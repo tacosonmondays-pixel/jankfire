@@ -1096,14 +1096,14 @@
   ],
   "slide": [
    {
-    "id": 9125380604,
-    "title": "Baseball Runner Slide On Dirt Into Home Plat (SFX)",
+    "id": 9119197706,
+    "title": "Slide On Wood 1 (SFX)",
     "source": "Pro Sound Effects (Roblox licensed library)",
     "region": [
-     1.42,
-     2.22
+     0.05,
+     0.85
     ],
-    "L": -34
+    "L": -23
    }
   ],
   "ropesnap": [
@@ -1397,15 +1397,6 @@
     "L": -20
    }
   ],
-  "zone_hub": [
-   {
-    "id": 104669963881856,
-    "title": "\"Murmur.wav\" by stewadosan (466767)",
-    "source": "Freesound, CC0",
-    "region": null,
-    "L": -14
-   }
-  ],
   "zone_training": [
    {
     "id": 113734560794871,
@@ -1498,6 +1489,30 @@
     "region": null,
     "L": -14
    }
+  ],
+  "hook_empty": [
+   {
+    "id": 9126267420,
+    "title": "Wood Hit Giant Wood Beam Dull Thuds Knocks 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.02,
+     0.4
+    ],
+    "L": -25
+   }
+  ],
+  "hook_ready": [
+   {
+    "id": 9116785204,
+    "title": "Metal Ratchet Small Ratchet Clicks 13 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.32
+    ],
+    "L": -35
+   }
   ]
  },
  "vol": {
@@ -1505,7 +1520,6 @@
   "squeak": 0.08,
   "parry": 0.25,
   "shutter": 6,
-  "slide": 3.5,
   "loot_win_common": 3.5,
   "click": 2.6,
   "empty": 3.2,
@@ -1558,7 +1572,6 @@
   "skin_lever_star_cycle": -28,
   "skin_sniper_triangulum_fire": -25.5,
   "skin_sniper_triangulum_cycle": -28,
-  "zone_hub": -31,
   "zone_training": -31,
   "zone_playground": -31,
   "zone_lot": -31,
@@ -1567,7 +1580,9 @@
   "door_vip_bell": -27,
   "door_vip_slide": -26,
   "pad_launch": -27,
-  "ranked_fire": -25
+  "ranked_fire": -25,
+  "hook_empty": -31,
+  "hook_ready": -32
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -1582,7 +1597,6 @@
   "skin_revolver_star_fire": 0.03,
   "skin_lever_star_fire": 0.03,
   "skin_sniper_triangulum_fire": 0.03,
-  "zone_hub": 0.03,
   "zone_training": 0.03,
   "zone_playground": 0.03,
   "zone_lot": 0.03,

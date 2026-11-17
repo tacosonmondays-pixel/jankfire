@@ -1,3 +1,32 @@
+# No crowd sound anywhere; grapple charge sounds (17 Nov 2026, place version 665)
+
+The owner: "why is the crowd sfx still there i want it gone completely". The crowd was the hub's area sting,
+`zone_hub` (Freesound "Murmur.wav" by stewadosan, 466767), which played on arriving in the hub from anywhere.
+- `ZoneSounds.client` plays nothing on arriving in the hub, from anywhere: training, the playground, the lot, the VIP
+  room or after a match. No other sound replaces it.
+- The Sound `zone_hub` is deleted from `JankfireSounds`, its row is out of `store.json` (so `store_sounds.mjs` can't bring
+  it back), and its cut `recorded/zone_hub.wav` is deleted. The credit line stays, marked unused.
+- The audit: every Sound saved in the place was listed (144: 139 in `JankfireSounds`, 5 on the back lot's timer
+  panel), with every asset's title, plus every script that makes a Sound at runtime (only `SpeedLines`' wind loop,
+  PSE 9113286782). No other crowd, murmur, chatter, cheer or voice sound. There is no hub ambience loop.
+- One more, to be safe: `slide` was "Baseball Runner Slide On Dirt Into Home Plate" (PSE), whose recording has a steady
+  background bed about 20 dB under the slide. It could have been a ballpark crowd. Now it's "Slide On Wood 1 (SFX)"
+  [0.05–0.85 s], a clean studio take that falls to silence after the scrape.
+
+Two quiet sounds for the ranked grapple limit (2 charges, one back every 6 s; `HookChargesUI`, the
+play-party-ranked session's), both on your screen only:
+
+| Sound | when | recording |
+| --- | --- | --- |
+| `hook_empty` | you press grapple with no charge left | PSE: Wood Hit Giant Wood Beam Dull Thuds Knocks 1 (SFX) [0.02–0.4 s]: one dull knock |
+| `hook_ready` | a charge comes back | PSE: Metal Ratchet Small Ratchet Clicks 13 (SFX) [0.08–0.32 s]: four quick ratchet ticks |
+
+Levels: targets −31 and −32 (quieter than the dry-fire click), slide −29 as before.
+
+Checks: one Play test (17:30 UTC, place version 665), logging every sound that started except footsteps. Through the hub's real door to training (`RotundaToTraining`): `zone_training`. Back to the hub: nothing. To the playground: `zone_playground`. Back to the hub: nothing. As a session-only VIP, to the VIP door, into the room and back out: only `door_vip_slide`, `door_vip_bell` and the closing slide. `zone_hub` no longer exists in the library. `slide`, `hook_empty` and `hook_ready` all load. The grapple sounds weren't triggered here: the play-party-ranked session hears them in its ranked test.
+
+---
+
 # VIP door, jump pads, the RANKED flame (17 Nov 2026, place version 654)
 
 Four recordings, each asked for by the owner:
@@ -16,7 +45,8 @@ along the edge can't flap it. It stays open at least 2 s. It dings once per open
 reopen just slides). Non-VIPs: the door stays shut and silent. When ZoneCull brings the hub back, the door is set
 straight to where it should be, with no sound. The owner also said "when you step out I think there's like a crowd
 sound effect, I don't want that, cut it to just the bell", so `ZoneSounds` plays nothing between the hub and the VIP
-room in either direction. `zone_hub` still plays for every other way into the hub, and `zone_vip` is now never played.
+room in either direction. `zone_vip` is now never played. (`zone_hub` still played for every other way into the hub
+until place version 665, which removed it.)
 
 **Jump pads.** The owner: "do bounce pads have a sound effect?" `Move.client` throws you off a part whose `Pad`
 attribute is a Vector3. `Steps.client` watches every body: when one leaves the ground going up faster than 25
@@ -81,7 +111,7 @@ quiet (between footsteps and gunfire), on the EFFECTS volume.
 
 | area | how it's known | sting |
 | --- | --- | --- |
-| hub | server `Zone` = hub | Freesound: "Murmur.wav" by stewadosan (466767) |
+| hub | server `Zone` = hub | none since place version 665 (was a crowd murmur, Freesound "Murmur.wav" by stewadosan, 466767: the owner wanted it gone) |
 | training hall | `Zone` = training | Freesound: "Air Hiss" by Jofae (367125) |
 | playground | `Zone` = playground | Freesound: "light slow swoosh.mp3" by Mikes-MultiMedia (349698) |
 | back lot | `OnLot` (TheLot) | Freesound: "Wind Gust" by crashoverride6 (146932) |

@@ -25,7 +25,7 @@
 - 119931.ogg: "Shoe Slide and Scuffle.aif" by ftpalad, https://freesound.org/people/ftpalad/sounds/119931/ (CC0)
 - 234869.ogg: "Musket Shot.wav" by mlsulli, https://freesound.org/people/mlsulli/sounds/234869/ (CC0)
 - 244345.ogg: "Musket Explosion" by Willlewis, https://freesound.org/people/Willlewis/sounds/244345/ (CC0)
-- 466767.ogg: "Murmur.wav" by stewadosan, https://freesound.org/people/stewadosan/sounds/466767/ (CC0)
+- 466767.ogg: "Murmur.wav" by stewadosan, https://freesound.org/people/stewadosan/sounds/466767/ (CC0); not used since 17 Nov (the owner wanted no crowd sound)
 - 271370.ogg: "singing bowl strike sound" by inoshirodesign, https://freesound.org/people/inoshirodesign/sounds/271370/ (CC0)
 - 810426.ogg: "temple bowl" by midge-f, https://freesound.org/people/midge-f/sounds/810426/ (CC0)
 - 146932.ogg: "Wind Gust" by crashoverride6, https://freesound.org/people/crashoverride6/sounds/146932/ (CC0)

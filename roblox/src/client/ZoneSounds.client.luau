@@ -1,17 +1,19 @@
 --!strict
 -- ZoneSounds: a short, soft sting when you move from one area into another (the owner, 17 Nov 2026: "can you have a
--- sfx when entering and leaving areas?"). one sting per area, played for you alone as you arrive there, so leaving
--- the training hall plays the hub's: recordings (Freesound CC0 / Pro Sound Effects), each about a second, quiet.
---   hub        a crowd murmur swelling up             training   a pneumatic air hiss (the hall's doors)
+-- sfx when entering and leaving areas?"). one sting per area, played for you alone as you arrive there (the hub and the
+-- VIP room have none): recordings (Freesound CC0 / Pro Sound Effects), each about a second, quiet.
+--   hub        (none: see below)                       training   a pneumatic air hiss (the hall's doors)
 --   playground a light, slow swoosh                    lot        a gust of wind (the back lot, outdoors)
 --   vip        (none: its door rings, see below)        lobby      a soft whoosh into your party's room
 -- where you are: the server's "Zone" attribute (hub / training / playground / match, Matches.zoneOf), its "OnLot"
 -- (TheLot), and here: inside a part tagged VipRoom, or inside a room of workspace.PartyLobbies.
--- quiet on purpose: the first area after you spawn or respawn, anything to or from a match (the round has its own
--- sounds), through the VIP door either way (the owner, 17 Nov: "when you step out I think there's like a crowd sound
--- effect, I don't want that, cut it to just the bell": the door's own chime and slide, HubVip.client, are the only
--- sounds there), and a second sting within 1.5 s (walking back and forth over a line doesn't spam). the Sounds are named
--- "zone_<area>" in JankfireSounds, so the settings page's EFFECTS volume covers them (SettingsApply).
+-- quiet on purpose: arriving in the hub, from anywhere (its sting was a crowd murmur; the owner, 17 Nov: "when you step
+-- out I think there's like a crowd sound effect, I don't want that, cut it to just the bell", then "why is the crowd sfx
+-- still there i want it gone completely": the Sound zone_hub is gone from JankfireSounds too, and no other sound
+-- replaces it), into the VIP room (the door's own chime and slide, HubVip.client, are the only sounds there), the first
+-- area after you spawn or respawn, anything to or from a match (the round has its own sounds), and a second sting within
+-- 1.5 s (walking back and forth over a line doesn't spam). the Sounds are named "zone_<area>" in JankfireSounds, so the
+-- settings page's EFFECTS volume covers them (SettingsApply).
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
@@ -81,7 +83,8 @@ while true do
 		local quiet = from == nil -- (the first area after you spawn: no sting)
 			or now - spawnedAt < SPAWN_QUIET
 			or a == "match" or from == "match"
-			or (a == "vip" and from == "hub") or (a == "hub" and from == "vip") -- (the VIP door has its own sounds)
+			or a == "hub" -- (no crowd, no sting: the owner wants it gone)
+			or a == "vip" -- (the VIP door has its own sounds)
 			or now - lastSting < COOLDOWN
 		if not quiet then
 			lastSting = now
