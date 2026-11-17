@@ -510,5 +510,9 @@ plays a sheet per effect from `Shared.FlairSheets.kill`; the sheets are ours: 4x
 **Bullet-trail retake (place version 630):** the ten special-skin trails with v596's doubled bits, drawn by
 `Fx.bulletTrail` across the training hall with the Fx clock frozen: `round16/v630-ten-trails-008.jpg` (0.08 s: the
 hearts, bubbles, stars, rings and feathers now read at this distance) and `-018.jpg` (0.18 s: the trails fading, the
-Star Drover's ring bloom, sparks and feathers settling). Still not photographed: a real first-person Seraph shot and the
-Sakura swing (the game camera came back facing a pillar after the scripted shots; next turn: those first).
+Star Drover's ring bloom, sparks and feathers settling). Real first-person shots (a fresh Play, real
+mouse clicks, the Fx clock frozen from the press): `round16/v630-fp-seraph-shot.jpg` (0.067 s after the press: the
+muzzle star, the hit mark on the dummy 24 studs off, a shell; your own line is meant to stay faint up close, first 25 %
+and 6 studs skipped, half the bits) and `round16/v630-fp-sakura-swing.jpg` (0.166 s: the pale swing trail with pink
+petals shed along the arc and round the guard). Scripted cameras first and a real first-person shot after don't mix in
+one Play: the game camera came back facing a pillar, with no gun in view.
