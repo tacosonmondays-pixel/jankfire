@@ -1387,6 +1387,14 @@ Bazaar v2 was built here. Desert v2 and Suburb v2 were built by two parallel hel
   - at the kerbs, a brick planter with a hedge, a mailbox cluster and two wheelie bins.
   - `W.check` still finds 539/539 hit boxes, 0 of 128 spawn lines open, the pads landing right, and ZFight 0.
   - Before/after photos: `docs/maps/suburb2_cars_removed_v706.jpg`.
+- **Suburb v2 switched off until it's finished (17 Nov, commit 086915f).** The owner said "suburb can you take it out until its finished".
+  - **The switch:** any arena's own attribute `Enabled`. When it is false, `Arena.pool` (`src/shared/Arena.luau`) skips the arena, so no pad, queue, mode, ranked game, party pick or map vote can land on it. `Arena.enabled(name)` asks the same question.
+  - **Suburb's setting:** `workspace.Map.SuburbV2` has `Enabled = false`. It stays built and stays in `ArenaPool`.
+  - **To bring it back:** `workspace.Map.SuburbV2:SetAttribute("Enabled", true)` (or clear the attribute), then save.
+  - **Checked:**
+    - Edit: Suburb is out of the pool for every team size, 0 picks in 2,000 draws, and flipping the switch puts it back.
+    - Play: 21 pad picks landed on all 8 other arenas, never on Suburb.
+  - The map selector and vote (Party.luau) read `Arena.pool`, so they follow the switch.
 - **Not done / not tested:** real 2-player matches, a whole storm in a live match, phones.
 
 ## For the next Claude session
