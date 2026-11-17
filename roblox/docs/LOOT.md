@@ -69,6 +69,15 @@ whose items have no weapon, so wraps and hats come on every gun. `("buy" / "clai
 ("comes with VIP"); and `Loot.owns` counts a VIP wrap or hat owned on one gun as owned on
 every gun, guns added later included.
 
+**The VIP daily reward's exclusives** (17 Nov, the shop session's `Shared.VipDailyData`: a VIP talks to Trisangle in the
+VIP room once a day). `VipDailyData.EXCLUSIVE` names a wrap (`triangulum`), a hat (`tricorne`) and a skin
+(`sniper_triangulum`) only that reward gives. `LootTable.exclusive(type, id)` asks `VipDailyData.isExclusive`;
+`LootTable.cosmetics` leaves them out of every container (and so out of the odds and the reels). The reward pays them
+through `Loot.grant(p, "vipdaily:<kind>:<id>", "vd-<uid>-<day>")` (a one-item `pass` offer, which buy / claim refuse);
+`LootTable.SKINS.sniper_triangulum` is there so the skin's pair can be written (a SkinSets row for it wins). Like a VIP
+one, an exclusive wrap or hat owned on one gun counts as owned on every gun (`Loot.owns`). They aren't marked vip: the
+VIP pack gives every vip thing. Containers from the reward go through `Loot.grant(p, "spray", ...)`.
+
 Free items (the Default / Pink / Wood wraps, the Party Hat and Traffic Cone) belong to everyone and never roll.
 Achievement items (`ach`, e.g. the Golden Sniper) are never in a container.
 
@@ -261,6 +270,26 @@ lands on its side on the floor beside the can. A soft dark band at the top and b
 readable over any room, and the camera stands a couple of studs in front of you so your own body is never in shot.
 
 All seven sounds were approved by Roblox on 16 Nov (asset ids in the shared notes, `loot-progress.md`).
+
+**A reward that isn't from a container: `Opening.reward(spec)`** (17 Nov, for the shop session's VIP daily reward).
+`spec = { title = "DAILY REWARD", who = "Trisangle"?, line?, prize = P, reel = { P, ... } }` with
+`P = { kind = "brass" | "container" | "wrap" | "hat" | "skin" (or a hook's type), id, n?, name, rarity, weapon? }`.
+No container and no camera move: the world goes soft, the reel (the given entries, round again to 36 and shuffled) lands
+on the prize, then the prize's card comes up big in the middle with its name, EQUIP (a wrap, hat or skin on its gun) and
+DONE. It yields until DONE and returns "done" ("busy" if an opening is running); it gives nothing (the caller grants
+first). Brass draws the quests session's `QuestUI.icon("brass")`, a container its own model. Tested at place v547
+(made-up rewards: a Duffel Bag on a computer, the Hairdryer skin in an 844 x 390 box).
+
+**Phones** (17 Nov, the mobile-controls session: the 1920 x 1080 stage scaled to fit made the buttons about 18 points).
+The opening's ScreenGui keeps to the device's safe area (`ScreenInsets = DeviceSafeInsets`; the dark bands, the flash
+and the click catcher reach past it). `fit(ui)` runs every frame: the stage scale `s` fits the safe area; under
+`PHONE = 0.62` the title, the reel and the reveal are boosted by `b = min(0.62 / s, 2)` round their own anchors, SKIP
+moves to the top right (touch screens say just SKIP), and every button is at least `TAP = 44` points tall (`tapH`,
+`layRow`). After a ring, on a phone, the whole card is its EQUIP button (a tag on its corner says EQUIP or OWNED) and the
+list is as big as fits between the title and the buttons. The reward's big card fits the space between the title and
+the reveal. A test: `Opening.setTestBox(Vector2.new(844, 390))` lays it out in a box that size mid-screen (nil to stop).
+Measured at v547 in an 844 x 390 box: the reveal's buttons 155 x 44 and 93 x 44, after a five-ring the cards 109 x 131
+and OPEN 5 MORE / DONE 196 x 44 and 149 x 44. Not yet seen: a single opening in the box, the 1133 x 744 box, a real phone.
 
 ## Several at once, and others seeing it
 

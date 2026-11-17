@@ -172,6 +172,9 @@ do
 		end
 	end
 end
+-- the VIP daily reward's exclusive skin (the shop session's VipDailyData.EXCLUSIVE.skin, 17 Nov): a row so the reward can
+-- give it (Loot.grant of a "pass" offer); it's in no container (L.exclusive). a SkinSets row for it wins
+L.SKINS.sniper_triangulum = L.SKINS.sniper_triangulum or { "Triangulum", "legendary", "sniper" }
 -- a weapon skin's tier (SkinSets.TIER: basic = small changes to the base gun, mid = a new model, high = a remodel with
 -- its own effects): "basic" / "mid" / "high" and its name, or nil (no tier, or no SkinSets in the place)
 function L.tier(id: string): (string?, string?)
@@ -225,6 +228,22 @@ function L.vipOnly(t: string, id: string): boolean
 		local ok, c = pcall(cm.info, t, id)
 		return ok and type(c) == "table" and (c.vip == true or c.rarity == "vip")
 	end
+end
+
+-- the VIP daily reward's own exclusives (the shop session's Shared.VipDailyData: EXCLUSIVE = { wrap, hat, skin },
+-- isExclusive(kind, id)): only the daily reward gives them (a hidden "pass" offer through Loot.grant), never a container
+local vipDaily: any = nil
+function L.exclusive(t: string, id: string): boolean
+	if vipDaily == nil then
+		local m = Shared:FindFirstChild("VipDailyData")
+		if m and m:IsA("ModuleScript") then
+			local ok, v = pcall(require, m)
+			vipDaily = if ok and type(v) == "table" and type(v.isExclusive) == "function" then v else false
+		end
+	end
+	if not vipDaily then return false end
+	local ok, yes = pcall(vipDaily.isExclusive, t, id)
+	return ok and yes == true
 end
 
 local function skinsLive(): { [string]: boolean }
@@ -346,7 +365,10 @@ function L.cosmetics(kind: string): { Item }
 			end
 		end
 	end
-	return out
+	-- (never one of the VIP daily reward's exclusives)
+	local kept = {}
+	for _, i in out do if not L.exclusive(i.type, i.id) then table.insert(kept, i) end end
+	return kept
 end
 -- the guns a cosmetic can be won for
 -- (a hook's type is gun-less: it rolls as one more "gun", so a bag lands on one about as often as on one gun's hats.

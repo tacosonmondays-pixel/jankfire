@@ -110,7 +110,8 @@ function Loot.owns(p: Player, t: string, id: string, weapon: string?): boolean
 	if not set then return false end
 	if t == "skin" then return set[LootTable.key(t, id, weapon)] == true end
 	-- (a VIP wrap or hat is worn on every gun: owning it on one is owning it, guns added later too)
-	if weapon and not LootTable.vipOnly(t, id) then return set[LootTable.key(t, id, weapon)] == true end
+	-- (and so is the VIP daily reward's exclusive wrap or hat: VipDailyData, "worn on every gun, like the VIP pack's")
+	if weapon and not LootTable.vipOnly(t, id) and not LootTable.exclusive(t, id) then return set[LootTable.key(t, id, weapon)] == true end
 	for k in set do if LootTable.split(k) == id then return true end end
 	return false
 end

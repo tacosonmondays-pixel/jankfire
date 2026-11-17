@@ -374,9 +374,42 @@ local function modelPicture(parent: GuiObject, m: Model?, fixedR: number?)
 	local dir = (Vector3.new(0.8, 0.5, -1)).Unit
 	cam.CFrame = CFrame.lookAt(cf.Position + dir * (r / math.tan(math.rad(15)) * 1.05), cf.Position)
 end
+-- Brass (the quests session's currency): its own icon (QuestUI.icon), else a plain brass disc. size in the card's pixels
+local questUi: any = false
+local function brassPicture(parent: GuiObject, size: number)
+	if questUi == false then
+		questUi = nil
+		local m = script.Parent:FindFirstChild("QuestUI")
+		if m and m:IsA("ModuleScript") then
+			local ok, q = pcall(require, m)
+			if ok and type(q) == "table" and type(q.icon) == "function" then questUi = q end
+		end
+	end
+	local ok, f = false, nil
+	if questUi then ok, f = pcall(questUi.icon, "brass", parent, size) end
+	if ok and typeof(f) == "Instance" and f:IsA("GuiObject") then
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromScale(0.5, 0.5)
+		f.Parent = parent
+	else
+		local c = new("Frame", { BackgroundColor3 = Color3.fromRGB(196, 156, 82), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(size, size) }, parent)
+		T.corner(c, 999)
+	end
+end
+-- a container (a reward can be one): its model, the same one that drops in an opening
+local boxPics: { [string]: Model } = {}
+local function containerPicture(parent: GuiObject, kind: string)
+	if not LootTable.CONTAINERS[kind] then return end
+	local t = boxPics[kind]
+	if not t then t = container(kind); boxPics[kind] = t end
+	modelPicture(parent, t:Clone())
+end
 local skinPics: { [string]: any } = {}
 local function cardPicture(parent: GuiObject, item: any)
-	if item.type == "wrap" then wrapPicture(parent, item.id)
+	if item.type == "brass" then brassPicture(parent, math.floor(math.min(CARD_W - 16, CARD_H - 72) * 0.58))
+	elseif item.type == "container" then containerPicture(parent, item.id)
+	elseif item.type == "wrap" then wrapPicture(parent, item.id)
 	elseif item.type == "hat" then
 		local t = GunHats.template(item.id)
 		modelPicture(parent, if t then t:Clone() else nil)
@@ -474,37 +507,56 @@ local function button(parent: Instance, text: string, main: boolean, pos: UDim2,
 	return b
 end
 
-type Ui = { gui: ScreenGui, stage: Frame, scale: UIScale, title: TextLabel, odds: TextLabel, skip: TextButton,
-	reel: CanvasGroup, strip: Frame, marker: Frame, flash: Frame, reveal: Frame, rName: TextLabel, rKind: TextLabel, rOn: TextLabel,
-	equip: TextButton, again: TextButton, done: TextButton }
+type Ui = { gui: ScreenGui, box: Frame, stage: Frame, scale: UIScale, head: Frame, headScale: UIScale, title: TextLabel,
+	odds: TextLabel, skip: TextButton, skipScale: UIScale, reel: CanvasGroup, reelScale: UIScale, reelLow: number, strip: Frame,
+	marker: Frame, flash: Frame, reveal: Frame, revealScale: UIScale, rName: TextLabel, rKind: TextLabel, rOn: TextLabel,
+	equip: TextButton, again: TextButton, done: TextButton, s: number, b: number, wide: number }
 local function buildUi(): Ui
 	local pg = me:WaitForChild("PlayerGui")
+	-- (the stage keeps to the device's safe area, away from a phone's notch and corners; the dark bands, the flash and
+	-- the click catcher reach past it to the screen's edges)
 	local gui = new("ScreenGui", { Name = "JankLootOpening", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 60,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = true }, pg)
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = true, ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets,
+		ClipToDeviceSafeArea = false }, pg)
+	local PAST = 400 -- (pixels of screen past the safe area on every side: more than any notch)
 	-- (Modal frees the mouse from first person while it's up, and the button eats clicks on the world)
-	new("TextButton", { Name = "Catcher", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Modal = true }, gui)
-	local flash = new("Frame", { Name = "Flash", BackgroundColor3 = WHITE, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1 }, gui)
+	new("TextButton", { Name = "Catcher", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(-PAST, -PAST),
+		Size = UDim2.new(1, PAST * 2, 1, PAST * 2), Modal = true }, gui)
+	local flash = new("Frame", { Name = "Flash", BackgroundColor3 = WHITE, BackgroundTransparency = 1, BorderSizePixel = 0,
+		Position = UDim2.fromOffset(-PAST, -PAST), Size = UDim2.new(1, PAST * 2, 1, PAST * 2), ZIndex = 1 }, gui)
 	-- (a soft dark band at the top and the bottom so the words read over any room)
 	local shadeTop = new("Frame", { Name = "ShadeTop", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, BorderSizePixel = 0,
-		Size = UDim2.new(1, 0, 0.22, 0), ZIndex = 1 }, gui)
+		Position = UDim2.fromOffset(-PAST, -PAST), Size = UDim2.new(1, PAST * 2, 0.22, PAST), ZIndex = 1 }, gui)
 	new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) }) }, shadeTop)
 	local shadeBot = new("Frame", { Name = "ShadeBot", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0.38, 0), ZIndex = 1 }, gui)
+		AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, -PAST, 1, PAST), Size = UDim2.new(1, PAST * 2, 0.38, PAST), ZIndex = 1 }, gui)
 	new("UIGradient", { Rotation = 270, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }) }, shadeBot)
+	-- the box the stage fits in: the safe area (or Opening.testBox, a phone-sized test box in the middle)
+	local box = new("Frame", { Name = "Box", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1), ZIndex = 2 }, gui)
 	local stage = new("Frame", { Name = "Stage", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(1920, 1080), ZIndex = 2 }, gui)
+		Size = UDim2.fromOffset(1920, 1080), ZIndex = 2 }, box)
 	local scale = new("UIScale", {}, stage)
-	local title = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 70),
-		Size = UDim2.fromOffset(1200, 44), FontFace = T.FONT_TITLE, TextSize = 34, Text = "", TextColor3 = T.TEXT, TextTransparency = 1 }, stage)
+	-- the title and the line under it (boosted together on a phone, from their top middle)
+	local head = new("Frame", { Name = "Head", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 62),
+		Size = UDim2.fromOffset(1200, 96) }, stage)
+	local headScale = new("UIScale", {}, head)
+	local title = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(600, 8),
+		Size = UDim2.fromOffset(1200, 44), FontFace = T.FONT_TITLE, TextSize = 34, Text = "", TextColor3 = T.TEXT, TextTransparency = 1 }, head)
 	new("UIStroke", { Thickness = 1, Transparency = 0.7, Color = Color3.new(0, 0, 0), ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual }, title)
-	local odds = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 118),
-		Size = UDim2.fromOffset(1200, 24), FontFace = T.FONT, TextSize = 17, Text = "", TextColor3 = T.SOFT, TextTransparency = 1 }, stage)
-	local skip = button(stage, "SKIP  [SPACE]", false, UDim2.fromOffset(1700, 980), UDim2.fromOffset(170, 46))
+	local odds = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(600, 56),
+		Size = UDim2.fromOffset(1200, 24), FontFace = T.FONT, TextSize = 17, Text = "", TextColor3 = T.SOFT, TextTransparency = 1 }, head)
+	-- (SKIP: bottom right; on a phone top right, out of the low reel's way. a touch screen has no SPACE)
+	local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled
+	local skip = button(stage, if touch then "SKIP" else "SKIP  [SPACE]", false, UDim2.fromOffset(1870, 1026), UDim2.fromOffset(170, 46))
+	skip.AnchorPoint = Vector2.new(1, 1)
+	local skipScale = new("UIScale", {}, skip)
 	-- the reel: a band across the middle, cards on a strip that slides left under a fixed marker
 	-- (a CanvasGroup, so the gradient fades the cards themselves out at both ends, not just the band behind them)
 	local reel = new("CanvasGroup", { Name = "Reel", BackgroundColor3 = T.BG, BackgroundTransparency = 0.25, BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(960, 540), Size = UDim2.fromOffset(1920, CARD_H + 56), ClipsDescendants = true, Visible = false }, stage)
 	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.18, 0), NumberSequenceKeypoint.new(0.82, 0), NumberSequenceKeypoint.new(1, 1) }) }, reel)
+	local reelScale = new("UIScale", { Name = "Low", Scale = 1 }, reel)
 	local strip = new("Frame", { Name = "Strip", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 28), Size = UDim2.fromOffset(STEP * 60, CARD_H) }, reel)
 	local marker = new("Frame", { Name = "Marker", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromOffset(960, 6), Size = UDim2.fromOffset(4, CARD_H + 44), ZIndex = 10 }, reel)
@@ -516,6 +568,7 @@ local function buildUi(): Ui
 	-- the reveal: bottom centre, under the turning prize
 	local reveal = new("Frame", { Name = "Reveal", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromOffset(960, 1030),
 		Size = UDim2.fromOffset(900, 250), Visible = false }, stage)
+	local revealScale = new("UIScale", {}, reveal)
 	local rKind = new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, 26),
 		FontFace = T.FONT_BOLD, TextSize = 20, Text = "", TextColor3 = T.TEXT }, reveal)
 	local rName = new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 28), Size = UDim2.new(1, 0, 0, 70),
@@ -526,8 +579,71 @@ local function buildUi(): Ui
 	local equip = button(reveal, "EQUIP", true, UDim2.fromOffset(120, 160), UDim2.fromOffset(250, 56))
 	local again = button(reveal, "OPEN ANOTHER", false, UDim2.fromOffset(390, 160), UDim2.fromOffset(220, 56))
 	local done = button(reveal, "DONE", false, UDim2.fromOffset(630, 160), UDim2.fromOffset(150, 56))
-	return { gui = gui, stage = stage, scale = scale, title = title, odds = odds, skip = skip, reel = reel, strip = strip, marker = marker,
-		flash = flash, reveal = reveal, rName = rName, rKind = rKind, rOn = rOn, equip = equip, again = again, done = done }
+	return { gui = gui, box = box, stage = stage, scale = scale, head = head, headScale = headScale, title = title, odds = odds,
+		skip = skip, skipScale = skipScale, reel = reel, reelScale = reelScale, reelLow = 1, strip = strip, marker = marker, flash = flash,
+		reveal = reveal, revealScale = revealScale, rName = rName, rKind = rKind, rOn = rOn, equip = equip, again = again, done = done,
+		s = 1, b = 1, wide = 1920 }
+end
+
+-- ---------------------------------------------------------------- phones
+-- (the mobile-controls session, 17 Nov: the 1920 x 1080 stage scaled to fit a phone made the buttons about 18 points.)
+-- the stage still fits the safe area, but where it gets small (a stage scale under PHONE) the title, the reel and the
+-- reveal are boosted up to 2x round their own anchors, SKIP goes to the top right, and every button is at least TAP
+-- points tall. ui.s = the stage's scale, ui.b = the boost, ui.wide = the stage-pixel width you can see (more than 1920
+-- on a wide phone). a test: Opening.setTestBox(Vector2.new(844, 390)) lays it out in a box that size mid-screen
+local PHONE, TAP = 0.62, 44
+local testBox: Vector2? = nil
+function Opening.setTestBox(v: Vector2?) testBox = v end
+local function fit(ui: Ui)
+	local a: Vector2
+	if testBox then
+		ui.box.Size = UDim2.fromOffset(testBox.X, testBox.Y)
+		a = testBox
+	else
+		ui.box.Size = UDim2.fromScale(1, 1)
+		a = ui.box.AbsoluteSize
+	end
+	local edge = ui.box:FindFirstChild("TestEdge")
+	if testBox and not edge then new("UIStroke", { Name = "TestEdge", Color = T.ACCENT, Thickness = 2 }, ui.box)
+	elseif edge and not testBox then edge:Destroy() end
+	if a.X < 2 or a.Y < 2 then return end
+	local s = math.min(a.X / 1920, a.Y / 1080)
+	local b = if s < PHONE then math.min(PHONE / s, 2) else 1
+	ui.s, ui.b, ui.wide = s, b, a.X / s
+	ui.scale.Scale = s
+	ui.headScale.Scale = b
+	ui.revealScale.Scale = b
+	ui.reelScale.Scale = ui.reelLow * b
+	ui.skipScale.Scale = math.max(b, TAP / (46 * s))
+	local right = 960 + ui.wide / 2 - 50
+	if b > 1 then
+		ui.skip.AnchorPoint = Vector2.new(1, 0)
+		ui.skip.Position = UDim2.fromOffset(right, 40)
+	else
+		ui.skip.AnchorPoint = Vector2.new(1, 1)
+		ui.skip.Position = UDim2.fromOffset(right, 1026)
+	end
+end
+-- a button's height in stage pixels: `base`, or taller to make TAP points under this boost
+local function tapH(ui: Ui, base: number, boost: number?): number
+	return math.max(base, math.ceil(TAP / (ui.s * (boost or 1))))
+end
+-- the reveal's row of buttons, in the middle, each at least TAP points tall
+local function layRow(ui: Ui, row: { TextButton })
+	local h = tapH(ui, 56, ui.b)
+	local width = 0
+	for _, b in row do
+		b.Size = UDim2.fromOffset(b.Size.X.Offset, h)
+		b.TextSize = math.floor(math.min(h, 80) * 0.36)
+		width += b.Size.X.Offset
+	end
+	width += (#row - 1) * 16
+	local x = 450 - width / 2
+	for _, b in row do b.Position = UDim2.fromOffset(x, 160); x += b.Size.X.Offset + 16 end
+end
+-- where the space between the title and the reveal is (stage y): for something big in the middle
+local function middle(ui: Ui): (number, number)
+	return 62 + 100 * ui.b, 1030 - 250 * ui.b
 end
 
 -- ---------------------------------------------------------------- the world: where it lands, the camera
@@ -755,9 +871,9 @@ end
 -- the reel: build the cards, spin, land. returns the winning card
 local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: boolean?): Frame
 	local ui = R.ui
-	local sc = ui.reel:FindFirstChild("Low") :: UIScale?
-	if not sc then sc = new("UIScale", { Name = "Low", Scale = 1 }, ui.reel) end
-	(sc :: UIScale).Scale = if low then 0.68 else 1
+	-- (the low reel of a ring is smaller; on a phone both are boosted: fit() keeps reelScale = reelLow x boost)
+	ui.reelLow = if low then 0.68 else 1
+	ui.reelScale.Scale = ui.reelLow * ui.b
 	local y = if low then 905 else 540
 	for _, c in ui.strip:GetChildren() do c:Destroy() end
 	local cards = {}
@@ -1159,31 +1275,57 @@ local function runMany(R: Run): string
 	end)
 	local grid = new("Frame", { Name = "Summary", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(1920, 1080), ZIndex = 5 }, ui.stage)
 	local rows = math.ceil(n / 5)
-	local CW, CH, BH, GY = CARD_W, CARD_H, 38, 26
-	local GX = 22
-	local y0 = 540 - (rows * (CH + BH + 8) + (rows - 1) * GY) / 2 + 10
+	-- (a phone: the whole card is its EQUIP button (a tag on its corner says which), the list as big as fits between
+	-- the title and the buttons; a computer: a button under each card, as before)
+	local phone = ui.b > 1
+	local CW, CH, GY, GX = CARD_W, CARD_H, 26, 22
+	local BH = if phone then 0 else 38
+	local cols = math.min(5, n)
+	local gw, gh = cols * CW + (cols - 1) * GX, rows * (CH + BH + 8) + (rows - 1) * GY
+	local bh = tapH(ui, 56) -- (the buttons under it: TAP points tall)
+	local gTop, gBot = 62 + 100 * ui.b + 20, 1080 - 40 - bh - 24
+	local g = if phone then math.min(ui.b, (gBot - gTop) / gh, (ui.wide - 120) / gw) else 1
+	local cards = new("Frame", { Name = "Cards", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(960, if phone then (gTop + gBot) / 2 else 580), Size = UDim2.fromOffset(gw, gh) }, grid)
+	new("UIScale", { Scale = g }, cards)
 	for i, item in order do
 		local r, c = math.floor((i - 1) / 5), (i - 1) % 5
 		local inRow = math.min(5, n - r * 5)
-		local xr = 960 - (inRow * CW + (inRow - 1) * GX) / 2 -- (a short last row sits in the middle)
-		local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(xr + c * (CW + GX), y0 + r * (CH + BH + 8 + GY) + 30),
-			Size = UDim2.fromOffset(CW, CH + BH + 8) }, grid)
+		local xr = (gw - (inRow * CW + (inRow - 1) * GX)) / 2 -- (a short last row sits in the middle)
+		local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(xr + c * (CW + GX), r * (CH + BH + 8 + GY)),
+			Size = UDim2.fromOffset(CW, CH + BH + 8) }, cards)
 		local cd = card(holder, item, 0)
 		local stroke = cd:FindFirstChildOfClass("UIStroke")
 		if stroke and (RANK[item.rarity] or 0) >= 3 then stroke.Color = rcol(item.rarity); stroke.Transparency = 0.1; stroke.Thickness = 2 end
 		local eq = canEquip(item)
-		local b = button(holder, if eq then "EQUIP" else "IN YOUR INVENTORY", false, UDim2.fromOffset(0, CH + 8), UDim2.fromOffset(CW, BH))
-		b.TextSize = 14
+		local b: TextButton
+		local say: (string) -> ()
+		if phone then
+			b = new("TextButton", { Name = "Tap", Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromOffset(CW, CH), ZIndex = 9 }, holder)
+			local tag = new("TextLabel", { Name = "Tag", BackgroundColor3 = if eq then T.ACCENT else T.BG, BackgroundTransparency = if eq then 0 else 0.15,
+				BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromOffset(CW - 12, 12), Size = UDim2.fromOffset(0, 26),
+				AutomaticSize = Enum.AutomaticSize.X, FontFace = T.FONT_BOLD, TextSize = 15, Text = if eq then "EQUIP" else "OWNED",
+				TextColor3 = if eq then T.INK else T.SOFT, ZIndex = 8 }, holder)
+			new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, tag)
+			T.corner(tag, 4)
+			say = function(s: string) tag.Text = s end
+		else
+			b = button(holder, if eq then "EQUIP" else "IN YOUR INVENTORY", false, UDim2.fromOffset(0, CH + 8), UDim2.fromOffset(CW, BH))
+			b.TextSize = 14
+			if not eq then b.TextColor3 = T.MUTED end
+			say = function(s: string) b.Text = s end
+		end
 		if eq then
+			local busy, done = false, false
 			b.MouseButton1Click:Connect(function()
-				if b.Text == "EQUIPPED" or b.Text == "..." then return end
-				b.Text = "..."
+				if busy or done then return end
+				busy = true
+				say("...")
 				local ok, why = equipItem(item)
-				b.Text = if ok then "EQUIPPED" else string.upper(why or "couldn't")
+				busy, done = false, ok
+				say(if ok then "EQUIPPED" else string.upper(why or "couldn't"))
 				if ok then pcall(Sfx.play, "click") end
 			end)
-		else
-			b.TextColor3 = T.MUTED
 		end
 		holder.Position += UDim2.fromOffset(0, 24)
 		cd.BackgroundTransparency = 1
@@ -1191,16 +1333,20 @@ local function runMany(R: Run): string
 		tw(cd, 0.3 + i * 0.03, { BackgroundTransparency = 0 })
 	end
 	if res.short then
-		local note = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 150),
+		local note = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 62 + 92 * ui.b),
 			Size = UDim2.fromOffset(1000, 24), FontFace = T.FONT, TextSize = 17, TextColor3 = T.SOFT, ZIndex = 6,
 			Text = "that was everything left in them for you" }, grid)
-		local _ = note
+		new("UIScale", { Scale = ui.b }, note)
 	end
 	local again = R.opts.again ~= false
-	local bAgain = button(grid, ("OPEN %d MORE"):format(n), true, UDim2.fromOffset(960 - 230, 960), UDim2.fromOffset(250, 56))
-	local bDone = button(grid, "DONE", false, UDim2.fromOffset(960 + 40, 960), UDim2.fromOffset(190, 56))
+	-- (the two buttons, TAP points tall, wider in step)
+	local bw = bh / 56
+	local by = if phone then 1080 - 40 - bh else 960
+	local x0 = 960 - (440 * bw + 20) / 2
+	local bAgain = button(grid, ("OPEN %d MORE"):format(n), true, UDim2.fromOffset(x0, by), UDim2.fromOffset(250 * bw, bh))
+	local bDone = button(grid, "DONE", false, UDim2.fromOffset(x0 + 250 * bw + 20, by), UDim2.fromOffset(190 * bw, bh))
 	bAgain.Visible = again
-	if not again then bDone.Position = UDim2.fromOffset(960 - 95, 960) end
+	if not again then bDone.Position = UDim2.fromOffset(960 - 95 * bw, by) end
 	local answer: string? = nil
 	bDone.MouseButton1Click:Connect(function() answer = "done" end)
 	bAgain.MouseButton1Click:Connect(function() answer = "again" end)
@@ -1586,11 +1732,7 @@ local function run(R: Run): string
 	-- lay the row out in the middle
 	local row = {}
 	for _, b in { ui.equip, ui.again, ui.done } do if b.Visible then table.insert(row, b) end end
-	local width = 0
-	for _, b in row do width += b.Size.X.Offset end
-	width += (#row - 1) * 16
-	local x = 450 - width / 2
-	for _, b in row do b.Position = UDim2.fromOffset(x, 160); x += b.Size.X.Offset + 16 end
+	layRow(ui, row)
 	ui.reveal.Visible = true
 	ui.reveal.Position = UDim2.fromOffset(960, 1060)
 	tw(ui.reveal, 0.4, { Position = UDim2.fromOffset(960, 1030) })
@@ -1693,8 +1835,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 		c.CFrame = cf
 		fovNow += (R.cam.fov - fovNow) * 0.12
 		c.FieldOfView = fovNow
-		local v = c.ViewportSize
-		ui.scale.Scale = math.min(v.X / 1920, v.Y / 1080)
+		fit(ui)
 	end)
 	-- a death or a match grabbing you ends it
 	local function bail() R.result = "done"; R.skip = true end
@@ -1710,6 +1851,211 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	running = false
 	if not ok then
 		warn("[jankfire] the opening broke: " .. tostring(out))
+		return "done"
+	end
+	return out
+end
+
+-- ---------------------------------------------------------------- a reward that isn't from a container
+-- (the shop session's VIP daily reward, 17 Nov: a VIP talks to Trisangle in the VIP room once a day and gets a random
+-- prize, shown in the openings' style.) no container and no camera move: the reel over the blurred world, landing on
+-- the prize; then the prize big in the middle with its name, EQUIP (an item that goes on a gun) and DONE.
+-- spec = { title = "DAILY REWARD", who = "Trisangle"?, line = "Here."?, prize = P, reel = { P, ... } } where
+-- P = { kind = "brass" | "container" | "wrap" | "hat" | "skin" (or a hook's type), id, n?, name, rarity, weapon? }
+-- (id: "brass", a container's kind, or the item's id). the prize goes on the landing card. it gives nothing: the
+-- caller grants first. yields until DONE and returns "done" ("busy" while an opening runs)
+local function rewardItem(x: any): any
+	if type(x) ~= "table" then return nil end
+	local kind = if type(x.kind) == "string" then x.kind elseif type(x.type) == "string" then x.type else nil
+	if not kind or type(x.id) ~= "string" then return nil end
+	local rarity = if type(x.rarity) == "string" and LootTable.RARITY[x.rarity] then x.rarity else "common"
+	local name: string? = if type(x.name) == "string" and x.name ~= "" then x.name else nil
+	if not name then
+		local i = LootTable.info(kind, x.id)
+		local c = LootTable.CONTAINERS[x.id]
+		name = if i then i.name elseif kind == "container" and c then c.name else x.id
+	end
+	return { type = kind, id = x.id, key = x.id, name = name, rarity = rarity, n = tonumber(x.n) or 1,
+		weapon = if type(x.weapon) == "string" then x.weapon else nil }
+end
+local KIND_WORD = { brass = "Brass", container = "Container" }
+
+local function rewardRun(R: Run, spec: any, prize: any, items: { any }, stop: number): string
+	local ui = R.ui
+	ui.title.Text = string.upper(if type(spec.title) == "string" and spec.title ~= "" then spec.title else "REWARD")
+	local sub = {}
+	if type(spec.who) == "string" and spec.who ~= "" then table.insert(sub, "FROM " .. string.upper(spec.who)) end
+	if type(spec.line) == "string" and spec.line ~= "" then table.insert(sub, spec.line) end
+	ui.odds.Text = table.concat(sub, "  ·  ")
+	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
+	tw(R.blur, 0.4, { Size = 18 })
+	tw(R.tint, 0.4, { Brightness = -0.06, Saturation = -0.5, Contrast = 0.05 })
+	hold(R, 0.3)
+
+	-- the reel, as an opening's
+	local win = spinReel(R, items, stop, if R.skip then TIME.spinQuick else TIME.spin)
+	local col = rcol(prize.rarity)
+	for _, c in ui.strip:GetChildren() do
+		if c:IsA("Frame") and c ~= win then
+			local dim = c:FindFirstChild("Dim")
+			if dim then tw(dim :: Frame, 0.3, { BackgroundTransparency = 0.5 }) end
+		end
+	end
+	local sc = new("UIScale", { Scale = 1 }, win)
+	tw(sc, 0.35, { Scale = 1.1 }, Enum.EasingStyle.Back)
+	local stroke = win:FindFirstChildOfClass("UIStroke")
+	if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
+	ui.flash.BackgroundColor3 = col
+	ui.flash.BackgroundTransparency = 0.72
+	tw(ui.flash, 0.8, { BackgroundTransparency = 1 })
+	local rank = RANK[prize.rarity] or 1
+	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
+	snd(stings, nil, 1, 1)
+	if not R.result then R.skip = false end
+	hold(R, TIME.land)
+
+	-- the prize: its card big in the middle, the rarity's colour soft behind it
+	tw(ui.reel, 0.3, { Position = UDim2.fromOffset(960, 600), BackgroundTransparency = 1 })
+	task.delay(0.3, function() ui.reel.Visible = false end)
+	ui.skip.Visible = false
+	-- (in the space between the title and the reveal: on a phone both are boosted, so the card is a little smaller)
+	local top, bot = middle(ui)
+	local bigK = math.min(1.65, (bot - top - 30) / (CARD_H + 44))
+	local holder = new("Frame", { Name = "Prize", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(960, (top + bot) / 2),
+		Size = UDim2.fromOffset(CARD_W, CARD_H), ZIndex = 5 }, ui.stage)
+	local halo = new("Frame", { Name = "Halo", BackgroundColor3 = col, BackgroundTransparency = 1, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 44, 1, 44) }, holder)
+	T.corner(halo, 18)
+	local big = card(holder, prize, 0)
+	local bst = big:FindFirstChildOfClass("UIStroke")
+	if bst then bst.Color = col; bst.Transparency = 0; bst.Thickness = 2 end
+	local hs = new("UIScale", { Scale = bigK * 0.66 }, holder)
+	tw(hs, 0.5, { Scale = bigK }, Enum.EasingStyle.Back)
+	tw(halo, 0.5, { BackgroundTransparency = 0.82 })
+
+	-- the words and the buttons
+	local word = KIND_WORD[prize.type] or LootTable.TYPE_NAMES[prize.type] or "Item"
+	ui.rKind.Text = rname(prize.rarity) .. "  ·  " .. string.upper(word)
+	ui.rKind.TextColor3 = col
+	ui.rName.Text = string.upper(prize.name or prize.id or "")
+	local wid = gunOf(prize)
+	local we = wid and Roster.byId[wid]
+	ui.rOn.Text = if prize.type == "skin" and we then "a new look for your " .. we.name
+		elseif we and prize.weapon then "for your " .. we.name .. " only"
+		elseif LootTable.cardLook(prize.type) then "for your player card" else ""
+	local can = canEquip(prize)
+	ui.equip.Visible = can
+	ui.equip.Text = if can and wid then "EQUIP ON " .. string.upper(Roster.byId[wid].name) else "EQUIP"
+	ui.equip.Size = UDim2.fromOffset(math.max(250, #ui.equip.Text * 13 + 40), 56)
+	ui.again.Visible = false
+	local row = {}
+	for _, b in { ui.equip, ui.done } do if b.Visible then table.insert(row, b) end end
+	layRow(ui, row)
+	ui.reveal.Visible = true
+	ui.reveal.Position = UDim2.fromOffset(960, 1060)
+	tw(ui.reveal, 0.4, { Position = UDim2.fromOffset(960, 1030) })
+
+	local answer: string? = nil
+	ui.done.MouseButton1Click:Connect(function() answer = "done" end)
+	ui.equip.MouseButton1Click:Connect(function()
+		if not can or ui.equip.Text == "EQUIPPED" or ui.equip.Text == "..." then return end
+		ui.equip.Text = "..."
+		local ok, why = equipItem(prize)
+		if ok then
+			ui.equip.Text = "EQUIPPED"
+			ui.equip.BackgroundColor3 = T.CARD
+			ui.equip.TextColor3 = T.TEXT
+			pcall(Sfx.play, "click")
+		else
+			ui.equip.Text = string.upper(why or "couldn't equip")
+		end
+	end)
+	while not answer do
+		if R.result then answer = R.result end
+		RunService.RenderStepped:Wait()
+	end
+
+	-- away
+	tw(ui.reveal, 0.25, { Position = UDim2.fromOffset(960, 1100) })
+	tw(hs, 0.25, { Scale = bigK * 0.75 })
+	for _, d in holder:GetDescendants() do
+		if d:IsA("Frame") then tw(d, 0.25, { BackgroundTransparency = 1 })
+		elseif d:IsA("TextLabel") then tw(d, 0.25, { TextTransparency = 1 }) end
+	end
+	tw(R.blur, 0.3, { Size = 0 })
+	tw(R.tint, 0.3, { Brightness = 0, Saturation = 0, Contrast = 0 })
+	tw(ui.title, 0.25, { TextTransparency = 1 }); tw(ui.odds, 0.25, { TextTransparency = 1 })
+	local t0 = os.clock()
+	while os.clock() - t0 < 0.3 do RunService.RenderStepped:Wait() end
+	return answer :: string
+end
+
+function Opening.reward(spec: any): string
+	if running then return "busy" end
+	if type(spec) ~= "table" then return "done" end
+	local prize = rewardItem(spec.prize)
+	if not prize then return "done" end
+	-- the reel: the entries given, round again till it's long enough to spin, the prize on the landing card
+	local given = {}
+	for _, x in (if type(spec.reel) == "table" then spec.reel else {}) do
+		local it = rewardItem(x)
+		if it then table.insert(given, it) end
+	end
+	if #given == 0 then given = { prize } end
+	local rng = Random.new()
+	local items = {}
+	local N = math.max(#given, 36)
+	for i = 1, N do items[i] = given[(i - 1) % #given + 1] end
+	for i = #items, 2, -1 do local j = rng:NextInteger(1, i); items[i], items[j] = items[j], items[i] end
+	local stop = N - rng:NextInteger(5, 8)
+	items[stop] = prize
+
+	running = true
+	local cam = workspace.CurrentCamera :: Camera
+	local ui = buildUi()
+	local R: Run = {
+		ui = ui, kind = "reward", res = { ok = true, prize = prize }, opts = {}, skip = false, skipAt = 0, result = nil,
+		box = nil, prize = nil, base = cam.CFrame, flat = cam.CFrame.LookVector, height = 0, light = nil, rim = nil,
+		cam = { from = cam.CFrame, to = cam.CFrame, t0 = os.clock(), dur = 0.01, shake = 0, shakeT = 0, fov = cam.FieldOfView },
+		blur = new("BlurEffect", { Name = "JankLootBlur", Size = 0 }, cam),
+		tint = new("ColorCorrectionEffect", { Name = "JankLootTint" }, cam),
+		dof = new("DepthOfFieldEffect", { Name = "JankLootDof", Enabled = false }, cam),
+		hidden = {}, saved = { cf = cam.CFrame, type = cam.CameraType, fov = cam.FieldOfView, loadoutOpen = me:GetAttribute("LoadoutOpen") },
+		conns = {}, spin = 0, prizeY = 0, wid = nil, boxes = nil, layout = nil,
+	}
+	-- (as an opening: the HUD and menus step aside, your hands and the other screens' keys hold still; the camera stays
+	-- where it was, only the world goes soft)
+	for _, g in (me:WaitForChild("PlayerGui")):GetChildren() do
+		if g:IsA("ScreenGui") and g ~= ui.gui and g.Enabled then R.hidden[g] = true; g.Enabled = false end
+	end
+	me:SetAttribute("LoadoutOpen", true)
+	me:SetAttribute("LootOpening", "reward")
+	pcall(function()
+		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
+		controls:Disable()
+	end)
+	ContextActionService:BindActionAtPriority("JankLootSink", function(_, state, io)
+		if state == Enum.UserInputState.Begin and (io.KeyCode == Enum.KeyCode.Space or io.KeyCode == Enum.KeyCode.ButtonA) then
+			R.skip = true
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, 3000, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.KeyCode.L, Enum.KeyCode.B, Enum.KeyCode.G, Enum.KeyCode.Q,
+		Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.F, Enum.KeyCode.T, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Tab)
+	ui.skip.MouseButton1Click:Connect(function() R.skip = true end)
+	table.insert(R.conns, RunService.RenderStepped:Connect(function() fit(ui) end))
+	local function bail() R.result = "done"; R.skip = true end
+	table.insert(R.conns, me:GetAttributeChangedSignal("Zone"):Connect(function() if me:GetAttribute("Zone") == "match" then bail() end end))
+	local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+	if hum then table.insert(R.conns, hum.Died:Connect(bail)) end
+
+	current = R
+	local ok, out = pcall(rewardRun, R, spec, prize, items, stop)
+	current = nil
+	-- (restore puts the camera's type and field of view back as they were: unchanged here)
+	restore(R)
+	running = false
+	if not ok then
+		warn("[jankfire] the reward didn't draw: " .. tostring(out))
 		return "done"
 	end
 	return out
