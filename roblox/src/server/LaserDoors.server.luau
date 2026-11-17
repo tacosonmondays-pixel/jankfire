@@ -9,7 +9,9 @@
 -- anyone who falls off its blocks is put back on its start (no death, no smog).
 -- any other part in Hub.Doors with the attribute Land is a door too: Land names the marker folder in Hub.Doors you
 -- arrive on ("@TrainSpawns" = the training ground's spawns), Say is the callout. the hub's own training door is one of
--- these (Doors.LanesToTraining, made by the hub's builder); the old round hub's was the fixed ToTraining route below
+-- these (Doors.LanesToTraining, made by the hub's builder); the old round hub's was the fixed ToTraining route below.
+-- NeedKey (optional) names a player attribute that must be true for the door to take you: the gold dummies' door
+-- (Doors.EggPortal, NeedKey "LotKey": only players who have found them; TrainingLot builds it, TheLot gives the key)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -88,6 +90,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if went then continue end
 		for _, t in doors:GetChildren() do
 			local land = t:GetAttribute("Land")
+			local need = t:GetAttribute("NeedKey")
+			if type(need) == "string" and p:GetAttribute(need) ~= true then continue end
 			if type(land) == "string" and t:IsA("BasePart") and inside(t, root.Position) then
 				local folder = if land == "@TrainSpawns" then hub:FindFirstChild("TrainSpawns") else doors:FindFirstChild(land)
 				local s = pick(folder)

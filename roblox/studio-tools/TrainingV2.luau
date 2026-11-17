@@ -86,6 +86,28 @@ T.ZONE = { -94, 86, 220, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall
 -- basement, its things and its way out
 T.BASEMENT = { door = { 52, 64 }, well = { x0 = 52, x1 = 78, z0 = -8300, z1 = -8290, top = 252 }, floor = 226.4,
 	room = { x0 = 40, x1 = 78, z0 = -8288, z1 = -8262, ceil = 234.9 } }
+-- the basement's way out, walked (owner, 17 Nov: "can you make the exit actually connect to an exit because there should
+-- be no way for it to just tp you back into the main hub area"): the EXIT door in its west wall opens onto a landing
+-- under the far terrace; stairs climb south (flight A, under a thinner piece of the terrace), turn on a landing inside
+-- the backstop bank, climb east (flight B) to a corridor at the terrace's height, and a door in the bank's face, west
+-- of the big target, lets you out onto the far terrace. that door opens from the corridor only (TrainingDoors.client:
+-- the hall can't get down to the lot this way). range() leaves the stair hall out of the far terrace and the bank;
+-- TrainingLot builds the stairs, walls, lamps and doors. 24 risers of 0.9 from the basement's floor (226.4) to 248
+T.BASEMENT.exit = {
+	x0 = 30.5, east = 51,          -- the stair hall's inside, west to east (the bank: x 30..52)
+	land = { x1 = 38, z0 = -8281, z1 = -8273 }, -- the landing behind the EXIT door
+	fA = { x1 = 36, n = 12 },      -- flight A: x0..x1, rising south from land.z0, 12 risers to landA's height
+	landA = { x1 = 36.5, z0 = -8299.5, z1 = -8293 },
+	fB = { x0 = 36.5, z0 = -8299.5, z1 = -8294, n = 12 }, -- flight B: rising east from x0, 12 risers to 248
+	hall = { x0 = 36.5, z0 = -8293.5, z1 = -8289 },        -- the corridor at 248 (and landing B east of flight B's top)
+	out = { x0 = 36.8, x1 = 41.0, top = 255.5 },            -- the door in the bank's face (west of the target's rim)
+	face = -8288, skin = -8289, back = -8299.5, ceil = 257, thin = { x1 = 37, y = 244 }, top = 248,
+}
+-- the gold dummies' door (17 Nov, the owner: a dead end "should be the locked door connected to the dummies", opening
+-- onto a portal to the playground for whoever has found them): TrainingLot's eggDoor builds it where this says, nil = not
+-- built. { cf = the floor in the middle of the opening's face, its -Z the way you walk in (the corridor's end wall
+-- TrainingLot.EGG_DEPTH behind it), w, h = the opening, cw, ch = the corridor's width and height, wall = their colour }
+T.EGG_DOOR = nil :: { cf: CFrame, w: number?, h: number?, cw: number?, ch: number?, wall: string? }?
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
 T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
 -- head room (16 Nov, the hold session: strafing into the yard's console put your eye 0.6 from its top, which then filled
@@ -751,9 +773,13 @@ local function range(B)
 	B.blk("Shell", "Deck", RX0, RX1, 236, DECK, RZ0, DECK_Z, P.floor)
 	B.blk("Shell", "Lane", RX0, RX1, 236, Y0, DECK_Z, T1Z, P.floor)
 	B.blk("Shell", "Terrace1", RX0, RX1, 236, 244, T1Z, T2Z, P.floor)
-	-- (the second terrace stops short of the basement's stairwell, T.BASEMENT.well, cut into the backstop over it)
-	B.blk("Shell", "Terrace2", RX0, RX1, 236, 248, T2Z, T.BASEMENT.well.z1, P.floor)
-	B.blk("Shell", "Terrace2", RX0, T.BASEMENT.well.x0, 236, 248, T.BASEMENT.well.z1, RZ1, P.floor)
+	-- (the second terrace stops short of the basement's stairwell, T.BASEMENT.well, cut into the backstop over it, and
+	-- of the walk-out's stair hall in the bank, T.BASEMENT.exit; over its first flight it is 4 thick, 244..248)
+	local EX = T.BASEMENT.exit
+	B.blk("Shell", "Terrace2", RX0, RX1, 236, 248, T2Z, EX.land.z0, P.floor)
+	B.blk("Shell", "Terrace2", EX.thin.x1, RX1, 236, 248, EX.land.z0, EX.face, P.floor)
+	B.blk("Shell", "Terrace2", RX0, EX.thin.x1, EX.thin.y, 248, EX.land.z0, EX.face, P.floor)
+	B.blk("Shell", "Terrace2", T.BASEMENT.well.x0, RX1, 236, 248, EX.face, T.BASEMENT.well.z1, P.floor)
 	B.blk("Shell", "EdgeFace", RX0, RX1, Y0, DECK - 0.6, DECK_Z - 0.05, DECK_Z - 0.15, P.slate, { ghost = true })
 	B.blk("Shell", "EdgeCap", RX0, RX1, DECK - 0.6, DECK + 0.05, DECK_Z + 0.3, DECK_Z - 0.35, P.trim)
 	-- each terrace: a darker face and a thick rounded nose along its edge (open at the side steps)
@@ -1140,9 +1166,19 @@ local function range(B)
 	-- (rework 4: one thick slate backstop the full width, its top edge cut, the big target in a round recess on it, and
 	-- a hood over the end, so the lane ends under cover)
 	local BZ = -8288
-	-- (the stairwell down to the basement is a hollow in it: T.BASEMENT.well)
-	local W = T.BASEMENT.well
-	B.blk("Shell", "Backstop", RX0, W.x0, 236, 274, BZ, RZ1, P.pier2)
+	-- (the stairwell down to the basement is a hollow in it: T.BASEMENT.well; and west of it the walk-out's stair hall,
+	-- T.BASEMENT.exit: a skin round it, its door in the face, open under 244 over flight A)
+	local W, EX = T.BASEMENT.well, T.BASEMENT.exit
+	assert(EX.face == BZ, "T.BASEMENT.exit.face is the backstop's face")
+	B.blk("Shell", "Backstop", RX0, EX.hall.x0, EX.thin.y, 274, BZ, EX.skin, P.pier2)
+	B.blk("Shell", "Backstop", EX.hall.x0, EX.out.x0, 236, 274, BZ, EX.skin, P.pier2)
+	B.blk("Shell", "Backstop", EX.out.x1, W.x0, 236, 274, BZ, EX.skin, P.pier2)
+	B.blk("Shell", "Backstop", EX.out.x0, EX.out.x1, EX.out.top, 274, BZ, EX.skin, P.pier2)
+	B.blk("Shell", "Backstop", EX.out.x0, EX.out.x1, 236, EX.top, BZ, EX.skin, P.pier2)
+	B.blk("Shell", "Backstop", RX0, W.x0, EX.ceil, 274, EX.skin, EX.back, P.pier2)
+	B.blk("Shell", "Backstop", RX0, W.x0, 236, 274, EX.back, RZ1, P.pier2)
+	B.blk("Shell", "Backstop", RX0, EX.x0, 236, EX.ceil, EX.skin, EX.back, P.pier2)
+	B.blk("Shell", "Backstop", EX.east, W.x0, 236, EX.ceil, EX.skin, EX.back, P.pier2)
 	B.blk("Shell", "Backstop", W.x0, RX1, 236, 274, BZ, W.z1, P.pier2)
 	B.blk("Shell", "Backstop", W.x0, RX1, W.top, 274, W.z1, RZ1, P.pier2)
 	B.part("Shell", "BackstopCut", CF((RX0 + RX1) / 2, 274, BZ) * CFrame.Angles(math.rad(45), 0, 0), V3(RX1 - RX0, 2.83, 2.83), P.pier2)
@@ -1354,7 +1390,7 @@ end
 
 -- what a live build owns in the hub (and v1 had): parked whole, put back whole
 local OWNED = { "TrainingGround", "TrainSpawns", "DummySpots", "TrainingZone", "Barrier" }
-local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit" }
+local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit", "EggPortal" }
 local function clearLive()
 	for _, n in OWNED do local c = hub:FindFirstChild(n); if c then c:Destroy() end end
 	for _, n in OWNED_DOORS do local c = hub.Doors:FindFirstChild(n); if c then c:Destroy() end end
@@ -1697,7 +1733,9 @@ function T.check(stage): string
 	for n in T.DUMMIES do need(ds and ds:FindFirstChild(n), "DummySpots." .. n) end
 	local zone = mk:FindFirstChild("TrainingZone"); need(zone, "TrainingZone")
 	need(mk:FindFirstChild("Barrier"), "Barrier")
-	for _, n in OWNED_DOORS do if n ~= "LotExit" or tg:FindFirstChild("Lot") then need(doors:FindFirstChild(n), "Doors." .. n) end end
+	for _, n in OWNED_DOORS do
+		if n ~= "LotExit" and (n ~= "EggPortal" or T.EGG_DOOR) then need(doors:FindFirstChild(n), "Doors." .. n) end -- (LotExit: gone since the walk-out; kept in the list so a rebuild clears an old one)
+	end
 	local r = tg:FindFirstChild("Range")
 	need(r and r:FindFirstChild("Plates") and #r.Plates:GetChildren() == 3, "Range.Plates (3)")
 	need(r and r:FindFirstChild("Spots") and #r.Spots:GetChildren() >= 10, "Range.Spots")
@@ -1760,6 +1798,7 @@ function T.check(stage): string
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
 		V3(-58, Y0 + 4, -8120), V3(-40, Y0 + 4, -8200), V3(-80, 274, -8225), V3(-58, 286, -8166), V3(-50, 280, -8130),
 		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
+		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)
 	}
 	for _, z in { -8154, -8186, -8218, -8250 } do
 		for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
@@ -1788,7 +1827,7 @@ function T.check(stage): string
 	table.insert(out, (T.headRoom(stage)))
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	if lotSrc and tg:FindFirstChild("Lot") then
-		for _, l in require(lotSrc:Clone()).check(tg, mk) do table.insert(out, l) end
+		for _, l in require(lotSrc:Clone()).check(tg, mk, T, O) do table.insert(out, l) end
 	end
 	return table.concat(out, "\n")
 end

@@ -3,8 +3,8 @@
 -- dummy yard, and the little easter egg that opens it. three GOLD CARLS hide in the training rooms; shoot all three
 -- within 90 seconds of the first and the garage door rolls up for 45 seconds. the panel over the door lights one
 -- cardboard man per gold Carl down and counts the time left. out on the lot, cardboard Carls on the long lane and in
--- the blocks fold when shot and stand back up. you leave the lot by its side door (Doors.LotExit, LaserDoors) or the
--- garage while it is open. while you are on the lot (attribute OnLot) the Plinker in the yard leaves you alone.
+-- the blocks fold when shot and stand back up. you leave the lot by its side door (EXIT: down to the basement and up
+-- its walk-out into the range, on foot) or the garage while it is open. while you are on the lot (attribute OnLot) the Plinker in the yard leaves you alone.
 -- a Carl here is a real fighter of kind "dummy", made like RangeTest's (so every weapon and hit check works on him).
 -- the door (owner, 16 Nov: "when you go up to garage doors can they slide up"): it rolls up when someone walks up to
 -- it from the lot (it always lets you back in); on the yard's side it lifts a hand's width, rattles and drops while
@@ -25,7 +25,7 @@
 --   Beacons    models tagged HubSpin (HubLife turns them while Spin > 0); parts in them with the attribute Lens glow
 --   GoldSpots  parts Gold1..Gold3: where a gold Carl stands (its look = the way he faces)
 --   Targets    parts: where a lot Carl stands (its look points at the shooters)
---   Area       (Part, unseen) inside it a player is on the lot
+--   Area       (Parts, unseen, one or more: the loading bay, past the façade) inside one a player is on the lot
 -- nothing happens while the training area is v1 (no Lot): it looks again every few seconds.
 -- Studio play tests: ServerStorage.LotTest (a BindableFunction, Studio only) answers "state", "gold" (n: put gold Carl
 -- n down as if the first player shot him), "lotcarl" (one lot Carl down), "open", "shut", "carls", "key" (the first
@@ -537,15 +537,18 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 	end
 	-- who is on the lot
-	local area = lot:FindFirstChild("Area") :: BasePart?
+	local areas: { BasePart } = {}
+	for _, c in lot:GetChildren() do if c.Name == "Area" and c:IsA("BasePart") then table.insert(areas, c) end end
 	for _, p in Players:GetPlayers() do
 		local ch = p.Character
 		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local on = false
-		if area and root then
-			local rel = area.CFrame:PointToObjectSpace(root.Position)
-			local h = area.Size / 2
-			on = math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z
+		if root then
+			for _, area in areas do
+				local rel = area.CFrame:PointToObjectSpace(root.Position)
+				local h = area.Size / 2
+				if math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z then on = true; break end
+			end
 		end
 		if (p:GetAttribute("OnLot") == true) ~= on then p:SetAttribute("OnLot", if on then true else nil) end
 	end

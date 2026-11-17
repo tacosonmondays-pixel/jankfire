@@ -13,11 +13,13 @@
 -- from its roof to a container tower, a slate kerb round it), THE CLIMB (one slate plinth: a pad onto a deck, a slide,
 -- a cut gap, stepping drums, a summit, a walled canyon with two masts, a 48-stud finish tower) and THE HILL (slate
 -- terraces, walled ramps, a core watchtower you are thrown up through), inside berms, trees and a ridge of hills that
--- hides the playground's towers (L.horizon checks it). you leave by the EXIT door beside the portal (back on the
--- muster's spawn points) or through the garage while it is up; anyone who has opened it can stand at it to reopen it.
+-- hides the playground's towers (L.horizon checks it). you leave by the EXIT door beside the portal (down to the
+-- basement and up its walk-out into the range: no teleport) or through the garage while it is up; anyone who has opened
+-- it can stand at it to reopen it.
 -- (push 7 is judge round 1's rework: vault Reviews\Back lot - judge round 1.md)
 -- what the game reads (TheLot.server.luau): Hub.TrainingGround.Lot { Door, Doorway, Panel, Beacons, GoldSpots, Targets,
--- Area }; LaserDoors: the trigger Hub.Doors.LotExit (Land "@TrainSpawns"). kit: tools/roblox/lot_models.py (L.KIT).
+-- Area (one part or more) }; TrainingDoors.client: the walk-out's WalkOutDoor (OneWayDoor) and the gold dummies'
+-- EggDoor; LaserDoors: Doors.EggPortal (NeedKey). kit: tools/roblox/lot_models.py (L.KIT).
 --   usage (Edit, command bar): require(game.ServerStorage.PolishBackup.TrainingLot:Clone()).import()  (the kit), then
 --   TrainingV2's T.build("live") builds the lot with everything else.
 local L = {}
@@ -356,8 +358,9 @@ end
 -- door, sixteen steps cut into the range's backstop running down east (a handrail on each wall, two caged lamps), and at
 -- their foot an opening north into the basement under the range's far terrace: pipes along its ceiling on brackets, a
 -- boiler with its flue and a squat tank, shelves of crates, a fuse box, caged lamps. its far door, in the west wall, is
--- the way out (LotExit: back on the muster's spawns, as the old door did). below the hall's floors (236) it has walls
--- of its own; everything bounding it is solid and 2 thick (T.check's seal test has points in it)
+-- the way out: stairs up through the backstop bank to a door onto the range's far terrace (T.BASEMENT.exit). below the
+-- hall's floors (236) it has walls of its own; everything bounding it is solid and 2 thick (T.check's seal test has
+-- points in it; L.check probes its floors for holes)
 local function cagedLamp(x, y, z, range, bright)
 	B.drum("LotScenery", "CagedLampBase", x, z, y - 0.3, y, 1.6, P.slate, { ghost = true })
 	B.drum("LotScenery", "CagedLampBulb", x, z, y - 1.2, y - 0.3, 0.9, P.warm, { ghost = true, mat = NEON })
@@ -386,6 +389,9 @@ local function basement(BS)
 		deco("WellStepEdge", xa + run - 0.3, xa + run, top, top + 0.04, W.z0 + 0.4, W.z1 - 0.4, P.trim)
 	end
 	blk("WellFoot", xf, W.x1, LOW, FL, W.z0, W.z1, P.floor2)
+	-- (owner, 17 Nov: "there's a hole in the ground once you go down the stairs": the strip between the foot and the
+	-- basement's floor, where the south wall stops to let you in, had no floor; L.check's floor probes walk it now)
+	blk("WellThreshold", xf, W.x1, LOW, FL, W.z1, R.z0, P.floor2)
 	-- a handrail on each wall, 3 over the steps' edges, on brackets into the wall. (owner, 17 Nov: "the railing down
 	-- should be against the wall because the one that isnt is just floating": the south rail ran across the door's
 	-- opening with nothing behind it; it now starts where it drops under the opening's sill, the wall behind it)
@@ -415,22 +421,96 @@ local function basement(BS)
 	blk("BaseCeiling", R.x0, R.x1, R.ceil, 235.9, R.z0, R.z1, P.ceil)
 	deco("BaseSkirt", R.x0, R.x1, FL, FL + 1, R.z1 - 0.1, R.z1, P.slate)
 	deco("BaseSkirt", R.x0, xf, FL, FL + 1, R.z0, R.z0 + 0.1, P.slate)
-	-- the way out: a door 6 wide in a niche in the west wall, EXIT over it
-	local DZ0, DZ1, DH = -8279, -8273, FL + 6.6
+	-- the way out, walked (owner, 17 Nov: "can you make the exit actually connect to an exit because there should be no way
+	-- for it to just tp you back into the main hub area"; it used to be a door in a niche whose trigger, Doors.LotExit,
+	-- put you on the muster's spawns). the EXIT door in the west wall stands open onto a landing under the far terrace;
+	-- stairs climb south, turn on a landing inside the backstop bank, climb east to a corridor at the far terrace's height,
+	-- and a plain door in the bank's face, west of the big target, lets you out onto the far terrace (T.BASEMENT.exit;
+	-- TrainingV2's range() leaves the hollow). that door opens from the corridor only, on the screen of whoever comes up it
+	-- (a Model tagged OneWayDoor: TrainingDoors.client), so nobody in the hall gets down to the lot this way
+	local EX = TV.BASEMENT.exit
+	local DZ0, DZ1, DH = EX.land.z0 + 2, EX.land.z1, FL + 6.6
 	local NX = R.x0 - 2
 	wallZ("BaseWallW", R.z0 - 2, R.z1 + 2, LOW, 236, NX, R.x0, P.pier2, { { DZ0, DZ1, FL, DH } })
-	blk("ExitNicheFloor", NX - 3.4, NX, LOW, FL, DZ0 - 2, DZ1 + 2, P.floor2)
-	blk("ExitNicheTop", NX - 3.4, NX, DH, 236, DZ0 - 2, DZ1 + 2, P.pier2)
-	blk("ExitNicheBack", NX - 3.4, NX - 2.4, FL, DH, DZ0 - 2, DZ1 + 2, P.pier2)
-	blk("ExitNicheSide", NX - 2.4, NX, FL, DH, DZ0 - 2, DZ0, P.pier2)
-	blk("ExitNicheSide", NX - 2.4, NX, FL, DH, DZ1, DZ1 + 2, P.pier2)
-	blk("ExitLeaf", NX - 2.4, NX - 2.1, FL, DH, DZ0, DZ1, P.dark)
-	deco("ExitPushBar", NX - 2.1, NX - 1.85, FL + 3.4, FL + 3.8, DZ0 + 0.8, DZ1 - 0.8, P.trim)
 	blk("ExitJamb", R.x0, R.x0 + 0.4, FL, DH + 0.4, DZ0 - 0.8, DZ0, P.slate)
 	blk("ExitJamb", R.x0, R.x0 + 0.4, FL, DH + 0.4, DZ1, DZ1 + 0.8, P.slate)
 	blk("ExitHead", R.x0, R.x0 + 0.4, DH, DH + 0.4, DZ0, DZ1, P.slate)
 	sign("WordBaseEXIT", { { "EXIT", P.amber, "B", 1 } }, 3.6, 1.0, R.x0 + 0.25, DH + 0.95, (DZ0 + DZ1) / 2, V3(R.x0 + 50, 0, (DZ0 + DZ1) / 2), { plate = P.board, thick = 0.2 })
-	B.trigger("LotExit", NX - 2.1, R.x0 + 0.6, FL, DH - 0.4, DZ0 + 0.4, DZ1 - 0.4, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
+	-- the door itself, held open flat against the landing's north wall, its push bar out
+	blk("ExitLeaf", NX - (DZ1 - DZ0), NX, FL, DH, DZ1 - 0.3, DZ1, P.dark)
+	deco("ExitPushBar", NX - (DZ1 - DZ0) + 0.8, NX - 0.8, FL + 3.4, FL + 3.8, DZ1 - 0.55, DZ1 - 0.3, P.trim)
+	-- the stair hall's own walls under the hall's floors (over 236: the range's west wall, the bank's skin)
+	local X0, TOP = EX.x0, EX.top
+	local nA, nB = EX.fA.n, EX.fB.n
+	local rise = (TOP - FL) / (nA + nB)
+	local yA = FL + rise * nA
+	local xB = EX.fB.x0 + nB -- (flight B's top: landing B east of it)
+	blk("WalkWallW", X0 - 2, X0, LOW, 236, EX.land.z1 + 2, EX.back - 2, P.pier2)
+	blk("WalkWallN", X0 - 2, NX, LOW, 236, EX.land.z1, EX.land.z1 + 2, P.pier2)
+	blk("WalkWallS", X0 - 2, W.x0, LOW, 236, EX.back - 2, EX.back, P.pier2)
+	blk("WalkWallE", EX.east, W.x0, LOW, 236, EX.skin, EX.back, P.pier2)
+	blk("WalkWallA", EX.fA.x1, NX, LOW, EX.thin.y, EX.land.z0, EX.skin, P.pier2) -- (flight A's east side, up to the thin terrace)
+	-- the landing behind the door, flight A (south), landing A, flight B (east), the corridor and landing B: solid down
+	blk("WalkLanding", X0, NX, LOW, FL, EX.land.z0, EX.land.z1, P.floor2)
+	for i = 0, nA - 1 do
+		local za = EX.land.z0 - i
+		local top = FL + rise * (i + 1)
+		blk("WalkStep", X0, EX.fA.x1, LOW, top, za - 1, za, P.floor2)
+		deco("WalkStepEdge", X0 + 0.4, EX.fA.x1 - 0.4, top, top + 0.04, za - 0.3, za, P.trim)
+	end
+	blk("WalkLandingA", X0, EX.landA.x1, LOW, yA, EX.landA.z0, EX.landA.z1, P.floor2)
+	for j = 0, nB - 1 do
+		local xa = EX.fB.x0 + j
+		local top = yA + rise * (j + 1)
+		blk("WalkStep", xa, xa + 1, LOW, top, EX.fB.z0, EX.fB.z1, P.floor2)
+		deco("WalkStepEdge", xa, xa + 0.3, top, top + 0.04, EX.fB.z0 + 0.4, EX.fB.z1 - 0.4, P.trim)
+	end
+	blk("WalkTop", EX.hall.x0, EX.east, LOW, TOP, EX.hall.z0, EX.hall.z1, P.floor2)
+	blk("WalkTop", xB, EX.east, LOW, TOP, EX.fB.z0, EX.hall.z0, P.floor2)
+	-- walls between the flights and the corridor, floor to the bank's ceiling
+	blk("WalkWall", EX.fA.x1, EX.hall.x0, LOW, EX.ceil, EX.skin, EX.landA.z1 - 1, P.pier2)
+	blk("WalkWall", EX.hall.x0, xB, LOW, EX.ceil, EX.fB.z1, EX.hall.z0, P.pier2)
+	-- a handrail along each flight's wall
+	local angA = math.atan2(rise, 1)
+	local lenA = nA / math.cos(angA)
+	part("WalkRail", CF(X0 + 0.45, FL + rise * nA / 2 + 3, EX.land.z0 - nA / 2) * CFrame.Angles(angA, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), V3(lenA, 0.35, 0.35), P.trim, { cyl = true })
+	part("WalkRail", CF(EX.fB.x0 + nB / 2, yA + rise * nB / 2 + 3, EX.fB.z0 + 0.45) * CFrame.Angles(0, 0, angA), V3(nB / math.cos(angA), 0.35, 0.35), P.trim, { cyl = true })
+	for k = 0, 2 do
+		local d = (k + 0.5) * nA / 3
+		local y = FL + rise * d + 3
+		blk("WalkRailBracket", X0, X0 + 0.45, y - 0.3, y + 0.05, EX.land.z0 - d - 0.15, EX.land.z0 - d + 0.15, P.slate)
+		local x = EX.fB.x0 + (k + 0.5) * nB / 3
+		local y2 = yA + rise * (x - EX.fB.x0) + 3
+		blk("WalkRailBracket", x - 0.15, x + 0.15, y2 - 0.3, y2 + 0.05, EX.fB.z0, EX.fB.z0 + 0.45, P.slate)
+	end
+	cagedLamp((X0 + NX) / 2, 235.9, (EX.land.z0 + EX.land.z1) / 2, 18, 0.55)
+	cagedLamp((X0 + EX.fA.x1) / 2, EX.thin.y - 0.1, (EX.land.z0 + EX.face) / 2, 16, 0.5)
+	cagedLamp((X0 + EX.landA.x1) / 2, EX.ceil - 0.1, (EX.landA.z0 + EX.landA.z1) / 2, 22, 0.6)
+	cagedLamp((EX.hall.x0 + EX.east) / 2, EX.ceil - 0.1, (EX.hall.z0 + EX.hall.z1) / 2, 18, 0.55)
+	-- the door out: a plain steel leaf in the bank's face, a slate frame on the terrace's side, no handle there; a push bar
+	-- and EXIT on the corridor's side. it swings out onto the terrace on its opener's screen only; an unseen block behind
+	-- it (a thin leaf alone lets a fast body through) goes with it. Hinge (its CFrame), Swing (radians), Center, Near
+	local OD = EX.out
+	local door = Instance.new("Model")
+	door.Name = "WalkOutDoor"
+	door:SetAttribute("ACPass", true) -- (the anti-cheat's noclip checks skip it: it is open on one screen only)
+	local leaf = B.part("LotShell", "WalkOutLeaf", CF((OD.x0 + OD.x1) / 2, (TOP + OD.top) / 2, EX.face - 0.225), V3(OD.x1 - OD.x0 - 0.1, OD.top - TOP - 0.1, 0.25), P.dark)
+	local bar = B.part("LotShell", "WalkOutPushBar", CF((OD.x0 + OD.x1) / 2, TOP + 3.6, EX.face - 0.47), V3(OD.x1 - OD.x0 - 1.2, 0.4, 0.25), P.trim, { ghost = true })
+	for _, q in { leaf, bar } do q:SetAttribute("Shut", q.CFrame); q.Parent = door end
+	local blkP = B.part("LotShell", "Block", CF((OD.x0 + OD.x1) / 2, (TOP + OD.top) / 2, EX.face - 0.7), V3(OD.x1 - OD.x0, OD.top - TOP, 0.6), P.slate, { tr = 1, noShadow = true })
+	blkP.Parent = door
+	local inside = B.part("LotShell", "Inside", CF((EX.hall.x0 + EX.east) / 2, (TOP + EX.ceil) / 2, (EX.hall.z0 + EX.hall.z1) / 2), V3(EX.east - EX.hall.x0, EX.ceil - TOP, EX.hall.z1 - EX.hall.z0), P.slate, { ghost = true, tr = 1 })
+	inside.Parent = door
+	for _, fr in { { OD.x0 - 0.5, OD.x0, TOP, OD.top + 0.5 }, { OD.x1, OD.x1 + 0.5, TOP, OD.top + 0.5 }, { OD.x0, OD.x1, OD.top, OD.top + 0.5 } } do
+		blk("WalkOutFrame", fr[1], fr[2], fr[3], fr[4], EX.face, EX.face + 0.2, P.slate).Parent = door
+	end
+	door:SetAttribute("Hinge", B.at(CF(OD.x0 + 0.05, (TOP + OD.top) / 2, EX.face - 0.1)))
+	door:SetAttribute("Swing", -math.pi / 2) -- (out onto the terrace, +Z, flat against its west jamb)
+	door:SetAttribute("Center", B.at(CF((OD.x0 + OD.x1) / 2, TOP + 3, EX.face - 0.5)).Position)
+	door:SetAttribute("Near", 5.5)
+	door.Parent = B.root.LotShell
+	CollectionService:AddTag(door, "OneWayDoor")
+	sign("WordWalkOutEXIT", { { "EXIT", P.amber, "B", 1 } }, 3.6, 1.0, (OD.x0 + OD.x1) / 2, OD.top + 0.75, EX.skin - 0.25, V3((OD.x0 + OD.x1) / 2, 0, EX.skin - 60), { plate = P.board, thick = 0.2 })
 	-- pipes along the ceiling on brackets
 	for _, pp in { { R.z1 - 1.6, 1.4, C.slateC }, { R.z1 - 3.4, 1.0, P.pier }, { R.z1 - 4.9, 0.8, C.drum } } do
 		part("BasePipe", CF((R.x0 + R.x1) / 2, R.ceil - 1.1, pp[1]), V3(R.x1 - R.x0, pp[2], pp[2]), pp[3], { cyl = true })
@@ -480,6 +560,87 @@ local function basement(BS)
 	-- caged lamps along the room
 	for _, x in { R.x0 + 8, R.x0 + 20, R.x0 + 32 } do cagedLamp(x, R.ceil, (R.z0 + R.z1) / 2 - 4, 18, 0.55) end -- (south of the middle: clear of the boiler)
 end
+
+-- ---------------------------------------------------------------- the gold dummies' door (T.EGG_DOOR)
+-- (17 Nov, the owner: a dead end in the training hall "should be the locked door connected to the dummies", "it should
+-- lead to a portal teleporter that takes you to the training area that's in the air"): a roll-up garage door across a
+-- corridor's end, LOCKED on a plate over it, and behind it a dark doorway (GateKit's GateBack: the owner, 17 Nov, "I like
+-- the old black entrances for doors idk if i like the gold..").
+-- it opens only on the screen of a player who has found the gold dummies (TheLot's key, the attribute LotKey):
+-- TrainingDoors.client rolls it up as they come and lets them through; for everyone else it stays down and rattles.
+-- the doorway's trigger (Hub.Doors.EggPortal: Land PlaygroundArrive, NeedKey LotKey) takes key holders, and only them,
+-- to the playground's arrival (LaserDoors, with the anti-cheat's TeleportT stamp). the anti-cheat lets bodies through
+-- its parts (ACPass). EGG = { cf = the floor in the middle of the opening's face (plan; its -Z the way you walk in),
+-- w, h = the opening (GateKit's 8.4 x 9.96 if not given), cw, ch = the corridor's width and height (its sides and the
+-- part over the frame are filled, so nobody walks round the door), wall = the fill's colour }. the corridor's end wall
+-- stands DEPTH behind the opening's face (the door is built in front of it; nothing of the hall is cut)
+local EGG_COL = { slat = "6b7079", slat2 = "5f646d", frame = "4a4f58", back = "2b2d33" }
+L.EGG_DEPTH = 3.2
+local function eggDoor(EGG)
+	local F: CFrame = EGG.cf
+	local W, H = EGG.w or 8.4, EGG.h or 9.96
+	local hw = W / 2
+	local DEPTH = L.EGG_DEPTH
+	local function box(folder, name, x0, x1, y0, y1, d0, d1, hex, o)
+		return B.part(folder, name, F * CF((x0 + x1) / 2, (y0 + y1) / 2, -(d0 + d1) / 2), V3(x1 - x0, y1 - y0, d1 - d0), hex, o)
+	end
+	local door = Instance.new("Model")
+	door.Name = "EggDoor"
+	door:SetAttribute("ACPass", true) -- (the anti-cheat's noclip checks skip it: it is open on some screens only)
+	-- the corridor's sides and the part over the frame, filled from the face to the end wall
+	local cw, ch = EGG.cw or W + 1.2, EGG.ch or H + 2.4
+	local fill = EGG.wall or P.pier
+	if cw / 2 > hw + 0.6 + 0.05 then
+		box("LotShell", "EggFill", -cw / 2, -hw - 0.6, 0, ch, 0, DEPTH, fill)
+		box("LotShell", "EggFill", hw + 0.6, cw / 2, 0, ch, 0, DEPTH, fill)
+	end
+	if ch > H + 0.6 + 0.05 then box("LotShell", "EggFill", -hw - 0.6, hw + 0.6, H + 0.6, ch, 0, DEPTH, fill) end
+	-- the frame: slate jambs and a head round the opening, standing 0.3 proud of the fill
+	box("LotShell", "EggFrame", -hw - 0.6, -hw, 0, H + 0.6, -0.3, 0.6, EGG_COL.frame).Parent = door
+	box("LotShell", "EggFrame", hw, hw + 0.6, 0, H + 0.6, -0.3, 0.6, EGG_COL.frame).Parent = door
+	box("LotShell", "EggFrame", -hw, hw, H, H + 0.6, -0.3, 0.6, EGG_COL.frame).Parent = door
+	-- the slats, in the opening behind the frame's face; they roll up into the head (hidden over Top)
+	local n = math.max(6, math.floor(H / 1.1))
+	local sh = H / n
+	for k = 0, n - 1 do
+		local y = k * sh
+		local sl = box("LotShell", "EggSlat", -hw, hw, y + 0.04, y + sh - 0.04, 0.6, 1.0, if k % 2 == 0 then EGG_COL.slat else EGG_COL.slat2)
+		sl:SetAttribute("Shut", sl.CFrame)
+		sl.Parent = door
+	end
+	door:SetAttribute("Lift", H + 0.4)
+	door:SetAttribute("Top", (F * CF(0, H, 0)).Y + B.O.Y)
+	door:SetAttribute("Center", (F * CF(0, 1, 0)).Position + B.O)
+	door:SetAttribute("Near", 11)
+	-- an unseen block behind the slats (they are thin; a fast body goes through thin parts), up to the dark plate
+	local blk2 = box("LotShell", "EggBlock", -hw, hw, 0, H, 1.0, DEPTH - 0.35, P.slate, { tr = 1, noShadow = true })
+	blk2.Parent = door
+	-- the doorway at the corridor's end: the old dark plate, as GateKit's gates have it again (GateBack, "2b2d33")
+	local back = box("LotScenery", "EggBack", -hw, hw, 0, H, DEPTH - 0.35, DEPTH - 0.05, EGG_COL.back, { ghost = true })
+	back.Parent = door
+	-- the trigger in front of the dark plate (Hub.Doors, read by LaserDoors): key holders only, to the playground
+	local trig = B.trigger("EggPortal", 0, 1, 0, 1, 0, 1, { Land = "PlaygroundArrive", Say = "YOU FOUND THE PLAYGROUND", NeedKey = "LotKey" })
+	trig.Size = V3(W - 0.6, H - 0.4, DEPTH - 1.2 + 0.6)
+	trig.CFrame = B.at(F * CF(0, (H - 0.4) / 2, -(1.2 + DEPTH + 0.6) / 2))
+	-- LOCKED over it (a key holder's screen says OPEN), in the gold dummies' gold, no other words
+	local pw = math.min(4.4, W - 1)
+	local py = math.min(H + 0.85, ch - 1.3) -- (on the fill over the frame; low ceilings: as high as fits)
+	local plate = box("LotScenery", "EggPlate", -pw / 2, pw / 2, py, py + 1.1, -0.12, 0, P.board, { ghost = true })
+	local pg = Instance.new("SurfaceGui")
+	pg.Name = "Gui"; pg.Face = Enum.NormalId.Back; pg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; pg.PixelsPerStud = 40; pg.LightInfluence = 0
+	local tl = Instance.new("TextLabel")
+	tl.Name = "Text"; tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(0.9, 0.8); tl.Position = UDim2.fromScale(0.05, 0.1)
+	tl.TextScaled = true; tl.Text = "LOCKED"
+	tl.TextColor3 = Color3.fromRGB(242, 184, 75); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+	tl.Parent = pg; pg.Parent = plate
+	plate.Parent = door
+	door.Parent = B.root.LotShell
+	CollectionService:AddTag(door, "EggDoor")
+	local lp = F * CF(0, math.min(H + 2.6, ch - 0.6), 1.2)
+	B.lamp(lp.X, lp.Y, lp.Z, "point", 12, 0.55, "ffc27a")
+	return door
+end
+L.eggDoor = eggDoor
 
 local function bay(beacon)
 	local Y = L.DOOR.y0
@@ -1276,11 +1437,20 @@ function L.build(b, T): string
 	theClimb()
 	theHill()
 	gold()
-	local a = Instance.new("Part")
-	a.Name = "Area"; a.Anchored = true; a.Transparency = 1; a.CanCollide = false; a.CanQuery = false; a.CanTouch = false
-	local z0, z1, x0, x1, y0, y1 = L.DOOR.z - 1, T.LOT[4], T.LOT[1], T.LOT[2], 228, T.LOT[3]
-	a.Size = V3(x1 - x0, y1 - y0, math.abs(z1 - z0)); a.CFrame = B.cf((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-	a.Parent = LOT
+	if TV.EGG_DOOR then eggDoor(TV.EGG_DOOR) end -- (the gold dummies' door, where the training hall puts it)
+	-- where you are on the lot (TheLot: the attribute OnLot, its light and sounds): the loading bay inside the garage door
+	-- and everything past the façade. (17 Nov: one box from the garage door's line across the whole width took in the
+	-- range's far end and the basement too, so they had the lot's open-air light; they are the hall's now, the basement's
+	-- walk-out comes up into the range)
+	local function area(x0, x1, z0, z1)
+		local a = Instance.new("Part")
+		a.Name = "Area"; a.Anchored = true; a.Transparency = 1; a.CanCollide = false; a.CanQuery = false; a.CanTouch = false
+		local y0, y1 = 228, T.LOT[3]
+		a.Size = V3(x1 - x0, y1 - y0, math.abs(z1 - z0)); a.CFrame = B.cf((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+		a.Parent = LOT
+	end
+	area(-L.BAY.x - 2, L.BAY.x + 2, L.DOOR.z - 1, L.FACE.z0 - 2)
+	area(T.LOT[1], T.LOT[2], L.FACE.z0 - 2, T.LOT[4])
 	return ("the back lot: %d things, %d targets, %d slats; %s"):format(B.count - before, #LOT.Targets:GetChildren(), #LOT.Door:GetChildren(), tostring(B.treeNote))
 end
 
@@ -1319,7 +1489,7 @@ function L.horizon(tg): string
 end
 
 -- the lot's own checks (TrainingV2.check calls this): the data the server reads, and nothing solid on a Carl
-function L.check(tg, mk): { string }
+function L.check(tg, mk, T, O): { string }
 	local out = {}
 	local lot = tg:FindFirstChild("Lot")
 	if not lot then return { "MISSING Lot" } end
@@ -1333,7 +1503,9 @@ function L.check(tg, mk): { string }
 	need(lot:FindFirstChild("Targets") and #lot.Targets:GetChildren() >= 20, "Targets")
 	need(lot:FindFirstChild("Beacons") and #lot.Beacons:GetChildren() == 4, "Beacons (4)")
 	local doors = mk:FindFirstChild("Doors")
-	need(doors and doors:FindFirstChild("LotExit"), "Doors.LotExit")
+	if doors and doors:FindFirstChild("LotExit") then table.insert(out, "LEFT OVER Doors.LotExit (the basement's way out is walked now)") end
+	local wd = tg:FindFirstChild("WalkOutDoor", true)
+	need(wd and wd:FindFirstChild("Inside") and wd:FindFirstChild("Block") and wd:FindFirstChild("WalkOutLeaf"), "WalkOutDoor (leaf, Block, Inside)")
 	local op = OverlapParams.new(); op.FilterType = Enum.RaycastFilterType.Include; op.FilterDescendantsInstances = { tg }; op.RespectCanCollide = true
 	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { tg }
 	local stuck, floating = 0, 0
@@ -1447,6 +1619,83 @@ function L.check(tg, mk): { string }
 		end
 	end
 	table.insert(out, ("the lot closed in: %d rays, leaks %d"):format(ring, leaks))
+	-- the basement's floors (owner, 17 Nov: "there's a hole in the ground once you go down the stairs"): straight down from
+	-- under each ceiling, a stud apart, over the room, the stairs' foot, the stairwell and the walk-out, every ray must
+	-- meet a floor no lower than the basement's (columns that are solid at the start, a wall, are skipped); and on the
+	-- walk-out, the head room over each floor
+	local BS = T and T.BASEMENT
+	if BS and BS.exit then
+		local EX, R, W, FL = BS.exit, BS.room, BS.well, BS.floor
+		local o = O or Vector3.zero
+		local fp = RaycastParams.new(); fp.FilterType = Enum.RaycastFilterType.Include; fp.FilterDescendantsInstances = { tg }; fp.RespectCanCollide = true
+		local inq = OverlapParams.new(); inq.FilterType = Enum.RaycastFilterType.Include; inq.FilterDescendantsInstances = { tg }; inq.RespectCanCollide = true
+		local regions = { -- { name, x0, x1, z0, z1, start height, walk-out (head room counts) }
+			{ "room", R.x0, R.x1, R.z0, R.z1, R.ceil - 0.5, false },
+			{ "stairs' foot", W.x1 - 6, W.x1, W.z1, R.z0, R.ceil - 0.5, false },
+			{ "stairwell", W.x0, W.x1, W.z0, W.z1, W.top - 0.5, false },
+			{ "walk-out landing", EX.x0, EX.land.x1, EX.land.z0, EX.land.z1, 235.5, true },
+			{ "flight A", EX.x0, EX.fA.x1, EX.face, EX.land.z0, EX.thin.y - 0.5, true },
+			{ "the bank", EX.x0, EX.east, EX.back, EX.skin, EX.ceil - 0.5, true },
+		}
+		local probes, holes, minHead, headAt = 0, 0, math.huge, ""
+		for _, rg in regions do
+			for x = math.min(rg[2], rg[3]) + 0.5, math.max(rg[2], rg[3]) - 0.5, 1 do
+				for z = math.min(rg[4], rg[5]) + 0.5, math.max(rg[4], rg[5]) - 0.5, 1 do
+					local at = V3(x, rg[6], z) + o
+					if #workspace:GetPartBoundsInBox(CFrame.new(at), V3(0.1, 0.1, 0.1), inq) > 0 then continue end
+					probes += 1
+					local h = workspace:Raycast(at, V3(0, -(rg[6] - FL + 6), 0), fp)
+					for _ = 1, 4 do -- (a handrail is not a floor: look on past it)
+						if not (h and string.find(h.Instance.Name, "Rail", 1, true)) then break end
+						h = workspace:Raycast(h.Position - V3(0, 0.5, 0), V3(0, -(h.Position.Y - FL + 6), 0), fp)
+					end
+					if not h or h.Position.Y < FL + o.Y - 0.6 then
+						holes += 1
+						if holes <= 6 then table.insert(out, ("BASEMENT HOLE (%s) at (%.1f, %.1f)"):format(rg[1], x, z)) end
+					elseif rg[7] then
+						local from, up = h.Position + V3(0, 0.05, 0), nil
+						for _ = 1, 4 do -- (handrails don't count: you walk beside them)
+							up = workspace:Raycast(from, V3(0, 20, 0), fp)
+							if up and string.find(up.Instance.Name, "Rail", 1, true) then from = up.Position + V3(0, 0.5, 0) else break end
+						end
+						local head = if up then up.Position.Y - h.Position.Y else 20
+						if head < minHead then minHead, headAt = head, ("(%.1f, %.1f)"):format(x, z) end
+					end
+				end
+			end
+		end
+		table.insert(out, ("the basement's floors: %d probes, holes %d; the walk-out's least head room %.1f at %s"):format(probes, holes, minHead, headAt))
+	end
+	-- the gold dummies' door (where T.EGG_DOOR puts it): its trigger takes key holders only and lands somewhere; shut (as
+	-- everyone without the key has it) nothing gets past it: rays across the whole corridor at knee, waist and head
+	-- height, from 3 in front of it toward the dark plate, all stop on something solid before the pocket behind it
+	local EGG = T and T.EGG_DOOR
+	if EGG then
+		local ed = tg:FindFirstChild("EggDoor", true)
+		need(ed and ed:FindFirstChild("EggBack") and ed:FindFirstChild("EggBlock") and ed:FindFirstChild("EggPlate"), "EggDoor (back, block, plate)")
+		local ep = doors and doors:FindFirstChild("EggPortal")
+		need(ep and ep:GetAttribute("NeedKey") == "LotKey" and ep:GetAttribute("Land") == "PlaygroundArrive", "Doors.EggPortal (NeedKey LotKey, Land PlaygroundArrive)")
+		local pa = doors and doors:FindFirstChild("PlaygroundArrive")
+		need(pa and #pa:GetChildren() > 0, "Doors.PlaygroundArrive (the portal's landing)")
+		local F = CF(O or Vector3.zero) * EGG.cf
+		local W = EGG.w or 8.4
+		local cw = EGG.cw or W + 1.2
+		local sp = RaycastParams.new(); sp.FilterType = Enum.RaycastFilterType.Include; sp.FilterDescendantsInstances = { tg }; sp.RespectCanCollide = true
+		local n, gaps = 0, 0
+		for i = 0, 12 do
+			local x = -cw / 2 + 0.3 + i * (cw - 0.6) / 12
+			for _, y in { 1, 3, 5.5 } do
+				n += 1
+				local a = (F * CF(x, y, 3)).Position
+				local b = (F * CF(x, y, -(L.EGG_DEPTH - 0.5))).Position
+				if not workspace:Raycast(a, b - a, sp) then
+					gaps += 1
+					if gaps <= 4 then table.insert(out, ("EGG DOOR GAP at x %.1f, %.1f up"):format(x, y)) end
+				end
+			end
+		end
+		table.insert(out, ("the gold dummies' door shut: %d rays, gaps %d"):format(n, gaps))
+	end
 	return out
 end
 

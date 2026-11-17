@@ -28,6 +28,17 @@
 --   * the mirror (the muster's bay; a part MirrorSpot): while you are in training you stand there as a hologram in the
 --     hub's style, holding what you hold the way everyone else sees you hold it (ThirdPerson's hold), a still statue.
 --     the owner, 16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
+--   * the gold dummies' door (a Model tagged EggDoor, TrainingLot's eggDoor; owner, 17 Nov: the dead end "should be the
+--     locked door connected to the dummies", opening onto a portal to the playground): on a key holder's screen (LotKey)
+--     it rolls up as they come within Near of it (and down once they are SHUTTER_SLACK past) onto the dark doorway, the
+--     plate reads OPEN, and its slats and EggBlock don't stop them (the doorway's trigger, Doors.EggPortal, takes only
+--     key holders: LaserDoors). for everyone else it stays down; walk up to it and it rattles, clatters, and
+--     LOCKED flashes, on your screen only
+--   * one-way doors (a Model tagged OneWayDoor: the basement's walk-out onto the range's far terrace, TrainingLot; owner,
+--     17 Nov, "can you make the exit actually connect to an exit"): its leaf (parts with Shut) swings Swing radians
+--     about its Hinge on your screen while you are in its Inside box, and stays open while you are within Near of its
+--     Center after (through the doorway and away); its leaf and Block don't stop you while it is open. from the other
+--     side it never opens: nobody in the hall gets down to the lot that way. a click when it opens and when it shuts
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 --   * the gun shop's keeper (ShopKeeper.server builds him): his idle (his attribute Idle: the owner's "cute sway waiting
 --     at the cases"; one clip or a few, the first most of the time) loops here, crossfading at each end, and he waves
@@ -107,10 +118,7 @@ local function doorU(m: Instance, now: number): (number, boolean)
 	local a = (now - since) / dur
 	return from + (goal - from) * ease(a), a < 1.05
 end
-local function rattleOff(m: Instance, now: number): (Vector3, boolean)
-	local at = m:GetAttribute("Rattle")
-	if type(at) ~= "number" then return Vector3.zero, false end
-	local t = now - at
+local function shake(t: number): (Vector3, boolean)
 	if t < 0 or t > 0.8 then return Vector3.zero, false end
 	local y
 	if t < 0.16 then y = 0.55 * math.sin(t / 0.16 * math.pi / 2)        -- up a hand's width
@@ -118,6 +126,11 @@ local function rattleOff(m: Instance, now: number): (Vector3, boolean)
 	else y = 0.14 * math.abs(math.sin((t - 0.28) * 28)) * (1 - (t - 0.28) / 0.52) end -- and bounces
 	local x = 0.07 * math.sin(t * 95) * (1 - t / 0.8)
 	return Vector3.new(x, y, 0), true
+end
+local function rattleOff(m: Instance, now: number): (Vector3, boolean)
+	local at = m:GetAttribute("Rattle")
+	if type(at) ~= "number" then return Vector3.zero, false end
+	return shake(now - at)
 end
 
 -- a key holder's door lets them through: its slats and block don't collide or stop rays on this screen
@@ -142,6 +155,128 @@ end)
 type Shutter = { r: Roller, center: Vector3, near: number, lin: number, goal: number, lastNear: number, shown: boolean }
 local shutters: { Shutter } = {}
 local SHUTTER_UP, SHUTTER_DOWN, SHUTTER_SLACK, SHUTTER_LINGER = 1.1, 1.4, 2, 0.8 -- (seconds up, seconds down, studs, seconds)
+
+-- ---------------------------------------------------------------- one-way doors (this screen's)
+type OneWay = { m: Instance, leaf: { Slat }, hinge: CFrame, swing: number, inside: BasePart?, blk: BasePart?, center: Vector3,
+	near: number, lin: number, goal: number, shown: boolean, pass: boolean? }
+local oneWays: { OneWay } = {}
+local ONEWAY_OPEN, ONEWAY_SHUT = 0.45, 0.6 -- (seconds)
+local function oneWayOf(m: Instance): OneWay?
+	local h, sw, c, n = m:GetAttribute("Hinge"), m:GetAttribute("Swing"), m:GetAttribute("Center"), m:GetAttribute("Near")
+	if typeof(h) ~= "CFrame" or typeof(c) ~= "Vector3" then return nil end
+	local leaf: { Slat } = {}
+	for _, d in m:GetDescendants() do
+		local shut = d:GetAttribute("Shut")
+		if d:IsA("BasePart") and typeof(shut) == "CFrame" then table.insert(leaf, { p = d, shut = shut }) end
+	end
+	if #leaf == 0 then return nil end
+	local inside, blk = m:FindFirstChild("Inside"), m:FindFirstChild("Block")
+	return {
+		m = m, leaf = leaf, hinge = h, swing = if type(sw) == "number" then sw else -math.pi / 2,
+		inside = if inside and inside:IsA("BasePart") then inside else nil, blk = if blk and blk:IsA("BasePart") then blk else nil,
+		center = c, near = if type(n) == "number" then n else 5.5, lin = 0, goal = 0, shown = false, pass = nil,
+	}
+end
+local function inBox(b: BasePart, pos: Vector3): boolean
+	local rel = b.CFrame:PointToObjectSpace(pos)
+	local h = b.Size / 2
+	return math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z
+end
+local function oneWayPass(o: OneWay, pass: boolean)
+	if o.pass == pass then return end
+	o.pass = pass
+	for _, s in o.leaf do s.p.CanCollide = not pass; s.p.CanQuery = not pass end
+	if o.blk then o.blk.CanCollide = not pass; o.blk.CanQuery = not pass end
+end
+local function oneWayStep(o: OneWay, dt: number, root: BasePart?)
+	if not o.m:IsDescendantOf(workspace) then o.shown = false; o.pass = nil; return end -- (out of your world)
+	local inn = root ~= nil and o.inside ~= nil and inBox(o.inside :: BasePart, root.Position)
+	local near = root ~= nil and (root.Position - o.center).Magnitude <= o.near
+	-- open while you are inside; once open, it stays open while you are near it (in the doorway, just through it)
+	local goal = if inn or (o.goal == 1 and near) then 1 else 0
+	local moved = false
+	if not o.shown then
+		o.shown, o.goal, o.lin, moved = true, goal, goal, true
+	elseif goal ~= o.goal then
+		o.goal = goal
+		Sfx.play("click", o.center, 0.8, if goal == 1 then 1 else 0.85)
+	end
+	if o.lin ~= goal then
+		local step = dt / (if goal == 1 then ONEWAY_OPEN else ONEWAY_SHUT)
+		o.lin = if goal > o.lin then math.min(goal, o.lin + step) else math.max(goal, o.lin - step)
+		moved = true
+	end
+	oneWayPass(o, o.lin > 0 or goal == 1)
+	if moved then
+		local turn = o.hinge * CFrame.Angles(0, o.swing * ease(o.lin), 0) * o.hinge:Inverse()
+		for _, s in o.leaf do if s.p.Parent then s.p.CFrame = turn * s.shut end end
+	end
+end
+
+-- ---------------------------------------------------------------- the gold dummies' door (this screen's)
+type Egg = { r: Roller, center: Vector3, near: number, lin: number, goal: number, shown: boolean, pass: boolean?,
+	blk: BasePart?, text: TextLabel?, bumpT: number, was: boolean }
+local eggs: { Egg } = {}
+local EGG_BUMP, EGG_EVERY = 4.6, 2.4 -- (studs from its middle that count as at it; seconds between rattles)
+local LOCKED_GOLD, LOCKED_RED = Color3.fromRGB(242, 184, 75), Color3.fromRGB(255, 92, 72)
+local function eggOf(m: Instance): Egg?
+	local c, n = m:GetAttribute("Center"), m:GetAttribute("Near")
+	local r = readRoller(m)
+	if typeof(c) ~= "Vector3" or #r.slats == 0 then return nil end
+	local blk = m:FindFirstChild("EggBlock")
+	local plate = m:FindFirstChild("EggPlate")
+	local text = plate and plate:FindFirstChild("Text", true)
+	return {
+		r = r, center = c, near = if type(n) == "number" then n else 11, lin = 0, goal = 0, shown = false, pass = nil,
+		blk = if blk and blk:IsA("BasePart") then blk else nil,
+		text = if text and text:IsA("TextLabel") then text else nil, bumpT = -math.huge, was = false,
+	}
+end
+-- let a key holder's body through (or not): the slats and the block behind them, on this screen
+local function eggPass(e: Egg, pass: boolean)
+	if e.pass == pass then return end
+	e.pass = pass
+	for _, sl in e.r.slats do sl.p.CanCollide = not pass; sl.p.CanQuery = not pass end
+	if e.blk then e.blk.CanCollide = not pass; e.blk.CanQuery = not pass end
+end
+local function eggStep(e: Egg, dt: number, clock: number, root: BasePart?)
+	if not e.r.m:IsDescendantOf(workspace) then e.shown = false; e.pass = nil; return end -- (out of your world)
+	local key = me:GetAttribute("LotKey") == true
+	eggPass(e, key)
+	local flat, dy = math.huge, math.huge
+	if root then
+		local d = root.Position - e.center
+		flat, dy = Vector3.new(d.X, 0, d.Z).Magnitude, math.abs(d.Y)
+	end
+	local goal = if key and dy < 9 and flat <= (if e.goal == 1 then e.near + SHUTTER_SLACK else e.near) then 1 else 0
+	local moved = false
+	if not e.shown then
+		e.shown, e.goal, e.lin, moved = true, goal, goal, true -- (back in your world: straight to where it should be)
+	elseif goal ~= e.goal then
+		e.goal = goal
+		Sfx.play("whirr", e.center + Vector3.new(0, 5, 0), 0.9, if goal == 1 then 0.8 else 0.65)
+	end
+	if e.lin ~= goal then
+		local step = dt / (if goal == 1 then SHUTTER_UP else SHUTTER_DOWN)
+		e.lin = if goal > e.lin then math.min(goal, e.lin + step) else math.max(goal, e.lin - step)
+		moved = true
+	end
+	-- locked: at it without the key, it rattles (a hand's width up and down), clatters, and LOCKED flashes
+	if not key and dy < 9 and flat <= EGG_BUMP and clock - e.bumpT > EGG_EVERY then
+		e.bumpT = clock
+		Sfx.play("clatter", e.center + Vector3.new(0, 4, 0), 0.85)
+	end
+	local off, shaking = shake(clock - e.bumpT)
+	if moved or shaking or e.was then place(e.r, ease(e.lin), off) end
+	e.was = shaking
+	if e.text then
+		local word = if key then "OPEN" else "LOCKED"
+		if e.text.Text ~= word then e.text.Text = word end
+		local t = clock - e.bumpT
+		local col = if not key and t < 0.78 and (t % 0.26) < 0.14 then LOCKED_RED else LOCKED_GOLD
+		if e.text.TextColor3 ~= col then e.text.TextColor3 = col end
+	end
+end
 
 -- ---------------------------------------------------------------- laser gates
 type Gate = { m: Instance, parts: { { p: BasePart, tr: number } }, center: Vector3, near: number, off: boolean, lastNear: number }
@@ -611,6 +746,30 @@ local function scan()
 		end
 	end
 	for _, m in CollectionService:GetTagged("Shutter") do if m:GetAttribute("Shutter") == true then addShutter(m) end end
+	-- one-way doors, the same way (tagged OneWayDoor)
+	local haveOne: { [Instance]: boolean } = {}
+	for i = #oneWays, 1, -1 do
+		local om = oneWays[i].m
+		if not om.Parent then table.remove(oneWays, i) else haveOne[om] = true end
+	end
+	for _, m in CollectionService:GetTagged("OneWayDoor") do
+		if not haveOne[m] then
+			local o = oneWayOf(m)
+			if o then table.insert(oneWays, o); haveOne[m] = true end
+		end
+	end
+	-- the gold dummies' doors, the same way (tagged EggDoor)
+	local haveEgg: { [Instance]: boolean } = {}
+	for i = #eggs, 1, -1 do
+		local em = eggs[i].r.m
+		if not em.Parent then table.remove(eggs, i) else haveEgg[em] = true end
+	end
+	for _, m in CollectionService:GetTagged("EggDoor") do
+		if not haveEgg[m] then
+			local e = eggOf(m)
+			if e then table.insert(eggs, e); haveEgg[m] = true end
+		end
+	end
 	if tg and tg ~= seen then
 		seen = tg
 		pit = nil
@@ -677,6 +836,19 @@ RunService.RenderStepped:Connect(function(dt: number)
 			local step = dt / (if goal == 1 then SHUTTER_UP else SHUTTER_DOWN)
 			s.lin = if goal > s.lin then math.min(goal, s.lin + step) else math.max(goal, s.lin - step)
 			place(s.r, ease(s.lin), Vector3.zero)
+		end
+	end
+	-- the gold dummies' door
+	do
+		local mc = me.Character
+		local myRoot = mc and mc:FindFirstChild("HumanoidRootPart") :: BasePart?
+		for _, e in eggs do
+			local okE, errE = pcall(eggStep, e, dt, clock, myRoot)
+			if not okE then warn("[TrainingDoors] egg door: " .. tostring(errE)) end
+		end
+		for _, o in oneWays do
+			local okO, errO = pcall(oneWayStep, o, dt, myRoot)
+			if not okO then warn("[TrainingDoors] one-way door: " .. tostring(errO)) end
 		end
 	end
 	-- laser gates

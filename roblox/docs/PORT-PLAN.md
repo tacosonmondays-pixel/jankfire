@@ -1008,9 +1008,27 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - The stairwell's south handrail (the owner: "the one that isnt is just floating") starts where it drops under the door's sill, so there is wall behind it all the way; brackets into the wall on both.
   - The hills' dark lumps (the owner: "get rid of the little dark green lumps on the hills") were the far ridge's FarTrees crowns: gone.
   - The fence (the owner: "raise the wall on the left side so its complete wall all at the same height"): one top all the way round, 16 over the highest ground any post stands on (rails at 277.7); each panel reaches down to its own ground.
-  - The muster's gate home is on the hub session's corrected GateKit: the laser fence at the face, the roll-up door behind it, the amber portal (GatePortal).
+  - The muster's gate home is on the hub session's corrected GateKit: the laser fence at the face, the roll-up door behind it, and behind that the doorway plate. That plate was amber (GatePortal) at first; since hub push 61 it is the old black plate again (GateBack), as the owner asked.
   - Checks: the hall sealed (0 leaks, 57 points), the lot closed in (0 leaks), head room 0 within 0.6, trees all outside the fence, ZFight 1 pair.
   - Photos: `lot_lumps_fence_before_after.jpg` (the owner's high angle), `lot_round4_sheet.jpg` (the rails, the gate home, joxex21).
+- **17 Nov, the basement's real way out, the stair-foot hole, the gold dummies' door kit (place version 674):**
+  - The way out (the owner: "can you make the exit actually connect to an exit because there should be no way for it to just tp you back into the main hub area"):
+    - The EXIT door in the basement's west wall stands open onto a landing under the far terrace. Stairs climb south (flight A, under a 4-thick piece of the terrace), turn on a landing inside the backstop bank, and climb east (flight B) to a corridor at the far terrace's height (248).
+    - A plain door in the bank's face, west of the big target, lets you out onto the far terrace. It has 24 risers of 0.9, handrails on brackets and four caged lamps, with EXIT over both doors.
+    - The old `LotExit` teleport is gone. `OWNED_DOORS` still lists it, so a rebuild clears an old copy, and `T.check` no longer asks for it.
+    - The door out is one-way (`WalkOutDoor`, tagged `OneWayDoor`, `TrainingDoors.client`). It swings open onto the terrace on the screen of whoever comes up the corridor (its `Inside` box), and stays open while they are within `Near` of it. Its leaf and `Block` let only them through.
+    - From the hall it never opens, so nobody can reach the lot without the gold dummies this way. The anti-cheat skips it (`ACPass`).
+    - Geometry: `T.BASEMENT.exit` (TrainingV2). `range()` splits Terrace2 and hollows the bank's west half (skins, the door hole, a ceiling at 257); TrainingLot `basement()` builds the rest.
+  - The hole at the stairs' foot (the owner: "there's a hole in the ground once you go down the stairs"): a 6 x 2 strip between the foot and the basement's floor, where the south wall stops to let you in, had no floor. `WellThreshold` fills it.
+  - `L.check` now probes the basement's floors: a ray straight down every stud over the room, the stairs' foot, the stairwell and the walk-out, skipping columns that are wall. 1488 probes, 0 holes. Head room on the walk-out is 9 at the least: the corridor, and the top of flight B.
+  - The lot's `Area` is two boxes now: the loading bay, and everything past the façade. TheLot reads any number of them. The old single box ran from the garage door's line across the whole width, so the range's far end and the basement were `OnLot` and had the lot's open-air light. Now the switch happens in the doorways.
+  - The gold dummies' door kit (`TrainingLot.eggDoor`, built where `T.EGG_DOOR` says; nil until the owner's screenshot shows the dead end):
+    - A roll-up door with LOCKED over it and a dark doorway behind it, the corridor's sides filled.
+    - Key holders (`LotKey`) see it roll up as they come, OPEN on the plate, and pass through. Everyone else sees it stay down, and it rattles and flashes LOCKED.
+    - The trigger `Doors.EggPortal` (Land `PlaygroundArrive`, `NeedKey` `LotKey`) takes only key holders to the playground. LaserDoors now honours `NeedKey` on any Land door.
+    - `L.check` checks the trigger and its landing, and casts 39 rays across the shut door for gaps.
+  - Checks: the hall sealed (1560 rays from 60 points, 3 of them new in the stair hall; 0 leaks), the lot closed in (0 leaks), head room 0 within 0.6, ZFight 1 pair.
+  - Photos: `basement_walkout_sheet.jpg` (the open EXIT door from the basement, flight A, the door out on the far terrace by the target, the stairs' foot with its floor closed).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
