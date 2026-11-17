@@ -335,6 +335,12 @@ The Half a Shotgun's line ran inside its hinge.
     Starlight and Sweet Shop and the four cute Plan Bs measure within a point of their gun aimed and at the hip.
   - Sheet: `gun-hold/ads-6.jpg` (place version 496: Velvet hip and aimed, Glasswing hip and aimed, Starlight and a cute
     Plan B aimed).
+- The Ducklings (concepts, place version 511), measured offline on gun-models' exports (their thin `__shade` shells
+  left out; the glbs are not in the repo). Rifle: 12.0 % of the screen aimed (the plain rifle 13.3), the duck's head
+  inside the ring's lower half just under the crosshair, like a front post. SMG: 9.1 % (8.8), a notch block with its
+  top on the crosshair; the duck stock's top is 2 mm over the aim line at your eye and hides the small front post.
+  Plan B: 4.6 % (4.9). At the hip all three are within a point of their gun. No rows. Not photographed: Studio would
+  not start Play that turn.
 
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
 JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
