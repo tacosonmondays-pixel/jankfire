@@ -1,7 +1,8 @@
 # TRIPO GUN: a whole gun the owner made in Tripo (AI image/text-to-3D, shape only) turned into a kit SKIN of a live gun
 # (17 Nov 2026, the owner: "this can be cleaned right?" on a Tripo angel rifle). Headless Blender 5.3.
 #   blender -b --factory-startup -P tools/roblox/tripo_gun.py -- <raw.glb> <base gun id> <skin id> <recipe.json> <out_dir>
-#           [--export <dir>] [--sheet <file.jpg>] [--concept <picture>] [--no-bake] [--stage clean|sheet]
+#           [--export <dir>] [--sheet <file.jpg>] [--concept <picture>] [--compare <folder>] [--no-bake] [--stage clean|sheet]
+#   (--compare: a folder with an earlier run's sheet/_p_hand.png and _p_aim.png, shown BEFORE / NOW on the sheet)
 #   (--stage clean: steps 1-8 and a flat-colour preview, seconds: the loop while writing a recipe's regions;
 #    --stage sheet: only the sheet again from a finished run's files)
 #   blender -b --factory-startup -P tools/roblox/tripo_gun.py -- parts <raw.glb> <out_dir> [<recipe.json> <base gun id>]
@@ -57,6 +58,10 @@
 #   "drop": [{"box": [[x0,y0,z0],[x1,y1,z1]]}, {"near": [x,y,z]}, {"tris_below": 14}, {"index": 9}],   parts out
 #   "decimate": {"default": 1.0, "parts": [{"part": {"near": [..]}, "ratio": 0.6}]},   Collapse per part
 #   "flatten": [{"part": {...}, "box": [lo, hi], "axis": "y", "keep": "below", "at": 0.068}],   cut + cap
+#   "reshape": [{"part": {...}, "side_flat": true, "pivot": [x, y, z], "scale": 0.58, "thick": 0.007, "x_in": 0.044,
+#                "y_top": 0.068, "z_back": 0.05, "sharpen": {"prom": 0.005, "tip": 0.004, "pinch": 0.55, "radius": 0.012,
+#                "notch": 0.002}}],   re-pose a part (a wing: flat on the side, smaller, thinner, lower), see reshape()
+#   "rims": [{"tag": ["rwing", "fwing"], "width": 0.0018}],   a chamfer round a fused part's outer face (trim line)
 #   "splits": [{"part": {...}, "co": [x, y, z], "no": [x, y, z]}],   cut along a plane (a straight colour border)
 #   "nodes": [{"node": "mag", "part": {...}}, {"node": "grip", "part": {...}, "box": [lo, hi]}],  whole part / box cut
 #   "unions": [{"parts": [{...base}, {...}, {...}], "tag": "bstar"}],   parts after the first get the tag
@@ -350,6 +355,129 @@ def flatten(bm, op):
     if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
     caps = fill_holes(bm, 100000)
     return {'faces_cut': len(gone), 'caps': len(caps)}
+
+
+def _span(P):
+    lo = Vector([min(p[k] for p in P) for k in range(3)]); hi = Vector([max(p[k] for p in P) for k in range(3)])
+    return [round(x, 4) for x in lo], [round(x, 4) for x in hi]
+
+
+def reshape(bm, op):
+    """re-pose each selected part (a wing; its mirror twin on the other side gets the same, x mirrored), weapon frame:
+       side_flat  turn it about its middle so its thinnest direction (PCA) faces straight out of its side (no flare)
+       scale      uniform, about `pivot` (given for the right side, x mirrored on the left; default its middle)
+       thick      squash across (x) to this thickness, about its middle
+       x_in       slide across so its inner face sits at |x| = x_in (sunk into the body, then fused by a union)
+       y_top / z_back / z_front   slide so its highest point / its back / its front end is there
+       sharpen    {"bin": deg, "prom": m, "tip": m, "pinch": 0..1, "radius": m, "notch": m}: feather tips found as the
+                  local maxima of the outline's distance from the pivot (a fan's tips), each pulled out along its own
+                  direction and pinched to a point; the notches between them pulled in (deeper cuts)"""
+    import numpy as np
+    pid, info = parts_of(bm)
+    ids = select_parts(op['part'], info, bm)
+    log = []
+    for i in sorted(ids):
+        vs = list({v for f in info[i]['faces'] for v in f.verts})
+        P = [W(v.co) for v in vs]
+        before = _span(P)
+        side = 1.0 if sum(p.x for p in P) > 0 else -1.0
+        c = sum(P, Vector()) / len(P)
+        if op.get('side_flat'):
+            A = np.array([list(p - c) for p in P])
+            w, V = np.linalg.eigh(A.T @ A)
+            n = Vector(V[:, 0].tolist())
+            if n.x * side < 0: n = -n
+            q = n.rotation_difference(Vector((side, 0.0, 0.0)))
+            P = [c + q @ (p - c) for p in P]
+        pv = Vector(op['pivot']) if 'pivot' in op else c.copy()
+        pv.x = side * abs(pv.x)
+        sc = op.get('scale', 1.0)
+        P = [pv + (p - pv) * sc for p in P]
+        if 'thick' in op:
+            xs = [p.x for p in P]; cx = (max(xs) + min(xs)) / 2; k = op['thick'] / max(max(xs) - min(xs), 1e-6)
+            P = [Vector((cx + (p.x - cx) * k, p.y, p.z)) for p in P]
+        d = Vector((0.0, 0.0, 0.0))
+        if 'x_in' in op: d.x = side * (op['x_in'] - min(abs(p.x) for p in P))
+        if 'y_top' in op: d.y = op['y_top'] - max(p.y for p in P)
+        if 'z_back' in op: d.z = op['z_back'] - max(p.z for p in P)
+        if 'z_front' in op: d.z = op['z_front'] - min(p.z for p in P)
+        mv = op.get('move', (0, 0, 0)); d += Vector((side * mv[0], mv[1], mv[2]))
+        P = [p + d for p in P]
+        root = pv + d
+        tips = []
+        sh = op.get('sharpen')
+        if sh:
+            P, tips = _sharpen(P, root, sh)
+        for v, p in zip(vs, P): v.co = B(p)
+        xs = [abs(p.x) for p in P]
+        log.append({'part': i, 'side': int(side), 'before': before, 'after': _span(P), 'tips': len(tips),
+                    'thick_after': round(max(xs) - min(xs), 4), 'top_y': round(max(p.y for p in P), 4),
+                    'out_x': round(max(xs), 4)})
+    return log
+
+
+def _sharpen(P, root, sh):
+    """see reshape(): in the side plane (z, y) about root"""
+    q = [Vector((p.z - root.z, p.y - root.y)) for p in P]
+    th = [math.degrees(math.atan2(v.y, v.x)) for v in q]
+    r = [v.length for v in q]
+    bw = sh.get('bin', 3.0)
+    best = {}
+    for k, (a, rr) in enumerate(zip(th, r)):
+        b = int(math.floor(a / bw))
+        if b not in best or rr > r[best[b]]: best[b] = k
+    keys = sorted(best)
+    rmax = [r[best[b]] for b in keys]
+    w = sh.get('window', 3)
+    prom = sh.get('prom', 0.006)
+    tips, notches = [], []
+    for j in range(len(keys)):
+        lo_, hi_ = max(0, j - w), min(len(keys), j + w + 1)
+        nb = rmax[lo_:hi_]
+        if rmax[j] == max(nb) and rmax[j] - min(nb) >= prom and 0 < j < len(keys) - 1: tips.append(best[keys[j]])
+        if rmax[j] == min(nb) and max(nb) - rmax[j] >= prom and 0 < j < len(keys) - 1: notches.append(best[keys[j]])
+    rad, e, pinch, nd = sh.get('radius', 0.012), sh.get('tip', 0.004), sh.get('pinch', 0.5), sh.get('notch', 0.0)
+    out = [v.copy() for v in q]
+    for t in tips:
+        T = q[t]; a = T.normalized()
+        for k, v in enumerate(q):
+            dv = v - T
+            dist = dv.length
+            if dist >= rad: continue
+            along = dv.dot(a)
+            perp = dv - a * along
+            wgt = (1 - dist / rad) ** 2
+            out[k] = out[k] + a * (e * wgt) - perp * (pinch * wgt)
+    for t in notches:
+        N = q[t]; a = N.normalized()
+        for k, v in enumerate(q):
+            dist = (v - N).length
+            if dist >= rad * 0.7: continue
+            wgt = (1 - dist / (rad * 0.7)) ** 2
+            out[k] = out[k] - a * (nd * wgt)
+    return [Vector((p.x, root.y + o.y, root.z + o.x)) for p, o in zip(P, out)], tips
+
+
+def rims(bm, op, tags):
+    """a chamfer `width` wide round the outer face of every tagged (fused) part: the edges between a face looking out
+       of the gun's side (|n.x| > 0.6, away from the middle) and a wall (|n.x| < 0.5). Seen from the side it is the
+       emblem's trim line (colour it with an `an` x rule). After the unions: a bevelled solid fed to an EXACT boolean
+       lost most of itself (the angel's left rear wing)"""
+    lay = bm.faces.layers.int['tag']
+    want = {tags[t] for t in (op['tag'] if isinstance(op['tag'], list) else [op['tag']]) if t in tags}
+    bm.normal_update()
+    eds = set()
+    for e in bm.edges:
+        lf = e.link_faces
+        if len(lf) != 2 or lf[0][lay] not in want or lf[1][lay] not in want: continue
+        ca = W(lf[0].calc_center_median()); side = 1.0 if ca.x > 0 else -1.0
+        na, nb = W(lf[0].normal), W(lf[1].normal)
+        if (na.x * side > 0.6 and abs(nb.x) < 0.5) or (nb.x * side > 0.6 and abs(na.x) < 0.5): eds.add(e)
+    if eds:
+        bmesh.ops.bevel(bm, geom=list(eds), offset=op['width'], offset_type='OFFSET', segments=1, profile=0.5,
+                        affect='EDGES', clamp_overlap=True)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    return {'tag': op['tag'], 'edges': len(eds)}
 
 
 def box_cut(bm, part_faces, box):
@@ -700,10 +828,12 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['nonmanifold_after_fill'] = sum(1 for e in bm.edges if not e.is_manifold)
     meta['decimate'] = decimate_parts(bm, rec)
     meta['flatten'] = [flatten(bm, op) for op in rec.get('flatten', [])]
+    meta['reshape'] = [reshape(bm, op) for op in rec.get('reshape', [])]
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     tags = {}
     meta['unions'] = run_unions(bm, rec, tags)
     meta['inlays'] = run_inlays(bm, rec, tags)
+    meta['rims'] = [rims(bm, op, tags) for op in rec.get('rims', [])]
     # straight region borders: parts cut along planes (nothing removed), so a colour edge can follow a line
     for sp in rec.get('splits', []):
         pid, info = parts_of(bm)
@@ -957,8 +1087,9 @@ def _grey(objs):
         if o.type == 'MESH': o.data.materials.clear(); o.data.materials.append(m)
 
 
-def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, Wd=900, Ht=560):
-    """the verdict panels (PNG) in out_dir, composed with labels into sheet_path by plain Python + PIL"""
+def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None, Wd=900, Ht=560):
+    """the verdict panels (PNG) in out_dir/sheet, composed with labels into sheet_path by plain Python + PIL.
+       compare = a folder holding an earlier version's _p_hand.png and _p_aim.png: shown beside this version's"""
     import gun_set
     sh = os.path.join(out_dir, K + '_sh.glb')
     meta = json.load(open(os.path.join(out_dir, K + '_clean.json')))
@@ -988,6 +1119,10 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, Wd=900, Ht=56
     _sun(sc, (math.radians(60), 0, math.radians(-90)))
     _cam(sc, mid + side, mid, ortho=L * 1.12)
     panels.append((_render(os.path.join(pdir, '_p_side.png')), 'left side'))
+    sc = _scene(Wd, Ht); _import(sh)
+    _sun(sc, (math.radians(20), 0, math.radians(-30)))
+    _cam(sc, mid + Vector((0, 0, 3.0)), mid, ortho=L * 1.12, up=Vector((1, 0, 0)))
+    panels.append((_render(os.path.join(pdir, '_p_top.png')), 'top (right side up)'))
     # in hand: the skin, then the live base gun (gun_preview's camera and pose)
     sc = _scene(Wd, Ht); _import(sh, hold_matrix(base_id))
     _sun(sc, (math.radians(35), 0, math.radians(20)))
@@ -1005,6 +1140,13 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, Wd=900, Ht=56
     eye = B((0, sp[1], sp[2] + 0.11))
     _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
     panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'aim view (approx.: eye 0.11 m behind the rear sight)'))
+    if compare:   # raw, 3/4, side, top | before in hand, now in hand, before aimed | now aimed, base gun in hand
+        P = dict(zip(('raw', '34', 'side', 'top', 'hand', 'base', 'aim'), panels))
+        tag = meta.get('name', K).split()[-1]
+        relabel = lambda pl, l: (pl[0], l)
+        panels = [P['raw'], P['34'], P['side'], P['top'],
+                  (os.path.join(compare, '_p_hand.png'), 'BEFORE: in hand'), relabel(P['hand'], 'NOW: in hand'),
+                  (os.path.join(compare, '_p_aim.png'), 'BEFORE: aim view'), relabel(P['aim'], 'NOW: aim view'), P['base']]
     if concept: panels.insert(0, (concept, "owner's concept"))
     spec = {'panels': panels, 'out': sheet_path, 'w': Wd, 'h': Ht, 'title': meta.get('name', K)}
     js = os.path.join(pdir, '_sheet.json')
@@ -1051,7 +1193,7 @@ def preview(glb, out_dir):
     sc.render.resolution_x, sc.render.resolution_y = 1600, 800
     out = []
     for name, d, up, sz in (('left', Vector((-1, 0, 0)), Vector((0, 0, 1)), 1.05), ('right', Vector((1, 0, 0)), Vector((0, 0, 1)), 1.05),
-                            ('top', Vector((0, 0, 1)), Vector((0, 1, 0)), 1.05), ('q34', Vector((-0.75, 0.8, 0.42)).normalized(), Vector((0, 0, 1)), 0.9)):
+                            ('top', Vector((0, 0, 1)), Vector((1, 0, 0)), 1.05), ('q34', Vector((-0.75, 0.8, 0.42)).normalized(), Vector((0, 0, 1)), 0.9)):
         _cam(sc, c + d * 3, c, ortho=L * sz, up=up)
         out.append(_render(os.path.join(out_dir, 'preview_%s.png' % name)))
     print('PREVIEW', out)
@@ -1150,7 +1292,7 @@ def main(argv):
     if opt('--stage') == 'sheet':   # (only the sheet again, from the files a full run left in out_dir)
         meta = json.load(open(os.path.join(out_dir, K + '_clean.json')))
         s, t, R, _ = solve_fit(rec, meta['spots'])
-        sheet(K, base_id, out_dir, opt('--sheet'), raw, (s, t, R), concept=opt('--concept'))
+        sheet(K, base_id, out_dir, opt('--sheet'), raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'))
         return
     meta = clean(raw, base_id, skin_id, rec, out_dir)
     if opt('--stage') == 'clean':   # (the quick loop while writing regions: flat colours, workbench, three views)
@@ -1205,7 +1347,7 @@ def main(argv):
     sp = opt('--sheet')
     if sp and '--no-bake' not in rest:
         s, t, R, _ = solve_fit(rec, meta['spots'])
-        sheet(K, base_id, out_dir, sp, raw, (s, t, R), concept=opt('--concept'))
+        sheet(K, base_id, out_dir, sp, raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'))
     print('TRIPO GUN %s done in %.0fs' % (key, time.time() - t0))
     for k in ('fit', 'tris', 'tris_gun', 'tris_shells', 'tris_total', 'zfix', 'flicker', 'gun_check', 'export', 'export_lo_hi', 'bounds', 'base_bounds'):
         if k in meta: print('  %s: %s' % (k, json.dumps(meta[k], default=str)))
