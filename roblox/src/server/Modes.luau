@@ -555,7 +555,10 @@ infect = function(m: any, ms: MS, s: Seat, first: boolean)
 			Fight.syncHp(f)
 		end
 	end
-	if p then (p :: Player):SetAttribute("Infected", true) end
+	if p then
+		(p :: Player):SetAttribute("Infected", true)
+		;(p :: Player):SetAttribute("Item", nil) -- (a zombie has no item: off the HUD now, not at the next spawn)
+	end
 	zombieTint(s)
 	callTo(s, "YOU ARE INFECTED", 2)
 	if first then callAll(ms, s.name .. " IS PATIENT ZERO", 1.6, s) end

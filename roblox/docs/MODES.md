@@ -1129,15 +1129,15 @@ Grapples, Team Deathmatch, Tags and Infection**. The code:
 
 The rules follow the sections above. Below is every place where the Roblox version had to differ, and why.
 
-**Tested in Studio** (17 Nov 2026, place versions 548, 567 and 578). The photos are in `roblox/docs/modes/`: the MODES
+**Tested in Studio** (17 Nov 2026, place versions 548, 567, 578 and 591). The photos are in `roblox/docs/modes/`: the MODES
 tab, and each mode's HUD and result.
 - All eight were played to their win, with Studio stand-ins as the other players.
 - Gun Game went through the real queue: a party, the card, FIND, the 15 s wait.
 - The other seven were started with `ServerStorage.JankModeTest`.
 - Infection was played through: patient zero turned at 6 s, a claw kill turned me (200 HP, the claw, green), and the
   last survivor's death ended it.
-- Not tested yet: a real knife hit on a real target (heavy stab, backstab). The modes' kills come through the test
-  hook, so the knife's damage path has been compile-checked only.
+- The knife on a training dummy, real clicks through Combat: slash 55 and heavy stab 90 from the front; from behind
+  slash 165 and stab 270, both flagged as headshots (`knife-dummy.jpg`).
 
 **Shared by all of them**
 - **Who plays:** parties of 1-4 queue for a mode, and parties are kept whole.
@@ -1179,7 +1179,10 @@ tab, and each mode's HUD and result.
   - The **Zombie Claw**: Infection only, 55 a swipe (0.45 s, 2.6 m, cone 0.85), ×1.3 run speed.
   - The swings, the stab and the draw are the web's keyframes (`tools/roblox/anims.mjs` → `Anims.luau`). The
     viewmodel and the swing smear take any melee weapon now, not just the katana.
-  - Until the gun-models session's kit models land, the three are code stand-ins (`WeaponModels` BUILD).
+  - The models are the gun-models session's kit models (`JankfireWeapons.w_knife`, `w_spoon`, `w_claw`, place
+    version 589); the code stand-ins (`WeaponModels` BUILD) carry the same Grip / Muzzle / Mid spots. The holds are the
+    hold session's (the claw is your own right hand, green, with the cuff and nails fitted over it).
+  - The weapon plate reads "Spoon" in the spoon look, and the knife's right-click hint is "RMB stab".
 
 **Gun Game**
 - **The ladder** is rolled the web way:

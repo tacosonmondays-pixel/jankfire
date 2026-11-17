@@ -181,13 +181,17 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 		sub = note
 		if note == "OVERHEATED" then subColor = T.DANGER end
 	elseif w.kind == "melee" then
-		sub = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S) else "RMB parry"
+		-- (right click: the katana parries, the knife stabs, the claw does nothing)
+		sub = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
+			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry" else ""
 	else
 		count = ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
 		if reloading then sub = "RELOADING"; subColor = T.ACCENT; countColor = T.DIM
 		elseif (mag or 0) <= 0 then countColor = T.DANGER end
 	end
-	if wName.Text ~= w.name then wName.Text = w.name end
+	-- (a classic mode's spoon look: the knife is the Spoon, Modes.luau's SpoonLook)
+	local shown = if wid == "knife" and game:GetService("Players").LocalPlayer:GetAttribute("SpoonLook") then "Spoon" else w.name
+	if wName.Text ~= shown then wName.Text = shown end
 	wChip.BackgroundColor3 = w.color
 	if ammoText.Text ~= count then ammoText.Text = count end
 	ammoText.TextColor3 = countColor
