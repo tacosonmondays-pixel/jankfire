@@ -195,7 +195,7 @@ local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u *
 
 local function offHandSetup(m: Model, root: BasePart)
 	ride, magGrab, crankGrab, lidTop = nil, nil, nil, nil
-	local hold = AvatarArms.holdFrame(VM.wid, "Left", k)
+	local hold = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
 	local st = VM.parts
 	if not armsOn or not hold or not st then return end
 	local function biggest(list: { any }?): BasePart?
@@ -263,7 +263,7 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 		for i = 1, #tw do if tw[i][2] ~= 0 then t0 = tw[math.max(1, i - 1)][1]; break end end
 		local mix = smoothstep((t - (t0 - 0.16)) / 0.16) * (1 - smoothstep((t - t1) / 0.2))
 		if mix > 0 then
-			local hold = root.CFrame * (AvatarArms.holdFrame(VM.wid, "Left", k) :: CFrame)
+			local hold = root.CFrame * (AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin) :: CFrame)
 			local away = CFrame.new(camera.CFrame:VectorToWorldSpace(Vector3.new(-0.1, -0.42, 0.12) * S)) * hold
 			return away, mix, false
 		end
@@ -279,7 +279,7 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 	if prop then
 		-- (when each is out, and how tall it is: VM.props below)
 		local win = if clip.name == "reload_redline" then { 0.2, 1.26, 0.11 } elseif clip.name == "reload_marbles" then { 0.4, 1.35, 0.12 } else nil
-		local hold = AvatarArms.holdFrame(VM.wid, "Left", k)
+		local hold = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
 		if win and hold then
 			local mix = math.min(smoothstep((t - win[1]) / 0.12), 1 - smoothstep((t - (win[2] - 0.2)) / 0.2))
 			return prop:GetPivot() * CFrame.new(0, -win[3] * S * SIZE / 2, 0), mix, true -- (under its foot, as it tips)
@@ -308,7 +308,7 @@ end
 
 local function hands(m: Model, root: BasePart)
 	-- your own avatar's hands and forearms, held the way the hold table says (AvatarArms.hold)
-	armsOn = AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid))
+	armsOn = AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid), VM.skin)
 	offHandSetup(m, root)
 	if armsOn then return end
 	-- your body may not be built yet (a spawn): plain boxes for now
@@ -337,7 +337,7 @@ local function hands(m: Model, root: BasePart)
 		for _ = 1, 24 do
 			task.wait(0.25)
 			if VM.model ~= m or not m.Parent then return end
-			if AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid)) then
+			if AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid), VM.skin) then
 				armsOn = true
 				offHandSetup(m, root)
 				for _, n in { "HandGrip", "SleeveGrip", "HandFore", "SleeveFore" } do

@@ -53,9 +53,10 @@ AvatarArms.SINK = 0.12 -- held from under: the thing sinks this far (of the hand
 AvatarArms.PAST = 0.18 -- ... and the fingers reach this far (of the hand's length) past it
 
 local UNDER = { palm = true } -- (the hold table's poses that hold from under; every other pose is a grip)
+local WHOLE = { hand = true } -- (... and the one where the hand IS the weapon, the Zombie Claw: placed whole, no grip)
 
 type Arm = {
-	side: string, root: BasePart, rel: CFrame, under: boolean, elbow: Vector3, turn: number,
+	side: string, root: BasePart, rel: CFrame, under: boolean, whole: boolean, elbow: Vector3, turn: number,
 	hand: BasePart, fore: BasePart,
 	gripInv: CFrame, -- the hand's grip attachment, inverted (part space, sized)
 	wrist: Vector3, -- the hand's wrist joint (part space, sized)
@@ -97,13 +98,62 @@ local function basisAt(joint: Vector3, toElbow: Vector3): CFrame
 	return CFrame.fromMatrix(joint, x, y, x:Cross(y))
 end
 
+-- ---- the hand that IS the weapon (pose "hand": the Zombie Claw). its model is only what goes on a hand: the nails
+-- (pieces named nail_*) and the cuff (cuff_*), built round a reference hand (REF, file metres: its middle at the
+-- hold's spot, palm down, fingers forward, thumb to the left). every body's hand is another shape (a blocky hand is a
+-- slab a third as long as it is wide), so the nails go onto THIS hand's fingertip end and the cuff onto its wrist,
+-- grown or shrunk to its width (the cuff: to its width or thickness, the larger). handRel = the hand part's frame
+-- against the weapon's root, size = the hand part's size, wrist = its wrist joint (part space), all in studs. the
+-- hand's own axes: x through it (palm to back), y to the wrist, z across. the pieces remember how they were built
+-- (attributes FitRel / FitSize), so fitting again starts from there. used by first and third person
+AvatarArms.REF = { wide = 0.115, thick = 0.06, long = 0.10 }
+local FIT = { nail = "tips", cuff = "wrist" }
+function AvatarArms.fitOver(root: BasePart, k: number, handRel: CFrame, size: Vector3, wrist: Vector3?)
+	local m = root.Parent
+	if not m then return end
+	local R = AvatarArms.REF
+	local sw = size.Z / (R.wide * k)
+	local sc = math.max(sw, size.X / (R.thick * k))
+	local spots = {
+		tips = { from = Vector3.new(0, -R.long / 2 * k, 0), to = Vector3.new(0, -size.Y / 2, 0), s = sw },
+		wrist = { from = Vector3.new(0, R.long / 2 * k, 0), to = wrist or Vector3.new(0, size.Y * 0.42, 0), s = sc },
+	}
+	for _, d in m:GetDescendants() do
+		if not d:IsA("BasePart") or d == root or d:FindFirstAncestor("AvatarArms") then continue end
+		local n = string.lower(d.Name)
+		local g = nil
+		for pre, grp in FIT do
+			if string.sub(n, 1, #pre) == pre then g = spots[grp]; break end
+		end
+		if not g then continue end
+		local rel0, size0 = d:GetAttribute("FitRel"), d:GetAttribute("FitSize")
+		if typeof(rel0) ~= "CFrame" or typeof(size0) ~= "Vector3" then
+			rel0, size0 = root.CFrame:ToObjectSpace(d.CFrame), d.Size
+			d:SetAttribute("FitRel", rel0); d:SetAttribute("FitSize", size0)
+		end
+		local inH = handRel:ToObjectSpace(rel0 :: CFrame) -- (the piece against the hand's middle, the hand's axes)
+		local wc = d:FindFirstChildOfClass("WeldConstraint")
+		if wc then wc.Enabled = false end -- (moved alone, then welded where it now is)
+		d.Size = (size0 :: Vector3) * g.s
+		d.CFrame = root.CFrame * handRel * CFrame.new(g.to + (inH.Position - g.from) * g.s) * inH.Rotation
+		if wc then wc.Enabled = true end
+	end
+end
+
+-- a weapon's hand rows, a skin's own where it has them (the knife's spoon look holds its handle further back)
+function AvatarArms.rows(wid: string, skin: string?): any
+	local rows = Holds.holds[wid]
+	local sk = rows and skin and rows.skins and rows.skins[skin]
+	return sk or rows
+end
+
 -- the arms for a weapon, under `parent`, held as the hold table says. root = the weapon's root (its frame the
 -- weapon's own: -Z forward, +Y up), k = studs per metre of the weapon's file, frame = the weapon's frame against root
 -- if root is not it (the Shredder's handle), scale = the viewmodel's size (the hands grow with the weapon). false if
 -- your character isn't ready or the weapon has no row
-function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: number, frame: CFrame?, scale: number?): boolean
+function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: number, frame: CFrame?, scale: number?, skin: string?): boolean
 	local ch = Players.LocalPlayer and Players.LocalPlayer.Character
-	local rows = Holds.holds[wid]
+	local rows = AvatarArms.rows(wid, skin)
 	if not ch or not rows or not ch:FindFirstChildOfClass("Humanoid") then return false end
 	for _, side in { "Right", "Left" } do
 		if rows[side] and not (ch:FindFirstChild(side .. "Hand") and ch:FindFirstChild(side .. "LowerArm")) then return false end
@@ -154,10 +204,17 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			dress(hand, K.glove, K.material)
 			dress(fore, K.sleeve, K.sleeveMaterial)
 		end
-		hand.Name = side .. "Hand"; fore.Name = side .. "LowerArm"
+		-- a tinted hand (the Zombie Claw's green) in either look; named apart so your body colours never repaint it
+		if row.tint then dress(hand, row.tint, AvatarArms.KIT.material) end
+		hand.Name = side .. (if row.tint then "HandTint" else "Hand"); fore.Name = side .. "LowerArm"
 		hand.Parent = arms; fore.Parent = arms
+		local whole = WHOLE[row.pose] == true
+		if whole then
+			-- the weapon is only what goes on this hand (nails, a cuff): fitted to its shape now, before it is placed
+			AvatarArms.fitOver(root, k, (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z), hand.Size, hw)
+		end
 		table.insert(list, {
-			side = side, root = root, under = UNDER[row.pose] == true,
+			side = side, root = root, under = UNDER[row.pose] == true, whole = whole,
 			elbow = row.elbow or Holds.elbow[side], turn = row.turn or 0,
 			rel = (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z),
 			hand = hand, fore = fore,
@@ -176,14 +233,14 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 end
 
 -- where a hand's hold sits against the weapon's root, and what kind it is (for a caller that sends the hand elsewhere)
-function AvatarArms.holdFrame(wid: string, side: string, k: number, frame: CFrame?): CFrame?
-	local rows = Holds.holds[wid]
+function AvatarArms.holdFrame(wid: string, side: string, k: number, frame: CFrame?, skin: string?): CFrame?
+	local rows = AvatarArms.rows(wid, skin)
 	local row = rows and rows[side]
 	if not row then return nil end
 	return (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z)
 end
-function AvatarArms.poseOf(wid: string, side: string): string?
-	local rows = Holds.holds[wid]
+function AvatarArms.poseOf(wid: string, side: string, skin: string?): string?
+	local rows = AvatarArms.rows(wid, skin)
 	return if rows and rows[side] then rows[side].pose else nil
 end
 
@@ -226,6 +283,8 @@ function AvatarArms.aim(parent: Instance, cam: CFrame)
 			local X = if a.side == "Right" then -P else P
 			local at = F.Position - P * a.thick * (0.5 - AvatarArms.SINK) - Y * a.long * AvatarArms.PAST
 			hand = CFrame.fromMatrix(at, X, Y, X:Cross(Y)) * a.mid:Inverse()
+		elseif a.whole then
+			hand = F -- (the hand's own frame: the row's turn already lines its axes up)
 		else
 			-- the grip on the handle, turned about it until the wrist faces the elbow
 			local w = a.gripInv * a.wrist -- (the wrist, seen from the grip)

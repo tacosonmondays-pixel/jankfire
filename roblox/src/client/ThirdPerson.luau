@@ -39,6 +39,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local Holds = require(Shared:WaitForChild("Holds")) :: any
+local AvatarArms = require(Shared:WaitForChild("AvatarArms")) -- (the claw's nails and cuff fitted onto a real hand)
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
 for name, a in require(Shared:WaitForChild("Reloads")) :: any do
@@ -77,6 +78,9 @@ TP.T = {
 		cheek = V(-0.12, 0, -0.2), poleR = V(1, -0.8, 0.8), poleL = V(-0.5, -1.3, -0.2) },
 	pistol = { twist = 0.22, twistAds = 0.38, waist = 0.4, ads = V(0.02, -0.06, -0.62), hip = V(0.08, -0.44, 0.04), hipRot = V(-0.05, 0.1, 0),
 		cheek = V(-0.06, 0, -0.12), poleR = V(0.9, -1, 0.3), poleL = V(-0.6, -1.2, -0.2) },
+	-- (the hold session, 17 Nov 2026) the one-handed melee weapons: low at the right hip, blade forward; never aimed
+	melee = { twist = 0.18, twistAds = 0.18, waist = 0.4, ads = V(0.02, -0.06, -0.62), hip = V(0.12, -0.5, 0.1), hipRot = V(-0.1, 0.12, 0),
+		cheek = V(0, 0, 0), poleR = V(0.9, -1, 0.3), poleL = V(-0.6, -1.2, -0.2) },
 	shredder = { twist = -0.4, twistAds = -0.45, waist = 0.4, ads = V(0.18, -0.5, -0.5), hip = V(0.32, -0.85, -0.3), hipRot = V(0, 0, 0),
 		cheek = V(-0.05, 0, -0.08), poleR = V(1, -0.8, 0.8), poleL = V(-0.5, -1.3, -0.2) },
 	-- the katana: its hilt's pose against the chest (pos in u from the chest's front, rot = x y z radians), per key
@@ -141,6 +145,9 @@ TP.KAT, TP.KAT_REST = KAT, KAT_REST
 local ONE_HAND = { pistol = true, revolver = true, sawnoff = true }
 local function classOf(wid: string): string
 	if wid == "katana" then return "katana" end
+	-- (the hold session, 17 Nov 2026) every other melee weapon is one-handed: the Knife (its Spoon skin), the Zombie
+	-- Claw. their slashes and the stab are the first-person clips (swing_<id>, swing_<id>2, stab_<id>), round the grip
+	if W[wid] and W[wid].kind == "melee" then return "melee" end
 	if wid == "shredder" then return "shredder" end
 	if ONE_HAND[wid] then return "pistol" end
 	if wid == "lmg" then return "heavy" end
@@ -241,7 +248,7 @@ type Rig = {
 	J: { [string]: Joint }, arms: { [string]: Arm }, u: number, Hs: number, nk: Vector3, headC1: CFrame, geomT: number, dirty: boolean,
 	src: Instance?, wid: string, cls: string, k: number,
 	gun: Model?, groot: BasePart?, weld: Weld?, parts: any, sight: Vector3, gripPt: Vector3, muzzle: Attachment?,
-	holdR: CFrame?, holdL: CFrame?, poseL: string?, turnR: number, turnL: number, ride: Grab?, grab: { [string]: Grab },
+	holdR: CFrame?, holdL: CFrame?, poseR: string?, poseL: string?, turnR: number, turnL: number, ride: Grab?, grab: { [string]: Grab },
 	hidden: { [BasePart]: number }, shown: { [BasePart]: number },
 	pitch: number, yaw: number, aim: number, low: number, on: number, lastFire: number, flags: number,
 	clip: { name: string, t: number, rate: number }?, follow: { name: string, at: number }?,
@@ -366,6 +373,7 @@ end
 -- the hand on a hold frame F (chest space; its Y along the thing held, through the fist), turned about it until the
 -- wrist faces the elbow (AvatarArms' rule); "palm": held from under, the palm up into it
 local function handOn(a: Arm, F: CFrame, pose: string?, turn: number, pole: Vector3): CFrame
+	if pose == "hand" then return F end -- (the hold session: the hand IS the weapon, the claw; F is the hand's own frame)
 	local elbow = elbowAt(a, F.Position, pole)
 	if pose == "palm" then
 		local to = elbow - F.Position
@@ -418,6 +426,15 @@ end
 
 local function dropGun(r: Rig)
 	if r.gun then r.gun:Destroy() end
+	-- (the hold session) the claw's green comes off this body's own hand
+	local tint = (r :: any).tint
+	if tint then
+		(r :: any).tint = nil
+		if tint.part.Parent then
+			tint.part.Color = tint.color
+			if tint.tex and tint.part:IsA("MeshPart") then (tint.part :: MeshPart).TextureID = tint.tex end
+		end
+	end
 	r.gun, r.groot, r.weld, r.parts, r.muzzle = nil, nil, nil, nil, nil
 	r.holdR, r.holdL, r.ride = nil, nil, nil
 	r.grab = {}
@@ -463,8 +480,8 @@ local function grabsFor(r: Rig)
 	end
 end
 
-local function holdFrame(wid: string, side: string, k: number, frame: CFrame?): (CFrame?, string?, number)
-	local rows = Holds.holds[wid]
+local function holdFrame(wid: string, side: string, k: number, frame: CFrame?, skin: string?): (CFrame?, string?, number)
+	local rows = AvatarArms.rows(wid, skin) -- (the hold session: a skin's own hands, the knife's spoon)
 	local row = rows and rows[side]
 	if not row then return nil, nil, 0 end
 	return (frame or ID) * CF(row.at * k) * eul(row.rot), row.pose, row.turn or 0
@@ -521,8 +538,24 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	r.gripPt = if ga then ga.Position else Vector3.zero
 	r.sight = if sa then sa.Position else r.gripPt + V(0, 0.12 * r.k, 0.02 * r.k)
 	r.muzzle = root:FindFirstChild("Muzzle") :: Attachment?
-	r.holdR, _, r.turnR = holdFrame(wid, "Right", r.k)
-	r.holdL, r.poseL, r.turnL = holdFrame(wid, "Left", r.k)
+	local sk = if type(skin) == "string" then skin else nil
+	r.holdR, r.poseR, r.turnR = holdFrame(wid, "Right", r.k, nil, sk)
+	r.holdL, r.poseL, r.turnL = holdFrame(wid, "Left", r.k, nil, sk)
+	-- (the hold session, 17 Nov 2026) the Zombie Claw: this body's own right hand is the claw. the nails and the cuff
+	-- go onto its real shape, and on this client the hand takes the claw's green while it is out (dropGun undoes it)
+	if r.poseR == "hand" and r.holdR then
+		local hand = r.ch:FindFirstChild("RightHand") :: BasePart?
+		if hand then
+			local wa = hand:FindFirstChild("RightWristRigAttachment") :: Attachment?
+			AvatarArms.fitOver(root, r.k, r.holdR, hand.Size, if wa then wa.Position else nil)
+			local tint = AvatarArms.rows(wid, sk).Right.tint
+			if typeof(tint) == "Color3" then
+				(r :: any).tint = { part = hand, color = hand.Color, tex = if hand:IsA("MeshPart") then (hand :: MeshPart).TextureID else nil }
+				hand.Color = tint
+				if hand:IsA("MeshPart") then (hand :: MeshPart).TextureID = "" end
+			end
+		end
+	end
 	-- (put at the chest before it goes in: the WeldConstraints holding its pieces and its hat keep whatever offset they
 	-- find when they go live, and the chest weld moved only the root: every piece stayed back at the world's origin)
 	m:PivotTo(r.ut.CFrame * CF(0, -0.5, -1))
@@ -555,7 +588,7 @@ local function newRig(ch: Model): Rig?
 		J = {}, arms = {}, u = 1.5, Hs = 1, nk = Vector3.zero, headC1 = ID, geomT = 0, dirty = true,
 		src = nil, wid = "", cls = "", k = 3,
 		gun = nil, groot = nil, weld = nil, parts = nil, sight = Vector3.zero, gripPt = Vector3.zero, muzzle = nil,
-		holdR = nil, holdL = nil, poseL = nil, turnR = 0, turnL = 0, ride = nil, grab = {}, hidden = {}, shown = {},
+		holdR = nil, holdL = nil, poseR = nil, poseL = nil, turnR = 0, turnL = 0, ride = nil, grab = {}, hidden = {}, shown = {},
 		pitch = 0, yaw = 0, aim = 0, low = 0, on = 0, lastFire = -10, flags = 0,
 		clip = nil, follow = nil, kat = nil, katAlt = false, lastSwing = -10,
 		rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero },
@@ -643,11 +676,19 @@ local function katRig(r: Rig, name: string)
 	if r.wid ~= "katana" then return end
 	r.kat = { name = name, t = 0 }
 end
-local function swingRig(r: Rig, alt: boolean?)
+local function swingRig(r: Rig, alt: boolean?, name: string?)
 	local now = os.clock()
 	local a = if alt == nil then (now - r.lastSwing < 0.75 and not r.katAlt) else alt
 	r.katAlt = a
 	r.lastSwing = now
+	-- (the hold session) a melee weapon plays its own first-person clip: the slash (every other one the backhand) or
+	-- the one named (the knife's stab)
+	if r.cls == "melee" then
+		local n = name or ("swing_" .. r.wid .. (if a then "2" else ""))
+		if not Anims[n] then n = "swing_" .. r.wid end
+		if Anims[n] then r.clip = { name = n, t = 0, rate = 1 } end
+		return
+	end
 	katRig(r, if a then "swing2" else "swing")
 end
 local function itemRig(r: Rig, id: string, kind: string)
@@ -678,7 +719,7 @@ function TP.cancelReload()
 	local r = myRig()
 	if r and r.clip and string.sub(r.clip.name, 1, 7) == "reload_" then r.clip = nil end
 end
-function TP.swing(alt: boolean) local r = myRig(); if r then swingRig(r, alt) end end
+function TP.swing(alt: boolean, name: string?) local r = myRig(); if r then swingRig(r, alt, name) end end -- (name: a melee clip, the knife's stab)
 function TP.parry() local r = myRig(); if r then katRig(r, "guard") end end
 
 local function rigOfUid(uid: any): Rig?
@@ -695,7 +736,7 @@ end)
 Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if type(f) ~= "table" then return end
 	local r = rigFor(if typeof(f.model) == "Instance" then f.model else nil)
-	if f.k == "swing" and f.by ~= me.UserId and r then swingRig(r, nil)
+	if f.k == "swing" and f.by ~= me.UserId and r then swingRig(r, nil, if type(f.clip) == "string" then f.clip else nil)
 	elseif f.k == "guard" and f.by ~= me.UserId and r then katRig(r, "guard")
 	elseif f.k == "parry" and f.kind == "melee" then
 		local a = rigOfUid(f.att) -- (the swing that got parried: its owner staggers)
@@ -1057,7 +1098,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 			local want = if hideAll or d:GetAttribute("Hide") then 1 else 0
 			if r.shown[d] ~= want then r.shown[d] = want; d.LocalTransparencyModifier = want end
 		end
-		if r.holdR then handR = handOn(R, G * r.holdR, "grip", r.turnR, poleR) end
+		if r.holdR then handR = handOn(R, G * r.holdR, if r.poseR == "hand" then "hand" else "grip", r.turnR, poleR) end
 		if r.holdL then
 			local F = G * r.holdL
 			local gunBack = G:VectorToWorldSpace(Vector3.zAxis)
