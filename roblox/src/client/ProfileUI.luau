@@ -287,6 +287,19 @@ local function privatePlate(parent: Instance, y: number, W: number): number
 	return y + 120
 end
 
+-- a cheat restore reset this player's numbers (Stats.restoreFor): a plain strip with the day, for everyone
+local function resetPlate(parent: Instance, y: number, W: number, t: number?): number
+	local h = 44
+	local f = card(parent, 0, y, W, h, "StatsReset")
+	local bar = new("Frame", { BackgroundColor3 = LOSS, BorderSizePixel = 0 }, f)
+	at(bar, 0, 0, 4, h)
+	local a = txt(f, "STATS RESET", 15, T.TEXT, T.FONT_TITLE)
+	at(a, 16, 0, W * 0.6, h)
+	local b = txt(f, string.upper(os.date("!%d %b %Y", math.floor(tonumber(t) or os.time())) :: string), 13, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	at(b, W * 0.4, 0, W * 0.6 - 16, h)
+	return y + h
+end
+
 local function statsBlock(parent: Instance, y: number, W: number, s: any): number
 	local tiles = {
 		{ "K/D", if s.d > 0 then ("%.2f"):format(s.k / s.d) else (if s.k > 0 then ("%.2f"):format(s.k) else "—") },
@@ -381,9 +394,12 @@ local function recentBlock(parent: Instance, y: number, x: number, W: number, li
 		local f = card(parent, x, y, W, rh, "Match")
 		f.BackgroundTransparency = if i % 2 == 0 then 0.25 else 0
 		local won = r.r == "W"
-		local bar = new("Frame", { BackgroundColor3 = if won then WIN else LOSS, BorderSizePixel = 0 }, f)
+		-- (a loss to a cheater that a restore took off: VOID, grey. a win over one stays a win)
+		local void = r.x == true and not won
+		local rc = if void then T.DIM elseif won then WIN else LOSS
+		local bar = new("Frame", { BackgroundColor3 = rc, BorderSizePixel = 0 }, f)
 		at(bar, 0, 0, 4, rh)
-		local res = txt(f, if won then "WIN" else "LOSS", 13, if won then WIN else LOSS, T.FONT_HEAVY)
+		local res = txt(f, if void then "VOID" elseif won then "WIN" else "LOSS", 13, if void then T.MUTED else rc, T.FONT_HEAVY)
 		at(res, 14, 0, 46, rh)
 		local sc = txt(f, tostring(r.sc or ""), 13, T.TEXT, T.FONT_BOLD)
 		at(sc, 58, 0, 40, rh)
@@ -650,6 +666,7 @@ local function draw()
 	elseif c and view.tab == "customize" and own then
 		y = customizeBlock(sf, y, W, c, view.owned)
 	elseif c then
+		if c.reset then y = resetPlate(sf, y, W, c.reset.t) + 12 end
 		if c.stats then
 			y = statsBlock(sf, y, W, c.stats) + 18
 			if L.two then

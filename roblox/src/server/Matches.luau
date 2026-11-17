@@ -42,7 +42,8 @@ type Fighter = any
 -- where a match is played: an arena under workspace.Map, or a copy of one in Map.ArenaCopies
 type Site = { name: string, model: Model, copy: boolean, slot: number }
 type Match = {
-	id: number, mode: string, teams: { { Player } }, wins: { number }, round: number,
+	id: number, key: string, -- (key: unique across servers and restarts, "<server>-<id>-<os.time>": per-match records in Stats and RankedData)
+	mode: string, teams: { { Player } }, wins: { number }, round: number,
 	phase: string, -- "ready" (spawned, not live yet) | "live" | "between" | "over"
 	roundEnds: number, pad: Model, fighters: { Fighter },
 	dmg: { number }, -- damage each team dealt to the others this round
@@ -69,6 +70,8 @@ local padLast: { [Model]: Match } = {} -- each pad's latest match (its sign show
 local busy: { [Model]: boolean } = {} -- the sites in use
 local copySlots: { [string]: { [number]: Model } } = {} -- each arena's copies by slot (Arena.copyOffset)
 local nextId = 0
+-- (the first 8 of the JobId, or a random tag in Studio where the JobId is "": a match key never repeats across servers)
+local SERVER_TAG = if game.JobId ~= "" then string.sub(game.JobId, 1, 8) else ("st" .. string.format("%06x", math.random(0, 0xffffff)))
 
 -- other modules follow the matches (Stats.luau): one starting (its teams of players), a round won, the end. each hook
 -- runs in its own thread, so a slip in one can't stop a match
@@ -78,10 +81,10 @@ function Matches.onRound(fn: (Match, number) -> ()) table.insert(hooks.round, fn
 function Matches.onEnd(fn: (Match, number?) -> ()) table.insert(hooks.finish, fn) end -- (the match, the winning team)
 local function fire(list: { (...any) -> () }, ...: any) for _, fn in list do task.spawn(fn, ...) end end
 -- the match a player is in, or nil: { id, mode, arena, team, phase }
-function Matches.matchOf(p: Player): { id: number, mode: string, arena: string, team: number, phase: string, ranked: boolean, queue: string? }?
+function Matches.matchOf(p: Player): { id: number, key: string, mode: string, arena: string, team: number, phase: string, ranked: boolean, queue: string? }?
 	local im = inMatch[p]
 	if not im then return nil end
-	return { id = im.m.id, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase, ranked = im.m.ranked == true, queue = im.m.queue }
+	return { id = im.m.id, key = im.m.key, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase, ranked = im.m.ranked == true, queue = im.m.queue }
 end
 -- (Party.luau) where a player who is not in a match respawns instead of the hub: their private lobby's plinth, or nil
 Matches.homeOf = nil :: ((Player) -> CFrame?)?
@@ -422,7 +425,7 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 	local wins = {}
 	for t = 1, #teams do wins[t] = 0 end
 	lastArena[pad] = arena
-	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
+	local m: Match = { id = nextId, key = SERVER_TAG .. "-" .. nextId .. "-" .. os.time(), mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
 		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil }
 	table.insert(live, m)
 	if not m.queue then padLast[pad] = m end -- (a Play-queue match isn't the pad's: its sign keeps its own)

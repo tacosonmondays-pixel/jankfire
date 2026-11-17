@@ -143,8 +143,37 @@ or the shop".
   - `recent` (10 matches);
   - `look = { border, banner, title }`;
   - `private`;
-  - `since`.
+  - `since`;
+  - `log`: the last 100 matches, one record each (see Cheat restores);
+  - `fixed`, `voids`, `reset`, `backup`: what restores have done.
 - **Looks you don't own:** a worn look you no longer own goes back to the default once the loot save has loaded.
+
+## Cheat restores
+
+The owner's rule (17 Nov): "If someone is caught cheating give back any ranked stuff or stats!!" The anti-cheat calls this when it confirms a cheater. The ranked session's `RankedData.restoreFor` does the same for RP and MMR, with the same call shape.
+
+```lua
+local Stats = require(ServerScriptService.Jankfire.Stats)
+task.spawn(function()
+	local res = Stats.restoreFor(cheaterUserId, since) -- since = os.time() seconds; nil or 0 = all 100 logged matches
+	-- res = { ok = true, matches, victims, now, queued, failed } or { ok = false, why }
+end)
+```
+
+- **Per-match records.** Every finished match writes one record into each player's own save (`log`, newest first, 100 kept), keyed by the match's `key`. `Matches` now gives every match a key that is unique across servers (`<first 8 of JobId>-<id>-<os.time>`), and `matchOf(p)` returns it. A record holds `{ id = key, t (the end), mode, map, team, ranked?, r, k, d, rp, rw, xp, foes = { userIds }, mates = { userIds } }`. Foes are taken when the match starts, so a player who leaves is still in it. The `recent` rows carry the key too.
+- **The victims.** These are everyone on the other side of the cheater in each logged match that ended at or after `since`. Each victim gets that match's **deaths** taken off. If they **lost** it, the match and the rounds they lost come off too. Their kills, their XP and a win stay. On the card, a lost row shows **VOID** in grey.
+- **The cheater** (my call: **reset**). Every number and the XP go back to zero: totals, weapons, recent matches, best streak, level. Their card shows a **STATS RESET** strip with the day, to everyone, even when the player keeps their stats private. Hiding the numbers would have kept fake records (a best streak, weapon numbers) waiting to come back. A reset of the whole save, not only the period, is safer because a catch usually comes after cheating started. The look, the privacy switch and the loot are left alone.
+  - The old numbers are kept in `backup`. If a catch was wrong (an UNBAN), `Stats.undoRestore(userId)` adds them back to whatever was played since. Victims keep their restore.
+  - While a restored cheater stays in this server, nothing more counts for them. That covers the moment between the call and a kick.
+- **Who gets it when:**
+  - **Players in this server:** at once, and their save is written.
+  - **Everyone else:** a pending entry in `JankfireStatsFix_v1` (`JankfireStatsFix_studio` in Studio), key `u<userId>`. It is applied when they next join, written to their save, and only then taken off the list.
+  - **A server that has them now:** a MessagingService message on the topic `JankStatsFix` makes it take the pending entries at once. The same message tells every server to watch the cheater.
+- **A match still being played:** victims in a match with the cheater get it taken off when that match ends.
+- **A cheater kicked just before the call:** this server keeps the logs of players who left in the last 10 minutes, so the newest match is in it.
+- **Idempotent.** A match is undone once per victim (`fixed[key]`), and a reset happens once per `since` (`voids`). The pending store merges entries by id. Running the same call twice changes nothing. A later call with an earlier `since` only adds the older matches.
+- **For ranked:** `Stats.matchesOf(userId, since)` returns the cheater's logged matches `{ key, t, mode, ranked, team, r, foes, mates }`, so ranked needs only its own rating changes per match, keyed by the same key.
+- **Limits:** only the last 100 matches of the cheater can be restored, and only matches played after this shipped (older saves have no log). A victim's own record has to be in their last 100 too, or there is nothing to take off (the match is marked done).
 
 ## The remote and the attributes
 
@@ -171,6 +200,8 @@ The loadout on a card is read from the player's own attributes (`LoadoutNext`, `
   - `("ghost", "Stand")`: that training dummy counts as an enemy player while you're in a match;
   - `("data", p)`, `("card", p, viewer)`, `("save", p)`, `("reset", p)`, `("xp", p, n)`;
   - `("unlock", p, true)`: wear any look this session; nothing about owning is saved.
+  - `("begin", p, mode, arena, foes)` returns the test match's key; `("round", p, won)` is a round of it; `("put", p, data)` puts a backup taken with `data` back.
+  - cheat restores, with stand-ins under made-up negative userIds: `("stand", uid, online)`, `("drop", uid)`, `("fake", uid, { key, r, k, d, rp, rw, foes, t? })` (a finished match, totals and record), `("view", uid)`, `("pending", uid)`, `("join", uid)` (takes what waits), `("restore", uid, since)`, `("undo", uid)`, `("clean", uid)` (no pending entries, not watched).
 - **`JankMatchTest:Invoke("ghost", padName, nil, secs, player, winTeam)`** now puts the test player in the ghost match (team 1) and picks who wins when its time is up.
 - **The player's `ProfileTest` attribute** (from the Client):
   - `open`, `open:<userId>`;
@@ -196,6 +227,29 @@ The loadout on a card is read from the player's own attributes (`LoadoutNext`, `
 | VIP looks (Studio unlock) | the Ducky border (the duck on the top edge) and the gold VIP title draw on the card and in the player list |
 
 | test data kept out (place version 445) | only real live weapons count (`Roster`, `live`): a test hook's "test" damage adds nothing. A Studio ghost match with the player in it adds no match, time or XP. The stand-in dummy and ghost matches count only while `JankStatsTest("ghost", name)` is on, and `"ghost", ""` turns it off again (the default). Real AR shots still count (3 of 3) |
+
+**Cheat restores (17 Nov, solo Play with stand-ins, place version 523):**
+- P = the test player. The stand-ins use made-up userIds: C = cheater (in the server), V1 = victim (away), V2 = victim (in the server). C2 = a second cheater caught while a match against them was still on.
+- `since` = an hour ago.
+
+| check | result |
+|---|---|
+| a real match end writes the record | P lost a test match to C (one real death, rounds 1 of 3): `log[1]` = { key, d 1, rp 3, rw 1, L, foes { C } } |
+| the call | `restoreFor(C, since)` → matches 3 (a match from before `since` left out), victims 3, now 3 (P, V2, C), queued 1 (V1) |
+| a victim who lost | P: deaths 1 → 0, matches 1 → 0, rounds played 3 → 1 (the round they won stays), the row shows VOID |
+| a victim who won | V2: that match's 2 deaths come off (6 → 4), the win stays (2 matches, 1 win), the 2 lost rounds come off. Their match from before `since` is untouched |
+| the cheater | C: every number 0, `reset` set, `backup.k` = 10 |
+| twice | the same call again: all numbers the same, V1 still has 1 pending entry (merged) |
+| away, then joins | V1 had only the pending entry. On joining: deaths 3 → 0, matches 1 → 0, rounds played 5 → 2, kills 2 kept, pending list empty. A third call changed nothing |
+| caught mid-match | P died in a live test match against C2. C2 was restored before the end (matches 0: nothing logged yet). When the match ended, P's death, match and lost round came off (back to what they were before it) |
+| undo | `undoRestore(C)` → k 10, d 8, m 4, w 3, rp 18, rw 11 (as before the call), no reset mark. A second undo changed nothing |
+| the card | the remote card's recent rows carry `x`, and draw VOID. A reset player's card shows STATS RESET with the day |
+
+The owner's save was put back exactly as it was from a copy taken first (zero stats, the Ducky look kept) and saved. The stand-ins' pending entries were removed from `JankfireStatsFix_studio`.
+
+Not tested: two real servers. That covers the MessagingService nudge and a cheater online in another server. Studio runs one server.
+
+![restore photos](profiles/restore-sheet.jpg)
 
 After the tests the owner's stats were reset to zero (saved). Their look was left as they wear it (Ducky border, Eclipse background, from the VIP pack).
 
