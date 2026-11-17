@@ -3,7 +3,8 @@
 -- only writes down. this server's entries are kept in memory; every 30 s the new ones are appended to a DataStore list
 -- the owner reads from the panel (/ac in chat), so flags from every server end up in one place. nothing leaves Roblox.
 --   DataStore "JankAntiCheat_v1":  "log" = the newest MAX entries (a Studio play test writes "log_studio" instead, so
---   test catches never mix with real ones);  "u_<userId>" = one player's totals (points, kicks, flags by kind, last)
+--   test catches never mix with real ones);  "u_<userId>" = one player's totals (points, kicks, flags by kind, first,
+--   last). stored by user id only, never a name (the panel looks names up). Log.erase(userId): right-to-erasure
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -102,8 +103,11 @@ function Log.flush()
 	local ok, err = pcall(function()
 		(store :: DataStore):UpdateAsync(LOG_KEY, function(old: any)
 			local list = if type(old) == "table" then old else {}
-			-- (a merged line goes in again: drop its older copy from this server)
-			for _, e in batch do
+			-- (a merged line goes in again: drop its older copy from this server. stored without the name: user ids
+			-- only, the panel looks names up when it shows them)
+			for _, e0 in batch do
+				local e = table.clone(e0)
+				e.name = nil
 				for i = #list, 1, -1 do
 					local o = list[i]
 					if type(o) == "table" and o.srv == e.srv and o.uid == e.uid and o.kind == e.kind and o.act == e.act and (e.t - (o.t or 0)) <= (e.n or 1) * 10 + 10 then table.remove(list, i); break end
@@ -142,6 +146,7 @@ function Log.flush()
 					end
 				end
 				r.last = os.time()
+				r.first = if type(r.first) == "number" then r.first else os.time() -- (the earliest evidence: Reports.evidenceSince)
 				return r
 			end)
 		end)
@@ -158,6 +163,33 @@ function Log.kicksWithin(uid: number, days: number): number
 	if type(r) == "table" and type(r.kickTimes) == "table" then
 		for _, t in r.kickTimes do if type(t) == "number" and os.time() - t <= days * 86400 then n += 1 end end
 	end
+	return n
+end
+
+-- Roblox's right-to-erasure (Reports.erase calls this): their totals, and their lines in the stored list and here,
+-- go. returns how many lines went
+function Log.erase(uid: number): number
+	local n = 0
+	for i = #recent, 1, -1 do if recent[i].uid == uid then table.remove(recent, i); n += 1 end end
+	for i = #queue, 1, -1 do if queue[i].uid == uid then table.remove(queue, i) end end
+	users[uid] = nil
+	local pre = uid .. "|"
+	for k in last do if string.sub(k, 1, #pre) == pre then last[k] = nil end end
+	if store then
+		for _, key in { "log", "log_studio" } do
+			pcall(function()
+				(store :: DataStore):UpdateAsync(key, function(old: any)
+					if type(old) ~= "table" then return nil end
+					local keep, cut = {}, 0
+					for _, e in old do if type(e) == "table" and e.uid == uid then cut += 1 else table.insert(keep, e) end end
+					n += cut
+					return if cut > 0 then keep else nil
+				end)
+			end)
+		end
+		for _, key in { "u_" .. uid, "su_" .. uid } do pcall(function() (store :: DataStore):RemoveAsync(key) end) end
+	end
+	storedT = -math.huge
 	return n
 end
 

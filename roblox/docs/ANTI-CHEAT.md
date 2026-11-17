@@ -2,6 +2,8 @@
 
 The owner asked: "How do we combat cheaters? People that have fly, no clip, aimbot etc!!" This is the answer, built 17 Nov 2026.
 
+Later the same day the owner also asked: "Can we have a built in report that saves public chat?" and "If someone is caught cheating give back any ranked stuff or stats!!". Both are in the "Reports" section below.
+
 Short version:
 
 - **Movement cheats** (teleport, noclip, fly, speed) are checked on the server ten times a second against what the game itself can do to a body. A catch puts the player back, scores points, and enough points is a kick.
@@ -129,6 +131,72 @@ A flag goes into the review log at most once every 5 minutes per player and kind
 
 ![The owner's panel in a Studio Play test, after the cheat runs](anticheat/panel.jpg)
 
+## Reports (players report players)
+
+The owner asked: "Can we have a built in report that saves public chat?"
+
+**Where players report.** Each opens a small window with four reasons: cheating, abusive chat, griefing, other (`client/ReportUI.luau`).
+
+- A REPORT button on anyone else's player card (ProfileUI, top right next to close).
+- A REPORT button on each row of the end-of-match board (`client/ReportClient.client.luau` adds it to FightHud's rows).
+- The party panel's rows: the VIEW CARD button there already leads to the card's REPORT.
+
+Players can still use Roblox's own Report in the Esc menu. Ours is extra evidence for the owner.
+
+**What a report keeps** (`server/Reports.luau`):
+
+- **The last 3 minutes of public chat in that server.** Each line is filtered the way Roblox filters text for everyone (`TextService`, public chat, the broadcast version). The raw words are never kept: a line the filter couldn't answer for is stored as "(not kept)". Whispers, team chat (`/t`, `%`) and chat commands (anything starting with `/`) are never kept.
+  - This place uses the legacy chat. In a Studio test, neither `Player.Chatted` nor the chat server's own "All" channel (as a separately required copy) heard anything. The legacy chat's remote did: `DefaultChatSystemChatEvents.SayMessageRequest` with the channel "All". Whispers go to "To <name>" and team chat to "Team", so neither is kept. All three hooks are in, and a line two of them hear is kept once.
+  - If the place moves to TextChatService, check this again: its public channel is `RBXGeneral`.
+- **The reported player's anti-cheat state** when the report was made: their points in that server, their last 12 catches, their aim counts, and their totals across servers.
+- **The match:** its id and mode, and **its recording** (`Recorder.forReport`, the play/party/ranked session's recorder) when the reported player is in a match or left one in the last 10 minutes. Only reported matches are ever stored. The names in a recording are taken out first.
+- **Who reported whom, as user ids only. No names are stored**, here or in the anti-cheat log. The panel looks names up when it shows them.
+
+**Limits:**
+
+- A player can send 3 reports in 10 minutes and 10 a day.
+- The same reporter reporting the same player again within 24 hours is kept once.
+- They can report someone in their server, or someone who left it in the last 10 minutes.
+- They can't report themselves.
+
+**Storage:** DataStore `JankReports_v1`. A Studio test uses `s_` keys, so test reports never mix with real ones.
+
+| Key | Holds |
+|---|---|
+| `index` | the newest 500 reports' summaries (who, by whom, why, when, state) |
+| `r_<id>` | one report: its chat, its flags, the match id |
+| `rec_<id>` | its recording (up to 3.5 MB of JSON; a DataStore key holds 4 MB) |
+| `inv_<userId>` | which reports a user appears in (their chat lines, a recording): an erasure finds them |
+| `c_<userId>` | the confirm-cheater record: who confirmed or unconfirmed, when, since when |
+
+Reports **expire after 30 days**: every 6 hours one server removes the older ones and their recordings.
+
+**Reviewing** (the panel's REPORTS tab):
+
+- The list, newest first. Open reports are bright; dismissed or acted-on ones are dim.
+- Click a report to see: who reported whom, why and when; the match and its recording (size); the reported player's anti-cheat state; and the chat transcript. The reported player's own lines are in the accent colour.
+- The buttons are DISMISS, KICK (if they're in this server), BAN (only with bans on) and CONFIRM. Each asks "SURE?" first.
+
+**Confirm cheater** (the owner: "If someone is caught cheating give back any ranked stuff or stats!!"):
+
+- Only the owner can trigger it, from the panel's CONFIRM: on a report, on a player row, or by user id in the bottom row. A panel BAN also counts as a confirm. **Never an automatic flag, kick or auto-ban.**
+- It calls, each in its own thread, behind a FindFirstChild and a pcall, retrying a "try again" answer twice:
+  - `Stats.restoreFor(userId, since)`: victims' deaths and losses off; the cheater's stats voided.
+  - `RankedData.restoreFor(userId, since)`: losers' RP and MMR back; the cheater's season voided.
+  - `Quests.restoreFor(userId, since)`: rewards earned since then come off.
+- **since** is the earliest evidence on record (their first anti-cheat catch, or the first report about them), minus one day. With nothing on record it's 0, which means everything those modules still have.
+- Every module's restore runs once per match, so pressing CONFIRM twice refunds nothing twice. `c_<userId>` and the review log say who confirmed and when, and each module's answer is logged.
+- **UNCONFIRM** (a wrong catch; also UNBAN) calls `Stats.undoRestore`, `Quests.undoRestore`, and `RankedData.undoRestore` if it exists: the player's own numbers come back. The victims keep their refunds.
+
+**Right to erasure** (Roblox sends these to the game's creator). Type the user id in the panel's bottom row and press **ERASE DATA** (it asks "SURE?").
+
+- Every report by or about them goes, with its recording.
+- Their lines in other reports become "(erased)", and any recording they're in goes.
+- Their `inv_` and `c_` records go.
+- Their anti-cheat totals (`u_<userId>`) and their lines in the review log go.
+
+The panel shows what was removed. The log keeps one line saying an erasure happened, without the user id. From a script, the same thing is `require(ServerScriptService.Jankfire.Reports).erase(userId)` in a running server. The Studio command bar won't do, because its copy of the module isn't the running one.
+
 ## The remote audit (17 Nov 2026)
 
 Every client→server remote and its handler was read. No high-severity gap was found.
@@ -151,14 +219,14 @@ Fixed here:
 | `HubVip` | the VIP room's "out you go" teleport didn't stamp `TeleportT` | stamped |
 | server-only remotes | client fires queued up with no listener | listened to and written down |
 
-Found, but left for the session working on that file (it had uncommitted changes, so it wasn't edited here):
+Found here, then fixed by the session working on that file (it had uncommitted changes, so it wasn't edited here):
 
-| Where | The gap | Suggested fix |
+| Where | The gap | Fixed |
 |---|---|---|
-| `Party.luau` (Play "play" / "leave") | alternating them runs `LoadCharacter` and builds or tears down a lobby room each time, up to 6 a second: a lag lever | a 2 s cooldown per player on play/leave |
-| `Loadout.luau` ("arm") | re-arming anywhere outside a match refills mags and resets reloads mid-life (beats RangeTest's best board) | only in the hub, or only when dead |
-| `Loadout.luau` | `handle()` isn't in a pcall, so an error goes to the client with its script path | pcall it |
-| `FlairServer` ("state") | answers before its rate limit | spend first |
+| `Party.luau` (Play "play" / "leave") | alternating them ran `LoadCharacter` and built or tore down a lobby room each time, up to 6 a second: a lag lever | a cooldown per player on the heavy ops (commit 793001d, place version 551) |
+| `Loadout.luau` ("arm") | re-arming anywhere outside a match refilled mags and reset reloads mid-life (beat RangeTest's best board) | re-arm only in the hub, the training hall and the playground (ab096ef, v555) |
+| `Loadout.luau` | `handle()` wasn't in a pcall, so an error went to the client with its script path | pcall'd (ab096ef) |
+| `FlairServer` ("state") | answers before its rate limit | passed to its session |
 
 ## Testing it
 
@@ -213,6 +281,25 @@ All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. Sav
 The review log in the owner's panel after the runs (read back from the DataStore, so catches from every Play run are there):
 
 ![The review log](anticheat/log.jpg)
+
+**Reports (runs 6 and 7, place versions 561 and 574).** A solo test has nobody else to report, so `JankAC "left"` registered user 1 as having just left.
+
+- **The report window** opened from `ReportUI` (photo below).
+- **Sending:**
+  - A report went through, and the same one again within 24 h came back "already reported" (kept once).
+  - Reporting yourself is refused ("that's you"), and so is a reason that isn't one of the four.
+- **Chat:** two public lines and a whisper and a team line were sent through the legacy chat. The report kept exactly the two public lines, filtered and with names looked up only for showing.
+- **The owner's side:**
+  - The REPORTS tab listed it ("1 reports, 1 open") and opened it: reason, reporter, the anti-cheat state ("0 points here · 0 kicks"), "no match recording" (not in a match), and the transcript.
+  - CONFIRM ran with since = the report's day minus one.
+  - ERASE DATA removed the report and the user's log lines ("1 reports, 0 scrubbed, 2 log lines"); the list was empty after.
+- **Not tested live:**
+  - The REPORT button on the end-of-match board, which needs a second player on the board.
+  - Storing a match recording with a report. The recorder's `forReport` is the play/party/ranked session's, and the store path is the same SetAsync as the report itself.
+
+![The report window](anticheat/report-dialog.jpg)
+
+![A report in the owner's panel](anticheat/report-detail.jpg)
 
 Log excerpt (run 3, the server's own verdict list via `JankAC`):
 

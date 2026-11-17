@@ -32,6 +32,7 @@ local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local ACR = require(script.Parent:WaitForChild("AntiCheatRules"))
 local Log = require(script.Parent:WaitForChild("AntiCheatLog"))
+local Reports = require(script.Parent:WaitForChild("Reports")) -- (players' reports, confirm cheater, erasure)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local C = ACR.C
@@ -794,6 +795,26 @@ RunService.Heartbeat:Connect(function(dt: number)
 	end
 end)
 
+-- ------------------------------------------------------------------ reports (server/Reports.luau)
+-- what a report keeps about the reported player: this server's points, recent catches and aim counts, and their
+-- totals across servers (the stored log)
+local function flagsOf(uid: number): any
+	local p = Players:GetPlayerByUserId(uid)
+	local s = p and st[p]
+	local out: any = { points = if s then ACR.points(s.points, now()) else 0, recent = {} }
+	if s then
+		for i = math.max(1, #s.verdicts - 11), #s.verdicts do
+			local v = s.verdicts[i]
+			table.insert(out.recent, { kind = v.kind, act = v.act, info = v.info, ago = math.floor(now() - v.t) })
+		end
+		out.aim = { hits = s.hits, heads = s.heads, snaps = s.snaps, smoke = s.smoke }
+	end
+	local r = Log.user(uid)
+	if type(r) == "table" then out.totals = r.flags; out.kicks = r.kicks end
+	return out
+end
+Reports.init({ Log = Log, flagsOf = flagsOf })
+
 -- ------------------------------------------------------------------ the owner's panel (client/AntiCheatPanel.client)
 local Admin = Remotes:FindFirstChild("AntiCheat") :: RemoteFunction?
 if not Admin then
@@ -812,9 +833,9 @@ local function spend(p: Player): boolean
 	return true
 end
 Players.PlayerRemoving:Connect(function(p) adminBudget[p] = nil end)
-local function uidArg(v: unknown): number?
-	if type(v) ~= "number" or v ~= v or v ~= math.floor(v) or v < 1 or v > 2 ^ 53 then return nil end
-	return v
+local uidArg = Reports.validUid
+local function reportId(v: unknown): string?
+	return if type(v) == "string" and #v <= 40 and string.match(v, "^%w+$") then v else nil
 end
 local function textArg(v: unknown, max: number): string
 	if type(v) ~= "string" then return "" end
@@ -838,14 +859,56 @@ local probed: { [Player]: boolean } = {}
 		return if op == "hello" then { admin = false } else nil
 	end
 	if op == "hello" then
-		return { admin = true, bans = C.BANS, kicks = C.KICK and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window }
+		return { admin = true, bans = C.BANS, kicks = C.KICK and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window, reports = true }
 	elseif op == "players" then
 		local out = {}
 		for _, q in Players:GetPlayers() do table.insert(out, playerRow(q)) end
 		return out
 	elseif op == "log" then
 		local ok, list = pcall(Log.read, 150)
+		if not ok then return {} end
+		local out = {}
+		for _, e in list do
+			local row = table.clone(e)
+			row.name = row.name or Reports.nameOf(row.uid) -- (stored lines have no names: looked up to show)
+			table.insert(out, row)
+		end
+		return out
+	elseif op == "reports" then
+		local ok, list = pcall(Reports.list)
 		return if ok then list else {}
+	elseif op == "report" then
+		local id = reportId(a)
+		if not id then return nil end
+		local ok, r = pcall(Reports.get, id)
+		return if ok then r else nil
+	elseif op == "dismiss" then
+		local id = reportId(a)
+		if not id then return { ok = false, why = "no such report" } end
+		return { ok = Reports.setState(id, "dismissed", p.UserId) }
+	elseif op == "confirm" then
+		-- CONFIRM CHEATER: the restores (Stats, RankedData, Quests). b = "all": everything, else since the earliest
+		-- evidence; c = the report it came from
+		local uid = uidArg(a)
+		if not uid then return { ok = false, why = "no such user id" } end
+		if uid == p.UserId then return { ok = false, why = "that's you" } end
+		local from = Reports.confirm(uid, if b == "all" then 0 else nil, p.UserId)
+		local id = reportId(c)
+		if id then Reports.setState(id, "confirmed", p.UserId) end
+		return { ok = true, since = from }
+	elseif op == "unconfirm" then
+		local uid = uidArg(a)
+		if not uid then return { ok = false, why = "no such user id" } end
+		Reports.unconfirm(uid, p.UserId)
+		return { ok = true }
+	elseif op == "erase" then
+		-- Roblox's right-to-erasure: every report by or about them, their chat lines, their anti-cheat records
+		local uid = uidArg(a)
+		if not uid then return { ok = false, why = "no such user id" } end
+		local ok, res = pcall(Reports.erase, uid)
+		if not ok then return { ok = false, why = tostring(res) } end
+		Log.add(0, "erase", "erase", ("a user's data erased on request: %d reports, %d scrubbed, %d log lines"):format(res.reports, res.scrubbed, res.logLines))
+		return { ok = true, res = res }
 	elseif op == "kick" then
 		local uid = uidArg(a)
 		local q = uid and Players:GetPlayerByUserId(uid)
@@ -853,6 +916,8 @@ local probed: { [Player]: boolean } = {}
 		if q == p then return { ok = false, why = "that's you" } end
 		local why = textArg(b, 120)
 		Log.add(q, "kick", "kick", "by the owner" .. (if why ~= "" then ": " .. why else ""))
+		local id = reportId(c)
+		if id then Reports.setState(id, "kicked", p.UserId) end
 		if STUDIO then return { ok = true, why = "Studio: written down, not kicked" } end
 		q:Kick(if why ~= "" then "Kicked by the game's owner: " .. why else "Kicked by the game's owner.")
 		return { ok = true }
@@ -873,6 +938,8 @@ local probed: { [Player]: boolean } = {}
 		local days = if type(b) == "number" and b == b then math.clamp(math.floor(b), 0, 3650) else C.BAN_DAYS
 		local why = textArg(c, 200)
 		local ok, err = banFor(uid, if days > 0 then days * 86400 else -1, if why ~= "" then why else "cheating", "owner " .. p.Name)
+		-- (an owner's ban is a confirmed cheater: the restores run too)
+		if ok then Reports.confirm(uid, nil, p.UserId) end
 		return { ok = ok, why = err }
 	elseif op == "unban" then
 		local uid = uidArg(a)
@@ -881,6 +948,7 @@ local probed: { [Player]: boolean } = {}
 		if STUDIO then Log.add(uid, "unban", "would unban", "by " .. p.Name); return { ok = true, why = "Studio: written down" } end
 		local ok, err = pcall(function() Players:UnbanAsync({ UserIds = { uid }, ApplyToUniverse = true }) end)
 		Log.add(uid, "unban", if ok then "unban" else "unban failed", "by " .. p.Name .. (if ok then "" else " (" .. tostring(err) .. ")"))
+		if ok then Reports.unconfirm(uid, p.UserId) end -- (a wrong catch: their own numbers come back)
 		return { ok = ok, why = if ok then nil else tostring(err) }
 	end
 	return nil
@@ -933,6 +1001,18 @@ if STUDIO then
 			return true
 		elseif op == "config" then
 			return table.clone(C)
+		elseif op == "left" and type(a) == "number" then -- (a user id that "just left": somebody to report in a solo test)
+			Reports.testLeft(a)
+			return true
+		elseif op == "chat" then -- (the public chat a report would keep right now)
+			return Reports.chatNow()
+		elseif op == "rec" and s then -- (what Recorder.forReport hands a report for this player now: its size)
+			local m = script.Parent:FindFirstChild("Recorder")
+			local okR, R = pcall(require, m :: ModuleScript)
+			if not okR or type(R) ~= "table" or type(R.forReport) ~= "function" then return "no recorder" end
+			local rec = R.forReport(a)
+			if type(rec) ~= "table" then return "no match" end
+			return { id = rec.id, mode = rec.mode, secs = rec.secs, bytes = #game:GetService("HttpService"):JSONEncode(rec) }
 		end
 		return nil
 	end

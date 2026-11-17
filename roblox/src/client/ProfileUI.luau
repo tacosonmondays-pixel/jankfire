@@ -668,6 +668,19 @@ local function draw()
 			BackgroundColor3 = T.TEXT, BorderSizePixel = 0, ZIndex = 41 }, close)
 	end
 	close.MouseButton1Click:Connect(function() UI.close() end)
+	-- REPORT, left of close, on anyone else's card (client/ReportUI.luau -> server/Reports.luau, the anti-cheat's)
+	if not own then
+		local rw = if L.compact then 76 else 92
+		local rep = new("TextButton", { Name = "Report", AutoButtonColor = true, Text = "REPORT", FontFace = T.FONT_BOLD, TextSize = 12, TextColor3 = T.TEXT,
+			BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, ZIndex = 40 }, panel)
+		at(rep, L.W - cs - 10 - rw - 8, 10, rw, cs)
+		T.corner(rep, 6)
+		local who = view.who
+		rep.MouseButton1Click:Connect(function()
+			local ok, RU = pcall(function() return require(script.Parent:WaitForChild("ReportUI", 5) :: ModuleScript) end)
+			if ok and RU then (RU :: any).open(who, "card") end
+		end)
+	end
 	-- the tabs
 	local ty = hdrH + 10
 	local tabs = { { "profile", "PROFILE" }, { "customize", "CUSTOMIZE" }, { "players", "PLAYERS" } }
