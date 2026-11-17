@@ -14,6 +14,7 @@ local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
 local Theme = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local T = Theme
 local me = Players.LocalPlayer
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("AntiCheat", 30) :: RemoteFunction?
@@ -301,6 +302,7 @@ local function toggle()
 	if gui.Enabled then refresh() end
 end
 close.Activated:Connect(function() gui.Enabled = false end)
+gui:GetPropertyChangedSignal("Enabled"):Connect(function() MenuCursor.set("anticheat", gui.Enabled) end) -- (the mouse shows while it's up)
 
 -- F7, or "/ac" in chat: with the new chat a command of this client's own (nothing goes out); with the legacy chat
 -- (this place's) the server hears it and bumps our ACPanel attribute

@@ -16,6 +16,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Ranks = require(Shared:WaitForChild("Ranks"))
 local CardStyles = require(Shared:WaitForChild("CardStyles"))
@@ -770,6 +771,7 @@ local function fetch()
 end
 
 local function setMenuFlag(on: boolean)
+	MenuCursor.set("card", on, function() return isOpen end) -- (the mouse is free and shows while it's up)
 	if on then
 		if not me:GetAttribute("LoadoutOpen") then me:SetAttribute("LoadoutOpen", true); setFlag = true end
 	elseif setFlag then

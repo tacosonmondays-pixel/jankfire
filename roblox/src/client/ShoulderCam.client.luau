@@ -8,7 +8,8 @@
 -- ThirdPerson.luau (TP.aiming: Arsenal's ADS blend, the same speed as first person). Camera kicks and shakes (Arsenal,
 -- items) are changes from last frame's look, so the look is read back from the camera every frame, as Roblox's own
 -- camera does. Menus (LoadoutOpen: the loadout, shop, profile, loot) have the camera and the mouse while they're up;
--- under the settings panel (SettingsOpen) the mouse is free and the camera holds its look.
+-- under the settings panel (SettingsOpen), or any menu that has the mouse (MenuCursor), the mouse is free and the
+-- camera holds its look.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -213,7 +214,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 
 	-- the look: last frame's (with any kick on it), then the mouse
 	local yaw, pitch = lookOf(cam.CFrame)
-	if me:GetAttribute("SettingsOpen") == true then
+	if me:GetAttribute("SettingsOpen") == true or me:GetAttribute("MenuCursor") == true then
 		if UIS.MouseBehavior ~= Enum.MouseBehavior.Default then UIS.MouseBehavior = Enum.MouseBehavior.Default end
 	else
 		if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end

@@ -10,6 +10,7 @@ local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
@@ -263,6 +264,7 @@ function PartyUI.open()
 	me:SetAttribute("LoadoutOpen", true) -- (a menu is up: hands and movement hold still, the mouse is free)
 	if not PlayUI.isOpen() then controls(false) end
 	gui.Enabled = true
+	MenuCursor.set("party", true, function() return S.open end)
 	PartyUI.refresh()
 	task.spawn(fetch)
 end
@@ -270,6 +272,7 @@ function PartyUI.close()
 	if not S.open then return end
 	S.open = false
 	gui.Enabled = false
+	MenuCursor.set("party", false)
 	if not PlayUI.isOpen() then
 		me:SetAttribute("LoadoutOpen", if saved == true then true else false)
 		controls(true)

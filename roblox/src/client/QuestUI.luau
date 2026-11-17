@@ -12,6 +12,7 @@ local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local QD = require(Shared:WaitForChild("QuestData"))
 local Roster = require(Shared:WaitForChild("Roster"))
@@ -399,6 +400,7 @@ end
 UI.refresh = function() if isOpen then draw() end end
 
 local function setMenuFlag(on: boolean)
+	MenuCursor.set("quests", on, function() return isOpen end) -- (the mouse is free and shows while it's up)
 	if on then
 		if not me:GetAttribute("LoadoutOpen") then me:SetAttribute("LoadoutOpen", true); setFlag = true end
 	elseif setFlag then

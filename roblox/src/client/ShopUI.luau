@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Shop = require(Shared:WaitForChild("Shop"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
@@ -2219,11 +2220,12 @@ function ShopUI.canOpen(): (boolean, string?)
 end
 -- the loadout screen is up (its ScreenGui is on)
 function ShopUI.loadoutUp(): boolean
+	if MenuCursor.has("loadout") then return true end -- (the shop hides its screen while it's over it)
 	local g = pg:FindFirstChild("JankLoadout")
 	return g ~= nil and g:IsA("ScreenGui") and g.Enabled
 end
 -- while the shop is up it also raises LoadoutOpen: every script that holds still while a menu is up (no jumping,
--- shooting or items, the mouse arrow on: Move, Arsenal, Utility, ShredderSlot, JankSettings) reads that one flag
+-- shooting or items: Move, Arsenal, Utility, ShredderSlot) reads that one flag. the mouse is MenuCursor's ("shop")
 local controls: any = nil
 task.spawn(function()
 	pcall(function() controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls() end)
@@ -2258,6 +2260,7 @@ function ShopUI.open(tab: string?, id: string?)
 		S.open = true
 		me:SetAttribute("ShopOpen", true)
 		hold(true)
+		MenuCursor.set("shop", true, function() return S.open end)
 		UI.sub.Text = if Shop.free() then LINE else ""
 		table.clear(S.hidden)
 		for _, g in pg:GetChildren() do
@@ -2287,6 +2290,7 @@ function ShopUI.close()
 	if not S.open then return end
 	S.open = false
 	me:SetAttribute("ShopOpen", false)
+	MenuCursor.set("shop", false)
 	hold(false)
 	S.inspect, S.pending, S.deep = nil, nil, nil
 	UI.insp.Visible = false; UI.odds.Visible = false; UI.confirm.Visible = false; UI.dim.Visible = false

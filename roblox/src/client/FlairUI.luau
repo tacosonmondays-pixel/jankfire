@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Flair = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Flair")) :: any
 local KillFx = require(script.Parent:WaitForChild("KillFx")) :: any
 local T = require(script.Parent:WaitForChild("Theme")) :: any
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
 
@@ -658,6 +659,7 @@ function FlairUI.open(tab: string?, home: CFrame?)
 	S.open = true
 	S.savedOpen = false
 	me:SetAttribute("LoadoutOpen", true)
+	MenuCursor.set("flair", true, function() return S.open end)
 	S.pick.kill = wornKill()
 	local sl = slots()
 	S.pick.emote = if sl[S.slot] ~= "" then sl[S.slot] else Flair.ORDER.emote[1]
@@ -696,6 +698,7 @@ function FlairUI.close()
 	S.tok += 1
 	gui.Enabled = false
 	guiUI.Enabled = false
+	MenuCursor.set("flair", false)
 	me:SetAttribute("LoadoutOpen", false)
 	for g in S.hidden do if g.Parent then g.Enabled = true end end
 	table.clear(S.hidden)

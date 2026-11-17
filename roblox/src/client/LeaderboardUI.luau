@@ -12,6 +12,7 @@ local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local RankedStyle = require(Shared:WaitForChild("RankedStyle"))
@@ -245,6 +246,7 @@ function Board.open(tab: string?)
 	me:SetAttribute("LoadoutOpen", true) -- (a menu is up: hands and movement hold still, the mouse is free)
 	if not PlayUI.isOpen() then controls(false) end
 	gui.Enabled = true
+	MenuCursor.set("board", true, function() return S.open end)
 	Board.refresh()
 	task.spawn(Board.fetch)
 end
@@ -252,6 +254,7 @@ function Board.close()
 	if not S.open then return end
 	S.open = false
 	gui.Enabled = false
+	MenuCursor.set("board", false)
 	if not PlayUI.isOpen() then
 		me:SetAttribute("LoadoutOpen", if saved == true then true else false)
 		controls(true)

@@ -11,6 +11,7 @@ local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
 local Ranked = require(Shared:WaitForChild("Ranked"))
@@ -831,6 +832,7 @@ function UI.open()
 	end
 	me:SetAttribute("LoadoutOpen", true) -- (a menu is up: hands, weapons, movement and the other screens hold still)
 	me:SetAttribute("PlayOpen", true)
+	MenuCursor.set("play", true, function() return S.open end)
 	controls(false)
 	lobby.Visible = true
 	bindCam(true)
@@ -848,6 +850,7 @@ function UI.close()
 	bindCam(false)
 	for g in hidden do if g.Parent then g.Enabled = true end end
 	table.clear(hidden)
+	MenuCursor.set("play", false)
 	me:SetAttribute("LoadoutOpen", if savedOpen == true then true else false)
 	me:SetAttribute("PlayOpen", nil)
 	controls(true)

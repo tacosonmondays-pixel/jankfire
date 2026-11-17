@@ -31,6 +31,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Flair = require(Shared:WaitForChild("Flair")) :: any
 local KillFx = require(script.Parent:WaitForChild("KillFx")) :: any
 local T = require(script.Parent:WaitForChild("Theme")) :: any
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
@@ -231,7 +232,7 @@ RunService:BindToRenderStep("JankFlairEmoteCam", Enum.RenderPriority.Camera.Valu
 	end
 	if not root then return end
 	if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
-	if me:GetAttribute("LoadoutOpen") ~= true then
+	if me:GetAttribute("LoadoutOpen") ~= true and not MenuCursor.on() then -- (a menu has the mouse: MenuCursor)
 		UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
 		local d = UIS:GetMouseDelta()
 		c.yaw -= d.X * math.rad(0.4)
@@ -423,6 +424,7 @@ function W.openWheel(touch: boolean)
 	W.open, W.touch, W.hover, W.t0 = true, touch, 0, os.clock()
 	W.savedOpen = me:GetAttribute("LoadoutOpen") == true
 	me:SetAttribute("LoadoutOpen", true) -- (a menu is up: hands, weapons and the other screens hold still; the mouse is free)
+	MenuCursor.set("wheel", true, function() return W.open end)
 	fill()
 	show()
 	gui.Enabled = true
@@ -434,6 +436,7 @@ function W.close()
 	if not W.open then return end
 	W.open = false
 	gui.Enabled = false
+	MenuCursor.set("wheel", false)
 	me:SetAttribute("LoadoutOpen", W.savedOpen)
 end
 -- the slot the mouse points at: by its angle from the middle (a dead zone in the middle)

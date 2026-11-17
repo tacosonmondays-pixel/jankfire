@@ -385,6 +385,51 @@ Tested in solo Play (place version 684): a Duffel Bag opened from INVENTORY and 
 reveal (`docs/shop/chest-reveal.jpg`) left the shop shut, the camera Custom, no blur and the HUD back
 (`chest-done-back-in-game.jpg`). The inventory was put back afterwards (the loot remote's dev `set`).
 
+## The mouse in menus: MenuCursor (17 Nov)
+
+The owner: "sometimes your mouse cursor disappears when you open crates and stuff". The arrow used to follow one flag,
+LoadoutOpen (JankSettings showed it only while that was true), and every screen saves that flag when it opens and puts
+it back when it closes. Screens don't close in the order they opened, so the flag could read false with a menu still
+up: the arrow hid, and the shoulder camera and the emote camera locked the mouse again. One case is certain: the shop
+closing over the Loadout cleared it (`ShopUI.loadoutUp` looked at the Loadout's ScreenGui, which the shop itself had
+switched off).
+
+`client/MenuCursor.luau` is now the one place that says a menu needs the mouse. Each screen puts its name in while
+it's up and takes it out when it goes, with an optional alive check. A screen that went away without taking its name
+out is let go on the next frame:
+
+    MenuCursor.set("shop", true, function() return S.open end)   ...   MenuCursor.set("shop", false)
+
+Names: shop (with its inventory), loot (a crate, bag or spray-can reveal, to DONE or OPEN ANOTHER), loadout, settings,
+quests, card (the player card), play, party, board, flair (the equip screen), wheel (the emote wheel), report, anticheat.
+
+While any name is in:
+- the mouse is free (MouseBehavior Default) and the arrow shows (MouseIconEnabled). This is written every frame at
+  RenderPriority Last + 100, after Roblox's first person, ShoulderCam and the Play panel's lineup;
+- the player attribute MenuCursor is true (ShoulderCam and FlairClient's emote camera don't lock while it is), and
+  MenuCursorBy lists the names;
+- LoadoutOpen (the hold-still flag for hands, weapons and movement) stays up. If a screen clears it on its way out
+  while another is still up, it goes straight back up.
+
+When the last name goes, the game's own rule comes back on the next frame: first person and the shoulder camera lock
+the mouse, and JankSettings hides the arrow. A cinematic that only holds still (a finisher, the play of the match) still
+shows the arrow through LoadoutOpen, as before.
+
+Tested in solo Play, in first person, on the hub (not saved yet, C: had 0.5 GB free). A test RenderStep after
+everything logged the mouse every frame (1,628 frames, 109 s). In every frame where a menu held the mouse, it was
+Default with the arrow showing; once each flow ended, it was LockCenter with the arrow hidden:
+- INVENTORY, then a Crate: the reveal had loot and shop in; DONE closed both and gave LockCenter back.
+- CONTAINERS, then a Spray Can, OPEN ANOTHER, a second one, then DONE: no frame lost the mouse between the two openings.
+- Quests (QuestTest open), then the real OPEN SHOP button, then a Duffel Bag from CONTAINERS, then DONE: back in the game.
+- The shop opened and closed four times in 1.2 s: LockCenter after, nothing left in.
+- The Loadout (L), then the shop on top: the shop doesn't open over the Loadout (canOpen refuses), and the Loadout kept
+  the mouse. After the shop's close and the Loadout's close (L): LockCenter, arrow hidden.
+- The owner's inventory was put back afterwards (249 items, via the loot dev `set` op). Stock was 0 in all three
+  kinds, so every opening was a free one.
+
+Not tested: the third-person shoulder camera, the phone, the Play, party and leaderboard panels, the equip screen, the
+emote wheel and a report. They take the same two calls.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local me = Players.LocalPlayer
 
 local ReportUI = {}
@@ -14,6 +15,7 @@ local gui: ScreenGui? = nil
 
 function ReportUI.close()
 	if gui then gui:Destroy(); gui = nil end
+	MenuCursor.set("report", false)
 end
 
 function ReportUI.isOpen(): boolean return gui ~= nil end
@@ -24,6 +26,7 @@ function ReportUI.open(userId: number, ctx: string?)
 	local remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):FindFirstChild("Report") :: RemoteFunction?
 	local g = T.new("ScreenGui", { Name = "ReportDialog", ResetOnSpawn = false, DisplayOrder = 70, IgnoreGuiInset = true, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, me:WaitForChild("PlayerGui"))
 	gui = g
+	MenuCursor.set("report", true, function() return g.Parent ~= nil end) -- (the mouse is free and shows while it's up)
 	local root = T.scaled(g)
 	-- (Modal: frees the mouse from first person while this is up)
 	local scrim = T.new("TextButton", { Name = "Scrim", Text = "", AutoButtonColor = false, Modal = true, BackgroundColor3 = Color3.new(0, 0, 0),

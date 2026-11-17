@@ -1301,6 +1301,7 @@ setOpen = function(v: boolean)
 		if not to then return end
 		state.open = true
 		me:SetAttribute("LoadoutOpen", true)
+		require(script.Parent:WaitForChild("MenuCursor")).set("loadout", true, function() return state.open end)
 		local p = pick()
 		state.focus = p[state.slot]
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
@@ -1335,6 +1336,7 @@ setOpen = function(v: boolean)
 		state.open = false
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		lastSeen = "" -- (the worn things come into view again next time)
+		require(script.Parent:WaitForChild("MenuCursor")).set("loadout", false)
 		me:SetAttribute("LoadoutOpen", false)
 		gui.Enabled = false
 		for g in hidden do if g.Parent then g.Enabled = true end end

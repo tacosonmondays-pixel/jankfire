@@ -25,6 +25,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local LootTable = require(Shared:WaitForChild("LootTable"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local LootFloor = require(Shared:WaitForChild("LootFloor"))
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
@@ -934,7 +935,9 @@ local function restore(R: Run)
 	if R.prize then R.prize:Destroy() end
 	R.ui.gui:Destroy()
 	for g in R.hidden do if g.Parent then g.Enabled = true end end
-	me:SetAttribute("LoadoutOpen", R.saved.loadoutOpen)
+	-- (the mouse goes back to whoever else still has it: the shop between two openings, the loadout under it)
+	MenuCursor.set("loot", false)
+	me:SetAttribute("LoadoutOpen", R.saved.loadoutOpen == true or MenuCursor.on())
 	me:SetAttribute("LootOpening", nil)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
@@ -1803,6 +1806,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	end
 	me:SetAttribute("LoadoutOpen", true)
 	me:SetAttribute("LootOpening", kind)
+	MenuCursor.set("loot", true, function() return running end) -- (the mouse is free and shows to the end: DONE, OPEN ANOTHER)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
 		controls:Disable()
@@ -2030,6 +2034,7 @@ function Opening.reward(spec: any): string
 	end
 	me:SetAttribute("LoadoutOpen", true)
 	me:SetAttribute("LootOpening", "reward")
+	MenuCursor.set("loot", true, function() return running end)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
 		controls:Disable()

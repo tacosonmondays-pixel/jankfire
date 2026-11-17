@@ -11,6 +11,7 @@ local J = script.Parent:WaitForChild("Jankfire")
 local T = require(J:WaitForChild("Theme"))
 local Binds = require(J:WaitForChild("Binds"))
 local UI = require(J:WaitForChild("SettingsUI"))
+local MenuCursor = require(J:WaitForChild("MenuCursor")) :: any
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "JankSettings"
@@ -60,8 +61,10 @@ lp:GetAttributeChangedSignal("SettingsOpen"):Connect(function()
 end)
 local _ = UI.isOpen
 
--- hide the mouse arrow under the crosshair (the page and the loadout screen need it)
+-- hide the mouse arrow under the crosshair. the page is one of the menus that need it (MenuCursor: the mouse is free
+-- and shows while any is up); a menu or cinematic that only holds still (LoadoutOpen) keeps it as before
 RunService.RenderStepped:Connect(function()
 	if open and not UI.isOpen() then open = false; lp:SetAttribute("SettingsOpen", false) end
-	UIS.MouseIconEnabled = open or lp:GetAttribute("LoadoutOpen") == true
+	if MenuCursor.has("settings") ~= open then MenuCursor.set("settings", open) end
+	UIS.MouseIconEnabled = open or MenuCursor.on() or lp:GetAttribute("LoadoutOpen") == true
 end)
