@@ -126,8 +126,9 @@ SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: 
 -- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
 -- and the decorated Japanese systems (17 Nov, the owner: "more decoared ... use referenmces"): J-A Maki-e, J-B Odoshi,
 -- J-C Zogan on the rifle, J-A across the set; the pick is rebuilt under Tidecrest's own keys (tools/roblox/gun_sets_japan2.py)
+-- (cute v3, 17 Nov: A-D rebuilt with bigger signature pieces, tools/roblox/gun_sets_cute3.py; E Daydream dropped)
 SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b", "ar_cute_c", "pistol_cute_c",
-	"ar_cute_d", "pistol_cute_d", "ar_cute_e", "pistol_cute_e",
+	"ar_cute_d", "pistol_cute_d",
 	"ar_jp_a", "ar_jp_b", "ar_jp_c", "dmr_jp_a", "sawnoff_jp_a", "lever_jp_a", "katana_jp_a" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design

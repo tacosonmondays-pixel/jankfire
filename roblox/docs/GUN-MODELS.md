@@ -435,6 +435,24 @@ The owner: "my issue is just the iron sights or the scopes look bulky and not li
 - **Install note:** `W.kit(keys)` only loads models into `WeaponSets.kit`. After it, the base guns also need
   `W.models("kit", ids)` to become the live templates; skins go live through `W.skins()`.
 
+### Cute set v3 concepts (17 November 2026, place version 493)
+
+The owner, after the first cute concepts: "the shapes are irregular and aren't cohesive to how a gun should look",
+then "I want bigger more noticeable decorations".
+
+- **The rule** (the skin-concepts brief "Cute set v3"): each concept is the live Rifle and Plan B kept whole, plus one
+  big hero piece on the left flank, under the sight line, and reshaped ends. Outlines grow about 12–22%.
+  - A Velvet: a jewel locket, fur muff, pom-pom and cushion stock.
+  - B Starlight: puffy wings, a star collar and a big stock star.
+  - C Glasswing: a stained-glass butterfly and crystals.
+  - D Sweet Shop: a big bow, a candy cane hooked down at the muzzle, gumdrop lights and a wrapper-fan stock.
+- **Built:** `tools/roblox/gun_sets_cute3.py`, in the default build, same keys `ar_cute_a..d` / `pistol_cute_a..d`.
+  - A weight pass brought them down from as much as 43k triangles to at most 15k per rifle and 11k per Plan B.
+  - Concept E (Daydream) is dropped. It is out of `SkinSets.CONCEPTS`, `assets.json` and the place.
+- **Status:** concepts only, not sold and not in crates, until the owner picks one; the pick becomes a full set. The
+  judges call Starlight's Plan B the weakest: its wing reads as a rosette in first person.
+- **Pictures:** `gun-models/cute-v3.jpg`, `cute-v3-in-hand.jpg` (Velvet rifle, Sweet Shop Plan B).
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

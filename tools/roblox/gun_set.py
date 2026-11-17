@@ -238,7 +238,7 @@ SKINS = {'ar@cardboard': ar_cardboard}
 # gun_skins_1.py. A file that isn't there yet is skipped.
 for _part in (('gun_skins_1', 'gun_skins_2', 'gun_skins_3', 'gun_sets', 'gun_sets_halloween', 'gun_sets_japan', 'gun_sets_ducky',
               'gun_skins_fix', 'gun_skins_fix2', 'gun_skins_fix3', 'gun_skins_fix4', 'gun_sets_ducky_alt',
-              'gun_sets_cute', 'gun_sets_ducky_v3')
+              'gun_sets_cute', 'gun_sets_cute3', 'gun_sets_ducky_v3')
               # (work in progress, built only when named: JF_EXTRA=gun_sets_japan2,gun_sets_west,gun_sets_angel2)
               + tuple(x for x in os.environ.get('JF_EXTRA', '').split(',') if x)):
     try:
