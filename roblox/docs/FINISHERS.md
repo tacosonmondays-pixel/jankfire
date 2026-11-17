@@ -167,6 +167,10 @@ The generator was slow all day: about half its calls timed out. A timed-out call
 and base64, read in slices under the MCP's 100,000-character result cap), save it as an .rbxm, and upload it through
 Open Cloud with `assetType = "Animation"`.
 
+**Checked in Play (place version 647).** Each of the five previews (High Noon, Inkfall, Warp Out, Lantern Light,
+Starchart) loaded its own clip (length 2.47 s, so the asset loaded) and played it on the victim. Each ended cleanly in
+2.8 to 3.0 s, with no ghosts left behind and no errors from the finisher code.
+
 The clips play at 1.6 times their speed (a third of that through the slowed impact), so most of each clip fits in the
 cut. A clip with no id falls back to a code-only shove back and tilt. The shooter is never animated by a generated
 clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as recorded.
