@@ -630,8 +630,9 @@ cleaned, fitted and coloured here.
 
   v3 (place version 708) answered two owner notes. "It's a good base but with a lot of these you might have to rebuild
   them a bit!! Make sure it has proper gun elements" got round-2 shapes from `tripo_gun.py`:
-  - Plan B's red-pen marks fixed: notched rear sight and white-dot front post, round duck head under the sight line,
-    clean frame seam, flat reliefs, slide serrations, an ejection port, a bore in the duck's mouth;
+  - Plan B's red-pen marks fixed: notched rear sight and a front post (no dot: `gun_sights.blade` adds its glow
+    insert only on a post taller than this one, like the base guns), round duck head under the sight line, clean
+    frame seam, flat reliefs, slide serrations, an ejection port, a bore in the duck's mouth;
   - SMG and sniper bores and ports.
 
   "Ducky looks so simple now" got a baked surface from `tools/roblox/tripo_bake.py`:
@@ -650,7 +651,13 @@ cleaned, fitted and coloured here.
   - SMG 72904091721393
   - katana 73021117796404
   - sniper 139142913295194
-  - Plan B 81405719351973
+  - Plan B 81405719351973, then 128878054607229 (v709, below)
+
+  v709: the hold session's aim check found Plan B's raised blue strap across the slide top (recipe `add[0]`, top at
+  0.0555, between the notch and the post) hid the front post below 0.0552. The strap is out of the recipe and the
+  game mesh. The blue-white-blue band stays as paint on the slide top (the bake spec already painted it there), and
+  the slide was re-baked; only atlas A1 changed. From the eye, the whole post now shows in the notch. A lesson for
+  every themed gun: nothing may rise above the slide top between the notch and the post.
 
   The 32 map ids are in the notes folder's `gun-models-uploads-16nov.md`. The install is
   `w_<key>_install.luau`-style Luau run in Edit: the maps are PluginSecurity. The live angel v6 was left as it is; its
