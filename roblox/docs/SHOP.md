@@ -239,9 +239,10 @@ thing (`Shop.vipItems` skips them anyway). A slot turns on by itself once its it
 - A Brass prize (40) was paid through `Quests.giveBrass`: the wallet went 600 to 640.
 - Not VIP: the client's answer opened the shop straight onto the VIP panel. It now says "and the VIP room in the
   hub, with a daily reward" (`vip-daily-notvip.jpg`).
-- Not tested: the server's own VIP refusal. A `require` of Vip from the command bar made a second copy of the Vip
-  and Loot modules, which took over their remotes, so the owner's Studio lock never reached the copy the daily asks.
-  That check is one line (`if not Vip.isVip(p)`). Never `require` a server module from the command bar during a test.
+- The server's own VIP refusal was tested later (place version 569). The owner's Studio lock went through the real
+  Vip remote and the claim through `JankVipDailyTest`: the answer was "notvip", with nothing written (the day stayed
+  unclaimed). In the first test a command-bar `require` of Vip had made second copies of Vip and Loot that took over
+  their remotes (see the trap under "Testing it in Play").
 - Put back afterwards: the owner's Studio quest balance (1 ticket, 335 Brass), and the daily (claimable again).
 - Not put back: the second loot copy blocked the restore, so the owner kept a Spray Can in stock and one SMG item
   from the redeemed Duffel Bag. Both are free while testing.
@@ -271,6 +272,52 @@ Tested in solo Play (place version 549), with 13 tickets and 600 Brass:
 - The Duffel Bag's confirm panel had REDEEM · 6 TICKETS lit and REDEEM · 2,500 BRASS grey (`shop-redeem-confirm.jpg`).
 - REDEEM · 6 TICKETS took the tickets from 13 to 7 and the Duffel Bag's opening played.
 
+## The owner's deals (17 Nov)
+
+The owner: "I give players 3 special discounts on random skins if you talk to me!" The owner's own avatar is the
+shopkeeper in the training area's gun shop. Its "Deals" prompt (the training session's, `ShopOpen = "tab:deals"`) opens
+the shop on the DEALS tab.
+
+**The rule** (`Shop.DEALS`, `DEAL_OFF`, `DEAL_TOP`, `DEAL_PICK`; `src/server/Deals.luau` picks and keeps them):
+- **Three per player per day,** new at 00:00 UTC. They are picked the first time the player asks that day and kept
+  in a session-locked save (`JankfireDeals_v1`, `_studio` in Studio), so they stay the same all day.
+- **Which skins:** weapon skins on sale (`Shop.liveSkins`: not VIP, not the daily-only ones, not concepts) that the
+  player doesn't own.
+  - Picked by rarity weight: common 40, rare 35, epic 20, legendary 5.
+  - At most one legendary.
+  - Variety: a skin from a set already picked counts a tenth as likely, and one for a gun already picked a quarter.
+- **The discount:** by rarity, off its single price: common 20%, rare 25%, epic 30%, legendary 35%. The rarest of the
+  three gets 5% more, so 20 to 40% in all. Prices round like the rest (`Shop.dealPrice`). Examples:
+  - a legendary skin, 1,200, is 719 at 40% (as the rarest) or 779 at 35%;
+  - an epic, 600, is 419 at 30%;
+  - a rare, 300, is 229 at 25%;
+  - a common, 150, is 119 at 20%.
+- **One each:** a deal can be had once. It reads YOURS after, or OWNED if the skin came another way.
+- **Free while testing,** like the rest of the shop: CLAIM opens the confirm panel and the server grants it
+  (`Loot.grant("skin:<id>")`, receipt `deal-<uid>-<day>-<id>`).
+- **With Robux on:** BUY sends ShopBuy `"deal:<skin>"`. ShopReceipts checks it's one of the player's own deals today
+  (`Deals.offerFor`) and prompts the product for its rarity and discount, `"deal:<rarity>:<pct>"` in `Shop.PRODUCTS`.
+  On the receipt it calls `Deals.grant`.
+
+**On screen:** a DEALS tab after FEATURED, headed OWNER'S PICKS with the time to new ones. Three cards, each with:
+- a thin amber edge and a faint amber wash;
+- "OWNER'S PICK · 30% OFF";
+- the skin in 3D, its name, gun and rarity;
+- the deal price, with the normal price struck through;
+- CLAIM or BUY.
+
+The tabs are a little narrower with five (108, or 86 on a phone).
+
+Tested in solo Play (place version 569), as the owner:
+- DEALS showed three: Cauldron (epic, Marble Shotgun) 35% off, 600 to 389; Bullpup (rare, Assault Rifle) 25% off,
+  300 to 229; Baguette Katana (rare) 25% off, 300 to 229. That's three guns, the rarest with the extra 5%
+  (`docs/shop/shop-deals.jpg`).
+- CLAIM on the Bullpup opened the confirm panel, and the claim made it owned. The toast read "BULLPUP · ASSAULT RIFLE
+  ADDED", and a second buy answered "you've had that deal".
+- Closed and reopened: the same three, with the Bullpup reading YOURS.
+- At phone size (844 x 390) all five tabs fit, with the wallet in the pill's place (`shop-deals-phone.jpg`).
+- Put back afterwards: the owner's inventory (through the loot remote) and the test deals (`JankDealsTest` reset).
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
@@ -292,7 +339,22 @@ Tested in solo Play (place version 549), with 13 tickets and 600 Brass:
 
 Set the local player's attribute `ShopTest` from the Client datamodel: `"open"`, `"open:bundles"`, `"count:spray:5"` (the x1/x5/x10 pick),
 `"open::bundle_nightshift"`, `"inspect:crate"`, `"odds:crate"`, `"ask:bundle_quarry"`, `"commit"`, `"back"`,
-`"close"`, `"fake:844x390"` (lays the shop out in a phone-sized box with an amber edge), `"real"`.
+`"close"`, `"fake:844x390"` (lays the shop out in a phone-sized box with an amber edge), `"real"`,
+`"redeem:tix"` / `"redeem:brass"` (the confirm panel's REDEEM), `"askdeal:<skin>"` (one of the owner's deals).
+
+The server side has its own test hooks, BindableFunctions in ServerStorage that reach the running modules:
+- `JankVipDailyTest`: `("claim", p, prizeId?)`, `("reset", p)`, `("state", p)`, `("sim", n, "best"?)`.
+- `JankDealsTest`: `("state", p)`, `("reset", p)`.
+- The loot server's `dev` ops and Vip's `("dev", "lock" | "unlock")`, through their remotes from the Client
+  datamodel.
+
+**The trap: never `require` a server module from the command bar during a Play test** (execute_luau in the Server
+datamodel). The command bar has its own module cache, so the `require` builds a second copy of the module, and of
+anything it pulls in. A module that starts itself on require (Vip, Loot's remote handler, VipDaily, Deals) then sets
+up again and takes over the shared remotes with empty state. Every later call goes to the copy: "still loading", a
+Studio VIP lock that the real module never sees, an inventory restore that can't happen. This happened on 17 Nov
+(place version 549). Reach a running module only through its test hook or its remote. Reading `Source` or instances
+is fine, and so is requiring a `Clone()` of a pure shared module (one with no start code) in Edit.
 
 ## Tested (16 Nov 2026, solo Play, place version 367)
 

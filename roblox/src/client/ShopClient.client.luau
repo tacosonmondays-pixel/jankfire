@@ -51,6 +51,7 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 		if cid then ShopUI.S.count[cid] = tonumber(nn); if ShopUI.isOpen() then ShopUI.refill() end end
 	elseif cmd == "commit" then ShopUI.commit()
 	elseif cmd == "redeem" then ShopUI.redeem(rest) -- ("redeem:tix" / "redeem:brass": the confirm panel's REDEEM)
+	elseif cmd == "askdeal" then ShopUI.askDeal(rest) -- ("askdeal:<skin>": one of the owner's deals, its confirm panel)
 	elseif cmd == "back" then ShopUI.back() -- (the inspect panel's BACK: closes a shop opened straight onto it)
 	end
 end)

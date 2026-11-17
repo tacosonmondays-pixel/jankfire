@@ -29,8 +29,8 @@ local WHITE = Color3.new(1, 1, 1)
 local ROBUX = utf8.char(0xE002) -- the Robux mark (Roblox's fonts draw it)
 
 local ShopUI = {}
-local TABS = { "featured", "bundles", "containers", "inventory" }
-local TAB_NAMES = { featured = "FEATURED", bundles = "BUNDLES", containers = "CONTAINERS", inventory = "INVENTORY" }
+local TABS = { "featured", "deals", "bundles", "containers", "inventory" }
+local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", inventory = "INVENTORY" }
 local LINE = "Free while we test. The prices are for later."
 
 -- everything the screen knows, in one table (keeps the main chunk well under Luau's 200 locals)
@@ -1077,6 +1077,140 @@ function ShopUI.fillContainers()
 	end
 end
 
+-- ------------------------------------------------------------------------ DEALS: the owner's three picks for you today
+-- (the owner, 17 Nov: "I give players 3 special discounts on random skins if you talk to me!". the server picks and
+-- keeps them: Deals.luau, JankfireRemotes.Deals "get" / "buy"; the rules are Shop.DEAL_*. the owner's shopkeeper in the
+-- training area's gun shop opens the shop here: its prompt has ShopOpen = "tab:deals")
+local Deal = {} -- (the deals' state and helpers, one local for the lot)
+Deal.list = nil :: any
+Deal.gen = 0
+function Deal.ask(op: string, a: any?): any
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Deals")
+	if not (r and r:IsA("RemoteFunction")) then return { ok = false, why = "the deals aren't open yet" } end
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer(op, a) end)
+	if not ok or type(res) ~= "table" then return { ok = false, why = "couldn't reach the shop" } end
+	return res
+end
+function Deal.find(skin: string): any?
+	for _, d in (if Deal.list then Deal.list.deals else {}) :: { any } do if d.skin == skin then return d end end
+	return nil
+end
+do
+	local pg_ = UI.pages.deals
+	UI.dealsHead, UI.dealsTimer = header(pg_, "OWNER'S PICKS", "")
+	UI.dealsRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, 0, 1, -30) }, pg_)
+	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(1 / 3, -10, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.dealsRow)
+	UI.dealsNote = txt(pg_, "", 16, T.MUTED, T.FONT, Enum.TextXAlignment.Center)
+	UI.dealsNote.Position = UDim2.fromOffset(0, 140); UI.dealsNote.Size = UDim2.new(1, 0, 0, 24)
+end
+-- one deal: the skin big, "OWNER'S PICK · 30% OFF", its name and gun, the deal's price with the normal one struck
+-- through, and CLAIM / BUY (YOURS once had, OWNED if you got it another way). a thin amber edge marks the owner's picks
+local function dealCard(parent: Instance, d: any, order: number): TextButton
+	local k = S.compact
+	local c = card(parent, d.rarity)
+	c.LayoutOrder = order
+	local pick = new("Frame", { Name = "Pick", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5 }, c)
+	T.corner(pick)
+	T.edge(pick, T.ACCENT, 0.5)
+	local wash = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1 }, c)
+	T.corner(wash)
+	new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(0.4, 1), NumberSequenceKeypoint.new(1, 1) }) }, wash)
+	local pad = if k then 12 else 18
+	local eb = txt(c, "OWNER'S PICK  ·  " .. tostring(d.pct) .. "% OFF", 11, T.ACCENT, T.FONT_BOLD); eb.ZIndex = 3
+	eb.Position = UDim2.fromOffset(pad, if k then 10 else 16); eb.Size = UDim2.new(1, -2 * pad, 0, 14)
+	local textH = if k then 150 else 196
+	local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, if k then 26 else 36), Size = UDim2.new(1, 0, 1, -(textH + (if k then 26 else 36))), ZIndex = 2 }, c)
+	V.show(view, V.gun(d.weapon, nil, nil, nil, d.skin), "hover", 1.0)
+	local name = txt(c, string.upper(tostring(d.name)), if k then 20 else 26, T.TEXT, T.FONT_TITLE); name.ZIndex = 3
+	name.Position = UDim2.new(0, pad, 1, if k then -146 else -190); name.Size = UDim2.new(1, -2 * pad, 0, if k then 24 else 30)
+	local wl = txt(c, "FOR " .. string.upper(Shop.weaponName(d.weapon)), 12, T.SOFT, T.FONT_BOLD); wl.ZIndex = 3
+	wl.Position = UDim2.new(0, pad, 1, if k then -120 else -156); wl.Size = UDim2.new(1, -2 * pad, 0, 15)
+	local rl = rarityLine(c, d.rarity, "SKIN", 11)
+	rl.Position = UDim2.new(0, pad, 1, if k then -102 else -134); rl.Size = UDim2.new(1, -2 * pad, 0, 15)
+	local pr = txt(c, string.format('%s %s   <font size="%d" color="%s"><s>%s %s</s></font>', ROBUX, commas(d.price),
+		if k then 13 else 15, T.hex(T.MUTED), ROBUX, commas(d.was)), if k then 18 else 22, T.TEXT, T.FONT_BOLD)
+	pr.RichText = true; pr.ZIndex = 3
+	pr.Position = UDim2.new(0, pad, 1, if k then -80 else -108); pr.Size = UDim2.new(1, -2 * pad, 0, if k then 22 else 28)
+	local bh = 44 -- (a touch target)
+	local buy = button(c, "", "main", UDim2.new(1, -2 * pad, 0, bh), UDim2.new(0, pad, 1, -(bh + (if k then 10 else 16))))
+	buy.face.ZIndex = 6
+	if d.bought then buy.set("YOURS", false)
+	elseif d.owned then buy.set("OWNED", false)
+	elseif Shop.free() then buy.set("CLAIM", true)
+	else buy.set("BUY  " .. ROBUX .. " " .. commas(d.price), Shop.ROBUX == true) end
+	buy.face.MouseButton1Click:Connect(function() if buy.enabled then ShopUI.askDeal(d.skin) end end)
+	c.MouseButton1Click:Connect(function() if buy.enabled then ShopUI.askDeal(d.skin) end end)
+	return c
+end
+function Deal.draw()
+	for _, c in UI.dealsRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	local list = if Deal.list then Deal.list.deals else {}
+	UI.dealsNote.Text = if #list == 0 then "you have every skin that's on sale" else ""
+	for i, d in list do dealCard(UI.dealsRow, d, i) end
+end
+-- the tab: what's known at once, then the server's word (the same three all day; new at 00:00 UTC)
+function ShopUI.fillDeals()
+	Deal.gen += 1
+	local gen = Deal.gen
+	if Deal.list then Deal.draw() else
+		for _, c in UI.dealsRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+		UI.dealsNote.Text = "loading the owner's picks"
+	end
+	task.spawn(function()
+		local res = Deal.ask("get")
+		if gen ~= Deal.gen or not S.open or S.tab ~= "deals" then return end
+		if not res.ok then
+			if not Deal.list then UI.dealsNote.Text = string.lower(tostring(res.why or "can't load the deals right now")) end
+			return
+		end
+		Deal.list = res
+		Deal.draw()
+	end)
+end
+-- step one: the confirm panel (with Robux on, Roblox's own prompt is the confirm: ShopReceipts checks it's yours)
+function ShopUI.askDeal(skin: string)
+	local d = Deal.find(skin)
+	if not d or S.busy then return end
+	if d.bought or d.owned then Hud.callout("ALREADY YOURS", 1); return end
+	if not Shop.free() then
+		if not Shop.ROBUX then Hud.callout("THE SHOP IS SHUT", 1); return end
+		local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+		local r = f and f:FindFirstChild("ShopBuy")
+		if r and r:IsA("RemoteEvent") then play("click"); r:FireServer("deal:" .. skin) end
+		return
+	end
+	play("click")
+	S.pending = "deal:" .. skin
+	S.pendingN = 1
+	for _, c in UI.cOdds:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+	UI.cOdds.Size = UDim2.new(1, -44, 0, 0)
+	UI.cTitle.Text = "CLAIM " .. string.upper(tostring(d.name)) .. "?"
+	UI.cBody.Text = string.format("this weapon skin for the %s goes into your inventory. the owner's pick: %d%% off.", Shop.weaponName(d.weapon), d.pct)
+		.. string.format('<br/><font color="%s">free while we test. later: %s %s (normally %s %s)</font>', T.hex(T.MUTED), ROBUX, commas(d.price), ROBUX, commas(d.was))
+	Purse.row("", 1)
+	UI.cYes.set("CLAIM", true)
+	UI.confirm.Size = UDim2.fromOffset(460, if S.compact then 210 else 230)
+	UI.confirm.Visible = true
+	ShopUI.layer()
+end
+-- step two: the server gives it (one of today's, not had yet: it checks)
+function ShopUI.commitDeal(skin: string)
+	if not UI.cYes.enabled then return end
+	ShopUI.unconfirm()
+	if S.busy then return end
+	S.busy = true
+	local res = Deal.ask("buy", skin)
+	S.busy = false
+	if not res.ok then Hud.callout(string.upper(tostring(res.why or "the shop said no")), 1.6); return end
+	play("click")
+	local d = Deal.find(skin)
+	if d then d.bought = true end
+	Till.refresh()
+	ShopUI.toast(string.upper(Shop.itemLabel({ kind = "skin", id = skin })) .. " ADDED. WEAR IT FROM THE LOADOUT [L]")
+	ShopUI.refill()
+end
+
 -- ------------------------------------------------------------------------ INVENTORY: what you own
 do
 	local pg_ = UI.pages.inventory
@@ -1632,6 +1766,7 @@ end
 -- step two: the till. a container is opened at once (the loot module plays the opening); the rest just lands
 function ShopUI.commit()
 	local id = S.pending
+	if type(id) == "string" and string.sub(id, 1, 5) == "deal:" then ShopUI.commitDeal(string.sub(id, 6)); return end -- (the owner's deals)
 	local o = id and Shop.offer(id)
 	local n = S.pendingN or 1
 	if not UI.cYes.enabled then return end
@@ -1848,11 +1983,12 @@ function ShopUI.layout()
 	UI.top.Size = UDim2.new(1, -(topL + side), 0, topH)
 	-- the top row on a phone: title, tabs, the FREE pill, CLOSE, all 44 tall; where it's too narrow the pill goes, then
 	-- the title (the tabs and CLOSE always stay)
-	local tabW = if compact then 98 else 116
+	-- (five tabs since the owner's DEALS: a little narrower, so the FREE pill and CLOSE still fit beside them)
+	local tabW = if compact then (if #TABS > 4 then 86 else 98) else (if #TABS > 4 then 108 else 116)
 	local closeW = if compact then 84 else 112
 	local walletW = if compact then 70 else 170
 	local titleW = if compact then 78 else 190
-	local tabsW = tabW * 4 + 18
+	local tabsW = tabW * #TABS + 6 * (#TABS - 1)
 	-- (the quests' Brass and tickets: on a phone they take the FREE pill's place, then the title goes if it must)
 	local purse = Purse.has()
 	if purse then Purse.draw() end
@@ -1868,7 +2004,7 @@ function ShopUI.layout()
 	UI.sub.Position = UDim2.fromOffset(2, 54); UI.sub.Size = UDim2.fromOffset(420, 18)
 	UI.tabRow.Position = UDim2.fromOffset(if showTitle then titleW else 0, 0)
 	UI.tabRow.Size = UDim2.fromOffset(tabsW, 44)
-	for _, b in UI.tabs do b.face.Size = UDim2.fromOffset(tabW, 44); b.face.TextSize = if compact then 14 else 15 end
+	for _, b in UI.tabs do b.face.Size = UDim2.fromOffset(tabW, 44); b.face.TextSize = if compact then (if #TABS > 4 then 13 else 14) else 15 end
 	UI.close.face.AnchorPoint = Vector2.new(1, 0)
 	UI.close.face.Position = UDim2.new(1, 0, 0, 0)
 	UI.close.face.Size = UDim2.fromOffset(closeW, 44)
@@ -1982,6 +2118,7 @@ function ShopUI.tab(t: string)
 	if t == "featured" then ShopUI.fillFeatured()
 	elseif t == "bundles" then ShopUI.fillBundles()
 	elseif t == "containers" then ShopUI.fillContainers()
+	elseif t == "deals" then ShopUI.fillDeals()
 	elseif t == "inventory" then ShopUI.fillInventory() end
 end
 function ShopUI.refill()
@@ -2109,6 +2246,7 @@ task.spawn(function()
 			local left = clock(Shop.secondsLeft())
 			UI.heroTimer.Text = "NEW IN " .. left
 			UI.dailyTimer.Text = "NEW IN " .. left
+			if UI.dealsTimer then UI.dealsTimer.Text = "NEW IN " .. left end
 			if Shop.secondsLeft() <= 1 then task.delay(2, function() if S.open then ShopUI.refill() end end) end
 		end
 	end

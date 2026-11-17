@@ -15,9 +15,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("ShopBuy") :: RemoteEvent
 
--- VIP (a game pass, not a developer product: no receipt here) is Vip.luau's, and its daily reward from Trisangle
--- VipDaily.luau's; requiring them starts them
-for _, name in { "Vip", "VipDaily" } do
+-- VIP (a game pass, not a developer product: no receipt here) is Vip.luau's, its daily reward from Trisangle
+-- VipDaily.luau's, and the owner's deals Deals.luau's; requiring them starts them
+for _, name in { "Vip", "VipDaily", "Deals" } do
 	task.spawn(function()
 		local m = script.Parent:WaitForChild(name, 30)
 		if m and m:IsA("ModuleScript") then
@@ -38,12 +38,31 @@ local function loot(): any
 	local ok, L = pcall(require, m)
 	return if ok and type(L) == "table" then L else nil
 end
+-- the owner's deals (Deals.luau): "deal:<skin>", only the player's own of today
+local function deals(): any
+	local m = script.Parent:FindFirstChild("Deals")
+	if not (m and m:IsA("ModuleScript")) then return nil end
+	local ok, D = pcall(require, m)
+	return if ok and type(D) == "table" then D else nil
+end
 
 Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	if not Shop.ROBUX or Shop.free() then return end
 	local now = os.clock()
 	if (lastAsk[p] or 0) > now - 1 then return end
 	lastAsk[p] = now
+	-- one of the owner's deals: its product is the rarity's and the discount's ("deal:legendary:40")
+	local dskin = if type(offerId) == "string" then string.match(offerId, "^deal:([%w_]+)$") else nil
+	if dskin then
+		local D = deals()
+		local d = D and type(D.offerFor) == "function" and D.offerFor(p, dskin)
+		if not d then return end
+		local dpid = Shop.PRODUCTS["deal:" .. d.rarity .. ":" .. d.pct]
+		if type(dpid) ~= "number" or dpid <= 0 then return end
+		asked[p.UserId .. ":" .. dpid] = { offer = offerId :: string, product = dpid, t = now }
+		MarketplaceService:PromptProductPurchase(p, dpid)
+		return
+	end
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
 	-- a paid random item (a container) never goes to a player Roblox's policy keeps them from (the shop's screen hides
@@ -90,7 +109,16 @@ if Shop.ROBUX then
 		end
 		local L = loot()
 		if not L or type(L.grant) ~= "function" then return Enum.ProductPurchaseDecision.NotProcessedYet end
-		local ok, granted = pcall(L.grant, p, offerId, info.PurchaseId)
+		local ok, granted
+		local dskin = string.match(offerId, "^deal:([%w_]+)$")
+		if dskin then
+			-- (one of the owner's deals: the skin, and the deal marked had)
+			local D = deals()
+			if not D or type(D.grant) ~= "function" then return Enum.ProductPurchaseDecision.NotProcessedYet end
+			ok, granted = pcall(D.grant, p, dskin, info.PurchaseId)
+		else
+			ok, granted = pcall(L.grant, p, offerId, info.PurchaseId)
+		end
 		if ok and granted == true then
 			local ak = info.PlayerId .. ":" .. info.ProductId
 			if asked[ak] and asked[ak].offer == offerId then asked[ak] = nil end

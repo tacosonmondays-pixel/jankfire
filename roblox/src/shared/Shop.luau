@@ -591,6 +591,23 @@ function Shop.worth(o: Offer): number
 	return n
 end
 
+-- ---------------------------------------------------------------- the owner's deals (Deals.luau on the server picks them)
+-- the owner, 17 Nov 2026: "I give players 3 special discounts on random skins if you talk to me!". per player per UTC
+-- day: three weapon skins on sale (Shop.liveSkins: not VIP, not daily-only, not a concept) that they don't own, at
+-- most one legendary, a different skin set and gun each where it can. each is DEAL_OFF[rarity] percent off its single
+-- price, the rarest of the three DEAL_TOP more: 20 to 40% off. they stay the same all day; each can be had once.
+-- offer ids "deal:<skin>" (only the player's own deals: the server checks), a product per rarity and discount when
+-- Robux goes on ("deal:legendary:40", Shop.PRODUCTS)
+Shop.DEALS = 3
+Shop.DEAL_OFF = { common = 20, rare = 25, epic = 30, legendary = 35 }
+Shop.DEAL_TOP = 5
+Shop.DEAL_PICK = { common = 40, rare = 35, epic = 20, legendary = 5 } -- how likely each rarity is picked
+function Shop.dealPrice(kind: string, id: string, pct: number): number
+	local full = Shop.singlePrice(kind, id)
+	if full <= 0 then return 0 end
+	return math.max(9, math.floor(full * (100 - pct) / 100 / 10 + 0.5) * 10 - 1)
+end
+
 -- ---------------------------------------------------------------- the featured rotation
 -- one hero bundle and Shop.DAILY singles a day, the same for everyone (seeded by the UTC day number), so the server can
 -- check a single is on sale today without keeping any state
@@ -739,6 +756,9 @@ Shop.PRODUCTS = {
 	-- ["hat:common"] = 0, ["hat:rare"] = 0, ["hat:epic"] = 0, ["hat:legendary"] = 0,
 	-- ["skin:common"] = 0, ["skin:rare"] = 0, ["skin:epic"] = 0, ["skin:legendary"] = 0,
 	-- ["kill:rare"] = 0, ["kill:epic"] = 0, ["kill:legendary"] = 0, ["emote:common"] = 0, ["emote:rare"] = 0, ...
+	-- (the owner's deals: one per rarity and discount, priced as Shop.dealPrice)
+	-- ["deal:common:20"] = 0, ["deal:common:25"] = 0, ["deal:rare:25"] = 0, ["deal:rare:30"] = 0, ["deal:epic:30"] = 0,
+	-- ["deal:epic:35"] = 0, ["deal:legendary:35"] = 0, ["deal:legendary:40"] = 0,
 } :: { [string]: number }
 Shop.byProduct = {} :: { [number]: string } -- product id -> offer id, or a tier ("wrap:epic")
 for key, pid in Shop.PRODUCTS do
