@@ -54,7 +54,7 @@ local aim = 0
 local trigger, aimHeld = false, false
 local firedT = -math.huge
 local lastSwing, swingAlt, nextSwing = -math.huge, false, 0
-local pending: { t: number }? = nil
+local pending: { t: number, w: string?, heavy: boolean? }? = nil -- (the swing waiting for its hit time: which weapon, a heavy stab)
 local parryT, parryReady, parryBuf = -math.huge, 0, -math.huge
 local staggerUntil = -math.huge
 local shake = 0
@@ -462,32 +462,48 @@ local function fireGun(now: number, fan: boolean?)
 	if a.mag <= 0 then task.delay(0.15, reload) end
 end
 
--- the katana: click = swing (the combo alternates within 0.75 s); the hit lands at the clip's hit time
-local function swing(now: number)
+-- a melee weapon (the katana, the knife, the claw): click = swing (the combo alternates within 0.75 s); the hit lands at
+-- the clip's hit time. heavy = the knife's right-click stab (its own clip, numbers and cooldown, the slash's too)
+local function swing(now: number, heavy: boolean?)
+	local w = W[held]
+	if not w or w.kind ~= "melee" then return end
+	local hv = if heavy then w.heavy else nil
+	if heavy and not hv then return end
 	if now < nextSwing or now < staggerUntil or now - parryT < P.win then return end
-	nextSwing = now + (W.katana.cd :: number)
-	swingAlt = (now - lastSwing < 0.75) and not swingAlt
-	lastSwing = now
-	VM.play(if swingAlt then "swing_katana2" else "swing_katana")
-	TP.swing(swingAlt)
-	SwingR:FireServer("katana")
-	pending = { t = now + (W.katana.hitT :: number) }
+	nextSwing = now + ((if hv then hv.cd else w.cd) :: number)
+	local clip: string
+	if hv then
+		clip = "stab_" .. held
+	else
+		swingAlt = (now - lastSwing < 0.75) and not swingAlt
+		lastSwing = now
+		clip = if swingAlt and Anims["swing_" .. held .. "2"] then "swing_" .. held .. "2" else "swing_" .. held
+	end
+	VM.play(clip)
+	TP.swing(if hv then false else swingAlt, if hv then clip else nil) -- (third person: the stab plays its own clip, ThirdPerson.luau)
+	SwingR:FireServer(held, if hv then true else nil)
+	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil }
 end
 
 local function resolveSwing()
+	local pd = pending :: any
 	pending = nil
 	local _, _, root = myChar()
 	if not root then return end
 	local eye, look = eyeAndAim()
-	local w = W.katana
-	local reach = Weapons.reach(w, kat())
+	local wid = (pd and pd.w) or "katana"
+	local w = W[wid]
+	if not w then return end
+	local hv = if pd and pd.heavy then w.heavy else nil
+	local reach = if hv then hv.range else Weapons.reach(w, kat())
+	local cone = (if hv then hv.cone else w.cone) :: number
 	local map = workspace:FindFirstChild("Map")
 	mapParams.FilterDescendantsInstances = { map :: Instance }
 	local hitList: { Model } = {}
 	local firstAt: Vector3? = nil
 	for _, t in targets() do
 		local pt = t.feet + Vector3.new(0, Hitbox.ROOT_UP, 0)
-		if Hitbox.inCone(eye, look, pt, reach, w.cone :: number) then
+		if Hitbox.inCone(eye, look, pt, reach, cone) then
 			local v = pt - eye
 			if v.Magnitude < 0.5 or not workspace:Raycast(eye, v, mapParams) then
 				table.insert(hitList, t.m)
@@ -504,12 +520,13 @@ local function resolveSwing()
 		elseif h then Fx.slash(h.Position, h.Normal, h.Instance, h.Material, look); Sfx.play("tink", h.Position, 0.7) end
 		return
 	end
-	MeleeR:FireServer("katana", look, hitList)
-	-- the hit, felt right away: hit-stop, the flash, a bonk, a punch
-	VM.hitStop = 0.06
-	if firstAt then Fx.blast(firstAt, 0.6) end
-	Sfx.play("bonk")
-	shake = math.max(shake, 0.35)
+	MeleeR:FireServer(wid, look, hitList)
+	-- the hit, felt right away: hit-stop, the flash, a bonk (a spoon tings; a stab crunches), a punch
+	VM.hitStop = if hv then 0.11 else 0.06
+	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
+	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else "bonk")
+	if hv then Sfx.play("crunch") end
+	shake = math.max(shake, if hv then 0.6 else 0.35)
 	VM.jolt(-1.5)
 end
 
@@ -559,11 +576,11 @@ Keys.began(function(io: InputObject, gp: boolean)
 		fanArmed = true
 		local _, _, root = myChar()
 		if not root then return end
-		if held == "katana" then swing(now)
+		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif not W[held].auto and now >= nextShot[held] then fireGun(now) end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
-		tryParry(now)
+		if W[held] and W[held].heavy then swing(now, true) else tryParry(now) end -- (the knife stabs; the katana parries)
 	elseif Binds.is("reload", io) then reload()
 	end
 end)
@@ -797,7 +814,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local wantAim = aimHeld and canAim == true and w.ads ~= nil and w.ads.scope == true
 	if wantAim ~= aimSent then aimSent = wantAim; AimR:FireServer(wantAim) end
 	-- how fast you run with it out (the SMG is light, the Belt Sander isn't), slower down the sights (web: x0.75)
-	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim)
+	-- (a classic mode's run speed on top: spoons & grapples x1.6, Modes.luau's ModeSpeed)
+	local ms = tonumber(me:GetAttribute("ModeSpeed")) or 1
+	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim) * (if inHub() then 1 else ms)
 	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
 	local fovAttr = me:GetAttribute("BaseFov")
 	local baseFov = if type(fovAttr) == "number" then fovAttr else 70

@@ -12,6 +12,10 @@
 -- and two team modes (two sides, PINK and CYAN, parties kept on one side):
 --   TEAM DEATHMATCH     every kill on the other side scores for yours, first to 40 (6 min: the higher score, or a draw)
 --   TAGS                a kill drops a tag; grab the other side's to score, your own to deny it; first to 25
+-- and (17 Nov, once the knife and the claw were ported):
+--   SPOONS & GRAPPLES   the knife in its spoon look only, one hit kills, you run x1.6, the grapple pulls x1.35; first to 20
+--   INFECTION           someone turns 6 s in (two with 8 or more); whoever the zombies kill turns too; zombies have the
+--                       claw and 200 HP; the survivors win if anyone lasts the 3 min clock, the infected if nobody does
 -- a mode's match runs through Matches (Matches.startMode): its site, who's in it, who may hurt whom (everyone: their
 -- own side each), the end screen, home, and every hook on it (Stats, RankedData, the Recorder). Matches hands this
 -- module the match (m.rules = this module's rules): the spawns, the respawns, the clock, the HUD, the board and the
@@ -56,12 +60,14 @@ type Seat = {
 	p: Player?, f: any?, name: string, uid: number, team: number, ghost: boolean,
 	kills: number, deaths: number, rung: number, lives: number, out: boolean, outAt: number, gone: boolean,
 	own: { string }?, -- (the player's own picks: back on their keys after the match)
+	zombie: boolean?, -- (infection: turned)
 }
 type MS = {
 	def: any, seats: { Seat }, byP: { [Player]: Seat }, byF: { [any]: Seat }, ladder: { string }, orig: { string },
 	target: number, time: number, liveAt: number, nextDrop: number, ducks: number, size: number, tops: { Vector3 }?,
 	rayTop: number, spawns: { CFrame }?, over: boolean, winner: Seat?, lead: string, n0: number,
 	teams: boolean, score: { number }, winTeam: number?, tags: { Tag }, sideSpawns: { [number]: { CFrame } },
+	infAt: number, turned: boolean, winSide: string?, -- (infection: when patient zero turns, whether they have, who won)
 }
 -- a dog tag on the floor (tags): its side, where it floats, its model, when it goes
 type Tag = { team: number, p: Vector3, model: Model, dies: number }
@@ -155,6 +161,8 @@ local function kitFor(ms: MS, s: Seat): { string }?
 		return kit
 	end
 	if ms.def.id == "rand" then return roll() end
+	if k == "spoons" then return table.clone(ModeConfig.SPOONS.kit) end
+	if k == "inf" and s.zombie then return { ModeConfig.INF.claw } end
 	return nil
 end
 -- the server armed a seat mid-life (a new rung): its keys, its gun in hand, everyone sees it
@@ -193,6 +201,7 @@ local function better(ms: MS, a: Seat, b: Seat): boolean
 	if a.gone ~= b.gone then return not a.gone end
 	if ms.winner and (a == ms.winner) ~= (b == ms.winner) then return a == ms.winner end
 	if ms.winTeam and a.team ~= b.team and (a.team == ms.winTeam or b.team == ms.winTeam) then return a.team == ms.winTeam end
+	if ms.winSide and (a.zombie == true) ~= (b.zombie == true) then return (a.zombie == true) == (ms.winSide == "infected") end
 	local k = ms.def.kind
 	if k == "gun" and a.rung ~= b.rung then return a.rung > b.rung end
 	if k == "oitc" and a.lives ~= b.lives then return a.lives > b.lives end
@@ -228,8 +237,14 @@ local function hudLine(m: any, ms: MS, s: Seat): string
 		return ('ONE IN THE CHAMBER ·  · <font color="%s">%d</font> LEFT'):format(ACC, #leftIn(ms))
 	elseif ms.teams then
 		return ('%s ·  · <font color="%s">%d</font> – <font color="%s">%d</font>'):format(ms.def.name, SIDES[1].hex, ms.score[1], SIDES[2].hex, ms.score[2])
+	elseif k == "inf" then
+		-- survivors (white) against zombies (the infection's green)
+		local sv, zb = 0, 0
+		for _, x in ms.seats do if present(x) then if x.zombie then zb += 1 else sv += 1 end end end
+		return ('INFECTION · %s · <font color="#f0f2f5">%d</font> – <font color="%s">%d</font>'):format(if s.zombie then "ZOMBIE" else "SURVIVE", sv, ModeConfig.INF.color, zb)
 	end
-	return ('%s · KILLS · <font color="%s">%d</font>/%d'):format(ms.def.name, ACC, s.kills, ms.target)
+	-- (a long name, spoons & grapples, takes the whole left cell)
+	return ('%s · %s · <font color="%s">%d</font>/%d'):format(ms.def.name, if #ms.def.name > 12 then "" else "KILLS", ACC, s.kills, ms.target)
 end
 -- everyone's scoreboard line, clock and mode numbers
 local function publish(m: any)
@@ -253,6 +268,14 @@ local function publish(m: any)
 		p:SetAttribute("RoundEnds", if m.phase == "live" then stamp(m.roundEnds) else nil)
 		p:SetAttribute("ModeLead", lead)
 		p:SetAttribute("ModePlace", i)
+		if ms.def.kind == "inf" then
+			local sv, zb = 0, 0
+			for _, x in ms.seats do if present(x) then if x.zombie then zb += 1 else sv += 1 end end end
+			p:SetAttribute("ModeZombie", s.zombie or nil)
+			p:SetAttribute("ModeSurv", sv)
+			p:SetAttribute("ModeZomb", zb)
+			p:SetAttribute("ModeTurnAt", if ms.turned or ms.infAt <= 0 then nil else stamp(ms.infAt))
+		end
 		if ms.teams then
 			p:SetAttribute("ModeTeam", s.team)
 			p:SetAttribute("ModeScore", ("%d|%d"):format(ms.score[1], ms.score[2]))
@@ -288,6 +311,7 @@ local function finish(m: any, win: Seat?, team: number?)
 	local place = 0
 	for i, s in list do
 		if ms.teams then place = if ms.winTeam == nil or s.team == ms.winTeam then 1 else 2
+		elseif ms.winSide then place = if (s.zombie == true) == (ms.winSide == "infected") then 1 else 2 -- (infection: by side)
 		elseif i == 1 or not tied(ms, s, list[i - 1]) then place = i end
 		m.places[s.team] = place
 		local score = if ms.teams then ms.score[s.team] elseif ms.def.kind == "gun" then s.rung elseif ms.def.kind == "oitc" then s.lives else s.kills
@@ -295,9 +319,11 @@ local function finish(m: any, win: Seat?, team: number?)
 	end
 	-- everyone's own loadout back for their next spawn (home), no more mode rules on them
 	for _, s in ms.seats do
+		if s.p and ms.winSide then (s.p :: Player):SetAttribute("ModeResult", ms.winSide) end -- (infection: the end screen's title)
 		local f = s.f
 		if f then
 			f.forced = nil
+			f.maxHp = nil
 			f.noReload = nil
 			if not f.nextLoadout and s.own then f.nextLoadout = s.own end
 		end
@@ -309,7 +335,15 @@ end
 
 -- the end of the clock: deathmatch most kills, gun game highest rung, one in the chamber most lives. the top player
 -- takes it if they got a kill (web endRound), else nobody does
+local infEnd: (any, MS, string) -> ()
 local function timeUp(m: any, ms: MS)
+	if ms.def.kind == "inf" then
+		-- the clock ran out: the survivors win if anyone is still one (web INFECT: survive 3 min)
+		local sv = 0
+		for _, s in ms.seats do if present(s) and not s.zombie then sv += 1 end end
+		infEnd(m, ms, if sv > 0 then "survivors" else "infected")
+		return
+	end
 	if ms.teams then
 		-- the higher score takes it; level is a draw (web endRound: no winner, no roll)
 		local a, b = ms.score[1], ms.score[2]
@@ -407,6 +441,7 @@ local function tagTick(m: any)
 end
 
 -- ------------------------------------------------------------------ kills
+local infect: (any, MS, Seat, boolean) -> () -- (infection: below)
 local function gunUp(m: any, ms: MS, ks: Seat)
 	if ks.rung >= #ms.ladder then finish(m, ks); return end
 	ks.rung += 1
@@ -414,8 +449,8 @@ local function gunUp(m: any, ms: MS, ks: Seat)
 	if f then f.forced = { ms.ladder[ks.rung] } end
 	rearm(ks)
 	if ks.rung == #ms.ladder then
-		callTo(ks, "LAST RUNG · ONE KILL WINS", 1.8)
-		callAll(ms, ks.name .. " IS ON THE LAST RUNG", 1.6, ks)
+		callTo(ks, "YOU HAVE THE SPOON · ONE KILL WINS", 1.8)
+		callAll(ms, ks.name .. " HAS THE SPOON", 1.6, ks)
 	else
 		callTo(ks, ("%s · %d/%d"):format(wname(ms.ladder[ks.rung]), ks.rung, #ms.ladder), 1.2)
 	end
@@ -469,10 +504,87 @@ local function scoreKill(m: any, ks: Seat?, vs: Seat, w: string, via: string?)
 	elseif k == "tags" then
 		-- kills alone score nothing: a kill on the other side drops the victim's tag
 		if real and (ks :: Seat).team ~= vs.team then dropTag(m, ms, vs, ks :: Seat) end
+	elseif k == "inf" then
+		-- once patient zero has turned, a survivor's death (any cause) turns them: they come back as a zombie
+		if ms.turned and not vs.zombie then
+			infect(m, ms, vs, false)
+			if ms.over then return end
+		end
 	else
 		if real and (ks :: Seat).kills >= ms.target then publish(m); finish(m, ks); return end
 	end
 	publish(m)
+end
+
+-- ------------------------------------------------------------------ infection
+-- a zombie's green: a Highlight on their body (everyone sees it; web: green-tinted mannequins)
+local function zombieTint(s: Seat)
+	local ch = s.p and (s.p :: Player).Character
+	if not ch then return end
+	local h = ch:FindFirstChild("ZombieTint") :: Highlight?
+	if not s.zombie then if h then h:Destroy() end; return end
+	if h then return end
+	local hl = Instance.new("Highlight")
+	hl.Name = "ZombieTint"
+	hl.FillColor = Color3.fromHex(string.sub(ModeConfig.INF.color, 2)); hl.FillTransparency = 0.55
+	hl.OutlineTransparency = 1; hl.DepthMode = Enum.HighlightDepthMode.Occluded
+	hl.Parent = ch
+end
+-- the end: the winning side on top; its best player takes it if they got a kill (web endRound)
+infEnd = function(m: any, ms: MS, side: string)
+	if ms.over then return end
+	ms.winSide = side
+	local best: Seat? = nil
+	for _, s in ms.seats do
+		if present(s) and (s.zombie == true) == (side == "infected") and s.kills >= 1 and (not best or s.kills > best.kills) then best = s end
+	end
+	callAll(ms, if side == "infected" then "THE INFECTED WIN" else "SURVIVORS WIN", 1.8)
+	finish(m, best)
+end
+-- web infect(p, first): turn a seat. their claw and 200 HP now if they're alive (patient zero), else from their respawn
+infect = function(m: any, ms: MS, s: Seat, first: boolean)
+	if s.zombie then return end
+	s.zombie = true
+	local f, p = s.f, s.p
+	if f then
+		f.forced = { ModeConfig.INF.claw }
+		f.maxHp = ModeConfig.INF.hp
+		if f.alive and p then
+			rearm(s)
+			f.hp = ModeConfig.INF.hp
+			Fight.syncHp(f)
+		end
+	end
+	if p then (p :: Player):SetAttribute("Infected", true) end
+	zombieTint(s)
+	callTo(s, "YOU ARE INFECTED", 2)
+	if first then callAll(ms, s.name .. " IS PATIENT ZERO", 1.6, s) end
+	-- the last survivor hears it; nobody left: the infected win
+	local sv: { Seat } = {}
+	for _, x in ms.seats do if present(x) and not x.zombie then table.insert(sv, x) end end
+	if ms.turned and #sv == 1 then callTo(sv[1], "YOU ARE THE LAST SURVIVOR", 1.8) end
+	publish(m)
+	if ms.turned and #sv == 0 then infEnd(m, ms, "infected") end
+end
+-- every Matches tick in a live infection: patient zero 6 s in (two with 8 or more; it waits for 2 fighters), and a new
+-- one at once if every zombie has left
+local function infTick(m: any, ms: MS)
+	if ms.def.kind ~= "inf" or m.phase ~= "live" or ms.over then return end
+	local inn, zb = {}, 0
+	for _, s in ms.seats do if present(s) then table.insert(inn, s); if s.zombie then zb += 1 end end end
+	if #inn < 2 then return end
+	local due = not ms.turned and now() >= ms.infAt
+	local lost = ms.turned and zb == 0
+	if not due and not lost then return end
+	local n = if lost then 1 elseif #inn >= ModeConfig.INF.two then 2 else 1
+	local pool = {}
+	for _, s in inn do if not s.zombie then table.insert(pool, s) end end
+	-- (Studio tests: TestInfFirst names patient zero)
+	local want = script:GetAttribute("TestInfFirst")
+	table.sort(pool, function(a, b) return (a.name == want) and not (b.name == want) end)
+	if not (type(want) == "string") then shuffle(pool) end
+	ms.turned = true
+	for i = 1, math.min(n, #pool - 1) do infect(m, ms, pool[i], not lost) end
 end
 
 -- ------------------------------------------------------------------ spawns
@@ -674,10 +786,11 @@ function RULES.begin(m: any)
 	local ms: MS = {
 		def = def, seats = {}, byP = {}, byF = {}, ladder = {}, orig = {},
 		target = if kind == "tdm" then ModeConfig.TDM.target elseif kind == "tags" then ModeConfig.TAGS.target else ModeConfig.DM.target,
-		time = if kind == "gun" then ModeConfig.GUN.time elseif kind == "oitc" then ModeConfig.OITC.time
+		time = if kind == "gun" then ModeConfig.GUN.time elseif kind == "oitc" then ModeConfig.OITC.time elseif kind == "inf" then ModeConfig.INF.time
 			elseif kind == "tdm" then ModeConfig.TDM.time elseif kind == "tags" then ModeConfig.TAGS.time else ModeConfig.DM.time,
 		liveAt = 0, nextDrop = math.huge, ducks = 0, size = 1, tops = nil, rayTop = 0, spawns = nil, over = false, winner = nil, lead = "", n0 = 0,
 		teams = teamMode, score = { 0, 0 }, winTeam = nil, tags = {}, sideSpawns = {},
+		infAt = 0, turned = false, winSide = nil,
 	}
 	m.ms = ms
 	if kind == "gun" then ms.ladder, ms.orig = rollLadder() end
@@ -735,6 +848,13 @@ function RULES.begin(m: any)
 		p:SetAttribute("ModeLadder", if kind == "gun" then table.concat(ms.ladder, ",") else nil)
 		p:SetAttribute("ModeTarget", if kind == "dm" then ms.target else nil)
 		p:SetAttribute("ModeOut", nil)
+		-- every knife wears the spoon look in gun game and spoons & grapples (web spoonLookOn); spoons & grapples' run and rope
+		p:SetAttribute("SpoonLook", if kind == "gun" or kind == "spoons" then true else nil)
+		p:SetAttribute("ModeSpeed", if kind == "spoons" then ModeConfig.SPOONS.speed else nil)
+		p:SetAttribute("ModeHook", if kind == "spoons" then ModeConfig.SPOONS.hook else nil)
+		p:SetAttribute("ACSpeed", if kind == "spoons" then ModeConfig.SPOONS.speed else nil) -- (the anti-cheat's ground speed allowance)
+		p:SetAttribute("Infected", nil)
+		f.maxHp = nil
 		f.alive = false
 		task.spawn(Fight.spawn, f)
 	end
@@ -768,6 +888,7 @@ function RULES.begin(m: any)
 		m.roundEnds = now() + (if type(tt) == "number" then tt else ms.time)
 		ms.nextDrop = now() + ModeConfig.DUCKRAIN.first
 		if kind == "tags" then liveTags[m] = true end
+		if kind == "inf" then ms.infAt = now() + ModeConfig.INF.delay end
 		publish(m)
 		for _, p in playersOf(ms) do RoundR:FireClient(p, { start = true, mode = def.id }) end
 	end)
@@ -819,6 +940,12 @@ function RULES.check(m: any)
 	if m.phase ~= "live" then return end
 	if now() >= m.roundEnds then timeUp(m, ms); return end
 	rainTick(m, ms)
+	infTick(m, ms)
+	if ms.def.kind == "inf" and ms.turned and not ms.over then
+		local sv = 0
+		for _, s in ms.seats do if present(s) and not s.zombie then sv += 1 end end
+		if sv == 0 then infEnd(m, ms, "infected"); return end
+	end
 end
 
 function RULES.setHud(m: any) publish(m) end
@@ -830,7 +957,7 @@ function RULES.board(m: any): { { any } }
 	for _, s in ordered(ms) do
 		local k = ms.def.kind
 		if k == "gun" then
-			local rung = if s == ms.winner then "WON" else ("%d/%d"):format(s.rung, #ms.ladder)
+			local rung = if s == ms.winner then "SPOON KILL" else ("%d/%d"):format(s.rung, #ms.ladder)
 			table.insert(out, { s.name, rung, s.kills, s.uid })
 		elseif k == "oitc" then
 			table.insert(out, { s.name, s.lives, s.kills, s.uid })
@@ -860,13 +987,23 @@ function RULES.home(m: any)
 	for _, s in ms.seats do
 		local p = s.p
 		if p and p.Parent then
-			for _, a in { "ModeId", "ModeMatch", "ModeLadder", "ModeTarget", "ModeRung", "ModeLead", "ModePlace", "ModeLives", "ModeLeft", "ModeOut", "ModeBullets", "NoReload", "ModeTeam", "ModeScore" } do
+			for _, a in { "ModeId", "ModeMatch", "ModeLadder", "ModeTarget", "ModeRung", "ModeLead", "ModePlace", "ModeLives", "ModeLeft", "ModeOut", "ModeBullets", "NoReload", "ModeTeam", "ModeScore",
+				"SpoonLook", "ModeSpeed", "ModeHook", "ACSpeed", "Infected", "ModeZombie", "ModeSurv", "ModeZomb", "ModeTurnAt", "ModeResult" } do
 				p:SetAttribute(a, nil)
 			end
 		end
 		local f = s.f
-		if f then f.forced = nil; f.noReload = nil end
+		if f then f.forced = nil; f.noReload = nil; f.maxHp = nil end
+		if s.zombie then s.zombie = false; zombieTint(s) end
 	end
+end
+-- who may hurt whom: infection's sides (survivors and zombies never hurt their own), else Matches' own answer (def)
+function RULES.allow(m: any, by: any, t: any, def: boolean): boolean
+	local ms = msOf(m)
+	if not ms or ms.def.kind ~= "inf" then return def end
+	local a, b = ms.byF[by], ms.byF[t]
+	if not a or not b then return def end
+	return (a.zombie == true) ~= (b.zombie == true)
 end
 
 -- ------------------------------------------------------------------ starting one (PlayConfig's start, from Party)
@@ -934,6 +1071,7 @@ function Modes.init(fight: any, matches: any, utility: any, recorder: any?)
 		if not ms or ms.over then return end
 		local s = ms.byF[f]
 		if s and ms.def.kind == "oitc" then setBullets(s, ModeConfig.OITC.bullets) end
+		if s and ms.def.kind == "inf" then zombieTint(s) end -- (a zombie's new body is green too)
 	end)
 	-- one in the chamber: every Revolver shot the server took is a bullet gone (the HUD's pips)
 	Fight.onShot(function(f: any, wid: string)
@@ -944,17 +1082,23 @@ function Modes.init(fight: any, matches: any, utility: any, recorder: any?)
 		(f.ref :: Player):SetAttribute("ModeBullets", if a then a.mag else 0)
 	end)
 	-- one in the chamber: a Revolver hit always kills (web room.js oitcHit: 999)
+	-- spoons & grapples: any knife hit kills (web kit.oneHit: dmg = max(dmg, target HP))
 	Fight.modDamage = function(t: any, amt: number, by: any, wid: string): number
-		if wid ~= ModeConfig.OITC.gun or not by or by.kind ~= "player" or by == t then return amt end
+		if not by or by.kind ~= "player" or by == t then return amt end
 		local ms = msOf(Matches.raw(by.ref :: Player))
-		if ms and ms.def.kind == "oitc" then return ModeConfig.OITC.hit end
+		if not ms then return amt end
+		if wid == ModeConfig.OITC.gun and ms.def.kind == "oitc" then return ModeConfig.OITC.hit end
+		if wid == "knife" and ms.def.kind == "spoons" then return math.max(amt, t.hp) end
 		return amt
 	end
-	-- no items in one in the chamber and gun game (web noItem)
+	-- no items in one in the chamber, gun game and spoons & grapples (web noItem), nor for a zombie
 	Fight.noItems = function(f: any): boolean
 		if f.kind ~= "player" then return false end
 		local ms = msOf(Matches.raw(f.ref :: Player))
-		return ms ~= nil and (ms.def.kind == "oitc" or ms.def.kind == "gun")
+		if not ms then return false end
+		local k = ms.def.kind
+		if k == "inf" then local s = ms.byF[f]; return s ~= nil and s.zombie == true end
+		return k == "oitc" or k == "gun" or k == "spoons"
 	end
 	-- the killcam only for a player who won't be back this match (out of lives): a 2.5 s respawn would cut it off
 	if recorder then
@@ -976,6 +1120,7 @@ end
 --   ("time", secs) the clock of every match started from now on (nil: the mode's own); ("gunstart", rung) likewise
 --   ("end", player)    the clock runs out now
 --   ("grab", player, seatName)   that seat takes the nearest tag (tags);  ("tags", player) where the tags are
+--   ("infect", player, seatName)   that seat turns now (infection); the module attribute TestInfFirst names patient zero
 function Modes.test(op: string, a: any, b: any, c: any, d: any): any
 	if not RunService:IsStudio() then return nil end
 	if op == "start" then
@@ -999,7 +1144,7 @@ function Modes.test(op: string, a: any, b: any, c: any, d: any): any
 	if op == "state" then
 		local seats = {}
 		for _, s in ms.seats do
-			table.insert(seats, { name = s.name, team = s.team, ghost = s.ghost, kills = s.kills, deaths = s.deaths, rung = s.rung, lives = s.lives, out = s.out,
+			table.insert(seats, { name = s.name, team = s.team, zombie = s.zombie, hp = if s.f then s.f.hp else nil, ghost = s.ghost, kills = s.kills, deaths = s.deaths, rung = s.rung, lives = s.lives, out = s.out,
 				gone = s.gone, alive = if s.f then s.f.alive else nil, loadout = if s.f then table.concat(Rules.loadoutOf(s.f), ",") else nil,
 				bullets = if s.f then bulletsOf(s) else nil })
 		end
@@ -1047,6 +1192,16 @@ function Modes.test(op: string, a: any, b: any, c: any, d: any): any
 		if ft then for _, t in ms.tags do if (t.p - ft).Magnitude < (pick.p - ft).Magnitude then pick = t end end end
 		grabTag(m, ms, s, pick)
 		return { score = ms.score, tags = #ms.tags }
+	elseif op == "infect" then -- (player, seatName) that seat turns now (patient zero if nobody has)
+		for _, x in ms.seats do
+			if x.name == b or (x.p and (x.p :: Player).Name == b) then
+				local first = not ms.turned
+				ms.turned = true
+				infect(m, ms, x, first)
+				return Modes.test("state", p)
+			end
+		end
+		return { why = "no seat " .. tostring(b) }
 	elseif op == "tags" then -- (player) where the tags are
 		local out = {}
 		for _, t in ms.tags do table.insert(out, { team = t.team, p = t.p, left = t.dies - now() }) end

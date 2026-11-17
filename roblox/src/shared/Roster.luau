@@ -125,7 +125,7 @@ add({ id = "bread", slot = "melee", name = "Bread", color = "d9a35b", live = fal
 add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live = false, gimmick = "",
 	desc = "Thrown like a boomerang. Curves into the nearest enemy in front of it, then flies back to you. Hits on the way out and on the way back.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = false, gimmick = "",
+add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = true, gimmick = "fast slashes. right click: a heavy stab. from behind it's three times the hit.",
 	desc = "Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "REACH", text = "2.6 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
 add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = false, gimmick = "",

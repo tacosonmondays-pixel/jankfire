@@ -170,7 +170,7 @@ function H.hp(hp: number)
 	hpPlate.BackgroundColor3 = if low then Color3.fromRGB(42, 18, 21) else T.BG
 	hpEdge.Color = if low then T.DANGER else T.EDGE
 	hpEdge.Transparency = if low then 0.35 else T.EDGE_A
-	hpBar.Size = UDim2.fromScale(math.clamp(hp / 100, 0, 1), 1)
+	hpBar.Size = UDim2.fromScale(math.clamp(hp / (tonumber(game:GetService("Players").LocalPlayer:GetAttribute("HpMax")) or 100), 0, 1), 1) -- (HpMax: infection's 200 HP zombies)
 	hpBar.BackgroundColor3 = if hp > 50 then T.TEXT elseif hp > 25 then T.ACCENT else T.DANGER
 end
 function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?)

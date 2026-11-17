@@ -39,6 +39,9 @@ end
 
 -- a player's skin on one weapon (nil = the plain gun), from the "Skins" attribute the server keeps
 function GunSkins.skinFor(p: Player?, wid: string): string?
+	-- (a classic mode's look, Modes.luau: gun game's last rung and spoons & grapples put every knife in the spoon look,
+	-- WeaponModels' "spoon": JankfireWeapons.w_spoon, never a skin of the catalog)
+	if wid == "knife" and p and p:GetAttribute("SpoonLook") then return "spoon" end
 	local s = p and p:GetAttribute("Skins")
 	if type(s) ~= "string" then return nil end
 	for w, id in string.gmatch(s, "([%w_]+)=([%w_]+)") do

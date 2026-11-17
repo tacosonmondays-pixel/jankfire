@@ -21,7 +21,7 @@ Rules.AIM_PAD = 2 -- studs added round a target's boxes when the server re-check
 
 export type Ammo = { mag: number, reloadUntil: number }
 export type Tag = { by: Fighter, w: string, t: number }
-export type Swing = { t: number, w: string, hit: { [Fighter]: boolean } }
+export type Swing = { t: number, w: string, hit: { [Fighter]: boolean }, heavy: boolean? } -- (heavy: the knife's right-click stab)
 export type Fighter = {
 	id: number, kind: string, name: string, ref: any,
 	hp: number, alive: boolean, spawnT: number, diedT: number, held: string, equipT: number,
@@ -34,6 +34,7 @@ export type Fighter = {
 	-- a classic mode's kit (Modes.luau, web p.forced): armed instead of your picks while it's set (1 to 3 weapons), and
 	-- no reloads (one in the chamber)
 	forced: { string }?, noReload: boolean?,
+	maxHp: number?, -- (a classic mode's own HP: infection's zombies have 200)
 	-- batch 3's guns: when each gun last fired, the Hat Trick's recent shots, the Yeehaw's chain, the Hat Trick's
 	-- burst in flight, the last quick-scope paid out, when the scope went up (nil = not aiming)
 	lastShot: { [string]: number }, shotLog: { [string]: { number } },
@@ -79,7 +80,7 @@ end
 
 -- (re)spawn: full HP, full mags, nothing left over from the last life
 function Rules.spawn(f: Fighter, now: number)
-	f.hp, f.alive, f.spawnT = Weapons.HP, true, now
+	f.hp, f.alive, f.spawnT = f.maxHp or Weapons.HP, true, now
 	f.kat, f.parryT, f.staggerUntil, f.swing, f.tag = 0, -math.huge, -math.huge, nil, nil
 	Rules.arm(f, now)
 end
@@ -316,16 +317,19 @@ function Rules.hit(f: Fighter, t: Fighter, wid: string, n: any, h: any, _now: nu
 	return nil, nn, hh
 end
 
--- a melee swing (the click). the hits come at the animation's hit time, each checked against this swing
-function Rules.swing(f: Fighter, wid: any, now: number): string?
+-- a melee swing (the click). the hits come at the animation's hit time, each checked against this swing. heavy = the
+-- knife's right-click stab (web heavyAttack): its own numbers, and it puts the slash on its longer cooldown too
+function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
 	local w = W[wid]
+	local hv = if heavy then w.heavy else nil
+	if heavy and not hv then return "no heavy attack" end
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
 	if now < f.staggerUntil then return "staggered" end
 	if now - f.parryT < P.win then return "guarding" end
-	if not Rules.gate(f, "swing", now, w.cd :: number) then return "too fast" end
-	f.swing = { t = now, w = wid, hit = {} }
+	if not Rules.gate(f, "swing", now, (if hv then hv.cd else w.cd) :: number) then return "too fast" end
+	f.swing = { t = now, w = wid, hit = {}, heavy = hv ~= nil }
 	return nil
 end
 
@@ -341,10 +345,12 @@ function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeC
 	if not f.alive or not t.alive then return "dead" end
 	if now < f.staggerUntil then return "staggered" end
 	local w = W[wid]
-	if c.dist > Weapons.reach(w, f.kat) + Rules.SLACK + 0.3 * (c.speedF + c.speedT) then return "out of reach" end
+	local hv = if sw.heavy then w.heavy else nil
+	local reach = if hv then hv.range else Weapons.reach(w, f.kat)
+	if c.dist > reach + Rules.SLACK + 0.3 * (c.speedF + c.speedT) then return "out of reach" end
 	if c.dist > 1.5 * S and c.to.Magnitude > 1e-3 and c.look.Magnitude > 1e-3 then
 		local cosA = math.clamp(c.look.Unit:Dot(c.to.Unit), -1, 1)
-		if math.acos(cosA) > (w.cone :: number) + 0.5 then return "outside the swing" end
+		if math.acos(cosA) > (if hv then hv.cone else w.cone :: number) + 0.5 then return "outside the swing" end
 	end
 	if not c.los then return "through a wall" end
 	sw.hit[t] = true

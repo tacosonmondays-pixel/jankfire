@@ -130,6 +130,8 @@ function Matches.allow(by: Fighter?, t: Fighter): boolean
 	local tp = t.ref :: Player
 	if by.kind == "dummy" then return Matches.zoneOf(tp) == "training" end -- the dummies only shoot back in their room
 	local a, b = inMatch[by.ref :: Player], inMatch[tp]
+	-- (a classic mode can have sides of its own: infection's survivors and zombies, Modes.luau)
+	if a and b and a.m == b.m and a.m.rules and a.m.rules.allow then return a.m.phase == "live" and a.m.rules.allow(a.m, by, t, a.team ~= b.team) end
 	return a ~= nil and b ~= nil and a.m == b.m and a.m.phase == "live" and a.team ~= b.team
 end
 

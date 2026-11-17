@@ -58,6 +58,10 @@ ModeConfig.TDM = { target = 40, time = 360 }
 ModeConfig.TAGS = { target = 25, time = 360, life = 30, grab = 1.9 * S, up = 0.9 * S, drop = 60 * S }
 -- the two sides of a team mode: the duels' own (Matches TEAM_NAMES / TEAM_HEX: the pads' pink and cyan), not the web's
 -- red and blue, so a side looks the same everywhere in the game
+-- web modes.js spoons kit: { slots: ['knife'] (in its spoon look), noItem, noStreaks, oneHit, speedMul: 1.6 }, hookMul 1.35
+ModeConfig.SPOONS = { kit = { "knife" }, speed = 1.6, hook = 1.35 }
+-- web modes.js INFECT: 180 s, patient zero 6 s in (two with 8 or more fighters), 200 HP zombies with the claw
+ModeConfig.INF = { time = 180, delay = 6, two = 8, hp = 200, claw = "claw", color = "#7dff4f" }
 ModeConfig.SIDES = { { name = "PINK", hex = "#ff4fd8" }, { name = "CYAN", hex = "#37d6ff" } }
 -- a team mode's queue (Queue.luau's team branch): whole parties on one side each, 1-4 a side, the sides at most one
 -- apart; it goes at 4v4, or once the oldest has waited FILL s with both sides filled
@@ -73,10 +77,14 @@ ModeConfig.LIST = {
 		rule = "watch for the shadows · first to 20" },
 	{ id = "rand", kind = "dm", name = "RANDOMIZER", sub = "free for all · a random loadout every life · first to 20",
 		rule = "a random loadout every life · first to 20" },
+	{ id = "spoons", kind = "spoons", name = "SPOONS & GRAPPLES", sub = "spoons only, one hit kills · the grapple pulls harder · first to 20",
+		rule = "one hit kills · you run faster · the grapple pulls harder" },
 	{ id = "tdm", kind = "tdm", sides = 2, name = "TEAM DEATHMATCH", sub = "two teams · every kill scores · first to 40",
 		rule = "every kill scores for your team · first to 40" },
 	{ id = "tags", kind = "tags", sides = 2, name = "TAGS", sub = "two teams · grab enemy tags to score · first to 25",
 		rule = "grab enemy tags to score · grab your team's to deny" },
+	{ id = "inf", kind = "inf", name = "INFECTION", sub = "someone turns 6 s in · the zombies' kills turn · survive 3 minutes",
+		rule = "survive 3 minutes · a zombie's kill turns you" },
 }
 ModeConfig.byId = {} :: { [string]: any }
 for _, m in ModeConfig.LIST do

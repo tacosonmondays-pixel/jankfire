@@ -21,6 +21,8 @@ export type Weapon = {
 	cycle: { clip: string, at: number }?, draw: string?, -- the clip after every shot (pump, bolt, lever), its own draw
 	-- melee
 	cd: number?, cone: number?, kb: number?, kbUp: number?, grow: number?, growMax: number?, hitT: number?,
+	-- the knife: x this from behind (and the hit counts as a headshot), and its right-click heavy stab
+	backstab: number?, heavy: { dmg: number, cd: number, range: number, cone: number, kb: number, kbUp: number, hitT: number }?,
 	recoilVM: { back: number, up: number, roll: number, side: number, punch: number }?,
 	vm: { p: Vector3, r: Vector3, s: number }?, -- viewmodel rest pose (camera space, studs / radians)
 	-- how a gun looks and sounds when it fires (all optional). the gun code in Arsenal reads these, so a plain gun is
@@ -277,6 +279,24 @@ local W: { [string]: Weapon } = {
 		desc = "grows longer with every kill. right click parries; a perfect parry sends the bullets home.",
 		cd = 0.5, range = 2.8 * S, cone = 0.7, dmg = 48, kb = 6 * S, kbUp = 2 * S, grow = 0.5 * S, growMax = 30, hitT = 0.12,
 		vm = { p = Vector3.new(0.1, -0.185, -0.44) * S, r = Vector3.new(0.85, -0.7, 0.25), s = 0.85 },
+	},
+	-- the knife (shared/weapons.js knife, WEAPONS.md "Knife"): fast slashes, right click a heavy stab; from behind (the
+	-- victim facing away within about 63 degrees) either hit is x3 and counts as a headshot. the classic modes wear it as
+	-- a spoon (gun game's last rung, spoons & grapples: GunSkins "spoon"). 17 Nov 2026
+	knife = {
+		id = "knife", name = "Knife", slot = "melee", kind = "melee", color = rgb(0xc8d0dc),
+		desc = "fast slashes. right click: a heavy stab. from behind, three times the hit.",
+		cd = 0.42, range = 2.6 * S, cone = 0.75, dmg = 55, kb = 9 * S, kbUp = 3 * S, hitT = 0.1, backstab = 3, speedMul = 1.1,
+		heavy = { dmg = 90, cd = 0.95, range = 2.2 * S, cone = 0.6, kb = 16 * S, kbUp = 4 * S, hitT = 0.29 },
+		draw = "draw_knife",
+		vm = { p = Vector3.new(0.17, -0.2, -0.42) * S, r = Vector3.new(0.12, -0.22, 0.08), s = 0.85 },
+	},
+	-- the zombie claw (shared/weapons.js claw): infection's only weapon, handed out by the mode, never in a loadout
+	claw = {
+		id = "claw", name = "Zombie Claw", slot = "mode", kind = "melee", color = rgb(0x7dff4f),
+		desc = "infection only. two swipes and they turn.",
+		cd = 0.45, range = 2.6 * S, cone = 0.85, dmg = 55, kb = 8 * S, kbUp = 3 * S, hitT = 0.1, speedMul = 1.3,
+		vm = { p = Vector3.new(0.18, -0.22, -0.4) * S, r = Vector3.new(0.05, -0.15, 0), s = 0.85 },
 	},
 	-- kill credit only: bullets parried back, parry shoves into the smog
 	parry = { id = "parry", name = "Katana Parry", slot = "none", kind = "parry", color = rgb(0x9fe8ff), desc = "", dmg = 0, range = 0 },

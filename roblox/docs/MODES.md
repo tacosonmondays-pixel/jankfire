@@ -1120,8 +1120,8 @@ These are set as env vars on the web server. Mirror the useful ones as server `C
 
 ## Roblox adaptations (the classic modes on the Play screen, 17 Nov 2026)
 
-Six classic modes are on the Play screen's MODES tab: **Gun Game, One in the Chamber, Duck Rain, Randomizer, Team
-Deathmatch and Tags**. The code:
+Eight classic modes are on the Play screen's MODES tab: **Gun Game, One in the Chamber, Duck Rain, Randomizer, Spoons &
+Grapples, Team Deathmatch, Tags and Infection**. The code:
 - `server/Modes.luau`: the rules.
 - `shared/ModeConfig.luau`: the numbers, the cards and the ladder pools.
 - `server/ModesServer.server.luau`: the wiring and the Studio test hook.
@@ -1129,13 +1129,15 @@ Deathmatch and Tags**. The code:
 
 The rules follow the sections above. Below is every place where the Roblox version had to differ, and why.
 
-**Tested in Studio** (17 Nov 2026, place versions 548 and 567). The photos are in `roblox/docs/modes/`: the MODES tab, and
-each mode's HUD and result.
-- Gun Game, One in the Chamber, Duck Rain, Randomizer and Tags were each played to their win, with Studio stand-ins as
-  the other players.
+**Tested in Studio** (17 Nov 2026, place versions 548, 567 and 578). The photos are in `roblox/docs/modes/`: the MODES
+tab, and each mode's HUD and result.
+- All eight were played to their win, with Studio stand-ins as the other players.
 - Gun Game went through the real queue: a party, the card, FIND, the 15 s wait.
-- The other four were started with `ServerStorage.JankModeTest`.
-- Team Deathmatch runs on the same team code as Tags, but it hasn't been played to its win yet.
+- The other seven were started with `ServerStorage.JankModeTest`.
+- Infection was played through: patient zero turned at 6 s, a claw kill turned me (200 HP, the claw, green), and the
+  last survivor's death ended it.
+- Not tested yet: a real knife hit on a real target (heavy stab, backstab). The modes' kills come through the test
+  hook, so the knife's damage path has been compile-checked only.
 
 **Shared by all of them**
 - **Who plays:** parties of 1-4 queue for a mode, and parties are kept whole.
@@ -1164,8 +1166,20 @@ each mode's HUD and result.
   - `Rules.arm` arms the kit instead of your picks, and `Combat` refuses any other weapon, as before.
   - Your own loadout comes back after the match.
   - A kit can be 1-3 weapons: `Arsenal.client`'s number keys take fewer than 3.
-- **No items** in Gun Game and One in the Chamber (web `noItem`): `Utility` asks `Fight.noItems`. Killstreaks aren't on
-  Roblox at all, so `noStreaks` has nothing to switch off.
+- **No items** in Gun Game, One in the Chamber and Spoons & Grapples, nor for a zombie (web `noItem`): `Utility` asks
+  `Fight.noItems`, and the item plate isn't shown. Killstreaks aren't on Roblox at all, so `noStreaks` has nothing to
+  switch off.
+- **The melee weapons the modes need** were ported for them (17 Nov), on the existing weapon and `Combat` path:
+  - The **Knife**, with web stats: slash 55 (0.42 s, 2.6 m, cone 0.75) and a right-click heavy stab 90 (0.95 s, 2.2 m,
+    cone 0.6). From behind (the victim facing away, within about 63°) either hit is ×3 and counts as a headshot. You run
+    ×1.1 with it out. It's a normal melee pick in the loadout now. Its skins aren't on Roblox, so none of them (the
+    Kitchen Knife included) can come out of a container.
+  - The **Spoon** is the knife's look (web `knife_spoon`), worn by every knife in Gun Game and Spoons & Grapples. It's
+    its own model (`JankfireWeapons.w_spoon`, `GunSkins` "spoon"), never a catalog skin, so it can't drop either.
+  - The **Zombie Claw**: Infection only, 55 a swipe (0.45 s, 2.6 m, cone 0.85), ×1.3 run speed.
+  - The swings, the stab and the draw are the web's keyframes (`tools/roblox/anims.mjs` → `Anims.luau`). The
+    viewmodel and the swing smear take any melee weapon now, not just the katana.
+  - Until the gun-models session's kit models land, the three are code stand-ins (`WeaponModels` BUILD).
 
 **Gun Game**
 - **The ladder** is rolled the web way:
@@ -1173,8 +1187,8 @@ each mode's HUD and result.
   - A weapon that isn't on Roblox yet plays as its nearest ported one (`ModeConfig.NEAREST`), and where it can, one
     that isn't on the ladder already.
   - Once a weapon is ported (Roster `live`), it takes its own rung by itself.
-- **What stands in today:** 15 weapons are live, and the only melee weapon is the katana.
-  - The 3 melee rungs and the knife's last rung are all the **katana**.
+- **What stands in today:** 16 weapons are live. The knife takes the last rung itself, in its spoon look.
+  - The 3 melee rungs (slapper, bread, scales, katana) are all the **katana** until the others are ported.
   - Nothing in the silly pool is ported yet:
 
     | silly weapon | plays as |
@@ -1192,13 +1206,13 @@ each mode's HUD and result.
 
   - The **Shredder** is a Tool that only a spawn hands out, so a mid-life rung swap can't give it. Its rung plays as
     the Lawn Mower.
-- **The last rung:** the web calls it "the spoon". Here it's the katana, so the callouts say
-  **LAST RUNG · ONE KILL WINS** and "<NAME> IS ON THE LAST RUNG". The end board shows WON for the winning kill.
-- **A melee death** is a death to a `kind: melee` weapon (the katana). A parried shot (`parry`) isn't one, as on the
-  web.
+- **The last rung** is the spoon, as on the web: **YOU HAVE THE SPOON · ONE KILL WINS** and "<NAME> HAS THE SPOON",
+  and the end board shows SPOON KILL for the winner.
+- **A melee death** is a death to a `kind: melee` weapon (the katana, the knife). A parried shot (`parry`) isn't one,
+  as on the web.
 
 **One in the Chamber**
-- **The knife isn't on Roblox yet**, so the katana stands in. It does its normal damage and still grows with kills.
+- **The kit** is the Revolver and the knife, as on the web.
 - **Bullets** are the Revolver's mag on the server:
   - 1 at spawn, +1 for a kill, 3 at most.
   - The server refuses reloads (`f.noReload`), and the client never starts one.
@@ -1228,6 +1242,24 @@ each mode's HUD and result.
 - Each life rolls one weapon per slot from every weapon on Roblox in that slot (the Shredder included: a spawn hands it
   out).
 - The server keeps the roll as the kit, so a hit from anything else is refused. The web game doesn't make that check.
+
+**Spoons & Grapples**
+- The web kit as it is: the knife in its spoon look only, any knife hit kills (`Fight.modDamage`: damage = the target's
+  HP), no items, first to 20 in 360 s.
+- **Run ×1.6** on top of the knife's ×1.1 (`ModeSpeed`, read by `Arsenal`'s run speed), and the anti-cheat's ground
+  limit is told the same (`ACSpeed`).
+- **The grapple pulls ×1.35** (`ModeHook` → `Movement.ropeStep`, web `hookMul`).
+
+**Infection**
+- The web's numbers (`INFECT`): patient zero turns 6 s in (two with 8 or more fighters, never everyone), 180 s.
+  Zombies have the claw only and 200 HP (`f.maxHp`; the HP bar reads `HpMax`).
+- A survivor's death after patient zero, by any cause, turns them: they come back as a zombie. Same-side hits don't
+  land (`RULES.allow` through `Matches.allow`). If every zombie leaves, someone turns at once.
+- **The end:** no survivors left → THE INFECTED WIN. The clock runs out with anyone still a survivor → SURVIVORS WIN.
+  The winning side is on top of the board and takes place 1. Its best player takes the match if they got a kill.
+- **Looks:** zombies are tinted green for everyone (a `Highlight` on the body, the web's green mannequins). The strip
+  under the scoreboard counts down to patient zero, then shows your side (survivors left to infect, for a zombie).
+- Not ported: the web's green haze, the groans, the zombie-share meter. There are no bots.
 
 **Team Deathmatch and Tags (the team modes)**
 - **Sides:** two sides, **PINK and CYAN**: the duels' and pads' own colours (`ModeConfig.SIDES`), not the web's red and

@@ -203,10 +203,13 @@ end
 local function syncHp(f: Fighter)
 	local hum = Fight.hum(f)
 	if hum then
-		hum.MaxHealth = Weapons.HP
+		hum.MaxHealth = f.maxHp or Weapons.HP
 		hum.Health = math.max(0, f.hp)
 	end
-	if f.kind == "player" then (f.ref :: Player):SetAttribute("Hp", math.max(0, math.ceil(f.hp))) end
+	if f.kind == "player" then
+		(f.ref :: Player):SetAttribute("Hp", math.max(0, math.ceil(f.hp)))
+		;(f.ref :: Player):SetAttribute("HpMax", f.maxHp) -- (a classic mode's own HP, infection's zombies: nil = 100)
+	end
 end
 Fight.syncHp = syncHp
 

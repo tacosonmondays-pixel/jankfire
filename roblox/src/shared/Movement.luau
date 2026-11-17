@@ -14,6 +14,7 @@ export type State = {
 	sliding: boolean, crouching: boolean, sprinting: boolean,
 	slip: number?, -- seconds of slipping left (marbles): no grip, no jumping, no steering (public/js/player.js)
 	speedMul: number?, -- run speed x this (the gun you hold, aiming: public/js/weapons.js ME.speedMul)
+	hookMul: number?, -- the grapple's pull x this (spoons & grapples: 1.35, web G.hookMul)
 	slideT: number, slideCd: number, slideArmed: boolean, slideAir: number, -- the slide's time left, its cooldown, crouch let go since, time off the ground
 }
 export type Input = {
@@ -64,13 +65,13 @@ end
 
 -- the classic grapple (hookphys.js classicRopeStep): a flat pull toward the point (off when close), the rope takes a
 -- share of your weight, and it never lets you drift further away (the length only ever shrinks). p = your chest
-function Movement.ropeStep(h: Hook, px: number, py: number, pz: number, vx: number, vy: number, vz: number, dt: number, grav: number): (number, number, number)
+function Movement.ropeStep(h: Hook, px: number, py: number, pz: number, vx: number, vy: number, vz: number, dt: number, grav: number, mul: number?): (number, number, number)
 	local H = Config.hook
 	local dx, dy, dz = h.ax - px, h.ay - py, h.az - pz
 	local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
 	if dist < 0.03 then return vx, vy, vz end
 	local nx, ny, nz = dx / dist, dy / dist, dz / dist
-	local pull = if dist > H.near then H.pull else 0
+	local pull = if dist > H.near then H.pull * (mul or 1) else 0 -- (mul: a classic mode's stronger pull, web classicRopeStep hookMul)
 	vx += nx * pull * dt; vy += ny * pull * dt; vz += nz * pull * dt
 	vy += grav * H.lift * dt
 	h.len = math.min(h.len or dist, dist)
@@ -163,7 +164,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 		end
 	end
 	if st.hook then
-		st.vx, st.vy, st.vz = Movement.ropeStep(st.hook, chestX, chestY, chestZ, st.vx, st.vy, st.vz, dt, grav)
+		st.vx, st.vy, st.vz = Movement.ropeStep(st.hook, chestX, chestY, chestZ, st.vx, st.vy, st.vz, dt, grav, st.hookMul)
 		st.lift = 1
 	elseif st.lift > 0 then -- letting go: the rope's share of your weight fades out instead of dropping you
 		st.lift = math.max(0, st.lift - dt / Config.hook.letGo)

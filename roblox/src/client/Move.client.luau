@@ -286,6 +286,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
 	else
 		st.speedMul = Body.speedMul * Body.boost -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming)
+		st.hookMul = tonumber(player:GetAttribute("ModeHook")) or 1 -- (spoons & grapples: the rope pulls x1.35, Modes.luau)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
 	end
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)

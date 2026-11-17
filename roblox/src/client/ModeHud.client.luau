@@ -9,6 +9,9 @@
 --   * duck rain: each sky duck's shadow and blinking ring where it lands, the duck falling, LOOK UP when it's yours
 --   * randomizer: what you rolled, for a moment, on every spawn
 --   * team modes: your side under the scoreboard; tags spin and bob; a level end reads DRAW
+--   * infection: the turn countdown, then your side (a survivor, or a zombie and how many are left to infect); the end
+--     reads SURVIVORS WIN / THE INFECTED WIN
+--   * gun game's last rung is THE SPOON (the knife in its spoon look)
 -- everything comes from the server: player attributes (ModeId, ModeMatch, ModeLadder, ModeRung, ModeLead, ModeLives,
 -- ModeBullets, ModeOut, ModeLeft, ModeTeam, ModeScore), ItemFx { k = "skyduck" } and workspace.JankModeTags
 local Players = game:GetService("Players")
@@ -82,7 +85,8 @@ local function draw()
 	if not inMatch then lastKey = ""; return end
 	local key = table.concat({ tostring(k), tostring(me:GetAttribute("ModeRung")), tostring(me:GetAttribute("ModeLead")), tostring(me:GetAttribute("ModeLives")),
 		tostring(me:GetAttribute("ModeBullets")), tostring(me:GetAttribute("ModeOut")), tostring(me:GetAttribute("ModeLadder")),
-		tostring(me:GetAttribute("ModeTeam")) }, "/")
+		tostring(me:GetAttribute("ModeTeam")), tostring(me:GetAttribute("ModeZombie")), tostring(me:GetAttribute("ModeSurv")),
+		tostring(me:GetAttribute("ModeTurnAt")), tostring(math.floor(workspace:GetServerTimeNow())) }, "/")
 	if key == lastKey then return end
 	lastKey = key
 	for _, c in pips:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
@@ -91,9 +95,11 @@ local function draw()
 		local ladder = string.split(tostring(me:GetAttribute("ModeLadder") or ""), ",")
 		local rung = tonumber(me:GetAttribute("ModeRung")) or 1
 		local cur, nxt = W[ladder[rung]], W[ladder[rung + 1]]
-		local name = if cur then ('<font color="%s">%s</font>'):format(hex(cur.color), string.upper(cur.name)) else "?"
+		-- (the last rung is the knife in its spoon look: THE SPOON)
+		local curName = if cur and ladder[rung] == "knife" and me:GetAttribute("SpoonLook") then "THE SPOON" elseif cur then string.upper(cur.name) else "?"
+		local name = if cur then ('<font color="%s">%s</font>'):format(hex(cur.color), curName) else "?"
 		local tail = if rung >= #ladder then ('<font color="%s">LAST RUNG</font>'):format(hex(T.ACCENT))
-			elseif nxt then quiet("NEXT") .. "  " .. string.upper(nxt.name) else ""
+			elseif nxt then quiet("NEXT") .. "  " .. (if ladder[rung + 1] == "knife" and me:GetAttribute("SpoonLook") then "THE SPOON" else string.upper(nxt.name)) else ""
 		line.Text = name .. "      " .. tail
 		pips.Visible = true
 		strip.Size = UDim2.fromOffset(0, 50)
@@ -120,6 +126,19 @@ local function draw()
 		label(11, "LIVES")
 		gap(12, 4)
 		for i = 1, ModeConfig.OITC.lives do pip(12 + i, 10, 10, if i <= lives then T.TEXT else T.TRACK, 0) end
+	elseif k == "inf" then
+		-- before patient zero: the countdown; then your side
+		pips.Visible = false
+		strip.Size = UDim2.fromOffset(0, 30)
+		local at = me:GetAttribute("ModeTurnAt")
+		local sv = tonumber(me:GetAttribute("ModeSurv")) or 0
+		if type(at) == "number" and at > workspace:GetServerTimeNow() then
+			line.Text = quiet("SOMEONE TURNS IN") .. "  " .. tostring(math.ceil(at - workspace:GetServerTimeNow()))
+		elseif me:GetAttribute("ModeZombie") then
+			line.Text = ('<font color="%s">YOU ARE A ZOMBIE</font>'):format(ModeConfig.INF.color) .. "      " .. quiet("LEFT TO INFECT") .. "  " .. tostring(sv)
+		else
+			line.Text = quiet("SURVIVE") .. "      " .. tostring(sv) .. "  " .. quiet(if sv == 1 then "SURVIVOR" else "SURVIVORS")
+		end
 	elseif k == "tdm" or k == "tags" then
 		-- your side, in its colour, and what the side is playing to
 		pips.Visible = false
@@ -154,6 +173,17 @@ Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	if c4 and c4:IsA("TextLabel") then c4.Text = tostring(cols[2] or "DEATHS") end
 	-- (a team mode that ended level: a draw, not "nobody wins")
 	local def = if type(r.mode) == "string" then ModeConfig.byId[r.mode] else nil
+	-- (infection: the winning side is the title)
+	local res = me:GetAttribute("ModeResult")
+	if def and def.kind == "inf" and type(res) == "string" then
+		local title = head.Parent and head.Parent:FindFirstChild("Title")
+		if title and title:IsA("TextLabel") then
+			task.defer(function()
+				title.Text = if res == "infected" then "THE INFECTED WIN" else "SURVIVORS WIN"
+				title.TextColor3 = if res == "infected" then Color3.fromHex(string.sub(ModeConfig.INF.color, 2)) else T.TEXT
+			end)
+		end
+	end
 	if def and def.sides == 2 and r.winner == nil then
 		local title = head.Parent and head.Parent:FindFirstChild("Title")
 		if title and title:IsA("TextLabel") then task.defer(function() title.Text = "DRAW"; title.TextColor3 = T.TEXT end) end

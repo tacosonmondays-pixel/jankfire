@@ -1,4 +1,4 @@
-// the viewmodel animations step 2 needs, as Luau data (roblox/src/shared/Anims.luau): the draw, getting parried, and
+// the viewmodel animations, as Luau data (roblox/src/shared/Anims.luau): the draw, getting parried, and
 // the katana's swings / draw / parry, copied from public/js/anim.js and public/js/katanavm.js (same keys, same maths
 // for the katana's "hilt + blade direction + edge" keys), plus the two reloads, keyed from the timings in
 // roblox/docs/WEAPONS.md (reloads.js). metres and radians, camera space; Luau scales metres to studs.
@@ -59,6 +59,35 @@ const A = {
     KP(0.34, [0.085, -0.095, -0.41], [-0.74, 0.46, -0.45], [0.05, 0.4, -0.9], 'linear'),
     KK(0.56),
   ], events: [[0.01, 'whoosh']], trail: [0, 0.07] },
+  // the classic modes' melee (17 Nov 2026): the knife's slashes and draw from public/js/bladefeel.js (the re-felt versions
+  // that replace anim.js's; the toss and finger channels aren't ported: the hand holds it throughout), its heavy stab
+  // and the zombie claw's swipes from public/js/anim.js. offsets from the weapon's rest pose (Weapons vm)
+  swing_knife: { hit: 0.1, keys: [
+    K(0), K(0.05, [0.085, 0.09, 0.05], [0.32, -0.64, -0.64]), K(0.075, [0.095, 0.1, 0.055], [0.37, -0.7, -0.7], 'linear'),
+    K(0.12, [-0.15, 0.0, -0.16], [-0.12, 1.0, 0.86], 'snap'), K(0.18, [-0.18, -0.02, -0.14], [-0.18, 1.12, 0.96]),
+    K(0.4, [0, 0, 0], [0, 0, 0], 'back'),
+  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.24] },
+  swing_knife2: { hit: 0.1, keys: [
+    K(0), K(0.05, [-0.11, 0.07, 0.04], [0.26, 0.82, 0.66]), K(0.075, [-0.12, 0.08, 0.045], [0.3, 0.88, 0.72], 'linear'),
+    K(0.12, [0.09, 0.0, -0.16], [-0.12, -0.84, -0.8], 'snap'), K(0.18, [0.11, -0.02, -0.14], [-0.18, -0.95, -0.88]),
+    K(0.4, [0, 0, 0], [0, 0, 0], 'back'),
+  ], events: [[0.07, 'whoosh']], trail: [0.07, 0.24] },
+  stab_knife: { hit: 0.29, keys: [
+    K(0), K(0.22, [0.05, 0.07, 0.16], [0.5, 0.15, 0.15], 'in'),
+    K(0.29, [-0.08, 0.02, -0.24], [-0.12, 0.42, 0.12], 'snap'),
+    K(0.46, [-0.08, 0.015, -0.23], [-0.14, 0.44, 0.12]),
+    K(0.85, [0, 0, 0], [0, 0, 0], 'smooth'),
+  ], events: [[0.25, 'whooshBig']], trail: [0.23, 0.34] },
+  draw_knife: { keys: [K(0, [0.01, -0.16, 0.02], [-0.5, 0, 0]), K(0.2, [0, 0.02, 0], [0.1, 0, 0], 'snap'), K(0.3, [0, -0.006, 0], [-0.04, 0, 0]), K(0.4)],
+    events: [[0.1, 'whoosh'], [0.25, 'shing']] },
+  swing_claw: { hit: 0.1, keys: [
+    K(0), K(0.07, [0.1, 0.1, 0.06], [0.6, -0.5, -0.5], 'in'),
+    K(0.14, [-0.16, -0.08, -0.12], [-0.5, 0.9, 0.7], 'snap'), K(0.24, [-0.18, -0.1, -0.1], [-0.55, 1.0, 0.75]), K(0.42),
+  ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
+  swing_claw2: { hit: 0.1, keys: [
+    K(0), K(0.07, [-0.14, 0.1, 0.05], [0.6, 0.7, 0.6], 'in'),
+    K(0.14, [0.1, -0.08, -0.12], [-0.5, -0.7, -0.7], 'snap'), K(0.24, [0.12, -0.1, -0.1], [-0.55, -0.8, -0.75]), K(0.42),
+  ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
   // the Redline's 1.8 s pit stop (reloads.js:165-172): tilt, a jerry can tips in three glugs, a wrist-twist rev
   reload_redline: { keys: [
     K(0), K(0.2, [0.02, -0.03, 0.02], [0.22, 0.3, 0.5]), K(1.26, [0.02, -0.035, 0.02], [0.24, 0.3, 0.5]),

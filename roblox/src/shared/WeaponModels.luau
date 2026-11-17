@@ -138,6 +138,43 @@ BUILD.katana = function(b)
 	spot(b, "Fore", Vector3.new(0, 0, 0.085))
 end
 
+-- the classic modes' melee (17 Nov 2026): code stand-ins until the kit models are in JankfireWeapons (w_knife, w_spoon,
+-- w_claw). chunky, flat colours; the grip at the origin, the tip along -Z; Muzzle = the tip, Mid = 45% of the way there
+BUILD.knife = function(b)
+	bx(b, "handle", 0.026, 0.032, 0.11, 0x2b2622, 0, 0, 0.035)
+	bx(b, "guard", 0.034, 0.042, 0.012, 0x3a3d45, 0, 0.002, -0.026)
+	local blade = bx(b, "blade", 0.006, 0.034, 0.12, 0xc8d0dc, 0, 0.004, -0.092)
+	blade.Material = Enum.Material.Metal; blade.Reflectance = 0.2
+	local tip = bx(b, "blade", 0.006, 0.022, 0.04, 0xdde2e7, 0, 0.01, -0.165, -0.25)
+	tip.Material = Enum.Material.Metal; tip.Reflectance = 0.25
+	-- (the spots are the kit model's, gun-models WeaponKit: a fitted model keeps the code model's spots)
+	spot(b, "Muzzle", Vector3.new(0, 0.0026, -0.2138))
+	spot(b, "Mid", Vector3.new(0, 0.0012, -0.0797))
+	spot(b, "Grip", Vector3.new(0, 0, 0.03))
+end
+-- the knife's spoon look (web knife_spoon: a serving spoon that still stabs)
+BUILD.spoon = function(b)
+	cylZ(b, "handle", 0.009, 0.2, 0xc8ccd2, 0, 0, -0.02)
+	local bowl = part(b, "bowl", Enum.PartType.Cylinder, Vector3.new(0.016, 0.07, 0.07), 0xd4d8de, Vector3.new(0, 0.004, -0.15), CFrame.Angles(0, 0, math.pi / 2))
+	bowl.Material = Enum.Material.Metal; bowl.Reflectance = 0.3
+	bx(b, "lip", 0.05, 0.012, 0.03, 0xd4d8de, 0, 0.004, -0.188)
+	spot(b, "Muzzle", Vector3.new(-0.0027, -0.0067, -0.132))
+	spot(b, "Mid", Vector3.new(-0.0012, -0.003, -0.0429))
+	spot(b, "Grip", Vector3.new(0, 0, 0.03))
+end
+-- the zombie claw (web models.js claw): a torn cuff and four long dirty nails out of the fist
+BUILD.claw = function(b)
+	cylZ(b, "cuff", 0.05, 0.06, 0x4a5a3a, 0, -0.005, 0.05)
+	for i = 0, 3 do
+		local x = -0.045 + i * 0.03
+		bx(b, "finger", 0.022, 0.024, 0.07, 0x55782b, x, 0.004, -0.04, -0.2)
+		bx(b, "nail", 0.012, 0.012, 0.07, 0xd8cf9a, x, -0.006, -0.1, -0.45)
+	end
+	spot(b, "Muzzle", Vector3.new(0, -0.0332, -0.149))
+	spot(b, "Mid", Vector3.new(0, 0, -0.05))
+	spot(b, "Grip", Vector3.new(0, 0, 0))
+end
+
 -- a plain gun with no hand-written code model: a stand-in from its row in Weapons (mdl = the Blender file's bounds and
 -- the spots, metres): a receiver, a barrel to the muzzle, a grip, a stripe in the weapon's colour. it only shows
 -- until the Blender model (JankfireWeapons.w_<id>) is imported, and it carries the same Muzzle / Grip / Fore /
@@ -214,7 +251,10 @@ end
 -- build a weapon. k = studs per web metre (viewmodel: 3 x its VM scale, third person: 3 x 1.5). skin = a weapon skin's
 -- id (GunSkins: its model in ReplicatedStorage.JankfireSkins, same frame and moving pieces as the gun): drawn instead
 function WeaponModels.build(id: string, k: number, skin: string?): Model?
-	local fn = BUILD[id]
+	-- (the knife's spoon look in a classic mode: its own model, w_spoon / BUILD.spoon, not a catalog skin)
+	local look = if id == "knife" and skin == "spoon" then "spoon" else id
+	if look == "spoon" then skin = nil end
+	local fn = BUILD[look]
 	local row = (Weapons.list :: any)[id]
 	local mdl = row and row.mdl
 	if not fn and not mdl then return nil end
@@ -229,7 +269,7 @@ function WeaponModels.build(id: string, k: number, skin: string?): Model?
 	if fn then fn(b) else buildPlain(b, mdl, row.color) end
 	for _, c in m:GetChildren() do if c:IsA("BasePart") and c ~= root then c:SetAttribute("Code", true) end end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
-	local tmpl = lib and lib:FindFirstChild("w_" .. id)
+	local tmpl = lib and lib:FindFirstChild("w_" .. look)
 	local skins = skin and ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local st = skins and skins:FindFirstChild(skin :: string)
 	if st and st:IsA("Model") and st:GetAttribute("Weapon") == id then tmpl = st; m:SetAttribute("Skin", skin) end

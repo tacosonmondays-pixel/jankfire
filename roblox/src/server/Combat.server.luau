@@ -333,13 +333,14 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	if W[wid].marbles then makePatch(f, e, ends :: { Vector3 }) end
 end)
 
-SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown)
+SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown)
 	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" then return end
-	if Rules.swing(f, wid, now()) then return end
+	if Rules.swing(f, wid, now(), heavy == true) then return end -- (heavy: the knife's right-click stab)
 	Fight.shot(f, wid)
-	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId })
+	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId, h = if heavy == true then true else nil,
+		clip = if heavy == true then "stab_" .. wid else nil }) -- (clip: the stab others see, ThirdPerson.luau)
 	Fight.shotFx(f, wid, nil, "swing")
 end)
 
@@ -376,8 +377,19 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 			callout(f, "PARRIED", 0.8)
 			continue
 		end
-		local kb = lk.Unit * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0)
-		Fight.hurt(t, w.dmg, f, wid, false, kb, tp)
+		-- the knife's heavy stab has its own numbers; from behind (web room.js: the victim's look . attacker->victim over
+		-- 0.45) the knife does x3 and it counts as a headshot
+		local sw = f.swing
+		local hv = if sw and sw.heavy then w.heavy else nil
+		local dmg = if hv then hv.dmg else w.dmg
+		local hs = false
+		if w.backstab then
+			local face = Fight.facing(t)
+			local flatF, toT = Vector3.new(face.X, 0, face.Z), Vector3.new(tp.X - fr.Position.X, 0, tp.Z - fr.Position.Z)
+			if flatF.Magnitude > 1e-3 and toT.Magnitude > 1e-3 and flatF.Unit:Dot(toT.Unit) > 0.45 then dmg *= w.backstab; hs = true end
+		end
+		local kb = lk.Unit * (if hv then hv.kb else (w.kb or 0)) + Vector3.new(0, if hv then hv.kbUp else (w.kbUp or 0), 0)
+		Fight.hurt(t, dmg, f, wid, hs, kb, tp)
 	end
 end)
 
