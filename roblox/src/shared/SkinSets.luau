@@ -270,15 +270,18 @@ SkinSets.FX = {
 		pulse = { parts = { "barrel" }, t = 0.1 }, -- (the nose ring and the light line flare on each shot)
 		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
 	},
-	katana_sakura = { -- petals drifting off the blossom guard, the sprig and the blade's back (the blade points move with its stretch)
+	katana_sakura = { -- (the J-A Maki-e katana since v498) petals drifting off the guard's gold rim, the hilt's two blossom
+		-- ornaments and the blade's back (the blade points move with its stretch). points measured on the model, 17 Nov: the
+		-- guard's top at y 0.055-0.059, the blossoms at x +-0.023 z -0.024, the blade's back y 0.034 at z -0.26 rising to 0.07
 		idle = {
 			{ kind = "petal", colour = Color3.fromRGB(233, 183, 195), colour2 = Color3.fromRGB(246, 221, 227), rate = 2.2,
 				life = 2.2, size = 0.016, drift = "fall",
-				at = { { 0, 0.066, -0.144 }, { 0, 0.07, -0.229 }, { 0, 0.042, -0.453 }, { 0, 0.071, -0.731 } }, blade = { 2, 3, 4 } },
+				at = { { 0, 0.057, -0.148 }, { 0.023, 0.006, -0.024 }, { 0, 0.035, -0.26 }, { 0, 0.042, -0.453 }, { 0, 0.071, -0.731 } },
+				both = true, blade = { 3, 4, 5 } },
 		},
 		glow = { colour = Color3.fromRGB(236, 186, 200) },
 		trail = { colour = Color3.fromRGB(246, 196, 212), life = 0.2, width0 = 0.04, width1 = 0, -- (a swing trail off the blade)
-			segs = { { { 0, 0.04, -0.25 }, { 0, 0.075, -0.78 } } } },
+			segs = { { { 0, 0.035, -0.25 }, { 0, 0.077, -0.78 } } } },
 	},
 } :: { [string]: any }
 

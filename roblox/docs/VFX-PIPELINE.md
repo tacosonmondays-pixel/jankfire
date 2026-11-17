@@ -396,3 +396,13 @@ tongues, white with soft alpha, made for tinting.
   bright at 2 studs; the squared one, photographed in a second Play 1.6 studs from the hall's wall, leaves the wall
   its own colour (`round13/wall-glare-before-after.jpg`).
 - Sheet: `round13/muzzle-flash-before-after.jpg` (round 12's frames above, this round's below).
+
+### Round 14: the sakura katana's petals on the new model (17 Nov 2026, place version 501)
+
+The gun models session rebuilt `katana_sakura` as the J-A Maki-e katana (v498) and asked for a re-check: its petal
+points sat on the old blossom guard and sprig. Measured on the new model's file (`w_katana@katana_sakura.glb`, gun
+frame): the guard's first point was 1 cm above the new, smaller guard, and the first blade point 4 cm above the
+blade's back (0.07 where the back is at 0.033). The petals now come off the guard's gold rim, the hilt's two blossom
+ornaments (mirrored) and three points on the blade's back; the swing trail follows the back. First-person photo:
+`round14/sakura-katana-petals-fp.jpg` (petals on the blade, the rim and the hilt, none floating). Third person not
+photographed: the shoulder camera sits behind the avatar's hat.
