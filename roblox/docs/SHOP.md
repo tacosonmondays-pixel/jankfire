@@ -427,8 +427,16 @@ Default with the arrow showing; once each flow ended, it was LockCenter with the
 - The owner's inventory was put back afterwards (249 items, via the loot dev `set` op). Stock was 0 in all three
   kinds, so every opening was a free one.
 
-Not tested: the third-person shoulder camera, the phone, the Play, party and leaderboard panels, the equip screen, the
-emote wheel and a report. They take the same two calls.
+The rest, tested after (place version 717, solo Play, one per-frame log, 0 frames in any of 18 phases with a menu up
+and the mouse locked or the arrow hidden). Each screen went through its own test hook, and each gave Default with the
+arrow showing while it was open and LockCenter with the arrow hidden once it closed:
+- the emote wheel (FlairTest wheel / close), the equip screen (ui / uiclose), the party panel (PlayTest party /
+  unparty), the leaderboard (board / noboard), the Play panel (play / close);
+- third person (V): the shop opened and closed over the shoulder camera. Toggle Cursor there held the look through
+  mouse moves (0 degrees), and off gave LockCenter again;
+- the phone layout (TouchForce): the shop opened and closed the same way.
+
+Not tested: a report (ReportUI), the anti-cheat panel.
 
 ## Toggle Cursor (17 Nov)
 
