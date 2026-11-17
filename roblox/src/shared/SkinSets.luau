@@ -119,6 +119,9 @@ SkinSets.TIER = {
 	marbles_gumball = "mid", redline_hotrod = "mid", pistol_calc = "mid", revolver_flint = "mid", revolver_drill = "mid",
 	katana_baguette = "mid", katana_neon = "mid", shredder_chipper = "mid",
 } :: { [string]: string }
+-- the VIP daily reward's sniper (17 Nov 2026): the Triangulum, a high-tier skin in no set and not a concept (the shop
+-- session's VipDailyData.EXCLUSIVE marks it daily-only; the loot session lists it in LootTable.SKINS)
+SkinSets.TIER.sniper_triangulum = "high"
 for id, row in SkinSets.SKINS do SkinSets.TIER[id] = row[5] end
 
 -- the older skins remodelled on 16 Nov (after a review of every skin) that took a new name (the loot session's

@@ -21,8 +21,16 @@
 #        corner needs room beside it (it raises with the spot; give hidden corners a fillet >= r);
 #      - two solids of one piece must never share a plane (a muzzle block flush with its barrel's face): one colour, so
 #        gun_zfix cannot see it, but the atlas gives each its own texels and Roblox flickers. `solids` below finds them;
-#      - a boolean on a self-folded curve keeps the cutter (the first sign: thin plates sticking out of the part).
+#      - a boolean on a self-folded curve keeps the cutter (the first sign: thin plates sticking out of the part);
+#      - gun_set wraps every builder in gun_zfix, which pushes one face of every flicker pair 8 mm out: two faces of
+#        different looks, facing one way, overlapping, within 0.02 studs on its rack (0.02 x the gun's length / the rack's
+#        6.6 or 3.9 studs: 6.3 mm on the 2.1 m Sniper, about 3.5 mm on the AR, 1.7 mm on a pistol). Hidden faces count:
+#        an inlay let in 1.6 mm (its top over the recess floor), a 4 mm line in a square
+#        groove (its top side over the groove's lower wall), a part running on inside another beside its sides. Let
+#        inlays in deeper than that, put narrow lines in V grooves, end parts at the faces they meet; build until
+#        `JF_NOZFIX=1 ... gun_zfix.py -- <key>` shows 0 pairs, so the fix moves nothing (the Triangulum, 17 Nov).
 # 2. CHECK.  JF_EXTRA=<module> blender -b --factory-startup -P tools/roblox/gun_check.py -- <key ...>  (0 loose)
+#            JF_NOZFIX=1 JF_EXTRA=<module> blender -b --factory-startup -P tools/roblox/gun_zfix.py -- <key> (0 pairs)
 #            blender -b --factory-startup -P tools/roblox/artist_kit.py -- solids <K.glb ...>   (0 same-piece planes)
 #            and the flicker scan on the exported glbs (gun_zfix's finder; ROUTE T must show 0 pairs)
 # 3. BAKE.   bake_gun(g, out_dir) takes ANY built gun (an ArtGun, or a plain kit gun from gun_set):
@@ -400,6 +408,8 @@ class ArtGun(Gun):
         self.ao = None     # the bake's AO reach (metres); None = from the gun's length
         self.shell = None  # ROUTE S: the pieces ('node_wzX__slot') or nodes that get a shade shell; None = every painted
                            # piece (to keep a gun in budget, shell only its big masses: the shells double what they cover)
+        self.shell_drop = None  # ROUTE S: f((x, y, z) face centre, (nx, ny, nz) normal), weapon frame -> True drops that
+                           # face from the shell: an inlay's recess (its walls and floor, pushed out, would cover the inlay)
 
     def put(self, piece, *objs):
         self.slots[piece.split('__')[1]]  # (an unknown slot fails here, not at export)
@@ -466,7 +476,7 @@ def _groups(bm, fam):
     return out
 
 
-def atlas_uvs(objs, margin=0.006):
+def atlas_uvs(objs, margin=0.006, rotate=False):
     """one UV layer 'UVMap' on every object: family islands (above) packed into 0..1 together, no turning; a chamfer
        strip (an island thinner than THIN) joins the island of the face beside it when it can be projected that way,
        so the atlas is a few big islands, not hundreds of strips. returns (texels per metre at ATLAS, share of the
@@ -514,7 +524,7 @@ def atlas_uvs(objs, margin=0.006):
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.uv.select_all(action='SELECT')
-    bpy.ops.uv.pack_islands(rotate=False, margin=margin, margin_method='FRACTION', shape_method='CONCAVE')
+    bpy.ops.uv.pack_islands(rotate=rotate, margin=margin, margin_method='FRACTION', shape_method='CONCAVE')
     bpy.ops.object.mode_set(mode='OBJECT')
     return _uv_stats(objs)
 
@@ -679,8 +689,16 @@ def bake_gun(g, out_dir, ao=None):
     # light atlas reads like a barcode, which an upload must never look like)
     painted = [o for o in objs if g.slots[o.data.materials[0].name.split('.')[0]]['kind'] == 'p'
                and lum(g.slots[o.data.materials[0].name.split('.')[0]]['color']) > 0.015]
+    want = getattr(g, 'shell', None)
+    if want is not None:
+        # (a gun that names its shell pieces ships as ROUTE S: only those need the shading, so only they go in the
+        # atlas, packed with turning allowed (a shell never wears a wrap): about twice the texels on what is shaded)
+        def shelled(o):
+            node = o.name.split('.')[0]
+            return '%s__%s' % (node, o.data.materials[0].name.split('.')[0]) in want or node.split('_wz')[0] in want
+        painted = [o for o in painted if shelled(o)]
     flat = [o for o in objs if o not in painted]   # (glow and glass keep their own look: no picture, no UVs here)
-    density, used, over = atlas_uvs(painted)
+    density, used, over = atlas_uvs(painted, rotate=want is not None)
     w = bpy.data.worlds.new('w'); sc.world = w; w.light_settings.distance = ao
     bpy.ops.object.select_all(action='DESELECT')
     for o in painted: o.select_set(True)   # (the glow and glass pieces still occlude)
@@ -755,6 +773,11 @@ def bake_gun(g, out_dir, ao=None):
     cimg = bpy.data.images.load(base + '_color.png')
     for m in {o.data.materials[0] for o in objs}:
         m['jf_color'] = g.slots[m.name.split('.')[0]]['color']
+    if want is not None:   # (a slot shared with flat pieces: the pictured pieces get their own copy, "<slot>.001")
+        shared = {o.data.materials[0] for o in flat} & {o.data.materials[0] for o in painted}
+        copies = {m: m.copy() for m in shared}
+        for o in painted:
+            if o.data.materials[0] in copies: o.data.materials[0] = copies[o.data.materials[0]]
     for m in {o.data.materials[0] for o in painted}:
         nt = m.node_tree
         tn = nt.nodes.new('ShaderNodeTexImage'); tn.image = cimg
@@ -784,7 +807,12 @@ def bake_gun(g, out_dir, ao=None):
         if want is not None and piece not in want and nodeb not in want: continue
         shells.setdefault(nodeb, bmesh.new()).from_mesh(o.data)
     shell_tris = 0
+    drop = getattr(g, 'shell_drop', None)
     for nodeb, bm in shells.items():
+        if drop is not None:
+            bm.normal_update()
+            gone = [f for f in bm.faces if drop(tuple((lambda c: (c.x, c.z, -c.y))(f.calc_center_median())), (f.normal.x, f.normal.z, -f.normal.y))]
+            if gone: bmesh.ops.delete(bm, geom=gone, context='FACES')
         bm.normal_update()
         for vt in bm.verts: vt.co += vt.normal * SHELL
         me = bpy.data.meshes.new(nodeb + '_wzN'); bm.to_mesh(me); bm.free()
@@ -886,7 +914,8 @@ def coplanar_solids(path):
     objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     ys = [(o.matrix_world @ v.co).y for o in objs for v in o.data.vertices]
     L = max(ys) - min(ys)
-    M = Matrix.Scale((6.6 if L > 0.75 else 3.9) / L, 4) @ Matrix.Rotation(-math.pi / 2, 4, 'X')
+    K = (6.6 if L > 0.75 else 3.9) / L
+    M = Matrix.Scale(K, 4) @ Matrix.Rotation(-math.pi / 2, 4, 'X')
     pieces = {}
     for o in objs:
         bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world)
@@ -911,10 +940,11 @@ def coplanar_solids(path):
     out = []
     for (pa, pb, nk), (ar, n, da, db, na, nb) in hits.items():
         a, b = found[pa][0].split('#')[0], found[pb][0].split('#')[0]
-        if a == b: out.append((a, abs(da - db), ar))
+        if a == b: out.append((a, abs(da - db), ar, n, da / K))
     print('SOLIDS %s: %d same-piece pairs sharing a plane' % (os.path.basename(path), len(out)))
-    for a, gap, ar in sorted(out, key=lambda t: -t[2])[:10]: print('   %-40s gap %.4f area %.3f' % (a, gap, ar))
-    return out
+    for a, gap, ar, n, d in sorted(out, key=lambda t: -t[2])[:10]:
+        print('   %-40s gap %.4f area %.3f  n (%.1f, %.1f, %.1f) plane at %.4f m' % (a, gap, ar, n.x, n.y, n.z, d))
+    return [t[:3] for t in out]
 
 
 # ================================================================================================ the command line
