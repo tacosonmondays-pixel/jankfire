@@ -18,11 +18,14 @@
 --   ("state")                -> the state (below)
 --   ("reroll", slot)         -> swap that quest (not done) for another of its tier: once a day, free
 --   ("redeem", kind, cur)    -> kind "crate"|"bag"|"spray", cur "tix"|"brass": { ok, why?, stock, state }
+--   ("seen")                 -> the panel was opened (QuestNews goes off)
 -- the state: { brass, tix, owed?, list = { { slot, id, tier, text, goal, n, done } x3 }, rerolls (left today), pts,
 --   got (steps paid), dayLeft, weekLeft (s), save, frozen }
 -- JankfireRemotes.QuestPush (RemoteEvent) to the client: { t = "done", id, text, tier, brass, pts } (a quest finished),
 -- { t = "step", i, at, brass?, tix? } (a weekly step paid), { t = "state", state } (progress moved)
--- player attributes: Brass, CrateTickets, QuestsDone (today's, 0-3), QuestSave ("loading"|"cloud"|"off"|"lost").
+-- player attributes: Brass, CrateTickets, QuestsDone (today's, 0-3), QuestSave ("loading"|"cloud"|"off"|"lost"),
+-- QuestNews (true: something new since the panel was last opened: today's quests not looked at, a quest finished or a
+-- weekly step paid since. rewards pay themselves, so there's never anything to claim: this is the badge over Dune)
 -- Studio play tests: ServerStorage.JankQuestTest (BindableFunction), Quests.test at the end.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -60,7 +63,8 @@ local LOOT_FREE_CAP = 10 -- (Loot.luau BUY_MAX: free stock past this is lost)
 local function template(): any
 	return { v = 1, brass = 0, tix = 0, day = -1, list = {}, rolls = 0, avoid = {}, week = -1, pts = 0, got = 0,
 		earned = {}, owed = { b = 0, x = 0 }, pending = {}, nextId = 1, voids = {}, total = { quests = 0, brass = 0, tix = 0 },
-		grants = {}, gday = -1, gsum = 0 } -- (Quests.grant: other modules' Brass, the last 50, and today's sum for the cap)
+		grants = {}, gday = -1, gsum = 0, -- (Quests.grant: other modules' Brass, the last 50, and today's sum for the cap)
+		news = true } -- (something new since the panel was last opened: today's roll, a finished quest, a step paid)
 end
 local store = Profiles.new(if STUDIO then "JankfireQuests_studio" else "JankfireQuests_v1", template)
 
@@ -108,6 +112,7 @@ local function freshDay(uid: number, d: any): boolean
 		d.list[i] = { id = id, n = 0, done = false }
 	end
 	d.day, d.rolls, d.avoid = day, 0, {}
+	d.news = true
 	return true
 end
 local function freshWeek(d: any): boolean
@@ -152,6 +157,7 @@ local function publish(s: State)
 	local done = 0
 	if d and d.day == QD.day(now()) then for _, e in d.list do if e.done then done += 1 end end end
 	p:SetAttribute("QuestsDone", done)
+	p:SetAttribute("QuestNews", d ~= nil and d.news == true)
 	p:SetAttribute("QuestSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
 end
 
@@ -187,6 +193,7 @@ local function complete(s: State, q: QD.Quest)
 	d.total.quests = num(d.total.quests) + 1
 	freshWeek(d)
 	d.pts = num(d.pts) + tier.pts
+	d.news = true
 	push(s, { t = "done", id = q.id, text = q.text, tier = q.tier, brass = tier.brass, pts = tier.pts })
 	while num(d.got) < #QD.STEPS and d.pts >= QD.STEPS[num(d.got) + 1].at do
 		d.got = num(d.got) + 1
@@ -519,6 +526,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	if not s or not s.ready then return { ok = false, why = "your quests are still loading" } end
 	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "state" then return stateFor(s) end
+	if op == "seen" then -- (the panel was opened: nothing new any more, QuestNews off)
+		local d0 = dataOf(s)
+		if d0 and d0.news then d0.news = false; dirty(s); publish(s) end
+		return { ok = true }
+	end
 	local d = dataOf(s)
 	if not d then return { ok = false, why = "your quests are still loading" } end
 	if op == "reroll" then

@@ -1,4 +1,5 @@
--- the ways into the QUESTS screen (QuestUI.luau has it): the U key and the QUESTS button over PLAY (hub only, like the
+-- the ways into the QUESTS screen (QuestUI.luau has it): the U key, any ProximityPrompt with the attribute QuestsOpen (the
+-- hub's Dune), and the QUESTS button over PLAY (hub only, like the
 -- other buttons in that column), the wallet in the top-right corner (Brass and Crate Tickets, from the player
 -- attributes Quests.luau keeps), and the toasts the server pushes when a quest finishes or a weekly step pays.
 -- a test hook (Play tests driven from Studio, which can't call into this script's modules): set the local player's
@@ -7,6 +8,7 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local QuestUI = require(script.Parent:WaitForChild("QuestUI"))
@@ -21,6 +23,13 @@ UIS.InputBegan:Connect(function(io, gp)
 	-- (another menu up: the loadout, the shop, a card. only one at a time)
 	if not QuestUI.isOpen() and me:GetAttribute("LoadoutOpen") then return end
 	QuestUI.toggle()
+end)
+
+-- any ProximityPrompt carrying the attribute QuestsOpen (or QuestOpen) = true opens the panel: the hub's Dune ("Dune is
+-- the quests guy")
+ProximityPromptService.PromptTriggered:Connect(function(prompt, who)
+	if who ~= me or (prompt:GetAttribute("QuestsOpen") ~= true and prompt:GetAttribute("QuestOpen") ~= true) then return end
+	QuestUI.open()
 end)
 
 -- the server's pushes
@@ -63,6 +72,10 @@ local face = T.new("TextButton", {
 T.corner(face); T.edge(face)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, face)
 T.key(face, "U", UDim2.fromOffset(-34, 7))
+-- something new (QuestNews): a small amber dot on the button's top right corner
+local dot = T.new("Frame", { Name = "News", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(1, -2, 0, 2), Size = UDim2.fromOffset(8, 8), Visible = false }, face)
+T.corner(dot, 99)
 -- today's quests done, 0/3..3/3
 local count = T.text(face, "Done", "0/3", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
 count.Position = UDim2.fromOffset(0, 0)
@@ -73,9 +86,10 @@ face.MouseButton1Click:Connect(function() QuestUI.open() end)
 
 -- ------------------------------------------------------------------ the wallet, top right
 -- (its own ScreenGui: on a phone TouchControls moves JankQuestsButton.Scaled's one child, the button, into its right-
--- hand stack; the wallet then sits under the touch row of EMOTE / SETTINGS pills, at y 58: agreed 17 Nov)
+-- hand stack. the wallet sits at y 58 on every screen: under the touch row of EMOTE / SETTINGS pills on a phone (agreed
+-- 17 Nov) and under the settings pill on a computer)
 local walletGui = T.new("ScreenGui", { Name = "JankQuestsWallet", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
-local wallet = T.plate(T.scaled(walletGui), "Wallet", UDim2.new(1, -24, 0, 16), UDim2.fromOffset(0, 32))
+local wallet = T.plate(T.scaled(walletGui), "Wallet", UDim2.new(1, -24, 0, 58), UDim2.fromOffset(0, 32))
 wallet.AnchorPoint = Vector2.new(1, 0)
 wallet.AutomaticSize = Enum.AutomaticSize.X
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, wallet)
@@ -94,8 +108,9 @@ local function refresh()
 	if t[2] then t[2].Text = QuestUI.comma(tonumber(me:GetAttribute("CrateTickets")) or 0) end
 	count.Text = ("%d/3"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
 	count.TextColor3 = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then T.ACCENT else T.MUTED
+	dot.Visible = me:GetAttribute("QuestNews") == true
 end
-for _, a in { "Brass", "CrateTickets", "QuestsDone" } do me:GetAttributeChangedSignal(a):Connect(refresh) end
+for _, a in { "Brass", "CrateTickets", "QuestsDone", "QuestNews" } do me:GetAttributeChangedSignal(a):Connect(refresh) end
 refresh()
 
 RunService.Heartbeat:Connect(function()
@@ -103,6 +118,4 @@ RunService.Heartbeat:Connect(function()
 	local show = ready and not QuestUI.isOpen() and not me:GetAttribute("LoadoutOpen") and me:GetAttribute("Zone") ~= "match"
 	if face.Visible ~= show then face.Visible = show end
 	if wallet.Visible ~= show then wallet.Visible = show end
-	local y = if me:GetAttribute("TouchOn") == true then 58 else 16
-	if wallet.Position.Y.Offset ~= y then wallet.Position = UDim2.new(1, -24, 0, y) end
 end)

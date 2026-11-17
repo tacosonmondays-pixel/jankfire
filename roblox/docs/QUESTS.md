@@ -225,10 +225,17 @@ a cheater earn them twice.
 ## 8. The screen (`src/client/QuestUI.luau`, `QuestClient.client.luau`)
 
 - **U** or the QUESTS button opens the panel. The button sits in the hub's button column, over PLAY.
+- **Dune** (the owner: "Dune is the quests guy"): any ProximityPrompt with the attribute `QuestsOpen = true` (or `QuestOpen`)
+  opens the panel. The hub session puts one on the Dune NPC. From client code, `QuestUI.open()` does the same.
+- **Something new:** the player attribute `QuestNews` (boolean, from the server) is true from the day's new roll, or
+  from a quest finishing or a weekly step paying, until the panel is next opened or closed (the remote's `"seen"`).
+  Rewards pay themselves, so there is never anything to claim: this is the badge over Dune, and a small amber dot on
+  the QUESTS button.
 - **The panel:** three quest cards (tier, name, which weapons count, a progress bar, Brass and points, REROLL), the
   weekly bar with its steps and rewards, the wallet, and the time to the next reset. OPEN SHOP goes to the
   containers.
-- **The wallet chip:** Brass and tickets in the top-right corner, in the hub.
+- **The wallet chip:** Brass and tickets in the top-right corner, in the hub, at y 58: under the settings pill on a
+  computer, and under the touch row on a phone.
 - **A toast:** a short plate at the top when a quest finishes or a weekly step pays.
 - **Look:** Theme's plates, one amber accent, quest names only and no flavour text (the owner's rule). The Brass and
   ticket icons are drawn from frames: no uploads.
@@ -295,3 +302,23 @@ the `RangeTest.onRun` hook. Code pushes were Open Cloud models `jf_push_quests_1
 shares it). Containers are free while `LOOT_FREE` is on, so it changes nothing that matters.
 
 Photos: `docs/quests/` (panel in progress, the toast, the panel done, the shop after the redeem).
+
+## 11. Dune (17 Nov 2026, place version 563)
+
+- **Dune is the quests guy** (the owner). The hub session's Dune NPC has a prompt "Quests" (E) carrying
+  `QuestsOpen = true`, and `QuestClient` opens the panel for it. The prompt sits on Dune's HumanoidRootPart at run
+  time, 8 studs.
+- **`QuestNews`** (server, boolean): on from the day's new quests, a quest finished or a weekly step paid; off when the
+  panel opens or closes (`"seen"`). The hub draws an amber dot after "DUNE · QUESTS" for the local player, and the
+  QUESTS button gets one too.
+- **Tested in Play:**
+  - The dot was on Dune's label and on the button.
+  - A real E press 4 studs from Dune opened the panel and turned `QuestNews` off.
+  - The quest save from the v544 test was still there: 335 Brass, 1 ticket.
+  - The DONE tick now draws the right way.
+- **Fixed in the same turn:** the wallet moved to y 58 on every screen. At y 16 it was hidden under the settings
+  session's new "settings" pill.
+- **Trap:** `ProximityPrompt:InputHoldBegin()` from the Studio MCP's client Luau did not trigger it; a real
+  `user_keyboard_input` E did, within range. In Edit the prompt's attachment `PromptAt` is local (`.Position` is
+  relative): use `WorldCFrame`.
+- **Photos:** `docs/quests/quests-dune-badge.jpg`, `quests-from-dune.jpg`.

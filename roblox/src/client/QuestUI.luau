@@ -429,10 +429,12 @@ function UI.open()
 	end
 	draw()
 	fetch()
+	if me:GetAttribute("QuestNews") == true then task.spawn(invoke, "seen") end -- (QuestNews off: the badge over Dune)
 end
 function UI.close()
 	if not isOpen then return end
 	isOpen = false
+	if me:GetAttribute("QuestNews") == true then task.spawn(invoke, "seen") end -- (finished while it was open: seen too)
 	gui.Enabled = false
 	setMenuFlag(false)
 	body = nil
