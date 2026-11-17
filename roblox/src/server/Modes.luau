@@ -469,6 +469,7 @@ local function scoreKill(m: any, ks: Seat?, vs: Seat, w: string, via: string?)
 	if k == "gun" then
 		-- up: a kill with your rung's weapon (a fall counts with what knocked them off). down: dying to a melee weapon
 		local kw = via or w
+		if kw == "parry" then kw = "katana" end -- (a parry kill is the katana's: Stats, Quests and the finishers count it so too)
 		if real and kw == ms.ladder[(ks :: Seat).rung] then
 			gunUp(m, ms, ks :: Seat)
 			if ms.over then return end

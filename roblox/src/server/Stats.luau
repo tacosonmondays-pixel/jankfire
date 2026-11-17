@@ -209,6 +209,7 @@ local function onKill(info: any)
 	if not sk or not dk or not sk.cur or watched[sk.p.UserId] then lastHit[v] = nil; return end
 	local c = sk.cur :: Cur
 	local wid = if info.w == "void" and type(info.via) == "string" then info.via else info.w
+	if wid == "parry" then wid = "katana" end -- (a parry kill is the parrier's katana: a perfect parry's shot sent back, or a fall after a parry shove)
 	if not real(wid) then lastHit[v] = nil; return end
 	dk.k += 1
 	c.k += 1

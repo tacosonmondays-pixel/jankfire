@@ -339,6 +339,7 @@ local function onKill(info: any)
 	local sk = stateOf(k)
 	if not sk or not live(sk) then return end
 	local wid = if info.w == "void" and type(info.via) == "string" then info.via else info.w
+	if wid == "parry" then wid = "katana" end -- (a parry kill is the parrier's katana: a perfect parry's shot sent back, or a fall after a parry shove)
 	if not real(wid) then return end
 	local c = sk.cur :: Cur
 	c.act, c.ract = true, true
