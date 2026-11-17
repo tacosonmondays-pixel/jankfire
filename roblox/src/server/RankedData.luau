@@ -224,7 +224,7 @@ local function apply(p: Player, fixes: { any })
 	if s and s.prof then s.prof.dirty = true end
 	publish(p)
 	if (any or total > 0) and push then
-		(push :: any)(p, { t = "toast", text = if total > 0 then ("RANKED RATING RESTORED +%d"):format(total) else "RANKED RATING RESTORED" })
+		(push :: any)(p, { t = "toast", text = if total > 0 then ("RANKED RATING RESTORED +%d"):format(total) else "RANKED RATING RESTORED", refresh = true })
 	end
 end
 
@@ -273,6 +273,7 @@ function RankedData.restoreFor(cheaterId: number, since: number?, forceStore: bo
 	local okI, idx = pcall(function() return (store :: DataStore):GetAsync("u:" .. cheaterId) end)
 	if not okI then return { ok = false, why = "couldn't read the match index: " .. tostring(idx) } end
 	local out = { ok = true, matches = 0, victims = 0, now = 0, queued = 0 }
+	local here: { [Player]: { any } } = {} -- (players in this server: all their fixes at once, so one notice with the total)
 	for _, e in (if type(idx) == "table" then idx else {}) do
 		if type(e) ~= "table" or (e.t or 0) < from or type(e.k) ~= "string" then continue end
 		local rec: any = nil
@@ -294,10 +295,16 @@ function RankedData.restoreFor(cheaterId: number, since: number?, forceStore: bo
 				local fx = { k = e.k, mode = rec.mode, season = rec.season, by = cheaterId, t = os.time(),
 					rp = if type(r.rp) == "number" and r.rp < 0 then -r.rp else 0, mmr = if type(r.mmr) == "number" and r.mmr < 0 then -r.mmr else 0 }
 				out.victims += 1
-				if deliver(uid, fx, forceStore) then out.now += 1 else out.queued += 1 end
+				local p = Players:GetPlayerByUserId(uid)
+				if p and dataOf(p) and not forceStore then
+					here[p] = here[p] or {}
+					table.insert(here[p], fx)
+					out.now += 1
+				elseif deliver(uid, fx, true) then out.now += 1 else out.queued += 1 end
 			end
 		end
 	end
+	for p, list in here do apply(p, list) end
 	-- the cheater's own season, voided (now if they're here, else on their next join)
 	deliver(cheaterId, { k = ("void:%d:%d"):format(cheaterId, Ranked.SEASON), void = true, season = Ranked.SEASON, t = os.time() }, forceStore)
 	return out

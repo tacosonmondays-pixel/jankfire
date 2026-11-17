@@ -294,7 +294,9 @@ local function gatherCamParts(center: Vector3)
 	for _, d in map:GetDescendants() do
 		if d:IsA("BasePart") and d.Transparency < 0.85 then
 			local s = d.Size
-			if math.max(s.X, s.Y, s.Z) >= 1.2 and (d.Position - center).Magnitude < 140 + s.Magnitude / 2 then table.insert(camParts, d) end
+			-- (walls, floors, pillars: what you can't walk through; decoration that doesn't collide only if it's solid)
+			local solid = d.CanCollide or (math.min(s.X, s.Y, s.Z) >= 0.8 and d.Transparency < 0.5)
+			if solid and math.max(s.X, s.Y, s.Z) >= 1.2 and (d.Position - center).Magnitude < 140 + s.Magnitude / 2 then table.insert(camParts, d) end
 		end
 	end
 end
@@ -324,24 +326,25 @@ local function rayBox(o: Vector3, d: Vector3, len: number, p: BasePart): number?
 end
 -- how far the camera can go from `from` toward `to` before something solid (minus a margin), checked along three
 -- rays (the middle and two a little to the sides, so the lens doesn't graze a corner)
-local function clearTo(from: Vector3, to: Vector3): number
+local function clearTo(from: Vector3, to: Vector3): (number, BasePart?)
 	local d = to - from
 	local L = d.Magnitude
-	if L < 0.05 then return L end
+	if L < 0.05 then return L, nil end
 	local u = d / L
 	local side = u:Cross(Vector3.yAxis)
 	side = if side.Magnitude > 1e-3 then side.Unit * 0.7 else Vector3.xAxis * 0.7
 	local best = L
+	local hitP: BasePart? = nil
 	for _, off in { Vector3.zero, side, -side } do
 		local o = from + off * 0.35
 		for _, p in camParts do
 			if (p.Position - o).Magnitude <= L + p.Size.Magnitude / 2 then
 				local t = rayBox(o, u, best, p)
-				if t and t < best then best = t end
+				if t and t < best then best, hitP = t, p end
 			end
 		end
 	end
-	return if best < L then math.max(0.8, best - 1.1) else L
+	return (if best < L then math.max(0.8, best - 1.1) else L), hitP
 end
 
 local function camStep(dt: number)
@@ -361,15 +364,20 @@ local function camStep(dt: number)
 		return
 	end
 	local right = Vector3.new(math.cos(yaw), 0, -math.sin(yaw))
-	-- the shoulder with the most room (this side, the other side, then up and behind)
+	-- the shoulder with the most room: this side, the other side, up and behind, then higher and closer ones (a wall
+	-- right behind the hero); the first one with all its room wins
+	local s1 = st.side or 1
 	local best = nil
-	for _, o in { { st.side or 1, CAM.up }, { -(st.side or 1), CAM.up }, { 0, CAM.up * 2.6 } } do
-		local want = eye - dir * CAM.back + right * (o[1] * CAM.side) + Vector3.new(0, o[2], 0)
+	for _, o in { { s1, CAM.up, CAM.back }, { -s1, CAM.up, CAM.back }, { 0, CAM.up * 2.6, CAM.back }, { s1 * 0.6, 4.5, 7 }, { -s1 * 0.6, 4.5, 7 }, { 0, 6, 4.5 } } do
+		local want = eye - dir * o[3] + right * (o[1] * CAM.side) + Vector3.new(0, o[2], 0)
 		local L = (want - eye).Magnitude
-		local free = clearTo(eye, want)
-		if not best or free > best.free + 1.2 then best = { free = free, d = (want - eye).Unit, side = o[1] } end
+		local free, hitP = clearTo(eye, want)
+		local score = free / L + free * 0.02 -- (a short clear spot beats a long blocked one)
+		if not best or score > best.score + 0.05 then best = { free = free, d = (want - eye).Unit, side = o[1], score = score, hit = hitP } end
 		if free >= L - 0.01 then break end
 	end
+	local fold = folder
+	if fold then fold:SetAttribute("CamBlock", if best.hit then best.hit:GetFullName() else nil); fold:SetAttribute("CamFree", math.floor(best.free * 10) / 10) end
 	if best.side ~= 0 then st.side = best.side end
 	local pos = eye + best.d * best.free
 	local look = eye + dir * 90
@@ -382,6 +390,14 @@ local function camStep(dt: number)
 	st.camLook = st.camLook:Lerp(look, math.min(1, dt * 9))
 	cam.CFrame = CFrame.lookAt(st.camPos, st.camLook)
 	cam.Focus = CFrame.new(eye)
+	-- the hero fades when the lens is close (Roblox's own camera does the same), so a tight spot never shows the inside
+	-- of their hat
+	if f and f.model.Parent then
+		local k = math.clamp((5 - (st.camPos - eye).Magnitude) / 3, 0, 0.85)
+		for _, d in f.model:GetDescendants() do
+			if (d:IsA("BasePart") or d:IsA("Decal")) and d.LocalTransparencyModifier ~= k then d.LocalTransparencyModifier = k end
+		end
+	end
 end
 
 -- ------------------------------------------------------------------ the overlay: what this is, who, SKIP

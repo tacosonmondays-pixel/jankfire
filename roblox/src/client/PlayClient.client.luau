@@ -70,7 +70,14 @@ PushR.OnClientEvent:Connect(function(msg: any)
 		PartyUI.changed()
 	elseif msg.t == "invite" then PlayUI.onInvite(msg)
 	elseif msg.t == "inviteGone" then PlayUI.onInviteGone(msg.id)
-	elseif msg.t == "toast" and type(msg.text) == "string" then PlayUI.notice(msg.text)
+	elseif msg.t == "toast" and type(msg.text) == "string" then
+		PlayUI.notice(msg.text)
+		if msg.refresh then -- (a ranked restore: the menu's ranks change too)
+			task.spawn(function()
+				local st = PlayUI.ask("state")
+				if st.ok then PlayUI.setState(st) end
+			end)
+		end
 	elseif msg.t == "found" then
 		pcall(function() require(script.Parent:WaitForChild("Sfx")).play("round_start") end)
 	elseif msg.t == "ranked" and type(msg.result) == "table" then
