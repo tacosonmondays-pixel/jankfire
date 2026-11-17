@@ -26,6 +26,7 @@ local S: any = {
 	open = false, party = nil, ranked = {}, best = nil, tab = "casual", invites = {}, inviting = false, players = {},
 	found = nil, fake = nil, busy = false,
 }
+S.tab = "duels"
 UI.S = S
 
 local GOOD = Color3.fromRGB(110, 214, 140) -- a rating gained (the only green: it carries information)
@@ -175,69 +176,243 @@ local function button(parent: Instance, name: string, label: string, accent: boo
 	return b
 end
 
--- ------------------------------------------------------------------ the modes (left)
+-- ------------------------------------------------------------------ the ranked fire (the mode panel)
+-- (17 Nov, the owner: "a toggle for rank that will have a flame like transition and add like a cool fire effect").
+-- turning RANKED on: a front of flame tongues sweeps up the panel, a warm gradient and a glow along the bottom, a
+-- burst of embers; then a low flicker and a few rising embers while ranked stays on. off: it cools down. all frames
+-- and gradients (nothing uploaded). it lives in its own layer under the panel's cards, so a refresh keeps it
+local FIRE_HOT = Color3.fromRGB(255, 196, 61) -- (the HUD amber at the tips)
+local FIRE_MID = Color3.fromRGB(255, 122, 32)
+local FIRE_DEEP = Color3.fromRGB(200, 52, 18)
+local fireLayer = new("Frame", { Name = "Fire", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ClipsDescendants = true, ZIndex = 0 }, left)
+T.corner(fireLayer)
+local heat = new("Frame", { Name = "Heat", BorderSizePixel = 0, BackgroundColor3 = FIRE_DEEP, BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1 }, fireLayer)
+local heatGrad = new("UIGradient", { Rotation = 270, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, FIRE_MID), ColorSequenceKeypoint.new(0.35, FIRE_DEEP), ColorSequenceKeypoint.new(1, T.BG) }),
+	Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.45, 0.88), NumberSequenceKeypoint.new(1, 1) }) }, heat)
+local _ = heatGrad
+local TONGUES = 16
+local tongues: { { f: Frame, seed: number, w: number } } = {}
+for i = 1, TONGUES do
+	local f = new("Frame", { Name = "Tongue", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 1), ZIndex = 1,
+		Position = UDim2.new((i - 0.5) / TONGUES, 0, 1, 18), Size = UDim2.fromOffset(30, 0) }, fireLayer)
+	T.corner(f, 15)
+	new("UIGradient", { Rotation = 270, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, FIRE_DEEP), ColorSequenceKeypoint.new(0.45, FIRE_MID), ColorSequenceKeypoint.new(1, FIRE_HOT) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.6, 0.45), NumberSequenceKeypoint.new(1, 1) }) }, f)
+	table.insert(tongues, { f = f, seed = math.random() * 100, w = 0.9 + math.random() * 0.5 })
+end
+local embers: { { f: Frame, x: number, y: number, vy: number, vx: number, life: number, age: number } } = {}
+local fire = { level = 0, want = 0, sweep = 1, burst = 0 } -- level: how hot (0..1); sweep: the front's climb (0..1, 1 = done)
+local function ember(W: number, H: number, fast: boolean)
+	local sz = math.random(2, if fast then 5 else 4)
+	local f = new("Frame", { Name = "Ember", BorderSizePixel = 0, BackgroundColor3 = FIRE_HOT:Lerp(FIRE_MID, math.random()), ZIndex = 2,
+		AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(sz, sz) }, fireLayer)
+	T.corner(f, sz)
+	table.insert(embers, { f = f, x = math.random() * W, y = H - math.random() * (if fast then H * 0.5 else 20), vy = -(if fast then 90 + math.random() * 160 else 30 + math.random() * 50),
+		vx = (math.random() - 0.5) * 30, life = 0.9 + math.random() * (if fast then 1.2 else 1.6), age = 0 })
+end
+local leftStroke = left:FindFirstChildOfClass("UIStroke")
+-- RANKED on / off: the sweep and the burst on the way up
+local function setFire(on: boolean, instant: boolean?)
+	local was = fire.want
+	fire.want = if on then 1 else 0
+	if instant then fire.level = fire.want; fire.sweep = 1; return end
+	if on and was < 1 then
+		fire.sweep = 0
+		fire.burst = 1
+		local W, H = left.AbsoluteSize.X / math.max(0.01, T.scaleNow()), left.AbsoluteSize.Y / math.max(0.01, T.scaleNow())
+		for _ = 1, 36 do ember(W, H, true) end
+	end
+end
+local fireT = 0
+RunService.RenderStepped:Connect(function(dt)
+	if not S.open and fire.level <= 0 and #embers == 0 then return end
+	fireT += dt
+	local s = math.max(0.01, T.scaleNow())
+	local W, H = left.AbsoluteSize.X / s, left.AbsoluteSize.Y / s
+	-- heat follows want: up fast, down slower
+	local rate = if fire.want > fire.level then 2.4 else 1.6
+	fire.level = math.clamp(fire.level + math.sign(fire.want - fire.level) * dt * rate, 0, 1)
+	if math.abs(fire.want - fire.level) < 0.02 then fire.level = fire.want end
+	fire.sweep = math.min(1, fire.sweep + dt / 0.7)
+	fire.burst = math.max(0, fire.burst - dt / 1.1)
+	-- (during the sweep the flames run over the cards; after it they sit behind them)
+	fireLayer.ZIndex = if fire.sweep < 1 then 6 else 0
+	heat.BackgroundTransparency = 1 - fire.level
+	heat.Visible = fire.level > 0
+	-- the tongues: a flicker that climbs with the sweep (up to the panel's height at its peak) and settles low
+	local sweepH = math.sin(math.min(1, fire.sweep) * math.pi) -- (0 -> 1 -> 0 over the sweep)
+	for i, t in tongues do
+		local n = math.noise(t.seed, fireT * 2.2) * 0.5 + 0.5
+		local n2 = math.noise(t.seed + 9, fireT * 5.1) * 0.5 + 0.5
+		local base = (24 + 40 * n + 14 * n2) * fire.level
+		local h = base + sweepH * H * (0.75 + 0.35 * n)
+		t.f.Size = UDim2.fromOffset(math.floor((W / TONGUES) * 1.9 * t.w), math.floor(h))
+		t.f.Position = UDim2.new((i - 0.5) / TONGUES, math.floor((n2 - 0.5) * 6), 1, 18)
+		t.f.Visible = h > 1
+	end
+	-- embers: a few rising while it's hot
+	if fire.level > 0.5 and math.random() < dt * 4 then ember(W, H, false) end
+	for i = #embers, 1, -1 do
+		local e = embers[i]
+		e.age += dt
+		e.x += (e.vx + math.sin(e.age * 5 + i) * 14) * dt
+		e.y += e.vy * dt
+		local k = e.age / e.life
+		if k >= 1 or e.y < -10 then
+			e.f:Destroy()
+			table.remove(embers, i)
+		else
+			e.f.Position = UDim2.fromOffset(e.x, e.y)
+			e.f.BackgroundTransparency = k * k
+		end
+	end
+	-- the panel's edge warms up
+	if leftStroke then
+		leftStroke.Color = T.EDGE:Lerp(FIRE_HOT, fire.level)
+		leftStroke.Transparency = T.EDGE_A + (0.35 - T.EDGE_A) * fire.level
+	end
+end)
+UI.fire = fire
+
+-- ------------------------------------------------------------------ the modes (left): DUELS | MODES
+-- DUELS: the RANKED switch, your rank in the picked mode (badge, bar, 34/100), the 1V1..4V4 cards (1V1V1 while ranked
+-- is off). MODES: PlayConfig.EXTRA, the slot a later session fills with JANKFIRE's classic modes
 local refresh: () -> ()
+-- the rank line for a mode view: the bar's fill (0..1) and the number right of it ("34/100", "2/5", "APEX 245 RP")
+local function rankBar(v: any): (number, string)
+	if not v or v.unranked then return 0, ("0/%d"):format(Ranked.PLACEMENTS) end
+	if v.placed ~= true then return math.clamp((v.n or 0) / math.max(1, v.need or Ranked.PLACEMENTS), 0, 1), ("%d/%d"):format(v.n or 0, v.need or Ranked.PLACEMENTS) end
+	if v.div == nil then return 1, ("%s RP"):format(Ranked.comma(v.rp or 0)) end
+	return math.clamp((v.rp or 0) / 100, 0, 1), ("%d/100"):format(v.rp or 0)
+end
+UI.rankBar = rankBar
+local function bar(parent: Instance, x: number, y: number, w: number, fill: number, color: Color3): Frame
+	local track = new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, 6), ZIndex = 3 }, parent)
+	T.corner(track, 3)
+	local f = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = color, Size = UDim2.fromScale(math.max(0.02, fill), 1), ZIndex = 4 }, track)
+	T.corner(f, 3)
+	return track
+end
+
 local function modeList()
-	clear(left)
+	clear(left, { Fire = true })
 	local c = L.compact
 	local pt = myParty()
 	local n = if pt then #pt.members else 1
 	local lead = iLead()
 	local W = L.leftW
-	-- CASUAL | RANKED
-	local tabs = new("Frame", { Name = "Tabs", BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(W - 24, if c then 28 else 34) }, left)
-	for i, id in { "casual", "ranked" } do
+	local ranked = pt ~= nil and pt.ranked == true
+	-- DUELS | MODES
+	local tabs = new("Frame", { Name = "Tabs", BackgroundTransparency = 1, ZIndex = 3, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(W - 24, if c then 28 else 34) }, left)
+	for i, id in { "duels", "modes" } do
 		local on = S.tab == id
-		local tb = new("TextButton", { Name = id, AutoButtonColor = false, BorderSizePixel = 0, BackgroundColor3 = if on then T.CARD_HI else T.CARD,
+		local tb = new("TextButton", { Name = id, AutoButtonColor = false, BorderSizePixel = 0, BackgroundColor3 = if on then T.CARD_HI else T.CARD, ZIndex = 3,
 			BackgroundTransparency = if on then 0 else 0.3, Position = UDim2.new((i - 1) * 0.5, if i == 2 then 3 else 0, 0, 0), Size = UDim2.new(0.5, -3, 1, 0),
 			FontFace = T.FONT_HEAVY, TextSize = if c then 11 else 13, Text = string.upper(id), TextColor3 = if on then T.TEXT else T.MUTED }, tabs)
 		T.corner(tb, 5)
 		if on then
-			local bar = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.5, 0, 0, 2) }, tb)
-			T.corner(bar, 1)
+			local b = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.5, 0, 0, 2), ZIndex = 4 }, tb)
+			T.corner(b, 1)
 		end
-		tb.MouseButton1Click:Connect(function()
-			if S.tab == id then return end
-			S.tab = id
-			-- the leader's pick follows the tab (a ranked tab can't keep 1v1v1)
-			if lead and pt then
-				local mode = pt.mode
-				if id == "ranked" and not (PlayConfig.byId[mode] and PlayConfig.byId[mode].ranked) then mode = "2v2" end
-				if PlayConfig.fits(PlayConfig.byId[mode], n, id == "ranked") then task.spawn(ask, "mode", mode, id == "ranked") end
-			end
-			refresh()
-		end)
+		tb.MouseButton1Click:Connect(function() if S.tab ~= id then S.tab = id; refresh() end end)
 	end
 	local y = (if c then 28 else 34) + 22
-	local ranked = S.tab == "ranked"
+	if S.tab == "modes" then
+		local extra = PlayConfig.EXTRA or {}
+		if #extra == 0 then
+			local e = text(left, "Empty", "No modes yet.", if c then 12 else 14, T.MUTED, T.FONT_BOLD)
+			e.Position = UDim2.fromOffset(16, y + 4); e.Size = UDim2.fromOffset(W - 32, 20); e.ZIndex = 3
+			y += 34
+		end
+		for _, m in extra do
+			local card = new("TextButton", { Name = m.id, AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
+				BackgroundColor3 = if pt and pt.mode == m.id then T.CARD_HI else T.CARD, BackgroundTransparency = 0.2,
+				Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, L.cardH) }, left)
+			T.corner(card, 5)
+			local nm = text(card, "Name", m.name, if c then 16 else 21, T.TEXT, T.FONT_TITLE); nm.ZIndex = 3
+			nm.Position = UDim2.fromOffset(14, if c then 5 else 9); nm.Size = UDim2.new(1, -24, 0, if c then 20 else 26)
+			local sl = text(card, "Sub", m.sub or "", if c then 10 else 12, T.MUTED, T.FONT); sl.ZIndex = 3
+			sl.Position = UDim2.fromOffset(14, if c then 25 else 36); sl.Size = UDim2.new(1, -24, 0, 16)
+			card.MouseButton1Click:Connect(function()
+				if not lead then notice("only the leader (" .. leaderName() .. ") picks the mode"); return end
+				task.spawn(ask, "mode", m.id, false)
+			end)
+			y += L.cardH + 8
+		end
+		left.Size = UDim2.fromOffset(W, y + 12)
+		return
+	end
+	-- the RANKED switch
+	local sw = new("TextButton", { Name = "RankedSwitch", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 3,
+		BackgroundColor3 = T.CARD, BackgroundTransparency = if ranked then 0.45 else 0.2, Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, if c then 34 else 42) }, left)
+	T.corner(sw, 5)
+	local sl = text(sw, "Label", "RANKED", if c then 13 else 15, if ranked then T.ACCENT else T.TEXT, T.FONT_TITLE); sl.ZIndex = 4
+	sl.Position = UDim2.fromOffset(14, 0); sl.Size = UDim2.new(1, -90, 1, 0)
+	local pill = new("Frame", { Name = "Pill", BorderSizePixel = 0, BackgroundColor3 = if ranked then T.ACCENT else T.TRACK, ZIndex = 4,
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.fromOffset(if c then 40 else 50, if c then 20 else 24) }, sw)
+	T.corner(pill, 12)
+	local kn = if c then 14 else 18
+	local knob = new("Frame", { Name = "Knob", BorderSizePixel = 0, BackgroundColor3 = if ranked then T.INK else T.SOFT, ZIndex = 5, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(if ranked then 1 else 0, if ranked then -(kn // 2 + 3) else kn // 2 + 3, 0.5, 0), Size = UDim2.fromOffset(kn, kn) }, pill)
+	T.corner(knob, kn)
+	sw.MouseButton1Click:Connect(function()
+		if not lead then notice("only the leader (" .. leaderName() .. ") switches ranked"); return end
+		if not pt then return end
+		local mode = pt.mode
+		if not ranked and not (PlayConfig.byId[mode] and PlayConfig.byId[mode].ranked) then mode = if n <= 2 then "2v2" else (if n == 3 then "3v3" else "4v4") end
+		task.spawn(ask, "mode", mode, not ranked)
+	end)
+	y += (if c then 34 else 42) + 8
+	-- your rank in the picked mode: the badge, the name, a bar, and right of the bar how far to the next rank
+	if ranked and pt then
+		local v = S.ranked[pt.mode]
+		local blk = new("Frame", { Name = "Rank", BorderSizePixel = 0, BackgroundColor3 = T.BG, BackgroundTransparency = 0.35, ZIndex = 3,
+			Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, if c then 52 else 66) }, left)
+		T.corner(blk, 5)
+		local bs = if c then 40 else 54
+		local b = RankedStyle.badge(blk, bs, v)
+		b.Position = UDim2.fromOffset(6, if c then 6 else 6)
+		for _, d in b:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
+		local x = bs + 12
+		local nm = text(blk, "Name", RankedStyle.label(v), if c then 13 else 16, RankedStyle.color(v), T.FONT_TITLE); nm.ZIndex = 4
+		nm.Position = UDim2.fromOffset(x, if c then 6 else 10); nm.Size = UDim2.new(1, -x - 60, 0, 20); nm.TextTruncate = Enum.TextTruncate.AtEnd
+		local md = text(blk, "Mode", modeName(pt.mode), if c then 10 else 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); md.ZIndex = 4
+		md.AnchorPoint = Vector2.new(1, 0); md.Position = UDim2.new(1, -10, 0, if c then 8 else 12); md.Size = UDim2.fromOffset(50, 16)
+		local fill, num = rankBar(v)
+		local bw = (W - 24) - x - 66
+		bar(blk, x, if c then 32 else 40, bw, fill, RankedStyle.color(v))
+		local nt = text(blk, "Points", num, if c then 11 else 13, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right); nt.ZIndex = 4
+		nt.AnchorPoint = Vector2.new(1, 0); nt.Position = UDim2.new(1, -10, 0, if c then 25 else 33); nt.Size = UDim2.fromOffset(60, 20)
+		y += (if c then 52 else 66) + 8
+	end
 	for _, m in PlayConfig.MODES do
 		if ranked and not m.ranked then continue end
 		local fits, why = PlayConfig.fits(m, n, ranked)
-		local picked = pt ~= nil and pt.mode == m.id and pt.ranked == ranked
-		local card = new("TextButton", { Name = m.id, AutoButtonColor = false, BorderSizePixel = 0, Text = "",
-			BackgroundColor3 = if picked then T.CARD_HI else T.CARD, BackgroundTransparency = if picked then 0 else 0.2,
+		local picked = pt ~= nil and pt.mode == m.id
+		local card = new("TextButton", { Name = m.id, AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
+			BackgroundColor3 = if picked then T.CARD_HI else T.CARD, BackgroundTransparency = if picked then 0.05 else (if ranked then 0.4 else 0.2),
 			Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, L.cardH) }, left)
 		T.corner(card, 5)
 		if picked then
 			T.edge(card, T.ACCENT, 0.35, 1)
-			local bar = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(0, 3, 1, -16) }, card)
-			T.corner(bar, 2)
+			local pb = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(0, 3, 1, -16), ZIndex = 3 }, card)
+			T.corner(pb, 2)
 		end
-		local nm = text(card, "Name", m.name, if c then 16 else 21, if fits then T.TEXT else T.DIM, T.FONT_TITLE)
+		local nm = text(card, "Name", m.name, if c then 16 else 21, if fits then T.TEXT else T.DIM, T.FONT_TITLE); nm.ZIndex = 3
 		nm.Position = UDim2.fromOffset(14, if c then 5 else 9); nm.Size = UDim2.new(1, -90, 0, if c then 20 else 26)
 		local sub = if not fits then (why or "") elseif m.teams == 3 then "three solo sides · first to 5 rounds" else ("%d a side · first to 5 rounds"):format(m.size)
-		local sl = text(card, "Sub", sub, if c then 10 else 12, if fits then T.MUTED else T.DIM, T.FONT)
-		sl.Position = UDim2.fromOffset(14, if c then 25 else 36); sl.Size = UDim2.new(1, if ranked then (if c then -64 else -120) else -24, 0, 16)
-		sl.TextTruncate = Enum.TextTruncate.AtEnd
+		local s2 = text(card, "Sub", sub, if c then 10 else 12, if fits then T.MUTED else T.DIM, T.FONT); s2.ZIndex = 3
+		s2.Position = UDim2.fromOffset(14, if c then 25 else 36); s2.Size = UDim2.new(1, if ranked then (if c then -64 else -120) else -24, 0, 16)
+		s2.TextTruncate = Enum.TextTruncate.AtEnd
 		if ranked then
 			local v = S.ranked[m.id]
-			local bs = if c then 32 else 44
+			local bs = if c then 28 else 38
 			local badge = RankedStyle.badge(card, bs, v)
 			badge.AnchorPoint = Vector2.new(1, 0.5); badge.Position = UDim2.new(1, -10, 0.5, -6)
-			local lab = text(card, "Rank", RankedStyle.label(v), if c then 8 else 10, RankedStyle.color(v), T.FONT_BOLD, Enum.TextXAlignment.Center)
+			for _, d in badge:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 2 end end
+			local lab = text(card, "Rank", RankedStyle.label(v), if c then 8 else 10, RankedStyle.color(v), T.FONT_BOLD, Enum.TextXAlignment.Right); lab.ZIndex = 3
 			lab.AnchorPoint = Vector2.new(1, 0); lab.Position = UDim2.new(1, -8, 1, if c then -13 else -16); lab.Size = UDim2.fromOffset(100, 12)
-			lab.TextXAlignment = Enum.TextXAlignment.Right
-			lab.TextScaled = false; lab.TextTruncate = Enum.TextTruncate.AtEnd
+			lab.TextTruncate = Enum.TextTruncate.AtEnd
 		end
 		card.MouseButton1Click:Connect(function()
 			if not lead then notice("only the leader (" .. leaderName() .. ") picks the mode"); return end
@@ -246,16 +421,15 @@ local function modeList()
 		end)
 		y += L.cardH + 8
 	end
-	-- what the pick means, under the cards
-	local foot = text(left, "Foot", "", if c then 10 else 12, T.MUTED, T.FONT)
+	local foot = text(left, "Foot", "", if c then 10 else 12, T.MUTED, T.FONT); foot.ZIndex = 3
 	foot.Position = UDim2.fromOffset(14, y + 2); foot.Size = UDim2.fromOffset(W - 28, 34); foot.TextWrapped = true
 	foot.TextYAlignment = Enum.TextYAlignment.Top
 	if pt and not lead then
 		foot.Text = "only the leader (" .. leaderName() .. ") picks the mode and starts the search"
 	elseif ranked then
-		foot.Text = ("%d placement matches, then your rank shows. parties within %d rating"):format(Ranked.PLACEMENTS, Ranked.PARTY_SPREAD)
+		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points"):format(Ranked.PLACEMENTS)
 	else
-		foot.Text = "same arenas and rules as the pads. your party plays on one team"
+		foot.Text = "the same duels as the pads. your party plays on one team"
 	end
 	left.Size = UDim2.fromOffset(W, y + 44)
 end
@@ -291,10 +465,11 @@ local function partyPanel()
 	hdr.RichText = true
 	local n = if pt then #pt.members else 1
 	hdr.Text = ('PARTY  <font color="%s">%d/%d</font>'):format(T.hex(T.MUTED), n, PlayConfig.PARTY_MAX)
-	local inv = button(right, "Invite", if S.inviting then "BACK" else "INVITE", not S.inviting and n < PlayConfig.PARTY_MAX,
+	local inv = button(right, "Invite", if S.inviting then "BACK" else "PARTY", not S.inviting,
 		UDim2.fromOffset(if c then 74 else 96, if c then 24 else 28), UDim2.new(1, if c then -84 else -108, 0, 8))
 	inv.TextSize = if c then 11 else 12
 	inv.MouseButton1Click:Connect(function()
+		if UI.openParty and not S.inviting then UI.openParty(); return end
 		S.inviting = not S.inviting
 		if S.inviting then
 			task.spawn(function()
@@ -422,9 +597,8 @@ local function bottomBar()
 		stroke(main, T.ACCENT, 0.45)
 		local t = text(main, "Clock", "SEARCHING", if c then 15 else 18, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center)
 		t.Size = UDim2.new(1, 0, 0.62, 0); t:SetAttribute("Since", pt.queue.since)
-		local sub = text(main, "Range", if pt.ranked then "" else "looking for players", if c then 10 else 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		local sub = text(main, "Range", (if pt.ranked then "RANKED " else "CASUAL ") .. modeName(pt.mode), if c then 10 else 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
 		sub.Position = UDim2.fromScale(0, 0.55); sub.Size = UDim2.new(1, 0, 0.4, 0)
-		if pt.ranked then sub:SetAttribute("Since", pt.queue.since) end
 		-- the spinner: a small amber bar sliding under the clock
 		local track = new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 14, 1, -6), Size = UDim2.new(1, -28, 0, 2) }, main)
 		T.corner(track, 1)
@@ -578,6 +752,7 @@ function UI.open()
 	lobby.Visible = true
 	bindCam(true)
 	refresh()
+	setFire(S.party ~= nil and S.party.ranked == true, true)
 	if UI.placeResult then UI.placeResult() end
 end
 
@@ -597,8 +772,7 @@ end
 
 leaveB.MouseButton1Click:Connect(function()
 	task.spawn(function()
-		local r = ask("leave")
-		if r.ok then S.party = nil; UI.close() end
+		ask("leave") -- (back to the hub, still in the party: the push closes this screen)
 	end)
 end)
 
@@ -666,42 +840,35 @@ function UI.showResult(r: any)
 	head.Position = UDim2.fromOffset(x, 12); head.Size = UDim2.fromOffset(W - x - 12, 16); head.ZIndex = 36
 	local nm = text(res, "Rank", RankedStyle.label(r.rank), 18, RankedStyle.color(r.rank), T.FONT_TITLE)
 	nm.Position = UDim2.fromOffset(x, 30); nm.Size = UDim2.fromOffset(W - x - 12, 24); nm.ZIndex = 36
-	-- the rating and the change
-	local num = text(res, "Rating", Ranked.comma(r.before), 22, T.TEXT, T.FONT_HEAVY)
-	num.Position = UDim2.fromOffset(x, 56); num.Size = UDim2.fromOffset(110, 26); num.ZIndex = 36
-	local d = tonumber(r.delta) or 0
-	local dl = text(res, "Delta", (if d >= 0 then "+" else "−") .. tostring(math.abs(d)), 18, if d >= 0 then GOOD else T.DANGER, T.FONT_HEAVY)
-	dl.Position = UDim2.fromOffset(x + 92, 59); dl.Size = UDim2.fromOffset(70, 22); dl.ZIndex = 36
+	-- the points: "+24 RP" (placements: the game's result only), and the bar with "58/100" right of it
+	local d = tonumber(r.delta)
+	local dl = text(res, "Delta", if d then ((if d >= 0 then "+" else "−") .. tostring(math.abs(d)) .. " RP") else (if r.won then "W" else "L"), 22,
+		if d == nil then T.SOFT elseif d >= 0 then GOOD else T.DANGER, T.FONT_HEAVY)
+	dl.Position = UDim2.fromOffset(x, 54); dl.Size = UDim2.fromOffset(120, 26); dl.ZIndex = 36
 	local tag = if r.placedNow then "PLACED" elseif r.promoted then "PROMOTED" elseif r.demoted then "DEMOTED"
 		elseif r.rank.placed ~= true then ("PLACEMENT %d OF %d"):format(r.rank.n or 0, r.rank.need or Ranked.PLACEMENTS) else ""
 	local tg = text(res, "Tag", tag, 11, if r.demoted then T.DANGER else T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
-	tg.Position = UDim2.new(1, -132, 0, 62); tg.Size = UDim2.fromOffset(120, 16); tg.ZIndex = 36
-	-- the division bar: where you stand in it, sliding from before to after
-	local track = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.fromOffset(x, 90), Size = UDim2.fromOffset(W - x - 14, 5), ZIndex = 36 }, res)
+	tg.Position = UDim2.new(1, -132, 0, 61); tg.Size = UDim2.fromOffset(120, 16); tg.ZIndex = 36
+	-- the division bar, sliding from before to after
+	local p1, label = UI.rankBar(r.rank)
+	local p0 = p1
+	local prev = r.prev
+	if r.promoted then p0 = 0 elseif r.demoted then p0 = 1
+	elseif type(prev) == "table" and prev.placed and r.rank.placed and r.rank.div ~= nil then p0 = math.clamp((tonumber(prev.rp) or 0) / 100, 0, 1) end
+	local tw = W - x - 72
+	local track = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.fromOffset(x, 90), Size = UDim2.fromOffset(tw, 6), ZIndex = 36 }, res)
 	T.corner(track, 3)
 	local col = RankedStyle.color(r.rank)
-	local p1 = math.clamp(tonumber(r.rank.progress) or 0, 0, 1)
-	local p0 = p1
-	if r.rank.placed and not r.promoted and not r.demoted and not r.placedNow and type(r.rank.hi) == "number" then
-		local lo = r.rank.lo or (r.rank.hi - Ranked.DIV)
-		p0 = math.clamp((r.before - lo) / math.max(1, r.rank.hi - lo), 0, 1)
-	elseif r.promoted then p0 = 0 elseif r.demoted then p0 = 1 end
 	local fill = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = col, Size = UDim2.fromScale(math.max(0.02, p0), 1), ZIndex = 37 }, track)
 	T.corner(fill, 3)
+	local pts = text(res, "Points", label, 13, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+	pts.AnchorPoint = Vector2.new(1, 0); pts.Position = UDim2.new(1, -12, 0, 83); pts.Size = UDim2.fromOffset(60, 18); pts.ZIndex = 36
 	res.Visible = true
 	res.BackgroundTransparency = 1
 	T.tween(res, 0.25, { BackgroundTransparency = T.BG_A })
 	task.delay(0.6, function()
 		if my ~= resTok then return end
 		T.tween(fill, 1.1, { Size = UDim2.fromScale(math.max(0.02, p1), 1) }, Enum.EasingStyle.Quart)
-		-- the number counts to its new value
-		local t0 = os.clock()
-		while my == resTok and os.clock() - t0 < 1.1 do
-			local u = 1 - (1 - (os.clock() - t0) / 1.1) ^ 3
-			num.Text = Ranked.comma(r.before + (r.after - r.before) * u)
-			task.wait()
-		end
-		if my == resTok then num.Text = Ranked.comma(r.after) end
 	end)
 	task.delay(14, function() if my == resTok then res.Visible = false end end)
 end
@@ -718,7 +885,7 @@ function UI.onParty(view: any)
 	local had = S.party
 	S.party = view
 	if view then
-		if not had or had.ranked ~= view.ranked then S.tab = if view.ranked then "ranked" else "casual" end
+		if not had or had.ranked ~= view.ranked then setFire(view.ranked == true, had == nil or not S.open) end
 		if had and #had.members ~= #view.members and S.inviting then S.inviting = false end
 	end
 	refresh()
@@ -792,7 +959,7 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -- ------------------------------------------------------------------ test helpers (PlayClient's PlayTest attribute)
-function UI.tab(id: string) S.tab = if id == "ranked" then "ranked" else "casual"; refresh() end
+function UI.tab(id: string) S.tab = if id == "modes" then "modes" else "duels"; refresh() end
 function UI.invitePanel(on: boolean)
 	S.inviting = on
 	if on then

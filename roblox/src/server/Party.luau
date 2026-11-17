@@ -29,7 +29,7 @@ local CrossServer = require(script.Parent:WaitForChild("CrossServer"))
 
 local Party = {}
 
-type Member = { id: number, player: Player?, name: string, display: string, model: Model?, rating: { [string]: any }? }
+type Member = { id: number, player: Player?, name: string, display: string, model: Model?, rating: { [string]: any }?, inRoom: boolean? }
 type Found = { key: string, mode: string, ranked: boolean, teams: { { Queue.Entry } }, at: number, waiting: boolean? }
 type PartyT = {
 	id: number, leader: Member, members: { Member }, mode: string, ranked: boolean, room: LobbyRooms.Room?,
@@ -89,19 +89,31 @@ local function ratingFor(m: Member, mode: string): (number, number)
 end
 
 -- ------------------------------------------------------------------ the view each member's screen draws
+-- the members standing in the room, in plinth order (stand-ins stand there whenever the room is open)
+local function inRoom(pt: PartyT): { Member }
+	local out = {}
+	if not pt.room then return out end
+	for _, m in pt.members do if m.inRoom or not m.player then table.insert(out, m) end end
+	return out
+end
+
 local function viewOf(pt: PartyT, forP: Player): any
 	local ms = {}
-	for i, m in pt.members do
+	local here = inRoom(pt)
+	local meIn = false
+	for _, m in pt.members do
+		local spot = table.find(here, m)
+		if m.player == forP and spot then meIn = true end
 		table.insert(ms, {
-			id = m.id, name = m.name, display = m.display, leader = m == pt.leader, standIn = m.player == nil, spot = i,
+			id = m.id, name = m.name, display = m.display, leader = m == pt.leader, standIn = m.player == nil, spot = spot,
+			inRoom = spot ~= nil, inMatch = m.player ~= nil and Matches.matchOf(m.player) ~= nil,
 			rank = if pt.ranked then rankView(m, pt.mode) else nil,
 		})
 	end
 	local q: any = nil
 	local e = pt.entry
 	if e and e.state == "search" then
-		local waited = now() - e.since
-		q = { since = serverNow() - waited, rating = math.floor(e.rating + 0.5) } -- (the window is worked out on the screen: math.huge does not travel well)
+		q = { since = serverNow() - (now() - e.since) } -- (no rating: the MMR never leaves the server)
 	end
 	local out = {}
 	for _, iv in invites do
@@ -111,13 +123,14 @@ local function viewOf(pt: PartyT, forP: Player): any
 		end
 	end
 	local spots = {}
-	if pt.room then for i = 1, #pt.members do spots[i] = LobbyRooms.spot(pt.room, i) end end
+	if pt.room then for i = 1, #here do spots[i] = LobbyRooms.spot(pt.room, i) end end
 	return {
 		id = pt.id, me = forP.UserId, leader = pt.leader.id, mode = pt.mode, ranked = pt.ranked, members = ms,
 		max = PlayConfig.PARTY_MAX, queue = q,
 		found = if pt.found then { at = serverNow() + math.max(0, pt.found.at - now()), waiting = pt.found.waiting == true } else nil,
-		inMatch = pt.match ~= nil, outgoing = out,
-		room = if pt.room then { cam = pt.room.cam, focus = pt.room.focus, spots = spots, slot = pt.room.slot } else nil,
+		inMatch = pt.match ~= nil, outgoing = out, meIn = meIn,
+		-- (the room only for those standing in it: the client opens the lobby screen when it has one)
+		room = if pt.room and meIn then { cam = pt.room.cam, focus = pt.room.focus, spots = spots, slot = pt.room.slot } else nil,
 	}
 end
 local function pushParty(pt: PartyT)
@@ -152,30 +165,30 @@ end
 local function place(pt: PartyT)
 	local room = pt.room
 	if not room then return end
-	local leaderIndex = table.find(pt.members, pt.leader)
-	LobbyRooms.rings(room, #pt.members, leaderIndex)
+	local here = inRoom(pt)
+	LobbyRooms.rings(room, #here, table.find(here, pt.leader))
 	if pt.match then return end -- (in a match: they come back to their spots when it ends)
-	for i, m in pt.members do
+	for i, m in here do
 		local cf = LobbyRooms.spot(room, i)
 		if cf then standAt(m, cf) end
 	end
 end
--- a fresh body where homeOf says (the plinth, or the hub once out of the party)
+-- a fresh body where homeOf says (the plinth while in the room, else the hub)
 local function respawn(p: Player)
 	local f = Fight.byPlayer[p]
 	if f then f.alive = false; task.spawn(Fight.spawn, f) end
 end
 
--- where a lobby player's body goes when it respawns outside a match (Matches.homeOf)
+-- where a body goes when it respawns outside a match (Matches.homeOf): a plinth while you stand in your party's room
 function Party.homeOf(p: Player): CFrame?
 	local pt = byPlayer[p]
 	if not pt or not pt.room then return nil end
-	for i, m in pt.members do
+	for i, m in inRoom(pt) do
 		if m.player == p then return LobbyRooms.spot(pt.room, i) end
 	end
 	return nil
 end
-function Party.inLobby(p: Player): boolean return byPlayer[p] ~= nil end
+function Party.inLobby(p: Player): boolean return Party.homeOf(p) ~= nil end
 
 -- ------------------------------------------------------------------ the queue's side
 local function dropEntry(pt: PartyT, why: string?)
@@ -197,7 +210,7 @@ local function dropEntry(pt: PartyT, why: string?)
 					if opt and opt.entry == x then
 						opt.found = nil
 						Queue.back(x)
-						if opt.members and opt.room then pushParty(opt :: PartyT); for _, p in realMembers(opt :: PartyT) do toast(p, "a player left the match: searching again") end end
+						if opt.leader then pushParty(opt :: PartyT); for _, p in realMembers(opt :: PartyT) do toast(p, "a player left the match: searching again") end end
 					else
 						-- (a test rival group: back in the queue too)
 						if x.owner and x.owner.rival then Queue.back(x) end
@@ -210,6 +223,8 @@ local function dropEntry(pt: PartyT, why: string?)
 end
 
 -- ------------------------------------------------------------------ joining and leaving
+-- (17 Nov, the owner's second pass: a party lives in the hub too. the room opens on PLAY and closes when nobody is
+-- standing in it; LEAVE LOBBY takes you back to the hub still in the party, LEAVE PARTY takes you out)
 local function standInModel(m: Member): Model?
 	local src = ServerStorage:FindFirstChild("JankfireNPCs")
 	local tpl = src and (src:FindFirstChild(m.name) or src:GetChildren()[1])
@@ -226,9 +241,33 @@ local function standInModel(m: Member): Model?
 	return c
 end
 
+-- the party's room, built now if it has none (stand-ins get their bodies in it)
+local function ensureRoom(pt: PartyT): LobbyRooms.Room?
+	if pt.room then return pt.room end
+	local room = LobbyRooms.claim()
+	if not room then return nil end
+	room.model:SetAttribute("Party", pt.id)
+	pt.room = room
+	for _, m in pt.members do
+		if not m.player then
+			m.model = standInModel(m)
+			if m.model then m.model.Parent = room.model end
+		end
+	end
+	return room
+end
+-- nobody real standing in the room (and no match to come back from): it goes
+local function closeRoomIfEmpty(pt: PartyT)
+	if not pt.room or pt.match then return end
+	for _, m in pt.members do if m.player and m.inRoom then return end end
+	for _, m in pt.members do m.model = nil end -- (stand-ins' bodies go with the room)
+	LobbyRooms.release(pt.room)
+	pt.room = nil
+end
+
 local function addMember(pt: PartyT, m: Member)
 	table.insert(pt.members, m)
-	if m.player then byPlayer[m.player] = pt end
+	if m.player then byPlayer[m.player] = pt; m.player:SetAttribute("Party", pt.id) end
 	if not m.player and pt.room then
 		m.model = m.model or standInModel(m)
 		if m.model then m.model.Parent = pt.room.model end
@@ -240,23 +279,52 @@ local function changed(pt: PartyT, why: string?)
 	if pt.entry or pt.found then dropEntry(pt, why or "the party changed: search stopped") end
 end
 
--- PLAY: into your own lobby, a party of one (or back to the room you're already in)
-function Party.enter(p: Player): (boolean, string?)
-	if byPlayer[p] then place(byPlayer[p]); return true, nil end
-	if Matches.matchOf(p) then return false, "finish your match first" end
-	local room = LobbyRooms.claim()
-	if not room then return false, "no lobby free right now" end
+local function newParty(p: Player): PartyT
 	nextId += 1
-	local me: Member = { id = p.UserId, player = p, name = p.Name, display = p.DisplayName }
-	local pt: PartyT = { id = nextId, leader = me, members = {}, mode = "2v2", ranked = false, room = room }
-	room.model:SetAttribute("Party", pt.id)
+	local me: Member = { id = p.UserId, player = p, name = p.Name, display = p.DisplayName, inRoom = false }
+	local pt: PartyT = { id = nextId, leader = me, members = {}, mode = "2v2", ranked = false, room = nil }
 	parties[pt.id] = pt
 	addMember(pt, me)
-	p:SetAttribute("Lobby", pt.id)
-	respawn(p) -- (the fresh body lands on the plinth: Matches.homeOf)
+	return pt
+end
+
+-- into the room: a fresh body on a plinth
+local function goIn(pt: PartyT, m: Member)
+	if not m.player or m.inRoom or Matches.matchOf(m.player) then return end
+	m.inRoom = true
+	m.player:SetAttribute("Lobby", pt.id)
+	respawn(m.player) -- (the fresh body lands on its plinth: Matches.homeOf)
+end
+
+-- PLAY: into your party's room (a party of one if you have none). the leader brings every member who isn't in a
+-- match; a member goes in alone
+function Party.enter(p: Player): (boolean, string?)
+	if Matches.matchOf(p) then return false, "finish your match first" end
+	local pt = byPlayer[p] or newParty(p)
+	if not ensureRoom(pt) then return false, "no lobby free right now" end
+	local me = memberOf(pt, p.UserId) :: Member
+	if pt.leader == me then
+		for _, m in pt.members do goIn(pt, m) end
+	else
+		goIn(pt, me)
+	end
 	place(pt)
 	pushParty(pt)
 	return true, nil
+end
+
+-- LEAVE LOBBY: back to the hub, still in the party
+function Party.exit(p: Player)
+	local pt = byPlayer[p]
+	if not pt then return end
+	local m = memberOf(pt, p.UserId)
+	if not m or not m.inRoom then return end
+	m.inRoom = false
+	p:SetAttribute("Lobby", nil)
+	if not Matches.matchOf(p) then respawn(p) end
+	closeRoomIfEmpty(pt)
+	place(pt)
+	pushParty(pt)
 end
 
 local function disband(pt: PartyT)
@@ -272,7 +340,8 @@ local function disband(pt: PartyT)
 	parties[pt.id] = nil
 end
 
--- out of the party (LEAVE, a kick, leaving the server, joining another party). toHub: send the body to the hub
+-- out of the party (LEAVE PARTY, a kick, leaving the server, joining another party). toHub: a body standing in the
+-- room goes back to the hub
 local function removeMember(pt: PartyT, m: Member, toHub: boolean)
 	local i = table.find(pt.members, m)
 	if not i then return end
@@ -281,8 +350,10 @@ local function removeMember(pt: PartyT, m: Member, toHub: boolean)
 	if m.player then
 		byPlayer[m.player] = nil
 		m.player:SetAttribute("Lobby", nil)
+		m.player:SetAttribute("Party", nil)
 		push(m.player, { t = "party", party = nil })
-		if toHub and m.player.Parent and not Matches.matchOf(m.player) then respawn(m.player) end
+		if toHub and m.inRoom and m.player.Parent and not Matches.matchOf(m.player) then respawn(m.player) end
+		m.inRoom = false
 	elseif m.model then
 		m.model:Destroy(); m.model = nil
 		table.insert(standPool, m)
@@ -292,10 +363,12 @@ local function removeMember(pt: PartyT, m: Member, toHub: boolean)
 		-- the lead passes to the oldest real member (web party.js: the next member who hasn't dropped)
 		for _, x in pt.members do if x.player then pt.leader = x; break end end
 	end
+	closeRoomIfEmpty(pt)
 	place(pt)
 	pushParty(pt)
 end
 
+-- LEAVE PARTY
 function Party.leave(p: Player)
 	local pt = byPlayer[p]
 	if not pt then return end
@@ -303,7 +376,7 @@ function Party.leave(p: Player)
 	if m then removeMember(pt, m, true) end
 end
 
--- join pt (an accepted invite): out of your own party first
+-- join pt (an accepted invite): out of your own party first. if pt's room is open you go in
 local function join(p: Player, pt: PartyT): (boolean, string?)
 	if #pt.members >= PlayConfig.PARTY_MAX then return false, ("that party is full (%d)"):format(PlayConfig.PARTY_MAX) end
 	if pt.match then return false, "they're in a match: try again after it" end
@@ -312,13 +385,14 @@ local function join(p: Player, pt: PartyT): (boolean, string?)
 	if old == pt then return true, nil end
 	if old then
 		local m = memberOf(old, p.UserId)
-		if m then removeMember(old, m, false) end
+		if m then
+			removeMember(old, m, pt.room == nil) -- (out of the old room: to the hub, or straight into the new one)
+		end
 	end
 	changed(pt)
-	local me: Member = { id = p.UserId, player = p, name = p.Name, display = p.DisplayName }
+	local me: Member = { id = p.UserId, player = p, name = p.Name, display = p.DisplayName, inRoom = false }
 	addMember(pt, me)
-	p:SetAttribute("Lobby", pt.id)
-	respawn(p)
+	if pt.room then goIn(pt, me) end
 	place(pt)
 	pushParty(pt)
 	return true, nil
@@ -354,8 +428,8 @@ local function inviteStandIn(pt: PartyT, p: Player, m: Member, id: number)
 end
 
 local function invite(p: Player, targetId: number): (boolean, string?)
-	local pt = byPlayer[p]
-	if not pt then return false, "press PLAY first" end
+	if Matches.matchOf(p) then return false, "after your match" end
+	local pt = byPlayer[p] or newParty(p) -- (inviting from the hub starts your party there)
 	if pt.match then return false, "after the match" end
 	if #pt.members >= PlayConfig.PARTY_MAX then return false, "your party is full" end
 	if targetId == p.UserId then return false, "that's you" end
@@ -475,7 +549,7 @@ local function onFormed(key: string, teams: { { Queue.Entry } })
 		for _, e in list do
 			local o = e.owner :: any
 			o.found = f
-			if o.room then
+			if o.leader then
 				pushParty(o :: PartyT)
 				for _, pl in realMembers(o :: PartyT) do push(pl, { t = "found", at = serverNow() + PlayConfig.FOUND, mode = mode, ranked = f.ranked }) end
 			end
@@ -517,11 +591,12 @@ local function start(f: Found): boolean
 		end
 		opts.hold, opts.holdWin = testHold.secs, win
 	end
-	local m = Matches.startQueued(cfg.pad, sides, opts)
+	-- (a mode from PlayConfig.EXTRA may bring its own start; the duels go through the pads' code)
+	local m = if type((cfg :: any).start) == "function" then (cfg :: any).start(sides, opts) else Matches.startQueued(cfg.pad, sides, opts)
 	if not m then
 		if not f.waiting then
 			f.waiting = true
-			for _, list in f.teams do for _, e in list do local o = e.owner :: any; if o.room then pushParty(o :: PartyT) end end end
+			for _, list in f.teams do for _, e in list do local o = e.owner :: any; if o.leader then pushParty(o :: PartyT) end end end
 		end
 		return false
 	end
@@ -530,9 +605,15 @@ local function start(f: Found): boolean
 			Queue.remove(e)
 			local o = e.owner :: any
 			o.entry, o.found = nil, nil
-			if o.room then
-				o.match = m.id
-				pushParty(o :: PartyT)
+			if o.members and o.leader then
+				-- the whole party comes back to the room after the match (built now if everyone had left it)
+				local pt = o :: PartyT
+				ensureRoom(pt)
+				for _, mem in pt.members do
+					if mem.player then mem.inRoom = true; mem.player:SetAttribute("Lobby", pt.id) end
+				end
+				pt.match = m.id
+				pushParty(pt)
 			end
 		end
 	end
@@ -615,14 +696,15 @@ local function players(p: Player): any
 			local inv = false
 			for _, iv in invites do if iv.party == mine and iv.to == o then inv = true end end
 			table.insert(out, { id = o.UserId, name = o.Name, display = o.DisplayName, mine = mine ~= nil and byPlayer[o] == mine,
-				party = byPlayer[o] ~= nil, inMatch = Matches.matchOf(o) ~= nil, invited = inv })
+				party = byPlayer[o] ~= nil, inMatch = Matches.matchOf(o) ~= nil, invited = inv, rank = RankedData.summary(o) })
 		end
 	end
 	if RunService:IsStudio() then
 		for _, m in standPool do
 			local inv = false
 			for _, iv in invites do if iv.party == mine and iv.toStand == m then inv = true end end
-			table.insert(out, { id = m.id, name = m.name, display = m.display, standIn = true, invited = inv })
+			table.insert(out, { id = m.id, name = m.name, display = m.display, standIn = true, invited = inv,
+				rank = RankedData.view(m.rating and (m.rating :: any)["2v2"], "2v2") })
 		end
 	end
 	return out
@@ -647,7 +729,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	if op == "state" then return stateOf(p)
 	elseif op == "players" then return { ok = true, list = players(p) }
 	elseif op == "play" then ok, why = Party.enter(p)
-	elseif op == "leave" then Party.leave(p); ok = true
+	elseif op == "leave" then Party.exit(p); ok = true -- (LEAVE LOBBY)
+	elseif op == "leaveparty" then Party.leave(p); ok = true
 	elseif op == "invite" and type(a) == "number" then ok, why = invite(p, a)
 	elseif op == "answer" and type(a) == "number" then ok, why = answer(p, a, b == true)
 	elseif (op == "kick" or op == "promote") and type(a) == "number" then
@@ -688,7 +771,7 @@ function Party.init(fight: any, matches: any, rankedData: any, remotes: Instance
 	-- a lobby body stands still on its plinth (anchored) whenever it respawns there
 	Fight.onSpawn(function(f: any)
 		local p = f.ref :: Player
-		if f.kind ~= "player" or not byPlayer[p] or Matches.matchOf(p) then return end
+		if f.kind ~= "player" or not Party.homeOf(p) or Matches.matchOf(p) then return end
 		local root = rootOf(p)
 		if root then root.Anchored = true end
 	end)

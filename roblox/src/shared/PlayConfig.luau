@@ -20,6 +20,16 @@ PlayConfig.MODES = {
 PlayConfig.byId = {} :: { [string]: Mode }
 for _, m in PlayConfig.MODES do PlayConfig.byId[m.id] = m end
 
+-- MODES (the Play screen's second tab): JANKFIRE's classic modes, ported by a later session. empty until then.
+-- an entry is a Mode (above) plus sub (its one line); PlayConfig.addMode puts it here and in byId, so the screen draws
+-- its card and the server's queue takes it like a duel. its match starts through Matches.startQueued with its pad
+-- (that session can give the entry a start function instead: Party.luau's start() calls it when it is there)
+PlayConfig.EXTRA = {} :: { any }
+function PlayConfig.addMode(m: any)
+	table.insert(PlayConfig.EXTRA, m)
+	PlayConfig.byId[m.id] = m
+end
+
 PlayConfig.PARTY_MAX = 4 -- the biggest team
 PlayConfig.INVITE_TTL = 60 -- s an invite stays open
 PlayConfig.INVITES_PER_MIN = 6

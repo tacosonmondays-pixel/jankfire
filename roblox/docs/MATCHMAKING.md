@@ -69,6 +69,13 @@ What changes from the first build (this section wins where it disagrees with sec
 
 ## 1. The flow
 
+(This is the first build's flow. Section 0 changes four things:)
+
+- the PARTY panel invites from anywhere;
+- LEAVE LOBBY keeps you in the party;
+- CASUAL / RANKED is now a RANKED switch;
+- the screens show rank points, not the rating.
+
 1. **PLAY** (button over PROFILE in the hub HUD, or **M**): you go to a private lobby. If you are not in a party you
    become a party of one. The screen fades, you appear on the first plinth of a quiet room, and the Play screen opens
    over it: modes on the left, the party on the right, the lineup in the middle.
@@ -96,8 +103,9 @@ What changes from the first build (this section wins where it disagrees with sec
 | ranked party | members within **400 rating** of each other in that mode | stops boosting; Rivals uses about 4 ranks |
 | in a match | a member who is in a pad match greys out; the party cannot queue until they are back | web `pbusy` |
 
-The private lobby **is** the party: everyone in a party stands in its room, and leaving the room leaves the party.
-Rooms are built from code when a party needs one and removed when it empties.
+Since the second pass (section 0), a party and its room are separate. A party can be people walking around the hub.
+Its room is built from code when someone presses PLAY, and removed when no member stands in it, unless a match will
+bring them back to it.
 
 ## 3. Matchmaking (in one server)
 
@@ -169,10 +177,16 @@ level only (LV and the XP bar). Its right-hand mark is the ranked badge with its
 
 ### What you see
 
-- **After a match** (on the end screen, then in the lobby): WIN / LOSS, the rating before and after with `+24` or
-  `-18`, a bar showing where you stand in your division, and the new rank. Crossing a division says `PROMOTED` or
-  `DEMOTED`; finishing placements says `PLACED`.
-- **The Play screen:** each ranked mode card shows your badge and rating for that mode (or `PLACEMENTS n/5`).
+(Since the second pass, section 0: what you see is rank points, never the rating.)
+
+- **After a match** (on the end screen, then in the lobby):
+  - WIN / LOSS and the new rank;
+  - the points won or lost, `+24 RP` / `-18 RP` (in placements, just W / L);
+  - the division bar sliding to its new place, with `58/100` beside it.
+  - Crossing a division says `PROMOTED` or `DEMOTED`. Finishing placements says `PLACED`.
+- **The Play screen:**
+  - with RANKED on, your rank in the picked mode: badge, name, bar and `34/100`;
+  - each ranked mode card: your badge and rank for that mode (or `PLACEMENTS n/5`).
 - **The player card** (Stats.cardExtra → `card.ranked`): the best placed mode this season, or the mode nearest to
   being placed, or `UNRANKED`.
 - Player attribute `RankedBest` = "GOLD II" (for nametags or lists later).
@@ -271,6 +285,22 @@ Tested in Studio Play with one real player plus stand-ins (photos in `docs/match
   GOLD II. The Studio store (`JankfireRanked_studio`) kept the rating between Play tests.
 - **Card and phone:** the player card shows the ranked badge and its line in the player-cards session's slot. An
   844x390 phone box lays out with the compact panels.
+
+**The second pass (section 0), tested 17 Nov, place version 510:**
+
+![PARTY panel, the RANKED switch's flame sweep, the rank bar, a ranked win in RP](matchmaking/matchmaking-sheet-2.jpg)
+
+- **PARTY panel in the hub:**
+  - Inviting a stand-in made a party of 2 in the hub, with no room.
+  - The panel lists the party (LEADER / MEMBER, IN THE HUB, KICK, VIEW CARD, LEAVE PARTY) and the server (badges,
+    INVITE, VIEW CARD, a greyed TRADE).
+- **PLAY as the leader** built the room and brought both members onto plinths.
+- **The RANKED switch:**
+  - Turning it on sweeps flames up the panel with embers.
+  - Then it settles to a warm edge, low flames along the bottom and a few embers.
+  - The rank block reads GOLD II, a bar, 34/100.
+- **A ranked win** gave +27 RP: GOLD II, 61/100 on the result card.
+- **LEAVE LOBBY** sent me to the hub, still in a party of 2 (the room closed). **LEAVE PARTY** left the party.
 
 Not tested (needs other real players or a published place):
 

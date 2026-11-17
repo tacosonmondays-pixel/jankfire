@@ -49,10 +49,10 @@ end
 function RankedData.view(q: Ranked.Rating?, mode: string?): any
 	if not q or (q.n or 0) <= 0 then return { unranked = true, mode = mode, n = 0, need = if q then q.need else Ranked.PLACEMENTS } end
 	local rk = Ranked.rankOf(q)
+	-- (the MMR itself never leaves the server: the screens show rank points, rp of 100 in the division)
 	return {
-		mode = mode, r = rk.r, placed = rk.placed, name = rk.name, tier = rk.tier and rk.tier.id, div = rk.div, step = rk.step,
-		lo = if rk.lo == -math.huge then nil else rk.lo, hi = rk.hi, progress = rk.progress, n = q.n or 0, need = q.need or Ranked.PLACEMENTS,
-		w = q.w or 0, l = q.l or 0, peak = math.floor((q.peak or 0) + 0.5),
+		mode = mode, placed = rk.placed, name = rk.name, tier = rk.tier.id, div = rk.div, step = rk.step, rp = rk.rp,
+		progress = rk.progress, n = q.n or 0, need = q.need or Ranked.PLACEMENTS, w = q.w or 0, l = q.l or 0,
 	}
 end
 
@@ -121,8 +121,12 @@ local function rate(p: Player, m: any, team: number, won: boolean): any?
 	local res = Ranked.apply(q, teamR, oppR, oppRd, won, os.time())
 	res.mode = rated.mode
 	res.rank = RankedData.view(q, rated.mode)
+	-- (what the card animates from; the Rank tables carry the hidden MMR, so they stay here)
+	local rb = res.rankBefore
+	res.prev = { tier = rb.tier.id, div = rb.div, rp = rb.rp, step = rb.step, placed = rb.placed }
+	res.rankBefore, res.rankAfter = nil, nil
 	res.season = d.season
-	table.insert(d.recent, 1, { t = os.time(), mode = rated.mode, r0 = res.before, r1 = res.after, res = if won then "W" else "L" })
+	table.insert(d.recent, 1, { t = os.time(), mode = rated.mode, rp = res.delta, mmr = res.mmrDelta, res = if won then "W" else "L" })
 	while #d.recent > RECENT do table.remove(d.recent) end
 	if s.prof then s.prof.dirty = true end
 	publish(p)
@@ -212,7 +216,7 @@ function RankedData.test(op: string, p: Player?, a: any, b: any): any
 		return { ready = true, store = store.name, season = d.season, modes = d.modes, views = RankedData.modes(p :: Player), best = RankedData.summary(p :: Player), recent = d.recent }
 	elseif op == "setranked" and d and type(a) == "string" and type(b) == "table" then
 		local q = ratingOf(d, a)
-		for _, k in { "r", "rd", "vol", "n", "w", "l", "need" } do if type(b[k]) == "number" then (q :: any)[k] = b[k] end end
+		for _, k in { "r", "rd", "vol", "n", "w", "l", "need", "lp" } do if type(b[k]) == "number" then (q :: any)[k] = b[k] end end
 		if type(b.placed) == "boolean" then q.placed = b.placed end
 		local s = st[p :: Player]
 		if s and s.prof then s.prof.dirty = true end

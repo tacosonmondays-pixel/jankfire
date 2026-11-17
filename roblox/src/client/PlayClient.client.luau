@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
+local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
 local T = require(script.Parent:WaitForChild("Theme"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local PushR = Remotes:WaitForChild("PlayPush") :: RemoteEvent
@@ -27,10 +28,12 @@ end
 local busy = false
 local function play()
 	if busy or me:GetAttribute("Zone") == "match" then return end
-	if PlayUI.S.party then
+	local pt = PlayUI.S.party
+	if pt and pt.room then
 		if not PlayUI.isOpen() then PlayUI.open() end
 		return
 	end
+	if PartyUI.isOpen() then PartyUI.close() end
 	busy = true
 	T.tween(fade, 0.18, { BackgroundTransparency = 0 })
 	task.wait(0.18)
@@ -60,10 +63,11 @@ end
 PushR.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" then return end
 	if msg.t == "party" then
-		local wasIn = PlayUI.S.party ~= nil
+		local hadRoom = PlayUI.S.party ~= nil and PlayUI.S.party.room ~= nil
 		PlayUI.onParty(msg.party)
-		if wasIn and not msg.party then PlayUI.close(); dip() end
+		if hadRoom and not (msg.party and msg.party.room) and not (msg.party and msg.party.inMatch) then PlayUI.close(); dip() end
 		sync()
+		PartyUI.changed()
 	elseif msg.t == "invite" then PlayUI.onInvite(msg)
 	elseif msg.t == "inviteGone" then PlayUI.onInviteGone(msg.id)
 	elseif msg.t == "toast" and type(msg.text) == "string" then PlayUI.notice(msg.text)
@@ -80,6 +84,10 @@ end)
 me:GetAttributeChangedSignal("Zone"):Connect(function() task.defer(sync) end)
 
 UIS.InputBegan:Connect(function(io, gp)
+	if io.KeyCode == Enum.KeyCode.J and not gp and not UIS:GetFocusedTextBox() and me:GetAttribute("Zone") ~= "match" then
+		if PartyUI.isOpen() or me:GetAttribute("LoadoutOpen") ~= true or PlayUI.isOpen() then PartyUI.toggle() end
+		return
+	end
 	if io.KeyCode ~= Enum.KeyCode.M or gp or UIS:GetFocusedTextBox() then return end
 	if PlayUI.isOpen() then return end -- (in the lobby the screen stays: LEAVE LOBBY takes you out)
 	if me:GetAttribute("LoadoutOpen") == true then return end
@@ -90,7 +98,7 @@ end)
 local hud = T.new("ScreenGui", { Name = "JankPlayButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 local face = T.new("TextButton", {
 	Name = "Play", AutoButtonColor = false, BackgroundColor3 = T.ACCENT, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -266), Size = UDim2.fromOffset(136, 42), FontFace = T.FONT_SHOUT, TextSize = 16, Text = "PLAY",
+	Position = UDim2.new(0, 24, 1, -312), Size = UDim2.fromOffset(136, 42), FontFace = T.FONT_SHOUT, TextSize = 16, Text = "PLAY",
 	TextColor3 = T.INK, TextXAlignment = Enum.TextXAlignment.Left,
 }, T.scaled(hud))
 T.corner(face)
@@ -100,9 +108,26 @@ key.BackgroundColor3 = T.INK
 face.MouseEnter:Connect(function() face.BackgroundColor3 = T.ACCENT:Lerp(Color3.new(1, 1, 1), 0.18) end)
 face.MouseLeave:Connect(function() face.BackgroundColor3 = T.ACCENT end)
 face.MouseButton1Click:Connect(function() task.spawn(play) end)
+-- PARTY, under it: everyone in the server, invites, cards (PartyUI). it counts your party when you have one
+local partyB = T.new("TextButton", {
+	Name = "Party", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
+	Position = UDim2.new(0, 24, 1, -262), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "PARTY",
+	TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, RichText = true,
+}, face.Parent)
+T.corner(partyB); T.edge(partyB)
+T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, partyB)
+T.key(partyB, "J", UDim2.fromOffset(-34, 7))
+partyB.MouseEnter:Connect(function() partyB.BackgroundTransparency = 0.1 end)
+partyB.MouseLeave:Connect(function() partyB.BackgroundTransparency = T.BG_A end)
+partyB.MouseButton1Click:Connect(function() PartyUI.toggle() end)
+PlayUI.openParty = function() PartyUI.open() end
 RunService.Heartbeat:Connect(function()
 	local show = not PlayUI.isOpen() and me:GetAttribute("LoadoutOpen") ~= true and me:GetAttribute("Zone") ~= "match"
 	if face.Visible ~= show then face.Visible = show end
+	if partyB.Visible ~= show then partyB.Visible = show end
+	local pt = PlayUI.S.party
+	local label = if pt then ('PARTY  <font color="%s">%d/%d</font>'):format(T.hex(T.MUTED), #pt.members, pt.max or 4) else "PARTY"
+	if partyB.Text ~= label then partyB.Text = label end
 end)
 
 -- after a respawn (back from a match) the lobby screen comes back if it should
@@ -115,7 +140,8 @@ task.spawn(function()
 end)
 
 -- a test hook (Play tests driven from Studio can't call into this script's modules): set the local player's attribute
--- PlayTest to "play", "open", "close", "tab:ranked", "tab:casual", "invite", "uninvite", "fake:844x390", "real", "state"
+-- PlayTest to "play", "open", "close", "tab:duels", "tab:modes", "invite", "uninvite", "fake:844x390", "real", "state",
+-- "party", "unparty", "partyfake:844x390" (the PARTY panel)
 me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 	local v = me:GetAttribute("PlayTest")
 	if type(v) ~= "string" or v == "" then return end
@@ -131,6 +157,11 @@ me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 		local w, h = string.match(a, "^(%d+)x(%d+)$")
 		if w then PlayUI.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
 	elseif cmd == "real" then PlayUI.fakeScreen(nil)
+	elseif cmd == "party" then PartyUI.open()
+	elseif cmd == "unparty" then PartyUI.close()
+	elseif cmd == "partyfake" then
+		local w, h = string.match(a, "^(%d+)x(%d+)$")
+		if w then PartyUI.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
 	elseif cmd == "state" then task.spawn(function() local st = PlayUI.ask("state"); if st.ok then PlayUI.setState(st) end end)
 	end
 end)
