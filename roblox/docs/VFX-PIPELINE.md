@@ -351,3 +351,25 @@ Trail on the viewmodel), guns' trails stay off in first person.
   The revolvers' sparks did not show at all at first (the spark drawing needs the frag's x3.4); fixed and checked
   live on the levers. The steam chuffs read too small, so they are about 1.7x bigger now. Not re-photographed after
   those two fixes, and nothing photographed in first person yet.
+
+### Round 12: the first-person pass with effects really on (17 Nov 2026, place version 486)
+
+Main asked for it after round 11's finding (first-person skin effects had been off since round 4, so no earlier
+first-person check saw them). Real viewmodel, real input, the test hook arming the skins: the Ducky LMG (Bubble Bath
+v3), the Seraph rifle, the Dust Drover revolver and an SMG in the Lava wrap, each idle, strafing, firing and aimed.
+Sheet: `round12/first-person-sheet.jpg`.
+
+- Passed: nothing sits on the sights; every skin's effects go quiet while aiming (0 of 8, 0 of 7, 0 of 5, Lava 0 of
+  4) and come back after; strafing at 9-10 m/s floods nothing (first-person particles ride with the gun).
+- Fixed: a shot's bursts went to the first skinned gun within 2.5 studs of the muzzle, and in first person that was
+  often the copy hidden in your character's hand, so your own shots' sparks went off on a gun you can't see. Now the
+  nearest muzzle wins. And any gun that isn't showing goes quiet (that hidden copy's idle effects drew round your
+  hand before).
+- Fixed: Lava's embers (WrapAnim, not Fx) rose into the upper middle of the view, one inside the middle fifth. In first
+  person, wrap particles now live 0.55 as long (a third of the climb). Pushed after the Play, not re-photographed.
+- Re-photographed from round 11: the Dust Drover's hammer spark (a warm streak pair off the back of the gun, riding
+  it through the twirl) and its gunsmoke (a faint warm curl at the muzzle at 0.5 s).
+- Capture trap: freeze on the mouse press, not on the ammo count. The count waits for the server, and a 0.14 s spark is
+  gone by then.
+- Open: firing right next to a wall, the muzzle light blows out half the screen (Lava SMG frames). That is Fx's own
+  light at a stud from the wall; next turn.

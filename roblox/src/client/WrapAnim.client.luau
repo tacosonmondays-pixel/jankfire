@@ -235,6 +235,9 @@ local function rebuild(gun: Instance)
 		local em = Instance.new("ParticleEmitter")
 		em.Name = "WrapFx"
 		for k, v in fxProps(spec, s) do (em :: any)[k] = v end
+		-- (first person, the VFX session's round 12 photos: Lava's embers rose into the upper middle of the view, one
+		-- inside the middle fifth; 0.55 of the life keeps them round the gun, a third of the climb)
+		if fp then em.Lifetime = NumberRange.new(em.Lifetime.Min * 0.55, em.Lifetime.Max * 0.55) end
 		em.Shape = Enum.ParticleEmitterShape.Box
 		em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
 		em.Rate = spec.rate * area(b) / total

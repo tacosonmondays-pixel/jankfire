@@ -1848,14 +1848,18 @@ function Fx.skinOff(model: Model)
 	local root = model.PrimaryPart
 	if root then for _, c in root:GetChildren() do if c.Name == "SkinFx" then c:Destroy() end end end
 end
--- the registered skinned gun whose muzzle a shot left from (within 2.5 studs), if any
+-- the registered skinned gun whose muzzle a shot left from: the nearest within 2.5 studs. (round 12 in first person:
+-- the first one within reach was often the copy hidden in your character's hand, a stud or two from the viewmodel's,
+-- so your shots' bursts went off on a gun you can't see)
 skinAt = function(p: Vector3): any
+	local best, bd = nil, 2.5
 	for m, S_ in skinned do
 		if not m.Parent then skinned[m] = nil; continue end
 		local mz = S_.muzzle
-		if mz and (mz.WorldPosition - p).Magnitude < 2.5 then return S_ end
+		local d = if mz then (mz.WorldPosition - p).Magnitude else math.huge
+		if d < bd then best, bd = S_, d end
 	end
-	return nil
+	return best
 end
 -- a shot from a registered skinned gun: its shot bursts, its lever bursts at the lever cycle's clack, its glow pieces
 -- flare for spec.pulse.t. your own in first person: none while aiming or hidden, no puff across the middle fifth
@@ -1965,10 +1969,12 @@ local function skinStep()
 	local aiming = fov < wideFov * 0.95
 	for m, S_ in skinned do
 		if not m.Parent then skinned[m] = nil; continue end
-		if S_.fp then
+		-- (any gun that isn't showing goes quiet: the viewmodel in third person, and in first person the copy in your
+		-- character's hand, whose effects drew round your hand before round 12; your own in first person also while aiming)
+		do
 			local vis = S_.vis
 			local hidden = vis == nil or vis.Parent == nil or vis.LocalTransparencyModifier >= 0.99 or vis.Transparency >= 0.99
-			local quiet = hidden or aiming
+			local quiet = hidden or (S_.fp and aiming)
 			if quiet ~= S_.quiet then
 				S_.quiet = quiet
 				for _, e in S_.idle do e.Enabled = not quiet; if hidden then e:Clear() end end
