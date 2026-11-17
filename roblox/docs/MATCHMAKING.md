@@ -436,6 +436,8 @@ Main's decision: yes, with the web game's own Jank Royale rule (`shared/royale.j
   - On the server: n 1, then 0, then the third was cut "recharging". One charge came back at 6.2 s and the second at
     12.2 s.
   - In the hub, three hooks in a row all went (`HookLimit` false).
+  - The sounds (place v665, the sound session's recordings), checked in Play: the refused third hook played
+    `hook_empty` once, and each charge coming back played `hook_ready`, at 6.2 s and 12.2 s.
 
   ![ranked: the third hook refused](matchmaking/33_grapple_charges.jpg)
 
