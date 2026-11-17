@@ -82,6 +82,7 @@
 #        fn: a Gun method (box prism cyl cylz ring ball xprism yprism window), a gun_sights.py helper (rifle_rear
 #        rifle_front notch blade bead), gun_models' trigger / guard, or halo (a tilted ring on spokes, below)
 #   "shell": ["body_wzA__pearl", "rwing"],      Route S shells: pieces or nodes (budget: <= 15k tris with shells)
+#   "sheet": {"closeup": {"at": [x, y, z], "size": 0.16, "label": "front sight"}},   an extra close side view
 #   "ao": null                                  the bake's AO reach (metres; null = from the gun's length)
 # }
 # TRAPS (the angel rifle): Tripo pieces come as open shells sitting on each other (a star relief with no back, a halo as a
@@ -1087,7 +1088,7 @@ def _grey(objs):
         if o.type == 'MESH': o.data.materials.clear(); o.data.materials.append(m)
 
 
-def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None, Wd=900, Ht=560):
+def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None, rec=None, Wd=900, Ht=560):
     """the verdict panels (PNG) in out_dir/sheet, composed with labels into sheet_path by plain Python + PIL.
        compare = a folder holding an earlier version's _p_hand.png and _p_aim.png: shown beside this version's"""
     import gun_set
@@ -1123,6 +1124,14 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     _sun(sc, (math.radians(20), 0, math.radians(-30)))
     _cam(sc, mid + Vector((0, 0, 3.0)), mid, ortho=L * 1.12, up=Vector((1, 0, 0)))
     panels.append((_render(os.path.join(pdir, '_p_top.png')), 'top (right side up)'))
+    cu = ((rec or meta.get('recipe', {})).get('sheet') or {}).get('closeup')   # {"at": [x, y, z], "size": m, "label": ".."}
+    close = None
+    if cu:   # a close left-side view of one detail (a slight turn toward the camera so its depth shows)
+        sc = _scene(Wd, Ht); _import(sh)
+        _sun(sc, (math.radians(55), 0, math.radians(-70)))
+        at = B(cu['at'])
+        _cam(sc, at + Vector((-3.0, 0.6, 0.5)), at, ortho=cu.get('size', 0.18))
+        close = (_render(os.path.join(pdir, '_p_close.png')), cu.get('label', 'close-up'))
     # in hand: the skin, then the live base gun (gun_preview's camera and pose)
     sc = _scene(Wd, Ht); _import(sh, hold_matrix(base_id))
     _sun(sc, (math.radians(35), 0, math.radians(20)))
@@ -1140,13 +1149,20 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     eye = B((0, sp[1], sp[2] + 0.11))
     _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
     panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'aim view (approx.: eye 0.11 m behind the rear sight)'))
-    if compare:   # raw, 3/4, side, top | before in hand, now in hand, before aimed | now aimed, base gun in hand
-        P = dict(zip(('raw', '34', 'side', 'top', 'hand', 'base', 'aim'), panels))
-        tag = meta.get('name', K).split()[-1]
-        relabel = lambda pl, l: (pl[0], l)
+    P = dict(zip(('raw', '34', 'side', 'top', 'hand', 'base', 'aim'), panels))
+    relabel = lambda pl, l: (pl[0], l)
+    if compare and close and os.path.exists(os.path.join(compare, '_p_close.png')):
+        # 3/4, side, top | the detail before and now, now in hand | aimed before and now, the base gun in hand
+        panels = [P['34'], P['side'], P['top'],
+                  (os.path.join(compare, '_p_close.png'), 'BEFORE: ' + close[1]), relabel(close, 'NOW: ' + close[1]),
+                  relabel(P['hand'], 'NOW: in hand'),
+                  (os.path.join(compare, '_p_aim.png'), 'BEFORE: aim view'), relabel(P['aim'], 'NOW: aim view'), P['base']]
+    elif compare:   # raw, 3/4, side, top | before in hand, now in hand, before aimed | now aimed, base gun in hand
         panels = [P['raw'], P['34'], P['side'], P['top'],
                   (os.path.join(compare, '_p_hand.png'), 'BEFORE: in hand'), relabel(P['hand'], 'NOW: in hand'),
                   (os.path.join(compare, '_p_aim.png'), 'BEFORE: aim view'), relabel(P['aim'], 'NOW: aim view'), P['base']]
+    elif close:
+        panels.append(close)
     if concept: panels.insert(0, (concept, "owner's concept"))
     spec = {'panels': panels, 'out': sheet_path, 'w': Wd, 'h': Ht, 'title': meta.get('name', K)}
     js = os.path.join(pdir, '_sheet.json')
@@ -1292,7 +1308,7 @@ def main(argv):
     if opt('--stage') == 'sheet':   # (only the sheet again, from the files a full run left in out_dir)
         meta = json.load(open(os.path.join(out_dir, K + '_clean.json')))
         s, t, R, _ = solve_fit(rec, meta['spots'])
-        sheet(K, base_id, out_dir, opt('--sheet'), raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'))
+        sheet(K, base_id, out_dir, opt('--sheet'), raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'), rec=rec)
         return
     meta = clean(raw, base_id, skin_id, rec, out_dir)
     if opt('--stage') == 'clean':   # (the quick loop while writing regions: flat colours, workbench, three views)
@@ -1347,7 +1363,7 @@ def main(argv):
     sp = opt('--sheet')
     if sp and '--no-bake' not in rest:
         s, t, R, _ = solve_fit(rec, meta['spots'])
-        sheet(K, base_id, out_dir, sp, raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'))
+        sheet(K, base_id, out_dir, sp, raw, (s, t, R), concept=opt('--concept'), compare=opt('--compare'), rec=rec)
     print('TRIPO GUN %s done in %.0fs' % (key, time.time() - t0))
     for k in ('fit', 'tris', 'tris_gun', 'tris_shells', 'tris_total', 'zfix', 'flicker', 'gun_check', 'export', 'export_lo_hi', 'bounds', 'base_bounds'):
         if k in meta: print('  %s: %s' % (k, json.dumps(meta[k], default=str)))
