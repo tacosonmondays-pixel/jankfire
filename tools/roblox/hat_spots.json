@@ -45,6 +45,8 @@
   "katana@katana_neon": {"z": 0.08, "s": 0.6, "note": "upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm"},
   "ar@ar_seraph": {"z": -0.14, "s": 1.0, "note": "on the receiver rib ahead of the halo sight (solved onto the halo itself, 6 cm over the gun; moved by hand): worst clip 0.0 mm"},
   "ar@ar_seraph_tripo": {"z": -0.15, "s": 1.0, "note": "on the pearl rail ahead of the receiver, the whole foot on its flat (the solver's -0.11 hung half off its back edge): worst clip 0.0 mm"},
+  "pistol@pistol_ducky_tripo": {"z": -0.07, "s": 0.62, "note": "on the slide behind the strap (the pistol's -0.08 put the third-person cowboy brim 2.7 mm into the strap): worst clip 0.1 mm"},
+  "katana@katana_ducky_tripo": {"y": 0.0, "pitch": 90, "z": 0.269, "s": 0.6, "note": "standing off the back of the life-ring pommel (the handle ends 14 cm behind the katana's): worst clip 0.0 mm"},
   "ar@ar_infernal": {"z": -0.09, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "lmg@lmg_ducky": {"z": 0.0, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.4 mm (first)"},
   "marbles@marbles_cauldron": {"z": -0.04, "s": 0.65, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},

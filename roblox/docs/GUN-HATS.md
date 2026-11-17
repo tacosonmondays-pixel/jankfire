@@ -350,6 +350,24 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
     set: 89 seats, 2,136 rows.
   - Studio: the template's `FileLo`/`FileHi` match the builder (plus its shade shells). Every hat's foot is 2.0 mm into
     the rail at its centre and 1.6–2.0 mm at 3 cm fore and aft. Live in place version 628.
+- **The Tripo Ducky guns (guns place version 669, hats 678):** four more of the owner's Tripo models, cleaned by
+  `tripo_gun.py`. All are concepts, not sold, and built from the vault with the same `JF_EXTRA`:
+  `smg@smg_ducky_tripo`, `katana@katana_ducky_tripo`, `sniper@sniper_ducky_tripo` and `pistol@pistol_ducky_tripo`.
+  - SMG: its gun's seat (z −0.10, size 0.85) on the long flat top; feet at most 2.5 mm.
+  - Sniper: its gun's seat as well (z 0.039 on the 13 mm puck, on the live slim scope); nothing touches. The solver
+    offered z 0.009 with no puck, which perches the foot on a 1 cm scope band; the puck seat matches the other Snipers.
+    (The solver tries every spot with no saddle before the base's own saddle.)
+  - Plan B: its own seat, z −0.07, on the slide behind the blue strap. At the pistol's −0.08 the third-person Cowboy
+    Hat's brim went 2.7 mm into the strap (the Propeller Cap 1.8); at −0.07 the worst is 0.1 mm.
+  - Katana: its own seat, z 0.269, standing off the back of the life-ring pommel. The handle ends 14 cm behind the
+    katana's, so the inherited pommel seat (z 0.128) would have put the hat inside the grip. Nothing touches; the
+    foot is at most 0.7 mm into the ring's curve.
+  - Angel rifle v6 (a new barrel and brake): rechecked at its seat, unchanged (foot 2.0 mm, nothing else).
+  - The hat preview tool needs a `hat_spots.json` line for every gun (`--spots` with a copy for inherited seats).
+  - Whole set: 93 seats, 2,232 rows.
+  - Studio (the templates' `FileLo`/`FileHi` match the guns session's bounds): five rays under each foot. SMG, Plan B
+    and the angel: 2.0 mm in throughout. Sniper: 11–12 mm over the scope on its puck, as on the plain Sniper. Katana:
+    1.5 mm into the ring at the centre, up to 2.5 mm over its curve 1 cm out. Live in place version 678.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -430,7 +448,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 12** (asset 100913123667082: the eleven hats plus the Star Tricorne), place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
-  73 skins since place version 628 (72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
+  77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
