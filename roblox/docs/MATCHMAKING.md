@@ -86,7 +86,7 @@ and a volatility `σ`. After each match each player is updated as one Glicko-2 r
 Why Glicko-2 and not plain Elo: it knows how sure it is. New players find their level in a handful of matches,
 settled players don't swing, and coming back after a break moves you faster again. Tested by simulation
 (`tools/roblox/glicko_sim.mjs`): 2,000 players of known skill, 60 matches each, end with ratings spread
-1115 / 1339 / 1500 / 1661 / 1888 at the 5th / 25th / 50th / 75th / 95th percentiles.
+1098 / 1333 / 1500 / 1668 / 1904 / 2062 at the 5th / 25th / 50th / 75th / 95th / 99th percentiles.
 
 ### Tiers and divisions
 
@@ -168,12 +168,20 @@ the ratings, but they never enter a match. A match with stand-ins is held like a
 
 - `:Invoke("standins", n)` puts n stand-ins in the server's invite list (inviting one: it joins after 1 s)
 - `:Invoke("rival", mode, ranked, size, rating)` puts a stand-in party in the queue
-- `:Invoke("hold", secs, win)` how long a test match lasts and which team wins it
+- `:Invoke("hold", secs, win)` how long a test match lasts and who wins it: a team number, `"party"` (the real
+  players' team, the default) or `"rival"`
+- `:Invoke("join", player)` a stand-in straight into the player's party (no invite)
 - `:Invoke("state")` parties, queues, rooms; `:Invoke("ranked", player)` the player's ratings
-- `:Invoke("setranked", player, mode, { r, rd, n })` and `:Invoke("resetranked", player)` (Studio store only)
+- `:Invoke("setranked", player, mode, { r, rd, n, placed, need })` and `:Invoke("resetranked", player)` (Studio
+  store only)
+- `:Invoke("play", player)` / `:Invoke("leave", player)` what PLAY and LEAVE LOBBY do
 
-Client side: the local player's attribute `PlayTest` = `open`, `close`, `tab:ranked`, `mode:2v2`, `invite`,
-`fake:844x390`, `real`.
+Client side: the local player's attribute `PlayTest` = `play`, `open`, `close`, `tab:ranked`, `tab:casual`, `invite`,
+`uninvite`, `fake:844x390`, `real`, `state`. The remote also works from a Client `execute_luau`
+(`JankfireRemotes.Play:InvokeServer("find")`).
+
+A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match
+places you), `rival 2v2 true 2 1500`, `hold 8 party`, `find`.
 
 ## 6. Across servers (written, OFF, untested until publish)
 
@@ -192,7 +200,38 @@ has never run.
 - What still needs doing at publish: test the teleports, the lock hand-over, and what happens when a teleport fails
   (`TeleportInitFailed`).
 
-## 7. Research notes (16 Nov 2026)
+## 7. State (17 Nov 2026, place version 507)
+
+![the Play screen, party, search, results, card, phone, hub](matchmaking/matchmaking-sheet.jpg)
+
+Tested in Studio Play with one real player plus stand-ins (photos in `docs/matchmaking/`):
+
+- **PLAY** (button and test hook): a private lobby room is built, you respawn anchored on the middle plinth, the
+  camera frames the lineup and the Play screen opens. **LEAVE LOBBY**: back to the hub, body free, room removed.
+- **Invites:** the list shows everyone else in the server. A stand-in invited joins after 1 s and stands on plinth 2.
+  The party panel shows 2/4, LEADER and MEMBER, KICK and LEAD; kick works. The invite toast (JOIN / DECLINE, a
+  draining bar) shows in the hub.
+- **Ranked pick:** the leader picks RANKED 2V2. The mode cards show each mode's rank (UNRANKED, PLACEMENTS n/5, GOLD III).
+- **The queue:** FIND MATCH shows SEARCHING with a clock and the widening rating range. A rival stand-in party joins the
+  queue, then MATCH FOUND counts 3 s.
+- **The match:** RooftopV2, and the HUD line says RANKED 2v2. The end screen says "back to the lobby" with the ranked
+  card beside it. Then everyone is back in the lobby on the same plinths, party intact, and the screen comes back by itself.
+- **Ratings:** a 5th placement (a loss) gave -53, PLACED, GOLD III. The next match (a win) gave +49, PROMOTED to
+  GOLD II. The Studio store (`JankfireRanked_studio`) kept the rating between Play tests.
+- **Card and phone:** the player card shows the ranked badge and its line in the player-cards session's slot. An
+  844x390 phone box lays out with the compact panels.
+
+Not tested (needs other real players or a published place):
+
+- Two real players in one party, a real invite answered, a real 2v2 against real players. Stand-ins never enter the
+  arena: their side of a test match is empty, so the match is held like a ghost match.
+- Leaving the server mid ranked match. The loss is applied at once in code, but this has not been run.
+- Everything in section 6 (cross-server): off, never run.
+- The nameplates over the lineup are built and attached (checked by code: two plates, one on each head), but Studio's
+  capture tool doesn't draw them, so they have no photo.
+- Touch on a real phone.
+
+## 8. Research notes (16 Nov 2026)
 
 - **Roblox duel games:** a Play button that matchmakes across lobbies sits beside walk-on duel pads. Ranked is 1v1 to
   3v3 there, with Bronze to Diamond in three divisions, a further named tier, a top tier with no divisions, about 200

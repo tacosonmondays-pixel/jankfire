@@ -85,6 +85,12 @@
         },
         "ShopBuy": {
           "$className": "RemoteEvent"
+        },
+        "Play": {
+          "$className": "RemoteFunction"
+        },
+        "PlayPush": {
+          "$className": "RemoteEvent"
         }
       },
       "Match": {

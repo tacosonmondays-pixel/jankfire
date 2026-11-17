@@ -3,7 +3,7 @@
 // run: node tools/roblox/glicko_sim.mjs (the Luau is src/shared/Ranked.luau; keep the two in step)
 const Q = 173.7178, TAU = 0.5, EPS = 1e-6;
 const g = (phi) => 1 / Math.sqrt(1 + 3 * phi * phi / (Math.PI * Math.PI));
-function update(p, oppMu, oppPhi, teamMu, s, floor = 50, ceil = 350) {
+function update(p, oppMu, oppPhi, teamMu, s, floor = 80, ceil = 350) {
   let mu = (p.r - 1500) / Q, phi = p.rd / Q, sig = p.vol;
   const tm = (teamMu - 1500) / Q, om = (oppMu - 1500) / Q, op = oppPhi / Q;
   const gg = g(op), E = 1 / (1 + Math.exp(-gg * (tm - om)));

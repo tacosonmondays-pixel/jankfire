@@ -51,6 +51,9 @@ type Match = {
 	on: boolean, -- false once its players are back in the hub
 	ghost: number?, -- (Studio tests only: a match with nobody in it, over at this os.clock(): Matches.test)
 	ghostWin: number?, -- (and the team that wins it then; nil = nobody)
+	queue: string?, -- (the Play queue's matches: its queue key, "ranked:2v2"; nil = a pad match)
+	ranked: boolean?, -- (a ranked match: RankedData rates it at the end)
+	rated: any?, -- (everyone's rating when it started, stand-ins too: RankedData)
 }
 
 local Fight: any
@@ -75,11 +78,13 @@ function Matches.onRound(fn: (Match, number) -> ()) table.insert(hooks.round, fn
 function Matches.onEnd(fn: (Match, number?) -> ()) table.insert(hooks.finish, fn) end -- (the match, the winning team)
 local function fire(list: { (...any) -> () }, ...: any) for _, fn in list do task.spawn(fn, ...) end end
 -- the match a player is in, or nil: { id, mode, arena, team, phase }
-function Matches.matchOf(p: Player): { id: number, mode: string, arena: string, team: number, phase: string }?
+function Matches.matchOf(p: Player): { id: number, mode: string, arena: string, team: number, phase: string, ranked: boolean, queue: string? }?
 	local im = inMatch[p]
 	if not im then return nil end
-	return { id = im.m.id, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase }
+	return { id = im.m.id, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase, ranked = im.m.ranked == true, queue = im.m.queue }
 end
+-- (Party.luau) where a player who is not in a match respawns instead of the hub: their private lobby's plinth, or nil
+Matches.homeOf = nil :: ((Player) -> CFrame?)?
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -219,6 +224,8 @@ local function spawnAt(f: Fighter): (Vector3, Vector3?)
 		local cf = list[(i - 1) % #list + 1]
 		return cf.Position, cf.LookVector
 	end
+	local home = Matches.homeOf and Matches.homeOf(p)
+	if home then return home.Position, home.LookVector end
 	local list = markers(if lastZone[p] == "training" then "TrainSpawns" else "HubSpawns")
 	if #list == 0 then list = markers("HubSpawns") end
 	if #list == 0 then return (hub:GetAttribute("Origin") :: Vector3) + Vector3.new(0, 3, 0), nil end
@@ -230,7 +237,7 @@ end
 local function hudText(m: Match): string
 	local score = {}
 	for t = 1, #m.teams do table.insert(score, ('<font color="%s">%d</font>'):format(TEAM_HEX[t], m.wins[t])) end
-	return ("%s · ROUND %d · %s"):format(m.mode, m.round, table.concat(score, " – "))
+	return ("%s · ROUND %d · %s"):format(if m.ranked then "RANKED " .. m.mode else m.mode, m.round, table.concat(score, " – "))
 end
 local function each(m: Match, fn: (Player, number) -> ())
 	for t, list in m.teams do for _, p in list do if p.Parent then fn(p, t) end end end
@@ -278,7 +285,9 @@ local function endMatch(m: Match, winner: number?)
 	local board = Fight.board(m.fighters)
 	local name = if winner then teamLabel(m, winner) else nil
 	each(m, function(p, t)
-		RoundR:FireClient(p, { over = true, winner = name, youWon = winner == t, board = board, next = Matches.AFTER, nextLabel = "back to the hub in %d" })
+		local home = Matches.homeOf and Matches.homeOf(p)
+		RoundR:FireClient(p, { over = true, winner = name, youWon = winner == t, board = board, next = Matches.AFTER,
+			nextLabel = if home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true })
 	end)
 	task.delay(Matches.AFTER, backToHub, m)
 end
@@ -401,16 +410,17 @@ startRound = function(m: Match)
 end
 
 -- `site` is the one the pad took when its countdown started (in arena `arena`, the pad's pick from the rotation)
-local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: string): Match
+local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: string, opts: any?): Match
 	nextId += 1
 	local teams = {}
 	for t, list in sides do teams[t] = table.clone(list) end
 	local wins = {}
 	for t = 1, #teams do wins[t] = 0 end
 	lastArena[pad] = arena
-	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true }
+	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
+		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil }
 	table.insert(live, m)
-	padLast[pad] = m
+	if not m.queue then padLast[pad] = m end -- (a Play-queue match isn't the pad's: its sign keeps its own)
 	each(m, function(p, t)
 		inMatch[p] = { m = m, team = t }
 		p:SetAttribute("Team", t)
@@ -430,6 +440,31 @@ end
 -- the pad's next arena: the next one in the rotation for this pad (never its last one twice running), else "Arena"
 local function nextArena(pad: Model): string
 	return Arena.pick(Arena.pool(), lastArena[pad], math.random) or Arena.name()
+end
+
+-- (Party.luau, the Play queue) a match the queue found: the pad of that mode (the one by the lifts first) gives its
+-- rules and its arena rotation, and a site is claimed now, like a pad's countdown does. returns the match, or nil and
+-- why ("busy": every site is in use; the queue tries again). opts = { queue, ranked, rated, hold?, holdWin? }; hold
+-- (Studio tests only) holds the match like a ghost match: it ends after hold s with team holdWin taking it
+function Matches.startQueued(padMode: string, sides: { { Player } }, opts: any): (Match?, string?)
+	local pads = hub:FindFirstChild("QueuePads")
+	local pad: Model? = nil
+	if pads then
+		for _, c in pads:GetChildren() do
+			if c:IsA("Model") and c:GetAttribute("Mode") == padMode and (pad == nil or c:GetAttribute("Bank") == "lifts") then pad = c end
+		end
+	end
+	if not pad then return nil, "no pad plays " .. padMode end
+	for _, list in sides do for _, p in list do if inMatch[p] then return nil, "in a match" end end end
+	local arena = nextArena(pad)
+	local site = claimSite(arena)
+	if not site then return nil, "busy" end
+	local m = startMatch(pad, sides, site, arena, opts)
+	if opts.hold and RunService:IsStudio() then
+		m.ghost = os.clock() + opts.hold
+		m.ghostWin = opts.holdWin
+	end
+	return m, nil
 end
 
 -- ------------------------------------------------------------------ the pads
