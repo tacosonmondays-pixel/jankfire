@@ -104,6 +104,7 @@ D.SPOTS = {
 	["ar@ar_cute_b"] = { at = Vector3.new(0, 0.10367, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["ar@ar_cute_c"] = { at = Vector3.new(0, 0.10353, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["ar@ar_cute_d"] = { at = Vector3.new(0, 0.10389, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["ar@ar_duckling"] = { at = Vector3.new(0, 0.0865, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["burst@burst_seraph"] = { at = Vector3.new(0, 0.1348, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["dmr@dmr_nighttide"] = { at = Vector3.new(0, 0.13228, 0.11), s = 0.95, yaw = 0, pitch = 0, saddle = 0.004 },  -- skin: its gun's spot, height measured on the skin
 	["lever@lever_cloudlock"] = { at = Vector3.new(0, 0.049, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
@@ -111,6 +112,7 @@ D.SPOTS = {
 	["pistol@pistol_cute_a"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_cute_b"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_cute_c"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_duckling"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_infernal"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_seraph"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["revolver@revolver_ducky"] = { at = Vector3.new(0, 0.06938, -0.05), s = 0.7, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
@@ -119,6 +121,7 @@ D.SPOTS = {
 	["sawnoff@sawnoff_dust"] = { at = Vector3.new(0, 0.0425, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["sawnoff@sawnoff_star"] = { at = Vector3.new(0, 0.044, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["shotgun@shotgun_bone"] = { at = Vector3.new(0, 0.062, -0.36), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["smg@smg_duckling"] = { at = Vector3.new(0, 0.046, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["smg@smg_pumpkin"] = { at = Vector3.new(0, 0.046, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["sniper@sniper_dust"] = { at = Vector3.new(0, 0.14508, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
 	["sniper@sniper_infernal"] = { at = Vector3.new(0, 0.14325, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin

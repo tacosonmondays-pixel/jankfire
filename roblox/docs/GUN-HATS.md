@@ -260,6 +260,25 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Full check of the five: no hat in a gun, no gun in a hat, feet at most 2.5 mm.
   - Whole set: 84 seats, 1,848 pairs, the same limits as before. Built guns in Studio wear their hats at all five seats.
     Live in place version 500.
+- **The Ducklings (guns place version 511, hats 512):** three Blender-method Ducky concepts, `ar_duckling`,
+  `smg_duckling` and `pistol_duckling` (`tools/roblox/gun_sets_ducky_art.py`, built with the artist kit). They are an
+  extra set, so **`hat_spots.py`, `hat_clip.py`, `hat_solve.py` and `hat_preview.py` need
+  `JF_EXTRA=gun_sets_ducky_art` again**; without it their three lines drop out of the data.
+  - Each takes its gun's seat, with the height measured on the duckling, and needs no line in `hat_spots.json`:
+    - Rifle: z −0.07, on the flat-topped cover.
+    - SMG: z −0.10.
+    - Plan B: z −0.08, on the slide behind the duck's head.
+    The duck heads at the barrel's root and the tails at the back stay clear of the hats. The wings sit below the top line.
+  - Full check of the three: no hat in a gun, no gun in a hat, feet 2.0 mm (66 pairs). The solver keeps all three seats.
+  - Whole set: 87 seats, 1,914 pairs, the same limits as before.
+  - The artist kit's "`__shade`" pieces (thin transparent shells 0.8 mm off the big masses, carrying baked shading) are
+    made only when the gun is exported. The hat tools build without them, and a Studio seat check must leave them out of
+    its rays.
+  - **Open (guns side):** in Studio the three were squashed. Their templates carried no `FileLo`/`FileHi`, so
+    `WeaponModels.build` fitted them into the base guns' row boxes. The rifle came out at 55% of its width and 118% of
+    its height, and its hat floated 17 mm over the cover. The SMG and Plan B came out at about 68% of their width; their
+    hats sat within 2 mm of the design sink. The seats are right for the true models: recheck in Studio once the bounds
+    are fixed.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -339,7 +358,7 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476; seats on 16 guns and
-  68 skins since place version 500 (77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
+  71 skins since place version 512 (68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
