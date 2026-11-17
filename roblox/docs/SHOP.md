@@ -437,8 +437,18 @@ Tested in solo Play (place version 588):
 - Switched to FEATURED, the same tracks held at speed 0.
 - The inspect panel showed Groove big (`shop-anim-inspect.jpg`).
 - The owner's inventory was put back.
-- The kill effects still show their still tiles until the VFX session's sheets are in `FlairSheets`; that session
-  will fill it.
+- The kill effects' sheets came from the VFX session (place version 625): 16 of 17, all but Ink, which is being
+  retaken on a lighter backdrop. Ink keeps its still tile until then.
+
+Tested in solo Play (place version 626), with six kill effects and two emotes owned for the test:
+- The KILL EFFECTS cards stepped their flipbooks: Ascend, Big Duck, Blue Screen, Chickens, Shatter, Tombstone.
+  Blue Screen showed its "FATAL ERROR" words live on its panel (`docs/shop/shop-anim-kills.jpg`).
+- The emote cards' avatar copies, cameras and tracks were all there and playing, but the tiles were blank. The
+  Studio window was hidden in that test, so no 3D drew anywhere: not the world, not the guns' previews. The new
+  framing (on the body, feet near the bottom) still needs a look with the window shown.
+- The longest finisher blurb (the Infernal Rifle's, Hellgate) fits in full now that the blurb grows to its text
+  (`shop-finisher-blurb.jpg`).
+- The owner's inventory was put back.
 
 ### Finishers on skin cards (17 Nov)
 

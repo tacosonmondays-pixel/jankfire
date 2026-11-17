@@ -1565,7 +1565,9 @@ function ShopUI.fillInspect()
 	UI.inspName.TextSize = if c then 22 else 30
 	UI.inspName.Size = UDim2.new(1, 0, 0, if c then 30 else 38)
 	UI.inspBlurb.Visible = not c
-	UI.inspBlurb.Size = UDim2.new(1, 0, 0, if o.type == "single" then 58 else 38) -- (a single has no list under it: room for a third line)
+	-- (the blurb grows to fit its words, a finisher's long one too: AutomaticSize Y from a one-line floor)
+	UI.inspBlurb.AutomaticSize = Enum.AutomaticSize.Y
+	UI.inspBlurb.Size = UDim2.new(1, 0, 0, 18)
 	UI.inspNote.Position = UDim2.new(0, 0, 1, -foot)
 	UI.inspList.Position = UDim2.fromOffset(0, listY)
 	UI.inspList.Size = UDim2.new(1, 0, 1, -(listY + foot + 26))
