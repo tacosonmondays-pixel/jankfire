@@ -9,7 +9,8 @@
 --   handle.stop() / FlairAnim.detach(frame) take it away (the frame going away does too)
 -- cheap on purpose: one stepper for all; only a preview that's on screen plays (its ScreenGui enabled, every ancestor
 -- visible, inside its scrolling frame's view and the screen), at most MAX at once, flipbooks at their own fps; the rest
--- hold their frame (emotes pause)
+-- hold their frame (emotes pause; a kill card stands you there again). more than MAX on screen: they take turns, MAX
+-- at a time, a new set every TURN seconds, so every card plays (the equip screen's grid shows 12)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -19,6 +20,7 @@ local me = Players.LocalPlayer
 
 local A = {}
 local MAX = 8
+local TURN = 4.5 -- (seconds a set of MAX plays before the next set: about one loop of a kill card)
 local BG = Color3.fromRGB(22, 24, 30) -- (the flair tile's dark)
 
 type Handle = { frame: GuiObject, kind: string, root: GuiObject, step: (number, boolean) -> (), stop: () -> (), dead: boolean }
@@ -444,7 +446,13 @@ local function kill(frame: GuiObject, id: string): Handle?
 		frame = frame, kind = "kill", root = sc.holder, dead = false,
 		step = function(dt: number, on: boolean)
 			if stand then stand:AdjustSpeed(if on then 1 else 0) end
-			if not on or not (live3d or id == "none") then return end
+			if not on then
+				-- (paused mid-run, past the cap or scrolled away: the run would end on its own with the body gone and the
+				-- card empty until its next turn; it stops here and you stand there again, soon to go when it's on)
+				if running then reset(); t = -math.random() * 0.5 end
+				return
+			end
+			if not (live3d or id == "none") then return end
 			t += dt
 			if not running and t >= START then
 				running = true
@@ -586,19 +594,30 @@ end
 -- (how many play right now: a test reads it)
 A.playing = 0
 
+local turn, turnAt = 0, 0
 RunService.RenderStepped:Connect(function(dt)
 	if #live == 0 then A.playing = 0; return end
-	local n = 0
+	local vis: { Handle } = {}
 	for i = #live, 1, -1 do
 		local h = live[i]
 		if h.dead or not h.root:IsDescendantOf(game) then
 			if not h.dead then h.dead = true end
 			table.remove(live, i)
-		else
-			local on = n < MAX and shown(h.frame)
-			if on then n += 1 end
-			h.step(dt, on)
-		end
+		elseif shown(h.frame) then table.insert(vis, h)
+		else h.step(dt, false) end
+	end
+	-- (more on screen than MAX: a window of MAX moves along them every TURN seconds; the same few never hog it)
+	local first = 0
+	if #vis > MAX then
+		local now = os.clock()
+		if now >= turnAt then turnAt = now + TURN; turn += MAX end
+		first = turn % #vis
+	end
+	local n = 0
+	for k, h in vis do
+		local on = (k - 1 - first) % #vis < MAX
+		if on then n += 1 end
+		h.step(dt, on)
 	end
 	A.playing = n
 end)

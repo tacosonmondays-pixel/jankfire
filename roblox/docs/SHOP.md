@@ -594,6 +594,18 @@ Tested in solo Play (place version 603):
 - The bigger, warmer emote tiles (body framing, the shop's light) are in this push but not yet looked at on
   screen.
 
+### More than eight kill cards on screen (17 Nov, place version 689)
+
+The equip screen's kill grid shows 12 cards; `FlairAnim` plays at most `MAX` = 8 at once. A card that lost its turn
+mid-run let KillFx finish on its own, which leaves the body hidden for good, and it waited on an empty set; the same
+eight always got the turns (the kill-fx-emotes session found it: MAKE IT RAIN, MISSING TEXTURE, CHICKENS, BLUE SCREEN
+and YEET sat empty). Now:
+- a kill card paused mid-run resets at once (a fresh copy of you, standing) and starts again soon after it's back on;
+- with more than 8 on screen a window of 8 moves along them every `TURN` = 4.5 s, so every card plays.
+
+Tested in solo Play: 12 test cards (Cash to Ink) in a grid, 8 playing at a time, and over three shots every card
+played or stood with you in it; the top row that sat empty before played its turn (`docs/shop/kill-cards-12-turns.jpg`).
+
 ## Weapon skins and skin sets (16 Nov)
 
 **Weapon skins** (a whole other body for one gun: `GunSkins.luau`, models in `ReplicatedStorage.JankfireSkins`, names
