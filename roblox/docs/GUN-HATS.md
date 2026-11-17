@@ -247,7 +247,9 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Built guns in Studio wear their hats at all eight seats. Live in place version 495.
 - **The Tidecrest set is J-A Maki-e (place version 498):** the owner picked J-A. Its five models went live under the old
   keys `ar_lacquer`, `dmr_nighttide`, `sawnoff_twintide`, `lever_cloudlock` and `katana_sakura`. J-B, J-C and the concept
-  copies left the game. `gun_sets_japan2` builds by default now; only `JF_EXTRA=gun_sets_west` is still needed.
+  copies left the game. `gun_sets_japan2` builds by default now, and since guns commit 1c1d0ee so does the space-western
+  pair: the hat tools need no `JF_EXTRA` at all. A plain `hat_spots.py` rebuilds the place version 500 data byte for byte.
+  Only trial and in-progress files (`gun_artist`, `gun_sets_angel2`) still have to be named.
   - The five builders match their installed glbs, and the geometry is the J-A concepts', so each live key took its J-A
     seat as is:
     - Rifle: z −0.08, no saddle (was −0.07 on a 6 mm saddle).
