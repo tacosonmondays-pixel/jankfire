@@ -502,8 +502,13 @@ plays a sheet per effect from `Shared.FlairSheets.kill`; the sheets are ours: 4x
   is out of sight, or lies still), so each comes round after a short beat.
 - Checked in Play: the shop's inspect card for Blue Screen steps its frames and shows the words on frames 2-9 (a
   property check; Studio's window was hidden, so no photo).
-- Not done: Ink. Its black blots fall on the box's black and the capture clips them to nothing (the sheet goes blank
-  from frame 5). The retake shoots it on a lighter wall and maps that wall back to the card's dark (`"remap": true` in
-  the job; `C.backdrop(color)` in the capture script). The first try came back blank white, every shot, even the
-  card-dark wall and the camera on the player: Studio's window was hidden, not the wall. Until then Ink keeps its
-  still tile.
+- Ink (place version 630): its black blots fell on the box's black and the first capture clipped them to nothing.
+  Retaken on a lighter Neon wall (72, 74, 80), which Studio draws about (50, 54, 72); `"remap": true` in the job maps
+  that wall to the card's dark and anything darker in proportion, so the ink stays black on the card. n 10. (A first
+  retake came back blank white, even the card-dark wall: Studio's window was hidden, not the wall.)
+
+**Bullet-trail retake (place version 630):** the ten special-skin trails with v596's doubled bits, drawn by
+`Fx.bulletTrail` across the training hall with the Fx clock frozen: `round16/v630-ten-trails-008.jpg` (0.08 s: the
+hearts, bubbles, stars, rings and feathers now read at this distance) and `-018.jpg` (0.18 s: the trails fading, the
+Star Drover's ring bloom, sparks and feathers settling). Still not photographed: a real first-person Seraph shot and the
+Sakura swing (the game camera came back facing a pillar after the scripted shots; next turn: those first).

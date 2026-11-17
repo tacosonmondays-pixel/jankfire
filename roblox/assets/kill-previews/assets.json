@@ -94,5 +94,11 @@
   "sha1": "fe9fcbfc1f06c70bedc74c2f9e222aac4ccd4495",
   "what": "the blastzone kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.blastzone)",
   "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_ink": {
+  "id": 130138852134834,
+  "sha1": "00d5004e843dc91b9624267d39d0b517bc86abf4",
+  "what": "the ink kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, shot on a lighter wall and mapped back to the backdrop (22, 24, 30) (kill_sheets.py remap), no text (FlairSheets.kill.ink)",
+  "uploaded": "2026-11-17 14:30 UTC (the retake: black ink on the first capture's black wall was lost)"
  }
 }

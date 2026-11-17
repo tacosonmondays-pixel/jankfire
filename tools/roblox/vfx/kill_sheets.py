@@ -23,14 +23,14 @@ for grp in job['groups']:
         im = np.asarray(Image.open(path).convert('RGB')).astype(np.float64)
         h, w = im.shape[:2]
         corner = np.concatenate([im[4:40, 4:40].reshape(-1, 3), im[4:40, w - 40:w - 4].reshape(-1, 3)])
-        G = np.median(corner, 0)
+        wall = np.median(corner, 0)
         if grp.get('remap'):
             # (a dark effect, Ink, shot on a lighter wall: the wall G goes to bg, anything darker than the wall darker than
             # bg in proportion (black stays black), anything lighter spread over bg..255; a shift would lose the ink)
-            G = np.maximum(G, 1)
-            im = np.where(im <= G, im * (bg / G), bg + (im - G) * ((255 - bg) / np.maximum(255 - G, 1)))
+            wall = np.maximum(wall, 1)
+            im = np.where(im <= wall, im * (bg / wall), bg + (im - wall) * ((255 - bg) / np.maximum(255 - wall, 1)))
         else:
-            im = np.clip(im + (bg - G), 0, 255)
+            im = np.clip(im + (bg - wall), 0, 255)
         img = Image.fromarray(im.astype(np.uint8))
         for sid, (x, y, s) in zip(ids, rects):
             x0, y0 = int(round(x - s / 2)), int(round(y - s / 2))

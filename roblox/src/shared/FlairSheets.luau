@@ -18,8 +18,8 @@ S.kill = {} :: { [string]: any }
 
 -- the sheets (17 Nov 2026, the VFX session: tools/roblox/vfx/kill_sheets.py from Studio captures of a stand-in, 0.1 s a
 -- frame; roblox/assets/kill-previews/). n stops a loop before its empty tail frames (the body gone, nothing left on
--- screen) so each one comes round again after a short beat. Ink has no sheet yet (its black ink was lost against the
--- capture's black: a retake on a lighter backdrop)
+-- screen) so each one comes round again after a short beat. Ink's frames were shot on a lighter wall (black ink on the
+-- capture box's black was lost) and mapped back to the card's dark
 local function sheet(id: number, n: number): { [string]: any }
 	return { image = "rbxassetid://" .. id, cols = 4, rows = 4, px = 256, n = n, fps = 10, hold = 0 }
 end
@@ -42,5 +42,6 @@ S.kill.static = sheet(70597060116498, 10)
 S.kill.ascend = sheet(74885896822851, 16)
 S.kill.duck = sheet(121664077077152, 16)
 S.kill.blastzone = sheet(127042928731850, 6) -- (knocked out of sight by frame 4)
+S.kill.ink = sheet(130138852134834, 10) -- (the blots are gone by frame 10)
 
 return S
