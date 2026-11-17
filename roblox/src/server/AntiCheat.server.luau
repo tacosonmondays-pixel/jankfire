@@ -15,7 +15,8 @@
 -- the speed-trap cage or a pop quiz (attributes Trap / Jail / Quiz), water, a seat, a spawn, any server teleport
 -- (TeleportT, or a server write to the root's CFrame). jump pads and grapple jumps need nothing: their arcs are free
 -- flight. a future streak that bends the rules (Moon Boots) sets ACGravity (x gravity) or calls the ACGrace
--- attribute (os.clock() until): AntiCheat stays out of its way.
+-- attribute (os.clock() until): AntiCheat stays out of its way. a mode that runs everyone faster sets ACSpeed (x the
+-- ground limit and a rope's throw; classic modes' Spoons & Grapples: 1.6).
 -- a catch is put back where it was last fine, and scores points (AntiCheatRules.C.weights); enough points inside the
 -- window is a kick. bans are the owner's switch (C.BANS, off). aim signals (headshot share, snaps before hits, hits
 -- through smoke) are only written to the review log: the server never acts on them. a Studio Play test never kicks (it
@@ -490,6 +491,10 @@ local function look(p: Player, s: St)
 	if Terrain:FindFirstChild("Rope_" .. p.UserId) then s.rope = t end
 	local bound = p:GetAttribute("Trap") or p:GetAttribute("Jail") or p:GetAttribute("Quiz")
 	if bound then s.rope = t end -- (a soap bubble floats you, a cage hangs you, a quiz holds you: no fly or speed checks)
+	-- a mode that runs everyone faster (classic modes: Spoons & Grapples x1.6) sets ACSpeed for the match: the ground
+	-- limit and a rope's throw grow with it
+	local am = p:GetAttribute("ACSpeed")
+	local sm = if type(am) == "number" and am > 1 then math.min(am, 3) else 1
 	local group = root.CollisionGroup
 	local ping = math.clamp(p:GetNetworkPing(), 0, 1)
 	local from = s.trusted :: Vector3
@@ -566,7 +571,7 @@ local function look(p: Player, s: St)
 			-- (the take-off: from the last look on the ground. a take-off the server never saw, the body already in the
 			-- air when the watch started again after a teleport or a spawn, gets the most any take-off can give)
 			local from0 = s.ground or pos
-			rebase(s, from0, t, if s.knownGround then takeoffV0(s, from0) else C.ropeV0)
+			rebase(s, from0, t, if s.knownGround then takeoffV0(s, from0) else C.ropeV0 * sm)
 		end
 		if moved then s.stillSince = nil else s.stillSince = s.stillSince or t end
 	end
@@ -575,7 +580,7 @@ local function look(p: Player, s: St)
 		local v = flatSpeed(s.samples, math.max(s.groundSince, t - C.groundWin))
 		local fast = p:GetAttribute("FastUntil")
 		local star = type(fast) == "number" and fast > workspace:GetServerTimeNow()
-		local lim = ACR.groundLimit(star)
+		local lim = ACR.groundLimit(star) * sm
 		if v then
 			worst(s, "speed", v / lim)
 			if v > lim then
@@ -600,7 +605,7 @@ local function look(p: Player, s: St)
 		end
 		-- a push (a knock, a rope, an item...) is a new take-off from where the body is now, as fast as the push
 		if lastPush > s.baseT then
-			rebase(s, pos, t, math.max(takeoffV0(s, pos), if s.rope >= s.push then C.ropeV0 else s.pushMag + C.jumpV0))
+			rebase(s, pos, t, math.max(takeoffV0(s, pos), if s.rope >= s.push then C.ropeV0 * sm else s.pushMag + C.jumpV0))
 		end
 		-- the window, cut at the last upward kick between two looks: a landing the looks missed (a bhop's ground
 		-- contact is a few ticks) starts a new arc; with ground under it, it's a new take-off too
@@ -948,7 +953,8 @@ local probed: { [Player]: boolean } = {}
 		if STUDIO then Log.add(uid, "unban", "would unban", "by " .. p.Name); return { ok = true, why = "Studio: written down" } end
 		local ok, err = pcall(function() Players:UnbanAsync({ UserIds = { uid }, ApplyToUniverse = true }) end)
 		Log.add(uid, "unban", if ok then "unban" else "unban failed", "by " .. p.Name .. (if ok then "" else " (" .. tostring(err) .. ")"))
-		if ok then Reports.unconfirm(uid, p.UserId) end -- (a wrong catch: their own numbers come back)
+		-- (an unban is NOT an unconfirm: a served or forgiven ban leaves the restores as they are. a wrong catch is
+		-- the owner's UNCONFIRM, which gives the player's own numbers back)
 		return { ok = ok, why = if ok then nil else tostring(err) }
 	end
 	return nil

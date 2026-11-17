@@ -243,9 +243,9 @@ local function send(p: Player, who: unknown, why: unknown, ctx: unknown): any
 	end
 	local rec = nil
 	local R = recorder()
-	local mp = target or (gone and gone.p)
-	if R and mp and type(R.forReport) == "function" then
-		local okR, r = pcall(R.forReport, mp)
+	if R and type(R.forReport) == "function" then
+		-- (the Player if they're here, else their user id: the recorder keeps a leaver's last match 10 minutes)
+		local okR, r = pcall(R.forReport, target or uid)
 		if okR and type(r) == "table" then
 			rec = r
 			-- (user ids only: the names come off)

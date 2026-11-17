@@ -83,6 +83,7 @@ Mark any new client-animated solid with `ACPass = true`.
 
 - `ACGravity` (a number): the gravity multiplier the fly check uses.
 - `ACGrace` (an `os.clock()` time): no movement checks until then.
+- `ACSpeed` (a multiplier above 1): for a mode that runs everyone faster, set for the whole match. It multiplies the ground-speed limit and a rope's throw (the climb check). The classic modes' Spoons & Grapples sets 1.6.
 
 ### The ladder
 
@@ -139,7 +140,7 @@ The owner asked: "Can we have a built in report that saves public chat?"
 
 - A REPORT button on anyone else's player card (ProfileUI, top right next to close).
 - A REPORT button on each row of the end-of-match board (`client/ReportClient.client.luau` adds it to FightHud's rows).
-- The party panel's rows: the VIEW CARD button there already leads to the card's REPORT.
+- A REPORT button on each party-panel row (PartyUI), except your own row and stand-ins.
 
 Players can still use Roblox's own Report in the Esc menu. Ours is extra evidence for the owner.
 
@@ -149,7 +150,7 @@ Players can still use Roblox's own Report in the Esc menu. Ours is extra evidenc
   - This place uses the legacy chat. In a Studio test, neither `Player.Chatted` nor the chat server's own "All" channel (as a separately required copy) heard anything. The legacy chat's remote did: `DefaultChatSystemChatEvents.SayMessageRequest` with the channel "All". Whispers go to "To <name>" and team chat to "Team", so neither is kept. All three hooks are in, and a line two of them hear is kept once.
   - If the place moves to TextChatService, check this again: its public channel is `RBXGeneral`.
 - **The reported player's anti-cheat state** when the report was made: their points in that server, their last 12 catches, their aim counts, and their totals across servers.
-- **The match:** its id and mode, and **its recording** (`Recorder.forReport`, the play/party/ranked session's recorder) when the reported player is in a match or left one in the last 10 minutes. Only reported matches are ever stored. The names in a recording are taken out first.
+- **The match:** its id and mode, and **its recording** (`Recorder.forReport`, the play/party/ranked session's recorder; it's given the Player, or the user id of someone who left) when the reported player is in a match or left one in the last 10 minutes. Only reported matches are ever stored. The names in a recording are taken out first.
 - **Who reported whom, as user ids only. No names are stored**, here or in the anti-cheat log. The panel looks names up when it shows them.
 
 **Limits:**
@@ -186,7 +187,8 @@ Reports **expire after 30 days**: every 6 hours one server removes the older one
   - `Quests.restoreFor(userId, since)`: rewards earned since then come off.
 - **since** is the earliest evidence on record (their first anti-cheat catch, or the first report about them), minus one day. With nothing on record it's 0, which means everything those modules still have.
 - Every module's restore runs once per match, so pressing CONFIRM twice refunds nothing twice. `c_<userId>` and the review log say who confirmed and when, and each module's answer is logged.
-- **UNCONFIRM** (a wrong catch; also UNBAN) calls `Stats.undoRestore`, `Quests.undoRestore`, and `RankedData.undoRestore` if it exists: the player's own numbers come back. The victims keep their refunds.
+- **UNCONFIRM** (a wrong catch) calls `Stats.undoRestore`, `Quests.undoRestore` and `RankedData.undoRestore`: the player's own numbers come back. The victims keep their refunds.
+- **UNBAN does not undo anything.** A served or forgiven ban isn't a wrong catch. A timed ban running out never calls an undo either.
 
 **Right to erasure** (Roblox sends these to the game's creator). Type the user id in the panel's bottom row and press **ERASE DATA** (it asks "SURE?").
 
