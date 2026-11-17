@@ -437,24 +437,15 @@ return function(B, R)
 		end
 		B.put(F, "bc_hardcase", "HardCase", 10.6, 0, 62, -20, { solid = true, color = { ["2f3b2a"] = P.pier2 } })
 		B.put(F, "bc_ammocrate", "AmmoCrate", 10.8, 1.7, 62, 10, { color = { ["4a5a2c"] = "66705a", ["3a4622"] = "566050" } })
-		-- the gate: a chunky frame on the far wall, red bars across it; walk in and you are in the training ground
-		B.put(F, "hb_portal", "TrainingPortal", 0, 0, 64, 0, { back = true, scale = 0.6, color = { ff4fd8 = P.train, ["2e3140"] = P.pier, a4aab8 = P.pier2 } })
-		B.box(F, C, "LaserVoid", -4.2, 4.2, 0, 9.96, 63.3, 63.6, "42121f", nil, G)
-		-- (the lasers are one model tagged LaserGate: TrainingDoors.client switches its LaserField and LaserBars off with a
-		-- click while anyone is within Near of it, and back on after. owner, 16 Nov: "when you go to the laser gate, when
-		-- you get close you hear a click and the laser gate turns off")
-		local gate = Instance.new("Model"); gate.Name = "TrainingLaserGate"
-		local field = B.box(F, C, "LaserField", -4.2, 4.2, 0, 9.96, 62.9, 63.05, "ff2a3a", Neon, { ghost = true, tr = 0.88 })
-		field.Parent = gate
-		for i = 1, 5 do
-			local b = B.box(F, C, "LaserBar", -4.2, 4.2, i * 1.66 - 0.22, i * 1.66 + 0.22, 62.78, 63.22, "ff2a3a", Neon, G)
-			b.Shape = Enum.PartType.Cylinder
-			b.Parent = gate
-		end
-		gate:SetAttribute("Center", (F * CFrame.new(0, 5, -63)).Position); gate:SetAttribute("Near", 9)
-		gate.Parent = B.root.Scenery
-		game:GetService("CollectionService"):AddTag(gate, "LaserGate")
-		B.lamp(F, 0, 5, 61.4, 9, 0.5, "ff6a6a") -- (round 1's judge: the red "floods the walls pink")
+		-- the gate: a chunky frame on the far wall and in it the gate's kit, the same on the training side (GateKit; owner,
+		-- 17 Nov: "can the laser fence be on both side of the hub and same with the garage door because its weird to have
+		-- the grid on one side and a garage door on the other"): a roll-up garage door with the laser fence just inside it.
+		-- walk up and the door rolls up, then the lasers click off (owner, 16 Nov: "when you get close you hear a click and
+		-- the laser gate turns off"); walk in and you are in the training ground
+		local GK = require(game.ServerStorage.PolishBackup.GateKit:Clone())
+		B.put(F, "hb_portal", "TrainingPortal", 0, 0, 64, 0, { back = true, scale = GK.FRAME.scale, color = GK.FRAME.color })
+		GK.build(F * CFrame.new(0, 0, -62.2), B.root.Scenery, { door = "TrainingShutter", lasers = "TrainingLaserGate" })
+		B.lamp(F, 0, GK.LAMP.up, 62.2 - GK.LAMP.out, GK.LAMP.range, GK.LAMP.bright, GK.LAMP.hex)
 		-- (no sign over the gate: the round room's word TRAINING names this way, and the HUD names the place on entry)
 		B.trigger(F, R.ROOM .. "ToTraining", -3.9, 3.9, 0, 10, 60.6, 63.2, "@TrainSpawns", "TRAINING GROUND")
 		-- (where the training hall's door lands you: on the round room's floor just inside the armory's hatch, looking
