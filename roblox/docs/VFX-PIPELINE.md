@@ -373,3 +373,26 @@ Sheet: `round12/first-person-sheet.jpg`.
   gone by then.
 - Open: firing right next to a wall, the muzzle light blows out half the screen (Lava SMG frames). That is Fx's own
   light at a stud from the wall; next turn.
+
+### Round 13: a new muzzle flash (17 Nov 2026, place version 499)
+
+The owner: the flash "looks kinda ugly" and asked for one found online. The web's 16-point star read as a flat sun
+sticker. Looked at: free Creator Store flash images (most have the colour baked in, several are rips from other
+games, and other people's images can be taken down under us) and CC0 packs (mostly pixel art). Picked Kenney's
+Particle Pack (CC0, kenney.nl/assets/particle-pack; credit is welcome, not required): its five side-view muzzle flame
+tongues, white with soft alpha, made for tinting.
+
+- `tools/roblox/vfx/mflash_sheet.py` lays them out (the pack itself is not in the repo; point the tool at its
+  `PNG (Transparent)` folder). Front sheet: 5-7 tongues of uneven length round a small hot core, long and short in
+  turn, four variants. Side sheet: one tongue lying along +X with a thinner one inside it for a hot root. Colour is
+  baked from a "heat" map (white core, pale gold, orange tips); the `_n` copies are white and pale grey, so a skin's
+  flash colour tints them (the Star Drover's flash is now pale cyan, not gold). Alpha-bled, 2x2 cells of 512 px.
+- Fx: the particle star uses `TEX.mflash` (or `mflashN` with a skin colour), 1.8x the old size because the tongues
+  fill about half a cell; the barrel's two crossed flame planes show one random cell of `TEX.mside` through
+  `ImageRectOffset`, sized from where the drawing actually shows (`SIDE_X0`, `SIDE_X1`, `SIDE_TH`, measured as alpha
+  over 0.2).
+- The light by a wall (round 12's open item): three 5-stud rays from the muzzle (ahead and to both sides, missing
+  the effects, the camera and characters) dim it, squared. The first try (3 studs, a 1.5 power) still lit the wall
+  bright at 2 studs; the squared one, photographed in a second Play 1.6 studs from the hall's wall, leaves the wall
+  its own colour (`round13/wall-glare-before-after.jpg`).
+- Sheet: `round13/muzzle-flash-before-after.jpg` (round 12's frames above, this round's below).

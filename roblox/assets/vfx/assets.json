@@ -167,5 +167,29 @@
   "sha1": "5b02e9828358bb29a484c33ddf256729b174791e",
   "what": "a flame tongue licking up, pale core, 16 frames (4x4, 256 px; tools/roblox/vfx/flame_sheet.py): the angel weapons, coloured by the wrap",
   "uploaded": "2026-11-16 22:52 UTC"
+ },
+ "vfx_mflash_front": {
+  "id": 114197784927969,
+  "sha1": "78e0479143bbd583c8a7b183006e34e6a4f074d2",
+  "what": "the muzzle flash seen down the barrel: 5-7 uneven flame tongues round a hot core, 4 variants (2x2, 512 px), warm as drawn; Kenney Particle Pack (CC0, kenney.nl) muzzle tongues, laid out by tools/roblox/vfx/mflash_sheet.py",
+  "uploaded": "2026-11-17 05:25 UTC (owner: the old flash \"looks kinda ugly\")"
+ },
+ "vfx_mflash_front_n": {
+  "id": 94655748843416,
+  "sha1": "de78edeec39aaeb95eab24cc4782830299f3c39b",
+  "what": "the same in white and pale grey, for a skin's flash colour to tint",
+  "uploaded": "2026-11-17 05:25 UTC (owner: the old flash \"looks kinda ugly\")"
+ },
+ "vfx_mflash_side": {
+  "id": 131614116535562,
+  "sha1": "cd4e81bc4a0e69a34b0acf7a31305c8b91954e3e",
+  "what": "the flash's flame along the barrel: one tongue lying along +X, root at the left, 4 variants (2x2), warm; Kenney Particle Pack (CC0, kenney.nl) muzzle tongues, laid out by tools/roblox/vfx/mflash_sheet.py",
+  "uploaded": "2026-11-17 05:25 UTC (owner: the old flash \"looks kinda ugly\")"
+ },
+ "vfx_mflash_side_n": {
+  "id": 131131912689549,
+  "sha1": "74c968cbb24d6e19af980da5effc5a83b4fe3853",
+  "what": "the same in white and pale grey, for a skin's flash colour to tint",
+  "uploaded": "2026-11-17 05:25 UTC (owner: the old flash \"looks kinda ugly\")"
  }
 }

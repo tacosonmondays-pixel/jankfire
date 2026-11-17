@@ -174,6 +174,13 @@ local TEX = {
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
 	streak = "rbxassetid://127914373549121", -- a soft white streak (the spark drawing is warm)
 	flame = "rbxassetid://77597527828324", -- a flame tongue licking up, 16 frames (4x4; tools/roblox/vfx/flame_sheet.py)
+	-- the muzzle flash since 17 Nov (the owner: the web's 16-point star "looks kinda ugly"): flame tongues from Kenney's
+	-- Particle Pack (CC0, kenney.nl) laid out by tools/roblox/vfx/mflash_sheet.py; warm as drawn, the N ones white for
+	-- a skin's own flash colour
+	mflash = "rbxassetid://114197784927969", -- the flash seen down the barrel: 5-7 uneven tongues round a hot core (2x2)
+	mflashN = "rbxassetid://94655748843416",
+	mside = "rbxassetid://131614116535562", -- one tongue lying along +X, its root at the left (2x2; see SIDE_X0)
+	msideN = "rbxassetid://131131912689549",
 }
 local function ns(...: number): NumberSequence
 	local a = { ... }
@@ -265,7 +272,7 @@ local HOT = cs(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 242, 176), Col
 -- the muzzle flash (weapons.js:114-145): the star across the barrel, its flame along it, a soft glow round both. on for
 -- 0.05 s (0.035 s on guns over 8 shots a second); each flash flickers between the 4 drawn stars (the web re-rolls its
 -- star every frame), a random roll, 0.8-1.4 of its size
-local FLASH = emitters(6, { Texture = TEX.flash, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(60),
+local FLASH = emitters(6, { Texture = TEX.mflash, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(60),
 	LightEmission = 0.3, LightInfluence = 0, Brightness = 1.0, ZOffset = 0.3, Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 	Lifetime = NR(0.05), Speed = NR(0.01), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
 -- (one of the 4 stars per flash, held: a 2-3 frame flash must never be a playing flipbook, its blending blurs it)
@@ -274,7 +281,7 @@ for _, e in FLASH.list do
 	e.pe.FlipbookFramerate = NR(0)
 	pcall(function() (e.pe :: any).FlipbookBlendFrames = false end)
 end
-local FLASH_TP = emitters(6, { Texture = TEX.flash, FlipbookLayout = FLIP2, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+local FLASH_TP = emitters(6, { Texture = TEX.mflash, FlipbookLayout = FLIP2, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
 	FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0.45, LightInfluence = 0, Brightness = 1.15, ZOffset = 0.3,
 	Lifetime = NR(0.05), Speed = NR(0), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
 for _, e in FLASH_TP.list do pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
@@ -390,7 +397,8 @@ local function flamePlane(): BasePart
 		g.Face = face; g.LightInfluence = 0; g.Brightness = 1.3; g.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
 		g.CanvasSize = Vector2.new(128, 128); g.Enabled = false
 		local im = Instance.new("ImageLabel")
-		im.BackgroundTransparency = 1; im.Size = UDim2.fromScale(1, 1); im.Image = TEX.spikeH
+		im.BackgroundTransparency = 1; im.Size = UDim2.fromScale(1, 1); im.Image = TEX.mside
+		im.ImageRectSize = Vector2.new(512, 512) -- (one of the sheet's four, picked per shot)
 		-- (seen on the Front face the part's +X is on the viewer's left: turn the drawing round so its root stays at the
 		-- muzzle end, -X, on both faces; the flame is symmetric top to bottom)
 		im.Rotation = if face == Enum.NormalId.Front then 180 else 0
@@ -400,15 +408,19 @@ local function flamePlane(): BasePart
 	p.Parent = folder
 	return p
 end
+-- where the side sheet's flame shows (alpha over 0.2, measured on the sheet): from SIDE_X0 to SIDE_X1 of a cell's width,
+-- SIDE_TH of its height thick
+local SIDE_X0, SIDE_X1, SIDE_TH = 0.065, 0.64, 0.15
 local function flameShow(pos: Vector3, dir: Vector3, len: number, thick: number, color: Color3?, life: number)
 	flameI = flameI % 8 + 1
 	local F = flames[flameI]
 	if not F then F = { a = flamePlane(), b = flamePlane(), t = 0, life = 0, live = false }; flames[flameI] = F end
 	local FF = F :: Fl
-	-- the drawing's flame fills 0.95 of its width and 0.3 of its height
-	local size = Vector3.new(len / 0.95, thick / 0.3, 0.02)
+	local size = Vector3.new(len / (SIDE_X1 - SIDE_X0), thick / SIDE_TH, 0.02)
 	local up = if math.abs(dir.Y) > 0.95 then Vector3.xAxis else Vector3.yAxis
-	local mid = pos + dir * (len / 2 - 0.08 / 0.4 * len) -- from 0.08 behind the star to 0.32 ahead of it
+	-- the flame shows from 0.2 of its length behind the flash to 0.8 ahead of it
+	local mid = pos + dir * (size.X * (0.5 - SIDE_X0) - 0.2 * len)
+	local cell = Vector2.new(math.random(0, 1) * 512, math.random(0, 1) * 512)
 	local right = dir:Cross(up).Unit
 	-- the part's X runs along the barrel (the drawing's root at -X, the muzzle end)
 	local cfA = CFrame.fromMatrix(mid, dir, dir:Cross(right).Unit * -1)
@@ -419,7 +431,10 @@ local function flameShow(pos: Vector3, dir: Vector3, len: number, thick: number,
 			local sg = g :: SurfaceGui
 			sg.Enabled = true
 			local im = sg:FindFirstChildOfClass("ImageLabel")
-			if im then im.ImageColor3 = color or Color3.new(1, 1, 1) end
+			if im then
+				im.Image = if color then TEX.msideN else TEX.mside
+				im.ImageColor3 = color or Color3.new(1, 1, 1); im.ImageRectOffset = cell
+			end
 		end
 	end
 	FF.a.CFrame = cfA; FF.b.CFrame = cfB
@@ -698,6 +713,25 @@ end
 -- (the web shows its flash in first person only; here everyone's gun flashes, the same drawing.) big = the web's x1.6
 -- guns, fast = over 8 shots a second (a 0.035 s flash). color tints the drawing (nil: as drawn)
 local lastPuff, lastPuffAt = -1, Vector3.zero
+-- how far the nearest wall is from a muzzle (5 = none within 5 studs): three short rays, ahead and to both sides,
+-- missing the effects, the camera's viewmodel and everyone's characters
+local wallParams = RaycastParams.new()
+wallParams.FilterType = Enum.RaycastFilterType.Exclude
+local function wallNear(pos: Vector3, dir: Vector3): number
+	local skip: { Instance } = { folder }
+	local cam = workspace.CurrentCamera
+	if cam then table.insert(skip, cam) end
+	for _, pl in Players:GetPlayers() do if pl.Character then table.insert(skip, pl.Character) end end
+	wallParams.FilterDescendantsInstances = skip
+	local side = dir:Cross(Vector3.yAxis)
+	side = if side.Magnitude > 0.1 then side.Unit else Vector3.xAxis
+	local best = 5
+	for _, d in { dir, side, -side } do
+		local hit = workspace:Raycast(pos - dir * 0.3, d * 5, wallParams)
+		if hit and hit.Distance < best then best = hit.Distance end
+	end
+	return best
+end
 function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast: boolean?)
 	-- (first person: matched to the web's flash on screen in the frame captures, 16 Nov: 0.45 of the viewmodel's scale)
 	-- (round 2: a quarter bigger, 0.1 m ahead of the muzzle, the handguard hid a quarter of it; others' 1.4x so the star
@@ -707,16 +741,24 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	local life = if fast then 0.035 else 0.05
 	local pos, dir = at.Position, at.LookVector
 	if fpv then pos += dir * 0.16 * FPK end
-	local tint = cs(color or Color3.fromRGB(255, 226, 150)) -- (round 5: untinted it read cream with peach tips)
+	-- (17 Nov: the sheet's tongues are coloured as drawn; a skin's flash colour tints the white copy. they fill about half
+	-- a cell where the old star filled it all: x1.8 keeps the flash's size on screen)
 	local f = emAt(if fpv then FLASH else FLASH_TP, pos, dir)
-	f.Size = nsk({ { 0, 0.24 * k * 1.1 * H, 0.24 * k * 0.3 * H }, { 1, 0.24 * k * 1.1 * H, 0.24 * k * 0.3 * H } })
-	f.Lifetime = NR(life); f.Color = tint
+	f.Texture = if color then TEX.mflashN else TEX.mflash
+	local fs = 0.24 * k * 1.1 * H * 1.8
+	f.Size = nsk({ { 0, fs, fs * 0.27 }, { 1, fs, fs * 0.27 } })
+	f.Lifetime = NR(life); f.Color = cs(color or FWHITE)
 	emit(f, 1)
 	-- the flame runs from just behind the star to 0.32 ahead of it, 0.4 long, 0.14 thick (the drawing's flame is 0.3 of
 	-- the texture's height), the same 0.8-1.4 size
 	local fk = k * (0.8 + math.random() * 0.6)
 	flameShow(pos, dir, 0.4 * fk, 0.14 * fk * (if fpv then 1.5 else 1), color, life) -- (first person: seen from behind, wider)
-	lightFlash(pos + dir * 0.15 * k, Color3.fromRGB(255, 220, 170), if fpv then 6 else 8, if big then 1.8 else 1.2, life * 1.4)
+	-- (round 13: firing a stud or two from a wall, the light blew half the screen out: the nearest wall within 5 studs,
+	-- straight ahead or to either side, dims it; at 2 studs a 1.5 power still lit the wall bright, so squared)
+	local near = wallNear(pos, dir)
+	local dim = math.clamp((near - 0.4) / 4.6, 0.06, 1) ^ 2
+	lightFlash(pos + dir * 0.15 * k, Color3.fromRGB(255, 220, 170), (if fpv then 6 else 8) * math.max(dim, 0.4),
+		(if big then 1.8 else 1.2) * dim, life * 1.4)
 	-- the smoke: never off your own gun in first person (it would sit in your face)
 	local cam = workspace.CurrentCamera
 	if cam and (pos - cam.CFrame.Position).Magnitude > 1.3 * S
