@@ -133,6 +133,35 @@ Every 0.5 s the server looks at each queue (casual and ranked, per mode) and tri
 - A formed match asks Matches for a site. When every site is busy the match waits, at the front of the line.
 - A party that changes while searching (someone joins, leaves, or a member goes to a pad) drops out of the queue.
 
+### QUICK JOIN on the hub pads (17 Nov 2026)
+
+The owner: "also when someone steps on a pad, make a pop up to quick join and itll teleport them to one of the pad
+sides". Built in `server/QuickJoin.luau` and `client/QuickJoinUI.luau`.
+
+- **When it shows:** someone stays on a hub queue pad (either bank) for 1 s and the pad still has room. Then everyone
+  else free in the hub gets a pop-up at the top centre, in the invite toast's look. It says who is waiting, the mode,
+  how many spots are open, and has QUICK JOIN.
+- **Pressing it:**
+  - The key is F (the settings session's "quickjoin" bind; the hub is first person, so on a PC the mouse is locked).
+    On a phone you tap the button.
+  - The server moves you onto the side with room, the emptier one, stamping `TeleportT` first so the anti-cheat
+    starts afresh. From there the pad's own queue takes over, as if you had walked on.
+- **Who doesn't get one:** anyone on a pad, in a match, in a private lobby (`Lobby` attribute), in training or the
+  playground, or in a menu (`LoadoutOpen`). Not the one who stepped on. Not a party member whose leader is someone else.
+  A leader brings the members who are free in the hub onto one side, and only gets the pop-up when a side has room
+  for all of them.
+- **No spam:** one pop-up at a time. It goes after 6 s, the moment the pad fills, or when the one waiting steps off.
+  Each player gets at most one every 20 s. Settings > HUD > QUICK JOIN POP-UPS (`hud.quickJoin`) turns them off.
+- **Phones:** the card drops to y 64, under the touch buttons' top row. The button is 40 tall.
+- **The hook in Matches:** `Matches.padView()` is the pads as the last pad step saw them. QUICK JOIN only reads it.
+  Pretend people (Studio tests) count for the pop-ups, never for the pad's own queue.
+- **Tested** in place v646 (17 Nov, 16:30 UTC), with stand-ins through `JankPlayTest`:
+  - "Dune" stood on 1v1 side 1. The pop-up came up at about 1 s, and F put me on side 2.
+  - The pop-up faded at 6 s.
+  - It went the moment the other side filled, and when the one waiting stepped off.
+  - With the 20 s gap on, new pop-ups within 20 s of the last one were held back.
+- Test ops: `qjstand pad side name`, `qjoff pad`, `qjgap secs`, `qjstate player`.
+
 ## 4. Ranked
 
 ### The rating: Glicko-2 with a team composite

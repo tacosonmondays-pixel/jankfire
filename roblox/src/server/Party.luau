@@ -200,6 +200,17 @@ function Party.sizeOf(p: Player): number
 	local pt = byPlayer[p]
 	return if pt then #pt.members else 0
 end
+-- (QuickJoin.luau) this player's party as players: its leader (nil when a stand-in leads) and its real members, or
+-- nil when they have none
+function Party.groupOf(p: Player): (Player?, { Player }?)
+	local pt = byPlayer[p]
+	if not pt then return nil, nil end
+	local list = {}
+	for _, m in pt.members do if m.player then table.insert(list, m.player) end end
+	return pt.leader.player, list
+end
+-- (QuickJoin.luau, wired by PlayServer) ops other server modules answer through the Play remote: Party.ops[op](p, a, b)
+Party.ops = {} :: { [string]: (Player, any, any) -> any }
 
 -- ------------------------------------------------------------------ the queue's side
 local function dropEntry(pt: PartyT, why: string?)
@@ -705,7 +716,7 @@ end
 -- spamming PLAY / LEAVE could rebuild rooms and bodies several times a second). a request inside the gap waits out the
 -- rest of it, so a quick LEAVE then PLAY still works; another one while that waits is refused quietly
 local HEAVY_GAP = 2
-local HEAVY = { play = true, leave = true, leaveparty = true, answer = true, kick = true }
+local HEAVY = { play = true, leave = true, leaveparty = true, answer = true, kick = true, quickjoin = true }
 local heavyAt: { [Player]: number } = {}
 local heavyWaiting: { [Player]: boolean } = {}
 local function heavyTurn(p: Player): boolean
@@ -812,6 +823,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	elseif op == "mode" then ok, why = setMode(p, a, b)
 	elseif op == "find" then ok, why = find(p)
 	elseif op == "cancel" then ok, why = cancel(p)
+	elseif type(op) == "string" and Party.ops[op] then return Party.ops[op](p, a, b)
 	else return { ok = false, why = "?" } end
 	return { ok = ok == true, why = why }
 end

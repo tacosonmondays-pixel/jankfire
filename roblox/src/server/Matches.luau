@@ -67,6 +67,9 @@ local lastZone: { [Player]: string } = {}
 -- a full pad's countdown and the site it holds (lost: when the pad stopped being full, if it has)
 local padCount: { [Model]: { at: number, site: Site, arena: string, lost: number? } } = {}
 local fullSince: { [Model]: number } = {} -- when each full pad filled (the first to fill gets the next free site)
+-- (QuickJoin.luau) the pads as the last step saw them: pad -> { sides = { { Player } }, full = boolean }
+local padView: { [Model]: any } = {}
+function Matches.padView(): { [Model]: any } return padView end
 local lastArena: { [Model]: string } = {} -- each pad's last arena (none yet after a server starts: the first pick is random)
 local padLast: { [Model]: Match } = {} -- each pad's latest match (its sign shows it)
 local busy: { [Model]: boolean } = {} -- the sites in use
@@ -637,6 +640,7 @@ local function padStep()
 		end
 		padSign(pad, s.counts, sub)
 	end
+	padView = seen
 end
 
 -- ------------------------------------------------------------------ wiring
