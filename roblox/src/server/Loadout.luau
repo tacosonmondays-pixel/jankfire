@@ -8,6 +8,9 @@
 -- the Shredder is a Tool (ShredderServer): you only get one when it's your primary.
 -- HATS (GunHats.luau): one per weapon, from the hat list (GunHatData), kept and saved beside the wraps (attribute
 -- "Hats" = "ar=crown;katana=duck", saved as `hats`); a hat goes on right away, like a wrap
+-- SKINS (GunSkins.luau): another body per weapon, from a crate. Only a skin you own (Inventory.owns, the loot
+-- session's) and whose model is in the place (ReplicatedStorage.JankfireSkins); attribute "Skins" =
+-- "ar=ar_toy;katana=katana_bokken", saved as `skins`; on right away, like a wrap. The Shredder's is a Tool of its own
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local DataStoreService = game:GetService("DataStoreService")
@@ -86,8 +89,9 @@ local function syncTools(p: Player, f: any)
 	local want = table.find(Rules.loadoutOf(f), "shredder") ~= nil
 	local bag = p:FindFirstChildOfClass("Backpack")
 	local ch = p.Character
+	local d = data[p]
 	-- its skin (a Tool of its own, "Shredder@<skin id>", handed over named "Shredder"): a Shredder in the wrong skin goes
-	local sk = data[p] and data[p].skins.shredder
+	local sk = d and d.skins.shredder
 	local skinSrc = sk and Tools:FindFirstChild("Shredder@" .. sk)
 	local wantSkin = if skinSrc then sk else nil
 	local have: Tool? = nil
@@ -97,7 +101,6 @@ local function syncTools(p: Player, f: any)
 			if want and not have and t:GetAttribute("Skin") == wantSkin then have = t else t:Destroy() end
 		end
 	end
-	local d = data[p]
 	local wr = ownedWrap(p, d)
 	if want and not have and bag then
 		local src = skinSrc or Tools:FindFirstChild("Shredder")
@@ -125,10 +128,13 @@ local function armed(f: any)
 	p:SetAttribute("ArmT", (tonumber(p:GetAttribute("ArmT")) or 0) + 1)
 end
 
--- the hub (not in a match, alive): the new picks go in now. returns whether it did
+-- the hub (not in a match, alive): the new picks go in now. returns whether it did. a re-arm refills every magazine,
+-- so it only happens where no fight counts: the hub, the training hall and its playground (an allow-list, so a new
+-- arena or match zone can never refill mid-fight; anti-cheat audit, 17 Nov 2026)
+local REARM_ZONES = { hub = true, training = true, playground = true }
 local function rearmInHub(p: Player): boolean
 	local f = Fight and Fight.byPlayer[p]
-	if not f or not f.alive or p:GetAttribute("Zone") == "match" then return false end
+	if not f or not f.alive or not REARM_ZONES[p:GetAttribute("Zone") :: any] then return false end
 	Rules.arm(f, os.clock())
 	local d = data[p]
 	if d then Utility.pick(f, d.pick.utility, true) end -- (the item too, charges used this life stay used)
@@ -244,7 +250,7 @@ local function changed(p: Player)
 	publish(p)
 end
 
--- ------------------------------------------------------------------ the remote: ("pick", slot, weapon) / ("wrap", weapon, wrap, mode) / ("hat", weapon, hat) / ("arm")
+-- ------------------------------------------------------------------ the remote: ("pick", slot, weapon) / ("wrap", weapon, wrap, mode) / ("hat", weapon, hat) / ("skin", weapon, skin) / ("arm")
 local budget: { [Player]: { n: number, t: number } } = {}
 local function spend(p: Player): boolean
 	local b, t = budget[p], os.clock()
@@ -340,7 +346,12 @@ end
 
 Remote.OnServerInvoke = function(p: Player, op: unknown, a: unknown, b: unknown, c: unknown)
 	if not spend(p) then return { ok = false, why = "slow down" } end
-	local ok, why = handle(p, op, a, b, c)
+	-- (a bad request must never break the handler: anything that throws is a plain "nope")
+	local fine, ok, why = pcall(handle, p, op, a, b, c)
+	if not fine then
+		warn("[Loadout] request failed: " .. tostring(ok))
+		return { ok = false, why = "nope" }
+	end
 	return { ok = ok, why = why }
 end
 
