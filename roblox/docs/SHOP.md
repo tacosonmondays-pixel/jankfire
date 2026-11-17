@@ -430,6 +430,42 @@ Default with the arrow showing; once each flow ended, it was LockCenter with the
 Not tested: the third-person shoulder camera, the phone, the Play, party and leaderboard panels, the equip screen, the
 emote wheel and a report. They take the same two calls.
 
+## Toggle Cursor (17 Nov)
+
+The owner: "allow a button to toggle mouse cursor", then "we need mouse unlock". **Left Alt** frees the mouse and shows
+the arrow without opening a menu, and pressing it again locks the mouse again. The key can be changed in Settings >
+KEYBINDS (TOGGLE CURSOR, Binds action `cursor`, MENUS group). The script is `client/CursorToggle.client.luau`.
+
+- It's a MenuCursor name, `toggle`, put in **cursor only**: the mouse is free and the arrow shows the same way as
+  under a menu, but it isn't a menu. LoadoutOpen isn't raised or kept up, so movement, jumping, reloading and the
+  other keys work as normal. `MenuCursor.menu()` says whether a real menu is in.
+- With a menu up, the key only turns the toggle off (the menu has the mouse anyway). Turned off under a menu, the
+  menu keeps the mouse.
+- While the mouse is free (the toggle or any menu, the MenuCursor attribute), clicks don't fire, swing or aim
+  (Arsenal's fire and aim keys and its auto and fan loops). A Tool in your hands (the Shredder) is set to
+  ManualActivationOnly, so a click can't start it. The camera holds its look.
+- A plate at the top in the middle (below the match score) shows CURSOR FREE and the bound key.
+- It turns itself off at a death, a respawn and a round's start (the Round remote's `start`). In a live round it can
+  be turned on again, and it still can't fire.
+- Phones: the key does nothing (no mouse).
+- Test hooks (Studio): the player attribute `CursorFree` is true while it's on; `CursorTest = "on" | "off"` sets it.
+
+Tested in solo Play, in first person (place version 717). The live checks read MouseBehavior, MouseIconEnabled,
+MenuCursorBy, LoadoutOpen and the camera's look, and the real Left Alt key and mouse clicks went through the Studio
+input tools:
+- In the hub: Left Alt gave Default with the arrow shown, the toggle in, LoadoutOpen not raised and the plate up
+  (key "Alt"). Moving the mouse about, and a right-button drag, turned the camera 0.02 and 0 degrees. W held for
+  0.9 s walked 25.5 studs.
+- The shop opened over the toggle (shop and toggle in) and closed again: the toggle kept the mouse. Left Alt inside
+  the shop turned the toggle off and left the shop the mouse. A Crate opened from there, and DONE gave LockCenter,
+  the arrow hidden and nothing in.
+- A ghost 1v1 on RooftopV3 with the toggle on before it: the round's start turned it off (LockCenter). In the live
+  round Left Alt turned it on: two clicks fired nothing (5 / 5 in the magazine). Left Alt off, then one click fired
+  (4 / 5).
+- With the toggle on, a death (Health 0 from the server) turned it off at once.
+
+Not tested: the Shredder held with the toggle on, third person, a controller, a rebound key.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

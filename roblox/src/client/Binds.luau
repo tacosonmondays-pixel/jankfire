@@ -42,6 +42,7 @@ Binds.ACTIONS = {
 	{ id = "shop", label = "SHOP", group = "MENUS", kb = { "B" } },
 	{ id = "profile", label = "PROFILE", group = "MENUS", kb = { "K" } },
 	{ id = "settings", label = "SETTINGS", group = "MENUS", kb = { "P" } },
+	{ id = "cursor", label = "TOGGLE CURSOR", group = "MENUS", kb = { "LeftAlt" } }, -- (frees the mouse to click the screen: CursorToggle.client)
 	{ id = "keys", label = "SHOW KEY HINTS (HOLD)", group = "MENUS", kb = { "H" } },
 	{ id = "quickjoin", label = "QUICK JOIN", group = "MENUS", kb = { "F" } }, -- (the hub pad pop-up: QuickJoinUI)
 } :: { Action }

@@ -7,9 +7,12 @@
 -- while any name is in:
 --   the mouse is free (MouseBehavior Default) and the arrow shows (MouseIconEnabled), written every frame after the
 --   cameras, so first person, the shoulder camera and the emote camera can't lock it again;
---   the player attribute MenuCursor is true (what ShoulderCam, FlairClient and JankSettings read);
---   LoadoutOpen (the one "hold still" flag: hands, weapons, movement) stays up. a screen closing over another one
---   clears it on its way out (they each save and restore it): it goes straight back up.
+--   the player attribute MenuCursor is true (what ShoulderCam, FlairClient, Arsenal and JankSettings read: the camera
+--   holds its look, clicks don't fire or aim);
+--   LoadoutOpen (the one "hold still" flag: hands, weapons, movement) stays up while a menu is in. a screen closing
+--   over another one clears it on its way out (they each save and restore it): it goes straight back up.
+-- a name put in "cursor only" (the fourth argument: Toggle Cursor, CursorToggle.client) frees the mouse the same way
+-- but isn't a menu: it doesn't keep LoadoutOpen up, so you still move. MenuCursor.menu() says whether a real menu is in.
 -- when the last name goes the game's own rule is back: first person and the shoulder camera lock the mouse again on
 -- their next frame and JankSettings hides the arrow under the crosshair.
 -- the alive function (optional) says whether that screen is really still up: a screen that went away by a path that
@@ -23,8 +26,9 @@ local UIS = game:GetService("UserInputService")
 local me = Players.LocalPlayer
 local M = {}
 
-local held: { [string]: (() -> boolean) | boolean } = {}
-local n = 0
+type Holder = { alive: (() -> boolean)?, menu: boolean }
+local held: { [string]: Holder } = {}
+local n, menus = 0, 0
 
 local function names(): { string }
 	local out = {}
@@ -43,19 +47,28 @@ local function free()
 	if not UIS.MouseIconEnabled then UIS.MouseIconEnabled = true end
 end
 
-function M.set(name: string, on: boolean, alive: (() -> boolean)?)
+function M.set(name: string, on: boolean, alive: (() -> boolean)?, cursorOnly: boolean?)
+	local h = held[name]
 	if on then
-		if held[name] == nil then n += 1 end
-		held[name] = alive or true
+		if h then
+			if h.menu then menus -= 1 end
+		else
+			n += 1
+		end
+		local menu = cursorOnly ~= true
+		held[name] = { alive = alive, menu = menu }
+		if menu then menus += 1 end
 		publish()
 		free()
-	elseif held[name] ~= nil then
+	elseif h then
 		held[name] = nil
 		n -= 1
+		if h.menu then menus -= 1 end
 		publish()
 	end
 end
 function M.on(): boolean return n > 0 end
+function M.menu(): boolean return menus > 0 end
 function M.has(name: string): boolean return held[name] ~= nil end
 function M.list(): { string } return names() end
 
@@ -64,9 +77,9 @@ function M.list(): { string } return names() end
 RunService:BindToRenderStep("JankMenuCursor", Enum.RenderPriority.Last.Value + 100, function()
 	if n == 0 then return end
 	local gone: { string }? = nil
-	for k, a in held do
-		if type(a) == "function" then
-			local ok, up = pcall(a)
+	for k, h in held do
+		if h.alive then
+			local ok, up = pcall(h.alive)
 			if ok and not up then
 				gone = gone or {}
 				table.insert(gone :: { string }, k)
@@ -80,9 +93,9 @@ end)
 -- a screen closing over another one clears LoadoutOpen (each saves it when it opens and puts that back when it
 -- closes, and the order they close in isn't the order they opened in): while a menu is still up it goes back up
 me:GetAttributeChangedSignal("LoadoutOpen"):Connect(function()
-	if n > 0 and me:GetAttribute("LoadoutOpen") ~= true then
+	if menus > 0 and me:GetAttribute("LoadoutOpen") ~= true then
 		task.defer(function()
-			if n > 0 and me:GetAttribute("LoadoutOpen") ~= true then me:SetAttribute("LoadoutOpen", true) end
+			if menus > 0 and me:GetAttribute("LoadoutOpen") ~= true then me:SetAttribute("LoadoutOpen", true) end
 		end)
 	end
 end)

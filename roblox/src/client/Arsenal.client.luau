@@ -573,6 +573,8 @@ Keys.began(function(io: InputObject, gp: boolean)
 	if want then equip(want); return end
 	if held == "shredder" then return end -- (the Shredder put away with 4: nothing to fire till you pick a slot)
 	local now = os.clock()
+	-- (the mouse is out, by Toggle Cursor or a menu: a click is for the screen. it doesn't fire, swing or aim: MenuCursor)
+	if me:GetAttribute("MenuCursor") == true and (Binds.is("fire", io) or Binds.is("aim", io)) then return end
 	if Binds.is("fire", io) then
 		trigger = true
 		pressT = now
@@ -831,7 +833,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local holstered = inHub()
 	if holstered then trigger, aimHeld = false, false; if hum and toolOut() then hum:UnequipTools() end end
 	if holstered then burstLeft = 0 end
-	if hum and (trigger or burstLeft > 0) and w and w.auto and not toolOut() and not menuOpen() and now >= (nextShot[held] or 0) then
+	if hum and (trigger or burstLeft > 0) and w and w.auto and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
 		local n = 0
 		-- (a Hat Trick burst always finishes, even on a tap)
 		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
@@ -839,7 +841,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	end
 	-- the Revolver: hold the trigger (not down the sights) and the rest of the cylinder is fanned out
 	if aim >= 0.1 or not trigger then fanArmed = false end
-	if hum and trigger and fanArmed and w and w.fan and a and not toolOut() and not menuOpen() and now - pressT > w.fan.hold
+	if hum and trigger and fanArmed and w and w.fan and a and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now - pressT > w.fan.hold
 		and now >= fanNext and a.mag > 0 and a.reloadUntil == 0 then
 		fireGun(now, true)
 	end
