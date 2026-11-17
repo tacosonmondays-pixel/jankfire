@@ -22,12 +22,13 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 
 local OWNER = 2833796200
 local K = 4.5 -- studs per metre: a gun's size in your hands (Fight's HAND_K)
--- his idle at the cases: a slow side-to-side sway, his weight going foot to foot, hands clasped, made with Studio's
--- prompt-to-animation tool on his avatar (17 Nov, its second take: the first barely moved); Roblox's own idle (IDLE)
--- if he is R6. every screen plays it itself (TrainingDoors.client: two copies crossfading at each end), from his
+-- his idles at the cases (17 Nov): two Mixamo mocap clips the owner picked, retargeted to R15 with
+-- tools/blender/mixamo_r15.py: a happy side-to-side sway (most of the time) and a happy idle with hands clasped at the
+-- chest and a head tilt (now and then). they replaced Studio's prompt-to-animation sway (132873393676097): side by side
+-- on his avatar the mocap was the more natural. Roblox's own idle (IDLE) if he is R6. every screen plays it itself (TrainingDoors.client: two copies crossfading at each end), from his
 -- attributes Idle, Wave and WaveAt: ZoneCull takes the training area out of your world while you are away, and what
 -- the server plays does not come back with it (in Play on 17 Nov the server's track ran and no screen showed it)
-local SWAY = "rbxassetid://132873393676097"
+local SWAY = "rbxassetid://105334089716706,rbxassetid://78877669663605" -- (comma-separated: the first most of the time)
 -- the talk prompt: { what it says, the attribute it carries, its value } (ShopClient reads ShopOpen). the hub's
 -- regulars' prompt style: on an attachment at chest height, E (gamepad X), no hold, 8 studs, no line of sight, clickable,
 -- his name under it

@@ -25,7 +25,8 @@
 --     16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 --   * the gun shop's keeper (ShopKeeper.server builds him): his idle (his attribute Idle: the owner's "cute sway waiting
---     at the cases") loops here as two copies crossfading at each end, and he waves when WaveAt (server time) moves on.
+--     at the cases"; one clip or a few, the first most of the time) loops here, crossfading at each end, and he waves
+--     when WaveAt (server time) moves on.
 --     played here, not on the server: ZoneCull takes the training area out of your world while you are away, and the
 --     server's tracks don't come back with it. it starts again whenever he is back in your world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
@@ -327,20 +328,30 @@ task.spawn(function()
 end)
 me:GetAttributeChangedSignal("ViewAs"):Connect(resort)
 
--- ---------------------------------------------------------------- the gun shop's keeper: his sway and wave
-type Keeper = { m: Model, t1: AnimationTrack, t2: AnimationTrack, cur: AnimationTrack?, wave: AnimationTrack?, waveAt: number }
+-- ---------------------------------------------------------------- the gun shop's keeper: his idles and wave
+-- Idle is one clip id or several, comma-separated: the first is his idle; at each loop's end, after the first, he goes
+-- on to one of the others now and then (SOMETIMES), and from any other back to the first. every clip has two tracks,
+-- so one can fade in while the other fades out
+local SOMETIMES = 0.35
+type Keeper = { m: Model, clips: { { AnimationTrack } }, ci: number, other: number, cur: AnimationTrack?, wave: AnimationTrack?, waveAt: number }
 local keeper: Keeper? = nil
 local function keeperOf(m: Instance): Keeper?
 	if not m:IsA("Model") then return nil end
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local an = hum and hum:FindFirstChildOfClass("Animator")
-	local id = m:GetAttribute("Idle")
-	if not an or type(id) ~= "string" or id == "" then return nil end -- (not ready yet: the next look tries again)
-	local a = Instance.new("Animation"); a.AnimationId = id
-	local ok1, t1 = pcall(function() return an:LoadAnimation(a) end)
-	local ok2, t2 = pcall(function() return an:LoadAnimation(a) end)
-	if not ok1 or not ok2 or not t1 or not t2 then return nil end
-	for _, t in { t1, t2 } do t.Looped = false; t.Priority = Enum.AnimationPriority.Idle end
+	local ids = m:GetAttribute("Idle")
+	if not an or type(ids) ~= "string" or ids == "" then return nil end -- (not ready yet: the next look tries again)
+	local clips = {}
+	for id in string.gmatch(ids, "[^,%s]+") do
+		local a = Instance.new("Animation"); a.AnimationId = id
+		local ok1, t1 = pcall(function() return an:LoadAnimation(a) end)
+		local ok2, t2 = pcall(function() return an:LoadAnimation(a) end)
+		if ok1 and ok2 and t1 and t2 then
+			for _, t in { t1, t2 } do t.Looped = false; t.Priority = Enum.AnimationPriority.Idle end
+			table.insert(clips, { t1, t2 })
+		end
+	end
+	if #clips == 0 then return nil end
 	local wave: AnimationTrack? = nil
 	local wid = m:GetAttribute("Wave")
 	if type(wid) == "string" and wid ~= "" then
@@ -349,18 +360,27 @@ local function keeperOf(m: Instance): Keeper?
 		if okW and tw then tw.Looped = false; tw.Priority = Enum.AnimationPriority.Action; wave = tw end
 	end
 	local at = m:GetAttribute("WaveAt")
-	return { m = m, t1 = t1, t2 = t2, cur = nil, wave = wave, waveAt = if type(at) == "number" then at else 0 }
+	return { m = m, clips = clips, ci = 1, other = 0, cur = nil, wave = wave, waveAt = if type(at) == "number" then at else 0 }
 end
 local function keeperStep()
 	local k = keeper
 	if not k then return end
 	if not k.m:IsDescendantOf(workspace) then k.cur = nil; return end -- (out of your world: start afresh when he is back)
 	local cur = k.cur
-	if not cur or not (k.t1.IsPlaying or k.t2.IsPlaying) then
-		k.t2:Stop(0); k.t1:Play(0.4); k.cur = k.t1
+	local playing = false
+	for _, c in k.clips do if c[1].IsPlaying or c[2].IsPlaying then playing = true; break end end
+	if not cur or not playing then
+		for _, c in k.clips do c[1]:Stop(0); c[2]:Stop(0) end
+		k.ci = 1; k.cur = k.clips[1][1]; k.clips[1][1]:Play(0.4)
 	elseif cur.Length > 0 and cur.Length - cur.TimePosition < 0.75 then
-		local nxt = if cur == k.t1 then k.t2 else k.t1
-		nxt:Play(0.7); cur:Stop(0.7); k.cur = nxt
+		local nci = 1
+		if k.ci == 1 and #k.clips > 1 and math.random() < SOMETIMES then
+			k.other = (k.other % (#k.clips - 1)) + 1
+			nci = 1 + k.other
+		end
+		local pair = k.clips[nci]
+		local nxt = if pair[1] == cur then pair[2] else pair[1]
+		nxt:Play(0.7); cur:Stop(0.7); k.cur = nxt; k.ci = nci
 	end
 	local at = k.m:GetAttribute("WaveAt")
 	if type(at) == "number" and at > k.waveAt then

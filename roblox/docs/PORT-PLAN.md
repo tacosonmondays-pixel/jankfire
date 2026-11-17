@@ -982,6 +982,12 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - It is kept while the area is out of your world, and set straight to the right state, with no sound, when it is back.
     - Tested: frozen 8.81 up when the area left, every slat 0 on return; opens walking up from the east and the west, shuts walking away.
   - Photos: `roblox/docs/training/hub_gate_shutter_strip.jpg`, `shopkeeper_sway_strip.jpg` (four moments of the sway, a wave, the DEALS tab), `shopkeeper_deals.jpg`.
+- **17 Nov: the shopkeeper's idles are Mixamo mocap (place version 599).** The owner approved Mixamo; the main session put the clips in the vault (`Assets/mixamo-17nov`, not in git).
+  - `tools/blender/mixamo_r15.py` (shared) retargets a Mixamo .fbx to an R15 KeyframeSequence .rbxm in Blender headless; it is uploaded as an Animation.
+  - Uploads: happy idle 1 = 105334089716706 (2.0 s, a side-to-side sway, arms relaxed) and happy idle 2 = 78877669663605 (2.9 s, hands clasped at the chest, a head tilt).
+  - Side by side on his avatar against the generated sway (132873393676097), the mocap looked more natural. On the floor for all three: feet within 0.1.
+  - `Idle` now takes a comma-separated list: the first plays most of the time, and after it one of the others about one loop in three (`SOMETIMES = 0.35`), then back. In Play: 105 > 788 > 105, crossfading.
+  - Photo: `roblox/docs/training/shopkeeper_mocap_compare.jpg` (generated sway, idle 1, idle 2 at two moments, then him in the shop).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
