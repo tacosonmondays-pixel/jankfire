@@ -438,8 +438,9 @@ function V.card(parent: GuiObject, kind: string, id: string)
 	if CS then pcall(CS.preview, kind, id, f) end
 end
 -- a kill effect or an emote: no 3D model either, a square tile drawn by Flair (a figure in the effect's colour, or
--- doing the move)
-function V.flair(parent: GuiObject, kind: string, id: string)
+-- doing the move). anim: a looping preview over it (FlairAnim: the effect's flipbook, or you doing the emote), for
+-- cards and the inspect panel; a small chip in a list stays still
+function V.flair(parent: GuiObject, kind: string, id: string, anim: boolean?)
 	local F = Shop.Flair :: any
 	clearPreview(parent)
 	local holder = new("Frame", { Name = "Preview", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = parent.ZIndex + 1 }, parent)
@@ -447,6 +448,12 @@ function V.flair(parent: GuiObject, kind: string, id: string)
 		Size = UDim2.fromScale(0.92, 0.92), ZIndex = parent.ZIndex + 2 }, holder)
 	new("UIAspectRatioConstraint", { AspectRatio = 1 }, f)
 	if F and type(F.picture) == "function" then pcall(F.picture, kind, id, f) end
+	if anim then
+		local m = script.Parent:FindFirstChild("FlairAnim")
+		local ok, FA = false, nil
+		if m and m:IsA("ModuleScript") then ok, FA = pcall(require, m) end
+		if ok and type(FA) == "table" and type((FA :: any).attach) == "function" then pcall((FA :: any).attach, f, kind, id) end
+	end
 end
 -- a whole card dressed in a set's background, border and title (the Head Office bundle's picture)
 function V.cardSet(parent: GuiObject, items: { any })
@@ -485,7 +492,7 @@ end
 function V.put(parent: GuiObject, o: any?, item: any?, spin: string, zoom: number?, boost: number?)
 	local it = item or (if o and o.type == "single" then { kind = o.kind, id = o.item, weapon = o.weapon } else nil)
 	if it and Shop.isCard(it.kind) then V.card(parent, it.kind, it.id); return end
-	if it and Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id); return end
+	if it and Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id, true); return end
 	if o and o.type == "bundle" and not o.hero then V.cardSet(parent, o.items); return end
 	V.show(parent, if o then V.offerModel(o, item, boost) else V.item(it, boost), spin, zoom)
 end

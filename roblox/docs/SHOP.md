@@ -413,6 +413,33 @@ KILL EFFECTS filter showed it (`shop-flair-inventory.jpg`); at phone size (844 x
 inventory was put back afterwards (195 things, no kill effect). Not seen on screen: an emote tile, and the picked
 filter scrolling into view (added after the test).
 
+### Moving previews (17 Nov)
+
+The owner: "for kill effects in shop can they be small previews? same with in inv?" Kill effect and emote tiles on
+cards (the daily row, the inventory, the inspect panel) play a small loop over their still tile. A chip in a list
+stays still. `src/client/FlairAnim.luau` does it; anyone may use `FlairAnim.attach(frame, kind, id)`.
+- **Kill effects:** a flipbook per effect, because a ViewportFrame can't draw particles. The VFX session captures
+  each effect in Studio on a stand-in, as a 1024 x 1024 sheet of 4 x 4 frames on the tile's dark, with no text.
+  The sheets are listed in `Shared.FlairSheets` (`kill[id] = { image, cols, rows, px, n, fps, hold, words? }`), and
+  Blue Screen's words are drawn live over its frames. An effect with no sheet yet keeps its still tile.
+- **Emotes:** a copy of your own avatar in a ViewportFrame inside a WorldModel (so it animates), doing the emote on a
+  loop.
+- **Cheap:** one stepper runs them all. Only a preview that's on screen plays: its gui on, every parent visible,
+  inside its scrolling frame's view. At most 8 play at once; the rest hold still (emotes pause).
+- **Grapples** aren't sold in the shop, so they have none.
+- **Emote timing** follows the flair session's stand-in. A one-shot emote plays at priority Action4, in over 0.3 s,
+  is let go 0.35 s before its end, rests 0.7 s, and starts again, so it never snaps at a loop's seam. A looping emote
+  just loops. The clip, length and loop flag are read from `Flair.info` each time, because the emotes get remade.
+
+Tested in solo Play (place version 588):
+- With three emotes owned for the test, the inventory's EMOTES section showed the owner's own avatar doing each one
+  (`docs/shop/shop-anim-emotes.jpg`). The tracks moved: 0.06 s to 0.88 s in 0.8 s.
+- Switched to FEATURED, the same tracks held at speed 0.
+- The inspect panel showed Groove big (`shop-anim-inspect.jpg`).
+- The owner's inventory was put back.
+- The kill effects still show their still tiles until the VFX session's sheets are in `FlairSheets`; that session
+  will fill it.
+
 ## Weapon skins and skin sets (16 Nov)
 
 **Weapon skins** (a whole other body for one gun: `GunSkins.luau`, models in `ReplicatedStorage.JankfireSkins`, names
