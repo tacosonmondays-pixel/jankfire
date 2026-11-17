@@ -75,6 +75,9 @@
 #                colour border; box: only faces whose centre is in it)
 #   "blend": [{"part": {...}, "box": [lo, hi], "to": 0.0425, "fade": {"axis": "y", "from": -0.03, "to": -0.012}}],
 #                pull a lip that overhangs past |x| = to flush (fully below fade.from, not at all at fade.to)
+#   "decals": [{"part": {...}, "box": .., "sides": [-1, 1], "tag": "wave", "polys": [[[z, y], ...]]}],   flat painted
+#                shapes (a wave band, foam dots, a duck icon) CUT into the side faces along their outlines (seen
+#                along x): new edges, no picture, nothing laid on top; colour them by tag
 #   "lines": [{"part": {...}, "box": .., "absx": .., "cf_at": 0.5 | "plane": {"co", "no"}, "width": 0.0012,
 #              "tag": "rwlit"}],   a thin strip along a contour border or a plane cut, tagged (glow lines)
 #   "contours": [{"part": {...}, "box": .., "absx": .., "field": "ny", "smooth": 2, "at": 0.5}],   cut a soft surface
@@ -85,7 +88,7 @@
 #   "inlays": [{"part": {...}, "tag": "mstar", "shape": "star", "points": 4, "R": 0.026, "r": 0.007, "c": [y, z],
 #               "sides": [-1, 1], "proud": 0.0015, "turn": 0}],   a kit star let into a part's side faces (union);
 #               "shape": "oval" with "ry", "rz" instead: an ellipse (a face's eyes and bill); "x": the side's |x|
-#               where no vertex of the part lies inside the footprint (a big flat face)
+#               where no vertex of the part lies inside the footprint (a big flat face); "x_min": a floor for it
 #   "palette": {"pearl": "eeece6", "gold": "c9a456", "lit": ["ffd58a", "n"]},   slot -> colour or [colour, kind]
 #   "default": {"node": "body", "zone": "A", "slot": "pearl"},
 #   "regions": [{"where": {"part": {...}, "box": [lo, hi], "absx": [a, b], "n": {"x": [lo, hi]}, "an": {"x": [lo, hi]},
@@ -101,7 +104,7 @@
 #        fn: a Gun method (box prism cyl cylz ring ball xprism yprism window), a gun_sights.py helper (rifle_rear
 #        rifle_front notch blade bead), gun_models' trigger / guard, or halo (a tilted ring on spokes, below);
 #        with "pieces": brake (a ported muzzle brake + shroud), kblade (a katana blade, one kit solid from an outline:
-#        sharp edge, wave band, spine; every colour's back end at the stretch origin), candy (a striped round grip),
+#        sharp edge, spine, and curling waves, foam curls and dots cut into its flat face), candy (a striped round grip),
 #        hoop (a striped pommel loop with gold collars)
 #   "shell": ["body_wzA__pearl", "rwing"],      Route S shells: pieces or nodes (budget: <= 15k tris with shells)
 #   "sheet": {"closeup": {"at": [x, y, z], "size": 0.16, "label": "front sight"}},   an extra close side view
@@ -642,6 +645,88 @@ def contour(bm, op):
     return {'faces': len(fs), 'cuts': cut}
 
 
+def _inpoly(z, y, poly):
+    """is (z, y) inside the closed polygon [(z, y), ...] (even-odd)"""
+    inside = False
+    n = len(poly)
+    for i in range(n):
+        za, ya = poly[i]; zb, yb = poly[(i + 1) % n]
+        if (ya > y) != (yb > y):
+            zc = za + (y - ya) * (zb - za) / (yb - ya)
+            if z < zc: inside = not inside
+    return inside
+
+
+def imprint(bm, ok, polys, sides=(-1, 1), nmin=0.35):
+    """a flat painted shape CUT INTO a surface (no picture, nothing laid on top: no flicker): every outline segment of
+       each closed polygon [(z, y), ...] (weapon frame, projected along x onto the faces that face side s) bisects
+       the faces near it along the plane through the segment and the x axis; then the faces whose middle falls
+       inside a polygon are returned with its index (the last polygon wins: a foam curl inside a wave).
+       ok(f) -> the faces that may be cut (a mark carried onto the pieces bisect splits off). returns {face: index}"""
+    lay = bm.faces.layers.int['_sel']
+    for f in bm.faces: f[lay] = 1 if ok(f) else 0
+    orig = bm.edges.layers.int.get('_orig') or bm.edges.layers.int.new('_orig')
+    for e in bm.edges: e[orig] = 1   # (the edges before the cuts: their split halves keep the mark, the cuts do not)
+    def facing(f):
+        return any(f.normal.x * s >= nmin for s in sides)   # (weapon x = Blender x)
+    for poly in polys:
+        n = len(poly)
+        for i in range(n):
+            (za, ya), (zb, yb) = poly[i], poly[(i + 1) % n]
+            if abs(za - zb) + abs(ya - yb) < 1e-7: continue
+            lz, hz = min(za, zb) - 2e-4, max(za, zb) + 2e-4
+            ly, hy = min(ya, yb) - 2e-4, max(ya, yb) + 2e-4
+            fs = []
+            for f in bm.faces:
+                if not f[lay] or not facing(f): continue
+                zs = [-v.co.y for v in f.verts]; ys = [v.co.z for v in f.verts]   # (weapon z = -Blender y, y = Blender z)
+                if max(zs) < lz or min(zs) > hz or max(ys) < ly or min(ys) > hy: continue
+                fs.append(f)
+            if not fs: continue
+            geom = list(set(fs) | {e for f in fs for e in f.edges} | {v for f in fs for v in f.verts})
+            nw = Vector((0.0, -(zb - za), (yb - ya))).normalized()   # (weapon frame: x cross the segment)
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=B((0.0, ya, za)), plane_no=B(nw) - B((0.0, 0.0, 0.0)), dist=1e-7)
+    bm.normal_update()
+    # every cut line ran right across the faces it touched: merge the slivers back (coplanar neighbours of the same
+    # class: inside polygon k, or outside), so only the outlines stay as new edges
+    tagl = bm.faces.layers.int.get('tag')   # (and never across an earlier decal's or inlay's border)
+    for f in [f for f in bm.faces if f[lay]]:
+        k = 0
+        if facing(f):
+            c = f.calc_center_median(); z, y = -c.y, c.z
+            for i, poly in enumerate(polys):
+                if _inpoly(z, y, poly): k = i + 1
+        f.material_index = (f[tagl] if tagl else 0) * 64 + k
+    # (a cut edge with the same class on both sides is only the rest of a cut line: dissolve it, and the corner it
+    # left on an old edge with it; the outlines, between classes, stay)
+    edges = [e for e in bm.edges if not e[orig] and len(e.link_faces) == 2 and all(f[lay] for f in e.link_faces)
+             and e.link_faces[0].material_index == e.link_faces[1].material_index]
+    if edges:
+        try: bmesh.ops.dissolve_edges(bm, edges=edges, use_verts=True, use_face_split=False)
+        except Exception as ex: print('imprint: dissolve skipped', ex)
+    out = {}
+    for f in bm.faces:
+        if not f[lay]: continue
+        if f.material_index % 64 > 0: out[f] = f.material_index % 64 - 1
+        f.material_index = 0
+    return out
+
+
+def decals(bm, op, tags):
+    """the recipe's painted shapes: {"part": .., "box": .., "sides": [-1, 1], "nmin": 0.35, "tag": "wave",
+       "polys": [[[z, y], ...], ...]} -> the faces inside get the tag (regions colour it)"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    box = op.get('box')
+    def ok(f):
+        return pid.get(f) in ps and (box is None or _inbox(W(f.calc_center_median()), box))
+    hit = imprint(bm, ok, op['polys'], op.get('sides', (-1, 1)), op.get('nmin', 0.35))
+    tid = tags.setdefault(op['tag'], len(tags) + 1)
+    lay = bm.faces.layers.int['tag']
+    for f in hit: f[lay] = tid
+    return {'tag': op['tag'], 'faces': len(hit), 'polys': len(op['polys'])}
+
+
 def lines(bm, op, tags):
     """a thin crisp strip (a glow line) along a border on the op's faces: the contour iso-line of field value `cf_at`
        (the edges whose two corners carry it, see contour()) or a plane cut (`plane`: {"co", "no"}, weapon frame); those
@@ -817,8 +902,8 @@ def run_inlays(bm, rec, tags):
             # the surface's height under the star: the farthest the part reaches out on that side inside its footprint
             ys = [p[0] for p in poly]; zs = [p[1] for p in poly]
             xs = [abs(W(v.co).x) for v in base.verts if sx * W(v.co).x > 0 and min(ys) <= W(v.co).y <= max(ys) and min(zs) <= W(v.co).z <= max(zs)]
-            if 'x' in il: xs.append(il['x'])   # (a floor: the corners in a small footprint can all be inside ones)
-            top = (max(xs) if xs else 0.03) + il.get('proud', 0.0015)
+            if 'x_min' in il: xs.append(il['x_min'])   # (a floor: the corners in a small footprint can all be inside ones)
+            top = (max(xs) if xs else il.get('x', 0.03)) + il.get('proud', 0.0015)
             inner = max(0.002, top - il.get('depth', 0.012))
             tools.append(star_prism(poly, sx * inner, sx * top))
         n0 = tri_count(base)
@@ -1085,6 +1170,7 @@ def clean(raw, base_id, skin_id, rec, out_dir):
         fs = _faces_of(bm, sp)   # (its part, and only faces in its box when it has one)
         geom = list(set(fs) | {e for f in fs for e in f.edges} | {v for f in fs for v in f.verts})
         bmesh.ops.bisect_plane(bm, geom=geom, plane_co=B(sp['co']), plane_no=B(sp['no']), dist=1e-6)
+    meta['decals'] = [decals(bm, op, tags) for op in rec.get('decals', [])]   # (painted shapes cut into the faces)
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
     # moving nodes: whole parts, or box cuts out of a part
     node_lay = bm.faces.layers.int['node']
@@ -1238,15 +1324,22 @@ def _loft(rings, caps=(True, True)):
     return AK._obj(bm)
 
 
+CREST = [(0.00, 0.00), (0.25, 0.18), (0.45, 0.50), (0.58, 0.80), (0.70, 0.97), (0.82, 0.98), (0.92, 0.88),
+         (0.98, 0.70), (0.96, 0.56), (0.89, 0.50), (0.84, 0.56), (0.83, 0.64), (0.79, 0.60), (0.78, 0.45),
+         (0.85, 0.25), (0.95, 0.08)]   # (one curling crest: u 0 back .. 1 front, h 0 trough .. 1 top; the lip overhangs)
+FOAM = [(0.40, 0.30), (0.55, 0.58), (0.68, 0.78), (0.78, 0.86), (0.85, 0.84), (0.76, 0.75), (0.64, 0.61),
+        (0.52, 0.40), (0.45, 0.26)]    # (the white curl inside a crest, under its back slope)
+
+
 def kblade(g, pieces, outline, z0=-0.139, tk=(0.0056, 0.0046), ty=0.834, n=96, m=10, edge=0.24, spine=0.12,
-           tip_w=0.0024, waves=3.5, band=(0.34, 0.2), skew=0.16, foam=0.0, tip_piece=None):
+           tip_w=0.0024, waves=4, base=0.40, height=0.36, dots=0.0032, tip_piece=None, **_old):
     """a katana blade rebuilt in kit (a Tripo blade is a soft lump): ONE closed solid lofted through sections of the
-       outline [(z, y_edge, y_back)] from the root (z0: the game stretches every kat_blade piece from here, and every
-       colour's faces start at the root ring, so each piece's back end is exactly z0) to the tip, its faces coloured:
-       a bevel to a SHARP edge (pieces['edge']), the flat face with a wave band (pieces['wave'], its top a run of
-       `waves` rolling crests leaning toward the tip; an optional thin `foam` line, pieces['foam']), the pale face
-       (pieces['blade']) and a chamfered spine (pieces['spine']); past `ty` (the yokote) the point in pieces['edge'] (or
-       tip_piece). One solid: no hidden faces inside it to flicker"""
+       outline [(z, y_edge, y_back)] from the root (z0) to the tip, its faces coloured: a bevel to a SHARP edge
+       (pieces['edge']), the flat face (pieces['blade']), a chamfered spine (pieces['spine']), past `ty` (the yokote)
+       the point in pieces['edge'] (or tip_piece). On the flat face, CUT INTO it (no picture, nothing laid on top):
+       a band of `waves` curling crests (pieces['wave'], its top `height` of the face tall from `base`), a white foam
+       curl inside each crest (pieces['foam']) and round dots over the troughs (pieces['wave'], radius `dots` m).
+       The game stretches every kat_blade piece about z0 alike, so all of them stay in place"""
     def at(z):
         for i in range(len(outline) - 1):
             (za, ea, ba), (zb, eb, bb) = outline[i], outline[i + 1]
@@ -1260,61 +1353,71 @@ def kblade(g, pieces, outline, z0=-0.139, tk=(0.0056, 0.0046), ty=0.834, n=96, m
         ye, yb = at(z)
         if yb - ye < tip_w:
             c = (ye + yb) / 2; ye, yb = c - tip_w / 2, c + tip_w / 2
-        k = tk[0] + (tk[1] - tk[0]) * min(t / ty, 1.0)
+        k = tk[0] + (tk[1] - tk[0]) * min(max(t, 0.0) / ty, 1.0)
         if t > ty: k *= 1.0 - 0.7 * ((t - ty) / (1 - ty)) ** 1.3
         return z, ye, yb, k
+    def zy(t, f):   # (a point on the face: t along, f across) -> weapon (z, y)
+        z, ye, yb, _ = sec(t)
+        return (z, ye + (yb - ye) * f)
     def thick(f):
         if f <= edge: return 0.1 + 0.9 * f / edge
         if f >= 1 - spine: return 1.0 - 0.45 * (f - (1 - spine)) / spine
         return 1.0
-    def crest(t):   # 0..1: a rolling wave, its crest pushed toward the tip by `skew`
-        p = t / ty * waves
-        p = p + skew * math.sin(2 * math.pi * p)
-        return 0.5 - 0.5 * math.cos(2 * math.pi * p)
-    def hband(t):
-        tt = min(t, ty)
-        return band[0] + band[1] * crest(tt) * min(1.0, tt / 0.05 + 0.3)
-    use_foam = foam > 0
-    def fs(t):   # the section's cut points across the blade, edge (0) to back (1)
-        h = hband(t)
-        out = [0.0, edge, h] + ([h + foam] if use_foam else []) + [1 - spine, 1.0]
-        return out
-    names = ['edge', 'wave'] + (['foam'] if use_foam else []) + ['blade', 'spine']   # (the band between cut k, k+1)
+    F = [0.0, edge, 1 - spine, 1.0]
+    names = ['edge', 'blade', 'spine']
+    CODE = {'edge': 0, 'blade': 1, 'spine': 2, 'tip': 3, 'wave': 4, 'foam': 5}
     ts = [ty * i / n for i in range(n + 1)] + [ty + (1 - ty) * i / m for i in range(1, m + 1)]
     bm = bmesh.new()
+    kc = bm.faces.layers.int.new('kc'); bm.faces.layers.int.new('_sel')
     rings = []
     for t in ts:
         z, ye, yb, k = sec(t)
-        F = fs(t)
         right = [(thick(f) * k, ye + (yb - ye) * f, z) for f in F]
         left = [(-x, y, zz) for x, y, zz in reversed(right)]
         rings.append([bm.verts.new(B(Vector(p))) for p in right + left])
-    nf = len(fs(0.0))
-    cnt = 2 * nf
-    def colour(k, tmid):   # ring edge k (right side k = 0..nf-2 up, top k = nf-1, left down, bottom k = 2nf-1)
-        if k == nf - 1: return pieces['spine']   # (the spine's flat top)
-        if k == cnt - 1: return pieces['edge']    # (the edge's thin bottom)
-        band_i = k if k < nf - 1 else (cnt - 2 - k)
-        nm = names[band_i]
-        if tmid > ty and nm != 'spine': return tip_piece or pieces['edge']
-        return pieces[nm]
-    col = {}
+    nf = len(F); cnt = 2 * nf
+    def code(k, tmid):   # ring edge k (right side 0..nf-2 up, top nf-1, left down, bottom 2nf-1)
+        if k == nf - 1: return CODE['spine']
+        if k == cnt - 1: return CODE['edge']
+        nm = names[k if k < nf - 1 else cnt - 2 - k]
+        if tmid > ty and nm != 'spine': return CODE['tip']
+        return CODE[nm]
     for i in range(len(rings) - 1):
         tmid = (ts[i] + ts[i + 1]) / 2
         for k in range(cnt):
             j = (k + 1) % cnt
             f = bm.faces.new([rings[i][k], rings[i][j], rings[i + 1][j], rings[i + 1][k]])
-            col[f] = colour(k, tmid)
-    f = bm.faces.new(rings[0][::-1]); col[f] = pieces['blade']        # (the root: inside the habaki)
-    f = bm.faces.new(rings[-1]); col[f] = tip_piece or pieces['edge']
+            f[kc] = code(k, tmid)
+    f = bm.faces.new(rings[0][::-1]); f[kc] = CODE['blade']          # (the root: inside the habaki)
+    f = bm.faces.new(rings[-1]); f[kc] = CODE['tip']
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    # the painted waves, cut into the flat face on both sides
+    t0, t1 = -0.01, ty - 0.012
+    P = (t1 - t0) / waves
+    top = []
+    for w in range(waves):
+        for u, h in CREST: top.append(zy(t0 + (w + u) * P, base + h * height))
+    top.append(zy(t1, base))
+    bottom = [zy(t1 - (t1 - t0) * i / 24, edge - 0.04) for i in range(25)]   # (along the edge line's own curve)
+    band = top + bottom
+    foams = [[zy(t0 + (w + u) * P, base + h * height) for u, h in FOAM] for w in range(waves)]
+    dotp = []
+    for w in range(1, waves):
+        zc, yc = zy(t0 + (w - 0.12) * P, base + height + 0.05)
+        dotp.append([(zc + dots * math.cos(2 * math.pi * i / 12), yc + dots * math.sin(2 * math.pi * i / 12)) for i in range(12)])
+    polys = [band] + foams + dotp
+    hit = imprint(bm, lambda f: f[kc] == CODE['blade'], polys, sides=(-1, 1), nmin=0.5)
+    for f, i in hit.items():
+        f[kc] = CODE['foam'] if 1 <= i <= len(foams) else CODE['wave']
     import artist_kit as AK
-    for piece in sorted(set(col.values())):
-        sub = bm.copy()
-        sub.faces.ensure_lookup_table(); bm.faces.ensure_lookup_table()
-        gone = [sub.faces[i] for i, f in enumerate(bm.faces) if col[f] != piece]
-        bmesh.ops.delete(sub, geom=gone, context='FACES')
-        g.put(piece, AK._obj(sub))
+    piece_of = {CODE['edge']: pieces['edge'], CODE['blade']: pieces['blade'], CODE['spine']: pieces['spine'],
+                CODE['tip']: tip_piece or pieces['edge'], CODE['wave']: pieces['wave'], CODE['foam']: pieces.get('foam', pieces['blade'])}
+    bm.faces.ensure_lookup_table()
+    for c in sorted({f[kc] for f in bm.faces}):
+        sub = bm.copy(); sub.faces.ensure_lookup_table()
+        lay = sub.faces.layers.int['kc']
+        bmesh.ops.delete(sub, geom=[f for f in sub.faces if f[lay] != c], context='FACES')
+        g.put(piece_of[c], AK._obj(sub))
     bm.free()
 
 
