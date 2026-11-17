@@ -18,6 +18,7 @@ from gunkit import Gun, rect, raked
 import gun_models as AB
 from gun_models import FRAME, DARK, BLACK, DECK, STEEL, slash, guard, trigger, panel, rivets, kit_mark, deck
 import gun_models_c as CC   # (imports gunkit_c, which sets look C: every builder below sets its own look first)
+import gun_sights as SG     # (the slim sights, 16 Nov 2026)
 from gunkit_c import tube
 
 
@@ -60,21 +61,13 @@ def sniper():
     for z0 in (-1.455, -1.4):
         g.box('trim_wzN__black', (-0.0595, 0.0595), (BY - 0.03, BY + 0.03), (z0, z0 + 0.034), bev=0.002)
     g.cylz('trim_wzN__black', 0.021, -1.4815, -1.477, y=BY, sides=8, bev=0)
-    # the big scope, up on its two rings with daylight under it (owner: "without scope inside gun")
-    g.cylz('scope_wzN__deck', 0.038, -0.25, 0.06, y=SY, sides=8, bev=0.005)
-    g.cyl('scope_wzN__frame', 0.056, (0, SY, -0.45), (0, SY, -0.25), sides=8, bev=0.008, r2=0.04, hole=(0.046, 0.016))
-    g.cylz('lens_wzN__glow', 0.046, -0.4355, -0.431, y=SY, sides=8, bev=0)
-    g.cylz('scope_wzN__accent', 0.0575, -0.415, -0.39, y=SY, sides=8, bev=0.003)
-    g.cylz('scope_wzN__frame', 0.045, 0.04, 0.17, y=SY, sides=8, bev=0.007)
-    g.cylz('scope_wzN__frame', 0.05, 0.182, 0.14, y=SY, sides=8, bev=0.006, hole=(0.037, 0.01))
-    g.cylz('lens_wzN__glow', 0.037, 0.173, 0.1745, y=SY, sides=8, bev=0)
-    g.ring('scope_wzN__deck', 0.0515, 0.04, (0, SY, 0.176), (0, SY, 0.184), sides=8, bev=0.002)
-    g.cylz('scope_wzN__deck', 0.05, 0.06, 0.1, y=SY, sides=8, bev=0.004)
-    g.cyl('scope_wzN__frame', 0.023, (0, SY + 0.03, -0.1), (0, SY + 0.07, -0.1), sides=8, bev=0.004)
-    g.cyl('scope_wzN__frame', 0.021, (0.03, SY, -0.1), (0.068, SY, -0.1), sides=8, bev=0.004)
-    for z0 in (-0.22, 0.0):
-        g.ring('scope_wzN__frame', 0.046, 0.036, (0, SY, z0), (0, SY, z0 + 0.032), sides=8, bev=0.003)
-        g.box('scope_wzN__frame', (-0.024, 0.024), (0.06, SY - 0.034), (z0 - 0.004, z0 + 0.036), bev=0.006)
+    # the scope, clear of the gun on two narrow ring mounts (owner: "without scope inside gun"; slim sights, 16 Nov
+    # 2026, gun_sights.py): an eight-sided tube, a bell at each end, the lenses sunk in near-black rims (a faint glint
+    # behind the front one), one turret (its top at SY + 0.035, z -0.1295: Golden's crown sits on it), the plum band
+    g.slot('glass', '5f7484', 'g', 0.7); g.slot('glint', 'b9d6e6', 'n')
+    SG.scope_slim(g, 'scope_wzN__frame', -0.43, 0.175, SY, r=0.0235, lens_piece='lens_wzN__glass', glint_piece='lens_wzN__glint',
+                  rim_piece='scope_wzN__dark', turret_piece='scope_wzN__dark', mounts=((-0.21, 0.069), (0.01, 0.069)),
+                  band_piece='scope_wzN__accent', band_z=-0.3)
     # the bolt (node "bolt"), magazine, guard, trigger, port (as A)
     g.cylz('bolt_wzB__steel', 0.017, -0.06, 0.08, y=BY, x=0.024, sides=8, bev=0.002)
     g.cyl('bolt_wzB__steel', 0.013, (0.032, BY, 0.04), (0.09, BY - 0.032, 0.06), sides=8, bev=0.002)
@@ -100,6 +93,7 @@ def revolver():
     g.slot('wood', '43352b'); g.slot('glow', 'b8bcc4'); g.slot('steel', '626772')
     g.spots = dict(AB.revolver().spots)
     BY = 0.03
+    SY_REV = g.spots['sight'][1]
     # (A) the heavy barrel, an underlug and a rib; the frame round the cylinder: top strap, bottom, back
     g.cylz('body_wzA__frame', 0.024, -0.29, -0.11, y=BY, sides=8, bev=0.004, hole=(0.012, 0.02))
     g.box('body_wzA__frame', (-0.009, 0.009), (0.048, 0.066), (-0.288, -0.112), bev=0.004)
@@ -118,9 +112,10 @@ def revolver():
         g.ring('cylinder_wzN__body', 0.044, 0.03, (0, 0.009, z0), (0, 0.009, z1), sides=12, bev=0.002)
     # (A) hammer (node "hammer"), sights
     g.prism('hammer_wzN__dark', [(0.045, 0.036), (0.062, 0.036), (0.098, 0.062), (0.092, 0.074), (0.05, 0.062)], 0.014, bev=0.003)
-    g.box('sight_wzN__frame', (-0.019, -0.007), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    g.box('sight_wzN__frame', (0.007, 0.019), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    g.prism('sight_wzN__frame', [(-0.286, 0.064), (-0.246, 0.064), (-0.256, 0.088), (-0.278, 0.088)], 0.016, bev=0.003)
+    # (slim sights, 16 Nov 2026, gun_sights.py; near-black: a low notch block on the top strap's back, a pointed blade
+    # on the rib at the muzzle)
+    SG.notch(g, 'sight_wzN__dark', 0.032, SY_REV, 0.07, 0.028, depth=0.01, nw=0.3, nd=0.0055)
+    SG.blade(g, 'sight_wzN__dark', -0.268, SY_REV, 0.066, w=0.0055, depth=0.02)
     # (C) the handle and trigger area: the frame's rounded back down into the grip, the round guard, the trigger,
     # the big wood target grips and their medallion
     g.prism('body_wzA__frame', [(-0.003, -0.048), (0.04, -0.05), (0.064, -0.046), (0.088, -0.038), (0.084, -0.016),
@@ -221,9 +216,10 @@ def ar_cardboard():
     tube(g, 'barrel_wzB__tube', 0.026, -0.72, -0.47, y=BY, bev=0.004, hole=(0.019, 0.05))
     for z0 in (-0.672, -0.545):
         tube(g, 'tape_wzN__tape', 0.031, z0, z0 + 0.03, y=BY, bev=0.003)
-    g.box('sight_wzN__frame', (-0.02, 0.02), (0.062, 0.096), (0.205, 0.258), bev=0.004)
-    g.window('sight_wzN__body', (-0.024, 0.024), (SY - 0.023, SY + 0.023), (0.224, 0.244), 0.011)
-    g.xprism('sight_wzN__body', [(-0.022, 0.068), (0.022, 0.068), (0.0, SY)], -0.53, -0.5, bev=0.002)
+    # card sights (slim sights, 16 Nov 2026: the live rifle's outline in dark card): a thin card ring on a narrow
+    # stem off the cover's back, a thin card hood with a pointed post on the handguard's front
+    SG.rifle_rear(g, 'sight_wzN__frame', 0.234, SY, 0.088, w=0.037, stem_z=(0.203, 0.2425), ear_z=0.2085)
+    SG.rifle_front(g, 'sight_wzN__frame', -0.452, SY, 0.06, w=0.032)
     g.box('tape_wzN__tape', (-0.036, 0.036), (-0.066, 0.094), (-0.03, 0.002), bev=0.003)
     g.box('tape_wzN__tape', (-0.0285, 0.0285), (-0.154, 0.084), (0.36, 0.388), bev=0.003)
     for y in (-0.13, -0.085, -0.04, 0.005, 0.05):
@@ -242,7 +238,7 @@ SKINS = {'ar@cardboard': ar_cardboard}
 # gun_skins_1.py. A file that isn't there yet is skipped.
 for _part in (('gun_skins_1', 'gun_skins_2', 'gun_skins_3', 'gun_sets', 'gun_sets_halloween', 'gun_sets_japan', 'gun_sets_ducky',
               'gun_skins_fix', 'gun_skins_fix2', 'gun_skins_fix3', 'gun_skins_fix4', 'gun_sets_ducky_alt',
-              'gun_sets_cute')
+              'gun_sets_cute', 'gun_sets_ducky_v3')
               # (work in progress, built only when named: JF_EXTRA=gun_sets_japan2,gun_sets_west,gun_sets_angel2)
               + tuple(x for x in os.environ.get('JF_EXTRA', '').split(',') if x)):
     try:

@@ -404,6 +404,37 @@ The owner: "Can we do a complete redo of the ducky guns except the revolver it l
 - `gun_sets_ducky_v3.py` builds only when named (`JF_EXTRA=gun_sets_ducky_v3`) until the slim-sight kit
   (`gun_sights.py`) it imports is committed.
 
+## Slim sights (17 November 2026, place version 484)
+
+The owner: "my issue is just the iron sights or the scopes look bulky and not like the ones in rivals".
+
+- **What Rivals does** (vault note `Research/Rivals sights.md`): its sights are not tiny. They read as slim because
+  they are thin, open and under the aim line: a washer-thin rear ring, a hooded pointed front post at the receiver's
+  front, low notch blocks on pistols and shotguns, and near-black sights even on pale bodies.
+- **The kit:** `tools/roblox/gun_sights.py`, imported everywhere as `SG` through `gunkit_c.py`.
+  - `rifle_rear`, `rifle_front`, `notch`, `blade`, `bead`, `red_dot`, `holo`, `scope_slim`.
+  - Each is placed from the gun's `g.spots['sight']`. Walls are at least 3.5 to 4 mm.
+- **Where it went:** every base gun and every skin with sights, 50 guns in this install. The gun bodies did not change.
+  - Themed skins keep their theme on thin, low sights.
+  - The Seraph guns keep their old sights until the angel set is installed; the cute concepts until cute v3.
+- **Aim points:**
+  - The Half a Shotgun's aim point moved from y 0.037 to 0.065: its old line ran inside the action. `Weapons.luau`
+    was updated to match.
+  - The Redline keeps its spot. The cover's hump was lowered so the line through its ring is clear.
+- **Checked:**
+  - `gun_check` 0 loose on all 50, and the z-fight scan finds no pair involving a sight.
+  - Three judge rounds against the Rivals note.
+  - The install, and in Play: the rifle's thin ring at the hip, and when aiming, the front post inside the ring with
+    the target clear around it.
+- **Pictures:** `gun-models/sights-before-after.jpg` (side and aimed render, before and after),
+  `sights-all-after.jpg`, `sights-in-game-v484.jpg`.
+- **Not done here:**
+  - How big the ring sits on screen when aiming is the hold session's framing. It is about 4–5% of the screen width
+    now, against Rivals' 13%.
+  - The hat seats on the changed guns are re-seated by the hats session.
+- **Install note:** `W.kit(keys)` only loads models into `WeaponSets.kit`. After it, the base guns also need
+  `W.models("kit", ids)` to become the live templates; skins go live through `W.skins()`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

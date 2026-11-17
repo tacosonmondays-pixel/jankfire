@@ -1,6 +1,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit_c import *
+import gun_sights as SG
 # VERSION C, part 3: Plan B (M1911), Revolver (S&W Model 29), Redline (Thompson M1928), Katana, Shredder. The style,
 # the contract and the shared pieces are in gunkit_c.py; gun_models_c.py builds and previews these with the rest:
 #   blender -b --factory-startup -P tools/roblox/gun_models_c.py -- <out_dir> pistol revolver redline katana shredder
@@ -101,12 +102,10 @@ def pistol():
     g.ring('slide_wzN__dark', 0.0165, 0.0094, (0, BY, -0.2535), (0, BY, -0.245), sides=8, bev=0.002)
     g.cylz('slide_wzN__dark', 0.0092, -0.2515, -0.24, y=-0.0025, sides=8, bev=0.002)
     g.cylz('slide_wzN__black', 0.0048, -0.2522, -0.25, y=-0.0025, sides=8, bev=0)
-    # sights: a blade with a white dot at the front, a notch block at the back (the aim line over both)
-    g.box('slide_wzN__dark', (-0.0062, 0.0062), (0.046, SY), (-0.236, -0.218), bev=0.002)
-    g.box('slide_wzN__glow', (-0.0032, 0.0032), (SY - 0.0075, SY - 0.002), (-0.2186, -0.2172), bev=0.0006)
-    for xs in ((-0.0185, -0.0058), (0.0058, 0.0185)):
-        g.box('slide_wzN__dark', xs, (0.046, SY + 0.002), (0.034, 0.052), bev=0.002)
-    g.box('slide_wzN__dark', (-0.0065, 0.0065), (0.046, SY - 0.0055), (0.034, 0.052), bev=0.0015)
+    # sights (slim sights, 16 Nov 2026, gun_sights.py; on the slide, near-black): a pointed blade with a white dot at
+    # the front, a low notch block with two square ears at the back (the aim line over both)
+    SG.blade(g, 'slide_wzN__dark', -0.226, SY, 0.052, w=0.0055, depth=0.012, glow_piece='slide_wzN__glow')
+    SG.notch(g, 'slide_wzN__dark', 0.044, SY, 0.052, 0.031, depth=0.008, nw=0.3, nd=0.0036)
     # the barrel (stays put: it shows out of the bushing when the slide locks back)
     tube(g, 'body_wzB__dark', 0.0092, -0.2515, -0.2, y=BY, bev=0.0015, hole=(0.0058, 0.02))
     # the frame: the rails and dust cover under the slide (a little narrower, so the nose rides over it)

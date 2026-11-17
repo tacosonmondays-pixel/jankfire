@@ -34,6 +34,7 @@ from gun_skins_1 import leaf
 from gun_skins_2 import spline
 from gun_skins_3 import oval_loft, kz, kedge, kspine, KL
 from gun_sets import tsweep
+import gun_sights as SG
 
 # ------------------------------------------------------------------------------------------------ the set
 SETS = {
@@ -343,17 +344,13 @@ def smg_pumpkin():
     # the barrel and the hex band round its muzzle
     tube(g, 'barrel_wzB__purple', 0.0135, -0.345, -0.29, y=BY, bev=0.003)
     hexband(g, 'barrel_wzN__band', 'barrel_wzN__ivory', (0, BY, -0.37), (0, BY, -0.335), 0.0145, hole=(0.0082, 0.02))
-    # the front sight on the gourd's nose: a block, the ring hood, the post (its top the aim line)
+    # the front sight on the gourd's nose (slim sights, 16 Nov 2026, gun_sights.py): a slim block, a thin hood with a
+    # pointed post (its tip the aim point); the rear a low notch block on the cover's back
     FZ = -0.285
-    g.box('sight_wzN__purple', (-0.013, 0.013), (0.022, 0.041), (FZ - 0.011, FZ + 0.011), bev=0.004)
-    g.ring('sight_wzN__purple', 0.0195, 0.0128, (0, SY, FZ - 0.011), (0, SY, FZ + 0.011), sides=8, bev=0.003)
-    g.box('sight_wzN__purple', (-0.0052, 0.0052), (0.036, SY), (FZ - 0.0055, FZ + 0.0055), bev=0.0015)
-    # the drum rear sight
+    g.box('sight_wzN__purple', (-0.009, 0.009), (0.022, 0.042), (FZ - 0.006, FZ + 0.006), bev=0.002)
+    SG.rifle_front(g, 'sight_wzN__purple', FZ, SY, 0.042, w=0.024, depth=0.007)
     RZ = 0.102
-    g.box('sight_wzN__purple', (-0.022, 0.022), (0.04, 0.05), (RZ - 0.02, RZ + 0.02), bev=0.004)
-    aperture(g, 'sight_wzN__purple', RZ, SY, ro=0.0175, ri=0.0082, zt=0.02)
-    for sx in (-1, 1):
-        g.cyl('sight_wzN__purple', 0.0185, (sx * 0.0095, SY, RZ), (sx * 0.0215, SY, RZ), sides=8, bev=0.003)
+    SG.notch(g, 'sight_wzN__purple', RZ, SY, 0.048, 0.03, depth=0.008, nw=0.34, nd=0.0035)
     # the cocking knob (node "charge"): a stalk nub out of the gourd's upper left
     g.cyl('charge_wzN__stalk', 0.0095, (-0.016, 0.022, -0.274), (-0.046, 0.03, -0.274), sides=6, bev=0.002, r2=0.008)
     g.ball('charge_wzN__stalk', 0.0105, (-0.047, 0.0305, -0.274), sub=2)

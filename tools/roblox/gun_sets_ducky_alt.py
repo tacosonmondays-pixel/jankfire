@@ -31,6 +31,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
+import gun_sights as SG
 import gunkit
 import bmesh
 from gunkit import P
@@ -561,18 +562,18 @@ def lmg_ducky():
         under = smooth_step(186, 204, a) * (1 - smooth_step(336, 354, a))
         return 0.0272 + (0.0198 - 0.0272) * under
     helix_ribbon(g, 'shroud_wzN__pink', BY, -0.705, -0.565, 2.0, rad, 0.016, 0.004, a0=100.0)
-    # the front sight: a block, the post, a gold crescent moon round it (horns up, framing the post)
-    g.box('sight_wzN__metal', (-0.016, 0.016), (BY + 0.014, 0.05), (-0.808, -0.782), bev=0.004)
-    g.box('sight_wzN__metal', (-0.0055, 0.0055), (0.045, SY), (-0.8, -0.79), bev=0.002)
-    g.xprism('sight_wzN__gold', crescent(0.0, 0.074, 0.03, 0.022, 0.016, cut=0.3), -0.801, -0.789, bev=0.002)
+    # the front sight (slim sights, 16 Nov 2026, gun_sights.py): a slim block, a pointed blade, a thin gold crescent
+    # moon round its tip (horns up, framing it: the hood)
+    g.box('sight_wzN__metal', (-0.012, 0.012), (BY + 0.014, 0.05), (-0.802, -0.788), bev=0.003)
+    SG.blade(g, 'sight_wzN__metal', -0.795, SY, 0.049, w=0.0055, depth=0.008)
+    g.xprism('sight_wzN__gold', crescent(0.0, SY - 0.006, 0.019, 0.0152, 0.0055, cut=0.25), -0.798, -0.792, bev=0.0012)
     # the handguard under the barrel (the off hand): a pearl soap bar with a gold lip round each end
     blob(g, 'fore_wzA__pearl', [(-0.53, -0.03, 0.002, 0.016), (-0.522, -0.052, 0.008, 0.031), (-0.5, -0.06, 0.012, 0.038),
                                 (-0.385, -0.06, 0.012, 0.038), (-0.364, -0.054, 0.008, 0.032), (-0.355, -0.04, 0.002, 0.018)], p=2.6)
     for z0 in (-0.507, -0.383):
         blob(g, 'fore_wzN__gold', [(z0, -0.063, 0.015, 0.041), (z0 + 0.0075, -0.063, 0.015, 0.041)], p=2.6)
-    # the rear sight on the duck's back, behind the cover
-    g.box('sight_wzN__metal', (-0.024, 0.024), (0.045, 0.074), (0.092, 0.14), bev=0.005)
-    aperture(g, 'sight_wzN__metal', 0.112, SY, ro=0.018, ri=0.0088, zt=0.02, base=0.07)
+    # the rear sight on the duck's back, behind the cover (slim sights: a thin ring on a narrow stem)
+    SG.rifle_rear(g, 'sight_wzN__metal', 0.112, SY, 0.056, w=0.038, ears=False, stem_piece='sight_wzN__duck')
     # the port on the right (the brass), a dark slot
     g.box('trim_wzN__black', (0.046, 0.0575), (0.024, 0.05), (-0.082, -0.042), bev=0.0015)
     # the tail feathers fanned as the stock: four wide overlapping feathers from one root behind the body, the top
@@ -643,7 +644,8 @@ def revolver_ducky():
        The hammer (node "hammer"), rear sight, guard, trigger and grip dark; a coral webbed foot pressed on each side
        of the grip, its toes down"""
     g, base = skin('revolver', 'revolver_ducky')
-    palette(g)
+    # (the six cylinder hearts close to the camera bloomed near white: a dimmer pink Neon, ~60% of GLOW; VFX critic, v459)
+    palette(g, glowdim=('a34e72', 'n'))
     BY, AX = 0.03, 0.009
     # the barrel (dark) and its bore
     tube(g, 'barrel_wzB__metal', 0.02, -0.29, -0.115, y=BY, bev=0.003, hole=(0.0105, 0.02))
@@ -654,8 +656,9 @@ def revolver_ducky():
     bill(g, 'body_wzN__bill', -0.202, -0.276, 0.0055, 0.022, 0.0086, up=-0.002, n=18)
     eyes(g, 'body_wzN__black', 'body_wzN__pearl', HC, HR, (0.72, 0.24, -0.65), 0.0122)
     # the front sight: a gold star standing on the upper bill near its tip, facing you
-    g.box('sight_wzN__gold', (-0.0042, 0.0042), (0.056, 0.067), (-0.2715, -0.2645), bev=0.0015)
-    g.xprism('sight_wzN__gold', star(0.0, 0.0735, 0.0142, 0.0064), -0.272, -0.264, bev=0.0018)
+    # (slim sights, 16 Nov 2026: a small thin star, its top point on the aim line)
+    g.box('sight_wzN__gold', (-0.003, 0.003), (0.0615, 0.0705), (-0.2705, -0.2655), bev=0.001)
+    g.xprism('sight_wzN__gold', star(0.0, g.spots['sight'][1] - 0.0095, 0.0095, 0.0042), -0.2705, -0.2655, bev=0.001)
     # the bow on the left of its neck
     p, nrm = surf(HC, HR, (-0.8, 0.2, 0.56))
     bow(g, 'body_wzN__pink', 'body_wzN__gold', p, nrm, s=0.95, gold2='body_wzN__gold2')
@@ -695,12 +698,11 @@ def revolver_ducky():
         rad = Vector((math.cos(a), math.sin(a), 0.0))
         tan = Vector((-math.sin(a), math.cos(a), 0.0))
         O = Vector((0.0425 * math.cos(a), AX + 0.0425 * math.sin(a), -0.05))
-        heart_gem(g, 'cylinder_wzN__gold', 'cylinder_wzN__glow', O, tan, Vector((0, 0, -1)), rad, 0.03,
+        heart_gem(g, 'cylinder_wzN__gold', 'cylinder_wzN__glowdim', O, tan, Vector((0, 0, -1)), rad, 0.03,
                   t_frame=0.0045, sink=0.0028)
     # the hammer (dark), the rear sight
     g.prism('hammer_wzN__metal', [(0.045, 0.036), (0.062, 0.036), (0.098, 0.062), (0.092, 0.074), (0.05, 0.062)], 0.016, bev=0.004)
-    g.box('sight_wzN__metal', (-0.019, -0.007), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    g.box('sight_wzN__metal', (0.007, 0.019), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
+    SG.notch(g, 'sight_wzN__metal', 0.032, g.spots['sight'][1], 0.0705, 0.028, depth=0.01, nw=0.3, nd=0.0055)  # (slim)
     # the round guard and the trigger (dark)
     g.prism('guard_wzB__metal', [(-0.074, -0.044), (-0.08, -0.068), (-0.072, -0.088), (-0.05, -0.1), (-0.01, -0.104),
                                   (0.02, -0.098), (0.038, -0.084), (0.032, -0.07), (0.014, -0.084), (-0.012, -0.09),

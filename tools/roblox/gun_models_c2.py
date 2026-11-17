@@ -1,6 +1,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit_c import *
+import gun_sights as SG
 # VERSION C, part 2 (rules and shared pieces: gunkit_c.py; the Assault Rifle worked example: gun_models_c.py):
 # Yeehaw (Winchester 1873), Shotgun (Franchi SPAS-12), Lawn Mower (AA-12), Half a Shotgun (a sawn-off hammer coach
 # gun) and Marble Shotgun (a flintlock blunderbuss with its gumball jar).
@@ -101,11 +102,10 @@ def lever():
                [(0.03, -0.077), (0.096, -0.077), (0.13, -0.061), (0.139, -0.073), (0.127, -0.104), (0.103, -0.119), (0.06, -0.119), (0.038, -0.108), (0.025, -0.087)],
                0.018, bev=0.004)
     trigger(g, 'body_wzB__dark', 0.052, -0.06, -0.088)
-    # sights: a buckhorn notch on the barrel, a blade with a tan bead at the muzzle
-    A.notch_block(g, 'sight_wzN__frame', -0.2, SY, hw=0.022, zt=0.02, base=0.038, gap=0.01)
-    g.box('sight_wzN__frame', (-0.009, 0.009), (0.036, 0.048), (-0.703, -0.675), bev=0.003)
-    g.box('sight_wzN__frame', (-0.006, 0.006), (0.044, 0.055), (-0.697, -0.681), bev=0.002)
-    g.box('bead_wzN__body', (-0.0065, 0.0065), (0.053, SY + 0.001), (-0.694, -0.684), bev=0.002)
+    # sights (slim sights, 16 Nov 2026, gun_sights.py; near-black): a thin notch leaf on the barrel, a tan bead on a
+    # narrow blade at the muzzle
+    SG.notch(g, 'sight_wzN__dark', -0.2, SY, 0.0422, 0.028, depth=0.006, nw=0.3, nd=0.005, neck=0.0055)
+    SG.bead(g, 'bead_wzN__body', -0.689, SY, 0.0422, r=0.0032, stem_piece='sight_wzN__dark', stem_w=0.006, stem_d=0.008)
     return g
 
 
@@ -194,10 +194,10 @@ def autoshot():
     brake(g, 'barrel_wzB__dark', 'trim_wzN__black', -0.76, -0.696, BY, 0.032, ports=2, hole=0.016)
     # the carry handle (lighter): one loop along the top, the rear notch on its back, the front post on its front
     ring_prism(g, 'deck_wzA__deck', cut_rect(-0.374, 0.134, 0.024, 0.068, 0.014), cut_rect(-0.31, 0.06, 0.034, 0.05, 0.006), 0.036, bev=0.006)
-    A.notch_block(g, 'sight_wzN__frame', 0.11018, SY, hw=0.024, zt=0.022, base=0.064, gap=0.011)
-    g.box('sight_wzN__frame', (-0.0055, 0.0055), (0.062, SY), (-0.352, -0.338), bev=0.002)
-    for xr in ((-0.02, -0.009), (0.009, 0.02)):
-        g.box('sight_wzN__frame', xr, (0.062, SY + 0.004), (-0.356, -0.334), bev=0.003)
+    # (slim sights, 16 Nov 2026, gun_sights.py; near-black): a low notch block on the handle's back, a pointed blade
+    # on its front
+    SG.notch(g, 'sight_wzN__dark', 0.11018, SY, 0.068, 0.026, depth=0.008, nw=0.34, nd=0.0045)
+    SG.blade(g, 'sight_wzN__dark', -0.345, SY, 0.068, w=0.0055, depth=0.008)
     # the drum (node "mag"): a fat eight-sided drum across the gun, green faces and dark hubs, its neck
     g.box('mag_wzB__dark', (-0.026, 0.026), (-0.076, -0.04), (-0.152, -0.048), bev=0.006)
     g.cyl('mag_wzB__dark', 0.088, (-0.039, -0.14, -0.1), (0.039, -0.14, -0.1), sides=8, bev=0.01)
@@ -232,6 +232,9 @@ def sawnoff():
     g.slot('frame', '454953'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '463a31')
     g.slot('steel', '8a8f98'); g.slot('shell', '9a2b27'); g.slot('brass', '7e7254')
     g.spots = dict(base.spots)
+    # (slim sights, 16 Nov 2026: the aim line was inside the action at 0.037; it now runs at 0.065 between the hammers'
+    # tips, along the vent rib to the bead. Weapons.luau's sawnoff sight follows: (0, 0.065, 0.075))
+    g.spots['sight'] = (0, 0.065, 0.075)
     BX, BY, R = 0.027, 0.017, 0.026
     # the barrels (node "hinge": they break open round the pin), chambered at the back; the sawn ends (hinge_trim)
     for sx in (-1, 1):
@@ -241,7 +244,10 @@ def sawnoff():
     # the rib on top (and under) between the barrels, the bead, the lump under the breech
     g.box('hinge_wzB__frame', (-0.009, 0.009), (0.028, 0.0445), (-0.296, -0.014), bev=0.003)
     g.box('hinge_wzB__frame', (-0.009, 0.009), (-0.012, 0.006), (-0.296, -0.014), bev=0.003)
-    g.box('hinge_trim_wzN__brass', (-0.0055, 0.0055), (0.042, 0.0515), (-0.291, -0.279), bev=0.002)
+    # the front sight (slim sights, 16 Nov 2026): a solid tapered blade on the rib at the muzzle, the brass bead on it
+    # centred on the aim line (both ride on the hinge: they break open with the barrels)
+    SG.bead(g, 'hinge_trim_wzN__brass', -0.284, g.spots['sight'][1], 0.0445, r=0.0035, stem_piece='hinge_wzB__frame',
+            stem_w=0.008, stem_d=0.012)
     g.box('hinge_wzB__dark', (-0.024, 0.024), (-0.03, -0.004), (-0.074, -0.016), bev=0.004)
     # the two shells, in the chambers: their rims sit on the breech face
     for sx, n in ((1, 'shell1'), (-1, 'shell2')):

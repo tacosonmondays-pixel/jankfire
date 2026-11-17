@@ -19,6 +19,7 @@ from gun_skins_2 import spline, sweep as rod, lathe, raked_at, band
 from gun_skins_3 import oval_loft, kz, kedge, kspine, KL, faced
 from gun_sets import tsweep, band as line_band
 from gun_sets_japan import relief, spiral, disc as jdisc
+import gun_sights as SG
 
 
 # ------------------------------------------------------------------------------------------------- local pieces
@@ -92,8 +93,8 @@ def shotgun_umbrella():
     g.cylz('trim_wzN__black', 0.0088, -0.7335, -0.7325, y=BY, bev=0)
     tube(g, 'barrel_wzN__silver', 0.0182, -0.712, -0.703, y=BY, bev=0.002)
     g.cyl('barrel_wzB__dark', 0.0175, (0, BY, -0.705), (0, BY, -0.678), r2=0.026, bev=0.003)
-    # the front sight: a low blade on the top cup (its top the aim line)
-    g.box('sight_wzN__silver', (-0.0055, 0.0055), (BY + 0.018, SY), (-0.7, -0.684), bev=0.002)
+    # the front sight: a low pointed blade on the top cup (its tip the aim line; slim sights, 16 Nov 2026)
+    SG.blade(g, 'sight_wzN__dark', -0.692, SY, 0.0449, w=0.0055, depth=0.012)
     # the canopy: eight folds a quarter turn round, fat behind the middle, gathered in at its foot
     prof = [(-0.684, 0.022), (-0.66, 0.0272), (-0.62, 0.0338), (-0.57, 0.0395), (-0.52, 0.0438), (-0.47, 0.0468),
             (-0.42, 0.048), (-0.37, 0.0475), (-0.32, 0.0455), (-0.28, 0.0418), (-0.252, 0.0362), (-0.236, 0.029)]
@@ -163,7 +164,7 @@ def shotgun_umbrella():
     g.cyl('grip_wzN__silver', rs[-1] + 0.002, (0, e.y - d.y * 0.012, e.x - d.x * 0.012), (0, e.y + d.y * 0.004, e.x + d.x * 0.004),
           sides=12, bev=0.003)
     # the rear notch on the shank's top (the aim line over it)
-    A.notch_block(g, 'sight_wzN__silver', -0.0386, SY, hw=0.019, zt=0.02, base=0.041, gap=0.01)
+    SG.notch(g, 'sight_wzN__dark', -0.0386, SY, 0.043, 0.03, depth=0.008, nw=0.4, nd=0.005, neck=0.0055)
     # the trigger: a silver button in a slim silver guard under the shank
     loop(g, 'guard_wzN__silver', -0.035, 0.085, -0.094, -0.016, 0.011, 0.016, c=0.014)
     trigger(g, 'guard_wzN__silver', 0.018, -0.02, -0.064)
@@ -228,7 +229,7 @@ def sawnoff_pepper():
         g.xprism('hinge_wzN__silver', band([(-cx, cy, r), (cx, cy, r)], 0.0032), zc - wz, zc + wz, bev=0.002)
     cy = axis(1)(-0.262)[1]
     top = cy + lerp_prof(prof, -0.262) * 1.05 + 0.0032
-    g.box('hinge_trim_wzN__silver', (-0.0058, 0.0058), (top - 0.004, top + 0.008), (-0.268, -0.256), bev=0.002)
+    SG.bead(g, 'hinge_trim_wzN__stem', -0.262, g.spots['sight'][1], top, r=0.0035, stem_w=0.006, stem_d=0.008)  # (slim, dark green)
     # the lump under the breeches that hooks round the pin
     g.box('hinge_wzB__silver', (-0.024, 0.024), (-0.03, -0.004), (-0.074, -0.016), bev=0.004)
     # the forend (charcoal) and its silver iron
@@ -416,7 +417,7 @@ def shotgun_double():
         tube(g, 'barrel_wzB__blued', R + 0.0026, -0.74, -0.718, y=BY, x=sx * BX, bev=0.004, hole=(0.0125, 0.03))
         g.cylz('trim_wzN__black', 0.0127, -0.7105, -0.7095, y=BY, x=sx * BX, bev=0)
     g.box('barrel_wzB__blued', (-0.0125, 0.0125), (0.034, 0.0575), (-0.735, -0.095), bev=0.004)
-    g.box('bead_wzN__brass', (-0.0062, 0.0062), (0.054, SY + 0.0008), (-0.731, -0.716), bev=0.002)
+    SG.bead(g, 'bead_wzN__brass', -0.7235, SY, 0.0575, r=0.004, stem_w=0.007, stem_d=0.008)  # (slim sights)
     g.box('barrel_wzB__blued', (-0.009, 0.009), (-0.004, 0.014), (-0.7, -0.095), bev=0.003)
     # the action: the bar under the barrels, the standing breech, the rounded fences, the top lever, two pins
     g.prism('body_wzB__steel', [(-0.15, 0.004), (-0.15, -0.018), (-0.135, -0.032), (0.0, -0.05), (0.03, -0.046), (0.036, -0.02),
@@ -481,9 +482,10 @@ def lever_capgun():
     tube(g, 'barrel_wzB__dark', RT + 0.002, -0.672, -0.652, y=TY, bev=0.004)
     g.box('barrel_wzB__silver', (-0.012, 0.012), (TY, BY), (-0.655, -0.24), bev=0.003)
     g.xprism('barrel_wzB__dark', cut_rect(-RB - 0.004, RB + 0.004, TY - RT - 0.004, BY + RB + 0.004, 0.016), -0.62, -0.598, bev=0.004)
-    # sights: a chunky notch on the receiver's nose, a blade at the muzzle
-    A.notch_block(g, 'sight_wzN__silver', -0.2, SY, hw=0.024, zt=0.022, base=0.046, gap=0.011)
-    g.box('sight_wzN__silver', (-0.008, 0.008), (BY + RB - 0.004, SY), (-0.69, -0.668), bev=0.003)
+    # sights (slim sights, 16 Nov 2026, gun_sights.py; a toy's, a little stouter): a low notch block on the receiver's
+    # nose, a pointed blade at the muzzle
+    SG.notch(g, 'sight_wzN__dark', -0.2, SY, 0.05, 0.03, depth=0.009, nw=0.34, nd=0.005, c=0.0025)
+    SG.blade(g, 'sight_wzN__dark', -0.679, SY, 0.0468, w=0.007, depth=0.014)
     # the pearl forend ahead of the receiver, a dark cap on its nose
     g.prism('fore_wzA__pearl', [(-0.42, 0.03), (-0.236, 0.03), (-0.236, -0.056), (-0.404, -0.056), (-0.42, -0.044)], 0.064, bev=0.012)
     g.box('fore_wzN__dark', (-0.0305, 0.0305), (-0.05, 0.026), (-0.436, -0.416), bev=0.004)
@@ -659,7 +661,7 @@ def autoshot_trimmer():
         g.box('head_wzB__dark', (-0.033, 0.033), (0.056, 0.073), (z0, z0 + 0.012), bev=0.003)
     g.cyl('head_wzN__black', 0.009, (0, 0.056, -0.172), (0, 0.066, -0.19), sides=8, bev=0.002)
     # the rear notch on the engine's back
-    A.notch_block(g, 'sight_wzN__dark', g.spots['sight'][2], SY, hw=0.022, zt=0.022, base=0.05, gap=0.011)
+    SG.notch(g, 'sight_wzN__dark', g.spots['sight'][2], SY, 0.055, 0.03, depth=0.008, nw=0.34, nd=0.0045)  # (slim)
     # the muffler on the left behind its dark guard with three slots
     g.box('muffler_wzB__dark', (-0.06, -0.038), (-0.036, 0.03), (-0.15, 0.03), bev=0.006)
     for z0 in (-0.13, -0.085, -0.04):
@@ -710,7 +712,7 @@ def autoshot_trimmer():
     g.box('fore_wzB__dark', (-xo + 0.006, xo - 0.006), (yt - 0.016, yt), (FZ - 0.015, FZ + 0.015), bev=0.005)
     g.box('fore_wzB__dark', (-0.016, 0.016), (BY - 0.012, BY + 0.012), (FZ - 0.018, FZ + 0.018), bev=0.003)
     g.box('fore_wzB__dark', (-0.008, 0.008), (BY, yt - 0.006), (FZ - 0.012, FZ + 0.012), bev=0.002)
-    g.box('sight_wzN__dark', (-0.0055, 0.0055), (yt - 0.002, SY), (FZ - 0.007, FZ + 0.007), bev=0.002)
+    SG.blade(g, 'sight_wzN__dark', FZ, SY, yt, w=0.007, depth=0.014)  # (slim sights: a pointed blade)
     # the gear head at the shaft's end, the spool facing forward, the bump knob round the bore (the muzzle)
     tube(g, 'head_wzB__dark', RS + 0.006, -0.712, -0.666, y=BY, bev=0.005)
     g.cyl('head_wzB__dark', 0.045, (0, BY, -0.745), (0, BY, -0.708), sides=16, bev=0.006)

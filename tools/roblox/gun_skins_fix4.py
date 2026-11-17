@@ -27,6 +27,7 @@ from gun_models_c2 import ring_prism, loop, cut_rect
 from gun_models_c3 import loft, fluted
 from gun_sets import tsweep
 from gun_skins_1 import fpost
+import gun_sights as SG
 
 GOLD, GOLD2 = 'f2c14e', 'b8862b'   # the two-tone gold (bright faces, dark rims)
 
@@ -116,11 +117,12 @@ def revolver_candle():
         for za, zb in ((z0, z0 + 0.0062), (z1 - 0.0062, z1)):
             g.cylz('body_wzN__ivory', VR * 0.8, za, zb, y=VY, x=VX, sides=12, bev=0.0012)
     # the spear-finial front sight on the rib: a square neck, a gold collar, the iron leaf, its gilt tip on the aim line
+    # (slim sights, 16 Nov 2026: the finial thin and low, its gilt tip on the aim line)
     FZ = -0.247
-    g.box('sight_wzN__purple', (-0.0055, 0.0055), (BY + 0.032, BY + 0.043), (FZ - 0.006, FZ + 0.006), bev=0.0015)
-    g.box('sight_wzN__gold2', (-0.0075, 0.0075), (BY + 0.04, BY + 0.045), (FZ - 0.008, FZ + 0.008), bev=0.0012)
-    g.prism('sight_wzN__purple', [(FZ - 0.0115, 0.0815), (FZ, 0.0745), (FZ + 0.0115, 0.0815)], 0.011, bev=0.0012)
-    g.prism('sight_wzN__gold', [(FZ - 0.0115, 0.0815), (FZ + 0.0115, 0.0815), (FZ, 0.0935)], 0.011, bev=0.0012)
+    g.box('sight_wzN__purple', (-0.003, 0.003), (BY + 0.032, BY + 0.041), (FZ - 0.0045, FZ + 0.0045), bev=0.001)
+    g.box('sight_wzN__gold2', (-0.0045, 0.0045), (BY + 0.039, BY + 0.0425), (FZ - 0.006, FZ + 0.006), bev=0.001)
+    g.prism('sight_wzN__purple', [(FZ - 0.008, 0.0765), (FZ, 0.0715), (FZ + 0.008, 0.0765)], 0.0055, bev=0.0008)
+    g.prism('sight_wzN__gold', [(FZ - 0.008, 0.0765), (FZ + 0.008, 0.0765), (FZ, SY)], 0.0055, bev=0.0008)
     # the frame (bone): top and bottom straps, the post ahead of the cylinder, the rounded back; a purple-black rib
     # down the top strap carries the aim line to the rear sight
     g.box('body_wzA__ivory', (-0.02, 0.02), (0.05, 0.07), (-0.125, 0.045), bev=0.006)
@@ -136,9 +138,8 @@ def revolver_candle():
                                  (-0.043, -0.087), (-0.06, -0.077), (-0.065, -0.064), (-0.061, -0.044)], 0.024, bev=0.004)
     g.prism('body_wzN__purple', [(-0.03, -0.046), (-0.012, -0.046), (-0.012, -0.06), (-0.02, -0.074), (-0.03, -0.082),
                                   (-0.036, -0.079), (-0.031, -0.066)], 0.014, bev=0.003)
-    # the rear sight (purple-black), its notch on the aim line
-    g.box('sight_wzN__purple', (-0.019, -0.0065), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    g.box('sight_wzN__purple', (0.0065, 0.019), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
+    # the rear sight (purple-black), its notch on the aim line (slim sights, 16 Nov 2026: a low notch block)
+    SG.notch(g, 'sight_wzN__purple', 0.032, SY, 0.07, 0.028, depth=0.01, nw=0.3, nd=0.0045)
     # the cylinder (node "cylinder"): fluted bone round the row's axis (0, 0.009), six flutes (six-fold), purple rings
     fluted(g, 'cylinder_wzB__ivory', 0.0435, 0.035, AX, -0.1, 0.001)
     for z0, z1 in ((-0.104, -0.096), (-0.004, 0.004)):
@@ -252,15 +253,30 @@ def sniper_cue():
                                  (-0.05, 0.022), (-0.056, 0.012)], -0.53, -0.47, bev=0.006)
     g.cylz('fore_wzN__ivory', 0.0222, -0.534, -0.528, y=BY, sides=12, bev=0.001)
     g.cylz('fore_wzN__ivory', 0.0222, -0.472, -0.466, y=BY, sides=12, bev=0.001)
-    # the scope: a felt tube between two chalk cubes (their dimples the lenses), on two ebony rings clear of the rail
-    g.box('scope_wzN__chalk', (-0.034, 0.034), (SY - 0.034, SY + 0.034), (-0.35, -0.282), bev=0.012)
-    g.cylz('lens_wzN__dimple', 0.018, -0.3515, -0.347, y=SY, sides=12, bev=0.001)
-    g.cylz('scope_wzN__felt', 0.025, -0.286, 0.104, y=SY, sides=12, bev=0.002)
-    g.box('scope_wzN__chalk', (-0.03, 0.03), (SY - 0.03, SY + 0.03), (0.098, 0.158), bev=0.011)
-    g.cylz('lens_wzN__dimple', 0.0145, 0.156, 0.1605, y=SY, sides=12, bev=0.001)
+    # the scope (slim sights, 16 Nov 2026, gun_sights.py): a slim felt tube between two small chalk cubes, their
+    # dimples the lenses (sunk in round holes in the cubes' outer faces), held by two thin ebony bands (sections of the
+    # tube) on narrow legs down to the rail
+    FR = 0.0165
+    def chalk(z_out, z_in, h, lr):  # a cube with a round bore through it, the lens near its outer face
+        k = 16
+        sq, cr = [], []
+        for j in range(k):
+            a = math.pi / k + 2 * math.pi * j / k
+            m = max(abs(math.cos(a)), abs(math.sin(a)))
+            sq.append((h * math.cos(a) / m, SY + h * math.sin(a) / m))
+            cr.append((lr * math.cos(a), SY + lr * math.sin(a)))
+        SG.xframe(g, 'scope_wzN__chalk', sq, cr, min(z_out, z_in), max(z_out, z_in), bev=0.002)
+        s = 1 if z_in > z_out else -1
+        g.cylz('lens_wzN__dimple', lr + 0.0005, z_out + s * 0.0035, z_out + s * 0.0065, y=SY, sides=16, bev=0)
+    chalk(-0.35, -0.302, 0.023, 0.0125)
+    chalk(0.152, 0.106, 0.0205, 0.0105)
+    zs = [-0.31, -0.246, -0.234, 0.014, 0.026, 0.114]
+    for k in range(len(zs) - 1):
+        on = k in (1, 3)  # (the two ebony bands)
+        g.cylz('scope_wzN__ebony' if on else 'scope_wzN__felt', FR + (0.0035 if on else 0.0), zs[k], zs[k + 1],
+               y=SY, sides=12, bev=0.0015)
     for zc in (-0.24, 0.02):
-        g.ring('scope_wzN__ebony', 0.0295, 0.0235, (0, SY, zc - 0.013), (0, SY, zc + 0.013), sides=12, bev=0.002)
-        g.box('scope_wzN__ebony', (-0.011, 0.011), (RT - 0.002, SY - 0.025), (zc - 0.013, zc + 0.013), bev=0.003)
+        g.box('scope_wzN__ebony', (-0.012, 0.012), (RT - 0.002, SY - FR + 0.001), (zc - 0.01, zc + 0.01), bev=0.0015)
     return g
 
 
@@ -344,22 +360,23 @@ def sniper_musket():
             x=0.0285, bev=0.002)
     # the spyglass (the scope): brass objective with its glass, the leather body, a brass collar, three blackened draws
     # with brass rims down to the eyepiece
+    # (slim sights, 16 Nov 2026: the spyglass two thirds as fat, each part a section of it so no sleeve lies over another)
     S = SY
-    g.cyl('scope_wzN__gold', 0.043, (0, S, -0.63), (0, S, -0.572), sides=16, bev=0.004, hole=(0.034, 0.012))
-    g.cylz('lens_wzN__glass', 0.0345, -0.621, -0.6195, y=S, sides=16, bev=0)
-    g.cylz('scope_wzN__leather', 0.0385, -0.576, -0.24, y=S, sides=16, bev=0.003)
-    g.cylz('scope_wzN__gold2', 0.041, -0.252, -0.218, y=S, sides=16, bev=0.003)
-    for r, z0, z1 in ((0.031, -0.222, -0.07), (0.026, -0.074, 0.05), (0.0215, 0.046, 0.142)):
-        g.cylz('scope_wzN__iron', r, z0, z1, y=S, sides=16, bev=0.002)
-        g.cylz('scope_wzN__gold2', r + 0.0035, z1 - 0.018, z1, y=S, sides=16, bev=0.002)
-    g.cyl('scope_wzN__gold', 0.0255, (0, S, 0.17), (0, S, 0.138), sides=16, bev=0.003, hole=(0.0135, 0.008))
-    g.cylz('trim_wzN__black', 0.0137, 0.1618, 0.1625, y=S, sides=16, bev=0)
+    g.cyl('scope_wzN__gold', 0.028, (0, S, -0.63), (0, S, -0.578), sides=16, bev=0.003, hole=(0.021, 0.016))
+    g.cylz('lens_wzN__glass', 0.0215, -0.6235, -0.6205, y=S, sides=16, bev=0)
+    g.cylz('scope_wzN__leather', 0.0245, -0.578, -0.252, y=S, sides=16, bev=0.002)
+    g.cylz('scope_wzN__gold2', 0.0265, -0.252, -0.222, y=S, sides=16, bev=0.002)
+    for r, z0, z1 in ((0.0205, -0.222, -0.07), (0.0175, -0.07, 0.05), (0.0148, 0.05, 0.142)):
+        g.cylz('scope_wzN__iron', r, z0, z1 - 0.016, y=S, sides=16, bev=0.0015)
+        g.cylz('scope_wzN__gold2', r + 0.0032, z1 - 0.016, z1, y=S, sides=16, bev=0.0015)
+    g.cyl('scope_wzN__gold', 0.0178, (0, S, 0.17), (0, S, 0.142), sides=16, bev=0.002, hole=(0.0105, 0.008))
+    g.cylz('trim_wzN__black', 0.0107, 0.1618, 0.1625, y=S, sides=16, bev=0)
     # lashed on: a wooden wedge on the barrel at two places, two raised turns of twine round both at each
     for zc in (-0.5, -0.3):
-        g.box('scope_wzN__wood', (-0.015, 0.015), (0.034, S - 0.03), (zc - 0.03, zc + 0.03), bev=0.006)
-        for dz in (-0.012, 0.009):
-            g.xprism('twine_wzN__twine', band([(0, S, 0.0385), (0, BY, 0.022)], 0.0045), zc + dz - 0.0055,
-                     zc + dz + 0.0055, bev=0.0025)
+        g.box('scope_wzN__wood', (-0.009, 0.009), (0.034, S - 0.0235), (zc - 0.022, zc + 0.022), bev=0.004)
+        for dz in (-0.01, 0.008):
+            g.xprism('twine_wzN__twine', band([(0, S, 0.0245), (0, BY, 0.022)], 0.0035), zc + dz - 0.004,
+                     zc + dz + 0.004, bev=0.0018)
     return g
 
 
@@ -496,10 +513,10 @@ def revolver_flint():
                                     (-0.274, 0.0205), (-0.262, 0.0145)], cy=BY, n=20)
     g.cylz('trim_wzN__black', 0.0147, -0.2635, -0.2625, y=BY, sides=20, bev=0)
     g.ring('barrel_wzN__gold2', 0.023, 0.016, (0, BY, -0.25), (0, BY, -0.238), sides=16, bev=0.0015)
-    g.box('barrel_wzN__gold2', (-0.0062, 0.0062), (BY + 0.016, 0.063), (-0.232, -0.218), bev=0.002)
-    # the tang over the wrist and the rear sight on it (iron)
+    SG.blade(g, 'barrel_wzN__gold2', -0.225, 0.063, BY + 0.0175, w=0.0055, depth=0.012)  # (slim sights, 16 Nov 2026)
+    # the tang over the wrist and the rear sight on it (iron; slim sights: a low notch)
     g.box('body_wzB__iron', (-0.009, 0.009), (0.046, 0.055), (-0.02, 0.05), bev=0.003)
-    g.box('body_wzB__iron', (-0.009, 0.009), (0.05, 0.068), (0.004, 0.018), bev=0.003)
+    SG.notch(g, 'body_wzB__iron', 0.011, 0.063, 0.055, 0.016, depth=0.007, nw=0.34, nd=0.003)
     # the stock: the forestock under the barrel to a dark-gold nose cap; the lock, the wrist and the swept butt
     g.prism('stock_wzA__wood', [(-0.226, 0.006), (-0.226, BY), (-0.02, BY), (-0.02, -0.006)], 0.04, bev=0.005)
     g.box('stock_wzN__gold2', (-0.0215, 0.0215), (0.002, BY + 0.002), (-0.238, -0.222), bev=0.003)
@@ -614,9 +631,9 @@ def lmg_leaf():
         h = tr((z0 + z1) / 2) * math.cos(math.pi / 12) + 0.0012
         g.box('lmg_heat_wzN__dark', (-h, h), (BY - 0.011, BY + 0.011), (z0, z1), bev=0.002)
     # the front sight on a band round the tube
-    FZ = -0.76
-    g.cyl('sight_wzN__dark', tr(FZ + 0.012) + 0.004, (0, BY, FZ - 0.012), (0, BY, FZ + 0.012), sides=12, bev=0.003)
-    fpost(g, 'sight_wzN__dark', FZ, BY + tr(FZ) + 0.004, SY, hw=0.017, ear=0.01, zt=0.024)
+    FZ = -0.76  # (slim sights, 16 Nov 2026, gun_sights.py: a slim band, a thin hood with a pointed post on a stem)
+    g.cyl('sight_wzN__dark', tr(FZ + 0.007) + 0.004, (0, BY, FZ - 0.007), (0, BY, FZ + 0.007), sides=12, bev=0.002)
+    SG.rifle_front(g, 'sight_wzN__dark', FZ, SY, BY + tr(FZ) + 0.004, w=0.03)
     # the assist handle under the tube (the off hand)
     g.prism('fore_wzB__dark', [(-0.495, -0.01), (-0.47, -0.01), (-0.47, -0.04), (-0.37, -0.04), (-0.37, -0.01),
                                 (-0.345, -0.01), (-0.345, -0.07), (-0.495, -0.07)], 0.036, bev=0.006)
@@ -624,8 +641,7 @@ def lmg_leaf():
     g.prism('cover_wzB__dark', [(-0.096, 0.054), (0.08, 0.054), (0.08, 0.078), (0.064, 0.09), (-0.074, 0.09),
                                  (-0.096, 0.072)], 0.072, bev=0.008, wtop=0.058)
     g.cyl('cover_wzN__green', 0.016, (0, 0.086, -0.01), (0, 0.097, -0.01), sides=8, bev=0.003)
-    g.box('sight_wzN__dark', (-0.024, 0.024), (0.05, 0.074), (0.092, 0.14), bev=0.005)
-    aperture(g, 'sight_wzN__dark', 0.112, SY, ro=0.018, ri=0.0088, zt=0.02, base=0.07)
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.112, SY, 0.06, w=0.038, ears=False)  # (slim sights: a thin ring on a stem)
     # the leaf bag (node "mag"): a plump canvas bag under the left, its dark collar and a seam band
     g.box('mag_wzN__bag', (-0.092, 0.026), (-0.236, -0.078), (-0.138, -0.004), bev=0.028)
     g.box('mag_wzB__dark', (-0.078, 0.014), (-0.092, -0.058), (-0.124, -0.016), bev=0.005)
@@ -712,23 +728,27 @@ def sniper_golden():
     g.slot('gold', GOLD2); g.slot('polish', GOLD); g.slot('black', '1f2024'); g.slot('ruby', '7a1c28')
     g.slot('glow', '9fb6c8')
     SLOT = {'stock_wzA__body': 'gold', 'deck_wzB__deck': 'polish', 'rivet_wzN__steel': 'polish', 'barrel_wzN__black': 'gold',
-            'barrel_wzB__frame': 'polish', 'barrel_wzB__dark': 'gold', 'scope_wzN__frame': 'polish', 'bolt_wzB__steel': 'polish',
-            'scope_wzN__accent': 'ruby', 'bolt_wzN__accent': 'ruby', 'lens_wzN__glow': 'glow', 'barrel_wzB__deck': 'black'}
+            'barrel_wzB__frame': 'polish', 'barrel_wzB__dark': 'gold', 'scope_wzN__frame': 'black', 'bolt_wzB__steel': 'polish',
+            'scope_wzN__dark': 'polish',
+            'scope_wzN__accent': 'ruby', 'bolt_wzN__accent': 'ruby', 'lens_wzN__glow': 'glow', 'barrel_wzB__deck': 'black',
+            'lens_wzN__glass': 'glass', 'lens_wzN__glint': 'glint'}
+    g.slot('glass', '8a774c', 'g', 0.7); g.slot('glint', 'ffe2a8', 'n')
     for (node, slot), bm in base.pieces.items():
         me = bpy.data.meshes.new('tmp')
         bm.copy().to_mesh(me)
         g._bm('%s__%s' % (node, SLOT.get('%s__%s' % (node, slot), 'black'))).from_mesh(me)
         bpy.data.meshes.remove(me)
     SY = g.spots['sight'][1]
-    # the crown on the turret: a band, five points, a ruby dome inside (1.5x)
-    TY, TZ = SY + 0.066, -0.1
-    g.ring('crown_wzN__polish', 0.04, 0.028, (0, TY, TZ), (0, TY + 0.022, TZ), sides=10, bev=0.002)
-    g.ring('crown_wzN__gold', 0.0415, 0.03, (0, TY - 0.004, TZ), (0, TY + 0.004, TZ), sides=10, bev=0.0015)
+    # the crown on the turret: a band, five points, a ruby dome inside (slim sights, 16 Nov 2026: sized to the slim
+    # scope and set on its one turret, top SY + 0.035 at z -0.1295: gun_set.sniper; the scope black, its rims and
+    # turret polished)
+    TY, TZ = SY + 0.0325, -0.1295
+    g.ring('crown_wzN__polish', 0.026, 0.0185, (0, TY, TZ), (0, TY + 0.016, TZ), sides=10, bev=0.0015)
     for k in range(5):
         a = 2 * math.pi * k / 5 + math.pi / 2
-        px, pz = 0.034 * math.cos(a), TZ + 0.034 * math.sin(a)
-        g.cyl('crown_wzN__polish', 0.0095, (px, TY + 0.018, pz), (px, TY + 0.044, pz), sides=4, r2=0.0035, bev=0.001)
-    g.ball('crown_wzN__ruby', 0.026, (0, TY + 0.012, TZ), sub=2)
+        px, pz = 0.0222 * math.cos(a), TZ + 0.0222 * math.sin(a)
+        g.cyl('crown_wzN__polish', 0.0065, (px, TY + 0.012, pz), (px, TY + 0.03, pz), sides=4, r2=0.0025, bev=0.0008)
+    g.ball('crown_wzN__ruby', 0.0192, (0, TY + 0.008, TZ), sub=2)
     # ruby velvet: the cheek rest on the comb, the butt pad
     g.box('stock_wzN__ruby', (-0.03, 0.03), (0.083, 0.099), (0.34, 0.54), bev=0.006)
     g.box('stock_wzB__ruby', (-0.034, 0.034), (-0.252, 0.086), (0.588, 0.606), bev=0.008)

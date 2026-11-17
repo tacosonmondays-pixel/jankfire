@@ -25,6 +25,7 @@ import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
 from gun_sets import band
+import gun_sights as SG
 from gun_models_c2 import ring_prism, cut_rect, loop
 from gun_skins_2 import raked_at
 from gun_skins_3 import oval_loft, TSUKA, KL, kz, kedge, kspine
@@ -428,10 +429,10 @@ def lever_cloudlock():
     g.cyl('barrel_wzB__black', 0.029, (0, BY, -0.71), (0, BY, -0.668), sides=8, bev=0.004, smooth=False, r2=0.025,
           hole=(0.0115, 0.03))
     g.cyl('barrel_wzN__gold', 0.023 + P_ / math.cos(math.pi / 8), (0, BY, -0.668), (0, BY, -0.652), sides=8, bev=0.002, smooth=False)
-    # the sights: a gold notch block on the barrel, a gold blade and bead at the muzzle
-    A.notch_block(g, 'sight_wzN__gold', -0.2, SY, hw=0.022, zt=0.02, base=0.038, gap=0.01)
-    g.box('sight_wzN__gold', (-0.009, 0.009), (0.042, 0.05), (-0.703, -0.678), bev=0.003)
-    g.box('sight_wzN__gold', (-0.0065, 0.0065), (0.046, SY + 0.001), (-0.696, -0.684), bev=0.002)
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py): a thin gold notch leaf on the barrel, a gold bead on a narrow
+    # blade at the muzzle
+    SG.notch(g, 'sight_wzN__gold', -0.2, SY, 0.0412, 0.028, depth=0.006, nw=0.3, nd=0.005, neck=0.0055)
+    SG.bead(g, 'sight_wzN__gold', -0.69, SY, 0.045, r=0.0032, stem_w=0.006, stem_d=0.008)
     # the full stock under the barrel (red lacquer), three gold bands round barrel and stock, a cloud scroll each side
     g.prism('fore_wzA__red', [(-0.6, 0.014), (-0.12, 0.014), (-0.12, -0.046), (-0.585, -0.046), (-0.6, -0.032)], 0.05, bev=0.008)
     for z0 in (-0.584, -0.43, -0.262):

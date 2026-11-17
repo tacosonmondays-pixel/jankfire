@@ -62,7 +62,8 @@ from gun_sets_ducky_alt import (YELLOW, YELLOW2, BILL, PEARL, PINK, GOLD, GOLD2,
 
 NAMES = {'lmg@lmg_ducky': 'Bubble Bath', 'revolver@revolver_ducky': 'Wish Duck', 'katana@katana_ducky': 'Ribbon Duck'}
 METAL2 = '4b4254'      # a step lighter plum: the carry handle and the belt's links
-GLOWDIM = 'a34e72'     # Wish Duck's dimmer pink Neon (its cylinder hearts bloomed near the camera): the hearts seen up close
+GLOWDIM = '7a3050'  # (17 Nov: a34e72 still bloomed near white in game: the export brightens Neon, so a darker source)
+_GLOWDIM_WAS = 'a34e72'     # Wish Duck's dimmer pink Neon (its cylinder hearts bloomed near the camera): the hearts seen up close
 SEAM = '4a2c26'        # the bill's mouth line: a dark warm brown (as the Royal Duck hat's)
 
 

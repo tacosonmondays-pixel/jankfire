@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit_c import *
 import gunkit_c
 from gunkit_c import A
+import gun_sights as SG
 
 
 # ------------------------------------------------------------------------------------------------------------- AR
@@ -32,8 +33,9 @@ def ar():
     for z0 in (0.02, 0.052, 0.084, 0.116, 0.148):
         g.box('body_wzN__frame', (-0.0255, 0.0255), (0.058, 0.08), (z0, z0 + 0.012), bev=0.002)
     rail(g, 'sight_wzN__frame', 'trim_wzN__black', -0.115, 0.2, 0.087)
-    aperture(g, 'sight_wzN__frame', 0.234, SY, ro=0.021, ri=0.0098, zt=0.02, base=0.088)
-    g.box('sight_wzN__frame', (-0.02, 0.02), (0.062, 0.096), (0.205, 0.258), bev=0.005)
+    # (slim sights, 16 Nov 2026, gun_sights.py: a thin near-black ring on a narrow stem off the cover's back, two small
+    # ears beside it; the old fat ring on its block is gone)
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.234, SY, 0.088, w=0.037, stem_z=(0.203, 0.2425), ear_z=0.2085)
     # handguards (olive): the lower round the barrel, the upper round the gas tube; three grooves each side
     g.prism('guard_wzA__body', [(-0.48, -0.042), (-0.215, -0.042), (-0.205, -0.03), (-0.205, 0.03), (-0.48, 0.03),
                                  (-0.49, 0.018), (-0.49, -0.03)], 0.074, bev=0.009)
@@ -44,7 +46,7 @@ def ar():
     # barrel, gas block, front post with ears, brake
     tube(g, 'barrel_wzB__dark', 0.021, -0.66, -0.48, y=BY, bev=0.003)
     g.box('barrel_wzB__dark', (-0.024, 0.024), (BY - 0.022, 0.07), (-0.54, -0.49), bev=0.005)
-    post(g, 'sight_wzN__frame', -0.515, 0.068, SY, dot_piece='dot_wzN__glow', hw=0.02, zt=0.032)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.515, SY, 0.07, w=0.032, dot_piece='dot_wzN__glow')
     brake(g, 'barrel_wzB__dark', 'trim_wzN__black', -0.72, -0.64, BY, 0.027, ports=2)
     # the curved magazine (node "mag"), its base plate in the body colour, a rib
     fb, bb = curved_mag(g, 'mag_wzB__dark', [(-0.165, -0.05), (-0.172, -0.18), (-0.235, -0.3)],

@@ -25,6 +25,7 @@ import gunkit
 from gunkit import Gun, rect, raked
 import gun_models as A
 from gun_models import FRAME, DARK, BLACK, DECK, STEEL, slash, guard, trigger, panel, rivets, kit_mark, star, stadium
+import gun_sights as SG  # (the slim sights, 16 Nov 2026: every C builder and skin reaches them as SG)
 
 # ---- the C style, for the whole kit while these builders run (gunkit.STYLES['C']: the builder's chamfer as asked,
 # fairly wide and one crisp step; tapers as drawn; tubes 8-sided and shaded round; barrels at their drawn size)

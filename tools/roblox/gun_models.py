@@ -17,6 +17,7 @@
 import bpy, sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit import Gun, rect, raked
+import gun_sights as SG
 
 FRAME = '444851'   # charcoal (rounds 6 and 7: lighter; in hand it reads much darker)
 DARK = '353840'    # near-black: barrels, magazines, grips (never darker: it reads as a hole)
@@ -263,8 +264,10 @@ def burst():
     for z0 in (-0.17, -0.12, -0.07):  # round 7: three, like the burst
         g.box('handle_wzA__body', (-0.0225, 0.0225), (0.079, 0.103), (z0, z0 + 0.03), bev=0.002)
     deck(g, 'handle_wzN__deck', 0.016, 0.13, -0.27, 0.16)
-    rear_window(g, 'handle_wzN__frame', 0.1204, 0.1448, hw=0.027, inner=0.02, t=0.009, zt=0.024, base=0.13)
-    front_fork(g, 'handle_wzN__frame', -0.275, 0.133, 0.1448, hw=0.024, ear=0.011, zt=0.03)
+    # (slim sights, 16 Nov 2026, gun_sights.py; near-black): a low notch block on the handle's back (the notch's floor
+    # the aim line), a thin hood with a pointed post on its front
+    SG.notch(g, 'sight_wzN__dark', 0.1204, 0.1448, 0.137, 0.036, depth=0.016, nw=0.5, nd=0.004)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.275, 0.1448, 0.1287, w=0.026)
     # charging handle (node "charge") on top, under the carry handle
     g.box('charge_wzB__dark', (-0.052, -0.03), (-0.004, 0.024), (-0.14, -0.106), bev=0.005)
     # the grip, and the big loop in front of it that the off hand takes
@@ -429,10 +432,11 @@ def shotgun():
     guard(g, 'body_wzB__frame', -0.07, 0.045, -0.092, t=0.013, hw=0.011)
     g.box('body_wzB__frame', (-0.011, 0.011), (-0.092, -0.045), (-0.082, -0.068), bev=0.004)
     trigger(g, 'body_wzB__frame', -0.012, -0.05, -0.078)
-    # sights: the rear window on the receiver, a brass bead at the front
-    notch_block(g, 'sight_wzN__frame', -0.0386, 0.0712, hw=0.026, zt=0.022, base=0.056)
-    g.box('sight_wzN__frame', (-0.007, 0.007), (0.045, 0.062), (-0.722, -0.7), bev=0.003)
-    g.box('bead_wzN__brass', (-0.006, 0.006), (0.061, 0.073), (-0.717, -0.705), bev=0.002)
+    # sights (slim sights, 16 Nov 2026, gun_sights.py; near-black): a low notch block on the receiver (a shallow notch,
+    # its top on the aim line), a brass bead on a narrow stem just behind the muzzle
+    SG.notch(g, 'sight_wzN__dark', -0.0386, 0.0712, 0.058, 0.04, depth=0.009, nw=0.36, nd=0.005, c=0.0025)
+    SG.blade(g, 'sight_wzN__dark', -0.668, 0.0712 - 0.004, 0.0572, w=0.0065, depth=0.01)
+    g.ball('bead_wzN__brass', 0.0036, (0, 0.0712 - 0.0036, -0.668), sub=1)  # (its top on the aim line)
     g.box('trim_wzN__black', (0.0325, 0.0385), (-0.005, 0.035), (-0.15, -0.05), bev=0.001)
     return g
 
@@ -725,7 +729,9 @@ def redline():
     # receiver (charcoal) under a red top cover
     g.prism('body_wzB__frame', [(-0.2, -0.045), (0.09, -0.045), (0.125, -0.012), (0.125, 0.03), (-0.2, 0.03)], 0.068, bev=0.008)
     g.prism('cover_wzA__deck', [(-0.2, 0.026), (0.125, 0.026), (0.125, 0.04), (0.1, 0.058), (-0.2, 0.058)], 0.072, bev=0.007, wtop=0.056)
-    g.prism('cover_wzA__deck', [(-0.115, 0.05), (0.015, 0.05), (-0.005, 0.082), (-0.095, 0.082)], 0.06, bev=0.009)
+    # (slim sights, 16 Nov 2026: the hump on the cover lowered from 0.082 to 0.068, under the aim line at 0.0737, so you
+    # aim through the rear ring to the front post over it)
+    g.prism('cover_wzA__deck', [(-0.115, 0.05), (0.015, 0.05), (0.0, 0.068), (-0.1, 0.068)], 0.06, bev=0.009)
     # handguard with the vents that glow hotter the lower your HP (the game recolours every piece named *vents*)
     g.prism('guard_wzB__frame', [(-0.44, -0.012), (-0.42, -0.032), (-0.2, -0.032), (-0.2, 0.054), (-0.42, 0.054), (-0.44, 0.036)], 0.074, bev=0.009)
     for z0 in (-0.395, -0.345, -0.295, -0.245):
@@ -761,8 +767,10 @@ def redline():
     g.box('stock_wzB__dark', (-0.029, 0.029), (-0.118, 0.048), (0.362, 0.395), bev=0.009)
     panel(g, 'stock_wzN__dark', 0.026, 0.15, 0.25, -0.03, 0.02)
     # sights and port
-    rear_window(g, 'sight_wzN__frame', 0.1058, 0.0737, hw=0.027, inner=0.02, t=0.009, zt=0.024, base=0.052)
-    front_fork(g, 'sight_wzN__frame', -0.415, 0.054, 0.0737, hw=0.025, ear=0.011, zt=0.03)
+    # (slim sights, 16 Nov 2026, gun_sights.py; near-black): a thin ring with two small ears on the cover's back, a
+    # thin hood with a pointed post on the handguard's front
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.1058, 0.0737, 0.052, w=0.032)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.415, 0.0737, 0.054, w=0.028)
     g.box('trim_wzN__black', (0.0335, 0.0395), (0.0, 0.026), (-0.11, -0.02), bev=0.001)
     return g
 

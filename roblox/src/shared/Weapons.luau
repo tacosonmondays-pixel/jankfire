@@ -263,7 +263,7 @@ local W: { [string]: Weapon } = {
 		vm = { p = Vector3.new(0.19, -0.18, -0.34) * S, r = Vector3.new(0, 0.05, 0), s = 0.85 },
 		mdl = {
 			lo = Vector3.new(-0.0241, -0.1012, -0.311), hi = Vector3.new(0.0241, 0.0569, 0.1469),
-			muzzle = Vector3.new(0, 0.02, -0.31), sight = Vector3.new(0, 0.037, 0.075),
+			muzzle = Vector3.new(0, 0.02, -0.31), sight = Vector3.new(0, 0.065, 0.075),
 			grip = Vector3.new(0, -0.05, 0.095),
 			parts = {
 				hinge = { at = Vector3.new(0, -0.002, -0.05), open = 0.7, nodes = { "hinge", "hinge_trim", "forend", "forend_iron", "shell1", "shell2" } },

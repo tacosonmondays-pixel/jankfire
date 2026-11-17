@@ -12,6 +12,7 @@ import bpy
 from mathutils import Vector
 from gun_models_c2 import ring_prism, loop, cut_rect
 from gun_models_c3 import loft, disc
+import gun_sights as SG
 
 
 # ------------------------------------------------------------------------------------------------- local pieces
@@ -594,8 +595,8 @@ def redline_hotrod():
     g.cylz('barrel_wzB__chrome', 0.03, -0.47, -0.41, y=BY, bev=0.006, hole=(0.014, 0.025))
     g.cylz('trim_wzN__black', 0.0142, -0.4455, -0.4445, y=BY, bev=0)
     # sights (chrome), as the Redline's
-    A.rear_window(g, 'sight_wzN__chrome', 0.1058, SY, hw=0.027, inner=0.02, t=0.009, zt=0.024, base=0.052)
-    A.front_fork(g, 'sight_wzN__chrome', -0.415, 0.054, SY, hw=0.025, ear=0.011, zt=0.03)
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.1058, SY, 0.052, w=0.032)  # (slim sights, 16 Nov 2026, gun_sights.py: dark on chrome)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.415, SY, 0.0486, w=0.028)
     # the tachometer (left), where the Redline's is: chrome bezel, pale face, candy arc, the needle (node "needle")
     K = 1.15
     GZ, GY = -0.04992, 0.0277

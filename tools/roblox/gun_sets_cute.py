@@ -22,6 +22,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
+import gun_sights as SG
 import gunkit
 import bmesh
 from gunkit import P
@@ -616,12 +617,11 @@ def pb_slide(g, slot, front_sight=True, rear_sight=True, sight_slot='dark'):
                                      (-0.248, 0.052)], 0.044, bev=0.007)
     g.box('slide_wzN__black', (0.0215, 0.0229), (0.022, 0.045), (-0.096, -0.036), bev=0.001)
     g.ring('slide_wzN__dark', 0.0165, 0.0094, (0, PB_BY, -0.2535), (0, PB_BY, -0.245), sides=8, bev=0.002)
+    # (slim sights, 16 Nov 2026, gun_sights.py: a pointed blade, a low notch block with two square ears)
     if front_sight:
-        g.box('slide_wzN__%s' % sight_slot, (-0.0062, 0.0062), (0.046, PB_SY), (-0.236, -0.218), bev=0.002)
+        SG.blade(g, 'slide_wzN__%s' % sight_slot, -0.226, PB_SY, 0.052, w=0.0055, depth=0.012)
     if rear_sight:
-        for xs in ((-0.0185, -0.0058), (0.0058, 0.0185)):
-            g.box('slide_wzN__%s' % sight_slot, xs, (0.046, PB_SY + 0.002), (0.034, 0.052), bev=0.002)
-        g.box('slide_wzN__%s' % sight_slot, (-0.0065, 0.0065), (0.046, PB_SY - 0.0055), (0.034, 0.052), bev=0.0015)
+        SG.notch(g, 'slide_wzN__%s' % sight_slot, 0.044, PB_SY, 0.052, 0.031, depth=0.008, nw=0.3, nd=0.0036)
 
 
 # ======================================================================================= A  VELVET
@@ -653,7 +653,7 @@ def ar_cute_a():
         z = 0.254 + (i + 0.5) * (-0.466 / 14)
         for sx in (-1, 1):
             g.ball('body_wzN__gold', 0.0042, (sx * 0.0368, 0.0418, z), sub=2)
-    aperture(g, 'sight_wzN__gold', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.064)
+    SG.rifle_rear(g, 'sight_wzN__gold', 0.234, SY, 0.078, w=0.037)  # (slim sights, 16 Nov 2026)
     # the brooch over the magazine well
     brooch(g, 'body_wzN__gold', 'body_wzN__glow', 0.0335, -0.105, -0.002, r=0.0185)
     # the handguard, its two gold rails, the front post on its nose
@@ -661,7 +661,7 @@ def ar_cute_a():
             0.066, bev=0.01, wtop=0.056)
     for y0 in (0.03, -0.014):
         g.box('guard_wzN__gold', (-0.0345, 0.0345), (y0, y0 + 0.009), (-0.455, -0.225), bev=0.003)
-    fpost(g, 'sight_wzN__gold', -0.447, 0.056, SY, hw=0.016)
+    SG.rifle_front(g, 'sight_wzN__gold', -0.447, SY, 0.0561, w=0.03)
     # the fur cuffs: big clumps round the handguard's front end and the stock-receiver joint
     cuff(g, 'guard_wzN__fur', 'guard_wzN__furshade', -0.497, 0.01, 0.04, 0.028, n=10, dz=0.02, flat=0.68)
     cuff(g, 'stock_wzN__fur', 'stock_wzN__furshade', 0.29, -0.006, 0.043, 0.027, n=10, dz=0.02, flat=0.62)
@@ -760,7 +760,7 @@ def ar_cute_b():
                                 (0.24, 0.072), (-0.17, 0.072), (-0.215, 0.05)], 0.068, bev=0.012, wtop=0.056)
     g.box('body_wzN__gold', (-0.0325, 0.0325), (0.052, 0.06), (-0.18, 0.238), bev=0.0025)
     g.box('body_wzN__gold', (-0.0355, 0.0355), (-0.05, -0.042), (-0.205, 0.2), bev=0.0025)
-    aperture(g, 'sight_wzN__gold', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.062)
+    SG.rifle_rear(g, 'sight_wzN__gold', 0.234, SY, 0.07, w=0.037)  # (slim sights, 16 Nov 2026)
     star_core(g, 'body_wzN__gold', 'body_wzN__rose', 'body_wzN__glow', 0.0332, -0.103, 0.008, R=0.0225)
     # the handguard (rose), a gold lip along its top edges, the gold collar at its front
     g.prism('guard_wzA__rose', [(-0.485, -0.036), (-0.205, -0.044), (-0.205, 0.056), (-0.47, 0.052), (-0.485, 0.036)],
@@ -768,8 +768,8 @@ def ar_cute_b():
     g.box('guard_wzN__gold', (-0.0312, 0.0312), (0.043, 0.05), (-0.47, -0.215), bev=0.002)
     g.box('guard_wzN__gold', (-0.0355, 0.0355), (-0.044, 0.062), (-0.505, -0.482), bev=0.004)
     # the crescent front sight: the post up the middle, the crescent round it, horns up level with the aim line
-    g.box('sight_wzN__gold', (-0.0055, 0.0055), (0.058, SY), (-0.499, -0.488), bev=0.0018)
-    g.xprism('sight_wzN__gold', crescent(0.0, SY - 0.0145, 0.028, 0.0085, 30.0, n=16, blunt=0.0045), -0.5, -0.486, bev=0.002)
+    SG.blade(g, 'sight_wzN__gold', -0.4935, SY, 0.062, w=0.005, depth=0.008)
+    g.xprism('sight_wzN__gold', crescent(0.0, SY - 0.0095, 0.019, 0.0045, 30.0, n=16, blunt=0.003), -0.497, -0.49, bev=0.0012)
     # the wing on each side of the handguard, rooted in the collar
     plume(g, 'guard_wzN__ribbon', 'guard_wzN__gold', 0.0315, (-0.48, 0.03), (12, 1, -10, -21), (0.2, 0.17, 0.14, 0.11),
           yaw=0.1, th=0.009, wk=0.25)
@@ -801,8 +801,8 @@ def pistol_cute_b():
     g.box('slide_wzN__gold', (-0.0235, 0.0235), (0.004, 0.0105), (-0.19, 0.054), bev=0.0015)
     g.box('slide_wzN__gold', (-0.0235, 0.0235), (-0.017, -0.011), (-0.248, -0.19), bev=0.0015)
     # the crescent front sight
-    g.box('slide_wzN__gold', (-0.0042, 0.0042), (0.046, SY), (-0.234, -0.224), bev=0.0015)
-    g.xprism('slide_wzN__gold', crescent(0.0, SY - 0.0068, 0.0135, 0.0055, 30.0, n=12, blunt=0.003), -0.235, -0.223, bev=0.0015)
+    SG.blade(g, 'slide_wzN__gold', -0.229, SY, 0.052, w=0.005, depth=0.008)  # (slim sights, 16 Nov 2026)
+    g.xprism('slide_wzN__gold', crescent(0.0, SY - 0.0058, 0.0108, 0.0035, 30.0, n=12, blunt=0.0025), -0.232, -0.226, bev=0.001)
     # the small wing on each side of the slide's front
     plume(g, 'slide_wzN__ribbon', 'slide_wzN__gold', 0.0215, (-0.212, 0.028), (14, 2, -10), (0.1, 0.082, 0.064),
           yaw=0.12, th=0.0065, wk=0.27, step=0.004, arm=0.003)
@@ -866,13 +866,13 @@ def ar_cute_c():
     g.prism('body_wzA__pearl', [(-0.215, -0.056), (0.2, -0.056), (0.24, -0.028), (0.262, 0.0), (0.262, 0.05),
                                 (0.236, 0.074), (-0.2, 0.074), (-0.215, 0.058)], 0.068, bev=0.014, wtop=0.056)
     g.box('body_wzN__mint', (-0.0342, 0.0342), (-0.024, -0.012), (-0.2, 0.235), bev=0.0025)
-    aperture(g, 'sight_wzN__vein', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.062)
+    SG.rifle_rear(g, 'sight_wzN__vein', 0.234, SY, 0.072, w=0.037)  # (slim sights, 16 Nov 2026)
     butterfly(g, 'body_wzN__lilac', 'body_wzN__mint', 'body_wzN__vein', 'body_wzN__white', 0.0333, -0.1, 0.008, s=1.15)
     g.prism('guard_wzA__lilac', [(-0.49, -0.036), (-0.205, -0.044), (-0.205, 0.056), (-0.475, 0.054), (-0.49, 0.04)],
             0.064, bev=0.01, wtop=0.054)
     g.box('guard_wzN__pearl', (-0.0335, 0.0335), (0.036, 0.044), (-0.475, -0.215), bev=0.002)
     g.box('guard_wzN__mint', (-0.0335, 0.0335), (-0.03, -0.022), (-0.475, -0.215), bev=0.002)
-    fpost(g, 'sight_wzN__vein', -0.466, 0.054, SY, hw=0.016)
+    SG.rifle_front(g, 'sight_wzN__vein', -0.466, SY, 0.0541, w=0.03)
     # the crystal cluster under the handguard's front (the glow)
     for b, d, r, L in (((0.0, -0.022, -0.45), (0, -1, -0.34), 0.0135, 0.082), ((0.013, -0.022, -0.432), (0.55, -1, 0.06), 0.0105, 0.06),
                        ((-0.013, -0.022, -0.436), (-0.55, -1, 0.0), 0.011, 0.064), ((0.002, -0.022, -0.412), (0.1, -1, 0.42), 0.009, 0.046),
@@ -944,7 +944,7 @@ def ar_cute_d():
     ar_barrel(g, z1=-0.47)
     g.prism('body_wzA__cream', [(-0.215, -0.056), (0.205, -0.056), (0.24, -0.03), (0.262, 0.0), (0.262, 0.048),
                                 (0.24, 0.072), (-0.2, 0.072), (-0.215, 0.056)], 0.07, bev=0.016, wtop=0.06)
-    aperture(g, 'sight_wzN__dark', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.062)
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.234, SY, 0.078, w=0.037)  # (slim sights, 16 Nov 2026)
     # strawberry icing poured over the receiver's top, dripping down both flanks (round drip ends; on the right clear of
     # the port and the charging handle)
     icing = [(-0.213, 0.054, 0.07, 0.022)]
@@ -981,9 +981,9 @@ def ar_cute_d():
     pleat_fan(g, 'guard_wzN__cream', (0, CY - 0.003, -0.247), (0, -0.84, 0.54), 0.054, 0.011, 0.043, k=9, depth=0.32)
     # the candy-stripe band on the barrel, the front sight and its gumdrop bead
     candy_sleeve(g, 'candy_wzN__berry', 'candy_wzN__cream', -0.664, -0.596, BY, 0.026, k=4, turns=0.55, t=0.006)
-    g.box('sight_wzN__dark', (-0.016, 0.016), (BY + 0.006, 0.066), (-0.566, -0.534), bev=0.004)
-    g.box('sight_wzN__dark', (-0.0055, 0.0055), (0.06, SY - 0.009), (-0.556, -0.544), bev=0.0018)
-    gumdrop(g, 'sight_wzN__glow', -0.55, SY + 0.001, r=0.0088)
+    g.box('sight_wzN__dark', (-0.009, 0.009), (BY + 0.006, 0.062), (-0.556, -0.544), bev=0.002)
+    g.box('sight_wzN__dark', (-0.003, 0.003), (0.06, SY - 0.0055), (-0.553, -0.547), bev=0.001)
+    gumdrop(g, 'sight_wzN__glow', -0.55, SY + 0.0015, r=0.0045)
     # the stock, the bow on its wrist, the sprinkles, the cocoa pad
     ST = [(0.255, 0.052), (0.44, 0.064), (0.452, 0.064), (0.452, -0.15), (0.425, -0.152), (0.33, -0.04), (0.255, -0.03)]
     g.prism('stock_wzA__cream', ST, 0.05, bev=0.01)
@@ -1053,13 +1053,14 @@ def ar_cute_e():
     g.box('guard_wzN__cloud', (-0.0325, 0.0325), (0.034, 0.042), (-0.47, -0.215), bev=0.002)
     for sx in (-1, 1):  # a raised white cloud on each side of the handguard, ahead of the off hand
         pillow(g, 'guard_wzN__cloud', cloud_outline(-0.408, -0.016, 0.13, 0.046), 0.0295, 0.0085, sx)
-    fpost(g, 'sight_wzN__dark', -0.466, 0.056, SY, hw=0.016)
-    # the rainbow rear sight and its two little clouds
-    rainbow(g, 'sight', ['b%d' % i for i in range(6)], 0.216, 0.07, 0.0635, 0.0185, 0.0045, 0.0145)
-    puffs(g, 'sight_wzN__cloud', 'sight_wzN__shade', [(0.15, 0.076, 0.015, -0.012), (0.164, 0.079, 0.016, 0.006),
-                                                      (0.178, 0.075, 0.014, 0.016), (0.156, 0.072, 0.013, 0.016)])
-    puffs(g, 'sight_wzN__cloud', 'sight_wzN__shade', [(0.268, 0.074, 0.018, -0.014), (0.284, 0.08, 0.02, 0.006),
-                                                      (0.276, 0.066, 0.016, 0.018)])
+    SG.rifle_front(g, 'sight_wzN__dark', -0.466, SY, 0.0561, w=0.03)  # (slim sights, 16 Nov 2026)
+    # the rainbow rear sight and its two little clouds (slim sights: lower and thinner, its top 6 mm over the aim line,
+    # the notch through it 11 mm wide)
+    rainbow(g, 'sight', ['b%d' % i for i in range(6)], 0.216, 0.07, 0.044, 0.022, 0.008, 0.0045)
+    puffs(g, 'sight_wzN__cloud', 'sight_wzN__shade', [(0.164, 0.076, 0.012, -0.011), (0.176, 0.079, 0.013, 0.005),
+                                                      (0.188, 0.075, 0.011, 0.014), (0.169, 0.072, 0.011, 0.014)])
+    puffs(g, 'sight_wzN__cloud', 'sight_wzN__shade', [(0.252, 0.074, 0.014, -0.012), (0.264, 0.079, 0.015, 0.005),
+                                                      (0.258, 0.067, 0.013, 0.015)])
     # the sun (the glow) over the magazine well
     sun(g, 'body_wzN__glow', 'body_wzN__ray', 0.0332, -0.103, 0.008, 0.019, 0.036, n=8)
     # the clouds round the muzzle device
@@ -1094,7 +1095,7 @@ def pistol_cute_e():
     paint(g, **DAYDREAM)
     pb_core(g, frame='wzA__cloud', trig='dark')
     pb_slide(g, 'sky', rear_sight=False)
-    rainbow(g, 'slide', ['b%d' % i for i in range(6)], 0.034, 0.047, 0.0215, 0.0062, 0.0042, 0.0115, n=20, bev=0.0)
+    rainbow(g, 'slide', ['b%d' % i for i in range(6)], 0.034, 0.047, 0.0115, 0.004, 0.005, 0.008, n=20, bev=0.0)  # (slim)
     sun(g, 'slide_wzN__glow', 'slide_wzN__ray', 0.0215, -0.115, 0.027, 0.0095, 0.0185, n=8, t=0.005, sides=(-1,))
     for sx in (-1, 1):
         for v0 in (0.008, -0.044):  # two little clouds stacked on each grip panel

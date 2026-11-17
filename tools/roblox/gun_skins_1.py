@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
 from gun_models_c1 import rot_rect, wedge_w, vent, mag_ribs
 from gun_models_c2 import front_post
+import gun_sights as SG
 
 
 # ------------------------------------------------------------------------------------------------- local pieces
@@ -148,13 +149,12 @@ def ar_bullpup():
     fb, bb = curved_mag(g, 'mag_wzB__dark', MF, MB, 0.05, bev=0.008)
     mag_ribs(g, 'mag_wzB__dark', MF, MB, (-0.12, -0.2), 0.056)
     plate(g, 'mag_wzN__grey', fb, bb, 0.018, 0.058, bev=0.005)
-    # the carry-handle optic: two white legs, an open tube on the aim line (you look through it), an orange band
-    g.prism('optic_wzA__shell', [(-0.066, 0.056), (-0.012, 0.056), (-0.018, 0.09), (-0.058, 0.09)], 0.032, bev=0.007)
-    g.prism('optic_wzA__shell', [(0.095, 0.056), (0.165, 0.056), (0.155, 0.09), (0.102, 0.09)], 0.032, bev=0.007)
-    g.ring('optic_wzB__dark', 0.029, 0.022, (0, SY, -0.035), (0, SY, 0.165), bev=0.003)
-    g.ring('optic_wzB__dark', 0.036, 0.027, (0, SY, -0.08), (0, SY, -0.03), bev=0.004)
-    g.ring('optic_wzN__orange', 0.0315, 0.024, (0, SY, 0.13), (0, SY, 0.15), bev=0.002)
-    g.ring('optic_wzB__dark', 0.032, 0.022, (0, SY, 0.162), (0, SY, 0.186), bev=0.003)
+    # the optic (slim sights, 16 Nov 2026, gun_sights.py: never a tube): one tall tapered dark reflex hood standing
+    # straight on the body (the aim line stands 52 mm over it), its window at the top with a faintly tinted pane and
+    # one small orange dot
+    g.slot('glass', '9fb4c4', 'g', 0.3); g.slot('dot', 'ff7a3c', 'n')
+    SG.red_dot(g, 'optic_wzN__dark', 'optic_wzN__glass', 'optic_wzN__dot', 0.128, SY, 0.062, bw=0.019, tw=0.0135,
+               win_w=0.0098, win_h=0.0085, depth=0.026)
     # the charging handle on the right of the action's front (node "charge"), its orange knob
     g.box('charge_wzB__dark', (0.028, 0.05), (0.018, 0.044), (-0.062, -0.026), bev=0.005)
     g.cyl('charge_wzN__orange', 0.012, (0.048, 0.031, -0.044), (0.06, 0.031, -0.044), sides=8, bev=0.003)

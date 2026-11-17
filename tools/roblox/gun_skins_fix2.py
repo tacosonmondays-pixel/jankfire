@@ -22,6 +22,7 @@ from gun_models_c2 import ring_prism
 from gun_models_c3 import loft
 from gun_sets import tsweep, band, zigzag
 from mathutils import Vector
+import gun_sights as SG
 
 
 # ------------------------------------------------------------------------------------------------- local pieces
@@ -96,12 +97,10 @@ def smg_uzi():
         g.box('vent_wzB__dark', (-0.026, 0.026), (0.036, 0.0475), (z0, z0 + 0.0105), bev=0.002)
         if i < 4:
             g.box('vent_wzN__glow', (-0.022, 0.022), (0.036, 0.0445), (z0 + 0.01, z0 + 0.025), bev=0.001)
-    # the sights: a post with ears on the collar's top, the aperture on the body's top at the back
-    g.box('sight_wzN__dark', (-0.016, 0.016), (0.036, 0.046), (-0.214, -0.19), bev=0.003)
-    g.box('sight_wzN__dark', (-0.005, 0.005), (0.04, SY), (-0.207, -0.197), bev=0.002)
-    for xr in ((-0.016, -0.008), (0.008, 0.016)):
-        g.box('sight_wzN__dark', xr, (0.04, SY + 0.005), (-0.211, -0.193), bev=0.002)
-    aperture(g, 'sight_wzN__dark', RZ, SY, ro=0.0135, ri=0.0062, zt=0.016, base=0.036)
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py): a thin hood with a pointed post on the collar's top, a low
+    # notch block with two square ears on the body's top at the back
+    SG.rifle_front(g, 'sight_wzN__dark', -0.202, SY, 0.0437, w=0.024, depth=0.007)
+    SG.notch(g, 'sight_wzN__dark', RZ, SY, 0.0429, 0.028, depth=0.008, nw=0.34, nd=0.0035)
     # the air intake closing the back: a charcoal cap, two white grille rings and a dark hub on its back face
     g.cylz('intake_wzB__dark', 0.056, 0.122, 0.156, y=-0.004, sides=16, bev=0.008)
     for ro, ri in ((0.046, 0.036), (0.027, 0.017)):
@@ -186,9 +185,8 @@ def ar_lacquer():
         z = -0.115 + i * 0.044
         for x in (-0.0155, 0.0155):
             g.ball('stud_wzN__gold', 0.0072, (x, 0.0845, z), sub=2)
-    # the rear sight: the gold aperture on a black block
-    g.box('sight_wzB__black', (-0.02, 0.02), (0.058, 0.093), (0.205, 0.258), bev=0.004)
-    aperture(g, 'sight_wzN__gold', 0.234, SY, ro=0.021, ri=0.0098, zt=0.02, base=0.09)
+    # the rear sight (slim sights, 16 Nov 2026, gun_sights.py): a thin gold ring on a narrow stem, two small ears
+    SG.rifle_rear(g, 'sight_wzN__gold', 0.234, SY, 0.072, w=0.037)
     # the handguard: three rows of black lames, gold rims along each top edge, laced with pairs of red cords
     HG = []
     for y0, y1, w, wtop in ((0.03, 0.07, 0.074, 0.052), (-0.008, 0.034, 0.078, 0.062), (-0.046, -0.004, 0.082, 0.066)):
@@ -201,13 +199,15 @@ def ar_lacquer():
     # gold crest plate
     tube(g, 'barrel_wzB__black', 0.021, -0.66, -0.48, y=BY, bev=0.003)
     g.box('barrel_wzB__black', (-0.024, 0.024), (BY - 0.022, 0.064), (-0.545, -0.49), bev=0.005)
+    # (slim sights, 16 Nov 2026: the crest lower and thin, the horn plates thin blades just over the aim line, the post
+    # a pointed blade)
     FZ = -0.517
-    g.box('crest_wzN__goldd', (-0.03, 0.03), (0.058, 0.074), (FZ - 0.012, FZ + 0.012), bev=0.004)
-    g.box('crest_wzN__gold', (-0.006, 0.006), (0.07, SY), (FZ - 0.007, FZ + 0.007), bev=0.002)
+    g.box('crest_wzN__goldd', (-0.024, 0.024), (0.062, 0.073), (FZ - 0.009, FZ + 0.009), bev=0.003)
+    SG.blade(g, 'crest_wzN__gold', FZ, SY, 0.072, w=0.0055, depth=0.008)
     for sx in (-1, 1):
-        horn = [(sx * 0.016, 0.07), (sx * 0.021, 0.088), (sx * 0.029, 0.104), (sx * 0.036, 0.118), (sx * 0.037, 0.13),
-                (sx * 0.031, 0.139)]
-        g.xprism('crest_wzN__gold', band(horn, 0.013), FZ - 0.008, FZ + 0.008, bev=0.003)
+        horn = [(sx * 0.0125, 0.0715), (sx * 0.017, 0.086), (sx * 0.0235, 0.1), (sx * 0.029, 0.111), (sx * 0.0305, 0.119),
+                (sx * 0.0275, 0.1245)]
+        g.xprism('crest_wzN__gold', band(horn, 0.0055), FZ - 0.006, FZ + 0.006, bev=0.0015)
     # the brake: black, a gold ring at each end, a raised gold wave curl on each flank
     g.cylz('muzzle_wzB__black', 0.033, -0.72, -0.648, y=BY, sides=8, bev=0.004, hole=(0.013, 0.03))
     for z0, z1 in ((-0.724, -0.712), (-0.658, -0.646)):
@@ -313,12 +313,10 @@ def smg_label():
           (-NX - 0.0045, -0.03), (-NX - 0.006, -0.058), (-NX - 0.014, -0.077), (-NX - 0.028, -0.088),
           (-NX - 0.041, -0.084)]
     g.xprism('tape_wzN__yellow', band(TP, 0.005), -0.335, -0.313, bev=0.0012)
-    # the sights: a post with ears on the nose, the aperture on the body's flat top at the back
-    g.box('sight_wzN__dark', (-0.016, 0.016), (0.044, 0.05), (-0.36, -0.336), bev=0.002)
-    g.box('sight_wzN__dark', (-0.005, 0.005), (0.046, SY), (-0.353, -0.343), bev=0.002)
-    for xr in ((-0.016, -0.009), (0.009, 0.016)):
-        g.box('sight_wzN__dark', xr, (0.046, SY + 0.005), (-0.357, -0.339), bev=0.002)
-    aperture(g, 'sight_wzN__dark', RZ, SY, ro=0.0135, ri=0.0062, zt=0.016, base=0.04)
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py): a thin hood with a pointed post on the nose, a low notch
+    # block with two square ears on the body's flat top at the back
+    SG.rifle_front(g, 'sight_wzN__dark', -0.348, SY, 0.049, w=0.024, depth=0.007)
+    SG.notch(g, 'sight_wzN__dark', RZ, SY, 0.043, 0.028, depth=0.008, nw=0.34, nd=0.0035)
     # the cutter button on the left, just behind the nose (node "charge")
     g.box('charge_wzN__yellow', (-HX - 0.009, -HX + 0.006), (-0.03, -0.006), (-0.262, -0.234), bev=0.005)
     g.box('trim_wzN__black', (HX - 0.004, HX + 0.002), (0.004, 0.026), (-0.12, -0.06), bev=0.0015)  # the port, right
@@ -373,13 +371,10 @@ def pistol_calc():
     g.box('slide_wzN__orange', (xs[3] - 0.006, xs[3] + 0.006), (ytop(zc) - 0.004, ytop(zc) + 0.0075), zr, bev=0.0025)
     # the solar strip: one plain dark panel let into the top, between the keys and the rear sight
     g.box('slide_wzN__dark', (-0.026, 0.026), (ytop(0.0) - 0.004, ytop(0.0) + 0.0028), (-0.014, 0.024), bev=0.0018)
-    # the sights: a dark post at the nose (its top the aim line), a notch of two blocks at the back
-    g.box('slide_wzN__dark', (-0.016, 0.016), (YF - 0.003, YF + 0.007), (-0.246, -0.222), bev=0.0025)
-    g.box('slide_wzN__dark', (-0.005, 0.005), (YF, SY), (-0.239, -0.229), bev=0.0018)
-    for xr in ((-0.016, -0.0095), (0.0095, 0.016)):
-        g.box('slide_wzN__dark', xr, (YF, SY - 0.002), (-0.243, -0.225), bev=0.002)
-    for xr in ((-0.02, -0.0058), (0.0058, 0.02)):
-        g.box('slide_wzN__dark', xr, (YK - 0.004, SY + 0.002), (0.032, 0.052), bev=0.002)
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py): a pointed dark blade at the nose (its tip the aim line), a
+    # low notch block with two square ears at the back
+    SG.blade(g, 'slide_wzN__dark', -0.234, SY, ytop(-0.234), w=0.0055, depth=0.01)
+    SG.notch(g, 'slide_wzN__dark', 0.042, SY, ytop(0.042), 0.031, depth=0.008, nw=0.3, nd=0.0045)
     # the display on the back face: a dark bezel, the pale glass, four dash bars
     g.box('slide_wzN__dark', (-0.028, 0.028), (0.0145, 0.0475), (Z1 - 0.004, Z1 + 0.0025), bev=0.0025)
     g.box('slide_wzN__lcd', (-0.0235, 0.0235), (0.0195, 0.0425), (Z1 - 0.002, Z1 + 0.0045), bev=0.0015)
@@ -432,9 +427,10 @@ def ar_toy():
     for z0 in (-0.58, -0.51, -0.44):
         g.box('barrel_wzN__black', (-0.031, 0.031), (BY - 0.008, BY + 0.008), (z0, z0 + 0.044), bev=0.002)
     tube(g, 'tip_wzN__tip', 0.041, -0.72, -0.64, y=BY, bev=0.01, hole=(0.02, 0.035))
-    # the sights: a fat dark fin at the front (its flat top the aim line), the dark peep at the back
-    g.prism('sight_wzB__dark', [(-0.63, 0.04), (-0.55, 0.04), (-0.58, SY), (-0.6, SY)], 0.02, bev=0.005)
-    aperture(g, 'sight_wzB__dark', 0.234, SY, ro=0.024, ri=0.011, zt=0.026, base=0.072)
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py; still a toy): a thin dark fin at the front (its flat top the
+    # aim line), an open toy ring on a narrow stem at the back
+    g.prism('sight_wzB__dark', [(-0.628, 0.043), (-0.552, 0.043), (-0.582, SY), (-0.598, SY)], 0.0085, bev=0.003)
+    SG.rifle_rear(g, 'sight_wzB__dark', 0.234, SY, 0.064, w=0.04, wall=0.0055, depth=0.012, ears=False)
     # the fore grip under the barrel (dark, chunky, four ribs)
     g.prism('fore_wzB__dark', rrect(-0.44, -0.26, -0.052, 0.004, 0.016), 0.06, bev=0.008)
     for z0 in (-0.42, -0.385, -0.35, -0.315):
@@ -567,16 +563,11 @@ def dmr_pen():
     g.prism('nib_wzN__glow', [(za, ntop(za) - 0.004), (zb, ntop(zb) - 0.004), (zb, ntop(zb) + 0.0014),
                               (za, ntop(za) + 0.0014)], 0.0085, bev=0.001)
     g.cyl('nib_wzN__glow', 0.009, (0, ntop(-0.78) - 0.004, -0.78), (0, ntop(-0.78) + 0.0016, -0.78), sides=8, bev=0.001)
-    # the scope: black lacquer, gold rings at its ends and middle, pale lenses, on two dark mounts
-    tube(g, 'scope_wzB__dark', 0.025, -0.14, 0.11, y=SY, bev=0.004)
-    tube(g, 'scope_wzB__dark', 0.032, -0.215, -0.13, y=SY, bev=0.005, r2=0.025, hole=(0.026, 0.01))
-    tube(g, 'scope_wzB__dark', 0.029, 0.158, 0.1, y=SY, bev=0.005, r2=0.025, hole=(0.02, 0.01))
-    tube(g, 'lens_wzN__lens', 0.0262, -0.206, -0.202, y=SY, bev=0)
-    tube(g, 'lens_wzN__lens', 0.0202, 0.15, 0.146, y=SY, bev=0)
-    for z0, z1, r in ((-0.215, -0.198, 0.0335), (-0.035, -0.015, 0.0268), (0.142, 0.158, 0.0305)):
-        tube(g, 'scope_wzN__goldd', r, z0, z1, y=SY, bev=0.002)
-    for z0 in (-0.1, 0.04):
-        g.box('mount_wzB__dark', (-0.014, 0.014), (0.05, 0.1), (z0, z0 + 0.034), bev=0.005)
+    # the scope (slim sights, 16 Nov 2026, gun_sights.py): slim black lacquer, gold rims at its ends and a gold band
+    # in the middle, faintly tinted lenses, on two narrow dark mounts
+    g.slot('lens', '7f99a8', 'g', 0.65)
+    SG.scope_slim(g, 'scope_wzB__dark', -0.215, 0.158, SY, r=0.0185, lens_piece='lens_wzN__lens', rim_piece='scope_wzN__goldd',
+                  band_piece='scope_wzN__goldd', band_z=-0.025, mounts=((-0.083, 0.05), (0.057, 0.05)), turret=False)
     # the lever filler on the left flank (node "charge"): a gold bar along the body, a round tab at its back
     g.box('charge_wzN__gold', (-0.0445, -0.033), (0.009, 0.029), (-0.04, 0.05), bev=0.004)
     g.cyl('charge_wzN__gold', 0.012, (-0.046, 0.019, 0.05), (-0.032, 0.019, 0.05), sides=8, bev=0.003)
@@ -646,9 +637,7 @@ def burst_ticket():
     g.box('sign_wzN__glow', (-0.0155, 0.0155), (0.078, 0.104), (0.2, 0.2065), bev=0.0015)
     g.box('sign_wzB__dark', (-0.032, -0.024), (0.068, 0.114), (0.04, 0.18), bev=0.003)
     g.box('sign_wzN__glow', (-0.0345, -0.028), (0.08, 0.1), (0.07, 0.15), bev=0.0015)
-    aperture(g, 'sight_wzN__dark', RZ, SY, ro=0.0165, ri=0.0078, zt=0.02, base=0.126)
-    for x0, x1 in ((-0.026, -0.015), (0.015, 0.026)):
-        g.box('sight_wzN__dark', (x0, x1), (0.126, 0.158), (RZ - 0.016, RZ + 0.016), bev=0.004)
+    SG.notch(g, 'sight_wzN__dark', RZ, SY, 0.13, 0.04, depth=0.016, nw=0.5, nd=0.004)  # (slim sights, 16 Nov 2026)
     # the queue post (the barrel, chrome), its cap with the bore, a ring; the belt cassette round it (the handguard)
     tube(g, 'barrel_wzB__chrome', 0.017, -0.645, -0.38, y=BY, bev=0.003)
     tube(g, 'barrel_wzB__chrome', 0.027, -0.67, -0.632, y=BY, bev=0.007, hole=(0.011, 0.025))
@@ -658,11 +647,9 @@ def burst_ticket():
     g.box('fore_wzN__red', (-0.054, -0.036), (BY - 0.017, BY + 0.017), (-0.34, -0.296), bev=0.004)
     # the queue stanchion as the front sight: a chrome post on the cassette, its round cap, the dark blade
     FZ = -0.29
-    g.cyl('sight_wzN__chrome', 0.0125, (0, 0.04, FZ), (0, 0.128, FZ), sides=8, bev=0.002)
-    g.cyl('sight_wzN__chrome', 0.022, (0, 0.122, FZ), (0, 0.134, FZ), sides=12, bev=0.003)
-    g.box('sight_wzN__dark', (-0.0045, 0.0045), (0.13, SY), (FZ - 0.005, FZ + 0.005), bev=0.0015)
-    for xr in ((-0.02, -0.013), (0.013, 0.02)):
-        g.box('sight_wzN__dark', xr, (0.13, SY + 0.004), (FZ - 0.008, FZ + 0.008), bev=0.002)
+    # (slim sights, 16 Nov 2026: a slim post, a thin cap, a pointed dark blade on it)
+    SG.xsolid(g, 'sight_wzN__dark', [(-0.008, 0.048), (0.008, 0.048), (0.0026, SY - 0.004), (0.0, SY), (-0.0026, SY - 0.004)],
+              FZ - 0.008, FZ + 0.008, bev=0.0008)
     # the pull tab on the left (node "charge")
     g.box('charge_wzN__white', (-0.052, -0.028), (0.0, 0.032), (-0.14, -0.1), bev=0.006)
     # the grip, the fore loop, the trigger

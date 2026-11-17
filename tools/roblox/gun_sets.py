@@ -15,6 +15,7 @@ from gunskin_kit import *
 from gun_skins_1 import arc, rrect, fpost, rpoint
 from gun_models_c3 import loft
 from mathutils import Vector
+import gun_sights as SG
 
 # ------------------------------------------------------------------------------------------------ the sets
 SETS = {
@@ -981,9 +982,15 @@ def _ar_pair(skinid, pal, angel):
             a = math.pi / 2 + 2 * math.pi * k / 5
             px, py = math.cos(a) * 0.021, BY + math.sin(a) * 0.021
             g.cyl('barrel_wzN__trim', 0.006, (px, py, -0.705), (px * 1.25, BY + (py - BY) * 1.25, -0.745), r2=0.0015, sides=6, bev=0.001)
-    # the sights: a front post on the handguard's nose, a rear aperture at the back of the receiver
-    fpost(g, 'sight_wzN__gold', -0.515, 0.054, SY, hw=0.016)
-    aperture(g, 'sight_wzN__gold', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.058)
+    # the sights: a front post on the handguard's nose, a rear aperture at the back of the receiver (the Infernal side:
+    # the slim sights, 16 Nov 2026, gun_sights.py, a thin hood with a pointed post, a thin ring on a narrow stem with
+    # two small ears; the Seraph side is rebuilt in gun_sets_angel2.py)
+    if angel:
+        fpost(g, 'sight_wzN__gold', -0.515, 0.054, SY, hw=0.016)
+        aperture(g, 'sight_wzN__gold', 0.234, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.058)
+    else:
+        SG.rifle_front(g, 'sight_wzN__gold', -0.515, SY, 0.0588, w=0.032)
+        SG.rifle_rear(g, 'sight_wzN__gold', 0.234, SY, 0.0575, w=0.037, ear_z=0.212, ear_base=0.066)
     # the crown over the receiver, under the aim line: a level halo on two posts / two horns
     if angel:
         # the halo floats high over the receiver, held up by two small gold wings rising off the receiver's top
@@ -1079,23 +1086,30 @@ def _sniper_pair(skinid, pal, angel):
                       sides=6, bev=0.001)
         spines(g, 'barrel_wzN__trim', -1.3, -0.9, BY + 0.04, 3, h=0.03)
         bold_cracks(g, 'barrel_wzN__glow', 0.0505, -1.47, BY + 0.046, -1.36, BY + 0.04, seed=21, forks=1, w=0.006, amp=0.005, box=((-1.46, -1.35), (BY + 0.036, BY + 0.05)))
-    # the scope on its two rings
-    g.cylz('scope_wzN__shell', 0.038, -0.25, 0.06, y=SY, sides=8, bev=0.005)
-    g.cyl('scope_wzN__trim', 0.056, (0, SY, -0.45), (0, SY, -0.25), sides=8, bev=0.008, r2=0.04, hole=(0.046, 0.016))
-    g.cylz('lens_wzN__glow', 0.046, -0.4355, -0.431, y=SY, sides=8, bev=0)
-    g.cylz('scope_wzN__trim', 0.045, 0.04, 0.17, y=SY, sides=8, bev=0.007)
-    g.cylz('scope_wzN__trim', 0.05, 0.182, 0.14, y=SY, sides=8, bev=0.006, hole=(0.037, 0.01))
-    g.cylz('lens_wzN__glow', 0.037, 0.173, 0.1745, y=SY, sides=8, bev=0)
-    for z0 in (-0.22, 0.0):
-        g.ring('scope_wzN__gold', 0.046, 0.036, (0, SY, z0), (0, SY, z0 + 0.032), sides=8, bev=0.003)
-        g.box('scope_wzN__gold', (-0.024, 0.024), (0.06, SY - 0.034), (z0 - 0.004, z0 + 0.036), bev=0.006)
+    # the scope on its two rings (the Infernal side: the slim scope, 16 Nov 2026, gun_sights.py, its lenses tinted
+    # ember, a glowing glint behind the front one, an ember band; the Seraph side is rebuilt in gun_sets_angel2.py)
+    if angel:
+        g.cylz('scope_wzN__shell', 0.038, -0.25, 0.06, y=SY, sides=8, bev=0.005)
+        g.cyl('scope_wzN__trim', 0.056, (0, SY, -0.45), (0, SY, -0.25), sides=8, bev=0.008, r2=0.04, hole=(0.046, 0.016))
+        g.cylz('lens_wzN__glow', 0.046, -0.4355, -0.431, y=SY, sides=8, bev=0)
+        g.cylz('scope_wzN__trim', 0.045, 0.04, 0.17, y=SY, sides=8, bev=0.007)
+        g.cylz('scope_wzN__trim', 0.05, 0.182, 0.14, y=SY, sides=8, bev=0.006, hole=(0.037, 0.01))
+        g.cylz('lens_wzN__glow', 0.037, 0.173, 0.1745, y=SY, sides=8, bev=0)
+        for z0 in (-0.22, 0.0):
+            g.ring('scope_wzN__gold', 0.046, 0.036, (0, SY, z0), (0, SY, z0 + 0.032), sides=8, bev=0.003)
+            g.box('scope_wzN__gold', (-0.024, 0.024), (0.06, SY - 0.034), (z0 - 0.004, z0 + 0.036), bev=0.006)
+    else:
+        g.slot('glass', 'a8502e', 'g', 0.55)
+        SG.scope_slim(g, 'scope_wzN__shell', -0.43, 0.175, SY, r=0.0235, lens_piece='lens_wzN__glass', rim_piece='scope_wzN__gold',
+                      glint_piece='lens_wzN__glow', mounts=((-0.21, 0.066), (0.01, 0.066)), band_piece='scope_wzN__gold',
+                      band_z=-0.3)
     if angel:  # the halo: a wide gold flange round the front bell, a glowing ring let into its face, a thin outer ring
         g.ring('scope_wzN__gold', 0.1, 0.05, (0, SY, -0.405), (0, SY, -0.392), sides=20, bev=0.002)
         g.ring('scope_wzN__glow', 0.09, 0.078, (0, SY, -0.4065), (0, SY, -0.3905), sides=20, bev=0.001)
         g.ring('scope_wzN__glow', 0.068, 0.062, (0, SY, -0.4065), (0, SY, -0.3905), sides=20, bev=0.001)
     else:  # two big horns off the bell, sweeping back and up
         for sx in (-1, 1):
-            horn(g, 'scope_wzN__horn', (sx * 0.03, SY + 0.028, -0.32), 0.09, 0.08, sx * 0.035, 0.02, curl=0.6)
+            horn(g, 'scope_wzN__horn', (sx * 0.008, SY + 0.016, -0.33), 0.065, 0.065, sx * 0.03, 0.013, curl=0.6)
     # the bolt (node "bolt"), the magazine, the guard and trigger
     g.cylz('bolt_wzB__trim', 0.017, -0.06, 0.08, y=BY, x=0.024, sides=8, bev=0.002)
     g.cyl('bolt_wzB__trim', 0.013, (0.032, BY, 0.04), (0.09, BY - 0.032, 0.06), sides=8, bev=0.002)
@@ -1152,8 +1166,12 @@ def _burst_pair(skinid, pal, angel):
     g.prism('handle_wzA__shell', [(-0.3, 0.05), (0.19, 0.05), (0.19, 0.118), (0.16, 0.132), (-0.27, 0.132), (-0.3, 0.112)],
             0.036, bev=0.008)
     g.box('handle_wzN__gold', (-0.0195, 0.0195), (0.09, 0.102), (-0.265, 0.16), bev=0.003)
-    aperture(g, 'handle_wzN__gold', 0.1204, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.128)
-    fpost(g, 'handle_wzN__gold', -0.285, 0.128, SY, hw=0.014)
+    if angel:  # (the Seraph side is rebuilt in gun_sets_angel2.py)
+        aperture(g, 'handle_wzN__gold', 0.1204, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.128)
+        fpost(g, 'handle_wzN__gold', -0.285, 0.128, SY, hw=0.014)
+    else:  # (slim sights, 16 Nov 2026, gun_sights.py: a low notch block on the handle's back, a thin hood on its front)
+        SG.notch(g, 'sight_wzN__gold', 0.1204, SY, 0.132, 0.036, depth=0.016, nw=0.5, nd=0.004)
+        SG.rifle_front(g, 'sight_wzN__gold', -0.285, SY, 0.122, w=0.026)
     if angel:  # the halo: a thick gold ring round the aim line over the front post, a glowing ring inside it
         for zc in (-0.17, -0.07, 0.03):  # three halos lying flat on the handle's top, under the sight line
             g.ring('handle_wzN__gold', 0.026, 0.017, (0, 0.13, zc), (0, 0.137, zc), sides=16, bev=0.0012)
@@ -1206,9 +1224,13 @@ def _pistol_pair(skinid, pal, angel):
     g.prism('slide_wzA__shell', [(-0.248, -0.017), (-0.19, -0.017), (-0.19, 0.004), (0.054, 0.004), (0.054, 0.05),
                                   (0.042, 0.056), (-0.232, 0.056), (-0.248, 0.044)], 0.046, bev=0.007, wtop=0.038)
     g.box('slide_wzN__gold', (-0.024, 0.024), (0.02, 0.028), (-0.23, 0.04), bev=0.002)
-    g.box('slide_wzN__gold', (-0.006, 0.006), (0.05, SY), (-0.232, -0.218), bev=0.002)
-    for xs in ((-0.016, -0.005), (0.005, 0.016)):
-        g.box('slide_wzN__gold', xs, (0.05, SY + 0.002), (0.034, 0.05), bev=0.002)
+    if angel:  # (the Seraph side is rebuilt in gun_sets_angel2.py)
+        g.box('slide_wzN__gold', (-0.006, 0.006), (0.05, SY), (-0.232, -0.218), bev=0.002)
+        for xs in ((-0.016, -0.005), (0.005, 0.016)):
+            g.box('slide_wzN__gold', xs, (0.05, SY + 0.002), (0.034, 0.05), bev=0.002)
+    else:  # (slim sights, 16 Nov 2026, gun_sights.py: a pointed blade, a low notch block with two square ears)
+        SG.blade(g, 'slide_wzN__dark', -0.222, SY, 0.056, w=0.0055, depth=0.012)
+        SG.notch(g, 'slide_wzN__gold', 0.038, SY, 0.056, 0.03, depth=0.008, nw=0.3, nd=0.0045)
     tube(g, 'body_wzB__dark', 0.0092, -0.2515, -0.2, y=BY, bev=0.0015, hole=(0.0058, 0.02))
     g.prism('body_wzB__trim', [(-0.19, -0.017), (0.0, -0.017), (0.03, -0.024), (0.056, -0.012), (0.056, 0.005),
                                 (-0.19, 0.005)], 0.042, bev=0.005)

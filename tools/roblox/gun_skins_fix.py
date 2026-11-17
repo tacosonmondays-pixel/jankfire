@@ -10,6 +10,7 @@ import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
 from gun_models_c3 import loft
+import gun_sights as SG
 
 R2 = math.sqrt(0.5)
 
@@ -203,7 +204,7 @@ def ar_keytar_v2():
     g.prism('head_wzB__dark', HEAD, 2 * HW, bev=0.008)
     for sx in (-1, 1):
         g.prism('head_wzA__fin', inset(HEAD, 0.009), 0.006, x=sx * (HW + 0.002), bev=0.0025)
-    g.prism('sight_wzB__dark', [(-0.674, 0.066), (-0.634, 0.066), (-0.648, SY), (-0.662, SY)], 0.013, bev=0.003)
+    g.prism('sight_wzB__dark', [(-0.672, 0.0805), (-0.636, 0.0805), (-0.65, SY), (-0.658, SY)], 0.006, bev=0.0015)  # (slim)
     for zc, yc in ((-0.628, 0.04), (-0.676, 0.022)):   # (a post and a round button: tuner pegs, not bolts)
         flank_disc(g, 'head_wzN__steel', 0.0065, -0.001, 0.012, zc, yc, -HW - 0.005, sides=16, bev=0.0015)
         g.ball('head_wzN__steel', 0.0105, (-HW - 0.005 - 0.016, yc, zc), sub=2)
@@ -229,12 +230,8 @@ def ar_keytar_v2():
     g.cyl('stock_wzN__steel', 0.0065, (0, -0.2, 0.484), (0, -0.2, 0.5), sides=8, bev=0.0015)
     g.cyl('stock_wzN__steel', 0.011, (0, -0.2, 0.496), (0, -0.2, 0.504), sides=8, bev=0.002)
 
-    # ---- the rear sight: a dark notch block on the top (the notch's floor just under the aim line)
-    g.prism('sight_wzB__dark', [(0.198, 0.072), (0.262, 0.072), (0.262, SY - 0.002), (0.214, SY - 0.002)], 0.04,
-            bev=0.004)
-    for sx in (-1, 1):
-        g.prism('sight_wzB__dark', [(0.214, SY - 0.006), (0.262, SY - 0.006), (0.262, 0.13), (0.232, 0.13)], 0.0135,
-                bev=0.003, x=sx * 0.01325)
+    # ---- the rear sight (slim sights, 16 Nov 2026, gun_sights.py): a thin dark ring low on the top, on a short stem
+    SG.rifle_rear(g, 'sight_wzB__dark', 0.234, SY, 0.095, w=0.034, ears=False)
 
     # ---- the volume knob on the left flank (node "charge"): a steel skirt, the dark knob, a white pointer
     kz, ky = 0.14, 0.02

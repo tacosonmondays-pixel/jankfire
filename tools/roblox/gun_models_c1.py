@@ -1,6 +1,7 @@
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit_c import *
+import gun_sights as SG
 # VERSION C, part 1 (rules and shared pieces: gunkit_c.py; the worked example, the Assault Rifle: gun_models_c.py): the
 # SMG (MP5A2), Hat Trick (FAMAS), Belt Sander (M249), Second Opinion (SVD) and Sniper (Remington 700 / M40).
 #   blender -b --factory-startup -P tools/roblox/gun_models_c.py -- <out_dir> smg burst lmg dmr sniper
@@ -81,17 +82,13 @@ def smg():
     # barrel, the muzzle collar
     tube(g, 'barrel_wzB__dark', 0.0135, -0.352, -0.29, y=BY, bev=0.003)
     tube(g, 'barrel_wzB__dark', 0.0175, -0.37, -0.341, y=BY, bev=0.004, hole=(0.0082, 0.02))
-    # the hooded front post: a block round barrel and tube, a ring hood, the post inside it (its top the aim line)
-    FZ = -0.299
-    g.box('sight_wzN__frame', (-0.017, 0.017), (BY - 0.017, 0.045), (FZ - 0.014, FZ + 0.014), bev=0.005)
-    g.ring('sight_wzN__frame', 0.0195, 0.0128, (0, SY, FZ - 0.011), (0, SY, FZ + 0.011), sides=8, bev=0.003)
-    g.box('sight_wzN__frame', (-0.0052, 0.0052), (0.036, SY), (FZ - 0.0055, FZ + 0.0055), bev=0.0015)
-    # the drum rear sight: an aperture on the aim line between the drum's two ends, on a foot
+    # the sights (slim sights, 16 Nov 2026, gun_sights.py; near-black): a slim clamp round barrel and tube carrying a
+    # thin hood with a pointed post (its tip the aim point), a low notch block on the cover's back
+    FZ = -0.306  # (the clamp's front face 9 mm ahead of the tube's end: no two faces close together)
+    g.box('sight_wzN__dark', (-0.0135, 0.0135), (BY - 0.0145, 0.044), (FZ - 0.007, FZ + 0.007), bev=0.003)
+    SG.rifle_front(g, 'sight_wzN__dark', FZ, SY, 0.044, w=0.026, depth=0.007)
     RZ = 0.102
-    g.box('sight_wzN__frame', (-0.022, 0.022), (0.04, 0.05), (RZ - 0.02, RZ + 0.02), bev=0.004)
-    aperture(g, 'sight_wzN__frame', RZ, SY, ro=0.0175, ri=0.0082, zt=0.02)
-    for sx in (-1, 1):
-        g.cyl('sight_wzN__frame', 0.0185, (sx * 0.0095, SY, RZ), (sx * 0.0215, SY, RZ), sides=8, bev=0.003)
+    SG.notch(g, 'sight_wzN__dark', RZ, SY, 0.048, 0.03, depth=0.008, nw=0.34, nd=0.0035)
     # magazine well, the slim curved magazine (node "mag"), a rib down its side, a teal base plate
     g.box('body_wzB__frame', (-0.025, 0.025), (-0.07, -0.03), (-0.158, -0.058), bev=0.005)
     MF, MB = [(-0.148, -0.05), (-0.15, -0.13), (-0.185, -0.208)], [(-0.07, -0.05), (-0.073, -0.13), (-0.11, -0.205)]
@@ -264,12 +261,11 @@ def lmg():
     g.prism('belt_wzN__grit', stadium(-0.505, -0.215, -0.036, 0.03), 0.072, bev=0.004)
     for z in (-0.475, -0.245):
         g.cyl('roller_wzN__frame', 0.023, (-0.046, -0.036, z), (0.046, -0.036, z), sides=8, bev=0.004)
-    # sights: the rear aperture on a block behind the cover (an elevation knob on its right), the tall front post
-    g.box('sight_wzN__frame', (-0.024, 0.024), (0.05, 0.074), (0.092, 0.14), bev=0.005)
-    aperture(g, 'sight_wzN__frame', 0.112, SY, ro=0.018, ri=0.0088, zt=0.02, base=0.07)
-    g.cyl('sight_wzN__frame', 0.012, (0.022, 0.062, 0.118), (0.037, 0.062, 0.118), sides=8, bev=0.003)
-    g.box('sight_wzN__frame', (-0.022, 0.022), (BY - 0.022, 0.045), (-0.812, -0.778), bev=0.005)
-    post(g, 'sight_wzN__frame', -0.795, 0.04, SY, hw=0.02, ear=0.011, zt=0.03)
+    # sights (slim sights, 16 Nov 2026, gun_sights.py; near-black): a thin ring on a narrow stem behind the cover, a
+    # thin hood with a pointed post on a tall narrow stem from a collar round the barrel
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.112, SY, 0.052, w=0.038, ears=False)
+    g.ring('sight_wzN__dark', 0.0215, 0.0165, (0, BY, -0.803), (0, BY, -0.787), sides=8, bev=0.002)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.795, SY, BY + 0.0205, w=0.032)
     # the charging handle on the right, the link chute (port) on the right
     g.box('body_wzB__dark', (0.038, 0.056), (0.0, 0.024), (-0.182, -0.15), bev=0.004)
     g.box('trim_wzN__black', (0.0385, 0.042), (0.016, 0.044), (-0.11, -0.01), bev=0.001)
@@ -317,37 +313,24 @@ def dmr():
     # the gas block, the long barrel, the hooded front post, the slotted flash hider
     g.box('barrel_wzB__dark', (-0.02, 0.02), (BY - 0.019, 0.056), (-0.575, -0.528), bev=0.005)
     tube(g, 'barrel_wzB__dark', 0.019, -0.82, -0.52, y=BY, bev=0.003)
-    FZ = -0.785
-    g.box('barrel_wzB__dark', (-0.016, 0.016), (BY - 0.016, 0.054), (FZ - 0.016, FZ + 0.016), bev=0.004)
-    g.ring('barrel_wzB__dark', 0.0165, 0.011, (0, 0.066, FZ - 0.011), (0, 0.066, FZ + 0.011), sides=8, bev=0.003)
-    g.box('barrel_wzB__dark', (-0.005, 0.005), (0.05, 0.068), (FZ - 0.005, FZ + 0.005), bev=0.0015)
+    # (slim sights, 16 Nov 2026: one sight type a gun: the scope gun's iron front sight is gone)
     tube(g, 'barrel_wzB__dark', 0.0205, -0.8915, -0.808, y=BY, bev=0.004, hole=(0.0095, 0.03))
     for ang in (45, 135, 225, 315):
         g.xprism('trim_wzN__black', rot_rect(0, BY, 0.012, 0.0075, ang, r0=0.0165), -0.874, -0.824, bev=0.001)
-    # the scope over the aim line: a tube, the objective bell with pale glass, a purple band, the square turret block
-    # (a knob on top and one on the right), the long eyepiece and its rubber cup
-    tube(g, 'scope_wzN__frame', 0.024, -0.14, 0.05, y=SY, bev=0.004)
-    tube(g, 'scope_wzN__frame', 0.032, -0.215, -0.168, y=SY, bev=0.005, hole=(0.0255, 0.012))
-    tube(g, 'scope_wzN__frame', 0.031, -0.172, -0.128, y=SY, bev=0.003, r2=0.024)
-    tube(g, 'lens_wzN__glow', 0.0258, -0.204, -0.2, y=SY, bev=0)
-    tube(g, 'scope_wzA__body', 0.0262, -0.118, -0.098, y=SY, bev=0.002)
-    g.box('scope_wzN__frame', (-0.028, 0.028), (SY - 0.022, SY + 0.025), (-0.066, -0.008), bev=0.008)
-    g.cyl('scope_wzN__frame', 0.0165, (0, SY + 0.02, -0.037), (0, SY + 0.042, -0.037), sides=8, bev=0.004)
-    g.cyl('scope_wzN__frame', 0.015, (0.024, SY, -0.037), (0.046, SY, -0.037), sides=8, bev=0.004)
-    tube(g, 'scope_wzN__frame', 0.024, 0.045, 0.1, y=SY, bev=0.003, r2=0.028)
-    tube(g, 'scope_wzN__dark', 0.03, 0.162, 0.096, y=SY, bev=0.006, hole=(0.021, 0.012))
-    tube(g, 'lens_wzN__glow', 0.0212, 0.151, 0.147, y=SY, bev=0)
-    # the side mount: from a rail on the receiver's left, over the cover, up under the scope; its clamp lever
-    g.xprism('scope_wzN__frame', [(-0.052, 0.0), (-0.0305, 0.0), (-0.0305, 0.073), (0.014, 0.073), (0.014, 0.099),
-                                  (-0.052, 0.099)], -0.086, 0.044, bev=0.004)
-    g.cyl('scope_wzN__dark', 0.0095, (-0.051, 0.03, -0.03), (-0.064, 0.03, -0.03), sides=8, bev=0.003)
-    # the second opinion: a small round optic on the mount's left edge, beside the first, its pale lens toward you
-    OX, OY = -0.048, SY - 0.006
-    tube(g, 'scope_wzN__frame', 0.0145, -0.045, 0.05, y=OY, x=OX, bev=0.004)
-    tube(g, 'scope_wzN__frame', 0.0175, -0.075, -0.04, y=OY, x=OX, bev=0.004, hole=(0.0125, 0.008))
-    tube(g, 'lens_wzN__glow', 0.0126, -0.068, -0.065, y=OY, x=OX, bev=0)
-    tube(g, 'scope_wzA__body', 0.0155, 0.022, 0.034, y=OY, x=OX, bev=0.002)
-    tube(g, 'lens_wzN__glow', 0.0105, 0.05, 0.053, y=OY, x=OX, bev=0)
+    # the scope (slim sights, 16 Nov 2026, gun_sights.py): an eight-sided tube with a bell at each end, the lenses sunk
+    # in near-black rims (a faint glint behind the front one), one turret, the purple band; on two narrow ring mounts
+    g.slot('glass', '5f7484', 'g', 0.7); g.slot('glint', 'b9d6e6', 'n'); g.slot('dot', 'b07dff', 'n')
+    g.slot('pane', '9fb4c4', 'g', 0.3)
+    SG.scope_slim(g, 'scope_wzN__frame', -0.215, 0.162, SY, r=0.0185, lens_piece='lens_wzN__glass', glint_piece='lens_wzN__glint',
+                  mounts=((-0.072, 0.0795), (0.024, 0.0795)), band_piece='scope_wzA__body', band_z=-0.125)
+    # the side mount, slim: a plate on the receiver's left, an arm over the cover under the scope; its clamp lever
+    g.xprism('scope_wzN__frame', [(-0.0385, 0.004), (-0.022, 0.004), (-0.022, 0.069), (0.012, 0.069), (0.012, 0.0795),
+                                  (-0.0385, 0.0795)], -0.084, 0.04, bev=0.002)
+    g.box('scope_wzN__frame', (-0.0625, -0.037), (0.069, 0.0795), (-0.042, -0.018), bev=0.002)
+    g.cyl('scope_wzN__dark', 0.0085, (-0.0375, 0.03, -0.03), (-0.0495, 0.03, -0.03), sides=8, bev=0.002)
+    # the second opinion: a small reflex sight on the arm's left end, beside the scope, its purple dot toward you
+    SG.red_dot(g, 'scope_wzN__dark', 'lens_wzN__pane', 'dot_wzN__dot', -0.03, 0.097, 0.0795, bw=0.0105, tw=0.0085,
+               win_w=0.0055, win_h=0.005, depth=0.009, x=-0.05)
     # the magazine (node "mag"): short, a little curved, two ribs, a purple base plate
     MF, MB = [(-0.088, -0.03), (-0.091, -0.1), (-0.105, -0.162)], [(0.03, -0.03), (0.028, -0.1), (0.016, -0.166)]
     fb, bb = curved_mag(g, 'mag_wzB__dark', MF, MB, 0.054, bev=0.008)
