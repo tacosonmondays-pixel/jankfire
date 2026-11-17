@@ -8,8 +8,9 @@
 --     the next); the Reset button is off (a reset would cost a life)
 --   * duck rain: each sky duck's shadow and blinking ring where it lands, the duck falling, LOOK UP when it's yours
 --   * randomizer: what you rolled, for a moment, on every spawn
+--   * team modes: your side under the scoreboard; tags spin and bob; a level end reads DRAW
 -- everything comes from the server: player attributes (ModeId, ModeMatch, ModeLadder, ModeRung, ModeLead, ModeLives,
--- ModeBullets, ModeOut, ModeLeft) and ItemFx { k = "skyduck" }
+-- ModeBullets, ModeOut, ModeLeft, ModeTeam, ModeScore), ItemFx { k = "skyduck" } and workspace.JankModeTags
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -80,7 +81,8 @@ local function draw()
 	strip.Visible = inMatch
 	if not inMatch then lastKey = ""; return end
 	local key = table.concat({ tostring(k), tostring(me:GetAttribute("ModeRung")), tostring(me:GetAttribute("ModeLead")), tostring(me:GetAttribute("ModeLives")),
-		tostring(me:GetAttribute("ModeBullets")), tostring(me:GetAttribute("ModeOut")), tostring(me:GetAttribute("ModeLadder")) }, "/")
+		tostring(me:GetAttribute("ModeBullets")), tostring(me:GetAttribute("ModeOut")), tostring(me:GetAttribute("ModeLadder")),
+		tostring(me:GetAttribute("ModeTeam")) }, "/")
 	if key == lastKey then return end
 	lastKey = key
 	for _, c in pips:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
@@ -118,6 +120,14 @@ local function draw()
 		label(11, "LIVES")
 		gap(12, 4)
 		for i = 1, ModeConfig.OITC.lives do pip(12 + i, 10, 10, if i <= lives then T.TEXT else T.TRACK, 0) end
+	elseif k == "tdm" or k == "tags" then
+		-- your side, in its colour, and what the side is playing to
+		pips.Visible = false
+		strip.Size = UDim2.fromOffset(0, 30)
+		local side = ModeConfig.SIDES[tonumber(me:GetAttribute("ModeTeam")) or 0]
+		local to = if k == "tdm" then ModeConfig.TDM.target else ModeConfig.TAGS.target
+		line.Text = (if side then quiet("YOU ARE") .. "  " .. ('<font color="%s">%s</font>'):format(side.hex, side.name) else "")
+			.. "      " .. quiet(if k == "tags" then "TAGS TO" else "KILLS TO") .. "  " .. tostring(to)
 	else
 		pips.Visible = false
 		strip.Size = UDim2.fromOffset(0, 30)
@@ -142,6 +152,12 @@ Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	local c3, c4 = head:FindFirstChild("Cell3"), head:FindFirstChild("Cell4")
 	if c3 and c3:IsA("TextLabel") then c3.Text = tostring(cols[1] or "KILLS") end
 	if c4 and c4:IsA("TextLabel") then c4.Text = tostring(cols[2] or "DEATHS") end
+	-- (a team mode that ended level: a draw, not "nobody wins")
+	local def = if type(r.mode) == "string" then ModeConfig.byId[r.mode] else nil
+	if def and def.sides == 2 and r.winner == nil then
+		local title = head.Parent and head.Parent:FindFirstChild("Title")
+		if title and title:IsA("TextLabel") then task.defer(function() title.Text = "DRAW"; title.TextColor3 = T.TEXT end) end
+	end
 	-- (a mode's final score under the result: the scoreboard's last line, which can land a frame after this message)
 	if r.mode then
 		task.delay(0.1, function()
@@ -305,6 +321,19 @@ local function skyDuck(m: any)
 		end
 	end)
 end
+-- ------------------------------------------------------------------ tags: each spins (3 rad/s) and bobs (0.15 m)
+RunService.RenderStepped:Connect(function()
+	local f = workspace:FindFirstChild("JankModeTags")
+	if not f then return end
+	local t = os.clock()
+	for _, mdl in f:GetChildren() do
+		local at = mdl:GetAttribute("At")
+		if mdl:IsA("Model") and typeof(at) == "Vector3" then
+			mdl:PivotTo(CFrame.new(at + Vector3.new(0, math.sin(t * 2.4) * 0.15 * S, 0)) * CFrame.Angles(0, t * 3, 0))
+		end
+	end
+end)
+
 Remotes:WaitForChild("ItemFx").OnClientEvent:Connect(function(m: any)
 	if type(m) == "table" and m.k == "skyduck" and typeof(m.p) == "Vector3" then skyDuck(m) end
 end)

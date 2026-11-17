@@ -1120,8 +1120,8 @@ These are set as env vars on the web server. Mirror the useful ones as server `C
 
 ## Roblox adaptations (the classic modes on the Play screen, 17 Nov 2026)
 
-The first four classic modes are live on the Play screen's MODES tab: **Gun Game, One in the Chamber, Duck Rain and
-Randomizer**. The code:
+Six classic modes are on the Play screen's MODES tab: **Gun Game, One in the Chamber, Duck Rain, Randomizer, Team
+Deathmatch and Tags**. The code:
 - `server/Modes.luau`: the rules.
 - `shared/ModeConfig.luau`: the numbers, the cards and the ladder pools.
 - `server/ModesServer.server.luau`: the wiring and the Studio test hook.
@@ -1129,12 +1129,21 @@ Randomizer**. The code:
 
 The rules follow the sections above. Below is every place where the Roblox version had to differ, and why.
 
-**Shared by all four**
+**Tested in Studio** (17 Nov 2026, place versions 548 and 567). The photos are in `roblox/docs/modes/`: the MODES tab, and
+each mode's HUD and result.
+- Gun Game, One in the Chamber, Duck Rain, Randomizer and Tags were each played to their win, with Studio stand-ins as
+  the other players.
+- Gun Game went through the real queue: a party, the card, FIND, the 15 s wait.
+- The other four were started with `ServerStorage.JankModeTest`.
+- Team Deathmatch runs on the same team code as Tags, but it hasn't been played to its win yet.
+
+**Shared by all of them**
 - **Who plays:** parties of 1-4 queue for a mode, and parties are kept whole.
-  - A match takes 2-8 players. It starts at 8, or at 2 or more once the oldest party has waited 15 s
+  - A free-for-all match takes 2-8 players. It starts at 8, or at 2 or more once the oldest party has waited 15 s
     (`ModeConfig.MIN/MAX/FILL`, `Queue.luau`'s free-for-all branch). A party of 2+ can also start on its own after the
     wait.
-  - All four modes are free for all, so party mates fight each other too. Every player is their own side in `Matches`.
+  - The four free-for-all modes put party mates against each other too: every player is their own side in `Matches`.
+    The team modes keep parties together (below).
 - **No bots, so the Online numbers:** the web has an Online and a Bots value for each target and clock. There are no
   bots on Roblox, so the Online ones apply: 20 kills, 360 s, and 600 s for Gun Game.
 - **Match flow:** a mode match runs through `Matches.startMode`.
@@ -1219,6 +1228,28 @@ The rules follow the sections above. Below is every place where the Roblox versi
 - Each life rolls one weapon per slot from every weapon on Roblox in that slot (the Shredder included: a spawn hands it
   out).
 - The server keeps the roll as the kit, so a hit from anything else is refused. The web game doesn't make that check.
+
+**Team Deathmatch and Tags (the team modes)**
+- **Sides:** two sides, **PINK and CYAN**: the duels' and pads' own colours (`ModeConfig.SIDES`), not the web's red and
+  blue, so a side looks the same everywhere in the game. "YOU ARE PINK" opens the match, and the strip under the
+  scoreboard keeps saying it.
+- **Who plays:** parties are kept on one side, 1-4 a side.
+  - `Queue.luau`'s team branch puts whole parties on the two sides with at most one player between them, seating as
+    many as it can.
+  - A match starts at 4v4, or once the oldest party has waited 15 s with both sides filled.
+  - Without bots, the Online targets apply: 40 team kills, 25 confirms, 360 s.
+- **Spawns:** each side spawns on its own end (the arena's `att` / `def` team spawns), farthest from the nearest
+  enemy. Teammates can't hurt each other (`Matches.allow`, as in the duels).
+- **The end:** a side reaching the target, or the higher score when the clock runs out. Level is a **DRAW**: no winner,
+  and both sides take place 1. A side whose players all leave loses.
+- **Tags:**
+  - A tag is a small plate in the side's colour in a white frame. It's server-made and can't be hit by shots or
+    collided with. Each client spins (3 rad/s) and bobs (0.15 m) its own copy.
+  - It drops under the victim (a ray 60 m down, 0.9 m over the floor), else under the killer, and lasts 30 s.
+  - Pickups are checked every frame on the server (1.9 m from your middle), not by `Touched`. A running player covers
+    more than a tag's reach in one 0.15 s Matches tick.
+  - The callouts are KILL CONFIRMED +1 and KILL DENIED.
+- **Result:** `m.places` is per side. `m.ffa` isn't set, so Party Ranked rates a team mode like the duels.
 
 ---
 

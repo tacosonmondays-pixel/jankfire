@@ -52,8 +52,18 @@ ModeConfig.DUCKRAIN = {
 	lookR = 3.5 * S, lookY = 4 * S, credit = 6,
 }
 
--- the cards (PlayConfig.addMode): id, name, the card's rules line. kind = which rules run it. all four are free for all
--- (ffa: Queue packs whole parties, every player their own side)
+-- web modes.js TARGETS (Online) for the team modes: team deathmatch 40 team kills, tags 25 confirms, 360 s; a tag lasts
+-- 30 s and is picked up within 1.9 m of your centre (feet + 0.9 m), placed 0.9 m over the floor (room.js dropTag)
+ModeConfig.TDM = { target = 40, time = 360 }
+ModeConfig.TAGS = { target = 25, time = 360, life = 30, grab = 1.9 * S, up = 0.9 * S, drop = 60 * S }
+-- the two sides of a team mode: the duels' own (Matches TEAM_NAMES / TEAM_HEX: the pads' pink and cyan), not the web's
+-- red and blue, so a side looks the same everywhere in the game
+ModeConfig.SIDES = { { name = "PINK", hex = "#ff4fd8" }, { name = "CYAN", hex = "#37d6ff" } }
+-- a team mode's queue (Queue.luau's team branch): whole parties on one side each, 1-4 a side, the sides at most one
+-- apart; it goes at 4v4, or once the oldest has waited FILL s with both sides filled
+
+-- the cards (PlayConfig.addMode): id, name, the card's rules line. kind = which rules run it. ffa = free for all (Queue
+-- packs whole parties, every player their own side); sides = 2: a team mode
 ModeConfig.LIST = {
 	{ id = "gun", kind = "gun", name = "GUN GAME", sub = "19 weapons · a kill moves you up · the last rung wins",
 		rule = "a kill moves you up · a melee death knocks you down" },
@@ -63,13 +73,23 @@ ModeConfig.LIST = {
 		rule = "watch for the shadows · first to 20" },
 	{ id = "rand", kind = "dm", name = "RANDOMIZER", sub = "free for all · a random loadout every life · first to 20",
 		rule = "a random loadout every life · first to 20" },
+	{ id = "tdm", kind = "tdm", sides = 2, name = "TEAM DEATHMATCH", sub = "two teams · every kill scores · first to 40",
+		rule = "every kill scores for your team · first to 40" },
+	{ id = "tags", kind = "tags", sides = 2, name = "TAGS", sub = "two teams · grab enemy tags to score · first to 25",
+		rule = "grab enemy tags to score · grab your team's to deny" },
 }
 ModeConfig.byId = {} :: { [string]: any }
 for _, m in ModeConfig.LIST do
 	ModeConfig.byId[m.id] = m
-	-- (teams x size keep a queue without the free-for-all branch from ever forming one: 8 x 4 = 32 seats)
-	PlayConfig.addMode({ id = m.id, name = m.name, sub = m.sub, teams = ModeConfig.MAX, size = PlayConfig.PARTY_MAX, ffa = true,
-		min = ModeConfig.MIN, max = ModeConfig.MAX, fill = ModeConfig.FILL, pad = "modes" })
+	if m.sides == 2 then
+		-- (a queue without the team branch would need a full 4v4 to form one)
+		PlayConfig.addMode({ id = m.id, name = m.name, sub = m.sub, teams = 2, size = PlayConfig.PARTY_MAX, sides = 2,
+			fill = ModeConfig.FILL, pad = "modes" })
+	else
+		-- (teams x size keep a queue without the free-for-all branch from ever forming one: 8 x 4 = 32 seats)
+		PlayConfig.addMode({ id = m.id, name = m.name, sub = m.sub, teams = ModeConfig.MAX, size = PlayConfig.PARTY_MAX, ffa = true,
+			min = ModeConfig.MIN, max = ModeConfig.MAX, fill = ModeConfig.FILL, pad = "modes" })
+	end
 end
 
 return ModeConfig

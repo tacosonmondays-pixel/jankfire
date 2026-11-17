@@ -117,11 +117,62 @@ local function formFfa(es: { Entry }, m: any, ranked: boolean, now: number): { {
 	return nil
 end
 
+-- a team mode (an entry with sides = 2: the classic team modes, Shared.ModeConfig): whole parties, each on one side, 1 to
+-- size a side, the two sides at most one apart. the oldest entry is the anchor (ranked: the others inside both
+-- windows); of the entries that could join it, the split that seats the most players (then the most even) wins. it goes
+-- at size a side, or once the anchor has waited fill s. pure
+local function formTeams(es: { Entry }, m: any, ranked: boolean, now: number): { { Entry } }?
+	local cap = m.size or PlayConfig.PARTY_MAX
+	local open = {}
+	for _, e in es do if e.state == "search" and e.size <= cap then table.insert(open, e) end end
+	table.sort(open, function(a, b) return a.since < b.since end)
+	local fill = m.fill or 15
+	for ai, anchor in open do
+		local cands = { anchor }
+		local wa = Ranked.window(now - anchor.since)
+		for j, e in open do
+			if j ~= ai and #cands < 8 then
+				if not ranked or math.abs(e.rating - anchor.rating) <= math.min(wa, Ranked.window(now - e.since)) then table.insert(cands, e) end
+			end
+		end
+		-- every way to put the others out, on the anchor's side or on the other (3^7 at most)
+		local n = #cands
+		local best: { { Entry } }? = nil
+		local bestN, bestGap = 0, math.huge
+		local side = table.create(n, 0)
+		local function rec(i: number, a: number, b: number)
+			if a > cap or b > cap then return end
+			if i > n then
+				if b < 1 or math.abs(a - b) > 1 then return end
+				local tot = a + b
+				if tot > bestN or (tot == bestN and math.abs(a - b) < bestGap) then
+					local A, B = {}, {}
+					for k = 1, n do
+						if side[k] == 1 then table.insert(A, cands[k]) elseif side[k] == 2 then table.insert(B, cands[k]) end
+					end
+					best, bestN, bestGap = { A, B }, tot, math.abs(a - b)
+				end
+				return
+			end
+			local sz = cands[i].size
+			if i == 1 then side[1] = 1; rec(2, a + sz, b); return end
+			side[i] = 0; rec(i + 1, a, b)
+			side[i] = 1; rec(i + 1, a + sz, b)
+			side[i] = 2; rec(i + 1, a, b + sz)
+			side[i] = 0
+		end
+		rec(1, 0, 0)
+		if best and (bestN >= 2 * cap or now - anchor.since >= fill) then return best end
+	end
+	return nil
+end
+
 -- the teams for one match from this queue's searching entries (oldest first), or nil. pure
 function Queue.form(es: { Entry }, mode: string, ranked: boolean, now: number): { { Entry } }?
 	local m = PlayConfig.byId[mode]
 	if not m then return nil end
 	if (m :: any).ffa then return formFfa(es, m, ranked, now) end
+	if (m :: any).sides == 2 then return formTeams(es, m, ranked, now) end
 	local open = {}
 	for _, e in es do if e.state == "search" and e.size <= m.size then table.insert(open, e) end end
 	table.sort(open, function(a, b) return a.since < b.since end)
