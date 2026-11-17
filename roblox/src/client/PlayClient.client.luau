@@ -148,7 +148,8 @@ end)
 
 -- a test hook (Play tests driven from Studio can't call into this script's modules): set the local player's attribute
 -- PlayTest to "play", "open", "close", "tab:duels", "tab:modes", "invite", "uninvite", "fake:844x390", "real", "state",
--- "party", "unparty", "partyfake:844x390" (the PARTY panel)
+-- "party", "unparty", "partyfake:844x390" (the PARTY panel), "badges" / "nobadges" (both ladders on one sheet),
+-- "samplemodes" (Studio: three sample classic modes on the MODES tab; JankPlayTest "samplemodes" for the server)
 me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 	local v = me:GetAttribute("PlayTest")
 	if type(v) ~= "string" or v == "" then return end
@@ -164,6 +165,9 @@ me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 		local w, h = string.match(a, "^(%d+)x(%d+)$")
 		if w then PlayUI.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
 	elseif cmd == "real" then PlayUI.fakeScreen(nil)
+	elseif cmd == "badges" then PlayUI.badgeSheet(true)
+	elseif cmd == "nobadges" then PlayUI.badgeSheet(false)
+	elseif cmd == "samplemodes" then PlayUI.sampleModes()
 	elseif cmd == "party" then PartyUI.open()
 	elseif cmd == "unparty" then PartyUI.close()
 	elseif cmd == "partyfake" then

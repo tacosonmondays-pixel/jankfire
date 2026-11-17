@@ -70,20 +70,22 @@ end
 
 -- a member's rank view in a mode (stand-ins carry a test rating)
 local function rankView(m: Member, mode: string): any
-	if not Ranked.SIZE[mode] then return nil end
+	local key = PlayConfig.ratingKey(mode)
+	if not Ranked.SIZE[key] and key ~= Ranked.PARTY_KEY then return nil end
 	if m.player then
 		local all = RankedData.modes(m.player)
-		return all[mode]
+		return all[key]
 	end
-	local q = m.rating and m.rating[mode]
-	return RankedData.view(q, mode)
+	local q = m.rating and m.rating[key]
+	return RankedData.view(q, key)
 end
 local function ratingFor(m: Member, mode: string): (number, number)
+	local key = PlayConfig.ratingKey(mode)
 	if m.player then
-		local r, rd = RankedData.rating(m.player, mode)
+		local r, rd = RankedData.rating(m.player, key)
 		return r, rd
 	end
-	local q = m.rating and m.rating[mode]
+	local q = m.rating and m.rating[key]
 	if q then return q.r, q.rd end
 	return Ranked.START.r, Ranked.START.rd
 end
@@ -189,6 +191,11 @@ function Party.homeOf(p: Player): CFrame?
 	return nil
 end
 function Party.inLobby(p: Player): boolean return Party.homeOf(p) ~= nil end
+-- how many are in this player's party (stand-ins too), 0 when they have none (the quests session: "play 2 matches with your party")
+function Party.sizeOf(p: Player): number
+	local pt = byPlayer[p]
+	return if pt then #pt.members else 0
+end
 
 -- ------------------------------------------------------------------ the queue's side
 local function dropEntry(pt: PartyT, why: string?)
@@ -561,7 +568,7 @@ end
 local function start(f: Found): boolean
 	local cfg = PlayConfig.byId[f.mode]
 	local sides: { { Player } } = {}
-	local rated = { mode = f.mode, teams = {} }
+	local rated = { mode = f.mode, rkey = PlayConfig.ratingKey(f.mode), teams = {} }
 	local standIns = false
 	for t, list in f.teams do
 		sides[t], rated.teams[t] = {}, {}
@@ -799,7 +806,7 @@ local function newStandIn(rating: number?, id: number?): Member
 	standN += 1
 	local name = NPC_NAMES[(standN - 1) % #NPC_NAMES + 1]
 	local m: Member = { id = id or -standN, name = name, display = name, rating = {} }
-	for _, mode in Ranked.MODES do
+	for _, mode in { "1v1", "2v2", "3v3", "4v4", Ranked.PARTY_KEY } do
 		local q = Ranked.fresh()
 		q.r = rating or 1500; q.rd = 90; q.n = 12; q.placed = true
 		;(m.rating :: any)[mode] = q
@@ -845,6 +852,14 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 		place(pt)
 		pushParty(pt)
 		return { id = m.id, name = m.name }
+	elseif op == "samplemodes" then
+		-- (the same three sample classic modes the client's PlayTest "samplemodes" shows)
+		if not PlayConfig.byId.sample_qp then
+			PlayConfig.addMode({ id = "sample_qp", name = "QUICK PLAY", sub = "free for all · drop in any time", teams = 2, size = 4, pad = "4v4" })
+			PlayConfig.addMode({ id = "sample_bomb", name = "PLANT & DEFUSE", sub = "attackers plant, defenders defuse", teams = 2, size = 4, pad = "4v4" })
+			PlayConfig.addMode({ id = "sample_zm", name = "ZOMBIES", sub = "your squad against the rounds", teams = 2, size = 4, pad = "4v4", ranked = false })
+		end
+		return #PlayConfig.EXTRA
 	elseif op == "state" then
 		local out = { parties = {}, queue = {}, founds = #founds, rooms = LobbyRooms.count(), pool = #standPool, invites = 0 }
 		for _, pt in parties do

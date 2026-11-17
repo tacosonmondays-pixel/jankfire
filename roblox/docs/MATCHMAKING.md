@@ -205,6 +205,65 @@ Rewards are not built.
 - `{ v, season, modes = { ["2v2"] = { r, rd, vol, n, w, l, peak, last, placed, lp, s0 } }, past = {}, recent = { last 10 },
   log = { this season's ranked matches }, fixed = { restores applied }, void? }`.
 
+### Party Ranked: the classic modes' ladder (17 Nov 2026)
+
+The owner: "You can play party mode ranked with funny more playful ranked. Maybe it starts at wet napkin, cardboard,
+paper bag etc to mimic the real ranked system".
+
+The MODES tab (JANKFIRE's classic modes, which a modes session adds through `PlayConfig.addMode`) has its own
+**PARTY RANKED** switch and ladder.
+
+- **The same machinery as the duels:** Glicko-2 MMR, 5 placements, 100 RP a division with the "34/100" bar, the
+  season field, the cheater restore.
+- **One rating for every classic mode**, kept under its own key (`modes.party` in the ranked save), so it never mixes
+  with the duels'. `PlayConfig.ratingKey(mode)` gives `"party"` for any mode added with `addMode` (they are ranked
+  unless they say `ranked = false`).
+  - Why one and not one per mode: the classic modes are many and each is played less than the duels. Per-mode ratings
+    would mean five placement runs and thin queues. One rating also matches the owner's words: "party mode ranked".
+  - A later split per mode only needs `ratingKey` to return the mode's id.
+- **The tiers mirror the duels one for one** (same RP edges, III/II/I, a top tier with no divisions), playful on
+  purpose. The owner wants these names funny, so the no-flavour-text rule doesn't apply to them; everything else on
+  screen stays plain.
+
+| duels | Party Ranked | its badge |
+|---|---|---|
+| BRONZE | WET NAPKIN | a pale damp napkin, corner folded, two drips |
+| SILVER | CARDBOARD | a box face, its flap seam and a strip of tape |
+| GOLD | PAPER BAG | a kraft bag with a crinkled top and a fold |
+| PLATINUM | DUCT TAPE | a grey roll with its core and a loose tail |
+| DIAMOND | SHEET METAL | a brushed plate with four rivets |
+| MASTER | BULLETPROOF GLASS | a framed pane with two clean sheen lines |
+| APEX | RUBBER DUCK | the game's duck, in a small three-point crown |
+
+- **Badges** are drawn from frames like the duels' shields, on their own square shapes. The division is 1 to 3 pips
+  under the badge, where the duels use chevrons.
+- **The switch's effect** is lighter than the duels' flames: soap bubbles rise up the panel, with a soft teal-to-pink
+  glow and a teal edge.
+- **The player card** gets `card.partyRanked` (only once played). The player-cards session draws it as a smaller
+  second badge.
+- **Free-for-all matches** (the classic modes session's Gun Game, One in the Chamber, Duck Rain, Randomizer: 2 to 8
+  players). The match says `m.ffa`, `m.places[team]` and `m.results`.
+  - **MMR:** each player gets one Glicko-2 period with a game against every other player: a win against each one they
+    placed above, a loss against each one above them, half against a shared place (`Ranked.updateMany`).
+  - **RP from the place** (`Ranked.placePoints`): +20 for first down to -20 for last, pulled toward the MMR's spot
+    like the duels. First gets at least +8, last at most -6.
+  - A leaver counts as last.
+  - **Cheat restore:** in an FFA match everyone faced the cheater, so every other player who lost RP or MMR in it gets
+    it back.
+  - The result card says the place: "2ND OF 6  ·  PARTY RANKED GUN GAME".
+
+**Tested 17 Nov, place version 538** (Studio Play, one player plus three sample modes from `samplemodes`):
+- The maths, from GOLD II 0/100 in a 6-player FFA: 1st +35 RP (MMR +86), 3rd +7 (MMR +17), 6th -35 (MMR -86).
+- The name at RP 734 on the Party ladder: PAPER BAG II.
+- The badge sheet (both ladders, every tier at III / II / I, unranked and in placements) and the MODES tab with
+  PARTY RANKED on: the bubbles, the rank block "PAPER BAG II 34/100", the bottom line "PARTY RANKED · QUICK PLAY",
+  the party panel showing the Party rank.
+- **Not tested yet:** a real classic-mode match rated on this ladder (the modes session's FFA matches and team
+  modes need their `Matches.startMode` to land), and the card's second badge (the player-cards session).
+
+![both ladders' badges](matchmaking/18_party_ranked_badges.jpg)
+![the MODES tab with PARTY RANKED on](matchmaking/19_party_ranked_modes_tab.jpg)
+
 ### When a cheater is caught (17 Nov 2026)
 
 The owner: "If someone is caught cheating give back any ranked stuff or stats!!". This works like Valorant's restore
@@ -289,9 +348,12 @@ the ratings, but they never enter a match. A match with stand-ins is held like a
 - `:Invoke("setranked", player, mode, { r, rd, n, placed, need })` and `:Invoke("resetranked", player)` (Studio
   store only)
 - `:Invoke("play", player)` / `:Invoke("leave", player)` what PLAY and LEAVE LOBBY do
+- `:Invoke("samplemodes")` three sample classic modes (QUICK PLAY, PLANT & DEFUSE, ZOMBIES unranked); use
+  `setranked` with mode `"party"` for the Party ladder
 
-Client side: the local player's attribute `PlayTest` = `play`, `open`, `close`, `tab:ranked`, `tab:casual`, `invite`,
-`uninvite`, `fake:844x390`, `real`, `state`. The remote also works from a Client `execute_luau`
+Client side: the local player's attribute `PlayTest` = `play`, `open`, `close`, `tab:duels`, `tab:modes`, `invite`,
+`uninvite`, `fake:844x390`, `real`, `state`, `badges` / `nobadges` (both ladders on one sheet), `samplemodes` (the
+same sample modes on the client). The remote also works from a Client `execute_luau`
 (`JankfireRemotes.Play:InvokeServer("find")`).
 
 A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match

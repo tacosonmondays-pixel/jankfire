@@ -137,6 +137,23 @@ Ranked.TIERS = {
 	{ id = "apex", name = "APEX" },
 } :: { Tier }
 Ranked.DIVS = { "III", "II", "I" }
+-- PARTY RANKED (17 Nov, the owner: "party mode ranked with funny more playful ranked. Maybe it starts at wet napkin,
+-- cardboard, paper bag etc to mimic the real ranked system"): the classic modes' ranked ladder. the same machinery as
+-- the duels (Glicko-2, placements, 100 RP a division, seasons, the cheater restore), one rating for all the classic
+-- modes, kept under its own key ("party") so the two never mix. its tiers mirror the duels' one for one, toughest last
+Ranked.LADDERS = {
+	duels = Ranked.TIERS,
+	party = {
+		{ id = "napkin", name = "WET NAPKIN" },
+		{ id = "cardboard", name = "CARDBOARD" },
+		{ id = "paperbag", name = "PAPER BAG" },
+		{ id = "ducttape", name = "DUCT TAPE" },
+		{ id = "sheetmetal", name = "SHEET METAL" },
+		{ id = "glass", name = "BULLETPROOF GLASS" },
+		{ id = "duck", name = "RUBBER DUCK" },
+	} :: { Tier },
+}
+Ranked.PARTY_KEY = "party" -- (the rating key in a save for every classic mode)
 Ranked.APEX_AT = 1800 -- RP where APEX starts (18 divisions under it)
 Ranked.PLACE_CAP = 1490 -- placements land at most here (DIAMOND I, 90/100)
 Ranked.RP = { win = 20, loss = 20, pull = 10, winMin = 8, winMax = 40, lossMin = 6, lossMax = 40 }
@@ -157,14 +174,16 @@ export type Rank = {
 }
 
 -- the rank a stored rating shows
-function Ranked.rankOf(p: Rating?): Rank
+-- (ladder: "duels" by default, or "party": the same numbers, its own names)
+function Ranked.rankOf(p: Rating?, ladder: string?): Rank
 	local q: any = p or Ranked.fresh()
 	local placed = q.placed == true
 	local lp = if type(q.lp) == "number" then q.lp else (if placed then Ranked.ladderOf(q.r) else Ranked.ladderOf(q.r))
 	lp = math.max(0, math.floor(lp))
 	local step = math.min(19, lp // 100 + 1)
-	local ti = math.min(#Ranked.TIERS, (step - 1) // 3 + 1)
-	local tier = Ranked.TIERS[ti]
+	local tiers = Ranked.LADDERS[ladder or "duels"] or Ranked.TIERS
+	local ti = math.min(#tiers, (step - 1) // 3 + 1)
+	local tier = tiers[ti]
 	local div: number? = if step <= 18 then (step - 1) % 3 + 1 else nil
 	local rp = if div then lp % 100 else lp - Ranked.APEX_AT
 	local need = q.need or Ranked.PLACEMENTS
@@ -230,6 +249,97 @@ function Ranked.apply(p: Rating, teamR: number, oppR: number, oppRd: number, won
 	local after = Ranked.rankOf(p)
 	return {
 		won = won, delta = delta, rpBefore = before.rp, rpAfter = after.rp, mmrDelta = round(p.r) - round(r0),
+		placedNow = p.placed == true and not wasPlaced,
+		promoted = wasPlaced and after.step > before.step, demoted = wasPlaced and after.step < before.step,
+		rankBefore = before, rankAfter = after,
+	}
+end
+
+-- ------------------------------------------------------------------ free-for-all (the classic modes: 2 to 8 players)
+-- one Glicko-2 period with a game against every other player: a win against each one you placed above, a loss against
+-- each one above you, half against a shared place. opps = { { r, rd, s } }
+function Ranked.updateMany(p: Rating, opps: { { r: number, rd: number, s: number } }): Rating
+	if #opps == 0 then return { r = p.r, rd = p.rd, vol = p.vol } end
+	local mu, phi, sig = (p.r - 1500) / Q, p.rd / Q, p.vol
+	local vInv, dSum = 0, 0
+	for _, o in opps do
+		local gg = g(o.rd / Q)
+		local E = math.clamp(1 / (1 + math.exp(-gg * (mu - (o.r - 1500) / Q))), 1e-6, 1 - 1e-6)
+		vInv += gg * gg * E * (1 - E)
+		dSum += gg * (o.s - E)
+	end
+	local v = 1 / vInv
+	local delta = v * dSum
+	local a = math.log(sig * sig)
+	local tau = Ranked.TAU
+	local function f(x: number): number
+		local ex = math.exp(x)
+		local d2 = phi * phi + v + ex
+		return ex * (delta * delta - phi * phi - v - ex) / (2 * d2 * d2) - (x - a) / (tau * tau)
+	end
+	local A, B = a, 0
+	if delta * delta > phi * phi + v then
+		B = math.log(delta * delta - phi * phi - v)
+	else
+		local k = 1
+		while f(a - k * tau) < 0 and k < 100 do k += 1 end
+		B = a - k * tau
+	end
+	local fA, fB = f(A), f(B)
+	local i = 0
+	while math.abs(B - A) > 1e-6 and i < 100 do
+		i += 1
+		local C = A + (A - B) * fA / (fB - fA)
+		local fC = f(C)
+		if fC * fB <= 0 then A, fA = B, fB else fA /= 2 end
+		B, fB = C, fC
+	end
+	local sig2 = math.exp(A / 2)
+	local phiS = math.sqrt(phi * phi + sig2 * sig2)
+	local phi2 = 1 / math.sqrt(1 / (phiS * phiS) + 1 / v)
+	local mu2 = mu + phi2 * phi2 * dSum
+	phi2 = math.clamp(phi2, Ranked.RD_MIN / Q, Ranked.RD_MAX / Q)
+	return { r = 1500 + Q * mu2, rd = Q * phi2, vol = sig2 }
+end
+
+-- the RP a placed FFA finish is worth: +20 for first down to -20 for last, pulled toward the MMR's spot like the duels,
+-- at least +8 for first and at most -6 for last
+function Ranked.placePoints(lp: number, r: number, place: number, n: number): number
+	local s = if n > 1 then (n - place) / (n - 1) else 1
+	local pull = math.clamp((Ranked.ladderOf(r) - lp) / Ranked.RP.pull, -15, 15)
+	local d = math.clamp(round(40 * s - 20 + pull), -Ranked.RP.lossMax, Ranked.RP.winMax)
+	if place == 1 then d = math.max(d, Ranked.RP.winMin) elseif place >= n then d = math.min(d, -Ranked.RP.lossMin) end
+	return d
+end
+
+-- an FFA finish for one player: like Ranked.apply, from a place (1 = first) among n
+function Ranked.applyFfa(p: Rating, place: number, n: number, opps: { { r: number, rd: number, s: number } }, now: number): any
+	local q: any = p
+	local before = Ranked.rankOf(p)
+	local r0 = p.r
+	local new = Ranked.updateMany(p, opps)
+	p.r, p.rd, p.vol = new.r, new.rd, new.vol
+	p.n = (p.n or 0) + 1
+	local won = place == 1
+	if won then p.w = (p.w or 0) + 1 elseif place >= n then p.l = (p.l or 0) + 1 end
+	p.last = now
+	local wasPlaced = p.placed == true
+	local delta: number? = nil
+	if not wasPlaced then
+		if (p.n or 0) >= (p.need or Ranked.PLACEMENTS) then
+			p.placed = true
+			q.lp = math.min(Ranked.PLACE_CAP, math.floor(Ranked.ladderOf(p.r) / 10) * 10)
+		end
+	else
+		local lp = if type(q.lp) == "number" then q.lp else Ranked.ladderOf(r0)
+		local d = Ranked.placePoints(lp, p.r, place, n)
+		q.lp = math.max(0, lp + d)
+		delta = q.lp - lp
+	end
+	if p.placed then p.peak = math.max(p.peak or 0, q.lp or 0) end
+	local after = Ranked.rankOf(p)
+	return {
+		won = won, place = place, of = n, delta = delta, rpBefore = before.rp, rpAfter = after.rp, mmrDelta = round(p.r) - round(r0),
 		placedNow = p.placed == true and not wasPlaced,
 		promoted = wasPlaced and after.step > before.step, demoted = wasPlaced and after.step < before.step,
 		rankBefore = before, rankAfter = after,

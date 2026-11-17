@@ -26,8 +26,16 @@ for _, m in PlayConfig.MODES do PlayConfig.byId[m.id] = m end
 -- (that session can give the entry a start function instead: Party.luau's start() calls it when it is there)
 PlayConfig.EXTRA = {} :: { any }
 function PlayConfig.addMode(m: any)
+	-- (a classic mode is ranked on the PARTY RANKED ladder unless it says ranked = false: one rating for them all)
+	if m.ranked == nil then m.ranked = true end
+	m.ladder = m.ladder or "party"
 	table.insert(PlayConfig.EXTRA, m)
 	PlayConfig.byId[m.id] = m
+end
+-- the rating a mode is played for: the duels' own per mode, every classic mode the one "party" rating
+function PlayConfig.ratingKey(modeId: string): string
+	local m = PlayConfig.byId[modeId]
+	return if m and (m :: any).ladder == "party" then "party" else modeId
 end
 
 PlayConfig.PARTY_MAX = 4 -- the biggest team

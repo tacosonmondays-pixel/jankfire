@@ -42,11 +42,162 @@ local function tierIndex(v: any): number
 	return 1
 end
 
+-- ------------------------------------------------------------------ Party Ranked's badges (the classic modes' ladder)
+-- each tier's badge hints at what it is made of, drawn clean from frames like the duels' shields: a damp napkin with its
+-- corner folded, a taped cardboard box, a kraft bag with a crinkled top, a roll of duct tape, a riveted metal plate, a
+-- framed glass pane, a rubber duck in a small crown. the division is 1 to 3 round pips under it (III one, I three)
+local PARTY: { [string]: { color: Color3, deep: Color3 } } = {
+	napkin = { color = Color3.fromRGB(226, 234, 242), deep = Color3.fromRGB(150, 176, 204) },
+	cardboard = { color = Color3.fromRGB(186, 138, 88), deep = Color3.fromRGB(122, 84, 48) },
+	paperbag = { color = Color3.fromRGB(210, 174, 120), deep = Color3.fromRGB(150, 116, 72) },
+	ducttape = { color = Color3.fromRGB(158, 164, 174), deep = Color3.fromRGB(88, 94, 104) },
+	sheetmetal = { color = Color3.fromRGB(196, 206, 218), deep = Color3.fromRGB(112, 124, 140) },
+	glass = { color = Color3.fromRGB(150, 220, 236), deep = Color3.fromRGB(64, 132, 156) },
+	duck = { color = Color3.fromRGB(255, 208, 64), deep = Color3.fromRGB(214, 140, 30) },
+}
+RankedStyle.PARTY = PARTY
+
+local function isParty(v: any): boolean
+	return v ~= nil and (v.ladder == "party" or PARTY[v.tier] ~= nil)
+end
+
+local function round(f: Frame, r: number?)
+	new("UICorner", { CornerRadius = if r then UDim.new(0, r) else UDim.new(1, 0) }, f)
+end
+local function box(parent: Instance, name: string, x: number, y: number, w: number, h: number, color: Color3, z: number, rot: number?): Frame
+	return new("Frame", { Name = name, BorderSizePixel = 0, BackgroundColor3 = color, ZIndex = z, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(math.max(1, math.floor(w)), math.max(1, math.floor(h))), Rotation = rot or 0 }, parent)
+end
+
+local DRAW: { [string]: (Frame, number, any) -> () } = {}
+-- (each draws into a square of s px, centred on (s/2, s*0.44): the pips sit under it)
+DRAW.napkin = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.44, s * 0.56
+	local sheet = box(b, "Napkin", cx, cy, w, w, c.color, 2, -8)
+	round(sheet, math.floor(w * 0.12))
+	sheet.ClipsDescendants = true
+	-- the folded corner: a turned square half inside the sheet's top right
+	local fold = box(sheet, "Fold", w, 0, w * 0.62, w * 0.62, c.deep:Lerp(c.color, 0.45), 3, 45)
+	local _ = fold
+	-- two drips under it
+	for i, o in { { -0.12, 0.5 }, { 0.14, 0.58 } } do
+		local d = box(b, "Drip" .. i, cx + o[1] * s, cy + o[2] * s * 0.62, s * 0.07, s * 0.1, c.deep, 2)
+		round(d)
+	end
+end
+DRAW.cardboard = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.44, s * 0.6
+	local face = box(b, "Box", cx, cy, w, w * 0.84, c.color, 2)
+	round(face, math.max(1, math.floor(w * 0.06)))
+	box(b, "Flap", cx, cy - w * 0.2, w, math.max(1, s * 0.025), c.deep, 3)
+	box(b, "Tape", cx, cy - w * 0.08, w * 0.2, w * 0.66, c.color:Lerp(Color3.new(1, 1, 1), 0.45), 3)
+end
+DRAW.paperbag = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.47, s * 0.52
+	local bag = box(b, "Bag", cx, cy, w, w * 0.92, c.color, 2)
+	round(bag, math.max(1, math.floor(w * 0.06)))
+	-- the crinkled top: a row of small turned squares along its edge
+	local n = 4
+	for i = 1, n do
+		local x = cx - w / 2 + (i - 0.5) * (w / n)
+		box(b, "Crinkle" .. i, x, cy - w * 0.46, w / n * 0.72, w / n * 0.72, c.color, 2, 45)
+	end
+	box(b, "Fold", cx, cy - w * 0.28, w, math.max(1, s * 0.022), c.deep, 3)
+end
+DRAW.ducttape = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.44, s * 0.58
+	local tail = box(b, "Tail", cx + w * 0.28, cy + w * 0.36, w * 0.5, w * 0.2, c.color, 1, -18)
+	round(tail, math.max(1, math.floor(s * 0.02)))
+	local roll = box(b, "Roll", cx, cy, w, w, c.color, 2)
+	round(roll)
+	new("UIGradient", { Color = ColorSequence.new(c.color:Lerp(Color3.new(1, 1, 1), 0.25), c.deep), Rotation = 60 }, roll)
+	local hole = box(b, "Core", cx, cy, w * 0.44, w * 0.44, CORE, 3)
+	round(hole)
+end
+DRAW.sheetmetal = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.44, s * 0.58
+	local plate = box(b, "Plate", cx, cy, w, w, c.color, 2)
+	round(plate, math.max(1, math.floor(w * 0.1)))
+	new("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, c.deep), ColorSequenceKeypoint.new(0.45, c.color:Lerp(Color3.new(1, 1, 1), 0.35)),
+		ColorSequenceKeypoint.new(1, c.deep) }), Rotation = 35 }, plate)
+	for _, o in { { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } } do
+		local r = box(b, "Rivet", cx + o[1] * w * 0.34, cy + o[2] * w * 0.34, s * 0.065, s * 0.065, c.deep:Lerp(CORE, 0.4), 3)
+		round(r)
+	end
+end
+DRAW.glass = function(b, s, c)
+	local cx, cy, w = s / 2, s * 0.44, s * 0.6
+	local frame = box(b, "Frame", cx, cy, w, w, c.deep, 2)
+	round(frame, math.max(1, math.floor(w * 0.08)))
+	local pane = box(b, "Pane", cx, cy, w * 0.78, w * 0.78, c.color, 3)
+	round(pane, math.max(1, math.floor(w * 0.05)))
+	pane.BackgroundTransparency = 0.18
+	pane.ClipsDescendants = true
+	-- two clean sheen lines across it
+	for i, o in { { -0.12, 0.06 }, { 0.12, 0.03 } } do
+		box(pane, "Sheen" .. i, w * 0.39 + o[1] * w, w * 0.39, w * o[2] + 1, w * 1.3, Color3.new(1, 1, 1), 4, 35).BackgroundTransparency = 0.35
+	end
+end
+DRAW.duck = function(b, s, c)
+	local cx, cy = s / 2, s * 0.48
+	local body = box(b, "Body", cx + s * 0.03, cy + s * 0.07, s * 0.58, s * 0.36, c.color, 2)
+	round(body)
+	new("UIGradient", { Color = ColorSequence.new(c.color:Lerp(Color3.new(1, 1, 1), 0.2), c.deep), Rotation = 90 }, body)
+	local head = box(b, "Head", cx - s * 0.12, cy - s * 0.16, s * 0.3, s * 0.3, c.color, 3)
+	round(head)
+	local beak = box(b, "Beak", cx - s * 0.3, cy - s * 0.13, s * 0.15, s * 0.08, Color3.fromRGB(255, 132, 40), 4)
+	round(beak)
+	local eye = box(b, "Eye", cx - s * 0.16, cy - s * 0.2, s * 0.05, s * 0.05, CORE, 4)
+	round(eye)
+	-- the top tier's crown: three small points over the head
+	for i = -1, 1 do
+		box(b, "Crown", cx - s * 0.12 + i * s * 0.07, cy - s * 0.33 - (if i == 0 then s * 0.02 else 0), s * 0.07, s * 0.07,
+			if i == 0 then Color3.fromRGB(255, 240, 200) else c.deep, 4, 45)
+	end
+end
+
+local function partyBadge(parent: Instance, s: number, v: any): Frame
+	local b = new("Frame", { Name = "PartyBadge", BackgroundTransparency = 1, Size = UDim2.fromOffset(s, s) }, parent)
+	if unranked(v) or placing(v) then
+		-- a hollow round tile: a dash, or a dot per placement match
+		local tile = box(b, "Tile", s / 2, s * 0.46, s * 0.62, s * 0.62, CORE, 1)
+		round(tile, math.floor(s * 0.16))
+		new("UIStroke", { Color = if unranked(v) then GREY else PALE, Thickness = math.max(1, math.floor(s * 0.04)) }, tile)
+		if unranked(v) then
+			local d = box(b, "Dash", s / 2, s * 0.46, s * 0.22, math.max(2, s * 0.05), GREY, 2)
+			round(d)
+		else
+			local need = math.max(1, math.floor(tonumber(v.need) or Ranked.PLACEMENTS))
+			local played = math.clamp(math.floor(tonumber(v.n) or 0), 0, need)
+			local dot = math.max(3, math.floor(s * 0.07))
+			for i = 1, need do
+				local f = box(b, "Dot", s / 2 + (i - (need + 1) / 2) * dot * 1.6, s * 0.46, dot, dot, if i <= played then PALE else GREY, 2)
+				f.BackgroundTransparency = if i <= played then 0 else 0.55
+				round(f)
+			end
+		end
+		return b
+	end
+	local c = PARTY[v.tier] or PARTY.napkin
+	local draw = DRAW[v.tier] or DRAW.napkin
+	draw(b, s, c)
+	-- the division: pips under it
+	if v.div ~= nil then
+		local count = math.clamp(math.floor(v.div), 1, 3)
+		local dot = math.max(3, math.floor(s * 0.075))
+		for i = 1, count do
+			local p = box(b, "Pip", s / 2 + (i - (count + 1) / 2) * dot * 1.7, s * 0.88, dot, dot, c.color:Lerp(Color3.new(1, 1, 1), 0.3), 5)
+			round(p)
+		end
+	end
+	return b
+end
+
 function RankedStyle.label(v: any): string
 	if unranked(v) then return "UNRANKED" end
 	if type(v.name) == "string" and v.name ~= "" then
 		-- the player card names the mode its rank is from: "GOLD II  ·  2V2"
-		if v.card == true and v.placed == true and type(v.mode) == "string" then return v.name .. "  ·  " .. string.upper(v.mode) end
+		if v.card == true and v.placed == true and type(v.mode) == "string" then return v.name .. "  ·  " .. (if v.mode == "party" then "PARTY" else string.upper(v.mode)) end
 		return v.name
 	end
 	return "RANKED"
@@ -55,6 +206,7 @@ end
 function RankedStyle.color(v: any): Color3
 	if unranked(v) then return GREY end
 	if placing(v) then return PALE end
+	if isParty(v) then local c = PARTY[v.tier] or PARTY.napkin; return c.color:Lerp(Color3.new(1, 1, 1), 0.15) end
 	local m = metal[v.tier] or metal.iron
 	return m.color:Lerp(Color3.new(1, 1, 1), 0.25)
 end
@@ -85,6 +237,7 @@ end
 
 function RankedStyle.badge(parent: Instance, size: number, v: any): Frame
 	local s = math.max(16, math.floor(size))
+	if isParty(v) then return partyBadge(parent, s, v) end -- (Party Ranked: the classic modes' playful ladder)
 	local box = new("Frame", { Name = "RankedBadge", BackgroundTransparency = 1, Size = UDim2.fromOffset(s, s) }, parent)
 	-- the shield: 0.62 of the box wide, its point near the bottom
 	local W = math.floor(s * 0.62)

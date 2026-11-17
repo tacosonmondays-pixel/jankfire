@@ -47,11 +47,13 @@ end
 
 -- the view of one rating that the screens draw (RankedStyle): the rank, tier and division, placements
 function RankedData.view(q: Ranked.Rating?, mode: string?): any
-	if not q or (q.n or 0) <= 0 then return { unranked = true, mode = mode, n = 0, need = if q then q.need else Ranked.PLACEMENTS } end
-	local rk = Ranked.rankOf(q)
+	if not q or (q.n or 0) <= 0 then
+		return { unranked = true, mode = mode, ladder = if mode == Ranked.PARTY_KEY then "party" else "duels", n = 0, need = if q then q.need else Ranked.PLACEMENTS }
+	end
+	local rk = Ranked.rankOf(q, if mode == Ranked.PARTY_KEY then "party" else nil)
 	-- (the MMR itself never leaves the server: the screens show rank points, rp of 100 in the division)
 	return {
-		mode = mode, placed = rk.placed, name = rk.name, tier = rk.tier.id, div = rk.div, step = rk.step, rp = rk.rp,
+		mode = mode, ladder = if mode == Ranked.PARTY_KEY then "party" else "duels", placed = rk.placed, name = rk.name, tier = rk.tier.id, div = rk.div, step = rk.step, rp = rk.rp,
 		progress = rk.progress, n = q.n or 0, need = q.need or Ranked.PLACEMENTS, w = q.w or 0, l = q.l or 0,
 	}
 end
@@ -61,6 +63,7 @@ function RankedData.modes(p: Player): { [string]: any }
 	local d = dataOf(p)
 	local out = {}
 	for _, m in Ranked.MODES do out[m] = RankedData.view(if d then d.modes[m] else nil, m) end
+	out[Ranked.PARTY_KEY] = RankedData.view(if d then d.modes[Ranked.PARTY_KEY] else nil, Ranked.PARTY_KEY)
 	return out
 end
 
@@ -145,16 +148,16 @@ local function logMatch(p: Player, d: any, m: any, team: number, won: boolean, r
 	local mates, foes = {}, {}
 	for t, ids in teams do
 		for _, id in ids do
-			if t == team then if id ~= p.UserId then table.insert(mates, id) end else table.insert(foes, id) end
+			if t == team and not m.ffa then if id ~= p.UserId then table.insert(mates, id) end elseif id ~= p.UserId then table.insert(foes, id) end
 		end
 	end
 	d.log = d.log or {}
-	table.insert(d.log, 1, { k = m.key, t = os.time(), mode = m.rated.mode, team = team, mates = mates, foes = foes,
-		rp = res.delta, mmr = res.mmrDelta, won = won, season = d.season })
+	table.insert(d.log, 1, { k = m.key, t = os.time(), mode = m.rated.rkey or m.rated.mode, played = m.rated.mode, team = team, mates = mates, foes = foes,
+		rp = res.delta, mmr = res.mmrDelta, won = won, place = res.place, of = res.of, season = d.season })
 	while #d.log > LOG_KEEP do table.remove(d.log) end
 	local key = tostring(m.key)
 	matchRes[key] = matchRes[key] or {}
-	matchRes[key][tostring(p.UserId)] = { team = team, won = won, rp = res.delta, mmr = res.mmrDelta, placed = res.delta == nil }
+	matchRes[key][tostring(p.UserId)] = { team = team, won = won, rp = res.delta, mmr = res.mmrDelta, placed = res.delta == nil, place = res.place }
 end
 
 -- after a ranked match: its record and every player's index line (in the background, retried by the store)
@@ -162,7 +165,7 @@ local function writeIndex(m: any)
 	local store = logStore
 	if not store or type(m.key) ~= "string" then return end
 	local key = m.key :: string
-	local rec = { t = os.time(), mode = m.rated.mode, season = Ranked.SEASON, teams = idsOf(m.rated), res = matchRes[key] or {} }
+	local rec = { ffa = m.ffa == true, t = os.time(), mode = m.rated.rkey or m.rated.mode, played = m.rated.mode, season = Ranked.SEASON, teams = idsOf(m.rated), res = matchRes[key] or {} }
 	matchRes[key] = nil
 	pcall(function() (store :: DataStore):SetAsync("m:" .. key, rec) end)
 	local cut = os.time() - INDEX_DAYS * 86400
@@ -291,7 +294,8 @@ function RankedData.restoreFor(cheaterId: number, since: number?, forceStore: bo
 		local cteam = e.team
 		for uidS, r in rec.res or {} do
 			local uid = tonumber(uidS)
-			if uid and uid ~= cheaterId and r.team ~= cteam and r.won == false then
+			local lostTo = if rec.ffa then ((type(r.rp) == "number" and r.rp < 0) or (type(r.mmr) == "number" and r.mmr < 0)) else (r.team ~= cteam and r.won == false)
+			if uid and uid ~= cheaterId and lostTo then
 				local fx = { k = e.k, mode = rec.mode, season = rec.season, by = cheaterId, t = os.time(),
 					rp = if type(r.rp) == "number" and r.rp < 0 then -r.rp else 0, mmr = if type(r.mmr) == "number" and r.mmr < 0 then -r.mmr else 0 }
 				out.victims += 1
@@ -312,7 +316,31 @@ end
 
 -- ------------------------------------------------------------------ a finished match
 -- rate one player in a finished (or left) match. rated = m.rated: { mode, teams = { { { id, r, rd } } } }
-local function rate(p: Player, m: any, team: number, won: boolean): any?
+-- an FFA match (the classic modes, m.ffa): where this player finished among how many, and every other player as an
+-- opponent beaten (placed below), lost to (above) or tied. a leaver finishes last
+local function ffaGame(m: any, p: Player, team: number, left: boolean?): (number, number, { any })
+	local byId = {}
+	local all = 0
+	for _, list in m.rated.teams do for _, x in list do byId[x.id] = x; all += 1 end end
+	local results = if type(m.results) == "table" then m.results else {}
+	local n = math.max(all, #results)
+	local place = if left then n elseif type(m.places) == "table" and m.places[team] then m.places[team] else n
+	local opps = {}
+	local seen = {}
+	for _, r in results do
+		if r.id ~= p.UserId and type(r.place) == "number" then
+			local x = byId[r.id] or { r = Ranked.START.r, rd = Ranked.START.rd }
+			table.insert(opps, { r = x.r, rd = x.rd, s = if left then 0 elseif place < r.place then 1 elseif place > r.place then 0 else 0.5 })
+			seen[r.id] = true
+		end
+	end
+	for id, x in byId do
+		if id ~= p.UserId and not seen[id] then table.insert(opps, { r = x.r, rd = x.rd, s = if left then 0 else 0.5 }) end
+	end
+	return place, n, opps
+end
+
+local function rate(p: Player, m: any, team: number, won: boolean, left: boolean?): any?
 	local s = st[p]
 	local d = dataOf(p)
 	if not s or not d or s.done[m.id] then return nil end
@@ -327,13 +355,21 @@ local function rate(p: Player, m: any, team: number, won: boolean): any?
 	end
 	local teamR = Ranked.team(mine)
 	local oppR, oppRd = Ranked.team(opp)
-	local q = ratingOf(d, rated.mode)
+	local key = rated.rkey or rated.mode -- ("party" for every classic mode: one Party Ranked rating)
+	local q = ratingOf(d, key)
 	-- (the rd as it stands after idle days, so coming back after a break moves you faster again)
 	if (q.last or 0) > 0 then q.rd = Ranked.idle(q, (os.time() - (q.last :: number)) / 86400) end
-	local res = Ranked.apply(q, teamR, oppR, oppRd, won, os.time())
+	local res
+	if m.ffa then
+		local place, n, opps = ffaGame(m, p, team, left)
+		res = Ranked.applyFfa(q, place, n, opps, os.time())
+		won = place == 1
+	else
+		res = Ranked.apply(q, teamR, oppR, oppRd, won, os.time())
+	end
 	res.mode = rated.mode
 	pcall(logMatch, p, d, m, team, won, res) -- (its line in the season's log and the match's record, for a cheat restore)
-	res.rank = RankedData.view(q, rated.mode)
+	res.rank = RankedData.view(q, key)
 	-- (what the card animates from; the Rank tables carry the hidden MMR, so they stay here)
 	local rb = res.rankBefore
 	res.prev = { tier = rb.tier.id, div = rb.div, rp = rb.rp, step = rb.step, placed = rb.placed }
@@ -404,7 +440,7 @@ local function leave(p: Player)
 	-- leaving a ranked match before its end: a loss, now
 	local im = inRanked[p]
 	inRanked[p] = nil
-	if im and im.m.phase ~= "over" then pcall(rate, p, im.m, im.team, false) end
+	if im and im.m.phase ~= "over" then pcall(rate, p, im.m, im.team, false, true) end
 	st[p] = nil
 	if s.prof then Profiles.release(store, s.prof) end
 end
@@ -417,6 +453,14 @@ function RankedData.init(matches: any, stats: any?, pushFn: (Player, any) -> ())
 	if stats and type(stats.cardExtra) == "function" then
 		stats.cardExtra(function(target: Player, _viewer: Player?, card: any)
 			card.ranked = RankedData.summary(target)
+			-- (Party Ranked too, when they have played it: the card shows it as a smaller second badge)
+			local d = dataOf(target)
+			local q = d and d.modes[Ranked.PARTY_KEY]
+			if q and (q.n or 0) > 0 then
+				local v = RankedData.view(q, Ranked.PARTY_KEY)
+				v.card = true
+				card.partyRanked = v
+			end
 		end)
 	end
 	Players.PlayerAdded:Connect(function(p) task.spawn(join, p) end)
