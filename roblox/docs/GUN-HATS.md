@@ -274,11 +274,11 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - The artist kit's "`__shade`" pieces (thin transparent shells 0.8 mm off the big masses, carrying baked shading) are
     made only when the gun is exported. The hat tools build without them, and a Studio seat check must leave them out of
     its rays.
-  - **Open (guns side):** in Studio the three were squashed. Their templates carried no `FileLo`/`FileHi`, so
-    `WeaponModels.build` fitted them into the base guns' row boxes. The rifle came out at 55% of its width and 118% of
-    its height, and its hat floated 17 mm over the cover. The SMG and Plan B came out at about 68% of their width; their
-    hats sat within 2 mm of the design sink. The seats are right for the true models: recheck in Studio once the bounds
-    are fixed.
+  - **Squashed at first, fixed:** in Studio the three came out squashed. Their templates carried no `FileLo`/`FileHi`,
+    so `WeaponModels.build` fitted them into the base guns' row boxes. The rifle came out at 55% of its width and 118% of
+    its height, and its hat floated 17 mm over the cover. The guns session then set each template's bounds to its
+    export's, shells included. Recheck in Studio after that: the built pieces match the builder, and all three hats sit
+    exactly 2.0 mm into the gun on all five rays. A new artist-kit skin needs this recheck too.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
