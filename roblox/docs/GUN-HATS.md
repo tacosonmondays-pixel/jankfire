@@ -245,6 +245,19 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Concept E's two lines stay in the generated data while `gun_sets_cute.py` still builds it (harmless: no such gun in
     the place).
   - Built guns in Studio wear their hats at all eight seats. Live in place version 495.
+- **The Tidecrest set is J-A Maki-e (place version 498):** the owner picked J-A. Its five models went live under the old
+  keys `ar_lacquer`, `dmr_nighttide`, `sawnoff_twintide`, `lever_cloudlock` and `katana_sakura`. J-B, J-C and the concept
+  copies left the game. `gun_sets_japan2` builds by default now; only `JF_EXTRA=gun_sets_west` is still needed.
+  - The five builders match their installed glbs, and the geometry is the J-A concepts', so each live key took its J-A
+    seat as is:
+    - Rifle: z −0.08, no saddle (was −0.07 on a 6 mm saddle).
+    - Katana: pommel z 0.130, no riser (was 0.1358 on a 3 mm riser).
+    - Sawn-off: z −0.11.
+    - The DMR and lever keep their guns' seats, measured on the new models.
+  - The seven concept lines and concept E's two left `hat_spots.json`, GunHatData and the clip report.
+  - Full check of the five: no hat in a gun, no gun in a hat, feet at most 2.5 mm.
+  - Whole set: 84 seats, 1,848 pairs, the same limits as before. Built guns in Studio wear their hats at all five seats.
+    Live in place version 500.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -324,7 +337,7 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476; seats on 16 guns and
-  77 skins since place version 481 (latest seats: place version 495). Round 10 (asset
+  68 skins since place version 500 (77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
