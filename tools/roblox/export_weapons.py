@@ -119,7 +119,8 @@ def look_of(m):
         if fac is not None: rgb = [rgb[i] * srgb(fac[i]) for i in range(3)]
     else:
         rgb = [srgb(c) for c in list(base.default_value)[:3]]
-    out['color'] = rbxglb.rgb_hex(rgb)
+    # (a baked atlas shared by many pieces: each piece's fallback colour is its own slot colour, set by artist_kit.py)
+    out['color'] = m['jf_color'] if m.get('jf_color') else rbxglb.rgb_hex(rgb)
     out['metal'] = round(float(val('Metallic', 0.0)), 3)
     out['rough'] = round(float(val('Roughness', 0.5)), 3)
     out['alpha'] = round(float(val('Alpha', 1.0)), 3)
@@ -218,7 +219,9 @@ for f in files:
         o.data.name = o.name
         pieces.append({'name': base, 'upload': o.name, 'tris': tris(o), 'look': look, 'lo': [round(x, 4) for x in plo], 'hi': [round(x, 4) for x in phi]})
     if '--kit' in flags:  # UVs a wrap texture can follow (gun_uvs.py: one scale for the whole gun, seams out of sight)
-        gun_uvs.unwrap(objs, gun_uvs.SCALE.get(name[2:].split('@')[0], 1.0))
+        # (a piece that carries a picture keeps its own UVs: artist_kit.py's baked atlas)
+        gun_uvs.unwrap([o for o in objs if not look_of(o.data.materials[0] if o.data.materials else None)['tex']],
+                       gun_uvs.SCALE.get(name[2:].split('@')[0], 1.0))
     rbxglb.turn_for_roblox(objs)  # so the upload lands in the file's frame (rbxglb.py: measured)
     out = os.path.join(out_dir, name + '.glb')
     size = rbxglb.export_glb(out, tangents='--kit' in flags)

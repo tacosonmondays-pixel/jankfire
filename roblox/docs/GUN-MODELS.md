@@ -471,6 +471,38 @@ Opinion and Yeehaw yes, and Half a Shotgun and the Katana yes twice.
 - **Checked:** `gun_check` 0 loose on all five, the install, and in hand in Play (Twin Tide, Sakura). Picture:
   `gun-models/tidecrest-maki-e-in-hand.jpg`.
 
+## The Blender-artist method: trial on the AR and Revolver (17 November 2026, test in place version 504)
+
+The owner: "can you try making them in blender ... with the idea that it's for Roblox and should look like Rivals?",
+then: if it goes well, apply it to all the new guns.
+
+- **The kit:** `tools/roblox/artist_kit.py`, with a README at its top. It does four things:
+  1. **Modelling:** real Blender tools.
+     - Filled, extruded and bevelled curves (`curve_slab`), and curves swept along paths (`curve_sweep`).
+     - Exact booleans, cleaned by a planar Decimate and a Weld.
+     - A Bevel modifier and a Weighted Normal pass, all applied.
+  2. **An atlas packer:** laid out like `gun_uvs.py` (left side upright, u along the gun).
+  3. **`bake_gun()`:** bakes ambient occlusion, a soft top-down gradient and a light edge line over the flat slot colours.
+  4. **Export and wrap shells:** `roblox_export` carries the texture into Roblox, and `shell_luau` writes the shade
+     shells.
+- **The trial guns:** `tools/roblox/gun_artist.py` holds the two descriptions, `ar@ar_artist` and
+  `revolver@revolver_artist`. Build them with `JF_EXTRA=gun_artist`.
+- **Two ways the bake travels into Roblox:**
+  - **T, the baked picture as each piece's TextureID:** works today. `export_weapons.py` now keeps a pictured piece's
+    UVs and its own slot colour. But a wrap laid on the baked atlas comes out about 6× too big and seamed.
+  - **S, the plain kit gun plus a shade shell (recommended):** each node gets a shell 0.8 mm off the surface, wearing
+    the shade map as a SurfaceAppearance with AlphaMode Transparency. Wraps stay exactly as today, and the baked
+    shading lies over the paint and over any wrap. The cost is about twice the triangles (AR about 25k) and one more
+    1024 image per gun.
+- **Tested in Studio (v504):**
+  - Both routes load the right way round.
+  - In the hall the baked guns look softer and more modelled than the live ones.
+  - A galaxy wrap shows the T scale problem and S working.
+  - In hand and aimed the S rifle is clean.
+  - The trial is kept in `PolishBackup.ArtistTrial`, not live.
+- **Judges:** AR 7 against the current 5, Revolver 6 against 5.
+- **Picture:** `gun-models/artist-trial.jpg`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
