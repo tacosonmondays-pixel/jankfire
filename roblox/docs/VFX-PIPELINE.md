@@ -450,3 +450,21 @@ warm band moved from 2.25 m (a pale ring round the middle of the disk, a Saturn 
 - First person with the hole on you (camera 1.25 studs from its middle): the view stays clear, only a few streaks
   and a flake cross it.
 - Not checked: a real thrown duck end to end (the frames call Fx directly); the spark at its new light strength.
+
+**Third turn (place version 570)**, main's last asks and the classic modes session's Duck Rain photo (the whole arena
+lavender with many holes; `roblox/docs/modes/duck-rain-hud.jpg`), sheet `round15/blackhole-v3-real-and-rain.jpg`:
+- The pop is a snap: its light 1.6 over 0.55 of the blast radius for 0.12 s (was 5 over 1.4 radius for 0.3 s), the
+  glow 0.16 s and about two thirds the size, the hole's own light 1.2 for 0.12 s.
+- The lavender room was Utility's screen tint (`JankHoleSqueeze`, a ColorCorrection up to 90 % violet whenever any
+  hole pulled on you; Duck Rain's holes reach 12 m and are everywhere), not the holes' lights. It now starts only in
+  the inner 60 % of a hole's reach and goes at most half way to a paler lilac. Lights budgeted too: only the two open
+  holes nearest the camera carry their PointLight, now 6 m (was 8 m).
+- Duck Rain holes live 2.6 s, not the duck's 3: the hole's message carries `life` and Utility passes it to
+  `Fx.holeOpen(id, at, R, age, life)`, so their collapse lands on their pop too.
+- A real duck thrown with G at a dummy (logged on the client from the G press): the hole's message at 0.41 s (age -0.3,
+  stuck), the horizon from 0.63 s, full at 0.83 s (the pull starts at 0.71 s), the collapse from 3.56 s, gone at 3.70 s,
+  the server's pop at 3.73 s: it closes 0.03 s before the pop.
+- Six sky holes at once (their real client path: the server's hole messages with life 2.6, R 12 m): 6 open, 2 lit, no
+  screen tint 7 m from the nearest; the hall keeps its own colours.
+- Not clean: the throw at the floor. The first hole had pulled the player up to the dummy and the second duck stuck to
+  it. A floor duck's hole sends age 0, the same message the sky-hole test sent, so its opening is that path.

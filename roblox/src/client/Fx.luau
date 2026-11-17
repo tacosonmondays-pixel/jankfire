@@ -1476,7 +1476,7 @@ type BH = { hz: BasePart, disk: ParticleEmitter, diskShade: ParticleEmitter, ban
 	haloShade: ParticleEmitter, spark: ParticleEmitter, sparkGlow: ParticleEmitter, flare: ParticleEmitter, swirl: BasePart,
 	dust: ParticleEmitter, dustAtt: Attachment, fall: ParticleEmitter, outer: BasePart, bits: ParticleEmitter, light: PointLight }
 type HoleFx = { at: Vector3, R: number, rig: BH, u: number, age: number, nextLayer: number, nextDust: number, ang: number,
-	opened: boolean, flared: boolean, closing: boolean, k: number, f: number }
+	opened: boolean, flared: boolean, closing: boolean, k: number, f: number, life: number, dc: number, lit: boolean }
 local holesFx: { [any]: HoleFx } = {}
 local bhFree: { BH } = {}
 local bhDying: { { rig: BH, t: number, k0: number } } = {}
@@ -1546,7 +1546,7 @@ local function newBH(): BH
 		Transparency = ns(0, 1, 0.3, 0.84, 0.85, 0.86, 1, 1), Lifetime = NR(0.9) })
 	local light = Instance.new("PointLight")
 	-- (round 3: at 1.4-2 over 14 m it washed the whole room; a faint pulse on what is near)
-	light.Color = Color3.fromRGB(232, 168, 214); light.Range = math.min(60, 8 * S); light.Brightness = 0; light.Shadows = false
+	light.Color = Color3.fromRGB(232, 168, 214); light.Range = 6 * S; light.Brightness = 0; light.Shadows = false
 	light.Enabled = false; light.Parent = hz
 	return { hz = hz, disk = disk, diskShade = diskShade, band = band, halo = halo, haloShade = haloShade, spark = spark,
 		sparkGlow = sparkGlow, flare = flare, swirl = swirl, dust = dust, dustAtt = dustAtt, fall = fall, outer = outer, bits = bits,
@@ -1589,13 +1589,14 @@ local function bhFlare(b: BH, pop: boolean)
 	emit(b.flare, 1)
 end
 -- returns true: Fx draws the whole hole (Utility then makes no core, shell or ring of its own). age: the hole's age
--- (below 0 while it is about to open: a duck stuck to someone)
-function Fx.holeOpen(id: any, at: Vector3, R: number, age: number?): boolean
+-- (below 0 while it is about to open: a duck stuck to someone); life: when it pops (a Duck Rain sky hole's own, 2.6 s;
+-- else the duck's)
+function Fx.holeOpen(id: any, at: Vector3, R: number, age: number?, life: number?): boolean
 	if holesFx[id] then return true end
 	local b = table.remove(bhFree) or newBH()
 	local a = age or 0
 	local h: HoleFx = { at = at, R = R, rig = b, u = math.max(0, a), age = a, nextLayer = 0, nextDust = 0, ang = 0,
-		opened = false, flared = false, closing = false, k = -1, f = -1 }
+		opened = false, flared = false, closing = false, k = -1, f = -1, life = life or BHK.HOLE_T, dc = math.huge, lit = false }
 	holesFx[id] = h
 	b.hz.CFrame = CFrame.new(at); b.swirl.CFrame = CFrame.new(at); b.outer.CFrame = CFrame.new(at)
 	bhSize(b, 0)
@@ -1627,15 +1628,16 @@ function Fx.holePop(id: any, at: Vector3?, r: number?)
 	end
 	if not at then return end
 	local rr = r or 9 * S
-	-- the pop: a white-gold flare where the hole was, a warm-white glow going magenta, a ring out across the floor, the light
+	-- the pop: a white-gold flare where the hole was, a warm-white glow going magenta, a ring out across the floor, a short
+	-- sharp light (round 15: 5 over 38 studs for 0.3 s, and a glow 48 studs across, whited out the hall: a snap now)
 	if b then bhFlare(b, true) end
 	local g = emAt(ITEMFX, at, Vector3.yAxis)
-	g.Color = cs(Color3.fromRGB(255, 240, 222), Color3.fromRGB(226, 96, 200)); g.Lifetime = NR(0.3)
-	g.Size = ns(0, rr * 0.25 * 2 * H, 0.25, rr * 0.6 * 2 * H, 1, rr * 0.9 * 2 * H); g.Transparency = ns(0, 0.1, 1, 1)
+	g.Color = cs(Color3.fromRGB(255, 240, 222), Color3.fromRGB(226, 96, 200)); g.Lifetime = NR(0.16)
+	g.Size = ns(0, rr * 0.18 * 2 * H, 0.3, rr * 0.4 * 2 * H, 1, rr * 0.55 * 2 * H); g.Transparency = ns(0, 0.25, 1, 1)
 	emit(g, 1)
 	local fl = floorBelow(at, rr * 0.6)
 	if fl then floorRing(fl, Color3.fromRGB(176, 160, 186), rr * 0.2, rr * 1.1, 0.45, 0.25) end
-	lightFlash(at, Color3.fromRGB(240, 176, 236), math.min(60, rr * 1.4), 5, 0.3)
+	lightFlash(at, Color3.fromRGB(240, 176, 236), math.min(60, rr * 0.55), 1.6, 0.12)
 end
 local function holeFxStep(dt: number)
 	local K = BHK
@@ -1652,14 +1654,14 @@ local function holeFxStep(dt: number)
 		end
 		if not h.opened and h.u >= K.OPEN0 then
 			h.opened = true
-			b.fall.Enabled = true; b.bits.Enabled = true; b.light.Enabled = true
+			b.fall.Enabled = true; b.bits.Enabled = true -- (the light: the budget below)
 			emit(b.diskShade, 1); emit(b.disk, 1); emit(b.band, 1); emit(b.haloShade, 1); emit(b.halo, 1)
 			h.nextLayer = h.u + K.EVERY
 		end
 		-- open (eased: quick, then settling) and the collapse just before the pop
 		local g = math.clamp((h.u - K.OPEN0) / (K.OPEN1 - K.OPEN0), 0, 1)
 		g = 1 - (1 - g) ^ 3
-		local c = math.clamp((K.HOLE_T - h.age) / K.COLLAPSE, 0, 1)
+		local c = math.clamp((h.life - h.age) / K.COLLAPSE, 0, 1)
 		if c < 1 and not h.closing then h.closing = true; b.fall.Enabled = false; b.bits.Enabled = false end
 		local k = g * c ^ 1.3
 		-- (the horizon breathes a little once open: 3 % at the web core's 20 rad/s)
@@ -1669,7 +1671,8 @@ local function holeFxStep(dt: number)
 		b.swirl.CFrame = CFrame.new(at) * K.TILT * CFrame.Angles(0, -h.ang * 3, 0)
 		b.outer.CFrame = CFrame.new(at) * K.TILT * CFrame.Angles(0, -h.ang * 0.9, 0)
 		if math.abs(k - h.k) > 0.004 or (k >= 1 and h.k < 1) then h.k = k; bhSize(b, k) end
-		local f = math.clamp(((camPos - at).Magnitude - 1.4 * K.HZ) / (1.8 * K.HZ), 0, 1)
+		h.dc = (camPos - at).Magnitude
+		local f = math.clamp((h.dc - 1.4 * K.HZ) / (1.8 * K.HZ), 0, 1)
 		f = f * f * (3 - 2 * f)
 		if math.abs(f - h.f) > 0.02 or ((f <= 0 or f >= 1) and f ~= h.f) then h.f = f; bhFade(b, f) end
 		b.light.Brightness = (0.22 + 0.1 * math.sin(h.u * 5)) * k -- (round 4: the walls 10 m off still went lavender)
@@ -1687,6 +1690,18 @@ local function holeFxStep(dt: number)
 			end
 		end
 	end
+	-- the room light budget: only the two open holes nearest the camera light the room (Duck Rain, 17 Nov: with many
+	-- holes open their lights stacked into a lavender room); their glow is in the sprites
+	local n1: HoleFx?, n2: HoleFx? = nil, nil
+	for _, h in holesFx do
+		if not h.opened then continue end
+		if not n1 or h.dc < (n1 :: HoleFx).dc then n2 = n1; n1 = h
+		elseif not n2 or h.dc < (n2 :: HoleFx).dc then n2 = h end
+	end
+	for _, h in holesFx do
+		local lit = h == n1 or h == n2
+		if lit ~= h.lit then h.lit = lit; h.rig.light.Enabled = lit end
+	end
 	-- popped: the horizon (what is left of it) gone in 0.1 s, the light's flash dying; parked once the pop's flare is over
 	for i = #bhDying, 1, -1 do
 		local d = bhDying[i]
@@ -1694,7 +1709,7 @@ local function holeFxStep(dt: number)
 		if d.t >= 0.35 then table.remove(bhDying, i); bhPark(d.rig); continue end
 		local u = math.min(1, d.t / 0.1)
 		d.rig.hz.Size = Vector3.one * 2 * K.HZ * math.max(d.k0 * (1 - u) * (1 - u), 0.005)
-		d.rig.light.Brightness = 2 * math.max(0, 1 - d.t / 0.25)
+		d.rig.light.Brightness = 1.2 * math.max(0, 1 - d.t / 0.12)
 	end
 end
 

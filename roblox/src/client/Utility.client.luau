@@ -874,7 +874,7 @@ local function addHole(m: any)
 	local age = if type(m.age) == "number" then m.age else 0
 	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
 	-- (age: already open for late joiners)
-	local drawn = FxM.holeOpen(id, m.p, R, age) == true
+	local drawn = FxM.holeOpen(id, m.p, R, age, if type(m.life) == "number" then m.life else nil) == true -- (life: a Duck Rain hole's own)
 	local core: BasePart?, shell: BasePart?, ring: BasePart?, pull: BasePart? = nil, nil, nil, nil
 	if not drawn then
 		core = part(Enum.PartType.Ball, Vector3.one * 2 * S, VOID, Enum.Material.SmoothPlastic)
@@ -1016,13 +1016,15 @@ Body.onStep = function(st: any, chest: Vector3, dt: number)
 	end
 end
 local function squeezeStep()
-	-- (a violet squeeze over the view while a hole eats your speed: web duck.js, opacity holeF x 1.5, at most 0.9)
-	local a = math.min(0.9, holeF * 1.5)
+	-- (a violet squeeze over the view while a hole eats your speed: web duck.js, opacity holeF x 1.5, at most 0.9.
+	-- 17 Nov, Duck Rain: with sky holes everywhere you are nearly always in one, and the whole arena went lavender:
+	-- now only in the inner 60 % of a hole's reach, at most half, paler)
+	local a = 0.5 * math.clamp((holeF - 0.4) / 0.6, 0, 1)
 	squeeze.Enabled = a > 0.01
 	if squeeze.Enabled then
-		squeeze.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(196, 170, 255), a)
-		squeeze.Saturation = -0.5 * a
-		squeeze.Contrast = 0.25 * a
+		squeeze.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(214, 198, 255), a)
+		squeeze.Saturation = -0.4 * a
+		squeeze.Contrast = 0.2 * a
 	end
 end
 
