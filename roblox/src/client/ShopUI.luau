@@ -1652,6 +1652,8 @@ function ShopUI.fillInspect()
 			elseif o.kind == "skin" then "a weapon skin for your " .. wn .. (if setName then ", from the " .. setName .. " set" else "") .. ". wear it from the loadout [L]."
 			elseif o.kind == "hat" then "a hat for your " .. wn .. ". it goes on that gun only. wear it from the loadout [L]."
 			else "a wrap for your " .. wn .. ". it paints that gun only. pick how much it covers in the loadout [L]."
+		-- (the training hall's loadout lets you wear anything for a try: Loadout.luau's try layer)
+		if not own and not card and not Shop.isFlair(o.kind) then UI.inspBlurb.Text ..= " try it on in the training hall first." end
 		if S.finSkin then
 			local _, row = Fin.of(S.finSkin)
 			local fname = if type(row) == "table" and type(row.name) == "string" then row.name else "its own"
@@ -1921,8 +1923,9 @@ function ShopUI.redeem(cur: string)
 	ShopUI.openBox(o.id, 1)
 end
 
--- open a container you have: the till rolls it, the loot module's opening plays (the shop steps aside), then the
--- inventory shows what you got
+-- open a container you have: the till rolls it, the loot module's opening plays (the shop steps aside), and closing
+-- the reveal goes straight back to the game (the owner, 17 Nov: "after opening chests it shouldnt take you back to your
+-- inventory just back to the game"), wherever it was opened from
 -- (OPEN ANOTHER at the end of the opening: the next one from your stock, or a fresh free one while we test).
 -- n = how many at once (1, 5 or 10): the loot server rolls them as one batch, the opening shows them all, and
 -- OPEN ANOTHER opens the same number again
@@ -1963,27 +1966,9 @@ function ShopUI.openBox(cid: string, n: number?)
 		if Till.boxState(cid) then break end
 	end
 	S.busy = false
-	-- (the shop was opened straight onto this container from outside: the opening has shown what you got, so DONE
-	-- takes you back to the game rather than into the shop's inventory)
-	if S.open and last and S.deep == cid then ShopUI.close(); return end
-	if S.open then
-		gui.Enabled = true; back.Enabled = true
-		UI.blur.Enabled = true; UI.tint.Enabled = true
-		local it = last and (last.item or last.prize)
-		local got = if last and type(last.items) == "table" then #last.items else 1
-		if got > 1 then
-			ShopUI.toast(got .. " THINGS ARE YOURS" .. (if last.short then " (ALL THAT WAS LEFT)" else "") .. ". WEAR THEM FROM THE LOADOUT [L]")
-		elseif type(it) == "table" and it.id then
-			local name = it.name or Shop.itemInfo(it.kind or it.type, it.id)
-			if it.weapon then name ..= " · " .. Shop.weaponName(it.weapon) end
-			local k = it.kind or it.type
-			ShopUI.toast(string.upper(name) .. (if Shop.isCard(k) then " IS YOURS. WEAR IT ON YOUR PLAYER CARD"
-				elseif Shop.isFlair(k) then " IS YOURS. PICK IT IN THE LOADOUT [L]" else " IS YOURS. WEAR IT FROM THE LOADOUT [L]"))
-		end
-		S.invFilter = "all"
-		ShopUI.shutOverlays()
-		ShopUI.tab("inventory")
-	end
+	-- (the opening has shown what you got: closing it takes you back to the game, not into the shop's inventory. only
+	-- an open that never started (refused, nothing in stock) leaves you in the shop with its reason)
+	if S.open and last then ShopUI.close() end
 end
 -- the loot server says what you own changed (another screen, the opening's EQUIP, a receipt): refresh what's shown
 for _, a in { "LootOwned", "LootStock", "VIP" } do

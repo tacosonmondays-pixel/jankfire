@@ -127,12 +127,20 @@ local function onKey(slot: string): string return if slot == "utility" then "ON 
 local function hatOf(wid: string): string return GunHats.hatFor(me, wid) or "none" end
 local function skinOf(wid: string): string return GunSkins.skinFor(me, wid) or "default" end
 -- a skin's name and rarity: the loot session's LootTable (the web game's list), if it is in the place
+-- the guns session's concepts (SkinSets.CONCEPTS) carry their working names only in their builders' notes
+-- (tools/roblox/gun_sets_cute3.py, gun_sets_ducky_art.py); the ones with none (the owner's Tripo picks) keep their ids
+local CONCEPT_NAMES = {
+	ar_cute_a = "Velvet", pistol_cute_a = "Velvet", ar_cute_b = "Starlight", pistol_cute_b = "Starlight",
+	ar_cute_c = "Glasswing", pistol_cute_c = "Glasswing", ar_cute_d = "Sweet Shop", pistol_cute_d = "Sweet Shop",
+	ar_duckling = "Duckling", smg_duckling = "Duckling", pistol_duckling = "Duckling",
+} :: { [string]: string }
 local function skinInfo(id: string): (string, string)
 	local mod = Shared:FindFirstChild("LootTable")
 	local ok, L = false, nil
 	if mod then ok, L = pcall(require, mod) end
 	local row = ok and type(L) == "table" and type(L.SKINS) == "table" and L.SKINS[id] or nil
 	if type(row) == "table" and type(row[1]) == "string" then return row[1], (if type(row[2]) == "string" then row[2] else "common") end
+	if CONCEPT_NAMES[id] then return CONCEPT_NAMES[id], "common" end
 	return (string.gsub(string.gsub(id, "^[%a]+_", ""), "_", " ")), "common"
 end
 
@@ -504,8 +512,9 @@ local swatchRow = new("ScrollingFrame", {
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, wbar)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Top }, swatchRow)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Top }, swatchRow) -- (the hats row's spacing)
 new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingTop = UDim.new(0, 14), PaddingRight = UDim.new(0, 12) }, swatchRow)
+-- (its ‹ › arrows: added below, once arrows() exists)
 local noPaint = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 108),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no paint on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
@@ -609,11 +618,68 @@ local function lockOver(parent: GuiObject, z: number): Frame
 	local f = new("Frame", { Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.5, BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = z, Visible = false }, parent)
 	T.corner(f, 4)
-	local l = label(f, "\u{1F512}", 13, UDim2.new(1, -21, 0, 2), UDim2.fromOffset(19, 17), WHITE, Enum.TextXAlignment.Center)
-	l.ZIndex = z + 1
+	local l = label(f, "\u{1F512}", 13, UDim2.new(1, -33, 0, 2), UDim2.fromOffset(31, 17), WHITE, Enum.TextXAlignment.Center)
+	l.Name = "Glyph"; l.ZIndex = z + 1
 	return f
 end
+-- TRY IN TRAINING (Loadout.luau, the owner's ask): in the training hall and its playground you can wear anything, owned or
+-- not; it isn't saved, and your own loadout comes back when you leave. the server says when (the attribute Trying, and
+-- its zone); a thing you don't own shows TRY there instead of the lock
+local function trying(): boolean
+	local z = me:GetAttribute("Zone")
+	return me:GetAttribute("Trying") == true or z == "training" or z == "playground"
+end
+local function lockLook(lk: Frame)
+	local g = lk:FindFirstChild("Glyph") :: TextLabel?
+	local t = trying()
+	if g then g.Text = if t then "TRY" else "🔒"; g.TextColor3 = if t then ACCENT else WHITE; g.FontFace = FONT_BOLD end
+	lk.BackgroundTransparency = if t then 0.82 else 0.5
+end
+-- a strip that can outgrow its panel (the owner, 17 Nov: "The weapons run off and you can [not] scroll through!!"):
+-- a horizontal ScrollingFrame (wheel, drag, swipe) with a ‹ and a › at its ends that page along it, shown only when
+-- there's more that way; into(row, child) brings a card into view (the one you wear, when the tab opens)
+-- (CanvasPosition is in screen pixels, like the Absolute* sizes, even under a UIScale (the desktop fit, the phone
+-- layout): measured in Play, 17 Nov. so everything here is in screen pixels; k stays for the record)
+local function span(row: ScrollingFrame): (number, number, number)
+	local view = row.AbsoluteWindowSize.X
+	return 1, view, math.max(0, row.AbsoluteCanvasSize.X - view)
+end
+local function arrows(row: ScrollingFrame, parent: GuiObject)
+	local function btn(txt: string, right: boolean): TextButton
+		local b = new("TextButton", { Text = txt, AutoButtonColor = false, BackgroundColor3 = Color3.fromRGB(16, 18, 22), BackgroundTransparency = 0.15,
+			BorderSizePixel = 0, AnchorPoint = Vector2.new(if right then 1 else 0, 0.5), FontFace = FONT_BOLD, TextSize = 26, TextColor3 = TEXT,
+			Size = UDim2.fromOffset(34, 64), ZIndex = 20, Visible = false }, parent)
+		T.corner(b, 6)
+		b.MouseButton1Click:Connect(function()
+			local _, view, maxX = span(row)
+			local x = math.clamp(row.CanvasPosition.X + (if right then view * 0.8 else -view * 0.8), 0, maxX)
+			TweenService:Create(row, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CanvasPosition = Vector2.new(x, 0) }):Play()
+		end)
+		return b
+	end
+	local l, r = btn("‹", false), btn("›", true)
+	local function place()
+		local pos, size = row.Position, row.Size
+		l.Position = UDim2.new(pos.X.Scale, pos.X.Offset + 2, pos.Y.Scale, pos.Y.Offset + size.Y.Offset / 2)
+		r.Position = UDim2.new(pos.X.Scale + size.X.Scale, pos.X.Offset + size.X.Offset - 2, pos.Y.Scale, pos.Y.Offset + size.Y.Offset / 2)
+		local _, _, maxX = span(row)
+		l.Visible = row.Visible and maxX > 1 and row.CanvasPosition.X > 1
+		r.Visible = row.Visible and maxX > 1 and row.CanvasPosition.X < maxX - 1
+	end
+	for _, prop in { "CanvasPosition", "AbsoluteCanvasSize", "AbsoluteWindowSize", "Position", "Size", "Visible" } do
+		row:GetPropertyChangedSignal(prop):Connect(place)
+	end
+	place()
+end
+local function into(row: ScrollingFrame, child: GuiObject)
+	local k, view, maxX = span(row)
+	local x0 = (child.AbsolutePosition.X - row.AbsolutePosition.X) / k + row.CanvasPosition.X
+	local w = child.AbsoluteSize.X / k
+	if x0 < row.CanvasPosition.X then row.CanvasPosition = Vector2.new(math.clamp(x0 - 40, 0, maxX), 0)
+	elseif x0 + w > row.CanvasPosition.X + view then row.CanvasPosition = Vector2.new(math.clamp(x0 + w - view + 40, 0, maxX), 0) end
+end
 local swatchLocks: { [string]: Frame } = {}
+arrows(swatchRow, wbar)
 local hatLocks: { [string]: Frame } = {}
 type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame, st: UIStroke, tick: TextLabel }
 local swatches: { Swatch } = {}
@@ -768,7 +834,7 @@ refresh = function()
 		local on = s.wr.id == wid
 		s.tick.Visible = on
 		local lk = swatchLocks[s.wr.id]
-		if lk then lk.Visible = not owns("wrap", s.wr.id) end
+		if lk then lk.Visible = not owns("wrap", s.wr.id); lockLook(lk) end
 		s.st.Color = if on then ACCENT else WHITE
 		s.st.Transparency = if on then 0 else 0.8
 		s.st.Thickness = if on then 2 else 1
@@ -814,7 +880,7 @@ onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
 	local _, md = wrapOf(e.id)
-	if not owns("wrap", wr.id) then play("empty"); say(("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED); return end
+	if not owns("wrap", wr.id) and not trying() then play("empty"); say(("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED); return end
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
 		play("click")
@@ -855,9 +921,14 @@ hTitle.FontFace = FONT_TITLE
 local hName = label(hbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
 hName.FontFace = FONT_BOLD; hName.RichText = true; hName.TextWrapped = false
 label(hbar, "hover to try it on · click to put it on", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
-local hatRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132), ZIndex = 3 }, hbar)
+local hatRow = new("ScrollingFrame", {
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
+	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
+}, hbar)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, hatRow)
-new("UIPadding", { PaddingLeft = UDim.new(0, 6) }, hatRow)
+new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, hatRow)
+arrows(hatRow, hbar)
 local noHats = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no hats on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
@@ -868,9 +939,9 @@ local CARD_TURN = { eyes = math.pi, halo = math.pi }
 type HatCard = { id: string, chip: TextButton, st: UIStroke, tick: TextLabel, spin: Model? }
 local hatCards: { HatCard } = {}
 local onHat: (string) -> () = function() end
--- (the cards share the row: 102 px each up to eleven, narrower past that so None and every hat fit; round 12 made it
--- thirteen)
-local CW = math.min(102, math.floor((1226 - 6 - 8 * (#GunHats.ORDER - 1)) / #GunHats.ORDER))
+-- (the cards share the row: 102 px each up to eleven, narrower past that so None and every hat fit (round 12 made it
+-- thirteen), never under 86: past that the row scrolls)
+local CW = math.max(86, math.min(102, math.floor((1226 - 6 - 8 * (#GunHats.ORDER - 1)) / #GunHats.ORDER)))
 for i, hid in GunHats.ORDER do
 	local h = GunHats.HATS[hid]
 	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(CW, 128), LayoutOrder = i, ZIndex = 4 }, hatRow)
@@ -916,20 +987,28 @@ sTitle.FontFace = FONT_TITLE
 local sName = label(sbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
 sName.FontFace = FONT_BOLD; sName.RichText = true; sName.TextWrapped = false
 label(sbar, "from crates · hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
-local skinRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132), ZIndex = 3 }, sbar)
+local skinRow = new("ScrollingFrame", {
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
+	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
+}, sbar)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, skinRow)
-new("UIPadding", { PaddingLeft = UDim.new(0, 6) }, skinRow)
+new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, skinRow)
+arrows(skinRow, sbar)
 local noSkins = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "", ZIndex = 10, Visible = false, Active = true,
 }, sbar)
-type SkinCard = { id: string, st: UIStroke, tick: TextLabel }
+type SkinCard = { id: string, st: UIStroke, tick: TextLabel, lock: Frame? }
 local skinCards: { SkinCard } = {}
 local skinsFor = ""
 local onSkin: (string) -> () = function() end
-local function skinCard(sid: string, order: number, wid: string)
-	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 128), LayoutOrder = order, ZIndex = 4 }, skinRow)
-	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(150, 88), ZIndex = 5 }, holder)
+local function skinCard(sid: string, order: number, wid: string, concept: boolean?)
+	-- (the hats row's cards exactly: CW wide, the same spacing; the owner, 17 Nov, on the HATS tab: "This is right and
+	-- easily fixable by allowing scroll!!")
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(CW, 128), LayoutOrder = order, ZIndex = 4 }, skinRow)
+	holder:SetAttribute("SkinId", sid)
+	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(CW, 88), ZIndex = 5 }, holder)
 	T.corner(chip, 4)
 	local st = T.edge(chip, nil, 0.8)
 	local name, rarity = "Default", "common"
@@ -942,35 +1021,82 @@ local function skinCard(sid: string, order: number, wid: string)
 		if m then
 			m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
 			m.Parent = sv
-			scam.CFrame = CFrame.lookAt(Vector3.new(0, 0.6, 5.2), Vector3.new(0, 0, 0))
+			scam.CFrame = CFrame.lookAt(Vector3.new(0, 0.6, 5.8), Vector3.new(0, 0, 0))
 		end
 	end
 	local tick = label(chip, "\u{2713}", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
 	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
 	local rr = Roster.RARITY[rarity] or Roster.RARITY.common
-	local line = new("Frame", { BackgroundColor3 = rr.color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(142, 3), ZIndex = 4 }, holder)
+	local line = new("Frame", { BackgroundColor3 = rr.color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(CW - 8, 3), ZIndex = 4 }, holder)
 	T.corner(line, 2)
-	local nm = label(holder, name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(150, 26), GREY, Enum.TextXAlignment.Center)
+	local nm = label(holder, name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(CW, 18), GREY, Enum.TextXAlignment.Center)
 	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
+	nm.TextScaled = true -- (as the hats: a long name shrinks to fit, at most 14)
+	new("UITextSizeConstraint", { MaxTextSize = 14 }, nm)
 	chip.MouseEnter:Connect(function() state.skinHover = sid; if state.open then refresh() end end)
 	chip.MouseLeave:Connect(function() if state.skinHover == sid then state.skinHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onSkin(sid) end)
-	table.insert(skinCards, { id = sid, st = st, tick = tick })
+	if concept then
+		holder:SetAttribute("Concept", true)
+		local tag = label(chip, "CONCEPT", 10, UDim2.new(1, -62, 0, 3), UDim2.fromOffset(58, 14), GREY, Enum.TextXAlignment.Right)
+		tag.FontFace = FONT_BOLD; tag.ZIndex = 8
+	end
+	table.insert(skinCards, { id = sid, st = st, tick = tick, lock = if sid ~= "default" and not concept then lockOver(chip, 8) else nil })
+end
+local lastSeen = ""
+local function showWorn(e: any)
+	if not state.open then return end
+	if tab == "wraps" then
+		local wid = wrapOf(e.id)
+		for _, sw in swatches do if sw.wr.id == wid and sw.holder.Visible then into(swatchRow, sw.holder); return end end
+		swatchRow.CanvasPosition = Vector2.zero
+	elseif tab == "hats" then
+		local hid = hatOf(e.id)
+		for _, c in hatCards do if c.id == hid then into(hatRow, c.chip.Parent :: GuiObject); return end end
+		hatRow.CanvasPosition = Vector2.zero
+	else
+		local sid = skinOf(e.id)
+		for _, c in skinRow:GetChildren() do
+			if c:IsA("GuiObject") and c:GetAttribute("SkinId") == sid then into(skinRow, c); return end
+		end
+		skinRow.CanvasPosition = Vector2.zero
+	end
 end
 skinsRefresh = function(e: any)
 	-- the row follows the focused weapon: rebuilt when the focus (or the skins in the place) change
-	local ids = GunSkins.forWeapon(e.id)
-	local k = e.id .. ":" .. table.concat(ids, ",")
+	-- (the guns session's concepts, SkinSets.CONCEPTS, are in the place for the owner to choose from: never shown to
+	-- players, who can't have them; the owner (in Studio, or the place's creator) sees them at the end, tagged CONCEPT,
+	-- to look at in the big preview. a test sees the players' row with the attribute PlayerView = true)
+	local ids, extra = {}, {}
+	local ss = Shared:FindFirstChild("SkinSets")
+	local okS, SS = false, nil
+	if ss and ss:IsA("ModuleScript") then okS, SS = pcall(require, ss) end
+	local concepts = if okS and type(SS) == "table" and type((SS :: any).CONCEPTS) == "table" then (SS :: any).CONCEPTS else {}
+	local ownerView = (RunService:IsStudio() or (game.CreatorType == Enum.CreatorType.User and me.UserId == game.CreatorId))
+		and me:GetAttribute("PlayerView") ~= true
+	for _, sid in GunSkins.forWeapon(e.id) do
+		if not table.find(concepts, sid) then table.insert(ids, sid)
+		elseif ownerView then table.insert(extra, sid) end
+	end
+	local k = e.id .. ":" .. table.concat(ids, ",") .. "|" .. table.concat(extra, ",")
+	local rebuilt = k ~= skinsFor
 	if k ~= skinsFor then
 		skinsFor = k
 		for _, c in skinRow:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 		table.clear(skinCards)
-		if e.live and e.slot ~= "utility" and #ids > 0 then
+		if e.live and e.slot ~= "utility" and #ids + #extra > 0 then
 			skinCard("default", 0, e.id)
 			for i, sid in ids do skinCard(sid, i, e.id) end
+			for i, sid in extra do skinCard(sid, 1000 + i, e.id, true) end
 		end
 	end
 	local cur = skinOf(e.id)
+	-- (the worn wrap, hat or skin comes into view when the screen opens, the tab changes or another weapon is focused)
+	local seenKey = tab .. "|" .. e.id
+	if state.open and (seenKey ~= lastSeen or rebuilt) then
+		lastSeen = seenKey
+		task.delay(0.1, showWorn, e)
+	end
 	local shownId = if state.skinHover and e.live then state.skinHover else cur
 	if shownId == "default" then
 		sName.Text = "Default"
@@ -980,11 +1106,16 @@ skinsRefresh = function(e: any)
 		sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
 			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
-	noSkins.Visible = not e.live or e.slot == "utility" or #ids == 0
+	noSkins.Visible = not e.live or e.slot == "utility" or #ids + #extra == 0
 	noSkins.Text = if e.slot == "utility" then "items don't take skins." elseif not e.live then "no skins on vapourware. pick something that's live." else "no skins for this one yet."
 	for _, c in skinCards do
 		local on = c.id == cur
 		c.tick.Visible = on
+		if c.lock then
+			local set = owned.skin
+			c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true)
+			lockLook(c.lock)
+		end
 		c.st.Color = if on then ACCENT else WHITE
 		c.st.Transparency = if on then 0 else 0.8
 		c.st.Thickness = if on then 2 else 1
@@ -993,6 +1124,15 @@ end
 onSkin = function(sid: string)
 	local e = Roster.byId[(skinsFor:match("^([%w_]+):")) or state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
+	local set = owned.skin
+	if string.find(skinsFor, sid, 1, true) and not (set ~= nil and set[sid] == true) then
+		for _, c in skinRow:GetChildren() do
+			if c:GetAttribute("SkinId") == sid and c:GetAttribute("Concept") then
+				play("empty"); say("a concept, not in the game. hover it to see it on the gun.", RED)
+				return
+			end
+		end
+	end
 	local ok, why = ask("skin", e.id, sid)
 	if ok then
 		play("click")
@@ -1034,7 +1174,7 @@ hatsRefresh = function(e: any)
 		local on = c.id == cur
 		c.tick.Visible = on
 		local lk = hatLocks[c.id]
-		if lk then lk.Visible = not owns("hat", c.id) end
+		if lk then lk.Visible = not owns("hat", c.id); lockLook(lk) end
 		c.st.Color = if on then ACCENT else WHITE
 		c.st.Transparency = if on then 0 else 0.8
 		c.st.Thickness = if on then 2 else 1
@@ -1043,7 +1183,7 @@ end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
-	if not owns("hat", hid) then
+	if not owns("hat", hid) and not trying() then
 		play("empty")
 		local h = GunHats.HATS[hid] :: any
 		-- (a VIP hat, GunHatData vip = true, comes with the VIP pack on every gun, never from a container; the VIP daily
@@ -1164,7 +1304,8 @@ setOpen = function(v: boolean)
 		local p = pick()
 		state.focus = p[state.slot]
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
-		subtitle.Text = LINES[math.random(#LINES)]
+		subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else LINES[math.random(#LINES)]
+		subtitle.TextColor3 = if trying() then ACCENT else GREY
 		-- the rest of the HUD steps aside while the screen is up (it comes back as it was)
 		table.clear(hidden)
 		for _, g in pg:GetChildren() do
@@ -1193,6 +1334,7 @@ setOpen = function(v: boolean)
 	else
 		state.open = false
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
+		lastSeen = "" -- (the worn things come into view again next time)
 		me:SetAttribute("LoadoutOpen", false)
 		gui.Enabled = false
 		for g in hidden do if g.Parent then g.Enabled = true end end
@@ -1246,9 +1388,15 @@ end)
 -- the screen follows the server: picks / wraps / save status changing, a match grabbing you, a death
 -- (what you own: asked when the screen opens and whenever you win something)
 me:GetAttributeChangedSignal("LootOwned"):Connect(function() task.spawn(function() fetchOwned(); if state.open then refresh() end end) end)
-for _, a in { "LoadoutNext", "Wraps", "LoadoutSave" } do
+for _, a in { "LoadoutNext", "Wraps", "LoadoutSave", "Hats", "Skins", "Trying" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if state.open then refresh() end end)
 end
+-- (in or out of training with the screen up: the TRY line and marks follow)
+me:GetAttributeChangedSignal("Trying"):Connect(function()
+	if not state.open then return end
+	subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else LINES[math.random(#LINES)]
+	subtitle.TextColor3 = if trying() then ACCENT else GREY
+end)
 me:GetAttributeChangedSignal("Zone"):Connect(function()
 	if me:GetAttribute("Zone") == "match" and state.open then setOpen(false) end
 end)

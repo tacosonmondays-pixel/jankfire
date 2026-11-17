@@ -53,6 +53,12 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 	elseif cmd == "redeem" then ShopUI.redeem(rest) -- ("redeem:tix" / "redeem:brass": the confirm panel's REDEEM)
 	elseif cmd == "askdeal" then ShopUI.askDeal(rest) -- ("askdeal:<skin>": one of the owner's deals, its confirm panel)
 	elseif cmd == "back" then ShopUI.back() -- (the inspect panel's BACK: closes a shop opened straight onto it)
+	elseif cmd == "openbox" then -- ("openbox:<container>" or "openbox:<container>:<n>": its OPEN button, from any tab)
+		local cid, nn = string.match(rest or "", "^([%w_]+):?(%d*)$")
+		if cid then task.spawn(ShopUI.openBox, cid, tonumber(nn)) end
+	elseif cmd == "finish" then -- ("finish" or "finish:again": the reveal's DONE or OPEN ANOTHER)
+		local L = require(script.Parent:WaitForChild("LootOpening")) :: any
+		L.finish(if rest == "again" then "again" else "done")
 	end
 end)
 

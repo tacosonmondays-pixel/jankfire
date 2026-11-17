@@ -318,6 +318,73 @@ Tested in solo Play (place version 569), as the owner:
 - At phone size (844 x 390) all five tabs fit, with the wallet in the pill's place (`shop-deals-phone.jpg`).
 - Put back afterwards: the owner's inventory (through the loot remote) and the test deals (`JankDealsTest` reset).
 
+## Try anything in training (17 Nov)
+
+The owner: "when you're in the training hub you're free to use any weapon, and when you leave it reloads your previous
+loadout".
+
+- **Where:** the training hall (with its back lot and basement) and the playground: `Zones.training(p)`, the shared
+  helper `Zones.luau` (the utility-items session's, also used for free items in training) over `Matches.zoneOf`.
+- **What changes there (`Loadout.luau`):** the first loadout change (pick, wrap, hat or skin) copies the saved
+  loadout into a try layer (`d.try`). Changes go to that layer with no ownership checks, and it arms you at once
+  (`tryArm`). The saved loadout, which is what gets written to the DataStore, is never touched. Concept skins
+  (`SkinSets.CONCEPTS`) are refused even there.
+- **Leaving:** a check every 0.2 s drops the layer once you're outside both zones, republishes the saved loadout and
+  re-arms you with it (`endTry`). Coming back starts again from the saved one. A match (`armed` while not in a try
+  zone) drops the layer before arming, so nothing tried reaches a match, a replay or a finisher.
+- **On screen (`LoadoutUI`):** while trying (the attribute `Trying`, or Zone training/playground) the subtitle reads
+  TRY ANYTHING HERE · YOUR LOADOUT COMES BACK WHEN YOU LEAVE, and things you don't own carry an accent TRY mark
+  instead of the padlock. The shop's inspect blurb for a skin, wrap or hat you don't own ends "try it on in the
+  training hall first."
+
+Tested in solo Play (place version 684):
+- In the training hall, picking the Assault Rifle, the Keytar skin and the Halo hat (none owned) all went through,
+  with `Trying` = true; a concept skin was refused ("that one's still a concept"). The loadout showed the
+  training subtitle and TRY on what isn't owned (`docs/shop/loadout-try-training.jpg`).
+- Back in the hub: `Trying` cleared, skins, hats and picks were the saved ones again (Shredder on 1).
+- Tried again in the hall, then a ghost 1v1 started with the player in it: in the match, the Shredder in hand and the
+  saved skins and hats, nothing tried.
+
+## The Loadout's strips scroll (17 Nov)
+
+The owner: "The weapons run off and you can [not] scroll through!!" The SKINS strip was a plain frame, so the Assault
+Rifle's many skins ran off the panel.
+
+- The wraps, hats and skins strips are horizontal ScrollingFrames: mouse wheel, drag, swipe on a phone, a scroll bar,
+  and ‹ › buttons at the ends that page along (shown only when there's more that way). `CanvasPosition` turned out to
+  be in screen pixels even under a UIScale (measured in Play: its furthest is `AbsoluteCanvasSize - AbsoluteWindowSize`),
+  so the paging works in screen pixels on the desktop fit and the phone layout alike.
+- What you wear comes into view when the screen opens, when you switch tab and when you focus another weapon
+  (`showWorn`).
+- The owner on the HATS tab: "This is right and easily fixable by allowing scroll!!" So the SKINS row is the HATS
+  row exactly: the same place in the same panel, cards `CW` wide (86 today) with an 88 px picture, a rarity line, the
+  name under it, and 8 px between them. Hat cards shrink to fit up to thirteen hats as before, never under 86 px; past
+  that the strip scrolls. The wraps strip keeps its swatches (86 px, the same width) and its filter row; it already scrolled inside its panel and now has the same 8 px spacing and ‹ › buttons.
+- Concept skins (`SkinSets.CONCEPTS`, the guns session's) are never shown to players. The owner (in Studio, or the
+  place's creator) sees them at the end of the strip, tagged CONCEPT, to look at in the big preview; clicking one
+  says it's a concept. Their names come from the builders' notes: Velvet, Starlight, Glasswing, Sweet Shop (cute
+  A to D), Duckling. The owner's Tripo picks have no names yet and show their ids. A test sees the players' strip
+  with the player attribute `PlayerView = true`.
+- Tested in solo Play (place version 684): before, the Assault Rifle's skins ran off the panel under dev names
+  (`docs/shop/loadout-skins-before.jpg`); after, they sit in the panel at the hats' size with a › at the end, the
+  concepts named and tagged (`loadout-skins-after.jpg`), the wheel scrolls the row, and the hats row and the phone
+  layout (844 x 390) are unchanged and inside their panels (`loadout-hats-after.jpg`, `loadout-hats-phone.jpg`).
+- The flair screen's kill effect, emote and grapple grids (the flair session's `FlairUI`) already clip and scroll, and
+  stay as they are.
+
+## After an opening, back to the game (17 Nov)
+
+The owner: "after opening chests it shouldnt take you back to your inventory just back to the game". Every container
+opening goes through `ShopUI.openBox` (the inventory's OPEN, the CONTAINERS tab, the inspect panel, a redeem). When
+the reveal (`LootOpening.play`) closes with DONE, the shop closes too: camera, controls and HUD back, no inventory.
+OPEN ANOTHER still opens the next one first. Only an open that never started (refused, none in stock) leaves you in
+the shop, with the reason. Test ops (`ShopTest`): `openbox:<container>` or `openbox:<container>:<n>` presses its
+OPEN; `finish` or `finish:again` presses the reveal's DONE or OPEN ANOTHER.
+
+Tested in solo Play (place version 684): a Duffel Bag opened from INVENTORY and one from CONTAINERS; DONE on the
+reveal (`docs/shop/chest-reveal.jpg`) left the shop shut, the camera Custom, no blur and the HUD back
+(`chest-done-back-in-game.jpg`). The inventory was put back afterwards (the loot remote's dev `set`).
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

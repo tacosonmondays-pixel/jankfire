@@ -11,6 +11,15 @@
 -- SKINS (GunSkins.luau): another body per weapon, from a crate. Only a skin you own (Inventory.owns, the loot
 -- session's) and whose model is in the place (ReplicatedStorage.JankfireSkins); attribute "Skins" =
 -- "ar=ar_toy;katana=katana_bokken", saved as `skins`; on right away, like a wrap. The Shredder's is a Tool of its own
+-- TRY IN TRAINING (the owner, 17 Nov 2026: "when you're in the training hub you're free to use any weapon, and when you
+-- leave it reloads your previous loadout"): in the training hall and its playground (the server's own zone,
+-- Matches.zoneOf: the hall, the back lot, the basement, the playground) every pick goes into a layer of its own, d.try,
+-- a copy of your loadout that is never saved and never owned: any live weapon, any skin, wrap or hat that exists (not
+-- the guns session's concepts). the moment you're anywhere else (the hub, a match, a lobby; checked 5 times a second
+-- and at every spawn) the layer goes, your saved loadout is back and, where re-arming is allowed, in your hands.
+-- nothing tried reaches a match: f.nextLoadout always carries the saved picks (tried weapons are put in your hands on
+-- the spot), and the looks a match, a replay or a finisher reads (Skins / Wraps / Hats) are the saved ones again
+-- before any spawn outside training. the attribute "Trying" tells the loadout screen to mark what you're trying
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local DataStoreService = game:GetService("DataStoreService")
@@ -34,7 +43,7 @@ local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking
 
 type Data = {
 	pick: { [string]: string }, wraps: { [string]: { id: string, mode: string } }, hats: { [string]: string },
-	skins: { [string]: string },
+	skins: { [string]: string }, try: any?,
 	loaded: boolean, canSave: boolean, dirty: boolean, saveAt: number, touched: boolean,
 }
 local data: { [Player]: Data } = {}
@@ -44,22 +53,32 @@ local function canHave(slot: string, wid: any): boolean
 	local e = if type(wid) == "string" then Roster.byId[wid] else nil
 	return e ~= nil and e.live and e.slot == slot
 end
--- the Shredder's wrap and hat, if you own them (Loot.owns; a saved pick you don't own stays saved but isn't worn)
+-- what you're wearing and carrying right now: the training try layer while it's on, else your saved loadout
+local function layer(d: Data): any
+	return d.try or d
+end
+-- the Shredder's wrap and hat, if you own them (Loot.owns; a saved pick you don't own stays saved but isn't worn).
+-- trying in training: whatever you tried
 local function ownedWrap(p: Player, d: Data?): { id: string, mode: string }?
+	if d and d.try then return d.try.wraps.shredder end
 	local w = d and d.wraps.shredder
 	return if w and Loot.owns(p, "wrap", w.id, "shredder") then w else nil
 end
 local function ownedHat(p: Player, d: Data?): string?
+	if d and d.try then return d.try.hats.shredder end
 	local h = d and d.hats.shredder
 	return if h and Loot.owns(p, "hat", h, "shredder") then h else nil
 end
+-- the SAVED weapons (what f.nextLoadout always carries, so nothing tried can reach a match)
 local function list(d: Data): { string }
 	return { d.pick.primary, d.pick.secondary, d.pick.melee }
 end
--- every slot in Roster.SLOTS order (what the loadout screen reads): the three weapons, then the item
+-- every slot in Roster.SLOTS order (what the loadout screen reads): the three weapons, then the item (the ones you
+-- have now: the try layer's while it's on)
 local function slots(d: Data): { string }
+	local L = layer(d)
 	local out = {}
-	for _, slot in Roster.SLOTS do table.insert(out, d.pick[slot] or DEFAULT[slot]) end
+	for _, slot in Roster.SLOTS do table.insert(out, L.pick[slot] or DEFAULT[slot]) end
 	return out
 end
 
@@ -68,21 +87,33 @@ local function publish(p: Player)
 	local d = data[p]
 	if not d then return end
 	p:SetAttribute("LoadoutNext", table.concat(slots(d), ","))
+	-- (trying in training: whatever you tried, owned or not; else only what you own is worn: a saved pick you don't
+	-- own stays saved, and goes on the moment you win it)
+	local L = layer(d)
+	local free = d.try ~= nil
 	local parts = {}
-	-- (only what you own is worn: a saved pick you don't own stays saved, and goes on the moment you win it)
-	for wid, w in d.wraps do if Loot.owns(p, "wrap", w.id, wid) then table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end end
+	for wid, w in L.wraps do if free or Loot.owns(p, "wrap", w.id, wid) then table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end end
 	table.sort(parts)
 	p:SetAttribute("Wraps", table.concat(parts, ";"))
 	local hats = {}
-	for wid, h in d.hats do if Loot.owns(p, "hat", h, wid) then table.insert(hats, wid .. "=" .. h) end end
+	for wid, h in L.hats do if free or Loot.owns(p, "hat", h, wid) then table.insert(hats, wid .. "=" .. h) end end
 	table.sort(hats)
 	p:SetAttribute("Hats", table.concat(hats, ";"))
+	p:SetAttribute("Trying", if free then true else nil)
 	local skins = {}
-	for wid, s in d.skins do table.insert(skins, wid .. "=" .. s) end
+	for wid, s in L.skins do table.insert(skins, wid .. "=" .. s) end
 	table.sort(skins)
 	p:SetAttribute("Skins", table.concat(skins, ";"))
 	p:SetAttribute("LoadoutSave", if not d.loaded then "loading" elseif d.canSave then "cloud" else "off")
 end
+
+-- ------------------------------------------------------------------ where you are (the server's own zone)
+-- one helper for every zone rule (Zones.luau, the utility-items session's: Matches.zoneOf, the Zone attribute until
+-- Matches is up): the training hall, its back lot and basement, and the playground are where you try anything
+local Zones = require(script.Parent:WaitForChild("Zones")) :: any
+local function trying(p: Player): boolean return Zones.training(p) end
+local tryArming: { [Player]: boolean } = {}
+local tryArm: (Player) -> boolean = function() return false end -- (below)
 
 -- ------------------------------------------------------------------ arming
 local function syncTools(p: Player, f: any)
@@ -91,7 +122,7 @@ local function syncTools(p: Player, f: any)
 	local ch = p.Character
 	local d = data[p]
 	-- its skin (a Tool of its own, "Shredder@<skin id>", handed over named "Shredder"): a Shredder in the wrong skin goes
-	local sk = d and d.skins.shredder
+	local sk = d and layer(d).skins.shredder
 	local skinSrc = sk and Tools:FindFirstChild("Shredder@" .. sk)
 	local wantSkin = if skinSrc then sk else nil
 	local have: Tool? = nil
@@ -123,6 +154,17 @@ local function armed(f: any)
 	if f.kind ~= "player" then return end
 	local p = f.ref :: Player
 	if not p.Parent then return end
+	local d = data[p]
+	if d and d.try and not tryArming[p] then
+		if trying(p) then
+			-- (a respawn in training: what you were trying comes back in your hands)
+			task.defer(tryArm, p)
+		else
+			-- (a spawn anywhere else, a match: the try is over before anything reads your looks or weapons)
+			d.try = nil
+			publish(p)
+		end
+	end
 	p:SetAttribute("Loadout", table.concat(Rules.loadoutOf(f), ","))
 	syncTools(p, f)
 	p:SetAttribute("ArmT", (tonumber(p:GetAttribute("ArmT")) or 0) + 1)
@@ -151,6 +193,51 @@ local function pushNext(p: Player)
 		f.nextLoadout = list(d)
 		Utility.pick(f, d.pick.utility) -- (in at once while you're dead or in the first 5 s of a life, like the web game)
 	end
+end
+
+-- ------------------------------------------------------------------ the training try layer
+local function copyLayer(d: Data): any
+	local wraps = {}
+	for wid, w in d.wraps do wraps[wid] = { id = w.id, mode = w.mode } end
+	return { pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins) }
+end
+-- the tried weapons in your hands now (training re-arms on the spot), then f.nextLoadout back to the saved picks
+tryArm = function(p: Player): boolean
+	local d = data[p]
+	local f = Fight and Fight.byPlayer[p]
+	if not d or not d.try or not f or not f.alive or tryArming[p] or not trying(p) then return false end
+	tryArming[p] = true
+	local L = d.try
+	f.nextLoadout = { L.pick.primary, L.pick.secondary, L.pick.melee }
+	Rules.arm(f, os.clock())
+	f.nextLoadout = list(d)
+	Utility.pick(f, L.pick.utility, true)
+	Fight.showWeapon(f)
+	armed(f)
+	tryArming[p] = nil
+	return true
+end
+-- leaving training: the layer goes; your saved loadout is back, in your hands where re-arming is allowed (the hub)
+local function endTry(p: Player)
+	local d = data[p]
+	if not d or not d.try then return end
+	d.try = nil
+	publish(p)
+	pushNext(p)
+	local f = Fight and Fight.byPlayer[p]
+	if f and f.alive and not rearmInHub(p) then
+		-- (where a re-arm isn't allowed, a match: its next spawn takes the saved picks; the looks are back now)
+		Fight.showWeapon(f)
+		syncTools(p, f)
+	end
+end
+Loadout.endTry = endTry
+-- the guns session's concepts (for the owner to choose from) aren't tried either
+local function concept(id: string): boolean
+	local m = Shared:FindFirstChild("SkinSets")
+	if not (m and m:IsA("ModuleScript")) then return false end
+	local ok, K = pcall(require, m)
+	return ok and type(K) == "table" and type((K :: any).CONCEPTS) == "table" and table.find((K :: any).CONCEPTS, id) ~= nil
 end
 
 -- ------------------------------------------------------------------ the DataStore
@@ -275,14 +362,24 @@ end
 local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown): (boolean, string?)
 	local d = data[p]
 	if not d then return false, "still loading" end
+	-- (in training every pick goes into the try layer: never saved, never owned; out of it, a leftover layer goes)
+	local tr = trying(p)
+	if d.try and not tr then endTry(p) end
+	if tr and not d.try and (op == "pick" or op == "wrap" or op == "hat" or op == "skin") then d.try = copyLayer(d) end
+	local L = layer(d)
+	local free = d.try ~= nil
+	local function done()
+		if free then publish(p) else changed(p) end
+	end
 	if op == "pick" then
 		if type(a) ~= "string" or not table.find(Roster.SLOTS, a) or type(b) ~= "string" then return false, "nope" end
 		local e = Roster.byId[b]
 		if not e or e.slot ~= a then return false, "wrong slot" end
 		if not e.live then return false, "coming soon. it's not on roblox yet" end
-		if d.pick[a] == b then return true, nil end
-		d.pick[a] = b
-		changed(p); pushNext(p)
+		if L.pick[a] == b then return true, nil end
+		L.pick[a] = b
+		done()
+		if free then tryArm(p) else pushNext(p) end
 		return true, nil
 	elseif op == "wrap" then
 		if type(a) ~= "string" or type(b) ~= "string" or type(c) ~= "string" then return false, "nope" end
@@ -290,9 +387,9 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no paint on vapourware" end
 		if e.slot == "utility" then return false, "items don't take paint" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
-		if not Loot.owns(p, "wrap", b, a) then return false, "you don't own that one for this gun yet. it's in spray cans" end
-		if b == "default" and c == "normal" then d.wraps[a] = nil else d.wraps[a] = { id = b, mode = c } end
-		changed(p)
+		if not free and not Loot.owns(p, "wrap", b, a) then return false, "you don't own that one for this gun yet. it's in spray cans" end
+		if b == "default" and c == "normal" then L.wraps[a] = nil else L.wraps[a] = { id = b, mode = c } end
+		done()
 		-- paint: right away (it's only a look), on what others see in your hand and on the Shredder
 		local f = Fight and Fight.byPlayer[p]
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
@@ -304,11 +401,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no hats on vapourware" end
 		if e.slot == "utility" then return false, "items don't wear hats" end
 		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
-		if b ~= "none" and not Loot.owns(p, "hat", b, a) then return false, "you don't own that one for this gun yet. it's in duffel bags" end
-		local was = d.hats[a]
-		d.hats[a] = if b == "none" then nil else b
-		if was == d.hats[a] then return true, nil end
-		changed(p)
+		if b ~= "none" and not free and not Loot.owns(p, "hat", b, a) then return false, "you don't own that one for this gun yet. it's in duffel bags" end
+		local was = L.hats[a]
+		L.hats[a] = if b == "none" then nil else b
+		if was == L.hats[a] then return true, nil end
+		done()
 		-- on right away (it's only a look): what others see in your hand, and the Shredder
 		local f = Fight and Fight.byPlayer[p]
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
@@ -321,12 +418,16 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if e.slot == "utility" then return false, "items don't take skins" end
 		if b ~= "default" then
 			if not GunSkins.valid(a, b) then return false, "that skin isn't here yet" end
-			if not ownsSkin(p, b) then return false, "you don't own that skin" end
+			if free then
+				if concept(b) then return false, "that one's still a concept" end
+			elseif not ownsSkin(p, b) then
+				return false, "you don't own that skin"
+			end
 		end
-		local was = d.skins[a]
-		d.skins[a] = if b == "default" then nil else b
-		if was == d.skins[a] then return true, nil end
-		changed(p)
+		local was = L.skins[a]
+		L.skins[a] = if b == "default" then nil else b
+		if was == L.skins[a] then return true, nil end
+		done()
 		-- on right away (it's only a look): what others see in your hand, and the Shredder
 		local f = Fight and Fight.byPlayer[p]
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
@@ -335,6 +436,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 	elseif op == "arm" then
 		local f = Fight and Fight.byPlayer[p]
 		if not f then return false, "nope" end
+		if free then return true, if tryArm(p) then "armed" else "same" end
 		local nxt = list(d)
 		local cur = Rules.loadoutOf(f)
 		if cur[1] == nxt[1] and cur[2] == nxt[2] and cur[3] == nxt[3] and Utility.itemOf(f) == d.pick.utility then return true, "same" end
@@ -380,10 +482,21 @@ function Loadout.init(fight: any)
 	Players.PlayerAdded:Connect(added)
 	Players.PlayerRemoving:Connect(function(p)
 		budget[p] = nil
-		save(p)
+		tryArming[p] = nil
+		save(p) -- (the saved loadout only: a try layer is never written)
 		data[p] = nil
 	end)
 	-- a burst of clicks is one write, SAVE_DELAY s after the last one
+	-- (a try ends within 0.2 s of leaving training, a teleport out included; a spawn outside it ends it at once: armed)
+	local tryAcc = 0
+	RunService.Heartbeat:Connect(function(dt)
+		tryAcc += dt
+		if tryAcc < 0.2 then return end
+		tryAcc = 0
+		for p, d in data do
+			if d.try and not trying(p) then endTry(p) end
+		end
+	end)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
 		acc += dt
