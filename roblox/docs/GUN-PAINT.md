@@ -311,8 +311,17 @@ The Half a Shotgun's line ran inside its hinge.
   out while aiming. The Ticket Hat Trick sits at -0.06, the Capgun Yeehaw at 0.09, the Star and Japanese-concept
   Yeehaws at 0.08. The Seraph skins keep their old sights until the angel set lands, and the cute concepts until cute
   v3; the cute concept rifle E's black block covers the crosshair and needs the cute v3 sight.
-- Sheet: `gun-hold/ads-5.jpg`, ten guns aimed in Play. Not pictured: the Half a Shotgun, the Marble Shotgun, the
-  scopes (unchanged) and skins aimed.
+- The Ducky Belt Sander (Bubble Bath v3): on the VFX sheet (place version 486, the old distance) its stock's orange
+  rubber-duck bill filled the bottom middle, about 6 % of the screen and the brightest thing there. At the new
+  distance the stock passes beside your eye and the bill is out of sight; it frames like the plain Belt Sander
+  (12.5 % of the screen against 11.1 %).
+- The Seraph rifle "strafing" on the same sheet: the big beige shape in the upper right is the training hall's
+  console (`TrainingGround.Shell.ConsoleTop`), 0.6 studs from the camera after strafing right into it, not the wing.
+  Checked in Play: the gun's pose moves 0.002 rad while strafing, the wing stays in the bottom-right corner, and the
+  shape is still there standing still at the console. Offline, run tilt, bob and sway at their extremes keep the
+  wing's scaled pieces below 68 % of the screen's height.
+- Sheet: `gun-hold/ads-5.jpg`, every gun aimed in Play (both scopes too), the Ducky Belt Sander before and now, and the
+  Seraph rifle at the console. Not pictured: skins aimed other than the Ducky Belt Sander (measured only).
 
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
 JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
