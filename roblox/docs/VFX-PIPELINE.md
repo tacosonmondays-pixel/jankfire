@@ -561,3 +561,10 @@ look at each character's floor ten times a second. Nothing runs for an idle pad.
 "launch" / "stand" / "both" (the nearest pad). Strips `round17/v667-padglow-hub-idle-stand-launch.jpg` and
 `-training-rooftop-launch.jpg`; a real step-on throw off a hub pad was checked by its light (peak 4.7 of a flare's 5).
 Rooftop pads only throw in a match, so they were flared through the hook.
+
+**The angel rifle v6's new glowing lines** (the owner: "can there be more glowing parts with cool vfx?"; the gun models
+session's v6, place version 669): small gold flame licks along each rear wing's top edge to its tip (`flame`, with the
+new `lift` 0.25: at the Seraph's lift, flames this small floated well above the edge), feathers shed off the wings'
+outer edges, twinkles along the handguard's lines and on the brake's stars, a short trail off each wing tip; the brake's
+motes moved clear of v6's wider ported brake. `flame` rows may now carry `fp` (first-person share; the wings sit close
+to the eye there, 0.35), `step` and `lift`. Photos `round17/angel-v6-effects-wings-barrel-fp.jpg`.

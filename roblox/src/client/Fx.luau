@@ -2171,12 +2171,16 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	-- in the gun frame, metres, `both` mirrors), one small emitter every 7 cm; their colour and the lit parts' (names
 	-- ending "__lit") follow the equipped wrap's glow colour (skinGlow)
 	local fl = sp.flame
-	if fl and fl.segs then
+	-- (fl.fp: the flames' rate share in first person, your own gun; 0 = none there. the angel rifle's wing flames sit
+	-- close to the eye there)
+	local flK = if fl and S_.fp and type(fl.fp) == "number" then fl.fp else 1
+	if fl and fl.segs and flK > 0 then
 		-- (round 8 in Play on a stand-in rifle: at 0.08 m and 30 a metre they read as small candle flames, and a violet
 		-- wrap's barely showed on a light wall: taller, about twice as many, brighter)
 		local fh = (fl.size or 0.12) * k
-		local step = 0.07
-		local perPoint = (fl.rate or 60) * step
+		local step = fl.step or 0.07
+		local perPoint = (fl.rate or 60) * step * flK
+		local lift = fl.lift or 1 -- (how far they rise off the edge: small flames need less, or they float above it)
 		local function seg(a: Vector3, b: Vector3)
 			local n = math.max(1, math.floor((b - a).Magnitude / step + 0.5))
 			for i = 0, n do
@@ -2185,8 +2189,8 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 				local em = rigEmitter(att, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
 					FlipbookStartRandom = true, FlipbookFramerate = NR(18, 26), LightEmission = 1, LightInfluence = 0, Brightness = 2.4,
 					Size = ns(0, fh / 0.86 * H * 0.6, 0.3, fh / 0.86 * H, 1, fh / 0.86 * H * 0.7), Transparency = ns(0, 1, 0.15, 0.1, 0.7, 0.3, 1, 1),
-					Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * k, 0.3 * k), SpreadAngle = Vector2.new(10, 10),
-					Acceleration = Vector3.new(0, 0.6 * k, 0), Rotation = NR(-8, 8), LockedToPart = S_.fp })
+					Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * k * lift, 0.3 * k * lift), SpreadAngle = Vector2.new(10, 10),
+					Acceleration = Vector3.new(0, 0.6 * k * lift, 0), Rotation = NR(-8, 8), LockedToPart = S_.fp })
 				em.Rate = perPoint
 				em.Enabled = true
 				table.insert(S_.flames, em); table.insert(S_.idle, em)
