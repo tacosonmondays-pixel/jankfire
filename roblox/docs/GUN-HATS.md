@@ -327,6 +327,16 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
     its height, and its hat floated 17 mm over the cover. The guns session then set each template's bounds to its
     export's, shells included. Recheck in Studio after that: the built pieces match the builder, and all three hats sit
     exactly 2.0 mm into the gun on all five rays. A new artist-kit skin needs this recheck too.
+- **The Triangulum Sniper (guns place versions 573 and 589, hats 598):** `sniper@sniper_triangulum`, the VIP daily
+  reward's Sniper, another artist-kit extra set (`tools/roblox/gun_sets_triangulum.py`). The hat tools now need
+  **`JF_EXTRA=gun_sets_ducky_art,gun_sets_triangulum`**; without the second, its line drops out of the data.
+  - It keeps the Sniper's scope axis and radius, so it takes the Sniper's seat as is: z 0.039 on the midnight tube,
+    the 13 mm saddle, height measured on the skin (0.14504, the same as the Star and Dust skins). v2's star band
+    (z −0.35..−0.315), the fore-end studs and the bolt-knob star are all well away from it.
+  - Full check of the twelve hats: no hat in a gun, no gun in a hat, nothing at the foot (24 pairs), the same as the
+    plain Sniper. Whole set: 88 seats, 2,112 rows.
+  - Studio (v2 template, its `FileLo`/`FileHi` set): every hat stands 11.0 mm over the tube (the saddle less the 2 mm
+    sink), the same as on the plain Sniper and the Star skin. Live in place version 598.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -407,7 +417,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 12** (asset 100913123667082: the eleven hats plus the Star Tricorne), place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
-  71 skins since place version 512 (68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
+  72 skins since place version 598 (71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place

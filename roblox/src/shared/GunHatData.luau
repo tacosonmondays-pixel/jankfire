@@ -130,6 +130,7 @@ D.SPOTS = {
 	["sniper@sniper_infernal"] = { at = Vector3.new(0, 0.14325, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
 	["sniper@sniper_seraph"] = { at = Vector3.new(0, 0.15665, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
 	["sniper@sniper_star"] = { at = Vector3.new(0, 0.14508, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
+	["sniper@sniper_triangulum"] = { at = Vector3.new(0, 0.14504, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
 }
 
 return D
