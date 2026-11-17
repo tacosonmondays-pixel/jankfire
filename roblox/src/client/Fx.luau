@@ -170,6 +170,11 @@ local TEX = {
 	bubble = "rbxassetid://127426547666953", -- a soap bubble (the ducky skin)
 	bhdisk = "rbxassetid://108998749126513", -- the black hole's accretion disk from above (tools/roblox/vfx/bh_sheets.py)
 	bhhalo = "rbxassetid://115358722214312", -- its lensing halo: the photon ring and the bent-over arcs
+	-- black hole v3 (17 Nov; tools/roblox/vfx/bh3_sheets.py)
+	bhdisk3 = "rbxassetid://102511491188854", -- the disk from above: white-hot inner edge, orange, then magenta and purple clouds
+	bhhalo3 = "rbxassetid://135232907882413", -- the warm photon ring and the lensed arcs over the top and under the bottom
+	bhshade = "rbxassetid://121099071721160", -- a soft round shade, white (tinted dark: the dark twins)
+	bhflare = "rbxassetid://100443875393789", -- the opening's lens flare: a hot core, a long thin level streak, thin rays
 	cotton2 = "rbxassetid://96781809339333", -- a thick lumpy smoke puff, 64 frames (8x8; tools/roblox/vfx/cotton_sheet.py)
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
 	streak = "rbxassetid://127914373549121", -- a soft white streak (the spark drawing is warm)
@@ -1427,33 +1432,53 @@ local function spiralStep(dt: number)
 	end
 end
 
--- ---- the rubber duck's black hole (the owner, 16 Nov evening: "actual blackhole effect for duck pls"). Fx draws the
--- whole hole; Utility keeps the gameplay (3 s, the pull, the pop), the little duck orbiting and the one stuck to someone.
--- the layers, all cheap and readable across the arena:
---   a pure black event horizon (a black Neon ball: unlit, no shine), 2 m across as the web's core, growing in over 0.3 s
---   the accretion disk: a flat sprite lying in the disk's plane, tilted 14 degrees, turning; each copy lives 1.2 s and
---     the next takes over in a quick crossfade (their fades are mirror ramps, so the brightness holds); the horizon hides
---     its far half
---   the lensing halo: a camera-facing sprite, the thin photon ring hugging the horizon and the disk's far side bent over
---     the top and under the bottom (the arcs), a faint warped glow round it
---   streaks falling in on a spiral and stretching as they go (inward particles locked to a turning part, speeding up)
---   loose dark bits pulled in from further out, on a slower spiral
---   grey dust on the floor below drawn in toward it, a slow violet light pulse
--- the pop: the horizon collapses in 0.12 s while Utility's flash and fire bits go off; a bright ring flash, a ring out
--- across the floor
-local HOLE_C = Color3.fromRGB(150, 110, 220)
-local HZ = 1 * S -- the horizon's radius (the web's core is 2 m across)
-local DISK_W = 2.85 * S -- the disk sprite's half width (its inner edge, 0.38 of it, sits just outside the horizon)
-local HALO_W = 2.5 * S -- the halo sprite's half width (its photon ring at 0.42 of it)
-local TILT = CFrame.Angles(math.rad(20), 0, math.rad(-6)) -- (round 3: 14 read as a line from the side)
-type BH = { hz: BasePart, disk: ParticleEmitter, diskAtt: Attachment, halo: ParticleEmitter, band: ParticleEmitter, swirl: BasePart, dust: ParticleEmitter,
-	dustAtt: Attachment, fall: ParticleEmitter, outer: BasePart, bits: ParticleEmitter, light: PointLight }
-type HoleFx = { at: Vector3, R: number, rig: BH, t: number, nextLayer: number, nextDust: number, ang: number, full: boolean }
--- (each sprite: 1.2 s, in and out over 12 % of it; the next one starts as the last begins to go)
-local LAYER_LIFE, LAYER_EVERY = 1.2, 1.2 * 0.88
+-- ---- the rubber duck's black hole (the owner, 16 Nov evening: "actual blackhole effect for duck pls"; v3 on 17 Nov after
+-- the owner's reference clip: a hot pink spark, a white-gold lens flare, then the hole opens on a warm photon ring and a
+-- wide purple and magenta disk with an orange inner edge; looked at for the sequence and the colours, nothing traced).
+-- Fx draws the whole hole; Utility keeps the gameplay (3 s, the pull, the pop), the little duck orbiting and the one
+-- stuck to someone. The timeline runs from the hole's first message (u; a duck stuck to someone sends it 0.3 s before
+-- the pull starts, a duck whose fuse ran out the moment it starts; late joiners skip the opening):
+--   0      the spark: a small hot pink point, a soft pink glow and a pink light on what is near
+--   0.07   the flare: a white-gold star with a long thin horizontal streak (it stays level on screen, like a lens's),
+--          at its biggest about 0.1 s later, shrinking into the opening; the horizon swallows its middle
+--   0.2    the hole opens over 0.33 s, quick then settling: the horizon, the disk, the halo and their shades grow together
+--   then it holds:
+--     a pure black event horizon (a black Neon ball: unlit, no shine), 2 m across as the web's core
+--     the accretion disk (vfx_bhdisk3): a flat sprite in the disk's plane, tilted 20 degrees, turning about half a turn
+--       a second; copies crossfade (mirror ramps, so the brightness holds) so the clouds keep changing
+--     its dark twin under it (vfx_bhshade, normal blend, deep purple): the room behind the disk goes dark so the colours
+--       keep their strength on our light maps (VFX-STUDY: dark twins)
+--     a warm band in the disk's plane at 2.25 m whose near arc crosses in front of the horizon from the side
+--     the lensing halo (vfx_bhhalo3, camera-facing): the thin warm photon ring, the disk's far side bent over the top
+--       and under the bottom; a dark round shade behind it (the shadow round the horizon)
+--     streaks falling in on a spiral, magenta far out and white-hot at the end; dark flakes on a slower spiral; grey
+--       dust on the floor below drawn in; a faint warm-violet light pulse
+--   0.16 s before the pop (the hole's age reaches Items.DUCK.holeTime - 0.16) it collapses: everything sucked into the
+--   middle, so it is a point when the server's pop comes: a white-gold flare, the glow, a ring out across the floor
+-- first person stays clear: within 3.2 horizon radii of the camera the sprites fade (out by 1.4: the one the duck is
+-- stuck to has the camera inside the hole and sees only the streaks and flakes pour into them)
+local BHK = {
+	HZ = 1 * S, -- the horizon's radius (the web's core is 2 m across)
+	DISK_W = 3.6 * S, -- the disk sprite's half width (its inner edge, 0.29 of it, just outside the horizon)
+	HALO_W = 2.5 * S, -- the halo's (its photon ring at 0.42 of it)
+	SHADE_W = 2.1 * S, -- the round shade behind the halo
+	BAND_W = 2.4 * S, -- the band (the ring drawing's ring at 0.94 of it: 2.25 m)
+	FLARE_W = 2.8 * S, -- the opening flare at its biggest
+	TILT = CFrame.Angles(math.rad(20), 0, math.rad(-6)), -- (round 3: 14 read as a line from the side)
+	FLARE_T = 0.07, OPEN0 = 0.2, OPEN1 = 0.53, COLLAPSE = 0.16,
+	HOLE_T = ((require(Shared:WaitForChild("Items")) :: any).DUCK.holeTime :: number),
+	-- (each disk copy: 1.2 s, in and out over 12 % of it; the next starts as the last begins to go. the shades, the
+	-- band and the halo are one long particle each)
+	LIFE = 1.2, EVERY = 1.2 * 0.88, LONG = 6,
+}
+type BH = { hz: BasePart, disk: ParticleEmitter, diskShade: ParticleEmitter, band: ParticleEmitter, halo: ParticleEmitter,
+	haloShade: ParticleEmitter, spark: ParticleEmitter, sparkGlow: ParticleEmitter, flare: ParticleEmitter, swirl: BasePart,
+	dust: ParticleEmitter, dustAtt: Attachment, fall: ParticleEmitter, outer: BasePart, bits: ParticleEmitter, light: PointLight }
+type HoleFx = { at: Vector3, R: number, rig: BH, u: number, age: number, nextLayer: number, nextDust: number, ang: number,
+	opened: boolean, flared: boolean, closing: boolean, k: number, f: number }
 local holesFx: { [any]: HoleFx } = {}
 local bhFree: { BH } = {}
-local bhDying: { { rig: BH, t: number } } = {}
+local bhDying: { { rig: BH, t: number, k0: number } } = {}
 local function bhPart(name: string, shape: Enum.PartType): BasePart
 	local p = Instance.new("Part")
 	p.Name = name; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
@@ -1461,92 +1486,127 @@ local function bhPart(name: string, shape: Enum.PartType): BasePart
 	return p
 end
 local function newBH(): BH
+	local K = BHK
 	local hz = bhPart("FxHoleHorizon", Enum.PartType.Ball)
-	hz.Material = Enum.Material.Neon; hz.Color = Color3.new(0, 0, 0); hz.Transparency = 0
-	local diskAtt = Instance.new("Attachment"); diskAtt.CFrame = TILT; diskAtt.Parent = hz
-	local disk = rigEmitter(diskAtt, { Texture = TEX.bhdisk, LightEmission = 1, LightInfluence = 0, Brightness = 2.1,
-		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), LockedToPart = true,
-		Size = NumberSequence.new(DISK_W), Transparency = ns(0, 1, 0.12, 0.08, 0.88, 0.08, 1, 1), Lifetime = NR(LAYER_LIFE),
+	hz.Material = Enum.Material.Neon; hz.Color = Color3.new(0, 0, 0); hz.Transparency = 0; hz.Size = Vector3.one * 0.01
+	local flat = Enum.ParticleOrientation.VelocityPerpendicular
+	local diskAtt = Instance.new("Attachment"); diskAtt.CFrame = K.TILT; diskAtt.Parent = hz
+	-- (ZOffset sorts them: the dark shades first, then the glowing layers over them)
+	local diskShade = rigEmitter(diskAtt, { Texture = TEX.bhshade, LightEmission = 0, LightInfluence = 0, Color = cs(Color3.fromRGB(16, 6, 28)),
+		Orientation = flat, Speed = NR(0.01), LockedToPart = true, Size = NumberSequence.new(0.01), Lifetime = NR(K.LONG), ZOffset = -0.8 })
+	local disk = rigEmitter(diskAtt, { Texture = TEX.bhdisk3, LightEmission = 1, LightInfluence = 0, Brightness = 1.8,
+		Orientation = flat, Speed = NR(0.01), LockedToPart = true, Size = NumberSequence.new(0.01), Lifetime = NR(K.LIFE),
 		Rotation = NR(0, 360), RotSpeed = NR(-200, -160) }) -- (about half a turn a second)
-	-- the bright band: a thin ring in the disk's plane at 2.25 m (the ring drawing's ring sits at 0.94 of its half width), so
-	-- from the side its near arc crosses in front of the horizon's lower half (round 4: the side view read as an eclipse)
-	local band = rigEmitter(diskAtt, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 1.2, -- (round 5: 2.6 drowned the swirl from above)
-		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), LockedToPart = true,
-		Color = cs(Color3.fromRGB(214, 188, 255)), Size = NumberSequence.new(2.4 * S), Transparency = ns(0, 1, 0.12, 0.2, 0.88, 0.2, 1, 1),
-		Lifetime = NR(LAYER_LIFE) })
+	-- the warm band: from the side its near arc crosses in front of the horizon's lower half (round 4: the side view
+	-- read as an eclipse without it)
+	local band = rigEmitter(diskAtt, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 1.3,
+		Orientation = flat, Speed = NR(0.01), LockedToPart = true, Color = cs(Color3.fromRGB(255, 196, 140)),
+		Size = NumberSequence.new(0.01), Lifetime = NR(K.LONG), ZOffset = 0.1 })
 	local haloAtt = Instance.new("Attachment"); haloAtt.Parent = hz -- (on the middle: an emitter on a part spawns anywhere in it)
-	local halo = rigEmitter(haloAtt, { Texture = TEX.bhhalo, LightEmission = 1, LightInfluence = 0, Brightness = 2.4,
-		Speed = NR(0), LockedToPart = true, Size = NumberSequence.new(HALO_W), Transparency = ns(0, 1, 0.12, 0.1, 0.88, 0.1, 1, 1),
-		Lifetime = NR(LAYER_LIFE), Rotation = NR(-4, 4) })
-	-- the streaks: from a shell 3.2 m out straight to the middle in the turning part's frame (a spiral in the world),
-	-- speeding up as they go (negative drag) and stretching along their flight
+	local haloShade = rigEmitter(haloAtt, { Texture = TEX.bhshade, LightEmission = 0, LightInfluence = 0, Color = cs(Color3.fromRGB(10, 4, 18)),
+		Speed = NR(0), LockedToPart = true, Size = NumberSequence.new(0.01), Lifetime = NR(K.LONG), ZOffset = -1 })
+	local halo = rigEmitter(haloAtt, { Texture = TEX.bhhalo3, LightEmission = 1, LightInfluence = 0, Brightness = 2.2,
+		Speed = NR(0), LockedToPart = true, Size = NumberSequence.new(0.01), Lifetime = NR(K.LONG), ZOffset = 0.3 })
+	-- the opening: the spark (a hot point and its soft glow; the glow drawing's bright middle is under half its width)
+	-- and the flare
+	local spark = rigEmitter(haloAtt, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 3,
+		Color = cs(Color3.fromRGB(255, 214, 240), Color3.fromRGB(255, 84, 176)), Speed = NR(0), LockedToPart = true,
+		Size = ns(0, 0.05 * S, 0.25, 0.24 * S, 1, 0.1 * S), Transparency = ns(0, 0, 0.6, 0.1, 1, 1), Lifetime = NR(0.22), ZOffset = 0.5 })
+	local sparkGlow = rigEmitter(haloAtt, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 1.2,
+		Color = cs(Color3.fromRGB(255, 92, 178)), Speed = NR(0), LockedToPart = true,
+		Size = ns(0, 0.2 * S, 0.3, 0.8 * S, 1, 0.5 * S), Transparency = ns(0, 0.45, 0.5, 0.6, 1, 1), Lifetime = NR(0.26), ZOffset = 0.4 })
+	local flare = rigEmitter(haloAtt, { Texture = TEX.bhflare, LightEmission = 1, LightInfluence = 0, Brightness = 2.6,
+		Speed = NR(0), LockedToPart = true, Rotation = NR(-8, 8), RotSpeed = NR(-25, 25), Lifetime = NR(0.42) })
+	-- the streaks: from a flat band round the disk's plane, 5 m out, ending 1.2 m out (round 4: straight scratches up to
+	-- the ceiling); the part turning under them bends each path into a spiral. magenta far out, white-hot at the end
 	local swirl = bhPart("FxHoleSwirl", Enum.PartType.Block) -- (a block: a ball part keeps its sides equal)
-	-- (round 4: straight scratches up to the ceiling: now only in a flat band round the disk's plane, 5 m out, ending
-	-- 1.2 m out, before the core; the part turning under them bends each path into a spiral)
 	swirl.Size = Vector3.new(10 * S, 1.6 * S, 10 * S)
 	local fall = rigEmitter(swirl, { Texture = TEX.streak, LightEmission = 1, LightInfluence = 0, Brightness = 2,
 		Orientation = Enum.ParticleOrientation.VelocityParallel, LockedToPart = true,
-		Color = cs(Color3.fromRGB(203, 184, 255), Color3.fromRGB(250, 246, 255)), Size = ns(0, 0.1 * S, 1, 0.16 * S),
+		Color = cs(Color3.fromRGB(226, 112, 236), Color3.fromRGB(255, 226, 190)), Size = ns(0, 0.1 * S, 1, 0.16 * S),
 		Squash = ns(0, 0.5, 1, 2), Transparency = ns(0, 1, 0.15, 0.15, 0.75, 0.1, 1, 1), Lifetime = NR(0.8, 0.9),
 		Speed = NR(2.6 * S, 2.9 * S), Drag = -1.5, Shape = Enum.ParticleEmitterShape.Cylinder,
-		ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface, ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 80 })
-	-- the loose bits: small dark flakes from 6 m out, slower, tumbling
+		ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface, ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 60 })
+	-- the loose bits: small dark flakes from 4.5 m out, slower, tumbling, stretched as they go in
 	local outer = bhPart("FxHoleDebris", Enum.PartType.Ball)
 	outer.Size = Vector3.one * 9 * S
 	local bits = rigEmitter(outer, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, LightEmission = 0,
 		LightInfluence = 1, LockedToPart = true, Color = cs(Color3.fromRGB(92, 90, 98), Color3.fromRGB(44, 42, 50)),
 		Size = ns(0, 0.45 * S * H, 0.7, 0.4 * S * H, 1, 0.12 * S * H), Transparency = ns(0, 1, 0.15, 0, 0.9, 0, 1, 1), Lifetime = NR(1.5, 1.7),
 		Speed = NR(1.7 * S, 2 * S), Drag = -1, Rotation = NR(0, 360), RotSpeed = NR(-300, 300),
-		Orientation = Enum.ParticleOrientation.VelocityParallel, Squash = ns(0, 0, 0.7, 0, 1, 2.5), -- (stretched as they go in)
+		Orientation = Enum.ParticleOrientation.VelocityParallel, Squash = ns(0, 0, 0.7, 0, 1, 2.5),
 		Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
 		ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 12 })
 	-- grey dust on the floor below drawn in: a flat ring shrinking to the middle, slow at first, quick at the end
 	local dustAtt = Instance.new("Attachment"); dustAtt.Parent = hz
 	local dust = rigEmitter(dustAtt, { Texture = TEX.shock, LightEmission = 0.3, LightInfluence = 0.7,
-		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), Color = cs(Color3.fromRGB(150, 148, 156)),
+		Orientation = flat, Speed = NR(0.01), Color = cs(Color3.fromRGB(150, 148, 156)),
 		Size = ns(0, 6 * S * H * 2, 0.5, 4.6 * S * H * 2, 0.8, 2.8 * S * H * 2, 1, 1.2 * S * H * 2),
 		Transparency = ns(0, 1, 0.3, 0.84, 0.85, 0.86, 1, 1), Lifetime = NR(0.9) })
 	local light = Instance.new("PointLight")
-	-- (round 3: at 1.4-2 over 14 m it washed the whole room violet; a faint pulse on what is near)
-	light.Color = Color3.fromRGB(192, 178, 236); light.Range = math.min(60, 8 * S); light.Brightness = 0; light.Shadows = false
+	-- (round 3: at 1.4-2 over 14 m it washed the whole room; a faint pulse on what is near)
+	light.Color = Color3.fromRGB(232, 168, 214); light.Range = math.min(60, 8 * S); light.Brightness = 0; light.Shadows = false
 	light.Enabled = false; light.Parent = hz
-	return { hz = hz, disk = disk, diskAtt = diskAtt, halo = halo, band = band, swirl = swirl, dust = dust, dustAtt = dustAtt, fall = fall,
-		outer = outer, bits = bits, light = light }
+	return { hz = hz, disk = disk, diskShade = diskShade, band = band, halo = halo, haloShade = haloShade, spark = spark,
+		sparkGlow = sparkGlow, flare = flare, swirl = swirl, dust = dust, dustAtt = dustAtt, fall = fall, outer = outer, bits = bits,
+		light = light }
 end
 local function bhPark(b: BH)
 	b.fall.Enabled = false; b.bits.Enabled = false
-	b.disk:Clear(); b.halo:Clear(); b.band:Clear(); b.fall:Clear(); b.bits:Clear(); b.dust:Clear()
+	for _, e in { b.disk, b.diskShade, b.band, b.halo, b.haloShade, b.spark, b.sparkGlow, b.flare, b.fall, b.bits, b.dust } do e:Clear() end
+	b.hz.Size = Vector3.one * 0.01
 	b.hz.CFrame = PARK; b.swirl.CFrame = PARK; b.outer.CFrame = PARK
 	b.light.Enabled = false
 	table.insert(bhFree, b)
 end
--- the hole's look at a grow-in fraction g (0..1): the horizon and both sprites scale with it
-local function bhScale(h: HoleFx, g: number)
-	local b = h.rig
-	local k = math.max(g, 0.01)
-	b.hz.Size = Vector3.one * 2 * HZ * k
-	if g < 1 then
-		b.disk.Size = NumberSequence.new(DISK_W * k)
-		b.halo.Size = NumberSequence.new(HALO_W * k)
-		b.band.Size = NumberSequence.new(2.4 * S * k)
-		h.full = false
-	elseif not h.full then
-		h.full = true
-		b.disk.Size = NumberSequence.new(DISK_W); b.halo.Size = NumberSequence.new(HALO_W); b.band.Size = NumberSequence.new(2.4 * S)
-	end
+-- the hole's size: k = how far open (0..1, the opening and the collapse); the sprites only (the horizon is set each step)
+local function bhSize(b: BH, k: number)
+	local K = BHK
+	k = math.max(k, 0.001)
+	b.disk.Size = NumberSequence.new(K.DISK_W * k); b.diskShade.Size = NumberSequence.new(K.DISK_W * 1.08 * k)
+	b.band.Size = NumberSequence.new(K.BAND_W * k)
+	b.halo.Size = NumberSequence.new(K.HALO_W * k); b.haloShade.Size = NumberSequence.new(K.SHADE_W * k)
 end
--- returns true: Fx draws the whole hole (Utility then makes no core, shell or ring of its own)
+-- how much of it shows: f = 1 far from the camera, 0 with the camera inside it (first person stays clear)
+local function bhFade(b: BH, f: number)
+	local o = 0.92 * f
+	b.disk.Transparency = ns(0, 1, 0.12, 1 - o, 0.88, 1 - o, 1, 1)
+	b.diskShade.Transparency = NumberSequence.new(1 - 0.8 * f)
+	b.band.Transparency = NumberSequence.new(1 - 0.75 * f)
+	b.halo.Transparency = NumberSequence.new(1 - 0.92 * f)
+	b.haloShade.Transparency = NumberSequence.new(1 - 0.85 * f)
+	b.flare.Transparency = ns(0, 1 - f, 0.7, 1 - 0.9 * f, 1, 1)
+end
+-- the flare at the opening (big, slow-ish) or at the pop (smaller, quick)
+local function bhFlare(b: BH, pop: boolean)
+	local W = BHK.FLARE_W
+	if pop then
+		b.flare.Lifetime = NR(0.3); b.flare.Size = ns(0, W * 0.5, 0.2, W * 0.85, 1, 0)
+	else
+		b.flare.Lifetime = NR(0.42); b.flare.Size = ns(0, W * 0.15, 0.25, W, 0.6, W * 0.45, 1, 0)
+	end
+	emit(b.flare, 1)
+end
+-- returns true: Fx draws the whole hole (Utility then makes no core, shell or ring of its own). age: the hole's age
+-- (below 0 while it is about to open: a duck stuck to someone)
 function Fx.holeOpen(id: any, at: Vector3, R: number, age: number?): boolean
 	if holesFx[id] then return true end
 	local b = table.remove(bhFree) or newBH()
-	local h: HoleFx = { at = at, R = R, rig = b, t = math.max(0, age or 0), nextLayer = 0, nextDust = 0, ang = 0, full = false }
-	holesFx[id] = h -- (age: already open for late joiners)
+	local a = age or 0
+	local h: HoleFx = { at = at, R = R, rig = b, u = math.max(0, a), age = a, nextLayer = 0, nextDust = 0, ang = 0,
+		opened = false, flared = false, closing = false, k = -1, f = -1 }
+	holesFx[id] = h
 	b.hz.CFrame = CFrame.new(at); b.swirl.CFrame = CFrame.new(at); b.outer.CFrame = CFrame.new(at)
-	bhScale(h, math.min(1, h.t / 0.3))
-	b.fall.Enabled = true; b.bits.Enabled = true
-	b.light.Enabled = true
-	emit(b.disk, 1); emit(b.halo, 1); emit(b.band, 1)
-	h.nextLayer = h.t + LAYER_EVERY
+	bhSize(b, 0)
+	if h.u < BHK.FLARE_T then
+		local cam = workspace.CurrentCamera
+		if not cam or (cam.CFrame.Position - at).Magnitude > 2.3 * BHK.HZ then -- (not in the face of the one it's stuck to)
+			emit(b.spark, 1); emit(b.sparkGlow, 1)
+		end
+		lightFlash(at, Color3.fromRGB(255, 92, 182), 5 * S, 3, 0.3)
+	elseif h.u > BHK.FLARE_T + 0.15 then
+		h.flared = true -- (a late joiner: no opening)
+	end
 	return true
 end
 function Fx.holeMove(id: any, at: Vector3)
@@ -1555,46 +1615,70 @@ function Fx.holeMove(id: any, at: Vector3)
 end
 function Fx.holePop(id: any, at: Vector3?, r: number?)
 	local h = holesFx[id]
+	local b: BH? = nil
 	if h then
 		holesFx[id] = nil
-		local b = h.rig
-		b.fall.Enabled = false; b.bits.Enabled = false
-		b.disk:Clear(); b.halo:Clear(); b.band:Clear()
-		table.insert(bhDying, { rig = b, t = 0 })
+		local rig = h.rig
+		b = rig
+		rig.fall.Enabled = false; rig.bits.Enabled = false
+		for _, e in { rig.disk, rig.diskShade, rig.band, rig.halo, rig.haloShade, rig.spark, rig.sparkGlow, rig.flare } do e:Clear() end
+		table.insert(bhDying, { rig = rig, t = 0, k0 = rig.hz.Size.X / (2 * BHK.HZ) })
 	end
 	if not at then return end
 	local rr = r or 9 * S
-	-- the collapse's flash: the photon ring flaring out (one halo sprite, big and quick), a white-violet glow, a ring out
-	-- across the floor, the light
+	-- the pop: a white-gold flare where the hole was, a warm-white glow going magenta, a ring out across the floor, the light
+	if b then bhFlare(b, true) end
 	local g = emAt(ITEMFX, at, Vector3.yAxis)
-	g.Color = cs(Color3.fromRGB(235, 220, 255), HOLE_C); g.Lifetime = NR(0.3)
+	g.Color = cs(Color3.fromRGB(255, 240, 222), Color3.fromRGB(226, 96, 200)); g.Lifetime = NR(0.3)
 	g.Size = ns(0, rr * 0.25 * 2 * H, 0.25, rr * 0.6 * 2 * H, 1, rr * 0.9 * 2 * H); g.Transparency = ns(0, 0.1, 1, 1)
 	emit(g, 1)
 	local fl = floorBelow(at, rr * 0.6)
-	if fl then floorRing(fl, Color3.fromRGB(170, 160, 190), rr * 0.2, rr * 1.1, 0.45, 0.25) end
-	lightFlash(at, Color3.fromRGB(190, 150, 255), math.min(60, rr * 1.4), 5, 0.3)
+	if fl then floorRing(fl, Color3.fromRGB(176, 160, 186), rr * 0.2, rr * 1.1, 0.45, 0.25) end
+	lightFlash(at, Color3.fromRGB(240, 176, 236), math.min(60, rr * 1.4), 5, 0.3)
 end
 local function holeFxStep(dt: number)
+	local K = BHK
+	local cam = workspace.CurrentCamera
+	local camPos = if cam then cam.CFrame.Position else Vector3.zero
 	for _, h in holesFx do
-		h.t += dt
-		h.ang += dt
+		h.u += dt; h.age += dt; h.ang += dt
 		local b = h.rig
 		local at = h.at
-		bhScale(h, math.min(1, h.t / 0.3))
-		-- (the horizon breathes a little: 3 % at the web core's 20 rad/s, the light pulses slowly)
-		local pulse = 1 + 0.03 * math.sin(h.t * 20)
-		if h.t >= 0.3 then b.hz.Size = Vector3.one * 2 * HZ * pulse end
+		if not h.flared and h.u >= K.FLARE_T then
+			h.flared = true
+			bhFlare(b, false)
+			lightFlash(at, Color3.fromRGB(255, 226, 180), 9 * S, 4, 0.4)
+		end
+		if not h.opened and h.u >= K.OPEN0 then
+			h.opened = true
+			b.fall.Enabled = true; b.bits.Enabled = true; b.light.Enabled = true
+			emit(b.diskShade, 1); emit(b.disk, 1); emit(b.band, 1); emit(b.haloShade, 1); emit(b.halo, 1)
+			h.nextLayer = h.u + K.EVERY
+		end
+		-- open (eased: quick, then settling) and the collapse just before the pop
+		local g = math.clamp((h.u - K.OPEN0) / (K.OPEN1 - K.OPEN0), 0, 1)
+		g = 1 - (1 - g) ^ 3
+		local c = math.clamp((K.HOLE_T - h.age) / K.COLLAPSE, 0, 1)
+		if c < 1 and not h.closing then h.closing = true; b.fall.Enabled = false; b.bits.Enabled = false end
+		local k = g * c ^ 1.3
+		-- (the horizon breathes a little once open: 3 % at the web core's 20 rad/s)
+		local pulse = if g >= 1 and c >= 1 then 1 + 0.03 * math.sin(h.u * 20) else 1
+		b.hz.Size = Vector3.one * 2 * K.HZ * math.max(k * pulse, 0.005)
 		b.hz.CFrame = CFrame.new(at)
-		b.swirl.CFrame = CFrame.new(at) * TILT * CFrame.Angles(0, -h.ang * 3, 0)
-		b.outer.CFrame = CFrame.new(at) * TILT * CFrame.Angles(0, -h.ang * 0.9, 0)
-		b.light.Brightness = 0.22 + 0.1 * math.sin(h.t * 5) -- (round 4: the walls 10 m off still went lavender)
-		if h.t >= h.nextLayer then
-			h.nextLayer += LAYER_EVERY
-			emit(b.disk, 1); emit(b.halo, 1); emit(b.band, 1)
+		b.swirl.CFrame = CFrame.new(at) * K.TILT * CFrame.Angles(0, -h.ang * 3, 0)
+		b.outer.CFrame = CFrame.new(at) * K.TILT * CFrame.Angles(0, -h.ang * 0.9, 0)
+		if math.abs(k - h.k) > 0.004 or (k >= 1 and h.k < 1) then h.k = k; bhSize(b, k) end
+		local f = math.clamp(((camPos - at).Magnitude - 1.4 * K.HZ) / (1.8 * K.HZ), 0, 1)
+		f = f * f * (3 - 2 * f)
+		if math.abs(f - h.f) > 0.02 or ((f <= 0 or f >= 1) and f ~= h.f) then h.f = f; bhFade(b, f) end
+		b.light.Brightness = (0.22 + 0.1 * math.sin(h.u * 5)) * k -- (round 4: the walls 10 m off still went lavender)
+		if h.opened and not h.closing and h.u >= h.nextLayer then
+			h.nextLayer += K.EVERY
+			emit(b.disk, 1)
 		end
 		-- grey dust on the floor under it drawn in (only when the floor is close below)
-		if h.t >= h.nextDust then
-			h.nextDust = h.t + 0.5
+		if h.opened and not h.closing and h.u >= h.nextDust then
+			h.nextDust = h.u + 0.5
 			local fl = floorBelow(at, 4 * S)
 			if fl then
 				b.dustAtt.WorldCFrame = CFrame.new(fl + Vector3.new(0, 0.12, 0))
@@ -1602,13 +1686,14 @@ local function holeFxStep(dt: number)
 			end
 		end
 	end
+	-- popped: the horizon (what is left of it) gone in 0.1 s, the light's flash dying; parked once the pop's flare is over
 	for i = #bhDying, 1, -1 do
 		local d = bhDying[i]
 		d.t += dt
-		local u = d.t / 0.12
-		if u >= 1 then table.remove(bhDying, i); bhPark(d.rig); continue end
-		d.rig.hz.Size = Vector3.one * 2 * HZ * (1 - u) * (1 - u)
-		d.rig.light.Brightness = 2 * (1 - u)
+		if d.t >= 0.35 then table.remove(bhDying, i); bhPark(d.rig); continue end
+		local u = math.min(1, d.t / 0.1)
+		d.rig.hz.Size = Vector3.one * 2 * K.HZ * math.max(d.k0 * (1 - u) * (1 - u), 0.005)
+		d.rig.light.Brightness = 2 * math.max(0, 1 - d.t / 0.25)
 	end
 end
 

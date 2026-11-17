@@ -180,6 +180,17 @@ with our quiet colours:
   out across the floor. Sprites drawn from maths (`tools/roblox/vfx/bh_sheets.py`: `vfx_bhdisk`, `vfx_bhhalo`). The
   owner's reference clip for this was a glowing floor field; only its layering (a ground disc, streaks falling in) was
   taken.
+  **v3 since 17 Nov (place version 540)**, after the owner's second reference clip (a black-hole effect video: a hot pink
+  spark, a white-gold lens flare, then a black shadow with a warm photon ring, lensed arcs and a wide purple-magenta disk
+  with an orange inner edge; the sequence and colours taken, nothing traced). The hole now opens with the spark (0 s)
+  and the flare (0.07 s, biggest about 0.17 s), then grows in over 0.2-0.53 s; it collapses to a point over the last
+  0.16 s before the server's pop (the client knows the hole's age, `Items.DUCK.holeTime`), and the pop adds a smaller
+  flare. New sprites from `tools/roblox/vfx/bh3_sheets.py`: `vfx_bhdisk3` (nebula clouds on a spiral, white-hot and
+  orange inner edge, flecks), `vfx_bhhalo3` (warm photon ring, lensed arcs), `vfx_bhshade` (a soft round shade tinted
+  dark: the dark twins behind the halo and under the disk, so the colours hold on our light maps) and `vfx_bhflare`.
+  The shades, the band and the halo are one long particle each; only the disk crossfades. First person stays clear:
+  the sprites fade within 3.2 horizon radii of the camera (gone by 1.4), and the spark is skipped for the one the duck
+  is stuck to. Timing of the pull and the pop unchanged.
 
 ## Results
 
@@ -415,3 +426,14 @@ blade's back (0.07 where the back is at 0.033). The petals now come off the guar
 ornaments (mirrored) and three points on the blade's back; the swing trail follows the back. First-person photo:
 `round14/sakura-katana-petals-fp.jpg` (petals on the blade, the rim and the hilt, none floating). Third person not
 photographed: the shoulder camera sits behind the avatar's hat.
+
+### Round 15: black hole v3 (17 Nov 2026, place version 540)
+
+Main passed on the owner's reference clip for the Rubber Duck (spark, flare, then a Gargantua-style hole). Built as in
+"Item looks" above. One Play in the training hall with the effect clock frozen (Fx called directly, so Utility's little
+orbiting duck is not in the frames): `round15/blackhole-v3-first-look.jpg`.
+- Holding (1.4 s): from the side the black shadow, the thin warm ring, the bright arc over the top, the disk's near
+  side crossing in front of the shadow, magenta and purple clouds with flecks on the dark backing; from above a
+  swirling nebula with an orange inner edge. Reads on the hall's light walls.
+- Opening: the spark's pink light and the flare's warm light flood the near wall (frozen at full strength), and the
+  flare itself is faint against the lit wall.

@@ -191,5 +191,29 @@
   "sha1": "74c968cbb24d6e19af980da5effc5a83b4fe3853",
   "what": "the same in white and pale grey, for a skin's flash colour to tint",
   "uploaded": "2026-11-17 05:25 UTC (owner: the old flash \"looks kinda ugly\")"
+ },
+ "vfx_bhdisk3": {
+  "id": 102511491188854,
+  "sha1": "d19522dbefee487f13d289310e987067ea32f6b1",
+  "what": "the black hole's accretion disk from above, 1024 px, additive: white-hot inner edge, gold and orange, then coral, magenta and purple clouds on a spiral, bright flecks",
+  "uploaded": "2026-11-17 08:16 UTC (black hole v3, after the owner's reference clip; tools/roblox/vfx/bh3_sheets.py)"
+ },
+ "vfx_bhhalo3": {
+  "id": 135232907882413,
+  "sha1": "253ca5e080035bb277a2dccd4cbc8672aded265d",
+  "what": "its lensing halo, additive: the thin warm photon ring, the lensed arcs over the top (thick) and under the bottom, a pink haze",
+  "uploaded": "2026-11-17 08:16 UTC (black hole v3, after the owner's reference clip; tools/roblox/vfx/bh3_sheets.py)"
+ },
+ "vfx_bhshade": {
+  "id": 121099071721160,
+  "sha1": "1c1aefeaa12255ebe5ad275127fc8161ba6735a5",
+  "what": "a soft round shade, white (tinted dark in Fx): the dark twins behind the halo and under the disk",
+  "uploaded": "2026-11-17 08:16 UTC (black hole v3, after the owner's reference clip; tools/roblox/vfx/bh3_sheets.py)"
+ },
+ "vfx_bhflare": {
+  "id": 100443875393789,
+  "sha1": "c2858fa5874269d5a6cea4d55606fce7a14eff85",
+  "what": "the hole's opening lens flare, additive: a hot core, a long thin level streak, a shorter upright one, four thin uneven rays",
+  "uploaded": "2026-11-17 08:16 UTC (black hole v3, after the owner's reference clip; tools/roblox/vfx/bh3_sheets.py)"
  }
 }
