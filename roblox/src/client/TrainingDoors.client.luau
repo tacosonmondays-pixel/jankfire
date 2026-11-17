@@ -4,8 +4,13 @@
 -- laser gate turns off?", and the course's pit: "is that going to be something?"):
 --   * the back lot's garage door (Hub.TrainingGround.Lot.Door): the server (TheLot) decides when it moves and sets the
 --     Door's attributes From, Goal, Dur and Since (server time). this rolls the slats up smoothly, into the head one by
---     one. Rattle (server time): the door jumps a hand's width and drops (LOCKED)
---   * roll-up shutters: a Model with the attribute Shutter (the muster's gate home). it rolls up while anyone is within
+--     one. Rattle (server time): the door jumps a hand's width and drops (LOCKED). if you have found the egg (your
+--     attribute LotKey, from your save: owner, 17 Nov, "once you find the golden dummies, the main garage is
+--     permanently open for you") it is up on your screen whatever the server's door does, and its slats and DoorBlock
+--     don't stop you (your own body is yours to move; the anti-cheat skips this door): straight up when you get there,
+--     rolling up with the reveal when you earn it
+--   * roll-up shutters: a Model with the attribute Shutter (the muster's gate home), in the training area or anywhere
+--     tagged "Shutter" (the hub's gate to here, GateKit: both sides are the same door). it rolls up while anyone is within
 --     Near studs of its Center and rolls down once they are 2 studs past that (so it can't flip-flop at the edge). only
 --     on screen: its slats never block (walk in and the gate's trigger takes you home). each one is a state, how far up
 --     it is, that moves toward open or shut every frame, so a reversal midway carries on from where it is. (17 Nov, the
@@ -21,12 +26,16 @@
 --   * the course's long-jump pit (a part LongJumpPit with the attribute Edge, the take-off line's z): slide down the
 --     lane, jump at the line, and how far you got shows when you land
 --   * the mirror (the muster's bay; a part MirrorSpot): while you are in training you stand there as a hologram in the
---     hub's style (see-through, a soft fill and outline, turning slowly over its lens), holding what you hold. the owner,
---     16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
+--     hub's style, holding what you hold the way everyone else sees you hold it (ThirdPerson's hold), a still statue.
+--     the owner, 16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 --   * the gun shop's keeper (ShopKeeper.server builds him): his idle (his attribute Idle: the owner's "cute sway waiting
 --     at the cases"; one clip or a few, the first most of the time) loops here, crossfading at each end, and he waves
---     when WaveAt (server time) moves on.
+--     when WaveAt (server time) moves on. his gaze (owner, 17 Nov: "can my character look down I look high or at
+--     least down and track the palyer"): a layer on his neck and waist joints, on this screen only (a Motor6D's C0, or
+--     an AnimationConstraint's Attachment0, as HubNPCs.client does the regulars'), over whatever clip plays: his eyes
+--     lowered to the counter while nobody is near, and turned to the nearest player within GAZE.range in front of him,
+--     eased, with a short hold before he turns to someone else
 --     played here, not on the server: ZoneCull takes the training area out of your world while you are away, and the
 --     server's tracks don't come back with it. it starts again whenever he is back in your world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
@@ -88,6 +97,9 @@ end
 
 -- ---------------------------------------------------------------- the back lot's door (the server's)
 local door: Roller? = nil
+local KEY_UP = 4.2 -- (seconds to roll up on your screen when you earn the key: the egg's reveal)
+local keyU: number? = nil -- (how far up it is on a key holder's screen; nil = set it straight up when next in your world)
+local keyShown: number? = nil
 local function doorU(m: Instance, now: number): (number, boolean)
 	local from, goal, dur, since = m:GetAttribute("From"), m:GetAttribute("Goal"), m:GetAttribute("Dur"), m:GetAttribute("Since")
 	if type(from) ~= "number" or type(goal) ~= "number" or type(dur) ~= "number" or type(since) ~= "number" then return 0, false end
@@ -107,6 +119,24 @@ local function rattleOff(m: Instance, now: number): (Vector3, boolean)
 	local x = 0.07 * math.sin(t * 95) * (1 - t / 0.8)
 	return Vector3.new(x, y, 0), true
 end
+
+-- a key holder's door lets them through: its slats and block don't collide or stop rays on this screen
+local function passDoor(r: Roller)
+	for _, s in r.slats do
+		if s.p.CanCollide then s.p.CanCollide = false end
+		if s.p.CanQuery then s.p.CanQuery = false end
+	end
+	local blk = r.m.Parent and r.m.Parent:FindFirstChild("DoorBlock")
+	if blk and blk:IsA("BasePart") then
+		if blk.CanCollide then blk.CanCollide = false end
+		if blk.CanQuery then blk.CanQuery = false end
+	end
+end
+me:GetAttributeChangedSignal("LotKey"):Connect(function()
+	local dr = door
+	-- (earned with the door in front of you: it rolls up from where it is; anywhere else it is up when you get there)
+	if me:GetAttribute("LotKey") == true and dr and dr.m:IsDescendantOf(workspace) then keyU = doorU(dr.m, workspace:GetServerTimeNow()) else keyU = nil end
+end)
 
 -- ---------------------------------------------------------------- shutters (on screen only)
 type Shutter = { r: Roller, center: Vector3, near: number, lin: number, goal: number, lastNear: number, shown: boolean }
@@ -211,14 +241,40 @@ local function dropHolo()
 end
 -- (16 Nov evening, the owner's lag report, 12 fps in training: the mirror was a full 1.8x clone of your avatar with
 -- its layered clothing, an Animator playing, scanline textures on every face and a new CFrame every frame. it is a
--- still statue now: a plain copy (no layered clothing, nothing in its hands), posed once in Roblox's idle and then
--- anchored, its Humanoid and joints gone, facing out of the bay; the hologram look without scanlines, glitch or
--- flicker; made only when your character is (a spawn, a new look). nothing about it runs per frame)
+-- still statue now: a plain copy (no layered clothing), posed once and then anchored, its Humanoid and joints gone,
+-- facing out of the bay; the hologram look without scanlines, glitch or flicker. nothing about it runs per frame)
+-- (17 Nov, the owner: "the you hologram isnt holding a weapon properly": the copy carried ThirdPerson's own gun,
+-- TPGun, welded to its chest while its arms hung in the idle. now, for a moment while it is made, it is a ThirdPerson
+-- test rig (tag TPRig, TPWeapon = what you hold, its Skin, TPPlayer = you for your wrap and hat): ThirdPerson builds
+-- the gun fresh and puts it in its hands exactly as everyone sees you hold it (the katana in its own stance), at the
+-- hip, looking straight out. once the draw is over the body is anchored where it is, the gun copied in as still parts,
+-- the tag taken off (ThirdPerson lets go and drops its own copy) and the joints and Humanoid destroyed. your utility:
+-- when you use it, the statue holds that item as you do (its use pose, or a throw's wind-up) for ITEM_SHOW seconds,
+-- then goes back to your weapon. it is made again only when what you hold changes (a swap, a skin, a wrap or a hat
+-- gives you a new HeldWeapon), you respawn, or your look changes)
+local ITEM_SHOW = 4
+local TPmod: any = nil
+local function thirdPerson(): any
+	if TPmod == nil then
+		local m = script.Parent:FindFirstChild("ThirdPerson")
+		local ok, t = pcall(function() return if m then require(m) else nil end)
+		TPmod = if ok and t then t else false
+	end
+	return if TPmod then TPmod else nil
+end
 local holoFor: Model? = nil
 local holoBusy = false
+local holoHeld: Instance? = nil -- (the HeldWeapon the statue was made with)
+local holoItem: string? = nil -- (an item pose it shows: "laptop:use:0.55"), and until when
+local itemUntil = 0
+local itemSeen: any = nil
 local function buildHolo(ch: Model, spot: BasePart)
 	dropHolo()
 	holoFor = ch
+	local hw = ch:FindFirstChild("HeldWeapon")
+	holoHeld = hw
+	local wid = hw and hw:GetAttribute("Weapon")
+	local skin = hw and hw:GetAttribute("Skin")
 	local realHum = ch:FindFirstChildOfClass("Humanoid")
 	local realRoot = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not realHum or not realRoot then return end
@@ -231,9 +287,13 @@ local function buildHolo(ch: Model, spot: BasePart)
 	local m = c :: Model
 	m.Name = "MirrorHolo"
 	for _, d in m:GetChildren() do
-		-- (what it holds, and layered clothing: a WrapLayer deforms over the body every frame)
-		if d:IsA("Tool") or d.Name == "HeldWeapon" or (d:IsA("Accessory") and d:FindFirstChildWhichIsA("WrapLayer", true)) then d:Destroy() end
+		-- (what it holds, the copies ThirdPerson hung on you (TPGun, TPItem), and layered clothing: a WrapLayer deforms
+		-- over the body every frame)
+		if d:IsA("Tool") or d.Name == "HeldWeapon" or d.Name == "TPGun" or d.Name == "TPItem"
+			or (d:IsA("Accessory") and d:FindFirstChildWhichIsA("WrapLayer", true)) then d:Destroy() end
 	end
+	-- (your own pose and aim stay with you: it stands at the hip, looking straight out)
+	for _, a in { "TP", "Pose", "PoseW", "TPKatPose", "TPClipPose", "TPItemPose", "TPWeapon" } do m:SetAttribute(a, nil) end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("BillboardGui")
 			or d:IsA("ProximityPrompt") or d:IsA("Highlight") or d:IsA("Beam") or d:IsA("Trail") or d:IsA("WrapTarget") or d:IsA("WrapLayer") then
@@ -269,11 +329,54 @@ local function buildHolo(ch: Model, spot: BasePart)
 		a.AnimationId = if hum.RigType == Enum.HumanoidRigType.R6 then "rbxassetid://180435571" else "rbxassetid://507766388"
 		pcall(function() an:LoadAnimation(a):Play(0) end)
 	end
+	-- the hold: ThirdPerson poses it as a test rig for a moment
+	local TP = thirdPerson()
+	local held = type(wid) == "string" and TP ~= nil
+	if held then
+		m:SetAttribute("TP", Vector3.zero)
+		m:SetAttribute("TPWeapon", wid)
+		m:SetAttribute("TPPlayer", me.UserId)
+		if type(skin) == "string" then m:SetAttribute("Skin", skin) end
+		if holoItem then m:SetAttribute("TPItemPose", holoItem) end
+		CollectionService:AddTag(m, "TPRig")
+	end
 	holoBusy = true
-	task.delay(0.35, function()
+	task.spawn(function()
+		local t0 = os.clock()
+		-- (until its gun is in its hands and the draw is done: at least 0.6 s, at most 3)
+		while held and os.clock() - t0 < 3 do
+			task.wait()
+			if holo ~= m or not m.Parent then holoBusy = false; return end
+			local r = TP.rigFor(m)
+			if os.clock() - t0 > 0.6 and r and r.gun and r.clip == nil and r.kat == nil and (holoItem == nil or (r.item and r.item.model)) then break end
+		end
+		if not held then task.wait(0.35) end
 		holoBusy = false
 		if holo ~= m or not m.Parent then return end
+		-- frozen where it is: the body anchored, ThirdPerson's gun (and item) copied in as still parts, then let go
 		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true end end
+		if held then
+			local r = TP.rigFor(m)
+			for _, src in { r and r.gun, r and r.item and r.item.model } do
+				if src and src.Parent then
+					local was2 = src.Archivable
+					src.Archivable = true
+					local okC, g = pcall(function() return src:Clone() end)
+					src.Archivable = was2
+					if okC and g then
+						for _, d in g:GetDescendants() do
+							if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false
+							elseif d:IsA("JointInstance") or d:IsA("WeldConstraint") then d:Destroy() end
+						end
+						g.Name = if src == (r and r.gun) then "HoloGun" else "HoloItem"
+						g.Parent = m
+					end
+				end
+			end
+			CollectionService:RemoveTag(m, "TPRig")
+			for _, a in { "TPWeapon", "TPItemPose", "TP" } do m:SetAttribute(a, nil) end
+			for _, d in m:GetChildren() do if d.Name == "TPGun" or d.Name == "TPItem" then d:Destroy() end end
+		end
 		for _, d in m:GetDescendants() do
 			if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Humanoid") or d:IsA("AnimationController") then d:Destroy() end
 		end
@@ -288,7 +391,19 @@ local function mirrorStep(_dt: number)
 	-- (always there while you are in training: the owner, 16 Nov: "can your big hologram just be active always?")
 	if me:GetAttribute("Zone") ~= "training" then dropHolo(); holoFor = nil; return end
 	if holoBusy then return end
-	if not holo or not holo.Parent or holoFor ~= ch then buildHolo(ch, spot) end
+	-- your utility: a use (or a throw) on your own body shows on the statue for ITEM_SHOW seconds
+	local TP = thirdPerson()
+	local r = TP and TP.rigFor(ch)
+	local it = r and r.item
+	if it and it ~= itemSeen then
+		itemSeen = it
+		local u = TP.T.use[it.id]
+		holoItem = if it.kind == "throw" then ("%s:throw:0.14"):format(it.id) elseif u then ("%s:use:%.2f"):format(it.id, u.dur * 0.5) else nil
+		if holoItem then itemUntil = os.clock() + ITEM_SHOW; holoFor = nil end
+	elseif holoItem and os.clock() > itemUntil then
+		holoItem = nil; holoFor = nil
+	end
+	if not holo or not holo.Parent or holoFor ~= ch or ch:FindFirstChild("HeldWeapon") ~= holoHeld then buildHolo(ch, spot) end
 end
 -- a new look (the avatar editor, a respawn's appearance arriving late): the statue is made again
 me.CharacterAppearanceLoaded:Connect(function() holoFor = nil end)
@@ -333,7 +448,26 @@ me:GetAttributeChangedSignal("ViewAs"):Connect(resort)
 -- on to one of the others now and then (SOMETIMES), and from any other back to the first. every clip has two tracks,
 -- so one can fade in while the other fades out
 local SOMETIMES = 0.35
-type Keeper = { m: Model, clips: { { AnimationTrack } }, ci: number, other: number, cur: AnimationTrack?, wave: AnimationTrack?, waveAt: number }
+-- his gaze: rest = how far his eyes go down while nobody is near; bias = down on top of the clip always (the mocap
+-- holds his head a little high); range = studs in front of him; yaw / pitch = the most he turns; speed = how fast he
+-- eases there (1/s); hold = s someone else must be nearest before he turns to them; neck / waist = their shares
+local GAZE = { rest = math.rad(-10), bias = math.rad(-8), range = 16, yaw = math.rad(60), pitch = math.rad(25), speed = 5, hold = 0.6,
+	neck = Vector2.new(0.7, 0.75), waist = Vector2.new(0.3, 0.25) }
+type Joint = { set: (CFrame) -> (), c0: CFrame }
+local function jointOf(m: Model, part: string, name: string): Joint?
+	local p = m:FindFirstChild(part)
+	local j = p and p:FindFirstChild(name)
+	if j and j:IsA("Motor6D") then
+		local m6 = j
+		return { set = function(cf: CFrame) m6.C0 = cf end, c0 = m6.C0 }
+	elseif j and j:IsA("AnimationConstraint") and j.Attachment0 then
+		local at = j.Attachment0 :: Attachment
+		return { set = function(cf: CFrame) at.CFrame = cf end, c0 = at.CFrame }
+	end
+	return nil
+end
+type Keeper = { m: Model, clips: { { AnimationTrack } }, ci: number, other: number, cur: AnimationTrack?, wave: AnimationTrack?, waveAt: number,
+	neck: Joint?, waist: Joint?, head: BasePart?, root: BasePart?, gy: number, gp: number, target: Player?, cand: Player?, candSince: number }
 local keeper: Keeper? = nil
 local function keeperOf(m: Instance): Keeper?
 	if not m:IsA("Model") then return nil end
@@ -360,12 +494,62 @@ local function keeperOf(m: Instance): Keeper?
 		if okW and tw then tw.Looped = false; tw.Priority = Enum.AnimationPriority.Action; wave = tw end
 	end
 	local at = m:GetAttribute("WaveAt")
-	return { m = m, clips = clips, ci = 1, other = 0, cur = nil, wave = wave, waveAt = if type(at) == "number" then at else 0 }
+	local head, root = m:FindFirstChild("Head"), m:FindFirstChild("HumanoidRootPart")
+	return { m = m, clips = clips, ci = 1, other = 0, cur = nil, wave = wave, waveAt = if type(at) == "number" then at else 0,
+		neck = jointOf(m, "Head", "Neck"), waist = jointOf(m, "UpperTorso", "Waist"),
+		head = if head and head:IsA("BasePart") then head else nil, root = if root and root:IsA("BasePart") then root else nil,
+		gy = 0, gp = GAZE.rest, target = nil, cand = nil, candSince = 0 }
 end
-local function keeperStep()
+-- where a player's head is in front of him, if near enough to look at
+local function gazeAt(k: Keeper, p: Player?): Vector3?
+	local ch = p and p.Character
+	local h = ch and ch:FindFirstChild("Head")
+	local root = k.root
+	if not h or not h:IsA("BasePart") or not root then return nil end
+	local rel = root.CFrame:PointToObjectSpace(h.Position)
+	if rel.Z > -0.5 or rel.Magnitude > GAZE.range then return nil end
+	return h.Position
+end
+local function gazeStep(k: Keeper, dt: number)
+	local neck, head, root = k.neck, k.head, k.root
+	if not neck or not head or not root then return end
+	local now = os.clock()
+	local best, bestD = nil, math.huge
+	for _, p in Players:GetPlayers() do
+		local at = gazeAt(k, p)
+		if at then
+			local d = (at - head.Position).Magnitude
+			if d < bestD then best, bestD = p, d end
+		end
+	end
+	-- (someone else nearest: he turns to them once that has held for GAZE.hold; the one he looks at gone: at once)
+	if best ~= k.target then
+		if gazeAt(k, k.target) == nil then k.target = best; k.cand = nil
+		elseif best ~= k.cand then k.cand = best; k.candSince = now
+		elseif now - k.candSince >= GAZE.hold then k.target = best; k.cand = nil end
+	else
+		k.cand = nil
+	end
+	local wy, wp = 0, GAZE.rest
+	local at = gazeAt(k, k.target)
+	if at then
+		local d = root.CFrame:VectorToObjectSpace(at - head.Position)
+		local flat = math.sqrt(d.X * d.X + d.Z * d.Z)
+		wy = math.clamp(math.atan2(-d.X, -d.Z), -GAZE.yaw, GAZE.yaw)
+		wp = math.clamp(math.atan2(d.Y, flat), -GAZE.pitch, GAZE.pitch)
+	end
+	local a = 1 - math.exp(-GAZE.speed * dt)
+	k.gy += (wy - k.gy) * a
+	k.gp += (wp - k.gp) * a
+	local p = k.gp + GAZE.bias
+	neck.set(neck.c0 * CFrame.Angles(p * GAZE.neck.Y, k.gy * GAZE.neck.X, 0))
+	if k.waist then k.waist.set(k.waist.c0 * CFrame.Angles(p * GAZE.waist.Y, k.gy * GAZE.waist.X, 0)) end
+end
+local function keeperStep(dt: number)
 	local k = keeper
 	if not k then return end
 	if not k.m:IsDescendantOf(workspace) then k.cur = nil; return end -- (out of your world: start afresh when he is back)
+	gazeStep(k, dt)
 	local cur = k.cur
 	local playing = false
 	for _, c in k.clips do if c[1].IsPlaying or c[2].IsPlaying then playing = true; break end end
@@ -405,24 +589,36 @@ local function scan()
 	local km = stock and stock:FindFirstChild("ShopKeeper")
 	if km and (not keeper or keeper.m ~= km) then keeper = keeperOf(km)
 	elseif tg and not km then keeper = nil end
-	-- (a nil area is one ZoneCull has taken out of your world for now: keep what we know, it comes back as it was)
+	-- shutters: the area's own (its Shutter models) and any tagged "Shutter" anywhere (the hub's side of the gate), one
+	-- each by its model; a door that is gone (a rebuild) drops out, a new one is met straight at open or shut for who is
+	-- near it now. (a nil area is one ZoneCull has taken out of your world for now: keep what we know, it comes back as
+	-- it was)
+	local have: { [Instance]: boolean } = {}
+	for i = #shutters, 1, -1 do
+		local sm = shutters[i].r.m
+		if not sm.Parent then table.remove(shutters, i) else have[sm] = true end
+	end
+	local function addShutter(m: Instance)
+		if have[m] then return end
+		local c, n = m:GetAttribute("Center"), m:GetAttribute("Near")
+		local r = readRoller(m)
+		if typeof(c) == "Vector3" and #r.slats > 0 then
+			local near = if type(n) == "number" then n else 12
+			local up = if anyoneNear(c, near) then 1 else 0
+			place(r, up, Vector3.zero)
+			table.insert(shutters, { r = r, center = c, near = near, lin = up, goal = up, lastNear = if up == 1 then os.clock() else -math.huge, shown = true })
+			have[m] = true
+		end
+	end
+	for _, m in CollectionService:GetTagged("Shutter") do if m:GetAttribute("Shutter") == true then addShutter(m) end end
 	if tg and tg ~= seen then
 		seen = tg
-		table.clear(shutters)
 		pit = nil
 		mirrorSpot = nil
 		if tg then
 			for _, m in tg:GetDescendants() do
 				if m:GetAttribute("Shutter") == true then
-					local c, n = m:GetAttribute("Center"), m:GetAttribute("Near")
-					local r = readRoller(m)
-					if typeof(c) == "Vector3" and #r.slats > 0 then
-						local near = if type(n) == "number" then n else 12
-						-- (met for the first time: straight to open or shut, for who is near it now)
-						local up = if anyoneNear(c, near) then 1 else 0
-						place(r, up, Vector3.zero)
-						table.insert(shutters, { r = r, center = c, near = near, lin = up, goal = up, lastNear = if up == 1 then os.clock() else -math.huge, shown = true })
-					end
+					addShutter(m)
 				elseif m.Name == "LongJumpPit" and m:IsA("BasePart") then
 					pit = m
 				elseif m.Name == "MirrorSpot" and m:IsA("BasePart") then
@@ -442,9 +638,23 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local dr = door
 	if dr and dr.m.Parent then
 		local u, moving = doorU(dr.m, now)
-		local off, shaking = rattleOff(dr.m, now)
-		if moving or shaking or doorMoving then place(dr, u, off) end
-		doorMoving = moving or shaking
+		if me:GetAttribute("LotKey") == true then
+			if not dr.m:IsDescendantOf(workspace) then
+				keyU, keyShown = nil, nil -- (out of your world: straight up when it is back)
+			else
+				local k = math.min(1, (keyU or 1) + dt / KEY_UP)
+				keyU = k
+				local shown = math.max(u, k)
+				if shown ~= keyShown then place(dr, shown, Vector3.zero); keyShown = shown end
+				passDoor(dr)
+			end
+			doorMoving = true -- (if the key goes, back to the server's door at once)
+		else
+			local off, shaking = rattleOff(dr.m, now)
+			if moving or shaking or doorMoving then place(dr, u, off) end
+			doorMoving = moving or shaking
+			keyShown = nil
+		end
 	end
 	-- shutters: open inside Near, shut once everyone is SHUTTER_SLACK past it (and SHUTTER_LINGER after); how far up it
 	-- is moves toward that every frame
@@ -481,7 +691,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if root and hum then jumpWatch(root, hum) end
-	mirrorStep(dt)
-	keeperStep()
+	local okM, errM = pcall(mirrorStep, dt) -- (the mirror going wrong never stops the doors)
+	if not okM then warn("[TrainingDoors] mirror: " .. tostring(errM)) end
+	keeperStep(dt)
 end)
 scan()

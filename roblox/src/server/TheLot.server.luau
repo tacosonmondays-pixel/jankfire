@@ -7,10 +7,16 @@
 -- garage while it is open. while you are on the lot (attribute OnLot) the Plinker in the yard leaves you alone.
 -- a Carl here is a real fighter of kind "dummy", made like RangeTest's (so every weapon and hit check works on him).
 -- the door (owner, 16 Nov: "when you go up to garage doors can they slide up"): it rolls up when someone walks up to
--- it. from the lot it always lets you back in; on the yard's side it rolls up for anyone who has opened it before
--- (the egg), and for everyone else it lifts a hand's width, rattles and drops while LOCKED flashes. the slats move on
--- each player's screen (TrainingDoors.client, from the Door's attributes From, Goal, Dur, Since and Rattle); here the
--- server only decides when, and whether the slats block. the map is data, made by ServerStorage.PolishBackup.
+-- it from the lot (it always lets you back in); on the yard's side it lifts a hand's width, rattles and drops while
+-- LOCKED flashes. the slats move on each player's screen (TrainingDoors.client, from the Door's attributes From,
+-- Goal, Dur, Since and Rattle); here the server only decides when, and whether the slats block.
+-- YOURS FOR GOOD (owner, 17 Nov: "once you find the golden dummies, the main garage is permanently open for you"):
+-- everyone who shot a gold Carl in the try that opened it gets the key, kept in their own session-locked save
+-- (Profiles, store "JankfireLot_v1": { egg, eggAt }, like Stats and Quests keep theirs, so a write here can never
+-- touch what you own) and shown as the player attribute LotKey. for a key holder the door is up on their own screen
+-- from the moment they are there, and its slats and block let them through (TrainingDoors.client: their own body is
+-- theirs to move; the anti-cheat already skips this door). for everyone else it stays shut, the egg works as ever,
+-- and its 45 s opening for all is still the shared moment. key holders don't open, hold or rattle the door for others. the map is data, made by ServerStorage.PolishBackup.
 -- TrainingLot into Hub.TrainingGround.Lot:
 --   Door       (Model) parts with the attribute Shut (their shut CFrame); its attributes Lift (studs it goes up) and
 --              Top (a slat whose bottom is over this height is put away inside the wall)
@@ -22,7 +28,8 @@
 --   Area       (Part, unseen) inside it a player is on the lot
 -- nothing happens while the training area is v1 (no Lot): it looks again every few seconds.
 -- Studio play tests: ServerStorage.LotTest (a BindableFunction, Studio only) answers "state", "gold" (n: put gold Carl
--- n down as if the first player shot him), "lotcarl" (one lot Carl down), "open", "shut", "carls"
+-- n down as if the first player shot him), "lotcarl" (one lot Carl down), "open", "shut", "carls", "key" (the first
+-- player's saved key: { egg, eggAt, save state }), "forget" (clear the first player's key and save it)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -32,6 +39,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
+local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local CalloutR = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Callout") :: RemoteEvent
 
 local WINDOW = 90     -- seconds from the first gold Carl to get the other two
@@ -54,8 +62,6 @@ local carls: { [any]: Entry } = {}          -- fighter -> where he stands
 local found = { false, false, false }
 local firstAt = 0                            -- os.clock() of the first gold Carl down this try (0 = none yet)
 local finders: { [Player]: boolean } = {}
-local known: { [Player]: boolean } = {}      -- who has opened it this server: it rolls up for them on their own
-local greeted: { [Player]: boolean } = {}    -- told "THE GARAGE REMEMBERS YOU" once
 local state = "shut"                          -- shut | opening | open | closing
 local eggOpen = false                         -- the egg opened it: up for OPEN_FOR, then the egg resets
 local moveT = MOVE_FAST
@@ -64,6 +70,35 @@ local u = 0                                   -- how far up the door is: 0 shut 
 local openUntil = 0
 local slats: { { p: BasePart, shut: CFrame, solid: boolean, query: boolean } } = {}
 local lift, top = 20.6, math.huge
+
+-- ---------------------------------------------------------------- the key: your own save
+local store = Profiles.new("JankfireLot_v1", function() return { v = 1, egg = false, eggAt = 0 } end)
+local profs: { [Player]: Profiles.Profile } = {}
+local function hasKey(p: Player): boolean return p:GetAttribute("LotKey") == true end
+local function joined(p: Player)
+	local prof = Profiles.load(store, "u" .. p.UserId, function() return p.Parent ~= nil end)
+	if not prof then return end
+	if not p.Parent then Profiles.release(store, prof); return end
+	profs[p] = prof
+	if prof.data.egg == true then p:SetAttribute("LotKey", true) end
+end
+-- found it: the key, saved now (and on screen at once, even if the save is slow or off)
+local function grantKey(p: Player)
+	if not p.Parent then return end
+	p:SetAttribute("LotKey", true)
+	local prof = profs[p]
+	if prof and prof.data.egg ~= true then
+		prof.data.egg = true; prof.data.eggAt = os.time(); prof.dirty = true
+		task.spawn(Profiles.save, store, prof)
+	end
+end
+Players.PlayerAdded:Connect(function(p) task.spawn(joined, p) end)
+for _, p in Players:GetPlayers() do task.spawn(joined, p) end
+Players.PlayerRemoving:Connect(function(p)
+	local prof = profs[p]
+	profs[p] = nil
+	if prof then Profiles.release(store, prof) end
+end)
 
 local function lib(): Instance? return ServerStorage:FindFirstChild("JankfireMeshes") end
 local function dummyFolder(): Instance return workspace:FindFirstChild("Dummies") or workspace end
@@ -288,12 +323,13 @@ local function rattle()
 		end)
 	end
 end
--- who is near the doorway, on the yard's side and on the lot's
+-- who is near the doorway, on the yard's side and on the lot's (not key holders: theirs is open on their own screen)
 local function nearDoor(): ({ Player }, { Player })
 	local yard, back = {}, {}
 	local dw = lot and lot:FindFirstChild("Doorway") :: BasePart?
 	if not dw then return yard, back end
 	for _, p in Players:GetPlayers() do
+		if hasKey(p) then continue end
 		local ch = p.Character
 		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
@@ -310,6 +346,7 @@ end
 
 local function someoneIn(part: BasePart, grow: number): boolean
 	for _, p in Players:GetPlayers() do
+		if hasKey(p) then continue end -- (the door never shuts on a key holder: it isn't there for them)
 		local ch = p.Character
 		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root then
@@ -333,8 +370,8 @@ local function open(by: Player?)
 	eggOpen = true
 	setPips(); setBeacons(true); setTimer("OPEN")
 	sayTraining("THE GARAGE IS OPEN", 2.2)
-	if by then known[by] = true; greeted[by] = true end
-	for p in finders do known[p] = true; greeted[p] = true end
+	if by then grantKey(by) end
+	for p in finders do grantKey(p) end
 	if state == "shut" or state == "closing" then goUp(MOVE_T); sound("Open")
 	elseif state == "open" then openUntil = os.clock() + OPEN_FOR end
 end
@@ -459,15 +496,12 @@ RunService.Heartbeat:Connect(function(dt: number)
 	acc += dt
 	if acc < 0.2 then return end
 	acc = 0
-	-- who is at the door: from the lot it always lets you back in; on the yard's side it rolls up for anyone who has
-	-- opened it before, and for everyone else it rattles (LOCKED)
+	-- who is at the door: from the lot it always lets you back in; on the yard's side it rattles (LOCKED). key holders
+	-- are left out of both: it is open on their own screen
 	local yard, back = nearDoor()
-	local let: Player? = nil
-	for _, p in yard do if known[p] then let = p; break end end
-	if #back > 0 or let then
+	if #back > 0 then
 		holdUntil = now + HOLD
 		if state == "shut" or state == "closing" then
-			if let and not greeted[let] then greeted[let] = true end
 			goUp(MOVE_FAST)
 			sound("Open")
 			setBeacons(true); setPips()
@@ -546,7 +580,17 @@ if RunService:IsStudio() then
 			return nil
 		elseif op == "open" then open(Players:GetPlayers()[1]); return true
 		elseif op == "shut" then if state == "open" then openUntil = 0; holdUntil = 0 end; return true
-		elseif op == "know" then local p = Players:GetPlayers()[1]; if p then known[p] = a ~= false end; return true
+		elseif op == "key" then
+			local p = Players:GetPlayers()[1]
+			local prof = p and profs[p]
+			return if prof then { egg = prof.data.egg, eggAt = prof.data.eggAt, save = prof.state, attr = p:GetAttribute("LotKey") } else nil
+		elseif op == "forget" then
+			local p = Players:GetPlayers()[1]
+			local prof = p and profs[p]
+			if not p or not prof then return false end
+			prof.data.egg = false; prof.data.eggAt = 0; prof.dirty = true
+			p:SetAttribute("LotKey", nil)
+			return Profiles.save(store, prof)
 		elseif op == "carls" then
 			local out = {}
 			for f, e in carls do
