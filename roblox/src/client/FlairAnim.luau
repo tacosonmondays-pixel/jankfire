@@ -83,10 +83,14 @@ local function flipbook(frame: GuiObject, id: string): Handle?
 	local fps = tonumber(sh.fps) or 10
 	local hold = tonumber(sh.hold) or 0
 	local z = frame.ZIndex + 3
-	local img = new("ImageLabel", { Name = "FlairAnim", BackgroundColor3 = BG, BackgroundTransparency = 0, BorderSizePixel = 0,
+	-- (any shape of frame: the backdrop fills it, the frame's picture sits in a square in the middle, and the words are
+	-- placed in that square, so they land on the sheet's panel whatever the card's shape)
+	local back = new("Frame", { Name = "FlairAnim", BackgroundColor3 = BG, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z }, frame)
+	round(back, 6)
+	local img = new("ImageLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1), Image = sh.image, ImageRectSize = Vector2.new(px, px), ImageRectOffset = Vector2.zero,
-		ScaleType = Enum.ScaleType.Fit, ZIndex = z }, frame)
-	round(img, 6)
+		ScaleType = Enum.ScaleType.Stretch, ZIndex = z }, back)
+	new("UIAspectRatioConstraint", { AspectRatio = 1 }, img)
 	local words: TextLabel? = nil
 	local w = sh.words
 	if type(w) == "table" and type(w.text) == "string" then
@@ -97,7 +101,7 @@ local function flipbook(frame: GuiObject, id: string): Handle?
 	local last = -1
 	local h: Handle
 	h = {
-		frame = frame, kind = "kill", root = img, dead = false,
+		frame = frame, kind = "kill", root = back, dead = false,
 		step = function(dt: number, on: boolean)
 			if on then t += dt end
 			local f = math.floor(t * fps) % (n + hold)
@@ -109,7 +113,7 @@ local function flipbook(frame: GuiObject, id: string): Handle?
 		end,
 		stop = function()
 			h.dead = true
-			img:Destroy()
+			back:Destroy()
 		end,
 	}
 	h.step(0, true)
@@ -161,22 +165,32 @@ local function emote(frame: GuiObject, id: string): Handle?
 		round(glow, 6)
 		new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 0.92), NumberSequenceKeypoint.new(1, 0.7) }) }, glow)
 	end
+	-- (the shop's own 3D light, V.show's: the pastel colours read as they do on the guns and in the inspect panel)
 	local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = z + 1,
-		Ambient = Color3.fromRGB(160, 163, 172), LightColor = Color3.fromRGB(255, 248, 240), LightDirection = Vector3.new(-0.4, -1, -0.8) }, holder)
+		Ambient = Color3.fromRGB(150, 153, 162), LightColor = Color3.fromRGB(255, 248, 240), LightDirection = Vector3.new(-0.5, -1, -0.7) }, holder)
 	local world = new("WorldModel", {}, vp)
 	local m = src:Clone()
 	m:PivotTo(CFrame.identity)
 	m.Parent = world
 	local cam = new("Camera", { FieldOfView = 30 }, vp)
 	vp.CurrentCamera = cam
-	-- (framed from the front, a little to the side, the whole body with room for the arms)
+	-- (framed on the body, not its accessories (a big hat or a staff would shrink it): feet just above the bottom edge,
+	-- the head with room for raised arms, from the front a little to the side)
+	local lo, hi = math.huge, -math.huge
+	for _, p in m:GetChildren() do
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+			lo = math.min(lo, p.Position.Y - p.Size.Y / 2)
+			hi = math.max(hi, p.Position.Y + p.Size.Y / 2)
+		end
+	end
 	local cf, size = m:GetBoundingBox()
-	local r = math.max(size.Y, size.X) * 0.62
+	if lo == math.huge then lo, hi = cf.Position.Y - size.Y / 2, cf.Position.Y + size.Y / 2 end
+	local r = (hi - lo) * 0.64 -- (half the height the frame shows: a fifth over the head for raised arms)
 	local d = r / math.tan(math.rad(cam.FieldOfView / 2))
-	local look = cf.Position + Vector3.new(0, size.Y * 0.04, 0)
+	local look = Vector3.new(cf.Position.X, lo + r * 0.93, cf.Position.Z)
 	local face = (m:GetPivot().LookVector * Vector3.new(1, 0, 1)).Unit
 	if face.Magnitude ~= face.Magnitude then face = Vector3.new(0, 0, -1) end
-	cam.CFrame = CFrame.lookAt(look + (face * d) + Vector3.new(0, size.Y * 0.08, 0) + face:Cross(Vector3.yAxis) * (d * 0.22), look)
+	cam.CFrame = CFrame.lookAt(look + (face * d) + face:Cross(Vector3.yAxis) * (d * 0.2), look)
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local an = hum and (hum:FindFirstChildOfClass("Animator") or new("Animator", {}, hum))
 	-- (the flair session's way, FlairUI's stand-in: priority Action4, in over 0.3 s; a one-shot is let go 0.35 s before

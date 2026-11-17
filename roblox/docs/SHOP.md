@@ -440,6 +440,30 @@ Tested in solo Play (place version 588):
 - The kill effects still show their still tiles until the VFX session's sheets are in `FlairSheets`; that session
   will fill it.
 
+### Finishers on skin cards (17 Nov)
+
+The finishers session's cinematic finishers (roblox/docs/FINISHERS.md) belong to a few top-tier skins:
+`Shared.Finishers.forSkin(skinId)` gives the finisher's id and its row (name, colour). In the shop:
+- **A FINISHER pill** in the finisher's colour, top right, on a skin's daily card, deal card and inventory card, in
+  the inspect panel's view, and left of OWNED on a list row (a set's or the VIP pack's).
+- **PREVIEW FINISHER** in the inspect panel, over CLAIM: for a skin with one, or for a set or the VIP pack, the first
+  of its skins that has one. It calls the client's `Finisher.preview(id, { skin = skinId })`, which plays the full
+  cut (about 2.9 s) in front of you. That takes the camera and the screen and gives both back; the shop needs no
+  camera of its own. The skin's blurb names its finisher.
+- Built so far: ar_seraph, ar_infernal, lmg_ducky, revolver_ducky, katana_ducky.
+- While a finisher plays, the shop's own blur and grey tint are off, so they don't sit over the cut. They come back
+  once `Finisher.isPlaying()` goes false, if the shop is still up. A single's blurb has room for a third line.
+
+Tested in solo Play (place version 603):
+- The Seraph Rifle's inspect panel had the FINISHER pill, the blurb naming Ascension, and PREVIEW FINISHER over the
+  buy button (`docs/shop/shop-finisher-inspect.jpg`).
+- Pressing it played the cut sharp, with SKIP (`shop-finisher-preview.jpg`). After it, the shop was back with its
+  blur and the camera was Custom.
+- The inventory's VIP row showed the pill on the three Ducky skins (`shop-finisher-inventory.jpg`).
+- In the first try the shop's blur stayed over the cut; that's what the fix above is for.
+- The bigger, warmer emote tiles (body framing, the shop's light) are in this push but not yet looked at on
+  screen.
+
 ## Weapon skins and skin sets (16 Nov)
 
 **Weapon skins** (a whole other body for one gun: `GunSkins.luau`, models in `ReplicatedStorage.JankfireSkins`, names

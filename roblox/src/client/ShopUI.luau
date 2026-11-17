@@ -481,6 +481,53 @@ function V.forWords(kind: string, weapon: string?, short: boolean?): string
 	if kind == "emote" then return "FOR YOUR EMOTE WHEEL" end
 	return "FOR " .. string.upper(Shop.weaponName(weapon))
 end
+-- FINISHERS (the finishers session's, roblox/docs/FINISHERS.md: a short cinematic when a high-tier skin that owns one
+-- lands a round's or the match's winning kill). Shared.Finishers.forSkin(skinId) -> id, row { name, colour }; the
+-- client's Finisher.preview(id, { skin = skinId }) plays the full cut in front of you, taking the camera and the screen,
+-- and gives both back. a skin with one gets a FINISHER pill on its cards, and PREVIEW FINISHER in its inspect panel
+local Fin = {}
+function Fin.of(skin: string?): (string?, any)
+	if type(skin) ~= "string" then return nil, nil end
+	local m = Shared:FindFirstChild("Finishers")
+	if not (m and m:IsA("ModuleScript")) then return nil, nil end
+	local ok, F = pcall(require, m)
+	if not ok or type(F) ~= "table" or type((F :: any).forSkin) ~= "function" then return nil, nil end
+	local ok2, id, row = pcall((F :: any).forSkin, skin)
+	if not ok2 or type(id) ~= "string" then return nil, nil end
+	return id, row
+end
+-- the pill, in the finisher's own colour (anchored by its top-right corner at `pos`)
+function Fin.badge(parent: Instance, skin: string?, pos: UDim2, z: number?): Frame?
+	local id, row = Fin.of(skin)
+	if not id then return nil end
+	local col = if type(row) == "table" and typeof(row.colour) == "Color3" then row.colour else T.ACCENT
+	local zz = z or 6
+	local f = new("Frame", { Name = "Finisher", BackgroundColor3 = T.BG, BackgroundTransparency = 0.1, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
+		Position = pos, Size = UDim2.fromOffset(0, 22), AutomaticSize = Enum.AutomaticSize.X, ZIndex = zz }, parent)
+	T.corner(f, 4)
+	T.edge(f, col, 0.35)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, f)
+	local l = txt(f, "FINISHER", 11, col, T.FONT_BOLD, Enum.TextXAlignment.Center)
+	l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 22); l.ZIndex = zz + 1; l.TextTruncate = Enum.TextTruncate.None
+	return f
+end
+function Fin.preview(skin: string?)
+	local id = Fin.of(skin)
+	local m = script.Parent:FindFirstChild("Finisher")
+	if not id or not (m and m:IsA("ModuleScript")) then return end
+	local ok, F = pcall(require, m)
+	if ok and type(F) == "table" and type((F :: any).preview) == "function" then
+		play("click")
+		-- (the shop's blur and grey tint would sit over the cut: off while it plays, back after if the shop is still up)
+		UI.blur.Enabled = false; UI.tint.Enabled = false
+		task.spawn(function()
+			pcall((F :: any).preview, id, { skin = skin })
+			local t0 = os.clock()
+			repeat task.wait(0.1) until os.clock() - t0 > 10 or type((F :: any).isPlaying) ~= "function" or not (F :: any).isPlaying()
+			if S.open then UI.blur.Enabled = true; UI.tint.Enabled = true end
+		end)
+	end
+end
 -- a small still picture of one item (a chip in a list or a strip): a hat on its own, a skin's whole gun, a card tile
 function V.chip(parent: GuiObject, it: any)
 	if Shop.isCard(it.kind) then V.card(parent, it.kind, it.id)
@@ -731,6 +778,7 @@ local function singleCard(parent: Instance, o: any, order: number): TextButton
 		T.corner(tag, 4)
 		local l = txt(tag, "OWNED", 11, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Center); l.Size = UDim2.fromScale(1, 1); l.ZIndex = 6
 	end
+	if o.kind == "skin" then Fin.badge(c, o.item, UDim2.new(1, -8, 0, 8)) end
 	c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
 	return c
 end
@@ -1126,6 +1174,7 @@ local function dealCard(parent: Instance, d: any, order: number): TextButton
 	local pad = if k then 12 else 18
 	local eb = txt(c, "OWNER'S PICK  ·  " .. tostring(d.pct) .. "% OFF", 11, T.ACCENT, T.FONT_BOLD); eb.ZIndex = 3
 	eb.Position = UDim2.fromOffset(pad, if k then 10 else 16); eb.Size = UDim2.new(1, -2 * pad, 0, 14)
+	Fin.badge(c, d.skin, UDim2.new(1, -pad, 0, if k then 6 else 11))
 	local textH = if k then 150 else 196
 	local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, if k then 26 else 36), Size = UDim2.new(1, 0, 1, -(textH + (if k then 26 else 36))), ZIndex = 2 }, c)
 	V.show(view, V.gun(d.weapon, nil, nil, nil, d.skin), "hover", 1.0)
@@ -1343,6 +1392,7 @@ function ShopUI.fillInventory()
 				local name = txt(c, it.name, 15, T.TEXT, T.FONT_BOLD)
 				name.Position = UDim2.new(0, 10, 1, -46); name.Size = UDim2.new(1, -20, 0, 18)
 				local rl = rarityLine(c, it.rarity, Shop.KIND_NAMES[it.kind], 10)
+				if it.kind == "skin" then Fin.badge(c, it.id, UDim2.new(1, -6, 0, 6)) end
 				rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
 				local oid = if it.vip then "vip" else Shop.singleId({ kind = it.kind, id = it.id, weapon = it.weapon or (if Shop.gunless(it.kind) then nil else V.yourGun()) })
 				c.MouseButton1Click:Connect(function() ShopUI.inspect(oid) end)
@@ -1400,6 +1450,10 @@ do
 	T.corner(UI.inspBar, 2)
 	UI.inspFill = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1), ZIndex = 24 }, UI.inspBar)
 	T.corner(UI.inspFill, 2)
+	-- (a skin with a finisher, or a set or the VIP pack with one: its cinematic, played in front of you)
+	UI.inspFin = button(Sd, "PREVIEW FINISHER", "dark", UDim2.new(1, 0, 0, 44), UDim2.new(0, 0, 1, -100))
+	UI.inspFin.face.ZIndex = 23; UI.inspFin.face.Visible = false
+	UI.inspFin.face.MouseButton1Click:Connect(function() if S.finSkin then Fin.preview(S.finSkin) end end)
 	UI.inspOdds = button(Sd, "ODDS", "dark", UDim2.new(0.5, -5, 0, 40), UDim2.new(0, 0, 1, -94))
 	UI.inspOdds.face.ZIndex = 23
 	UI.inspOdds.face.MouseButton1Click:Connect(function() if S.inspect then ShopUI.odds(S.inspect) end end)
@@ -1440,6 +1494,7 @@ local function listRow(it: any, order: number, o: any)
 	for _, d in rl:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 25 end end
 	local own = Till.owns(it.kind, it.id, it.weapon)
 	local tag = txt(row, if own then "OWNED" else "", 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); tag.ZIndex = 25
+	if it.kind == "skin" then Fin.badge(row, it.id, UDim2.new(1, -(if own then 70 else 10), 0.5, -11), 25) end
 	tag.Position = UDim2.new(1, -86, 0, 0); tag.Size = UDim2.new(0, 76, 1, 0)
 	row.MouseEnter:Connect(function() row.BackgroundColor3 = T.CARD_HI end)
 	row.MouseLeave:Connect(function() if S.preview ~= it then row.BackgroundColor3 = T.CARD end end)
@@ -1493,12 +1548,24 @@ function ShopUI.fillInspect()
 	local c = S.compact
 	local nameY = if c then 66 else 72
 	local listY = if c then 104 else 160
-	local foot = if isBox then 104 else 56 -- what sits under the note: odds + open + buy, or just buy
+	-- (the finisher to preview: a skin's own, or for a set or the VIP pack the first of its skins that has one)
+	S.finSkin = nil
+	if o.type == "single" and o.kind == "skin" then
+		if Fin.of(o.item) then S.finSkin = o.item end
+	elseif o.type == "pass" or o.set then
+		for _, it in Shop.contents(o) do if it.kind == "skin" and Fin.of(it.id) then S.finSkin = it.id; break end end
+	end
+	UI.inspFin.face.Visible = S.finSkin ~= nil
+	local oldFin = UI.inspView:FindFirstChild("Finisher")
+	if oldFin then oldFin:Destroy() end
+	if S.finSkin and o.type == "single" then Fin.badge(UI.inspView, S.finSkin, UDim2.new(1, -10, 0, 10), 24) end
+	local foot = if isBox or S.finSkin then 104 else 56 -- what sits under the note: odds + open + buy, or just buy
 	UI.inspEyebrow.Position = UDim2.fromOffset(0, if c then 46 else 50)
 	UI.inspName.Position = UDim2.fromOffset(0, nameY)
 	UI.inspName.TextSize = if c then 22 else 30
 	UI.inspName.Size = UDim2.new(1, 0, 0, if c then 30 else 38)
 	UI.inspBlurb.Visible = not c
+	UI.inspBlurb.Size = UDim2.new(1, 0, 0, if o.type == "single" then 58 else 38) -- (a single has no list under it: room for a third line)
 	UI.inspNote.Position = UDim2.new(0, 0, 1, -foot)
 	UI.inspList.Position = UDim2.fromOffset(0, listY)
 	UI.inspList.Size = UDim2.new(1, 0, 1, -(listY + foot + 26))
@@ -1564,6 +1631,11 @@ function ShopUI.fillInspect()
 			elseif o.kind == "skin" then "a weapon skin for your " .. wn .. (if setName then ", from the " .. setName .. " set" else "") .. ". wear it from the loadout [L]."
 			elseif o.kind == "hat" then "a hat for your " .. wn .. ". it goes on that gun only. wear it from the loadout [L]."
 			else "a wrap for your " .. wn .. ". it paints that gun only. pick how much it covers in the loadout [L]."
+		if S.finSkin then
+			local _, row = Fin.of(S.finSkin)
+			local fname = if type(row) == "table" and type(row.name) == "string" then row.name else "its own"
+			UI.inspBlurb.Text ..= " it comes with a finisher, " .. fname .. ": a short cinematic when it lands the kill that wins a round or the match."
+		end
 		UI.inspNote.Text = if own then (if card then "it's yours. wear it on your player card."
 				elseif Shop.isFlair(o.kind) then "it's yours. pick it in the loadout [L]."
 				else "it's yours. wear it from the loadout [L].")
