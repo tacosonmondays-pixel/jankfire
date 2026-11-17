@@ -521,6 +521,44 @@ The owner: "Can you also tell it to make a few blender ducky skins?"
   base gun's box from `Weapons.luau`, squashing it per axis. In v511 the Duckling AR came out 55% as wide and 118% as
   tall. `W.kit` sets them from the kit book; a hand install must copy the import's box check values.
 
+### Tripo pieces: AI-made decoration, cleaned for the kit (17 November 2026, not in the place)
+
+The owner tried Tripo (AI text-to-3D, shape only) and approved five results: a bow, a teddy charm, a crystal cluster, a
+duck head and a duck-headed SMG (a reference only). They are the owner's generated files and stay local: the raw files and
+everything made from them are in the vault (`Assets/tripo-17nov/`, cleaned copies in `clean/`), never in git. Only the
+cleanup code is here: `tools/roblox/gun_tripo.py` (`blender -b --factory-startup -P tools/roblox/gun_tripo.py -- clean
+[bow teddy crystals duck]`).
+- **On hold.** The plan was to seat the pieces on the concept guns (the bow on Sweet Shop v3, the crystals on Glasswing
+  v3, the teddy on Velvet v3 as the Plush take, the duck head on the Duckling SMG). The owner then said "wait with
+  concept skins, tripo does a really good job", so none of that is built. Our own method stays for gun bodies; Tripo's
+  angel wing and angel rifle were rejected earlier.
+- **The numbers** (triangles):
+
+  | Piece | Raw | Final | What worked |
+  |---|---|---|---|
+  | bow | 39,958 | 1,500 | clean from the start: a plain Collapse decimate |
+  | teddy | 41,032 | 2,400 | a masked Smooth modifier, then Collapse in two passes with the face features held |
+  | crystals | 40,798 | 1,500 | a plain Collapse (Planar only reached 23.8k: Tripo's facets aren't flat) |
+  | duck head | 34,498 | 1,700 | the open bill cut away and patched, a voxel remesh, then the two-pass Collapse |
+
+- **The cleanup, every piece:** import through Blender's glTF importer; apply transforms; merge by distance (1e-4); keep
+  only the biggest connected part; fill holes up to 64 edges; normals out; decimate; split into colour regions by face
+  (grow from a seed face up to the concave creases, or oval zones round features). Then flat colours from the set's
+  palette and Route S shade shells, as the Ducklings have.
+- **Traps:**
+  - Blender 5.3's Collapse ignores a vertex group's factor: weight 0 just freezes those vertices. One pass with the
+    features frozen turned the rest of the teddy into shards. Use two passes: about 5k first, then the target.
+  - A Laplacian smooth erases small features (the teddy's eyes). Mask them off first.
+  - A voxel remesh softens crisp shapes (the bow's tails). Use it only after cutting and patching.
+  - Region borders are jaggy at 1.5-2.5k triangles (eyes, ear cups). Snap border vertices to the zone outline if it matters.
+  - Smooth shading turns crystal facets soft. They need sharp, angle-based shading when built.
+  - Small features vanish at gun size: a 9 cm teddy has eyes about 2 mm across.
+- **Asking Tripo for pieces that clean up well:** smooth, relief-like objects with big shapes (the bow came out nearly
+  ready). Ask for a clean vinyl-toy or clay look, a closed mouth, and oversized eyes and nose. Avoid fur or noise texture,
+  open mouths and other cavities, tiny facial features, thin dangly bits (the teddy's tail), and "faceted" crystals,
+  which come back rounded. About 40k raw triangles is plenty. Aim for 1.5k for a bow or crystal cluster and 1.7-2.4k for
+  a head or a teddy.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
