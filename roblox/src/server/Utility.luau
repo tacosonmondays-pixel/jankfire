@@ -70,7 +70,7 @@ local function publish(f: Fighter)
 	if not p.Parent then return end
 	local s = stateOf(f)
 	local c = charges(s)
-	p:SetAttribute("Item", s.item)
+	p:SetAttribute("Item", if Fight.noItems(f) then nil else s.item) -- (none in a classic mode without items: Modes.luau)
 	p:SetAttribute("ItemN", c.n)
 	p:SetAttribute("ItemAt", if c.next > 0 then stamp(c.next) else 0)
 	p:SetAttribute("ItemNext", s.nextItem)
@@ -97,8 +97,10 @@ function Utility.itemOf(f: Fighter): string return stateOf(f).item end
 type Pr = { id: number, k: string, owner: Fighter?, uid: number?, p: Vector3, v: Vector3, r: number, bounce: number, grav: number, born: number, fuse: number, life: number, syncT: number,
 	lp: Vector3?, hid: Fighter?, hsync: number, p0: Vector3?, v0: Vector3? } -- (a soap bubble: where and how it was blown) -- (the duck: where it was last tick, who it's homing on, when it last told everyone)
 -- a rubber duck's black hole: where it is, whose it is, when it opens (born; later than now while it's about to open
--- on someone it stuck to), the one it rides (on), the next pulse, the next "where it is" to everyone
-type Hole = { id: number, p: Vector3, owner: Fighter?, born: number, on: Fighter?, tick: number, syncT: number }
+-- on someone it stuck to), the one it rides (on), the next pulse, the next "where it is" to everyone. sky = a Duck Rain
+-- sky duck's (Modes.luau, Utility.skyHole): nobody's, it works on everyone, with its own radius, pull and life
+type Hole = { id: number, p: Vector3, owner: Fighter?, born: number, on: Fighter?, tick: number, syncT: number,
+	sky: { R: number, pull: number, life: number }? }
 local holes: { Hole } = {}
 local MAX_HOLE = 12
 local projs: { Pr } = {}
@@ -182,11 +184,12 @@ local function centre(t: Fighter): Vector3?
 end
 local function modelOf(t: Fighter?): Instance? return if t then Fight.model(t) else nil end
 local function holeInfo(h: Hole, k: string): { [string]: any }
-	return { k = k, id = h.id, p = h.p, o = uidOf(h.owner), on = modelOf(h.on), age = now() - h.born, R = D.holeR }
+	return { k = k, id = h.id, p = h.p, o = uidOf(h.owner), on = modelOf(h.on), age = now() - h.born, R = if h.sky then h.sky.R else D.holeR,
+		life = if h.sky then h.sky.life else nil }
 end
-local function makeHole(at: Vector3, owner: Fighter?, on: Fighter?, delay: number)
+local function makeHole(at: Vector3, owner: Fighter?, on: Fighter?, delay: number, sky: { R: number, pull: number, life: number }?)
 	nextId += 1
-	local h: Hole = { id = nextId, p = at, owner = owner, born = now() + delay, on = on, tick = 0, syncT = now() + 0.5 }
+	local h: Hole = { id = nextId, p = at, owner = owner, born = now() + delay, on = on, tick = 0, syncT = now() + 0.5, sky = sky }
 	table.insert(holes, h)
 	while #holes > MAX_HOLE do
 		local old = table.remove(holes, 1) :: Hole
@@ -304,11 +307,15 @@ local function tickHoles(dt: number)
 		local age = t - h.born
 		if age < 0 then continue end -- (stuck: it opens on them in a moment)
 		local owner = alive(h.owner)
-		if age >= D.holeTime then
+		-- (a sky duck's: nobody's, but it pulls and pops on everyone; its damage is "skyduck", credited by Rules.kill)
+		local sky = h.sky
+		local wid = if sky then "skyduck" else "duck"
+		local R = if sky then sky.R else D.holeR
+		if age >= (if sky then sky.life else D.holeTime) then
 			local i = table.find(holes, h)
 			if i then table.remove(holes, i) end
 			ItemFx:FireAllClients({ k = "he", id = h.id, p = h.p, r = D.blastR })
-			if not owner then continue end -- (whoever threw it has left: it pops harmlessly)
+			if not owner and not sky then continue end -- (whoever threw it has left: it pops harmlessly)
 			for _, v in table.clone(Fight.all) do
 				if not v.alive then continue end
 				local c = centre(v)
@@ -318,10 +325,10 @@ local function tickHoles(dt: number)
 				if dist > D.blastR then continue end
 				local f = 1 - dist / D.blastR
 				local dir = if dist > 0.1 * S then to.Unit else Vector3.yAxis
-				local self = v == owner
+				local self = owner ~= nil and v == owner
 				local k = D.blastKb * (0.4 + 0.6 * f)
-				Fight.hurt(v, if self then 0 else D.blastDmg * f, if self then nil else owner, "duck", false,
-					dir * k + Vector3.new(0, D.blastUp * f, 0), c)
+				Fight.hurt(v, if self then 0 else D.blastDmg * f, if self then nil else owner, wid, false,
+					dir * k + Vector3.new(0, D.blastUp * f, 0), c, if sky then h.p else nil)
 			end
 			continue
 		end
@@ -330,26 +337,26 @@ local function tickHoles(dt: number)
 		h.tick -= dt
 		if h.tick > 1e-6 then continue end
 		h.tick += D.pulse
-		if not owner then continue end
+		if not owner and not sky then continue end
 		for _, v in table.clone(Fight.all) do
 			if not v.alive or not Fight.allow(owner, v) then continue end
 			local vf = Fight.feet(v)
-			if vf and #bubbles > 0 and v ~= owner and Items.blocks(bubbles, vf, Fight.feet(owner), nil) then continue end -- (no pulling people out of a dome)
-			if v == h.on then Fight.hurt(v, D.stuckDmg, owner, "duck", false, nil, h.p, nil, true); continue end -- (the one it's stuck to IS the middle)
+			if vf and #bubbles > 0 and v ~= owner and Items.blocks(bubbles, vf, if owner then Fight.feet(owner) else nil, if owner then nil else h.p) then continue end -- (no pulling people out of a dome)
+			if v == h.on then Fight.hurt(v, D.stuckDmg, owner, wid, false, nil, h.p, nil, true); continue end -- (the one it's stuck to IS the middle)
 			local c = centre(v)
 			if not c then continue end
 			local to = h.p - c
 			local dist = to.Magnitude
-			if dist > D.holeR or dist < 0.05 * S then continue end
+			if dist > R or dist < 0.05 * S then continue end
 			local ramp = math.min(1, dist / D.ramp)
-			local sp = (D.pull * (1 - dist / D.holeR) + D.push0) * D.pulse * ramp
+			local sp = ((if sky then sky.pull else D.pull) * (1 - dist / R) + D.push0) * D.pulse * ramp
 			-- (and a little lift each pulse: off their feet, ground friction can't hold them back)
 			local kick = to / dist * sp + Vector3.new(0, D.lift * ramp, 0)
 			if v.kind == "player" then Fight.knock(v, kick, "duck")
 			else pulled[v] = (pulled[v] or Vector3.zero) + Vector3.new(kick.X, 0, kick.Z) end
 			if v ~= owner then
-				Rules.tagged(v, owner, "duck", t)
-				if dist < D.near then Fight.hurt(v, D.nearDmg, owner, "duck", false, nil, c, nil, true) end
+				if owner then Rules.tagged(v, owner, "duck", t) end
+				if dist < D.near then Fight.hurt(v, D.nearDmg, owner, wid, false, nil, c, nil, true) end
 			end
 		end
 	end
@@ -1148,6 +1155,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if not spendMsg(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f then return end
+	if Fight.noItems(f) then publish(f); return end -- (a classic mode with no items: one in the chamber, gun game)
 	if i == "nv" then onNv(f, o); return end -- (G with the goggles: on / off, free)
 	if i == "ans" then onAnswer(f, o); return end -- (a pop quiz answer, 0-3)
 	if i == "radar" then onRadar(f, o, d); return end -- (the speed trap: G held is free, only a ticket spends)
@@ -1338,6 +1346,13 @@ function Utility.init(fight: any)
 			tick(STEP)
 		end
 	end)
+end
+
+-- Duck Rain (Modes.luau): a sky duck landed here. its black hole is nobody's and works on everyone (web room.js skyduck,
+-- DUCKRAIN.hole): sky = { R, pull, life } (studs, studs/s, s), the blast is the duck's own. on = the one it landed on:
+-- it sticks to them and rides them. kill credit: whoever hurt you in the last 6 s (Rules.kill "skyduck")
+function Utility.skyHole(at: Vector3, on: Fighter?, sky: { R: number, pull: number, life: number })
+	makeHole(at, nil, on, if on then D.stick else 0, sky)
 end
 
 -- Studio play tests (TestHook "rev"): a reverse card on any fighter (a dummy) for secs, so a solo test can send a

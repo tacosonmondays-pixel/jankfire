@@ -55,6 +55,8 @@ type Match = {
 	queue: string?, -- (the Play queue's matches: its queue key, "ranked:2v2"; nil = a pad match)
 	ranked: boolean?, -- (a ranked match: RankedData rates it at the end)
 	rated: any?, -- (everyone's rating when it started, stand-ins too: RankedData)
+	rules: any?, -- (a classic mode's match, Matches.startMode: Modes.luau runs its spawns, respawns, clock, HUD, board and end)
+	ms: any?, -- (and keeps its state here)
 }
 
 local Fight: any
@@ -90,6 +92,11 @@ end
 Matches.homeOf = nil :: ((Player) -> CFrame?)?
 -- (Recorder.luau) at a match's end: hold it for a replay? { wait = s on the end screen, total = s until home, label }
 Matches.afterHook = nil :: ((any) -> any?)?
+-- (Modes.luau) the match itself a player is in, or nil
+function Matches.raw(p: Player): any?
+	local im = inMatch[p]
+	return if im then im.m else nil
+end
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -231,6 +238,7 @@ end
 local function spawnAt(f: Fighter): (Vector3, Vector3?)
 	local p = f.ref :: Player
 	local im = inMatch[p]
+	if im and im.m.rules then return im.m.rules.spawnAt(im.m, p) end -- (a classic mode: Modes.luau picks)
 	if im then
 		local list = teamSpawns(im.m, im.team)
 		local i = table.find(im.m.teams[im.team], p) or 1
@@ -256,6 +264,7 @@ local function each(m: Match, fn: (Player, number) -> ())
 	for t, list in m.teams do for _, p in list do if p.Parent then fn(p, t) end end end
 end
 local function setHud(m: Match)
+	if m.rules then m.rules.setHud(m); return end -- (a classic mode: each player's own line, Modes.luau)
 	local txt = hudText(m)
 	each(m, function(p) p:SetAttribute("MatchHud", txt); p:SetAttribute("RoundEnds", if m.phase == "live" then workspace:GetServerTimeNow() + (m.roundEnds - os.clock()) else nil) end)
 end
@@ -273,6 +282,7 @@ end
 local startRound: (Match) -> ()
 
 local function backToHub(m: Match)
+	if m.rules then m.rules.home(m) end -- (a classic mode: its marks come off first)
 	each(m, function(p)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
@@ -295,18 +305,21 @@ local function endMatch(m: Match, winner: number?)
 	m.phase = "over"
 	fire(hooks.finish, m, winner)
 	setHud(m)
-	local board = Fight.board(m.fighters)
-	local name = if winner then teamLabel(m, winner) else nil
+	local board = if m.rules then m.rules.board(m) else Fight.board(m.fighters)
+	local name = if winner then (if m.rules then m.rules.label(m, winner) else teamLabel(m, winner)) else nil
+	local cols = if m.rules then m.rules.cols(m) else nil -- (the board's two number columns, nil: KILLS, DEATHS)
 	-- (Recorder.luau) a match with a play of the match stays on the end screen for after.wait s, then everyone watches
 	-- it, then home after after.total s
 	local after = if Matches.afterHook then Matches.afterHook(m) else nil
 	each(m, function(p, t)
 		local home = Matches.homeOf and Matches.homeOf(p)
 		RoundR:FireClient(p, { over = true, winner = name, youWon = winner == t, board = board, next = if after then after.wait else Matches.AFTER,
-			nextLabel = if after then after.label elseif home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true })
+			nextLabel = if after then after.label elseif home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true,
+			cols = cols, mode = if m.rules then m.mode else nil })
 	end)
 	task.delay(if after then after.total else Matches.AFTER, backToHub, m)
 end
+Matches.finish = endMatch -- (Modes.luau: a classic mode's end, winner = the team that takes it or nil)
 
 -- teams with someone still standing
 local function standing(m: Match): { number }
@@ -348,6 +361,7 @@ end
 
 local function checkRound(m: Match)
 	if not m.on or m.phase == "over" then return end
+	if m.rules then m.rules.check(m); return end -- (a classic mode: its clock, leavers and win, Modes.luau)
 	if m.ghost then -- (a Studio test's empty match: over when its time is up)
 		if os.clock() >= m.ghost then endMatch(m, m.ghostWin) end
 		return
@@ -433,8 +447,9 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 	local wins = {}
 	for t = 1, #teams do wins[t] = 0 end
 	lastArena[pad] = arena
-	local m: Match = { id = nextId, key = SERVER_TAG .. "-" .. nextId .. "-" .. os.time(), mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
-		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil }
+	local m: Match = { id = nextId, key = SERVER_TAG .. "-" .. nextId .. "-" .. os.time(), mode = if opts and opts.mode then opts.mode else pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
+		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil,
+		rules = if opts then opts.rules else nil }
 	table.insert(live, m)
 	if not m.queue then padLast[pad] = m end -- (a Play-queue match isn't the pad's: its sign keeps its own)
 	each(m, function(p, t)
@@ -449,7 +464,7 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 		end
 	end)
 	fire(hooks.start, m)
-	startRound(m)
+	if m.rules then m.rules.begin(m) else startRound(m) end
 	return m
 end
 
@@ -484,6 +499,25 @@ function Matches.startQueued(padMode: string, sides: { { Player } }, opts: any):
 		m.ghostWin = opts.holdWin
 	end
 	return m, nil
+end
+
+-- (Modes.luau) a classic mode's match: sides = one list of players per side (a free-for-all: one each; a ghost side of a
+-- Studio test: empty), opts as startQueued's plus rules (Modes.luau's: it runs the match) and mode (its id, "gun"). the
+-- arena comes from the whole rotation through a pad of its own (no queue pad's rotation moves). the match, or nil and why
+local modePad: Model? = nil
+function Matches.startMode(sides: { { Player } }, opts: any): (Match?, string?)
+	for _, list in sides do for _, p in list do if inMatch[p] then return nil, "in a match" end end end
+	if not modePad then
+		local mp = Instance.new("Model")
+		mp.Name = "ModesPad"
+		mp:SetAttribute("Mode", "modes")
+		modePad = mp
+	end
+	local pad = modePad :: Model
+	local arena = if type(opts.arena) == "string" then opts.arena else nextArena(pad)
+	local site = claimSite(arena)
+	if not site then return nil, "busy" end
+	return startMatch(pad, sides, site, arena, opts), nil
 end
 
 -- ------------------------------------------------------------------ the pads
@@ -611,7 +645,9 @@ function Matches.init(fight: any)
 	Fight.spawnAt = spawnAt
 	Fight.holdRespawn = function(f: Fighter): boolean
 		local p = f.ref :: Player
-		return inMatch[p] ~= nil
+		local im = inMatch[p]
+		if im and im.m.rules then return im.m.rules.holdRespawn(im.m, f) end -- (a classic mode: you respawn, Modes.luau)
+		return im ~= nil
 	end
 	Fight.onKill(function(info)
 		local v = info.v

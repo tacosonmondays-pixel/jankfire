@@ -67,13 +67,14 @@ local fanArmed = false -- a fan needs a fresh click after running dry, reloading
 local scoped, scopedAt = false, -math.huge
 local aimSent = false
 
--- your loadout (the server sets it on every arm, Loadout.luau): the weapons on keys 1 2 3
+-- your loadout (the server sets it on every arm, Loadout.luau): the weapons on keys 1 2 3. a classic mode's kit can be
+-- fewer (Modes.luau: gun game's one weapon, one in the chamber's two)
 local function lo(): { string }
 	local s = me:GetAttribute("Loadout")
 	if type(s) ~= "string" then return Weapons.loadout end
 	local out = {}
 	for id in string.gmatch(s, "[^,]+") do if W[id] then table.insert(out, id) end end
-	return if #out == 3 then out else Weapons.loadout
+	return if #out >= 1 and #out <= 3 then out else Weapons.loadout
 end
 -- the loadout screen is up (LoadoutUI): hands off the weapons
 local function menuOpen(): boolean return me:GetAttribute("LoadoutOpen") == true end
@@ -294,6 +295,7 @@ local function reload()
 	local w = W[held]
 	local a = ammo[held]
 	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return end
+	if me:GetAttribute("NoReload") then return end -- (one in the chamber: kills are the only bullets, Modes.luau)
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
 	burstLeft = 0

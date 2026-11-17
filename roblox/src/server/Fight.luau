@@ -46,6 +46,10 @@ Fight.reflects = function(_by: Fighter, _t: Fighter): boolean return false end
 Fight.invulnerable = function(_t: Fighter): boolean return false end
 -- sealed in a soap bubble: asked first, a hit only pops it (Utility.luau, the bubble wand)
 Fight.soaked = function(_t: Fighter, _by: Fighter?, _wid: string, _from: Vector3?): boolean return false end
+-- the classic modes' hooks (Modes.luau): a hit's damage changed by the mode (one in the chamber's Revolver: 999), and
+-- no items in a mode without them (Utility.luau asks)
+Fight.modDamage = nil :: ((Fighter, number, Fighter?, string) -> number)?
+Fight.noItems = function(_f: Fighter): boolean return false end
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -312,6 +316,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	-- (a shove with no damage still marks who did it, so a fall now is theirs: web hurt tags every hit)
 	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
+	if Fight.modDamage and amt > 0 then amt = Fight.modDamage(t, amt, by, wid) end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
 	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid, hs) end end

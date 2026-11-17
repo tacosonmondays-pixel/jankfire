@@ -88,10 +88,40 @@ local function pack(cands: { Entry }, teams: number, size: number, ok: (({ { Ent
 	return nil
 end
 
+-- a free-for-all mode (an entry with ffa: the classic modes, Shared.ModeConfig): whole parties, min..max players, each
+-- entry its own list in what comes back (Modes.luau makes every player their own side). it goes at max seats, or at min
+-- once its oldest entry has waited fill s (a party of min or more may go on its own then). ranked: the oldest entry is
+-- the anchor and every other must sit inside both search windows, like the duels. pure
+local function formFfa(es: { Entry }, m: any, ranked: boolean, now: number): { { Entry } }?
+	local open = {}
+	for _, e in es do if e.state == "search" and e.size <= (m.size or PlayConfig.PARTY_MAX) then table.insert(open, e) end end
+	table.sort(open, function(a, b) return a.since < b.since end)
+	local lo, hi, fill = m.min or 2, m.max or 8, m.fill or 15
+	for ai, anchor in open do
+		local pick, seats = { anchor }, anchor.size
+		local wa = Ranked.window(now - anchor.since)
+		for j, e in open do
+			if j ~= ai and seats + e.size <= hi then
+				if not ranked or math.abs(e.rating - anchor.rating) <= math.min(wa, Ranked.window(now - e.since)) then
+					table.insert(pick, e)
+					seats += e.size
+				end
+			end
+		end
+		if seats >= hi or (seats >= lo and now - anchor.since >= fill) then
+			local out = {}
+			for _, e in pick do table.insert(out, { e }) end
+			return out
+		end
+	end
+	return nil
+end
+
 -- the teams for one match from this queue's searching entries (oldest first), or nil. pure
 function Queue.form(es: { Entry }, mode: string, ranked: boolean, now: number): { { Entry } }?
 	local m = PlayConfig.byId[mode]
 	if not m then return nil end
+	if (m :: any).ffa then return formFfa(es, m, ranked, now) end
 	local open = {}
 	for _, e in es do if e.state == "search" and e.size <= m.size then table.insert(open, e) end end
 	table.sort(open, function(a, b) return a.since < b.since end)

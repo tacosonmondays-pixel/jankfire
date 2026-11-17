@@ -20,6 +20,8 @@ local Recorder = {}
 Recorder.HZ = 12
 Recorder.KEEP_AFTER = 600 -- s a finished match's recording waits for a report
 Recorder.KILLCAM = { before = 5, after = 0.7 }
+-- (Modes.luau) does this victim get a killcam? nil = always. a classic mode's respawn comes before the clip would end
+Recorder.killcamFor = nil :: ((Player) -> boolean)?
 Recorder.POTM = { before = 3.2, after = 1.3, max = 8, wait = 3.5, slowPerKill = 0.6 }
 Recorder.REC = 24 -- bytes a fighter a frame
 
@@ -220,6 +222,7 @@ local function onKill(info: any)
 		local t = now()
 		task.delay(Recorder.KILLCAM.after, function()
 			if not vp.Parent then return end
+			if Recorder.killcamFor and not Recorder.killcamFor(vp) then return end -- (a classic mode: you're back in 2.5 s)
 			local c = Recorder.clip(s, t - Recorder.KILLCAM.before, now())
 			if #c.frames < 6 then return end
 			remote:FireClient(vp, { t = "killcam", clip = c, focus = s.slot[k], victim = s.slot[v], w = info.w, by = k.name })

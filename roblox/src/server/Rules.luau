@@ -31,6 +31,9 @@ export type Fighter = {
 	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
 	-- keys 1 2 3 (Loadout.luau): the weapons you carry this life, and the picks waiting for your next (re)arm
 	loadout: { string }?, nextLoadout: { string }?,
+	-- a classic mode's kit (Modes.luau, web p.forced): armed instead of your picks while it's set (1 to 3 weapons), and
+	-- no reloads (one in the chamber)
+	forced: { string }?, noReload: boolean?,
 	-- batch 3's guns: when each gun last fired, the Hat Trick's recent shots, the Yeehaw's chain, the Hat Trick's
 	-- burst in flight, the last quick-scope paid out, when the scope went up (nil = not aiming)
 	lastShot: { [string]: number }, shotLog: { [string]: { number } },
@@ -60,7 +63,7 @@ end
 -- arm: take the picks waiting in nextLoadout (they never change mid-life on their own), full mags, slot 1 out.
 -- every spawn does this; the hub also does it when the loadout screen closes
 function Rules.arm(f: Fighter, now: number)
-	if f.nextLoadout then f.loadout = f.nextLoadout end
+	if f.forced then f.loadout = f.forced elseif f.nextLoadout then f.loadout = f.nextLoadout end
 	local lo = Rules.loadoutOf(f)
 	f.held, f.equipT = lo[1], now
 	f.swing = nil
@@ -125,6 +128,7 @@ end
 function Rules.reload(f: Fighter, wid: any, now: number): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	if not f.alive then return "dead" end
+	if f.noReload then return "no reloads" end -- (one in the chamber: kills are the only bullets)
 	if f.held ~= wid then return "not held" end
 	local a = ammoOf(f, wid, now)
 	if not a then return "no ammo" end
@@ -398,7 +402,8 @@ end
 export type KillInfo = { k: Fighter?, v: Fighter, w: string, via: string? }
 
 -- the one place a fighter dies. credit: the attacker; a fall ("void") goes to whoever tagged you in the last 10 s, with
--- `via` = what they last hit you with. katana / parry kills grow the killer's katana (a void kill doesn't: web rule)
+-- `via` = what they last hit you with; a sky duck (Duck Rain's, "skyduck") to whoever hurt you in the last 6 s, and it
+-- goes in the feed as the duck. katana / parry kills grow the killer's katana (a void kill doesn't: web rule)
 function Rules.kill(t: Fighter, by: Fighter?, wid: string, now: number): KillInfo
 	t.alive, t.hp, t.diedT = false, 0, now
 	t.deaths += 1
@@ -407,6 +412,9 @@ function Rules.kill(t: Fighter, by: Fighter?, wid: string, now: number): KillInf
 	if wid == "void" then
 		k = nil
 		if t.tag and now - t.tag.t <= 10 and t.tag.by ~= t then k, via = t.tag.by, t.tag.w end
+	elseif wid == "skyduck" then
+		k, wid = nil, "duck"
+		if t.tag and now - t.tag.t <= 6 and t.tag.by ~= t then k, via = t.tag.by, t.tag.w end
 	end
 	if k == t then k = nil end
 	if k then

@@ -164,6 +164,8 @@ local KINDS: { { string } } = {
 	{ "TICKET", "small" }, { "BUSTED!", "small" }, { "PHOTO TAKEN", "small" }, { "* WENT IN YOUR PHOTO", "small" },
 	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },
 	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" },
+	-- (the classic modes, Modes.luau: a bullet earned and somebody else going out are what just happened, quietly)
+	{ "+1 BULLET", "small" }, { "* IS OUT OF LIVES", "small" },
 	{ "BOING", "cut" }, { "BONK", "cut" }, { "MARBLES!", "cut" }, { "WHOOPS!", "cut" }, { "dummy down", "cut" },
 	{ "KATANA GROWS", "cut" }, { "BURST!", "cut" }, { "NO SCOPE", "cut" }, { "IN THE TEETH", "cut" }, { "SHREDDED", "cut" },
 	{ "OVERHEATED", "cut" }, { "POP!", "cut" }, { "WISH YOU WERE HERE", "cut" },

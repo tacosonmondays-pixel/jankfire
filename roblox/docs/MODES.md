@@ -1118,6 +1118,110 @@ These are set as env vars on the web server. Mirror the useful ones as server `C
 
 ---
 
+## Roblox adaptations (the classic modes on the Play screen, 17 Nov 2026)
+
+The first four classic modes are live on the Play screen's MODES tab: **Gun Game, One in the Chamber, Duck Rain and
+Randomizer**. The code:
+- `server/Modes.luau`: the rules.
+- `shared/ModeConfig.luau`: the numbers, the cards and the ladder pools.
+- `server/ModesServer.server.luau`: the wiring and the Studio test hook.
+- `client/ModeHud.client.luau`: the HUD, spectating and the sky ducks.
+
+The rules follow the sections above. Below is every place where the Roblox version had to differ, and why.
+
+**Shared by all four**
+- **Who plays:** parties of 1-4 queue for a mode, and parties are kept whole.
+  - A match takes 2-8 players. It starts at 8, or at 2 or more once the oldest party has waited 15 s
+    (`ModeConfig.MIN/MAX/FILL`, `Queue.luau`'s free-for-all branch). A party of 2+ can also start on its own after the
+    wait.
+  - All four modes are free for all, so party mates fight each other too. Every player is their own side in `Matches`.
+- **No bots, so the Online numbers:** the web has an Online and a Bots value for each target and clock. There are no
+  bots on Roblox, so the Online ones apply: 20 kills, 360 s, and 600 s for Gun Game.
+- **Match flow:** a mode match runs through `Matches.startMode`.
+  - It uses the same arena rotation, copies, cap, end screen and trip home as the duels. The Recorder (play of the
+    match), Stats and RankedData all see it.
+  - There's no end-of-match vote and no next round. As with the web's offline hub matches, you go back to your lobby.
+  - The clock starts after 4 s of ready time: the arena's name, the mode's name, then its rules line.
+- **Spawns:** the web's `pickSpawn` (farthest from the nearest living enemy, plus 0-15 m), over the arena's `Spawns` and
+  `TeamSpawns` markers. Respawn after 2.5 s, with 1.2 s of spawn protection, as before.
+- **Killcam:** a 2.5 s respawn would cut the replay killcam off. So in mode matches only a player who won't be back gets
+  it: One in the Chamber, out of lives (`Recorder.killcamFor`). The web's optional +9 s killcam wait isn't ported.
+- **The result, for Party Ranked:** `Modes.luau` sets these before `Matches.onEnd` runs:
+  - `m.ffa` and `m.modeId`.
+  - `m.places[team]`: the place each side finished. Ties share a place.
+  - `m.results`: every player, best first.
+  - Winning needs at least 1 kill, or being the last one standing (web `endRound`).
+- **Kits:** a mode's kit is `f.forced` (web `p.forced`).
+  - `Rules.arm` arms the kit instead of your picks, and `Combat` refuses any other weapon, as before.
+  - Your own loadout comes back after the match.
+  - A kit can be 1-3 weapons: `Arsenal.client`'s number keys take fewer than 3.
+- **No items** in Gun Game and One in the Chamber (web `noItem`): `Utility` asks `Fight.noItems`. Killstreaks aren't on
+  Roblox at all, so `noStreaks` has nothing to switch off.
+
+**Gun Game**
+- **The ladder** is rolled the web way:
+  - 10 guns, 5 silly, 3 melee, then the knife. Each group is shuffled, and last match's weapons go last.
+  - A weapon that isn't on Roblox yet plays as its nearest ported one (`ModeConfig.NEAREST`), and where it can, one
+    that isn't on the ladder already.
+  - Once a weapon is ported (Roster `live`), it takes its own rung by itself.
+- **What stands in today:** 15 weapons are live, and the only melee weapon is the katana.
+  - The 3 melee rungs and the knife's last rung are all the **katana**.
+  - Nothing in the silly pool is ported yet:
+
+    | silly weapon | plays as |
+    |---|---|
+    | bow | Yeehaw |
+    | chicken | shotgun |
+    | blood cross | Revolver |
+    | banana | Marble Shotgun |
+    | cards | Hat Trick |
+    | bowling | Lawn Mower |
+    | tennis, snowball | Plan B |
+    | cart | shotgun |
+    | taser | Half a Shotgun |
+    | slipper | katana |
+
+  - The **Shredder** is a Tool that only a spawn hands out, so a mid-life rung swap can't give it. Its rung plays as
+    the Lawn Mower.
+- **The last rung:** the web calls it "the spoon". Here it's the katana, so the callouts say
+  **LAST RUNG · ONE KILL WINS** and "<NAME> IS ON THE LAST RUNG". The end board shows WON for the winning kill.
+- **A melee death** is a death to a `kind: melee` weapon (the katana). A parried shot (`parry`) isn't one, as on the
+  web.
+
+**One in the Chamber**
+- **The knife isn't on Roblox yet**, so the katana stands in. It does its normal damage and still grows with kills.
+- **Bullets** are the Revolver's mag on the server:
+  - 1 at spawn, +1 for a kill, 3 at most.
+  - The server refuses reloads (`f.noReload`), and the client never starts one.
+  - A hit with the Revolver does 999 (`Fight.modDamage`).
+- **No shot pairing:** the web counts a hit plus a fire within 250 ms as one bullet. That isn't needed here: one `Fire`
+  remote carries its hits, and the mag is the server's own.
+- **Out of lives:** you watch the others from over their shoulder (click, Space or → for the next, ← for the one
+  before). Reset is off for the match.
+- **Late joiners** don't exist here (matches are formed whole), so the "fewest lives" rule never comes up.
+
+**Duck Rain**
+- **The black holes** use the Rubber Duck item's own code (`Utility.skyHole`):
+  - A sky hole is nobody's, and it works on everyone.
+  - It has `DUCKRAIN.hole`'s numbers (12 m, pull 40, 2.6 s) and the duck's own blast (9 m, 30 m/s, 45 damage).
+  - A shield bubble blocks it.
+  - A death in one goes to whoever hurt you in the last 6 s (`Rules.kill` "skyduck"). The feed shows it as the Rubber
+    Duck.
+- **Floor area** sets the drop size. It comes from a grid of rays every 2.5 m over the arena's spawn area plus 25 m,
+  counting hits that face up. That's the web's `surfaces` idea worked out from the Roblox parts, and it's kept per
+  arena.
+- **Landing on a player:** a duck sticks to someone standing within 0.7 m of its landing spot when it lands.
+  - The server schedules each landing at its ETA rather than simulating the fall: the duck falls straight down.
+  - Clients draw the shadow, the blinking ring and the falling duck, and show LOOK UP within 3.5 m.
+- **Caps:** the duck item's cap of 12 live holes covers sky holes too. The oldest goes first.
+
+**Randomizer**
+- Each life rolls one weapon per slot from every weapon on Roblox in that slot (the Shredder included: a spawn hands it
+  out).
+- The server keeps the roll as the kit, so a hit from anything else is refused. The web game doesn't make that check.
+
+---
+
 ## Unclear (collected)
 - **DM round-start sound:** there's no DM-specific one. Zombies uses `sfx.roundStart`; the generic round start only
   shows a callout (`main.js:2986`).
