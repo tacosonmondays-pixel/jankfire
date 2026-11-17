@@ -199,6 +199,9 @@ for _id, _v in PICK.items():
         BUILD[_id] = _c(_id)
     else:
         BUILD[_id] = _ab(_id, _v)
+# the melee weapons for the classic modes (17 Nov 2026): knife, spoon, claw (tools/roblox/gun_melee.py)
+import gun_melee
+BUILD.update(gun_melee.BUILD)
 
 
 # ------------------------------------------------------------------------- the skin: Carl's Cardboard on the C rifle
