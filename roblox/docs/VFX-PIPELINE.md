@@ -590,4 +590,4 @@ helix at `spin` rad/s, so it winds along the gun like a barber's pole; the mirro
 the gun, so first person has them now (`fp` = their width share there; off while aiming, with the rest). A wrap's glow
 colour reaches every layer (`coilShade`). The row: two vines round the barrel (r 6.5 cm, 1.5 turns), one up each wing.
 88 beams a gun. Photos `round17/angel-vines-v701-close-side-fp.jpg` (taken before the bead texture had processed: halo,
-body and core only).
+body and core only) and `round17/angel-vines-v701-beads.jpg` (with the beads, over the training hall's dark floor).
