@@ -204,9 +204,12 @@ return function(B, R)
 			else { { "MORE PADS   ·   UPSTAIRS", "d8dbe2", "S", 0.3 }, { "TRAINING   ·   THROUGH THE ARMORY", "d8dbe2", "S", 0.3 }, { "LOADOUT   ·   PRESS L ANYWHERE", "d8dbe2", "S", 0.3 } } -- (no title, no "holstered" line: the owner, 16 Nov, "I dont want unnecessary flavor text everywhere")
 		B.text(F, if i == 3 then "BoardHow" else "BoardNotice", lines, 9.2, 4.2, 0, 8.1, A - 0.62, 0, { flush = true, thick = 0.3, pps = 40 })
 	end
-	-- a regular (R.NPCS; HubNPCs builds them at start): Frisk1636 on the balcony over the lifts, by the pier between the
-	-- 2V2's and the 3V3's doorways, looking down at the platform
-	B.npc(B.fr(0.5 * step), "Frisk1636", 0, RY + 0.04, RIN + 1.7, 180)
+	-- a regular (R.NPCS; HubNPCs builds them at start): Frisk1636 on the balcony over the lifts, the ranked guy. he moves
+	-- between four spots on the rail (by the piers between the doorways), pausing at each, looking down at the platform
+	for k, b in { -1.5 * step, -0.5 * step, 0.5 * step, 1.5 * step } do
+		if k == 1 then B.npc(B.fr(b), "Frisk1636", 0, RY + 0.04, RIN + 2.5, 180) end
+		B.npcPoint(B.fr(b), "Frisk1636", k, "stop", "stand", 0, RY + 0.04, RIN + 2.5, 180, { pause = { 8, 16 } })
+	end
 	-- ---- the showroom: sides 5, 6, 8 and 9, the south wall either side of the lounge's arch (owner, 16 Nov: "we also need
 	-- holograms like in rivals with bundle sets that float and people can look at and interact with"). on each a round
 	-- plinth like a small copy of the platform, a bundle from the shop floating over it (HubHolo.client: one bundle a

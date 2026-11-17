@@ -100,6 +100,10 @@ return function(B, R)
 		-- a regular (HubNPCs builds them at start): Looticus on the east sofa, at its door end, looking over at the duck.
 		-- (the seat's top on the sofa's cushion: its fabric starts at 1.92, the cushion's top about 2.45)
 		B.npc(F, "Looticus", 11.2, 2.35, 46.6, 90)
+		-- where he puffs to: either end of either sofa, or standing by the arcade or the fridge
+		for k, w in { { "sit", 11.2, 2.35, 46.6, 90 }, { "sit", 11.2, 2.35, 49.6, 90 }, { "sit", -11.2, 2.35, 46.6, -90 }, { "sit", -11.2, 2.35, 49.6, -90 }, { "stand", 8.6, 0.6, 55.2, -55 }, { "stand", -8.6, 0.6, 55.2, 55 } } do
+			B.npcPoint(F, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5])
+		end
 
 		-- ---- the VIP room, behind the lounge (owner, 16 Nov: VIP, the game pass, "lets you enter the VIP room"). its door
 		-- is in the middle of the lounge's far wall, on the spawn's axis behind the duck: dark leaves in a brass frame, VIP
@@ -160,7 +164,14 @@ return function(B, R)
 			end
 			B.put(F, R.prop("rk_coffeetable", "bc_coffeetable"), "VipTable", 0, FY, 71, 0, { solid = true })
 			-- a regular (R.NPCS; HubNPCs builds them at start): Trisangle on the east sofa, at its door end, across from the door
-			B.npc(F, "Trisangle", -(VX - 0.2) + 2.2, 2.35, 69.8, -90)
+			local tris = B.npc(F, "Trisangle", -(VX - 0.2) + 2.2, 2.35, 69.8, -90)
+			-- the seats she moves between (either end of either sofa), each reached from a point in front of it, along the
+			-- aisle beside the table, and across the room by the door (clear of the table, the sofas and the plinths)
+			if tris then tris:SetAttribute("Door", F * Vector3.new(0, FY, -65.6)) end
+			for k, w in { { -1, 69.8 }, { -1, 72.4 }, { 1, 69.8 }, { 1, 72.4 } } do
+				local s, d = w[1], w[2]
+				B.npcPoint(F, "Trisangle", k, "seat", "sit", s * ((VX - 0.2) - 2.2), 2.35, d, s * 90, { approach = F * Vector3.new(s * 6, FY, -d), aisle = F * Vector3.new(s * 5.2, FY, -67) })
+			end
 			-- the Ducky pack, turning over two plinths either side of the door
 			for k, s in { -1, 1 } do
 				local x, d = s * 7.4, 64.6
@@ -313,9 +324,13 @@ return function(B, R)
 			head.Shape = Enum.PartType.Ball
 			B.solid("DummyBox", Vector3.new(2.6, 8, 2.6), F * CFrame.new(x, 4, -d))
 		end
-		-- a regular (R.NPCS; HubNPCs builds them at start): Dune standing just off the south aisle (outside it: the walk
-		-- past the ring stays clear), between the weights and the dummy, turned to the ring's middle
-		B.npc(F, "Dune", 15.4, 0, 62.5, 105)
+		-- a regular (R.NPCS; HubNPCs builds them at start): Dune, the quests guy, walking a loop round the ring (the aisles
+		-- either side, behind it, past the door), pausing at the weights, behind the ring, at the bags and by the door,
+		-- always facing the ring there. the walk stays clear of the posts, the benches, the bags and the tyres
+		B.npc(F, "Dune", 11.9, 0, 58, 90)
+		for k, w in { { "stop", 11.9, 58, 90 }, { "via", 11.9, 70.4, 0 }, { "stop", 0, 71, 180 }, { "via", -12.6, 70.3, 0 }, { "stop", -13, 58, -90 }, { "via", -11.2, 47.2, 0 }, { "stop", 0, 45.6, 0 }, { "via", 11.2, 47.2, 0 } } do
+			B.npcPoint(F, "Dune", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil })
+		end
 
 	end
 

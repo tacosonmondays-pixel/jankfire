@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 46 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 49 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -90,12 +90,16 @@ R.GYM_BOX = { 20, 74, 18 } -- half its width, its far wall's d, its height
 R.GYM_RING = 58.5 -- the ring's middle, on the door's axis
 -- THE REGULARS: the owner's friends about the hub in their own avatars (owner, 16 Nov: "Can you put these two as NPCs
 -- somewhere?", "This one too"). B.npc leaves their places, HubNPCs.server builds them at server start (a saved copy in
--- ServerStorage.JankfireNPCs if the avatar call fails). who = the label over them, user = their Roblox username
+-- ServerStorage.JankfireNPCs if the avatar call fails). who = the label over them, user = their Roblox username. their
+-- purposes (owner, 17 Nov: "Dune is the quests guy, maybe Frisk does one. Maybe Looticus the shop? ... I want to give
+-- them purposes"): role = the word after their name over them; prompt = { its action, the attribute it carries, its
+-- value }: the panel's own client opens on that attribute (ShopOpen: ShopClient; QuestsOpen: QuestClient; RankedOpen:
+-- the ranked panel). Trisangle's prompt is the shop's VipDaily's
 R.NPCS = {
-	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit" }, -- on the lounge's sofa
-	Dune = { user = "Doonamei", id = 56917496, pose = "stand" }, -- by the ring in the gym, watching it
-	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand" }, -- on the balcony over the lifts, looking down at the platform
-	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
+	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport" }, -- on the lounge's sofa; now and then a puff and he is on another seat or by the arcade or the fridge
+	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "loop" }, -- in the gym, walking round the ring
+	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedOpen", true }, moves = "pingpong" }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
+	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 } }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -480,9 +484,46 @@ function R.new(live, opts)
 		if p:IsA("Seat") then p.Disabled = true end -- (HubNPCs.server opens it for its regular only)
 		p:SetAttribute("Who", who); p:SetAttribute("User", info.user); p:SetAttribute("Pose", info.pose)
 		if info.vipDaily then p:SetAttribute("VipDaily", true) end -- (the shop's VipDaily puts the VIP daily reward's prompt on this spot)
+		-- (their idle and the one-shot now and then: HubNPCs plays them; made with Studio's prompt-to-animation tool)
+		if info.role then p:SetAttribute("Role", info.role) end
+		if info.badge then p:SetAttribute("Badge", info.badge) end -- (a player attribute: while it is true for you, a dot after their name)
+		if info.prompt then -- (one style for all four: E, no hold, 8 studs, at chest height)
+			local at = Instance.new("Attachment"); at.Name = "PromptAt"; at.Position = Vector3.new(0, if info.pose == "sit" then 1.4 else 3.2, 0); at.Parent = p
+			local pr = Instance.new("ProximityPrompt")
+			pr.Name = info.prompt[1] .. "Prompt" -- (ShopPrompt, QuestsPrompt, RankedPrompt: as the shop's VipDailyPrompt)
+			pr.ActionText = info.prompt[1]; pr.ObjectText = who
+			pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
+			pr.MaxActivationDistance = 8; pr.RequiresLineOfSight = false; pr.ClickablePrompt = true
+			pr:SetAttribute(info.prompt[2], info.prompt[3])
+			pr.Parent = at
+		end
+		if info.idle then p:SetAttribute("Idle", info.idle) end
+		if info.walk then p:SetAttribute("Walk", info.walk) end
+		-- (how they move about: HubNPCs reads Moves and walks or jumps between their points, B.npcPoint)
+		if info.moves then p:SetAttribute("Moves", info.moves) end
+		if info.moveEvery then p:SetAttribute("MoveEvery", Vector2.new(info.moveEvery[1], info.moveEvery[2])) end
+		if info.extra then p:SetAttribute("Extra", info.extra); p:SetAttribute("ExtraEvery", Vector2.new(info.every[1], info.every[2])) end
 		if info.id then p:SetAttribute("UserId", info.id) end
 		p.Parent = root.Scenery
 		game:GetService("CollectionService"):AddTag(p, "HubNPC")
+		return p
+	end
+	-- one of a regular's points (HubNPCs walks or jumps them between these): index 1 is where they start (their place);
+	-- kind "seat" / "spot" / "stop" (pause there) / "via" (walk on through); pose "sit" / "stand"; (x, y, d) and yaw as
+	-- for B.npc (a seat point stands where a Seat would, so the way they sit on it carries over). o.pause = { min, max }
+	-- seconds; o.approach / o.aisle = world points on the floor a seat is reached by
+	function B.npcPoint(F, who, index, kind, pose, x, y, d, yaw, o)
+		o = o or {}
+		local p = Instance.new("Part")
+		p.Name = ("NPCPoint_%s_%d"):format(who, index); p.Size = Vector3.new(2, 0.2, 2)
+		p.CFrame = F * CFrame.new(x, y + 0.1, -d) * CFrame.Angles(0, math.rad(yaw or 0), 0)
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Transparency = 1; p.CastShadow = false
+		p:SetAttribute("Who", who); p:SetAttribute("Index", index); p:SetAttribute("Kind", kind); p:SetAttribute("Pose", pose)
+		if o.pause then p:SetAttribute("Pause", Vector2.new(o.pause[1], o.pause[2])) end
+		if o.approach then p:SetAttribute("Approach", o.approach) end
+		if o.aisle then p:SetAttribute("Aisle", o.aisle) end
+		p.Parent = root.Scenery
+		game:GetService("CollectionService"):AddTag(p, "NPCPoint")
 		return p
 	end
 	-- a white light panel let into a ceiling whose underside is y: w across, l deep. o.hex = its colour
