@@ -295,6 +295,7 @@ The review log in the owner's panel after the runs (read back from the DataStore
   - The REPORTS tab listed it ("1 reports, 1 open") and opened it: reason, reporter, the anti-cheat state ("0 points here · 0 kicks"), "no match recording" (not in a match), and the transcript.
   - CONFIRM ran with since = the report's day minus one.
   - ERASE DATA removed the report and the user's log lines ("1 reports, 0 scrubbed, 2 log lines"); the list was empty after.
+- **The party panel's REPORT** (installed by the play/party/ranked session, place version 587, commit b0fb76c): in Play, REPORT on a row opened the report window above the panel, and your own row had no button. Photos: `docs/matchmaking/22_party_report.jpg` and `23_party_report_window.jpg`.
 - **Not tested live:**
   - The REPORT button on the end-of-match board, which needs a second player on the board.
   - Storing a match recording with a report. The recorder's `forReport` is the play/party/ranked session's, and the store path is the same SetAsync as the report itself.
