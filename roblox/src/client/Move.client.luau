@@ -15,6 +15,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Movement = require(Shared:WaitForChild("Movement"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
+local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
 
@@ -102,7 +103,7 @@ GrappleRemote.OnClientEvent:Connect(function(what: string)
 	end
 end)
 
-UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+Keys.began(function(io: InputObject, gp: boolean)
 	if gp or game:GetService("Players").LocalPlayer:GetAttribute("LoadoutOpen") then return end -- (the loadout screen is up)
 	local k = io.KeyCode
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = true
@@ -112,7 +113,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	elseif k == Enum.KeyCode.V then thirdPerson = not thirdPerson; setCamera()
 	end
 end)
-UserInputService.InputEnded:Connect(function(io: InputObject)
+Keys.ended(function(io: InputObject)
 	local k = io.KeyCode
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = false
 	elseif k == Enum.KeyCode.C or k == Enum.KeyCode.LeftControl then keys.crouch = false

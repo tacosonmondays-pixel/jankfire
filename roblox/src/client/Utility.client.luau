@@ -431,7 +431,7 @@ local whiteFlash: (number, number) -> ()
 local printIn: () -> ()
 local wandIn: () -> () -- (the bubble wand below)
 local laptopIn: () -> () -- (the laptop's lid, below)
-UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+;(require(script.Parent:WaitForChild("Keys")) :: any).began(function(io: InputObject, gp: boolean) -- (Keys: the phone's item plate presses G too)
 	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
 	if menuOpen() or inHub() then return end
 	local _, _, root = myChar()
@@ -1084,6 +1084,12 @@ local function adOpen(slot: number, copy: { string }, isSure: boolean)
 	local f = T.new("Frame", { Name = "Ad", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(at.X + (math.random() - 0.5) * 0.05, at.Y + (math.random() - 0.5) * 0.05),
 		Size = UDim2.fromOffset(300, 136), BackgroundColor3 = T.BG, BackgroundTransparency = 0.04, BorderSizePixel = 0, ZIndex = 10 + ads.n, Rotation = (math.random() - 0.5) * 4 }, stage)
 	T.corner(f, 6); T.edge(f, if isSure then T.DANGER else nil, if isSure then 0.2 else nil)
+	f.InputBegan:Connect(function(io: InputObject) -- (a phone: tap an ad to close it, as its number key would)
+		if io.UserInputType == Enum.UserInputType.Touch then
+			local K = require(script.Parent:WaitForChild("Keys")) :: any
+			K.tap(({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five })[slot])
+		end
+	end)
 	local bar = T.new("Frame", { Name = "Bar", BackgroundColor3 = if isSure then T.DANGER else BARS[ads.n % #BARS + 1], BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 10 + ads.n }, f)
 	T.corner(bar, 6)
 	local title = T.text(bar, "Title", copy[1], 14, T.INK, T.FONT_HEAVY); title.Position = UDim2.fromOffset(12, 0); title.Size = UDim2.new(1, -60, 1, 0); title.ZIndex = 11 + ads.n
@@ -1143,10 +1149,10 @@ local function adsStep(dt: number)
 	local tip = adTip
 	if tip then
 		tip.Visible = true
-		tip.Text = ("press the number on an ad to close it  ·  %d left"):format(#ads.live + #ads.queue)
+		tip.Text = (if (require(script.Parent:WaitForChild("Keys")) :: any).isTouch() then "tap an ad to close it  ·  %d left" else "press the number on an ad to close it  ·  %d left"):format(#ads.live + #ads.queue)
 	end
 end
-UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+;(require(script.Parent:WaitForChild("Keys")) :: any).began(function(io: InputObject, gp: boolean) -- (a phone: tapping an ad presses its number)
 	local k = NUM[io.KeyCode]
 	if not k or gp or #ads.live == 0 then return end
 	for _, a in ads.live do
@@ -1482,7 +1488,7 @@ radarHold = function(on: boolean)
 		if hand and hand.id == "radar" then startHand("radarDown") end
 	end
 end
-UserInputService.InputEnded:Connect(function(io: InputObject)
+;(require(script.Parent:WaitForChild("Keys")) :: any).ended(function(io: InputObject)
 	if io.KeyCode == Enum.KeyCode.G and radarOn then radarHold(false) end
 end)
 local function radarStep()

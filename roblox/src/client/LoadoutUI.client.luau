@@ -1296,3 +1296,120 @@ RunService.Heartbeat:Connect(function()
 	local show = not state.open and me:GetAttribute("Zone") ~= "match"
 	if hubBtn.holder.Visible ~= show then hubBtn.holder.Visible = show end
 end)
+
+-- ---------------------------------------------------------------- the phone layout (touch controls, 17 Nov)
+-- the 1920 x 1080 screen above, scaled down to fit a phone, left every button a third of its size (DONE: 18 points tall
+-- on an 844 x 390 phone; the armory's names 6 points). on a touch screen whose short side is under 600 points the same
+-- pieces are laid out on a 1300 x 600 canvas instead, in two pages picked at the top left: WEAPONS (the slot cards, the
+-- armory, the weapon's card with a bigger EQUIP) and LOOKS (the preview, the slot cards small, the wraps / hats /
+-- skins bar full width). tap targets come out 40-65 points. nothing else changes: the same buttons, the same code.
+-- (a Studio test fakes the screen: the player attribute FakeScreen, a Vector2, set by TouchControls' "fake:WxH")
+-- (all in its own function: this script's main chunk is near Luau's 200-local limit)
+do
+local function phoneLayout()
+	local deskFit = fit
+	local PW, PH = 1300, 600
+	local page = "gear"
+	local on = false
+	local saved: { [Instance]: { [string]: any } } = {}
+	local function keep(o: Instance, prop: string)
+		saved[o] = saved[o] or {}
+		if saved[o][prop] == nil then saved[o][prop] = (o :: any)[prop] end
+	end
+	local function set(o: Instance, prop: string, v: any)
+		keep(o, prop)
+		if (o :: any)[prop] ~= v then (o :: any)[prop] = v end
+	end
+	local function scaleOf(o: Instance): UIScale
+		local sc = o:FindFirstChild("PhoneScale") :: UIScale?
+		if not sc then sc = new("UIScale", { Name = "PhoneScale" }, o) end
+		return sc :: UIScale
+	end
+	local function put(o: GuiObject, x: number, y: number, k: number, vis: boolean)
+		set(o, "Position", UDim2.fromOffset(x, y))
+		set(o, "Visible", vis)
+		local sc = scaleOf(o)
+		if sc.Scale ~= k then sc.Scale = k end
+	end
+	local function screen(): Vector2
+		local f = me:GetAttribute("FakeScreen")
+		if typeof(f) == "Vector2" then return f end
+		return (workspace.CurrentCamera :: Camera).ViewportSize
+	end
+	local function phone(): boolean
+		local v = screen()
+		local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchOn") == true
+		return touch and math.min(v.X, v.Y) < 600
+	end
+	-- the page buttons (phone only)
+	local pageBtns: { [string]: Btn } = {}
+	for i, p in { { "gear", "WEAPONS" }, { "looks", "LOOKS" } } do
+		local b = button(stage, p[2], "chip", UDim2.fromOffset(20 + (i - 1) * 212, 12), UDim2.fromOffset(200, 60))
+		b.holder.Visible = false
+		b.face.TextSize = 24
+		b.face.MouseButton1Click:Connect(function() if page ~= p[1] then page = p[1]; play("click") end end)
+		pageBtns[p[1]] = b
+	end
+	-- (a test picks the page: the player attribute LoadoutPhonePage = "gear" or "looks")
+	me:GetAttributeChangedSignal("LoadoutPhonePage"):Connect(function()
+		local v = me:GetAttribute("LoadoutPhonePage")
+		if v == "gear" or v == "looks" then page = v end
+	end)
+	local armHolder = armBody.Parent :: Frame
+	local infoHolder = info.Parent :: Frame
+	local bars = { wraps = wbar.Parent :: Frame, hats = hHolder, skins = sHolder }
+	local function layout()
+		local gear = page == "gear"
+		set(stage, "Size", UDim2.fromOffset(PW, PH))
+		set(titleBox, "Visible", false)
+		set(saveLbl, "Visible", false)
+		for name, b in pageBtns do
+			b.holder.Visible = true
+			b.mark.Visible = name == page
+			b.face.BackgroundColor3 = if name == page then T.CARD_HI else b.base
+		end
+		put(flairBtn.holder, 768, 12, 1, true)
+		set(flairBtn.holder, "Size", UDim2.fromOffset(320, 60))
+		set(flairBtn.face, "TextSize", 19)
+		put(done.holder, 1100, 12, 1, true)
+		set(done.holder, "Size", UDim2.fromOffset(180, 60))
+		set(done.face, "TextSize", 22)
+		set(done.face, "Text", "DONE")
+		for i, c in cards do
+			if gear then put(c.holder, 20, 88 + (i - 1) * 99, 0.89, true) -- (463 x 91: a column down the left)
+			else put(c.holder, 372 + ((i - 1) % 2) * 328, 152 + (i - 1) // 2 * 72, 0.6, true) end -- (two by two, beside the preview)
+		end
+		put(armHolder, 499, 88, 0.89, gear)
+		put(infoHolder, 978, 88, 0.72, gear)
+		set(equipBtn.holder, "Position", UDim2.fromOffset(22, 596))
+		set(equipBtn.holder, "Size", UDim2.fromOffset(376, 88))
+		set(equipBtn.face, "TextSize", 28)
+		put(previewBox, 20, 88, 0.42, not gear)
+		for i, t in { "wraps", "hats", "skins" } do
+			put(tabBtns[t].holder, 372 + (i - 1) * 172, 88, 1, not gear)
+			set(tabBtns[t].holder, "Size", UDim2.fromOffset(160, 52))
+			set(tabBtns[t].face, "TextSize", 24)
+			put(bars[t], 20, 404, 1, not gear and tab == t)
+		end
+		-- (no slide-in on a phone: the pieces open where they are)
+		for _, x in panelsIn do keep(x, "from"); keep(x, "to"); x.from = x.o.Position; x.to = x.o.Position end
+		uiScale.Scale = math.min(screen().X / PW, screen().Y / PH)
+	end
+	local function undo()
+		for o, props in saved do
+			for prop, v in props do (o :: any)[prop] = v end
+		end
+		table.clear(saved)
+		for _, b in pageBtns do b.holder.Visible = false end
+		for _, o in stage:GetDescendants() do if o:IsA("UIScale") and o.Name == "PhoneScale" then o.Scale = 1 end end
+		setTab(tab)
+	end
+	fit = function()
+		local want = phone()
+		if want then layout(); on = true; return end
+		if on then on = false; undo() end
+		deskFit()
+	end
+end
+phoneLayout()
+end

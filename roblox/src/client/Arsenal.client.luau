@@ -526,7 +526,8 @@ end
 
 -- ---------------------------------------------------------------- input
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 } -- the loadout's slots
-UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
+Keys.began(function(io: InputObject, gp: boolean)
 	if gp or menuOpen() or inHub() then return end
 	local slot = KEYS[io.KeyCode]
 	-- (a key that's closing a pop-up ad or answering a pop quiz right now isn't a weapon key: Utility.client.luau)
@@ -558,7 +559,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	elseif io.KeyCode == Enum.KeyCode.R then reload()
 	end
 end)
-UserInputService.InputEnded:Connect(function(io: InputObject)
+Keys.ended(function(io: InputObject)
 	if io.UserInputType == Enum.UserInputType.MouseButton1 then trigger = false
 	elseif io.UserInputType == Enum.UserInputType.MouseButton2 then aimHeld = false end
 end)

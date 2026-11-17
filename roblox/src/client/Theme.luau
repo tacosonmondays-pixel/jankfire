@@ -74,6 +74,16 @@ function T.key(parent: Instance, letter: string, pos: UDim2): Frame
 	T.edge(f, nil, 0.8)
 	local l = T.text(f, "Letter", letter, 13, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center)
 	l.Size = UDim2.fromScale(1, 1)
+	-- a phone has no keys: no cap there, and a button that kept room for one centres its words instead
+	local uis = game:GetService("UserInputService")
+	if (uis.TouchEnabled and not uis.KeyboardEnabled) or game:GetService("StarterPlayer"):GetAttribute("TouchForce") == true then
+		f.Visible = false
+		local pad = parent:FindFirstChildOfClass("UIPadding")
+		if parent:IsA("TextButton") and pad and pad.PaddingLeft.Offset >= 40 then
+			pad.PaddingLeft = UDim.new(0, 0)
+			parent.TextXAlignment = Enum.TextXAlignment.Center
+		end
+	end
 	return f
 end
 function T.hex(c: Color3): string return "#" .. c:ToHex() end

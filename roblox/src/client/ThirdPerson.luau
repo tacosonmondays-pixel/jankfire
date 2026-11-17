@@ -45,6 +45,7 @@ for name, a in require(Shared:WaitForChild("Reloads")) :: any do
 	if not Anims[name] then Anims[name] = a end
 end
 local GunParts = require(script.Parent:WaitForChild("GunParts"))
+local Keys = require(script.Parent:WaitForChild("Keys")) -- (C held: a keyboard, or the phone's SLIDE)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local TP = {}
@@ -985,7 +986,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local pose = r.ch:GetAttribute("Pose")
 	if r.isMe then
 		local ui = game:GetService("UserInputService")
-		if not ui:GetFocusedTextBox() and (ui:IsKeyDown(Enum.KeyCode.C) or ui:IsKeyDown(Enum.KeyCode.LeftControl)) then crouchW = 1 end
+		if not ui:GetFocusedTextBox() and (Keys.isDown(Enum.KeyCode.C) or Keys.isDown(Enum.KeyCode.LeftControl)) then crouchW = 1 end
 	elseif pose == "crouch" then crouchW = 1 end
 	local waistPitch = pitch * st.waist - 0.12 * crouchW
 	local Rut = ANG(0, yaw + twist, 0) * ANG(waistPitch, 0, 0)

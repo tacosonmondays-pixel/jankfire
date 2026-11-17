@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local Keys = require(script.Parent:WaitForChild("Keys")) -- (on a phone a callout names the button, not the key: Keys.say)
 
 local Hud = {}
 local gui = Instance.new("ScreenGui")
@@ -138,7 +139,7 @@ local noteTok = 0
 function Hud.note(text: string, dur: number)
 	noteTok += 1
 	local my = noteTok
-	note.Text = caps(text)
+	note.Text = caps(Keys.say(text))
 	note.TextTransparency = 0; note.TextStrokeTransparency = 0.6
 	task.delay(math.max(dur, 0.6), function()
 		if my ~= noteTok then return end
@@ -196,7 +197,7 @@ function Hud.callout(text: string, dur: number)
 	if kind == "small" then Hud.note(text, dur); return end
 	token += 1
 	local my = token
-	call.Text = dress(text)
+	call.Text = dress(Keys.say(text))
 	call.TextTransparency = 0; call.TextStrokeTransparency = 0.55
 	callRule.BackgroundTransparency = 0
 	callBand.BackgroundTransparency = 0
