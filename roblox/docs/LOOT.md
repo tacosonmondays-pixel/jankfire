@@ -41,6 +41,21 @@ guns session's concepts (`SkinSets.CONCEPTS`, read when the module loads: the id
 models in `JankfireSkins` for the owner to choose from, but `LootTable.concept(id)` keeps them out of every roll, even if
 one gets a row. A concept picked for a set is rebuilt under that set's own keys (Tidecrest, v498), and rolls as that.
 
+**Gun-less cosmetics from other sessions: hooks** (17 Nov, the owner: "kill effects and grapples should be gacha
+too!!"). `LootTable.HOOKS = { "CardStyles", "Flair" }`: modules next to LootTable, all of CardStyles' shape (`TYPES`,
+`info(t, id)`, `ORDER[t]`, `CONTAINER`, optional `forSale(t)`, `isVip(t, id)`, `picture(t, id, frame)`). CardStyles is
+the player card's looks (border / banner / title); Flair is the flair session's kill effects (`kill`) and emotes
+(`emote`). Their types are owned like skins: key = the bare id, `Loot.owns(p, "kill", "ember")`, `LootTable.gunless`
+true, in `LootTable.ownTypes()` (so the save, dev "unlock" / "reset" / "set" cover them). The Duffel Bag rolls what
+`forSale(t)` lists (Flair leaves out the free ones, VIP ones and emotes whose clip isn't uploaded), never a free or VIP
+one. In a roll each gun-less type is one more "gun": the card looks share `card`, a kill effect is `kill`, an emote
+`emote`, so a bag lands on one about as often as on one gun's hats. Owning nothing, 20,000 rolls at v515 gave hats
+86.8%, emotes 5.3%, kill effects 2.4%, titles 2.5%, banners 1.6%, borders 1.4%. The reel's card draws the module's
+`picture`; the prize that comes up out of the bag is a flat dark tile with the picture on both faces (0.6 m by 0.75 m
+at the guns' scale), and its sign says KILL EFFECT / EMOTE (a card look: PLAYER CARD). No EQUIP button for these:
+what's worn lives in the owning session's store (Flair: `JankfireFlair_v1`). A grapple module can join the list the
+same way.
+
 **VIP only** (16 Nov, the owner's design: the Ducky set comes with the VIP game pass, which the shop session leads).
 `LootTable.vipOnly(type, id)`: an item listed in `LootTable.VIP_ONLY`, or whose own row says `vip = true` (a Roster
 wrap, a GunHats hat, a card look's info), or a skin of `set_ducky` or of any SkinSets set marked `vip = true`. A VIP

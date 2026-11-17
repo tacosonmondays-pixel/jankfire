@@ -4,7 +4,8 @@
 -- server (Loot.luau rolls with them) and by the clients (the shop shows the odds, Opening draws the cards).
 --   crate: weapon skins (web COSMETICS.model + SKINS_2). a skin rolls only once its model is in the place
 --          (ReplicatedStorage.JankfireSkins.<id>); until then the crate is "coming soon".
---   bag:   the Duffel Bag: hats (live), effects, kill effects, grapples (not on Roblox yet).
+--   bag:   the Duffel Bag: hats (live), kill effects and emotes (Flair, live), the player card's looks (CardStyles),
+--          effects and grapples (not on Roblox yet).
 --   spray: the Spray Can (the web game's Box): wraps (live), sprays (not on Roblox yet).
 -- free items are owned by everyone and never roll; `ach` items (achievement rewards) are never in a container.
 -- a wrap or a hat is won for ONE gun (the owner, 16 Nov): what you own is (cosmetic, gun) pairs, "galaxy@ar". a roll
@@ -33,45 +34,73 @@ L.RARITY = {
 
 export type Item = { type: string, id: string, key: string, name: string, rarity: string, weapon: string? }
 
-L.TYPE_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", effect = "Effect", kill = "Kill Effect", grapple = "Grapple", spray = "Spray",
-	border = "Card Border", banner = "Card Banner", title = "Card Title" }
+L.TYPE_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", effect = "Effect", kill = "Kill Effect", emote = "Emote", grapple = "Grapple",
+	spray = "Spray", border = "Card Border", banner = "Card Banner", title = "Card Title" }
 
--- ------------------------------------------------------------------ other sessions' gun-less cosmetics (a hook)
--- the player cards' looks (ReplicatedStorage.Jankfire.CardStyles, the player-profiles session's): if that module is in
--- the place, its TYPES (e.g. border / banner / title) are owned like skins (key = the bare id, not on a gun) and roll
--- from its CONTAINER as one more "gun" (the reel shows PLAYER CARD). its shape: TYPES = { t }, info(t, id) ->
--- { name, rarity }?, ORDER[t] = { ids }, CONTAINER = "bag", optional picture(t, id, frame) for the reel's card
-local cardMod: any = false
-function L.cardStyles(): any
-	if cardMod == false then
-		cardMod = nil
-		local m = Shared:FindFirstChild("CardStyles")
-		if m and m:IsA("ModuleScript") then
-			local ok, c = pcall(require, m)
-			if ok and type(c) == "table" and type(c.TYPES) == "table" and type(c.info) == "function" then cardMod = c end
+-- ------------------------------------------------------------------ other sessions' gun-less cosmetics (hooks)
+-- modules next to this one, all of one shape: CardStyles (the player-profiles session's card looks: border / banner /
+-- title) and Flair (the flair session's kill effects and emotes, 17 Nov, the owner: "kill effects and grapples should be
+-- gacha too!!"). if one is in the place, its TYPES are owned like skins (key = the bare id, not on a gun) and roll from
+-- its CONTAINER. the shape: TYPES = { t }, info(t, id) -> { name, rarity, vip? }?, ORDER[t] = { ids }, CONTAINER =
+-- "bag", optional forSale(t) -> { item } (what may roll; else every non-free id of ORDER), optional isVip(t, id),
+-- optional picture(t, id, frame) (the reel's card and the prize that comes up out of the container)
+L.HOOKS = { "CardStyles", "Flair" }
+local hookMods: { [string]: any } = {}
+local function hookList(): { any }
+	local out = {}
+	for _, name in L.HOOKS do
+		local c = hookMods[name]
+		if c == nil then
+			-- (looked for again while it isn't there: a client may ask before the module has replicated)
+			local m = Shared:FindFirstChild(name)
+			if m and m:IsA("ModuleScript") then
+				local ok, x = pcall(require, m)
+				c = if ok and type(x) == "table" and type(x.TYPES) == "table" and type(x.info) == "function" then x else false
+				hookMods[name] = c
+			end
 		end
+		if c then table.insert(out, c) end
 	end
-	return cardMod
+	return out
 end
-local function isCardType(t: any): boolean
-	local c = L.cardStyles()
-	return c ~= nil and type(t) == "string" and table.find(c.TYPES, t) ~= nil
+-- the hook module that owns this gun-less type and its name ("CardStyles" / "Flair"), or nil
+function L.hookFor(t: any): (any, string?)
+	if type(t) ~= "string" then return nil, nil end
+	hookList()
+	for _, name in L.HOOKS do
+		local c = hookMods[name]
+		if c and table.find(c.TYPES, t) then return c, name end
+	end
+	return nil, nil
 end
--- a type you own without a gun: skins (already one gun's) and the card looks
+function L.cardStyles(): any
+	hookList()
+	return hookMods.CardStyles or nil
+end
+local function isHookType(t: any): boolean
+	return (L.hookFor(t)) ~= nil
+end
+-- a player card's look (shown as PLAYER CARD), not a kill effect or an emote
+function L.cardLook(t: any): boolean
+	local _, name = L.hookFor(t)
+	return name == "CardStyles"
+end
+-- a type you own without a gun: skins (already one gun's) and the hooks' types
 function L.gunless(t: string): boolean
-	return t == "skin" or isCardType(t)
+	return t == "skin" or isHookType(t)
 end
 -- every type that can be owned (Loot.luau keeps a list per type)
 function L.ownTypes(): { string }
 	local out = { "wrap", "hat", "skin" }
-	local c = L.cardStyles()
-	if c then for _, t in c.TYPES do if not table.find(out, t) then table.insert(out, t) end end end
+	for _, c in hookList() do
+		for _, t in c.TYPES do if not table.find(out, t) then table.insert(out, t) end end
+	end
 	return out
 end
 
 L.CONTAINERS = {
 	crate = { name = "Crate", plural = "Crates", desc = "weapon skins", types = { "skin" } },
-	bag = { name = "Duffel Bag", plural = "Duffel Bags", desc = "hats, effects, kill effects and grapples", types = { "hat", "effect", "kill", "grapple" } },
+	bag = { name = "Duffel Bag", plural = "Duffel Bags", desc = "hats, kill effects, emotes and grapples", types = { "hat", "effect", "kill", "emote", "grapple" } },
 	spray = { name = "Spray Can", plural = "Spray Cans", desc = "wraps and sprays", types = { "wrap", "spray" } },
 }
 
@@ -185,13 +214,17 @@ function L.vipOnly(t: string, id: string): boolean
 		local set = if type(row) == "table" then row[4] else nil
 		local info = if set and type(S.SETS) == "table" then S.SETS[set] else nil
 		return set == "set_ducky" or (type(info) == "table" and info.vip == true)
-	elseif isCardType(t) then
-		local cm = L.cardStyles()
-		if not cm or type(cm.info) ~= "function" then return false end
+	else
+		-- (a hook's type: its info says vip = true, or its own isVip says so (Flair: rarity "vip"))
+		local cm = L.hookFor(t)
+		if not cm then return false end
+		if type(cm.isVip) == "function" then
+			local okV, v = pcall(cm.isVip, t, id)
+			if okV and v == true then return true end
+		end
 		local ok, c = pcall(cm.info, t, id)
-		return ok and type(c) == "table" and c.vip == true
+		return ok and type(c) == "table" and (c.vip == true or c.rarity == "vip")
 	end
-	return false
 end
 
 local function skinsLive(): { [string]: boolean }
@@ -213,8 +246,8 @@ function L.info(t: any, id: any): Item?
 	elseif t == "skin" then
 		local s = L.SKINS[id]
 		return if s then { type = t, id = id, key = id, name = s[1], rarity = s[2], weapon = s[3] } else nil
-	elseif isCardType(t) then
-		local ok, c = pcall(L.cardStyles().info, t, id)
+	elseif isHookType(t) then
+		local ok, c = pcall((L.hookFor(t)).info, t, id)
 		if ok and type(c) == "table" and type(c.name) == "string" and type(c.rarity) == "string" then
 			return { type = t, id = id, key = id, name = c.name, rarity = c.rarity }
 		end
@@ -292,28 +325,41 @@ function L.cosmetics(kind: string): { Item }
 			end
 		end
 	end
-	-- (the card looks, in the container their module names)
-	local cm = L.cardStyles()
-	if cm and cm.CONTAINER == kind and type(cm.ORDER) == "table" then
-		for _, t in cm.TYPES do
-			for _, id in (cm.ORDER[t] or {}) do
-				local i = L.info(t, id)
-				if i and i.rarity ~= "free" and L.RARITY[i.rarity] and not L.vipOnly(t, id) then table.insert(out, i) end
+	-- (the hooks' types, in the container their module names: what its forSale says may roll, else every id of ORDER;
+	-- never a free one or a VIP one)
+	for _, cm in hookList() do
+		if cm.CONTAINER == kind then
+			for _, t in cm.TYPES do
+				local ids = {}
+				if type(cm.forSale) == "function" then
+					local ok, list = pcall(cm.forSale, t)
+					if ok and type(list) == "table" then
+						for _, x in list do if type(x) == "table" and type(x.id) == "string" then table.insert(ids, x.id) end end
+					end
+				elseif type(cm.ORDER) == "table" then
+					ids = cm.ORDER[t] or {}
+				end
+				for _, id in ids do
+					local i = L.info(t, id)
+					if i and i.rarity ~= "free" and L.RARITY[i.rarity] and not L.vipOnly(t, id) then table.insert(out, i) end
+				end
 			end
 		end
 	end
 	return out
 end
 -- the guns a cosmetic can be won for
--- (a card look is gun-less: it rolls as one more "gun", CARD, so a bag lands on it about as often as on one gun)
+-- (a hook's type is gun-less: it rolls as one more "gun", so a bag lands on one about as often as on one gun's hats.
+-- the card looks share one, CARD; a kill effect is its own, "kill", and an emote "emote")
 local CARD = "card"
 local function gunsOf(i: Item): { string }
 	if i.type == "skin" then return { i.weapon :: string } end
-	if isCardType(i.type) then return { CARD } end
+	local cm, name = L.hookFor(i.type)
+	if cm then return { if name == "CardStyles" then CARD else i.type } end
 	return L.weapons(i.type)
 end
 local function pairOf(i: Item, w: string): Item
-	local gun = if w == CARD then nil else w
+	local gun = if w == CARD or isHookType(w) then nil else w
 	return { type = i.type, id = i.id, name = i.name, rarity = i.rarity, weapon = gun, key = L.key(i.type, i.id, gun) }
 end
 

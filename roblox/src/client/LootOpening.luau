@@ -232,11 +232,36 @@ local function toolGun(skin: string?): Model?
 	pcall(function() m:ScaleTo(3 / TOOL_K) end) -- (to 3 studs a metre, like the built guns)
 	return m
 end
+-- a gun-less prize (a kill effect, an emote, a player card's look): a flat dark tile with its module's picture on both
+-- faces, built at 3 studs a metre like the guns, 0.6 m wide and 0.75 m tall (half a rifle's length: at 1 m it filled
+-- the bag's mouth). its faces are its X sides: it turns to the camera as a gun turned side-on does
+local TILE_M = Vector2.new(0.6, 0.75)
+local function tileModel(item: any): Model
+	local cm = LootTable.hookFor(item.type)
+	local m = Instance.new("Model")
+	m.Name = "PrizeTile"
+	local p = new("Part", { Name = "Tile", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
+		Material = Enum.Material.SmoothPlastic, Color = T.CARD, Size = Vector3.new(0.18, TILE_M.Y * 3, TILE_M.X * 3) }, m)
+	m.PrimaryPart = p
+	for _, face in { Enum.NormalId.Right, Enum.NormalId.Left } do
+		local sg = new("SurfaceGui", { Face = face, SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud, PixelsPerStud = 64,
+			LightInfluence = 0, Brightness = 1.1, ClipsDescendants = true }, p)
+		local f = new("Frame", { BackgroundColor3 = T.CARD, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, sg)
+		if cm and type(cm.picture) == "function" then pcall(cm.picture, item.type, item.id, f) end
+	end
+	return m
+end
 -- the weapon wearing the prize, at its true size (3 studs a metre: call showAt to show it), pivot at its middle;
--- returns the model, the weapon id and its length in metres
+-- returns the model, the weapon id and its length in metres (a gun-less prize: its tile, no weapon)
 local function prizeModel(item: any): (Model?, string?, number)
 	local wid: string?
 	local m: Model?
+	if LootTable.hookFor(item.type) then
+		local tm = tileModel(item)
+		local cf, sz = tm:GetBoundingBox()
+		tm.WorldPivot = cf
+		return tm, nil, math.max(sz.X, sz.Y, sz.Z) / 3
+	end
 	if item.type == "skin" then
 		wid = (LootTable.SKINS[item.id] or {})[3]
 		if wid == "shredder" then m = toolGun(item.id)
@@ -388,8 +413,8 @@ local function cardPicture(parent: GuiObject, item: any)
 			modelPicture(parent, if t and t:IsA("Model") then t:Clone() else nil)
 		end
 	else
-		-- (a player card's look: its own module draws it, if it can)
-		local cm = LootTable.cardStyles()
+		-- (a player card's look, a kill effect, an emote: its own module draws it, if it can)
+		local cm = LootTable.hookFor(item.type)
 		if cm and type(cm.picture) == "function" then pcall(cm.picture, item.type, item.id, parent) end
 	end
 end
@@ -425,7 +450,7 @@ local function card(parent: Instance, item: any, x: number): Frame
 	new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, CARD_H - 36), Size = UDim2.fromOffset(CARD_W - 20, 18),
 		FontFace = T.FONT, TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd,
 		Text = (if item.weapon and Roster.byId[item.weapon] then string.upper(Roster.byId[item.weapon].name)
-			elseif item.type ~= "skin" and LootTable.gunless(item.type) then "PLAYER CARD"
+			elseif LootTable.cardLook(item.type) then "PLAYER CARD"
 			else string.upper(LootTable.TYPE_NAMES[item.type] or item.type)) .. "  ·  " .. rname(item.rarity),
 		TextColor3 = T.MUTED, TextXAlignment = Enum.TextXAlignment.Left }, c)
 	local bar = new("Frame", { Name = "Bar", BackgroundColor3 = col, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1),
@@ -859,7 +884,8 @@ local function prizeSign(parent: Instance, at: Vector3, item: any, header: strin
 			TextColor3 = color, FontFace = font, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
 	end
 	local gun = item.weapon and Roster.byId[item.weapon]
-	local under = (if gun then string.upper(gun.name) .. "  ·  " else "") .. rname(item.rarity)
+	local what = if gun then string.upper(gun.name) elseif LootTable.hookFor(item.type) then string.upper(LootTable.TYPE_NAMES[item.type] or item.type) else nil
+	local under = (if what then what .. "  ·  " else "") .. rname(item.rarity)
 	if header then
 		line(0.07, 0.24, header, T.SOFT, T.FONT)
 		line(0.34, 0.36, string.upper(item.name or item.id or ""), col, T.FONT_BOLD)
@@ -1548,6 +1574,7 @@ local function run(R: Run): string
 	ui.rName.Text = string.upper(prize.name or prize.id or "")
 	local we = wid and Roster.byId[wid]
 	ui.rOn.Text = if prize.type == "skin" then "a new look for your " .. (if we then we.name else "weapon")
+		elseif LootTable.cardLook(prize.type) then "for your player card"
 		elseif we and prize.weapon then "for your " .. we.name .. " only" elseif we then "shown on your " .. we.name else ""
 	local can = canEquip(prize)
 	local eqGun = gunOf(prize)
