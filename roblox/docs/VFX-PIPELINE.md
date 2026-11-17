@@ -543,4 +543,7 @@ sweep. `round17/v644-ranked-fire-hold-01-03-06-10.jpg` (FlameStripHold 0.1, 0.3,
 barrel or somethin?"): a breathing gold aura round the halo ring (new idle kind `aura`), sparkles round the ring, slow
 gold motes off the halo and the brake (new kind `mote`), a gold light on the barrel (`glow.at`). Idle rows may now carry
 `fp` (their rate's share in first person; 0 = none there) and `tint` (they take the wrap's glow colour, gold with none).
-Not yet photographed (the turn ran out after a teleport that didn't hold).
+Photos `round17/v644-tripo-halo-closeup-and-fp.jpg`: up close in the training hall (gold motes drifting up off the
+barrel, the halo's lit ring and the brake's star bright, the light warming the barrel) and in first person (the halo far
+down the barrel by the crosshair, its bits small and calm, the sights clear). The breathing aura is faint in the lit hall:
+stronger if wanted (`aura` rate or size in the row).
