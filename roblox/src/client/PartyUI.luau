@@ -61,6 +61,21 @@ local function button(parent: Instance, name: string, label: string, kind: strin
 	return b
 end
 
+-- REPORT (the anti-cheat's client/ReportUI.luau -> server/Reports.luau): on every row but yours and the stand-ins'
+-- (negative ids). no ReportUI in the place: no button, the panel works as before
+local function reportButton(parent: Instance, id: number): TextButton?
+	-- (Studio layout checks: the LocalPlayer attribute PartyReportTest = true shows it on stand-ins too)
+	if id == me.UserId or (id <= 0 and not (RunService:IsStudio() and me:GetAttribute("PartyReportTest") == true)) then return nil end
+	local m = script.Parent:FindFirstChild("ReportUI")
+	if not m or not m:IsA("ModuleScript") then return nil end
+	local b = button(parent, "Report", "REPORT", "plain", 64, 26)
+	b.MouseButton1Click:Connect(function()
+		local ok, RU = pcall(require, m :: ModuleScript)
+		if ok and type(RU) == "table" and type((RU :: any).open) == "function" then (RU :: any).open(id, "party") end
+	end)
+	return b
+end
+
 local thumbs: { [number]: string } = {}
 local function headshot(parent: Instance, id: number, name: string, size: number): Frame
 	local holder = new("Frame", { Name = "Head", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Size = UDim2.fromOffset(size, size) }, parent)
@@ -93,13 +108,19 @@ local function row(parent: Instance, y: number, W: number, who: any, line: strin
 			Position = UDim2.fromOffset(38, 9), Size = UDim2.fromOffset(9, 9), ZIndex = 3 }, r)
 		T.corner(d, 2)
 	end
+	-- the buttons take their room first; the badge and the name give way on a row with many (REPORT made four)
+	local bw = 0
+	for _, b in buttons or {} do bw += b.Size.X.Offset + 6 end
+	local left = W - 8 - bw
+	local badgeX = math.min(224, left - 40)
+	local nameW = math.max(60, math.min(170, (if who.rank then badgeX else left) - 54))
 	local nm = text(r, "Name", who.display or who.name or "?", 14, T.TEXT, T.FONT_BOLD)
-	nm.Position = UDim2.fromOffset(50, 6); nm.Size = UDim2.fromOffset(170, 18); nm.TextTruncate = Enum.TextTruncate.AtEnd
+	nm.Position = UDim2.fromOffset(50, 6); nm.Size = UDim2.fromOffset(nameW, 18); nm.TextTruncate = Enum.TextTruncate.AtEnd
 	local ln = text(r, "Line", line, 11, lineColor, T.FONT_BOLD)
-	ln.Position = UDim2.fromOffset(50, 25); ln.Size = UDim2.fromOffset(170, 14); ln.TextTruncate = Enum.TextTruncate.AtEnd
+	ln.Position = UDim2.fromOffset(50, 25); ln.Size = UDim2.fromOffset(nameW, 14); ln.TextTruncate = Enum.TextTruncate.AtEnd
 	if who.rank then
 		local b = RankedStyle.badge(r, 34, who.rank)
-		b.Position = UDim2.fromOffset(224, 6)
+		b.Position = UDim2.fromOffset(badgeX, 6)
 	end
 	local x = W - 8
 	for _, b in buttons or {} do
@@ -144,6 +165,8 @@ function PartyUI.refresh()
 				local vc = button(mine, "Card", "VIEW CARD", "plain", 84, 26)
 				vc.MouseButton1Click:Connect(function() viewCard(m.id) end)
 				table.insert(bs, vc)
+				local rb = reportButton(mine, m.id)
+				if rb then table.insert(bs, rb) end
 			end
 			if lead and m.id ~= me.UserId then
 				local k = button(mine, "Kick", "KICK", "plain", 50, 26)
@@ -194,6 +217,8 @@ function PartyUI.refresh()
 		local vc = button(sc, "Card", "VIEW CARD", "plain", 84, 26)
 		vc.MouseButton1Click:Connect(function() viewCard(o.id) end)
 		table.insert(bs, vc)
+		local rb = reportButton(sc, o.id)
+		if rb then table.insert(bs, rb) end
 		local tag = if o.invited then "INVITED" elseif o.inMatch then "IN A MATCH" else nil
 		if tag then
 			local t = button(sc, "Tag", tag, "off", 74, 26)

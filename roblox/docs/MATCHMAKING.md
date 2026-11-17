@@ -33,6 +33,17 @@ What changes from the first build (this section wins where it disagrees with sec
      card, the player-cards session's screen) and **TRADE**.
    - TRADE is a disabled slot: trading is its own system with confirm screens, and a later session builds it.
    - Your party's rows have LEAD and KICK (for the leader), and the panel has **LEAVE PARTY**.
+   - **REPORT** (17 Nov, the anti-cheat session's button) sits next to VIEW CARD on every row but your own and the
+     stand-ins'. It opens the anti-cheat's report window: `ReportUI.open(userId, "party")`; see `docs/ANTI-CHEAT.md`.
+     With four buttons the badge and the name give way to the buttons (`row()` measures them first). Before that,
+     INVITE covered a ranked player's badge.
+   - For a Studio photo, set the LocalPlayer attribute `PartyReportTest = true` and the stand-ins get the button too.
+   - Tested in place v587 (17 Nov, 11:05 UTC) with 5 ranked stand-ins and one in the party. Every row was measured
+     from code: the four-button rows keep 15 px between the badge and INVITE. This held on the full screen and on
+     844x390 and 667x375 fake screens. Clicking REPORT on a row opened the report window above the panel.
+
+     ![PARTY panel with REPORT on every row but your own](matchmaking/22_party_report.jpg)
+     ![REPORT from the party panel opens the report window](matchmaking/23_party_report_window.jpg)
 2. **A party no longer needs the lobby room.**
    - You can invite from the hub, and a party of people walking around the hub is a party.
    - The lobby room opens when someone presses **PLAY**:
