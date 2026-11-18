@@ -205,6 +205,9 @@ BUILD.update(gun_melee.BUILD)
 # batch A (17 Nov 2026): minigun, water pistol, nail gun, bread, hand slapper (tools/roblox/gun_batch_a.py)
 import gun_batch_a
 BUILD.update(gun_batch_a.BUILD)
+# batch B (17 Nov 2026): Lefty & Righty, taser, leaf blower, hot sauce (the cig's stand-in), big laser pointer (tools/roblox/gun_batch_b.py)
+import gun_batch_b
+BUILD.update(gun_batch_b.BUILD)
 
 
 # ------------------------------------------------------------------------- the skin: Carl's Cardboard on the C rifle
