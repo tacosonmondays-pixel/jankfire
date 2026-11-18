@@ -16,7 +16,8 @@
 #   pack_*.png   512 x 512 on the VIP pass icon's backdrop (dark slate, a warm gold glow behind the subject)
 #   coin.png, ticket.png   256 x 256 on a transparent background (HUD and shop)
 #   currency_sheet.png     all six side by side (the contact sheet)
-#   blender -b --factory-startup -P tools/blender/currency_icons.py -- <out_dir> [coin ticket pack_99 ...]
+#   blender -b --factory-startup -P tools/blender/currency_icons.py -- roblox/docs/money/icons [coin ticket pack_99 ...]
+# (roblox/docs/money/icons is the owner-approved folder for shop product icons; render straight into it, never copy)
 import bpy, bmesh, sys, os, math, random
 from mathutils import Vector, Matrix, Euler
 
