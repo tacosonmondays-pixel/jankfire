@@ -31,6 +31,8 @@ The owner: "Perhaps the hidden NPCs including guy from hr can be rehidden around
 Left out (no gore): Dot and Mina grown into the flesh wall, Bev the meat mechanic, the Gut Choir, the Stomach Bishop.
 Not yet: the Timekeeping Collector, the Unpaid Intern, Sister Agenda.
 
+**The cats are parked** (owner, 18 Nov 2026: "No cats please"): `LoreData.CATS_ON = false`, so they are not built, don't count (LORE n / 15) and BOARD MEMBER is never granted (its row stays for anyone who has it; the profile hides an unowned secret). Everything below is kept so `CATS_ON = true` + `LoreSpots.build(LoreData.CATS)` brings them back.
+
 The cats are ONE cohesive body each (the owner's rule for creatures, 18 Nov: no stacked primitives):
 `tools/roblox/lore_cat_dump.mjs` (the web's `buildCat` in each cat's own pose, three moving pieces: body with legs,
 head with ears, tail) + `blender -b -P tools/roblox/lore_cat_meshes.py` (each piece's solid parts voxel-remeshed and

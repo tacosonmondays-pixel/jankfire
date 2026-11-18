@@ -25,10 +25,18 @@ export type Entry = {
 L.REACH, L.UP, L.DOWN = 8.4, 7.2, 7.8
 
 L.ORDER = { "gary", "dale", "janitor", "smiles", "todd", "hr",
-	"auntie", "lumps", "gordo", "mina", "sharon", "dumpling", "pallet_jack", "eotm", "overtime",
-	"cat_biscuit", "cat_beans", "cat_gravy", "cat_meatloaf", "cat_gremlin" } :: { string }
+	"auntie", "lumps", "gordo", "mina", "sharon", "dumpling", "pallet_jack", "eotm", "overtime" } :: { string }
 -- the board of directors (the five cats): finding all five gives the secret title BOARD MEMBER (LoreNPCs)
 L.CATS = { "cat_biscuit", "cat_beans", "cat_gravy", "cat_meatloaf", "cat_gremlin" } :: { string }
+-- PARKED (owner, 18 Nov 2026: "No cats please"). false: they aren't built (LoreSpots), don't count, can't be found and
+-- BOARD MEMBER is never granted (its CardStyles row stays, so anyone who has it keeps it; ProfileUI hides an unowned
+-- secret). Their models, rigs, spots and lines stay in the repo: true + LoreSpots.build(L.CATS) brings them back
+L.CATS_ON = false
+if L.CATS_ON then for _, id in L.CATS do table.insert(L.ORDER, id) end end
+-- does a find of this one count? (only what's in ORDER: a parked one doesn't)
+function L.counts(id: any): boolean
+	return type(id) == "string" and table.find(L.ORDER, id) ~= nil
+end
 
 L.NPCS = {
 	gary = {

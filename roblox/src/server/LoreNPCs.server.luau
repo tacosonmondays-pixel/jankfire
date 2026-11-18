@@ -55,7 +55,7 @@ local function points(): { [string]: BasePart }
 	for _, m in f:GetChildren() do
 		local id = m:GetAttribute("LoreId")
 		local r = m:FindFirstChild("Root")
-		if type(id) == "string" and r and r:IsA("BasePart") and LoreData.get(id) then out[id] = r end
+		if type(id) == "string" and r and r:IsA("BasePart") and LoreData.counts(id) then out[id] = r end
 	end
 	return out
 end
@@ -129,6 +129,7 @@ local function allFound(s: State): boolean
 	return true
 end
 local function allCats(s: State): boolean
+	if not LoreData.CATS_ON then return false end -- (parked: BOARD MEMBER is never granted)
 	for _, id in LoreData.CATS do if not s.prof.data.found[id] then return false end end
 	return true
 end
@@ -136,7 +137,7 @@ end
 local function find(p: Player, id: string)
 	local s = st[p]
 	local e = LoreData.get(id)
-	if not s or not s.ready or not s.prof or not e or s.busy[id] then return end
+	if not s or not s.ready or not s.prof or not e or s.busy[id] or not LoreData.counts(id) then return end
 	local d = s.prof.data
 	if d.found[id] then return end
 	s.busy[id] = true
