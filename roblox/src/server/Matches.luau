@@ -22,6 +22,7 @@ local ServerStorage = game:GetService("ServerStorage")
 -- the arenas (the Rooftop v1, v2 or v3), the rotation (workspace.Map's ArenaPool) and where copies go
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local MapCards = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("MapCards")) -- (the pads' map vote)
+local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hitbox")) -- (a spawn's root height, as Fight.spawn puts it)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
 local CalloutR = Remotes:WaitForChild("Callout") :: RemoteEvent
@@ -383,28 +384,50 @@ function Matches.ready(p: Player): (boolean, string?)
 	checkReady(m)
 	return true, nil
 end
--- held at your spawn while the round counts in: your body's root anchored once it has stood 0.6 s, let go the moment
--- it goes live (an anchored body doesn't move, so the anti-cheat's speed and fly checks see nothing to judge)
+-- held at your round spawn while the round counts in (18 Nov, the owner: "make sure to lock position at the start of
+-- round because I was moving around after round ended and when round started I got a head start forward because it
+-- carried my momentum"). every body, the round's winners' too, is a fresh one Fight.spawn puts on its spawn (startRound);
+-- the step it's there (alive again) it's put back exactly on the spot (a TeleportT stamp first: the anti-cheat starts
+-- afresh there), stopped and anchored. SpawnHold on each player tells Move.client to keep no speed and build none.
+-- the round goes live: stopped again, let go, SpawnHold off. (until 18 Nov a body was anchored 0.6 s after it appeared,
+-- time to sprint a few studs off the spot first.) an anchored body doesn't move: the anti-cheat sees nothing to judge
+local function spawnSpot(m: Match, p: Player, team: number): CFrame?
+	local list = teamSpawns(m, team)
+	if #list == 0 then return nil end
+	local i = table.find(m.teams[team], p) or 1
+	local cf = list[(i - 1) % #list + 1]
+	local pos = cf.Position + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+	local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+	return if look.Magnitude > 1e-3 then CFrame.lookAt(pos, pos + look.Unit) else CFrame.new(pos)
+end
 local function holdSpawns(m: Match, round: number)
 	local held: { [BasePart]: boolean } = {}
-	local seen: { [BasePart]: number } = {}
-	while m.on and m.round == round and m.phase == "ready" do
-		each(m, function(p)
+	local function live(): boolean return m.on and m.round == round and m.phase == "ready" end
+	each(m, function(p) p:SetAttribute("SpawnHold", true) end)
+	while live() do
+		each(m, function(p, t)
 			local ch = p.Character
 			local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-			if not root or not hum or hum.Health <= 0 or held[root] then return end
-			local t0 = seen[root]
-			if not t0 then seen[root] = os.clock(); return end
-			if os.clock() - t0 >= 0.6 and not root.Anchored then
-				root.AssemblyLinearVelocity = Vector3.zero
-				root.Anchored = true
-				held[root] = true
+			local f = Fight.byPlayer[p]
+			if not root or not hum or hum.Health <= 0 or held[root] or not f or not f.alive then return end
+			local spot = spawnSpot(m, p, t)
+			if spot and (root.Position - spot.Position).Magnitude > 0.05 then
+				p:SetAttribute("TeleportT", os.clock())
+				local body = ch :: Model
+				body:PivotTo(spot)
 			end
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			root.Anchored = true
+			held[root] = true
 		end)
-		task.wait(0.1)
+		RunService.Heartbeat:Wait()
 	end
-	for root in held do if root.Parent then root.Anchored = false end end
+	for root in held do
+		if root.Parent then root.AssemblyLinearVelocity = Vector3.zero; root.Anchored = false end
+	end
+	each(m, function(p) p:SetAttribute("SpawnHold", nil) end)
 end
 
 local function backToHub(m: Match)
@@ -413,7 +436,7 @@ local function backToHub(m: Match)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
 		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil); p:SetAttribute("LoadoutWindow", nil)
-		p:SetAttribute("ReadyTeams", nil); p:SetAttribute("LoadoutReady", nil)
+		p:SetAttribute("ReadyTeams", nil); p:SetAttribute("LoadoutReady", nil); p:SetAttribute("SpawnHold", nil)
 		RoundR:FireClient(p, { hub = true })
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end

@@ -256,9 +256,28 @@ task.spawn(function()
 	end
 	steering = true
 end)
+-- held at a round's spawn (Matches: SpawnHold while the round counts in): no speed kept, none built, the rope let go;
+-- let go, the movement starts from nothing, so nothing carries into the round (18 Nov, the owner: "I got a head start
+-- forward because it carried my momentum")
+local spawnHeld = false
 RunService.PreSimulation:Connect(function(dt: number)
 	local ch, hum, root = character()
 	if not ch or not hum or not root or not lv then return end
+	if player:GetAttribute("SpawnHold") then
+		if not spawnHeld then spawnHeld = true; releaseHook(false) end
+		for k, v in Movement.newState() do (st :: any)[k] = v end
+		st.hook = nil
+		keys.jumpPressed = false
+		pressT = -10
+		lv.PlaneVelocity = Vector2.zero
+		lastSet = Vector3.zero
+		return
+	elseif spawnHeld then
+		spawnHeld = false
+		for k, v in Movement.newState() do (st :: any)[k] = v end
+		lv.PlaneVelocity = Vector2.zero
+		lastSet = Vector3.zero
+	end
 	dt = math.min(dt, 1 / 20)
 	local v = root.AssemblyLinearVelocity
 	local swimming = hum:GetState() == Enum.HumanoidStateType.Swimming
