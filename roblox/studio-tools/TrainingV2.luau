@@ -44,7 +44,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 20
+T.PUSH = 21
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -1419,10 +1419,59 @@ T.COURSE = { tower = V3(TOWER.x, TOWER.top, TOWER.z) } -- (TrainingLot: gold Car
 -- leads to it). come from the muster into the course and on your left, in the strip's south wall, a framed opening:
 -- a ramp up (rise over ramp) into a corridor that ends on the locked roll-up door (TrainingLot.eggDoor). x = its axis,
 -- w = its width inside, ceil = its ceiling, face = the door's face (z)
+-- (OFF since the same day, EGG_STRIP: the owner's dead end was the TOP frame on the gallery all along, see TOPD; the
+-- corridor stays here, unbuilt, in case it is wanted back)
+local EGG_STRIP = false
 local EGGC = { x = -44, w = 12, ramp = 16, rise = 4, flat = 12, ceil = 256 }
 EGGC.face = CZ0 + 4 + EGGC.ramp + EGGC.flat -- (-8070: from the wall's outside face, up the ramp and along the level)
-T.EGG_DOOR = { cf = CFrame.lookAt(V3(EGGC.x, Y0 + EGGC.rise, EGGC.face), V3(EGGC.x, Y0 + EGGC.rise, EGGC.face + 1)), w = 8.4, h = 9.96,
-	cw = EGGC.w, ch = EGGC.ceil - Y0 - EGGC.rise, wall = P.wall }
+if EGG_STRIP then
+	T.EGG_DOOR = { cf = CFrame.lookAt(V3(EGGC.x, Y0 + EGGC.rise, EGGC.face), V3(EGGC.x, Y0 + EGGC.rise, EGGC.face + 1)), w = 8.4, h = 9.96,
+		cw = EGGC.w, ch = EGGC.ceil - Y0 - EGGC.rise, wall = P.wall }
+end
+-- the gold dummies' door, where the owner meant it (18 Nov, a screenshot of the course's TOP frame on the gallery: "this
+-- door is still open bro this is what should lead to the teleporter"; their 17 Nov dead end, "a portal teleporter that
+-- takes you to the training area thats in the air", was this frame's dark panel): the frame stands 2.4 further out from
+-- the north wall, the locked roll-up door fills its mouth (TrainingLot.eggDoor), and behind it, through the wall, a
+-- short room (the frame's own look: warm walls, a dark skirting, the top corners cut, a lit ceiling strip) ends on the
+-- portal (TrainingLot's te_portal: a ring with a black middle on a step, no light column) that takes key holders to the
+-- playground. x, y = the opening's middle and floor; w, h = the frame's hole (tv_frameWide at 0.75); frame = the
+-- frame's pivot (z, its depth's middle; it is 3.6 deep); face = the door's face (0.3 inside the frame's front); back =
+-- the room's back wall's face (0.3 off the façade's inside)
+local TOPD = { x = CXM, y = 270, w = 12, h = 10.5, frame = CZ1 + 4.2, face = CZ1 + 5.8, back = T.FACE + 0.3, cut = 1.95, jamb = 1.8 }
+if not EGG_STRIP then
+	T.EGG_DOOR = { cf = CFrame.lookAt(V3(TOPD.x, TOPD.y, TOPD.face), V3(TOPD.x, TOPD.y, TOPD.face - 1)), w = 8.4, h = 8.6,
+		cw = TOPD.w, ch = TOPD.h, wall = P.recess, room = TOPD.face - TOPD.back, door = 2.4 }
+end
+T.TOPD = TOPD
+-- the room behind the TOP door: the collar between the frame and the wall, the frame's depth made solid (kit meshes
+-- have no collision), the lining, skirting, cut corners, ceiling, floor and back, a lit strip and a lamp
+local function topRoom(B)
+	local x0, x1, y0, y1 = TOPD.x - TOPD.w / 2, TOPD.x + TOPD.w / 2, TOPD.y, TOPD.y + TOPD.h
+	local oy1 = y1 + TOPD.jamb
+	local front, fb = TOPD.frame + 1.8, TOPD.frame - 1.78 -- (the frame's front; its back, 0.02 inside it)
+	-- the collar: the frame's section carried back to the wall (the wall's colour: from the gallery, the wall steps out
+	-- to meet the frame)
+	B.blk("Shell", "TopCollar", x0 - TOPD.jamb, x0, y0, oy1, fb, CZ1, P.courseWall)
+	B.blk("Shell", "TopCollar", x1, x1 + TOPD.jamb, y0, oy1, fb, CZ1, P.courseWall)
+	B.blk("Shell", "TopCollar", x0, x1, y1, oy1, fb, CZ1, P.courseWall)
+	-- the frame itself stops nobody: its jambs and head, unseen and solid, from its front to the collar
+	B.solid("TopFrameSolid", CF(x0 - TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
+	B.solid("TopFrameSolid", CF(x1 + TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
+	B.solid("TopFrameSolid", CF(TOPD.x, (y1 + oy1) / 2, (front + fb) / 2), V3(TOPD.w, oy1 - y1, front - fb))
+	-- inside: warm lining, a dark skirting, the frame's cut corners carried on, a ceiling, a floor and the back
+	for _, sx in { -1, 1 } do
+		local wx = TOPD.x + sx * TOPD.w / 2
+		B.blk("Shell", "TopLining", wx, wx - sx * 0.3, y0, y1, fb, TOPD.back, P.warmWall)
+		B.blk("Shell", "TopDado", wx - sx * 0.3, wx - sx * 0.5, y0, y0 + 1.2, fb, TOPD.back, P.floor2, { ghost = true })
+		local c = TOPD.cut
+		B.part("Shell", "TopChamfer", CF(wx, y1, (fb + TOPD.back) / 2) * CFrame.Angles(0, 0, math.rad(45)), V3(c * math.sqrt(2), c * math.sqrt(2), fb - TOPD.back), P.warmWall)
+	end
+	B.blk("Shell", "TopCeiling", x0, x1, y1 - 0.06, y1, fb, TOPD.back, P.ceil)
+	B.blk("Shell", "TopFloor", x0 + 0.3, x1 - 0.3, y0, y0 + 0.06, TOPD.face - 2.4, TOPD.back, P.ledge)
+	B.blk("Shell", "TopBack", x0, x1, y0, y1, TOPD.back, T.FACE, P.warmWall)
+	B.blk("Scenery", "TopLight", x0 + 2.6, x1 - 2.6, y1 - 0.24, y1 - 0.06, fb - 0.6, fb - 3.4, P.panel, { ghost = true, mat = NEON })
+	B.lamp(TOPD.x, y1 - 1.2, fb - 2, "point", 14, 0.6, P.warm)
+end
 local function eggCorridor(B)
 	local x0, x1 = EGGC.x - EGGC.w / 2, EGGC.x + EGGC.w / 2
 	local zIn, top = CZ0 + 4, Y0 + EGGC.rise -- (the course wall's outside face; the level floor)
@@ -1460,15 +1509,24 @@ local function course(B)
 	B.blk("Shell", "CourseWallIn", CX1, SX1 + 4, 234, W2, SZ1, SZ1 - 4, P.courseWall)
 	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, W2, SZ1 - 4, CZ1 - 4, P.courseWall)
 	B.blk("Shell", "CourseWallW", CX0 - 4, CX0, 234, W2, CZ0 + 4, CZ1 - 4, P.courseWall)
-	B.blk("Shell", "CourseWallN", CX0 - 4, CX1 + 4, 234, W2, CZ1, CZ1 - 4, P.courseWall)
+	-- (the north wall has the TOP room's hole through it since 18 Nov: TOPD)
+	local hx0, hx1, hy0, hy1 = TOPD.x - TOPD.w / 2, TOPD.x + TOPD.w / 2, TOPD.y, TOPD.y + TOPD.h
+	B.blk("Shell", "CourseWallN", CX0 - 4, hx0, 234, W2, CZ1, CZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallN", hx1, CX1 + 4, 234, W2, CZ1, CZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallN", hx0, hx1, 234, hy0, CZ1, CZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallN", hx0, hx1, hy1, W2, CZ1, CZ1 - 4, P.courseWall)
 	-- (rework 5: the south wall, the end of the view from the gallery, opens into a deep lit bay on the main hall's axis,
 	-- framed in the ledges' rounded white noses)
 	local SB = { x0 = CXM - 13, x1 = CXM + 13, y0 = 246, y1 = 282, back = CZ0 + 8 }
 	B.blk("Shell", "CourseWallS", CX0 - 4, SB.x0, 234, W2, CZ0 + 4, CZ0, P.courseWall)
-	local ex0, ex1 = EGGC.x - 6.05, EGGC.x + 6.05 -- (the egg corridor's mouth: the frames' 12 x 12 holes, 0.05 bigger all round)
-	B.blk("Shell", "CourseWallS", SB.x1, ex0, 234, W2, CZ0 + 4, CZ0, P.courseWall)
-	B.blk("Shell", "CourseWallS", ex1, SX1 + 4, 234, W2, CZ0 + 4, CZ0, P.courseWall)
-	B.blk("Shell", "CourseWallS", ex0, ex1, Y0 + 12.05, W2, CZ0 + 4, CZ0, P.courseWall)
+	if EGG_STRIP then
+		local ex0, ex1 = EGGC.x - 6.05, EGGC.x + 6.05 -- (the egg corridor's mouth: the frames' 12 x 12 holes, 0.05 bigger all round)
+		B.blk("Shell", "CourseWallS", SB.x1, ex0, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+		B.blk("Shell", "CourseWallS", ex1, SX1 + 4, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+		B.blk("Shell", "CourseWallS", ex0, ex1, Y0 + 12.05, W2, CZ0 + 4, CZ0, P.courseWall)
+	else
+		B.blk("Shell", "CourseWallS", SB.x1, SX1 + 4, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+	end
 	B.blk("Shell", "CourseWallS", SB.x0, SB.x1, 234, SB.y0, CZ0 + 4, CZ0, P.courseWall)
 	B.blk("Shell", "CourseWallS", SB.x0, SB.x1, SB.y1, W2, CZ0 + 4, CZ0, P.courseWall)
 	B.blk("Shell", "StartBaySill", SB.x0, SB.x1, 234, SB.y0, SB.back, CZ0 + 4, P.ledge)
@@ -1601,12 +1659,17 @@ local function course(B)
 	for _, h in { { -57.2, -8130 }, { -84.4, -8130 }, { CXM, TOWER.z }, { -111.6, -8210 }, { -84.4, -8226 }, { TOWER2.x, TOWER2.z }, { -111.6, -8274 } } do
 		B.put("tv_hoop", CF(h[1], CTOP, h[2]), { name = "GrappleRing" })
 	end
-	-- the top: a deep frame on the north wall at the gallery's middle, lit, with its word (the course's far end)
-	B.put("tv_frameWide", CF(CXM, 270, CZ1 + 1.8), { name = "FrameTop", scale = 0.75 })
-	B.blk("Shell", "TopPanel", CXM - 6, CXM + 6, 270, 280.5, CZ1 + 0.05, CZ1 + 0.3, P.recess)
-	B.blk("Scenery", "TopLight", CXM - 5, CXM + 5, 279.6, 279.9, CZ1 + 0.3, CZ1 + 1.6, P.warm, { ghost = true, mat = NEON })
-	B.lamp(CXM, 278, CZ1 + 3, "point", 16, 0.7, P.warm)
-	B.text("WordTOP", { { "TOP", P.amber, "B", 1 } }, 7, 1.5, CF(CXM, 280.9, CZ1 + 3.85) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
+	-- the top: a deep frame on the north wall at the gallery's middle, with its word (the course's far end). since 18 Nov
+	-- it is the gold dummies' door (TOPD, topRoom; the door itself is TrainingLot's eggDoor, where T.EGG_DOOR says)
+	B.put("tv_frameWide", CF(CXM, 270, TOPD.frame), { name = "FrameTop", scale = 0.75 })
+	if EGG_STRIP then
+		B.blk("Shell", "TopPanel", CXM - 6, CXM + 6, 270, 280.5, CZ1 + 0.05, CZ1 + 0.3, P.recess)
+		B.blk("Scenery", "TopLight", CXM - 5, CXM + 5, 279.6, 279.9, CZ1 + 0.3, CZ1 + 1.6, P.warm, { ghost = true, mat = NEON })
+		B.lamp(CXM, 278, CZ1 + 3, "point", 16, 0.7, P.warm)
+	else
+		topRoom(B)
+	end
+	B.text("WordTOP", { { "TOP", P.amber, "B", 1 } }, 7, 1.5, CF(CXM, 280.9, TOPD.frame + 2.05) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
 	-- the playground's secret: a bullseye high on the north wall over ledge 3. too high to jump to: grapple into it
 	-- (the line and arrow from the door to the first pad went on 16 Nov: "an arrow that looks ugly and is redundant")
 	local bx, by, bz = CX0 + 6, 283, CZ1 + 0.45 -- (over ledge 3, off the line you see from the entrance)
@@ -1617,7 +1680,7 @@ local function course(B)
 		local p = B.marker(ta, "TrainingArrive", x, 270.1, CZ1 + 6, V3(x, 270, CZ1 + 20))
 		p:SetAttribute("Built", "TrainingV2")
 	end
-	eggCorridor(B)
+	if EGG_STRIP then eggCorridor(B) end
 end
 
 -- ---------------------------------------------------------------- the zone, the barrier, the finish
@@ -2077,7 +2140,8 @@ function T.check(stage): string
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
 		V3(-58, Y0 + 4, -8120), V3(CXM, Y0 + 4, -8120), V3(-80, 274, -8225), V3(CXM, 286, TOWER.z), V3(-50, 280, -8130),
 		V3(-90, Y0 + 4, -8240), V3(CX0 + 6, 274, CZ1 + 6), V3(-100, 282, CZ1 + 8), V3(-70, 270, -8200), V3(CX0 + 30, 285, -8125),
-		V3(TOWER2.x, Y0 + 40, TOWER2.z), V3(EGGC.x, Y0 + 3, CZ0 + 8), V3(EGGC.x, Y0 + 9, EGGC.face - 6), -- (the course since 18 Nov: the strip, the main hall, over ledge 3, the gallery, the far tower)
+		V3(TOWER2.x, Y0 + 40, TOWER2.z), if EGG_STRIP then V3(EGGC.x, Y0 + 3, CZ0 + 8) else V3(TOPD.x, TOPD.y + 4, TOPD.back + 4), -- (the course since 18 Nov: the strip, the main hall, over ledge 3, the gallery, the far tower; the TOP room)
+		if EGG_STRIP then V3(EGGC.x, Y0 + 9, EGGC.face - 6) else V3(TOPD.x, TOPD.y + 8, TOPD.back + 2),
 		V3(AISLE.x, Y0 + 4, -8160), V3(AISLE.x, AISLE.ceil - 4, -8200), V3(AISLE.x, Y0 + 4, -8250), V3(AISLE.x1 + 1, 250, -8186), -- (the yard's side hall, and in an opening of its arcade)
 		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
 		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)

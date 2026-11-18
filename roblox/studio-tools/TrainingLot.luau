@@ -31,7 +31,8 @@ local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
 L.KIT = 102031091411579 -- the kit's Model asset (tl_kit_5: lot_models.py; kit 5: flicker fixes in the frames and the roller)
-L.PUSH = 16
+L.PORTAL_KIT = 125041627506798 -- the gold dummies' portal (te_portal_1: tools/roblox/egg_portal_models.py), L.import(L.PORTAL_KIT)
+L.PUSH = 17
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -64,9 +65,10 @@ end
 local function lib() return SS:WaitForChild("JankfireMeshes") end
 
 -- ---------------------------------------------------------------- the kit
-function L.import(): string
+function L.import(id: number?): string
 	local MAT = { plastic = SP, neon = NEON }
-	local ok, container = pcall(function() return InsertService:LoadAsset(L.KIT) end)
+	local kitId = id or L.KIT
+	local ok, container = pcall(function() return InsertService:LoadAsset(kitId) end)
 	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
 	local groups, bad = {}, 0
 	for _, d in container:GetDescendants() do
@@ -85,7 +87,7 @@ function L.import(): string
 		m.Name = name
 		for _, p in parts do p.Parent = m end
 		m.WorldPivot = CFrame.identity
-		m:SetAttribute("AssetId", L.KIT); m:SetAttribute("Kit", "lot"); m:SetAttribute("FileFrame", true)
+		m:SetAttribute("AssetId", kitId); m:SetAttribute("Kit", "lot"); m:SetAttribute("FileFrame", true)
 		local old = lib():FindFirstChild(name)
 		if old then old:Destroy() end
 		m.Parent = lib()
@@ -573,14 +575,21 @@ end
 -- its parts (ACPass). EGG = { cf = the floor in the middle of the opening's face (plan; its -Z the way you walk in),
 -- w, h = the opening (GateKit's 8.4 x 9.96 if not given), cw, ch = the corridor's width and height (its sides and the
 -- part over the frame are filled, so nobody walks round the door), wall = the fill's colour }. the corridor's end wall
--- stands DEPTH behind the opening's face (the door is built in front of it; nothing of the hall is cut)
+-- stands DEPTH behind the opening's face (the door is built in front of it; nothing of the hall is cut).
+-- EGG.room (18 Nov, the course's TOP door: the owner, "this is what should lead to the teleporter"): the door is only
+-- EGG.door deep (its fill and the unseen block), there is no dark plate, and EGG.room studs behind the face (the
+-- room's back wall, TrainingV2's topRoom) stands the portal (L.PORTAL_KIT's te_portal: a ring with a black middle on
+-- a step; no light column, the owner: "I dont like the pillar of light from the teleporter"); its trigger is the black
+-- middle, so a key holder walks through the door, across the room and into the ring
 local EGG_COL = { slat = "6b7079", slat2 = "5f646d", frame = "4a4f58", back = "2b2d33" }
 L.EGG_DEPTH = 3.2
+L.PORTAL_BACK = 1.25 -- (the ring's plane, in front of the room's back wall)
 local function eggDoor(EGG)
 	local F: CFrame = EGG.cf
 	local W, H = EGG.w or 8.4, EGG.h or 9.96
 	local hw = W / 2
-	local DEPTH = L.EGG_DEPTH
+	local ROOM = EGG.room
+	local DEPTH = if ROOM then EGG.door or 2.4 else L.EGG_DEPTH
 	local function box(folder, name, x0, x1, y0, y1, d0, d1, hex, o)
 		return B.part(folder, name, F * CF((x0 + x1) / 2, (y0 + y1) / 2, -(d0 + d1) / 2), V3(x1 - x0, y1 - y0, d1 - d0), hex, o)
 	end
@@ -608,20 +617,41 @@ local function eggDoor(EGG)
 		sl:SetAttribute("Shut", sl.CFrame)
 		sl.Parent = door
 	end
+	if ROOM then -- (the room behind is lit: a dark sheet behind the slats rolls with them, so their gaps show no light)
+		local sheet = box("LotShell", "EggSheet", -hw, hw, 0.02, H - 0.02, 1.0, 1.06, EGG_COL.back, { ghost = true })
+		sheet:SetAttribute("Shut", sheet.CFrame)
+		sheet.Parent = door
+	end
 	door:SetAttribute("Lift", H + 0.4)
 	door:SetAttribute("Top", (F * CF(0, H, 0)).Y + B.O.Y)
 	door:SetAttribute("Center", (F * CF(0, 1, 0)).Position + B.O)
 	door:SetAttribute("Near", 11)
-	-- an unseen block behind the slats (they are thin; a fast body goes through thin parts), up to the dark plate
-	local blk2 = box("LotShell", "EggBlock", -hw, hw, 0, H, 1.0, DEPTH - 0.35, P.slate, { tr = 1, noShadow = true })
+	-- an unseen block behind the slats (they are thin; a fast body goes through thin parts), up to the dark plate (or
+	-- to the room)
+	local blk2 = box("LotShell", "EggBlock", -hw, hw, 0, H, 1.0, if ROOM then DEPTH else DEPTH - 0.35, P.slate, { tr = 1, noShadow = true })
 	blk2.Parent = door
-	-- the doorway at the corridor's end: the old dark plate, as GateKit's gates have it again (GateBack, "2b2d33")
-	local back = box("LotScenery", "EggBack", -hw, hw, 0, H, DEPTH - 0.35, DEPTH - 0.05, EGG_COL.back, { ghost = true })
-	back.Parent = door
-	-- the trigger in front of the dark plate (Hub.Doors, read by LaserDoors): key holders only, to the playground
 	local trig = B.trigger("EggPortal", 0, 1, 0, 1, 0, 1, { Land = "PlaygroundArrive", Say = "YOU FOUND THE PLAYGROUND", NeedKey = "LotKey" })
-	trig.Size = V3(W - 0.6, H - 0.4, DEPTH - 1.2 + 0.6)
-	trig.CFrame = B.at(F * CF(0, (H - 0.4) / 2, -(1.2 + DEPTH + 0.6) / 2))
+	if not ROOM then
+		-- the doorway at the corridor's end: the old dark plate, as GateKit's gates have it again (GateBack, "2b2d33")
+		local back = box("LotScenery", "EggBack", -hw, hw, 0, H, DEPTH - 0.35, DEPTH - 0.05, EGG_COL.back, { ghost = true })
+		back.Parent = door
+		-- the trigger in front of the dark plate (Hub.Doors, read by LaserDoors): key holders only, to the playground
+		trig.Size = V3(W - 0.6, H - 0.4, DEPTH - 1.2 + 0.6)
+		trig.CFrame = B.at(F * CF(0, (H - 0.4) / 2, -(1.2 + DEPTH + 0.6) / 2))
+	else
+		-- the portal at the room's end, facing the door; you step up onto its step (unseen, solid: kit meshes have no
+		-- collision) and the trigger in its black middle takes you (it starts 1.6 in front of the ring's plane, so you
+		-- are at the ring when you go)
+		local ring = ROOM - L.PORTAL_BACK
+		local pm = B.put("te_portal", F * CF(0, 0, -ring), { name = "EggPortalRing", raw = true })
+		if pm then pm.Parent = B.root.LotScenery end
+		B.solid("EggPortalStep", F * CF(0, 0.3, -(ring - 0.9)), V3(10.6, 0.6, 3.2))
+		trig.Size = V3(6.0, 6.4, 1.9)
+		trig.CFrame = B.at(F * CF(0, 0.6 + 3.2, -(ring - 1.6 + 0.95)))
+		-- a dim warm light over the ring, for its face (nothing shines up from it)
+		local lr = F * CF(0, 9.6, -(ring - 2.2))
+		B.lamp(lr.X, lr.Y, lr.Z, "point", 10, 0.45, "ffc27a")
+	end
 	-- LOCKED over it (a key holder's screen says OPEN), in the gold dummies' gold, no other words
 	local pw = math.min(4.4, W - 1)
 	local py = math.min(H + 0.85, ch - 1.3) -- (on the fill over the frame; low ceilings: as high as fits)
@@ -1674,7 +1704,8 @@ function L.check(tg, mk, T, O): { string }
 	local EGG = T and T.EGG_DOOR
 	if EGG then
 		local ed = tg:FindFirstChild("EggDoor", true)
-		need(ed and ed:FindFirstChild("EggBack") and ed:FindFirstChild("EggBlock") and ed:FindFirstChild("EggPlate"), "EggDoor (back, block, plate)")
+		need(ed and (EGG.room or ed:FindFirstChild("EggBack")) and ed:FindFirstChild("EggBlock") and ed:FindFirstChild("EggPlate"), "EggDoor (back, block, plate)")
+		if EGG.room then need(tg:FindFirstChild("EggPortalRing", true) and tg:FindFirstChild("EggPortalStep", true), "the portal (EggPortalRing, EggPortalStep: L.import(L.PORTAL_KIT) first)") end
 		local ep = doors and doors:FindFirstChild("EggPortal")
 		need(ep and ep:GetAttribute("NeedKey") == "LotKey" and ep:GetAttribute("Land") == "PlaygroundArrive", "Doors.EggPortal (NeedKey LotKey, Land PlaygroundArrive)")
 		local pa = doors and doors:FindFirstChild("PlaygroundArrive")
@@ -1689,7 +1720,7 @@ function L.check(tg, mk, T, O): { string }
 			for _, y in { 1, 3, 5.5 } do
 				n += 1
 				local a = (F * CF(x, y, 3)).Position
-				local b = (F * CF(x, y, -(L.EGG_DEPTH - 0.5))).Position
+				local b = (F * CF(x, y, -((if EGG.room then EGG.door or 2.4 else L.EGG_DEPTH) - 0.5))).Position
 				if not workspace:Raycast(a, b - a, sp) then
 					gaps += 1
 					if gaps <= 4 then table.insert(out, ("EGG DOOR GAP at x %.1f, %.1f up"):format(x, y)) end
