@@ -1582,6 +1582,40 @@ The owner: "revolver needs to either do less damage or be less accurate the long
   - the hat seats, from weapon-hats, once the models are in.
 - The Roster rows stay `live = false` until the models and holds are in.
 
+## 42. The grapple's yank, 18 November 2026 (place version 796)
+
+The owner, about grappling onto people (section 37): "when you grapple someone maybe you can press a button to like pull them towards you?? Or reel you towards them??" Both are kept. Reeling you in stays what a hook on a person does; the yank is a second choice while the rope is on them.
+
+- **The key:** GRAPPLE YANK in Settings > KEYBINDS (`Binds` id `yank`), rebindable like the rest.
+  - Keyboard **F**: shared with QUICK JOIN, which only works in the hub, where the yank never does.
+  - Controller **B**: shared with crouch. Crouching mid-rope only lowers your eye.
+  - Phone: a **YANK** button (56, 244), shown only while your rope is on a person and the yank is ready.
+- **What it does** (`Move.client` `tryYank` → `Main.server` `yank()`): one pull toward you through `Fight.knock`, so the anti-cheat knows the shove. The rope drops with it.
+  - Aimed so they'd fly about 0.7 s and come down a fifth of the way short of you (`Config.hook.yankAir`).
+  - Capped at 30 m/s sideways (`yankSpeed`; a point-blank frag shoves 34 m/s), plus 9 m/s up to lift them off their feet (`yankUp`). If you're above them, up to 10 more (`yankClimb`).
+  - From the hook's full 90 m range it drags them about 20 m, not across the map.
+  - A training dummy goes over for the pull (`Dummies.slip`, chest first toward you), or its legs would walk it off.
+- **Who:** enemies in a live round and training dummies get the full yank and are tagged (`Rules.tagged`, `"grapple"`), so a fall within 10 s is your kill via Grapple.
+  - Anyone you can't hurt (a teammate, another player in training) gets 45% of it (`yankMate`) and no tag: a rescue.
+  - Not in the hub or a map room: weapons' zones only (`match`, `training`, `playground`).
+  - Not before a round (`LoadoutWindow`), and not on someone held in a soap bubble, a cage or a pop quiz.
+- **Cost:** one yank every 3 s (`yankCool`). The server stamps `YankT` (server time) on you; your client and the phone button read it. It ends the grapple, so the next yank needs a new hook, and that spends a ranked charge as usual. The yank itself takes no charge.
+- **Look and sound** (`GrappleYank.client`, for everyone; the server sends `"yank"` on the Grapple remote):
+  - the rope snaps dead straight and bright from the hand to their chest, then thins out over 0.22 s;
+  - a crack: the recorded `ropesnap` (Pro Sound Effects, a towel crack), 2D for the yanker and positional on them for everyone else;
+  - a short pale streak on them while they fly.
+  - No text. A teammate's gentle pull draws thinner.
+- **Test hook:** `YankFxHold` (seconds) on the local player holds the snap and the streak for photos.
+- **Tested in solo Play** (the training yard's Plinker, on its block on the live-fire stage, 60 studs from the firing line):
+  - hooked, then F 0.26 s later: the rope dropped, every client got the yank, the snap and the 2D crack played for the yanker;
+  - the Plinker left its block at 68 studs/s toward the yanker and 25 up (peak 4 studs over the block), off the stage onto the yard floor;
+  - dropped below the fall line 2.2 s later: a void kill credited to the yanker, `via = grapple`;
+  - `YankT` stamped 3 s ahead;
+  - the phone's YANK button (TouchForce): hidden unroped, shown roped and ready, hidden while cooling, back when ready, gone on letting go.
+  - **Seen:** a dummy lands about where the yanker stands, then slides on (it lies flat for the slip). Over 2.5 s it went 88 studs, past the yanker. A landing brake for dummies is the next push.
+  - Not tested: two real players (a yanked player's own movement friction stops them; a solo test can't show it) and the teammate pull.
+  - Photo: `docs/grapples/grapple_yank_v796.jpg` (the taut rope to the Plinker in the air, its streak from the block).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

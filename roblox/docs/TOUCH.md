@@ -32,7 +32,9 @@ Ported from the web game (`public/js/touch.js`, `touch.css`, `autofire.js`), 17 
   (its `CameraInput.getRotation` returns zero), so it never turns twice.
 - **Buttons** at the web's places (points from the bottom corner on the fire side; × button size): FIRE (100, 92),
   JUMP (36, 50), SLIDE (34, 120), AIM (44, 184), HOOK (112, 176), STAB (176, 152: slot 3), SWAP (180, 98: your last
-  weapon), RELOAD (176, 44). Top row: AUTO, SETTINGS (taps P). The HUD's boxes are buttons too: three weapon chips
+  weapon), RELOAD (176, 44). WAVE (112, 240) shows with the katana out. YANK (56, 244, 18 Nov) shows only while
+  your rope is on a person and the yank is ready (the player attributes `HookBody` from Move.client and `YankT` from
+  the server); it presses F, the yank's default key. Top row: AUTO, SETTINGS (taps P). The HUD's boxes are buttons too: three weapon chips
   (slots 1-3), the ammo plate (reload) and the item plate (G, held while held).
 - **AIM** is a tap toggle by default (the web's first-run rule): it holds the aim key down while on.
 - **Auto fire** (`autofire.js` rules kept): presses the same fire key as FIRE once the crosshair is on an enemy in

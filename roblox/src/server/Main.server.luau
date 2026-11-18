@@ -81,10 +81,68 @@ local function tieRope(i: Info, p: Player, a1: Attachment)
 	i.rope, i.anchor = b, a1
 end
 
+-- the yank (18 Nov 2026, the owner: "when you grapple someone maybe you can press a button to like pull them towards
+-- you??"; Move.client's tryYank): with the rope on a person, one pull toward the hooker, and the rope goes. the shove
+-- goes through Fight.knock (the anti-cheat knows it); an enemy or a training dummy is tagged like the hook itself, so a
+-- fall within 10 s is the yanker's kill via the grapple. anyone you can't hurt (a teammate, another player in training)
+-- gets Config.hook.yankMate of the pull and no tag: a rescue. where weapons work only (not the hub), one every yankCool
+-- (YankT on the yanker, server time: their client and the phone's YANK button read it). everyone draws the snap
+-- (GrappleYank.client: the rope taut, its crack, a trail on them)
+local Dummies = require(script.Parent:WaitForChild("Dummies"))
+local YANK_ZONES = { match = true, training = true, playground = true }
+local function yankV(from: Vector3, to: Vector3, k: number): Vector3
+	local H = Config.hook
+	local d = Vector3.new(from.X - to.X, 0, from.Z - to.Z)
+	local dist = d.Magnitude
+	local dir = if dist > 0.1 then d / dist else Vector3.zero
+	-- (sideways: enough to fly about yankAir s and come down a fifth of the way short of you, never past yankSpeed)
+	local side = math.min(H.yankSpeed, dist * 0.8 / H.yankAir) * k
+	local up = (H.yankUp + math.clamp(from.Y - to.Y, 0, H.yankClimb)) * (if k < 1 then 0.75 else 1)
+	return dir * side + Vector3.new(0, up, 0)
+end
+local function yank(p: Player, i: Info)
+	local function stop(why: string)
+		dropRope(i)
+		GrappleRemote:FireClient(p, "cut", why)
+	end
+	local tm = i.body
+	local hum, root = alive(p)
+	if not tm or not hum or not root then return stop("nobody there") end
+	local ready = p:GetAttribute("YankT")
+	if type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.15 then return stop("recharging") end -- (a little slack for the clocks)
+	if not YANK_ZONES[Matches.zoneOf(p)] or p:GetAttribute("LoadoutWindow") ~= nil then return stop("not here") end
+	local tp = Players:GetPlayerFromCharacter(tm)
+	local tf = Fight.of(tp or tm)
+	local troot = tm:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not tf or not tf.alive or not troot or not tm:IsDescendantOf(workspace) then return stop("gone") end
+	-- (held where they are: a soap bubble, a cage, a pop quiz, the loadout window before a round)
+	if tp and (tp:GetAttribute("Trap") or tp:GetAttribute("Jail") or tp:GetAttribute("Quiz") or tp:GetAttribute("LoadoutWindow") ~= nil) then return stop("held") end
+	local from, to = root.Position, troot.Position
+	if (to - from).Magnitude > Config.hook.range + Config.check.hookSlack + 20 then return stop("out of range") end
+	if i.bodyBlind > Config.hook.bodyBlind then return stop("out of sight") end
+	local mf = Fight.byPlayer[p]
+	local full = mf ~= nil and mf ~= tf and Fight.allow(mf, tf)
+	local v = yankV(from, to, if full then 1 else Config.hook.yankMate)
+	p:SetAttribute("YankT", workspace:GetServerTimeNow() + Config.hook.yankCool)
+	if full then Rules.tagged(tf, mf :: any, "grapple", os.clock()) end
+	if tf.kind == "dummy" then
+		-- (a training dummy's legs would walk the pull off: it goes over for it, like a marble slip, chest first to you)
+		pcall(Dummies.slip, tf)
+		troot.AssemblyLinearVelocity = Vector3.zero
+		local flat = Vector3.new(v.X, 0, v.Z)
+		local d = if flat.Magnitude > 0.1 then flat.Unit else Vector3.zAxis
+		troot.AssemblyAngularVelocity = Vector3.new(d.Z, 0, -d.X) * 6
+	end
+	Fight.knock(tf, v, "grapple")
+	GrappleRemote:FireAllClients("yank", p.Character, tm, not full)
+	dropRope(i)
+end
+
 GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: unknown, body: unknown)
 	local i = info[p]
 	if not i or type(what) ~= "string" then return end
 	if what == "release" then dropRope(i); return end
+	if what == "yank" then yank(p, i); return end
 	if what ~= "hook" then return end
 	local function cut(why: string)
 		dropRope(i)

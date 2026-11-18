@@ -46,6 +46,12 @@ local Config = {
 		-- chest), lets go this close to them (the web's 3.2 m: your momentum carries you into them) and drops when they've
 		-- been out of your sight this long (the server allows a little more, for lag)
 		bodyUp = 1, bodyLet = 3.2 * S, bodyBlind = 0.4,
+		-- the yank (18 Nov 2026, the owner: "maybe you can press a button to like pull them towards you"): with the rope on
+		-- a person, the YANK key pulls them toward you once and the rope drops. aimed so they'd fly about yankAir s and
+		-- land short of you, at most yankSpeed sideways (a point-blank frag shoves 34 m/s) and yankUp up (off their feet;
+		-- more when you're above them, up to yankClimb more). someone you can't hurt (a teammate) gets yankMate of it, a
+		-- rescue. one every yankCool s (the server's say-so). not in the hub
+		yankSpeed = 30 * S, yankUp = 9 * S, yankClimb = 10 * S, yankAir = 0.7, yankMate = 0.45, yankCool = 3,
 	},
 	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in
 	-- stock (while we test); LOOT_ROBUX = sell them through developer products (Shop.luau's product ids; receipts:

@@ -27,7 +27,7 @@ Rebind on the CONTROLLER tab or in the KEYBINDS' CONTROLLER column. Select a but
 | Y | Triangle | next weapon (round the loadout, the Shredder included) | — |
 | RB | R1 | grapple (the hook, onto walls and people) | next tab |
 | LB | L1 | utility (hold to cook a grenade, let go to throw) | previous tab |
-| B | Circle | crouch / slide | back out |
+| B | Circle | crouch / slide; GRAPPLE YANK while your rope is on a person (shared: crouch does nothing harmful mid-rope) | back out |
 | A | Cross | jump (rope: fling) | press the selected button |
 | LS (click) | L3 | sprint (toggle by default) | — |
 | RS (click) | R3 | melee weapon | — |

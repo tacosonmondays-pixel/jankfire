@@ -86,9 +86,24 @@ end
 
 local function releaseHook(tellServer: boolean)
 	if st.hook then st.hook = nil; st.lift = 1 end
-	hookBody = nil
+	if hookBody then hookBody = nil; player:SetAttribute("HookBody", nil) end -- (HookBody: the phone's YANK button shows)
 	dropRope()
 	if tellServer then GrappleRemote:FireServer("release") end
+end
+
+-- the yank (18 Nov 2026, the owner: "when you grapple someone maybe you can press a button to like pull them towards
+-- you"): with the rope on a person, the YANK key (Binds "yank": F, a pad's B, the phone's YANK) pulls them to you and
+-- the rope goes. the server checks it and throws them (Main.server); everyone sees the rope snap taut and hears it
+-- crack (GrappleYank.client). where weapons work only (not the hub: F is QUICK JOIN's there), and one every
+-- Config.hook.yankCool (YankT, the server's, on you)
+local YANK_ZONES = { match = true, training = true, playground = true }
+local function tryYank(): boolean
+	if not (st.hook and hookBody) or not YANK_ZONES[player:GetAttribute("Zone") :: any] then return false end
+	local ready = player:GetAttribute("YankT")
+	if type(ready) == "number" and workspace:GetServerTimeNow() < ready then return false end
+	GrappleRemote:FireServer("yank")
+	releaseHook(false) -- (the server drops its rope with the yank)
+	return true
 end
 
 local function character(): (Model?, Humanoid?, BasePart?)
@@ -126,6 +141,7 @@ local function tryHook()
 	if body and troot then -- (a person: the rope ties onto them)
 		p = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
 		hookBody, hookBlind, hookLookT = body, 0, os.clock()
+		player:SetAttribute("HookBody", true)
 	else
 		body = nil
 	end
@@ -164,6 +180,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if not (Binds.is("camera", io) and MenuCursor.unstick()) then return end
 	end
 	local k = io.KeyCode
+	if Binds.is("yank", io) then tryYank() end -- (on its own: its keys are shared, F with QUICK JOIN, a pad's B with crouch)
 	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", true)
 	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", true)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true; pressT = os.clock()
@@ -368,8 +385,9 @@ RunService.PreSimulation:Connect(function(dt: number)
 				if hookBlind >= Config.hook.bodyBlind then releaseHook(true) end
 			end
 		end
-	elseif not st.hook then
+	elseif not st.hook and hookBody then
 		hookBody = nil
+		player:SetAttribute("HookBody", nil)
 	end
 	if swimming then
 		-- swimming (the Rooftop pool is Terrain water): paddle where you look, with water drag. Space swims up (and pops
