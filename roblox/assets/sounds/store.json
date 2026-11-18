@@ -2012,6 +2012,176 @@
     ],
     "L": -25
    }
+  ],
+  "chicken_fire": [
+   {
+    "id": 9114659666,
+    "title": "Grenade Launcher 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.22
+    ],
+    "L": -21
+   }
+  ],
+  "chicken_squeak": [
+   {
+    "id": 9125994570,
+    "title": "Squeeze Toy Squeaky Rubber With Noisemaker H (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -18
+   }
+  ],
+  "banana_fire": [
+   {
+    "id": 9117841338,
+    "title": "Pop Airy 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -25
+   }
+  ],
+  "tennis_fire": [
+   {
+    "id": 9113050696,
+    "title": "Air Bolt Gun 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.45
+    ],
+    "L": -16
+   },
+   {
+    "id": 9113050770,
+    "title": "Air Bolt Gun 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.45
+    ],
+    "L": -16
+   }
+  ],
+  "tennis_bounce": [
+   {
+    "id": 9119984265,
+    "title": "Tennis Ball Bounces Int. Apartment 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.15
+    ],
+    "L": -37
+   },
+   {
+    "id": 9119984230,
+    "title": "Tennis Ball Bounces Int. Apartment 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -38
+   },
+   {
+    "id": 9119984004,
+    "title": "Tennis Ball Bounces Int. Apartment 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -37
+   }
+  ],
+  "snow_throw": [
+   {
+    "id": 9120972444,
+    "title": "Wood Whoosh Slicing Air Quick Swings 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -37
+   }
+  ],
+  "blood_fire": [
+   {
+    "id": 9120629100,
+    "title": "Web Shoot Short Juicy Launch 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -22
+   },
+   {
+    "id": 9120629317,
+    "title": "Web Shoot Short Juicy Launch 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -23
+   }
+  ],
+  "blood_stick": [
+   {
+    "id": 9113489280,
+    "title": "Body Hit 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -30
+   },
+   {
+    "id": 9113514756,
+    "title": "Body Hit Sloshy 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.35
+    ],
+    "L": -31
+   }
+  ],
+  "blood_erupt": [
+   {
+    "id": 9125498766,
+    "title": "Drain Bubbling Liquid Gurgle Emptying Drain (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     0.78
+    ],
+    "L": -28
+   }
+  ],
+  "blood_boom": [
+   {
+    "id": 9119481494,
+    "title": "Splash Slightly Boomy 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -39
+   }
   ]
  },
  "vol": {
@@ -2048,7 +2218,8 @@
   "minigun_spinup": 0.12,
   "minigun_spin": 0.12,
   "minigun_spindown": 0.12,
-  "water_soak": 6
+  "water_soak": 6,
+  "blood_boom": 5.5
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -2114,7 +2285,17 @@
   "blower_loop": -29,
   "breath_loop": -25,
   "laser_fire": -21,
-  "laser_whine": -28
+  "laser_whine": -28,
+  "chicken_fire": -21,
+  "chicken_squeak": -26,
+  "banana_fire": -24,
+  "tennis_fire": -23,
+  "tennis_bounce": -28,
+  "snow_throw": -29,
+  "blood_fire": -25,
+  "blood_stick": -27,
+  "blood_erupt": -27,
+  "blood_boom": -23
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2153,7 +2334,16 @@
   "taser_fire": 0.04,
   "taser_buzz": 0.04,
   "taser_arc": 0.06,
-  "laser_fire": 0.03
+  "laser_fire": 0.03,
+  "chicken_fire": 0.04,
+  "chicken_squeak": 0.05,
+  "banana_fire": 0.05,
+  "tennis_fire": 0.04,
+  "snow_throw": 0.04,
+  "blood_fire": 0.04,
+  "blood_stick": 0.04,
+  "blood_erupt": 0.04,
+  "blood_boom": 0.04
  },
  "loop": {
   "minigun_spin": true,

@@ -1,3 +1,26 @@
+# Weapons batch C: the projectile weapons (18 Nov 2026, place version 792)
+
+Asked for by the weapons-port session. All are Pro Sound Effects recordings, stylised, and none is gory: the
+"blood" sounds are a web-shoot launch, body thuds, a drain gurgle and a boomy splash.
+
+| name | for | take(s): id, title, cut (s) | Volume | notes |
+| --- | --- | --- | --- | --- |
+| `chicken_fire` | the launcher thunk | 9114659666 Grenade Launcher 2, 0–0.22 | 0.92 | the blast is the existing `boom` |
+| `chicken_squeak` | the rubber chicken's squeak, to play with `chicken_fire` | 9125994570 Squeeze Toy Squeaky Rubber With Noisemaker, 0–0.2 | 0.37 | added beside the thunk: a Sound plays one take, so one name can't hold both |
+| `banana_fire` | a soft pneumatic pop | 9117841338 Pop Airy 1, 0–0.2 | 1.04 | |
+| `tennis_fire` | the ball-machine thump | 9113050696 / 9113050770 Air Bolt Gun 2 / 3, 0–0.45 | 0.41 | |
+| `tennis_bounce` | one bounce (pitched up per bounce by the caller) | 9119984265 / 9119984230 / 9119984004 Tennis Ball Bounces Int. Apartment 6 / 5 / 4, single bounces (0.15–0.2 s) | 2.7 | no jitter, so the caller's pitch steps stay clean |
+| `snow_throw` | a light throw whoosh | 9120972444 Wood Whoosh Slicing Air Quick Swings 1, 0–0.2 | 2.32 | |
+| `blood_fire` | a quick wet flick | 9120629100 / 9120629317 Web Shoot Short Juicy Launch 1 / 3, 0–0.5 | 0.69 | |
+| `blood_stick` | a dull thud | 9113489280 Body Hit 6, 0–0.3; 9113514756 Body Hit Sloshy 11, 0–0.35 | 1.38 | |
+| `blood_erupt` | the build before the pop | 9125498766 Drain Bubbling Liquid Gurgle Emptying Drain, 0.18–0.78 | 1.04 | a bubbling gurgle, 0.6 s: it crackles but doesn't rise in pitch |
+| `blood_boom` | a muffled pop | 9119481494 Splash Slightly Boomy 1, 0–0.6 | 5.5 (set) | a quiet recording, so the Volume is set by hand |
+
+All ten follow EFFECTS until they're added to WEAPON_NAMES. Checked in Edit: every clip loads, every cut measured.
+Not heard in Play.
+
+---
+
 # Weapons batch B: taser, leaf blower, fire breath, laser (18 Nov 2026, place version 783)
 
 Asked for by the weapons-port session. All are Pro Sound Effects recordings. A `roll` now also sets the Sound's own
