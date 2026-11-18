@@ -1,3 +1,64 @@
+# Gunfire where it happens (17 Nov 2026, place version 737)
+
+The owner, from the live preview: "gun fire audio should be proportional to where players are". `Sfx.luau` now
+places every sound that has a position in the world the same way:
+
+- **Where:** someone else's shot plays as a 3D sound at their muzzle. That's the gun's `Muzzle` (or `TP.muzzle`, where
+  you see their gun) at the moment their `Shot` event reaches you; the server sends it to everyone but the shooter, so
+  it's always their position, never yours. Their swings, gadget throws, blasts and (new) reloads play where they
+  happen too. Your own shots stay close and on you, as before.
+- **How loud by distance:** `RollOffMode` InverseTapered for every world copy. RollOffMin / Max by name in `ROLL_EXACT`
+  / `ROLL_PREFIX` (a Sound's `RollMin` / `RollMax` attributes still win):
+
+  | sounds | Min | Max | so |
+  | --- | --- | --- | --- |
+  | `gun_*` (shots) | 12 | 520 | full inside 12 studs, −10 dB at 40, −21 dB at 120, −29 dB at 300 (with the far take), gone past 520 |
+  | `boom` / `blow` / `hole` (blasts) | 24 / 16 / 18 | 1100 / 650 / 750 | carry further than a shot |
+  | `skin_*` (skin layers) | 8 | 220 | a decoration: fades before the shot does |
+  | `swing`, `ting`, `bonk`, `tink`, `thwack` (melee) | 6 | 150–170 | |
+  | `click`, `reload`, `empty` (handling) | 4 | 60–90 | a reload is heard a few strides off |
+  | everything else | 15 | 600 | (footsteps keep their own `RollMax` 110) |
+- **Far away sounds far:** gunshots and blasts get a far take. From 60 to 90 studs (`NEAR_END`, `FAR_FULL`) the close
+  take crossfades (equal power) into a copy that's thin and dull (EQ Low −8, Mid 0, High −20 dB, ×0.9). Both arrive
+  late by the distance over the speed of sound (1,225 studs/s, so 0.1 s at 120 studs; at most 0.4 s).
+- **Walls:** one ray per sound from your camera (the listener) to the sound. Players' bodies and non-colliding parts
+  don't count. If something solid is in the way, the sound dips: Mid −5, High −12 dB and ×0.6.
+- **Others' reloads:** `ThirdPerson` replays another player's reload from the reload flag on their rig. Now it also
+  plays the mag out (`click`, lower) as it starts and the mag in (`reload`) 60% through, at their gun.
+- **Recorded distance takes slot in by name.** This is for a library like BOOM's Tactical Guns, recorded 0–100 m.
+  Add Sounds named `<sound>@<studs>` next to `<sound>` (1 m = 3.57 studs: 25 m = `gun_ar@89`, 50 m = `gun_ar@179`,
+  100 m = `gun_ar@357`). Sfx finds them by name (no code change) and then, for that gun, drops the made-up far take.
+  A shot crossfades between the two recordings either side of its distance (the plain one counts as 0 studs), and
+  the roll-off, delay and wall still apply. `store_sounds.mjs` levels an `@` take like its close take unless
+  `store.json` gives it its own target.
+
+Checks (v737, one solo Play). A test platform at y 2000 held stand-ins (a Head only) at 10, 40, 75, 120 and 300
+studs straight ahead, one 40 studs to the left and one 40 to the right. The real `Shot` event was sent to the
+client from each (`w = "ar"`), with the camera (the listener) pinned at the ear point looking at them. A log on the
+client read every world Sound as it started: its distance, the engine's gain (InverseTapered), Volume, EQ, wall,
+delay, and where it sat in camera space.
+
+| shot from | layer | level | vs 10 studs | EQ (low/mid/high) | late | side |
+| --- | --- | --- | --- | --- | --- | --- |
+| 10 studs ahead | near | 0.520 | 0 dB | none | 0.008 s | centre |
+| 40 ahead | near | 0.156 | −10.4 dB | none | 0.033 s | centre |
+| 75 ahead | near + far, half each | 0.059 + 0.053 | −16.3 dB | far copy −8/0/−20 | 0.061 s | centre |
+| 120 ahead | far | 0.047 | −20.9 dB | −8/0/−20 | 0.098 s | centre |
+| 300 ahead | far | 0.019 | −28.9 dB | −8/0/−20 | 0.245 s | centre |
+| 40 to the left | near | 0.156 | −10.4 dB | none | 0.033 s | LEFT, −90° |
+| 40 to the right | near | 0.156 | −10.4 dB | none | 0.033 s | RIGHT, +90° |
+| 40 behind a wall | near | 0.094 | −14.8 dB (−4.4 for the wall) | 0/−5/−12 | 0.033 s | centre |
+| 120 behind a wall | far | 0.028 | −25.3 dB (−4.4 for the wall) | −8/−5/−32 | 0.098 s | centre |
+
+Each sound sat exactly at its shooter's head, the muzzle stand-in, in camera space: (0,0,−40) ahead, (−40,0,0)
+left, (40,0,0) right. Roblox pans a 3D Sound by where it sits from the camera, so the left and right shots come
+out of the left and right ear. For someone else's reload, a copy of the player tagged `TPRig` stood 6 studs off
+with the reload flag raised. The test heard `click` at 7 studs (gain 0.57) as the reload started, then `reload` at
+6 studs 1.0 s later, both from the right where that copy stood. Your own shots take the unchanged path, no position,
+in SoundService: not re-tested this run. No new errors in the output.
+
+---
+
 # No crowd sound anywhere; grapple charge sounds (17 Nov 2026, place version 665)
 
 The owner: "why is the crowd sfx still there i want it gone completely". The crowd was the hub's area sting,

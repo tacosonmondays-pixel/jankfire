@@ -49,6 +49,18 @@ local GunParts = require(script.Parent:WaitForChild("GunParts"))
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the crouch, held or toggled: Settings)
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (C held: a keyboard, or the phone's SLIDE)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
+-- (the sounds, for someone else's reload: found when first needed, so this module never waits on them)
+local SfxM: any = nil
+local function sfx(): any
+	if SfxM == nil then
+		local m = script.Parent:FindFirstChild("Sfx")
+		if m and m:IsA("ModuleScript") then
+			local ok, M = pcall(require, m)
+			SfxM = if ok then M else false
+		end
+	end
+	return SfxM or nil
+end
 
 local TP = {}
 local me = Players.LocalPlayer
@@ -674,7 +686,20 @@ local function reloadRig(r: Rig, secs: number?, empty: boolean?)
 	if not a then return end
 	local s = secs or w.reload or a.dur
 	r.follow = nil
-	r.clip = { name = name, t = 0, rate = if s > 0 then a.dur / s else 1 }
+	local clip = { name = name, t = 0, rate = if s > 0 then a.dur / s else 1 }
+	r.clip = clip
+	if not r.isMe then
+		-- (the sound session, 17 Nov 2026: "gun fire audio should be proportional to where players are") someone else's
+		-- reload is heard at their gun: the mag out now, the mag in 60% through, only a few strides far (Sfx's ROLL)
+		local function at(): Vector3 return if r.muzzle and r.muzzle.Parent then r.muzzle.WorldPosition else r.root.Position end
+		local Sfx = sfx()
+		if Sfx then
+			Sfx.play("click", at(), 0.9, 0.8)
+			task.delay(s * 0.6, function()
+				if r.clip == clip and r.ch.Parent then Sfx.play("reload", at()) end
+			end)
+		end
+	end
 end
 local function katRig(r: Rig, name: string)
 	if r.wid ~= "katana" then return end

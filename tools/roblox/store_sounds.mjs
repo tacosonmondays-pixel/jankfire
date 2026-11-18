@@ -21,7 +21,10 @@ const onlyArg = process.argv.find((x) => x.startsWith('only='));
 const ONLY = onlyArg ? onlyArg.slice(5).split(',') : null;
 for (const [name, takes] of Object.entries(store.sounds)) {
   if (ONLY && !ONLY.some((p) => name.startsWith(p))) continue;
-  const base = list[name]?.target ?? store.targets?.[name]; // (store.targets: names take 2 never had, e.g. skin_* and zone_*)
+  // (store.targets: names take 2 never had, e.g. skin_* and zone_*; a recorded distance take "gun_ar@179" levels like
+  // its close take "gun_ar" unless it has its own: Sfx's distance roll-off does the fading)
+  const near = name.includes('@') ? name.slice(0, name.indexOf('@')) : null;
+  const base = list[name]?.target ?? store.targets?.[name] ?? (near && (list[near]?.target ?? store.targets?.[near]));
   if (base == null) throw new Error('no target for ' + name);
   if (!takes.length) continue;
   const L = takes.reduce((a, t) => a + t.L, 0) / takes.length;
