@@ -44,8 +44,12 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 21
+T.PUSH = 22
 T.VERSION = "v2"
+-- the dummies room and the course (18 Nov, the owner: "instead of an extension can you do a complete remodel ... these two
+-- rooms can be redone entirely"): "v3" = PolishBackup.TrainingRooms (roblox/studio-tools/TrainingRooms.luau) builds them
+-- new, "v2" = this module's own yard (with its side hall) and course (with its strip), one switch away
+T.ROOMS = "v2" -- (v2 live until the v3 rooms are judged; stage them with a clone whose Source says "v3")
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
 T.P = {
@@ -578,8 +582,44 @@ local function muster(B)
 			B.part("Shell", "PassageWall", CFrame.lookAt(V3(mid.X, 246.5, mid.Z), V3(mid.X, 246.5, mid.Z) + d), V3(4, 21, (b - a).Magnitude + 0.6), P.wall)
 		end
 		B.blk("Shell", "PassageCeiling", math.min(x0, x1) + 0.05, math.max(x0, x1) - 0.05, MY + 11.9, 257, MZ - 10, MZ + 10, P.ceil) -- (0.1 under the walls' heads, 0.05 under the frames' bands: flicker list)
-		B.blk("Scenery", "PassageLight", (x0 + x1) / 2 - 2, (x0 + x1) / 2 + 2, MY + 11.75, MY + 11.95, MZ - 1.5, MZ + 1.5, P.panel, { ghost = true, mat = NEON })
 		B.lamp((x0 + x1) / 2, MY + 11, MZ, "point", 14, 0.6, P.lampWhite)
+		-- (18 Nov, the owner, from the course's side: "can you fix the back side of this to make it look presentable": the
+		-- passage was bare walls and a flat ceiling. now the house's finish on every face you see from inside: a dark
+		-- skirting along the ramp, a framing strip at each end of each wall with a pale panel between, a cornice with its
+		-- white nose, a lit coffer in the ceiling, and the room-side opening framed in white noses)
+		local fA, fB = MY, if sgn > 0 then 242 else Y0 -- (the floor at the frame and at the room)
+		local cy = MY + 11.9 -- (the ceiling's underside)
+		for _, sz in { -1, 1 } do
+			local a, b = V3(x0, 0, MZ + sz * 6), V3(x1, 0, MZ + sz * 8.5)
+			local len = (b - a).Magnitude
+			local d = (b - a).Unit
+			local n = V3(0, 0, sz)
+			n = (n - d * n:Dot(d)).Unit -- (out of the passage, into the wall)
+			local function at(t, off, y) return a + d * (t * len) - n * off + V3(0, y, 0) end
+			local function fl(t) return fA + (fB - fA) * t end
+			local pa, pb = at(0, 0.1, fA + 0.6), at(1, 0.1, fB + 0.6)
+			B.part("Shell", "PassageSkirt", CFrame.lookAt((pa + pb) / 2, pb), V3(0.2, 1.2, (pb - pa).Magnitude), P.floor2, { ghost = true })
+			for _, t in { 0.7 / len, 1 - 0.7 / len } do
+				local f = fl(t)
+				local c = at(t, 0.2, (f + cy) / 2)
+				B.part("Shell", "PassageStrip", CFrame.lookAt(c, c + d), V3(0.4, cy - f, 1.4), P.pier)
+			end
+			local p0 = math.max(fA, fB) + 1.9
+			local pc = at(0.5, 0.06, (p0 + cy - 1.6) / 2)
+			B.part("Shell", "PassagePanel", CFrame.lookAt(pc, pc + d), V3(0.12, cy - 1.6 - p0, len - 3.4), P.mass, { ghost = true })
+			local cc = at(0.5, 0.15, cy - 0.3)
+			B.part("Shell", "PassageCornice", CFrame.lookAt(cc, cc + d), V3(0.3, 0.6, len), P.trim, { ghost = true })
+			local nc = at(0.5, 0.35, cy - 0.7)
+			B.part("Shell", "PassageNose", CFrame.lookAt(nc, nc + d) * CFrame.Angles(0, math.pi / 2, 0), V3(len, 0.7, 0.7), P.trim, { cyl = true, ghost = true })
+		end
+		local mx, lx = (x0 + x1) / 2, math.abs(x1 - x0)
+		B.blk("Shell", "PassageCofferRim", mx - lx / 2 + 0.7, mx + lx / 2 - 0.7, cy - 0.18, cy - 0.02, MZ - 6.2, MZ + 6.2, P.trim, { ghost = true })
+		B.blk("Scenery", "PassageLight", mx - lx / 2 + 1.3, mx + lx / 2 - 1.3, cy - 0.3, cy - 0.18, MZ - 5.4, MZ + 5.4, P.panel, { ghost = true, mat = NEON })
+		local rx = x1 + sgn * 0.1 -- (the room's face of its wall)
+		for _, sz in { -1, 1 } do
+			B.part("Shell", "PassageJambNose", CF(rx, (fB + MY + 12) / 2, MZ + sz * 8.5) * CFrame.Angles(0, 0, math.pi / 2), V3(MY + 12 - fB + 1.4, 1.4, 1.4), P.trim, { cyl = true })
+		end
+		B.part("Shell", "PassageHeadNose", CF(rx, MY + 12, MZ) * CFrame.Angles(0, math.pi / 2, 0), V3(17 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
 	end
 	-- spawn points: you arrive facing the yard
 	local sp = folderIn(B.mk, "TrainSpawns")
@@ -1445,7 +1485,8 @@ end
 T.TOPD = TOPD
 -- the room behind the TOP door: the collar between the frame and the wall, the frame's depth made solid (kit meshes
 -- have no collision), the lining, skirting, cut corners, ceiling, floor and back, a lit strip and a lamp
-local function topRoom(B)
+local function topRoom(B, D)
+	local TOPD = D or TOPD
 	local x0, x1, y0, y1 = TOPD.x - TOPD.w / 2, TOPD.x + TOPD.w / 2, TOPD.y, TOPD.y + TOPD.h
 	local oy1 = y1 + TOPD.jamb
 	local front, fb = TOPD.frame + 1.8, TOPD.frame - 1.78 -- (the frame's front; its back, 0.02 inside it)
@@ -1874,6 +1915,17 @@ local function headGuards(B): number
 	return n
 end
 
+-- the v3 rooms (T.ROOMS): their module sets what the rest reads (T.DUMMIES, T.RAILS, T.LANE, T.COURSE, T.GOLD1,
+-- T.EGG_DOOR, T.TOPD3) now, before anything builds or checks
+local ROOMS3 = nil
+if T.ROOMS == "v3" then
+	local src = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingRooms")
+	if src then
+		ROOMS3 = require(src:Clone())
+		ROOMS3.apply(T, { Y0 = Y0, MY = MY, MZ = MZ, MTOP = MTOP, NEON = NEON, PASS = PASS, folderIn = folderIn, rail = rail, healPad = healPad, topRoom = topRoom })
+	end
+end
+
 function T.build(mode): string
 	local live = mode == "live"
 	if live then
@@ -1884,7 +1936,11 @@ function T.build(mode): string
 		local old = workspace.Map:FindFirstChild("TrainingStage"); if old then old:Destroy() end
 	end
 	local B = new(live)
-	muster(B); yard(B); range(B); course(B)
+	if T.ROOMS == "v3" and not ROOMS3 then return "STOPPED: T.ROOMS is v3 but PolishBackup.TrainingRooms is missing" end
+	muster(B)
+	if ROOMS3 then ROOMS3.build(B) else yard(B) end
+	range(B)
+	if not ROOMS3 then course(B) end
 	-- the back lot (push 10): its own builder, with this build's context
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	local lotNote = ""
@@ -2138,14 +2194,17 @@ function T.check(stage): string
 		V3(0, MY + 4, MZ), V3(0, MY + 14, MZ), V3(0, MY + 26, MZ), V3(12, MY + 4, MZ + 8), V3(-12, MY + 12, MZ - 8),
 		S5:PointToWorldSpace(V3(0, MY + 4, -(A + WALL + 3))), V3(26, MY + 4, MZ), V3(-26, MY + 4, MZ),
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
+		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
+		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)
+	}
+	local v2pts = {
 		V3(-58, Y0 + 4, -8120), V3(CXM, Y0 + 4, -8120), V3(-80, 274, -8225), V3(CXM, 286, TOWER.z), V3(-50, 280, -8130),
 		V3(-90, Y0 + 4, -8240), V3(CX0 + 6, 274, CZ1 + 6), V3(-100, 282, CZ1 + 8), V3(-70, 270, -8200), V3(CX0 + 30, 285, -8125),
 		V3(TOWER2.x, Y0 + 40, TOWER2.z), if EGG_STRIP then V3(EGGC.x, Y0 + 3, CZ0 + 8) else V3(TOPD.x, TOPD.y + 4, TOPD.back + 4), -- (the course since 18 Nov: the strip, the main hall, over ledge 3, the gallery, the far tower; the TOP room)
 		if EGG_STRIP then V3(EGGC.x, Y0 + 9, EGGC.face - 6) else V3(TOPD.x, TOPD.y + 8, TOPD.back + 2),
 		V3(AISLE.x, Y0 + 4, -8160), V3(AISLE.x, AISLE.ceil - 4, -8200), V3(AISLE.x, Y0 + 4, -8250), V3(AISLE.x1 + 1, 250, -8186), -- (the yard's side hall, and in an opening of its arcade)
-		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
-		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)
 	}
+	for _, q in (if ROOMS3 and ROOMS3.SEAL then ROOMS3.SEAL else v2pts) do table.insert(pts, q) end
 	for _, z in { -8154, -8186, -8218, -8250 } do
 		for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
 	end

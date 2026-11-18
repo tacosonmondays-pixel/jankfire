@@ -1115,6 +1115,15 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - With the key (`LotTest` "setkey"): within 2.5 s the plate read OPEN, all 8 rolling parts were up and hidden, and `EggBlock` let you through.
     - Walking at the ring: the step lifts you 0.6. With the deeper trigger (the same size as in the build), you were taken in 0.12 s to the playground's arrival (0, 306.7, -9388).
   - Photos: `training/egg_top_door_sheet.jpg` (no key: LOCKED; with the key: OPEN onto the portal; the room and the ring).
+- **18 Nov, the muster's passages finished (place version 905, TrainingV2 push 22):** the owner, from the course's side of the passage into the muster: "can you fix the back side of this to make it look presentable". The short splayed passages west (to the course) and east (to the range) were bare beige walls with a flat ceiling and one small light. `muster()` now gives them the house's finish on every face you see from inside:
+  - a dark skirting that follows the ramp;
+  - a framing strip at each end of each wall, with a pale panel between;
+  - a cornice with its white nose;
+  - a lit coffer (rim and panel) in the ceiling;
+  - the room-side opening framed in white noses (both jambs and the head).
+  - Checks: sealed (0 leaks), head room 0 within 0.6, the lot closed, the egg door shut.
+  - Photo: `training/muster_passage_before_after.jpg`.
+  - The same push carries the v3 rooms (`TrainingRooms.luau`, `T.ROOMS`), still switched off (`"v2"`) until they are judged.
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

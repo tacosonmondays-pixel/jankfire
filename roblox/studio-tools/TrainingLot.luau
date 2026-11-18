@@ -32,7 +32,7 @@ local RAD = math.rad
 
 L.KIT = 102031091411579 -- the kit's Model asset (tl_kit_5: lot_models.py; kit 5: flicker fixes in the frames and the roller)
 L.PORTAL_KIT = 125041627506798 -- the gold dummies' portal (te_portal_1: tools/roblox/egg_portal_models.py), L.import(L.PORTAL_KIT)
-L.PUSH = 17
+L.PUSH = 18
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -1456,7 +1456,8 @@ end
 function L.build(b, T): string
 	B, P, TV = b, T.P, T
 	-- (18 Nov: the course was rebuilt bigger; its tower stands where TrainingV2 says)
-	if TV.COURSE then L.GOLD[3] = { "course tower", TV.COURSE.tower, V3(-30, TV.COURSE.tower.Y, -8122) } end
+	if TV.COURSE then L.GOLD[3] = { "course tower", TV.COURSE.tower, TV.COURSE.look or V3(-30, TV.COURSE.tower.Y, -8122) } end
+	if TV.GOLD1 then L.GOLD[1] = TV.GOLD1 end -- (the v3 dummies hall: gold Carl 1 on the practice deck, TrainingRooms)
 	local root = B.root
 	for _, n in { "LotShell", "LotScenery" } do folderIn(root, n) end
 	LOT = folderIn(root, "Lot")
