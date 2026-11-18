@@ -398,6 +398,22 @@ end
 -- runs in a pcall, so a slip there never breaks a card
 local extras: { (Player, Player?, any) -> () } = {}
 function Stats.cardExtra(fn: (Player, Player?, any) -> ()) table.insert(extras, fn) end
+-- (Loadout's weapon-unlock grandfather, 18 Nov: the weapons a player has used, any time held, shot or kill. nil while
+-- their stats are loading)
+function Stats.usedWeapons(p: Player): { string }?
+	local s = st[p]
+	if not s or not s.ready then return nil end
+	local d = dataOf(s)
+	local out = {}
+	if d and type(d.wpn) == "table" then
+		for wid, w in d.wpn do
+			if type(wid) == "string" and type(w) == "table" and ((tonumber(w.t) or 0) > 0 or (tonumber(w.s) or 0) > 0 or (tonumber(w.k) or 0) > 0) then
+				table.insert(out, wid)
+			end
+		end
+	end
+	return out
+end
 local function extra(target: Player, viewer: Player?, card: any): any
 	for _, fn in extras do
 		local ok, err = pcall(fn, target, viewer, card)

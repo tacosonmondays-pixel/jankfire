@@ -37,6 +37,7 @@ local Binds = require(script.Parent:WaitForChild("Binds")) :: any
 local Keys = require(script.Parent:WaitForChild("Keys")) :: any
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local GunPreview = require(script.Parent:WaitForChild("GunPreview")) :: any
+local Unlocks = require(Shared:WaitForChild("Unlocks")) :: any -- (weapons open by level, a few are Robux: docs/PROGRESSION.md)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local TEAM_COLORS = { Color3.fromHex("#ff4fd8"), Color3.fromHex("#37d6ff"), Color3.fromHex("#ffe14d") } -- (the score's)
 
@@ -141,7 +142,7 @@ local done = new("TextButton", { Name = "Done", AutoButtonColor = false, BorderS
 T.corner(done, 4)
 done.Activated:Connect(function() setTray(nil) end)
 
-type Card = { id: string, btn: TextButton, st: UIStroke, vp: ViewportFrame, cam: Camera }
+type Card = { id: string, btn: TextButton, st: UIStroke, vp: ViewportFrame, cam: Camera, lk: TextLabel }
 local cards: { Card } = {}
 local cardsFor = ""
 
@@ -271,10 +272,13 @@ local function drawTray()
 			nm.AnchorPoint = Vector2.new(0, 1); nm.Position = UDim2.new(0, 4, 1, -3); nm.Size = UDim2.new(1, -8, 0, 14)
 			nm.TextScaled = true
 			new("UITextSizeConstraint", { MaxTextSize = 11, MinTextSize = 7 }, nm)
+			-- (LEVEL n on a locked one, ROBUX on a Robux one: Unlocks)
+			local lk = text(btn, "Lock", "", 9, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+			lk.Position = UDim2.fromOffset(3, 3); lk.Size = UDim2.new(1, -6, 0, 12); lk.ZIndex = 3
 			btn.Activated:Connect(function() ask(slot, e.id) end)
 			btn.MouseEnter:Connect(function() S.hover = e.id end)
 			btn.MouseLeave:Connect(function() if S.hover == e.id then S.hover = nil end end)
-			table.insert(cards, { id = e.id, btn = btn, st = st, vp = vp, cam = cam })
+			table.insert(cards, { id = e.id, btn = btn, st = st, vp = vp, cam = cam, lk = lk })
 		end
 	end
 	-- its size: as many columns as fit (7 at most), rows under them
@@ -308,7 +312,11 @@ local function drawTray()
 		c.st.Color = if on then T.ACCENT else Color3.new(1, 1, 1)
 		c.st.Transparency = if on then 0.15 else 0.9
 		c.btn.BackgroundColor3 = if on then T.CARD_HI else T.CARD
-		c.btn.BackgroundTransparency = if S.asking == c.id then 0.45 else 0
+		local okU, whyU = Unlocks.forPlayer(me, c.id)
+		c.lk.Text = if not okU then (whyU or "LOCKED") elseif Unlocks.robux(c.id) then (if Unlocks.WEAPONS_ROBUX_FREE then "ROBUX · FREE" else "ROBUX") else ""
+		c.lk.TextColor3 = if okU then T.MUTED else T.TEXT
+		c.vp.ImageTransparency = if okU then 0 else 0.65
+		c.btn.BackgroundTransparency = if S.asking == c.id then 0.45 elseif not okU then 0.5 else 0
 		task.defer(GunPreview.put, c.vp, c.cam, c.id)
 	end
 	tray.Visible = true
@@ -325,6 +333,12 @@ end
 ask = function(slot: string, wid: string)
 	if S.asking then return end
 	if current(slot) == wid then return end
+	local okU, whyU = Unlocks.forPlayer(me, wid)
+	if not okU then
+		S.note = if whyU == "ROBUX" then "a robux weapon" else string.lower(whyU or "locked") .. " unlocks it"
+		draw()
+		return
+	end
 	S.asking = wid
 	draw()
 	task.spawn(function()
@@ -435,7 +449,7 @@ me:GetAttributeChangedSignal("LoadoutReady"):Connect(function()
 	if isReady() then setTray(nil) end
 	if S.shown then draw() end
 end)
-for _, a in { "Wraps", "Hats", "Skins" } do
+for _, a in { "Wraps", "Hats", "Skins", "Level", "WeaponsKept", "UnlockAll" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if S.shown then draw() end end)
 end
 me.CharacterAdded:Connect(function() if S.shown then task.defer(draw) end end)

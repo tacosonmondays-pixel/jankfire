@@ -30,6 +30,7 @@ local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local GunSkins = require(Shared:WaitForChild("GunSkins"))
+local Unlocks = require(Shared:WaitForChild("Unlocks")) :: any -- (weapons open by level, a few are Robux: docs/PROGRESSION.md)
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
 local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags, one gun at a time)
@@ -38,12 +39,13 @@ local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
 local Loadout = {}
 local STORE, VERSION = "JankfireLoadout_v1", 1
-local DEFAULT = { primary = "redline", secondary = "marbles", melee = "katana", utility = "frag" }
+local DEFAULT = { primary = "ar", secondary = "pistol", melee = "katana", utility = "frag" } -- (all level 1: Unlocks. was the Redline and the Marble Shotgun until 18 Nov)
 local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking)
 
 type Data = {
 	pick: { [string]: string }, wraps: { [string]: { id: string, mode: string } }, hats: { [string]: string },
 	skins: { [string]: string }, try: any?,
+	kept: { [string]: boolean }, u: number?, -- (weapons kept at any level, and whether that was worked out yet: Unlocks)
 	loaded: boolean, canSave: boolean, dirty: boolean, saveAt: number, touched: boolean,
 }
 local data: { [Player]: Data } = {}
@@ -105,6 +107,10 @@ local function publish(p: Player)
 	table.sort(skins)
 	p:SetAttribute("Skins", table.concat(skins, ";"))
 	p:SetAttribute("LoadoutSave", if not d.loaded then "loading" elseif d.canSave then "cloud" else "off")
+	local kept = {}
+	for wid in d.kept do table.insert(kept, wid) end
+	table.sort(kept)
+	p:SetAttribute("WeaponsKept", if #kept > 0 then table.concat(kept, ",") else nil)
 end
 
 -- ------------------------------------------------------------------ where you are (the server's own zone)
@@ -294,6 +300,10 @@ local function adopt(d: Data, saved: any)
 			if e and e.live and GunHats.valid(h) and h ~= "none" then d.hats[wid] = h end
 		end
 	end
+	if type(saved.kept) == "table" then
+		for _, wid in saved.kept do if type(wid) == "string" and Roster.byId[wid] then d.kept[wid] = true end end
+	end
+	if type(saved.u) == "number" then d.u = saved.u end
 	if type(saved.skins) == "table" then
 		for wid, s in saved.skins do
 			local e = if type(wid) == "string" then Roster.byId[wid] else nil
@@ -303,6 +313,30 @@ local function adopt(d: Data, saved: any)
 end
 
 local function key(p: Player): string return "u" .. p.UserId end
+
+-- (18 Nov: weapons open by level now. nobody loses anything: what a player already carried or used stays theirs at any
+-- level, worked out once per player: their saved picks and every weapon their stats show they've used)
+local function grandfatherWeapons(p: Player, d: Data)
+	local okS, S = pcall(function() return require(script.Parent:WaitForChild("Stats", 10) :: ModuleScript) end)
+	local used: { string }? = nil
+	local t0 = os.clock()
+	while p.Parent and data[p] == d and os.clock() - t0 < 30 do
+		if okS and type(S) == "table" and type((S :: any).usedWeapons) == "function" then used = (S :: any).usedWeapons(p) end
+		if used then break end
+		task.wait(1)
+	end
+	if not used or not p.Parent or data[p] ~= d or d.u ~= nil then return end -- (stats unreadable: next join)
+	for _, slot in Roster.SLOTS do
+		local w = d.pick[slot]
+		if w and Unlocks.level(w) > 1 then d.kept[w] = true end
+	end
+	for _, w in used do
+		if Roster.byId[w] and Unlocks.level(w) > 1 then d.kept[w] = true end
+	end
+	d.u = 1
+	d.dirty, d.saveAt = true, os.clock() + SAVE_DELAY
+	publish(p)
+end
 
 local function load(p: Player)
 	local d = data[p]
@@ -318,6 +352,7 @@ local function load(p: Player)
 		for wid, w in d.wraps do table.insert(old, { type = "wrap", id = w.id, weapon = wid }) end
 		for wid, h in d.hats do table.insert(old, { type = "hat", id = h, weapon = wid }) end
 		Loot.grandfather(p, old)
+		if d.u == nil then task.spawn(grandfatherWeapons, p, d) end
 	end
 	publish(p)
 	pushNext(p)
@@ -331,7 +366,9 @@ local function save(p: Player)
 	d.dirty = false
 	local wraps = {}
 	for wid, w in d.wraps do wraps[wid] = { w.id, w.mode } end
-	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins) }
+	local kept = {}
+	for wid in d.kept do table.insert(kept, wid) end
+	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins), kept = kept, u = d.u }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
 	if not ok then
 		d.dirty = true; d.saveAt = os.clock() + 20
@@ -387,6 +424,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		-- (in a match: only in the loadout window, never while a round is live)
 		if not free and p:GetAttribute("Zone") == "match" and not inWindow(p) then
 			return false, if p:GetAttribute("LoadoutReady") then "you're locked in for this round" else "the loadout opens before a round and between rounds"
+		end
+		-- (weapons open by level, a few are Robux: Unlocks. trying in training is still anything)
+		if not free then
+			local okU, whyU = Unlocks.forPlayer(p, b)
+			if not okU then return false, if whyU == "ROBUX" then "a robux weapon" else string.lower(whyU or "locked") .. " unlocks it" end
 		end
 		if L.pick[a] == b then return true, nil end
 		L.pick[a] = b
@@ -446,6 +488,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
 		if a == "shredder" and f then syncTools(p, f) end
 		return true, nil
+	elseif op == "unlockall" then
+		-- (the owner and Studio: every weapon open, or back to your level to see the locks)
+		if not (RunService:IsStudio() or p.UserId == game.CreatorId) then return false, "nope" end
+		p:SetAttribute("UnlockAll", if a == true then true else nil)
+		return true, nil
 	elseif op == "arm" then
 		local f = Fight and Fight.byPlayer[p]
 		if not f then return false, "nope" end
@@ -472,7 +519,9 @@ end
 
 local function added(p: Player)
 	if data[p] then return end
-	data[p] = { pick = table.clone(DEFAULT), wraps = {}, hats = {}, skins = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
+	data[p] = { pick = table.clone(DEFAULT), wraps = {}, hats = {}, skins = {}, kept = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
+	-- (the owner, and every Studio test, start with every weapon open: Unlocks. "unlockall" false shows the locks)
+	if RunService:IsStudio() or p.UserId == game.CreatorId then p:SetAttribute("UnlockAll", true) end
 	publish(p)
 	task.spawn(load, p)
 end

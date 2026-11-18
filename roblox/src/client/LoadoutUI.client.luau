@@ -797,8 +797,15 @@ refresh = function()
 		a.st.Thickness = if focused then 2 else 1
 		-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
 		a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
-		a.tag.Text = if equipped then onKey(state.slot) elseif e.live then "LIVE · ready" else "COMING SOON"
-		a.tag.TextColor3 = if equipped then ACCENT elseif e.live then GREY else DIM
+		-- (weapons open by level, a few are Robux and free for now: Unlocks, docs/PROGRESSION.md. training: anything)
+		local U = require(Shared:WaitForChild("Unlocks")) :: any
+		local okU, whyU = U.forPlayer(me, a.id)
+		okU = okU or trying()
+		a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
+			elseif U.robux(a.id) then (if U.WEAPONS_ROBUX_FREE then "ROBUX · FREE FOR NOW" else "ROBUX")
+			elseif not okU then whyU or "LOCKED" else "LIVE · ready"
+		a.tag.TextColor3 = if equipped then ACCENT elseif not e.live or not okU then DIM else GREY
+		a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
 	end
 	-- the focused weapon
 	local e = Roster.byId[state.focus] or Roster.byId[p[state.slot]]
@@ -819,7 +826,9 @@ refresh = function()
 		local full = if s and s.text ~= "n/a" then math.clamp(s.bar, 0.03, 1) else 0 -- (nothing to measure: an empty track)
 		tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
 	end
+	local okE, whyE = (require(Shared:WaitForChild("Unlocks")) :: any).forPlayer(me, e.id)
 	if not e.live then equipBtn:set("COMING SOON", false)
+	elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
 	elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
 	else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
 	showPreview(e.id)
@@ -1406,7 +1415,7 @@ end)
 -- the screen follows the server: picks / wraps / save status changing, a match grabbing you, a death
 -- (what you own: asked when the screen opens and whenever you win something)
 me:GetAttributeChangedSignal("LootOwned"):Connect(function() task.spawn(function() fetchOwned(); if state.open then refresh() end end) end)
-for _, a in { "LoadoutNext", "Wraps", "LoadoutSave", "Hats", "Skins", "Trying" } do
+for _, a in { "LoadoutNext", "Wraps", "LoadoutSave", "Hats", "Skins", "Trying", "Level", "WeaponsKept", "UnlockAll" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if state.open then refresh() end end)
 end
 -- (in or out of training with the screen up: the TRY line and marks follow)
