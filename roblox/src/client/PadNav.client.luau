@@ -14,6 +14,8 @@
 --     sees it (the selection is cleared the moment the mouse moves)
 --   * hints: bracketed keys in menu text ("DONE  [L]") follow the pad too (Pad.say), and a few key caps say which pad
 --     button they mean (Pad attribute: the View glyph by SETTINGS, B on the shop's CLOSE and on SKIP)
+-- (VIEW's order: pop-up ads / a quiz, the end-of-match board's REPORTs, the match loadout strip, an invite, quick join, a
+-- vote, then the hub's menu column and SETTINGS)
 -- Studio tests: player attribute PadNavTest = "bar" (as VIEW), "back" (as B), "tab:1" / "tab:-1" (the bumpers),
 -- "nudge:1" / "nudge:-1", "select:<full name>" ; PadNavState (read) = JSON of the top menu and the selection
 local Players = game:GetService("Players")
@@ -209,15 +211,16 @@ local function viewport(): Vector2
 	local cam = workspace.CurrentCamera
 	return if cam then cam.ViewportSize else Vector2.new(1280, 720)
 end
--- catchers (a full-screen button that only stops clicks) and buttons that hold other buttons are never picked
-local prepped: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
-local function prep(g: ScreenGui)
+-- catchers (a full-screen button that only stops clicks) and buttons that hold other buttons are never picked. it's
+-- measured each time, not once: a screen laid out after it was first seen (a scrim still at size 0) must count
+local function catcher(o: GuiObject): boolean
 	local vp = viewport()
+	return o.AbsoluteSize.X >= vp.X * 0.85 and o.AbsoluteSize.Y >= vp.Y * 0.85
+end
+local function prep(g: ScreenGui)
 	for _, d in g:GetDescendants() do
-		if d:IsA("GuiButton") and not prepped[d] and d.AbsoluteSize.X > 0 then
-			prepped[d] = true
-			local big = d.AbsoluteSize.X >= vp.X * 0.85 and d.AbsoluteSize.Y >= vp.Y * 0.85
-			if big or d:FindFirstChildWhichIsA("GuiButton", true) then d.Selectable = false end
+		if d:IsA("GuiButton") and d.Selectable and d.AbsoluteSize.X > 0 and (catcher(d) or d:FindFirstChildWhichIsA("GuiButton", true)) then
+			d.Selectable = false
 		end
 	end
 	-- (the screen's own top frames keep the selection in: it stops at their edges instead of going out to the HUD)
@@ -236,6 +239,7 @@ local function pickable(o: Instance, root: Instance): boolean
 	if not o:IsA("GuiObject") or not o.Selectable then return false end
 	if not (o:IsA("GuiButton") or o:IsA("TextBox") or o:GetAttribute("PadPick")) then return false end
 	if o.AbsoluteSize.X < 4 or o.AbsoluteSize.Y < 4 then return false end
+	if o:IsA("GuiButton") and (catcher(o) or o:FindFirstChildWhichIsA("GuiButton", true)) then return false end
 	return shown(o, root)
 end
 local function candidates(root: Instance): { GuiObject }
@@ -318,6 +322,14 @@ local function barTargets(): ({ GuiObject }, string, string)
 		end
 		table.sort(out, function(a, b) return a.AbsolutePosition.X < b.AbsolutePosition.X end)
 		if #out > 0 then return out, "row", "pop" end
+	end
+	-- the end-of-match board: its REPORT buttons (ReportClient puts one on every other player's row)
+	local fight = pg:FindFirstChild("JankfireFight")
+	local endF = fight and fight:FindFirstChild("End", true)
+	if endF and endF:IsA("GuiObject") and shown(endF, fight :: Instance) then
+		addShown(out, endF, { "Report" })
+		table.sort(out, function(a, b) return a.AbsolutePosition.Y < b.AbsolutePosition.Y end)
+		if #out > 0 then return out, "column", "board" end
 	end
 	-- a pop-up: the match loadout strip, an invite, quick join, a vote
 	local ml = pg:FindFirstChild("JankMatchLoadout")

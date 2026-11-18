@@ -100,11 +100,12 @@ It ports `public/js/aimassist.js` and keeps its rules and ring:
 - **The focus ring:** one quiet white rounded ring, 2 px, with a 7% white wash (`PlayerGui.SelectionImageObject`). A mouse player never sees it: the selection is cleared the moment the mouse moves.
 - **VIEW** goes to the buttons on screen, in this order:
   1. what someone threw at you: pop-up ads (A closes the picked one, as its number key would, and the next one is picked) and a pop quiz's answers
-  2. the match loadout strip (slots, READY)
-  3. an invite (JOIN / DECLINE)
-  4. QUICK JOIN
-  5. a vote
-  6. the hub's menu column (LOADOUT, PLAY, PARTY, SHOP, PROFILE, QUESTS) and then SETTINGS, which opens with A
+  2. the end-of-match board's REPORT buttons (one per other player's row; A opens the report, B closes it)
+  3. the match loadout strip (slots, READY)
+  4. an invite (JOIN / DECLINE)
+  5. QUICK JOIN
+  6. a vote
+  7. the hub's menu column (LOADOUT, PLAY, PARTY, SHOP, PROFILE, QUESTS) and then SETTINGS, which opens with A
 
   B or VIEW again leaves them. While they're picked, the left stick moves the selection, not you.
 
@@ -131,6 +132,7 @@ It ports `public/js/aimassist.js` and keeps its rules and ring:
     - RB goes to CROSSHAIR, with the selection on its nearest pill.
     - B closes it.
   - The emote wheel: hold D-Right, push the right stick up-right, and slot 2 lights (`emote-wheel-right-stick-v772.jpg`). Letting go plays it and closes the wheel.
+  - The shop (v775): the ring starts on FEATURED, the CLOSE cap shows B, RB goes to DEALS and B closes it (`shop-focus-ring-v775.jpg`). The profile card and quests close on B. Their full-screen Scrim took the selection, so since v775 a catcher is measured every time instead of once.
   - Pad buttons through Binds (pretend Gamepad1 presses): RS takes out the katana, and Y goes round to the SMG, then the revolver.
   - The right stick held fully over turns the shoulder camera about 7° a frame once the acceleration is up.
   - Aim assist on the training Stand 12 studs away:
