@@ -792,10 +792,25 @@ local function startCut(id: string, again: boolean?)
 	local pc = pm:GetPivot().Position
 	local away = flat(finish - pc, -face) -- (the panel's far side: they come from there)
 	rayP.FilterDescendantsInstances = { me.Character :: Instance, localFolder, cutFolder }
-	local run = 14
-	local hit = workspace:Raycast(finish + Vector3.new(0, 2.5, 0), away * run, rayP)
-	if hit then run = math.max(4, hit.Distance - 2) end
-	local start = finish + away * run
+	-- the way in: the longest clear, floored run (up to 16 studs) among directions round the panel's far side, never
+	-- from the camera's side
+	local best, bestDir = 0, away
+	for _, deg in { 0, 30, -30, 60, -60, 90, -90, 120, -120 } do
+		local dir = (CFrame.Angles(0, math.rad(deg), 0) * away)
+		if dir:Dot(face) > 0.55 then continue end
+		local run = 16
+		local hit = workspace:Raycast(finish + Vector3.new(0, 2.5, 0), dir * run, rayP)
+		if hit then run = hit.Distance - 2 end
+		-- (floor all the way: step back from the far end till there is)
+		while run > 3 do
+			local p = finish + dir * run
+			local fl = workspace:Raycast(p + Vector3.new(0, 4, 0), Vector3.new(0, -8, 0), rayP)
+			if fl and math.abs(fl.Position.Y - finish.Y) < 1.5 then break end
+			run -= 2
+		end
+		if run > best + 0.5 then best, bestDir = run, dir end
+	end
+	local start = finish + bestDir * math.max(4, best)
 	-- after: off toward where they live (the last shot's only hint)
 	local home = placed[id]
 	local exit = if home then flat(home:GetPivot().Position - finish, -face) else -face
