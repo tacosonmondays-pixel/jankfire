@@ -35,7 +35,7 @@ local _ = Players
 	local D = w and w.dash
 	if not D then return end
 	local n = now()
-	if n < f.staggerUntil or (f.castUntil and n < f.castUntil) or Rules.parryOpen(f, n) then return end
+	if n < f.staggerUntil or (f.castUntil and n < f.castUntil) or Rules.parryOpen(f, n) or Rules.transforming(f, n) then return end
 	if not Rules.gate(f, "dash", n, D.cd / 0.9) then return end -- (one charge: the next only after cd s)
 	local root = Fight.root(f)
 	if not root then return end

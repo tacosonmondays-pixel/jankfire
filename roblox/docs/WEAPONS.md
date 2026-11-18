@@ -111,23 +111,27 @@ This spec keeps the web game's names; on Roblox they show as:
 The signature weapons keep their names. Two callouts changed: the Lever Rifle's chain reads "CHAIN x1.30" (was
 "YEEHAW x1.30"), and the Taser's reads "3 LINKED".
 
-## Scythe on Roblox: a loadout melee, 18 Nov 2026
+## Scythe on Roblox: a melee that is also a rifle, 18 Nov 2026
 
-The owner: *"Bring scythe in as a weapon, balance it especially its dash"*. On the web the Scythe was a killstreak reward:
-65 damage, 4.6 m reach, five dash charges, and it folds into a rifle. On Roblox it is a normal melee in the loadout
-(id `scythe`, slot melee, Weapons.luau). The rifle fold isn't ported.
+The owner: *"Bring scythe in as a weapon, balance it especially its dash"*, then *"It's a sniper too remember"*. On the
+web the Scythe was a killstreak reward: 65 damage, 4.6 m reach, five dash charges, and it folds into a rifle. On Roblox
+it is one loadout weapon in the melee slot (unlock level 14, Unlocks.luau) with two forms: the scythe (id `scythe`)
+and its rifle (id `scythe_rifle`, `formOf = "scythe"`). Q switches between them (bind "form", rebindable; D-pad left
+on a controller; FORM on a phone). Each form is a little under the specialist: the Katana up close, the Sniper at range.
+Kills, hits and time held in either form count as the Scythe (Weapons.base, Roster.formOf).
 
-**The swing.** Slow, wide and long, and two hits kill.
+**The scythe form's swing.** Slow, wide and long, and two hits kill. Since the rifle came in it swings a little slower
+and reaches a little less (was 0.80 s and 3.6 m), so it no longer out-kills the Katana.
 
 | | Scythe | Katana | Knife |
 |---|---|---|---|
 | damage | 50 | 48 | 55 (x3 from behind) |
 | wind-up (hit after the click) | 0.24 s | 0.12 s | 0.10 s |
-| between swings | 0.80 s | 0.50 s | 0.42 s |
-| reach | 3.6 m (10.8 studs) | 2.8 m, +0.5 m a kill | 2.6 m |
+| between swings | 0.95 s | 0.50 s | 0.42 s |
+| reach | 3.3 m (9.9 studs) | 2.8 m, +0.5 m a kill | 2.6 m |
 | cone (half-angle) | 0.95 rad | 0.70 rad | 0.75 rad |
 | hits to kill (100 HP) | 2 | 3 | 2 (1 from behind) |
-| time to kill, every swing landing | 1.04 s | 1.12 s | 0.52 s |
+| time to kill, every swing landing | 1.19 s | 1.12 s | 0.52 s |
 | run speed | x0.95 | x1 | x1.1 |
 
 **The dash** (right click; `ScytheDash.server`). The server decides it, and the client only runs the path it's given.
@@ -145,8 +149,48 @@ The owner: *"Bring scythe in as a weapon, balance it especially its dash"*. On t
 | anti-cheat | the server stamps ACGrace for the dash + 0.4 s |
 
 **Kill and escape values.**
-- Dash into a swing: 25 + 50 = 75 by 0.81 s (the dash, the recovery, the wind-up). A second swing kills at 1.61 s. That closes 8 m and kills in about the same time the Katana takes standing next to you.
+- Dash into a swing: 25 + 50 = 75 by 0.81 s (the dash, the recovery, the wind-up). A second swing kills at 1.76 s. That closes 8 m, and the kill comes about half a second after the Katana's standing still.
 - As an escape it's 8 m once every 6 s. Everyone has the grapple, so the dash adds a short burst, not a getaway. Ranked uses the same numbers.
+
+**The rifle form.** Server hitscan like every gun. Right click scopes; it has its own mag and reload.
+
+| | Scythe rifle | Sniper |
+|---|---|---|
+| body / head | 45 / 81 (x1.8) | 55 / always kills |
+| shots to kill | 3 body, or a head and anything | 1 head, 2 body |
+| time between shots | 1.0 s | 0.91 s |
+| mag / reload | 4 / 2.0 s | 5 / 2.2 s |
+| hip spread / scoped | 0.06 rad / none | 0.05 rad / none |
+| scope zoom | x3 | x4 |
+| shove | 30 m/s | 75 m/s (a body shot throws them off the map) |
+| range | 400 m | 500 m |
+| time to kill | 2.0 s body only, 1.0 s with a headshot | 0 s head, 0.91 s body |
+
+**The switch.** `Rules.equip` decides it; the client checks the same so it never shows the wrong form.
+
+| | |
+|---|---|
+| switch time | 0.45 s: no swing, dash, shot or reload |
+| rifle's first shot | 0.15 s after that (0.6 s after the key) |
+| refused | within 0.6 s of a swing's click, 0.35 s of a shot, during a dash or its recovery, while staggered or stunned, mid-switch |
+| reload | switching cancels it; each form keeps its own ammo for the life |
+| dash | only in the scythe form; its 6 s cooldown runs through switches |
+| the look | the blade slides down the haft behind the grip and turns on its edge as the stock, a scope comes up out of the haft, the teal collar is the muzzle (GunParts eases the pieces across; everyone sees it via the FormT attribute) |
+
+**Combos across the switch.** The switch never makes a kill faster than one form alone.
+- Rifle headshot (81), then the scythe: switch at 0.35 s, swing ready at 0.8 s, kill at 1.04 s. The rifle's own second shot kills at 1.0 s.
+- Swing (50), then the rifle: switch at 0.6 s, first shot at 1.2 s, a kill only with a headshot. Two swings kill at 1.19 s.
+- Dash (25), then the rifle: the recovery ends at 0.57 s, first shot at 1.17 s, a kill with a headshot (106). That's level with the Katana standing still (1.12 s), and it needs both the dash and the headshot to land.
+
+**Time to kill, both forms.**
+
+| | best case | every hit to the body |
+|---|---|---|
+| Scythe (swing) | 1.19 s | 1.19 s |
+| Scythe (dash + swings) | 1.76 s (closes 8 m) | 1.76 s |
+| Scythe rifle | 1.0 s | 2.0 s |
+| Katana | 1.12 s | 1.12 s |
+| Sniper | 0 s | 0.91 s |
 
 ## Everything at a glance
 

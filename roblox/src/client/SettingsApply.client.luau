@@ -94,7 +94,8 @@ local WEAPON_NAMES = { click = true, empty = true, reload = true, thwack = true,
 	hit = true, headshot = true, headshot_ko = true, kill = true,
 	crit_return = true, wave_cast = true, wave_fly = true, wave_hit = true, wave_wall = true, edge_full = true, -- (the katana's moves sit with its parry: 18 Nov)
 	minigun_spinup = true, minigun_spin = true, minigun_spindown = true, reload_minigun = true, water_soak = true,
-	nail_wall = true, nail_pinned = true, bread_bonk = true, slap_hit = true, slap_whoosh = true } -- (weapons batch A, d8fb3a1)
+	nail_wall = true, nail_pinned = true, bread_bonk = true, slap_hit = true, slap_whoosh = true, -- (weapons batch A, d8fb3a1)
+	scythe_swing = true, scythe_hit = true, scythe_dash = true, scythe_shot = true, scythe_form = true } -- (the Scythe and its rifle form)
 local function kind(name: string): string
 	local base = string.match(name, "^(.-)#%d+$") or name
 	-- (skin_<skin>_<kind>: a special skin's shot and reload layers, the sound session's: they go with the guns)

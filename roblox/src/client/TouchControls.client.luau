@@ -182,7 +182,7 @@ local function fakeScreen(sz: Vector2?)
 end
 
 type Btn = { id: string, key: any, label: string, x: number, y: number, d: number, look: boolean?, fight: boolean?,
-	toggle: boolean?, katana: boolean?, body: boolean?, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, finger: any, lit: boolean }
+	toggle: boolean?, katana: boolean?, scythe: boolean?, body: boolean?, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, finger: any, lit: boolean }
 local BTNS: { Btn } = {}
 local byId: { [string]: Btn } = {}
 local function def(id: string, key: any, label: string, x: number, y: number, d: number, o: { [string]: boolean }?)
@@ -200,6 +200,7 @@ def("melee", Enum.KeyCode.Three, "STAB", 176, 152, 44, { fight = true })
 def("swap", nil, "SWAP", 180, 98, 44, { fight = true })
 def("reload", Enum.KeyCode.R, "RELOAD", 176, 44, 46, { fight = true })
 def("wave", Enum.KeyCode.Q, "WAVE", 112, 240, 52, { fight = true, katana = true }) -- (the katana's slash wave: shown with the katana out, lit with the meter full)
+def("form", Enum.KeyCode.Q, "FORM", 112, 240, 52, { fight = true, scythe = true }) -- (the Scythe <-> its rifle, in the wave's spot: you never carry both)
 def("yank", Enum.KeyCode.F, "YANK", 56, 244, 50, { fight = true, body = true }) -- (the grapple's yank: shown while your rope is on a person and it's ready. Move.client)
 local TEXT_SIZE: { [string]: number } = { fire = 17, jump = 13, hook = 13, crouch = 12, aim = 12 }
 
@@ -886,10 +887,11 @@ RunService.Heartbeat:Connect(function()
 	local cam = workspace.CurrentCamera
 	local watching = cam ~= nil and cam.CameraType == Enum.CameraType.Scriptable and me:GetAttribute("Emote") == nil
 	local kat, edgeFull = heldWeapon() == "katana", me:GetAttribute("EdgeFull") == true
+	local scy = heldWeapon() == "scythe" or heldWeapon() == "scythe_rifle"
 	local yt = me:GetAttribute("YankT")
 	local onBody = me:GetAttribute("HookBody") == true and not (type(yt) == "number" and workspace:GetServerTimeNow() < yt)
 	for _, b in BTNS do
-		local vis = (fight or not b.fight) and not watching and (not b.katana or kat) and (not b.body or onBody)
+		local vis = (fight or not b.fight) and not watching and (not b.katana or kat) and (not b.scythe or scy) and (not b.body or onBody)
 		if b.face.Visible ~= vis then b.face.Visible = vis end
 		local lit = (b.id == "aim" and aimOn) or (b.id == "wave" and edgeFull)
 		if lit ~= b.lit or b.face.BackgroundColor3 ~= (if lit then T.ACCENT else T.BG) then b.lit = lit; style(b.face, lit, b.id == "fire") end

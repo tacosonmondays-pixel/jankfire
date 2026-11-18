@@ -44,6 +44,7 @@ export type Fighter = {
 	qsT: number?, aimT: number?,
 	fanN: number?, -- the Revolver: fanned shots in the string so far (0 after a tap)
 	spin: { lvl: number, t: number, on: boolean }?, -- the Minigun's barrels: the spin level at t, rising while on (Rules.spin)
+	formUntil: number?, -- the Scythe turning into its rifle or back (Rules.equip): no swing, dash, shot or reload till then
 	-- a range Carl (RangeTest): the one runner who may hurt him (anything else that is not nil: nobody may)
 	onlyFor: any?,
 }
@@ -80,7 +81,14 @@ function Rules.arm(f: Fighter, now: number)
 		local w = W[id]
 		if w and w.mag then f.ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		f.gate[id] = -math.huge
+		-- (a weapon's second form, the Scythe's rifle: its own full mag, kept through switches this life)
+		local alt = w and w.form and W[w.form.to]
+		if alt then
+			if alt.mag then f.ammo[alt.id] = { mag = alt.mag, reloadUntil = 0 } end
+			f.gate[alt.id] = -math.huge
+		end
 	end
+	f.formUntil = nil
 end
 
 -- (re)spawn: full HP, full mags, nothing left over from the last life
@@ -94,10 +102,18 @@ end
 local function finite(x: any): boolean return type(x) == "number" and x == x and x > -math.huge and x < math.huge end
 Rules.finite = finite
 
--- is this one of YOUR weapons this life (anything else is refused, whatever the client sends)
+-- is this one of YOUR weapons this life (anything else is refused, whatever the client sends). a weapon's second form
+-- (the Scythe's rifle) is yours when the weapon is
 local function inLoadout(f: Fighter, w: any): boolean
 	if type(w) ~= "string" then return false end
-	return table.find(Rules.loadoutOf(f), w) ~= nil
+	local lo = Rules.loadoutOf(f)
+	if table.find(lo, w) ~= nil then return true end
+	local row = W[w]
+	return row ~= nil and row.formOf ~= nil and table.find(lo, row.formOf) ~= nil
+end
+-- mid-switch between a weapon's two forms (Rules.equip): extra = the gun's first-shot delay on top
+local function transforming(f: Fighter, now: number, extra: number?): boolean
+	return f.formUntil ~= nil and now < (f.formUntil :: number) + (extra or 0) - Rules.JITTER
 end
 
 -- the ammo, finishing a reload whose time has come
@@ -107,6 +123,7 @@ local function ammoOf(f: Fighter, wid: string, now: number): Ammo?
 	return a
 end
 Rules.ammoOf = ammoOf
+Rules.transforming = transforming
 
 -- a rate gate: refuse if it's too soon, else book the next slot. 10% under the real interval + a little early arrival
 -- (jitter) is fine; idle time can't be banked for a burst (at most `JITTER` s of it)
@@ -122,8 +139,21 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 	if not inLoadout(f, wid) then return "not your weapon" end
 	if not f.alive then return "dead" end
 	if f.held == wid then return nil end
+	-- the Scythe turning into its rifle or back (the key "form"): not mid-swing, mid-shot, mid-dash or mid-switch
+	local fw = W[f.held]
+	local F = fw and fw.form
+	local turn = F ~= nil and F.to == wid
+	if turn then
+		local Fx = F :: any
+		if now < f.staggerUntil then return "staggered" end
+		if transforming(f, now) then return "switching" end
+		if f.castUntil and now < f.castUntil then return "casting" end
+		if f.swing and now - f.swing.t < Fx.swingLock then return "mid-swing" end
+		if now - (f.lastShot[f.held] or -math.huge) < Fx.shotLock - Rules.JITTER then return "mid-shot" end
+	end
 	if now - (f.gate.equip or -math.huge) < 0.15 then return "too fast" end
 	f.gate.equip = now
+	if turn then f.formUntil = now + (F :: any).time end
 	f.swing = nil -- a swing doesn't land after you've put the blade away
 	local a = f.ammo[f.held]
 	if a and a.reloadUntil > 0 and now < a.reloadUntil then a.reloadUntil = 0 end
@@ -167,6 +197,7 @@ function Rules.reload(f: Fighter, wid: any, now: number): string?
 	if not f.alive then return "dead" end
 	if f.noReload then return "no reloads" end -- (one in the chamber: kills are the only bullets)
 	if f.held ~= wid then return "not held" end
+	if transforming(f, now) then return "switching" end
 	local a = ammoOf(f, wid, now)
 	if not a then return "no ammo" end
 	if a.reloadUntil > 0 then return "already reloading" end
@@ -185,6 +216,7 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if not f.alive then return "dead", 1 end
 	if f.held ~= wid then return "not held", 1 end
 	if now < f.staggerUntil then return "staggered", 1 end
+	if transforming(f, now, if w.form then w.form.fireDelay else 0) then return "switching", 1 end
 	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head", 1 end
 	local a = ammoOf(f, wid, now)
 	if not a then return "no ammo", 1 end
@@ -381,6 +413,7 @@ function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?, yaw: an
 	if now < f.staggerUntil then return "staggered" end
 	if Rules.parryOpen(f, now) then return "guarding" end
 	if f.castUntil and now < f.castUntil then return "casting" end
+	if transforming(f, now) then return "switching" end
 	if not Rules.gate(f, "swing", now, (if hv then hv.cd else w.cd) :: number) then return "too fast" end
 	f.swing = { t = now, w = wid, hit = {}, heavy = hv ~= nil, yaw = if finite(yaw) then yaw else nil }
 	return nil

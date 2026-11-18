@@ -86,6 +86,9 @@ end
 -- (weapons batch C) the projectile weapons (the Chicken Rocket, the Peel Shooter, the Tennis Ball Launcher, the
 -- Snowball, the Blood Cross): ProjClient sends the click, the server flies them
 minigun.proj = require(script.Parent:WaitForChild("ProjClient")) :: any
+-- (the Scythe's two forms) mid-switch till formUntil; the form each two-form weapon was last in (its slot key takes that
+-- one out again); when your last shot went off (no switch right after a shot)
+minigun.formUntil, minigun.lastForm, minigun.shotT = 0, {} :: { [string]: string }, -math.huge
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -132,7 +135,13 @@ local function resetAmmo()
 		local w = W[id]
 		if w.mag then ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		nextShot[id] = 0
+		local alt = w.form and W[w.form.to] -- (the Scythe's rifle: its own mag, Rules.arm)
+		if alt then
+			if alt.mag then ammo[alt.id] = { mag = alt.mag, reloadUntil = 0 } end
+			nextShot[alt.id] = 0
+		end
 	end
+	minigun.formUntil = 0
 end
 resetAmmo()
 
@@ -376,10 +385,32 @@ local function equip(wid: string)
 	Sfx.play("click")
 end
 
+-- the key "form" (Q) with the Scythe out: it turns into its rifle, or back (Rules.equip checks the same: not mid-swing,
+-- mid-shot, mid-dash or mid-switch). the blade and scope move across (GunParts), nothing fires or swings till it's done
+function minigun.form(now: number)
+	local w = W[held]
+	local F = w and w.form
+	if not F or not W[F.to] or Body.stunned() or Body.dashing() then return end
+	if now < minigun.formUntil or now < staggerUntil or pending then return end
+	if now - lastSwing < F.swingLock or now - minigun.shotT < F.shotLock then return end
+	minigun.formUntil = now + F.time
+	minigun.lastForm[w.formOf or held] = F.to
+	minigun.parts.myFormT = now
+	equip(F.to)
+	VM.play("form_scythe")
+	Sfx.play("scythe_form") -- (a metal slide and the lock: the sound session's, v816)
+	if W[F.to].kind == "hitscan" then
+		nextShot[F.to] = math.max(nextShot[F.to] or 0, now + F.time + F.fireDelay)
+	else
+		nextSwing = math.max(nextSwing, now + F.time)
+	end
+end
+
 local function reload()
 	local w = W[held]
 	local a = ammo[held]
 	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return end
+	if os.clock() < minigun.formUntil then return end -- (mid-switch: the Scythe's rifle reloads once it's a rifle)
 	if me:GetAttribute("NoReload") then return end -- (one in the chamber: kills are the only bullets, Modes.luau)
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
@@ -455,6 +486,7 @@ local function fireGun(now: number, fan: boolean?)
 	local F = if fan then w.fan else nil
 	local iv = 1 / Weapons.fireRate(w, hp())
 	nextShot[held] = math.max(nextShot[held], now - math.min(0.04, iv / 2)) + iv
+	minigun.shotT = now
 	if w.fan then fanNext = now + 1 / w.fan.rate end
 	if w.burst then -- the Hat Trick: a press is a whole burst, then a breath before the next one
 		if burstLeft <= 0 then burstLeft = w.burst end
@@ -691,7 +723,13 @@ Keys.began(function(io: InputObject, gp: boolean)
 	local want = if slot then lo()[slot] else nil
 	if not want and Binds.is("next", io) then -- (a controller's next-weapon button: round the loadout)
 		local l = lo()
-		want = l[(table.find(l, held) or 0) % #l + 1]
+		want = l[(table.find(l, Weapons.base(held)) or 0) % #l + 1]
+	end
+	-- (the Scythe comes out in the form you last had it in; its own key while it's out keeps that form)
+	if want then want = minigun.lastForm[want] or want end
+	if not want and Binds.is("form", io) and W[held] and W[held].form and not toolOut() then
+		minigun.form(os.clock())
+		return
 	end
 	if toolOut() then -- 1/2/3 put the Shredder away and take that weapon; the rest is the Shredder's
 		if want and want ~= "shredder" then
@@ -727,7 +765,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
 		if W[held] and W[held].dash then -- (the Scythe: right click dashes; the server runs it, ScytheDash.server)
 			local r = Remotes:FindFirstChild("Dash")
-			if r and r:IsA("RemoteEvent") and not Body.stunned() then r:FireServer(camera.CFrame.LookVector) end
+			if r and r:IsA("RemoteEvent") and not Body.stunned() and os.clock() >= minigun.formUntil then r:FireServer(camera.CFrame.LookVector) end
 		elseif W[held] and W[held].heavy then swing(now, true)
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then reload()
@@ -883,6 +921,14 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 	end
 end)
 
+-- the server kept you on the other form (a switch it refused: Combat tryEquip): back to what it says you hold
+remote("Equip").OnClientEvent:Connect(function(wid: any)
+	if type(wid) ~= "string" or not W[wid] or wid == held or toolOut() then return end
+	minigun.formUntil = 0
+	local b = Weapons.base(wid)
+	if b ~= wid or (W[wid].form ~= nil) then minigun.lastForm[b] = wid end
+	equip(wid)
+end)
 remote("Ammo").OnClientEvent:Connect(function(wid: any, mag: any, left: any)
 	if type(wid) ~= "string" or not ammo[wid] or type(mag) ~= "number" then return end
 	ammo[wid].mag = mag

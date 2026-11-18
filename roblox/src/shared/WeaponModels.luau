@@ -164,18 +164,40 @@ BUILD.bread = function(b)
 	spot(b, "Grip", Vector3.new(0, 0.002, 0.12))
 end
 -- (the Scythe, 18 Nov 2026) a code stand-in until its kit model is in (guns-remodel): a long dark haft, a grip wrap and
--- a broad curved blade out to the side at the top, the edge facing forward
-BUILD.scythe = function(b)
+-- a broad curved blade out to the side at the top, the edge facing forward. its rifle form (scythe_rifle) is the same
+-- pieces with two moved: the blade slides down the haft to behind the grip and turns on its edge as the stock, the
+-- scope comes up out of the haft; the teal collar is the muzzle. SCYTHE_TURN = scythe -> rifle for those two (model
+-- units, the model's own space); GunParts eases them across in the switch, measured from the two built models
+local SCYTHE_TURN = {
+	blade = CFrame.new(0, -0.03, 0.14) * CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 0, -1), Vector3.new(-1, 0, 0), Vector3.new(0, 1, 0)) * CFrame.new(0, -0.02, 1.26),
+	scope = CFrame.new(0, 0.085, 0),
+}
+local function scythe(b: Builder, rifle: boolean)
 	cylZ(b, "haft", 0.022, 1.5, 0x3a3d45, 0, 0, -0.55)
 	bx(b, "wrap", 0.05, 0.05, 0.16, 0x2b2622, 0, 0, 0.05)
-	bx(b, "blade", 0.6, 0.02, 0.12, 0x9aa3ad, -0.28, 0.02, -1.28)
-	bx(b, "blade", 0.32, 0.02, 0.1, 0xb8c0c8, -0.62, 0.02, -1.2, 0.0)
 	bx(b, "collar", 0.07, 0.07, 0.08, 0x3ee6c8, 0, 0, -1.26)
-	spot(b, "Muzzle", Vector3.new(-0.7, 0.02, -1.16))
-	spot(b, "Mid", Vector3.new(-0.3, 0.02, -1.25))
+	local moving = {
+		bx(b, "blade", 0.6, 0.02, 0.12, 0x9aa3ad, -0.28, 0.02, -1.28),
+		bx(b, "blade", 0.32, 0.02, 0.1, 0xb8c0c8, -0.62, 0.02, -1.2),
+		cylZ(b, "scope", 0.026, 0.26, 0x2b2e35, 0, -0.012, -0.42),
+		bx(b, "scope", 0.02, 0.06, 0.06, 0x2b2e35, 0, -0.045, -0.42),
+	}
+	if rifle then
+		for _, p in moving do
+			local off = SCYTHE_TURN[p.Name]
+			p.CFrame = b.root.CFrame * CFrame.new(off.Position * b.k) * off.Rotation * b.root.CFrame:ToObjectSpace(p.CFrame)
+		end
+		spot(b, "Muzzle", Vector3.new(0, 0, -1.32))
+		spot(b, "Mid", Vector3.new(0, 0, -0.6))
+	else
+		spot(b, "Muzzle", Vector3.new(-0.7, 0.02, -1.16))
+		spot(b, "Mid", Vector3.new(-0.3, 0.02, -1.25))
+	end
 	spot(b, "Grip", Vector3.new(0, 0, 0))
 	spot(b, "Fore", Vector3.new(0, 0, -0.45))
 end
+BUILD.scythe = function(b) scythe(b, false) end
+BUILD.scythe_rifle = function(b) scythe(b, true) end
 BUILD.slapper = function(b)
 	cylZ(b, "stick", 0.016, 0.5, 0xd6d0c6, 0, 0, -0.18)
 	bx(b, "grip", 0.04, 0.04, 0.14, 0x3a3d45, 0, 0, 0.05)

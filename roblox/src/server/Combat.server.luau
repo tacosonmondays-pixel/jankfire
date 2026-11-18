@@ -185,7 +185,8 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	local feet = Fight.feet(t) :: Vector3
 	local to = c - eye
 	local kb = if to.Magnitude > 1e-3 then Weapons.gunKb(w, n, to.Unit, extraKb) else nil
-	local done = Fight.hurt(t, dmg, f, wid, h > 0, kb, if h > 0 then feet + Vector3.new(0, Weapons.BOX.bodyTop + 1, 0) else c)
+	-- (a second form's hit is its weapon's: the Scythe's rifle kills with the Scythe, Weapons.base)
+	local done = Fight.hurt(t, dmg, f, Weapons.base(wid), h > 0, kb, if h > 0 then feet + Vector3.new(0, Weapons.BOX.bodyTop + 1, 0) else c)
 	-- a no-scope is a callout and nothing else: the hit landed, and the server's own clock says the scope was down
 	if done > 0 and w.noscope and x and x.ns and f.aimT == nil then
 		callout(f, ("NO SCOPE %dm"):format(math.floor(to.Magnitude / S + 0.5)), 1.0)
@@ -324,8 +325,14 @@ local function tryEquip(p: Player, wid: string)
 	local before = f.held
 	local why = Rules.equip(f, wid, now())
 	if why == "too fast" then task.delay(0.16, tryEquip, p, wid); return end
+	-- (a Scythe switch refused, mid-swing or mid-shot: your client already turned it, so it's told what you hold)
+	local hw = W[f.held]
+	if why ~= nil and hw and hw.form and hw.form.to == wid then EquipR:FireClient(p, f.held) end
 	if why == nil and f.held ~= before then
 		p:SetAttribute("Spin", nil) -- (a Minigun put away stops spinning: Rules.equip)
+		-- (the Scythe turned into its rifle or back: everyone's copy of it moves its blade and scope across, GunParts)
+		local bw = W[before]
+		if bw and bw.form and bw.form.to == f.held then p:SetAttribute("FormT", workspace:GetServerTimeNow()) end
 		Fight.showWeapon(f)
 		FxR:FireAllClients({ k = "equip", model = Fight.model(f), w = f.held })
 	end
@@ -445,7 +452,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		if W[wid] then ammoSync(p, f, wid, why) end
 		return
 	end
-	Fight.shot(f, wid) -- (Stats.luau: one more attack for accuracy)
+	Fight.shot(f, Weapons.base(wid)) -- (Stats.luau: one more attack for accuracy)
 	if fanSpread then
 		-- a fanned Revolver shot: the client's hits are ignored, the server rolls the spread round where it looked (its
 		-- `look`, else the line to its first end point) and fires the bullet itself

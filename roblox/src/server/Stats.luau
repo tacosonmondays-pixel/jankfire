@@ -838,6 +838,7 @@ function Stats.init(fight: any, matches: any)
 					local c = s.cur :: Cur
 					d.time += step
 					local held = tostring(f.held)
+					held = Roster.formOf[held] or held -- (the Scythe's rifle form is time with the Scythe)
 					if real(held) then
 						c.wt[held] = (c.wt[held] or 0) + step
 						wpn(d, held).t += step

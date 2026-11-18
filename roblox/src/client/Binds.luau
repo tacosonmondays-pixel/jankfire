@@ -32,6 +32,7 @@ Binds.ACTIONS = {
 	{ id = "item", label = "UTILITY", group = "WEAPONS", kb = { "G" }, pad = "ButtonL1" },
 	{ id = "flash", label = "UTILITY ALT", group = "WEAPONS", kb = { "N", "MouseButton3" }, pad = "DPadUp" }, -- (a pad's D-Up is READY only before a round, held at your spawn: the two share it. CONTROLLER.md)
 	{ id = "wave", label = "KATANA SLASH WAVE", group = "WEAPONS", kb = { "Q" }, pad = "DPadLeft" }, -- (with the katana's edge meter full: Katana.client)
+	{ id = "form", label = "SCYTHE: SWITCH FORM", group = "WEAPONS", kb = { "Q" }, pad = "DPadLeft" }, -- (scythe <-> its rifle: Arsenal minigun.form. the same keys as the wave: you never carry both, they're melee)
 	{ id = "sprint", label = "SPRINT", group = "MOVEMENT", kb = { "LeftShift", "RightShift" }, pad = "ButtonL3", toggle = "sprint.toggle", padToggle = "pad.sprintToggle" },
 	{ id = "crouch", label = "CROUCH", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle", padToggle = "pad.crouchToggle" },
 	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonR1" },

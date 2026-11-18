@@ -173,6 +173,12 @@ function H.hp(hp: number)
 	hpBar.Size = UDim2.fromScale(math.clamp(hp / (tonumber(game:GetService("Players").LocalPlayer:GetAttribute("HpMax")) or 100), 0, 1), 1) -- (HpMax: infection's 200 HP zombies)
 	hpBar.BackgroundColor3 = if hp > 50 then T.TEXT elseif hp > 25 then T.ACCENT else T.DANGER
 end
+-- (the Scythe) the key that switches its form, as bound (Settings > KEYBINDS)
+local function formKey(): string
+	local ok, B = pcall(require, script.Parent:WaitForChild("Binds"))
+	local k = if ok then (B :: any).label("form") else "Q"
+	return if k ~= "" then k else "Q"
+end
 function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?)
 	local w = Weapons.list[wid]
 	if not w then return end
@@ -183,11 +189,13 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	elseif w.kind == "melee" or w.mag == nil then -- (and a weapon with no magazine, the Taser: no count)
 		-- (right click: the katana parries, the knife stabs, the claw does nothing)
 		sub = if kat > 0 then (if kat == 1 then "%d kill · %.1f m" else "%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
-			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry" elseif w.dash then "RMB dash" else ""
+			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry"
+			elseif w.dash then (if w.form then "RMB dash · " .. formKey() .. " rifle" else "RMB dash") else ""
 	else
 		count = ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
 		if reloading then sub = "RELOADING"; subColor = T.ACCENT; countColor = T.DIM
 		elseif (mag or 0) <= 0 then countColor = T.DANGER end
+		if not reloading and w.formOf then sub = formKey() .. " " .. string.lower((Weapons.list :: any)[w.formOf].name) end -- (the Scythe's rifle: the key back)
 	end
 	-- (a classic mode's spoon look: the knife is the Spoon, Modes.luau's SpoonLook)
 	local shown = if wid == "knife" and game:GetService("Players").LocalPlayer:GetAttribute("SpoonLook") then "Spoon" else w.name

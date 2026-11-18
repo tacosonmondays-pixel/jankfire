@@ -38,6 +38,12 @@ export type Weapon = {
 	-- the Scythe's right click (ScytheDash.server): a flat dash of dist studs in time s, once every cd s (one charge),
 	-- then recover s with no swing, guard or dash; the first enemy on its path (within width) takes dmg and a shove
 	dash: { dist: number, time: number, cd: number, recover: number, dmg: number, kb: number, kbUp: number, width: number }?,
+	-- a weapon with two forms (the Scythe and its rifle, Rules.equip): the key "form" (Q) turns it into `to` in `time` s
+	-- (no swing, dash, shot or reload meanwhile), the gun's first shot `fireDelay` s after that; not within `swingLock` s
+	-- of a swing's click or `shotLock` s of a shot. formOf: this row is the second form of that loadout weapon (it shares
+	-- its slot, unlock, stats and kill credit, Weapons.base)
+	form: { to: string, time: number, fireDelay: number, swingLock: number, shotLock: number }?,
+	formOf: string?,
 	-- weapons batch C, the projectiles (kind "proj", WeaponProj.server flies them): proj = "rocket" | "peel" | "ball" |
 	-- "snow" | "blood", speed / grav (studs/s, /s^2), r (studs), life (s); the rocket's radius and selfKb, the ball's
 	-- bounces / bonus / minBounce, the snowball's frost, the blood cross's cost / thin / fuse / burst / blast
@@ -504,17 +510,35 @@ local W: { [string]: Weapon } = {
 		draw = "draw_bread", hitSnd = "bread_bonk",
 		vm = { p = Vector3.new(0.3, -0.3, -0.42) * S, r = Vector3.new(0.35, 0.2, -0.25), s = 0.55 },
 	},
-	-- (the owner, 18 Nov 2026: "Bring scythe in as a weapon, balance it especially its dash") the web game's killstreak
-	-- Scythe as a loadout melee, toned down (WEAPONS.md "Scythe"): a slow wide reap that two-hits, and a right-click dash
-	-- with one charge, a cooldown and a recovery, no invulnerability
+	-- (the owner, 18 Nov 2026: "Bring scythe in as a weapon, balance it especially its dash", then "It's a sniper too
+	-- remember") the web game's killstreak Scythe as a loadout melee, toned down (WEAPONS.md "Scythe"): a slow wide reap
+	-- that two-hits, a right-click dash with one charge, a cooldown and a recovery, no invulnerability; Q turns it into
+	-- its rifle (scythe_rifle). each form a little under the specialist: the Katana up close, the Sniper at range
 	scythe = {
 		id = "scythe", name = "Scythe", slot = "melee", kind = "melee", color = rgb(0x3ee6c8),
-		desc = "a slow, wide reap that kills in two. right click dashes you forward and cuts the first one in your way.",
-		cd = 0.8, range = 3.6 * S, cone = 0.95, dmg = 50, kb = 18 * S, kbUp = 6 * S, hitT = 0.24, speedMul = 0.95,
+		desc = "a slow, wide reap that kills in two. right click dashes you forward and cuts the first one in your way. q turns it into a rifle.",
+		cd = 0.95, range = 3.3 * S, cone = 0.95, dmg = 50, kb = 18 * S, kbUp = 6 * S, hitT = 0.24, speedMul = 0.95,
 		dash = { dist = 8 * S, time = 0.22, cd = 6, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
+		form = { to = "scythe_rifle", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
 		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
 		vm = { p = Vector3.new(0.22, -0.25, -0.44) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.6 },
+		mdl = { parts = { form = { to = "scythe_rifle", nodes = { "blade", "scope" } } } } :: any, -- (GunParts: the blade and scope move between the forms; no file bounds, the kit model brings its own)
+	},
+	-- the Scythe's second form: the blade slides back down the haft and turns under it as the stock, the collar is the
+	-- muzzle and a short scope comes up. no one-shot headshot, no big shove: under the Sniper at range
+	scythe_rifle = {
+		id = "scythe_rifle", name = "Scythe", slot = "melee", kind = "hitscan", color = rgb(0x3ee6c8), formOf = "scythe",
+		desc = "the scythe's rifle form. right click to scope. q turns it back into the scythe.",
+		auto = false, rate = 1 / 1.0, mag = 4, reload = 2.0, pellets = 1, dmg = 45, head = 1.8, spread = 0.06,
+		kb = 30 * S, kbUp = 8 * S, recoil = 10 * S, kick = 0.06, range = 400 * S,
+		ads = { zoom = 3, spread = 0, scope = true }, tracer = rgb(0x3ee6c8), thick = 0.07 * S,
+		fx = { big = true, shake = 0.4 }, snd = "gun_scythe",
+		form = { to = "scythe", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
+		draw = "form_scythe",
+		recoilVM = { back = 2.5, up = 9, roll = 1.6, side = 0.2, punch = 0.06 },
+		vm = { p = Vector3.new(0.2, -0.22, -0.4) * S, r = Vector3.new(0, 0.03, 0), s = 0.5 },
+		mdl = { parts = { form = { to = "scythe", nodes = { "blade", "scope" } } } } :: any,
 	},
 	-- (weapons batch A) point blank, barely hurts: shoves them straight away from you and they slip
 	slapper = {
@@ -583,6 +607,13 @@ local Weapons = {
 	FFA = { kills = 20, time = 360, respawn = 2.5, protect = 1.2, over = 12 },
 	HP = 100,
 }
+
+-- the loadout weapon a row belongs to: a second form's own (the Scythe's rifle is the Scythe), else itself. its kills,
+-- hits and time held count there (Combat, Stats)
+function Weapons.base(wid: string): string
+	local w = (Weapons.list :: any)[wid]
+	return if w and w.formOf then w.formOf else wid
+end
 
 -- shots per second right now (shared/weapons.js fireRate): the Redline speeds up as your HP drops
 function Weapons.fireRate(w: Weapon, hp: number): number
