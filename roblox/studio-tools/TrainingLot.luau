@@ -640,14 +640,16 @@ local function eggDoor(EGG)
 		trig.CFrame = B.at(F * CF(0, (H - 0.4) / 2, -(1.2 + DEPTH + 0.6) / 2))
 	else
 		-- the portal at the room's end, facing the door; you step up onto its step (unseen, solid: kit meshes have no
-		-- collision) and the trigger in its black middle takes you (it starts 1.6 in front of the ring's plane, so you
-		-- are at the ring when you go)
+		-- collision) and the trigger in its black middle takes you. it starts 1.6 in front of the ring's plane (you are
+		-- at the ring when you go) and runs back to the room's back wall: LaserDoors looks every 0.1 s, a walking body
+		-- crosses 2 studs in that, and the first trigger (1.9 deep) was crossed between two looks (Play, 18 Nov)
 		local ring = ROOM - L.PORTAL_BACK
 		local pm = B.put("te_portal", F * CF(0, 0, -ring), { name = "EggPortalRing", raw = true })
 		if pm then pm.Parent = B.root.LotScenery end
 		B.solid("EggPortalStep", F * CF(0, 0.3, -(ring - 0.9)), V3(10.6, 0.6, 3.2))
-		trig.Size = V3(6.0, 6.4, 1.9)
-		trig.CFrame = B.at(F * CF(0, 0.6 + 3.2, -(ring - 1.6 + 0.95)))
+		local t0, t1 = ring - 1.6, ROOM - 0.1
+		trig.Size = V3(6.0, 6.4, t1 - t0)
+		trig.CFrame = B.at(F * CF(0, 0.6 + 3.2, -(t0 + t1) / 2))
 		-- a dim warm light over the ring, for its face (nothing shines up from it)
 		local lr = F * CF(0, 9.6, -(ring - 2.2))
 		B.lamp(lr.X, lr.Y, lr.Z, "point", 10, 0.45, "ffc27a")

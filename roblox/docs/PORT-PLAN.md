@@ -1093,6 +1093,28 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - The game's controller ignores `Humanoid:MoveTo` from a test: disable the PlayerModule's controls and `Humanoid:Move` each frame, or step the body with `PivotTo` (and `TeleportT`).
     - Put the save back only after moving the body out of the touch box. A body left standing in it touched again and found OG again after the v809 restore.
   - Photos: `hub/hub_egg_sheet.jpg` (the mannequin in its nook, the first glimpse from the balcony, the round room's floor).
+- **18 Nov, the gold dummies' door in the TOP frame, with a portal (place version 897, TrainingV2 push 21, TrainingLot push 17):** the owner sent a shot of the course's TOP frame on the gallery (its dark panel under the lit strip, the orange TOP word over it): "this door is still open bro this is what should lead to the teleporter". Their 17 Nov dead end ("should be the locked door connected to the dummies", "a portal teleporter that takes you to the training area thats in the air") was this frame all along. The v746 door was built in a new corridor off the strip instead, so the frame stayed a dead end.
+  - **Where:** the TOP frame (`TOPD` in TrainingV2) stands 2.4 further out from the north wall. `TrainingLot.eggDoor` (`T.EGG_DOOR.room`) puts the locked roll-up door in its mouth, with LOCKED on a plate under the TOP word. The door is LOCKED for everyone, and rolls up only on the screen of a player with `LotKey`.
+    - A dark sheet (`EggSheet`) rolls with the slats, so the lit room doesn't show through their gaps.
+    - Behind the door, through the north wall, `topRoom` builds a 7-stud room in the frame's own look: warm lining, a dark skirting, the cut top corners carried on, a lit ceiling strip.
+    - The collar between the frame and the wall is in the wall's colour. The frame's own depth is lined with unseen solids, since kit meshes have no collision.
+  - **The teleporter** (`te_portal`, `tools/roblox/egg_portal_models.py`, Model asset 125041627506798, `L.PORTAL_KIT`; `L.import(L.PORTAL_KIT)` puts it in JankfireMeshes): an off-white ring 9.5 across with a black middle, one thin amber line round its inside, and three slate clamps, standing on a step (`EggPortalStep`).
+    - There is no light column and nothing shines upward. The owner, earlier the same day: "I dont like the pillar of light from the teleporter". That was the hub jump pads' light column, already removed in v889 (7d0898c).
+    - `Doors.EggPortal` is the ring's black middle, from 1.6 in front of the ring's plane back to the room's back wall. Walk up the step into it and LaserDoors takes key holders to `PlaygroundArrive`.
+    - It runs back to the wall because LaserDoors looks every 0.1 s and a walking body crosses about 2 studs in that. The first trigger (1.9 deep) was crossed between two looks, and the body came to rest behind it.
+  - **The strip's corridor from v746 is off** (`EGG_STRIP = false`; the code stays) and the strip's south wall is closed. The lore session moves Mina, who stood in it.
+  - **The owner's live save holds the key** (`JankfireLot_v1`, egg true since 17 Nov 18:34 UTC, read only), so on their screen the door rolls up as they come.
+  - **Checks** (`T.check`):
+    - the hall sealed (1872 rays from 72 points, 2 of them in the new room, 0 leaks);
+    - head room 0 within 0.6;
+    - the egg door shut: 39 rays, 0 gaps;
+    - the lot closed: 0 leaks;
+    - ZFight: 1 pair.
+  - **Play test** (one solo Play; the Studio save put back to egg false, eggAt 0):
+    - Without the key: walking at the door stops you at it (root 0.1 behind its face). The slats only rattle (0.06) and LOCKED flashed red for 42 frames.
+    - With the key (`LotTest` "setkey"): within 2.5 s the plate read OPEN, all 8 rolling parts were up and hidden, and `EggBlock` let you through.
+    - Walking at the ring: the step lifts you 0.6. With the deeper trigger (the same size as in the build), you were taken in 0.12 s to the playground's arrival (0, 306.7, -9388).
+  - Photos: `training/egg_top_door_sheet.jpg` (no key: LOCKED; with the key: OPEN onto the portal; the room and the ring).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
