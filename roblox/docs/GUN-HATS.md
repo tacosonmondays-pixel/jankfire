@@ -283,6 +283,41 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## Seats on batch C, the Classic skins and the Ducky Pistol rebuild (18 Nov 2026, place version 824)
+
+The guns session's commit 342127e (place version 813) brought batch C (the scythe, chicken rocket, peel shooter, tennis
+ball launcher and snowball; the four projectiles wear no hats), Classic skins batch 1 (AKM-type rifle, FAMAS-type
+burst, MP5-type SMG, open-slide pistol) and the Ducky Pistol rebuilt on our own base with Tripo decoration. The hat
+tools now need `JF_EXTRA=gun_sets_ducky_art,gun_sets_triangulum,tripo_gun,gun_sets_tripo_rebuild,gun_skins_classic`.
+The rebuild must come after `tripo_gun` so it overrides the Ducky Pistol, and the Classic skins are not in
+`gun_set.py`'s default list. Photo: `gun-hats/batchC-seats.jpg` (the three whose Studio rays read deep, from the side, and the Classic FAMAS).
+
+| Gun | Seat (z, s) | Where | Why it moved |
+|---|---|---|---|
+| Scythe | -1.282, 1.0, x -0.2 | the blade's flat top near the spine | (the guns session's seat) |
+| Chicken rocket | -0.425, 0.75 | the tube's crest | (the guns session's seat) |
+| Peel shooter (`banana`) | -0.08, 0.83 | the long flat deck between the sights | behind the notch there are only 6.5 cm, and the brims hit it (4.9 mm) |
+| Tennis ball launcher | -0.1, 0.67 | the hopper's lid | (the guns session's seat) |
+| Snowball | -0.08, 0.5 | on top, where the guns session put it | |
+| Ducky Pistol (rebuild) | -0.08, 0.62 | the slide behind the front post, where the plain pistol's sits | the duck block's flat top is 4 cm long, between the duck's head and a 2 mm step up to the slide. The third-person feet hit the step (3.7 mm) and the brims the head |
+| Classic AK (`ar_classic`) | -0.07, 1.0 | the dust cover (the rifle's seat) | |
+| Classic FAMAS (`burst_classic`) | -0.1, 0.9, y 0.132 | the long carry handle at its rails' height | the handle's top is a channel. A measured seat drops into the groove between the rails (feet 4.7 mm in), so the height is fixed at the rails' top with a 2 mm sink |
+| Classic MP5 (`smg_classic`) | -0.11, 0.85 | the receiver's round top | at the SMG's -0.1 the brims cut 3.9 mm (solved) |
+| Classic pistol (`pistol_classic`) | -0.015, 0.62 | the slide's solid rear between the open top and the notch | the pistol's -0.08 is over the open slide (9.8 mm) |
+
+- **Clipping** (`hat_clip.py`, the twelve hats on the ten, first and third person, 240 rows): feet at most 2.9 mm (the
+  scythe's third-person crown, on the blade's slight curve), bodies and guns 0.2 mm (the snowball's duck), the googly
+  eyes 1.5 mm. The report is now 2,688 rows.
+- **A solver trap:** for the Ducky Pistol, `hat_solve.py` offered z -0.168, which stands the hat on the front sight
+  post and floats it 3.6 mm over the slide. It counts how deep things go in, not how far a hat floats. Grid the top
+  (a ray per cm) before taking a solver seat.
+- **Studio (place version 824):** `GunHatData` pushed as a guarded patch. On the built guns, at both sizes, the cowboy's
+  foot reads exactly its 2.0 mm sink on seven of the ten. Each hat rides a static piece, or the Ducky Pistol's slide.
+  Three read deeper: the Ducky Pistol 6.6 mm, the peel shooter 10.0 mm and the scythe 3.6 mm. Those rays hit the
+  MeshParts' Default collision hulls, which sit above the drawn surface on the slide's Tripo decoration, the windowed
+  body and the curved blade. The side photos show each hat's foot on the drawn top, so the seats stand (Blender measures
+  the drawn mesh).
+
 ## Seats on batch B: Lefty & Righty, taser, leaf blower, Hot Sauce, big laser pointer (18 Nov 2026, place version 798)
 
 The guns session built batch B as kit models (commit 3dd4d82, `gun_batch_b.py`, place version 791) and proposed a seat
@@ -561,7 +596,7 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
-blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798.
+blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, and batch C, the Classic skins and the Ducky Pistol rebuild in place version 824.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
