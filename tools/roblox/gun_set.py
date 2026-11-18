@@ -265,7 +265,11 @@ for _part in (('gun_skins_1', 'gun_skins_2', 'gun_skins_3', 'gun_sets', 'gun_set
               'gun_skins_fix', 'gun_skins_fix2', 'gun_skins_fix3', 'gun_skins_fix4', 'gun_sets_ducky_alt',
               'gun_sets_cute', 'gun_sets_cute3', 'gun_sets_ducky_v3', 'gun_sets_japan2', 'gun_sets_west',
               # (the Seraph four with the headliner's wings, 18 Nov: read from the vault; without it they build as before)
-              'gun_sets_seraph_wings')
+              'gun_sets_seraph_wings',
+              # (the knife's ten loot skins that had no model, 18 Nov)
+              'gun_knife_skins',
+              # (the primaries' loot skins that had no model, batch 2, 18 Nov)
+              'gun_primary_skins')
               # (work in progress, built only when named: JF_EXTRA=gun_sets_japan2,gun_sets_west,gun_sets_angel2)
               + tuple(x for x in os.environ.get('JF_EXTRA', '').split(',') if x)):
     try:

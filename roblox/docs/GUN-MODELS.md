@@ -1075,6 +1075,51 @@ is its live body, checked piece for piece against the live build: identical.
 - **Effects:** the rifle's wing effects (feather sheds, lit-loop twinkles, the wing vine, the tip trail) moved through
   the same matrices are in the notes folder's `seraph-wing-fx-points.json`, for the VFX session's `SkinSets.FX` rows.
 
+## The loot skins that had no model (18 November 2026)
+
+`LootTable.SKINS` had 55 rows with no model in `JankfireSkins`, so `GunSkins.valid` hid them and nobody could get them.
+- **15 rows** belong to weapons that aren't on Roblox (wrecking ball, giant duck, chicken strike, moon boots, spinbot,
+  satellite). They are parked.
+- **The other 40** are being built in batches, the most-held weapons first. The full list with its flags (rows to drop
+  or rename for the content rules) is the notes folder's `modelless-skins-list.md`.
+
+**Batch 1: the knife ×10 (live in place version 960, `tools/roblox/gun_knife_skins.py`).** Each keeps the knife's
+contract: the grip at (0, 0, 0.03), the blade forward, the edge down, nothing moving, under 6k triangles. Each has one
+signature piece:
+- Bowie: a brass S-guard with ball ends;
+- Cleaver: a tall square blade with its hanging hole;
+- Switchblade: bolsters at both ends, pearl inlays and a gold button;
+- Karambit: a hawkbill blade bent down round a centre under it, a finger ring, a lit rib on each scale;
+- Butterfly: twin windowed handles with a lit core glowing through, gold pivots and a latch;
+- Spoon: the Spoons mode's serving spoon, dressed royal with a gold bowl and a gem in the finial;
+- Ladle: a deep bowl and a curled hook;
+- Pizza Cutter: a big wheel in a fork, with a tomato-red handle;
+- Keycard: a card blade with a plain stripe and a plain chip (no text, no code), its lower edge lit;
+- Frozen Fish: one moulded fish (`sdf_kit.mesh_paint`) held by the tail, with an ice crust and icicles.
+
+Checks:
+- `gun_check`: 0 loose.
+- Flicker: 0 pairs raw, so `gun_zfix` moves nothing, and 0 at display and hand scales on the exports.
+- Hats: the knife has no hat seat, so no hat check applies.
+- Assets: `assets.json` rows `knife@knife_*`.
+
+**Batch 2: the primaries ×9 (`tools/roblox/gun_primary_skins.py`).** Each skin is a RESKIN of its base weapon's own
+build: the very pieces, so every spot, moving node, sight line and hold stays. The base's off-theme parts come off, and
+one signature piece goes on:
+- Old Gatling: a brass hopper and a hand crank;
+- Compound Bow: cams, a stabiliser and a pin sight;
+- Turkey Launcher: a fanned tail;
+- Hand Cannon: rings, a cascabel and a lit fuse;
+- Office Stapler: a chrome hinge and head;
+- Ball Machine: a launcher drum and a carry bar;
+- Basket Case: arched basket handles;
+- Bunch Blaster: a fused bunch of five;
+- Cat Laser: cat ears and a feather toy.
+
+`reskin()` clears the build's solids before adding new ones; otherwise `done()` folds them in a second time.
+Checks: 0 loose; 0 flicker pairs raw and on the exports.
+Hats: the Gatling's hopper and the basket's handles stand where the base seat was, so those two need new seats.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
