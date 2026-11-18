@@ -338,18 +338,30 @@ def bread():
     """THE BREAD (see the file's header)"""
     gunkit.use_style('B')
     g = Batch('w_bread')
-    g.slot('paper', 'bdb6a7'); g.slot('crust', '7c5839'); g.slot('side', '97724f'); g.slot('crumb', 'bba783')
+    # v2 (18 Nov, the main session: "reads as a carrot or a surfboard, a smooth orange spindle"): golden-brown crust kept
+    # greyer than it looks here (the hall's warm lamps push browns to orange), four deep diagonal score cuts that wrap
+    # onto the sides with pale crumb and a lighter golden rim, lumps between the cuts, rounder blunt ends, a paler
+    # underside. Kept: the length, the tip, grip and mid spots, and the crest at z -0.45 (the hat seat) at its height.
+    g.slot('paper', 'bdb6a7'); g.slot('crust', '7a5f3e'); g.slot('side', '9a7d58'); g.slot('under', 'b49c78')
+    g.slot('edge', 'c2a676'); g.slot('crumb', 'dccdab')
     HW, TOP, BOT = 0.105, 0.09, -0.07            # the loaf's full half width, top, bottom
     hh = (0.034, 0.032, -0.028)                  # the heel inside the sleeve
+    CUTS = (-0.66, -0.86, -1.06, -1.245)         # the score cuts' centres (none near the hat's crest at -0.45)
+    LUMPS = (-0.765, -0.96, -1.15)               # the puffed crust between them
+    def lumps(z, k):
+        up = sum(math.exp(-((z - c) / 0.055) ** 2) for c in LUMPS)
+        dn = sum(math.exp(-((z - c) / 0.04) ** 2) for c in CUTS)
+        return 1.0 + k * (up - 0.8 * dn)
     def env(z):
         if z >= -0.07: return hh
-        if z >= -0.43:
-            t = (-0.07 - z) / 0.36; s = t * t * (3 - 2 * t)
+        if z >= -0.26:                           # the rounded back end of the loaf, gathered into the sleeve
+            t = (-0.07 - z) / 0.19; s = math.sqrt(max(0.0, 1 - (1 - t) ** 2))
             return tuple(a + (b - a) * s for a, b in zip(hh, (HW, TOP, BOT)))
-        bulge = 1.0 + 0.025 * math.sin(math.pi * min(1.0, (-0.43 - z) / 0.77))
-        if z >= -1.2: return (HW * bulge, TOP * bulge, BOT)
-        t = min(1.0, (-1.2 - z) / 0.3); f = max(0.0, 1 - t ** 2.2) ** 0.5
-        return (HW * f, TOP * f, BOT * f)
+        bulge = 1.0 + 0.025 * math.sin(math.pi * min(1.0, max(0.0, (-0.43 - z) / 0.77)))
+        f = 1.0
+        if z < -1.3:                             # the blunt rounded nose: a quarter ellipse to the tip at -1.50
+            t = min(1.0, (-1.3 - z) / 0.2); f = math.sqrt(max(0.0, 1 - t * t))
+        return (HW * bulge * f * lumps(z, 0.035), TOP * bulge * f * lumps(z, 0.06), BOT * f)
     def sec(z, n=28):
         hw, top, bot = env(z)
         out = []
@@ -360,15 +372,22 @@ def bread():
             y = top * abs(s) ** (2 / 2.2) if s >= 0 else -abs(bot) * abs(s) ** (2 / 4.0)   # (a dome over a flat base)
             out.append((x, y, z))
         return out
-    zs = ([0.03 - 0.1 * i / 3 for i in range(4)] + [-0.07 - 0.36 * i / 12 for i in range(1, 13)] +
-          [-0.43 - 0.77 * i / 14 for i in range(1, 15)] + [-1.2 - 0.297 * (1 - (1 - i / 13) ** 1.6) for i in range(1, 14)])
+    zs = ([0.03 - 0.1 * i / 3 for i in range(4)] + [-0.07 - 0.19 * (1 - (1 - i / 10) ** 1.5) for i in range(1, 11)] +
+          [-0.26 - 1.04 * i / 32 for i in range(1, 33)] + [-1.3 - 0.197 * (1 - (1 - i / 12) ** 1.6) for i in range(1, 13)])
     loaf = loft([sec(z) for z in zs], tip=(0.0, 0.0, -1.50))
-    # five slashes along the top, each turned 17 degrees, cut 14 mm deep: the cut faces are the crumb
-    E = [((0.0, env(z)[1] + 0.008, z), 0.1, 0.03, 0.026, 0.30) for z in (-0.57, -0.72, -0.87, -1.02, -1.16)]
+    # four diagonal score cuts across the top (turned 40 degrees): each a shallow wide oval ledge (the lighter golden
+    # rim where the crust opened) round a deep narrow slot (the pale crumb). Two cutters, so both outlines are clean
+    # ovals of the mesh itself (choosing rim faces one by one gave a jagged staircase on the long loft faces)
+    E = [((0.0, env(z)[1] + 0.006, z), 0.13, 0.034, 0.034, 0.70) for z in CUTS]
+    R = [((0.0, env(z)[1] + 0.012, z), 0.165, 0.052, 0.0155, 0.70) for z in CUTS]
+    loaf = cut(loaf, *[_ellipsoid(*e, u=28, v=12) for e in R])
     loaf = cut(loaf, *[_ellipsoid(*e) for e in E])
     rest, crumb = split_v(loaf, lambda vs, c, n: any(all(_q(v, e) < 1.004 for v in vs) for e in E))
+    rest, edge = split_v(rest, lambda vs, c, n: any(all(_q(v, e) < 1.004 for v in vs) for e in R))
     crust, side = split(rest, lambda c, n: n.y < 0.42)
-    g.put('bread_wzB__crust', crust); g.put('bread_wzB__side', side); g.put('bread_wzN__crumb', crumb)
+    side, under = split(side, lambda c, n: n.y < -0.3)
+    g.put('bread_wzB__crust', crust); g.put('bread_wzB__side', side); g.put('bread_wzB__under', under)
+    g.put('bread_wzN__edge', edge); g.put('bread_wzN__crumb', crumb)
     # the paper sleeve (the grip): a faceted twelve-sided sleeve over the heel, a thin lip at its open front, gathered and
     # twisted shut at the back
     crink = [0.0, 0.7, -0.4, 0.9, -0.8, 0.3, -0.2, 0.8, -0.6]

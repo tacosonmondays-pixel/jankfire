@@ -70435,35 +70435,11 @@
  "w_bread": {
   "pieces": [
    {
-    "name": "bread_wzB__crust",
-    "upload": "bread_wzB__crust__p7c5839",
-    "tris": 677,
-    "look": {
-     "color": "7c5839",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0991,
-     0.0121,
-     -1.497
-    ],
-    "hi": [
-     0.0991,
-     0.0922,
-     0.03
-    ],
-    "paint": "p7c5839"
-   },
-   {
     "name": "bread_wzB__side",
-    "upload": "bread_wzB__side__p97724f",
-    "tris": 1018,
+    "upload": "bread_wzB__side__p9a7d58",
+    "tris": 640,
     "look": {
-     "color": "97724f",
+     "color": "9a7d58",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -70471,23 +70447,23 @@
      "tex": false
     },
     "lo": [
-     -0.1074,
-     -0.07,
+     -0.111,
+     -0.033,
      -1.5
     ],
     "hi": [
-     0.1076,
-     0.0431,
+     0.111,
+     0.0455,
      0.03
     ],
-    "paint": "p97724f"
+    "paint": "p9a7d58"
    },
    {
-    "name": "bread_wzN__crumb",
-    "upload": "bread_wzN__crumb__pbba783",
-    "tris": 625,
+    "name": "bread_wzB__under",
+    "upload": "bread_wzB__under__pb49c78",
+    "tris": 884,
     "look": {
-     "color": "bba783",
+     "color": "b49c78",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -70495,16 +70471,88 @@
      "tex": false
     },
     "lo": [
-     -0.0371,
-     0.0724,
-     -1.2462
+     -0.1089,
+     -0.07,
+     -1.497
     ],
     "hi": [
-     0.0371,
-     0.0922,
-     -0.483
+     0.1089,
+     -0.0095,
+     0.03
     ],
-    "paint": "pbba783"
+    "paint": "pb49c78"
+   },
+   {
+    "name": "bread_wzB__crust",
+    "upload": "bread_wzB__crust__p7a5f3e",
+    "tris": 1005,
+    "look": {
+     "color": "7a5f3e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1025,
+     0.015,
+     -1.497
+    ],
+    "hi": [
+     0.1025,
+     0.0973,
+     0.03
+    ],
+    "paint": "p7a5f3e"
+   },
+   {
+    "name": "bread_wzN__crumb",
+    "upload": "bread_wzN__crumb__pdccdab",
+    "tris": 636,
+    "look": {
+     "color": "dccdab",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0759,
+     0.058,
+     -1.3354
+    ],
+    "hi": [
+     0.0761,
+     0.09,
+     -0.5683
+    ],
+    "paint": "pdccdab"
+   },
+   {
+    "name": "bread_wzN__edge",
+    "upload": "bread_wzN__edge__pc2a676",
+    "tris": 207,
+    "look": {
+     "color": "c2a676",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.055,
+     0.086,
+     -1.325
+    ],
+    "hi": [
+     0.0543,
+     0.0968,
+     -0.5778
+    ],
+    "paint": "pc2a676"
    },
    {
     "name": "sleeve_wzA__paper",
@@ -70531,31 +70579,31 @@
     "paint": "pbdb6a7"
    }
   ],
-  "tris": 2586,
+  "tris": 3638,
   "lo": [
-   -0.1074,
+   -0.111,
    -0.07,
    -1.5
   ],
   "hi": [
-   0.1076,
-   0.0922,
+   0.111,
+   0.0973,
    0.292
   ],
-  "bytes": 118536,
+  "bytes": 174092,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "bread",
    "set": "kit",
    "lo": [
-    -0.1074,
+    -0.111,
     -0.07,
     -1.5
    ],
    "hi": [
-    0.1076,
-    0.0922,
+    0.111,
+    0.0973,
     0.292
    ],
    "spots": {
@@ -70576,14 +70624,14 @@
     ],
     "hat": [
      0.0,
-     0.088,
+     0.09,
      -0.39
     ]
    },
    "hatAt": [
     [
      0.0,
-     0.088,
+     0.09,
      -0.39
     ],
     0.12

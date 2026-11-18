@@ -681,7 +681,7 @@ carries a hat seat (`meta.spots.hat` / `meta.hatAt`) and moving-node origins (`m
 | `minigun` | C, charcoal and olive, fat ammo box | 2,470 | `barrels` (spins on z, origin 0, 0, -0.45) | 125451323090974 |
 | `water` | B, light grey toy, blue tank | 8,016 | `water` (liquid, origin on the tank floor: scale y = fill), `pump` | 112537696211238 |
 | `nailgun` | B, muted orange tool, slanted nail strip | 6,706 | `mag` (the strip, origin at its middle) | 84960341833541 |
-| `bread` | B, domed scored loaf, paper sleeve grip | 2,586 | none | 89469059163185 |
+| `bread` | B, v2: golden crust, four diagonal score cuts (pale crumb in an oval golden rim), lumps between them, rounded ends, paler underside, paper sleeve grip | 3,638 | none | 92349177871405 (v2, place v786; v1 was 89469059163185) |
 | `slapper` | B, toy hand on a stick | 3,048 | `hand` (origin at the wrist, 0, 0, -0.45) | 122970789665786 |
 
 The exporter bakes transforms, so a moving node's pivot lives only in the report; code must apply it.
