@@ -554,7 +554,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 			who, head = nil, false
 			for _, t in tg do
 				local k = Hitbox.distScale((t.feet - from).Magnitude)
-				local tt, hd = Hitbox.ray(from, d, t.feet, k)
+				local tt, hd = Hitbox.ray(from, d, t.feet, k, nil, Hitbox.profile(t.m)) -- (the whole head, as the server: Hitbox.profile)
 				if tt and tt < best then best, who, head = tt, t.m, hd end
 			end
 			if who or not mh or bounces <= 0 or left - best <= 1 then break end

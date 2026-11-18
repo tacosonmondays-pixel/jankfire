@@ -380,13 +380,14 @@ end
 -- lag) somewhere along its recent trail. the web server takes the shooter's word for head or body; with the Sniper's
 -- headshot always lethal, that word is worth too much to take
 Rules.HEAD_PAD = 1
-function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }): boolean
+function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, prof: Hitbox.Prof?): boolean
+	-- (prof: this body's own head, Hitbox.profile: the whole visible head, as the shooter's client judged it)
 	for _, e in ends do
 		local v = e - eye
 		if v.Magnitude < 1e-3 then continue end
 		local d = v.Unit
 		for _, ft in feet do
-			local _, _, hl, hh = Hitbox.boxes(ft, Hitbox.distScale((ft - eye).Magnitude), Rules.HEAD_PAD)
+			local _, _, hl, hh = Hitbox.boxes(ft, Hitbox.distScale((ft - eye).Magnitude), Rules.HEAD_PAD, prof)
 			if Hitbox.rayBox(eye, d, hl, hh) then return true end
 		end
 	end

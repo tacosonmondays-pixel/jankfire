@@ -398,7 +398,7 @@ local function serverShot(p: Player, f: Fighter, wid: string, eye: Vector3, d: V
 		who, head = nil, false
 		for _, c in cands do
 			for _, ft in c.spots do
-				local tt, hd = Hitbox.ray(from, d, ft, Hitbox.distScale((ft - from).Magnitude))
+				local tt, hd = Hitbox.ray(from, d, ft, Hitbox.distScale((ft - from).Magnitude), nil, Hitbox.profile(Fight.model(c.t))) -- (the whole head: Hitbox.profile)
 				if tt and tt < best then best, who, head = tt, c.t, hd end
 			end
 		end
@@ -500,7 +500,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		if hwhy then continue end
 		-- head or body: for a one-bullet gun the server looks for itself (a claimed headshot that never crossed the head
 		-- is paid as a body shot)
-		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t)) then hh = 0 end
+		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t), Hitbox.profile(Fight.model(t))) then hh = 0 end
 		n = math.min(n, left); hh = math.min(hh, n); left -= n
 		applyHitscan(f, t, wid, n, hh, from :: Vector3, { mul = mul, qs = x.qs == true, ns = x.ns == true })
 		if not f.alive then break end -- a perfect parry can kill the shooter mid-volley

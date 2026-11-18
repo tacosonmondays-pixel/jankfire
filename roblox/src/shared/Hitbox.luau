@@ -38,18 +38,59 @@ function Hitbox.rayBox(o: Vector3, d: Vector3, lo: Vector3, hi: Vector3): number
 	return math.max(tmin, 0)
 end
 
+-- (18 Nov 2026: the whole visible head is a headshot) where this body's head really is, in studs over its feet line
+-- (root - ROOT_UP): neck = the Head part's bottom, top = its top, from the rig's joints at rest (Motor6D C0 * C1^-1
+-- up to the root, no animation), so the server and every client get the same numbers for R6, R15, short or tall.
+-- the web's fixed boxes put the split at bodyTop, over the middle of a Roblox head: shots at its centre were body hits
+export type Prof = { neck: number, top: number }
+local profs: { [Instance]: { t: number, p: Prof? } } = setmetatable({}, { __mode = "k" }) :: any
+local function restInRoot(m: Instance, root: BasePart, part: BasePart): CFrame?
+	local cf, cur = CFrame.identity, part
+	for _ = 1, 10 do
+		if cur == root then return cf end
+		local joint: Motor6D? = nil
+		for _, d in m:GetDescendants() do
+			if d:IsA("Motor6D") and d.Part1 == cur and d.Part0 then joint = d; break end
+		end
+		if not joint then return nil end
+		cf = joint.C0 * joint.C1:Inverse() * cf
+		cur = joint.Part0 :: BasePart
+	end
+	return nil
+end
+function Hitbox.profile(m: Instance?): Prof?
+	if not m then return nil end
+	local c = profs[m]
+	local now = os.clock()
+	if c and now - c.t < 5 then return c.p end
+	local root, head = m:FindFirstChild("HumanoidRootPart"), m:FindFirstChild("Head")
+	local p: Prof? = nil
+	if root and root:IsA("BasePart") and head and head:IsA("BasePart") then
+		local rest = restInRoot(m, root, head)
+		local mid = if rest then rest.Position.Y else root.CFrame:PointToObjectSpace(head.Position).Y
+		local up, h = mid + Hitbox.ROOT_UP, head.Size.Y
+		if up > 1 and up < 15 and h > 0.2 and h < 5 then p = { neck = up - h / 2, top = up + h / 2 } end
+	end
+	profs[m] = { t = now, p = p }
+	return p
+end
+
 -- a fighter's boxes (scaled about the feet by k). pad = extra studs on every outer face: the server's lag allowance
--- when it re-checks a shot against where the target was (the client always passes none)
-function Hitbox.boxes(feet: Vector3, k: number, pad: number?): (Vector3, Vector3, Vector3, Vector3)
+-- when it re-checks a shot against where the target was (the client always passes none). prof (Hitbox.profile):
+-- the body box ends at the neck and the head box starts there, never lower than the old top (nothing that was a
+-- headshot stops being one)
+function Hitbox.boxes(feet: Vector3, k: number, pad: number?, prof: Prof?): (Vector3, Vector3, Vector3, Vector3)
 	local p = pad or 0
 	local br, hr = B.bodyR * k + p, B.headR * k + p
-	return feet + Vector3.new(-br, -p, -br), feet + Vector3.new(br, B.bodyTop * k, br),
-		feet + Vector3.new(-hr, B.bodyTop * k, -hr), feet + Vector3.new(hr, B.headTop * k + p, hr)
+	local split = if prof then math.min(prof.neck, B.bodyTop) * k else B.bodyTop * k
+	local top = if prof then math.max(prof.top, B.headTop) * k else B.headTop * k
+	return feet + Vector3.new(-br, -p, -br), feet + Vector3.new(br, split, br),
+		feet + Vector3.new(-hr, split, -hr), feet + Vector3.new(hr, top + p, hr)
 end
 
 -- the nearest box this ray hits: distance and whether it was the head
-function Hitbox.ray(o: Vector3, d: Vector3, feet: Vector3, k: number, pad: number?): (number?, boolean)
-	local bl, bh, hl, hh = Hitbox.boxes(feet, k, pad)
+function Hitbox.ray(o: Vector3, d: Vector3, feet: Vector3, k: number, pad: number?, prof: Prof?): (number?, boolean)
+	local bl, bh, hl, hh = Hitbox.boxes(feet, k, pad, prof)
 	local tb, th = Hitbox.rayBox(o, d, bl, bh), Hitbox.rayBox(o, d, hl, hh)
 	if th and (not tb or th <= tb) then return th, true end
 	return tb, false

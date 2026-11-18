@@ -106,7 +106,7 @@ local function sweep(pr: Proj, a: Vector3, b: Vector3, r: number): (Fighter?, nu
 		if t.onlyFor ~= nil and t.onlyFor ~= pr.owner.ref then continue end
 		local ft = Fight.feet(t)
 		if not ft then continue end
-		local tt, hd = Hitbox.ray(a, dir, ft, Hitbox.distScale((ft - a).Magnitude), r)
+		local tt, hd = Hitbox.ray(a, dir, ft, Hitbox.distScale((ft - a).Magnitude), r, Hitbox.profile(Fight.model(t))) -- (the whole head)
 		if tt and tt <= L and tt < bt then best, bt, head = t, tt, hd end
 	end
 	return best, (if best then bt else nil), head
@@ -220,7 +220,7 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 		if own then Fight.knock(t, kb, pr.wid)
 		else
 			local ft = Fight.feet(t)
-			local hs = ft ~= nil and at.Y > ft.Y + Weapons.BOX.bodyTop
+			local hs = head -- (the sweep's own head box: the whole visible head, Hitbox.profile)
 			Fight.hurt(t, w.dmg * (1 + w.bonus * math.min(pr.b, w.bounces)) * (if hs then 1.5 else 1), pr.owner, pr.wid, hs, kb, at)
 		end
 		return true
@@ -269,7 +269,7 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 		if own then return true end
 		local c = pr.charge or 1
 		local ft = Fight.feet(t)
-		local hs = ft ~= nil and at.Y > ft.Y + 1.55 * S
+		local hs = head -- (above the shoulders = the sweep's own head box: the whole visible head, Hitbox.profile)
 		local dmg = (w.dmg + (w.dmgMax - w.dmg) * c) * (if hs then w.head else 1)
 		local kb = Vector3.new(d.X * w.kb, w.kbUp, d.Z * w.kb)
 		if tip == "power" then dmg *= 1.8
