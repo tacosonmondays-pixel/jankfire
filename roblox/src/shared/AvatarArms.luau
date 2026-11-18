@@ -74,6 +74,7 @@ type Arm = {
 	foreInv: CFrame, -- the forearm's own frame at its wrist joint (Y to the elbow), inverted
 	thick: number, long: number, ang: number,
 	over: CFrame?, mix: number, overUnder: boolean,
+	elbowTo: Vector3?, elbowMix: number, -- (AvatarArms.elbowAt: the elbow spot moved for a pose, the Bow's draw)
 	away: boolean, idle: boolean?, -- (a hand that waits off screen: hidden while nothing calls it)
 	base: { color: Color3, material: Enum.Material, name: string }?, -- (the hand as dressed, for zombieSync)
 }
@@ -240,7 +241,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			rel = (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z),
 			hand = hand, fore = fore,
 			gripInv = grip:Inverse(), wrist = hw, mid = basisAt(Vector3.zero, hw), foreInv = basisAt(fw, fe - fw):Inverse(),
-			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false, away = row.away == true,
+			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false, elbowMix = 0, away = row.away == true,
 			base = base,
 		})
 	end
@@ -280,6 +281,17 @@ function AvatarArms.override(parent: Instance, side: string, to: CFrame?, mix: n
 	end
 end
 
+-- move an arm's elbow spot (camera space, metres; nil = its row's own) part of the way (mix 0 to 1): the Bow's draw
+-- puts the bow arm's elbow out along the straight arm and the drawing arm's behind you. set it every frame it applies
+function AvatarArms.elbowAt(parent: Instance, side: string, to: Vector3?, mix: number)
+	local arms = parent:FindFirstChild("AvatarArms")
+	local list = arms and live[arms]
+	if not list then return end
+	for _, a in list do
+		if a.side == side then a.elbowTo = to; a.elbowMix = if to then math.clamp(mix, 0, 1) else 0 end
+	end
+end
+
 -- every frame, after the weapon (and whatever the off hand is on) is placed
 function AvatarArms.aim(parent: Instance, cam: CFrame)
 	local arms = parent:FindFirstChild("AvatarArms")
@@ -293,7 +305,8 @@ function AvatarArms.aim(parent: Instance, cam: CFrame)
 			F = F:Lerp(a.over, a.mix)
 			if a.mix > 0.5 then under = a.overUnder end
 		end
-		local elbow = cam:PointToWorldSpace(a.elbow * S)
+		local eSpot = if a.elbowTo and a.elbowMix > 0 then a.elbow:Lerp(a.elbowTo, a.elbowMix) else a.elbow
+		local elbow = cam:PointToWorldSpace(eSpot * S)
 		local hand: CFrame
 		if under then
 			-- the arm on its line to the elbow, the palm side up into the thing as far as that line allows

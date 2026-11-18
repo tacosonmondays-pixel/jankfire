@@ -1304,5 +1304,5 @@ RunService.RenderStepped:Connect(function(dt: number)
 	else
 		H.top("HUB") -- (16 Nov, owner: no flavour text. the place's name only: FightHud flashes it for 3 s as you come in)
 	end
-	TP.mine(aim, st ~= nil and st.sprinting, if a then a.mag else nil) -- (your aim and mag for the third-person pose)
+	TP.mine(aim, st ~= nil and st.sprinting, if a then a.mag else nil, minigun.bowDraw()) -- (your aim and mag for the third-person pose; the Bow drawn)
 end)

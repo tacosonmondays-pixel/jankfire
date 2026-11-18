@@ -613,12 +613,23 @@ local raise = { t0 = -10, dur = 0 }
 function VM.raise(dur: number?) raise.t0 = os.clock(); raise.dur = dur or 0.6 end
 
 -- the Bow (18 Nov 2026, guns-remodel's recurve: its export meta.bow): the drawn string is two halves from where the
--- string leaves the limbs to the nock, pulled back by the draw (ProjClient.drawn(), 0..1) x meta draw; the kit's own
--- straight string is hidden; a kit arrow (w_pj_arrow at half size) sits on the nock while one is ready; your right
--- hand rides the nock
+-- string leaves the limbs to the nock; the kit's own straight string is hidden; a kit arrow (w_pj_arrow, arrowScale)
+-- sits on the nock while one is ready; your right hand rides the nock.
+-- the draw (the owner, 18 Nov: "the bow draw animtion looks bad!"): at rest it's held low on the left (holds.json),
+-- tipped over, an arrow on the string. drawing (ProjClient.drawn(), 0..1) it comes up on a straight bow arm, out on the
+-- left and nearly upright (aim: camera metres, where the arrow rests on the bow and where the nock reaches at full draw,
+-- the bow rolled `roll` so its top leans away from the crosshair), and the string, the arrow and your hand come straight
+-- back to your cheek, the hand dropping out of sight at full draw. held full, it shakes a little (shake m, growing over
+-- `shakeIn` s). let go: the string snaps forward past its rest and settles (a stiff spring), the bow kicks forward and
+-- its top rocks over (kick m, rock rad), your hand stays at the cheek a moment and moves back (follow m), then the bow
+-- comes down after `hold` s. elbows: where each arm's elbow spot goes while it's up (camera metres)
 local BOW = { nock = Vector3.new(0, 0, 0.1132), leave = { Vector3.new(0, 0.36, 0.1132), Vector3.new(0, -0.36, 0.1132) },
-	draw = 0.16, arrowNock = Vector3.new(-0.0023, 0, 0.4002), arrowScale = 0.5, thick = 0.006, cd = 0.35 }
-type Bow = { halves: { BasePart }, arrow: Model?, arrowParts: { BasePart }, e: number, was: boolean, relT: number }
+	arrowNock = Vector3.new(-0.0023, 0, 0.4002), arrowScale = 0.8, thick = 0.006, cd = 0.35,
+	aim = { rest = Vector3.new(-0.07, -0.12, -0.66), nock = Vector3.new(0.07, -0.155, -0.15), roll = math.rad(12) },
+	steady = 0.45, shake = 0.0035, shakeIn = 0.5, kick = 0.035, rock = 0.14, follow = 0.03, hold = 0.22,
+	elbowL = Vector3.new(-0.24, -0.36, -0.28), elbowR = Vector3.new(0.25, -0.12, 0.25) }
+type Bow = { halves: { BasePart }, arrow: Model?, arrowParts: { BasePart }, was: boolean, relT: number,
+	up: number, pull: number, pv: number, hand: number, relPull: number, fullT: number? }
 local bow: Bow? = nil
 local function bowSetup(m: Model, root: BasePart): Bow
 	local col = Color3.fromRGB(60, 52, 44)
@@ -652,7 +663,42 @@ local function bowSetup(m: Model, root: BasePart): Bow
 		a.Parent = m
 		arrow = a
 	end
-	return { halves = halves, arrow = arrow, arrowParts = parts, e = 0, was = false, relT = -10 }
+	return { halves = halves, arrow = arrow, arrowParts = parts, was = false, relT = -10, up = 0, pull = 0, pv = 0, hand = 0, relPull = 0 }
+end
+-- the Bow this frame (camera space, studs): `held` is where its hold puts it, `wob` the sway and bob on top of that.
+-- returns where the bow goes and how far it's up (0..1, eased). B.pull: the string's nock back from its rest (studs);
+-- B.hand: your hand's (the same while drawing; it stays at your cheek a moment after the let-go)
+local function bowPose(B: Bow, draw: number?, held: CFrame, wob: Vector3, dt: number, nSub: number, h: number): (CFrame, number)
+	local now = os.clock()
+	local drawing = draw ~= nil
+	if B.was and not drawing then B.relT = now; B.relPull = B.pull; B.fullT = nil end -- (let go: the arrow is away)
+	B.was = drawing
+	local rt = now - B.relT
+	local A = BOW.aim
+	local full = math.max(0, (A.rest - A.nock).Magnitude * S - BOW.nock.Z * k) -- (how far the nock comes back at full draw)
+	if drawing then
+		local d = math.clamp(draw or 0, 0, 1)
+		B.pull += (full * (1 - (1 - d) ^ 1.6) - B.pull) * math.min(1, dt * 20); B.pv = 0
+		if d >= 0.999 then B.fullT = B.fullT or now else B.fullT = nil end
+		B.hand = B.pull
+	else
+		for _ = 1, nSub do B.pv += (-3600 * B.pull - 80 * B.pv) * h; B.pull += B.pv * h end -- (the snap: past its rest and back)
+		local tgt = if rt < BOW.hold then B.relPull + BOW.follow * S * math.min(1, rt / 0.08) else 0
+		B.hand += (tgt - B.hand) * math.min(1, dt * (if rt < BOW.hold then 30 else 7))
+	end
+	local upNow = drawing or rt < BOW.hold
+	B.up += ((if upNow then 1 else 0) - B.up) * math.min(1, dt * (if upNow then 12 else 5))
+	local u = B.up * B.up * (3 - 2 * B.up)
+	if u < 0.001 then return held, 0 end
+	local g = A.rest * S
+	local aim = CFrame.lookAt(g, g + (A.rest - A.nock)) * CFrame.Angles(0, 0, A.roll)
+	-- held full: a small shake, two beats, growing over shakeIn
+	local sh = if B.fullT then math.min(1, (now - B.fullT) / BOW.shakeIn) else 0
+	local tremor = Vector3.new(math.sin(now * 71) * 0.6 + math.sin(now * 113 + 1) * 0.4, math.sin(now * 83 + 2) * 0.6 + math.sin(now * 127) * 0.4, 0) * (BOW.shake * S * sh)
+	-- let go: forward and the top over, peaking ~35 ms after, gone in ~0.3 s
+	local kk = if drawing then 0 else (1 - math.exp(-rt / 0.02)) * math.exp(-rt / 0.09) * 1.6
+	aim = CFrame.new(wob * BOW.steady + tremor + aim.LookVector * (BOW.kick * S * kk)) * aim * CFrame.Angles(-BOW.rock * kk, 0, tremor.X * 1.5)
+	return held:Lerp(aim, u), u
 end
 -- the Lasso (18 Nov 2026, weapons-port's LassoClient): hold fire and your hand goes up and round while the loop spins
 -- over your head, growing as the spin builds (c.spin, 0..1 to full); a spoke of rope runs from your fist to the loop.
@@ -1023,7 +1069,15 @@ function VM.update(dt: number, c: Ctx)
 		drink = R
 	end
 	if dR > 0 then jig *= CFrame.Angles(DIP.tip * dR, 0, 0) end
-	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * drink * jig * baseRot
+	local held = CFrame.new(pos) * drink * jig * baseRot
+	local bowUp = 0 -- (the Bow raised to its draw, 0..1: the elbows go with it, below)
+	if bow then
+		local draw = c.draw
+		local hd = if IS_STUDIO then LookPlayer:GetAttribute("BowDrawHold") else nil -- (Studio photos: the draw held at this, 0..1)
+		if type(hd) == "number" then draw = math.clamp(hd, 0, 1) end
+		held, bowUp = bowPose(bow :: Bow, draw, held, pos - base, dt, nSub, h)
+	end
+	m.PrimaryPart.CFrame = camera.CFrame * held
 	if twin then -- (Lefty: the right gun's pose in a mirror, its own kick and reload dip on top)
 		local T = twin :: Twin
 		local dL = dipOf(T.dip)
@@ -1031,23 +1085,19 @@ function VM.update(dt: number, c: Ctx)
 		local off = Vector3.new(T.rec.p.X * ra, T.rec.p.Y, (T.kick * 0.04 * S + T.rec.p.Z) * ra) + Vector3.new(-DIP.p.X, DIP.p.Y, DIP.p.Z) * S * dL + swayP
 		T.root.CFrame = camera.CFrame * CFrame.new(off) * mir * CFrame.fromEulerAnglesXYZ((T.kickUp * 0.12 + T.rec.r.X) * ra + DIP.tip * dL, 0, -T.rec.r.Z * ra)
 	end
-	local bowPull = 0 -- (the Bow's string pulled back, studs: the right hand rides it, below)
-	if bow then
+	if bow then -- (the Bow's string to wherever the nock is, a buzz across it after the snap; the arrow on it)
 		local B = bow :: Bow
-		local drawing = c.draw ~= nil
-		if B.was and not drawing then B.relT = os.clock() end -- (let go: the arrow is away)
-		B.was = drawing
-		B.e += ((c.draw or 0) - B.e) * math.min(1, dt * (if drawing then 25 else 40)) -- (the string snaps back fast)
-		bowPull = B.e * BOW.draw * k
 		local R = m.PrimaryPart.CFrame
-		local nock = BOW.nock * k + Vector3.new(0, 0, bowPull)
-		for i, h in B.halves do
+		local rt = os.clock() - B.relT
+		local buzz = if not B.was and rt < 0.4 then math.sin(rt * 2 * math.pi * 24) * 0.005 * S * math.exp(-rt / 0.08) else 0
+		local nock = BOW.nock * k + Vector3.new(buzz, 0, B.pull)
+		for i, hp in B.halves do
 			local a, b = R * (BOW.leave[i] * k), R * nock
-			h.Size = Vector3.new(h.Size.X, h.Size.Y, math.max(0.01, (b - a).Magnitude))
-			h.CFrame = CFrame.lookAt((a + b) / 2, b)
+			hp.Size = Vector3.new(hp.Size.X, hp.Size.Y, math.max(0.01, (b - a).Magnitude))
+			hp.CFrame = CFrame.lookAt((a + b) / 2, b)
 		end
 		if B.arrow then
-			local ready = drawing or os.clock() - B.relT > BOW.cd
+			local ready = B.was or rt > BOW.cd
 			;(B.arrow :: Model):PivotTo(R * CFrame.new(nock - BOW.arrowNock * k * BOW.arrowScale))
 			for _, d in B.arrowParts do
 				local hide = if ready then nil else true
@@ -1157,9 +1207,12 @@ function VM.update(dt: number, c: Ctx)
 		end
 		placeLoader(m.PrimaryPart, to, mix, c.hidden)
 		AvatarArms.override(m, "Left", to, mix, under)
-		if bow then -- (the Bow: your right hand on the string, wherever the draw has it)
+		if bow then -- (the Bow: your right hand on the string, wherever the draw has it; the elbows go with the raise)
+			local B = bow :: Bow
 			local rel = AvatarArms.holdFrame("bow", "Right", k)
-			if rel and bowPull > 1e-4 then AvatarArms.override(m, "Right", m.PrimaryPart.CFrame * CFrame.new(0, 0, bowPull) * rel, 1) else AvatarArms.override(m, "Right", nil, 0) end
+			if rel and B.hand > 1e-3 then AvatarArms.override(m, "Right", m.PrimaryPart.CFrame * CFrame.new(0, 0, B.hand) * rel, 1) else AvatarArms.override(m, "Right", nil, 0) end
+			AvatarArms.elbowAt(m, "Left", BOW.elbowL, bowUp)
+			AvatarArms.elbowAt(m, "Right", BOW.elbowR, bowUp)
 		end
 		AvatarArms.aim(m, camera.CFrame)
 	end

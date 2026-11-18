@@ -83,6 +83,15 @@ TP.T = {
 	-- cart rider's free left hand out for balance (aim space from the shoulder, u), leant in `lean` radians
 	lasso = { spin = V(0.1, 0.92, -0.05), circle = 0.22, rev = 2.2, loop = 0.75, pull = V(0.12, -0.55, -0.5), lead = 0.3,
 		flailR = V(0.4, 0.75, -0.1), flailL = V(-0.4, 0.75, -0.1), wave = 0.28, waveHz = 3, ride = V(-0.9, -0.3, -0.2), lean = 0.18 },
+	-- (the hold session, 18 Nov 2026) the Bow's draw (the owner: "the bow draw animtion looks bad!"): the chest turns side
+	-- on (twist, radians), the bow goes out on a straight left arm (the arrow's rest `reach` of the arm's reach from the
+	-- shoulder, along the aim from the anchor) nearly upright (roll radians: its top away from the face), and the string,
+	-- the arrow and the right hand come back to the anchor (aim space from the right eye, u) under the cheek; the right
+	-- elbow out behind (poleR, chest space, u). held full it shakes (shake u, over shakeIn s); let go: the string snaps,
+	-- the bow kicks (kick u) and rocks (rock rad), the hand stays a moment (follow u), and it comes down after `hold` s.
+	-- arrowScale: the nocked arrow's size against the bow's
+	bow = { twist = -0.85, anchor = V(-0.02, -0.17, 0.08), reach = 0.96, roll = 0.2, poleR = V(1.1, 0.35, 0.9), poleL = V(-0.5, -1.2, 0.1),
+		shake = 0.006, shakeIn = 0.5, kick = 0.05, rock = 0.14, follow = 0.05, hold = 0.22, arrowScale = 0.8 },
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
@@ -772,11 +781,12 @@ local function itemRig(r: Rig, id: string, kind: string)
 end
 
 -- your own weapon code (Arsenal) tells us what you do the moment you do it
-local mine = { aim = 0, sprint = false, reloadT = -10, reloadDur = 0, empty = false, ammo = nil :: number? }
-function TP.mine(aim: number, sprint: boolean?, ammo: number?)
+local mine = { aim = 0, sprint = false, reloadT = -10, reloadDur = 0, empty = false, ammo = nil :: number?, draw = nil :: number? }
+function TP.mine(aim: number, sprint: boolean?, ammo: number?, draw: number?)
 	mine.aim = aim
 	mine.sprint = sprint == true
 	mine.ammo = ammo
+	mine.draw = draw -- (the Bow drawn, 0..1, while you draw it: Arsenal's minigun.bowDraw())
 end
 function TP.aiming(): number return mine.aim end -- (how far you're aimed in, 0 to 1: the shoulder camera comes in with it)
 local function myRig(): Rig? return rigFor(me.Character) end
@@ -1025,6 +1035,119 @@ local function gunPose(r: Rig, st: any, Q: CFrame, eye: Vector3, e: number): CFr
 	return hip:Lerp(ads, e)
 end
 
+-- (the hold session, 18 Nov 2026) a body's Bow draw this frame: d = how far it's drawn (0..1), nil when it isn't. pull:
+-- the string, a share of the full draw (its spring overshoots past 0 after the let-go); hand: the right hand's (the
+-- same while drawing; it stays at the cheek a moment after); up: how far the bow is raised to the draw (0..1)
+type BowS = { up: number, pull: number, pv: number, hand: number, relT: number, relPull: number, was: boolean, fullT: number? }
+local function bowStep(r: Rig, d: number?, dt: number, now: number): BowS
+	local rx = r :: any
+	if not rx.bowS then rx.bowS = { up = 0, pull = 0, pv = 0, hand = 0, relT = -10, relPull = 0, was = false } end
+	local B = rx.bowS :: BowS
+	local T = TP.T.bow
+	local drawing = d ~= nil
+	if B.was and not drawing then B.relT = now; B.relPull = B.pull; B.fullT = nil end
+	B.was = drawing
+	local rt = now - B.relT
+	if drawing then
+		local dd = math.clamp(d :: number, 0, 1)
+		B.pull += ((1 - (1 - dd) ^ 1.6) - B.pull) * math.min(1, dt * 20); B.pv = 0
+		if dd >= 0.999 then B.fullT = B.fullT or now else B.fullT = nil end
+		B.hand = B.pull
+	else
+		local n = math.clamp(math.ceil(dt * 240), 1, 40)
+		local h = dt / n
+		for _ = 1, n do B.pv += (-3600 * B.pull - 80 * B.pv) * h; B.pull += B.pv * h end -- (the snap: past its rest and back)
+		local tgt = if rt < T.hold then B.relPull else 0
+		B.hand += (tgt - B.hand) * math.min(1, dt * (if rt < T.hold then 30 else 7))
+	end
+	local upNow = drawing or rt < T.hold
+	B.up += ((if upNow then 1 else 0) - B.up) * math.min(1, dt * (if upNow then 12 else 5))
+	return B
+end
+-- ... and its string (two halves from the limbs to the nock) and the arrow on it, welded into the gun (so they move with
+-- it on the same step): made while the bow is up or the string still moving, the kit's straight string hidden then
+local BOW_NOCK, BOW_LEAVE = 0.1132, { V(0, 0.36, 0.1132), V(0, -0.36, 0.1132) } -- (the kit bow's export meta.bow, file metres)
+local BOW_ARROW_NOCK = V(-0.0023, 0, 0.4002) -- (w_pj_arrow's nock)
+local BOW_STUDIO = game:GetService("RunService"):IsStudio() -- (Studio photos: your BowDrawHold attribute holds your draw)
+local function bowString(r: Rig, B: BowS, on: boolean, cd: number, now: number)
+	local rx = r :: any
+	local s = rx.bowStr
+	if s and (s.gun ~= r.gun or not on) then
+		for _, p in s.halves do p:Destroy() end
+		if s.arrow then s.arrow:Destroy() end
+		for _, p in s.kit do if p.Parent then p:SetAttribute("Hide", nil) end end
+		rx.bowStr = nil; s = nil
+	end
+	if not on or not r.gun or not r.groot then return end
+	local root = r.groot :: BasePart
+	if not s then
+		local kit, col = {}, Color3.fromRGB(60, 52, 44)
+		for _, d in (r.gun :: Model):GetDescendants() do
+			if d:IsA("BasePart") and string.sub(string.lower(d.Name), 1, 6) == "string" then
+				if string.find(string.lower(d.Name), "cord", 1, true) then col = d.Color end
+				d:SetAttribute("Hide", true) -- (the gun's own hide pass: LocalTransparencyModifier)
+				table.insert(kit, d)
+			end
+		end
+		local halves = {}
+		for i = 1, 2 do
+			local p = Instance.new("Part")
+			p.Name = "TPBowString" .. i
+			p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false; p.Massless = true
+			p.Material = Enum.Material.SmoothPlastic; p.Color = col
+			p.Size = V(0.012 * r.k, 0.012 * r.k, 0.1)
+			p.CFrame = root.CFrame
+			p.Parent = r.gun
+			local wd = Instance.new("Weld")
+			wd.Part0 = root; wd.Part1 = p; wd.Parent = p
+			halves[i] = { part = p, weld = wd }
+		end
+		local arrow, aw, arel = nil, nil, CFrame.identity
+		local lib = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireWeapons")
+		local t = lib and lib:FindFirstChild("w_pj_arrow")
+		if t and t:IsA("Model") then
+			local a = t:Clone()
+			a.Name = "TPBowArrow"
+			a:ScaleTo(a:GetScale() * r.k * TP.T.bow.arrowScale)
+			a:PivotTo(root.CFrame)
+			local main = a.PrimaryPart or a:FindFirstChildWhichIsA("BasePart", true)
+			if main then
+				for _, d in a:GetDescendants() do
+					if d:IsA("BasePart") then
+						d.Anchored = false; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false; d.Massless = true
+						if d ~= main then local wc = Instance.new("WeldConstraint"); wc.Part0 = main; wc.Part1 = d; wc.Parent = d end
+					end
+				end
+				arel = a:GetPivot():ToObjectSpace(main.CFrame)
+				a.Parent = r.gun
+				aw = Instance.new("Weld")
+				aw.Part0 = root; aw.Part1 = main; aw.C0 = arel; aw.Parent = main
+				arrow = a
+			else
+				a:Destroy()
+			end
+		end
+		s = { gun = r.gun, halves = halves, kit = kit, arrow = arrow, aweld = aw, arel = arel, shown = true }
+		rx.bowStr = s
+	end
+	local rt = now - B.relT
+	local buzz = if not B.was and rt < 0.4 then math.sin(rt * 2 * math.pi * 24) * 0.005 * r.k * math.exp(-rt / 0.08) else 0
+	local nock = V(buzz, 0, BOW_NOCK * r.k + B.pull * (rx.bowFull or 0))
+	for i, hv in s.halves do
+		local a = BOW_LEAVE[i] * r.k
+		hv.part.Size = V(hv.part.Size.X, hv.part.Size.Y, math.max(0.01, (nock - a).Magnitude))
+		hv.weld.C0 = CFrame.lookAt((a + nock) / 2, nock)
+	end
+	if s.arrow and s.aweld then
+		local ready = B.was or rt > cd
+		s.aweld.C0 = CF(nock - BOW_ARROW_NOCK * r.k * TP.T.bow.arrowScale) * s.arel
+		if ready ~= s.shown then
+			s.shown = ready
+			for _, d in s.arrow:GetDescendants() do if d:IsA("BasePart") then d.LocalTransparencyModifier = if ready then 0 else 1 end end
+		end
+	end
+end
+
 local function katanaPose(r: Rig, Q: CFrame): CFrame
 	local st = TP.T.katana
 	local u = r.u
@@ -1122,6 +1245,24 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local lspin = eased("lspin", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoSpin") == true, 9)
 	local lhold = eased("lhold", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoHolding") == true, 9)
 	local flail = eased("flail", plr ~= nil and plr:GetAttribute("LassoHeld") == true, 8)
+	-- the Bow's draw: yours from Arsenal (TP.mine), anyone else's from their BowDrawT (the server clock when their draw
+	-- began: weapons-port's), a TPRig test body's from its own BowDraw (0..1)
+	local bowS: BowS? = nil
+	if r.wid == "bow" then
+		local bd: number? = nil
+		if r.isMe then
+			bd = mine.draw
+			local hd = if BOW_STUDIO then me:GetAttribute("BowDrawHold") else nil
+			if type(hd) == "number" then bd = math.clamp(hd, 0, 1) end
+		else
+			local holder: Instance = plr or r.ch
+			local dd, t0 = holder:GetAttribute("BowDraw"), holder:GetAttribute("BowDrawT")
+			if type(dd) == "number" then bd = math.clamp(dd, 0, 1)
+			elseif type(t0) == "number" then bd = math.clamp((workspace:GetServerTimeNow() - t0) / (if w and w.drawT then w.drawT else 0.7), 0, 1) end
+		end
+		bowS = bowStep(r, bd, dt, now)
+	end
+	local bowUp = if bowS then smoothstep(bowS.up) else 0
 	local spinAt: Vector3?, ropeL: CFrame? = nil, nil -- (the spinning fist, chest space; the left fist on the rope)
 	-- sprinting (on the ground, fast, not aiming, not just fired): the gun comes down across the body (riding a cart too)
 	local vel = r.root.AssemblyLinearVelocity
@@ -1134,6 +1275,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local J = r.J
 	local e = smoothstep(r.aim)
 	local twist = if r.cls == "katana" then st.twist else st.twist + (st.twistAds - st.twist) * e
+	if bowUp > 0 then twist += (TP.T.bow.twist - twist) * bowUp end -- (the Bow drawn: side on, the left shoulder to it)
 	local pitch = math.clamp(r.pitch, -1.45, 1.45)
 	local yaw = math.clamp(r.yaw, -1.2, 1.2)
 	local crouchW = 0
@@ -1215,6 +1357,26 @@ local function stepRig(r: Rig, dt: number, now: number)
 				G = G:Lerp(CF(p) * Q * inv, smoothstep(flail))
 			end
 		end
+		-- the Bow drawn (TP.T.bow): out on the straight left arm, the arrow's line along the aim through the anchor under
+		-- the right cheek; how far out the arm's reach decides, and the string comes back that far less the nock's own
+		if bowS and bowUp > 0.001 then
+			local T = TP.T.bow
+			local f = Q.LookVector
+			local A = eye + Q * (T.anchor * r.u)
+			local La = r.arms.Left
+			local dv = A - La.S
+			local b = f:Dot(dv)
+			local disc = b * b - (dv:Dot(dv) - (La.reach * T.reach) ^ 2)
+			local D = math.max(if disc > 0 then -b + math.sqrt(disc) else 0.9 * r.u, 0.4 * r.u)
+			local rest = A + f * D
+			rx.bowFull = math.max(0, D - BOW_NOCK * r.k)
+			local rt = now - bowS.relT
+			local sh = if bowS.fullT then math.min(1, (now - bowS.fullT) / T.shakeIn) else 0
+			local tremor = V(math.sin(now * 71) * 0.6 + math.sin(now * 113 + 1) * 0.4, math.sin(now * 83 + 2) * 0.6 + math.sin(now * 127) * 0.4, 0) * (T.shake * r.u * sh)
+			local kk = if bowS.was then 0 else (1 - math.exp(-rt / 0.02)) * math.exp(-rt / 0.09) * 1.6
+			local Bf = CF(f * (T.kick * r.u * kk) + Q * tremor) * CFrame.lookAt(rest, rest + f, Q.UpVector) * ANG(-T.rock * kk, 0, T.roll)
+			G = G:Lerp(Bf, bowUp)
+		end
 		-- a breath and the stride, small
 		local bob = if hum.FloorMaterial ~= Enum.Material.Air then math.min(1, spd / 20) else 0
 		local ph = now * (if spd > 20 then 11 else 8)
@@ -1225,6 +1387,10 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local R, L = arms.Right, arms.Left
 	local poleR = R.S + st.poleR * r.u
 	local poleL = L.S + st.poleL * r.u
+	if bowUp > 0.001 then -- (the Bow drawn: the right elbow out behind, the bow arm's nearly straight)
+		poleR = poleR:Lerp(R.S + TP.T.bow.poleR * r.u, bowUp)
+		poleL = poleL:Lerp(L.S + TP.T.bow.poleL * r.u, bowUp)
+	end
 	local handR: CFrame?, handL: CFrame?
 	if r.tool then
 		local tool = r.tool
@@ -1262,7 +1428,15 @@ local function stepRig(r: Rig, dt: number, now: number)
 			local want = if hideAll or d:GetAttribute("Hide") then 1 else 0
 			if r.shown[d] ~= want then r.shown[d] = want; d.LocalTransparencyModifier = want end
 		end
-		if r.holdR then handR = handOn(R, G * r.holdR, if r.poseR == "hand" then "hand" else "grip", r.turnR, poleR) end
+		if r.holdR then
+			local Fr = G * r.holdR
+			if bowS and bowS.hand > 1e-3 then -- (the Bow: the hand on the string wherever the draw has it; at the cheek a moment after)
+				local rt = now - bowS.relT
+				local fol = if not bowS.was and rt < TP.T.bow.hold then TP.T.bow.follow * r.u * math.min(1, rt / 0.08) else 0
+				Fr = G * CF(0, 0, bowS.hand * ((r :: any).bowFull or 0) + fol) * r.holdR
+			end
+			handR = handOn(R, Fr, if r.poseR == "hand" then "hand" else "grip", r.turnR, poleR)
+		end
 		if r.holdL then
 			local F = (G2 or G) * r.holdL -- (Lefty & Righty: on the left gun's grip)
 			local gunBack = G:VectorToWorldSpace(Vector3.zAxis)
@@ -1418,6 +1592,14 @@ local function stepRig(r: Rig, dt: number, now: number)
 	elseif loop then
 		for _, p in loop :: { BasePart } do p:Destroy() end
 		rx.loop = nil
+	end
+	-- (the hold session, 18 Nov 2026) the Bow's string and arrow: everyone's, and yours in third person
+	if bowS then
+		local hideMine = r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true)
+		local on = r.gun ~= nil and dist < TP.T.far and not hideMine and (bowS.up > 0.002 or math.abs(bowS.pull) > 1e-3)
+		bowString(r, bowS, on, if w and w.cd then w.cd else 0.35, now)
+	elseif rx.bowStr then
+		bowString(r, rx.bowS or { up = 0, pull = 0, pv = 0, hand = 0, relT = -10, relPull = 0, was = false }, false, 0, now)
 	end
 	-- (debug / tests: where each hand was sent, chest space, to check the IK landed it there)
 	if r.gun and r.ch:GetAttribute("TPDebug") then
