@@ -416,8 +416,15 @@ per-utility wraps.
 - `GunSkins.template` finds them. The held, thrown and third-person models wear the skin the `Skins` attribute picks
   (`smoke=smoke_censer`).
 
-**Not live yet** (the shop session's files): the loadout's wrap and skin pickers on the utility slot, the server
-Loadout accepting gadget ids, and LootTable listing the gadgets and the skin rows. Until then nobody can pick these.
+**Picking, winning and buying** (place version 823, the shop session's commit 676b161, with my LootTable hunks ccce051):
+- The loadout's wrap and skin pickers open on the utility slot, and the server Loadout takes gadget wraps and skins
+  (hats stay guns-only).
+- `LootTable.weapons("wrap")` includes the live gadgets, so a wrap is owned per gadget ("galaxy@frag") and spray cans
+  can give one.
+- `Shared.ItemSkins` rows merge into `LootTable.SKINS`: crates roll gadget skins and the shop rotation can offer them.
+  `LOOT_FREE` applies as for everything else.
+- The shop session's previews (`GunPreview.itemModel(id, skin)`) draw them in LoadoutUI, the match picker and the shop
+  cards.
 
 **Tested** in one solo Play in training, with the attributes set by hand:
 - the medkit with Galaxy in hand;
