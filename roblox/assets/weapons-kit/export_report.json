@@ -73442,5 +73442,269 @@
   },
   "uv": true,
   "paint": "kit"
+ },
+ "w_scythe": {
+  "pieces": [
+   {
+    "name": "blade_wzB__steel",
+    "upload": "blade_wzB__steel__p98a0aa",
+    "tris": 244,
+    "look": {
+     "color": "98a0aa",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.7,
+     0.0127,
+     -1.3609
+    ],
+    "hi": [
+     0.012,
+     0.0272,
+     -1.16
+    ],
+    "paint": "p98a0aa"
+   },
+   {
+    "name": "blade_wzN__edge",
+    "upload": "blade_wzN__edge__pc8ced6",
+    "tris": 174,
+    "look": {
+     "color": "c8ced6",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.686,
+     0.0149,
+     -1.3788
+    ],
+    "hi": [
+     0.012,
+     0.0251,
+     -1.1755
+    ],
+    "paint": "pc8ced6"
+   },
+   {
+    "name": "collar_wzN__teal",
+    "upload": "collar_wzN__teal__p3ee6c8",
+    "tris": 288,
+    "look": {
+     "color": "3ee6c8",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.031,
+     -0.031,
+     -1.2885
+    ],
+    "hi": [
+     0.031,
+     0.031,
+     -1.192
+    ],
+    "paint": "p3ee6c8"
+   },
+   {
+    "name": "haft_wzA__haft",
+    "upload": "haft_wzA__haft__p3c3734",
+    "tris": 192,
+    "look": {
+     "color": "3c3734",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0245,
+     -0.0245,
+     -1.342
+    ],
+    "hi": [
+     0.0245,
+     0.0245,
+     -0.0925
+    ],
+    "paint": "p3c3734"
+   },
+   {
+    "name": "haft_wzB__frame",
+    "upload": "haft_wzB__frame__p444851",
+    "tris": 528,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.026,
+     -0.026,
+     -1.378
+    ],
+    "hi": [
+     0.026,
+     0.026,
+     0.1305
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "wrap_wzN__wrap",
+    "upload": "wrap_wzN__wrap__p232429",
+    "tris": 2112,
+    "look": {
+     "color": "232429",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0245,
+     -0.0245,
+     -0.4925
+    ],
+    "hi": [
+     0.0245,
+     0.0245,
+     0.0915
+    ],
+    "paint": "p232429"
+   }
+  ],
+  "tris": 3538,
+  "lo": [
+   -0.7,
+   -0.031,
+   -1.3788
+  ],
+  "hi": [
+   0.031,
+   0.031,
+   0.1305
+  ],
+  "bytes": 207236,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "scythe",
+   "set": "kit",
+   "lo": [
+    -0.7,
+    -0.031,
+    -1.3788
+   ],
+   "hi": [
+    0.031,
+    0.031,
+    0.1305
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "fore": [
+     0.0,
+     0.0,
+     -0.45
+    ],
+    "mid": [
+     -0.3,
+     0.02,
+     -1.25
+    ],
+    "muzzle": [
+     -0.7,
+     0.02,
+     -1.16
+    ],
+    "hat": [
+     -0.2,
+     0.0254,
+     -1.282
+    ]
+   },
+   "hatAt": [
+    [
+     -0.2,
+     0.0254,
+     -1.282
+    ],
+    0.12
+   ],
+   "hat_size": 0.12
+  },
+  "nodes": {
+   "blade_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "blade_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "collar_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "haft_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "haft_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "wrap_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
  }
 }
