@@ -515,8 +515,10 @@ SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown, y
 	-- (heavy: the knife's right-click stab; yaw: where you looked, the front of a katana swing's crit return)
 	if Rules.swing(f, wid, now(), heavy == true, yaw) then return end
 	Fight.shot(f, wid)
+	-- (the Scythe: the server's own count of its swing chain, ScytheLatch; everyone else's copy plays that link)
+	local link = if heavy == true then nil else require(script.Parent:WaitForChild("ScytheLatch")).swing(f, wid, now())
 	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId, h = if heavy == true then true else nil,
-		clip = if heavy == true then "stab_" .. wid else nil }) -- (clip: the stab others see, ThirdPerson.luau)
+		clip = if heavy == true then "stab_" .. wid elseif link then "swing_" .. wid .. (if link > 1 then tostring(link) else "") else nil }) -- (clip: the stab or the chain's link others see, ThirdPerson.luau)
 	Fight.shotFx(f, wid, nil, "swing")
 end)
 
@@ -531,6 +533,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 	local eye, fr = Fight.eye(f), Fight.root(f)
 	if not eye or not fr or not W[wid] or W[wid].kind ~= "melee" then return end
 	local w = W[wid]
+	local latched: { Rules.Fighter } = {} -- (the Scythe: the ones its blade latched onto, ScytheLatch)
 	for _, m in targets :: { Instance } do
 		local t = Fight.of(m)
 		local tr = t and Fight.root(t)
@@ -571,11 +574,17 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 		-- up and down too (web radial), + kbUp
 		local away = tp - fr.Position
 		if w.radial and away.Magnitude > 1e-3 then kb = away.Unit * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0) end
-		local done = Fight.hurt(t, dmg, f, wid, hs, kb, tp)
+		local done = Fight.hurt(t, dmg, f, wid, hs, if w.latch then nil else kb, tp) -- (a latch shoves after its beat)
+		if w.latch and done > 0 then table.insert(latched, t) end
 		if done > 0 and w.slip and t.alive then -- (and onto their back: the marbles' slip)
 			t.slipT = now()
 			if t.kind == "player" then SlipR:FireClient(t.ref :: Player, wid) else Dummies.slip(t) end
 		end
+	end
+	-- (the owner, 18 Nov 2026: "when you scythe it should latch on and send you back! and send them back a bit too")
+	if #latched > 0 then
+		local Latch = require(script.Parent:WaitForChild("ScytheLatch"))
+		Latch.apart(f, latched, wid, Latch.finisher(f, wid))
 	end
 end)
 

@@ -717,13 +717,13 @@ local function resolveSwing()
 	end
 	MeleeR:FireServer(wid, look, hitList)
 	-- the hit, felt right away: hit-stop, the flash, a bonk (a spoon tings; a stab crunches), a punch
-	VM.hitStop = if hv then 0.11 else 0.06
+	VM.hitStop = if hv then 0.11 elseif w.latch then w.latch.t else 0.06 -- (the Scythe: its blade holds for the latch's beat)
 	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
 	if firstAt then Fx.skinHit(VM.model, firstAt) end -- (a high-tier katana's own burst: Sakura's petals, Ribbon Duck's sparkles)
 	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else (w.hitSnd or "bonk")) -- (the Bread thuds, the Slapper slaps)
 	Sfx.skinHit(wid)
 	if hv then Sfx.play("crunch") end
-	shake = math.max(shake, if hv then 0.6 else 0.35)
+	shake = math.max(shake, if hv then 0.6 elseif w.latch then 0.55 else 0.35) -- (a latch kicks the camera a bit harder)
 	VM.jolt(-1.5)
 end
 

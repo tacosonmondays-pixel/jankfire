@@ -118,38 +118,70 @@ end)
 	p:SetAttribute("DashV", flat * (len / D.time))
 	p:SetAttribute("DashUntil", workspace:GetServerTimeNow() + D.time)
 	FxR:FireAllClients({ k = "dash", model = Fight.model(f), a = from, b = to })
-	-- the first enemy on the path
-	local best, bt = nil, math.huge
-	for _, t in Fight.all do
-		if t == f or not t.alive or not Fight.allow(f, t) then continue end
-		if t.onlyFor ~= nil and t.onlyFor ~= p then continue end
-		local tr = Fight.root(t)
-		if not tr then continue end
-		local rel = tr.Position - from
-		local along = rel:Dot(flat)
-		if along < -1 or along > len + D.width then continue end
-		local side = (rel - flat * along)
-		if Vector3.new(side.X, 0, side.Z).Magnitude > D.width or math.abs(side.Y) > 4 then continue end
-		if along < bt then best, bt = t, along end
-	end
-	if not best then return end
-	local t = best :: Rules.Fighter
-	local tr = Fight.root(t) :: BasePart
-	-- a katana guard facing the dash stops it: you're staggered and shoved back off it (the melee parry)
-	local pr = Rules.parryAt(t, from - tr.Position, Fight.facing(t), n)
-	if pr > 0 then
-		local shove = Rules.stagger(f, from - tr.Position, pr == 2, n)
-		Fight.knock(f, shove, "parry")
-		Rules.tagged(f, t, "parry", n)
-		FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = if t.kind == "player" then (t.ref :: Player).UserId else nil, att = p.UserId, pf = pr == 2, kind = "melee", st = f.staggerUntil - n, from = tr.Position })
-		if t.kind == "player" then CalloutR:FireClient(t.ref :: Player, if pr == 2 then "PERFECT PARRY!" else "PARRY!", 0.9) end
-		CalloutR:FireClient(p, "PARRIED", 0.8)
-		return
-	end
-	task.delay(math.clamp(bt / math.max(1, len) * D.time, 0, D.time), function()
-		if t.alive and f.alive then
-			Fight.hurt(t, D.dmg, f, wid, false, flat * D.kb + Vector3.new(0, D.kbUp, 0), tr.Position)
+	-- (the owner, 18 Nov 2026: "if you make any contact while dashing it auto latches and does that kick back") the dash
+	-- feels for contact the whole way: every server frame, the stretch of the server's path you covered since the last
+	-- one is checked against every enemy body (within D.width of it across, under 4 studs up or down), even one that
+	-- steps in mid-dash or that you only brush past. the first contact is the dash's one hit
+	local done1 = false
+	local prev = from
+	local conn: RBXScriptConnection? = nil
+	local function contact(t: Rules.Fighter, tr: BasePart, at: Vector3, side: number)
+		done1 = true
+		if conn then conn:Disconnect() end
+		local nn = now()
+		note({ k = "contact", by = f.name, v = t.name, at = at, side = side, el = nn - n, t = snow() })
+		-- a katana guard facing the dash stops it: you're staggered and shoved back off it (the melee parry)
+		local pr = Rules.parryAt(t, at - tr.Position, Fight.facing(t), nn)
+		if pr > 0 then
+			p:SetAttribute("DashUntil", workspace:GetServerTimeNow())
+			local dv = p:GetAttribute("DashV")
+			if typeof(dv) == "Vector3" then Fight.knock(f, -(dv :: Vector3), "parry") end
+			local shove = Rules.stagger(f, at - tr.Position, pr == 2, nn)
+			Fight.knock(f, shove, "parry")
+			Rules.tagged(f, t, "parry", nn)
+			FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = if t.kind == "player" then (t.ref :: Player).UserId else nil, att = p.UserId, pf = pr == 2, kind = "melee", st = f.staggerUntil - nn, from = tr.Position })
+			if t.kind == "player" then CalloutR:FireClient(t.ref :: Player, if pr == 2 then "PERFECT PARRY!" else "PARRY!", 0.9) end
+			CalloutR:FireClient(p, "PARRIED", 0.8)
+			return
 		end
+		if not w.latch then
+			Fight.hurt(t, D.dmg, f, wid, false, flat * D.kb + Vector3.new(0, D.kbUp, 0), tr.Position)
+			return
+		end
+		-- (the latch, ScytheLatch: the owner's "latch on and send you back") the dash stops on them: it ends here and its
+		-- speed is taken back off you, the blade holds them for the latch's beat, then the two spring apart
+		local dv = p:GetAttribute("DashV")
+		p:SetAttribute("DashUntil", workspace:GetServerTimeNow())
+		if typeof(dv) == "Vector3" then Fight.knock(f, -(dv :: Vector3), wid) end
+		p:SetAttribute("ACGrace", nn + w.latch.t + 0.7)
+		f.castUntil = math.max(f.castUntil or 0, nn + w.latch.t) -- (no swing mid-latch)
+		local dealt = Fight.hurt(t, D.dmg, f, wid, false, nil, tr.Position)
+		if dealt > 0 then require(script.Parent:WaitForChild("ScytheLatch")).apart(f, { t }, wid, false) end
+	end
+	local function sweep(): boolean
+		local el = now() - n
+		local at = from + flat * (len * math.clamp(el / D.time, 0, 1))
+		local seg = at - prev
+		local sl = seg.Magnitude
+		for _, t in Fight.all do
+			if t == f or not t.alive or not Fight.allow(f, t) then continue end
+			if t.onlyFor ~= nil and t.onlyFor ~= p then continue end
+			local tr = Fight.root(t)
+			if not tr then continue end
+			-- the nearest point of this frame's stretch to them
+			local u = if sl > 1e-3 then math.clamp((tr.Position - prev):Dot(seg) / (sl * sl), 0, 1) else 0
+			local q = prev + seg * u
+			local rel = tr.Position - q
+			local side = Vector3.new(rel.X, 0, rel.Z).Magnitude
+			if side <= D.width and math.abs(rel.Y) <= 4 then contact(t, tr, q, side); return true end
+		end
+		prev = at
+		return el >= D.time
+	end
+	if sweep() then return end -- (already touching them as it starts)
+	conn = RunService.Heartbeat:Connect(function()
+		if done1 or not f.alive then if conn then conn:Disconnect() end return end
+		if sweep() and conn then conn:Disconnect() end
 	end)
 end)
 
@@ -159,6 +191,7 @@ end)
 --   S:Invoke("fill", player)   -> full charges
 --   S:Invoke("set", player, n) -> n charges left, the next one starting to come back now (a refund test)
 --   S:Invoke("log", "clear"?)  -> the last dashes { from, to, len, n } and refunds (and empties it)
+--   S:Invoke("latch")          -> the last latches (ScytheLatch.log: the pushes sent, the room found)
 if RunService:IsStudio() then
 	local ServerStorage = game:GetService("ServerStorage")
 	local old = ServerStorage:FindFirstChild("JankScytheTest")
@@ -166,6 +199,7 @@ if RunService:IsStudio() then
 	local bf = Instance.new("BindableFunction")
 	bf.Name = "JankScytheTest"
 	bf.OnInvoke = function(what: string, a: any, b: any): any
+		if what == "latch" then return table.clone(require(script.Parent:WaitForChild("ScytheLatch")).log) end
 		if what == "log" then
 			local out = table.clone(log)
 			if a == "clear" then table.clear(log) end

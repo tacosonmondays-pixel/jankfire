@@ -192,6 +192,32 @@ through the site, kept in the vault at `Assets/mixamo-18nov`, never in git), pic
     switched off (`ScytheExtras = false`, which only shortens the chain to 1 and 2). The offline strips are
     `chain-strip-offline.png` and `mocap-contact-sheet.png`.
 
+**The latch since the night of 18 Nov** (the owner: *"when you scythe it should latch on and send you back! and send
+them back a bit too"*; `server/ScytheLatch.luau`). A scythe hit, any link of the chain or the dash's, holds them on
+the blade for a beat, then the two spring apart.
+| | |
+|---|---|
+| the beat | 0.15 s: the damage lands at once, nobody is shoved yet; your swing hit-stops for the same beat (it was 0.06 s) and the camera kicks a little harder |
+| you | 33 studs/s (11 m/s) back, away from the nearest one you hit, + 15 up: a short hop back |
+| them | 18 studs/s (6 m/s) away from you + 9 up: less than you (the scythe's old shove was 54 + 18) |
+| the finisher | the chain's 4th link pushes both x1.5 (the server counts the chain itself, so a client can't claim it) |
+| walls | each push is cut short by a wall behind that one (scaled by the room in 8-10 studs, never under 12%), so nobody is shoved into or through geometry |
+| the dash | the owner: *"if you make any contact while dashing it auto latches and does that kick back"*. Every server frame the stretch of the dash's path covered since the last one is checked against every enemy body (within 1.4 m across, 4 studs up or down), so a brush past or someone stepping in mid-dash counts. The first contact stops the dash on them (its speed is taken back off you), deals the dash's 25 once, latches and springs apart the same way. A katana guard facing it still parries it |
+| server | Fight.knock for both (the anti-cheat's known push), ACGrace for the hop; a fall right after counts for you (tagged) |
+| test hook | `ServerStorage.JankScytheTest:Invoke("latch")` returns the last latches (pushes sent, room found) |
+
+Tested in one solo Play, place version 992 (training yard Stand set to 100,000 HP; your body on the player path, the
+Stand on the dummy path; anti-cheat movement checks on):
+- **A swing:** the server sent you 33 back + 15 up and the Stand 18 + 9, with full room both ways. You landed 9.8 studs
+  back. The Stand moved only 0.2 studs: a grounded training dummy soaks a push that size (the old 54 + 18 moved it).
+- **A dash straight in:** contact 0.10 s in (2.9 studs from the Stand's middle), the dash stopped about 5 studs short of
+  it, latched and sprang you back to about 10 studs off.
+- **A glancing dash, 3.4 studs to the side:** contact at 3.5 studs, latched and sprang back and away.
+- **A clean miss, 5.5 studs to the side:** no contact, the full dash (36 studs path, about 47 with the carry).
+- **Anti-cheat:** 0 points, 0 catches through all of it.
+- **Not checked:** another player as the target (no second player in a solo test), the finisher's x1.5 on a body, a
+  wall behind.
+
 **The dash** (right click; `ScytheDash.server`). The server decides it, and the client only runs the path it's given.
 
 | | |

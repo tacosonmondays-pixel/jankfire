@@ -39,6 +39,10 @@ export type Weapon = {
 	-- back cd s after the last started (one at a time, like Tracer's Blink; a Scythe kill gives one back at once), then
 	-- recover s with no swing, guard or dash; the first enemy on its path (within width) takes dmg and a shove
 	dash: { dist: number, time: number, cd: number, charges: number?, recover: number, dmg: number, kb: number, kbUp: number, width: number }?,
+	-- (the Scythe, ScytheLatch.luau) a hit latches: the blade holds them for t s (no shove yet: a hit-stop beat), then
+	-- you spring back (back studs/s away from them, backUp up) and they go back a little (push, pushUp), each cut short
+	-- by a wall behind. the chain's last link (chain: the finisher) pushes x finisher. kb / kbUp aren't used for its hits
+	latch: { t: number, back: number, backUp: number, push: number, pushUp: number, finisher: number, chain: number }?,
 	-- a weapon with two forms (the Scythe and its rifle, Rules.equip): the key "form" (Q) turns it into `to` in `time` s
 	-- (no swing, dash, shot or reload meanwhile), the gun's first shot `fireDelay` s after that; not within `swingLock` s
 	-- of a swing's click or `shotLock` s of a shot. formOf: this row is the second form of that loadout weapon (it shares
@@ -646,6 +650,8 @@ local W: { [string]: Weapon } = {
 		desc = "a slow, wide overhead reap that kills in two. right click dashes you forward and cuts the first one in your way. q turns it into a rifle.",
 		cd = 0.95, range = 3.3 * S, cone = 0.95, dmg = 50, kb = 18 * S, kbUp = 6 * S, hitT = 0.24, speedMul = 0.95,
 		dash = { dist = 12 * S, time = 0.28, cd = 6, charges = 2, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
+		-- (the owner, 18 Nov 2026: "when you scythe it should latch on and send you back! and send them back a bit too")
+		latch = { t = 0.15, back = 11 * S, backUp = 5 * S, push = 6 * S, pushUp = 3 * S, finisher = 1.5, chain = 4 },
 		form = { to = "scythe_rifle", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
 		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
