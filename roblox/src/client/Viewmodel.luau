@@ -42,7 +42,9 @@ local kickUp = 0 -- (kick's upward tilt, scaled by VM.feel: the rearward push ke
 local bobPh, breathT = 0, 0
 local sway = Vector2.zero
 local runK = 0
-local feel = { ground = 0, slide = 0, slip = 0, speed = 0 } -- (the body's state, eased: VM.update)
+local feel = { ground = 0, slide = 0, slip = 0, speed = 0, swig = 0 } -- (the body's state, eased: VM.update)
+-- the swig's pose: where the bottle goes (camera space, metres), its tip up (radians) plus more over the swig, its roll
+local SWIG = { at = Vector3.new(0.03, -0.2, -0.17), tip = 1.2, more = 0.4, roll = -0.2 }
 local lastLook: Vector3? = nil
 local needles: { Weld } = {}
 local needleAng = -2.3
@@ -706,6 +708,7 @@ export type Ctx = {
 	aim: number, speed: number, sprint: boolean, slide: boolean, grounded: boolean, hp: number, firedT: number, slipping: boolean, now: number, sight: Vector3?,
 	ammo: number?, reloading: boolean?, -- (for the moving pieces: the belt, a locked-back slide, fallen hammers)
 	hidden: boolean?, -- (the viewmodel is hidden this frame: the fill light goes out)
+	swig: number?, -- (the Hot Sauce's swig, 0..1 of it, while its trigger is down: the bottle up to your mouth)
 }
 
 function VM.update(dt: number, c: Ctx)
@@ -771,6 +774,7 @@ function VM.update(dt: number, c: Ctx)
 	feel.slide += ((if c.slide then 1 else 0) - feel.slide) * e10
 	feel.slip += ((if c.slipping then 1 else 0) - feel.slip) * e10
 	feel.speed += (c.speed - feel.speed) * e10
+	feel.swig += ((if c.swig then 1 else 0) - feel.swig) * math.min(1, dt * 8)
 	-- footstep bob: one dip per foot strike
 	local spd = feel.speed / S
 	local stride = math.min(4.3, 1.2 + 0.29 * spd)
@@ -826,7 +830,15 @@ function VM.update(dt: number, c: Ctx)
 		pos += fp * S
 	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kickUp * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
-	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
+	-- the Hot Sauce's swig (18 Nov 2026, weapons-port's hold-to-swig): the bottle comes down in front of your mouth, its
+	-- cap tipping up toward you as the swig goes on (c.swig 0..1), and back down as you let go
+	local drink = CFrame.identity
+	if feel.swig > 0.001 then
+		local e = feel.swig * feel.swig * (3 - 2 * feel.swig)
+		pos = pos:Lerp(SWIG.at * S, e)
+		drink = CFrame.Angles((SWIG.tip + SWIG.more * (c.swig or 1)) * e, 0, SWIG.roll * e)
+	end
+	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * drink * jig * baseRot
 	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
 	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you
 	if c.hidden then dropProp() else VM.props(m.PrimaryPart.CFrame) end

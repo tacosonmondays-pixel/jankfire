@@ -74,6 +74,15 @@ local fanArmed = false -- a fan needs a fresh click after running dry, reloading
 local minigun = { spin = 0, on = false, snd = nil :: Sound?, parts = require(script.Parent:WaitForChild("GunParts")) :: any, zapNext = 0 } -- (zapNext: the Taser's next click)
 -- (weapons batch B) the held-trigger weapons (the Leaf Blower, the Hot Sauce, the Big Laser Pointer): HoldClient
 minigun.hold = require(script.Parent:WaitForChild("HoldClient")) :: any
+-- the Hot Sauce's swig (18 Nov 2026): HoldClient.charging() says ("cig", 0..1 of the 3 s swig) while its trigger is
+-- down; the viewmodel brings the bottle up to your mouth (VM.update's swig). nil when not swigging
+function minigun.swig(): number?
+	local h = minigun.hold
+	if held ~= "cig" or not h or type(h.charging) ~= "function" then return nil end
+	local ok, wid, k = pcall(h.charging)
+	if not ok or wid ~= "cig" then return nil end
+	return if type(k) == "number" then math.clamp(k, 0, 1) else 0
+end
 -- (weapons batch C) the projectile weapons (the Chicken Rocket, the Peel Shooter, the Tennis Ball Launcher, the
 -- Snowball, the Blood Cross): ProjClient sends the click, the server flies them
 minigun.proj = require(script.Parent:WaitForChild("ProjClient")) :: any
@@ -1081,6 +1090,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 			aim = aim, speed = spd, sprint = st ~= nil and st.sprinting, slide = st ~= nil and st.sliding,
 			grounded = st ~= nil and st.onGround, hp = hp(), firedT = firedT, slipping = Body.slipping(), now = now,
 			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading, hidden = gone,
+			swig = minigun.swig(), -- (the Hot Sauce's swig: the bottle up to your mouth)
 		})
 		-- the katana's smear, after the blade has moved this frame
 		smearStep(now, tp)

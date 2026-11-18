@@ -75,6 +75,7 @@ local ID = CFrame.identity
 TP.T = {
 	scale = 1.95, kMin = 2, kMax = 4.5, -- the gun: studs per metre of its file = scale x u, clamped
 	size = { katana = 1.3 }, -- a weapon's own size on top (a sword read short at the guns' scale)
+	swig = { mouth = V(0, -0.25, -0.6), tip = 2.3 }, -- the Hot Sauce's swig: where the cap meets the mouth (head sizes), the bottle's tip (radians)
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
@@ -155,6 +156,9 @@ local KAT = {
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
 local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true } -- (Taser, Hot Sauce: 18 Nov)
+-- a weapon held in another class's stance (its moves still its own class's: the Scythe swings as a melee weapon, held low
+-- with both hands like the LMG: 18 Nov 2026)
+local STANCE: { [string]: string } = { scythe = "heavy" }
 local function classOf(wid: string): string
 	if wid == "katana" then return "katana" end
 	-- (the hold session, 17 Nov 2026) every other melee weapon is one-handed: the Knife (its Spoon skin), the Zombie
@@ -1033,7 +1037,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	else
 		readState(r, dt)
 	end
-	local st = TP.T[r.cls] or TP.T.rifle
+	local st = TP.T[STANCE[r.wid] or r.cls] or TP.T.rifle
 	local w = W[r.wid]
 	r.on = math.min(1, r.on + dt * 6)
 	-- the clip (reload / draw / pump), the follow-up after a shot, the katana's move
@@ -1113,6 +1117,20 @@ local function stepRig(r: Rig, dt: number, now: number)
 		local gp = r.gripPt
 		G = G * CF(gp) * ANG(rec.r.X, 0, rec.r.Z) * CF(-gp) * CF(rec.p.X, 0, rec.p.Z)
 		if r.low > 0.001 then G = G * CF(gp) * eul(TP.T.low * r.low) * CF(-gp) end
+		-- the Hot Sauce's swig (18 Nov 2026: the player attribute Swig, set by the server while its trigger is held):
+		-- the bottle up in front of the mouth, its cap tipped toward it (TP.T.swig: rot about the head, mouth in head
+		-- sizes from its middle), eased in and out
+		if r.wid == "cig" then
+			local who = Players:GetPlayerFromCharacter(r.ch)
+			local want = if who and who:GetAttribute("Swig") == true then 1 else 0
+			local ra = r :: any
+			ra.swig = (ra.swig or 0) + (want - (ra.swig or 0)) * math.min(1, dt * 8)
+			if ra.swig > 0.001 then
+				local sw = TP.T.swig
+				local M = CF(headCF * (sw.mouth * r.Hs)) * Hq * ANG(sw.tip, 0, 0) * CF(0, 0, 0.118 * r.k)
+				G = G:Lerp(M, smoothstep(ra.swig))
+			end
+		end
 		-- a breath and the stride, small
 		local bob = if hum.FloorMaterial ~= Enum.Material.Air then math.min(1, spd / 20) else 0
 		local ph = now * (if spd > 20 then 11 else 8)
