@@ -15,14 +15,16 @@
 --     { match, team, mode, ranked, rated } (seen by the client: nothing secret in it). a teleport that fails (an error
 --     now, TeleportInitFailed later, or the players simply still here AWAY s on) puts the party back in its own
 --     server's queue with a note: Party.luau
---   * a match server (players arriving with match data) waits up to ARRIVE s for everyone, starts the match (a duel
---     through Matches.startQueued, a classic mode through its own start), and after it sends everyone back to a public
---     server. a side that never arrives, or a match that won't start, sends everyone back at once with a note, so
---     nobody is left in an empty private server
+--   * a match server (players arriving with match data) waits up to ARRIVE s for everyone. a casual match then votes on
+--     its map in a map room, the same room and cards as a hub pad's (Matches.voteRoom; 18 Nov 2026); ranked plays the
+--     rotation. the match starts (a duel through Matches.startQueued, a classic mode through its own start), and after
+--     it everyone goes back to a public server. a side that never arrives or leaves the room, or a match that won't
+--     start, sends everyone back at once with a note, so nobody is left in an empty private server
 --   * an invite to a friend in another server: MessagingService topic "jf_invite" { to, fromName, job }
 --   * any memory store call that fails is skipped: the party simply searches at home
 -- Studio: its own map names ("jfs_" in place of "jf_"), so a play test never touches the live queues; nothing runs
--- unless a test switches it on: CrossServer.test below (PlayServer's JankPlayTest "cross...")
+-- unless a test switches it on (CrossServer.test below, PlayServer's JankPlayTest "cross..."), whatever the saved switch
+-- says, so the place can be tested with PlayConfig.CROSS_SERVER still false
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
@@ -52,9 +54,11 @@ local studioOn = false -- (Studio: a test switched it on)
 function CrossServer.enabled(): boolean
 	return PlayConfig.CROSS_SERVER == true
 end
--- (Party.luau) does this server take part right now? live: when the switch is on. Studio: only in a test
+-- (Party.luau) does this server take part right now? live: when the switch is on. Studio: only in a test (the test's
+-- own switch, not the saved one)
 function CrossServer.active(): boolean
-	return CrossServer.enabled() and (not STUDIO or studioOn)
+	if STUDIO then return studioOn end
+	return CrossServer.enabled()
 end
 
 local function map(key: string): MemoryStoreSortedMap
@@ -71,18 +75,23 @@ function CrossServer.crossable(mode: string): boolean
 end
 
 -- ------------------------------------------------------------------ tickets (any server)
+-- when the entry started searching, in os.time() (its own clock is this server's os.clock()): the matchmaker widens a
+-- ticket's rating range with the whole wait, as the home queue does, not from the last renewal
+local function started(e: any): number
+	return os.time() - math.max(0, math.floor(os.clock() - (tonumber(e.since) or os.clock())))
+end
 -- offer an entry that has searched here for HANDOFF s. members = { { id, r, rd } }
 function CrossServer.offer(e: any, members: { any }): string?
 	if not CrossServer.active() then return nil end
 	local id = HttpService:GenerateGUID(false)
 	local ok = pcall(function()
-		map(e.key):SetAsync(id, { job = JOB, size = e.size, rating = e.rating, since = os.time(), members = members }, CrossServer.TICKET_TTL, e.rating)
+		map(e.key):SetAsync(id, { job = JOB, size = e.size, rating = e.rating, since = started(e), members = members }, CrossServer.TICKET_TTL, e.rating)
 	end)
 	return if ok then id else nil
 end
 function CrossServer.renew(key: string, id: string, e: any, members: { any })
 	pcall(function()
-		map(key):SetAsync(id, { job = JOB, size = e.size, rating = e.rating, since = os.time(), members = members }, CrossServer.TICKET_TTL, e.rating)
+		map(key):SetAsync(id, { job = JOB, size = e.size, rating = e.rating, since = started(e), members = members }, CrossServer.TICKET_TTL, e.rating)
 	end)
 end
 function CrossServer.withdraw(key: string, id: string)
@@ -238,7 +247,9 @@ local function sendHome(list: { Player }, note: string?)
 end
 
 -- the match server's side: who has arrived for which match; start once all are in or ARRIVE s have passed
-type Arrival = { data: any, players: { [number]: { Player } }, t0: number, started: boolean }
+-- (ghost: a Studio test's hold, in s: a side that never arrived is played as a ghost side, as the Play queue's stand-in
+-- tests do)
+type Arrival = { data: any, players: { [number]: { Player } }, t0: number, started: boolean, ghost: number? }
 local arrivals: { [string]: Arrival } = {}
 local function arrived(p: Player, data: any)
 	if type(data) ~= "table" or type(data.match) ~= "string" then return end
@@ -269,12 +280,33 @@ local function arrived(p: Player, data: any)
 	end
 	arr.players[team] = arr.players[team] or {}
 	table.insert(arr.players[team], p)
+	if hooks.notify then pcall(hooks.notify, p, "match server: waiting for everyone to arrive") end
 	if hooks.onArrive then pcall(hooks.onArrive, p, arr.data) end
 end
 local function everyone(a: Arrival): { Player }
 	local out = {}
 	for _, list in a.players do for _, p in list do table.insert(out, p) end end
 	return out
+end
+-- the match itself, on arena (nil: the rotation's), with whoever of sides is still here. nil and why if it won't start
+-- (everyone goes back to a public server then)
+local function begin(id: string, a: Arrival, sides: { { Player } }, arena: string?): (any, string?)
+	local cfg: any = PlayConfig.byId[a.data.mode]
+	local live = {}
+	for t, list in sides do
+		live[t] = {}
+		for _, p in list do if p.Parent then table.insert(live[t], p) end end
+	end
+	local opts: any = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated, arena = arena }
+	if a.ghost and STUDIO then opts.hold, opts.holdWin = a.ghost, 1 end
+	local okS, r1, r2 = pcall(function()
+		if type(cfg.start) == "function" then return cfg.start(live, opts) end
+		return Matches.startQueued(cfg.pad, live, opts)
+	end)
+	local m, why = nil, nil
+	if okS then m, why = r1, r2 else why = tostring(r1) end
+	if not m then sendHome(everyone(a), "the match couldn't start: back to a public server") end
+	return m, why
 end
 local function startArrived(): { any }
 	local out = {}
@@ -294,32 +326,40 @@ local function startArrived(): { any }
 			sides[t] = list
 			if #list == 0 then missing = true end
 		end
-		local m, why = nil, nil
+		local m, why, voting = nil, nil, false
 		if not cfg then
 			why = "unknown mode"
-		elseif missing then
+			sendHome(everyone(a), "the match couldn't start: back to a public server")
+		elseif missing and not (a.ghost and STUDIO) then
 			why = "a side never arrived"
+			sendHome(everyone(a), "the match couldn't start: back to a public server")
 		else
-			local opts = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated }
-			local okS, r1, r2 = pcall(function()
-				if type(cfg.start) == "function" then return cfg.start(sides, opts) end
-				return Matches.startQueued(cfg.pad, sides, opts)
-			end)
-			if okS then m, why = r1, r2 else why = tostring(r1) end
+			-- casual: the map room's vote first (three maps from the rotation for the sides' size: a duel's own, a classic
+			-- mode's half its head-count, as at home). ranked: the rotation, no vote. no room free: straight on, rotation
+			local size = if cfg.ladder == "party" then (if need >= 4 then math.ceil(need / 2) else nil) else cfg.size
+			if a.data.ranked ~= true and Matches.voteRoom then
+				voting = Matches.voteRoom(sides, size, function(arena: string)
+					begin(id, a, sides, arena)
+				end, function()
+					sendHome(everyone(a), "the other side left: back to a public server")
+				end, a.ghost ~= nil and STUDIO) == true
+			end
+			if not voting then m, why = begin(id, a, sides, nil) end
 		end
-		table.insert(out, { match = id, started = m ~= nil, why = why })
-		if not m then sendHome(everyone(a), "the match couldn't start: back to a public server") end
+		table.insert(out, { match = id, started = m ~= nil, voting = voting, why = why })
 		task.delay(300, function() arrivals[id] = nil end)
 	end
 	return out
 end
 
 -- after a cross-server match: everyone back to a public server
+local homeLog: { any } = {} -- (Studio tests: what backHome sent)
 local function backHome(m: any)
 	if type(m.queue) ~= "string" or string.sub(m.queue, 1, 6) ~= "cross:" then return end
 	task.delay((Matches.AFTER or 7) + 0.5, function()
 		local all = {}
 		for _, list in m.teams do for _, p in list do table.insert(all, p) end end
+		if STUDIO then table.insert(homeLog, { match = m.queue, players = #all, mode = m.mode, ranked = m.ranked == true }) end
 		sendHome(all, nil)
 	end)
 end
@@ -334,8 +374,8 @@ end
 function CrossServer.init(matches: any, h: any)
 	Matches = matches
 	hooks = h or {}
+	Matches.onEnd(backHome) -- (does nothing for a match that didn't come from here; Studio tests see it too)
 	if not CrossServer.enabled() or STUDIO then return end
-	Matches.onEnd(backHome)
 	local function joined(p: Player)
 		local jd = p:GetJoinData()
 		if jd and jd.TeleportData then arrived(p, jd.TeleportData) end
@@ -375,7 +415,9 @@ end
 --   ("mm")                        one matchmaker pass, with stand-in reserved-server codes; what it made
 --   ("result", ticketId)          a ticket's result
 --   ("arrive", player, data)      that player arrives as if teleported with data; ("start") the arrivals' check now,
---                                 ARRIVE taken as passed
+--                                 ARRIVE taken as passed; ("start", "ghost", secs) the same, a side that never arrived
+--                                 played as a ghost side, the match held secs (then side 1 takes it)
+--   ("home")                      the matches backHome has sent home so far (Studio: no teleport, just the list)
 function CrossServer.test(op: string, a: any, b: any, c: any): any
 	if not STUDIO then return nil end
 	if op == "on" then studioOn = true; return CrossServer.active()
@@ -405,8 +447,13 @@ function CrossServer.test(op: string, a: any, b: any, c: any): any
 		arrived(a, b)
 		return true
 	elseif op == "start" then
-		for _, x in arrivals do x.t0 = -math.huge end
+		for _, x in arrivals do
+			x.t0 = -math.huge
+			if a == "ghost" then x.ghost = tonumber(b) or 25 end
+		end
 		return startArrived()
+	elseif op == "home" then
+		return homeLog
 	end
 	return nil
 end

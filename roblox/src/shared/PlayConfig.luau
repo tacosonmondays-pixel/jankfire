@@ -4,11 +4,12 @@
 local PlayConfig = {}
 
 -- across servers (MemoryStore queues, MessagingService invites, reserved match servers: server/CrossServer.luau).
--- READY since 17 Nov 2026 (the owner: "can you also enable cross matchmaking"): the duels and QUICKPLAY queues reach
--- other servers after CrossServer.HANDOFF s, failing back to this server's queue. Studio never takes part (its own
--- memory store names, no teleports) unless a test switches it on. held OFF until a publish of its own that the owner
--- watches live (main session, 18 Nov): set this true, save, publish, then run MATCHMAKING.md section 6's live check
-PlayConfig.CROSS_SERVER = false
+-- ON since 18 Nov 2026 (the owner: "can you also enable cross matchmaking", then "also can you enable custom
+-- matchmaking for queue outside of pads"): the PLAY button's duels (casual and ranked) and QUICKPLAY reach other
+-- servers after CrossServer.HANDOFF s, still searching in this server meanwhile; the hub pads stay in this server.
+-- Studio never takes part (its own memory store names, no teleports) unless a test switches it on. its own publish,
+-- then MATCHMAKING.md section 6's live check. false turns it off again, nothing else to undo
+PlayConfig.CROSS_SERVER = true
 -- the ranked extras across servers, apart from the matchmaking and still OFF (untested): the global top 100 on the
 -- leaderboard (an OrderedDataStore) and a cheat restore telling another server to take it now (MessagingService)
 PlayConfig.GLOBAL_RANKED = false

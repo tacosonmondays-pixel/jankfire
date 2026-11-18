@@ -752,8 +752,11 @@ end
 local MapRooms = require(script.Parent:WaitForChild("MapRooms"))
 local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hitbox"))
 local PICK_SHOW = 1.5
-type Stage = { pad: Model, sides: { { Player } }, site: Site, arena: string, room: any, options: { string },
-	votes: { [number]: string }, ends: number, map: string?, at: number?, test: boolean, shown: { [Player]: boolean }, dirty: boolean }
+-- (a pad's stage holds its pad and site; a match server's (Matches.voteRoom, CrossServer.luau) has neither: go(map)
+-- starts its match and cancel(note) runs when a whole side has left)
+type Stage = { pad: Model?, sides: { { Player } }, site: Site?, arena: string, room: any, options: { string },
+	votes: { [number]: string }, ends: number, map: string?, at: number?, test: boolean, shown: { [Player]: boolean }, dirty: boolean,
+	go: ((string) -> ())?, cancel: ((string) -> ())? }
 local stages: { Stage } = {}
 local testFill: { [Model]: Player } = {} -- (Studio: Matches.test "padfill")
 local pushR: RemoteEvent? = nil
@@ -820,20 +823,23 @@ end
 -- a whole side gone: the rest back to the hub, the site back
 local function stageCancel(st: Stage, note: string)
 	stageEnd(st)
-	releaseSite(st.site)
+	if st.site then releaseSite(st.site) end
 	each2(st, function(p)
-		padPush(p, { t = "toast", text = note })
+		if not st.cancel then padPush(p, { t = "toast", text = note }) end -- (a match server's cancel says its own)
 		local f = Fight.byPlayer[p]
 		if f and p.Parent then f.alive = false; task.spawn(Fight.spawn, f) end -- (a fresh body at the hub's spawns)
 	end)
+	if st.cancel then task.spawn(st.cancel, note) end
 end
 -- the vote's clock ran out: its pick, and that arena's site in place of the held one if it can be had
 local function stageSettle(st: Stage)
 	if st.map then return end
 	local want = MapCards.result(st.options, st.votes) or st.arena
-	if want ~= st.arena then
+	if not st.site then
+		st.arena = want -- (a match server's room: no site held, its go() starts the match on the pick)
+	elseif want ~= st.arena then
 		-- (the held site goes back first, so the cap counts it free; if the winner can't be had, the held map is taken again)
-		local held = st.site
+		local held = st.site :: Site
 		releaseSite(held)
 		local site = claimSite(want)
 		if site then st.site, st.arena = site, want else st.site = claimSite(st.arena) or held end
@@ -845,8 +851,25 @@ end
 -- to the arena: the match starts the usual way (everyone respawns at its spawns)
 local function stageGo(st: Stage)
 	stageEnd(st)
-	local m = startMatch(st.pad, st.sides, st.site, st.arena)
+	if st.go then task.spawn(st.go, st.arena); return end
+	local m = startMatch(st.pad :: Model, st.sides, st.site :: Site, st.arena)
 	if st.test then m.ghost = os.clock() + 25 end -- (a test fill: held like a ghost match)
+end
+-- into the room: everyone on a spot, facing the displays, and the vote on its way
+local function stageIn(st: Stage, sides: { { Player } })
+	local room = st.room
+	local k = 0
+	for t, list in sides do
+		st.sides[t] = {}
+		for _, p in list do
+			table.insert(st.sides[t], p)
+			staged[p] = st
+			k += 1
+			moveTo(p, room.spots[(k - 1) % #room.spots + 1], room.look)
+		end
+	end
+	table.insert(stages, st)
+	MapRooms.show(room, stageCards(st), {}, nil)
 end
 -- a full pad's countdown is over: its group to a map room (no room to be had: straight to the match, as before)
 local function stageStart(pad: Model, sides: { { Player } }, site: Site, arena: string): Match?
@@ -862,19 +885,24 @@ local function stageStart(pad: Model, sides: { { Player } }, site: Site, arena: 
 	for i = #options, 2, -1 do local j = math.random(i); options[i], options[j] = options[j], options[i] end -- (the held one anywhere)
 	local st: Stage = { pad = pad, sides = {}, site = site, arena = arena, room = room, options = options, votes = {},
 		ends = os.clock() + ((script:GetAttribute("TestPadVote") :: number?) or Matches.PAD_VOTE), test = test, shown = {}, dirty = true }
-	local k = 0
-	for t, list in sides do
-		st.sides[t] = {}
-		for _, p in list do
-			table.insert(st.sides[t], p)
-			staged[p] = st
-			k += 1
-			moveTo(p, room.spots[(k - 1) % #room.spots + 1], room.look)
-		end
-	end
-	table.insert(stages, st)
-	MapRooms.show(room, stageCards(st), {}, nil)
+	stageIn(st, sides)
 	return nil
+end
+-- (CrossServer.luau, a match server: 18 Nov 2026, the owner's "custom matchmaking for queue outside of pads") everyone
+-- the cross-server matchmaker sent here has arrived: the same map room and vote as a pad's, on three maps from the
+-- rotation for teamSize (nil: any). go(map) starts the match once the pick has shown; cancel(note) if a whole side
+-- leaves the room. false = no room or no maps (the caller starts straight away on the rotation). test: a Studio test
+-- whose other side is a ghost (an empty side doesn't cancel it)
+function Matches.voteRoom(sides: { { Player } }, teamSize: number?, go: (string) -> (), cancel: (string) -> (), test: boolean?): boolean
+	local options = MapCards.offer(Arena.pool(teamSize), nil, 3)
+	if #options == 0 then return false end
+	local room = MapRooms.claim()
+	if not room then return false end
+	local st: Stage = { sides = {}, arena = options[1], room = room, options = options, votes = {},
+		ends = os.clock() + ((script:GetAttribute("TestPadVote") :: number?) or Matches.PAD_VOTE), test = test == true, shown = {}, dirty = true,
+		go = go, cancel = cancel }
+	stageIn(st, sides)
+	return true
 end
 -- every padStep: leavers, the plates, the clock
 local function stageStep()
@@ -1171,7 +1199,7 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 	elseif op == "padvotefor" then
 		-- (a stand-in's vote in the map room pad a sent: voter id b for map c)
 		for _, st in stages do
-			if st.pad.Name == tostring(a) and not st.map and table.find(st.options, tostring(c)) then
+			if (if st.pad then st.pad.Name else "cross") == tostring(a) and not st.map and table.find(st.options, tostring(c)) then
 				st.votes[tonumber(b) or -1] = tostring(c)
 				st.dirty = true
 				return true
@@ -1184,7 +1212,7 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 		for _, st in stages do
 			local n = 0
 			each2(st, function() n += 1 end)
-			table.insert(out, { pad = st.pad.Name, arena = st.arena, options = st.options, counts = MapCards.counts(st.votes), map = st.map,
+			table.insert(out, { pad = if st.pad then st.pad.Name else "cross", arena = st.arena, options = st.options, counts = MapCards.counts(st.votes), map = st.map,
 				left = st.ends - os.clock(), players = n, room = st.room.model:GetFullName() })
 		end
 		return out

@@ -747,22 +747,24 @@ same sample modes on the client), `board` / `board:party` / `noboard` / `boardfa
 A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match
 places you), `rival 2v2 true 2 1500`, `hold 8 party`, `find`.
 
-## 6. Across servers (ready since 17 Nov 2026, held off until its own publish)
+## 6. Across servers (ON since 18 Nov 2026, place version 1017: live from the owner's next publish)
 
-The owner: "can you also enable cross matchmaking". `server/CrossServer.luau` and `crossTick` in `server/Party.luau`
-are built and Studio-tested (below). Place v720 had `PlayConfig.CROSS_SERVER = true`; the main session wants it to go
-live on a publish of its own that the owner watches, so the switch is back to false until then. **To turn it on:** set
-`PlayConfig.CROSS_SERVER = true` (ReplicatedStorage.Jankfire.PlayConfig), save, publish, then run the live check at
-the end of this section. Studio tests need it true as well. The ranked extras across servers are a separate switch,
-`PlayConfig.GLOBAL_RANKED`, still off and untested: the leaderboard's global top 100 and a cheat restore telling
-another server to take it now.
+The owner: "can you also enable cross matchmaking", then on 18 Nov "also can you enable custom matchmaking for queue
+outside of pads". `server/CrossServer.luau` and `crossTick` in `server/Party.luau` are built and Studio-tested
+(below). The switch was on in v720, held off from v722 so it could go out on a publish of its own, and is on again
+since v1017 (`PlayConfig.CROSS_SERVER = true`). The PLAY button's queue reaches other servers; the hub pads stay in
+their own server. **To turn it off:** set it to false, save, publish; nothing else to undo. Studio tests don't need the
+switch: `JankPlayTest("cross", "on")` turns Studio's own part on, whatever the saved switch says. The ranked extras
+across servers are a separate switch, `PlayConfig.GLOBAL_RANKED`, still off and untested: the leaderboard's global
+top 100 and a cheat restore telling another server to take it now.
 
 - **Which queues:** every duel (casual and ranked) and QUICKPLAY. A PARTY card pick, filled from quickplay, stays in
   its own server.
 - **Home first:** a party searches in its own server as before. After `CrossServer.HANDOFF` (20 s) without a match it
   also offers a ticket and keeps searching at home; whichever finds a match first wins.
   - The ticket is one entry in a `MemoryStoreSortedMap` per queue (`jf_q_casual:1v1`), sort key = rating, a 30 s
-    expiry renewed while it searches.
+    expiry renewed while it searches. It carries the time the party started searching (since 18 Nov; before, every
+    renewal reset it), so the matchmaker widens a ranked rating range with the whole wait, as the home queue does.
   - The players see "searching other servers too".
   - A party matched at home, or one that cancels or leaves, takes its ticket back.
 - **The matchmaker:** one server at a time (a lock in `jf_mm`, renewed every 5 s).
@@ -770,29 +772,37 @@ another server to take it now.
     reserves a server for each (`TeleportService:ReserveServer`).
   - It writes each ticket's result (`jf_results`) and the match's own record (`m:<match id>`: mode, ranked, sides with
     everyone's rating).
-  - **QUICKPLAY can't vote across servers:** the matchmaker draws the mode (`QUICK_WEIGHT`, a team mode only when the
-    parties split into two sides), and the map is the rotation's.
+  - **QUICKPLAY can't vote on its mode across servers:** the matchmaker draws the mode (`QUICK_WEIGHT`, a team mode
+    only when the parties split into two sides). The map is voted on the match server (below).
   - One party alone is never rated.
 - **The move:** a ticket with a result takes the party out of its home queue ("match found on another server: moving
   you there") and teleports its players with the match id in the teleport data.
 - **The match server:** teleport data passes through the client, so it only takes the match id from it.
   - The mode, sides and ratings come from the matchmaker's record, and each player goes on the side they're listed
     on.
-  - It waits up to `ARRIVE` (30 s) for everyone, then starts the match (a duel through `Matches.startQueued`, a classic
-    mode through its own start).
-  - When the match ends, everyone goes back to a public server.
+  - Each arrival sees "match server: waiting for everyone to arrive". It waits up to `ARRIVE` (30 s) for everyone.
+  - **The map (18 Nov):** a casual match (duels and QUICKPLAY) goes to a map room and votes there, the same void room,
+    displays, plates and cards as a hub pad's (`Matches.voteRoom`, 8 s, then the pick shows 1.5 s). The maps are three
+    from the rotation for the sides' size. Ranked plays the rotation, no vote, as at home. With no map room free, it
+    starts straight away on the rotation.
+  - Then the match starts (a duel through `Matches.startQueued`, a classic mode through its own start), with the usual
+    READY / loadout window, rounds and finishers: the same code as any queue match at home.
+  - When the match ends, everyone goes back to a public server (`AFTER` + 0.5 s, 3 tries).
 - **Failing safe:**
   - A memory store call that fails means no ticket; the party simply searches at home.
   - A teleport that fails puts the whole party straight back in its home queue with "couldn't reach the match server:
     searching here again". That covers an error from `TeleportAsync`, a `TeleportInitFailed` later, or the players
     still being there `AWAY` (20 s) on.
-  - On a match server, a player not on the match's list, a match already started, a side that never arrived, or a
-    match that won't start sends the players back to a public server with a note (3 tries).
+  - On a match server, a player not on the match's list, a match already started, a side that never arrived, a whole
+    side leaving the map room, or a match that won't start sends the players back to a public server with a note (3
+    tries). A player who left the map room this way gets a fresh body in the hub first, so a failed teleport never
+    leaves them in the void.
 - **Studio:** never takes part on its own. It uses its own memory store names (`jfs_`), so a play test never touches
   the live queues, and it has no teleports.
   - Tests switch it on: `JankPlayTest("cross", op, …)` with `on` / `off`, `handoff secs`, `ticket key size rating` (a
     ticket from "another server"), `peek key`, `mm` (one matchmaker pass with stand-in server codes), `result id`,
-    `arrive player data`, `start`.
+    `arrive player data`, `start` (`start "ghost" secs`: a side that never arrived plays as a ghost side, the match held
+    secs), `home` (the matches sent back to a public server so far).
 
 - **Tested in Studio** (place v720, 18 Nov 00:07 UTC, cross switched on with a handoff of 2 s):
   - My party searching casual 1V1 offered a ticket (in `jfs_q_casual:1v1`).
@@ -808,6 +818,25 @@ another server to take it now.
 
   ![a match id the matchmaker never made: the note](matchmaking/41_cross_failsafe_note.jpg)
 
+- **Re-tested in Studio** (18 Nov 21:15 UTC, place v1014 + these changes, saved switch still false, Studio's test
+  switch on, handoff 2 s), one solo Play:
+  - **The PLAY button with no pad:** PLAY, casual 1V1, FIND MATCH. After 2 s my ticket was out (`jfs_q_casual:1v1`).
+  - **The fallback:** a stand-in rival joined the home queue. The match formed at home, its map vote picked THE GUT
+    (the stand-in's vote), the match started there with the loadout window open, and my ticket was taken back.
+  - **Across servers, casual:** a ticket from "another server" plus mine, one matchmaker pass: a 1v1, both tickets
+    removed. My server read the result; with no teleport in Studio the party went back to searching (its wait kept)
+    with a fresh ticket.
+  - **The match server, casual:** I left the party and arrived with that match id. I went to a map room (zone
+    "staging") with ROOFTOP: SKYLINE, SUBURB: CUL-DE-SAC and THE GUT. I voted SUBURB, and the match started on
+    SuburbV2 with the loadout window open. After it, the return to a public server fired.
+  - **Across servers, ranked:** my ranked 1V1 ticket and another server's at 1500 made a ranked 1v1. On the match
+    server it started straight on the rotation (BACKROOMS, no vote), the HUD read RANKED 1v1, and the win was rated
+    (placement 1/5, +117 MMR from a fresh rating). The return to a public server fired.
+  - Not run in Studio: QUICKPLAY across servers on the match server (same path, through the mode's own start) and a
+    finisher (needs a real opponent).
+
+  ![the match server's map room, with a vote for SUBURB](matchmaking/49_cross_match_server_map_room.jpg)
+
 ### What needs a live check after the owner publishes
 
 Two or more real players, each alone in their own public server (or two friends who join different servers):
@@ -815,7 +844,8 @@ Two or more real players, each alone in their own public server (or two friends 
 1. Both press PLAY, pick casual 1V1 and search. After 20 s each sees "searching other servers too".
 2. Within about 5 s more, both see "match found on another server: moving you there" and are teleported to the same
    new server.
-3. The match starts once both arrive (at most 30 s), with the arena banner and both on opposite sides.
+3. Both land in a map room, vote, and the match starts on the pick (at most 30 s to arrive, then 8 s of vote), with
+   the arena banner and both on opposite sides. The READY / loadout window works there.
 4. After the match, both are teleported back to a public server (not necessarily the one they came from).
 5. Ranked 1V1 the same way: the rating changes at the end, and the leaderboard shows it after the return.
 6. QUICKPLAY with 2+ players in different servers: the match starts on a drawn mode.
