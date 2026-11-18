@@ -17,6 +17,32 @@ MapCards.THUMBS = {
 	SuburbV2 = "rbxassetid://134037734020157", -- SUBURB: CUL-DE-SAC
 } :: { [string]: string }
 
+-- a map vote's three (or fewer) cards out of `pool`, never `last` while there's anything else. pure but for the dice
+function MapCards.offer(pool: { string }, last: string?, n: number?): { string }
+	local left = {}
+	for _, id in pool do if id ~= last then table.insert(left, id) end end
+	if #left == 0 then left = table.clone(pool) end
+	local out = {}
+	while #out < (n or 3) and #left > 0 do table.insert(out, table.remove(left, math.random(#left)) :: string) end
+	return out
+end
+-- the winner of votes ({ [voter] = id }): most votes, a tie drawn among the top, no votes at all drawn among all
+function MapCards.result(options: { string }, votes: { [any]: string }): string?
+	local counts = {}
+	for _, id in votes do counts[id] = (counts[id] or 0) + 1 end
+	local best, top = {}, 0
+	for _, id in options do
+		local c = counts[id] or 0
+		if c > top then best, top = { id }, c elseif c == top then table.insert(best, id) end
+	end
+	return if #best > 0 then best[math.random(#best)] else nil
+end
+function MapCards.counts(votes: { [any]: string }): { [string]: number }
+	local counts = {}
+	for _, id in votes do counts[id] = (counts[id] or 0) + 1 end
+	return counts
+end
+
 -- (a copy's name, "Gut_copy2", is its arena's)
 function MapCards.thumb(arena: string?): string
 	if type(arena) ~= "string" then return "" end

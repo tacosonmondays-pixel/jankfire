@@ -75,6 +75,7 @@ PushR.OnClientEvent:Connect(function(msg: any)
 	elseif msg.t == "openBoard" then LeaderboardUI.open(msg.tab) -- (Party.openBoard: the hub's RANKED regular)
 	elseif msg.t == "invite" then PlayUI.onInvite(msg)
 	elseif msg.t == "inviteGone" then PlayUI.onInviteGone(msg.id)
+	elseif msg.t == "padvote" then QuickVoteUI.syncPad(msg) -- (a hub pad's map vote while you stand on it: Matches)
 	elseif msg.t == "quick" then QuickJoinUI.show(msg) -- (QUICK JOIN: someone stepped on a hub pad, server/QuickJoin.luau)
 	elseif msg.t == "quickGone" then QuickJoinUI.gone(msg.id)
 	elseif msg.t == "toast" and type(msg.text) == "string" then

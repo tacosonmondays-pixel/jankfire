@@ -243,6 +243,27 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
   - Most votes wins, a tie is drawn at random, and no votes is a draw of the three.
   - The map that vote last picked is never on offer again straight away.
   - Quickplay's maps take half its head-count a side, so Crate (3 a side at most) sits out an 8-player match.
+- **The hub's pads** (18 Nov, the owner: "map select for pads please"): a full pad's countdown is now its map vote.
+  - It runs `Matches.PAD_VOTE` = 8 s on 3 cards from the rotation (`Arena.pool` for the pad's size, never the pad's
+    last arena), then the pick shows for 1 s and the match starts. Before, the countdown was 3 s on the rotation's
+    pick.
+  - The cards are the same as quickplay's (QuickVoteUI), shown only to the players standing on that pad. Vote with
+    1-3 or a tap. The pad's sign says MAP VOTE · n.
+  - Most votes wins; a tie, or no votes at all, is drawn.
+  - The first card's site is held while the vote runs, so the cap and the waiting line work as before. At the end
+    the winner's site takes its place; if the winner can't be had right now, the first card is played, and the cards
+    show what is played.
+  - Someone stepping off pauses it as before; stepping back on resumes the count, after the vote if it's still on.
+  - Pads are casual, so there's no ranked case.
+  - Server: `Matches.padVote` (the Play remote's `padvote` through `Party.ops`), PlayPush `{ t = "padvote" }`.
+    Test ops: `JankMatchTest("padfill", padName, player)` makes a pad full with one player (its match is held like a
+    ghost match); `("padvotefor", padName, voterId, arena)`; `("padstate")`.
+  - **Tested** in place v726 (18 Nov, 00:19 UTC), the 1v1 pad by the lifts:
+    - The cards came up as THE GUT, BAZAAR and DESERT: CANYON, and the pad's sign read MAP VOTE · 7.
+    - A stand-in voted BAZAAR and I pressed 2, so BAZAAR had 2 votes.
+    - The held site (THE GUT, the first card) went back, and the match started on BAZAAR.
+
+    ![a pad's map vote](matchmaking/43_pad_map_vote.jpg)
 - **RANKED** (duels and PARTY RANKED): no pick and no vote, a fair random draw from the rotation. The DUELS foot and
   the MODES tab say so.
 - **Server:** `Party.luau` (Found `mvote` / `map`, ops `map` and `mapvote`, test op `qpmap standInId arena`).

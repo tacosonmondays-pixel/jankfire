@@ -39,6 +39,11 @@ CrossServer.init(Matches, {
 Recorder.init(Fight, Matches)
 -- QUICK JOIN: a pop-up for everyone free in the hub when someone steps on a queue pad (QuickJoin.luau)
 QuickJoin.init(Matches, Party, remotes)
+-- the hub pads' map vote (Matches.padVote): a vote from a player standing on a full pad, through the Play remote
+Party.ops.padvote = function(p: Player, a: any): any
+	local ok, why = Matches.padVote(p, a)
+	return { ok = ok, why = why }
+end
 
 -- ------------------------------------------------------------------ Studio play tests
 --   T:Invoke("standins", n, rating)   n stand-ins in this server's invite list (invite one: it joins after 1 s)

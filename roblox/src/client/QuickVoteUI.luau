@@ -8,6 +8,10 @@
 -- everything comes from the party view (found.vote / pick, found.mvote / map), so a reopened screen or a respawn
 -- shows it again:
 --   QuickVoteUI.sync(found)   PlayClient, on every party view
+-- and a hub PAD's map vote (18 Nov, the owner: "map select for pads please"): while you stand on a full pad, its
+-- countdown is a map vote (server/Matches.luau, Matches.PAD_VOTE s), the same three cards, keys 1-3 or a tap:
+--   QuickVoteUI.syncPad(msg)  PlayClient, on PlayPush { t = "padvote", vote?, map? } (no vote: it's gone)
+-- a party match's vote, if there is one, has the panel first
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -22,6 +26,8 @@ local new, text = T.new, T.text
 local QuickVoteUI = {}
 -- the found view on screen: { vote = { options, ends, counts, mine }?, pick, mvote = { options, ends, counts, mine }?, map }
 local cur: any = nil
+local partyCur: any = nil -- (the party match's)
+local padCur: any = nil -- (the pad's: { mvote, map, pad = true })
 local modeIds: { string } = {}
 local mapIds: { string } = {}
 local fake: Vector2? = nil -- (tests: lay it out as on a screen this size, PlayTest "votefake:844x390")
@@ -58,7 +64,7 @@ local function voteMap(i: number)
 	if not id or not cur or not cur.mvote or cur.map then return end
 	cur.mvote.mine = id
 	QuickVoteUI.draw()
-	send("mapvote", id)
+	send(if cur.pad then "padvote" else "mapvote", id)
 end
 
 local function votesText(k: number): string
@@ -168,14 +174,14 @@ function QuickVoteUI.draw()
 end
 
 function QuickVoteUI.sync(found: any)
-	if type(found) ~= "table" or (type(found.vote) ~= "table" and type(found.mvote) ~= "table") then
-		cur = nil
-		gui.Enabled = false
-		for _, c in cards do c:Destroy() end
-		table.clear(cards)
-		return
-	end
-	cur = { vote = found.vote, pick = found.pick, mvote = found.mvote, map = found.map }
+	partyCur = if type(found) == "table" and (type(found.vote) == "table" or type(found.mvote) == "table")
+		then { vote = found.vote, pick = found.pick, mvote = found.mvote, map = found.map } else nil
+	cur = partyCur or padCur
+	QuickVoteUI.draw()
+end
+function QuickVoteUI.syncPad(msg: any)
+	padCur = if type(msg) == "table" and type(msg.vote) == "table" then { mvote = msg.vote, map = msg.map, pad = true } else nil
+	cur = partyCur or padCur
 	QuickVoteUI.draw()
 end
 function QuickVoteUI.fakeScreen(v: Vector2?)
