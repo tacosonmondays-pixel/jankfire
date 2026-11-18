@@ -53,6 +53,12 @@
         "Dash": {
           "$className": "RemoteEvent"
         },
+        "TVRemote": {
+          "$className": "RemoteEvent"
+        },
+        "Gavel": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

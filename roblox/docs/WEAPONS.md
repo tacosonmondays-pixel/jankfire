@@ -192,6 +192,28 @@ and reaches a little less (was 0.80 s and 3.6 m), so it no longer out-kills the 
 | Katana | 1.12 s | 1.12 s |
 | Sniper | 0 s | 0.91 s |
 
+## Batch D on Roblox, 18 Nov 2026
+
+Six more web weapons, all server-decided. The traced spec is in the side notes (weapons-batchD-spec.md). Code:
+WeaponProj.server (bowling, slipper, arrow), WeaponTricks.server (TV Remote, the Scales' pillar), Verdict.luau, and
+Rules.handKey (Lefty & Righty).
+
+| weapon | slot | how it plays on Roblox |
+|---|---|---|
+| Bowling Ball Launcher `bowling` | primary | Rolls a 0.45 m ball along the floor at 30 m/s; it hops a little and loses a little on each touch. It goes on through everyone in its way: 45 each and a 40 m/s shove along its roll, once a person every 0.7 s (you too, after 0.5 s); it slows to 85 % after each. 2 people = SPARE, 3 = STRIKE. 1.3 s between balls, 6 s life. |
+| Slipper `slipper` | melee | A boomerang, one out at a time. Out at 32 m/s: it locks the nearest enemy within 30 m and 70 deg of its heading that it can see and turns 5 rad/s toward them, out 0.45 s (1 s while locked) or till a wall. Then straight back to your eye through walls (38 m/s, or your speed + 10), caught within 1.3 m. 30 and a 22 m/s shove to everyone it passes, once each way. |
+| Scales of Justice `scales` | melee | 35 x the verdict (x0.4 to x3: their K/D, kills, top of the board, team behind, their streak, your last killer; dummies: streak and revenge only), 0.6 s, 3.2 m. Right click: a pillar of light on someone within 42 m (0.16 rad) or where you aim; 1 s later 20 x the verdict to everyone in it (2.3 m round, 3.2 m up). 10 s; nobody to aim at costs nothing. |
+| TV Remote `remote` | secondary | Point it (45 m, 0.09 rad + a body's width). Left click: they're paused 1.2 s (no moving, shooting or swinging), then their momentum comes back; 3.5 s. Right click: snapped to where the server saw them 2 s ago, standing still; 6 s; put back again if their client misses it. No damage; a fall after it is yours. |
+| Bow `bow` | primary | Hold to draw (0.7 s to full), let go: 45 to 115 m/s and 30 to 70 damage by the draw (x1.5 above the shoulders); the server caps the draw by the time since your last arrow. Stops at the first wall. Every arrow has a random tip, the next shown on your HUD: regular, power (x1.8, x1.3 speed), knockback (15, a 60 m/s shove), flame (15 + 5 every 0.5 s for 3 s), explosion (5.5 m, 50 at the middle; you get only the shove), gas (10 + a 4.5 s cloud: 4 every 0.4 s within 5.5 m), sleep (10 + 4 s asleep: no input, your camera on the floor). |
+| Lefty & Righty `akimbo` | secondary | Two machine pistols: left click the left gun, right click the right one, each 9 a second with its own 20 and its own 1.5 s reload (R reloads both, one after the other); 6 a bullet, x1.6 head. Each hand's mag and rate are the server's (`akimbo` and `akimbo@2`). |
+
+Checked in solo Play (place version 862):
+- **Bowling:** 45 per hit, rolling on, and a SPARE.
+- **TV Remote:** pause (the Stand held still), rewind, and a second pause inside the cooldown refused.
+- **Scales:** a swing for 35 (x1 on a dummy) and the pillar for 20 after its second, with a second pillar inside 10 s refused.
+- **Bow:** power 126, flame 15 plus its burn ticks, and a shot inside 0.35 s refused.
+- **Slipper:** 30 out and 30 back, caught, with a second throw refused while it was out.
+
 ## Everything at a glance
 
 | weapon | slot | colour | what it does |

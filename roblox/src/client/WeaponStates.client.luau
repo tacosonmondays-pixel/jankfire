@@ -40,6 +40,24 @@ me:GetAttributeChangedSignal("StunUntil"):Connect(function()
 	local v = me:GetAttribute("StunUntil")
 	Body.stunUntil = if type(v) == "number" then v else 0
 end)
+-- (weapons batch D) the TV Remote paused you: held still where you are (your client owns your body, so it's anchored
+-- here), and the momentum you had comes back when it ends
+me:GetAttributeChangedSignal("PauseUntil"):Connect(function()
+	local u = me:GetAttribute("PauseUntil")
+	local ch = me.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if type(u) ~= "number" or not root then return end
+	local left = u - workspace:GetServerTimeNow()
+	if left <= 0 then return end
+	local v = root.AssemblyLinearVelocity
+	root.Anchored = true
+	task.delay(left, function()
+		if me:GetAttribute("PauseUntil") ~= u or not root.Parent then return end
+		root.Anchored = false
+		root.AssemblyLinearVelocity = v
+		me:SetAttribute("PauseUntil", nil)
+	end)
+end)
 me.CharacterAdded:Connect(function()
 	mine.soakUntil, Body.pin = 0, nil
 	Body.wet, Body.grip = 1, 1
@@ -210,6 +228,89 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			task.delay(0.25, function() g:Destroy() end)
 		end
 		Sfx.play("scythe_dash", f.a :: Vector3, 1)
+	elseif (f.k == "burn" or f.k == "sleep") and typeof(f.model) == "Instance" then
+		-- (weapons batch D, the Bow's tips) on fire for 3 s; asleep for 4 s: slow purple motes over the head
+		local m = f.model :: Instance
+		local r = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not r then return end
+		local dur = tonumber(f.dur) or 3
+		if f.k == "burn" then
+			local fire = Instance.new("Fire")
+			fire.Size = 4; fire.Heat = 6; fire.Color = Color3.fromRGB(255, 120, 40); fire.SecondaryColor = Color3.fromRGB(255, 200, 80)
+			fire.Parent = r
+			task.delay(dur, function() fire.Enabled = false; task.delay(1, function() fire:Destroy() end) end)
+			Sfx.play("flame_burn", r.Position, 0.7)
+		else
+			local a = Instance.new("Attachment"); a.Position = Vector3.new(0, 3.5, 0); a.Parent = r
+			local pe = Instance.new("ParticleEmitter")
+			pe.Color = ColorSequence.new(Color3.fromRGB(176, 125, 255)); pe.LightEmission = 0.6
+			pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 0) })
+			pe.Transparency = NumberSequence.new(0.2, 1); pe.Rate = 6; pe.Lifetime = NumberRange.new(1.2, 1.8)
+			pe.Speed = NumberRange.new(0.6, 1.2); pe.SpreadAngle = Vector2.new(25, 25); pe.Parent = a
+			task.delay(dur, function() a:Destroy() end)
+			Sfx.play("sleep_hit", r.Position, 0.8)
+			-- asleep yourself: the camera sinks to the floor till you wake
+			if m == me.Character then
+				local hum = m:FindFirstChildOfClass("Humanoid")
+				if hum then
+					hum.CameraOffset = Vector3.new(0, -2.5, 0)
+					task.delay(dur, function() if hum.Parent then hum.CameraOffset = Vector3.zero end end)
+				end
+			end
+		end
+	elseif f.k == "gas" and typeof(f.p) == "Vector3" then
+		-- the gas tip's cloud: a pale green haze the size of its reach, thinning out over its 4.5 s
+		local ball = Instance.new("Part")
+		ball.Shape = Enum.PartType.Ball
+		local r = tonumber(f.r) or 16.5
+		ball.Size = Vector3.new(r * 2, r * 2, r * 2); ball.CFrame = CFrame.new(f.p :: Vector3)
+		ball.Color = Color3.fromRGB(125, 255, 79); ball.Material = Enum.Material.SmoothPlastic; ball.Transparency = 0.82
+		ball.Anchored = true; ball.CanCollide = false; ball.CanQuery = false; ball.CanTouch = false; ball.CastShadow = false
+		ball.Parent = workspace:FindFirstChild("JankfireFx") or workspace
+		local dur = tonumber(f.dur) or 4.5
+		game:GetService("TweenService"):Create(ball, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1 }):Play()
+		task.delay(dur, function() ball:Destroy() end)
+		Sfx.play("gas_hiss", f.p :: Vector3, 0.8)
+	elseif f.k == "tvpause" and typeof(f.model) == "Instance" then
+		-- (weapons batch D) the TV Remote's pause: they go grey and still for the pause
+		local m = f.model :: Instance
+		local h = Instance.new("Highlight")
+		h.FillColor = Color3.fromRGB(150, 150, 160); h.FillTransparency = 0.45
+		h.OutlineColor = Color3.fromRGB(255, 90, 138); h.OutlineTransparency = 0.2
+		h.DepthMode = Enum.HighlightDepthMode.Occluded
+		h.Parent = m
+		task.delay(tonumber(f.dur) or 1.2, function() h:Destroy() end)
+		local r = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		Sfx.play("remote_pause", if r then r.Position else nil, 0.9)
+	elseif f.k == "tvrewind" and typeof(f.a) == "Vector3" and typeof(f.b) == "Vector3" then
+		-- the rewind: a pink streak from where they were back to where they were 2 s ago
+		Fx.tracer(f.a, f.b, Color3.fromRGB(255, 90, 138), 0.4, 0.35)
+		Sfx.play("remote_rewind", f.b :: Vector3, 0.9)
+	elseif (f.k == "gavel" or f.k == "gavelx") and typeof(f.p) == "Vector3" then
+		-- the Scales' pillar: a gold ring on the floor and a faint column rising for its second, then the strike
+		local at, r, h = f.p :: Vector3, tonumber(f.r) or 6.9, tonumber(f.h) or 9.6
+		local folder = workspace:FindFirstChild("JankfireFx") or workspace
+		local function disc(size: Vector3, y: number, a: number, life: number): Part
+			local d = Instance.new("Part")
+			d.Shape = Enum.PartType.Cylinder; d.Size = size
+			d.CFrame = CFrame.new(at + Vector3.new(0, y, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+			d.Color = Color3.fromRGB(255, 200, 58); d.Material = Enum.Material.Neon; d.Transparency = a
+			d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false
+			d.Parent = folder
+			task.delay(life, function() d:Destroy() end)
+			return d
+		end
+		if f.k == "gavel" then
+			local dur = tonumber(f.dur) or 1
+			disc(Vector3.new(0.12, r * 2, r * 2), 0.06, 0.55, dur)
+			local col = disc(Vector3.new(h, r * 2, r * 2), h / 2, 0.92, dur)
+			game:GetService("TweenService"):Create(col, TweenInfo.new(dur), { Transparency = 0.7 }):Play()
+			Sfx.play("gavel_charge", at, 0.8)
+		else
+			local col = disc(Vector3.new(h, r * 2, r * 2), h / 2, 0.35, 0.35)
+			game:GetService("TweenService"):Create(col, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+			Sfx.play("gavel_strike", at, 1)
+		end
 	elseif f.k == "zap" and type(f.links) == "table" then
 		-- (weapons batch B) the Taser: two dark wires out to whoever it hit, a yellow bolt down them, cyan bolts on to
 		-- everyone soaked it jumped to (70 ms apart), sparks where they land; or the darts into the wall on a miss

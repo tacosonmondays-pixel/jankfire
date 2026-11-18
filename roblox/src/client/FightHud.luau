@@ -179,7 +179,7 @@ local function formKey(): string
 	local k = if ok then (B :: any).label("form") else "Q"
 	return if k ~= "" then k else "Q"
 end
-function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?)
+function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?, mag2: number?)
 	local w = Weapons.list[wid]
 	if not w then return end
 	local count, sub, subColor, countColor = "", "", T.MUTED, T.TEXT
@@ -190,9 +190,12 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 		-- (right click: the katana parries, the knife stabs, the claw does nothing)
 		sub = if kat > 0 then (if kat == 1 then "%d kill · %.1f m" else "%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
 			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry"
-			elseif w.dash then (if w.form then "RMB dash · " .. formKey() .. " rifle" else "RMB dash") else ""
+			elseif w.dash then (if w.form then "RMB dash · " .. formKey() .. " rifle" else "RMB dash")
+			elseif w.rewind then "LMB pause · RMB rewind" elseif w.gavel then "RMB pillar" -- (weapons batch D)
+			elseif w.kind == "bow" then string.upper(tostring(game:GetService("Players").LocalPlayer:GetAttribute("BowTip") or "regular")) .. " TIP" else ""
 	else
-		count = ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
+		count = if mag2 then ('%d<font size="15" color="%s">  |  </font>%d'):format(mag or 0, T.hex(T.MUTED), mag2) -- (Lefty & Righty: left | right)
+			else ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
 		if reloading then sub = "RELOADING"; subColor = T.ACCENT; countColor = T.DIM
 		elseif (mag or 0) <= 0 then countColor = T.DANGER end
 		if not reloading and w.formOf then sub = formKey() .. " " .. string.lower((Weapons.list :: any)[w.formOf].name) end -- (the Scythe's rifle: the key back)

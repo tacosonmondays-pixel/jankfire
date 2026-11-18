@@ -199,6 +199,33 @@ local function scythe(b: Builder, rifle: boolean)
 	spot(b, "Fore", Vector3.new(0, 0, -0.45))
 end
 BUILD.scythe = function(b) scythe(b, false) end
+-- (weapons batch D) code stand-ins until the kit models are in (guns-remodel)
+BUILD.slipper = function(b)
+	bx(b, "sole", 0.12, 0.025, 0.28, 0xb06a8e, 0, -0.012, -0.1)
+	bx(b, "upper", 0.11, 0.04, 0.12, 0xff9ad5, 0, 0.018, -0.16)
+	spot(b, "Muzzle", Vector3.new(0, 0.0088, -0.1395)) -- (the kit model's spots, 76cbc02: held by the heel, toe forward)
+	spot(b, "Mid", Vector3.new(0, 0.0018, -0.0078))
+	spot(b, "Grip", Vector3.new(0, -0.004, 0.1))
+end
+BUILD.scales = function(b)
+	cylZ(b, "stem", 0.014, 0.62, 0x8a7a4a, 0, 0, -0.26)
+	bx(b, "beam", 0.5, 0.02, 0.02, 0xffc83a, 0, 0.01, -0.56)
+	for _, x in { -0.24, 0.24 } do
+		bx(b, "rod", 0.008, 0.12, 0.008, 0x8a7a4a, x, -0.05, -0.56)
+		part(b, "pan", Enum.PartType.Cylinder, Vector3.new(0.012, 0.12, 0.12), 0xffc83a, Vector3.new(x, -0.11, -0.56), CFrame.Angles(0, 0, math.pi / 2))
+	end
+	bx(b, "foot", 0.08, 0.05, 0.05, 0xffc83a, 0, 0, 0.06)
+	spot(b, "Muzzle", Vector3.new(0, 0, -0.726)) -- (the kit model's spots, 40f47a7: the heavy base strikes)
+	spot(b, "Mid", Vector3.new(0, 0, -0.3267))
+	spot(b, "Grip", Vector3.new(0, 0, 0))
+end
+BUILD.remote = function(b)
+	bx(b, "body", 0.05, 0.022, 0.2, 0x2b2e35, 0, 0, -0.07)
+	bx(b, "keys", 0.034, 0.006, 0.1, 0x45484f, 0, 0.013, -0.08)
+	bx(b, "eye", 0.03, 0.014, 0.012, 0xff5a8a, 0, 0, -0.172)
+	spot(b, "Muzzle", Vector3.new(0, 0, -0.2174)) -- (the kit model's spots, 76cbc02: the lens)
+	spot(b, "Grip", Vector3.new(0, -0.01, 0.04))
+end
 BUILD.scythe_rifle = function(b) scythe(b, true) end
 BUILD.slapper = function(b)
 	cylZ(b, "stick", 0.016, 0.5, 0xd6d0c6, 0, 0, -0.18)

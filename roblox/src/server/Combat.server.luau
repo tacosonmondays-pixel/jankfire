@@ -14,6 +14,7 @@ local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Marbles = require(Shared:WaitForChild("Marbles"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Fight = require(script.Parent:WaitForChild("Fight"))
+local Verdict = require(script.Parent:WaitForChild("Verdict")) -- (weapons batch D: the Scales of Justice)
 local Dummies = require(script.Parent:WaitForChild("Dummies"))
 local Katana = require(script.Parent:WaitForChild("Katana")) -- (the katana's crit return, edge meter and slash wave: docs/KATANA.md)
 local Zones = require(script.Parent:WaitForChild("Zones")) -- (training: no guard cooldown)
@@ -345,12 +346,13 @@ EquipR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 end)
 Players.PlayerRemoving:Connect(function(p) wantW[p] = nil end)
 
-ReloadR.OnServerEvent:Connect(function(p: Player, wid: unknown)
+ReloadR.OnServerEvent:Connect(function(p: Player, wid: unknown, hand: unknown)
 	if not spend(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" then return end
-	local why = Rules.reload(f, wid, now())
-	if why and why ~= "full" and why ~= "already reloading" then ammoSync(p, f, wid, why) end
+	local hd = if hand == 2 then 2 else nil -- (Lefty & Righty: which hand)
+	local why = Rules.reload(f, wid, now(), hd)
+	if why and why ~= "full" and why ~= "already reloading" and W[wid] then ammoSync(p, f, Rules.handKey(W[wid], wid, hd), why) end
 end)
 
 -- ------------------------------------------------------------------ the server's own bullet (a fanned Revolver shot)
@@ -447,9 +449,10 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	-- the claimed eye must be a clear line from your real head (no firing from the far side of a wall)
 	local off = e - seye
 	local blocked = off.Magnitude > 0.05 and Fight.castMap(seye, off.Unit, off.Magnitude) ~= nil
-	local why, mul, fanSpread = Rules.fire(f, wid, now(), seye, e, blocked, x.fan == true)
+	local hd = if x.hand == 2 then 2 else nil -- (Lefty & Righty: the right gun)
+	local why, mul, fanSpread = Rules.fire(f, wid, now(), seye, e, blocked, x.fan == true, hd)
 	if why then
-		if W[wid] then ammoSync(p, f, wid, why) end
+		if W[wid] then ammoSync(p, f, Rules.handKey(W[wid], wid, hd), why) end
 		return
 	end
 	Fight.shot(f, Weapons.base(wid)) -- (Stats.luau: one more attack for accuracy)
@@ -556,6 +559,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 		local sw = f.swing
 		local hv = if sw and sw.heavy then w.heavy else nil
 		local dmg = if hv then hv.dmg else w.dmg
+		if w.verdict then dmg *= Verdict.mult(f, t) end -- (the Scales of Justice: as hard as they deserve, Verdict.luau)
 		local hs = false
 		if w.backstab then
 			local face = Fight.facing(t)

@@ -81,6 +81,8 @@ function Rules.arm(f: Fighter, now: number)
 		local w = W[id]
 		if w and w.mag then f.ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		f.gate[id] = -math.huge
+		-- (Lefty & Righty: the right gun's own mag and rate, "<id>@2")
+		if w and w.hands == 2 and w.mag then f.ammo[id .. "@2"] = { mag = w.mag, reloadUntil = 0 }; f.gate[id .. "@2"] = -math.huge end
 		-- (a weapon's second form, the Scythe's rifle: its own full mag, kept through switches this life)
 		local alt = w and w.form and W[w.form.to]
 		if alt then
@@ -119,9 +121,15 @@ end
 -- the ammo, finishing a reload whose time has come
 local function ammoOf(f: Fighter, wid: string, now: number): Ammo?
 	local a = f.ammo[wid]
-	if a and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = W[wid].mag :: number; a.reloadUntil = 0 end
+	local row = W[wid] or W[string.match(wid, "^(.-)@%d$") or ""] -- (a hand's mag: "akimbo@2" is Lefty & Righty's)
+	if a and row and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = row.mag :: number; a.reloadUntil = 0 end
 	return a
 end
+-- the key of a gun's mag and rate: Lefty & Righty's right hand has its own ("<id>@2"); every other gun, its id
+local function handKey(w: any, wid: string, hand: any): string
+	return if hand == 2 and w and w.hands == 2 then wid .. "@2" else wid
+end
+Rules.handKey = handKey
 Rules.ammoOf = ammoOf
 Rules.transforming = transforming
 
@@ -192,13 +200,13 @@ function Rules.spin(f: Fighter, on: boolean, now: number)
 	f.spin = { lvl = Rules.spinLevel(f, now), t = now, on = on }
 end
 
-function Rules.reload(f: Fighter, wid: any, now: number): string?
+function Rules.reload(f: Fighter, wid: any, now: number, hand: any?): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	if not f.alive then return "dead" end
 	if f.noReload then return "no reloads" end -- (one in the chamber: kills are the only bullets)
 	if f.held ~= wid then return "not held" end
 	if transforming(f, now) then return "switching" end
-	local a = ammoOf(f, wid, now)
+	local a = ammoOf(f, handKey(W[wid], wid, hand), now)
 	if not a then return "no ammo" end
 	if a.reloadUntil > 0 then return "already reloading" end
 	if a.mag >= (W[wid].mag :: number) then return "full" end
@@ -209,7 +217,7 @@ end
 -- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it.
 -- returns why it's refused (or nil), what this shot's damage is multiplied by (the Revolver's fanned shots pay less),
 -- and for a fanned Revolver shot its spread: the server fires that one itself (Combat serverShot), never the client
-function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?): (string?, number, number?)
+function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?, hand: any?): (string?, number, number?)
 	if not inLoadout(f, wid) then return "not your weapon", 1 end
 	if W[wid].kind ~= "hitscan" then return "not a gun", 1 end
 	local w = W[wid]
@@ -218,7 +226,8 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if now < f.staggerUntil then return "staggered", 1 end
 	if transforming(f, now, if w.form then w.form.fireDelay else 0) then return "switching", 1 end
 	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head", 1 end
-	local a = ammoOf(f, wid, now)
+	local key = handKey(w, wid, hand) -- (Lefty & Righty: each hand its own mag and rate)
+	local a = ammoOf(f, key, now)
 	if not a then return "no ammo", 1 end
 	-- (a shot with rounds still in the mag cancels the reload: the owner, 18 Nov 2026, "can you cancel reload by
 	-- shooting". no rounds go in, so no reload time is skipped; an empty mag keeps reloading)
@@ -256,9 +265,9 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 		while #(log :: { number }) > 0 and now - (log :: { number })[1] >= span do table.remove(log :: { number }, 1) end
 		if #(log :: { number }) >= w.burst then return "too fast", 1 end
 	end
-	if not Rules.gate(f, wid, now, iv) then return "too fast", 1 end
+	if not Rules.gate(f, key, now, iv) then return "too fast", 1 end
 	if log then table.insert(log, now) end
-	f.lastShot[wid] = now
+	f.lastShot[key] = now
 	if w.fan then f.fanN = fanK end
 	a.mag -= 1
 	return nil, mul, spread

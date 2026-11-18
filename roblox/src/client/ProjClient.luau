@@ -21,18 +21,31 @@ local S = Weapons.S
 local nextT: { [string]: number } = {}
 
 -- your click: the server decides everything (it gates the cooldown too); this only keeps you from spamming it
-function P.throw(held: string, eye: Vector3, look: Vector3): boolean
+function P.throw(held: string, eye: Vector3, look: Vector3, c: number?): boolean
 	local w = W[held] :: any
-	if not w or w.kind ~= "proj" then return false end
+	if not w or (w.kind ~= "proj" and w.kind ~= "bow") then return false end
 	local t = os.clock()
 	if t < (nextT[held] or 0) then return false end
 	nextT[held] = t + (w.cd or 0.5)
 	local r = Remotes:FindFirstChild("Throw")
-	if r and r:IsA("RemoteEvent") then r:FireServer(held, eye, look) end
+	if r and r:IsA("RemoteEvent") then r:FireServer(held, eye, look, c) end
 	if w.snd then Sfx.play(w.snd) end
 	if w.snd2 then task.delay(0.03, Sfx.play, w.snd2) end
 	return true
 end
+
+-- (weapons batch D) the Bow's draw: when you started pulling (nil: not drawing). the hold reads P.drawn() (0..1)
+P.bowT = nil :: number?
+function P.drawn(): number
+	local w = W.bow :: any
+	return if P.bowT and w then math.clamp((os.clock() - (P.bowT :: number)) / w.drawT, 0, 1) else 0
+end
+-- each arrow tip's colour (the shooter's next one is BowTip on them)
+P.TIP = {
+	regular = Color3.fromRGB(221, 221, 221), power = Color3.fromRGB(255, 225, 77), knockback = Color3.fromRGB(79, 216, 255),
+	flame = Color3.fromRGB(255, 106, 26), explosion = Color3.fromRGB(255, 48, 48), gas = Color3.fromRGB(125, 255, 79),
+	sleep = Color3.fromRGB(176, 125, 255),
+} :: { [string]: Color3 }
 
 -- ---------------------------------------------------------------- the shots in flight
 local folder = Instance.new("Folder")
@@ -44,22 +57,42 @@ local LOOK = {
 	ball = { Color3.fromRGB(205, 235, 80), "Ball", Vector3.new(0.6, 0.6, 0.6) },
 	snow = { Color3.fromRGB(240, 246, 252), "Ball", Vector3.new(0.78, 0.78, 0.78) },
 	blood = { Color3.fromRGB(120, 10, 24), "Ball", Vector3.new(0.4, 0.4, 0.4) },
+	bowl = { Color3.fromRGB(44, 52, 92), "Ball", Vector3.new(2.7, 2.7, 2.7) }, -- (weapons batch D)
+	slipper = { Color3.fromRGB(255, 154, 213), "Block", Vector3.new(1.0, 0.35, 2.1) },
+	arrow = { Color3.fromRGB(120, 90, 60), "Block", Vector3.new(0.12, 0.12, 2.4) },
 }
-type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number }
+type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number, r: number? }
 local live: { [number]: Live } = {}
 -- the kit models for the shots (guns-remodel, v813: JankfireWeapons w_pj_*, built in metres, nose along -Z, origin at
 -- the middle); a kind with none (the tennis ball, the blood cross) stays a simple shape
-local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball" } :: { [string]: string }
-local function kit(name: string): Model?
+local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball", bowl = "w_pj_bowling", slipper = "w_pj_slipper", arrow = "w_pj_arrow" } :: { [string]: string }
+-- (an arrow's tip in its tip's colour: the kit's tip_ pieces, or the stand-in's point)
+local function tint(root: BasePart, tip: string?)
+	local col = tip and P.TIP[tip]
+	if not col then return end
+	local m = root.Parent
+	if m and m:IsA("Model") then
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") and string.sub(d.Name, 1, 4) == "tip_" then d.Color = col end end
+	end
+end
+-- (the bowling ball rolls: each client keeps it on the floor itself, the server only sends walls and hits)
+local floorParams = RaycastParams.new()
+floorParams.FilterType = Enum.RaycastFilterType.Include
+local function kit(name: string, fitR: number?): Model?
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
 	local t = lib and lib:FindFirstChild(name)
 	if not t or not t:IsA("Model") then return nil end
 	local m = t:Clone()
 	m:ScaleTo(m:GetScale() * S) -- (metres to studs: S studs a metre)
+	if fitR then -- (the bowling ball: as big as what it hits with, whatever size the file is)
+		local _, size = m:GetBoundingBox()
+		local big = math.max(size.X, size.Y, size.Z)
+		if big > 1e-3 then m:ScaleTo(m:GetScale() * (2 * fitR) / big) end
+	end
 	return m
 end
-local function shape(k: string): BasePart
-	local m = if KIT[k] then kit(KIT[k]) else nil
+local function shape(k: string, r: number?): BasePart
+	local m = if KIT[k] then kit(KIT[k], if k == "bowl" then r else nil) else nil
 	if m then
 		local root = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
 		if root then
@@ -87,12 +120,21 @@ local function drop(id: number)
 	if m and m ~= folder and m:IsA("Model") then m:Destroy() else L.part:Destroy() end
 end
 RunService.RenderStepped:Connect(function(dt: number)
+	local map = workspace:FindFirstChild("Map")
+	if map then floorParams.FilterDescendantsInstances = { map } end
 	for _, L in live do
 		L.v -= Vector3.new(0, L.g * S * dt, 0)
 		L.p += L.v * dt
+		if L.k == "bowl" and map and L.r then
+			local hit = workspace:Raycast(L.p + Vector3.new(0, L.r, 0), Vector3.new(0, -2 * L.r, 0), floorParams)
+			if hit and L.p.Y - hit.Position.Y < L.r then
+				L.p = Vector3.new(L.p.X, hit.Position.Y + L.r, L.p.Z)
+				if L.v.Y < 0 then L.v = Vector3.new(L.v.X, 0, L.v.Z) end
+			end
+		end
 		L.spin += dt * 18
 		local face = if L.v.Magnitude > 0.1 then CFrame.lookAt(L.p, L.p + L.v) else CFrame.new(L.p)
-		local cf = if L.k == "rocket" or L.k == "blood" then face else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
+		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" then face else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
 		local m = L.part.Parent
 		if m and m:IsA("Model") and m ~= folder then (m :: Model):PivotTo(cf) else L.part.CFrame = cf end
 	end
@@ -126,7 +168,12 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if k == "proj" and type(f.id) == "number" and typeof(f.p) == "Vector3" and typeof(f.v) == "Vector3" then
 		local w = W[f.w] :: any
 		local kind = w and w.proj or "ball"
-		live[f.id] = { part = shape(kind), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0 }
+		live[f.id] = { part = shape(kind, tonumber(f.r)), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0, r = tonumber(f.r) }
+		if kind == "arrow" then
+			local part = live[f.id].part
+			tint(part, f.tip)
+			if part.Parent == folder and type(f.tip) == "string" and P.TIP[f.tip] then part.Color = P.TIP[f.tip] end -- (the stand-in: all of it)
+		end
 		if f.by ~= me.UserId and w and w.snd then Sfx.play(w.snd, f.p, 0.8) end
 		if f.by ~= me.UserId and w and w.snd2 then task.delay(0.03, Sfx.play, w.snd2, f.p, 0.8) end
 	elseif k == "proju" and type(f.id) == "number" then
@@ -134,13 +181,32 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		if L and typeof(f.p) == "Vector3" and typeof(f.v) == "Vector3" then
 			L.p, L.v = f.p, f.v
 			if L.k == "ball" then Sfx.play("tennis_bounce", f.p, 0.8, 1 + 0.08 * (tonumber(f.b) or 0)) end
+			if f.h then -- (batch D: the bowling ball or the slipper went through someone)
+				Sfx.play(if L.k == "bowl" then "bowl_hit" else "slipper_hit", f.p, 0.9)
+			end
 		end
 	elseif k == "projx" and type(f.id) == "number" then
 		local L = live[f.id]
 		local at = if typeof(f.p) == "Vector3" then f.p elseif L then L.p else nil
 		local kind = L and L.k
+		-- (batch D: an arrow in a wall stays there a few seconds)
+		if f.stuck and L then
+			local m = L.part.Parent
+			if m and m ~= folder and m:IsA("Model") then
+				live[f.id] = nil
+				task.delay(4, function() m:Destroy() end)
+			else
+				live[f.id] = nil
+				local part = L.part
+				task.delay(4, function() part:Destroy() end)
+			end
+			Sfx.play("arrow_wall", at or L.p, 0.8)
+			return
+		end
 		drop(f.id)
 		if not at then return end
+		if f.c then Sfx.play("slipper_catch", at, 0.7) end -- (batch D: the slipper back in your hand)
+		if kind == "arrow" and f.b then Sfx.play("arrow_hit", at, 0.9) end
 		if f.x then
 			Fx.explosion(at, tonumber(f.r) or 22.5)
 			Sfx.play("boom", at, 1)

@@ -50,6 +50,15 @@ export type Weapon = {
 	proj: string?, speed: number?, grav: number?, life: number?, radius: number?, selfKb: number?, bounce: number?,
 	bounces: number?, bonus: number?, minBounce: number?, freezeAt: number?, freeze: number?, frostDecay: number?,
 	cost: number?, thin: { cd: number, dmg: number, heal: number }?, fuse: number?, burst: number?, blastR: number?, blastDmg: number?,
+	-- weapons batch D: the slipper's way out (out s, outLock s while locked on) and back (back studs/s), its homing (homeR
+	-- studs, homeCone degrees off its heading, homeTurn rad/s); the Scales' verdict and right-click pillar (gavel); the TV
+	-- Remote (kind "remote": range, cone; pause dur / cd, rewind back / cd)
+	out: number?, back: number?, homeR: number?, homeCone: number?, homeTurn: number?, outLock: number?,
+	verdict: boolean?, gavel: { range: number, cone: number, delay: number, r: number, h: number, dmg: number, kbUp: number, cd: number }?,
+	pause: { dur: number, cd: number }?, rewind: { back: number, cd: number }?,
+	-- the Bow (kind "bow", proj "arrow"): hold drawT s to full; speed .. speedMax studs/s and dmg .. dmgMax by the draw
+	drawT: number?, speedMax: number?, dmgMax: number?,
+	hands: number?, -- (Lefty & Righty: 2 guns, left click the left, right click the right, each its own mag of `mag`)
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?, snd2: string?, -- (snd2: a second layer on the shot)
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
@@ -433,6 +442,70 @@ local W: { [string]: Weapon } = {
 		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
 		-- (bare: only these spots are built, the fingertip the bolt leaves from and the hand)
 		mdl = { lo = Vector3.new(-0.02, -0.02, -0.1), hi = Vector3.new(0.02, 0.02, 0.02), muzzle = Vector3.new(0, 0, -0.1), grip = Vector3.new(0, 0, 0) },
+	},
+	-- ------------------------------------------------------------ weapons batch D (18 Nov 2026; WEAPONS.md, the traced spec
+	-- weapons-batchD-spec.md). code stand-in models until the kit ones are in (guns-remodel)
+	-- rolls along the floor and bowls over everyone in its way, on through them (WeaponProj "bowl")
+	bowling = {
+		id = "bowling", name = "Bowling Ball Launcher", slot = "primary", kind = "proj", proj = "bowl", color = rgb(0x6b7bff),
+		desc = "rolls a bowling ball along the floor. it knocks over everyone in its way and keeps rolling.",
+		cd = 1.3, speed = 30 * S, grav = 30, r = 0.45 * S, bounce = 0.25, dmg = 45, kb = 40 * S, kbUp = 10 * S, life = 6, range = 200 * S,
+		snd = "gun_bowling", hitSnd = "bowl_hit",
+		recoilVM = { back = 2.2, up = 7, roll = 1, side = 0.2, punch = 0.04 },
+		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.65 },
+		mdl = { lo = Vector3.new(-0.11, -0.2091, -0.61), hi = Vector3.new(0.11, 0.11, 0.1385), muzzle = Vector3.new(0, 0, -0.5), grip = Vector3.new(0, -0.1099, 0.026), fore = Vector3.new(0, -0.146, -0.255),
+			parts = { refill = { node = "ball", back = 1.0 } } }, -- (the kit model's, 76cbc02: the loaded ball goes with the shot)
+	},
+	-- a boomerang: curves into the nearest enemy ahead, then back to your hand (WeaponProj "slipper")
+	slipper = {
+		id = "slipper", name = "Slipper", slot = "melee", kind = "proj", proj = "slipper", color = rgb(0xff9ad5),
+		desc = "thrown like a boomerang. it curves into the nearest enemy in front of it, then flies back to you. it hits both ways.",
+		cd = 0.5, speed = 32 * S, grav = 0, r = 0.3 * S, out = 0.45, back = 38 * S, dmg = 30, kb = 22 * S, kbUp = 6 * S, life = 3,
+		homeR = 30 * S, homeCone = 70, homeTurn = 5, outLock = 1, range = 30 * S,
+		snd = "slipper_throw", hitSnd = "slipper_hit",
+		recoilVM = { back = 0.8, up = 3, roll = 2, side = 0.4, punch = 0.01 },
+		vm = { p = Vector3.new(0.22, -0.22, -0.4) * S, r = Vector3.new(0.2, 0.2, -0.1), s = 0.9 },
+	},
+	-- hits as hard as they deserve (Verdict.luau: x0.4 to x3); right click, a pillar of light on someone far away
+	scales = {
+		id = "scales", name = "Scales of Justice", slot = "melee", kind = "melee", color = rgb(0xffc83a),
+		desc = "hits as hard as they deserve: leaders, streakers and whoever killed you take up to x3. right click calls a pillar of light down on someone far away.",
+		cd = 0.6, range = 3.2 * S, cone = 0.75, dmg = 35, kb = 14 * S, kbUp = 5 * S, hitT = 0.22, speedMul = 0.95, verdict = true,
+		gavel = { range = 42 * S, cone = 0.16, delay = 1.0, r = 2.3 * S, h = 3.2 * S, dmg = 20, kbUp = 7 * S, cd = 10 },
+		swingSnd = "scales_swing", hitSnd = "scales_hit",
+		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
+		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.7 },
+	},
+	-- two machine pistols: left click fires lefty, right click righty; each its own 20 and its own reload (Rules.handKey)
+	akimbo = {
+		id = "akimbo", name = "Lefty & Righty", slot = "secondary", kind = "hitscan", hands = 2, color = rgb(0x00e5a0),
+		desc = "two machine pistols, one per hand. left click fires lefty, right click fires righty, hold both to hose. they reload one at a time.",
+		auto = true, rate = 9, mag = 20, reload = 1.5, pellets = 1, dmg = 6, head = 1.6, spread = 0.045, bloom = 0.003, maxBloom = 0.05,
+		kb = 0, recoil = 0.25 * S, kick = 0.012, range = 140 * S, tracer = rgb(0x7dffd0), speedMul = 1.05,
+		fx = { brass = true, shake = 0.04 }, snd = "gun_akimbo",
+		recoilVM = { back = 0.5, up = 1.8, roll = 1.2, side = 0.2, punch = 0.006 },
+		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0.03, 0), s = 0.9 },
+		mdl = { lo = Vector3.new(-0.028, -0.1499, -0.2), hi = Vector3.new(0.028, 0.086, 0.088), muzzle = Vector3.new(0, 0.03, -0.2), grip = Vector3.new(0, -0.064, 0.035) },
+	},
+	-- hold to draw, let go to fire; every arrow has a random tip (WeaponProj "arrow")
+	bow = {
+		id = "bow", name = "Bow", slot = "primary", kind = "bow", proj = "arrow", color = rgb(0xc88a4a),
+		desc = "hold to draw, let go to fire. every arrow has a random tip: regular, power, knockback, flame, explosion, gas or sleep.",
+		cd = 0.35, drawT = 0.7, speed = 45 * S, speedMax = 115 * S, grav = 8, r = 0.24 * S, dmg = 30, dmgMax = 70, head = 1.5,
+		kb = 6 * S, kbUp = 2 * S, life = 4, range = 300 * S,
+		snd = "gun_bow", drawSnd = "bow_draw",
+		recoilVM = { back = 1.2, up = 3, roll = 0.5, side = 0.2, punch = 0.01 },
+		vm = { p = Vector3.new(0.18, -0.2, -0.4) * S, r = Vector3.new(0, 0.05, 0), s = 0.75 },
+		mdl = { lo = Vector3.new(-0.0368, -0.4249, -0.0372), hi = Vector3.new(0.0235, 0.4249, 0.1192), muzzle = Vector3.new(0, 0, -0.0075), grip = Vector3.new(-0.012, -0.06, -0.0008), fore = Vector3.new(0, 0, 0.1132) }, -- (the kit model's, 40f47a7: fore = the nocking point)
+	},
+	-- point and click: left click pauses them, right click rewinds them 2 s (WeaponTricks.server)
+	remote = {
+		id = "remote", name = "TV Remote", slot = "secondary", kind = "remote", color = rgb(0xff5a8a),
+		desc = "point and click. left click pauses them for a second. right click rewinds them to where they were 2 seconds ago.",
+		range = 45 * S, cone = 0.09, pause = { dur = 1.2, cd = 3.5 }, rewind = { back = 2, cd = 6 }, speedMul = 1.05,
+		snd = "remote_click",
+		recoilVM = { back = 0.3, up = 1.5, roll = 0, side = 0, punch = 0.004 },
+		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
 	},
 	-- (weapons batch B) the Leaf Blower: hold it, everyone in the cone is shoved away from you (0 damage: a fall is yours),
 	-- 4 s of fuel that refills when you let go; pointed at the floor, its thrust holds you up

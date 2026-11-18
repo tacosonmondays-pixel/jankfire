@@ -89,6 +89,19 @@ minigun.proj = require(script.Parent:WaitForChild("ProjClient")) :: any
 -- (the Scythe's two forms) mid-switch till formUntil; the form each two-form weapon was last in (its slot key takes that
 -- one out again); when your last shot went off (no switch right after a shot)
 minigun.formUntil, minigun.lastForm, minigun.shotT = 0, {} :: { [string]: string }, -math.huge
+-- (weapons batch D) the TV Remote's clicks and the Scales' pillar: the server picks the target and gates the cooldowns
+-- (WeaponTricks.server); these only keep you from spamming the remotes
+minigun.trickNext = {} :: { [string]: number }
+function minigun.trick(name: string, op: string?, cd: number)
+	local t = os.clock()
+	local key = name .. (op or "")
+	if t < (minigun.trickNext[key] or 0) then return end
+	minigun.trickNext[key] = t + math.min(cd, 0.5)
+	local r = Remotes:FindFirstChild(name)
+	if not r or not r:IsA("RemoteEvent") then return end
+	local lk = workspace.CurrentCamera.CFrame.LookVector
+	if op then r:FireServer(op, lk) else r:FireServer(lk) end
+end
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -135,6 +148,7 @@ local function resetAmmo()
 		local w = W[id]
 		if w.mag then ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		nextShot[id] = 0
+		if w.hands == 2 and w.mag then ammo[id .. "@2"] = { mag = w.mag, reloadUntil = 0 }; nextShot[id .. "@2"] = 0 end -- (Lefty & Righty's right gun)
 		local alt = w.form and W[w.form.to] -- (the Scythe's rifle: its own mag, Rules.arm)
 		if alt then
 			if alt.mag then ammo[alt.id] = { mag = alt.mag, reloadUntil = 0 } end
@@ -406,20 +420,31 @@ function minigun.form(now: number)
 	end
 end
 
-local function reload()
+local function reload(hand: number?): boolean
 	local w = W[held]
-	local a = ammo[held]
-	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return end
-	if os.clock() < minigun.formUntil then return end -- (mid-switch: the Scythe's rifle reloads once it's a rifle)
-	if me:GetAttribute("NoReload") then return end -- (one in the chamber: kills are the only bullets, Modes.luau)
+	local a = ammo[if hand == 2 and w and w.hands == 2 then held .. "@2" else held]
+	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return false end
+	if os.clock() < minigun.formUntil then return false end -- (mid-switch: the Scythe's rifle reloads once it's a rifle)
+	if me:GetAttribute("NoReload") then return false end -- (one in the chamber: kills are the only bullets, Modes.luau)
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
 	burstLeft = 0
 	fanArmed = false
-	ReloadR:FireServer(held)
+	ReloadR:FireServer(held, hand)
 	if w.reloadSnd then Sfx.play(w.reloadSnd) end -- (a whole reload's own recording: the Minigun's ammo box)
-	VM.reload(held, w.reload :: number, a.mag <= 0)
-	TP.reload(held, w.reload :: number, a.mag <= 0)
+	VM.reload(held, w.reload :: number, a.mag <= 0, hand)
+	TP.reload(held, w.reload :: number, a.mag <= 0, hand)
+	return true
+end
+-- (Lefty & Righty) R reloads both, one after the other: lefty first, righty when it's done
+function minigun.reloadBoth()
+	local wid = held
+	local w = W[wid]
+	if reload(1) then
+		task.delay((w.reload :: number) + 0.05, function() if held == wid then reload(2) end end)
+	else
+		reload(2)
+	end
 end
 
 -- fire with rounds still in the mag cancels a reload (the owner, 18 Nov 2026: "can you cancel reload by shooting"):
@@ -476,16 +501,17 @@ local mapParams = RaycastParams.new()
 mapParams.FilterType = Enum.RaycastFilterType.Include
 
 -- fan = a fanned Revolver shot (the trigger held): the fan's own rate, spread and softer kick
-local function fireGun(now: number, fan: boolean?)
+local function fireGun(now: number, fan: boolean?, hand: number?)
 	local w = W[held]
-	local a = ammo[held]
+	local key = if hand == 2 and w and w.hands == 2 then held .. "@2" else held -- (Lefty & Righty's right gun: its own mag)
+	local a = ammo[key]
 	local _, _, root = myChar()
 	if not root or not a then return end
 	if a.reloadUntil > 0 then return end
-	if a.mag <= 0 then Sfx.play("empty"); burstLeft = 0; reload(); return end
+	if a.mag <= 0 then Sfx.play("empty"); burstLeft = 0; reload(hand); return end
 	local F = if fan then w.fan else nil
 	local iv = 1 / Weapons.fireRate(w, hp())
-	nextShot[held] = math.max(nextShot[held], now - math.min(0.04, iv / 2)) + iv
+	nextShot[key] = math.max(nextShot[key] or 0, now - math.min(0.04, iv / 2)) + iv
 	minigun.shotT = now
 	if w.fan then fanNext = now + 1 / w.fan.rate end
 	if w.burst then -- the Hat Trick: a press is a whole burst, then a breath before the next one
@@ -559,6 +585,7 @@ local function fireGun(now: number, fan: boolean?)
 		(opt :: any).look = look
 		ends = { eye + look * w.range }
 	end
+	if hand then opt = opt or {}; (opt :: any).hand = hand end -- (Lefty & Righty: which gun)
 	FireR:FireServer(held, eye, ends, list, opt)
 	-- your own feel: shove, climb, bloom, the gun kicks, flash, brass, tracer / marbles, sound
 	local km = if F then F.kick else 1
@@ -572,9 +599,9 @@ local function fireGun(now: number, fan: boolean?)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
 	local vis = Settings.get("gfx.recoil") -- (a visual-only recoil slider, 0..1; nil = 1)
 	vis = if type(vis) == "number" then math.clamp(vis, 0, 1) else 1
-	VM.kick(w.recoilVM, (if aim > 0.5 then 0.6 else 1) * rk, rt > 8, fl.up * vis, fl.punch * vis)
-	VM.shot(w) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms
-	TP.fired(held, F ~= nil) -- (and the gun in your character's hands kicks, for you in third person and for everyone)
+	VM.kick(w.recoilVM, (if aim > 0.5 then 0.6 else 1) * rk, rt > 8, fl.up * vis, fl.punch * vis, hand)
+	VM.shot(w, hand) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms (hand: Lefty & Righty's)
+	TP.fired(held, F ~= nil, hand) -- (and the gun in your character's hands kicks, for you in third person and for everyone)
 	if w.cycle then VM.follow(w.cycle.clip, w.cycle.at) end -- then the pump / the bolt / the lever
 	if w.fan then -- the Revolver: a twirl round the finger after a tap (not down the sights), a whole turn per fanned shot
 		if F then VM.play("fan_revolver") elseif aim < 0.3 then VM.play("twirl_revolver") end
@@ -754,6 +781,16 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
+		elseif W[held] and W[held].kind == "bow" then -- (batch D: the Bow draws while you hold; the arrow goes on the let-go)
+			if not minigun.proj.bowT then
+				minigun.proj.bowT = now
+				local ds = W[held].drawSnd
+				if ds then Sfx.play(ds) end
+			end
+		elseif W[held] and W[held].kind == "remote" then -- (batch D: the TV Remote's left click pauses whoever you point at)
+			minigun.trick("TVRemote", "pause", 0.3)
+			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
+			Sfx.play(W[held].snd or "click")
 		elseif W[held] and W[held].kind == "proj" then -- (batch C: the projectiles)
 			local eye, look = eyeAndAim()
 			if minigun.proj.throw(held, eye, look) then VM.kick(W[held].recoilVM, 0.8, false, 1, 1); VM.shot(W[held]); TP.fired(held, false) end
@@ -763,18 +800,35 @@ Keys.began(function(io: InputObject, gp: boolean)
 		end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
-		if W[held] and W[held].dash then -- (the Scythe: right click dashes; the server runs it, ScytheDash.server)
+		if W[held] and W[held].hands == 2 then minigun.trigger2 = true -- (Lefty & Righty: right click is the right gun)
+		elseif W[held] and W[held].dash then -- (the Scythe: right click dashes; the server runs it, ScytheDash.server)
 			local r = Remotes:FindFirstChild("Dash")
 			if r and r:IsA("RemoteEvent") and not Body.stunned() and os.clock() >= minigun.formUntil then r:FireServer(camera.CFrame.LookVector) end
 		elseif W[held] and W[held].heavy then swing(now, true)
+		elseif W[held] and W[held].kind == "remote" then -- (batch D: the TV Remote's right click rewinds them)
+			minigun.trick("TVRemote", "rewind", 0.3)
+			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
+			Sfx.play(W[held].snd or "click")
+		elseif W[held] and W[held].gavel then -- (batch D: the Scales of Justice's pillar of light)
+			if not Body.stunned() then minigun.trick("Gavel", nil, 0.3) end
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
-	elseif Binds.is("reload", io) then reload()
+	elseif Binds.is("reload", io) then if W[held] and W[held].hands == 2 then minigun.reloadBoth() else reload() end
 	end
 end)
 Keys.ended(function(io: InputObject)
 	if Binds.is("fire", io) then trigger = false; minigun.hold.release(held)
+		-- (batch D: the Bow's let-go: the arrow, drawn as far as you held it)
+		local bt = minigun.proj.bowT
+		if bt and W[held] and W[held].kind == "bow" then
+			minigun.proj.bowT = nil
+			local eye, look = eyeAndAim()
+			if not Body.stunned() and minigun.proj.throw(held, eye, look, (os.clock() - bt) / W[held].drawT) then
+				VM.kick(W[held].recoilVM, 0.8, false, 1, 1); VM.shot(W[held]); TP.fired(held, false)
+			end
+		elseif bt then minigun.proj.bowT = nil end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", false, aimHeld)
+		minigun.trigger2 = false
 		if not aimHeld then guardEnd(os.clock()) end -- (the katana's guard comes down with the button)
 	end
 end)
@@ -1028,6 +1082,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- reload finishes on its own clock
 	local a = ammo[held]
 	if a and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = w.mag :: number; a.reloadUntil = 0 end
+	local a2 = if w and w.hands == 2 then ammo[held .. "@2"] else nil -- (Lefty & Righty's right gun)
+	if a2 and a2.reloadUntil > 0 and now >= a2.reloadUntil then a2.mag = w.mag :: number; a2.reloadUntil = 0 end
 	local reloading = a ~= nil and a.reloadUntil > 0
 	-- aim down sights (can't while reloading): in ~0.14 s, out in ~0.125 s
 	local canAim = w and w.ads ~= nil and not reloading and hum ~= nil
@@ -1088,8 +1144,16 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if hum and (trigger or burstLeft > 0) and w and w.auto and w.kind == "hitscan" and (not w.spinup or minigun.spin >= 1) and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
 		local n = 0
 		-- (a Hat Trick burst always finishes, even on a tap)
-		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
-		if (ammo[held] :: any).mag <= 0 and (ammo[held] :: any).reloadUntil == 0 then burstLeft = 0; reload() end
+		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now, nil, if w.hands == 2 then 1 else nil); n += 1 end
+		if (ammo[held] :: any).mag <= 0 and (ammo[held] :: any).reloadUntil == 0 then burstLeft = 0; reload(if w.hands == 2 then 1 else nil) end
+	end
+	-- (Lefty & Righty) the right gun on right click, its own mag and rate
+	if hum and w and w.hands == 2 and minigun.trigger2 and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true then
+		local k2 = held .. "@2"
+		local a2r = ammo[k2]
+		local n2 = 0
+		while a2r and now >= (nextShot[k2] or 0) and n2 < 4 and a2r.mag > 0 and a2r.reloadUntil == 0 do fireGun(now, nil, 2); n2 += 1 end
+		if a2r and a2r.mag <= 0 and a2r.reloadUntil == 0 then reload(2) end
 	end
 	-- the Revolver: hold the trigger (not down the sights) and the rest of the cylinder is fanned out
 	if aim >= 0.1 or not trigger then fanArmed = false end
@@ -1127,7 +1191,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local spd = if root then Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z).Magnitude else 0
 	if VM.model then
 		local tp = thirdPerson() or hum == nil or toolOut() or menuOpen() or holstered
-		local gone = tp or scoped
+		local gone = tp or scoped or (held == "slipper" and me:GetAttribute("SlipperOut") == true) -- (batch D: the slipper's out of your hand)
 		for _, d in VM.model:GetDescendants() do
 			-- (Hide: a piece that's out of the gun right now: a dropped mag, a belt link that's been fired)
 			if d:IsA("BasePart") and d.Name ~= "Root" then d.LocalTransparencyModifier = if gone or d:GetAttribute("Hide") then 1 else 0 end
@@ -1174,6 +1238,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 		H.weapon("shredder", nil, false, 0, if tool:GetAttribute("Hot") then "OVERHEATED" else ("heat %d%%"):format(math.floor((if type(heat) == "number" then heat else 0) * 100 + 0.5)))
 	elseif holstered then
 		H.weapon(held, a and a.mag, reloading, kat(), "HOLSTERED")
+	elseif a2 then -- (Lefty & Righty: both mags, left | right)
+		H.weapon(held, a and a.mag, reloading or a2.reloadUntil > 0, kat(), nil, a2.mag)
 	else
 		H.weapon(held, a and a.mag, reloading, kat())
 	end
