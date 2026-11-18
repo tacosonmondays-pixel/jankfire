@@ -172,7 +172,7 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	if w.ramp then
 		local k = Rules.ramp(f, t, w, now())
 		dmg *= 1 + w.ramp * k
-		if k > 0 then callout(f, ("YEEHAW x%.2f"):format(1 + w.ramp * k), 0.8) end
+		if k > 0 then callout(f, ("CHAIN x%.2f"):format(1 + w.ramp * k), 0.8) end
 	end
 	if w.burst and Rules.burstHit(f, t, w, now()) then callout(f, "BURST!", 0.9) end
 	if w.quick and x and Rules.quick(f, w, now(), x.qs == true) then
@@ -649,7 +649,7 @@ local function zapFrom(f: Fighter, wid: string, eye: Vector3, look: Vector3, cla
 				stunOne(f, t, wid, Z.chainStun, Z.chainDmg, 0, ct)
 			end
 		end
-		if n > 2 then callout(f, ("CHAIN x%d"):format(n), 0.9) end
+		if n > 2 then callout(f, ("%d LINKED"):format(n), 0.9) end
 	else
 		local h = Fight.castMap(eye, look, w.range)
 		miss = if h then h.Position else eye + look * w.range

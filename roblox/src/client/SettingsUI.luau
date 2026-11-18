@@ -484,7 +484,7 @@ tabs = {
 		section("ZOOM", "1.00 keeps the same feel as hip fire at every zoom")
 		slider({ key = "look.ads", label = "ZOOM SENSITIVITY RATIO", sub = "iron sights and red dots", min = 0.2, max = 2, step = 0.01, fmt = times })
 		slider({ key = "look.sniper", label = "SCOPED SENSITIVITY", sub = "Sniper, 4x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
-		slider({ key = "look.dmr", label = "SCOPED SENSITIVITY", sub = "Second Opinion, 2.6x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
+		slider({ key = "look.dmr", label = "SCOPED SENSITIVITY", sub = "Marksman Rifle, 2.6x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
 		section("VIEW")
 		slider({ key = "fov", label = "FIELD OF VIEW", sub = "vertical, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
 		switch({ key = "fov.kick", label = "FOV KICK", sub = "the view widens as you speed up" })

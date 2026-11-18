@@ -167,7 +167,7 @@ local KINDS: { { string } } = {
 	{ "SLIDE JUMP", "train" }, { "GRAPPLE JUMP", "train" }, { "BHOP x", "train" }, { "LEDGE LAUNCH", "train" },
 	{ "BUBBLED BY", "big" },
 	{ "TOO FAR", "small" }, { "killed ", "small" }, { "PERFECT PARRY", "small" }, { "PARRY!", "small" }, { "PARRIED", "small" }, { "CRIT RETURN", "small" },
-	{ "BLOCKED", "small" }, { "YEEHAW x", "small" }, { "QUICK SCOPE", "small" }, { "you are in a bubble", "small" },
+	{ "BLOCKED", "small" }, { "CHAIN x", "small" }, { "* LINKED", "small" }, { "QUICK SCOPE", "small" }, { "you are in a bubble", "small" },
 	{ "*: recharging", "small" }, { "REVERSED", "small" }, { "ROPE SNAPPED", "small" }, { "POP QUIZ FOR ", "small" },
 	{ "TICKET", "small" }, { "BUSTED!", "small" }, { "PHOTO TAKEN", "small" }, { "* WENT IN YOUR PHOTO", "small" },
 	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },

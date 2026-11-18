@@ -373,7 +373,7 @@ the floor, and the camera inside a wall):
 | corner (place v436) | 10 crates | round the open side at 85%, 6.5 to 13.3 studs out | 0 | - | +0.04 |
 
 **Guns at one scale** (place v436, a made-up opening, nothing given): one wrap on six guns, shown lengths in studs:
-Plan B 0.86, SMG 1.64, Shredder 1.22, katana 2.43, assault rifle 2.99, sniper 5.24 (the ring made them all 0.65 of
+Pistol 0.86, SMG 1.64, Shredder 1.22, katana 2.43, assault rifle 2.99, sniper 5.24 (the ring made them all 0.65 of
 the display scale together, the sniper being the longest). In the reveal the assault rifle is 4.6. The Shredder's size
 comes from its tool (1.96 studs at 4.5 studs a metre): if the tool isn't made at the hands' scale it will read wrong.
 Skin set check: the crate's pool has 45 skins with the set skins in (Seraph Rifle, Sakura ...), none of the Ducky ones
@@ -450,7 +450,7 @@ strip (52 cards) had the prize at its `stop`.
   3.8%, against 55 / 28 / 13 / 4. Every one of the 16 guns came up 350 to 409 times (375 expected). The per-cosmetic
   chances add to exactly 1. Pairs: 1,584 in the can, 128 in the bag.
 - The Crate is live: the guns session's 26 skin models are in, 25 of them roll (the Golden Sniper is an achievement
-  reward). A Crate opened a Cap Gun skin for the Yeehaw, shown on it.
+  reward). A Crate opened a Cap Gun skin for the Lever Rifle, shown on it.
 - The owner's v1 save migrated on load: 5 wraps became 80 pairs, 3 hats became 48 pairs, saved as `v = 2`.
 - A Spray Can gave Jersey for the Marble Shotgun. The loadout put it on the Marble Shotgun, and refused it on the AR
   ("you don't own that one for this gun yet. it's in spray cans"). A migrated Camo went on the Katana.

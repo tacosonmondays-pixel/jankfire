@@ -91,6 +91,26 @@ the bloom never builds (0.0025 a shot against 0.06 a second of recovery), so at 
 hipfired, and at 50 m hipfire adds about 15% to the TTK (full HP 1.74 s; 10 HP 0.51 s before, 0.96 s after). Aimed,
 everything lands out to 50 m. `keep = 0` would be a hard cap at 120 (0.78 s); `keep = 1` is the old gun.
 
+## Display names on Roblox, 18 Nov 2026
+
+The owner: *"I think all the standard guns should be named what they are because some people don't know the
+difference between sniper and the other one with the nickname"*. The ids, saves, stats, skins and quests are unchanged.
+This spec keeps the web game's names; on Roblox they show as:
+
+| id | web name | Roblox name |
+|---|---|---|
+| `burst` | Hat Trick | Burst Rifle |
+| `lmg` | Belt Sander | LMG |
+| `dmr` | Second Opinion | Marksman Rifle |
+| `lever` | Yeehaw | Lever Rifle |
+| `autoshot` | Lawn Mower | Auto Shotgun |
+| `pistol` | Plan B | Pistol |
+| `sawnoff` | Half a Shotgun | Sawed-Off |
+| `cig` | Cigarette | Hot Sauce (Roblox-safe stand-in, same gimmick) |
+
+The signature weapons keep their names. Two callouts changed: the Lever Rifle's chain reads "CHAIN x1.30" (was
+"YEEHAW x1.30"), and the Taser's reads "3 LINKED".
+
 ## Everything at a glance
 
 | weapon | slot | colour | what it does |

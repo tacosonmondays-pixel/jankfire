@@ -15,7 +15,7 @@ Pictures (`gun-hats/`): **`hats-sheet.jpg`** (the live hats on the Assault Rifle
 place version 319), `hats-blender.png` (the ten models on their own), `round6-first-person.jpg` (the live round-6 hats on the Assault Rifle from the eye, place
 version 312), `round6-seats.jpg` (the Marble Shotgun and the Katana), `round5-third-person.jpg` (third person on a
 dummy's rifle, round 5), `round6-blender.png`, `round4-first-person.jpg` (the ten round-4 hats on the Assault Rifle in the training hall,
-from the eye, place version 300), `round4-scopes.jpg` (Second Opinion and the Sniper from the eye), `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
+from the eye, place version 300), `round4-scopes.jpg` (Marksman Rifle and the Sniper from the eye), `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
 Rifle in the training hall, from the eye and on a dummy's rifle), `round1-on-guns.jpg` (round-1 hats on the other guns
 from the eye, the aim-down-sights shot, the hub rack), `loadout-hats-tab.jpg` (the HATS tab, a hat being tried on, the
 Shredder's preview), `round4-blender.png` (the round-4 hats on their own) and `round4-seats-side.png` (round-4 seats on
@@ -27,7 +27,7 @@ the nine guns that moved, from the side).
 |---|---|---|
 | the loadout screen (L) | a **HATS** tab beside **WRAPS** over the bottom bar: thirteen cards (None and the twelve hats, each turning slowly with its moving bits going, a line in its rarity's colour); hover to try one on, click to put it on. The big preview and the slot cards show the hat | `LoadoutUI.client.luau` (the "hats" block, `previewModel(id, hat)`) |
 | the server | one hat per weapon, checked against the hat list, saved with the loadout (`hats` in the DataStore payload beside `wraps`), published as the player attribute `Hats` = `"ar=crown;katana=duck"`; a change goes on at once (your third-person gun, the Shredder) | `Loadout.luau` (op `"hat"`) |
-| first person | the hat rides the gun piece under it (so it moves with a slide, a feed cover or the Half a Shotgun's barrels), **hides while you aim** (aim 0.3 or more, as in the web game) so it is never in the sight picture, and rebuilds when you change it | `Viewmodel.luau` (`VM.set`, `VM.update`) |
+| first person | the hat rides the gun piece under it (so it moves with a slide, a feed cover or the Sawed-Off's barrels), **hides while you aim** (aim 0.3 or more, as in the web game) so it is never in the sight picture, and rebuilds when you change it | `Viewmodel.luau` (`VM.set`, `VM.update`) |
 | third person | on every player's held gun, drawn 1.5 times the first-person size (`GunHats.THIRD`: at 1x it was a few pixels on someone else's gun) | `Fight.showWeapon` |
 | the Shredder (a Tool) | on its Handle in the kit model's frame (the frame is a constant in `GunHats.luau`, measured from the web Tool; a Tool may carry its own as attributes `HatFrame` / `HatK`) | `GunHats.attachTool`, `Loadout.syncTools` |
 | the hub armory | the display guns on the boards (`Rack_w_<id>`) wear **your own** hat for that weapon, on your screen only | `GunHatsClient.client.luau` |
@@ -80,13 +80,13 @@ the kit model, so a gun whose top moves leaves its hat floating or sunk. (A pend
 
 Measured on the **live gun set** (`tools/roblox/gun_set.py`, the owner's A/B/C picks of 16 Nov; `hat_spots.py --set kit`
 measures the older round-8 models instead). On top of the gun, on a flat surface clear of the sights and of anything
-that moves past it: the Assault Rifle's top rail, the SMG's receiver, the Hat Trick's carry handle, the Belt Sander's
-feed cover (it rides the cover), the flat top of Second Opinion's box optic (ahead of the optic it was tiny from the
+that moves past it: the Assault Rifle's top rail, the SMG's receiver, the Burst Rifle's carry handle, the LMG's
+feed cover (it rides the cover), the flat top of Marksman Rifle's box optic (ahead of the optic it was tiny from the
 eye; it hides while you aim anyway), the Sniper's scope between its turret and its bell (elsewhere the scope hid it
-from the eye), the Yeehaw's receiver between its barrel rib and sight rib (the sight rib ran through the crown at
-first), the Shotgun's slotted barrel shield (the rear sight crowded it on the receiver), the Lawn Mower's receiver
-with the propeller's whole spin clear of the mower deck, Half a Shotgun's barrels back from the bead (it tips down
-with them), Plan B's slide back from the front sight, the Revolver's top strap, the Redline's deck behind its gauge
+from the eye), the Lever Rifle's receiver between its barrel rib and sight rib (the sight rib ran through the crown at
+first), the Shotgun's slotted barrel shield (the rear sight crowded it on the receiver), the Auto Shotgun's receiver
+with the propeller's whole spin clear of the mower deck, Sawed-Off's barrels back from the bead (it tips down
+with them), Pistol's slide back from the front sight, the Revolver's top strap, the Redline's deck behind its gauge
 (the bigger gauge of the picked model stands where the hat first was), the Marble Shotgun's **jar lid** (the hat steps
 away while the reload's bag pours marbles in: `GunHats.HIDE_CLIPS`), the Katana's **pommel**, standing off the end
 of the handle (`pitch = 90`: on the blade it floated beside the edge), and the Shredder's body behind its bell.
@@ -113,8 +113,8 @@ What it found and what changed (16 Nov 2026, round 9, live in place version 380,
   has a cord); `GunHats` uses `SPOTS["<gun>@<skin>"]` when the built gun or the Shredder Tool carries `Skin`.
 After: 700 hat-on-gun pairs (16 guns and 27 skins x 10 hats, first and third person, both counted in each pair's
 worst): no hat body more than 1.4 mm into a gun, no gun more than 1.4 mm into a hat, feet 2 mm in by design (up to 4 mm
-on one curved skin, the drill revolver). Moving parts: every part that moves under a hat carries it (Plan B's slide, the
-Belt Sander's feed cover, Half a Shotgun's barrels); the bolts, charging handles and the Revolver's cylinder stay at
+on one curved skin, the drill revolver). Moving parts: every part that moves under a hat carries it (Pistol's slide, the
+LMG's feed cover, Sawed-Off's barrels); the bolts, charging handles and the Revolver's cylinder stay at
 least a centimetre below their hat. The Marble Shotgun's lid (rebuilt with a hinge, 16 Nov) carries its hat: in
 third person the lid flips open in the reload with the hat on it, and swept through the whole flip no hat touches the
 gun (in first person the hat steps away for the pour).
@@ -225,7 +225,7 @@ set's darker brass reads dull as Metal. `gun-hats/star-tricorne.png` has the Ble
   limits:
   - feet at most 3.5 mm, on the Toy rifle's rail, as the Cowboy Hat does there;
   - at most 1.0 mm of hat in a gun (the katana's grip, first person);
-  - at most 0.4 mm of gun in the hat (the calculator Plan B's key).
+  - at most 0.4 mm of gun in the hat (the calculator Pistol's key).
   The scopes and rails needed no new seats. The whole report is now 2,088 rows (87 seats × 12 hats × 2 views).
 - **Upload:** round 12, asset 100913123667082, with all twelve hats. The other eleven are unchanged (identical bounds and
   pieces).
@@ -238,7 +238,7 @@ set's darker brass reads dull as Metal. `gun-hats/star-tricorne.png` has the Ble
   - Import: `H.load(100913123667082)` loaded twelve hats; `H.check()`: hats ok. The tricorne has 8 pieces: Neon stars at
     Transparency 0.15, the braid and the foot rim Metal.
   - Built guns: no `vip` flag, `GunHats.valid` true, three twinkling stars on each.
-    - Rifle, Plan B and Duckling SMG: the foot 2.0 mm into the gun.
+    - Rifle, Pistol and Duckling SMG: the foot 2.0 mm into the gun.
     - Sniper: on its 13 mm saddle.
     - Katana: 3.0 mm into the pommel, as the clip check found.
   - Play (client): each star rests at 0.35 and flares to 0.05 in turn (front, back-left, back-right), then all three
@@ -249,7 +249,7 @@ set's darker brass reads dull as Metal. `gun-hats/star-tricorne.png` has the Ble
 The owner: "googly eyes should just be placed on the gun like in JANKFIRE!". The web game's eyes are two white balls side
 by side with a black pupil ball pushed forward on each, straight on the gun's top, with no base (`public/js/skins.js`
 `eyes()`). Ours had sat on a slate plate (round 5), then been set into a grey felt cap looking up and back at the
-player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault Rifle, Plan B and the Sniper).
+player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault Rifle, Pistol and the Sniper).
 
 - **Model** (`hat_models.eyes`): two warm-white balls (radius 18.6 mm, centres 19.8 mm either side), a slate-black
   pupil ball (radius 8.7 mm) 14.9 mm forward of each, looking along the barrel toward the muzzle. These are the web's
@@ -267,7 +267,7 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
   - `GunHats` places them with `seatOf(sp, id, boost)` in all four attach paths: upright, at that height, with no
     saddle (the scoped guns' slate pucks are not drawn under them).
   - Against the other hats' seats: up to 8 mm lower on round scopes and tubes (they straddle them), a little higher
-    where something stands up under one ball (the calculator Plan B's key, 7.8 mm).
+    where something stands up under one ball (the calculator Pistol's key, 7.8 mm).
 - **Clipping** (`hat_clip.py`: the eyes on all 93 seats, first and third person, 186 rows; the balls count as the
   foot, `hat_models.SEATED`; the pupils' rattle is swept): the balls at most 1.4 mm into a gun (the designed 1 mm
   times size), the pupils nowhere in a gun, no gun in the eyes. The report is still 2,232 rows.
@@ -359,8 +359,8 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   they build by default now (`gun_sets_cute3`). All eight match their installed glbs.
   - The four rifles now share the base rifle's receiver: their hats stand on the rail at 10.3 cm, up from about 7 cm. The
     new pieces beside the rail (locket, wing, butterfly, band) stay clear.
-  - Plan B A to C keep the slide seat.
-  - Plan B D: at the old seat three brims went 1.9 mm into its ribbon band. `hat_solve.py` moved the hat 3 cm forward,
+  - Pistol A to C keep the slide seat.
+  - Pistol D: at the old seat three brims went 1.9 mm into its ribbon band. `hat_solve.py` moved the hat 3 cm forward,
     onto the band, so it stands on the ribbon over the bow.
   - Full check of the eight: at most 0.1 mm of hat in a gun, none of a gun in a hat, feet 2.0 mm.
   - Concept E's two lines stay in the generated data while `gun_sets_cute.py` still builds it (harmless: no such gun in
@@ -388,7 +388,7 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Each takes its gun's seat, with the height measured on the duckling, and needs no line in `hat_spots.json`:
     - Rifle: z −0.07, on the flat-topped cover.
     - SMG: z −0.10.
-    - Plan B: z −0.08, on the slide behind the duck's head.
+    - Pistol: z −0.08, on the slide behind the duck's head.
     The duck heads at the barrel's root and the tails at the back stay clear of the hats. The wings sit below the top line.
   - Full check of the three: no hat in a gun, no gun in a hat, feet 2.0 mm (66 pairs). The solver keeps all three seats.
   - Whole set: 87 seats, 1,914 pairs, the same limits as before.
@@ -430,7 +430,7 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Sniper: its gun's seat as well (z 0.039 on the 13 mm puck, on the live slim scope); nothing touches. The solver
     offered z 0.009 with no puck, which perches the foot on a 1 cm scope band; the puck seat matches the other Snipers.
     (The solver tries every spot with no saddle before the base's own saddle.)
-  - Plan B: its own seat, z −0.07, on the slide behind the blue strap. At the pistol's −0.08 the third-person Cowboy
+  - Pistol: its own seat, z −0.07, on the slide behind the blue strap. At the pistol's −0.08 the third-person Cowboy
     Hat's brim went 2.7 mm into the strap (the Propeller Cap 1.8); at −0.07 the worst is 0.1 mm.
   - Katana: its own seat, z 0.269, standing off the back of the life-ring pommel. The handle ends 14 cm behind the
     katana's, so the inherited pommel seat (z 0.128) would have put the hat inside the grip. Nothing touches; the
@@ -438,7 +438,7 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Angel rifle v6 (a new barrel and brake): rechecked at its seat, unchanged (foot 2.0 mm, nothing else).
   - The hat preview tool needs a `hat_spots.json` line for every gun (`--spots` with a copy for inherited seats).
   - Whole set: 93 seats, 2,232 rows.
-  - Studio (the templates' `FileLo`/`FileHi` match the guns session's bounds): five rays under each foot. SMG, Plan B
+  - Studio (the templates' `FileLo`/`FileHi` match the guns session's bounds): five rays under each foot. SMG, Pistol
     and the angel: 2.0 mm in throughout. Sniper: 11–12 mm over the scope on its puck, as on the plain Sniper. Katana:
     1.5 mm into the ring at the centre, up to 2.5 mm over its curve 1 cm out. Live in place version 678.
   - v2 (guns place version 683: the waves cut in as flat colour regions, no shapes changed): rechecked. The seat
@@ -473,7 +473,7 @@ principles (vault `Principles/Design principles.md`) and the Rivals-class bar.
 
 | round | score | what it said | what changed |
 |---|---|---|---|
-| 1 (models r3) | 5 / 10 | readable and clean, but loud primaries (safety orange, lemon, pure Neon yellow), no shared look, uneven sizes (crown, duck, eyes half the others' weight), the googly eyes and the halo toy-jank; jammed or floating on six guns (Yeehaw, Second Opinion, Shotgun, Half a Shotgun, Lawn Mower, Marble Shotgun) and beside the Katana's blade. Nothing over the crosshair; the sight picture clean | round 4 |
+| 1 (models r3) | 5 / 10 | readable and clean, but loud primaries (safety orange, lemon, pure Neon yellow), no shared look, uneven sizes (crown, duck, eyes half the others' weight), the googly eyes and the halo toy-jank; jammed or floating on six guns (Lever Rifle, Marksman Rifle, Shotgun, Sawed-Off, Auto Shotgun, Marble Shotgun) and beside the Katana's blade. Nothing over the crosshair; the sight picture clean | round 4 |
 | 2 (models r4, place v300) | 6 / 10 | the cowboy, top hat and chef hat premium; the set still no shared palette, the "gold" a bright yellow plastic at a different value on every hat, no common mount; the halo a flat yellow Neon sticker; the crown's points like cat ears; the eyes' tray and rims noise; the scoped guns' hats a speck or sunk into the optic. Nothing over the crosshair | round 5 |
 | 3 (models r5, place v307) | 6.5 / 10 | top hat 8, cowboy and crown 7.5; the halo a donut on a cake pick (the stem), the eyes a gag sticker, the palette louder in game than in Blender; the Marble Shotgun's hat hidden by the jar. One more round should reach about 7.5 | round 6 |
 | 4 (models r6, place v312) | 7 / 10 | cowboy and top hat 8; the set holds together; the eyes fixed; the halo an onion ring floating far over an empty foot; the palette tuned in Blender, not in the hall (the crown, cone, cap and duck brighter in game); the cap a desk bell; the Katana's hat a sliver at the screen's edge; the spinning and rattling bits always in view. One more round: about 7.6, then stop | round 7 |

@@ -19,15 +19,15 @@ paint on the left and the calm paint on the right.
 |---|---|---|
 | Assault Rifle | olive with a pink see-through magazine, neon strip, charm | olive furniture on gunmetal, a smoked magazine |
 | SMG | black, teal slab and magazine base | black and charcoal, the whole magazine is the teal accent |
-| Hat Trick | bright blue glitter body, yellow controls, baguette rounds | slate body, darker panels, blue magazine, three dark brass rounds |
-| Belt Sander | orange body, hazard stripes, green box | graphite body and box, orange feed cover and switches |
-| Second Opinion | purple marbled stock, pink tubing, stickers | dusk violet furniture on black steel |
+| Burst Rifle | bright blue glitter body, yellow controls, baguette rounds | slate body, darker panels, blue magazine, three dark brass rounds |
+| LMG | orange body, hazard stripes, green box | graphite body and box, orange feed cover and switches |
+| Marksman Rifle | purple marbled stock, pink tubing, stickers | dusk violet furniture on black steel |
 | Sniper | hot pink glitter stock, gold | smooth grey-tan stock on black steel, violet lens, one small magenta mark |
-| Yeehaw | pink and blue patterned stock, gems, gold | saddle walnut, steel receiver, brass trim |
+| Lever Rifle | pink and blue patterned stock, gems, gold | saddle walnut, steel receiver, brass trim |
 | Shotgun | orange wood | dark walnut, blued steel, red shells |
-| Lawn Mower | bright green, red drum, striped cord | charcoal furniture, a machine green magazine; drum and cord gunmetal |
-| Half a Shotgun | candy orange and blue pattern | dark cherry wood, steel barrels, red shells |
-| Plan B | pearl white and silver, gold | the dark handgun: black frame, gunmetal slide, a blue rib and controls |
+| Auto Shotgun | bright green, red drum, striped cord | charcoal furniture, a machine green magazine; drum and cord gunmetal |
+| Sawed-Off | candy orange and blue pattern | dark cherry wood, steel barrels, red shells |
+| Pistol | pearl white and silver, gold | the dark handgun: black frame, gunmetal slide, a blue rib and controls |
 | Revolver | pink pearl grip, chrome, gold | the steel handgun: gunmetal frame, dark cylinder, black grip, brass trim |
 | Redline | black and red | the same; grip and tape lose their pictures, chrome to steel |
 | Marble Shotgun | bright brass, blue jar with a label, rainbow marbles | aged brass, walnut, a dark smoked jar, marbles in one blue family |
@@ -52,15 +52,15 @@ reworked paint. The weakest of each round were reworked before the next.
 |---|---|---|---|
 | Assault Rifle | 4 | 7 | 7.5 |
 | SMG | 6 | 6.5 | 7 |
-| Hat Trick | 3 | 6.5 | 6.5 |
-| Belt Sander | 4 | 7.5 | 7.5 |
-| Second Opinion | 4 | 7.5 | 7.5 |
+| Burst Rifle | 3 | 6.5 | 6.5 |
+| LMG | 4 | 7.5 | 7.5 |
+| Marksman Rifle | 4 | 7.5 | 7.5 |
 | Sniper | 2 | 6 | 6.5 |
-| Yeehaw | 3 | 8 | 8 |
+| Lever Rifle | 3 | 8 | 8 |
 | Shotgun | 6 | 7.5 | 7.5 |
-| Lawn Mower | 4 | 5.5 | 6.5 |
-| Half a Shotgun | 3 | 8 | 8 |
-| Plan B | 4 | 7.5 | 8 |
+| Auto Shotgun | 4 | 5.5 | 6.5 |
+| Sawed-Off | 3 | 8 | 8 |
+| Pistol | 4 | 7.5 | 8 |
 | Revolver | 3.5 | 6 | 6.5 |
 | Redline | 7.5 | 7.5 | 7.5 |
 | Marble Shotgun | 4.5 | 5 | 6 |
@@ -71,10 +71,10 @@ Scores are out of 10. On average the sixteen went from about 4 to about 7. The j
 round: "Not at the bar yet": nine guns at 7.5 or more, six between 6 and 7, and the Katana at 4.5.
 
 After the second round one more set of paint fixes went in, which **no judge has scored**: the SMG's teal moved onto
-its whole magazine, the Lawn Mower's green moved off the furniture onto its magazine (it had looked like the Assault
+its whole magazine, the Auto Shotgun's green moved off the furniture onto its magazine (it had looked like the Assault
 Rifle), the Revolver's frame went from a lavender grey to neutral gunmetal, the Sniper's stock went smooth and
-greyer, the Hat Trick's rounds went to dark brass, the Marble Shotgun's jar went dark, the near-black bodies of the
-Assault Rifle, Lawn Mower and Redline were lifted to charcoal so their second value shows, and the arms changed to a
+greyer, the Burst Rifle's rounds went to dark brass, the Marble Shotgun's jar went dark, the near-black bodies of the
+Assault Rifle, Auto Shotgun and Redline were lifted to charcoal so their second value shows, and the arms changed to a
 darker matte glove with a plain near-black sleeve. The pictures show this final state.
 
 ## The hold (the same day, place version 237)
@@ -107,11 +107,11 @@ Pictures: `gun-hold/before-after-1.jpg` to `-4.jpg` (all sixteen, the old hold o
   the web game's: the new pose eases out as a swing winds up and back in as it recovers (`Holds.katana`,
   `katanaFix` in `Viewmodel.luau`). Reach, cooldown, cone, parry window and timings are untouched.
 - **The off hand is back in reloads.** It goes down and back with the magazine, rides the Shotgun's pump, holds the
-  Redline's can and the marble bag from under, steps clear while the Yeehaw spins, and otherwise keeps its place
+  Redline's can and the marble bag from under, steps clear while the Lever Rifle spins, and otherwise keeps its place
   on the gun (`offHand` in `Viewmodel.luau`).
 - **The Shredder** takes its hands from the same table (its row is in the tool's own frame): the left palm is under
   the body behind the cone, and nothing clips.
-- **The HUD's colour chips** for the Sniper and the Yeehaw are their calm accents now (`a2457c`, `a58640`; `color`
+- **The HUD's colour chips** for the Sniper and the Lever Rifle are their calm accents now (`a2457c`, `a58640`; `color`
   in `Weapons`, and the loadout screen's `Roster`).
 
 **How it was judged**
@@ -123,15 +123,15 @@ are fixed. Scores out of 10 for the hold and hands as seen; "before" is the stat
 |---|---|---|---|---|
 | Assault Rifle | 3 | 6.5 | 6 | 6 |
 | SMG | 3 | 6.5 | 6 | 5.5 |
-| Hat Trick | 3.5 | 5 | 5.5 | 6 |
-| Belt Sander | 3 | 6 | 5.5 | 5.5 |
-| Second Opinion | 3 | 7 | 6 | 5.5 |
+| Burst Rifle | 3.5 | 5 | 5.5 | 6 |
+| LMG | 3 | 6 | 5.5 | 5.5 |
+| Marksman Rifle | 3 | 7 | 6 | 5.5 |
 | Sniper | 2 | 6.5 | 5.5 | 5 |
-| Yeehaw | 3 | 6 | 6 | 4.5 |
+| Lever Rifle | 3 | 6 | 6 | 4.5 |
 | Shotgun | 3.5 | 7 | 5.5 | 5.5 |
-| Lawn Mower | 3 | 6.5 | 5 | 5.5 |
-| Half a Shotgun | 5 | 6 | 5 | 4 |
-| Plan B | 5 | 6.5 | 4 | 4 |
+| Auto Shotgun | 3 | 6.5 | 5 | 5.5 |
+| Sawed-Off | 5 | 6 | 5 | 4 |
+| Pistol | 5 | 6.5 | 4 | 4 |
 | Revolver | 5 | 5 | 5.5 | 3 |
 | Redline | 3 | 6 | 6 | 5.5 |
 | Marble Shotgun | 3.5 | 6.5 | 6 | 5 |
@@ -142,10 +142,10 @@ are fixed. Scores out of 10 for the hold and hands as seen; "before" is the stat
 one point higher. Round 3 was the first one at the larger size.)
 
 - **Round 1** (the first avatar-hand hold): "close, not at the bar". Weakest: the Revolver (no hand could be told
-  from the grip), the Hat Trick (a hook under the fore-end), the Shredder (a thin arm, no hand), and on every long
+  from the grip), the Burst Rifle (a hook under the fore-end), the Shredder (a thin arm, no hand), and on every long
   gun a left forearm that crossed the screen as a long glossy plank. Reworked: the hands moved onto their grip
   attachments, the support arm became short and steep, the sidearms got an arm of their own, the glove was lightened.
-- **Round 2**: again "close, not at the bar", the long planks and rock-like fists gone, the Katana the best. Plan B
+- **Round 2**: again "close, not at the bar", the long planks and rock-like fists gone, the Katana the best. Pistol
   went backwards (a hand far too big swallowed the grip), and the judge asked for thicker forearms ("a stick under a
   ball"), a glove between dark and clay grey, a sleeve that is not a flat black cut-out, the off hand round the
   handguard rather than under it, and smaller pistol hands.
@@ -155,8 +155,8 @@ one point higher. Round 3 was the first one at the larger size.)
   smaller pistol hands on an arm from farther out, forearms a fifth thicker, the glove at 50, 52, 58 and the sleeve
   at 26, 28, 32, the support hands a little higher, and the sidearms and the katana lifted clear of the HUD.
 
-- **Round 3** (25% larger): the rifles "from clearly unfinished to close", the Hat Trick and the Assault Rifle the
-  best. It found the size right for the rifles but too much for the one-handed guns (the Revolver and Plan B came so
+- **Round 3** (25% larger): the rifles "from clearly unfinished to close", the Burst Rifle and the Assault Rifle the
+  best. It found the size right for the rifles but too much for the one-handed guns (the Revolver and Pistol came so
   close to the camera that the hand and gun merged), the forearm still a thin pole that vanished against black guns,
   and the Redline's reload can a placeholder. Last changes after it (place version 237, not judged): the one-handed
   guns drawn at 0.8 of the new size (`scale` in `holds.json`, back to the web game's size), the forearm a third
@@ -164,7 +164,7 @@ one point higher. Round 3 was the first one at the larger size.)
   show that state.
 
 The judges' shared verdict: **close, not at the bar.** The Katana went from the worst hold to one of the best; the
-long guns are coherent; the sidearms, the Yeehaw and the reload props are the weakest.
+long guns are coherent; the sidearms, the Lever Rifle and the reload props are the weakest.
 
 ## Matched to the Rivals layout (16 November 2026, place version 347)
 
@@ -187,9 +187,9 @@ What changed (`holds.json`, nothing in the gun models, the paint, the hands' loo
 - Every gun's rest pose moved (`shift`, camera space): most sit about 0.35 m further from the camera and a little
   left, so the muzzle lands on the Rivals spot and the gun covers 54 to 80 % across. Every gun is drawn at the same
   scale (1 against `_size` 1.25; the Marble Shotgun 0.9), so the hands are the same size from gun to gun.
-- New `tilt` (degrees added to the rest turn, `Viewmodel.luau`): Plan B 18 and the Revolver 24 about y, so their side
-  shows instead of their back end; Half a Shotgun turned straight ahead so its barrels run to the crosshair.
-- Plan B's and the Revolver's fists moved down their grips (the butt and the magazine base poked out below the fist).
+- New `tilt` (degrees added to the rest turn, `Viewmodel.luau`): Pistol 18 and the Revolver 24 about y, so their side
+  shows instead of their back end; Sawed-Off turned straight ahead so its barrels run to the crosshair.
+- Pistol's and the Revolver's fists moved down their grips (the butt and the magazine base poked out below the fist).
 - The Marble Shotgun drawn a little smaller and lower, its jar below the crosshair.
 - The Katana's rest stands nearly upright on the right, the flat of the blade toward you (guard at about 65 / 72 %).
 - The forearms are thicker (`AvatarArms.SLEEVE` 1.6, was 1.35): further off, they had thinned to poles.
@@ -202,23 +202,23 @@ Judged by an independent judge from before and after photos against the measurem
 | Weapon | Before | After |
 |---|---|---|
 | Assault Rifle | 4 | 8 |
-| Hat Trick | 4 | 7 |
+| Burst Rifle | 4 | 7 |
 | SMG | 4 | 7 |
 | Sniper | 3 | 7 |
 | Shotgun | 5 | 7 |
-| Plan B | 5 | 7 |
+| Pistol | 5 | 7 |
 | Revolver | 4 | 5 |
 | Katana | 2 | 9 |
-| Belt Sander, Second Opinion, Yeehaw, Lawn Mower | | 6, 7, 7, 7 |
-| Redline, Marble Shotgun, Half a Shotgun | | 6, 4, 5 |
+| LMG, Marksman Rifle, Lever Rifle, Auto Shotgun | | 6, 7, 7, 7 |
+| Redline, Marble Shotgun, Sawed-Off | | 6, 4, 5 |
 
 Its verdict: "yes, a lot"; every gun now points at the crosshair and the rifles sit inside the box. Its three weakest
-(the Marble Shotgun's jar at crosshair height, the Revolver's grip poking out below the fist, Half a Shotgun pointing
+(the Marble Shotgun's jar at crosshair height, the Revolver's grip poking out below the fist, Sawed-Off pointing
 below the crosshair) were fixed after it, with the thicker forearms, and checked in a Play photo, not judged again.
 
 Checked in Play (place version 347): all fifteen guns photographed in hand at the new spots (the Shredder's hold did
 not change); hats sit right (party, cowboy, chef, cone on four guns); wraps read (camo, galaxy, hex, hazard);
-Half a Shotgun fires twice and reloads in about 2 s; the Revolver's sights come to the crosshair (aim unchanged).
+Sawed-Off fires twice and reloads in about 2 s; the Revolver's sights come to the crosshair (aim unchanged).
 Not checked: other avatar bodies, the Shredder with the thicker forearm, aim on every gun, third person, the Rooftop's
 daylight, reloads on every gun at the new spot.
 
@@ -231,7 +231,7 @@ the closer look?" So every weapon now keeps three looks in `holds.json` (`looks`
 - **before** (place version 340): near and big, the muzzle low and right of the crosshair.
 - **after** (place version 347): the Rivals layout above, further off, a quarter of the screen.
 - **combined** (live on every weapon): before's size and nearness, the muzzle moved onto after's spot just below and
-  right of the crosshair so the barrel points at it; Plan B and the Revolver keep after's turn so their side shows.
+  right of the crosshair so the barrel points at it; Pistol and the Revolver keep after's turn so their side shows.
   The Katana keeps before's guard spot (nearer the middle) with after's upright blade; the Shredder sits between the
   two (`shredder.vm_looks`, read by `ShredderClient`). Aiming keeps after's work (the sight on the crosshair, both
   scopes); the one-handed guns aim a little nearer than in after, to match their closer rest.
@@ -241,7 +241,7 @@ test, the player's `HoldLook` attribute shows one look on every weapon at once (
 `py tools/roblox/hold_screen.py --look before|after|combined` prints where each look puts each gun.
 
 Sheets for the owner (each row: before | after | combined): `gun-hold/looks-1.jpg` to `looks-3.jpg`.
-Checked in Play: every weapon in all three looks photographed; aiming on the SMG, Plan B and the Sniper lines up in
+Checked in Play: every weapon in all three looks photographed; aiming on the SMG, Pistol and the Sniper lines up in
 combined; the Shredder's first-person copy no longer stays in the camera when its tool is removed (an older fault:
 the tool's own script dies with it, so Arsenal now clears a copy whose `Owner` tool is gone; place version 360). Its
 heat bar still stays until you respawn in that case. Not checked: other avatar bodies in the combined look (checked in after), third
@@ -267,23 +267,23 @@ The aim's zoom (Arsenal narrows the camera from 80 down to as little as 50) then
 Valorant draw the gun with a view of its own, so their zoom never touches it. Before this pass the Redline aimed
 covered 13 % of the screen and the rifle's back end spread 25 to 75 % across the bottom. Two guns also aimed through
 their own bodies. The Redline's sight line runs 8 mm under the top of its deck, so the deck filled the sight window.
-The Half a Shotgun's line ran inside its hinge.
+The Sawed-Off's line ran inside its hinge.
 
 **What changed** (each weapon's `ads` row in `holds.json`, `Viewmodel.adsPos`, `FightHud`):
 
 - The gun is pushed back by the zoom's own amount (the ratio of the two views' tangents), so it keeps the size it has
   at your own FOV. On top of that, an `aimZ` per gun is fitted to Rivals' rifle numbers: Redline 0.10 m, Assault
-  Rifle 0.05, SMG 0.09, Shotgun 0.15, Hat Trick 0.05, Belt Sander 0.17, Yeehaw 0.15, Lawn Mower 0.21, Marble Shotgun
-  0.06, Revolver and Plan B 0.03, Half a Shotgun 0.04. Every long gun now covers 6 to 8 %.
+  Rifle 0.05, SMG 0.09, Shotgun 0.15, Burst Rifle 0.05, LMG 0.17, Lever Rifle 0.15, Auto Shotgun 0.21, Marble Shotgun
+  0.06, Revolver and Pistol 0.03, Sawed-Off 0.04. Every long gun now covers 6 to 8 %.
 - The Redline aims just over its housing with a red dot drawn on the crosshair. The Hot Rod skin's deck is low, so it
-  keeps the gun's own height, with a bump as the front post. The Half a Shotgun aims between its two hammers.
+  keeps the gun's own height, with a bump as the front post. The Sawed-Off aims between its two hammers.
 - With iron sights the crosshair fades out as the sights come up, and the Marble Shotgun (no sights) keeps a faint one.
 - Both scopes black out the screen outside a round lens with a soft edge. The Sniper's lens is 96 % of the screen
-  high with a duplex reticle (thin lines through the middle, thick posts from the rim). The Second Opinion's is 88 %,
+  high with a duplex reticle (thin lines through the middle, thick posts from the rim). The Marksman Rifle's is 88 %,
   with a red dot, short side lines and a post from below. It used to be a smaller lens with the world dimmed round it.
 - Skins: the Seraph and Infernal sets fade their wings, horns and crowns out while aiming. The Seraph rifle's wings
-  would otherwise cover 84 % of the screen. Bulkier bodies sit further back: the Ticket Hat Trick at 0.14, the Dust
-  Yeehaw at 0.29 and the Star Yeehaw at 0.18. Every other skin was measured and passes as is.
+  would otherwise cover 84 % of the screen. Bulkier bodies sit further back: the Ticket Burst Rifle at 0.14, the Dust
+  Lever Rifle at 0.29 and the Star Lever Rifle at 0.18. Every other skin was measured and passes as is.
 
 - At the hip (place version 475; the main session, after the sheets: the Seraph rifle's wing "fills the whole right
   third of the screen" because it sits by the stock, at the camera): a skin's `near` row draws its big pieces by the
@@ -295,33 +295,33 @@ The Half a Shotgun's line ran inside its hinge.
 - On the slim sights (place version 489; the owner: the sights "look bulky and not like the ones in rivals"; the
   gun-models session made every sight thin and open in place version 484). Rivals' rear ring reads about 12 to 13 %
   of the screen wide when aimed (vault `Research/Rivals sights.md`), ours read 4 to 6 % at the old distances, so each
-  gun's `aimZ` was refitted on the new models: Assault Rifle, Redline and Lawn Mower -0.06 m, Belt Sander -0.07, Hat
-  Trick -0.09, Shotgun -0.01, Plan B -0.01, SMG 0.05, Yeehaw 0.06, Half a Shotgun 0.02, Revolver 0.03 (as before; it
-  matches the owner's reference picture). The rings now read 9 to 13 % wide, the Hat Trick's handle block 14 %, the
+  gun's `aimZ` was refitted on the new models: Assault Rifle, Redline and Auto Shotgun -0.06 m, LMG -0.07, Hat
+  Trick -0.09, Shotgun -0.01, Pistol -0.01, SMG 0.05, Lever Rifle 0.06, Sawed-Off 0.02, Revolver 0.03 (as before; it
+  matches the owner's reference picture). The rings now read 9 to 13 % wide, the Burst Rifle's handle block 14 %, the
   notch blocks about 7 %, and a gun covers 9 to 13.5 % of the screen with nothing but ring walls above the crosshair.
-  The SMG and the Yeehaw were left further back: closer, their stocks spread across the whole bottom (the SMG to 21 %
+  The SMG and the Lever Rifle were left further back: closer, their stocks spread across the whole bottom (the SMG to 21 %
   of the screen). Moving closer means the stock, right at the lens, spreads wider at the bottom than in Rivals (their
   gun is drawn with a narrower lens of its own). Squeezing the gun front to back while aiming would match that, but it
   would also move the hands, the muzzle points and the moving parts every frame, so it was left out.
 - The Redline's line runs through its ring now (the cover hump was lowered), so it aims at its own Sight spot
   (0, 0.0737, 0.1058) with iron sights and no red dot. That spot lives only in `WeaponModels.luau`, not in
   `Weapons.luau`, so the `ads.sight` row stays: without it the Redline aims like a gun with no sights, off to the
-  right. The Half a Shotgun's Sight spot moved up between its hammers (0.065), so its override went.
+  right. The Sawed-Off's Sight spot moved up between its hammers (0.065), so its override went.
 - The cardboard rifle's flap stands over the sight and would cover 28 % of the screen at the new distance: it fades
-  out while aiming. The Ticket Hat Trick sits at -0.06, the Capgun Yeehaw at 0.09, the Star and Japanese-concept
-  Yeehaws at 0.08. The Seraph skins keep their old sights until the angel set lands, and the cute concepts until cute
+  out while aiming. The Ticket Burst Rifle sits at -0.06, the Capgun Lever Rifle at 0.09, the Star and Japanese-concept
+  Lever Rifles at 0.08. The Seraph skins keep their old sights until the angel set lands, and the cute concepts until cute
   v3; the cute concept rifle E's black block covers the crosshair and needs the cute v3 sight.
-- The Ducky Belt Sander (Bubble Bath v3): on the VFX sheet (place version 486, the old distance) its stock's orange
+- The Ducky LMG (Bubble Bath v3): on the VFX sheet (place version 486, the old distance) its stock's orange
   rubber-duck bill filled the bottom middle, about 6 % of the screen and the brightest thing there. At the new
-  distance the stock passes beside your eye and the bill is out of sight; it frames like the plain Belt Sander
+  distance the stock passes beside your eye and the bill is out of sight; it frames like the plain LMG
   (12.5 % of the screen against 11.1 %).
 - The Seraph rifle "strafing" on the same sheet: the big beige shape in the upper right is the training hall's
   console (`TrainingGround.Shell.ConsoleTop`), 0.6 studs from the camera after strafing right into it, not the wing.
   Checked in Play: the gun's pose moves 0.002 rad while strafing, the wing stays in the bottom-right corner, and the
   shape is still there standing still at the console. Offline, run tilt, bob and sway at their extremes keep the
   wing's scaled pieces below 68 % of the screen's height.
-- Sheet: `gun-hold/ads-5.jpg`, every gun aimed in Play (both scopes too), the Ducky Belt Sander before and now, and the
-  Seraph rifle at the console. Not pictured: skins aimed other than the Ducky Belt Sander (measured only).
+- Sheet: `gun-hold/ads-5.jpg`, every gun aimed in Play (both scopes too), the Ducky LMG before and now, and the
+  Seraph rifle at the console. Not pictured: skins aimed other than the Ducky LMG (measured only).
 - Cute v3 concepts (place versions 494 and 496; gun-models: big signature pieces sit by the aimed eye). Measured on
   the real triangles, aimed and at the hip:
   - Velvet rifle: its cushion stock and muff filled the whole bottom aimed (27.6 % of the screen against the
@@ -332,18 +332,18 @@ The Half a Shotgun's line ran inside its hinge.
     front edge (pivot (0, 0, 0.27)), 0.7 to 1.3 %.
   - The Starlight's stock star and the Sweet Shop's wrapper fan are never on screen at the hip (behind the camera in
     every bob and sway pose) and the Velvet's cushion is the plain stock's size there, so they need no `near` row.
-    Starlight and Sweet Shop and the four cute Plan Bs measure within a point of their gun aimed and at the hip.
+    Starlight and Sweet Shop and the four cute Pistols measure within a point of their gun aimed and at the hip.
   - Sheet: `gun-hold/ads-6.jpg` (place version 496: Velvet hip and aimed, Glasswing hip and aimed, Starlight and a cute
-    Plan B aimed).
+    Pistol aimed).
 - The Ducklings (concepts, place version 511), measured offline on gun-models' exports (their thin `__shade` shells
   left out; the glbs are not in the repo). Rifle: 12.0 % of the screen aimed (the plain rifle 13.3), the duck's head
   inside the ring's lower half just under the crosshair, like a front post. SMG: 9.1 % (8.8), a notch block with its
   top on the crosshair; the duck stock's top is 2 mm over the aim line at your eye and hides the small front post.
-  Plan B: 4.6 % (4.9). At the hip all three are within a point of their gun. No rows. Not photographed: Studio would
+  Pistol: 4.6 % (4.9). At the hip all three are within a point of their gun. No rows. Not photographed: Studio would
   not start Play that turn.
 
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
-JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
+JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Burst Rifle, and the Infernal Pistol.
 Not checked in pictures: the cute concepts, the duck guns and the Keytar (they measure within 1.25x of their gun in
 `hold_screen.py --ads`), other avatar bodies aimed, and third person. The shoulder camera has its own aim (TP).
 
@@ -351,7 +351,7 @@ Not checked in pictures: the cute concepts, the duck guns and the Keytar (they m
 
 - The hands are Roblox's own, so on a blocky avatar they are mittens with no fingers: a trigger finger or fingers
   round a handguard cannot be shown. That is by choice.
-- Shapes that are toy-like by design: the Lawn Mower's drum, the Marble Shotgun's jar, the Hat Trick's slab
+- Shapes that are toy-like by design: the Auto Shotgun's drum, the Marble Shotgun's jar, the Burst Rifle's slab
   receiver and oversized rounds, the Revolver's block sights, the Sniper's plank stock.
 - The reload props are simple: the Redline's can is a flat red box, and the things the off hand would fetch (a
   spare magazine, shells, a speedloader) are not modelled, so its hand goes with what is there.
@@ -359,8 +359,8 @@ Not checked in pictures: the cute concepts, the duck guns and the Keytar (they m
   trigger hand is mostly hidden behind the gun at this camera angle.
 - The 25% size is one number (`_size`), chosen from the owner's words and the judges' read; since the Rivals pass the
   guns sit further off at that size, so they look like Rivals' on screen; the owner has not yet seen it.
-- The trigger arm still shows as a second forearm beside the stock on the Shotgun, the Sniper, the Second Opinion and
-  the Yeehaw (Rivals hides it), and long guns show the flat end of their stock in the lower right.
+- The trigger arm still shows as a second forearm beside the stock on the Shotgun, the Sniper, the Marksman Rifle and
+  the Lever Rifle (Rivals hides it), and long guns show the flat end of their stock in the lower right.
 
 ## Switching paints
 
@@ -387,10 +387,10 @@ The paint pass (version 215):
 The hold (version 237), all in solo Play tests in the training hall:
 
 - Checked: all sixteen weapons photographed in hand. Firing, hitting and reloading on the SMG (15 shots, 15 hits,
-  1.5 s), the Shotgun (2, 2, 2.0 s, the hand riding the pump) and Plan B (3, 3, 1.4 s), and on the first version of
-  the hold also the Assault Rifle. Wraps on the SMG (full), the Shotgun (normal) and Plan B (reverse): they paint
+  1.5 s), the Shotgun (2, 2, 2.0 s, the hand riding the pump) and Pistol (3, 3, 1.4 s), and on the first version of
+  the hold also the Assault Rifle. Wraps on the SMG (full), the Shotgun (normal) and Pistol (reverse): they paint
   the gun, never the arms, and come off again. The katana's parry and cut, the SMG's magazine, the Redline's can and
-  the Yeehaw being loaded were stopped mid-move and looked at.
+  the Lever Rifle being loaded were stopped mid-move and looked at.
 - Not checked: other avatars (only the owner's blocky one was tried; the code reads each avatar's own grip, wrist
   and elbow attachments, but a slim or a bundle body has not been seen in it); the `"avatar"` look (bare skin and
   shirt) in the new hold; aiming down sights with every gun; the Rooftop's daylight; the guns in another player's

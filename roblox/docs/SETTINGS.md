@@ -29,7 +29,7 @@ player loses a setting).
 
 - **CONTROLS.** SENSITIVITY (`look.sens`, Roblox's `MouseDeltaSensitivity`), VERTICAL SENSITIVITY (`look.ySpeed`),
   INVERT MOUSE Y, ZOOM SENSITIVITY RATIO (`look.ads`, sights and red dots), SCOPED SENSITIVITY for the Sniper
-  (`look.sniper`) and the Second Opinion (`look.dmr`), CONTROLLER SENSITIVITY, FIELD OF VIEW, FOV KICK (`fov.kick`), VISUAL RECOIL (`gfx.recoil`: the gun's tilt and view punch only, Arsenal),
+  (`look.sniper`) and the Marksman Rifle (`look.dmr`), CONTROLLER SENSITIVITY, FIELD OF VIEW, FOV KICK (`fov.kick`), VISUAL RECOIL (`gfx.recoil`: the gun's tilt and view punch only, Arsenal),
   SCREEN SHAKE, and hold or toggle for AIM DOWN SIGHTS, CROUCH and SPRINT.
 - **KEYBINDS.** Every action with KEY, ALTERNATE and CONTROLLER columns: FIRE, AIM DOWN SIGHTS, RELOAD, PRIMARY /
   SECONDARY / MELEE / SPECIAL WEAPON, NEXT WEAPON, UTILITY, UTILITY ALT, SPRINT, CROUCH, GRAPPLE, TOGGLE THIRD PERSON,
@@ -64,7 +64,7 @@ coming up (the view narrows by `1 + (zoom - 1) * aim`) and the multiplier blends
 
     turn = look.sens * (1 + (m - 1) * aim) / (1 + (zoom - 1) * aim)
 
-`m` is `look.sniper` with the Sniper (zoom 4), `look.dmr` with the Second Opinion (zoom 2.6), else `look.ads`. So at
+`m` is `look.sniper` with the Sniper (zoom 4), `look.dmr` with the Marksman Rifle (zoom 2.6), else `look.ads`. So at
 1.00x a mouse move moves the view as far across the screen at every zoom as at the hip. Rivals has one scoped
 multiplier at 50 % with no zoom matching; we keep the web game's matching and give each scope its own.
 

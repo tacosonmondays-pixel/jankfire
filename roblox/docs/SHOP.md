@@ -137,7 +137,7 @@ Tested in solo Play (place version 437, the owner's account; photo sheet `roblox
 - **Claiming:** GET VIP · FREE WHILE TESTING (from a panel opened straight onto `"vip"`) made the player VIP in
   0.8 s. The pack landed: the 3 Ducky skins, the Ducky wrap on all 16 guns, the Ducky border and the VIP title. The
   panel then read YOU'RE VIP with every item OWNED, and BACK shut the shop.
-- **In the room and wearing:** as VIP the character stayed inside the room. Bubble Bath was worn on the Belt Sander
+- **In the room and wearing:** as VIP the character stayed inside the room. Bubble Bath was worn on the LMG
   (then put back) and the Ducky border on the player card (left on: the owner is VIP now).
 - **Locking and unlocking:** the owner's Studio "lock" moved the character out of the room again, and "unlock" made
   them VIP again at once.
@@ -508,7 +508,7 @@ Tested in solo Play (place version 728) in a ghost 1v1:
 - The phone layout (TouchForce, an 844 x 390 box) showed the utility slot's 13 items and PRIMARY
   (`match-loadout-phone.jpg`).
 - The window shutting hid the strip and gave the mouse back (LockCenter, arrow hidden, nothing in MenuCursor).
-- The owner's primary was put back afterwards (Belt Sander).
+- The owner's primary was put back afterwards (LMG).
 
 Not tested: a pick while dead between rounds, a team match, a controller.
 
@@ -816,7 +816,7 @@ On screen:
 No uploaded banner art: every picture is the live models in 3D.
 
 The words on screen were also cut to what a player needs (the owner's no-flavour-text rule). Bundles say what's in
-them (`Shop.describe`: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Plan B."), containers say what
+them (`Shop.describe`: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Pistol."), containers say what
 they give, and the top line is just "Free while we test. The prices are for later."
 
 Tested in solo Play (place version 423). The guns session's set models weren't in the place yet, so the test used a

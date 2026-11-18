@@ -173,8 +173,8 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	burst = {
-		id = "burst", name = "Hat Trick", slot = "primary", kind = "hitscan", color = rgb(0x4f8bff),
-		desc = "a bullpup that fires three at a time. land all three on one person for a BURST!. very accurate, very french.",
+		id = "burst", name = "Burst Rifle", slot = "primary", kind = "hitscan", color = rgb(0x4f8bff),
+		desc = "a bullpup that fires three at a time. land all three on one person for a BURST!. very accurate.",
 		auto = true, rate = 14, burst = 3, burstGap = 0.28, mag = 30, reload = 2.0, pellets = 1, dmg = 15, head = 2,
 		spread = 0.006, bloom = 0.002, maxBloom = 0.018, recoil = 0.35 * S, kick = 0.006, range = 320 * S,
 		ads = { zoom = 1.6, spread = 0.15 }, tracer = rgb(0x4f8bff),
@@ -189,8 +189,8 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	lmg = {
-		id = "lmg", name = "Belt Sander", slot = "primary", kind = "hitscan", color = rgb(0xff5a1f),
-		desc = "a hundred rounds on a belt you can watch run out. slow to aim, slow to reload, sands people down.",
+		id = "lmg", name = "LMG", slot = "primary", kind = "hitscan", color = rgb(0xff5a1f),
+		desc = "a hundred rounds on a belt you can watch run out. slow to aim, slow to reload. the barrel glows the longer you hold it.",
 		auto = true, rate = 12, mag = 100, reload = 4.2, pellets = 1, dmg = 10, head = 1.6, spread = 0.034,
 		bloom = 0.0012, maxBloom = 0.03, kb = 0.25 * S, recoil = 0.45 * S, kick = 0.006, range = 260 * S,
 		speedMul = 0.86, adsSpeed = 0.42, heatUp = 0.24, heatDown = 0.4,
@@ -206,7 +206,7 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	dmr = {
-		id = "dmr", name = "Second Opinion", slot = "primary", kind = "hitscan", color = rgb(0xb07dff),
+		id = "dmr", name = "Marksman Rifle", slot = "primary", kind = "hitscan", color = rgb(0xb07dff),
 		desc = "a marksman rifle with a little scope. two to the body or one to the head. quick-scope it for a bit extra.",
 		auto = false, rate = 1 / 0.55, mag = 10, reload = 2.1, pellets = 1, dmg = 52, head = 2, spread = 0.045,
 		recoil = 3 * S, kick = 0.035, range = 400 * S, speedMul = 0.96, quick = 0.3, qsDmg = 10, qsKb = 9 * S,
@@ -222,7 +222,7 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	lever = {
-		id = "lever", name = "Yeehaw", slot = "primary", kind = "hitscan", color = rgb(0xa58640), -- (its calm accent: the brass)
+		id = "lever", name = "Lever Rifle", slot = "primary", kind = "hitscan", color = rgb(0xa58640), -- (its calm accent: the brass)
 		desc = "a lever-action you crank after every shot. keep hitting the same person and every hit stings a bit more.",
 		auto = false, rate = 1 / 0.42, mag = 8, reload = 2.6, pellets = 1, dmg = 30, head = 2, spread = 0.012,
 		kb = 2 * S, kbUp = 0.5 * S, recoil = 2 * S, kick = 0.04, range = 280 * S, ramp = 0.15, rampMax = 3, chain = 0.8,
@@ -238,8 +238,8 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	autoshot = {
-		id = "autoshot", name = "Lawn Mower", slot = "primary", kind = "hitscan", color = rgb(0x4ad66b),
-		desc = "an automatic shotgun with a box mag. less per shot than the pump, but it never stops. mows lawns. and people.",
+		id = "autoshot", name = "Auto Shotgun", slot = "primary", kind = "hitscan", color = rgb(0x4ad66b),
+		desc = "an automatic shotgun with a box mag. less per shot than the pump, but it never stops.",
 		auto = true, rate = 3, mag = 10, reload = 2.4, pellets = 8, dmg = 5, head = 1.5, spread = 0.07,
 		recoil = 5.5 * S, kick = 0.045, range = 60 * S, ads = { zoom = 1.2, spread = 0.7 },
 		fx = { big = true, brass = true, shake = 0.3 }, snd = "gun_autoshot", draw = "draw_autoshot",
@@ -308,8 +308,8 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	pistol = {
-		id = "pistol", name = "Plan B", slot = "secondary", kind = "hitscan", color = rgb(0xa0b4ff),
-		desc = "a plain pistol for when plan A runs dry. 12 shots, the slide locks back so you know you're empty.",
+		id = "pistol", name = "Pistol", slot = "secondary", kind = "hitscan", color = rgb(0xa0b4ff),
+		desc = "a plain pistol. 12 shots, the slide locks back so you know you're empty.",
 		auto = false, rate = 5, mag = 12, reload = 1.35, pellets = 1, dmg = 20, head = 2.2, spread = 0.006,
 		bloom = 0.007, maxBloom = 0.03, recoil = 0.6 * S, kick = 0.035, range = 220 * S, speedMul = 1.05,
 		ads = { zoom = 1.35, spread = 0.25 }, tracer = rgb(0xb8c8ff),
@@ -324,8 +324,8 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	sawnoff = {
-		id = "sawnoff", name = "Half a Shotgun", slot = "secondary", kind = "hitscan", color = rgb(0xe05a3a),
-		desc = "somebody sawed a shotgun in half. two shells, point blank they go flying, shoot the floor for a little hop.",
+		id = "sawnoff", name = "Sawed-Off", slot = "secondary", kind = "hitscan", color = rgb(0xe05a3a),
+		desc = "a sawed-off double. two shells, point blank they go flying, shoot the floor for a little hop.",
 		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9, head = 1.3, spread = 0.11,
 		kb = 3.4 * S, kbUp = 9 * S, recoil = 10 * S, kick = 0.09, range = 32 * S,
 		ads = { zoom = 1.12, spread = 0.7 }, tracer = rgb(0xffa060),

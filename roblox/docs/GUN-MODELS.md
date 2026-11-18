@@ -5,7 +5,7 @@ On 15 November, after the guns were repainted, the owner wrote "the gun textures
 added "can you reference the rivals weapons when remodeling these please" and "im mostly discontent with the
 snipers". So all sixteen weapons were remade as new models built for Roblox. Their shapes, colours and themes are
 our own; Rivals' guns were studied for proportions and finish only. After round 5 the owner wrote "why do some guns
-have like bullets attached on top?", that the Sniper's stock "isnt one piece", that Second Opinion had "an ugly
+have like bullets attached on top?", that the Sniper's stock "isnt one piece", that Marksman Rifle had "an ugly
 cross thingy", and "I think rivals weapons are a little blockier"; round 6 answered all four, round 7 made the guns
 chunkier and gave back a signature to the guns that had lost theirs (below). After round 7: "not completly block some
 rounded too look at rivals a bix of the two versions", so round 8 is a mix of round 5's rounder look and round 7's
@@ -20,16 +20,16 @@ every piece but the Neon and Glass ones marked `WrapUV`. In hand in the hall: `g
 **The reload check (16 Nov, after the owner's "make sure the magazine, stocks mount etc works for all of them").**
 Every gun was reloaded (or fired, for the pump, bolt, lever, cylinder) in a Play test while a probe measured each
 moving piece against the gun's body, every frame: how far it travelled and where it ended. Magazines (AR, SMG, Hat
-Trick, Belt Sander, Second Opinion, Lawn Mower, Plan B), charging handles, the Belt Sander's feed cover, the Sniper's
-bolt, the Yeehaw's lever and hammer, the Shotgun's pump, Plan B's slide and hammer, Half a Shotgun's break-open (barrels,
+Trick, LMG, Marksman Rifle, Auto Shotgun, Pistol), charging handles, the LMG's feed cover, the Sniper's
+bolt, the Lever Rifle's lever and hammer, the Shotgun's pump, Pistol's slide and hammer, Sawed-Off's break-open (barrels,
 forend, both shells, hammers) all moved and came back to within 0.001 stud. The Redline's reload is its rev (the needle
 swings into the red), the Marble Shotgun's is the hand pouring marbles into the jar; neither moves a gun piece, by
 design. The Katana and the Shredder have no reload.
 
 Two faults, fixed (place version 325):
 - **Every held gun was fitted from the wrong box.** `WeaponModels.fitImported` read the template's size from
-  `Model:GetBoundingBox()`, which on the kit models comes out larger than the parts (Plan B 41% too wide, the Yeehaw
-  34%, the Redline 23%, the Hat Trick 14%, the Revolver 3.7% too tall ...). So every held gun was squashed across and
+  `Model:GetBoundingBox()`, which on the kit models comes out larger than the parts (Pistol 41% too wide, the Lever Rifle
+  34%, the Redline 23%, the Burst Rifle 14%, the Revolver 3.7% too tall ...). So every held gun was squashed across and
   shifted against its row's pivots. It now measures the parts themselves (`partsBox`): every template matches its
   file to within 0.08%.
 - **The Revolver's cylinder** sat 8 mm off its axis after a shot (that same shift) and, being eight-sided, looked
@@ -54,21 +54,21 @@ game), `gun-models/round5-side.jpg` (round 5 from the side),
 
 | | The web models (before) | The kit models (now) |
 |---|---|---|
-| Pieces | 10 to 59 parts a gun, 329 in all, many of them tiny (screws, stickers, cables) | 8 to 31 parts a gun, about 280 in all, each a big simple mass (a part per colour per moving piece; the Belt Sander's 12 belt rounds are one each) |
+| Pieces | 10 to 59 parts a gun, 329 in all, many of them tiny (screws, stickers, cables) | 8 to 31 parts a gun, about 280 in all, each a big simple mass (a part per colour per moving piece; the LMG's 12 belt rounds are one each) |
 | Finish | Roblox `Metal`, `Plastic` and `Wood` (each adds its own grain), 42 pieces with printed pictures | `SmoothPlastic` and flat `Color` only; `Neon` on a sight dot, the vents and the lamps; `Glass` on the marble jar; no pictures, no `SurfaceAppearance` |
 | Shapes | made for another renderer: thin parts, stickers, cables | a few big blocks with small crisp chamfers, straight sides, boxy stocks, upright slots, flat-faceted eight-sided barrels; thick barrels, ribbed magazines, square sights; no loose rounds on show |
 | Colour | a calm paint over the old pieces | a charcoal base, ONE muted colour on the side panels and stock, a small accent where it says something |
 | Triangles | 6,400 to 12,300 a gun | about 500 to 2,800 a gun |
 
-Each gun keeps its own signature: the Belt Sander's sanding belt and its belt of links (they still count the ammo
+Each gun keeps its own signature: the LMG's sanding belt and its belt of links (they still count the ammo
 down), the Marble Shotgun's jar of marbles on a blunderbuss, the Redline's rev-counter (its needle still follows
-your HP and its vents still glow), the Lawn Mower's mower deck, drum magazine and pull start, the Hat Trick's carry
-handle, Second Opinion's box optic, the Yeehaw's lever loop and stars, the Revolver's cylinder, Half a Shotgun's sawn
-ends, the Shredder's hopper and teeth. Round 6 took off what the owner did not want: the Hat Trick's three rounds,
-the Shotgun's shell saddle, the Belt Sander's brass rounds on top, Second Opinion's cross. Round 7 built a signature
-back into those guns: three blue squares on the Hat Trick's carry handle (its three-round burst), a second small optic
-beside Second Opinion's first (its name), a boxy slotted shield over the Shotgun's barrel (so it no longer reads like
-the Yeehaw).
+your HP and its vents still glow), the Auto Shotgun's mower deck, drum magazine and pull start, the Burst Rifle's carry
+handle, Marksman Rifle's box optic, the Lever Rifle's lever loop and stars, the Revolver's cylinder, Sawed-Off's sawn
+ends, the Shredder's hopper and teeth. Round 6 took off what the owner did not want: the Burst Rifle's three rounds,
+the Shotgun's shell saddle, the LMG's brass rounds on top, Marksman Rifle's cross. Round 7 built a signature
+back into those guns: three blue squares on the Burst Rifle's carry handle (its three-round burst), a second small optic
+beside Marksman Rifle's first (its name), a boxy slotted shield over the Shotgun's barrel (so it no longer reads like
+the Lever Rifle).
 
 ## The picked set (the owner's choice, 16 November 2026)
 
@@ -76,15 +76,15 @@ the Yeehaw).
 |---|---|---|
 | Assault Rifle | C (AK-12) | C |
 | SMG | C (MP5) | C |
-| Hat Trick | B | B |
-| Belt Sander | C (M249) | C |
-| Second Opinion | C (SVD + its second optic) | C |
+| Burst Rifle | B | B |
+| LMG | C (M249) | C |
+| Marksman Rifle | C (SVD + its second optic) | C |
 | Sniper | A, the scope raised clear of the gun on its rings, a new one-piece stock (sloped underline, comb low under the eyepiece) | "A (without scope inside gun, fix stock)" |
-| Yeehaw | C (Winchester 1873), the star bigger | "C (increase star size)" |
+| Lever Rifle | C (Winchester 1873), the star bigger | "C (increase star size)" |
 | Shotgun | A | A |
-| Lawn Mower | C (AA-12: the top rail and carry handle) | "you pick prob one with top rail" |
-| Half a Shotgun | C (coach gun), one trigger | "C but remove one trigger since it has 2" |
-| Plan B | C (M1911) | C |
+| Auto Shotgun | C (AA-12: the top rail and carry handle) | "you pick prob one with top rail" |
+| Sawed-Off | C (coach gun), one trigger | "C but remove one trigger since it has 2" |
+| Pistol | C (M1911) | C |
 | Revolver | A's barrel, frame, cylinder, hammer and sights; C's rounded frame back, round guard, trigger and wood target grips | "I like how the held looks for volvie A but I like the handle of trigger area of C" |
 | Redline | A, the trigger area closed (a post from the guard into the receiver), the tachometer 15% bigger round the same pivot | "A ... can you inclose the trigger area, and increase the guage a tinier bit bigger" |
 | Marble Shotgun | C (blunderbuss), the flintlock's cock compact and low over the wrist | C, and "fix ... the little thing that sticks out above the handle" (read as this gun's cock) |
@@ -96,8 +96,8 @@ the receiver, corrugated butt, flaps).
 
 **Is every gun one connected thing?** `tools/roblox/gun_check.py` builds the live set and finds, for every solid of
 every gun, whether it touches or sinks into another (a gap over 1.5 mm counts as loose), and whether the nodes the game
-moves are all there. Its first run found two: Second Opinion's whole front (handguard, barrel, brake) stood 2 mm off
-the receiver and its trigger 3 mm under it; the Hat Trick's grip 1.7 mm under the body. Both fixed; all sixteen now come
+moves are all there. Its first run found two: Marksman Rifle's whole front (handguard, barrel, brake) stood 2 mm off
+the receiver and its trigger 3 mm under it; the Burst Rifle's grip 1.7 mm under the body. Both fixed; all sixteen now come
 out as one piece each with every moving node present. What it cannot judge: how a join looks, and whether a moving
 part clears the rest in motion (that is the reload test in game).
 
@@ -195,7 +195,7 @@ are kit models now, one whole other body each, built in look C. The crate gives 
 | Sniper | Musket, Pool Cue, Golden (the web game's Sniper Royalty prize: built, not in the crate) |
 | Lever Rifle | Cap Gun |
 | Shotgun | Double Barrel, Brolly |
-| Half a Shotgun | Pepper Mills |
+| Sawed-Off | Pepper Mills |
 | Marble Shotgun | Gumball Machine |
 | Redline | Hot Rod |
 | Pistol | Calculator |
@@ -260,7 +260,7 @@ GPU can't tell which is in front. `tools/roblox/gun_zfix.py` now runs on every g
 - **Where a gun is checked:** in the studs of its smallest static display, the armory racks (long guns 6.6 studs,
   the rest 3.9). That is about 3.2 to 11.5 studs a metre.
 - **How a pair is fixed:** it is pulled apart to 0.04 studs there, or 8 mm at most on the gun. On the long guns shown
-  small (Sniper, Shotgun, Hat Trick, about 3.2 studs a metre) 0.04 studs would be 12 mm and change their look; 8 mm
+  small (Sniper, Shotgun, Burst Rifle, about 3.2 studs a metre) 0.04 studs would be 12 mm and change their look; 8 mm
   is about 0.026 studs, still clear of the scan's 0.02.
 - **Which face moves:** the one already in front moves further out (it is the detail meant to be seen: the Hat
   Trick's blue blocks on its handle panel). Of two level faces, a trim (`_wzN`: bands, stripes, lenses) stands out
@@ -278,7 +278,7 @@ GPU can't tell which is in front. `tools/roblox/gun_zfix.py` now runs on every g
   - The exported files, scanned the same way: the same.
   - `gun_check.py`: every gun and skin is still one connected piece.
   - In Studio, the armory's 12 display guns: 0 hits (`ZFight`, tol 0.02).
-- **The look:** a few millimetres at most. The Hat Trick, Shotgun and Lawn Mower lost speckled seams and now show
+- **The look:** a few millimetres at most. The Burst Rifle, Shotgun and Auto Shotgun lost speckled seams and now show
   their side panels and top ribs cleanly; the rest look the same (`JF_NOZFIX=1` builds them as before, to compare).
 
 ## Skin sets and tiers (16 November 2026, place version 433)
@@ -291,11 +291,11 @@ placed the same way on every piece. The top piece gets the biggest reshape and t
 
 | Set (id) | Skins (top first) | Palette and motif |
 |---|---|---|
-| Seraph (`set_seraph`) | Rifle, Sniper, Hat Trick, Katana, Plan B | ivory and gold; halo, feathered wings, a sunburst core |
+| Seraph (`set_seraph`) | Rifle, Sniper, Burst Rifle, Katana, Pistol | ivory and gold; halo, feathered wings, a sunburst core |
 | Infernal (`set_infernal`) | the same five | black and crimson with ember glow; horns, blade wings, lava cracks, a slit eye |
 | Witching Hour (`set_halloween`) | Pumpkin Patch (SMG), Cauldron (Marble Shotgun), Hex Blade (Katana), Vigil (Revolver), Gravekeeper (Shotgun) | purple-black, bone, pumpkin; a hex band with bone rims |
-| Tidecrest (`set_tidecrest`) | Sakura (Katana), Yoroi (Rifle), Cloudlock (Yeehaw), Kintsugi (Second Opinion), Twin Tide (Half a Shotgun) | red and black lacquer, gold wave crests, cloud scrolls, sakura |
-| Ducky (`set_ducky`, VIP) | Bubble Bath (Belt Sander), Wish Duck (Revolver), Ribbon Duck (Katana): all high tier | magical-girl rubber duck (since v450): each gun shaped as a duck, a pink bow with a gold star clip, pearl wings, glowing heart gems |
+| Tidecrest (`set_tidecrest`) | Sakura (Katana), Yoroi (Rifle), Cloudlock (Lever Rifle), Kintsugi (Marksman Rifle), Twin Tide (Sawed-Off) | red and black lacquer, gold wave crests, cloud scrolls, sakura |
+| Ducky (`set_ducky`, VIP) | Bubble Bath (LMG), Wish Duck (Revolver), Ribbon Duck (Katana): all high tier | magical-girl rubber duck (since v450): each gun shaped as a duck, a pink bow with a gold star clip, pearl wings, glowing heart gems |
 
 Seraph and Infernal are a pair: the same weapons, the same layout, the motifs swapped one for one. Ducky is the VIP
 game pass's set (the owner: "the ducky set is a high tier set you get by purchasing vip"): `vip = true`, never in crates or
@@ -326,7 +326,7 @@ black plates (glowing fractures), lit muzzles, and the glow along every feather'
     - Angel: long round-tipped quills, gold by turns, under an ivory arm.
     - Demon: blades that widen to a sharp point on the leading edge, crimson and black by turns, with the glow
       running along each ridge.
-  - A small wing stands up off the front of the handguard (or the slide on Plan B), so the wings show in first person.
+  - A small wing stands up off the front of the handguard (or the slide on Pistol), so the wings show in first person.
   - Flat cut-out feathers read as "a fan of leaves", "a saw" or "spiky hair", whatever their outline.
 - Pictures: `gun-models/sets-heaven-hell.jpg`, `sets-witching-hour.jpg`, `sets-tidecrest.jpg` (side view and in hand),
   `sets-wings-vs-refs.jpg` (the owner's pictures, the round before and round 6). Not checked yet: the wings against the
@@ -365,10 +365,10 @@ rebuilt, each with one big new shape the hand view sees, and fewer colours.
 ### Space western and the decorated Japanese concepts (17 November 2026, place version 478)
 
 - **Space western, a pair (live).** The owner asked for a classic and a futuristic look of the same weapons, after
-  seeing a frontier line elsewhere; ours is our own. Both sets: Revolver and Yeehaw high, Half a Shotgun and Sniper mid,
+  seeing a frontier line elsewhere; ours is our own. Both sets: Revolver and Lever Rifle high, Sawed-Off and Sniper mid,
   Katana basic.
-  - Dust Drover (`set_dust`): Dust Drover revolver (horse-head grip, a 7-point star), Iron Horse (Yeehaw as a
-    locomotive), Wagon Wheel (Half a Shotgun), Brass Spyglass (Sniper), Horseshoe (Katana).
+  - Dust Drover (`set_dust`): Dust Drover revolver (horse-head grip, a 7-point star), Iron Horse (Lever Rifle as a
+    locomotive), Wagon Wheel (Sawed-Off), Brass Spyglass (Sniper), Horseshoe (Katana).
   - Star Drover (`set_star`): the same five in plum graphite, tan ceramic and teal hard light (Star Drover, Streamliner,
     Warp Wheel, Star Spyglass, Star Horseshoe).
   - Models: `tools/roblox/gun_sets_west.py`. Its `EFFECTS` proposes shot and lever-cycle puffs and sparks for the VFX
@@ -387,7 +387,7 @@ rebuilt, each with one big new shape the hand view sees, and fewer colours.
 
 The owner: "Can we do a complete redo of the ducky guns except the revolver it looks clean on it and cute!!", then
 "The duck beak is what looks bad looks nothing like beak!!".
-- Bubble Bath (Belt Sander) and Ribbon Duck (Katana) are rebuilt in Wish Duck's clean style, on their base guns' own
+- Bubble Bath (LMG) and Ribbon Duck (Katana) are rebuilt in Wish Duck's clean style, on their base guns' own
   outlines. All three keep their keys, so VIP owners keep them.
 - **The shared bill:** one rubber-duck bill on all three, shaped like the Royal Duck hat's bill. It is `duck_bill()` in
   `tools/roblox/gun_sets_ducky_v3.py`: a wide flat spoon about 1.8 times as wide as it is deep, the upper half
@@ -418,7 +418,7 @@ The owner: "my issue is just the iron sights or the scopes look bulky and not li
   - Themed skins keep their theme on thin, low sights.
   - The Seraph guns keep their old sights until the angel set is installed; the cute concepts until cute v3.
 - **Aim points:**
-  - The Half a Shotgun's aim point moved from y 0.037 to 0.065: its old line ran inside the action. `Weapons.luau`
+  - The Sawed-Off's aim point moved from y 0.037 to 0.065: its old line ran inside the action. `Weapons.luau`
     was updated to match.
   - The Redline keeps its spot. The cover's hump was lowered so the line through its ring is clear.
 - **Checked:**
@@ -440,23 +440,23 @@ The owner: "my issue is just the iron sights or the scopes look bulky and not li
 The owner, after the first cute concepts: "the shapes are irregular and aren't cohesive to how a gun should look",
 then "I want bigger more noticeable decorations".
 
-- **The rule** (the skin-concepts brief "Cute set v3"): each concept is the live Rifle and Plan B kept whole, plus one
+- **The rule** (the skin-concepts brief "Cute set v3"): each concept is the live Rifle and Pistol kept whole, plus one
   big hero piece on the left flank, under the sight line, and reshaped ends. Outlines grow about 12–22%.
   - A Velvet: a jewel locket, fur muff, pom-pom and cushion stock.
   - B Starlight: puffy wings, a star collar and a big stock star.
   - C Glasswing: a stained-glass butterfly and crystals.
   - D Sweet Shop: a big bow, a candy cane hooked down at the muzzle, gumdrop lights and a wrapper-fan stock.
 - **Built:** `tools/roblox/gun_sets_cute3.py`, in the default build, same keys `ar_cute_a..d` / `pistol_cute_a..d`.
-  - A weight pass brought them down from as much as 43k triangles to at most 15k per rifle and 11k per Plan B.
+  - A weight pass brought them down from as much as 43k triangles to at most 15k per rifle and 11k per Pistol.
   - Concept E (Daydream) is dropped. It is out of `SkinSets.CONCEPTS`, `assets.json` and the place.
 - **Status:** concepts only, not sold and not in crates, until the owner picks one; the pick becomes a full set. The
-  judges call Starlight's Plan B the weakest: its wing reads as a rosette in first person.
-- **Pictures:** `gun-models/cute-v3.jpg`, `cute-v3-in-hand.jpg` (Velvet rifle, Sweet Shop Plan B).
+  judges call Starlight's Pistol the weakest: its wing reads as a rosette in first person.
+- **Pictures:** `gun-models/cute-v3.jpg`, `cute-v3-in-hand.jpg` (Velvet rifle, Sweet Shop Pistol).
 
 ### Tidecrest becomes J-A Maki-e (17 November 2026, place version 498)
 
 The owner marked the decorated Japanese sheet: J-A Maki-e yes, J-B and J-C no. On the J-A set pieces they marked Second
-Opinion and Yeehaw yes, and Half a Shotgun and the Katana yes twice.
+Opinion and Lever Rifle yes, and Sawed-Off and the Katana yes twice.
 
 - **Live:** J-A is the Tidecrest set now, built by `tools/roblox/gun_sets_japan2.py` under the set's existing keys, so
   owners keep their pieces. Black lacquer and gold, with the names kept:
@@ -510,7 +510,7 @@ The owner: "Can you also tell it to make a few blender ducky skins?"
   `smg_duckling`, `pistol_duckling`. The builder is `tools/roblox/gun_sets_ducky_art.py` (`JF_EXTRA=gun_sets_ducky_art`).
 - **The look:** each has a round head at the barrel's root with the muzzle out of the shared bill, a pink bow with a gold
   star clip, pearl-over-pink wings, a chunky tail, coral feet on the grip, dimmed pink heart gems, and a plum business end.
-  The Plan B's slide nose is the duck's head and moves with the slide.
+  The Pistol's slide nose is the duck's head and moves with the slide.
 - **Shading:** baked shade shells (route S). Each gun stays at or under 15k triangles including the shells.
 - **Not live:** they are concepts in `SkinSets.CONCEPTS`, so not sold, not in crates and not in the VIP pack.
 - **Where they live in the place:** the loaded models are kept in `PolishBackup.DucklingTrial`, and the live copies in
@@ -619,25 +619,25 @@ cleaned, fitted and coloured here.
   - SMG: blue curling waves, foam dots and drops, plus a duck print on each receiver side;
   - sniper: a wave band along the barrel;
   - katana: curling crests with foam curls and dots on the blade;
-  - Plan B: waves along the slide's lower edge and on the grip panels.
+  - Pistol: waves along the slide's lower edge and on the grip panels.
 
   The light slot moved halfway from pearl toward each concept's blush (e.g. SMG `ebdfde`). Some shade shells were
   dropped to stay under 15k triangles. Assets:
   - SMG 96541562068186
   - katana 122632316158289
   - sniper 112944176569314
-  - Plan B 117844930479923
+  - Pistol 117844930479923
 
   v3 (place version 708) answered two owner notes. "It's a good base but with a lot of these you might have to rebuild
   them a bit!! Make sure it has proper gun elements" got round-2 shapes from `tripo_gun.py`:
-  - Plan B's red-pen marks fixed: notched rear sight and a front post (no dot: `gun_sights.blade` adds its glow
+  - Pistol's red-pen marks fixed: notched rear sight and a front post (no dot: `gun_sights.blade` adds its glow
     insert only on a post taller than this one, like the base guns), round duck head under the sight line, clean
     frame seam, flat reliefs, slide serrations, an ejection port, a bore in the duck's mouth;
   - SMG and sniper bores and ports.
 
   "Ducky looks so simple now" got a baked surface from `tools/roblox/tripo_bake.py`:
   - the same meshes with the shade shells dropped;
-  - 1024 atlases (SMG 2, Plan B 2, sniper 3, katana 1), each with a NormalMap from Tripo's own surface, a painted
+  - 1024 atlases (SMG 2, Pistol 2, sniper 3, katana 1), each with a NormalMap from Tripo's own surface, a painted
     ColorMap (AO, cavity, edge light, foam lines, clouds, mag wave bands, banner crown and duck, piping, rivets) and
     glossy Roughness plus gold Metalness;
   - one SurfaceAppearance per pictured piece (AlphaMode Overlay, white). Dark, metal, neon and glass pieces stay plain;
@@ -646,14 +646,14 @@ cleaned, fitted and coloured here.
 
   Before upload, every normal, metal and roughness map went through `tools/roblox/bake_guard.py`. It blurs the packed
   small-island strips and drops lone metal motifs (a banner crown on its side reads like a letter). The katana's
-  blade dots that landed on the gold spine were painted out by hand. Triangles: SMG 12,272, Plan B 12,654, sniper
+  blade dots that landed on the gold spine were painted out by hand. Triangles: SMG 12,272, Pistol 12,654, sniper
   13,755, katana 10,252. Models:
   - SMG 72904091721393
   - katana 73021117796404
   - sniper 139142913295194
-  - Plan B 81405719351973, then 128878054607229 (v709, below)
+  - Pistol 81405719351973, then 128878054607229 (v709, below)
 
-  v709: the hold session's aim check found Plan B's raised blue strap across the slide top (recipe `add[0]`, top at
+  v709: the hold session's aim check found Pistol's raised blue strap across the slide top (recipe `add[0]`, top at
   0.0555, between the notch and the post) hid the front post below 0.0552. The strap is out of the recipe and the
   game mesh. The blue-white-blue band stays as paint on the slide top (the bake spec already painted it there), and
   the slide was re-baked; only atlas A1 changed. From the eye, the whole post now shows in the notch. A lesson for
@@ -696,62 +696,62 @@ weakest were reworked after each round, with Rivals' matching guns open as the r
 
 | Round | Average | What it said most | What changed next |
 |---|---|---|---|
-| 1 (first build, in the hall) | 6.2 | bright colour covering the whole top of every gun; look-alike pairs (Assault Rifle / Lawn Mower, Sniper / Second Opinion); the Revolver had no cylinder | charcoal tops, colour on side panels and stocks, a third less saturation; the scoped rifles, Revolver, Lawn Mower rebuilt; solid sight posts |
-| 2 (Blender renders) | 6.6 | pencil barrels, thin rods, plank grips, empty boards; the snipers still generic | the Sniper and Second Opinion rebuilt again; thick guards; lighter tops on the charcoal guns; shrouds; signatures moved into view |
-| 3 (in the hall) | 6.8 | pure-black sights and scopes under the crosshair; thin barrels; colours too strong under the lamps; the Sniper's changes invisible from the eye | round 4: charcoal sights and scopes, darker and dustier colours, the Sniper's barrel fat all its length and a lit eyepiece, the Lawn Mower's deck on top, the sanding belt as the Belt Sander's hero |
-| 4 (in the hall) | 7.4 | the Sniper's new eyepiece did not show from the eye; wood, tan and brass turn orange-gold under the lamps, so the set was not calmer than the old one; the Belt Sander, Lawn Mower and Half a Shotgun weakest | round 5 (below) |
-| 5 (in the hall) | 7.3 | the Sniper's lens now shows; the guns go near-black in hand (charcoal and the colour blocks merge), so fixes in the lighter values vanish; gold accents and a few full reds; the theme guns wear their theme as add-ons. Weakest: Belt Sander, Lawn Mower, Half a Shotgun | round 6 (below), with the owner's four notes |
-| 6 (in the hall) | 7.25 | all four owner notes answered (no rounds on top, the Sniper's stock one piece, no cross, blockier in the side views); still near-black in hand; "blockier" only partly: Rivals' blockiness is thick masses and the long guns are still slim; the Shotgun, Hat Trick and Second Opinion lost their signature with what was taken off. Weakest: Belt Sander, Shotgun, Lawn Mower | round 7: thicker barrels and tubes, chunkier long guns, a signature built into the body where one was taken off |
-| 7 (in the hall) | 7.5 | the owner's four notes still hold; the Hat Trick's squares and Second Opinion's second optic read in first person; the compact guns are properly blocky, the long guns still 4 to 5 times as long as tall (Rivals about 3); the held gun's left side faces away from the hall's lamps, so colour blocks go near-black. Weakest: Shotgun, Plan B, Belt Sander | first a fill light on the held gun (viewmodel code), re-shoot, then decide on another model round |
-| 8 (in the hall, with the fill light) | 7.5 | the mix shows from the side but is timid in first person (the rounding went onto grips and magazines, which the hands hide); 8-sided leftovers next to the round barrels; most of the brighter look is the new fill light. Weakest: Shredder, Second Opinion, Revolver | round 8b (below): round what the player sees; then the owner asked for version C |
+| 1 (first build, in the hall) | 6.2 | bright colour covering the whole top of every gun; look-alike pairs (Assault Rifle / Auto Shotgun, Sniper / Marksman Rifle); the Revolver had no cylinder | charcoal tops, colour on side panels and stocks, a third less saturation; the scoped rifles, Revolver, Auto Shotgun rebuilt; solid sight posts |
+| 2 (Blender renders) | 6.6 | pencil barrels, thin rods, plank grips, empty boards; the snipers still generic | the Sniper and Marksman Rifle rebuilt again; thick guards; lighter tops on the charcoal guns; shrouds; signatures moved into view |
+| 3 (in the hall) | 6.8 | pure-black sights and scopes under the crosshair; thin barrels; colours too strong under the lamps; the Sniper's changes invisible from the eye | round 4: charcoal sights and scopes, darker and dustier colours, the Sniper's barrel fat all its length and a lit eyepiece, the Auto Shotgun's deck on top, the sanding belt as the LMG's hero |
+| 4 (in the hall) | 7.4 | the Sniper's new eyepiece did not show from the eye; wood, tan and brass turn orange-gold under the lamps, so the set was not calmer than the old one; the LMG, Auto Shotgun and Sawed-Off weakest | round 5 (below) |
+| 5 (in the hall) | 7.3 | the Sniper's lens now shows; the guns go near-black in hand (charcoal and the colour blocks merge), so fixes in the lighter values vanish; gold accents and a few full reds; the theme guns wear their theme as add-ons. Weakest: LMG, Auto Shotgun, Sawed-Off | round 6 (below), with the owner's four notes |
+| 6 (in the hall) | 7.25 | all four owner notes answered (no rounds on top, the Sniper's stock one piece, no cross, blockier in the side views); still near-black in hand; "blockier" only partly: Rivals' blockiness is thick masses and the long guns are still slim; the Shotgun, Burst Rifle and Marksman Rifle lost their signature with what was taken off. Weakest: LMG, Shotgun, Auto Shotgun | round 7: thicker barrels and tubes, chunkier long guns, a signature built into the body where one was taken off |
+| 7 (in the hall) | 7.5 | the owner's four notes still hold; the Burst Rifle's squares and Marksman Rifle's second optic read in first person; the compact guns are properly blocky, the long guns still 4 to 5 times as long as tall (Rivals about 3); the held gun's left side faces away from the hall's lamps, so colour blocks go near-black. Weakest: Shotgun, Pistol, LMG | first a fill light on the held gun (viewmodel code), re-shoot, then decide on another model round |
+| 8 (in the hall, with the fill light) | 7.5 | the mix shows from the side but is timid in first person (the rounding went onto grips and magazines, which the hands hide); 8-sided leftovers next to the round barrels; most of the brighter look is the new fill light. Weakest: Shredder, Marksman Rifle, Revolver | round 8b (below): round what the player sees; then the owner asked for version C |
 
-Round 1 per gun: AR 6.5, SMG 5.5, Hat Trick 6, Belt Sander 6.5, Second Opinion 6, Sniper 6, Yeehaw 7, Shotgun 7.5,
-Lawn Mower 5, Redline 6.5, Marble Shotgun 6.5, Katana 6.5, Plan B 6.5, Revolver 4.5, Half a Shotgun 5.5, Shredder 7.
-Round 3 per gun: AR 7, SMG 6.5, Hat Trick 7, Belt Sander 6, Second Opinion 7, Sniper 6.5, Yeehaw 7.5, Shotgun 7.5,
-Lawn Mower 5.5, Redline 7, Marble Shotgun 7, Katana 7.5, Plan B 7.5, Revolver 6.5, Half a Shotgun 6, Shredder 7;
+Round 1 per gun: AR 6.5, SMG 5.5, Burst Rifle 6, LMG 6.5, Marksman Rifle 6, Sniper 6, Lever Rifle 7, Shotgun 7.5,
+Auto Shotgun 5, Redline 6.5, Marble Shotgun 6.5, Katana 6.5, Pistol 6.5, Revolver 4.5, Sawed-Off 5.5, Shredder 7.
+Round 3 per gun: AR 7, SMG 6.5, Burst Rifle 7, LMG 6, Marksman Rifle 7, Sniper 6.5, Lever Rifle 7.5, Shotgun 7.5,
+Auto Shotgun 5.5, Redline 7, Marble Shotgun 7, Katana 7.5, Pistol 7.5, Revolver 6.5, Sawed-Off 6, Shredder 7;
 the Cardboard skin 5.
 
-Round 4 per gun: AR 7.5, SMG 7.5, Hat Trick 7, Belt Sander 6.5, Second Opinion 7.5, Sniper 7, Yeehaw 7.5, Shotgun 8,
-Lawn Mower 6.5, Redline 8, Marble Shotgun 8, Katana 7.5, Plan B 7.5, Revolver 7.5, Half a Shotgun 6.5, Shredder 8;
+Round 4 per gun: AR 7.5, SMG 7.5, Burst Rifle 7, LMG 6.5, Marksman Rifle 7.5, Sniper 7, Lever Rifle 7.5, Shotgun 8,
+Auto Shotgun 6.5, Redline 8, Marble Shotgun 8, Katana 7.5, Pistol 7.5, Revolver 7.5, Sawed-Off 6.5, Shredder 8;
 the Cardboard skin 5.5.
 
 The judge after round 4: "about a point under" Rivals' plain guns, with the Shotgun, Redline, Marble Shotgun and
 Shredder touching the low edge of the bar, and the set "less garish, not less colourful" than the old models.
 
-Round 5 per gun: AR 7.5, SMG 7.5, Hat Trick 7, Belt Sander 6.5, Second Opinion 7, Sniper 7.5, Yeehaw 7.5, Shotgun 7.5,
-Lawn Mower 6.5, Redline 8, Marble Shotgun 8, Katana 8, Plan B 7, Revolver 7, Half a Shotgun 6.5, Shredder 7.5; the
+Round 5 per gun: AR 7.5, SMG 7.5, Burst Rifle 7, LMG 6.5, Marksman Rifle 7, Sniper 7.5, Lever Rifle 7.5, Shotgun 7.5,
+Auto Shotgun 6.5, Redline 8, Marble Shotgun 8, Katana 8, Pistol 7, Revolver 7, Sawed-Off 6.5, Shredder 7.5; the
 Cardboard skin 7. It called the set plainly less colourful than the old models ("now overshoots into dark and drab
 rather than calm") and the Sniper "the best it has been", but "a black tube and a white disc" from the eye.
 
 **Round 6** (the owner's notes plus judge round 5): the kit itself made blockier (every chamfer half as wide, wedge
 sections straightened, barrels flat-faceted, vents as upright slots, front sights square blocks, the AR, SMG, Belt
-Sander, Lawn Mower and Redline stocks boxy L shapes); no loose rounds (the Hat Trick's three rounds and the Shotgun's
-shell saddle gone, the Belt Sander's belt now charcoal links low on the left, still counting the ammo down); the
-Sniper's stock one solid block with no thumbhole, cheek pad or panel; Second Opinion's cross gone; every charcoal,
+Sander, Auto Shotgun and Redline stocks boxy L shapes); no loose rounds (the Burst Rifle's three rounds and the Shotgun's
+shell saddle gone, the LMG's belt now charcoal links low on the left, still counting the ammo down); the
+Sniper's stock one solid block with no thumbhole, cheek pad or panel; Marksman Rifle's cross gone; every charcoal,
 near-black and colour block a step lighter; gold accents (Katana guard, Revolver ring, Marble bell, Shredder hopper,
-Yeehaw receiver) greyed; the Lawn Mower's knobs brick, the Shredder's lamps small, the Redline's red stock band dark;
-the Revolver's cylinder lighter steel than its frame; a pale rib between Half a Shotgun's barrels.
+Lever Rifle receiver) greyed; the Auto Shotgun's knobs brick, the Shredder's lamps small, the Redline's red stock band dark;
+the Revolver's cylinder lighter steel than its frame; a pale rib between Sawed-Off's barrels.
 
-Round 6 per gun: AR 7, SMG 7.5, Hat Trick 7, Belt Sander 6.5, Second Opinion 7, Sniper 7.5, Yeehaw 7, Shotgun 6.5,
-Lawn Mower 6.5, Redline 7.5, Marble Shotgun 8, Katana 7.5, Plan B 7, Revolver 8, Half a Shotgun 8, Shredder 7.5; the
+Round 6 per gun: AR 7, SMG 7.5, Burst Rifle 7, LMG 6.5, Marksman Rifle 7, Sniper 7.5, Lever Rifle 7, Shotgun 6.5,
+Auto Shotgun 6.5, Redline 7.5, Marble Shotgun 8, Katana 7.5, Pistol 7, Revolver 8, Sawed-Off 8, Shredder 7.5; the
 Cardboard skin 7.5. The judge measured the hall's floor at the same brightness in rounds 5 and 6, so the near-black
 guns are not the photos: the held gun is lit darker than Blender shows, and a step lighter in the colours moved the
 gun's dark pixels only 0 to 6 levels. That points at the light on the held gun more than at the models (see "Not
 checked").
 
 **Round 7** (judge round 6): every barrel 1.2 times as thick (`BARREL_K` in `gunkit.py`, bores too); charcoal,
-near-black and the top decks another step lighter, the Assault Rifle's top rail on the deck colour; the Hat Trick's
-three blue squares; Second Opinion's second optic; the Shotgun's wider receiver, fatter pump and slotted barrel
-shield, the dark patch off its stock; the Belt Sander's links thinner with gaps; the Yeehaw's bands widened and one
-star; Plan B's rear sight charcoal; a green panel on the Lawn Mower's receiver, an amber strip on the Shredder's motor.
+near-black and the top decks another step lighter, the Assault Rifle's top rail on the deck colour; the Burst Rifle's
+three blue squares; Marksman Rifle's second optic; the Shotgun's wider receiver, fatter pump and slotted barrel
+shield, the dark patch off its stock; the LMG's links thinner with gaps; the Lever Rifle's bands widened and one
+star; Pistol's rear sight charcoal; a green panel on the Auto Shotgun's receiver, an amber strip on the Shredder's motor.
 
-Round 7 per gun: AR 7.5, SMG 7.5, Hat Trick 8, Belt Sander 7, Second Opinion 7.5, Sniper 8, Yeehaw 7.5, Shotgun 6.5,
-Lawn Mower 7, Redline 8, Marble Shotgun 8, Katana 7.5, Plan B 7, Revolver 7.5, Half a Shotgun 7.5, Shredder 8; the
+Round 7 per gun: AR 7.5, SMG 7.5, Burst Rifle 8, LMG 7, Marksman Rifle 7.5, Sniper 8, Lever Rifle 7.5, Shotgun 6.5,
+Auto Shotgun 7, Redline 8, Marble Shotgun 8, Katana 7.5, Pistol 7, Revolver 7.5, Sawed-Off 7.5, Shredder 8; the
 Cardboard skin 7.5. The judge's advice: more model rounds might add about 0.3; a soft fill light that travels with
 the held gun, aimed at its top and left side, would likely add 0.5 or more to every gun at once (most already look
 about 8 in Blender's neutral light). If another model round follows, its list: the long guns thicker in mass
-(handguards, receivers, stocks, not only barrels), the Shotgun's shield and receiver top on the deck colour, Plan B's
-blue moved onto the slide's left side, the Lawn Mower's green as one block, the Belt Sander's stock charcoal and a fat
+(handguards, receivers, stocks, not only barrels), the Shotgun's shield and receiver top on the deck colour, Pistol's
+blue moved onto the slide's left side, the Auto Shotgun's green as one block, the LMG's stock charcoal and a fat
 ammo box feeding the belt, fewer and deeper magazine ribs.
 
 **Round 8** (the owner: "not completely blocky, some rounded too, a mix of the two versions"): `gunkit.py` round 8
@@ -760,14 +760,14 @@ stay crisp) at three quarters of the builder's width; tapers back to two thirds 
 round again, with more sides the bigger they are (`round_sides`: 12, 16 or 24); the side-view corners of grips,
 magazines, stocks, pumps and handguards rounded (`CORNER`, square where they join the gun so no notch opens); the
 parts the hand holds and the scopes a fuller round edge (`ROUND_NODES`, `ROUND_K`). Judge 8 (7.5, per gun: AR 8, SMG
-7.5, Hat Trick 7.5, Belt Sander 7.5, Second Opinion 7, Sniper 8, Yeehaw 8, Shotgun 7.5, Lawn Mower 7, Half a Shotgun 8,
-Plan B 8, Revolver 7, Redline 7.5, Marble Shotgun 7.5, Katana 7.5, Shredder 6.5; Cardboard 7.5) said the mix was timid
+7.5, Burst Rifle 7.5, LMG 7.5, Marksman Rifle 7, Sniper 8, Lever Rifle 8, Shotgun 7.5, Auto Shotgun 7, Sawed-Off 8,
+Pistol 8, Revolver 7, Redline 7.5, Marble Shotgun 7.5, Katana 7.5, Shredder 6.5; Cardboard 7.5) said the mix was timid
 where the player looks, so **round 8b** rounded what is seen: the big masses (body, slide, motor ...) get the full round
 edge twice as wide (`BODY_NODES`, `BODY_K`), stocks' corners rounder, round rear sights on the Assault Rifle and the
-Belt Sander, the Shredder's hopper smooth and round with round cage posts and its motor's top in amber, Second
+LMG, the Shredder's hopper smooth and round with round cage posts and its motor's top in amber, Second
 Opinion's optics two round scopes (one fat, one small beside it) with purple on the receiver and a body-wide magazine,
 the Revolver's cylinder round with six dark flutes, its underlug as wide as the barrel and the guard closed to the
-grip, the Lawn Mower's drum round. Live in place version 281 (the hub rebuilt, 0 problems).
+grip, the Auto Shotgun's drum round. Live in place version 281 (the hub rebuilt, 0 problems).
 
 ## Version C: a real gun each, built the way Rivals builds (for the owner's pick)
 
@@ -783,18 +783,18 @@ kind of gun, ours is a different real one):
 | Gun | Drawn from | Gun | Drawn from |
 |---|---|---|---|
 | Assault Rifle | AK-12 (ribbed cover, rail, rear aperture, curved magazine) | Shotgun | SPAS-12 (perforated shield) |
-| SMG | HK MP5 (hooded post, drum sight, cocking tube) | Lawn Mower | AA-12 (drum, carry handle) |
-| Hat Trick | FAMAS (it is a bullpup already; long carry handle) | Half a Shotgun | a sawn-off coach gun with two hammers |
-| Belt Sander | M249 SAW (feed cover, box, belt into the left side) | Plan B | Colt M1911 |
-| Second Opinion | SVD Dragunov (thumbhole stock) + a second small optic | Revolver | S&W Model 29 (half underlug, target grips) |
+| SMG | HK MP5 (hooded post, drum sight, cocking tube) | Auto Shotgun | AA-12 (drum, carry handle) |
+| Burst Rifle | FAMAS (it is a bullpup already; long carry handle) | Sawed-Off | a sawn-off coach gun with two hammers |
+| LMG | M249 SAW (feed cover, box, belt into the left side) | Pistol | Colt M1911 |
+| Marksman Rifle | SVD Dragunov (thumbhole stock) + a second small optic | Revolver | S&W Model 29 (half underlug, target grips) |
 | Sniper | Remington 700 / M40 (one-piece stock, heavy fluted barrel) | Redline | Thompson M1928 (finned barrel = the glowing vents) |
-| Yeehaw | Winchester 1873 (octagon barrel, lever loop) | Marble Shotgun | a flintlock blunderbuss with the jar |
+| Lever Rifle | Winchester 1873 (octagon barrel, lever loop) | Marble Shotgun | a flintlock blunderbuss with the jar |
 | Katana | a real katana (temper line, round tsuba, wrapped grip) | Shredder | a garden wood-chipper (style pass) |
 
 Every C builder takes its spots from the current builder and keeps every node the game moves; sizes within about 8%;
 1,900 to 4,400 triangles. Things to settle if a C gun is picked: the hold session may nudge a hand on the Shotgun
 (the grip is in the stock), the Sniper and the SMG (the handguards' undersides moved about 1 cm), and the Redline's
-left hand (a vertical foregrip); the Belt Sander's belt now empties from the box end; the Cardboard skin is built on
+left hand (a vertical foregrip); the LMG's belt now empties from the box end; the Cardboard skin is built on
 the A/B Assault Rifle and would need its own C version. Preview: `gun_preview.py -- <dir> --set c <ids>`.
 
 ## Checked, and not checked
@@ -806,10 +806,10 @@ the A/B Assault Rifle and would need its own C version. Preview: `gun_preview.py
   test (8 shots, 8 hits, the magazine 30 to 22, the dummy down 88 = 8 x 11, the rifle's damage); the third-person model
   the server builds in your hand comes from the new template; all sixteen photographed in hand in the training hall
   after each round (round 6: place version 261, round 7: 263, round 8: 279, round 8b: 281), and the hold session
-  moved three fists (Plan B, Revolver, Shredder) onto the new grips. Version C is built and carded in Blender only.
+  moved three fists (Pistol, Revolver, Shredder) onto the new grips. Version C is built and carded in Blender only.
 - **Not checked:** every gun firing (only the Assault Rifle was shot; the others were armed and held, and the game's
   spots and moving-part names are unchanged, so their firing code has nothing new to meet); the reload animations'
-  moving pieces on each new model (mag drops, pump, bolt, lever, cylinder, hinge) in motion; the Belt Sander's belt
+  moving pieces on each new model (mag drops, pump, bolt, lever, cylinder, hinge) in motion; the LMG's belt
   links counting down (same names, `belt_00`..`belt_11`, as before); the Redline's needle and vents reacting to HP; guns in another player's hands (needs two
   players); the Rooftop's daylight; phones; the loadout screen's previews (they build from the same templates, not
   looked at).

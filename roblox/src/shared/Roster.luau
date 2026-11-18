@@ -62,20 +62,20 @@ add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", 
 add({ id = "laser", slot = "primary", name = "Big Laser Pointer", color = "39ff14", live = false, gimmick = "hold to charge, let go for a beam through everyone in a line. a tap is a little zap.",
 	desc = "Hold to charge it (you walk a little slower), let go for a fat beam that goes through everyone in a line. Tap it for a little zap.",
 	stats = { { label = "DAMAGE", text = "21", bar = 0.18 }, { label = "FIRE RATE", text = "2.22/s", bar = 0.1 }, { label = "RANGE", text = "120 m", bar = 0.49 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "burst", slot = "primary", name = "Hat Trick", color = "4f8bff", live = true, gimmick = "three at a time. land all three on one person for a BURST!.",
-	desc = "A bullpup that fires three at a time. Land all three on one person for a BURST!. Very accurate, very French.",
+add({ id = "burst", slot = "primary", name = "Burst Rifle", color = "4f8bff", live = true, gimmick = "three at a time. land all three on one person for a BURST!.",
+	desc = "A bullpup that fires three at a time. Land all three on one person for a BURST!. Very accurate.",
 	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "14/s", bar = 0.64 }, { label = "RANGE", text = "320 m", bar = 0.8 }, { label = "MAG", text = "30", bar = 0.5 } } })
-add({ id = "lmg", slot = "primary", name = "Belt Sander", color = "ff5a1f", live = true, gimmick = "a hundred rounds on a belt. slow to aim, slow to walk, and the barrel glows.",
-	desc = "A hundred rounds on a belt you can watch run out. Slow to aim, slow to reload, sands people down. The barrel glows hotter the longer you hold it.",
+add({ id = "lmg", slot = "primary", name = "LMG", color = "ff5a1f", live = true, gimmick = "a hundred rounds on a belt. slow to aim, slow to walk, and the barrel glows.",
+	desc = "A hundred rounds on a belt you can watch run out. Slow to aim, slow to reload. The barrel glows hotter the longer you hold it.",
 	stats = { { label = "DAMAGE", text = "10", bar = 0.08 }, { label = "FIRE RATE", text = "12/s", bar = 0.55 }, { label = "RANGE", text = "260 m", bar = 0.72 }, { label = "MAG", text = "100", bar = 1 } } })
-add({ id = "dmr", slot = "primary", name = "Second Opinion", color = "b07dff", live = true, gimmick = "two to the body or one to the head. quick-scope it for a bit extra.",
+add({ id = "dmr", slot = "primary", name = "Marksman Rifle", color = "b07dff", live = true, gimmick = "two to the body or one to the head. quick-scope it for a bit extra.",
 	desc = "A semi-auto marksman rifle with a little scope. Two to the body or one to the head. Quick-scope it for a bit extra.",
 	stats = { { label = "DAMAGE", text = "52", bar = 0.43 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "RANGE", text = "400 m", bar = 0.89 }, { label = "MAG", text = "10", bar = 0.17 } } })
-add({ id = "lever", slot = "primary", name = "Yeehaw", color = "a58640", live = true, gimmick = "keep hitting the same person and every hit stings more: x1.15, x1.3, x1.45.",
-	desc = "A lever-action you crank after every shot. Keep hitting the same person and every hit stings a bit more. Spin-cocks on reload, obviously.",
+add({ id = "lever", slot = "primary", name = "Lever Rifle", color = "a58640", live = true, gimmick = "keep hitting the same person and every hit stings more: x1.15, x1.3, x1.45.",
+	desc = "A lever-action you crank after every shot. Keep hitting the same person and every hit stings a bit more. Spin-cocks on reload.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "RANGE", text = "280 m", bar = 0.75 }, { label = "MAG", text = "8", bar = 0.13 } } })
-add({ id = "autoshot", slot = "primary", name = "Lawn Mower", color = "4ad66b", live = true, gimmick = "an automatic shotgun. less per shot than the pump, but it never stops.",
-	desc = "An automatic shotgun with a box mag. Less per shot than the pump, but it never stops. Mows lawns. And people.",
+add({ id = "autoshot", slot = "primary", name = "Auto Shotgun", color = "4ad66b", live = true, gimmick = "an automatic shotgun. less per shot than the pump, but it never stops.",
+	desc = "An automatic shotgun with a box mag. Less per shot than the pump, but it never stops.",
 	stats = { { label = "DAMAGE", text = "5 x8", bar = 0.33 }, { label = "FIRE RATE", text = "3/s", bar = 0.14 }, { label = "RANGE", text = "60 m", bar = 0.35 }, { label = "MAG", text = "10", bar = 0.17 } } })
 add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", live = true, gimmick = "six nails in a row pin them to the wall behind them for a second.",
 	desc = "Fires nails, fast. Land six in a row and they are nailed to the wall behind them for a second.",
@@ -92,14 +92,14 @@ add({ id = "marbles", slot = "secondary", name = "Marble Shotgun", color = "7fd0
 add({ id = "revolver", slot = "secondary", name = "Revolver", color = "e0c070", live = true, gimmick = "tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
 	desc = "6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, each shot wilder and weaker than the last. Ricochets off walls twice. A headshot does 96: almost a kill.",
 	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "2.5/s", bar = 0.11 }, { label = "RANGE", text = "250 m", bar = 0.71 }, { label = "MAG", text = "6", bar = 0.1 } } })
-add({ id = "pistol", slot = "secondary", name = "Plan B", color = "a0b4ff", live = true, gimmick = "a plain pistol for when plan A runs dry. out of the holster in a blink.",
-	desc = "A plain pistol for when plan A runs dry. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you're empty.",
+add({ id = "pistol", slot = "secondary", name = "Pistol", color = "a0b4ff", live = true, gimmick = "a plain pistol, out of the holster in a blink. 12 shots.",
+	desc = "A plain pistol. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you're empty.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "5/s", bar = 0.23 }, { label = "RANGE", text = "220 m", bar = 0.66 }, { label = "MAG", text = "12", bar = 0.2 } } })
 add({ id = "akimbo", slot = "secondary", name = "Lefty & Righty", color = "00e5a0", live = false, gimmick = "",
 	desc = "Two machine pistols, one per hand. Left click fires lefty, right click fires righty, hold both to hose. They reload one at a time, so keep one busy.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "9/s", bar = 0.41 }, { label = "RANGE", text = "140 m", bar = 0.53 }, { label = "MAG", text = "40", bar = 0.67 } } })
-add({ id = "sawnoff", slot = "secondary", name = "Half a Shotgun", color = "e05a3a", live = true, gimmick = "two shells. point blank they go flying. shoot the floor for a little hop.",
-	desc = "Somebody sawed a shotgun in half. Two shells, and point blank they go flying. Shoot the floor for a little hop.",
+add({ id = "sawnoff", slot = "secondary", name = "Sawed-Off", color = "e05a3a", live = true, gimmick = "two shells. point blank they go flying. shoot the floor for a little hop.",
+	desc = "A sawed-off double. Two shells, and point blank they go flying. Shoot the floor for a little hop.",
 	stats = { { label = "DAMAGE", text = "9 x12", bar = 0.9 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "32 m", bar = 0.25 }, { label = "MAG", text = "2", bar = 0.03 } } })
 add({ id = "cig", slot = "secondary", name = "Hot Sauce", color = "ff7a1a", live = false, gimmick = "hold to take a swig, let go to breathe fire for as long as you held it. too long and it burns you.",
 	desc = "Hold to take a swig of hot sauce. Let go and you breathe fire for as long as you held it, up to 3.6 seconds. Let go past 3 seconds, or hold past 4.5, and it burns you instead.",

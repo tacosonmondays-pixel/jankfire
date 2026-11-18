@@ -907,7 +907,7 @@ remote("Callout").OnClientEvent:Connect(function(text: unknown)
 	if string.sub(text, 1, 6) == "BURST!" then
 		Sfx.play("ting", nil, 0.8, 1.3)
 		task.delay(0.09, function() Sfx.play("ting", nil, 0.8, 1.6) end)
-	elseif string.sub(text, 1, 6) == "YEEHAW" then
+	elseif string.sub(text, 1, 7) == "CHAIN x" then -- (the Lever Rifle's chain on one person)
 		local mul = tonumber(string.match(text, "x([%d%.]+)")) or 1.15
 		Sfx.play("ting", nil, 0.7, 1 + 0.25 * (mul - 1) / 0.15)
 	elseif text == "QUICK SCOPE" or string.sub(text, 1, 8) == "NO SCOPE" then

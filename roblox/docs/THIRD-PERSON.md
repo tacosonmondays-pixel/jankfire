@@ -32,7 +32,7 @@ Every frame, for every character holding a weapon (players, the training dummies
    avatar's own rig attachments: shoulder, elbow, wrist and the hand's `GripAttachment`. Each hand is turned about the
    handle until the wrist faces its elbow (the first-person rule), the elbows bend toward per-stance pole points. If a
    handguard is beyond an arm's reach, the hand slides back along the gun (at most 0.18 m of the file) until it is
-   reachable. One-handed guns (Plan B, Revolver, Half a Shotgun) leave the left arm to the walk animation.
+   reachable. One-handed guns (Pistol, Revolver, Sawed-Off) leave the left arm to the walk animation.
 5. **Fire.** A kick per shot from the gun's own first-person recoil row (`recoilVM`, x `TP.T.kick`), on springs, about
    the grip; the slide, cylinder and hammer move (`GunParts.shot`); the pump, bolt and lever cycle after a shot.
 6. **Reload.** The gun goes through its first-person reload clip (`Reloads.luau`), its moving pieces move (`GunParts`),
@@ -182,7 +182,7 @@ client and drive the kicks, slashes and throws.
 ## Tuning
 
 All numbers are in `TP.T` at the top of `ThirdPerson.luau`. Distances are in the avatar's arm lengths (`u`), angles in
-radians. Per stance (`rifle`, `heavy` = Belt Sander, `pistol`, `shredder`, `katana`): `twist` / `twistAds`, `waist`,
+radians. Per stance (`rifle`, `heavy` = LMG, `pistol`, `shredder`, `katana`): `twist` / `twistAds`, `waist`,
 `ads` (rear sight from the right eye while aiming), `hip` and `hipRot` (the gun's move from there at the hip), `cheek`,
 `poleR` / `poleL` (where the elbows point).
 
@@ -233,7 +233,7 @@ Measured in Play tests:
 arm pose (`poseStep`: it turned the shoulder joint, and on the owner's avatar the shoulders are AnimationConstraints,
 so the server's gun swung round behind). This work removed that code (v389). Checked again on the owner's own avatar
 in third person (place v397): the Assault Rifle points along the body (0.98 of straight ahead), muzzle 2.9 studs in
-front, both hands exactly on; Plan B 0.85 (the rest is the aim's yaw toward the camera), muzzle in front; the
+front, both hands exactly on; Pistol 0.85 (the rest is the aim's yaw toward the camera), muzzle in front; the
 server's copy of the gun shows 0 visible parts.
 
 **Later tweaks (place v397):** the Wood Chipper Shredder skin gets both hands through a fallback frame (handle to

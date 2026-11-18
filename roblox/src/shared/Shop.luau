@@ -406,7 +406,7 @@ if Shop.SkinSets then
 	end
 end
 
--- what's in a bundle, in plain words: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Plan B."
+-- what's in a bundle, in plain words: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Pistol."
 local function joinWords(list: { string }): string
 	if #list <= 1 then return list[1] or "" end
 	return table.concat(list, ", ", 1, #list - 1) .. " and " .. list[#list]
