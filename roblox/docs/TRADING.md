@@ -146,8 +146,9 @@ stand-in traders with their own saves.
     read the ledger's commit, and finished: it had the skin and not the hat; I had the hat and not the skin.
   - Nothing duplicated, nothing lost. The ledger lookup showed both trades as commits, with both ids and items.
 - **TRADES:** both trades listed, newest first, with what went each way.
-- **Restored afterwards:** my save's things are as before (the hat back, no skin, no crates). The test's restore missed
-  the trade history, so my Studio save still lists the two test trades. It's fixed, and `clearlog` clears it.
+- **Restored afterwards:** my save's things are as before (the hat back, no skin, no crates). The test's restore
+  missed the trade history; it's fixed, and `clearlog` cleared the two test trades from my Studio save (place version
+  1036).
 
 Not tested: two real players, a phone-sized layout, a controller, a worn item coming off (it runs through `Loot.changed`
 like any change of what you own), and the live PolicyService answer for a real account.
