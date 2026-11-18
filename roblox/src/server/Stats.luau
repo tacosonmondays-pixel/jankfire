@@ -91,6 +91,9 @@ local function real(wid: any): boolean
 	local e = if type(wid) == "string" then Roster.byId[wid] else nil
 	return e ~= nil and e.live == true
 end
+-- kills with no roster weapon that still count as kills (18 Nov): the t-bag's blast, and a fall after your grapple. they
+-- go on the kill count, the streak and the xp, not on a weapon row (the card lists the roster's weapons)
+local KILL_ONLY = { tbag = true, grapple = true } :: { [string]: boolean }
 
 -- ------------------------------------------------------------------ the numbers
 local function dataOf(s: State?): any
@@ -210,10 +213,10 @@ local function onKill(info: any)
 	local c = sk.cur :: Cur
 	local wid = if info.w == "void" and type(info.via) == "string" then info.via else info.w
 	if wid == "parry" then wid = "katana" end -- (a parry kill is the parrier's katana: a perfect parry's shot sent back, or a fall after a parry shove)
-	if not real(wid) then lastHit[v] = nil; return end
+	if not real(wid) and not KILL_ONLY[wid] then lastHit[v] = nil; return end
 	dk.k += 1
 	c.k += 1
-	wpn(dk, wid).k += 1
+	if real(wid) then wpn(dk, wid).k += 1 end
 	c.streak += 1
 	if c.streak > (tonumber(dk.best) or 0) then dk.best = c.streak end
 	local lh = lastHit[v]

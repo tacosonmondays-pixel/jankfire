@@ -304,6 +304,8 @@ local W: { [string]: Weapon } = {
 	shredder = { id = "shredder", name = "Shredder", slot = "none", kind = "shredder", color = rgb(0xffb31a), desc = "", dmg = 0, range = 0 },
 	-- the grapple tied to a person (18 Nov): a fall or a hazard soon after is the hooker's kill; this entry only names it
 	grapple = { id = "grapple", name = "Grapple", slot = "none", kind = "grapple", color = rgb(0xc8ccd2), desc = "", dmg = 0, range = 0 },
+	-- the t-bag (18 Nov: 14 crouches in 4 s, your knees explode, TBag.server): its blast's kills and your own death
+	tbag = { id = "tbag", name = "T-Bag", slot = "none", kind = "tbag", color = rgb(0xff8a3a), desc = "", dmg = 0, range = 0 },
 }
 
 local Weapons = {

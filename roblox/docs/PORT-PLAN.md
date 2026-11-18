@@ -1515,6 +1515,26 @@ The owner: "can you do hub v3? its the current one just more spacious one of my 
   - Two-player matches from the pads, phones.
   - No new decoration was added: the bigger room's own pieces (platform, ring, plinths, planters, the gym's ring) fill it.
 
+## 38. A dead body's gun goes with it, 18 November 2026 (place version 753)
+
+The owner: "after you kill someone their gun is still there".
+
+- **The cause:** the server puts the gun a player holds into their body as `HeldWeapon`, welded to the right hand. Every client hides that one and draws its own copy sized to the avatar (`ThirdPerson.luau`). When a body died, `ThirdPerson` let the body go: it dropped its own copy and showed the server's gun again. Nothing removed the server's gun on a death, so it came apart with the body, was flung with it (`Fight.died` throws every part), and stayed for everyone until the body was replaced (the next round, in a round-based match).
+- **The fix** (server, `Fight.luau`): `Fight.died` destroys the victim's `HeldWeapon` (and its hat with it) in the same step as the Health that tells the clients, and puts a Tool in the hand (the Shredder) back in the backpack. `Fight.showWeapon` never builds a gun on a dead fighter (a weapon switch, a zone change or the loadout window after death can't put one back).
+- Replay and finisher copies already strip `HeldWeapon` and the client's gun, and the kill effects don't copy guns: nothing else was left behind.
+- **Tested in Play:** the walking training dummy (katana), a Plinker (gun) and the player in the training room: each one's gun gone at the moment of death, and no gun piece visible on any dead body on the client.
+
+## 39. The T-Bag explosion is back, 18 November 2026 (place version 753)
+
+The owner: "bring back tbagging explosion". Ported from the web (`player.js` crouchTap, `room.js` case 'tbag').
+
+- **The trigger** (`TBag.server.luau`): every crouch press goes to the server (`TBag` remote, `TBag.client`). The server counts them while you're alive: 14 within 4 s and your knees explode. At most 15 presses a second count, 3 s between two blasts, none while sealed in a bubble, in a pop quiz, in a cage, or before a match's round is live (the web's rules).
+- **The warning:** from the 9th press `TBagHeat` (0..1) goes on the player, and every client draws a heat glow (a warm light), sparks and a haze round their legs, with the recorded `fuse_tick` as a looped sizzle, all growing with the heat and gone when it cools. No text.
+- **The blast:** the frag's (Utility's explode(): damage 80 x (0.3 + 0.7 f), a 34 m/s shove + 10 up, out to 6 m, as the web's), mirrored in `TBag.server` because `Utility.luau` had another session's open work; the clients get the same "boom" and draw the frag's explosion, sound and close-up shake. It hurts only who you may hurt (`Fight.allow`: enemies in a live match, the training dummies), the knock through `Fight.knock`. Your own death is "T-Bag" with no killer (an earlier tagger gets no credit, as on the web). In the hub nobody else is touched; you still blow yourself up.
+- **Kill feed:** `Weapons.list.tbag` (a naming-only row) shows "T-Bag".
+- **Stats:** T-Bag kills, and falls after your grapple, now count as kills (count, streak, xp), not as a weapon row (`Stats.luau` only counted roster weapons, so both went uncounted). Coin and quest rewards follow the kills as they do for any kill.
+- **Tested in Play:** 13 presses: the glow and sizzle on, still alive; the presses aged out and it cooled; 14 presses: the blast, a training dummy in range (30 HP left) died credited to the player via "tbag", and the player died, "tbag", no killer. Photo: `docs/tbag/tbag_warning_and_blast_v753.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
