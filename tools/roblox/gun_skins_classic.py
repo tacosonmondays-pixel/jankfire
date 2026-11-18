@@ -615,17 +615,19 @@ def sawnoff_classic():
     for sx in (-1, 1):
         g.cyl('hinge_wzB__blue', R, (sx * BX, BY, -0.311), (sx * BX, BY, -0.14), sides=RS, flat=False, bev=0.002,
               hole=(0.0145, 0.13))
+        # (18 Nov 2026, the hub's flicker scan: the chamber is 12.5 mm round so its floor sits 8.5 mm over the bar's top)
         g.cyl('hinge_wzB__blue', R, (sx * BX, BY, -0.012), (sx * BX, BY, -0.152), sides=RS, flat=False, bev=0.003,
-              hole=(0.0145, 0.07))
-    # the flat rib on top and the one under, the lump under the breech, the bead (node "hinge_trim") on its stem
+              hole=(0.0125, 0.07))
+    # the flat rib on top and the one under, the bead (node "hinge_trim") on its stem. (18 Nov 2026, the hub's flicker
+    # scan: no lump under the breech, it sat inside the bar 6-10 mm off its faces; the under-rib's top is up at 0.014,
+    # hidden between the barrels, so it clears the forend's top by 12 mm)
     g.box('hinge_wzB__blue', (-0.009, 0.009), (0.03, 0.047), (-0.304, -0.014), bev=0.003)
-    g.box('hinge_wzB__blue', (-0.009, 0.009), (-0.012, 0.006), (-0.304, -0.014), bev=0.003)
-    g.box('hinge_wzB__blue', (-0.024, 0.024), (-0.03, -0.0085), (-0.074, -0.016), bev=0.004)
+    g.box('hinge_wzB__blue', (-0.009, 0.009), (-0.012, 0.014), (-0.304, -0.014), bev=0.003)
     SG.bead(g, 'hinge_trim_wzN__brass', -0.29, SY, 0.047, r=0.0035, stem_piece='hinge_wzB__blue', stem_w=0.008, stem_d=0.012)
     # the two shells in the chambers: red hulls, brass heads no wider than the chamber (so no rim lies on the face)
     for sx, n in ((1, 'shell1'), (-1, 'shell2')):
-        g.cylz(n + '_wzN__shell', 0.0135, -0.08, -0.0175, y=BY, x=sx * BX, sides=16, bev=0.002)
-        g.cylz(n + '_wzN__brass', 0.0144, -0.0175, -0.0115, y=BY, x=sx * BX, sides=16, bev=0.0008)
+        g.cylz(n + '_wzN__shell', 0.0115, -0.08, -0.0175, y=BY, x=sx * BX, sides=16, bev=0.002)
+        g.cylz(n + '_wzN__brass', 0.0122, -0.0175, -0.0115, y=BY, x=sx * BX, sides=16, bev=0.0008)
     # the boxlock (coin finish): the bar under the barrels, the standing breech, the rounded fences, two pins
     g.prism('body_wzB__silver', [(-0.084, -0.014), (-0.076, -0.03), (-0.06, -0.036), (0.04, -0.036), (0.06, -0.03),
                                   (0.074, -0.014), (0.076, 0.012), (0.066, 0.026), (0.03, 0.03), (0.014, 0.044),

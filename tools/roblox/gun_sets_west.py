@@ -688,11 +688,13 @@ def _sawnoff(skinid, star):
     # ---- the barrels (node "hinge"), the muzzles (hinge_trim), the shells (shell1 / shell2)
     if not star:
         for sx in (-1, 1):
-            tube(g, 'hinge_wzB__metal', R, -0.012, -0.296, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07))
+            # (18 Nov 2026, the hub's flicker scan: the chamber is 12.5 mm round, its floor 8.5 mm over the bar's top)
+            tube(g, 'hinge_wzB__metal', R, -0.012, -0.296, y=BY, x=sx * BX, bev=0.003, hole=(0.0125, 0.07))
             g.cylz('hinge_trim_wzN__metal2', R + 0.0012, -0.311, -0.293, y=BY, x=sx * BX, sides=8, bev=0.002, hole=(0.0178, 0.014))
             g.cylz('hinge_trim_wzN__black', 0.018, -0.3, -0.296, y=BY, x=sx * BX, sides=8, bev=0)
         g.box('hinge_wzB__metal2', (-0.009, 0.009), (0.028, 0.0445), (-0.296, -0.014), bev=0.003)
-        g.box('hinge_wzB__metal2', (-0.009, 0.009), (-0.012, 0.006), (-0.296, -0.014), bev=0.003)
+        # (the under-rib's top up at 0.014, hidden between the barrels: at 0.006 it lay 6 mm over the forend's top)
+        g.box('hinge_wzB__metal2', (-0.009, 0.009), (-0.012, 0.014), (-0.296, -0.014), bev=0.003)
         g.box('hinge_trim_wzN__brass2', (-0.0025, 0.0025), (0.042, 0.0505), (-0.289, -0.281), bev=0.001)
         from gun_skins_2 import band as hull_band
         g.xprism('hinge_wzN__brass2', hull_band([(-BX, BY, R), (BX, BY, R)], 0.0045), -0.262, -0.246, bev=0.002)
@@ -701,7 +703,7 @@ def _sawnoff(skinid, star):
             t.box(p, (-0.054, 0.054), (-0.012, 0.046), (-0.29, -0.012), bev=0.012)
         def chambers(t, p):
             for sx in (-1, 1):
-                t.cylz(p, 0.0152, -0.085, -0.0105, y=BY, x=sx * BX, sides=16, bev=0.0)
+                t.cylz(p, 0.0125, -0.085, -0.0105, y=BY, x=sx * BX, sides=16, bev=0.0)  # (12.5 mm: the floor 8.5 mm over the bar)
         cut(g, 'hinge_wzA__wood', shroud, chambers)
         for sx in (-1, 1):
             g.ring('hinge_trim_wzN__glow', 0.0188, 0.0135, (sx * BX, BY, -0.3005), (sx * BX, BY, -0.2875), sides=16, bev=0.0015)
@@ -709,10 +711,11 @@ def _sawnoff(skinid, star):
             g.box('hinge_wzN__stripe', tuple(sorted((sx * 0.05, sx * 0.0575))), (0.011, 0.021), (-0.272, -0.118), bev=0.002)
         g.box('hinge_trim_wzN__brass2', (-0.0025, 0.0025), (0.044, 0.0495), (-0.286, -0.278), bev=0.001)
         g.box('hinge_trim_wzN__glow', (-0.0025, 0.0025), (0.0495, 0.0525), (-0.2835, -0.2795), bev=0.0004)
-    g.box('hinge_wzB__%s' % ('metal2' if star else 'metal'), (-0.024, 0.024), (-0.03, -0.004), (-0.074, -0.016), bev=0.004)
+    # (18 Nov 2026, the hub's flicker scan: no lump under the breech any more; it sat inside the action's bar, 4-8 mm
+    # off its faces, and z-fought in players' hands)
     for sx, n in ((1, 'shell1'), (-1, 'shell2')):
-        g.cylz(n + '_wzN__%s' % ('wood' if star else 'red'), 0.0135, -0.08, -0.0135, y=BY, x=sx * BX, sides=8, bev=0.002)
-        g.cylz(n + '_wzN__brass', 0.0152, -0.0135, -0.0115, y=BY, x=sx * BX, sides=8, bev=0.0006)
+        g.cylz(n + '_wzN__%s' % ('wood' if star else 'red'), 0.0115, -0.08, -0.0135, y=BY, x=sx * BX, sides=8, bev=0.002)
+        g.cylz(n + '_wzN__brass', 0.0122, -0.0135, -0.0115, y=BY, x=sx * BX, sides=8, bev=0.0006)
     # ---- the forend and its iron (the hinge group: they tip with the barrels)
     g.prism('forend_wzA__%s' % ('metal2' if star else 'wood'), [(-0.24, 0.0), (-0.098, 0.0), (-0.098, -0.03), (-0.112, -0.04),
                                                               (-0.226, -0.04), (-0.24, -0.028)], 0.088, bev=0.009)

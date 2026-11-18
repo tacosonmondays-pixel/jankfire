@@ -248,20 +248,25 @@ def sawnoff():
         # (the halves overlap 12 mm, so the breech half's end chamfer sits wholly inside the muzzle half: at 2 mm it
         # showed as a seam line round the barrel)
         tube(g, 'hinge_wzB__dark', R, -0.305, -0.14, y=BY, x=sx * BX, bev=0.0, hole=(0.0145, 0.13), sides=RS)
-        tube(g, 'hinge_wzB__dark', R, -0.012, -0.152, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07), sides=RS)
+        # (the chamber is 12.5 mm round, not the bore's 14.5: its floor then sits 8.5 mm over the action bar's top face
+        # under it, not 6.6 mm; 18 Nov 2026, the hub's flicker scan. The shells below are slimmer to match)
+        tube(g, 'hinge_wzB__dark', R, -0.012, -0.152, y=BY, x=sx * BX, bev=0.003, hole=(0.0125, 0.07), sides=RS)
         g.ring('hinge_trim_wzN__steel', R, 0.0145, (sx * BX, BY, -0.311), (sx * BX, BY, -0.305), sides=RS, bev=0.0008)
     # the rib on top (and under) between the barrels, the bead, the lump under the breech
     g.box('hinge_wzB__frame', (-0.009, 0.009), (0.028, 0.0445), (-0.296, -0.014), bev=0.003)
-    g.box('hinge_wzB__frame', (-0.009, 0.009), (-0.012, 0.006), (-0.296, -0.014), bev=0.003)
+    # (the under-rib's top is up at 0.014, hidden between the barrels: at 0.006 it lay 6 mm over the forend's top)
+    g.box('hinge_wzB__frame', (-0.009, 0.009), (-0.012, 0.014), (-0.296, -0.014), bev=0.003)
     # the front sight (slim sights, 16 Nov 2026): a solid tapered blade on the rib at the muzzle, the brass bead on it
     # centred on the aim line (both ride on the hinge: they break open with the barrels)
     SG.bead(g, 'hinge_trim_wzN__brass', -0.284, g.spots['sight'][1], 0.0445, r=0.0035, stem_piece='hinge_wzB__frame',
             stem_w=0.008, stem_d=0.012)
-    g.box('hinge_wzB__dark', (-0.024, 0.024), (-0.03, -0.004), (-0.074, -0.016), bev=0.004)
+    # (no lump under the breech any more, 18 Nov 2026, the hub's flicker scan: it sat wholly inside the action's bar
+    # when the gun is shut, its top and bottom 4-7 mm off the bar's own faces, and z-fought in players' hands; a
+    # slimmer one could only clear them by 8 mm. Opened, the under-rib still shows under the barrels)
     # the two shells, in the chambers: their rims sit on the breech face
     for sx, n in ((1, 'shell1'), (-1, 'shell2')):
-        g.cylz(n + '_wzN__shell', 0.0135, -0.08, -0.0135, y=BY, x=sx * BX, sides=16, bev=0.002)
-        g.cylz(n + '_wzN__brass', 0.0152, -0.0135, -0.0115, y=BY, x=sx * BX, sides=16, bev=0.0006)
+        g.cylz(n + '_wzN__shell', 0.0115, -0.08, -0.0135, y=BY, x=sx * BX, sides=16, bev=0.002)
+        g.cylz(n + '_wzN__brass', 0.0135, -0.0135, -0.0115, y=BY, x=sx * BX, sides=16, bev=0.0006)
     # the action (charcoal): the bar and knuckle under the barrels, the standing breech, the rounded fences
     g.prism('body_wzB__frame', [(-0.084, -0.016), (-0.074, -0.034), (0.05, -0.034), (0.072, -0.018), (0.072, 0.022),
                                  (0.03, 0.03), (0.014, 0.044), (-0.012, 0.044), (-0.012, -0.004), (-0.084, -0.004)], 0.08, bev=0.007)
