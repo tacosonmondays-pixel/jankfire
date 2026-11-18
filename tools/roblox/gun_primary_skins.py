@@ -176,14 +176,14 @@ def cart_basket():
     g = reskin(E.BUILD['cart'], 'cart@cart_basket',
                {'body': 'b23b36', 'frame': '3a3c42', 'violet': 'b23b36', 'deck': '8a2e2a', 'hub': '8e949d'},
                drop=('handle',))
-    # two black arched basket handles over the mouth, hinged at the sides
+    # two black arched basket handles over the mouth (smooth half rings, sdf), hinged at the sides
+    import sdf_kit as S
+    from gun_secondary_skins import oval_ring
     for z in (-0.47, -0.33):
-        arc = []
-        for k in range(13):
-            a = math.pi * k / 12
-            arc.append((0.122 * math.cos(a), 0.085 + 0.12 * math.sin(a), z))
-        for p0, p1 in zip(arc, arc[1:]):
-            g.put('basket_wzN__black', capsule(0.0085, p0, p1, seg=10, rings=4))
+        arc = oval_ring((0.0, 0.085, z), 0.122, 0.12, 0.0085, plane='xy', keep=S.half((0, -1, 0), -0.083))
+        g.pieces.setdefault(('basket_wzN', 'black'), bmesh.new())
+        me = bpy.data.meshes.new('arc'); S.mesh(arc, (-0.14, 0.07, z - 0.012), (0.14, 0.215, z + 0.012), h=0.0012, tris=500, name='arc').to_mesh(me)
+        g.pieces[('basket_wzN', 'black')].from_mesh(me); bpy.data.meshes.remove(me)
         for s in (-1, 1):
             g.put('basket_wzN__black', soft(cyl(0.016, (s * 0.104, 0.085, z), (s * 0.145, 0.085, z), sides=14), 0.003, seg=1))
     g.hat = ((0.0, 0.205, -0.4), 0.14)

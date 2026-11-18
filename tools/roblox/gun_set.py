@@ -269,7 +269,11 @@ for _part in (('gun_skins_1', 'gun_skins_2', 'gun_skins_3', 'gun_sets', 'gun_set
               # (the knife's ten loot skins that had no model, 18 Nov)
               'gun_knife_skins',
               # (the primaries' loot skins that had no model, batch 2, 18 Nov)
-              'gun_primary_skins')
+              'gun_primary_skins',
+              # (the secondaries' loot skins that had no model, batch 3, 18 Nov)
+              'gun_secondary_skins',
+              # (the melee loot skins that had no model, batch 4, 18 Nov)
+              'gun_melee_skins')
               # (work in progress, built only when named: JF_EXTRA=gun_sets_japan2,gun_sets_west,gun_sets_angel2)
               + tuple(x for x in os.environ.get('JF_EXTRA', '').split(',') if x)):
     try:

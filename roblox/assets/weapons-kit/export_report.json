@@ -93432,7 +93432,7 @@
    {
     "name": "basket_wzN__black",
     "upload": "basket_wzN__black__p16171b",
-    "tris": 1872,
+    "tris": 1432,
     "look": {
      "color": "16171b",
      "metal": 0.0,
@@ -93448,7 +93448,7 @@
     ],
     "hi": [
      0.145,
-     0.211,
+     0.2135,
      -0.3144
     ],
     "paint": "p16171b"
@@ -93526,30 +93526,6 @@
     "paint": "p353840"
    },
    {
-    "name": "bore_wzN__dark",
-    "upload": "bore_wzN__dark__p353840",
-    "tris": 192,
-    "look": {
-     "color": "353840",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.126,
-     -0.126,
-     -0.66
-    ],
-    "hi": [
-     0.126,
-     0.126,
-     -0.42
-    ],
-    "paint": "p353840"
-   },
-   {
     "name": "bore_wzN__black",
     "upload": "bore_wzN__black__p16171b",
     "tris": 14,
@@ -93572,6 +93548,30 @@
      -0.42
     ],
     "paint": "p16171b"
+   },
+   {
+    "name": "bore_wzN__dark",
+    "upload": "bore_wzN__dark__p353840",
+    "tris": 192,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.126,
+     -0.126,
+     -0.66
+    ],
+    "hi": [
+     0.126,
+     0.126,
+     -0.42
+    ],
+    "paint": "p353840"
    },
    {
     "name": "castor_wzB__frame",
@@ -93598,30 +93598,6 @@
     "paint": "p3a3c42"
    },
    {
-    "name": "castor_wzN__steel",
-    "upload": "castor_wzN__steel__pb5bbc4",
-    "tris": 64,
-    "look": {
-     "color": "b5bbc4",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0699,
-     -0.1946,
-     -0.5425
-    ],
-    "hi": [
-     0.0699,
-     -0.1696,
-     -0.5175
-    ],
-    "paint": "pb5bbc4"
-   },
-   {
     "name": "castor_wzN__black",
     "upload": "castor_wzN__black__p16171b",
     "tris": 448,
@@ -93644,6 +93620,30 @@
      -0.5
     ],
     "paint": "p16171b"
+   },
+   {
+    "name": "castor_wzN__steel",
+    "upload": "castor_wzN__steel__pb5bbc4",
+    "tris": 64,
+    "look": {
+     "color": "b5bbc4",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0699,
+     -0.1946,
+     -0.5425
+    ],
+    "hi": [
+     0.0699,
+     -0.1696,
+     -0.5175
+    ],
+    "paint": "pb5bbc4"
    },
    {
     "name": "fore_wzB__black",
@@ -93718,78 +93718,6 @@
     "paint": "p16171b"
    },
    {
-    "name": "load_wzN__violet",
-    "upload": "load_wzN__violet__pb23b36",
-    "tris": 92,
-    "look": {
-     "color": "b23b36",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0495,
-     0.0525,
-     -0.74
-    ],
-    "hi": [
-     0.0495,
-     0.081,
-     -0.5793
-    ],
-    "paint": "pb23b36"
-   },
-   {
-    "name": "load_wzN__hub",
-    "upload": "load_wzN__hub__p8e949d",
-    "tris": 352,
-    "look": {
-     "color": "8e949d",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0428,
-     -0.0941,
-     -0.7259
-    ],
-    "hi": [
-     0.0428,
-     -0.0732,
-     -0.5976
-    ],
-    "paint": "p8e949d"
-   },
-   {
-    "name": "load_wzN__black",
-    "upload": "load_wzN__black__p16171b",
-    "tris": 240,
-    "look": {
-     "color": "16171b",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0416,
-     -0.0959,
-     -0.7277
-    ],
-    "hi": [
-     0.0416,
-     -0.0714,
-     -0.5959
-    ],
-    "paint": "p16171b"
-   },
-   {
     "name": "load_wzN__body",
     "upload": "load_wzN__body__pb23b36",
     "tris": 325,
@@ -93812,30 +93740,6 @@
      -0.6018
     ],
     "paint": "pb23b36"
-   },
-   {
-    "name": "load_wzN__deck",
-    "upload": "load_wzN__deck__p8a2e2a",
-    "tris": 10,
-    "look": {
-     "color": "8a2e2a",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0395,
-     -0.0171,
-     -0.7158
-    ],
-    "hi": [
-     0.0395,
-     -0.0171,
-     -0.6093
-    ],
-    "paint": "p8a2e2a"
    },
    {
     "name": "load_wzN__frame",
@@ -93862,6 +93766,102 @@
     "paint": "p3a3c42"
    },
    {
+    "name": "load_wzN__hub",
+    "upload": "load_wzN__hub__p8e949d",
+    "tris": 352,
+    "look": {
+     "color": "8e949d",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0428,
+     -0.0941,
+     -0.7259
+    ],
+    "hi": [
+     0.0428,
+     -0.0732,
+     -0.5976
+    ],
+    "paint": "p8e949d"
+   },
+   {
+    "name": "load_wzN__deck",
+    "upload": "load_wzN__deck__p8a2e2a",
+    "tris": 10,
+    "look": {
+     "color": "8a2e2a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0395,
+     -0.0171,
+     -0.7158
+    ],
+    "hi": [
+     0.0395,
+     -0.0171,
+     -0.6093
+    ],
+    "paint": "p8a2e2a"
+   },
+   {
+    "name": "load_wzN__black",
+    "upload": "load_wzN__black__p16171b",
+    "tris": 240,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0416,
+     -0.0959,
+     -0.7277
+    ],
+    "hi": [
+     0.0416,
+     -0.0714,
+     -0.5959
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "load_wzN__violet",
+    "upload": "load_wzN__violet__pb23b36",
+    "tris": 92,
+    "look": {
+     "color": "b23b36",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0495,
+     0.0525,
+     -0.74
+    ],
+    "hi": [
+     0.0495,
+     0.081,
+     -0.5793
+    ],
+    "paint": "pb23b36"
+   },
+   {
     "name": "trigger_wzN__steel",
     "upload": "trigger_wzN__steel__pb5bbc4",
     "tris": 44,
@@ -93886,7 +93886,7 @@
     "paint": "pb5bbc4"
    }
   ],
-  "tris": 9088,
+  "tris": 8648,
   "lo": [
    -0.145,
    -0.221,
@@ -93894,10 +93894,10 @@
   ],
   "hi": [
    0.145,
-   0.211,
+   0.2135,
    0.0754
   ],
-  "bytes": 569372,
+  "bytes": 524344,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -93910,7 +93910,7 @@
    ],
    "hi": [
     0.145,
-    0.211,
+    0.2135,
     0.0754
    ],
    "spots": {
@@ -95440,6 +95440,5111 @@
     "turned": false
    },
    "trigger_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_taser@taser_zapper": {
+  "pieces": [
+   {
+    "name": "batt_wzB__frame",
+    "upload": "batt_wzB__frame__p444851",
+    "tris": 108,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.023,
+     -0.1487,
+     0.0515
+    ],
+    "hi": [
+     0.023,
+     -0.1223,
+     0.1039
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "body_wzA__body",
+    "upload": "body_wzA__body__pd8d6cf",
+    "tris": 504,
+    "look": {
+     "color": "d8d6cf",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.025,
+     -0.03,
+     -0.112
+    ],
+    "hi": [
+     0.025,
+     0.054,
+     0.098
+    ],
+    "paint": "pd8d6cf"
+   },
+   {
+    "name": "body_wzN__dark",
+    "upload": "body_wzN__dark__p353840",
+    "tris": 44,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.021,
+     0.01,
+     -0.0254
+    ],
+    "hi": [
+     0.021,
+     0.04,
+     0.072
+    ],
+    "paint": "p353840"
+   },
+   {
+    "name": "cart_wzB__frame",
+    "upload": "cart_wzB__frame__p444851",
+    "tris": 284,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.028,
+     -0.036,
+     -0.168
+    ],
+    "hi": [
+     0.028,
+     0.047,
+     -0.104
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "cart_wzN__steel",
+    "upload": "cart_wzN__steel__pb5bbc4",
+    "tris": 376,
+    "look": {
+     "color": "b5bbc4",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0238,
+     0.0027,
+     -0.1745
+    ],
+    "hi": [
+     0.0238,
+     0.0213,
+     -0.162
+    ],
+    "paint": "pb5bbc4"
+   },
+   {
+    "name": "cart_wzN__body",
+    "upload": "cart_wzN__body__pd8d6cf",
+    "tris": 576,
+    "look": {
+     "color": "d8d6cf",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0305,
+     -0.0385,
+     -0.159
+    ],
+    "hi": [
+     0.0305,
+     0.0495,
+     -0.15
+    ],
+    "paint": "pd8d6cf"
+   },
+   {
+    "name": "grip_wzA__body",
+    "upload": "grip_wzA__body__pd8d6cf",
+    "tris": 216,
+    "look": {
+     "color": "d8d6cf",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.019,
+     -0.1339,
+     0.027
+    ],
+    "hi": [
+     0.019,
+     -0.0141,
+     0.097
+    ],
+    "paint": "pd8d6cf"
+   },
+   {
+    "name": "grip_wzN__black",
+    "upload": "grip_wzN__black__p16171b",
+    "tris": 4,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0155,
+     -0.1162,
+     0.041
+    ],
+    "hi": [
+     0.0155,
+     -0.0415,
+     0.0855
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "guard_wzB__frame",
+    "upload": "guard_wzB__frame__p444851",
+    "tris": 308,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.006,
+     -0.07,
+     -0.032
+    ],
+    "hi": [
+     0.006,
+     -0.0265,
+     0.0395
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "led_wzN__glow",
+    "upload": "led_wzN__glow__n8a7dff",
+    "tris": 44,
+    "look": {
+     "color": "8a7dff",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 2.0,
+     "alpha": 1.0,
+     "tex": false,
+     "glowColor": "8a7dff"
+    },
+    "lo": [
+     -0.007,
+     0.021,
+     0.095
+    ],
+    "hi": [
+     0.007,
+     0.03,
+     0.1005
+    ],
+    "paint": "n8a7dff"
+   },
+   {
+    "name": "lower_wzB__frame",
+    "upload": "lower_wzB__frame__p444851",
+    "tris": 284,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.022,
+     -0.032,
+     -0.05
+    ],
+    "hi": [
+     0.022,
+     -0.006,
+     0.07
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "prong_wzN__steel",
+    "upload": "prong_wzN__steel__pb5bbc4",
+    "tris": 144,
+    "look": {
+     "color": "b5bbc4",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0185,
+     0.008,
+     -0.199
+    ],
+    "hi": [
+     0.0185,
+     0.016,
+     -0.164
+    ],
+    "paint": "pb5bbc4"
+   },
+   {
+    "name": "racket_wzB__ring",
+    "upload": "racket_wzB__ring__p3a3d44",
+    "tris": 1020,
+    "look": {
+     "color": "3a3d44",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0062,
+     -0.046,
+     -0.3403
+    ],
+    "hi": [
+     0.0062,
+     0.0702,
+     -0.16
+    ],
+    "paint": "p3a3d44"
+   },
+   {
+    "name": "sight_wzN__frame",
+    "upload": "sight_wzN__frame__p444851",
+    "tris": 148,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.015,
+     0.053,
+     -0.099
+    ],
+    "hi": [
+     0.015,
+     0.066,
+     0.087
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "trigger_wzN__steel",
+    "upload": "trigger_wzN__steel__pb5bbc4",
+    "tris": 44,
+    "look": {
+     "color": "b5bbc4",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0045,
+     -0.052,
+     -0.0089
+    ],
+    "hi": [
+     0.0045,
+     -0.028,
+     0.0018
+    ],
+    "paint": "pb5bbc4"
+   },
+   {
+    "name": "wire_wzN__lit",
+    "upload": "wire_wzN__lit__n9a8cff",
+    "tris": 96,
+    "look": {
+     "color": "9a8cff",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 2.0,
+     "alpha": 1.0,
+     "tex": false,
+     "glowColor": "9a8cff"
+    },
+    "lo": [
+     -0.0011,
+     -0.0151,
+     -0.33
+    ],
+    "hi": [
+     0.0011,
+     0.0391,
+     -0.194
+    ],
+    "paint": "n9a8cff"
+   }
+  ],
+  "tris": 4200,
+  "lo": [
+   -0.0305,
+   -0.1487,
+   -0.3403
+  ],
+  "hi": [
+   0.0305,
+   0.0702,
+   0.1039
+  ],
+  "bytes": 241780,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "taser@taser_zapper",
+   "set": "kit",
+   "lo": [
+    -0.0305,
+    -0.1487,
+    -0.3403
+   ],
+   "hi": [
+    0.0305,
+    0.0702,
+    0.1039
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.012,
+     -0.172
+    ],
+    "sight": [
+     0.0,
+     0.066,
+     0.093
+    ],
+    "grip": [
+     0.0,
+     -0.068,
+     0.06
+    ],
+    "hat": [
+     0.0,
+     0.054,
+     -0.004
+    ]
+   },
+   "pivots": {
+    "led": [
+     0.0,
+     0.0255,
+     0.1005
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.054,
+     -0.004
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "batt_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "cart_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "cart_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "guard_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "led_wzN": {
+    "at": [
+     0.0,
+     0.0255,
+     0.1005
+    ],
+    "turned": false
+   },
+   "lower_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "prong_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "racket_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sight_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "trigger_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "wire_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_water@water_flower": {
+  "pieces": [
+   {
+    "name": "body_wzA__body",
+    "upload": "body_wzA__body__p9fb79a",
+    "tris": 1856,
+    "look": {
+     "color": "9fb79a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.028,
+     -0.053,
+     -0.266
+    ],
+    "hi": [
+     0.028,
+     0.12,
+     0.1512
+    ],
+    "paint": "p9fb79a"
+   },
+   {
+    "name": "body_wzN__frame",
+    "upload": "body_wzN__frame__p444851",
+    "tris": 256,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0302,
+     -0.024,
+     -0.105
+    ],
+    "hi": [
+     0.0302,
+     0.104,
+     0.122
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "flower_wzN__petal",
+    "upload": "flower_wzN__petal__pf4f1ea",
+    "tris": 2146,
+    "look": {
+     "color": "f4f1ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0702,
+     -0.0573,
+     -0.273
+    ],
+    "hi": [
+     0.0708,
+     0.0773,
+     -0.263
+    ],
+    "paint": "pf4f1ea"
+   },
+   {
+    "name": "flower_wzN__heart",
+    "upload": "flower_wzN__heart__pe8c24a",
+    "tris": 1134,
+    "look": {
+     "color": "e8c24a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0274,
+     -0.0173,
+     -0.2832
+    ],
+    "hi": [
+     0.0277,
+     0.0374,
+     -0.2608
+    ],
+    "paint": "pe8c24a"
+   },
+   {
+    "name": "grip_wzB__frame",
+    "upload": "grip_wzB__frame__p444851",
+    "tris": 696,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.026,
+     -0.1568,
+     0.0523
+    ],
+    "hi": [
+     0.026,
+     -0.03,
+     0.1553
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "guard_wzB__frame",
+    "upload": "guard_wzB__frame__p444851",
+    "tris": 428,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.008,
+     -0.088,
+     -0.036
+    ],
+    "hi": [
+     0.008,
+     -0.0279,
+     0.058
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "nozzle_wzN__black",
+    "upload": "nozzle_wzN__black__p16171b",
+    "tris": 44,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.004,
+     0.006,
+     -0.286
+    ],
+    "hi": [
+     0.004,
+     0.014,
+     -0.281
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "nozzle_wzN__accent",
+    "upload": "nozzle_wzN__accent__pd27a95",
+    "tris": 740,
+    "look": {
+     "color": "d27a95",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.029,
+     -0.019,
+     -0.29
+    ],
+    "hi": [
+     0.029,
+     0.039,
+     -0.228
+    ],
+    "paint": "pd27a95"
+   },
+   {
+    "name": "pump_wzB__accent",
+    "upload": "pump_wzB__accent__pd27a95",
+    "tris": 2516,
+    "look": {
+     "color": "d27a95",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.024,
+     -0.066,
+     -0.248
+    ],
+    "hi": [
+     0.024,
+     -0.018,
+     -0.1644
+    ],
+    "paint": "pd27a95"
+   },
+   {
+    "name": "sight_wzN__frame",
+    "upload": "sight_wzN__frame__p444851",
+    "tris": 148,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.015,
+     0.118,
+     -0.2
+    ],
+    "hi": [
+     0.015,
+     0.136,
+     0.086
+    ],
+    "paint": "p444851"
+   },
+   {
+    "name": "tank_wzB__accent",
+    "upload": "tank_wzB__accent__pd27a95",
+    "tris": 756,
+    "look": {
+     "color": "d27a95",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.038,
+     0.043,
+     -0.205
+    ],
+    "hi": [
+     0.038,
+     0.127,
+     0.05
+    ],
+    "paint": "pd27a95"
+   },
+   {
+    "name": "tank_wzN__glass",
+    "upload": "tank_wzN__glass__gd3e4ee47",
+    "tris": 192,
+    "look": {
+     "color": "d3e4ee",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 0.28,
+     "tex": false
+    },
+    "lo": [
+     -0.034,
+     0.047,
+     -0.19
+    ],
+    "hi": [
+     0.034,
+     0.117,
+     0.035
+    ],
+    "paint": "gd3e4ee47"
+   },
+   {
+    "name": "trigger_wzN__accent",
+    "upload": "trigger_wzN__accent__pd27a95",
+    "tris": 292,
+    "look": {
+     "color": "d27a95",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.005,
+     -0.068,
+     0.0036
+    ],
+    "hi": [
+     0.005,
+     -0.03,
+     0.0197
+    ],
+    "paint": "pd27a95"
+   },
+   {
+    "name": "water_wzN__water",
+    "upload": "water_wzN__water__p4a98cc",
+    "tris": 92,
+    "look": {
+     "color": "4a98cc",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0285,
+     0.0545,
+     -0.181
+    ],
+    "hi": [
+     0.0285,
+     0.104,
+     0.026
+    ],
+    "paint": "p4a98cc"
+   }
+  ],
+  "tris": 11296,
+  "lo": [
+   -0.0702,
+   -0.1568,
+   -0.29
+  ],
+  "hi": [
+   0.0708,
+   0.136,
+   0.1553
+  ],
+  "bytes": 539096,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "water@water_flower",
+   "set": "kit",
+   "lo": [
+    -0.0702,
+    -0.1568,
+    -0.29
+   ],
+   "hi": [
+    0.0708,
+    0.136,
+    0.1553
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.01,
+     -0.29
+    ],
+    "sight": [
+     0.0,
+     0.136,
+     0.09
+    ],
+    "grip": [
+     0.0,
+     -0.09,
+     0.108
+    ],
+    "hat": [
+     0.0,
+     0.12,
+     0.115
+    ]
+   },
+   "pivots": {
+    "water": [
+     0.0,
+     0.0545,
+     -0.0775
+    ],
+    "pump": [
+     0.0,
+     -0.042,
+     -0.2085
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.12,
+     0.115
+    ],
+    0.05
+   ],
+   "hat_size": 0.05
+  },
+  "nodes": {
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "flower_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "guard_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "nozzle_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pump_wzB": {
+    "at": [
+     0.0,
+     -0.042,
+     -0.2085
+    ],
+    "turned": false
+   },
+   "sight_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "tank_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "tank_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "trigger_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "water_wzN": {
+    "at": [
+     0.0,
+     0.0545,
+     -0.0775
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_water@water_hose": {
+  "pieces": [
+   {
+    "name": "body_wzA__body",
+    "upload": "body_wzA__body__p3f6e48",
+    "tris": 1856,
+    "look": {
+     "color": "3f6e48",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.028,
+     -0.053,
+     -0.266
+    ],
+    "hi": [
+     0.028,
+     0.12,
+     0.1512
+    ],
+    "paint": "p3f6e48"
+   },
+   {
+    "name": "body_wzN__frame",
+    "upload": "body_wzN__frame__p2f3237",
+    "tris": 256,
+    "look": {
+     "color": "2f3237",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0302,
+     -0.024,
+     -0.105
+    ],
+    "hi": [
+     0.0302,
+     0.104,
+     0.122
+    ],
+    "paint": "p2f3237"
+   },
+   {
+    "name": "grip_wzB__frame",
+    "upload": "grip_wzB__frame__p2f3237",
+    "tris": 696,
+    "look": {
+     "color": "2f3237",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.026,
+     -0.1568,
+     0.0523
+    ],
+    "hi": [
+     0.026,
+     -0.03,
+     0.1553
+    ],
+    "paint": "p2f3237"
+   },
+   {
+    "name": "guard_wzB__frame",
+    "upload": "guard_wzB__frame__p2f3237",
+    "tris": 428,
+    "look": {
+     "color": "2f3237",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.008,
+     -0.088,
+     -0.036
+    ],
+    "hi": [
+     0.008,
+     -0.0279,
+     0.058
+    ],
+    "paint": "p2f3237"
+   },
+   {
+    "name": "hose_wzN__hose",
+    "upload": "hose_wzN__hose__p2f5a38",
+    "tris": 3360,
+    "look": {
+     "color": "2f5a38",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0125,
+     -0.2521,
+     0.0976
+    ],
+    "hi": [
+     0.0385,
+     -0.1567,
+     0.2794
+    ],
+    "paint": "p2f5a38"
+   },
+   {
+    "name": "hose_wzN__accent",
+    "upload": "hose_wzN__accent__pb8924a",
+    "tris": 140,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0167,
+     -0.1771,
+     0.0887
+    ],
+    "hi": [
+     0.0167,
+     -0.1449,
+     0.1273
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "nozzle_wzN__black",
+    "upload": "nozzle_wzN__black__p16171b",
+    "tris": 44,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.004,
+     0.006,
+     -0.286
+    ],
+    "hi": [
+     0.004,
+     0.014,
+     -0.281
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "nozzle_wzN__accent",
+    "upload": "nozzle_wzN__accent__pb8924a",
+    "tris": 740,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.029,
+     -0.019,
+     -0.29
+    ],
+    "hi": [
+     0.029,
+     0.039,
+     -0.228
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "pump_wzB__accent",
+    "upload": "pump_wzB__accent__pb8924a",
+    "tris": 2516,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.024,
+     -0.066,
+     -0.248
+    ],
+    "hi": [
+     0.024,
+     -0.018,
+     -0.1644
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "sight_wzN__frame",
+    "upload": "sight_wzN__frame__p2f3237",
+    "tris": 148,
+    "look": {
+     "color": "2f3237",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.015,
+     0.118,
+     -0.2
+    ],
+    "hi": [
+     0.015,
+     0.136,
+     0.086
+    ],
+    "paint": "p2f3237"
+   },
+   {
+    "name": "tank_wzB__accent",
+    "upload": "tank_wzB__accent__pb8924a",
+    "tris": 756,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.038,
+     0.043,
+     -0.205
+    ],
+    "hi": [
+     0.038,
+     0.127,
+     0.05
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "tank_wzN__glass",
+    "upload": "tank_wzN__glass__gd3e4ee47",
+    "tris": 192,
+    "look": {
+     "color": "d3e4ee",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 0.28,
+     "tex": false
+    },
+    "lo": [
+     -0.034,
+     0.047,
+     -0.19
+    ],
+    "hi": [
+     0.034,
+     0.117,
+     0.035
+    ],
+    "paint": "gd3e4ee47"
+   },
+   {
+    "name": "trigger_wzN__accent",
+    "upload": "trigger_wzN__accent__pb8924a",
+    "tris": 292,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.005,
+     -0.068,
+     0.0036
+    ],
+    "hi": [
+     0.005,
+     -0.03,
+     0.0197
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "water_wzN__water",
+    "upload": "water_wzN__water__p4a98cc",
+    "tris": 92,
+    "look": {
+     "color": "4a98cc",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0285,
+     0.0545,
+     -0.181
+    ],
+    "hi": [
+     0.0285,
+     0.104,
+     0.026
+    ],
+    "paint": "p4a98cc"
+   }
+  ],
+  "tris": 11516,
+  "lo": [
+   -0.038,
+   -0.2521,
+   -0.29
+  ],
+  "hi": [
+   0.0385,
+   0.136,
+   0.2794
+  ],
+  "bytes": 608720,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "water@water_hose",
+   "set": "kit",
+   "lo": [
+    -0.038,
+    -0.2521,
+    -0.29
+   ],
+   "hi": [
+    0.0385,
+    0.136,
+    0.2794
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.01,
+     -0.29
+    ],
+    "sight": [
+     0.0,
+     0.136,
+     0.09
+    ],
+    "grip": [
+     0.0,
+     -0.09,
+     0.108
+    ],
+    "hat": [
+     0.0,
+     0.12,
+     0.115
+    ]
+   },
+   "pivots": {
+    "water": [
+     0.0,
+     0.0545,
+     -0.0775
+    ],
+    "pump": [
+     0.0,
+     -0.042,
+     -0.2085
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.12,
+     0.115
+    ],
+    0.05
+   ],
+   "hat_size": 0.05
+  },
+  "nodes": {
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "guard_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hose_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "nozzle_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pump_wzB": {
+    "at": [
+     0.0,
+     -0.042,
+     -0.2085
+    ],
+    "turned": false
+   },
+   "sight_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "tank_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "tank_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "trigger_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "water_wzN": {
+    "at": [
+     0.0,
+     0.0545,
+     -0.0775
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_cards@cards_business": {
+  "pieces": [
+   {
+    "name": "case_wzN__case",
+    "upload": "case_wzN__case__pc3c9d1",
+    "tris": 348,
+    "look": {
+     "color": "c3c9d1",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.051,
+     0.036,
+     -0.0225
+    ],
+    "hi": [
+     0.051,
+     0.104,
+     -0.002
+    ],
+    "paint": "pc3c9d1"
+   },
+   {
+    "name": "deck_wzA__back",
+    "upload": "deck_wzA__back__p3e4b5f",
+    "tris": 204,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0392,
+     0.0488,
+     -0.0156
+    ],
+    "hi": [
+     0.0392,
+     0.1672,
+     -0.0149
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "deck_wzN__card",
+    "upload": "deck_wzN__card__pf2f0ea",
+    "tris": 800,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.045,
+     0.043,
+     -0.0156
+    ],
+    "hi": [
+     0.045,
+     0.173,
+     -0.0
+    ],
+    "paint": "pf2f0ea"
+   },
+   {
+    "name": "fan1_wzA__back",
+    "upload": "fan1_wzA__back__p3e4b5f",
+    "tris": 310,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1035,
+     0.0067,
+     0.0115
+    ],
+    "hi": [
+     0.0268,
+     0.1562,
+     0.0122
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "fan1_wzN__card",
+    "upload": "fan1_wzN__card__pf2f0ea",
+    "tris": 214,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1039,
+     0.0063,
+     0.0115
+    ],
+    "hi": [
+     0.0272,
+     0.1566,
+     0.0141
+    ],
+    "paint": "pf2f0ea"
+   },
+   {
+    "name": "fan2_wzA__back",
+    "upload": "fan2_wzA__back__p3e4b5f",
+    "tris": 310,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0755,
+     0.0168,
+     0.0087
+    ],
+    "hi": [
+     0.0362,
+     0.1588,
+     0.0094
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "fan2_wzN__card",
+    "upload": "fan2_wzN__card__pf2f0ea",
+    "tris": 214,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0759,
+     0.0164,
+     0.0087
+    ],
+    "hi": [
+     0.0366,
+     0.1592,
+     0.0113
+    ],
+    "paint": "pf2f0ea"
+   },
+   {
+    "name": "fan3_wzA__back",
+    "upload": "fan3_wzA__back__p3e4b5f",
+    "tris": 310,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0446,
+     0.0254,
+     0.0059
+    ],
+    "hi": [
+     0.0446,
+     0.1546,
+     0.0066
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "fan3_wzN__card",
+    "upload": "fan3_wzN__card__pf2f0ea",
+    "tris": 214,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.045,
+     0.025,
+     0.0059
+    ],
+    "hi": [
+     0.045,
+     0.155,
+     0.0085
+    ],
+    "paint": "pf2f0ea"
+   },
+   {
+    "name": "fan4_wzA__back",
+    "upload": "fan4_wzA__back__p3e4b5f",
+    "tris": 310,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0362,
+     0.0168,
+     0.0031
+    ],
+    "hi": [
+     0.0755,
+     0.1588,
+     0.0038
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "fan4_wzN__card",
+    "upload": "fan4_wzN__card__pf2f0ea",
+    "tris": 214,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0366,
+     0.0164,
+     0.0031
+    ],
+    "hi": [
+     0.0759,
+     0.1592,
+     0.0057
+    ],
+    "paint": "pf2f0ea"
+   },
+   {
+    "name": "fan5_wzA__back",
+    "upload": "fan5_wzA__back__p3e4b5f",
+    "tris": 310,
+    "look": {
+     "color": "3e4b5f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0268,
+     0.0067,
+     0.0003
+    ],
+    "hi": [
+     0.1035,
+     0.1562,
+     0.001
+    ],
+    "paint": "p3e4b5f"
+   },
+   {
+    "name": "fan5_wzN__card",
+    "upload": "fan5_wzN__card__pf2f0ea",
+    "tris": 214,
+    "look": {
+     "color": "f2f0ea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0272,
+     0.0063,
+     0.0003
+    ],
+    "hi": [
+     0.1039,
+     0.1566,
+     0.0029
+    ],
+    "paint": "pf2f0ea"
+   }
+  ],
+  "tris": 3972,
+  "lo": [
+   -0.1039,
+   0.0063,
+   -0.0225
+  ],
+  "hi": [
+   0.1039,
+   0.173,
+   0.0141
+  ],
+  "bytes": 235544,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "cards@cards_business",
+   "set": "kit",
+   "lo": [
+    -0.1039,
+    0.0063,
+    -0.0225
+   ],
+   "hi": [
+    0.1039,
+    0.173,
+    0.0141
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.035,
+     -0.001
+    ],
+    "muzzle": [
+     0.0,
+     0.155,
+     0.0072
+    ],
+    "hat": [
+     0.0,
+     0.173,
+     -0.0065
+    ]
+   },
+   "pivots": {
+    "fan1": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "fan2": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "fan3": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "fan4": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "fan5": [
+     0.0,
+     0.0,
+     0.0016
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.173,
+     -0.0065
+    ],
+    0.05
+   ],
+   "hat_size": 0.05,
+   "fan": [
+    "fan1",
+    "fan2",
+    "fan3",
+    "fan4",
+    "fan5"
+   ],
+   "fanPivot": [
+    0.0,
+    0.0
+   ],
+   "fanRadius": 0.09,
+   "fanStep": 0.22
+  },
+  "nodes": {
+   "case_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "deck_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "deck_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "fan1_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "turned": false
+   },
+   "fan1_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "turned": false
+   },
+   "fan2_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "turned": false
+   },
+   "fan2_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "turned": false
+   },
+   "fan3_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "turned": false
+   },
+   "fan3_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "turned": false
+   },
+   "fan4_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "turned": false
+   },
+   "fan4_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "turned": false
+   },
+   "fan5_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0016
+    ],
+    "turned": false
+   },
+   "fan5_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0016
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_remote@remote_pad": {
+  "pieces": [
+   {
+    "name": "body_wzA__body",
+    "upload": "body_wzA__body__p34363d",
+    "tris": 2555,
+    "look": {
+     "color": "34363d",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0292,
+     -0.0218,
+     -0.2055
+    ],
+    "hi": [
+     0.0292,
+     0.012,
+     0.0652
+    ],
+    "paint": "p34363d"
+   },
+   {
+    "name": "btn_wzN__btn",
+    "upload": "btn_wzN__btn__paeb3bb",
+    "tris": 432,
+    "look": {
+     "color": "aeb3bb",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.0219,
+     0.0115,
+     -0.1752
+    ],
+    "hi": [
+     0.0581,
+     0.0185,
+     -0.1368
+    ],
+    "paint": "paeb3bb"
+   },
+   {
+    "name": "dpad_wzN__stick",
+    "upload": "dpad_wzN__stick__p1d1f23",
+    "tris": 572,
+    "look": {
+     "color": "1d1f23",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.052,
+     0.0125,
+     -0.168
+    ],
+    "hi": [
+     -0.028,
+     0.0185,
+     -0.144
+    ],
+    "paint": "p1d1f23"
+   },
+   {
+    "name": "grip_wzN__black",
+    "upload": "grip_wzN__black__p16171b",
+    "tris": 140,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0247,
+     -0.0068,
+     -0.002
+    ],
+    "hi": [
+     0.0247,
+     0.0045,
+     0.048
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "ir_wzN__lens",
+    "upload": "ir_wzN__lens__p8e3b55",
+    "tris": 160,
+    "look": {
+     "color": "8e3b55",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0052,
+     -0.0052,
+     -0.2174
+    ],
+    "hi": [
+     0.0052,
+     0.0052,
+     -0.2046
+    ],
+    "paint": "p8e3b55"
+   },
+   {
+    "name": "nose_wzN__window",
+    "upload": "nose_wzN__window__p2b2228",
+    "tris": 460,
+    "look": {
+     "color": "2b2228",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0278,
+     -0.0136,
+     -0.214
+    ],
+    "hi": [
+     0.0278,
+     0.0118,
+     -0.205
+    ],
+    "paint": "p2b2228"
+   },
+   {
+    "name": "pad_wzA__pad",
+    "upload": "pad_wzA__pad__p2c2e34",
+    "tris": 1400,
+    "look": {
+     "color": "2c2e34",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0728,
+     -0.0321,
+     -0.211
+    ],
+    "hi": [
+     0.0727,
+     0.0155,
+     -0.049
+    ],
+    "paint": "p2c2e34"
+   },
+   {
+    "name": "stick_wzN__stick",
+    "upload": "stick_wzN__stick__p1d1f23",
+    "tris": 336,
+    "look": {
+     "color": "1d1f23",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.029,
+     0.0105,
+     -0.121
+    ],
+    "hi": [
+     0.029,
+     0.0255,
+     -0.103
+    ],
+    "paint": "p1d1f23"
+   }
+  ],
+  "tris": 6055,
+  "lo": [
+   -0.0728,
+   -0.0321,
+   -0.2174
+  ],
+  "hi": [
+   0.0727,
+   0.0255,
+   0.0652
+  ],
+  "bytes": 290064,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "remote@remote_pad",
+   "set": "kit",
+   "lo": [
+    -0.0728,
+    -0.0321,
+    -0.2174
+   ],
+   "hi": [
+    0.0727,
+    0.0255,
+    0.0652
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.0,
+     -0.2174
+    ],
+    "grip": [
+     0.0,
+     -0.01,
+     0.04
+    ],
+    "hat": [
+     0.0,
+     0.0145,
+     -0.112
+    ]
+   },
+   "pivots": {
+    "ir": [
+     0.0,
+     0.0,
+     -0.2174
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.0145,
+     -0.112
+    ],
+    0.05
+   ],
+   "hat_size": 0.05
+  },
+  "nodes": {
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "btn_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "dpad_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "ir_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     -0.2174
+    ],
+    "turned": false
+   },
+   "nose_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pad_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "stick_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_akimbo@akimbo_walkie": {
+  "pieces": [
+   {
+    "name": "aerial_wzN__dark",
+    "upload": "aerial_wzN__dark__p24262b",
+    "tris": 92,
+    "look": {
+     "color": "24262b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.006,
+     0.0596,
+     0.0541
+    ],
+    "hi": [
+     0.018,
+     0.2004,
+     0.0779
+    ],
+    "paint": "p24262b"
+   },
+   {
+    "name": "aerial_wzN__orange",
+    "upload": "aerial_wzN__orange__pd67a32",
+    "tris": 80,
+    "look": {
+     "color": "d67a32",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.0034,
+     0.195,
+     0.063
+    ],
+    "hi": [
+     0.0206,
+     0.213,
+     0.081
+    ],
+    "paint": "pd67a32"
+   },
+   {
+    "name": "barrel_wzB__dark",
+    "upload": "barrel_wzB__dark__p24262b",
+    "tris": 188,
+    "look": {
+     "color": "24262b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0168,
+     0.0132,
+     -0.2
+    ],
+    "hi": [
+     0.0168,
+     0.0468,
+     -0.14
+    ],
+    "paint": "p24262b"
+   },
+   {
+    "name": "body_wzA__body",
+    "upload": "body_wzA__body__p3a3e45",
+    "tris": 602,
+    "look": {
+     "color": "3a3e45",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.028,
+     -0.0,
+     -0.152
+    ],
+    "hi": [
+     0.028,
+     0.07,
+     0.088
+    ],
+    "paint": "p3a3e45"
+   },
+   {
+    "name": "body_wzB__frame",
+    "upload": "body_wzB__frame__p2a2c31",
+    "tris": 12,
+    "look": {
+     "color": "2a2c31",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.023,
+     0.0695,
+     -0.1258
+    ],
+    "hi": [
+     0.023,
+     0.07,
+     0.0718
+    ],
+    "paint": "p2a2c31"
+   },
+   {
+    "name": "body_wzN__dark",
+    "upload": "body_wzN__dark__p24262b",
+    "tris": 138,
+    "look": {
+     "color": "24262b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0235,
+     0.018,
+     -0.13
+    ],
+    "hi": [
+     0.0235,
+     0.07,
+     0.064
+    ],
+    "paint": "p24262b"
+   },
+   {
+    "name": "cocker_wzN__steel",
+    "upload": "cocker_wzN__steel__pa3a9b2",
+    "tris": 232,
+    "look": {
+     "color": "a3a9b2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0113,
+     0.06,
+     -0.1093
+    ],
+    "hi": [
+     0.0113,
+     0.086,
+     -0.0867
+    ],
+    "paint": "pa3a9b2"
+   },
+   {
+    "name": "grille_wzN__grille",
+    "upload": "grille_wzN__grille__p1d1f23",
+    "tris": 752,
+    "look": {
+     "color": "1d1f23",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0315,
+     0.0192,
+     -0.11
+    ],
+    "hi": [
+     -0.0275,
+     0.0578,
+     -0.03
+    ],
+    "paint": "p1d1f23"
+   },
+   {
+    "name": "grip_wzB__dark",
+    "upload": "grip_wzB__dark__p24262b",
+    "tris": 220,
+    "look": {
+     "color": "24262b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.021,
+     -0.1337,
+     0.0077
+    ],
+    "hi": [
+     0.021,
+     -0.0063,
+     0.0643
+    ],
+    "paint": "p24262b"
+   },
+   {
+    "name": "grip_wzN__black",
+    "upload": "grip_wzN__black__p16171b",
+    "tris": 4,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0175,
+     -0.1183,
+     0.0188
+    ],
+    "hi": [
+     0.0175,
+     -0.0456,
+     0.0556
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "guard_wzB__frame",
+    "upload": "guard_wzB__frame__p2a2c31",
+    "tris": 308,
+    "look": {
+     "color": "2a2c31",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.006,
+     -0.058,
+     -0.045
+    ],
+    "hi": [
+     0.006,
+     -0.0125,
+     0.0155
+    ],
+    "paint": "p2a2c31"
+   },
+   {
+    "name": "loop_wzN__steel",
+    "upload": "loop_wzN__steel__pa3a9b2",
+    "tris": 316,
+    "look": {
+     "color": "a3a9b2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0025,
+     -0.0445,
+     -0.1199
+    ],
+    "hi": [
+     0.0025,
+     -0.0176,
+     -0.1041
+    ],
+    "paint": "pa3a9b2"
+   },
+   {
+    "name": "lower_wzB__frame",
+    "upload": "lower_wzB__frame__p2a2c31",
+    "tris": 284,
+    "look": {
+     "color": "2a2c31",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.024,
+     -0.018,
+     -0.13
+    ],
+    "hi": [
+     0.024,
+     0.006,
+     0.072
+    ],
+    "paint": "p2a2c31"
+   },
+   {
+    "name": "mag_wzA__body",
+    "upload": "mag_wzA__body__p3a3e45",
+    "tris": 108,
+    "look": {
+     "color": "3a3e45",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.019,
+     -0.1499,
+     0.022
+    ],
+    "hi": [
+     0.019,
+     -0.1344,
+     0.0644
+    ],
+    "paint": "p3a3e45"
+   },
+   {
+    "name": "mag_wzB__steel",
+    "upload": "mag_wzB__steel__pa3a9b2",
+    "tris": 44,
+    "look": {
+     "color": "a3a9b2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.016,
+     -0.1458,
+     0.0184
+    ],
+    "hi": [
+     0.016,
+     -0.039,
+     0.0581
+    ],
+    "paint": "pa3a9b2"
+   },
+   {
+    "name": "nut_wzB__frame",
+    "upload": "nut_wzB__frame__p2a2c31",
+    "tris": 140,
+    "look": {
+     "color": "2a2c31",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0203,
+     0.0097,
+     -0.16
+    ],
+    "hi": [
+     0.0203,
+     0.0503,
+     -0.146
+    ],
+    "paint": "p2a2c31"
+   },
+   {
+    "name": "tagL_wzN__tagl",
+    "upload": "tagL_wzN__tagl__pcdd0d4",
+    "tris": 332,
+    "look": {
+     "color": "cdd0d4",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.002,
+     -0.067,
+     -0.124
+    ],
+    "hi": [
+     0.002,
+     -0.043,
+     -0.1
+    ],
+    "paint": "pcdd0d4"
+   },
+   {
+    "name": "tagR_wzN__tagr",
+    "upload": "tagR_wzN__tagr__p9c8559",
+    "tris": 284,
+    "look": {
+     "color": "9c8559",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0045,
+     -0.069,
+     -0.126
+    ],
+    "hi": [
+     0.0045,
+     -0.041,
+     -0.098
+    ],
+    "paint": "p9c8559"
+   },
+   {
+    "name": "talk_wzN__orange",
+    "upload": "talk_wzN__orange__pd67a32",
+    "tris": 188,
+    "look": {
+     "color": "d67a32",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0315,
+     0.026,
+     -0.01
+    ],
+    "hi": [
+     -0.0255,
+     0.05,
+     0.028
+    ],
+    "paint": "pd67a32"
+   },
+   {
+    "name": "trigger_wzN__steel",
+    "upload": "trigger_wzN__steel__pa3a9b2",
+    "tris": 44,
+    "look": {
+     "color": "a3a9b2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0045,
+     -0.04,
+     -0.0129
+    ],
+    "hi": [
+     0.0045,
+     -0.014,
+     -0.0032
+    ],
+    "paint": "pa3a9b2"
+   }
+  ],
+  "tris": 4368,
+  "lo": [
+   -0.0315,
+   -0.1499,
+   -0.2
+  ],
+  "hi": [
+   0.028,
+   0.213,
+   0.088
+  ],
+  "bytes": 270344,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "akimbo@akimbo_walkie",
+   "set": "kit",
+   "lo": [
+    -0.0315,
+    -0.1499,
+    -0.2
+   ],
+   "hi": [
+    0.028,
+    0.213,
+    0.088
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.03,
+     -0.2
+    ],
+    "grip": [
+     0.0,
+     -0.064,
+     0.035
+    ],
+    "hat": [
+     0.0,
+     0.07,
+     0.02
+    ]
+   },
+   "pivots": {
+    "cocker": [
+     0.0,
+     0.07,
+     -0.098
+    ],
+    "mag": [
+     0.0,
+     -0.09239,
+     0.03825
+    ],
+    "tagL": [
+     0.0,
+     -0.0425,
+     -0.112
+    ],
+    "tagR": [
+     0.0,
+     -0.0425,
+     -0.112
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.07,
+     0.02
+    ],
+    0.07
+   ],
+   "hat_size": 0.07
+  },
+  "nodes": {
+   "aerial_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "barrel_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "cocker_wzN": {
+    "at": [
+     0.0,
+     0.07,
+     -0.098
+    ],
+    "turned": false
+   },
+   "grille_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "guard_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "loop_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "lower_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "mag_wzA": {
+    "at": [
+     0.0,
+     -0.09239,
+     0.03825
+    ],
+    "turned": false
+   },
+   "mag_wzB": {
+    "at": [
+     0.0,
+     -0.09239,
+     0.03825
+    ],
+    "turned": false
+   },
+   "nut_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "tagL_wzN": {
+    "at": [
+     0.0,
+     -0.0425,
+     -0.112
+    ],
+    "turned": false
+   },
+   "tagR_wzN": {
+    "at": [
+     0.0,
+     -0.0425,
+     -0.112
+    ],
+    "turned": false
+   },
+   "talk_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "trigger_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_snowball@snowball_ice": {
+  "pieces": [
+   {
+    "name": "cube_wzA__frost",
+    "upload": "cube_wzA__frost__peef6f9",
+    "tris": 3566,
+    "look": {
+     "color": "eef6f9",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0608,
+     -0.0363,
+     -0.1438
+    ],
+    "hi": [
+     0.0608,
+     0.0763,
+     -0.0142
+    ],
+    "paint": "peef6f9"
+   },
+   {
+    "name": "cube_wzA__ice",
+    "upload": "cube_wzA__ice__pb9dcea",
+    "tris": 4044,
+    "look": {
+     "color": "b9dcea",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0608,
+     -0.0363,
+     -0.1438
+    ],
+    "hi": [
+     0.0608,
+     0.0763,
+     -0.0142
+    ],
+    "paint": "pb9dcea"
+   }
+  ],
+  "tris": 7610,
+  "lo": [
+   -0.0608,
+   -0.0363,
+   -0.1438
+  ],
+  "hi": [
+   0.0608,
+   0.0763,
+   -0.0142
+  ],
+  "bytes": 351460,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "snowball@snowball_ice",
+   "set": "kit",
+   "lo": [
+    -0.0608,
+    -0.0363,
+    -0.1438
+   ],
+   "hi": [
+    0.0608,
+    0.0763,
+    -0.0142
+   ],
+   "spots": {
+    "muzzle": [
+     0.0,
+     0.02,
+     -0.08
+    ],
+    "grip": [
+     0.0,
+     0.02,
+     -0.08
+    ],
+    "hat": [
+     0.0,
+     0.088,
+     -0.08
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.088,
+     -0.08
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "cube_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_lasso@lasso_hose": {
+  "pieces": [
+   {
+    "name": "coil_wzA__rope",
+    "upload": "coil_wzA__rope__p3f7a4a",
+    "tris": 4608,
+    "look": {
+     "color": "3f7a4a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0723,
+     -0.2367,
+     -0.0581
+    ],
+    "hi": [
+     0.0663,
+     0.0866,
+     0.0963
+    ],
+    "paint": "p3f7a4a"
+   },
+   {
+    "name": "coil_wzN__leather",
+    "upload": "coil_wzN__leather__pb8924a",
+    "tris": 48,
+    "look": {
+     "color": "b8924a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0724,
+     -0.09,
+     0.041
+    ],
+    "hi": [
+     -0.0462,
+     -0.0665,
+     0.0685
+    ],
+    "paint": "pb8924a"
+   },
+   {
+    "name": "loop_wzA__rope",
+    "upload": "loop_wzA__rope__p3f7a4a",
+    "tris": 2904,
+    "look": {
+     "color": "3f7a4a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0768,
+     -0.2767,
+     -0.0981
+    ],
+    "hi": [
+     0.1262,
+     0.073,
+     0.0347
+    ],
+    "paint": "p3f7a4a"
+   },
+   {
+    "name": "loop_wzN__brass",
+    "upload": "loop_wzN__brass__pc49a4e",
+    "tris": 124,
+    "look": {
+     "color": "c49a4e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.076,
+     -0.2503,
+     -0.0096
+    ],
+    "hi": [
+     0.108,
+     -0.2287,
+     0.012
+    ],
+    "paint": "pc49a4e"
+   }
+  ],
+  "tris": 7684,
+  "lo": [
+   -0.0768,
+   -0.2767,
+   -0.0981
+  ],
+  "hi": [
+   0.1262,
+   0.0866,
+   0.0963
+  ],
+  "bytes": 383544,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "lasso@lasso_hose",
+   "set": "kit",
+   "lo": [
+    -0.0768,
+    -0.2767,
+    -0.0981
+   ],
+   "hi": [
+    0.1262,
+    0.0866,
+    0.0963
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "muzzle": [
+     0.0138,
+     -0.1578,
+     -0.0405
+    ],
+    "lead": [
+     0.0575,
+     -0.0563,
+     -0.0153
+    ],
+    "eye": [
+     0.086,
+     -0.2355,
+     0.0012
+    ],
+    "hat": [
+     -0.0088,
+     0.0876,
+     0.0099
+    ]
+   },
+   "pivots": {
+    "loop": [
+     0.05747,
+     -0.05628,
+     -0.01532
+    ]
+   },
+   "hatAt": [
+    [
+     -0.0088,
+     0.0876,
+     0.0099
+    ],
+    0.065
+   ],
+   "hat_size": 0.065
+  },
+  "nodes": {
+   "coil_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "coil_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "loop_wzA": {
+    "at": [
+     0.05747,
+     -0.05628,
+     -0.01532
+    ],
+    "turned": false
+   },
+   "loop_wzN": {
+    "at": [
+     0.05747,
+     -0.05628,
+     -0.01532
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_slapper@slapper_foam": {
+  "pieces": [
+   {
+    "name": "cap_wzN__hand",
+    "upload": "cap_wzN__hand__pb98895",
+    "tris": 80,
+    "look": {
+     "color": "b98895",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0219,
+     -0.023,
+     0.107
+    ],
+    "hi": [
+     0.0219,
+     0.023,
+     0.153
+    ],
+    "paint": "pb98895"
+   },
+   {
+    "name": "grip_wzA__grip",
+    "upload": "grip_wzA__grip__p2f3238",
+    "tris": 956,
+    "look": {
+     "color": "2f3238",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0225,
+     -0.0225,
+     -0.016
+    ],
+    "hi": [
+     0.0225,
+     0.0225,
+     0.12
+    ],
+    "paint": "p2f3238"
+   },
+   {
+    "name": "hand_wzB__foam",
+    "upload": "hand_wzB__foam__p4f74b3",
+    "tris": 1882,
+    "look": {
+     "color": "4f74b3",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0298,
+     -0.0797,
+     -0.706
+    ],
+    "hi": [
+     0.03,
+     0.0663,
+     -0.4685
+    ],
+    "paint": "p4f74b3"
+   },
+   {
+    "name": "hand_wzB__band",
+    "upload": "hand_wzB__band__peef0f2",
+    "tris": 576,
+    "look": {
+     "color": "eef0f2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.034,
+     -0.0362,
+     -0.4914
+    ],
+    "hi": [
+     0.0338,
+     0.0361,
+     -0.4272
+    ],
+    "paint": "peef0f2"
+   },
+   {
+    "name": "hand_wzN__cuff",
+    "upload": "hand_wzN__cuff__peef0f2",
+    "tris": 400,
+    "look": {
+     "color": "eef0f2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0325,
+     -0.0325,
+     -0.472
+    ],
+    "hi": [
+     0.0325,
+     0.0325,
+     -0.436
+    ],
+    "paint": "peef0f2"
+   },
+   {
+    "name": "stick_wzA__stick",
+    "upload": "stick_wzA__stick__pc3c7cd",
+    "tris": 60,
+    "look": {
+     "color": "c3c7cd",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0135,
+     -0.0135,
+     -0.455
+    ],
+    "hi": [
+     0.0135,
+     0.0135,
+     0.002
+    ],
+    "paint": "pc3c7cd"
+   }
+  ],
+  "tris": 3954,
+  "lo": [
+   -0.034,
+   -0.0797,
+   -0.706
+  ],
+  "hi": [
+   0.0338,
+   0.0663,
+   0.153
+  ],
+  "bytes": 173868,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "slapper@slapper_foam",
+   "set": "kit",
+   "lo": [
+    -0.034,
+    -0.0797,
+    -0.706
+   ],
+   "hi": [
+    0.0338,
+    0.0663,
+    0.153
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.055
+    ],
+    "muzzle": [
+     0.0,
+     0.0,
+     -0.7
+    ],
+    "mid": [
+     0.0,
+     0.0,
+     -0.28475
+    ],
+    "hat": [
+     0.0,
+     0.049,
+     -0.57
+    ]
+   },
+   "pivots": {
+    "hand": [
+     0.0,
+     0.0,
+     -0.45
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.049,
+     -0.57
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "cap_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hand_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     -0.45
+    ],
+    "turned": false
+   },
+   "hand_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     -0.45
+    ],
+    "turned": false
+   },
+   "stick_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_slapper@slapper_paw": {
+  "pieces": [
+   {
+    "name": "cap_wzN__hand",
+    "upload": "cap_wzN__hand__pb98895",
+    "tris": 80,
+    "look": {
+     "color": "b98895",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0219,
+     -0.023,
+     0.107
+    ],
+    "hi": [
+     0.0219,
+     0.023,
+     0.153
+    ],
+    "paint": "pb98895"
+   },
+   {
+    "name": "grip_wzA__grip",
+    "upload": "grip_wzA__grip__p2f2a27",
+    "tris": 956,
+    "look": {
+     "color": "2f2a27",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0225,
+     -0.0225,
+     -0.016
+    ],
+    "hi": [
+     0.0225,
+     0.0225,
+     0.12
+    ],
+    "paint": "p2f2a27"
+   },
+   {
+    "name": "hand_wzB__fur",
+    "upload": "hand_wzB__fur__p6b4a32",
+    "tris": 3078,
+    "look": {
+     "color": "6b4a32",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0339,
+     -0.0609,
+     -0.6279
+    ],
+    "hi": [
+     0.034,
+     0.0699,
+     -0.4276
+    ],
+    "paint": "p6b4a32"
+   },
+   {
+    "name": "hand_wzB__claw",
+    "upload": "hand_wzB__claw__pe8dccb",
+    "tris": 250,
+    "look": {
+     "color": "e8dccb",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0062,
+     -0.0505,
+     -0.6486
+    ],
+    "hi": [
+     0.0061,
+     0.0565,
+     -0.6216
+    ],
+    "paint": "pe8dccb"
+   },
+   {
+    "name": "hand_wzB__pad",
+    "upload": "hand_wzB__pad__p2e2523",
+    "tris": 1568,
+    "look": {
+     "color": "2e2523",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0369,
+     -0.0553,
+     -0.6182
+    ],
+    "hi": [
+     0.037,
+     0.0613,
+     -0.4942
+    ],
+    "paint": "p2e2523"
+   },
+   {
+    "name": "hand_wzN__cuff",
+    "upload": "hand_wzN__cuff__p5a3e2a",
+    "tris": 400,
+    "look": {
+     "color": "5a3e2a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0325,
+     -0.0325,
+     -0.472
+    ],
+    "hi": [
+     0.0325,
+     0.0325,
+     -0.436
+    ],
+    "paint": "p5a3e2a"
+   },
+   {
+    "name": "stick_wzA__stick",
+    "upload": "stick_wzA__stick__p8a6a4a",
+    "tris": 60,
+    "look": {
+     "color": "8a6a4a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0135,
+     -0.0135,
+     -0.455
+    ],
+    "hi": [
+     0.0135,
+     0.0135,
+     0.002
+    ],
+    "paint": "p8a6a4a"
+   }
+  ],
+  "tris": 6392,
+  "lo": [
+   -0.0369,
+   -0.0609,
+   -0.6486
+  ],
+  "hi": [
+   0.037,
+   0.0699,
+   0.153
+  ],
+  "bytes": 343708,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "slapper@slapper_paw",
+   "set": "kit",
+   "lo": [
+    -0.0369,
+    -0.0609,
+    -0.6486
+   ],
+   "hi": [
+    0.037,
+    0.0699,
+    0.153
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.055
+    ],
+    "muzzle": [
+     0.0,
+     0.0,
+     -0.7
+    ],
+    "mid": [
+     0.0,
+     0.0,
+     -0.28475
+    ],
+    "hat": [
+     0.0,
+     0.049,
+     -0.57
+    ]
+   },
+   "pivots": {
+    "hand": [
+     0.0,
+     0.0,
+     -0.45
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.049,
+     -0.57
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "cap_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hand_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     -0.45
+    ],
+    "turned": false
+   },
+   "hand_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     -0.45
+    ],
+    "turned": false
+   },
+   "stick_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_bread@bread_croissant": {
+  "pieces": [
+   {
+    "name": "bread_wzB__crust",
+    "upload": "bread_wzB__crust__pc78a45",
+    "tris": 2614,
+    "look": {
+     "color": "c78a45",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1186,
+     -0.0638,
+     -1.526
+    ],
+    "hi": [
+     0.1182,
+     0.1604,
+     0.106
+    ],
+    "paint": "pc78a45"
+   },
+   {
+    "name": "bread_wzB__crust2",
+    "upload": "bread_wzB__crust2__p8f5a2a",
+    "tris": 2648,
+    "look": {
+     "color": "8f5a2a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1267,
+     -0.0479,
+     -1.3121
+    ],
+    "hi": [
+     0.1267,
+     0.1756,
+     -0.088
+    ],
+    "paint": "p8f5a2a"
+   },
+   {
+    "name": "sleeve_wzA__paper",
+    "upload": "sleeve_wzA__paper__pc9c1b0",
+    "tris": 266,
+    "look": {
+     "color": "c9c1b0",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0534,
+     -0.0506,
+     -0.106
+    ],
+    "hi": [
+     0.0565,
+     0.0533,
+     0.292
+    ],
+    "paint": "pc9c1b0"
+   }
+  ],
+  "tris": 5528,
+  "lo": [
+   -0.1267,
+   -0.0638,
+   -1.526
+  ],
+  "hi": [
+   0.1267,
+   0.1756,
+   0.292
+  ],
+  "bytes": 255104,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "bread@bread_croissant",
+   "set": "kit",
+   "lo": [
+    -0.1267,
+    -0.0638,
+    -1.526
+   ],
+   "hi": [
+    0.1267,
+    0.1756,
+    0.292
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.002,
+     0.12
+    ],
+    "muzzle": [
+     0.0,
+     0.0,
+     -1.45
+    ],
+    "mid": [
+     0.0,
+     0.0011,
+     -0.5865
+    ],
+    "hat": [
+     0.0,
+     0.09,
+     -0.39
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.09,
+     -0.39
+    ],
+    0.12
+   ],
+   "hat_size": 0.12
+  },
+  "nodes": {
+   "bread_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sleeve_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_bread@bread_sliced": {
+  "pieces": [
+   {
+    "name": "bread_wzB__crust",
+    "upload": "bread_wzB__crust__p8a6a44",
+    "tris": 6000,
+    "look": {
+     "color": "8a6a44",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1056,
+     -0.064,
+     -1.4605
+    ],
+    "hi": [
+     0.1056,
+     0.098,
+     0.02
+    ],
+    "paint": "p8a6a44"
+   },
+   {
+    "name": "bread_wzN__crumb",
+    "upload": "bread_wzN__crumb__pe2d4b2",
+    "tris": 1840,
+    "look": {
+     "color": "e2d4b2",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1016,
+     -0.06,
+     -1.4605
+    ],
+    "hi": [
+     0.1016,
+     0.094,
+     0.02
+    ],
+    "paint": "pe2d4b2"
+   },
+   {
+    "name": "sleeve_wzA__paper",
+    "upload": "sleeve_wzA__paper__pbdb6a7",
+    "tris": 266,
+    "look": {
+     "color": "bdb6a7",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0534,
+     -0.0506,
+     -0.106
+    ],
+    "hi": [
+     0.0565,
+     0.0533,
+     0.292
+    ],
+    "paint": "pbdb6a7"
+   }
+  ],
+  "tris": 8106,
+  "lo": [
+   -0.1056,
+   -0.064,
+   -1.4605
+  ],
+  "hi": [
+   0.1056,
+   0.098,
+   0.292
+  ],
+  "bytes": 518588,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "bread@bread_sliced",
+   "set": "kit",
+   "lo": [
+    -0.1056,
+    -0.064,
+    -1.4605
+   ],
+   "hi": [
+    0.1056,
+    0.098,
+    0.292
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.002,
+     0.12
+    ],
+    "muzzle": [
+     0.0,
+     0.0,
+     -1.45
+    ],
+    "mid": [
+     0.0,
+     0.0011,
+     -0.5865
+    ],
+    "hat": [
+     0.0,
+     0.09,
+     -0.39
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.09,
+     -0.39
+    ],
+    0.12
+   ],
+   "hat_size": 0.12
+  },
+  "nodes": {
+   "bread_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "bread_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sleeve_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_slipper@slipper_croc": {
+  "pieces": [
+   {
+    "name": "sole_wzB__sole",
+    "upload": "sole_wzB__sole__pe9e4da",
+    "tris": 492,
+    "look": {
+     "color": "e9e4da",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0533,
+     -0.0131,
+     -0.1395
+    ],
+    "hi": [
+     0.0533,
+     0.0228,
+     0.1395
+    ],
+    "paint": "pe9e4da"
+   },
+   {
+    "name": "sole_wzB__rubber",
+    "upload": "sole_wzB__rubber__p5f5a60",
+    "tris": 612,
+    "look": {
+     "color": "5f5a60",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0533,
+     -0.018,
+     -0.1395
+    ],
+    "hi": [
+     0.0533,
+     0.0023,
+     0.1395
+    ],
+    "paint": "p5f5a60"
+   },
+   {
+    "name": "sole_wzN__bed",
+    "upload": "sole_wzN__bed__pdbd2c6",
+    "tris": 522,
+    "look": {
+     "color": "dbd2c6",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0521,
+     0.0072,
+     -0.1395
+    ],
+    "hi": [
+     0.0521,
+     0.0593,
+     0.1395
+    ],
+    "paint": "pdbd2c6"
+   },
+   {
+    "name": "toe_wzA__strap",
+    "upload": "toe_wzA__strap__p6b7f70",
+    "tris": 568,
+    "look": {
+     "color": "6b7f70",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.063,
+     0.0236,
+     -0.011
+    ],
+    "hi": [
+     0.0634,
+     0.0447,
+     0.0928
+    ],
+    "paint": "p6b7f70"
+   },
+   {
+    "name": "toe_wzA__upper",
+    "upload": "toe_wzA__upper__p8fae94",
+    "tris": 2438,
+    "look": {
+     "color": "8fae94",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0559,
+     0.012,
+     -0.1549
+    ],
+    "hi": [
+     0.0559,
+     0.0819,
+     0.0449
+    ],
+    "paint": "p8fae94"
+   },
+   {
+    "name": "toe_wzA__vent",
+    "upload": "toe_wzA__vent__p5f7a64",
+    "tris": 614,
+    "look": {
+     "color": "5f7a64",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0367,
+     0.0554,
+     -0.1226
+    ],
+    "hi": [
+     0.0368,
+     0.0814,
+     -0.0312
+    ],
+    "paint": "p5f7a64"
+   }
+  ],
+  "tris": 5246,
+  "lo": [
+   -0.063,
+   -0.018,
+   -0.1549
+  ],
+  "hi": [
+   0.0634,
+   0.0819,
+   0.1395
+  ],
+  "bytes": 258236,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "slipper@slipper_croc",
+   "set": "kit",
+   "lo": [
+    -0.063,
+    -0.018,
+    -0.1549
+   ],
+   "hi": [
+    0.0634,
+    0.0819,
+    0.1395
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     -0.004,
+     0.1
+    ],
+    "muzzle": [
+     0.0,
+     0.0088,
+     -0.1395
+    ],
+    "mid": [
+     0.0,
+     0.00176,
+     -0.00778
+    ],
+    "hat": [
+     0.0,
+     0.0756,
+     -0.034
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.0756,
+     -0.034
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "sole_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sole_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "toe_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_slipper@slipper_flipflop": {
+  "pieces": [
+   {
+    "name": "sole_wzB__sole",
+    "upload": "sole_wzB__sole__p4d8ea1",
+    "tris": 492,
+    "look": {
+     "color": "4d8ea1",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0533,
+     -0.0131,
+     -0.1395
+    ],
+    "hi": [
+     0.0533,
+     0.0228,
+     0.1395
+    ],
+    "paint": "p4d8ea1"
+   },
+   {
+    "name": "sole_wzB__rubber",
+    "upload": "sole_wzB__rubber__p2f5d6e",
+    "tris": 612,
+    "look": {
+     "color": "2f5d6e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0533,
+     -0.018,
+     -0.1395
+    ],
+    "hi": [
+     0.0533,
+     0.0023,
+     0.1395
+    ],
+    "paint": "p2f5d6e"
+   },
+   {
+    "name": "sole_wzN__bed",
+    "upload": "sole_wzN__bed__pe6d2a8",
+    "tris": 522,
+    "look": {
+     "color": "e6d2a8",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0521,
+     0.0072,
+     -0.1395
+    ],
+    "hi": [
+     0.0521,
+     0.0593,
+     0.1395
+    ],
+    "paint": "pe6d2a8"
+   },
+   {
+    "name": "strap_wzN__strap",
+    "upload": "strap_wzN__strap__p2f5d6e",
+    "tris": 900,
+    "look": {
+     "color": "2f5d6e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.056,
+     -0.001,
+     -0.08
+    ],
+    "hi": [
+     0.0556,
+     0.0445,
+     0.026
+    ],
+    "paint": "p2f5d6e"
+   }
+  ],
+  "tris": 2526,
+  "lo": [
+   -0.056,
+   -0.018,
+   -0.1395
+  ],
+  "hi": [
+   0.0556,
+   0.0593,
+   0.1395
+  ],
+  "bytes": 110652,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "slipper@slipper_flipflop",
+   "set": "kit",
+   "lo": [
+    -0.056,
+    -0.018,
+    -0.1395
+   ],
+   "hi": [
+    0.0556,
+    0.0593,
+    0.1395
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     -0.004,
+     0.1
+    ],
+    "muzzle": [
+     0.0,
+     0.0088,
+     -0.1395
+    ],
+    "mid": [
+     0.0,
+     0.00176,
+     -0.00778
+    ],
+    "hat": [
+     0.0,
+     0.0756,
+     -0.034
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.0756,
+     -0.034
+    ],
+    0.06
+   ],
+   "hat_size": 0.06
+  },
+  "nodes": {
+   "sole_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sole_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "strap_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_scales@scales_kangaroo": {
+  "pieces": [
+   {
+    "name": "beam_wzB__gold",
+    "upload": "beam_wzB__gold__pc4a15a",
+    "tris": 1320,
+    "look": {
+     "color": "c4a15a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.2015,
+     -0.0202,
+     -0.1502
+    ],
+    "hi": [
+     0.2015,
+     0.0414,
+     -0.1098
+    ],
+    "paint": "pc4a15a"
+   },
+   {
+    "name": "collar_wzN__gold",
+    "upload": "collar_wzN__gold__pc4a15a",
+    "tris": 1656,
+    "look": {
+     "color": "c4a15a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0899,
+     -0.0899,
+     -0.6885
+    ],
+    "hi": [
+     0.0899,
+     0.0899,
+     0.1205
+    ],
+    "paint": "pc4a15a"
+   },
+   {
+    "name": "column_wzA__iron",
+    "upload": "column_wzA__iron__p6e5137",
+    "tris": 1560,
+    "look": {
+     "color": "6e5137",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0877,
+     -0.0877,
+     -0.726
+    ],
+    "hi": [
+     0.0877,
+     0.0877,
+     -0.1975
+    ],
+    "paint": "p6e5137"
+   },
+   {
+    "name": "glove_wzN__cuffw",
+    "upload": "glove_wzN__cuffw__pe8e2d8",
+    "tris": 1354,
+    "look": {
+     "color": "e8e2d8",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.074,
+     -0.074,
+     -0.6086
+    ],
+    "hi": [
+     0.074,
+     0.074,
+     -0.4611
+    ],
+    "paint": "pe8e2d8"
+   },
+   {
+    "name": "glove_wzN__glove",
+    "upload": "glove_wzN__glove__pb23b36",
+    "tris": 1770,
+    "look": {
+     "color": "b23b36",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0978,
+     -0.0878,
+     -0.746
+    ],
+    "hi": [
+     0.0994,
+     0.096,
+     -0.5976
+    ],
+    "paint": "pb23b36"
+   },
+   {
+    "name": "handle_wzB__leather",
+    "upload": "handle_wzB__leather__p3a2b24",
+    "tris": 864,
+    "look": {
+     "color": "3a2b24",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.022,
+     -0.022,
+     -0.0628
+    ],
+    "hi": [
+     0.022,
+     0.022,
+     0.0728
+    ],
+    "paint": "p3a2b24"
+   },
+   {
+    "name": "pan_wzB__goldin",
+    "upload": "pan_wzB__goldin__pa5853f",
+    "tris": 280,
+    "look": {
+     "color": "a5853f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.2177,
+     -0.0597,
+     -0.3664
+    ],
+    "hi": [
+     0.2177,
+     0.0597,
+     -0.3352
+    ],
+    "paint": "pa5853f"
+   },
+   {
+    "name": "pan_wzB__gold",
+    "upload": "pan_wzB__gold__pc4a15a",
+    "tris": 520,
+    "look": {
+     "color": "c4a15a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.2224,
+     -0.0644,
+     -0.3785
+    ],
+    "hi": [
+     0.2224,
+     0.0644,
+     -0.3352
+    ],
+    "paint": "pc4a15a"
+   },
+   {
+    "name": "pan_wzN__gold",
+    "upload": "pan_wzN__gold__pc4a15a",
+    "tris": 448,
+    "look": {
+     "color": "c4a15a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.2153,
+     -0.0346,
+     -0.341
+    ],
+    "hi": [
+     0.2153,
+     0.0653,
+     -0.1402
+    ],
+    "paint": "pc4a15a"
+   }
+  ],
+  "tris": 9772,
+  "lo": [
+   -0.2224,
+   -0.0899,
+   -0.746
+  ],
+  "hi": [
+   0.2224,
+   0.096,
+   0.1205
+  ],
+  "bytes": 460980,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "scales@scales_kangaroo",
+   "set": "kit",
+   "lo": [
+    -0.2224,
+    -0.0899,
+    -0.746
+   ],
+   "hi": [
+    0.2224,
+    0.096,
+    0.1205
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "muzzle": [
+     0.0,
+     0.0,
+     -0.726
+    ],
+    "mid": [
+     0.0,
+     0.0,
+     -0.3267
+    ],
+    "hat": [
+     0.0,
+     0.0414,
+     -0.13
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.0414,
+     -0.13
+    ],
+    0.08
+   ],
+   "hat_size": 0.08
+  },
+  "nodes": {
+   "beam_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "collar_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "column_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "glove_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "handle_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pan_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pan_wzN": {
     "at": [
      0.0,
      0.0,
