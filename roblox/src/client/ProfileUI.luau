@@ -754,6 +754,25 @@ local function draw()
 			if ok and RU then (RU :: any).open(who, "card") end
 		end)
 	end
+	-- TRADE on anyone else's card, TRADES (your history) on your own: play-party-ranked's client/TradeUI.luau, only while
+	-- trading is open (docs/TRADING.md)
+	do
+		local tm = script.Parent:FindFirstChild("TradeUI")
+		local okT, TU = false, nil
+		if tm then okT, TU = pcall(require, tm) end
+		if okT and type(TU) == "table" and (TU :: any).on() then
+			local rw = if L.compact then 76 else 92
+			local tx = if own then L.W - cs - 10 - rw - 8 else L.W - cs - 10 - (rw + 8) * 2
+			local tb = new("TextButton", { Name = if own then "Trades" else "Trade", AutoButtonColor = true, Text = if own then "TRADES" else "TRADE",
+				FontFace = T.FONT_BOLD, TextSize = 12, TextColor3 = T.TEXT, BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, ZIndex = 40 }, panel)
+			at(tb, tx, 10, rw, cs)
+			T.corner(tb, 6)
+			local who = view.who
+			tb.MouseButton1Click:Connect(function()
+				if own then (TU :: any).history() else UI.close(); (TU :: any).request(who) end
+			end)
+		end
+	end
 	-- the tabs
 	local ty = hdrH + 10
 	local tabs = { { "profile", "PROFILE" }, { "customize", "CUSTOMIZE" }, { "players", "PLAYERS" } }

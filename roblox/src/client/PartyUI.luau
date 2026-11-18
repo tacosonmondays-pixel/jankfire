@@ -35,6 +35,16 @@ local function viewCard(id: number)
 	if not profileUI then notice("player cards aren't here"); return end
 	pcall(profileUI.open, id, "profile")
 end
+-- TRADE (client/TradeUI.luau, server/Trading.luau: docs/TRADING.md). a live button while trading is open
+local tradeUI: any = false
+local function trading(): any
+	if tradeUI == false then
+		tradeUI = nil
+		local m = script.Parent:FindFirstChild("TradeUI")
+		if m then local ok, r = pcall(require, m); if ok then tradeUI = r end end
+	end
+	return tradeUI
+end
 
 -- ------------------------------------------------------------------ the panel
 local gui = new("ScreenGui", { Name = "JankParty", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 22,
@@ -212,8 +222,14 @@ function PartyUI.refresh()
 	end
 	for i, o in others do
 		local bs: { TextButton } = {}
-		local tr = button(sc, "Trade", "TRADE", "off", 60, 26)
-		tr.MouseButton1Click:Connect(function() notice("trading is not open yet") end)
+		local TU = trading()
+		local tradeOn = TU ~= nil and TU.on()
+		local tr = button(sc, "Trade", "TRADE", if tradeOn then "plain" else "off", 60, 26)
+		tr.MouseButton1Click:Connect(function()
+			if not tradeOn then notice("trading is not open yet"); return end
+			PartyUI.close()
+			TU.request(o.id)
+		end)
 		table.insert(bs, tr)
 		local vc = button(sc, "Card", "VIEW CARD", "plain", 84, 26)
 		vc.MouseButton1Click:Connect(function() viewCard(o.id) end)

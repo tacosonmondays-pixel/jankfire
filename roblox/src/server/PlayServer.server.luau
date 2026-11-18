@@ -15,6 +15,7 @@ local Party = require(Jankfire:WaitForChild("Party"))
 local CrossServer = require(Jankfire:WaitForChild("CrossServer"))
 local Recorder = require(Jankfire:WaitForChild("Recorder"))
 local QuickJoin = require(Jankfire:WaitForChild("QuickJoin"))
+local Trading = require(Jankfire:WaitForChild("Trading"))
 
 -- the remotes (in the saved place and default.project.json; made here too if missing)
 local remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -39,6 +40,8 @@ CrossServer.init(Matches, {
 Recorder.init(Fight, Matches)
 -- QUICK JOIN: a pop-up for everyone free in the hub when someone steps on a queue pad (QuickJoin.luau)
 QuickJoin.init(Matches, Party, remotes)
+-- TRADING (Trading.luau, docs/TRADING.md): off until PlayConfig.TRADING_ON; its Studio hook is ServerStorage.JankTradeTest
+Trading.init()
 -- the hub pads' map vote (Matches.padVote): a vote from a player standing on a full pad, through the Play remote
 Party.ops.padvote = function(p: Player, a: any): any
 	local ok, why = Matches.padVote(p, a)

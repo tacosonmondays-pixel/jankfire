@@ -13,6 +13,9 @@ PlayConfig.CROSS_SERVER = true
 -- the ranked extras across servers, apart from the matchmaking and still OFF (untested): the global top 100 on the
 -- leaderboard (an OrderedDataStore) and a cheat restore telling another server to take it now (MessagingService)
 PlayConfig.GLOBAL_RANKED = false
+-- TRADING (18 Nov 2026, the owner: "we need trading"; server/Trading.luau, docs/TRADING.md). built and tested, held OFF:
+-- the game's content questionnaire says "no trading" today and must say yes before this turns on (the main session)
+PlayConfig.TRADING_ON = false
 
 export type Mode = { id: string, name: string, teams: number, size: number, ranked: boolean, pad: string }
 -- pad = the queue pads' Mode attribute it plays like (Matches.startQueued takes that pad's rules and arena rotation)

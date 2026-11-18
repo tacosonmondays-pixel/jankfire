@@ -348,6 +348,9 @@ local function barTargets(): ({ GuiObject }, string, string)
 	local q = pg:FindFirstChild("JankQuick")
 	if q then addShown(out, q, { "Join" }) end
 	if #out > 0 then return out, "row", "quick" end
+	local tq = pg:FindFirstChild("JankTradeAsk") -- (a trade request: TradeUI, play-party-ranked's)
+	if tq then addShown(out, tq, { "Accept", "Decline" }) end
+	if #out > 0 then return out, "row", "trade" end
 	local v = pg:FindFirstChild("JankVote")
 	if v then addShown(out, v) end
 	if #out > 0 then return out, "row", "vote" end

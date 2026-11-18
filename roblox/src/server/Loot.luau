@@ -56,6 +56,8 @@ local BUY_MAX = 10
 
 local changed = Instance.new("BindableEvent")
 Loot.changed = changed.Event -- (player): what they own changed (the loadout republishes)
+local loadedE = Instance.new("BindableEvent")
+Loot.loaded = loadedE.Event -- (player): their save has just loaded (Trading.luau finishes a trade the save missed)
 
 local store = Profiles.new("JankfireLoot_v1", function()
 	-- (v 2: wraps and hats are "<id>@<weapon>" pairs; v 1 had bare ids, owned on every gun: migrate() below)
@@ -761,6 +763,55 @@ local function retired(d: any): boolean
 	return true
 end
 
+-- ------------------------------------------------------------------ trading (server/Trading.luau, 18 Nov 2026)
+-- the trade module moves things between two saves itself (docs/TRADING.md: a ledger decides, each save keeps a receipt,
+-- a save that missed a trade finishes it when it loads). here: a handle on one side's save, the same shape for a player
+-- and for a Studio test's stand-in. { id, data (the save's table: inv, stock, fresh, every, trades...), save() -> written?,
+-- done() (what they own was changed in data: recount it, tell the loadout, flair and card), state() -> "cloud" | "off" | ... }
+function Loot.tradeHandle(p: Player): any?
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return nil end
+	local prof = s.prof :: Profiles.Profile
+	return {
+		id = p.UserId, data = prof.data,
+		save = function(): boolean prof.dirty = true; return Profiles.save(store, prof) end,
+		done = function() s.owned = sets(prof.data); touch(p, s) end,
+		state = function(): string return prof.state end,
+	}
+end
+-- (Studio tests) a stand-in's own save in this store ("u<id>", id < 0), loaded and locked like a player's. how = true:
+-- let go of it, written (the stand-in left); how = "drop": forget it UNWRITTEN, the lock left behind (a server dying
+-- mid-trade). either way the next call loads it again from the store, the way a rejoin does
+local testProfs: { [number]: Profiles.Profile } = {}
+function Loot.testHandle(id: number, how: any?): any?
+	if not RunService:IsStudio() or type(id) ~= "number" or id >= 0 then return nil end
+	if how then
+		local old = testProfs[id]
+		testProfs[id] = nil
+		if old and how == "drop" then
+			old.state = "dropped"
+			store.live[old] = nil
+		elseif old then
+			Profiles.release(store, old)
+		end
+		return nil
+	end
+	local prof = testProfs[id]
+	if not prof then
+		prof = Profiles.load(store, "u" .. id, function() return true end)
+		if not prof then return nil end
+		migrate(prof.data)
+		testProfs[id] = prof
+	end
+	local pr = prof :: Profiles.Profile
+	return {
+		id = id, data = pr.data,
+		save = function(): boolean pr.dirty = true; return Profiles.save(store, pr) end,
+		done = function() end,
+		state = function(): string return pr.state end,
+	}
+end
+
 -- ------------------------------------------------------------------ players
 local function added(p: Player)
 	if st[p] then return end
@@ -789,6 +840,7 @@ local function added(p: Player)
 	publish(p)
 	changed:Fire(p)
 	applyOld(p, s)
+	loadedE:Fire(p) -- (Trading: a trade this save missed is finished now)
 end
 
 function Loot.init()

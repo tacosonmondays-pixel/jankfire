@@ -18,7 +18,7 @@ local pg = me:WaitForChild("PlayerGui")
 
 local NAMES = { "JankQuestsButton", "JankPlayButton", "JankProfileButton", "JankShopButton", "JankLoadoutButton" }
 -- the hub menus' modules and how each closes (all of them do nothing when they're not open)
-local MENUS = { ShopUI = "close", ProfileUI = "close", QuestUI = "close", PartyUI = "close", LeaderboardUI = "close", FlairUI = "close", PlayUI = "close" }
+local MENUS = { ShopUI = "close", ProfileUI = "close", QuestUI = "close", PartyUI = "close", LeaderboardUI = "close", FlairUI = "close", PlayUI = "close", TradeUI = "close" }
 local off: { [ScreenGui]: boolean } = {}
 
 local function closeAll()
