@@ -103,6 +103,10 @@ local TITLES = {
 	{ "duck_rain_survivor", "DUCK RAIN SURVIVOR", "epic" }, { "spoon_main", "SPOON MAIN", "rare" },
 	{ "vip", "VIP", "vip", "VIP" }, -- (the VIP pack's title, words "VIP"; 4th: its name when it isn't sentence case)
 	{ "og", "OG", "secret", "OG" }, -- (found: the hub's hidden mannequin, 18 Nov)
+	-- (found: the hidden NPCs round the hub, LoreNPCs.server, 18 Nov; one each for the web's five and the HR guy, OVERDUE for all)
+	{ "lore_gary", "REGIONAL MANAGER", "secret" }, { "lore_dale", "OUT OF ORDER", "secret" }, { "lore_janitor", "HAS SEEN THINGS", "secret" },
+	{ "lore_smiles", "MANDATORY FUN", "secret" }, { "lore_todd", "INTERN", "secret" }, { "lore_hr", "HAD A QUICK CHAT", "secret" },
+	{ "lore_all", "OVERDUE", "secret" },
 }
 
 C.ORDER = { border = {}, banner = {}, title = {} } :: { [string]: { string } }

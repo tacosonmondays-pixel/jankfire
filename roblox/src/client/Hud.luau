@@ -174,6 +174,7 @@ local KINDS: { { string } } = {
 	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" }, { "PINNED", "small" }, { "FROZEN", "small" }, -- (PINNED: your Nail Gun pinned them, weapons batch A)
 	-- (the classic modes, Modes.luau: a bullet earned and somebody else going out are what just happened, quietly)
 	{ "NEW TITLE", "small" }, -- (the hub egg: "NEW TITLE · OG", HubEgg.server)
+	{ "NEW GRAPPLE", "small" }, { "NEW KILL EFFECT", "small" }, { "+1 CRATE", "small" }, { "+1 DUFFEL BAG", "small" }, { "+1 SPRAY CAN", "small" }, -- (a hidden NPC's gift, LoreNPCs.server)
 	{ "+1 BULLET", "small" }, { "* IS OUT OF LIVES", "small" }, { "KILL CONFIRMED", "small" }, { "KILL DENIED", "small" },
 	{ "BOING", "cut" }, { "BONK", "cut" }, { "MARBLES!", "cut" }, { "WHOOPS!", "cut" }, { "dummy down", "cut" },
 	{ "KATANA GROWS", "cut" }, { "BURST!", "cut" }, { "NO SCOPE", "cut" }, { "IN THE TEETH", "cut" }, { "SHREDDED", "cut" },

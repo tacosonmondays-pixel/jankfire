@@ -289,6 +289,14 @@ local function header(parent: Instance, c: any)
 	T.corner(track, 3)
 	local fill = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(math.max(0.02, rank.progress), 1), ZIndex = 4 }, track)
 	T.corner(fill, 3)
+	-- the hidden NPCs they've found (LoreNPCs.server: the player's LoreFound / LoreTotal), a count only, under the bar
+	local who = Players:GetPlayerByUserId(tonumber(c.id) or 0)
+	local lf, lt = who and who:GetAttribute("LoreFound"), who and who:GetAttribute("LoreTotal")
+	if type(lf) == "number" and type(lt) == "number" and lt > 0 then
+		local ll = txt(hdr, ("LORE  %d / %d"):format(lf, lt), 12, T.MUTED, T.FONT_BOLD)
+		at(ll, x, barY + 10, math.min(nameW, 360), 14)
+		ll.ZIndex = 3
+	end
 	-- on the right: the ranked badge and its line (or the level), the line under it
 	local my = (H - bs) // 2 - 12
 	local mark, line, col = rankMark(hdr, right, my, bs, c)

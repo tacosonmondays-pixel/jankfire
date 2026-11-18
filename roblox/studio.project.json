@@ -33,6 +33,7 @@
         "$className": "Folder",
         "PropPlacer": { "$path": "studio-tools/PropPlacer.luau" },
         "OverlapCheck": { "$path": "studio-tools/OverlapCheck.luau" },
+        "LoreSpots": { "$path": "studio-tools/LoreSpots.luau" },
         "ZFight": { "$path": "studio-tools/ZFight.luau" },
         "CozyKit": { "$path": "studio-tools/CozyKit.luau" },
         "Hub2Colors": { "$path": "studio-tools/Hub2Colors.luau" },
