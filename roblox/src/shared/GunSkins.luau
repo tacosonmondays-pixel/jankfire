@@ -22,23 +22,12 @@ end
 -- a skin with no model that only changes its weapon's effects (18 Nov, shop-gui: the Shadow Cross, the Blood Cross in
 -- purple; the Blood Cross is your own hand, nothing to dress): its LootTable.SKINS row has effectOnly = true. it's worn
 -- like any skin (the "Skins" attribute), the gun drawn is the plain one (skinFor: no template), and the weapon's own
--- effects read the attribute (client/BloodCrossFx)
-local LT: any = nil
-local function lootTable(): any
-	if LT == nil then
-		local sh = ReplicatedStorage:FindFirstChild("Jankfire")
-		local m = sh and sh:FindFirstChild("LootTable")
-		local ok, r = false, nil
-		if m and m:IsA("ModuleScript") then ok, r = pcall(require, m) end
-		LT = if ok and type(r) == "table" then r else false
-	end
-	return LT
-end
+-- effects read the attribute (client/BloodCrossFx). the list is here, plain data: no require of another module and no
+-- loop over the catalogue (18 Nov: a lazy require of LootTable from here was the suspect in a menu report). LootTable's row
+-- carries effectOnly = true for the pools and the shop; keep the two in step
+GunSkins.EFFECT_ONLY = { bloodcross_shadow = "bloodcross" } :: { [string]: string }
 function GunSkins.effectOnly(wid: string, id: any): boolean
-	if type(id) ~= "string" then return false end
-	local L = lootTable()
-	local row = L and type(L.SKINS) == "table" and L.SKINS[id] or nil
-	return type(row) == "table" and row.effectOnly == true and row[3] == wid
+	return type(id) == "string" and GunSkins.EFFECT_ONLY[id] == wid
 end
 
 -- every skin in the place for one weapon (ids, sorted): its models, and its effect-only skins
@@ -50,11 +39,8 @@ function GunSkins.forWeapon(wid: string): { string }
 			if m:IsA("Model") and m:GetAttribute("Weapon") == wid then table.insert(out, m.Name) end
 		end
 	end
-	local L = lootTable()
-	if L and type(L.SKINS) == "table" then
-		for id, row in L.SKINS do
-			if type(row) == "table" and row.effectOnly == true and row[3] == wid and not table.find(out, id) then table.insert(out, id) end
-		end
+	for id, w in GunSkins.EFFECT_ONLY do
+		if w == wid and not table.find(out, id) then table.insert(out, id) end
 	end
 	table.sort(out)
 	return out
