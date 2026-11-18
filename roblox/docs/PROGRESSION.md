@@ -92,9 +92,12 @@ server's Level set to 1, so it showed what a fresh level-1 player sees:
   (`loadout-robux-free.jpg`).
 - **Level up:** Level 1 to 7 showed LEVEL 7 and the 14 weapons that opened on the way, with the sting
   (`level-up-toast-before-wrap.jpg`). That list ran past the plate's edges, so the plate now wraps it over lines, at
-  most 560 wide. The wrap is in version 801 but hasn't been seen on screen yet.
+  most 560 wide: seen in a later run, two lines inside the plate, the chip at LV 7 (`level-up-toast.jpg`).
 - **Dev unlock:** at level 7 the Shredder was refused ("level 20 unlocks it"). With `("unlockall", true)` it was
   allowed. The profile's own picks were put back afterwards.
 
-Not tested: a real XP gain to the next level (the level was set by hand), the match picker's LEVEL marks on screen,
-the phone, a player with no save at all, and the LV chip at a level the XP agrees with.
+- **The match picker at level 7** (`match-picker-locks.jpg`): Redline LEVEL 10, Shredder LEVEL 20, Lever Rifle LEVEL
+  8, Auto Shotgun LEVEL 12, Nail Gun LEVEL 18, all greyed. The Minigun and the Big Laser Pointer (live since weapons
+  batch B) read ROBUX · FREE.
+
+Not tested: a real XP gain to the next level (the level was set by hand), the phone, a player with no save at all, and the LV chip at a level the XP agrees with.
