@@ -234,6 +234,12 @@
   "what": "a UI fire flipbook, 64 frames (8x8, 128 px cells), a ragged row of fire rising off the bottom edge, looping, coloured as drawn (normal blend), sides fading in alpha (FlameStrip.luau, the RANKED switch)",
   "uploaded": "2026-11-17 10:27 UTC (the owner: \"can the flames be actual flames?\"; tools/roblox/vfx/fire_sheet.py, nothing downloaded)"
  },
+ "vfx_fire_tongues_8x8": {
+  "id": 76464949862705,
+  "sha1": "9bbd6501c65713a66dcb3e74eca748c83f0a1e44",
+  "what": "the RANKED fire, second drawing: 64 frames (8x8, 128 px cells) of separate pointed flame tongues (no full-width solid base), sides fading over 28 % of the cell, looping, coloured as drawn (FlameStrip.luau)",
+  "uploaded": "2026-11-18 14:42 UTC (the owner: \"whya re the falmes like cut off or is ther blocky flames in the backl?\"; tools/roblox/vfx/fire_tongues.py, nothing downloaded)"
+ },
  "ui_speedline": {
   "id": 103897494524802,
   "sha1": "28a3547417469ad3987ea6536b00c059b9e97f30",

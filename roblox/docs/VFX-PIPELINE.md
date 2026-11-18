@@ -612,3 +612,21 @@ fuse, or the duck sticking), use as your own bento opens (first person only; nob
   vanishes at once), so the trail fades over its own life.
 - Photos `round18/v840-gadget-skins-trails.jpg` (a test rig flying the skins' own models in loops at 14 m/s in the hub;
   the duck's larger flecks and the bento's steam are not in the photos).
+
+## The RANKED fire, second drawing (18 Nov 2026, place version 913)
+
+The owner on the Play menu's mode panel: "whya re the falmes like cut off or is ther blocky flames in the backl?". The
+utility session traced it: each cell of `vfx_fire_8x8` was a full-width wall of fire (a solid hot base across the cell,
+straight sides faded over only ~8 px, a fairly even top), so FlameStrip's eight labels at independent heights (56-96)
+read as rectangular blocks at stepped heights with flat tops.
+
+- New sheet `vfx_fire_tongues_8x8` (asset 76464949862705, `tools/roblox/vfx/fire_tongues.py`): every cell is a group
+  of separate tongues, each widest low down and tapering to a point, eaten by the first sheet's scrolling turbulence;
+  clear between them; only a soft broken ember band where they root; alpha fading over 28 % of the cell each side.
+  Loops on whole cycles like the first.
+- `FlameStrip.luau`: labels overlap 0.7 (was 0.4) so the groups blend into one row; the heights follow one smooth
+  noise along the row (neighbours close, 64-88 settled) instead of each label's own; the 9-slice base is 20 rows (the
+  tongues' roots) instead of the old wall's 44.
+- Photos: `docs/vfx/round18/ranked-flames-v913.jpg` (settled; mid-sweep held with `FlameStripHold`). Getting the panel up
+  in a solo Play: `PlayTest = "play"`, `PlayTest = "open"`, then `JankfireRemotes.Play:InvokeServer("mode", "1v1", true)`.
+  The Play menu's lobby camera binds after a Last+50 step: close it (`PlayTest = "close"`) before staging other shots.

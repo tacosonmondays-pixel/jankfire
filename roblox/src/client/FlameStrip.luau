@@ -21,24 +21,28 @@ local STUDIO = RunService:IsStudio()
 local FlameStrip = {}
 FlameStrip.__index = FlameStrip
 
-FlameStrip.SHEET = "rbxassetid://79816315934163"
+FlameStrip.SHEET = "rbxassetid://76464949862705" -- (vfx_fire_tongues_8x8; the first sheet, vfx_fire_8x8, was 79816315934163)
 local GRID, CELL, FRAMES, FPS = 8, 128, 64, 30
 -- (17 Nov, the owner on the sweep: "the base of the flame jumps up too!": stretched whole, a flame's solid bottom band
 -- grew with it to a third of the panel. Now each flame is nine-sliced: its cell's bottom BASE rows keep the settled
 -- size, so the solid base stays a low band on the panel's bottom edge and only the tongues above it stretch up)
-local BASE = 44 -- (cell rows 84-128: the solid hot base)
+-- (18 Nov, the owner: "whya re the falmes like cut off or is ther blocky flames in the backl?": each cell of the first
+-- sheet was a full-width wall of fire, so eight side by side read as blocks with flat tops. The sheet is now
+-- tools/roblox/vfx/fire_tongues.py: separate pointed tongues, no solid base, sides fading over 28 % of the cell; the
+-- labels overlap 0.7 so they blend into one uneven row, and their heights follow one smooth noise along the row)
+local BASE = 20 -- (cell rows 108-128: where the tongues root)
 local HOT = Color3.fromRGB(255, 150, 40)
 local DEEP = Color3.fromRGB(196, 46, 12)
 
 export type Strip = typeof(setmetatable({} :: {
-	root: Frame, glow: Frame, tall: Frame, flames: { { im: ImageLabel, off: number, seed: number, w: number } }, t: number, frame: number,
+	root: Frame, glow: Frame, tall: Frame, flames: { { im: ImageLabel, off: number, seed: number, x: number, w: number } }, t: number, frame: number,
 }, FlameStrip))
 
 function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: number?, overlap: number? }?): Strip
 	local o = opts or {}
 	local count = o.count or 8
 	local z = o.zIndex or 1
-	local overlap = o.overlap or 0.4
+	local overlap = o.overlap or 0.7
 	local root = Instance.new("Frame")
 	root.Name = "FlameStrip"; root.BackgroundTransparency = 1; root.Size = UDim2.fromScale(1, 1); root.ZIndex = z
 	root.Visible = false
@@ -71,7 +75,7 @@ function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: numbe
 		im.Size = UDim2.new((1 + overlap) / count, 0, 0, 0); im.ZIndex = z + 1
 		im.Parent = root
 		-- (each on its own frame, 11 apart; widths a little uneven)
-		table.insert(flames, { im = im, off = (i * 11) % FRAMES, seed = math.random() * 100, w = (1 + overlap) / count * (0.9 + math.random() * 0.25) })
+		table.insert(flames, { im = im, off = (i * 11) % FRAMES, seed = math.random() * 100, x = (i - 0.5) / count, w = (1 + overlap) / count * (0.95 + math.random() * 0.1) })
 	end
 	root.Parent = parent
 	return setmetatable({ root = root, glow = glow, tall = tall, flames = flames, t = 0, frame = -1 }, FlameStrip)
@@ -105,12 +109,13 @@ function FlameStrip.step(self: Strip, dt: number, level: number, sweep: number, 
 			local k = (frame + f.off) % FRAMES
 			f.im.ImageRectOffset = Vector2.new((k % GRID) * CELL, (k // GRID) * CELL)
 		end
-		local n = math.noise(f.seed, self.t * 1.4) * 0.5 + 0.5
+		-- (one noise along the row, so neighbours stand at nearly the same height and the tops roll; a little of its own)
+		local n = math.clamp((math.noise(f.x * 2.2, self.t * 1.1) * 0.8 + math.noise(f.seed, self.t * 1.6) * 0.2) * 0.5 + 0.5, 0, 1)
 		-- settled: a low flicker 56-96 tall, the tongues reaching up past the hot band into the dark panel; the sweep: up to
 		-- the frame's height and a bit over (the fire fills the lower ~85 % of its cell). (v586: 34-62 tall over a strong glow
 		-- read as one orange band, no flames)
-		local h0 = (56 + 40 * n) * math.max(level, math.min(1, sweep * 4))
-		local h = h0 + sweep * H * (1.0 + 0.3 * n)
+		local h0 = (64 + 24 * n) * math.max(level, math.min(1, sweep * 4))
+		local h = h0 + sweep * H * (1.0 + 0.15 * n)
 		f.im.Size = UDim2.new(f.w, 0, 0, math.floor(h))
 		-- (the slice scale: the cell's own size at the settled height, so the base band is the settled flame's base, held
 		-- there while the sweep stretches only the tongues)
