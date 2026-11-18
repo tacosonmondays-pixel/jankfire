@@ -426,6 +426,32 @@ local function ownsSkin(p: Player, id: string): boolean
 	return ok2 and yes == true
 end
 
+-- where a look you don't own comes from, in plain words for the refusal (18 Nov: a mastery camo said "it's in spray
+-- cans"): a mastery camo's level, the VIP daily reward, VIP, a set (by name), a code, a concept, else its container
+local function notOwned(t: string, id: string): string
+	local mm = Shared:FindFirstChild("Mastery")
+	local okM, M = false, nil
+	if mm and mm:IsA("ModuleScript") then okM, M = pcall(require, mm) end
+	local camo = if okM and type(M) == "table" and type(M.byId) == "table" then M.byId[id] else nil
+	if t == "wrap" and camo then return ("unlocks at LV %d with this gun"):format(camo.level) end
+	if LootTable.exclusive(t, id) then return "it comes from the VIP daily reward" end
+	if LootTable.vipOnly(t, id) then return "it comes with VIP" end
+	if t == "skin" then
+		if LootTable.concept(id) then return "that one's still a concept" end
+		local sm = Shared:FindFirstChild("SkinSets")
+		local okS, S = false, nil
+		if sm and sm:IsA("ModuleScript") then okS, S = pcall(require, sm) end
+		local row = if okS and type(S) == "table" and type(S.SKINS) == "table" then S.SKINS[id] else nil
+		local set = if type(row) == "table" and type(S.SETS) == "table" then S.SETS[row[4]] else nil
+		if type(set) == "table" then
+			return if set.code then "it comes from a code" else ("it comes with the %s set in the shop"):format(set.name)
+		end
+		return "you don't own that skin. it's in crates"
+	end
+	if t == "hat" then return "you don't own that one for this gun yet. it's in duffel bags" end
+	return "you don't own that one for this gun yet. it's in spray cans"
+end
+
 local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown): (boolean, string?)
 	local d = data[p]
 	if not d then return false, "still loading" end
@@ -479,7 +505,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		local e = Roster.byId[a]
 		if not e or not e.live then return false, "that weapon isn't on roblox yet" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
-		if not free and not Loot.owns(p, "wrap", b, a) then return false, "you don't own that one for this gun yet. it's in spray cans" end
+		if not free and not Loot.owns(p, "wrap", b, a) then return false, notOwned("wrap", b) end
 		if b == "default" and c == "normal" then L.wraps[a] = nil else L.wraps[a] = { id = b, mode = c } end
 		done()
 		-- paint: right away (it's only a look), on what others see in your hand and on the Shredder
@@ -493,7 +519,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "that weapon isn't on roblox yet" end
 		if e.slot == "utility" then return false, "items don't wear hats" end
 		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
-		if b ~= "none" and not free and not Loot.owns(p, "hat", b, a) then return false, "you don't own that one for this gun yet. it's in duffel bags" end
+		if b ~= "none" and not free and not Loot.owns(p, "hat", b, a) then return false, notOwned("hat", b) end
 		local was = L.hats[a]
 		L.hats[a] = if b == "none" then nil else b
 		if was == L.hats[a] then return true, nil end
@@ -513,7 +539,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 			if free then
 				if concept(b) then return false, "that one's still a concept" end
 			elseif not ownsSkin(p, b) then
-				return false, "you don't own that skin"
+				return false, notOwned("skin", b)
 			end
 		end
 		local was = L.skins[a]

@@ -853,6 +853,34 @@ Tested in solo Play:
 
 Not seen on screen: the purple effect itself in a shot (`BloodCrossFx` already draws `PAL.shadow`; the palette check passed).
 
+## The loadout always opens; refusals name where a look comes from (18 Nov, place version 986)
+
+The owner couldn't open the loadout live. Their saved primary was the Shopping Cart Cannon, and the cannon (like the
+TV Remote) has no `dmg` of its own. So `statsFor` formatted a nil inside `setOpen`. `refresh` threw before the screen
+showed, and `LoadoutOpen` stayed true. That stuck flag also blocked other menus, such as the party screen.
+
+- **`LoadoutUI.statsFor`:** DAMAGE, REACH and RANGE read "n/a" (bar empty) when the weapon has no number. FIRE
+  RATE falls back to `1 / cd`.
+- **`refresh`:** now wrapped in a pcall. One bad weapon, look or row logs `[jankfire] loadout refresh: ...` once per
+  message, and the screen still opens and updates.
+- **Refusals (`Loadout.notOwned`):** a look you don't own now says where it comes from:
+  - a mastery camo: "unlocks at LV n with this gun";
+  - the VIP daily reward;
+  - VIP;
+  - its set by name ("it comes with the Seraph set in the shop");
+  - a code;
+  - a concept;
+  - otherwise crates, duffel bags or spray cans.
+
+  The client only blocks a mastery camo locally (with its level). Everything else goes to the server for that answer.
+
+Tested in solo Play on the `_studio` profile with primary = Shopping Cart Cannon:
+- L opened the screen, with DAMAGE n/a, FIRE RATE 0.62/s and RANGE 100 m, and no errors in the console
+  (`shop/loadout-cart-opens.jpg`).
+- Wearing Mastery Gold on the AR at LV 1 answered "unlocks at LV 10 with this gun".
+- Wearing the Seraph AR without the set answered "it comes with the Seraph set in the shop".
+- Primary was put back to the AR afterwards.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

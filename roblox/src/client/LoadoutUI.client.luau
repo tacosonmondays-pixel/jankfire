@@ -470,16 +470,19 @@ local function statsFor(id: string): { Roster.Stat }
 	local S = Weapons.S
 	local pel = w.pellets or 1
 	local out = {}
-	table.insert(out, { label = "DAMAGE", text = if pel > 1 then ("%g x%d"):format(w.dmg, pel) else ("%g"):format(w.dmg), bar = math.min(1, w.dmg * pel / 120) })
+	-- (a weapon may have no damage or range of its own: the Shopping Cart Cannon runs people over with its cart, the TV
+	-- Remote pauses them. "n/a", never a nil sum: 18 Nov, a nil here kept the owner's loadout from opening at all)
+	local dmg, range = tonumber(w.dmg), tonumber(w.range)
+	table.insert(out, { label = "DAMAGE", text = if not dmg then "n/a" elseif pel > 1 then ("%g x%d"):format(dmg, pel) else ("%g"):format(dmg), bar = if dmg then math.min(1, dmg * pel / 120) else 0 })
 	if w.kind == "melee" then
 		local r = 1 / (w.cd or 1)
 		table.insert(out, { label = "SWING RATE", text = ("%.3g/s"):format(r), bar = math.min(1, r / 22) })
-		table.insert(out, { label = "REACH", text = ("%.2g m, +%.2g a kill"):format(w.range / S, (w.grow or 0) / S), bar = math.min(1, math.sqrt(w.range / S / 500)) })
+		table.insert(out, { label = "REACH", text = if range then ("%.2g m, +%.2g a kill"):format(range / S, (w.grow or 0) / S) else "n/a", bar = if range then math.min(1, math.sqrt(range / S / 500)) else 0 })
 		table.insert(out, { label = "MAG", text = "n/a", bar = 0 })
 	else
-		local r = w.rate or 1
+		local r = w.rate or (if w.cd then 1 / w.cd else 1)
 		table.insert(out, { label = "FIRE RATE", text = if w.rateMax then ("%g-%g/s"):format(r, w.rateMax) else ("%.2g/s"):format(r), bar = math.min(1, (w.rateMax or r) / 22) })
-		table.insert(out, { label = "RANGE", text = ("%g m"):format(w.range / S), bar = math.min(1, math.sqrt(w.range / S / 500)) })
+		table.insert(out, { label = "RANGE", text = if range then ("%g m"):format(range / S) else "n/a", bar = if range then math.min(1, math.sqrt(range / S / 500)) else 0 })
 		table.insert(out, { label = "MAG", text = if w.mag then tostring(w.mag) else "no reload", bar = math.min(1, (w.mag or 60) / 60) })
 	end
 	return out
@@ -920,6 +923,21 @@ refresh = function()
 	saveLbl.TextColor3 = if save == "off" then RED else GREY
 end
 
+-- (one bad weapon, look or row must never keep the screen from opening or updating: an error in a refresh is caught and
+-- logged once per message, and the rest goes on. 18 Nov: a nil in one weapon's stats threw inside setOpen, before the
+-- screen showed, and left it shut for good)
+do
+	local inner = refresh
+	local lastErr = ""
+	refresh = function()
+		local ok, err = pcall(inner)
+		if not ok and tostring(err) ~= lastErr then
+			lastErr = tostring(err)
+			warn("[jankfire] loadout refresh: " .. lastErr)
+		end
+	end
+end
+
 -- ---------------------------------------------------------------- talking to the server
 local function ask(...: any): (boolean, string?)
 	local ok, res = pcall(function(...) return Remote:InvokeServer(...) end, ...)
@@ -948,10 +966,11 @@ onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live then return end
 	local _, md = wrapOf(e.id)
-	if not owns("wrap", wr.id) and not trying() then
+	-- (a mastery camo says its level here; any other look you don't own: the server's refusal names where it comes from,
+	-- VIP, the daily reward or spray cans. 18 Nov)
+	if not owns("wrap", wr.id) and not trying() and wr.mastery then
 		play("empty")
-		say(if wr.mastery then ("%s for the %s unlocks at %s level %d."):format(wr.name, string.lower(e.name), string.lower(e.name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0)
-			else ("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED)
+		say(("%s for the %s unlocks at %s level %d."):format(wr.name, string.lower(e.name), string.lower(e.name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0), RED)
 		return
 	end
 	local ok, why = ask("wrap", e.id, wr.id, md)
