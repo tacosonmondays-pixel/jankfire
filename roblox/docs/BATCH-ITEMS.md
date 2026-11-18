@@ -439,3 +439,19 @@ per-utility wraps.
 
 ![skins](items/gadget-skins-sheet.jpg)
 ![wraps and a skin in hand](items/gadget-wraps-in-hand.jpg)
+
+**The legendary gadget skins' own sounds and effects** (place version 836, commit 077d77b; that commit's message says
+838 by mistake):
+- The four legendary skins (Paper Lantern, Bento Box, Incense Burner, Origami Duck) get sound layers from the sound
+  session (`Sfx.skinItem`, place version 834) and effects from the VFX session (`Fx.itemFlight` / `itemLand` /
+  `itemUse`).
+- Utility.client calls them at:
+  - the throw (yours on the release, others' as it appears in flight);
+  - the frag blast;
+  - the smoke cloud starting;
+  - the duck sticking (its hole opening);
+  - the medkit opening (yours as you press G and its lid opens; others' where they stand: sound only).
+- The server's "boom" and "smoke" now carry the owner (`o`). A thrown gadget's "pd" carries `x = true` only when it
+  really went off (the fuse ran out, or the duck stuck), so a landing effect never plays for one that ran out of life,
+  fell into the void, hit a dome or was culled by the room cap.
+- Every call is guarded and does nothing for a gadget without a skin layer.
