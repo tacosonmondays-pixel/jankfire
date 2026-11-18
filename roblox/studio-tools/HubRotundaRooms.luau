@@ -234,19 +234,11 @@ return function(B, R)
 		local CD = { 33.7, 40.25, 47.75, 55.25, 62.75 } -- (across it: the coffers' middles at 44 and 59 are the chandeliers')
 		for _, x in CX do B.box(F7, C, "CofferBeam", x - 0.45, x + 0.45, ROOF - 1.2, ROOF, A + T, DS, TRIM, nil, G) end
 		for _, d in CD do B.box(F7, C, "CofferBeam", -X, X, ROOF - 1.15, ROOF, d - 0.45, d + 0.45, TRIM, nil, G) end -- (bottoms 0.05 off the others')
-		local cxs = { -12.67, -6.33, 0, 6.33, 12.67 }
-		local cds = { 37, 44, 51.5, 59, 66 }
-		for _, x in cxs do
-			for _, d in cds do
-				if x == 0 and (d == 44 or d == 59) then
-					B.cyl(F7, C, "CeilingRose", 0, ROOF - 0.4, ROOF - 0.02, d, 3.2, TRIM2, nil, G)
-				else
-					B.cyl(F7, C, "Downlight", x, ROOF - 0.1, ROOF - 0.02, d, 0.9, "f0d6a8", Neon, G)
-				end
-			end
-		end
-		for _, e in { { -9.5, 40 }, { 9.5, 40 }, { -9.5, 62 }, { 9.5, 62 } } do B.lamp(F7, e[1], ROOF - 3, e[2], 40, 0.25, P.warm) end
-		B.lamp(F7, 0, ROOF - 1.5, (37 + DS) / 2, 50, 0.25, P.warm, { spot = true, angle = 120 })
+		-- a rose over each chandelier; no downlights (18 Nov, the owner: "too many circle lights, maybe none necessary to
+		-- make it cozy because we have the chandeliers"): the chandeliers and the sconces light the room, with a little
+		-- hidden fill from the ceiling's corners
+		for _, d in { 44, 59 } do B.cyl(F7, C, "CeilingRose", 0, ROOF - 0.4, ROOF - 0.02, d, 3.2, TRIM2, nil, G) end
+		for _, e in { { -9.5, 40 }, { 9.5, 40 }, { -9.5, 62 }, { 9.5, 62 } } do B.lamp(F7, e[1], ROOF - 3, e[2], 34, 0.2, P.warm) end
 
 		-- ---- the walls over the arcades. one bay between two piers: the band over the opening (the gallery's edge rests on
 		-- it), a gallery's wall over that (a wood dado and its rail, a panelled wood door to each room, a moulded plaster
@@ -285,7 +277,7 @@ return function(B, R)
 				B.box(Ff, C, "SconcePlate", x - 0.3, x + 0.3, 17.6, 18.8, A - 0.12, A, TRIM, nil, G)
 				B.box(Ff, C, "SconceArm", x - 0.08, x + 0.08, 18.1, 18.3, A - 0.6, A - 0.12, "b59a5c", nil, G)
 				B.box(Ff, C, "SconceShade", x - 0.3, x + 0.3, 18.3, 19.1, A - 0.85, A - 0.35, "f0d6a8", Neon, G)
-				B.lamp(Ff, x, 18.7, A - 0.9, 12, 0.2, P.warm)
+				B.lamp(Ff, x, 18.7, A - 0.9, 14, 0.35, P.warm)
 			end
 			if kind == "grand" then door(0, 2.2); panel(0, 2.2); sconce(-4.2); sconce(4.2)
 			else
@@ -391,7 +383,7 @@ return function(B, R)
 					B.box(Fk, C, "SconcePlate", x - 0.3, x + 0.3, 17.6, 18.8, e, e + 0.12, TRIM, nil, G)
 					B.box(Fk, C, "SconceArm", x - 0.08, x + 0.08, 18.1, 18.3, e + 0.12, e + 0.6, "b59a5c", nil, G)
 					B.box(Fk, C, "SconceShade", x - 0.3, x + 0.3, 18.3, 19.1, e + 0.35, e + 0.85, "f0d6a8", Neon, G)
-					B.lamp(Fk, x, 18.7, e + 0.9, 12, 0.2, P.warm)
+					B.lamp(Fk, x, 18.7, e + 0.9, 14, 0.35, P.warm)
 				end
 			end
 		end
@@ -429,40 +421,87 @@ return function(B, R)
 			for _, s in { -1, 1 } do B.paint(F7, "RunnerEdge", s * 2.2, s * 2.6, -0.05, run[1], run[2], P.creamHi, 0.03) end
 		end
 
-		-- ---- the fountain: a round basin, a column and a bowl, water spilling from the bowl, and the duck on top (a
-		-- stone duck now; until the plaza a hologram over a projector), a ring set in the floor round it
-		B.cyl(F7, C, "FountainRing", 0, -0.06, 0.03, FD, 2 * 7.4, P.cream, nil, G)
-		B.cyl(F7, C, "FountainRingFill", 0, -0.1, 0.07, FD, 2 * 6.9, P.floor2, nil, G)
-		B.cyl(F7, C, "FountainBasin", 0, 0, 1.3, FD, 2 * 5.2, P.cream)
-		B.cyl(F7, C, "FountainWater", 0, 1.22, 1.38, FD, 2 * 4.5, WATER, Enum.Material.Glass, { ghost = true, tr = 0.3 })
-		local Fc = F7 * CFrame.new(0, 0, -FD)
-		for k = 0, 15 do -- (the basin's coping: a ring of blocks, every other one 0.03 higher so no two tops share a plane)
-			local Fk = Fc * CFrame.Angles(0, k * math.pi / 8, 0)
-			local o = (k % 2) * 0.03
-			local half = 4.85 * math.tan(math.pi / 16) + 0.03
-			B.box(Fk, C, "FountainCoping", -half, half, 1.3 + o, 1.75 + o, 4.45, 5.25, P.creamHi, nil, G)
-		end
-		B.cyl(F7, C, "FountainColumn", 0, 1.3, 4.4, FD, 1.8, P.cream)
-		B.cyl(F7, C, "FountainBowl", 0, 4.4, 5, FD, 2 * 2.4, P.creamHi, nil, G)
-		B.cyl(F7, C, "FountainBowlWater", 0, 4.92, 5.08, FD, 2 * 2.05, WATER, Enum.Material.Glass, { ghost = true, tr = 0.3 })
-		local spill = B.cyl(F7, C, "FountainSpill", 0, 4.6, 4.7, FD, 2 * 2.35, WATER, nil, { ghost = true, tr = 1 })
+		-- ---- the fountain (18 Nov, the owner: "this is scary, we have plenty cute ducks already we can use, can the water
+		-- trickling look like actual water like what we used for the pools in rooftop"): a square basin of real Terrain
+		-- water, set on Terrain's 4-stud grid so the water fills it exactly (the hub's look leaves Terrain's water as saved:
+		-- the Rooftop v3 pool's), a column and a bowl, OUR rubber duck on top (JankfireItems.x_duck, the moulded one), and
+		-- water pouring from the bowl's rim: beams of a moving streak texture, a little splash where each lands. all in world
+		-- studs, its middle on the grid nearest the old one; a ring set in the floor round it
 		do
-			local pe = Instance.new("ParticleEmitter")
-			pe.Name = "Spill"; pe.Rate = 45; pe.Lifetime = NumberRange.new(0.45, 0.6); pe.Speed = NumberRange.new(0.5, 1.2)
-			pe.EmissionDirection = Enum.NormalId.Left -- (the part lies on its side: its -X face is down)
-			pe.Acceleration = Vector3.new(0, -24, 0); pe.Size = NumberSequence.new(0.14); pe.LightEmission = 0.2
-			pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0.8) })
-			pe.Color = ColorSequence.new(Color3.fromHex("d8e6e8")); pe.Parent = spill
-		end
-		local duck = B.put(F7, "pj_duck", "FountainDuck", 0, 5.1, FD, 180, { scale = 6, raw = true }) -- (180: the model's own front is its back; it looks north, at the arches)
-		if duck then
-			for _, p in duck:GetDescendants() do
-				if p:IsA("BasePart") then
-					local dark = p.Color.R + p.Color.G + p.Color.B < 0.45 -- (its eyes stay dark)
-					p.Color = if dark then Color3.fromHex("3a3d44") else Color3.fromHex(P.creamHi)
-					p.Material = Enum.Material.SmoothPlastic; p.CanCollide = false
-				end
+			local c0 = R.warpPoint(B.warp, B.O, F7 * Vector3.new(0, 0, -FD))
+			if not B.warp then c0 = F7 * Vector3.new(0, 0, -FD) end
+			local wc = Vector3.new(math.round(c0.X / 4) * 4, B.O.Y, math.round(c0.Z / 4) * 4)
+			local Fw = CFrame.new(wc) * CFrame.Angles(0, math.pi, 0) -- (turned as the lobby's frame: d grows south)
+			local HW, WL = 8, 1.2 -- (the water's half width, its depth: whole voxels across, 0.3 of one up)
+			local was = B.mark
+			B.mark = B.warp ~= nil
+			B.box(Fw, C, "FountainFloor", -HW, HW, -0.04, 0.02, -HW, HW, "3f5a60", nil, G)
+			for _, sg in { -1, 1 } do
+				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + 1.2), -0.04, 1.7, -(HW + 1.2), HW + 1.2, TRIM)
+				B.box(Fw, S, "FountainWall", -HW, HW, -0.04, 1.69, sg * HW, sg * (HW + 1.2), TRIM)
+				B.box(Fw, C, "FountainCoping", sg * (HW - 0.2), sg * (HW + 1.6), 1.7, 2.15, -(HW + 1.6), HW + 1.6, TRIM2, nil, G)
+				B.box(Fw, C, "FountainCoping", -(HW - 0.2), HW - 0.2, 1.72, 2.13, sg * (HW - 0.2), sg * (HW + 1.6), TRIM2, nil, G)
 			end
+			B.cyl(Fw, S, "FountainColumn", 0, -0.04, 4.6, 0, 2.6, TRIM)
+			B.cyl(Fw, C, "FountainColumnRing", 0, 1.5, 1.9, 0, 3.1, TRIM2, nil, G)
+			local bowl = B.cyl(Fw, S, "FountainBowl", 0, 4.6, 5.2, 0, 6.6, TRIM2)
+			B.cyl(Fw, C, "FountainBowlLip", 0, 5.2, 5.5, 0, 6.9, TRIM2, nil, G)
+			B.cyl(Fw, C, "FountainBowlWater", 0, 5.28, 5.42, 0, 6.2, "3f8fa0", Enum.Material.Glass, { ghost = true, tr = 0.35 })
+			-- the duck, big and round on the bowl, looking north at the arches
+			local lib = game.ReplicatedStorage:FindFirstChild("JankfireItems")
+			local src = lib and lib:FindFirstChild("x_duck")
+			if src then
+				local m = src:Clone(); m.Name = "FountainDuck"
+				local _, sz = m:GetBoundingBox()
+				m:ScaleTo(m:GetScale() * 4.6 / math.max(sz.Y, 0.01))
+				local pv = m:GetPivot()
+				m:PivotTo(CFrame.new(pv.Position) * CFrame.Angles(0, math.rad(R.FOUNTAIN_DUCK_TURN or 0), 0) * pv.Rotation) -- (turned in place)
+				local cf2, sz2 = m:GetBoundingBox()
+				m:PivotTo(m:GetPivot() + (wc + Vector3.new(0, 5.5 + sz2.Y / 2, 0) - cf2.Position)) -- (its box's foot on the bowl's lip)
+				for _, q in m:GetDescendants() do
+					if q:IsA("BasePart") then q.Anchored = true; q.CanCollide = false; q.CanTouch = false; q:SetAttribute("Warped", true) end
+				end
+				m.Parent = B.root.Scenery
+			else
+				B.missing.x_duck = 1
+			end
+			-- the water pouring from the bowl's rim into the basin: eight streams, a splash where each lands
+			local tex = "rbxassetid://112358151691374"
+			local floorPart = B.root.Scenery:FindFirstChild("FountainFloor")
+			for k = 0, 7 do
+				local an = (k + 0.5) * math.pi / 4
+				local dir = Vector3.new(math.cos(an), 0, math.sin(an))
+				local a0 = Instance.new("Attachment"); a0.Name = "Pour"; a0.Parent = bowl
+				a0.WorldPosition = wc + dir * 3.35 + Vector3.new(0, 5.3, 0)
+				local a1 = Instance.new("Attachment"); a1.Name = "Land"; a1.Parent = floorPart or bowl
+				a1.WorldPosition = wc + dir * 4.7 + Vector3.new(0, WL, 0)
+				local bm = Instance.new("Beam")
+				bm.Name = "Stream"; bm.Attachment0 = a0; bm.Attachment1 = a1
+				bm.Texture = tex; bm.TextureMode = Enum.TextureMode.Wrap; bm.TextureLength = 2.5; bm.TextureSpeed = 1.4
+				bm.Width0 = 0.55; bm.Width1 = 0.95; bm.CurveSize0 = 1.6; bm.CurveSize1 = 0; bm.Segments = 14; bm.FaceCamera = true
+				bm.Color = ColorSequence.new(Color3.fromRGB(214, 236, 242)); bm.LightEmission = 0.15; bm.LightInfluence = 0.8
+				bm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.8, 0.35), NumberSequenceKeypoint.new(1, 0.7) })
+				-- (the curve bows out from the rim: Attachment0's +X along the stream's way out)
+				a0.Axis = dir; a0.SecondaryAxis = Vector3.new(0, 1, 0)
+				bm.Parent = bowl
+				local sp = Instance.new("ParticleEmitter")
+				sp.Name = "Splash"; sp.Rate = 14; sp.Lifetime = NumberRange.new(0.25, 0.45); sp.Speed = NumberRange.new(2, 4)
+				sp.SpreadAngle = Vector2.new(35, 35); sp.EmissionDirection = Enum.NormalId.Top; sp.Acceleration = Vector3.new(0, -32, 0)
+				sp.Size = NumberSequence.new(0.14, 0.05); sp.LightEmission = 0.1
+				sp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+				sp.Color = ColorSequence.new(Color3.fromRGB(228, 242, 246)); sp.Parent = a1
+			end
+			B.mark = was
+			-- the water itself: Terrain, only in the live hub (a staging copy has none), the last build's cleared first
+			if B.live then
+				local hub = workspace.Map.Hub
+				local T0 = workspace.Terrain
+				local old = hub:GetAttribute("FountainWater")
+				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, 2, 0)), Vector3.new(4 * HW + 8, 8, 4 * HW + 8), Enum.Material.Air) end
+				T0:FillBlock(CFrame.new(wc + Vector3.new(0, WL / 2, 0)), Vector3.new(2 * HW, WL, 2 * HW), Enum.Material.Water)
+				hub:SetAttribute("FountainWater", wc)
+			end
+			B.box(F7, C, "FountainRing", -0.1, 0.1, -0.06, 0.03, FD - 0.1, FD + 0.1, P.cream, nil, { ghost = true, tr = 1 }) -- (a marker only: the old floor ring went with the round basin)
 		end
 		B.lamp(F7, 0, 9.2, FD, 16, 0.6, P.warm, { spot = true, angle = 60 })
 
@@ -493,7 +532,7 @@ return function(B, R)
 			B.cyl(Fq, C, "ChandelierLanternGlow", 0, 18.4, 21.1, 0, 1.76, P.warm, Neon, { ghost = true, tr = 0.35 })
 			B.cyl(Fq, C, "ChandelierFinial", 0, 16.9, 17.6, 0, 0.9, TRIM, nil, G)
 			B.cyl(Fq, C, "ChandelierRod", 0, 21.9, ROOF - 0.4, 0, 0.5, P.pier, nil, G)
-			B.lamp(Fq, 0, 17.4, 0, 34, 0.6, P.warm, { shadows = ci == 2 })
+			B.lamp(Fq, 0, 17.4, 0, 42, 0.95, P.warm, { shadows = ci == 2 })
 		end
 
 		-- ---- big trees in pots: two each side on the piers' lines, two either side of the way to the VIP door. (people-
@@ -515,7 +554,7 @@ return function(B, R)
 			end)
 		end
 		for _, s in { -1, 1 } do
-			tree(s * 12.5, 39, 20 * s); tree(s * 12.5, 57, -35 * s); tree(s * PZ.PIERS_X[1], 64.5, 70 * s)
+			tree(s * 12.5, 39, 20 * s); tree(s * 12.5, 57, -35 * s); tree(s * 10, 64.5, 70 * s) -- (clear of the square basin)
 		end
 
 		-- ---- the mini-games' two tables either side, between the palms, each on a rug with a border (the seating went to

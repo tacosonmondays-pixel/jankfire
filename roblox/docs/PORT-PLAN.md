@@ -1988,6 +1988,43 @@ The owner on v940: "the lobby area looks like the outside of a hotel rather than
 - LoreLife.client (lore-npcs) hides it and turns its collision off, on that player's screen only, once they have entered the code.
 - Live check: still 0 problems.
 
+## 48. Hub v3: the lobby's blocks out, the round hall's greys, the upstairs cleared and closed, 18 November 2026 (place version 966)
+
+The owner on v953 and v963. On the lobby's north wall: "can you remove those blocks". Then: "also can the hotel match the gray colors". On the upstairs pad area: "not a fan of this..". On a gap upstairs: "this is open on either side". Meanwhile the lore NPCs, the mannequin included, became cutscene-only.
+- **North wall.** The two built-out bay walls (`FaceMass`) over the side arches are gone. All three of the round hall's faces seen from the lobby are flat: a grey skin, the picture rail, the frieze and the cornice. Over each side arch hang a framed plaster panel and two sconces. The middle arch keeps its balcony.
+- **Egg nook dropped.** `R.EGG_SIDE = nil` (set it back to 8 to build the nook again; `R.EGG_NICHE` is kept as data). Side 8's gallery window is an ordinary closed lit panel in a solid lintel. The EggNookDoor and the nook's keep-clear zone are gone with it. training-v2 owns `HubEgg.luau`; it was told the old `HubEgg.SPOT` is now lobby air.
+- **Grey.** The lobby's paint comes from the round hall's palette:
+  - walls `P.bay`;
+  - piers and pilasters `P.pier` and `P.pier2`;
+  - trim `P.cream` and `P.creamHi`;
+  - ceiling `P.dome`;
+  - floors `P.floor` and `P.floor2`;
+  - rugs `P.carpet`;
+  - desk, bar and stools in the pier greys;
+  - the arches' lobby-side skin (`ArchSkin`, HubRotundaCentre) `P.bay`.
+  The wood doors stay a muted warm accent, and the lamps stay warm-white.
+- **Upstairs.** The waiting benches and the blob-bush planters between the upper pads are gone; each pad is its clean bay. The doorways' inside frames are the hall's cream, not the brighter one.
+- **The crescent's ends** (HubRotundaLifts). The second floor's slab and roof ran out to the end walls at ±`R.endBearing()` (54.3°), but its outer wall stopped behind the last pads (±50.75°), leaving the sky open at both ends. Each end now has outer wall with skirting, cap and band.
+- **Mini-games' markers.** The lobby's two seating groups gave way to the mini-games' tables: `MiniGameSpot` parts with `Game = "arm"` (east) and `"board"` (west), on the rugs between the palms. The arcade machine gave way to `Game = "arcade"`, back to the east arcade's north wall. The markers are invisible parts tagged `MiniGameSpot`, look along the lobby, built with the hub. Looticus lost his arcade point.
+
+**Checks.**
+- Live `R.check`: 0 problems, 12 of 12 pads.
+- A ray sweep of 4,224 rays over the whole upper floor, the balcony ring and the lobby found no way out to the sky. The only hits came from points inside the west end wall.
+
+**Trap.** A ray started inside a part never hits that part. Discard sweep hits whose origin is inside a part (`GetPartBoundsInRadius`) before calling them leaks.
+
+**Place version 976: the ceiling's lights and the fountain.**
+- **Ceiling.** The owner: "too many circle lights, maybe none necessary to make it cozy because we have the chandeliers". The coffer downlights are gone; only a rose over each chandelier remains. The chandeliers (0.95, range 42) and the sconces (0.35) light the room, with four hidden fills at 0.2.
+- **Fountain.** The owner on the statue duck: "this is scary, we have plenty cute ducks already we can use, can the water trickling look like actual water like what we used for the pools in rooftop".
+  - A square basin in world studs, centred on Terrain's 4-stud grid nearest the old middle, holds real **Terrain water**: 16 × 16 × 1.2, occupancy 0.3. The live build clears the last build's water first; its place is kept in the `Map.Hub` attribute `FountainWater`. A staging copy gets none.
+  - The hub's look leaves Terrain's water as saved, which is the Rooftop v3 pool's.
+  - On the column's bowl sits **our rubber duck** (`ReplicatedStorage.JankfireItems.x_duck`, the moulded one), scaled 4.6 tall and looking north. `R.FOUNTAIN_DUCK_TURN` turns it.
+  - **Eight streams** pour from the bowl's rim. Each is a Beam with a moving streak texture (image asset 112358151691374, `tools`: drawn as soft white streaks), with a little splash emitter where it lands.
+  - Check: water in the 16 voxels inside the basin, none outside.
+- The two south palms moved out to x ±10, clear of the basin.
+- Checks: live `R.check` 0 problems. One solo Play: the player spawns on the lobby floor, the 12 pads are live, the regulars are out, and the mini-games build on their markers.
+- Sheet: `roblox/docs/hub/hub_lobby_grey_976.jpg`. Next: the bigger hall, planned in `roblox/docs/hub/hub_bigger_plan.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

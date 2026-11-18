@@ -96,6 +96,7 @@ R.JUMP_GLOW = 4
 -- (dropped 18 Nov: the lore NPCs, the mannequin too, now appear only in their code cutscene, so the nook went with the
 -- lobby's two bay blocks. R.EGG_SIDE = 8 builds it again)
 R.EGG_SIDE, R.EGG_NICHE = nil, { 2.3, 17, 23.4 }
+R.FOUNTAIN_DUCK_TURN = 0 -- (the lobby fountain's duck: degrees about its own axis, so its face looks north at the arches)
 -- where you appear: { x, d } in the lounge's frame (side 7: x to the right as you look out of the round room, d out)
 R.SPAWNS = if R.LOUNGE_STYLE == "plaza"
 	then { { -3.6, 42.8 }, { -1.2, 42.8 }, { 1.2, 42.8 }, { 3.6, 42.8 }, { -3.6, 45.2 }, { -1.2, 45.2 }, { 1.2, 45.2 }, { 3.6, 45.2 } } -- (in the courtyard, the middle arch straight ahead)
