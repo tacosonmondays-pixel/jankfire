@@ -286,7 +286,7 @@
    "metal": 0.0,
    "emit": "galaxy_emit.png"
   },
-  "emissive": 4.5,
+  "emissive": 6.5,
   "tint": "ffffff"
  },
  "geode": {

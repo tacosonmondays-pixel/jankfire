@@ -33,7 +33,7 @@ local BOOK = {
 	digital = { color = 139264590789652, rough = 122441279549464, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "30332a", accent = "d9c7ac" },
 	ducky = { color = 120690864359569, normal = 75348588764562, rough = 86227588438345, emit = 132516774576453, emissive = 1.2, tint = "ffffff", finish = "GLOWS", second = "464646", dark = "3a331b", accent = "e0883a" },
 	fade = { color = 88146409955012, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "5e5e5e", dark = "33314c", accent = "43a8e6" },
-	galaxy = { color = 81606959511190, rough = 86227588438345, emit = 137597014105061, emissive = 4.5, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "0e0c1d", accent = "7f6bd9" },
+	galaxy = { color = 81606959511190, rough = 86227588438345, emit = 137597014105061, emissive = 6.5, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "0e0c1d", accent = "7f6bd9" },
 	geode = { color = 83470920279332, normal = 116609429761653, rough = 86227588438345, emit = 82262081498012, emissive = 4.5, tint = "ffffff", finish = "GLOWS", second = "5b5b5b", dark = "3a2e51", accent = "7f55d9" },
 	glitch = { color = 94209880648418, rough = 86227588438345, emit = 87698487163336, emissive = 5.0, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "2a272d", accent = "7b4ad9" },
 	granite = { color = 71870102293803, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "6e6e6e", dark = "33323a", accent = "d9b7d0" },

@@ -317,6 +317,77 @@ containers, the shop and the pack skip it.
   the gun's small trims (`_wzN` pieces) that stand over the picture on that face while it shows (Transparency 1,
   remembered, so changing or taking off the wrap brings them back). Applies to every hero decal.
 
+## Glow you can see (18 Nov 2026, place versions 906 and 921)
+
+The owner: "can you add a glow to certain textures like a brighter glow? I can't see it when applying it really", and
+then "can you make nebula twinkle and the lighter purple parts have a brighter glow".
+
+**Why it was hard to see.** A wrap's glow is the colour map x the emissive mask x `EmissiveStrength` x `EmissiveTint`,
+in linear light. Measured on the drawn maps (`scratchpad glow/analyze.py`: the 99th and 99.9th percentile of that, and
+the share over 2.0), only nine of the 22 glow wraps had anything over a Bloom threshold: Lava, Arcade, Market Crash,
+Kintsugi, Tokyo Night, Neon Hex, Datamosh and Circuit (just) and a few Nebula pixels. Galaxy peaked at 0.13, Aurora at
+0.21, Holo 0.08, Stained Glass 0.08: well under a lit surface's own 0.3 to 1, so in hand they looked unlit. And a
+picker (the loadout, the match loadout, the shop, crates) is a ViewportFrame: it draws a SurfaceAppearance's emissive
+(checked in Edit, a rifle in Neon Hex at x0 / x1 / x2.5) but no Bloom and no particles, so there a glow was a slightly
+lighter line at most.
+
+**In the world (`wrap_textures.py`, GLOW 18 Nov notes; WrapBook):**
+
+| wrap | strength (was) | what changed |
+| --- | --- | --- |
+| Galaxy | 6.5 (1.2) | the brighter stars bloom, the star clouds glow (4.5 at first, place version 906; it read quiet in hand under Rooftop v3's light, so 6.5 in 921) |
+| Aurora | 5.0 (1.2) | the curtains glow; the lower edges near the threshold |
+| Holo Foil | 4.0 (0.5) | the stars and sparkles bloom |
+| Stained Glass | 6.0 (0.6) | the panes glow as if lit from behind |
+| ☺ CORP | 5.0 (0.9) | the smileys' rims bloom |
+| Nebula | 6.5 (3.6) | new mask: the pale purple gas glows full (about 10% of the tile over 1, 6% blooms in the hub) |
+| Amethyst Geode | 4.5 (none) | its first mask: the crystal pockets lit from inside, the facet ridges bright |
+| CRT, Missing Texture, Opal, Vaporwave, Lava Lamp | 2.4, 2.5, 2.0, 2.2, 1.6 (1.4, 0.8, 0.7, 1.1, 1.0) | broad glows: brighter, still under the threshold (no flashbang) |
+| Black Hole, Triangulum | 3.0, 4.0 (1.5, 2.0) | the tiles' streaks and stars (the hole and the mark were already bright) |
+| Circuit, Neon Hex, Kintsugi, Tokyo Night, Lava | 7.0, 6.0, 5.5, 5.5, 6.0 (4.5, 5.0, 4.2, 4.5, 5.5) | the line glows up a fifth to a half (Circuit's traces only just reached 2.0 before) |
+| Arcade, Datamosh, Market Crash | 5.0 each (4.0, 3.4, 4.0) | the same |
+
+Ducky stays 1.2 (soap bubbles, not a glow wrap). New masks: `geode_emit` 82262081498012, `nebula_emit`
+89061714432334. No other map changed, so nothing else re-uploaded; the book was rebuilt from a full redraw (identical
+before the change, byte for byte) and the 22 changed rows set in Studio directly.
+
+**Nebula twinkles** (`client/WrapAnim`, FX `nebula`, kind `twinkle`): small four-point stars appear at random points on
+the painted half's pieces and fade in, hold and fade out where they sit (no drift, `LockedToPart`), each living 1.3 to
+3.1 s, about ten on a rifle at once, `Brightness` 3 so they bloom. Particles, so no per-frame property writes. The drawn
+twinkles in the map keep their bloom, and the drift (pink to blue, 10 s) runs as before.
+
+**In the pickers** (`client/WrapAnim`, "THE PICKERS"; no picker file changed: it finds the pictures by the `WrapSA`
+tag, so the loadout, match loadout, shop and crates all get it):
+- a picture inside a ViewportFrame glows 1.6x (`PREVIEW_GAIN`, before the animation reads it, so breathing wraps
+  breathe round the raised level);
+- a wrap whose book strength is at least 1.5 gets a soft halo behind the weapon in its `Accent` colour (the glow
+  texture as an ImageLabel just behind the frame, fitted every frame to the weapon's projected box, so it follows the
+  loadout's turning gun; opacity 0.38 to 0.6 by strength, breathing over 3 s). A frame whose parent lays out its
+  children (a list or grid) gets the gain only;
+- a glowing wrap with WRAP EFFECTS gets them drawn over the weapon as images (MOTES, at most 3 to 7 a frame): Nebula's
+  twinkles, Lava's embers rising, Galaxy's dots, Kintsugi's and Holo's glints, Hex, Circuit and Tokyo's motes.
+- `WrapAnim`'s attribute `PreviewGlowOff = true` turns the gain, halos and motes off (before / after photos).
+
+**Settings:** GRAPHICS > OTHER PLAYERS' SKIN EFFECTS ("animated wraps and flames") now reaches the wraps: off, a gun in
+another player's hands keeps its wrap still (no breathing, no particles); yours, the racks and the pickers move as ever.
+The particle density setting already scales the wrap particles (SettingsApply scales every emitter's Rate).
+
+**In hand** (solo Play, the Redline in first person in the training hall, each arena's look set on the client;
+`wrap-textures/glow-18nov-sheet.jpg`, frames in `wrap-textures/glow-18nov/`):
+- Galaxy: at 1.2 the stars were faint specks on black; at 4.5 brighter, still quiet under Rooftop v3's light (Bloom 2.4);
+  at 6.5 the clouds read purple and lit and the stars bright. Kept 6.5.
+- Nebula: the pale purple clouds glow strongly under the training hall's, Rooftop v3's and Arctic Cabin's lights (Bloom
+  2.6, the highest threshold), and the twinkles come and go round the gun (two frames a moment apart). A twinkle can
+  sit a few millimetres off the gun where a piece's box stands proud of its mesh (particles start on the part's box,
+  not its mesh): it reads as a glint round the gun.
+- Lava at 6.0 under the hub's light (Bloom 1.9, the lowest): bright cracks with a soft orange bloom, no white-out.
+- The loadout picker, Nebula: before (no gain, no halo) the gun reads as a print; after, it glows with a soft violet
+  halo behind it and twinkles over it. The Edit probes (`glow-18nov/vpf_probe1.jpg`, `vpf_probe2.jpg`) show eight more.
+- Not checked in hand: Amethyst Geode. It rendered bare (the gun's factory paint) in the Edit check straight after its
+  new mask went on (the known trap); judge it in a later Play.
+- Trap: `open_cloud_invoke` timed out twice while another session's Play test was running; one call during my own
+  lock went straight through.
+
 ## Redrawing or adding a wrap
 
 ```bash

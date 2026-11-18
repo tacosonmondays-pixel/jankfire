@@ -199,7 +199,7 @@ def galaxy(t: Tex):
     for x, y in scatter(r, n, 7, 260, taken=[(gx, gy, R * 1.4) for gx, gy, R in gal]):
         S.dot(x, y, r.uniform(4.2, 5.4), 1.0, star_colour(r), glow=0.26, glow_r=r.uniform(12, 16))
     S.done()
-    return {'emissive': 4.5, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.2)
+    return {'emissive': 6.5, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.2; 4.5 read quiet in hand under Rooftop v3's light)
 
 
 def camo_layers(t: Tex, base, light, mid, dark, seed, cut=(0.02, 0.12, 0.2), stretch=1.0):
