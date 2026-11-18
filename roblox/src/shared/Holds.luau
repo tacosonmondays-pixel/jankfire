@@ -60,8 +60,8 @@ return {
 		scythe_rifle = { Right = { pose = "fist", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.9 }, Left = { pose = "wrap", at = V(0, 0, -0.45), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.0257, 0.0556, 0), scale = 1, ads = { aimZ = 0, kind = "scope" } },
 		chicken = { Right = { pose = "grip", at = V(0, -0.142, 0.082), rot = V(-0.29671, 0, 0), size = 0.8 }, Left = { pose = "grip", at = V(0, -0.134, -0.272), rot = V(-0.13963, 0, 0), size = 0.82 }, shift = V(-0.0317, 0.0583, 0), scale = 1 },
 		banana = { Right = { pose = "grip", at = V(0, -0.094, 0.098), rot = V(-0.29671, 0, 0), size = 0.88 }, Left = { pose = "cradle", at = V(0, -0.042, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.0705, 0.1038, 0), scale = 1 },
-		tennis = { Right = { pose = "grip", at = V(0, -0.09, 0.005), rot = V(-0.29671, 0, 0), size = 0.86 }, Left = { pose = "grip", at = V(0, -0.062, -0.36), rot = V(-0.13963, 0, 0), size = 0.85 }, shift = V(-0.0375, 0.0557, 0), scale = 1 },
-		snowball = { Right = { pose = "palm", at = V(0, -0.049, -0.08), rot = V(0, 0, 0), size = 1 }, shift = V(-0.07, 0.0669, 0), scale = 1 },
+		tennis = { Right = { pose = "grip", at = V(0, -0.09, 0.005), rot = V(-0.29671, 0, 0), size = 0.86 }, Left = { pose = "grip", at = V(0, -0.062, -0.36), rot = V(-0.13963, 0, 0), size = 0.85 }, shift = V(-0.0233, 0.0043, 0), scale = 1 },
+		snowball = { Right = { pose = "palm", at = V(0, -0.049, -0.08), rot = V(0, 0, 0), size = 1 }, shift = V(-0.0288, 0.0285, 0), scale = 1 },
 	},
 	katana = {
 		fixes = {
