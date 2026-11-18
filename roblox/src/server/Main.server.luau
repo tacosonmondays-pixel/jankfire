@@ -32,7 +32,8 @@ pcall(function() PhysicsService:RegisterCollisionGroup("JFRayBlind") end)
 pcall(function() PhysicsService:CollisionGroupSetCollidable("JFRayBlind", "Default", false) end)
 
 type Info = { hookTimes: { number }, rope: Beam?, anchor: Attachment?, last: Vector3?, lastT: number, tp: number?,
-	body: Model?, bodyBlind: number, bodyNext: number } -- (body: the person the rope is tied to)
+	body: Model?, bodyBlind: number, bodyNext: number, -- (body: the person the rope is tied to)
+	bornT: number } -- (when the body loaded: the spawn grace below)
 local info: { [Player]: Info } = {}
 
 local function dropRope(i: Info)
@@ -42,11 +43,11 @@ local function dropRope(i: Info)
 end
 
 Players.PlayerAdded:Connect(function(p: Player)
-	info[p] = { hookTimes = {}, lastT = 0, bodyBlind = 0, bodyNext = 0 }
+	info[p] = { hookTimes = {}, lastT = 0, bodyBlind = 0, bodyNext = 0, bornT = 0 }
 	p.CharacterAdded:Connect(function()
 		local i = info[p]
 		-- a new body gets moved to its spawn (the hub, the arena) right after it loads: give the teleport check a moment
-		if i then dropRope(i); i.last = nil; i.lastT = os.clock() + 0.5 end
+		if i then dropRope(i); i.last = nil; i.lastT = os.clock() + 0.5; i.bornT = os.clock() end
 	end)
 end)
 Players.PlayerRemoving:Connect(function(p: Player)
@@ -146,6 +147,7 @@ end)
 -- slides you off the ledge round the edge. anyone SKY_OUT over the line (only a client that skipped Move.client gets
 -- there) is out of the world, like under the fall line. (only over the site itself: the hub stands higher than any sky)
 local SKY_OUT = 60
+local SPAWN_GRACE = 1 -- s (the spawn grace, in the heartbeat below)
 local skyNext: { [Player]: number } = {}
 local function siteOf(p: Player, pos: Vector3): Model?
 	local an = p:GetAttribute("Arena")
@@ -175,6 +177,16 @@ RunService.Heartbeat:Connect(function()
 		local hum, root = alive(p)
 		if not hum or not root then continue end
 		local pos = root.Position
+		-- the spawn grace (18 Nov): LoadCharacter yields, and until Fight.spawn places the new body it stands wherever
+		-- Roblox first put it (the Rooftop v1's SpawnLocations, y -11 to 13). no fall line or sky line applies to it
+		-- until it's placed (its fighter alive again), or for SPAWN_GRACE at most. (today every fall line is lower than
+		-- those pads, so this only guards against spawns or fall lines moving; the script's attribute SpawnGrace = 0
+		-- turns it off for a test)
+		local f = Fight.byPlayer[p]
+		if f and not f.alive then
+			local g = script:GetAttribute("SpawnGrace")
+			if os.clock() - i.bornT < (if type(g) == "number" then g else SPAWN_GRACE) then continue end
+		end
 		local killY = Matches.killY(p)
 		if pos.Y < killY then
 			hum.Health = 0
