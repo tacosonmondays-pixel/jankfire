@@ -18,7 +18,9 @@ MOVING = {'ar': ['mag', 'charge'], 'smg': ['mag', 'charge'], 'burst': ['mag', 'c
           'marbles': [], 'katana': ['kat_blade'], 'shredder': ['hub'],
           'minigun': ['barrels'], 'water': ['water', 'pump'], 'nailgun': ['mag'], 'bread': [], 'slapper': ['hand'],
           'akimbo': ['cocker', 'mag', 'tagL', 'tagR'], 'taser': ['led'], 'blower': [], 'cig': ['tip'],
-          'laser': ['emitter', 'button', 'led0', 'led1', 'led2', 'led3', 'led4']}
+          'laser': ['emitter', 'button', 'led0', 'led1', 'led2', 'led3', 'led4'],
+          'scythe': [], 'chicken': ['bird'], 'banana': ['mag'], 'tennis': ['ball'], 'snowball': [],
+          'pj_chicken': [], 'pj_banana': [], 'pj_peel': [], 'pj_snowball': []}
 
 
 def solids(g):
