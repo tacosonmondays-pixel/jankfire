@@ -109,7 +109,7 @@ return function(B, R)
 		elseif kind and not R.UP_DOORS[i] then
 			B.box(F, C, "WindowFrame", -2.3, 2.3, 16.8, 23.4, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "Window", -1.7, 1.7, 17.4, 22.8, A - 0.52, A - 0.4, P.dim, Neon, G)
-		else
+		elseif not R.UP_DOORS[i] then -- (18 Nov: no banner over a doorway into the second floor: it hung in the opening)
 			-- (a banner: the one soft thing that hangs in the room)
 			B.box(F, C, "BannerRod", -2.6, 2.6, 23.5, 24, A - 0.9, A - 0.3, P.pier, nil, G)
 			B.box(F, C, "Banner", -2.2, 2.2, 16.4, 23.5, A - 0.7, A - 0.55, P.band, nil, G)

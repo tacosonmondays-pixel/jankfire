@@ -195,6 +195,172 @@ R.PALETTES = {
 -- side by side, to photograph: { palette, its site }. R.compare() builds one staging copy of each
 R.COMPARE = { { "arena", Vector3.new(200, 240, -10000) }, { "glow", Vector3.new(600, 240, -10000) }, { "warm", Vector3.new(1000, 240, -10000) } }
 
+-- HUB V3 (18 Nov 2026, the owner: "can you do hub v3? its the current one just more spacious one of my friends said it
+-- felt too cramped"). the same Rotunda, everything in it, through ONE scale rule applied to the finished build:
+--   the plan   every place and every footprint K times as far from the round room's middle (K = 1.35: the room 56
+--              across becomes 75.6; walks, halls, doorways, rooms and the gaps between things all 35% wider)
+--   the height a map H of heights over the floor: { old, new } breakpoints, straight between them. the bands people
+--              use keep their size (the ground floor up to 9.5, the second floor's first 9.5) and only the air over
+--              them grows: the balcony and the second floor 14.04 -> 18, its ceiling (the wall top) 27.45 -> 35, the
+--              dome over it 30% taller
+--   what keeps its size (people-sized things): seats keep their depth (sofas, armchairs, benches get longer), the
+--              props and display guns keep their size and stand where their place went (R.WARP_MODE), plants and the
+--              jump pads grow with the plan, the regulars, markers and lamps move (lamps reach K times as far)
+-- R.VERSION says what R.build("live") makes: 3 = Hub v3, 2 = the Rotunda as it was (the spare: R.switch("rotunda"))
+R.V3 = { K = 1.35, H = { { 0, 0 }, { 9.5, 9.5 }, { 14.04, 18 }, { 23.5, 27.46 }, { 27.45, 35 }, { 41.3, 53 } } }
+R.VERSION = 3
+-- how a kit model takes the warp: "stretch" (its footprint K times, its height by H: the structural kit that must meet
+-- walls and lids, and the jump pads: wider, not taller), "seat" (longer, not deeper or taller: people sit in it),
+-- "uniform" (K times all over: plants, bigger things for a bigger room), anything else "rigid" (its own size, moved)
+R.WARP_MODE = { hb_pier = "stretch", hb_rail = "stretch", hb_screen = "stretch", bc_halo = "stretch", hb_portal = "stretch",
+	rk_lockers = "stretch", bc_lockers = "stretch", rk_coffeetable = "stretch", bc_coffeetable = "stretch", bc_holoprojector = "stretch",
+	bc_sofa = "seat", bc_armchair = "seat", rk_bench = "seat", bc_bench = "seat",
+	bc_jumppad = "stretch", rk_planter = "uniform", bc_plantbig = "uniform" }
+-- heights over the floor through a warp's H (straight past the last breakpoint)
+local function hmap(H, y)
+	if y <= H[1][1] then return y + (H[1][2] - H[1][1]) end
+	for i = 1, #H - 1 do
+		local a, b = H[i], H[i + 1]
+		if y <= b[1] then return a[2] + (y - a[1]) * (b[2] - a[2]) / (b[1] - a[1]) end
+	end
+	local a, b = H[#H - 1], H[#H]
+	return b[2] + (y - b[1]) * (b[2] - a[2]) / (b[1] - a[1])
+end
+R.hmap = hmap
+-- a world point through a warp about the round room's middle O (nil warp: the point itself)
+function R.warpPoint(Wp, O, v)
+	if not Wp then return v end
+	local d = v - O
+	return O + Vector3.new(d.X * Wp.K, hmap(Wp.H, d.Y), d.Z * Wp.K)
+end
+-- the warp a built hub was made with (its Version attribute)
+function R.warpOf(room)
+	return if room and room:GetAttribute("Version") == 3 then R.V3 else nil
+end
+-- the warp on one finished part: its middle and its three axes' ends through the warp (a box stays a box when its axes
+-- are level or upright, as nearly all are; a tilted one, a dome panel or a rib, keeps its ends on the warped points),
+-- the attachments in it moved with its faces, its lights reaching K times as far
+local function warpPart(Wp, O, p)
+	local cf, s = p.CFrame, p.Size
+	local c = cf.Position
+	local ax = { cf.XVector, cf.YVector, cf.ZVector }
+	local half = { s.X / 2, s.Y / 2, s.Z / 2 }
+	local ey = 0
+	for i = 1, 3 do ey += math.abs(ax[i].Y) * half[i] end
+	local lo, hi = hmap(Wp.H, c.Y - ey - O.Y), hmap(Wp.H, c.Y + ey - O.Y)
+	local mid = Vector3.new(O.X + (c.X - O.X) * Wp.K, O.Y + (lo + hi) / 2, O.Z + (c.Z - O.Z) * Wp.K)
+	local dirs, ext = {}, {}
+	for i = 1, 3 do
+		local u, e = ax[i], half[i]
+		if math.abs(u.Y) < 1e-3 then dirs[i], ext[i] = u, e * Wp.K
+		elseif math.abs(u.Y) > 0.999 then dirs[i], ext[i] = u, e * (hi - lo) / math.max(2 * ey, 1e-6)
+		else
+			local w = R.warpPoint(Wp, O, c + u * e) - R.warpPoint(Wp, O, c - u * e)
+			dirs[i], ext[i] = w.Unit, w.Magnitude / 2
+		end
+	end
+	-- (a tilted part: the longest axis kept, the others squared to it)
+	local order = { 1, 2, 3 }
+	table.sort(order, function(a, b) return ext[a] > ext[b] end)
+	local a1 = dirs[order[1]]
+	local a2 = dirs[order[2]] - a1 * dirs[order[2]]:Dot(a1)
+	if a2.Magnitude < 1e-4 then a2 = dirs[order[3]] - a1 * dirs[order[3]]:Dot(a1) end
+	a2 = a2.Unit
+	local a3 = a1:Cross(a2)
+	if a3:Dot(dirs[order[3]]) < 0 then a3 = -a3 end
+	local new = {}
+	new[order[1]], new[order[2]], new[order[3]] = a1, a2, a3
+	-- (keep the frame right-handed: X cross Y = Z)
+	if new[1]:Cross(new[2]):Dot(new[3]) < 0 then new[3] = -new[3] end
+	local ns = Vector3.new(math.max(ext[1] * 2, 0.02), math.max(ext[2] * 2, 0.02), math.max(ext[3] * 2, 0.02))
+	for _, a in p:GetChildren() do
+		if a:IsA("Attachment") then
+			local q = a.Position
+			a.Position = Vector3.new(q.X * ns.X / math.max(s.X, 1e-6), q.Y * ns.Y / math.max(s.Y, 1e-6), q.Z * ns.Z / math.max(s.Z, 1e-6))
+		elseif a:IsA("Light") then a.Range = math.min(a.Range * Wp.K, 60) end
+	end
+	p.Size = ns
+	p.CFrame = CFrame.fromMatrix(mid, new[1], new[2], new[3])
+end
+-- a part that keeps its size and only moves (markers, the regulars' places and points, lamp spots)
+local function movePart(Wp, O, p)
+	local c = p.Position
+	p.CFrame = CFrame.new(R.warpPoint(Wp, O, c)) * p.CFrame.Rotation
+	for _, l in p:GetChildren() do if l:IsA("Light") then l.Range = math.min(l.Range * Wp.K, 60) end end
+end
+-- a thrown body's flight: launched up at vy from the floor, how long until it comes down onto a floor y over the launch
+local function flight(vy, y, g)
+	local disc = vy * vy - 2 * g * y
+	return (vy + math.sqrt(math.max(disc, 0))) / g
+end
+-- the attributes that hold world points, vectors or heights, through the warp
+local POINT_ATTR = { Door = true, Out = true, Approach = true, Aisle = true, Stand = true, Center = true }
+local function warpAttrs(Wp, O, inst)
+	local top0 = inst:GetAttribute("Top")
+	for name, v in inst:GetAttributes() do
+		if POINT_ATTR[name] and typeof(v) == "Vector3" then inst:SetAttribute(name, R.warpPoint(Wp, O, v))
+		elseif name == "Slide" and typeof(v) == "Vector3" then inst:SetAttribute(name, Vector3.new(v.X * Wp.K, v.Y, v.Z * Wp.K))
+		elseif name == "Top" and type(v) == "number" then inst:SetAttribute(name, O.Y + hmap(Wp.H, v - O.Y))
+		-- (the gate's roll-up door, GateKit: each slat's shut place is where it now stands; the door rolls up as much
+		-- further as its top went up)
+		elseif name == "Shut" and typeof(v) == "CFrame" and inst:IsA("BasePart") then inst:SetAttribute(name, inst.CFrame)
+		elseif name == "Lift" and type(v) == "number" and type(top0) == "number" then
+			inst:SetAttribute(name, v + hmap(Wp.H, top0 - O.Y) - (top0 - O.Y))
+		end
+	end
+end
+-- the whole warp over a finished build: every part of the room and of the pads, markers and triggers it made (extras),
+-- except the kit models and guns B.put and B.gun already placed through it (attribute Warped)
+function R.applyWarp(Wp, O, root, extras)
+	local CS = game:GetService("CollectionService")
+	local list = {}
+	for _, top in { root, table.unpack(extras) } do
+		table.insert(list, top)
+		for _, d in top:GetDescendants() do table.insert(list, d) end
+	end
+	local skip = {}
+	for _, d in list do if d:GetAttribute("Warped") then skip[d] = true end end
+	local function skipped(d)
+		local q = d
+		while q do if skip[q] then return true end; q = q.Parent end
+		return false
+	end
+	local holo = {}
+	for _, d in list do
+		if skipped(d) then continue end
+		if d:IsA("BasePart") then
+			local rigid = CS:HasTag(d, "HubNPC") or CS:HasTag(d, "NPCPoint") or d.Name == "LampSpot" or d.Name == "HubSpawn" or d.Name == "Arrive"
+			if d:GetAttribute("HoloEnvelope") then holo[d] = { mid = d.Position.Y, base = d:GetAttribute("Base") or 0 } end
+			if rigid then movePart(Wp, O, d) else warpPart(Wp, O, d) end
+		end
+		warpAttrs(Wp, O, d)
+		if d:IsA("Model") and d.PrimaryPart == nil then
+			-- (a model's own pivot, which HubLife turns things about: moved with it)
+			local pv = d.WorldPivot
+			d.WorldPivot = CFrame.new(R.warpPoint(Wp, O, pv.Position)) * pv.Rotation
+		end
+	end
+	-- the holograms' drums: their radius with the plan, their height and their lens with the height map
+	for p, h in holo do
+		p:SetAttribute("Radius", (p:GetAttribute("Radius") or 1) * Wp.K)
+		p:SetAttribute("Height", p.Size.X)
+		local lens = O.Y + hmap(Wp.H, h.mid - h.base - O.Y)
+		p:SetAttribute("Base", if h.base > 0 then p.Position.Y - lens else 0)
+	end
+	-- the jump pads' throws: as high over the new balcony as they were over the old, as far out in the new plan
+	for _, d in list do
+		if d.Name == "JumpPadTop" and typeof(d:GetAttribute("Pad")) == "Vector3" then
+			local v = d:GetAttribute("Pad") :: Vector3
+			local g = workspace.Gravity
+			local up0, up1 = R.UP_Y, hmap(Wp.H, R.UP_Y)
+			local vy = math.sqrt(v.Y * v.Y + 2 * g * (up1 - up0))
+			local t0, t1 = flight(v.Y, up0, g), flight(vy, up1, g)
+			local flat = Vector3.new(v.X, 0, v.Z) * (Wp.K * t0 / t1)
+			d:SetAttribute("Pad", Vector3.new(flat.X, vy, flat.Z))
+		end
+	end
+end
+
 local function folderIn(parent, name)
 	local f = parent:FindFirstChild(name)
 	if not f then f = Instance.new("Folder"); f.Name = name; f.Parent = parent end
@@ -279,7 +445,10 @@ function R.new(live, opts)
 	P.name = pname
 	local O = if live then R.SITE else opts.at or R.STAGE
 	local stageName = opts.stage or "HubStage"
-	local B = { live = live, O = O, P = P, G = { ghost = true }, count = 0, lamps = 0, shadows = 0, missing = {} }
+	-- (opts.version: 3 = Hub v3, through R.V3; 2 = the Rotunda as it was. default R.VERSION)
+	local version = opts.version or R.VERSION
+	local B = { live = live, O = O, P = P, G = { ghost = true }, count = 0, lamps = 0, shadows = 0, missing = {},
+		version = version, warp = if version == 3 then R.V3 else nil, extra = {} }
 	if live then
 		for _, n in { R.ROOM, "Lanes" } do local old = hub:FindFirstChild(n); if old then old:Destroy() end end
 		for _, f in { folderIn(hub, "QueuePads"), folderIn(hub, "HubSpawns"), folderIn(hub.Doors, "HubArrive"), hub.Doors } do
@@ -360,15 +529,52 @@ function R.new(live, opts)
 		local t = lib:FindFirstChild(tmpl)
 		if not t then B.missing[tmpl] = (B.missing[tmpl] or 0) + 1; return nil end
 		local m = t:Clone(); m.Name = name or tmpl
-		if o.scale and math.abs(o.scale - 1) > 0.005 then m:ScaleTo(o.scale) end
+		local Wp = B.warp
+		local mode = Wp and (o.warp or R.WARP_MODE[tmpl] or "rigid")
+		local scale = o.scale
+		if mode == "uniform" then scale = (scale or 1) * Wp.K end
+		if scale and math.abs(scale - 1) > 0.005 then m:ScaleTo(scale) end
 		local bcf, sz = m:GetBoundingBox()
 		local st = o.stretch or Vector3.one
 		local full = sz * st
 		local a = math.rad(face or 0)
 		local at = Vector3.new(x, y, -d)
-		if o.back then at += Vector3.new(math.sin(a), 0, math.cos(a)) * (full.Z / 2) end
+		local backAt = nil
+		if o.back then backAt = at; at += Vector3.new(math.sin(a), 0, math.cos(a)) * (full.Z / 2) end
 		local cy = if o.seat == "top" then y - full.Y / 2 elseif o.seat == "centre" then y else y + full.Y / 2
 		local cf = F * CFrame.new(at.X, cy, at.Z) * CFrame.Angles(0, a, 0)
+		-- (Hub v3: the model through the warp as its mode says, R.WARP_MODE. its own solid boxes too: marked Warped, the
+		-- post-pass leaves them alone)
+		local solidK = Vector3.one
+		if Wp then
+			local H = Wp.H
+			local base0, top0 = cy - full.Y / 2, cy + full.Y / 2
+			if mode == "stretch" then
+				solidK = Vector3.new(Wp.K, (hmap(H, top0) - hmap(H, base0)) / math.max(full.Y, 1e-6), Wp.K)
+			elseif mode == "seat" then
+				solidK = Vector3.new(Wp.K, 1, 1)
+			end
+			st = st * solidK
+			if mode == "uniform" then solidK = Vector3.one * Wp.K end
+			local nf = sz * st
+			local ny
+			if mode == "stretch" then ny = hmap(H, base0) + nf.Y / 2
+			elseif o.seat == "top" then ny = hmap(H, top0) - nf.Y / 2
+			elseif o.seat == "centre" then ny = hmap(H, cy)
+			else ny = hmap(H, base0) + nf.Y / 2 end
+			local wc = F * Vector3.new(at.X, 0, at.Z)
+			local pc
+			if backAt then -- (set against a wall: its back stays on the wall)
+				local wb = F * Vector3.new(backAt.X, 0, backAt.Z)
+				pc = R.warpPoint(Wp, B.O, wb) + (wc - wb) * (if mode == "stretch" then Wp.K else 1)
+			else
+				pc = R.warpPoint(Wp, B.O, wc)
+			end
+			cf = CFrame.new(pc.X, B.O.Y + ny, pc.Z) * F.Rotation * CFrame.Angles(0, a, 0)
+			full = nf
+			if st ~= Vector3.one then o = table.clone(o); o.stretch = st end
+			m:SetAttribute("Warped", true)
+		end
 		m:PivotTo(cf * m:GetPivot():ToObjectSpace(bcf):Inverse())
 		for _, p in m:GetDescendants() do
 			if not p:IsA("BasePart") then continue end
@@ -388,11 +594,16 @@ function R.new(live, opts)
 		end
 		m.Parent = root.Scenery
 		local base = cf * CFrame.new(0, -full.Y / 2, 0)
+		local k = solidK
 		if typeof(o.solid) == "table" then
-			for i, b in o.solid do B.solid((name or tmpl) .. "Box" .. i, Vector3.new(b[1], b[2], b[3]), base * CFrame.new(b[4] or 0, b[5] or b[2] / 2, b[6] or 0)) end
+			for i, b in o.solid do
+				local bx = B.solid((name or tmpl) .. "Box" .. i, Vector3.new(b[1], b[2], b[3]) * k, base * CFrame.new((b[4] or 0) * k.X, (b[5] or b[2] / 2) * k.Y, (b[6] or 0) * k.Z))
+				if Wp then bx:SetAttribute("Warped", true) end
+			end
 		elseif o.solid then
-			local s = if typeof(o.solid) == "Vector3" then o.solid else full
-			B.solid((name or tmpl) .. "Box", s, base * CFrame.new(0, s.Y / 2, 0))
+			local s = if typeof(o.solid) == "Vector3" then o.solid * k else full
+			local bx = B.solid((name or tmpl) .. "Box", s, base * CFrame.new(0, s.Y / 2, 0))
+			if Wp then bx:SetAttribute("Warped", true) end
 		end
 		B.count += 1
 		return m, full, cf
@@ -416,6 +627,10 @@ function R.new(live, opts)
 		g:ScaleTo(g:GetScale() * (k or (len / math.max(sz.Z, 0.01))))
 		local bcf = g:GetBoundingBox()
 		local at = F * CFrame.new(x, y, -d) * CFrame.Angles(0, math.rad(90 + (yaw or 0)), 0)
+		if B.warp then -- (Hub v3: a gun keeps its size and goes where its place went)
+			at = CFrame.new(R.warpPoint(B.warp, B.O, at.Position)) * at.Rotation
+			g:SetAttribute("Warped", true)
+		end
 		g:PivotTo(at * g:GetPivot():ToObjectSpace(bcf):Inverse())
 		g.PrimaryPart = nil; g.WorldPivot = at
 		g.Parent = root.Scenery
@@ -629,6 +844,7 @@ function R.new(live, opts)
 			plate("Edge", e[1], e[2], e[3], e[4], P.edge, Neon, 0.14, 0.1)
 		end
 		m.Parent = B.pads
+		if live then table.insert(B.extra, m) end -- (outside the room's folder: the warp's post-pass is told of it)
 		B.count += 1
 		return m
 	end
@@ -654,7 +870,7 @@ function R.new(live, opts)
 		local at = B.fr(0) * Vector3.new(x, y + 0.1, -d)
 		local f = B.fr(lookBearing).LookVector
 		p.CFrame = CFrame.lookAt(at, at + f)
-		if live then p:SetAttribute("Built", R.MARK) end
+		if live then p:SetAttribute("Built", R.MARK); table.insert(B.extra, p) end
 		p.Parent = folder
 		return p
 	end
@@ -674,7 +890,7 @@ function R.new(live, opts)
 		p.Size = Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(d1 - d0))
 		p.CFrame = F * CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, -(d0 + d1) / 2)
 		p:SetAttribute("Land", land); p:SetAttribute("Say", say)
-		if live then p:SetAttribute("Built", R.MARK) end
+		if live then p:SetAttribute("Built", R.MARK); table.insert(B.extra, p) end
 		p.Parent = B.doors
 		return p
 	end
@@ -690,6 +906,9 @@ function R.new(live, opts)
 
 	function B.done()
 		for _, p in root:GetDescendants() do if p:IsA("BasePart") then p.Anchored = true end end
+		-- (Hub v3: the whole build through the warp, R.V3, before it goes into the place)
+		if B.warp then R.applyWarp(B.warp, O, root, B.extra) end
+		root:SetAttribute("Version", B.version)
 		root:SetAttribute("Palette", P.name); root:SetAttribute("Live", live); root:SetAttribute("At", O)
 		local home = if live then hub else folderIn(workspace.Map, stageName)
 		if live then
@@ -706,7 +925,7 @@ function R.new(live, opts)
 		for _, p in root:GetDescendants() do if p:IsA("BasePart") then parts += 1 end end
 		local miss = {}
 		for k, n in B.missing do table.insert(miss, k .. " x" .. n) end
-		return ("%s (%s) built %s at (%d, %d, %d): %d things, %d parts, %d lamps, %d with shadows%s"):format(R.ROOM, P.name, if live then "LIVE" else "as a staging copy", O.X, O.Y, O.Z,
+		return ("%s v%d (%s) built %s at (%d, %d, %d): %d things, %d parts, %d lamps, %d with shadows%s"):format(R.ROOM, B.version, P.name, if live then "LIVE" else "as a staging copy", O.X, O.Y, O.Z,
 			#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "")
 	end
 	return B
@@ -739,13 +958,15 @@ function R.compare()
 	return table.concat(out, "\n")
 end
 
--- the bowling centre back, or the Rotunda
+-- the bowling centre back, or the Rotunda: "v3" = Hub v3 (the live hub since 18 Nov), "rotunda" = the Rotunda as it
+-- was before (the spare, like the bowling centre); anything else = R.VERSION's
 function R.switch(which)
 	if which == "lanes" then
 		local m = PB.HubLab:Clone(); local L = require(m); m:Destroy()
 		return "the bowling centre: " .. tostring(L.build("Hub3_Lanes")) .. "\n" .. L.check()
 	end
-	return R.build("live") .. "\n" .. R.check()
+	local version = if which == "rotunda" or which == "v2" then 2 elseif which == "v3" then 3 else nil
+	return R.build("live", { version = version }) .. "\n" .. R.check()
 end
 
 -- what the other edit-time tools had to learn about this hub, once (2026-11-15). safe to run again: each edit is made
@@ -876,6 +1097,11 @@ function R.check(stage)
 	local W = R.places(stage)
 	if not W then return "no " .. R.ROOM .. " in Map.Hub or Map.HubStage: build it first" end
 	local room, O = W.room, W.O
+	-- (Hub v3: the check's own places, written for the Rotunda's plan, through the same warp as the build)
+	local Wp = R.warpOf(room)
+	local KK = if Wp then Wp.K else 1
+	local function WP(v) return R.warpPoint(Wp, O, v) end
+	local function HY(y) return if Wp then hmap(Wp.H, y) else y end
 	local zones = {}
 	local function zone(what, cf, half) table.insert(zones, { what = what, cf = cf, half = half }) end
 	for _, f in { W.spawns, W.arrive } do
@@ -895,7 +1121,9 @@ function R.check(stage)
 		end
 	end
 	for _, w in R.WALKS do
-		zone(w[1], R.frame(O, w[2], 0, w[8]) * CFrame.new((w[3] + w[4]) / 2, (w[7] or 0) + 4.2, -(w[5] + w[6]) / 2), Vector3.new(math.abs(w[4] - w[3]) / 2, 3.8, math.abs(w[6] - w[5]) / 2))
+		local fr = R.frame(O, w[2], 0, w[8])
+		local mid = WP(fr * Vector3.new((w[3] + w[4]) / 2, w[7] or 0, -(w[5] + w[6]) / 2))
+		zone(w[1], CFrame.new(mid + Vector3.new(0, 4.2, 0)) * fr.Rotation, Vector3.new(math.abs(w[4] - w[3]) / 2 * KK, 3.8, math.abs(w[6] - w[5]) / 2 * KK))
 	end
 	local issues, seen, looked = {}, {}, 0
 	local game_ = room:FindFirstChild("Game")
@@ -963,8 +1191,8 @@ function R.check(stage)
 		local rp2 = RaycastParams.new(); rp2.FilterType = Enum.RaycastFilterType.Include; rp2.FilterDescendantsInstances = { room }; rp2.RespectCanCollide = true
 		local BODY, LIFT = Vector3.new(1.8, 3, 1.8), 2.8 -- (walking: its middle 2.8 over the floor, so it clears kerbs and steps)
 		local FULL = Vector3.new(1.8, 4.6, 1.8) -- (thrown: the whole body, feet to head)
-		local function lf(b, x, y, d) return R.frame(O, b, 0, R.FOCUS) * Vector3.new(x, y, -d) end
-		local function mf(b, x, y, d) return R.frame(O, b, 0) * Vector3.new(x, y, -d) end
+		local function lf(b, x, y, d) return WP(R.frame(O, b, 0, R.FOCUS) * Vector3.new(x, y, -d)) end
+		local function mf(b, x, y, d) return WP(R.frame(O, b, 0) * Vector3.new(x, y, -d)) end
 		local UY, ST = R.UP_Y, 360 / R.N
 		local start = mf(0, 0, 1.3, -9.7) -- (between the two spawn rows)
 		local nUp = #R.UPPER
@@ -993,7 +1221,7 @@ function R.check(stage)
 			if hit and hit.Normal.Y > 0.7 then
 				local at = hit.Position
 				local r = Vector3.new(at.X - O.X, 0, at.Z - O.Z).Magnitude
-				if math.abs(at.Y - (O.Y + UY)) < 0.6 and r > R.RING_IN - 0.5 and r < R.A then
+				if math.abs(at.Y - (O.Y + HY(UY))) < 0.6 and r > R.RING_IN * KK - 0.5 and r < R.A * KK then
 					land[side] = at
 					table.insert(landings, at)
 				else
@@ -1038,7 +1266,7 @@ function R.check(stage)
 				table.insert(pts, front); table.insert(pts, onto)
 				walk(pts, pad.Name)
 			else
-				local rel = R.frame(O, 0, 0, R.FOCUS):PointToObjectSpace(front)
+				local rel = CFrame.new(WP(R.frame(O, 0, 0, R.FOCUS).Position)):PointToObjectSpace(front)
 				local b = math.deg(math.atan2(rel.X, -rel.Z))
 				walk({ start, mf(0, if b >= 0 then 7 else -7, 1.24, 0), lf(b, 0, 0, R.reach(b, R.A + R.WALL + 3)), front, onto }, pad.Name)
 			end
@@ -1098,7 +1326,7 @@ function R.check(stage)
 		end
 		if best then
 			lines += 1
-			local inward = Vector3.new(O.X - L.X, 0, O.Z - L.Z).Unit * 1.5 -- (a step off the wall, where you stand up)
+			local inward = Vector3.new(O.X - L.X, 0, O.Z - L.Z).Unit * 1.5 * KK -- (a step off the wall, where you stand up)
 			local by = hidden(L + inward + Vector3.new(0, 4.7, 0), best.Position, best)
 			if by then shut += 1; table.insert(sights, ("SIGHT: %s hides the doorway into the second floor from where a jump pad lands you"):format(by.Name)) end
 		else table.insert(issues, "SIGHT: no doorway into the second floor near where a jump pad lands you") end
@@ -1125,7 +1353,7 @@ function R.check(stage)
 	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { room.Shell }
 	local leaks = 0
 	for _, from in R.LEAKS do
-		local at = R.frame(O, from[1], 0, from[5]) * Vector3.new(from[2], from[3], -from[4])
+		local at = WP(R.frame(O, from[1], 0, from[5]) * Vector3.new(from[2], from[3], -from[4]))
 		for x = -1, 1 do for y = -1, 1 do for z = -1, 1 do
 			if not (x == 0 and y == 0 and z == 0) and not workspace:Raycast(at, Vector3.new(x, y, z).Unit * 500, rp) then
 				leaks += 1; table.insert(issues, ("LEAK from bearing %.0f, x %.0f, y %.0f, d %.0f toward (%d, %d, %d)"):format(from[1], from[2], from[3], from[4], x, y, z))
@@ -1268,8 +1496,9 @@ function R.view(name)
 	local W = R.places()
 	local v = R.VIEWS[name]
 	if not W or not v then return nil end
-	local a = R.frame(W.O, v[1][1]) * Vector3.new(v[1][2], v[1][3], -v[1][4])
-	local b = R.frame(W.O, v[2][1]) * Vector3.new(v[2][2], v[2][3], -v[2][4])
+	local Wp = R.warpOf(W.room)
+	local a = R.warpPoint(Wp, W.O, R.frame(W.O, v[1][1]) * Vector3.new(v[1][2], v[1][3], -v[1][4]))
+	local b = R.warpPoint(Wp, W.O, R.frame(W.O, v[2][1]) * Vector3.new(v[2][2], v[2][3], -v[2][4]))
 	return a, b
 end
 
