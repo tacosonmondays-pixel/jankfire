@@ -2248,6 +2248,40 @@
     ],
     "L": -11
    }
+  ],
+  "gun_scythe": [
+   {
+    "id": 9114720370,
+    "title": "Gun Live Ammunition 302 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     1.3
+    ],
+    "L": -19
+   },
+   {
+    "id": 9114724063,
+    "title": "Gun Live Ammunition 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1.65,
+     2.9
+    ],
+    "L": -21
+   }
+  ],
+  "scythe_form": [
+   {
+    "id": 9119197267,
+    "title": "Slide Lock 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -30
+   }
   ]
  },
  "vol": {
@@ -2364,7 +2398,9 @@
   "blood_boom": -23,
   "scythe_swing": -24,
   "scythe_hit": -21,
-  "scythe_dash": -26
+  "scythe_dash": -26,
+  "gun_scythe": -18,
+  "scythe_form": -24
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2415,7 +2451,8 @@
   "blood_boom": 0.04,
   "scythe_swing": 0.03,
   "scythe_hit": 0.04,
-  "scythe_dash": 0.04
+  "scythe_dash": 0.04,
+  "gun_scythe": 0.02
  },
  "loop": {
   "minigun_spin": true,

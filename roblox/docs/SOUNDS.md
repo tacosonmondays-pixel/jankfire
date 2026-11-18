@@ -1,3 +1,16 @@
+# The Scythe's rifle form (18 Nov 2026, place version 816)
+
+Asked for by the weapons-port session (the owner: the Scythe is also a sniper). Pro Sound Effects.
+
+| name | for | take(s): id, title, cut (s) | Volume | notes |
+| --- | --- | --- | --- | --- |
+| `gun_scythe` | the rifle form's shot | 9114720370 Gun Live Ammunition 302, 0.05–1.3; 9114724063 Gun Live Ammunition 4, 1.65–2.9 | 1.16 | a heavy 0.4 s boom with its tail cut at about 1.2 s, drier than `gun_sniper`'s 2.6 s roll. Named `gun_` (asked for as `scythe_shot`) so other players' shots get the gunfire treatment and the WEAPONS slider |
+| `scythe_form` | the form switch, 0.5 s | 9119197267 Slide Lock 1, 0–0.5 | 1.84 | a short metal slide, then a hard lock clack 0.25 s in |
+
+Checked in Edit: both load and both cuts were measured. Not heard in Play.
+
+---
+
 # The Scythe (18 Nov 2026, place version 805)
 
 Asked for by the weapons-port session (the owner wants the Scythe as a loadout melee). Pro Sound Effects, no flesh.
