@@ -860,6 +860,66 @@ creatures and food.
 - **The clip report:** `hat_clip.py` given a gun list rewrites the hats session's `clip_report.json` with only those
   guns. To check one gun without touching the report, pass every hat with `--hat <id>`, or restore the file afterwards.
 
+## Fused, batch 1: creatures and the banana hand (18 November 2026, live in place version 908)
+
+The owner on the Slapper: "thats what either makes it look like ai or not". Fused versus segmented is the owner's test
+for whether a model looks AI-made. So every live model was audited for round or organic parts built from separate
+shapes pushed into each other.
+- **The scan:** `scratchpad/audit/organic_scan.py` checks every glb. It finds round solids passing into round solids,
+  and round solids with hard concave creases (a boolean union with no fillet).
+- **The review:** every hit was checked by eye.
+- **Left alone:** hard-surface gun parts.
+
+| Model | What changed | Asset (before → after) |
+|---|---|---|
+| `pj_chicken` | body, neck, head, wings, tail, comb, beak, moulded eyes, legs and toes: one field (`gun_batch_c.flyer_field`), painted by part | 129536037822224 → 87169677580103 |
+| `chicken` (the bird in its mouth) | neck and head one form; comb, open beak and dark mouth, eyes painted on it (`bird_field`) | 80611464745945 → 115405268587259 |
+| Rubber Duck gadget (`item_models2.duck`) | body and pointed tail, head on a filleted neck, wings moulded in, two-part beak grown out of the face, painted eyes and glints; the old one kept as `duck_v2` | items 135902213200582 → `items_upload_duck3.glb` 137758878381817 (imported alone) |
+| `lmg@lmg_ducky`, `katana@katana_ducky`, `revolver@revolver_ducky` | head, bill and eyes one moulded head (`gun_sets_ducky_v3.fuse_head`); the bow, the seam rod and everything else unchanged | 77593603996289 → 70639779600142, 122969132689308 → 92037598713317, 115822847636423 → 103720717644285 |
+| `banana` | the three bananas, stalks and tips one hand with shallow grooves; the clip stays a hard part | 93071088017256 → 84597179508391 |
+
+**Tools (`tools/roblox/sdf_kit.py`):**
+- `mesh_paint(field, cls, labels, ...)`: ONE skin, cut into colour pieces along its own quads. The pieces share their
+  seam vertices exactly: no gap, no face over another, so no flicker.
+- **The paint seams** are relaxed along the seam line before the cut. The grid's staircase becomes a smooth edge, and
+  both colours keep it.
+- **Each piece is decimated** with its seam held. Blender 5.3 never collapses a decimate-group vertex at weight 0.
+- **Normals come from the field.** Shading runs across the seams unbroken.
+- `nearest()` paints each face by the part field nearest it.
+- `fuse(g, parts, ...)` re-skins pieces of an already built model:
+  - each part's closed solids become a sampled field (`grid_field`), or the part's exact field when given;
+  - `pick` limits a part to some of a piece's faces, so the hard parts in the same piece stay;
+  - `kin` sets the fillet between one piece's own solids (a bunch of bananas, a cloud's puffs).
+- `grid_field`:
+  - **Sign:** a winding count along one ray per grid row. It holds at sharp edges and where a solid passes through
+    itself; a nearest face's normal does not.
+  - **Distance:** exact near the surface, coarse farther out.
+  - **Smoothing:** a 1-2-1 blur, because a kit solid's flat facets otherwise come back as lumps.
+- New primitives: turned `ellipsoid(rot=)`, `intersect`, `half`.
+
+**Checked:**
+- `gun_check` on all: 1 group, 0 loose.
+- `zfight_glb` on every exported glb, at rack and hand scale plus a strict pass: 0 hits.
+- `hat_clip` on the launcher, banana and the three Ducky skins: all 12 hats with body 0 and gun 0. It was run with
+  `--hat`, so the hats session's report was not touched.
+- The install: the skins carried every attribute of the old models over, and there were no copies in the world.
+- In hand in a Play test (the launcher and the banana).
+- Picture: `gun-models/fused-batch1.jpg`.
+
+**Lessons:**
+- **Decimate eats thin tips:**
+  - The decimate meets its ratio by collapsing a thin part away. The first painted chicken lost 2 cm of beak.
+  - So a piece's budget adds 1.5 triangles per seam vertex, and the builder names the tips to hold (`hold=`).
+  - Holding by curvature kept whole fingertips dense instead.
+- **A plain Laplacian relax shrinks tips.** It slides only along the surface now.
+- **Open shells can't be sampled alone.** Shells that only close a solid together (a rope and its whipping band, a
+  slipper's toe and lining) break a mesh field's inside test. The lasso and the slipper were left as they were:
+  - The lasso is one continuous rope whose loops only press together inside the bundle.
+  - The slipper's pom-pom is sewn on, as a real one is.
+- **Check that a glb is live before reworking it.** `weapons-kit/` still holds glbs of skins that were dropped:
+  `ar_cute_e` and `pistol_cute_e` (Daydream), `sawnoff_jp_a`, and two untracked Ducky glbs. `assets.json` is the
+  live list.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

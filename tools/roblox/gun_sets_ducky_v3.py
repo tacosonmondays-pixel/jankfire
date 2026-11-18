@@ -355,6 +355,25 @@ def duck_bill(g, piece, seam_piece, head, z_root, z_tip, ym, W, hu, hl, seam_r=0
     return top
 
 
+
+def fuse_head(g, node, HC, HR, name, k_bill=0.008, h=0.0013, tris=1000):
+    """THE DUCK'S HEAD AS ONE MOULDED SKIN (18 Nov 2026; the owner: separate shapes stuck together are what makes a
+       model look AI-made): the egg head, the bill grown out of its face on a fillet k_bill wide, the dot eyes and their
+       pearl glints moulded in, meshed once (sdf_kit.fuse) and painted back as the same pieces (<node>_wzA__duck,
+       _wzN__bill, _wzN__black, _wzN__pearl). The head is its exact ellipsoid; the bill and eyes are sampled from the
+       solids built above. Only faces at the head are touched (the gun's other parts in those pieces stay); the bow and
+       the dark seam rod in the mouth line stay as they were"""
+    import numpy as np
+    import sdf_kit as SDF
+    c, r = np.array(HC, float), np.array(HR, float)
+    inside = lambda p: float((((p - c) / (r * 1.005)) ** 2).sum()) < 1.0
+    near = lambda p: float((((p - c) / (r * 2.4)) ** 2).sum()) < 1.0
+    return SDF.fuse(g, [((node + '_wzA', 'duck'), 0, SDF.ellipsoid(HC, HR), inside),
+                        ((node + '_wzN', 'bill'), k_bill, None, near),
+                        ((node + '_wzN', 'black'), 0.002, None, near),
+                        ((node + '_wzN', 'pearl'), 0.001, None, near)], h=h, tris=tris, name=name)
+
+
 def side_star(g, piece, c, R, xs, depth, sink=0.0015):
     """a small star standing on a side face at |x| = xs (one side: xs < 0 is the left), facing out, depth proud"""
     sx = 1 if xs > 0 else -1
@@ -454,6 +473,7 @@ def lmg_ducky():
                t_frame=0.0065, sink=0.003)
     # a small gold star on the front sight's stem (left), under its hood: never in the sight picture
     side_star(g, 'sight_wzN__gold', (-0.795, 0.062), 0.0105, -0.0076, 0.0035)
+    fuse_head(g, 'head', HC, HR, 'lmg_duckhead')
     # (the slots the base gun had that nothing wears now)
     used = {s for (_, s) in g.pieces}
     g.slots = {k: v for k, v in g.slots.items() if k in used}
@@ -516,6 +536,7 @@ def katana_ducky():
     orod(g, 'kat_trims_wzN__pink', [(0, CY - 0.016, 0.1145), (0, CY - 0.040, 0.1165)], [0.0042, 0.0042], out=(1, 0, 0))
     cplate(g, 'kat_trims_wzN__gold', (0.0, CY - 0.0445, 0.1168), (0, 0, 1), (0, 1, 0), (1, 0, 0), star(0.0, 0.0, 0.0105, 0.0048),
            -0.0042, 0.0042, bev=0.0012)
+    fuse_head(g, 'kat_guard', HC, HR, 'kat_duckhead', k_bill=0.006)
     return g
 
 
@@ -606,6 +627,7 @@ def revolver_ducky():
     g.prism('grip_wzN__gold2', [(0.07, -0.198), (0.136, -0.19), (0.142, -0.2), (0.134, -0.214), (0.114, -0.217),
                                 (0.082, -0.216), (0.066, -0.207)], 0.058, bev=0.004)
     grip_feet(g, 'grip_wzN__bill', (0.062, -0.07), (0.44, -0.9), 0.027, L=0.112, W=0.03, spread=11.0)
+    fuse_head(g, 'body', HC, HR, 'rev_duckhead', k_bill=0.006)
     return g
 
 

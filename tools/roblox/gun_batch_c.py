@@ -72,6 +72,7 @@ from gun_melee import split, ball, lathe, loft, catmull, interp
 from gun_batch_a import Batch, pockets
 from gun_batch_b import grip_pockets, along
 import gun_sights as SG
+import sdf_kit as SDF
 
 FRAME, DARK, BLACK, STEEL = '444851', '353840', '16171b', 'b5bbc4'
 # the warm lamps push yellows and browns toward hot orange: the fruit and the bird are a third darker and greyer than
@@ -262,7 +263,61 @@ def scythe():
     g.hat = ((xs, round(Y0 + ts / 2 - 0.0007, 4), -1.282), 0.12)
     return g.done()
 
-# ================================================================================================= the chicken rocket
+# ================================================================================================= the rubber chickens
+def bird_field():
+    """the Chicken Rocket's next chicken (head and neck out of the muzzle) as one distance field: the neck, the head,
+       the comb and wattle, the open beak round a dark mouth, two moulded dot eyes. Returns (labels, the part fields in
+       label order (mesh_paint paints each face by the nearest), the whole field, the tips the decimate must hold)"""
+    neck = SDF.blend(SDF.capsule((0, -0.0051, -0.509), (0, -0.0009, -0.614), 0.021),
+                     SDF.capsule((0, 0.0069, -0.6438), (0, 0.0171, -0.6712), 0.02), 0.018)
+    head = SDF.ellipsoid((0, 0.034, -0.705), (0.0342, 0.038, 0.0418))
+    chick = SDF.blend(neck, head, 0.012)
+    red = SDF.union(SDF.union(SDF.ellipsoid((0, 0.07, -0.722), (0.0066, 0.012, 0.012)),
+                              SDF.ellipsoid((0, 0.077, -0.705), (0.0077, 0.014, 0.014)),
+                              SDF.ellipsoid((0, 0.071, -0.688), (0.0066, 0.012, 0.012)), k=0.0015),
+                    SDF.ellipsoid((0, 0.002, -0.733), (0.0066, 0.0143, 0.0088)))
+    beak = SDF.union(SDF.capsule((0, 0.035, -0.737), (0, 0.0273, -0.788), 0.0145, 0.002),
+                     SDF.capsule((0, 0.021, -0.735), (0, 0.0095, -0.7701), 0.0105, 0.002), k=0.002)
+    dark = SDF.union(SDF.ellipsoid((0, 0.025, -0.743), (0.0076, 0.0076, 0.0095)),
+                     *[SDF.ellipsoid((sx * 0.025, 0.04495, -0.72356), (0.0055, 0.0055, 0.0055)) for sx in (-1, 1)])
+    f = SDF.blend(chick, red, 0.006)
+    f = SDF.blend(f, beak, 0.006)
+    f = SDF.blend(f, dark, 0.003)
+    return ['chick', 'comb', 'beak', 'black'], [chick, red, beak, dark], f, [(0, 0.0273, -0.790), (0, 0.0095, -0.7721)]
+
+
+def flyer_field():
+    """the thrown rubber chicken (w_pj_chicken, before centred()) as one distance field: the plump body with moulded
+       wings and tail, the long neck, the head, comb and wattle, the beak, moulded dot eyes, the legs and toes (returns
+       as bird_field)"""
+    body = SDF.ellipsoid((0, 0, 0.05), (0.064, 0.071, 0.109))
+    neck = SDF.tube([(0, 0.012, 0.0), (0, 0.028, -0.08), (0, 0.04, -0.15), (0, 0.05, -0.205)], (0.032, 0.022, 0.0195, 0.0195), k=0.004)
+    head = SDF.ellipsoid((0, 0.058, -0.225), (0.0306, 0.036, 0.0396))
+    tail = SDF.ellipsoid((0, 0.05, 0.152), (0.015, 0.03, 0.024))
+    wings = SDF.union(*[SDF.ellipsoid((sx * 0.056, 0.014, 0.06), (0.0135, 0.027, 0.045)) for sx in (-1, 1)])
+    chick = SDF.blend(SDF.blend(SDF.blend(SDF.blend(body, neck, 0.02), head, 0.014), tail, 0.012), wings, 0.008)
+    red = SDF.union(SDF.union(SDF.ellipsoid((0, 0.091, -0.241), (0.0066, 0.012, 0.012)),
+                              SDF.ellipsoid((0, 0.098, -0.224), (0.0077, 0.014, 0.014)),
+                              SDF.ellipsoid((0, 0.092, -0.207), (0.0066, 0.012, 0.012)), k=0.0015),
+                    SDF.ellipsoid((0, 0.028, -0.247), (0.0066, 0.0143, 0.0088)))
+    beak = SDF.capsule((0, 0.056, -0.254), (0, 0.047, -0.303), 0.014, 0.002)
+    eyes = SDF.union(*[SDF.ellipsoid((sx * 0.0219, 0.0671, -0.2435), (0.0055, 0.0055, 0.0055)) for sx in (-1, 1)])
+    legs = []
+    tips = [(0, 0.047, -0.305)]   # (the beak's and the toes' tips: held by the decimate)
+    for sx in (-1, 1):
+        F = Vector((sx * 0.031, -0.062, 0.255))
+        legs.append(SDF.capsule((sx * 0.026, -0.045, 0.105), tuple(F), 0.0075))
+        for dx, dz in ((-0.018, 0.04), (0.0, 0.046), (0.018, 0.04)):
+            d = Vector((dx, 0.0, dz)); tip = F + d - d.normalized() * 0.006
+            legs.append(SDF.capsule(tuple(F), tuple(tip), 0.006)); tips.append(tuple(F + d))
+    legs = SDF.union(*legs, k=0.004)
+    f = SDF.blend(chick, red, 0.006)
+    f = SDF.blend(f, beak, 0.006)
+    f = SDF.blend(f, eyes, 0.003)
+    f = SDF.blend(f, legs, 0.008)
+    return ['chick', 'comb', 'beak', 'black', 'leg'], [chick, red, beak, eyes, legs], f, tips
+
+
 def chicken():
     """THE CHICKEN ROCKET (see the file's header)"""
     gunkit.use_style('B')
@@ -302,19 +357,12 @@ def chicken():
     g.put('pad_wzB__black', soft(prism(outline([(0.165, -0.05, 'c'), (0.375, -0.05, 'c'), (0.375, -0.074, 0.012), (0.34, -0.086, 's'),
                                                 (0.2, -0.086, 's'), (0.165, -0.074, 0.012)]), 0.058), 0.005, seg=2))
     # ---- the next rubber chicken, poking its head out of the muzzle (node `bird`)
-    # (a big head, the comb, the wattle, the beak open in the rubber chicken's squawk round a dark mouth, two dot eyes)
-    g.put('bird_wzN__chick', capsule(0.021, (0, -0.006, -0.488), (0, 0.0, -0.635), seg=16, rings=8),
-          capsule(0.02, (0, 0.0, -0.625), (0, 0.024, -0.69), seg=16, rings=8),
-          blob((0, 0.034, -0.705), 0.038, u=20, v=12, scale=(0.9, 1.0, 1.1)))
-    g.put('bird_wzN__comb', blob((0, 0.07, -0.722), 0.012, u=12, v=8, scale=(0.55, 1, 1)),
-          blob((0, 0.077, -0.705), 0.014, u=12, v=8, scale=(0.55, 1, 1)),
-          blob((0, 0.071, -0.688), 0.012, u=12, v=8, scale=(0.55, 1, 1)),
-          blob((0, 0.002, -0.733), 0.011, u=12, v=8, scale=(0.6, 1.3, 0.8)))
-    g.put('bird_wzN__beak', cyl(0.0145, (0, 0.035, -0.737), (0, 0.027, -0.79), sides=12, r2=0.002),
-          cyl(0.0105, (0, 0.021, -0.735), (0, 0.009, -0.772), sides=12, r2=0.002))
-    g.put('bird_wzN__black', blob((0, 0.025, -0.743), 0.0095, u=12, v=8, scale=(0.8, 0.8, 1.0)))
-    for sx in (-1, 1):
-        g.put('bird_wzN__black', ball(0.0058, (sx * 0.028, 0.046, -0.725), sub=1))
+    # (a big head, the comb, the wattle, the beak open in the rubber chicken's squawk round a dark mouth, two dot eyes).
+    # ONE moulded skin since 18 Nov (the owner: fused, not stuck-on parts): bird_field(), painted by part
+    labels, parts, field, tips = bird_field()
+    for lab, bm in SDF.mesh_paint(field, SDF.nearest(*parts), labels, (-0.045, -0.03, -0.80), (0.045, 0.096, -0.48),
+                                  h=0.0011, tris=2000, name='bird', hold=tips).items():
+        g.pieces[('bird_wzN', lab)] = bm
     g.origins['bird'] = (0.0, 0.0, -0.62)
     g.spots = {'muzzle': (0.0, 0.0, -0.62), 'grip': tuple(round(v, 4) for v in (0.0,) + along(GZ, GY, GR, 0.01)[::-1]),
                'fore': (0.0, FY, FZ)}
@@ -378,7 +426,13 @@ def banana():
     g.spots = {'muzzle': (0.0, 0.0, -0.3625), 'sight': (0.0, SY, 0.0778), 'grip': (0.0, round(gy, 4), round(gz, 4)),
                'fore': (0.0, -0.004, -0.2)}
     g.hat = ((0.0, TOP, 0.115), 0.1)      # (on the flat deck behind the notch, the web's size: the brims 21 mm clear of it, 14 mm of the back)
-    return g.done()
+    g.done()
+    # ONE HAND OF BANANAS (18 Nov, the owner: stuck-together shapes look AI-made): the three bananas, their stalks and
+    # dark tips fused into one moulded hand (sdf_kit.fuse), a shallow groove where the bananas press together; the
+    # charcoal clip stays a hard part
+    SDF.fuse(g, [(('mag_wzN', 'nana'), 0, None, None, 0.004), (('mag_wzN', 'stalk'), 0.004), (('mag_wzN', 'tip'), 0.002)],
+             h=0.0008, tris=2600, name='bananas', smooth=2)
+    return g
 
 
 # ================================================================================================= the tennis ball launcher
@@ -483,24 +537,13 @@ def pj_chicken():
     gunkit.use_style('B')
     g = Proj('w_pj_chicken')
     g.slot('chick', CHICK); g.slot('comb', COMB); g.slot('beak', BEAK); g.slot('black', BLACK)
-    g.put('body_wzA__chick', blob((0, 0, 0.05), 0.075, u=18, v=10, scale=(0.85, 0.95, 1.45)),
-          sweep([(0, 0.012, 0.0), (0, 0.028, -0.08), (0, 0.04, -0.15), (0, 0.05, -0.205)], [0.032, 0.022, 0.0195, 0.0195], n=12),
-          blob((0, 0.058, -0.225), 0.036, u=16, v=10, scale=(0.85, 1.0, 1.1)),
-          blob((0, 0.05, 0.152), 0.03, u=10, v=6, scale=(0.5, 1.0, 0.8)))
-    for sx in (-1, 1):
-        g.put('body_wzA__chick', blob((sx * 0.058, 0.012, 0.06), 0.045, u=12, v=6, scale=(0.3, 0.6, 1.0)))
-    g.put('comb_wzB__comb', blob((0, 0.091, -0.241), 0.012, u=10, v=6, scale=(0.55, 1, 1)),
-          blob((0, 0.098, -0.224), 0.014, u=10, v=6, scale=(0.55, 1, 1)),
-          blob((0, 0.092, -0.207), 0.012, u=10, v=6, scale=(0.55, 1, 1)),
-          blob((0, 0.028, -0.247), 0.011, u=10, v=6, scale=(0.6, 1.3, 0.8)))
-    g.put('beak_wzN__beak', cyl(0.014, (0, 0.056, -0.254), (0, 0.047, -0.305), sides=12, r2=0.002))
-    for sx in (-1, 1):
-        g.put('eye_wzN__black', ball(0.0058, (sx * 0.025, 0.068, -0.245), sub=1))
-        lx = sx * 0.026
-        F = Vector((sx * 0.031, -0.062, 0.255))
-        g.put('leg_wzN__beak', cyl(0.0075, (lx, -0.045, 0.105), tuple(F), sides=8))
-        for dx, dz in ((-0.018, 0.04), (0.0, 0.046), (0.018, 0.04)):
-            g.put('leg_wzN__beak', capsule(0.006, tuple(F), tuple(F + Vector((dx, 0.0, dz))), seg=6, rings=4))
+    # ONE moulded skin since 18 Nov (the owner: fused, not stuck-on parts): flyer_field(), painted by part
+    labels, parts, field, tips = flyer_field()
+    names = {'chick': ('body_wzA', 'chick'), 'comb': ('comb_wzB', 'comb'), 'beak': ('beak_wzN', 'beak'),
+             'black': ('eye_wzN', 'black'), 'leg': ('leg_wzN', 'beak')}
+    for lab, bm in SDF.mesh_paint(field, SDF.nearest(*parts), labels, (-0.075, -0.08, -0.31), (0.075, 0.116, 0.30),
+                                  h=0.002, tris=900, name='flyer', hold=tips).items():
+        g.pieces[names[lab]] = bm
     g.spots = {'nose': (0.0, 0.047, -0.305)}
     g.done()
     return centred(g, 0.82)

@@ -351,7 +351,56 @@ def bubble():
 YELLOW, BEAK, EYE, GLINT = 'd6b445', 'c9773d', '2b2d33', 'ecebe4'
 
 
+def _turn(rx=0.0, ry=0.0, rz=0.0):
+    """blob()'s turn (about x, then y, then z of the item frame) as a 3 x 3 array"""
+    import numpy as np
+    m = Matrix.Rotation(rz, 3, 'Z') @ Matrix.Rotation(ry, 3, 'Y') @ Matrix.Rotation(rx, 3, 'X')
+    return np.array([[m[i][j] for j in range(3)] for i in range(3)])
+
+
+def duck_field():
+    """THE RUBBER DUCK AS ONE MOULDED SKIN (18 Nov 2026, the owner: separate shapes stuck together are what makes a model
+       look AI-made). The same duck as duck_v2 (its sizes and places), as one distance field (sdf_kit): the body (a
+       soft flat belly, sweeping up into a pointed tail), the head on a filleted neck, the wings moulded into the
+       sides, the two-part beak grown out of the face (its mouth line kept), the eyes moulded in. Returns (labels, the
+       part fields, the whole field, the glint field: painted, not modelled)"""
+    import sdf_kit as SDF
+    body = SDF.intersect(SDF.ellipsoid((0, -0.005, 0.03), (0.2, 0.155, 0.25)), SDF.half((0, -1, 0), 0.118), 0.04)
+    body = SDF.blend(body, SDF.capsule((0, 0.03, 0.10), (0, 0.15, 0.24), 0.12, 0.04), 0.09)            # the tail
+    body = SDF.blend(body, SDF.ellipsoid((0, 0.185, -0.125), (0.122, 0.118, 0.122)), 0.06)             # the head
+    wings = SDF.union(*[SDF.ellipsoid((0.168 * sx, 0.025, 0.045), (0.04, 0.075, 0.125), rot=_turn(-0.3, 0.12 * sx))
+                        for sx in (-1, 1)])
+    body = SDF.blend(body, wings, 0.02)
+    beak = SDF.union(SDF.ellipsoid((0, 0.172, -0.235), (0.068, 0.024, 0.075)),
+                     SDF.ellipsoid((0, 0.148, -0.222), (0.055, 0.016, 0.055)), k=0.002)
+    eyes = SDF.union(*[SDF.ellipsoid((0.07 * sx, 0.212, -0.207), (0.021, 0.028, 0.016), rot=_turn(0, -0.55 * sx))
+                       for sx in (-1, 1)])
+    glint = SDF.union(*[SDF.ellipsoid((0.078 * sx, 0.222, -0.218), (0.0065, 0.0075, 0.004), rot=_turn(0, -0.55 * sx))
+                        for sx in (-1, 1)])
+    f = SDF.blend(SDF.blend(body, beak, 0.012), eyes, 0.004)
+    return ['body', 'beak', 'eye', 'glint'], [body, beak, eyes], f, glint
+
+
 def duck():
+    """the bath duck, one moulded skin painted body / beak / eyes / glints (see duck_field)"""
+    import numpy as np
+    import sdf_kit as SDF
+    g = Gun('x_duck')
+    g.slot('body', YELLOW); g.slot('beak', BEAK); g.slot('eye', EYE); g.slot('glint', GLINT)
+    labels, parts, field, glint = duck_field()
+    near = SDF.nearest(*parts)
+    def cls(p):
+        lab = near(p)
+        lab[(glint(p) < 0.0008) & (lab == 2)] = 3
+        return lab
+    for lab, bm in SDF.mesh_paint(field, cls, labels, (-0.215, -0.125, -0.315), (0.215, 0.31, 0.285), h=0.0035,
+                                  tris=3600, name='duck').items():
+        g.pieces[(lab, lab)] = bm
+    g.spots = {'grip': [0, 0, 0.02], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def duck_v2():
     g = Gun('x_duck')
     g.slot('body', YELLOW); g.slot('beak', BEAK); g.slot('eye', EYE); g.slot('glint', GLINT)
     # the bath duck as one clean shape: a body with a flat-ish belly that sweeps up into a pointed tail, a round head
