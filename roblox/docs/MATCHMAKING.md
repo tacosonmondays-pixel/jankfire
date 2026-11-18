@@ -290,6 +290,16 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
     ![the map room](matchmaking/44_map_room.jpg)
     ![the map room with the vote cards](matchmaking/45_map_room_vote_cards.jpg)
     ![the pick (the first, louder winner style)](matchmaking/46_map_room_pick.jpg)
+  - **v733 polish** (the main session, from the photos):
+    - The screens are about twice the size: 30 x 16.9 in 33-wide frames. They stand on an arc round the spot where
+      the group lands: the middle one, the one you face, at 34 studs, the side ones at 42, 54 degrees round.
+    - The screen lights are softer (0.45).
+    - The hub's left-hand menu (QUESTS, PLAY, PARTY, PROFILE, SHOP, LOADOUT) is hidden in the room, as in a match:
+      `client/MapRoomHud.client.luau` switches those five ScreenGuis off in the `staging` zone and back on after. On
+      a phone, TouchControls only moves the buttons inside them, so they go there too. The vote cards, the clock, HP,
+      the weapon panels and the wallet stay.
+
+    ![the map room from the spawn, v733](matchmaking/47_map_room_big_screens.jpg)
   - v726's on-pad vote, for the record:
 
     ![v726: the vote on the pad](matchmaking/43_pad_map_vote.jpg)

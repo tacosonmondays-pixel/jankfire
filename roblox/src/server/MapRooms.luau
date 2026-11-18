@@ -89,10 +89,14 @@ local function surfaceText(p: BasePart, face: Enum.NormalId, name: string, size:
 	return t
 end
 
--- the three displays: on an arc on the far side (room space: -z is the far side), each turned to the platform's middle
-local SLOT_ANGLE = { -46, 0, 46 } -- degrees round from straight ahead (wide enough that the three frames stand apart)
-local DISPLAY_R = 33 -- from the centre to a display's face
-local PLATE_D = 18 -- from the centre to a plate's middle
+-- the three displays: big (each map fills a good part of the view: the main session, 18 Nov, "about twice the size
+-- and bring the arc closer"), on an arc round the spot where the group lands (VIEW, room space: -z is the far side),
+-- each turned to it, far enough apart that the three frames stand clear of each other
+local VIEW = Vector3.new(0, 0, 22)
+local SLOT_ANGLE = { -54, 0, 54 } -- degrees round from straight ahead
+local DISPLAY_R = { 42, 34, 42 } -- from VIEW to each display's face (the middle one, the one you face on landing, nearer)
+local PLATE_D = 26 -- from VIEW to a plate's middle
+local SW, SH = 30, 16.9 -- the screen (16:9); the frame is 3 wider and 3.5 taller
 
 local function build(slot: number): Room
 	local o = CFrame.new(MapRooms.ORIGIN + MapRooms.STEP * (slot - 1))
@@ -113,17 +117,19 @@ local function build(slot: number): Room
 	end
 	local screens, frames, plates, plateParts = {}, {}, {}, {}
 	for i, deg in SLOT_ANGLE do
-		local turn = o * CFrame.Angles(0, math.rad(-deg), 0)
+		local turn = o * CFrame.new(VIEW) * CFrame.Angles(0, math.rad(-deg), 0)
 		-- the display: a dark slab frame, rounded at the sides (two thick upright cylinders), on a low plinth
-		local base = turn * CFrame.new(0, 0, -DISPLAY_R)
-		part(m, "Plinth" .. i, Vector3.new(20, 2, 6), base * CFrame.new(0, 1, -1), C.plinth)
-		local frame = part(m, "Frame" .. i, Vector3.new(20, 14, 2), base * CFrame.new(0, 10.5, -1.6), C.frame)
+		local base = turn * CFrame.new(0, 0, -DISPLAY_R[i])
+		local FW, FH = SW + 3, SH + 3.5
+		local fy = 2.4 + FH / 2 -- (the frame stands on the plinth, a hand over it)
+		part(m, "Plinth" .. i, Vector3.new(FW, 2, 6), base * CFrame.new(0, 1, -1), C.plinth)
+		local frame = part(m, "Frame" .. i, Vector3.new(FW, FH, 2), base * CFrame.new(0, fy, -1.6), C.frame)
 		for _, sx in { -1, 1 } do
-			part(m, "Edge" .. i, Vector3.new(14, 2.6, 2.6), base * CFrame.new(sx * 10, 10.5, -1.6) * CFrame.Angles(0, 0, math.rad(90)), C.frame, Enum.PartType.Cylinder)
+			part(m, "Edge" .. i, Vector3.new(FH, 2.6, 2.6), base * CFrame.new(sx * FW / 2, fy, -1.6) * CFrame.Angles(0, 0, math.rad(90)), C.frame, Enum.PartType.Cylinder)
 		end
-		part(m, "Cap" .. i, Vector3.new(20, 2.6, 2.6), base * CFrame.new(0, 17.5, -1.6), C.frame, Enum.PartType.Cylinder) -- (a cylinder runs along x: the frame's width)
+		part(m, "Cap" .. i, Vector3.new(FW, 2.6, 2.6), base * CFrame.new(0, 2.4 + FH, -1.6), C.frame, Enum.PartType.Cylinder) -- (a cylinder runs along x: the frame's width)
 		-- the screen: 16:9, flush in the frame's face, its own light falling on the plate in front
-		local screen = part(m, "Screen" .. i, Vector3.new(17, 9.6, 0.4), base * CFrame.new(0, 12, -0.5), C.screen)
+		local screen = part(m, "Screen" .. i, Vector3.new(SW, SH, 0.4), base * CFrame.new(0, 2.4 + FH - 1 - SH / 2, -0.5), C.screen)
 		local g = Instance.new("SurfaceGui")
 		g.Name = "Picture"
 		g.Face = Enum.NormalId.Back -- (the face towards the platform's middle: room space +z)
@@ -141,11 +147,11 @@ local function build(slot: number): Room
 		img.Image = ""
 		img.Parent = g
 		local light = Instance.new("SurfaceLight")
-		light.Face = Enum.NormalId.Back; light.Brightness = 0.7; light.Range = 26; light.Angle = 110
+		light.Face = Enum.NormalId.Back; light.Brightness = 0.45; light.Range = 30; light.Angle = 120
 		light.Color = Color3.fromRGB(226, 230, 238); light.Shadows = false
 		light.Parent = screen
 		-- the name and the votes on the frame's lower strip (a thin strip part in front of the frame)
-		local strip = part(m, "Strip" .. i, Vector3.new(17, 2.2, 0.3), base * CFrame.new(0, 5.6, -0.45), C.frame)
+		local strip = part(m, "Strip" .. i, Vector3.new(SW, 2.4, 0.3), base * CFrame.new(0, 2.4 + 1.25, -0.45), C.frame)
 		local name = surfaceText(strip, Enum.NormalId.Back, "Name", 60, C.text, FONT)
 		name.Size = UDim2.fromScale(0.72, 1)
 		name.TextXAlignment = Enum.TextXAlignment.Left
