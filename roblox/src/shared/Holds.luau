@@ -51,6 +51,11 @@ return {
 		nailgun = { Right = { pose = "grip", at = V(0, -0.066, 0.05), rot = V(-0.29671, 0, 0), size = 0.88 }, Left = { pose = "wrap", at = V(0, -0.05, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.01, 0.0344, 0), scale = 1, ads = { aimZ = 0, kind = "iron" } },
 		bread = { Right = { pose = "fist", at = V(0, 0, 0.04), rot = V(-1.5708, 0, 0), size = 1 }, Left = { pose = "fist", at = V(0, 0, 0.2), rot = V(-1.5708, 0, 0), size = 1 }, shift = V(0.02, 0.09, 0), scale = 1, tilt = V(0.69813, -0.34907, -1.39626) },
 		slapper = { Right = { pose = "grip", at = V(0, 0, 0.055), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0, 0.04, 0), scale = 1, tilt = V(0.34907, -0.17453, 1.5708) },
+		taser = { Right = { pose = "grip", at = V(0, -0.074, 0.062), rot = V(-0.29671, 0, 0), size = 1 }, Left = { pose = "grip", at = V(-0.06, -0.3, 0.1), rot = V(-1.5708, 0, 0), size = 1, away = true }, shift = V(-0.0786, 0.0554, 0), scale = 0.75 },
+		blower = { Right = { pose = "fist", at = V(0, 0.2015, 0.06), rot = V(-1.5708, 0, 0), size = 0.85 }, Left = { pose = "wrap", at = V(0, -0.03, -0.31), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.0367, -0.0063, 0), scale = 1 },
+		cig = { Right = { pose = "fist", at = V(0, 0, 0.05), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.0391, 0.0507, 0), scale = 1 },
+		laser = { Right = { pose = "grip", at = V(0, -0.0984, 0.132), rot = V(-0.29671, 0, 0), size = 0.85 }, Left = { pose = "wrap", at = V(0, 0, -0.28), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.06, 0.1145, 0), scale = 1 },
+		bloodcross = { Right = { pose = "hand", at = V(0, 0, -0.05), rot = V(1.5708, 1.5708, 0), size = 1 }, shift = V(-0.0987, 0.1105, 0), scale = 1 },
 	},
 	katana = {
 		fixes = {

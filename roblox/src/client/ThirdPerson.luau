@@ -154,7 +154,7 @@ local KAT = {
 }
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
-local ONE_HAND = { pistol = true, revolver = true, sawnoff = true }
+local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true } -- (Taser, Hot Sauce: 18 Nov)
 local function classOf(wid: string): string
 	if wid == "katana" then return "katana" end
 	-- (the hold session, 17 Nov 2026) every other melee weapon is one-handed: the Knife (its Spoon skin), the Zombie
@@ -162,7 +162,7 @@ local function classOf(wid: string): string
 	if W[wid] and W[wid].kind == "melee" then return "melee" end
 	if wid == "shredder" then return "shredder" end
 	if ONE_HAND[wid] then return "pistol" end
-	if wid == "lmg" or wid == "minigun" then return "heavy" end -- (the Minigun: held low, 18 Nov 2026)
+	if wid == "lmg" or wid == "minigun" or wid == "blower" then return "heavy" end -- (the Minigun, the Leaf Blower: held low, 18 Nov 2026)
 	return "rifle"
 end
 TP.classOf = classOf
