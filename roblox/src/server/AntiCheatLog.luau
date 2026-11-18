@@ -2,8 +2,9 @@
 -- the anti-cheat's review log (docs/ANTI-CHEAT.md): every catch (put back, kick, ban) and every aim flag the server
 -- only writes down. this server's entries are kept in memory; every 30 s the new ones are appended to a DataStore list
 -- the owner reads from the panel (/ac in chat), so flags from every server end up in one place. nothing leaves Roblox.
---   DataStore "JankAntiCheat_v1":  "log" = the newest MAX entries (a Studio play test writes "log_studio" instead, so
---   test catches never mix with real ones);  "u_<userId>" = one player's totals (points, kicks, flags by kind, first,
+--   DataStore "JankAntiCheat_v1" (a Studio play test uses its own store, "JankAntiCheat_v1_studio", since 18 Nov: like
+--   Profiles' "_studio" stores, so a test can never write where live servers do; its keys keep their old Studio names
+--   too):  "log" = the newest MAX entries (Studio: "log_studio", so test catches never mix with real ones);  "u_<userId>" = one player's totals (points, kicks, flags by kind, first,
 --   last). stored by user id only, never a name (the panel looks names up). Log.erase(userId): right-to-erasure
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -32,7 +33,10 @@ local queue: { Entry } = {}
 local users: { [number]: { kicks: number, points: number, flags: { [string]: number } } } = {}
 local last: { [string]: Entry } = {} -- uid..kind -> the entry a repeat merges into
 local store: DataStore? = nil
-pcall(function() store = DataStoreService:GetDataStore("JankAntiCheat_v1") end)
+pcall(function() store = DataStoreService:GetDataStore(if STUDIO then "JankAntiCheat_v1_studio" else "JankAntiCheat_v1") end)
+-- (right-to-erasure must reach the live log from anywhere, the owner's Studio panel too: Log.erase only)
+local liveStore: DataStore? = store
+if STUDIO then pcall(function() liveStore = DataStoreService:GetDataStore("JankAntiCheat_v1") end) end
 local SRV = if game.JobId ~= "" then string.sub(game.JobId, 1, 8) else "st" .. (os.time() % 100000)
 
 -- one line for the log. a repeat of the same kind for the same player within 10 s adds to the last line (a flying
@@ -175,10 +179,13 @@ function Log.erase(uid: number): number
 	users[uid] = nil
 	local pre = uid .. "|"
 	for k in last do if string.sub(k, 1, #pre) == pre then last[k] = nil end end
-	if store then
+	local stores: { DataStore } = {}
+	if store then table.insert(stores, store :: DataStore) end
+	if liveStore and liveStore ~= store then table.insert(stores, liveStore :: DataStore) end
+	for _, st in stores do
 		for _, key in { "log", "log_studio" } do
 			pcall(function()
-				(store :: DataStore):UpdateAsync(key, function(old: any)
+				st:UpdateAsync(key, function(old: any)
 					if type(old) ~= "table" then return nil end
 					local keep, cut = {}, 0
 					for _, e in old do if type(e) == "table" and e.uid == uid then cut += 1 else table.insert(keep, e) end end
@@ -187,7 +194,7 @@ function Log.erase(uid: number): number
 				end)
 			end)
 		end
-		for _, key in { "u_" .. uid, "su_" .. uid } do pcall(function() (store :: DataStore):RemoveAsync(key) end) end
+		for _, key in { "u_" .. uid, "su_" .. uid } do pcall(function() st:RemoveAsync(key) end) end
 	end
 	storedT = -math.huge
 	return n

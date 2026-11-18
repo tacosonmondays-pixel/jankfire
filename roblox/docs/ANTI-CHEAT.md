@@ -159,7 +159,8 @@ A flag goes into the review log at most once every 5 minutes per player and kind
 - **DataStore `JankAntiCheat_v1`**, written every 30 s and when a server closes; nothing leaves Roblox.
   - `log`: the newest 300 lines from every server.
   - `u_<userId>`: one player's totals across servers (points, kicks and kick times, flags by kind).
-  - A Studio test writes `log_studio` / `su_<userId>` instead, so test catches never mix with real ones.
+  - A Studio test writes to its own store, `JankAntiCheat_v1_studio` (since 18 Nov, like the Profiles `_studio` stores), under the keys `log_studio` / `su_<userId>`. Test catches never reach the live store. The live `log` key only ever held lines from live servers, so a review of it needs nothing filtered out.
+  - ERASE (right-to-erasure) clears both stores and both key sets, even from Studio.
 - A line has: when, who, the kind (teleport, noclip, inside, fly, stall, speed, head, snap, smoke, remote, admin, kick, ban), what was done (put back, flag, kick, ban, clear) and the numbers. A repeat within 10 s adds to the last line (`x12`).
 - **The panel** (`client/AntiCheatPanel.client.luau`): F7, or `/ac` in chat.
   - The server checks the owner on every call: user 2833796200, or the game's creator.
@@ -198,7 +199,7 @@ Players can still use Roblox's own Report in the Esc menu. Ours is extra evidenc
 - They can report someone in their server, or someone who left it in the last 10 minutes.
 - They can't report themselves.
 
-**Storage:** DataStore `JankReports_v1`. A Studio test uses `s_` keys, so test reports never mix with real ones.
+**Storage:** DataStore `JankReports_v1`. A Studio test uses its own store, `JankReports_v1_studio` (since 18 Nov), with `s_` keys, so test reports never mix with real ones. Erasing a real player's reports has to be done from a live server.
 
 | Key | Holds |
 |---|---|

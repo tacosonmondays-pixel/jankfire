@@ -7,7 +7,8 @@
 --   * the reported player's anti-cheat state (points, recent catches, totals across servers)
 --   * the match's recording when they're in one or just left one (Recorder.forReport: kept only for reported matches)
 -- only user ids are stored, never names (the panel looks names up when it shows them). it all lives in the DataStore
--- "JankReports_v1" (a Studio test writes "s_" keys) and goes after KEEP_DAYS. Roblox's right-to-erasure requests:
+-- "JankReports_v1" (a Studio test uses its own store, "JankReports_v1_studio", since 18 Nov, and its "s_" keys) and
+-- goes after KEEP_DAYS. Roblox's right-to-erasure requests:
 -- Reports.erase(userId), the panel's ERASE (docs/ANTI-CHEAT.md says how). players can still use Roblox's own Report
 -- (Esc menu); ours is extra evidence for the owner.
 -- the owner's actions (server/AntiCheat.server.luau answers the panel): dismiss, kick, ban (the ban switch), and
@@ -36,7 +37,7 @@ local MAX_INDEX = 500
 local MAX_REC = 3500000 -- characters of JSON: a DataStore key holds 4 MB
 
 local store: DataStore? = nil
-pcall(function() store = DataStoreService:GetDataStore("JankReports_v1") end)
+pcall(function() store = DataStoreService:GetDataStore(if STUDIO then "JankReports_v1_studio" else "JankReports_v1") end) -- (Studio: its own store, like Profiles')
 local SRV = if game.JobId ~= "" then string.sub(game.JobId, 1, 8) else "st" .. (os.time() % 100000)
 
 local deps: any = {}
