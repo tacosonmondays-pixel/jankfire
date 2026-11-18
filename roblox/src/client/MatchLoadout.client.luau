@@ -45,10 +45,14 @@ local S = {
 	hover = nil :: string?,
 }
 
+-- (the window is shut the moment any of these says so, whichever comes first: the server's shut time passing on this
+-- client's clock, the attribute cleared, RoundEnds set (the round is live). owner, 18 Nov: "your choose loudout stays on
+-- screen until you move after the countdown")
 local function windowLeft(): number?
 	local w = me:GetAttribute("LoadoutWindow")
-	if type(w) ~= "number" then return nil end
-	return math.max(0, w - workspace:GetServerTimeNow())
+	if type(w) ~= "number" or me:GetAttribute("RoundEnds") ~= nil then return nil end
+	local left = w - workspace:GetServerTimeNow()
+	return if left > 0 then left else nil
 end
 local function picks(): { string }
 	local s = me:GetAttribute("LoadoutNext")
@@ -323,11 +327,23 @@ end
 me.CharacterAdded:Connect(function() if S.shown then task.defer(draw) end end)
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function() if S.shown then layout(); draw() end end)
 
+-- shown or not: checked on every change that can shut it, and every frame (Heartbeat runs even when nothing is drawn)
+local function check()
+	setShown(windowLeft() ~= nil and me:GetAttribute("Zone") == "match" and me:GetAttribute("FinisherT") == nil)
+end
+for _, a in { "LoadoutWindow", "RoundEnds", "Zone", "FinisherT" } do me:GetAttributeChangedSignal(a):Connect(check) end
+RunService.Heartbeat:Connect(check)
+task.spawn(function()
+	local r = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Round", 60)
+	if r and r:IsA("RemoteEvent") then
+		r.OnClientEvent:Connect(function(m: any) if type(m) == "table" and m.start then setShown(false) end end)
+	end
+end)
+
 local t0 = os.clock()
 RunService.RenderStepped:Connect(function()
+	check()
 	local left = windowLeft()
-	local want = left ~= nil and me:GetAttribute("Zone") == "match" and me:GetAttribute("FinisherT") == nil
-	setShown(want)
 	if not S.shown or not left then return end
 	if left > S.total then S.total = left end
 	local s = tostring(math.ceil(left))
