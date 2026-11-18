@@ -98,8 +98,52 @@ GALAXY.
 
 A kill that counts, alone in Studio: `JankStatsTest("begin", p)` opens a test match, `JankStatsTest("ghost",
 dummyName)` makes that dummy count as an enemy, then a real shot from the Client datamodel through the Fire remote
-(`roblox-weapon-testing`). Back it all up first and put it back after: `JankStatsTest("data")` / `("put")`,
-`JankMasteryTest("drop")`, `JankStatsTest("ghost", "")`, `JankMasteryTest("live", false)`.
+(`roblox-weapon-testing`). Back it all up first and put it back after, in this order: `JankMasteryTest("live",
+false)` and `JankStatsTest("put", p, backup)` (the XP back) FIRST, then `JankMasteryTest("drop")`, then
+`JankStatsTest("ghost", "")` and `("save")`. Dropping first re-grants the camo at once: the drop changes the loot save,
+and the catch-up sees the XP still past the camo's level.
+
+In the training hall any wrap can be worn ("trying", nothing saved), so "the camo is refused on another gun" is only
+a real check in the hub.
+
+## Tested
+
+Solo Play at place version 980 (pushed as one guarded patch model, asset 81894793769478, dry-run first):
+
+- **A dummy gives nothing:** an AR shot through the Fire remote killed `Dummy2` with no match open: no weapon XP.
+- **A counted kill:** with a Stats test match and `Dummy` as the ghost, the same shot gave `ar=100`. The server didn't
+  score that shot as a head hit (it was aimed at the head's position from the root; `Rules.headAimed`), so the +25
+  wasn't seen.
+- **The match won:** `JankStatsTest("finish", p, "W")` gave the AR +50 (`ar=150`), the weapon held in it.
+- **Gold at 10, that gun only:** `("set", p, "ar", 10)` granted `mastery_gold@ar` and nothing else.
+- **What a rejoin loads:** after a save, the `_studio` stores themselves held `mx.ar = 4860` and the pair
+  `mastery_gold@ar` (read straight from the DataStores).
+- **Wearing it:** in the hub the Loadout remote put Gold on the AR and refused it on the SMG. Loadout.luau's refusal
+  still says "it's in spray cans" (the shop session's file): a follow-up.
+- **A buy:** `buy "wrap:mastery_gold@smg"` was refused.
+- **Put back:** the `_studio` saves were restored (no camo, no mastery receipt, no mastery XP; kills and XP as before).
+
+On screen (the gun-hats session's photo once the camos went live, place version 981, in the training hall where
+anything can be tried: `docs/wrap-textures/mastery-sheet.jpg`): the weapon card's bar (LV 1, 0 / 300 XP, GOLD AT
+LV 10 with the locked gold swatch), LV 1 and the hairline bar on every armory card, the four camos in WRAPS right after
+the free wraps, and the header "Mastery Galaxy MASTERY · LV 40".
+
+Solo Play at place version 982 (Studio `fa0b2665`, the camos live), photos in `docs/mastery/`:
+
+- `("set", p, "ar", 10)` in the hub: the level toast LEVEL 10 / ASSAULT RIFLE (`level-toast.jpg`), then GOLD UNLOCKED ·
+  ASSAULT RIFLE with the gold swatch and WRAPS · LOADOUT (`unlock-toast.jpg`), under the account's level plate.
+- The match card through `("toast", p, "match", ...)`: WEAPON XP, a row per weapon with +XP, LV n and its bar
+  (`match-card.jpg`). With no end screen up it sits left of the screen's middle and goes after 10 s.
+- The loadout at level 10 (`loadout-level-10.jpg`): the weapon card's LV 10 · 0 / 840 XP · DAMASCUS AT LV 20 with the
+  locked swatch, the AR's armory card LV 10 (the rest LV 1), and in WRAPS Mastery Gold first (owned, NEW) and Mastery
+  Damascus / Diamond / Galaxy locked LV 20 / 30 / 40.
+
+- **A real rejoin:** that Play was stopped with the AR at level 10 and Gold owned; the next Play loaded both on join
+  (`ar=4860`, `mastery_gold@ar`). Then the owner's `_studio` saves were put back (XP first, then the camo: nothing was
+  re-granted) and read straight from the DataStores: no camo, no mastery receipt or XP, the rest as before.
+
+Not yet seen: assists and round wins in a real match (the code path is the same `MasteryXp.add` the kill took), the
+headshot's +25, the match card beside a real end screen, the phone layout.
 
 ## Not done
 
