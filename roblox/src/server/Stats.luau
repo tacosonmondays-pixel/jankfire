@@ -17,6 +17,9 @@
 --   fixed[matchKey] = cheater (the matches already undone: twice is once), voids[since] = when (resets already done),
 --   reset = false | { t, since } (shown on the card), backup = false | the numbers before the reset (undoRestore)
 -- XP: +20 a kill on a player, +50 a round won, 2 a minute of live match time (web room.js).
+--   mx[weapon] = xp: WEAPON MASTERY (Shared.Mastery, server/MasteryXp.luau): a kill 100 (+25 headshot), an assist 50, a
+--   round or the match won 50 (to the weapon held longest in it). the same matches count as for everything here (never
+--   a ghost or a dev match, never a dummy); a cheat restore takes it with the rest
 --
 -- CHEAT RESTORES (the owner, 17 Nov: "If someone is caught cheating give back any ranked stuff or stats!!"). the
 -- anti-cheat calls Stats.restoreFor(cheaterUserId, since) when a cheater is confirmed (RankedData.restoreFor does RP
@@ -52,6 +55,9 @@ local CardStyles = require(Shared:WaitForChild("CardStyles"))
 local Roster = require(Shared:WaitForChild("Roster"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local Loot = require(script.Parent:WaitForChild("Loot"))
+-- weapon mastery (18 Nov 2026, Shared.Mastery, docs/MASTERY.md): XP per weapon in this save (mx), added from here
+local Mastery = require(Shared:WaitForChild("Mastery"))
+local MasteryXp = require(script.Parent:WaitForChild("MasteryXp"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Profile") :: RemoteFunction
 
 local Stats = {}
@@ -61,7 +67,7 @@ local LOG = 100 -- matches kept per player for cheat restores
 local function template(): any
 	return { v = 1, xp = 0, k = 0, d = 0, m = 0, w = 0, rp = 0, rw = 0, sh = 0, hi = 0, hc = 0, hs = 0, hk = 0, dmg = 0, best = 0, time = 0,
 		wpn = {}, recent = {}, look = { border = CardStyles.DEFAULT.border, banner = CardStyles.DEFAULT.banner, title = CardStyles.DEFAULT.title },
-		private = false, since = os.time(), log = {}, fixed = {}, voids = {}, reset = false, backup = false }
+		private = false, since = os.time(), log = {}, fixed = {}, voids = {}, reset = false, backup = false, mx = {} }
 end
 local store = Profiles.new("JankfireStats_v1", template)
 
@@ -70,6 +76,7 @@ type Fighter = any
 type Cur = { id: number, key: string, mode: string, arena: string, team: number, k: number, d: number, dmg: number,
 	wt: { [string]: number }, streak: number, t0: number, test: boolean?, m: any?, -- (m: the match itself)
 	foes: { number }, mates: { number }, ranked: boolean, rp: number, rw: number, xp: number,
+	rwt: { [string]: number }, -- (seconds held per weapon this round: the round win's mastery XP goes to the longest)
 	fix: number? } -- (fix: a cheater restored while this match was on: it comes off when it ends)
 type State = { p: Player, prof: Profiles.Profile?, ready: boolean, cur: Cur?, att: { [string]: boolean }, xpAcc: number,
 	budget: number, budgetT: number, devAll: boolean? }
@@ -108,6 +115,7 @@ local function publish(s: State)
 	p:SetAttribute("Level", Ranks.levelOf(xp))
 	p:SetAttribute("StatsSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
 	p:SetAttribute("StatsPrivate", d ~= nil and d.private == true) -- (the settings panel's switch shows it)
+	MasteryXp.publish(p) -- (the Mastery attribute: XP per weapon)
 	-- (the card title you wear, for the one over your head: client/OverheadTitles; "none" shows nothing)
 	local title = if d and type(d.look) == "table" and type(d.look.title) == "string" then d.look.title else "none"
 	if p:GetAttribute("CardTitle") ~= title then p:SetAttribute("CardTitle", title) end
@@ -147,6 +155,17 @@ local function stateOf(f: Fighter?): State?
 	if not f or f.kind ~= "player" then return nil end
 	return st[f.ref :: Player]
 end
+-- does this player's match count for weapon mastery? the same matches as the numbers here: a real one (or a stats
+-- test's), never a ghost match (unless a stats test turned ghosts on) or a dev match, never a restored cheater. no
+-- phase check: the blow that ends a round lands after the round is decided
+local function masteryCounts(s: State?): boolean
+	if not s or not s.cur or watched[s.p.UserId] then return false end
+	local c = s.cur :: Cur
+	if c.test then return true end
+	return c.m ~= nil and not (c.m.ghost and not testCount) and not c.m.dev
+end
+-- who hurt whom lately, for assists: victim -> { attacker -> { t (last hurt), w = { [weapon] = damage } } }
+local hurtBy: { [Fighter]: { [Fighter]: { t: number, w: { [string]: number } } } } = setmetatable({}, { __mode = "k" }) :: any
 -- two fighters on opposite teams of one counted match (or a test player and the test ghost)
 local function enemies(a: Fighter?, b: Fighter?): boolean
 	if not a or not b or a == b then return false end
@@ -179,6 +198,13 @@ end
 local function onHurt(t: Fighter, done: number, by: Fighter?, wid: string, hs: boolean?)
 	if not by or not real(wid) or not enemies(by, t) then return end
 	lastHit[t] = { by = by, hs = hs == true, t = os.clock() }
+	-- (weapon mastery's assists: who hurt them, with what, and when last)
+	local hb = hurtBy[t] or {}
+	hurtBy[t] = hb
+	local he = hb[by]
+	if not he or os.clock() - he.t > Mastery.ASSIST_WINDOW then he = { t = 0, w = {} }; hb[by] = he end
+	he.t = os.clock()
+	he.w[wid] = (he.w[wid] or 0) + done
 	local s = stateOf(by)
 	local d = dataOf(s)
 	if not s or not d or not s.cur or watched[s.p.UserId] then return end
@@ -198,6 +224,8 @@ end
 
 local function onKill(info: any)
 	local v, k = info.v, info.k
+	local hb = hurtBy[v] -- (who hurt them: the assists below. gone with this death whatever happens)
+	hurtBy[v] = nil
 	local sv = stateOf(v)
 	local dv = dataOf(sv)
 	if sv and dv and sv.cur and liveFor(sv) then
@@ -214,6 +242,18 @@ local function onKill(info: any)
 	local c = sk.cur :: Cur
 	local wid = if info.w == "void" and type(info.via) == "string" then info.via else info.w
 	if wid == "parry" then wid = "katana" end -- (a parry kill is the parrier's katana: a perfect parry's shot sent back, or a fall after a parry shove)
+	-- (weapon mastery's assists: everyone else on the killer's side who hurt them in the last few seconds, on the weapon
+	-- they hurt them most with)
+	if hb then
+		for f, e in hb do
+			if f ~= k and os.clock() - e.t <= Mastery.ASSIST_WINDOW and enemies(f, v) then
+				local sf = stateOf(f)
+				local top, most = nil, 0
+				for w, dmg in e.w do if dmg > most then top, most = w, dmg end end
+				if sf and top and masteryCounts(sf) then MasteryXp.add(sf.p, top, Mastery.XP.assist, "assist") end
+			end
+		end
+	end
 	if not real(wid) and not KILL_ONLY[wid] then lastHit[v] = nil; return end
 	dk.k += 1
 	c.k += 1
@@ -221,10 +261,15 @@ local function onKill(info: any)
 	c.streak += 1
 	if c.streak > (tonumber(dk.best) or 0) then dk.best = c.streak end
 	local lh = lastHit[v]
-	if info.w ~= "void" and lh and lh.by == k and lh.hs and os.clock() - lh.t < 2 then dk.hk += 1 end
+	local hsKill = info.w ~= "void" and lh ~= nil and lh.by == k and lh.hs and os.clock() - lh.t < 2
+	if hsKill then dk.hk += 1 end
 	lastHit[v] = nil
 	dirty(sk)
 	addXp(sk, Ranks.XP.kill)
+	-- (weapon mastery: the kill to the weapon that made it, more for a headshot)
+	if real(wid) and masteryCounts(sk) then
+		MasteryXp.add(sk.p, wid, Mastery.XP.kill + (if hsKill then Mastery.XP.headshot else 0), "kill")
+	end
 end
 
 -- ------------------------------------------------------------------ cheat restores: the pieces (on one save's data)
@@ -263,7 +308,7 @@ local function voidStats(d: any, since: number, at: number): boolean
 	local vk = tostring(math.floor(since))
 	if d.voids[vk] ~= nil then return false end
 	d.voids[vk] = at
-	local before: any = { wpn = deepCopy(d.wpn), recent = deepCopy(d.recent) }
+	local before: any = { wpn = deepCopy(d.wpn), recent = deepCopy(d.recent), mx = deepCopy(if type(d.mx) == "table" then d.mx else {}) }
 	for _, k in NUMS do before[k] = num(d[k]) end
 	-- (a second reset keeps the first one's numbers too: undo gives back everything)
 	if type(d.backup) == "table" then
@@ -273,10 +318,12 @@ local function voidStats(d: any, since: number, at: number): boolean
 			local cur = before.wpn[wid]
 			if type(cur) ~= "table" then before.wpn[wid] = w else for f, v in w do cur[f] = num(cur[f]) + num(v) end end
 		end
+		for wid, x in (if type(b.mx) == "table" then b.mx else {}) do before.mx[wid] = num(before.mx[wid]) + num(x) end
 	end
 	d.backup = before
 	for _, k in NUMS do d[k] = 0 end
 	d.wpn, d.recent = {}, {}
+	d.mx = {} -- (weapon mastery XP too; camos already granted stay with the loot save)
 	d.reset = { t = at, since = since }
 	return true
 end
@@ -290,6 +337,8 @@ local function unvoid(d: any): boolean
 		local cur = d.wpn[wid]
 		if type(cur) ~= "table" then d.wpn[wid] = w else for f, v in w do cur[f] = num(cur[f]) + num(v) end end
 	end
+	if type(d.mx) ~= "table" then d.mx = {} end
+	for wid, x in (if type(b.mx) == "table" then b.mx else {}) do d.mx[wid] = math.min(Mastery.total(Mastery.MAX), num(d.mx[wid]) + num(x)) end
 	local rec = table.clone(d.recent)
 	for _, r in b.recent or {} do table.insert(rec, r) end
 	while #rec > RECENT do table.remove(rec) end
@@ -303,8 +352,9 @@ local function begin(p: Player, id: number, mode: string, arena: string, team: n
 	local s = st[p]
 	if not s then return end
 	s.cur = { id = id, key = key or ("t" .. os.time() .. "-" .. math.random(1e6)), mode = mode, arena = arena, team = team, k = 0, d = 0, dmg = 0, wt = {},
-		streak = 0, t0 = os.time(), test = test, m = m, foes = foes or {}, mates = mates or {}, ranked = m ~= nil and m.ranked == true, rp = 0, rw = 0, xp = 0 }
+		streak = 0, t0 = os.time(), test = test, m = m, foes = foes or {}, mates = mates or {}, ranked = m ~= nil and m.ranked == true, rp = 0, rw = 0, xp = 0, rwt = {} }
 	s.att = {}
+	MasteryXp.matchStart(p)
 end
 
 -- a cheater restored in this server (or any, through the nudge) was on the other side of this match
@@ -319,6 +369,13 @@ local function finish(p: Player, res: string, score: string?)
 	local s = st[p]
 	if not s or not s.cur then return end
 	local c = s.cur :: Cur
+	-- (weapon mastery: the match won is worth XP to the weapon held longest in it; then the client hears what it gave)
+	local counts = masteryCounts(s)
+	if counts and res == "W" then
+		local top = MasteryXp.top(c.wt)
+		if top then MasteryXp.add(p, top, Mastery.XP.matchWin, "match") end
+	end
+	MasteryXp.matchEnd(p, counts)
 	s.cur = nil
 	s.att = {}
 	local d = dataOf(s)
@@ -379,8 +436,12 @@ local function hookMatches()
 					if not watched[p.UserId] then
 						d.rp += 1
 						if t == winner then d.rw += 1; addXp(s, Ranks.XP.roundWin) end
+						-- (weapon mastery: a round won, to the weapon held longest in it)
+						local top = if t == winner and masteryCounts(s) then MasteryXp.top(c.rwt) else nil
+						if top then MasteryXp.add(p, top, Mastery.XP.roundWin, "round") end
 						dirty(s)
 					end
+					c.rwt = {}
 				end
 			end
 		end
@@ -755,7 +816,7 @@ local function cleanLook(p: Player, d: any)
 		local id = d.look[t]
 		if type(id) ~= "string" or not CardStyles.info(t, id) then d.look[t] = CardStyles.DEFAULT[t] end
 	end
-	for _, k in { "wpn", "recent", "log", "fixed", "voids" } do
+	for _, k in { "wpn", "recent", "log", "fixed", "voids", "mx" } do
 		if type(d[k]) ~= "table" then d[k] = {} end
 	end
 end
@@ -788,6 +849,7 @@ local function added(p: Player)
 		prof.dirty = true
 	end
 	s.ready = true
+	MasteryXp.bind(p, prof.data, function() dirty(s) end) -- (weapon mastery: its XP lives in this save)
 	prof.onLost.Event:Connect(function() publish(s) end)
 	publish(s)
 	if Loot.ready(p) then recheck(p) end -- (the loot save was first: no Loot.changed is coming)
@@ -807,6 +869,7 @@ function Stats.init(fight: any, matches: any)
 	Fight.onHurt(safe(onHurt))
 	Fight.onKill(safe(onKill))
 	hookMatches()
+	MasteryXp.init()
 	for _, p in Players:GetPlayers() do task.spawn(added, p) end
 	Players.PlayerAdded:Connect(added)
 	Players.PlayerRemoving:Connect(function(p)
@@ -855,6 +918,7 @@ function Stats.init(fight: any, matches: any)
 					held = Roster.formOf[held] or held -- (the Scythe's rifle form is time with the Scythe)
 					if real(held) then
 						c.wt[held] = (c.wt[held] or 0) + step
+						c.rwt[held] = (c.rwt[held] or 0) + step
 						wpn(d, held).t += step
 					end
 					s.xpAcc += step * Ranks.XP.perMinute / 60
@@ -969,6 +1033,7 @@ function Stats.test(op: string, a: any, b: any, c: any, e: any): any
 		if not s.prof or type(b) ~= "table" then return false end
 		s.prof.data = b
 		cleanLook(p, b)
+		MasteryXp.bind(p, b, function() dirty(s) end) -- (the save's table changed: weapon mastery reads the new one)
 		dirty(s); publish(s)
 		return true
 	elseif op == "finish" then

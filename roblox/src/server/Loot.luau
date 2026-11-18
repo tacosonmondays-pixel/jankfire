@@ -34,6 +34,8 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Config = require(Shared:WaitForChild("Config"))
 local LootTable = require(Shared:WaitForChild("LootTable"))
 local LootFloor = require(Shared:WaitForChild("LootFloor"))
+-- (weapon mastery's camos, 18 Nov: granted here only through "mastery:<camo>@<gun>", never sold or gifted. docs/MASTERY.md)
+local Mastery = require(Shared:WaitForChild("Mastery"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local Remote = Remotes:WaitForChild("Loot") :: RemoteFunction
@@ -236,7 +238,7 @@ local function grantOffer(s: State, o: any, n: number?): { LootTable.Item }
 		return got
 	end
 	local c = catalog()
-	local items = if c and type(c.contents) == "function" then c.contents(o) else {}
+	local items = if o.type == "mastery" then o.items elseif c and type(c.contents) == "function" then c.contents(o) else {}
 	local d = (s.prof :: Profiles.Profile).data
 	for _, it in items do
 		-- (a bundle's wrap, every = true: every gun's pair, and kept for guns added later. NEW only on the gun it's shown
@@ -418,6 +420,10 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		end
 		if not Config.LOOT_FREE and (o.robux or 0) > 0 then return { ok = false, why = "the shop is shut" } end
 		if o.type ~= "container" and c and type(c.contents) == "function" then
+			-- (a weapon mastery camo is never for sale: it comes from levelling its gun)
+			for _, it in c.contents(o) do
+				if type(it) == "table" and Mastery.masteryOnly(it.kind, it.id) then return { ok = false, why = "unlocked by weapon level" } end
+			end
 			local missing = 0
 			for _, it in c.contents(o) do
 				for _, i in pairsOf(it) do if i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then missing += 1 end end
@@ -593,11 +599,32 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
 	local id = tostring(purchaseId)
 	if table.find(d.receipts, id) then return true end
 	local c = catalog()
-	local o = if c and type(c.offer) == "function" and type(offerId) == "string" then c.offer(offerId) else nil
-	if not o and type(offerId) == "string" and LootTable.CONTAINERS[offerId] then o = { id = offerId, type = "container" } end
-	if type(o) ~= "table" then
-		warn(("[jankfire] loot: grant of %s: no such offer"):format(tostring(offerId)))
-		return false
+	local o: any = nil
+	-- (a weapon mastery camo, "mastery:<camo>@<gun>": only MasteryXp asks, when that gun reaches the camo's level. it
+	-- isn't in the catalog: no offer can be bought, rolled or gifted into one)
+	local mid, mw = string.match(tostring(offerId), "^mastery:([%w_]+)@([%w_]+)$")
+	if mid and mw then
+		if not Mastery.isCamo(mid) or not LootTable.takes("wrap", mw) then
+			warn(("[jankfire] loot: grant of %s: no such camo or gun"):format(tostring(offerId)))
+			return false
+		end
+		o = { id = offerId, type = "mastery", items = { { kind = "wrap", id = mid, weapon = mw } } }
+	else
+		o = if c and type(c.offer) == "function" and type(offerId) == "string" then c.offer(offerId) else nil
+		if not o and type(offerId) == "string" and LootTable.CONTAINERS[offerId] then o = { id = offerId, type = "container" } end
+		if type(o) ~= "table" then
+			warn(("[jankfire] loot: grant of %s: no such offer"):format(tostring(offerId)))
+			return false
+		end
+		-- (never gifted or bought: a gift or a pack with a mastery camo in it is refused whole)
+		if o.type ~= "container" and c and type(c.contents) == "function" then
+			for _, it in c.contents(o) do
+				if type(it) == "table" and Mastery.masteryOnly(it.kind, it.id) then
+					warn(("[jankfire] loot: grant of %s: a mastery camo comes only from weapon level"):format(tostring(offerId)))
+					return false
+				end
+			end
+		end
 	end
 	local before = { stock = table.clone(d.stock), inv = {} :: any,
 		every = if type(d.every) == "table" and type(d.every.wrap) == "table" then table.clone(d.every.wrap) else nil }
@@ -617,6 +644,38 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
 	end
 	touch(p, s)
 	return true
+end
+
+-- (Studio tests only: every pair pred(type, key) says yes to comes off this player's save, its NEW mark too, and the
+-- receipts rcpt(id) says yes to. a test's grants undone (MasteryXp's "drop"). returns how many pairs went)
+function Loot.testDrop(p: Player, pred: (string, string) -> boolean, rcpt: ((string) -> boolean)?): number
+	if not RunService:IsStudio() then return 0 end
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return 0 end
+	local d = s.prof.data
+	local n = 0
+	for t, list in d.inv do
+		if type(list) == "table" then
+			local keep = {}
+			for _, k in list do
+				if type(k) == "string" and pred(t, k) then n += 1 else table.insert(keep, k) end
+			end
+			d.inv[t] = keep
+		end
+	end
+	if type(d.fresh) == "table" then
+		for t, f in d.fresh do
+			if type(f) == "table" then for k in f do if type(k) == "string" and pred(t, k) then f[k] = nil end end end
+		end
+	end
+	if rcpt then
+		local keep = {}
+		for _, r in d.receipts do if not rcpt(tostring(r)) then table.insert(keep, r) end end
+		d.receipts = keep
+	end
+	s.owned = sets(d)
+	touch(p, s, 1)
+	return n
 end
 
 -- may this player buy random items with Robux? (Roblox's PolicyService: false for some ages and countries)

@@ -107,6 +107,11 @@ function News.dot(parent: GuiObject, z: number, inset: number?): Frame
 	new("UIStroke", { Color = Color3.fromRGB(8, 9, 12), Thickness = 1.5, Transparency = 0.25 }, d)
 	return d
 end
+-- weapon mastery (18 Nov, docs/MASTERY.md): the camos per gun (Shared.Mastery: the WRAPS strip's last four, MASTERY as
+-- their source) and the level bars on the weapon card and the armory cards (MasteryUI). in News: no locals to spare
+News.MW = require(Shared:WaitForChild("Mastery")) :: any
+News.MUI = require(script.Parent:WaitForChild("MasteryUI")) :: any
+News.mbar = function(_e: any) end
 
 -- ---------------------------------------------------------------- state from the server (player attributes)
 local function pick(): { [string]: string }
@@ -338,6 +343,7 @@ local function buildArmory()
 		btn.MouseEnter:Connect(function() if state.focus ~= e.id then btn.BackgroundColor3 = T.CARD_HI end end)
 		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = CARD end)
 		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color, new = News.dot(btn, 6, 8) })
+		News.MUI.card(btn, e) -- (its weapon level: LV n and a hairline bar)
 	end
 	armCount.Text = ("%d live · %d coming soon"):format(live, soon)
 	armList.CanvasPosition = Vector2.zero
@@ -454,6 +460,7 @@ for i = 1, 4 do
 	table.insert(statRows, { name = name, val = val, fill = fill })
 end
 local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 614), UDim2.fromOffset(376, 60))
+News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: LV, XP, the next camo)
 
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
 local function statsFor(id: string): { Roster.Stat }
@@ -728,7 +735,7 @@ type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame,
 local swatches: { Swatch } = {}
 local onSwatch: (Roster.Wrap) -> () = function() end
 local onHover: (string?) -> () = function() end
-for i, wr in Roster.wraps do
+for i, wr in News.MW.wrapList() do -- (Roster.wraps, then the mastery camos)
 	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(86, 92), LayoutOrder = i, ZIndex = 4 }, swatchRow)
 	local shadow = new("Frame", { BackgroundColor3 = Roster.RARITY[wr.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 57), Size = UDim2.fromOffset(78, 3), ZIndex = 4 }, holder)
 	T.corner(shadow, 2)
@@ -759,7 +766,8 @@ for i, wr in Roster.wraps do
 	swatchLocks[wr.id] = lockOver(chip, 8)
 end
 local function applyFilter()
-	for _, s in swatches do s.holder.Visible = state.filter == "all" or s.wr.rarity == state.filter or s.wr.id == "default" end
+	-- (a mastery camo shows once its picture is in the place: Mastery.live)
+	for _, s in swatches do s.holder.Visible = (state.filter == "all" or s.wr.rarity == state.filter or s.wr.id == "default") and (not s.wr.mastery or News.MW.live(s.wr.id)) end
 	for f, t in filterBtns do
 		-- (a dot in the rarity's colour; the name goes white on the one that's picked)
 		local dot = if f == "all" then "" else ('<font color="#%s">●</font>  '):format(Roster.RARITY[f].color:ToHex())
@@ -854,6 +862,7 @@ refresh = function()
 	bigName.Text = string.upper(e.name)
 	soonStamp.Visible = not e.live
 	infoName.Text = e.name; infoChip.BackgroundColor3 = e.color
+	News.mbar(e)
 	slotChipL.Text = Roster.SLOT_NAMES[e.slot]
 	liveChipL.Text = if e.live then '<font color="#6fd08a">●</font>  LIVE ON ROBLOX' else "COMING SOON"
 	liveChipL.TextColor3 = if e.live then TEXT else DIM
@@ -878,8 +887,9 @@ refresh = function()
 	local shownId = if state.hover and e.live then state.hover else wid
 	local wr = Roster.wrapById[shownId]
 	if wr then
-		local rc = Roster.RARITY[wr.rarity].color
-		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(), string.upper(Roster.RARITY[wr.rarity].name),
+		local rc = if wr.mastery then ACCENT else Roster.RARITY[wr.rarity].color
+		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(),
+			if wr.mastery then ("MASTERY  ·  LV %d"):format(News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0) else string.upper(Roster.RARITY[wr.rarity].name),
 			if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noPaint.Visible = not e.live -- (the gadgets take paint since 18 Nov)
@@ -889,6 +899,9 @@ refresh = function()
 		s.tick.Visible = on
 		local lk = swatchLocks[s.wr.id]
 		if lk then lk.Visible = not owns("wrap", s.wr.id); lockLook(lk) end
+		-- (a mastery camo's lock says the weapon level that unlocks it)
+		local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
+		if mg then mg.Text = "LV " .. (News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2) end
 		s.st.Color = if on then ACCENT else WHITE
 		s.st.Transparency = if on then 0 else 0.8
 		s.st.Thickness = if on then 2 else 1
@@ -935,7 +948,12 @@ onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live then return end
 	local _, md = wrapOf(e.id)
-	if not owns("wrap", wr.id) and not trying() then play("empty"); say(("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED); return end
+	if not owns("wrap", wr.id) and not trying() then
+		play("empty")
+		say(if wr.mastery then ("%s for the %s unlocks at %s level %d."):format(wr.name, string.lower(e.name), string.lower(e.name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0)
+			else ("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED)
+		return
+	end
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
 		play("click")
@@ -1328,7 +1346,8 @@ News.refresh = function(e: any)
 		local list = {}
 		for i, s in swatches do
 			local n = News.got("wrap", s.wr.id, gun)
-			table.insert(list, { holder = s.holder, g = if n then 0 elseif s.wr.rarity == "free" then 1 else 2, n = n or 0, plain = s.wr.id == "default", i = i })
+			-- (the mastery camos sit with the free ones near the front, after them: something to aim for)
+			table.insert(list, { holder = s.holder, g = if n then 0 elseif s.wr.rarity == "free" or s.wr.mastery then 1 else 2, n = n or 0, plain = s.wr.id == "default", i = i })
 		end
 		News.sort(list)
 		list = {}

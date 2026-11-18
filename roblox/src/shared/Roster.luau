@@ -6,7 +6,7 @@ local Roster = {}
 
 export type Stat = { label: string, text: string, bar: number }
 export type Entry = { id: string, slot: string, name: string, color: Color3, desc: string, live: boolean, gimmick: string, stats: { Stat } }
-export type Wrap = { id: string, name: string, rarity: string, pal: { Color3 }, pat: string, mat: string?, refl: number?, tr: number?, neon: { number }?, vip: boolean? }
+export type Wrap = { id: string, name: string, rarity: string, pal: { Color3 }, pat: string, mat: string?, refl: number?, tr: number?, neon: { number }?, vip: boolean?, mastery: boolean? }
 
 local function hex(h: string): Color3 return Color3.fromHex(h) end
 
@@ -314,5 +314,18 @@ Roster.wrapById.ducky.vip = true
 -- the VIP daily reward only (17 Nov 2026, the Triangulum trio): VipDailyData.EXCLUSIVE is its daily-only mark, so the
 -- containers, the shop and the VIP pack skip it. Never vip = true here (the VIP pack would give it to every VIP)
 wrap("triangulum", "Triangulum", "legendary", { "2a355f", "bf9c55", "ffe7a6" }, "speck", nil, nil, nil, { 3 })
+-- WEAPON MASTERY (18 Nov 2026, the owner: "level up weapons to unlock gold, damascus, diamond and galaxy camo for their
+-- respective guns"): earned per gun by levelling it (the weapon-mastery session's unlocks), never sold, never in a
+-- container or a bundle (mastery = true). A prestige ladder: polished gold, pattern-welded steel, faceted diamond, then
+-- a deep space camo that moves. Pictures in tools/roblox/wrap_textures.py (the mastery camos); docs/WRAP-TEXTURES.md
+wrap("mastery_gold", "Mastery Gold", "legendary", { "d9a345", "f3d488" }, "solid", "Metal", 0.35)
+wrap("mastery_damascus", "Mastery Damascus", "legendary", { "8e9298", "6a6b6e" }, "alt", "Metal", 0.2)
+wrap("mastery_diamond", "Mastery Diamond", "legendary", { "e4ebf4", "cfe4ff" }, "speck", "Glass", 0.3, nil, { 2 })
+wrap("mastery_galaxy", "Mastery Galaxy", "legendary", { "0b0a1c", "6a3cc8", "1fa8b8" }, "speck", nil, nil, nil, { 2, 3 })
+for _, id in { "mastery_gold", "mastery_damascus", "mastery_diamond", "mastery_galaxy" } do Roster.wrapById[id].mastery = true end
+-- (by id only, out of Roster.wraps: the Spray Can's pool, the shop's rotation, the bundles and the VIP pack all walk that
+-- list, so none of them can ever hold a camo. the loadout's WRAPS strip adds them back: Shared.Mastery.wrapList)
+Roster.masteryWraps = {} :: { Wrap }
+for i = #Roster.wraps, 1, -1 do if Roster.wraps[i].mastery then table.insert(Roster.masteryWraps, 1, table.remove(Roster.wraps, i) :: Wrap) end end
 
 return Roster
