@@ -672,6 +672,28 @@ local function replaced(d: any): boolean
 	return true
 end
 
+-- a skin dropped from the game (LootTable.RETIRED, 18 Nov: the Fat Cigar, tobacco): an owned one goes, and its owner
+-- gets the container named in its place (a Duffel Bag). true = the save changed
+local function retired(d: any): boolean
+	local map = LootTable.RETIRED
+	local list = if type(d.inv) == "table" then d.inv.skin else nil
+	if type(list) ~= "table" or type(map) ~= "table" or next(map) == nil then return false end
+	local out, n = {}, 0
+	for _, k in list do
+		local kind = if type(k) == "string" then map[k] else nil
+		if kind then
+			n += 1
+			d.stock = if type(d.stock) == "table" then d.stock else {}
+			d.stock[kind] = (tonumber(d.stock[kind]) or 0) + 1
+		else
+			table.insert(out, k)
+		end
+	end
+	if n == 0 then return false end
+	d.inv.skin = out
+	return true
+end
+
 -- ------------------------------------------------------------------ players
 local function added(p: Player)
 	if st[p] then return end
@@ -689,6 +711,7 @@ local function added(p: Player)
 	s.prof = prof
 	migrate(prof.data)
 	if replaced(prof.data) then prof.dirty = true end -- (the old Seraph Rifle is the Tripo one now: 18 Nov)
+	if retired(prof.data) then prof.dirty = true end -- (the Fat Cigar is a Duffel Bag now: 18 Nov)
 	s.owned = sets(prof.data)
 	everyWraps(s) -- (a shop bundle's wraps on every gun, new guns too: 18 Nov)
 	s.ready = true

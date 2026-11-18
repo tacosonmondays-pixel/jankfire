@@ -118,12 +118,16 @@ L.SKINS = {
 	chicken_turkey = { "Turkey Launcher", "rare", "chicken" }, bowling_cannon = { "Hand Cannon", "epic", "bowling" },
 	nailgun_staple = { "Office Stapler", "rare", "nailgun" }, tennis_machine = { "Ball Machine", "epic", "tennis" },
 	cart_basket = { "Basket Case", "rare", "cart" }, banana_bunch = { "Bunch Blaster", "rare", "banana" },
-	bow_compound = { "Compound Bow", "rare", "bow" }, cig_cigar = { "Fat Cigar", "rare", "cig" },
-	blower_dryer = { "Hair Dryer", "epic", "blower" }, popper_bottle = { "Champagne", "epic", "popper" },
+	-- (18 Nov: the Fat Cigar, cig_cigar, dropped: tobacco. L.RETIRED gives its owners a Duffel Bag. Hair Dryer became Shop Vac
+	-- (smg_uzi is the Hairdryer), Champagne became Fizzy Pop (no alcohol), Croc became Clog (a brand name). ids kept)
+	bow_compound = { "Compound Bow", "rare", "bow" },
+	blower_dryer = { "Shop Vac", "epic", "blower" }, popper_bottle = { "Fizzy Pop", "epic", "popper" },
 	reverse_skip = { "Skip Card", "common", "reverse" }, snowball_ice = { "Ice Cube", "rare", "snowball" },
-	slipper_croc = { "Croc", "epic", "slipper" }, scythe_reaper = { "Reaper", "legendary", "scythe" },
+	slipper_croc = { "Clog", "epic", "slipper" }, scythe_reaper = { "Reaper", "legendary", "scythe" },
 	katana_bokken = { "Bokken", "common", "katana" }, marbles_gumball = { "Gumball Machine", "rare", "marbles" },
-	bloodcross_shadow = { "Shadow Cross", "epic", "bloodcross" }, redline_hotrod = { "Hot Rod", "epic", "redline" },
+	-- (the Shadow Cross: effectOnly, 18 Nov. no model, the Blood Cross is your own hand: worn, its effects go purple,
+	-- client/BloodCrossFx's PAL.shadow. GunSkins.valid takes it, and the pools and the shop do too)
+	bloodcross_shadow = { "Shadow Cross", "epic", "bloodcross", effectOnly = true } :: any, redline_hotrod = { "Hot Rod", "epic", "redline" },
 	katana_shirasaya = { "Shirasaya", "rare", "katana" }, scales_kangaroo = { "Kangaroo Court", "rare", "scales" },
 	shredder_chipper = { "Wood Chipper", "epic", "shredder" }, lasso_hose = { "Garden Hose", "rare", "lasso" },
 	laser_cattoy = { "Cat Laser", "rare", "laser" }, burst_ticket = { "Take A Number", "epic", "burst" },
@@ -175,6 +179,9 @@ end
 -- a skin retired for another (SkinSets.REPLACED, 18 Nov: the Seraph set's rifle is the owner's Tripo one): an owned old
 -- one becomes the new one when the save loads (Loot.luau), and a worn one too (Loadout.luau)
 L.REPLACED = (if skinSets and type(skinSets.REPLACED) == "table" then skinSets.REPLACED else {}) :: { [string]: string }
+-- a skin dropped from the game (18 Nov: the Fat Cigar, tobacco): an owned one goes when the save loads, and its owner
+-- gets this container in its place (Loot.luau)
+L.RETIRED = { cig_cigar = "bag" } :: { [string]: string }
 -- the VIP daily reward's exclusive skin (the shop session's VipDailyData.EXCLUSIVE.skin, 17 Nov): a row so the reward can
 -- give it (Loot.grant of a "pass" offer); it's in no container (L.exclusive). a SkinSets row for it wins
 L.SKINS.sniper_triangulum = L.SKINS.sniper_triangulum or { "Triangulum", "legendary", "sniper" }
@@ -307,6 +314,8 @@ local function skinsLive(): { [string]: boolean }
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local out = {}
 	if lib then for _, m in lib:GetChildren() do out[m.Name] = true end end
+	-- (a skin with no model that only changes its weapon's effects: effectOnly, the Shadow Cross. 18 Nov)
+	for id, row in L.SKINS do if (row :: any).effectOnly == true then out[id] = true end end
 	return out
 end
 

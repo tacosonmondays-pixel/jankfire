@@ -194,6 +194,11 @@ function Shop.skinLive(id: string): boolean
 	-- (the guns session's concepts for the owner to choose from are in the place but never on sale)
 	local K = Shop.SkinSets :: any
 	if K and type(K.CONCEPTS) == "table" and table.find(K.CONCEPTS, id) then return false end
+	-- (a skin with no model that only changes its weapon's effects: the Shadow Cross. live with its weapon. 18 Nov)
+	if (row :: any).effectOnly == true then
+		local e = Roster.byId[row[3]]
+		return e ~= nil and e.live == true
+	end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local m = lib and lib:FindFirstChild(id)
 	return m ~= nil and m:IsA("Model") and m:GetAttribute("Weapon") == row[3]

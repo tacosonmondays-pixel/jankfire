@@ -820,6 +820,39 @@ Tested in solo Play on the Assault Rifle:
 
 Not seen on screen: VIP, VIP daily reward, code and concept. They come from the same function.
 
+## Skin rows: renames, the Fat Cigar out, an effect-only Shadow Cross (18 Nov, place version 959)
+
+From main's list of the model-less skins on live weapons (gun-models is building the rest):
+- **Renamed (ids kept, so owners keep them under the new name):**
+  - Hair Dryer (Leaf Blower, `blower_dryer`) is now Shop Vac: the SMG's Hairdryer already had the name.
+  - Croc (Slipper, `slipper_croc`) is now Clog: Croc is a brand name.
+  - Champagne (Party Popper, `popper_bottle`) is now Fizzy Pop: no alcohol.
+- **Dropped:** the Fat Cigar (Hot Sauce, `cig_cigar`): tobacco. Its row is gone from every pool, the shop and the odds.
+  `LootTable.RETIRED = { cig_cigar = "bag" }`: when a save loads, an owned one goes and its owner gets a Duffel Bag in its
+  place (`Loot.luau` `retired`). Nobody could have rolled or bought it (it never had a model), so this only covers a gift
+  or a test.
+- **Effect-only: the Shadow Cross** (Blood Cross, `bloodcross_shadow`, `effectOnly = true`). There's no model, because the
+  Blood Cross is your own hand. Worn, it turns the Blood Cross's effects purple: `client/BloodCrossFx` reads the Skins
+  attribute (`PAL.shadow`).
+  - `GunSkins.valid` and `GunSkins.forWeapon` take an effect-only skin, so the server lets it be worn and the loadout lists
+    it. `GunSkins.skinFor` still gives no model, so the hand stays the player's own.
+  - The Crate rolls it (`skinsLive`), and the shop sells it as a single (`Shop.skinLive`: live with its weapon).
+  - The previews and the crate reveal show the weapon's own model.
+- **Parked:** the 15 rows on weapons not on Roblox stay hidden (`GunSkins.valid` finds no model for them).
+
+Tested in solo Play:
+- **Old code:** the test profile was given a Fat Cigar.
+- **New code, on load:** the Fat Cigar was gone and the stock read `bag=1`.
+- **Names:** Shop Vac, Clog, Fizzy Pop and Shadow Cross; the Fat Cigar has no row.
+- **Shadow Cross:**
+  - It is valid, listed for the Blood Cross, in the Crate, in the shop's skins, and sold as a single at 600.
+  - The Fat Cigar is in neither the Crate nor the shop.
+  - Worn: the Skins attribute read `bloodcross=bloodcross_shadow`, `BloodCrossFx.palOf` gave the purple palette, and
+    `skinFor` gave nothing (the plain hand).
+- **Put back afterwards:** the bag was used up, then the inventory was restored (52 items, stock 0, looks as before).
+
+Not seen on screen: the purple effect itself in a shot (`BloodCrossFx` already draws `PAL.shadow`; the palette check passed).
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
