@@ -6,7 +6,7 @@ Asked by the owner on 18 Nov 2026: "can you add controller support?" An Xbox or 
 | file | what |
 |---|---|
 | `client/Pad.luau` | Which device is in your hands (`Pad.on()`, player attribute `PadOn`). It also holds the sticks and triggers, the button pictures and short names (`Pad.image`, `Pad.short`), the key-cap glyphs (`Pad.chip`, called by `Theme.key`) and hint text (`Pad.say`, called by `Keys.say`). |
-| `client/PadLook.client.luau` | Right-stick look: deadzones, curve, speed, acceleration and pad-only aim assist. Turns the camera at `RenderPriority.Camera + 2`. |
+| `client/PadLook.client.luau` | Right-stick look: deadzones, curve, speed, acceleration and pad-only aim assist. Turns the look before the cameras, at `RenderPriority.Camera - 3`. |
 | `client/PadNav.client.luau` | Menus: GuiService selection inside the top menu, the focus ring, B to back out, the bumpers for tabs, slider nudges, right-stick scrolling, and VIEW. |
 | `client/Binds.luau` | The pad defaults (below) and `padToggle` (a pad's own hold or toggle). |
 | `client/Settings.luau` | The `pad.*` defaults. |
@@ -22,7 +22,7 @@ Rebind on the CONTROLLER tab or in the KEYBINDS' CONTROLLER column. Select a but
 | Xbox | PlayStation | in play | in a menu |
 |---|---|---|---|
 | RT | R2 | fire / swing | — |
-| LT | L2 | aim down sights; the katana parries, the knife stabs | — |
+| LT | L2 | aim down sights; the katana's guard (held up while LT is down, up to 1.5 s), the knife stabs | — |
 | X | Square | reload | — |
 | Y | Triangle | next weapon (round the loadout, the Shredder included) | — |
 | RB | R1 | grapple (the hook, onto walls and people) | next tab |
@@ -54,8 +54,8 @@ Rebind on the CONTROLLER tab or in the KEYBINDS' CONTROLLER column. Select a but
   - DYNAMIC: an S-curve, 3t² − 2t³
 - **Look acceleration (on):** held past 92% for 0.12 s, the side-to-side turn rises to 1.75× over 0.4 s, at the hip only. A turn-around doesn't take a second.
 - **Aiming:** the web game's rule, as the mouse has it (SettingsApply's `aimK`): `(1 + (AIM SENSITIVITY − 1) · aim) / (1 + (zoom − 1) · aim)`. At 1.00 the screen moves under the crosshair at the same speed as at the hip.
-- **Where it turns:** a change from this frame's look at Camera + 2, as the phone's look and the guns' kick already do.
-  - First person and the shoulder camera read it back next frame. Recoil, the aim's framing and third person behave as with a mouse.
+- **Where it turns:** a change to the camera's look before the cameras run (Camera − 3, under SettingsApply's look speed at Camera − 2). The shoulder camera (Camera − 1) and Roblox's first-person camera (Camera) both build this frame's view from the turned look. (At first it turned at Camera + 2, after the shoulder camera had placed itself, so the view swung off the shoulder line for a frame. The hold session caught it on 18 Nov.)
+  - Recoil, the aim's framing and third person behave as with a mouse.
   - It stays still under a menu, a finisher, a crate reveal or the death cam, and with any other scripted camera.
 
 ## Aim assist (a controller only, never a mouse)
@@ -140,6 +140,9 @@ It ports `public/js/aimassist.js` and keeps its rules and ring:
     - All the photos on one sheet: `controller-sheet.jpg`.
   - Pad buttons through Binds (pretend Gamepad1 presses): RS takes out the katana, and Y goes round to the SMG, then the revolver.
   - The right stick held fully over turns the shoulder camera about 7° a frame once the acceleration is up.
+  - Turning before the cameras (v781):
+    - Over a 154° full-stick turn the shoulder camera stays on its line: 2.3–2.6 studs right and 7.8–8.1 back from the head, against 2.6 / 7.8 standing still. The head moves as the body turns with the view.
+    - First person turned 49° in 0.5 s at 60% stick, which is what the STANDARD curve gives (39% of 240°/s).
   - Aim assist on the training Stand 12 studs away:
     - Only the move stick pushed, 3.2° off the body: the crosshair settles 0.25° off in 0.6 s.
     - The look slows to 0.46× near dead on.

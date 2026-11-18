@@ -1,9 +1,11 @@
 --!strict
 -- looking with a controller's right stick (18 Nov 2026, controller support; layout and numbers: docs/CONTROLLER.md).
--- the stick turns the camera the way the phone's look (TouchControls) and the guns' kick already do: a change from this
--- frame's look, after the camera module and the shoulder camera (Camera + 2), so first person, the shoulder camera, the
--- aim's zoom and the recoil all read it back next frame like everything else that moves the view. Roblox's own stick
--- turn is switched off for it (SettingsApply's CameraInput wrapper), so nothing turns twice.
+-- the stick turns the look BEFORE the cameras (Camera - 3, under SettingsApply's JankLookSpeed at Camera - 2): the
+-- shoulder camera (Camera - 1) and Roblox's first-person camera (Camera) both read the look back from the camera and
+-- build this frame's view from the turned one, so the aim's zoom, third person and the recoil (the guns' kick, a punch
+-- after the cameras at Camera + 1) behave as with a mouse. (turned after the shoulder camera had placed itself, the
+-- view swung off the shoulder line for a frame: the hold session, 18 Nov.) Roblox's own stick turn is switched off for
+-- it (SettingsApply's CameraInput wrapper), so nothing turns twice.
 --   the stick: a round inner deadzone, an outer one (pushed that far counts as all the way), a response curve
 --   (LINEAR / STANDARD / DYNAMIC), the look speed (pad.sens) and its up-down part (pad.ySpeed, pad.invert); held all the
 --   way over, the turn speeds up (pad.accel); with the sights up, the web game's rule: the zoom's share and pad.ads
@@ -152,7 +154,7 @@ local activeUntil = 0
 local last = { yaw = 0, pitch = 0, slow = 1, tug = 0, rot = 0, ang = -1, stick = Vector2.zero, k = 0 }
 local lastDir: Vector3? = nil
 local lastModel: Model? = nil
-RunService:BindToRenderStep("JankPadLook", Enum.RenderPriority.Camera.Value + 2, function(dtRaw: number)
+RunService:BindToRenderStep("JankPadLook", Enum.RenderPriority.Camera.Value - 3, function(dtRaw: number)
 	local dt = math.min(dtRaw, 0.1)
 	local cam = workspace.CurrentCamera
 	last.yaw, last.pitch, last.tug, last.rot, last.ang = 0, 0, 0, 0, -1
