@@ -75,7 +75,7 @@ local ID = CFrame.identity
 TP.T = {
 	scale = 1.95, kMin = 2, kMax = 4.5, -- the gun: studs per metre of its file = scale x u, clamped
 	size = { katana = 1.3 }, -- a weapon's own size on top (a sword read short at the guns' scale)
-	swig = { mouth = V(0, -0.25, -0.6), tip = 2.3 }, -- the Hot Sauce's swig: where the cap meets the mouth (head sizes), the bottle's tip (radians)
+	swig = { mouth = V(0, -0.25, -0.6), tip = -2.6 }, -- the Hot Sauce's swig: where the cap meets the mouth (head sizes), the bottle's tip (radians: the cap back into the mouth, the base up and out)
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
