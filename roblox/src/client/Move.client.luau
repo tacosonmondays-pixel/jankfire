@@ -34,7 +34,7 @@ local JUMP_BUF = 0.22
 -- the open sky of a walled arena (18 Nov 2026, tools/roblox/wallbox.py): no lid; over its sky line (SkyY, put on you by
 -- Main.server) nothing lifts you more than SKY_CAP higher. its edge is a step you can swing over but not stand on: the
 -- step's top ('ledge') slides you back toward the middle (ArenaAt), LEDGE_PUSH along, LEDGE_HOP up so it lets go of you
-local SKY_CAP, LEDGE_PUSH, LEDGE_HOP = 12, 40, 20
+local SKY_CAP, LEDGE_PUSH, LEDGE_HOP = 12, 30, 18
 local function inArena(pos: Vector3): boolean
 	local at = player:GetAttribute("ArenaAt")
 	return typeof(at) == "Vector3" and Vector2.new(pos.X - at.X, pos.Z - at.Z).Magnitude < 600

@@ -92,7 +92,8 @@ local function makePatch(i: number): Patch
 	p.CFrame = CFrame.new(0, -1e5, 0)
 	local g = Instance.new("SurfaceGui")
 	g.Face = Enum.NormalId.Front; g.LightInfluence = 0; g.Brightness = 2
-	g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = PPS
+	-- (a fixed canvas: a patch drawn bigger, for a far hook, keeps its grid and thickens its lines with it)
+	g.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize; g.CanvasSize = Vector2.new(SIZE * PPS, SIZE * PPS)
 	g.Enabled = false
 	g.Parent = p
 	local cg = Instance.new("CanvasGroup")
@@ -124,8 +125,10 @@ local hitP = { makePatch(3), makePatch(4) }
 local nextHit = 1
 local all = { hookP, nearP, hitP[1], hitP[2] }
 
-local function place(pt: Patch, at: Vector3, n: Vector3)
+local function place(pt: Patch, at: Vector3, n: Vector3, size: number?)
 	pt.pos, pt.normal = at, n
+	local sz = size or SIZE
+	if math.abs(pt.part.Size.X - sz) > 0.05 then pt.part.Size = Vector3.new(sz, sz, 0.05) end
 	local up = if math.abs(n.Y) > 0.9 then Vector3.zAxis else Vector3.yAxis
 	pt.part.CFrame = CFrame.lookAt(at + n * 0.08, at + n * 2, up)
 end
@@ -160,7 +163,7 @@ player:GetAttributeChangedSignal("HookAt"):Connect(function()
 	params.FilterDescendantsInstances = { ch, holder }
 	local hit = workspace:Raycast(from, d.Unit * (d.Magnitude + 2), params)
 	if hit and (hit.Position - at).Magnitude < 1.5 and shield(hit.Instance, at.Y) then
-		place(hookP, at, hit.Normal)
+		place(hookP, at, hit.Normal, math.clamp(d.Magnitude * 0.1, SIZE, 30)) -- (a far one drawn bigger, so it still reads)
 		show(hookP, 1)
 		ripple(hookP)
 	else
@@ -175,7 +178,7 @@ hitFn.OnInvoke = function(at: Vector3, n: Vector3, part: Instance?): boolean
 	if not shield(part, at.Y) then return false end
 	local pt = hitP[nextHit]
 	nextHit = nextHit % #hitP + 1
-	place(pt, at, n)
+	place(pt, at, n, SIZE * 0.7)
 	pt.alpha = 0.9; pt.target = 0; pt.rate = 1 / 0.5
 	return true
 end
