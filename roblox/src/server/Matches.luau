@@ -217,13 +217,24 @@ local function releaseSite(s: Site)
 end
 
 -- the site's spawns per team: attackers' end, defenders' end, and (1v1v1) the middle
+-- which end a team spawns at this round (18 Nov 2026, the owner: "rotate spawns"): the sides swap every round, so nobody
+-- keeps a better end. round 1 is a random side (a shift drawn once a match); after it, two teams swap ends each round
+-- and a 1v1v1 moves one spawn group round. 1 = the "att" spawns, 2 = "def", 3 = "mid". a classic mode keeps its own
+-- spawning (Modes.luau). everything that puts a body on its round spawn asks teamSpawns, so it follows
+local function sideOf(m: Match, team: number): number
+	local n = math.max(1, #m.teams)
+	local mm = m :: any
+	if mm.spawnShift == nil then mm.spawnShift = math.random(0, n - 1) end
+	return (team - 1 + mm.spawnShift + math.max(0, m.round - 1)) % n + 1
+end
 local function teamSpawns(m: Match, team: number): { CFrame }
 	local roof = m.site.model
 	local cx = Arena.centreX(roof)
 	local out = {}
 	local ts = roof:FindFirstChild("TeamSpawns")
 	-- (a 1v1v1's third side: the arena's "mid" team spawns, facing its middle; the ported web maps have them, 17 Nov)
-	local want = if team == 1 then "att" elseif team == 2 then "def" else "mid"
+	local side = sideOf(m, team)
+	local want = if side == 1 then "att" elseif side == 2 then "def" else "mid"
 	local mid = roof:GetPivot().Position
 	if ts then
 		for _, s in ts:GetChildren() do
@@ -242,7 +253,7 @@ local function teamSpawns(m: Match, team: number): { CFrame }
 			if s then table.insert(out, CFrame.lookAt(s.Position + Vector3.new(0, 0.1, 0), Vector3.new(s.Position.X + 1, s.Position.Y, s.Position.Z))) end
 		end
 	end
-	if #out == 0 then table.insert(out, CFrame.new(roof:GetPivot().Position + Vector3.new(team * 30, 5, 0))) end
+	if #out == 0 then table.insert(out, CFrame.new(roof:GetPivot().Position + Vector3.new(side * 30, 5, 0))) end
 	return out
 end
 
