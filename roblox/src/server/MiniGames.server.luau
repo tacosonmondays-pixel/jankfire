@@ -300,6 +300,21 @@ function ctx.gloves(T: Table, side: string, on: boolean, whom: any?)
 	end
 end
 
+-- a boxer back onto their mark, facing the other one (each round's start: in between they walk where they like). for a
+-- person it's the server moving them, so TeleportT first (the anti-cheat)
+function ctx.toMark(T: Table, side: string)
+	local who = T.who[side]
+	local ch: Model? = if typeof(who) == "Instance" and who:IsA("Player") then who.Character
+		elseif type(who) == "table" and who.Character then who.Character else T.bots[side]
+	if not ch then return end
+	local hum = ch:FindFirstChildOfClass("Humanoid")
+	local root = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hum or not root then return end
+	if typeof(who) == "Instance" and who:IsA("Player") then who:SetAttribute("TeleportT", os.clock()) end
+	root.AssemblyLinearVelocity = Vector3.zero
+	ch:PivotTo(standCF(T, side, hum, root))
+end
+
 -- a bot sits down at T's seat `side` (or gets up: on = false)
 function ctx.botSeat(T: Table, side: string, level: string?)
 	local old = T.bots[side]
@@ -309,7 +324,10 @@ function ctx.botSeat(T: Table, side: string, level: string?)
 		if hum then hum.Sit = false end
 		local w = T.seats[side] and T.seats[side]:FindFirstChild("SeatWeld")
 		if w then w:Destroy() end
-		for _, c in old:GetDescendants() do if c:IsA("IKControl") or c.Name == "MiniGlove" then c:Destroy() end end
+		for _, c in old:GetDescendants() do if c:IsA("IKControl") or c.Name == "MiniGlove" or c.Name == "MiniFace" then c:Destroy() end end
+		-- (a boxer walked on its own feet: back to the still, see-through body a seat wants)
+		if hum then hum.AutoRotate = true; hum:Move(Vector3.zero, false) end
+		for _, d in old:GetDescendants() do if d:IsA("BasePart") then d.CanCollide = false end end
 		old.Parent = ServerStorage
 		table.insert(spareBots, old)
 	end
@@ -327,13 +345,37 @@ function ctx.botSeat(T: Table, side: string, level: string?)
 	local hum = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not seat then
-		-- (the ring: the bot stands on its mark, its root held still; the boxing client plays its moves)
-		if root then root.Anchored = true end
+		-- (the ring: the bot walks on its own feet, the server's physics: MiniBox's botMove steers its Humanoid and turns
+		-- its MiniFace to face the other boxer. its torso and head are solid so you bump into it, not through it. the
+		-- boxing client plays its moves)
+		if root then root.Anchored = false end
 		local an = hum:FindFirstChildOfClass("Animator")
 		if an then for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end end
 		rig:SetAttribute("SitPlaying", nil)
+		for _, n in { "UpperTorso", "LowerTorso", "Head" } do
+			local p = rig:FindFirstChild(n)
+			if p and p:IsA("BasePart") then p.CanCollide = true end
+		end
+		hum.AutoRotate = false
+		hum.WalkSpeed = 0
+		if root then
+			local a0 = root:FindFirstChild("RootAttachment") :: Attachment?
+			if not a0 then a0 = Instance.new("Attachment"); (a0 :: Attachment).Name = "RootAttachment"; (a0 :: Attachment).Parent = root end
+			local ao = Instance.new("AlignOrientation")
+			ao.Name = "MiniFace"
+			ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+			ao.Attachment0 = a0
+			ao.RigidityEnabled = false
+			ao.MaxTorque = 1e7
+			ao.Responsiveness = 30
+			ao.CFrame = CFrame.lookAt(Vector3.zero, (if side == "A" then 1 else -1) * T.cf.LookVector) -- (A faces -Z)
+			ao.Parent = root
+		end
+		hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false) -- (bumped, it stays on its feet)
+		hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
 		rig:PivotTo(standCF(T, side, hum, root))
 		rig.Parent = T.model
+		if root then pcall(function() root:SetNetworkOwner(nil) end) end
 		ctx.refresh(T)
 		return
 	end
@@ -500,7 +542,12 @@ RunService.Heartbeat:Connect(function(dt: number)
 	for p, g in inGame do
 		local _, _, root = bodyOf(p)
 		if not root or not allowed(p) then ctx.leave(p, "zone"); continue end
-		if (root.Position - g.t.cf.Position).Magnitude > 14 then ctx.leave(p, "away") end
+		if g.t.kind == "box" then
+			-- (the ring: you walk all over it, so out means well past its ropes, or fallen off it)
+			local l = g.t.cf:PointToObjectSpace(root.Position)
+			local b = MG.L.box.bound + 4
+			if math.abs(l.X) > b or math.abs(l.Z) > b or l.Y < -6 or l.Y > 14 then ctx.leave(p, "away") end
+		elseif (root.Position - g.t.cf.Position).Magnitude > 14 then ctx.leave(p, "away") end
 	end
 end)
 

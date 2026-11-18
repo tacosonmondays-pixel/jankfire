@@ -60,13 +60,20 @@ MG.L = {
 		marquee = { at = Vector3.new(0, 7.05, -0.975), size = Vector2.new(2.65, 0.66) },
 	},
 	-- the gym's ring (19 Nov 2026, the owner: "when you step into the ring can it be a boxing mini game? perfect dodge,
-	-- counter b low, upper cut jab, hook ... weave duck you know !"). the spot is the mat's middle on its top; the two
-	-- boxers stand at +/- `gap` on the look's line, A on +Z facing -Z. each boxer's camera: a low side-on shot from
-	-- their right, `dist` out from the middle, `up` over the mat, turned `angle` toward their end
+	-- counter b low, upper cut jab, hook ... weave duck you know !", then "I want to freely move in the boxing arena!").
+	-- the spot is the mat's middle on its top, its look along one side of the mat; each round the two boxers start at
+	-- +/- `gap` on the look's line (A on +Z facing -Z) and then go where they like. `bound`: a body's middle stays this
+	-- far from the middle along either side (the mat is 25.5 square, its ropes at 13.2): your own client puts up walls
+	-- at `wall` that only you collide with, and the server keeps a bot inside `bound`. the camera (yours): behind you
+	-- and `angle` degrees round to your right (straight behind, a big avatar hid the other one), `dist` + `distK` x the
+	-- gap between you out, `up` + `upK` x the gap high, looking at the point `lead` of the way from you to them, `aim`
+	-- up; it eases round as you circle
 	box = {
-		gap = 2.3,
+		gap = 3.0,
 		mark = 4.6, -- the BOX prompts: at +/- this on the look's line (step onto your corner of the mat)
-		cam = { dist = 9.5, angle = 14, up = 4.4, aim = 2.9 },
+		bound = 11.0,
+		wall = 12.0,
+		cam = { dist = 7.2, distK = 0.4, angle = 44, up = 3.9, upK = 0.15, lead = 0.55, aim = 1.6, fov = 58 },
 	},
 }
 
@@ -113,13 +120,23 @@ MG.BOARD = {
 -- what dodges what: DUCK slips the jab and the hook (an uppercut catches a duck: x UPPER_DUCK); WEAVE slips the jab, the
 -- uppercut and the body blow, and the hook coming from the side you weave to. PERFECT: a dodge that starts within
 -- PERFECT s before the punch lands: the puncher is left open (OPEN s), you get a COUNTER window and the world slows
+-- free in the ring (the owner, 19 Nov: "I want to freely move in the boxing arena!"): a punch is a real hit in space.
+-- it lands only if, when it's judged, the other one's middle is within its `reach` (studs, middle to middle, flat) and
+-- inside CONE degrees of where you face; else it's a WHIFF (a whoosh, WHIFF_REC s more recovery). REACH_SLACK more
+-- when a person is in it (their body on the server is a moment behind their screen). the server judges, never a client
 MG.BOX = {
 	MOVES = {
-		jab = { wind = 0.2, rec = 0.22, dmg = 5, chip = 0.15, st = 5, big = false },
-		hook = { wind = 0.36, rec = 0.38, dmg = 11, chip = 0.2, st = 10, big = true },
-		upper = { wind = 0.48, rec = 0.45, dmg = 16, chip = 0.25, st = 15, big = true },
-		body = { wind = 0.3, rec = 0.34, dmg = 8, chip = 1, st = 8, big = false, drain = 10 },
+		jab = { wind = 0.2, rec = 0.22, dmg = 5, chip = 0.15, st = 5, big = false, reach = 3.9 },
+		hook = { wind = 0.36, rec = 0.38, dmg = 11, chip = 0.2, st = 10, big = true, reach = 3.3 },
+		upper = { wind = 0.48, rec = 0.45, dmg = 16, chip = 0.25, st = 15, big = true, reach = 3.0 },
+		body = { wind = 0.3, rec = 0.34, dmg = 8, chip = 1, st = 8, big = false, drain = 10, reach = 3.5 },
 	},
+	CONE = 50, WHIFF_REC = 0.18, REACH_SLACK = 0.35,
+	-- your feet in guard: JANKFIRE's run (30 studs/s) x GUARD, about a Roblox walk; it crosses the 22 stud ring in
+	-- under 1.5 s. STEP (Space, a double tap, pad LB, the phone's STEP): `speed` studs/s for `len` s, then braked to
+	-- `brake` of it, costs `st` stamina, `rest` s before the next. a step back out of reach makes a punch whiff
+	GUARD = 0.55,
+	STEP = { speed = 30, len = 0.1, brake = 0.15, st = 6, rest = 0.4 },
 	DODGE = { duck = 0.42, weave = 0.38 }, -- how long a dodge keeps you clear
 	DODGE_REST = 0.28, -- after a dodge, before the next one
 	DODGE_ST = 4,
@@ -158,11 +175,16 @@ MG.BOX = {
 		up = { id = "rbxassetid://137388307124591", len = 2.7 }, -- (31 getting up)
 	},
 	-- the bot: its wind-ups are this much longer (the tell), how often it reads your punch and answers it, how soon, how
-	-- often it fakes, how long between its punches
+	-- often it fakes, how long between its punches. its feet: `speed` studs/s, it hovers `keep` studs away (just out of
+	-- your jab), circles at `circle` of its speed (turning round every 1.2-2.8 s), steps in to punch, backs off after a
+	-- punch at `backoff`, and answers a read punch by stepping out of reach at `slip`
 	BOT = {
-		easy = { wind = 1.7, read = 0.18, react = { 0.32, 0.5 }, feint = 0, every = { 1.4, 2.4 }, block = 0.25 },
-		medium = { wind = 1.35, read = 0.38, react = { 0.2, 0.36 }, feint = 0.12, every = { 1.0, 1.9 }, block = 0.4 },
-		hard = { wind = 1.12, read = 0.58, react = { 0.12, 0.24 }, feint = 0.25, every = { 0.7, 1.4 }, block = 0.5 },
+		easy = { wind = 1.7, read = 0.18, react = { 0.32, 0.5 }, feint = 0, every = { 1.4, 2.4 }, block = 0.25,
+			speed = 8, keep = 5.0, circle = 0.35, backoff = 0.2, slip = 0 },
+		medium = { wind = 1.35, read = 0.38, react = { 0.2, 0.36 }, feint = 0.12, every = { 1.0, 1.9 }, block = 0.4,
+			speed = 10, keep = 4.8, circle = 0.5, backoff = 0.4, slip = 0.2 },
+		hard = { wind = 1.12, read = 0.58, react = { 0.12, 0.24 }, feint = 0.25, every = { 0.7, 1.4 }, block = 0.5,
+			speed = 12, keep = 4.6, circle = 0.65, backoff = 0.55, slip = 0.3 },
 	},
 }
 

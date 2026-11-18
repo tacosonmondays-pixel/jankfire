@@ -119,15 +119,35 @@ The owner said: "when I sit down at the table all my accessories come off and im
 
 The gun's crosshair sat in the middle of the screen, over the locked hands and the board (main, 19 Nov). `FightHud.step` now hides it while the server's `MiniGame` player attribute is set: seated at a table, at the cabinet, or in the ring. It comes back the moment you leave. The scythe's charge circles follow it, as they follow the crosshair everywhere.
 
-## BOXING (19 Nov 2026, place version 1010)
+## BOXING (19 Nov 2026, place versions 1010 to 1019)
 
-The owner asked: "when you step into the ring can it be a boxing mini game? perfect dodge, counter b low, upper cut jab, hook, we can look through mixamo for those! weave duck you know !"
+The owner asked: "when you step into the ring can it be a boxing mini game? perfect dodge, counter b low, upper cut jab, hook, we can look through mixamo for those! weave duck you know !", then: "I want to freely move in the boxing arena!"
 
 **Where:** the hub gym's ring.
 
-- The hub's builder drops a `MiniGameSpot` with `Game = "box"` at the middle of `RingMat`'s top, its look along the ring's right (`RingMatLine`).
-- Until that marker is live, the server falls back to the `RingMat` part itself, giving the same spot.
-- The two corners stand at ±2.3 studs along the look. The prompts "Box" sit at ±4.6.
+- The hub's builder drops a `MiniGameSpot` with `Game = "box"` at the middle of `RingMat`'s top, its look along the ring's right (`RingMatLine`). It is live since place version 1012.
+- Without a marker, the server falls back to the `RingMat` part itself, giving the same spot.
+- Each round starts with the boxers on their marks, ±3 studs along the look (out of reach of each other). The "Box" prompts sit at ±4.6.
+
+**Free in the ring** (since place version 1016):
+
+- You walk the ring with WASD, the left stick, or a stick that appears under your left thumb on a phone (the game's own phone stick hides while you play).
+  - The pace is the guard's: JANKFIRE's run (30 studs/s) x 0.55, about a Roblox walk. The full run would cross the 22-stud ring in under a second.
+  - You always face the other boxer (an `AlignOrientation` on your root), so you circle them.
+  - No jumping.
+- **The ropes are walls.** Your own client puts up four invisible walls at the ropes that only you collide with, so nobody else is fenced in. The server keeps a bot inside too. Walking far past the ropes (a fall, a teleport) takes you out of the game.
+- **STEP:** a quick dash-step in the direction you're moving, or straight back with no keys.
+  - Keys: Space, a direction tapped twice, pad LB, or the phone's STEP button.
+  - About 3.5 studs, braked at the end.
+  - Costs 6 stamina, at most one every 0.4 s.
+- Duck, weave and block all work while you move.
+- **A punch is a real hit in space.** The server judges it, never your client. It lands only if, when judged, the other boxer is:
+  - within its reach (middle to middle, flat);
+  - inside 50° of where you face.
+  - Otherwise it is a WHIFF: a whoosh at your fist, and 0.18 s more recovery.
+  - With a person in the bout, reach gets 0.35 studs of slack, because the server sees their body a moment late.
+  - Stepping out of reach is a dodge too, but gives no counter.
+- During a knockdown the downed boxer can't move. Both are back on their marks for each round.
 
 **Joining:** the "Box" prompt in either corner.
 
@@ -136,14 +156,14 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
 - LEAVE works like the other games. Mid-bout it asks twice and you forfeit.
 - Gloves are welded on for the bout only: the kit's `mg_glove` (one fused fist, cream cuff, a thin gold band), sized to your hand. Corner A is muted red, B muted blue. On R6 the glove sits at the end of the arm.
 
-**Offence** (wind-up / recovery in seconds, damage, stamina):
+**Offence** (wind-up / recovery in seconds, damage, stamina, reach in studs):
 
-| Move | Wind-up | Recovery | Damage | Stamina | Notes |
-|---|---|---|---|---|---|
-| JAB | 0.20 | 0.22 | 5 | 5 | fast, short |
-| HOOK | 0.36 | 0.38 | 11 | 10 | big; your right hand, so it arrives on their left |
-| UPPERCUT | 0.48 | 0.45 | 16 | 15 | big; x1.4 into a duck |
-| BODY | 0.30 | 0.34 | 8 | 8 | the low shot: a block doesn't stop it; drains 10 of their stamina |
+| Move | Wind-up | Recovery | Damage | Stamina | Reach | Notes |
+|---|---|---|---|---|---|---|
+| JAB | 0.20 | 0.22 | 5 | 5 | 3.9 | fast, the longest |
+| HOOK | 0.36 | 0.38 | 11 | 10 | 3.3 | big; your right hand, so it arrives on their left |
+| UPPERCUT | 0.48 | 0.45 | 16 | 15 | 3.0 | big; x1.4 into a duck; the shortest |
+| BODY | 0.30 | 0.34 | 8 | 8 | 3.5 | the low shot: a block doesn't stop it; drains 10 of their stamina |
 
 **Defence:**
 
@@ -168,22 +188,36 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
 - The third knockdown ends it: KNOCKOUT.
 - Otherwise it goes to the most damage over 3 rounds of 45 s, with 5 s rests (+12 health each).
 
-**The bot** reads your wind-up and dodges, blocks, or takes the hit. Difficulty sets:
+**The bot** reads your wind-up and dodges, blocks, or takes the hit. It walks on its own feet: its own Humanoid, the server's physics, owned by the server. Its torso and head are solid, so you bump into it rather than through it.
 
-- its own wind-up (x1.7, x1.35, x1.12: easy is slow and readable);
-- how often it reads you (18%, 38%, 58%);
-- its reaction time;
-- feints (0, 12%, 25%);
-- how often it blocks.
+- **Footwork:**
+  - It hovers just out of your jab (5.0 / 4.8 / 4.6 studs) and circles, turning round every 1.2 to 2.8 s and off the ropes.
+  - When it decides to punch, it steps in to that punch's reach, then closes a little more during the wind-up. The tell shows all of it.
+  - After a punch or a hit it sometimes backs off (20 / 40 / 55%).
+  - Medium and hard sometimes answer your wind-up by slipping out of reach (20 / 30%).
+- **Difficulty** (easy / medium / hard) also sets:
+  - its own wind-up: x1.7, x1.35, x1.12 (easy is slow and readable);
+  - how often it reads you: 18%, 38%, 58%;
+  - its reaction time;
+  - feints: 0, 12%, 25%;
+  - how often it blocks;
+  - its pace: 8, 10, 12 studs/s.
 
 **Controls:**
 
-- **Keyboard and mouse:** click JAB, right click HOOK, E UPPER, S + a punch BODY, F BLOCK (held), C or Ctrl DUCK, Q / R WEAVE.
-- **Pad:** RT jab, RB hook, Y upper, X body, LT block, A duck, a flick of the left stick or the d-pad weaves.
-- **Touch:** buttons.
+- **Keyboard and mouse:** WASD walk, Space STEP (or a direction tapped twice), click JAB, right click HOOK, E UPPER, X (or the middle button) BODY, F BLOCK (held), C or Ctrl DUCK, Q / R WEAVE.
+  - S is now walking back, so it no longer turns a punch into a body shot.
+- **Pad:** the left stick walks, LB step, RT jab, RB hook, Y upper, X body, LT block, A duck. The d-pad or a flick of the right stick weaves; flicking it down ducks.
+- **Touch:** a stick under your left thumb. On the right: JAB, HOOK, UPPER, BODY, BLOCK, DUCK, STEP, ◀ and ▶.
 - A short keys line sits at the bottom. No other text.
 
-**Camera:** a side-on 3/4 shot from your right, 9.5 studs out, turned 14° toward your corner. Your whole look stays (the table rules).
+**Camera:** behind and above you, swung 44° round to your right, always turned toward the other boxer.
+
+- It sits 7.2 studs out plus 0.4 x the gap, and 3.9 studs up plus 0.15 x the gap, looking at a point 55% of the way to them. As the gap grows it pulls back to keep you both in frame.
+- The first try (38°, 8.5 out) framed both boxers too small. The 44° shot shows the bot's face, its gloves and the tell.
+- The core eases it, so it swings round gently as you circle. A big hit shakes it lightly; a perfect dodge's slow beat narrows it a little.
+- Straight behind, the owner's big avatar hid the bot, hence the swing to the side.
+- Your whole look stays (the table rules). Only an accessory that really blocks the other boxer's head or middle fades to 0.6, and hair never fades.
 
 **Animations:**
 
@@ -204,9 +238,13 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
 
 **Files:**
 
-- `server/MiniBox.luau`: the bout, the rules, the bot.
-- `client/MiniBoxUI.luau`: poses, clips, the screen, input, the camera.
-- `MG.BOX` and `L.box` in `shared/MiniGames.luau`.
+- `server/MiniBox.luau`: the bout, the rules, where the bodies are (reach and cone), the bot and its footwork.
+- `client/MiniBoxUI.luau`: poses, clips, the screen, input, your feet (walls, facing, STEP, the phone stick), the camera.
+- `MG.BOX` and `L.box` (`bound`, `wall`, `cam`) in `shared/MiniGames.luau`.
+- The core:
+  - `MiniGames.server`: `ctx.toMark` and the walking bot body (`MiniFace`).
+  - `MiniGames.client`: `api.move(on)` turns your controls on, and `api.walk(dir)` feeds a direction through the control module's own hook, so `Move.client` takes it as input.
+- `Body.mini` (Body.luau, used in Move.client's speed): the guard's pace. Put back to 1 when you leave.
 - `tools/roblox/boxing_models.py`: the glove, asset 93628648477968. `MiniGameImport.MORE` merges it into the kit.
 
 **Test hooks:**
@@ -216,9 +254,28 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
 - Client `MiniTest`:
   - `box:auto`: perfect-dodges every punch and counters;
   - `box:<act>`, `box:block:on|off`;
-  - `box:hold:<s>`: freezes your next perfect dodge for a photo.
+  - `box:hold:<s>`: freezes your next perfect dodge for a photo;
+  - `box:walk:<F|B|L|R>:<s>`: walk that way for s seconds, relative to facing the other boxer;
+  - `box:step:<F|B|L|R>`: a STEP that way.
+  - Clear `MiniTest` on the server before each command. The client clears it only on its own side, so the same value sent twice would not replicate.
 
-**Tested** in solo Play on the owner's R15 avatar against the EASY bot:
+**Tested with free movement** (place version 1016, solo Play, owner's avatar, EASY bot):
+
+- The bot walks: it stepped in, circled, and threw from range. Its body punches at 3.9 and 4.6 studs whiffed (reach 3.5 + 0.35).
+- Walking back to 5.1 studs and jabbing gave `whiff:A:jab:5.0`.
+- Circling left for 1.6 s took you from 27° to 155° around the bot, still facing it (dot 0.98).
+- Perfect dodges into counters (`perfect:A:hook`, then `hit:B:hook:big,counter`), with the PERFECT · COUNTER line and the amber ring.
+- The anti-cheat with `StudioOn`: 0 points, no verdicts, no catches.
+- Again at place version 1019 with the autopilot:
+  - KNOCKOUT in 30 s: the bot down three times, you never, and the server kept the bot's body.
+  - An R6 stand-in: gloves at the ends of its arms, turned to face you. Its hook landed once you walked into reach.
+  - After leaving, everything was back: turning, jumping, no walls, normal pace, the normal camera, no gloves.
+  - Anti-cheat: 0 points again.
+- Fixed during that test:
+  - The bot's body had been handed to the player's physics. The server now takes it back once a second.
+  - The screen's PERFECT/COUNTER line never showed. Its event pattern read the whole rest of the event as "who".
+
+**Tested with the fixed stance** (place versions 1010 and 1013, solo Play on the owner's R15 avatar, EASY bot):
 
 - Five perfect dodges in a row, each followed by a big counter.
 - Three knockdowns, the get-ups between them, and YOU WIN · KNOCKOUT with the bot and AGAIN buttons.
@@ -227,4 +284,11 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
 - The anti-cheat with `StudioOn`: 0 points, no verdicts.
 - The first test found the gloves staying on after you left. `ctx.leave` clears the seat before the game's `left` hook runs, so the hook couldn't find your body. Fixed in place version 1013 (the leaver is passed in), and checked: 2 gloves during the bout, none after leaving.
 
-**Photos:** `docs/minigames/box_*.jpg`: the side shot mid-hook (with the tell), the knockdown, the KO, and the R6 stand-in.
+**Photos** in `docs/minigames/`:
+
+- Free movement (`box_free_*.jpg`):
+  - the camera with the bot's JAB tell;
+  - the frozen perfect dodge with PERFECT · COUNTER (from the first, straight-behind camera, where the big avatar hides the bot);
+  - the KO;
+  - the R6 stand-in.
+- The first, fixed-stance version (`box_*.jpg`): the side shot mid-hook, the knockdown, the KO, the R6 stand-in.

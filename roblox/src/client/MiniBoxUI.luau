@@ -7,17 +7,24 @@
 --          world for a moment
 --   your screen: both boxers' health and stamina, the round and its clock, the other one's punch as it winds up (its
 --          name and the side a hook comes from, filling to the moment it lands), PERFECT / COUNTER, knockdowns, the
---          result; alone, three bot buttons; after a bout, AGAIN. the camera: a low side-on shot from your right, your
---          boxer on the left of the screen
---   keys: left click JAB, right click HOOK, E UPPERCUT, hold S with a punch for a BODY blow, F (hold) BLOCK, C or Ctrl
---         DUCK, Q / R WEAVE left / right. a pad: RT jab, RB hook, Y uppercut, X body, LT (hold) block, A duck, the D-pad
---         or a flick of the left stick weaves, B leaves. a phone: the buttons on screen
+--          result; alone, three bot buttons; after a bout, AGAIN
+--   your feet (the owner, 19 Nov: "I want to freely move in the boxing arena!"): you walk the ring in guard (BOX.GUARD of
+--          the game's run, Body.mini), always turned to face the other one (MiniFace), fenced in at the ropes by walls
+--          only your own client has; no jumping. STEP: a quick dash-step (Body.dash) where you're heading, or back. a
+--          punch only lands on someone in front of you and in its reach (the server judges)
+--   the camera: behind and over you, turned toward them, pulling back as the gap grows; it eases round as you circle
+--   keys: WASD walk, Space STEP (or tap a direction twice), left click JAB, right click HOOK, E UPPERCUT, X BODY, F
+--         (hold) BLOCK, C or Ctrl DUCK, Q / R WEAVE left / right. a pad: the left stick walks, LB step, RT jab, RB hook,
+--         Y uppercut, X body, LT (hold) block, A duck, the D-pad or a flick of the right stick weaves (down ducks), B
+--         leaves. a phone: a stick where your left thumb lands, the buttons on the right
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 local MG = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("MiniGames")) :: any
+local Body = require(script.Parent:WaitForChild("Body")) :: any
 
 local M = {}
 local me = Players.LocalPlayer
@@ -87,6 +94,8 @@ local POSES: { [string]: Pose } = {
 	down = with(GUARD, { rs = { 10, 0, 70 }, re = { 20, 0, 0 }, ls = { 10, 0, -70 }, le = { 20, 0, 0 }, waist = { 6, 0, 0 }, neck = { 14, 0, 0 },
 		rh = { 30, 0, 6 }, rk = { -40, 0, 0 }, lh = { 10, 0, -6 }, lk = { -20, 0, 0 }, root = { 82, 0, 0 }, off = { 0, -2.15, 1.3 } }),
 }
+-- walking (a person on their feet, idle): their own walk plays below the waist, the guard holds the arms up
+local ARM_KEYS = { "rs", "re", "ls", "le" }
 local JOINTS = {
 	R15 = { rs = { "RightUpperArm", "RightShoulder" }, re = { "RightLowerArm", "RightElbow" }, ls = { "LeftUpperArm", "LeftShoulder" },
 		le = { "LeftLowerArm", "LeftElbow" }, waist = { "UpperTorso", "Waist" }, neck = { "Head", "Neck" }, rh = { "RightUpperLeg", "RightHip" },
@@ -251,7 +260,7 @@ function M.world(model: Model, api: any): ((number) -> ())?
 		local e = model:GetAttribute("Ev")
 		if type(e) ~= "string" or e == V.lastEv then return end
 		V.lastEv = e
-		local _, kind, who, move, flags = string.match(e, "^(%d+):(%a+):(%S+):(%S+):(.*)$")
+		local _, kind, who, move, flags = string.match(e, "^(%d+):(%a+):([^:]+):([^:]+):(.*)$")
 		local b = who and V.bodies[who]
 		local head = b and (b.ch:FindFirstChild("Head") :: BasePart?)
 		local at = if head then head.Position else root.Position + Vector3.new(0, 4, 0)
@@ -274,6 +283,10 @@ function M.world(model: Model, api: any): ((number) -> ())?
 			if mine then api.shake(0.006, 0.12) end
 		elseif kind == "dodge" then
 			soundAt("swing", at, 0.5)
+		elseif kind == "whiff" then
+			-- (a punch at no one in reach: the air it cut, at the puncher's fist)
+			local hand = b and (b.ch:FindFirstChild("RightHand") or b.ch:FindFirstChild("Right Arm")) :: BasePart?
+			soundAt("swing", if hand then hand.Position else at, 0.55, 1.12)
 		elseif kind == "perfect" then
 			soundAt("wave_fly", at, 0.7, 0.85)
 			local hold = if mine and who == me:GetAttribute("MiniSide") then holdFor(e) else 0
@@ -312,6 +325,22 @@ function M.world(model: Model, api: any): ((number) -> ())?
 			end
 			local body = b :: Body
 			local a, sd, t0, len = parseAct(model:GetAttribute(side .. "_act"))
+			-- a person walking in guard: their walk below, the guard's arms above (a bot has no walk: it keeps its bounce)
+			local rt = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if a == "idle" and rt and Players:GetPlayerFromCharacter(ch) then
+				local v = rt.AssemblyLinearVelocity
+				if Vector3.new(v.X, 0, v.Z).Magnitude > 2.5 then
+					if body.playing then body.playing:Stop(0.15); body.playing = nil; body.playingKey = nil end
+					local cur = body.cur or table.clone(GUARD)
+					local u = 1 - math.exp(-dt * 14)
+					cur = lerpPose(cur, GUARD, u)
+					body.cur = cur
+					local arms = {}
+					for _, k in ARM_KEYS do arms[k] = cur[k] end
+					applyPose(body, arms)
+					continue
+				end
+			end
 			-- visual time: in a hit-stop the pose holds; in the slow beat it moves at a third
 			local vt = t - (os.clock() < VT.stopUntil and 0.085 or 0)
 			-- a clip if there is one for this act (R15), else the pose
@@ -473,14 +502,55 @@ function M.open(api: any, model: Model, side: string)
 			b.MouseButton1Down:Connect(down)
 			if up then b.MouseButton1Up:Connect(up); b.MouseLeave:Connect(up) end
 		end
-		tb_("Jab", "JAB", UDim2.new(1, -70, 1, -150), 84, function() send(api, "jab") end)
-		tb_("Hook", "HOOK", UDim2.new(1, -170, 1, -110), 76, function() send(api, "hook") end)
-		tb_("Upper", "UPPER", UDim2.new(1, -90, 1, -250), 72, function() send(api, "upper") end)
-		tb_("Body", "BODY", UDim2.new(1, -190, 1, -210), 68, function() send(api, "body") end)
-		tb_("Block", "BLOCK", UDim2.new(0, 80, 1, -150), 84, function() api.send({ op = "block", on = true }) end, function() api.send({ op = "block", on = false }) end)
-		tb_("Duck", "DUCK", UDim2.new(0, 180, 1, -110), 72, function() send(api, "duck") end)
-		tb_("WeaveL", "◀", UDim2.new(0, 60, 1, -250), 64, function() send(api, "weaveL") end)
-		tb_("WeaveR", "▶", UDim2.new(0, 150, 1, -270), 64, function() send(api, "weaveR") end)
+		-- (all on the right: the left is the stick's)
+		tb_("Jab", "JAB", UDim2.new(1, -70, 1, -120), 84, function() send(api, "jab") end)
+		tb_("Hook", "HOOK", UDim2.new(1, -170, 1, -86), 74, function() send(api, "hook") end)
+		tb_("Upper", "UPPER", UDim2.new(1, -78, 1, -226), 70, function() send(api, "upper") end)
+		tb_("Body", "BODY", UDim2.new(1, -172, 1, -184), 66, function() send(api, "body") end)
+		tb_("Block", "BLOCK", UDim2.new(1, -268, 1, -76), 70, function() api.send({ op = "block", on = true }) end, function() api.send({ op = "block", on = false }) end)
+		tb_("Duck", "DUCK", UDim2.new(1, -264, 1, -160), 60, function() send(api, "duck") end)
+		tb_("Step", "STEP", UDim2.new(1, -258, 1, -236), 56, function() S.stepNow(nil) end)
+		tb_("WeaveL", "◀", UDim2.new(1, -184, 1, -270), 54, function() send(api, "weaveL") end)
+		tb_("WeaveR", "▶", UDim2.new(1, -112, 1, -306), 54, function() send(api, "weaveR") end)
+	end
+	-- STEP: a quick dash-step where you're heading (no keys: back), if you have the breath. your client moves you at
+	-- once (Body.dash, then braked); the server takes its stamina
+	S.stepNow = function(dir: Vector3?)
+		local hum, r = S.hum, S.root
+		if not hum or not r or model:GetAttribute("State") ~= "fight" then return end
+		local mine = parseAct(model:GetAttribute(side .. "_act"))
+		if mine == "down" or mine == "up" or os.clock() < (S.nextStep or 0) then return end
+		if (tonumber(model:GetAttribute(side .. "_st")) or 0) < BX.STEP.st then return end
+		local d = dir or hum.MoveDirection
+		d = Vector3.new(d.X, 0, d.Z)
+		if d.Magnitude < 0.1 then local lk = r.CFrame.LookVector; d = -Vector3.new(lk.X, 0, lk.Z) end
+		if d.Magnitude < 0.01 then return end
+		d = d.Unit
+		S.nextStep = os.clock() + BX.STEP.rest
+		api.send({ op = "step" })
+		Body.dash = { v = d * BX.STEP.speed, untilT = now() + BX.STEP.len }
+		task.delay(BX.STEP.len + 0.02, function()
+			local br = Body.root
+			if S.model == model and br and br.Parent then
+				local v = br.AssemblyLinearVelocity
+				Body.throw(Vector3.new(v.X * BX.STEP.brake, v.Y, v.Z * BX.STEP.brake))
+			end
+		end)
+	end
+	-- a direction key tapped twice in a moment: a step that way (as the camera sees it)
+	local DIRKEY = { [Enum.KeyCode.W] = "F", [Enum.KeyCode.S] = "B", [Enum.KeyCode.A] = "L", [Enum.KeyCode.D] = "R" }
+	local lastTap: { [any]: number } = {}
+	local function tapStep(k: Enum.KeyCode)
+		local w = DIRKEY[k]
+		if not w then return end
+		local t0 = lastTap[k]
+		lastTap[k] = os.clock()
+		if not t0 or os.clock() - t0 > 0.25 then return end
+		lastTap[k] = nil
+		local cam = workspace.CurrentCamera.CFrame
+		local fw = Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z).Unit
+		local rt = fw:Cross(Vector3.yAxis)
+		S.stepNow(if w == "F" then fw elseif w == "B" then -fw elseif w == "L" then -rt else rt)
 	end
 	-- keys and buttons
 	local function blockSet(on: boolean)
@@ -491,9 +561,11 @@ function M.open(api: any, model: Model, side: string)
 	table.insert(S.conns, UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		if gp then return end
 		local k, ut = io.KeyCode, io.UserInputType
-		if k == Enum.KeyCode.S then S.sHeld = true end
-		if ut == Enum.UserInputType.MouseButton1 then send(api, if S.sHeld then "body" else "jab")
-		elseif ut == Enum.UserInputType.MouseButton2 then send(api, if S.sHeld then "body" else "hook")
+		tapStep(k)
+		if ut == Enum.UserInputType.MouseButton1 then send(api, "jab")
+		elseif ut == Enum.UserInputType.MouseButton2 then send(api, "hook")
+		elseif ut == Enum.UserInputType.MouseButton3 or k == Enum.KeyCode.X then send(api, "body")
+		elseif k == Enum.KeyCode.ButtonL1 then S.stepNow(nil)
 		elseif k == Enum.KeyCode.E then send(api, "upper")
 		elseif k == Enum.KeyCode.Q or k == Enum.KeyCode.DPadLeft then send(api, "weaveL")
 		elseif k == Enum.KeyCode.R or k == Enum.KeyCode.DPadRight then send(api, "weaveR")
@@ -506,7 +578,6 @@ function M.open(api: any, model: Model, side: string)
 	end))
 	table.insert(S.conns, UIS.InputEnded:Connect(function(io: InputObject)
 		local k = io.KeyCode
-		if k == Enum.KeyCode.S then S.sHeld = false end
 		if k == Enum.KeyCode.F or k == Enum.KeyCode.ButtonL2 then blockSet(false) end
 	end))
 	for _, a in { "State", "AName", "BName", "AId", "BId", "Winner", "Why", "AgainA", "AgainB" } do
@@ -514,7 +585,7 @@ function M.open(api: any, model: Model, side: string)
 	end
 	table.insert(S.conns, model:GetAttributeChangedSignal("Ev"):Connect(function()
 		local e = model:GetAttribute("Ev")
-		local _, kind, who = string.match(tostring(e), "^(%d+):(%a+):(%S+)")
+		local _, kind, who = string.match(tostring(e), "^(%d+):(%a+):([^:]+)") -- (who alone: not the move and flags after it)
 		if kind == "perfect" and who == side then
 			S.flash.Text = "PERFECT  ·  COUNTER"
 			S.flash.TextTransparency = 0
@@ -529,22 +600,146 @@ function M.open(api: any, model: Model, side: string)
 		end
 	end))
 	layout()
-	-- the camera: a low side-on shot from your right, turned toward your end; your boxer on the left of the screen
-	local mirror = if side == "A" then 1 else -1
+	-- your feet: free in the ring (the owner, 19 Nov: "I want to freely move in the boxing arena!")
+	local ringRoot = model:FindFirstChild("Root") :: BasePart?
+	local ringCF = if ringRoot then ringRoot.CFrame else CFrame.identity
+	S.walls = Instance.new("Folder")
+	S.walls.Name = "MiniBoxWalls" -- (made here, so only your own client has them: they fence in you, no one else)
+	for i = 0, 3 do
+		local w = Instance.new("Part")
+		w.Name = "Wall"; w.Anchored = true; w.CanCollide = true; w.CanQuery = false; w.CanTouch = false; w.Transparency = 1
+		w.CastShadow = false
+		w.Size = Vector3.new(L.wall * 2 + 4, 16, 2)
+		w.CFrame = ringCF * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 7, L.wall + 1)
+		w.Parent = S.walls
+	end
+	S.walls.Parent = workspace
+	local ch0 = me.Character
+	S.hum = ch0 and ch0:FindFirstChildOfClass("Humanoid")
+	S.root = ch0 and ch0:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if S.hum then
+		S.hum.AutoRotate = false
+		S.hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	end
+	if S.root then
+		local a0 = S.root:FindFirstChild("RootAttachment") :: Attachment?
+		if not a0 then
+			a0 = Instance.new("Attachment"); (a0 :: Attachment).Name = "MiniFaceAt"; (a0 :: Attachment).Parent = S.root
+		end
+		local ao = Instance.new("AlignOrientation")
+		ao.Name = "MiniFace"
+		ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+		ao.Attachment0 = a0
+		ao.MaxTorque = 1e7
+		ao.Responsiveness = 40
+		ao.CFrame = S.root.CFrame.Rotation
+		ao.Parent = S.root
+		S.face = ao
+	end
+	Body.mini = BX.GUARD
+	S.moveOn = nil
+	-- a phone: a stick where your left thumb lands (the game's own is hidden while you play)
+	if api.isTouch() then
+		local ring_ = T.new("Frame", { Name = "MiniBoxStick", AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = T.BG,
+			BackgroundTransparency = 0.55, Size = UDim2.fromOffset(130, 130), Visible = false, ZIndex = 4 }, api.gui)
+		T.corner(ring_, 65)
+		T.edge(ring_, T.EDGE, 0.55, 2)
+		local knob = T.new("Frame", { Name = "Knob", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+			BackgroundColor3 = T.TEXT, BackgroundTransparency = 0.5, Size = UDim2.fromOffset(50, 50) }, ring_)
+		T.corner(knob, 25)
+		S.stickGui = ring_
+		S.stickV = Vector2.zero
+		local inset = GuiService:GetGuiInset()
+		table.insert(S.conns, UIS.TouchStarted:Connect(function(io: InputObject, gp: boolean)
+			if gp or S.stickIo then return end
+			local cam = workspace.CurrentCamera
+			if io.Position.X > cam.ViewportSize.X * 0.45 then return end
+			S.stickIo = io
+			S.stickO = Vector2.new(io.Position.X, io.Position.Y)
+			ring_.Position = UDim2.fromOffset(io.Position.X + inset.X, io.Position.Y + inset.Y)
+			knob.Position = UDim2.fromScale(0.5, 0.5)
+			ring_.Visible = true
+		end))
+		table.insert(S.conns, UIS.TouchMoved:Connect(function(io: InputObject)
+			if io ~= S.stickIo then return end
+			local d = Vector2.new(io.Position.X, io.Position.Y) - S.stickO
+			if d.Magnitude > 55 then d = d.Unit * 55 end
+			S.stickV = d / 55
+			knob.Position = UDim2.new(0.5, d.X, 0.5, d.Y)
+		end))
+		table.insert(S.conns, UIS.TouchEnded:Connect(function(io: InputObject)
+			if io ~= S.stickIo then return end
+			S.stickIo = nil
+			S.stickV = Vector2.zero
+			ring_.Visible = false
+		end))
+	end
+	-- every frame, before the movement reads it: walk on (or not), face them, the phone's stick or a test's walk
+	local function flatV(v: Vector3): Vector3 return Vector3.new(v.X, 0, v.Z) end
+	RunService:BindToRenderStep("JankBoxFeet", Enum.RenderPriority.Input.Value + 1, function()
+		local st = model:GetAttribute("State")
+		local mine = parseAct(model:GetAttribute(side .. "_act"))
+		local can = st ~= "count" and mine ~= "down" and mine ~= "up"
+		if S.moveOn ~= can then S.moveOn = can; api.move(can) end
+		Body.mini = BX.GUARD
+		local r = S.root
+		local them = bodyFor(model, o)
+		local tr = them and them:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r and S.face then
+			local d = if tr then flatV(tr.Position - r.Position) else Vector3.zero
+			if d.Magnitude > 0.2 and mine ~= "down" then S.face.CFrame = CFrame.lookAt(Vector3.zero, d.Unit) end
+		end
+		local cam = workspace.CurrentCamera
+		local fw = flatV(cam.CFrame.LookVector)
+		fw = if fw.Magnitude > 0.01 then fw.Unit else Vector3.new(0, 0, -1)
+		local rt = fw:Cross(Vector3.yAxis)
+		local tw = S.testWalk
+		if tw and os.clock() < tw.untilT and can then
+			-- (a Studio test: walk F / B / L / R, the way you face them)
+			local f = if r then flatV(r.CFrame.LookVector).Unit else fw
+			local rr = f:Cross(Vector3.yAxis)
+			local dir = if tw.dir == "F" then f elseif tw.dir == "B" then -f elseif tw.dir == "L" then -rr else rr
+			api.walk(dir)
+		elseif api.isTouch() then
+			local v = if can then S.stickV or Vector2.zero else Vector2.zero
+			api.walk(rt * v.X - fw * v.Y)
+		end
+	end)
+	-- the camera: behind and over you, round to your right (L.box.cam.angle) so they show clear of your body and
+	-- whatever you wear; further out and higher as the gap grows. the core eases it: it swings round gently as you circle
 	local c = L.cam
 	api.camera = function(): CFrame?
-		local r = model:FindFirstChild("Root") :: BasePart?
-		if not r then return nil end
+		local r = S.root
+		if not r or not r.Parent then return nil end
+		local them = bodyFor(model, o)
+		local tr = them and them:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local p = r.Position
+		local q = if tr then tr.Position else p + flatV(r.CFrame.LookVector) * 4
+		local d = flatV(q - p)
+		local gap = d.Magnitude
+		local fwd = if gap > 0.2 then d.Unit else flatV(r.CFrame.LookVector).Unit
+		local right = fwd:Cross(Vector3.yAxis)
 		local a = math.rad(c.angle)
-		local eye = Vector3.new(math.cos(a) * c.dist * mirror, c.up, math.sin(a) * c.dist * mirror)
-		return CFrame.lookAt(r.CFrame * eye, r.CFrame * Vector3.new(0, c.aim, 0))
+		local eye = p + (right * math.sin(a) - fwd * math.cos(a)) * (c.dist + c.distK * gap) + Vector3.new(0, c.up + c.upK * gap, 0)
+		local at = p:Lerp(q, c.lead) + Vector3.new(0, c.aim, 0)
+		return CFrame.lookAt(eye, at)
 	end
-	api.fov = 50
+	-- (what the camera must see: their head and middle. one of your accessories in the way fades, never your hair)
+	api.viewPoints = function(): { Vector3 }
+		local them = bodyFor(model, o)
+		local pts = {}
+		for _, n in { "Head", "UpperTorso", "Torso" } do
+			local pp = them and them:FindFirstChild(n) :: BasePart?
+			if pp then table.insert(pts, pp.Position) end
+		end
+		return pts
+	end
+	api.fov = c.fov
 	S.step = RunService.RenderStepped:Connect(function(dt: number)
 		local st = model:GetAttribute("State")
 		local t = now()
 		-- the slow beat: the camera leans in
-		api.fov = if os.clock() < VT.slowUntil then 44 else 50
+		api.fov = if os.clock() < VT.slowUntil then c.fov - 6 else c.fov
 		-- bars
 		local function fill(f: Frame, v: any, max: number) f.Size = UDim2.fromScale(math.clamp((tonumber(v) or 0) / max, 0, 1), 1) end
 		fill(S.youHp, model:GetAttribute(side .. "_hp"), BX.HP)
@@ -595,8 +790,8 @@ function M.open(api: any, model: Model, side: string)
 		-- the keys line (short)
 		S.keys.Text = if st ~= "fight" then ""
 			elseif api.isTouch() then ""
-			elseif api.padOn() then "RT JAB · RB HOOK · Y UPPER · X BODY · LT BLOCK · A DUCK · ◀ ▶ WEAVE"
-			else "CLICK JAB · RIGHT CLICK HOOK · E UPPER · S + PUNCH BODY · F BLOCK · C DUCK · Q / R WEAVE"
+			elseif api.padOn() then "LS MOVE · LB STEP · RT JAB · RB HOOK · Y UPPER · X BODY · LT BLOCK · A DUCK · RS WEAVE"
+			else "WASD MOVE · SPACE STEP · CLICK JAB · RIGHT CLICK HOOK · E UPPER · X BODY · F BLOCK · C DUCK · Q / R WEAVE"
 		-- (a Studio test's autopilot, MiniTest "box:auto": a perfect dodge into every punch, then the counter)
 		if S.auto and st == "fight" then
 			local oa, osd, ot0, olen = parseAct(model:GetAttribute(o .. "_act"))
@@ -609,11 +804,14 @@ function M.open(api: any, model: Model, side: string)
 				end)
 			end
 		end
-		-- a pad: a flick of the left stick weaves
+		-- a pad: a flick of the right stick weaves (sideways) or ducks (down); the left stick walks
 		if api.padOn() and st == "fight" then
-			local x = api.Pad.stick(1).X
-			if math.abs(x) > 0.75 and S.stick == 0 then S.stick = if x > 0 then 1 else -1; send(api, if x > 0 then "weaveR" else "weaveL")
-			elseif math.abs(x) < 0.35 then S.stick = 0 end
+			local v = api.Pad.stick(2)
+			if v.Magnitude > 0.75 and S.stick == 0 then
+				S.stick = 1
+				if math.abs(v.X) >= math.abs(v.Y) then send(api, if v.X > 0 then "weaveR" else "weaveL")
+				elseif v.Y < 0 then send(api, "duck") end
+			elseif v.Magnitude < 0.35 then S.stick = 0 end
 		end
 	end)
 end
@@ -621,8 +819,19 @@ end
 function M.close()
 	if S.blockHeld and S.api then S.api.send({ op = "block", on = false }) end
 	if S.step then S.step:Disconnect() end
+	pcall(function() RunService:UnbindFromRenderStep("JankBoxFeet") end)
 	for _, c in S.conns or {} do c:Disconnect() end
-	if S.api then S.api.camera = nil; S.api.fov = nil; S.api.nav(false) end
+	if S.api then S.api.camera = nil; S.api.fov = nil; S.api.viewPoints = nil; S.api.nav(false) end
+	-- your feet back as they were: your own turning, jumping, the game's run, no walls, no stick
+	Body.mini = 1
+	if S.walls then S.walls:Destroy() end
+	if S.face then S.face:Destroy() end
+	if S.root then local at = S.root:FindFirstChild("MiniFaceAt"); if at then at:Destroy() end end
+	if S.stickGui then S.stickGui:Destroy() end
+	if S.hum and S.hum.Parent then
+		S.hum.AutoRotate = true
+		S.hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+	end
 	S = {}
 end
 
@@ -635,6 +844,8 @@ function M.space(down: boolean, io: any): boolean
 		if down and st == "fight" then send(S.api, "duck") end
 		return st == "fight" or st == "count" or st == "down" or st == "rest"
 	end
+	-- Space: a STEP (no jumping in the ring)
+	if down and st == "fight" and S.stepNow then S.stepNow(nil) end
 	return st == "fight" or st == "count" or st == "down" or st == "rest"
 end
 
@@ -649,12 +860,23 @@ end
 
 -- Studio test: MiniTest "box:<act>" (jab, hook, upper, body, duck, weaveL, weaveR), "box:block:on|off",
 -- "box:auto" (dodge the bot's punches perfectly and counter: the autopilot for photos), "box:hold:<s>" (your next
--- perfect dodge freezes s seconds for a photo)
+-- perfect dodge freezes s seconds for a photo), "box:walk:<F|B|L|R>:<s>" (walk that way, as you face them, for s
+-- seconds), "box:step:<F|B|L|R>" (a STEP that way)
 function M.test(v: string): string
 	local a = string.match(v, "^box:(%a+)$")
 	if v == "box:auto" then S.auto = not S.auto; return "auto " .. tostring(S.auto) end
 	local hold = tonumber(string.match(v, "^box:hold:([%d%.]+)$"))
 	if hold then HOLD.pending = math.clamp(hold, 0, 5); return "hold " .. HOLD.pending end
+	-- (walk F / B / L / R for s seconds, the way you face them: circling, stepping in and out of reach)
+	local wd, ws = string.match(v, "^box:walk:([FBLR]):([%d%.]+)$")
+	if wd then S.testWalk = { dir = wd, untilT = os.clock() + math.clamp(tonumber(ws) or 1, 0, 10) }; return "walk " .. wd end
+	local sd = string.match(v, "^box:step:([FBLR])$")
+	if sd and S.root and S.stepNow then
+		local f = Vector3.new(S.root.CFrame.LookVector.X, 0, S.root.CFrame.LookVector.Z).Unit
+		local r = f:Cross(Vector3.yAxis)
+		S.stepNow(if sd == "F" then f elseif sd == "B" then -f elseif sd == "L" then -r else r)
+		return "step " .. sd
+	end
 	if a and a ~= "auto" then send(S.api, a); return "sent " .. a end
 	local on = string.match(v, "^box:block:(%a+)$")
 	if on then S.api.send({ op = "block", on = on == "on" }); return "block " .. on end

@@ -104,6 +104,17 @@ local savedOpen: any = nil
 local controls: any = nil
 pcall(function() controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls() end)
 local confirmT = 0
+-- a game that lets you walk (the boxing ring): your keys and stick move you again while it says so (`on`), and stop
+-- when it doesn't. a phone has no Roblox stick here (TouchControls draws the game's own, hidden in a game): the game
+-- feeds api.walk(dir) instead, through the control module's own hook, so Move.client takes it as input
+api.controls = function(): any return controls end
+function api.move(on: boolean)
+	if not controls then return end
+	pcall(function() if on and not Keys.isTouch() then controls:Enable() else controls:Disable() end end)
+end
+function api.walk(dir: Vector3)
+	if controls and type(controls.moveFunction) == "function" then pcall(controls.moveFunction, me, dir, false) end
+end
 
 local function modelOf(id: string): Model?
 	for _, m in CollectionService:GetTagged("MiniGame") do
@@ -310,7 +321,7 @@ RunService:BindToRenderStep("JankMiniCam", Enum.RenderPriority.Camera.Value + 7,
 		-- game's api.viewPoints crosses its parts' boxes) fades, to FADE, and only while it does. hair never fades.
 		-- your title over your head stays hidden on your screen while you sit
 		if ch then
-			local clear = api.kind == "arm" or api.kind == "board"
+			local clear = api.kind == "arm" or api.kind == "board" or api.kind == "box"
 			if clear and os.clock() - (cam.blockT or 0) > 0.1 then
 				cam.blockT = os.clock()
 				cam.blocking = blockers(ch, c.CFrame.Position)

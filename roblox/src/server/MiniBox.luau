@@ -13,7 +13,11 @@
 --   up, bell; who = the one it happened TO for hit/block/down, the dodger for dodge/perfect; flags: "big", "counter",
 --   "body"), AgainA / AgainB
 -- from the client: { op = "bot", level }, { op = "act", a = jab|hook|upper|body|duck|weaveL|weaveR, t = its server
--- time }, { op = "block", on }, { op = "again" }
+-- time }, { op = "block", on }, { op = "step" } (a dash-step: its stamina; the client moves itself), { op = "again" }
+-- free in the ring since 19 Nov ("I want to freely move in the boxing arena!"): people walk where they like (their own
+-- client fences them in at the ropes and turns them to face the other one), the server puts both on their marks at
+-- each round's start, judges every punch by where the two bodies are (MOVES[a].reach, CONE: else a "whiff"), and walks
+-- a bot (its own Humanoid, the server's physics): it hovers just out of reach, circles, steps in to punch and backs off
 local Box = {}
 
 local rng = Random.new()
@@ -24,12 +28,34 @@ local function set(T: any, k: string, v: any) if T.model:GetAttribute(k) ~= v th
 type F = { hp: number, st: number, act: string, side: string, t0: number, len: number, hitT: number?, untilT: number,
 	block: boolean, dodge: string?, dodgeSide: string?, dodgeT0: number, dodgeLen: number, nextDodge: number,
 	counterUntil: number, counter: boolean, tired: boolean, resolved: boolean, feint: boolean, kd: number, dmg: number,
-	lastAct: number, botNext: number, botSeen: number, botPlan: any? }
+	lastAct: number, nextStep: number, botNext: number, botSeen: number, botPlan: any?, botBlockTill: number,
+	botWas: string, botBackUntil: number, botSlipUntil: number, botCircle: number, botCircleT: number, botFlipT: number,
+	botApproach: string?, botApproachUntil: number }
 
 local function fresh(BX: any): F
 	return { hp = BX.HP, st = BX.ST_MAX, act = "idle", side = "-", t0 = 0, len = 0, hitT = nil, untilT = 0, block = false,
 		dodge = nil, dodgeSide = nil, dodgeT0 = -10, dodgeLen = 0, nextDodge = 0, counterUntil = 0, counter = false,
-		tired = false, resolved = true, feint = false, kd = 0, dmg = 0, lastAct = 0, botNext = 0, botSeen = 0, botPlan = nil }
+		tired = false, resolved = true, feint = false, kd = 0, dmg = 0, lastAct = 0, nextStep = 0, botNext = 0, botSeen = 0,
+		botPlan = nil, botBlockTill = 0, botWas = "idle", botBackUntil = 0, botSlipUntil = 0, botCircle = 1, botCircleT = 0,
+		botFlipT = 0, botApproach = nil, botApproachUntil = 0 }
+end
+
+-- ------------------------------------------------------------------ bodies in the ring
+-- a boxer's root: a person's character, a Studio stand-in's body, or the bot's
+local function rootOf(T: any, side: string): BasePart?
+	local who = T.who[side]
+	local ch: Instance? = if typeof(who) == "Instance" and who:IsA("Player") then who.Character
+		elseif type(who) == "table" and who.Character then who.Character else T.bots[side]
+	return if ch then ch:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+end
+local function flat(v: Vector3): Vector3 return Vector3.new(v.X, 0, v.Z) end
+local function isPerson(who: any): boolean return typeof(who) == "Instance" and who:IsA("Player") end
+-- the flat gap between the two, and the way from `side` to the other one
+local function gapOf(T: any, side: string): (number, Vector3?)
+	local a, b = rootOf(T, side), rootOf(T, other(side))
+	if not a or not b then return 0, nil end
+	local v = flat(b.Position - a.Position)
+	return v.Magnitude, if v.Magnitude > 0.05 then v.Unit else nil
 end
 
 local function pubAct(T: any, side: string, f: F)
@@ -84,7 +110,7 @@ local function begin(T: any, ctx: any)
 	G.round = 0
 	G.again = {}
 	set(T, "Winner", nil); set(T, "Why", nil); set(T, "AgainA", nil); set(T, "AgainB", nil); set(T, "Round", 0)
-	for _, s in { "A", "B" } do setAct(T, s, G.f[s], "idle", 0, nil, ctx) end
+	for _, s in { "A", "B" } do setAct(T, s, G.f[s], "idle", 0, nil, ctx); ctx.toMark(T, s) end
 	pubBars(T)
 	state(T, "count", ctx)
 end
@@ -113,7 +139,9 @@ local function startRound(T: any, ctx: any)
 	for _, s in { "A", "B" } do
 		local f = G.f[s]
 		f.botNext = ctx.now() + rng:NextNumber(0.8, 1.6)
+		f.botApproach = nil
 		setAct(T, s, f, "idle", 0, nil, ctx)
+		if G.round > 1 then ctx.toMark(T, s) end -- (round 1: they're on their marks from the count)
 	end
 	ev(T, "bell", "-", "start")
 	state(T, "fight", ctx)
@@ -206,6 +234,21 @@ local function resolve(T: any, side: string, ctx: any)
 	local a = f.act
 	local m = BX.MOVES[a]
 	if not m or f.feint then return end
+	-- where they are now: only someone in front of you and within the punch's reach can be hit. else a whiff: a
+	-- whoosh, and a little longer before you can act (stepping out of reach is a dodge too, with no counter)
+	local ra, rd = rootOf(T, side), rootOf(T, ds)
+	if ra and rd then
+		local v = flat(rd.Position - ra.Position)
+		local dist = v.Magnitude
+		local reach = (m.reach or 3.5) + (if isPerson(T.who[side]) or isPerson(T.who[ds]) then BX.REACH_SLACK else 0)
+		local look = flat(ra.CFrame.LookVector)
+		local ahead = dist < 0.6 or look.Magnitude < 0.01 or look.Unit:Dot(v.Unit) >= math.cos(math.rad(BX.CONE))
+		if dist > reach or not ahead then
+			f.untilT += BX.WHIFF_REC
+			ev(T, "whiff", side, a, ("%.1f"):format(dist))
+			return
+		end
+	end
 	local hitT = f.hitT :: number
 	local arrives = if f.side == "R" then "L" elseif f.side == "L" then "R" else nil -- (the side of the one it hits)
 	local dodging = d.dodge ~= nil and hitT >= d.dodgeT0 - 0.02 and hitT <= d.dodgeT0 + d.dodgeLen
@@ -260,6 +303,65 @@ local function resolve(T: any, side: string, ctx: any)
 end
 
 -- ------------------------------------------------------------------ the bot
+-- its feet (the server's physics: its own Humanoid walks, its MiniFace turns it to face you). it hovers `keep` studs
+-- off, circling; steps in to punch (BOX.MOVES[a].reach) and closes a little more while it winds up; backs off after
+-- a punch now and then; slips out of reach when it reads one coming (`slip`). never past the ropes (L.box.bound)
+local function botMove(T: any, side: string, ctx: any)
+	local BX = ctx.MG.BOX
+	local L = ctx.MG.L.box
+	local G = T.g
+	local rig = T.bots[side]
+	local hum = rig and rig:FindFirstChildOfClass("Humanoid")
+	local root = rig and rig:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hum or not root or root.Anchored then return end
+	local f: F = G.f[side]
+	local now = ctx.now()
+	-- (its body is the server's: Roblox hands a body near a player to that player's physics unless told. checked once
+	-- a second: on 19 Nov the first call, as it stepped in, didn't hold)
+	if now >= (T.ownT or 0) then
+		T.ownT = now + 1
+		pcall(function() if root:GetNetworkOwner() ~= nil then root:SetNetworkOwner(nil) end end)
+	end
+	local dist, fwd0 = gapOf(T, side)
+	local fwd = fwd0 or flat(root.CFrame.LookVector).Unit
+	local ao = root:FindFirstChild("MiniFace") :: AlignOrientation?
+	if ao and f.act ~= "down" then ao.CFrame = CFrame.lookAt(Vector3.zero, fwd) end
+	local lp = T.cf:PointToObjectSpace(root.Position)
+	-- (pushed through the ropes, or fallen: back onto its mark)
+	if math.abs(lp.X) > L.bound + 2.5 or math.abs(lp.Z) > L.bound + 2.5 or lp.Y < -5 then ctx.toMark(T, side); return end
+	local B = BX.BOT[T.who[side] and T.who[side].level] or BX.BOT.medium
+	local free = G.state == "fight" and f.act ~= "down" and f.act ~= "up" and f.act ~= "hit" and f.act ~= "open" and fwd0 ~= nil
+	if not free then hum:Move(Vector3.zero, false); return end
+	local want, speed = B.keep, B.speed
+	if f.botApproach then want = BX.MOVES[f.botApproach].reach - 0.5; speed = B.speed * 1.25 end
+	if ATTACK[f.act] and not f.resolved and BX.MOVES[f.act] then want = BX.MOVES[f.act].reach - 0.8; speed = B.speed * 1.3 end
+	if now < f.botBackUntil then want = B.keep + 2; speed = B.speed * 1.2 end
+	local slipping = now < f.botSlipUntil
+	if slipping then want = 99; speed = BX.STEP.speed end
+	local radial = math.clamp((dist - want) / 0.8, -1, 1)
+	local lat = 0
+	if not ATTACK[f.act] and not slipping then
+		if now >= f.botCircleT then
+			f.botCircleT = now + rng:NextNumber(1.2, 2.8)
+			f.botCircle = if rng:NextNumber() < 0.5 then -1 else 1
+		end
+		lat = f.botCircle * B.circle
+	end
+	local right = fwd:Cross(Vector3.yAxis)
+	local ld = T.cf:VectorToObjectSpace(fwd * radial + right * lat)
+	-- the ropes: nothing outward past the bound; circling into them turns it round
+	local b = L.bound - 0.4
+	local x, z = ld.X, ld.Z
+	local blocked = false
+	if (lp.X > b and x > 0) or (lp.X < -b and x < 0) then x = 0; blocked = true end
+	if (lp.Z > b and z > 0) or (lp.Z < -b and z < 0) then z = 0; blocked = true end
+	if blocked and lat ~= 0 and now >= f.botFlipT then f.botCircle = -f.botCircle; f.botFlipT = now + 0.8 end
+	local dir = T.cf:VectorToWorldSpace(Vector3.new(x, 0, z))
+	if dir.Magnitude > 1 then dir = dir.Unit end
+	hum.WalkSpeed = speed
+	hum:Move(dir, false)
+end
+
 local function botStep(T: any, side: string, dt: number, ctx: any)
 	local BX = ctx.MG.BOX
 	local G = T.g
@@ -268,6 +370,13 @@ local function botStep(T: any, side: string, dt: number, ctx: any)
 	local who = T.who[side]
 	local B = BX.BOT[who.level] or BX.BOT.medium
 	local now = ctx.now()
+	-- after its punch (or a hit taken), now and then it backs off
+	if f.botWas ~= f.act then
+		if (ATTACK[f.botWas] or f.botWas == "hit") and not ATTACK[f.act] and rng:NextNumber() < B.backoff then
+			f.botBackUntil = now + rng:NextNumber(0.4, 0.8)
+		end
+		f.botWas = f.act
+	end
 	-- a punch coming: read it (once), and answer in time
 	if ATTACK[o.act] and not o.resolved and o.t0 ~= f.botSeen then
 		f.botSeen = o.t0
@@ -276,7 +385,8 @@ local function botStep(T: any, side: string, dt: number, ctx: any)
 			local at = o.t0 + rng:NextNumber(B.react[1], B.react[2])
 			if at < (o.hitT :: number) - 0.04 then
 				local answer
-				if rng:NextNumber() < B.block and o.act ~= "body" then answer = "block"
+				if rng:NextNumber() < B.slip then answer = "slip"
+				elseif rng:NextNumber() < B.block and o.act ~= "body" then answer = "block"
 				elseif o.act == "jab" then answer = if rng:NextNumber() < 0.5 then "duck" else (if rng:NextNumber() < 0.5 then "weaveL" else "weaveR")
 				elseif o.act == "hook" then answer = if rng:NextNumber() < 0.5 then "duck" else (if o.side == "R" then "weaveL" else "weaveR")
 				else answer = if rng:NextNumber() < 0.5 then "weaveL" else "weaveR" end
@@ -289,26 +399,46 @@ local function botStep(T: any, side: string, dt: number, ctx: any)
 		f.botPlan = nil
 		if plan.a == "block" then
 			if canAct(f, now) then f.block = true; f.botBlockTill = plan.till + 0.15; setAct(T, side, f, "block", 0, nil, ctx) end
+		elseif plan.a == "slip" then
+			if canAct(f, now) then f.botSlipUntil = now + 0.13; f.botApproach = nil end
 		else
 			startDodge(T, side, plan.a, now, ctx)
 		end
 	end
 	if f.block and now > (f.botBlockTill or 0) then f.block = false; if f.act == "block" then setAct(T, side, f, "idle", 0, nil, ctx) end end
-	-- its own punches: right away into a counter window; else on its rhythm, if it has the breath
+	-- its own punches: right away into a counter window; else on its rhythm, if it has the breath. out of reach, it
+	-- steps in first (botMove) and throws once it's there
 	if not canAct(f, now) or f.block then return end
+	if o.act == "down" then f.botApproach = nil; return end
+	local dist = gapOf(T, side)
+	local function throw(a: string)
+		if startAttack(T, side, a, ctx, B.wind) and now >= f.counterUntil and rng:NextNumber() < B.feint and a ~= "jab" then
+			-- a fake: the wind-up starts, then it pulls back
+			f.feint = true
+			local cut = ((f.hitT :: number) - now) * 0.55
+			f.hitT = now + cut
+			f.untilT = now + cut + 0.15
+		end
+	end
+	if f.botApproach then
+		local a = f.botApproach :: string
+		if dist <= BX.MOVES[a].reach + 0.3 then
+			f.botApproach = nil
+			throw(a)
+		elseif now > f.botApproachUntil then
+			f.botApproach = nil
+			f.botNext = now + rng:NextNumber(0.3, 0.8)
+		end
+		return
+	end
 	local go = now < f.counterUntil or now >= f.botNext
-	if not go or f.st < 12 or o.act == "down" then return end
+	if not go or f.st < 12 then return end
 	f.botNext = now + rng:NextNumber(B.every[1], B.every[2])
 	local r = rng:NextNumber()
 	local a = if now < f.counterUntil then (if r < 0.5 then "hook" else "upper")
 		elseif r < 0.4 then "jab" elseif r < 0.65 then "hook" elseif r < 0.8 then "upper" else "body"
-	if startAttack(T, side, a, ctx, B.wind) and now >= f.counterUntil and rng:NextNumber() < B.feint and a ~= "jab" then
-		-- a fake: the wind-up starts, then it pulls back
-		f.feint = true
-		local cut = ((f.hitT :: number) - now) * 0.55
-		f.hitT = now + cut
-		f.untilT = now + cut + 0.15
-	end
+	if dist <= BX.MOVES[a].reach + 0.3 then throw(a)
+	else f.botApproach = a; f.botApproachUntil = now + 1.5 end
 end
 
 -- ------------------------------------------------------------------ the module's hooks (MiniGames.server)
@@ -362,6 +492,15 @@ function Box.msg(T: any, p: Player, side: string, d: any, ctx: any)
 			setAct(T, side, f, if on then "block" else "idle", 0, nil, ctx)
 			pubBars(T)
 		end
+	elseif d.op == "step" then
+		-- (a dash-step: the client moves itself at once; here it costs its stamina, no more often than STEP.rest)
+		local f: F = G.f[side]
+		local S = ctx.MG.BOX.STEP
+		if G.state ~= "fight" or f.act == "down" or f.act == "up" or now < f.nextStep then return end
+		f.st = math.max(0, f.st - S.st)
+		f.nextStep = now + S.rest - 0.08
+		f.lastAct = now
+		pubBars(T)
 	elseif d.op == "again" then
 		if G.state ~= "done" then return end
 		if ctx.isBot(T.who[o]) then begin(T, ctx); return end
@@ -376,6 +515,19 @@ function Box.step(T: any, dt: number, ctx: any)
 	local BX = ctx.MG.BOX
 	local G = T.g
 	local now = ctx.now()
+	-- the bodies the server moves: a bot walks (any state: it stands still outside a round), a Studio stand-in (held
+	-- still, anchored) turns to face the other one
+	for _, s in { "A", "B" } do
+		local who = T.who[s]
+		if ctx.isBot(who) then botMove(T, s, ctx)
+		elseif type(who) == "table" and who.standIn then
+			local r = rootOf(T, s)
+			local _, fwd = gapOf(T, s)
+			if r and r.Anchored and fwd and flat(r.CFrame.LookVector).Unit:Dot(fwd) < 0.999 and G.f[s].act ~= "down" then
+				(who.Character :: Model):PivotTo(CFrame.lookAt(r.Position, r.Position + fwd))
+			end
+		end
+	end
 	if G.state == "count" then
 		if not bothHere(T) then state(T, "open", ctx); return end
 		if now - G.at >= BX.COUNT then startRound(T, ctx) end

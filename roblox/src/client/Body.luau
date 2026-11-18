@@ -28,6 +28,8 @@ Body.devSpeed = 1
 Body.flying = false
 -- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
 Body.speedMul = 1
+-- (19 Nov 2026) a hub mini-game's own pace on top: the boxing ring's guard (MiniBoxUI sets it, puts back 1 on leaving)
+Body.mini = 1
 -- (weapons batch A, 18 Nov 2026; WeaponStates.client sets these from the server's attributes on you) soaked by a Water
 -- Pistol: run speed x wet, ground friction x grip (slidey). pinned by a Nail Gun: pulled to `at` (where your feet go)
 -- until `untilT` (workspace:GetServerTimeNow()), no jumping

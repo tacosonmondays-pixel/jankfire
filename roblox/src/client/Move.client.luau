@@ -404,7 +404,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		elseif fwd and math.abs(look.Y) > 0.3 then up = look.Y * spd end
 		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
 	else
-		st.speedMul = Body.speedMul * Body.boost * Body.wet * Body.devSpeed -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming; soaked)
+		st.speedMul = Body.speedMul * Body.boost * Body.wet * Body.devSpeed * Body.mini -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming; soaked; the boxing guard)
 		st.grip = Body.grip -- (soaked by a Water Pistol: slidey)
 		st.hookMul = tonumber(player:GetAttribute("ModeHook")) or 1 -- (spoons & grapples: the rope pulls x1.35, Modes.luau)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
