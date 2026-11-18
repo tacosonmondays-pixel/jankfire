@@ -205,7 +205,10 @@ function AvatarArms.hatSpot(hand: BasePart, wid: string, owner: number, k: numbe
 	local s = hand.Size
 	local at = Instance.new("Attachment")
 	at.Name = "HatSpot"
-	at.CFrame = CFrame.fromMatrix(Vector3.new(s.X * 0.15, -s.Y * 0.2, -s.Z / 2), Vector3.xAxis, -Vector3.zAxis)
+	-- (an R6 body's Right Arm in third person: one block, raised forward on its shoulder, so its front face (-z) is on
+	-- top; the spot sits on it 0.3 studs from the hand end, the same axes)
+	local pos = if hand.Name == "Right Arm" then Vector3.new(0, -s.Y / 2 + 0.3, -s.Z / 2) else Vector3.new(s.X * 0.15, -s.Y * 0.2, -s.Z / 2)
+	at.CFrame = CFrame.fromMatrix(pos, Vector3.xAxis, -Vector3.zAxis)
 	at:SetAttribute("Weapon", wid); at:SetAttribute("Owner", owner); at:SetAttribute("K", k)
 	at.Parent = hand
 	CollectionService:AddTag(at, "GunHatSpot")

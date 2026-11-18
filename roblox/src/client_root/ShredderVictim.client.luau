@@ -65,7 +65,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local a = 1 - math.exp(-14 * dt)
 	for _, ch in ipairs(holders()) do
 		local tool = ch:FindFirstChild("Shredder")
-		local hand = ch:FindFirstChild("RightHand")
+		local hand = ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") -- (R6: the Tool's grip is on the arm; 18 Nov 2026)
 		local grip = hand and hand:FindFirstChild("RightGrip")
 		if tool and tool:IsA("Tool") and grip then
 			local want = tool:GetAttribute("Swivel")

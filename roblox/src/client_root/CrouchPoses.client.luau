@@ -103,6 +103,42 @@ local function posesFor(ch)
 	}
 end
 
+-- (the hold session, 18 Nov 2026; the owner: "Keep R6 allowed") a blocky R6 body: one block per leg on the Torso's
+-- hips, no knees, so its crouch is a lowered split stance (the right leg forward, the left back, both feet on the floor
+-- at the drop: R6.crouch) leaning in, and its slide leans back with both legs out in front (the right flatter: R6.slide; front / under = each
+-- leg's angle from straight down, radians). each bend is worked out in the joint's parent's own space and turned into the joint's (an R6 joint's C0
+-- is turned: hips by 90 deg, the root and the neck over on their backs). radians and studs
+local R6 = {
+	crouch = { drop = 0.55, lean = 0.22, spread = 0.72, back = 0.1 },
+	slide = { drop = 1.0, lean = 0.5, front = 1.1, under = 0.9, armOut = -1.1, armBack = 0.35 }, -- (hips ~1 stud up: both legs forward, the right flatter; no knee to fold the left under)
+}
+local function posesR6(ch)
+	local function c0(part, name)
+		local p = ch:FindFirstChild(part)
+		local m = p and p:FindFirstChild(name)
+		return if m and m:IsA("Motor6D") then m.C0.Rotation else ID
+	end
+	-- a bend in the parent's space about the joint, as the joint's own Transform
+	local function J(part, name, delta) local r = c0(part, name); return r:Inverse() * delta * r end
+	local C, S = R6.crouch, R6.slide
+	return {
+		crouch = {
+			RootJoint = J("HumanoidRootPart", "RootJoint", CFrame.new(0, -C.drop, C.back) * A(-C.lean, 0, 0)),
+			Neck = J("Torso", "Neck", A(C.lean * 0.8, 0, 0)),
+			["Right Hip"] = J("Torso", "Right Hip", A(C.spread + C.lean, 0, 0)),
+			["Left Hip"] = J("Torso", "Left Hip", A(-C.spread + C.lean, 0, 0)),
+		},
+		slide = {
+			RootJoint = J("HumanoidRootPart", "RootJoint", CFrame.new(0, -S.drop, 0) * A(S.lean, 0, 0)),
+			Neck = J("Torso", "Neck", A(-S.lean * 0.7, 0, 0)),
+			["Right Hip"] = J("Torso", "Right Hip", A(S.front - S.lean, 0, 0)),
+			["Left Hip"] = J("Torso", "Left Hip", A(S.under - S.lean, 0, 0)),
+			["Left Shoulder"] = J("Torso", "Left Shoulder", A(S.armBack, 0, S.armOut)),
+		},
+	}
+end
+LEGS.RootJoint = true; LEGS["Right Hip"] = true; LEGS["Left Hip"] = true
+
 -- every body's joints (old Motor6Ds or the new avatar AnimationConstraints). the avatar's joints get rebuilt a moment
 -- after a spawn (scaling, the new joints), so the list is collected again whenever joints come or go
 local function isJoint(d) return d:IsA("Motor6D") or d:IsA("AnimationConstraint") end
@@ -112,14 +148,14 @@ local function collect(ch, b)
 		-- (not a held weapon's or a tool's own joints)
 		if isJoint(m) and not m:FindFirstAncestorOfClass("Tool") and not m:FindFirstAncestor("HeldWeapon") then b.motors[m.Name] = m end
 	end
-	b.poses = posesFor(ch)
+	b.poses = if ch:FindFirstChild("RightUpperLeg") then posesFor(ch) else posesR6(ch)
 	b.written = {}
 	b.dirty = false
 end
 local function bodyOf(ch)
 	local b = bodies[ch]
 	if not b then
-		if not ch:FindFirstChild("RightUpperLeg") then return nil end -- R15 only
+		if not ch:FindFirstChild("RightUpperLeg") and not (ch:FindFirstChild("Torso") and ch:FindFirstChild("Right Leg")) then return nil end -- R15, or R6 (posesR6)
 		b = { w = { crouch = 0, slide = 0 }, dirty = true }
 		bodies[ch] = b
 		local function mark(d) if isJoint(d) then b.dirty = true end end

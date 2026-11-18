@@ -1005,10 +1005,12 @@ FFx.THEMES.lantern = {
 -- TRIANGULUM · STARCHART: stars light on the victim's joints one by one, the lines of their figure draw between them, the
 -- body fades away and the constellation rises into a field of sparkles and goes
 local JOINTS = { "Head", "UpperTorso", "LowerTorso", "LeftLowerArm", "LeftHand", "RightLowerArm", "RightHand", "LeftLowerLeg", "LeftFoot",
-	"RightLowerLeg", "RightFoot" }
+	"RightLowerLeg", "RightFoot",
+	"Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg" } -- (the hold session, 18 Nov 2026: an R6 victim's blocks; each body has only its own set)
 local LINES = { { "Head", "UpperTorso" }, { "UpperTorso", "LeftLowerArm" }, { "LeftLowerArm", "LeftHand" }, { "UpperTorso", "RightLowerArm" },
 	{ "RightLowerArm", "RightHand" }, { "UpperTorso", "LowerTorso" }, { "LowerTorso", "LeftLowerLeg" }, { "LeftLowerLeg", "LeftFoot" },
-	{ "LowerTorso", "RightLowerLeg" }, { "RightLowerLeg", "RightFoot" } }
+	{ "LowerTorso", "RightLowerLeg" }, { "RightLowerLeg", "RightFoot" },
+	{ "Head", "Torso" }, { "Torso", "Left Arm" }, { "Torso", "Right Arm" }, { "Torso", "Left Leg" }, { "Torso", "Right Leg" } } -- (R6)
 FFx.THEMES.stars = {
 	slug = { core = Color3.fromRGB(255, 246, 220), trail = Color3.fromRGB(255, 231, 166), tex = "sparkle", shed = Color3.fromRGB(255, 236, 196),
 		shedSize = 0.3, shedRate = 45, shedFall = 0, shedLight = 1 },

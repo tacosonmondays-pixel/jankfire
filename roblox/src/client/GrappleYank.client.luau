@@ -18,7 +18,7 @@ local SNAP_T, TRAIL_T, TRAIL_LIFE = 0.22, 0.55, 0.28 -- s: the taut rope's flash
 
 local function snap(from: Model, to: Model, mate: boolean)
 	local troot = to:FindFirstChild("HumanoidRootPart") :: BasePart?
-	local hand = (from:FindFirstChild("RightHand") or from:FindFirstChild("HumanoidRootPart")) :: BasePart?
+	local hand = (from:FindFirstChild("RightHand") or from:FindFirstChild("Right Arm") or from:FindFirstChild("HumanoidRootPart")) :: BasePart? -- (R6: the arm; 18 Nov 2026)
 	if not troot or not hand then return end
 	-- (a test, for photos: YankFxHold on you = hold the snap and the streak that many seconds)
 	local hold = me:GetAttribute("YankFxHold")

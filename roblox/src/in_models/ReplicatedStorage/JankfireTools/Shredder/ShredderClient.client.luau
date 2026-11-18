@@ -130,7 +130,7 @@ end
 
 RunService.RenderStepped:Connect(function(dt)
 	local ch = lp.Character
-	local hand = ch and ch:FindFirstChild("RightHand")
+	local hand = ch and (ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm")) -- (R6: the Tool's grip is on the arm; 18 Nov 2026)
 	local grip = hand and hand:FindFirstChild("RightGrip")
 	local att = hand and hand:FindFirstChild("RightGripAttachment")
 	if tool.Parent ~= ch or not grip or not att then swivel = CFrame.identity return end

@@ -321,9 +321,53 @@ local function spot(part: BasePart?, name: string): Vector3?
 	return if a and a:IsA("Attachment") then a.Position else nil
 end
 
+-- (the hold session, 18 Nov 2026; the owner: "Keep R6 allowed") a blocky R6 body: the Torso is the chest (no waist to
+-- turn), the Neck and the RootJoint, and each arm one block on its shoulder. its Arm rows carry what the rest reads
+-- (the shoulder, a grip at the arm's end, a reach) with the arm split in two for elbowAt's turn of the hand; the arm
+-- itself is aimed by solveArmR6. r.u is an R15 arm's (so the stances' sizes read the same)
+local function readBodyR6(r: Rig): boolean
+	local ch = r.ch
+	local torso = ch:FindFirstChild("Torso") :: BasePart?
+	local head = ch:FindFirstChild("Head") :: BasePart?
+	local neck = jointOf(ch, "Torso", "Neck")
+	local root = jointOf(ch, "HumanoidRootPart", "RootJoint")
+	if not torso or not head or not neck or not root then return false end
+	local J: { [string]: Joint } = { Root = root, Neck = neck }
+	local arms: { [string]: Arm } = {}
+	for _, side in { "Right", "Left" } do
+		local sh = jointOf(ch, "Torso", side .. " Shoulder")
+		local arm = ch:FindFirstChild(side .. " Arm") :: BasePart?
+		if not sh or not arm then return false end
+		J[side .. "Shoulder"] = sh
+		local ga = arm:FindFirstChild(side .. "GripAttachment")
+		local grip = if ga and ga:IsA("Attachment") then ga.CFrame else ANG(-math.pi / 2, 0, 0) + V(0, -arm.Size.Y / 2, 0)
+		local as = sh.c1.Position -- (the shoulder, in the arm's own space)
+		local len = (grip.Position - as).Magnitude
+		arms[side] = {
+			side = side, S = sh.c0.Position, as = as, ae = as, L1 = len * 0.55, B1inv = ID,
+			el = Vector3.zero, wl = Vector3.zero, L2 = len * 0.45, B2inv = ID,
+			wh = grip.Position + V(0, arm.Size.Y * 0.25, 0), -- (no wrist: a spot up the arm from the grip, for handOn's turn)
+			grip = grip, gripInv = grip:Inverse(), mid = basis(Vector3.xAxis, Vector3.yAxis), thick = arm.Size.X, long = arm.Size.Y * 0.3,
+			reach = len, sh = sh, elb = sh, wr = sh,
+		}
+	end
+	r.J = J
+	r.ut, r.head = torso, head
+	r.Hs = head.Size.Y
+	r.nk = neck.c0.Position
+	r.headC1 = neck.c1
+	r.arms = arms
+	r.u = 1.9
+	;(r :: any).r6 = true
+	r.geomT = os.clock()
+	r.dirty = false
+	return true
+end
+
 -- read a body's joints and limbs (again whenever its joints change, and every half second: avatars rescale after a spawn)
 local function readBody(r: Rig): boolean
 	local ch = r.ch
+	if not ch:FindFirstChild("UpperTorso") and ch:FindFirstChild("Torso") then return readBodyR6(r) end
 	local J: { [string]: Joint } = {}
 	for _, n in { { "LowerTorso", "Root" }, { "UpperTorso", "Waist" }, { "Head", "Neck" },
 		{ "RightUpperArm", "RightShoulder" }, { "RightLowerArm", "RightElbow" }, { "RightHand", "RightWrist" },
@@ -410,6 +454,24 @@ local function solveArm(a: Arm, H: CFrame, pole: Vector3, weight: number)
 		a.elb.j.Transform = a.elb.j.Transform:Lerp(T2, weight)
 		a.wr.j.Transform = a.wr.j.Transform:Lerp(T3, weight)
 	end
+end
+-- (R6) the arm is one block: turned on its shoulder (the least turn from hanging) so the line from the shoulder to its
+-- grip points at where the hand should hold (H * grip); it reaches as far as the arm does. whole (a hand that IS the
+-- weapon: H is the hand's own frame): the arm's last 0.6 studs are the hand, their middle aimed at H
+local function solveArmR6(a: Arm, H: CFrame, weight: number, whole: boolean?)
+	local sh = a.sh
+	local A0 = sh.c0 * sh.c1:Inverse() -- (the arm hanging, chest space)
+	local pt = if whole then a.grip.Position + V(0, 0.3, 0) else a.grip.Position
+	local v0 = A0:VectorToWorldSpace(pt - a.as)
+	local v1 = (if whole then H.Position else (H * a.grip).Position) - a.S
+	if v0.Magnitude < 1e-3 or v1.Magnitude < 1e-3 then return end
+	v0, v1 = v0.Unit, v1.Unit
+	local axis = v0:Cross(v1)
+	local ang = math.acos(math.clamp(v0:Dot(v1), -1, 1))
+	local R = if axis.Magnitude > 1e-5 then CFrame.fromAxisAngle(axis.Unit, ang) elseif v0:Dot(v1) < 0 then CFrame.fromAxisAngle(Vector3.xAxis, math.pi) else ID
+	local A = CF(a.S) * R * CF(-a.S) * A0
+	local T = (sh.c0:Inverse() * A * sh.c1).Rotation
+	sh.j.Transform = if weight >= 0.999 then T else sh.j.Transform:Lerp(T, weight)
 end
 -- the hand on a hold frame F (chest space; its Y along the thing held, through the fist), turned about it until the
 -- wrist faces the elbow (AvatarArms' rule); "palm": held from under, the palm up into it
@@ -590,10 +652,14 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	-- (the hold session, 17 Nov 2026) the Zombie Claw: this body's own right hand is the claw. the nails and the cuff
 	-- go onto its real shape, and on this client the hand takes the claw's green while it is out (dropGun undoes it)
 	if r.poseR == "hand" and r.holdR then
-		local hand = r.ch:FindFirstChild("RightHand") :: BasePart?
+		local hand = (r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm")) :: BasePart? -- (R6: the arm block)
 		if hand then
 			local wa = hand:FindFirstChild("RightWristRigAttachment") :: Attachment?
-			AvatarArms.fitOver(root, r.k, r.holdR, hand.Size, if wa then wa.Position else nil)
+			if hand.Name == "Right Arm" then -- (R6: the arm's last 0.6 studs are the hand: solveArmR6's whole)
+				AvatarArms.fitOver(root, r.k, r.holdR, V(hand.Size.X, 0.6, hand.Size.Z), V(0, 0.3, 0))
+			else
+				AvatarArms.fitOver(root, r.k, r.holdR, hand.Size, if wa then wa.Position else nil)
+			end
 			local tint = AvatarArms.rows(wid, sk).Right.tint
 			if typeof(tint) == "Color3" then
 				(r :: any).tint = { part = hand, color = hand.Color, tex = if hand:IsA("MeshPart") then (hand :: MeshPart).TextureID else nil }
@@ -649,9 +715,10 @@ end
 local function newRig(ch: Model): Rig?
 	local hum = ch:FindFirstChildOfClass("Humanoid")
 	local root = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not hum or not root or not ch:FindFirstChild("UpperTorso") then return nil end
+	local ut = ch:FindFirstChild("UpperTorso") or ch:FindFirstChild("Torso") -- (an R6 body's chest is its Torso: readBodyR6)
+	if not hum or not root or not ut or not ut:IsA("BasePart") then return nil end
 	local r: Rig = {
-		ch = ch, hum = hum, root = root, ut = ch:FindFirstChild("UpperTorso") :: BasePart, head = nil, isMe = ch == me.Character,
+		ch = ch, hum = hum, root = root, ut = ut :: BasePart, head = nil, isMe = ch == me.Character,
 		-- (a test rig or a replay ghost may name its player in TPPlayer: its gun then gets that player's wrap and hat)
 		player = Players:GetPlayerFromCharacter(ch) or (if type(ch:GetAttribute("TPPlayer")) == "number" then Players:GetPlayerByUserId(ch:GetAttribute("TPPlayer") :: number) else nil),
 		J = {}, arms = {}, u = 1.5, Hs = 1, nk = Vector3.zero, headC1 = ID, geomT = 0, dirty = true,
@@ -676,7 +743,7 @@ local function release(r: Rig)
 	r.item = nil
 	r.src, r.wid, r.tool = nil, "", nil
 	if r.isMe and r.hum.Parent and r.hum:GetAttribute("TPTurned") then r.hum.AutoRotate = true; r.hum:SetAttribute("TPTurned", nil) end
-	local rh = r.ch:FindFirstChild("RightHand") -- (the Blood Cross's hat spot goes with the weapon: AvatarArms.hatSpot)
+	local rh = r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm") -- (the Blood Cross's hat spot goes with the weapon: AvatarArms.hatSpot; R6: on the arm)
 	local hs = rh and rh:FindFirstChild("HatSpot")
 	if hs then hs:Destroy() end
 end
@@ -878,7 +945,7 @@ local function itemModel(r: Rig, id: string): Model?
 		local sk = GS.template(id, GS.skinFor(r.player, id))
 		if sk and sk:GetAttribute("Item") then t = sk end
 	end
-	local hand = r.ch:FindFirstChild("LeftHand") :: BasePart?
+	local hand = (r.ch:FindFirstChild("LeftHand") or r.ch:FindFirstChild("Left Arm")) :: BasePart? -- (R6: the arm block)
 	if not t or not t:IsA("Model") or not hand then return nil end
 	local m = t:Clone()
 	-- (and their wrap on it, as on their guns: gadgets take wraps since 18 Nov 2026)
@@ -1292,8 +1359,12 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local Raim = ANG(0, yaw, 0) * ANG(pitch, 0, 0)
 	local on = r.on
 	local LT = (J.Root.c0 * J.Root.j.Transform * J.Root.c1:Inverse()).Rotation
-	local Tw = (J.Waist.c0.Rotation:Inverse() * LT:Inverse() * Rut * J.Waist.c1.Rotation)
-	J.Waist.j.Transform = if on >= 0.999 then Tw else J.Waist.j.Transform:Lerp(Tw, on)
+	if J.Waist then
+		local Tw = (J.Waist.c0.Rotation:Inverse() * LT:Inverse() * Rut * J.Waist.c1.Rotation)
+		J.Waist.j.Transform = if on >= 0.999 then Tw else J.Waist.j.Transform:Lerp(Tw, on)
+	else
+		Rut = LT -- (R6: no waist, the chest stays where the body has it; the aim is all in the arms and the head)
+	end
 	local Q = (Rut:Inverse() * Raim).Rotation
 	-- ---- the head: where the gun points; the cheek down on the stock while aiming
 	local cheek = st.cheek or Vector3.zero
@@ -1397,7 +1468,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local handR: CFrame?, handL: CFrame?
 	if r.tool then
 		local tool = r.tool
-		local hand = r.ch:FindFirstChild("RightHand") :: BasePart?
+		local hand = (r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm")) :: BasePart? -- (R6: the Tool's grip is on the arm)
 		local grip = hand and hand:FindFirstChild("RightGrip") :: Weld?
 		if grip and r.toolFrame and grip.Part1 then
 			-- G is where the gun's own frame (muzzle -Z, chute up) goes: aim it from the eye like a heavy gun
@@ -1554,12 +1625,13 @@ local function stepRig(r: Rig, dt: number, now: number)
 		end
 	end
 	-- ---- the arms: IK onto the hands. a free left hand (a pistol) goes back to the animation's own swing
-	if handR then solveArm(R, handR, poleR, on) end
+	local r6 = (r :: any).r6 == true -- (an R6 body: each arm one block, aimed on its shoulder)
+	if handR then if r6 then solveArmR6(R, handR, on, r.poseR == "hand") else solveArm(R, handR, poleR, on) end end
 	local leftOn = handL ~= nil and (r.holdL ~= nil or r.tool ~= nil or itemMix > 0 or r.leftW > 0)
 	if handL and leftOn then
 		local wgt = on
 		if not r.holdL and not r.tool then wgt = math.max(itemMix, r.leftW) * on end
-		solveArm(L, handL, poleL, wgt)
+		if r6 then solveArmR6(L, handL, wgt, r.poseL == "hand") else solveArm(L, handL, poleL, wgt) end
 	end
 	-- (the hold session, 18 Nov 2026) the Lasso's loop over the head while it spins, the fist driving it round its
 	-- edge: everyone's, and yours in third person (first person draws its own)
@@ -1606,7 +1678,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	end
 	-- (the hold session, 18 Nov 2026) the Blood Cross's hat spot on this body's own right hand (AvatarArms.hatSpot;
 	-- GunHats seats the Googly Eyes there): while it's out, not on yours while you're in first person
-	local rhand = r.ch:FindFirstChild("RightHand")
+	local rhand = r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm") -- (R6: on the arm, AvatarArms.hatSpot)
 	if rhand and rhand:IsA("BasePart") then
 		local want = r.wid == "bloodcross" and not (r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true))
 		if want ~= (rhand:FindFirstChild("HatSpot") ~= nil) then

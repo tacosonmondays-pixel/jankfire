@@ -108,7 +108,7 @@ local function anchorPart(at: Vector3): (Part, Attachment)
 end
 local function handOf(m: Instance?): Attachment?
 	if typeof(m) ~= "Instance" then return nil end
-	local hand = (m :: Instance):FindFirstChild("RightHand") or (m :: Instance):FindFirstChild("HumanoidRootPart")
+	local hand = (m :: Instance):FindFirstChild("RightHand") or (m :: Instance):FindFirstChild("Right Arm") or (m :: Instance):FindFirstChild("HumanoidRootPart") -- (R6: the arm; 18 Nov 2026)
 	if not hand or not hand:IsA("BasePart") then return nil end
 	local a = hand:FindFirstChild("LassoHand") :: Attachment?
 	if not a then

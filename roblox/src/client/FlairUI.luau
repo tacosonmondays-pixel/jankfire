@@ -839,7 +839,7 @@ local function previewLoop()
 				-- (shared/GrappleLook.luau draws it, the grapple look's own module; a plain cable if it isn't in yet)
 				local m = standIn(true)
 				if not m then return end
-				local hand = m:FindFirstChild("RightHand") :: BasePart?
+				local hand = (m:FindFirstChild("RightHand") or m:FindFirstChild("Right Arm")) :: BasePart? -- (an R6 stand-in: the arm; 18 Nov 2026)
 				local a0 = hand and (hand:FindFirstChild("RightGripAttachment") or hand:FindFirstChildWhichIsA("Attachment")) :: Attachment?
 				local sp = S.spot
 				local cleanup: (() -> ())? = nil
