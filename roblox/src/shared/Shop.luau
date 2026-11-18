@@ -198,12 +198,27 @@ function Shop.skinLive(id: string): boolean
 	local m = lib and lib:FindFirstChild(id)
 	return m ~= nil and m:IsA("Model") and m:GetAttribute("Weapon") == row[3]
 end
--- every skin on sale, sorted by id (VIP ones aren't: they come with VIP)
+-- a skin set's piece (the owner, 18 Nov 2026: "weapons from sets can't be pulled from crates or be discounted"): sold
+-- only in its set (Shop.sets), at the set's own price: never a single, never in the daily rotation, never one of the
+-- owner's deals. the loot module's LootTable.setOnly (it keeps them out of every container), else the sets' lists here
+function Shop.setOnly(kind: string, id: string): boolean
+	if kind ~= "skin" then return false end
+	if LootTable and type(LootTable.setOnly) == "function" then
+		local ok, v = pcall(LootTable.setOnly, kind, id)
+		if ok and v then return true end
+	end
+	local K = Shop.SkinSets :: any
+	if K and type(K.SETS) == "table" then
+		for _, s in K.SETS do if type(s) == "table" and table.find(s.members or {}, id) then return true end end
+	end
+	return false
+end
+-- every skin on sale as a single, sorted by id (VIP ones aren't: they come with VIP; set pieces aren't: their set is)
 function Shop.liveSkins(): { string }
 	local out = {}
 	if LootTable and type(LootTable.SKINS) == "table" then
 		-- (never a free one: the Classic set is everyone's already. 18 Nov)
-		for id, row in LootTable.SKINS do if row[2] ~= "free" and Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) then table.insert(out, id) end end
+		for id, row in LootTable.SKINS do if row[2] ~= "free" and Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) and not Shop.setOnly("skin", id) then table.insert(out, id) end end
 	end
 	table.sort(out)
 	return out
@@ -443,7 +458,9 @@ for _, o in Shop.containers do Shop.byId[o.id] = o end
 for _, b in Shop.bundles do
 	local worth = 0
 	for _, it in b.items :: { Item } do worth += Shop.singlePrice(it.kind, it.id) end
-	b.robux = math.floor(worth * 0.6 / 10 + 0.5) * 10 - 1
+	-- (a skin set is never discounted, the owner, 18 Nov: its own price is its pieces' whole worth. the other bundles,
+	-- wraps, hats and card looks, are 40% under theirs)
+	b.robux = if b.set then worth else math.floor(worth * 0.6 / 10 + 0.5) * 10 - 1
 	b.productId = nil
 	b.blurb = Shop.describe(b.items)
 	Shop.byId[b.id] = b
@@ -464,13 +481,14 @@ function Shop.shown(withSets: boolean?): { Offer }
 	end
 	return out
 end
--- what completing a skin set costs when `missing` of its skins are left: that share of the set's price
--- (the whole set: its own price). a developer product per set and count, "set_seraph" / "set_seraph:3" (Shop.PRODUCTS)
+-- what completing a skin set costs when `missing` of its skins are left: that share of the set's price, rounded up
+-- (pro rata, never under it: no discount on a set, 18 Nov) (the whole set: its own price). a developer product per set
+-- and count, "set_seraph" / "set_seraph:3" (Shop.PRODUCTS)
 function Shop.setPrice(o: Offer, missing: number?): number
 	local total = #(o.items :: { Item })
 	local m = missing or total
 	if m >= total or total == 0 then return o.robux end
-	return math.max(0, math.floor(o.robux * m / total / 10 + 0.5) * 10 - 1)
+	return math.max(0, math.ceil(o.robux * m / total))
 end
 
 -- the singles the rotation can show (wraps and hats that are not free, not held back and not VIP)
@@ -554,6 +572,7 @@ end
 -- "banner:<id>" / "title:<id>", kill effect "kill:<id>" or emote "emote:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
 	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) or Shop.dailyOnly(kind, id) or Shop.secret(kind, id) then return nil end
+	if Shop.setOnly(kind, id) then return nil end -- (a set's piece: only its set sells it, 18 Nov)
 	if Shop.isFlair(kind) and not Shop.flairForSale(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
@@ -618,7 +637,7 @@ end
 
 -- ---------------------------------------------------------------- the owner's deals (Deals.luau on the server picks them)
 -- the owner, 17 Nov 2026: "I give players 3 special discounts on random skins if you talk to me!". per player per UTC
--- day: three weapon skins on sale (Shop.liveSkins: not VIP, not daily-only, not a concept) that they don't own, at
+-- day: three weapon skins on sale (Shop.liveSkins: not VIP, not daily-only, not a concept, not a set's) they don't own, at
 -- most one legendary, a different skin set and gun each where it can. each is DEAL_OFF[rarity] percent off its single
 -- price, the rarest of the three DEAL_TOP more: 20 to 40% off. they stay the same all day; each can be had once.
 -- offer ids "deal:<skin>" (only the player's own deals: the server checks), a product per rarity and discount when

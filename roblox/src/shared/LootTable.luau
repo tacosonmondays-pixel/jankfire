@@ -150,9 +150,9 @@ L.SKINS = {
 	sat_blimp = { "CCTV Blimp", "epic", "satellite" },
 }
 
--- the skin sets' skins (Shared.SkinSets: the guns session owns their names, rarities and tiers) join the list above, so a
--- crate rolls them like any skin once their model is in JankfireSkins (16 Nov, the owner: "can the weapon skins, not all
--- of them but a couple, be like sets?"). a skin already listed keeps its row
+-- the skin sets' skins (Shared.SkinSets: the guns session owns their names, rarities and tiers) join the list above, so
+-- they're owned, granted and worn like any skin once their model is in JankfireSkins (16 Nov, the owner: "can the weapon
+-- skins, not all of them but a couple, be like sets?"). never rolled: L.setOnly (18 Nov). a skin already listed keeps its row
 local skinSets: any = nil
 do
 	local m = script.Parent:FindFirstChild("SkinSets")
@@ -286,6 +286,20 @@ function L.exclusive(t: string, id: string): boolean
 	return ok and yes == true
 end
 
+-- a skin set's piece (the owner, 18 Nov 2026: "weapons from sets can't be pulled from crates or be discounted"): a skin
+-- with a set in SkinSets.SKINS (its 4th field) or in a set's members, the VIP Ducky set's too. never in a container or
+-- its odds (L.cosmetics); the shop sells it only in its set, at the set's own price (Shop.setOnly), VIP gives the Ducky
+-- set, and Loot.grant what the owner hands out ("gift:skin:<id>"). owned ones stay owned
+function L.setOnly(t: string, id: string): boolean
+	if t ~= "skin" or not skinSets then return false end
+	local row = if type(skinSets.SKINS) == "table" then skinSets.SKINS[id] else nil
+	if type(row) == "table" and type(row[4]) == "string" and row[4] ~= "" then return true end
+	for _, s in (if type(skinSets.SETS) == "table" then skinSets.SETS else {}) do
+		if type(s) == "table" and type(s.members) == "table" and table.find(s.members, id) then return true end
+	end
+	return false
+end
+
 local function skinsLive(): { [string]: boolean }
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local out = {}
@@ -406,9 +420,9 @@ function L.cosmetics(kind: string): { Item }
 			end
 		end
 	end
-	-- (never one of the VIP daily reward's exclusives)
+	-- (never one of the VIP daily reward's exclusives, and never a skin set's piece: L.setOnly)
 	local kept = {}
-	for _, i in out do if not L.exclusive(i.type, i.id) then table.insert(kept, i) end end
+	for _, i in out do if not L.exclusive(i.type, i.id) and not L.setOnly(i.type, i.id) then table.insert(kept, i) end end
 	return kept
 end
 -- the guns a cosmetic can be won for

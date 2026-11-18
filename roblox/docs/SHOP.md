@@ -281,11 +281,12 @@ the shop on the DEALS tab.
 **The rule** (`Shop.DEALS`, `DEAL_OFF`, `DEAL_TOP`, `DEAL_PICK`; `src/server/Deals.luau` picks and keeps them):
 - **Three per player per day,** new at 00:00 UTC. They are picked the first time the player asks that day and kept
   in a session-locked save (`JankfireDeals_v1`, `_studio` in Studio), so they stay the same all day.
-- **Which skins:** weapon skins on sale (`Shop.liveSkins`: not VIP, not the daily-only ones, not concepts) that the
-  player doesn't own.
+- **Which skins:** weapon skins on sale (`Shop.liveSkins`: not VIP, not the daily-only ones, not concepts, never a skin
+  set's piece since 18 Nov) that the player doesn't own.
   - Picked by rarity weight: common 40, rare 35, epic 20, legendary 5.
   - At most one legendary.
-  - Variety: a skin from a set already picked counts a tenth as likely, and one for a gun already picked a quarter.
+  - Variety: a skin for a gun already picked counts a quarter as likely. (A set's piece counted a tenth before set
+    pieces left the deals.)
 - **The discount:** by rarity, off its single price: common 20%, rare 25%, epic 30%, legendary 35%. The rarest of the
   three gets 5% more, so 20 to 40% in all. Prices round like the rest (`Shop.dealPrice`). Examples:
   - a legendary skin, 1,200, is 719 at 40% (as the rarest) or 779 at 35%;
@@ -591,6 +592,45 @@ Tested in solo Play (place version 823):
 
 Not seen yet: a gadget skin won from a crate's reveal on screen, and a gadget card in the shop.
 
+## Set skins: never from a container, never discounted (18 Nov)
+
+The owner: "weapons from sets can't be pulled from crates or be discounted". Every skin in a `SkinSets` set counts:
+Seraph, Infernal, Witching Hour, Tidecrest, Dust Drover, Star Drover, and Ducky (still VIP only).
+- **One check:** `LootTable.setOnly("skin", id)` is true when the skin has a set in `SkinSets.SKINS` (its 4th field)
+  or is in a set's `members`. `Shop.setOnly` asks it. LootTable is the loot session's file; the change is noted
+  in its comments.
+- **No container:** `L.cosmetics` leaves set pieces out, so they're out of every Crate, Duffel Bag and Spray Can. That
+  also covers the odds and the odds screens (`L.odds`, `Shop.odds`), the opening reels (`L.strip`), and the
+  Brass and ticket redeems and the VIP daily reward's containers, which open through the same roll.
+- **No discount:**
+  - Set pieces are never single offers (`single()`), never in the daily rotation (`Shop.liveSkins`) and never one of
+    the owner's deals. A deal picked before the rule goes when the player's deals next load: if they had none of today's
+    deals yet, they get three new ones, otherwise the set piece is just dropped (`Deals.luau`).
+  - A set costs its pieces' whole worth one by one (`b.robux = worth`, no rounding). Until now it was 60%.
+  - Complete the set is a plain share of that, rounded up (`math.ceil`), never under it.
+  - Bundles of wraps, hats and card looks keep their 40% off: they hold no set pieces.
+- **Where set pieces come from:** buying the set (or the pieces still missing), VIP for Ducky, and `Loot.grant` for
+  anything the owner hands out (`"gift:skin:<id>"`). What anyone owns already stays theirs.
+
+Prices now (Robux, while the shop is free they're shown only): Seraph, Infernal and Witching Hour 3,300; Tidecrest
+3,000; Dust Drover and Star Drover 3,900. One piece left is a fifth of that (660, 600 or 780).
+
+Tested in solo Play at place version 904:
+- **The skins:** 33 set skins, all in the place.
+- **The pools:** the Crate holds 33 skins, the Duffel Bag 90 items and the Spray Can 99 wraps, with no set piece in
+  any of them.
+- **Rolls:** 10,000 Crate, 10,000 Duffel Bag and 5,000 Spray Can rolls gave no set skin. Neither did 100 reels of each.
+- **The Crate emptied 5 times:** 165 rolls, no set skin. Its odds still added up to 1 as it emptied.
+- **The odds screens:** each container's odds add up to 100.000%.
+- **The shop:**
+  - `Shop.liveSkins` holds 33 skins, none a set's. No set skin is a single or on sale.
+  - 60 days of the rotation had 60 skin singles, none from a set. A set was the featured hero on 30 of those days, at
+    its own price.
+  - Every set's price equals its worth, and no complete-the-set price is under its share.
+- **The owner's deals:** the test profile's stored deals held two set pieces (`sawnoff_dust`, `dmr_nighttide`). After
+  a reset the new three were `sawnoff_pepper`, `ar_bullpup` and `medkit_doctorbag`: no set piece. The clean-up of
+  an old list itself (without a reset) wasn't run.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
@@ -818,7 +858,7 @@ played or stood with you in it; the top row that sat empty before played its tur
 and rarities in `LootTable.SKINS`) are sold too. A skin is already one gun's, so it is owned under its bare id like a
 card look (`Shop.gunless`). A skin is on sale once the loot module knows it and its model is in the place
 (`Shop.skinLive`, the same check the loot module rolls the Crate by). One of the six daily singles is a skin
-(`"skin:<id>"`, priced 150 / 300 / 600 / 1200 by rarity). The inventory shows skins first in each gun's section, with
+(`"skin:<id>"`, priced 150 / 300 / 600 / 1200 by rarity), never a set's piece (`Shop.setOnly`, 18 Nov). The inventory shows skins first in each gun's section, with
 a SKINS filter. Every preview builds the skin's body with `WeaponModels.build(weapon, 3, skinId)`.
 
 **Skin sets** are the guns session's `Shared.SkinSets` (`SETS[setId] = { name, pair?, colour, accent, order,
@@ -826,8 +866,8 @@ members }`). Each set is a bundle whose offer id is the set id (`"set_seraph"`, 
 - Its contents are its skins, and its hero is its top piece (the rarest skin), so a set can be the day's featured
   bundle or a hub hologram (`hero.skin`).
 - It is on sale only when every skin in it is (`Shop.ready`). Bundle lists should use `Shop.shown(true)`.
-- Its price is 60% of its skins one by one. Completing a set you have some of costs that share of the set's price
-  (`Shop.setPrice(o, missing)`). The loot server's `("buy", "set_seraph")` gives only the skins you lack.
+- Its price is its skins' whole worth one by one: a set is never discounted (18 Nov; until then it was 60%). Completing
+  a set you have some of costs that share of the set's price, rounded up (`Shop.setPrice(o, missing)`). The loot server's `("buy", "set_seraph")` gives only the skins you lack.
 - With Robux on there is one product for the whole set and one per count left (`"set_seraph:3"`).
   `Shop.productFor(o, missing)` picks the product, and `ShopReceipts` counts what the buyer lacks.
 

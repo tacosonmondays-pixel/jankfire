@@ -108,6 +108,18 @@ local function today(p: Player): any?
 		prof.dirty = true
 		task.spawn(Profiles.save, store, prof)
 	end
+	-- (a skin set's piece is never on a deal, the owner, 18 Nov: one picked before that goes. nothing had today: a new
+	-- three; else just without it)
+	local kept, had = {}, false
+	for _, x in d.deals do
+		if x.bought then had = true end
+		if not (type(x.skin) == "string" and Shop.setOnly("skin", x.skin)) then table.insert(kept, x) end
+	end
+	if #kept ~= #d.deals then
+		d.deals = if had then kept else roll(p)
+		prof.dirty = true
+		task.spawn(Profiles.save, store, prof)
+	end
 	return d
 end
 
