@@ -143,7 +143,7 @@ end
 -- the thrower (no damage to themselves, the whole shove); a thrower who has left: nobody's, judged from the blast point.
 -- held = it went off in the owner's hand (cooked too long): they take the blast like anyone, as their own kill
 local function explode(at: Vector3, owner: Fighter?, wid: string, w: Items.Proj, held: boolean?)
-	ItemFx:FireAllClients({ k = "boom", w = wid, p = at, r = w.radius })
+	ItemFx:FireAllClients({ k = "boom", w = wid, p = at, r = w.radius, o = uidOf(owner) }) -- (o: whose: a skin's sound layer)
 	local R = w.radius :: number
 	for _, t in table.clone(Fight.all) do
 		if not t.alive then continue end
@@ -163,19 +163,19 @@ local function explode(at: Vector3, owner: Fighter?, wid: string, w: Items.Proj,
 	end
 end
 
-local function dropProj(pr: Pr, at: Vector3?)
+local function dropProj(pr: Pr, at: Vector3?, went: boolean?)
 	local i = table.find(projs, pr)
 	if i then table.remove(projs, i) end
-	ItemFx:FireAllClients({ k = "pd", id = pr.id, p = at or pr.p })
+	ItemFx:FireAllClients({ k = "pd", id = pr.id, p = at or pr.p, x = if went then true else nil }) -- (x: it went off)
 end
 
-local function smokeAt(at: Vector3)
+local function smokeAt(at: Vector3, owner: Fighter?)
 	local sm = L.smoke
 	nextId += 1
 	local cl: Items.Cloud = { id = nextId, p = at, r = sm.r :: number, untilT = now() + (sm.dur :: number) }
 	table.insert(clouds, cl)
 	while #clouds > MAX_CLOUD do table.remove(clouds, 1) end
-	ItemFx:FireAllClients({ k = "smoke", id = cl.id, p = cl.p, r = cl.r, left = sm.dur })
+	ItemFx:FireAllClients({ k = "smoke", id = cl.id, p = cl.p, r = cl.r, left = sm.dur, o = uidOf(owner) })
 end
 
 local function throw(f: Fighter, k: string, o: Vector3, d: Vector3, vel: Vector3, fuse: number?)
@@ -248,7 +248,7 @@ local function duckFly(pr: Pr, owner: Fighter?, dt: number): boolean
 	end
 	if stuck then
 		local c = centre(stuck) or pr.p
-		dropProj(pr, c)
+		dropProj(pr, c, true)
 		makeHole(c, owner, stuck, D.stick)
 		Rules.tagged(stuck, owner, "duck", now())
 		ItemFx:FireAllClients({ k = "dstick", o = pr.uid, on = modelOf(stuck), onUid = uidOf(stuck) })
@@ -1238,7 +1238,7 @@ local function blowInHand(f: Fighter)
 	ItemFx:FireAllClients({ k = "cookx", o = uid, why = "boom" })
 	if not at then return end
 	if ck.k == "frag" then explode(at, f, "frag", Items.PROJ.frag, true)
-	elseif ck.k == "smokegren" then smokeAt(at) end
+	elseif ck.k == "smokegren" then smokeAt(at, f) end
 end
 -- killed with the pin out: it drops where you fell, with what's left of its fuse (still yours)
 local function dropCook(f: Fighter)
@@ -1339,9 +1339,9 @@ local function tick(dt: number)
 			ItemFx:FireAllClients({ k = "pb", id = pr.id, p = pr.p, v = pr.v })
 		end
 		if age >= pr.fuse then
-			dropProj(pr)
+			dropProj(pr, nil, true)
 			if pr.k == "frag" then explode(pr.p, alive(pr.owner), "frag", Items.PROJ.frag)
-			elseif pr.k == "smokegren" then smokeAt(pr.p)
+			elseif pr.k == "smokegren" then smokeAt(pr.p, alive(pr.owner))
 			elseif pr.k == "duck" then makeHole(pr.p, pr.owner, nil, 0) end
 		elseif age >= pr.life or pr.p.Y < -1500 then
 			dropProj(pr)

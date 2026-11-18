@@ -532,6 +532,8 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	handStep()
 	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" and it.id ~= "wand" then -- (those make their sound when the server says it happened)
 		Sfx.play(if it.id == "medkit" then "heal" elseif it.id == "bubble" then "reverse" else "swing")
+		-- (a skin's own layer on top: the medkit opening, a thrown one's throw)
+		if (Sfx :: any).skinItem then (Sfx :: any).skinItem(me, it.id, if it.id == "medkit" then "open" else "throw") end
 	end
 end)
 
@@ -628,6 +630,7 @@ local function addFlying(m: any)
 	local w = Items.PROJ[m.w]
 	local model = itemModel(m.w, if type(m.o) == "number" then Players:GetPlayerByUserId(m.o) else nil)
 	model.Parent = folder
+	do local FxM = require(script.Parent:WaitForChild("Fx")) :: any; if FxM.itemFlight then pcall(FxM.itemFlight, model) end end -- (a skin's flight trail)
 	local mine = m.o == me.UserId
 	if m.w == "duck" and not mine then Sfx.play("squeak", m.p, 0.8) end
 	local vis: Vis = { id = m.id, k = m.w, p = m.p, v = m.v, r = w.r, bounce = w.bounce, grav = w.grav, born = os.clock(),
@@ -640,11 +643,19 @@ local function addFlying(m: any)
 	if rel then vis.off = rel - m.p end
 	flying[m.id] = vis
 	if not mine then Sfx.play("swing", m.p, 0.8) end
+	if not mine and type(m.o) == "number" and (Sfx :: any).skinItem then
+		(Sfx :: any).skinItem(Players:GetPlayerByUserId(m.o), if m.w == "smokegren" then "smoke" elseif m.w == "calc" then "quiz" else m.w, "throw", m.p)
+	end
 end
-local function dropFlying(id: any)
+-- went: the server says it went off there (its fuse ran out, or the duck stuck): a skin's landing effect plays
+local function dropFlying(id: any, went: boolean?, at: Vector3?)
 	local v = if type(id) == "number" then flying[id] else nil
 	if not v then return end
 	flying[id] = nil
+	if went then
+		local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+		if FxM.itemLand then pcall(FxM.itemLand, v.model, at or (v.p + v.off)) end
+	end
 	v.model:Destroy()
 end
 -- someone's middle (their feet + 0.9 m: what the duck homes on and the hole sits at)
@@ -936,6 +947,7 @@ local function addHole(m: any)
 	end
 	holesV[id] = hv
 	if age < 0.5 then Sfx.play("hole", m.p, 0.9) end
+	if age < 0.5 and holeBy and (Sfx :: any).skinItem then (Sfx :: any).skinItem(holeBy, "duck", "land", m.p) end -- (the duck's skin layer as it sticks)
 end
 local function updHole(m: any)
 	local hv = if type(m.id) == "number" then holesV[m.id] else nil
@@ -1709,6 +1721,7 @@ X.cookRelease = function()
 	end
 	handStep()
 	Sfx.play("swing")
+	if (Sfx :: any).skinItem then (Sfx :: any).skinItem(me, ck.id, "throw") end -- (a skin's own layer on the throw)
 end
 -- the hand holding it: the pin comes out at 0.13 s, the lamp on top blinks faster as the fuse runs down
 X.cookHand = function(h: any, t: number)
@@ -2154,6 +2167,8 @@ do
 			if d:IsA("BasePart") and string.sub(d.Name, 1, 3) == "lid" then table.insert(parts, { p = d, rel = piv:ToObjectSpace(d.CFrame) }) end
 		end
 		h.extra = { medkit = true, hinge = Vector3.new(0, rel.Position.Y - lid.Size.Y / 2, rel.Position.Z - lid.Size.Z / 2), parts = parts }
+		local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+		if FxM.itemUse then pcall(FxM.itemUse, m) end -- (a skin's own effect as its lid opens: the Bento's steam)
 	end
 	X.medkitStep = function(h: Hand, t: number)
 		local e = h.extra
@@ -2375,15 +2390,24 @@ local function onFx(m: any)
 			v.off += v.p - m.p -- (a small correction slides in instead of jumping)
 			v.p, v.v = m.p, m.v
 		end
-	elseif k == "pd" then if not X.dropSoap(m.id, m.p) then dropFlying(m.id) end
-	elseif k == "boom" and typeof(m.p) == "Vector3" then boom(m.p, if type(m.r) == "number" then m.r else 7.5 * S)
+	elseif k == "pd" then if not X.dropSoap(m.id, m.p) then dropFlying(m.id, m.x == true, if typeof(m.p) == "Vector3" then m.p else nil) end
+	elseif k == "boom" and typeof(m.p) == "Vector3" then
+		boom(m.p, if type(m.r) == "number" then m.r else 7.5 * S)
+		if type(m.o) == "number" and (Sfx :: any).skinItem then (Sfx :: any).skinItem(Players:GetPlayerByUserId(m.o), "frag", "blast", m.p) end
 	elseif k == "smoke" and type(m.id) == "number" and typeof(m.p) == "Vector3" then
 		addCloud(m.id, m.p, if type(m.r) == "number" then m.r else 6.5 * S, if type(m.left) == "number" then m.left else 10)
+		if type(m.o) == "number" and (Sfx :: any).skinItem then (Sfx :: any).skinItem(Players:GetPlayerByUserId(m.o), "smoke", "cloud", m.p) end
 	elseif k == "bub+" and type(m.id) == "number" and typeof(m.p) == "Vector3" then
 		addDome(m.id, m.p, if type(m.r) == "number" then m.r else 4.4 * S, if type(m.left) == "number" then m.left else 7, m.fresh ~= false and type(m.o) == "number")
 	elseif k == "bubx" then dropDome(m.id)
 	elseif k == "bubhit" and typeof(m.p) == "Vector3" then domeHit(m.p)
-	elseif k == "medkit" then healFx(if typeof(m.model) == "Instance" then m.model else nil, m.o == me.UserId)
+	elseif k == "medkit" then
+		healFx(if typeof(m.model) == "Instance" then m.model else nil, m.o == me.UserId)
+		-- (someone else's medkit: their skin's layer where they stand; yours played as you pressed G)
+		local hr = if typeof(m.model) == "Instance" then m.model:FindFirstChild("HumanoidRootPart") else nil
+		if type(m.o) == "number" and m.o ~= me.UserId and hr and hr:IsA("BasePart") and (Sfx :: any).skinItem then
+			(Sfx :: any).skinItem(Players:GetPlayerByUserId(m.o), "medkit", "open", hr.Position)
+		end
 	elseif k == "popper" then popperFx(m)
 	elseif k == "reverse" then reverseFx(m)
 	elseif k == "reversex" and type(m.o) == "number" then dropCard(m.o)
