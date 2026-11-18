@@ -255,9 +255,9 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
   ![the mode and map votes](matchmaking/35_vote_mode_and_map.jpg)
   ![Infection on THE GUT, the map that won](matchmaking/36_infection_on_the_gut.jpg)
   ![a casual 1v1's map vote](matchmaking/38_duel_map_vote.jpg)
-- **Open question** (v719): in a casual 1v1 I pressed 1 (ROOFTOP), but the match went to CRATE. Either the key didn't
-  register (with no votes, one of the three is drawn) or ROOFTOP's site couldn't be claimed and the rotation took over.
-  To be rechecked with a logged stand-in vote.
+- **Casual duel rechecked** (v720): a stand-in and I (key 1) both voted DESERT: CANYON. The server counted 2 votes and
+  the 1v1 opened on DESERT: CANYON. At v719, pressing 1 for ROOFTOP had ended on CRATE; most likely that key press
+  didn't register, and with no votes one of the three is drawn.
 
 ### Changing your loadout before and between rounds (17 Nov 2026)
 
@@ -289,8 +289,10 @@ The owner: "allow us to change weapons before first round and between rounds".
   - Once the round was live, a pick was refused with the line above.
   - I died, then forced the round end. In the break the picker took SMG (LoadoutNext `smg,…`), and round 2 spawned me
     with the SMG.
-  - Not tested: a pick while alive in the countdown going straight into your hands. The round-2 countdown (3 s)
-    passed during my checks. It runs through the hub's re-arm, which the server allows in the window.
+  - v720: a pick while alive in round 1's countdown went straight into my hands (SMG to Assault Rifle, 30/30) with 7 s
+    left on the window.
+
+  ![a pick in the countdown, in your hands at once](matchmaking/42_rearm_in_countdown.jpg)
 
   ![CHANGE LOADOUT before round 1](matchmaking/39_change_loadout_hint.jpg)
   ![the picker in the break, dead: SMG for next round](matchmaking/40_loadout_between_rounds.jpg)
@@ -626,22 +628,78 @@ same sample modes on the client), `board` / `board:party` / `noboard` / `boardfa
 A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match
 places you), `rival 2v2 true 2 1500`, `hold 8 party`, `find`.
 
-## 6. Across servers (written, OFF, untested until publish)
+## 6. Across servers (ON since 17 Nov 2026)
 
-`PlayConfig.CROSS_SERVER = false`. Teleports and reserved servers can't be tested in Studio solo Play, so this part
-has never run.
+The owner: "can you also enable cross matchmaking". `PlayConfig.CROSS_SERVER = true` (`server/CrossServer.luau`, and
+`crossTick` in `server/Party.luau`). The ranked extras across servers are a separate switch,
+`PlayConfig.GLOBAL_RANKED`, still off and untested: the leaderboard's global top 100 and a cheat restore telling
+another server to take it now.
 
-- **Queue:** each ticket (a party) goes into a `MemoryStoreSortedMap` per queue (`q_ranked_2v2`), sort key = rating,
-  60 s expiry renewed while searching. One server at a time is the matchmaker (a lock key renewed every 5 s); it reads
-  the map, forms matches with the same rules as §3, and writes each ticket's result (a reserved server's access code).
-- **Match servers:** `TeleportService:ReserveServer` gives a server for the match; the parties are teleported there
-  with `TeleportOptions.ReservedServerAccessCode` and teleport data `{ match, team, party }`. That server sees it is
-  a match server (`game.PrivateServerId ~= ""` and the data), waits up to 30 s for everyone, starts the match through
-  `Matches.startQueued`, and at the end teleports everyone back to a public server with their party in the data.
-- **Invites to friends elsewhere:** `MessagingService` topic `jf_invite` with `{ to, from, server, code }`; accepting
-  teleports you to the leader's server.
-- What still needs doing at publish: test the teleports, the lock hand-over, and what happens when a teleport fails
-  (`TeleportInitFailed`).
+- **Which queues:** every duel (casual and ranked) and QUICKPLAY. A PARTY card pick, filled from quickplay, stays in
+  its own server.
+- **Home first:** a party searches in its own server as before. After `CrossServer.HANDOFF` (20 s) without a match it
+  also offers a ticket and keeps searching at home; whichever finds a match first wins.
+  - The ticket is one entry in a `MemoryStoreSortedMap` per queue (`jf_q_casual:1v1`), sort key = rating, a 30 s
+    expiry renewed while it searches.
+  - The players see "searching other servers too".
+  - A party matched at home, or one that cancels or leaves, takes its ticket back.
+- **The matchmaker:** one server at a time (a lock in `jf_mm`, renewed every 5 s).
+  - It reads the duel and QUICKPLAY queues, forms matches with `Queue.form` (the same rules as in one server), and
+    reserves a server for each (`TeleportService:ReserveServer`).
+  - It writes each ticket's result (`jf_results`) and the match's own record (`m:<match id>`: mode, ranked, sides with
+    everyone's rating).
+  - **QUICKPLAY can't vote across servers:** the matchmaker draws the mode (`QUICK_WEIGHT`, a team mode only when the
+    parties split into two sides), and the map is the rotation's.
+  - One party alone is never rated.
+- **The move:** a ticket with a result takes the party out of its home queue ("match found on another server: moving
+  you there") and teleports its players with the match id in the teleport data.
+- **The match server:** teleport data passes through the client, so it only takes the match id from it.
+  - The mode, sides and ratings come from the matchmaker's record, and each player goes on the side they're listed
+    on.
+  - It waits up to `ARRIVE` (30 s) for everyone, then starts the match (a duel through `Matches.startQueued`, a classic
+    mode through its own start).
+  - When the match ends, everyone goes back to a public server.
+- **Failing safe:**
+  - A memory store call that fails means no ticket; the party simply searches at home.
+  - A teleport that fails puts the whole party straight back in its home queue with "couldn't reach the match server:
+    searching here again". That covers an error from `TeleportAsync`, a `TeleportInitFailed` later, or the players
+    still being there `AWAY` (20 s) on.
+  - On a match server, a player not on the match's list, a match already started, a side that never arrived, or a
+    match that won't start sends the players back to a public server with a note (3 tries).
+- **Studio:** never takes part on its own. It uses its own memory store names (`jfs_`), so a play test never touches
+  the live queues, and it has no teleports.
+  - Tests switch it on: `JankPlayTest("cross", op, …)` with `on` / `off`, `handoff secs`, `ticket key size rating` (a
+    ticket from "another server"), `peek key`, `mm` (one matchmaker pass with stand-in server codes), `result id`,
+    `arrive player data`, `start`.
+
+- **Tested in Studio** (place v720, 18 Nov 00:07 UTC, cross switched on with a handoff of 2 s):
+  - My party searching casual 1V1 offered a ticket (in `jfs_q_casual:1v1`).
+  - A stand-in ticket from "another server" joined it, and one matchmaker pass formed a 1v1 with both and removed both
+    tickets.
+  - My server read the result. The teleport can't happen in Studio, so the party went straight back to searching at
+    home, kept its time, and offered a fresh ticket.
+  - On the match-server side, arriving with that match id put me on my listed side, and the check said "a side never
+    arrived" (the stand-in's).
+  - A made-up match id showed "THAT MATCH IS GONE: BACK TO A PUBLIC SERVER".
+  - Not testable in Studio: the real teleports, reserved servers, `TeleportInitFailed`, the lock hand-over between
+    servers. They're in the live check below.
+
+  ![a match id the matchmaker never made: the note](matchmaking/41_cross_failsafe_note.jpg)
+
+### What needs a live check after the owner publishes
+
+Two or more real players, each alone in their own public server (or two friends who join different servers):
+
+1. Both press PLAY, pick casual 1V1 and search. After 20 s each sees "searching other servers too".
+2. Within about 5 s more, both see "match found on another server: moving you there" and are teleported to the same
+   new server.
+3. The match starts once both arrive (at most 30 s), with the arena banner and both on opposite sides.
+4. After the match, both are teleported back to a public server (not necessarily the one they came from).
+5. Ranked 1V1 the same way: the rating changes at the end, and the leaderboard shows it after the return.
+6. QUICKPLAY with 2+ players in different servers: the match starts on a drawn mode.
+7. Fail-safe: one player leaves the game during the move. The other should be sent back to a public server with a
+   note after 30 s, not left in an empty server.
+8. Watch the server log for "cross-server teleport failed" and "[jankfire]" warnings.
 
 ## 7. State (17 Nov 2026, place version 507)
 

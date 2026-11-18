@@ -344,7 +344,8 @@ Party.ops = {} :: { [string]: (Player, any, any) -> any }
 local function dropEntry(pt: PartyT, why: string?)
 	local e = pt.entry
 	local tk = (pt :: any).ticket
-	if tk and e then (pt :: any).ticket = nil; task.spawn(CrossServer.withdraw, e.key, tk) end
+	if tk and e then (pt :: any).ticket = nil; task.spawn(CrossServer.withdraw, (pt :: any).ticketKey or e.key, tk) end
+	;(pt :: any).ticketKey, (pt :: any).away = nil, nil -- (a cross-server ticket, a teleport under way: CrossServer)
 	if e then Queue.remove(e) end
 	pt.entry = nil
 	local f = pt.found
@@ -873,6 +874,8 @@ local function start(f: Found): boolean
 		for _, e in list do
 			Queue.remove(e)
 			local o = e.owner :: any
+			-- (matched here: a cross-server ticket of theirs is taken back, so no other server waits for them)
+			if o.ticket then task.spawn(CrossServer.withdraw, o.ticketKey or e.key, o.ticket); o.ticket, o.ticketKey = nil, nil end
 			o.entry, o.found = nil, nil
 			if o.members and o.leader then
 				-- the whole party comes back to the room after the match (built now if everyone had left it)
@@ -889,26 +892,78 @@ local function start(f: Found): boolean
 	return true
 end
 
--- (PlayConfig.CROSS_SERVER only: untested until publish) a party that found nothing here for CrossServer.HANDOFF s
--- offers a ticket to every server's matchmaker; once the ticket has a result, its players go to that match server
+-- (PlayConfig.CROSS_SERVER, on since 17 Nov 2026: CrossServer.luau) a party that has searched here for
+-- CrossServer.HANDOFF s (a duel or QUICKPLAY) also offers a ticket to every server's matchmaker, and keeps searching
+-- here meanwhile: whichever finds a match first wins (matched here, the ticket is taken back). a ticket's result takes
+-- the party out of this server's queue and teleports its players to that match server. anything failing on the way
+-- (the memory store: no ticket, it simply searches here; the teleport: an error, TeleportInitFailed, or the players
+-- still here CrossServer.AWAY s on) puts the party straight back in this server's queue with a short note. the memory
+-- store calls yield, so this runs on its own thread, never holding up the queue's tick
 local crossT = 0
+local crossBusy = false
+local function withdrawTicket(pt: PartyT)
+	local o = pt :: any
+	if o.ticket then
+		task.spawn(CrossServer.withdraw, o.ticketKey or (pt.entry and pt.entry.key) or "", o.ticket)
+		o.ticket, o.ticketKey = nil, nil
+	end
+end
+-- back to searching here after a cross-server match fell through
+local function searchHere(pt: PartyT, note: string)
+	local o = pt :: any
+	local away = o.away
+	o.away = nil
+	if not away or pt.entry ~= away.e or not parties[pt.id] then return end
+	local e = away.e :: Queue.Entry
+	e.state = "search"
+	Queue.add(e)
+	pushParty(pt)
+	for _, pl in realMembers(pt) do toast(pl, note) end
+end
+-- (CrossServer's TeleportInitFailed) a player of a party on its way out stayed: the whole party searches here again
+function Party.crossFailed(p: Player)
+	local pt = byPlayer[p]
+	if pt and (pt :: any).away then searchHere(pt, "couldn't reach the match server: searching here again") end
+end
 local function crossTick()
-	if not CrossServer.enabled() or RunService:IsStudio() or now() - crossT < 5 then return end
+	if not CrossServer.active() or now() - crossT < 3 then return end
 	crossT = now()
-	for _, pt in parties do
+	local list = {}
+	for _, pt in parties do table.insert(list, pt) end
+	for _, pt in list do
+		if not parties[pt.id] then continue end
+		local o = pt :: any
 		local e = pt.entry
-		if not e or e.state ~= "search" or now() - e.since < CrossServer.HANDOFF then continue end
+		-- sent off, but still here: the teleport never went
+		if o.away then
+			if now() - o.away.t > CrossServer.AWAY then searchHere(pt, "couldn't reach the match server: searching here again") end
+			continue
+		end
+		-- a ticket out for a party no longer searching here (found here, cancelled, left): taken back
+		if o.ticket and (not e or e.state ~= "search" or e.key ~= o.ticketKey) then withdrawTicket(pt); continue end
+		if not e or e.state ~= "search" or now() - e.since < CrossServer.HANDOFF or not CrossServer.crossable(e.mode) then continue end
 		local ms = {}
 		for _, m in pt.members do local r, rd = ratingFor(m, e.mode); table.insert(ms, { id = m.id, r = r, rd = rd }) end
-		local o = pt :: any
 		if not o.ticket then
-			o.ticket = CrossServer.offer(e, ms)
+			local id = CrossServer.offer(e, ms) -- (yields; nil if the memory store failed: it searches here anyway)
+			if id and pt.entry == e and e.state == "search" then
+				o.ticket, o.ticketKey = id, e.key
+				for _, pl in realMembers(pt) do toast(pl, "searching other servers too") end
+			elseif id then
+				task.spawn(CrossServer.withdraw, e.key, id)
+			end
 		else
 			local res = CrossServer.result(o.ticket)
+			if pt.entry ~= e or e.state ~= "search" then continue end -- (found here meanwhile: the next pass takes the ticket back)
 			if res then
-				o.ticket = nil
-				dropEntry(pt)
-				CrossServer.send(realMembers(pt), res, { leader = pt.leader.id })
+				o.ticket, o.ticketKey = nil, nil
+				Queue.remove(e)
+				e.state = "away"
+				o.away = { e = e, t = now() }
+				local players = realMembers(pt)
+				for _, pl in players do toast(pl, "match found on another server: moving you there") end
+				local ok = CrossServer.send(players, res, { leader = pt.leader.id })
+				if not ok then searchHere(pt, "couldn't reach the match server: searching here again") end
 			else
 				CrossServer.renew(e.key, o.ticket, e, ms)
 			end
@@ -918,7 +973,10 @@ end
 
 local function tick()
 	sweepInvites()
-	pcall(crossTick)
+	if not crossBusy and CrossServer.active() then
+		crossBusy = true
+		task.spawn(function() pcall(crossTick); crossBusy = false end)
+	end
 	Queue.step(now(), onFormed)
 	for _, f in table.clone(founds) do
 		-- (a quickplay vote's clock ran out: its pick shows for PlayConfig.VOTE_SHOW s, then the match starts)
@@ -1021,7 +1079,7 @@ local function stateOf(p: Player): any
 		end
 	end
 	return { ok = true, party = if pt then viewOf(pt, p) else nil, invites = incoming, ranked = RankedData.modes(p),
-		best = RankedData.summary(p), cross = PlayConfig.CROSS_SERVER }
+		best = RankedData.summary(p), cross = CrossServer.active() }
 end
 
 -- (Studio: the leaderboard lists the stand-ins too, so a one-player test has a list to look at)

@@ -4,9 +4,13 @@
 local PlayConfig = {}
 
 -- across servers (MemoryStore queues, MessagingService invites, reserved match servers: server/CrossServer.luau).
--- OFF: teleports and reserved servers don't run in Studio Play, so this has never been tested. turn on only after
--- publishing and testing it with real players
-PlayConfig.CROSS_SERVER = false
+-- ON since 17 Nov 2026 (the owner: "can you also enable cross matchmaking"): the duels and QUICKPLAY queues reach
+-- other servers after CrossServer.HANDOFF s, failing back to this server's queue. Studio never takes part (its own
+-- memory store names, no teleports) unless a test switches it on
+PlayConfig.CROSS_SERVER = true
+-- the ranked extras across servers, apart from the matchmaking and still OFF (untested): the global top 100 on the
+-- leaderboard (an OrderedDataStore) and a cheat restore telling another server to take it now (MessagingService)
+PlayConfig.GLOBAL_RANKED = false
 
 export type Mode = { id: string, name: string, teams: number, size: number, ranked: boolean, pad: string }
 -- pad = the queue pads' Mode attribute it plays like (Matches.startQueued takes that pad's rules and arena rotation)

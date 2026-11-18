@@ -29,7 +29,12 @@ local pushR = remotes:WaitForChild("PlayPush") :: RemoteEvent
 
 RankedData.init(Matches, Stats, function(p: Player, msg: any) if p.Parent then pushR:FireClient(p, msg) end end)
 Party.init(Fight, Matches, RankedData, remotes)
-CrossServer.init(Matches, {}) -- (does nothing while PlayConfig.CROSS_SERVER is off)
+-- (across servers, PlayConfig.CROSS_SERVER: a teleport that fails puts the party back in this server's queue; a match
+-- server that can't play its match says why before it sends everyone back)
+CrossServer.init(Matches, {
+	onTeleportFailed = Party.crossFailed,
+	notify = function(p: Player, text: string) if p.Parent then pushR:FireClient(p, { t = "toast", text = text }) end end,
+})
 -- every match recorded (Recorder.luau): killcams, the play of the match, recordings for reports
 Recorder.init(Fight, Matches)
 -- QUICK JOIN: a pop-up for everyone free in the hub when someone steps on a queue pad (QuickJoin.luau)
@@ -56,6 +61,7 @@ if RunService:IsStudio() then
 	fn.OnInvoke = function(op: string, a: any, b: any, c: any, d: any): any
 		if op == "ranked" or op == "setranked" or op == "resetranked" or op == "restore" or op == "unrestore" or op == "fixes" or op == "pull" or op == "log" then return RankedData.test(op, a, b, c) end
 		if string.sub(op, 1, 2) == "qj" then return QuickJoin.test(op, a, b, c) end
+		if op == "cross" then return CrossServer.test(a, b, c, d) end -- ("cross", "on" | "handoff" | "ticket" | "mm" ...: CrossServer.test)
 		if op == "play" then return Party.enter(a) end
 		if op == "leave" then Party.leave(a); return true end
 		return Party.test(op, a, b, c, d)

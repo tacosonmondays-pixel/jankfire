@@ -115,7 +115,7 @@ end
 --     their save flagged (d.void)
 -- a player online in this server gets it at once; anyone else gets a pending fix in fixStore ("r:<user id>"), taken and
 -- applied on their next join (their own save is session-locked, so nothing else writes into it). with
--- PlayConfig.CROSS_SERVER on, MessagingService ("JankRankedFix") tells the server they're on to take it now.
+-- PlayConfig.GLOBAL_RANKED on, MessagingService ("JankRankedFix") tells the server they're on to take it now.
 -- the restored player sees "RANKED RATING RESTORED +N"
 -- RankedData.undoRestore(uid), for a wrong catch (the anti-cheat session's UNCONFIRM / UNBAN): the accused's season
 -- comes back as it was before the void. the players who got RP back keep it, and the matches stay marked restored, so a
@@ -276,7 +276,7 @@ local function deliver(uid: number, fx: any, forceStore: boolean?): boolean
 			return list
 		end)
 	end)
-	if PlayConfig.CROSS_SERVER and not studio then
+	if PlayConfig.GLOBAL_RANKED and not studio then
 		pcall(function() MessagingService:PublishAsync("JankRankedFix", { u = uid }) end)
 	end
 	return false
@@ -343,7 +343,7 @@ end
 -- ------------------------------------------------------------------ the leaderboard
 -- (17 Nov: the hub's RANKED regular, Frisk1636, opens it, and so does the Play screen's LEADERBOARD.) this server's
 -- placed players by rank points on each ladder (the duels: each player's best mode), the viewer's own ranks, the
--- season and its end. with PlayConfig.CROSS_SERVER on, also a global top 100 per ladder from an OrderedDataStore of rank
+-- season and its end. with PlayConfig.GLOBAL_RANKED on, also a global top 100 per ladder from an OrderedDataStore of rank
 -- points: written after every rated match and every restore (a voided season drops out), read at most once a minute
 -- per server. that part is OFF and untested until the place is published
 local TOP_N = 100
@@ -362,7 +362,7 @@ local function topStore(ladder: string): OrderedDataStore?
 end
 -- this player's place on the global lists (their best duels mode, and Party Ranked), or off them when not placed
 function RankedData.topWrite(p: Player)
-	if not PlayConfig.CROSS_SERVER then return end
+	if not PlayConfig.GLOBAL_RANKED then return end
 	local d = dataOf(p)
 	if not d then return end
 	local uid = tostring(p.UserId)
@@ -382,7 +382,7 @@ end
 local topCache: { [string]: { t: number, rows: { any } } } = {}
 local topBusy: { [string]: boolean } = {}
 local function globalTop(ladder: string): { any }?
-	if not PlayConfig.CROSS_SERVER then return nil end
+	if not PlayConfig.GLOBAL_RANKED then return nil end
 	local c = topCache[ladder]
 	if (c and os.clock() - c.t < 60) or topBusy[ladder] then return if c then c.rows else nil end
 	local s = topStore(ladder)
@@ -434,8 +434,8 @@ function RankedData.board(viewer: Player, global: boolean?): any
 		season = { n = Ranked.SEASON, name = Ranked.SEASON_NAME, ends = Ranked.SEASON_ENDS, now = os.time() },
 		duels = lists.duels, party = lists.party,
 		me = { duels = RankedData.summary(viewer), party = views[Ranked.PARTY_KEY], modes = views },
-		cross = PlayConfig.CROSS_SERVER,
-		global = if global and PlayConfig.CROSS_SERVER then { duels = globalTop("duels"), party = globalTop("party") } else nil,
+		cross = PlayConfig.GLOBAL_RANKED,
+		global = if global and PlayConfig.GLOBAL_RANKED then { duels = globalTop("duels"), party = globalTop("party") } else nil,
 	}
 end
 
@@ -592,9 +592,9 @@ function RankedData.init(matches: any, stats: any?, pushFn: (Player, any) -> ())
 	Players.PlayerAdded:Connect(function(p) task.spawn(join, p) end)
 	for _, p in Players:GetPlayers() do task.spawn(join, p) end
 	Players.PlayerRemoving:Connect(leave)
-	-- (PlayConfig.CROSS_SERVER only, untested until publish: a restore in another server tells this one to take a
+	-- (PlayConfig.GLOBAL_RANKED only, untested until publish: a restore in another server tells this one to take a
 	-- player's fixes now)
-	if PlayConfig.CROSS_SERVER and not studio then
+	if PlayConfig.GLOBAL_RANKED and not studio then
 		pcall(function()
 			MessagingService:SubscribeAsync("JankRankedFix", function(msg: any)
 				local u = type(msg.Data) == "table" and tonumber(msg.Data.u)
