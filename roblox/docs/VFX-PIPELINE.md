@@ -653,3 +653,16 @@ see of it is now `client/BloodCrossFx.luau`, ported from the web's own `public/j
   is always a saltire X or spikes on its diagonals, never the web's upright cross (the protected Red Cross emblem).
 - Web reference frames: `ref_harness.js` effect `bc` loads bloodcross.js with blood off (sounds and HUD stubbed).
 - Sheet: `docs/vfx/round19/blood-cross-v944.jpg`.
+
+### The Blood Cross, upright and only light (place version 955)
+
+The owner, on v944 (via main): "Web's upright cross", then "vfx looks good just make upright", and of the web's flat red
+cross sign: "it would look better without it". So the shape changed and the look stayed: no sprite of a cross anywhere
+(vfx_xblade / vfx_xcore are parked, and the dagger-cross sprites drawn in between were never used). The upright cross
+is drawn only by tapered Beams of light (`crossArms` / `placeArms` in BloodCrossFx): the stuck mark is four small
+blades round a hot point (up and sides 0.62 studs, down 1.45: never equal-armed), and the erupt is the same cross as
+spikes with its crossing raised half the chest's height above the chest, so the long blade runs down through them to just
+over the floor (thorns on each arm). Walls and floors get a soft scorch glow, a spray and a sizzle of light streaks, then
+a puff. When you're the one crossed, your screen pulses red and flashes, with no symbol. The pop and the bolt kept v944's
+look, with the critic's round 2 kept small: five thin streaks, sparks a little bigger, a slightly longer tapered trail.
+Sheet: `docs/vfx/round19/blood-cross-v955.jpg`.

@@ -4,21 +4,24 @@
 -- public/js/bloodcross.js as energy and light: additive glow, a white-hot core, a red haze, sharp tapered shapes.
 --   the bolt   a glowing dart turned along its flight (tapered Beams: a short nose, a long tail that reads as its trail),
 --              a red haze and hot specks shed behind it, a red light riding with it
---   the stick  an X in whoever it hit: a SALTIRE of two tapered blades with a white-hot core (vfx_xblade + vfx_xcore,
---              tools/roblox/vfx/xblade_sheet.py), a glow behind; it throbs faster as the fuse runs
---   the erupt  two long tapered spikes burst out through them along the X's arms (overshoot, settle, throb), thorns on
---              each, light streaks thrown off all four ends
---   the pop    a red glow flash, a white-hot core for a blink, the blast ring on the floor, red light sparks, a hanging
---              red haze, a red light
---   walls      an X flat on the wall (a lit SurfaceGui, upright as a saltire) that pops in, throbs, sizzles and fizzles out
---   you        crossed yourself: you can't see your own chest, so the X is on your screen (pulse, burst, red flash)
+--   the stick  a small cross of LIGHT in whoever it hit: four tapered blades of light from the hit point (the web's
+--              upright cross: the lower one long, the top and sides short), each a red haze, the cross's colour and a
+--              white-hot line, round a hot point in a soft glow; it throbs faster as the fuse runs
+--   the erupt  spikes burst out along the same upright cross (overshoot, settle, throb), the crossing raised over their
+--              chest so the long blade runs down through them to the floor; thorns on each; light streaks off the ends
+--   the pop    a red glow flash, a white-hot core for a blink, light streaks, sparks, a hanging red haze, the blast ring
+--              on the floor, a short red light
+--   walls      a scorch glow on the wall, a spray and a sizzle of light streaks, fizzling into a puff of haze
+--   you        crossed yourself: you can't see your own chest, so your screen pulses red, then flashes
+-- The owner (18 Nov, via main): "vfx looks good just make upright", and of the web's flat red cross sign: "it would look
+-- better without it". So no symbol, no printed cross, no sprite of one anywhere: the upright cross is only ever drawn
+-- by the light itself (tapered blades, spikes), and never equal-armed (the lower arm is 2.3x the others: an equal-armed
+-- red plus is the protected Red Cross emblem). (v944 drew it as a saltire X of sprites: vfx_xblade / vfx_xcore, parked.)
 -- CONTENT LINE (the account has a warning): no blood or gore on Roblox. The web's blood, drips, splats and wall stains
--- are red light, haze and sparks here; and the cross is always an X (or spikes on its diagonals), never an upright plus
--- (that is the protected Red Cross emblem). The Shadow Cross skin (bloodcross_shadow) is purple throughout (web
--- PAL.shadow). Studio photos: the workspace attribute FxTimeScale = 0 freezes all of it, like Fx.
+-- are red light, haze and sparks here. The Shadow Cross skin (bloodcross_shadow) is purple throughout (web PAL.shadow).
+-- Studio photos: the workspace attribute FxTimeScale = 0 freezes all of it, like Fx.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons")) :: any
@@ -30,14 +33,12 @@ local W = Weapons.list.bloodcross or {}
 local H = 0.5 -- (a ParticleEmitter's Size is half the particle's width)
 
 local TEX = {
-	xblade = "rbxassetid://86829213365759", -- the X's blades (greyscale, tinted)
-	xcore = "rbxassetid://76358841057788", -- the X's white-hot core lines + a hot point (additive)
 	glow = "rbxassetid://107753175681578",
 	spark = "rbxassetid://73042129135061",
 	core = "rbxassetid://72229869149513", -- a Beam core: v runs across it
 	shock = "rbxassetid://136567724057402", -- a ring
 }
--- the web's palettes (bloodcross.js PAL): glow = the red haze, core = the white-hot bits, x = the X, deep = its rim
+-- the web's palettes (bloodcross.js PAL): glow = the red haze, core = the white-hot bits, x = the cross, deep = its rim
 local function rgb(h: number): Color3 return Color3.fromRGB(bit32.rshift(h, 16) % 256, bit32.rshift(h, 8) % 256, h % 256) end
 BC.PAL = {
 	blood = { core = rgb(0xffc0c8), glow = rgb(0xff1a2e), red = rgb(0xd0001a), bolt = rgb(0xff4a5c), x = rgb(0xff2a3a), deep = rgb(0x9a0010) },
@@ -116,7 +117,7 @@ local function light(parent: Instance, col: Color3, range: number, bright: numbe
 	return l
 end
 
--- things that run on the clock: fn(age) returns true when done
+-- things that run on the clock: fn(age, step) returns true when done
 local steps: { { t: number, fn: (number, number) -> boolean } } = {}
 local function run(fn: (number, number) -> boolean) table.insert(steps, { t = 0, fn = fn }) end
 RunService.RenderStepped:Connect(function(dt: number)
@@ -135,74 +136,62 @@ end)
 -- long tail the trail, a red haze and hot specks shed behind, a red light. the part itself goes clear
 function BC.bolt(part: BasePart, pal: Pal)
 	part.Transparency = 1
-	local nose, mid, tail = att(part, Vector3.new(0, 0, -0.55)), att(part, Vector3.zero), att(part, Vector3.new(0, 0, 3.2))
+	local nose, mid, tail = att(part, Vector3.new(0, 0, -0.55)), att(part, Vector3.zero), att(part, Vector3.new(0, 0, 4.2))
 	blade(mid, nose, 0.95, 0, pal.glow, 0.55, 0.7, 1, 1.2)
 	blade(mid, tail, 0.95, 0, pal.glow, 0.55, 1, 1, 1.2)
 	blade(mid, nose, 0.42, 0, pal.bolt, 0, 0.1, 0.6, 1.6)
 	blade(mid, tail, 0.42, 0, pal.red, 0.05, 0.9, 0.6, 1.4)
 	blade(mid, nose, 0.13, 0, pal.core, 0, 0, 1, 3)
 	blade(mid, tail, 0.13, 0, pal.core, 0, 1, 1, 3)
+	-- (the shed haze shrinks as it falls behind: a tapering wake, not a dotted line)
 	em(mid, { Texture = TEX.glow, Rate = 70, Enabled = true, LightEmission = 0.7, Brightness = 1.4, Color = cs(pal.glow, pal.deep),
-		Size = ns(0, 0.5, 1, 0.9), Transparency = ns(0, 0.55, 1, 1), Lifetime = NR(0.2, 0.35), Speed = NR(0.5, 1.5),
+		Size = ns(0, 0.55, 1, 0.15), Transparency = ns(0, 0.5, 1, 1), Lifetime = NR(0.15, 0.3), Speed = NR(0.3, 1),
 		SpreadAngle = Vector2.new(180, 180), Drag = 3 })
 	em(mid, { Texture = TEX.glow, Rate = 30, Enabled = true, LightEmission = 1, Brightness = 3, Color = cs(pal.core, pal.glow),
 		Size = ns(0, 0.13, 1, 0), Lifetime = NR(0.15, 0.3), Speed = NR(1, 3), SpreadAngle = Vector2.new(180, 180), Drag = 2 })
 	light(part, pal.glow, 7, 0.8)
 end
 
--- ---------------------------------------------------------------- the X (a stuck one: billboard layers on a body)
-type Mark = { host: Attachment, glow: ParticleEmitter, blade: ParticleEmitter, core: ParticleEmitter, pal: Pal, size: number,
-	t: number, te: number, tb: number, fuse: number, model: Instance?, spikes: { any }?, sp: Part? }
-local marks: { Mark } = {}
-local function xLayers(host: Instance, pal: Pal, size: number): (ParticleEmitter, ParticleEmitter, ParticleEmitter)
-	local lock = { LockedToPart = true, Lifetime = NR(30), Rotation = NR(0) }
-	local function with(t: { [string]: any }) for k, v in lock do t[k] = v end; return t end
-	local g = em(host, with({ Texture = TEX.glow, LightEmission = 1, Brightness = 1.5, Color = cs(pal.glow), Size = NumberSequence.new(size * 1.6 * H), Transparency = NumberSequence.new(0.55), ZOffset = 0 }))
-	local b = em(host, with({ Texture = TEX.xblade, LightEmission = 0.45, Brightness = 1.3, Color = cs(pal.x), Size = NumberSequence.new(size * H), Transparency = NumberSequence.new(0), ZOffset = 1 }))
-	local c = em(host, with({ Texture = TEX.xcore, LightEmission = 1, Brightness = 2.5, Color = cs(pal.core), Size = NumberSequence.new(size * H), Transparency = NumberSequence.new(0), ZOffset = 2 }))
-	g:Emit(1); b:Emit(1); c:Emit(1)
-	return g, b, c
-end
-local function setSize(e: ParticleEmitter, s: number) e.Size = NumberSequence.new(math.max(0.001, s)) end
-
--- the spikes: two long tapered shards along the X's diagonals through the middle of them, a few thorns on each
-local function spikes(at: Vector3, out: Vector3, pal: Pal, len: number): (Part, { any })
-	local up = Vector3.yAxis
-	local n = Vector3.new(out.X, 0, out.Z)
-	n = if n.Magnitude > 1e-3 then n.Unit else -Vector3.zAxis
-	local right = n:Cross(up).Unit
-	local host = anchor(CFrame.new(at), "BCSpikes")
-	local parts = {}
-	local mid = att(host)
-	for _, d in { (right + up).Unit, (right - up).Unit, (-right + up).Unit, (-right - up).Unit } do
-		local tip = att(host)
+-- ---------------------------------------------------------------- a cross of light
+-- four tapered blades from one point c on a part (part space): up, down, right, left; each a red haze, the cross's
+-- colour and a white-hot line (Beams). lens: { up, down, side }; ws: { short, long } widths; thorns along the arms
+type Arm = { c: Vector3, tip: Attachment, d: Vector3, len: number, w: number, layers: { Beam }, thorns: { any } }
+local function crossArms(part: BasePart, c: Vector3, up: Vector3, right: Vector3, lens: { number }, ws: { number }, pal: Pal, thorns: boolean): { Arm }
+	local mid = att(part, c)
+	local arms: { Arm } = {}
+	for i, d in { up, -up, right, -right } do
+		local len = if i == 1 then lens[1] elseif i == 2 then lens[2] else lens[3]
+		local w = if i == 2 then ws[2] else ws[1]
+		local tip = att(part, c)
 		local layers = {
-			blade(mid, tip, 1.5, 0, pal.glow, 0.45, 0.8, 1, 1.4),
-			blade(mid, tip, 0.55, 0, pal.x, 0, 0.1, 0.5, 1.6),
-			blade(mid, tip, 0.16, 0, pal.core, 0, 0.2, 1, 3),
+			blade(mid, tip, w, 0, pal.glow, 0.45, 0.8, 1, 1.4),
+			blade(mid, tip, w * 0.37, 0, pal.x, 0, 0.1, 0.5, 1.6),
+			blade(mid, tip, w * 0.11, 0, pal.core, 0, 0.1, 1, 3.5),
 		}
-		local thorns = {}
-		for j, f in { 0.32, 0.58, 0.8 } do
-			local side = if j % 2 == 0 then 1 else -1
-			local base, tp = att(host), att(host)
-			local perp = d:Cross(n).Unit * side
-			table.insert(thorns, { base = base, tip = tp, f = f, dir = (d * 0.6 + perp * 0.8).Unit, l = (0.55 - 0.15 * f) * len / 7.5,
-				b = blade(base, tp, 0.22, 0, pal.x, 0, 0.3, 0.6, 1.5) })
+		local th = {}
+		if thorns then
+			for j, f in (if i == 2 then { 0.3, 0.45, 0.6, 0.75 } else { 0.45, 0.7 }) do
+				local side = if j % 2 == 0 then 1 else -1
+				local base, tp = att(part, c), att(part, c)
+				local perp = (if i <= 2 then right else up) * side
+				table.insert(th, { base = base, tip = tp, f = f, dir = (d * 0.6 + perp * 0.8).Unit, l = 0.18 * lens[3] * (1 - 0.4 * f),
+					b = blade(base, tp, 0.22, 0, pal.x, 0, 0.3, 0.6, 1.5) })
+			end
 		end
-		table.insert(parts, { tip = tip, d = d, layers = layers, thorns = thorns, len = len / 2 })
+		table.insert(arms, { c = c, tip = tip, d = d, len = len, w = w, layers = layers, thorns = th })
 	end
-	return host, parts
+	return arms
 end
-local function placeSpikes(parts: { any }, k: number, w: number, fade: number, throb: number)
-	for _, s in parts do
-		s.tip.Position = s.d * s.len * k
-		local ws = w * (1 - fade)
-		s.layers[1].Width0 = 1.5 * ws * (1 + 0.15 * throb); s.layers[2].Width0 = 0.55 * ws; s.layers[3].Width0 = 0.16 * ws
-		s.layers[1].Transparency = ns(0, 0.45 + 0.4 * fade, 1, 0.85)
+-- k: length (0..1+), wk: width, glowT: the haze layer's transparency, throb: -1..1
+local function placeArms(arms: { Arm }, k: number, wk: number, glowT: number, throb: number)
+	for _, s in arms do
+		s.tip.Position = s.c + s.d * s.len * math.max(0.001, k)
+		s.layers[1].Width0 = s.w * wk * (1 + 0.15 * throb); s.layers[2].Width0 = s.w * 0.37 * wk; s.layers[3].Width0 = s.w * 0.11 * wk
+		s.layers[1].Transparency = ns(0, glowT, 1, 0.85)
 		for _, th in s.thorns do
-			local b = s.d * s.len * k * th.f
+			local b = s.c + s.d * s.len * k * th.f
 			th.base.Position = b; th.tip.Position = b + th.dir * th.l * k
-			th.b.Width0 = 0.22 * ws
+			th.b.Width0 = 0.22 * wk
 		end
 	end
 end
@@ -218,9 +207,9 @@ local function rootOf(model: Instance?): BasePart?
 	return if r and r:IsA("BasePart") then r else nil
 end
 
--- ---------------------------------------------------------------- you were crossed: the X on your screen
-local ov: { gui: ScreenGui?, bars: { Frame }, t: number, te: number, tb: number, fuse: number, pal: Pal, on: boolean } =
-	{ gui = nil, bars = {}, t = 0, te = -1, tb = -1, fuse = 0.6, pal = BC.PAL.blood :: Pal, on = false }
+-- ---------------------------------------------------------------- you were crossed: your screen pulses, then flashes
+local ov: { gui: ScreenGui?, t: number, te: number, tb: number, fuse: number, pal: Pal, on: boolean } =
+	{ gui = nil, t = 0, te = -1, tb = -1, fuse = 0.6, pal = BC.PAL.blood :: Pal, on = false }
 local function ovMake()
 	if ov.gui and ov.gui.Parent then return end
 	local pg = me:FindFirstChildOfClass("PlayerGui")
@@ -230,15 +219,6 @@ local function ovMake()
 	local flash = Instance.new("Frame")
 	flash.Name = "Flash"; flash.Size = UDim2.fromScale(1, 1); flash.BorderSizePixel = 0; flash.BackgroundTransparency = 1
 	flash.Parent = g
-	-- the X itself (the blade sprite, a saltire) with its white-hot core on top
-	local b = Instance.new("ImageLabel")
-	b.AnchorPoint = Vector2.new(0.5, 0.5); b.Position = UDim2.fromScale(0.5, 0.5); b.BackgroundTransparency = 1
-	b.Image = TEX.xblade; b.ImageTransparency = 1
-	b.Parent = g
-	local c = Instance.new("ImageLabel")
-	c.Name = "Core"; c.AnchorPoint = Vector2.new(0.5, 0.5); c.Position = UDim2.fromScale(0.5, 0.5); c.Size = UDim2.fromScale(1, 1)
-	c.BackgroundTransparency = 1; c.Image = TEX.xcore; c.ImageTransparency = 1; c.Parent = b
-	ov.bars = { b :: any }
 	g.Parent = pg
 	ov.gui = g
 end
@@ -250,54 +230,67 @@ local function ovTick(d: number)
 	ov.t += d
 	if ov.te >= 0 then ov.te += d end
 	if ov.tb >= 0 then ov.tb += d end
-	local vp = (workspace.CurrentCamera :: Camera).ViewportSize
-	local diag = math.sqrt(vp.X * vp.X + vp.Y * vp.Y)
-	local size, op
-	if ov.tb >= 0 then local k = math.max(0, 1 - ov.tb / 0.6); size = diag * (1.1 + ov.tb * 0.4); op = k
-	elseif ov.te >= 0 then local k = math.min(1, ov.te / 0.07); size = 140 + (diag * 1.1 - 140) * k; op = 0.95
-	else local k = math.min(1, ov.t / ov.fuse); size = 120 + 90 * k; op = 0.45 + 0.45 * math.abs(math.sin(ov.t * (8 + 16 * k))) end
-	local b = ov.bars[1] :: any
-	b.Size = UDim2.fromOffset(size, size); b.ImageColor3 = ov.pal.x; b.ImageTransparency = 1 - op
-	local c = b:FindFirstChild("Core")
-	if c then c.ImageColor3 = ov.pal.core; c.ImageTransparency = 1 - op end
+	local a -- (how much red covers the screen)
+	if ov.tb >= 0 then a = 0.38 * math.max(0, 1 - ov.tb / 0.45)
+	elseif ov.te >= 0 then a = 0.22
+	else local k = math.min(1, ov.t / ov.fuse); a = (0.04 + 0.1 * k) * math.abs(math.sin(ov.t * (8 + 16 * k))) end
 	local fl = g:FindFirstChild("Flash") :: Frame
 	fl.BackgroundColor3 = ov.pal.glow
-	fl.BackgroundTransparency = if ov.tb >= 0 then 1 - 0.35 * math.max(0, 1 - ov.tb / 0.4) else 1
-	if ov.tb > 0.6 or ov.t > ov.fuse + 3 then ov.on = false; b.ImageTransparency = 1; if c then c.ImageTransparency = 1 end; fl.BackgroundTransparency = 1 end
+	fl.BackgroundTransparency = 1 - a
+	if ov.tb > 0.5 or ov.t > ov.fuse + 3 then ov.on = false; fl.BackgroundTransparency = 1 end
 end
 
 -- ---------------------------------------------------------------- marks: stick, erupt, pop
+type Mark = { host: Attachment, glow: ParticleEmitter, hot: ParticleEmitter, arms: { Arm }, pal: Pal, size: number,
+	t: number, te: number, tb: number, fuse: number, model: Instance?, spikes: { Arm }?, sp: Part?, raise: number? }
+local marks: { Mark } = {}
 local function newMark(model: Instance?, at: Vector3, pal: Pal, thin: boolean)
 	local r = rootOf(model)
-	local size = (if thin then 1.6 else 2.3)
-	local host: Attachment
-	if r then host = att(r); host.WorldPosition = at else host = att(anchor(CFrame.new(at))) end
-	local g, b, c = xLayers(host, pal, size)
-	local mk: Mark = { host = host, glow = g, blade = b, core = c, pal = pal, size = size, t = 0, te = -1, tb = -1,
+	local size = (if thin then 0.7 else 1)
+	local part: BasePart = r or anchor(CFrame.new(at))
+	local c = part.CFrame:PointToObjectSpace(at)
+	-- (the cross's plane faces where it came from: out of them through the hit point)
+	local out = if r then at - r.Position else (workspace.CurrentCamera :: Camera).CFrame.Position - at
+	local n = Vector3.new(out.X, 0, out.Z)
+	n = if n.Magnitude > 1e-3 then n.Unit else -Vector3.zAxis
+	local upL = part.CFrame:VectorToObjectSpace(Vector3.yAxis)
+	local rightL = part.CFrame:VectorToObjectSpace(n:Cross(Vector3.yAxis).Unit)
+	local arms = crossArms(part, c, upL, rightL, { 0.62 * size, 1.45 * size, 0.62 * size }, { 0.75 * size, 0.85 * size }, pal, false)
+	local host = att(part, c)
+	local g = em(host, { Texture = TEX.glow, LightEmission = 1, Brightness = 1.5, Color = cs(pal.glow), LockedToPart = true, Lifetime = NR(30),
+		Size = NumberSequence.new(2.6 * size * H), Transparency = NumberSequence.new(0.55) })
+	local hot = em(host, { Texture = TEX.glow, LightEmission = 1, Brightness = 3, Color = cs(pal.core), LockedToPart = true, Lifetime = NR(30),
+		Size = NumberSequence.new(0.5 * size * H), Transparency = NumberSequence.new(0), ZOffset = 2 })
+	g:Emit(1); hot:Emit(1)
+	local mk: Mark = { host = host, glow = g, hot = hot, arms = arms, pal = pal, size = size, t = 0, te = -1, tb = -1,
 		fuse = (W.fuse or 0.6), model = model }
 	table.insert(marks, mk)
+	placeArms(arms, 1, 1, 0.45, 0)
 	-- a spray of light where it went in (the web's spurt, as sparks: no blood)
 	local sp = em(host, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 3,
 		Color = cs(pal.core, pal.glow), Size = ns(0, 0.35, 1, 0.08), Lifetime = NR(0.15, 0.3), Speed = NR(10, 22),
 		SpreadAngle = Vector2.new(60, 60), Drag = 4 })
 	sp:Emit(10)
+	local own = if r then nil else part
 	run(function(t: number, d: number): boolean
 		if mk.te >= 0 then mk.te += d end
 		if mk.tb >= 0 then mk.tb += d end
 		mk.t = t
 		if not host.Parent then return true end
-		-- stuck: it throbs faster as the fuse runs; bigger once the spikes are out
 		if mk.tb < 0 then
+			-- stuck: it throbs faster as the fuse runs; bigger once the spikes are out
 			local k = math.min(1, t / mk.fuse)
 			local beat = math.abs(math.sin(t * (7 + 18 * k)))
 			local sc = 1 + 0.22 * beat * (0.4 + k) + (if mk.te >= 0 then 0.3 else 0)
-			setSize(mk.blade, size * sc * H); setSize(mk.core, size * sc * H)
-			setSize(mk.glow, size * (1.5 + 0.6 * k * beat + (if mk.te >= 0 then 0.6 else 0)) * H)
+			placeArms(arms, sc, sc, 0.45 - 0.15 * k * beat, beat)
+			mk.glow.Size = NumberSequence.new(size * (2.4 + 0.9 * k * beat + (if mk.te >= 0 then 0.9 else 0)) * H)
 			mk.glow.Transparency = NumberSequence.new(0.6 - 0.25 * k * beat - (if mk.te >= 0 then 0.15 else 0))
+			mk.hot.Size = NumberSequence.new(size * (0.5 + 0.25 * beat) * H)
 		else
 			local k = math.min(1, mk.tb / 0.45)
 			local sc = 1.3 * (1 - k)
-			setSize(mk.blade, size * sc * H); setSize(mk.core, size * sc * H); setSize(mk.glow, size * 1.8 * (1 - k) * H)
+			placeArms(arms, sc, sc, 0.6, 0)
+			mk.glow.Size = NumberSequence.new(math.max(0.001, size * 2.8 * (1 - k) * H)); mk.hot.Size = NumberSequence.new(math.max(0.001, size * 0.6 * (1 - k) * H))
 		end
 		-- the spikes: burst out (overshoot, settle), throb, then thin away with the pop
 		if mk.te >= 0 and mk.spikes then
@@ -305,11 +298,20 @@ local function newMark(model: Instance?, at: Vector3, pal: Pal, thin: boolean)
 			local kk = if e < 0.06 then (e / 0.06) * 1.2 elseif e < 0.13 then 1.2 - ((e - 0.06) / 0.07) * 0.2 else 1
 			local w = 0.3 + 0.7 * math.min(1, e / 0.06)
 			local fade = if mk.tb >= 0 then math.min(1, mk.tb / 0.45) else 0
-			placeSpikes(mk.spikes, math.max(0.01, kk * (1 + 0.25 * fade)), w, fade, math.sin(t * 40))
-			if mk.sp and model then local c2 = centreOf(model); if c2 then mk.sp.CFrame = CFrame.new(c2) end end
+			placeArms(mk.spikes, kk * (1 + 0.25 * fade), w * (1 - fade), 0.45 + 0.4 * fade, math.sin(t * 40))
+			if mk.sp and model then local c2 = centreOf(model); if c2 then mk.sp.CFrame = CFrame.new(c2 + Vector3.yAxis * (mk.raise or 0)) end end
 		end
 		if (mk.tb >= 0 and mk.tb >= 0.5) or t > mk.fuse + 4 then
+			-- (everything it put on their body: the blades, their attachments, the shared crossing point)
+			local midA = arms[1].layers[1].Attachment0
+			for _, a in arms do
+				for _, b in a.layers do b:Destroy() end
+				for _, th in a.thorns do th.b:Destroy(); th.base:Destroy(); th.tip:Destroy() end
+				a.tip:Destroy()
+			end
+			if midA then midA:Destroy() end
 			host:Destroy()
+			if own then own:Destroy() end
 			if mk.sp then mk.sp:Destroy() end
 			local i = table.find(marks, mk); if i then table.remove(marks, i) end
 			return true
@@ -323,16 +325,34 @@ local function markOf(model: Instance?): Mark?
 	return nil
 end
 
+-- the erupt: the cross bursting out of them, in the plane facing where the shot came from. its crossing is raised half
+-- the way from their chest to the floor above the chest, so the long lower blade runs down through them to just over the
+-- floor; the top and side arms 0.45 of it (never equal-armed). k: 0.7 for a thin shot
+local downParams = RaycastParams.new()
+downParams.FilterType = Enum.RaycastFilterType.Exclude
 local function erupt(mk: Mark, at: Vector3, thin: boolean)
 	if mk.te >= 0 then return end
 	mk.te = 0
 	local r = rootOf(mk.model)
 	local out = if r then (mk.host.WorldPosition - r.Position) else (workspace.CurrentCamera :: Camera).CFrame.Position - at
-	local host, parts = spikes(at, out, mk.pal, if thin then 4.5 else 7.5)
-	mk.sp = host; mk.spikes = parts
-	placeSpikes(parts, 0.01, 0.3, 0, 0)
+	local n = Vector3.new(out.X, 0, out.Z)
+	n = if n.Magnitude > 1e-3 then n.Unit else -Vector3.zAxis
+	local right = n:Cross(Vector3.yAxis).Unit
+	local skip: { Instance } = { folder }
+	if typeof(mk.model) == "Instance" then table.insert(skip, mk.model :: Instance) end
+	downParams.FilterDescendantsInstances = skip
+	local hit = workspace:Raycast(at, Vector3.new(0, -8 * S, 0), downParams)
+	local fl = math.clamp(if hit then at.Y - hit.Position.Y else 4, 2, 6)
+	local k = if thin then 0.7 else 1
+	local raise = 0.5 * fl
+	local Ld = (fl + raise - 0.25) * k
+	local Ls = 0.45 * Ld
+	local host = anchor(CFrame.new(at + Vector3.yAxis * raise), "BCSpikes")
+	local arms = crossArms(host, Vector3.zero, Vector3.yAxis, right, { Ls, Ld, Ls }, { 1.5, 1.7 }, mk.pal, true)
+	mk.sp = host; mk.spikes = arms; mk.raise = raise
+	placeArms(arms, 0.01, 0.3, 0.45, 0)
 	-- light streaks thrown off all four ends
-	for _, s in parts do
+	for _, s in arms do
 		local e = att(host, s.d * s.len)
 		local st = em(e, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 3,
 			Color = cs(mk.pal.core, mk.pal.glow), Size = ns(0, 0.45, 1, 0.1), Lifetime = NR(0.15, 0.3), Speed = NR(15, 35),
@@ -353,9 +373,13 @@ local function pop(at: Vector3, pal: Pal, thin: boolean)
 		Size = ns(0, 1.2 * S * H * k, 0.4, 4.5 * S * H * k, 1, 6 * S * H * k), Transparency = ns(0, 0.35, 0.5, 0.7, 1, 1), ZOffset = 0 }):Emit(1)
 	em(a, { Texture = TEX.glow, LightEmission = 1, Brightness = 3, Color = cs(pal.core), Lifetime = NR(0.14),
 		Size = ns(0, 0.4 * S * H * k, 1, 1.8 * S * H * k), Transparency = ns(0, 0, 1, 1), ZOffset = 2 }):Emit(1)
+	-- a few long thin streaks bursting out (the critic: a harder edge to the flash)
+	em(a, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 4,
+		Color = cs(pal.core, pal.glow), Size = ns(0, 1.2 * k, 1, 0.25 * k), Lifetime = NR(0.12, 0.2), Speed = NR(55 * k, 80 * k),
+		SpreadAngle = Vector2.new(180, 180), Drag = 6 }):Emit(5)
 	-- light sparks flung out (the web's glowing droplets, as light), a few white-hot
 	em(a, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 3,
-		Color = cs(pal.core, pal.glow), Size = ns(0, 0.5 * k, 1, 0.12), Lifetime = NR(0.25, 0.55), Speed = NR(14 * k, 34 * k),
+		Color = cs(pal.core, pal.glow), Size = ns(0, 0.7 * k, 1, 0.15), Lifetime = NR(0.25, 0.55), Speed = NR(18 * k, 40 * k),
 		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -25, 0), Drag = 2.5 }):Emit(math.floor(36 * k))
 	em(a, { Texture = TEX.glow, LightEmission = 1, Brightness = 2.5, Color = cs(pal.core, pal.glow), Size = ns(0, 0.22 * k, 1, 0),
 		Lifetime = NR(0.3, 0.6), Speed = NR(10, 26), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -18, 0), Drag = 2 }):Emit(math.floor(18 * k))
@@ -369,7 +393,7 @@ local function pop(at: Vector3, pal: Pal, thin: boolean)
 		local fy = if hit then hit.Position.Y + 0.08 else at.Y - 2.5
 		local ra = att(host); ra.WorldPosition = Vector3.new(at.X, fy, at.Z)
 		local blastR = (W.blastR or 3 * S)
-		em(ra, { Texture = TEX.shock, Orientation = Enum.ParticleOrientation.VelocityPerpendicular, LightEmission = 1, Brightness = 2,
+		em(ra, { Texture = TEX.shock, Orientation = Enum.ParticleOrientation.VelocityPerpendicular, LightEmission = 1, Brightness = 2.5,
 			Color = cs(pal.glow), Lifetime = NR(0.32), Speed = NR(0.01), EmissionDirection = Enum.NormalId.Top,
 			Size = ns(0, 0.3 * H, 0.5, blastR * 0.9 * H, 1, blastR * H), Transparency = ns(0, 0.05, 0.6, 0.4, 1, 1) }):Emit(1)
 	end
@@ -382,46 +406,46 @@ local function pop(at: Vector3, pal: Pal, thin: boolean)
 	end)
 end
 
--- ---------------------------------------------------------------- walls: an X flat on the wall that fizzles out
+-- ---------------------------------------------------------------- walls: a scorch glow and a sizzle of light
+-- no symbol on the wall (the owner: the web's flat red cross sign "would look better without it"): a soft round glow
+-- flat on the wall that fades, a spray of light streaks off it, a sizzle, then a puff of haze
 local function wallX(at: Vector3, n: Vector3, pal: Pal)
 	local nn = if n.Magnitude > 0.5 then n.Unit else Vector3.yAxis
 	local up = if math.abs(nn.Y) < 0.9 then Vector3.yAxis else ((workspace.CurrentCamera :: Camera).CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
 	local p = at + nn * 0.06
 	local face = anchor(CFrame.lookAt(p, p + nn, up), "BCWall")
-	local SZ = 3
+	local SZ = 3.2
 	face.Size = Vector3.new(SZ, SZ, 0.05)
 	local sg = Instance.new("SurfaceGui")
-	sg.Face = Enum.NormalId.Front; sg.LightInfluence = 0; sg.Brightness = 2.2; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	sg.PixelsPerStud = 64; sg.ZOffset = 1
-	local bl = Instance.new("ImageLabel")
-	bl.Size = UDim2.fromScale(1, 1); bl.BackgroundTransparency = 1; bl.Image = TEX.xblade; bl.ImageColor3 = pal.x
-	bl.Parent = sg
-	local co = Instance.new("ImageLabel")
-	co.Size = UDim2.fromScale(1, 1); co.BackgroundTransparency = 1; co.Image = TEX.xcore; co.ImageColor3 = pal.core
-	co.Parent = sg
+	sg.Face = Enum.NormalId.Front; sg.LightInfluence = 0; sg.Brightness = 1.6; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	sg.PixelsPerStud = 40; sg.ZOffset = 1
+	local scorch = Instance.new("ImageLabel")
+	scorch.Size = UDim2.fromScale(1, 1); scorch.BackgroundTransparency = 1; scorch.Image = TEX.glow; scorch.ImageColor3 = pal.glow
+	scorch.Parent = sg
+	local hotspot = Instance.new("ImageLabel")
+	hotspot.AnchorPoint = Vector2.new(0.5, 0.5); hotspot.Position = UDim2.fromScale(0.5, 0.5); hotspot.Size = UDim2.fromScale(0.35, 0.35)
+	hotspot.BackgroundTransparency = 1; hotspot.Image = TEX.glow; hotspot.ImageColor3 = pal.core
+	hotspot.Parent = sg
 	sg.Parent = face
 	local a = att(face, Vector3.new(0, 0, -0.1))
-	local glow = em(a, { Texture = TEX.glow, LightEmission = 1, Brightness = 1.4, Color = cs(pal.glow), LockedToPart = true, Lifetime = NR(30),
-		Size = NumberSequence.new(SZ * 1.4 * H), Transparency = NumberSequence.new(0.6) })
-	glow:Emit(1)
-	local sizzle = em(a, { Texture = TEX.glow, LightEmission = 1, Brightness = 2.5, Color = cs(pal.core, pal.glow), Size = ns(0, 0.18, 1, 0),
-		Lifetime = NR(0.2, 0.35), Speed = NR(3, 8), SpreadAngle = Vector2.new(70, 70), EmissionDirection = Enum.NormalId.Front, Drag = 2 })
-	-- (it went in: a spray of light off the wall)
+	local sizzle = em(a, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 3,
+		Color = cs(pal.core, pal.glow), Size = ns(0, 0.25, 1, 0.05), Lifetime = NR(0.15, 0.3), Speed = NR(6, 14),
+		SpreadAngle = Vector2.new(70, 70), EmissionDirection = Enum.NormalId.Front, Drag = 3, Rate = 40 })
+	-- (it went in: a spray of light streaks off the wall)
 	local sp = em(a, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, Brightness = 3,
-		Color = cs(pal.core, pal.glow), Size = ns(0, 0.35, 1, 0.08), Lifetime = NR(0.15, 0.3), Speed = NR(10, 22),
+		Color = cs(pal.core, pal.glow), Size = ns(0, 0.45, 1, 0.08), Lifetime = NR(0.15, 0.3), Speed = NR(12, 26),
 		SpreadAngle = Vector2.new(55, 55), EmissionDirection = Enum.NormalId.Front, Drag = 4 })
-	sp:Emit(8)
+	sp:Emit(12)
 	local l = light(face, pal.glow, 8, 1.2)
 	local puffed = false
 	run(function(t: number): boolean
-		local s = if t < 0.08 then (t / 0.08) * 1.25 elseif t < 0.7 then 1 + 0.08 * math.sin(t * 25) else math.max(0.001, 1 - (t - 0.7) / 0.3)
-		face.Size = Vector3.new(SZ * s, SZ * s, 0.05)
-		glow.Size = NumberSequence.new(SZ * 1.4 * s * H)
+		local s = if t < 0.06 then t / 0.06 * 1.2 elseif t < 0.7 then 1 + 0.08 * math.sin(t * 25) else math.max(0, 1 - (t - 0.7) / 0.3)
+		scorch.ImageTransparency = 1 - 0.85 * s; hotspot.ImageTransparency = 1 - math.min(1, s * 1.1)
+		hotspot.Size = UDim2.fromScale(0.35 * (0.8 + 0.2 * s), 0.35 * (0.8 + 0.2 * s))
 		l.Brightness = 1.2 * s
-		sizzle.Enabled = t > 0.6 and t < 1
+		sizzle.Enabled = t < 0.95
 		if t >= 1 and not puffed then
 			puffed = true
-			face.Size = Vector3.new(0.01, 0.01, 0.01)
 			-- the fizzle: a puff of red haze and a last spray of light
 			em(a, { Texture = TEX.glow, LightEmission = 0.4, Brightness = 1.2, Color = cs(pal.glow, pal.deep), Size = ns(0, 0.6, 1, 1.6),
 				Transparency = ns(0, 0.5, 1, 1), Lifetime = NR(0.5, 0.9), Speed = NR(1.5, 4), SpreadAngle = Vector2.new(60, 60),
@@ -444,7 +468,7 @@ function BC.event(f: any, pal: Pal?)
 		local p = pal or BC.PAL.blood :: Pal
 		local at = if typeof(f.p) == "Vector3" then f.p else centreOf(model)
 		if mine then
-			-- (nothing is drawn at your own chest: the overlay keeps the palette for the burst and the pop)
+			-- (nothing is drawn at your own chest: the screen keeps the palette for the burst and the pop)
 			ov.on = true; ov.t = 0; ov.te = -1; ov.tb = -1; ov.fuse = W.fuse or 0.6; ov.pal = p
 			return
 		end

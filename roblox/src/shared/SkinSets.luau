@@ -233,6 +233,89 @@ SkinSets.FX = {
 		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
 		bullet = { kind = "feathers" }, -- (the Seraph's: a gold-white streak shedding white feathers)
 	},
+	-- (18 Nov 2026, the owner: "take the wings from the finished seraph weapon and put it on the others so they all have the same
+	-- quality"; main: "feathers, gold glow, wing-tip trails; lighter on the pistol"). The Seraph set's other four wear the
+	-- headliner's own rear-wing meshes now (the gun models session), and these are the headliner's wing effects moved with
+	-- them (its points through the same matrices: notes seraph-wing-fx-points.json): feathers shed off each wing, twinkles
+	-- along its lit loop, a star glint at the tip, a vine of light up each wing, a short glowing trail off each tip as the gun
+	-- moves; the halo and brake bits stay the rifle's. Sniper and burst at the rifle's rates; pistol and katana (wings at
+	-- 0.45) about half the rates and sizes. The katana's pair mirrors across y (one wing up, one down): explicit lists.
+	sniper_seraph = { -- (the Seraph Sniper: the headliner's wings)
+		idle = {
+			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
+				at = { { 0.034, 0.0751, 0.5178 }, { 0.045, 0.0645, 0.4108 }, { 0.019, 0.0923, 0.5731 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 240, 200), rate = 7, life = 0.55, size = 0.011, drift = "rise",
+				at = { { -0.002, 0.0651, 0.3738 }, { 0.004, 0.0663, 0.428 }, { 0.01, 0.0696, 0.4813 }, { 0.015, 0.0812, 0.5303 }, { 0.019, 0.093, 0.5772 }, { 0.034, 0.0761, 0.5179 }, { 0.045, 0.0655, 0.4109 }, { 0.046, 0.033, 0.3455 } },
+				both = true, tint = true, fp = 0.35 }, -- (twinkles along each wing's lit loop)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 246, 220), rate = 1.2, life = 0.55, size = 0.045, drift = "rise",
+				at = { { 0.019, 0.093, 0.5772 } }, both = true, tint = true, fp = 0.25 }, -- (a star glint now and then at the wing tips)
+		},
+		coil = { -- (a vine of light winding up each wing to its tip)
+			{ a = { 0.004, 0.0509, 0.3196 }, b = { 0.021, 0.0946, 0.5833 }, r = 0.032, turns = 1.25, spin = 1.2, strands = 1, both = true,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.008, pulse = 1, tint = true, fp = 0.7 },
+		},
+		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.024, width1 = 0,
+			segs = { { { 0.01, 0.0686, 0.4813 }, { 0.019, 0.092, 0.5771 } } }, both = true, },
+		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
+		bullet = { kind = "feathers" },
+	},
+	burst_seraph = { -- (the Seraph Burst Rifle: the headliner's wings)
+		idle = {
+			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
+				at = { { 0.034, 0.0776, 0.4896 }, { 0.045, 0.0633, 0.383 }, { 0.019, 0.0967, 0.5443 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 240, 200), rate = 7, life = 0.55, size = 0.011, drift = "rise",
+				at = { { -0.002, 0.0626, 0.346 }, { 0.004, 0.0657, 0.4001 }, { 0.01, 0.0709, 0.4533 }, { 0.015, 0.0842, 0.5018 }, { 0.019, 0.0976, 0.5483 }, { 0.034, 0.0786, 0.4896 }, { 0.045, 0.0643, 0.3831 }, { 0.046, 0.0295, 0.3188 } },
+				both = true, tint = true, fp = 0.35 }, -- (twinkles along each wing's lit loop)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 246, 220), rate = 1.2, life = 0.55, size = 0.045, drift = "rise",
+				at = { { 0.019, 0.0976, 0.5483 } }, both = true, tint = true, fp = 0.25 }, -- (a star glint now and then at the wing tips)
+		},
+		coil = { -- (a vine of light winding up each wing to its tip)
+			{ a = { 0.004, 0.0465, 0.2924 }, b = { 0.021, 0.0994, 0.5544 }, r = 0.032, turns = 1.25, spin = 1.2, strands = 1, both = true,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.008, pulse = 1, tint = true, fp = 0.7 },
+		},
+		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.024, width1 = 0,
+			segs = { { { 0.01, 0.0699, 0.4533 }, { 0.019, 0.0966, 0.5483 } } }, both = true, },
+		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
+		bullet = { kind = "feathers" },
+	},
+	pistol_seraph = { -- (the Seraph Pistol: the headliner's wings, lighter)
+		idle = {
+			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 1.2, life = 1.8, size = 0.013, drift = "fall",
+				at = { { 0.0226, 0.0606, 0.0032 }, { 0.0275, 0.0525, -0.0445 }, { 0.0158, 0.0701, 0.0275 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 240, 200), rate = 3.5, life = 0.55, size = 0.0055, drift = "rise",
+				at = { { 0.0063, 0.0516, -0.0612 }, { 0.009, 0.0538, -0.0368 }, { 0.0117, 0.057, -0.013 }, { 0.014, 0.0638, 0.0086 }, { 0.0158, 0.0705, 0.0293 }, { 0.0226, 0.0611, 0.0032 }, { 0.0275, 0.0529, -0.0445 }, { 0.0279, 0.0363, -0.0728 } },
+				both = true, tint = true, fp = 0.35 }, -- (twinkles along each wing's lit loop)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 246, 220), rate = 0.6, life = 0.55, size = 0.0225, drift = "rise",
+				at = { { 0.0158, 0.0705, 0.0293 } }, both = true, tint = true, fp = 0.25 }, -- (a star glint now and then at the wing tips)
+		},
+		coil = { -- (a vine of light winding up each wing to its tip)
+			{ a = { 0.009, 0.0435, -0.085 }, b = { 0.0167, 0.0714, 0.032 }, r = 0.0144, turns = 1.25, spin = 1.2, strands = 1, both = true,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.0048, pulse = 1, tint = true, fp = 0.7 },
+		},
+		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.012, width1 = 0,
+			segs = { { { 0.0117, 0.0566, -0.013 }, { 0.0158, 0.0701, 0.0293 } } }, both = true, },
+		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
+		bullet = { kind = "feathers" },
+	},
+	katana_seraph = { -- (the Seraph Katana: the headliner's wings, lighter)
+		idle = {
+			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 1.2, life = 1.8, size = 0.013, drift = "fall",
+				at = { { -0.0029, 0.167, -0.1104 }, { -0.0079, 0.1233, -0.1311 }, { 0.0038, 0.1923, -0.1042 }, { -0.0029, -0.167, -0.1104 }, { -0.0079, -0.1233, -0.1311 }, { 0.0038, -0.1923, -0.1042 } }, fp = 0.3 }, -- (shed off the wings' outer edges)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 240, 200), rate = 3.5, life = 0.55, size = 0.0055, drift = "rise",
+				at = { { 0.0133, 0.1091, -0.1399 }, { 0.0106, 0.1303, -0.1279 }, { 0.0079, 0.1517, -0.1168 }, { 0.0056, 0.1732, -0.1099 }, { 0.0038, 0.194, -0.1035 }, { -0.0029, 0.1672, -0.1108 }, { -0.0079, 0.1235, -0.1315 }, { -0.0083, 0.0908, -0.1341 }, { 0.0133, -0.1091, -0.1399 }, { 0.0106, -0.1303, -0.1279 }, { 0.0079, -0.1517, -0.1168 }, { 0.0056, -0.1732, -0.1099 }, { 0.0038, -0.194, -0.1035 }, { -0.0029, -0.1672, -0.1108 }, { -0.0079, -0.1235, -0.1315 }, { -0.0083, -0.0908, -0.1341 } },
+				tint = true, fp = 0.35 }, -- (twinkles along each wing's lit loop)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 246, 220), rate = 0.6, life = 0.55, size = 0.0225, drift = "rise",
+				at = { { 0.0038, 0.194, -0.1035 }, { 0.0038, -0.194, -0.1035 } }, tint = true, fp = 0.25 }, -- (a star glint now and then at the wing tips)
+		},
+		coil = { -- (a vine of light winding up each wing to its tip)
+			{ a = { 0.0106, 0.0849, -0.147 }, b = { 0.0029, 0.1968, -0.1027 }, r = 0.0144, turns = 1.25, spin = 1.2, strands = 1,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.0048, pulse = 1, tint = true, fp = 0.7 },
+			{ a = { 0.0106, -0.0849, -0.147 }, b = { 0.0029, -0.1968, -0.1027 }, r = 0.0144, turns = 1.25, spin = 1.2, strands = 1,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.0048, pulse = 1, tint = true, fp = 0.7 },
+		},
+		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.012, width1 = 0,
+			segs = { { { 0.0079, 0.1514, -0.1164 }, { 0.0038, 0.1938, -0.1032 } }, { { 0.0079, -0.1514, -0.1164 }, { 0.0038, -0.1938, -0.1032 } } }, },
+	},
 	ar_infernal = {
 		idle = {
 			{ kind = "ember", colour = Color3.fromRGB(255, 110, 40), rate = 3, life = 1.2, size = 0.012, drift = "rise",
