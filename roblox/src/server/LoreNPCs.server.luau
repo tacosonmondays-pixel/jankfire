@@ -405,12 +405,22 @@ local function hashOf(code: string): string
 	return h
 end
 -- the egg's find is HubEgg.server's (the OG title; PetSecrets gives the mini mannequin to whoever owns it)
+-- (18 Nov: the hub's rebuild took the egg's nook out, and with it HubEgg's touch box, so HubEgg answers "no egg". then
+-- the OG title is granted here, with HubEgg's own offer and receipt, so it can never be given twice)
 local function findEgg(p: Player)
 	local f = ServerStorage:FindFirstChild("HubEggFind")
+	local res: any = nil
 	if f and f:IsA("BindableFunction") then
-		local ok, res = pcall(function() return (f :: BindableFunction):Invoke(p) end)
-		if not ok then warn("[jankfire] lore code: the egg's find: " .. tostring(res)) end
+		local ok, r = pcall(function() return (f :: BindableFunction):Invoke(p) end)
+		if not ok then warn("[jankfire] lore code: the egg's find: " .. tostring(r)) end
+		res = if ok then r else nil
 	end
+	if res == "found" or res == "owned" then return end
+	local okO, owns = pcall(Loot.owns, p, "title", "og")
+	if okO and owns == true then return end
+	local rid = "hubegg-" .. p.UserId .. (if STUDIO then "-" .. math.floor(os.clock() * 1000) else "")
+	local okG, got = pcall(Loot.grant, p, "egg:title:og", rid)
+	if okG and got == true then CalloutR:FireClient(p, "NEW TITLE · OG", 2.6) end
 end
 
 local function tryCode(p: Player, text: unknown, test: boolean?): any

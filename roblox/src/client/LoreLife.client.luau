@@ -705,8 +705,10 @@ endCut = function()
 	local cam = workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Custom
 	cam.FieldOfView = c.fov
-	me:SetAttribute("LoadoutOpen", c.loadoutWas == true)
-	me:SetAttribute("Finishing", nil)
+	-- (always down, never the value saved at the start: the code screen was still closing then, so it read true. a
+	-- menu that's really still up has MenuCursor put it straight back. 18 Nov: the owner's hub buttons stayed dead)
+	me:SetAttribute("LoadoutOpen", false)
+	if me:GetAttribute("Finishing") == "lore" then me:SetAttribute("Finishing", nil) end
 	controls(true)
 end
 
@@ -887,24 +889,30 @@ local function startCut(id: string, again: boolean?)
 		camC = clampCam(finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0)),
 		fov = cam.FieldOfView, loadoutWas = me:GetAttribute("LoadoutOpen"), said = false, shot = 0, aim = nil, look = nil,
 	}
-	local u = ui()
-	for _, g in me:WaitForChild("PlayerGui"):GetChildren() do
-		if g:IsA("ScreenGui") and g ~= u.g and g.Enabled and g.Name ~= "LoreDelivery" then hiddenGuis[g] = true; g.Enabled = false end
-	end
-	u.g.Enabled = true
-	me:SetAttribute("LoadoutOpen", true) -- (hands and guns hold still, no menu opens, the shoulder camera lets go)
-	me:SetAttribute("Finishing", "lore") -- (MenuCursor, PadLook and the death camera treat it like a finisher)
-	controls(false)
-	cam.FieldOfView = 50
-	chime(finish + Vector3.new(0, 4, 0))
-	ContextActionService:BindActionAtPriority("JankLoreSkip", function(_, state)
-		if state == Enum.UserInputState.Begin and cut and os.clock() - cut.t0 > CUT_SKIP then endCut() end
-		return Enum.ContextActionResult.Sink
-	end, false, 3600, Enum.KeyCode.Space, Enum.KeyCode.ButtonB)
-	RunService:BindToRenderStep("JankLoreCut", Enum.RenderPriority.Last.Value + 70, function(dt: number)
-		local ok, err = pcall(stepCut, dt)
-		if not ok then warn("[jankfire] lore cutscene: " .. tostring(err)); endCut() end
+	local okSetup, errSetup = pcall(function()
+		local u = ui()
+		for _, g in me:WaitForChild("PlayerGui"):GetChildren() do
+			if g:IsA("ScreenGui") and g ~= u.g and g.Enabled and g.Name ~= "LoreDelivery" then hiddenGuis[g] = true; g.Enabled = false end
+		end
+		u.g.Enabled = true
+		me:SetAttribute("LoadoutOpen", true) -- (hands and guns hold still, no menu opens, the shoulder camera lets go)
+		me:SetAttribute("Finishing", "lore") -- (MenuCursor, PadLook and the death camera treat it like a finisher)
+		controls(false)
+		cam.FieldOfView = 50
+		chime(finish + Vector3.new(0, 4, 0))
+		ContextActionService:BindActionAtPriority("JankLoreSkip", function(_, state)
+			if state == Enum.UserInputState.Begin and cut and os.clock() - cut.t0 > CUT_SKIP then endCut() end
+			return Enum.ContextActionResult.Sink
+		end, false, 3600, Enum.KeyCode.Space, Enum.KeyCode.ButtonB)
+		RunService:BindToRenderStep("JankLoreCut", Enum.RenderPriority.Last.Value + 70, function(dt: number)
+			local ok, err = pcall(stepCut, dt)
+			if not ok then warn("[jankfire] lore cutscene: " .. tostring(err)); endCut() end
+		end)
 	end)
+	if not okSetup then
+		warn("[jankfire] lore cutscene setup: " .. tostring(errSetup))
+		endCut()
+	end
 end
 me.CharacterAdded:Connect(function() if cut then endCut() end end)
 me:GetAttributeChangedSignal("Zone"):Connect(function()
@@ -951,6 +959,12 @@ task.spawn(function()
 	while true do
 		eggHidden = nil -- (look again: the hub may have been rebuilt)
 		pcall(eggApply)
+		-- (a cutscene's flag with no cutscene: put right, controls back)
+		if not cut and me:GetAttribute("Finishing") == "lore" then
+			me:SetAttribute("Finishing", nil)
+			me:SetAttribute("LoadoutOpen", false)
+			controls(true)
+		end
 		task.wait(3)
 	end
 end)

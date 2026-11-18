@@ -76,13 +76,11 @@ codes weekly by weekly at some point".
   only in its cutscene and is never placed at its spot afterwards (its delivered copy stays hidden in the player's
   PlayerGui for the cutscene to clone); the HR guy makes no visits; the egg nook stays shut. Set it to `true` and they
   live at their spots after their codes again (the spots are kept as data).
-- **The egg nook's door**: the nook's opening over the west arch (the "hole") is closed by a solid panel,
-  `Map.Lore.EggNookDoor` (a stand-in made at place version 954 in the wall's own lintel colour: 6.7 x 6.3 x 0.6 at
-  (-216.66, 264.21, -9965.40), facing the round room, 0.3 behind the wall's face). LoreLife.client opens every part
-  named `EggNookDoor` (in Map.Lore or Map.Hub; the hub session may build its own) for a player only once they've
-  entered JANK and only while `PLACE_IN_WORLD` is on: hidden and no collisions on their screen alone. With the
-  owner's "only in the cutscene" it stays shut for everyone; the hub session may replace it with a plain closed panel
-  or remove the nook (then delete the stand-in).
+- **The egg nook's door**: the nook's opening over the west arch (the "hole") is closed by the hub's own solid
+  panel, `Map.Hub.Rotunda.Shell.EggNookDoor` (the hub builder's, since place version 963; cream, 6.21 x 6.40 x 0.68,
+  tagged EggNookDoor). LoreLife.client would open any part named `EggNookDoor` for a player who has entered JANK, but
+  only while `PLACE_IN_WORLD` is on: with the owner's "only in the cutscene" it stays shut for everyone. (My stand-in
+  in Map.Lore, v954, was deleted when the hub's landed.)
 - **Reward codes** (book rows with `kind = "reward"`; what each gives: `REWARDS` in LoreNPCs): a code that gives items
   instead of an NPC, once per player (`Loot.grant` of shop-gui's `gift:<kind>:<id>` offers, one receipt per player and
   item; the save's `claims`). The screen shows what it gave (names from LootTable), or CLAIMED. First one:

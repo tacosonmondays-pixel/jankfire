@@ -99,7 +99,8 @@ local function submit()
 	if res.ok then
 		say(if res.again then "FOUND" else "", T.ACCENT)
 		b.Text = ""
-		task.delay(if res.again then 0.8 else 0.25, function() if S.gui == g then close() end end)
+		-- (closed at once: the cutscene is about to start, and it must not start with this menu still up)
+		close()
 		return
 	end
 	if res.why == "wait" then
