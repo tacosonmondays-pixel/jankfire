@@ -513,10 +513,12 @@ do
 	local order = 0
 	for _, slot in Roster.SLOTS do
 		for _, e in Roster.list do
-			if e.slot ~= slot or not e.live then continue end
+			-- (a coming-soon weapon that has a weapon row is here too, for tests: the server lets DevArms arm it. "(soon)")
+			local soon = not e.live and (ReplicatedStorage:WaitForChild("Jankfire"):FindFirstChild("Weapons") ~= nil) and (require(ReplicatedStorage.Jankfire.Weapons) :: any).list[e.id] ~= nil
+			if e.slot ~= slot or not (e.live or soon) then continue end
 			order += 1
 			local b = T.new("TextButton", {
-				Name = "W_" .. e.id, Text = string.upper(e.name), FontFace = T.FONT_BOLD, TextSize = 11, TextScaled = false,
+				Name = "W_" .. e.id, Text = string.upper(e.name) .. (if soon then " (soon)" else ""), FontFace = T.FONT_BOLD, TextSize = 11, TextScaled = false,
 				TextTruncate = Enum.TextTruncate.AtEnd, AutoButtonColor = true, TextColor3 = T.TEXT, BackgroundColor3 = T.CARD_HI,
 				BorderSizePixel = 0, LayoutOrder = order,
 			}, wlist)

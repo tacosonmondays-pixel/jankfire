@@ -27,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Roster = require(Shared:WaitForChild("Roster"))
+local Weapons = require(Shared:WaitForChild("Weapons")) -- (the owner's dev menu arms a coming-soon weapon that has a row)
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local GunSkins = require(Shared:WaitForChild("GunSkins"))
@@ -284,9 +285,29 @@ end
 -- a saved loadout, checked like anything a client sends (a bad save just falls back to the defaults)
 local function adopt(d: Data, saved: any)
 	if type(saved) ~= "table" then return end
+	-- (a weapon that's "coming soon" again, owner 18 Nov: its saved pick, wrap and hat are held and written back on
+	-- every save, so its coming back puts them back. a held pick goes once you pick another weapon for that slot)
+	local dd = d :: any
 	if type(saved.pick) == "table" then
 		for _, slot in Roster.SLOTS do
-			if canHave(slot, saved.pick[slot]) then d.pick[slot] = saved.pick[slot] end
+			local w = saved.pick[slot]
+			if canHave(slot, w) then d.pick[slot] = w
+			elseif type(w) == "string" and Roster.byId[w] and Roster.byId[w].slot == slot and not Roster.byId[w].live then
+				dd.heldPick = dd.heldPick or {}
+				dd.heldPick[slot] = w
+			end
+		end
+	end
+	if type(saved.wraps) == "table" then
+		for wid, w in saved.wraps do
+			local e = if type(wid) == "string" then Roster.byId[wid] else nil
+			if e and not e.live and type(w) == "table" then dd.heldWraps = dd.heldWraps or {}; dd.heldWraps[wid] = w end
+		end
+	end
+	if type(saved.hats) == "table" then
+		for wid, h in saved.hats do
+			local e = if type(wid) == "string" then Roster.byId[wid] else nil
+			if e and not e.live and type(h) == "string" then dd.heldHats = dd.heldHats or {}; dd.heldHats[wid] = h end
 		end
 	end
 	if type(saved.wraps) == "table" then
@@ -389,7 +410,12 @@ local function save(p: Player)
 	for wid in d.kept do table.insert(kept, wid) end
 	local skins = table.clone(d.skins)
 	for wid, s in ((d :: any).held or {}) :: { [string]: string } do if skins[wid] == nil then skins[wid] = s end end
-	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = skins, kept = kept, u = d.u }
+	local pick, hats = table.clone(d.pick), table.clone(d.hats)
+	local dd = d :: any
+	for slot, w in (dd.heldPick or {}) :: { [string]: string } do pick[slot] = w end -- (coming soon again: kept, Roster)
+	for wid, w in (dd.heldWraps or {}) :: { [string]: any } do if wraps[wid] == nil then wraps[wid] = w end end
+	for wid, h in (dd.heldHats or {}) :: { [string]: string } do if hats[wid] == nil then hats[wid] = h end end
+	local payload = { v = VERSION, pick = pick, wraps = wraps, hats = hats, skins = skins, kept = kept, u = d.u }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
 	inflight -= 1
 	if not ok then
@@ -484,7 +510,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if type(a) ~= "string" or not table.find(Roster.SLOTS, a) or type(b) ~= "string" then return false, "nope" end
 		local e = Roster.byId[b]
 		if not e or e.slot ~= a then return false, "wrong slot" end
-		if not e.live then return false, "coming soon. it's not on roblox yet" end
+		-- (the owner's dev menu, DevArms set by OwnerDev.server, still arms a coming-soon weapon in the try layer for tests)
+		if not e.live and not (free and p:GetAttribute("DevArms") == true and (Weapons.list :: any)[b] ~= nil) then return false, "coming soon. it's not on roblox yet" end
 		-- (in a match: only in the loadout window, never while a round is live)
 		if not free and p:GetAttribute("Zone") == "match" and not inWindow(p) then
 			return false, if p:GetAttribute("LoadoutReady") then "you're locked in for this round" else "the loadout opens before a round and between rounds"
@@ -496,6 +523,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		end
 		if L.pick[a] == b then return true, nil end
 		L.pick[a] = b
+		if not free and (d :: any).heldPick then (d :: any).heldPick[a] = nil end -- (you picked another: the held one goes)
 		done()
 		if free then tryArm(p) else pushNext(p) end
 		if not free and inWindow(p) then rearmInHub(p) end -- (the window: in your hands now; dead, at the next round's spawn)
