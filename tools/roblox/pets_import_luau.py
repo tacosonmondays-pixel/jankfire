@@ -11,7 +11,7 @@ L = json.load(open(sys.argv[1]))
 def v3(v): return 'Vector3.new(%s, %s, %s)' % tuple(('%.4f' % x).rstrip('0').rstrip('.') if x else '0' for x in v)
 
 rows = ['I.LAYOUT = {']
-for pet in ('mannequin', 'slug', 'dog', 'kennel'):
+for pet in ('mannequin', 'kennel'):  # (the dog and the slug are skinned since take 2: pets_skinned.py, I.SKINNED)
     d = L[pet]
     ex = d['extra']
     extra = ''

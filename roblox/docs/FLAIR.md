@@ -215,22 +215,37 @@ could be the train, a slug made of hardware with his mask, it crawls using his h
 meat dogs?" Main's spec: one pet worn at a time, earned only by finding secrets, following you everywhere, cheap, and
 everyone sees everyone's.
 
-**The three** (`tools/roblox/pets_models.py`, headless Blender; sheet `flair/pets-models-sheet.jpg`):
-- **Mini Mannequin** (`mannequin`): the hub egg's mannequin, from its own dump of the web game's player, at 0.95 studs per web
-  metre (1.9 studs, knee high), with the pink outline rim. One stiff piece that waddles, rocking from foot to foot like a
-  wind-up toy. Upload 93735950095362.
-- **Train Slug** (`slug`): the Gut train's ☺ enamel mask on four steel plate drums, with a stack, a copper pipe and a valve
-  wheel. It drags itself along on two cable arms with dark rubber hands and the boss's blue wrist knots. 3.1 long.
-  Upload 77552236809847.
-- **Meat Dog** (`dog`): two pink sausage links tied with cream twine, stubby legs, a sausage tail that wags, button eyes,
-  floppy ears and a muted teal collar. 2.7 long. Flat clean pinks: nothing raw, no organs, bones or blood (the account has
-  one warning). Upload 75123181576256.
-- **Remodel (18 Nov):** the owner on the first sheet: "The dog looks very AI-ish, which I think is characterized by the lack
-  of joins and the segmented body!! Same with the train boss pet!!" So the dog and the slug are being rebuilt as single
-  skinned forms, with legs, arms, neck and tail growing out of the body through filleted joins. Their first uploads above
-  were never put in the place. The mannequin stays as it is: it's the web game's own crusty model on purpose.
-- Each moving piece is its own mesh with its joint (`pets_layout.json`, written into `PolishBackup.PetImport` by
+**Shipped: the Mini Mannequin only** (18 Nov, the owner: "Maybe just jank player pet for now"). The slug and the dog are
+parked, each behind its own switch (the last column of `Flair.luau` PETS). A parked pet is not in the PETS tab, its secret
+doesn't run (no train counting, no kennel in the Gut), nothing can grant or wear it, and nobody draws it. Their models, the
+skinned take 2 and the code all stay; turning a switch on brings that pet back (then `PetImport.build({ "dog" })` makes its
+template).
+
+**The three** (headless Blender; sheets `flair/pets-models-sheet.jpg` (take 1) and `flair/pets-before-after.jpg` (take 2)):
+- **Mini Mannequin** (`mannequin`, `tools/roblox/pets_models.py`): the hub egg's mannequin, from its own dump of the web game's player, at 0.95 studs per web
+  metre (1.9 studs, knee high), with the pink outline rim. Two stiff pieces (body, outline) that waddle together, rocking from
+  foot to foot like a wind-up toy. Upload 93735950095362.
+- **Train Slug** (`slug`, `tools/roblox/pets_skinned.py`): one tapering steel body with plate seams and rivets on its skin, a
+  stack and a valve wheel. The Gut train's ☺ enamel mask sits in a socket carved into its own collar. Two cable arms come
+  out of steel shoulders through an elbow and a wrist (the boss's blue knots) to mitten hands it drags itself along on.
+  3.1 long. Upload 70466317838874.
+- **Meat Dog** (`dog`, `pets_skinned.py`): one pink body; the two sausage links are a soft waist with a cream twine groove.
+  Hips and shoulders melt into stubby legs with knees and paws; the neck flows into the head; floppy ears grow from the head
+  and the tail from the rump. Button eyes, a raised teal collar band with a tag. 2.6 long. Flat clean pinks: nothing raw, no
+  organs, bones or blood (the account has one warning). Upload 131881237894353.
+- **Take 2 (18 Nov):** the owner on the first sheet: "The dog looks very AI-ish, which I think is characterized by the lack
+  of joins and the segmented body!! Same with the train boss pet!!" Take 1 was primitives butted together (uploads
+  77552236809847 and 75123181576256, never put in the place). Take 2 builds each as a metaball field: soft lumps that melt into
+  one another, so every join has its own fillet. It is then meshed, smoothed, reduced (dog 8.1k tris, slug 12.6k), coloured
+  per vertex (smooth edges between colours) and skinned to a few bones (dog: body, head, tail, four legs; slug: five
+  along the body, an upper arm and a forearm each side). One MeshPart with its Bones; Roblox's import puts it in the file's
+  own frame (bones exactly where `pets2_layout.json` says).
+- The mannequin's pieces carry their joints (`pets_layout.json`, written into `PolishBackup.PetImport` by
   `tools/roblox/pets_import_luau.py`). Colours are baked vertex colours (`rbxglb`), so Color stays white.
+- **The find's recording** (`PetImport.SOUNDS`, a `Found` Sound in each template, played for the finder alone):
+  - mannequin: the hub egg's toy-top run;
+  - slug: four quick clanks from Pro Sound Effects "Metal Pole Impact With Wrench Bat 2" (6.8 to 7.95 s, measured);
+  - dog: Freesound 468443 "Squeaky Toy #1" by Breviceps (CC0), upload 75582875806945.
 
 **Finding them** (`server/PetSecrets.server.luau`; nothing on screen hints at any of them):
 - **Mannequin:** find the hub egg. Anyone who owns its OG title has the pet, checked when the loot save loads and on
@@ -261,8 +276,10 @@ The remote `Flair` takes `("pet", id)` ("" for none), and `state` returns `pets`
   above or below for 1.2 s (pads, lifts).
 - No collisions, queries or touches: it can't be shot, stood on or block anything. Your own is hidden while it's in front of
   you in first person, and any pet right at the camera is hidden too.
-- Gaits are sums of sines on the pieces' joints: the mannequin's waddle, the slug's crawl (hands reach in turn, the drums
-  bunch in a wave) and the dog's trot (diagonal legs, bob, nod, a tail that always wags). Standing, each idles.
+- Gaits are sums of sines (`client/PetRig.luau`): the mannequin's pieces turn about its feet (the waddle). The dog's and
+  the slug's bones get a `Transform` each frame, written in the pet's own frame and carried into the bone's (rest^-1 · move ·
+  rest). The slug crawls: its body bunches in a wave, and each arm lifts at the shoulder and the elbow in turn. The dog trots:
+  diagonal legs, a bob, a nod, and a tail that always wags. Standing, each idles.
 
 **The picker:** the equip screen's PETS tab. NO PET comes first, then the three. A found pet shows in its own colours with
 its name; one you haven't found is a black silhouette named "???", with no hint. The preview walks the pet in a ring round
@@ -277,6 +294,14 @@ the copy of you.
 - Workspace attribute `PetFreeze` holds every pose (for photos).
 - A Model tagged `PetStandIn` with an attribute `Pet` walks a pet like a player.
 - `FlairTest = "ui:pet"` opens the tab.
+
+**Checked in Play** (place v833, then v843 with the slug and the dog parked):
+- `HubEggTest "find"` gave the OG title, and the mini mannequin with it, worn at once.
+- It followed 2.6 to 3.3 studs behind and 1.8 to 2.8 to the side, in the hub.
+- The tab shows only NO PET and MINI MANNEQUIN (EQUIPPED). The preview draws it in colour (v843 fixed it starting as a silhouette before the found list came in).
+- With the slug and the dog parked: granting them answers "no such pet", and no kennel is placed in the Gut.
+- Not tested live: the train-pass and kennel finds, which need a Gut match. They're parked now anyway.
+- Photos: `flair/pets-mannequin-hub.jpg`, `flair/pets-picker.jpg`.
 
 ## Settings hooks (the settings page, P)
 

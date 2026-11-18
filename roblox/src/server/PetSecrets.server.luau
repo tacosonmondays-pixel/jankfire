@@ -23,6 +23,11 @@ local RunService = game:GetService("RunService")
 
 local Jankfire = script.Parent
 local Loot = require(Jankfire:WaitForChild("Loot")) :: any
+local Flair = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Flair")) :: any
+-- a pet that's switched off (Flair PETS, parked: since 18 Nov the slug and the dog, the owner: "Maybe just jank player pet
+-- for now") has no secret running: no train counting, no kennel in the Gut, no door to find.
+local SLUG_ON = Flair.pet("slug") ~= nil
+local DOG_ON = Flair.pet("dog") ~= nil
 local PetOps = Jankfire:WaitForChild("FlairServer"):WaitForChild("PetOps") :: BindableFunction
 
 -- THE GUT's frame (gut_layout.py, the arena's pivot at its site's middle on the street; copies only move): the platform
@@ -136,8 +141,8 @@ end
 local function addGut(root: Model)
 	if guts[root] then return end
 	guts[root] = true
-	placeKennel(root)
-	root:GetAttributeChangedSignal("TrainAt"):Connect(function() trainRun(root) end)
+	if DOG_ON then placeKennel(root) end
+	if SLUG_ON then root:GetAttributeChangedSignal("TrainAt"):Connect(function() trainRun(root) end) end
 	root.AncestryChanged:Connect(function()
 		if not root:IsDescendantOf(workspace) then guts[root] = nil; kennels[root] = nil; counted[root] = nil end
 	end)
@@ -156,6 +161,7 @@ task.spawn(function()
 	if copies then watch(copies) end
 	map.ChildAdded:Connect(function(c) if c.Name == "ArenaCopies" then watch(c) end end)
 	-- (the kit may come in after the arenas: place what's missing once it's there)
+	if not DOG_ON then return end
 	while not kit() do task.wait(5) end
 	for root in guts do placeKennel(root) end
 end)

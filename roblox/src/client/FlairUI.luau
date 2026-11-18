@@ -834,7 +834,10 @@ function FlairUI.open(tab: string?, home: CFrame?)
 	end
 	c.from, c.to, c.t0, c.dur, c.closing, c.active = cam.CFrame, to, os.clock(), 0.55, false, true
 	if controls then pcall(function() controls:Disable() end) end
-	task.spawn(function() fetch(); if S.open then refresh() end end)
+	task.spawn(function()
+		fetch()
+		if S.open then refresh(); if S.tab == "pet" then previewLoop() end end -- (the pet preview drew before it knew what you have found)
+	end)
 	previewLoop()
 end
 

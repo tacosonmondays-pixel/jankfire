@@ -106,17 +106,25 @@ end
 -- player's, client-side). found only, never sold or rolled: NOT one of F.TYPES (the loot and shop hooks read those), and
 -- owned in FlairServer's own save, not the loot save. how each is found is server/PetSecrets.server.luau's (no hint of
 -- it anywhere on screen: the picker shows a pet you haven't found as a black silhouette, no name)
---   id, name, the gait the follower plays (client/PetRig.luau), how far behind you it keeps, how fast it can go
+--   id, name, the gait the follower plays (client/PetRig.luau), how far behind you it keeps, ON: the pet's switch
+-- (18 Nov, the owner: "Maybe just jank player pet for now". a pet that's off is parked: not in the PETS tab, its secret
+-- doesn't run (PetSecrets), nothing can grant or wear it, nobody draws it; F.pet() doesn't know it. its model and code
+-- stay: true here brings it back)
 local PETS = {
-	{ "mannequin", "Mini Mannequin", "waddle", 3.2 }, -- (the hub egg's mannequin, knee high)
-	{ "slug", "Train Slug", "crawl", 3.8 },           -- (the Gut train's mask on a slug of steel plates)
-	{ "dog", "Meat Dog", "trot", 3.4 },               -- (two sausage links on stubby legs)
+	{ "mannequin", "Mini Mannequin", "waddle", 3.2, true }, -- (the hub egg's mannequin, knee high)
+	{ "slug", "Train Slug", "crawl", 3.8, false },          -- (the Gut train's mask on a slug of steel plates; parked)
+	{ "dog", "Meat Dog", "trot", 3.4, false },              -- (a pink sausage-link dog; parked)
 }
 F.PET_ORDER = {} :: { string }
 F.PETS = {} :: { [string]: { id: string, name: string, gait: string, keep: number } }
+F.PARKED = {} :: { [string]: boolean }
 for _, r in PETS do
-	table.insert(F.PET_ORDER, r[1])
-	F.PETS[r[1]] = { id = r[1], name = r[2], gait = r[3], keep = r[4] }
+	if r[5] then
+		table.insert(F.PET_ORDER, r[1])
+		F.PETS[r[1]] = { id = r[1], name = r[2], gait = r[3], keep = r[4] }
+	else
+		F.PARKED[r[1]] = true
+	end
 end
 function F.pet(id: any): { id: string, name: string, gait: string, keep: number }?
 	return if type(id) == "string" then F.PETS[id] else nil

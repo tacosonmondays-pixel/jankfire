@@ -5,10 +5,9 @@
 #   mannequin  the hub egg's mannequin (the web game's own player, roblox/assets/hub-egg/mannequin.json) at knee height,
 #              its exact crusty look: flat shaded, the web's colours, the pink outline shell. one piece: it waddles stiff,
 #              rocking from foot to foot like a wind-up toy
-#   slug       the Gut train's ☺ enamel mask on a slug made of hardware: steel plate segments, a stack and a pipe, two
-#              cable arms with dark rubber hands and the boss's blue wrist knots, dragging itself along on them
-#   dog        a meat dog kept cartoon-cute: a pink sausage-link body tied in the middle, stubby legs, a wagging sausage
-#              tail, button eyes, floppy ears, a collar. clean flat pinks, nothing raw, no organs, bones or blood
+#   kennel     the meat dog's secret: a little dog house for the Gut's subway
+# (take 1 also built the meat dog and the train slug here, from butted primitives: the owner found them "AI-ish", so
+# since 18 Nov they are single skinned forms, tools/roblox/pets_skinned.py)
 # Every piece that moves is its own mesh; pets_layout.json says where its joint is (the Roblox frame, studs, the pet's
 # root on the floor under its middle, its front -Z). Colours are baked vertex colours (rbxglb route: Color white).
 # run: blender -b --factory-startup -P tools/roblox/pets_models.py -- <out_dir> [--preview]
@@ -209,136 +208,8 @@ def mannequin():
     return objs, lay, {'feet': 0.1 * K, 'height': round((1.9072 - y0) * K, 3)}
 
 
-# ================================================================== the train slug
-STEEL, STEEL_D, STEEL_DD = '8c9198', '62676e', '4c5056'
-ENAMEL, ENAMEL2, INK = 'efe7d8', 'f6f1e6', '2a2427'
-COPPER, CABLE, RUBBER, KNOT = 'a8786b', '3c3d43', '4b4c53', '5277aa'
-def slug():
-    s = 0.85
-    # the mask: an enamel disc facing forward, a steel rim and bolts, a raised middle, two dark ovals and a smile
-    C = Vector((0, 1.05, 0.8))
-    add('ps_mask', disc((C.x, C.y - 0.02, C.z), 0.7, 0.14, bev=0.035), ENAMEL)
-    add('ps_mask', ring((C.x, C.y + 0.03, C.z), 0.7, 0.075, 'Y', 48, 10), STEEL_D)
-    add('ps_mask', disc((C.x, C.y + 0.06, C.z), 0.36, 0.04, bev=0.012), ENAMEL2)
-    for k in range(8):
-        t = 2 * math.pi * k / 8 + math.pi / 8
-        add('ps_mask', ball((C.x + 0.57 * math.cos(t), C.y + 0.06, C.z + 0.57 * math.sin(t)), (0.035, 0.035, 0.035), 10, 6), STEEL_D)
-    for sx in (-1, 1):
-        add('ps_mask', disc((C.x + sx * 0.2, C.y + 0.085, C.z + 0.17), 0.1, 0.05, bev=0.015, scale=(0.82, 1.38, 1)), INK)
-    add('ps_mask', tube([(C.x + 0.34 * math.cos(math.radians(a)), C.y + 0.085, C.z - 0.02 + 0.34 * math.sin(math.radians(a)))
-                         for a in [200 + 140 * k / 16 for k in range(17)]], 0.035, 10), INK)
-    # behind it: the dark steel drum it is set in
-    add('ps_mask', disc((0, 0.86, C.z - 0.02), 0.63, 0.3, bev=0.06), STEEL_DD)
-    # the segments: steel plate drums lying along the body, each tucked into the one ahead, a darker lip with rivets
-    # at its front; each lower and narrower toward the tail (squashed a little: it lies flat on the floor)
-    SQ = 0.84
-    DRUMS = [(0.42, 0.6, 0.66), (-0.2, 0.53, 0.64), (-0.78, 0.44, 0.6), (-1.27, 0.33, 0.52)]  # (y, radius, length)
-    SEG = []
-    for i, (y, r, ln) in enumerate(DRUMS):
-        name = 'ps_seg%d' % (i + 1)
-        zc = r * SQ + 0.01
-        d = disc((0, 0, 0), r, ln, axis='Y', segs=36, bev=r * 0.3)
-        put(d, S(1, 1, SQ)); put(d, T(0, y, zc))
-        add(name, d, STEEL)
-        lip = ring((0, 0, 0), r * 0.97, 0.055, 'Y', 44, 8)
-        put(lip, S(1, 1, SQ)); put(lip, T(0, y + ln / 2 - 0.07, zc))
-        add(name, lip, STEEL_D)
-        for k in range(7):
-            t = math.radians(15 + 150 * k / 6)
-            add(name, ball((r * 0.97 * math.cos(t), y + ln / 2 - 0.02, zc + r * 0.97 * SQ * math.sin(t)), (0.035, 0.035, 0.035), 10, 6), STEEL_DD)
-        if i == len(DRUMS) - 1:  # (the tail's end: a rounded steel cap)
-            add(name, ball((0, y - ln / 2 + 0.02, zc), (r * 0.8, 0.2, r * 0.8 * SQ), 24, 12), STEEL_D)
-        SEG.append(((0, y, zc), r))
-    # hardware on the back: a stack on the first segment, a pipe hump on the second, a valve wheel on the third
-    add('ps_seg1', disc((0.17, 0.38, 1.04), 0.075, 0.26, axis='Z', segs=18, bev=0.02), COPPER)
-    add('ps_seg1', disc((0.17, 0.38, 1.18), 0.095, 0.05, axis='Z', segs=18, bev=0.015), STEEL_DD)
-    add('ps_seg2', tube([(-0.19, 0.06 - 0.5 * k / 10, 0.84 + 0.1 * math.sin(math.pi * k / 10)) for k in range(11)], 0.06, 12), COPPER)
-    for yy in (0.06, -0.44):
-        add('ps_seg2', disc((-0.19, yy, 0.85), 0.085, 0.06, axis='Y', segs=16, bev=0.015), STEEL_DD)
-    add('ps_seg3', ring((0.12, -0.8, 0.8), 0.1, 0.022, 'Z', 24, 6), COPPER)
-    add('ps_seg3', disc((0.12, -0.8, 0.76), 0.03, 0.1, axis='Z', segs=10), STEEL_DD)
-    # the arms: a cable from each side of the first segment, out and forward to a hand planted on the floor ahead
-    arms = {}
-    for sx, name in ((-1, 'ps_armL'), (1, 'ps_armR')):
-        sh = Vector((sx * 0.5, 0.62, 0.55))
-        wr = Vector((sx * 0.76, 1.52, 0.13))
-        pts = [sh, Vector((sx * 0.7, 0.92, 0.6)), Vector((sx * 0.8, 1.28, 0.36)), wr]
-        # (a smooth line through them)
-        line = []
-        for i in range(len(pts) - 1):
-            a, b = pts[i], pts[i + 1]
-            for k in range(6): line.append(a.lerp(b, k / 6))
-        line.append(wr)
-        sm = [line[0]] + [(line[i - 1] + line[i] * 2 + line[i + 1]) / 4 for i in range(1, len(line) - 1)] + [line[-1]]
-        add(name, tube(sm, 0.07, 12), CABLE)
-        add(name, ring((wr.x, wr.y, wr.z + 0.02), 0.095, 0.04, 'Y', 24, 8), KNOT)
-        palm = Vector((wr.x, wr.y + 0.14, 0.075))
-        add(name, ball(palm, (0.16, 0.15, 0.075), 20, 12), RUBBER)
-        for dx in (-0.085, 0.0, 0.085):
-            add(name, capsule((palm.x + dx, palm.y + 0.1, 0.07), (palm.x + dx * 1.15, palm.y + 0.22, 0.045), 0.045, 12, 8), RUBBER)
-        add(name, capsule((palm.x - sx * 0.12, palm.y - 0.02, 0.08), (palm.x - sx * 0.2, palm.y + 0.08, 0.06), 0.045, 12, 8), RUBBER)
-        arms[name] = sh
-    objs = [build_piece(n) for n in ['ps_mask', 'ps_seg1', 'ps_seg2', 'ps_seg3', 'ps_seg4', 'ps_armL', 'ps_armR']]
-    for o in objs:
-        o.data.transform(S(s, s, s)); o.data.update()
-    lay = {'ps_mask': {'role': 'mask', 'joint': rbx(Vector((0, 0.86, 0.5)) * s)}}
-    for i, (c, r) in enumerate(SEG):
-        lay['ps_seg%d' % (i + 1)] = {'role': 'seg', 'n': i + 1, 'joint': rbx(Vector(c) * s)}
-    for name, sh in arms.items():
-        lay[name] = {'role': 'arm', 'side': -1 if name.endswith('L') else 1, 'joint': rbx(sh * s)}
-    return objs, lay, {'scale': s}
-
-
-# ================================================================== the meat dog
-PINK, PINK_L, PINK_D, PINK_E = 'e7a19b', 'f1c3bb', 'cf817c', 'd98a84'
-NOSE, EYE, WHITE, COLLAR, TAG, TWINE = '5e3b3d', '2a2228', 'fbf7f2', '5f8b95', 'c9a55e', 'efe2c6'
-def dog():
-    s = 0.8
-    # the body: two sausage links tied in the middle, a collar at the neck
-    add('pd_body', capsule((0, -0.14, 0.72), (0, 0.62, 0.8), 0.42, 28, 16), PINK)
-    add('pd_body', capsule((0, -0.98, 0.66), (0, -0.2, 0.71), 0.39, 28, 16), PINK)
-    # (the tie between the links: the casing pinched in, a band of cream twine round it)
-    add('pd_body', ball((0, -0.17, 0.715), (0.2, 0.12, 0.2), 20, 12), PINK_D)
-    add('pd_body', ring((0, -0.17, 0.715), 0.205, 0.045, 'Y', 32, 8), TWINE)
-    add('pd_body', ring((0, -0.13, 0.715), 0.2, 0.035, 'Y', 32, 8), TWINE)
-    col = ring((0, 0, 0), 0.36, 0.065, 'Y', 36, 10)
-    put(col, R('X', -25)); put(col, T(0, 0.82, 0.86))
-    add('pd_body', col, COLLAR)
-    add('pd_body', ball((0, 0.98, 0.56), (0.075, 0.03, 0.09), 14, 8), TAG)
-    # the head: round, a lighter snout, a dark nose, button eyes with a glint, floppy ears, a small smile
-    add('pd_head', ball((0, 1.1, 1.18), (0.42, 0.4, 0.39), 28, 16), PINK)
-    add('pd_head', ball((0, 1.45, 1.06), (0.25, 0.22, 0.18), 24, 14), PINK_L)
-    add('pd_head', ball((0, 1.665, 1.12), (0.09, 0.06, 0.065), 16, 10), NOSE)
-    for sx in (-1, 1):
-        e = disc((0, 0, 0), 0.08, 0.05, axis='Y', segs=22, bev=0.015)
-        put(e, R('Z', -sx * 28)); put(e, T(sx * 0.18, 1.43, 1.31))
-        add('pd_head', e, EYE)
-        add('pd_head', ball((sx * 0.18 - 0.025, 1.465, 1.34), (0.022, 0.012, 0.022), 10, 6), WHITE)
-        ear = capsule((sx * 0.31, 1.02, 1.44), (sx * 0.45, 0.94, 1.1), 0.12, 18, 10, squash=(0.45, 1, 1))
-        add('pd_head', ear, PINK_E)
-    add('pd_head', tube([(-0.08, 1.61, 0.985), (-0.035, 1.635, 0.955), (0.0, 1.64, 0.95), (0.035, 1.635, 0.955), (0.08, 1.61, 0.985)], 0.018, 8), NOSE)
-    # the legs: stubby, a lighter paw on each (front pair under the front link, back pair under the back link)
-    legs = {}
-    for name, x, y in (('pd_legFL', -0.24, 0.42), ('pd_legFR', 0.24, 0.42), ('pd_legBL', -0.24, -0.72), ('pd_legBR', 0.24, -0.72)):
-        add(name, capsule((x, y, 0.5), (x, y, 0.16), 0.135, 18, 10), PINK)
-        add(name, ball((x, y + 0.05, 0.085), (0.155, 0.19, 0.085), 18, 10), PINK_L)
-        legs[name] = Vector((x, y, 0.55))
-    # the tail: a little sausage, up and back
-    add('pd_tail', capsule((0, -1.28, 0.8), (0, -1.5, 1.1), 0.105, 18, 10), PINK)
-    names = ['pd_body', 'pd_head', 'pd_legFL', 'pd_legFR', 'pd_legBL', 'pd_legBR', 'pd_tail']
-    objs = [build_piece(n) for n in names]
-    for o in objs:
-        o.data.transform(S(s, s, s)); o.data.update()
-    lay = {'pd_body': {'role': 'body', 'joint': rbx(Vector((0, 0, 0.72)) * s)},
-           'pd_head': {'role': 'head', 'joint': rbx(Vector((0, 0.86, 0.98)) * s)},
-           'pd_tail': {'role': 'tail', 'joint': rbx(Vector((0, -1.24, 0.76)) * s)}}
-    for name, j in legs.items():
-        lay[name] = {'role': 'leg', 'front': name[6] == 'F', 'side': -1 if name.endswith('L') else 1, 'joint': rbx(j * s)}
-    return objs, lay, {'scale': s}
-
-
 # ================================================================== the meat dog's kennel (its secret, in the Gut's subway)
-CREAM, CREAM_D, ROOF, DOOR = 'efe3d6', 'dccab9', 'c98f8a', '3d2b2f'
+CREAM, CREAM_D, ROOF, DOOR, COLLAR = 'efe3d6', 'dccab9', 'c98f8a', '3d2b2f', '5f8b95'
 def kennel():
     """a little dog house in the Gut's colours: cream walls, a dusty rose roof, a dark arched doorway (front +Y), a paw
        print on a blank plaque over it (no words), a teal bowl by the door. one piece; the find spot is in front of the door"""
@@ -417,8 +288,6 @@ def render(objs, path, eye, tgt, res=(900, 760), lens=50):
 bpy.ops.wm.read_factory_settings(use_empty=True)
 report = {}
 for pet, fn, frame in (('mannequin', mannequin, ((2.9, 4.6, 1.9), (0, 0, 0.9))),
-                       ('slug', slug, ((2.9, 4.2, 2.0), (0, 0.1, 0.45))),
-                       ('dog', dog, ((3.1, 4.1, 2.0), (0, 0.2, 0.6))),
                        ('kennel', kennel, ((6.5, 8.5, 4.0), (0, 0.4, 1.4)))):
     objs, lay, extra = fn()
     los, his = [], []

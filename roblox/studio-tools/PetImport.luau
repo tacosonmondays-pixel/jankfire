@@ -16,33 +16,31 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local I = {}
-I.ASSETS = { mannequin = 93735950095362, slug = 77552236809847, dog = 75123181576256, kennel = 114456936297774 }
+I.ASSETS = { mannequin = 93735950095362, kennel = 114456936297774 }
+-- take 2 of the dog and the slug (tools/roblox/pets_skinned.py; the owner found take 1's butted pieces "AI-ish"): ONE
+-- skinned MeshPart each, its Bones inside it. the upload lands in the file's own frame (measured 18 Nov: the MeshPart at
+-- its box's middle, the bones exactly where pets2_layout.json says, the root bone at the origin), so it goes in as it
+-- lands. BONE: one bone and where it must be (the check)
+I.SKINNED = {
+	dog = { asset = 131881237894353, mesh = "pd_dog", bone = "head", at = Vector3.new(0, 0.784, -0.688) },
+	slug = { asset = 70466317838874, mesh = "ps_slug", bone = "s0", at = Vector3.new(0, 0.4675, -0.527) },
+}
 -- the find's recording per pet (Roblox's licensed library, Pro Sound Effects): id, the stretch played, volume
-I.SOUNDS = {} :: { [string]: { id: string, from: number?, to: number?, volume: number } }
+I.SOUNDS = {
+	-- (the hub egg's own recording: Pro Sound Effects "Musical Toy Top 1", its toy-top run, measured by the hub egg)
+	mannequin = { id = "rbxassetid://9117040176", from = 1.3, to = 3.0, volume = 0.35 },
+	-- (Pro Sound Effects "Metal Pole Impact With Wrench Bat 2": four quick clanks, onsets 6.85, 7.10, 7.42, 7.70 s,
+	-- measured silently 18 Nov, peak 0.74)
+	slug = { id = "rbxassetid://9116768705", from = 6.8, to = 7.95, volume = 0.3 },
+	-- (Freesound 468443 "Squeaky Toy #1" by Breviceps, CC0, uploaded as is: one squeak, 0.45 s)
+	dog = { id = "rbxassetid://75582875806945", volume = 0.5 },
+} :: { [string]: { id: string, from: number?, to: number?, volume: number } }
 -- (tools/roblox/pets_import_luau.py writes this from pets_layout.json)
 -- LAYOUT BEGIN
 I.LAYOUT = {
 	mannequin = { size = Vector3.new(0.637, 1.853, 0.737), feet = 0.0950, pieces = {
 		pm_body = { role = "body", joint = Vector3.new(0, 0, 0), centre = Vector3.new(-0.0868, 0.9144, -0.2023) },
 		pm_shell = { role = "shell", joint = Vector3.new(0, 0, 0), centre = Vector3.new(-0.0884, 0.9208, -0.1952) },
-	} },
-	slug = { size = Vector3.new(1.564, 1.359, 3.089), pieces = {
-		ps_mask = { role = "mask", joint = Vector3.new(0, 0.425, -0.731), centre = Vector3.new(0, 0.68, -0.799) },
-		ps_seg1 = { role = "seg", joint = Vector3.new(0, 0.4369, -0.357), centre = Vector3.new(0, 0.5032, -0.3634), n = 1 },
-		ps_seg2 = { role = "seg", joint = Vector3.new(0, 0.3869, 0.17), centre = Vector3.new(0, 0.4153, 0.1636), n = 2 },
-		ps_seg3 = { role = "seg", joint = Vector3.new(0, 0.3227, 0.663), centre = Vector3.new(0, 0.3374, 0.6566), n = 3 },
-		ps_seg4 = { role = "seg", joint = Vector3.new(0, 0.2441, 1.0795), centre = Vector3.new(0, 0.2441, 1.1496), n = 4 },
-		ps_armL = { role = "arm", joint = Vector3.new(-0.425, 0.4675, -0.527), centre = Vector3.new(-0.5738, 0.2812, -1.0516), side = -1 },
-		ps_armR = { role = "arm", joint = Vector3.new(0.425, 0.4675, -0.527), centre = Vector3.new(0.5738, 0.2812, -1.0516), side = 1 },
-	} },
-	dog = { size = Vector3.new(0.895, 1.256, 2.664), pieces = {
-		pd_body = { role = "body", joint = Vector3.new(0, 0.576, 0), centre = Vector3.new(0, 0.6097, 0.1324) },
-		pd_head = { role = "head", joint = Vector3.new(0, 0.784, -0.688), centre = Vector3.new(0, 0.944, -0.97) },
-		pd_tail = { role = "tail", joint = Vector3.new(0, 0.608, 0.992), centre = Vector3.new(0, 0.76, 1.112) },
-		pd_legFL = { role = "leg", joint = Vector3.new(-0.192, 0.44, -0.336), centre = Vector3.new(-0.192, 0.254, -0.376), side = -1, front = true },
-		pd_legFR = { role = "leg", joint = Vector3.new(0.192, 0.44, -0.336), centre = Vector3.new(0.192, 0.254, -0.376), side = 1, front = true },
-		pd_legBL = { role = "leg", joint = Vector3.new(-0.192, 0.44, 0.576), centre = Vector3.new(-0.192, 0.254, 0.536), side = -1, front = false },
-		pd_legBR = { role = "leg", joint = Vector3.new(0.192, 0.44, 0.576), centre = Vector3.new(0.192, 0.254, 0.536), side = 1, front = false },
 	} },
 	kennel = { size = Vector3.new(3.367, 3.26, 4.135), door = Vector3.new(0, 0, -1.9), pieces = {
 		pk_kennel = { role = "kennel", joint = Vector3.new(0, 0, 0), centre = Vector3.new(0, 1.63, -0.2925) },
@@ -122,6 +120,42 @@ local function sound(pet: string, into: Instance)
 	snd.Parent = into
 end
 
+-- a skinned pet: its one MeshPart and its Bones, as the upload put them, round a Root at the origin
+local function skinned(pet: string): (Model?, string)
+	local sk = I.SKINNED[pet]
+	local c, err = load(sk.asset)
+	if not c then return nil, err :: string end
+	local mp = (c :: Instance):FindFirstChild(sk.mesh, true)
+	if not (mp and mp:IsA("MeshPart")) then (c :: Instance):Destroy(); return nil, pet .. ": no " .. sk.mesh .. " in the upload" end
+	local m = Instance.new("Model")
+	m.Name = pet
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Size = Vector3.new(0.2, 0.2, 0.2)
+	root.Transparency = 1
+	root.Anchored = true
+	root.CanCollide = false; root.CanQuery = false; root.CanTouch = false
+	root.CFrame = CFrame.new()
+	root.Parent = m
+	m.PrimaryPart = root
+	mp.Parent = m
+	mp.Anchored = true
+	mp.CanCollide = false; mp.CanQuery = false; mp.CanTouch = false
+	mp.Massless = true
+	mp.Color = Color3.new(1, 1, 1) -- (the colours are in the mesh)
+	mp.Material = Enum.Material.SmoothPlastic
+	mp.Reflectance = 0
+	mp.CastShadow = true
+	mp:SetAttribute("Role", "body")
+	m:SetAttribute("Skinned", true)
+	;(c :: Instance):Destroy()
+	local b = mp:FindFirstChild(sk.bone, true)
+	local miss = if b and b:IsA("Bone") then (b.WorldPosition - sk.at).Magnitude else math.huge
+	local nb = 0
+	for _, d in mp:GetDescendants() do if d:IsA("Bone") then nb += 1 end end
+	return m, ("%s: skinned, %d bones, %s off by %.3f"):format(pet, nb, sk.bone, miss)
+end
+
 function I.build(only: { string }?): string
 	local out = {}
 	local kit = ReplicatedStorage:FindFirstChild("JankfirePets")
@@ -130,8 +164,9 @@ function I.build(only: { string }?): string
 		kit.Name = "JankfirePets"
 		kit.Parent = ReplicatedStorage
 	end
-	for _, pet in only or { "mannequin", "slug", "dog" } do
-		local m, msg = assemble(pet, pet)
+	for _, pet in only or { "mannequin" } do -- (the slug and the dog are parked: Flair PETS. I.build({ "dog" }) still builds one)
+		local m, msg
+		if I.SKINNED[pet] then m, msg = skinned(pet) else m, msg = assemble(pet, pet) end
 		table.insert(out, msg)
 		if m then
 			sound(pet, m)
