@@ -31,11 +31,12 @@ Files:
 ## Opening it
 
 - **Keyboard:** F8, or `/dev` in chat. In the legacy chat the server hears `/dev` and bumps the `DevPanel` attribute.
-- **Touch:** the small DEV button in the top-right corner. Only the owner has it.
+- **Touch:** the small DEV button in the top-right corner, under the currency box. Only the owner has it.
 - **Controller:** VIEW reaches the DEV button (it's in PadNav's menu column). Once the menu is open, B backs out.
 - **Hotkeys, menu open or not:**
   - **X** flings whoever you're looking at.
   - **Z** freezes or lets go of whoever you're looking at.
+  - **Y** shows a red card to whoever you're looking at.
 - The menu frees the mouse but doesn't hold you still (it's a cursor-only MenuCursor name). You can fly with it open.
 
 ## The powers
@@ -48,6 +49,7 @@ Each power is a server attribute on the owner. The owner's client acts on it.
 | NOCLIP | `DevNoclip` | Your body's parts stop colliding every step. The Humanoid still stands on floors, so walls become air. |
 | RUN SPEED | `DevSpeed` (1x to 4x, in 0.25 steps) | `Body.devSpeed` multiplies your run speed in `Move.client`. |
 | WEAPONS IN HUB | `DevArms` | Weapons come out in the hub (see below). |
+| INVISIBLE | `DevInvisible` | Everyone else stops seeing your body, gun, name, title and pet. The server makes every part and decal of your character fully see-through, switches off its lights, effects and labels, and hides the name (`DisplayDistanceType` None). Each value is kept so it can be put back, including anything added later, such as a new gun or a respawn. OverheadTitles, Pets and ThirdPerson skip an invisible player. Your own client draws a faint ghost of you from each part's `DevWas` attribute. Footsteps and shots can still be heard. |
 | (all of the above) | `DevOn` | Set while any power is on, and for 3 s after the last one goes off. The anti-cheat's pass. |
 
 **WEAPONS IN HUB:**
@@ -64,7 +66,25 @@ Each power is a server attribute on the owner. The owner's client acts on it.
 | FLING | 170 studs/s away from you and 130 up, through `Fight.knock`, so the anti-cheat sees the push. It also tags the victim, so a fall afterwards counts as yours. |
 | FREEZE / LET GO | Holds them still where they are. Their own client anchors the body (`DevFrozen`) and `Rules.stun` stops their shots. They are let go if they die or leave, and everyone is let go when the owner leaves. |
 | GO TO / BRING | Moves you 5 studs in front of them, or them in front of you. Anywhere: a map room or a match keeps its own list of who's in it, so a player brought out is still counted there. |
-| LET EVERYONE GO, ALL MY POWERS OFF | Buttons under the player list. |
+| JAIL / FREE | Sends them to the jail (below), or lets them out to the hub. |
+| RED CARD | Football style. On every screen the owner's right arm goes up with a red card in the hand for 1.2 s, and a referee's whistle blows where they stand. The whistle is a recording: Pro Sound Effects "Referee Whistle, Exterior, Single Blast", asset 9118113825, from Roblox's licensed library. The target's screen flashes a red card shape, with no text. Then they're sent to the jail. |
+| UNFREEZE EVERYONE, EMPTY THE JAIL, ALL MY POWERS OFF | Buttons under the player list. |
+
+**The jail** (the owner's "small room for funsey"):
+
+- **The room:** `Map.DevJail`, built by the server the first time someone is sent there. It sits 420 studs over the hub's `Origin`, because anything 60 studs under it is the void.
+  - It's a `ZonePiece`, so ZoneCull draws it only for whoever is near it.
+  - Inside it's 22 x 12 x 18 studs, in quiet greys: bars across the front with a dark sealed corridor behind them, a bench with a rounded edge, a white ceiling light panel, and a small bright window behind glass. There's no text.
+  - Every piece is solid and anchored, so walking, jumping and a grapple's ray all stop at the walls. The bars' gaps are 1.15 studs, narrower than a body.
+- **Going in:** being sent there is a server move (`TeleportT`). The first 2.5 s put them back in if their client still reports the old spot.
+  - A player sent from a match is taken out of it first (`Matches.pull`, as if they'd left). The match is flagged dev, so it counts for nothing.
+- **Getting out:** whichever comes first:
+  - 60 s pass (`JAIL_TIME`; the `DevJailed` attribute is the end time);
+  - the owner frees them;
+  - they join a party or a lobby;
+  - they die, or anything else moves them out;
+  - they leave the game.
+- **Where they go:** a timed or freed release goes to their hub spawn (`Fight.spawnAt`). After a match, that's the hub, or their lobby's plinth if they're in a party.
 
 ## Nothing counts
 
@@ -109,3 +129,29 @@ Each power is a server attribute on the owner. The owner's client acts on it.
   Other ops: `"players"`, `"fling"` / `"freeze"` / `"goto"` / `"bring"` with a Player or a dummy Model, `"flingAim"` / `"freezeAim"` with a look vector, `"unfreezeAll"`.
 - **A match:** `ServerStorage.JankMatchTest:Invoke("ghost", "<pad>", nil, 30, player)`.
 - **The anti-cheat in Studio:** set `StudioOn = true` on `ServerScriptService.Jankfire.AntiCheat` to switch it on.
+
+## Test results
+
+**Round 1, place version 943** (solo Play, a training dummy as the stand-in):
+- Fly holds its height exactly with nothing pressed. Noclip turns the body's parts non-colliding.
+- With dev powers on, a 60-stud client jump scored 0 points; the panel's verdict was "dev powers on".
+- The stand-in was brought to the hub, flung 30 studs up in 0.45 s, and frozen mid-air.
+- WEAPONS in the hub: the TV Remote went into the try layer (`Trying`), and its pause froze the stand-in. The rewind fired, but the stand-in had stood still, so it didn't move.
+- `TestNotOwner` made every command "owner only".
+- A ghost match with the player: a power worked, and the match was flagged (`MatchDev` set).
+
+**Round 2, place version 950:**
+- A red card on the stand-in: the card was in the owner's hand with the arm at 172 degrees. The stand-in was in the jail 1.2 s later with its 60 s running.
+- The jail is sealed: rays out of its middle hit the walls on all four sides and the ceiling.
+- Invisible, as the server sees it (and so everyone else): 25 of 25 body parts fully hidden and the name off. The owner's own head showed at 0.72, a ghost. Switching it off brought everything back: 1 of 25 hidden (the root, as before) and the name back.
+  - The first try at switching it off left the body hidden. The kept values sat in a weak-keyed table, and Roblox can drop Instance keys from one while the parts still exist. Fixed with a strong table, plus the `DevWas` fallback.
+
+**Not tested yet:**
+- On a second real player: fling, freeze, jail and the red card on a player rather than a stand-in, jailing someone out of a real match, and invisible as seen from another client.
+- The jail's 60 s release (the Play test stopped before it ran out).
+- The overhead OWNER title and the card's shimmer.
+
+**Photos:** `docs/owner-dev/`:
+- `menu_v950.jpg`
+- `jail_v950.jpg`
+- `red_card_flash_v950.jpg`

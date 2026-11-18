@@ -1037,6 +1037,26 @@ local function padStep()
 	stageStep() -- (the map rooms: leavers, plates, clocks)
 end
 
+-- (OwnerDev.server: the owner's jail and red card in a match) take a player out of their match as if they'd left it:
+-- off their team, their match marks off, the round and READY go on without them. the match has been flagged dev by
+-- then, so nothing in it counts. their body stays where it is (the jail moves it). true if they were in one
+function Matches.pull(p: Player): boolean
+	local im = inMatch[p]
+	if not im then return false end
+	local m = im.m
+	inMatch[p] = nil
+	lastZone[p] = "hub"
+	local list = m.teams[im.team]
+	local i = list and table.find(list, p)
+	if i then table.remove(list, i) end
+	p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil); p:SetAttribute("LoadoutWindow", nil)
+	p:SetAttribute("ReadyTeams", nil); p:SetAttribute("LoadoutReady", nil); p:SetAttribute("SpawnHold", nil)
+	RoundR:FireClient(p, { hub = true })
+	task.defer(checkRound, m)
+	task.defer(function() pushReady(m); checkReady(m) end)
+	return true
+end
+
 -- ------------------------------------------------------------------ wiring
 function Matches.init(fight: any)
 	Fight = fight

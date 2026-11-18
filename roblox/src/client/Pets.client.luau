@@ -91,6 +91,7 @@ local function drop(owner: Instance)
 	f.rig:destroy()
 end
 local function want(owner: Instance): string?
+	if owner ~= Players.LocalPlayer and owner:GetAttribute("DevInvisible") == true then return nil end -- (the owner gone invisible: OwnerDev.server)
 	local id = owner:GetAttribute("Pet")
 	return if type(id) == "string" and Flair.pet(id) then id else nil
 end
@@ -174,6 +175,7 @@ local function sync(owner: Instance)
 end
 local function watchOwner(owner: Instance)
 	owner:GetAttributeChangedSignal("Pet"):Connect(function() sync(owner) end)
+	owner:GetAttributeChangedSignal("DevInvisible"):Connect(function() sync(owner) end)
 	sync(owner)
 end
 for _, p in Players:GetPlayers() do watchOwner(p) end

@@ -750,6 +750,9 @@ end
 
 -- what a body is holding: the Shredder (a Tool), the server's HeldWeapon, or (a test rig) its TPWeapon attribute
 local function sourceOf(ch: Model): (Instance?, string?)
+	-- (the owner gone invisible, OwnerDev.server: nobody else draws their gun)
+	local owner = Players:GetPlayerFromCharacter(ch)
+	if owner and owner ~= Players.LocalPlayer and owner:GetAttribute("DevInvisible") == true then return nil, nil end
 	local tool = ch:FindFirstChildOfClass("Tool")
 	if tool and tool.Name == "Shredder" then return tool, "shredder" end
 	local hw = ch:FindFirstChild("HeldWeapon")

@@ -148,7 +148,7 @@ local function tryHook()
 	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil }
 	GrappleRemote:FireServer("hook", p, body)
 	-- our own rope right away (the server draws it for everyone else)
-	local a0 = (ch:FindFirstChild("RightHand") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
+	local a0 = (ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
 	local a1 = Instance.new("Attachment")
 	if troot and body then
 		a1.Position = Vector3.new(0, Config.hook.bodyUp, 0)

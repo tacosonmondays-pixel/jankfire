@@ -11,8 +11,10 @@
 --       run speed: Body.devSpeed, x the run speed (Move.client)
 --       weapons in the hub: DevArms (the hub's weapon checks let it through); a weapon picked here goes into the
 --         loadout's try layer (never saved), like trying one in training
---     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); X flings and Z freezes or
---     lets go whoever you look at. it works everywhere, matches too: a match a power touches counts for nothing (the
+--       invisible: DevInvisible (the server hides the body): your own client draws a faint ghost of you (DevWas)
+--     everyone's too: the red card (DevFx): the owner's arm up with a card, a whistle, a red card on the target's screen
+--     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); X flings, Z freezes or
+--     lets go and Y shows a red card to whoever you look at. it works everywhere, matches too: a match a power touches counts for nothing (the
 --     server flags it; the status line says so)
 -- plain and functional on purpose: no flavour text (the owner's rule)
 local Players = game:GetService("Players")
@@ -50,6 +52,130 @@ do
 		ch:WaitForChild("HumanoidRootPart", 5)
 		hold()
 	end)
+end
+
+-- ------------------------------------------------------------------ everyone's: the red card (DevFx "redcard")
+-- the owner's arm goes up with a red card in the hand for `pose` s (set over the animation every physics step, so it
+-- wins), a referee's whistle blows where they stand, and the one it's for sees a red card pop up on their screen
+do
+	local Fx = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("DevFx", 60) :: RemoteEvent?
+	local function cardPart(): Part
+		local c = Instance.new("Part")
+		c.Name = "DevRedCard"
+		c.Size = Vector3.new(0.85, 1.2, 0.06)
+		c.Color = Color3.fromRGB(212, 30, 38)
+		c.Material = Enum.Material.SmoothPlastic
+		c.CanCollide, c.CanQuery, c.CanTouch, c.Massless = false, false, false, true
+		c.CastShadow = false
+		return c
+	end
+	local function pose(ch: Model, secs: number)
+		local arm = ch:FindFirstChild("RightUpperArm")
+		local sh = arm and arm:FindFirstChild("RightShoulder") :: Motor6D?
+		local fore = ch:FindFirstChild("RightLowerArm")
+		local el = fore and fore:FindFirstChild("RightElbow") :: Motor6D?
+		local hand = ch:FindFirstChild("RightHand") :: BasePart?
+		if not sh or not hand then return end
+		local card = cardPart()
+		card.CFrame = hand.CFrame * CFrame.new(0, -0.8, 0)
+		local w = Instance.new("WeldConstraint")
+		w.Part0, w.Part1 = hand, card
+		w.Parent = card
+		card.Parent = ch
+		local t0 = os.clock()
+		local conn: RBXScriptConnection
+		conn = RunService.Stepped:Connect(function()
+			local t = os.clock() - t0
+			if t > secs or not sh.Parent then
+				conn:Disconnect()
+				card:Destroy()
+				return
+			end
+			-- up in 0.15 s, held, down in the last 0.15 s
+			local a = math.clamp(math.min(t / 0.15, (secs - t) / 0.15), 0, 1)
+			a = a * a * (3 - 2 * a)
+			sh.Transform = CFrame.identity:Lerp(CFrame.Angles(math.rad(172), 0, math.rad(-8)), a)
+			if el then el.Transform = el.Transform:Lerp(CFrame.identity, a) end
+		end)
+	end
+	local function whistle(id: string, at: BasePart?)
+		local s = Instance.new("Sound")
+		s.Name = "DevWhistle"
+		s.SoundId = id
+		s.Volume = 0.8
+		s.RollOffMode = Enum.RollOffMode.InverseTapered
+		s.RollOffMinDistance = 14
+		s.RollOffMaxDistance = 260
+		s.Parent = at or workspace
+		s:Play()
+		task.delay(4, function() s:Destroy() end)
+	end
+	local function flash(hold: number?)
+		local g = Instance.new("ScreenGui")
+		g.Name = "DevRedCardFlash"
+		g.IgnoreGuiInset = true
+		g.DisplayOrder = 80
+		g.ResetOnSpawn = false
+		local tint = Instance.new("Frame")
+		tint.BackgroundColor3 = Color3.fromRGB(200, 20, 28)
+		tint.BackgroundTransparency = 0.82
+		tint.BorderSizePixel = 0
+		tint.Size = UDim2.fromScale(1, 1)
+		tint.Parent = g
+		local card = Instance.new("Frame")
+		card.Name = "Card"
+		card.AnchorPoint = Vector2.new(0.5, 0.5)
+		card.Position = UDim2.fromScale(0.5, 0.46)
+		card.Size = UDim2.fromOffset(130, 182)
+		card.Rotation = -8
+		card.BackgroundColor3 = Color3.fromRGB(212, 30, 38)
+		card.BorderSizePixel = 0
+		card.Parent = g
+		local cr = Instance.new("UICorner"); cr.CornerRadius = UDim.new(0, 10); cr.Parent = card
+		local st = Instance.new("UIStroke"); st.Color = Color3.fromRGB(255, 236, 236); st.Thickness = 3; st.Transparency = 0.2; st.Parent = card
+		local sc = Instance.new("UIScale"); sc.Scale = 0.3; sc.Parent = card
+		g.Parent = me:WaitForChild("PlayerGui")
+		local TS = game:GetService("TweenService")
+		TS:Create(sc, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		task.delay(hold or 0.9, function()
+			TS:Create(card, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+			TS:Create(st, TweenInfo.new(0.35), { Transparency = 1 }):Play()
+			TS:Create(tint, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+			task.delay(0.4, function() g:Destroy() end)
+		end)
+	end
+	-- (Studio photos: player attribute DevCardTest = seconds holds your own arm up with the card that long; DevFlashTest =
+	-- seconds holds the target's red card flash)
+	if RunService:IsStudio() then
+		me:GetAttributeChangedSignal("DevCardTest"):Connect(function()
+			local v = me:GetAttribute("DevCardTest")
+			if type(v) == "number" and me.Character then task.spawn(pose, me.Character, v) end
+		end)
+		me:GetAttributeChangedSignal("DevFlashTest"):Connect(function()
+			local v = me:GetAttribute("DevFlashTest")
+			if type(v) == "number" then flash(v) end
+		end)
+	end
+	if Fx then
+		Fx.OnClientEvent:Connect(function(d: any)
+			if type(d) ~= "table" or d.k ~= "redcard" then return end
+			local by = d.by
+			local ch = typeof(by) == "Instance" and by:IsA("Player") and by.Character or nil
+			local secs = if type(d.pose) == "number" then math.clamp(d.pose, 0.3, 3) else 1.2
+			local id = if type(d.sound) == "string" then d.sound else ""
+			if ch then
+				task.spawn(pose, ch, secs)
+				whistle(id, ch:FindFirstChild("Head") :: BasePart?)
+			end
+			if d.target == me then
+				if not ch or (ch:FindFirstChild("Head") and me.Character and me.Character:FindFirstChild("Head")
+					and ((ch.Head :: BasePart).Position - (me.Character.Head :: BasePart).Position).Magnitude > 120) then
+					whistle(id, nil) -- (far from the owner: heard anyway, on you)
+				end
+				flash()
+			end
+		end)
+	end
 end
 
 -- ------------------------------------------------------------------ the owner's only
@@ -202,10 +328,41 @@ do
 	speed()
 end
 
+-- ------------------------------------------------------------------ invisible: your ghost
+-- the server made every part of you fully see-through (DevWas = what it was); here, on your screen only, you're a faint
+-- ghost. the server's own write puts each one back when it ends
+do
+	local function ghost(d: Instance)
+		if me:GetAttribute("DevInvisible") ~= true then return end
+		local was = d:GetAttribute("DevWas")
+		if type(was) ~= "number" or was >= 1 then return end
+		if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).Transparency = 0.72 + 0.28 * was end
+	end
+	local function all()
+		local ch = me.Character
+		if ch then for _, d in ch:GetDescendants() do ghost(d) end end
+	end
+	local watched: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+	local function watch(ch: Model)
+		if watched[ch] then return end
+		watched[ch] = true
+		ch.DescendantAdded:Connect(function(d) task.defer(ghost, d) end)
+	end
+	me:GetAttributeChangedSignal("DevInvisible"):Connect(function() task.delay(0.2, all) end)
+	me.CharacterAdded:Connect(function(ch) watch(ch); task.delay(0.5, all) end)
+	if me.Character then watch(me.Character) end
+	task.spawn(function() -- (a part whose DevWas came after it: once a second while it lasts)
+		while true do
+			task.wait(1)
+			if me:GetAttribute("DevInvisible") == true then all() end
+		end
+	end)
+end
+
 -- ------------------------------------------------------------------ the menu
 local gui = T.new("ScreenGui", { Name = "OwnerDev", ResetOnSpawn = false, DisplayOrder = 61, IgnoreGuiInset = true, Enabled = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, me:WaitForChild("PlayerGui"))
 local scaled = T.scaled(gui)
-local plate = T.plate(scaled, "Panel", UDim2.new(0.5, -390, 0.5, -255), UDim2.fromOffset(780, 510))
+local plate = T.plate(scaled, "Panel", UDim2.new(0.5, -450, 0.5, -255), UDim2.fromOffset(900, 510))
 plate.BackgroundTransparency = 0.08
 
 local title = T.text(plate, "Title", "DEV", 18, T.TEXT, T.FONT_TITLE)
@@ -244,9 +401,10 @@ local function label(parent: Instance, name: string, text: string, x: number, y:
 end
 label(plate, "MeHead", "ME", ME_X, 66, 100)
 
-local flyB = button(plate, "Fly", "FLY", UDim2.fromOffset(ME_X, 86), 110)
-local noclipB = button(plate, "Noclip", "NOCLIP", UDim2.fromOffset(ME_X + 118, 86), 110)
-local armsB = button(plate, "Arms", "WEAPONS IN HUB", UDim2.fromOffset(ME_X + 236, 86), 124)
+local flyB = button(plate, "Fly", "FLY", UDim2.fromOffset(ME_X, 86), 84)
+local noclipB = button(plate, "Noclip", "NOCLIP", UDim2.fromOffset(ME_X + 92, 86), 84)
+local invisB = button(plate, "Invisible", "INVISIBLE", UDim2.fromOffset(ME_X + 184, 86), 84)
+local armsB = button(plate, "Arms", "WEAPONS", UDim2.fromOffset(ME_X + 276, 86), 84)
 
 -- a slider: a track you click or drag (mouse, touch), and - / + (a pad, or a fine step)
 type Slider = { set: (number) -> (), value: () -> number }
@@ -345,9 +503,9 @@ do
 end
 
 -- the right half: everyone else
-local PL_X, PL_W = 398, 364
+local PL_X, PL_W = 398, 484
 label(plate, "PlayersHead", "PLAYERS", PL_X, 66, 100)
-local hint = T.text(plate, "Hint", "X  fling   ·   Z  freeze / let go   (whoever you look at)", 12, T.DIM, T.FONT, Enum.TextXAlignment.Right)
+local hint = T.text(plate, "Hint", "X  fling   ·   Z  freeze / let go   ·   Y  red card   (whoever you look at)", 12, T.DIM, T.FONT, Enum.TextXAlignment.Right)
 hint.Position = UDim2.fromOffset(PL_X + 60, 66); hint.Size = UDim2.fromOffset(PL_W - 60, 16)
 local plist = T.new("ScrollingFrame", {
 	Name = "Players", BackgroundColor3 = T.CARD, BackgroundTransparency = 0.2, BorderSizePixel = 0,
@@ -357,8 +515,9 @@ local plist = T.new("ScrollingFrame", {
 T.corner(plist, 4)
 T.new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, plist)
 T.new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 10), PaddingBottom = UDim.new(0, 6) }, plist)
-local unfreezeB = button(plate, "UnfreezeAll", "LET EVERYONE GO", UDim2.fromOffset(PL_X, 444), 140)
-local offB = button(plate, "AllOff", "ALL MY POWERS OFF", UDim2.fromOffset(PL_X + 148, 444), 150)
+local unfreezeB = button(plate, "UnfreezeAll", "UNFREEZE EVERYONE", UDim2.fromOffset(PL_X, 444), 150)
+local emptyB = button(plate, "EmptyJail", "EMPTY THE JAIL", UDim2.fromOffset(PL_X + 158, 444), 130)
+local offB = button(plate, "AllOff", "ALL MY POWERS OFF", UDim2.fromOffset(PL_X + 296, 444), 150)
 
 
 local open = false
@@ -372,7 +531,10 @@ local function drawMe()
 	noclipB.Text = if nc then "NOCLIP: ON" else "NOCLIP: OFF"
 	local arms = me:GetAttribute("DevArms") == true
 	lit(armsB, arms)
-	armsB.Text = if arms then "WEAPONS: ON" else "WEAPONS IN HUB"
+	armsB.Text = if arms then "WEAPONS: ON" else "WEAPONS"
+	local inv = me:GetAttribute("DevInvisible") == true
+	lit(invisB, inv)
+	invisB.Text = if inv then "HIDDEN: ON" else "INVISIBLE"
 	local fs = me:GetAttribute("DevFlySpeed")
 	if type(fs) == "number" then flySpeed.set(fs) end
 	local rs = me:GetAttribute("DevSpeed")
@@ -383,13 +545,15 @@ local function drawMe()
 	if z == "match" then how = if me:GetAttribute("MatchDev") ~= nil then "this match counts for nothing now" else "a power used here makes this match count for nothing" end
 	status.Text = ("%s  ·  %s"):format(words[z] or string.upper(z), how)
 end
-for _, a in { "DevFly", "DevNoclip", "DevArms", "DevFlySpeed", "DevSpeed", "DevOn", "Zone", "MatchDev" } do
+for _, a in { "DevFly", "DevNoclip", "DevArms", "DevFlySpeed", "DevSpeed", "DevOn", "Zone", "MatchDev", "DevInvisible" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if open then drawMe() end end)
 end
 
 flyB.Activated:Connect(function() said(call("set", "fly", type(me:GetAttribute("DevFly")) ~= "number"), "fly") end)
 noclipB.Activated:Connect(function() said(call("set", "noclip", me:GetAttribute("DevNoclip") ~= true), "noclip") end)
 armsB.Activated:Connect(function() said(call("set", "arms", me:GetAttribute("DevArms") ~= true), "weapons") end)
+invisB.Activated:Connect(function() said(call("set", "invis", me:GetAttribute("DevInvisible") ~= true), "invisible") end)
+emptyB.Activated:Connect(function() said(call("emptyJail"), "jail emptied"); task.defer(refreshPlayers) end)
 unfreezeB.Activated:Connect(function() said(call("unfreezeAll"), "everyone let go"); task.defer(refreshPlayers) end)
 offB.Activated:Connect(function() said(call("set", "off"), "all off") end)
 
@@ -415,7 +579,7 @@ refreshPlayers = function()
 		T.corner(row, 4)
 		local away = false
 		cell(row, "Name", tostring(r.name), 8, 96, T.TEXT, T.FONT_BOLD)
-		cell(row, "Zone", if r.frozen then "FROZEN" else string.upper(tostring(r.zone)), 104, 64, if r.frozen then T.ACCENT else T.MUTED)
+		cell(row, "Zone", if r.jailed then "JAILED" elseif r.frozen then "FROZEN" else string.upper(tostring(r.zone)), 104, 64, if r.frozen or r.jailed then T.ACCENT else T.MUTED)
 		local x = 170
 		local function act(name: string, text: string, w: number, fn: () -> ())
 			local b = button(row, name, text, UDim2.fromOffset(x, 3), w, 24)
@@ -428,6 +592,10 @@ refreshPlayers = function()
 		act("Freeze", if r.frozen then "LET GO" else "FREEZE", 52, function() said(call("freeze", r.ref, not r.frozen), "done") end)
 		act("Goto", "GO TO", 40, function() said(call("goto", r.ref), "done") end)
 		act("Bring", "BRING", 40, function() said(call("bring", r.ref), "done") end)
+		act("Jail", if r.jailed then "FREE" else "JAIL", 40, function() said(call(if r.jailed then "release" else "jail", r.ref), "done") end)
+		act("RedCard", "RED CARD", 60, function() said(call("redcard", r.ref), "done") end)
+		local rc = row:FindFirstChild("RedCard") :: TextButton?
+		if rc then rc.BackgroundColor3 = Color3.fromRGB(150, 34, 40) end
 	end
 end
 
@@ -472,7 +640,7 @@ do
 	local b = T.new("TextButton", {
 		Name = "Dev", Text = "DEV", FontFace = T.FONT_BOLD, TextSize = 12, AutoButtonColor = true, TextColor3 = T.ACCENT,
 		BackgroundColor3 = T.BG, BackgroundTransparency = 0.3, BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 64), Size = UDim2.fromOffset(46, 24),
+		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 104), Size = UDim2.fromOffset(46, 24), -- (under the currency box)
 	}, bg)
 	T.corner(b, 4)
 	T.edge(b, T.ACCENT, 0.6)
@@ -496,10 +664,10 @@ UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or typing() then return end
 	if io.KeyCode == Enum.KeyCode.F8 then
 		toggle()
-	elseif io.KeyCode == Enum.KeyCode.X or io.KeyCode == Enum.KeyCode.Z then
+	elseif io.KeyCode == Enum.KeyCode.X or io.KeyCode == Enum.KeyCode.Z or io.KeyCode == Enum.KeyCode.Y then
 		local lk = lookDir()
 		if not lk then return end
-		local res = call(if io.KeyCode == Enum.KeyCode.X then "flingAim" else "freezeAim", lk)
+		local res = call(if io.KeyCode == Enum.KeyCode.X then "flingAim" elseif io.KeyCode == Enum.KeyCode.Z then "freezeAim" else "redcardAim", lk)
 		if open then said(res, "done"); task.delay(0.2, refreshPlayers) end
 	end
 end)
