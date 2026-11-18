@@ -65,7 +65,7 @@ D.SPOTS = {
 	minigun = { at = Vector3.new(0, 0.148, 0.036), s = 1.15, yaw = 0, pitch = 0, ey = 0.14454, ey3 = 0.13734 },  -- batch A (17 Nov 2026): on the carry handle's bar over the receiver, clear of the spinning barrels (the guns session's seat; the web's size)
 	water = { at = Vector3.new(0, 0.115, -0.09), s = 0.6, yaw = 0, pitch = 0, ey = 0.1164, ey3 = 0.11597 },  -- batch A: on the clear tank's top between the sights, as on the web gun (behind the notch the brims hit the rear sight; it hides while you aim)
 	nailgun = { at = Vector3.new(0, 0.157, -0.06), s = 0.75, yaw = 0, pitch = 0, ey = 0.15789, ey3 = 0.15734 },  -- batch A: on the housing's flat top between the sights (the guns session's seat)
-	bread = { at = Vector3.new(0, 0.08818, -0.45), s = 1.35, yaw = 0, pitch = 0, ey = 0.08721, ey3 = 0.08538 },  -- batch A: on the dome's crest behind the last slash (at -0.39 the slope sank the feet 4 mm; the web's size)
+	bread = { at = Vector3.new(0, 0.0887, -0.45), s = 1.35, yaw = 0, pitch = 0, ey = 0.08773, ey3 = 0.08594 },  -- batch A: on the dome's crest behind the last slash (at -0.39 the slope sank the feet 4 mm; the web's size)
 	slapper = { at = Vector3.new(-0.008, 0.09305, -0.51), s = 0.6, yaw = 0, pitch = 0, ey = 0.0926, ey3 = 0.08981 },  -- batch A: on the thumb's tip (on the hand's top edge the brims cut into the thumb; it rides the hand when it slaps)
 	["ar@ar_bullpup"] = { at = Vector3.new(0, 0.06, -0.05), s = 1, yaw = 0, pitch = 0, ey = 0.06094, ey3 = 0.05821 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["ar@ar_keytar"] = { at = Vector3.new(0, 0.093, -0.06), s = 1, yaw = 0, pitch = 0, ey = 0.094, ey3 = 0.0934 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)

@@ -309,6 +309,11 @@ Photo: `gun-hats/batchA-seats.jpg` (a different hat on each, from the front left
 - **Studio (place version 779):** `GunHatData` pushed as a guarded patch. On the five built guns, both sizes, the
   cowboy's foot reads exactly 2.0 mm in on every seat. The eyes read 0.4 to 1.9 mm in; on the round thumb one ball
   rests 0.9 mm above it.
+- **Bread v2 rechecked (place version 787):** the guns session remodelled the loaf (commit 70f71d7, version 786: four
+  diagonal score cuts, lumps between them, rounded ends). The crest seat is 0.5 mm higher (0.0887); every hat's feet
+  are at most 2.3 mm in, no body or gun clips, and the eyes are 1.9 mm in (24 rows replaced). In Studio the cowboy
+  reads 3.0 mm in, because the new loaf's Default collision hull sits about 1 mm above the crust. Blender measures
+  the drawn mesh.
 - **Trap:** importing `hat_spots.py` from another script runs its `main()` and rewrites `GunHatData.luau` (there is no
   `__main__` guard). Use `--profile` instead, or copy `tree()` / `top()`. Then re-pin the Angel rifle line.
 
