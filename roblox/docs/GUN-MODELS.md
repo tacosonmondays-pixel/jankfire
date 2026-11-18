@@ -926,7 +926,7 @@ shapes pushed into each other.
 |---|---|---|
 | `pistol@pistol_cute_a` | the grip's pom-pom: 18 faceted tuft balls on a core, now one fluffy ball. It is built from the tufts' exact shapes (`gun_sets_cute3.pompom_fields`) with 1 mm fillets, two shades painted | 124098310418379 → 71392655287998 |
 | `ar@ar_cute_a` | the pom-pom charm and the fur muff round the stock, the same way (`fur_ring_fields`) | 84347908564143 → 100758003273440 |
-| Decoy Duck gadget skin (`item_skins.duck_decoy`) | one carved block: body, breast, tail, carved wings, neck ring, head, bill and eyes, filleted where a chisel would round them, painted by part | in skins 98860977994294 → `skins_decoy2.glb` 89237275632756 (imported alone) |
+| Decoy Duck gadget skin (`item_skins.duck_decoy`) | one carved block: body, breast, tail, carved wings, neck ring, head, bill and eyes, filleted where a chisel would round them, painted by part (v2: the wings still read as pasted ovals; v3 in batch 3) | in skins 98860977994294 → `skins_decoy2.glb` 89237275632756 (imported alone) |
 
 **Tried and left as they were:**
 - **The ribbon bows (AR Cute B and D, Pistol Cute B):** they already read as one silhouette. Fused, the D bow's knot came out lumpy. Pistol Cute D's bow shares pieces with the hard slide.
@@ -938,8 +938,56 @@ shapes pushed into each other.
 - **Small, low-poly balls (tufts):** sampling them brings their flat facets back as a faceted crystal. Give fuse the
   exact shapes instead.
 - **Fillets on fur:** keep them small (1–2 mm). At 3–5 mm the tufts melt into a smooth snowball.
-- **Pre-existing flicker:** the Pistol Cute A grip has 2 to 4 flicker hits at hand scale (the grip's deep panel
-  against the dark grip and the magazine). They were there before the fuse and are not touched here.
+- **The Pistol Cute A grip "flicker" is not real.**
+  - The quilted panel against the dark grip and the magazine shows 2 to 4 hits, but only in my hand-scale pass
+    (3 studs a metre, tolerance 6.7 mm).
+  - At the pistol's own smallest display (10.32 studs a metre) it shows 0.
+  - In first person the gun is 1 to 2 studs from the camera, where depth precision is about 1e-6 studs, so faces 4 mm
+    apart cannot fight.
+  - The 2 rack-scale slivers were measured at the rifles' 8.06; at 10.32 they clear the 0.02-stud tolerance.
+  - Left as built.
+
+### Batch 3: one moulded bow for every Cute bow, the decoy carved (18 November 2026, live in place version 927)
+
+Main asked that every bow in the game match the Tripo bow the Bento uses. A skin built with Tripo geometry can't live in
+git, and the Cute skins are tracked. So `gun_sets_cute3.soft_bow` builds a bow in the Tripo bow's language from a
+distance field, with the same arguments as `bow()`:
+- **Loops:** two closed puffy loops on bow()'s teardrop outlines, thin where they pinch into the knot and fat at their
+  ends. Each has a soft dome and a shallow fold crease from the knot outward.
+- **Knot:** rounded; the loops melt into it.
+- **Tails:** soft ribbon slabs with notched ends. A skin with a sweet gets it as a dome on the knot.
+- **One skin:** the bow is painted loops and tails `main2`, knot `ctrim` (gold) or `main2`, sweet `cglow`, and added
+  to the node's pieces as its own closed skin. That is why it also works where the bow shares pieces with a hard part
+  (Pistol Cute D's slide).
+- **Dropped:** the old inner fold colour (`bowin`), since the loops are closed.
+
+Every `bow()` call site now calls `soft_bow`:
+
+| Skin | Bows | Asset (before → after) |
+|---|---|---|
+| `ar@ar_cute_b` | the ribbon bow under the handguard, the two wrist bows | 138798001605938 → 133098772689535 |
+| `pistol@pistol_cute_b` | the bow on the trigger guard's band | 131707881234474 → 125671052211726 |
+| `ar@ar_cute_d` | the big bow on the left flank (its glowing sweet on the knot) | 110318612705695 → 131859834278981 |
+| `pistol@pistol_cute_d` | the bow on the slide | 139251013363836 → 93469005049965 |
+
+- **The Decoy Duck, v3 (main: the v2 wings still looked like dark ovals pasted on the body):** `item_skins.decoy_carve`.
+  - **Wings:** each one is a raised carved relief that follows the body's own surface. A rounded block of coverts
+    sits over the long tapered primaries, which run back over the tail to a point. The edges are rounded and a fillet
+    rises from the body.
+  - **Neck:** the collar disc is gone. A moulded neck flows from the breast into the head, with the pale ring painted
+    round it as a band.
+  - **The rest:** head, bill and eyes are moulded in; the body, breast and tail are sampled from the built solids.
+  - **Contract:** the 8 piece names are kept (SKIN_WRAP unchanged).
+  - **Upload:** `skins_decoy3.glb`, asset 130995425183609.
+  - **Size:** 9,126 triangles (v1 had 5,612).
+
+**Checked:**
+- `gun_check`: 0 loose.
+- All 12 hats clean on all four skins.
+- Flicker: each skin has exactly the hits its source had before (hand scale: B rifle 1, B pistol 4, D rifle 6, D
+  pistol 4). They are not from the bows and were left as they were.
+- **Triangles:** +0.8k to +1.3k a skin, and +4.1k on the B rifle (three bows).
+- Picture: `gun-models/fused-batch3.jpg`.
 
 ## How it was judged
 

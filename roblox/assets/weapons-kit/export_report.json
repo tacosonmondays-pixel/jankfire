@@ -48285,7 +48285,7 @@
    {
     "name": "ribbon_wzN__main2",
     "upload": "ribbon_wzN__main2__pc75a76",
-    "tris": 1020,
+    "tris": 2238,
     "look": {
      "color": "c75a76",
      "metal": 0.0,
@@ -48296,44 +48296,20 @@
     },
     "lo": [
      -0.0415,
-     -0.2127,
-     -0.519
+     -0.2116,
+     -0.5197
     ],
     "hi": [
      0.0415,
      0.02,
-     -0.3911
+     -0.3921
     ],
     "paint": "pc75a76"
    },
    {
-    "name": "ribbon_wzN__bowin",
-    "upload": "ribbon_wzN__bowin__pa94e60",
-    "tris": 440,
-    "look": {
-     "color": "a94e60",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0043,
-     -0.0702,
-     -0.5099
-    ],
-    "hi": [
-     0.0043,
-     -0.0539,
-     -0.4281
-    ],
-    "paint": "pa94e60"
-   },
-   {
     "name": "ribbon_wzN__ctrim",
     "upload": "ribbon_wzN__ctrim__pcfa451",
-    "tris": 192,
+    "tris": 276,
     "look": {
      "color": "cfa451",
      "metal": 0.0,
@@ -48343,14 +48319,14 @@
      "tex": false
     },
     "lo": [
-     -0.0098,
-     -0.0702,
-     -0.4799
+     -0.0124,
+     -0.07,
+     -0.4793
     ],
     "hi": [
-     0.0098,
-     -0.0428,
-     -0.4581
+     0.0127,
+     -0.0425,
+     -0.4584
     ],
     "paint": "pcfa451"
    },
@@ -48695,7 +48671,7 @@
    {
     "name": "wrist_wzN__main2",
     "upload": "wrist_wzN__main2__pc75a76",
-    "tris": 1688,
+    "tris": 4914,
     "look": {
      "color": "c75a76",
      "metal": 0.0,
@@ -48705,45 +48681,21 @@
      "tex": false
     },
     "lo": [
-     -0.0393,
+     -0.0428,
      -0.1396,
-     0.2287
+     0.2283
     ],
     "hi": [
-     0.0393,
+     0.0428,
      0.0582,
      0.31
     ],
     "paint": "pc75a76"
    },
    {
-    "name": "wrist_wzN__bowin",
-    "upload": "wrist_wzN__bowin__pa94e60",
-    "tris": 624,
-    "look": {
-     "color": "a94e60",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0354,
-     0.0301,
-     0.2353
-    ],
-    "hi": [
-     0.0354,
-     0.0461,
-     0.2887
-    ],
-    "paint": "pa94e60"
-   },
-   {
     "name": "wrist_wzN__ctrim",
     "upload": "wrist_wzN__ctrim__pcfa451",
-    "tris": 272,
+    "tris": 906,
     "look": {
      "color": "cfa451",
      "metal": 0.0,
@@ -48753,19 +48705,19 @@
      "tex": false
     },
     "lo": [
-     -0.0399,
-     0.0203,
-     0.2542
+     -0.0408,
+     0.0219,
+     0.2538
     ],
     "hi": [
-     0.0399,
-     0.0397,
-     0.2698
+     0.0408,
+     0.04,
+     0.2703
     ],
     "paint": "pcfa451"
    }
   ],
-  "tris": 14680,
+  "tris": 18778,
   "lo": [
    -0.0515,
    -0.3319,
@@ -48776,7 +48728,7 @@
    0.134,
    0.5454
   ],
-  "bytes": 1017048,
+  "bytes": 1148060,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -49335,7 +49287,7 @@
    {
     "name": "ribbon_wzN__main2",
     "upload": "ribbon_wzN__main2__pc75a76",
-    "tris": 1304,
+    "tris": 2688,
     "look": {
      "color": "c75a76",
      "metal": 0.0,
@@ -49345,45 +49297,21 @@
      "tex": false
     },
     "lo": [
-     -0.0379,
+     -0.0385,
      -0.16,
      -0.1328
     ],
     "hi": [
-     0.0379,
-     -0.0272,
+     0.0385,
+     -0.0267,
      -0.0595
     ],
     "paint": "pc75a76"
    },
    {
-    "name": "ribbon_wzN__bowin",
-    "upload": "ribbon_wzN__bowin__pa94e60",
-    "tris": 440,
-    "look": {
-     "color": "a94e60",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.031,
-     -0.048,
-     -0.1174
-    ],
-    "hi": [
-     0.031,
-     -0.0343,
-     -0.1116
-    ],
-    "paint": "pa94e60"
-   },
-   {
     "name": "ribbon_wzN__ctrim",
     "upload": "ribbon_wzN__ctrim__pcfa451",
-    "tris": 192,
+    "tris": 502,
     "look": {
      "color": "cfa451",
      "metal": 0.0,
@@ -49393,14 +49321,14 @@
      "tex": false
     },
     "lo": [
-     -0.0084,
-     -0.057,
-     -0.1211
+     -0.0081,
+     -0.0573,
+     -0.1231
     ],
     "hi": [
-     0.0084,
-     -0.036,
-     -0.1079
+     0.0086,
+     -0.0358,
+     -0.1059
     ],
     "paint": "pcfa451"
    },
@@ -49622,7 +49550,7 @@
     "paint": "pc75a76"
    }
   ],
-  "tris": 10546,
+  "tris": 11800,
   "lo": [
    -0.0442,
    -0.16,
@@ -49633,7 +49561,7 @@
    0.0585,
    0.0878
   ],
-  "bytes": 709028,
+  "bytes": 742232,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -51690,7 +51618,7 @@
    {
     "name": "bow_wzN__main2",
     "upload": "bow_wzN__main2__pcf6d7e",
-    "tris": 1296,
+    "tris": 2240,
     "look": {
      "color": "cf6d7e",
      "metal": 0.0,
@@ -51700,45 +51628,21 @@
      "tex": false
     },
     "lo": [
-     -0.0482,
-     -0.1201,
-     -0.197
+     -0.0525,
+     -0.1155,
+     -0.1984
     ],
     "hi": [
-     -0.031,
-     0.0701,
-     0.003
+     -0.0223,
+     0.0717,
+     0.0043
     ],
     "paint": "pcf6d7e"
    },
    {
-    "name": "bow_wzN__bowin",
-    "upload": "bow_wzN__bowin__pa94e60",
-    "tris": 312,
-    "look": {
-     "color": "a94e60",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0422,
-     0.01,
-     -0.1783
-    ],
-    "hi": [
-     -0.031,
-     0.0515,
-     -0.0157
-    ],
-    "paint": "pa94e60"
-   },
-   {
     "name": "bow_wzN__cglow",
     "upload": "bow_wzN__cglow__nff4f86",
-    "tris": 136,
+    "tris": 270,
     "look": {
      "color": "ff4f86",
      "metal": 0.0,
@@ -51749,14 +51653,14 @@
      "glowColor": "ff4f86"
     },
     "lo": [
-     -0.0537,
-     -0.0091,
-     -0.1186
+     -0.0578,
+     -0.0077,
+     -0.1165
     ],
     "hi": [
-     -0.0322,
-     0.0331,
-     -0.0754
+     -0.0432,
+     0.0317,
+     -0.0776
     ],
     "paint": "nff4f86"
    },
@@ -52195,7 +52099,7 @@
     "paint": "pf7f1e6"
    }
   ],
-  "tris": 10448,
+  "tris": 11214,
   "lo": [
    -0.0633,
    -0.3319,
@@ -52206,7 +52110,7 @@
    0.134,
    0.5514
   ],
-  "bytes": 867108,
+  "bytes": 879024,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -52788,7 +52692,7 @@
    {
     "name": "slide_wzN__main2",
     "upload": "slide_wzN__main2__pcf6d7e",
-    "tris": 1652,
+    "tris": 2732,
     "look": {
      "color": "cf6d7e",
      "metal": 0.0,
@@ -52798,8 +52702,8 @@
      "tex": false
     },
     "lo": [
-     -0.0316,
-     -0.0242,
+     -0.0338,
+     -0.0223,
      -0.243
     ],
     "hi": [
@@ -52858,33 +52762,9 @@
     "paint": "p231e20"
    },
    {
-    "name": "slide_wzN__bowin",
-    "upload": "slide_wzN__bowin__pa94e60",
-    "tris": 312,
-    "look": {
-     "color": "a94e60",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0284,
-     0.0128,
-     -0.1454
-    ],
-    "hi": [
-     -0.0215,
-     0.0297,
-     -0.0746
-    ],
-    "paint": "pa94e60"
-   },
-   {
     "name": "slide_wzN__cglow",
     "upload": "slide_wzN__cglow__nff4f86",
-    "tris": 136,
+    "tris": 266,
     "look": {
      "color": "ff4f86",
      "metal": 0.0,
@@ -52895,21 +52775,21 @@
      "glowColor": "ff4f86"
     },
     "lo": [
-     -0.0371,
-     0.0054,
-     -0.1188
+     -0.0376,
+     0.0056,
+     -0.1184
     ],
     "hi": [
-     -0.0227,
-     0.0226,
-     -0.1012
+     -0.029,
+     0.0223,
+     -0.1016
     ],
     "paint": "nff4f86"
    }
   ],
-  "tris": 7904,
+  "tris": 8802,
   "lo": [
-   -0.0371,
+   -0.0376,
    -0.2109,
    -0.2553
   ],
@@ -52918,14 +52798,14 @@
    0.0585,
    0.1194
   ],
-  "bytes": 639848,
+  "bytes": 660716,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "pistol@pistol_cute_d",
    "set": "kit",
    "lo": [
-    -0.0371,
+    -0.0376,
     -0.2109,
     -0.2553
    ],

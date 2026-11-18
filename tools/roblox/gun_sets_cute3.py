@@ -729,7 +729,7 @@ def bow(g, node, frame, knot, s, t, sl, fold, knot_sl, angs=(160.0, 20.0), L=1.0
 
 def soft_bow(g, node, frame, knot, s, t, sl, fold, knot_sl, angs=(160.0, 20.0), L=1.0, W=0.66, tails=None,
              tail_w=(0.28, 0.34), tail_t=None, centred=False, sweet=None, knot_k=(0.21, 0.27), tail_h0=-0.001, h=None,
-             tris=1600):
+             tris=2200):
     """THE SAME BOW AS bow() (its place, size, loop angles and tails), ONE MOULDED SKIN (18 Nov 2026; the owner: shapes
        stuck together look AI-made, and every bow in the game should match the Tripo bow's puffy one-piece look): two
        closed puffy loops (pillows on bow()'s teardrop outlines, thin where they pinch into the knot, fat at their
@@ -754,7 +754,19 @@ def soft_bow(g, node, frame, knot, s, t, sl, fold, knot_sl, angs=(160.0, 20.0), 
             hx = t * (0.32 + 0.42 * along)
             q0 = d2(u, v) + hx; q1 = np.abs(n - nc)
             return np.minimum(np.maximum(q0, q1), 0.0) + np.sqrt(np.maximum(q0, 0.0) ** 2 + np.maximum(q1, 0.0) ** 2) - hx
-        return f
+        # a soft dome in the loop's middle (a cushion, not a paddle), and a shallow fold crease from the knot out
+        # along the loop on its face(s), as the Tripo bow's loops have
+        cu = np.array(knot) + dirv * (0.55 * L * s)
+        cen = O + U * cu[0] + V * cu[1] + N * nc
+        Rl = np.stack([U * dirv[0] + V * dirv[1], -U * dirv[1] + V * dirv[0], N], 1)
+        puff = SDF.ellipsoid(tuple(cen), (0.34 * L * s, 0.30 * W * s, t * 0.95), rot=Rl)
+        shape = SDF.blend(f, puff, 0.004)
+        a0 = np.array(knot) + dirv * (0.10 * L * s); a1 = np.array(knot) + dirv * (0.62 * L * s)
+        for side_ in ((1.0, -1.0) if centred else (1.0,)):
+            top = nc + side_ * t * 1.02
+            c0 = O + U * a0[0] + V * a0[1] + N * top; c1 = O + U * a1[0] + V * a1[1] + N * (top - side_ * t * 0.15)
+            shape = SDF.carve(shape, SDF.capsule(tuple(c0), tuple(c1), t * 0.22, t * 0.08), 0.0015)
+        return shape
     loops = SDF.union(*[loop(a) for a in angs], k=0.002)
     tt = tail_t or t * 0.38
     tl = []
@@ -1195,7 +1207,7 @@ def ar_cute_b():
     # under the front: a rose band round the handguard and a bow tied on it, two long tails (ahead of the off hand)
     SG.xsolid(g, 'ribbon_wzN__main2', [(-0.0415, -0.0465), (0.0415, -0.0465), (0.0415, 0.020), (-0.0415, 0.020)], -0.477, -0.461,
               bev=0.0015)
-    bow(g, 'ribbon_wzN', MID, (-0.469, -0.0565), 0.052, 0.017, 'main2', 'bowin', 'ctrim', angs=(192.0, -12.0), W=0.74,
+    soft_bow(g, 'ribbon_wzN', MID, (-0.469, -0.0565), 0.052, 0.017, 'main2', 'bowin', 'ctrim', angs=(192.0, -12.0), W=0.74,
         tails=[bez((-0.473, -0.061), (-0.500, -0.130), (-0.478, -0.208), 7), bez((-0.465, -0.061), (-0.436, -0.112), (-0.410, -0.180), 7)],
         tail_w=(0.62, 0.78), tail_t=0.006, centred=True)
     # the stock end: a big gold star through the stock, its points past the butt and below it
@@ -1203,7 +1215,7 @@ def ar_cute_b():
     # the wrist: a rose ribbon round the stock tube, a bow each side, two tails down the gap behind the grip
     g.ring('wrist_wzN__main2', 0.0292, 0.020, (0, 0.03, 0.252), (0, 0.03, 0.272), sides=12, bev=0.002)
     for sx in (-1, 1):
-        bow(g, 'wrist_wzN', side(sx, 0.0285), (0.262, 0.030), 0.037, 0.012, 'main2', 'bowin', 'ctrim', angs=(152.0, 28.0), W=0.74)
+        soft_bow(g, 'wrist_wzN', side(sx, 0.0285), (0.262, 0.030), 0.037, 0.012, 'main2', 'bowin', 'ctrim', angs=(152.0, 28.0), W=0.74)
     for path in (bez((0.257, 0.004), (0.234, -0.062), (0.247, -0.138), 7), bez((0.267, 0.004), (0.297, -0.050), (0.298, -0.114), 7)):
         slab(g, 'wrist_wzN__main2', tail_poly(path, 0.019, 0.024, 0.014), MID, 0.006, 0.002, h0=-0.003)
     # the magazine: a big gold star through it, its front points past the front edge (node "mag")
@@ -1235,7 +1247,7 @@ def pistol_cute_b():
     g.yprism('body_wzN__main2', [(-0.0155, -0.1128), (0.0155, -0.1128), (0.0155, -0.0938), (-0.0155, -0.0938)], -0.0535, -0.0395,
              bev=0.0015)
     fr = (Vector((0.0, 0.0, -0.1145)), Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, -1)))
-    bow(g, 'ribbon_wzN', fr, (0.0, -0.0465), 0.040, 0.0115, 'main2', 'bowin', 'ctrim', angs=(16.0, 164.0), W=0.74, centred=True)
+    soft_bow(g, 'ribbon_wzN', fr, (0.0, -0.0465), 0.040, 0.0115, 'main2', 'bowin', 'ctrim', angs=(16.0, 164.0), W=0.74, centred=True)
     # (the tails hang in the side plane, one forward, one back under the guard's corner: the outline shows them)
     for path in (bez((-0.113, -0.052), (-0.136, -0.105), (-0.119, -0.158), 10), bez((-0.107, -0.054), (-0.088, -0.096), (-0.066, -0.140), 10)):
         slab(g, 'ribbon_wzN__main2', tail_poly(path, 0.0115, 0.0145, 0.0085), MID, 0.0045, 0.0016, h0=-0.00225)
@@ -1340,7 +1352,7 @@ def ar_cute_d():
     band = [(-0.0365, -0.0665), (0.0365, -0.0665), (0.0365, 0.0565), (0.0335, 0.0605), (0.0275, 0.0925), (-0.0275, 0.0925),
             (-0.0335, 0.0605), (-0.0365, 0.0565)]
     SG.xsolid(g, 'band_wzN__main2', band, -0.112, -0.082, bev=0.002)
-    bow(g, 'bow_wzN', side(-1, 0.033), (-0.097, 0.012), 0.098, 0.016, 'main2', 'bowin', 'main2', angs=(158.0, 22.0),
+    soft_bow(g, 'bow_wzN', side(-1, 0.033), (-0.097, 0.012), 0.098, 0.016, 'main2', 'bowin', 'main2', angs=(158.0, 22.0),
         L=1.1, W=0.8, tails=[bez((-0.103, 0.0), (-0.122, -0.055), (-0.140, -0.115), 12), bez((-0.091, 0.0), (-0.072, -0.055), (-0.056, -0.112), 12)],
         tail_w=(0.30, 0.36), tail_t=0.0055, sweet='cglow', tail_h0=0.0025)
     # the candy cane under the barrel: from the handguard's front (a cream collar where it goes in), hooked down and
@@ -1382,7 +1394,7 @@ def pistol_cute_d():
             if len(pc) >= 3 and abs(area(pc)) > 2e-6: g.prism('slide_wzN__main2', pc, 0.049, bev=0.0018)
     ring_xy = fillet_poly([(-0.022, 0.0105), (0.022, 0.0105), (0.022, 0.052), (-0.022, 0.052)], 0.0055, seg=4)
     tloop(g, 'slide_wzN__main2', [(x, y, -0.110) for x, y in ring_xy], (0, 0, 1), 0.0028, 0.0085, n=6)
-    bow(g, 'slide_wzN', side(-1, 0.0235), (-0.110, 0.014), 0.040, 0.0085, 'main2', 'bowin', 'main2', angs=(160.0, 20.0),
+    soft_bow(g, 'slide_wzN', side(-1, 0.0235), (-0.110, 0.014), 0.040, 0.0085, 'main2', 'bowin', 'main2', angs=(160.0, 20.0),
         L=1.15, W=0.8, tails=[bez((-0.113, 0.006), (-0.119, -0.007), (-0.126, -0.021), 8), bez((-0.107, 0.006), (-0.101, -0.007), (-0.096, -0.020), 8)],
         tail_w=(0.30, 0.36), tail_t=0.0032, sweet='cglow', tail_h0=0.0015)
     # the candy cane under the dust cover, from the trigger guard's front, hooked down at the front; a clamp up into

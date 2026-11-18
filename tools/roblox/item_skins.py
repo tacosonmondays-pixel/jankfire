@@ -568,6 +568,93 @@ def smoke_censer():
 D_HEAD, D_NECK, D_BREAST, D_BODY, D_TAIL, D_BILL = '3f5a4a', 'dcd8cc', '6c4b3c', '8b8a84', '3c3d44', '9c935a'
 
 
+def _zy_shape(z0, y0, a, b, tilt=0.0, p=2.6, n=40):
+    """a rounded, slightly squared outline [(z, y)] (a superellipse a by b round (z0, y0), turned tilt radians)"""
+    out = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        c, s_ = math.cos(t), math.sin(t)
+        u = a * math.copysign(abs(c) ** (2.0 / p), c); v = b * math.copysign(abs(s_) ** (2.0 / p), s_)
+        out.append((z0 + u * math.cos(tilt) - v * math.sin(tilt), y0 + u * math.sin(tilt) + v * math.cos(tilt)))
+    return out
+
+
+def _leaf(root, tip, w, n=14):
+    """a tapered leaf outline [(z, y)] from root (its width w across, round-ended) to a pointed tip, bowing up"""
+    (z0, y0), (z1, y1) = root, tip
+    top, bot = [], []
+    for i in range(n + 1):
+        f = i / n
+        z = z0 + (z1 - z0) * f
+        yc = y0 + (y1 - y0) * f + 0.012 * math.sin(math.pi * f)
+        hw = w / 2 * (1 - f) ** 0.85
+        top.append((z, yc + hw)); bot.append((z, yc - hw))
+    cap = [(z0 - w / 2 * math.sin(math.pi * k / 6), y0 + w / 2 * math.cos(math.pi * k / 6)) for k in range(1, 6)]
+    return top[::-1] + cap + bot[:-1]
+
+
+def decoy_carve(g):
+    """THE DECOY CARVED FROM ONE BLOCK (18 Nov 2026; the owner: separate shapes stuck together are what makes a model
+       look AI-made; main: the first pass still showed the wings as dark ovals pasted on). One distance field
+       (sdf_kit), painted by part:
+       - the body, breast and tail (sampled from the solids built above), melted together;
+       - each wing a RAISED CARVED RELIEF that follows the body's own surface: a rounded block of coverts and, layered
+         under it, the long tapered primaries running back over the tail to a point, their edges rounded, a fillet
+         where they rise from the body (the old wing ovals are gone);
+       - a moulded neck flowing from the breast into the head (no collar disc), the pale ring painted round it as a band;
+       - the head, the bill (grown out of the face) and the eyes moulded in.
+       The pieces keep their names (body, breast, tail, wings, neck, head, bill, eye), so SKIN_WRAP still finds them"""
+    import numpy as np
+    import sdf_kit as SDF
+    def sampled(key):
+        sol = [SDF.grid_field(v, t, 0.0018, 0.03, 2) for v, t in SDF.solids_of(g.pieces[key])]
+        return SDF.union(*sol) if len(sol) > 1 else sol[0]
+    body, breast, tail, bill = (sampled(k) for k in (('body', 'body'), ('breast', 'breast'), ('tail', 'tail'), ('bill', 'bill')))
+    base = SDF.blend(SDF.blend(body, breast, 0.025), tail, 0.02)
+    coverts = SDF.polygon2(_zy_shape(0.045, 0.048, 0.092, 0.04, tilt=0.12))
+    primaries = SDF.polygon2(_leaf((0.07, 0.05), (0.315, 0.098), 0.05))
+    def relief(outline, t, sx, k=0.007):
+        def f(p):
+            shell = base(p) - t
+            prism = outline(p[:, 2], p[:, 1])
+            side_ = 0.012 - sx * p[:, 0]
+            a = -SDF.smin(-prism, -side_, k)
+            return -SDF.smin(-shell, -a, k)
+        return f
+    wings = SDF.union(*[relief(coverts, 0.012, sx) for sx in (-1, 1)] + [relief(primaries, 0.0075, sx) for sx in (-1, 1)])
+    na, nb = np.array([0.0, 0.04, -0.115]), np.array([0.0, 0.135, -0.14])
+    neck = SDF.capsule(tuple(na), tuple(nb), 0.068, 0.058)
+    head = SDF.ellipsoid((0, 0.165, -0.15), (0.085, 0.08, 0.095))
+    eyes = SDF.union(*[SDF.ellipsoid((sx * 0.068, 0.18, -0.19), (0.013, 0.015, 0.01), rot=B._turn(0, -0.5 * sx)) for sx in (-1, 1)])
+    f = SDF.blend(base, wings, 0.003)
+    f = SDF.blend(f, neck, 0.02)
+    f = SDF.blend(f, head, 0.02)
+    f = SDF.blend(f, bill, 0.006)
+    f = SDF.blend(f, eyes, 0.002)
+    labels = ['body', 'breast', 'tail', 'wings', 'neck', 'head', 'bill', 'eye']
+    near = SDF.nearest(body, breast, tail, wings, neck, head, bill, eyes)
+    ax = nb - na; L2 = float(ax @ ax)
+    def cls(p):
+        lab = near(p)
+        tt = np.clip(((p - na) @ ax) / L2, 0, 1)
+        rad = np.sqrt((((p - na) - tt[:, None] * ax) ** 2).sum(1))
+        at_neck = rad < 0.085
+        band = at_neck & (p[:, 1] > 0.072) & (p[:, 1] < 0.097) & (lab != 6) & (lab != 7)
+        neckish = lab == 4
+        lab = np.where(neckish & (p[:, 1] >= 0.097), 5, lab)
+        lab = np.where(neckish & (p[:, 1] <= 0.072), np.where(body(p) < breast(p), 0, 1), lab)
+        lab = np.where(band, 4, lab)
+        return lab
+    keys = {'body': ('body', 'body'), 'breast': ('breast', 'breast'), 'tail': ('tail', 'tail'), 'wings': ('wings', 'tail'),
+            'neck': ('neck', 'neck'), 'head': ('head', 'head'), 'bill': ('bill', 'bill'), 'eye': ('eye', 'eye')}
+    out = SDF.mesh_paint(f, cls, labels, (-0.205, -0.15, -0.335), (0.205, 0.26, 0.36), h=0.0017, tris=3600, name='decoy',
+                         seam_k=0.8)
+    for lab, key in keys.items():
+        old = g.pieces.pop(key, None)
+        if old is not None: old.free()
+        if lab in out: g.pieces[key] = out[lab]
+
+
 def duck_decoy():
     g = Gun('x_duck_decoy')
     g.slot('body', D_BODY); g.slot('head', D_HEAD); g.slot('neck', D_NECK); g.slot('breast', D_BREAST); g.slot('tail', D_TAIL)
@@ -594,13 +681,7 @@ def duck_decoy():
     blob(g, 'bill__bill', 0.035, 0.016, 0.07, (0, 0.145, -0.25), sub=3, warp=bill)
     for sx in (-1, 1):
         blob(g, 'eye__eye', 0.013, 0.015, 0.01, (sx * 0.068, 0.18, -0.19), sub=2, rot=(0, -0.5 * sx, 0))
-    # ONE CARVED BLOCK (18 Nov 2026; the owner: separate shapes stuck together are what makes a model look AI-made): a
-    # decoy is carved from one piece of wood, so the body, breast, tail, carved wings, neck ring, head, bill and eyes
-    # are melted into one skin (sdf_kit.fuse: fillets where the carver's chisel would round them), still painted by part
-    import sdf_kit as SDF
-    SDF.fuse(g, [(('body', 'body'), 0), (('breast', 'breast'), 0.025), (('tail', 'tail'), 0.02), (('wings', 'tail'), 0.014),
-                 (('neck', 'neck'), 0.008), (('head', 'head'), 0.012), (('bill', 'bill'), 0.006), (('eye', 'eye'), 0.002)],
-             h=0.0022, tris=3200, name='decoy', smooth=1, seam_k=0.8)
+    decoy_carve(g)
     g.spots = {'grip': GRIP['duck'], 'gripRot': [0, 0, 0]}
     return g
 
