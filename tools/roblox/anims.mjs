@@ -126,7 +126,7 @@ const A = {
   draw_bread: { keys: [K(0, [0.12, -0.5, 0.12], [-0.9, 0.1, 0.5]), K(0.22, [0, 0.03, 0], [0.12, 0, -0.06], 'snap'), K(0.34, [0, -0.012, 0], [-0.05, 0, 0.02]), K(0.46)], events: [[0.2, 'thwack']] },
   // ---- the Scythe (18 Nov 2026): a slow wide reap both ways, its draw, and the switch to its rifle and back
   // (18 Nov 2026, the owner: "can you do an overhead with the scythe") both swings are overheads: up past the top of
-  // your view, then down onto the crosshair (scratch swing_strip.py renders a clip on the kit triangles)
+  // your view, then down onto the crosshair (tools/roblox/swing_strip.py renders a clip on the kit triangles)
   swing_scythe: { hit: 0.24, keys: [
     K(0), K(0.16, [0.02, 0.08, -0.06], [0.702, 0.074, 0.575]),
     K(0.3, [-0.15, -0.01, -0.12], [-1.118, 0.794, 1.125], 'snap'),

@@ -133,7 +133,7 @@ sweep's wind-up was already 0.24 s and the new motion fits it. Third person play
 - **Why hand-keyed, not generated:** the swing is a viewmodel clip (Anims.luau, mirrored in `tools/roblox/anims.mjs`),
   the same system every melee swing uses. Studio's `generate_animation` and Mixamo clips are whole-body R15 animations
   that know nothing about a held weapon (the Nov 14 trial scored weapon moves 2-4 out of 10), so they were not used.
-- **Keyed offline on the real model:** a strip renderer (scratch `swing_strip.py`) draws the clip on the kit's own
+- **Keyed offline on the real model:** a strip renderer (`tools/roblox/swing_strip.py`) draws the clip on the kit's own
   triangles at the game's 80 degree view, frame by frame, as Viewmodel places it.
 - **Studio photos:** the player attribute `VMClipHold` (Studio only, Viewmodel.luau) freezes the playing clip at that
   time; raise it to step on, clear it to let the clip finish.
