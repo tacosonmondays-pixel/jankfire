@@ -779,6 +779,38 @@ The hat seat is the static heel top (0, 0.03, 0.122), size 0.09, in both forms.
 **Checked in Play** (the hands session, v842): no fist clipping in either form, and the rifle's scope sits ahead of
 the hand. Sheets: `scythe-v3.jpg`, `classic-batch1..3.jpg` in the shared notes.
 
+## Batches D and E: the last ported weapons (18 November 2026, live in place versions 861, 883 and 887)
+
+The weapons session's specs: `weapons-batchD-spec.md` and `weapons-batchE-spec.md` in the shared notes.
+
+**Builders:** `tools/roblox/gun_batch_d.py`, `gun_batch_d2.py`, `gun_batch_e.py` and `gun_batch_e2.py`.
+- `gun_set.py` loads each of them once its file exists.
+- `gun_check.py` lists their moving nodes.
+- All are look B, with one toned accent each and filleted joins. There is no text, rank, digit or brand anywhere.
+
+| Id | What it is | Nodes the game uses | Asset |
+|---|---|---|---|
+| `bowling` | bowling-pin cannon, the next ball in its mouth | `ball` (hide on fire) | 139193546832282 |
+| `pj_bowling` | the ball, r 0.11 (the game fits it to the hit radius) | | 87969627702547 |
+| `remote` | chunky TV remote, plain keys | `ir` (lens, tint) | 129796382406402 |
+| `slipper` / `pj_slipper` | plush slipper with a pom-pom, and its throw | | 131151095923364 / 78272919003542 |
+| `bow` | 0.85 m upright recurve, right-handed | `string` (one rigid piece: draw it as two halves from `meta.bow.leave`) | 106916162138428 |
+| `pj_arrow` | 0.80 m arrow | `tip` (tint per arrow type) | 94185406732605 |
+| `scales` | balance scales swung by the handle, the rounded base strikes | | 125312611591188 |
+| `cart` | square bell-mouthed cannon, the next cart in its mouth | `load` (hide on fire) | 120131669855207 |
+| `pj_cart` | full-size generic cart, rideable, origin on the floor | `wheel_fl` / `fr` / `rl` / `rr` (spin) | 133794181229861 |
+| `cards` | five fanned cards before a deck block | `fan1`..`fan5` ((i-2) x 0.22 rad on a 0.09 radius) | 136429327637901 |
+| `pj_card` | 0.09 x 0.13 card | `pip_h/s/c/d/j` (show exactly one) | 103595472305951 |
+| `lasso` | three-strand rope coil, the lariat loop in the fist | `loop` (hide on throw) | 114906726221468 |
+| `pj_loop` | plain 1.1 m rope ring, a simple eye (never a noose) | | 97724342872724 |
+
+`akimbo` was not rebuilt: Batch B's symmetric machine pistol serves both hands.
+
+**Lessons:**
+- **Small-surface hat seats:** size them by the widest brims (the cowboy brim, the propeller visor). The remote, slipper and bow seats came back at s 0.26, 0.42 and 0.3.
+- **Flicker scans:** `zfight_glb.py` at its defaults skips small triangles at hand scale. Run a strict pass as well (`minArea=0.00005`, or every triangle at 12 mm).
+- **Domed pips:** the card's pips are domed and tiered, so no pip face lies parallel to the card face.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
