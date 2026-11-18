@@ -8,6 +8,9 @@
       },
       "JankfireRemotes": {
         "$className": "Folder",
+        "MiniGame": {
+          "$className": "RemoteEvent"
+        },
         "Grapple": {
           "$className": "RemoteEvent"
         },

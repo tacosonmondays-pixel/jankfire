@@ -15,7 +15,8 @@
       "ShredderRemote": { "$path": "place/ReplicatedStorage/ShredderRemote.rbxm" },
       "ImpactRemote": { "$path": "place/ReplicatedStorage/ImpactRemote.rbxm" },
       "PoseRemote": { "$path": "place/ReplicatedStorage/PoseRemote.rbxm" },
-      "JankfireFinisherKit": { "$path": "place/ReplicatedStorage/JankfireFinisherKit.rbxm" }
+      "JankfireFinisherKit": { "$path": "place/ReplicatedStorage/JankfireFinisherKit.rbxm" },
+      "JankfireMiniGames": { "$path": "place/ReplicatedStorage/JankfireMiniGames.rbxm" }
     },
     "Players": {
       "$properties": { "CharacterAutoLoads": false, "RespawnTime": 5 }
@@ -61,7 +62,8 @@
         "BazaarLayout": { "$path": "studio-tools/BazaarLayout.luau" },
         "HatImport": { "$path": "studio-tools/HatImport.luau" },
         "LootImport": { "$path": "studio-tools/LootImport.luau" },
-        "GrappleImport": { "$path": "studio-tools/GrappleImport.luau" }
+        "GrappleImport": { "$path": "studio-tools/GrappleImport.luau" },
+        "MiniGameImport": { "$path": "studio-tools/MiniGameImport.luau" }
       }
     },
     "StarterPlayer": {
