@@ -375,6 +375,36 @@ The owner: "rotate spawns".
   - A 1v1 on BAZAAR: my side spawned def, att, def.
   - A 1v1v1 on ROOFTOP: att, def, the middle (the fallback spawns: RooftopV3 has no "mid" parts), then att again.
 
+### A party that fills a duel plays it privately (18 Nov 2026)
+
+The owner: "if you're in a party of 2 you can search 1v1, it'll just send you to a private matching 1v1!"
+
+- **Which parties:** one exactly the size of a duel's whole match (`PlayConfig.private`): 2 for 1V1, 3 for 1V1V1, 4 for
+  2V2 (3V3 and 4V4 need 6 and 8, more than a party holds).
+- **The screen:** the tile reads "1V1 · PRIVATE" with "your party only · never ranked" (no rank badge), the line over
+  the button "PRIVATE · 1V1", and the button START PRIVATE.
+- **The match:** it starts at once among the party: no queue, no other servers. It's never ranked, whatever the RANKED
+  switch says (it goes on the casual key).
+  - The party is split into the sides at random each time.
+  - It votes on its map like any casual duel. The READY / loadout window, rounds, finishers and replays are the
+    usual ones.
+- **Afterwards:** everyone is back in the hub, still a party. The lobby room closes, and PLAY opens it again.
+- **It counts for nothing** (`m.private`, like an owner's dev match), so friends can't farm each other:
+  - no ranked rating;
+  - no player-card numbers or XP (Stats);
+  - no weapon mastery (it goes through Stats);
+  - no quests, so no Brass or Crate Tickets from it either.
+  - The same now holds for a PARTY-card pick played without FILL FROM QUICKPLAY, the other party-alone match. It was
+    already never ranked; before this it counted for the rest.
+- **Tested** in Studio (18 Nov 21:33 UTC, place v1025, solo with a stand-in in my party, RANKED on):
+  - The tile and the button read as above.
+  - START PRIVATE formed the match at once (nothing queued). The match's map vote had RooftopV2, Bazaar and DesertV2;
+    the stand-in's vote picked DESERT.
+  - The match was 1v1, not ranked, private, and the loadout window was open. I was on side 2 this time.
+  - After it: the hub, still a party of 2, the room gone, my ranked count unchanged.
+
+  ![a party of 2 on DUELS: 1V1 · PRIVATE and START PRIVATE](matchmaking/50_private_duel_tile.jpg)
+
 ### No hub menus in a match or a map room (18 Nov 2026)
 
 The owner: "disable like all the other menus because I can open shop and stats during a match". Then, from the live

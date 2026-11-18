@@ -479,7 +479,7 @@ local function modeList()
 		local s2 = text(card, "Sub", sub, if c then 10 else 12, if fits then T.MUTED else T.DIM, T.FONT); s2.ZIndex = 3
 		s2.Position = UDim2.fromOffset(14, if c then 25 else 36); s2.Size = UDim2.new(1, if ranked then (if c then -64 else -120) else -24, 0, 16)
 		s2.TextTruncate = Enum.TextTruncate.AtEnd
-		if ranked then
+		if ranked and not priv then -- (a private tile has no rank: it's never ranked)
 			local v = S.ranked[m.id]
 			local bs = if c then 28 else 38
 			local badge = RankedStyle.badge(card, bs, v)
@@ -662,8 +662,9 @@ local function bottomBar()
 	-- the pick, over the button: RANKED · 2V2 and your rank in it
 	local pick = text(bottom, "Pick", "", if c then 13 else 16, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
 	pick.Position = UDim2.fromOffset(0, 0); pick.Size = UDim2.fromOffset(W, 22); pick.RichText = true
-	local mine = if pt.ranked then S.ranked[PlayConfig.ratingKey(pt.mode)] else nil
-	pick.Text = (if pt.ranked then (if partyPick() then "PARTY RANKED" else "RANKED") else "CASUAL") .. "  ·  " .. modeName(pt.mode)
+	local priv = PlayConfig.private(PlayConfig.byId[pt.mode], #pt.members) -- (a duel the party fills by itself: never ranked)
+	local mine = if pt.ranked and not priv then S.ranked[PlayConfig.ratingKey(pt.mode)] else nil
+	pick.Text = (if priv then "PRIVATE" elseif pt.ranked then (if partyPick() then "PARTY RANKED" else "RANKED") else "CASUAL") .. "  ·  " .. modeName(pt.mode)
 		.. (if mine then ('  <font color="%s">%s</font>'):format(T.hex(RankedStyle.color(mine)), RankedStyle.label(mine)) else "")
 	local y = if c then 30 else 36
 	local main: GuiObject
