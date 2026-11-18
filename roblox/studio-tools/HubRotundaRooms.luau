@@ -205,7 +205,7 @@ return function(B, R)
 		local FK = if B.warp then B.warp.K else 1
 		local fc0 = if B.warp then R.warpPoint(B.warp, B.O, F7 * Vector3.new(0, 0, -FD)) else F7 * Vector3.new(0, 0, -FD)
 		local FWC = Vector3.new(math.round(fc0.X / 4) * 4, B.O.Y, math.round(fc0.Z / 4) * 4)
-		local FHOLE = 10
+		local FHOLE = 9.5 -- (inside the basin's thin walls, 8..9.6: the floor runs over the water's hidden ring)
 		do
 			local hx, hd, hh = -(FWC.X - B.O.X) / FK, (FWC.Z - B.O.Z) / FK, FHOLE / FK -- (the lobby's frame: x = -world X, d = world Z, / K)
 			B.box(F7, S, "PlazaFloor", -X, X, -2.1, -0.05, cd - 1, hd - hh, FLOOR) -- (its top 0.05 under the round room's floor, which lies over its front)
@@ -427,7 +427,7 @@ return function(B, R)
 			table.insert(list, { l.X, -l.Z })
 		end
 		B.spawns(list, 0.16)
-		for _, run in { { A + T + 0.2, mid }, { FD + 13 / FK, BACK - 0.3 } } do -- (the second from past the fountain's basin on)
+		for _, run in { { A + T + 0.2, mid }, { FD + 11 / FK, BACK - 0.3 } } do -- (the second from past the fountain's basin on)
 			B.paint(F7, "Runner", -2.2, 2.2, -0.05, run[1], run[2], P.carpet, 0.03)
 			for _, s in { -1, 1 } do B.paint(F7, "RunnerEdge", s * 2.2, s * 2.6, -0.05, run[1], run[2], P.creamHi, 0.03) end
 		end
@@ -443,18 +443,21 @@ return function(B, R)
 		do
 			local wc = FWC
 			local Fw = CFrame.new(wc) * CFrame.Angles(0, math.pi, 0)
-			local HW, WT, WL, PIT = 8, 4, 1.2, 4 -- (the water's half width inside the walls, the walls' thickness, the surface over the floor, the pit's depth)
+			-- (18 Nov, the owner: "the pool like outer square is too thick now, can you bring the outside square in to make it
+			-- thinner". the rim is thin again, 2 studs on top; the water's surface lies just under the lobby's floor, so the
+			-- voxel ring it needs past the walls' inner faces runs under the floor round the rim, hidden, not inside a thick wall)
+			local HW, WT, WL, PIT, WX = 8, 1.6, -0.2, 4, 4 -- (the water's half width inside the walls, the walls' thickness, its surface from the floor, the pit's depth, how far the water runs past the inner faces)
 			local was = B.mark
 			B.mark = B.warp ~= nil
 			-- (the pit's floor deep teal, the water's own colour, and inside the water, which runs a voxel under it: a light
 			-- floor showed through the moving surface in patches, a mottled "map" on the water, 18 Nov; tested in Studio:
 			-- with the floor dark the pool reads clean teal)
-			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "123e48")
+			B.box(Fw, S, "FountainFloor", -(HW + WX), HW + WX, -PIT - 0.4, -PIT, -(HW + WX), HW + WX, "123e48")
 			for _, sg in { -1, 1 } do
 				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + WT), -PIT - 0.04, 1.7, -(HW + WT), HW + WT, TRIM)
 				B.box(Fw, S, "FountainWall", -HW, HW, -PIT - 0.04, 1.69, sg * HW, sg * (HW + WT), TRIM)
-				B.box(Fw, C, "FountainCoping", sg * (HW - 0.2), sg * (HW + WT + 0.4), 1.7, 2.15, -(HW + WT + 0.4), HW + WT + 0.4, TRIM2, nil, G)
-				B.box(Fw, C, "FountainCoping", -(HW - 0.2), HW - 0.2, 1.72, 2.13, sg * (HW - 0.2), sg * (HW + WT + 0.4), TRIM2, nil, G)
+				B.box(Fw, C, "FountainCoping", sg * (HW - 0.2), sg * (HW + WT + 0.2), 1.7, 2.15, -(HW + WT + 0.2), HW + WT + 0.2, TRIM2, nil, G)
+				B.box(Fw, C, "FountainCoping", -(HW - 0.2), HW - 0.2, 1.72, 2.13, sg * (HW - 0.2), sg * (HW + WT + 0.2), TRIM2, nil, G)
 			end
 			B.cyl(Fw, S, "FountainColumn", 0, -PIT - 0.02, 4.6, 0, 2.6, TRIM)
 			B.cyl(Fw, C, "FountainColumnRing", 0, 1.5, 1.9, 0, 3.1, TRIM2, nil, G)
@@ -535,7 +538,7 @@ return function(B, R)
 				local T0 = workspace.Terrain
 				local old = hub:GetAttribute("FountainWater")
 				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, -2, 0)), Vector3.new(2 * (HW + WT) + 16, 20, 2 * (HW + WT) + 16), Enum.Material.Air) end
-				local hwW = HW + WT
+				local hwW = HW + WX
 				T0:FillBlock(CFrame.new(wc + Vector3.new(0, (WL - PIT - 4) / 2, 0)), Vector3.new(2 * hwW, WL + PIT + 4, 2 * hwW), Enum.Material.Water) -- (a voxel more under the pit's floor: its face is never the water's bottom)
 				hub:SetAttribute("FountainWater", wc)
 			end

@@ -2086,6 +2086,12 @@ The owner on v976: "stream is a little unnatural and the water doesnt fill the w
 - `R.check`: 0 problems. No water outside the walls.
 - Sheet: `roblox/docs/hub/hub_fountain_1002.jpg`; the photos are also in the shared notes folder.
 
+**Place version 1004: a thinner rim.** The owner: "the pool like outer square is too thick now, can you bring the outside square in to make it thinner".
+- The rim is 1.6 thick again, with 2 studs of coping on top. Its inner size is unchanged.
+- The water's surface now lies 0.2 under the lobby's floor (layers 1.0 and 0.95). The voxel ring the water needs past the walls' inner faces runs under the floor round the rim (the floor's hole is `FHOLE` 9.5), hidden, instead of inside a 4-stud wall.
+- Staging and live `R.check`: 0 problems. No flicker in the fountain. No water past the hidden ring.
+- Photo: `roblox/docs/hub/hub_fountain_1004.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
