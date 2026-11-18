@@ -1,4 +1,0 @@
-std = "roblox_min"
-
-[lints]
-multiple_statements = "allow"
