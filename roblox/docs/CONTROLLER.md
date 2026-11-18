@@ -133,6 +133,11 @@ It ports `public/js/aimassist.js` and keeps its rules and ring:
     - B closes it.
   - The emote wheel: hold D-Right, push the right stick up-right, and slot 2 lights (`emote-wheel-right-stick-v772.jpg`). Letting go plays it and closes the wheel.
   - The shop (v775): the ring starts on FEATURED, the CLOSE cap shows B, RB goes to DEALS and B closes it (`shop-focus-ring-v775.jpg`). The profile card and quests close on B. Their full-screen Scrim took the selection, so since v775 a catcher is measured every time instead of once.
+    - Checked after that fix:
+      - The profile card starts on a tab, and RB lands on a border tile (`profile-focus-ring-v775.jpg`).
+      - Quests start on a quest's button.
+      - The loadout starts on its equip button, its utility cap shows LB, its slot numbers are empty and DONE loses its [L]. B closes it (`loadout-focus-ring-v775.jpg`).
+    - All the photos on one sheet: `controller-sheet.jpg`.
   - Pad buttons through Binds (pretend Gamepad1 presses): RS takes out the katana, and Y goes round to the SMG, then the revolver.
   - The right stick held fully over turns the shoulder camera about 7° a frame once the acceleration is up.
   - Aim assist on the training Stand 12 studs away:
