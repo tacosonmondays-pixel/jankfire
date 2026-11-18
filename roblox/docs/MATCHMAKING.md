@@ -883,6 +883,17 @@ Two or more real players, each alone in their own public server (or two friends 
    note after 30 s, not left in an empty server.
 8. Watch the server log for "cross-server teleport failed" and "[jankfire]" warnings.
 
+**Live since the owner's publish of v1023 (18 Nov 2026, about 21:30 UTC).** The two-player check above is still to
+run. Meanwhile the live queues can be watched without anyone playing:
+- Open Cloud `GET /cloud/v2/universes/10776367667/memory-store/sorted-maps/jf_q_<key>/items` (scope
+  `memory-store.sorted-map:read`; the key URL-encoded, e.g. `jf_q_casual%3A1v1`, `jf_q_ranked%3A1v1`,
+  `jf_q_casual%3Aquickplay`). Studio's own are `jfs_q_…`.
+- A ticket lives 30 s unless renewed, so an entry there is a party searching right now for more than 20 s. One that
+  stays for minutes while its server is up means the matchmaker isn't running.
+- The results and the matchmaker's lock are hash maps (`jf_results`, `jf_mm`), which Open Cloud can't read.
+- First reading, 21:37 UTC: `casual:1v1`, `ranked:1v1`, `casual:2v2`, `casual:quickplay` and Studio's `jfs_q_casual:1v1`
+  all empty. Nobody was searching; nothing was stuck.
+
 ## 7. State (17 Nov 2026, place version 507)
 
 ![the Play screen, party, search, results, card, phone, hub](matchmaking/matchmaking-sheet.jpg)
