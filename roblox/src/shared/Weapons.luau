@@ -107,7 +107,7 @@ local SCYTHE_TURN = CFrame.new(0.02, 1.23, 0.126, 0, -1, 0, 0, 0, 1, -1, 0, 0)
 local W: { [string]: Weapon } = {
 	redline = {
 		id = "redline", name = "Redline", slot = "primary", kind = "hitscan", color = rgb(0xff3b3b),
-		desc = "the lower your HP, the faster it fires. full health it plods, 10 HP it screams. watch the needle.",
+		desc = "the lower your HP, the faster it fires: 6 a second at full health, up to 22 at low HP. the needle shows the rate.",
 		auto = true, rate = 6, rateMax = 22, mag = 40, reload = 1.8, pellets = 1, dmg = 10, head = 1.8, spread = 0.018,
 		bloom = 0.0025, maxBloom = 0.06, recoil = 0.3 * S, kick = 0.006, range = 250 * S,
 		-- (owner, 18 Nov 2026: "redline damage at higher speeds needs to maybe be capped? its super strong") the rate
@@ -144,7 +144,7 @@ local W: { [string]: Weapon } = {
 	-- public/js/weapons.js (VM, RECOIL), mdl from the export report and the web model's spots
 	ar = {
 		id = "ar", name = "Assault Rifle", slot = "primary", kind = "hitscan", color = rgb(0x9fd36b),
-		desc = "full auto, steady, a laser when you aim. the honest gun. somebody has to be.",
+		desc = "full auto and steady. accurate when you aim down sights.",
 		auto = true, rate = 10, mag = 30, reload = 1.7, pellets = 1, dmg = 11, head = 2, spread = 0.01,
 		bloom = 0.004, maxBloom = 0.04, recoil = 0.4 * S, kick = 0.008, range = 300 * S,
 		ads = { zoom = 1.5, spread = 0.2 }, tracer = rgb(0xfff0a0),
@@ -161,7 +161,7 @@ local W: { [string]: Weapon } = {
 	},
 	smg = {
 		id = "smg", name = "SMG", slot = "primary", kind = "hitscan", color = rgb(0x6bd3c8),
-		desc = "sprays fast, weighs nothing, and you run faster holding it. aiming is optional, enthusiasm isn't.",
+		desc = "sprays fast. light: you run faster holding it.",
 		auto = true, rate = 16, mag = 45, reload = 1.5, pellets = 1, dmg = 7, head = 1.5, spread = 0.03,
 		bloom = 0.002, maxBloom = 0.05, recoil = 0.2 * S, kick = 0.005, range = 200 * S, speedMul = 1.2,
 		ads = { zoom = 1.3, spread = 0.4 }, tracer = rgb(0xfff0a0),
@@ -177,7 +177,7 @@ local W: { [string]: Weapon } = {
 	},
 	shotgun = {
 		id = "shotgun", name = "Shotgun", slot = "primary", kind = "hitscan", color = rgb(0xe0a060),
-		desc = "ten pellets of close-range bad news. shoot the floor and it throws you into the sky.",
+		desc = "ten pellets, best up close. shoot the floor to launch yourself up.",
 		auto = false, rate = 1 / 0.75, mag = 6, reload = 2.0, pellets = 10, dmg = 8, head = 1.5, spread = 0.075,
 		recoil = 17 * S, kick = 0.08, range = 80 * S, ads = { zoom = 1.2, spread = 0.65 },
 		fx = { big = true, shake = 0.5 }, snd = "gun_shotgun", cycle = { clip = "pump_shotgun", at = 0.22 },
@@ -192,7 +192,7 @@ local W: { [string]: Weapon } = {
 	},
 	sniper = {
 		id = "sniper", name = "Sniper", slot = "primary", kind = "hitscan", color = rgb(0xa2457c), -- (its calm accent: the magenta mark)
-		desc = "right click to scope. a headshot always kills, a body shot sends them flying off the map. hipfire is a gamble.",
+		desc = "right click to scope. a headshot always kills, a body shot sends them flying off the map. hipfire is inaccurate.",
 		auto = false, rate = 1 / 1.1, mag = 5, reload = 2.2, pellets = 1, dmg = 55, head = 2, spread = 0.05,
 		kb = 75 * S, kbUp = 14 * S, recoil = 12 * S, kick = 0.06, range = 500 * S, lethalHead = true, noscope = true,
 		ads = { zoom = 4, spread = 0, scope = true }, tracer = rgb(0xff4fd8), thick = 0.09 * S,
@@ -208,7 +208,7 @@ local W: { [string]: Weapon } = {
 	},
 	burst = {
 		id = "burst", name = "Burst Rifle", slot = "primary", kind = "hitscan", color = rgb(0x4f8bff),
-		desc = "a bullpup that fires three at a time. land all three on one person for a BURST!. very accurate.",
+		desc = "a bullpup that fires three at a time. land all three on one person for a BURST. very accurate.",
 		auto = true, rate = 14, burst = 3, burstGap = 0.28, mag = 30, reload = 2.0, pellets = 1, dmg = 15, head = 2,
 		spread = 0.006, bloom = 0.002, maxBloom = 0.018, recoil = 0.35 * S, kick = 0.006, range = 320 * S,
 		ads = { zoom = 1.6, spread = 0.15 }, tracer = rgb(0x4f8bff),
@@ -273,7 +273,7 @@ local W: { [string]: Weapon } = {
 	},
 	autoshot = {
 		id = "autoshot", name = "Auto Shotgun", slot = "primary", kind = "hitscan", color = rgb(0x4ad66b),
-		desc = "an automatic shotgun with a box mag. less per shot than the pump, but it never stops.",
+		desc = "an automatic shotgun with a box mag. less per shot than the pump, but it keeps firing while you hold.",
 		auto = true, rate = 3, mag = 10, reload = 2.4, pellets = 8, dmg = 5, head = 1.5, spread = 0.07,
 		recoil = 5.5 * S, kick = 0.045, range = 60 * S, ads = { zoom = 1.2, spread = 0.7 },
 		fx = { big = true, brass = true, shake = 0.3 }, snd = "gun_autoshot", draw = "draw_autoshot",
@@ -290,7 +290,7 @@ local W: { [string]: Weapon } = {
 	-- RECOIL), WEAPONS.md has each one's section. mdl = the stand-in until the kit model is in JankfireWeapons
 	minigun = {
 		id = "minigun", name = "Minigun", slot = "primary", kind = "hitscan", color = rgb(0xc8c8c8),
-		desc = "spins up, then never stops. the bullets shove people, and the recoil is strong enough to fly on.",
+		desc = "spins up, then fires 25 a second while you hold. the bullets shove people, and the recoil is strong enough to fly on.",
 		auto = true, rate = 25, mag = 250, reload = 3.5, pellets = 1, dmg = 6, head = 1.5, spread = 0.045,
 		kb = 1.7 * S, recoil = 1.25 * S, kick = 0.004, range = 200 * S, spinup = 0.6, spindown = 0.9,
 		ads = { zoom = 1.15, spread = 0.6 }, tracer = rgb(0xfff0a0),
@@ -436,7 +436,7 @@ local W: { [string]: Weapon } = {
 	},
 	snowball = {
 		id = "snowball", name = "Snowball", slot = "secondary", kind = "proj", proj = "snow", color = rgb(0xdff4ff),
-		desc = "barely hurts. 4 hits freeze them solid, one more shatters them.",
+		desc = "low damage. 4 hits freeze them solid, one more shatters them.",
 		cd = 0.3, speed = 46 * S, grav = 10, r = 0.13 * S, dmg = 9, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
 		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0.5, side = 0.1, punch = 0.004 },
@@ -481,7 +481,7 @@ local W: { [string]: Weapon } = {
 	-- hits as hard as they deserve (Verdict.luau: x0.4 to x3); right click, a pillar of light on someone far away
 	scales = {
 		id = "scales", name = "Scales of Justice", slot = "melee", kind = "melee", color = rgb(0xffc83a),
-		desc = "hits as hard as they deserve: leaders, streakers and whoever killed you take up to x3. right click calls a pillar of light down on someone far away.",
+		desc = "damage depends on the target: leaders, streakers and whoever killed you take up to x3. right click calls a pillar of light down on someone far away.",
 		cd = 0.6, range = 3.2 * S, cone = 0.75, dmg = 35, kb = 14 * S, kbUp = 5 * S, hitT = 0.22, speedMul = 0.95, verdict = true,
 		gavel = { range = 42 * S, cone = 0.16, delay = 1.0, r = 2.3 * S, h = 3.2 * S, dmg = 20, kbUp = 7 * S, cd = 10 },
 		swingSnd = "scales_swing", hitSnd = "scales_hit",
@@ -524,7 +524,7 @@ local W: { [string]: Weapon } = {
 	-- two machine pistols: left click fires lefty, right click righty; each its own 20 and its own reload (Rules.handKey)
 	akimbo = {
 		id = "akimbo", name = "Lefty & Righty", slot = "secondary", kind = "hitscan", hands = 2, color = rgb(0x00e5a0),
-		desc = "two machine pistols, one per hand. left click fires lefty, right click fires righty, hold both to hose. they reload one at a time.",
+		desc = "two machine pistols, one per hand. left click fires lefty, right click fires righty, hold both to fire both. they reload one at a time.",
 		auto = true, rate = 9, mag = 20, reload = 1.5, pellets = 1, dmg = 6, head = 1.6, spread = 0.045, bloom = 0.003, maxBloom = 0.05,
 		kb = 0, recoil = 0.25 * S, kick = 0.012, range = 140 * S, tracer = rgb(0x7dffd0), speedMul = 1.05,
 		fx = { brass = true, shake = 0.04 }, snd = "gun_akimbo",
@@ -584,7 +584,7 @@ local W: { [string]: Weapon } = {
 	-- everyone in its line; a tap is a little zap (2 ticks of 5), a full charge 7 ticks of 21
 	laser = {
 		id = "laser", name = "Big Laser Pointer", slot = "primary", kind = "hold", hold = "beam", color = rgb(0x39ff14),
-		desc = "hold to charge it, let go for a beam through everyone in a line. tap it for a little zap.",
+		desc = "hold to charge it, let go for a beam through everyone in a line. a tap fires a short, weak beam.",
 		dmg = 21, range = 120 * S, charge = 1.2, tap = 0.3, cd = 0.45, tick = 0.1, dur = { 0.16, 0.62 }, r = { 0.22 * S, 0.7 * S },
 		dmgK = { 5, 21 }, kbK = { 1.5 * S, 7 * S }, kbUp = 1.5 * S, slow = 0.72, speedMul = 0.97,
 		snd = "laser_fire", tracer = rgb(0x7dff5a),
@@ -678,7 +678,7 @@ local W: { [string]: Weapon } = {
 	-- (weapons batch A) point blank, barely hurts: shoves them straight away from you and they slip
 	slapper = {
 		id = "slapper", name = "Hand Slapper", slot = "melee", kind = "melee", color = rgb(0xff7ab8),
-		desc = "a giant toy hand on a stick. point blank only, barely hurts, sends them flying and off their feet.",
+		desc = "a giant toy hand on a stick. point blank only, low damage, sends them flying and off their feet.",
 		cd = 0.8, range = 1.9 * S, cone = 0.8, dmg = 15, kb = 55 * S, kbUp = 14 * S, hitT = 0.17, slip = true, radial = true,
 		draw = "draw_melee", hitSnd = "slap_hit", swingSnd = "slap_whoosh",
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.25, 0.1, 0), s = 0.7 },

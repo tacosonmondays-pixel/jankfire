@@ -55,7 +55,7 @@ Items.list = {
 		dur = 10, r = 6.5 * S,
 		desc = "A thick cloud nobody can see through for 10 s." },
 	popper = { id = "popper", name = "Party Popper", color = hex("ff6bd0"), charges = 2, recharge = 9, live = true,
-		desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes." },
+		desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. No damage: push people into the void, or escape." },
 	reverse = { id = "reverse", name = "Reverse Card", color = hex("ff3b3b"), charges = 1, recharge = 22, live = true,
 		desc = "For 1.8 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it." },
 	wand = { id = "wand", name = "Bubble Wand", color = hex("9fe8ff"), charges = 2, recharge = 32, carry = true, live = true,
@@ -69,7 +69,7 @@ Items.list = {
 	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = true,
 		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
 	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = true,
-		desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot." },
+		desc = "Open it at someone. Five pop-up ads cover their screen for 7 s. They close them one key at a time." },
 } :: { [string]: Item }
 
 -- the thrown ones (web shared/weapons.js WEAPONS.frag :262, smokegren :264): speed along your look, + up, + this
