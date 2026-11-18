@@ -228,6 +228,30 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			task.delay(0.25, function() g:Destroy() end)
 		end
 		Sfx.play("scythe_dash", f.a :: Vector3, 1)
+	elseif f.k == "carthit" and typeof(f.p) == "Vector3" then
+		Sfx.play("cart_hit", f.p :: Vector3, 1) -- (batch E: the cart ran someone over)
+	elseif f.k == "cart" and type(f.id) == "number" then
+		-- a fresh cart: its rattle loops on it till it's gone
+		task.defer(function()
+			local map = workspace:FindFirstChild("Map")
+			local fo = map and map:FindFirstChild("JankfireCarts")
+			local m = fo and fo:WaitForChild("Cart" .. f.id, 2)
+			local box = m and (m :: Model).PrimaryPart
+			local lib = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireSounds")
+			local src = lib and lib:FindFirstChild("cart_roll")
+			if box and src and src:IsA("Sound") then
+				local c = src:Clone(); c.Looped = true; c.Parent = box; c:Play()
+				-- (quiet while it's parked)
+				local con: RBXScriptConnection
+				con = game:GetService("RunService").Heartbeat:Connect(function()
+					if not c.Parent then con:Disconnect() return end
+					local st = (m :: Model):GetAttribute("CartState")
+					local v = (m :: Model):GetAttribute("CartV")
+					local moving = st ~= "rest" and typeof(v) == "Vector3" and (v :: Vector3).Magnitude > 3
+					if c.Playing ~= moving then if moving then c:Resume() else c:Pause() end end
+				end)
+			end
+		end)
 	elseif f.k == "cardplay" then
 		-- (weapons batch E) a card played: its own sound; the effects come on their own messages
 		local m = typeof(f.model) == "Instance" and f.model :: Instance

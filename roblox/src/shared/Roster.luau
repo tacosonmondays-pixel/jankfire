@@ -85,7 +85,7 @@ add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", liv
 add({ id = "tennis", slot = "primary", name = "Tennis Ball Launcher", color = "d4ff3a", live = true, gimmick = "balls that bounce up to 5 times, harder every bounce. bank it round a corner.",
 	desc = "Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5cff", live = false, gimmick = "",
+add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5cff", live = false, gimmick = "fires a cart that runs people over; it stays as cover, and you can ride it.",
 	desc = "Fires a shopping cart that runs people over. It stays as cover, or hop in (F) and ride it.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "0.63/s", bar = 0.03 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "marbles", slot = "secondary", name = "Marble Shotgun", color = "7fd0ff", live = true, gimmick = "a hundred marbles a shot. whatever misses stays on the floor for 9 s and trips people.",

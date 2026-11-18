@@ -62,6 +62,7 @@ export type Weapon = {
 	-- batch E, the Card Deck (kind "cards", CardDeck.server): a card's dmg + perRank x rank; a spade's fan (fanN over
 	-- fanSpread rad), a picture spade's (ultN over ultSpread), the flick every other card throws
 	perRank: number?, fanN: number?, fanSpread: number?, ultN: number?, ultSpread: number?, flick: number?,
+	up: number?, -- (the Shopping Cart Cannon, kind "cart": the shot's lift; CartServer flies the cart)
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?, snd2: string?, -- (snd2: a second layer on the shot)
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
@@ -480,6 +481,16 @@ local W: { [string]: Weapon } = {
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.7 },
 	},
 	-- ------------------------------------------------------------ weapons batch E (18 Nov 2026; weapons-batchE-spec.md)
+	-- fires a shopping cart that runs people over; parked it's cover, and you can hop in (F) and ride it (CartServer)
+	cart = {
+		id = "cart", name = "Shopping Cart Cannon", slot = "primary", kind = "cart", color = rgb(0x9b5cff),
+		desc = "fires a shopping cart that runs people over. it stays as cover, or hop in (f) and ride it.",
+		cd = 1.6, speed = 22 * S, up = 3.5 * S, speedMul = 0.93, range = 100 * S,
+		snd = "gun_cart",
+		recoilVM = { back = 2.6, up = 6, roll = 1, side = 0.2, punch = 0.04 },
+		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.6 },
+		mdl = { lo = Vector3.new(-0.16, -0.22, -0.6), hi = Vector3.new(0.16, 0.16, 0.3), muzzle = Vector3.new(0, 0, -0.6), grip = Vector3.new(0, -0.13, 0.08), fore = Vector3.new(0, -0.1, -0.28) },
+	},
 	-- a hand of 5 from a 54-card deck: right click picks, left click plays, R a new hand (CardDeck.server; the cards fly
 	-- in WeaponProj "card")
 	cards = {

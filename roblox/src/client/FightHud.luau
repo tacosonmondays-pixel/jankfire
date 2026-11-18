@@ -193,7 +193,8 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 			elseif w.dash then (if w.form then "RMB dash · " .. formKey() .. " rifle" else "RMB dash")
 			elseif w.rewind then "LMB pause · RMB rewind" elseif w.gavel then "RMB pillar" -- (weapons batch D)
 			elseif w.kind == "bow" then string.upper(tostring(game:GetService("Players").LocalPlayer:GetAttribute("BowTip") or "regular")) .. " TIP"
-			elseif w.kind == "cards" then "RMB pick · R new hand" else "" -- (batch E)
+			elseif w.kind == "cards" then "RMB pick · R new hand" -- (batch E)
+			elseif w.kind == "cart" then "F on a cart: ride it" else ""
 	else
 		count = if mag2 then ('%d<font size="15" color="%s">  |  </font>%d'):format(mag or 0, T.hex(T.MUTED), mag2) -- (Lefty & Righty: left | right)
 			else ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)

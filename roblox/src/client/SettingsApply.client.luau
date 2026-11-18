@@ -99,7 +99,8 @@ local WEAPON_NAMES = { click = true, empty = true, reload = true, thwack = true,
 	bowl_roll = true, bowl_hit = true, bowl_strike = true, slipper_throw = true, slipper_hit = true, slipper_catch = true,
 	scales_swing = true, scales_hit = true, gavel_strike = true, gavel_charge = true, remote_click = true, remote_pause = true,
 	remote_rewind = true, bow_draw = true, arrow_hit = true, arrow_wall = true, flame_burn = true, gas_hiss = true, sleep_hit = true, -- (weapons batch D)
-	card_throw = true, card_deal = true, card_heal = true, card_blast = true, card_dash = true, card_tp = true } -- (weapons batch E: the Card Deck)
+	card_throw = true, card_deal = true, card_heal = true, card_blast = true, card_dash = true, card_tp = true, -- (weapons batch E: the Card Deck)
+	cart_roll = true, cart_hit = true, lasso_spin = true, lasso_throw = true, lasso_catch = true, rope_creak = true, lasso_slam = true } -- (the cart, the lasso)
 local function kind(name: string): string
 	local base = string.match(name, "^(.-)#%d+$") or name
 	-- (skin_<skin>_<kind>: a special skin's shot and reload layers, the sound session's: they go with the guns)

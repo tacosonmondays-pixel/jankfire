@@ -790,6 +790,16 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
+		elseif W[held] and W[held].kind == "cart" then -- (batch E: the Shopping Cart Cannon; CartServer flies it)
+			if now >= (minigun.trickNext.cart or 0) then
+				minigun.trickNext.cart = now + (W[held].cd or 1.6)
+				local eye, look = eyeAndAim()
+				local r = Remotes:FindFirstChild("Cart")
+				if r and r:IsA("RemoteEvent") then r:FireServer("fire", eye, look) end
+				Body.push(-look * 6 * Weapons.S) -- (the kick pushes you back)
+				VM.kick(W[held].recoilVM, 1, false, 1, 1); VM.shot(W[held]); TP.fired(held, false)
+				if W[held].snd then Sfx.play(W[held].snd) end
+			end
 		elseif W[held] and W[held].kind == "cards" then -- (batch E: the Card Deck plays the picked card)
 			local eye, look = eyeAndAim()
 			if minigun.cards.play(eye, look) then

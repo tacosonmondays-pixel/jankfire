@@ -418,6 +418,9 @@ RunService.PreSimulation:Connect(function(dt: number)
 		st.vy = math.max(st.vy, 0)
 		Body.kick()
 	end
+	-- (batch E: on a Shopping Cart you go where it rolls; CartRide.client drives it)
+	local rd = Body.ride
+	if rd then st.vx, st.vz = rd.v.X, rd.v.Z end
 	local pin = Body.pin
 	if pin and Body.pinned() then
 		local d = pin.at + Vector3.new(0, 3, 0) - chest

@@ -37,6 +37,8 @@ end
 Body.stunUntil = 0
 -- (the Scythe) the server's dash: this velocity, flat, until this server time (WeaponStates sets it from DashV / DashUntil)
 Body.dash = nil :: { v: Vector3, untilT: number }?
+-- (batch E) riding a Shopping Cart: the cart's velocity, flat (CartRide.client drives it; Move runs you along it)
+Body.ride = nil :: { v: Vector3 }?
 function Body.dashing(): boolean
 	local d = Body.dash
 	return d ~= nil and workspace:GetServerTimeNow() < d.untilT

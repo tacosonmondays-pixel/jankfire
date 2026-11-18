@@ -62,6 +62,9 @@
         "Cards": {
           "$className": "RemoteEvent"
         },
+        "Cart": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },
