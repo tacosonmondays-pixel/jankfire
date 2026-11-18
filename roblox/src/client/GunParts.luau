@@ -16,9 +16,10 @@ export type State = {
 	-- (weapons batch A) the Minigun's barrels: their turn and how fast; whose gun (nil = your viewmodel); the Water
 	-- Pistol's tank as shown (0..1, eased) and each tank piece's full size
 	barA: number?, spinV: number?, owner: Player?, waterShow: number?, waterSize: { [BasePart]: Vector3 }?,
-	-- (the Scythe's two forms) each moving node's offset to where it sits in the other form (root space), the switch's
-	-- length; and whether whose gun this is has been looked up (a third-person copy is parented after attach)
-	form: { [string]: CFrame }?, formTime: number?, ownerSeen: boolean?,
+	-- (the Scythe's two forms) each moving node's move to where it sits in the other form and the root it turns about
+	-- (root space, scaled), the switch's length; and whether whose gun this is has been looked up (a third-person copy
+	-- is parented after attach)
+	form: { [string]: { cf: CFrame, at: Vector3 } }?, formTime: number?, ownerSeen: boolean?,
 	shotT: number?, -- (weapons batch C) when it last fired: the round in the muzzle is gone till it's refilled
 }
 -- your own last form switch (os.clock: Arsenal sets it); anyone else's is their FormT attribute (server time, Combat)
@@ -54,28 +55,18 @@ function GunParts.attach(m: Model, root: BasePart, k: number, parts: { [string]:
 		if parts.heat and string.find(c.Name, parts.heat.piece, 1, true) then st.heatPiece = c end
 	end
 	st.owner = game:GetService("Players"):GetPlayerFromCharacter(m.Parent)
-	-- (a two-form weapon, the Scythe: build the other form's model once and measure where each moving node sits in it.
-	-- the switch eases from there to here, so the code stand-in and the kit model both just work if the pieces share
-	-- their node names in the two models)
+	-- (a two-form weapon, the Scythe: the row says where each moving node goes in the other form, file metres; the
+	-- switch eases it from there to here about its root. the kit bakes turns into its meshes, so measuring the two
+	-- models would only slide the blade: guns-remodel, c0716af)
 	local F = parts.form
-	if F and type(F.to) == "string" and type(F.nodes) == "table" then
-		local ok, WM = pcall(require, game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("WeaponModels"))
-		local other = if ok then (WM :: any).build(F.to, k) else nil
-		if other and other.PrimaryPart then
-			local offs: { [string]: CFrame } = {}
-			for _, node in F.nodes do
-				local mine = st.nodes[node]
-				if not mine or not mine[1] then continue end
-				for _, c in other:GetChildren() do
-					if c:IsA("BasePart") and c ~= other.PrimaryPart and nodeOf(c.Name) == node then
-						offs[node] = other.PrimaryPart.CFrame:ToObjectSpace(c.CFrame) * mine[1].rest:Inverse()
-						break
-					end
-				end
+	if F and type(F.set) == "table" then
+		local offs: { [string]: { cf: CFrame, at: Vector3 } } = {}
+		for node, d in F.set do
+			if st.nodes[node] and typeof(d.cf) == "CFrame" and typeof(d.at) == "Vector3" then
+				offs[node] = { cf = CFrame.new(d.cf.Position * k) * d.cf.Rotation, at = d.at * k }
 			end
-			st.form, st.formTime = offs, tonumber(F.time) or 0.45
 		end
-		if other then other:Destroy() end
+		st.form, st.formTime = offs, tonumber(F.time) or 0.45
 	end
 	return st
 end
@@ -308,7 +299,10 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 		if e < 1 then
 			e = math.max(0, e)
 			local s = 1 - e * e * (3 - 2 * e)
-			for node, off in st.form :: { [string]: CFrame } do move[node] = CFrame.identity:Lerp(off, s) end
+			-- (about the node's root, not the model's origin: lerped from the origin the halfway blade swings 0.6 m out)
+			for node, o in st.form :: { [string]: { cf: CFrame, at: Vector3 } } do
+				move[node] = CFrame.new(o.at:Lerp(o.cf * o.at, s)) * CFrame.identity:Lerp(o.cf.Rotation, s) * CFrame.new(-o.at)
+			end
 		end
 	end
 	-- the whole gun round the hand (the lever's spin-cock, the Revolver's twirl): every piece, never the hands

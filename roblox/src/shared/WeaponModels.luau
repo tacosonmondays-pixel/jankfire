@@ -166,12 +166,8 @@ end
 -- (the Scythe, 18 Nov 2026) a code stand-in until its kit model is in (guns-remodel): a long dark haft, a grip wrap and
 -- a broad curved blade out to the side at the top, the edge facing forward. its rifle form (scythe_rifle) is the same
 -- pieces with two moved: the blade slides down the haft to behind the grip and turns on its edge as the stock, the
--- scope comes up out of the haft; the teal collar is the muzzle. SCYTHE_TURN = scythe -> rifle for those two (model
--- units, the model's own space); GunParts eases them across in the switch, measured from the two built models
-local SCYTHE_TURN = {
-	blade = CFrame.new(0, -0.03, 0.14) * CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 0, -1), Vector3.new(-1, 0, 0), Vector3.new(0, 1, 0)) * CFrame.new(0, -0.02, 1.26),
-	scope = CFrame.new(0, 0.085, 0),
-}
+-- scope comes up out of the haft; the teal collar is the muzzle. the turn of each is the scythe row's (Weapons
+-- mdl.parts.form.set: the kit model's numbers), which GunParts also eases across in the switch
 local function scythe(b: Builder, rifle: boolean)
 	cylZ(b, "haft", 0.022, 1.5, 0x3a3d45, 0, 0, -0.55)
 	bx(b, "wrap", 0.05, 0.05, 0.16, 0x2b2622, 0, 0, 0.05)
@@ -183,12 +179,14 @@ local function scythe(b: Builder, rifle: boolean)
 		bx(b, "scope", 0.02, 0.06, 0.06, 0x2b2e35, 0, -0.045, -0.42),
 	}
 	if rifle then
+		local set = (Weapons.list :: any).scythe.mdl.parts.form.set
 		for _, p in moving do
-			local off = SCYTHE_TURN[p.Name]
+			local off = set[p.Name].cf :: CFrame
 			p.CFrame = b.root.CFrame * CFrame.new(off.Position * b.k) * off.Rotation * b.root.CFrame:ToObjectSpace(p.CFrame)
 		end
-		spot(b, "Muzzle", Vector3.new(0, 0, -1.32))
+		spot(b, "Muzzle", Vector3.new(0, 0, -1.305))
 		spot(b, "Mid", Vector3.new(0, 0, -0.6))
+		spot(b, "Sight", Vector3.new(0, 0.0775, -0.095))
 	else
 		spot(b, "Muzzle", Vector3.new(-0.7, 0.02, -1.16))
 		spot(b, "Mid", Vector3.new(-0.3, 0.02, -1.25))

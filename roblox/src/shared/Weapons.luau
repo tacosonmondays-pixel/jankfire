@@ -85,6 +85,11 @@ local function rgb(hex: number): Color3
 	return Color3.fromRGB(bit32.rshift(hex, 16) % 256, bit32.rshift(hex, 8) % 256, hex % 256)
 end
 
+-- the Scythe's blade, scythe -> rifle (guns-remodel's kit, c0716af; file metres, the model's own space): 120 degrees
+-- about (-1, 1, 1) and down the haft, from its root at the collar (0.012, 0.02, -1.218) to the heel slot (0, 0.012,
+-- 0.114). the kit bakes every turn into the meshes, so this can't be measured off the two models: it is written here
+local SCYTHE_TURN = CFrame.new(0.02, 1.23, 0.126, 0, -1, 0, 0, 0, 1, -1, 0, 0)
+
 local W: { [string]: Weapon } = {
 	redline = {
 		id = "redline", name = "Redline", slot = "primary", kind = "hitscan", color = rgb(0xff3b3b),
@@ -525,7 +530,12 @@ local W: { [string]: Weapon } = {
 		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
 		vm = { p = Vector3.new(0.22, -0.25, -0.44) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.6 },
-		mdl = { parts = { form = { to = "scythe_rifle", nodes = { "blade", "scope" } } } } :: any, -- (GunParts: the blade and scope move between the forms; no file bounds, the kit model brings its own)
+		-- (GunParts: the blade and scope move across in a switch, each about its own root `at`; cf = this form -> the
+		-- other. no file bounds here: the kit model brings its own)
+		mdl = { parts = { form = { set = {
+			blade = { cf = SCYTHE_TURN, at = Vector3.new(0.012, 0.02, -1.218) },
+			scope = { cf = CFrame.new(0, 0.0645, 0), at = Vector3.new(0, 0.013, -0.24) },
+		} } } } :: any,
 	},
 	-- the Scythe's second form: the blade slides back down the haft and turns under it as the stock, the collar is the
 	-- muzzle and a short scope comes up. no one-shot headshot, no big shove: under the Sniper at range
@@ -540,7 +550,10 @@ local W: { [string]: Weapon } = {
 		draw = "form_scythe",
 		recoilVM = { back = 2.5, up = 9, roll = 1.6, side = 0.2, punch = 0.06 },
 		vm = { p = Vector3.new(0.2, -0.22, -0.4) * S, r = Vector3.new(0, 0.03, 0), s = 0.5 },
-		mdl = { parts = { form = { to = "scythe", nodes = { "blade", "scope" } } } } :: any,
+		mdl = { parts = { form = { set = {
+			blade = { cf = SCYTHE_TURN:Inverse(), at = Vector3.new(0, 0.012, 0.114) },
+			scope = { cf = CFrame.new(0, -0.0645, 0), at = Vector3.new(0, 0.0775, -0.24) },
+		} } } } :: any,
 	},
 	-- (weapons batch A) point blank, barely hurts: shoves them straight away from you and they slip
 	slapper = {
