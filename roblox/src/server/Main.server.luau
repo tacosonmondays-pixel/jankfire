@@ -152,6 +152,7 @@ local function yank(p: Player, i: Info)
 		end)
 	end
 	Fight.knock(tf, v, "grapple")
+	if full and mf then pcall(function() require(script.Parent:WaitForChild("ScytheCombo")).step(mf :: any, tf, "yank") end) end -- (the combo's 2nd step)
 	GrappleRemote:FireAllClients("yank", p.Character, tm, not full)
 	dropRope(i)
 end
@@ -198,6 +199,8 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 		a1.Parent = troot
 		tieRope(i, p, a1)
 		i.body, i.bodyBlind, i.bodyNext = tm, 0, os.clock() + 0.2
+		-- (the Scythe's combo finisher, ScytheCombo: a rope on them is its first step)
+		if mf and mf ~= tf then pcall(function() require(script.Parent:WaitForChild("ScytheCombo")).step(mf :: any, tf, "grapple") end) end
 		return
 	end
 	local toPoint = (pt - from).Magnitude

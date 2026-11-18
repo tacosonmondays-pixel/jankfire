@@ -221,6 +221,28 @@ Stand on the dummy path; anti-cheat movement checks on):
 - **Not checked:** another player as the target (no second player in a solo test), the finisher's x1.5 on a body, a
   wall behind.
 
+**The combo finisher since the night of 18 Nov** (the owner: *"if you get e + f + swing + dash, it auto shoots to do a
+finisher! ... that final shot should reward an insta kill basically"*; `server/ScytheCombo.luau`).
+| | |
+|---|---|
+| the chain | on one living enemy: your grapple tied onto them (E), the full yank (F), then a scythe swing hit and a scythe dash hit in either order. Each step within 2.0 s of the last, the whole within 6 s |
+| who judges | the server, from steps it already confirmed (Main's hook on a body and yank, Combat's swing hits, ScytheDash's contact), one chain per attacker on one target: a client can't claim it |
+| what ends it | a scythe swing or dash that touches nobody, swapping off the scythe, either one dying, a gap too long. A training dummy counts only in Studio or the training zone |
+| the finisher | the server snaps the scythe to its rifle; 0.2 s later one shot to their head kills them whatever their HP or shield (straight to HP; a kill of its own if anything still held them up), credited to the Scythe's rifle as a headshot (kills, mastery, the dash refund count it). It fizzles if they're out of sight, past 40 m or gone. 0.35 s later it snaps back |
+| what everyone sees | a heavy teal tracer with a white core, a ring opening round the head and a burst there, the rifle's own recorded shot, loud (Fx "scyfin", ScytheDash.client) |
+| the shooter | a 0.12 s hit-stop, a punch-in of 9 degrees of FOV easing out over 0.35 s (Arsenal's ScyPunch) and a small kick up: the camera is never taken. A kill that wins the round or the match plays the finishers' own cut as usual. No text |
+| test hook | `JankScytheTest:Invoke("combo", player)`: the chain now and the log |
+
+Tested in one solo Play, place version 1009 (a training Stand at 100,000 HP, the steps sent through the game's own
+remotes from one script, because the 2 s windows are shorter than the test tools' delay):
+- **The full chain:** grapple 0.00 s, yank 0.45, swing 1.53, dash 2.48; the finisher fired, and the shot at 2.70 s
+  killed the Stand from 99,874 HP at 21 studs. The rifle was in hand for the shot and the server had the scythe back
+  after it. The dash still closed 29 studs after the swing's kick-back. Photo: `docs/scythe/combo-finisher-shot-v1009.jpg`.
+- **Too slow** (2.6 s between the yank and the swing): reset "too slow", no shot, the Stand lived.
+- **Anti-cheat:** 0 points, 0 catches.
+- **Not checked:** a real player as the target, 3+ player matches (another player hitting your target mid-chain), the
+  finisher cut on a round-winning combo kill, the E and F keys themselves (the remotes were sent directly).
+
 **The dash** (right click; `ScytheDash.server`). The server decides it, and the client only runs the path it's given.
 
 | | |

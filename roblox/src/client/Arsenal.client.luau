@@ -1163,6 +1163,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- (the speed FOV kick on top: SpeedLines.client's SpeedFov, the web's fovKick; zoomed with it down the sights)
 	local kick = me:GetAttribute("SpeedFov")
 	if type(kick) == "number" then baseFov += kick end
+	local punch = me:GetAttribute("ScyPunch") -- (the Scythe's combo finisher: a quick punch-in, ScytheDash.client)
+	if type(punch) == "number" then baseFov -= punch end
 	if w and w.ads then camera.FieldOfView = baseFov / (1 + (w.ads.zoom - 1) * aim) else camera.FieldOfView = baseFov end
 	-- full auto
 	local holstered = inHub()

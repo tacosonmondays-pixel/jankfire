@@ -157,6 +157,7 @@ end)
 		f.castUntil = math.max(f.castUntil or 0, nn + w.latch.t) -- (no swing mid-latch)
 		local dealt = Fight.hurt(t, D.dmg, f, wid, false, nil, tr.Position)
 		if dealt > 0 then require(script.Parent:WaitForChild("ScytheLatch")).apart(f, { t }, wid, false) end
+		if dealt > 0 then require(script.Parent:WaitForChild("ScytheCombo")).step(f, t, "dash") end -- (the combo's dash step)
 	end
 	local function sweep(): boolean
 		local el = now() - n
@@ -176,6 +177,7 @@ end)
 			if side <= D.width and math.abs(rel.Y) <= 4 then contact(t, tr, q, side); return true end
 		end
 		prev = at
+		if el >= D.time then require(script.Parent:WaitForChild("ScytheCombo")).miss(f, "dash") end -- (touched nobody)
 		return el >= D.time
 	end
 	if sweep() then return end -- (already touching them as it starts)
@@ -192,6 +194,7 @@ end)
 --   S:Invoke("set", player, n) -> n charges left, the next one starting to come back now (a refund test)
 --   S:Invoke("log", "clear"?)  -> the last dashes { from, to, len, n } and refunds (and empties it)
 --   S:Invoke("latch")          -> the last latches (ScytheLatch.log: the pushes sent, the room found)
+--   S:Invoke("combo", player)  -> { state = the combo chain now (ScytheCombo.state), log = ScytheCombo.log }
 if RunService:IsStudio() then
 	local ServerStorage = game:GetService("ServerStorage")
 	local old = ServerStorage:FindFirstChild("JankScytheTest")
@@ -200,6 +203,11 @@ if RunService:IsStudio() then
 	bf.Name = "JankScytheTest"
 	bf.OnInvoke = function(what: string, a: any, b: any): any
 		if what == "latch" then return table.clone(require(script.Parent:WaitForChild("ScytheLatch")).log) end
+		if what == "combo" then
+			local C = require(script.Parent:WaitForChild("ScytheCombo"))
+			local cf = if typeof(a) == "Instance" then Fight.byPlayer[a :: Player] else nil
+			return { state = if cf then C.state(cf) else nil, log = table.clone(C.log) }
+		end
 		if what == "log" then
 			local out = table.clone(log)
 			if a == "clear" then table.clear(log) end

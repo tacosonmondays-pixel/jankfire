@@ -104,3 +104,79 @@ RunService.RenderStepped:Connect(function()
 		c.rim.Transparency = if flash then 0 else 0.4
 	end
 end)
+
+-- ------------------------------------------------------------------ the combo finisher's shot (server/ScytheCombo.luau)
+-- (the owner, 18 Nov 2026: "if you get e + f + swing + dash, it auto shoots to do a finisher!") everyone near sees it:
+-- a heavy teal tracer from the shooter to the head, a white core down its middle, a ring that opens round the head and
+-- a burst there, the rifle's own recorded shot, loud. the shooter also gets a 0.12 s hit-stop, a quick punch-in (the
+-- FOV through Arsenal's ScyPunch, never the camera itself) and a small kick up. no text. (Studio photos: the player
+-- attribute ScyFinPhoto keeps the tracer and the ring up for 3 s)
+local Fx = require(script.Parent:WaitForChild("Fx")) :: any
+local VM = require(script.Parent:WaitForChild("Viewmodel")) :: any
+local TP = require(script.Parent:WaitForChild("ThirdPerson")) :: any
+local S = Weapons.S
+local STUDIO = RunService:IsStudio()
+local function ring(at: Vector3, life: number)
+	local p = Instance.new("Part")
+	p.Name = "ScyFinRing"
+	p.Shape = Enum.PartType.Cylinder
+	p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+	p.Material = Enum.Material.Neon
+	p.Color = TEAL
+	p.Size = Vector3.new(0.08, 0.6, 0.6)
+	local cam = workspace.CurrentCamera
+	local face = (cam.CFrame.Position - at)
+	p.CFrame = CFrame.lookAt(at, at + (if face.Magnitude > 1e-3 then face.Unit else Vector3.zAxis)) * CFrame.Angles(0, math.pi / 2, 0)
+	p.Transparency = 0.1
+	p.Parent = workspace
+	local t0 = os.clock()
+	local conn: RBXScriptConnection? = nil
+	conn = RunService.RenderStepped:Connect(function()
+		local u = math.clamp((os.clock() - t0) / life, 0, 1)
+		local e = 1 - (1 - u) ^ 3
+		local d = 0.6 + e * 3.2 * S
+		p.Size = Vector3.new(0.08 * (1 - u * 0.6), d, d)
+		p.Transparency = 0.1 + 0.9 * u
+		if u >= 1 then if conn then conn:Disconnect() end; p:Destroy() end
+	end)
+end
+local punchT = -math.huge
+ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
+	if type(f) ~= "table" or f.k ~= "scyfin" then return end
+	local a, b = f.a, f.b
+	if typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
+	local mine = f.by == me.UserId
+	local hold = STUDIO and me:GetAttribute("ScyFinPhoto") == true
+	local life = if hold then 3 else 0.35
+	-- from the muzzle: theirs off their rifle in third person, yours off the viewmodel's (or the eye)
+	local from = a
+	if mine then
+		local mz = VM.attachment and VM.attachment("Muzzle")
+		if typeof(mz) == "Vector3" then from = mz end
+	elseif typeof(f.model) == "Instance" then
+		local ok, mz = pcall(TP.muzzle, f.model)
+		if ok and typeof(mz) == "Vector3" then from = mz end
+	end
+	Fx.tracer(from, b, TEAL, 0.22 * S, life)
+	Fx.tracer(from, b, Color3.new(1, 1, 1), 0.07 * S, life * 0.8)
+	ring(b, if hold then 3 else 0.32)
+	Fx.blast(b, 1.6)
+	pcall(Sfx.play, "gun_scythe", if mine then nil else from, 1.6)
+	if mine then
+		VM.hitStop = 0.12
+		punchT = os.clock()
+	end
+end)
+-- the shooter's punch-in: 9 degrees in at once, eased back out over 0.35 s; and a small kick up of the view, on top of
+-- the camera (never Scriptable)
+RunService:BindToRenderStep("ScyFinKick", Enum.RenderPriority.Camera.Value + 2, function()
+	local u = (os.clock() - punchT) / 0.35
+	if u < 0 or u > 1 then
+		if me:GetAttribute("ScyPunch") ~= nil then me:SetAttribute("ScyPunch", nil) end
+		return
+	end
+	local e = (1 - u) ^ 2
+	me:SetAttribute("ScyPunch", 9 * e)
+	local cam = workspace.CurrentCamera
+	cam.CFrame = cam.CFrame * CFrame.Angles(0.035 * e * math.sin(math.min(1, u * 4) * math.pi), 0, 0)
+end)

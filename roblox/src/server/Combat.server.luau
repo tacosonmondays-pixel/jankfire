@@ -335,6 +335,7 @@ local function tryEquip(p: Player, wid: string)
 		local bw = W[before]
 		if bw and bw.form and bw.form.to == f.held then p:SetAttribute("FormT", workspace:GetServerTimeNow()) end
 		Fight.showWeapon(f)
+		require(script.Parent:WaitForChild("ScytheCombo")).equipped(f) -- (off the scythe: its combo is over)
 		FxR:FireAllClients({ k = "equip", model = Fight.model(f), w = f.held })
 	end
 end
@@ -517,6 +518,7 @@ SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown, y
 	Fight.shot(f, wid)
 	-- (the Scythe: the server's own count of its swing chain, ScytheLatch; everyone else's copy plays that link)
 	local link = if heavy == true then nil else require(script.Parent:WaitForChild("ScytheLatch")).swing(f, wid, now())
+	if link then require(script.Parent:WaitForChild("ScytheCombo")).swung(f, W[wid].hitT or 0.24) end -- (the combo: a swing that touches nobody ends it)
 	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId, h = if heavy == true then true else nil,
 		clip = if heavy == true then "stab_" .. wid elseif link then "swing_" .. wid .. (if link > 1 then tostring(link) else "") else nil }) -- (clip: the stab or the chain's link others see, ThirdPerson.luau)
 	Fight.shotFx(f, wid, nil, "swing")
@@ -584,6 +586,8 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 	-- (the owner, 18 Nov 2026: "when you scythe it should latch on and send you back! and send them back a bit too")
 	if #latched > 0 then
 		local Latch = require(script.Parent:WaitForChild("ScytheLatch"))
+		local Combo = require(script.Parent:WaitForChild("ScytheCombo"))
+		for _, t in latched do Combo.step(f, t, "swing") end -- (the combo finisher's swing step: ScytheCombo)
 		Latch.apart(f, latched, wid, Latch.finisher(f, wid))
 	end
 end)
