@@ -191,7 +191,7 @@ local function previewModel(id: string, hat: string?, skin: string?): (Model?, C
 	local e = Roster.byId[id]
 	local m: Model?
 	if not e or not e.live then m = crate(if e then e.color else GREY)
-	elseif e.slot == "utility" then m = itemModel(id)
+	elseif e.slot == "utility" then m = (require(script.Parent:WaitForChild("GunPreview")) :: any).itemModel(id, if skin ~= "default" then skin else nil) -- (a gadget, or its skin)
 	elseif id == "shredder" then m = shredderModel(if skin ~= "default" then skin else nil)
 	else m = WeaponModels.build(id, 3, if skin ~= "default" then skin else nil) end
 	if not m then return nil, CFrame.identity end
@@ -841,8 +841,8 @@ refresh = function()
 		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(), string.upper(Roster.RARITY[wr.rarity].name),
 			if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
-	noPaint.Visible = not e.live or e.slot == "utility"
-	noPaint.Text = if e.slot == "utility" then "items don't take paint." else "no paint on vapourware. pick something that's live."
+	noPaint.Visible = not e.live -- (the gadgets take paint since 18 Nov)
+	noPaint.Text = "no paint on vapourware. pick something that's live."
 	for _, s in swatches do
 		local on = s.wr.id == wid
 		s.tick.Visible = on
@@ -852,7 +852,7 @@ refresh = function()
 		s.st.Transparency = if on then 0 else 0.8
 		s.st.Thickness = if on then 2 else 1
 	end
-	local paints = e.live and e.slot ~= "utility" -- (an item takes no paint)
+	local paints = e.live
 	for m, b in modeBtns do
 		local on = m == md and paints
 		b:set(MODE_NAMES[m], paints, if on then T.CARD_HI else nil)
@@ -891,7 +891,7 @@ end)
 
 onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
-	if not e or not e.live or e.slot == "utility" then return end
+	if not e or not e.live then return end
 	local _, md = wrapOf(e.id)
 	if not owns("wrap", wr.id) and not trying() then play("empty"); say(("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED); return end
 	local ok, why = ask("wrap", e.id, wr.id, md)
@@ -1101,7 +1101,7 @@ skinsRefresh = function(e: any)
 		skinsFor = k
 		for _, c in skinRow:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 		table.clear(skinCards)
-		if e.live and e.slot ~= "utility" and #ids + #extra > 0 then
+		if e.live and #ids + #extra > 0 then
 			skinCard("default", 0, e.id)
 			for i, sid in ids do skinCard(sid, i, e.id) end
 			for i, sid in extra do skinCard(sid, 1000 + i, e.id, true) end
@@ -1123,14 +1123,15 @@ skinsRefresh = function(e: any)
 		sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
 			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
-	noSkins.Visible = not e.live or e.slot == "utility" or #ids + #extra == 0
-	noSkins.Text = if e.slot == "utility" then "items don't take skins." elseif not e.live then "no skins on vapourware. pick something that's live." else "no skins for this one yet."
+	noSkins.Visible = not e.live or #ids + #extra == 0
+	noSkins.Text = if not e.live then "no skins on vapourware. pick something that's live." else "no skins for this one yet."
 	for _, c in skinCards do
 		local on = c.id == cur
 		c.tick.Visible = on
 		if c.lock then
 			local set = owned.skin
-			c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true)
+			-- (a free skin, the Classic set, is everyone's: LootTable's rarity "free")
+			c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true) and select(2, skinInfo(c.id)) ~= "free"
 			lockLook(c.lock)
 		end
 		c.st.Color = if on then ACCENT else WHITE
@@ -1140,9 +1141,9 @@ skinsRefresh = function(e: any)
 end
 onSkin = function(sid: string)
 	local e = Roster.byId[(skinsFor:match("^([%w_]+):")) or state.focus]
-	if not e or not e.live or e.slot == "utility" then return end
+	if not e or not e.live then return end
 	local set = owned.skin
-	if string.find(skinsFor, sid, 1, true) and not (set ~= nil and set[sid] == true) then
+	if string.find(skinsFor, sid, 1, true) and not (set ~= nil and set[sid] == true) and select(2, skinInfo(sid)) ~= "free" then
 		for _, c in skinRow:GetChildren() do
 			if c:GetAttribute("SkinId") == sid and c:GetAttribute("Concept") then
 				play("empty"); say("a concept, not in the game. hover it to see it on the gun.", RED)

@@ -559,6 +559,38 @@ Not tested: two real players, an early start from the break with real players (t
 match), the map room handing over into round 1 (its code path is unchanged: stageGo -> startMatch -> startRound), a
 controller.
 
+## Gadget wraps and skins, and the Classic gun skins (18 Nov)
+
+**Gadgets** (the owner: "Gadgets should have skins and be wrappable"). The utility-items session made the models (in
+JankfireSkins, Weapon = the gadget, Item = true, with WrapUV), the catalogue (`shared/ItemSkins.luau`) and the
+held/thrown/third-person looks. Mine:
+- **LootTable:** the gadgets take wraps, owned per gadget like a gun's ("galaxy@frag"; utility-items' hunk). The
+  eight gadget skins have fallback rows until ItemSkins is in the place, and its rows win after that.
+- **Server Loadout:** wraps and skins go on the utility slot. Hats stay on guns.
+- **LoadoutUI:** the WRAPS and SKINS tabs open on the utility slot, and its preview is the skin's model wearing the wrap.
+- **Pictures:** `GunPreview.itemModel(id, skin)` clones the skin's model, or the gadget's own from JankfireItems. The
+  loadout, the match picker and the shop's cards (ShopUI `V.gun`) draw gadgets with it. The crate reveal already
+  falls back to the skin's model at its file size.
+- Crates roll them like a gun's skin, and the shop's daily and deal rotations may offer them (LOOT_FREE as for
+  everything).
+
+**Classic set** (the gun-models session's `<weapon>_classic` skins: one per standard gun, shaped like its real type).
+They're free for every player: LootTable rows with rarity "free" (`L.isFree`: `Loot.owns` says yes for anyone). Rows
+are ready for all twelve guns, and one shows once its model is in the place. They're never in a crate (`L.cosmetics`)
+or the shop's rotations (`Shop.liveSkins`), and the loadout shows them with no lock.
+
+Tested in solo Play (place version 823):
+- The crate pool and the shop's rotation hold no Classic, but do hold the gadget skins.
+- `ar_classic` went on with nothing owned.
+- `frag_lantern` was refused as not owned. With the owner's Studio loot unlock it went on, and so did Galaxy on the
+  Frag.
+- The loadout on the Frag Grenade showed the Paper Lantern wearing Galaxy, with Galaxy marked in WRAPS
+  (`docs/shop/gadget-wrap.jpg`). SKINS showed Default, Powder Keg and Paper Lantern, the Lantern picked
+  (`gadget-skin.jpg`).
+- The test profile's own looks were put back afterwards.
+
+Not seen yet: a gadget skin won from a crate's reveal on screen, and a gadget card in the shop.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

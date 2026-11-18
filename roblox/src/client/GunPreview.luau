@@ -68,7 +68,13 @@ local function crate(color: Color3): Model
 end
 -- an item (the utility slot): its own model (ReplicatedStorage.JankfireItems), or a crate until that's there
 local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble" }
-local function itemModel(id: string): Model?
+local function itemModel(id: string, skin: string?): Model?
+	-- (a gadget's skin, 18 Nov: its own model in JankfireSkins, Weapon = the gadget, Item = true)
+	if skin and skin ~= "default" then
+		local sl = ReplicatedStorage:FindFirstChild("JankfireSkins")
+		local st = sl and sl:FindFirstChild(skin)
+		if st and st:IsA("Model") and st:GetAttribute("Weapon") == id then return st:Clone() end
+	end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
 	local t = lib and lib:FindFirstChild(itemNames[id] or ("x_" .. id))
 	if t and t:IsA("Model") then return t:Clone() end
@@ -81,7 +87,7 @@ function P.build(id: string, hat: string?, skin: string?, wrap: string?, mode: s
 	local e = Roster.byId[id]
 	local m: Model?
 	if not e or not e.live then m = crate(if e then e.color else GREY)
-	elseif e.slot == "utility" then m = itemModel(id)
+	elseif e.slot == "utility" then m = itemModel(id, skin)
 	elseif id == "shredder" then m = shredderModel(if skin ~= "default" then skin else nil)
 	else m = WeaponModels.build(id, 3, if skin ~= "default" then skin else nil) end
 	if not m then return nil, CFrame.identity end
@@ -106,6 +112,8 @@ function P.build(id: string, hat: string?, skin: string?, wrap: string?, mode: s
 	if wrap and e and e.live then pcall(WeaponModels.wrap, m, wrap, mode) end
 	return m, m:GetPivot():ToObjectSpace(cf)
 end
+
+P.itemModel = itemModel -- (a gadget, or its skin: LoadoutUI's previews and the shop's cards draw them with it)
 
 -- ---------------------------------------------------------------- the frames
 function P.viewport(parent: Instance, props: { [string]: any }): (ViewportFrame, Camera)

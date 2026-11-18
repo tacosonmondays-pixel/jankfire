@@ -202,7 +202,8 @@ end
 function Shop.liveSkins(): { string }
 	local out = {}
 	if LootTable and type(LootTable.SKINS) == "table" then
-		for id in LootTable.SKINS do if Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) then table.insert(out, id) end end
+		-- (never a free one: the Classic set is everyone's already. 18 Nov)
+		for id, row in LootTable.SKINS do if row[2] ~= "free" and Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) then table.insert(out, id) end end
 	end
 	table.sort(out)
 	return out

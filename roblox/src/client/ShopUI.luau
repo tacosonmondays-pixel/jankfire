@@ -318,6 +318,16 @@ end
 -- a weapon wearing a wrap and a hat (all of it painted: "full"). boost = the hat drawn this much bigger (a small
 -- card, where a true-size hat is a few pixels). skin = a weapon skin's id: its body instead of the plain gun's
 function V.gun(wid: string, wrap: string?, hat: string?, boost: number?, skin: string?): Model?
+	-- (a gadget, 18 Nov: its own model or its skin's, GunPreview's; wraps yes, hats no)
+	local re = Roster.byId[wid]
+	if re and re.slot == "utility" then
+		local okG, GP = pcall(require, script.Parent:WaitForChild("GunPreview"))
+		local g = if okG and type(GP) == "table" then (GP :: any).itemModel(wid, skin) else nil
+		if not g then return nil end
+		settle(g)
+		if wrap and wrap ~= "default" then pcall(WeaponModels.wrap, g, wrap, "full") end
+		return g
+	end
 	local m = if skin then WeaponModels.build(wid, 3, skin) else nil
 	if not m then m = if wid == "shredder" then V.shredder() else WeaponModels.build(wid, 3) end
 	if not m then return nil end

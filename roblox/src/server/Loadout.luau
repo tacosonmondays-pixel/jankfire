@@ -440,7 +440,6 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if type(a) ~= "string" or type(b) ~= "string" or type(c) ~= "string" then return false, "nope" end
 		local e = Roster.byId[a]
 		if not e or not e.live then return false, "no paint on vapourware" end
-		if e.slot == "utility" then return false, "items don't take paint" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
 		if not free and not Loot.owns(p, "wrap", b, a) then return false, "you don't own that one for this gun yet. it's in spray cans" end
 		if b == "default" and c == "normal" then L.wraps[a] = nil else L.wraps[a] = { id = b, mode = c } end
@@ -470,7 +469,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if type(a) ~= "string" or type(b) ~= "string" then return false, "nope" end
 		local e = Roster.byId[a]
 		if not e or not e.live then return false, "no skins on vapourware" end
-		if e.slot == "utility" then return false, "items don't take skins" end
+		-- (the gadgets take wraps and skins since 18 Nov; hats stay on guns)
 		if b ~= "default" then
 			if not GunSkins.valid(a, b) then return false, "that skin isn't here yet" end
 			if free then

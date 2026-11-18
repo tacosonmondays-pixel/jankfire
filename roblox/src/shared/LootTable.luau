@@ -175,6 +175,18 @@ end
 -- the VIP daily reward's exclusive skin (the shop session's VipDailyData.EXCLUSIVE.skin, 17 Nov): a row so the reward can
 -- give it (Loot.grant of a "pass" offer); it's in no container (L.exclusive). a SkinSets row for it wins
 L.SKINS.sniper_triangulum = L.SKINS.sniper_triangulum or { "Triangulum", "legendary", "sniper" }
+-- the Classic set (18 Nov, the owner): one skin per standard gun, shaped like its well-known real type, in the kit's style
+-- (the gun-models session's, JankfireSkins "<weapon>_classic"). FREE for every player: an alternate look in the loadout,
+-- owned by everyone (L.isFree: Loot.owns), never in a container (L.cosmetics) or the shop's rotations (Shop.liveSkins).
+-- a row whose model isn't in the place yet shows nowhere (GunSkins.valid), so the later batches need nothing more here
+for wid, name in {
+	ar = "Assault Rifle", burst = "Burst Rifle", smg = "SMG", pistol = "Pistol", shotgun = "Shotgun", sniper = "Sniper",
+	revolver = "Revolver", sawnoff = "Sawed-Off", lmg = "LMG", dmr = "Marksman Rifle", lever = "Lever Rifle",
+	autoshot = "Auto Shotgun",
+} do
+	local id = wid .. "_classic"
+	L.SKINS[id] = L.SKINS[id] or { "Classic " .. name, "free", wid }
+end
 -- the gadget skins (18 Nov, the owner: "Gadgets should have skins and be wrappable"; the utility-items session's
 -- Shared.ItemSkins): whole other objects for one gadget, their models in JankfireSkins with Weapon = the gadget id and
 -- Item = true, so they roll in crates, sell and get picked like weapon skins. a row already here keeps its row
@@ -189,6 +201,15 @@ do
 			end
 		end
 	end
+end
+-- (the gadget skins' rows until the utility-items session's ItemSkins is in the place; its rows, merged above, win)
+for id, row in {
+	frag_lantern = { "Paper Lantern", "legendary", "frag" }, frag_keg = { "Powder Keg", "rare", "frag" },
+	medkit_doctorbag = { "Doctor's Bag", "rare", "medkit" }, medkit_bento = { "Bento Box", "legendary", "medkit" },
+	smoke_coffeepot = { "Camp Coffee Pot", "rare", "smoke" }, smoke_censer = { "Incense Burner", "legendary", "smoke" },
+	duck_origami = { "Origami Duck", "legendary", "duck" }, duck_decoy = { "Decoy Duck", "rare", "duck" },
+} do
+	L.SKINS[id] = L.SKINS[id] or row
 end
 -- a weapon skin's tier (SkinSets.TIER: basic = small changes to the base gun, mid = a new model, high = a remodel with
 -- its own effects): "basic" / "mid" / "high" and its name, or nil (no tier, or no SkinSets in the place)
@@ -356,7 +377,7 @@ function L.cosmetics(kind: string): { Item }
 		elseif t == "skin" then
 			local live = skinsLive()
 			local ids = {}
-			for id in L.SKINS do if live[id] and not L.vipOnly(t, id) and not L.concept(id) then table.insert(ids, id) end end
+			for id, s in L.SKINS do if live[id] and s[2] ~= "free" and not L.vipOnly(t, id) and not L.concept(id) then table.insert(ids, id) end end
 			table.sort(ids)
 			for _, id in ids do
 				local s = L.SKINS[id]
