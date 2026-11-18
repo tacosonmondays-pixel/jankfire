@@ -91,7 +91,8 @@ end
 local function watch(p: Player) p:GetAttributeChangedSignal("Hats"):Connect(function() repick(p) end) end
 for _, p in Players:GetPlayers() do watch(p) end
 Players.PlayerAdded:Connect(watch)
--- (a spot whose hand went loses its hat; a hat the view rebuilt away while its spot stayed goes back on)
+-- (a spot whose hand went loses its hat; a hat the view rebuilt away while its spot stayed goes back on; a hat on a
+-- body's hand fades with that hand, as the game hides your own body when the camera is in it)
 RunService.Heartbeat:Connect(function()
 	for att, hat in onSpot do
 		if not att.Parent then
@@ -100,6 +101,15 @@ RunService.Heartbeat:Connect(function()
 		elseif not hat.Parent then
 			onSpot[att] = nil
 			task.defer(placeSpot, att)
+		elseif hat.Parent == att.Parent then
+			local hand = att.Parent :: BasePart
+			local f = math.max(hand.LocalTransparencyModifier, if hand.Transparency >= 0.99 then 1 else 0)
+			if hat:GetAttribute("Fade") ~= f then
+				hat:SetAttribute("Fade", f)
+				for _, p in hat:GetChildren() do
+					if p:IsA("BasePart") then p.LocalTransparencyModifier = f end
+				end
+			end
 		end
 	end
 end)

@@ -319,6 +319,13 @@ larger too".
   - The hand's collision is a box, so rays can't measure the mitten's real top: `sink` 0.005 (x size) is the hold
     session's estimate, to be judged on photos.
   - R6 bodies: the hold session will put the spot at the end of `Right Arm`; nothing changes here.
+  - Play test (place version 949): with the Blood Cross drawn, the eyes stand on top of the finger-gun hand in
+    first person, as the viewmodel's `GunHat` (photo `gun-hats/bloodcross-eyes-fp.jpg`). The hold code also
+    puts a spot on your own body's hand when the view toggles, and your own body is hidden (LocalTransparencyModifier
+    1) while the camera is in it, so the eyes floated alone. `GunHatsClient` now fades a body-hand hat with its
+    hand. Third person on another player's body is not photographed yet (the toggle stayed close in the hall).
+  - The Seraph Pistol's third-person eyes rose 0.18 mm (`ey3` 0.05033) when its wings were replaced (place
+    version 946); pushed in place version 949.
 
 ## The fused Hand Slapper (18 Nov 2026, place version 899)
 
