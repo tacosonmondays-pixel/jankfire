@@ -39,7 +39,7 @@ player attribute `Level` carries it. The player card shows it.
 | 18 | 11,560 | Nail Gun, Laptop |
 | 20 | 14,440 | Shredder |
 
-Not on Roblox yet, with levels ready for when they go live: Snowball 6, Slipper 9, Card Deck 11, Bow 12, Tennis Ball
+Not on Roblox yet, with levels ready for when they go live: Scythe 14 (melee; the owner asked for it on 18 Nov), Snowball 6, Slipper 9, Card Deck 11, Bow 12, Tennis Ball
 Launcher 13, Peel Shooter 15, Taser 15, Hot Sauce 17, Leaf Blower 19, Lasso 20, Blood Cross 21, Bowling Ball Launcher
 22, TV Remote 23, Scales of Justice 24, Shopping Cart Cannon 25.
 

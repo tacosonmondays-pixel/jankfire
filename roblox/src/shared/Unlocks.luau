@@ -36,6 +36,7 @@ Unlocks.LEVEL = {
 	nailgun = 18, laptop = 18,
 	shredder = 20,
 	-- not on Roblox yet
+	scythe = 14, -- (melee: the owner asked for it, 18 Nov, and main for a mid-high level)
 	snowball = 6, slipper = 9, cards = 11, bow = 12, tennis = 13, banana = 15, taser = 15, cig = 17, blower = 19,
 	lasso = 20, bloodcross = 21, bowling = 22, remote = 23, scales = 24, cart = 25,
 } :: { [string]: number }
