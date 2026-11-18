@@ -151,7 +151,12 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head", 1 end
 	local a = ammoOf(f, wid, now)
 	if not a then return "no ammo", 1 end
-	if a.reloadUntil > 0 then return "reloading", 1 end
+	-- (a shot with rounds still in the mag cancels the reload: the owner, 18 Nov 2026, "can you cancel reload by
+	-- shooting". no rounds go in, so no reload time is skipped; an empty mag keeps reloading)
+	if a.reloadUntil > 0 then
+		if a.mag <= 0 then return "reloading", 1 end
+		a.reloadUntil = 0
+	end
 	if a.mag <= 0 then return "empty", 1 end
 	-- the rate comes from the SERVER's HP (a client can't claim low HP to make the Redline scream)
 	local iv = 1 / Weapons.fireRate(w, f.hp)

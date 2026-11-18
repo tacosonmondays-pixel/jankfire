@@ -208,26 +208,61 @@ local function alive(): Humanoid?
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	return if hum and hum.Health > 0 then hum else nil
 end
+local function mineSubject(sub: Instance?, hum: Humanoid): boolean
+	return sub == hum or (sub ~= nil and (sub == hum.SeatPart or (me.Character ~= nil and sub:IsDescendantOf(me.Character))))
+end
+-- V's reset: the camera on your body (its subject), and in first person Roblox's own camera locked to first person
+-- (unless the shoulder camera is still gliding in: release() hands it over then)
+local function reset(cam: Camera, hum: Humanoid)
+	if MC then MC.unstick() end
+	if not mineSubject(cam.CameraSubject, hum) then cam.CameraSubject = hum end
+	if me:GetAttribute("ThirdPerson") ~= true then
+		if me.CameraMode ~= Enum.CameraMode.LockFirstPerson then me.CameraMode = Enum.CameraMode.LockFirstPerson end
+		if not S.on and cam.CameraType ~= Enum.CameraType.Custom then cam.CameraType = Enum.CameraType.Custom end
+	end
+end
 me:GetAttributeChangedSignal("ThirdPerson"):Connect(function()
 	if MC then MC.unstick() end
 	local hum = alive()
 	if not hum or taken() then return end
-	local cam = workspace.CurrentCamera
-	local sub = cam.CameraSubject
-	local ch = me.Character :: Model
-	if sub ~= hum and not (sub and (sub == hum.SeatPart or sub:IsDescendantOf(ch))) then cam.CameraSubject = hum end
-	if me:GetAttribute("ThirdPerson") ~= true and not S.on and cam.CameraType ~= Enum.CameraType.Custom then
-		cam.CameraType = Enum.CameraType.Custom
-	end
+	reset(workspace.CurrentCamera, hum)
 end)
--- first person with a scripted camera nobody drives any more (a screen put back the shoulder camera's Scriptable after
--- it had let go) for a whole second: Roblox's own camera again (every glide back from a menu or an emote is shorter)
-local orphanT = 0
-local function orphan(cam: Camera, dt: number)
-	if cam.CameraType ~= Enum.CameraType.Scriptable or taken() or not alive() then orphanT = 0; return end
-	orphanT += dt
-	if orphanT >= 1 then orphanT = 0; cam.CameraType = Enum.CameraType.Custom end
-end
+
+-- the watchdog (18 Nov 2026, the owner: "camera gets stuck can you auto v if its detected?"): alive, with nothing that
+-- really has the camera (taken), a camera plainly not on you for WATCH s gets V's reset by itself (the view doesn't
+-- change mode). stuck = the camera's subject isn't your body; in first person a scripted camera nobody drives, or the
+-- camera more than 3 studs from your head; over the shoulder more than 15 from it. WATCH outlasts every glide back
+-- from a menu or an emote (0.5 s at most). each reset adds one to the player attribute CamFix, says what was wrong in
+-- CamFixWhy and prints it to the client log, so the screen that left the camera so can be found
+local WATCH = 0.7
+local bad, lastFix = 0, -10
+RunService:BindToRenderStep("JankCamWatch", Enum.RenderPriority.Last.Value + 90, function(dt: number)
+	local hum = alive()
+	if not hum or taken() then bad = 0; return end
+	local cam = workspace.CurrentCamera
+	local ch = me.Character :: Model
+	local head = (ch:FindFirstChild("Head") or ch:FindFirstChild("HumanoidRootPart")) :: BasePart?
+	local tp = me:GetAttribute("ThirdPerson") == true
+	local why: string? = nil
+	local d = if head then (cam.CFrame.Position - head.Position).Magnitude else 0
+	if not mineSubject(cam.CameraSubject, hum) then
+		why = "subject " .. (if cam.CameraSubject then cam.CameraSubject:GetFullName() else "none")
+	elseif not tp and not S.on and cam.CameraType ~= Enum.CameraType.Custom then
+		why = "first person, " .. cam.CameraType.Name .. " camera nobody drives"
+	elseif not tp and not S.on and d > 3 then
+		why = ("first person, camera %.0f studs from the head"):format(d)
+	elseif tp and S.on and d > 15 then
+		why = ("third person, camera %.0f studs from the head"):format(d)
+	end
+	if not why then bad = 0; return end
+	bad += dt
+	if bad < WATCH or os.clock() - lastFix < 2 then return end
+	bad, lastFix = 0, os.clock()
+	reset(cam, hum)
+	me:SetAttribute("CamFix", ((me:GetAttribute("CamFix") :: number?) or 0) + 1)
+	me:SetAttribute("CamFixWhy", why)
+	print("[camera] stuck, reset as V would: " .. why)
+end)
 
 RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value - 1, function(dt: number)
 	local cam = workspace.CurrentCamera
@@ -244,7 +279,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 	end
 	if me:GetAttribute("ThirdPerson") ~= true then
 		-- back to first person: a quick glide in to your head, then Roblox's own camera
-		if not S.on then orphan(cam, dt); return end
+		if not S.on then return end
 		if not S.leaving then S.leaving, S.leaveFrac = os.clock(), S.frac end
 		if os.clock() - (S.leaving :: number) >= C.inTime then release(); return end
 	elseif S.leaving then

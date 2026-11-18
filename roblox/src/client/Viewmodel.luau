@@ -42,6 +42,7 @@ local kickUp = 0 -- (kick's upward tilt, scaled by VM.feel: the rearward push ke
 local bobPh, breathT = 0, 0
 local sway = Vector2.zero
 local runK = 0
+local feel = { ground = 0, slide = 0, slip = 0, speed = 0 } -- (the body's state, eased: VM.update)
 local lastLook: Vector3? = nil
 local needles: { Weld } = {}
 local needleAng = -2.3
@@ -759,13 +760,22 @@ function VM.update(dt: number, c: Ctx)
 	if row and row.tilt then rot += row.tilt end -- (the one-handed guns turned to show their side)
 	local px, py, pz = base.X, base.Y - 0.3 * swap * S, base.Z
 	local rx, ry, rz = 0, 0, 0
+	-- what the gun reads off your body eases in and out (the owner, 18 Nov 2026: "sometimes the weapons vibrate during
+	-- match"): on the ground or not flips frame to frame on stairs, kerbs and bumps (a step up, an edge read as air),
+	-- sliding and slipping can flick on and off, and the body's speed jolts against walls and other bodies. the bob,
+	-- the slide roll and the slip took each flip whole, a jump of the gun every frame
+	local e10 = math.min(1, dt * 10)
+	feel.ground += ((if c.grounded then 1 else 0) - feel.ground) * math.min(1, dt * 12)
+	feel.slide += ((if c.slide then 1 else 0) - feel.slide) * e10
+	feel.slip += ((if c.slipping then 1 else 0) - feel.slip) * e10
+	feel.speed += (c.speed - feel.speed) * e10
 	-- footstep bob: one dip per foot strike
-	local spd = c.speed / S
+	local spd = feel.speed / S
 	local stride = math.min(4.3, 1.2 + 0.29 * spd)
-	if c.grounded then bobPh += spd * dt / stride * math.pi end
+	bobPh += spd * dt / stride * math.pi * feel.ground
 	local run = math.clamp((spd - 6) / 4, 0, 1)
 	local sprint = math.clamp((spd - 11.5) / 2.5, 0, 1)
-	local amp = (0.011 + 0.008 * run + 0.01 * sprint) * (if c.grounded then math.min(1, spd / 3) else 0)
+	local amp = (0.011 + 0.008 * run + 0.01 * sprint) * feel.ground * math.min(1, spd / 3)
 	local dip = -math.abs(math.sin(bobPh))
 	px += math.sin(bobPh) * amp * 1.1 * S; py += dip * amp * 1.6 * S; rx += dip * amp * 2.5; rz += math.sin(bobPh) * amp * 3.5
 	-- breathing
@@ -783,11 +793,14 @@ function VM.update(dt: number, c: Ctx)
 	lastLook = look
 	px += 0.2 * sway.X * S; py -= 0.12 * sway.Y * S; rx -= 0.8 * sway.Y; ry += 1.3 * sway.X; rz += 0.6 * sway.X
 	-- run tilt / slide roll
-	runK += ((if c.sprint and c.grounded and c.aim < 0.1 then 1 else 0) - runK) * math.min(1, dt * 8)
+	runK += ((if c.sprint and feel.ground > 0.5 and c.aim < 0.1 then 1 else 0) - runK) * math.min(1, dt * 8)
 	py -= 0.03 * runK * S; rx -= 0.25 * runK; ry += 0.35 * runK; rz += 0.2 * runK
-	if c.slide then rz += 0.3 end
+	rz += 0.3 * feel.slide
 	-- slipping on marbles: the gun flung up, then wobbling
-	if c.slipping then rx += 0.85 * 0.5 + math.sin(breathT * 9 * 2 * math.pi) * 0.12; rz += 0.5 * 0.5 + math.sin(breathT * 14 * 2 * math.pi) * 0.1 end
+	if feel.slip > 0.001 then
+		rx += (0.85 * 0.5 + math.sin(breathT * 9 * 2 * math.pi) * 0.12) * feel.slip
+		rz += (0.5 * 0.5 + math.sin(breathT * 14 * 2 * math.pi) * 0.1) * feel.slip
+	end
 	-- the clip (draw / swing / parry / reload / stagger)
 	local cp, crot: CFrame? = Vector3.zero, nil
 	if clip then

@@ -324,6 +324,19 @@ local function reload()
 	TP.reload(held, w.reload :: number, a.mag <= 0)
 end
 
+-- fire with rounds still in the mag cancels a reload (the owner, 18 Nov 2026: "can you cancel reload by shooting"):
+-- the reload clip stops, no rounds go in, and the shot goes off. with the mag empty the reload carries on. the server
+-- drops its own reload on that shot (Rules.fire), so it can't skip any reload time. guns only (not the blades, not the
+-- Shredder)
+local function cancelReload(): boolean
+	local a, w = ammo[held], W[held]
+	if not a or not w or w.kind ~= "hitscan" or a.reloadUntil <= 0 or a.mag <= 0 then return false end
+	a.reloadUntil = 0
+	VM.stop()
+	TP.cancelReload()
+	return true
+end
+
 -- a spent case out of the port (the pump's red hull, the bolt's and the lever's brass: thrown by the clip, not the shot)
 local function eject(big: boolean)
 	local port = VM.attachment("Port")
@@ -604,7 +617,10 @@ Keys.began(function(io: InputObject, gp: boolean)
 		local _, _, root = myChar()
 		if not root then return end
 		if W[held] and W[held].kind == "melee" then swing(now)
-		elseif not W[held].auto and now >= nextShot[held] then fireGun(now) end
+		else
+			cancelReload() -- (a reload with rounds left: the shot wins)
+			if not W[held].auto and now >= nextShot[held] then fireGun(now) end
+		end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
 		if W[held] and W[held].heavy then swing(now, true) else tryParry(now) end -- (the knife stabs; the katana parries)
