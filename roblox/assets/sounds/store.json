@@ -2282,6 +2282,100 @@
     ],
     "L": -30
    }
+  ],
+  "skin_frag_lantern_throw": [
+   {
+    "id": 9117202183,
+    "title": "Paper Bag Movement Opening Bag Movement 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.4,
+     1.08
+    ],
+    "L": -27
+   }
+  ],
+  "skin_frag_lantern_blast": [
+   {
+    "id": 9114447104,
+    "title": "Fireworks Fast 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     0.8
+    ],
+    "L": -18
+   },
+   {
+    "id": 9114447096,
+    "title": "Fireworks Fast 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.25,
+     0.95
+    ],
+    "L": -15
+   }
+  ],
+  "skin_medkit_bento_open": [
+   {
+    "id": 9120873789,
+    "title": "Wooden Chest Open Close Cedar Box 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.5,
+     1.15
+    ],
+    "L": -29
+   }
+  ],
+  "skin_smoke_censer_throw": [
+   {
+    "id": 9125597331,
+    "title": "Hand Bell Small Cast Iron Buddhist Temple Be (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.88,
+     1.65
+    ],
+    "L": -22
+   }
+  ],
+  "skin_smoke_censer_cloud": [
+   {
+    "id": 9125740669,
+    "title": "Pipe Ring Offs Soft Ringing Clinking Impacts (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     1.2
+    ],
+    "L": -42
+   }
+  ],
+  "skin_duck_origami_throw": [
+   {
+    "id": 9118835414,
+    "title": "Scrapbook Open And Turn Pages 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.72,
+     1.1
+    ],
+    "L": -30
+   }
+  ],
+  "skin_duck_origami_land": [
+   {
+    "id": 9125723704,
+    "title": "Paper Packet Handling Unfolding Crumpled She (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.62
+    ],
+    "L": -44
+   }
   ]
  },
  "vol": {
@@ -2319,7 +2413,9 @@
   "minigun_spin": 0.12,
   "minigun_spindown": 0.12,
   "water_soak": 6,
-  "blood_boom": 5.5
+  "blood_boom": 5.5,
+  "skin_smoke_censer_cloud": 3.7,
+  "skin_duck_origami_land": 4.6
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -2400,7 +2496,14 @@
   "scythe_hit": -21,
   "scythe_dash": -26,
   "gun_scythe": -18,
-  "scythe_form": -24
+  "scythe_form": -24,
+  "skin_frag_lantern_throw": -30,
+  "skin_frag_lantern_blast": -27,
+  "skin_medkit_bento_open": -28,
+  "skin_smoke_censer_throw": -29,
+  "skin_smoke_censer_cloud": -30,
+  "skin_duck_origami_throw": -30,
+  "skin_duck_origami_land": -30
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2452,7 +2555,12 @@
   "scythe_swing": 0.03,
   "scythe_hit": 0.04,
   "scythe_dash": 0.04,
-  "gun_scythe": 0.02
+  "gun_scythe": 0.02,
+  "skin_frag_lantern_throw": 0.03,
+  "skin_frag_lantern_blast": 0.03,
+  "skin_smoke_censer_throw": 0.02,
+  "skin_duck_origami_throw": 0.03,
+  "skin_duck_origami_land": 0.03
  },
  "loop": {
   "minigun_spin": true,

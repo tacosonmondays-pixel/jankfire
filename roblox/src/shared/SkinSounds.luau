@@ -10,6 +10,8 @@
 --   ev     = clip event -> layer (magIn: the mag seats; cylIn / spinCyl: the cylinder; leverClack: a lever cycle;
 --            shell: the sniper's bolt throws its case; whoosh: a katana swing)
 --   hit    = a layer on your melee hit
+--   item   = a skinned gadget's layers by event (throw, blast, cloud, land, open), played by Sfx.skinItem from the gadget
+--            code (client/Utility.client) beside the gadget's own sound (18 Nov 2026: the four legendary gadget skins)
 -- a new special skin: add its row here and its Sounds in JankfireSounds (tools/roblox/store_sounds.mjs, store.json)
 local SkinSounds = {}
 
@@ -26,6 +28,11 @@ SkinSounds.skin = {
 	revolver_star = { fire = "skin_revolver_star_fire", ev = { cylIn = "skin_revolver_star_reload" } }, -- a laser zap; a servo whirr
 	lever_star = { fire = "skin_lever_star_fire", ev = { leverClack = "skin_lever_star_cycle" } }, -- a plasma zap; a sci-fi relay clack
 	sniper_triangulum = { fire = "skin_sniper_triangulum_fire", ev = { shell = "skin_sniper_triangulum_cycle" } }, -- a falling shimmer; a soft chime on the bolt
-} :: { [string]: { fire: string?, chance: number?, alt: { name: string, every: number }?, ev: { [string]: string }?, hit: string? } }
+	-- the legendary gadget skins (ItemSkins)
+	frag_lantern = { item = { throw = "skin_frag_lantern_throw", blast = "skin_frag_lantern_blast" } }, -- a paper rustle; a firecracker pop under the blast
+	medkit_bento = { item = { open = "skin_medkit_bento_open" } }, -- a lacquer lid lifting with a soft wooden knock
+	smoke_censer = { item = { throw = "skin_smoke_censer_throw", cloud = "skin_smoke_censer_cloud" } }, -- a small bronze bell; a temple-bowl ring as the cloud starts
+	duck_origami = { item = { throw = "skin_duck_origami_throw", land = "skin_duck_origami_land" } }, -- a paper flap; a paper crinkle on landing
+} :: { [string]: { fire: string?, chance: number?, alt: { name: string, every: number }?, ev: { [string]: string }?, hit: string?, item: { [string]: string }? } }
 
 return SkinSounds

@@ -1,3 +1,33 @@
+# The legendary gadget skins' sound layers (18 Nov 2026, place version 834)
+
+Main asked for these, per `special-skins-standard`, from the rows in `special-skins-trails-sfx.md`. Each layer plays
+on top of the gadget's own sound, quieter than it. `SkinSounds.skin[id].item` maps an event to a Sound, and
+`Sfx.skinItem(owner, gid, ev, at?)` plays it once `GunSkins.skinFor(owner, gid)` names the skin. The utility session
+calls it in `Utility.client` at the throw (yours on G or the cooked release, others' when the gadget appears in
+flight), the frag blast, the smoke cloud's start, the duck sticking and the medkit lid opening. The names are
+`skin_<skin>_<event>`, so all seven follow the WEAPONS slider.
+
+| skin | event | take(s): Pro Sound Effects id, title, cut (s) | Volume |
+| --- | --- | --- | --- |
+| Paper Lantern `frag_lantern` | throw | 9117202183 Paper Bag Movement Opening Bag Movement 6, 0.4–1.08: a paper rustle | 0.65 |
+| | blast | 9114447104 Fireworks Fast 2, 0.18–0.8; 9114447096 Fireworks Fast 1, 0.25–0.95: firecracker crackle under the boom | 0.28 |
+| Bento Box `medkit_bento` | open | 9120873789 Wooden Chest Open Close Cedar Box 9, 0.5–1.15: the lid lifting, then a soft wooden knock | 1.04 |
+| Incense Burner `smoke_censer` | throw | 9125597331 Hand Bell Small Cast Iron Buddhist Temple Bell, 0.88–1.65: one strike of a small temple bell | 0.41 |
+| | cloud | 9125740669 Pipe Ring Offs Soft Ringing Clinking Impacts, 0.18–1.2: a soft ring as the cloud starts | 3.7 (set) |
+| Origami Duck `duck_origami` | throw | 9118835414 Scrapbook Open And Turn Pages 2, 0.72–1.1: a crisp page flap | 0.92 |
+| | land | 9125723704 Paper Packet Handling Unfolding Crumpled Sheet, 0–0.62: a paper crinkle | 4.6 (set) |
+
+Notes:
+- The fireworks cuts stop inside the crackle. The frag's boom covers the end.
+- The bell and the soft ring run 0.8–1.0 s, a little over the sheet's 0.6 s, so they can ring out. They're quiet by then.
+- The library has no singing bowl. The cloud's ring is a soft pipe ring-off.
+
+Checked in Play (v834, solo): a test copy of Sfx with a stand-in skin lookup played all seven layers on their events,
+on you with no position and in the world with one, all in the Weapons group. An unskinned gadget and an unknown event
+played nothing. Not checked with the utility session's real calls: they land in its next push.
+
+---
+
 # The Scythe's rifle form (18 Nov 2026, place version 816)
 
 Asked for by the weapons-port session (the owner: the Scythe is also a sniper). Pro Sound Effects.

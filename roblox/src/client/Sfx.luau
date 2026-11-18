@@ -308,5 +308,13 @@ function Sfx.skinHit(wid: string)
 	if L and L.hit then Sfx.play(L.hit) end
 end
 
+-- a skinned gadget's layer (SkinSounds .item): p = the gadget's owner, gid = the gadget (frag, smoke, duck, medkit),
+-- ev = throw / blast / cloud / land / open; at = out in the world, nil = on you. nothing for an unskinned gadget
+function Sfx.skinItem(p: Player?, gid: string, ev: string, at: Vector3?)
+	local _, L = layersFor(p, gid)
+	local name = L and L.item and L.item[ev]
+	if name then Sfx.play(name, at) end
+end
+
 local _ = holder
 return Sfx
