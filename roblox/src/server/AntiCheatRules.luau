@@ -15,6 +15,10 @@ R.C = {
 	AUTO_BAN_DAYS = 7,
 	BAN_DAYS = 7, -- how long a ban from the panel or the auto-ban lasts (0 = for good)
 	KICK = true,
+	-- the movement checks' own kicks (the ladder: teleport, noclip, inside, fly, stall, speed). off since 18 Nov 2026: a
+	-- friend in the private preview was kicked for lag. off = every catch is still put back and written down, a full
+	-- ladder writes "would kick" and starts counting again. the owner's panel KICK button doesn't read this
+	KICK_MOVE = false,
 	-- ------------------------------------------------------------------ movement
 	SAMPLE = 0.1, -- s between the server's looks at each body
 	GRAV = 26 * S, -- Workspace.Gravity (Config.grav)

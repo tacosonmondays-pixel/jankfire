@@ -385,7 +385,7 @@ end
 
 local function kick(p: Player, s: St, why: string)
 	if s.kicked then return end
-	if STUDIO or not C.KICK then
+	if STUDIO or not C.KICK or not C.KICK_MOVE then -- (KICK_MOVE off: movement kicks only written down)
 		Log.add(p, "kick", "would kick", why)
 		verdict(s, "kick", why, "would kick")
 		table.clear(s.points) -- (a Studio test goes on: start counting again)
@@ -891,7 +891,7 @@ local probed: { [Player]: boolean } = {}
 		return if op == "hello" then { admin = false } else nil
 	end
 	if op == "hello" then
-		return { admin = true, bans = C.BANS, kicks = C.KICK and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window, reports = true }
+		return { admin = true, bans = C.BANS, kicks = C.KICK and C.KICK_MOVE and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window, reports = true }
 	elseif op == "players" then
 		local out = {}
 		for _, q in Players:GetPlayers() do table.insert(out, playerRow(q)) end
