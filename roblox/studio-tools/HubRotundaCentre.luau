@@ -23,7 +23,7 @@ return function(B, R)
 	local mode = {}
 	for _, md in R.MODES do mode[md.side] = md end
 	-- what a way out is called and the colour of its word and floor line
-	local WAY = { gym = { "gym", "GYM", P.pale, P.cream }, lounge = { "lounge", "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" },
+	local WAY = { gym = { "gym", "GYM", P.pale, P.cream }, lounge = { "lounge", if R.LOUNGE_STYLE == "plaza" then "PLAZA" else "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" },
 		arcade = { nil, nil, P.pale, P.cream } } -- (the arches either side of the lounge's: no word of their own)
 	local ACCENT = P.doorGlow or P.glow -- (the building's one accent: the way to go)
 
@@ -78,6 +78,11 @@ return function(B, R)
 			local id, word, hex
 			if kind == "lift" then id, word, hex = mode[i].id, mode[i].title, P.word
 			else id, word, hex = WAY[kind][1], WAY[kind][2], WAY[kind][3] end
+			if kind == "lift" then -- (18 Nov, main: "the five lift bays should read as hotel lifts, with framed doors and a lit header over each": a pale frame inside the opening, a warm lit header over it)
+				for _, s in { -1, 1 } do B.box(F, C, "LiftJamb", s * 4.85, s * 5.2, -0.04, 10.7, A - 0.2, A + 0.3, P.creamHi, nil, G) end -- (against the piers: the ways in and the sight lines to the pads stay as wide)
+				B.box(F, C, "LiftHead", -5.05, 5.05, 10.7, 11.3, A - 0.5, A + 0.35, P.creamHi, nil, G)
+				B.box(F, C, "LiftHeader", -3.4, 3.4, 11.35, 11.85, A - 0.38, A - 0.2, "e6c99a", Neon, G)
+			end
 			if P.doorGlow then -- (the glow palette: each way out lit along its threshold in its own colour, a lift also under its lintel)
 				B.box(F, C, "DoorGlow", -4.9, 4.9, 0, 0.15, A - 0.55, A - 0.25, if kind == "lift" then P.doorGlow else hex, Neon, G)
 			end
@@ -129,10 +134,11 @@ return function(B, R)
 			for _, s in { -1, 1 } do B.box(F, C, "WindowFrame", s * N[1], s * (N[1] + 0.6), N[2] - 0.2, N[3] + 0.6, A - 0.4, A, P.pier, nil, G) end
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[3], N[3] + 0.6, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[2] - 0.2, N[2], A - 0.4, A, P.pier, nil, G)
-			local FY, TOPY, D1 = R.LOUNGE_H + 1, N[3] + 1.1, A + T + 6 -- (its floor: the top of the lounge's lid)
-			for _, s in { -1, 1 } do B.box(F, S, "NicheWall", s * (N[1] + 0.9), s * (N[1] + 1.3), FY, TOPY, A + T, D1, P.shell2) end
-			B.box(F, S, "NicheWall", -(N[1] + 1.3), N[1] + 1.3, FY, TOPY, D1, D1 + 0.4, P.shell2)
-			B.box(F, S, "NicheLid", -(N[1] + 1.3), N[1] + 1.3, TOPY, TOPY + 0.4, A + T, D1 + 0.4, P.shell2)
+			local FY, TOPY, D1 = R.LOUNGE_H + 1, N[3] + 1.1, A + T + 6 -- (its floor: the top of the lounge's lid; in the plaza a bay window's floor, HubRotundaRooms)
+			local NW = if R.LOUNGE_STYLE == "plaza" then "8e877c" else P.shell2 -- (the plaza: the bay window's body in the hotel's stone)
+			for _, s in { -1, 1 } do B.box(F, S, "NicheWall", s * (N[1] + 0.9), s * (N[1] + 1.3), FY, TOPY, A + T, D1, NW) end
+			B.box(F, S, "NicheWall", -(N[1] + 1.3), N[1] + 1.3, FY, TOPY, D1, D1 + 0.4, NW)
+			B.box(F, S, "NicheLid", -(N[1] + 1.3), N[1] + 1.3, TOPY, TOPY + 0.4, A + T, D1 + 0.4, NW)
 		elseif kind and not R.UP_DOORS[i] then
 			B.box(F, C, "WindowFrame", -2.3, 2.3, 16.8, 23.4, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "Window", -1.7, 1.7, 17.4, 22.8, A - 0.52, A - 0.4, P.dim, Neon, G)
@@ -221,7 +227,11 @@ return function(B, R)
 					-- the spandrel up to the lintel, in slices whose stepped bottoms the stones hide
 					for _, sl in { { 3.4, 4.3 }, { 4.3, 5.1 }, { 5.1, 5.9 }, { 5.9, 6.7 }, { 6.7, 7.5 }, { 7.5, rO + 0.35 } } do
 						local yb = if sl[2] < rO then SY + math.sqrt(rO * rO - sl[2] * sl[2]) else SY
-						if yb < top then B.box(Fl, C, "ArchSpandrel", s * sl[1], s * sl[2], yb, top, -h + 0.05, h - 0.05, P.shell, nil, G) end
+						if yb < top then
+							B.box(Fl, C, "ArchSpandrel", s * sl[1], s * sl[2], yb, top, -h + 0.05, h - 0.05, P.shell, nil, G)
+							-- (the plaza: the lounge side's face in the hotel's stone, the round room's side as it was)
+							if R.LOUNGE_STYLE == "plaza" then B.box(Fl, C, "ArchSkin", s * sl[1], s * sl[2], yb, top - 0.03, h - 0.05, h + 0.03, "a59d90", nil, G) end
+						end
 					end
 				end
 				B.box(Fl, C, "ArchKeystone", -0.75, 0.75, SY + rI - 0.25, SY + rO + 0.95, h, h + 0.9, P.cream, nil, G)

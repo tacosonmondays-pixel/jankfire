@@ -42,6 +42,9 @@ local SP, Neon = Enum.Material.SmoothPlastic, Enum.Material.Neon
 
 R.ROOM = "Rotunda" -- its folder in workspace.Map.Hub
 R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
+-- every hub building's folder in Map.Hub and Built mark (a build takes all of them away first: one hub at a time). the
+-- hotel plaza is HubPlaza's (18 Nov), the bowling centre HubLab's
+R.HUB_FOLDERS, R.HUB_MARKS = { "Rotunda", "Lanes", "Plaza" }, { "Rotunda", "HubLab", "Plaza" }
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
@@ -68,18 +71,38 @@ R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift
 -- on the lounge's front floor, facing the arches (Hub.HubSpawns: the same markers as before, only where they stand
 -- changed). HubRotundaRooms builds it. LOUNGE_X = half its width inside, LOUNGE_H = its ceiling
 R.LOUNGE_S, R.LOUNGE_X, R.LOUNGE_H = 8, 28, 16
+-- THE HOTEL PLAZA (18 Nov 2026; the owner, after a square plaza for the whole hub was planned: "keep the old circular
+-- look though for the hub, lounge free rein", so the round room stays the hub's heart and the hotel is the lounge wing.
+-- before that, the owner: "can you try remodelling the hub lounge into like a hotel plaza? rn a lot of
+-- your extensions just look like well extensions, it doesnt look very natural"). R.LOUNGE_STYLE = "plaza": the lounge,
+-- its timber bay and the VIP box behind it become one building round a covered courtyard, in the round room's own
+-- language (its piers floor to cornice, the balcony's band, the gallery's windows, its cornice) turned inside out: the
+-- round room's three south faces are the courtyard's north side (its arches the way in, a balcony over the middle one,
+-- a bay window over each side one: the west one is the hub egg's nook), and three facades of hotel rooms over arcades
+-- close the rest (dark windows, balconies); a lit coffered ceiling over it all. in the arcades: the showroom (west),
+-- seats and the games corner (east), the reception and the VIP door (south). in the courtyard: the spawn rug, a
+-- fountain with the duck over it, big trees, two ring chandeliers. "lounge" = the spawn lounge as it was (place v810)
+R.LOUNGE_STYLE = script:GetAttribute("LoungeStyle") or "plaza" -- ("lounge": the spawn lounge of place v810. R.switch("plaza" | "lounge") builds either live, from a copy of this module with the attribute set)
+-- the plaza's plan, in the lounge's frame (side 7: x to the west, d out) and Hub v2 numbers like everything here: X =
+-- the courtyard's half width (the side facades' faces), D = the south facade's face, BACK = the face of the south
+-- arcade's back wall (the VIP door's), OUT = the side arcades' outer walls' faces, WALL = a facade's thickness, BEAM =
+-- the arcades' ceilings (the openings' head), ROOF = the courtyard's lit ceiling, PIERS_D = the side facades' piers
+-- (their d; one more at each corner), PIERS_X = the south facade's (its x either side; and the corners)
+R.PLAZA = { X = 19, D = 69.2, BACK = 78.2, OUT = 28, WALL = 1.6, BEAM = 12, ROOF = 28.6, PIERS_D = { 27.5, 41.17, 55.17 }, PIERS_X = { 6.33 } }
 -- the jump pads' lit ring (18 Nov: the way up made obvious): its radius, a little outside the pad's own rim
 R.JUMP_GLOW = 4
 -- the hub egg's hiding place (18 Nov; the egg is training-v2's, Map.Hub.HubEgg): the gallery window over this side is an
 -- opening { half its width, its sill, its head } into a little room on the lounge's roof (HubRotundaCentre)
 R.EGG_SIDE, R.EGG_NICHE = 8, { 2.3, 17, 23.4 }
 -- where you appear: { x, d } in the lounge's frame (side 7: x to the right as you look out of the round room, d out)
-R.SPAWNS = { { -3.6, 39.2 }, { -1.2, 39.2 }, { 1.2, 39.2 }, { 3.6, 39.2 }, { -3.6, 41.6 }, { -1.2, 41.6 }, { 1.2, 41.6 }, { 3.6, 41.6 } } -- (far enough back that the first look takes in all three arches)
+R.SPAWNS = if R.LOUNGE_STYLE == "plaza"
+	then { { -3.6, 42.8 }, { -1.2, 42.8 }, { 1.2, 42.8 }, { 3.6, 42.8 }, { -3.6, 45.2 }, { -1.2, 45.2 }, { 1.2, 45.2 }, { 3.6, 45.2 } } -- (in the courtyard, the middle arch straight ahead)
+	else { { -3.6, 39.2 }, { -1.2, 39.2 }, { 1.2, 39.2 }, { 3.6, 39.2 }, { -3.6, 41.6 }, { -1.2, 41.6 }, { 1.2, 41.6 }, { 3.6, 41.6 } } -- (far enough back that the first look takes in all three arches)
 -- where the lifts must all be framed from: the platform's south edge, where you come out onto it from the lounge (the
 -- spawn rows stood here until 18 Nov). { x, d } in the north frame, on the platform's top
 -- where the lounge's own things (the duck, the showroom's bundles) must show from: the front of the spawn rug, { x, d } in
 -- the lounge's frame, the eye 5.2 up
-R.LOUNGE_LOOK = { 0, 34 }
+R.LOUNGE_LOOK = if R.LOUNGE_STYLE == "plaza" then { 0, 47 } else { 0, 34 } -- (the plaza: the rug's south half, the fountain ahead)
 R.PLATFORM_LOOK = { { -2.4, -8.4 }, { -0.8, -8.4 }, { 0.8, -8.4 }, { 2.4, -8.4 }, { -2.4, -9.9 }, { -0.8, -9.9 }, { 0.8, -9.9 }, { 2.4, -9.9 } }
 local TEAM = { "ff4fd8", "37d6ff", "ffe14d" } -- the teams' colours, in Matches' order
 R.TEAM = TEAM
@@ -468,19 +491,22 @@ function R.new(live, opts)
 	P.name = pname
 	local O = if live then R.SITE else opts.at or R.STAGE
 	local stageName = opts.stage or "HubStage"
-	-- (opts.version: 3 = Hub v3, through R.V3; 2 = the Rotunda as it was. default R.VERSION)
+	-- (opts.version: 3 = Hub v3, through R.V3; 2 = the Rotunda as it was. default R.VERSION. 18 Nov: another building
+	-- can use these helpers too, the hotel plaza, HubPlaza: opts.room = its folder's name, opts.mark = the Built
+	-- attribute on its pads and markers, opts.version anything but 3 = no warp)
 	local version = opts.version or R.VERSION
+	local ROOM, MARK = opts.room or R.ROOM, opts.mark or R.MARK
 	local B = { live = live, O = O, P = P, G = { ghost = true }, count = 0, lamps = 0, shadows = 0, missing = {},
-		version = version, warp = if version == 3 then R.V3 else nil, extra = {} }
+		version = version, warp = if version == 3 then R.V3 else nil, extra = {}, room = ROOM, builtMark = MARK } -- (not "mark": B.mark is B.rigid's)
 	if live then
-		for _, n in { R.ROOM, "Lanes" } do local old = hub:FindFirstChild(n); if old then old:Destroy() end end
+		for _, n in R.HUB_FOLDERS do local old = hub:FindFirstChild(n); if old then old:Destroy() end end
 		for _, f in { folderIn(hub, "QueuePads"), folderIn(hub, "HubSpawns"), folderIn(hub.Doors, "HubArrive"), hub.Doors } do
-			for _, c in f:GetChildren() do local b = c:GetAttribute("Built"); if b == R.MARK or b == "HubLab" then c:Destroy() end end
+			for _, c in f:GetChildren() do local b = c:GetAttribute("Built"); if b and table.find(R.HUB_MARKS, b) then c:Destroy() end end
 		end
 	else
 		local stage = workspace.Map:FindFirstChild(stageName); if stage then stage:Destroy() end
 	end
-	local root = Instance.new("Folder"); root.Name = R.ROOM
+	local root = Instance.new("Folder"); root.Name = ROOM
 	for _, n in { "Shell", "Scenery", "Collision" } do local f = Instance.new("Folder"); f.Name = n; f.Parent = root end
 	B.root = root
 	if live then
@@ -836,6 +862,12 @@ function R.new(live, opts)
 		fn(Fl)
 		B.mark = was
 	end
+	-- a ball: its middle at (x, y, d) in F, dia across (inside B.rigid: world studs)
+	function B.ball(F, folder, name, x, y, d, dia, hex, mat, o)
+		local p = B.box(F, folder, name, x - dia / 2, x + dia / 2, y - dia / 2, y + dia / 2, d - dia / 2, d + dia / 2, hex, mat, o)
+		p.Shape = Enum.PartType.Ball
+		return p
+	end
 
 	-- a queue pad: a dark base, the team plates side by side (pink on the left as you face outward, the way the counts
 	-- on its board read), each plate's face glowing in its team's colour (owner, 17 Nov: "can we try removing the circles
@@ -848,7 +880,7 @@ function R.new(live, opts)
 		m:SetAttribute("Mode", md.id); m:SetAttribute("Teams", md.teams); m:SetAttribute("Size", md.size)
 		-- (several pads share a mode since the duel hall: PadId tells them apart, Bank says where it stands)
 		m:SetAttribute("PadId", m.Name); m:SetAttribute("Bank", md.bank or "lifts")
-		m:SetAttribute(if live then "Built" else "ForShow", if live then R.MARK else true)
+		m:SetAttribute(if live then "Built" else "ForShow", if live then MARK else true)
 		local function plate(pn, cx, cd, sx, sd, hex, mat, yy, th)
 			local p = Instance.new("Part")
 			p.Name = pn; p.Anchored = true; p.Size = Vector3.new(sx, th, sd)
@@ -917,7 +949,7 @@ function R.new(live, opts)
 		local at = B.fr(0) * Vector3.new(x, y + 0.1, -d)
 		local f = B.fr(lookBearing).LookVector
 		p.CFrame = CFrame.lookAt(at, at + f)
-		if live then p:SetAttribute("Built", R.MARK); table.insert(B.extra, p) end
+		if live then p:SetAttribute("Built", MARK); table.insert(B.extra, p) end
 		p.Parent = folder
 		return p
 	end
@@ -937,7 +969,7 @@ function R.new(live, opts)
 		p.Size = Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(d1 - d0))
 		p.CFrame = F * CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, -(d0 + d1) / 2)
 		p:SetAttribute("Land", land); p:SetAttribute("Say", say)
-		if live then p:SetAttribute("Built", R.MARK); table.insert(B.extra, p) end
+		if live then p:SetAttribute("Built", MARK); table.insert(B.extra, p) end
 		p.Parent = B.doors
 		return p
 	end
@@ -972,7 +1004,7 @@ function R.new(live, opts)
 		for _, p in root:GetDescendants() do if p:IsA("BasePart") then parts += 1 end end
 		local miss = {}
 		for k, n in B.missing do table.insert(miss, k .. " x" .. n) end
-		return ("%s v%d (%s) built %s at (%d, %d, %d): %d things, %d parts, %d lamps, %d with shadows%s"):format(R.ROOM, B.version, P.name, if live then "LIVE" else "as a staging copy", O.X, O.Y, O.Z,
+		return ("%s v%d (%s) built %s at (%d, %d, %d): %d things, %d parts, %d lamps, %d with shadows%s"):format(ROOM, B.version, P.name, if live then "LIVE" else "as a staging copy", O.X, O.Y, O.Z,
 			#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "")
 	end
 	return B
@@ -1008,6 +1040,10 @@ end
 -- the bowling centre back, or the Rotunda: "v3" = Hub v3 (the live hub since 18 Nov), "rotunda" = the Rotunda as it
 -- was before (the spare, like the bowling centre); anything else = R.VERSION's
 function R.switch(which)
+	if which == "plaza" or which == "lounge" then -- (the lounge wing as the hotel plaza or as the spawn lounge, 18 Nov)
+		local m = PB.HubRotunda:Clone(); m:SetAttribute("LoungeStyle", which); local R2 = require(m); m:Destroy()
+		return R2.build("live") .. "\n" .. R2.check()
+	end
 	if which == "lanes" then
 		local m = PB.HubLab:Clone(); local L = require(m); m:Destroy()
 		return "the bowling centre: " .. tostring(L.build("Hub3_Lanes")) .. "\n" .. L.check()
@@ -1114,18 +1150,28 @@ for _, md in R.MODES do
 	table.insert(R.SIGHTS, { md.title .. " over its way in", "Way_" .. md.id })
 end
 -- (the lounge's three arches: from the platform's foot out through each into the lounge, and its front floor to the spawn rug)
-for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, 34, 0 },
-	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
+local PLAZA = R.LOUNGE_STYLE == "plaza"
+for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, if PLAZA then 40 else 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 },
+	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
 	{ "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 }, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
 	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
 local LS = R.LOUNGE_S
-for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 + LS }, { LOUNGE, 0, 5, 70 + LS }, { LOUNGE, 6, 8, 76 + LS },
-	{ LOUNGE, -22, 8, 40 }, { LOUNGE, 22, 8, 40 }, { LOUNGE, -22, 12, 62 }, { LOUNGE, 22, 12, 62 }, { LOUNGE, -24, 6, 29 }, { LOUNGE, 24, 6, 29 }, { LOUNGE, -13, 14, 31 }, { LOUNGE, 13, 14, 31 }, { 8 * STEP, 0, 20, 34 },
+for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { 8 * STEP, 0, 20, 34 },
 	{ GYM, 0, 6, 35 }, { GYM, 0, 9, 50 }, { GYM, 0, 9, 70 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
+if PLAZA then -- (the courtyard low and high, each arcade, the VIP room behind the south one)
+	local V = R.PLAZA.BACK + 2 -- (the VIP room's near wall's face)
+	for _, p in { { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 52 }, { LOUNGE, 0, 20, 50 }, { LOUNGE, 0, 26, 64 }, { LOUNGE, -12, 22, 40 }, { LOUNGE, 12, 22, 40 }, { LOUNGE, -15, 8, 66 }, { LOUNGE, 15, 8, 66 },
+		{ LOUNGE, -13, 14, 31 }, { LOUNGE, 13, 14, 31 }, { LOUNGE, -24, 6, 34 }, { LOUNGE, 24, 6, 34 }, { LOUNGE, -24, 9, 62 }, { LOUNGE, 24, 9, 62 }, { LOUNGE, -12, 6, 74 }, { LOUNGE, 12, 9, 74 },
+		{ LOUNGE, 0, 5, V + 8 }, { LOUNGE, 6, 8, V + 14 } } do table.insert(R.LEAKS, p) end
+else
+	for _, p in { { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 + LS }, { LOUNGE, 0, 5, 70 + LS }, { LOUNGE, 6, 8, 76 + LS },
+		{ LOUNGE, -22, 8, 40 }, { LOUNGE, 22, 8, 40 }, { LOUNGE, -22, 12, 62 }, { LOUNGE, 22, 12, 62 }, { LOUNGE, -24, 6, 29 }, { LOUNGE, 24, 6, 29 }, { LOUNGE, -13, 14, 31 }, { LOUNGE, 13, 14, 31 } } do table.insert(R.LEAKS, p) end
+end
 -- (w[3]: true = a thing in a room, looked for from the middle of the platform only; "lounge" = in the lounge, looked
 -- for from the front of the spawn rug, R.LOUNGE_LOOK)
-for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", "lounge" },
+for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" },
+	if PLAZA then { "the duck on the plaza's fountain", "FountainDuck", "lounge" } else { "the duck in the lounge", "HoloDuck", "lounge" },
 	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target at the gym's far end", "Target", true } } do table.insert(R.SIGHTS, w) end
 -- what every spawn point must show on the first look out of the lounge (any one of each group's parts, by name in
 -- Scenery or a pad): the way to the pads and the way up
@@ -1610,6 +1656,13 @@ R.VIEWS = {
 	training_door = { { ARM + 180, 0, 5.9, 4 }, { ARM, 0, 5.5, 60 } }, armory = { { ARM, 8.5, 6, 39.5 }, { ARM, -7, 5.5, 58 } },
 	holo = { { 180, 0, 5.94, 9 }, { 0, 0, 6, 0 } }, holo_across = { { 90, 0, 5.4, 24 }, { 0, 0, 6, 0 } }, showroom = { { LOUNGE, 8, 6.2, 40 }, { LOUNGE, 26, 4.6, 50 } },
 	plinth = { { 9 * STEP, -5, 5.6, 15.5 }, { 9 * STEP, 0, 4.8, 25 } }, arches = { { 0, 0, 7, 8 }, { 180, 0, 6, 32 } },
+	-- (18 Nov, the plaza: the same spots for both builds, under the old lounge's ceiling, for the before / after sheet.
+	-- pz_spawn = the first look from the spawn; pz_back = turned round; pz_wide = the courtyard from its north-east
+	-- corner; pz_join = the round room's south faces from the courtyard; pz_facade = the west facade and its arcade;
+	-- pz_up = the facades and the ceiling from the rug)
+	pz_spawn = { { LOUNGE, 0, 5.9, 44 }, { 0, 0, 8, 30 } }, pz_back = { { LOUNGE, 0, 6.4, 37 }, { LOUNGE, 0, 4, 76 } },
+	pz_wide = { { LOUNGE, -17, 13, 33 }, { LOUNGE, 9, 3, 66 } }, pz_join = { { LOUNGE, 7, 8, 62 }, { LOUNGE, -2, 11, 30 } },
+	pz_facade = { { LOUNGE, -13, 6, 46 }, { LOUNGE, 19, 12, 56 } }, pz_up = { { LOUNGE, 2, 5.6, 50 }, { LOUNGE, -8, 24, 66 } },
 }
 -- every view as "name x y z x y z" lines, for the screen capture tool
 function R.views()

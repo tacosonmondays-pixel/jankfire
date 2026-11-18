@@ -1891,6 +1891,51 @@ Three owner notes, fixed in Hub v3 ahead of the hotel-plaza rebuild (`roblox/doc
 - Checks: R.check 0 problems (50 zones, 0 leaks, 313 sight lines, walked to 12, 14 regulars' ways). Flicker finder 0 visible.
 - Rule kept for the plaza: every level has the same finish (skirting, cornice, trim round openings, a finished lip on open edges); every pad has a designed bay; everything is finished on every side a player can see.
 
+## 46. Hub v3: the hotel plaza in the lounge wing, 18 November 2026 (place version 940)
+
+The owner asked for the lounge as "like a hotel plaza", because the add-ons looked like add-ons. A square plaza for the whole hub was planned, then the owner said: "keep the old circular look though for the hub, lounge free rein". So the round room stays the hub's heart, exactly as section 45 left it, and the hotel is the lounge wing south of the three arches. The builders are HubRotunda, HubRotundaCentre and HubRotundaRooms (`plaza()`). The square-plaza builders (HubPlaza*) were never committed; they are gone from PolishBackup too.
+
+**Switch.** `R.LOUNGE_STYLE` comes from the module's `LoungeStyle` attribute and defaults to `"plaza"`. `R.switch("lounge")` builds section 43's spawn lounge live again; `R.switch("plaza")` builds this one. Both run from a copy of the module with the attribute set. `R.PLAZA` holds the plan, in the round room's own units, which the Hub v3 warp then scales.
+
+**The plaza.** A courtyard under a pitched glass roof, entered through the three arches. Two storeys of hotel rooms in warm stone stand on three sides, over arcades.
+- **North side.** The round room's three south faces.
+  - They have a stone skin (`FaceSkin`), the band and string-course lines, and a cornice.
+  - Over the middle arch is a balcony with doors and a window. Over each side arch is a bay window; the west one is still the hub egg's nook (`R.EGG_NICHE`, unchanged).
+  - The arches are the world-stud arches of section 45. On the plaza side their spandrels get a stone skin (`ArchSkin`).
+  - Clean world-stud pilasters stand over the round room's piers.
+- **Facades.** Framed French windows with sills.
+  - Some are balconies with balustrades; the rest have flower boxes.
+  - Upper windows have bars, a head and jambs, and some have shutters.
+  - About a quarter of the panes are lit warm from inside (`LIT`). The pattern is fixed by the bay count, so every build is the same.
+  - The side facades' first bays carry only the pair away from the round room, because the bay windows' corners come close to the other pair.
+- **Glass roof.** Two slopes of glass (`GlassRoof`) with a lit daylight field behind them, pale rafters, purlins, a ridge beam and stone gables. The flat lid stays over the strip by the arches, with its lit panel.
+- **Arcades.** Every bay of the back walls has a framed front: pilasters, a fascia, a warm lit band and an awning.
+  - `"shop"` is a glazed front with a door. `"window"` is glazed. `"frame"` is the frame only, with the fascia higher and no awning.
+  - **West, the boutique:** three of the shop's bundles on plinths, in front of their boards.
+  - **East, the lounge:** seats in the first and last bays, a bar in the middle bay (counter, stools, shelves with bottles, the fridge), and the arcade machine at the north end.
+  - **South:** the reception desk (east), the VIP door (middle, the VIP room behind it unchanged) and the porter's door with two luggage carts (west).
+- **Courtyard.** The spawn rug faces the middle arch. There is a fountain with the stone duck, big trees and two chunky chandeliers. Each chandelier has a big ring with candles and crystal drops, a smaller ring with candles, a lantern, and a warm light.
+- **Lifts** (HubRotundaCentre). Each of the five lift openings has a pale frame against the piers, a head and a warm lit header.
+- **Colour.** Warm quiet stone (`STONE`, `STONE2`, `TRIM`, `TRIM2`) and warm grey floors. The pads' colours and the one accent line stay the only strong colour.
+
+**Kept working.** All 12 pads, HubSpawns, HubArrive, the holograms, the four regulars, the VIP door, the training gate, ZoneCull and the hub egg all still work. Looticus has new points: either sofa, behind the bar, the arcade machine, and the boutique.
+
+**The code panel's corner.** The corner where the east and south arcades meet is left clear for the lore session's code panel. It has a warm light over it. Its floor point in the live hub is (-167.20, 239.95, -9899.42), facing -X; an 8 x 6 x 8 box over it was checked empty. The panel's old place, (-185, 240, -9946), is now inside a tree pot. Main was told to forward the move to the lore session.
+
+**Checks.**
+- Live `R.check` (place version 940): 0 problems, leaks 0, 313 sight lines, 12 of 12 pads walked to, the regulars' 14 ways clear.
+- Flicker finder over `Map.Hub.Rotunda`: 21 small visible hits are left (from 61 on the first stage build). All are 2.2 sq studs or less, and most are bottoms at floor level.
+- One solo Play: the player spawns in the courtyard facing the middle arch, all 12 pads are live, the regulars are out (Looticus in the boutique), and nothing from the hub shows in the console.
+- Before and after: `roblox/docs/hub/hub_hotel_plaza_940.jpg`. The plan: `roblox/docs/hub/hub_hotel_plan.jpg`.
+
+**Traps.**
+- The plaza is built in the round room's units and warped (K = 1.35, heights by `R.V3.H`). People-sized things are built in world studs through `B.rigid`: the desk, the bar and the pilasters.
+- Keep anything you add to the lift openings against the piers (x 4.85 or more). At x 4.35 it narrowed the ways from the platform to the outer lifts and hid two pads' sides.
+- The side arches' ways are checked to 31 in the plaza (34 in the lounge). Past 31 they run into the plaza's first piers, where the courtyard is already open.
+- Light: the hub's look (`HubLook` "hub") is lit by lamps, not by the sun. With pale stone, the first lamp values washed the photos out. Courtyard lamps sit about 0.45 to 0.8 bright; check photos in the hub's look after any lamp change.
+- The kit pier's shaft, corbel and head share their back plane. In the plaza those backs show in the arcades, so they share one colour there (`PIERC`).
+- Arches' world-stud stones and the round room's lintels stay the hall's own colours inside. The plaza side gets thin skins: `ArchSkin` in HubRotundaCentre and `FaceSkin` in Rooms.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
