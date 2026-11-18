@@ -67,7 +67,7 @@ local function crate(color: Color3): Model
 	return m
 end
 -- an item (the utility slot): its own model (ReplicatedStorage.JankfireItems), or a crate until that's there
-local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble" }
+local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble", quiz = "x_calc" } -- (quiz: the Pop Quiz is the calculator)
 local function itemModel(id: string, skin: string?): Model?
 	-- (a gadget's skin, 18 Nov: its own model in JankfireSkins, Weapon = the gadget, Item = true)
 	if skin and skin ~= "default" then

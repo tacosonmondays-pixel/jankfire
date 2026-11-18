@@ -172,7 +172,7 @@ local function shredderModel(skin: string?): Model?
 	return m
 end
 -- an item (the utility slot): its own model (ReplicatedStorage.JankfireItems), or a crate until that's there
-local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble" }
+local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble", quiz = "x_calc" } -- (quiz: the Pop Quiz is the calculator)
 local crate: (Color3) -> Model
 local function itemModel(id: string): Model?
 	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
