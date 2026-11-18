@@ -10,8 +10,7 @@
 --   the gym      (east) the locker room with the boxing ring, only for looks
 --   the armory   (west, on the spawn's left) display bays between rounded pilasters: the standard guns and the gadgets
 --                down the west wall, the premium weapons turning in open cases (the east wall's bays and two rows in the
---                aisle), a glass showcase in the middle, hologram bundle pads, and at the far end of its aisle the gate
---                to the training ground
+--                aisle), hologram bundle pads, and at the far end of its aisle the gate to the training ground
 -- called by HubRotunda.build with its helpers (B)
 return function(B, R)
 	local P, G = B.P, B.G
@@ -1189,8 +1188,9 @@ return function(B, R)
 		-- fewer to a row (main: "more room in each bay"), the gadgets along its sills under them; every PREMIUM weapon turns
 		-- in an open case of its own: the east wall's three bays are a wall of open cases, six to a bay (glass sides, the lit
 		-- panel behind, open at the front, a glowing turntable under each), and eight open cases on round plinths stand in
-		-- two rows either side of the aisle; the newest premium primary turns in the glass showcase in the middle; two
-		-- hologram pads flank the gate, each showing one of the shop's bundles. a case's or a pad's prompt opens the shop)
+		-- two rows either side of the aisle; two hologram pads flank the gate, each showing one of the shop's bundles. a
+		-- case's or a pad's prompt opens the shop. (the glass showcase that stood in the middle went: the owner, 18 Nov, "get
+		-- rid of the big container at the center of the armory". the runner is clear to the gate)
 		local WALL, PIL, PIL2, SILL = P.bay, P.pier2, P.pier, P.cream
 		local LINE = P.doorGlow or P.glow
 		local GLASS, GLASSMAT = "d8eef2", Enum.Material.Glass
@@ -1259,8 +1259,18 @@ return function(B, R)
 			"w_cart", "w_nailgun", "w_blower", "w_marbles", "w_cig", "w_bloodcross",
 			"w_cards", "w_snowball", "w_water", "w_taser", "w_remote", "w_lasso",
 			"w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_slipper" }
-		local okR, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
+		-- (a fresh copy: a require of the module itself gives what Studio cached the first time, before any change to it)
+		local okR, Roster = pcall(function() return require(game.ReplicatedStorage.Jankfire.Roster:Clone()) end)
 		if not okR then Roster = nil end
+		-- only what's live is on show (18 Nov: the Lasso, the Blood Cross and the Scales went back to COMING SOON, and their
+		-- cases went with them; the cases close up). no Roster: everything listed
+		local function live(w)
+			if not Roster then return true end
+			local e = Roster.byId and Roster.byId[w:sub(3)]
+			return e ~= nil and e.live == true
+		end
+		local SHOWN = {}
+		for _, w in PREMIUM do if live(w) then table.insert(SHOWN, w) end end
 
 		-- ---- the west wall: the standard guns at one display scale on brackets, three rows to a bay over the three bays, the
 		-- gadgets standing along the sills under them. a weapon any list leaves out (a new live one) hangs with the standard
@@ -1281,9 +1291,10 @@ return function(B, R)
 			return Vector3.new(sz.Z, sz.Y, sz.X)
 		end
 		local GROUPS = {
-			{ side = -1, bays = { 1, 2, 3 }, rows = 3, names = table.clone(STANDARD) },
+			{ side = -1, bays = { 1, 2, 3 }, rows = 3, names = {} },
 			{ side = -1, bays = { 1, 2, 3 }, rows = 1, shelves = true, names = {} },
 		}
+		for _, w in STANDARD do if live(w) then table.insert(GROUPS[1].names, w) end end
 		do
 			local named = {}
 			for _, w in STANDARD do named[w] = true end
@@ -1448,7 +1459,8 @@ return function(B, R)
 		for _, sx in { -1, 1 } do
 			for _, d in ROWD do
 				slot += 1
-				local w = PREMIUM[slot]
+				local w = SHOWN[slot]
+				if not w then continue end -- (fewer live premium weapons than cases: no empty case)
 				local x = sx * ROWX
 				B.cyl(F, S, "CaseFoot", x, -0.04, 0.5, d, 2.5, PIL2)
 				B.cyl(F, S, "CasePlinth", x, 0.5, 2.8, d, 2.3, SILL)
@@ -1461,62 +1473,52 @@ return function(B, R)
 				B.cyl(F, C, "CaseCap", x, 6.2, 6.5, d, 2.5, SILL, nil, G)
 				B.cyl(F, C, "CaseCapLight", x, 6.1, 6.18, d, 1.5, P.strip, Neon, G)
 				B.lamp(F, x, 3.1, d, 7, 0.5, P.light, { spot = true, face = Enum.NormalId.Top, angle = 70 })
-				if w and caseShow(w, x, 2.92, d, 2 * 0.98 * KW, 2.8) then casePrompt(w, sx * (ROWX - 1.35), 4.2, d) end
+				if caseShow(w, x, 2.92, d, 2 * 0.98 * KW, 2.8) then casePrompt(w, sx * (ROWX - 1.35), 4.2, d) end
 			end
 		end
 		-- the case wall (the east wall's bays): a shelf across each bay halfway up with a teal line on its front, glass
-		-- between the cases, three cases a row, a glowing turntable in each
+		-- between the cases, three cases a row, a glowing turntable in each. the weapons fill the bays in order; a bay with
+		-- three or fewer is one row of tall cases, each on a pedestal at eye height, and a bay with none is a plain lit
+		-- panel (no empty cases for weapons that aren't out)
 		do
 			local FE = face(1)
 			local CW = (BAYS[1][2] - BAYS[1][1]) / 3
 			local XC = (FE + 12.82) / 2
 			for _, by in BAYS do
-				B.box(F, S, "CaseShelf", FE, 12.82, 5.9, 6.2, by[1], by[2], PIL2)
-				B.box(F, C, "CaseShelfLine", FE - 0.06, FE + 0.02, 5.98, 6.12, by[1] + 0.25, by[2] - 0.25, LINE, Neon, G)
-				for c = 1, 2 do
-					local dg = by[1] + c * CW
-					for _, yy in { { 2.1, 5.9 }, { 6.2, 9.76 } } do -- (the top ones stop under the head's light strip, 9.78)
-						B.box(F, C, "CaseGlass", FE + 0.1, 12.82, yy[1], yy[2], dg - 0.03, dg + 0.03, GLASS, GLASSMAT, { tr = 0.75 })
+				local n = math.clamp(#SHOWN - slot, 0, 6)
+				if n == 0 then continue end
+				local cells = {}
+				if n > 3 then
+					B.box(F, S, "CaseShelf", FE, 12.82, 5.9, 6.2, by[1], by[2], PIL2)
+					B.box(F, C, "CaseShelfLine", FE - 0.06, FE + 0.02, 5.98, 6.12, by[1] + 0.25, by[2] - 0.25, LINE, Neon, G)
+					for c = 1, 2 do
+						local dg = by[1] + c * CW
+						for _, yy in { { 2.1, 5.9 }, { 6.2, 9.76 } } do -- (the top ones stop under the head's light strip, 9.78)
+							B.box(F, C, "CaseGlass", FE + 0.1, 12.82, yy[1], yy[2], dg - 0.03, dg + 0.03, GLASS, GLASSMAT, { tr = 0.75 })
+						end
 					end
-				end
-				for r, fy in { 6.2, 2.1 } do
-					for c = 1, 3 do
-						slot += 1
-						local w = PREMIUM[slot]
+					for r, fy in { 6.2, 2.1 } do for c = 1, 3 do table.insert(cells, { c = c, fy = fy, top = if r == 1 then 9.78 else 5.9 }) end end
+				else
+					for c = 1, 2 do
+						local dg = by[1] + c * CW
+						B.box(F, C, "CaseGlass", FE + 0.1, 12.82, 2.1, 9.76, dg - 0.03, dg + 0.03, GLASS, GLASSMAT, { tr = 0.75 })
+					end
+					for c = 1, n do
 						local dc = by[1] + (c - 0.5) * CW
-						B.cyl(F, C, "CaseTurnGlow", XC, fy, fy + 0.06, dc, 1.75, LINE, Neon, G)
-						B.cyl(F, C, "CaseTurn", XC, fy + 0.04, fy + 0.14, dc, 1.5, SILL, nil, G)
-						local high = (if r == 1 then 9.78 else 5.9) - fy - 0.45
-						if w and caseShow(w, XC, fy + 0.14, dc, 2 * 0.98 * KW, high) then casePrompt(w, FE - 0.4, fy + 1.6, dc) end
+						B.box(F, S, "CasePedestal", XC - 0.85, XC + 0.85, 2.1, 4.3, dc - 0.85, dc + 0.85, PIL2)
+						B.box(F, C, "CasePedestalTop", XC - 0.95, XC + 0.95, 4.3, 4.45, dc - 0.95, dc + 0.95, SILL, nil, G)
+						table.insert(cells, { c = c, fy = 4.45, top = 9.78 })
 					end
 				end
-			end
-		end
-
-		-- ---- the showcase in the middle: a round plinth, a glass case, the newest live premium primary turning inside it
-		-- (HubSpin), a teal ring at its foot, a light in its cap. the ways to the gate pass either side of it (R.WALKS)
-		do
-			local DC = 50
-			B.cyl(F, S, "ShowcaseBase", 0, -0.04, 1.2, DC, 3.6, PIL2)
-			B.cyl(F, C, "ShowcaseRing", 0, 1.2, 1.32, DC, 3.75, LINE, Neon, G)
-			B.cyl(F, S, "ShowcasePlinth", 0, 1.32, 2.6, DC, 3.2, SILL)
-			B.cyl(F, C, "ShowcaseGlass", 0, 2.6, 6.9, DC, 3, GLASS, GLASSMAT, { tr = 0.75 })
-			B.cyl(F, C, "ShowcaseCap", 0, 6.9, 7.3, DC, 3.3, SILL, nil, G)
-			B.cyl(F, C, "ShowcaseCapLight", 0, 6.78, 6.86, DC, 2.2, P.strip, Neon, G)
-			B.lamp(F, 0, 6.5, DC, 9, 0.9, P.light, { spot = true, angle = 90 })
-			local premium = {}
-			for _, w in PREMIUM do premium[w] = true end
-			local feature
-			if Roster then
-				for _, e in Roster.list do
-					if e.live and e.slot == "primary" and premium["w_" .. e.id] and weapons and weapons:FindFirstChild("w_" .. e.id) then feature = "w_" .. e.id end
+				for _, cell in cells do
+					slot += 1
+					local w = SHOWN[slot]
+					if not w then break end
+					local dc = by[1] + (cell.c - 0.5) * CW
+					B.cyl(F, C, "CaseTurnGlow", XC, cell.fy, cell.fy + 0.06, dc, 1.75, LINE, Neon, G)
+					B.cyl(F, C, "CaseTurn", XC, cell.fy + 0.04, cell.fy + 0.14, dc, 1.5, SILL, nil, G)
+					if caseShow(w, XC, cell.fy + 0.14, dc, 2 * 0.98 * KW, math.min(cell.top - cell.fy - 0.45, 3.4)) then casePrompt(w, FE - 0.4, cell.fy + 1.6, dc) end
 				end
-			end
-			if feature then
-				local _, sz = weapons[feature]:GetBoundingBox()
-				local k = math.min(3.2 / math.max(sz.X, sz.Z, 0.01), 3.2 / math.max(sz.Y, 0.01))
-				local g = B.gun(F, feature, nil, 0, 4.75, DC, 0, "ArmoryFeature", k)
-				if g then g:SetAttribute("Spin", 0.6); g:SetAttribute("SpinNear", 70); Tags:AddTag(g, "HubSpin") end
 			end
 		end
 

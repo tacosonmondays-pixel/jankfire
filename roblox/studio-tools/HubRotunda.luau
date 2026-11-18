@@ -1169,12 +1169,10 @@ for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 1
 	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
 	if R.EGG_SIDE then { "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 } else nil, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
 	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
-	-- (since the armory's makeover, 18 Nov: a showcase in its middle, d 48.1..51.9, and a row of open cases either side of
-	-- the aisle, |x| 4.75..7.25: the ways pass either side of the showcase, and a lane runs down each side between the
-	-- cases and the walls)
-	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 47.6, 0 }, { "the way to the training gate, left of the showcase", ARM, -4.5, -2.2, 47.6, 52.4, 0 },
-	{ "the way to the training gate, right of the showcase", ARM, 2.2, 4.5, 47.6, 52.4, 0 }, { "the way to the training gate, past the showcase", ARM, -4.2, 4.2, 52.4, 60.4, 0 },
-	{ "the armory's aisle", ARM, -4.5, 4.5, 40.2, 47.6, 0 }, { "the armory's west lane", ARM, -10.3, -7.5, 41.6, 60.4, 0 },
+	-- (since the armory's makeover, 18 Nov: a row of open cases either side of the aisle, |x| 4.75..7.25, the aisle clear
+	-- between them to the gate, and a lane down each side between the cases and the walls)
+	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -4.5, 4.5, 40.2, 60.4, 0 },
+	{ "the armory's west lane", ARM, -10.3, -7.5, 41.6, 60.4, 0 },
 	{ "the armory's east lane", ARM, 7.5, 9.5, 41.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
 local LS = R.LOUNGE_S
 for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { 8 * STEP, 0, 20, 34 },

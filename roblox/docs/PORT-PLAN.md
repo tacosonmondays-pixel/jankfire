@@ -2160,6 +2160,16 @@ The owner, of the armory: "this whole room needs a makeover its an ugly mess". I
 - Not tested: a real prompt press. In this MCP-driven Play no prompt showed at all, the lobby's existing hologram ones included. Shooting the water also wasn't tested, since the hub gives no weapons.
 - Sheet: `roblox/docs/hub/hub_armory_premium_1014.jpg`.
 
+**Place version 1023: the showcase out, coming-soon weapons out of their cases.**
+- The owner: "get rid of the big container at the center of the armory". The glass showcase is gone, and the runner is clear to the gate. `R.WALKS` is back to one aisle and one way to the gate, plus the two lanes.
+- The Lasso, the Blood Cross and the Scales went back to COMING SOON (weapons-batch4: `Roster` live = false).
+  - Only live weapons are on show now, on the brackets and in the cases (`live()`, `SHOWN`). The cases close up in order, and no empty case is left for a weapon that isn't out.
+  - A live weapon with no model keeps an empty lit case: today only the Shredder.
+  - A case-wall bay with three or fewer weapons is one row of tall cases on eye-height pedestals. A bay with none is a plain lit panel. Today: aisle 8 (the Shredder's empty), wall bays 6, 6 and 3.
+- Trap: the builder must `require` a CLONE of the Roster. A require of the module itself returns what Studio cached the first time in that session, so a Roster changed mid-session still showed the old live flags. The first v1023 build kept the Lasso and Scales cases until this was fixed.
+- Staging and live `R.check`: 0 problems, 0 overlaps. Flicker finder: clean (past the known Auto Shotgun kit seam).
+- Photo: `roblox/docs/hub/hub_armory_noshowcase_1023.jpg` (from the doorway).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
