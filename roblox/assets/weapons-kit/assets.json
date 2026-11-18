@@ -109,5 +109,9 @@
  "ar@ar_classic": 130063147377991,
  "burst@burst_classic": 93979575502366,
  "smg@smg_classic": 80884206103353,
- "pistol@pistol_classic": 90237823550937
+ "pistol@pistol_classic": 90237823550937,
+ "shotgun@shotgun_classic": 119175765278669,
+ "sniper@sniper_classic": 131732975740829,
+ "revolver@revolver_classic": 121391793855763,
+ "sawnoff@sawnoff_classic": 79016023102932
 }

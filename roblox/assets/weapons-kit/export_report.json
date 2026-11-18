@@ -78048,5 +78048,1605 @@
   },
   "uv": true,
   "paint": "kit"
+ },
+ "w_shotgun@shotgun_classic": {
+  "pieces": [
+   {
+    "name": "barrel_wzB__dark",
+    "upload": "barrel_wzB__dark__p35383f",
+    "tris": 1036,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0215,
+     -0.0465,
+     -0.74
+    ],
+    "hi": [
+     0.0215,
+     0.0575,
+     -0.19
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "barrel_wzN__steel",
+    "upload": "barrel_wzN__steel__p6e737c",
+    "tris": 188,
+    "look": {
+     "color": "6e737c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0205,
+     -0.0485,
+     -0.738
+    ],
+    "hi": [
+     0.0205,
+     -0.0075,
+     -0.705
+    ],
+    "paint": "p6e737c"
+   },
+   {
+    "name": "body_wzA__frame",
+    "upload": "body_wzA__frame__p3e4148",
+    "tris": 96,
+    "look": {
+     "color": "3e4148",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0295,
+     -0.05,
+     -0.2
+    ],
+    "hi": [
+     0.0295,
+     0.0574,
+     0.036
+    ],
+    "paint": "p3e4148"
+   },
+   {
+    "name": "body_wzB__dark",
+    "upload": "body_wzB__dark__p35383f",
+    "tris": 172,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.01,
+     -0.096,
+     -0.07
+    ],
+    "hi": [
+     0.01,
+     -0.045,
+     0.05
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "pump_wzA__wood",
+    "upload": "pump_wzA__wood__p5c3c29",
+    "tris": 1116,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0375,
+     -0.0735,
+     -0.505
+    ],
+    "hi": [
+     0.0375,
+     0.0115,
+     -0.3
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "pump_wzB__dark",
+    "upload": "pump_wzB__dark__p35383f",
+    "tris": 88,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0205,
+     -0.024,
+     -0.31
+    ],
+    "hi": [
+     0.0205,
+     -0.014,
+     -0.199
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "sight_wzN__dark",
+    "upload": "sight_wzN__dark__p35383f",
+    "tris": 148,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.018,
+     0.0525,
+     -0.721
+    ],
+    "hi": [
+     0.018,
+     0.0712,
+     -0.0341
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "sight_wzN__brass",
+    "upload": "sight_wzN__brass__p8a7a52",
+    "tris": 20,
+    "look": {
+     "color": "8a7a52",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0032,
+     0.064,
+     -0.7191
+    ],
+    "hi": [
+     0.0032,
+     0.0712,
+     -0.7129
+    ],
+    "paint": "p8a7a52"
+   },
+   {
+    "name": "stock_wzA__wood",
+    "upload": "stock_wzA__wood__p5c3c29",
+    "tris": 468,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.026,
+     -0.1314,
+     0.03
+    ],
+    "hi": [
+     0.026,
+     0.0468,
+     0.388
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "stock_wzB__pad",
+    "upload": "stock_wzB__pad__p2f3035",
+    "tris": 44,
+    "look": {
+     "color": "2f3035",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.027,
+     -0.138,
+     0.388
+    ],
+    "hi": [
+     0.027,
+     0.012,
+     0.407
+    ],
+    "paint": "p2f3035"
+   },
+   {
+    "name": "trim_wzN__black",
+    "upload": "trim_wzN__black__p16171b",
+    "tris": 44,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.012,
+     0.0015,
+     -0.1485
+    ],
+    "hi": [
+     0.0245,
+     0.0325,
+     -0.0665
+    ],
+    "paint": "p16171b"
+   }
+  ],
+  "tris": 3420,
+  "lo": [
+   -0.0375,
+   -0.138,
+   -0.74
+  ],
+  "hi": [
+   0.0375,
+   0.0712,
+   0.407
+  ],
+  "bytes": 318496,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "shotgun@shotgun_classic",
+   "set": "kit",
+   "lo": [
+    -0.0375,
+    -0.138,
+    -0.74
+   ],
+   "hi": [
+    0.0375,
+    0.0712,
+    0.407
+   ],
+   "spots": {
+    "muzzle": [
+     0,
+     0.025,
+     -0.74
+    ],
+    "sight": [
+     0,
+     0.0712,
+     -0.0386
+    ],
+    "port": [
+     0.03,
+     0.02,
+     -0.1
+    ],
+    "grip": [
+     0,
+     -0.06,
+     0.13
+    ],
+    "fore": [
+     0,
+     -0.03,
+     -0.4
+    ]
+   }
+  },
+  "nodes": {
+   "barrel_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "barrel_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pump_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pump_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sight_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "stock_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "stock_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "trim_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_sniper@sniper_classic": {
+  "pieces": [
+   {
+    "name": "barrel_wzB__dark",
+    "upload": "barrel_wzB__dark__p35383f",
+    "tris": 284,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.032,
+     -0.012,
+     -1.48
+    ],
+    "hi": [
+     0.032,
+     0.052,
+     -0.32
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "body_wzB__frame",
+    "upload": "body_wzB__frame__p3e4148",
+    "tris": 436,
+    "look": {
+     "color": "3e4148",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.036,
+     -0.132,
+     -0.335
+    ],
+    "hi": [
+     0.036,
+     0.056,
+     0.1
+    ],
+    "paint": "p3e4148"
+   },
+   {
+    "name": "bolt_wzB__steel",
+    "upload": "bolt_wzB__steel__p8a8f97",
+    "tris": 640,
+    "look": {
+     "color": "8a8f97",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.022,
+     -0.0355,
+     -0.11
+    ],
+    "hi": [
+     0.1027,
+     0.042,
+     0.12
+    ],
+    "paint": "p8a8f97"
+   },
+   {
+    "name": "lens_wzN__glass",
+    "upload": "lens_wzN__glass__g5f748499",
+    "tris": 184,
+    "look": {
+     "color": "5f7484",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 0.6,
+     "tex": false
+    },
+    "lo": [
+     -0.0431,
+     0.0804,
+     -0.5485
+    ],
+    "hi": [
+     0.0431,
+     0.1667,
+     0.1885
+    ],
+    "paint": "g5f748499"
+   },
+   {
+    "name": "scope_wzB__dark",
+    "upload": "scope_wzB__dark__p35383f",
+    "tris": 4292,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0575,
+     0.053,
+     -0.56
+    ],
+    "hi": [
+     0.0575,
+     0.181,
+     0.2
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "scope_wzN__dark",
+    "upload": "scope_wzN__dark__p35383f",
+    "tris": 376,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0159,
+     0.1077,
+     -0.1709
+    ],
+    "hi": [
+     0.054,
+     0.1775,
+     -0.1391
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "stock_wzA__wood",
+    "upload": "stock_wzA__wood__p5c3c29",
+    "tris": 1472,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.041,
+     -0.2436,
+     -0.75
+    ],
+    "hi": [
+     0.033,
+     0.076,
+     0.58
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "stock_wzA__tip",
+    "upload": "stock_wzA__tip__p33261f",
+    "tris": 56,
+    "look": {
+     "color": "33261f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.033,
+     -0.0307,
+     -0.8
+    ],
+    "hi": [
+     0.033,
+     0.0154,
+     -0.75
+    ],
+    "paint": "p33261f"
+   },
+   {
+    "name": "stock_wzB__pad",
+    "upload": "stock_wzB__pad__p2f3035",
+    "tris": 88,
+    "look": {
+     "color": "2f3035",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.034,
+     -0.2577,
+     0.1252
+    ],
+    "hi": [
+     0.034,
+     0.068,
+     0.597
+    ],
+    "paint": "p2f3035"
+   }
+  ],
+  "tris": 7828,
+  "lo": [
+   -0.0575,
+   -0.2577,
+   -1.48
+  ],
+  "hi": [
+   0.1027,
+   0.181,
+   0.597
+  ],
+  "bytes": 629928,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "sniper@sniper_classic",
+   "set": "kit",
+   "lo": [
+    -0.0575,
+    -0.2577,
+    -1.48
+   ],
+   "hi": [
+    0.1027,
+    0.181,
+    0.597
+   ],
+   "spots": {
+    "muzzle": [
+     0,
+     0.02,
+     -1.48
+    ],
+    "sight": [
+     0,
+     0.12354,
+     0.10316
+    ],
+    "port": [
+     0.04,
+     0.04,
+     -0.12
+    ],
+    "grip": [
+     0,
+     -0.11,
+     0.085
+    ],
+    "fore": [
+     0,
+     -0.06,
+     -0.5
+    ]
+   }
+  },
+  "nodes": {
+   "barrel_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "bolt_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "lens_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "scope_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "scope_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "stock_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "stock_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_revolver@revolver_classic": {
+  "pieces": [
+   {
+    "name": "body_wzA__frame",
+    "upload": "body_wzA__frame__p58504a",
+    "tris": 580,
+    "look": {
+     "color": "58504a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.022,
+     -0.0887,
+     -0.13
+    ],
+    "hi": [
+     0.022,
+     0.0795,
+     0.0555
+    ],
+    "paint": "p58504a"
+   },
+   {
+    "name": "body_wzB__blue",
+    "upload": "body_wzB__blue__p3a3d44",
+    "tris": 532,
+    "look": {
+     "color": "3a3d44",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.021,
+     -0.0035,
+     -0.29
+    ],
+    "hi": [
+     0.0225,
+     0.051,
+     -0.112
+    ],
+    "paint": "p3a3d44"
+   },
+   {
+    "name": "body_wzN__dark",
+    "upload": "body_wzN__dark__p35383f",
+    "tris": 80,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0055,
+     -0.0697,
+     -0.0265
+    ],
+    "hi": [
+     0.0055,
+     -0.046,
+     -0.0092
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "cylinder_wzB__steel",
+    "upload": "cylinder_wzB__steel__p5f636b",
+    "tris": 1148,
+    "look": {
+     "color": "5f636b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.044,
+     -0.035,
+     -0.099
+    ],
+    "hi": [
+     0.044,
+     0.053,
+     -0.0
+    ],
+    "paint": "p5f636b"
+   },
+   {
+    "name": "cylinder_wzN__black",
+    "upload": "cylinder_wzN__black__p16171b",
+    "tris": 360,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0261,
+     -0.0199,
+     -0.094
+    ],
+    "hi": [
+     0.0261,
+     0.0379,
+     -0.088
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "grip_wzA__wood",
+    "upload": "grip_wzA__wood__p5c3c29",
+    "tris": 1020,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.026,
+     -0.2128,
+     0.0295
+    ],
+    "hi": [
+     0.026,
+     -0.044,
+     0.1233
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "grip_wzB__frame",
+    "upload": "grip_wzB__frame__p58504a",
+    "tris": 280,
+    "look": {
+     "color": "58504a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.012,
+     -0.2164,
+     0.0257
+    ],
+    "hi": [
+     0.012,
+     0.0369,
+     0.127
+    ],
+    "paint": "p58504a"
+   },
+   {
+    "name": "hammer_wzN__dark",
+    "upload": "hammer_wzN__dark__p35383f",
+    "tris": 160,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.011,
+     0.0049,
+     0.0304
+    ],
+    "hi": [
+     0.011,
+     0.0781,
+     0.099
+    ],
+    "paint": "p35383f"
+   },
+   {
+    "name": "sight_wzN__dark",
+    "upload": "sight_wzN__dark__p35383f",
+    "tris": 192,
+    "look": {
+     "color": "35383f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.012,
+     0.048,
+     -0.29
+    ],
+    "hi": [
+     0.012,
+     0.0833,
+     0.037
+    ],
+    "paint": "p35383f"
+   }
+  ],
+  "tris": 4352,
+  "lo": [
+   -0.044,
+   -0.2164,
+   -0.29
+  ],
+  "hi": [
+   0.044,
+   0.0833,
+   0.127
+  ],
+  "bytes": 340836,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "revolver@revolver_classic",
+   "set": "kit",
+   "lo": [
+    -0.044,
+    -0.2164,
+    -0.29
+   ],
+   "hi": [
+    0.044,
+    0.0833,
+    0.127
+   ],
+   "spots": {
+    "muzzle": [
+     0,
+     0.03,
+     -0.29
+    ],
+    "sight": [
+     0,
+     0.08325,
+     0.168
+    ],
+    "grip": [
+     0,
+     -0.1,
+     0.085
+    ]
+   }
+  },
+  "nodes": {
+   "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "cylinder_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "cylinder_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hammer_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sight_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_sawnoff@sawnoff_classic": {
+  "pieces": [
+   {
+    "name": "body_wzB__silver",
+    "upload": "body_wzB__silver__p858a92",
+    "tris": 528,
+    "look": {
+     "color": "858a92",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.055,
+     -0.036,
+     -0.084
+    ],
+    "hi": [
+     0.055,
+     0.045,
+     0.0756
+    ],
+    "paint": "p858a92"
+   },
+   {
+    "name": "body_wzB__blue",
+    "upload": "body_wzB__blue__p34373e",
+    "tris": 88,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0065,
+     0.024,
+     0.024
+    ],
+    "hi": [
+     0.02,
+     0.034,
+     0.104
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "body_wzN__blue",
+    "upload": "body_wzN__blue__p34373e",
+    "tris": 284,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0435,
+     -0.082,
+     -0.024
+    ],
+    "hi": [
+     0.0435,
+     -0.0136,
+     0.078
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "forend_iron_wzN__blue",
+    "upload": "forend_iron_wzN__blue__p34373e",
+    "tris": 44,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.032,
+     -0.038,
+     -0.104
+    ],
+    "hi": [
+     0.032,
+     -0.002,
+     -0.085
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "forend_wzA__wood",
+    "upload": "forend_wzA__wood__p5c3c29",
+    "tris": 164,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.05,
+     -0.047,
+     -0.25
+    ],
+    "hi": [
+     0.05,
+     0.002,
+     -0.098
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "grip_wzA__wood",
+    "upload": "grip_wzA__wood__p5c3c29",
+    "tris": 332,
+    "look": {
+     "color": "5c3c29",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.027,
+     -0.1273,
+     0.05
+    ],
+    "hi": [
+     0.027,
+     0.0275,
+     0.1674
+    ],
+    "paint": "p5c3c29"
+   },
+   {
+    "name": "grip_wzN__silver",
+    "upload": "grip_wzN__silver__p858a92",
+    "tris": 44,
+    "look": {
+     "color": "858a92",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.028,
+     -0.1422,
+     0.1126
+    ],
+    "hi": [
+     0.028,
+     -0.0948,
+     0.177
+    ],
+    "paint": "p858a92"
+   },
+   {
+    "name": "hammerL_wzN__blue",
+    "upload": "hammerL_wzN__blue__p34373e",
+    "tris": 152,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0235,
+     0.012,
+     0.021
+    ],
+    "hi": [
+     -0.0085,
+     0.0684,
+     0.0951
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "hammerR_wzN__blue",
+    "upload": "hammerR_wzN__blue__p34373e",
+    "tris": 152,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.0085,
+     0.012,
+     0.021
+    ],
+    "hi": [
+     0.0235,
+     0.0684,
+     0.0951
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "hinge_trim_wzN__brass",
+    "upload": "hinge_trim_wzN__brass__p7e7254",
+    "tris": 20,
+    "look": {
+     "color": "7e7254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0031,
+     0.0615,
+     -0.293
+    ],
+    "hi": [
+     0.0031,
+     0.0685,
+     -0.287
+    ],
+    "paint": "p7e7254"
+   },
+   {
+    "name": "hinge_wzB__blue",
+    "upload": "hinge_wzB__blue__p34373e",
+    "tris": 1312,
+    "look": {
+     "color": "34373e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.053,
+     -0.03,
+     -0.311
+    ],
+    "hi": [
+     0.053,
+     0.0636,
+     -0.012
+    ],
+    "paint": "p34373e"
+   },
+   {
+    "name": "shell1_wzN__shell",
+    "upload": "shell1_wzN__shell__p8f2a26",
+    "tris": 124,
+    "look": {
+     "color": "8f2a26",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.0138,
+     0.0038,
+     -0.08
+    ],
+    "hi": [
+     0.0402,
+     0.0302,
+     -0.0175
+    ],
+    "paint": "p8f2a26"
+   },
+   {
+    "name": "shell1_wzN__brass",
+    "upload": "shell1_wzN__brass__p7e7254",
+    "tris": 124,
+    "look": {
+     "color": "7e7254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.0129,
+     0.0029,
+     -0.0175
+    ],
+    "hi": [
+     0.0411,
+     0.0311,
+     -0.0115
+    ],
+    "paint": "p7e7254"
+   },
+   {
+    "name": "shell2_wzN__shell",
+    "upload": "shell2_wzN__shell__p8f2a26",
+    "tris": 124,
+    "look": {
+     "color": "8f2a26",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0402,
+     0.0038,
+     -0.08
+    ],
+    "hi": [
+     -0.0138,
+     0.0302,
+     -0.0175
+    ],
+    "paint": "p8f2a26"
+   },
+   {
+    "name": "shell2_wzN__brass",
+    "upload": "shell2_wzN__brass__p7e7254",
+    "tris": 124,
+    "look": {
+     "color": "7e7254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0411,
+     0.0029,
+     -0.0175
+    ],
+    "hi": [
+     -0.0129,
+     0.0311,
+     -0.0115
+    ],
+    "paint": "p7e7254"
+   }
+  ],
+  "tris": 3616,
+  "lo": [
+   -0.055,
+   -0.1422,
+   -0.311
+  ],
+  "hi": [
+   0.055,
+   0.0685,
+   0.177
+  ],
+  "bytes": 313940,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "sawnoff@sawnoff_classic",
+   "set": "kit",
+   "lo": [
+    -0.055,
+    -0.1422,
+    -0.311
+   ],
+   "hi": [
+    0.055,
+    0.0685,
+    0.177
+   ],
+   "spots": {
+    "muzzle": [
+     0,
+     0.02,
+     -0.31
+    ],
+    "sight": [
+     0,
+     0.065,
+     0.075
+    ],
+    "grip": [
+     0,
+     -0.05,
+     0.095
+    ]
+   }
+  },
+  "nodes": {
+   "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "forend_iron_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "forend_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hammerL_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hammerR_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hinge_trim_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "hinge_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "shell1_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "shell2_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
  }
 }
