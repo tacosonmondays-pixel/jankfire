@@ -669,6 +669,25 @@ cleaned, fitted and coloured here.
 - **Images to ChatGPT:** the built-in browser pane can't attach files. The ChatGPT desktop app, driven by computer use,
   can: its file dialog takes a typed path.
 
+## Batch A: five new weapons for the port (18 November 2026, uploaded, in the kit book)
+
+The weapons session is porting the remaining web weapons, and these are its first five. They are new kit models built
+by `tools/roblox/gun_batch_a.py`, which `gun_set.py`'s `BUILD` picks up. They keep the web models' spots and sizes from
+`WEAPONS.md` (metres, muzzle at -z). Every one is a single connected piece (`gun_check`) with 0 z-fight pairs, and
+carries a hat seat (`meta.spots.hat` / `meta.hatAt`) and moving-node origins (`meta.pivots`) in `export_report.json`.
+
+| id | look | tris | moving | asset |
+|---|---|---|---|---|
+| `minigun` | C, charcoal and olive, fat ammo box | 2,470 | `barrels` (spins on z, origin 0, 0, -0.45) | 125451323090974 |
+| `water` | B, light grey toy, blue tank | 8,016 | `water` (liquid, origin on the tank floor: scale y = fill), `pump` | 112537696211238 |
+| `nailgun` | B, muted orange tool, slanted nail strip | 6,706 | `mag` (the strip, origin at its middle) | 84960341833541 |
+| `bread` | B, domed scored loaf, paper sleeve grip | 2,586 | none | 89469059163185 |
+| `slapper` | B, toy hand on a stick | 3,048 | `hand` (origin at the wrist, 0, 0, -0.45) | 122970789665786 |
+
+The exporter bakes transforms, so a moving node's pivot lives only in the report; code must apply it.
+Not yet done: the Weapons rows, holds and gimmicks (the weapons session), `W.kit()` in Studio, hat seats in
+`hat_spots.json` (the hats session), and a look in Play. The sheets are `batchA*.jpg` in the shared notes.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

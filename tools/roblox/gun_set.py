@@ -202,6 +202,9 @@ for _id, _v in PICK.items():
 # the melee weapons for the classic modes (17 Nov 2026): knife, spoon, claw (tools/roblox/gun_melee.py)
 import gun_melee
 BUILD.update(gun_melee.BUILD)
+# batch A (17 Nov 2026): minigun, water pistol, nail gun, bread, hand slapper (tools/roblox/gun_batch_a.py)
+import gun_batch_a
+BUILD.update(gun_batch_a.BUILD)
 
 
 # ------------------------------------------------------------------------- the skin: Carl's Cardboard on the C rifle

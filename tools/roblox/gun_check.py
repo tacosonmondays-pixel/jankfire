@@ -15,7 +15,8 @@ MOVING = {'ar': ['mag', 'charge'], 'smg': ['mag', 'charge'], 'burst': ['mag', 'c
           'lever': ['lever', 'lhammer'], 'shotgun': ['pump'], 'autoshot': ['mag', 'charge'],
           'sawnoff': ['hinge', 'hinge_trim', 'forend', 'forend_iron', 'shell1', 'shell2', 'hammerR', 'hammerL'],
           'pistol': ['slide', 'mag', 'hammer'], 'revolver': ['cylinder', 'hammer'], 'redline': ['needle', 'redline_vents'],
-          'marbles': [], 'katana': ['kat_blade'], 'shredder': ['hub']}
+          'marbles': [], 'katana': ['kat_blade'], 'shredder': ['hub'],
+          'minigun': ['barrels'], 'water': ['water', 'pump'], 'nailgun': ['mag'], 'bread': [], 'slapper': ['hand']}
 
 
 def solids(g):
