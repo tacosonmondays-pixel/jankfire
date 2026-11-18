@@ -2182,6 +2182,72 @@
     ],
     "L": -39
    }
+  ],
+  "scythe_swing": [
+   {
+    "id": 9119751240,
+    "title": "Sword Whip 302 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     1
+    ],
+    "L": -25
+   },
+   {
+    "id": 9119752176,
+    "title": "Sword Whip 702 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     1.05
+    ],
+    "L": -25
+   }
+  ],
+  "scythe_hit": [
+   {
+    "id": 9119746592,
+    "title": "Sword Hit 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -13
+   },
+   {
+    "id": 9119746751,
+    "title": "Sword Hit 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -11
+   }
+  ],
+  "scythe_dash": [
+   {
+    "id": 9126229255,
+    "title": "Whoosh By Fast Airy Swooshing Whipping Thuds (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.32
+    ],
+    "L": -12
+   },
+   {
+    "id": 9126229490,
+    "title": "Whoosh By Fast Airy Swooshing Whipping Thuds (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.13,
+     0.45
+    ],
+    "L": -11
+   }
   ]
  },
  "vol": {
@@ -2295,7 +2361,10 @@
   "blood_fire": -25,
   "blood_stick": -27,
   "blood_erupt": -27,
-  "blood_boom": -23
+  "blood_boom": -23,
+  "scythe_swing": -24,
+  "scythe_hit": -21,
+  "scythe_dash": -26
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2343,7 +2412,10 @@
   "blood_fire": 0.04,
   "blood_stick": 0.04,
   "blood_erupt": 0.04,
-  "blood_boom": 0.04
+  "blood_boom": 0.04,
+  "scythe_swing": 0.03,
+  "scythe_hit": 0.04,
+  "scythe_dash": 0.04
  },
  "loop": {
   "minigun_spin": true,

@@ -1,3 +1,17 @@
+# The Scythe (18 Nov 2026, place version 805)
+
+Asked for by the weapons-port session (the owner wants the Scythe as a loadout melee). Pro Sound Effects, no flesh.
+
+| name | for | take(s): id, title, cut (s) | Volume | notes |
+| --- | --- | --- | --- | --- |
+| `scythe_swing` | the wide swing | 9119751240 / 9119752176 Sword Whip 302 / 702, 0.33–1.0 / 0.33–1.05 | 1.04 | builds over about 0.25 s and falls, slower than the katana's `swing`. A pitch of 0.9 in `Sfx.play` makes it heavier still |
+| `scythe_hit` | a heavy blade hit | 9119746592 Sword Hit 2, 0–0.5; 9119746751 Sword Hit 4, 0–0.6 | 0.33 | a hard hit with a ringing tail, no flesh |
+| `scythe_dash` | the 0.22 s dash | 9126229255 / 9126229490 Whoosh By Fast Airy Swooshing Whipping Thuds, 0.05–0.32 / 0.13–0.45 | 0.17 | a fast air burst |
+
+All three follow EFFECTS until they're added to WEAPON_NAMES. Checked in Edit: every clip loads. Not heard in Play.
+
+---
+
 # Weapons batch C: the projectile weapons (18 Nov 2026, place version 792)
 
 Asked for by the weapons-port session. All are Pro Sound Effects recordings, stylised, and none is gory: the
