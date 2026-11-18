@@ -1908,6 +1908,110 @@
     ],
     "L": -37
    }
+  ],
+  "taser_fire": [
+   {
+    "id": 9113622104,
+    "title": "Bulb Air Air Suction And Release 31 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.13
+    ],
+    "L": -20
+   }
+  ],
+  "taser_buzz": [
+   {
+    "id": 9114277402,
+    "title": "Electric Zaps 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.6
+    ],
+    "L": -23
+   },
+   {
+    "id": 9114277623,
+    "title": "Electric Zaps 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.6
+    ],
+    "L": -23
+   }
+  ],
+  "taser_arc": [
+   {
+    "id": 9114277338,
+    "title": "Electric Zaps 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.37
+    ],
+    "L": -24
+   }
+  ],
+  "blower_loop": [
+   {
+    "id": 9114743130,
+    "title": "Hair Dryer 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1,
+     5
+    ],
+    "L": -26
+   }
+  ],
+  "breath_loop": [
+   {
+    "id": 9114429860,
+    "title": "Fire Burst 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1,
+     5
+    ],
+    "L": -16
+   }
+  ],
+  "laser_fire": [
+   {
+    "id": 9116236630,
+    "title": "Laser Cannon 1702 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     0.95
+    ],
+    "L": -16
+   },
+   {
+    "id": 9116235979,
+    "title": "Laser Cannon 1406 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.38,
+     0.95
+    ],
+    "L": -18
+   }
+  ],
+  "laser_whine": [
+   {
+    "id": 9125981170,
+    "title": "Spaceship Pre Blast Electric Charge Up Glass (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     1.36
+    ],
+    "L": -25
+   }
   ]
  },
  "vol": {
@@ -2003,7 +2107,14 @@
   "slap_hit": -21,
   "slap_whoosh": -27,
   "draw_minigun": -26,
-  "reload_minigun": -26
+  "reload_minigun": -26,
+  "taser_fire": -24,
+  "taser_buzz": -24,
+  "taser_arc": -27,
+  "blower_loop": -29,
+  "breath_loop": -25,
+  "laser_fire": -21,
+  "laser_whine": -28
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2038,10 +2149,16 @@
   "bread_bonk": 0.03,
   "slap_hit": 0.03,
   "slap_whoosh": 0.03,
-  "water_soak": 0.04
+  "water_soak": 0.04,
+  "taser_fire": 0.04,
+  "taser_buzz": 0.04,
+  "taser_arc": 0.06,
+  "laser_fire": 0.03
  },
  "loop": {
-  "minigun_spin": true
+  "minigun_spin": true,
+  "blower_loop": true,
+  "breath_loop": true
  },
  "roll": {
   "gun_water": [
@@ -2055,6 +2172,22 @@
   "nail_wall": [
    6,
    150
+  ],
+  "blower_loop": [
+   8,
+   200
+  ],
+  "breath_loop": [
+   8,
+   220
+  ],
+  "minigun_spin": [
+   10,
+   260
+  ],
+  "laser_whine": [
+   8,
+   200
   ]
  }
 }

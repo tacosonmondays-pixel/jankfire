@@ -1,3 +1,24 @@
+# Weapons batch B: taser, leaf blower, fire breath, laser (18 Nov 2026, place version 783)
+
+Asked for by the weapons-port session. All are Pro Sound Effects recordings. A `roll` now also sets the Sound's own
+InverseTapered roll-off (`store_sounds.mjs`), so a loop that its caller clones onto an Attachment fades with distance
+like Sfx's copies do. `minigun_spin` got one too (10–260 studs).
+
+| name | for | take(s): id, title, cut (s) | Volume | notes |
+| --- | --- | --- | --- | --- |
+| `taser_fire` | the darts popping out | 9113622104 Bulb Air Air Suction And Release 31, 0–0.13 | 0.58 | a dry compressed-air pop. The library has no taser cartridge; the buzz comes from `taser_buzz` |
+| `taser_buzz` | a hit, 0.5 s | 9114277402 / 9114277623 Electric Zaps 6 / 8, 0.08–0.6 | 0.82 | |
+| `taser_arc` | one chain link | 9114277338 Electric Zaps 4, 0.08–0.37 | 0.65 | 6% pitch jitter so a chain doesn't repeat |
+| `blower_loop` | the leaf blower held, **Looped** | 9114743130 Hair Dryer 3, 1.0–5.0 | 0.65 | steady within 1 dB. The library has no leaf blower; a hair dryer is the nearest motor + air. Carries 8–200 |
+| `breath_loop` | the fire breath, **Looped** | 9114429860 Fire Burst 9, 1.0–5.0 | 0.33 | a steady roar; 3.6 s of breath stays inside one pass. Carries 8–220 |
+| `laser_fire` | the beam zap | 9116236630 Laser Cannon 1702, 0.33–0.95; 9116235979 Laser Cannon 1406, 0.38–0.95 | 0.58 | |
+| `laser_whine` | the charge | 9125981170 Spaceship Pre Blast Electric Charge Up Glass, 0.33–1.36 | 0.65 | a one-shot 1 s rise, **not** Looped: a rising pitch jumps back down at a loop seam. Carries 8–200 |
+
+Volume groups: none of these is `gun_`, so all seven follow EFFECTS until they're added to SettingsApply's
+WEAPON_NAMES. Checked in Edit: every clip loads, every cut measured. Not heard in Play.
+
+---
+
 # Weapons batch A: minigun, water gun, nail gun, bread, slap (18 Nov 2026, place version 771)
 
 Asked for by the weapons-port session. All are Pro Sound Effects recordings, levelled from `store.json` like the
@@ -21,8 +42,8 @@ others. Two new `store.json` fields, handled by `store_sounds.mjs`: `loop` (the 
 | `draw_minigun` | the heavy draw | 9116357621 Machine Gun Bolt 4, 0–0.7 (bolt back and home) | 0.52 | |
 | `reload_minigun` | the 3.5 s reload | 9113103014 Ammo Box Movement 2, 0.1–3.0 | 3 (the cap) | an ammo can handled, opened and shut, over 2.9 s |
 
-Volume groups (SettingsApply `kind`): `gun_*` and `draw_minigun` follow WEAPONS. The rest follow EFFECTS unless
-they're added to WEAPON_NAMES. Checked in Edit: every clip loads, every cut measured. Not heard in Play. The spin loop's
+Volume groups (SettingsApply `kind`): all 14 follow WEAPONS: `gun_*` and `draw_minigun` by name, the rest through
+WEAPON_NAMES (settings commit c08a323). Checked in Edit: every clip loads, every cut measured. Not heard in Play. The spin loop's
 seam (2.8 → 0.8 s) wasn't checked by ear.
 
 ---
@@ -46,8 +67,8 @@ by `store_sounds.mjs only=...` from `store.json`; L is the analyzer loudness of 
 
 Pitch jitter 3% on all but `pin` and `edge_full`. Every cut was measured in Studio: each ends 35 dB or more below
 its peak, except `wave_wall`'s first take, which stops 21 dB down inside its crackle. `Sword Stab 1` was dropped from
-`wave_hit`: its second sound runs past the cut. Volume groups (SettingsApply `kind`): all eight fall under EFFECTS,
-since none is `gun_`/`skin_` or in WEAPON_NAMES. Checked in Edit (each clip loads), not heard in Play.
+`wave_hit`: its second sound runs past the cut. Volume groups (SettingsApply `kind`): `pin` and `fuse_tick` follow EFFECTS. The katana session put its six in
+WEAPON_NAMES, so they follow WEAPONS with `parry`. Checked in Edit (each clip loads), not heard in Play.
 
 ---
 

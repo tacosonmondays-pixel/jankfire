@@ -7,7 +7,8 @@
 // "target", LUFS) moved onto the analyzer's scale by store.json's "offset" (measured on the v2 renders).
 // a region plays only that slice of a clip (one shot out of a sequence, one footstep out of a walk).
 // store.loop[name] = true makes the Sound Looped (a region loops just that slice); store.roll[name] = [min, max] sets
-// its RollMin / RollMax attributes (how far Sfx lets a copy out in the world carry, studs).
+// its RollMin / RollMax attributes (how far Sfx lets a copy out in the world carry, studs) and the Sound's own
+// InverseTapered roll-off, for a caller that clones it onto an Attachment itself (the loops).
 // prints the Luau to paste into Studio (Edit): node tools/roblox/store_sounds.mjs [only=skin_,zone_] > swap.luau
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,7 +62,10 @@ for _, d in ipairs(D) do
 	s.Volume = vol
 	if jit then s:SetAttribute("Jitter", jit) end
 	if loop then s.Looped = true end
-	if rmin then s:SetAttribute("RollMin", rmin); s:SetAttribute("RollMax", rmax) end
+	if rmin then
+		s:SetAttribute("RollMin", rmin); s:SetAttribute("RollMax", rmax)
+		s.RollOffMode = Enum.RollOffMode.InverseTapered; s.RollOffMinDistance = rmin; s.RollOffMaxDistance = rmax
+	end
 	apply(s, list[1])
 	for _, c in ipairs(lib:GetChildren()) do if string.match(c.Name, "^(.-)#%d+$") == name then c:Destroy() end end
 	for k = 2, #list do
