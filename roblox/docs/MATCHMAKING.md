@@ -243,27 +243,56 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
   - Most votes wins, a tie is drawn at random, and no votes is a draw of the three.
   - The map that vote last picked is never on offer again straight away.
   - Quickplay's maps take half its head-count a side, so Crate (3 a side at most) sits out an 8-player match.
-- **The hub's pads** (18 Nov, the owner: "map select for pads please"): a full pad's countdown is now its map vote.
-  - It runs `Matches.PAD_VOTE` = 8 s on 3 cards from the rotation (`Arena.pool` for the pad's size, never the pad's
-    last arena), then the pick shows for 1 s and the match starts. Before, the countdown was 3 s on the rotation's
-    pick.
-  - The cards are the same as quickplay's (QuickVoteUI), shown only to the players standing on that pad. Vote with
-    1-3 or a tap. The pad's sign says MAP VOTE · n.
-  - Most votes wins; a tie, or no votes at all, is drawn.
-  - The first card's site is held while the vote runs, so the cap and the waiting line work as before. At the end
-    the winner's site takes its place; if the winner can't be had right now, the first card is played, and the cards
-    show what is played.
-  - Someone stepping off pauses it as before; stepping back on resumes the count, after the vote if it's still on.
-  - Pads are casual, so there's no ranked case.
+- **The hub's pads, in a map room** (18 Nov). The owner first asked for "map select for pads please" (v726: the vote
+  ran on the pad itself), then: "map select should happen after pads itll spawn you in liek a void area where the map
+  options appear then itll bring you to said map".
+  - A full pad counts down `Matches.COUNTDOWN` (3 s) as before; its sign reads MAP VOTE IN n. Then its group goes to
+    a MAP ROOM of its own (`server/MapRooms.luau`), and the pad is free for the next group at once.
+  - **The room:** a round charcoal platform in a dark void, with a lower ring under its edge and an invisible rail
+    round the rim.
+    - On the far side, three big framed displays stand on an arc, each showing one map's picture and name, lit only
+      by its own screen.
+    - A round plate in front of each display: standing on it votes for that map.
+    - One dim lamp hangs over the middle. No colour but the amber edge on the map that wins.
+    - Rooms are built from code as they're needed, one per group voting at once (`workspace.MapRooms`, a row at
+      y 1,400 far from every map), and taken down after the group has gone.
+    - It's out of `Map`, so ZoneCull leaves it drawn while everything else is put aside.
+  - **The vote:** `Matches.PAD_VOTE` (8 s) on the three maps, by the card on your screen (QuickVoteUI: keys 1-3 or a
+    tap) or by standing on a plate.
+    - The three are the site the pad already holds plus two more from the rotation for the pad's size, never the
+      pad's last arena, in a random order.
+    - Most votes wins; a tie, or no votes at all, is drawn.
+    - The winner's site takes the held one's place. If it can't be had right now, the held map is played, and the
+      displays show that.
+    - The pick shows for 1.5 s (amber frame, the others dim), then the match starts the usual way: everyone respawns
+      at that arena's spawns.
+  - **The zone:** the room is the "staging" zone (`Matches.zoneOf`), with its own look: HubLook `void` (night, a
+    near-black haze from 70 to 260 studs, enough ambient for the charcoal to read), through HubLife.
+    - Nobody there is in a match, so there's no damage.
+    - Every move into it stamps the anti-cheat's `TeleportT`, and the Spawn remote turns the camera to the displays.
+  - **Leavers:** anyone who leaves the game, or ends up in another match, leaves the room. A side with nobody left
+    sends the rest back to the hub with "the other side left: back to the hub", and the site goes back.
+  - Pads are casual, so there's no ranked case. Parties step on pads like anyone (QUICK JOIN brings a leader's party).
   - Server: `Matches.padVote` (the Play remote's `padvote` through `Party.ops`), PlayPush `{ t = "padvote" }`.
     Test ops: `JankMatchTest("padfill", padName, player)` makes a pad full with one player (its match is held like a
-    ghost match); `("padvotefor", padName, voterId, arena)`; `("padstate")`.
-  - **Tested** in place v726 (18 Nov, 00:19 UTC), the 1v1 pad by the lifts:
-    - The cards came up as THE GUT, BAZAAR and DESERT: CANYON, and the pad's sign read MAP VOTE · 7.
-    - A stand-in voted BAZAAR and I pressed 2, so BAZAAR had 2 votes.
-    - The held site (THE GUT, the first card) went back, and the match started on BAZAAR.
+    ghost match); `("padvotefor", padName, voterId, arena)`; `("padstate")` lists the rooms.
+  - **Tested** in place v731 (18 Nov, 00:55 UTC), solo with the test fill on the 1v1 pad:
+    - After the 3 s count I was in MapRoom1 (zone `staging`, the void look). Its displays were DESERT: CANYON (the held
+      site), BAZAAR: ROOFTOPS and ROOFTOP, with the cards on my screen.
+    - Standing on ROOFTOP's plate counted as a vote: ROOFTOP 1.
+    - At the end ROOFTOP won (shown, with the others dimmed), the held DESERT: CANYON site went back, and I spawned on
+      ROOFTOP with the match live. The room was taken down after.
+    - An earlier run (a stand-in's vote for BAZAAR: ROOFTOPS) went the same way.
+    - The photo of the pick shows the first winner style, a glowing amber frame. It was too loud under the bloom, so
+      v731 keeps the frame grey (a shade lighter) and lights the plate amber instead.
+    - Not tested: real groups of several players, a leaver mid-vote, two rooms at once.
 
-    ![a pad's map vote](matchmaking/43_pad_map_vote.jpg)
+    ![the map room](matchmaking/44_map_room.jpg)
+    ![the map room with the vote cards](matchmaking/45_map_room_vote_cards.jpg)
+    ![the pick (the first, louder winner style)](matchmaking/46_map_room_pick.jpg)
+  - v726's on-pad vote, for the record:
+
+    ![v726: the vote on the pad](matchmaking/43_pad_map_vote.jpg)
 - **RANKED** (duels and PARTY RANKED): no pick and no vote, a fair random draw from the rotation. The DUELS foot and
   the MODES tab say so.
 - **Server:** `Party.luau` (Found `mvote` / `map`, ops `map` and `mapvote`, test op `qpmap standInId arena`).

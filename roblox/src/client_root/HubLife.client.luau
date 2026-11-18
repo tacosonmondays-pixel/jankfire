@@ -39,7 +39,7 @@ local function relook(snap: boolean)
 	local an = me:GetAttribute("Arena")
 	if type(an) ~= "string" then an = Arena.name() end
 	local byArena = (HubLook :: any).byArena -- (the ported web maps' own lights, 17 Nov: HubLook.byArena)
-	local want = if zone == "match" then (if an == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif an == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" elseif byArena and byArena[an] and HubLook.looks[byArena[an]] then byArena[an] else "match") elseif zone == "training" then (if me:GetAttribute("OnLot") and HubLook.looks.lot then "lot" else "training") elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
+	local want = if zone == "match" then (if an == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif an == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" elseif byArena and byArena[an] and HubLook.looks[byArena[an]] then byArena[an] else "match") elseif zone == "training" then (if me:GetAttribute("OnLot") and HubLook.looks.lot then "lot" else "training") elseif zone == "playground" then "playground" elseif zone == "staging" and HubLook.looks.void then "void" else "hub" -- no zone yet = just joined = the hub. (staging: a pad's map room, server/MapRooms.luau)
 	if want == "hub" then want = zoneLook() or "hub" end
 	if want == looking then return end
 	looking = want

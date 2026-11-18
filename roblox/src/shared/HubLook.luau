@@ -252,6 +252,23 @@ H.looks.gut = {
 	ColorCorrection = { Brightness = -0.02, Contrast = 0.17, Saturation = -0.06, TintColor = Color3.fromRGB(255, 246, 244) }, -- (round 2: less haze, more contrast: players must read against the pink)
 	SunRays = { Intensity = 0.03 },
 } :: Look
+-- THE MAP ROOM (server/MapRooms.luau, the "staging" zone; 18 Nov 2026, the owner: "spawn you in liek a void area where
+-- the map options appear"): a dark, quiet void. no sun (night), a near-black haze that swallows everything past the
+-- platform; enough ambient that the charcoal floor and the bodies still read (the linear-lighting lesson). the light in
+-- the room is the three map screens' own glow and one dim lamp over the middle. play-party-ranked's
+H.looks.void = {
+	Lighting = {
+		Ambient = Color3.fromRGB(78, 80, 88), OutdoorAmbient = Color3.fromRGB(60, 62, 70), Brightness = 0.6,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.1, EnvironmentSpecularScale = 0.2,
+		ClockTime = 0, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(0, 0, 0),
+		FogColor = Color3.fromRGB(10, 11, 14), FogStart = 70, FogEnd = 260,
+	},
+	Atmosphere = { Density = 0.55, Offset = 0, Haze = 0, Glare = 0, Color = Color3.fromRGB(12, 13, 16), Decay = Color3.fromRGB(8, 9, 11) },
+	Bloom = { Intensity = 0.4, Size = 24, Threshold = 1.6 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.08, Saturation = -0.25, TintColor = Color3.fromRGB(250, 251, 255) },
+	SunRays = { Intensity = 0 },
+} :: Look
+H.plainSky.void = true
 H.ownSky = {} :: { [string]: string }    -- a look with its own Sky: the Sky's name in Lighting.SkyParked (attribute OwnSky)
 H.ownSky.gut = "GutSky"                    -- (plain gradient faces, tools/roblox/gut_sky.py)
 H.byArena.Gut = "gut"

@@ -30,7 +30,7 @@ local Matches = {}
 Matches.WIN = 5 -- round wins that take the match
 Matches.ROUND_TIME = 120 -- s; time up = the most damage dealt takes it (then HP left, then a coin flip)
 Matches.COUNTDOWN = 3 -- s on a full pad before you go
-Matches.PAD_VOTE = 8 -- s a full pad votes on its map first (18 Nov, the owner: "map select for pads please"); its pick shows 1 s
+Matches.PAD_VOTE = 8 -- s a pad's group votes on its map in a map room (18 Nov, the owner; MapRooms.luau, the stages below)
 Matches.READY = 3 -- s from spawning in to the round going live (no damage till then)
 Matches.READY_FIRST = 8 -- (round 1: longer, the time to change your loadout before the first round. 17 Nov, the owner)
 Matches.BETWEEN = 3 -- s between rounds
@@ -73,6 +73,7 @@ local padCount: { [Model]: { at: number, site: Site, arena: string, lost: number
 local fullSince: { [Model]: number } = {} -- when each full pad filled (the first to fill gets the next free site)
 -- (QuickJoin.luau) the pads as the last step saw them: pad -> { sides = { { Player } }, full = boolean }
 local padView: { [Model]: any } = {}
+local staged: { [Player]: any } = {} -- (in a map room, voting on the map: the stages below padSign)
 function Matches.padView(): { [Model]: any } return padView end
 local lastArena: { [Model]: string } = {} -- each pad's last arena (none yet after a server starts: the first pick is random)
 local padLast: { [Model]: Match } = {} -- each pad's latest match (its sign shows it)
@@ -119,6 +120,7 @@ local function inside(part: BasePart, pos: Vector3, up: number): boolean
 end
 function Matches.zoneOf(p: Player): string
 	if inMatch[p] then return "match" end
+	if staged[p] then return "staging" end -- (a map room: server/MapRooms.luau)
 	local ch = p.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local tz = hub:FindFirstChild("TrainingZone") :: BasePart?
@@ -565,77 +567,198 @@ local function padSign(pad: Model, status: string, sub: string)
 	for _, b in l.sub do if b.Text ~= sub then b.Text = sub end end
 end
 
--- ------------------------------------------------------------------ the pads' map vote (18 Nov 2026, the owner: "map
--- select for pads please"). a full pad's countdown is its map vote: Matches.PAD_VOTE s on 3 cards from the rotation
--- (Arena.pool for the pad's size, never the pad's last arena), on the screens of the players standing on it
--- (PlayPush { t = "padvote", vote, map }: client/QuickVoteUI.luau), keys 1-3 or a tap (the Play remote's "padvote",
--- Party.ops, wired by PlayServer). most votes wins; a tie, or no votes at all, is drawn. the first card's site is
--- claimed when the count starts, so the cap and the line work as before; at the end the winner's site takes its
--- place, or, if the winner can't be had right now, the first card stays, and the cards show what is played. pads are
--- casual: a ranked match never comes from a pad
+-- ------------------------------------------------------------------ the pads' map vote, in a room of its own (18 Nov 2026,
+-- the owner: "map select for pads please", then "map select should happen after pads itll spawn you in liek a void
+-- area where the map options appear then itll bring you to said map"). a full pad counts down Matches.COUNTDOWN s as
+-- before, then its group goes to a MAP ROOM of its own (server/MapRooms.luau: a dark platform in a void, three big map
+-- displays with a plate in front of each) and the pad is free for the next group at once.
+--   the vote: Matches.PAD_VOTE s on the three maps (the site the pad holds is one of them, two more from the rotation
+--   for the pad's size, never the pad's last arena). a vote is the card on your screen (client/QuickVoteUI.luau: keys
+--   1-3 or a tap; PlayPush { t = "padvote" }, the Play remote's "padvote" through Party.ops) or standing on a display's
+--   plate. most votes wins; a tie, or no votes at all, is drawn.
+--   the pick: the winner's site takes the held one's place (if it can't be had right now, the held map is played, and
+--   the displays show that), shown PICK_SHOW s, then the match starts the usual way: everyone respawns at that arena's
+--   spawns.
+--   leavers: out of the game, or into another match, they leave the room; a side with nobody left sends the rest back to
+--   the hub with a note, and the site goes back.
+-- the room is the "staging" zone (Matches.zoneOf): its own dark look (HubLook "void", client_root/HubLife), no damage
+-- (nobody there is in a match). every move into it stamps the anti-cheat's TeleportT, and the client turns its camera to
+-- the displays (the Spawn remote, Body.luau). pads are casual: a ranked match never comes from a pad
+local MapRooms = require(script.Parent:WaitForChild("MapRooms"))
+local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hitbox"))
+local PICK_SHOW = 1.5
+type Stage = { pad: Model, sides: { { Player } }, site: Site, arena: string, room: any, options: { string },
+	votes: { [number]: string }, ends: number, map: string?, at: number?, test: boolean, shown: { [Player]: boolean }, dirty: boolean }
+local stages: { Stage } = {}
 local testFill: { [Model]: Player } = {} -- (Studio: Matches.test "padfill")
-local shownOn: { [Model]: { [Player]: boolean } } = {}
 local pushR: RemoteEvent? = nil
+local spawnR: RemoteEvent? = nil
+local function remote(name: string): RemoteEvent?
+	local r = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	return r and r:FindFirstChild(name) :: RemoteEvent?
+end
 local function padPush(p: Player, msg: any)
-	if not pushR then
-		local r = ReplicatedStorage:FindFirstChild("JankfireRemotes")
-		pushR = r and r:FindFirstChild("PlayPush") :: RemoteEvent?
-	end
+	pushR = pushR or remote("PlayPush")
 	if pushR and p.Parent then (pushR :: RemoteEvent):FireClient(p, msg) end
 end
 local function padCard(id: string): any return { id = id, title = Arena.title(id), thumb = MapCards.thumb(id) } end
-local function padVoteView(c: any, p: Player): any
-	local v = c.vote
-	local opts = {}
-	for _, id in v.options do table.insert(opts, padCard(id)) end
-	return { options = opts, ends = workspace:GetServerTimeNow() + math.max(0, v.ends - os.clock()), counts = MapCards.counts(v.votes), mine = v.votes[p.UserId] }
+local function stageCards(st: Stage): { any }
+	local out = {}
+	for _, id in st.options do table.insert(out, padCard(id)) end
+	return out
 end
--- everyone on the pad sees it as it stands; anyone who stepped off (or went into the match) sees it go
-local function padVoteSync(pad: Model, c: any?, on: { Player })
-	local was = shownOn[pad] or {}
+local function each2(st: Stage, fn: (Player) -> ())
+	for _, list in st.sides do for _, p in list do fn(p) end end
+end
+-- into the room: on its spot, facing the displays (a server move: TeleportT first; the client turns its camera)
+local function moveTo(p: Player, spot: CFrame, look: Vector3)
+	local ch = p.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not ch or not root then return end
+	local hum = ch:FindFirstChildOfClass("Humanoid")
+	if hum and hum.SeatPart then
+		local weld = hum.SeatPart:FindFirstChild("SeatWeld")
+		if weld then weld:Destroy() end
+	end
+	p:SetAttribute("TeleportT", os.clock())
+	root.AssemblyLinearVelocity = Vector3.zero
+	local pos = spot.Position + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+	;(ch :: Model):PivotTo(CFrame.lookAt(pos, pos + look))
+	spawnR = spawnR or remote("Spawn")
+	if spawnR then (spawnR :: RemoteEvent):FireClient(p, spot.Position, look) end
+end
+-- the vote on everyone's screen as it stands; anyone who left the room sees it go
+local function stageSync(st: Stage, gone: boolean?)
 	local now: { [Player]: boolean } = {}
-	if c and c.vote then
-		for _, p in on do
+	if not gone then
+		local view = { options = stageCards(st), ends = workspace:GetServerTimeNow() + math.max(0, st.ends - os.clock()), counts = MapCards.counts(st.votes) }
+		local map = if st.map then padCard(st.map) else nil
+		each2(st, function(p)
 			now[p] = true
-			if c.dirty or not was[p] then padPush(p, { t = "padvote", vote = padVoteView(c, p), map = if c.map then padCard(c.map) else nil }) end
-		end
-		c.dirty = false
+			if st.dirty or not st.shown[p] then
+				padPush(p, { t = "padvote", vote = { options = view.options, ends = view.ends, counts = view.counts, mine = st.votes[p.UserId] }, map = map })
+			end
+		end)
 	end
-	for p in was do if not now[p] then padPush(p, { t = "padvote" }) end end
-	shownOn[pad] = if next(now) then now else nil
+	for p in st.shown do if not now[p] then padPush(p, { t = "padvote" }) end end
+	st.shown = now
 end
--- (Party.ops.padvote) a vote from a player standing on a pad that's counting down
-function Matches.padVote(p: Player, id: any): (boolean, string?)
-	for pad, c0 in padCount do
-		local c = c0 :: any
-		local v = c.vote
-		local s = padView[pad]
-		if not v or not s then continue end
-		local on = false
-		for _, list in s.sides do if table.find(list, p) then on = true end end
-		if not on then continue end
-		if c.map or os.clock() >= v.ends then return false, "the map is picked" end
-		if type(id) ~= "string" or not table.find(v.options, id) then return false, "not one of the three" end
-		v.votes[p.UserId] = id
-		c.dirty = true
-		return true, nil
-	end
-	return false, "no map vote on your pad"
+local function stageEnd(st: Stage)
+	local i = table.find(stages, st)
+	if i then table.remove(stages, i) end
+	each2(st, function(p) if staged[p] == st then staged[p] = nil end end)
+	for p in st.shown do if staged[p] == st then staged[p] = nil end end
+	stageSync(st, true)
+	local room = st.room
+	task.delay(4, function() MapRooms.release(room) end) -- (after everyone has gone: the new bodies come first)
 end
--- the vote's clock ran out: its pick, and that arena's site in place of the first card's if it can be had
-local function padSettle(c: any)
-	local v = c.vote
-	if not v or c.map then return end
-	local want = MapCards.result(v.options, v.votes) or c.arena
-	if want ~= c.arena then
-		-- (the held site goes back first, so the cap counts it free; if the winner can't be had, the first card is taken again)
-		local held = c.site
+-- a whole side gone: the rest back to the hub, the site back
+local function stageCancel(st: Stage, note: string)
+	stageEnd(st)
+	releaseSite(st.site)
+	each2(st, function(p)
+		padPush(p, { t = "toast", text = note })
+		local f = Fight.byPlayer[p]
+		if f and p.Parent then f.alive = false; task.spawn(Fight.spawn, f) end -- (a fresh body at the hub's spawns)
+	end)
+end
+-- the vote's clock ran out: its pick, and that arena's site in place of the held one if it can be had
+local function stageSettle(st: Stage)
+	if st.map then return end
+	local want = MapCards.result(st.options, st.votes) or st.arena
+	if want ~= st.arena then
+		-- (the held site goes back first, so the cap counts it free; if the winner can't be had, the held map is taken again)
+		local held = st.site
 		releaseSite(held)
 		local site = claimSite(want)
-		if site then c.site, c.arena = site, want else c.site = claimSite(c.arena) or held end
+		if site then st.site, st.arena = site, want else st.site = claimSite(st.arena) or held end
 	end
-	c.map = c.arena
-	c.dirty = true
+	st.map = st.arena
+	st.at = os.clock() + ((script:GetAttribute("TestPickShow") :: number?) or PICK_SHOW) -- (test knob: longer, for a photo)
+	st.dirty = true
+end
+-- to the arena: the match starts the usual way (everyone respawns at its spawns)
+local function stageGo(st: Stage)
+	stageEnd(st)
+	local m = startMatch(st.pad, st.sides, st.site, st.arena)
+	if st.test then m.ghost = os.clock() + 25 end -- (a test fill: held like a ghost match)
+end
+-- a full pad's countdown is over: its group to a map room (no room to be had: straight to the match, as before)
+local function stageStart(pad: Model, sides: { { Player } }, site: Site, arena: string): Match?
+	local test = testFill[pad] ~= nil
+	testFill[pad] = nil
+	local room = MapRooms.claim()
+	if not room then return startMatch(pad, sides, site, arena) end
+	local sz = pad:GetAttribute("Size")
+	local rest = {}
+	for _, id in Arena.pool(if type(sz) == "number" then sz else nil) do if id ~= arena then table.insert(rest, id) end end
+	local options = { arena }
+	for _, id in MapCards.offer(rest, lastArena[pad], 2) do table.insert(options, id) end
+	for i = #options, 2, -1 do local j = math.random(i); options[i], options[j] = options[j], options[i] end -- (the held one anywhere)
+	local st: Stage = { pad = pad, sides = {}, site = site, arena = arena, room = room, options = options, votes = {},
+		ends = os.clock() + ((script:GetAttribute("TestPadVote") :: number?) or Matches.PAD_VOTE), test = test, shown = {}, dirty = true }
+	local k = 0
+	for t, list in sides do
+		st.sides[t] = {}
+		for _, p in list do
+			table.insert(st.sides[t], p)
+			staged[p] = st
+			k += 1
+			moveTo(p, room.spots[(k - 1) % #room.spots + 1], room.look)
+		end
+	end
+	table.insert(stages, st)
+	MapRooms.show(room, stageCards(st), {}, nil)
+	return nil
+end
+-- every padStep: leavers, the plates, the clock
+local function stageStep()
+	for _, st in table.clone(stages) do
+		for _, list in st.sides do
+			for k = #list, 1, -1 do
+				local p = list[k]
+				if not p.Parent or inMatch[p] or staged[p] ~= st then
+					table.remove(list, k)
+					if staged[p] == st then staged[p] = nil end
+					st.dirty = true
+				end
+			end
+		end
+		local empty = false
+		for _, list in st.sides do if #list == 0 then empty = true end end
+		local anyone = false
+		each2(st, function() anyone = true end)
+		if not anyone or (empty and not st.test) then
+			stageCancel(st, "the other side left: back to the hub")
+			continue
+		end
+		if not st.map then
+			-- standing on a display's plate is a vote for it
+			each2(st, function(p)
+				local root = rootOf(p)
+				local i = if root then MapRooms.plateAt(st.room, root.Position) else nil
+				local id = if i then st.options[i] else nil
+				if id and st.votes[p.UserId] ~= id then st.votes[p.UserId] = id; st.dirty = true end
+			end)
+			if os.clock() >= st.ends then stageSettle(st) end
+		elseif st.at and os.clock() >= st.at then
+			stageGo(st)
+			continue
+		end
+		if st.dirty then MapRooms.show(st.room, stageCards(st), MapCards.counts(st.votes), st.map) end
+		stageSync(st)
+		st.dirty = false
+	end
+end
+-- (Party.ops.padvote) a vote from a player in a map room
+function Matches.padVote(p: Player, id: any): (boolean, string?)
+	local st = staged[p]
+	if not st then return false, "no map vote for you right now" end
+	if st.map or os.clock() >= st.ends then return false, "the map is picked" end
+	if type(id) ~= "string" or not table.find(st.options, id) then return false, "not one of the three" end
+	st.votes[p.UserId] = id
+	st.dirty = true
+	return true, nil
 end
 
 local function padStep()
@@ -654,7 +777,7 @@ local function padStep()
 		local sides: { { Player } } = {}
 		for t = 1, teams do sides[t] = {} end
 		for _, p in Players:GetPlayers() do
-			if inMatch[p] or claimed[p] then continue end
+			if inMatch[p] or claimed[p] or staged[p] then continue end
 			local root = rootOf(p)
 			if not root then continue end
 			for t = 1, teams do
@@ -697,11 +820,7 @@ local function padStep()
 		local c = padCount[pad]
 		if full then
 			fullSince[pad] = fullSince[pad] or os.clock()
-			if c and c.lost then -- (back on: the count starts again, after the map vote if it is still on)
-				c.lost = nil
-				local v = (c :: any).vote
-				c.at = math.max(os.clock() + Matches.COUNTDOWN, if v and not (c :: any).map then v.ends + 1 else 0)
-			end
+			if c and c.lost then c.lost = nil; c.at = os.clock() + Matches.COUNTDOWN end -- (back on: the count starts again)
 		else
 			fullSince[pad] = nil
 			-- someone stepped off: the count stops, and the site goes back if nobody steps on again within 1.5 s (so a
@@ -720,16 +839,9 @@ local function padStep()
 	local waiting: { [Model]: number } = {}
 	for _, pad in line do
 		if next(waiting) == nil then
-			-- (the map vote's three cards; the first one's site is held while it runs)
-			local sz = pad:GetAttribute("Size")
-			local options = MapCards.offer(Arena.pool(if type(sz) == "number" then sz else nil), lastArena[pad])
-			local arena = options[1] or nextArena(pad)
+			local arena = nextArena(pad)
 			local site = claimSite(arena)
-			if site then
-				local vote = if #options > 1 then { options = options, votes = {}, ends = os.clock() + Matches.PAD_VOTE } else nil
-				padCount[pad] = { at = os.clock() + (if vote then Matches.PAD_VOTE + 1 else Matches.COUNTDOWN), site = site, arena = arena, vote = vote, dirty = true } :: any
-				continue
-			end
+			if site then padCount[pad] = { at = os.clock() + Matches.COUNTDOWN, site = site, arena = arena }; continue end
 		end
 		local n = 0
 		for _ in waiting do n += 1 end
@@ -738,7 +850,6 @@ local function padStep()
 	for pad, s in seen do
 		local sub = "step on a side to queue"
 		local c = padCount[pad]
-		if c and (c :: any).vote and not (c :: any).map and os.clock() >= (c :: any).vote.ends then padSettle(c) end
 		if s.full then
 			if not c then
 				local ahead = waiting[pad] or 0
@@ -746,26 +857,19 @@ local function padStep()
 			elseif os.clock() >= c.at then
 				padCount[pad] = nil
 				fullSince[pad] = nil
-				local m = startMatch(pad, s.sides, c.site, c.arena)
-				if testFill[pad] then m.ghost = os.clock() + 25; testFill[pad] = nil end -- (a test fill: held like a ghost match)
+				stageStart(pad, s.sides, c.site, c.arena) -- (to a map room to vote on the map, then the match)
 				sub = "GO!"
-			elseif (c :: any).vote and not (c :: any).map then
-				sub = ("MAP VOTE · %d"):format(math.max(1, math.ceil((c :: any).vote.ends - os.clock())))
 			else
-				sub = ("STARTING IN %d"):format(math.ceil(c.at - os.clock()))
+				sub = ("MAP VOTE IN %d"):format(math.ceil(c.at - os.clock()))
 			end
 		else
 			local m = padLast[pad]
 			if m and m.on then sub = "match on · " .. hudText(m):gsub("<[^>]+>", "") end
 		end
 		padSign(pad, s.counts, sub)
-		-- (the map vote on the screens of those standing on it)
-		local on = {}
-		for _, list in s.sides do for _, p in list do table.insert(on, p) end end
-		padVoteSync(pad, padCount[pad], on)
 	end
-	for pad in shownOn do if not seen[pad] then padVoteSync(pad, nil, {}) end end
 	padView = seen
+	stageStep() -- (the map rooms: leavers, plates, clocks)
 end
 
 -- ------------------------------------------------------------------ wiring
@@ -871,20 +975,23 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 		testFill[pad] = b :: Player
 		return true
 	elseif op == "padvotefor" then
-		-- (a stand-in's vote on pad a: voter id b for map c)
-		local pads = hub:FindFirstChild("QueuePads")
-		local pad = pads and pads:FindFirstChild(tostring(a))
-		local pc = if pad and pad:IsA("Model") then padCount[pad] :: any else nil
-		if not pc or not pc.vote or pc.map or not table.find(pc.vote.options, tostring(c)) then return false end
-		pc.vote.votes[tonumber(b) or -1] = tostring(c)
-		pc.dirty = true
-		return true
+		-- (a stand-in's vote in the map room pad a sent: voter id b for map c)
+		for _, st in stages do
+			if st.pad.Name == tostring(a) and not st.map and table.find(st.options, tostring(c)) then
+				st.votes[tonumber(b) or -1] = tostring(c)
+				st.dirty = true
+				return true
+			end
+		end
+		return false
 	elseif op == "padstate" then
-		-- (every counting pad: its arena so far, the cards, the votes, the pick, the seconds to go)
+		-- (every map room: its pad, the held arena, the cards, the votes, the pick, the seconds to go)
 		local out = {}
-		for pad, pc0 in padCount do
-			local pc = pc0 :: any
-			out[pad.Name] = { arena = pc.arena, options = pc.vote and pc.vote.options, counts = pc.vote and MapCards.counts(pc.vote.votes), map = pc.map, left = pc.at - os.clock() }
+		for _, st in stages do
+			local n = 0
+			each2(st, function() n += 1 end)
+			table.insert(out, { pad = st.pad.Name, arena = st.arena, options = st.options, counts = MapCards.counts(st.votes), map = st.map,
+				left = st.ends - os.clock(), players = n, room = st.room.model:GetFullName() })
 		end
 		return out
 	elseif op == "between" then
