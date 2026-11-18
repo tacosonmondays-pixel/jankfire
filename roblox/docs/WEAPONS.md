@@ -214,6 +214,29 @@ Checked in solo Play (place version 862):
 - **Bow:** power 126, flame 15 plus its burn ticks, and a shot inside 0.35 s refused.
 - **Slipper:** 30 out and 30 back, caught, with a second throw refused while it was out.
 
+## Batch E on Roblox, 18 Nov 2026
+
+The last three web weapons, all server-decided, live with Lefty & Righty at place version 891. The traced spec is in the
+side notes (weapons-batchE-spec.md). Code: CardDeck.server + CardsClient (Card Deck), CartServer.server +
+CartRide.client (Shopping Cart Cannon), LassoServer.server + LassoClient (Lasso); remotes Cards, Cart, Lasso.
+
+| weapon | slot | how it plays on Roblox |
+|---|---|---|
+| Shopping Cart Cannon `cart` | primary | Fires a cart at 22 m/s (3.5 m/s up). The cart belongs to the server: an anchored model it flies, rolls and parks (box casts against the map, a 0.6 m step-up only when it's on the ground, wall bounce 0.35, friction). It runs people over for min(80, 3 x its speed) and a shove along it, once a person every 0.7 s, slowing to 75 % each time; you're safe from your own for 0.4 s (0.8 s in the air). Parked it's solid cover in the map: shots, projectiles and players stop on it. Stand on one that isn't flying and press F (pad B) to ride it: your client drives, the server keeps the real cart under you with a speed check (26 m/s at most) and you plough people with your credit. 25 s each, 3 a player, 6 a server. 1.6 s between carts. |
+| Card Deck `cards` | secondary | The server owns the deck (52 + 2 jokers), your hand of 5 and every card's effect; the client sends only which slot. Right click picks, left click plays, R draws a new hand (every 2.5 s); an empty hand is dealt again 1.5 s after its last card. Aces: a teleport 16 m along your aim or short of the first wall, the landing checked clear. Spades: a fan of 6 (0.16 rad), J Q K 24 over 0.9 rad, each card 11 + 0.6 x rank. Hearts: heal 3 x rank, J Q K to 150 with the extra fading 2 a second. Clubs: a blast in front (9 m, 53 deg) for 12 + 2 x rank and a shove, not through walls; J Q K all round (12 m) for 30 and a big shove. Diamonds: a dash 3.5 x rank m/s along your aim, J Q K 55. Joker: a random suit's J Q K. Every card but spades and aces also flicks 2 cards ahead. |
+| Lasso `lasso` | secondary | Hold to spin the loop (1.1 s to full), let go to throw: 12 to 28 m out at 24 to 38 m/s by the spin. It catches the first one it touches that it can see; a katana guard facing it cuts it (CUT). The rope ties at the waist. The swing runs on the server (the web ran it on the holder's machine): you stream your aim, the server steps the body at 120 Hz and tells the held client where to be. A spring pulls them toward where you aim at the rope's length (2 to 16 m: the wheel, R reels in, F lets out); turning, shaking and walking back pump it. Click to let go and they fly on with their speed (x1.2) and yours, the callout shows how fast (from 45 m/s). Hitting a wall or the floor at 22 m/s and up hurts ((s - 22) x 2.4, 140 at most), credited to you. They wriggle free with 18 presses (a teammate with 1), and the rope slips after 5 s. No weapon switch while someone's on your rope. |
+
+Lefty & Righty also got its shot echo per hand: other players see each bullet leave the gun that fired it.
+
+Checked in solo Play on the training range (dummies, place versions 878 to 891):
+- **Cart:** fired at a wall, landed, rolled, parked solid; stood on its top, rode it with F and W, got off.
+- **Card Deck:** a hand of 5 on screen; cards played from it with their effects; R redraws.
+- **Lasso:** caught the Stand, swung it on the rope, reeled, flung it.
+- **All four** in hand on their kit models (photo sheet batchE_in_hand_v891.jpg in the side notes).
+
+Not yet checked with a second real player: the ace teleport's landing in tight rooms, the lasso's wall slam and
+wriggle-free, and a katana guard cutting the rope.
+
 ## Everything at a glance
 
 | weapon | slot | colour | what it does |
