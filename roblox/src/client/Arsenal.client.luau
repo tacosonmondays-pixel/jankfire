@@ -616,7 +616,11 @@ Keys.ended(function(io: InputObject)
 	elseif Binds.is("aim", io) then aimHeld = Binds.press("aim", false, aimHeld) end
 end)
 UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
-	if gp or io.UserInputType ~= Enum.UserInputType.MouseWheel or toolOut() or menuOpen() or inHub() then return end
+	if io.UserInputType ~= Enum.UserInputType.MouseWheel or io.Position.Z == 0 or toolOut() or menuOpen() or inHub() then return end
+	-- (with the mouse locked to the middle and no menu or Toggle Cursor, the wheel is always the weapons', even when
+	-- something else (the camera's zoom, a screen under the middle) marked it used (gp); a wheel event with no turn
+	-- (Z 0) used to count as down. the owner, 18 Nov 2026: "scroll wheel inv doesnt work for down yes for up")
+	if gp and not (UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter and me:GetAttribute("MenuCursor") ~= true) then return end
 	local l = lo()
 	local i = table.find(l, held) or 1
 	i = (i - 1 + (if io.Position.Z > 0 then -1 else 1)) % #l + 1
