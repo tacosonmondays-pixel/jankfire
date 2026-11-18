@@ -112,6 +112,17 @@ local function shape(k: string, r: number?): BasePart
 	part.Parent = folder
 	return part
 end
+-- a looped recording riding something (the rolling ball): the library's own Sound cloned onto it, gone with it
+-- (Sfx.play's copies are cleaned up after a few seconds)
+local function loopOn(part: Instance, name: string)
+	local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+	local s = lib and lib:FindFirstChild(name)
+	if not s or not s:IsA("Sound") then return end
+	local c = s:Clone()
+	c.Looped = true
+	c.Parent = part
+	c:Play()
+end
 local function drop(id: number)
 	local L = live[id]
 	if not L then return end
@@ -169,6 +180,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local w = W[f.w] :: any
 		local kind = w and w.proj or "ball"
 		live[f.id] = { part = shape(kind, tonumber(f.r)), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0, r = tonumber(f.r) }
+		if kind == "bowl" then loopOn(live[f.id].part, "bowl_roll") end -- (batch D: the ball's roll, wherever it goes)
 		if kind == "arrow" then
 			local part = live[f.id].part
 			tint(part, f.tip)
@@ -215,6 +227,8 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			elseif kind == "peel" then Fx.impact(at, Vector3.yAxis, nil, Enum.Material.SmoothPlastic, { hole = false, scale = 0.8 }); Sfx.play("bonk", at, 0.8)
 			else Fx.impact(at, Vector3.yAxis, nil, Enum.Material.Fabric, { hole = false, scale = 0.6 }) end
 		end
+	elseif k == "bowlstrike" and typeof(f.p) == "Vector3" then
+		Sfx.play("bowl_strike", f.p, 1) -- (batch D: three down)
 	elseif k == "peel" and type(f.id) == "number" and typeof(f.p) == "Vector3" then
 		local m = kit("w_pj_peel")
 		local part: BasePart

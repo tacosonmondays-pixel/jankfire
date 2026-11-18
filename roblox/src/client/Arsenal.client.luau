@@ -818,7 +818,11 @@ Keys.began(function(io: InputObject, gp: boolean)
 			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
 			Sfx.play(W[held].snd or "click")
 		elseif W[held] and W[held].gavel then -- (batch D: the Scales of Justice's pillar of light)
-			if not Body.stunned() then minigun.trick("Gavel", nil, 0.3) end
+			if not Body.stunned() then
+				minigun.trick("Gavel", nil, 0.3)
+				local raise = (VM :: any).raise -- (the hold session's pose: the scales up and out, tipped up)
+				if raise then raise(0.6) end
+			end
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then if W[held] and W[held].hands == 2 then minigun.reloadBoth() else reload() end
 	end

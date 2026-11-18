@@ -239,7 +239,12 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			fire.Size = 4; fire.Heat = 6; fire.Color = Color3.fromRGB(255, 120, 40); fire.SecondaryColor = Color3.fromRGB(255, 200, 80)
 			fire.Parent = r
 			task.delay(dur, function() fire.Enabled = false; task.delay(1, function() fire:Destroy() end) end)
-			Sfx.play("flame_burn", r.Position, 0.7)
+			local lib = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireSounds")
+			local src = lib and lib:FindFirstChild("flame_burn") -- (a loop: cloned onto them for the burn, then gone)
+			if src and src:IsA("Sound") then
+				local c = src:Clone(); c.Looped = true; c.Parent = r; c:Play()
+				task.delay(dur, function() c:Destroy() end)
+			end
 		else
 			local a = Instance.new("Attachment"); a.Position = Vector3.new(0, 3.5, 0); a.Parent = r
 			local pe = Instance.new("ParticleEmitter")
@@ -270,7 +275,9 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local dur = tonumber(f.dur) or 4.5
 		game:GetService("TweenService"):Create(ball, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1 }):Play()
 		task.delay(dur, function() ball:Destroy() end)
-		Sfx.play("gas_hiss", f.p :: Vector3, 0.8)
+		local lib = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireSounds")
+		local src = lib and lib:FindFirstChild("gas_hiss") -- (a loop: on the cloud, gone with it)
+		if src and src:IsA("Sound") then local c = src:Clone(); c.Looped = true; c.Parent = ball; c:Play() end
 	elseif f.k == "tvpause" and typeof(f.model) == "Instance" then
 		-- (weapons batch D) the TV Remote's pause: they go grey and still for the pause
 		local m = f.model :: Instance

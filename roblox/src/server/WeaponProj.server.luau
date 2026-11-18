@@ -275,7 +275,8 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 			Fight.hurt(t, w.dmg, pr.owner, pr.wid, false, kb, at)
 			if first then
 				pr.victims = (pr.victims or 0) + 1
-				if pr.victims == 2 then callout(pr.owner, "SPARE", 1.0) elseif pr.victims == 3 then callout(pr.owner, "STRIKE", 1.2) end
+				if pr.victims == 2 then callout(pr.owner, "SPARE", 1.0)
+				elseif pr.victims == 3 then callout(pr.owner, "STRIKE", 1.2); fx("bowlstrike", { p = at }) end
 			end
 		end
 		pr.v *= 0.85
