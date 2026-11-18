@@ -73,7 +73,6 @@ R.JUMP_GLOW = 4
 -- the hub egg's hiding place (18 Nov; the egg is training-v2's, Map.Hub.HubEgg): the gallery window over this side is an
 -- opening { half its width, its sill, its head } into a little room on the lounge's roof (HubRotundaCentre)
 R.EGG_SIDE, R.EGG_NICHE = 8, { 2.3, 17, 23.4 }
-R.JUMP_COLUMN = 1.8 -- (and its light column's: narrower than the pad, so it stays out of the walks to the outer lifts)
 -- where you appear: { x, d } in the lounge's frame (side 7: x to the right as you look out of the round room, d out)
 R.SPAWNS = { { -3.6, 39.2 }, { -1.2, 39.2 }, { 1.2, 39.2 }, { 3.6, 39.2 }, { -3.6, 41.6 }, { -1.2, 41.6 }, { 1.2, 41.6 }, { 3.6, 41.6 } } -- (far enough back that the first look takes in all three arches)
 -- where the lifts must all be framed from: the platform's south edge, where you come out onto it from the lounge (the
@@ -1116,7 +1115,10 @@ for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM ove
 	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target at the gym's far end", "Target", true } } do table.insert(R.SIGHTS, w) end
 -- what every spawn point must show on the first look out of the lounge (any one of each group's parts, by name in
 -- Scenery or a pad): the way to the pads and the way up
-R.FIRST_LOOK = { { "the name over the middle lift", "GalleryName" }, { "a jump pad's light column", "JumpColumn" }, { "a lit doorway into the second floor", "UpperGlowHead" },
+-- (a group's second field may name several parts, "A|B": any one of them will do. 18 Nov, the owner: "I dont like the
+-- pillar of light from the teleporter", so the jump pads' light column is gone; from the spawn the pads' ring and the
+-- UPSTAIRS boards are behind the piers, so the way up there is the lit doorways)
+R.FIRST_LOOK = { { "the name over the middle lift", "GalleryName" }, { "a lit doorway into the second floor", "UpperGlowHead" },
 	{ "the 2V2 lift's pad", "pad:2v2" } }
 -- the second floor: its walk stays clear; inside it no ray gets out
 do
@@ -1432,7 +1434,9 @@ function R.check(stage)
 				for _, c in pad:GetChildren() do if c:IsA("BasePart") and c.Name:sub(1, 4) == "Side" then table.insert(list, { c, c.Position, pad }) end end
 			end
 		else
-			for _, q in room.Scenery:GetChildren() do if q.Name == g[2] and q:IsA("BasePart") then table.insert(list, { q, q.Position, nil }) end end
+			local names = {}
+			for n in g[2]:gmatch("[^|]+") do names[n] = true end
+			for _, q in room.Scenery:GetChildren() do if names[q.Name] and q:IsA("BasePart") then table.insert(list, { q, q.Position, nil }) end end
 		end
 		if #list == 0 then table.insert(issues, "SIGHT: nothing called " .. g[2] .. " for the first look") end
 		table.insert(groups, { g[1], list })

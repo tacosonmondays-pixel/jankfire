@@ -1718,7 +1718,7 @@ Plan picture: `roblox/docs/hub/hub_lounge_plan.jpg`. Photos from the Play test: 
   - `HubArrive` (training's way home) stays in the round room by the armory.
 
 **Upstairs, obvious:**
-- The jump pads: an accent ring (`JumpGlow`, with a light) round each pad, and a light column (`JumpColumn`, `R.JUMP_COLUMN`) up past the balcony. The column is kept narrow so it stays out of the walks to the outer lifts.
+- The jump pads: an accent ring (`JumpGlow`, with a light) round each pad. Their light column up past the balcony (`JumpColumn`) was taken out the same day (owner: "I dont like the pillar of light from the teleporter", place version 889). From the spawn the way up is the lit doorways (`R.FIRST_LOOK`); the rings and the UPSTAIRS boards are behind the piers from there.
   - Both breathe on your screen: `HubLife.client`'s new `HubBreathe` tag, with attributes `BreatheLo`, `BreatheHi` and `BreathePeriod`, and the light following.
 - The UPSTAIRS boards (HubRotundaLifts, the end): on the gallery wall over each jump pad, in a banner's place. Each lists the pads that jump pad leads to (east: 7, 6, 5, 4; west: 1, 2, 3) with live counts.
   - Each row is a part named `Mirror` inside its pad's model, so `Matches.padSign` writes the count on it as on the pad's own board.

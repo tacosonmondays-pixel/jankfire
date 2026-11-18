@@ -226,13 +226,12 @@ return function(B, R)
 	for _, i in { 3, 11 } do
 		local F = B.side(i)
 		B.jump(F, 0, 0, 18.2, 0, Vector3.new(0, 58, 6.2)) -- (6.2 out: you land mid-balcony, by the doorway, not against the wall) -- (the pad's arrows point away from its front: at the balcony)
-		-- (18 Nov, the way up made obvious: a ring of the accent round the pad with a light in it, and a soft column of light
-		-- from it up past the balcony's edge. HubLife.client breathes both, tag HubBreathe: see-through between BreatheLo
-		-- and BreatheHi, BreathePeriod s a breath, the light with it)
+		-- (18 Nov, the way up made obvious: a ring of the accent round the pad with a light in it. HubLife.client breathes
+		-- it, tag HubBreathe: see-through between BreatheLo and BreatheHi, BreathePeriod s a breath, the light with it. Its
+		-- light column up past the balcony went the same day, the owner: "I dont like the pillar of light from the teleporter")
 		local ring = B.cyl(F, C, "JumpGlow", 0, -0.07, 0.13, 18.2, 2 * R.JUMP_GLOW, ACCENT, Neon, { ghost = true, tr = 0.2 })
 		local gl = Instance.new("PointLight"); gl.Color = Color3.fromHex(ACCENT); gl.Range = 12; gl.Brightness = 1.2; gl.Shadows = false; gl.Parent = ring
-		local col = B.cyl(F, C, "JumpColumn", 0, 0.2, R.UP_Y + 4, 18.2, 2 * R.JUMP_COLUMN, ACCENT, Neon, { ghost = true, tr = 0.88 })
-		for _, q in { { ring, 0.1, 0.5 }, { col, 0.84, 0.93 } } do
+		for _, q in { { ring, 0.1, 0.5 } } do
 			q[1]:SetAttribute("BreatheLo", q[2]); q[1]:SetAttribute("BreatheHi", q[3]); q[1]:SetAttribute("BreathePeriod", 2.6)
 			Tags:AddTag(q[1], "HubBreathe")
 		end
