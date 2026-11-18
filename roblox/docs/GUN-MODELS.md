@@ -1014,6 +1014,67 @@ unchanged.
 - No display name carries "Tripo": the four are the Royal Duck SMG, Katana, Sniper and Pistol (`SkinSets.SKINS`, the
   shop's file). Their ids keep `_tripo`.
 
+## The Seraph set wears the headliner's wings (18 November 2026, live in place version 946)
+
+The owner: "can you take the wings from the finished seraph weapon and put it on the others so they all have the same
+quality?" The headliner is the Seraph Rifle (`ar_seraph_tripo`, the owner's cleaned Tripo angel rifle, live as v6). The
+Seraph Sniper, Burst Rifle, Pistol and Katana now wear its rear wings: the very meshes, not a copy of the shape.
+
+**What a wing is.** On the rifle, each rear wing is four pieces:
+- `rwing_wzA__wing`: the pearl feathers;
+- `rwing_wzN__gold`: the gold covert band;
+- `rwing_wzN__lit`: the lit gold lines;
+- `rwing_wzN__shade`: the Route S shade shell, a skin 1 mm over the feathers wearing the rifle's shade picture.
+
+The live rifle's finish is the shade shell, not the `tripo_bake.py` maps: those were baked for it but never installed.
+So the four match the live rifle exactly, and no new picture was uploaded.
+
+**How they sit** (`tools/roblox/gun_sets_seraph_wings.py`, table `WINGS`). Each wing sits as on the rifle: its inner
+side and root are sunk into the flank (on the rifle the root is buried 2 cm in the receiver).
+- **Sniper and burst:** the pair on the stock's flanks behind the grip, full size, tilted 4° and 2° to the stock's line.
+- **Pistol:** a pair at 0.45 size on the slide's flanks (node `slide`, so they kick with it).
+- **Katana:** a pair at 0.45 size at the guard, one straight up and one straight down, perpendicular to the blade.
+  The lower wing is the upper one mirrored, made by turning the rifle's other wing, so no mesh is mirrored.
+
+All the eagle wings come off, the small front ones too (slots v1, v2, v3, bone, wglow, arm, cov). The rest of each gun
+is its live body, checked piece for piece against the live build: identical.
+
+**Building and uploading:**
+- The build (`gun_set.py`, which now loads the module by default) reads the rifle's upload from the vault
+  (`Assets/tripo-17nov/angel-rifle/live/`) at build time. Without it the four build as before.
+- `export_weapons.py` exports as usual. Then `gun_sets_seraph_wings.py -- splice` swaps the four wing pieces for the
+  rifle's own meshes, moved by the same matrices: their UVs (the shell's onto the shade picture), their normals, and
+  the shell 1 mm over the feathers at any size. The glb stays out of git.
+- In the place the shade pieces wear a copy of the rifle's shade SurfaceAppearance (NoWrap). Feathers and gold take
+  wraps, as on the rifle.
+- The pieces are named `rwing_*` (`slide_*` on the pistol), with slots `wing`, `wgold`, `lit` and `shade`. They rise
+  above the sight line, so the hold hides them while aiming (`holds.json` `ads.skins`).
+
+**Two traps:**
+- **gun_zfix's scale moves with the gun's length.** The eagle wings made the sniper and burst longer. On the shorter
+  guns `gun_zfix`'s display scale rose, it found more small pairs, and it lifted the burst's carry-handle rings 1.4 mm
+  under the hat seat (hat body clip 4.3 mm). The module pins each of the four to the scale it had with the eagle wing.
+- **Book rows need the upload's real bounds.** The build's bounds include the shell that `gun_zfix` pushed out; the
+  splice puts it back. So the kit book rows take the upload's own bounds (the burst's x was 7 mm off otherwise).
+
+**Checked:**
+- `gun_check`: 0 loose on all four.
+- **Flicker:** at each gun's display scale, 0 pairs that don't involve a shade shell. The shell pairs follow the live
+  rifle's pattern (it has 29 to 60). At hand scale only the live bodies' own pairs show (scope trim, stock gold,
+  grip and mag).
+- All 12 hats clean in first and third person, the same as the committed rows.
+- **In hand (place version 946, solo Play):**
+  - first person: the pistol's wing shows on the slide's left flank, and the katana's pair spreads from the guard;
+  - the sniper's and the burst's wings sit on the stock, behind the first-person frame. They show in third person, the
+    loadout and the armory; moving them forward onto the receiver would put them in view.
+- **Triangles:** sniper 24,928 to 8,445; burst 25,580 to 9,097; pistol 9,044 to 7,401; katana 12,608 to 5,773. The eagle
+  wings were heavy.
+- **Assets:** sniper 103079006719951, burst 87644728838294, pistol 118697438854619, katana 111793118831861. The
+  committed book carries their rows (`assets.json`, `export_report.json`, `WeaponKit.luau`). The committed glbs of the
+  four are the old eagle builds: the live ones carry Tripo wings, so they stay local.
+- **Effects:** the rifle's wing effects (feather sheds, lit-loop twinkles, the wing vine, the tip trail) moved through
+  the same matrices are in the notes folder's `seraph-wing-fx-points.json`, for the VFX session's `SkinSets.FX` rows.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
