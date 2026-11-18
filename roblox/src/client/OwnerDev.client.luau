@@ -14,7 +14,7 @@
 --       invisible: DevInvisible (the server hides the body): your own client draws a faint ghost of you (DevWas)
 --     everyone's too: the red card (DevFx): the owner's arm up with a card, a whistle, a red card on the target's screen;
 --     a gift's toast ("GIFT · 5 CRATES")
---     the GIFT tab: give anyone (or you) containers in any number, bundles, items, coins, Brass, tickets, VIP
+--     the GIFT tab: give anyone (or you) containers in any number, bundles, items, Brass (the coins), tickets, VIP, Robux weapons
 --     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); X flings, Z freezes or
 --     lets go and Y shows a red card to whoever you look at. it works everywhere, matches too: a match a power touches counts for nothing (the
 --     server flags it; the status line says so)
@@ -814,7 +814,7 @@ do
 	-- coins, Brass, Crate Tickets: any amount
 	do
 		local P = kindPage.CURRENCY
-		for i, c in { { "coins", "COINS" }, { "brass", "BRASS" }, { "tickets", "CRATE TICKETS" } } do
+		for i, c in { { "brass", "BRASS (COINS)" }, { "tickets", "CRATE TICKETS" } } do
 			local y = (i - 1) * 56
 			label(P, "L_" .. c[1], c[2], 0, y + 6, 160)
 			local b = box(P, "N_" .. c[1], "", UDim2.fromOffset(170, y), 160, "how many")
@@ -827,12 +827,21 @@ do
 		end
 	end
 
-	-- VIP for good
+	-- VIP for good, and the Robux weapons (kept for good)
 	do
 		local P = kindPage.VIP
 		local g = button(P, "GiveVip", "GIVE VIP", UDim2.fromOffset(0, 0), 170, 34)
 		lit(g, true)
 		g.Activated:Connect(function() give("vip", nil, 1, "VIP") end)
+		label(P, "WeaponsHead", "ROBUX WEAPONS", 0, 56, 200)
+		local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
+		local ids = {}
+		for wid in (Unlocks.ROBUX or {}) :: any do if Roster.byId[wid] then table.insert(ids, wid) end end
+		table.sort(ids)
+		for i, wid in ids do
+			local b = button(P, "W_" .. wid, string.upper(Roster.byId[wid].name), UDim2.fromOffset(((i - 1) % 4) * 160, 78 + ((i - 1) // 4) * 36), 150)
+			b.Activated:Connect(function() give("weapon", wid, 1, Roster.byId[wid].name) end)
+		end
 	end
 
 	local kind = "CONTAINERS"

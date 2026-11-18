@@ -458,9 +458,9 @@ end
 --   bundle (a shop bundle or skin set, whole)     Loot.grant(p, bundleId, receipt)
 --   item (a wrap, hat, skin, kill effect, emote, grapple or card look; wraps and hats on every gun)
 --                                                 Loot.grant(p, "gift:<kind>:<id>", receipt)
---   brass / tickets (any amount)                  Quests.gift(p, brass, tickets, receipt)
---   coins (any amount)                            Coins.give(p, n, reason, receipt)   (the shop's, when it's in)
---   vip (for good)                                Vip.grant(p, reason)                (the shop's, when it's in)
+--   brass ("coins": the same thing) / tickets     Quests.gift(p, brass, tickets, receipt)
+--   vip (for good)                                Vip.gift(p, true)                   (the shop's: saved in JankfireVip)
+--   weapon (a Robux one: Unlocks.ROBUX)           Purchases.giveWeapon(p, wid, "gift", receipt)   (the shop's)
 -- the receiver gets a plain toast ("GIFT · 5 CRATES", DevFx "gift"). every gift is written to a gift log (giver,
 -- receiver, what, how many, when: user ids only) in its own store, Studio apart from live. a gift in a match flags
 -- nothing: it doesn't change the fight
@@ -534,7 +534,8 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 			return { ok = false, why = "not given (their loot save isn't ready, or that can't be gifted)" }
 		end
 		label, what, qty = string.upper(info.name), "item:" .. tostring(id), 1
-	elseif kind == "brass" or kind == "tickets" then
+	elseif kind == "brass" or kind == "coins" or kind == "tickets" then
+		if kind == "coins" then kind = "brass" end -- (coins are Brass: the shop's word, 18 Nov)
 		qty = count(n, 1000000)
 		if not qty then return { ok = false, why = "how many" } end
 		local Q = mod("Quests")
@@ -543,21 +544,23 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		if not ok then return { ok = false, why = tostring(why) } end
 		label = ("%d %s"):format(qty, if kind == "brass" then "BRASS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
 		what = kind :: string
-	elseif kind == "coins" then
-		qty = count(n, 10000000)
-		if not qty then return { ok = false, why = "how many" } end
-		local C = mod("Coins")
-		if not C or type(C.give) ~= "function" then return { ok = false, why = "coins aren't in yet" } end
-		local ok, why = C.give(to, qty, "owner gift", receipt(to))
-		if not ok then return { ok = false, why = tostring(why or "not given") } end
-		label, what = ("%d COINS"):format(qty), "coins"
 	elseif kind == "vip" then
 		local V = mod("Vip")
-		if not V or type(V.grant) ~= "function" then return { ok = false, why = "VIP gifts aren't in yet" } end
+		if not V or type(V.gift) ~= "function" then return { ok = false, why = "VIP gifts aren't in yet" } end
 		if V.isVip(to) then return { ok = false, why = "already VIP" } end
-		local ok, why = V.grant(to, "owner gift")
+		local ok, why = V.gift(to, true)
 		if not ok then return { ok = false, why = tostring(why or "not given") } end
 		label, what, qty = "VIP", "vip", 1
+	elseif kind == "weapon" then
+		local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
+		local Roster = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Roster")) :: any
+		local e = type(id) == "string" and Roster.byId[id]
+		if not e or not (type(Unlocks.robux) == "function" and Unlocks.robux(id)) then return { ok = false, why = "not a Robux weapon" } end
+		local Pu = mod("Purchases")
+		if not Pu or type(Pu.giveWeapon) ~= "function" then return { ok = false, why = "weapon gifts aren't in yet" } end
+		local ok, why = Pu.giveWeapon(to, id :: string, "gift", receipt(to))
+		if not ok then return { ok = false, why = tostring(why or "not given") } end
+		label, what, qty = string.upper(e.name), "weapon:" .. (id :: string), 1
 	else
 		return { ok = false, why = "nope" }
 	end

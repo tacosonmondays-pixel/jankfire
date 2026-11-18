@@ -216,14 +216,15 @@ local function catalog(): any
 	return if ok and type(c) == "table" then c else nil
 end
 
-local function addStock(s: State, grant: { [string]: number })
+local function addStock(s: State, grant: { [string]: number }, uncapped: boolean?)
 	local d = (s.prof :: Profiles.Profile).data
 	for kind, n in grant do
 		if LootTable.CONTAINERS[kind] and type(n) == "number" and n > 0 then
 			local have = (tonumber(d.stock[kind]) or 0) + math.floor(n)
 			-- while containers are free (LOOT_FREE) a "buy" costs nothing: keep that stock small, or a script spamming
 			-- "buy" builds a saved hoard that still opens once they cost robux (the anti-cheat audit, 17 Nov 2026)
-			if Config.LOOT_FREE then have = math.min(have, BUY_MAX) end
+			-- (uncapped: a server grant with a count, the owner's GIFT: OwnerDev.server. never a client's "buy")
+			if Config.LOOT_FREE and not uncapped then have = math.min(have, BUY_MAX) end
 			d.stock[kind] = have
 		end
 	end
@@ -231,10 +232,10 @@ end
 
 -- a shop offer, given: a container = one more in stock (n of them), a bundle / single = its items (the ones you lack).
 -- returns the items it gave
-local function grantOffer(s: State, o: any, n: number?): { LootTable.Item }
+local function grantOffer(s: State, o: any, n: number?, uncapped: boolean?): { LootTable.Item }
 	local got = {}
 	if o.type == "container" then
-		if LootTable.CONTAINERS[o.id] then addStock(s, { [o.id] = n or 1 }) end
+		if LootTable.CONTAINERS[o.id] then addStock(s, { [o.id] = n or 1 }, uncapped) end
 		return got
 	end
 	local c = catalog()
@@ -591,7 +592,10 @@ end
 -- the shop's ShopReceipts.server.luau owns Roblox's prompt and ProcessReceipt (one script may set it); when a receipt
 -- comes it calls Loot.grant. a purchase only counts once it is written: the purchase id is saved with what it gave, so
 -- a receipt Roblox sends twice (a crash before it heard back) gives once. false = not written: Roblox asks again later
-function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
+-- (n, 18 Nov 2026, the owner's GIFT tab: that many of a container in one write under the one receipt, past the free
+-- mode's stock cap; 1 to 999. ignored for anything else. Loot.GRANT_COUNT says this module takes it)
+Loot.GRANT_COUNT = true
+function Loot.grant(p: Player, offerId: string, purchaseId: any, n: number?): boolean
 	local s = st[p]
 	if not s or not s.ready or not s.prof or (s.prof.state ~= "cloud" and s.prof.state ~= "off") then return false end
 	local prof = s.prof :: Profiles.Profile
@@ -629,7 +633,8 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
 	local before = { stock = table.clone(d.stock), inv = {} :: any,
 		every = if type(d.every) == "table" and type(d.every.wrap) == "table" then table.clone(d.every.wrap) else nil }
 	for t, list in d.inv do before.inv[t] = table.clone(list) end
-	grantOffer(s, o, 1)
+	local count = if type(n) == "number" and n == n then math.clamp(math.floor(n), 1, 999) else nil
+	grantOffer(s, o, count or 1, count ~= nil)
 	table.insert(d.receipts, id)
 	while #d.receipts > 100 do table.remove(d.receipts, 1) end
 	prof.dirty = true

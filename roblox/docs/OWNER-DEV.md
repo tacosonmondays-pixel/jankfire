@@ -95,12 +95,12 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 
 | Kind | Server call |
 |---|---|
-| Crates, Duffel Bags, Spray Cans, 1 to 999 | `Loot.grant(p, id, receipt, n)`: one write, one receipt, once the loot module takes a count (`Loot.GRANT_COUNT`). Until then, `Loot.grant` once per box, 25 at a time. |
+| Crates, Duffel Bags, Spray Cans, 1 to 999 | `Loot.grant(p, id, receipt, n)`: one write, one receipt, past the free mode's stock cap of 10. The count is the loot module's (`Loot.GRANT_COUNT`, agreed with shop-gui); a client's "buy" stays capped. |
 | A shop bundle or skin set, whole | `Loot.grant(p, bundleId, receipt)` |
 | One item from the searchable list (skins, wraps, hats, kill effects, emotes, grapples, card looks) | `Loot.grant(p, "gift:<kind>:<id>", receipt)`. Wraps and hats go on every gun. |
-| Brass and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
-| Coins, any amount | the shop's coins call (`Coins.give`) once coins are in |
-| VIP, for good | the shop's `Vip.grant` once it's in |
+| Brass (the coins: the same currency) and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
+| VIP, for good | `Vip.gift(p, true)` (the shop's): saved on the player's key in `JankfireVip` |
+| A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | `Purchases.giveWeapon(p, wid, "gift", receipt)` (the shop's) |
 
 - **The receiver** sees one plain line at the top of the screen for 3.5 s, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
 - **The gift log:** every gift is written to DataStore `JankDevGifts_v1` (`JankDevGifts_v1_studio` in Studio), key `log`, last 500: when, giver, receiver (user ids only), what, how many. It's printed to the server log too.
@@ -185,7 +185,13 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 
 **GIFT, place version 1015** (solo Play on the owner's `_studio` saves):
 - Gifted to yourself: 3 Crates (stock 0 → 3), the Night Shift bundle, a kill effect, 500 Brass and 2 Crate Tickets. Each answered ok and showed its toast; the HUD showed the Brass and tickets.
-- Coins and VIP answered "not in yet": they wait for the shop's `Coins.give` and `Vip.grant`.
+- VIP and Robux weapons answered "not in yet": they wait for the shop's `Vip.gift` and `Purchases`, coming with its next install.
 - Afterwards the three saves (loot, quests, VIP) were put back exactly from a snapshot taken before Play, and an uncached read-back compared equal.
 - Containers go one grant per box (at most 25 at a time) until the loot module takes a count (`Loot.GRANT_COUNT`).
 - Photo: `gift_tab_v1015.jpg`.
+
+**GIFT round 2, place version 1026:**
+- 50 Crates and 12 Duffel Bags landed in one write each, past the free mode's stock cap of 10.
+- "Coins" gave 500 Brass.
+- VIP and a Robux weapon answered "not in yet": shop-gui's `Vip.gift` and `Purchases` weren't installed in Studio yet.
+- The owner's `_studio` saves were restored exactly afterwards.
