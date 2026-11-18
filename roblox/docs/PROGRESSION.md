@@ -33,6 +33,7 @@ player attribute `Level` carries it. The player card shows it.
 | 8 | 1,960 | Lever Rifle, Bubble Wand |
 | 9 | 2,560 | Marble Shotgun, Instant Camera, Slipper |
 | 10 | 3,240 | Redline, Reverse Card |
+| 11 | 4,000 | Card Deck |
 | 12 | 4,840 | Auto Shotgun, Pop Quiz, Bow |
 | 13 | 5,760 | Tennis Ball Launcher |
 | 14 | 6,760 | Bread, Night Vision Goggles, Scythe (melee; the owner asked for it on 18 Nov) |
@@ -41,18 +42,18 @@ player attribute `Level` carries it. The player card shows it.
 | 17 | 10,240 | Hot Sauce |
 | 18 | 11,560 | Nail Gun, Laptop |
 | 19 | 12,960 | Leaf Blower |
-| 20 | 14,440 | Shredder |
+| 20 | 14,440 | Shredder, Lasso |
 | 21 | 16,000 | Blood Cross |
 | 22 | 17,640 | Bowling Ball Launcher |
 | 23 | 19,360 | TV Remote |
 | 24 | 21,160 | Scales of Justice |
+| 25 | 23,040 | Shopping Cart Cannon |
 
-Level 24 takes about 85 matches. The weapons batches C (place version 835) and D (870) brought the Snowball, Slipper,
+Level 25 takes about 92 matches. The weapons batches C (place version 835) and D (870) brought the Snowball, Slipper,
 Bow, Tennis Ball Launcher, Peel Shooter, Taser, Hot Sauce, Leaf Blower, Blood Cross, Bowling Ball Launcher, TV Remote and
-Scales of Justice live at the levels they'd been given.
-
-Not on Roblox yet, with levels ready for when they go live: Card Deck 11, Lasso 20, Shopping Cart Cannon 25. A weapon
-that isn't live shows in no lock and no level-up list (`Unlocks.at` takes the live ones).
+Scales of Justice live at the levels they'd been given. Batch E (891) brought the last three: the Card Deck, the Lasso
+and the Shopping Cart Cannon. Every ported weapon is now on Roblox. A weapon that isn't live shows in no lock and no
+level-up list (`Unlocks.at` takes the live ones).
 
 The new loadout default is the level-1 kit: Assault Rifle, Pistol, Katana, Frag Grenade. Until 18 Nov it was the
 Redline and the Marble Shotgun.
@@ -60,8 +61,7 @@ Redline and the Marble Shotgun.
 ## The Robux weapons
 
 `Unlocks.ROBUX`: **Minigun**, **Big Laser Pointer**, **Chicken Rocket**, **Lefty & Righty**. These are the flashiest
-signature weapons. The Minigun, the Big Laser Pointer and the Chicken Rocket are on Roblox. Lefty & Righty waits for its
-two-gun view, with its mark ready.
+signature weapons. All four are on Roblox: Lefty & Righty went live with batch E (place version 891).
 
 All four stay Robux exclusives (18 Nov, shop-gui's call when weapons batches C and D went live). A pass id of 0 blocks
 nobody while the switch below is on: everyone can pick them at any level now. They don't get a level as well.
@@ -120,5 +120,9 @@ server's Level set to 1, so it showed what a fresh level-1 player sees:
   Slipper at 9, Bow at 12, Tennis Ball Launcher at 13, Scythe at 14, Peel Shooter and Taser at 15, Hot Sauce at 17, Leaf
   Blower at 19, then Blood Cross, Bowling Ball Launcher, TV Remote and Scales of Justice at 21 to 24), and nothing at
   11 or 25. The Chicken Rocket and Lefty & Righty pass the check at level 1.
+
+- **Batch E** (Edit, place version 892): the Card Deck lists at 11, the Lasso at 20 beside the Shredder, the Shopping
+  Cart Cannon at 25. Lefty & Righty is a Robux weapon and passes the check at level 1. No roster weapon is left not
+  live.
 
 Not tested: a real XP gain to the next level (the level was set by hand), the phone, a player with no save at all, and the LV chip at a level the XP agrees with.

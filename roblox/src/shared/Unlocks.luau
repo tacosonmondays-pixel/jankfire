@@ -30,6 +30,7 @@ Unlocks.LEVEL = {
 	marbles = 9, camera = 9, slipper = 9,
 	-- the specials and the fun ones later
 	redline = 10, reverse = 10,
+	cards = 11,
 	autoshot = 12, quiz = 12, bow = 12,
 	tennis = 13,
 	bread = 14, nvg = 14, scythe = 14, -- (the Scythe: the owner asked for it, 18 Nov, and main for a mid-high level)
@@ -38,10 +39,10 @@ Unlocks.LEVEL = {
 	cig = 17,
 	nailgun = 18, laptop = 18,
 	blower = 19,
-	shredder = 20,
+	shredder = 20, lasso = 20,
 	bloodcross = 21, bowling = 22, remote = 23, scales = 24,
-	-- not on Roblox yet (18 Nov, place version 870): their levels wait for the day they go live
-	cards = 11, lasso = 20, cart = 25,
+	cart = 25,
+	-- (every ported weapon is live since place version 891. a weapon that isn't live shows in no lock or level-up list)
 } :: { [string]: number }
 
 -- the Robux exclusives: { pass = the game pass id (0: not made yet) }. a pass of 0 blocks nobody while the switch above
@@ -50,7 +51,7 @@ Unlocks.ROBUX = {
 	minigun = { pass = 0 },
 	laser = { pass = 0 }, -- Big Laser Pointer
 	chicken = { pass = 0 }, -- Chicken Rocket
-	akimbo = { pass = 0 }, -- Lefty & Righty (not on Roblox yet: it waits for its two-gun view)
+	akimbo = { pass = 0 }, -- Lefty & Righty
 } :: { [string]: { pass: number } }
 
 function Unlocks.level(wid: string): number
