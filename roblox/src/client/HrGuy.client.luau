@@ -174,6 +174,22 @@ LoreR.OnClientEvent:Connect(function(op: string)
 	if okSfx and Sfx and Sfx.play then pcall(Sfx.play, BOOM, nil, 0.8, 0.7) end
 end)
 
+-- ------------------------------------------------------------------ revealed? (18 Nov 2026: hidden until you call him)
+-- he's only there for you once LoreSeen (the server's attribute) lists "hr": to anyone else he's not drawn, makes no
+-- step or drone, and the server doesn't count their looks either (HrGuy.server's knows)
+local knows = false
+local function readSeen()
+	local s = me:GetAttribute("LoreSeen")
+	knows = type(s) == "string" and string.find("," .. s .. ",", ",hr,", 1, true) ~= nil
+end
+readSeen()
+me:GetAttributeChangedSignal("LoreSeen"):Connect(readSeen)
+local hiddenFor: Hr? = nil -- (the visit whose parts are hidden here right now)
+local function hideHr(h: Hr, hide: boolean)
+	for _, pc in h.pieces do pc.part.LocalTransparencyModifier = if hide then 1 else 0 end
+	hiddenFor = if hide then h else nil
+end
+
 -- ------------------------------------------------------------------ every frame
 local shown = 0
 local lastSend, lastRootPos = 0, Vector3.zero
@@ -196,6 +212,12 @@ RunService.RenderStepped:Connect(function(dt)
 		LookR:FireServer(cam.CFrame.Position, cam.CFrame.LookVector)
 	end
 	local k, near = 0, 0
+	if h and not knows then
+		if hiddenFor ~= h then hideHr(h, true) end
+		h = nil
+	elseif h and hiddenFor == h then
+		hideHr(h, false)
+	end
 	if h and h.root and h.model.Parent then
 		-- pose him when he's moved or changed pose
 		local seed = h.model:GetAttribute("Pose")

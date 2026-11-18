@@ -11,13 +11,38 @@
 -- remote tells your screen to have them say their gift line.
 -- The player's attributes: LoreFound (how many), LoreList (their ids, comma separated), LoreTotal (how many there are):
 -- the profile card shows "n / N" (ProfileUI); nothing else nags.
--- Remote JankfireRemotes.Lore (server -> client): ("found", id, firstTime), ("hrtake", at) from HrGuy.server.
+-- HIDDEN UNTIL ITS CODE (18 Nov 2026, the owner: "Can jankfire npc's be hidden unless you do a very specific thing",
+-- then "there should be a control panel somewhere that you type in jank actually make codes and every code spawns in
+-- an NPC, ill give the codes weekly by weekly at some point"): every NPC, and the hub egg's mannequin ("egg"), is gone
+-- for you (LoreLife.client hides it) until you type its code at the code panel (workspace.Map.Lore.CodePanel, built by
+-- PolishBackup.LoreSpots). The code is checked here against LoreCodeBook (salted hashes and opening days only; the
+-- plain codes live in the owner's vault), wrong tries are rate-limited (CODE_TRIES, then CODE_WAIT seconds, saved), and
+-- each redemption is logged (the save's `codes`, and the server log). A right code reveals it for you for good (saved:
+-- `seen`; the player attribute LoreSeen lists them), spawns it in beside the panel on your screen alone, and counts as
+-- finding it (its gift and title as before; the egg's OG title goes through HubEgg.server's ServerStorage.HubEggFind).
+-- Then it lives at its own spot for you. (A find counts as seen too. The first idea, a secret action per NPC at its
+-- spot, is written and parked: LoreTriggers.luau, behind TRIGGERS_ON.)
+-- Remote JankfireRemotes.LoreCode (RemoteFunction, made here): ("try", text) -> { ok = true, id, again? } |
+-- { ok = false, why = "wrong" | "wait" | "far" | "busy" | "loading", wait = seconds, left = tries }
+-- Remote JankfireRemotes.Lore (server -> client): ("found", id, firstTime), ("seen", id, how) the moment you reveal one
+-- (how = "code": spawn it in at the panel), ("hrtake", at) from HrGuy.server.
 -- ServerStorage.LoreFindEvent (BindableEvent): (player, id) counts a find that isn't a walk-up (the HR guy's).
+-- ServerStorage.LoreRevealEvent (BindableEvent, fired here): (player, id) when someone reveals one (HrGuy.server: "hr"
+-- means he comes for them).
 -- Studio play tests: ServerStorage.LoreTest (BindableFunction, Studio only):
 --   "state"           every NPC: where, the first player's distance, found or not; the save's state
 --   "find", id        the first player finds them now, wherever they stand
 --   "forget", id?     takes one (or every) find off the first player's save (Studio's _studio store only)
 --   "near", id        moves the first player to stand in front of them (a TeleportT stamp first)
+--   "zone", id        moves the first player into the NPC's trigger Zone, facing its Face (a TeleportT stamp first)
+--   "hide", id?       un-reveals one (or every) NPC for the first player and takes its find off too (_studio only)
+--   "reveal", id      reveals one for the first player now (photos; the real way is its trigger)
+--   "wear", title     sets the first player's CardTitle attribute (what Stats publishes from the save), for title rules
+--   "progress"        what the triggers are counting for the first player (TRIGGERS_ON only)
+--   "code", text      the first player types this at the panel (the real check, nearness skipped)
+--   "clock", days     the server's calendar runs this many days ahead for the codes' opening days (0 = today)
+--   "codes"           each code's NPC, opening day and whether it's open by that calendar
+--   "unlock"          clears the first player's wrong tries and wait
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -27,6 +52,8 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local LoreData = require(Shared:WaitForChild("LoreData")) :: any
 local Profiles = require(script.Parent:WaitForChild("Profiles")) :: any
 local Loot = require(script.Parent:WaitForChild("Loot")) :: any
+local Book = require(script.Parent:WaitForChild("LoreCodeBook")) :: any
+local Sha256 = require(script.Parent:WaitForChild("Sha256")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local CalloutR = Remotes:WaitForChild("Callout") :: RemoteEvent
 local LoreR = Remotes:WaitForChild("Lore") :: RemoteEvent
@@ -35,12 +62,18 @@ local STUDIO = RunService:IsStudio()
 local TICK = 0.4 -- s between reach checks
 local GIFT_WORDS = { grapple = "GRAPPLE", kill = "KILL EFFECT", effect = "EFFECT", hat = "HAT", emote = "EMOTE" }
 local CONTAINER_WORDS = { crate = "+1 CRATE", bag = "+1 DUFFEL BAG", spray = "+1 SPRAY CAN" }
+local TRIGGERS_ON = false -- (the parked first idea: a secret action per NPC, LoreTriggers.luau. codes are the way now)
+local CODE_TRIES, CODE_WAIT, CODE_GAP = 5, 60, 0.5 -- wrong tries before a wait, the wait (s), the least gap between tries
+local PANEL_REACH = 24 -- studs from the panel a try may come from
+-- revealed by a code but not one of LoreData's NPCs: the hub egg's mannequin (HubEgg.server's; not in the LORE count)
+local EXTRA = { egg = true } :: { [string]: boolean }
+local function known(id: any): boolean return type(id) == "string" and (LoreData.counts(id) or EXTRA[id] == true) end
 
 local store = Profiles.new("JankfireLore_v1", function()
-	return { v = 1, found = {} }
+	return { v = 1, found = {}, seen = {}, codes = {}, codeWait = 0 }
 end)
 
-type State = { prof: any?, ready: boolean, busy: { [string]: boolean } }
+type State = { prof: any?, ready: boolean, busy: { [string]: boolean }, wrong: number, lastTry: number, trying: boolean }
 local st: { [Player]: State } = {}
 
 local function lore(): Instance?
@@ -76,15 +109,19 @@ end
 
 local function publish(p: Player)
 	local s = st[p]
-	local n, list = 0, {}
+	local n, list, seen = 0, {}, {}
 	if s and s.prof then
 		for _, id in LoreData.ORDER do
 			if s.prof.data.found[id] then n += 1; table.insert(list, id) end
+			if s.prof.data.seen[id] then table.insert(seen, id) end
 		end
+		for id in EXTRA do if s.prof.data.seen[id] then table.insert(seen, id) end end
 	end
 	p:SetAttribute("LoreTotal", LoreData.total())
 	p:SetAttribute("LoreFound", n)
 	p:SetAttribute("LoreList", table.concat(list, ","))
+	-- (the NPCs your screen may draw: LoreLife hides the rest. a client can't add to this: it's the server's attribute)
+	p:SetAttribute("LoreSeen", table.concat(seen, ","))
 end
 
 -- the gift (and later, the flair session's title for each find: LoreData entries' title ids go through the same door)
@@ -142,6 +179,7 @@ local function find(p: Player, id: string)
 	if d.found[id] then return end
 	s.busy[id] = true
 	d.found[id] = os.time()
+	if not d.seen[id] then d.seen[id] = d.found[id] end -- (a find is a reveal too: the HR guy's)
 	s.prof.dirty = true
 	publish(p)
 	LoreR:FireClient(p, "found", id, true)
@@ -164,10 +202,26 @@ local function find(p: Player, id: string)
 	end)
 end
 
+-- a trigger done: revealed for this player, saved, their screen told (LoreLife fades them in)
+local revealEv = ServerStorage:FindFirstChild("LoreRevealEvent") or Instance.new("BindableEvent")
+revealEv.Name = "LoreRevealEvent"
+revealEv.Parent = ServerStorage
+local function reveal(p: Player, id: string, how: string?)
+	local s = st[p]
+	if not s or not s.ready or not s.prof or not known(id) then return end
+	local d = s.prof.data
+	if d.seen[id] then return end
+	d.seen[id] = os.time()
+	s.prof.dirty = true
+	publish(p)
+	LoreR:FireClient(p, "seen", id, how)
+	;(revealEv :: BindableEvent):Fire(p, id)
+end
+
 -- ------------------------------------------------------------------ players
 local function added(p: Player)
 	if st[p] then return end
-	local s: State = { prof = nil, ready = false, busy = {} }
+	local s: State = { prof = nil, ready = false, busy = {}, wrong = 0, lastTry = -1e9, trying = false }
 	st[p] = s
 	publish(p)
 	local prof = Profiles.load(store, "u" .. p.UserId, function() return p.Parent ~= nil and st[p] == s end)
@@ -175,6 +229,12 @@ local function added(p: Player)
 	if st[p] ~= s then Profiles.release(store, prof); return end
 	if type(prof.data.found) ~= "table" then prof.data.found = {} end
 	for k in prof.data.found do if not LoreData.get(k) then prof.data.found[k] = nil end end -- (one taken out of the game)
+	-- (revealed: anyone who found one before the triggers keeps it revealed)
+	if type(prof.data.seen) ~= "table" then prof.data.seen = {} end
+	for k in prof.data.seen do if not known(k) then prof.data.seen[k] = nil end end
+	for k, t in prof.data.found do if prof.data.seen[k] == nil then prof.data.seen[k] = t end end
+	if type(prof.data.codes) ~= "table" then prof.data.codes = {} end
+	if type(prof.data.codeWait) ~= "number" then prof.data.codeWait = 0 end
 	s.prof = prof
 	s.ready = true
 	publish(p)
@@ -212,11 +272,127 @@ task.spawn(function()
 			local r = rootOf(p)
 			if not r then continue end
 			for id, at in pts do
-				if not s.prof.data.found[id] and inReach(r, at) then find(p, id) end
+				if not s.prof.data.found[id] and s.prof.data.seen[id] and inReach(r, at) then find(p, id) end
 			end
 		end
 	end
 end)
+
+-- ------------------------------------------------------------------ the codes
+-- the panel (LoreSpots builds it into Map.Lore; its place is data there: L.PANEL)
+local function panel(): Model?
+	local f = lore()
+	local m = f and f:FindFirstChild("CodePanel")
+	return if m and m:IsA("Model") then m else nil
+end
+-- each code's opening moment (UTC midnight of its day)
+local opensAt: { [string]: number } = {}
+for _, c in Book.CODES do
+	local y, mo, d = string.match(c.opens, "^(%d+)-(%d+)-(%d+)$")
+	opensAt[c.id] = if y then DateTime.fromUniversalTime(tonumber(y) :: number, tonumber(mo) :: number, tonumber(d) :: number).UnixTimestamp else math.huge
+end
+local clockShift = 0 -- (Studio: LoreTest "clock")
+local function today(): number return os.time() + clockShift end
+local function plain(text: string): string return (string.gsub(string.lower(text), "[^%w]", "")) end
+local function hashOf(code: string): string
+	local h = Sha256.hex(Book.SALT .. ":" .. code)
+	for _ = 2, Book.ITER do h = Sha256.hex(h .. Book.SALT) end
+	return h
+end
+-- the egg's find is HubEgg.server's (the OG title; PetSecrets gives the mini mannequin to whoever owns it)
+local function findEgg(p: Player)
+	local f = ServerStorage:FindFirstChild("HubEggFind")
+	if f and f:IsA("BindableFunction") then
+		local ok, res = pcall(function() return (f :: BindableFunction):Invoke(p) end)
+		if not ok then warn("[jankfire] lore code: the egg's find: " .. tostring(res)) end
+	end
+end
+
+local function tryCode(p: Player, text: unknown, test: boolean?): any
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return { ok = false, why = "loading" } end
+	if s.trying then return { ok = false, why = "busy" } end
+	local z = p:GetAttribute("Zone")
+	if z == "match" or z == "staging" then return { ok = false, why = "far" } end
+	if not test then
+		local m = panel()
+		local r = rootOf(p)
+		if not m or not r or (r.Position - m:GetPivot().Position).Magnitude > PANEL_REACH then return { ok = false, why = "far" } end
+	end
+	local d = s.prof.data
+	local now = os.time()
+	if d.codeWait > now then return { ok = false, why = "wait", wait = d.codeWait - now } end
+	if os.clock() - s.lastTry < CODE_GAP then return { ok = false, why = "busy" } end
+	s.lastTry = os.clock()
+	if type(text) ~= "string" or #text > 48 then return { ok = false, why = "wrong", left = CODE_TRIES - s.wrong } end
+	local code = plain(text)
+	if code == "" then return { ok = false, why = "wrong", left = CODE_TRIES - s.wrong } end -- (an empty box costs nothing)
+	s.trying = true
+	local h = if #code <= 32 then hashOf(code) else ""
+	local id: string? = nil
+	for _, c in Book.CODES do
+		if c.hash == h and today() >= (opensAt[c.id] or math.huge) and known(c.id) then id = c.id; break end
+	end
+	s.trying = false
+	if not id then
+		s.wrong += 1
+		if s.wrong >= CODE_TRIES then
+			s.wrong = 0
+			d.codeWait = now + CODE_WAIT
+			s.prof.dirty = true
+			return { ok = false, why = "wait", wait = CODE_WAIT }
+		end
+		return { ok = false, why = "wrong", left = CODE_TRIES - s.wrong }
+	end
+	s.wrong = 0
+	local again = d.seen[id] ~= nil
+	d.codes[id] = d.codes[id] or now
+	s.prof.dirty = true
+	print(("[jankfire] lore code: %s (%d) -> %s%s"):format(p.Name, p.UserId, id, if again then " (again)" else ""))
+	if again then
+		LoreR:FireClient(p, "seen", id, "code") -- (it shows itself at the panel again; nothing new is given)
+	else
+		reveal(p, id, "code")
+	end
+	-- it counts as finding it (titles and gifts as before)
+	if id == "egg" then task.spawn(findEgg, p) elseif not d.found[id] then find(p, id) end
+	return { ok = true, id = id, again = again or nil }
+end
+
+local codeR = Remotes:FindFirstChild("LoreCode")
+if not codeR then
+	codeR = Instance.new("RemoteFunction")
+	codeR.Name = "LoreCode"
+	codeR.Parent = Remotes
+end
+;(codeR :: RemoteFunction).OnServerInvoke = function(p: Player, op: unknown, text: unknown): any
+	if op ~= "try" then return { ok = false, why = "wrong" } end
+	return tryCode(p, text, false)
+end
+
+-- the HR guy has no spot of his own to stand at: his look for the panel's spawn-in, where clients can reach it
+task.spawn(function()
+	local hr = ServerStorage:WaitForChild("LoreHR", 30)
+	if hr and not ReplicatedStorage:FindFirstChild("LoreHRShow") then
+		local c = hr:Clone()
+		c.Name = "LoreHRShow"
+		c.Parent = ReplicatedStorage
+	end
+end)
+
+-- ------------------------------------------------------------------ the triggers (parked: LoreTriggers, the spoilers)
+local Triggers: any = if TRIGGERS_ON then require(script.Parent:WaitForChild("LoreTriggers")) else nil
+if Triggers then Triggers.start({
+	ready = function(p: Player): boolean
+		local s = st[p]
+		return s ~= nil and s.ready and s.prof ~= nil
+	end,
+	revealed = function(p: Player, id: string): boolean
+		local s = st[p]
+		return s ~= nil and s.prof ~= nil and s.prof.data.seen[id] ~= nil
+	end,
+	reveal = reveal,
+}) end
 
 -- ------------------------------------------------------------------ Studio test hook
 if STUDIO then
@@ -231,9 +407,10 @@ if STUDIO then
 			local r = p and rootOf(p)
 			for id, at in points() do
 				out.npcs[id] = { at = tostring(at.Position), dist = if r then math.floor((r.Position - at.Position).Magnitude * 10) / 10 else -1,
-					found = s and s.prof and s.prof.data.found[id] ~= nil or false, reach = r ~= nil and inReach(r, at) }
+					found = s and s.prof and s.prof.data.found[id] ~= nil or false, seen = s and s.prof and s.prof.data.seen[id] ~= nil or false,
+				reach = r ~= nil and inReach(r, at) }
 			end
-			out.attrs = p and { p:GetAttribute("LoreFound"), p:GetAttribute("LoreTotal"), p:GetAttribute("LoreList") } or nil
+			out.attrs = p and { p:GetAttribute("LoreFound"), p:GetAttribute("LoreTotal"), p:GetAttribute("LoreList"), p:GetAttribute("LoreSeen") } or nil
 			return out
 		elseif op == "find" and p then
 			find(p, tostring(a))
@@ -254,7 +431,46 @@ if STUDIO then
 			local spot = at.Position + off + Vector3.new(0, 3.2, 0)
 			r.CFrame = CFrame.lookAt(spot, Vector3.new(at.Position.X, spot.Y, at.Position.Z))
 			return tostring(spot)
+		elseif op == "zone" and p then
+			local at = points()[tostring(a)]
+			local z = at and (at.Parent :: Model):FindFirstChild("Zone")
+			local r = rootOf(p)
+			if not z or not z:IsA("BasePart") or not r then return "no zone" end
+			local f = z:GetAttribute("Face")
+			local look = if typeof(f) == "Vector3" then f else z.CFrame.LookVector
+			local spot = z.Position + Vector3.new(0, 3 - z.Size.Y / 2 + 0.2, 0)
+			p:SetAttribute("TeleportT", os.clock())
+			r.CFrame = CFrame.lookAt(spot, spot + Vector3.new(look.X, 0, look.Z))
+			return tostring(spot) .. " facing " .. tostring(look)
+		elseif op == "hide" and s and s.prof then
+			if a then s.prof.data.seen[tostring(a)] = nil; s.prof.data.found[tostring(a)] = nil
+			else s.prof.data.seen = {}; s.prof.data.found = {} end
+			s.prof.dirty = true
+			publish(p)
+			return p:GetAttribute("LoreSeen")
+		elseif op == "reveal" and p then
+			reveal(p, tostring(a), "test")
+			return p:GetAttribute("LoreSeen")
+		elseif op == "wear" and p then
+			p:SetAttribute("CardTitle", tostring(a))
+			return p:GetAttribute("CardTitle")
+		elseif op == "progress" and p then
+			return if Triggers then Triggers.progress(p) else "triggers parked"
+		elseif op == "code" and p then
+			return tryCode(p, a, true)
+		elseif op == "clock" then
+			clockShift = math.floor((tonumber(a) or 0) * 86400)
+			return ("calendar: %s UTC"):format(DateTime.fromUnixTimestamp(today()):FormatUniversalTime("YYYY-MM-DD HH:mm", "en-us"))
+		elseif op == "codes" then
+			local out = {}
+			for _, c in Book.CODES do table.insert(out, ("%s %s %s"):format(c.id, c.opens, if today() >= (opensAt[c.id] or math.huge) then "OPEN" else "shut")) end
+			return table.concat(out, " | ")
+		elseif op == "unlock" and s and s.prof then
+			s.wrong = 0
+			s.prof.data.codeWait = 0
+			s.prof.dirty = true
+			return "unlocked"
 		end
-		return "ops: state, find id, forget id?, near id"
+		return "ops: state, find id, forget id?, near id, zone id, hide id?, reveal id, wear title, progress, code text, clock days, codes, unlock"
 	end
 end

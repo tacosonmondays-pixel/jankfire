@@ -11,6 +11,11 @@
 --   * never hurts anyone. "having you" = a short scare (full static, a deep boom: LoreLife/HrGuy.client), then you're
 --     back in the spawn lounge (a TeleportT stamp first: the anti-cheat starts afresh), and it counts as finding him
 --     (the lore count, LoreNPCs' find "hr", once per player)
+--   * HIDDEN UNTIL CALLED (18 Nov 2026, the owner: "Can jankfire npc's be hidden unless you do a very specific
+--     thing"): he never visits anyone who hasn't revealed him (LoreTriggers: wear REGIONAL MANAGER on the lot for a
+--     few seconds; the player attribute LoreSeen lists "hr" after). Doing that calls him: his first visit comes as soon
+--     as you're alone on the lot (LoreRevealEvent "hr"), skipping the dice. Only players who have revealed him see him
+--     (HrGuy.client) or count as looking at him here
 -- Looking: each client on the lot tells the server where its camera is and where it looks (remote HrLook, a few times
 -- a second); the server tests the web's hrSight and a clear line, the same for everyone. (a client that lies only
 -- changes how fast he gets ITSELF: nothing here can touch anyone else)
@@ -52,6 +57,12 @@ local looks: { [Player]: Look } = {}
 local lotSince: { [Player]: number } = {}
 local lastVisit: { [Player]: number } = {}
 local stare: { [Player]: number } = {}
+local called: { [Player]: boolean } = {} -- (revealed him just now: his first visit, as soon as they're alone)
+-- has this player revealed him? (LoreNPCs' LoreSeen: the server's own attribute)
+local function knows(p: Player): boolean
+	local s = p:GetAttribute("LoreSeen")
+	return type(s) == "string" and string.find("," .. s .. ",", ",hr,", 1, true) ~= nil
+end
 
 local S = { on = false, model = nil :: Model?, p = Vector3.zero, yaw = 0, target = nil :: Player?, born = 0, stepT = 0, pose = 0, nextRoll = 0 }
 
@@ -100,7 +111,7 @@ local function sights(at: Vector3): { { any } }
 	local out = {}
 	local now = os.clock()
 	for p, l in looks do
-		if now - l.t > 1.0 or not alive(p) then continue end
+		if now - l.t > 1.0 or not alive(p) or not knows(p) then continue end
 		local h = sight(l.eye, l.dir, at)
 		if (h.view or h.stare) and clear(l.eye, h.c) then table.insert(out, { p, h }) end
 	end
@@ -250,7 +261,7 @@ LookR.OnServerEvent:Connect(function(p: Player, eye: any, dir: any)
 	looks[p] = { eye = eye, dir = dir.Unit, t = os.clock() }
 end)
 Players.PlayerRemoving:Connect(function(p)
-	looks[p] = nil; lotSince[p] = nil; lastVisit[p] = nil; stare[p] = nil
+	looks[p] = nil; lotSince[p] = nil; lastVisit[p] = nil; stare[p] = nil; called[p] = nil
 	if S.target == p then leave("gone") end
 end)
 
@@ -262,10 +273,14 @@ RunService.Heartbeat:Connect(function(dt)
 		if p:GetAttribute("OnLot") == true then lotSince[p] = lotSince[p] or now else lotSince[p] = nil end
 	end
 	if not S.on then
+		-- called (just revealed him): he comes the moment they're alone on the lot
+		for p in called do
+			if p.Parent and lonely(p) and visit(p) then called[p] = nil; return end
+		end
 		if now < S.nextRoll then return end
 		S.nextRoll = now + HR.EVERY
 		for p, since in lotSince do
-			if now - since >= HR.FIRST and now - (lastVisit[p] or -1e9) >= HR.COOLDOWN and lonely(p) and math.random() < HR.ROLL then
+			if knows(p) and now - since >= HR.FIRST and now - (lastVisit[p] or -1e9) >= HR.COOLDOWN and lonely(p) and math.random() < HR.ROLL then
 				if visit(p) then break end
 			end
 		end
@@ -328,6 +343,16 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 end)
 
+-- revealed him (LoreNPCs fires this): his first visit is on its way
+task.spawn(function()
+	local ev = ServerStorage:WaitForChild("LoreRevealEvent", 60)
+	if ev and ev:IsA("BindableEvent") then
+		ev.Event:Connect(function(p: Player, id: string)
+			if id == "hr" and typeof(p) == "Instance" and p:IsA("Player") then called[p] = true end
+		end)
+	end
+end)
+
 if STUDIO then
 	local hook = ServerStorage:FindFirstChild("HrTest") or Instance.new("BindableFunction")
 	hook.Name = "HrTest"
@@ -337,6 +362,7 @@ if STUDIO then
 		if op == "state" then
 			return { on = S.on, at = tostring(S.p), target = S.target and S.target.Name, pose = S.pose,
 				onLot = p and p:GetAttribute("OnLot"), look = p and looks[p] and tostring(looks[p].dir), stare = p and stare[p] or 0,
+				knows = p and knows(p), called = p and called[p] == true,
 				seen = S.on and #sights(S.p) or 0, nextRoll = math.floor(S.nextRoll - os.clock()) }
 		elseif op == "come" and p then
 			if S.on then leave("test") end

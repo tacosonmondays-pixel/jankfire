@@ -11,6 +11,12 @@
 -- says you found them (remote Lore "found"), the "again" line once you've heard everything.
 -- Cheap: only NPCs within LIVE studs of your camera move (the rest keep their last pose); past HIDE they are put aside
 -- on this client (ZoneCull also takes the whole Map.Lore away when you're far from the hub).
+-- HIDDEN UNTIL ITS CODE (18 Nov 2026, the owner's code panel; the server half: LoreNPCs.server): an NPC your LoreSeen
+-- (the server's attribute) doesn't list isn't there for you: no body, no bubble, no TALK, no movement (pieces marked
+-- Clue would stay: none are now). The hub egg's mannequin too (Map.Hub.HubEgg: its body, outline and prompt, its
+-- collisions off on your screen). A right code at the panel (remote Lore "seen", how = "code") spawns a copy in beside
+-- the panel (CodePanel.Show): it fades in with a soft chime, greets you and says its lines, then after SHOW_LIFE s
+-- (or when you walk off) it fades away, and from then on it's at its own spot for you.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -27,6 +33,12 @@ local HIDE = 260 -- studs: further than this they're put aside here
 local SAY_NEAR = 22 -- studs: the opening beat when you first come this close
 local SAY_RESET = 60 -- studs: walk this far away and the opening plays again next time
 local TYPE_CPS = 38 -- characters a second
+local FADE = 0.9 -- s a revealed NPC takes to fade in
+local SHOW_LIFE = 18 -- s a spawned-in NPC stays by the code panel
+local SHOW_FAR = 60 -- studs: walk this far from it and it goes
+local showFolder = Instance.new("Folder") -- (the panel's spawn-ins: on this screen only, never in Map.Lore)
+showFolder.Name = "LoreShowLocal"
+showFolder.Parent = workspace
 local aside = Instance.new("Folder")
 aside.Name = "LoreAside"
 
@@ -43,8 +55,28 @@ type Npc = {
 	id: string, model: Model, root: BasePart, base: CFrame, yaw: number, J: { [string]: Joint }, order: { Joint },
 	pieces: { Piece }, parts: { BasePart }, cfs: { CFrame }, st: any, t0: number, out: boolean, home: Instance,
 	bubble: any, heard: number, nearSaid: boolean, live: boolean,
+	clues: { BasePart }, shown: boolean, vis: number, prompt: ProximityPrompt?,
+	temp: boolean, born: number, leaving: boolean,
 }
 local npcs: { [Model]: Npc } = {}
+
+-- ------------------------------------------------------------------ who you've revealed (the server's LoreSeen)
+local seen: { [string]: boolean } = {}
+local function readSeen()
+	table.clear(seen)
+	local s = me:GetAttribute("LoreSeen")
+	if type(s) == "string" then for _, id in string.split(s, ",") do if id ~= "" then seen[id] = true end end end
+end
+readSeen()
+-- body pieces: hidden when far or not revealed (faded in by vis); clue pieces: only when far
+local function apply(n: Npc)
+	local body = if n.out then 1 else 1 - n.vis
+	for _, p in n.parts do p.LocalTransparencyModifier = body end
+	for _, p in n.clues do p.LocalTransparencyModifier = if n.out then 1 else 0 end
+	for _, d in n.model:GetDescendants() do if d:IsA("Beam") then d.Enabled = not n.out end end
+	if n.prompt then n.prompt.Enabled = n.shown and not n.out end
+	if not n.shown and n.bubble then n.bubble.queue = {}; n.bubble.line = nil; n.bubble.gui.Enabled = false end
+end
 
 -- ------------------------------------------------------------------ rigs
 local function eulerXYZ(r: { number }): CFrame return CFrame.fromEulerAnglesXYZ(r[1], r[2], r[3]) end
@@ -471,12 +503,13 @@ local function catUpdate(n: Npc, dt: number, t: number, ctx: any)
 end
 
 -- ------------------------------------------------------------------ finding the models
-local function adopt(m: Instance)
+local function adopt(m: Instance, temp: boolean?)
 	if not m:IsA("Model") or npcs[m] then return end
 	local id = m:GetAttribute("LoreId")
 	local rig = type(id) == "string" and Rigs[id]
-	local root = m:WaitForChild("Root", 10)
-	if not rig or not root or not root:IsA("BasePart") then return end
+	if not rig then return end
+	local root = if temp then m:FindFirstChild("Root") else m:WaitForChild("Root", 10)
+	if not root or not root:IsA("BasePart") then return end
 	local J: { [string]: Joint } = {}
 	local order: { Joint } = {}
 	for _, j in rig.joints do
@@ -492,14 +525,24 @@ local function adopt(m: Instance)
 	local look = base.LookVector
 	local n: Npc = { id = id :: string, model = m, root = root, base = base, yaw = math.atan2(-look.X, -look.Z), J = J,
 		order = order, pieces = {}, parts = {}, cfs = {}, st = {}, t0 = math.random() * 20, out = false, home = m.Parent :: Instance,
-		bubble = nil, heard = 0, nearSaid = false, live = false }
+		bubble = nil, heard = 0, nearSaid = false, live = false,
+		clues = {}, shown = temp == true or seen[id :: string] == true, vis = if seen[id :: string] and not temp then 1 else 0, prompt = nil,
+		temp = temp == true, born = os.clock(), leaving = false }
 	for name, pc in rig.pieces do
-		local part = m:WaitForChild(name, 10)
+		local part = if temp then m:FindFirstChild(name) else m:WaitForChild(name, 10)
 		if part and part:IsA("BasePart") and J[pc.joint] then
 			table.insert(n.pieces, { part = part, joint = J[pc.joint], off = CFrame.new(pc.at[1], pc.at[2], pc.at[3]) })
-			table.insert(n.parts, part)
+			table.insert(if part:GetAttribute("Clue") then n.clues else n.parts, part)
 		end
 	end
+	if temp then -- (a spawn-in's other things, Gary's desk, Dale's machine, fade with it)
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") and d ~= root and not table.find(n.parts, d) and not table.find(n.clues, d) then table.insert(n.parts, d) end
+		end
+	end
+	local tk = root:FindFirstChild("Talk", true)
+	n.prompt = if tk and tk:IsA("ProximityPrompt") then tk else nil
+	apply(n)
 	npcs[m] = n
 	m.Destroying:Connect(function() npcs[m] = nil; if n.bubble then n.bubble.gui:Destroy() end end)
 	-- TALK: the next beat
@@ -531,7 +574,145 @@ task.spawn(function()
 	watch(f :: Instance)
 end)
 
+-- ------------------------------------------------------------------ the code panel's spawn-ins
+local function showAt(): CFrame?
+	local map = workspace:FindFirstChild("Map")
+	local l = map and map:FindFirstChild("Lore")
+	local pnl = l and l:FindFirstChild("CodePanel")
+	local sp = pnl and pnl:FindFirstChild("Show")
+	return if sp and sp:IsA("BasePart") then sp.CFrame else nil
+end
+local function chime(at: Vector3)
+	local ok, Sfx = pcall(require, script.Parent:FindFirstChild("Sfx") :: ModuleScript)
+	if ok and Sfx and Sfx.play then pcall(Sfx.play, "card_heal", at, 0.7, 0.9) end
+end
+-- a model's lowest point (its parts' boxes, not counting a Root)
+local function lowest(m: Model): number
+	local lo = math.huge
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "Root" and d.Transparency < 1 then
+			local cf, sz = d.CFrame, d.Size / 2
+			local ext = math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.LookVector.Y) * sz.Z
+			lo = math.min(lo, d.Position.Y - ext)
+		end
+	end
+	return lo
+end
+-- strip a copy down to its looks: no prompts, scripts, sounds, lights, collisions or queries
+local function looksOnly(m: Model)
+	for _, d in m:GetDescendants() do
+		if d:IsA("ProximityPrompt") or d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("Light") then d:Destroy()
+		elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 1 end
+	end
+end
+-- a lore NPC: a copy of its model, standing by the panel (sitters lifted so their feet are on the floor), alive like
+-- the real one (adopted as a temp NPC: it fades in, greets, talks, and goes after SHOW_LIFE)
+local function spawnLore(id: string, at: CFrame)
+	local map = workspace:FindFirstChild("Map")
+	local l = map and map:FindFirstChild("Lore")
+	local src = l and l:FindFirstChild("Lore_" .. id)
+	if not src or not src:IsA("Model") then return end
+	src.Archivable = true
+	local m = src:Clone()
+	for _, name in { "MachineBlock", "Zone", "Target" } do -- (Gary keeps his desk, Dale his machine: their things come too)
+		local x = m:FindFirstChild(name)
+		if x then x:Destroy() end
+	end
+	looksOnly(m)
+	m:SetAttribute("LoreShow", true)
+	m:PivotTo(at)
+	local lo = lowest(m)
+	if lo < at.Y - 0.3 then m:PivotTo(at + Vector3.new(0, at.Y - lo, 0)) end
+	m.Parent = showFolder
+	adopt(m, true)
+end
+-- the mannequin and the HR guy: still figures (no rig life), faded in and out here
+type Plain = { m: Model, parts: { BasePart }, born: number, vis: number, leaving: boolean, at: Vector3 }
+local plains: { Plain } = {}
+local function spawnPlain(src: Instance?, at: CFrame)
+	if not src or not src:IsA("Model") then return end
+	src.Archivable = true
+	local m = src:Clone()
+	looksOnly(m)
+	m:PivotTo(at)
+	local lo = lowest(m)
+	if math.abs(lo - at.Y) > 0.05 and lo < math.huge then m:PivotTo(m:GetPivot() + Vector3.new(0, at.Y - lo, 0)) end
+	m.Parent = showFolder
+	local parts = {}
+	for _, d in m:GetDescendants() do if d:IsA("BasePart") and d.Transparency < 1 then table.insert(parts, d) end end
+	table.insert(plains, { m = m, parts = parts, born = os.clock(), vis = 0, leaving = false, at = at.Position })
+end
+local function spawnIn(id: string)
+	local at = showAt()
+	if not at then return end
+	for _, n in npcs do if n.temp then n.leaving = true end end -- (one at a time: whoever's there goes)
+	for _, pl in plains do pl.leaving = true end
+	chime(at.Position + Vector3.new(0, 4, 0))
+	if id == "egg" then
+		local map = workspace:FindFirstChild("Map")
+		local hub = map and map:FindFirstChild("Hub")
+		local e = hub and hub:FindFirstChild("HubEgg")
+		spawnPlain(e and e:FindFirstChild("Mannequin"), at)
+	elseif id == "hr" then
+		spawnPlain(game:GetService("ReplicatedStorage"):FindFirstChild("LoreHRShow"), at)
+	else
+		spawnLore(id, at)
+	end
+end
+
+-- ------------------------------------------------------------------ the hub egg's mannequin: hidden until its code
+local eggHidden: boolean? = nil
+local eggModel: Instance? = nil
+local function eggApply()
+	local map = workspace:FindFirstChild("Map")
+	local hub = map and map:FindFirstChild("Hub")
+	local e = hub and hub:FindFirstChild("HubEgg")
+	local m = e and e:FindFirstChild("Mannequin")
+	local hide = not seen.egg
+	if m == eggModel and hide == eggHidden then return end
+	eggModel, eggHidden = m, hide
+	if not e then return end
+	for _, d in e:GetDescendants() do
+		if d:IsA("BasePart") and m and d:IsDescendantOf(m) then
+			d.LocalTransparencyModifier = if hide then 1 else 0
+			-- (its collisions off on this screen while hidden: no invisible plinth to bump into)
+			if d:GetAttribute("EggCollide") == nil then d:SetAttribute("EggCollide", d.CanCollide) end
+			d.CanCollide = if hide then false else d:GetAttribute("EggCollide") == true
+		elseif d:IsA("ProximityPrompt") then d.Enabled = not hide
+		elseif d:IsA("Light") then d.Enabled = not hide
+		elseif d:IsA("Highlight") then d.Enabled = not hide end
+	end
+end
+task.spawn(function()
+	while true do
+		pcall(eggApply)
+		task.wait(1)
+	end
+end)
+
+me:GetAttributeChangedSignal("LoreSeen"):Connect(function()
+	readSeen()
+	pcall(eggApply)
+	for _, n in npcs do
+		if n.temp then continue end
+		local want = seen[n.id] == true
+		if want ~= n.shown then
+			n.shown = want
+			if not want then n.vis = 0; n.nearSaid = false end
+			apply(n)
+		end
+	end
+end)
+
 LoreR.OnClientEvent:Connect(function(op: string, id: string, first: boolean)
+	if op == "seen" then
+		-- a code at the panel: it spawns in there. (otherwise: a soft chime where they stand as they fade in)
+		if (first :: any) == "code" then spawnIn(id); return end
+		for _, n in npcs do
+			if n.id == id and not n.temp then chime(n.base.Position + Vector3.new(0, 4, 0)) end
+		end
+		return
+	end
 	if op ~= "found" then return end
 	for _, n in npcs do
 		if n.id == id then
@@ -570,10 +751,22 @@ RunService.RenderStepped:Connect(function(dt)
 		-- measures the folder by what's in it, and a folder that shrank to the nearby ones once counted as far away
 		if (dCam > HIDE) ~= n.out then
 			n.out = dCam > HIDE
-			for _, p in n.parts do p.LocalTransparencyModifier = if n.out then 1 else 0 end
-			for _, d in m:GetDescendants() do if d:IsA("Beam") then d.Enabled = not n.out end end
+			apply(n)
 		end
+		-- (a spawn-in you went far from before it left: gone)
+		if n.temp and n.out and now - n.born > SHOW_LIFE then task.defer(function() m:Destroy() end); continue end
 		if n.out or not m:IsDescendantOf(workspace) then continue end
+		-- not revealed: only the clue is here (no bubble, no moves). revealed just now: fading in
+		if not n.shown then continue end
+		if n.temp and not n.leaving and (now - n.born > SHOW_LIFE or (eye and (eye - rp).Magnitude > SHOW_FAR)) then n.leaving = true end
+		if n.leaving then
+			n.vis = math.max(0, n.vis - dt / FADE)
+			apply(n)
+			if n.vis <= 0 then task.defer(function() m:Destroy() end); continue end
+		elseif n.vis < 1 then
+			n.vis = math.min(1, n.vis + dt / FADE)
+			apply(n)
+		end
 		local d = if eye then Vector3.new(eye.X - rp.X, 0, eye.Z - rp.Z).Magnitude else 1e9
 		-- the opening beat, once per approach
 		if d < SAY_NEAR and not n.nearSaid then
@@ -603,4 +796,13 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
+	-- the still spawn-ins (the mannequin, the HR guy): in, a while, out
+	for i = #plains, 1, -1 do
+		local pl = plains[i]
+		if not pl.leaving and (now - pl.born > SHOW_LIFE or (eye and (eye - pl.at).Magnitude > SHOW_FAR)) then pl.leaving = true end
+		local was = pl.vis
+		pl.vis = if pl.leaving then math.max(0, pl.vis - dt / FADE) else math.min(1, pl.vis + dt / FADE)
+		if pl.vis ~= was then for _, p in pl.parts do p.LocalTransparencyModifier = 1 - pl.vis end end
+		if pl.leaving and pl.vis <= 0 then pl.m:Destroy(); table.remove(plains, i) end
+	end
 end)

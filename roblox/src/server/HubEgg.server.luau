@@ -13,6 +13,10 @@
 --   Touch     (Part, unseen, no collisions) round the plinth: a body part touching it finds it. a ProximityPrompt in it
 --   Found     (Sound) in Touch: the recording
 -- Nothing happens while the folder isn't there: it looks again every few seconds.
+-- HIDDEN UNTIL ITS CODE (18 Nov 2026, lore-npcs, the owner's code panel): the mannequin is hidden for you until you type
+-- its code at the code panel (LoreNPCs.server checks it; LoreLife.client hides the mannequin, its outline and its prompt
+-- for anyone whose LoreSeen doesn't list "egg"). Touching it or its prompt does nothing until then. The code itself is
+-- the find: LoreNPCs calls ServerStorage.HubEggFind (BindableFunction, made here): (player) -> find(player, anywhere).
 -- Studio play tests: ServerStorage.HubEggTest (a BindableFunction, Studio only) answers "state" (where it is, the
 -- first player's distance, whether their save is ready and whether they own the title) and "find" (the first player
 -- finds it now, wherever they stand). To lose the title again in a test, put your loot back with the Loot remote's
@@ -50,6 +54,11 @@ local function rootOf(p: Player): BasePart?
 	local ch = p.Character
 	local r = ch and ch:FindFirstChild("HumanoidRootPart")
 	return if r and r:IsA("BasePart") then r else nil
+end
+-- has p's code revealed the mannequin? (LoreNPCs' LoreSeen: the server's own attribute)
+local function known(p: Player): boolean
+	local s = p:GetAttribute("LoreSeen")
+	return type(s) == "string" and string.find("," .. s .. ",", ",egg,", 1, true) ~= nil
 end
 local function near(p: Player, t: BasePart): boolean
 	local r = rootOf(p)
@@ -110,13 +119,14 @@ local function wire(t: BasePart)
 	t.Touched:Connect(function(hit: BasePart)
 		local ch = hit.Parent
 		local p = ch and Players:GetPlayerFromCharacter(ch)
-		if not p or busy[p] then return end
+		if not p or busy[p] or not known(p) then return end
 		if Loot.ready(p) and Loot.owns(p, TYPE, ID) then return end
 		task.spawn(find, p)
 	end)
 	local pr = t:FindFirstChildOfClass("ProximityPrompt")
 	if pr then
 		pr.Triggered:Connect(function(p: Player)
+			if not known(p) then return end
 			if Loot.ready(p) and Loot.owns(p, TYPE, ID) then
 				if near(p, t) and os.clock() - (lastPlay[p] or 0) > AGAIN then playFor(p, t) end
 				return
@@ -138,6 +148,17 @@ Players.PlayerRemoving:Connect(function(p)
 	busy[p] = nil
 	lastPlay[p] = nil
 end)
+
+-- the code panel's find (LoreNPCs.server, a right code for the mannequin): wherever they stand
+do
+	local f = ServerStorage:FindFirstChild("HubEggFind") or Instance.new("BindableFunction")
+	f.Name = "HubEggFind"
+	f.Parent = ServerStorage;
+	(f :: BindableFunction).OnInvoke = function(p: any): string
+		if typeof(p) ~= "Instance" or not p:IsA("Player") then return "no player" end
+		return find(p, true)
+	end
+end
 
 -- ------------------------------------------------------------------ Studio play tests
 if STUDIO then
