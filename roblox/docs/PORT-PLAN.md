@@ -1735,7 +1735,16 @@ Plan picture: `roblox/docs/hub/hub_lounge_plan.jpg`. Photos from the Play test: 
 **The hub egg's nook** (training-v2 asked for a hidden spot that takes some exploring; main gave it the egg):
 - The gallery window over the west arch (`R.EGG_SIDE` = 8) is a real opening, `R.EGG_NICHE` = { half width, sill, head }. It's dark, in the same frame as the others.
 - Behind it is a small closed room on the lounge's roof: in Hub v3 about 8.6 wide, 8.1 deep and 8.4 tall, floor y 260.96.
-- You reach it from the balcony with a hop of about 3 studs (the jump is about 4.9). The hop is untested in Play.
+- You reach it from the balcony with a hop of about 3 studs. training-v2 tested it in Play with real movement and one jump press: the body rose 4.78 over the 3.03 sill and landed inside. Their egg stands in it since place version 819 (commit 9384f5b).
+- R.check keeps the room clear ("the hub egg's nook over the west arch" in `R.WALKS`).
+- `R.KEEP` holds other sessions' spots in world numbers (Hub v3 only), so the builder can never put anything in them. The first entry is the lore NPCs session's Dumpling in the gym's south corner (`Map.Lore`).
+
+**Flicker (ZFight, place version 846):** the first scan after the lounge build found 21 visible hits. The rebuilt lounge left 8, and those 8 were there before (the gym door's sill against its jambs, two balcony slivers, the fridge, the display sawn-off). The fixes:
+- The lounge floor's top is at -0.05: it lies under the round room's floor disc, which was only 0.02 above.
+- The bay's carpet underside sits off the VIP floor's.
+- The canopy's end sits inside the far wall instead of on its face.
+- The old lounge's piers stand 0.06 proud of the rail behind the sofas, whose backs no wall hides any more.
+- The jump-pad ring's underside sits off the floor's ring line.
 - The egg is training-v2's, in `Map.Hub.HubEgg`, outside the Rotunda: no rebuild wipes it and R.check doesn't look at it. The room has its own leak point.
 
 **Checks:**
@@ -1750,7 +1759,6 @@ Plan picture: `roblox/docs/hub/hub_lounge_plan.jpg`. Photos from the Play test: 
 - The VIP push-out (the owner counts as VIP in Studio).
 - Several players spawning at once.
 - Phones (the arches and the board from a small screen).
-- The hop into the egg nook.
 
 **Traps:**
 - The column first sat in the walks to the 1V1 and 4V4 lifts. A see-through part still counts in the keep-clear test, so the column was made narrower.

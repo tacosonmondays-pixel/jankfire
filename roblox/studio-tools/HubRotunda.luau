@@ -1069,6 +1069,12 @@ end
 R.WALKS = {}
 -- from where the leak test looks out in 26 directions: { bearing, x, y, d }
 R.LEAKS = {}
+-- spots other sessions keep their things in, outside the Rotunda's folders (their things are never checked here): nothing
+-- the builder makes may stand in them. Hub v3 only (world numbers): { what, its middle on the floor from the hub's site,
+-- its size; it starts 0.4 over the floor }
+R.KEEP = {
+	{ "Dumpling, the lore NPCs session's kid, in the gym's south corner (Map.Lore)", Vector3.new(76, 0, -3.5), Vector3.new(4, 4.6, 4) },
+}
 -- what must show from every spawn point besides the pads' plates and boards: { what, its name in Scenery }
 R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }
 -- the overlap test: kit models set into walls, lids or floors on purpose are left out; parts are shrunk by this much first
@@ -1087,6 +1093,7 @@ end
 -- (the lounge's three arches: from the platform's foot out through each into the lounge, and its front floor to the spawn rug)
 for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, 34, 0 },
 	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
+	{ "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 }, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
 	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
 local LS = R.LOUNGE_S
@@ -1169,6 +1176,7 @@ function R.check(stage)
 		local mid = WP(fr * Vector3.new((w[3] + w[4]) / 2, w[7] or 0, -(w[5] + w[6]) / 2))
 		zone(w[1], CFrame.new(mid + Vector3.new(0, 4.2, 0)) * fr.Rotation, Vector3.new(math.abs(w[4] - w[3]) / 2 * KK, 3.8, math.abs(w[6] - w[5]) / 2 * KK))
 	end
+	if Wp then for _, k in R.KEEP do zone(k[1], CFrame.new(O + k[2] + Vector3.new(0, 0.4 + k[3].Y / 2, 0)), k[3] / 2) end end
 	local issues, seen, looked = {}, {}, 0
 	local game_ = room:FindFirstChild("Game")
 	for _, p in room:GetDescendants() do

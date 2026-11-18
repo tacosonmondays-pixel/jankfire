@@ -229,7 +229,7 @@ return function(B, R)
 		-- (18 Nov, the way up made obvious: a ring of the accent round the pad with a light in it, and a soft column of light
 		-- from it up past the balcony's edge. HubLife.client breathes both, tag HubBreathe: see-through between BreatheLo
 		-- and BreatheHi, BreathePeriod s a breath, the light with it)
-		local ring = B.cyl(F, C, "JumpGlow", 0, -0.02, 0.13, 18.2, 2 * R.JUMP_GLOW, ACCENT, Neon, { ghost = true, tr = 0.2 })
+		local ring = B.cyl(F, C, "JumpGlow", 0, -0.07, 0.13, 18.2, 2 * R.JUMP_GLOW, ACCENT, Neon, { ghost = true, tr = 0.2 })
 		local gl = Instance.new("PointLight"); gl.Color = Color3.fromHex(ACCENT); gl.Range = 12; gl.Brightness = 1.2; gl.Shadows = false; gl.Parent = ring
 		local col = B.cyl(F, C, "JumpColumn", 0, 0.2, R.UP_Y + 4, 18.2, 2 * R.JUMP_COLUMN, ACCENT, Neon, { ghost = true, tr = 0.88 })
 		for _, q in { { ring, 0.1, 0.5 }, { col, 0.84, 0.93 } } do

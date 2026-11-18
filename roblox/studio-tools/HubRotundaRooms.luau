@@ -70,10 +70,11 @@ return function(B, R)
 			local FLOOR, WALL, LID = "4a4542", P.brick, P.shell2
 			-- the floor: the front (its top under the round room's floor and the arches' thresholds), each side's front and
 			-- wing; the bay keeps its own carpet (below)
-			B.box(F7, S, "LoungeFloor", -cx, cx, -2, -0.02, cd - 1, 36 + LS, FLOOR)
+			-- (its top 0.05 under the round room's floor, which lies over its front: no faces within 0.02)
+			B.box(F7, S, "LoungeFloor", -cx, cx, -2, -0.05, cd - 1, 36 + LS, FLOOR)
 			for _, s in { -1, 1 } do
-				B.box(F7, S, "LoungeFloor", s * cx, s * (LX + 2), -2, -0.02, cd, 36 + LS, FLOOR)
-				B.box(F7, S, "LoungeFloor", s * 16, s * (LX + 2), -2, -0.02, 36 + LS, FAR + 2, FLOOR)
+				B.box(F7, S, "LoungeFloor", s * cx, s * (LX + 2), -2, -0.05, cd, 36 + LS, FLOOR)
+				B.box(F7, S, "LoungeFloor", s * 16, s * (LX + 2), -2, -0.05, 36 + LS, FAR + 2, FLOOR)
 			end
 			-- the walls: each side's, a short one each side of the arches into the round room's corner, the far wall either
 			-- side of and over the VIP door
@@ -174,8 +175,8 @@ return function(B, R)
 		end
 		-- THE BAY: the old lounge, as it was (its floor, the beams, the seats, the duck), its lid now a canopy over it with a
 		-- timber edge, on two posts at its open front and the far wall
-		B.box(F, S, "LoungeFloor", -16, 16, -2, -0.02, 36, 62, P.carpet)
-		B.box(F, S, "LoungeLid", -16, 16, 11, 12, 36, 62, P.shell2)
+		B.box(F, S, "LoungeFloor", -16, 16, -1.9, -0.05, 36, 62, P.carpet) -- (its underside off the VIP floor's)
+		B.box(F, S, "LoungeLid", -16, 16, 11, 12, 36, 61.9, P.shell2) -- (its end inside the far wall, not on its face)
 		B.box(F, C, "CanopyEdge", -16.4, 16.4, 10.3, 12.4, 35.6, 36, P.beam, Wood, G)
 		for _, s in { -1, 1 } do
 			B.box(F, C, "CanopyEdge", s * 16, s * 16.4, 10.3, 12.4, 36, 60, P.beam, Wood, G)
@@ -190,7 +191,7 @@ return function(B, R)
 		-- timber beams across, a dark pier under each end, the corners of the room cut
 		for _, d in { 43, 49, 55 } do
 			B.box(F, C, "Beam", -14, 14, 9.9, 11, d - 0.6, d + 0.6, P.beam, Wood, G)
-			for _, s in { -1, 1 } do B.box(F, C, "LoungePier", s * 13.3, s * 14, 0.6, 9.9, d - 0.7, d + 0.7, P.pier, nil, G) end
+			for _, s in { -1, 1 } do B.box(F, C, "LoungePier", s * 13.3, s * 14.06, 0.6, 9.9, d - 0.7, d + 0.7, P.pier, nil, G) end -- (proud of the rail behind the seats, now that no wall hides their backs)
 		end
 		-- (its cut corners went with its walls, 18 Nov)
 		-- a wood rail and a pale ledge behind the seats
