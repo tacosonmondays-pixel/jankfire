@@ -413,6 +413,12 @@ Approved), ids in `assets.json`; checked full size (colour, normal, roughness, g
 seamless tiles have no strips and flat metal, so it had nothing to do, and running it would break the book's
 checksum match.
 
+- In hand (place version 981, `wrap-textures/mastery-sheet.jpg`: all four on the rifle, pistol and sniper in the
+  training hall, and the loadout with the four Mastery chips in a row; frames in `wrap-textures/mastery/`). The
+  diamond's spectrum sweep passes through ice blue and lavender (iris sat 0.1; lower it if it should stay whiter).
+  A camo's maps take a second or two to load the first time it's worn, and the gun shows its factory paint until
+  they arrive; in a test, re-equip or wait before a photo.
+
 ## Redrawing or adding a wrap
 
 ```bash
