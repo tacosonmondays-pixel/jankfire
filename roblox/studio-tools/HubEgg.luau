@@ -11,9 +11,18 @@
 local InsertService = game:GetService("InsertService")
 
 local E = {}
-E.PUSH = 2
+E.PUSH = 3
 E.ASSET = 139602935358805 -- HubEggMannequin1 (hub_egg_1.glb), Approved 18 Nov
-E.SPOT = CFrame.new(0, 0, 0) -- (set from the hub session's nook)
+-- WHERE (18 Nov, the hub session's nook, HubRotunda R.EGG_SIDE / R.EGG_NICHE, kept in every rebuild): the dark gallery
+-- "window" over the west arch into the lounge (side 8) is a real opening onto a small closed room on the lounge's roof,
+-- floor 260.96, 8.6 wide, 8.1 deep, 8.4 tall. you get there by a jump pad to the balcony, round to the south-west, and a
+-- 3-stud hop onto the sill. from the round room's floor it is a dark window. the plinth stands 1.3 back from the room's
+-- middle, facing out of the window toward the round room's middle
+E.NICHE = Vector3.new(-220.15, 260.96, -9958.16) -- (the room's middle, on its floor)
+E.FACE = Vector3.new(0.434, 0, -0.901) -- (out of the window)
+E.BACK = 1.3
+E.SPOT = CFrame.lookAt(E.NICHE - E.FACE * E.BACK, E.NICHE - E.FACE * E.BACK + E.FACE)
+E.LIGHT = { color = Color3.fromRGB(255, 214, 170), brightness = 0.45, range = 9, up = 7.9 } -- (a faint warm lamp over it: a glint in the dark window, no more)
 -- the recording that plays for the finder (Found): Pro Sound Effects' "Musical Toy Top 1" (Roblox's licensed library),
 -- the run of toy-top notes from 1.3 to 3.0 s (measured silently: AudioAnalyzer onsets 1.36, 1.62, 1.79, 2.13, 2.45, 2.60)
 E.SOUND = "rbxassetid://9117040176"
@@ -116,6 +125,18 @@ function E.build(spot: CFrame?): string
 	s.PlaybackRegionsEnabled = true
 	s.PlaybackRegion = E.SOUND_REGION
 	s.Parent = t
+	if E.LIGHT then
+		local a = Instance.new("Attachment")
+		a.Name = "Lamp"
+		a.Position = Vector3.new(0, E.LIGHT.up - E.TOUCH.Y / 2, -1.6) -- (up near the lid, over its outstretched hands)
+		a.Parent = t
+		local l = Instance.new("PointLight")
+		l.Color = E.LIGHT.color
+		l.Brightness = E.LIGHT.brightness
+		l.Range = E.LIGHT.range
+		l.Shadows = false
+		l.Parent = a
+	end
 	t.Parent = f
 	local _, size = m:GetBoundingBox()
 	return ("hub egg built at %s, facing %s, %.1f x %.1f x %.1f studs"):format(

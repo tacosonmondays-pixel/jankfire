@@ -1062,16 +1062,19 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Test hook (Studio): `ServerStorage.PracticeTest` "mode" / "hp" / "state".
   - Checks: sealed (0 leaks), head room 0 within 0.6, Carl lines 0 of 27, the egg door shut. Play: two real sniper hits on the 10 m dummy (55, 55 KO) read DAMAGE 110, DPS 79, TIME TO KILL 1.40 s on the board; HEALTH 300 gave the lane 300/300; shoot back took me 100 to 32 in 4.8 s; the heal pad healed and went dim; the prompts read "Dummies: Still" and "Dummy health: 300"; back to strafe and 100.
   - Photos: `training/practice_lane_sheet.jpg`.
-- **18 Nov, the hub egg (place version 809, HubEgg push 2):** the owner: "Can there be a secret Easter egg hidden somewhere in the hub a backfire manaqueen player?? With the exact crusty look" (backfire: JANKFIRE). The web game's player stands hidden in Hub v3 as a mannequin on its plinth. Touching it gives the OG title once.
+- **18 Nov, the hub egg (place version 819, HubEgg push 3):** the owner: "Can there be a secret Easter egg hidden somewhere in the hub a backfire manaqueen player?? With the exact crusty look" (backfire: JANKFIRE). The web game's player stands hidden in Hub v3 as a mannequin on its plinth. Touching it gives the OG title once.
   - **The look is the web's own code, not a redraw:**
     - `tools/roblox/hub_egg_dump.mjs` runs the web's `buildCharacter` (copied from `public/js/models.js`) and the real `clothes.js` in Node, with three 0.170.0 from a local copy (`hub_egg_hooks.mjs`, env `THREE_DIR`).
     - It uses the default look: Sash + Shorts, the default skin, the first player colour (pink), the locker mannequin's weight shift and the character screen's plinth (`preview.js`).
     - Every triangle and its colour goes to `roblox/assets/hub-egg/mannequin.json`. `tools/roblox/hub_egg_mannequin.py` makes the upload: 3 studs to the web metre, flat shaded, baked vertex colours.
     - Three pieces: the mannequin, the plinth, and the outline everyone else saw on a web player (`remote.js`: each piece 1.12x, inside out, in its colour; only its rim shows).
     - Nothing is cleaned up: six-sided limbs, 6 x 4 ball joints, the egg head with its mould seam, the price tag on the arm.
-  - **Placing:** `PolishBackup.HubEgg` (`E.build(spot)`, `E.check()`, asset 139602935358805) builds `workspace.Map.Hub.HubEgg`, outside the Rotunda, so the hub's `R.build` leaves it.
-    - For now it stands in the upstairs crescent's east dead end (56 degrees round, radius 70), checked clear (nothing in its box, flush on the floor, 17 studs of head room).
-    - That spot is in plain view from the last upstairs pad, so a better-hidden nook is with the hub session.
+  - **Where:** the hub session's nook (HubRotunda `R.EGG_SIDE` / `R.EGG_NICHE`, kept in every rebuild), behind the dark gallery "window" over the west arch into the lounge (side 8).
+    - It is a small closed room on the lounge's roof (floor 260.96; 8.6 wide, 8.1 deep, 8.4 tall).
+    - From the round room's floor the balcony hides it. From the balcony it is a dark window with a faint warm glint.
+    - You reach it by a jump pad to the balcony, then round to the south-west, then a 3.03-stud hop onto the sill.
+    - `PolishBackup.HubEgg` (`E.build()`, `E.check()`, `E.NICHE` / `E.FACE` / `E.BACK`, asset 139602935358805) builds `workspace.Map.Hub.HubEgg` outside the Rotunda, so the hub's `R.build` leaves it. The plinth stands 1.3 back from the room's middle, facing out of the window, with a dim warm PointLight near the lid.
+    - Checks: nothing in its box, flush on the lounge roof, 1 stud over its head.
   - **Finding it** (`server/HubEgg.server.luau`): walk into its unseen box round the plinth, or use its "Touch" prompt (phone and controller too).
     - The first time, `Loot.grant(p, "egg:title:og", "hubegg-<uid>")` gives the OG title, kept in your loot save, with one receipt per player.
     - A small line says "NEW TITLE · OG" (Hud's small kind). A slice of Pro Sound Effects' "Musical Toy Top 1" (1.3 to 3.0 s) plays in your own PlayerGui, so only you hear it.
@@ -1080,12 +1083,16 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - `forSale` leaves it out; `Shop.secret` keeps it out of singles and the day's six; LootTable rolls only the rarities it knows.
     - `Shop.offer("egg:<kind>:<id>")` is a pass, so the loot server's "buy" refuses it.
     - The card's picker shows a secret title only once it is yours.
-  - **Play test** (solo, v809):
+  - **Play tests** (solo, v809 and v819):
     - "buy" of `title:og` gave "that isn't for sale"; of `egg:title:og`, "comes with VIP".
     - Stepping up to the plinth gave OG in 0.2 s. The line showed. The slice played (TimePosition 1.51 at 0.3 s, Interface group) and was gone after 2.2 s.
-    - Then OG was taken off and found a second time the same way.
-    - The save was put back exactly (titles: vip). The test hook is `ServerStorage.HubEggTest` "state" / "find". In Studio each find has a fresh receipt, so it can be found again.
-  - Trap: the game's controller ignores `Humanoid:MoveTo` from a test. Step the body with `PivotTo` (and `TeleportT`).
+    - The hop: from the balcony, 3.5 studs out from the sill, walking at the window with the game's own movement (controls off, `Humanoid:Move` each frame) and one press of the pad's A through `PadTest`. The body rose 4.78 against the 3.03 sill and landed in the room, and the touch gave OG with the line and the sound.
+    - The owner's Studio save was put back to its titles (vip) after leaving the box.
+  - **Test hooks:** `ServerStorage.HubEggTest` "state" / "find". In Studio each find has a fresh receipt, so it can be found again.
+  - **Traps:**
+    - The game's controller ignores `Humanoid:MoveTo` from a test: disable the PlayerModule's controls and `Humanoid:Move` each frame, or step the body with `PivotTo` (and `TeleportT`).
+    - Put the save back only after moving the body out of the touch box. A body left standing in it touched again and found OG again after the v809 restore.
+  - Photos: `hub/hub_egg_sheet.jpg` (the mannequin in its nook, the first glimpse from the balcony, the round room's floor).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
