@@ -175,6 +175,21 @@ end
 -- the VIP daily reward's exclusive skin (the shop session's VipDailyData.EXCLUSIVE.skin, 17 Nov): a row so the reward can
 -- give it (Loot.grant of a "pass" offer); it's in no container (L.exclusive). a SkinSets row for it wins
 L.SKINS.sniper_triangulum = L.SKINS.sniper_triangulum or { "Triangulum", "legendary", "sniper" }
+-- the gadget skins (18 Nov, the owner: "Gadgets should have skins and be wrappable"; the utility-items session's
+-- Shared.ItemSkins): whole other objects for one gadget, their models in JankfireSkins with Weapon = the gadget id and
+-- Item = true, so they roll in crates, sell and get picked like weapon skins. a row already here keeps its row
+do
+	local m = script.Parent:FindFirstChild("ItemSkins")
+	local ok, I = false, nil
+	if m and m:IsA("ModuleScript") then ok, I = pcall(require, m) end
+	if ok and type(I) == "table" and type(I.SKINS) == "table" then
+		for id, row in I.SKINS do
+			if L.SKINS[id] == nil and type(row) == "table" and type(row[1]) == "string" and type(row[2]) == "string" and type(row[3]) == "string" then
+				L.SKINS[id] = { row[1], row[2], row[3] }
+			end
+		end
+	end
+end
 -- a weapon skin's tier (SkinSets.TIER: basic = small changes to the base gun, mid = a new model, high = a remodel with
 -- its own effects): "basic" / "mid" / "high" and its name, or nil (no tier, or no SkinSets in the place)
 function L.tier(id: string): (string?, string?)
@@ -288,7 +303,8 @@ end
 -- (owner, 16 Nov 2026: "spray cans should give you a wrap for only one gun at a time! some with the charms/hats"): a
 -- wrap or a hat is owned for ONE weapon, a pair written "<id>@<weapon>" ("galaxy@ar", "crown@katana"). a weapon skin
 -- already belongs to one weapon: its key is its own id. the weapons are the live ones that take paint (Roster: live, not
--- an item on G); a hat only goes on a weapon with a seat for it (GunHatData.SPOTS)
+-- an item on G); a hat only goes on a weapon with a seat for it (GunHatData.SPOTS). a WRAP also goes on the live
+-- gadgets (the utility slot: owner, 18 Nov 2026, "Gadgets should have skins and be wrappable"): "galaxy@frag"
 function L.key(t: string, id: string, weapon: string?): string
 	if L.gunless(t) or not weapon then return id end
 	return id .. "@" .. weapon
@@ -303,7 +319,7 @@ end
 function L.weapons(t: string): { string }
 	local out = {}
 	for _, e in Roster.list do
-		if e.live and e.slot ~= "utility" and (t ~= "hat" or (GunHatData.SPOTS ~= nil and GunHatData.SPOTS[e.id] ~= nil)) then
+		if e.live and (e.slot ~= "utility" or t == "wrap") and (t ~= "hat" or (GunHatData.SPOTS ~= nil and GunHatData.SPOTS[e.id] ~= nil)) then
 			table.insert(out, e.id)
 		end
 	end
