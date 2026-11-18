@@ -1472,6 +1472,49 @@ The owner: "can you make it so you can grapple onto people". Ported from the web
   - a wall hook: unchanged (a point, `HookAt` set, the rope's end in Terrain).
   - Not tested: two real players (a solo test can't). Photo: `docs/grapples/grapple_onto_people_v740.jpg`.
 
+## 38. Hub v3: the Rotunda, roomier, 18 November 2026 (place version 743)
+
+The owner: "can you do hub v3? its the current one just more spacious one of my friends said it felt too cramped".
+
+- **One scale rule over the finished build** (`studio-tools/HubRotunda.luau`, `R.V3`, `R.applyWarp`): the same builder and the same contents, then the whole build warped before it goes into the place.
+  - **The plan:** every place and every footprint is 1.35 times as far from the round room's middle.
+  - **The heights:** a map of heights over the floor, `R.V3.H`. The bands people use keep their size (the ground floor up to 9.5, the second floor's first 9.5), and only the air over them grows.
+- **Sizes (studs), Rotunda -> v3:**
+  - round room 56 -> 75.6 across; the walk round the platform 14.6 -> 19.7; halls 10 -> 13.5 wide;
+  - the middle to the lift decks 43.8 -> 59; lift decks 16 -> 21.6 wide;
+  - lounge 28 x 22 -> 37.8 x 29.7; VIP 22 x 18 -> 29.7 x 24.3; gym 40 x 34 -> 54 x 45.9; armory 26 x 26 -> 35.1 x 35.1;
+  - balcony and second floor 14 -> 18 up; wall top 27.5 -> 35; dome top 41 -> 53.
+  - Plan: `docs/hub/hub_v3_plan.jpg`.
+- **What keeps its size** (`R.WARP_MODE`):
+  - **stretch** (wider, height by the map): structural kit and the jump pads.
+  - **seat:** sofas, armchairs and benches get longer, not deeper or taller, so people sit as before.
+  - **uniform:** planters grow 1.35x.
+  - **rigid** (the default): props and display guns keep their size and move with their places.
+  - The regulars' places and points, the spawn and arrival markers and the lamp spots just move; lamps reach 1.35x as far.
+- **The world points held in attributes move too:** VIP `Out`/`Door`, the regulars' `Approach`/`Aisle`/`Stand`, the gate's `Center`/`Top`/`Lift` and each slat's `Shut`, and the VIP leaves' `Slide`.
+  - The holograms' `Radius`/`Height`/`Base` follow the drums they fill.
+  - Each jump pad's throw (`Pad`) is worked out again: as high over the new balcony and as far out in the new plan.
+- **Switches:**
+  - `R.VERSION = 3`: `R.build("live")` makes v3.
+  - `R.switch("rotunda")` brings back the Rotunda exactly as it was (the spare, like the bowling centre); `R.switch("v3")` returns to v3.
+  - The folder is still `Map.Hub.Rotunda` (ZoneCull, HubNPCs and HubVip find it there), with attribute `Version = 3`.
+- **`R.check` uses the same warp** for its own places (walk zones, leak points, the route's waypoints, camera views).
+  - While building v3 it found a flaw the Rotunda already had: a banner hung in front of each of the four doorways into the second floor. The old check missed it only because it skips each sight line's last stud. Those sides no longer get a banner (`HubRotundaCentre`).
+- **Checks:**
+  - A staging copy first, beside the live hub, then live. `R.check`: 0 problems, 0 leaks, 0 overlaps, 288 sight lines open, the route walked to all 12 pads, the regulars' 14 ways clear (839 body boxes).
+  - ZFight: 9 hairline hits, none seen in play (two floor undersides, edge faces a few hundredths wide, and inside the fridge and a gun model).
+  - In Play:
+    - you spawn on the platform;
+    - the four regulars stand and walk at their places;
+    - the jump pad throws you onto the balcony (peak 29, landed 34.5 out at the balcony's height);
+    - an upper pad and a lift pad each count you on their boards;
+    - the training gate takes you to the training ground.
+  - Photos: `docs/hub/hub_v3_photos_v743.jpg` (the entrance view, a pad bank, the upper floor, the VIP room).
+- **Not tested:**
+  - The VIP push-out: the owner counts as VIP in Studio. Its zone and its `Out` point moved with the build.
+  - Two-player matches from the pads, phones.
+  - No new decoration was added: the bigger room's own pieces (platform, ring, plinths, planters, the gym's ring) fill it.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
