@@ -178,10 +178,17 @@ local function showHats(ch: Model?)
 	table.clear(hatFade)
 end
 
+-- scoped in from third person (TPScope: Arsenal, ThirdPerson and the scope read it as first person)
+local function setScope(on: boolean)
+	local v = if on then true else nil
+	if me:GetAttribute("TPScope") ~= v then me:SetAttribute("TPScope", v) end
+end
+
 local function release()
 	if not S.on then return end
 	S.on = false
 	S.leaving = nil
+	setScope(false)
 	fade(me.Character, 0)
 	showHats(me.Character)
 	local cam = workspace.CurrentCamera
@@ -275,6 +282,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 	if me:GetAttribute("LoadoutOpen") == true then -- (a menu has the camera and the mouse)
 		if fadeNow > 0 then fade(ch, 0) end
 		showHats(ch)
+		setScope(false)
 		return
 	end
 	if me:GetAttribute("ThirdPerson") ~= true then
@@ -326,8 +334,17 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 		local u = math.clamp((os.clock() - (S.leaving :: number)) / C.inTime, 0, 1)
 		S.frac = math.min(S.frac, S.leaveFrac * (1 - u * u * (3 - 2 * u)))
 	end
-	cam.CFrame = CFrame.new(focus + dir * want * S.frac) * rot
-	local wall = 1 - math.clamp((want * S.frac - C.fadeNear) / (C.fadeFar - C.fadeNear), 0, 1)
+	-- a scoped gun aimed in (ScopeAim, Arsenal): the camera glides into your head with the sights, into first person's
+	-- own scope (its overlay, zoom and speed: TPScope), and back out over your shoulder as you let go. your body fades
+	-- out on the way in, like a wall right behind you (the owner, 18 Nov 2026: "when in 3rd person sniper scope doesnt
+	-- show up")
+	local sc = me:GetAttribute("ScopeAim")
+	local sk = if type(sc) == "number" then math.clamp(sc, 0, 1) else 0
+	sk = sk * sk * (3 - 2 * sk)
+	local dist = want * S.frac * (1 - sk)
+	cam.CFrame = CFrame.new(focus + dir * dist) * rot
+	setScope(sk > 0.98)
+	local wall = 1 - math.clamp((dist - C.fadeNear) / (C.fadeFar - C.fadeNear), 0, 1)
 	fade(ch, wall)
 	hats(ch, cam, wall, a, dt)
 end)
@@ -338,5 +355,27 @@ me.CharacterAdded:Connect(function(ch)
 	if S.on then
 		S.frac = C.startBack
 		task.defer(function() fadeNow = -1; fade(ch, 0) end)
+	end
+end)
+
+-- the start of a round (18 Nov 2026, the owner: "can you quickly double v to reset camera position at the start of
+-- rounds to ensure"): when your body comes into a match's round and again when the round goes live, V's reset runs,
+-- the view as two presses of V would leave it (first person stays first, third stays third). not while something
+-- really has the camera (taken: the death camera, a finisher, the loadout picker, menus). CamRoundReset counts them
+local function roundReset()
+	local hum = alive()
+	if not hum or taken() then return end
+	reset(workspace.CurrentCamera, hum)
+	me:SetAttribute("CamRoundReset", ((me:GetAttribute("CamRoundReset") :: number?) or 0) + 1)
+end
+me.CharacterAdded:Connect(function(ch)
+	task.delay(0.25, function() -- (after the Spawn turn, Body.luau)
+		if me.Character == ch and me:GetAttribute("Zone") == "match" then roundReset() end
+	end)
+end)
+task.spawn(function()
+	local r = game:GetService("ReplicatedStorage"):WaitForChild("JankfireRemotes"):WaitForChild("Round", 60)
+	if r and r:IsA("RemoteEvent") then
+		r.OnClientEvent:Connect(function(m: any) if type(m) == "table" and m.start then roundReset() end end)
 	end
 end)

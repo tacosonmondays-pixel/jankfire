@@ -1134,8 +1134,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 				ammo = (if r.isMe and mine.ammo then mine.ammo else w.mag) or 0, mag = w.mag or 0, reloading = reloading, now = now, firedT = r.lastFire,
 			}, w)
 		end
-		-- the pieces a reload takes out (a dropped mag) and your own gun in first person: hidden
-		local hideAll = r.isMe and not thirdPerson()
+		-- the pieces a reload takes out (a dropped mag) and your own gun in first person: hidden (and scoped in from
+		-- third person, TPScope: ShoulderCam took the camera into your head)
+		local hideAll = r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true)
 		for _, d in (r :: any).gunParts or {} do
 			local want = if hideAll or d:GetAttribute("Hide") then 1 else 0
 			if r.shown[d] ~= want then r.shown[d] = want; d.LocalTransparencyModifier = want end

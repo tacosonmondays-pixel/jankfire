@@ -129,8 +129,10 @@ local function kat(): number
 end
 local function thirdPerson(): boolean
 	local _, _, root = myChar()
-	-- (third person is on: the shoulder camera can come in closer than that in a tight corner)
-	return me:GetAttribute("ThirdPerson") == true or (root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5)
+	-- (third person is on: the shoulder camera can come in closer than that in a tight corner. scoped in from third
+	-- person (TPScope, ShoulderCam) is first person: the scope, the shot from your eye)
+	return (me:GetAttribute("ThirdPerson") == true and me:GetAttribute("TPScope") ~= true)
+		or (root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5)
 end
 -- the eye (feet + 1.6 m, lower when crouched: the camera itself in first person), and where you're aiming. In third
 -- person: from the eye to what's under the crosshair (TP.crosshair: the map or a body's hit box), so the shot lands
@@ -911,6 +913,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local isScoped = w ~= nil and w.ads ~= nil and w.ads.scope == true and aim > 0.92
 	if isScoped and not scoped then scopedAt = now end
 	scoped = isScoped
+	-- (in third person a scoped gun's aim takes the camera into your head for the scope, ShoulderCam: the owner, 18 Nov
+	-- 2026, "when in 3rd person sniper scope doesnt show up". how far in: ScopeAim, a scoped gun's aim, nil = none)
+	local sa: number? = if w and w.ads and w.ads.scope == true and hum then math.floor(aim * 100 + 0.5) / 100 else nil
+	if sa == 0 then sa = nil end
+	if me:GetAttribute("ScopeAim") ~= sa then me:SetAttribute("ScopeAim", sa) end
 	local wantAim = aimHeld and canAim == true and w.ads ~= nil and w.ads.scope == true
 	if wantAim ~= aimSent then aimSent = wantAim; AimR:FireServer(wantAim) end
 	-- how fast you run with it out (the SMG is light, the Belt Sander isn't), slower down the sights (web: x0.75)
