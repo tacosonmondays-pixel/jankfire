@@ -17,7 +17,7 @@ There is no second currency: two would confuse players.
 
 ## The switch
 
-Real money is **on** in the place since version 1034 (18 Nov; live once the owner publishes). The two lines in
+Real money is **LIVE** since 18 Nov 2026 (place version 1034, published about 22:36 UTC). The two lines in
 `roblox/src/shared/Config.luau`:
 
 | Switch | Now (version 1034) | Off again |
@@ -31,7 +31,7 @@ Real money is **on** in the place since version 1034 (18 Nov; live once the owne
 - `WEAPONS_ROBUX_FREE` only locks the weapons. With it off and `LOOT_ROBUX` still off, they can be bought with coins
   but not with Robux.
 
-## Going live (flipped in Studio 18 Nov, place version 1034; live once the owner publishes)
+## Going live (LIVE since 18 Nov 2026, about 22:36 UTC, place version 1034)
 
 The owner: "Lets get the shop going!". It is one change, in one Studio turn under main's OWNER HOLD:
 
@@ -41,8 +41,15 @@ The owner: "Lets get the shop going!". It is one change, in one Studio turn unde
    true (scope `game-pass:write`). `Shop.VIP_PASS` is already 2093409349.
 3. The owner publishes.
 
-Done in Studio, place version 1034: steps 1 and 3 wait on the owner's publish; then step 2 (the VIP pass goes on sale
-only once the live game has the code that grants it). Sanity Play before the save:
+**The log (18 Nov 2026, UTC):**
+- 22:3x: `LOOT_FREE = false`, `LOOT_ROBUX = true` in Studio (the shop session, in its turn under main's OWNER HOLD);
+  saved as place version 1034.
+- about 22:36: the owner published version 1034. Real money is live.
+- 22:53: main put the VIP pass on sale (PATCH `isForSale` true, 399). A GET at 22:53:11 confirms it.
+
+The live data stores (`JankfirePurchases_v1` and the rest) can't be read from here: Open Cloud's data-store scope
+isn't granted to the assistant. Watch the first real purchases in the live server's output (`[jankfire] purchases:` /
+`quests: ... bought` lines) or with a Studio read of the live store. Sanity Play before the save:
 - the 1,200-coin pack and the Crate showed Roblox's real purchase prompts (cancelled: `PromptProductPurchaseFinished`
   with false for 3733204424 and 3733200177);
 - the VIP tile's buy prompted the pass;
@@ -55,7 +62,7 @@ Also for the owner, on the Creator Hub:
 - Answer the experience questionnaire: the game has paid random items (the containers). See LOOT.md, "Roblox's rules
   for paid random items". The odds and PolicyService parts are already built.
 
-**Players keep everything they claimed while the shop was free.** Nothing is taken back at go-live:
+**Players keep everything they claimed while the shop was free.** Nothing was taken back at go-live:
 - items claimed (wraps, hats, skins, card looks, kill effects, emotes) stay in the loot save;
 - containers in stock stay, and still open;
 - a deal had stays had;
