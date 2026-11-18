@@ -178,8 +178,9 @@ local REARM_ZONES = { hub = true, training = true, playground = true }
 -- between rounds": the countdown before a round and the break between rounds, when no damage counts. the server's
 -- Matches sets LoadoutWindow on its players for it and clears it the moment the round goes live; a classic mode never
 -- sets it. play-party-ranked's)
+-- (18 Nov: READY locks your set for the round: LoadoutReady, Matches.ready)
 local function inWindow(p: Player): boolean
-	return p:GetAttribute("Zone") == "match" and p:GetAttribute("LoadoutWindow") ~= nil
+	return p:GetAttribute("Zone") == "match" and p:GetAttribute("LoadoutWindow") ~= nil and p:GetAttribute("LoadoutReady") ~= true
 end
 local function rearmInHub(p: Player): boolean
 	local f = Fight and Fight.byPlayer[p]
@@ -384,7 +385,9 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or e.slot ~= a then return false, "wrong slot" end
 		if not e.live then return false, "coming soon. it's not on roblox yet" end
 		-- (in a match: only in the loadout window, never while a round is live)
-		if not free and p:GetAttribute("Zone") == "match" and not inWindow(p) then return false, "the loadout opens before a round and between rounds" end
+		if not free and p:GetAttribute("Zone") == "match" and not inWindow(p) then
+			return false, if p:GetAttribute("LoadoutReady") then "you're locked in for this round" else "the loadout opens before a round and between rounds"
+		end
 		if L.pick[a] == b then return true, nil end
 		L.pick[a] = b
 		done()

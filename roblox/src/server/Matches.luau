@@ -31,8 +31,10 @@ Matches.WIN = 5 -- round wins that take the match
 Matches.ROUND_TIME = 120 -- s; time up = the most damage dealt takes it (then HP left, then a coin flip)
 Matches.COUNTDOWN = 3 -- s on a full pad before you go
 Matches.PAD_VOTE = 8 -- s a pad's group votes on its map in a map room (18 Nov, the owner; MapRooms.luau, the stages below)
-Matches.READY = 3 -- s from spawning in to the round going live (no damage till then)
-Matches.READY_FIRST = 8 -- (round 1: longer, the time to change your loadout before the first round. 17 Nov, the owner)
+Matches.READY = 3 -- s from spawning in to the round going live (no damage till then): the shortest count after a break
+Matches.READY_FIRST = 20 -- (round 1: the loadout window before the first round. 17 Nov, the owner; 20 s since 18 Nov)
+Matches.WINDOW = 15 -- s the loadout window runs between rounds: the break, then the count held at your spawn (18 Nov)
+Matches.GO = 3 -- s from everyone locked in (READY) to the round going live: the window shuts early (18 Nov)
 Matches.BETWEEN = 3 -- s between rounds
 Matches.AFTER = 7 -- s on the end screen, then back to the hub
 Matches.CLEAR = 3 -- s after a match's players are back in the hub, its site is free again (a copy is cleared)
@@ -61,6 +63,10 @@ type Match = {
 	rules: any?, -- (a classic mode's match, Matches.startMode: Modes.luau runs its spawns, respawns, clock, HUD, board and end)
 	ms: any?, -- (and keeps its state here)
 	liveAt: number?, -- (the os.clock() the next round goes live: the loadout window shuts then, LoadoutWindow)
+	tok: number?, -- (the go-live that's still wanted: an early start makes the one before it stale)
+	locked: boolean?, -- (everyone locked in: the window is shut early, the GO count runs)
+	ready: { [Player]: boolean }?, -- who has locked in their set this window (READY)
+	standIns: { { team: number, ready: boolean } }?, -- (Studio tests: pretend players in the ready count)
 }
 
 local Fight: any
@@ -280,7 +286,7 @@ local function setHud(m: Match)
 	-- (the loadout window, 17 Nov, the owner: "allow us to change weapons before first round and between rounds". the
 	-- countdown before a round and the break between rounds; the server time it shuts. Loadout.luau takes picks while
 	-- it is set and puts them in your hands, client/MatchLoadout.luau opens on it)
-	local win = if (m.phase == "ready" or m.phase == "between") and m.liveAt then workspace:GetServerTimeNow() + math.max(0, (m.liveAt :: number) - os.clock()) else nil
+	local win = if (m.phase == "ready" or m.phase == "between") and m.liveAt and not m.locked then workspace:GetServerTimeNow() + math.max(0, (m.liveAt :: number) - os.clock()) else nil
 	each(m, function(p) p:SetAttribute("MatchHud", txt); p:SetAttribute("RoundEnds", if m.phase == "live" then workspace:GetServerTimeNow() + (m.roundEnds - os.clock()) else nil); p:SetAttribute("LoadoutWindow", win) end)
 end
 local function callAll(m: Match, text: string, dur: number)
@@ -294,7 +300,101 @@ local function teamLabel(m: Match, t: number): string
 end
 
 -- ------------------------------------------------------------------ rounds
-local startRound: (Match) -> ()
+local startRound: (Match, boolean?) -> ()
+
+-- ------------------------------------------------------------------ READY (18 Nov, the owner: "give more time for
+-- loadouts! until move people lock in their set once both are ready"). the loadout window is longer (READY_FIRST before
+-- round 1, WINDOW between rounds) and you're held at your spawn while the round counts in. READY (MatchLoadout, the
+-- MatchReady remote) locks your set for the round; once everyone still in the match has, the window shuts early and the
+-- round goes live GO s later. whoever doesn't lock in keeps what they had; a leaver holds nobody up. every round-based
+-- match, casual and ranked; a classic mode has no window. ReadyTeams on each player: per team, "1" / "0" a player
+-- ("1,0|0"); LoadoutReady: you're locked in
+local function readyBoard(m: Match): string
+	local parts = {}
+	for t, list in m.teams do
+		local marks = {}
+		for _, p in list do if p.Parent then table.insert(marks, if m.ready and m.ready[p] then "1" else "0") end end
+		for _, s in m.standIns or {} do if s.team == t then table.insert(marks, if s.ready then "1" else "0") end end
+		parts[t] = table.concat(marks, ",")
+	end
+	return table.concat(parts, "|")
+end
+local function pushReady(m: Match)
+	local board = if (m.phase == "ready" or m.phase == "between") and not m.rules then readyBoard(m) else nil
+	each(m, function(p)
+		p:SetAttribute("ReadyTeams", board)
+		p:SetAttribute("LoadoutReady", if board and m.ready and m.ready[p] then true else nil)
+	end)
+end
+local function allReady(m: Match): boolean
+	local n = 0
+	for _, list in m.teams do
+		for _, p in list do
+			if p.Parent and inMatch[p] then
+				n += 1
+				if not (m.ready and m.ready[p]) then return false end
+			end
+		end
+	end
+	for _, s in m.standIns or {} do if not s.ready then return false end end
+	return n > 0
+end
+local goLive: (Match, number) -> ()
+-- everyone's in: the window shuts now and the round goes live GO s later (from the break: the round starts now)
+local function checkReady(m: Match)
+	if not m.on or m.rules or m.locked or not (m.phase == "ready" or m.phase == "between") then return end
+	if not allReady(m) then return end
+	if m.phase == "between" then
+		if m.wins and m.round > 0 then for _, w in m.wins do if w >= Matches.WIN then return end end end -- (the match is won)
+		startRound(m, true)
+		return
+	end
+	if (m.liveAt or 0) - os.clock() <= Matches.GO then return end -- (the count is shorter than that already)
+	m.locked = true
+	m.liveAt = os.clock() + Matches.GO
+	m.tok = (m.tok or 0) + 1
+	setHud(m)
+	pushReady(m)
+	callAll(m, "ALL READY", 1.2)
+	task.delay(Matches.GO, goLive, m, m.tok)
+end
+function Matches.ready(p: Player): (boolean, string?)
+	local im = inMatch[p]
+	if not im then return false, "not in a match" end
+	local m = im.m
+	if m.rules then return false, "this mode keeps its own weapons" end
+	if m.locked or not (m.phase == "ready" or m.phase == "between") then return false, "the round is starting" end
+	local r = m.ready or {}
+	m.ready = r
+	if r[p] then return true, nil end
+	r[p] = true
+	pushReady(m)
+	checkReady(m)
+	return true, nil
+end
+-- held at your spawn while the round counts in: your body's root anchored once it has stood 0.6 s, let go the moment
+-- it goes live (an anchored body doesn't move, so the anti-cheat's speed and fly checks see nothing to judge)
+local function holdSpawns(m: Match, round: number)
+	local held: { [BasePart]: boolean } = {}
+	local seen: { [BasePart]: number } = {}
+	while m.on and m.round == round and m.phase == "ready" do
+		each(m, function(p)
+			local ch = p.Character
+			local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+			if not root or not hum or hum.Health <= 0 or held[root] then return end
+			local t0 = seen[root]
+			if not t0 then seen[root] = os.clock(); return end
+			if os.clock() - t0 >= 0.6 and not root.Anchored then
+				root.AssemblyLinearVelocity = Vector3.zero
+				root.Anchored = true
+				held[root] = true
+			end
+		end)
+		task.wait(0.1)
+	end
+	for root in held do if root.Parent then root.Anchored = false end end
+end
 
 local function backToHub(m: Match)
 	if m.rules then m.rules.home(m) end -- (a classic mode: its marks come off first)
@@ -302,6 +402,7 @@ local function backToHub(m: Match)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
 		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil); p:SetAttribute("LoadoutWindow", nil)
+		p:SetAttribute("ReadyTeams", nil); p:SetAttribute("LoadoutReady", nil)
 		RoundR:FireClient(p, { hub = true })
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end
@@ -403,10 +504,11 @@ local function checkRound(m: Match)
 		winner, how = Matches.pickWinner(cands, m.dmg, hp, math.random)
 	end
 	m.phase = "between"
-	m.liveAt = os.clock() + Matches.BETWEEN + Matches.READY
+	m.liveAt = os.clock() + Matches.WINDOW -- (the break, then the count at your spawn: the loadout window)
 	m.wins[winner] += 1
 	fire(hooks.round, m, winner)
 	setHud(m)
+	pushReady(m)
 	if m.wins[winner] >= Matches.WIN then
 		callAll(m, teamLabel(m, winner) .. " WINS THE MATCH", 2)
 		task.delay(1.2, endMatch, m, winner)
@@ -424,18 +526,25 @@ local function checkRound(m: Match)
 	task.delay(Matches.BETWEEN, function() if m.on and m.phase == "between" then startRound(m) end end)
 end
 
-startRound = function(m: Match)
+startRound = function(m: Match, early: boolean?)
 	m.round += 1
 	m.phase = "ready"
-	local ready = if m.round == 1 then Matches.READY_FIRST else Matches.READY
+	-- (the loadout window: READY_FIRST before round 1, the rest of WINDOW after a break; everyone ready already: GO)
+	local ready = if early then Matches.GO elseif m.round == 1 then Matches.READY_FIRST else math.max(Matches.READY, Matches.WINDOW - Matches.BETWEEN)
 	m.liveAt = os.clock() + ready
+	m.locked = if early then true else nil
+	m.tok = (m.tok or 0) + 1
+	local tok = m.tok
 	for t = 1, #m.teams do m.dmg[t] = 0 end
 	setHud(m)
-	-- a fresh body for everyone at their end (alive or not)
+	pushReady(m)
+	if early then callAll(m, "ALL READY", 1.2) end
+	-- a fresh body for everyone at their end (alive or not), held there till the round goes live
 	each(m, function(p)
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end
 	end)
+	task.spawn(holdSpawns, m, m.round)
 	-- the first round opens on the arena's name (Arena.title: "ROOFTOP: SKYLINE"), then the round line, both on the
 	-- HUD's announcer line
 	local first = m.round == 1
@@ -447,14 +556,18 @@ startRound = function(m: Match)
 			each(m, function(p, t) CalloutR:FireClient(p, ("ROUND %d · you're %s"):format(m.round, TEAM_NAMES[t]), if first then 1.05 else 1.6) end)
 		end)
 	end)
-	task.delay(ready, function()
-		if not m.on or m.phase ~= "ready" then return end
-		m.phase = "live"
-		-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
-		m.roundEnds = os.clock() + ((script:GetAttribute("TestRoundTime") :: number?) or Matches.ROUND_TIME)
-		setHud(m)
-		each(m, function(p) RoundR:FireClient(p, { start = true }) end)
-	end)
+	task.delay(ready, goLive, m, tok)
+end
+goLive = function(m: Match, tok: number)
+	if not m.on or m.phase ~= "ready" or m.tok ~= tok then return end
+	m.phase = "live"
+	m.locked = nil
+	m.ready = nil
+	-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
+	m.roundEnds = os.clock() + ((script:GetAttribute("TestRoundTime") :: number?) or Matches.ROUND_TIME)
+	setHud(m)
+	pushReady(m)
+	each(m, function(p) RoundR:FireClient(p, { start = true }) end)
 end
 
 -- `site` is the one the pad took when its countdown started (in arena `arena`, the pad's pick from the rotation)
@@ -907,6 +1020,7 @@ function Matches.init(fight: any)
 			local i = table.find(list, p)
 			if i then table.remove(list, i) end
 			task.defer(checkRound, im.m)
+			task.defer(function() pushReady(im.m); checkReady(im.m) end) -- (a leaver holds nobody up)
 		end
 	end)
 	local acc = 0
@@ -929,6 +1043,14 @@ function Matches.init(fight: any)
 		padStep()
 		for _, m in table.clone(live) do checkRound(m) end
 	end)
+	-- READY: the client's lock-in (MatchLoadout)
+	local rr = Remotes:FindFirstChild("MatchReady") or Instance.new("RemoteFunction")
+	rr.Name = "MatchReady"
+	;(rr :: RemoteFunction).OnServerInvoke = function(p: Player)
+		local ok, why = Matches.ready(p)
+		return { ok = ok, why = why }
+	end
+	rr.Parent = Remotes
 	-- (Studio play tests only, like TestHook's JankTest: ServerStorage.JankMatchTest reaches the running server)
 	if RunService:IsStudio() then
 		local old = ServerStorage:FindFirstChild("JankMatchTest")
@@ -1005,6 +1127,24 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 		setHud(m)
 		task.delay(wait, function() if m.on and m.phase == "between" then startRound(m) end end)
 		return { round = m.round, opensFor = wait + Matches.READY }
+	elseif op == "standin" then
+		-- (the READY test: a pretend player in player a's match on team b (2), ready c; with d = its index, sets that one's
+		-- ready to c instead. answers the board)
+		local im = if typeof(a) == "Instance" then inMatch[a :: Player] else nil
+		if not im then return nil end
+		local m = im.m
+		local list = m.standIns or {}
+		m.standIns = list
+		if type(d) == "number" and list[d] then list[d].ready = c == true
+		else table.insert(list, { team = tonumber(b) or 2, ready = c == true }) end
+		pushReady(m)
+		checkReady(m)
+		return { n = #list, board = readyBoard(m), phase = m.phase, locked = m.locked == true, liveIn = (m.liveAt or 0) - os.clock() }
+	elseif op == "queued" then
+		-- (a Play-queue match, ranked if b, player a alone on team 1, held c s like a ghost match)
+		if typeof(a) ~= "Instance" then return nil end
+		local m2, why = Matches.startQueued("1v1", { { a :: Player }, {} }, { queue = (if b then "ranked" else "casual") .. ":1v1", ranked = b == true, hold = tonumber(c) or 60 })
+		return { ok = m2 ~= nil, why = why, ranked = m2 ~= nil and m2.ranked == true, arena = m2 and m2.arena }
 	elseif op == "state" then
 		local out = { live = {}, sites = {}, pads = {}, inMatch = 0, cap = maxLive() }
 		for _, m in live do

@@ -512,6 +512,47 @@ Tested in solo Play (place version 728) in a ghost 1v1:
 
 Not tested: a pick while dead between rounds, a team match, a controller.
 
+## READY: lock in, a longer window, an early start (18 Nov)
+
+The owner: "give more time for loadouts! until move people lock in their set once both are ready idk research rivals!"
+
+**Research, function only.** Rivals skips its 12 s matchmade duel countdown once every player has connected (patch
+notes, June 2026); its duel pads count in from 3. Nothing about a ready button or a loadout lock-in could be found.
+Main's rules (below) are kept: an early start once everyone is in is the same idea.
+
+**The rules** (server `Matches.luau`, shop-gui's part of it since 18 Nov; play-party-ranked's map rooms untouched):
+- The window is `READY_FIRST` = 20 s before round 1 and `WINDOW` = 15 s between rounds (the 3 s break, then 12 s at
+  your spawn). The server's `LoadoutWindow` still says when it shuts.
+- You're held at your spawn while the round counts in (`holdSpawns`): the server anchors your body's root 0.6 s after
+  it appears and lets go the moment the round goes live. Moving was free in the count before this. An anchored body
+  doesn't move, so the anti-cheat's checks have nothing to judge: with the movement checks on (StudioOn), a 20 s
+  window held gave 0 points and no verdicts.
+- READY locks your set for the round: the header's button, Enter (the new `ready` bind, READY (LOCK IN LOADOUT),
+  MENUS, controller D-pad up) or a tap. It goes through the `MatchReady` remote to `Matches.ready`; the server sets
+  `LoadoutReady` on you, and `Loadout.luau` refuses picks after that ("you're locked in for this round").
+- Who is ready: `ReadyTeams` on every player in the match, per team "1" a player locked in, "0" not ("1,0|0"). The
+  header draws one tick a player, by team, after a thin bar in the team's colour. No names.
+- Everyone still in the match ready: the window shuts at once (LoadoutWindow cleared), ALL READY, and the round goes
+  live `GO` = 3 s later, still held. From the break, the next round starts at once with that 3 s count. Whoever doesn't
+  lock in keeps what they had when the time runs out. A leaver is out of the count (PlayerRemoving checks again).
+- Every round-based match, casual and ranked, the same. A classic mode has no window and refuses READY.
+- Test ops (`JankMatchTest`): `"standin", player, team, ready[, index]` (a pretend player in the count),
+  `"queued", player, ranked, secs` (a Play-queue match alone, held like a ghost match). Client: `MatchLoadoutTest =
+  "ready"`.
+
+Tested in solo Play (place version 739):
+- A ghost 1v1 with a stand-in that never readied. The 20 s window ran with me held from 1.6 s. Enter at 6.4 s gave
+  LOCKED IN and the ticks 1|0 (`docs/shop/match-ready-desktop.jpg`; the phone layout:
+  `match-ready-phone-locked.jpg`). The time ran out: the strip went on the clock (20.62 s), the round went live
+  (20.65 s) and the hold let go (20.68 s). Anti-cheat: 0 points, no verdicts.
+- The phone layout before locking in: READY in the header (`match-ready-phone.jpg`).
+- A ranked Play-queue match ("queued"), alone. Enter with 10 s left: everyone in, so the window shut that frame, then
+  live 3.0 s later and let go.
+
+Not tested: two real players, an early start from the break with real players (the stand-in run ended with the ghost
+match), the map room handing over into round 1 (its code path is unchanged: stageGo -> startMatch -> startRound), a
+controller.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

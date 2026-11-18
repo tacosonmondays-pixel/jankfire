@@ -1,8 +1,8 @@
 --!strict
 -- the match loadout (17 Nov 2026, the owner: "allow us to change weapons before first round and between rounds", then
 -- "can you have renders when selecting loadout"). a round-based match (duels and team duels, ranked too; never a
--- classic mode, which keeps its own weapons) opens a loadout window: the countdown before each round (8 s before round
--- 1) and the break between rounds (6 s). the SERVER decides it: Matches sets the player attribute LoadoutWindow (the
+-- classic mode, which keeps its own weapons) opens a loadout window: the countdown before each round (20 s before round
+-- 1) and the break between rounds (15 s), held at your spawn. the SERVER decides it: Matches sets the player attribute LoadoutWindow (the
 -- server time it shuts) and clears it the moment the round goes live, and Loadout.luau only takes a pick in a match
 -- while it is set. a pick goes to the Loadout remote ("pick"), like the hub screen's: alive (a countdown) it's in your
 -- hands at once, dead (the break) you spawn with it next round.
@@ -13,9 +13,13 @@
 -- and opens the slot's picker on PRIMARY: every live weapon for that slot, each a picture in your looks, the one you
 -- have marked. one click picks it; the picker stays open for the next slot (click a slot, or 1 2 3 4). L, Esc or DONE
 -- closes it, and the window shutting closes it too. on a phone the slots are tapped straight away.
+-- READY (18 Nov, the owner: "until move people lock in their set once both are ready"): the header's READY button, Enter
+-- (the "ready" key, Binds) or a tap locks your set for the round (the MatchReady remote: Matches.ready; LoadoutReady on
+-- you after). one tick a player, by team, says who has (ReadyTeams). everyone in: the window shuts early and the round
+-- goes live 3 s later; whoever doesn't lock in keeps what they had.
 -- desktop: the strip sits low in the middle, the picker over it. phone (or a small screen): the strip sits at the top
 -- under the score, the picker under it, clear of the stick and the fire buttons.
--- test hook: the LocalPlayer attribute MatchLoadoutTest = "open" | "slot:<slot>" | "close" | "pick:<slot>:<weapon>"
+-- test hook: the LocalPlayer attribute MatchLoadoutTest = "open" | "slot:<slot>" | "close" | "ready" | "pick:<slot>:<weapon>"
 -- ("pick" answers on MatchLoadoutResult), "fake:844x390" (laid out in a box that size, as on that screen) | "real"
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -30,6 +34,7 @@ local Keys = require(script.Parent:WaitForChild("Keys")) :: any
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local GunPreview = require(script.Parent:WaitForChild("GunPreview")) :: any
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
+local TEAM_COLORS = { Color3.fromHex("#ff4fd8"), Color3.fromHex("#37d6ff"), Color3.fromHex("#ffe14d") } -- (the score's)
 
 local me = Players.LocalPlayer
 local new, text = T.new, T.text
@@ -43,7 +48,9 @@ local S = {
 	shown = false,
 	small = nil :: boolean?, -- the layout drawn: phone-sized or not
 	hover = nil :: string?,
+	readying = false, -- (a READY is out to the server)
 }
+local function isReady(): boolean return me:GetAttribute("LoadoutReady") == true end
 
 -- (the window is shut the moment any of these says so, whichever comes first: the server's shut time passing on this
 -- client's clock, the attribute cleared, RoundEnds set (the round is live). owner, 18 Nov: "your choose loudout stays on
@@ -89,6 +96,14 @@ local title = text(head, "Title", "LOADOUT", 13, T.TEXT, T.FONT_HEAVY)
 local cap = T.key(head, "L", UDim2.fromOffset(0, 6))
 local secs = text(head, "Secs", "", 22, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 local sub = text(head, "Sub", "", 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
+-- READY, and the ticks: who has locked in, by team
+local readyB = new("TextButton", { Name = "Ready", AutoButtonColor = false, BorderSizePixel = 0, Text = "READY", BackgroundColor3 = T.CARD_HI,
+	FontFace = T.FONT_HEAVY, TextSize = 12, TextColor3 = T.TEXT, AnchorPoint = Vector2.new(1, 0.5) }, head)
+T.corner(readyB, 4)
+local readySt = T.edge(readyB, T.ACCENT, 0.35, 1)
+local ticks = new("Frame", { Name = "Ticks", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5) }, head)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 10),
+	SortOrder = Enum.SortOrder.LayoutOrder }, ticks)
 local track = new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK or T.CARD_HI, AnchorPoint = Vector2.new(0, 1) }, head)
 local fill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Size = UDim2.fromScale(1, 1) }, track)
 
@@ -158,6 +173,9 @@ local function layout()
 	secs.TextSize = if sm then 18 else 22
 	sub.AnchorPoint = Vector2.new(1, 0); sub.Position = UDim2.new(1, -60, 0, 0); sub.Size = UDim2.new(0, 220, 1, -3)
 	track.Position = UDim2.new(0, 10, 1, -4); track.Size = UDim2.new(1, -20, 0, 2)
+	local rw = if sm then 76 else 112
+	readyB.Size = UDim2.fromOffset(rw, G.hh - 10); readyB.Position = UDim2.new(1, if sm then -50 else -62, 0.5, -1)
+	ticks.Position = UDim2.fromOffset(if t then 92 else 124, math.floor(G.hh / 2) - 1); ticks.Size = UDim2.fromOffset(w - (if t then 92 else 124) - rw - 70, 14)
 	for i, tl in tiles do
 		tl.btn.Position = UDim2.fromOffset((i - 1) * (G.tw + G.gap), G.hh + 6)
 		tl.btn.Size = UDim2.fromOffset(G.tw, G.th)
@@ -182,6 +200,38 @@ end
 local function alive(): boolean
 	local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
 	return hum ~= nil and hum.Health > 0
+end
+
+-- the ticks: ReadyTeams = per team, "1" a player locked in, "0" one not ("1,0|0")
+local function drawTicks()
+	for _, c in ticks:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
+	local board = me:GetAttribute("ReadyTeams")
+	if type(board) ~= "string" then return end
+	local sz = if S.small then 8 else 9
+	for t, part in string.split(board, "|") do
+		if part == "" then continue end
+		local g = new("Frame", { Name = "Team" .. t, BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 14), LayoutOrder = t }, ticks)
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder }, g)
+		local bar = new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = TEAM_COLORS[t] or T.MUTED, Size = UDim2.fromOffset(3, 12), LayoutOrder = 0 }, g)
+		T.corner(bar, 1)
+		for i, mark in string.split(part, ",") do
+			local on = mark == "1"
+			local d = new("Frame", { Name = "Tick" .. i, BorderSizePixel = 0, BackgroundColor3 = T.TEXT, BackgroundTransparency = if on then 0 else 1,
+				Size = UDim2.fromOffset(sz, sz), LayoutOrder = i }, g)
+			T.corner(d, 2)
+			new("UIStroke", { Color = if on then T.TEXT else T.MUTED, Transparency = if on then 0.2 else 0.3, Thickness = 1 }, d)
+		end
+	end
+end
+local function drawReady()
+	local r = isReady()
+	readyB.Text = if r then "LOCKED IN" elseif touch() then "READY" else "READY  [" .. Binds.label("ready") .. "]"
+	readyB.BackgroundColor3 = if r then T.CARD else T.CARD_HI
+	readyB.TextColor3 = if r then T.MUTED else T.TEXT
+	readySt.Transparency = if r then 0.9 else 0.35
+	readyB.BackgroundTransparency = if S.readying then 0.4 else 0
+	for _, tl in tiles do tl.btn.BackgroundTransparency = if r then 0.4 else T.BG_A end
 end
 
 local function drawTiles()
@@ -264,6 +314,8 @@ local function draw()
 	if not S.shown then return end
 	drawTiles()
 	drawTray()
+	drawTicks()
+	drawReady()
 end
 
 ask = function(slot: string, wid: string)
@@ -283,7 +335,7 @@ ask = function(slot: string, wid: string)
 end
 
 setTray = function(slot: string?)
-	if slot and not windowLeft() then return end
+	if slot and (not windowLeft() or isReady()) then return end -- (locked in: your set is fixed for the round)
 	S.tray = slot
 	S.note = nil
 	MenuCursor.set("matchloadout", slot ~= nil, function() return S.tray ~= nil end)
@@ -307,10 +359,33 @@ local function setShown(v: boolean)
 	end
 end
 
+-- READY: lock your set in for the round (the server's MatchReady: everyone in, the round goes early)
+local readyR: RemoteFunction? = nil
+task.spawn(function()
+	local r = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("MatchReady", 60)
+	if r and r:IsA("RemoteFunction") then readyR = r end
+end)
+local function readyUp()
+	if isReady() or S.readying or not windowLeft() or not readyR then return end
+	S.readying = true
+	setTray(nil)
+	draw()
+	task.spawn(function()
+		local ok, r = pcall(function() return (readyR :: RemoteFunction):InvokeServer() end)
+		S.readying = false
+		if not ok or type(r) ~= "table" or not r.ok then S.note = if ok and type(r) == "table" and type(r.why) == "string" then r.why else "no answer, try again" end
+		me:SetAttribute("MatchLoadoutResult", if ok and type(r) == "table" and r.ok then "ready" else "not ready")
+		draw()
+	end)
+end
+readyB.Activated:Connect(readyUp)
+
 -- ---------------------------------------------------------------- keys
 Keys.began(function(io: any, gp: boolean)
 	if UIS:GetFocusedTextBox() or not S.shown then return end
-	if Binds.is("loadout", io) then
+	if Binds.is("ready", io) and not gp then
+		readyUp()
+	elseif Binds.is("loadout", io) then
 		if gp and not S.tray then return end
 		setTray(if S.tray then nil else "primary")
 	elseif S.tray and not gp then
@@ -321,6 +396,11 @@ Keys.began(function(io: any, gp: boolean)
 end)
 
 me:GetAttributeChangedSignal("LoadoutNext"):Connect(function() if S.shown then draw() end end)
+me:GetAttributeChangedSignal("ReadyTeams"):Connect(function() if S.shown then drawTicks() end end)
+me:GetAttributeChangedSignal("LoadoutReady"):Connect(function()
+	if isReady() then setTray(nil) end
+	if S.shown then draw() end
+end)
 for _, a in { "Wraps", "Hats", "Skins" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if S.shown then draw() end end)
 end
@@ -349,7 +429,7 @@ RunService.RenderStepped:Connect(function()
 	local s = tostring(math.ceil(left))
 	if secs.Text ~= s then secs.Text = s end
 	fill.Size = UDim2.fromScale(math.clamp(left / S.total, 0, 1), 1)
-	local subT = if S.tray or not touch() then "" else "TAP A SLOT"
+	local subT = "" -- (the READY button sits there now)
 	if sub.Text ~= subT then sub.Text = subT end
 	if S.small ~= small() then layout(); draw() end
 	-- (the pictures turn a little: the slots slowly, the weapon under the mouse in the picker a full turn)
@@ -367,6 +447,7 @@ me:GetAttributeChangedSignal("MatchLoadoutTest"):Connect(function()
 	me:SetAttribute("MatchLoadoutTest", nil)
 	local cmd, a, b = string.match(v, "^(%a+):?([^:]*):?(.*)$")
 	if cmd == "open" then setTray("primary"); me:SetAttribute("MatchLoadoutResult", if S.tray then "open" else "shut")
+	elseif cmd == "ready" then readyUp()
 	elseif cmd == "slot" then setTray(if a ~= "" then a else "primary")
 	elseif cmd == "close" then setTray(nil)
 	elseif cmd == "pick" then ask(a or "", b or "")
