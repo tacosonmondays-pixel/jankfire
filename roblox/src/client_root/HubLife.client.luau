@@ -92,7 +92,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local cam = camera.CFrame.Position
 	for m, s in spinners do
 		if not m.Parent then spinners[m] = nil; continue end
-		if (s.base.Position - cam).Magnitude > 260 then continue end
+		local near = m:GetAttribute("SpinNear") -- (studs: the armory's cases turn only while someone is near them)
+		if (s.base.Position - cam).Magnitude > (if type(near) == "number" then near else 260) then continue end
 		s.t += dt
 		local spin = m:GetAttribute("Spin")
 		local bob = m:GetAttribute("Bob")

@@ -8,9 +8,10 @@
 --                hotel plaza instead: a courtyard in front of the three arches under a glass roof, hotel rooms round it
 --                over arcades (the boutique, the lounge and bar, the reception, the VIP door), a fountain, trees
 --   the gym      (east) the locker room with the boxing ring, only for looks
---   the armory   (west, on the spawn's left) display bays between rounded pilasters down both walls, the game's own
---                weapons and gadgets on backlit panels in them, a glass showcase in the middle, and at the far end of its
---                aisle the gate to the training ground
+--   the armory   (west, on the spawn's left) display bays between rounded pilasters: the standard guns and the gadgets
+--                down the west wall, the premium weapons turning in open cases (the east wall's bays and two rows in the
+--                aisle), a glass showcase in the middle, hologram bundle pads, and at the far end of its aisle the gate
+--                to the training ground
 -- called by HubRotunda.build with its helpers (B)
 return function(B, R)
 	local P, G = B.P, B.G
@@ -530,6 +531,21 @@ return function(B, R)
 				sp.Size = NumberSequence.new(0.1, 0.04); sp.LightEmission = 0.1
 				sp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
 				sp.Color = ColorSequence.new(Color3.fromRGB(228, 242, 246)); sp.Parent = a1
+			end
+			-- the water's volume for the effects (18 Nov, the owner: "are there splashes ripples and sfx for entering waters for
+			-- the fountain"): an invisible part tagged JankWater inside the walls, its top at the surface. Fx makes the splash
+			-- and its sound as someone drops in, the wake as they paddle, the drips as they climb out, and the shots' splashes;
+			-- the anti-cheat knows it for water. NoTerrain: JankWater.server leaves it unfilled (this build fills the pool
+			-- itself, cut to the pit and the ring hidden under the floor; a fill pushed out to whole cells would spill)
+			local vol = B.box(Fw, C, "FountainWaterVolume", -HW, HW, -PIT, WL, -HW, HW, P.glow, nil, { ghost = true, tr = 1 })
+			vol:SetAttribute("NoTerrain", true)
+			Tags:AddTag(vol, "JankWater")
+			-- a soft trickle from the bowl: a looped recording, quiet, gone past 30 studs
+			if R.FOUNTAIN_TRICKLE then
+				local snd = Instance.new("Sound")
+				snd.Name = "FountainTrickle"; snd.SoundId = R.FOUNTAIN_TRICKLE; snd.Looped = true; snd.Volume = R.FOUNTAIN_TRICKLE_VOL or 0.35
+				snd.RollOffMode = Enum.RollOffMode.InverseTapered; snd.RollOffMinDistance = 5; snd.RollOffMaxDistance = 30
+				snd.Playing = true; snd.Parent = bowl
 			end
 			B.mark = was
 			-- the water itself: Terrain, only in the live hub (a staging copy has none), the last build's cleared first. it
@@ -1089,6 +1105,14 @@ return function(B, R)
 		B.box(F, C, "RingApron", -RS - 0.1, RS + 0.1, RH - 0.4, RH - 0.04, RD - RS - 0.1, RD + RS + 0.1, P.creamHi, nil, G)
 		B.box(F, C, "RingMat", -RS + 1, RS - 1, RH, RH + 0.08, RD - RS + 1, RD + RS - 1, P.band, nil, G)
 		B.box(F, C, "RingMatLine", -RS + 1, RS - 1, RH + 0.08, RH + 0.12, RD - 0.25, RD + 0.25, P.creamHi, nil, G)
+		-- the boxing mini-game's marker (18 Nov, the mini-games session: MiniGames stands the two boxers at +-look, 2.4 out,
+		-- and builds nothing solid on the mat): the mat's middle, on its top, looking along the mat's line (F's +X). the
+		-- same kind as the tables': an invisible part tagged MiniGameSpot, attribute Game
+		B.rigid(F, 0, RD, -90, function(Fl)
+			local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, RH + 0.08 - 0.1, RH + 0.08 + 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
+			m:SetAttribute("Game", "box")
+			Tags:AddTag(m, "MiniGameSpot")
+		end)
 		B.box(F, S, "RingStep", -2.2, 2.2, 0, RH / 2, RD - RS - 1.2, RD - RS, P.pier2)
 		B.box(F, S, "RingStep", -2.2, 2.2, RH / 2, RH, RD - RS - 0.6, RD - RS, P.pier2)
 		for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do
@@ -1149,23 +1173,30 @@ return function(B, R)
 	do
 		local F = B.side(10)
 		-- (18 Nov, the owner, of the armory: "this whole room needs a makeover its an ugly mess". so: architecture first,
-		-- each long wall a run of three display bays between thick rounded pilasters, a backlit panel at the back of each
-		-- over a deep sill with a thin teal line; a coffered ceiling, two beams over the inner pilasters and a light strip in
-		-- each coffer; a framed portal at the doorway instead of the angled blocks; a dark runner down the middle. the guns
-		-- at one bigger display scale on brackets, one class to a bay group: the primaries down the west wall, the
-		-- secondaries, the melee and the gadgets down the east. a glass case in the middle with the newest live weapon
-		-- turning in it. the crates, the lockers, the benches and the workbench went. quiet greys as the lobby's, white
-		-- light, teal only as lines, no words)
+		-- each long wall a run of three display bays between thick rounded pilasters, a lit panel at the back of each over
+		-- a deep sill with a thin teal line; a coffered ceiling, two beams over the inner pilasters and a light strip in each
+		-- coffer; a framed portal at the doorway instead of the angled blocks; a dark runner down the middle. the crates,
+		-- the lockers, the benches and the workbench went. quiet greys as the lobby's, white light, teal only as lines, no
+		-- words. then, the owner: "in the armory can there be open cases with the premium weapons? or hologram bundles? a
+		-- premium robux weapon is anything that isnt a standard real life gun and has some sort of unique gimmick to it".
+		-- so the collection is split: the STANDARD real-life guns hang on brackets down the west wall, a little bigger and
+		-- fewer to a row (main: "more room in each bay"), the gadgets along its sills under them; every PREMIUM weapon turns
+		-- in an open case of its own: the east wall's three bays are a wall of open cases, six to a bay (glass sides, the lit
+		-- panel behind, open at the front, a glowing turntable under each), and eight open cases on round plinths stand in
+		-- two rows either side of the aisle; the newest premium primary turns in the glass showcase in the middle; two
+		-- hologram pads flank the gate, each showing one of the shop's bundles. a case's or a pad's prompt opens the shop)
 		local WALL, PIL, PIL2, SILL = P.bay, P.pier2, P.pier, P.cream
 		local LINE = P.doorGlow or P.glow
+		local GLASS, GLASSMAT = "d8eef2", Enum.Material.Glass
 		hall(F, "Armory", 38, 5, 11, WALL, P.floor, P.dome)
 		B.panel(F, 0, 11, 34.6, 2.4, 4); B.lamp(F, 0, 10, 34.6, 13, 0.6)
 		room(F, "Armory", -13, 13, 38, 64, 12, 5, 11, WALL, P.floor2, P.dome)
 		local KW = if B.warp then B.warp.K else 1
 		local PILS = { { 38, 39.4 }, { 46.2, 47.6 }, { 54.4, 55.8 }, { 62.6, 64 } }
 		local BAYS = { { 39.4, 46.2 }, { 47.6, 54.4 }, { 55.8, 62.6 } }
-		local DEEP = 1.6 -- (how far a pilaster and a sill stand out of the wall)
-		local FACE = 13 - DEEP
+		-- (where a wall's pilasters and sills stand out to: the west wall 1.6 out; the east wall, the case wall, 2.4 out,
+		-- deep enough for a weapon to turn in its cases)
+		local function face(sx) return if sx > 0 then 13 - 2.4 else 13 - 1.6 end
 		-- the ceiling: beams over the two inner pairs of pilasters, a light strip down each coffer either side
 		for k = 2, 3 do B.box(F, C, "CeilingBeam", -13, 13, 11.2, 12, PILS[k][1], PILS[k][2], PIL, nil, G) end
 		for _, sg in { { 38.6, 46.2 }, { 47.6, 54.4 }, { 55.8, 63.4 } } do
@@ -1187,8 +1218,9 @@ return function(B, R)
 		B.paint(F, "ArmoryRunner", -3, 3, 0, 40.4, 62.4, "2c3138")
 
 		-- ---- the bays. per wall: a pilaster at each end and between, a bay between each two with a deep sill at its foot, a
-		-- head at its top, a backlit panel at its back and a lamp in front of it
+		-- head at its top, a lit panel at its back and a lamp in front of it
 		for _, sx in { -1, 1 } do
+			local FACE = face(sx)
 			for _, pl in PILS do
 				local dc = (pl[1] + pl[2]) / 2
 				B.box(F, S, "Pilaster", sx * FACE, sx * 13, -0.04, 10.6, pl[1], pl[2], PIL)
@@ -1206,20 +1238,33 @@ return function(B, R)
 				-- head and the lamp in front)
 				B.box(F, C, "BayPanel", sx * 12.82, sx * 13, 2.1, 9.9, by[1] + 0.05, by[2] - 0.05, "d3d8db", nil, G)
 				B.box(F, C, "BayGlow", sx * (12.82 - 0.5), sx * 12.82, 9.78, 9.9, by[1] + 0.1, by[2] - 0.1, P.strip, Neon, G)
-				B.lamp(F, sx * 9.6, 7.8, dc, 11, 0.55)
+				B.lamp(F, sx * (FACE - 1.8), 7.8, dc, 11, if sx > 0 then 0.7 else 0.55)
 			end
 		end
 
-		-- ---- what is on show. a weapon any list leaves out (a new live one) joins its class's group; a weapon with no model
-		-- yet keeps an empty pair of brackets its length (the Shredder, the Blood Cross: they fill in when their models
-		-- exist and the hub is rebuilt). sizes are world studs { along the row, up, out of the panel }; places along a
-		-- bay are the round room's units (/ K)
-		local GUN_K = 4 -- (one display scale for every weapon: the sniper 8.3 long, the AR 4.8, the pistol 1.4)
-		local ITEM = 1.6 -- (a gadget's biggest side)
+		-- ---- the two lists. STANDARD: the real-life guns, on brackets. PREMIUM: the gimmick weapons (the owner's rule), in
+		-- the order of their cases: the aisle's eight (the west row from the door, then the east row), then the case wall's
+		-- eighteen (bay by bay from the door, the top row from the door's end, then the bottom row). (the shop sells no weapon
+		-- yet and nothing marks one Robux, so the rule is the owner's: borderline calls, the Minigun and the Redline
+		-- premium as main listed them, the Katana premium for its blade and parry, the Bow and the Knife standard)
+		local STANDARD = { "w_sniper", "w_dmr", "w_lmg", "w_autoshot", "w_burst", "w_ar", "w_lever", "w_shotgun", "w_smg", "w_bow",
+			"w_revolver", "w_sawnoff", "w_pistol", "w_akimbo", "w_knife" }
+		local PREMIUM = { "w_chicken", "w_minigun", "w_redline", "w_laser", "w_bowling", "w_shredder", "w_tennis", "w_banana",
+			"w_cart", "w_nailgun", "w_blower", "w_marbles", "w_cig", "w_bloodcross",
+			"w_cards", "w_snowball", "w_water", "w_taser", "w_remote", "w_lasso",
+			"w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_slipper" }
+		local okR, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
+		if not okR then Roster = nil end
+
+		-- ---- the west wall: the standard guns at one display scale on brackets, three rows to a bay over the three bays, the
+		-- gadgets standing along the sills under them. a weapon any list leaves out (a new live one) hangs with the standard
+		-- guns until it has a case of its own; a new gadget joins the sills
+		local GUN_K = 4.2 -- (one display scale for every gun on the brackets: the sniper 8.8 long, the AR 5, the pistol 1.4)
+		local ITEM = 1.25 -- (a gadget's biggest side: they stand under the guns' bottom row)
 		local weapons = game.ReplicatedStorage:FindFirstChild("JankfireWeapons")
 		local items = game.ReplicatedStorage:FindFirstChild("JankfireItems")
 		local LAY = { w_bow = "lay", w_cards = "face" }
-		local function size(w)
+		local function size(w) -- (world studs: { along the row, up, out of the panel }), nil if no model
 			local lib = if w:sub(1, 2) == "x_" then items else weapons
 			local t = lib and lib:FindFirstChild(w)
 			if not t then return nil end
@@ -1230,25 +1275,17 @@ return function(B, R)
 			return Vector3.new(sz.Z, sz.Y, sz.X)
 		end
 		local GROUPS = {
-			{ side = -1, bays = { 1, 2, 3 }, rows = 4, slot = "primary", names = { "w_sniper", "w_dmr", "w_lmg", "w_chicken", "w_autoshot", "w_burst", "w_ar",
-				"w_lever", "w_shotgun", "w_minigun", "w_redline", "w_cart", "w_laser", "w_bowling", "w_shredder", "w_smg", "w_tennis", "w_banana", "w_nailgun", "w_bow" } },
-			{ side = 1, bays = { 1 }, rows = 4, slot = "secondary", names = { "w_blower", "w_marbles", "w_sawnoff", "w_water", "w_revolver", "w_bloodcross", "w_pistol",
-				"w_taser", "w_akimbo", "w_remote", "w_cig", "w_lasso", "w_cards", "w_snowball" } },
-			{ side = 1, bays = { 2 }, rows = 4, slot = "melee", names = { "w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_knife", "w_slipper" } },
-			{ side = 1, bays = { 3 }, rows = 4, slot = "utility", shelves = true, names = {} },
+			{ side = -1, bays = { 1, 2, 3 }, rows = 3, names = table.clone(STANDARD) },
+			{ side = -1, bays = { 1, 2, 3 }, rows = 1, shelves = true, names = {} },
 		}
 		do
 			local named = {}
-			for _, g in GROUPS do for _, w in g.names do named[w] = true end end
-			local ok, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
-			if ok then
+			for _, w in STANDARD do named[w] = true end
+			for _, w in PREMIUM do named[w] = true end
+			if Roster then
 				for _, e in Roster.list do
 					local w = (if e.slot == "utility" then "x_" else "w_") .. e.id
-					if e.live and not named[w] then
-						local into = GROUPS[3] -- (a class no group names joins the melee bay, the one with the most room)
-						for _, g in GROUPS do if g.slot == e.slot then into = g end end
-						table.insert(into.names, w); named[w] = true
-					end
+					if e.live and not named[w] then table.insert(GROUPS[if e.slot == "utility" then 2 else 1].names, w); named[w] = true end
 				end
 			end
 		end
@@ -1285,8 +1322,7 @@ return function(B, R)
 			local list = {}
 			for _, w in g.names do
 				local z = size(w)
-				if z then table.insert(list, { w = w, z = z })
-				elseif w:sub(1, 2) == "w_" then table.insert(list, { w = w, z = Vector3.new(3, 1, 0.4), missing = true }) end
+				if z then table.insert(list, { w = w, z = z }) end
 			end
 			table.sort(list, function(a, b) return a.z.X > b.z.X end)
 			-- longest first, each into the emptiest row that still has room: the rows come out about even
@@ -1308,7 +1344,7 @@ return function(B, R)
 			-- tallest gun of each row deciding its band, the gaps between even from the sill to the head
 			local ys = {}
 			if g.shelves then
-				ys = { 2.1, 3.95, 5.8, 7.65 }
+				ys = { 2.1 } -- (the sill's top)
 			else
 				local hs, sum = {}, 0
 				for r = 1, g.rows do
@@ -1316,8 +1352,8 @@ return function(B, R)
 					for _, rw in rows do if rw.r == r then for _, it in rw.items do hs[r] = math.max(hs[r], it.z.Y) end end end
 					sum += hs[r]
 				end
-				local top, bottom = 9.55, 2.55
-				local gap = math.max((top - bottom - sum) / (g.rows + 1), 0.25)
+				local top, bottom = 9.7, 3.55 -- (under the head's light strip; over the gadgets on the sill, 3.37 at most)
+				local gap = math.max((top - bottom - sum) / (g.rows + 1), 0.18)
 				local y = top
 				for r = 1, g.rows do y -= gap + hs[r] / 2; ys[r] = y; y -= hs[r] / 2 end
 			end
@@ -1336,7 +1372,7 @@ return function(B, R)
 					local dc = at + z.X / KW / 2
 					local x = sx * (12.82 - (z.Z / 2 + (if g.shelves then 0.15 else 0.3)) / KW)
 					local y = if g.shelves then ys[rw.r] + z.Y / 2 + 0.01 else ys[rw.r]
-					if not it.missing then show(it.w, x, y, dc, sx, "Rack_" .. it.w) end
+					show(it.w, x, y, dc, sx, "Rack_" .. it.w)
 					if not g.shelves then -- two rounded pegs out of the panel under it
 						local half = math.max(z.X * 0.28, 0.3) / KW
 						local out = (math.max(z.Z, 0.4) + 0.4) / KW
@@ -1356,31 +1392,141 @@ return function(B, R)
 			local m = B.root.Scenery:FindFirstChild(k[1])
 			if m then B.unseam(m:FindFirstChild(k[2], true), k[3], "bottom") end
 		end
+		-- (at the sills' smaller size a few more lie a hair off another piece: each moved 0.03 off it, along its own
+		-- thinnest side, away from the piece it lies on)
+		for _, k in { { "Rack_x_laptop", "screen", "lid" }, { "Rack_x_laptop", "pad", "body" }, { "Rack_x_medkit", "tray", "body" } } do
+			local m = B.root.Scenery:FindFirstChild(k[1])
+			local p, on = m and m:FindFirstChild(k[2], true), m and m:FindFirstChild(k[3], true)
+			if p and on and p:IsA("BasePart") and on:IsA("BasePart") then
+				local cf, sz = p.CFrame, p.Size
+				local ax = if sz.X <= sz.Y and sz.X <= sz.Z then cf.RightVector elseif sz.Y <= sz.Z then cf.UpVector else cf.LookVector
+				p.CFrame = cf + ax * (if (p.Position - on.Position):Dot(ax) >= 0 then 0.03 else -0.03)
+			end
+		end
 
-		-- ---- the showcase in the middle: a round plinth, a glass case, the newest live primary turning inside it (HubSpin),
-		-- a teal ring at its foot, a light in its cap. the ways to the gate pass either side of it (R.WALKS)
+		-- ---- the premium weapons' open cases. each weapon is fitted to its case (the circle it turns in, and its height),
+		-- turns slowly (HubSpin; SpinNear: only while a camera is near, HubLife), and its case's prompt opens the shop
+		-- (ShopOpen: no weapon is an offer of its own yet, so the featured tab; the weapon's id is kept on the prompt as
+		-- Weapon for when one is). a premium weapon with no model yet (the Shredder, the Blood Cross) keeps its case
+		-- empty and lit
+		local function nameOf(w)
+			local e = Roster and Roster.byId and Roster.byId[w:sub(3)]
+			return if e then e.name else w:sub(3)
+		end
+		local function caseShow(w, x, y0, d, diag, high) -- (y0: the turntable's top; diag, high: world studs)
+			local t = weapons and weapons:FindFirstChild(w)
+			if not t then B.missing[w] = 1; return nil end
+			local _, sz = t:GetBoundingBox()
+			local k = math.min(diag / math.max(math.sqrt(sz.X * sz.X + sz.Z * sz.Z), 0.01), high / math.max(sz.Y, 0.01))
+			local g = B.gun(F, w, nil, x, y0 + sz.Y * k / 2 + 0.12, d, 0, "Case_" .. w, k)
+			if g then
+				g:SetAttribute("Spin", 0.5); g:SetAttribute("SpinNear", 70)
+				Tags:AddTag(g, "HubSpin")
+			end
+			return g
+		end
+		local function casePrompt(w, x, y, d)
+			local a = B.box(F, C, "CasePrompt", x - 0.2, x + 0.2, y - 0.2, y + 0.2, d - 0.2, d + 0.2, P.pier, nil, { ghost = true, tr = 1 })
+			local pr = Instance.new("ProximityPrompt")
+			pr.Name = "CasePrompt"; pr.ActionText = "View"; pr.ObjectText = nameOf(w)
+			pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
+			pr.MaxActivationDistance = 7; pr.RequiresLineOfSight = false; pr.ClickablePrompt = true
+			pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton
+			pr:SetAttribute("ShopOpen", "tab:featured"); pr:SetAttribute("Weapon", w:sub(3))
+			pr.Parent = a
+		end
+		local slot = 0
+		-- the aisle's eight: a round plinth, a glowing ring round its top, glass at the back (the wall's side) and the two
+		-- sides, open to the aisle, a cap with a light under it, a light from the base
+		local ROWX, ROWD = 6, { 44, 48, 52, 56 }
+		for _, sx in { -1, 1 } do
+			for _, d in ROWD do
+				slot += 1
+				local w = PREMIUM[slot]
+				local x = sx * ROWX
+				B.cyl(F, S, "CaseFoot", x, -0.04, 0.5, d, 2.5, PIL2)
+				B.cyl(F, S, "CasePlinth", x, 0.5, 2.8, d, 2.3, SILL)
+				B.cyl(F, C, "CaseGlow", x, 2.8, 2.86, d, 2.36, LINE, Neon, G)
+				B.cyl(F, C, "CaseTop", x, 2.84, 2.92, d, 2, PIL2, nil, G)
+				B.box(F, C, "CaseGlass", sx * (ROWX + 1.07), sx * (ROWX + 1.13), 2.86, 6.2, d - 1.13, d + 1.13, GLASS, GLASSMAT, { tr = 0.75 })
+				for _, sd in { -1, 1 } do
+					B.box(F, C, "CaseGlass", sx * (ROWX - 0.2), sx * (ROWX + 1.07), 2.86, 6.2, d + sd * 1.13 - 0.03, d + sd * 1.13 + 0.03, GLASS, GLASSMAT, { tr = 0.75 })
+				end
+				B.cyl(F, C, "CaseCap", x, 6.2, 6.5, d, 2.5, SILL, nil, G)
+				B.cyl(F, C, "CaseCapLight", x, 6.1, 6.18, d, 1.5, P.strip, Neon, G)
+				B.lamp(F, x, 3.1, d, 7, 0.5, P.light, { spot = true, face = Enum.NormalId.Top, angle = 70 })
+				if w and caseShow(w, x, 2.92, d, 2 * 0.98 * KW, 2.8) then casePrompt(w, sx * (ROWX - 1.35), 4.2, d) end
+			end
+		end
+		-- the case wall (the east wall's bays): a shelf across each bay halfway up with a teal line on its front, glass
+		-- between the cases, three cases a row, a glowing turntable in each
 		do
-			local DC = 51
+			local FE = face(1)
+			local CW = (BAYS[1][2] - BAYS[1][1]) / 3
+			local XC = (FE + 12.82) / 2
+			for _, by in BAYS do
+				B.box(F, S, "CaseShelf", FE, 12.82, 5.9, 6.2, by[1], by[2], PIL2)
+				B.box(F, C, "CaseShelfLine", FE - 0.06, FE + 0.02, 5.98, 6.12, by[1] + 0.25, by[2] - 0.25, LINE, Neon, G)
+				for c = 1, 2 do
+					local dg = by[1] + c * CW
+					for _, yy in { { 2.1, 5.9 }, { 6.2, 9.76 } } do -- (the top ones stop under the head's light strip, 9.78)
+						B.box(F, C, "CaseGlass", FE + 0.1, 12.82, yy[1], yy[2], dg - 0.03, dg + 0.03, GLASS, GLASSMAT, { tr = 0.75 })
+					end
+				end
+				for r, fy in { 6.2, 2.1 } do
+					for c = 1, 3 do
+						slot += 1
+						local w = PREMIUM[slot]
+						local dc = by[1] + (c - 0.5) * CW
+						B.cyl(F, C, "CaseTurnGlow", XC, fy, fy + 0.06, dc, 1.75, LINE, Neon, G)
+						B.cyl(F, C, "CaseTurn", XC, fy + 0.04, fy + 0.14, dc, 1.5, SILL, nil, G)
+						local high = (if r == 1 then 9.78 else 5.9) - fy - 0.45
+						if w and caseShow(w, XC, fy + 0.14, dc, 2 * 0.98 * KW, high) then casePrompt(w, FE - 0.4, fy + 1.6, dc) end
+					end
+				end
+			end
+		end
+
+		-- ---- the showcase in the middle: a round plinth, a glass case, the newest live premium primary turning inside it
+		-- (HubSpin), a teal ring at its foot, a light in its cap. the ways to the gate pass either side of it (R.WALKS)
+		do
+			local DC = 50
 			B.cyl(F, S, "ShowcaseBase", 0, -0.04, 1.2, DC, 3.6, PIL2)
 			B.cyl(F, C, "ShowcaseRing", 0, 1.2, 1.32, DC, 3.75, LINE, Neon, G)
 			B.cyl(F, S, "ShowcasePlinth", 0, 1.32, 2.6, DC, 3.2, SILL)
-			B.cyl(F, C, "ShowcaseGlass", 0, 2.6, 6.9, DC, 3, "d8eef2", Enum.Material.Glass, { tr = 0.75 })
+			B.cyl(F, C, "ShowcaseGlass", 0, 2.6, 6.9, DC, 3, GLASS, GLASSMAT, { tr = 0.75 })
 			B.cyl(F, C, "ShowcaseCap", 0, 6.9, 7.3, DC, 3.3, SILL, nil, G)
 			B.cyl(F, C, "ShowcaseCapLight", 0, 6.78, 6.86, DC, 2.2, P.strip, Neon, G)
 			B.lamp(F, 0, 6.5, DC, 9, 0.9, P.light, { spot = true, angle = 90 })
+			local premium = {}
+			for _, w in PREMIUM do premium[w] = true end
 			local feature
-			local ok, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
-			if ok then
+			if Roster then
 				for _, e in Roster.list do
-					if e.live and e.slot == "primary" and weapons and weapons:FindFirstChild("w_" .. e.id) then feature = "w_" .. e.id end
+					if e.live and e.slot == "primary" and premium["w_" .. e.id] and weapons and weapons:FindFirstChild("w_" .. e.id) then feature = "w_" .. e.id end
 				end
 			end
 			if feature then
 				local _, sz = weapons[feature]:GetBoundingBox()
 				local k = math.min(3.2 / math.max(sz.X, sz.Z, 0.01), 3.2 / math.max(sz.Y, 0.01))
 				local g = B.gun(F, feature, nil, 0, 4.75, DC, 0, "ArmoryFeature", k)
-				if g then g:SetAttribute("Spin", 0.6); Tags:AddTag(g, "HubSpin") end
+				if g then g:SetAttribute("Spin", 0.6); g:SetAttribute("SpinNear", 70); Tags:AddTag(g, "HubSpin") end
 			end
+		end
+
+		-- ---- the hologram pads: one either side of the gate (its frame is 16.4 across), each a low plinth with a lens.
+		-- HubHolo draws one of the shop's bundles over each (Slot picks it from the shop's list, after the four the lobby's
+		-- showroom shows; Offer "vip" the VIP pack) and its prompt opens the shop on it
+		for k, h in { { -1, 62.1, 5 }, { 1, 62.1, "vip" } } do
+			local x, d = h[1] * 8.4, h[2]
+			B.cyl(F, C, "HoloPadFoot", x, -0.04, 0.3, d, 2.45, PIL2, nil, G)
+			B.cyl(F, S, "HoloPad", x, -0.04, 1.15, d, 2.2, SILL)
+			B.cyl(F, C, "HoloPadTop", x, 1.15, 1.23, d, 1.9, P.floor2, nil, G)
+			B.cyl(F, C, "HoloPadRing", x, 1.12, 1.27, d, 1.6, LINE, Neon, G)
+			B.cyl(F, C, "HoloPadInner", x, 1.1, 1.3, d, 1.4, P.floor2, nil, G)
+			B.cyl(F, C, "HoloPadLens", x, 1.06, 1.33, d, 0.55, LINE, Neon, G)
+			local vip = h[3] == "vip"
+			B.holo(F, "HoloArmory" .. k, "bundle", x, 4.3, d, 1.3, 2.6, { slot = if vip then k else h[3], offer = if vip then "vip" else nil, base = 4.3 - 1.33, prompt = "View bundle" })
 		end
 
 		-- the gate: a chunky frame on the far wall and in it the gate's kit, the same on the training side (GateKit; owner,

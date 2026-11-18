@@ -2114,6 +2114,39 @@ The owner, of the armory: "this whole room needs a makeover its an ugly mess". I
   - Note: `ZFight.start` scans its roots' descendants, so pass folders or models, not single parts (a list of parts scans nothing).
 - Sheet: `roblox/docs/hub/hub_armory_1008.jpg` (before and after, from the doorway).
 
+## 53. Hub: the armory's premium cases and hologram pads, the fountain's splashes, the boxing marker, 18 November 2026 (place version 1012)
+
+**The armory.** The owner: "in the armory can there be open cases with the premium weapons? or hologram bundles? a premium robux weapon is anything that isnt a standard real life gun and has some sort of unique gimmick to it". Main added: "give the standard guns more room in each bay".
+
+- **The split** (`HubRotundaRooms`, `STANDARD` / `PREMIUM`). It follows the owner's rule, because the shop sells no weapon and nothing marks a weapon Robux (`Shop` / `Roster`). Borderline calls:
+  - the Minigun and the Redline are premium (main listed them);
+  - the Katana is premium (its growing blade and parry);
+  - the Bow, the Knife, the Revolver, the Sawed-Off and Lefty & Righty are standard.
+- **Standard (15).** On brackets down the west wall, three rows to a bay over all three bays, at `GUN_K` 4.2. The gadgets (`ITEM` 1.25) stand along the sills under them.
+- **Premium (26), each turning in an open case** (`HubSpin`, with `SpinNear` 70 so they turn only while someone is near: a one-line addition to `HubLife.client`).
+  - The east wall is a case wall: pilasters 2.4 deep, a shelf halfway up, glass between the cases, three a row, a glowing turntable in each (18).
+  - Eight open cases on round plinths stand in two rows either side of the aisle (x ±6, d 44/48/52/56). Each has glass at the back and sides, a cap with a light, and a teal ring.
+  - The Shredder and the Blood Cross keep their cases empty and lit.
+  - Each weapon is fitted to its case's turning circle, about 3 world studs.
+- **Showcase.** The newest live premium primary (the Shopping Cart Cannon), at d 50.
+- **Prompts.** Each case's prompt has `ShopOpen = "tab:featured"` and `Weapon = <id>`. No weapon is a shop offer yet; when one is, point `ShopOpen` at it.
+- **Hologram pads.** Two pads flank the gate (its frame is 16.4 across): `Slot` 5 (the shop's next bundle after the showroom's four) and `Offer` "vip". `HubHolo` draws them and their prompt opens the shop on the bundle.
+- **`R.WALKS`** now has the aisle, the ways either side of the showcase, and a lane down each side.
+- **The gate's red striped shutter** is the working training gate (`GateKit`, the owner's own request on 17 Nov), not a prop. It was left as it is and asked about.
+
+**The fountain.** The owner: "are there splashes ripples and sfx for entering waters for the fountain".
+
+- `FountainWaterVolume` is an invisible part tagged `JankWater` inside the walls, its top at the surface (`WL`). `Fx` makes the splash, the wake, the drips and the shots' splashes from it, and the anti-cheat sees it as water.
+- `NoTerrain = true`, so `JankWater.server` doesn't fill it (a fill pushed out to whole cells would spill). Checked: no water voxels past the hidden ring.
+- A looped trickle plays from the bowl: Freesound 676173 (CC0, a small fountain recorded close, made to loop, steady within 3.5 dB). It is `roblox/assets/sounds/fountain_trickle.ogg`, audio 110264836521979, `R.FOUNTAIN_TRICKLE`, volume 0.35, gone past 30 studs. Pro Sound Effects had no fountain loop.
+
+**The gym.** A `MiniGameSpot` with `Game = "box"` sits at the ring mat's middle, on its top, looking along the mat's line (the ring's RightVector). This is for the mini-games session's boxing.
+
+**Checks.**
+- Staging and live `R.check`: 0 problems, 0 overlaps, 0 leaks.
+- Flicker finder over the whole staging copy: one 0.03 sq-stud seam inside the Auto Shotgun's own kit model (deck vs guard) at this scale. Everything else the room adds is clean.
+- Kit seams lifted on show: the laptop's well, screen and touchpad, and the medkit's tray.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

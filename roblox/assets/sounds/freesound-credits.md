@@ -32,3 +32,4 @@
 - 367125.ogg: "Air Hiss" by Jofae, https://freesound.org/people/Jofae/sounds/367125/ (CC0)
 - 349698.ogg: "light slow swoosh.mp3" by Mikes-MultiMedia, https://freesound.org/people/Mikes-MultiMedia/sounds/349698/ (CC0)
 - 739487.ogg: "Fire Trap" by qubodup, https://freesound.org/people/qubodup/sounds/739487/ (CC0)
+- fountain_trickle.ogg: freesound 676173 "Ambiance_Fountain_Small_Loop_Stereo.wav" by Nox_Sound, https://freesound.org/people/Nox_Sound/sounds/676173/ (CC0), the hub lobby fountain's looped trickle (18 Nov 2026)
