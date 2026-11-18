@@ -39,7 +39,10 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("L
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
 local Loadout = {}
-local STORE, VERSION = "JankfireLoadout_v1", 1
+-- (Studio saves into its own store, never the live game's: 18 Nov, every Studio play test runs on the owner's account
+-- and was reading and writing the owner's LIVE loadout, so test picks and restores overwrote the owner's own skin picks.
+-- like Profiles.new's "<name>_studio")
+local STORE, VERSION = if RunService:IsStudio() then "JankfireLoadout_studio" else "JankfireLoadout_v1", 1
 local DEFAULT = { primary = "ar", secondary = "pistol", melee = "katana", utility = "frag" } -- (all level 1: Unlocks. was the Redline and the Marble Shotgun until 18 Nov)
 local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking)
 
@@ -310,7 +313,16 @@ local function adopt(d: Data, saved: any)
 			local e = if type(wid) == "string" then Roster.byId[wid] else nil
 			-- (a skin retired for another, LootTable.REPLACED, 18 Nov: a worn old Seraph Rifle is the owner's Tripo one now)
 			local s = if type(s0) == "string" and LootTable.REPLACED[s0] then LootTable.REPLACED[s0] else s0
-			if e and e.live and GunSkins.valid(wid, s) then d.skins[wid] = s end
+			if e and e.live and GunSkins.valid(wid, s) then
+				d.skins[wid] = s
+			elseif type(wid) == "string" and type(s) == "string" and s ~= "" and s ~= "default" then
+				-- (a saved skin this server can't find, a model renamed or not in yet: held, written back on every save
+				-- until you pick another for that weapon, so a load can never erase it. logged. 18 Nov)
+				local held = (d :: any).held or {}
+				held[wid] = s
+				;(d :: any).held = held
+				warn(("[jankfire] loadout: a saved skin %s for %s isn't in the place; kept in the save"):format(s, wid))
+			end
 		end
 	end
 end
@@ -375,7 +387,9 @@ local function save(p: Player)
 	for wid, w in d.wraps do wraps[wid] = { w.id, w.mode } end
 	local kept = {}
 	for wid in d.kept do table.insert(kept, wid) end
-	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins), kept = kept, u = d.u }
+	local skins = table.clone(d.skins)
+	for wid, s in ((d :: any).held or {}) :: { [string]: string } do if skins[wid] == nil then skins[wid] = s end end
+	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = skins, kept = kept, u = d.u }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
 	inflight -= 1
 	if not ok then
@@ -417,17 +431,22 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 	if not d then return false, "still loading" end
 	-- (in training every pick goes into the try layer: never saved, never owned; out of it, a leftover layer goes)
 	local tr = trying(p)
-	-- (the owner's dev weapons in the hub, DevArms (OwnerDev), borrow the try layer for WEAPONS only: a look picked there,
-	-- a skin, a wrap or a hat, is the owner's own and saved like anywhere else, and shows in the layer too. 18 Nov, the
-	-- owner: "it didn't save my skin options": every pick made with DevArms on went into the never-saved layer)
+	-- (a LOOK YOU OWN, a skin, a wrap or a hat, goes into your saved loadout wherever you pick it: in training, with the
+	-- owner's dev weapons on, anywhere. it shows in the try layer too while there is one. only weapons, and looks you
+	-- don't own tried in training, stay in the never-saved layer. 18 Nov, the owner: "it didn't save my skin options")
 	local look = op == "wrap" or op == "hat" or op == "skin"
-	local devHub = tr and Zones.TRAINING[Zones.of(p)] ~= true
+	local saveLook = false
+	if look and type(a) == "string" and type(b) == "string" then
+		if op == "wrap" then saveLook = b == "default" or Loot.owns(p, "wrap", b, a)
+		elseif op == "hat" then saveLook = b == "none" or Loot.owns(p, "hat", b, a)
+		else saveLook = b == "default" or ownsSkin(p, b) end
+	end
 	if d.try and not tr then endTry(p) end
-	if tr and not d.try and (op == "pick" or (look and not devHub)) then d.try = copyLayer(d) end
-	local L = if look and devHub then d else layer(d)
-	local free = d.try ~= nil and not (look and devHub)
+	if tr and not d.try and (op == "pick" or (look and not saveLook)) then d.try = copyLayer(d) end
+	local L = if saveLook then d else layer(d)
+	local free = d.try ~= nil and not saveLook
 	local function done()
-		if look and devHub and d.try and type(a) == "string" then
+		if saveLook and d.try and type(a) == "string" then
 			local w = d.wraps[a]
 			d.try.wraps[a] = if w then { id = w.id, mode = w.mode } else nil
 			d.try.hats[a] = d.hats[a]
@@ -499,6 +518,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		end
 		local was = L.skins[a]
 		L.skins[a] = if b == "default" then nil else b
+		if not free and (d :: any).held then (d :: any).held[a] = nil end -- (a skin held from the save gives way to a pick)
 		if was == L.skins[a] then return true, nil end
 		done()
 		-- on right away (it's only a look): what others see in your hand, and the Shredder
