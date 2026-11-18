@@ -12,8 +12,12 @@
 #                   above a gate the stair and the heart are look only
 #   subway (y -30)  one long platform under the south half, x -100..100, the track behind a full-height glass screen;
 #                   stairs: one at each end up into each hall, two from the Plaza's south side
-# Everything that is not walkable (buildings, the halls' roofs, the edge) is solid up to y 150, so there are no roofs
-# to stand on; the edge is closed by an invisible wall and a lid at y 150.
+# Everything that is not walkable (buildings, the halls' roofs, the edge) is solid up to y 150 here, the shape the kit
+# dresses from. Since 18 Nov 2026 the builder opens the roofs (roofs.open_up in gut_models.py; the owner: "Suburb we
+# should be able to get on roofs, gut map too!! There are weird ceiling blockers"): the buildings' hit boxes follow
+# the kit's roofs and nothing stands over them; the halls' roofs shed you (over the spawns). Two pads a side throw you
+# onto a roof (PADS), and screens inside the halls' doors keep the roofs from seeing the spawns (roof_sight.py).
+# The wall box (wallbox.py) replaced the edge's lid.
 import math
 
 LID = 150.0          # top of the closed world
@@ -44,6 +48,8 @@ ROT = []     # (cx, cy, cz, sx, sy, sz, yaw degrees (Roblox CFrame.Angles(0, yaw
 SPAWNS = []
 TEAM = {'att': [], 'def': [], 'mid': []}
 NOTES = []   # (x, z, level, text) for the plan
+PADS = []    # (x0, y0, z0, x1, y1, z1, vx, vy, vz): jump pads, the throw in studs/s (Move.client)
+G = 78.0     # workspace.Gravity in play (Config grav 26 x 3): pad_flight
 ROUNDS = []  # (cx, cz, r, y0, y1, mat): every round post (the kit dresses them)
 BENCHES = [] # (cx, cz, angle, r0, r1, width, y0, y1): the Plaza's benches
 
@@ -131,6 +137,12 @@ for (z0, z1) in ((-HALL_Z - W, -HALL_Z), (HALL_Z, HALL_Z + W)):
     both(-124.0, 0, z0, -X_HALL + W, HALL_TOP, z1, 'wall')
     both(-140.0, 12.0, z0, -124.0, HALL_TOP, z1, 'wall')
 NOTES += [(-132, 0, 0, 'ATT HALL'), (132, 0, 0, 'DEF HALL')]
+# screens just inside the front doors and the north door (18 Nov 2026, with the open roofs): a door seen from a roof
+# far off showed the spawns behind it (roof_sight.py: 58 of 74 roofs saw a team spawn; 2 marginal lines with these).
+# as high as the doors; you go round either end, as at the screens outside
+both(-121.0, 0, -26.0, -118.0, 12.0, -6.0, 'cover')
+both(-121.0, 0, 6.0, -118.0, 12.0, 22.0, 'cover')      # (stops at z 22: the stair down starts there, x -142..-122)
+both(-146.0, 0, -37.0, -121.0, 12.0, -34.0, 'cover')
 
 # ================================================================ the blocks between the lanes (solid to the lid)
 # north block z -72..-36 with an alley x -98..-90; south block z 36..70 with an alley x -78..-70 (offset so no line
@@ -168,6 +180,17 @@ for s in (1, -1):
     round_(s * -131.0, -70.0, 4.5, 0, 3.6, 'cover')
     round_(s * -131.0, 72.0, 4.5, 0, 3.6, 'cover')
 NOTES += [(-84, 14, 0, 'APPROACH'), (84, 14, 0, 'APPROACH'), (-84, 87, 0, 'AVENUE'), (84, 87, 0, 'AVENUE')]
+
+# ================================================================ jump pads onto the roofs (18 Nov 2026)
+# a way up besides the grapple: one in each north yard onto the Tube's flat roof (22 up), one in each Avenue onto the
+# small block by the south alley (its roof 28-32 up). pad_flight below checks the throws against the open roofs
+for s in (1, -1):
+    def pad(x0, z0, x1, z1, vx, vy, vz):
+        a, b = s * x0, s * x1
+        PADS.append((min(a, b), 0.0, z0, max(a, b), 0.9, z1, s * vx, vy, vz))
+    pad(-142.0, -92.0, -134.0, -84.0, 34.0, 62.0, 0.0)      # the north yard -> the Tube's roof
+    pad(-76.0, 76.0, -68.0, 84.0, 6.5, 75.0, -15.9)         # the Avenue -> the block by the south alley
+NOTES += [(-138, -88, 0, 'PAD'), (138, -88, 0, 'PAD'), (-72, 80, 0, 'PAD'), (72, 80, 0, 'PAD')]
 
 # ================================================================ the centre: the Plaza, the courts
 round_(0.0, -80.0, 13.0, 0, LID, 'block')        # the north court's dome pavilion

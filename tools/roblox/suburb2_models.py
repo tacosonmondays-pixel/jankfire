@@ -378,7 +378,7 @@ def yards():
         lathe('sb_tramp', TRAMPMAT, [(0, y1 - 0.3), (r - 0.2, y1 - 0.3), (r - 0.2, y1 - 0.1), (0, y1 - 0.1)], cx, 0, cz, segs=28)
         for k in range(6):
             t = 2 * math.pi * k / 6
-            cyl('sb_tramp', TRAMP, cx + r * math.cos(t), 0, cz + r * math.sin(t), 0.18, y1 - 0.1, segs=6, bev=0.0)
+            cyl('sb_tramp', TRAMP, cx + r * math.cos(t), y0, cz + r * math.sin(t), 0.18, y1 - 0.1 - y0, segs=6, bev=0.0)   # (from its floor: the garage roofs' too)
     # cover pieces: planters, loungers, barbecues, the hot tub
     for b in L.SOLID:
         if b[6] == 'cover' and b[1] >= 0:
@@ -514,10 +514,13 @@ ground(); houses(); fences(); trees(); street_sets(); lamps(); yards(); green();
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
 rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
 INFO.update(L.WALLBOX)
-# (the buildings solid to the old lid: ray-blind above their real roofs, measured against this kit: roofs.py)
-import roofs
-solid, rotb, _roofs = roofs.split(solid, rotb, L.LID, K.PIECES)
+# (the buildings solid to the old lid: since 18 Nov 2026 open roofs you can stand on, the kit's own shape and nothing
+# above it, measured against this kit: roofs.open_up. the owner: "Suburb we should be able to get on roofs, gut map too!!")
+import roofs, json
+solid, rotb, _roofs = roofs.open_up(solid, rotb, L.LID, K.PIECES, slide=lambda cx, cz, y0: abs(cx) > 120.0)   # (the houses round the turning circles, over the spawns, shed you)
 print('ROOFS', _roofs)
+if os.environ.get('ROOF_DUMP'):   # (the roof tops, for tools/roblox/roof_sight.py)
+    with open(os.environ['ROOF_DUMP'], 'w') as _f: json.dump(roofs.TOPS, _f)
 pads = [tuple(p) for p in L.PADS]
 water = [tuple(w) for w in L.WATER]
 K.write_layout(LAYOUT, INFO, solid, pads, [tuple(p) for p in L.SPAWNS], L.TEAM, water=water, src='tools/roblox/suburb2_models.py', rot=rotb)

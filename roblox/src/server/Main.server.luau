@@ -132,6 +132,23 @@ local function yank(p: Player, i: Info)
 		local flat = Vector3.new(v.X, 0, v.Z)
 		local d = if flat.Magnitude > 0.1 then flat.Unit else Vector3.zAxis
 		troot.AssemblyAngularVelocity = Vector3.new(d.Z, 0, -d.X) * 6
+		-- and it stops where it comes down: flat on its back it slid on 30 studs past the yanker (the v796 test), so
+		-- the moment it's down again its slide is braked (a player's own movement friction does this for them)
+		task.spawn(function()
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Exclude
+			rp.FilterDescendantsInstances = { tm }
+			local t0 = os.clock()
+			task.wait(0.2)
+			while os.clock() - t0 < 2.5 and troot.Parent do
+				local tv = troot.AssemblyLinearVelocity
+				if tv.Y <= 1 and workspace:Raycast(troot.Position, Vector3.new(0, -3.5, 0), rp) then
+					troot.AssemblyLinearVelocity = Vector3.new(tv.X * 0.15, tv.Y, tv.Z * 0.15)
+					break
+				end
+				task.wait()
+			end
+		end)
 	end
 	Fight.knock(tf, v, "grapple")
 	GrappleRemote:FireAllClients("yank", p.Character, tm, not full)

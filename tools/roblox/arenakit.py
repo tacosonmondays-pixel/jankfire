@@ -325,6 +325,12 @@ def render_previews(folder, views, prefix, sky=(0.55, 0.6, 0.7), sun_rot=(50, 0,
 def finish(kit, out_dir, preview_dir=None, views=(), prefix='kit', **pv):
     """after the map script has dressed everything: push coplanar faces apart, merge, previews, the .glb"""
     import zfightfix
+    # --only=<model>,<model>: a patch kit with just these models (18 Nov 2026: swapped into a built arena without a
+    # rebuild, WebArena's W.swap; the layout is written whole before this either way)
+    only = [f.split('=', 1)[1].split(',') for f in FLAGS if f.startswith('--only=')]
+    if only:
+        for key in [k for k in PIECES if k[0] not in only[0]]: del PIECES[key]
+        print('ONLY', sorted({k[0] for k in PIECES}))
     zfightfix.fix(PIECES)
     # the kit's extent: Roblox shrinks the whole upload if any of it reaches past 2,048 studs across
     lo, hi = [1e9] * 3, [-1e9] * 3

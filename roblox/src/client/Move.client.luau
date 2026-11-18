@@ -461,8 +461,9 @@ RunService.PreSimulation:Connect(function(dt: number)
 			st.vx, st.vy, st.vz = pad.X, pad.Y, pad.Z
 			hum:ChangeState(Enum.HumanoidStateType.Freefall)
 			Hud.callout("BOING", 0.5)
-		elseif hit and hit.Instance:GetAttribute("Mat") == "ledge" and inArena(root.Position) then
-			-- the step round a walled arena's edge: no place to stand. back you go, toward the middle
+		elseif hit and (hit.Instance:GetAttribute("Mat") == "ledge" or hit.Instance:GetAttribute("Slide")) and inArena(root.Position) then
+			-- the step round a walled arena's edge: no place to stand. back you go, toward the middle. (Slide: a roof over
+			-- a spawn, the same: roofs.py open_up, 18 Nov 2026)
 			local at = player:GetAttribute("ArenaAt") :: Vector3
 			local d = Vector3.new(at.X - root.Position.X, 0, at.Z - root.Position.Z)
 			if d.Magnitude > 1 then

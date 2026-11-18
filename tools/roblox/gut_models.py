@@ -433,6 +433,18 @@ def cover():
         Bc(m, TRIM, cx + rc * math.cos(a), (y1 - 0.8) / 2, cz + rc * math.sin(a), r1 - r0, y1 - 0.8, wid, bev=0.7, yaw=-a)
         Bc(m, WALL2, cx + rc * math.cos(a), y1 - 0.45, cz + rc * math.sin(a), r1 - r0 + 0.3, 0.9, wid + 0.3, bev=0.4, yaw=-a)
 
+def pads():
+    """the jump pads onto the roofs (18 Nov 2026): a rounded plinth in the deeper enamel, a cream top, a soft pink glow
+    ring (colour only on pads), a dusky rose middle"""
+    m = 'gu_pad'
+    for p in L.PADS:
+        x0, y0, z0, x1, y1, z1 = p[:6]
+        cx, cz, r = (x0 + x1) / 2, (z0 + z1) / 2, min(x1 - x0, z1 - z0) / 2
+        cyl(m, WALL3, cx, y0, cz, r + 0.4, y1 - y0 - 0.25, segs=32, bev=0.22)
+        cyl(m, TRIM, cx, y1 - 0.3, cz, r - 0.3, 0.32, segs=32, bev=0.12)
+        ring(m, 'ffb6c3', cx, y1 - 0.05, y1 + 0.07, cz, r - 1.05, r - 0.55, segs=40, kind='neon')
+        cyl(m, BAND, cx, y1 - 0.08, cz, r - 1.6, 0.16, segs=32, bev=0.05)
+
 def street_rails():
     m = 'gu_rail'
     for (x0, z0, x1, z1) in L.OPENINGS:
@@ -677,7 +689,7 @@ paving()
 for s in (-1, 1):
     hall(s); blocks(s); tube_street(s); arches(s)
     kiosk(s * 84.0, 0.0)
-pavilion(); gazebo(); edge(); cover(); street_rails(); station(); train()
+pavilion(); gazebo(); edge(); cover(); pads(); street_rails(); station(); train()
 # the tower: legs on the axes, the stair's foot facing north. the hearts, each its own model (the place keeps one, the
 # arena's attribute Heart): A, B, C the anatomical takes (the owner: "We can do an actual heart"), V the first candy one
 G.tower('gu', 'candy', phase=L.STAIR_PHASE, leg0=L.LEG0, heart=False, cradle=CRADLE)
@@ -690,12 +702,16 @@ G.heart_take('gu_heartV', 'candy', Tr(0, T.HEART_Y + 10, 0) @ Matrix.Scale(1.35,
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
 rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
 INFO.update(L.WALLBOX)
-# (the buildings solid to the old lid: ray-blind above their real roofs, measured against this kit: roofs.py)
-import roofs
-solid, rotb, _roofs = roofs.split(solid, rotb, L.LID, K.PIECES)
+# (the buildings solid to the old lid: since 18 Nov 2026 open roofs you can stand on, the kit's own shape and nothing
+# above it, measured against this kit: roofs.open_up. the owner: "Suburb we should be able to get on roofs, gut map too!!")
+import roofs, json
+solid, rotb, _roofs = roofs.open_up(solid, rotb, L.LID, K.PIECES, cell=1.5, q=0.5, tol=1.0,   # (rounded roofs and domes: fewer, wider steps)
+                                    slide=lambda cx, cz, y0: abs(cx) > L.X_HALL and y0 >= L.HALL_TOP - 0.5)   # (the halls' roofs, over the spawns, shed you)
 print('ROOFS', _roofs)
+if os.environ.get('ROOF_DUMP'):   # (the roof tops, for tools/roblox/roof_sight.py)
+    with open(os.environ['ROOF_DUMP'], 'w') as _f: json.dump(roofs.TOPS, _f)
 spawns = [tuple(p) for p in L.SPAWNS]
-K.write_layout(LAYOUT, INFO, solid, [], spawns, L.TEAM, src='tools/roblox/gut_models.py', rot=rotb)
+K.write_layout(LAYOUT, INFO, solid, [tuple(p) for p in L.PADS], spawns, L.TEAM, src='tools/roblox/gut_models.py', rot=rotb)
 
 # ================================================================ previews (with the station's lights) and the kit
 VIEWS = [

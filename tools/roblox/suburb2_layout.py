@@ -10,6 +10,8 @@
 #   street and the yards; garages with flat roofs that lead in through an upstairs window
 #   fenced backyards behind the houses: the flank lanes. north: two swimmable pools and a tree house up a stair.
 #   south: trampolines that throw you onto a garage roof or across the yards onto a play fort, sheds, barbecues
+# (18 Nov 2026: the builder opens the houses' roofs, roofs.open_up in suburb2_models.py: the hit boxes follow the kit's
+# roofs and nothing stands over them; the houses round the turning circles shed you, being right over the spawns.)
 # Everything that is not walkable is solid up to y 150 (no roofs to stand on but the garages', the tree house, the
 # fort), the edge closed by an invisible wall and a lid. Gravity in play is 78 studs/s^2 (Config.grav), a jump about
 # 4.9 studs: picket fences (3.2) are jumpable, hedges (5.6) are not.
@@ -312,6 +314,10 @@ with Mirror():
     # trampolines: one throws you onto the garage's roof, one across the yards onto the play fort in the middle
     PADS.append((-58.0, 0.0, 54.0, -50.0, 0.9, 62.0, 0.0, 50.0, -16.0))
     PADS.append((-34.0, 0.0, 80.0, -26.0, 0.9, 88.0, 30.0, 44.0, 0.0))
+    # (18 Nov 2026, the roofs open: roofs.open_up) a trampoline on the north garage's roof (up the outside stair) throws
+    # you onto the house's roof, a way up besides the grapple. (not on the south garage's: a spawn stands there, and the
+    # yard trampoline lands there by the upstairs window)
+    PADS.append((-57.0, GROOF, -38.0, -51.0, GROOF + 0.9, -32.0, -10.0, 62.0, 0.0))     # (lands south of the ridge: the chimney's north of it)
     NOTES.extend([(-73.0, -38.0, 0, 'HOUSE'), (-27.0, -50.0, 0, 'HOUSE'), (-73.0, 38.0, 0, 'HOUSE'),
                   (-27.0, 50.0, 0, 'HOUSE'), (-69.0, -85.0, 0, 'POOL'), (-54.0, 58.0, 0, 'TRAMPOLINE'), (-30.0, 84.0, 0, 'TRAMPOLINE'),
                   (-54.0, -35.0, 1, 'GARAGE ROOF'), (-54.0, 35.0, 1, 'GARAGE ROOF'), (-73.0, -38.0, 1, 'UPSTAIRS'), (-27.0, 50.0, 1, 'UPSTAIRS')])

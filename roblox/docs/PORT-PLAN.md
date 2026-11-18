@@ -1636,9 +1636,54 @@ The owner, about grappling onto people (section 37): "when you grapple someone m
   - dropped below the fall line 2.2 s later: a void kill credited to the yanker, `via = grapple`;
   - `YankT` stamped 3 s ahead;
   - the phone's YANK button (TouchForce): hidden unroped, shown roped and ready, hidden while cooling, back when ready, gone on letting go.
-  - **Seen:** a dummy lands about where the yanker stands, then slides on (it lies flat for the slip). Over 2.5 s it went 88 studs, past the yanker. A landing brake for dummies is the next push.
+  - **Seen:** a dummy lands about where the yanker stands, then slides on (it lies flat for the slip). Over 2.5 s it went 88 studs, past the yanker. Since version 812 a landing brake cuts a yanked dummy's slide to 15% the moment it's down again (Main.server). It's not yet tested in Play.
   - Not tested: two real players (a yanked player's own movement friction stops them; a solo test can't show it) and the teammate pull.
   - Photo: `docs/grapples/grapple_yank_v796.jpg` (the taut rope to the Plinker in the air, its streak from the block).
+
+## 43. Open roofs on the Gut and Suburb v2, 18 November 2026 (place version 812; the Gut's Tube-side plate in the next save)
+
+The owner: "Suburb we should be able to get on roofs, gut map too!! There are weird ceiling blockers". The blockers were section 36's body-only columns: every building stood solid to the old lid at 150, and v735 made the part above its real roof ray-blind, but it still stopped bodies.
+
+- **Open roofs** (`tools/roblox/roofs.py` `open_up`, run by `gut_models.py` and `suburb2_models.py` in place of `split`):
+  - Every lid-high building's hit boxes now follow the kit's own roof, with nothing above it.
+  - Rays straight down onto the kit every 1 stud (Suburb) or 1.5 studs (the Gut) give a height map. Heights go to the nearest 0.5 stud, and runs of cells within 1 stud of each other share a box, whose top is the highest cell.
+  - Movement walks up any step of 1.8 studs or less, so pitched roofs and domes are walkable steps that stay within about a stud of the mesh.
+  - A round building's turned twin squares are sampled once. Cells with nothing over them stay open where they reach the rim, so the hit boxes follow what you see.
+- **Roofs over spawns shed you:** the Gut's two halls and Suburb's six houses round the turning circles.
+  - Their boxes carry the flag `s`, and WebArena marks them `Slide`. Move.client treats them like the wall box's ledge: it slides you off toward the middle.
+  - You can hook them, land and touch, but you can't camp over a spawn, and there's no ceiling.
+- **Counts:** the Gut has 793 plain + 860 turned hit boxes (726 rows before); Suburb has 705 + 159 (590 before).
+- **Sight lines** (`tools/roblox/roof_sight.py`: standing spots every 3 studs on every roof, eyes 4.6 up, to every team spawn at 2.5 and 4.6, through the built hit boxes; rails don't stop shots):
+  - The Gut: 58 of 74 roof areas saw a team spawn, almost all through the halls' doors from 195-280 studs.
+    - Screens as high as the doors now stand just inside each hall's two front doors and its north door: `cover`, 12 high, you go round either end.
+    - That leaves 2 marginal lines: from a corner of each south block's roof through the hall's south door, at 52 studs, to the spawn just inside it.
+  - Suburb: its spawns stand in the open at the turning circles, so nearly every roof sees one.
+    - The rim houses, 44 studs over a spawn, now shed you.
+    - The houses nearest each circle still see their own team's spawn from 64-80 studs, and every roof sees the far spawn down the street from 150-206 studs.
+    - Parapet gables tried in the check only halved the near lines. A real fix needs cover over the spawns; it's left until Suburb comes back.
+  - W.check's spawn-to-spawn lines: 0 of 128 on all four walled arenas (the Gut, Suburb v2, Bazaar v2, Desert v2), as before.
+- **A way up besides the grapple** (`tools/roblox/pad_sim.py` flies the throws against the built hit boxes, as W.check does):
+  - The Gut: a pad in each north yard throws you onto the Tube's flat roof (21.5 up), and one in each Avenue onto the small block by the south alley (32 up). New model `gu_pad`: an enamel plinth, a cream top, a soft pink glow ring.
+  - Suburb: a trampoline on each north garage's roof (up the outside stair) throws you onto the house's roof (32 up), landing south of the ridge, clear of the chimney. None on the south garages: a free-for-all spawn stands there, and the yard trampoline lands there by the upstairs window (W.check caught a first try that put a trampoline on the spawn).
+- **Patch kits:** `arenakit.py --only=<model>,...` exports just those models, and `W.swap(name, id)` swaps them into the kit library and the built arena's Shell, leaving everything else as it is (the Gut's installed heart).
+  - Gut patch: asset 135539607644944 (`gu_cover`, `gu_pad`). Suburb patch: asset 92321963601111 (`sb_tramp`).
+  - A later full W.import + W.build needs the kit uploaded whole.
+- `W.solid` now rebuilds the pads too, and W.check reports `roofs: <body-only columns over 40>, <Slide boxes>`.
+- Bazaar v2 and Desert v2 stay as they were.
+  - Bazaar v2's lid-high boxes are the town's outer ring, round its roof network at y 18, which is already open.
+  - Desert v2's are rock spires over the mesa tops, not roofs.
+- **A raised roof box closes where the kit dips just under its foot.** A cell with nothing over a box that stands on something (base above y 1) gets a plate at the foot if the kit is within 8 studs under it (`roofs.UNDER`).
+  - The v812 test fell twice through the side of the Gut's Tube roof: a barrel vault whose side meets the block's wall under the box's foot (y 18), looking closed.
+  - Cells over the street stay open.
+- **W.check:** every hit box built, no lid, Slide boxes 234 (Gut) and 42 (Suburb), no body-only columns over Suburb's roofs. The Gut's 27 "columns over 40" are the tower balcony's bars (y 21-41), not roofs. All spawns are on floors and every pad lands.
+- **Tested in solo Play on the Gut** (version 812):
+  - the west north-yard pad threw me onto the Tube's roof (peak 29, standing at 21.5);
+  - walked 41 studs along it at roof height;
+  - teleported onto the north block's roof and stood there (photo `docs/maps/gut_roof_v812.jpg`);
+  - grappled from it down toward the kiosk dome (the pull flung me past it, as letting go does);
+  - set on the west hall's roof, it shed me toward the middle and off its front edge, into the Approach, in 1.8 s.
+  - **Found:** two grapples up from the Tube's roof to the block's dome dropped me through the slot at the Tube's side (fixed above, in the next save). Getting from the Tube's roof up onto the block's roof by grapple still needs the right swing: the block's edge is 12 higher.
+  - Not tested: Suburb in Play (switched off), and two players.
 
 ## 43. Hub v3: the spawn lounge and the way upstairs, 18 November 2026 (place version 810)
 

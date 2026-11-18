@@ -27,7 +27,8 @@ local CollectionService = game:GetService("CollectionService")
 local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
-	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 127392071390257 } :: { [string]: number }
+	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 127392071390257,
+	Backrooms = 108478509833298, Forest = 130312556142076 } :: { [string]: number }
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
@@ -98,6 +99,58 @@ function W.import(name: string, id: number?): string
 	return ("kit %s (asset %d): %d models%s\n  %s"):format(L.kit, aid, #names, if bad > 0 then ", " .. bad .. " pieces with no name rule" else "", table.concat(names, "\n  "))
 end
 
+-- a patch kit (18 Nov 2026: arenakit's --only=<model>,...): swaps just the models in asset `id` into the kit library and
+-- into the built arena's Shell (placed as W.build places them), and leaves everything else as it is: the other models,
+-- the Gut's installed heart, hand-set attributes. (a later full W.import + W.build needs a kit uploaded whole)
+--   print(W.swap("Gut", <asset id>))
+function W.swap(name: string, id: number): string
+	local L = layout(name)
+	local root = workspace.Map:FindFirstChild(name)
+	if not root then return name .. " is not built" end
+	local shell = root:FindFirstChild("Shell")
+	local ok, container = pcall(function() return InsertService:LoadAsset(id) end)
+	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
+	local groups, bad = {}, 0
+	for _, d in container:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		local model, kind, h = string.match(d.Name, "^(.-)%d+__(%a+)_(%x%x%x%x%x%x)")
+		if not model or not MAT[kind] then bad += 1; continue end
+		d.Material = MAT[kind]; d.Color = hex(h); d.TextureID = ""
+		d.Transparency = SEE[kind] or 0
+		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+		d.CastShadow = kind == "plastic"
+		d.DoubleSided = false
+		d:SetAttribute("Kind", kind)
+		groups[model] = groups[model] or {}
+		table.insert(groups[model], d)
+	end
+	local names = {}
+	for mname, parts in groups do
+		for _, old in lib():GetChildren() do
+			if old.Name == mname and old:GetAttribute("Kit") == L.kit then old:Destroy() end
+		end
+		local m = Instance.new("Model")
+		m.Name = mname
+		for _, p in parts do p.Parent = m end
+		m.WorldPivot = CFrame.identity
+		m:SetAttribute("AssetId", id); m:SetAttribute("Kit", L.kit); m:SetAttribute("FileFrame", true)
+		m.Parent = lib()
+		local was = 0
+		if shell then
+			for _, old in shell:GetChildren() do
+				if old.Name == mname then old:Destroy(); was += 1 end
+			end
+			local c = m:Clone()
+			c:PivotTo(CF(L.origin))
+			c.Parent = shell
+		end
+		table.insert(names, ("%s %d pieces (%d old in the arena replaced)"):format(mname, #parts, was))
+	end
+	container:Destroy()
+	table.sort(names)
+	return ("swapped into %s (asset %d)%s:\n  %s"):format(name, id, if bad > 0 then ", " .. bad .. " pieces with no name rule" else "", table.concat(names, "\n  "))
+end
+
 -- ---------------------------------------------------------------- build
 -- "stops you, takes no shots" (flag "c": the Gut's rails, the columns over the roofs, roofs.py): CanQuery off is not
 -- enough, Roblox still lets rays hit a part that collides. so such a part goes into the collision group JFRayBlind, which
@@ -138,6 +191,9 @@ local function hitBoxes(L: any, O: Vector3, solid: Instance)
 		p.Anchored = true; p.CanCollide = true; p.CanTouch = true; p.CastShadow = false
 		p.CanQuery = not string.find(b[9] or "", "c", 1, true)
 		if not p.CanQuery then p.CollisionGroup = RAYBLIND end
+		-- flags "s": a roof over a spawn (roofs.py open_up, 18 Nov 2026): you can hook it and land on it, but Move.client
+		-- slides you off toward the middle like the wall box's ledge, so nobody camps over a spawn
+		if string.find(b[9] or "", "s", 1, true) then p:SetAttribute("Slide", true) end
 		p.Transparency = 1
 		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
 		p.Material = material(mt[1]); p.Color = hex(mt[2])
@@ -157,6 +213,21 @@ local function wallBox(root: Instance, L: any, O: Vector3)
 	root:SetAttribute("SkyY", if L.skyY then O.Y + L.skyY else nil)
 	root:SetAttribute("EdgeTop", if L.edgeTop then O.Y + L.edgeTop else nil)
 	root:SetAttribute("EdgeSeen", if L.edgeSeen then O.Y + L.edgeSeen else nil)
+end
+
+-- the jump pads: invisible parts with their throw (attribute Pad, Move.client); the kit draws them
+local function padParts(L: any, O: Vector3, pads: Instance)
+	for _, b in L.pads do
+		local p = Instance.new("Part")
+		p.Name = "pad"
+		p.Anchored = true; p.CanCollide = true; p.CanQuery = true; p.CanTouch = true; p.CastShadow = false
+		p.Transparency = 1; p.Material = SP
+		p.Size = V3(b[4] - b[1], b[5] - b[2], b[6] - b[3])
+		p.CFrame = CF(O + V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2))
+		p:SetAttribute("Mat", "pad")
+		p:SetAttribute("Pad", V3(b[7], b[8], b[9]))
+		p.Parent = pads
+	end
 end
 
 function W.clear(name: string): string
@@ -196,17 +267,7 @@ function W.build(name: string): string
 	root.Parent = workspace.Map
 	hitBoxes(L, O, solid)
 	wallBox(root, L, O)
-	for _, b in L.pads do
-		local p = Instance.new("Part")
-		p.Name = "pad"
-		p.Anchored = true; p.CanCollide = true; p.CanQuery = true; p.CanTouch = true; p.CastShadow = false
-		p.Transparency = 1; p.Material = SP
-		p.Size = V3(b[4] - b[1], b[5] - b[2], b[6] - b[3])
-		p.CFrame = CF(O + V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2))
-		p:SetAttribute("Mat", "pad")
-		p:SetAttribute("Pad", V3(b[7], b[8], b[9]))
-		p.Parent = pads
-	end
+	padParts(L, O, pads)
 	for i, s in L.spawns do -- plain parts (SpawnLocations would join Roblox's own spawning)
 		marker(spawns, "Spawn" .. i, CF(O + V3(s[1], s[2], s[3])), V3(4, 0.2, 4))
 	end
@@ -280,7 +341,15 @@ function W.solid(name: string): string
 	if old then old:Destroy() end
 	solid.Parent = root
 	wallBox(root, L, O)
-	return ("%s: hit boxes %d -> %d, SkyY %s, EdgeTop %s, EdgeSeen %s"):format(name, n0, #solid:GetChildren(),
+	-- (and the pads again: 18 Nov 2026, the open roofs brought new ones)
+	local oldPads = root:FindFirstChild("Pads")
+	local p0 = if oldPads then #oldPads:GetChildren() else 0
+	local pads = folder(root, "Pads")
+	pads.Parent = nil
+	padParts(L, O, pads)
+	if oldPads then oldPads:Destroy() end
+	pads.Parent = root
+	return ("%s: hit boxes %d -> %d, pads %d -> %d, SkyY %s, EdgeTop %s, EdgeSeen %s"):format(name, n0, #solid:GetChildren(), p0, #pads:GetChildren(),
 		tostring(root:GetAttribute("SkyY")), tostring(root:GetAttribute("EdgeTop")), tostring(root:GetAttribute("EdgeSeen")))
 end
 
@@ -359,6 +428,17 @@ function W.check(name: string): string
 		end
 		table.insert(out, ("wall box: SkyY %.0f, EdgeTop %.0f, EdgeSeen %.0f; walls %d, step boxes %d; a lid: %d; other solids reaching past the sky line: %d (the old lid's columns, out of reach)"):format(
 			sky, root:GetAttribute("EdgeTop") or 0, root:GetAttribute("EdgeSeen") or 0, bound, ledge, lid, over))
+	end
+	-- 1c. the roofs (roofs.py): body-only columns standing higher than 40 over the street (the old ceilings over the
+	-- roofs: none once a map's roofs are open), and the roofs that shed you (Slide)
+	do
+		local cols, slide = 0, 0
+		for _, p in have do
+			if not p:IsA("BasePart") then continue end
+			if p.CollisionGroup == RAYBLIND and p.Position.Y + p.Size.Y / 2 > O.Y + 40 then cols += 1 end
+			if p:GetAttribute("Slide") then slide += 1 end
+		end
+		table.insert(out, ("roofs: %d body-only columns over 40 (ceilings over roofs), %d boxes that shed you (Slide)"):format(cols, slide))
 	end
 	-- 2. every spawn stands on something solid within a stud under it
 	local rp = RaycastParams.new()
