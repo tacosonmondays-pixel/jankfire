@@ -11,8 +11,8 @@ The owner: "Perhaps the hidden NPCs including guy from hr can be rehidden around
 | Dale, vending machine guy | same | back lot: behind the south-west container stack, at his machine |
 | The Janitor | same | the basement boiler room, mopping |
 | Mr. Smiles (retired mascot) | same | the playground: on the Hook pod, legs over the edge, balloons |
-| Todd, intern (year 40) | same | training: on top of the course's far tower |
-| Auntie Spreadsheet | `shared/story/content/cast_main.js`, `public/models/cast/c_auntie.glb` | training: the course's watch steps |
+| Todd, intern (year 40) | same | training: the dummies hall, on the west gantry tower's cap (since v3) |
+| Auntie Spreadsheet | `shared/story/content/cast_main.js`, `public/models/cast/c_auntie.glb` | training: the course lobby's west bench (since v3) |
 | Lumps | cast | the playground: a low west block, facing the sunset |
 | Wee Gordo | cast | back lot: behind the south-east containers |
 | Mina | cast | training: on the gallery beside the gold dummies' locked roll-up door at the course's TOP frame (since v898) |
@@ -46,22 +46,35 @@ The owner: "Can jankfire npc's be hidden unless you do a very specific thing", t
 be a control panel somewhere that you type in jank actually make codes and every code spawns in an NPC, ill give the
 codes weekly by weekly at some point".
 
-- **Hidden for you until its code.** Every NPC above (not the parked cats) and the hub egg's mannequin is gone for a
-  player until they type its code: no body, no bubble, no TALK, no sound, no collision (the mannequin's plinth and
-  outline too, and its lamp), and walking up finds nothing. `LoreLife.client` hides them from the player attribute
-  `LoreSeen` (the server's list of what you've revealed); the HR guy never visits, and isn't drawn for, anyone whose
-  `LoreSeen` lacks `hr`; `HubEgg.server` ignores touches and its prompt until `egg` is there.
+- **Not in the world until its code** (the owner, later the same day: "can you remove the jankfire npcs? when you type
+  in the codes you'll get a cutscene where an npc walks in and then they'll appear somewhere!"). Every NPC's model and
+  the hub egg's mannequin (`Lore_egg`) live in `ServerStorage.JankfireLore`: nothing stands in the map (LoreSpots
+  builds them there; `L.migrate()` and LoreNPCs' own `migrate()` move any a builder leaves in `Map.Lore` or
+  `Map.Hub.HubEgg`). Each player is given copies of only the NPCs THEY have revealed, in their own
+  `PlayerGui.LoreDelivery` (a hidden ScreenGui: a PlayerGui reaches only its player), and their `LoreLife.client` puts
+  each in `workspace.LoreLocal` at its spot. So nobody else sees it, and nothing unrevealed reaches a client at all.
+  The HR guy never visits, and isn't drawn for, anyone whose `LoreSeen` lacks `hr`; `HubEgg.server` ignores touches and
+  its prompt until `egg` is there.
 - **The panel**: `workspace.Map.Lore.CodePanel`, a chunky terminal (plinth, cabinet with one trim band, a console
   leaning toward you with a dim screen and a row of keys). Built by `PolishBackup.LoreSpots.panel()` where `L.PANEL`
   says (data: `at`, `look`, `show`). Its prompt ("Code", E / X) opens `CodePanel.client`'s screen: CODE, a box,
   ENTER. Keyboard (the box takes the keys, Enter sends, Esc closes), controller (PadNav: the box is picked first, A
   types, B backs out) and phone (tap the box). Hub only (MenuGate `lorecode`); closes when you walk 16 studs off.
 - **A right code** (`LoreNPCs.server`, remote `LoreCode` "try"): the NPC is revealed for you for good (saved in
-  `JankfireLore_v1`: `seen`, and `codes` = when each was redeemed), a copy of it spawns in beside the panel on your
-  screen alone (the panel's `Show` spot: it fades in with a soft chime, no light, greets you and says its lines, then
-  fades away after 18 s or when you walk off), and it counts as finding it: its gift and title as before (the
-  mannequin's OG title through `ServerStorage.HubEggFind`, and the Mini Mannequin pet with it via PetSecrets). From
-  then on it's at its own spot for you. A code you already used shows it at the panel again and gives nothing new.
+  `JankfireLore_v1`: `seen`, and `codes` = when each was redeemed), its copy is delivered, and it counts as finding it:
+  its gift and title as before (the mannequin's OG title through `ServerStorage.HubEggFind`, and the Mini Mannequin pet
+  with it via PetSecrets). Then **the cutscene**, on your screen alone (`LoreLife.client` startCut, about 7.5 s): your
+  controls and the HUD go, black bars, a soft chime, and the camera cuts to the panel. The NPC walks in (a procedural
+  walk on its own leg joints; Gary, Todd and Mr. Smiles stand up from their seats for it) to the panel's `Show` spot,
+  turns to you, greets you and says its first line and its gift line, then turns toward where it lives and walks off as
+  it fades: the only hint, no text. The mannequin fades in on its plinth; the HR guy is a step closer at every cut and
+  then simply gone. SKIP (Space, B, or the button) after the first 1.2 s; never in a match (it stops if a match takes
+  you). Afterwards it's at its own spot for you to go and find. A code you already used plays it again with its
+  "again" line, giving nothing new.
+- **Reward codes** (book rows with `kind = "reward"`; what each gives: `REWARDS` in LoreNPCs): a code that gives items
+  instead of an NPC, once per player (`Loot.grant` of shop-gui's `gift:<kind>:<id>` offers, one receipt per player and
+  item; the save's `claims`). The screen shows what it gave (names from LootTable), or CLAIMED. First one:
+  `ducky_classic`, the old Ducky trio (Bubble Bath LMG, Wish Duck revolver, Ribbon Duck katana), open from 18 Nov.
 - **Codes**: `server/LoreCodeBook.luau` holds only salted, stretched SHA-256 hashes (`server/Sha256.luau`; the typed
   text made plain first: lower case, letters and digits only) and each code's opening day. **The plain codes are not in
   git or the game**: they're in the owner's vault, `JANKFIRE Vault/Codes.md`. A code before its day is just wrong.
@@ -91,7 +104,8 @@ codes weekly by weekly at some point".
   redemption is logged (`[jankfire] lore code: <name> (<id>) -> <npc>` in the server log, and the save's `codes`).
 - **Tests** (`ServerStorage.LoreTest`, Studio): `"code", text` (the real check as the first player, nearness
   skipped), `"clock", days` (the calendar runs that many days ahead), `"codes"` (which are open), `"unlock"` (clears
-  the wait), `"hide", id?` (un-reveal; all with no id), `"reveal", id`. From the client: `Remotes.LoreCode:InvokeServer("try", text)`.
+  the wait), `"hide", id?` (un-reveal and take the copy back; all with no id), `"reveal", id`, `"redeliver"` (what
+  joining does), `"unclaim", id` (a reward's claim). From the client: `Remotes.LoreCode:InvokeServer("try", text)`.
 - **The parked first idea**: one secret action per NPC at its spot, judged by the server (`server/LoreTriggers.luau`,
   `TRIGGERS_ON = false` in LoreNPCs; written, never tested). Spoilers: Gary, salute facing his desk; Dale, shoot his
   machine 3 times in 8 s; the Janitor, stand still on the wet floor 8 s; Mr. Smiles, cheer on the Hook by his

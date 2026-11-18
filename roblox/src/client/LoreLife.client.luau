@@ -11,12 +11,16 @@
 -- says you found them (remote Lore "found"), the "again" line once you've heard everything.
 -- Cheap: only NPCs within LIVE studs of your camera move (the rest keep their last pose); past HIDE they are put aside
 -- on this client (ZoneCull also takes the whole Map.Lore away when you're far from the hub).
--- HIDDEN UNTIL ITS CODE (18 Nov 2026, the owner's code panel; the server half: LoreNPCs.server): an NPC your LoreSeen
--- (the server's attribute) doesn't list isn't there for you: no body, no bubble, no TALK, no movement (pieces marked
--- Clue would stay: none are now). The hub egg's mannequin too (Map.Hub.HubEgg: its body, outline and prompt, its
--- collisions off on your screen). A right code at the panel (remote Lore "seen", how = "code") spawns a copy in beside
--- the panel (CodePanel.Show): it fades in with a soft chime, greets you and says its lines, then after SHOW_LIFE s
--- (or when you walk off) it fades away, and from then on it's at its own spot for you.
+-- NOT IN THE WORLD UNTIL ITS CODE (18 Nov 2026, the owner: "can you remove the jankfire npcs? when you type in the codes
+-- you'll get a cutscene where an npc walks in and then they'll appear somewhere!"). The server keeps every NPC's model
+-- (and the hub egg's mannequin) in ServerStorage.JankfireLore and gives you a copy of each one YOU have revealed, in
+-- PlayerGui.LoreDelivery (a hidden ScreenGui: only you get what's in your PlayerGui). Each is cloned here into
+-- workspace.LoreLocal at its own spot (this screen only) and lives as before. Nothing else is in the map.
+-- A right code at the panel (remote Lore "seen", how = "code") plays a short cutscene on your screen alone (startCut):
+-- your controls and the HUD go, black bars, the camera cuts to the panel; the NPC walks in (its legs on a procedural
+-- walk; the sitters stand up for it), turns to you, greets you and says its lines, then turns toward where it lives
+-- and walks off as it fades (the hint: no text). SKIP (Space, B, or the button) after the first second. Never in a
+-- match. Then it's at its own spot, for you to go and find.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -34,11 +38,7 @@ local SAY_NEAR = 22 -- studs: the opening beat when you first come this close
 local SAY_RESET = 60 -- studs: walk this far away and the opening plays again next time
 local TYPE_CPS = 38 -- characters a second
 local FADE = 0.9 -- s a revealed NPC takes to fade in
-local SHOW_LIFE = 18 -- s a spawned-in NPC stays by the code panel
-local SHOW_FAR = 60 -- studs: walk this far from it and it goes
-local showFolder = Instance.new("Folder") -- (the panel's spawn-ins: on this screen only, never in Map.Lore)
-showFolder.Name = "LoreShowLocal"
-showFolder.Parent = workspace
+local CUT_WALK, CUT_BEAT, CUT_LEAVE, CUT_SKIP = 3.2, 2.8, 1.5, 1.2 -- the cutscene's parts (s), and when SKIP shows
 local aside = Instance.new("Folder")
 aside.Name = "LoreAside"
 
@@ -56,7 +56,7 @@ type Npc = {
 	pieces: { Piece }, parts: { BasePart }, cfs: { CFrame }, st: any, t0: number, out: boolean, home: Instance,
 	bubble: any, heard: number, nearSaid: boolean, live: boolean,
 	clues: { BasePart }, shown: boolean, vis: number, prompt: ProximityPrompt?,
-	temp: boolean, born: number, leaving: boolean,
+	temp: boolean, born: number, leaving: boolean, cut: boolean?, walk: number?,
 }
 local npcs: { [Model]: Npc } = {}
 
@@ -560,28 +560,44 @@ local function adopt(m: Instance, temp: boolean?)
 	end
 end
 
-local function watch(f: Instance)
-	for _, m in f:GetChildren() do task.spawn(adopt, m) end
-	f.ChildAdded:Connect(function(m) task.spawn(adopt, m) end)
+-- ------------------------------------------------------------------ your NPCs: only the ones you've revealed exist here
+local localFolder = Instance.new("Folder") -- (this screen's NPCs at their spots)
+localFolder.Name = "LoreLocal"
+localFolder.Parent = workspace
+local cutFolder = Instance.new("Folder") -- (the cutscene's actor)
+cutFolder.Name = "LoreCut"
+cutFolder.Parent = workspace
+local placed: { [string]: Model } = {}
+local function place(src: Instance)
+	if not src:IsA("Model") then return end
+	local id = src:GetAttribute("LoreId")
+	if type(id) ~= "string" or placed[id] then return end
+	-- (its pieces may still be arriving)
+	local rig = Rigs[id]
+	if rig then for name in rig.pieces do src:WaitForChild(name, 5) end else task.wait(0.3) end
+	if not src.Parent or placed[id] then return end
+	src.Archivable = true
+	local m = src:Clone()
+	for _, d in m:GetDescendants() do if d:IsA("BaseScript") then d:Destroy() end end
+	m.Parent = localFolder
+	placed[id] = m
+	if rig then adopt(m) end
+	src.Destroying:Connect(function()
+		if placed[id] == m then placed[id] = nil end
+		m:Destroy()
+	end)
 end
 task.spawn(function()
-	local map = workspace:WaitForChild("Map")
-	local f = map:FindFirstChild("Lore")
-	while not f do
-		map.ChildAdded:Wait()
-		f = map:FindFirstChild("Lore")
+	local pg = me:WaitForChild("PlayerGui")
+	local box = pg:FindFirstChild("LoreDelivery")
+	while not box do
+		pg.ChildAdded:Wait()
+		box = pg:FindFirstChild("LoreDelivery")
 	end
-	watch(f :: Instance)
+	for _, c in (box :: Instance):GetChildren() do task.spawn(place, c) end
+	;(box :: Instance).ChildAdded:Connect(function(c) task.spawn(place, c) end)
 end)
 
--- ------------------------------------------------------------------ the code panel's spawn-ins
-local function showAt(): CFrame?
-	local map = workspace:FindFirstChild("Map")
-	local l = map and map:FindFirstChild("Lore")
-	local pnl = l and l:FindFirstChild("CodePanel")
-	local sp = pnl and pnl:FindFirstChild("Show")
-	return if sp and sp:IsA("BasePart") then sp.CFrame else nil
-end
 local function chime(at: Vector3)
 	local ok, Sfx = pcall(require, script.Parent:FindFirstChild("Sfx") :: ModuleScript)
 	if ok and Sfx and Sfx.play then pcall(Sfx.play, "card_heal", at, 0.7, 0.9) end
@@ -605,96 +621,295 @@ local function looksOnly(m: Model)
 		elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 1 end
 	end
 end
--- a lore NPC: a copy of its model, standing by the panel (sitters lifted so their feet are on the floor), alive like
--- the real one (adopted as a temp NPC: it fades in, greets, talks, and goes after SHOW_LIFE)
-local function spawnLore(id: string, at: CFrame)
-	local map = workspace:FindFirstChild("Map")
-	local l = map and map:FindFirstChild("Lore")
-	local src = l and l:FindFirstChild("Lore_" .. id)
-	if not src or not src:IsA("Model") then return end
-	src.Archivable = true
-	local m = src:Clone()
-	for _, name in { "MachineBlock", "Zone", "Target" } do -- (Gary keeps his desk, Dale his machine: their things come too)
-		local x = m:FindFirstChild(name)
-		if x then x:Destroy() end
-	end
-	looksOnly(m)
-	m:SetAttribute("LoreShow", true)
-	m:PivotTo(at)
-	local lo = lowest(m)
-	if lo < at.Y - 0.3 then m:PivotTo(at + Vector3.new(0, at.Y - lo, 0)) end
-	m.Parent = showFolder
-	adopt(m, true)
-end
--- the mannequin and the HR guy: still figures (no rig life), faded in and out here
-type Plain = { m: Model, parts: { BasePart }, born: number, vis: number, leaving: boolean, at: Vector3 }
-local plains: { Plain } = {}
-local function spawnPlain(src: Instance?, at: CFrame)
-	if not src or not src:IsA("Model") then return end
-	src.Archivable = true
-	local m = src:Clone()
-	looksOnly(m)
-	m:PivotTo(at)
-	local lo = lowest(m)
-	if math.abs(lo - at.Y) > 0.05 and lo < math.huge then m:PivotTo(m:GetPivot() + Vector3.new(0, at.Y - lo, 0)) end
-	m.Parent = showFolder
-	local parts = {}
-	for _, d in m:GetDescendants() do if d:IsA("BasePart") and d.Transparency < 1 then table.insert(parts, d) end end
-	table.insert(plains, { m = m, parts = parts, born = os.clock(), vis = 0, leaving = false, at = at.Position })
-end
-local function spawnIn(id: string)
-	local at = showAt()
-	if not at then return end
-	for _, n in npcs do if n.temp then n.leaving = true end end -- (one at a time: whoever's there goes)
-	for _, pl in plains do pl.leaving = true end
-	chime(at.Position + Vector3.new(0, 4, 0))
-	if id == "egg" then
-		local map = workspace:FindFirstChild("Map")
-		local hub = map and map:FindFirstChild("Hub")
-		local e = hub and hub:FindFirstChild("HubEgg")
-		spawnPlain(e and e:FindFirstChild("Mannequin"), at)
-	elseif id == "hr" then
-		spawnPlain(game:GetService("ReplicatedStorage"):FindFirstChild("LoreHRShow"), at)
-	else
-		spawnLore(id, at)
+-- a walk, on any rig's legs (every one has legL / legR / kneeL / kneeR): thighs swing, the back knee bends; the
+-- story cast's arms swing against them. phase 0 = standing straight (the sitters stand up for it)
+local function walkPose(n: Npc)
+	local J, ph = n.J, n.walk or 0
+	local s = math.sin(ph)
+	if J.legL then J.legL.rot = { 0.42 * s, 0, 0 } end
+	if J.legR then J.legR.rot = { -0.42 * s, 0, 0 } end
+	if J.kneeL then J.kneeL.rot = { -0.6 * math.max(0, -s), 0, 0 } end
+	if J.kneeR then J.kneeR.rot = { -0.6 * math.max(0, s), 0, 0 } end
+	if J.spine and J.arm and J.armL then
+		J.arm.rot[1] += 0.28 * s
+		J.armL.rot[1] -= 0.28 * s
 	end
 end
 
--- ------------------------------------------------------------------ the hub egg's mannequin: hidden until its code
+-- ------------------------------------------------------------------ a right code's cutscene (your screen only)
+local ContextActionService = game:GetService("ContextActionService")
+local Th = require(script.Parent:WaitForChild("Theme")) :: any
+local cut: any = nil
+local cutUi: any = nil
+local hiddenGuis: { [ScreenGui]: boolean } = {}
+local rayP = RaycastParams.new()
+rayP.FilterType = Enum.RaycastFilterType.Exclude
+local endCut: () -> ()
+local function controls(on: boolean)
+	pcall(function()
+		local c = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
+		if on then c:Enable() else c:Disable() end
+	end)
+end
+local function ui(): any
+	if cutUi and cutUi.g.Parent then return cutUi end
+	local g = Instance.new("ScreenGui")
+	g.Name = "JankLoreCut"; g.ResetOnSpawn = false; g.IgnoreGuiInset = true; g.DisplayOrder = 80; g.Enabled = false
+	g.Parent = me:WaitForChild("PlayerGui")
+	local top = Instance.new("Frame")
+	top.Name = "BarTop"; top.BackgroundColor3 = Color3.new(0, 0, 0); top.BorderSizePixel = 0; top.Size = UDim2.new(1, 0, 0, 0)
+	top.Parent = g
+	local bot = top:Clone()
+	bot.Name = "BarBot"; bot.AnchorPoint = Vector2.new(0, 1); bot.Position = UDim2.fromScale(0, 1); bot.Parent = g
+	local sc = Th.scaled(g)
+	local skip = Th.new("TextButton", { Name = "Skip", AutoButtonColor = false, BackgroundColor3 = Th.BG, BackgroundTransparency = Th.BG_A, BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -28, 1, -14), Size = UDim2.fromOffset(132, 36), FontFace = Th.FONT_BOLD, TextSize = 13,
+		Text = "SKIP", TextColor3 = Th.TEXT, TextXAlignment = Enum.TextXAlignment.Left, Visible = false, ZIndex = 4 }, sc)
+	Th.corner(skip); Th.edge(skip)
+	Th.new("UIPadding", { PaddingLeft = UDim.new(0, 66) }, skip)
+	local key = Th.key(skip, "", UDim2.fromOffset(-58, 7))
+	key.Size = UDim2.fromOffset(50, 22)
+	local kt = key:FindFirstChild("Letter")
+	if kt and kt:IsA("TextLabel") then kt.Text = "SPACE"; kt.TextSize = 10 end
+	skip.Activated:Connect(function() if cut and os.clock() - cut.t0 > CUT_SKIP then endCut() end end)
+	cutUi = { g = g, top = top, bot = bot, skip = skip }
+	return cutUi
+end
+local function panelModel(): Model?
+	local map = workspace:FindFirstChild("Map")
+	local l = map and map:FindFirstChild("Lore")
+	local pm = l and l:FindFirstChild("CodePanel")
+	return if pm and pm:IsA("Model") then pm else nil
+end
+local function flat(v: Vector3, fallback: Vector3): Vector3
+	local f = Vector3.new(v.X, 0, v.Z)
+	return if f.Magnitude > 1e-3 then f.Unit else fallback
+end
+
+endCut = function()
+	local c = cut
+	if not c then return end
+	cut = nil
+	pcall(function() RunService:UnbindFromRenderStep("JankLoreCut") end)
+	pcall(function() ContextActionService:UnbindAction("JankLoreSkip") end)
+	if c.actor and c.actor.m then c.actor.m:Destroy() end
+	for g in hiddenGuis do if g.Parent then g.Enabled = true end end
+	table.clear(hiddenGuis)
+	if cutUi then cutUi.g.Enabled = false; cutUi.skip.Visible = false end
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Custom
+	cam.FieldOfView = c.fov
+	me:SetAttribute("LoadoutOpen", c.loadoutWas == true)
+	me:SetAttribute("Finishing", nil)
+	controls(true)
+end
+
+local function stepCut(dt: number)
+	local c = cut
+	if not c then return end
+	local t = os.clock() - c.t0
+	local T1, T2, T3 = CUT_WALK, CUT_WALK + CUT_BEAT, CUT_WALK + CUT_BEAT + CUT_LEAVE
+	if t >= T3 then endCut(); return end
+	local a = c.actor
+	local head: Vector3
+	if a.kind == "still" then
+		-- the mannequin fades in where it stands; the HR guy is a step closer every time you blink (cut), and simply
+		-- isn't there at the end
+		local pos, look, vis
+		if c.id == "hr" then
+			local k = if t >= T1 then 1 else math.floor(t / (T1 / 3)) / 3
+			pos = c.start:Lerp(c.finish, k); look = flat(c.finish - c.start, c.face)
+			if t >= T1 then look = c.face end
+			vis = if t < T2 then 1 else 0
+		else
+			pos = c.finish; look = c.face
+			vis = if t < T2 then math.min(1, t / 1.2) else math.max(0, 1 - (t - T2) / CUT_LEAVE)
+		end
+		a.m:PivotTo(CFrame.lookAt(pos, pos + look) + Vector3.new(0, a.lift, 0))
+		for _, pt in a.parts do pt.LocalTransparencyModifier = 1 - vis end
+		head = pos + Vector3.new(0, a.lift + a.height * 0.82, 0)
+	else
+		local n = a.n
+		local pos, look, vis, moving
+		if t < T1 then
+			local k = t / T1
+			pos = c.start:Lerp(c.finish, 1 - (1 - k) * (1 - k)); look = flat(c.finish - c.start, c.face)
+			moving = 1 - k * 0.6; vis = math.min(1, t / 0.6)
+		elseif t < T2 then
+			pos = c.finish; look = flat(c.camB - c.finish, c.face); moving = nil; vis = 1
+		else
+			local k = (t - T2) / CUT_LEAVE
+			pos = c.finish + c.exit * (k * 5.5); look = c.exit; moving = 1; vis = math.max(0, 1 - k * 1.25)
+		end
+		c.look = if c.look then flat(c.look:Lerp(look, math.min(1, dt * 7)), look) else look
+		if moving then n.walk = (n.walk or 0) + dt * 8.5 * moving else n.walk = 0 end
+		local bob = if moving then math.abs(math.sin(n.walk :: number)) * 0.14 else 0
+		n.base = CFrame.lookAt(pos, pos + c.look) + Vector3.new(0, a.lift + bob, 0)
+		n.yaw = math.atan2(-c.look.X, -c.look.Z)
+		if n.vis ~= vis then n.vis = vis; apply(n) end
+		head = if n.J.head then worldOf(n, n.J.head).Position + Vector3.new(0, 0.6, 0) else n.base.Position + Vector3.new(0, 4.5, 0)
+		-- the beat: they've arrived, they greet you and say their piece
+		if t >= T1 and not c.said then
+			c.said = true
+			local e = Data.get(c.id)
+			if e then
+				local lines = {}
+				if e.beats[1] and e.beats[1][1] then table.insert(lines, e.beats[1][1]) end
+				local more = if c.again then e.again else e.got
+				if more and more[1] then table.insert(lines, more[1]) end
+				say(n, lines)
+				if e.greet then playClip(n, e.greet) end
+			end
+		end
+	end
+	-- the camera: three set-ups, cut between (the aim eases toward the head within a shot)
+	local shot = if t < T1 then 1 elseif t < T2 then 2 else 3
+	local at = if shot == 1 then c.camA elseif shot == 2 then c.camB else c.camC
+	if shot ~= c.shot then c.shot = shot; c.aim = head end
+	c.aim = (c.aim :: Vector3):Lerp(head, math.min(1, dt * 5))
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.CFrame = CFrame.lookAt(at, c.aim)
+	local u = cutUi
+	if u then
+		local bar = math.min(1, t / 0.35) * 0.11
+		if t > T3 - 0.35 then bar = math.max(0, (T3 - t) / 0.35) * 0.11 end
+		u.top.Size = UDim2.fromScale(1, bar); u.bot.Size = UDim2.fromScale(1, bar)
+		if t > CUT_SKIP and not u.skip.Visible then u.skip.Visible = true end
+	end
+end
+
+-- id: whose code it was; again: a code you'd used before (their "again" line)
+local function startCut(id: string, again: boolean?)
+	if cut then endCut() end
+	local z = me:GetAttribute("Zone")
+	if z == "match" or z == "staging" then return end
+	local pm = panelModel()
+	local sp = pm and pm:FindFirstChild("Show")
+	if not pm or not sp or not sp:IsA("BasePart") then return end
+	local finish = sp.Position
+	local face = flat(sp.CFrame.LookVector, Vector3.zAxis) -- (toward where you stand at the panel)
+	local pc = pm:GetPivot().Position
+	local away = flat(finish - pc, -face) -- (the panel's far side: they come from there)
+	rayP.FilterDescendantsInstances = { me.Character :: Instance, localFolder, cutFolder }
+	local run = 14
+	local hit = workspace:Raycast(finish + Vector3.new(0, 2.5, 0), away * run, rayP)
+	if hit then run = math.max(4, hit.Distance - 2) end
+	local start = finish + away * run
+	-- after: off toward where they live (the last shot's only hint)
+	local home = placed[id]
+	local exit = if home then flat(home:GetPivot().Position - finish, -face) else -face
+	local actor: any
+	if id == "egg" or id == "hr" then
+		local src = if id == "egg" then placed.egg else ReplicatedStorage:FindFirstChild("LoreHRShow")
+		if not src or not src:IsA("Model") then return end
+		src.Archivable = true
+		local m = src:Clone()
+		looksOnly(m)
+		m:PivotTo(CFrame.lookAt(finish, finish + face))
+		local lo = lowest(m)
+		local cf, size = m:GetBoundingBox()
+		m.Parent = cutFolder
+		local parts = {}
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") and d.Transparency < 1 then table.insert(parts, d) end end
+		actor = { kind = "still", m = m, parts = parts, lift = if lo < math.huge then finish.Y - lo else 0, height = size.Y }
+		local _ = cf
+	else
+		local src = placed[id]
+		if not src then return end
+		local m = src:Clone()
+		-- (only the person walks in: their desk, chair, machine and the things on their spot stay home)
+		for _, name in { "Desk", "MachineBlock", "Zone", "Target", id .. "_machine", id .. "_door", id .. "_npc", id .. "_turn" } do
+			local x = m:FindFirstChild(name)
+			if x then x:Destroy() end
+		end
+		looksOnly(m)
+		m:PivotTo(CFrame.lookAt(start, finish))
+		m.Parent = cutFolder
+		adopt(m, true)
+		local n = npcs[m]
+		if not n then m:Destroy(); return end
+		n.cut = true; n.walk = 0; n.vis = 0; n.nearSaid = true
+		apply(n)
+		-- feet on the floor in the walking pose (a sitter's root is at its seat)
+		walkPose(n); solve(n)
+		local lo = math.huge
+		for _, pcc in n.pieces do
+			local j = pcc.joint.name
+			if j == "kneeL" or j == "kneeR" or j == "legL" or j == "legR" then
+				local cf = pcc.joint.cf * pcc.off
+				local sz = pcc.part.Size / 2
+				local ext = math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.LookVector.Y) * sz.Z
+				lo = math.min(lo, cf.Position.Y - ext)
+			end
+		end
+		local lift = if lo < math.huge then -lo else 0
+		local hh = if n.J.head then n.J.head.cf.Position.Y + lift else 5
+		actor = { kind = "rig", m = m, n = n, lift = lift, height = hh }
+	end
+	local hgt = if actor.kind == "rig" then actor.height else actor.height * 0.82
+	local cam = workspace.CurrentCamera
+	cut = {
+		id = id, again = again, t0 = os.clock(), actor = actor, start = start, finish = finish, face = face, exit = exit,
+		camA = finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0),
+		camB = finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0),
+		camC = finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0),
+		fov = cam.FieldOfView, loadoutWas = me:GetAttribute("LoadoutOpen"), said = false, shot = 0, aim = nil, look = nil,
+	}
+	local u = ui()
+	for _, g in me:WaitForChild("PlayerGui"):GetChildren() do
+		if g:IsA("ScreenGui") and g ~= u.g and g.Enabled and g.Name ~= "LoreDelivery" then hiddenGuis[g] = true; g.Enabled = false end
+	end
+	u.g.Enabled = true
+	me:SetAttribute("LoadoutOpen", true) -- (hands and guns hold still, no menu opens, the shoulder camera lets go)
+	me:SetAttribute("Finishing", "lore") -- (MenuCursor, PadLook and the death camera treat it like a finisher)
+	controls(false)
+	cam.FieldOfView = 50
+	chime(finish + Vector3.new(0, 4, 0))
+	ContextActionService:BindActionAtPriority("JankLoreSkip", function(_, state)
+		if state == Enum.UserInputState.Begin and cut and os.clock() - cut.t0 > CUT_SKIP then endCut() end
+		return Enum.ContextActionResult.Sink
+	end, false, 3600, Enum.KeyCode.Space, Enum.KeyCode.ButtonB)
+	RunService:BindToRenderStep("JankLoreCut", Enum.RenderPriority.Last.Value + 70, function(dt: number)
+		local ok, err = pcall(stepCut, dt)
+		if not ok then warn("[jankfire] lore cutscene: " .. tostring(err)); endCut() end
+	end)
+end
+me.CharacterAdded:Connect(function() if cut then endCut() end end)
+me:GetAttributeChangedSignal("Zone"):Connect(function()
+	local z = me:GetAttribute("Zone")
+	if cut and (z == "match" or z == "staging") then endCut() end
+end)
+
+-- ------------------------------------------------------------------ the hub egg's prompt and lamp: off until its code
 local eggHidden: boolean? = nil
-local eggModel: Instance? = nil
 local function eggApply()
 	local map = workspace:FindFirstChild("Map")
 	local hub = map and map:FindFirstChild("Hub")
 	local e = hub and hub:FindFirstChild("HubEgg")
-	local m = e and e:FindFirstChild("Mannequin")
 	local hide = not seen.egg
-	if m == eggModel and hide == eggHidden then return end
-	eggModel, eggHidden = m, hide
-	if not e then return end
+	if hide == eggHidden or not e then return end
+	eggHidden = hide
 	for _, d in e:GetDescendants() do
-		if d:IsA("BasePart") and m and d:IsDescendantOf(m) then
-			d.LocalTransparencyModifier = if hide then 1 else 0
-			-- (its collisions off on this screen while hidden: no invisible plinth to bump into)
-			if d:GetAttribute("EggCollide") == nil then d:SetAttribute("EggCollide", d.CanCollide) end
-			d.CanCollide = if hide then false else d:GetAttribute("EggCollide") == true
-		elseif d:IsA("ProximityPrompt") then d.Enabled = not hide
+		if d:IsA("ProximityPrompt") then d.Enabled = not hide
 		elseif d:IsA("Light") then d.Enabled = not hide
 		elseif d:IsA("Highlight") then d.Enabled = not hide end
 	end
 end
 task.spawn(function()
 	while true do
+		eggHidden = nil -- (look again: the hub may have been rebuilt)
 		pcall(eggApply)
-		task.wait(1)
+		task.wait(3)
 	end
 end)
 
 me:GetAttributeChangedSignal("LoreSeen"):Connect(function()
 	readSeen()
+	eggHidden = nil
 	pcall(eggApply)
 	for _, n in npcs do
-		if n.temp then continue end
+		if n.cut then continue end
 		local want = seen[n.id] == true
 		if want ~= n.shown then
 			n.shown = want
@@ -704,18 +919,25 @@ me:GetAttributeChangedSignal("LoreSeen"):Connect(function()
 	end
 end)
 
-LoreR.OnClientEvent:Connect(function(op: string, id: string, first: boolean)
+LoreR.OnClientEvent:Connect(function(op: string, id: string, first: any)
 	if op == "seen" then
-		-- a code at the panel: it spawns in there. (otherwise: a soft chime where they stand as they fade in)
-		if (first :: any) == "code" then spawnIn(id); return end
+		-- a code at the panel: its cutscene (once its copy has reached you). otherwise a soft chime where they stand
+		if first == "code" or first == "again" then
+			task.spawn(function()
+				local t0 = os.clock()
+				while id ~= "hr" and not placed[id] and os.clock() - t0 < 4 do task.wait(0.1) end
+				startCut(id, first == "again")
+			end)
+			return
+		end
 		for _, n in npcs do
-			if n.id == id and not n.temp then chime(n.base.Position + Vector3.new(0, 4, 0)) end
+			if n.id == id and not n.cut then chime(n.base.Position + Vector3.new(0, 4, 0)) end
 		end
 		return
 	end
 	if op ~= "found" then return end
 	for _, n in npcs do
-		if n.id == id then
+		if n.id == id and not n.cut then
 			local e = Data.get(id)
 			if e then
 				-- the opening (if they haven't said it yet), then the gift line
@@ -741,42 +963,37 @@ RunService.RenderStepped:Connect(function(dt)
 	dt = math.min(dt, 0.1)
 	local cam = workspace.CurrentCamera
 	local camPos = cam and cam.CFrame.Position or Vector3.zero
-	local eye = myEye()
+	local myE = myEye()
 	local now = os.clock()
 	local parts, cfs = {}, {}
 	for m, n in npcs do
 		local rp = n.base.Position
 		local dCam = (camPos - rp).Magnitude
-		-- far: not drawn on this client (and drawn again when near). hidden in place, never moved out of Map.Lore: ZoneCull
-		-- measures the folder by what's in it, and a folder that shrank to the nearby ones once counted as far away
+		-- far: not drawn on this client (and drawn again when near), hidden in place
 		if (dCam > HIDE) ~= n.out then
 			n.out = dCam > HIDE
 			apply(n)
 		end
-		-- (a spawn-in you went far from before it left: gone)
-		if n.temp and n.out and now - n.born > SHOW_LIFE then task.defer(function() m:Destroy() end); continue end
 		if n.out or not m:IsDescendantOf(workspace) then continue end
-		-- not revealed: only the clue is here (no bubble, no moves). revealed just now: fading in
 		if not n.shown then continue end
-		if n.temp and not n.leaving and (now - n.born > SHOW_LIFE or (eye and (eye - rp).Magnitude > SHOW_FAR)) then n.leaving = true end
-		if n.leaving then
-			n.vis = math.max(0, n.vis - dt / FADE)
-			apply(n)
-			if n.vis <= 0 then task.defer(function() m:Destroy() end); continue end
-		elseif n.vis < 1 then
+		if not n.cut and n.vis < 1 then
 			n.vis = math.min(1, n.vis + dt / FADE)
 			apply(n)
 		end
+		-- (the cutscene's actor looks at the camera)
+		local eye = if n.cut then camPos else myE
 		local d = if eye then Vector3.new(eye.X - rp.X, 0, eye.Z - rp.Z).Magnitude else 1e9
 		-- the opening beat, once per approach
-		if d < SAY_NEAR and not n.nearSaid then
-			local e = Data.get(n.id)
-			if e and e.beats[1] then
-				say(n, e.beats[1]); n.nearSaid = true; n.heard = 0
-				if e.greet then playClip(n, e.greet) end
+		if not n.cut then
+			if d < SAY_NEAR and not n.nearSaid then
+				local e = Data.get(n.id)
+				if e and e.beats[1] then
+					say(n, e.beats[1]); n.nearSaid = true; n.heard = 0
+					if e.greet then playClip(n, e.greet) end
+				end
+			elseif d > SAY_RESET and n.nearSaid then
+				n.nearSaid = false
 			end
-		elseif d > SAY_RESET and n.nearSaid then
-			n.nearSaid = false
 		end
 		stepBubble(n, dt, now)
 		if dCam > LIVE then continue end
@@ -789,6 +1006,7 @@ RunService.RenderStepped:Connect(function(dt)
 		}
 		local up = UPDATE[n.id]
 		if up then up(n, dt, now + n.t0, ctx) elseif n.J.tailBase then catUpdate(n, dt, now + n.t0, ctx) elseif n.J.spine then castUpdate(n, dt, now + n.t0, ctx) end
+		if n.walk then walkPose(n) end
 		solve(n)
 		for _, pc in n.pieces do
 			table.insert(parts, pc.part)
@@ -796,13 +1014,4 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
-	-- the still spawn-ins (the mannequin, the HR guy): in, a while, out
-	for i = #plains, 1, -1 do
-		local pl = plains[i]
-		if not pl.leaving and (now - pl.born > SHOW_LIFE or (eye and (eye - pl.at).Magnitude > SHOW_FAR)) then pl.leaving = true end
-		local was = pl.vis
-		pl.vis = if pl.leaving then math.max(0, pl.vis - dt / FADE) else math.min(1, pl.vis + dt / FADE)
-		if pl.vis ~= was then for _, p in pl.parts do p.LocalTransparencyModifier = 1 - pl.vis end end
-		if pl.leaving and pl.vis <= 0 then pl.m:Destroy(); table.remove(plains, i) end
-	end
 end)

@@ -3,7 +3,8 @@
 -- jank actually make codes and every code spawns in an NPC, ill give the codes weekly by weekly at some point"). The
 -- terminal is workspace.Map.Lore.CodePanel (PolishBackup.LoreSpots builds it where L.PANEL says); its prompt opens a
 -- small screen: CODE, a box, ENTER. The server checks the code (LoreNPCs.server, remote LoreCode); a right one closes
--- the screen and the NPC spawns in beside the panel (LoreLife.client). Wrong: the box shakes and says so; too many
+-- the screen and the NPC's cutscene plays (LoreLife.client). A reward code shows what it gave (its item names) in the
+-- screen instead, or CLAIMED for one already used. Wrong: the box shakes and says so; too many
 -- wrong: WAIT and the seconds left. Only in the hub (MenuGate "lorecode"); keyboard (the box takes the keys, Enter
 -- sends, Esc closes), controller (PadNav: the box is picked first, A types, B backs out) and phone (tap the box for the
 -- on-screen keyboard). It closes when you walk away from the panel or go into a match.
@@ -79,6 +80,22 @@ local function submit()
 	if S.gui ~= g then return end
 	S.busy = false
 	if not ok or type(res) ~= "table" then say("TRY AGAIN", T.DANGER); return end
+	if res.ok and res.reward then
+		-- a reward: what it gave, in the box's place (or CLAIMED), then the screen goes
+		b.Visible = false
+		if S.enter then S.enter.Visible = false end
+		local list = T.text(b.Parent :: Instance, "Rewards", "", 16, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		list.Position = UDim2.fromOffset(20, 52); list.Size = UDim2.fromOffset(300, 96)
+		list.TextWrapped = true; list.TextYAlignment = Enum.TextYAlignment.Center
+		if res.again then
+			list.Text = "CLAIMED"; list.TextColor3 = T.MUTED
+		else
+			list.Text = table.concat(if type(res.items) == "table" then res.items else {}, "\n")
+		end
+		say("")
+		task.delay(if res.again then 1.4 else 3.2, function() if S.gui == g then close() end end)
+		return
+	end
 	if res.ok then
 		say(if res.again then "FOUND" else "", T.ACCENT)
 		b.Text = ""
@@ -97,6 +114,8 @@ local function submit()
 		task.delay(1.4, function() if S.gui == g and S.status and S.status.Text == "WRONG" then say("") end end)
 	elseif res.why == "far" then
 		close()
+	elseif res.why == "later" then
+		say("TRY AGAIN", T.DANGER)
 	else
 		say("TRY AGAIN", T.DANGER)
 	end

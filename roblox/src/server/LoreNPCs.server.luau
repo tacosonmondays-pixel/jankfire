@@ -22,10 +22,22 @@
 -- finding it (its gift and title as before; the egg's OG title goes through HubEgg.server's ServerStorage.HubEggFind).
 -- Then it lives at its own spot for you. (A find counts as seen too. The first idea, a secret action per NPC at its
 -- spot, is written and parked: LoreTriggers.luau, behind TRIGGERS_ON.)
+-- REWARD CODES (18 Nov 2026, the owner: the old Ducky skin trio "via code"): a book row with kind = "reward" gives the
+-- things in REWARDS (through Loot.grant, one receipt per player and item: once each) instead of revealing an NPC; the
+-- save's `claims` remembers it, and a second try says it's claimed. Same checks (its day, near the panel, no match,
+-- the wrong-try wait).
 -- Remote JankfireRemotes.LoreCode (RemoteFunction, made here): ("try", text) -> { ok = true, id, again? } |
+-- { ok = true, reward = id, items = { names }, again? } |
 -- { ok = false, why = "wrong" | "wait" | "far" | "busy" | "loading", wait = seconds, left = tries }
+-- NOT IN THE WORLD UNTIL ITS CODE (18 Nov 2026, the owner: "can you remove the jankfire npcs? when you type in the codes
+-- you'll get a cutscene where an npc walks in and then they'll appear somewhere!"): every NPC's model (and the hub egg's
+-- mannequin, "Lore_egg") lives in ServerStorage.JankfireLore, never in the map (migrate() moves any a builder left in
+-- Map.Lore or Map.Hub.HubEgg). Each player is given a copy of only the ones THEY have revealed, in their own
+-- PlayerGui.LoreDelivery (a hidden ScreenGui: a PlayerGui reaches only its player), and their LoreLife.client puts it
+-- in their world at its spot. A right code delivers it first, then tells their screen to play the cutscene.
 -- Remote JankfireRemotes.Lore (server -> client): ("found", id, firstTime), ("seen", id, how) the moment you reveal one
--- (how = "code": spawn it in at the panel), ("hrtake", at) from HrGuy.server.
+-- (how = "code": the cutscene; "again": a used code, the cutscene with their "again" line), ("hrtake", at) from
+-- HrGuy.server.
 -- ServerStorage.LoreFindEvent (BindableEvent): (player, id) counts a find that isn't a walk-up (the HR guy's).
 -- ServerStorage.LoreRevealEvent (BindableEvent, fired here): (player, id) when someone reveals one (HrGuy.server: "hr"
 -- means he comes for them).
@@ -43,6 +55,8 @@
 --   "clock", days     the server's calendar runs this many days ahead for the codes' opening days (0 = today)
 --   "codes"           each code's NPC, opening day and whether it's open by that calendar
 --   "unlock"          clears the first player's wrong tries and wait
+--   "redeliver"       takes the first player's NPC copies back and gives them again (what joining does)
+--   "unclaim", id     forgets the first player's claim of a reward code (the items stay in the loot save)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -67,15 +81,69 @@ local CODE_TRIES, CODE_WAIT, CODE_GAP = 5, 60, 0.5 -- wrong tries before a wait,
 local PANEL_REACH = 24 -- studs from the panel a try may come from
 -- revealed by a code but not one of LoreData's NPCs: the hub egg's mannequin (HubEgg.server's; not in the LORE count)
 local EXTRA = { egg = true } :: { [string]: boolean }
+-- what each reward code gives (shop-gui's gift offers: "gift:<kind>:<id>", any item, never on sale; a grant gives only
+-- what's missing and is true then too; false = not written yet, try again). names: LootTable's, with the weapon
+local REWARDS = {
+	ducky_classic = { "gift:skin:lmg_ducky", "gift:skin:revolver_ducky", "gift:skin:katana_ducky" },
+} :: { [string]: { string } }
+local okLT, LootTable = pcall(function() return require(Shared:WaitForChild("LootTable")) :: any end)
+local WEAPON_WORD = { lmg = "LMG", revolver = "REVOLVER", katana = "KATANA" } :: { [string]: string }
+local function itemName(offer: string): string
+	local kind, id = string.match(offer, "^gift:(%w+):([%w_]+)$")
+	local name = id or offer
+	if okLT and LootTable and LootTable.info and kind and id then
+		local ok, info = pcall(LootTable.info, kind, id)
+		if ok and type(info) == "table" and type(info.name) == "string" then name = info.name end
+	end
+	local w = id and WEAPON_WORD[string.match(id, "^([%w]+)_") or ""]
+	return string.upper(name) .. (if w then " " .. w else "")
+end
 local function known(id: any): boolean return type(id) == "string" and (LoreData.counts(id) or EXTRA[id] == true) end
 
 local store = Profiles.new("JankfireLore_v1", function()
-	return { v = 1, found = {}, seen = {}, codes = {}, codeWait = 0 }
+	return { v = 1, found = {}, seen = {}, codes = {}, codeWait = 0, claims = {} }
 end)
 
 type State = { prof: any?, ready: boolean, busy: { [string]: boolean }, wrong: number, lastTry: number, trying: boolean }
 local st: { [Player]: State } = {}
 
+-- every NPC's model, out of the world (LoreSpots.build puts them here)
+local function npcStore(): Folder
+	local f = ServerStorage:FindFirstChild("JankfireLore")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "JankfireLore"
+		f.Parent = ServerStorage
+	end
+	return f :: Folder
+end
+-- anything a builder left in the world goes into storage (the place's old Map.Lore NPCs; the egg's mannequin)
+local function migrate()
+	local map = workspace:FindFirstChild("Map")
+	local ml = map and map:FindFirstChild("Lore")
+	local sf = npcStore()
+	if ml then
+		for _, m in ml:GetChildren() do
+			if m:IsA("Model") and type(m:GetAttribute("LoreId")) == "string" then
+				local old = sf:FindFirstChild(m.Name)
+				if old then old:Destroy() end
+				m.Parent = sf
+			end
+		end
+	end
+	local hub = map and map:FindFirstChild("Hub")
+	local egg = hub and hub:FindFirstChild("HubEgg")
+	local mq = egg and egg:FindFirstChild("Mannequin")
+	if mq and mq:IsA("Model") then
+		local old = sf:FindFirstChild("Lore_egg")
+		if old then old:Destroy() end
+		mq.Name = "Lore_egg"
+		mq:SetAttribute("LoreId", "egg")
+		mq.Parent = sf
+	end
+end
+migrate()
+task.spawn(function() while true do task.wait(10); pcall(migrate) end end)
 local function lore(): Instance?
 	local map = workspace:FindFirstChild("Map")
 	return map and map:FindFirstChild("Lore")
@@ -83,7 +151,7 @@ end
 -- each NPC's find point: its Root part (the floor under them), by id
 local function points(): { [string]: BasePart }
 	local out = {}
-	local f = lore()
+	local f = npcStore()
 	if not f then return out end
 	for _, m in f:GetChildren() do
 		local id = m:GetAttribute("LoreId")
@@ -202,7 +270,34 @@ local function find(p: Player, id: string)
 	end)
 end
 
--- a trigger done: revealed for this player, saved, their screen told (LoreLife fades them in)
+-- their copies: only what they've revealed, in their own PlayerGui (only they receive it)
+local function box(p: Player): ScreenGui?
+	local pg = p:FindFirstChildOfClass("PlayerGui")
+	if not pg then return nil end
+	local g = pg:FindFirstChild("LoreDelivery")
+	if not g then
+		local ng = Instance.new("ScreenGui")
+		ng.Name = "LoreDelivery"; ng.ResetOnSpawn = false; ng.Enabled = false
+		ng.Parent = pg
+		g = ng
+	end
+	return g :: ScreenGui
+end
+local function deliver(p: Player, id: string)
+	local g = box(p)
+	local src = npcStore():FindFirstChild("Lore_" .. id)
+	if not g or not src or g:FindFirstChild(src.Name) then return end
+	src:Clone().Parent = g
+end
+local function undeliver(p: Player, id: string?)
+	local g = box(p)
+	if not g then return end
+	for _, c in g:GetChildren() do
+		if not id or c.Name == "Lore_" .. id then c:Destroy() end
+	end
+end
+
+-- a code (or a trigger) done: revealed for this player, saved, their copy delivered, their screen told
 local revealEv = ServerStorage:FindFirstChild("LoreRevealEvent") or Instance.new("BindableEvent")
 revealEv.Name = "LoreRevealEvent"
 revealEv.Parent = ServerStorage
@@ -214,6 +309,7 @@ local function reveal(p: Player, id: string, how: string?)
 	d.seen[id] = os.time()
 	s.prof.dirty = true
 	publish(p)
+	deliver(p, id)
 	LoreR:FireClient(p, "seen", id, how)
 	;(revealEv :: BindableEvent):Fire(p, id)
 end
@@ -235,9 +331,11 @@ local function added(p: Player)
 	for k, t in prof.data.found do if prof.data.seen[k] == nil then prof.data.seen[k] = t end end
 	if type(prof.data.codes) ~= "table" then prof.data.codes = {} end
 	if type(prof.data.codeWait) ~= "number" then prof.data.codeWait = 0 end
+	if type(prof.data.claims) ~= "table" then prof.data.claims = {} end
 	s.prof = prof
 	s.ready = true
 	publish(p)
+	for id in prof.data.seen do deliver(p, id) end -- (what they've revealed is in their world, nothing else)
 	-- (someone who found everything before OVERDUE existed, or whose grant didn't save: theirs now, quietly)
 	task.delay(8, function()
 		if st[p] ~= s or not s.ready then return end
@@ -330,8 +428,12 @@ local function tryCode(p: Player, text: unknown, test: boolean?): any
 	s.trying = true
 	local h = if #code <= 32 then hashOf(code) else ""
 	local id: string? = nil
+	local reward = false
 	for _, c in Book.CODES do
-		if c.hash == h and today() >= (opensAt[c.id] or math.huge) and known(c.id) then id = c.id; break end
+		if c.hash == h and today() >= (opensAt[c.id] or math.huge) then
+			if c.kind == "reward" and REWARDS[c.id] then id = c.id; reward = true; break end
+			if c.kind == nil and known(c.id) then id = c.id; break end
+		end
 	end
 	s.trying = false
 	if not id then
@@ -345,12 +447,31 @@ local function tryCode(p: Player, text: unknown, test: boolean?): any
 		return { ok = false, why = "wrong", left = CODE_TRIES - s.wrong }
 	end
 	s.wrong = 0
+	if reward then
+		local rid = id :: string
+		local names = {}
+		for _, offer in REWARDS[rid] do table.insert(names, itemName(offer)) end
+		if d.claims[rid] then return { ok = true, reward = rid, items = names, again = true } end
+		local all = true
+		for _, offer in REWARDS[rid] do
+			local receipt = ("lorecode-%s-%s-%d"):format(rid, offer, p.UserId) .. (if STUDIO then "-" .. os.time() else "")
+			local ok, res = pcall(Loot.grant, p, offer, receipt)
+			if not ok or res ~= true then all = false end
+		end
+		if not all then return { ok = false, why = "later" } end -- (a save wasn't written: nothing marked, try again)
+		d.claims[rid] = os.time()
+		d.codes[rid] = d.codes[rid] or os.time()
+		s.prof.dirty = true
+		print(("[jankfire] lore code: %s (%d) -> reward %s"):format(p.Name, p.UserId, rid))
+		return { ok = true, reward = rid, items = names }
+	end
 	local again = d.seen[id] ~= nil
 	d.codes[id] = d.codes[id] or now
 	s.prof.dirty = true
 	print(("[jankfire] lore code: %s (%d) -> %s%s"):format(p.Name, p.UserId, id, if again then " (again)" else ""))
 	if again then
-		LoreR:FireClient(p, "seen", id, "code") -- (it shows itself at the panel again; nothing new is given)
+		deliver(p, id)
+		LoreR:FireClient(p, "seen", id, "again") -- (its cutscene again, with its "again" line; nothing new is given)
 	else
 		reveal(p, id, "code")
 	end
@@ -445,6 +566,7 @@ if STUDIO then
 		elseif op == "hide" and s and s.prof then
 			if a then s.prof.data.seen[tostring(a)] = nil; s.prof.data.found[tostring(a)] = nil
 			else s.prof.data.seen = {}; s.prof.data.found = {} end
+			undeliver(p, if a then tostring(a) else nil)
 			s.prof.dirty = true
 			publish(p)
 			return p:GetAttribute("LoreSeen")
@@ -465,6 +587,15 @@ if STUDIO then
 			local out = {}
 			for _, c in Book.CODES do table.insert(out, ("%s %s %s"):format(c.id, c.opens, if today() >= (opensAt[c.id] or math.huge) then "OPEN" else "shut")) end
 			return table.concat(out, " | ")
+		elseif op == "redeliver" and p and s and s.prof then -- (what a rejoin does: their copies taken back, then given again)
+			undeliver(p, nil)
+			task.wait(0.5)
+			for id in s.prof.data.seen do deliver(p, id) end
+			return p:GetAttribute("LoreSeen")
+		elseif op == "unclaim" and s and s.prof then
+			s.prof.data.claims[tostring(a)] = nil
+			s.prof.dirty = true
+			return "unclaimed " .. tostring(a)
 		elseif op == "unlock" and s and s.prof then
 			s.wrong = 0
 			s.prof.data.codeWait = 0

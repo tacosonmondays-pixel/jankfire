@@ -6,6 +6,7 @@
 -- letters and digits only, so "Jank Cola", "JANKCOLA" and " jank-cola " would be one code), then
 --   h = sha256(SALT .. ":" .. plain), then ITER - 1 times h = sha256(h .. SALT)   (Sha256.luau; hex digits)
 -- and compared with every row whose `opens` day (UTC, from midnight) has come. Before its day a code is just wrong.
+-- One code per hidden NPC (id = the NPC) and one for the hub egg's mannequin ("egg"); kind = "reward" rows give items.
 -- TO MOVE A WEEK: change `opens` here (and in the vault list). TO CHANGE A CODE: re-run the scratchpad tool
 -- (make_codes.py) or hash it the same way: Python
 --   h = sha256((SALT + ":" + plain).encode()).hexdigest(); for _ in range(ITER - 1): h = sha256((h + SALT).encode()).hexdigest()
@@ -30,5 +31,8 @@ B.CODES = {
 	{ id = "eotm", opens = "2027-02-15", hash = "6932cf293124aff9d3e53061bf58b3c886325d4af3f3ca249d3b00d644952d55" },
 	{ id = "overtime", opens = "2027-02-22", hash = "11077d7956c1a1800f5b2c12865de121058cc203a30153a91d2854f58cc9c255" },
 	{ id = "hr", opens = "2027-03-01", hash = "d05bbb767a70f0304849dcb275da32b291dc7ad23d3b955da0854e66118b6054" },
-} :: { { id: string, opens: string, hash: string } }
+	-- REWARD codes (kind = "reward"): they give things instead of revealing an NPC (LoreNPCs.server's REWARDS: what each
+	-- gives), once per player
+	{ id = "ducky_classic", kind = "reward", opens = "2026-11-18", hash = "436f8100b23cd31231da69eec9b8e48067359e97cbe1153cb8007d752d3a3c07" },
+} :: { { id: string, opens: string, hash: string, kind: string? } }
 return B

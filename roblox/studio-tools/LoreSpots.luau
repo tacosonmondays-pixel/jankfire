@@ -13,6 +13,9 @@
 -- Piece); extras (Gary's desk, Dale's machine's block, Smiles' balloon strings). No collisions on the NPCs themselves,
 -- no queries anywhere (unshootable, like the hub's regulars); a desk and a machine block players with a hidden box.
 -- Map.Lore has ZonePiece = true: ZoneCull puts the whole folder aside on a client that is far from the hub (in a match).
+-- SINCE 18 NOV (the owner: "can you remove the jankfire npcs?"): the NPC models are built into ServerStorage.JankfireLore,
+-- never into the map (LoreNPCs.server gives each player copies of only the ones they've revealed). Map.Lore keeps the
+-- code panel. L.migrate() moves any old ones (and the hub egg's mannequin) out of the map.
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -33,11 +36,12 @@ L.SPOTS = {
 		area = "the basement boiler room, mopping by the boiler" },
 	smiles = { at = Vector3.new(48.7, 464, -9376), look = Vector3.new(-1, 0, 0), top = true, visit = Vector3.new(7, 0, 0),
 		area = "the playground: on the Hook (the hanging pod), legs over the west edge, looking at the sunset" },
-	todd = { at = Vector3.new(-90, 273.6, -8263), look = Vector3.new(1, 0, 0.6), visit = Vector3.new(6, 0, 2),
-		area = "training: on top of the course's far tower (TOWER2), to one side of the grapple landing" },
+	-- (training v3, place 917: the v2 course's TOWER2 and watch steps are gone; spots from training-v2)
+	todd = { at = Vector3.new(-61, 262.8, -8206), y = 262.8, look = Vector3.new(1, 0, 0), visit = Vector3.new(2.2, 0, 2.6),
+		area = "training: the dummies hall, on the west gantry tower's cap, high and out of the way" },
 	-- the story cast
-	auntie = { at = Vector3.new(-51, 246.05, -8142), look = Vector3.new(0, 0, 1), visit = Vector3.new(0, -3, 7),
-		area = "training: the course's watch steps, the top step, writing in her notebook" },
+	auntie = { at = Vector3.new(-60, 241.9, -8104.2), y = 241.9, look = Vector3.new(-1, 0, 0), visit = Vector3.new(-5, 0, -4),
+		area = "training: the course lobby, on the west bench, writing in her notebook, looking toward the course" },
 	lumps = { at = Vector3.new(-124, 304, -9448), look = Vector3.new(-1, 0, 0), visit = Vector3.new(8, 0, 0),
 		area = "the playground: a low west block, facing the sunset" },
 	gordo = { at = Vector3.new(76, 240, -8590), look = Vector3.new(0, 0, 1), visit = Vector3.new(0, 0, -8),
@@ -80,6 +84,39 @@ local function folder(): Folder
 	end
 	(f :: Folder):SetAttribute("ZonePiece", true)
 	return f :: Folder
+end
+
+-- the NPCs' storage (out of the world)
+local function npcStore(): Folder
+	local ss = game:GetService("ServerStorage")
+	local f = ss:FindFirstChild("JankfireLore")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "JankfireLore"
+		f.Parent = ss
+	end
+	return f :: Folder
+end
+function L.migrate(): string
+	local f, sf, n = folder(), npcStore(), 0
+	for _, m in f:GetChildren() do
+		if m:IsA("Model") and type(m:GetAttribute("LoreId")) == "string" then
+			local old = sf:FindFirstChild(m.Name)
+			if old then old:Destroy() end
+			m.Parent = sf
+			n += 1
+		end
+	end
+	local hub = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub")
+	local egg = hub and hub:FindFirstChild("HubEgg")
+	local mq = egg and egg:FindFirstChild("Mannequin")
+	if mq then
+		local old = sf:FindFirstChild("Lore_egg")
+		if old then old:Destroy() end
+		mq.Name = "Lore_egg"; mq:SetAttribute("LoreId", "egg"); mq.Parent = sf
+		n += 1
+	end
+	return ("Lore.migrate: %d model(s) into ServerStorage.JankfireLore"):format(n)
 end
 
 local rayParams = RaycastParams.new()
@@ -385,7 +422,7 @@ function L.panel(): string
 end
 
 function L.build(ids: { string }?): string
-	local f = folder()
+	local f = npcStore()
 	local out = {}
 	for _, id in (ids or Data.ORDER) do
 		if not L.SPOTS[id] then continue end
@@ -405,7 +442,7 @@ end
 -- each spot: the floor still under the root, nothing solid through the body, the find point reachable from the visit
 -- spot (a ray from the visitor's feet height to the root finds no wall... a seat on an edge is checked from its visit)
 function L.check(): string
-	local f = folder()
+	local f = npcStore()
 	local probs, lines = 0, {}
 	rayParams.FilterDescendantsInstances = excludes()
 	for _, id in Data.ORDER do
