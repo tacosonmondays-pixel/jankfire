@@ -5,6 +5,9 @@
 -- ReplicatedStorage.JankfireItems at world size (3 studs per metre: no ScaleTo, so its GetScale() stays 1), its pivot
 -- the item's middle (the file's origin), each piece named by its node and painted from its look code (p = SmoothPlastic,
 -- n = Neon), attributes GripPos (studs) / GripRot (radians) for where the left fist holds it (Utility.client.luau).
+-- WRAPS (item_models2.py WRAP, 18 Nov 2026): an item's json row may list `wrap = { a = {nodes}, b = {nodes} }`; those
+-- pieces get WrapUV (their UVs were unfolded at export) and WrapZone "a" / "b", so WeaponModels.wrap paints them the
+-- way it paints a kit gun. Every other piece (lamps, lenses, screens, the pin and ring) keeps its own colour.
 local ASSET = 0 -- <- the upload's asset id
 local INFO = nil :: any -- <- items.json, as a Luau table
 local S = 3
@@ -55,6 +58,14 @@ for id, info in INFO.items do
 		c:SetAttribute("Look", code); c:SetAttribute("Piece", nil)
 		if code then look(c, code) end
 		c.Anchored = true; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.CastShadow = false
+		local wz = info.wrap
+		if type(wz) == "table" and node then
+			for _, zone in { "a", "b" } do
+				if type(wz[zone]) == "table" and table.find(wz[zone], node) and c:IsA("MeshPart") then
+					c:SetAttribute("WrapUV", true); c:SetAttribute("WrapZone", zone)
+				end
+			end
+		end
 		c.Size = p.Size * K
 		c.CFrame = CFrame.new((p.Position - origin) * K)
 		c.Parent = m

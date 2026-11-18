@@ -225,7 +225,7 @@ def smoke():
     return g
 
 
-def medkit():
+def medkit_v2():
     g = Gun('x_medkit')
     g.slot('body', SHELL); g.slot('band', RED); g.slot('dark', CHAR); g.slot('rubber', CHAR_L)
     # a rugged hard case: an off-white shell in two halves (a shallow lid over a deep tray, a dark seam between),
@@ -248,6 +248,79 @@ def medkit():
         g.box('post__dark', (x - 0.012, x + 0.012), (Y - 0.004, Y + 0.028), (-0.014, 0.014), bev=0.005)
     g.box('handle__rubber', (-0.08, 0.08), (Y + 0.02, Y + 0.044), (-0.017, 0.017), bev=0.009)
     g.spots = {'grip': [-0.142, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def ring_xz(g, piece, outer, inner, y0, y1, bev=0.0):
+    """a wall seen from above: the band between two outlines [(x, z)] (same point count, counter-clockwise seen from
+       above), pushed up from y0 to y1 (a bumper round a case, a lid's sides)"""
+    bm = bmesh.new()
+    A = [bm.verts.new(P(x, y0, z)) for x, z in outer]
+    B = [bm.verts.new(P(x, y1, z)) for x, z in outer]
+    HA = [bm.verts.new(P(x, y0, z)) for x, z in inner]
+    HB = [bm.verts.new(P(x, y1, z)) for x, z in inner]
+    n = len(outer)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([A[i], A[j], HA[j], HA[i]])
+        bm.faces.new([B[i], HB[i], HB[j], B[j]])
+        bm.faces.new([HA[i], HA[j], HB[j], HB[i]])
+        bm.faces.new([A[i], B[i], B[j], A[j]])
+    _out(bm)
+    if bev > 0:
+        bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=2, profile=0.5, affect='EDGES', clamp_overlap=True)
+    g._add(piece, bm, smooth=lambda f: abs(f.normal.z) < 0.7)
+
+
+def plus_outline(span, arm, cx=0.0, cy=0.0):
+    """a plus sign's outline (counter-clockwise): `span` end to end, arms `arm` wide"""
+    a, h = arm / 2, span / 2
+    pts = [(a, -h), (a, -a), (h, -a), (h, a), (a, a), (a, h), (-a, h), (-a, a), (-h, a), (-h, -a), (-a, -a), (-a, -h)]
+    return [(cx + x, cy + y) for x, y in pts]
+
+
+MKRED, MKPALE = 'b4473f', 'e4e1d8'
+
+
+def medkit():
+    g = Gun('x_medkit')
+    g.slot('body', MKRED); g.slot('rubber', CHAR_L); g.slot('dark', CHAR); g.slot('mark', MKPALE); g.slot('steel', STEEL)
+    g.slot('pale', MKPALE); g.slot('cap', MKRED)
+    # v3 (owner, 18 Nov: "Compare medkit to rivals!"): a chunky rounded hard case in medkit red. A thick charcoal rubber
+    # bumper runs round it under the lid, with big steel latches over the seam front and back. Big raised PALE plus
+    # signs sit on both big faces (pale on red: no Red Cross emblem). A fat arched handle stands on the lid. The lid is
+    # its own node ("lid", "lidhandle": the game swings every "lid*" part open, away from you, about its front bottom
+    # edge while you heal),
+    # with a hollow inside over a pale tray: a bandage roll, a bottle with a red cap, a gauze pack
+    X, Z = 0.13, 0.055
+    yS = 0.034  # the seam: the tray below, the lid above
+    g.box('body__body', (-X, X), (-0.09, yS), (-Z, Z), bev=0.012)
+    # the lid: rounded sides round a hollow, a domed top plate
+    ring_xz(g, 'lid__body', rrect(X, Z, 0.022, n=5), rrect(X - 0.008, Z - 0.008, 0.015, n=5), yS + 0.002, 0.078)
+    g.box('lid__body', (-X, X), (0.07, 0.092), (-Z, Z), bev=0.009)
+    # the bumper under the seam, the latches over it
+    ring_xz(g, 'bumper__rubber', rrect(X + 0.009, Z + 0.009, 0.03, n=5), rrect(X - 0.003, Z - 0.003, 0.02, n=5), -0.004, 0.03, bev=0.004)
+    for sz in (-1, 1):
+        for x in (-0.078, 0.078):
+            za, zb = (Z + 0.004, Z + 0.015) if sz > 0 else (-Z - 0.015, -Z - 0.004)
+            g.box('latch__steel', (x - 0.017, x + 0.017), (0.006, 0.046), (za, zb), bev=0.004)
+        # the plus on the big face below the bumper
+        z0, z1 = (Z - 0.002, Z + 0.0045) if sz > 0 else (-Z - 0.0045, -Z + 0.002)
+        cy, sp, arm = -0.037, 0.058, 0.021  # (two rounded bars: convex, nothing left to a triangulator)
+        g.box('mark__mark', (-sp / 2, sp / 2), (cy - arm / 2, cy + arm / 2), (z0, z1), bev=0.0035)
+        zz = (z0, z1 + 0.0007) if sz > 0 else (z0 - 0.0007, z1)  # (a hair prouder: no coplanar faces where they cross)
+        g.box('mark__mark', (-arm / 2, arm / 2), (cy - sp / 2, cy + sp / 2), zz, bev=0.0035)
+    # the handle on the lid: a fat arch on two blocks
+    torus(g, 'lidhandle__dark', 0.05, 0.011, (0, 0.096, 0), (0, 0, 1), seg=24, rseg=12, arc=(0.0, math.pi), e1=(1, 0, 0))
+    for x in (-0.05, 0.05):
+        g.box('lidhandle__dark', (x - 0.016, x + 0.016), (0.088, 0.104), (-0.016, 0.016), bev=0.005)
+    # the tray inside (seen when the lid swings open)
+    g.box('tray__pale', (-X + 0.012, X - 0.012), (yS - 0.006, yS + 0.002), (-Z + 0.012, Z - 0.012), bev=0.002)
+    g.cyl('tray__pale', 0.016, (-0.095, yS + 0.018, 0.008), (-0.035, yS + 0.018, 0.008), sides=20, bev=0.003)
+    g.cyl('tray__pale', 0.012, (0.03, yS, -0.012), (0.03, yS + 0.026, -0.012), sides=18, bev=0.002)
+    g.cyl('trayc__cap', 0.0085, (0.03, yS + 0.025, -0.012), (0.03, yS + 0.034, -0.012), sides=16, bev=0.002)
+    g.box('tray__pale', (0.06, 0.11), (yS, yS + 0.014), (-0.03, 0.03), bev=0.003)
+    g.spots = {'grip': [-0.142, 0, 0], 'gripRot': [0, 0, 0], 'hinge': [0, yS + 0.002, -Z]}
     return g
 
 
@@ -332,8 +405,318 @@ def popper():
     return g
 
 
-BUILD2 = {'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'duck': duck, 'popper': popper}
+# ------------------------------------------------------------------ batch 2: reverse, wand, camera, calc, nvg, radar, laptop
+def flat2d(g, piece, outer, z0, z1, holes=None, bev=0.0):
+    """a flat shape in the item's x-y plane (an outline [(x, y)], counter-clockwise), pushed from z0 to z1. holes =
+       one inner outline with as many points as the outer one (a frame). its faces stay flat"""
+    bm = bmesh.new()
+    A = [bm.verts.new(P(x, y, z0)) for x, y in outer]
+    B = [bm.verts.new(P(x, y, z1)) for x, y in outer]
+    n = len(outer)
+    if holes:
+        HA = [bm.verts.new(P(x, y, z0)) for x, y in holes]
+        HB = [bm.verts.new(P(x, y, z1)) for x, y in holes]
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new([A[i], A[j], HA[j], HA[i]])
+            bm.faces.new([B[i], HB[i], HB[j], B[j]])
+            bm.faces.new([HA[i], HA[j], HB[j], HB[i]])
+    else:
+        fa = bm.faces.new(A); fb = bm.faces.new(B[::-1])
+        bmesh.ops.triangulate(bm, faces=[fa, fb], quad_method='BEAUTY', ngon_method='EAR_CLIP')
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([A[i], B[i], B[j], A[j]])
+    _out(bm)
+    if bev > 0:
+        bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
+    g._add(piece, bm)
+
+
+def rrect(hw, hh, rad, n=6):
+    """a rounded rectangle's outline (counter-clockwise), half sizes hw / hh, corner radius rad"""
+    pts = []
+    for cx, cy, a0 in ((hw - rad, -hh + rad, -math.pi / 2), (hw - rad, hh - rad, 0.0), (-hw + rad, hh - rad, math.pi / 2), (-hw + rad, -hh + rad, math.pi)):
+        for k in range(n + 1):
+            a = a0 + (math.pi / 2) * k / n
+            pts.append((cx + math.cos(a) * rad, cy + math.sin(a) * rad))
+    return pts
+
+
+def ellipse(rx, ry, tilt=0.0, n=40):
+    c, s = math.cos(tilt), math.sin(tilt)
+    return [(math.cos(a) * rx * c - math.sin(a) * ry * s, math.cos(a) * rx * s + math.sin(a) * ry * c)
+            for a in (i * 2 * math.pi / n for i in range(n))]
+
+
+def arrow_arc(r, w, a0, a1, head=1.6, tipa=0.42, n=14):
+    """a curved arrow round the origin as one outline: a band w wide on radius r from angle a0 to a1 (counter-
+       clockwise), a head at a1 `head` x the band wide whose tip runs tipa radians further on"""
+    out = [(math.cos(a0 + (a1 - a0) * k / n) * (r + w / 2), math.sin(a0 + (a1 - a0) * k / n) * (r + w / 2)) for k in range(n + 1)]
+    hw = w * head
+    out.append((math.cos(a1) * (r + hw), math.sin(a1) * (r + hw)))
+    out.append((math.cos(a1 + tipa) * r, math.sin(a1 + tipa) * r))
+    out.append((math.cos(a1) * (r - hw), math.sin(a1) * (r - hw)))
+    out += [(math.cos(a0 + (a1 - a0) * k / n) * (r - w / 2), math.sin(a0 + (a1 - a0) * k / n) * (r - w / 2)) for k in range(n, -1, -1)]
+    return out
+
+
+def arrow_solid(g, piece, r, w, a0, a1, z0, z1, head=1.45, tipa=0.46, n=14, flip=False, off=(0.0, 0.0)):
+    """a curved arrow (see arrow_arc) as a solid built from convex faces (quads along the band, the head a triangle),
+       so nothing is left to a triangulator. flip mirrors it in x (the card's back face)"""
+    hw = w * head
+    def at(a, rr):
+        x, y = math.cos(a) * rr, math.sin(a) * rr
+        return ((-x if flip else x) + off[0], y + off[1])
+    O = [at(a0 + (a1 - a0) * k / n, r + w / 2) for k in range(n + 1)]
+    I = [at(a0 + (a1 - a0) * k / n, r - w / 2) for k in range(n + 1)]
+    H1, T, H2 = at(a1, r + hw), at(a1 + tipa, r), at(a1, r - hw)
+    bm = bmesh.new()
+    def pair(pt): return bm.verts.new(P(pt[0], pt[1], z0)), bm.verts.new(P(pt[0], pt[1], z1))
+    Ov = [pair(q) for q in O]; Iv = [pair(q) for q in I]
+    h1, t, h2 = pair(H1), pair(T), pair(H2)
+    for side in (0, 1):
+        for k in range(n):
+            bm.faces.new([Ov[k][side], Ov[k + 1][side], Iv[k + 1][side], Iv[k][side]])
+        bm.faces.new([Ov[n][side], h1[side], t[side], h2[side], Iv[n][side]])
+    ring = Ov + [h1, t, h2] + Iv[::-1]
+    for k in range(len(ring)):
+        a, b = ring[k], ring[(k + 1) % len(ring)]
+        bm.faces.new([a[0], b[0], b[1], a[1]])
+    _out(bm)
+    g._add(piece, bm)
+
+
+CARD, CARD_D = 'a83a34', '7e2a26'
+
+
+def reverse():
+    g = Gun('x_reverse')
+    g.slot('body', CARD); g.slot('rim', PALE); g.slot('mark', PALE)
+    # a playing card with round corners: dark red, a thin pale border on both faces, and the card's one sign big in the
+    # middle: two fat pale curved arrows chasing each other round, the same sign small in two corners (no letters, no
+    # numbers; no oval or other card game's dress: our own face)
+    hw, hh, t = 0.035, 0.0525, 0.0031
+    flat2d(g, 'body__body', rrect(hw, hh, 0.0075), -t, t)
+    for sz in (1, -1):
+        z0, z1 = (t - 0.0003, t + 0.0007) if sz > 0 else (-t - 0.0007, -t + 0.0003)
+        flat2d(g, 'rim__rim', rrect(hw - 0.0028, hh - 0.0028, 0.0055), z0, z1, holes=rrect(hw - 0.0052, hh - 0.0052, 0.0035))
+        for k in range(2):
+            a0 = k * math.pi + 0.35
+            # (the back face mirrored: the same way round as seen from behind)
+            arrow_solid(g, 'mark__mark', 0.0185, 0.0076, a0, a0 + 2.0, z0, z1, flip=sz < 0)
+        # the corner pips: the sign small, top left and bottom right (as you look at that face)
+        for cx, cy in ((-1, 1), (1, -1)):
+            px = cx * (hw - 0.0105) * (-1 if sz < 0 else 1)
+            py = cy * (hh - 0.0115)
+            for k in range(2):
+                a0 = k * math.pi + 0.35
+                arrow_solid(g, 'mark__mark', 0.0042, 0.0019, a0, a0 + 2.0, z0, z1, flip=sz < 0, off=(px, py), n=8)
+    g.spots = {'grip': [0, -0.034, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def wand():
+    g = Gun('x_wand')
+    g.slot('ring', ROSE); g.slot('handle', CHAR); g.slot('grip', CHAR_L); g.slot('steel', STEEL)
+    # a bubble wand: a round ring of soft tube you blow through (its middle at the origin, facing -z; the game's soap
+    # film fills it), a short neck into a steel collar, a tapered charcoal handle with a rubber grip sleeve and two
+    # grip rings, a round steel knob on the end
+    torus(g, 'ring__ring', 0.048, 0.0095, (0, 0, 0), (0, 0, 1), seg=44, rseg=12)
+    g.cyl('neck__ring', 0.009, (0, -0.052, 0), (0, -0.088, 0), sides=16, bev=0.002)
+    g.cyl('collar__steel', 0.012, (0, -0.086, 0), (0, -0.096, 0), sides=20, bev=0.002)
+    g.cyl('handle__handle', 0.0125, (0, -0.095, 0), (0, -0.25, 0), sides=20, bev=0.003, r2=0.015)
+    g.cyl('sleeve__grip', 0.018, (0, -0.15, 0), (0, -0.238, 0), sides=24, bev=0.004)
+    for y in (-0.168, -0.22):
+        torus(g, 'sleeve__grip', 0.018, 0.004, (0, y, 0), (0, 1, 0), seg=24, rseg=8)
+    blob(g, 'knob__steel', 0.0165, 0.0145, 0.0165, (0, -0.252, 0), sub=3)
+    g.spots = {'grip': [0, -0.2, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+GLASS, FLASHW = '1d2330', 'cfcac0'
+
+
+def camera():
+    g = Gun('x_camera')
+    g.slot('body', SHELL); g.slot('deck', CHAR); g.slot('dark', DARK); g.slot('steel', STEEL); g.slot('glass', GLASS)
+    g.slot('flash', FLASHW); g.slot('button', RED); g.slot('grip', CHAR_L)
+    # an instant camera, chunky: a pale brick body under a charcoal top deck, a square charcoal lens block standing
+    # out of the front with a big lens (steel focus rings, dark glass), the flash window top left (named "flash": it
+    # lights up when you snap), the viewfinder top right (a window in front, an eyepiece behind), the print slot under
+    # the deck, one muted red shutter button on top (named "shutter"), a rubber grip down the left end where the fist
+    # holds it, strap lugs both sides
+    g.box('body__body', (-0.078, 0.078), (-0.058, 0.03), (-0.042, 0.046), bev=0.012)
+    g.box('deck__deck', (-0.076, 0.076), (0.022, 0.058), (-0.04, 0.046), bev=0.01)
+    g.box('block__deck', (-0.046, 0.046), (-0.056, 0.018), (-0.052, -0.03), bev=0.008)
+    g.cyl('barrel__deck', 0.034, (0, -0.019, -0.05), (0, -0.019, -0.064), sides=32, bev=0.003)
+    g.ring('lensring__steel', 0.038, 0.027, (0, -0.019, -0.058), (0, -0.019, -0.072), sides=32, bev=0.003, smooth=True)
+    for z in (-0.061, -0.066):
+        g.ring('lensring__steel', 0.0395, 0.034, (0, -0.019, z - 0.0012), (0, -0.019, z + 0.0012), sides=32, bev=0.0008, smooth=True)
+    g.cyl('glass__glass', 0.028, (0, -0.019, -0.066), (0, -0.019, -0.071), sides=32, bev=0.002)
+    g.box('flash__flash', (-0.07, -0.026), (0.03, 0.051), (-0.0465, -0.039), bev=0.004)
+    g.box('finder__dark', (0.032, 0.066), (0.03, 0.051), (-0.0465, -0.039), bev=0.004)
+    g.box('eyepiece__dark', (0.03, 0.068), (0.026, 0.054), (0.044, 0.056), bev=0.006)
+    g.box('slot__dark', (-0.042, 0.042), (0.0185, 0.0235), (-0.0445, -0.0405), bev=0.001)
+    g.cyl('shutter__button', 0.012, (0.05, 0.056, -0.014), (0.05, 0.068, -0.014), sides=24, bev=0.003)
+    g.box('grip__grip', (-0.088, -0.07), (-0.055, 0.024), (-0.038, 0.04), bev=0.007)
+    for sx in (-1, 1):
+        g.cyl('lug__steel', 0.0065, (0.077 * sx, 0.04, 0.02), (0.088 * sx if sx > 0 else -0.09, 0.04, 0.02), sides=12, bev=0.001)
+    g.spots = {'grip': [-0.066, -0.02, 0.004], 'gripRot': [0, 0, 0], 'lensAt': [0, -0.019, -0.072]}
+    return g
+
+
+LCD, KEYC, AMBER = '9fb59a', '6a7079', 'b98a52'
+
+
+def calc():
+    g = Gun('x_calc')
+    g.slot('body', CHAR); g.slot('bezel', DARK); g.slot('screen', LCD); g.slot('key', KEYC); g.slot('op', CHAR_L)
+    g.slot('accent', AMBER)
+    # a pocket calculator at game size (0.15 x 0.3 m): a rounded charcoal slab (named "body": the game writes the
+    # question on its back), a raised dark bezel round a pale LCD near the top (named "screen": the question goes on
+    # it), a grid of chunky soft keys, the right-hand column darker, one tall amber key bottom right. no printing
+    g.box('body__body', (-0.075, 0.075), (-0.15, 0.15), (-0.016, 0.016), bev=0.01)
+    g.box('bezel__bezel', (-0.065, 0.065), (0.063, 0.137), (-0.0195, -0.012), bev=0.004)
+    g.box('screen__screen', (-0.056, 0.056), (0.073, 0.127), (-0.0215, -0.017), bev=0.002)
+    for row in range(5):
+        for col in range(4):
+            x = 0.045 - col * 0.03  # (col 3 at -x: the right-hand column as you look at the face)
+            y = 0.035 - row * 0.034
+            if col == 3 and row == 4: continue
+            if col == 3 and row == 3:
+                g.box('keys__accent', (x - 0.012, x + 0.012), (y - 0.034 - 0.013, y + 0.013), (-0.0225, -0.014), bev=0.0045)
+                continue
+            g.box('keys__' + ('op' if col == 3 else 'key'), (x - 0.012, x + 0.012), (y - 0.013, y + 0.013), (-0.0225, -0.014), bev=0.0045)
+    g.spots = {'grip': [0, -0.06, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+GREEN = '5fbf86'
+
+
+def nvg():
+    g = Gun('x_nvg')
+    g.slot('body', CHAR); g.slot('rubber', CHAR_L); g.slot('steel', STEEL); g.slot('lens', GREEN, 'n')
+    # night vision goggles as worn (the game sets them on a head; front = -z): a rounded bridge housing, two fat
+    # tubes forward with rubber focus rings, steel lips round the green lenses, rubber eyecups behind, a helmet mount
+    # with its arm on top, a battery box on one side
+    g.box('body__body', (-0.07, 0.07), (-0.026, 0.026), (-0.03, 0.024), bev=0.01)
+    for x in (-0.04, 0.04):
+        g.cyl('tubes__body', 0.026, (x, 0, -0.024), (x, 0, -0.08), sides=22, bev=0.003)
+        g.ring('focus__rubber', 0.0292, 0.022, (x, 0, -0.046), (x, 0, -0.066), sides=22, bev=0.003, smooth=True)
+        g.ring('hood__steel', 0.0285, 0.0205, (x, 0, -0.078), (x, 0, -0.089), sides=22, bev=0.002, smooth=True)
+        g.cyl('lens__lens', 0.021, (x, 0, -0.08), (x, 0, -0.085), sides=22, bev=0.001)
+        g.ring('cups__rubber', 0.022, 0.012, (x, 0, 0.022), (x, 0, 0.036), sides=18, bev=0.004, smooth=True)
+    g.box('mount__rubber', (-0.022, 0.022), (0.022, 0.044), (-0.018, 0.02), bev=0.006)
+    g.box('mount__steel', (-0.015, 0.015), (0.04, 0.066), (0.004, 0.02), bev=0.004)
+    g.box('battery__body', (0.066, 0.086), (-0.018, 0.016), (-0.022, 0.012), bev=0.006)
+    g.spots = {'grip': [0, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+BLUE, SCREEN = '4a6a96', '2e4250'
+
+
+def radar():
+    from gunkit import raked
+    g = Gun('x_radar')
+    g.slot('body', CHAR); g.slot('grip', CHAR_L); g.slot('steel', STEEL); g.slot('screen', SCREEN); g.slot('accent', BLUE)
+    g.slot('glass', GLASS)
+    # a handheld radar gun: a squat rounded body, a wide horn flaring forward with a blue band at its root and a dark
+    # dish behind a steel rim, a raked pistol grip under it with a trigger in a guard, a short rail on top, the readout
+    # screen on the back facing you under a little visor (named "screen": the game writes the speed on it)
+    g.box('body__body', (-0.042, 0.042), (0.0, 0.078), (-0.06, 0.07), bev=0.012)
+    g.cyl('horn__grip', 0.04, (0, 0.039, -0.056), (0, 0.039, -0.122), sides=32, bev=0.003, r2=0.056)
+    g.ring('band__accent', 0.0435, 0.034, (0, 0.039, -0.058), (0, 0.039, -0.072), sides=32, bev=0.002, smooth=True)
+    g.ring('rim__steel', 0.06, 0.05, (0, 0.039, -0.118), (0, 0.039, -0.13), sides=32, bev=0.003, smooth=True)
+    g.cyl('dish__glass', 0.052, (0, 0.039, -0.12), (0, 0.039, -0.126), sides=32, bev=0.002)
+    g.prism('grip__grip', raked(0.02, -0.052, 0.12, 0.042, -0.22), 0.044, bev=0.008)
+    g.box('trigger__steel', (-0.006, 0.006), (-0.034, -0.008), (-0.022, -0.01), bev=0.003)
+    g.box('guard__body', (-0.008, 0.008), (-0.048, -0.04), (-0.048, 0.004), bev=0.003)
+    g.box('guard__body', (-0.008, 0.008), (-0.048, 0.002), (-0.048, -0.04), bev=0.003)
+    g.box('rail__steel', (-0.011, 0.011), (0.076, 0.085), (-0.042, 0.042), bev=0.003)
+    g.box('screen__screen', (-0.033, 0.033), (0.02, 0.062), (0.0695, 0.0735), bev=0.002)
+    g.box('visor__body', (-0.041, 0.041), (0.062, 0.072), (0.058, 0.086), bev=0.004)
+    g.spots = {'grip': [0, -0.055, 0.018], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def laptop():
+    from mathutils import Matrix as _M
+    g = Gun('x_laptop')
+    g.slot('body', CHAR_L); g.slot('dark', CHAR); g.slot('key', '7a8089'); g.slot('screen', SCREEN)
+    # a small laptop held open toward whoever it's for (front = -z, away from you): the deck (named "body": its back
+    # edge is the hinge the game swings the lid about), a dark keyboard well near the hinge with chunky key rows, a
+    # touchpad at the front edge, a barrel hinge, the lid (named "lid") up at the back edge a little past upright with a
+    # raised panel on its back (the side you see) and the screen (named "screen") on its front in a bezel
+    g.box('body__body', (-0.16, 0.16), (-0.012, 0.012), (-0.11, 0.11), bev=0.006)
+    g.box('well__dark', (-0.146, 0.146), (0.0105, 0.0128), (-0.036, 0.09), bev=0.002)
+    pitch = 0.276 / 12
+    for z, n in ((0.074, 12), (0.048, 12), (0.022, 11), (-0.004, 10)):
+        x0 = -pitch * n / 2
+        for k in range(n):
+            g.box('keys__key', (x0 + k * pitch + 0.0022, x0 + (k + 1) * pitch - 0.0022), (0.012, 0.0158), (z - 0.0105, z + 0.0105), bev=0.0018)
+    g.box('keys__key', (-0.07, 0.07), (0.012, 0.0158), (-0.03, -0.016), bev=0.0018)
+    g.box('pad__dark', (-0.042, 0.042), (0.0105, 0.0128), (-0.098, -0.046), bev=0.003)
+    g.cyl('hinge__dark', 0.0085, (-0.125, 0.0, 0.106), (0.125, 0.0, 0.106), sides=16, bev=0.002)
+    g.box('lid__body', (-0.16, 0.16), (0.0, 0.215), (0.098, 0.11), bev=0.005)
+    g.box('lid__body', (-0.128, 0.128), (0.03, 0.19), (0.109, 0.1125), bev=0.002)
+    g.box('screen__screen', (-0.146, 0.146), (0.014, 0.2), (0.0955, 0.0985), bev=0.002)
+    hinge = P(0, 0.0, 0.11)
+    rot = _M.Translation(hinge) @ _M.Rotation(-0.25, 4, 'X') @ _M.Translation(-hinge)
+    for key in (('lid', 'body'), ('screen', 'screen')):
+        for v in g.pieces[key].verts: v.co = rot @ v.co
+    g.spots = {'grip': [-0.17, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+BUILD2 = {'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'duck': duck, 'popper': popper,
+          'reverse': reverse, 'wand': wand, 'camera': camera, 'calc': calc, 'nvg': nvg, 'radar': radar, 'laptop': laptop}
 BATCH1 = ['frag', 'medkit', 'bubble', 'duck', 'smoke', 'popper']
+BATCH2 = ['reverse', 'wand', 'camera', 'calc', 'nvg', 'radar', 'laptop']
+
+
+# WRAPS (owner, 18 Nov: "Gadgets should have skins and be wrappable"): the pieces a wrap paints, by node. zone "a" =
+# the gadget's shell (a normal wrap), "b" = its secondary parts (a reverse or full wrap). Everything else (lamps, lenses,
+# glass, screens, the pin and its ring, eyes, keys) keeps its own colour: the import sets WrapUV + WrapZone only on these
+WRAP = {
+    'frag': {'a': ['body'], 'b': ['fuse', 'neck', 'collar', 'base']},
+    'smoke': {'a': ['body', 'band'], 'b': ['cap', 'rim', 'base', 'fuse', 'neck']},
+    'medkit': {'a': ['body', 'lid'], 'b': ['bumper', 'lidhandle']},
+    'bubble': {'a': ['body'], 'b': ['grip', 'collar']},
+    'duck': {'a': ['body'], 'b': ['beak']},
+    'popper': {'a': ['body'], 'b': ['band', 'base']},
+    'reverse': {'a': ['body'], 'b': ['rim']},
+    'wand': {'a': ['ring', 'neck'], 'b': ['handle', 'sleeve']},
+    'camera': {'a': ['body'], 'b': ['deck', 'block', 'grip']},
+    'calc': {'a': ['body'], 'b': ['bezel']},
+    'nvg': {'a': ['body', 'tubes'], 'b': ['focus', 'cups', 'battery']},
+    'radar': {'a': ['body', 'horn'], 'b': ['grip', 'visor']},
+    'laptop': {'a': ['body', 'lid'], 'b': ['hinge']},
+}
+UV_SCALE = 1.4  # (gadgets are small and near the eye: a finer pattern, like the sidearms' 1.25)
+# round bodies the flat unfold breaks into patches: wrapped round the upright axis instead (u = the angle round, at
+# the body's mean radius; v = height), one seam at the front (-z), away from the player holding it
+ROUND_UV = {'frag': ['body'], 'popper': ['body'], 'bubble': ['body', 'grip']}
+
+
+def round_uv(objs, keys, nodes, scale=UV_SCALE):
+    import gun_uvs
+    D = scale / gun_uvs.TILE_M
+    for o, (node, slot) in zip(objs, keys):
+        if node not in nodes: continue
+        me = o.data
+        pts = [(v.co.x, v.co.z, -v.co.y) for v in me.vertices]
+        R = sum(math.hypot(x, z) for x, y, z in pts) / max(1, len(pts))
+        uv = me.uv_layers.active.data
+        for poly in me.polygons:
+            angs = [math.atan2(pts[me.loops[li].vertex_index][0], pts[me.loops[li].vertex_index][2]) for li in poly.loop_indices]
+            # (a face across the seam: lift its negative angles by a full turn, so it does not span the whole tile)
+            if max(angs) - min(angs) > math.pi: angs = [a + 2 * math.pi if a < 0 else a for a in angs]
+            for li, a in zip(poly.loop_indices, angs):
+                x, y, z = pts[me.loops[li].vertex_index]
+                uv[li].uv = (a * R * D, y * D)
 
 
 def export_all(out_dir, ids, name='items_v2.glb'):
@@ -346,15 +729,19 @@ def export_all(out_dir, ids, name='items_v2.glb'):
         g = BUILD2[iid]()
         lo, hi = g.bounds()
         info[iid] = {'lo': lo, 'hi': hi, 'tris': g.tris(), 'pieces': ['%s__%s' % k for k in g.pieces],
-                     'grip': g.spots.get('grip'), 'gripRot': g.spots.get('gripRot'),
+                     'grip': g.spots.get('grip'), 'gripRot': g.spots.get('gripRot'), 'wrap': WRAP.get(iid.split('@')[0]),
                      **{k: v for k, v in g.spots.items() if k not in ('grip', 'gripRot')}}
         made = g.to_scene(at=Matrix.Diagonal(Vector((UNIT, UNIT, UNIT, 1.0))))
+        # (UVs in the item's own metres, before the upload scale: the mesh data is in metres, UNIT rides on the object)
+        import gun_uvs
+        gun_uvs.unwrap(made, UV_SCALE)
+        round_uv(made, list(g.pieces.keys()), ROUND_UV.get(iid.split('@')[0], []))
         for o, (node, slot) in zip(made, list(g.pieces.keys())):
             o.name = '%s_%s__%s' % (iid, node, old.look(g.slots[slot]))
         objs += made
     rbxglb.turn_for_roblox(objs)
     path = os.path.join(out_dir, name)
-    size = rbxglb.export_glb(path)
+    size = rbxglb.export_glb(path, tangents=True)
     json.dump({'unit': UNIT, 'items': info}, open(os.path.join(out_dir, name.replace('.glb', '.json')), 'w'), indent=1)
     return path, size, info
 

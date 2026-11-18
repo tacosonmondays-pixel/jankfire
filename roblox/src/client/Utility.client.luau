@@ -139,12 +139,24 @@ local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medki
 	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", radarDown = "x_radar", cage = "x_cage",
 	camera = "x_camera", snap = "x_camera", print = "x_camera", photoframe = "x_photoframe", wand = "x_wand",
 	goggles = "x_nvg", gogglesOff = "x_nvg" }
-local function itemModel(id: string): Model
+-- owner: whose gadget it is (the owner's skin and wrap for it, the same "Skins" / "Wraps" attributes as their guns,
+-- keyed by the gadget's own id: owner, 18 Nov 2026, "Gadgets should have skins and be wrappable"). nil = the plain one
+local function itemModel(id: string, owner: Player?): Model
 	local name = MODEL[id] or ("x_" .. id)
 	local t = templates and templates:FindFirstChild(name)
+	local gid = if L[id] then id else ({ smokegren = "smoke", calc = "quiz", snap = "camera", print = "camera", goggles = "nvg",
+		gogglesOff = "nvg", radarDown = "radar" } :: { [string]: string })[id]
+	local GS = require(Shared:WaitForChild("GunSkins")) :: any
+	local sk = if owner and gid then GS.template(gid, GS.skinFor and GS.skinFor(owner, gid) or nil) else nil
+	if sk and sk:GetAttribute("Item") then t = sk end
 	local m = if t and t:IsA("Model") then t:Clone() else standIn(name)
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end
+	end
+	if owner and gid then
+		local WM = require(Shared:WaitForChild("WeaponModels")) :: any
+		local wid, md = WM.wrapFor(owner, gid)
+		if wid then pcall(WM.wrap, m, wid, md) end
 	end
 	return m
 end
@@ -366,7 +378,7 @@ local function startHand(id: string, clipName: string?)
 	if thirdPerson() or not VM.model then return end
 	local clip = CLIPS[clipName or id] or CLIPS.throw
 	if id == "nvg" then return end -- (the goggles go on your head, not in your hand: the hand that puts them on is "goggles")
-	local m = itemModel(id)
+	local m = itemModel(id, me)
 	m:ScaleTo(FP_K * (FP_SIZE[id] or 1))
 	m.Parent = camera
 	local h: Hand = { id = id, clip = clip, t0 = os.clock(), model = m, grip = gripOf(m), gone = false }
@@ -516,7 +528,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 		return
 	end
 	startHand(it.id)
-	if it.id == "wand" then wandIn() elseif it.id == "laptop" then laptopIn() end
+	if it.id == "wand" then wandIn() elseif it.id == "laptop" then laptopIn() elseif it.id == "medkit" then X.medkitIn() end
 	handStep()
 	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" and it.id ~= "wand" then -- (those make their sound when the server says it happened)
 		Sfx.play(if it.id == "medkit" then "heal" elseif it.id == "bubble" then "reverse" else "swing")
@@ -614,7 +626,7 @@ local function addFlying(m: any)
 	if type(m.id) ~= "number" or typeof(m.p) ~= "Vector3" or typeof(m.v) ~= "Vector3" or not Items.PROJ[m.w] then return end
 	if flying[m.id] then return end
 	local w = Items.PROJ[m.w]
-	local model = itemModel(m.w)
+	local model = itemModel(m.w, if type(m.o) == "number" then Players:GetPlayerByUserId(m.o) else nil)
 	model.Parent = folder
 	local mine = m.o == me.UserId
 	if m.w == "duck" and not mine then Sfx.play("squeak", m.p, 0.8) end
@@ -821,7 +833,7 @@ local function addCard(uid: number, model: Instance?, dur: number)
 	dropCard(uid)
 	local root = model and model:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then return end
-	local cm = itemModel("reverse")
+	local cm = itemModel("reverse", Players:GetPlayerByUserId(uid))
 	cm:ScaleTo(10) -- (web: a 0.7 x 1.05 m card, 2.9 m over their head)
 	cm.Parent = folder
 	-- a flat ring round them at the waist (a see-through plate with the ring picture on both faces)
@@ -913,12 +925,13 @@ local function addHole(m: any)
 		e.Enabled = true
 		for _, x in { core, shell, ring, pull } do (x :: BasePart).Parent = folder end
 	end
-	local orbit = itemModel("duck"); orbit:ScaleTo(0.35)
+	local holeBy = if type(m.o) == "number" then Players:GetPlayerByUserId(m.o) else nil
+	local orbit = itemModel("duck", holeBy); orbit:ScaleTo(0.35)
 	orbit.Parent = folder
 	local hv: HoleV = { id = id, p = m.p, on = on, born = os.clock() - age, R = R, mine = m.o == me.UserId, core = core, shell = shell,
 		ring = ring, pull = pull, orbit = orbit, stuck = nil, ang = 0 }
 	if on then
-		local dm = itemModel("duck"); dm:ScaleTo(0.7); dm.Parent = folder
+		local dm = itemModel("duck", holeBy); dm:ScaleTo(0.7); dm.Parent = folder
 		hv.stuck = dm
 	end
 	holesV[id] = hv
@@ -1256,7 +1269,7 @@ local function headStep()
 		local g = headGoggles[pl]
 		local head = pl.Character and pl.Character:FindFirstChild("Head") :: BasePart?
 		if on and head and not (pl == me and not thirdPerson()) then
-			if not g then g = itemModel("nvg"); g:ScaleTo(1.25); g.Parent = folder; headGoggles[pl] = g end
+			if not g then g = itemModel("nvg", pl); g:ScaleTo(1.25); g.Parent = folder; headGoggles[pl] = g end
 			local gm = g :: Model
 			gm:PivotTo(head.CFrame * CFrame.new(0, 0.15, -0.55))
 		elseif g then g:Destroy(); headGoggles[pl] = nil end
@@ -2124,8 +2137,40 @@ local function laptopStep(h: Hand, t: number)
 		e.light.Brightness = 2.2 - 1.2 * k
 	end
 end
+-- the medkit (v3, 18 Nov 2026): its lid ("lid", "lidhandle": every part named lid*) swings up and AWAY from you about
+-- its front bottom edge as the hand comes up (so you look into the tray, the lid standing beyond it), stays open while
+-- you take what you need, and shuts as it goes down
+do
+	X.medkitIn = function()
+		local h = hand
+		if not h or h.id ~= "medkit" then return end
+		local m = h.model
+		local lid = m:FindFirstChild("lid") :: BasePart?
+		if not lid then return end
+		local piv = m:GetPivot()
+		local rel = piv:ToObjectSpace(lid.CFrame)
+		local parts = {}
+		for _, d in m:GetChildren() do
+			if d:IsA("BasePart") and string.sub(d.Name, 1, 3) == "lid" then table.insert(parts, { p = d, rel = piv:ToObjectSpace(d.CFrame) }) end
+		end
+		h.extra = { medkit = true, hinge = Vector3.new(0, rel.Position.Y - lid.Size.Y / 2, rel.Position.Z - lid.Size.Z / 2), parts = parts }
+	end
+	X.medkitStep = function(h: Hand, t: number)
+		local e = h.extra
+		-- 0 = shut, 1 = open: up with a little overshoot from 0.05 to 0.22 s, shut again from 0.5 to 0.6 s
+		local u = math.clamp((t - 0.05) / 0.17, 0, 1)
+		local c1 = 1.3
+		local open = 1 + (c1 + 1) * (u - 1) ^ 3 + c1 * (u - 1) ^ 2
+		open *= 1 - smooth((t - 0.5) / 0.1)
+		local hc = CFrame.new(e.hinge)
+		local swing = hc * CFrame.Angles(-1.95 * open, 0, 0) * hc:Inverse()
+		local base = h.model:GetPivot()
+		for _, q in e.parts do q.p.CFrame = base * swing * q.rel end
+	end
+end
 extraStep = function(h: Hand, t: number)
 	if h.extra.cook then X.cookHand(h, t); return end
+	if h.extra.medkit then X.medkitStep(h, t); return end
 	if h.id == "print" then X.printStep(h, t) elseif h.id == "wand" then wandStep(h, t) elseif h.id == "laptop" then laptopStep(h, t) end
 end
 

@@ -813,9 +813,20 @@ local function itemModel(r: Rig, id: string): Model?
 	if NO_MODEL[id] then return nil end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
 	local t = lib and lib:FindFirstChild(ITEM_MODEL[id] or ("x_" .. id))
+	-- (the player's own skin for this gadget: a Model in JankfireSkins with Weapon = the gadget id and Item set)
+	if r.player then
+		local GS = require(Shared:WaitForChild("GunSkins")) :: any
+		local sk = GS.template(id, GS.skinFor(r.player, id))
+		if sk and sk:GetAttribute("Item") then t = sk end
+	end
 	local hand = r.ch:FindFirstChild("LeftHand") :: BasePart?
 	if not t or not t:IsA("Model") or not hand then return nil end
 	local m = t:Clone()
+	-- (and their wrap on it, as on their guns: gadgets take wraps since 18 Nov 2026)
+	if r.player then
+		local wrId, wrMode = WeaponModels.wrapFor(r.player, id)
+		if wrId then pcall(WeaponModels.wrap, m, wrId, wrMode) end
+	end
 	pcall(function() m:ScaleTo(m:GetScale() * r.k / 3) end)
 	local gp, gr = m:GetAttribute("GripPos"), m:GetAttribute("GripRot")
 	local grip = CF((if typeof(gp) == "Vector3" then gp else Vector3.zero) * m:GetScale()) * eul(if typeof(gr) == "Vector3" then gr else Vector3.zero)

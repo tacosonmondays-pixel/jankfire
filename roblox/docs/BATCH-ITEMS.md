@@ -370,3 +370,61 @@ medkit in hand. The console showed no errors from the items.
 
 ![before and after, batch 1](items/models-v2-batch1.jpg)
 ![in game: frag and smoke cooking, bubble and medkit in hand, duck and frag thrown](items/models-v2-batch1-play.jpg)
+
+## Medkit v3, wrappable gadgets, gadget skins (owner, 18 Nov 2026: "Compare medkit to rivals! Gadgets should have skins and be wrappable")
+
+Place version 815. The Rivals comparison and the plan are in the notes folder (`gadget-quality-skins-plan.md`). In
+short, Rivals gives every utility 2 to 7 skins (whole other objects, each with its own sound and animation) and
+per-utility wraps.
+
+**Medkit v3** (`item_models2.medkit`; v2 kept as `medkit_v2`):
+- a chunky red hard case with a thick rubber bumper and steel latches;
+- pale raised plus signs on both faces (pale on red: no Red Cross emblem);
+- a fat arched handle;
+- a lid with a tray under it (bandage roll, bottle, gauze).
+- While you heal, every `lid*` part swings up and away from you about the lid's front bottom edge (`X.medkitIn` /
+  `X.medkitStep` in Utility.client).
+- The batch 2 gadgets went in at the same time, with a thicker card and a chunkier wand.
+
+![medkit v2 against v3](items/medkit-v2-v3.jpg)
+![batch 2 before and after](items/models-v2-batch2.jpg)
+
+**Wraps on gadgets.**
+- All 13 have unfolded UVs (`gun_uvs.unwrap` at `UV_SCALE` 1.4). Round bodies are wrapped round their upright axis
+  (`ROUND_UV`).
+- `item_models2.WRAP` lists each gadget's zone a (shell) and zone b (secondary) pieces. The import sets `WrapUV` and
+  `WrapZone` on those pieces. Lamps, lenses, screens, glass, the pin and its ring keep their own colour.
+- The held model, the thrown one, the card over a head, the duck on its hole and goggles on a head all wear the
+  owner's wrap through `WeaponModels.wrap(m, WeaponModels.wrapFor(owner, gadgetId))`. The third-person rig does too.
+- The `Wraps` attribute keys them by the gadget's id (`medkit=galaxy/normal`).
+- A picture renders as the part's plain colour until the client has fetched it. The game preloads the wraps a player
+  wears.
+
+**Gadget skins.**
+- `tools/roblox/item_skins.py` builds 8 skins on the same contract (frame, size class, grip, `lamp` / `pin` / `ring`,
+  `lid*`):
+
+  | gadget | rare | legendary |
+  |---|---|---|
+  | frag | Powder Keg | Paper Lantern |
+  | medkit | Doctor's Bag | Bento Box |
+  | smoke bomb | Camp Coffee Pot | Incense Burner (its holes are the lamp) |
+  | duck | Decoy Duck | Origami Duck |
+
+- `tools/roblox/item_skin_import.luau` puts them in `ReplicatedStorage.JankfireSkins` as `<gadget>_<skin>`, with
+  `Weapon` = the gadget id and `Item` = true (asset 98860977994294, `roblox/assets/items/skins_v1.json`).
+- `GunSkins.template` finds them. The held, thrown and third-person models wear the skin the `Skins` attribute picks
+  (`smoke=smoke_censer`).
+
+**Not live yet** (the shop session's files): the loadout's wrap and skin pickers on the utility slot, the server
+Loadout accepting gadget ids, and LootTable listing the gadgets and the skin rows. Until then nobody can pick these.
+
+**Tested** in one solo Play in training, with the attributes set by hand:
+- the medkit with Galaxy in hand;
+- the frag with Camo (full) while cooking;
+- the Incense Burner skin while cooking, its holes lit.
+- The medkit lid first swung toward the camera. Its hinge moved to the front edge after the test; that fix is not yet
+  seen in Play.
+
+![skins](items/gadget-skins-sheet.jpg)
+![wraps and a skin in hand](items/gadget-wraps-in-hand.jpg)

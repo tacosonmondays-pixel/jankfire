@@ -15,11 +15,13 @@ OLD_ID = {'quiz': 'calc'}
 SIZE = 520
 
 
-def render(g, path, view):
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+def render(g, path, view, objs=None):
+    """objs: the item already in a fresh scene (a caller that changed its materials): render those as they are"""
+    if objs is None:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        objs = g.to_scene()
     sc = bpy.context.scene
     lo, hi = g.bounds()
-    objs = g.to_scene()
     # (the item frame -> Blender: x, -z, y)
     c = Vector(((lo[0] + hi[0]) / 2, -(lo[2] + hi[2]) / 2, (lo[1] + hi[1]) / 2))
     rad = 0.5 * (Vector(hi) - Vector(lo)).length
