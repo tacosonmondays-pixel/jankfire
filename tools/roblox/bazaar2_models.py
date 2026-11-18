@@ -389,8 +389,10 @@ for k in range(9):
     dome(mf, PLASTER, x, h - 0.5, z, 6.5, 6.0, segs=14, steps=4)
 
 # ================================================================ the layout and the kit
-solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.SOLID]
-rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.ROT]
+# (the hit boxes with the wall box applied: no lid, the walls pushed out, the step: wallbox.py)
+solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
+rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
+INFO.update(L.WALLBOX)
 K.write_layout(LAYOUT, INFO, solid, L.PADS, [tuple(p) for p in L.SPAWNS], L.TEAM, water=L.WATER, src='tools/roblox/bazaar2_models.py', rot=rotb)
 _tri = {}
 for (mname, key), items in K.PIECES.items():

@@ -1,6 +1,7 @@
 --!strict
 -- JANKFIRE movement on the default Roblox character: run, sprint (Shift), slide (C / Ctrl while fast), bhop (jump as
 -- you land), air strafing, the grapple (hold E: aim at a wall), grapple jump (Space on the rope), jump pads.
+-- In a walled arena: the sky line and the ledge round the edge (wallbox.py, 18 Nov).
 -- How: the Humanoid still does the standing, stepping, jumping and animations; a LinearVelocity on the root holds the
 -- character's sideways velocity at what JANKFIRE's maths (shared/Movement.luau) says, every physics step. Up/down is
 -- the engine's gravity (Workspace.Gravity = JANKFIRE's 26 m/s²) plus the rope. Movement is the client's, like the
@@ -30,6 +31,14 @@ local keys = { sprint = false, crouch = false, jump = false, hook = false, jumpP
 -- before you land, or within Config.bhopTicks after)
 local pressT = -10
 local JUMP_BUF = 0.22
+-- the open sky of a walled arena (18 Nov 2026, tools/roblox/wallbox.py): no lid; over its sky line (SkyY, put on you by
+-- Main.server) nothing lifts you more than SKY_CAP higher. its edge is a step you can swing over but not stand on: the
+-- step's top ('ledge') slides you back toward the middle (ArenaAt), LEDGE_PUSH along, LEDGE_HOP up so it lets go of you
+local SKY_CAP, LEDGE_PUSH, LEDGE_HOP = 12, 40, 20
+local function inArena(pos: Vector3): boolean
+	local at = player:GetAttribute("ArenaAt")
+	return typeof(at) == "Vector3" and Vector2.new(pos.X - at.X, pos.Z - at.Z).Magnitude < 600
+end
 local controlsRef: any = nil -- (the control module: the phone's jump button is read from it)
 local touchWas = false
 local st = Movement.newState()
@@ -327,6 +336,16 @@ RunService.PreSimulation:Connect(function(dt: number)
 			st.vx, st.vy, st.vz = pad.X, pad.Y, pad.Z
 			hum:ChangeState(Enum.HumanoidStateType.Freefall)
 			Hud.callout("BOING", 0.5)
+		elseif hit and hit.Instance:GetAttribute("Mat") == "ledge" and inArena(root.Position) then
+			-- the step round a walled arena's edge: no place to stand. back you go, toward the middle
+			local at = player:GetAttribute("ArenaAt") :: Vector3
+			local d = Vector3.new(at.X - root.Position.X, 0, at.Z - root.Position.Z)
+			if d.Magnitude > 1 then
+				d = d.Unit
+				st.vx, st.vz = d.X * LEDGE_PUSH, d.Z * LEDGE_PUSH
+				st.vy = math.max(st.vy, LEDGE_HOP)
+				hum:ChangeState(Enum.HumanoidStateType.Freefall)
+			end
 		end
 	end
 	-- stepping up: JANKFIRE walks onto anything 0.6 m (1.8 studs) high or lower without slowing (shared/physics.js
@@ -352,12 +371,22 @@ RunService.PreSimulation:Connect(function(dt: number)
 			end
 		end
 	end
+	-- the sky line: over it the climb eases off (rope, pad, launch, anything) and stops SKY_CAP higher, so the old lid's
+	-- solids (their tops at 150, out of sight) can't be stood on
+	local skyY = player:GetAttribute("SkyY")
+	if type(skyY) == "number" and st.vy > 0 then
+		local over = root.Position.Y - skyY
+		if over > 0 and inArena(root.Position) then st.vy = math.min(st.vy, math.max(0, (SKY_CAP - over) * 5)) end
+	end
 	lv.PlaneVelocity = Vector2.new(st.vx, st.vz)
 	if math.abs(st.vy - v.Y) > 1e-3 then root.AssemblyLinearVelocity = Vector3.new(st.vx, st.vy, st.vz) end
 	-- (the Humanoid's own jump lands after this, inside FLING_UP)
 	lastSet = Vector3.new(st.vx, st.vy, st.vz)
 	-- on the rope right now: GrappleImpacts only counts swings that are really on it
 	if player:GetAttribute("OnRope") ~= (st.hook ~= nil) then player:SetAttribute("OnRope", st.hook ~= nil) end
+	-- where the rope bites (WallGrid.client draws the grid there when it's the wall box)
+	local hookAt = if st.hook then Vector3.new(st.hook.ax, st.hook.ay, st.hook.az) else nil
+	if player:GetAttribute("HookAt") ~= hookAt then player:SetAttribute("HookAt", hookAt) end
 	-- sprinting right now (SpeedLines.client's FOV kick: +6, as the web's)
 	if player:GetAttribute("Sprinting") ~= st.sprinting then player:SetAttribute("Sprinting", st.sprinting) end
 	local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)

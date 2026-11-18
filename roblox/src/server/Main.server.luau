@@ -98,6 +98,34 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	i.rope, i.anchor = b, a1
 end)
 
+-- the open sky (18 Nov 2026, tools/roblox/wallbox.py): a walled arena has no lid any more. while you're in one, its SkyY
+-- and its middle (ArenaAt: the site's, a copy's own) go on you: Move.client lets nothing lift you past the sky line and
+-- slides you off the ledge round the edge. anyone SKY_OUT over the line (only a client that skipped Move.client gets
+-- there) is out of the world, like under the fall line. (only over the site itself: the hub stands higher than any sky)
+local SKY_OUT = 60
+local skyNext: { [Player]: number } = {}
+local function siteOf(p: Player, pos: Vector3): Model?
+	local an = p:GetAttribute("Arena")
+	if type(an) ~= "string" then return nil end
+	local best: Model?, bd = nil, 2500
+	local function try(m: Instance?)
+		if m and m:IsA("Model") then
+			local d = m:GetPivot().Position - pos
+			local h = Vector2.new(d.X, d.Z).Magnitude
+			if h < bd then best, bd = m :: Model, h end
+		end
+	end
+	try(map:FindFirstChild(an))
+	local copies = map:FindFirstChild("ArenaCopies")
+	if copies then
+		for _, c in copies:GetChildren() do
+			if string.sub(c.Name, 1, #an + 5) == an .. "_copy" then try(c) end
+		end
+	end
+	return best
+end
+Players.PlayerRemoving:Connect(function(p: Player) skyNext[p] = nil end)
+
 -- the street
 RunService.Heartbeat:Connect(function()
 	for p, i in info do
@@ -113,5 +141,22 @@ RunService.Heartbeat:Connect(function()
 		end
 		-- (the teleport check is AntiCheat.server.luau's now, with the fly, noclip and speed checks: a server teleport
 		-- still stamps the player's TeleportT attribute so it starts afresh from the new spot)
+		-- the sky line (above): what's on you follows your site, twice a second
+		local now = os.clock()
+		if now >= (skyNext[p] or 0) then
+			skyNext[p] = now + 0.5
+			local site = siteOf(p, pos)
+			local sky = site and site:GetAttribute("SkyY")
+			local at = if site and type(sky) == "number" then site:GetPivot().Position else nil
+			if p:GetAttribute("SkyY") ~= sky then p:SetAttribute("SkyY", if type(sky) == "number" then sky else nil) end
+			if p:GetAttribute("ArenaAt") ~= at then p:SetAttribute("ArenaAt", at) end
+		end
+		local sky, at = p:GetAttribute("SkyY"), p:GetAttribute("ArenaAt")
+		if type(sky) == "number" and typeof(at) == "Vector3" and pos.Y > sky + SKY_OUT and Vector2.new(pos.X - at.X, pos.Z - at.Z).Magnitude < 600 then
+			hum.Health = 0
+			dropRope(i)
+			CalloutRemote:FireClient(p, "OUT OF BOUNDS", 1.5)
+			continue
+		end
 	end
 end)

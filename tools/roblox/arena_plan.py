@@ -12,6 +12,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw, ImageFont
 
 L = importlib.import_module(sys.argv[1])
+# (the hit boxes as built: with the wall box applied when the layout has one, tools/roblox/wallbox.py)
+HSOLID = getattr(L, 'HIT_SOLID', L.SOLID)
+HROT = getattr(L, 'HIT_ROT', getattr(L, 'ROT', []))
 out = sys.argv[2]
 PX = getattr(L, 'PLAN_PX', 3.0)
 X0, X1, Z0, Z1 = getattr(L, 'BOUNDS', (-170, 170, -130, 130))
@@ -28,7 +31,8 @@ def font(n):
 F1, F2, F3 = font(34), font(19), font(15)
 COL = {'paving': (239, 222, 210), 'floor': (239, 222, 210), 'wall': (150, 88, 98), 'block': (150, 88, 98),
        'edge': (90, 56, 66), 'cover': (226, 160, 152), 'roof': (226, 190, 160), 'step': (205, 186, 172),
-       'glass': (120, 210, 230), 'rail': (196, 138, 122), 'wood': (176, 132, 96), 'water': (90, 170, 200)}
+       'glass': (120, 210, 230), 'rail': (196, 138, 122), 'wood': (176, 132, 96), 'water': (90, 170, 200),
+       'ledge': (72, 58, 70), 'bound': (214, 170, 178)}  # (the wall box's step and walls: wallbox.py)
 COL.update(getattr(L, 'COLOURS', {}))
 FLOORS = set(getattr(L, 'FLOORS', ('paving', 'floor', 'roof', 'step')))
 
@@ -52,21 +56,21 @@ for li, (title, ylo, yhi, fy) in enumerate(LEVELS):
     d.rectangle([ox, TOP, ox + PW, TOP + PH], fill=(70, 44, 54))
     d.text((ox, TOP - 34), title, font=F2, fill=(255, 214, 205))
     # floors: tops within a stud of this level's floor; then everything standing in the level's band, low to high
-    for b in sorted(L.SOLID, key=lambda b: b[4]):
+    for b in sorted(HSOLID, key=lambda b: b[4]):
         x0, y0, z0, x1, y1, z1, m = b
         if m in FLOORS and abs(y1 - fy) < 1.01: rect(ox, x0, z0, x1, z1, light(col(m)))
-    for r in getattr(L, 'ROT', []):
+    for r in HROT:
         if r[7] in FLOORS and abs(r[1] + r[4] / 2 - fy) < 1.01: rbox(ox, r, light(col(r[7])))
     for w in getattr(L, 'WATER', []):
         if w[1] < yhi and w[4] > fy - 12: rect(ox, w[0], w[2], w[3], w[5], COL['water'])
-    for b in sorted(L.SOLID, key=lambda b: b[4]):
+    for b in sorted(HSOLID, key=lambda b: b[4]):
         x0, y0, z0, x1, y1, z1, m = b
         if m == 'step' and y0 < yhi + 20 and y1 > ylo - 20:
             f = max(0.0, min(1.0, (y1 - fy + 20) / 40))
             rect(ox, x0, z0, x1, z1, tuple(int(a + (c - a) * f) for a, c in zip((140, 112, 110), (240, 226, 214))))
         elif (m not in FLOORS or y1 > fy + 1.01) and y0 < yhi and y1 > ylo:   # (a floor-coloured box taller than this level is a wall here)
             rect(ox, x0, z0, x1, z1, col(m))
-    for r in getattr(L, 'ROT', []):
+    for r in HROT:
         cx, cy, cz, sx, sy, sz, yaw, m, fl = r
         if m not in FLOORS and cy - sy / 2 < yhi and cy + sy / 2 > ylo:
             rbox(ox, r, (214, 150, 128) if 'c' in fl else col(m))

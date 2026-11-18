@@ -213,8 +213,12 @@ def write_layout(path, info, solid, pads, spawns, team, water=(), src='', rot=()
          'return {',
          '\tname = %s, title = %s, look = %s, mapId = %s, kit = %s,' % (q(info['name']), q(info['title']), q(info['look']), q(info['mapId']), q(info['kit'])),
          '\torigin = Vector3.new(%s, %s, %s),' % tuple(fmt(v) for v in info['origin']),
-         '\tkillY = %s, centreX = %s, maxTeam = %s,' % (fmt(info['killY']), fmt(info['centreX']), info.get('maxTeam', 0)),
-         '\t-- the hit boxes\' looks: { Roblox material (impacts), colour (impacts), web material }']
+         '\tkillY = %s, centreX = %s, maxTeam = %s,' % (fmt(info['killY']), fmt(info['centreX']), info.get('maxTeam', 0))]
+    if 'skyY' in info:  # (a walled arena: tools/roblox/wallbox.py)
+        L += ['\t-- the wall box (tools/roblox/wallbox.py), local y: the sky line, the top of the step round the edge (a ledge),',
+              '\t-- how high the edge scenery behind the step is seen (above that the grid shows on the step)',
+              '\tskyY = %s, edgeTop = %s, edgeSeen = %s,' % (fmt(info['skyY']), fmt(info['edgeTop']), fmt(info['edgeSeen']))]
+    L += ['\t-- the hit boxes\' looks: { Roblox material (impacts), colour (impacts), web material }']
     mats, mi = [], {}
     for b in solid:
         k = (b[6], b[7], b[8])

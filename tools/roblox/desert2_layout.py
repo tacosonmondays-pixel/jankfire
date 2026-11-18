@@ -23,6 +23,8 @@ MATS = {
     'sand': ('Sand', 'd9b98a', 'sand'),
     'rock': ('Sandstone', 'c39a6c', 'rock'),
     'edge': ('Sandstone', 'b08a60', 'rock'),
+    'ledge': ('SmoothPlastic', 'c8c4bd', 'ledge'),   # the wall box's step (wallbox.py)
+    'bound': ('SmoothPlastic', 'c8c4bd', 'bound'),   # its walls
     'spire': ('Sandstone', 'b58e64', 'rock'),
     'cover': ('Sandstone', 'c8a273', 'rock'),
     'wood': ('Wood', '8d6a4a', 'wood'),
@@ -213,7 +215,7 @@ for (x, y, z) in ((-140, 0, -24), (-92, 0, -60), (-62, 0, -50), (-33, 0, -30), (
 
 # ================================================================ for the plan
 TITLE = 'DESERT: CANYON (v2)'
-BOUNDS = (-180, 180, -130, 130)
+BOUNDS = (-215, 215, -165, 165)   # (the wall box: walls to 212 / 162)
 LEVELS = [('CANYON FLOOR (y 0)', 0.4, 9.0, 0.0), ('MESA TOPS (y 26) + the rope bridge', MESA + 0.4, MESA + 9.0, MESA)]
 FLOORS = ('sand', 'rock', 'step', 'plank')
 COLOURS = {'sand': (226, 200, 160), 'rock': (176, 136, 98), 'spire': (120, 84, 60), 'cover': (210, 150, 110), 'edge': (90, 66, 50),
@@ -221,3 +223,12 @@ COLOURS = {'sand': (226, 200, 160), 'rock': (176, 136, 98), 'spire': (120, 84, 6
            'step': (205, 180, 150)}
 PLAN_NOTE = ('a winding canyon between two mesas: each camp -> corridor -> north leg -> north run -> south leg -> the basin; '
              'stairs carved into the walls; a rope bridge over the basin; sandstorms close the mesa lines now and then')
+
+# ================================================================ the wall box (18 Nov 2026: tools/roblox/wallbox.py)
+# no lid; the walls 30 studs further out; the outer cliffs' hit boxes (solid to the lid till now) stop at the step's
+# top, 90 (the kit's cliffs reach 87.8), and the step runs on out to the new walls: open air over the cliffs, a ledge
+# nobody can stay on. the kit dresses from SOLID and ROT as before; the builders write HIT_SOLID/HIT_ROT
+import wallbox
+def _old_wall(b):
+    return b[6] == 'edge' and (b[1] >= LID or b[0] >= X_EDGE or b[3] <= -X_EDGE or b[2] >= Z_EDGE or b[5] <= -Z_EDGE)
+HIT_SOLID, HIT_ROT, WALLBOX = wallbox.rect(SOLID, ROT, X_EDGE, Z_EDGE, -6.0, 90.0, 52.0, drop=_old_wall, cut=lambda b: b[6] == 'edge')

@@ -510,8 +510,10 @@ def edge():
 
 # ================================================================ build
 ground(); houses(); fences(); trees(); street_sets(); lamps(); yards(); green(); tree_house(); play_fort(); edge()
-solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.SOLID]
-rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.ROT]
+# (the hit boxes with the wall box applied: no lid, the walls pushed out, the step: wallbox.py)
+solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
+rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
+INFO.update(L.WALLBOX)
 pads = [tuple(p) for p in L.PADS]
 water = [tuple(w) for w in L.WATER]
 K.write_layout(LAYOUT, INFO, solid, pads, [tuple(p) for p in L.SPAWNS], L.TEAM, water=water, src='tools/roblox/suburb2_models.py', rot=rotb)

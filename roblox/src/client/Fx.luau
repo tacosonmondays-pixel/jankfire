@@ -672,6 +672,15 @@ end
 -- a bullet (or pellet) hitting the map (fx.js impact: 10 squares sprayed off the wall; sparks off metal). what flies off
 -- depends on the material. o.hole = false: no hole (marbles); o.scale: a smaller or bigger hit
 function Fx.impact(at: Vector3, normal: Vector3, inst: Instance?, mat: Enum.Material?, o: { hole: boolean?, scale: number? }?)
+	-- the wall box of a walled arena (tools/roblox/wallbox.py, 18 Nov): bullets stop on it, and instead of chips off thin
+	-- air its grid shows where they hit (WallGrid.client says whether it is the wall box there)
+	if inst and inst:IsA("BasePart") then
+		local m = inst:GetAttribute("Mat")
+		if m == "bound" or m == "ledge" then
+			local wg = script.Parent:FindFirstChild("WallGridHit")
+			if wg and wg:IsA("BindableFunction") and wg:Invoke(at, normal, inst) == true then return end
+		end
+	end
 	local kind = (mat and KIND[mat]) or "hard"
 	if kind == "water" then Fx.splash(at, 0.3); return end
 	local part = if inst and inst:IsA("BasePart") then inst else nil

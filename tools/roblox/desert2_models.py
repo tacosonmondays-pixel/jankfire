@@ -325,8 +325,10 @@ floor(); mesas(); cliffs(); stairs(); spires(); ruins(); boulders(); wagons(); c
 for (x, z) in ((-92.0, -45.0), (-33.0, 0.0), (0.0, 30.0), (92.0, -45.0), (33.0, 0.0)):
     light('point', x, 10.0, z, (0, -1, 0), 0.25, 26, 0, 'ffe2bd')
 
-solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.SOLID]
-rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.ROT]
+# (the hit boxes with the wall box applied: no lid, the walls pushed out, the step: wallbox.py)
+solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
+rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
+INFO.update(L.WALLBOX)
 K.write_layout(LAYOUT, INFO, solid, [], [tuple(p) for p in L.SPAWNS], L.TEAM, src='tools/roblox/desert2_models.py', rot=rotb)
 
 _tri = {}

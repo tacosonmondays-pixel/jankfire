@@ -5,9 +5,12 @@ import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw, ImageFont
 import gut_layout as L
+# (the hit boxes as built: with the wall box applied when the layout has one, tools/roblox/wallbox.py)
+HSOLID = getattr(L, 'HIT_SOLID', L.SOLID)
+HROT = getattr(L, 'HIT_ROT', getattr(L, 'ROT', []))
 
 PX = 3.0
-X0, X1, Z0, Z1 = -156, 156, -110, 110
+X0, X1, Z0, Z1 = -193, 193, -147, 147   # (the wall box: walls to 190 / 144)
 PW, PH = int((X1 - X0) * PX), int((Z1 - Z0) * PX)
 M, TOP = 30, 96
 out = sys.argv[1] if len(sys.argv) > 1 else 'gut_plan.png'
@@ -22,7 +25,8 @@ F1, F2, F3 = font(34), font(19), font(15)
 
 COL = {'paving': (239, 222, 210), 'wall': (150, 88, 98), 'block': (150, 88, 98), 'edge': (90, 56, 66),
        'cover': (226, 160, 152), 'ivory': (246, 236, 224), 'tread': (233, 189, 182), 'tile': (226, 214, 202),
-       'step': (205, 186, 172), 'glass': (120, 210, 230), 'rail': (196, 138, 122)}
+       'step': (205, 186, 172), 'glass': (120, 210, 230), 'rail': (196, 138, 122),
+       'ledge': (72, 58, 70), 'bound': (214, 170, 178)}  # (the wall box's step and walls: wallbox.py)
 
 def P(ox, x, z): return (ox + (x - X0) * PX, TOP + (z - Z0) * PX)
 
@@ -45,24 +49,24 @@ def panel(ox, ylo, yhi, title, floor_y):
     d.rectangle([ox, TOP, ox + PW, TOP + PH], fill=(70, 44, 54))
     d.text((ox, TOP - 34), title, font=F2, fill=(255, 214, 205))
     # floors first: boxes whose top is this level's floor
-    for b in L.SOLID:
+    for b in HSOLID:
         x0, y0, z0, x1, y1, z1, m = b
         if abs(y1 - floor_y) < 0.01 and m in ('paving', 'tile'):
             rect(ox, x0, z0, x1, z1, COL[m])
     # stairs (steps rising through the level), shaded by height
-    for b in L.SOLID:
+    for b in HSOLID:
         x0, y0, z0, x1, y1, z1, m = b
         if m == 'step':
             f = (y1 - L.PLAT) / (0 - L.PLAT)
             c = tuple(int(a + (bb - a) * f) for a, bb in zip((150, 120, 118), (240, 226, 214)))
             rect(ox, x0, z0, x1, z1, c)
     # what stands on this level
-    for b in L.SOLID:
+    for b in HSOLID:
         x0, y0, z0, x1, y1, z1, m = b
         if m in ('paving', 'step'): continue
         if y0 < yhi and y1 > ylo and not (m == 'tile' and abs(y1 - floor_y) < 0.01):
             rect(ox, x0, z0, x1, z1, COL[m])
-    for r in L.ROT:
+    for r in HROT:
         cx, cy, cz, sx, sy, sz, yaw, m, fl = r
         if cy - sy / 2 < yhi and cy + sy / 2 > ylo:
             rbox(ox, r, COL[m] if 'c' not in fl else (214, 150, 128))

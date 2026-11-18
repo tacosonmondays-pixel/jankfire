@@ -11,12 +11,14 @@
 --   print(W.import("Crate"))   -- the kit into ServerStorage.JankfireMeshes (after each upload: set W.ASSETS first)
 --   print(W.build("Crate"))    -- wipe and remake workspace.Map.Crate
 --   print(W.check("Crate"))    -- the hit boxes, spawns on floors, team spawn sight lines, pad flights, part counts
+--   print(W.solid("Gut"))      -- just the hit boxes again (the kit, the lights and hand-set attributes stay)
 --   print(W.pool("add", "Crate"))  -- into the match rotation (workspace.Map's ArenaPool); "remove" takes it out
 --
 -- What the game reads off the arena model (ReplicatedStorage.Jankfire.Arena, Matches, HubLife, ZoneCull): KillY (the
 -- fall line), CentreX (the line team spawns face), Title (the first banner), Look (its light: HubLook.byArena),
 -- MaxTeam (the biggest team it takes: a 4v4 never lands on a tiny arena), ZonePiece (ZoneCull puts it aside when
--- nobody is near, however few parts it has). Matches copies the whole model for side-by-side matches, so everything
+-- nobody is near, however few parts it has), and on a walled arena SkyY, EdgeTop, EdgeSeen (its wall box: wallBox
+-- below). Matches copies the whole model for side-by-side matches, so everything
 -- an arena needs lives inside it.
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
@@ -97,6 +99,53 @@ function W.import(name: string, id: number?): string
 end
 
 -- ---------------------------------------------------------------- build
+-- the hit boxes (the web's boxes, or a hand-made layout's) into the arena's Solid folder
+local function hitBoxes(L: any, O: Vector3, solid: Instance)
+	-- the web's boxes: invisible, solid, they take shots (their material and colour: the impact's dust and chips)
+	for i, b in L.solid do
+		if L.mats and type(b[7]) == "number" then b = { b[1], b[2], b[3], b[4], b[5], b[6], table.unpack(L.mats[b[7]]) } end
+		local size = V3(b[4] - b[1], b[5] - b[2], b[6] - b[3])
+		local p = Instance.new("Part")
+		p.Name = "Solid"
+		p.Anchored = true; p.CanCollide = true; p.CanQuery = true; p.CanTouch = true; p.CastShadow = false
+		p.Transparency = 1
+		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Material = material(b[7]); p.Color = hex(b[8])
+		p.Size = size
+		p.CFrame = CF(O + V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2))
+		p:SetAttribute("Mat", b[9])
+		p.Parent = solid
+		if i % 200 == 0 then task.wait() end
+	end
+	-- turned hit boxes (a layout may have them: the Gut's spiral stair, its balcony, round posts). flags "c": the box
+	-- stops you but takes no shots (rails you can shoot through)
+	for i, b in (L.solidR or {}) do
+		local mt = L.mats[b[8]]
+		local p = Instance.new("Part")
+		p.Name = "Solid"
+		p.Anchored = true; p.CanCollide = true; p.CanTouch = true; p.CastShadow = false
+		p.CanQuery = not string.find(b[9] or "", "c", 1, true)
+		p.Transparency = 1
+		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Material = material(mt[1]); p.Color = hex(mt[2])
+		p.Size = V3(b[4], b[5], b[6])
+		p.CFrame = CF(O + V3(b[1], b[2], b[3])) * CFrame.Angles(0, math.rad(b[7]), 0)
+		p:SetAttribute("Mat", mt[3])
+		p.Parent = solid
+		if i % 200 == 0 then task.wait() end
+	end
+end
+
+-- the wall box of a walled arena (18 Nov 2026, tools/roblox/wallbox.py): no lid; the sky line (SkyY: Move.client lets
+-- nothing lift you over it, Main.server puts anyone 60 studs over it out of the world), the step round the edge (its
+-- top, EdgeTop, is a ledge Move.client slides you off) and how high the edge scenery behind the step is seen (EdgeSeen:
+-- above it the grid patch shows on the step, WallGrid.client). all world heights (a copy keeps its arena's height)
+local function wallBox(root: Instance, L: any, O: Vector3)
+	root:SetAttribute("SkyY", if L.skyY then O.Y + L.skyY else nil)
+	root:SetAttribute("EdgeTop", if L.edgeTop then O.Y + L.edgeTop else nil)
+	root:SetAttribute("EdgeSeen", if L.edgeSeen then O.Y + L.edgeSeen else nil)
+end
+
 function W.clear(name: string): string
 	local old = workspace.Map:FindFirstChild(name)
 	if old then old:Destroy() end
@@ -132,39 +181,8 @@ function W.build(name: string): string
 	local back = folder(root, "Backdrop")
 	root.WorldPivot = at
 	root.Parent = workspace.Map
-	-- the web's boxes: invisible, solid, they take shots (their material and colour: the impact's dust and chips)
-	for i, b in L.solid do
-		if L.mats and type(b[7]) == "number" then b = { b[1], b[2], b[3], b[4], b[5], b[6], table.unpack(L.mats[b[7]]) } end
-		local size = V3(b[4] - b[1], b[5] - b[2], b[6] - b[3])
-		local p = Instance.new("Part")
-		p.Name = "Solid"
-		p.Anchored = true; p.CanCollide = true; p.CanQuery = true; p.CanTouch = true; p.CastShadow = false
-		p.Transparency = 1
-		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
-		p.Material = material(b[7]); p.Color = hex(b[8])
-		p.Size = size
-		p.CFrame = CF(O + V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2))
-		p:SetAttribute("Mat", b[9])
-		p.Parent = solid
-		if i % 200 == 0 then task.wait() end
-	end
-	-- turned hit boxes (a layout may have them: the Gut's spiral stair, its balcony, round posts). flags "c": the box
-	-- stops you but takes no shots (rails you can shoot through)
-	for i, b in (L.solidR or {}) do
-		local mt = L.mats[b[8]]
-		local p = Instance.new("Part")
-		p.Name = "Solid"
-		p.Anchored = true; p.CanCollide = true; p.CanTouch = true; p.CastShadow = false
-		p.CanQuery = not string.find(b[9] or "", "c", 1, true)
-		p.Transparency = 1
-		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
-		p.Material = material(mt[1]); p.Color = hex(mt[2])
-		p.Size = V3(b[4], b[5], b[6])
-		p.CFrame = CF(O + V3(b[1], b[2], b[3])) * CFrame.Angles(0, math.rad(b[7]), 0)
-		p:SetAttribute("Mat", mt[3])
-		p.Parent = solid
-		if i % 200 == 0 then task.wait() end
-	end
+	hitBoxes(L, O, solid)
+	wallBox(root, L, O)
 	for _, b in L.pads do
 		local p = Instance.new("Part")
 		p.Name = "pad"
@@ -234,6 +252,25 @@ function W.build(name: string): string
 		name, tostring(O), nm, #L.solid + #(L.solidR or {}), #L.pads, #L.spawns, #team:GetChildren(), #L.water, #L.lights, nb)
 end
 
+-- just the hit boxes again, from the layout (the kit, the lights and everything set on the arena by hand stay: the Gut's
+-- heart, the desert's wind, SuburbV2's Enabled). for a change to the hit boxes only, like the wall box (18 Nov)
+function W.solid(name: string): string
+	local root = workspace.Map:FindFirstChild(name)
+	if not root then return name .. " is not built" end
+	local L = layout(name)
+	local O: Vector3 = L.origin
+	local old = root:FindFirstChild("Solid")
+	local n0 = if old then #old:GetChildren() else 0
+	local solid = folder(root, "Solid")
+	solid.Parent = nil
+	hitBoxes(L, O, solid)
+	if old then old:Destroy() end
+	solid.Parent = root
+	wallBox(root, L, O)
+	return ("%s: hit boxes %d -> %d, SkyY %s, EdgeTop %s, EdgeSeen %s"):format(name, n0, #solid:GetChildren(),
+		tostring(root:GetAttribute("SkyY")), tostring(root:GetAttribute("EdgeTop")), tostring(root:GetAttribute("EdgeSeen")))
+end
+
 -- ---------------------------------------------------------------- checks
 local function segHits(a: Vector3, b: Vector3, p: BasePart): boolean
 	local c = p.CFrame
@@ -292,7 +329,24 @@ function W.check(name: string): string
 		end end end
 		if not found then bad += 1 end
 	end
-	table.insert(out, ("hit boxes: %d in the layout, %d built, %d missing"):format(#want, #have, bad))
+	local extra = 0
+	for _, p in have do if p:IsA("BasePart") and not used[p] then extra += 1 end end
+	table.insert(out, ("hit boxes: %d in the layout, %d built, %d missing, %d extra"):format(#want, #have, bad, extra))
+	-- 1b. the wall box (wallbox.py): no lid (nothing solid stands over the sky line but the walls), the walls and the step
+	local sky = root:GetAttribute("SkyY")
+	if type(sky) == "number" then
+		local over, bound, ledge, lid = 0, 0, 0, 0
+		for _, p in have do
+			if not p:IsA("BasePart") then continue end
+			local m = p:GetAttribute("Mat")
+			if m == "bound" then bound += 1 elseif m == "ledge" then ledge += 1 end
+			local top = p.Position.Y + p.Size.Y / 2
+			if top > sky and m ~= "bound" then over += 1 end
+			if p.Size.Y < 12 and p.Size.X > 150 and p.Size.Z > 150 and p.Position.Y > sky then lid += 1 end
+		end
+		table.insert(out, ("wall box: SkyY %.0f, EdgeTop %.0f, EdgeSeen %.0f; walls %d, step boxes %d; a lid: %d; other solids reaching past the sky line: %d (the old lid's columns, out of reach)"):format(
+			sky, root:GetAttribute("EdgeTop") or 0, root:GetAttribute("EdgeSeen") or 0, bound, ledge, lid, over))
+	end
 	-- 2. every spawn stands on something solid within a stud under it
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Include

@@ -28,6 +28,8 @@ MATS = {
     'wall': ('SmoothPlastic', 'dfb2ab', 'enamel'),
     'block': ('SmoothPlastic', 'd9a7a2', 'enamel'),
     'edge': ('SmoothPlastic', 'c99a96', 'edge'),
+    'ledge': ('SmoothPlastic', 'c8c4bd', 'ledge'),   # the wall box's step (wallbox.py)
+    'bound': ('SmoothPlastic', 'c8c4bd', 'bound'),   # its walls
     'cover': ('SmoothPlastic', 'e8c3bc', 'enamel'),
     'ivory': ('SmoothPlastic', 'efe3d6', 'ivory'),
     'tread': ('SmoothPlastic', 'e9bdb6', 'ivory'),
@@ -282,3 +284,9 @@ for (x, z) in ((-144, -30), (-144, -16), (-144, -2), (-144, 6), (-132, -24), (-1
     TEAM['att'].append((x, 0.3, z, 1.0, 0.0))
     TEAM['def'].append((-x, 0.3, z, -1.0, 0.0))
 TEAM['mid'] = [(-26, 0.3, -98, 0.0, 1.0), (26, 0.3, -98, 0.0, 1.0), (-26, 0.3, 98, 0.0, -1.0), (26, 0.3, 98, 0.0, -1.0)]
+
+# ================================================================ the wall box (18 Nov 2026: tools/roblox/wallbox.py)
+# no lid; the walls 30 studs further out; between, a step up to the edge buildings' top (the kit's gu_edge reaches
+# 57.6), a ledge nobody can stay on. the kit dresses from SOLID and ROT as before; the builders write HIT_SOLID/HIT_ROT
+import wallbox
+HIT_SOLID, HIT_ROT, WALLBOX = wallbox.rect(SOLID, ROT, X_EDGE, Z_EDGE, CEIL, 60.0, 30.0, drop=lambda b: b[6] == 'edge')

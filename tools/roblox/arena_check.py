@@ -5,10 +5,13 @@
 import sys, os, math, importlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 L = importlib.import_module(sys.argv[1])
+# (the hit boxes as built: with the wall box applied when the layout has one, tools/roblox/wallbox.py)
+HSOLID = getattr(L, 'HIT_SOLID', L.SOLID)
+HROT = getattr(L, 'HIT_ROT', getattr(L, 'ROT', []))
 
-boxes = [(b[0], b[1], b[2], b[3], b[4], b[5]) for b in L.SOLID]
+boxes = [(b[0], b[1], b[2], b[3], b[4], b[5]) for b in HSOLID]
 rots = []
-for r in getattr(L, 'ROT', []):
+for r in HROT:
     cx, cy, cz, sx, sy, sz, yaw, m, fl = r
     t = math.radians(yaw)
     rots.append((cx, cy, cz, sx / 2, sy / 2, sz / 2, math.cos(t), math.sin(t), fl))

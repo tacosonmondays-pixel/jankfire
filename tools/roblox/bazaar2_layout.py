@@ -24,6 +24,8 @@ MATS = {
     'wall': ('SmoothPlastic', 'e2d4bb', 'plaster'),
     'block': ('SmoothPlastic', 'e2d4bb', 'plaster'),
     'edge': ('Sandstone', 'c8b08b', 'stone'),
+    'ledge': ('SmoothPlastic', 'c8c4bd', 'ledge'),   # the wall box's step (wallbox.py)
+    'bound': ('SmoothPlastic', 'c8c4bd', 'bound'),   # its walls
     'cover': ('Wood', '8a6a4a', 'wood'),
     'pot': ('Slate', 'b9764f', 'clay'),
     'stone': ('Sandstone', 'b8a688', 'stone'),
@@ -237,7 +239,7 @@ for (x, y, z) in ((-150, 0, -40), (-84, 0, -48), (-124, 0, 0), (-84, 0, 50), (-1
     SPAWNS.append((x, y + 0.3, z)); SPAWNS.append((-x, y + 0.3, z))
 
 # ================================================================ for the plan and the checks
-BOUNDS = (-172, 172, -132, 132)
+BOUNDS = (-210, 210, -170, 170)   # (the wall box: the oval wall to 205 x 165)
 LEVELS = [('STREET (y 0)', 0.4, 9.0, 0.0), ('ROOFS (y 18): the upper bazaar', H + 0.4, H + 9.0, H)]
 TITLE = 'BAZAAR: ROOFTOPS'
 PLAN_NOTE = ('Two full levels: the street (covered souk north, open spice market south, a domed hall you walk through, the pool you '
@@ -281,6 +283,15 @@ def pad_flight(p, g=GRAV):
             return (nxt[0], nxt[1] - 2.6, nxt[2], t)
         pos = nxt
     return (pos[0], pos[1] - 2.6, pos[2], None)
+
+# ================================================================ the wall box (18 Nov 2026: tools/roblox/wallbox.py)
+# no lid; the oval wall 30 studs further out (the ellipse 195 x 155); between, a step up to the town wall's top (the
+# kit's crenellations reach 33.2): the dunes outside the wall stay out of bounds, the air over them is open. the dead
+# space behind the outer houses stays solid to the old lid (under the sky line nobody gets up there). the kit
+# dresses from SOLID and ROT as before; the builders write HIT_SOLID/HIT_ROT
+import wallbox
+HIT_SOLID, HIT_ROT, WALLBOX = wallbox.oval(SOLID, ROT, A_, B_, -6.0, 34.0, 33.0, drop=lambda b: b[6] == 'edge' and b[1] >= LID,
+                                           drop_rot=lambda r: r[7] == 'edge', n=N)
 
 if __name__ == '__main__':
     print('solid', len(SOLID), 'rot', len(ROT), 'pads', len(PADS), 'water', len(WATER), 'spawns', len(SPAWNS))

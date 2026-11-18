@@ -40,6 +40,8 @@ MATS = {
     'floor': ('WoodPlanks', 'b89a78', 'wood'),
     'step': ('WoodPlanks', 'ad8e6b', 'wood'),
     'edge': ('SmoothPlastic', 'c0c4c8', 'edge'),
+    'ledge': ('SmoothPlastic', 'c8c4bd', 'ledge'),   # the wall box's step (wallbox.py)
+    'bound': ('SmoothPlastic', 'c8c4bd', 'bound'),   # its walls
     'rail': ('Metal', 'e8e6e0', 'metal'),
     'cover': ('SmoothPlastic', 'cfc8bc', 'cover'),
 }
@@ -360,7 +362,7 @@ SPAWNS.append((0.0, TH_Y + 0.3, -88.0)); SPAWNS.append((0.0, PF_Y + 0.3, 86.0))
 
 # ================================================================ for the plan (arena_plan.py)
 TITLE = 'SUBURB: CUL-DE-SAC (Suburb v2)'
-BOUNDS = (-180.0, 180.0, -116.0, 116.0)
+BOUNDS = (-219.0, 219.0, -155.0, 155.0)   # (the wall box: walls to 216 / 152)
 LEVELS = [('STREET AND YARDS (y 0)', 0.4, 9.0, 0.0), ('UPSTAIRS, GARAGE ROOFS, TREE HOUSE, FORT (y 8 to 14)', 7.5, 20.0, 12.0)]
 FLOORS = ('asphalt', 'lawn', 'floor', 'step')
 COLOURS = {'asphalt': (120, 122, 128), 'lawn': (150, 170, 128), 'house': (150, 88, 98), 'roof': (110, 70, 80),
@@ -443,6 +445,15 @@ def pad_flight(p):
                 return (nxt[0], nxt[1], nxt[2], t, 'HIT ' + s[6])
         pos = nxt
     return None
+
+# ================================================================ the wall box (18 Nov 2026: tools/roblox/wallbox.py)
+# no lid; the walls 30 studs further out; the back and end hedges (solid to the lid till now, 12 high in the kit) and
+# the ring past them become a step up to 32 (the houses and trees past the hedges reach 31.6): open air over the
+# gardens behind, a ledge nobody can stay on. the kit dresses from SOLID and ROT as before; the builders write
+# HIT_SOLID/HIT_ROT
+import wallbox
+HIT_SOLID, HIT_ROT, WALLBOX = wallbox.rect(SOLID, ROT, X_EDGE, Z_EDGE, -6.0, 32.0, 12.0, drop=lambda b: b[6] == 'edge',
+                                           cut=lambda b: b[6] == 'hedge' and b[4] >= LID - 0.01)
 
 if __name__ == '__main__':
     print('solid %d, turned %d, pads %d, water %d, spawns %d, team %s' % (len(SOLID), len(ROT), len(PADS), len(WATER), len(SPAWNS), {k: len(v) for k, v in TEAM.items()}))
