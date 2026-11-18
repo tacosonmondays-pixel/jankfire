@@ -446,12 +446,10 @@ return function(B, R)
 			local HW, WT, WL, PIT = 8, 4, 1.2, 4 -- (the water's half width inside the walls, the walls' thickness, the surface over the floor, the pit's depth)
 			local was = B.mark
 			B.mark = B.warp ~= nil
-			-- (the pit's floor pale tile under the water, so it reads clean teal, as a pool does: 18 Nov, main for the owner)
-			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "d2e2e2")
-			for g = -HW + 2, HW - 2, 2 do
-				B.box(Fw, C, "FountainTileLine", g - 0.05, g + 0.05, -PIT, -PIT + 0.03, -HW, HW, "a9c2c3", nil, G)
-				B.box(Fw, C, "FountainTileLine", -HW, HW, -PIT, -PIT + 0.04, g - 0.05, g + 0.05, "a9c2c3", nil, G)
-			end
+			-- (the pit's floor deep teal, the water's own colour, and inside the water, which runs a voxel under it: a light
+			-- floor showed through the moving surface in patches, a mottled "map" on the water, 18 Nov; tested in Studio:
+			-- with the floor dark the pool reads clean teal)
+			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "123e48")
 			for _, sg in { -1, 1 } do
 				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + WT), -PIT - 0.04, 1.7, -(HW + WT), HW + WT, TRIM)
 				B.box(Fw, S, "FountainWall", -HW, HW, -PIT - 0.04, 1.69, sg * HW, sg * (HW + WT), TRIM)
@@ -536,9 +534,9 @@ return function(B, R)
 				local hub = workspace.Map.Hub
 				local T0 = workspace.Terrain
 				local old = hub:GetAttribute("FountainWater")
-				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, 0, 0)), Vector3.new(2 * (HW + WT) + 16, 16, 2 * (HW + WT) + 16), Enum.Material.Air) end
+				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, -2, 0)), Vector3.new(2 * (HW + WT) + 16, 20, 2 * (HW + WT) + 16), Enum.Material.Air) end
 				local hwW = HW + WT
-				T0:FillBlock(CFrame.new(wc + Vector3.new(0, (WL - PIT) / 2, 0)), Vector3.new(2 * hwW, WL + PIT, 2 * hwW), Enum.Material.Water)
+				T0:FillBlock(CFrame.new(wc + Vector3.new(0, (WL - PIT - 4) / 2, 0)), Vector3.new(2 * hwW, WL + PIT + 4, 2 * hwW), Enum.Material.Water) -- (a voxel more under the pit's floor: its face is never the water's bottom)
 				hub:SetAttribute("FountainWater", wc)
 			end
 			B.box(F7, C, "FountainRing", -0.1, 0.1, -0.06, 0.03, FD - 0.1, FD + 0.1, P.cream, nil, { ghost = true, tr = 1 }) -- (a marker only)

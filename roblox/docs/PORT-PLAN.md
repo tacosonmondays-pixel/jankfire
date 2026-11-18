@@ -2078,6 +2078,14 @@ The owner on v976: "stream is a little unnatural and the water doesnt fill the w
 - **Checks:** the staging copy's `R.check` and the live one both found 0 problems. The flicker finder's only fountain hits are the pit floor's and the walls' outer edges meeting under the lobby floor, where they can't be seen.
 - Sheet: `roblox/docs/hub/hub_fountain_998.jpg`; also in the shared notes folder.
 
+**Place version 1002: clean water.** Main for the owner: the surface was a mottled brown/green "map", with ragged lights along a wall.
+- **Cause** (found by testing in Studio): the pit's floor showed through the moving surface in patches. Hiding the floor turned the water clean teal. It was not reflection: the mottling stayed with reflection off.
+- **Fix:** the floor is deep teal (`123e48`) and sits inside the water. The water now runs a voxel under it (three layers: 1.0, 1.0, 0.3).
+- **The hub's look** has its own Terrain water (`HubLook.looks.hub.Terrain`): the pool's teal, reflectance 0.2, waves 0.03 against the saved 0.75 and 0.08. That makes it calmer and less of a mirror indoors; the Rooftop pool is untouched.
+- At standing eye height the water mostly reflects the room, as water does at a low angle. From above it reads clean teal.
+- `R.check`: 0 problems. No water outside the walls.
+- Sheet: `roblox/docs/hub/hub_fountain_1002.jpg`; the photos are also in the shared notes folder.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
