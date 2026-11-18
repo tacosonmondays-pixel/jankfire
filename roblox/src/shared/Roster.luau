@@ -112,7 +112,7 @@ add({ id = "bloodcross", slot = "secondary", name = "Blood Cross", color = "ff1f
 add({ id = "blower", slot = "secondary", name = "Leaf Blower", color = "ff9a3a", live = true, gimmick = "pushes people away for 4 s of fuel. point it at the floor and you hover.",
 	desc = "Pushes people off the map. Point it at the floor to hover.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "16 m", bar = 0.18 }, { label = "MAG", text = "4 s of heat", bar = 0.45 } } })
-add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", live = false, gimmick = "",
+add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", live = false, gimmick = "a hand of 5: spades throw, hearts heal, clubs blast, diamonds dash, aces teleport.",
 	desc = "Hold 5 cards. Right click picks one, left click plays it, R redraws. Every card you play flicks cards at where you aim. Spades throw a whole fan, hearts heal, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", live = true, gimmick = "4 hits freeze them solid for 2.4 s. one more shatters them.",

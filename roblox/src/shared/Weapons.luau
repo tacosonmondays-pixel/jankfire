@@ -59,6 +59,9 @@ export type Weapon = {
 	-- the Bow (kind "bow", proj "arrow"): hold drawT s to full; speed .. speedMax studs/s and dmg .. dmgMax by the draw
 	drawT: number?, speedMax: number?, dmgMax: number?,
 	hands: number?, -- (Lefty & Righty: 2 guns, left click the left, right click the right, each its own mag of `mag`)
+	-- batch E, the Card Deck (kind "cards", CardDeck.server): a card's dmg + perRank x rank; a spade's fan (fanN over
+	-- fanSpread rad), a picture spade's (ultN over ultSpread), the flick every other card throws
+	perRank: number?, fanN: number?, fanSpread: number?, ultN: number?, ultSpread: number?, flick: number?,
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?, snd2: string?, -- (snd2: a second layer on the shot)
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
@@ -475,6 +478,18 @@ local W: { [string]: Weapon } = {
 		swingSnd = "scales_swing", hitSnd = "scales_hit",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.7 },
+	},
+	-- ------------------------------------------------------------ weapons batch E (18 Nov 2026; weapons-batchE-spec.md)
+	-- a hand of 5 from a 54-card deck: right click picks, left click plays, R a new hand (CardDeck.server; the cards fly
+	-- in WeaponProj "card")
+	cards = {
+		id = "cards", name = "Card Deck", slot = "secondary", kind = "cards", proj = "card", color = rgb(0xffffff),
+		desc = "hold 5 cards. right click picks one, left click plays it, r draws a new hand. spades throw a fan, hearts heal, clubs blast, diamonds dash, aces teleport, picture cards are stronger, jokers are any of them.",
+		cd = 0.35, speed = 85 * S, grav = 2, r = 0.26 * S, life = 5.7, dmg = 11, perRank = 0.6, kb = 4 * S, range = 150 * S,
+		fanN = 6, fanSpread = 0.16, ultN = 24, ultSpread = 0.9, flick = 2,
+		snd = "card_throw",
+		recoilVM = { back = 0.4, up = 1.5, roll = 0.5, side = 0.2, punch = 0.004 },
+		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
 	},
 	-- two machine pistols: left click fires lefty, right click righty; each its own 20 and its own reload (Rules.handKey)
 	akimbo = {

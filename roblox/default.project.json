@@ -59,6 +59,9 @@
         "Gavel": {
           "$className": "RemoteEvent"
         },
+        "Cards": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

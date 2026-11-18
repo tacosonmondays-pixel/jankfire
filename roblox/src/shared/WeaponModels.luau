@@ -219,6 +219,15 @@ BUILD.scales = function(b)
 	spot(b, "Mid", Vector3.new(0, 0, -0.3267))
 	spot(b, "Grip", Vector3.new(0, 0, 0))
 end
+-- (batch E) the Card Deck's stand-in: five cards fanned in the hand
+BUILD.cards = function(b)
+	for i = 0, 4 do
+		local a = (i - 2) * 0.22
+		part(b, "card", Enum.PartType.Block, Vector3.new(0.09, 0.004, 0.13), 0xf0eee8, Vector3.new(math.sin(a) * 0.09, 0.002 * i, -0.06 - math.cos(a) * 0.03), CFrame.Angles(0, -a, 0))
+	end
+	spot(b, "Muzzle", Vector3.new(0, 0.02, -0.12))
+	spot(b, "Grip", Vector3.new(0, -0.01, 0))
+end
 BUILD.remote = function(b)
 	bx(b, "body", 0.05, 0.022, 0.2, 0x2b2e35, 0, 0, -0.07)
 	bx(b, "keys", 0.034, 0.006, 0.1, 0x45484f, 0, 0.013, -0.08)

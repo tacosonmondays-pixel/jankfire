@@ -60,12 +60,23 @@ local LOOK = {
 	bowl = { Color3.fromRGB(44, 52, 92), "Ball", Vector3.new(2.7, 2.7, 2.7) }, -- (weapons batch D)
 	slipper = { Color3.fromRGB(255, 154, 213), "Block", Vector3.new(1.0, 0.35, 2.1) },
 	arrow = { Color3.fromRGB(120, 90, 60), "Block", Vector3.new(0.12, 0.12, 2.4) },
+	card = { Color3.fromRGB(245, 245, 240), "Block", Vector3.new(0.27, 0.03, 0.39) }, -- (batch E)
 }
 type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number, r: number? }
 local live: { [number]: Live } = {}
 -- the kit models for the shots (guns-remodel, v813: JankfireWeapons w_pj_*, built in metres, nose along -Z, origin at
 -- the middle); a kind with none (the tennis ball, the blood cross) stays a simple shape
-local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball", bowl = "w_pj_bowling", slipper = "w_pj_slipper", arrow = "w_pj_arrow" } :: { [string]: string }
+local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball", bowl = "w_pj_bowling", slipper = "w_pj_slipper", arrow = "w_pj_arrow", card = "w_pj_card" } :: { [string]: string }
+-- (a thrown card shows its suit's pip only: the kit's pip_h / pip_s / pip_c / pip_d / pip_j sit on top of each other)
+local function pips(root: BasePart, suit: string?)
+	local m = root.Parent
+	if not m or not m:IsA("Model") then return end
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and string.sub(d.Name, 1, 4) == "pip_" then
+			d.Transparency = if suit and string.sub(d.Name, 5, 5) == suit then 0 else 1
+		end
+	end
+end
 -- (an arrow's tip in its tip's colour: the kit's tip_ pieces, or the stand-in's point)
 local function tint(root: BasePart, tip: string?)
 	local col = tip and P.TIP[tip]
@@ -145,7 +156,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 		L.spin += dt * 18
 		local face = if L.v.Magnitude > 0.1 then CFrame.lookAt(L.p, L.p + L.v) else CFrame.new(L.p)
-		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" then face else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
+		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" then face elseif L.k == "card" then face * CFrame.Angles(0, L.spin * 2, 0) else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
 		local m = L.part.Parent
 		if m and m:IsA("Model") and m ~= folder then (m :: Model):PivotTo(cf) else L.part.CFrame = cf end
 	end
@@ -227,6 +238,16 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			elseif kind == "peel" then Fx.impact(at, Vector3.yAxis, nil, Enum.Material.SmoothPlastic, { hole = false, scale = 0.8 }); Sfx.play("bonk", at, 0.8)
 			else Fx.impact(at, Vector3.yAxis, nil, Enum.Material.Fabric, { hole = false, scale = 0.6 }) end
 		end
+	elseif k == "projn" and type(f.ids) == "table" and type(f.ps) == "table" and type(f.vs) == "table" then
+		-- (batch E) a whole fan of cards in one message
+		for i, id in f.ids do
+			local p, v = f.ps[i], f.vs[i]
+			if type(id) ~= "number" or typeof(p) ~= "Vector3" or typeof(v) ~= "Vector3" then continue end
+			local part = shape("card")
+			pips(part, if type(f.suit) == "string" then f.suit else nil)
+			live[id] = { part = part, p = p, v = v, g = tonumber(f.g) or 0, k = "card", spin = math.random() * 6, r = tonumber(f.r) }
+		end
+		if f.by ~= me.UserId then Sfx.play("card_throw", f.ps[1], 0.7) end
 	elseif k == "bowlstrike" and typeof(f.p) == "Vector3" then
 		Sfx.play("bowl_strike", f.p, 1) -- (batch D: three down)
 	elseif k == "peel" and type(f.id) == "number" and typeof(f.p) == "Vector3" then

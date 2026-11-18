@@ -100,6 +100,7 @@ minigun.formUntil, minigun.lastForm, minigun.shotT = 0, {} :: { [string]: string
 -- (weapons batch D) the TV Remote's clicks and the Scales' pillar: the server picks the target and gates the cooldowns
 -- (WeaponTricks.server); these only keep you from spamming the remotes
 minigun.trickNext = {} :: { [string]: number }
+minigun.cards = require(script.Parent:WaitForChild("CardsClient")) :: any -- (batch E: the Card Deck's hand)
 function minigun.trick(name: string, op: string?, cd: number)
 	local t = os.clock()
 	local key = name .. (op or "")
@@ -789,6 +790,11 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
+		elseif W[held] and W[held].kind == "cards" then -- (batch E: the Card Deck plays the picked card)
+			local eye, look = eyeAndAim()
+			if minigun.cards.play(eye, look) then
+				VM.kick(W[held].recoilVM, 0.8, false, 1, 1); VM.shot(W[held]); TP.fired(held, false)
+			end
 		elseif W[held] and W[held].kind == "bow" then -- (batch D: the Bow draws while you hold; the arrow goes on the let-go)
 			if not minigun.proj.bowT then
 				minigun.proj.bowT = now
@@ -817,6 +823,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 			minigun.trick("TVRemote", "rewind", 0.3)
 			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
 			Sfx.play(W[held].snd or "click")
+		elseif W[held] and W[held].kind == "cards" then minigun.cards.select() -- (batch E: the next card along)
 		elseif W[held] and W[held].gavel then -- (batch D: the Scales of Justice's pillar of light)
 			if not Body.stunned() then
 				minigun.trick("Gavel", nil, 0.3)
@@ -824,7 +831,10 @@ Keys.began(function(io: InputObject, gp: boolean)
 				if raise then raise(0.6) end
 			end
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
-	elseif Binds.is("reload", io) then if W[held] and W[held].hands == 2 then minigun.reloadBoth() else reload() end
+	elseif Binds.is("reload", io) then
+		if W[held] and W[held].hands == 2 then minigun.reloadBoth()
+		elseif W[held] and W[held].kind == "cards" then minigun.cards.redraw() -- (batch E: a new hand)
+		else reload() end
 	end
 end)
 Keys.ended(function(io: InputObject)
@@ -1095,6 +1105,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local a = ammo[held]
 	if a and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = w.mag :: number; a.reloadUntil = 0 end
 	local a2 = if w and w.hands == 2 then ammo[held .. "@2"] else nil -- (Lefty & Righty's right gun)
+	minigun.cards.show(held == "cards" and hum ~= nil and not toolOut() and not menuOpen()) -- (batch E: the hand's tiles)
 	if a2 and a2.reloadUntil > 0 and now >= a2.reloadUntil then a2.mag = w.mag :: number; a2.reloadUntil = 0 end
 	local reloading = a ~= nil and a.reloadUntil > 0
 	-- aim down sights (can't while reloading): in ~0.14 s, out in ~0.125 s

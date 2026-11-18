@@ -50,7 +50,8 @@ local now = os.clock
 type Fighter = Rules.Fighter
 type Proj = { id: number, wid: string, k: string, owner: Fighter, p: Vector3, v: Vector3, t0: number, b: number, thin: boolean?,
 	hitT: { [Fighter]: number }?, victims: number?, phase: number?, tg: Fighter?, sync: number?, -- (batch D: who it hit when, the slipper's way out / back and its lock)
-	charge: number?, tip: string? } -- (the Bow's draw and the arrow's tip)
+	charge: number?, tip: string?, -- (the Bow's draw and the arrow's tip)
+	dmg: number? } -- (batch E: a thrown card's own damage, by its rank)
 
 local projs: { Proj } = {}
 local nextId = 0
@@ -84,7 +85,7 @@ local function sweep(pr: Proj, a: Vector3, b: Vector3, r: number): (Fighter?, nu
 	local age = now() - pr.t0
 	for _, t in Fight.all do
 		if not t.alive then continue end
-		if t == pr.owner and (age < 0.25 or pr.k == "blood" or pr.k == "slipper" or (pr.k == "ball" and pr.b == 0) or (pr.k == "bowl" and age < 0.5)) then continue end
+		if t == pr.owner and (age < 0.25 or pr.k == "blood" or pr.k == "slipper" or pr.k == "card" or (pr.k == "ball" and pr.b == 0) or (pr.k == "bowl" and age < 0.5)) then continue end
 		-- (the bowling ball: once a person every 0.7 s; the slipper: once a person each way)
 		local ht = pr.hitT and pr.hitT[t]
 		if ht and (pr.k == "slipper" or now() - ht < 0.7) then continue end
@@ -239,6 +240,12 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 				fx("frost", { model = Fight.model(t), n = fr.n })
 			end
 		end
+		return true
+	elseif pr.k == "card" then
+		-- (batch E: the Card Deck's thrown cards) one target each, its rank's damage, a little shove
+		fx("projx", { id = pr.id, p = at, b = true })
+		if own then return true end
+		Fight.hurt(t, pr.dmg or w.dmg, pr.owner, pr.wid, false, Vector3.new(d.X * w.kb, 1 * S, d.Z * w.kb), at)
 		return true
 	elseif pr.k == "arrow" then
 		local tip = pr.tip or "regular"
@@ -444,6 +451,28 @@ end
 	fire(p, wid, eye :: Vector3, lk.Unit, c)
 end)
 
+-- ------------------------------------------------------------------ the Card Deck's volleys (CardDeck.server picks the
+-- cards and their aims; they fly here like every other shot). one spawn message for the whole fan
+local Volley = Instance.new("BindableEvent")
+Volley.Name = "JankCardVolley"
+Volley.Parent = game:GetService("ServerStorage")
+Volley.Event:Connect(function(p: Player, eye: Vector3, dirs: { Vector3 }, dmg: number, suit: string?)
+	local f = Fight.byPlayer[p]
+	local w = W.cards :: any
+	if not f or not f.alive or not w then return end
+	local ids, ps, vs = {}, {}, {}
+	for _, d in dirs do
+		local start = 0.8 * S
+		local hit = sphere(eye, w.r, d * start)
+		if hit then start = math.max(0, hit.Distance - 0.05) end
+		nextId += 1
+		local pr: Proj = { id = nextId, wid = "cards", k = "card", owner = f, p = eye + d * start, v = d * w.speed, t0 = now(), b = 0, dmg = dmg }
+		table.insert(projs, pr)
+		table.insert(ids, pr.id); table.insert(ps, pr.p); table.insert(vs, pr.v)
+	end
+	fx("projn", { w = "cards", by = uid(f), model = Fight.model(f), ids = ids, ps = ps, vs = vs, g = w.grav, r = w.r, suit = suit })
+end)
+
 -- ------------------------------------------------------------------ every Heartbeat
 local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 	local w = W[pr.wid] :: any
@@ -469,6 +498,7 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 		local nrm = hit.Normal
 		pr.p = to + nrm * 0.02
 		if pr.k == "rocket" then blast(pr, pr.p); return false end
+		if pr.k == "card" then fx("projx", { id = pr.id, p = pr.p }); return false end
 		if pr.k == "arrow" then
 			-- the first wall stops it: it sticks there (an explosion or gas tip goes off)
 			if pr.tip == "explosion" then arrowBlast(pr, pr.p); return false end

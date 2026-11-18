@@ -228,6 +228,34 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			task.delay(0.25, function() g:Destroy() end)
 		end
 		Sfx.play("scythe_dash", f.a :: Vector3, 1)
+	elseif f.k == "cardplay" then
+		-- (weapons batch E) a card played: its own sound; the effects come on their own messages
+		local m = typeof(f.model) == "Instance" and f.model :: Instance
+		local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local at = if r then r.Position else nil
+		local snd = if f.rank == 1 then "card_tp" elseif f.suit == "h" then "card_heal" elseif f.suit == "c" then "card_blast"
+			elseif f.suit == "d" then "card_dash" else "card_throw"
+		Sfx.play(snd, if f.by == me.UserId then nil else at, 0.9)
+	elseif f.k == "cardtp" and typeof(f.a) == "Vector3" and typeof(f.b) == "Vector3" then
+		Fx.tracer(f.a, f.b, Color3.fromRGB(240, 238, 232), 0.35, 0.3) -- (the ace: a pale streak from where you were)
+	elseif f.k == "carddash" and typeof(f.model) == "Instance" then
+		local r = (f.model :: Instance):FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r and typeof(f.look) == "Vector3" then Fx.tracer(r.Position, r.Position + (f.look :: Vector3) * (if f.ult then 18 else 9), Color3.fromRGB(200, 40, 48), 0.3, 0.25) end
+	elseif f.k == "cardheal" and typeof(f.model) == "Instance" then
+		-- hearts: a soft red ring rising up the body
+		local r = (f.model :: Instance):FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r then
+			local ring = Instance.new("Part")
+			ring.Shape = Enum.PartType.Cylinder; ring.Size = Vector3.new(0.1, 4.5, 4.5)
+			ring.CFrame = CFrame.new(r.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+			ring.Color = Color3.fromRGB(230, 70, 80); ring.Material = Enum.Material.Neon; ring.Transparency = 0.4
+			ring.Anchored = true; ring.CanCollide = false; ring.CanQuery = false; ring.CanTouch = false; ring.CastShadow = false
+			ring.Parent = workspace:FindFirstChild("JankfireFx") or workspace
+			game:GetService("TweenService"):Create(ring, TweenInfo.new(0.6), { CFrame = ring.CFrame + Vector3.new(0, 5, 0), Transparency = 1 }):Play()
+			task.delay(0.6, function() ring:Destroy() end)
+		end
+	elseif f.k == "cardblast" and typeof(f.p) == "Vector3" then
+		Fx.blast(f.p :: Vector3, if f.ult then 1.6 else 1) -- (clubs: the blast round you)
 	elseif (f.k == "burn" or f.k == "sleep") and typeof(f.model) == "Instance" then
 		-- (weapons batch D, the Bow's tips) on fire for 3 s; asleep for 4 s: slow purple motes over the head
 		local m = f.model :: Instance
