@@ -105,6 +105,26 @@ return function(B, R)
 				B.box(F7, C, "LoungeCornice", s * cx, s * (LX - 0.8), LH - 0.8, LH, cd + 2, cd + 2.8, P.cream, nil, G)
 			end
 			B.box(F7, C, "LoungeCornice", -LX, LX, LH - 0.8, LH, FAR - 0.8, FAR, P.cream, nil, G)
+			-- (18 Nov, the owner: "can you fix the back side of this to make it look presentable": the round room's three
+			-- faces seen from the lounge get the lounge's cornice carried across, a band over the arches, and a clean
+			-- pilaster over each of the round room's piers between and beside the arches, in world studs in Hub v3 as the
+			-- arches are, HubRotundaCentre)
+			for _, k in { 6, 7, 8 } do
+				local Fk = B.side(k)
+				local o = if k == 7 then 0 else 0.05 -- (the corners where two faces' trim meets: not in one plane)
+				B.box(Fk, C, "LoungeCornice", -(wo + 0.15), wo + 0.15, LH - 0.8 - o, LH - o, A + T, A + T + 0.8, P.cream, nil, G)
+				B.box(Fk, C, "ArchBand", -(wo + 0.1), wo + 0.1, 12 + o, 12.6 + o, A + T, A + T + 0.35, P.cream, nil, G)
+			end
+			if B.warp then
+				for i = 5, 8 do
+					B.rigid(B.fr((i + 0.5) * 360 / R.N), 0, rcO, 0, function(Fl)
+						local band = R.hmap(R.V3.H, 12)
+						B.box(Fl, C, "LoungePilaster", -2.45, 2.45, 0.4, R.hmap(R.V3.H, LH - 0.8), -1.6, 1, P.pier2, nil, G)
+						B.box(Fl, C, "LoungePilasterBase", -2.9, 2.9, -0.04, 1.3, -1.7, 1.5, P.pier, nil, G)
+						B.box(Fl, C, "LoungePilasterCap", -2.9, 2.9, band - 0.2, band + 0.9, -1.7, 1.4, P.cream, nil, G)
+					end)
+				end
+			end
 			-- timber beams across under the ceiling (one in front of the bay's canopy, two over each wing), white panels
 			-- between them, the lights
 			B.box(F7, C, "LoungeBeam", -(LX - 0.8), LX - 0.8, LH - 1.4, LH, 39.6, 40.8, P.beam, Wood, G)

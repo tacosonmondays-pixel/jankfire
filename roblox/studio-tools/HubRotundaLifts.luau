@@ -18,6 +18,13 @@ return function(B, R)
 	local A, T = R.A, R.WALL
 	local Neon = Enum.Material.Neon
 	local S, C = "Shell", "Scenery"
+	local ACCENT = P.doorGlow or P.glow -- (the building's one accent)
+	-- (18 Nov, the owner on the second floor: "top floor is missing this, and its also missing moulding", then "the
+	-- upstairs seems so empty", "like where the pads are!". so it gets the ground floor's finish (a lit nosing on every
+	-- deck's lip, skirting with a cap at every wall's foot, a cornice at every wall's top, pilasters where the round
+	-- room's faces meet, a lit sill in every doorway) and every pad a designed bay: on a deck, a lit coffer over it, a
+	-- lit panel over its board; a waiting bench and a big planter between each two)
+	local DECK_H = 0.36 -- (an upper pad's deck: under the walk's keep-clear zone, which starts 0.4 over the floor)
 	local D0, D1 = R.DECK0, R.DECK1 -- a deck's front, and the face of the wall behind it
 	local BACK = D1 + 2
 	local UY, ROOF, OUT = R.UP_Y, R.UP_ROOF, R.UP_OUT
@@ -96,10 +103,17 @@ return function(B, R)
 		md.w, md.dp = R.UP_SIZE[md.id][1], R.UP_SIZE[md.id][2]
 		local w = (OUT + 2) * math.tan(math.rad(R.UP_PITCH / 2)) + 0.4
 		B.box(F, S, "UpperWall", -w, w, FT, ROOF + 0.96, OUT, OUT + 2, P.bay) -- (from the slab's top: no face shared with its underside. the bay's own pale wall, as in the lifts)
-		B.box(F, C, "UpperBase", -w, w, UY, UY + 0.8, OUT - 0.25, OUT, P.pier, nil, G)
+		local wbw = OUT * math.tan(math.rad(R.UP_PITCH / 2)) - 0.7 -- (the bay's half width at its wall, between the fins: the skirting stops at the fins, so no steps)
+		B.box(F, C, "UpperBase", -wbw, wbw, UY, UY + 1.1, OUT - 0.3, OUT, P.pier, nil, G)
+		B.box(F, C, "UpperBaseCap", -wbw, wbw, UY + 1.1, UY + 1.25, OUT - 0.42, OUT, P.cream, nil, G)
 		B.box(F, C, "UpperBand", -w, w, UY + 9.4, UY + 9.9, OUT - 0.25, OUT, P.cream, nil, G)
 		local dP = OUT - 1.2 - md.dp / 2
-		local pad = B.pad(F, md, 0, UY, dP)
+		-- its deck (the lift decks' kind, low), the accent along its front lip
+		local dw = if md.w / 2 + 0.6 > wbw - 0.15 then md.w / 2 + 0.05 else md.w / 2 + 0.6
+		local dF = dP - md.dp / 2 - 0.5
+		B.box(F, S, "UpperDeck", -dw, dw, UY - 0.04, UY + DECK_H, dF, OUT - 0.3, P.deck)
+		B.box(F, C, "UpperNosing", -dw - 0.03, dw + 0.03, UY + DECK_H - 0.16, UY + DECK_H + 0.02, dF - 0.05, dF + 0.3, ACCENT, Neon, G)
+		local pad = B.pad(F, md, 0, UY + DECK_H, dP)
 		upPads[i] = pad
 		local bw = md.w - 1.4
 		B.board(pad, F, md, bw, bw / 2, 0, UY + 5.4, OUT - 0.45, 0, { thick = 0.4 })
@@ -118,7 +132,16 @@ return function(B, R)
 			local wd = d * math.tan(math.rad(R.UP_PITCH / 2))
 			B.box(F, C, "UpperBeam", -wd, wd, ROOF - 0.8, ROOF - 0.04, d - 0.5, d + 0.5, P.cream, nil, G)
 		end
-		B.panel(F, 0, ROOF, dP, 3, 3)
+		-- a lit coffer over the pad, its size, in a cream frame; a lit panel over its board, between the rails
+		local cfx, cfd = md.w / 2 - 0.4, md.dp / 2 - 0.4
+		B.box(F, C, "PadCoffer", -cfx, cfx, ROOF - 0.3, ROOF - 0.12, dP - cfd, dP + cfd, P.panel, Neon, G)
+		for _, s in { -1, 1 } do
+			B.box(F, C, "PadCofferFrame", s * cfx, s * (cfx + 0.7), ROOF - 0.95, ROOF - 0.05, dP - cfd - 0.7, dP + cfd + 0.7, P.cream, nil, G)
+			B.box(F, C, "PadCofferFrame", -cfx, cfx, ROOF - 0.9, ROOF - 0.08, dP + s * cfd, dP + s * (cfd + 0.7), P.cream, nil, G)
+		end
+		B.box(F, C, "HeaderPanel", -bw / 2, bw / 2, UY + 10.3, UY + 11.45, OUT - 0.17, OUT - 0.05, P.panel, Neon, G)
+		B.box(F, C, "HeaderFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 9.95, UY + 10.3, OUT - 0.35, OUT - 0.02, P.cream, nil, G)
+		B.box(F, C, "HeaderFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 11.45, UY + 11.8, OUT - 0.35, OUT - 0.02, P.cream, nil, G)
 		B.lamp(F, 0, ROOF - 1.2, dP, 22, 0.9, P.light, { spot = true, angle = 90 })
 		B.panel(F, 0, ROOF, 44, 2.4, 6)
 		B.lamp(F, 0, ROOF - 1.2, 44, 22, 0.6)
@@ -129,8 +152,19 @@ return function(B, R)
 		local b = (i - nU / 2) * R.UP_PITCH
 		local F = B.lf(b)
 		B.box(F, S, "UpperFin", -0.7, 0.7, UY - 0.04, ROOF, OUT - 5.2, OUT - 0.02, P.shell) -- (feet just into the floor: no face shared with the dark foot along the wall)
+		B.box(F, C, "UpperFinBase", -0.8, 0.8, UY, UY + 1.1, OUT - 5.45, OUT - 0.3, P.pier, nil, G)
+		B.box(F, C, "UpperFinBaseCap", -0.86, 0.86, UY + 1.1, UY + 1.25, OUT - 5.52, OUT - 0.42, P.cream, nil, G)
 		B.box(F, C, "UpperFinLight", -0.22, 0.22, UY + 2.4, UY + 10.4, OUT - 5.32, OUT - 5.2, P.strip, Neon, G)
 		B.box(F, C, "UpperRib", -0.5, 0.5, ROOF - 0.8, ROOF, R.reach(b, A + T) + 0.3, OUT - 5.2, P.cream, nil, G)
+	end
+	-- between each two pads, clear of the walks to them: a waiting bench (one solid block, its length along the gap) and
+	-- a big planter further out
+	for i = 1, nU - 1 do
+		local g = (i - nU / 2) * R.UP_PITCH
+		local F = B.lf(g)
+		B.box(F, S, "UpperBench", -0.6, 0.6, UY - 0.02, UY + 1.3, 39, 43.4, P.pier2)
+		B.box(F, C, "UpperBenchTop", -0.85, 0.85, UY + 1.3, UY + 1.72, 38.8, 43.6, P.creamHi, nil, G)
+		B.put(F, R.prop("rk_planter", "bc_plantbig"), "UpperPlanter", 0, UY, 51.2, 0, { scale = R.propScale("rk_planter", 0.95, 0.55), solid = true })
 	end
 	-- along the round room's wall inside the hall: a dark foot and a cream rail at hand height, broken at each doorway,
 	-- which gets a pale frame on this side too
@@ -145,6 +179,21 @@ return function(B, R)
 		if R.UP_DOORS[side] then
 			for _, s in { -1, 1 } do B.box(F, C, "UpperJambIn", s * 4.6, s * 5.2, UY + 0.04, UY + 9.4, A + T, A + T + 0.35, P.creamHi, nil, G) end
 			B.box(F, C, "UpperHeadIn", -5.2, 5.2, UY + 8.8, UY + 9.4, A + T, A + T + 0.35, P.creamHi, nil, G)
+			-- the doorway's sill lit in the accent, on both sides (the ground floor's ways out have one)
+			B.box(F, C, "UpperSillGlow", -4.6, 4.6, UY - 0.02, UY + 0.12, A + T + 0.05, A + T + 0.35, ACCENT, Neon, G)
+			B.box(F, C, "UpperSillGlow", -4.6, 4.6, UY + 0.02, UY + 0.16, A - 0.55, A - 0.25, ACCENT, Neon, G)
+		end
+		local o = if side % 2 == 0 then 0 else 0.05 -- (where two faces' trim meets at a corner: not in one plane)
+		B.box(F, C, "UpperInCornice", -wo, wo, ROOF - 1 - o, ROOF - o, A + T, A + T + 0.8, P.cream, nil, G)
+	end
+	-- pilasters where the round room's faces meet, inside the hall: they hide the trim's corners
+	do
+		local rcO = (A + T) / math.cos(math.pi / R.N)
+		for _, i in { 12, 13, 0, 1 } do
+			local F = B.fr((i + 0.5) * 360 / R.N)
+			B.box(F, C, "UpperInPilaster", -0.95, 0.95, UY - 0.02, ROOF - 1.1, rcO - 0.3, rcO + 0.4, P.pier2, nil, G)
+			B.box(F, C, "UpperInPilasterBase", -1.15, 1.15, UY, UY + 1.1, rcO - 0.3, rcO + 0.55, P.pier, nil, G)
+			B.box(F, C, "UpperInPilasterCap", -1.25, 1.25, ROOF - 1.2, ROOF, rcO - 0.3, rcO + 1.05, P.cream, nil, G)
 		end
 	end
 
@@ -157,6 +206,15 @@ return function(B, R)
 		B.box(F, C, "EndBase", -s * 1.6, -s * 1.95, 0, 0.7, w0 + 3, D0, P.pier2, nil, G)
 		B.box(F, C, "EndLedge", -s * 1.6, -s * 2.1, 5, 5.5, w0 + 3, D0, P.cream, nil, G)
 		B.box(F, C, "EndBand", -s * 1.6, -s * 1.75, 5.5, 7.2, w0 + 3, D0, P.band, nil, G)
+		-- on the second floor too: skirting with a cap, a rail at hand height, a cornice, and a lit panel in a pale frame
+		local u0 = R.reach(e, A + T) + 0.4
+		B.box(F, C, "EndUpBase", -s * 1.6, -s * 1.9, UY, UY + 1.1, u0, OUT - 0.3, P.pier, nil, G)
+		B.box(F, C, "EndUpBaseCap", -s * 1.6, -s * 2.02, UY + 1.1, UY + 1.25, u0, OUT - 0.42, P.cream, nil, G)
+		B.box(F, C, "EndUpRail", -s * 1.6, -s * 1.94, UY + 3.3, UY + 3.62, u0, OUT - 0.42, P.cream, nil, G)
+		B.box(F, C, "EndUpCornice", -s * 1.6, -s * 2.4, ROOF - 1, ROOF, u0, OUT - 0.3, P.cream, nil, G)
+		B.box(F, C, "EndUpPanel", -s * 1.6, -s * 1.72, UY + 4.2, UY + 10.2, 47, 57, P.panel, Neon, G)
+		for _, y in { { UY + 3.85, UY + 4.2 }, { UY + 10.2, UY + 10.55 } } do B.box(F, C, "EndUpFrame", -s * 1.6, -s * 1.95, y[1], y[2], 46.65, 57.35, P.cream, nil, G) end
+		for _, d in { { 46.65, 47 }, { 57, 57.35 } } do B.box(F, C, "EndUpFrame", -s * 1.6, -s * 1.95, UY + 4.2, UY + 10.2, d[1], d[2], P.cream, nil, G) end
 		-- (no pot plant here any more: the owner, 16 Nov, after a play-test: "in the match pads theres random pots on the
 		-- ground?". the walk past the lifts keeps clear floor)
 	end

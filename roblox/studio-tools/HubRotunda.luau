@@ -509,6 +509,7 @@ function R.new(live, opts)
 		if o.nc then p.CanCollide = false end
 		if o.noShadow or o.ghost then p.CastShadow = false end
 		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+		if B.mark then p:SetAttribute("Warped", true) end -- (made in world studs inside B.rigid: the warp leaves it be)
 		p.Parent = root[folder]
 		B.count += 1
 		return p
@@ -713,6 +714,7 @@ function R.new(live, opts)
 		l.Range = range; l.Brightness = bright; l.Color = Color3.fromHex(hex or P.light); l.Shadows = o.shadows or false
 		if o.spot then l.Face = o.face or Enum.NormalId.Bottom; l.Angle = o.angle or 120 end
 		l.Parent = p
+		if B.mark then p:SetAttribute("Warped", true) end
 		p.Parent = root.Scenery
 		B.lamps += 1
 		if l.Shadows then B.shadows += 1 end
@@ -821,6 +823,18 @@ function R.new(live, opts)
 	-- paint on a floor whose top is y
 	function B.paint(F, name, x0, x1, y, d0, d1, hex, lift)
 		return B.box(F, "Scenery", name, x0, x1, y + (lift or 0.03), y + (lift or 0.03) + 0.03, d0, d1, hex, nil, B.G)
+	end
+	-- a thing made in WORLD studs (18 Nov: the arches seen from the lounge, which the warp's stretch of heights over 9.5
+	-- had made faceted): fn(Fl) builds it in Fl, a frame at its place on the floor (x, d in F, turned yaw degrees). in
+	-- Hub v3 its place goes through the warp but its parts keep their shape (marked Warped)
+	function B.rigid(F, x, d, yaw, fn)
+		local at = F * Vector3.new(x, 0, -d)
+		if B.warp then at = R.warpPoint(B.warp, O, at) end
+		local Fl = CFrame.new(at) * F.Rotation * CFrame.Angles(0, math.rad(yaw or 0), 0)
+		local was = B.mark
+		B.mark = B.warp ~= nil
+		fn(Fl)
+		B.mark = was
 	end
 
 	-- a queue pad: a dark base, the team plates side by side (pink on the left as you face outward, the way the counts

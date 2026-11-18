@@ -1819,6 +1819,33 @@ The owner (18 Nov, about 04:30 UTC): "We need more map variety create our maps b
 
 **Map-vote cards** (`shared/MapCards.luau`): the new arenas' pictures are Cycles renders of their own kits (`tools/roblox/card_render.py` runs a map's builder with card cameras, 1280 x 720, denoised), uploaded as Images. No text in any.
 
+## 45. Hub v3 quick pass: the arches from the lounge, the second floor's finish and its pad bays, 18 November 2026 (place version 903)
+
+Three owner notes, fixed in Hub v3 ahead of the hotel-plaza rebuild (`roblox/docs/hub/hub_v3_quickpass_903.jpg`, before | after):
+
+- **The arches from the lounge.** The owner: "can you fix the back side of this to make it look presentable".
+  - **Cause:** the warp. The nine big stones were tilted boxes, and `R.applyWarp` stretches heights over 9.5 by 1.87, which turned them into pointed facets with holes beside them. The round room's piers showed their spiky backs.
+  - **Fix:** in Hub v3 each arch is now made in world studs, with `B.rigid` (its place is warped, its parts keep their shape: marked `Warped`). It has:
+    - 24 small stones in a true half circle as wide as the way through (the collision boxes' faces);
+    - jambs under it, and the spandrels filled up to the lintel in slices that the stones hide;
+    - on the lounge side, a cream hood, a keystone and imposts.
+  - The lounge adds a clean pilaster over each of the round room's four piers there, an `ArchBand` over the arches, and its cornice carried across the three faces.
+  - Hub v2 keeps the nine stones.
+- **The second floor's finish.** The owner: "top floor is missing this, and its also missing moulding". It now has the ground floor's finish:
+  - skirting with a cream cap that stops at the fins (no steps), plus a base round each fin's foot;
+  - pilasters at the round room's corners inside the hall (they hide the trim's corners);
+  - a cornice along the round room's wall and along the end walls;
+  - on each end wall: skirting, a rail and a lit panel in a pale frame;
+  - every doorway's sill lit in the accent, on the hall side and the balcony side.
+- **The pads upstairs.** The owner: "the upstairs seems so empty", "like where the pads are!". Every upper pad now sits in a designed bay:
+  - on a low deck (`DECK_H` 0.36: under the walks' keep-clear zones, which start 0.4 over the floor) with the accent along its lip (`UpperNosing`);
+  - under a lit coffer its own size, in a cream frame;
+  - with a lit panel over its board.
+  - Between each two pads, clear of the walks: a solid waiting bench and a big planter.
+- `R.FIRST_LOOK` groups can name several parts (`"A|B"`). The jump pads' light column went the same day (place version 889, commit 7d0898c).
+- Checks: R.check 0 problems (50 zones, 0 leaks, 313 sight lines, walked to 12, 14 regulars' ways). Flicker finder 0 visible.
+- Rule kept for the plaza: every level has the same finish (skirting, cornice, trim round openings, a finished lip on open edges); every pad has a designed bay; everything is finished on every side a player can see.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

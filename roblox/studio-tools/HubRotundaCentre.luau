@@ -187,13 +187,52 @@ return function(B, R)
 
 	-- ---- the doors' own shapes
 	-- the lounge: a round arch of dark stones (it springs 6 up; 4.9 in radius); since 18 Nov three in a row, sides 6, 7, 8
+	-- (18 Nov, the owner from the lounge: "can you fix the back side of this to make it look presentable". in Hub v3 the
+	-- nine big stones went through the warp, which stretches heights over 9.5, and came out as odd pointed facets with
+	-- holes beside them. so in Hub v3 each arch is made in world studs (B.rigid, its place warped, its parts not): 24
+	-- small stones in a true half circle as wide as the way through (the collision boxes' faces), jambs under it, the
+	-- spandrels filled up to the lintel, and on the lounge's side a cream hood round it, a keystone and imposts; the
+	-- lounge also puts a clean pilaster over each of the round room's piers there (HubRotundaRooms). Hub v2 keeps the
+	-- nine stones)
+	local Kw = B.warp and B.warp.K
 	for _, side in { 6, 7, 8 } do
 		local F = B.side(side)
-		for k = 1, 9 do
-			local a = math.rad((k - 0.5) * 20)
-			local cx, cy = 6.5 * math.cos(a), 6 + 6.5 * math.sin(a)
-			local tx, ty = -math.sin(a) * 1.5, math.cos(a) * 1.5
-			B.spar(F, C, "ArchStone", A - 0.3, A + T + 0.1, 3.2, cx - tx, cy - ty, cx + tx, cy + ty, P.pier, nil, G)
+		if Kw then
+			B.rigid(F, 0, A + T / 2, 0, function(Fl)
+				local h = T / 2 * Kw -- (the wall's faces, either side of Fl's middle; d > 0 the lounge's side)
+				local rI, SY = 4.8 * Kw, 6.6 -- (its inner radius: the collision boxes' inner faces; where it springs)
+				local rO = rI + 1.9
+				local top = R.hmap(R.V3.H, 12) -- (the lintel's underside)
+				local hl = (rI + rO) / 2 * math.tan(math.rad(3.75)) + 0.03
+				for k = 1, 24 do
+					local a = math.rad((k - 0.5) * 7.5)
+					local cx, cy = (rI + rO) / 2 * math.cos(a), SY + (rI + rO) / 2 * math.sin(a)
+					local tx, ty = -math.sin(a) * hl, math.cos(a) * hl
+					local o = (k % 2) * 0.04 -- (every other one a hair prouder: no two faces in one plane)
+					B.spar(Fl, C, "ArchStone", -h - 0.4 - o, h + 0.4 + o, rO - rI, cx - tx, cy - ty, cx + tx, cy + ty, P.pier, nil, G)
+					local hr = rO + 0.28 -- (the lounge's side: a cream hood round it)
+					local hx, hy = hr * math.cos(a), SY + hr * math.sin(a)
+					local hlh = hr * math.tan(math.rad(3.75)) + 0.03
+					B.spar(Fl, C, "ArchHood", h, h + 0.75 + o, 0.56, hx + math.sin(a) * hlh, hy - math.cos(a) * hlh, hx - math.sin(a) * hlh, hy + math.cos(a) * hlh, P.creamHi, nil, G)
+				end
+				for _, s in { -1, 1 } do
+					B.box(Fl, C, "ArchJamb", s * rI, s * (rO + 0.4), -0.04, SY + 0.05, -h - 0.4, h + 0.4, P.pier, nil, G)
+					B.box(Fl, C, "ArchImpost", s * (rI - 0.3), s * (rO + 0.7), SY - 0.6, SY, h - 0.05, h + 0.65, P.cream, nil, G)
+					-- the spandrel up to the lintel, in slices whose stepped bottoms the stones hide
+					for _, sl in { { 3.4, 4.3 }, { 4.3, 5.1 }, { 5.1, 5.9 }, { 5.9, 6.7 }, { 6.7, 7.5 }, { 7.5, rO + 0.35 } } do
+						local yb = if sl[2] < rO then SY + math.sqrt(rO * rO - sl[2] * sl[2]) else SY
+						if yb < top then B.box(Fl, C, "ArchSpandrel", s * sl[1], s * sl[2], yb, top, -h + 0.05, h - 0.05, P.shell, nil, G) end
+					end
+				end
+				B.box(Fl, C, "ArchKeystone", -0.75, 0.75, SY + rI - 0.25, SY + rO + 0.95, h, h + 0.9, P.cream, nil, G)
+			end)
+		else
+			for k = 1, 9 do
+				local a = math.rad((k - 0.5) * 20)
+				local cx, cy = 6.5 * math.cos(a), 6 + 6.5 * math.sin(a)
+				local tx, ty = -math.sin(a) * 1.5, math.cos(a) * 1.5
+				B.spar(F, C, "ArchStone", A - 0.3, A + T + 0.1, 3.2, cx - tx, cy - ty, cx + tx, cy + ty, P.pier, nil, G)
+			end
 		end
 		B.solid("ArchBoxL", Vector3.new(1.6, 12, T), F * CFrame.new(-5.6, 6, -(A + T / 2)))
 		B.solid("ArchBoxR", Vector3.new(1.6, 12, T), F * CFrame.new(5.6, 6, -(A + T / 2)))
