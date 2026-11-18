@@ -106,6 +106,8 @@ codes weekly by weekly at some point".
   skipped), `"clock", days` (the calendar runs that many days ahead), `"codes"` (which are open), `"unlock"` (clears
   the wait), `"hide", id?` (un-reveal and take the copy back; all with no id), `"reveal", id`, `"redeliver"` (what
   joining does), `"unclaim", id` (a reward's claim). From the client: `Remotes.LoreCode:InvokeServer("try", text)`.
+  Photos of the cutscene: set the player attribute `LoreCutHold` = seconds (Studio only) and it holds at that moment
+  (1.7 walk-in, 4.9 beat, 6.5 exit); clear it and it runs on. Check nobody else is pressing keys first: Space skips.
 - **The parked first idea**: one secret action per NPC at its spot, judged by the server (`server/LoreTriggers.luau`,
   `TRIGGERS_ON = false` in LoreNPCs; written, never tested). Spoilers: Gary, salute facing his desk; Dale, shoot his
   machine 3 times in 8 s; the Janitor, stand still on the wet floor 8 s; Mr. Smiles, cheer on the Hook by his

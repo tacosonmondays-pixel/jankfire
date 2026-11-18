@@ -708,6 +708,9 @@ local function stepCut(dt: number)
 	local c = cut
 	if not c then return end
 	local t = os.clock() - c.t0
+	-- (Studio photos: the player attribute LoreCutHold = seconds holds the cutscene at that moment)
+	local hold = me:GetAttribute("LoreCutHold")
+	if type(hold) == "number" and RunService:IsStudio() then t = hold; c.t0 = os.clock() - hold end
 	local T1, T2, T3 = CUT_WALK, CUT_WALK + CUT_BEAT, CUT_WALK + CUT_BEAT + CUT_LEAVE
 	if t >= T3 then endCut(); return end
 	local a = c.actor
