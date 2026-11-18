@@ -20,8 +20,17 @@
 --   ("stop")          -> end it
 -- remote FlairKill (RemoteEvent, made here): { m = the body, fx = id, k = killer's UserId, from = where they stood } to
 -- every client.
+--   ("pet", id)       -> wear a pet you have found ("" = none)
+-- PETS (18 Nov 2026): found only (server/PetSecrets.server.luau finds them), owned in THIS save (d.pets), never the loot
+-- save, so the shop and the bags never see them. the worn one is the player attribute Pet (every client's Pets.client
+-- draws it). script.PetOps (BindableFunction, for the server's own scripts):
+--   ("grant", p, id)   -> "found" (the first time: saved, worn if you wore none, "NEW PET · <NAME>" and its sound for
+--                         you alone), "owned", "loading" (the save isn't in yet: try again), "no such pet"
+--   ("owns", p, id)    -> true / false
+--   ("bump", p, key)   -> one more of a saved count (d.seen[key]: how many times the train passed you), the new count
+--                         (nil while loading)
 -- player attributes: KillFx (the worn effect), Grapple (the worn grapple skin), Emotes ("wave,salute,,,,,,"), Emote
--- (playing now, or nil), FlairSave.
+-- (playing now, or nil), Pet (the worn pet, or nil), FlairSave.
 -- Studio only: ServerStorage.JankFlairTest (BindableFunction):
 --   ("fx", model, id)          an effect on any model, as a kill would (frozen + FlairKill)
 --   ("kill", player, n|name)   you kill a training dummy, the n-th or the first whose name has it (the real path: Fight.hurt)
@@ -54,7 +63,7 @@ local Remote = remote("Flair", "RemoteFunction") :: RemoteFunction
 local KillEvent = remote("FlairKill", "RemoteEvent") :: RemoteEvent
 
 local store = Profiles.new("JankfireFlair_v1", function()
-	return { v = 2, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes) }
+	return { v = 2, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes), pet = "", pets = {}, seen = {} }
 end)
 
 type State = { prof: any, ready: boolean, emote: { id: string, t0: number, len: number, loop: boolean }?, last: number,
@@ -95,9 +104,23 @@ local function slots(p: Player): { string }
 	end
 	return out
 end
+-- pets: found ones are in the save (d.pets[id] = true); the dev unlock wears any
+local function ownsPet(p: Player, id: string): boolean
+	if not Flair.pet(id) then return false end
+	local s = st[p]
+	if s and s.devAll then return true end
+	local d = dataOf(p)
+	return d ~= nil and type(d.pets) == "table" and d.pets[id] == true
+end
+local function wornPet(p: Player): string?
+	local d = dataOf(p)
+	local id = d and d.pet
+	return if type(id) == "string" and id ~= "" and ownsPet(p, id) then id else nil
+end
 local function publish(p: Player)
 	local s = st[p]
 	if not s or not p.Parent then return end
+	p:SetAttribute("Pet", wornPet(p))
 	p:SetAttribute("KillFx", worn(p))
 	p:SetAttribute("Grapple", wornGrapple(p))
 	p:SetAttribute("Emotes", table.concat(slots(p), ","))
@@ -266,8 +289,10 @@ local function handle(p: Player, op: any, a: any, b: any): any
 	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "state" then
 		local d = dataOf(p)
+		local pets = {}
+		for _, id in Flair.PET_ORDER do if ownsPet(p, id) then table.insert(pets, id) end end
 		return { ok = true, kill = worn(p), grapple = wornGrapple(p), emotes = slots(p), owned = ownedList(p),
-			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none" }
+			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none", pets = pets, pet = wornPet(p) or "" }
 	end
 	if op == "emote" then
 		local ok, why, len, anim = startEmote(p, a)
@@ -287,6 +312,11 @@ local function handle(p: Player, op: any, a: any, b: any): any
 		if type(a) ~= "string" or not Flair.info("grapple", a) then return { ok = false, why = "no such grapple" } end
 		if not owns(p, "grapple", a) then return { ok = false, why = "not owned" } end
 		if d.grapple ~= a then d.grapple = a; changed(p) end
+		return { ok = true }
+	elseif op == "pet" then
+		if a ~= "" and not Flair.pet(a) then return { ok = false, why = "no such pet" } end
+		if a ~= "" and not ownsPet(p, a) then return { ok = false, why = "not found yet" } end
+		if d.pet ~= a then d.pet = a; changed(p) end
 		return { ok = true }
 	elseif op == "slot" then
 		if type(a) ~= "number" or a ~= math.floor(a) or a < 1 or a > Flair.SLOTS then return { ok = false, why = "no such slot" } end
@@ -327,6 +357,9 @@ local function added(p: Player)
 	for i = 1, Flair.SLOTS do if d.emotes[i] ~= "" and not Flair.info("emote", d.emotes[i]) then d.emotes[i] = "" end end
 	if not Flair.info("kill", d.kill) then d.kill = Flair.DEFAULT.kill end
 	if not Flair.info("grapple", d.grapple) then d.grapple = Flair.DEFAULT.grapple end
+	if type(d.pet) ~= "string" then d.pet = "" end
+	if type(d.pets) ~= "table" then d.pets = {} end
+	if type(d.seen) ~= "table" then d.seen = {} end
 	-- (v2, 17 Nov: Roblox's free emotes are the starter set: a wheel saved before then gets them in its empty slots)
 	if (tonumber(d.v) or 1) < 2 then
 		for _, id in Flair.DEFAULT.emotes do
@@ -400,6 +433,70 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 	end
 end)
+
+-- ------------------------------------------------------------------ pets: the finds (PetSecrets asks through PetOps)
+local CalloutR = Remotes:WaitForChild("Callout", 10) :: RemoteEvent?
+-- the find's recording, on the finder's screen only (a copy in their PlayerGui: nobody else hears it), like the hub egg's
+local function foundSound(p: Player, id: string)
+	local kit = ReplicatedStorage:FindFirstChild("JankfirePets")
+	local m = kit and kit:FindFirstChild(id)
+	local snd = m and m:FindFirstChild("Found")
+	local pg = p:FindFirstChildOfClass("PlayerGui")
+	if not (snd and snd:IsA("Sound") and pg) then return end
+	local c = snd:Clone()
+	c.Parent = pg
+	c:Play()
+	local len = if c.PlaybackRegionsEnabled then c.PlaybackRegion.Max - c.PlaybackRegion.Min else c.TimeLength
+	task.delay(math.max(2, len + 0.5), function() c:Destroy() end)
+end
+local function grantPet(p: Player, id: string): string
+	local info = Flair.pet(id)
+	if not info then return "no such pet" end
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not s.ready or not d then return "loading" end
+	if type(d.pets) ~= "table" then d.pets = {} end
+	if d.pets[id] == true then return "owned" end
+	d.pets[id] = true
+	if type(d.pet) ~= "string" or d.pet == "" then d.pet = id end -- (your first pet comes along at once)
+	changed(p)
+	if CalloutR then CalloutR:FireClient(p, "NEW PET · " .. string.upper(info.name), 2.8) end
+	foundSound(p, id)
+	return "found"
+end
+local PetOps = script:FindFirstChild("PetOps") :: BindableFunction?
+if not PetOps then
+	local b = Instance.new("BindableFunction")
+	b.Name = "PetOps"
+	b.Parent = script
+	PetOps = b
+end
+(PetOps :: BindableFunction).OnInvoke = function(op: any, p: any, a: any): any
+	if typeof(p) ~= "Instance" or not p:IsA("Player") then return nil end
+	if op == "grant" then return grantPet(p, a)
+	elseif op == "owns" then return ownsPet(p, a)
+	elseif op == "bump" then
+		local s = st[p]
+		local d = dataOf(p)
+		if not s or not s.ready or not d or type(a) ~= "string" then return nil end
+		if type(d.seen) ~= "table" then d.seen = {} end
+		d.seen[a] = (tonumber(d.seen[a]) or 0) + 1
+		changed(p)
+		return d.seen[a]
+	elseif op == "count" then
+		local d = dataOf(p)
+		return d and type(d.seen) == "table" and tonumber(d.seen[a]) or 0
+	elseif op == "forget" then -- (Studio tests only: lose a pet again, or every pet and count with "all")
+		if not RunService:IsStudio() then return nil end
+		local d = dataOf(p)
+		if not d then return "loading" end
+		if a == "all" then d.pets = {}; d.seen = {}; d.pet = "" elseif type(d.pets) == "table" then d.pets[a] = nil end
+		if d.pet ~= "" and not (type(d.pets) == "table" and d.pets[d.pet]) then d.pet = "" end
+		changed(p)
+		return "forgot " .. tostring(a)
+	end
+	return nil
+end
 
 -- ------------------------------------------------------------------ Studio test hook
 if RunService:IsStudio() then

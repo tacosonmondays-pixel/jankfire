@@ -1,4 +1,4 @@
-# Kill effects, emotes and grapple skins ("flair")
+# Kill effects, emotes, grapple skins and pets ("flair")
 
 17 Nov 2026. The owner asked: "Can we also have basic kill effects? Reference the rivals ones!! As well as other
 games and maybe some emotes??" Built by the flair session (a side session of the main session).
@@ -208,6 +208,76 @@ player attribute `Grapple`; the GRAPPLE tab of the equip screen. The look (Blend
 `make_grapples.py`, rope textures, `shared/GrappleLook.luau`, `client/GrappleSkins.client.luau`) is in GRAPPLES.md.
 A skin only rolls or sells once its head is in `ReplicatedStorage.JankfireGrapples` (`Flair.grappleReady`).
 
+## Pets (18 Nov 2026)
+
+The owner: "Secret pets: when you find jank npc you'll have a mini scaled down version that follows you. Another one
+could be the train, a slug made of hardware with his mask, it crawls using his hands from in game. Those like fleshy
+meat dogs?" Main's spec: one pet worn at a time, earned only by finding secrets, following you everywhere, cheap, and
+everyone sees everyone's.
+
+**The three** (`tools/roblox/pets_models.py`, headless Blender; sheet `flair/pets-models-sheet.jpg`):
+- **Mini Mannequin** (`mannequin`): the hub egg's mannequin, from its own dump of the web game's player, at 0.95 studs per web
+  metre (1.9 studs, knee high), with the pink outline rim. One stiff piece that waddles, rocking from foot to foot like a
+  wind-up toy. Upload 93735950095362.
+- **Train Slug** (`slug`): the Gut train's ☺ enamel mask on four steel plate drums, with a stack, a copper pipe and a valve
+  wheel. It drags itself along on two cable arms with dark rubber hands and the boss's blue wrist knots. 3.1 long.
+  Upload 77552236809847.
+- **Meat Dog** (`dog`): two pink sausage links tied with cream twine, stubby legs, a sausage tail that wags, button eyes,
+  floppy ears and a muted teal collar. 2.7 long. Flat clean pinks: nothing raw, no organs, bones or blood (the account has
+  one warning). Upload 75123181576256.
+- **Remodel (18 Nov):** the owner on the first sheet: "The dog looks very AI-ish, which I think is characterized by the lack
+  of joins and the segmented body!! Same with the train boss pet!!" So the dog and the slug are being rebuilt as single
+  skinned forms, with legs, arms, neck and tail growing out of the body through filleted joins. Their first uploads above
+  were never put in the place. The mannequin stays as it is: it's the web game's own crusty model on purpose.
+- Each moving piece is its own mesh with its joint (`pets_layout.json`, written into `PolishBackup.PetImport` by
+  `tools/roblox/pets_import_luau.py`). Colours are baked vertex colours (`rbxglb`), so Color stays white.
+
+**Finding them** (`server/PetSecrets.server.luau`; nothing on screen hints at any of them):
+- **Mannequin:** find the hub egg. Anyone who owns its OG title has the pet, checked when the loot save loads and on
+  `Loot.changed`, so players who found it before pets existed get theirs too. `HubEgg.server` is unchanged (agreed with the
+  training session).
+- **Slug:** be on the Gut's platform when the train passes behind the glass, three times, across any matches. The count is
+  saved (`seen.train`). `GutTrain.server`'s `TrainAt` says when a run reaches the station; the server checks who is on that
+  arena's platform then.
+- **Dog:** a little kennel (upload 114456936297774: cream walls, a dusty rose roof, a dark doorway, a paw print on a blank
+  plaque, a teal bowl) in the subway's south-west corner, against the end wall, beside the glass, behind the last column.
+  Walk up to its door. `PetSecrets` places one in every Gut arena at run time (`workspace.Map.Gut` and its copies), from
+  `ServerStorage.JankfirePetKit.Kennel`. An unseen box round its walls stops you and shots like any wall.
+- A find shows "NEW PET · <NAME>" (the announcer line) and plays a short recording for the finder alone. Your first pet is
+  worn at once.
+
+**Saving:** pets are not in `Flair.TYPES`, so the loot and shop hooks never see them: they're never sold or rolled. Found
+pets are kept in FlairServer's own save (`pets`, `pet` worn, `seen` counts). The player attribute `Pet` holds the worn pet.
+The remote `Flair` takes `("pet", id)` ("" for none), and `state` returns `pets` and `pet`. Server scripts use
+`FlairServer.PetOps` (BindableFunction): `grant` / `owns` / `bump` / `count` / `forget` (Studio only).
+
+**Following** (`client/Pets.client.luau` + `client/PetRig.luau`, nothing on the server):
+- Each screen draws every player's pet, one anchored model per pet in `workspace.ClientPets`, moved with one `BulkMoveTo` a
+  frame. A pet more than 165 studs from your camera is parked out of the world and not moved at all; it snaps back to its
+  owner when you come near.
+- It keeps a few studs behind its owner, off to one side, and catches up faster the further behind it is. It walks the floor
+  under it (one ray now and then, ignoring bodies, pets and things you walk through) and turns slowly to its owner when they
+  stop. It jumps back to them after a teleport (the body moved 25+ studs in a frame), past 42 studs behind, or 12+ studs
+  above or below for 1.2 s (pads, lifts).
+- No collisions, queries or touches: it can't be shot, stood on or block anything. Your own is hidden while it's in front of
+  you in first person, and any pet right at the camera is hidden too.
+- Gaits are sums of sines on the pieces' joints: the mannequin's waddle, the slug's crawl (hands reach in turn, the drums
+  bunch in a wave) and the dog's trot (diagonal legs, bob, nod, a tail that always wags). Standing, each idles.
+
+**The picker:** the equip screen's PETS tab. NO PET comes first, then the three. A found pet shows in its own colours with
+its name; one you haven't found is a black silhouette named "???", with no hint. The preview walks the pet in a ring round
+the copy of you.
+
+**Tests (Studio):**
+- `ServerStorage.PetTest`, for the first player:
+  - `state`
+  - `train`: a train passes now in every Gut arena, by the same path as a real run
+  - `platform` / `kennel`: stand on Map.Gut's platform, or at the kennel's door
+  - `grant` id / `forget` id|all
+- Workspace attribute `PetFreeze` holds every pose (for photos).
+- A Model tagged `PetStandIn` with an attribute `Pet` walks a pet like a player.
+- `FlairTest = "ui:pet"` opens the tab.
+
 ## Settings hooks (the settings page, P)
 
 Three rows of the settings session's page reach in here, each looked up once (FindFirstChild + pcall) with today's
@@ -218,7 +288,7 @@ behaviour as the fallback: GRAPHICS "OTHERS' KILL EFFECTS" off = someone else's 
 ## Equip screen (`client/FlairUI.luau`)
 
 The loadout screen has a KILL EFFECT · EMOTES button left of DONE; it closes the loadout and opens this screen (not in
-a match). Three tabs: KILL EFFECT, EMOTES, GRAPPLE. A grid of cards (EQUIP), or the wheel's 8 slots over the emotes (pick
+a match). Four tabs: KILL EFFECT, EMOTES, GRAPPLE, PETS (see Pets). A grid of cards (EQUIP), or the wheel's 8 slots over the emotes (pick
 a slot, pick an emote, PUT IN SLOT n; EMPTY SLOT). Locked items show a padlock. On the right a client-only copy of your
 own avatar stands in the world in front of you and plays what you point at, on a loop (a ViewportFrame can't draw
 particles). DONE or Esc closes.

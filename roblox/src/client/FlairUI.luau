@@ -1,5 +1,7 @@
 --!strict
--- the equip screen for kill effects, emotes and grapple skins (doc FLAIR.md). FlairUI.open(tab?) / close() / isOpen() / preview(id).
+-- the equip screen for kill effects, emotes, grapple skins and pets (doc FLAIR.md). FlairUI.open(tab?) / close() / isOpen() / preview(id).
+-- PETS (18 Nov 2026): found ones in colour, the rest as black silhouettes with no name and no hint; the preview walks the
+-- pet round the copy of you (client/PetRig.luau).
 -- the loadout's KILL EFFECT · EMOTES button opens it (the loadout steps aside first); not mid-match, like the loadout.
 -- left: the items (a grid of kill effects or grapples; or the emote wheel's 8 slots over the emotes). right: the world, with a
 -- copy of your own avatar standing in front of you (client-only) playing whatever you point at: the kill effect on it
@@ -12,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Flair = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Flair")) :: any
 local KillFx = require(script.Parent:WaitForChild("KillFx")) :: any
+local PetRig = require(script.Parent:WaitForChild("PetRig")) :: any
 local T = require(script.Parent:WaitForChild("Theme")) :: any
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local me = Players.LocalPlayer
@@ -19,7 +22,8 @@ local pg = me:WaitForChild("PlayerGui")
 
 local FlairUI = {}
 local S = {
-	open = false, tab = "kill", pick = { kill = "none", emote = "wave", grapple = "rope" } :: { [string]: string }, slot = 1,
+	open = false, tab = "kill", pick = { kill = "none", emote = "wave", grapple = "rope", pet = "" } :: { [string]: string }, slot = 1,
+	pets = {} :: { [string]: boolean }, -- (the pets you have found)
 	owned = { kill = {}, emote = {}, grapple = {} } :: { [string]: { [string]: boolean } }, tok = 0, hidden = {} :: { [ScreenGui]: boolean },
 	cam = { active = false, closing = false, t0 = 0, dur = 0.5, from = CFrame.new(), to = CFrame.new(), saved = CFrame.new(), savedType = Enum.CameraType.Custom },
 	spot = nil :: { s: Vector3, face: Vector3 }?, template = nil :: Model?, dummy = nil :: Model?, savedOpen = false,
@@ -65,7 +69,7 @@ local box = new("Frame", { Name = "Box", BackgroundTransparency = 1, AnchorPoint
 
 local DESK = {
 	key = "desk", W = 1920, H = 1080,
-	tabs = { y = 34, h = 60, font = 40, ruleY = 62, x = { kill = 60, emote = 400, grapple = 690 }, w = { kill = 320, emote = 270, grapple = 300 } },
+	tabs = { y = 34, h = 60, font = 40, ruleY = 62, x = { kill = 60, emote = 400, grapple = 690, pet = 1010 }, w = { kill = 320, emote = 270, grapple = 300, pet = 170 } },
 	done = { 1700, 40, 160, 50, "DONE  [ESC]" }, save = { 1360, 100, 500, 22, 16 },
 	panel = { 60, 130, 880, 900 },
 	grid = { 20, 20, 840, 720, 196, 236, 12 }, equip = { 20, 800, 300, 64 }, note = { 340, 820, 520, 24, 16 },
@@ -75,7 +79,7 @@ local DESK = {
 }
 local PHONE = {
 	key = "phone", W = 960, H = 440,
-	tabs = { y = 5, h = 52, font = 26, ruleY = 46, x = { kill = 16, emote = 210, grapple = 356 }, w = { kill = 186, emote = 138, grapple = 160 } },
+	tabs = { y = 5, h = 52, font = 26, ruleY = 46, x = { kill = 16, emote = 210, grapple = 356, pet = 528 }, w = { kill = 186, emote = 138, grapple = 160, pet = 100 } },
 	done = { 836, 5, 112, 52, "DONE" }, save = { 576, 60, 372, 16, 12 },
 	panel = { 16, 62, 548, 372 },
 	grid = { 8, 8, 532, 298, 164, 170, 8 }, equip = { 8, 312, 200, 54 }, note = { 218, 330, 322, 20, 12 },
@@ -171,6 +175,57 @@ local function card(parent: Instance, t: string, id: string, w: number, h: numbe
 	return c
 end
 
+-- a pet's card: the pet itself in a little window (found: its own colours and name; not found: a black silhouette,
+-- "???", nothing else). id "" is no pet
+local SECRET = Color3.fromRGB(232, 132, 206) -- (CardStyles' "secret": a found thing)
+local function petModel(vp: ViewportFrame, id: string, found: boolean)
+	vp:ClearAllChildren()
+	local rig = PetRig.new(id, not found)
+	if not rig then return end
+	local wm = new("WorldModel", {}, vp)
+	rig.model.Parent = wm
+	rig:pose(CFrame.Angles(0, math.rad(200), 0), 0, 0, 0)
+	local size = rig.model:GetExtentsSize()
+	local r = math.max(size.X, size.Y, size.Z)
+	local cam = new("Camera", { FieldOfView = 30 }, vp)
+	local mid = Vector3.new(0, size.Y * 0.45, 0)
+	cam.CFrame = CFrame.lookAt(mid + Vector3.new(r * 1.05, r * 0.75, -r * 1.75), mid)
+	vp.CurrentCamera = cam
+end
+local function petCard(parent: Instance, id: string, w: number, h: number, order: number): any
+	local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = T.CARD, BorderSizePixel = 0,
+		Size = UDim2.fromOffset(w, h), LayoutOrder = order, ZIndex = 3 }, parent)
+	T.corner(btn, 8)
+	local st = T.edge(btn)
+	local ph = h - 62
+	local pic = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(w - 12, ph), ZIndex = 4 }, btn)
+	local vp: ViewportFrame? = nil
+	if id ~= "" then
+		vp = new("ViewportFrame", { BackgroundColor3 = Color3.fromRGB(52, 56, 66), BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1), ZIndex = 4,
+			Ambient = Color3.fromRGB(150, 150, 158), LightColor = Color3.fromRGB(255, 250, 240), LightDirection = Vector3.new(-0.5, -1, -0.4) }, pic)
+		T.corner(vp :: any, 6)
+	else
+		-- (no pet: an empty ring)
+		local e = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(44, 44),
+			BackgroundTransparency = 1, ZIndex = 4 }, pic)
+		T.corner(e, 999)
+		T.edge(e, T.DIM, 0.4, 2)
+	end
+	local nm = label(btn, "", 17, UDim2.fromOffset(10, ph + 10), UDim2.fromOffset(w - 20, 22), T.TEXT, T.FONT_BOLD)
+	nm.ZIndex = 6; nm.TextScaled = true
+	new("UITextSizeConstraint", { MaxTextSize = 17 }, nm)
+	local chip = new("Frame", { BackgroundColor3 = SECRET, BorderSizePixel = 0, Position = UDim2.fromOffset(10, ph + 38),
+		Size = UDim2.fromOffset(8, 8), ZIndex = 6, Visible = id ~= "" }, btn)
+	T.corner(chip, 2)
+	local rar = label(btn, if id ~= "" then "SECRET" else "", 12, UDim2.fromOffset(24, ph + 33), UDim2.fromOffset(w - 34, 18), T.MUTED, T.FONT_BOLD)
+	rar.ZIndex = 6
+	local tag = label(btn, "", 12, UDim2.fromOffset(10, ph + 33), UDim2.fromOffset(w - 20, 18), T.ACCENT, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	tag.ZIndex = 6
+	btn.MouseEnter:Connect(function() btn.BackgroundColor3 = T.CARD_HI end)
+	btn.MouseLeave:Connect(function() btn.BackgroundColor3 = T.CARD end)
+	return { id = id, t = "pet", btn = btn, st = st, tag = tag, pic = pic, vp = vp, shown = nil :: boolean?, name = nm }
+end
+
 -- ------------------------------------------------------------------ a layout: tabs, the panel and its three tabs' contents
 -- (what a press does is shared by both layouts: set below)
 local onTab: (string) -> () = function() end
@@ -212,10 +267,10 @@ local function build(L: any): any
 	V.scale = new("UIScale", {}, stage)
 	-- the three tabs, as the title
 	V.tabs = {}
-	for _, t in { "kill", "emote", "grapple" } do
+	for _, t in { "kill", "emote", "grapple", "pet" } do
 		local b = new("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(L.tabs.x[t], L.tabs.y),
 			Size = UDim2.fromOffset(L.tabs.w[t], L.tabs.h), FontFace = T.FONT_TITLE, TextSize = L.tabs.font,
-			Text = ({ kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE" })[t],
+			Text = ({ kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE", pet = "PETS" })[t],
 			TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 }, stage)
 		local rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, L.tabs.ruleY), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, b)
 		V.tabs[t] = { b = b, rule = rule }
@@ -254,6 +309,25 @@ local function build(L: any): any
 		p, s = at(L.note)
 		X.note = label(X.frame, "", L.note[5], p, s, T.MUTED, T.FONT_BOLD)
 		if t == "kill" then V.K = X else V.G = X end
+	end
+
+	-- pets: a grid of cards (no pet first), EQUIP under it
+	do
+		local X = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel), cards = {} }
+		local g = grid(X.frame, L.grid)
+		local list = { "" }
+		for _, id in Flair.PET_ORDER do table.insert(list, id) end
+		for i, id in list do
+			local c = petCard(g, id, L.grid[5], L.grid[6], i)
+			c.btn.MouseButton1Click:Connect(function() onPick("pet", id) end)
+			table.insert(X.cards, c)
+		end
+		p, s = at(L.equip)
+		X.equip = button(X.frame, "EQUIP", "main", p, s)
+		X.equip.face.MouseButton1Click:Connect(function() onEquip("pet") end)
+		p, s = at(L.note)
+		X.note = label(X.frame, "", L.note[5], p, s, T.MUTED, T.FONT_BOLD)
+		V.P = X
 	end
 
 	-- emotes: the wheel's 8 slots (a ring on the desktop, a row on a phone) over the emotes
@@ -351,6 +425,10 @@ local function wornGrapple(): string
 	return if type(g) == "string" and Flair.info("grapple", g) then g else "rope"
 end
 local function owns(t: string, id: string): boolean return Flair.isFree(t, id) or S.owned[t][id] == true end
+local function wornPet(): string
+	local id = me:GetAttribute("Pet")
+	return if type(id) == "string" and Flair.pet(id) then id else ""
+end
 
 local function paintCard(c: Card, selected: boolean, worn: boolean)
 	c.st.Color = if selected then T.ACCENT else T.EDGE
@@ -372,6 +450,25 @@ local function refresh()
 	K.frame.Visible = S.tab == "kill"
 	M.frame.Visible = S.tab == "emote"
 	G.frame.Visible = S.tab == "grapple"
+	-- pets: found or not (a card redraws its pet only when that changes)
+	local P = V.P
+	P.frame.Visible = S.tab == "pet"
+	local wp = wornPet()
+	for _, c in P.cards do
+		local found = c.id == "" or S.pets[c.id] == true
+		if c.vp and c.shown ~= found then c.shown = found; petModel(c.vp, c.id, found) end
+		local info = Flair.pet(c.id)
+		c.name.Text = if c.id == "" then "NO PET" elseif found and info then string.upper(info.name) else "???"
+		c.st.Color = if c.id == S.pick.pet then T.ACCENT else T.EDGE
+		c.st.Transparency = if c.id == S.pick.pet then 0 else T.EDGE_A
+		c.st.Thickness = if c.id == S.pick.pet then 2 else 1
+		c.tag.Text = if c.id == wp then "EQUIPPED" else ""
+	end
+	local pid = S.pick.pet
+	if pid ~= "" and not S.pets[pid] then P.equip:set("LOCKED", false)
+	elseif pid == wp then P.equip:set("EQUIPPED", false)
+	else P.equip:set("EQUIP", true) end
+	P.note.Text = ""
 	local wg = wornGrapple()
 	for _, c in G.cards do paintCard(c, c.id == S.pick.grapple, c.id == wg) end
 	local gid = S.pick.grapple
@@ -409,6 +506,16 @@ local function refresh()
 	else M.equip:set("PUT IN SLOT " .. S.slot, true); M.note.Text = "" end
 	M.clear:set("EMPTY SLOT", sl[S.slot] ~= "")
 	-- the big name over the world
+	if S.tab == "pet" then
+		local pi = Flair.pet(S.pick.pet)
+		local found = pi ~= nil and S.pets[pi.id] == true
+		V.bigName.Text = if not pi then "NO PET" elseif found then string.upper(pi.name) else "???"
+		V.bigRule.BackgroundColor3 = if pi then SECRET else T.ACCENT
+		V.bigSub.Text = if found then "SECRET  ·  PET" else ""
+		local sv0 = me:GetAttribute("FlairSave")
+		V.saveLbl.Text = if sv0 == "off" then "NOT SAVING THIS SESSION" elseif sv0 == "lost" then "SAVED ELSEWHERE: CHANGES HERE WON'T KEEP" else ""
+		return
+	end
 	local i = Flair.info(S.tab, S.pick[S.tab])
 	V.bigName.Text = if i then string.upper(i.name) else ""
 	V.bigRule.BackgroundColor3 = if i then (Flair.RARITY_COLOR[i.rarity] or T.ACCENT) else T.ACCENT
@@ -424,6 +531,8 @@ local function fetch()
 		S.owned[t] = {}
 		for _, id in (res.owned and res.owned[t] or {}) do S.owned[t][id] = true end
 	end
+	S.pets = {}
+	for _, id in (if type(res.pets) == "table" then res.pets else {}) do S.pets[id] = true end
 end
 
 -- ------------------------------------------------------------------ the stand-in: a copy of you in the world
@@ -570,6 +679,41 @@ local function previewLoop()
 					KillFx.play(m, id, { preview = true })
 					task.wait((Flair.info("kill", id).dur or 1) + 0.9)
 				end
+			elseif t == "pet" then
+				-- the pet by the copy of you: it sits a moment, then walks a ring round you, then sits again
+				local m = standIn(true)
+				if not m then return end
+				local sp = S.spot
+				local rig = if id ~= "" and sp then PetRig.new(id, S.pets[id] ~= true) else nil
+				if rig and sp then
+					rig.model.Parent = workspace
+					local side = sp.face:Cross(Vector3.yAxis)
+					local mid = sp.s + side * 0.4
+					local t0, phase, last = os.clock(), 0, os.clock()
+					while S.open and S.tok == tok do
+						local now = os.clock()
+						local dt = now - last
+						last = now
+						local u = (now - t0) % 9
+						local cf, move
+						if u < 3 then
+							cf = CFrame.lookAt(mid - side * 2.6, mid - side * 2.6 + sp.face) -- (sitting by you, facing the camera's way)
+							move = 0
+						else
+							local a = (u - 3) / 6 * 2 * math.pi
+							local p = mid + (-side * math.cos(a) + sp.face * math.sin(a)) * 2.6
+							local tan = side * math.sin(a) + sp.face * math.cos(a)
+							cf = CFrame.lookAt(p, p + tan)
+							move = math.min(1, (u - 3) / 0.4, (9 - u) / 0.4)
+						end
+						phase += dt * 3.5 * 2 * math.pi * move
+						rig:pose(cf, phase, move, now)
+						RunService.RenderStepped:Wait()
+					end
+					rig:destroy()
+				else
+					while S.open and S.tok == tok do task.wait(0.1) end
+				end
 			elseif t == "grapple" then
 				-- a rope from the stand-in's right hand up past its shoulder to a point overhead, the skin's head on the end
 				-- (shared/GrappleLook.luau draws it, the grapple look's own module; a plain cable if it isn't in yet)
@@ -649,7 +793,7 @@ function FlairUI.isOpen(): boolean return S.open end
 -- to loadout and kill effects then leave it it renders your gun away for a second")
 function FlairUI.open(tab: string?, home: CFrame?)
 	if not require(script.Parent:WaitForChild("MenuGate")).allowed("flair") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
-	if tab == "kill" or tab == "emote" or tab == "grapple" then S.tab = tab end
+	if tab == "kill" or tab == "emote" or tab == "grapple" or tab == "pet" then S.tab = tab end
 	if S.open then refresh(); previewLoop(); return end
 	if not canOpen() then return end
 	if me:GetAttribute("LoadoutOpen") == true then return end -- (another screen is up)
@@ -665,6 +809,7 @@ function FlairUI.open(tab: string?, home: CFrame?)
 	local sl = slots()
 	S.pick.emote = if sl[S.slot] ~= "" then sl[S.slot] else Flair.ORDER.emote[1]
 	S.pick.grapple = wornGrapple()
+	S.pick.pet = wornPet()
 	table.clear(S.hidden)
 	for _, g in pg:GetChildren() do
 		if g:IsA("ScreenGui") and g ~= gui and g ~= guiUI and g.Enabled then S.hidden[g] = true; g.Enabled = false end
@@ -716,6 +861,7 @@ function FlairUI.preview(id: string)
 	for _, t in Flair.TYPES do
 		if Flair.info(t, id) then S.tab = t; S.pick[t] = id end
 	end
+	if Flair.pet(id) then S.tab = "pet"; S.pick.pet = id end
 	if S.open then refresh(); previewLoop() end
 end
 
@@ -746,7 +892,7 @@ onSlot = function(i: number)
 end
 onEquip = function(t: string)
 	if not V then return end
-	local X = if t == "kill" then V.K elseif t == "grapple" then V.G else V.M
+	local X = if t == "kill" then V.K elseif t == "grapple" then V.G elseif t == "pet" then V.P else V.M
 	if not X.equip.enabled then return end
 	local res = if t == "emote" then ask("slot", S.slot, S.pick.emote) else ask(t, S.pick[t])
 	if not res.ok then X.note.Text = string.upper(tostring(res.why or "")) end
@@ -763,7 +909,7 @@ catcher.MouseButton1Click:Connect(function() end)
 UIS.InputBegan:Connect(function(io, _gp)
 	if S.open and io.KeyCode == Enum.KeyCode.Escape then FlairUI.close() end
 end)
-for _, a in { "KillFx", "Emotes", "Grapple", "FlairSave", "LootOwned" } do
+for _, a in { "KillFx", "Emotes", "Grapple", "Pet", "FlairSave", "LootOwned" } do
 	me:GetAttributeChangedSignal(a):Connect(function()
 		if not S.open then return end
 		if a == "LootOwned" then task.spawn(function() fetch(); if S.open then refresh() end end) else refresh() end

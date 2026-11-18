@@ -100,6 +100,28 @@ for _, r in GRAPPLES do
 	table.insert(F.ORDER.grapple, r[1])
 	F.ITEMS.grapple[r[1]] = { type = "grapple", id = r[1], name = r[2], rarity = r[3], tint = r[4] }
 end
+-- PETS (18 Nov 2026, the owner: "Secret pets: when you find jank npc you'll have a mini scaled down version that follows
+-- you. Another one could be the train, a slug made of hardware with his mask, it crawls using his hands from in game.
+-- Those like fleshy meat dogs?"). one worn at a time; it follows you everywhere (client/Pets.client.luau draws every
+-- player's, client-side). found only, never sold or rolled: NOT one of F.TYPES (the loot and shop hooks read those), and
+-- owned in FlairServer's own save, not the loot save. how each is found is server/PetSecrets.server.luau's (no hint of
+-- it anywhere on screen: the picker shows a pet you haven't found as a black silhouette, no name)
+--   id, name, the gait the follower plays (client/PetRig.luau), how far behind you it keeps, how fast it can go
+local PETS = {
+	{ "mannequin", "Mini Mannequin", "waddle", 3.2 }, -- (the hub egg's mannequin, knee high)
+	{ "slug", "Train Slug", "crawl", 3.8 },           -- (the Gut train's mask on a slug of steel plates)
+	{ "dog", "Meat Dog", "trot", 3.4 },               -- (two sausage links on stubby legs)
+}
+F.PET_ORDER = {} :: { string }
+F.PETS = {} :: { [string]: { id: string, name: string, gait: string, keep: number } }
+for _, r in PETS do
+	table.insert(F.PET_ORDER, r[1])
+	F.PETS[r[1]] = { id = r[1], name = r[2], gait = r[3], keep = r[4] }
+end
+function F.pet(id: any): { id: string, name: string, gait: string, keep: number }?
+	return if type(id) == "string" then F.PETS[id] else nil
+end
+
 -- a grapple's look is in the place once its head model is (ReplicatedStorage.JankfireGrapples.<id>): until then it
 -- neither rolls nor sells (the plain rope is always there)
 function F.grappleReady(id: string): boolean
