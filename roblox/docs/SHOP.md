@@ -474,6 +474,44 @@ input tools:
 
 Not tested: the Shredder held with the toggle on, third person, a controller, a rebound key.
 
+## The match loadout screen (18 Nov)
+
+The owner: "can you have renders when selecting loadout look up rivals pregame loadout thing, I want something
+similar". It's `client/MatchLoadout.client.luau` (play-party-ranked's text picker, rewritten), with the window rules
+unchanged. Matches sets LoadoutWindow for 8 s before round 1 and 6 s between rounds; Loadout.luau takes a "pick" only
+inside it and puts it in your hands at once.
+
+**What the research said, as function only.** Rivals: four slots (primary, secondary, melee, utility), each weapon shown
+in its skin, changed between rounds under a short countdown; ranked caps swaps per duel. Little more could be found
+about the screen itself, and nothing of its layout or look is used here. We keep our own rules: no swap cap.
+
+**Ours:**
+- While the window is open, without taking the mouse, a strip of the four slots sits low in the middle. Each slot is a
+  live picture of the weapon in your own skin, hat and wrap, turning a little. The header shows LOADOUT, the L key, the
+  seconds left in big amber numbers, and a thin bar that runs down with them.
+- L (the loadout key) takes the mouse (MenuCursor `matchloadout`: clicks don't fire, you still move) and opens the
+  picker on PRIMARY. Every live weapon for that slot is a picture in your looks, with the one you have marked; one click
+  picks it. The picker stays open: click another slot or press 1 to 4. L, Esc or DONE closes it, and so does the window
+  shutting. With Toggle Cursor (Alt) on, the slots can be clicked straight away.
+- Phone (or a screen under 900 x 560): the strip sits at the top under the score and the picker under it, between the
+  stick and the fire buttons. A slot is tapped straight away.
+- Colours: the HUD's dark plates, white names, amber only on the seconds, the bar and the marked slot or weapon.
+- The pictures come from `client/GunPreview.luau`, the loadout screen's preview builders as a module: `viewport`,
+  `put(vp, cam, weapon)` (rebuilt only when the looks change), `turn`, `clear`. LoadoutUI still has its own copy.
+- Test hook: `MatchLoadoutTest` = open | slot:<slot> | close | pick:<slot>:<weapon> | fake:844x390 | real. The
+  server's `JankMatchTest("between", player, secs)` opens a window that long.
+
+Tested in solo Play (place version 728) in a ghost 1v1:
+- The strip came up with round 1's countdown, with all four pictures (`docs/shop/match-loadout-strip.jpg`).
+- L opened PRIMARY's 11 weapons (`match-loadout-picker.jpg`). A real click on SHOTGUN picked it: LoadoutNext changed
+  and it was in my hands at once.
+- The phone layout (TouchForce, an 844 x 390 box) showed the utility slot's 13 items and PRIMARY
+  (`match-loadout-phone.jpg`).
+- The window shutting hid the strip and gave the mouse back (LockCenter, arrow hidden, nothing in MenuCursor).
+- The owner's primary was put back afterwards (Belt Sander).
+
+Not tested: a pick while dead between rounds, a team match, a controller.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
