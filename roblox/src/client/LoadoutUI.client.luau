@@ -527,7 +527,7 @@ News.brassBtn.face.MouseButton1Click:Connect(function()
 		-- (not enough coins: the shop's COINS tab)
 		play("empty"); say("not enough coins.", RED)
 		local okS, ShopUI = pcall(require, script.Parent:WaitForChild("ShopUI"))
-		if okS and type(ShopUI) == "table" and type(ShopUI.open) == "function" then setOpen(false); task.delay(0.1, ShopUI.open, "coins") end
+		if okS and type(ShopUI) == "table" and type(ShopUI.open) == "function" then News.close(); task.delay(0.1, ShopUI.open, "coins") end
 		return
 	end
 	if News.arm ~= e.id or os.clock() - News.armT > 4 then
@@ -1733,6 +1733,7 @@ setOpen = function(v: boolean)
 end
 
 done.face.MouseButton1Click:Connect(function() setOpen(false) end)
+News.close = function() setOpen(false) end -- (the loadout's way out, for code above setOpen: the coins buy, 18 Nov)
 -- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
 -- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
 local flairBtn = button(stage, "KILL EFFECT  ·  EMOTES", "white", UDim2.fromOffset(1360, 40), UDim2.fromOffset(320, 50))

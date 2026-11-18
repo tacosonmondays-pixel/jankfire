@@ -889,22 +889,52 @@ function Shop.coinPack(id: any): any
 end
 
 -- ---------------------------------------------------------------- developer products (off while Shop.ROBUX is false)
--- when real prices go on: make one developer product per container and bundle on the Creator Hub (Monetization >
--- Developer Products, priced as `robux` above) and paste its id here. singles share one product per kind and rarity
--- ("wrap:epic", "hat:legendary", "skin:epic"): the server remembers which single you asked for
--- (ShopReceipts.server.luau). a skin set has one product for the whole set ("set_seraph") and one per count of skins
--- left to complete it ("set_seraph:1" .. ":4", priced as Shop.setPrice)
+-- made 18 Nov 2026 with Open Cloud, 88 of them (docs/MONEY.md has the list with names and prices): one per container,
+-- bundle and coin pack; one per skin set and per count of skins left to complete it ("set_seraph:3", priced as
+-- Shop.setPrice); singles share one per kind and rarity ("wrap:epic": the server remembers which single you asked for,
+-- ShopReceipts); the owner's deals one per rarity and discount ("deal:legendary:40", priced as Shop.dealPrice); one per
+-- Robux weapon ("weapon:minigun"). each is on sale with its store page off: only the game's own prompt sells it, and
+-- nothing prompts while Shop.ROBUX is false. a price changed in Shop.MONEY needs the product's price changed too
 Shop.PRODUCTS = {
-	-- crate = 0, bag = 0, spray = 0,
-	-- bundle_nightshift = 0, ...
-	-- set_seraph = 0, ["set_seraph:1"] = 0, ["set_seraph:2"] = 0, ["set_seraph:3"] = 0, ["set_seraph:4"] = 0,
-	-- ["wrap:common"] = 0, ["wrap:rare"] = 0, ["wrap:epic"] = 0, ["wrap:legendary"] = 0,
-	-- ["hat:common"] = 0, ["hat:rare"] = 0, ["hat:epic"] = 0, ["hat:legendary"] = 0,
-	-- ["skin:common"] = 0, ["skin:rare"] = 0, ["skin:epic"] = 0, ["skin:legendary"] = 0,
-	-- ["kill:rare"] = 0, ["kill:epic"] = 0, ["kill:legendary"] = 0, ["emote:common"] = 0, ["emote:rare"] = 0, ...
-	-- (the owner's deals: one per rarity and discount, priced as Shop.dealPrice)
-	-- ["deal:common:20"] = 0, ["deal:common:25"] = 0, ["deal:rare:25"] = 0, ["deal:rare:30"] = 0, ["deal:epic:30"] = 0,
-	-- ["deal:epic:35"] = 0, ["deal:legendary:35"] = 0, ["deal:legendary:40"] = 0,
+	-- (containers)
+	crate = 3733200177, bag = 3733200704, spray = 3733200725,
+	-- (bundles)
+	bundle_nightshift = 3733200745, bundle_fieldissue = 3733200855, bundle_teahouse = 3733200884,
+	bundle_deepspace = 3733200908, bundle_machineshop = 3733201016, bundle_quarry = 3733201039,
+	bundle_cards = 3733201064,
+	-- (skin sets, and completing one with n skins left)
+	set_seraph = 3733201174, ["set_seraph:1"] = 3733201190, ["set_seraph:2"] = 3733201209,
+	["set_seraph:3"] = 3733201426, ["set_seraph:4"] = 3733201313, set_infernal = 3733201329,
+	["set_infernal:1"] = 3733201448, ["set_infernal:2"] = 3733201459, ["set_infernal:3"] = 3733201580,
+	["set_infernal:4"] = 3733201598, set_halloween = 3733201617, ["set_halloween:1"] = 3733201706,
+	["set_halloween:2"] = 3733201726, ["set_halloween:3"] = 3733201741, ["set_halloween:4"] = 3733201837,
+	set_tidecrest = 3733201862, ["set_tidecrest:1"] = 3733201889, ["set_tidecrest:2"] = 3733201991,
+	["set_tidecrest:3"] = 3733202011, ["set_tidecrest:4"] = 3733202029, set_dust = 3733202122,
+	["set_dust:1"] = 3733202140, ["set_dust:2"] = 3733202160, ["set_dust:3"] = 3733202240, ["set_dust:4"] = 3733202257,
+	set_star = 3733202273, ["set_star:1"] = 3733202349, ["set_star:2"] = 3733202363, ["set_star:3"] = 3733202382,
+	["set_star:4"] = 3733202477,
+	-- (singles, one per kind and rarity)
+	["banner:common"] = 3733202493, ["banner:rare"] = 3733202511, ["banner:epic"] = 3733202602,
+	["banner:legendary"] = 3733202625, ["border:common"] = 3733202645, ["border:rare"] = 3733202732,
+	["border:epic"] = 3733202751, ["border:legendary"] = 3733202769, ["emote:common"] = 3733202887,
+	["emote:rare"] = 3733202906, ["emote:epic"] = 3733202924, ["emote:legendary"] = 3733203016,
+	["hat:common"] = 3733203035, ["hat:rare"] = 3733203049, ["hat:epic"] = 3733203160, ["hat:legendary"] = 3733203176,
+	["kill:common"] = 3733203199, ["kill:rare"] = 3733203280, ["kill:epic"] = 3733203293,
+	["kill:legendary"] = 3733203306, ["skin:common"] = 3733203365, ["skin:rare"] = 3733203381,
+	["skin:epic"] = 3733203397, ["skin:legendary"] = 3733203496, ["title:common"] = 3733203514,
+	["title:rare"] = 3733203535, ["title:epic"] = 3733203612, ["title:legendary"] = 3733203626,
+	["wrap:common"] = 3733203644, ["wrap:rare"] = 3733203745, ["wrap:epic"] = 3733203760,
+	["wrap:legendary"] = 3733203775,
+	-- (the owner's deals, per rarity and discount)
+	["deal:common:20"] = 3733203865, ["deal:common:25"] = 3733203886, ["deal:rare:25"] = 3733203909,
+	["deal:rare:30"] = 3733204023, ["deal:epic:30"] = 3733204043, ["deal:epic:35"] = 3733204068,
+	["deal:legendary:35"] = 3733204169, ["deal:legendary:40"] = 3733204190,
+	-- (the Robux weapons)
+	["weapon:minigun"] = 3733204206, ["weapon:laser"] = 3733204303, ["weapon:chicken"] = 3733204322,
+	["weapon:akimbo"] = 3733204340,
+	-- (coin packs)
+	["coins:coins_1200"] = 3733204424, ["coins:coins_6500"] = 3733204431, ["coins:coins_28000"] = 3733204444,
+	["coins:coins_70000"] = 3733204487,
 } :: { [string]: number }
 Shop.byProduct = {} :: { [number]: string } -- product id -> offer id, or a tier ("wrap:epic")
 for key, pid in Shop.PRODUCTS do

@@ -71,13 +71,13 @@ level as well.
   `Unlocks.robuxFree()`, which a Studio play test of the paid shop can turn off (MONEY.md, "Testing in Studio").
 - **Switched off,** each must be bought, once, for good (18 Nov: game passes are not used; `pass` stays 0):
   - with Robux: a developer product, `weapon:<id>`;
-  - or with Brass, which the server takes.
+  - or with coins (Brass in the code), which the server takes.
 
-  Prices are in `Shop.MONEY.weapons`: Minigun and Lefty & Righty 249 Robux or 5,000 Brass; Big Laser Pointer and
-  Chicken Rocket 199 or 4,000. The server keeps what you bought (`Purchases.luau`) and sets `RobuxOwned`, which
+  Prices are in `Shop.MONEY.weapons`: Minigun and Lefty & Righty 249 Robux or 5,000 coins; Big Laser Pointer and
+  Chicken Rocket 199 or 4,000 coins. The server keeps what you bought (`Purchases.luau`) and sets `RobuxOwned`, which
   `Unlocks.forPlayer` reads.
-- **Where to buy:** the shop's WEAPONS tab, or the loadout, whose EQUIP button splits into Robux and Brass for a
-  locked one. Everything about money is in MONEY.md.
+- **Where to buy:** the shop's WEAPONS tab, or the loadout, whose EQUIP button splits into Robux and coins for a
+  locked one; not enough coins opens the COINS tab. Everything about money is in MONEY.md.
 
 ## Ranked
 
