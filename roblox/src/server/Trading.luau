@@ -769,6 +769,7 @@ end
 --   ("crash", standId)                  the stand-in's save is dropped unwritten (a server dying); ("reload", standId) loads
 --                                       it again from the store and finishes what was pending, like a rejoin
 --   ("snap", id) / ("restore", id)      a copy of a save's things (inv, stock, fresh, every, trades, receipts) and back
+--   ("clearlog", id)                    a save's trade history, receipts and pending copy cleared
 --   ("state", id)  ("inbox", standId)  ("lookup", id)  ("trade", id)
 local snaps: { [number]: any } = {}
 function Trading.test(op: string, a: any, b: any, c: any, d: any): any
@@ -837,8 +838,15 @@ function Trading.test(op: string, a: any, b: any, c: any, d: any): any
 		local id = tonumber(a) or 0
 		local h, s = handleOf(id), snaps[id]
 		if not h or not s then return false end
-		for k, v in s do h.data[k] = deepCopy(v) end
+		-- (every field, the ones that were empty too: a test's trades and receipts go)
+		for _, k in { "inv", "stock", "fresh", "freshN", "every", "trades", "tradeDone", "tradePend" } do h.data[k] = deepCopy(s[k]) end
 		h.done()
+		return h.save()
+	elseif op == "clearlog" then
+		-- (a save's trade history, receipts and pending copy cleared: test trades out of a Studio save)
+		local h = handleOf(tonumber(a) or 0)
+		if not h then return false end
+		h.data.trades, h.data.tradeDone, h.data.tradePend = nil, nil, nil
 		return h.save()
 	elseif op == "state" then return stateFor(tonumber(a) or 0)
 	elseif op == "inbox" then local s = stands[tonumber(a) or 0]; return s and s.inbox

@@ -117,3 +117,40 @@ Hook: `ServerStorage.JankTradeTest` (BindableFunction). It works with `TRADING_O
 
 On the client, the LocalPlayer attribute `TradeTest` takes `open`, `history`, `close`, `request:<id>`, `fake:844x390`
 and `real`.
+
+## Tested (18 Nov 2026, about 22:55 UTC, place version 1035, solo Play)
+
+The test ran with trading switched on in Studio only (`TRADING_ON` stays false), my own Studio loot save, and two
+stand-in traders with their own saves.
+
+- **The gate:** my real Studio level is 1, so I was refused with "LEVEL 5 TO TRADE". Gated as level 3: "LEVEL 5 TO
+  TRADE". Gated as a 2-day account: "ACCOUNT UNDER 7 DAYS OLD". Gated as a policy no: "NOT AVAILABLE WHERE YOU ARE". The
+  rest of the test ran gated as level 10.
+- **A policy-blocked player:** the stand-in Dune (policy no) asking me was refused "NOT AVAILABLE WHERE YOU ARE". My
+  request to Dune was refused "THEY CAN'T TRADE RIGHT NOW".
+- **The picker:** 42 things in my save, 40 of them marked not tradeable (VIP, code and free items, mostly).
+- **An untradeable item refused:** the stand-in adding the VIP Ducky wrap was refused "NOT TRADEABLE: VIP".
+- **A normal trade:** the stand-in Looticus asked; the pop-up read "LOOTICUS WANTS TO TRADE"; I accepted.
+  - I put in a Tiny Duck hat (Redline); it put in a Bear Paw skin (Hand Slapper) and 2 crates.
+  - Both locked: the final look. A confirm 0 s after both locked was refused "LOOK IT OVER FIRST".
+  - **A change after lock:** the stand-in changed its crates, and both sides went back to unlocked (phase edit).
+  - Both locked again; CONFIRM counted 3, 2, 1; both confirmed.
+  - The hat was the stand-in's, the skin and 2 crates mine, the stand-in at 0 crates. Nothing on both sides, and one
+    history entry each.
+- **A save failure at prepare:** the second trade (the skin back for the hat), with the stand-in's prepare write made to
+  fail. "couldn't save: nothing changed. try again": nothing moved, no pending copy, back to adding.
+- **A failure after the commit, then a crash:**
+  - The same trade again, with the stand-in's final write made to fail. My side moved and saved; the stand-in's moved
+    in memory only.
+  - Its save was then dropped unwritten (a server dying) and loaded again from the store. It found its pending copy,
+    read the ledger's commit, and finished: it had the skin and not the hat; I had the hat and not the skin.
+  - Nothing duplicated, nothing lost. The ledger lookup showed both trades as commits, with both ids and items.
+- **TRADES:** both trades listed, newest first, with what went each way.
+- **Restored afterwards:** my save's things are as before (the hat back, no skin, no crates). The test's restore missed
+  the trade history, so my Studio save still lists the two test trades. It's fixed, and `clearlog` clears it.
+
+Not tested: two real players, a phone-sized layout, a controller, a worn item coming off (it runs through `Loot.changed`
+like any change of what you own), and the live PolicyService answer for a real account.
+
+![the final look: what goes each way, CONFIRM counting down](trading/1_final_look.jpg)
+![TRADES: the last trades from your save](trading/2_trades_history.jpg)
