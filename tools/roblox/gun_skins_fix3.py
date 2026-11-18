@@ -412,10 +412,13 @@ def shotgun_double():
     BY, SY = 0.025, g.spots['sight'][1]
     BX, R = 0.0195, 0.0195
     # the barrels, their fat crowns and bores, the wide raised rib and the bead, the rib under them
+    # (18 Nov 2026, the owner: "Double barrel shotgun looks scuffed and unsmooth!!": the barrels, crowns, bores and
+    # fences are 24-sided now, so they shade round and the muzzles are circles; sizes, spots and the rib unchanged)
+    RS = 24
     for sx in (-1, 1):
-        tube(g, 'barrel_wzB__blued', R, -0.72, -0.09, y=BY, x=sx * BX, bev=0.003)
-        tube(g, 'barrel_wzB__blued', R + 0.0026, -0.74, -0.718, y=BY, x=sx * BX, bev=0.004, hole=(0.0125, 0.03))
-        g.cylz('trim_wzN__black', 0.0127, -0.7105, -0.7095, y=BY, x=sx * BX, bev=0)
+        tube(g, 'barrel_wzB__blued', R, -0.72, -0.09, y=BY, x=sx * BX, bev=0.003, sides=RS)
+        tube(g, 'barrel_wzB__blued', R + 0.0026, -0.74, -0.718, y=BY, x=sx * BX, bev=0.004, hole=(0.0125, 0.03), sides=RS)
+        g.cylz('trim_wzN__black', 0.0127, -0.7105, -0.7095, y=BY, x=sx * BX, bev=0, sides=RS)
     g.box('barrel_wzB__blued', (-0.0125, 0.0125), (0.034, 0.0575), (-0.735, -0.095), bev=0.004)
     SG.bead(g, 'bead_wzN__brass', -0.7235, SY, 0.0575, r=0.004, stem_w=0.007, stem_d=0.008)  # (slim sights)
     g.box('barrel_wzB__blued', (-0.009, 0.009), (-0.004, 0.014), (-0.7, -0.095), bev=0.003)
@@ -423,7 +426,7 @@ def shotgun_double():
     g.prism('body_wzB__steel', [(-0.15, 0.004), (-0.15, -0.018), (-0.135, -0.032), (0.0, -0.05), (0.03, -0.046), (0.036, -0.02),
                                 (0.036, 0.034), (0.022, 0.048), (-0.095, 0.048), (-0.095, 0.004)], 0.078, bev=0.008)
     for sx in (-1, 1):
-        tube(g, 'body_wzB__steel', R + 0.0025, -0.108, -0.085, y=BY, x=sx * BX, bev=0.004)
+        tube(g, 'body_wzB__steel', R + 0.0025, -0.108, -0.085, y=BY, x=sx * BX, bev=0.004, sides=RS)
     g.box('body_wzB__steel', (-0.0085, 0.0085), (0.044, 0.054), (-0.02, 0.06), bev=0.003)
     rivets(g, 'body_wzN__brass', 0.039, [(-0.06, -0.022), (0.006, -0.03)], r=0.006)
     # the two exposed hammers on the lock plates, their spurs curling back over the wrist (under the aim line)

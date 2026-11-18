@@ -236,11 +236,14 @@ def sawnoff():
     # tips, along the vent rib to the bead. Weapons.luau's sawnoff sight follows: (0, 0.065, 0.075))
     g.spots['sight'] = (0, 0.065, 0.075)
     BX, BY, R = 0.027, 0.017, 0.026
+    # (18 Nov 2026, the owner: "Double barrel shotgun looks scuffed and unsmooth!!": the barrels, their sawn ends, the
+    # fences and the shells are round now (24 / 16 sides) instead of octagons; sizes and spots unchanged)
+    RS = 24
     # the barrels (node "hinge": they break open round the pin), chambered at the back; the sawn ends (hinge_trim)
     for sx in (-1, 1):
-        tube(g, 'hinge_wzB__dark', R, -0.012, -0.296, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07))
-        g.cylz('hinge_trim_wzN__steel', R + 0.0012, -0.311, -0.293, y=BY, x=sx * BX, sides=8, bev=0.002, hole=(0.0178, 0.014))
-        g.cylz('hinge_trim_wzN__black', 0.018, -0.3, -0.296, y=BY, x=sx * BX, sides=8, bev=0)
+        tube(g, 'hinge_wzB__dark', R, -0.012, -0.296, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07), sides=RS)
+        g.cylz('hinge_trim_wzN__steel', R + 0.0012, -0.311, -0.293, y=BY, x=sx * BX, sides=RS, bev=0.002, hole=(0.0178, 0.014))
+        g.cylz('hinge_trim_wzN__black', 0.018, -0.3, -0.296, y=BY, x=sx * BX, sides=RS, bev=0)
     # the rib on top (and under) between the barrels, the bead, the lump under the breech
     g.box('hinge_wzB__frame', (-0.009, 0.009), (0.028, 0.0445), (-0.296, -0.014), bev=0.003)
     g.box('hinge_wzB__frame', (-0.009, 0.009), (-0.012, 0.006), (-0.296, -0.014), bev=0.003)
@@ -251,13 +254,13 @@ def sawnoff():
     g.box('hinge_wzB__dark', (-0.024, 0.024), (-0.03, -0.004), (-0.074, -0.016), bev=0.004)
     # the two shells, in the chambers: their rims sit on the breech face
     for sx, n in ((1, 'shell1'), (-1, 'shell2')):
-        g.cylz(n + '_wzN__shell', 0.0135, -0.08, -0.0135, y=BY, x=sx * BX, sides=8, bev=0.002)
-        g.cylz(n + '_wzN__brass', 0.0152, -0.0135, -0.0115, y=BY, x=sx * BX, sides=8, bev=0.0006)
+        g.cylz(n + '_wzN__shell', 0.0135, -0.08, -0.0135, y=BY, x=sx * BX, sides=16, bev=0.002)
+        g.cylz(n + '_wzN__brass', 0.0152, -0.0135, -0.0115, y=BY, x=sx * BX, sides=16, bev=0.0006)
     # the action (charcoal): the bar and knuckle under the barrels, the standing breech, the rounded fences
     g.prism('body_wzB__frame', [(-0.084, -0.016), (-0.074, -0.034), (0.05, -0.034), (0.072, -0.018), (0.072, 0.022),
                                  (0.03, 0.03), (0.014, 0.044), (-0.012, 0.044), (-0.012, -0.004), (-0.084, -0.004)], 0.08, bev=0.007)
     for sx in (-1, 1):
-        g.cyl('body_wzB__frame', R + 0.002, (sx * BX, BY, -0.012), (sx * BX, BY, 0.016), sides=8, bev=0.004)
+        g.cyl('body_wzB__frame', R + 0.002, (sx * BX, BY, -0.012), (sx * BX, BY, 0.016), sides=RS, bev=0.004)
     g.box('body_wzB__frame', (-0.0075, 0.0075), (0.026, 0.035), (0.03, 0.104), bev=0.003)  # the top lever (the notch)
     rivets(g, 'body_wzN__steel', 0.04, [(0.0, -0.018), (0.048, -0.018)])
     # the two hammers, standing either side of the aim line

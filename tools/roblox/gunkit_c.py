@@ -33,12 +33,14 @@ gunkit.use_style('C')
 
 
 # ------------------------------------------------------------------------------------------------- shared pieces
-def tube(g, piece, r, z0, z1, y=0.0, x=0.0, bev=0.003, hole=None, r2=None):
-    """the style's tube: 8-sided, shaded round, a crisp chamfer on its ends. z0 is the end a hole goes into"""
+def tube(g, piece, r, z0, z1, y=0.0, x=0.0, bev=0.003, hole=None, r2=None, sides=8):
+    """the style's tube: 8-sided, shaded round, a crisp chamfer on its ends. z0 is the end a hole goes into.
+       sides: more for a gun whose barrels ARE the look (18 Nov 2026, the owner on the double barrels: "scuffed and
+       unsmooth!!": 8 facets on a thin barrel shade in bands and show octagon muzzles; those get 24)"""
     if r2 is None:
-        g.cylz(piece, r, z0, z1, y=y, x=x, sides=8, bev=bev, hole=hole)
+        g.cylz(piece, r, z0, z1, y=y, x=x, sides=sides, bev=bev, hole=hole)
     else:
-        g.cyl(piece, r, (x, y, z0), (x, y, z1), sides=8, bev=bev, r2=r2, hole=hole)
+        g.cyl(piece, r, (x, y, z0), (x, y, z1), sides=sides, bev=bev, r2=r2, hole=hole)
 
 
 def rail(g, piece, slot_piece, z0, z1, y, hw=0.013, h=0.011, pitch=0.026):

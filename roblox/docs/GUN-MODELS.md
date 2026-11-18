@@ -684,9 +684,30 @@ carries a hat seat (`meta.spots.hat` / `meta.hatAt`) and moving-node origins (`m
 | `bread` | B, v2: golden crust, four diagonal score cuts (pale crumb in an oval golden rim), lumps between them, rounded ends, paler underside, paper sleeve grip | 3,638 | none | 92349177871405 (v2, place v786; v1 was 89469059163185) |
 | `slapper` | B, toy hand on a stick | 3,048 | `hand` (origin at the wrist, 0, 0, -0.45) | 122970789665786 |
 
-The exporter bakes transforms, so a moving node's pivot lives only in the report; code must apply it.
-Not yet done: the Weapons rows, holds and gimmicks (the weapons session), `W.kit()` in Studio, hat seats in
-`hat_spots.json` (the hats session), and a look in Play. The sheets are `batchA*.jpg` in the shared notes.
+Batch B (18 November, `tools/roblox/gun_batch_b.py`, live in place v791 via `W.kit` / `W.models` for the five ids):
+
+| id | look | tris | moving / glowing | asset |
+|---|---|---|---|---|
+| `akimbo` (Lefty & Righty) | B, mint and charcoal machine pistol, symmetric so the left-hand mirror reads | 3,256 | `cocker`, `mag`, `tagL` / `tagR` (one shows per hand) | 80115793663799 |
+| `taser` | B, muted safety yellow, banded cartridge, two prongs, notch and blade on y 0.066 | 3,084 | `led` (Neon) | 95844722711396 |
+| `blower` (Leaf Blower) | B, orange shell on a charcoal tub, long grey tube, top handle | 5,652 | none | 106333648762648 |
+| `cig` (Hot Sauce, the Cigarette's Roblox-safe stand-in) | B, opaque sauce-red bottle, plain cream label band, dark cap forward | 2,540 | `tip` (the cap, origin at its tip) | 107834129757629 |
+| `laser` (Big Laser Pointer) | B, plum tube, steel ends, pocket clip, meter strip | 6,250 | `emitter`, `button`, `led0`..`led4` (Neon) | 73742511188419 |
+
+The exporter bakes transforms, so a moving node's pivot lives only in the report; code must apply it. Batch A is
+live (place v777, the weapons session's `W.kit`); its hat seats are in `hat_spots.json` (the hats session, v779).
+The sheets are `batchA*.jpg` / `batchB*.jpg` in the shared notes.
+
+## Smooth double barrels (18 November 2026)
+
+The owner: "Double barrel shotgun looks scuffed and unsmooth!!". Two guns are double barrels: the Shotgun's
+**Double Barrel** skin (`shotgun@shotgun_double`, `gun_skins_fix3.py`) and the **Half a Shotgun** (`sawnoff`, look C in
+`gun_models_c2.py`). Look C makes every tube under 10 cm radius 8-sided (`round_sides`), and smooth shading over 8
+facets on a thin barrel shows as bands along it; the muzzles and sawn ends were octagons. Both guns' barrels, crowns,
+bores, sawn ends and breech fences are 24-sided now (the sawn-off's shells 16): `gunkit_c.tube()` takes `sides`
+(default 8, so no other gun changed). Sizes, spots, the rib and the hat seats are unchanged. Tris: sawn-off 2,020 to
+3,428 (asset 84316575014493), Double Barrel 2,416 to 3,440 (asset 116673089549378). 0 z-fight hits on both exports.
+The other look-C guns keep 8-sided tubes: where a gun's barrels ARE the look, give them `sides=24`.
 
 ## How it was judged
 
