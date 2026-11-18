@@ -38,6 +38,9 @@
         "Spin": {
           "$className": "RemoteEvent"
         },
+        "Zap": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

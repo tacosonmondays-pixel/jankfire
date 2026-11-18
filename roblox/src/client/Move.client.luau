@@ -337,13 +337,14 @@ RunService.PreSimulation:Connect(function(dt: number)
 	local held = keys.jump or touchHeld
 	-- (a fresh press jumps you now, below: a released key has already told the Humanoid "no jump" this frame, and a
 	-- held one only gets it to jump again about 0.13 s after landing, past the bhop window)
-	local jumpNow = grounded and fresh and not st.hook and not Body.slipping() and not Body.pinned()
+	local jumpNow = grounded and fresh and not st.hook and not Body.slipping() and not Body.pinned() and not Body.stunned()
 	local inp: Movement.Input = {
 		wx = md.X, wz = md.Z, forward = fwd, sprint = keys.sprint, crouch = keys.crouch,
 		jump = held or (grounded and fresh and not Body.slipping()), jumpPressed = keys.jumpPressed, fresh = fresh,
 		lookX = look.X, lookZ = look.Z,
 	}
 	keys.jumpPressed = false
+	if Body.stunned() then inp.wx, inp.wz, inp.jump, inp.jumpPressed, inp.forward, inp.sprint = 0, 0, false, false, false, false end -- (tased: frozen)
 	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil

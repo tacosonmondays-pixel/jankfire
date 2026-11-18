@@ -133,6 +133,20 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 	return nil
 end
 
+-- (weapons batch B) the Taser's click: yours, out, alive, not stunned, once a cd (10% slack, the web's 1.125 s)
+function Rules.zap(f: Fighter, wid: any, now: number): string?
+	if not inLoadout(f, wid) or W[wid].kind ~= "zap" then return "not a taser" end
+	if not f.alive then return "dead" end
+	if f.held ~= wid then return "not held" end
+	if now < f.staggerUntil then return "staggered" end
+	if not Rules.gate(f, wid, now, W[wid].cd or 1) then return "too fast" end
+	return nil
+end
+-- stunned for s (the Taser): the server refuses your shots, swings and guard till then, like a parry's stagger
+function Rules.stun(t: Fighter, s: number, now: number)
+	t.staggerUntil = math.max(t.staggerUntil, now + s)
+end
+
 -- the Minigun's barrels (weapons batch A; the web server never checks the spin): the client says when its trigger goes
 -- down (on) and up (Combat Spin); the server keeps its own level the same way, up over spinup s and down over spindown
 -- s, so a quick re-press is full again sooner, and refuses a shot before it's full (Rules.fire)

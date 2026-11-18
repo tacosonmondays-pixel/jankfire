@@ -180,7 +180,7 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	if note then -- (the Shredder: its heat instead of ammo; HOLSTERED in the hub)
 		sub = note
 		if note == "OVERHEATED" then subColor = T.DANGER end
-	elseif w.kind == "melee" then
+	elseif w.kind == "melee" or w.mag == nil then -- (and a weapon with no magazine, the Taser: no count)
 		-- (right click: the katana parries, the knife stabs, the claw does nothing)
 		sub = if kat > 0 then (if kat == 1 then "%d kill · %.1f m" else "%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
 			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry" else ""

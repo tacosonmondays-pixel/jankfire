@@ -574,6 +574,104 @@ AimR.OnServerEvent:Connect(function(p: Player, on: unknown)
 	if f then Rules.aim(f, on == true, now()) end
 end)
 
+-- (weapons batch B) the Taser's click: (weapon, eye, look, the body under your crosshair). the server checks the eye
+-- and the click (Rules.zap), takes the claimed body only if it's in reach, inside the darts' cone round the look and
+-- in sight, else picks its own; then stuns it and chains through the soaked (web secondaries.js secTarget / zapOne)
+local ZapR = Remotes:FindFirstChild("Zap") :: RemoteEvent?
+if not ZapR then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "Zap"
+	r.Parent = Remotes
+	ZapR = r
+end
+local function chestOf(t: Fighter): Vector3? local ft = Fight.feet(t); return ft and ft + Vector3.new(0, Hitbox.ROOT_UP, 0) end
+local function soakedNow(t: Fighter): boolean
+	local m = Fight.model(t)
+	local h: Instance? = if t.kind == "player" then t.ref :: Player else m
+	local v = h and h:GetAttribute("SoakUntil")
+	return type(v) == "number" and v > workspace:GetServerTimeNow()
+end
+local function stunOne(f: Fighter, t: Fighter, wid: string, s: number, dmg: number, up: number, at: Vector3?)
+	Rules.stun(t, s, now())
+	local m = Fight.model(t)
+	local h: Instance? = if t.kind == "player" then t.ref :: Player else m
+	if h then h:SetAttribute("StunUntil", workspace:GetServerTimeNow() + s) end
+	if dmg > 0 and t ~= f then Fight.hurt(t, dmg, f, wid, false, if up > 0 then Vector3.new(0, up, 0) else nil, at) end
+end
+local function zapFrom(f: Fighter, wid: string, eye: Vector3, look: Vector3, claim: Fighter?)
+	local w = W[wid]
+	local Z = w.zap :: any
+	local function fits(t: Fighter): number?
+		if t == f or not t.alive or not Fight.allow(f, t) then return nil end
+		if t.onlyFor ~= nil and t.onlyFor ~= f.ref then return nil end
+		local c = chestOf(t)
+		if not c then return nil end
+		local to = c - eye
+		local d = to.Magnitude
+		if d < 1e-3 or d > w.range + Rules.SLACK then return nil end
+		local allow = (w.cone or 0.1) + math.atan(Weapons.BOX.bodyR * 1.3 / d) + 0.04
+		if math.acos(math.clamp(look:Dot(to.Unit), -1, 1)) > allow then return nil end
+		if Fight.castMap(eye, to.Unit, d) then return nil end
+		return d
+	end
+	local target: Fighter? = if claim and fits(claim) then claim else nil
+	if not target then
+		local bd = math.huge
+		for _, t in Fight.all do
+			local d = fits(t)
+			if d and d < bd then target, bd = t, d end
+		end
+	end
+	local links: { { Vector3 } } = {}
+	local miss: Vector3? = nil
+	if target then
+		local tc = chestOf(target) :: Vector3
+		table.insert(links, { eye, tc })
+		stunOne(f, target, wid, Z.stun * (if soakedNow(target) then Z.wet else 1), w.dmg, w.kbUp or 0, tc)
+		-- the chain: breadth-first from the target to everyone soaked within chainR, in sight, chainMax in all
+		local seen: { [Fighter]: boolean } = { [target] = true, [f] = true }
+		local queue, n = { target }, 1
+		while #queue > 0 and n < Z.chainMax do
+			local a = table.remove(queue, 1) :: Fighter
+			local ca = chestOf(a)
+			if not ca then continue end
+			for _, t in Fight.all do
+				if n >= Z.chainMax then break end
+				if seen[t] or not t.alive or not soakedNow(t) or not Fight.allow(f, t) then continue end
+				local ct = chestOf(t)
+				if not ct then continue end
+				local v = ct - ca
+				if v.Magnitude > Z.chainR or (v.Magnitude > 1e-3 and Fight.castMap(ca, v.Unit, v.Magnitude)) then continue end
+				seen[t] = true
+				n += 1
+				table.insert(queue, t)
+				table.insert(links, { ca, ct })
+				stunOne(f, t, wid, Z.chainStun, Z.chainDmg, 0, ct)
+			end
+		end
+		if n > 2 then callout(f, ("CHAIN x%d"):format(n), 0.9) end
+	else
+		local h = Fight.castMap(eye, look, w.range)
+		miss = if h then h.Position else eye + look * w.range
+	end
+	if soakedNow(f) then stunOne(f, f, wid, Z.self, 0, 0, nil) end -- (fired it soaked: it gets you too)
+	FxR:FireAllClients({ k = "zap", by = uid(f), model = Fight.model(f), links = links, miss = miss })
+end
+(ZapR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, look: unknown, claim: unknown)
+	if not spend(p) or holstered(p) then return end
+	local f = Fight.byPlayer[p]
+	if not f or type(wid) ~= "string" or not W[wid] or not finiteV(eye) or not finiteV(look) then return end
+	local lk = look :: Vector3
+	if lk.Magnitude < 0.5 or lk.Magnitude > 1.5 then return end
+	local seye = Fight.eye(f)
+	if not seye then return end
+	local off = (eye :: Vector3) - seye
+	if off.Magnitude > Rules.EYE_SLACK or (off.Magnitude > 0.05 and Fight.castMap(seye, off.Unit, off.Magnitude)) then return end
+	if Rules.zap(f, wid, now()) then return end
+	Fight.shot(f, wid)
+	zapFrom(f, wid, eye :: Vector3, lk.Unit, Fight.of(claim))
+end)
+
 -- (weapons batch A) the Minigun's trigger: (true) the barrels start spinning up, (false) let go. the server keeps the
 -- spin itself (Rules.spin: no shot before it's full) and everyone sees the barrels turn (the player's Spin attribute)
 local SpinR = Remotes:FindFirstChild("Spin") :: RemoteEvent?

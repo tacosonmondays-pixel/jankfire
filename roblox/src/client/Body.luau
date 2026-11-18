@@ -33,6 +33,9 @@ function Body.pinned(): boolean
 	local p = Body.pin
 	return p ~= nil and workspace:GetServerTimeNow() < p.untilT
 end
+-- (weapons batch B) stunned by a Taser until this server time: no moving, jumping, firing or swinging (WeaponStates)
+Body.stunUntil = 0
+function Body.stunned(): boolean return workspace:GetServerTimeNow() < Body.stunUntil end
 -- when one of our own moves last threw you (a push, a knock, a slip, a ledge launch, a shredder pull). Move's fling
 -- guard lets a sudden jump in speed through only just after one of these: anything else is a collision spike
 Body.kickT = -10

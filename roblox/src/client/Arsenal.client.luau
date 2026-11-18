@@ -71,7 +71,9 @@ local fanNext = 0
 local fanArmed = false -- a fan needs a fresh click after running dry, reloading or aiming
 -- (weapons batch A) the Minigun's barrels: spin 0..1, whether the server was told the trigger is down, the motor's
 -- looped whine (a Sound of ours while it spins), GunParts (it turns the barrels from GunParts.mySpin)
-local minigun = { spin = 0, on = false, snd = nil :: Sound?, parts = require(script.Parent:WaitForChild("GunParts")) :: any }
+local minigun = { spin = 0, on = false, snd = nil :: Sound?, parts = require(script.Parent:WaitForChild("GunParts")) :: any, zapNext = 0 } -- (zapNext: the Taser's next click)
+-- (weapons batch B) the held-trigger weapons (the Leaf Blower, the Hot Sauce, the Big Laser Pointer): HoldClient
+minigun.hold = require(script.Parent:WaitForChild("HoldClient")) :: any
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -196,6 +198,24 @@ local function targets(): { { m: Model, feet: Vector3 } }
 	local d = workspace:FindFirstChild("Dummies")
 	if d then for _, m in d:GetChildren() do if m:IsA("Model") then addModel(m) end end end
 	return out
+end
+-- (weapons batch B) the Taser's click: who's under your crosshair goes with it, and the server (Combat Zap) decides
+-- who the darts really hit; the darts, the bolts and the stun come back to everyone as Fx "zap" (WeaponStates)
+function minigun.zap(now: number)
+	local w = W[held]
+	if not w or now < (minigun.zapNext or 0) then return end
+	minigun.zapNext = now + (w.cd or 1)
+	local eye, look = eyeAndAim()
+	local best: Model?, bd = nil, math.huge
+	for _, t in targets() do
+		local tt = Hitbox.ray(eye, look, t.feet, Hitbox.distScale((t.feet - eye).Magnitude), 1.5)
+		if tt and tt < bd and tt <= w.range then best, bd = t.m, tt end
+	end
+	local r = Remotes:FindFirstChild("Zap")
+	if r and r:IsA("RemoteEvent") then r:FireServer(held, eye, look, best) end
+	Sfx.play(w.snd or "click")
+	VM.kick(w.recoilVM, 0.8, false, 1, 1)
+	VM.shot(w)
 end
 
 -- ---------------------------------------------------------------- camera: kick + punch/shake (visual)
@@ -680,7 +700,10 @@ Keys.began(function(io: InputObject, gp: boolean)
 		fanArmed = true
 		local _, _, root = myChar()
 		if not root then return end
+		if Body.stunned() then return end -- (tased: no firing or swinging till it wears off)
 		if W[held] and W[held].kind == "melee" then swing(now)
+		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
+		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
 		else
 			cancelReload() -- (a reload with rounds left: the shot wins)
 			if not W[held].auto and now >= nextShot[held] then fireGun(now) end
@@ -693,7 +716,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 	end
 end)
 Keys.ended(function(io: InputObject)
-	if Binds.is("fire", io) then trigger = false
+	if Binds.is("fire", io) then trigger = false; minigun.hold.release(held)
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", false, aimHeld)
 		if not aimHeld then guardEnd(os.clock()) end -- (the katana's guard comes down with the button)
@@ -959,7 +982,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- how fast you run with it out (the SMG is light, the Belt Sander isn't), slower down the sights (web: x0.75)
 	-- (a classic mode's run speed on top: spoons & grapples x1.6, Modes.luau's ModeSpeed)
 	local ms = tonumber(me:GetAttribute("ModeSpeed")) or 1
-	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim) * (if inHub() then 1 else ms)
+	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim) * (if inHub() then 1 else ms) * minigun.hold.speed()
 	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
 	local fovAttr = me:GetAttribute("BaseFov")
 	local baseFov = if type(fovAttr) == "number" then fovAttr else 70
@@ -977,7 +1000,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local spinning = false
 	if w and w.spinup then
 		local a2 = ammo[held]
-		spinning = hum ~= nil and trigger and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true
+		spinning = hum ~= nil and trigger and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true
 			and a2 ~= nil and a2.mag > 0 and a2.reloadUntil == 0
 		minigun.spin = if spinning then math.min(1, minigun.spin + dt / w.spinup) else math.max(0, minigun.spin - dt / (w.spindown or 0.9))
 	else
@@ -991,8 +1014,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 		elseif not spinning and minigun.spin > 0.25 then Sfx.play("minigun_spindown", nil, minigun.spin) end
 	end
 	minigun.parts.mySpin = minigun.spin
+	minigun.hold.step(dt, held) -- (the held-trigger weapons: where you look, your thrust, a swap lets go)
 	minigun.loop(minigun.on and minigun.spin >= 0.98, 1, 1)
-	if hum and (trigger or burstLeft > 0) and w and w.auto and (not w.spinup or minigun.spin >= 1) and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
+	if hum and (trigger or burstLeft > 0) and w and w.auto and (not w.spinup or minigun.spin >= 1) and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
 		local n = 0
 		-- (a Hat Trick burst always finishes, even on a tap)
 		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
@@ -1000,7 +1024,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	end
 	-- the Revolver: hold the trigger (not down the sights) and the rest of the cylinder is fanned out
 	if aim >= 0.1 or not trigger then fanArmed = false end
-	if hum and trigger and fanArmed and w and w.fan and a and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now - pressT > w.fan.hold
+	if hum and trigger and fanArmed and w and w.fan and a and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now - pressT > w.fan.hold
 		and now >= fanNext and a.mag > 0 and a.reloadUntil == 0 then
 		fireGun(now, true)
 	end

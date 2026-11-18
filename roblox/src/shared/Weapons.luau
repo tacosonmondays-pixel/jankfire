@@ -34,6 +34,14 @@ export type Weapon = {
 	pogo: number?, slip: boolean?, radial: boolean?,
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?,
+	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
+	-- soaked people within chainR, up to chainMax in all, each chainStun s + chainDmg; self = your own stun firing it wet
+	zap: { stun: number, wet: number, chainR: number, chainMax: number, chainStun: number, chainDmg: number, self: number }?,
+	-- the held-trigger weapons (kind "hold", HoldWeapons.server): hold = "blow" (the Leaf Blower), "breath" (the Hot
+	-- Sauce), "beam" (the Big Laser Pointer); their numbers are each row's own (WEAPONS.md "Balance"-free web values)
+	hold: string?, tick: number?, push: number?, pushUp: number?, self: number?, fuel: number?, regen: number?,
+	maxCharge: number?, coughAt: number?, exhaleMul: number?, jet: number?, cough: number?,
+	charge: number?, tap: number?, dur: { number }?, r: { number }?, dmgK: { number }?, kbK: { number }?, slow: number?,
 	cycle: { clip: string, at: number }?, draw: string?, -- the clip after every shot (pump, bolt, lever), its own draw
 	-- melee
 	cd: number?, cone: number?, kb: number?, kbUp: number?, grow: number?, growMax: number?, hitT: number?,
@@ -348,6 +356,64 @@ local W: { [string]: Weapon } = {
 			muzzle = Vector3.new(0, 0.01, -0.29), sight = Vector3.new(0, 0.136, 0.09),
 			grip = Vector3.new(0, -0.09, 0.108),
 			parts = { water = { at = Vector3.new(0, 0.0545, -0.0775) }, pump = { travel = 0.03 } },
+		},
+	},
+	-- (weapons batch B) the Leaf Blower: hold it, everyone in the cone is shoved away from you (0 damage: a fall is yours),
+	-- 4 s of fuel that refills when you let go; pointed at the floor, its thrust holds you up
+	blower = {
+		id = "blower", name = "Leaf Blower", slot = "secondary", kind = "hold", hold = "blow", color = rgb(0xff9a3a),
+		desc = "pushes people off the map. point it at the floor and you hover.",
+		dmg = 0, range = 16 * S, cone = 0.42, tick = 0.09, push = 5.5 * S, pushUp = 1.2 * S, self = 34 * S, fuel = 4, regen = 0.8,
+		snd = "blower_loop",
+		vm = { p = Vector3.new(0.2, -0.22, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
+		mdl = {
+			lo = Vector3.new(-0.08, -0.2, -0.87), hi = Vector3.new(0.08, 0.12, 0.25),
+			muzzle = Vector3.new(0, -0.03, -0.87), grip = Vector3.new(0, -0.06, 0.08), fore = Vector3.new(0, -0.02, -0.3),
+		},
+	},
+	-- (weapons batch B) the web game's Cigarette as a Roblox-safe Hot Sauce (no tobacco on Roblox; the same gimmick, id
+	-- kept): hold to take a swig, let go and you breathe fire for as long as you held it (x1.2, at most 3.6 s); let go
+	-- past 3 s or hold past 4.5 s and it burns you instead. the breath pushes you back a little
+	cig = {
+		id = "cig", name = "Hot Sauce", slot = "secondary", kind = "hold", hold = "breath", color = rgb(0xff7a1a),
+		desc = "hold to take a swig, let go to breathe fire for as long as you held it. too long and it burns you instead.",
+		dmg = 5, range = 13 * S, cone = 0.42, tick = 0.09, maxCharge = 3, coughAt = 4.5, exhaleMul = 1.2, jet = 6 * S,
+		kb = 1.5 * S, kbUp = 0.6 * S, cough = 12,
+		snd = "breath_loop",
+		vm = { p = Vector3.new(0.16, -0.17, -0.3) * S, r = Vector3.new(0.1, 0.1, 0), s = 1.0 },
+		mdl = {
+			lo = Vector3.new(-0.03, -0.1, -0.03), hi = Vector3.new(0.03, 0.11, 0.03),
+			muzzle = Vector3.new(0, 0.11, 0), grip = Vector3.new(0, -0.02, 0),
+		},
+	},
+	-- (weapons batch B) the Big Laser Pointer: hold to charge (1.2 s, slower on your feet), let go for a beam through
+	-- everyone in its line; a tap is a little zap (2 ticks of 5), a full charge 7 ticks of 21
+	laser = {
+		id = "laser", name = "Big Laser Pointer", slot = "primary", kind = "hold", hold = "beam", color = rgb(0x39ff14),
+		desc = "hold to charge it, let go for a beam through everyone in a line. tap it for a little zap.",
+		dmg = 21, range = 120 * S, charge = 1.2, tap = 0.3, cd = 0.45, tick = 0.1, dur = { 0.16, 0.62 }, r = { 0.22 * S, 0.7 * S },
+		dmgK = { 5, 21 }, kbK = { 1.5 * S, 7 * S }, kbUp = 1.5 * S, slow = 0.72, speedMul = 0.97,
+		snd = "laser_fire", tracer = rgb(0x7dff5a),
+		vm = { p = Vector3.new(0.2, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
+		mdl = {
+			lo = Vector3.new(-0.06, -0.12, -0.42), hi = Vector3.new(0.06, 0.08, 0.45),
+			muzzle = Vector3.new(0, 0, -0.42), grip = Vector3.new(0, -0.08, 0.12), fore = Vector3.new(0, -0.02, -0.15),
+		},
+	},
+	-- (weapons batch B, 18 Nov 2026) two darts on wires (web secondaries.js zapOne): the server picks the target from
+	-- the shot's line, stuns it (Rules.stun: no firing, swinging or guarding; its client stops moving) and chains through
+	-- everyone soaked by a Water Pistol near it. fire it soaked and it gets you too
+	taser = {
+		id = "taser", name = "Taser", slot = "secondary", kind = "zap", color = rgb(0xe8ff3a),
+		desc = "two darts on wires: whoever they hit is stunned for a second. it jumps through everyone soaked nearby.",
+		cd = 1.25, range = 9 * S, cone = 0.1, dmg = 18, kbUp = 2.5 * S, speedMul = 1.05,
+		zap = { stun = 1.0, wet = 1.5, chainR = 9 * S, chainMax = 8, chainStun = 1.0, chainDmg = 12, self = 0.4 },
+		snd = "taser_fire", tracer = rgb(0xf0f070),
+		recoilVM = { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 },
+		vm = { p = Vector3.new(0.165, -0.14, -0.31) * S, r = Vector3.new(0.03, 0.12, -0.1), s = 0.95 },
+		mdl = {
+			lo = Vector3.new(-0.025, -0.12, -0.172), hi = Vector3.new(0.025, 0.07, 0.1),
+			muzzle = Vector3.new(0, 0.012, -0.172), sight = Vector3.new(0, 0.066, 0.093), grip = Vector3.new(0, -0.07, 0.04),
 		},
 	},
 	katana = {

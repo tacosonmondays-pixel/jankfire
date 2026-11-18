@@ -32,9 +32,14 @@ me:GetAttributeChangedSignal("SoakUntil"):Connect(function()
 	local v = me:GetAttribute("SoakUntil")
 	mine.soakUntil = if type(v) == "number" then v else 0
 end)
+me:GetAttributeChangedSignal("StunUntil"):Connect(function()
+	local v = me:GetAttribute("StunUntil")
+	Body.stunUntil = if type(v) == "number" then v else 0
+end)
 me.CharacterAdded:Connect(function()
 	mine.soakUntil, Body.pin = 0, nil
 	Body.wet, Body.grip = 1, 1
+	Body.stunUntil = 0
 end)
 
 -- the wet edge: four soft blue bands at the screen's edges, fading out over the last 0.8 s of the soak
@@ -53,6 +58,29 @@ for _, b in { { UDim2.new(1, 0, 0.16, 0), UDim2.new(0, 0, 0, 0), 90 }, { UDim2.n
 	g.Parent = f
 	f.Parent = gui
 	table.insert(bands, f)
+end
+
+-- (weapons batch B) tased: a faint white flicker over your screen while it lasts
+local static = Instance.new("Frame")
+static.Size = UDim2.fromScale(1, 1); static.BackgroundColor3 = Color3.fromRGB(235, 240, 210); static.BorderSizePixel = 0
+static.BackgroundTransparency = 1
+static.Parent = gui
+
+-- a jagged bolt from a to b: a few short tracers bent off the line (the Taser's links and the crackle on the stunned)
+local function bolt(a: Vector3, b: Vector3, col: Color3, n: number, jag: number, wide: number, life: number)
+	local d = b - a
+	if d.Magnitude < 0.05 then return end
+	local side = d:Cross(Vector3.yAxis)
+	side = if side.Magnitude > 1e-3 then side.Unit else Vector3.xAxis
+	local up = side:Cross(d.Unit)
+	local prev = a
+	for i = 1, n do
+		local u = i / n
+		local p = a + d * u
+		if i < n then p += side * (math.random() - 0.5) * 2 * jag + up * (math.random() - 0.5) * 2 * jag end
+		Fx.tracer(prev, p, col, wide, life)
+		prev = p
+	end
 end
 
 -- ---------------------------------------------------------------- everyone soaked drips
@@ -86,6 +114,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 		for _, f in bands do f.BackgroundTransparency = 1 - 0.55 * a end
 	end
 	if Body.pin and t >= Body.pin.untilT then Body.pin = nil end
+	local stunned = Body.stunned()
+	static.BackgroundTransparency = if stunned then 0.86 + math.random() * 0.1 else 1
+	gui.Enabled = wet or stunned
 	dripAcc += dt
 	if dripAcc < 0.12 then return end
 	dripAcc = 0
@@ -97,6 +128,17 @@ RunService.RenderStepped:Connect(function(dt: number)
 		local off = Vector3.new((math.random() - 0.5) * 2, math.random() * 2.5 - 1, (math.random() - 0.5) * 2)
 		Fx.drip(r.Position + off)
 	end
+	-- (weapons batch B) the stunned crackle: a short arc somewhere on everyone tased (not round your own eyes)
+	local function crackle(m: Instance?, v: any)
+		local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not r or type(v) ~= "number" or v <= t then return end
+		if m == me.Character and cam and (cam.CFrame.Position - r.Position).Magnitude < 4.5 then return end
+		local a = r.Position + Vector3.new((math.random() - 0.5) * 2, math.random() * 3 - 1.5, (math.random() - 0.5) * 2)
+		bolt(a, a + Vector3.new((math.random() - 0.5) * 2, (math.random() - 0.5) * 2, (math.random() - 0.5) * 2), Color3.fromRGB(200, 235, 255), 3, 0.25, 0.05, 0.08)
+	end
+	for _, p in Players:GetPlayers() do crackle(p.Character, p:GetAttribute("StunUntil")) end
+	local dz = workspace:FindFirstChild("Dummies")
+	if dz then for _, m in dz:GetChildren() do crackle(m, m:GetAttribute("StunUntil")) end end
 end)
 
 -- ---------------------------------------------------------------- someone else's Minigun spinning: its whine at them
@@ -152,7 +194,47 @@ local function bigNail(cf: CFrame, life: number)
 end
 Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if type(f) ~= "table" then return end
-	if f.k == "soak" then
+	if f.k == "zap" and type(f.links) == "table" then
+		-- (weapons batch B) the Taser: two dark wires out to whoever it hit, a yellow bolt down them, cyan bolts on to
+		-- everyone soaked it jumped to (70 ms apart), sparks where they land; or the darts into the wall on a miss
+		local first = f.links[1]
+		local from = if type(first) == "table" and typeof(first[1]) == "Vector3" then first[1] :: Vector3
+			elseif typeof(f.miss) == "Vector3" then nil else nil
+		local shooter = if typeof(f.model) == "Instance" then f.model :: Instance else nil
+		local mz: Vector3? = nil
+		if shooter == me.Character then
+			local cam = workspace.CurrentCamera
+			mz = if cam then cam.CFrame.Position + cam.CFrame.LookVector * 1.5 - cam.CFrame.UpVector * 0.6 else nil
+		else
+			local hw = shooter and shooter:FindFirstChild("HeldWeapon")
+			local hr = hw and (hw :: Model).PrimaryPart
+			local a = hr and hr:FindFirstChild("Muzzle")
+			mz = if a and a:IsA("Attachment") then a.WorldPosition else from
+		end
+		local to = if type(first) == "table" and typeof(first[2]) == "Vector3" then first[2] :: Vector3 elseif typeof(f.miss) == "Vector3" then f.miss :: Vector3 else nil
+		if mz and to then
+			local side = (to - mz):Cross(Vector3.yAxis)
+			side = if side.Magnitude > 1e-3 then side.Unit * 0.25 else Vector3.zero
+			Fx.tracer(mz, to + side, Color3.fromRGB(40, 42, 46), 0.035, 0.75)
+			Fx.tracer(mz, to - side, Color3.fromRGB(40, 42, 46), 0.035, 0.75)
+		end
+		if type(first) == "table" and mz and typeof(first[2]) == "Vector3" then
+			bolt(mz, first[2] :: Vector3, Color3.fromRGB(240, 235, 120), 7, 0.35, 0.09, 0.2)
+			Fx.impact(first[2] :: Vector3, Vector3.yAxis, nil, Enum.Material.Metal, { hole = false, scale = 0.6 })
+			Sfx.play("taser_buzz", first[2] :: Vector3, 1)
+		elseif to then
+			Fx.impact(to, Vector3.yAxis, nil, Enum.Material.Metal, { hole = false, scale = 0.4 })
+		end
+		for i = 2, #f.links do
+			local l = f.links[i]
+			if type(l) ~= "table" or typeof(l[1]) ~= "Vector3" or typeof(l[2]) ~= "Vector3" then continue end
+			task.delay((i - 1) * 0.07, function()
+				bolt(l[1] :: Vector3, l[2] :: Vector3, Color3.fromRGB(140, 220, 255), 6, 0.4, 0.07, 0.2)
+				Fx.impact(l[2] :: Vector3, Vector3.yAxis, nil, Enum.Material.Metal, { hole = false, scale = 0.5 })
+				Sfx.play("taser_arc", l[2] :: Vector3, 0.8)
+			end)
+		end
+	elseif f.k == "soak" then
 		local r = rootOf(f.model)
 		if r then Fx.drip(r.Position + Vector3.new(0, 1, 0), 10); Sfx.play("water_soak", r.Position, 0.8) end
 	elseif f.k == "pin" and typeof(f.at) == "Vector3" then
