@@ -718,7 +718,11 @@ end
 -- a container can be redeemed here: it has a price in tickets or Brass and the quests server is up
 function Purse.price(cid: string): { tix: number?, brass: number? }?
 	if not Purse.remote() or not Purse.has() then return nil end
-	return Shop.redeemPrice(cid)
+	local p = Shop.redeemPrice(cid)
+	-- (where Roblox's policy keeps a player from paid random items, coins don't redeem a container: coins can be bought
+	-- with Robux. tickets are only ever earned, so they still do. the server refuses it too: Quests "redeem". 18 Nov)
+	if p and S.restricted then p = if p.tix then { tix = p.tix } else nil end
+	return p
 end
 -- "12 TICKETS" / "1 TICKET" / "2,500 COINS" (Brass in the code is Coins on screen, 18 Nov)
 function Purse.words(cur: string, n: number): string
@@ -1201,6 +1205,13 @@ function Money.ask(op: string, a: any?): any
 	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer(op, a) end)
 	if not ok or type(res) ~= "table" then return { ok = false, why = "couldn't reach the shop" } end
 	return res
+end
+-- a chance as a percentage, rounded four places past its first digit (Roblox's rule for long decimals): 12.346, 0.0083333
+function Money.pct(p: number): string
+	if p <= 0 then return "0" end
+	local first = math.floor(math.log10(p))
+	local places = math.clamp(4 - first, 2, 12)
+	return (string.format("%." .. places .. "f", p):gsub("0+$", ""):gsub("%.$", ""))
 end
 function Money.owns(wid: string): boolean
 	local s = me:GetAttribute("RobuxOwned")
@@ -1865,7 +1876,9 @@ do
 	UI.oddsTitle = txt(UI.odds, "", 22, T.TEXT, T.FONT_TITLE); UI.oddsTitle.ZIndex = 31
 	UI.oddsTitle.Position = UDim2.fromOffset(22, 18); UI.oddsTitle.Size = UDim2.new(1, -44, 0, 28)
 	new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 50), Size = UDim2.fromOffset(32, 3), ZIndex = 31 }, UI.odds)
-	UI.oddsList = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 66), Size = UDim2.new(1, -44, 1, -150), ZIndex = 31 }, UI.odds)
+	-- (it scrolls: the rarities, then every item with its chance)
+	UI.oddsList = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 66), Size = UDim2.new(1, -44, 1, -162), ZIndex = 31,
+		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, UI.odds)
 	new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, UI.oddsList)
 	UI.oddsFoot = txt(UI.odds, "", 12, T.MUTED); UI.oddsFoot.ZIndex = 31
 	UI.oddsFoot.TextWrapped = true; UI.oddsFoot.TextTruncate = Enum.TextTruncate.None
@@ -1913,6 +1926,24 @@ function ShopUI.odds(cid: string)
 	for _, c in UI.oddsList:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	UI.oddsTitle.Text = string.upper(o.name) .. "  ODDS"
 	ShopUI.oddsRows(UI.oddsList, cid, 31)
+	-- every final outcome with its own chance, below the rarities (Roblox's rule for paid random items: all outcomes and
+	-- their numerical odds, before anything is bought; one line per rarity and gun, whose items share a chance). 18 Nov
+	local det = Shop.oddsDetail(cid, Till.ownedSets())
+	if det and #det > 0 then
+		local head = txt(UI.oddsList, "EVERY ITEM", 13, T.MUTED, T.FONT_BOLD)
+		head.Size = UDim2.new(1, -6, 0, 26); head.LayoutOrder = 1000; head.ZIndex = 32
+		for i, g in det do
+			local where = if g.gun == "card" then "PLAYER CARD" elseif g.gun == "kill" then "KILL EFFECT" elseif g.gun == "emote" then "EMOTE"
+				else string.upper(Shop.weaponName(g.gun))
+			local l = txt(UI.oddsList, ("%s  ·  %s  ·  each item below: %s%%"):format(string.upper(g.name), where, Money.pct(g.each * 100)), 12, rarityColor(g.rarity), T.FONT_BOLD)
+			l.Size = UDim2.new(1, -6, 0, 18); l.LayoutOrder = 1000 + i * 2; l.ZIndex = 32
+			local b = txt(UI.oddsList, table.concat(g.items, ", "), 12, T.SOFT)
+			b.TextWrapped = true; b.TextTruncate = Enum.TextTruncate.None; b.AutomaticSize = Enum.AutomaticSize.Y
+			b.Size = UDim2.new(1, -6, 0, 0); b.LayoutOrder = 1001 + i * 2; b.ZIndex = 32
+		end
+		local note = txt(UI.oddsList, "Probabilities are rounded; the total of the displayed individual probabilities may not equal 100%.", 11, T.MUTED)
+		note.TextWrapped = true; note.Size = UDim2.new(1, -6, 0, 30); note.LayoutOrder = 9999; note.ZIndex = 32
+	end
 	UI.oddsFoot.Text = "a rarity by these chances, then the gun is picked evenly, then an item for it. never one you already own, so the odds change as you collect."
 	UI.odds.Visible = true
 	ShopUI.layer()
@@ -1948,12 +1979,18 @@ end
 function Purse.row(cid: string, n: number): number
 	local p = Purse.price(cid)
 	local shown = {}
+	-- (coins, where Roblox's policy keeps a player from paid random items: the option shows, greyed. 18 Nov)
+	local all = if cid ~= "" and S.restricted and Purse.remote() and Purse.has() then Shop.redeemPrice(cid) else nil
 	for _, cur in { "tix", "brass" } do
 		local b = UI.cRedeem[cur]
 		local cost = p and (p :: any)[cur]
-		b.face.Visible = cost ~= nil
+		local barred = cost == nil and cur == "brass" and all ~= nil and all.brass ~= nil
+		b.face.Visible = cost ~= nil or barred
 		if cost then
 			b.set((if n > 1 then "REDEEM 1  ·  " else "REDEEM  ·  ") .. Purse.words(cur, cost), Purse.of(cur) >= cost)
+			table.insert(shown, b)
+		elseif barred then
+			b.set("COINS  ·  NOT AVAILABLE HERE", false)
 			table.insert(shown, b)
 		end
 	end
@@ -1979,7 +2016,7 @@ function ShopUI.ask(id: string)
 		if bs == "soon" then Hud.callout("COMING SOON", 1); return end
 		if bs == "empty" then Hud.callout("YOU HAVE EVERYTHING IN IT", 1.2); return end
 		-- (where paid random items aren't allowed, a paid container isn't sold: PolicyService, the loot server's answer.
-		-- it can still be redeemed with tickets or Brass, which are earned, not bought)
+		-- it can still be redeemed with tickets, which are only earned; not with coins, which can be bought. 18 Nov)
 		if S.restricted and not Shop.free() and not Purse.price(o.id) then Hud.callout("NOT AVAILABLE WHERE YOU ARE", 1.2); return end
 	end
 	if not Shop.onSale(id) then Hud.callout("NOT ON SALE TODAY", 1); return end
@@ -2344,7 +2381,7 @@ function ShopUI.layout()
 	UI.inspSide.Size = UDim2.new(1 - split, -2 * ipad, 1, -2 * ipad)
 	UI.inspBack.face.Size = UDim2.fromOffset(if compact then 96 else 90, if compact then 44 else 38)
 	UI.inspName.TextSize = if compact then 22 else 30
-	UI.odds.Size = UDim2.fromOffset(if compact then 420 else 440, math.min(H - 16, 380))
+	UI.odds.Size = UDim2.fromOffset(if compact then 420 else 520, math.min(H - 16, 560))
 	UI.oddsOk.face.Size = UDim2.new(1, -44, 0, 44); UI.oddsOk.face.Position = UDim2.new(0, 22, 1, -56)
 	UI.oddsFoot.Position = UDim2.new(0, 22, 1, -90)
 end

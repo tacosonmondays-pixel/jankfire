@@ -525,6 +525,35 @@ function L.odds(kind: string, owned: { [string]: { [string]: boolean } }?): Odds
 	return out
 end
 
+-- every final outcome with its chance (Roblox's rule for paid random items: all outcomes and their numerical odds,
+-- adding up to 100%). the roll picks a rarity, then a gun evenly, then an item for that gun evenly, so every item of one
+-- rarity for one gun has the same chance: one group each, { rarity, name, gun, each = 0..1, items = { names } }, the
+-- rarest first, then by gun. what you own is left out, so it follows your collection like L.odds. 18 Nov, shop session
+function L.oddsDetail(kind: string, owned: { [string]: { [string]: boolean } }?): { any }
+	local left = leftOf(kind, owned)
+	local sum = 0
+	for r, x in left do if x.n > 0 then sum += L.RARITY[r].weight end end
+	local out = {}
+	if sum <= 0 then return out end
+	for k = #L.RARITY_ORDER, 1, -1 do
+		local r = L.RARITY_ORDER[k]
+		local x = left[r]
+		if x and x.n > 0 then
+			local pr = L.RARITY[r].weight / sum
+			local guns = table.clone(x.guns)
+			table.sort(guns)
+			for _, w in guns do
+				local list = x.by[w]
+				local names = {}
+				for _, i in list do table.insert(names, i.name) end
+				table.sort(names)
+				table.insert(out, { rarity = r, name = L.RARITY[r].name, gun = w, each = pr / #x.guns / #list, items = names })
+			end
+		end
+	end
+	return out
+end
+
 -- ------------------------------------------------------------------ the roll (the server's; pure, so a sample can be run anywhere)
 -- the web game's rollPick, on pairs: a rarity by weight among the rarities you still have a pair left in; a gun, evenly,
 -- among the guns that still have something of that rarity; then any cosmetic of that rarity you don't own for that gun.

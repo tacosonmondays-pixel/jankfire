@@ -155,6 +155,50 @@ Images for the GUI (uploaded as Image assets): the coin 140006087004657, the tic
   - they never count as earned, so a cheat restore leaves them;
   - idempotent per receipt in their own list (`bought`).
 
+## Paid random items (Roblox's policy, checked 18 Nov before go-live)
+
+Roblox's rules (create.roblox.com/docs/production/monetization/paid-random-items) cover random items bought with
+Robux, **or with a currency that can be bought with Robux**. Coins can be bought, so a container redeemed with coins
+counts. Tickets are only ever earned (the weekly track), and nothing sells them for Robux or coins, so ticket redeems
+don't.
+
+**Where the policy restricts a player** (PolicyService `ArePaidRandomItemsRestricted`; `Loot.restricted(p)`, true
+until Roblox answers):
+- **Robux:**
+  - the shop's BUY on a container reads NOT AVAILABLE HERE;
+  - ShopReceipts never prompts a container for them;
+  - a container receipt that arrives anyway is never granted (it waits, and Roblox returns the Robux).
+- **Coins:** the REDEEM option for coins reads COINS · NOT AVAILABLE HERE. The server refuses it too, before anything is
+  spent (`Quests` "redeem": "not available where you are").
+- **Tickets:** still redeem, and the containers they open still show their odds.
+- **Everything else** isn't random and stays on sale: coin packs, bundles, sets, singles, deals, weapons, VIP.
+
+**The odds**, before anything is bought by any route:
+- The container cards have an **ODDS** button (a word, not an icon).
+- The ODDS panel lists the rarities with their chances and a TOTAL row of 100%.
+- Below them, **EVERY ITEM**: every final outcome with its own chance, one line per rarity and gun ("LEGENDARY ·
+  ASSAULT RIFLE · each item below: 0.0046136%", then the items). The roll picks a rarity, then a gun evenly, then an
+  item for it, so the items in one line share a chance (`LootTable.oddsDetail`).
+- Chances are rounded four places past their first digit, with Roblox's disclaimer ("Probabilities are rounded; the
+  total of the displayed individual probabilities may not equal 100%").
+- The confirm panel (every buy and redeem of a container) shows the rarity odds again.
+- What you own is never rolled, so every number follows your collection.
+- Checked: the per-item chances add up to exactly 100% for all three containers: the Crate 44 outcomes, the Duffel Bag
+  378, the Spray Can 5,049.
+
+**Studio test:** the loot remote's `("dev", "restricted", true | false)` (Studio and the owner only, this session only).
+
+Tested 18 Nov, place version 1033 (\`MoneyTest\` on):
+- **Restricted:**
+  - Robux receipts for a Crate, a Duffel Bag and a Spray Can: NotProcessedYet, stock unchanged;
+  - coin redeems of a bag and a can: refused, coins unchanged (9,000);
+  - a ticket redeem of a can: done (30 to 27 tickets);
+  - a coin-pack receipt and the Head Office bundle: granted.
+- **Not restricted:** a coin redeem of a bag (10,200 to 7,700) and a Crate receipt: both done.
+- **Photos:** `money/odds-every-item.jpg`, `money/confirm-restricted.jpg`.
+- **Put back:** the containers opened, the loot save set back to its 17 / 17 / 8, the coins save back to its snapshot.
+  A fresh Play read it all back as it was.
+
 ## The shop's WEAPONS and COINS tabs
 
 - **WEAPONS:** the four Robux weapons. Each has a Robux button (the prompt) and a coins button.

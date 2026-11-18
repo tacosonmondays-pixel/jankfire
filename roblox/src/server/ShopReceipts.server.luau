@@ -163,6 +163,13 @@ local function grant(p: Player, info: any): boolean
 	else
 		local L = loot()
 		if not L or type(L.grant) ~= "function" then return false end
+		-- (a container for a player Roblox's policy keeps from paid random items is never granted: the receipt waits and
+		-- Roblox returns the Robux. the shop never prompts them; this is for a purchase made some other way. 18 Nov)
+		local co = Shop.byId[offerId]
+		if co and co.type == "container" and type(L.restricted) == "function" and L.restricted(p) then
+			warn("[jankfire] a container receipt for a restricted player, not granted: " .. pid)
+			return false
+		end
 		ok, granted = pcall(L.grant, p, offerId, pid)
 	end
 	if not ok then warn("[jankfire] the grant failed: " .. tostring(granted)) end

@@ -560,6 +560,9 @@ local function redeem(s: State, kind: unknown, cur: unknown): any
 	local price = if type(kind) == "string" then QD.PRICES[kind] else nil
 	if not price then return { ok = false, why = "no such container" } end
 	if cur ~= "tix" and cur ~= "brass" then return { ok = false, why = "nope" } end
+	-- (coins can be bought with Robux, so a container redeemed with them is a paid random item: refused where Roblox's
+	-- policy keeps the player from those, before anything is spent. tickets are only earned. the shop session, 18 Nov)
+	if cur == "brass" and Loot.restricted(p) then return { ok = false, why = "not available where you are" } end
 	local cost = (price :: any)[cur]
 	if type(cost) ~= "number" then return { ok = false, why = if cur == "brass" then "coins can't buy that" else "tickets can't buy that" } end
 	local have = if cur == "tix" then num(d.tix) else num(d.brass)

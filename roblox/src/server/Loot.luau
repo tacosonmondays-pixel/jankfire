@@ -527,6 +527,9 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			s.owned = sets(d)
 		elseif a == "stock" then
 			addStock(s, { crate = 5, bag = 5, spray = 5 })
+		elseif a == "restricted" then
+			-- (Studio tests: act as a player Roblox's policy keeps from paid random items, or not; this session only)
+			s.restricted = b == true
 		elseif a == "show" then
 			-- (what others see when you open, sent to you yourself, a few studs to the side: nothing is given.
 			-- ("dev", "show", { kind = "spray", n = 1, ahead = 9, side = 6 }))

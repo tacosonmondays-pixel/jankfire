@@ -844,6 +844,12 @@ function Shop.odds(containerId: string, owned: any?): ({ { rarity: string, pct: 
 	end
 	return rows, o
 end
+-- every final outcome and its own chance (LootTable.oddsDetail): groups of { rarity, name, gun, each (0..1), items }
+function Shop.oddsDetail(containerId: string, owned: any?): { any }?
+	if not LootTable or type(LootTable.oddsDetail) ~= "function" then return nil end
+	local ok, d = pcall(LootTable.oddsDetail, containerId, owned)
+	return if ok and type(d) == "table" then d else nil
+end
 -- nothing in this container is on roblox yet
 function Shop.soon(containerId: string): boolean
 	return LootTable ~= nil and type(LootTable.soon) == "function" and LootTable.soon(containerId) == true
