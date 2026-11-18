@@ -19,6 +19,7 @@ local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys a
 local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
 local HookChargesUI = require(script.Parent:WaitForChild("HookChargesUI")) -- (ranked: 2 grapple charges)
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any -- (a LoadoutOpen nothing holds: V clears it)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
 
@@ -156,7 +157,12 @@ GrappleRemote.OnClientEvent:Connect(function(what: string)
 end)
 
 Keys.began(function(io: InputObject, gp: boolean)
-	if gp or game:GetService("Players").LocalPlayer:GetAttribute("LoadoutOpen") then return end -- (the loadout screen is up)
+	if gp then return end
+	if player:GetAttribute("LoadoutOpen") then -- (the loadout screen is up)
+		-- (V is always yours: a LoadoutOpen nothing holds any more, left by screens closing out of order, goes, and the
+		-- key works. MenuCursor.unstick, 18 Nov 2026)
+		if not (Binds.is("camera", io) and MenuCursor.unstick()) then return end
+	end
 	local k = io.KeyCode
 	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", true)
 	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", true)

@@ -24,6 +24,13 @@ task.spawn(function()
 	local ok, r = pcall(require, m)
 	if ok then TP = r end
 end)
+local MC: any = nil -- (MenuCursor: whether a LoadoutOpen is really held, and letting go of one that isn't)
+task.spawn(function()
+	local m = script.Parent:WaitForChild("MenuCursor", 30)
+	if not m then return end
+	local ok, r = pcall(require, m)
+	if ok then MC = r end
+end)
 
 -- distances in studs from the head (the camera's focus): right, up, back. Tune live in a Play test through this
 -- script's "Tune" attribute (JSON merged in, e.g. '{"hip":{"back":9}}'), then write the numbers back here
@@ -184,6 +191,44 @@ local function release()
 	UIS.MouseBehavior = Enum.MouseBehavior.Default
 end
 
+-- V, whatever left the camera strange (18 Nov 2026, the owner: "sometimes when you go into 3rd person it locks your
+-- camera away from your character and doesnt let you go back into first person"; the cause was a LoadoutOpen left up
+-- with no menu, MenuCursor.luau): every press gives the camera back to you. Move.client has already let go of a
+-- LoadoutOpen nothing held (MenuCursor.unstick); here the camera's subject is your body again and, back to first person
+-- with nothing over the shoulder to glide in from, Roblox's own camera has it at once. not while you're dead (the
+-- death camera has it) or while something really has the camera (taken)
+local function taken(): boolean -- a menu, a finisher, a crate reveal, a killcam, an emote, One in the Chamber's watching
+	if me:GetAttribute("LoadoutOpen") == true then return true end
+	if MC and MC.holding() then return true end
+	if me:GetAttribute("Emote") ~= nil then return true end
+	return me:GetAttribute("ModeOut") == true and type(me:GetAttribute("MatchHud")) == "string"
+end
+local function alive(): Humanoid?
+	local ch = me.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	return if hum and hum.Health > 0 then hum else nil
+end
+me:GetAttributeChangedSignal("ThirdPerson"):Connect(function()
+	if MC then MC.unstick() end
+	local hum = alive()
+	if not hum or taken() then return end
+	local cam = workspace.CurrentCamera
+	local sub = cam.CameraSubject
+	local ch = me.Character :: Model
+	if sub ~= hum and not (sub and (sub == hum.SeatPart or sub:IsDescendantOf(ch))) then cam.CameraSubject = hum end
+	if me:GetAttribute("ThirdPerson") ~= true and not S.on and cam.CameraType ~= Enum.CameraType.Custom then
+		cam.CameraType = Enum.CameraType.Custom
+	end
+end)
+-- first person with a scripted camera nobody drives any more (a screen put back the shoulder camera's Scriptable after
+-- it had let go) for a whole second: Roblox's own camera again (every glide back from a menu or an emote is shorter)
+local orphanT = 0
+local function orphan(cam: Camera, dt: number)
+	if cam.CameraType ~= Enum.CameraType.Scriptable or taken() or not alive() then orphanT = 0; return end
+	orphanT += dt
+	if orphanT >= 1 then orphanT = 0; cam.CameraType = Enum.CameraType.Custom end
+end
+
 RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value - 1, function(dt: number)
 	local cam = workspace.CurrentCamera
 	local ch = me.Character
@@ -199,7 +244,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 	end
 	if me:GetAttribute("ThirdPerson") ~= true then
 		-- back to first person: a quick glide in to your head, then Roblox's own camera
-		if not S.on then return end
+		if not S.on then orphan(cam, dt); return end
 		if not S.leaving then S.leaving, S.leaveFrac = os.clock(), S.frac end
 		if os.clock() - (S.leaving :: number) >= C.inTime then release(); return end
 	elseif S.leaving then

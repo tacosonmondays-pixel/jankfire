@@ -937,7 +937,7 @@ local function restore(R: Run)
 	for g in R.hidden do if g.Parent then g.Enabled = true end end
 	-- (the mouse goes back to whoever else still has it: the shop between two openings, the loadout under it)
 	MenuCursor.set("loot", false)
-	me:SetAttribute("LoadoutOpen", R.saved.loadoutOpen == true or MenuCursor.on())
+	me:SetAttribute("LoadoutOpen", R.saved.loadoutOpen == true or MenuCursor.menu()) -- (a real menu: not Toggle Cursor)
 	me:SetAttribute("LootOpening", nil)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()

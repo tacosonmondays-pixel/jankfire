@@ -10,7 +10,9 @@
 --   the player attribute MenuCursor is true (what ShoulderCam, FlairClient, Arsenal and JankSettings read: the camera
 --   holds its look, clicks don't fire or aim);
 --   LoadoutOpen (the one "hold still" flag: hands, weapons, movement) stays up while a menu is in. a screen closing
---   over another one clears it on its way out (they each save and restore it): it goes straight back up.
+--   over another one clears it on its way out (they each save and restore it): it goes straight back up. and the
+--   other way: left up with nothing holding it (M.holding: no menu, finisher, crate reveal or play of the match) it
+--   goes down by itself half a second later.
 -- a name put in "cursor only" (the fourth argument: Toggle Cursor, CursorToggle.client) frees the mouse the same way
 -- but isn't a menu: it doesn't keep LoadoutOpen up, so you still move. MenuCursor.menu() says whether a real menu is in.
 -- when the last name goes the game's own rule is back: first person and the shoulder camera lock the mouse again on
@@ -72,9 +74,47 @@ function M.menu(): boolean return menus > 0 end
 function M.has(name: string): boolean return held[name] ~= nil end
 function M.list(): { string } return names() end
 
+-- LoadoutOpen can't outlive everything that holds it (18 Nov 2026, the owner: "sometimes when you go into 3rd person it
+-- locks your camera away from your character and doesnt let you go back into first person"). each screen saves
+-- LoadoutOpen as it opens and puts that back as it closes; closed in another order than they opened (the Play panel
+-- and the party panel, a finisher and the play of the match, a crate opened with Toggle Cursor on, the settings page
+-- or the match's loadout picker up while another screen closed: the guard below raised it again) the last one left a
+-- true that nothing held: the shoulder camera held still for a menu that wasn't there, V and the guns were ignored.
+-- what holds it: a menu here (menus), a finisher (Finishing), a crate reveal (LootOpening), the play of the match
+-- (Replay). up with none of them for STALE seconds, it goes down; M.unstick() takes it down at once (V: Move.client)
+local Replay: any = nil
+task.defer(function() -- (after this module has loaded: Replay's own requires may come back here)
+	local m = script.Parent:WaitForChild("Replay", 30)
+	if not m then return end
+	local ok, r = pcall(require, m)
+	if ok then Replay = r end
+end)
+function M.holding(): boolean
+	if menus > 0 then return true end
+	if me:GetAttribute("Finishing") or me:GetAttribute("LootOpening") ~= nil then return true end
+	if Replay and Replay.isPlaying and Replay.isPlaying() then return true end
+	return false
+end
+local STALE = 0.5
+local staleT: number? = nil
+function M.unstick(): boolean
+	staleT = nil
+	if me:GetAttribute("LoadoutOpen") == true and not M.holding() then
+		me:SetAttribute("LoadoutOpen", false)
+		return true
+	end
+	return false
+end
+
 -- after every camera (Roblox's first person at Camera, the shoulder camera just before it, the Play panel's lineup at
 -- Last + 60): while a menu is up the mouse stays free and the arrow shows
 RunService:BindToRenderStep("JankMenuCursor", Enum.RenderPriority.Last.Value + 100, function()
+	if me:GetAttribute("LoadoutOpen") == true and not M.holding() then
+		staleT = staleT or os.clock()
+		if os.clock() - (staleT :: number) >= STALE then M.unstick() end
+	else
+		staleT = nil
+	end
 	if n == 0 then return end
 	local gone: { string }? = nil
 	for k, h in held do

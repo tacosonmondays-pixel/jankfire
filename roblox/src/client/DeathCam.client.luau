@@ -284,9 +284,21 @@ local function letGo()
 	drawBar(false)
 end
 
+-- you, alive: your own current body with life in it (18 Nov 2026, the owner, alive in the next round with SPECTATING
+-- DUNE still up and first person stuck, then the bar still up back in the hub: a fresh body can die for a moment while
+-- the server puts it in place, its Died started this on a body that then lived, and only a respawn turned it off. now
+-- it never starts on a living body, turns off the moment yours is alive, and the bar shows only while it watches)
+local function living(ch: Model?): Humanoid?
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if hum and hum.Health > 0 and hum:GetState() ~= Enum.HumanoidStateType.Dead then return hum end
+	return nil
+end
+
 local function start(ch: Model)
 	if S.on and S.ch == ch then return end
+	if living(ch) then return end
 	local cam = workspace.CurrentCamera
+	drawBar(false)
 	S.on, S.owned, S.ch = true, false, ch
 	S.at = bodyPoint(ch) or cam.CFrame.Position
 	S.focus = S.at
@@ -307,11 +319,13 @@ local function stop()
 	S.on, S.ch, S.watch, S.camAt = false, nil, nil, nil
 	table.clear(touches)
 	drawBar(false)
-	if owned then
-		local cam = workspace.CurrentCamera
+	-- the camera back on you: your body is its subject, and if this had it (or nothing else does and no shoulder camera
+	-- is coming), Roblox's own camera has it again
+	local cam = workspace.CurrentCamera
+	local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+	if hum and cam.CameraSubject ~= hum then cam.CameraSubject = hum end
+	if owned or (cam.CameraType == Enum.CameraType.Scriptable and not aside() and me:GetAttribute("ThirdPerson") ~= true) then
 		cam.CameraType = Enum.CameraType.Custom
-		local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
-		if hum then cam.CameraSubject = hum end
 	end
 end
 
@@ -330,10 +344,15 @@ if me.Character then task.spawn(watch, me.Character) end
 -- ------------------------------------------------------------------ every frame
 local filterT = 0
 RunService:BindToRenderStep("JankDeathCam", Enum.RenderPriority.Last.Value + 65, function(dt: number)
-	if not S.on then return end
+	if S.on and living(me.Character) then stop() end -- (alive again, however you came back)
+	if not S.on then
+		if gui.Enabled then drawBar(false) end
+		return
+	end
 	local cam = workspace.CurrentCamera
 	if aside() then
 		if S.owned then letGo() end
+		drawBar(false)
 		turn = Vector2.zero
 		return
 	end
