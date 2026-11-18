@@ -83,6 +83,14 @@ function minigun.swig(): number?
 	if not ok or wid ~= "cig" then return nil end
 	return if type(k) == "number" then math.clamp(k, 0, 1) else 0
 end
+-- the Bow (18 Nov 2026): ProjClient.drawn() is how far it's drawn (0..1) while ProjClient.bowT says you're drawing; the
+-- viewmodel pulls the string and your hand back by it (VM.update's draw). nil when not drawing
+function minigun.bowDraw(): number?
+	local p = minigun.proj
+	if held ~= "bow" or not p or p.bowT == nil or type(p.drawn) ~= "function" then return nil end
+	local ok, d = pcall(p.drawn)
+	return if ok and type(d) == "number" then math.clamp(d, 0, 1) else 0
+end
 -- (weapons batch C) the projectile weapons (the Chicken Rocket, the Peel Shooter, the Tennis Ball Launcher, the
 -- Snowball, the Blood Cross): ProjClient sends the click, the server flies them
 minigun.proj = require(script.Parent:WaitForChild("ProjClient")) :: any
@@ -1201,6 +1209,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 			grounded = st ~= nil and st.onGround, hp = hp(), firedT = firedT, slipping = Body.slipping(), now = now,
 			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading, hidden = gone,
 			swig = minigun.swig(), -- (the Hot Sauce's swig: the bottle up to your mouth)
+			draw = minigun.bowDraw(), -- (the Bow drawn: its string and your right hand pulled back)
 		})
 		-- the katana's smear, after the blade has moved this frame
 		smearStep(now, tp)

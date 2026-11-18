@@ -561,6 +561,54 @@ local FILL = {
 	angle = 80,
 }
 local fill: { at: Attachment, light: SpotLight, mid: Vector3, away: number, full: number, reach: number }? = nil
+
+-- a short raise of what you hold (the Scales of Justice's strike from afar, weapons-port's Gavel: 18 Nov 2026): up and
+-- out a little, tipped up, for dur seconds. VM.raise(0.6)
+local raise = { t0 = -10, dur = 0 }
+function VM.raise(dur: number?) raise.t0 = os.clock(); raise.dur = dur or 0.6 end
+
+-- the Bow (18 Nov 2026, guns-remodel's recurve: its export meta.bow): the drawn string is two halves from where the
+-- string leaves the limbs to the nock, pulled back by the draw (ProjClient.drawn(), 0..1) x meta draw; the kit's own
+-- straight string is hidden; a kit arrow (w_pj_arrow at half size) sits on the nock while one is ready; your right
+-- hand rides the nock
+local BOW = { nock = Vector3.new(0, 0, 0.1132), leave = { Vector3.new(0, 0.36, 0.1132), Vector3.new(0, -0.36, 0.1132) },
+	draw = 0.16, arrowNock = Vector3.new(-0.0023, 0, 0.4002), arrowScale = 0.5, thick = 0.006, cd = 0.35 }
+type Bow = { halves: { BasePart }, arrow: Model?, arrowParts: { BasePart }, e: number, was: boolean, relT: number }
+local bow: Bow? = nil
+local function bowSetup(m: Model, root: BasePart): Bow
+	local col = Color3.fromRGB(60, 52, 44)
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and string.sub(string.lower(d.Name), 1, 6) == "string" then
+			if string.find(string.lower(d.Name), "cord", 1, true) then col = d.Color end
+			d:SetAttribute("Hide", true) -- (Arsenal hides a piece marked Hide)
+		end
+	end
+	local halves = {}
+	for i = 1, 2 do
+		local h = Instance.new("Part")
+		h.Name = "BowString" .. i
+		h.Anchored = true; h.CanCollide = false; h.CanQuery = false; h.CanTouch = false; h.CastShadow = false
+		h.Material = Enum.Material.SmoothPlastic; h.Color = col
+		h.Size = Vector3.new(BOW.thick * k, BOW.thick * k, 0.1)
+		h.Parent = m
+		halves[i] = h
+	end
+	local arrow: Model? = nil
+	local parts = {}
+	local lib = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireWeapons")
+	local t = lib and lib:FindFirstChild("w_pj_arrow")
+	if t and t:IsA("Model") then
+		local a = t:Clone()
+		a.Name = "BowArrow"
+		a:ScaleTo(a:GetScale() * k * BOW.arrowScale)
+		for _, d in a:GetDescendants() do
+			if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false; table.insert(parts, d) end
+		end
+		a.Parent = m
+		arrow = a
+	end
+	return { halves = halves, arrow = arrow, arrowParts = parts, e = 0, was = false, relT = -10 }
+end
 -- the rays that look for something in the light's way (light space, -Z = where it points): its middle and four at 30°
 local FILL_RAYS = { Vector3.new(0, 0, -1) }
 for _, d in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 1, 0), Vector3.new(0, -1, 0) } do
@@ -618,6 +666,7 @@ function VM.set(wid: string, kat: number)
 	fill = nil
 	VM.parts = nil
 	offGone = false
+	bow = nil
 	VM.wid = wid
 	needles, vents = {}, {}
 	adsHide = {}
@@ -676,6 +725,7 @@ function VM.set(wid: string, kat: number)
 	-- your hat on it, riding the piece under it (after the moving pieces are on their welds; never painted by a wrap)
 	GunHats.attach(m, wid, GunHats.hatFor(game:GetService("Players").LocalPlayer, wid), k)
 	hands(m, root)
+	if wid == "bow" then bow = bowSetup(m, root) end
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
 	for _, n in m:GetChildren() do
@@ -709,6 +759,7 @@ export type Ctx = {
 	ammo: number?, reloading: boolean?, -- (for the moving pieces: the belt, a locked-back slide, fallen hammers)
 	hidden: boolean?, -- (the viewmodel is hidden this frame: the fill light goes out)
 	swig: number?, -- (the Hot Sauce's swig, 0..1 of it, while its trigger is down: the bottle up to your mouth)
+	draw: number?, -- (the Bow drawn, 0..1, while you draw it: ProjClient.drawn())
 }
 
 function VM.update(dt: number, c: Ctx)
@@ -829,6 +880,15 @@ function VM.update(dt: number, c: Ctx)
 		baseRot *= fr
 		pos += fp * S
 	end
+	do -- (VM.raise: up, out and tipped up, eased in 0.15 s and out over the last 0.2 s)
+		local rt = os.clock() - raise.t0
+		if rt < raise.dur then
+			local function sm(u: number) u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+			local e = sm(rt / 0.15) * sm((raise.dur - rt) / 0.2)
+			pos += Vector3.new(-0.03, 0.12, -0.06) * S * e
+			rx += 0.7 * e
+		end
+	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kickUp * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	-- the Hot Sauce's swig (18 Nov 2026, weapons-port's hold-to-swig): the bottle comes down in front of your mouth, its
 	-- cap tipping up toward you as the swig goes on (c.swig 0..1), and back down as you let go
@@ -839,6 +899,30 @@ function VM.update(dt: number, c: Ctx)
 		drink = CFrame.Angles((SWIG.tip + SWIG.more * (c.swig or 1)) * e, 0, SWIG.roll * e)
 	end
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * drink * jig * baseRot
+	local bowPull = 0 -- (the Bow's string pulled back, studs: the right hand rides it, below)
+	if bow then
+		local B = bow :: Bow
+		local drawing = c.draw ~= nil
+		if B.was and not drawing then B.relT = os.clock() end -- (let go: the arrow is away)
+		B.was = drawing
+		B.e += ((c.draw or 0) - B.e) * math.min(1, dt * (if drawing then 25 else 40)) -- (the string snaps back fast)
+		bowPull = B.e * BOW.draw * k
+		local R = m.PrimaryPart.CFrame
+		local nock = BOW.nock * k + Vector3.new(0, 0, bowPull)
+		for i, h in B.halves do
+			local a, b = R * (BOW.leave[i] * k), R * nock
+			h.Size = Vector3.new(h.Size.X, h.Size.Y, math.max(0.01, (b - a).Magnitude))
+			h.CFrame = CFrame.lookAt((a + b) / 2, b)
+		end
+		if B.arrow then
+			local ready = drawing or os.clock() - B.relT > BOW.cd
+			;(B.arrow :: Model):PivotTo(R * CFrame.new(nock - BOW.arrowNock * k * BOW.arrowScale))
+			for _, d in B.arrowParts do
+				local hide = if ready then nil else true
+				if d:GetAttribute("Hide") ~= hide then d:SetAttribute("Hide", hide) end
+			end
+		end
+	end
 	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
 	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you
 	if c.hidden then dropProp() else VM.props(m.PrimaryPart.CFrame) end
@@ -880,6 +964,10 @@ function VM.update(dt: number, c: Ctx)
 		end
 		placeLoader(m.PrimaryPart, to, mix, c.hidden)
 		AvatarArms.override(m, "Left", to, mix, under)
+		if bow then -- (the Bow: your right hand on the string, wherever the draw has it)
+			local rel = AvatarArms.holdFrame("bow", "Right", k)
+			if rel and bowPull > 1e-4 then AvatarArms.override(m, "Right", m.PrimaryPart.CFrame * CFrame.new(0, 0, bowPull) * rel, 1) else AvatarArms.override(m, "Right", nil, 0) end
+		end
 		AvatarArms.aim(m, camera.CFrame)
 	end
 	-- the Redline's tachometer + vents (from your HP; it bangs off the limiter when it's in the red and firing)

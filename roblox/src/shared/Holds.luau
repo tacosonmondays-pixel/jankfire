@@ -62,6 +62,11 @@ return {
 		banana = { Right = { pose = "grip", at = V(0, -0.094, 0.098), rot = V(-0.29671, 0, 0), size = 0.88 }, Left = { pose = "cradle", at = V(0, -0.042, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.0705, 0.1038, 0), scale = 1 },
 		tennis = { Right = { pose = "grip", at = V(0, -0.09, 0.005), rot = V(-0.29671, 0, 0), size = 0.86 }, Left = { pose = "grip", at = V(0, -0.062, -0.36), rot = V(-0.13963, 0, 0), size = 0.85 }, shift = V(-0.0233, 0.0043, 0), scale = 1 },
 		snowball = { Right = { pose = "palm", at = V(0, -0.049, -0.08), rot = V(0, 0, 0), size = 1 }, shift = V(-0.0288, 0.0285, 0), scale = 1 },
+		bowling = { Right = { pose = "grip", at = V(0, -0.11, 0.02), rot = V(-0.29671, 0, 0), size = 0.85 }, Left = { pose = "grip", at = V(0, -0.146, -0.256), rot = V(-0.13963, 0, 0), size = 0.85 }, shift = V(-0.06, 0.08, 0), scale = 1 },
+		remote = { Right = { pose = "fist", at = V(0, -0.01, 0.03), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0, 0, 0), scale = 1, tilt = V(0.34907, 0, 0) },
+		slipper = { Right = { pose = "grip", at = V(0, -0.004, 0.1), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0, 0.04, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
+		scales = { Right = { pose = "grip", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0.08, 0.02, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
+		bow = { Right = { pose = "grip", at = V(0, 0, 0.1132), rot = V(0, 0, 0), size = 0.85 }, Left = { pose = "grip", at = V(-0.012, -0.06, -0.0008), rot = V(0, 0, 0), size = 0.85 }, shift = V(-0.12, 0.16, -0.1), scale = 1.0667, tilt = V(0, 0.54978, 0.20071) },
 	},
 	katana = {
 		fixes = {
