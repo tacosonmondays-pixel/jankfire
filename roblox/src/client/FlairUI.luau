@@ -648,6 +648,7 @@ function FlairUI.isOpen(): boolean return S.open end
 -- loadout's showcase spot after DONE, so first person's gun was hidden until it got back. 17 Nov, the owner: "when you go
 -- to loadout and kill effects then leave it it renders your gun away for a second")
 function FlairUI.open(tab: string?, home: CFrame?)
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("flair") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	if tab == "kill" or tab == "emote" or tab == "grapple" then S.tab = tab end
 	if S.open then refresh(); previewLoop(); return end
 	if not canOpen() then return end

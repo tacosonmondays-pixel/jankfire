@@ -423,6 +423,7 @@ local function fetch()
 end
 
 function UI.open()
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("quests") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	why = nil
 	if not isOpen then
 		isOpen = true

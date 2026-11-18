@@ -30,7 +30,7 @@ end
 
 local busy = false
 local function play()
-	if busy or me:GetAttribute("Zone") == "match" then return end
+	if busy or not require(script.Parent:WaitForChild("MenuGate")).allowed("play") then return end -- (not in a match or a map room)
 	local pt = PlayUI.S.party
 	if pt and pt.room then
 		if not PlayUI.isOpen() then PlayUI.open() end

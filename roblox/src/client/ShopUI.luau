@@ -2247,6 +2247,7 @@ end)
 -- open the shop, on a tab (featured / bundles / containers / inventory), and on an offer's inspect panel if given.
 -- what the hub's holograms call: ShopUI.open("bundles", "bundle_nightshift")
 function ShopUI.open(tab: string?, id: string?)
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("shop") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	local ok, why = ShopUI.canOpen()
 	if not ok then if why then Hud.callout(why, 1.2) end; return end
 	if id and not tab then

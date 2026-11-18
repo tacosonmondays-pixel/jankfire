@@ -824,6 +824,7 @@ UI.refresh = function() refresh() end
 function UI.isOpen(): boolean return S.open end
 
 function UI.open()
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("play") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	if S.open or not S.party then return end
 	S.open = true
 	savedOpen = me:GetAttribute("LoadoutOpen")

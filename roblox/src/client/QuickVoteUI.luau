@@ -202,7 +202,9 @@ Keys.began(function(io: any, gp: boolean)
 end)
 
 RunService.Heartbeat:Connect(function()
-	if not cur then return end
+	-- (nothing to show: off, every frame. a menu that hid this panel and puts it back when it closes, the loadout screen in
+	-- a map room on 18 Nov, must never bring back an empty one)
+	if not cur then if gui.Enabled then gui.Enabled = false end; return end
 	local open = (cur.vote and not cur.pick) or (cur.mvote and not cur.map)
 	if not open then clock.Text = ""; return end
 	local v = cur.vote or cur.mvote

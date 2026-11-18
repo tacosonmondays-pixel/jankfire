@@ -238,6 +238,7 @@ local function controls(on: boolean)
 end
 function Board.isOpen(): boolean return S.open end
 function Board.open(tab: string?)
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("leaderboard") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	if me:GetAttribute("Zone") == "match" then return end
 	if tab == "duels" or tab == "party" then S.tab = tab end
 	if S.open then Board.refresh(); return end

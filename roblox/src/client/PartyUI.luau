@@ -258,6 +258,7 @@ local function controls(on: boolean)
 end
 function PartyUI.isOpen(): boolean return S.open end
 function PartyUI.open()
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("party") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	if S.open or me:GetAttribute("Zone") == "match" then return end
 	S.open = true
 	saved = me:GetAttribute("LoadoutOpen")

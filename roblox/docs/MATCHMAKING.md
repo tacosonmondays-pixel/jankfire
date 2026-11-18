@@ -357,6 +357,47 @@ The owner: "allow us to change weapons before first round and between rounds".
   ![CHANGE LOADOUT before round 1](matchmaking/39_change_loadout_hint.jpg)
   ![the picker in the break, dead: SMG for next round](matchmaking/40_loadout_between_rounds.jpg)
 
+### No hub menus in a match or a map room (18 Nov 2026)
+
+The owner: "disable like all the other menus because I can open shop and stats during a match". Then, from the live
+game: "I opened my loadout during map select and this happened". The match had started, the view was only sky, and
+an empty MAP panel was left up.
+
+- **The rule** (`client/MenuGate.luau`): in the `match` and `staging` zones, the hub's menus don't open.
+  - Blocked: the shop, the profile / stats / player cards, quests, the party panel, the Play screen, the hub's loadout
+    screen, the leaderboard, and the customize (flair) screen.
+  - Still allowed: settings, the emote wheel, the cursor toggle, REPORT, the match loadout picker in its window, and
+    READY.
+- **One guard line** at the top of each menu's open function, before it touches MenuCursor or LoadoutOpen, so a
+  refused menu leaves nothing stuck. That catches every way in: keys, buttons, ProximityPrompts, server pushes and
+  clicks on players.
+  - The lines are in `ShopUI.open`, `ProfileUI` `UI.open`, `QuestUI` `UI.open`, `FlairUI.open`, LoadoutUI's `canOpen`,
+    plus my own `PartyUI.open`, `PlayUI` `UI.open` and `LeaderboardUI` `Board.open`.
+  - PlayClient's `play()` asks it too. On the server, `Party.enter` and `goIn` never take a map-room player out to a
+    lobby ("finish the map vote first").
+- **Going in** closes any hub menu that's open (`client/MapRoomHud.client.luau`), and hides the five hub button
+  ScreenGuis in both zones, phones included. LoadoutUI (a LocalScript) closes itself on `staging` as well as `match`
+  (its zone line).
+- **The sky bug:**
+  - The loadout screen hid the vote panel and switched it back on as it closed, after the vote had emptied it. The
+    panel now turns itself off every frame whenever it has nothing to show.
+  - The loadout screen's camera was put back after the move to the arena. Leaving the map room now hands the camera
+    back to your own Humanoid (Custom unless the shoulder camera, a finisher or a menu has it), 0.3 s and 1.2 s after.
+  - The hold session's 58e5baf safety nets (DeathCam's living check, ShoulderCam's Scriptable fallback) don't
+    conflict: they act on the same "your body, Roblox's camera" state.
+- **Tested** in place v747 (18 Nov, 02:12 UTC, solo with the test fill):
+  - The hub loadout was open on L (LoadoutOpen, MenuCursor, Scriptable camera). Going into the map room closed it:
+    LoadoutOpen and MenuCursor false, camera Custom.
+  - In the room, L, B, K, U, J and M opened nothing.
+  - After the vote, I landed on BAZAAR in first person: Custom camera on my Humanoid at 1.5 studs, with no vote panel.
+  - In the match, after closing the round-1 picker, B, K, U, J and M opened nothing. MenuCursor and LoadoutOpen stayed
+    false, and the hub buttons stayed hidden.
+  - Back in the hub, the buttons were back and B opened the shop. With the shop open, a pad fill closed it on the way
+    into the room.
+  - Settings opened on P in the hub; in matches it isn't gated.
+
+  ![landing in the arena after the map room, the round-1 picker up](matchmaking/48_arena_after_map_room.jpg)
+
 ## 4. Ranked
 
 ### The rating: Glicko-2 with a team composite

@@ -1283,6 +1283,7 @@ for _, o in stage:GetChildren() do
 end
 
 local function canOpen(): (boolean, string?)
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("loadout") then return false, nil end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's; the match picker has L in its window)
 	-- (in a match's loadout window the key opens the small picker instead: client/MatchLoadout.luau, play-party-ranked's)
 	if me:GetAttribute("Zone") == "match" then return false, if me:GetAttribute("LoadoutWindow") ~= nil then nil else "NOT MID-MATCH, CHAMP" end
 	local ch = me.Character
@@ -1401,7 +1402,7 @@ me:GetAttributeChangedSignal("Trying"):Connect(function()
 	subtitle.TextColor3 = if trying() then ACCENT else GREY
 end)
 me:GetAttributeChangedSignal("Zone"):Connect(function()
-	if me:GetAttribute("Zone") == "match" and state.open then setOpen(false) end
+	if (me:GetAttribute("Zone") == "match" or me:GetAttribute("Zone") == "staging") and state.open then setOpen(false) end -- (and a pad's map room: MenuGate)
 end)
 local function watchChar(ch: Model)
 	local hum = ch:WaitForChild("Humanoid", 10)

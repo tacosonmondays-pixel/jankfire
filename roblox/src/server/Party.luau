@@ -441,7 +441,8 @@ end
 
 -- into the room: a fresh body on a plinth
 local function goIn(pt: PartyT, m: Member)
-	if not m.player or m.inRoom or Matches.matchOf(m.player) then return end
+	-- (not out of a match, nor out of a pad's map room mid-vote: the "staging" zone, MapRooms)
+	if not m.player or m.inRoom or Matches.matchOf(m.player) or m.player:GetAttribute("Zone") == "staging" then return end
 	m.inRoom = true
 	m.player:SetAttribute("Lobby", pt.id)
 	respawn(m.player) -- (the fresh body lands on its plinth: Matches.homeOf)
@@ -451,6 +452,7 @@ end
 -- match; a member goes in alone
 function Party.enter(p: Player): (boolean, string?)
 	if Matches.matchOf(p) then return false, "finish your match first" end
+	if p:GetAttribute("Zone") == "staging" then return false, "finish the map vote first" end
 	local pt = byPlayer[p] or newParty(p)
 	if not ensureRoom(pt) then return false, "no lobby free right now" end
 	local me = memberOf(pt, p.UserId) :: Member

@@ -783,6 +783,7 @@ end
 
 -- open a card: userId (nil = yours), tab "profile" | "customize" | "players"
 function UI.open(userId: number?, tab: string?)
+	if not require(script.Parent:WaitForChild("MenuGate")).allowed("profile") then return end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's)
 	local who = userId or me.UserId
 	if who ~= view.who then view.card = nil end
 	view.who = who
