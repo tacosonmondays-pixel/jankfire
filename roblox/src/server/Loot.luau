@@ -2,6 +2,7 @@
 -- LOOT: what you own (wraps, hats, skins), how many Crates / Duffel Bags / Spray Cans you have, and opening them.
 -- a wrap or a hat is owned for ONE gun (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
 -- time! some with the charms/hats"): keys "<id>@<weapon>" (LootTable.key); a weapon skin is already one gun's.
+-- a shop bundle's wrap is every gun's (18 Nov: everyWraps, data.every.wrap).
 -- the server owns all of it: rolls happen here only, with the web game's weights (Shared.LootTable.roll), and every
 -- player's things live in one session-locked save (Profiles.luau: one server writes it at a time).
 --
@@ -16,6 +17,8 @@
 --   ("open", kind, n?)     -> n = 1 / 5 / 10 at once: { prize, item, strip, stop (the first), prizes, items, strips, stops,
 --                             n, stock }: uses stock first, or opens free (Config.LOOT_FREE). others nearby see it
 --                             (the LootShow event) unless you turned that off: ("setting", "showOpenings", false)
+--   ("seen", type, keys)   -> the loadout showed these NEW ones (or you picked one): their NEW dots go (18 Nov).
+--                             "inventory" also sends order = { type = keys, oldest first } and fresh = { type = { key = n } }
 --   ("dev", what)          -> Studio + the place's owner only: "unlock" (wear anything, this session only, nothing
 --                             saved), "lock" (back to what you own), "reset" (own nothing, no stock: saved), "stock" (+5 each),
 --                             "set", { wrap = {ids}, hat = {ids} } (an inventory back as it was before a test: saved)
@@ -106,6 +109,9 @@ function Loot.owns(p: Player, t: string, id: string, weapon: string?): boolean
 	local s = st[p]
 	if not s then return false end
 	if s.devAll and LootTable.info(t, id) then return true end -- (the owner's Studio "unlock": every pair, this session only)
+	-- (a shop bundle's wrap is every gun's: data.every.wrap, 18 Nov)
+	local ev = s.prof and type(s.prof.data.every) == "table" and s.prof.data.every.wrap
+	if t == "wrap" and type(ev) == "table" and ev[id] == true then return true end
 	local set = s.owned[t]
 	if not set then return false end
 	if t == "skin" then return set[LootTable.key(t, id, weapon)] == true end
@@ -150,19 +156,42 @@ local function touch(p: Player, s: State, saveIn: number?)
 	changed:Fire(p)
 end
 
-local function give(s: State, it: LootTable.Item)
+-- (the owner, 18 Nov 2026: "if you unlock a spray it should be placed at the start of the scroll"): a new thing goes on
+-- the END of data.inv[type], so that list is the order things were got in (the loadout sorts newest first; no times
+-- needed, and everything owned before has its place already). and it's fresh (data.fresh[type][key] = a running count,
+-- data.freshN) until the player has seen it in the loadout ("seen"): the NEW dot. quiet = not new to them (applyOld)
+-- (the owner, 18 Nov 2026: "the wraps in the bundle are given to all guns, if a bundle has a wrap its for all guns"):
+-- a shop bundle's wrap (Shop's W(): every = true) is owned on every gun that takes a wrap, the gadgets too: all its
+-- pairs, and data.every.wrap[id], so Loot.owns says yes on any gun and a gun added later gets its pair when the save
+-- loads (everyWraps). a container's wrap stays one gun's; a VIP wrap was every gun's already
+local function everyOf(d: any): { [string]: boolean }
+	d.every = if type(d.every) == "table" then d.every else {}
+	if type(d.every.wrap) ~= "table" then d.every.wrap = {} end
+	return d.every.wrap
+end
+local FRESH_MAX = 300 -- (per type: past it, the oldest fresh marks go)
+local function give(s: State, it: LootTable.Item, quiet: boolean?)
 	local d = (s.prof :: Profiles.Profile).data
 	local key = LootTable.key(it.type, it.id, it.weapon)
 	d.inv[it.type] = d.inv[it.type] or {}
 	table.insert(d.inv[it.type], key)
 	s.owned[it.type] = s.owned[it.type] or {}
 	s.owned[it.type][key] = true
+	if not quiet then
+		d.fresh = if type(d.fresh) == "table" then d.fresh else {}
+		local f = d.fresh[it.type]
+		if type(f) ~= "table" then f = {}; d.fresh[it.type] = f end
+		d.freshN = (tonumber(d.freshN) or 0) + 1
+		f[key] = d.freshN
+	end
 end
 -- the pairs a shop item stands for: { kind, id, weapon } is one pair; with no weapon (an old-style bundle) every gun
 local function pairsOf(it: any): { LootTable.Item }
 	local out = {}
 	if type(it) ~= "table" or type(it.kind) ~= "string" or type(it.id) ~= "string" then return out end
-	local guns = if it.kind == "skin" then { "" } elseif type(it.weapon) == "string" then { it.weapon } else LootTable.weapons(it.kind)
+	-- (a shop bundle's wrap, every = true: every gun's. 18 Nov)
+	local guns = if it.kind == "skin" then { "" } elseif it.kind == "wrap" and it.every == true then LootTable.weapons("wrap")
+		elseif type(it.weapon) == "string" then { it.weapon } else LootTable.weapons(it.kind)
 	for _, g in guns do
 		local i = LootTable.pairInfo(it.kind, LootTable.key(it.kind, it.id, if g ~= "" then g else nil))
 		if i then table.insert(out, i) end
@@ -208,15 +237,54 @@ local function grantOffer(s: State, o: any, n: number?): { LootTable.Item }
 	end
 	local c = catalog()
 	local items = if c and type(c.contents) == "function" then c.contents(o) else {}
+	local d = (s.prof :: Profiles.Profile).data
 	for _, it in items do
+		-- (a bundle's wrap, every = true: every gun's pair, and kept for guns added later. NEW only on the gun it's shown
+		-- on, and that pair is the one the buyer is told they got)
+		local every = type(it) == "table" and it.kind == "wrap" and it.every == true
+		if every then everyOf(d)[it.id] = true end
+		local shown, first = false, nil
 		for _, i in pairsOf(it) do
 			if i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then
-				give(s, i)
-				table.insert(got, i)
+				give(s, i, every and i.weapon ~= it.weapon)
+				if not every or i.weapon == it.weapon then table.insert(got, i); shown = true elseif not first then first = i end
 			end
 		end
+		if every and not shown and first then table.insert(got, first) end
 	end
 	return got
+end
+
+-- a save's bundle wraps on every gun, when it loads. once: a bundle bought before 18 Nov (its wraps were one named gun's
+-- each then, and no purchase was written down) counts as bought when every one of its pairs is owned as it was, and its
+-- wraps get marked every gun's. then every gun that takes a wrap gets the pair it lacks (a gun added since), quietly
+local function everyWraps(s: State)
+	local prof = s.prof
+	if not prof then return end
+	local d = prof.data
+	local ev = everyOf(d)
+	if d.everyV ~= 1 then
+		local c = catalog()
+		for _, b in (if c and type(c.bundles) == "table" then c.bundles else {}) :: { any } do
+			if b.set or type(b.items) ~= "table" then continue end
+			local all, wraps = true, {}
+			for _, it in b.items do
+				if it.kind == "wrap" and it.every == true then table.insert(wraps, it.id) end
+				local set = s.owned[it.kind]
+				if not (set and set[LootTable.key(it.kind, it.id, it.weapon)]) then all = false end
+			end
+			if all then for _, id in wraps do ev[id] = true end end
+		end
+		d.everyV = 1
+		prof.dirty = true
+	end
+	local guns = LootTable.weapons("wrap")
+	for id in ev do
+		for _, g in guns do
+			local i = LootTable.pairInfo("wrap", LootTable.key("wrap", id, g))
+			if i and i.rarity ~= "free" and not (s.owned.wrap and s.owned.wrap[i.key]) then give(s, i, true); prof.dirty = true end
+		end
+	end
 end
 
 -- ------------------------------------------------------------------ others see your openings
@@ -283,13 +351,41 @@ local function inventory(p: Player, s: State): any
 		table.sort(ids)
 		owned[t] = ids
 	end
+	-- (the order things were got in, oldest first, and the fresh ones with their count: the loadout's newest-first strips
+	-- and NEW dots. a fresh mark on something not owned any more goes, and past FRESH_MAX a type keeps its newest)
+	local order, fresh = {}, {}
+	local d = s.prof and s.prof.data
+	for _, t in TYPES() do
+		local list, seen = {}, {}
+		for _, k in (if d and type(d.inv[t]) == "table" then d.inv[t] else {}) do
+			local i = LootTable.pairInfo(t, k)
+			if i and not seen[i.key] and s.owned[t] and s.owned[t][i.key] then seen[i.key] = true; table.insert(list, i.key) end
+		end
+		order[t] = list
+		local f = if d and type(d.fresh) == "table" then d.fresh[t] else nil
+		local nf = {}
+		if type(f) == "table" then
+			local keep, drop = {}, {}
+			for k, n in f do
+				if type(k) == "string" and seen[k] then table.insert(keep, { k = k, n = tonumber(n) or 0 }) else table.insert(drop, k) end
+			end
+			table.sort(keep, function(x, y) return x.n > y.n end)
+			for j, x in keep do if j <= FRESH_MAX then nf[x.k] = x.n else table.insert(drop, x.k) end end
+			for _, k in drop do f[k] = nil end
+			if #drop > 0 and s.prof then s.prof.dirty = true end
+		end
+		fresh[t] = nf
+	end
+	local everyList = {} -- (the bundle wraps you have on every gun)
+	if d and type(d.every) == "table" and type(d.every.wrap) == "table" then for id in d.every.wrap do table.insert(everyList, id) end end
+	table.sort(everyList)
 	local left, soon = {}, {}
 	for _, k in LootTable.KINDS do
 		local o = LootTable.odds(k, s.owned)
 		left[k], soon[k] = o.left, o.soon
 	end
 	return { ok = true, free = Config.LOOT_FREE == true, robux = Config.LOOT_ROBUX == true, restricted = s.restricted,
-		stock = stockOf(s), owned = owned, left = left, soon = soon,
+		stock = stockOf(s), owned = owned, left = left, soon = soon, order = order, fresh = fresh, every = everyList,
 		inv = { wrap = owned.wrap, hat = owned.hat, skin = owned.skin, stock = stockOf(s) },
 		save = if not s.ready then "loading" elseif s.prof then s.prof.state else "off", dev = isDev(p), devAll = s.devAll,
 		showOpenings = not (s.prof ~= nil and type(s.prof.data.settings) == "table" and s.prof.data.settings.showOpenings == false) }
@@ -382,6 +478,24 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			prizes = list, items = items, strips = strips, stops = stops,
 			stock = stockOf(s), usedStock = used > 0, used = used }
 
+	elseif op == "seen" then
+		-- ("seen", type, { keys }): the loadout showed these NEW ones, or you picked one: no NEW dot on them from now on.
+		-- nothing else changes, so LootOwned stays (no client asks again); written with the next save
+		if type(a) ~= "string" or type(b) ~= "table" then return { ok = false, why = "nope" } end
+		local f = if type(d.fresh) == "table" then d.fresh[a] else nil
+		local n = 0
+		if type(f) == "table" then
+			for i, k in ipairs(b :: { any }) do
+				if i > 200 then break end
+				if type(k) == "string" and f[k] ~= nil then f[k] = nil; n += 1 end
+			end
+		end
+		if n > 0 then
+			(s.prof :: Profiles.Profile).dirty = true
+			s.saveAt = math.min(s.saveAt or math.huge, os.clock() + 20)
+		end
+		return { ok = true, n = n }
+
 	elseif op == "setting" then
 		-- ("setting", "showOpenings", on): others see your openings or not (Settings [P]); saved with your things
 		if a ~= "showOpenings" or type(b) ~= "boolean" then return { ok = false, why = "nope" } end
@@ -401,6 +515,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			d.inv = {}
 			for _, t in TYPES() do d.inv[t] = {} end
 			d.stock = { crate = 0, bag = 0, spray = 0 }
+			d.fresh = {}
+			d.every = {}
 			s.owned = sets(d)
 		elseif a == "stock" then
 			addStock(s, { crate = 5, bag = 5, spray = 5 })
@@ -440,6 +556,12 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 				end
 			end
 			d.inv = inv
+			-- (and the bundle wraps' every-gun marks, if given: { every = { ids } })
+			if type((b :: any).every) == "table" then
+				local ev = {}
+				for _, id in (b :: any).every do if type(id) == "string" then ev[id] = true end end
+				d.every = { wrap = ev }
+			end
 			s.owned = sets(d)
 		else
 			return { ok = false, why = "unlock, lock, reset, stock, set or show" }
@@ -477,7 +599,8 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
 		warn(("[jankfire] loot: grant of %s: no such offer"):format(tostring(offerId)))
 		return false
 	end
-	local before = { stock = table.clone(d.stock), inv = {} :: any }
+	local before = { stock = table.clone(d.stock), inv = {} :: any,
+		every = if type(d.every) == "table" and type(d.every.wrap) == "table" then table.clone(d.every.wrap) else nil }
 	for t, list in d.inv do before.inv[t] = table.clone(list) end
 	grantOffer(s, o, 1)
 	table.insert(d.receipts, id)
@@ -486,6 +609,7 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any): boolean
 	if not Profiles.save(store, prof) then
 		-- not written: take it back
 		d.stock, d.inv = before.stock, before.inv
+		if type(d.every) == "table" then d.every.wrap = before.every or {} end
 		s.owned = sets(d)
 		local i = table.find(d.receipts, id)
 		if i then table.remove(d.receipts, i) end
@@ -514,7 +638,7 @@ local function applyOld(p: Player, s: State)
 	if prof.data.migrated then return end
 	for _, x in items do
 		local i = LootTable.pairInfo(x.type, LootTable.key(x.type, x.id, x.weapon))
-		if i and i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then give(s, i) end
+		if i and i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then give(s, i, true) end -- (quiet: not new to them)
 	end
 	prof.data.migrated = true
 	touch(p, s, 5)
@@ -542,6 +666,7 @@ local function added(p: Player)
 	s.prof = prof
 	migrate(prof.data)
 	s.owned = sets(prof.data)
+	everyWraps(s) -- (a shop bundle's wraps on every gun, new guns too: 18 Nov)
 	s.ready = true
 	prof.onLost.Event:Connect(function()
 		if p.Parent then p:Kick("your JANKFIRE stuff was opened in another server. rejoin to carry on") end

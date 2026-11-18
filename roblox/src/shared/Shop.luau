@@ -139,7 +139,7 @@ Shop.HELD_BACK = { qr = true, barcode = true, meat = true, organ = true, corp = 
 
 -- wraps and hats are owned PER WEAPON (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
 -- time"): an item is (kind, id, weapon), written "<id>@<weapon>" where one string is needed (Shop.key)
-export type Item = { kind: string, id: string, weapon: string? }
+export type Item = { kind: string, id: string, weapon: string?, every: boolean? } -- (every: a bundle's wrap, on every gun)
 export type Hero = { weapon: string, wrap: string?, hat: string?, skin: string? }
 export type Offer = {
 	id: string, type: string, name: string, blurb: string, rarity: string,
@@ -297,6 +297,7 @@ end
 -- "Sakura Storm · SMG" ("Brackets" for a card look: it has no gun)
 function Shop.itemLabel(it: Item): string
 	local name = Shop.itemInfo(it.kind, it.id)
+	if it.kind == "wrap" and it.every then return name .. " · Every gun" end -- (a bundle's wrap)
 	local w = it.weapon or (if it.kind == "skin" then Shop.skinWeapon(it.id) else nil)
 	if not w and (it.kind == "wrap" or it.kind == "hat") and Shop.vipOnly(it.kind, it.id) then return name .. " · Every gun" end
 	return if w then name .. " · " .. Shop.weaponName(w) else name
@@ -366,10 +367,12 @@ function Shop.redeemPrice(cid: string): { tix: number?, brass: number? }?
 end
 
 -- ---------------------------------------------------------------- bundles
--- themed sets that dress several guns: every wrap and hat in a set is for one named weapon. hero = what the big
--- preview and the hub's hologram show: one weapon wearing its wrap and hat from the set. robux is about 60% of the
--- singles' worth (Shop.worth). the line under a bundle's name only says what's in it (Shop.describe)
-local function W(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon } end
+-- themed sets that dress several guns. a bundle's wrap is for EVERY gun (the owner, 18 Nov 2026: "the wraps in the
+-- bundle are given to all guns, if a bundle has a wrap its for all guns"): every = true, and the loot server gives every
+-- gun's pair, guns added later too; its weapon is only the one it's shown on. a hat is for its one named weapon.
+-- hero = what the big preview and the hub's hologram show: one weapon wearing its wrap and hat from the set. robux is
+-- about 60% of the singles' worth (Shop.worth). the line under a bundle's name only says what's in it (Shop.describe)
+local function W(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon, every = true } end
 local function H(id: string, weapon: string): Item return { kind = "hat", id = id, weapon = weapon } end
 Shop.bundles = {
 	{ id = "bundle_nightshift", type = "bundle", name = "Night Shift", rarity = "legendary",
@@ -435,8 +438,10 @@ local function joinWords(list: { string }): string
 end
 function Shop.describe(items: { Item }): string
 	local n = { skin = 0, wrap = 0, hat = 0, card = 0 }
+	local every = 0 -- (a bundle's wraps: every gun's, 18 Nov)
 	local guns, seen = {}, {}
 	for _, it in items do
+		if it.kind == "wrap" and it.every then every += 1; continue end
 		if Shop.isCard(it.kind) then n.card += 1 else n[it.kind] = (n[it.kind] or 0) + 1 end
 		if it.weapon and not seen[it.weapon] then seen[it.weapon] = true; table.insert(guns, Shop.weaponName(it.weapon)) end
 	end
@@ -446,10 +451,15 @@ function Shop.describe(items: { Item }): string
 	end
 	add(n.skin, "a weapon skin", "weapon skins"); add(n.wrap, "a wrap", "wraps"); add(n.hat, "a hat", "hats")
 	add(n.kill or 0, "a kill effect", "kill effects"); add(n.emote or 0, "an emote", "emotes")
-	if n.card > 0 and #parts == 0 then return "A border, a background and a title for your player card." end
+	if n.card > 0 and #parts == 0 and every == 0 then return "A border, a background and a title for your player card." end
 	local what = joinWords(parts)
-	what = string.upper(string.sub(what, 1, 1)) .. string.sub(what, 2)
-	return if #guns > 0 then what .. " for the " .. joinWords(guns) .. "." else what .. "."
+	if #guns > 0 and what ~= "" then what ..= " for the " .. joinWords(guns) end
+	if every > 0 then
+		-- ("4 wraps for every gun and a hat for the Assault Rifle.")
+		local ew = (if every == 1 then "a wrap" else every .. " wraps") .. " for every gun"
+		what = if what ~= "" then ew .. " and " .. what else ew
+	end
+	return string.upper(string.sub(what, 1, 1)) .. string.sub(what, 2) .. "."
 end
 
 -- ---------------------------------------------------------------- lookups

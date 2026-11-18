@@ -102,6 +102,18 @@ local function button(parent: Instance, text: string, kind: string, pos: UDim2, 
 	return b
 end
 
+-- ---------------------------------------------------------------- newest first, and the NEW dots (18 Nov; the rest below)
+-- (one table: this script is near Luau's 200-local limit)
+local News: any = { gotAt = {}, fresh = {}, rev = 0, pending = {}, tabDots = {}, orderFor = "", view = "", refresh = function(_e: any) end }
+-- the NEW dot: a small quiet amber dot in a card's top right corner (no words)
+function News.dot(parent: GuiObject, z: number, inset: number?): Frame
+	local d = new("Frame", { Name = "New", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -(inset or 5), 0, inset or 5), Size = UDim2.fromOffset(10, 10), ZIndex = z, Visible = false }, parent)
+	T.corner(d, 5)
+	new("UIStroke", { Color = Color3.fromRGB(8, 9, 12), Thickness = 1.5, Transparency = 0.25 }, d)
+	return d
+end
+
 -- ---------------------------------------------------------------- state from the server (player attributes)
 local function pick(): { [string]: string }
 	local s = me:GetAttribute("LoadoutNext")
@@ -301,7 +313,7 @@ local armList = new("ScrollingFrame", {
 }, armBody)
 new("UIGridLayout", { CellSize = UDim2.fromOffset(232, 82), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, armList)
 new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 8) }, armList)
-type ArmCard = { id: string, btn: TextButton, st: UIStroke, tag: TextLabel, chip: Frame, color: Color3 }
+type ArmCard = { id: string, btn: TextButton, st: UIStroke, tag: TextLabel, chip: Frame, color: Color3, new: Frame }
 local armCards: { ArmCard } = {}
 local armSlot = ""
 local function buildArmory()
@@ -330,7 +342,7 @@ local function buildArmory()
 		end)
 		btn.MouseEnter:Connect(function() if state.focus ~= e.id then btn.BackgroundColor3 = T.CARD_HI end end)
 		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = CARD end)
-		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color })
+		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color, new = News.dot(btn, 6, 8) })
 	end
 	armCount.Text = ("%d live · %d coming soon"):format(live, soon)
 	armList.CanvasPosition = Vector2.zero
@@ -592,6 +604,28 @@ end
 -- server won't put it on (Loadout.luau)
 local owned: { [string]: { [string]: boolean } } = {}
 local ownedKnown = false
+-- (the owner, 18 Nov 2026: "if you unlock a spray it should be placed at the start of the scroll"): News.gotAt[type][key]
+-- = its place in the loot save's own list (bigger = newer: inventory .order); News.fresh[type][key] = its count while
+-- it's NEW (inventory .fresh), until its strip has been shown and you've moved on, or you picked it (News.flush: "seen")
+function News.note(t: string, key: string)
+	News.pending[t] = News.pending[t] or {}
+	News.pending[t][key] = true
+end
+function News.flush()
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Loot")
+	for t, keys in News.pending do
+		local list = {}
+		for k in keys do
+			table.insert(list, k)
+			if News.fresh[t] then News.fresh[t][k] = nil end
+		end
+		if #list > 0 and r and r:IsA("RemoteFunction") then
+			task.spawn(function() pcall(function() (r :: RemoteFunction):InvokeServer("seen", t, list) end) end)
+		end
+	end
+	table.clear(News.pending)
+end
 local function owns(t: string, id: string): boolean
 	if not ownedKnown then return true end -- (not heard yet, or the owner's Studio unlock: lock nothing)
 	if t == "hat" and id == "none" then return true end
@@ -613,6 +647,18 @@ local function fetchOwned()
 			owned[t] = set
 		end
 		ownedKnown = res.devAll ~= true
+		News.gotAt, News.fresh = {}, {}
+		for t, keys in (if type(res.order) == "table" then res.order else {}) :: any do
+			local g = {}
+			for i, k in keys do g[k] = i end
+			News.gotAt[t] = g
+		end
+		for t, keys in (if type(res.fresh) == "table" then res.fresh else {}) :: any do
+			local fs = {}
+			for k, n in keys do if type(k) == "string" then fs[k] = if type(n) == "number" then n else 1 end end
+			News.fresh[t] = fs
+		end
+		News.rev += 1
 	end
 end
 -- a lock over a card you don't own: the card dims, a small padlock in its corner
@@ -683,7 +729,7 @@ end
 local swatchLocks: { [string]: Frame } = {}
 arrows(swatchRow, wbar)
 local hatLocks: { [string]: Frame } = {}
-type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame, st: UIStroke, tick: TextLabel }
+type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame, st: UIStroke, tick: TextLabel, new: Frame }
 local swatches: { Swatch } = {}
 local onSwatch: (Roster.Wrap) -> () = function() end
 local onHover: (string?) -> () = function() end
@@ -714,7 +760,7 @@ for i, wr in Roster.wraps do
 	chip.SelectionGained:Connect(function() onHover(wr.id) end) -- (a controller's pick tries it on, as the mouse's hover)
 	chip.SelectionLost:Connect(function() onHover(nil) end)
 	chip.MouseButton1Click:Connect(function() onSwatch(wr) end)
-	table.insert(swatches, { wr = wr, holder = holder, chip = chip, shadow = shadow, st = st, tick = tick })
+	table.insert(swatches, { wr = wr, holder = holder, chip = chip, shadow = shadow, st = st, tick = tick, new = News.dot(chip, 9) })
 	swatchLocks[wr.id] = lockOver(chip, 8)
 end
 local function applyFilter()
@@ -860,6 +906,7 @@ refresh = function()
 	end
 	hatsRefresh(e)
 	skinsRefresh(e)
+	News.refresh(e)
 	local save = me:GetAttribute("LoadoutSave")
 	saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
 	saveLbl.TextColor3 = if save == "off" then RED else GREY
@@ -927,6 +974,7 @@ local tabBtns: { [string]: Btn } = {}
 for i, t in { "wraps", "hats", "skins" } do
 	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(610 + (i - 1) * 112, 808), UDim2.fromOffset(104, 34))
 end
+for t, b in tabBtns do News.tabDots[t] = News.dot(b.face, 4, 6) end -- (a dot on a tab with something NEW for this weapon)
 local hHolder, hbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
 hHolder.Visible = false
 local hTitle = label(hbar, "HATS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
@@ -949,7 +997,7 @@ local noHats = new("TextLabel", {
 -- (each hat on a card: its own little stage, seen from the front left; the googly eyes and the halo, which lean
 -- toward the player holding the gun, turned to face you)
 local CARD_TURN = { eyes = math.pi, halo = math.pi }
-type HatCard = { id: string, chip: TextButton, st: UIStroke, tick: TextLabel, spin: Model? }
+type HatCard = { id: string, chip: TextButton, st: UIStroke, tick: TextLabel, spin: Model?, holder: Frame, new: Frame }
 local hatCards: { HatCard } = {}
 local onHat: (string) -> () = function() end
 -- (the cards share the row: 102 px each up to eleven, narrower past that so None and every hat fit (round 12 made it
@@ -989,7 +1037,7 @@ for i, hid in GunHats.ORDER do
 	chip.SelectionGained:Connect(function() state.hatHover = hid; if state.open then refresh() end end) -- (a controller's pick tries it on)
 	chip.SelectionLost:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onHat(hid) end)
-	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM })
+	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM, holder = holder, new = News.dot(chip, 9) })
 	hatLocks[hid] = lockOver(chip, 8)
 end
 -- ---------------------------------------------------------------- the skins (a third tab): another body per weapon
@@ -1014,7 +1062,7 @@ local noSkins = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "", ZIndex = 10, Visible = false, Active = true,
 }, sbar)
-type SkinCard = { id: string, st: UIStroke, tick: TextLabel, lock: Frame? }
+type SkinCard = { id: string, st: UIStroke, tick: TextLabel, lock: Frame?, holder: Frame, new: Frame, concept: boolean }
 local skinCards: { SkinCard } = {}
 local skinsFor = ""
 local onSkin: (string) -> () = function() end
@@ -1058,11 +1106,21 @@ local function skinCard(sid: string, order: number, wid: string, concept: boolea
 		local tag = label(chip, "CONCEPT", 10, UDim2.new(1, -62, 0, 3), UDim2.fromOffset(58, 14), GREY, Enum.TextXAlignment.Right)
 		tag.FontFace = FONT_BOLD; tag.ZIndex = 8
 	end
-	table.insert(skinCards, { id = sid, st = st, tick = tick, lock = if sid ~= "default" and not concept then lockOver(chip, 8) else nil })
+	table.insert(skinCards, { id = sid, st = st, tick = tick, lock = if sid ~= "default" and not concept then lockOver(chip, 8) else nil,
+		holder = holder, new = News.dot(chip, 9), concept = concept == true })
 end
 local lastSeen = ""
 local function showWorn(e: any)
 	if not state.open then return end
+	-- (something NEW for this weapon on the shown strip: it's at the start, so the strip starts there)
+	local cardsOf: { any } = if tab == "wraps" then swatches elseif tab == "hats" then hatCards else skinCards
+	for _, x in cardsOf do
+		if x.new.Visible then
+			local row = if tab == "wraps" then swatchRow elseif tab == "hats" then hatRow else skinRow
+			row.CanvasPosition = Vector2.zero
+			return
+		end
+	end
 	if tab == "wraps" then
 		local wid = wrapOf(e.id)
 		for _, sw in swatches do if sw.wr.id == wid and sw.holder.Visible then into(swatchRow, sw.holder); return end end
@@ -1198,6 +1256,100 @@ hatsRefresh = function(e: any)
 		c.st.Thickness = if on then 2 else 1
 	end
 end
+-- ---------------------------------------------------------------- newest first, and the NEW dots (18 Nov)
+-- (the owner: "if you unlock a spray it should be placed at the start of the scroll") every strip (wraps, hats, skins,
+-- the gadgets' too) runs: what you own newest first (the loot save's order), then the free ones (the plain one first),
+-- then the rest as listed. a NEW dot on what's fresh; the shown strip's NEW ones count as seen once you move on (another
+-- tab or weapon, or closing). a dot on a tab, and on an armory weapon, with something new
+function News.skinGun(id: string): string?
+	local mod = Shared:FindFirstChild("LootTable")
+	local ok, L = false, nil
+	if mod then ok, L = pcall(require, mod) end
+	local row = ok and type(L) == "table" and type(L.SKINS) == "table" and L.SKINS[id] or nil
+	return if type(row) == "table" and type(row[3]) == "string" then row[3] else nil
+end
+function News.key(t: string, id: string, gun: string): string return if t == "skin" then id else id .. "@" .. gun end
+function News.got(t: string, id: string, gun: string): number?
+	local g = News.gotAt[t]
+	return if g then g[News.key(t, id, gun)] else nil
+end
+function News.isNew(t: string, id: string, gun: string): boolean
+	local f = News.fresh[t]
+	return f ~= nil and f[News.key(t, id, gun)] ~= nil
+end
+function News.sort(list: { any })
+	table.sort(list, function(a, b)
+		if a.g ~= b.g then return a.g < b.g end
+		if a.g == 0 and a.n ~= b.n then return a.n > b.n end
+		if a.plain ~= b.plain then return a.plain end
+		return a.i < b.i
+	end)
+	for o, x in list do x.holder.LayoutOrder = o end
+end
+-- the weapons with something new, and the newest NEW thing of all: its type and weapon
+function News.guns(): ({ [string]: boolean }, string?, string?)
+	local out, best, bt, bg = {}, -1, nil, nil
+	for _, t in { "wrap", "hat", "skin" } do
+		for k, n in News.fresh[t] or {} do
+			local g = if t == "skin" then News.skinGun(k) else string.match(k, "@([%w_]+)$")
+			local re = if g then Roster.byId[g] else nil
+			if g and re and re.live and (t ~= "hat" or re.slot ~= "utility") then
+				out[g] = true
+				if type(n) == "number" and n > best then best, bt, bg = n, t, g end
+			end
+		end
+	end
+	return out, bt, bg
+end
+News.refresh = function(e: any)
+	local gun = e.id
+	local k = gun .. "|" .. News.rev .. "|" .. skinsFor
+	if k ~= News.orderFor then
+		News.orderFor = k
+		local list = {}
+		for i, s in swatches do
+			local n = News.got("wrap", s.wr.id, gun)
+			table.insert(list, { holder = s.holder, g = if n then 0 elseif s.wr.rarity == "free" then 1 else 2, n = n or 0, plain = s.wr.id == "default", i = i })
+		end
+		News.sort(list)
+		list = {}
+		for i, c in hatCards do
+			local n = News.got("hat", c.id, gun)
+			local hh = GunHats.HATS[c.id]
+			table.insert(list, { holder = c.holder, g = if n then 0 elseif c.id == "none" or (hh ~= nil and hh.rarity == "free") then 1 else 2, n = n or 0, plain = c.id == "none", i = i })
+		end
+		News.sort(list)
+		list = {}
+		for i, c in skinCards do
+			if c.concept then c.holder.LayoutOrder = 1000 + i; continue end
+			local n = News.got("skin", c.id, gun)
+			table.insert(list, { holder = c.holder, g = if n then 0 elseif c.id == "default" or select(2, skinInfo(c.id)) == "free" then 1 else 2, n = n or 0, plain = c.id == "default", i = i })
+		end
+		News.sort(list)
+	end
+	-- (a new view: what the last one showed has been seen)
+	local view = if state.open then tab .. "|" .. gun else ""
+	if view ~= News.view then News.view = view; News.flush() end
+	local has = { wraps = false, hats = false, skins = false }
+	for _, s in swatches do
+		local nw = e.live and s.holder.Visible and News.isNew("wrap", s.wr.id, gun)
+		s.new.Visible = nw
+		if nw then has.wraps = true; if state.open and tab == "wraps" then News.note("wrap", News.key("wrap", s.wr.id, gun)) end end
+	end
+	for _, c in hatCards do
+		local nw = e.live and e.slot ~= "utility" and News.isNew("hat", c.id, gun)
+		c.new.Visible = nw
+		if nw then has.hats = true; if state.open and tab == "hats" then News.note("hat", News.key("hat", c.id, gun)) end end
+	end
+	for _, c in skinCards do
+		local nw = e.live and not c.concept and News.isNew("skin", c.id, gun)
+		c.new.Visible = nw
+		if nw then has.skins = true; if state.open and tab == "skins" then News.note("skin", c.id) end end
+	end
+	for t, d in News.tabDots do d.Visible = has[t] == true end
+	local ng = News.guns()
+	for _, a in armCards do a.new.Visible = ng[a.id] == true end
+end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
@@ -1324,6 +1476,13 @@ setOpen = function(v: boolean)
 		require(script.Parent:WaitForChild("MenuCursor")).set("loadout", true, function() return state.open end)
 		local p = pick()
 		state.focus = p[state.slot]
+		-- (something NEW since last time: open on the newest one's weapon and tab, where it's first in the strip. 18 Nov)
+		local _, nt, ng = News.guns()
+		if nt and ng then
+			state.slot = Roster.byId[ng].slot
+			state.focus = ng
+			setTab(if nt == "wrap" then "wraps" elseif nt == "hat" then "hats" else "skins")
+		end
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else LINES[math.random(#LINES)]
 		subtitle.TextColor3 = if trying() then ACCENT else GREY
@@ -1356,6 +1515,7 @@ setOpen = function(v: boolean)
 		state.open = false
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		lastSeen = "" -- (the worn things come into view again next time)
+		News.flush(); News.view = "" -- (what was shown counts as seen)
 		require(script.Parent:WaitForChild("MenuCursor")).set("loadout", false)
 		me:SetAttribute("LoadoutOpen", false)
 		gui.Enabled = false

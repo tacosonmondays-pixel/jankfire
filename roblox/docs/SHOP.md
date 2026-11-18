@@ -37,7 +37,7 @@ Three kinds of offer, each with an id:
   The odds depend on what you own; when you own everything in one it reads YOU HAVE IT ALL.
 - **bundles** `bundle_<name>`: a fixed themed set of wraps and a hat that dresses several guns, plus a `hero` (the
   weapon, wrap and hat the big preview and the hub's hologram show). Six to start: Night Shift, Field Issue, Tea House,
-  Deep Space, Machine Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`).
+  Deep Space, Machine Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`). Its wraps are every gun's since 18 Nov (see Bundle wraps are every gun's).
 - **singles** `wrap:<id>@<weapon>`, `hat:<id>@<weapon>`: one item for one weapon; `skin:<id>`: one weapon skin
   (see "Weapon skins and skin sets" below); `border:<id>` / `banner:<id>` / `title:<id>`: one player card look;
   `kill:<id>` / `emote:<id>`: one kill effect or emote (see "Kill effects and emotes" below). On sale only while it is
@@ -630,6 +630,78 @@ Tested in solo Play at place version 904:
 - **The owner's deals:** the test profile's stored deals held two set pieces (`sawnoff_dust`, `dmr_nighttide`). After
   a reset the new three were `sawnoff_pepper`, `ar_bullpup` and `medkit_doctorbag`: no set piece. The clean-up of
   an old list itself (without a reset) wasn't run.
+
+## Newest first, and NEW dots, in the loadout (18 Nov)
+
+The owner: "if you unlock a spray it should be placed at the start of the scroll". Every strip in the loadout (WRAPS,
+HATS and SKINS, the gadgets' too) now runs:
+1. what you own, newest first;
+2. then the free ones, the plain one first (Default, None);
+3. then the rest as listed.
+
+The equipped one isn't pinned first: it keeps its place in that order, with its tick, and the strip still scrolls to it
+when nothing is new.
+
+- **The order** is the loot save's own list. Every unlock goes on the end of `data.inv[type]`, so it already records
+  when things were got. No times were needed, and everything owned before 18 Nov already has its place. `"inventory"`
+  sends it as `order = { type = keys, oldest first }`.
+- **NEW:** `give()` marks a new thing `data.fresh[type][key] = n`, a running count, so the newest is known across
+  types. `"inventory"` sends `fresh`.
+  - A quiet marker: a 10 px amber dot with a dark ring, in the card's top right. No words.
+  - It goes when the strip that showed it has been left (another tab or weapon, or closing), or when you pick the item.
+    The client then sends `("seen", type, keys)` and the server clears the marks.
+  - The same dot shows on a tab that has something NEW for this weapon, and on an armory weapon with something NEW.
+- **Opening the loadout** with something NEW lands on the newest one's weapon and tab, where it's first in the strip.
+- **Not new:** what you wore before ownership came in (`applyOld`). A bundle's wrap is NEW only on the gun it's shown
+  on (see below). The marks are capped at 300 per type, and a mark on something no longer owned is dropped.
+- **Phone and pad:** the same strips, so they get the same order and dots. Not checked on a phone screen.
+- **The kill effect, emote, grapple and pet picker** (`FlairUI`, the flair session's) and **the player card looks**
+  (`ProfileUI`, the player-cards session's) aren't changed yet. The data they'd need is the same
+  `"inventory"` `order`/`fresh` and the `"seen"` op.
+- `Loot.luau` is the loot session's file; the change is noted in its comments. `LoadoutUI` was at 191 top-level locals,
+  so all of this lives in one table (`News`).
+
+Tested in solo Play at place version 910:
+- **A Spray Can:** opened from the test profile's save (17 wrap pairs, nothing NEW), it gave `lemon@autoshot`. It came
+  last in the save's order with a NEW count.
+- **The loadout on L** opened on the Auto Shotgun's WRAPS. Lemon Drop was first, with a NEW dot. The WRAPS tab and the
+  Auto Shotgun's armory card had dots too (`docs/shop/newest-first-spray.jpg`). Then Ducky (a VIP wrap, every gun),
+  Default, the free ones, then the locked ones.
+- **Closing** cleared the mark: no longer NEW.
+- The test profile was put back afterwards: its 17 pairs, nothing NEW.
+
+## Bundle wraps are every gun's (18 Nov)
+
+The owner: "the wraps in the bundle are given to all guns, if a bundle has a wrap its for all guns".
+- **The shop:** a bundle's wrap is `W(id, weapon)` with `every = true`. Its weapon is only the one it's shown on.
+  - The bundle's line reads "4 wraps for every gun and a hat for the Assault Rifle." (`Shop.describe`).
+  - Its row reads "Neon Hex · Every gun" (`Shop.itemLabel`).
+  - A hat in a bundle stays one gun's.
+- **The loot server:**
+  - Granting it gives every gun's pair, the gadgets that take wraps too (`pairsOf`).
+  - It sets `data.every.wrap[id]`, and `Loot.owns` says yes on any gun for that. So the loadout and the worn Wraps
+    attribute take it everywhere.
+  - On every load, `everyWraps` gives the pair a gun added since then lacks. That pair is quiet, with no NEW dot.
+- **The buyer is told** of the one pair on the named gun, and only that one is NEW.
+- **Past buyers:** no record of who bought a bundle was ever kept (a free claim wrote nothing, and a Robux receipt
+  keeps only its purchase id). So once per save (`data.everyV`), a bundle counts as bought when every one of its
+  pairs is owned as it was, and its wraps become every gun's. A player who owns only part of a bundle (from Spray Cans,
+  say) isn't converted.
+- **Unchanged:** a Spray Can's wrap stays one gun's, and a VIP wrap was already every gun's.
+- **Test tools:** dev `"set"` takes `every = { ids }`, and `"reset"` clears the marks.
+
+Tested in solo Play at place version 910 (the `_studio` save):
+- The test profile had no whole bundle, so nothing was converted on load (`every` empty).
+- Night Shift was taken out of the profile, then claimed. The buyer was told: hex@ar, tophat@ar, carbon@smg,
+  lchrome@revolver, matte@pistol.
+- `every` = carbon, hex, lchrome, matte, and each of them is owned on all 54 weapons that take a wrap. NEW was only
+  on the four named pairs.
+- **Hex on the TV Remote**, a gun the profile had never used, went on, and the Wraps attribute showed it.
+- **Hex's TV Remote pair taken away**, every mark kept: it still went on, through `Loot.owns`.
+- The profile was put back afterwards: 17 pairs, no every marks, nothing NEW.
+
+Not tested: the load-time top-up for a new gun (it needs a rejoin), and a past buyer's conversion. The test profile
+owned no whole bundle.
 
 ## Robux, later
 
