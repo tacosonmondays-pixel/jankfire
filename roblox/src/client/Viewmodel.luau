@@ -44,7 +44,7 @@ local sway = Vector2.zero
 local runK = 0
 local feel = { ground = 0, slide = 0, slip = 0, speed = 0, swig = 0 } -- (the body's state, eased: VM.update)
 -- the swig's pose: where the bottle goes (camera space, metres), its tip up (radians) plus more over the swig, its roll
-local SWIG = { at = Vector3.new(0.04, -0.12, -0.2), tip = -2.2, more = -0.3, roll = -0.2 } -- (the cap down to your mouth below the screen, the base up by the crosshair)
+local SWIG = { at = Vector3.new(0.1, -0.17, -0.26), tip = -2.0, more = -0.3, roll = -0.2 } -- (the cap down to your mouth below the screen, the fist and the base low on the right: ~63/74 and 62/63 %)
 local lastLook: Vector3? = nil
 local needles: { Weld } = {}
 local needleAng = -2.3
