@@ -628,10 +628,13 @@ same sample modes on the client), `board` / `board:party` / `noboard` / `boardfa
 A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match
 places you), `rival 2v2 true 2 1500`, `hold 8 party`, `find`.
 
-## 6. Across servers (ON since 17 Nov 2026)
+## 6. Across servers (ready since 17 Nov 2026, held off until its own publish)
 
-The owner: "can you also enable cross matchmaking". `PlayConfig.CROSS_SERVER = true` (`server/CrossServer.luau`, and
-`crossTick` in `server/Party.luau`). The ranked extras across servers are a separate switch,
+The owner: "can you also enable cross matchmaking". `server/CrossServer.luau` and `crossTick` in `server/Party.luau`
+are built and Studio-tested (below). Place v720 had `PlayConfig.CROSS_SERVER = true`; the main session wants it to go
+live on a publish of its own that the owner watches, so the switch is back to false until then. **To turn it on:** set
+`PlayConfig.CROSS_SERVER = true` (ReplicatedStorage.Jankfire.PlayConfig), save, publish, then run the live check at
+the end of this section. Studio tests need it true as well. The ranked extras across servers are a separate switch,
 `PlayConfig.GLOBAL_RANKED`, still off and untested: the leaderboard's global top 100 and a cheat restore telling
 another server to take it now.
 
