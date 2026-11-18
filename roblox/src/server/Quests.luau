@@ -343,7 +343,7 @@ function Quests.spendBrass(p: Player, amount: number, reason: string, id: string
 	if type(d.spent) ~= "table" then d.spent = {} end
 	if d.spent[id] ~= nil then return true, "already" end
 	local n = math.floor(amount)
-	if num(d.brass) < n then return false, "not enough Brass" end
+	if num(d.brass) < n then return false, "not enough coins" end
 	if s.busy then return false, "one at a time" end
 	s.busy = true
 	d.brass = num(d.brass) - n
@@ -561,9 +561,9 @@ local function redeem(s: State, kind: unknown, cur: unknown): any
 	if not price then return { ok = false, why = "no such container" } end
 	if cur ~= "tix" and cur ~= "brass" then return { ok = false, why = "nope" } end
 	local cost = (price :: any)[cur]
-	if type(cost) ~= "number" then return { ok = false, why = if cur == "brass" then "Brass can't buy that" else "tickets can't buy that" } end
+	if type(cost) ~= "number" then return { ok = false, why = if cur == "brass" then "coins can't buy that" else "tickets can't buy that" } end
 	local have = if cur == "tix" then num(d.tix) else num(d.brass)
-	if have < cost then return { ok = false, why = if cur == "tix" then "not enough Crate Tickets" else "not enough Brass" } end
+	if have < cost then return { ok = false, why = if cur == "tix" then "not enough Crate Tickets" else "not enough coins" } end
 	if watched[p.UserId] then return { ok = false, why = "your rewards are on hold" } end
 	if not Loot.ready(p) then return { ok = false, why = "your inventory is still loading" } end
 	if Config.LOOT_FREE and (stockOf(p)[kind :: string] or 0) >= LOOT_FREE_CAP then return { ok = false, why = "you have 10 of those: open some first" } end

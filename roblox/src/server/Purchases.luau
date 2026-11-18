@@ -139,12 +139,12 @@ function Purchases.buyWithBrass(p: Player, wid: any): any
 	if not forSale(wid) then return { ok = false, why = "that isn't for sale" } end
 	local w = wid :: string
 	if d.weapons[w] then return { ok = false, why = "you have it already" } end
-	if Unlocks.robuxFree() then return { ok = false, why = "it's free for now: keep your Brass" } end
-	local price = tonumber((Shop.MONEY.weapons :: any)[w].brass) or 0
-	if price <= 0 then return { ok = false, why = "that isn't for sale for Brass" } end
+	if Unlocks.robuxFree() then return { ok = false, why = "it's free for now: keep your coins" } end
+	local price = tonumber((Shop.MONEY.weapons :: any)[w].coins) or 0
+	if price <= 0 then return { ok = false, why = "that isn't for sale for coins" } end
 	local Q = quests()
 	if not Q or type(Q.spendBrass) ~= "function" then return { ok = false, why = "the wallet isn't open" } end
-	if (tonumber(p:GetAttribute("Brass")) or 0) < price then return { ok = false, why = "not enough Brass" } end
+	if (tonumber(p:GetAttribute("Brass")) or 0) < price then return { ok = false, why = "not enough coins" } end
 	if s.busy then return { ok = false, why = "one at a time" } end
 	s.busy = true
 	local id = "weapon:" .. w
@@ -161,7 +161,7 @@ function Purchases.buyWithBrass(p: Player, wid: any): any
 		d.pending[id] = nil
 		write(s)
 		s.busy = false
-		return { ok = false, why = why or "couldn't take the Brass" }
+		return { ok = false, why = why or "couldn't take the coins" }
 	end
 	-- 3. the weapon (a failed write stays in memory: the next autosave writes it, and the mark settles it if not)
 	d.weapons[w] = { t = os.time(), how = "brass", id = id }

@@ -30,8 +30,8 @@ local WHITE = Color3.new(1, 1, 1)
 local ROBUX = utf8.char(0xE002) -- the Robux mark (Roblox's fonts draw it)
 
 local ShopUI = {}
-local TABS = { "featured", "deals", "bundles", "containers", "weapons", "inventory" }
-local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", weapons = "WEAPONS", inventory = "INVENTORY" }
+local TABS = { "featured", "deals", "bundles", "containers", "weapons", "coins", "inventory" }
+local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", weapons = "WEAPONS", coins = "COINS", inventory = "INVENTORY" }
 local LINE = "Free while we test. The prices are for later."
 
 -- everything the screen knows, in one table (keeps the main chunk well under Luau's 200 locals)
@@ -720,10 +720,10 @@ function Purse.price(cid: string): { tix: number?, brass: number? }?
 	if not Purse.remote() or not Purse.has() then return nil end
 	return Shop.redeemPrice(cid)
 end
--- "12 TICKETS" / "1 TICKET" / "2,500 BRASS"
+-- "12 TICKETS" / "1 TICKET" / "2,500 COINS" (Brass in the code is Coins on screen, 18 Nov)
 function Purse.words(cur: string, n: number): string
 	if cur == "tix" then return commas(n) .. (if n == 1 then " TICKET" else " TICKETS") end
-	return commas(n) .. " BRASS"
+	return commas(n) .. (if n == 1 then " COIN" else " COINS")
 end
 -- the quests' icon for "brass" / "tix" in a frame (false: QuestUI isn't there, the words say it instead)
 function Purse.icon(kind: string, parent: GuiObject, size: number): boolean
@@ -1157,12 +1157,15 @@ function ShopUI.fillContainers()
 	end
 end
 
--- ------------------------------------------------------------------------ WEAPONS: the Robux weapons, and Brass (18 Nov)
--- (the owner: "buying weapons with coins make sure thats a thing". the Robux-exclusive weapons, Unlocks.ROBUX, each for
--- Robux or for Brass, Shop.MONEY.weapons; Brass for Robux below them, Shop.MONEY.brass. a Brass buy is the server's
--- (JankfireRemotes.Purchases "brass", a second press to be sure); a Robux one the usual prompt (ShopUI.prompt). while the
--- weapons are free for everyone (Unlocks.robuxFree) their cards say so and sell nothing. docs/MONEY.md)
-local Money = {} -- (the page's state and helpers, one local)
+-- ------------------------------------------------------------------------ WEAPONS and COINS (18 Nov)
+-- (the owner: "buying weapons with coins make sure thats a thing", "we then also need a shop page for coins yea".
+-- Coins are the one soft currency, Brass in the code: earned from quests and the weekly track, bought here.)
+-- WEAPONS: the Robux-exclusive weapons (Unlocks.ROBUX), each for Robux or for Coins (Shop.MONEY.weapons). a Coins buy
+-- is the server's (JankfireRemotes.Purchases "brass", after a second press); a Robux one the usual prompt. while they're
+-- free for everyone (Unlocks.robuxFree) the cards say so and sell nothing. not enough coins: the COINS tab opens.
+-- COINS: the balance with the coin, and the four coin packs (Shop.MONEY.coins) with their pictures; a prompt once Robux
+-- is on, else the price struck through, NOT FOR SALE YET. the HUD's wallet opens it too (QuestClient). docs/MONEY.md
+local Money = {} -- (the two pages' state and helpers, one local)
 Money.arm = nil :: string?
 Money.armT = 0
 do
@@ -1170,13 +1173,26 @@ do
 	UI.gunScroll = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), CanvasSize = UDim2.new(),
 		ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, pg_)
 	UI.gunBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 22) }, UI.gunScroll)
-	UI.gunHead, UI.gunNote = header(UI.gunBar, "WEAPONS", "ROBUX OR BRASS")
+	UI.gunHead, UI.gunNote = header(UI.gunBar, "WEAPONS", "ROBUX OR COINS")
 	UI.gunRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, -8, 0, 300) }, UI.gunScroll)
 	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.gunRow)
-	UI.brassBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 22) }, UI.gunScroll)
-	UI.brassHead, UI.brassNote = header(UI.brassBar, "BRASS", "")
-	UI.brassRow = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 170) }, UI.gunScroll)
-	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.brassRow)
+	local pc = UI.pages.coins
+	UI.coinScroll = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), CanvasSize = UDim2.new(),
+		ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, pc)
+	UI.coinBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 30) }, UI.coinScroll)
+	UI.coinHead, UI.coinNote = header(UI.coinBar, "COINS", "")
+	UI.coinNote.Position = UDim2.fromOffset(0, 26)
+	-- the balance, top right: the coin and the number
+	UI.coinHave = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.fromOffset(0, 30),
+		AutomaticSize = Enum.AutomaticSize.X }, UI.coinBar)
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, UI.coinHave)
+	local ic = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(26, 26), LayoutOrder = 1 }, UI.coinHave)
+	Purse.icon("brass", ic, 26)
+	UI.coinAmt = txt(UI.coinHave, "0", 22, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Right)
+	UI.coinAmt.AutomaticSize = Enum.AutomaticSize.X; UI.coinAmt.Size = UDim2.fromOffset(0, 30); UI.coinAmt.LayoutOrder = 2
+	UI.coinRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, -8, 0, 320) }, UI.coinScroll)
+	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.coinRow)
 end
 function Money.ask(op: string, a: any?): any
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
@@ -1190,10 +1206,10 @@ function Money.owns(wid: string): boolean
 	local s = me:GetAttribute("RobuxOwned")
 	return type(s) == "string" and table.find(string.split(s, ","), wid) ~= nil
 end
-function Money.brassBuy(wid: string)
+function Money.coinBuy(wid: string)
 	local o = Shop.weaponOffer(wid)
 	if not o then return end
-	if Purse.of("brass") < o.brass then play("empty"); ShopUI.toast("NOT ENOUGH BRASS"); return end
+	if Purse.of("brass") < o.coins then play("empty"); ShopUI.toast("NOT ENOUGH COINS"); ShopUI.tab("coins"); return end
 	if Money.arm ~= wid or os.clock() - Money.armT > 4 then
 		Money.arm, Money.armT = wid, os.clock()
 		play("click"); ShopUI.fillWeapons()
@@ -1208,20 +1224,16 @@ function Money.brassBuy(wid: string)
 end
 function ShopUI.fillWeapons()
 	for _, c in UI.gunRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
-	for _, c in UI.brassRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
 	local U = require(Shared:WaitForChild("Unlocks")) :: any
 	local free = U.robuxFree()
 	local k = S.compact
 	local pad = if k then 10 else 14
-	-- (heights: the page's own, the weapons getting most of it; on a phone it scrolls)
+	-- (the page's own height; on a phone it scrolls)
 	local H = UI.gunScroll.AbsoluteSize.Y
-	local gunH = math.max(if k then 230 else 300, math.floor(H * 0.62) - 30)
-	local brassH = if k then 150 else math.max(160, H - gunH - 30 - 44)
+	local gunH = math.max(if k then 230 else 300, H - 40)
 	UI.gunRow.Size = UDim2.new(1, -8, 0, gunH)
-	UI.brassBar.Position = UDim2.fromOffset(0, 30 + gunH + 14)
-	UI.brassRow.Position = UDim2.fromOffset(0, 30 + gunH + 44); UI.brassRow.Size = UDim2.new(1, -8, 0, brassH)
-	UI.gunScroll.CanvasSize = UDim2.fromOffset(0, 30 + gunH + 44 + brassH)
-	UI.gunNote.Text = if free then "FREE FOR NOW" else "ROBUX OR BRASS"
+	UI.gunScroll.CanvasSize = UDim2.fromOffset(0, 30 + gunH)
+	UI.gunNote.Text = if free then "FREE FOR NOW" else "ROBUX OR COINS"
 	for i, wid in Shop.WEAPON_IDS do
 		local o = Shop.weaponOffer(wid)
 		if not o then continue end
@@ -1245,26 +1257,49 @@ function ShopUI.fillWeapons()
 		else
 			rb.set(priceText(o.robux), Shop.ROBUX == true and Shop.productFor(o) ~= nil)
 			local armed = Money.arm == wid and os.clock() - Money.armT < 4
-			bb.set(if armed then "SURE? " .. commas(o.brass) else commas(o.brass) .. " BRASS", Purse.of("brass") >= o.brass)
+			bb.set(if armed then "SURE? " .. commas(o.coins) else Purse.words("brass", o.coins), true)
 		end
 		rb.face.MouseButton1Click:Connect(function() if not own and not free then ShopUI.prompt(o) end end)
-		bb.face.MouseButton1Click:Connect(function() if not own and not free then Money.brassBuy(wid) end end)
+		bb.face.MouseButton1Click:Connect(function() if not own and not free then Money.coinBuy(wid) end end)
 	end
-	for i, bo in Shop.brassPacks() do
-		local c = card(UI.brassRow, nil)
+end
+function ShopUI.fillCoins()
+	for _, c in UI.coinRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	local k = S.compact
+	local pad = if k then 10 else 14
+	local H = UI.coinScroll.AbsoluteSize.Y
+	local rowH = math.max(if k then 240 else 320, H - 60)
+	UI.coinRow.Size = UDim2.new(1, -8, 0, rowH)
+	UI.coinScroll.CanvasSize = UDim2.fromOffset(0, 52 + rowH)
+	UI.coinAmt.Text = commas(Purse.of("brass"))
+	local sell = Shop.ROBUX == true and not Shop.free()
+	UI.coinNote.Text = if sell then "" else "NOT FOR SALE YET"
+	for i, o in Shop.coinPacks() do
+		local c = card(UI.coinRow, nil)
 		c.LayoutOrder = i
-		local amt = txt(c, commas(bo.amount), if k then 22 else 30, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
-		amt.Position = UDim2.new(0, 0, 0, if k then 10 else 18); amt.Size = UDim2.new(1, 0, 0, if k then 26 else 34)
-		local sub = txt(c, if bo.bonus > 0 then "BRASS  ·  " .. commas(bo.bonus) .. " MORE" else "BRASS", 12, if bo.bonus > 0 then T.ACCENT else T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Center)
-		sub.Position = UDim2.new(0, 0, 0, if k then 38 else 56); sub.Size = UDim2.new(1, 0, 0, 16)
-		local b = button(c, "", "main", UDim2.new(1, -2 * pad, 0, 40), UDim2.new(0, pad, 1, -(40 + pad)))
-		b.set(priceText(bo.robux), Shop.ROBUX == true and Shop.productFor(bo) ~= nil)
-		b.face.MouseButton1Click:Connect(function() ShopUI.prompt(bo) end)
+		new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, Image = o.image or "", ScaleType = Enum.ScaleType.Fit,
+			Position = UDim2.fromOffset(pad, pad), Size = UDim2.new(1, -2 * pad, 1, -(if k then 118 else 140)) }, c)
+		local amt = txt(c, commas(o.amount), if k then 24 else 32, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
+		amt.Position = UDim2.new(0, 0, 1, if k then -112 else -128); amt.Size = UDim2.new(1, 0, 0, if k then 28 else 36)
+		local sub = txt(c, "COINS", 12, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		sub.Position = UDim2.new(0, 0, 1, if k then -84 else -92); sub.Size = UDim2.new(1, 0, 0, 14)
+		if o.bonus > 0 then -- (the bonus: a small "+N" chip on the picture)
+			local chip = new("Frame", { Name = "Bonus", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -pad, 0, pad), Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 5 }, c)
+			T.corner(chip, 4)
+			new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, chip)
+			local cl = txt(chip, "+" .. commas(o.bonus), 13, T.INK, T.FONT_BOLD, Enum.TextXAlignment.Center)
+			cl.AutomaticSize = Enum.AutomaticSize.X; cl.Size = UDim2.fromOffset(0, 24); cl.ZIndex = 6
+		end
+		local b = button(c, "", "main", UDim2.new(1, -2 * pad, 0, 44), UDim2.new(0, pad, 1, -(44 + pad)))
+		b.set(priceText(o.robux), sell and Shop.productFor(o) ~= nil)
+		b.face.MouseButton1Click:Connect(function() if sell then ShopUI.prompt(o) end end)
 	end
-	UI.brassNote.Text = "YOU HAVE " .. commas(Purse.of("brass"))
 end
 for _, a in { "RobuxOwned", "Brass" } do
-	me:GetAttributeChangedSignal(a):Connect(function() if S.open and S.tab == "weapons" then ShopUI.fillWeapons() end end)
+	me:GetAttributeChangedSignal(a):Connect(function()
+		if S.open and S.tab == "weapons" then ShopUI.fillWeapons() elseif S.open and S.tab == "coins" then ShopUI.fillCoins() end
+	end)
 end
 ReplicatedStorage:GetAttributeChangedSignal("MoneyTest"):Connect(function() if S.open then ShopUI.refill() end end)
 
@@ -2135,9 +2170,9 @@ function ShopUI.livePrices()
 				local o = Shop.byId[key]
 				local kind, r = string.match(key, "^(%a+):(%a+)$")
 				local wid = string.match(key, "^weapon:([%w_]+)$")
-				local bid = string.match(key, "^brass:([%w_]+)$")
+				local bid = string.match(key, "^coins:([%w_]+)$")
 				if wid and (Shop.MONEY.weapons :: any)[wid] then (Shop.MONEY.weapons :: any)[wid].robux = price
-				elseif bid then for _, b in Shop.MONEY.brass do if b.id == bid then b.robux = price end end
+				elseif bid then for _, b in Shop.MONEY.coins do if b.id == bid then b.robux = price end end
 				elseif o then o.robux = price
 				elseif kind and (Shop.PRICE :: any)[kind] then (Shop.PRICE :: any)[kind][r] = price end
 			end
@@ -2330,6 +2365,7 @@ function ShopUI.tab(t: string)
 	elseif t == "bundles" then ShopUI.fillBundles()
 	elseif t == "containers" then ShopUI.fillContainers()
 	elseif t == "weapons" then ShopUI.fillWeapons()
+	elseif t == "coins" then ShopUI.fillCoins()
 	elseif t == "deals" then ShopUI.fillDeals()
 	elseif t == "inventory" then ShopUI.fillInventory() end
 end

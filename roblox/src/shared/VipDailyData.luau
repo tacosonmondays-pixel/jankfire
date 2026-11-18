@@ -89,7 +89,7 @@ end
 function D.prize(e: Entry, ctx: Ctx?): Prize
 	local p: Prize = { id = e.id, kind = e.kind, n = e.n, cid = e.cid, tier = e.tier, rarity = e.rarity, name = "" }
 	if e.kind == "brass" then
-		p.name = tostring(e.n) .. " Brass"
+		p.name = tostring(e.n) .. " Coins" -- (Brass in the code is Coins on screen, 18 Nov)
 	elseif e.kind == "container" then
 		p.name = D.CONTAINER_NAMES[e.cid or ""] or tostring(e.cid)
 	else

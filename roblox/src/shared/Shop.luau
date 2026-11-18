@@ -137,7 +137,8 @@ Shop.VIP_COLOR = Color3.fromRGB(255, 208, 72)
 -- them for the shop bundles as well, bundles, coins, buying weapons with coins"). Robux numbers are what the developer
 -- products and the VIP pass were made at: change one here AND on its product (Creator Hub > Monetization), or the
 -- prompt charges Roblox's price while the shop shows this one (with Robux on, the shop reads the products' own prices:
--- ShopUI.livePrices). Brass = the quests' soft currency (QuestData); what Brass and tickets redeem a container for is
+-- ShopUI.livePrices). Coins = the one soft currency (called Brass in the code: the quests' wallet, QuestData; earned
+-- from quests and the weekly track, bought in coin packs); what Coins and tickets redeem a container for is
 -- QuestData.PRICES (the quests session's). the list of products and ids: docs/MONEY.md
 Shop.MONEY = {
 	vip = 399, -- the VIP game pass (Shop.VIP_PASS)
@@ -156,20 +157,22 @@ Shop.MONEY = {
 	-- a themed bundle costs this share of its items' singles, rounded to ..9 (a skin set: its whole worth, no discount;
 	-- the owner's deals: Shop.DEAL_OFF below)
 	bundleShare = 0.6,
-	-- the Robux-exclusive weapons (Unlocks.ROBUX): Robux, or Brass, each its own price. kept for good once bought
+	-- the Robux-exclusive weapons (Unlocks.ROBUX): Robux, or Coins, each its own price. kept for good once bought
 	weapons = {
-		minigun = { robux = 249, brass = 5000 },
-		laser = { robux = 199, brass = 4000 }, -- (Big Laser Pointer)
-		chicken = { robux = 199, brass = 4000 }, -- (Chicken Rocket)
-		akimbo = { robux = 249, brass = 5000 }, -- (Lefty & Righty)
+		minigun = { robux = 249, coins = 5000 },
+		laser = { robux = 199, coins = 4000 }, -- (Big Laser Pointer)
+		chicken = { robux = 199, coins = 4000 }, -- (Chicken Rocket)
+		akimbo = { robux = 249, coins = 5000 }, -- (Lefty & Righty)
 	},
-	-- Brass for Robux: a bigger pack gives a little more (bonus), never so much that Brass bought with Robux redeems a
-	-- container for less than the container's own Robux price (QuestData.PRICES: a Spray Can is 1,000 Brass)
-	brass = {
-		{ id = "brass_500", brass = 500, bonus = 0, robux = 39 },
-		{ id = "brass_1100", brass = 1000, bonus = 100, robux = 79 },
-		{ id = "brass_2400", brass = 2000, bonus = 400, robux = 159 },
-		{ id = "brass_6500", brass = 5000, bonus = 1500, robux = 399 },
+	-- coin packs (the owner's prices, 18 Nov: 99 / 499 / 1999 / 4500 Robux). 12 coins a Robux, and the bigger packs a
+	-- bonus on top (8%, 17%, 30%), never so much that coins bought with Robux redeem a container or buy a weapon for less
+	-- than its own Robux price (the best rate, about 15.6 a Robux: a Spray Can's 1,000 coins is 64 Robux against its 60).
+	-- image = the pack's picture (guns-remodel's renders, uploaded as images)
+	coins = {
+		{ id = "coins_1200", coins = 1200, bonus = 0, robux = 99, image = "rbxassetid://76861915103827" },
+		{ id = "coins_6500", coins = 6000, bonus = 500, robux = 499, image = "rbxassetid://88259913823049" },
+		{ id = "coins_28000", coins = 24000, bonus = 4000, robux = 1999, image = "rbxassetid://93667428578542" },
+		{ id = "coins_70000", coins = 54000, bonus = 16000, robux = 4500, image = "rbxassetid://125116964696727" },
 	},
 }
 -- what a single costs, by kind and rarity (Robux; unused while free)
@@ -846,9 +849,9 @@ function Shop.soon(containerId: string): boolean
 	return LootTable ~= nil and type(LootTable.soon) == "function" and LootTable.soon(containerId) == true
 end
 
--- ---------------------------------------------------------------- the Robux weapons and Brass (18 Nov)
+-- ---------------------------------------------------------------- the Robux weapons and coin packs (18 Nov)
 -- the Robux-exclusive weapons (Unlocks.ROBUX) as offers, "weapon:<id>": bought once and kept for good, with Robux (its
--- developer product, ShopReceipts) or with Brass (taken by the server: Purchases.luau). prices: Shop.MONEY.weapons
+-- developer product, ShopReceipts) or with Coins (taken by the server: Purchases.luau). prices: Shop.MONEY.weapons
 local function digits(n: number): string
 	local s = tostring(math.floor(n))
 	while true do
@@ -869,19 +872,19 @@ function Shop.weaponOffer(wid: any): any
 	local e = Roster.byId[wid]
 	if not m or not e then return nil end
 	return { id = "weapon:" .. wid, type = "weapon", name = e.name, rarity = "legendary", blurb = "", robux = m.robux,
-		brass = m.brass, productId = nil, weapon = wid }
+		coins = m.coins, productId = nil, weapon = wid }
 end
--- Brass for Robux, "brass:<id>" (Shop.MONEY.brass, in order): amount = what lands, the pack's bonus in it
-function Shop.brassPacks(): { any }
+-- coin packs for Robux, "coins:<id>" (Shop.MONEY.coins, in order): amount = what lands, the pack's bonus in it
+function Shop.coinPacks(): { any }
 	local out = {}
-	for _, b in Shop.MONEY.brass do
-		table.insert(out, { id = "brass:" .. b.id, type = "brass", name = digits(b.brass + b.bonus) .. " Brass", rarity = "common",
-			blurb = "", robux = b.robux, amount = b.brass + b.bonus, bonus = b.bonus, productId = nil })
+	for _, b in Shop.MONEY.coins do
+		table.insert(out, { id = "coins:" .. b.id, type = "coins", name = digits(b.coins + b.bonus) .. " Coins", rarity = "common",
+			blurb = "", robux = b.robux, amount = b.coins + b.bonus, bonus = b.bonus, image = b.image, productId = nil })
 	end
 	return out
 end
-function Shop.brassPack(id: any): any
-	for _, o in Shop.brassPacks() do if o.id == id then return o end end
+function Shop.coinPack(id: any): any
+	for _, o in Shop.coinPacks() do if o.id == id then return o end end
 	return nil
 end
 
@@ -914,7 +917,7 @@ end
 -- the developer product an offer is bought with (nil: not for sale for Robux yet). missing = for a skin set, how
 -- many of its skins the buyer still lacks (fewer than all: the "complete the set" product for that count)
 function Shop.productFor(o: Offer, missing: number?): number?
-	if o.type == "weapon" or o.type == "brass" then -- ("weapon:minigun", "brass:brass_500")
+	if o.type == "weapon" or o.type == "coins" then -- ("weapon:minigun", "coins:coins_1200")
 		local wp = Shop.PRODUCTS[o.id]
 		return if type(wp) == "number" and wp > 0 then wp else nil
 	end

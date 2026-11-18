@@ -520,9 +520,9 @@ local function news(Vw: any)
 			end
 		end
 		table.sort(list, function(a, b)
+			if a.plain ~= b.plain then return a.plain end -- (the plain one is always first: the owner, 18 Nov)
 			if a.g ~= b.g then return a.g < b.g end
 			if a.g == 0 and a.n ~= b.n then return a.n > b.n end
-			if a.plain ~= b.plain then return a.plain end
 			return a.i < b.i
 		end)
 		for o, x in list do x.c.btn.LayoutOrder = o end

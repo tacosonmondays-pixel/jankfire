@@ -36,7 +36,7 @@ Q.PRICES = {
 	bag = { tix = 6, brass = 2500 },
 	spray = { tix = 3, brass = 1000 },
 }
-Q.CURRENCY = { brass = "Brass", tix = "Crate Tickets", tix1 = "Crate Ticket" }
+Q.CURRENCY = { brass = "Coins", tix = "Crate Tickets", tix1 = "Crate Ticket" } -- (brass is shown as Coins since 18 Nov: one currency, the owner's "coins")
 
 -- ---------------------------------------------------------------- weapon groups (live weapons only count: Roster)
 Q.CLASSES = {

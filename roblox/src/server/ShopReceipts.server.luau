@@ -6,13 +6,13 @@
 --   the client asks (JankfireRemotes.ShopBuy, an offer id); this checks the offer is on sale and has a developer
 --   product (Shop.PRODUCTS), remembers which offer you asked for, and shows Roblox's purchase prompt. the ids:
 --     a container, bundle, skin set or single (Shop.offer), "deal:<skin>" (one of your deals today),
---     "weapon:<id>" (a Robux weapon you don't have: Shop.weaponOffer), "brass:<pack>" (Brass: Shop.brassPack)
+--     "weapon:<id>" (a Robux weapon you don't have: Shop.weaponOffer), "coins:<pack>" (coins: Shop.coinPack)
 --   Roblox calls ProcessReceipt; this
 --     1. answers PurchaseGranted at once for a receipt it granted before (Purchases.seen: the receipt record, a save
 --        per player, split from live in Studio);
 --     2. works out what was bought from the product (for a shared product, "wrap:epic" or a deal's, the one you asked
 --        for) and grants it: Loot.grant(player, offerId, purchaseId) for loot, Deals.grant for a deal,
---        Purchases.giveWeapon for a weapon, Quests.buyBrass for Brass. each is written to its save BEFORE it answers
+--        Purchases.giveWeapon for a weapon, Quests.buyBrass for coins (Brass in the code). each is written to its save BEFORE it answers
 --        true, and each is idempotent by the purchase id (a receipt Roblox sends twice is granted once even if step 3
 --        was lost);
 --     3. marks the receipt (Purchases.mark) and only then tells Roblox PurchaseGranted. anything that fails:
@@ -75,9 +75,9 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 		if wpid then prompt(p, wo.id, wpid) end
 		return
 	end
-	-- a Brass pack
-	if string.match(offerId, "^brass:[%w_]+$") then
-		local bo = Shop.brassPack(offerId)
+	-- a coin pack
+	if string.match(offerId, "^coins:[%w_]+$") then
+		local bo = Shop.coinPack(offerId)
 		local bpid = if bo then Shop.productFor(bo) else nil
 		if bo and bpid then prompt(p, bo.id, bpid) end
 		return
@@ -134,9 +134,9 @@ local function grant(p: Player, info: any): boolean
 		if not ok then warn("[jankfire] Purchases.giveWeapon failed: " .. tostring(res)) end
 		return ok and res == true
 	end
-	-- Brass
-	if string.match(key, "^brass:[%w_]+$") then
-		local bo = Shop.brassPack(key)
+	-- coins (Brass in the code)
+	if string.match(key, "^coins:[%w_]+$") then
+		local bo = Shop.coinPack(key)
 		local Q = quests()
 		if not bo or not Q or type(Q.buyBrass) ~= "function" then return false end
 		local ok, res = pcall(Q.buyBrass, p, bo.amount, pid)

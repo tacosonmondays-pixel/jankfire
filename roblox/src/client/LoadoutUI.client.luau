@@ -478,8 +478,9 @@ end
 local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 614), UDim2.fromOffset(376, 60))
 News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: LV, XP, the next camo)
 -- buying a Robux weapon (Unlocks.ROBUX) here once they aren't free for everyone (Unlocks.robuxFree): the equip button
--- halves, Robux on the left (the shop's prompt, ShopBuy "weapon:<id>"), Brass on the right (the server takes it,
--- JankfireRemotes.Purchases "brass", after a second press to be sure). prices: Shop.MONEY.weapons. 18 Nov
+-- halves, Robux on the left (the shop's prompt, ShopBuy "weapon:<id>"), Coins on the right (the server takes them,
+-- JankfireRemotes.Purchases "brass", after a second press to be sure; not enough: the shop's COINS tab). prices:
+-- Shop.MONEY.weapons. 18 Nov
 News.Shop = require(Shared:WaitForChild("Shop")) :: any
 News.brassBtn = button(info, "", "white", UDim2.fromOffset(214, 614), UDim2.fromOffset(184, 60))
 News.brassBtn.holder.Visible = false
@@ -506,7 +507,7 @@ function News.buyLook(e: any)
 	equipBtn:set(News.digits(o.robux) .. " ROBUX", S.ROBUX == true and S.productFor(o) ~= nil)
 	local armed = News.arm == e.id and os.clock() - News.armT < 4
 	local have = tonumber(me:GetAttribute("Brass")) or 0
-	News.brassBtn:set(if armed then "SURE? " .. News.digits(o.brass) else News.digits(o.brass) .. " BRASS", have >= o.brass)
+	News.brassBtn:set(if armed then "SURE? " .. News.digits(o.coins) else News.digits(o.coins) .. " COINS", true, if have >= o.coins then nil else CARD)
 end
 function News.payRobux(e: any)
 	local o = News.weaponOffer(e.id)
@@ -522,6 +523,13 @@ News.brassBtn.face.MouseButton1Click:Connect(function()
 	if not News.brassBtn.enabled then return end
 	local e = Roster.byId[state.focus]
 	if not e or News.buyFor ~= e.id or not News.weaponOffer(e.id) then return end
+	if (tonumber(me:GetAttribute("Brass")) or 0) < News.weaponOffer(e.id).coins then
+		-- (not enough coins: the shop's COINS tab)
+		play("empty"); say("not enough coins.", RED)
+		local okS, ShopUI = pcall(require, script.Parent:WaitForChild("ShopUI"))
+		if okS and type(ShopUI) == "table" and type(ShopUI.open) == "function" then setOpen(false); task.delay(0.1, ShopUI.open, "coins") end
+		return
+	end
 	if News.arm ~= e.id or os.clock() - News.armT > 4 then
 		News.arm, News.armT = e.id, os.clock()
 		play("click"); refresh()
@@ -1463,9 +1471,9 @@ function News.isNew(t: string, id: string, gun: string): boolean
 end
 function News.sort(list: { any })
 	table.sort(list, function(a, b)
+		if a.plain ~= b.plain then return a.plain end -- (the plain one is always first: the owner, 18 Nov)
 		if a.g ~= b.g then return a.g < b.g end
 		if a.g == 0 and a.n ~= b.n then return a.n > b.n end
-		if a.plain ~= b.plain then return a.plain end
 		return a.i < b.i
 	end)
 	for o, x in list do x.holder.LayoutOrder = o end

@@ -87,7 +87,7 @@ local function plainReveal(msg: any)
 		local c = new("Frame", { BackgroundColor3 = T.BG, BorderSizePixel = 0, Position = UDim2.fromOffset((i - 1) * (CW + GAP) + GAP, 10), Size = UDim2.fromOffset(CW, 112) }, strip)
 		T.corner(c, 5)
 		new("Frame", { BackgroundColor3 = rarityColor(pz.rarity), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 4) }, c)
-		local kindWord = if pz.kind == "brass" then "BRASS" elseif pz.kind == "container" then "CONTAINER" else string.upper(Shop.KIND_NAMES and Shop.KIND_NAMES[pz.kind] or pz.kind)
+		local kindWord = if pz.kind == "brass" then "COINS" elseif pz.kind == "container" then "CONTAINER" else string.upper(Shop.KIND_NAMES and Shop.KIND_NAMES[pz.kind] or pz.kind)
 		local k = T.text(c, "Kind", kindWord, 10, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
 		k.Position = UDim2.fromOffset(6, 14); k.Size = UDim2.new(1, -12, 0, 12)
 		local n = T.text(c, "Name", string.upper(tostring(pz.name)), 14, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center)
@@ -118,7 +118,7 @@ local function plainReveal(msg: any)
 	if closed then return end
 	name.Text = string.upper(tostring(prize.name))
 	name.TextColor3 = if prize.tier == "best" then rarityColor(prize.rarity) else T.TEXT
-	local how = if prize.kind == "brass" then "added to your Brass"
+	local how = if prize.kind == "brass" then "added to your coins"
 		elseif prize.kind == "container" then "in your containers: open it in the shop [B]"
 		else "yours: wear it from the loadout [L]"
 	line.Text = string.upper(if prize.rarity and Shop.RARITY and Shop.RARITY[prize.rarity] then Shop.RARITY[prize.rarity].name else tostring(prize.rarity)) .. "  ·  " .. string.upper(how)

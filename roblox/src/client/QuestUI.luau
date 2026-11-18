@@ -1,9 +1,10 @@
 --!strict
 -- the QUESTS screen (QuestClient opens it: U, the QUESTS button): today's three quests with their progress and the
--- reroll, the weekly bar with its steps, the wallet (Brass, Crate Tickets) and the way to the shop. the numbers are the
+-- reroll, the weekly bar with its steps, the wallet (Coins, Crate Tickets) and the way to the shop. the numbers are the
 -- server's (Quests.luau, the remote JankfireRemotes.Quests); the pool and prices are Shared.QuestData.
--- also the toast when a quest finishes or a weekly step pays (QuestUI.toast), and the two icons, drawn from frames (no
--- uploads): QuestUI.icon("brass" | "tix", parent, size) for the shop and the HUD.
+-- also the toast when a quest finishes or a weekly step pays (QuestUI.toast), and the two icons: QuestUI.icon("brass" |
+-- "tix", parent, size) for the shop and the HUD (the coin and the ticket, guns-remodel's renders, since 18 Nov; Brass in
+-- the code is Coins on screen. the frame-drawn ones are kept for when the pictures can't be had).
 -- built from Theme; on a short or narrow screen (a phone) the panel fills the screen, the cards stack and the body
 -- scrolls, every button at least 44 px.
 local Players = game:GetService("Players")
@@ -47,10 +48,14 @@ UI.comma = comma
 
 -- ------------------------------------------------------------------ the icons
 -- Brass: a spent casing seen end-on (the rim, the head, the primer). a Crate Ticket: a stub with a torn line
+UI.PICTURES = { brass = "rbxassetid://140006087004657", tix = "rbxassetid://93857045911579" } -- (the coin, the ticket; 18 Nov, the shop session)
 function UI.icon(kind: string, parent: Instance?, size: number?): Frame
 	local s = size or 16
 	local f = new("Frame", { Name = if kind == "tix" then "TicketIcon" else "BrassIcon", BackgroundTransparency = 1, Size = UDim2.fromOffset(s, s) })
-	if kind == "tix" then
+	local pic = UI.PICTURES[if kind == "tix" then "tix" else "brass"]
+	if pic then
+		new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, Image = pic, ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromScale(1, 1) }, f)
+	elseif kind == "tix" then
 		local body = new("Frame", { Name = "Stub", BorderSizePixel = 0, BackgroundColor3 = TICKET, AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 0, 0.66, 0) }, f)
 		T.corner(body, math.max(2, math.floor(s * 0.14)))
@@ -317,7 +322,7 @@ local function walletRow(parent: Instance, x: number, y: number, w: number, h: n
 	row(c, p, 10, 22, { { icon = "tix", s = 18 }, { text = comma(state.tix or 0), size = 16, font = T.FONT_HEAVY }, { gap = 4 },
 		{ text = "CRATE TICKETS", size = 11, color = T.MUTED } })
 	local line = ("Crate %d · Duffel Bag %d · Spray Can %d tickets"):format(QD.PRICES.crate.tix or 0, QD.PRICES.bag.tix or 0, QD.PRICES.spray.tix or 0)
-	local line2 = ("Duffel Bag %s · Spray Can %s Brass"):format(comma(QD.PRICES.bag.brass or 0), comma(QD.PRICES.spray.brass or 0))
+	local line2 = ("Duffel Bag %s · Spray Can %s Coins"):format(comma(QD.PRICES.bag.brass or 0), comma(QD.PRICES.spray.brass or 0))
 	local bw = if compact then w - p * 2 else 150
 	at(txt(c, line, 12, T.SOFT, T.FONT), p, 36, w - p * 2 - (if compact then 0 else bw + 12), 16)
 	at(txt(c, line2, 12, T.MUTED, T.FONT), p, 54, w - p * 2 - (if compact then 0 else bw + 12), 16)
@@ -391,7 +396,7 @@ local function draw()
 	walletRow(sc, pad, y, cw, wh)
 	y += wh + 8
 	if state.owed then
-		at(txt(sc, ("OWED AFTER A CHEAT RESTORE: %s Brass, %d tickets. new rewards pay this first"):format(comma(state.owed.b or 0), state.owed.x or 0), 12, T.DANGER, T.FONT_BOLD), pad, y, cw, 16)
+		at(txt(sc, ("OWED AFTER A CHEAT RESTORE: %s Coins, %d tickets. new rewards pay this first"):format(comma(state.owed.b or 0), state.owed.x or 0), 12, T.DANGER, T.FONT_BOLD), pad, y, cw, 16)
 		y += 20
 	end
 	y += pad - 8
@@ -532,7 +537,7 @@ function UI.toast(msg: any)
 		local r = {}
 		if msg.brass then table.insert(r, { kind = "brass", n = comma(tonumber(msg.brass) or 0) }) end
 		if msg.tix then table.insert(r, { kind = "tix", n = tostring(msg.tix) }) end
-		local what = if msg.tix then (if msg.tix == 1 then "1 Crate Ticket" else msg.tix .. " Crate Tickets") else comma(tonumber(msg.brass) or 0) .. " Brass"
+		local what = if msg.tix then (if msg.tix == 1 then "1 Crate Ticket" else msg.tix .. " Crate Tickets") else comma(tonumber(msg.brass) or 0) .. " Coins"
 		table.insert(queue, { head = "WEEKLY REWARD", line = what, rewards = r })
 	else
 		return

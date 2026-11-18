@@ -1882,7 +1882,7 @@ local function rewardItem(x: any): any
 	return { type = kind, id = x.id, key = x.id, name = name, rarity = rarity, n = tonumber(x.n) or 1,
 		weapon = if type(x.weapon) == "string" then x.weapon else nil }
 end
-local KIND_WORD = { brass = "Brass", container = "Container" }
+local KIND_WORD = { brass = "Coins", container = "Container" } -- (Brass in the code is Coins on screen, 18 Nov)
 
 local function rewardRun(R: Run, spec: any, prize: any, items: { any }, stop: number): string
 	local ui = R.ui

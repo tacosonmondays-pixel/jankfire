@@ -96,6 +96,12 @@ T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 1
 local line = QuestUI.row(wallet, 0, 4, 24, { { icon = "brass", s = 16 }, { text = "0", size = 14, font = T.FONT_HEAVY }, { gap = 10 },
 	{ icon = "tix", s = 16 }, { text = "0", size = 14, font = T.FONT_HEAVY } })
 line.Position = UDim2.fromOffset(0, 4)
+-- (a click on the wallet opens the shop's COINS tab: the owner, 18 Nov; the shop session)
+local walletOpen = T.new("TextButton", { Name = "Open", BackgroundTransparency = 1, Text = "", Size = UDim2.fromScale(1, 1), ZIndex = 5 }, wallet)
+walletOpen.MouseButton1Click:Connect(function()
+	local ok, S = pcall(require, script.Parent:WaitForChild("ShopUI"))
+	if ok and type(S) == "table" and type((S :: any).open) == "function" then (S :: any).open("coins") end
+end)
 local function texts(): { TextLabel }
 	local out = {}
 	for _, c in line:GetChildren() do if c:IsA("TextLabel") then table.insert(out, c) end end

@@ -575,9 +575,9 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 		end
 		table.sort(ids, function(a, b)
 			local x, y = rank[a], rank[b]
+			if x.plain ~= y.plain then return x.plain end -- (the plain one is always first: the owner, 18 Nov)
 			if x.g ~= y.g then return x.g < y.g end
 			if x.g == 0 and x.n ~= y.n then return x.n > y.n end
-			if x.plain ~= y.plain then return x.plain end
 			return x.i < y.i
 		end)
 		local tw = if L.compact then 150 else 168
