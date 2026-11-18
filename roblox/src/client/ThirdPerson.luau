@@ -155,7 +155,7 @@ local KAT = {
 }
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
-local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck: 18 Nov)
+local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso: 18 Nov)
 -- a weapon held in another class's stance (its moves still its own class's: the Scythe swings as a melee weapon, held low
 -- with both hands like the LMG: 18 Nov 2026)
 local STANCE: { [string]: string } = { scythe = "heavy" }

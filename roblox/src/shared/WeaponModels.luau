@@ -228,6 +228,21 @@ BUILD.cards = function(b)
 	spot(b, "Muzzle", Vector3.new(0, 0.02, -0.12))
 	spot(b, "Grip", Vector3.new(0, -0.01, 0))
 end
+-- (batch E) the Lasso's stand-in (the hold session, 18 Nov 2026; guns-remodel's w_lasso takes its place): a coil of rope
+-- hung from the fist, three loops facing you, each a ring of short pieces
+BUILD.lasso = function(b)
+	for loop = 0, 2 do
+		local r = 0.085 - 0.006 * loop
+		local cx, cz = 0.006 * loop, -0.008 * loop
+		for i = 0, 13 do
+			local a = i / 14 * 2 * math.pi
+			part(b, "rope", Enum.PartType.Cylinder, Vector3.new(2 * math.pi * r / 14 + 0.004, 0.012, 0.012), 0xc4a064,
+				Vector3.new(cx + math.cos(a) * r, -r + math.sin(a) * r, cz), CFrame.Angles(0, 0, a + math.pi / 2))
+		end
+	end
+	spot(b, "Muzzle", Vector3.new(0, -0.17, 0))
+	spot(b, "Grip", Vector3.new(0, 0, 0))
+end
 BUILD.remote = function(b)
 	bx(b, "body", 0.05, 0.022, 0.2, 0x2b2e35, 0, 0, -0.07)
 	bx(b, "keys", 0.034, 0.006, 0.1, 0x45484f, 0, 0.013, -0.08)

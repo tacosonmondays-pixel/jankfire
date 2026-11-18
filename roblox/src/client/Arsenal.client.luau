@@ -1243,6 +1243,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading, hidden = gone,
 			swig = minigun.swig(), -- (the Hot Sauce's swig: the bottle up to your mouth)
 			draw = minigun.bowDraw(), -- (the Bow drawn: its string and your right hand pulled back)
+			spin = if held == "lasso" then minigun.lasso.spinning() else nil, -- (the Lasso spun up: your hand up and round, the loop over your head)
 		})
 		-- the katana's smear, after the blade has moved this frame
 		smearStep(now, tp)

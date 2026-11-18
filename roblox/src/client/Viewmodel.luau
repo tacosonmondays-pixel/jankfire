@@ -609,6 +609,30 @@ local function bowSetup(m: Model, root: BasePart): Bow
 	end
 	return { halves = halves, arrow = arrow, arrowParts = parts, e = 0, was = false, relT = -10 }
 end
+-- the Lasso (18 Nov 2026, weapons-port's LassoClient): hold fire and your hand goes up and round while the loop spins
+-- over your head, growing as the spin builds (c.spin, 0..1 to full); a spoke of rope runs from your fist to the loop.
+-- with someone on the rope (LassoHolding) both fists are on it, pulling, and the rope (LassoClient's beam from your
+-- character's LassoHand) starts at your fist here instead of at your body's hand under the camera.
+-- camera space: `up` / `circle` / `pull` in metres; `ring` (the loop's middle), `radius`, `orbit` in studs
+local LASSO = { up = Vector3.new(0.08, 0.17, -0.03), circle = 0.05, rev = { 1.4, 3.0 }, ring = Vector3.new(0.8, 1.55, -3.4),
+	radius = { 0.8, 1.5 }, orbit = 0.3, tilt = 0.55, segs = 20, thick = 0.08, pull = Vector3.new(-0.02, -0.04, 0.06), lead = 0.18 }
+type Lasso = { ring: { BasePart }, spoke: BasePart, ph: number, e: number, hold: number, shown: boolean, moved: Attachment? }
+local lasso: Lasso? = nil
+local function lassoSetup(m: Model): Lasso
+	local function rope(name: string): Part
+		local p = Instance.new("Part")
+		p.Name = name; p.Shape = Enum.PartType.Cylinder
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+		p.Material = Enum.Material.SmoothPlastic; p.Color = Color3.fromRGB(214, 178, 118) -- (the coil's rope colour)
+		p.Size = Vector3.new(0.2, LASSO.thick, LASSO.thick)
+		p:SetAttribute("Hide", true)
+		p.Parent = m
+		return p
+	end
+	local ring = {}
+	for i = 1, LASSO.segs do ring[i] = rope("LassoLoop") end
+	return { ring = ring, spoke = rope("LassoSpoke"), ph = 0, e = 0, hold = 0, shown = false, moved = nil }
+end
 -- the rays that look for something in the light's way (light space, -Z = where it points): its middle and four at 30°
 local FILL_RAYS = { Vector3.new(0, 0, -1) }
 for _, d in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 1, 0), Vector3.new(0, -1, 0) } do
@@ -667,6 +691,8 @@ function VM.set(wid: string, kat: number)
 	VM.parts = nil
 	offGone = false
 	bow = nil
+	if lasso and (lasso :: Lasso).moved then ((lasso :: Lasso).moved :: Attachment).Position = Vector3.zero end
+	lasso = nil
 	VM.wid = wid
 	needles, vents = {}, {}
 	adsHide = {}
@@ -726,6 +752,7 @@ function VM.set(wid: string, kat: number)
 	GunHats.attach(m, wid, GunHats.hatFor(game:GetService("Players").LocalPlayer, wid), k)
 	hands(m, root)
 	if wid == "bow" then bow = bowSetup(m, root) end
+	if wid == "lasso" then lasso = lassoSetup(m) end
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
 	for _, n in m:GetChildren() do
@@ -760,6 +787,7 @@ export type Ctx = {
 	hidden: boolean?, -- (the viewmodel is hidden this frame: the fill light goes out)
 	swig: number?, -- (the Hot Sauce's swig, 0..1 of it, while its trigger is down: the bottle up to your mouth)
 	draw: number?, -- (the Bow drawn, 0..1, while you draw it: ProjClient.drawn())
+	spin: number?, -- (the Lasso spun up, 0..1, while you hold fire: LassoClient.spinning())
 }
 
 function VM.update(dt: number, c: Ctx)
@@ -889,6 +917,18 @@ function VM.update(dt: number, c: Ctx)
 			rx += 0.7 * e
 		end
 	end
+	if lasso then -- (the Lasso: up and round while it spins; pulled in and down while someone's on the rope)
+		local L = lasso :: Lasso
+		local spin = c.spin or 0
+		L.e += ((if spin > 0 then 1 else 0) - L.e) * math.min(1, dt * (if spin > 0 then 9 else 12))
+		L.hold += ((if LookPlayer:GetAttribute("LassoHolding") == true then 1 else 0) - L.hold) * math.min(1, dt * 10)
+		L.ph += dt * 2 * math.pi * (LASSO.rev[1] + (LASSO.rev[2] - LASSO.rev[1]) * spin)
+		local e = L.e * L.e * (3 - 2 * L.e)
+		pos += (LASSO.up + Vector3.new(math.cos(L.ph), 0, math.sin(L.ph)) * LASSO.circle) * S * e
+		rx += 0.5 * e
+		pos += LASSO.pull * S * L.hold
+		rx -= 0.25 * L.hold
+	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kickUp * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	-- the Hot Sauce's swig (18 Nov 2026, weapons-port's hold-to-swig): the bottle comes down in front of your mouth, its
 	-- cap tipping up toward you as the swig goes on (c.swig 0..1), and back down as you let go
@@ -921,6 +961,44 @@ function VM.update(dt: number, c: Ctx)
 				local hide = if ready then nil else true
 				if d:GetAttribute("Hide") ~= hide then d:SetAttribute("Hide", hide) end
 			end
+		end
+	end
+	if lasso then -- (the loop over your head, and the spoke of rope from your fist to it)
+		local L = lasso :: Lasso
+		local show = L.e > 0.05 and not c.hidden
+		if show ~= L.shown then
+			L.shown = show
+			for _, p in L.ring do p:SetAttribute("Hide", if show then nil else true) end
+			L.spoke:SetAttribute("Hide", if show then nil else true)
+		end
+		if show then
+			local r = LASSO.radius[1] + (LASSO.radius[2] - LASSO.radius[1]) * (c.spin or 0)
+			local way = Vector3.new(math.cos(L.ph), 0, math.sin(L.ph))
+			local ringCF = camera.CFrame * CFrame.new(LASSO.ring) * CFrame.Angles(LASSO.tilt, 0, 0) * CFrame.new(way * LASSO.orbit)
+			local seg = 2 * math.pi * r / LASSO.segs + 0.04
+			for i, p in L.ring do
+				local th = (i - 1) / LASSO.segs * 2 * math.pi - L.ph
+				p.Size = Vector3.new(seg, LASSO.thick, LASSO.thick)
+				p.CFrame = ringCF * CFrame.Angles(0, th, 0) * CFrame.new(r, 0, 0) * CFrame.Angles(0, math.pi / 2, 0)
+			end
+			local rel = AvatarArms.holdFrame("lasso", "Right", k)
+			local a = if rel then (m.PrimaryPart.CFrame * rel).Position else m.PrimaryPart.Position
+			local b = ringCF:PointToWorldSpace(way * r)
+			L.spoke.Size = Vector3.new(math.max(0.05, (b - a).Magnitude), LASSO.thick, LASSO.thick)
+			L.spoke.CFrame = CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0)
+		end
+		-- the held rope starts at your fist (your own copy of the attachment only: the server and everyone else keep
+		-- your body's hand)
+		local ch = LookPlayer.Character
+		local hand = ch and ch:FindFirstChild("RightHand")
+		local att = hand and hand:FindFirstChild("LassoHand") :: Attachment?
+		local rel = AvatarArms.holdFrame("lasso", "Right", k)
+		if att and rel and L.hold > 0.01 and not c.hidden then
+			att.WorldPosition = (m.PrimaryPart.CFrame * rel).Position
+			L.moved = att
+		elseif L.moved then
+			(L.moved :: Attachment).Position = Vector3.zero
+			L.moved = nil
 		end
 	end
 	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
@@ -961,6 +1039,19 @@ function VM.update(dt: number, c: Ctx)
 				if to and mix > 0 then to, mix = to:Lerp(f2, m2), 1 else to, mix = f2, m2 end
 				if m2 > 0.5 then under = u2 end
 			end
+		end
+		local L = lasso :: Lasso?
+		if L and L.hold > 0.001 then -- (the Lasso held: your left fist on the rope ahead of your right, both along it)
+			local rel = AvatarArms.holdFrame("lasso", "Right", k)
+			if rel then
+				local cf = camera.CFrame
+				local R = (m.PrimaryPart.CFrame * rel).Position
+				local Y, X = cf.LookVector, cf.RightVector
+				to, mix, under = CFrame.fromMatrix(R + Y * LASSO.lead * S - X * 0.03 * S, X, Y), L.hold, false
+				AvatarArms.override(m, "Right", CFrame.fromMatrix(R, X, Y), L.hold)
+			end
+		elseif L then
+			AvatarArms.override(m, "Right", nil, 0)
 		end
 		placeLoader(m.PrimaryPart, to, mix, c.hidden)
 		AvatarArms.override(m, "Left", to, mix, under)
