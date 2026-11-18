@@ -630,3 +630,26 @@ read as rectangular blocks at stepped heights with flat tops.
 - Photos: `docs/vfx/round18/ranked-flames-v913.jpg` (settled; mid-sweep held with `FlameStripHold`). Getting the panel up
   in a solo Play: `PlayTest = "play"`, `PlayTest = "open"`, then `JankfireRemotes.Play:InvokeServer("mode", "1v1", true)`.
   The Play menu's lobby camera binds after a Last+50 step: close it (`PlayTest = "close"`) before staging other shots.
+
+## The Blood Cross, rebuilt as light (18 Nov 2026, place version 944)
+
+The owner: "blood cross looks bad compared to the web version, the cross is too rectangular, I wanted it to be like cool
+and vfx-ish". The old Roblox cross was two flat Neon bars (ProjClient `cross()`), the pop was Fx.blast. Everything you
+see of it is now `client/BloodCrossFx.luau`, ported from the web's own `public/js/bloodcross.js` as energy and light:
+- **Bolt:** a glowing dart turned nose-first (tapered FaceCamera Beams in three layers: red haze, the bolt colour, a
+  white-hot core; the long tail is its trail), red haze and hot specks shed behind, a red light.
+- **Stick:** an X of tapered blades (`vfx_xblade`) with a white-hot core (`vfx_xcore`), both drawn by
+  `tools/roblox/vfx/xblade_sheet.py`; locked to the body, throbbing faster as the fuse runs; a spray of light where it
+  went in.
+- **Erupt:** spikes burst out through them along the X's diagonals (overshoot, settle, throb; three thorns each),
+  light streaks off all four ends.
+- **Pop:** a red glow growing to 6 m, a white-hot blink, light sparks, a hanging red haze, the blast ring on the floor,
+  a short red light (1.6 over 14 studs: at 4 over 22 a frozen photo was a red room).
+- **Walls:** a lit SurfaceGui X flat on the wall that pops in, throbs, sizzles and fizzles into a puff of haze.
+- **You:** the X on your screen (pulse, burst, red flash), as the web's overlay.
+- **Shadow Cross** (`bloodcross_shadow`) is purple throughout (web `PAL.shadow`), picked per bolt from the shooter's
+  `Skins` attribute.
+- **Content line:** no blood or gore (the web's splats, drips and stains are light, haze and sparks here), and the cross
+  is always a saltire X or spikes on its diagonals, never the web's upright cross (the protected Red Cross emblem).
+- Web reference frames: `ref_harness.js` effect `bc` loads bloodcross.js with blood off (sounds and HUD stubbed).
+- Sheet: `docs/vfx/round19/blood-cross-v944.jpg`.

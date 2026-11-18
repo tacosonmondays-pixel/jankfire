@@ -12,6 +12,8 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
+-- (the Blood Cross's bolt, X, spikes, pop and wall X: BloodCrossFx, 18 Nov 2026)
+local BCFx = require(script.Parent:WaitForChild("BloodCrossFx")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local P = {}
@@ -184,23 +186,8 @@ local peels: { [number]: Instance } = {} -- (the whole peel: its kit model or th
 local function rootOf(m: any): BasePart?
 	return if typeof(m) == "Instance" then (m :: Instance):FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 end
-local function cross(at: Vector3, size: number, life: number, attach: BasePart?)
-	-- a deep red X (two flat bars), held on the body it's in
-	for i = 0, 1 do
-		local b = Instance.new("Part")
-		b.Size = Vector3.new(size, size * 0.18, 0.12)
-		b.Color = Color3.fromRGB(140, 14, 30); b.Material = Enum.Material.Neon
-		b.Anchored = attach == nil; b.CanCollide = false; b.CanQuery = false; b.CanTouch = false; b.CastShadow = false
-		local cam = workspace.CurrentCamera
-		local face = CFrame.lookAt(at, at + (cam.CFrame.Position - at))
-		b.CFrame = face * CFrame.Angles(0, 0, (i == 0 and 1 or -1) * math.pi / 4)
-		if attach then
-			local wd = Instance.new("WeldConstraint"); wd.Part0 = attach; wd.Part1 = b; wd.Parent = b
-		end
-		b.Parent = folder
-		task.delay(life, function() b:Destroy() end)
-	end
-end
+-- the Blood Cross's palette per bolt (the shooter's: the Shadow Cross is purple), kept for its stick and wall
+local bcPal: { [number]: any } = {}
 Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if type(f) ~= "table" or type(f.k) ~= "string" then return end
 	local k = f.k
@@ -209,6 +196,11 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local kind = w and w.proj or "ball"
 		live[f.id] = { part = shape(kind, tonumber(f.r)), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0, r = tonumber(f.r), t0 = os.clock() }
 		if kind == "bowl" then loopOn(live[f.id].part, "bowl_roll") end -- (batch D: the ball's roll, wherever it goes)
+		if kind == "blood" then -- (the glowing dart and its trail, in the shooter's palette)
+			local pal = BCFx.palOf(f.by)
+			bcPal[f.id] = pal
+			BCFx.bolt(live[f.id].part, pal)
+		end
 		if kind == "arrow" then
 			local part = live[f.id].part
 			tint(part, f.tip)
@@ -352,23 +344,19 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		for _ = 1, 3 do Fx.impact(f.p, Vector3.yAxis, nil, Enum.Material.Ice, { hole = false, scale = 1.6 }) end
 		Sfx.play("ting", f.p, 1, 1.4)
 	elseif k == "bcross" then
+		-- (BloodCrossFx draws it all: the X stuck in them, the spikes, the pop, the X in walls; ProjClient keeps the bolt's
+		-- palette by its id and the sounds)
 		local st = f.st
+		local pal = if type(f.id) == "number" then bcPal[f.id] else nil
+		if (st == "stick" or st == "wall") and type(f.id) == "number" then drop(f.id); bcPal[f.id] = nil end
+		BCFx.event(f, pal)
 		local r = rootOf(f.model)
 		if st == "stick" then
-			if type(f.id) == "number" then drop(f.id) end
-			if r then cross(r.Position, 1.2, 0.85, r) end
 			Sfx.play("blood_stick", if typeof(f.p) == "Vector3" then f.p else nil, 0.8)
 		elseif st == "erupt" then
-			if r then cross(r.Position + Vector3.new(0, 0.5, 0), if f.thin then 2.4 else 4, 0.3, r) end
 			Sfx.play("blood_erupt", if r then r.Position else nil, 0.9)
-		elseif st == "boom" then
-			if typeof(f.p) == "Vector3" then
-				Fx.blast(f.p, if f.thin then 0.8 else 1.4)
-				Sfx.play("blood_boom", f.p, 1)
-			end
-		elseif st == "wall" then
-			if type(f.id) == "number" then drop(f.id) end
-			if typeof(f.p) == "Vector3" then cross(f.p, 1.0, 1.2, nil) end
+		elseif st == "boom" and typeof(f.p) == "Vector3" then
+			Sfx.play("blood_boom", f.p, 1)
 		end
 	end
 end)

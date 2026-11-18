@@ -240,6 +240,18 @@
   "what": "the RANKED fire, second drawing: 64 frames (8x8, 128 px cells) of separate pointed flame tongues (no full-width solid base), sides fading over 28 % of the cell, looping, coloured as drawn (FlameStrip.luau)",
   "uploaded": "2026-11-18 14:42 UTC (the owner: \"whya re the falmes like cut off or is ther blocky flames in the backl?\"; tools/roblox/vfx/fire_tongues.py, nothing downloaded)"
  },
+ "vfx_xblade": {
+  "id": 86829213365759,
+  "sha1": "c875636d959d7ee30c34060d3a3d1ba1f47481b4",
+  "what": "the Blood Cross X: a saltire of two tapered blades, greyscale with a ridge (tinted per palette; BloodCrossFx), alpha-bled",
+  "uploaded": "2026-11-18 15:49 UTC (the owner: \"the cross is too rectangular\"; tools/roblox/vfx/xblade_sheet.py, nothing downloaded)"
+ },
+ "vfx_xcore": {
+  "id": 76358841057788,
+  "sha1": "43b70f277b84a4a39fff8535a3ca44d0fd9a6427",
+  "what": "the Blood Cross X's white-hot core: two thin tapered lines and a hot point in a soft glow, white, alpha = light (additive layers)",
+  "uploaded": "2026-11-18 15:49 UTC (tools/roblox/vfx/xblade_sheet.py)"
+ },
  "ui_speedline": {
   "id": 103897494524802,
   "sha1": "28a3547417469ad3987ea6536b00c059b9e97f30",

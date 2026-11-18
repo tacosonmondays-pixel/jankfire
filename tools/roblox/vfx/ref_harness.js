@@ -108,6 +108,28 @@ const EFFECTS = {
   smoke(o) { const s = { p: [0, 0, -8], r: o.r ?? 6.5 }; return { cloud: s, until: o.dur ?? 10 }; },
 };
 
+// ---- the Blood Cross (18 Nov 2026): the web's own bloodcross.js, loaded on its own (its imports pull in half the game),
+// with the sounds and HUD stubbed and the blood setting OFF (Roblox has no gore: the reference is its light, haze and
+// shapes). A cross "loose" in the world (no body to stick to) faces the camera, as the web hangs one. opts: p (where),
+// shadow (the Shadow Cross palette), wall (an X in the back wall instead)
+let BCM = null;
+import('/js/bloodcross.js').then(async (m) => {
+  const a = await import('/js/audio.js'); for (const k in a.sfx) if (typeof a.sfx[k] === 'function') a.sfx[k] = () => {};
+  const h = await import('/js/hud.js'); for (const k in h.hud) if (typeof h.hud[k] === 'function') h.hud[k] = () => {};
+  Object.assign(G, { settings: { blood: false }, myId: 'me', remotes: new Map(), skins: new Map(), equipped: {}, shake: 0 });
+  m.initCrosses(scene);
+  BCM = m; window.REF.bcReady = true;
+}).catch((e) => { window.REF.bcError = String(e && e.stack || e); });
+EFFECTS.bc = (o) => {
+  const p = o.p || [0, 1.4, -6];
+  G.skins.set('them', o.shadow ? { bloodcross: [0, 0, 0, 'bloodcross_shadow'] } : {});
+  if (o.wall) { BCM.crossEvent({ k: 'wall', id: 9, o: 'them', p: o.wallP || [0, 1.5, -14.9], n: [0, 0, 1] }); return { tick: (dt) => BCM.updateCrosses(dt) }; }
+  BCM.crossEvent({ k: 'stick', id: 1, o: 'them', to: 'other', p, f: 0.6 });
+  setTimeout(() => BCM.crossEvent({ k: 'erupt', id: 1, o: 'them', to: 'other', p }), 600);
+  setTimeout(() => BCM.crossEvent({ k: 'boom', id: 1, o: 'them', to: 'other', p }), 850);
+  return { tick: (dt) => BCM.updateCrosses(dt) };
+};
+
 // effects that wait with setTimeout (the explosion's after-smoke at 650 ms) wait on the fixed clock instead
 const realSetTimeout = window.setTimeout.bind(window);
 let simTimers = [];
@@ -120,6 +142,7 @@ window.REF = {
     live = null; simTimers = [];
     for (let i = 0; i < 400; i++) fx.update(0.05);
     clearFlipbooks();
+    if (BCM) BCM.clearCrosses();
     for (const o2 of scene.children.slice()) if (o2.userData && o2.userData.face) scene.remove(o2);
     seedState = o.seed ?? 7;
     if (o.muzzle) o.muzzle = o.muzzle.slice();
@@ -142,6 +165,7 @@ window.REF = {
         performance.now = () => fake; smokeCloud(L.cloud, DT); performance.now = realNow;
       }
       fx.update(DT); updateFlipbooks(DT);
+      if (L.tick) L.tick(DT);
       if (L.flash) L.flashT -= DT;
     }
     if (L.flash) {

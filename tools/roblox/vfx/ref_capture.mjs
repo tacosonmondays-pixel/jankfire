@@ -83,6 +83,12 @@ for (let i = 0; i < 300 && !ok; i++) { await new Promise((r) => setTimeout(r, 10
 if (!ok) { console.error('harness never got ready\n' + logs.join('\n')); chrome.kill(); process.exit(2); }
 
 const done = [];
+// (the Blood Cross loads its own module after the page: wait for it, or say why it failed)
+if (plan.some((s) => s.effect === 'bc')) {
+  let st = null;
+  for (let i = 0; i < 300 && !st; i++) { await new Promise((r) => setTimeout(r, 100)); st = await evalJs('window.REF.bcReady ? "ok" : (window.REF.bcError || null)'); }
+  if (st !== 'ok') { console.error('blood cross module: ' + st + String.fromCharCode(10) + logs.slice(-15).join(String.fromCharCode(10))); chrome.kill(); process.exit(3); }
+}
 for (const shot of plan) {
   await evalJs(`REF.start(${JSON.stringify(shot.effect)}, ${JSON.stringify(shot.view)}, ${JSON.stringify(shot.opts || {})})`);
   for (const t of shot.times) {
