@@ -430,8 +430,12 @@ per-utility wraps.
 - the medkit with Galaxy in hand;
 - the frag with Camo (full) while cooking;
 - the Incense Burner skin while cooking, its holes lit.
-- The medkit lid first swung toward the camera. Its hinge moved to the front edge after the test; that fix is not yet
-  seen in Play.
+- The medkit lid first swung toward the camera, so its hinge moved to the front edge. Seen in a second Play
+  (05:29 UTC): the lid swings away and you look into the tray.
+- In that Play the Bento Box skin and a wrap were picked for the medkit through the real loadout remote (training's
+  try layer: nothing saved), and the bento's own lid opened over its food.
+
+![the medkit's lid opening away; the Bento Box picked in the loadout](items/medkit-lid-and-bento.jpg)
 
 ![skins](items/gadget-skins-sheet.jpg)
 ![wraps and a skin in hand](items/gadget-wraps-in-hand.jpg)
