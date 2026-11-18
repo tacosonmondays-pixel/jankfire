@@ -446,7 +446,12 @@ return function(B, R)
 			local HW, WT, WL, PIT = 8, 4, 1.2, 4 -- (the water's half width inside the walls, the walls' thickness, the surface over the floor, the pit's depth)
 			local was = B.mark
 			B.mark = B.warp ~= nil
-			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "3a5157")
+			-- (the pit's floor pale tile under the water, so it reads clean teal, as a pool does: 18 Nov, main for the owner)
+			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "d2e2e2")
+			for g = -HW + 2, HW - 2, 2 do
+				B.box(Fw, C, "FountainTileLine", g - 0.05, g + 0.05, -PIT, -PIT + 0.03, -HW, HW, "a9c2c3", nil, G)
+				B.box(Fw, C, "FountainTileLine", -HW, HW, -PIT, -PIT + 0.04, g - 0.05, g + 0.05, "a9c2c3", nil, G)
+			end
 			for _, sg in { -1, 1 } do
 				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + WT), -PIT - 0.04, 1.7, -(HW + WT), HW + WT, TRIM)
 				B.box(Fw, S, "FountainWall", -HW, HW, -PIT - 0.04, 1.69, sg * HW, sg * (HW + WT), TRIM)

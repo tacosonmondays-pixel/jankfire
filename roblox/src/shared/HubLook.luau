@@ -60,6 +60,9 @@ H.hubTint = hubTint -- (which one is on)
 H.looks = {
 	-- the hub is THE LANES (workspace.Map.Hub.Lanes): warm and a little dim, the lanes and the carpet do the colour
 	hub = with(HUB, HUB_TINT[hubTint]),
+	-- (the lobby's fountain is Terrain water indoors, 18 Nov: the saved water, the Rooftop pool's, reflects 0.75, and
+	-- under a cream ceiling that read as a brown map on the water, its waves throwing ragged lights along the walls. in
+	-- the hub the same teal, less mirror, calmer: its own Terrain entry, set just after this table)
 	rotunda = HUB,
 	-- the training hall is a place to shoot in: same mood, more base light, thinner haze (it's 220 studs long)
 	training = with(HUB, {
@@ -81,6 +84,7 @@ H.looks = {
 		SunRays = { Intensity = 0.06 },
 	}),
 } :: { [string]: Look }
+H.looks.hub.Terrain = { WaterColor = Color3.fromRGB(28, 150, 178), WaterTransparency = 0.5, WaterReflectance = 0.2, WaterWaveSize = 0.03, WaterWaveSpeed = 5 }
 -- the three show hubs of the hub comparison that were not picked (put away in ServerStorage.PolishBackup.HubArchive,
 -- each with its look zone: a part in Hub.LookZones with the attribute Look names the look for whoever stands inside
 -- it). the fourth, the bowling alley, is the hub now: its look is looks.hub above
