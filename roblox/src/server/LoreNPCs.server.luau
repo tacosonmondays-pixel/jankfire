@@ -20,7 +20,7 @@
 -- each redemption is logged (the save's `codes`, and the server log). A right code reveals it for you for good (saved:
 -- `seen`; the player attribute LoreSeen lists them), spawns it in beside the panel on your screen alone, and counts as
 -- finding it (its gift and title as before; the egg's OG title goes through HubEgg.server's ServerStorage.HubEggFind).
--- Then it lives at its own spot for you. (A find counts as seen too. The first idea, a secret action per NPC at its
+-- Then it lives at its own spot for you. (Only a code counts: `seen` keeps nothing the save's `codes` log doesn't back, onlyCoded. The first idea, a secret action per NPC at its
 -- spot, is written and parked: LoreTriggers.luau, behind TRIGGERS_ON.)
 -- REWARD CODES (18 Nov 2026, the owner: the old Ducky skin trio "via code"): a book row with kind = "reward" gives the
 -- things in REWARDS (through Loot.grant, one receipt per player and item: once each) instead of revealing an NPC; the
@@ -56,6 +56,7 @@
 --   "codes"           each code's NPC, opening day and whether it's open by that calendar
 --   "unlock"          clears the first player's wrong tries and wait
 --   "redeliver"       takes the first player's NPC copies back and gives them again (what joining does)
+--   "migrate"         what loading a save does to `seen` (only code-backed reveals stay), now
 --   "unclaim", id     forgets the first player's claim of a reward code (the items stay in the loot save)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -247,7 +248,6 @@ local function find(p: Player, id: string)
 	if d.found[id] then return end
 	s.busy[id] = true
 	d.found[id] = os.time()
-	if not d.seen[id] then d.seen[id] = d.found[id] end -- (a find is a reveal too: the HR guy's)
 	s.prof.dirty = true
 	publish(p)
 	LoreR:FireClient(p, "found", id, true)
@@ -314,6 +314,15 @@ local function reveal(p: Player, id: string, how: string?)
 	;(revealEv :: BindableEvent):Fire(p, id)
 end
 
+-- (18 Nov 2026, main relaying the owner: NPCs were showing for players who never typed their code) a reveal counts only
+-- if that player really entered its code: `seen` keeps nothing the save's `codes` log doesn't back. Reveals carried
+-- over from the find-by-walking days, a test's reveal, anything else: dropped on load (finds, titles and gifts stay)
+local function onlyCoded(d: any)
+	for k in d.seen do
+		if not known(k) or d.codes[k] == nil then d.seen[k] = nil end
+	end
+end
+
 -- ------------------------------------------------------------------ players
 local function added(p: Player)
 	if st[p] then return end
@@ -325,13 +334,11 @@ local function added(p: Player)
 	if st[p] ~= s then Profiles.release(store, prof); return end
 	if type(prof.data.found) ~= "table" then prof.data.found = {} end
 	for k in prof.data.found do if not LoreData.get(k) then prof.data.found[k] = nil end end -- (one taken out of the game)
-	-- (revealed: anyone who found one before the triggers keeps it revealed)
-	if type(prof.data.seen) ~= "table" then prof.data.seen = {} end
-	for k in prof.data.seen do if not known(k) then prof.data.seen[k] = nil end end
-	for k, t in prof.data.found do if prof.data.seen[k] == nil then prof.data.seen[k] = t end end
 	if type(prof.data.codes) ~= "table" then prof.data.codes = {} end
 	if type(prof.data.codeWait) ~= "number" then prof.data.codeWait = 0 end
 	if type(prof.data.claims) ~= "table" then prof.data.claims = {} end
+	if type(prof.data.seen) ~= "table" then prof.data.seen = {} end
+	onlyCoded(prof.data)
 	s.prof = prof
 	s.ready = true
 	publish(p)
@@ -587,6 +594,13 @@ if STUDIO then
 			local out = {}
 			for _, c in Book.CODES do table.insert(out, ("%s %s %s"):format(c.id, c.opens, if today() >= (opensAt[c.id] or math.huge) then "OPEN" else "shut")) end
 			return table.concat(out, " | ")
+		elseif op == "migrate" and p and s and s.prof then -- (what loading the save does to `seen`, now)
+			onlyCoded(s.prof.data)
+			s.prof.dirty = true
+			publish(p)
+			undeliver(p, nil)
+			for id in s.prof.data.seen do deliver(p, id) end
+			return p:GetAttribute("LoreSeen")
 		elseif op == "redeliver" and p and s and s.prof then -- (what a rejoin does: their copies taken back, then given again)
 			undeliver(p, nil)
 			task.wait(0.5)
