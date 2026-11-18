@@ -176,12 +176,15 @@ function PetRig.pose(self: Rig, cf: CFrame, phase: number, move: number, t: numb
 	workspace:BulkMoveTo(self.parts, self.cfs, Enum.BulkMoveMode.FireCFrameChanged)
 end
 
--- hide or show the whole pet on this screen only (first person, too near the camera)
-function PetRig.hide(self: Rig, on: boolean)
-	if self.hidden == on then return end
+-- hide or show the whole pet on this screen only (the camera inside it). force: write it again even if unchanged (the
+-- follower does now and then, so nothing else that touches LocalTransparencyModifier can leave it hidden); only parts
+-- that differ are written
+function PetRig.hide(self: Rig, on: boolean, force: boolean?)
+	if self.hidden == on and not force then return end
 	self.hidden = on
+	local want = if on then 1 else 0
 	for _, p in self.parts do
-		if p ~= self.rootPart then p.LocalTransparencyModifier = if on then 1 else 0 end
+		if p ~= self.rootPart and p.LocalTransparencyModifier ~= want then p.LocalTransparencyModifier = want end
 	end
 end
 

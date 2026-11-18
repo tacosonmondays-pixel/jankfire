@@ -4,8 +4,8 @@
 -- parts there, no per-frame writes anywhere but these few anchored pieces (one BulkMoveTo per pet, PetRig), and a pet
 -- far from your camera isn't moved at all (it waits, parked out of the world, till you come near).
 --   * where: everywhere its owner goes (the hub, training, the playground, matches). it can't be shot or stood on and
---     blocks nothing (no collisions, no queries, no touches); your own is hidden while it's in front of you in first
---     person, and any pet right at the camera is hidden too
+--     blocks nothing (no collisions, no queries, no touches). you see your own in first person as in third (look down
+--     or round at it); only a pet right at the camera hides
 --   * how: it walks where its owner walked: a trail of the owner's footing (only while they stand on something), and the
 --     pet heads for the point a few studs back along it, off to one side when there's room. so it goes round corners and
 --     up the same stairs, never through a wall the owner went round. it trots, crawls or waddles to catch up (the faster
@@ -40,7 +40,7 @@ folder.Parent = workspace
 
 type F = { owner: Instance, id: string, rig: any, pos: Vector3, yaw: number, vel: Vector3, phase: number, move: number,
 	groundY: number, missT: number, upT: number, lastRoot: Vector3?, shown: boolean, side: number, snap: boolean,
-	stuckT: number, best: number }
+	stuckT: number, best: number, hideT: number? }
 local pets: { [Instance]: F } = {}
 -- each owner's trail: where they stood, newest last (points 0.5 studs apart, the last 48)
 local trails: { [Instance]: { Vector3 } } = {}
@@ -209,8 +209,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if not cam then return end
 	local camPos = cam.CFrame.Position
 	local frozen = workspace:GetAttribute("PetFreeze") == true
-	local myHead = me.Character and me.Character:FindFirstChild("Head") :: BasePart?
-	local firstPerson = myHead ~= nil and (camPos - myHead.Position).Magnitude < 1.6
 	for owner, f in pets do
 		local r, h = bodyOf(owner)
 		-- far from you: parked, not moved (it catches up the moment it's back in range: the snap below)
@@ -301,12 +299,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 		local cf = CFrame.new(f.pos) * CFrame.Angles(0, f.yaw, 0)
 		f.rig:pose(cf, f.phase, f.move, now)
-		-- out of your way: your own in front of you in first person, and any right at the camera
+		-- shown to you as in third person, your own included: only a pet right at the camera hides (the camera inside it).
+		-- (18 Nov, the owner: "when in first person your pet doesn't always show up". take 1 hid your own pet whenever it
+		-- was in front of you in first person, as the first spec asked; looking at it, or down at it, it was gone)
 		local v = f.pos + Vector3.new(0, 0.8, 0) - camPos
-		local hide = v.Magnitude < 2.2
-		if not hide and owner == me and firstPerson then
-			hide = v.Magnitude < 14 and cam.CFrame.LookVector:Dot(v.Unit) > 0.25
-		end
-		f.rig:hide(hide)
+		f.rig:hide(v.Magnitude < 1.3, now - (f.hideT or 0) > 0.5)
+		if now - (f.hideT or 0) > 0.5 then f.hideT = now end
 	end
 end)

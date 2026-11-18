@@ -286,8 +286,11 @@ The remote `Flair` takes `("pet", id)` ("" for none), and `state` returns `pets`
   - past 42 studs behind;
   - 12+ studs above or below for 1.2 s (pads, lifts);
   - held by a wall (barely moving, 3+ studs behind) for a second.
-- No collisions, queries or touches: it can't be shot, stood on or block anything. Your own is hidden while it's in front of
-  you in first person, and any pet right at the camera is hidden too.
+- No collisions, queries or touches: it can't be shot, stood on or block anything.
+- **First person (18 Nov, v961):** you see your own pet as in third person. The owner said "when in first person your pet
+  doesn't always show up": take 1 hid your own pet whenever it was in front of you in first person, as the first spec asked.
+  Now only a pet right at the camera (within 1.3 studs) hides, and its visibility is written again every 0.5 s, so no other
+  script can leave it transparent.
 - Gaits are sums of sines (`client/PetRig.luau`): the mannequin's pieces turn about its feet (the waddle). The dog's and
   the slug's bones get a `Transform` each frame, written in the pet's own frame and carried into the bone's (rest^-1 · move ·
   rest). The slug crawls: its body bunches in a wave, and each arm lifts at the shoulder and the elbow in turn. The dog trots:
@@ -322,6 +325,14 @@ the copy of you.
   - Training itself couldn't be walked: the hall is sealed against a teleported test player, who lands back in the hub. The
     pet then sat on the lounge floor at its exact height (239.95).
   - Photo: `flair/pets-floor-steps.jpg`.
+- **First person (v961):** the pet was visible (LocalTransparencyModifier 0, drawn on screen when looked at) in each case:
+  - in first person, facing it and looking down at it;
+  - after V to third person and V back;
+  - after a respawn;
+  - in a ghost match, and back in the hub when it ended (3.4 studs away each time).
+  - The test camera was tipped down with a render step after the game's camera, because simulated mouse moves don't turn
+    the locked first-person view.
+  - Photo: `flair/pets-first-person.jpg`.
 
 ## Settings hooks (the settings page, P)
 
