@@ -43,6 +43,16 @@ if not ThrowR then
 	r.Parent = Remotes
 	ThrowR = r
 end
+-- (the hold session's Bow draw, 18 Nov 2026) everyone else sees your Bow drawn from the player attribute BowDrawT: the
+-- server time your draw began, nil when you're not drawing. your client says when it starts and stops (BowDraw true /
+-- false, ProjClient); the arrow, a switch away, a death or a stun clear it here
+local BowDrawR = Remotes:FindFirstChild("BowDraw") :: RemoteEvent?
+if not BowDrawR then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "BowDraw"
+	r.Parent = Remotes
+	BowDrawR = r
+end
 
 local W = Weapons.list
 local S = Weapons.S
@@ -402,6 +412,7 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 	if not f or not w or (w.kind ~= "proj" and w.kind ~= "bow") then return end
 	if not table.find(Rules.loadoutOf(f), wid) or f.held ~= wid or not f.alive then return end
 	local n = now()
+	if w.kind == "bow" then p:SetAttribute("BowDrawT", nil) end -- (the let-go: the draw is over, whatever happens next)
 	if n < f.staggerUntil then return end
 	local seye = Fight.eye(f)
 	if not seye then return end
@@ -450,6 +461,7 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 	-- jump on its own: no back-blast on top (both together threw you 60 m up in a test)
 	if w.thrust and not sphere(eye, w.r, look * w.radius) then
 		local push = -look * w.thrust
+		if Vector3.new(push.X, 0, push.Z).Magnitude > math.abs(push.Y) then push = Vector3.new(push.X, math.max(push.Y, w.thrustHop or 0), push.Z) end -- (a dash: off your feet)
 		local vy = if root then root.AssemblyLinearVelocity.Y else 0
 		if push.Y > 0 then push = Vector3.new(push.X, math.clamp(w.thrustCapUp - vy, 0, push.Y), push.Z) end
 		Fight.knock(f, push, wid)
@@ -654,6 +666,27 @@ RunService.Heartbeat:Connect(function(dt: number)
 			frozenUntil[t] = nil
 			local h = holder(t)
 			if h then h:SetAttribute("FrozenUntil", nil) end
+		end
+	end
+end)
+-- the Bow's draw as others see it (BowDrawT): yours from the press; gone on the let-go, a switch away, a death, a stun
+;(BowDrawR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, on: unknown)
+	local f = Fight.byPlayer[p]
+	local w = f and f.held and W[f.held] :: any
+	if on == true and f and f.alive and w and w.kind == "bow" and p:GetAttribute("Zone") ~= "hub" and now() >= f.staggerUntil then
+		if p:GetAttribute("BowDrawT") == nil then p:SetAttribute("BowDrawT", workspace:GetServerTimeNow()) end
+	else
+		p:SetAttribute("BowDrawT", nil)
+	end
+end)
+task.spawn(function()
+	while true do
+		task.wait(0.1)
+		for _, p in Players:GetPlayers() do
+			if p:GetAttribute("BowDrawT") == nil then continue end
+			local f = Fight.byPlayer[p]
+			local w = f and f.held and W[f.held] :: any
+			if not f or not f.alive or not w or w.kind ~= "bow" or now() < f.staggerUntil then p:SetAttribute("BowDrawT", nil) end
 		end
 	end
 end)

@@ -147,7 +147,13 @@ local function drop(id: number)
 	live[id] = nil
 	topOf(L.part):Destroy()
 end
+local drawSent = false -- (the Bow's draw as the server knows it: BowDraw true at the press, false when it ends)
 RunService.RenderStepped:Connect(function(dt: number)
+	if (P.bowT ~= nil) ~= drawSent then
+		drawSent = P.bowT ~= nil
+		local r = Remotes:FindFirstChild("BowDraw")
+		if r and r:IsA("RemoteEvent") then r:FireServer(drawSent) end
+	end
 	local map = workspace:FindFirstChild("Map")
 	if map then floorParams.FilterDescendantsInstances = { map } end
 	for _, L in live do

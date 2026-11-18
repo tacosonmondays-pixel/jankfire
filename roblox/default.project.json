@@ -50,6 +50,9 @@
         "Throw": {
           "$className": "RemoteEvent"
         },
+        "BowDraw": {
+          "$className": "RemoteEvent"
+        },
         "Dash": {
           "$className": "RemoteEvent"
         },

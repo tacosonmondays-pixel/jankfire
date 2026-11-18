@@ -405,7 +405,9 @@ local W: { [string]: Weapon } = {
 		-- use it propel yourself through the air!") every shot's back-blast shoves you the other way to your aim, 18 m/s,
 		-- on the ground or in the air, no damage (WeaponProj.server). against 26 m/s² and 0.85 s a shot, a chain aimed down
 		-- climbs for a few shots, then sinks slowly. your upward speed after it is capped at 32 m/s (thrustCapUp)
-		thrust = 18 * S, thrustCapUp = 32 * S,
+		-- a mostly level shot also hops you 7 m/s (thrustHop): on the floor a flat shove is eaten by your footing at once
+		-- (4 m/s carried a level dash only 4.5 m in a test: you landed too soon)
+		thrust = 18 * S, thrustCapUp = 32 * S, thrustHop = 7 * S,
 		snd = "chicken_fire", snd2 = "chicken_squeak", -- (the launcher's thunk, and the rubber chicken's squeak with it)
 		recoilVM = { back = 1.6, up = 6, roll = 1, side = 0.2, punch = 0.03 },
 		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
