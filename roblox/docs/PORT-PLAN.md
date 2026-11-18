@@ -1444,6 +1444,26 @@ The owner: "you can keep wall box but can you remove sky box? that way we can gr
   - The test shots have the hub's sky: the test body was put in the arenas outside a real match.
   - Not tested: a real 2-player match on each map, phones.
 
+## 37. Grapple onto people, 18 November 2026 (place version 740)
+
+The owner: "can you make it so you can grapple onto people". Ported from the web game (`public/js/player.js`: `tryHook`, `hookPoint`, `hookStep`, the person branch of `ballHookStep`).
+
+- **The hook bites people.** The hook's ray already stops at whichever is nearer, the map or a body; now, when what it hit belongs to a living player or a training dummy (attribute `Dummy`), the rope ties onto that body instead of the point.
+- **The rope follows them:** tied 1 stud over their root (their chest, `Config.hook.bodyUp`), on your own client (`Move.client`: the hook point follows them every step) and on the server's rope everyone sees (`Main.server`: its end is an Attachment in their root). The skin's head and tie follow too (`GrappleLook`: the bite is read again each frame). No max length: the classic rope only ever shortens, as on the web.
+- **It reels you in** at the rope's full pull and **lets go `Config.hook.bodyLet` off them** (the web's 3.2 m = 9.6 studs; the brief said "about 3.2 studs", but the web's units are metres). Your momentum carries you into them.
+- **It drops** when they die, respawn or leave, or once you've lost sight of them for `Config.hook.bodyBlind` (0.4 s, the client; the server's say-so is 0.8 s, for lag). No ropes through walls.
+- **The server checks it** (`HookCheck.body`): a living Fighter (a player or a dummy), not you, in range to their chest with the usual slack, and seen from your head now or a moment ago (`Fight.sees`, the same lag allowance as shots). It costs a charge like any hook (`HookChargeServer`, ranked included), and the same rate limit applies.
+- **Kill credit:** an enemy hooked is tagged like a knock (`Rules.tagged`, `wid = "grapple"`). A fall or a hazard within the game's 10 s tag window is the hooker's kill, shown "via" Grapple (a `slot = "none"` naming entry in `Weapons.list`, like the parry and the Shredder). A teammate, or anyone outside a live match, is never tagged (`Fight.allow`).
+- **No text.** The sound and the rope skin are the usual ones.
+- **Anti-cheat:** the server's rope is still `Rope_<id>` in Terrain, so the hooker counts as on a rope (no fly checks, a rope's throw allowed). A clean reel into a dummy raised no verdict with `StudioOn`.
+- **Tested in solo Play** (training dummies as stand-ins):
+  - the walking dummy hooked: the rope's end followed it within 1.5 studs (the skin's tie offset) while it walked; the server's rope was tied to its root;
+  - reel-in: from 22.5 studs the rope let go by itself and momentum carried the hooker to 1.3 studs from it;
+  - killed while hooked: the server's rope was gone within 0.05 s, the client's too;
+  - a hooked dummy dropped below the fall line: the kill came back as `void`, `via = grapple`, credited to the hooker;
+  - a wall hook: unchanged (a point, `HookAt` set, the rope's end in Terrain).
+  - Not tested: two real players (a solo test can't). Photo: `docs/grapples/grapple_onto_people_v740.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

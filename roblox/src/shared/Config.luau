@@ -42,6 +42,10 @@ local Config = {
 		jumpMul = 1.12, -- grapple jump: keep your momentum, +12% sideways
 		jumpUp = 11 * S, -- and get launched up
 		chest = 1 * S, -- the rope pulls from your chest, 1 m over your feet
+		-- hooked to a person (18 Nov 2026, the web's tryHook / hookPoint): the rope ties on this far over their root (their
+		-- chest), lets go this close to them (the web's 3.2 m: your momentum carries you into them) and drops when they've
+		-- been out of your sight this long (the server allows a little more, for lag)
+		bodyUp = 1, bodyLet = 3.2 * S, bodyBlind = 0.4,
 	},
 	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in
 	-- stock (while we test); LOOT_ROBUX = sell them through developer products (Shop.luau's product ids; receipts:

@@ -24,6 +24,14 @@ function HookCheck.reach(dist: number, toPoint: number, seenDist: number?): stri
 	return nil
 end
 
+-- a hook on a person (18 Nov 2026, "grapple onto people"): dist = from the hooker's root to their chest, seen = whether
+-- the hooker's head sees them now or a moment ago (Fight.sees looks back along their trail, for lag)
+function HookCheck.body(dist: number, seen: boolean): string?
+	if dist > Config.hook.range + Config.check.hookSlack then return "out of range" end
+	if not seen then return "blocked" end
+	return nil
+end
+
 -- a sliding window of request times per player
 function HookCheck.rate(times: { number }, now: number): boolean
 	while #times > 0 and now - times[1] > 1 do table.remove(times, 1) end

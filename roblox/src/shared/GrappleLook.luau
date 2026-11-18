@@ -201,6 +201,7 @@ end
 -- where everything goes this frame: the head on the bite pointing along the rope, the rope tied on at the tail.
 -- returns the head's CFrame and the rope's length
 local function aim(rec: Rec, now: number): (CFrame, number)
+	if rec.anchor.Parent then rec.bite = rec.anchor.WorldPosition end -- (a rope tied to a person moves with them, 18 Nov)
 	local a0 = rec.beam.Attachment0
 	if a0 and a0.Parent then rec.from = a0.WorldPosition end
 	local d = rec.bite - rec.from

@@ -44,6 +44,32 @@ local touchWas = false
 local st = Movement.newState()
 local rope: Beam? = nil
 local ropeAnchor: Attachment? = nil
+-- hooked to a person (18 Nov 2026, the owner: "can you make it so you can grapple onto people"; the web's tryHook and
+-- hookPoint): the rope ties onto a living body the hook hit (a player, or a training dummy) at its chest and follows
+-- it. it reels you in at the rope's full pull and lets go Config.hook.bodyLet off them, your momentum carrying you into
+-- them; it drops if they die, respawn or leave, or once they've been out of your sight Config.hook.bodyBlind. no text
+local hookBody: Model? = nil
+local hookBlind, hookLookT = 0, 0
+local bodyParams = RaycastParams.new()
+bodyParams.FilterType = Enum.RaycastFilterType.Exclude
+local function bodyOf(inst: Instance): Model?
+	local m = inst:FindFirstAncestorOfClass("Model")
+	while m do
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum then
+			if hum.Health > 0 and m:FindFirstChild("HumanoidRootPart") and (Players:GetPlayerFromCharacter(m) or m:GetAttribute("Dummy")) then return m end
+			return nil
+		end
+		m = m:FindFirstAncestorOfClass("Model")
+	end
+	return nil
+end
+local function bodyRoot(m: Model?): BasePart?
+	if not m or not m.Parent then return nil end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return nil end
+	return m:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
 local thirdPerson = false
 
 local function setCamera()
@@ -59,6 +85,7 @@ end
 
 local function releaseHook(tellServer: boolean)
 	if st.hook then st.hook = nil; st.lift = 1 end
+	hookBody = nil
 	dropRope()
 	if tellServer then GrappleRemote:FireServer("release") end
 end
@@ -93,13 +120,26 @@ local function tryHook()
 	end
 	if not HookChargesUI.try() then return end -- (ranked: no charge left, it says so)
 	local p = hit.Position
+	local body = bodyOf(hit.Instance)
+	local troot = if body then bodyRoot(body) else nil
+	if body and troot then -- (a person: the rope ties onto them)
+		p = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
+		hookBody, hookBlind, hookLookT = body, 0, os.clock()
+	else
+		body = nil
+	end
 	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil }
-	GrappleRemote:FireServer("hook", p)
+	GrappleRemote:FireServer("hook", p, body)
 	-- our own rope right away (the server draws it for everyone else)
 	local a0 = (ch:FindFirstChild("RightHand") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
 	local a1 = Instance.new("Attachment")
-	a1.WorldPosition = p
-	a1.Parent = workspace.Terrain
+	if troot and body then
+		a1.Position = Vector3.new(0, Config.hook.bodyUp, 0)
+		a1.Parent = troot
+	else
+		a1.WorldPosition = p
+		a1.Parent = workspace.Terrain
+	end
 	local b = Instance.new("Beam")
 	b.Attachment0 = a0; b.Attachment1 = a1
 	b.Width0 = 0.25; b.Width1 = 0.25; b.FaceCamera = true; b.Segments = 1
@@ -282,6 +322,29 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil
+	-- a person on the rope (above): the end follows their chest; gone, reeled in, or out of sight too long, it lets go
+	if st.hook and hookBody then
+		local tr = bodyRoot(hookBody)
+		if not tr then
+			releaseHook(true)
+		else
+			local c = tr.Position + Vector3.new(0, Config.hook.bodyUp, 0)
+			local h = st.hook :: any
+			h.ax, h.ay, h.az = c.X, c.Y, c.Z
+			local nowL = os.clock()
+			if (c - chest).Magnitude < Config.hook.bodyLet then
+				releaseHook(true)
+			elseif nowL - hookLookT >= 0.1 then
+				local eye = root.Position + Vector3.new(0, 1.5, 0)
+				bodyParams.FilterDescendantsInstances = { ch, hookBody :: Model }
+				hookBlind = if workspace:Raycast(eye, c - eye, bodyParams) then hookBlind + (nowL - hookLookT) else 0
+				hookLookT = nowL
+				if hookBlind >= Config.hook.bodyBlind then releaseHook(true) end
+			end
+		end
+	elseif not st.hook then
+		hookBody = nil
+	end
 	if swimming then
 		-- swimming (the Rooftop pool is Terrain water): paddle where you look, with water drag. Space swims up (and pops
 		-- you out at the edge), C dives; with nothing pressed the Humanoid's own buoyancy holds you at the surface
@@ -385,7 +448,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 	-- on the rope right now: GrappleImpacts only counts swings that are really on it
 	if player:GetAttribute("OnRope") ~= (st.hook ~= nil) then player:SetAttribute("OnRope", st.hook ~= nil) end
 	-- where the rope bites (WallGrid.client draws the grid there when it's the wall box)
-	local hookAt = if st.hook then Vector3.new(st.hook.ax, st.hook.ay, st.hook.az) else nil
+	local hookAt = if st.hook and not hookBody then Vector3.new(st.hook.ax, st.hook.ay, st.hook.az) else nil -- (not a person)
 	if player:GetAttribute("HookAt") ~= hookAt then player:SetAttribute("HookAt", hookAt) end
 	-- sprinting right now (SpeedLines.client's FOV kick: +6, as the web's)
 	if player:GetAttribute("Sprinting") ~= st.sprinting then player:SetAttribute("Sprinting", st.sprinting) end

@@ -302,6 +302,8 @@ local W: { [string]: Weapon } = {
 	parry = { id = "parry", name = "Katana Parry", slot = "none", kind = "parry", color = rgb(0x9fe8ff), desc = "", dmg = 0, range = 0 },
 	-- the Shredder is a Tool of its own (key 4, StarterPack); this entry only names it in the kill feed
 	shredder = { id = "shredder", name = "Shredder", slot = "none", kind = "shredder", color = rgb(0xffb31a), desc = "", dmg = 0, range = 0 },
+	-- the grapple tied to a person (18 Nov): a fall or a hazard soon after is the hooker's kill; this entry only names it
+	grapple = { id = "grapple", name = "Grapple", slot = "none", kind = "grapple", color = rgb(0xc8ccd2), desc = "", dmg = 0, range = 0 },
 }
 
 local Weapons = {
