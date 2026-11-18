@@ -375,6 +375,23 @@ H.looks.arctic = {
 } :: Look
 H.plainSky.arctic = true
 H.byArena.ArcticCabin = "arctic"
+-- SKATEPARK (WebArena; tools/roblox/skatepark_models.py, a new small arena): a city skatepark late in the day. A low
+-- golden sun from the south (across the teams' line, so nobody starts a round staring into it), a warm haze over the
+-- city, the floodlights already on
+H.looks.skatepark = {
+	Lighting = {
+		Ambient = Color3.fromRGB(126, 118, 112), OutdoorAmbient = Color3.fromRGB(150, 138, 128), Brightness = 2.2,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
+		ClockTime = 13.0, GeographicLatitude = 86, ColorShift_Top = Color3.fromRGB(255, 214, 170),
+		FogColor = Color3.fromRGB(220, 196, 176), FogStart = 400, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.06, Haze = 1.4, Glare = 0.12, Color = Color3.fromRGB(226, 200, 178), Decay = Color3.fromRGB(170, 140, 132) },
+	Bloom = { Intensity = 0.3, Size = 24, Threshold = 2.0 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = -0.06, TintColor = Color3.fromRGB(255, 246, 236) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.skatepark = true
+H.byArena.Skatepark = "skatepark"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)

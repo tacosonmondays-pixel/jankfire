@@ -766,8 +766,10 @@ outbuildings(); crates(); firewoods(); fences(); rocks(); drifts(); trees(); fir
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
 rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
 INFO.update(L.WALLBOX)
+# (the boathouses solid to the old lid: open roofs you can stand on, the kit's own shape and nothing above it, as on the
+# Gut and Suburb v2 since 18 Nov 2026: roofs.open_up)
 import roofs
-solid, rotb, _roofs = roofs.split(solid, rotb, L.LID, K.PIECES)
+solid, rotb, _roofs = roofs.open_up(solid, rotb, L.LID, K.PIECES)
 print('ROOFS', _roofs)
 K.write_layout(LAYOUT, INFO, solid, [tuple(p) for p in L.PADS], [tuple(p) for p in L.SPAWNS], L.TEAM,
                water=[tuple(w) for w in L.WATER], src='tools/roblox/arctic_models.py', rot=rotb)

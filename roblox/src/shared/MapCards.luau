@@ -15,6 +15,10 @@ MapCards.THUMBS = {
 	BazaarV2 = "rbxassetid://131742520863260", -- BAZAAR: ROOFTOPS
 	DesertV2 = "rbxassetid://92556822417681", -- DESERT: CANYON
 	SuburbV2 = "rbxassetid://134037734020157", -- SUBURB: CUL-DE-SAC
+	Backrooms = "rbxassetid://114619621384993", -- BACKROOMS (18 Nov: Cycles renders of the kit, tools/roblox/card_render.py)
+	Forest = "rbxassetid://76491374027623", -- SPOOKY FOREST
+	ArcticCabin = "rbxassetid://112923749467887", -- ARCTIC CABIN
+	Skatepark = "rbxassetid://92147472353603", -- SKATEPARK
 } :: { [string]: string }
 
 -- a map vote's three (or fewer) cards out of `pool`, never `last` while there's anything else. pure but for the dice
