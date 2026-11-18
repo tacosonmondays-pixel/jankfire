@@ -814,7 +814,7 @@ do
 	-- coins, Brass, Crate Tickets: any amount
 	do
 		local P = kindPage.CURRENCY
-		for i, c in { { "brass", "BRASS (COINS)" }, { "tickets", "CRATE TICKETS" } } do
+		for i, c in { { "brass", "COINS" }, { "tickets", "CRATE TICKETS" } } do
 			local y = (i - 1) * 56
 			label(P, "L_" .. c[1], c[2], 0, y + 6, 160)
 			local b = box(P, "N_" .. c[1], "", UDim2.fromOffset(170, y), 160, "how many")

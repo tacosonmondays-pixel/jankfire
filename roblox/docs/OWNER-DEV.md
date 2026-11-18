@@ -98,7 +98,7 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 | Crates, Duffel Bags, Spray Cans, 1 to 999 | `Loot.grant(p, id, receipt, n)`: one write, one receipt, past the free mode's stock cap of 10. The count is the loot module's (`Loot.GRANT_COUNT`, agreed with shop-gui); a client's "buy" stays capped. |
 | A shop bundle or skin set, whole | `Loot.grant(p, bundleId, receipt)` |
 | One item from the searchable list (skins, wraps, hats, kill effects, emotes, grapples, card looks) | `Loot.grant(p, "gift:<kind>:<id>", receipt)`. Wraps and hats go on every gun. |
-| Brass (the coins: the same currency) and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
+| Coins (the game shows Brass as Coins; one currency, internal id brass) and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
 | VIP, for good | `Vip.gift(p, true)` (the shop's): saved on the player's key in `JankfireVip` |
 | A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | `Purchases.giveWeapon(p, wid, "gift", receipt)` (the shop's) |
 
@@ -195,3 +195,9 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 - "Coins" gave 500 Brass.
 - VIP and a Robux weapon answered "not in yet": shop-gui's `Vip.gift` and `Purchases` weren't installed in Studio yet.
 - The owner's `_studio` saves were restored exactly afterwards.
+
+**GIFT round 3, place version 1030** (after shop-gui's v1029 install):
+- A Robux weapon gift landed (the minigun, `RobuxOwned`).
+- 250 coins landed with "GIFT · 250 COINS".
+- VIP: "already VIP" for an owner who is VIP. With Vip's Studio dev lock on, the gift made them VIP.
+- The loot, quests, VIP and purchases `_studio` saves were restored exactly afterwards.

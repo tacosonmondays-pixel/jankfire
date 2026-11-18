@@ -542,7 +542,7 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		if not Q or type(Q.gift) ~= "function" then return { ok = false, why = "not ready" } end
 		local ok, why = Q.gift(to, if kind == "brass" then qty else 0, if kind == "tickets" then qty else 0, receipt(to))
 		if not ok then return { ok = false, why = tostring(why) } end
-		label = ("%d %s"):format(qty, if kind == "brass" then "BRASS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
+		label = ("%d %s"):format(qty, if kind == "brass" then "COINS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
 		what = kind :: string
 	elseif kind == "vip" then
 		local V = mod("Vip")
