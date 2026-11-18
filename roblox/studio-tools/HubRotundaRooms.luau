@@ -162,7 +162,7 @@ return function(B, R)
 	-- just look like well extensions, it doesnt look very natural". one building round a covered courtyard, in the round
 	-- room's own language turned inside out: its piers floor to cornice, the balcony's band, the gallery's windows, its
 	-- cornice. the round room's three south faces are the courtyard's north side (the arches the way in, a balcony over
-	-- the middle one, a bay window over each side one: the west one holds the hub egg's nook, R.EGG_NICHE); three walls
+	-- the middle one, a framed panel over each side one: the bay blocks there went, 18 Nov, and with them the egg nook); three walls
 	-- close the rest, over arcades: the showroom down the west one, seats and the bar down the east one, the reception
 	-- and the VIP door in the south one. 18 Nov, the owner: "the lobby area looks like the outside of a hotel rather than
 	-- the inside now!", so it is a LOBBY, inside: a mezzanine gallery with a balustrade round three sides, panelled
@@ -177,11 +177,13 @@ return function(B, R)
 		local seat = { ["3b2a52"] = P.creamHi, ff4fd8 = P.band }
 		-- (the hotel's paint, 18 Nov, main: "lighter, warm quiet stone or plaster for the facades and arcades": warm stone
 		-- walls, a paler stone for their trim, warm grey floors; colour stays on the pads, the boards and the one accent)
-		local STONE, STONE2, TRIM, TRIM2 = "958d80", "857e73", "b8b0a1", "c8c1b3"
-		local FLOOR, FLOOR2 = "68645d", "57534d"
-		local PIERC = { ["2e3140"] = "8e877c", a4aab8 = "a39b8e", ["5b6478"] = "a39b8e", f4f8ff = "f0d6a8" } -- (the piers' light slots warm too; shaft, corbel and head one colour: their backs share a plane, seen from the arcades)
+		-- (18 Nov, later, the owner: "also can the hotel match the gray colors": the round hall's own palette. its bay walls'
+		-- slate for the walls, its piers' greys, its cream for the trim, its floors; the wood and the lamps stay warm)
+		local STONE, STONE2, TRIM, TRIM2 = P.bay, P.pier, P.cream, P.creamHi
+		local FLOOR, FLOOR2 = P.floor, P.floor2
+		local PIERC = { ["2e3140"] = P.pier, a4aab8 = P.pier2, ["5b6478"] = P.pier2, f4f8ff = P.strip } -- (the piers' light slots warm too; shaft, corbel and head one colour: their backs share a plane, seen from the arcades)
 		local LIT = "dcbf8f" -- (a shop's window lit warm)
-		local WOOD, WOOD2, PLASTER = "6b5444", "5e4a3c", "a39b8e" -- (the lobby's panelling and doors; its ceiling)
+		local WOOD, WOOD2, PLASTER = "5c4d42", "514338", P.dome -- (the lobby's panelling and doors; its ceiling)
 		local wo = B.wid(A + T) / 2 -- (a round-room side's outer half width)
 		local rcO = (A + T) / math.cos(math.pi / R.N)
 		local cx, cd = rcO * math.sin(3 * math.pi / R.N), rcO * math.cos(3 * math.pi / R.N) -- the round room's outer corner between sides 6 / 8 and 5 / 9
@@ -308,7 +310,7 @@ return function(B, R)
 			-- room's wall)
 			local Fn = Ff((cd - 0.3 + north) / 2)
 			local hw = (north - (cd - 0.3)) / 2
-			B.box(Fn, C, "Base", -hw, hw, 0, 0.7, A - 0.35, A, "7a746a", nil, G)
+			B.box(Fn, C, "Base", -hw, hw, 0, 0.7, A - 0.35, A, P.pier, nil, G)
 			B.box(Fn, C, "Dado", -hw, hw, 0.7, 5, A - 0.22, A, WOOD, Wood, G)
 			B.box(Fn, C, "Ledge", -hw, hw, 5, 5.5, A - 0.6, A, TRIM, nil, G)
 			for k = 1, #PDs - 1 do pier(Ff(PDs[k]), 0) end
@@ -358,20 +360,13 @@ return function(B, R)
 			local e = A + T
 			B.box(Fk, S, "Parapet", -(wo + 0.05), wo + 0.05, 27.48 + o, ROOF, e - 1.2, e, STONE) -- (from over the lintels' tops: the cornice hides the seam)
 			B.box(Fk, C, "Band", -(wo + 0.15), wo + 0.15, 14.2 + o, 14.7 + o, e, e + 0.3, TRIM, nil, G)
-			-- (a skin of the stone on the wall's outer face from the arches' tops up, with a hole for the hub egg's nook)
-			local N = R.EGG_NICHE
-			if k == R.EGG_SIDE then
-				B.box(Fk, C, "FaceSkin", -(wo + 0.05), wo + 0.05, 12.05, 16.38, e, e + 0.06, STONE, nil, G) -- (under the built-out wall)
-			elseif k ~= 7 then
-				B.box(Fk, C, "FaceSkin", -(wo + 0.05), wo + 0.05, 12.05, 16.38, e, e + 0.06, STONE, nil, G)
-			else
-				B.box(Fk, C, "StringCourse", -(wo + 0.15), wo + 0.15, 21.4 + o, 21.8 + o, e, e + 0.25, TRIM, nil, G)
-				B.box(Fk, C, "FaceSkin", -(wo + 0.05), wo + 0.05, 12.05, 27.4, e, e + 0.06, STONE, nil, G)
-			end
-			if k == 7 then
-				B.box(Fk, C, "Frieze", -(wo + 0.25), wo + 0.25, 25.6 + o, 26 + o, e, e + 0.5, TRIM, nil, G)
-				B.box(Fk, C, "Cornice", -(wo + 0.35), wo + 0.35, 26 + o, 27.5 + o, e, e + 1.2, TRIM, nil, G)
-			end
+			-- (the round hall's wall over the arches, finished on the lobby's side: a skin of the wall's grey from the arches'
+			-- tops up, a picture rail, a frieze and the cornice; 18 Nov, the owner on the two bay blocks over the side arches:
+			-- "can you remove those blocks", so all three faces are flat)
+			B.box(Fk, C, "StringCourse", -(wo + 0.15), wo + 0.15, 21.4 + o, 21.8 + o, e, e + 0.25, TRIM, nil, G)
+			B.box(Fk, C, "FaceSkin", -(wo + 0.05), wo + 0.05, 12.05, 27.4, e, e + 0.06, STONE, nil, G)
+			B.box(Fk, C, "Frieze", -(wo + 0.25), wo + 0.25, 25.6 + o, 26 + o, e, e + 0.5, TRIM, nil, G)
+			B.box(Fk, C, "Cornice", -(wo + 0.35), wo + 0.35, 26 + o, 27.5 + o, e, e + 1.2, TRIM, nil, G)
 			if k == 7 then
 				B.box(Fk, C, "BalconySlab", -3.4, 3.4, 14.2, 14.7, e, e + 2.4, TRIM, nil, G)
 				B.box(Fk, C, "Balustrade", -3.4, 3.4, 14.7, 15.9, e + 2.12, e + 2.4, TRIM2, nil, G)
@@ -387,28 +382,17 @@ return function(B, R)
 				B.box(Fk, C, "WindowHead", -2.35, 2.35, 24.8, 25.25, e, e + 0.35, TRIM2, nil, G)
 				B.box(Fk, C, "WallPanel", -2, 2, 21.8, 24.8, e, e + 0.1, STONE2, nil, G)
 			else
-				-- (18 Nov, main for the owner: "the bay boxes become part of the wall": this face is built out to where the
-				-- bay window's front was, from over the arch to the ceiling, so the bay is the wall. side 8's keeps the hub
-				-- egg's nook inside it: its walls and lid are HubRotundaCentre's, R.EGG_NICHE; here the floor and the rest)
-				local hw, D1 = N[1] + 1.3, e + 6
-				local FD1 = D1 + 0.4 -- (the built-out front)
-				if k == R.EGG_SIDE then
-					B.box(Fk, S, "OrielFloor", -hw, hw, 16.4, 17, e, FD1, STONE2) -- (the nook's floor; side 6's wall is solid)
-					for _, sg in { -1, 1 } do B.box(Fk, S, "FaceMass", sg * hw, sg * (wo + 0.05), 16.4, ROOF, e, FD1, STONE) end
-					B.box(Fk, S, "FaceMass", -hw, hw, N[3] + 1.5, ROOF, e, FD1, STONE) -- (over the nook's lid)
-				else
-					B.box(Fk, S, "FaceMass", -(wo + 0.05), wo + 0.05, 16.4, ROOF, e, FD1, STONE)
+				-- over each side arch, as on the gallery's walls: a moulded plaster panel in a pale frame, a sconce either side
+				B.box(Fk, C, "WallPanel", -2.6, 2.6, 17.4, 24.6, e, e + 0.12, STONE2, nil, G)
+				for _, sg in { -1, 1 } do B.box(Fk, C, "WallPanelFrame", sg * 2.6, sg * 2.82, 17.4, 24.6, e, e + 0.24, TRIM2, nil, G) end
+				for _, y in { { 17.18, 17.4 }, { 24.6, 24.82 } } do B.box(Fk, C, "WallPanelFrame", -2.82, 2.82, y[1], y[2], e, e + 0.24, TRIM2, nil, G) end
+				for _, sg in { -1, 1 } do
+					local x = sg * 4.4
+					B.box(Fk, C, "SconcePlate", x - 0.3, x + 0.3, 17.6, 18.8, e, e + 0.12, TRIM, nil, G)
+					B.box(Fk, C, "SconceArm", x - 0.08, x + 0.08, 18.1, 18.3, e + 0.12, e + 0.6, "b59a5c", nil, G)
+					B.box(Fk, C, "SconceShade", x - 0.3, x + 0.3, 18.3, 19.1, e + 0.35, e + 0.85, "f0d6a8", Neon, G)
+					B.lamp(Fk, x, 18.7, e + 0.9, 12, 0.2, P.warm)
 				end
-				B.box(Fk, C, "FaceMassEdge", -(wo + 0.05), wo + 0.05, 16.1, 16.95, FD1, FD1 + 0.3, TRIM, nil, G)
-				B.box(Fk, C, "StringCourse", -(wo + 0.05), wo + 0.05, 21.4 + o, 21.8 + o, FD1, FD1 + 0.25, TRIM, nil, G)
-				B.box(Fk, C, "Frieze", -(wo + 0.05), wo + 0.05, 25.6 + o, 26 + o, FD1, FD1 + 0.5, TRIM, nil, G)
-				B.box(Fk, C, "Cornice", -(wo + 0.05), wo + 0.05, 26 + o, 27.5 + o, FD1, FD1 + 1.2, TRIM, nil, G)
-				-- where the window was: a tall wood panel in a pale frame
-				B.box(Fk, C, "OrielPanel", -2.3, 2.3, 18, 21.3, FD1, FD1 + 0.1, WOOD, nil, G)
-				B.box(Fk, C, "OrielPanel", -2.3, 2.3, 21.9, 23.4, FD1, FD1 + 0.1, WOOD, nil, G)
-				for _, sg in { -1, 1 } do B.box(Fk, C, "OrielJamb", sg * 2.3, sg * 2.7, 17.6, 23.9, FD1, FD1 + 0.35, TRIM2, nil, G) end
-				B.box(Fk, C, "OrielHead", -2.7, 2.7, 23.4, 23.9, FD1, FD1 + 0.35, TRIM2, nil, G)
-				B.box(Fk, C, "OrielSill", -2.9, 2.9, 17.4, 18, FD1, FD1 + 0.55, TRIM, nil, G)
 			end
 		end
 
@@ -418,8 +402,8 @@ return function(B, R)
 			for i = 5, 8 do
 				B.rigid(B.fr((i + 0.5) * 360 / R.N), 0, rcO, 0, function(Fl)
 					local top = R.hmap(R.V3.H, 26)
-					B.box(Fl, C, "PlazaPilaster", -2.45, 2.45, 0.4, top - 0.1, -1.6, 1, "8e877c", nil, G)
-					B.box(Fl, C, "PlazaPilasterBase", -2.9, 2.9, -0.04, 1.3, -1.7, 1.5, "7a746a", nil, G)
+					B.box(Fl, C, "PlazaPilaster", -2.45, 2.45, 0.4, top - 0.1, -1.6, 1, P.pier2, nil, G)
+					B.box(Fl, C, "PlazaPilasterBase", -2.9, 2.9, -0.04, 1.3, -1.7, 1.5, P.pier, nil, G)
 					B.box(Fl, C, "PlazaPilasterCap", -2.9, 2.9, top - 0.2, top + 0.9, -1.7, 1.4, TRIM, nil, G)
 				end)
 			end
@@ -430,9 +414,9 @@ return function(B, R)
 		local mid = 0
 		for _, sp in R.SPAWNS do mid += sp[2] / #R.SPAWNS end
 		B.cyl(F7, C, "SpawnRug", 0, -0.06, 0.04, mid, 2 * 6.4, P.creamHi, nil, G)
-		B.cyl(F7, C, "SpawnRug", 0, -0.1, 0.08, mid, 2 * 5.9, "57514d", nil, G)
+		B.cyl(F7, C, "SpawnRug", 0, -0.1, 0.08, mid, 2 * 5.9, P.carpet, nil, G)
 		B.cyl(F7, C, "RugRing", 0, -0.14, 0.12, mid, 2 * 5.3, ACCENT, Neon, G)
-		B.cyl(F7, C, "SpawnRug", 0, -0.18, 0.16, mid, 2 * 5, "57514d", nil, G)
+		B.cyl(F7, C, "SpawnRug", 0, -0.18, 0.16, mid, 2 * 5, P.carpet, nil, G)
 		local list = {}
 		for _, sp in R.SPAWNS do
 			local l = B.fr(0):PointToObjectSpace(F7 * Vector3.new(sp[1], 0, -sp[2]))
@@ -508,7 +492,7 @@ return function(B, R)
 			B.cyl(Fq, C, "ChandelierLantern", 0, 17.6, 21.9, 0, 1.7, TRIM2, nil, G)
 			B.cyl(Fq, C, "ChandelierLanternGlow", 0, 18.4, 21.1, 0, 1.76, P.warm, Neon, { ghost = true, tr = 0.35 })
 			B.cyl(Fq, C, "ChandelierFinial", 0, 16.9, 17.6, 0, 0.9, TRIM, nil, G)
-			B.cyl(Fq, C, "ChandelierRod", 0, 21.9, ROOF - 0.4, 0, 0.5, "7a746a", nil, G)
+			B.cyl(Fq, C, "ChandelierRod", 0, 21.9, ROOF - 0.4, 0, 0.5, P.pier, nil, G)
 			B.lamp(Fq, 0, 17.4, 0, 34, 0.6, P.warm, { shadows = ci == 2 })
 		end
 
@@ -534,18 +518,17 @@ return function(B, R)
 			tree(s * 12.5, 39, 20 * s); tree(s * 12.5, 57, -35 * s); tree(s * PZ.PIERS_X[1], 64.5, 70 * s)
 		end
 
-		-- ---- seating in the lobby either side, between the trees: a rug with a border, a sofa with its back to the
-		-- piers, two armchairs facing each other, a low table
+		-- ---- the mini-games' two tables either side, between the palms, each on a rug with a border (the seating went to
+		-- the arcades: 18 Nov, the mini-games session needed floor; MiniGames builds the tables on these markers: an
+		-- invisible part tagged MiniGameSpot, attribute Game, its look along the lobby, the seats at +-look)
 		for _, s in { -1, 1 } do
-			B.box(F7, C, "LobbyRug", s * 8.2, s * 16, -0.07, 0, 42.2, 53.8, "6f6052", nil, G) -- (its top 0.06 under the inner one's)
-			B.box(F7, C, "LobbyRug", s * 8.6, s * 15.6, -0.06, 0.06, 42.6, 53.4, "4f4440", nil, G)
-			B.put(F7, "bc_sofa", "LobbySofa", s * 16.3, 0, 48, -90 * s, { back = true, scale = 1.1, solid = true, color = seat })
-			B.rigid(F7, s * 12, 48, 0, function(Fl) -- (a low wood table)
-				B.box(Fl, C, "LobbyTable", -1.6, 1.6, 1.5, 1.85, -2.6, 2.6, WOOD, nil, G)
-				for _, c in { { -1.3, -2.3 }, { 1.3, -2.3 }, { -1.3, 2.3 }, { 1.3, 2.3 } } do B.box(Fl, C, "LobbyTableLeg", c[1] - 0.15, c[1] + 0.15, 0, 1.5, c[2] - 0.15, c[2] + 0.15, WOOD2, nil, G) end
-				B.solid("LobbyTableBox", Vector3.new(3.2, 1.85, 5.2), Fl * CFrame.new(0, 0.925, 0))
+			B.box(F7, C, "LobbyRug", s * 8.2, s * 16, -0.07, 0, 42.2, 53.8, P.pier2, nil, G) -- (its top 0.06 under the inner one's)
+			B.box(F7, C, "LobbyRug", s * 8.6, s * 15.6, -0.06, 0.06, 42.6, 53.4, P.carpet, nil, G)
+			B.rigid(F7, s * 12.2, 48, 0, function(Fl)
+				local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, -0.1, 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
+				m:SetAttribute("Game", if s > 0 then "board" else "arm")
+				game:GetService("CollectionService"):AddTag(m, "MiniGameSpot")
 			end)
-			for _, j in { -1, 1 } do B.put(F7, "bc_armchair", "LobbyArmchair", s * 10.6, 0, 48 + j * 4.6, if j < 0 then 180 else 0, { scale = 1.1, solid = true, color = seat }) end
 		end
 
 		-- ---- the arcades: a light panel and a lamp in each bay's ceiling, a dado and a ledge along the back walls, a
@@ -646,7 +629,7 @@ return function(B, R)
 		local SOFA_X = OUT - 0.55
 		for _, k in { 1, #PDs - 1 } do
 			local dc = (PDs[k] + PDs[k + 1]) / 2
-			B.cyl(F7, C, "ArcadeRug", -24.2, -0.06, 0.04, dc, 7.2, "56504c", nil, G)
+			B.cyl(F7, C, "ArcadeRug", -24.2, -0.06, 0.04, dc, 7.2, P.carpet, nil, G)
 			B.put(F7, "bc_sofa", "ArcadeSofa", -SOFA_X, 0, dc, 90, { back = true, scale = 1.1, solid = true, color = seat })
 			B.put(F7, R.prop("rk_coffeetable", "bc_coffeetable"), "ArcadeTable", -21.3, 0, dc, 90, { solid = true })
 			for _, j in (if k == 1 then { 1 } else { -1 }) do B.put(F7, "bc_armchair", "ArcadeArmchair", -24.6, 0, dc + j * 5, if j < 0 then 180 else 0, { scale = 1.1, solid = true, color = seat }) end
@@ -654,8 +637,13 @@ return function(B, R)
 		end
 		local dg = (PDs[2] + PDs[3]) / 2
 		local d3 = (PDs[#PDs - 1] + PDs[#PDs]) / 2
-		local dA = cd + 2.25 -- (its back to the arcade's north wall)
-		B.put(F7, "bc_arcade", "Arcade", -24, 0, dA, 180, { back = true, solid = true, color = { ff4fd8 = P.pier2, ffe14d = P.band, ["120818"] = P.pier } })
+		-- the arcade cabinet's marker (MiniGames builds the cabinet): its back to the arcade's north wall, its screen down the
+		-- arcade, 3.4 x 2.8 and 4.5 clear in front (world studs)
+		B.rigid(F7, -23.6, cd + 2 + 1.6 / 1.35, 0, function(Fl)
+			local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, -0.1, 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
+			m:SetAttribute("Game", "arcade")
+			game:GetService("CollectionService"):AddTag(m, "MiniGameSpot")
+		end)
 		local fridge = B.put(F7, "bc_fridge", "Fridge", -(OUT - 0.25), 0, dg + 3.4, 90, { back = true, solid = true })
 		if fridge then B.unseam(fridge:FindFirstChild("fridge6__plastic_120818", true), 0.05, "bottom") end -- (its top was on the red body's)
 		do -- the bar: a counter across the bay, stools in front, shelves on the wall behind (people-sized: world studs)
@@ -668,24 +656,24 @@ return function(B, R)
 			end
 			B.lamp(Fb, 0, BEAM - 3, A - 1.5, 14, 0.5, P.warm, { spot = true, angle = 80 })
 			B.rigid(F7, -(OUT - 4.6), dg, 90, function(Fl)
-				B.box(Fl, C, "BarCounter", -5.6, 5.6, 0, 3.8, -0.9, 0.9, "6f675c")
+				B.box(Fl, C, "BarCounter", -5.6, 5.6, 0, 3.8, -0.9, 0.9, P.pier)
 				B.box(Fl, C, "BarTop", -6, 6, 3.8, 4.15, -1.25, 1.1, TRIM2, nil, G)
 				B.box(Fl, C, "BarRail", -5.4, 5.4, 0.55, 0.75, -1.45, -1.25, "b59a5c", nil, G)
 				B.box(Fl, C, "BarLine", -5.4, 5.4, 3.5, 3.62, -0.98, -0.9, ACCENT, Neon, G)
 				for i = -2, 2 do
-					B.cyl(Fl, C, "StoolFoot", i * 2.2, 0, 0.3, -2.6, 1.2, "6f675c", nil, G)
-					B.cyl(Fl, C, "StoolStem", i * 2.2, 0.3, 2.4, -2.6, 0.3, "8e877c", nil, G)
-					B.cyl(Fl, C, "StoolSeat", i * 2.2, 2.4, 2.8, -2.6, 1.5, "6d665d", nil, G)
+					B.cyl(Fl, C, "StoolFoot", i * 2.2, 0, 0.3, -2.6, 1.2, P.pier, nil, G)
+					B.cyl(Fl, C, "StoolStem", i * 2.2, 0.3, 2.4, -2.6, 0.3, P.pier2, nil, G)
+					B.cyl(Fl, C, "StoolSeat", i * 2.2, 2.4, 2.8, -2.6, 1.5, P.shell2, nil, G)
 				end
 				B.solid("BarBox", Vector3.new(12, 4.15, 2.4), Fl * CFrame.new(0, 2.07, 0.05))
 			end)
 		end
 		-- a regular (HubNPCs builds them at start): Looticus, the shop's man, on the first sofa; he puffs to either end of
-		-- either sofa, behind the bar, to the arcade machine, or to the boutique behind a pier
+		-- either sofa, behind the bar, or to the boutique behind a pier
 		B.npc(F7, "Looticus", -(SOFA_X - 2.2), 1.75, (PDs[1] + PDs[2]) / 2 - 1.4, -90)
 		local d1 = (PDs[1] + PDs[2]) / 2
 		for k, w in { { "sit", -(SOFA_X - 2.2), 1.75, d1 - 1.4, -90 }, { "sit", -(SOFA_X - 2.2), 1.75, d1 + 1.6, -90 }, { "sit", -(SOFA_X - 2.2), 1.75, d3 - 1.4, -90 },
-			{ "sit", -(SOFA_X - 2.2), 1.75, d3 + 1.6, -90 }, { "stand", -(OUT - 2.2), 0, dg, -90 }, { "stand", -23, 0, dA + 3.6, 180 }, { "stand", 25.2, 0, PDs[3], 90 } } do
+			{ "sit", -(SOFA_X - 2.2), 1.75, d3 + 1.6, -90 }, { "stand", -(OUT - 2.2), 0, dg, -90 }, { "stand", 25.2, 0, PDs[3], 90 } } do
 			B.npcPoint(F7, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5])
 		end
 
@@ -693,14 +681,14 @@ return function(B, R)
 		-- a lamp on it, the one accent along its front), a board on the wall behind; two luggage carts in the west bay
 		local xr = (PXs[1] + PXs[2]) / 2
 		B.rigid(F7, xr, AD - 0.6, 0, function(Fl)
-			B.box(Fl, C, "Desk", -5.5, 5.5, 0, 3.4, -0.9, 0.9, "6f675c")
+			B.box(Fl, C, "Desk", -5.5, 5.5, 0, 3.4, -0.9, 0.9, P.pier)
 			for _, s in { -1, 1 } do
-				B.cyl(Fl, C, "DeskEnd", s * 5.5, 0.05, 3.35, 0, 1.8, "6f675c")
+				B.cyl(Fl, C, "DeskEnd", s * 5.5, 0.05, 3.35, 0, 1.8, P.pier)
 				B.cyl(Fl, C, "DeskTopEnd", s * 5.8, 3.45, 3.71, -0.1, 2.2, TRIM2, nil, G)
 			end
 			B.box(Fl, C, "DeskTop", -5.8, 5.8, 3.4, 3.75, -1.2, 1, TRIM2, nil, G)
-			B.box(Fl, C, "DeskFront", -5.1, 5.1, 0.45, 3.0, -1.0, -0.9, "8a8174", nil, G)
-			B.box(Fl, C, "DeskKick", -5.3, 5.3, 0, 0.35, -0.98, -0.9, "57534d", nil, G)
+			B.box(Fl, C, "DeskFront", -5.1, 5.1, 0.45, 3.0, -1.0, -0.9, P.pier2, nil, G)
+			B.box(Fl, C, "DeskKick", -5.3, 5.3, 0, 0.35, -0.98, -0.9, P.floor, nil, G)
 			B.box(Fl, C, "DeskLine", -5.1, 5.1, 3.12, 3.24, -1.06, -1.0, ACCENT, Neon, G)
 			B.cyl(Fl, C, "DeskLampFoot", 3.6, 3.75, 4, 0.2, 0.7, P.pier, nil, G)
 			B.cyl(Fl, C, "DeskLampStem", 3.6, 4, 5, 0.2, 0.22, P.pier, nil, G)

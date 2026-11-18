@@ -93,7 +93,9 @@ R.PLAZA = { X = 19, D = 69.2, BACK = 78.2, OUT = 28, WALL = 1.6, BEAM = 12, ROOF
 R.JUMP_GLOW = 4
 -- the hub egg's hiding place (18 Nov; the egg is training-v2's, Map.Hub.HubEgg): the gallery window over this side is an
 -- opening { half its width, its sill, its head } into a little room on the lounge's roof (HubRotundaCentre)
-R.EGG_SIDE, R.EGG_NICHE = 8, { 2.3, 17, 23.4 }
+-- (dropped 18 Nov: the lore NPCs, the mannequin too, now appear only in their code cutscene, so the nook went with the
+-- lobby's two bay blocks. R.EGG_SIDE = 8 builds it again)
+R.EGG_SIDE, R.EGG_NICHE = nil, { 2.3, 17, 23.4 }
 -- where you appear: { x, d } in the lounge's frame (side 7: x to the right as you look out of the round room, d out)
 R.SPAWNS = if R.LOUNGE_STYLE == "plaza"
 	then { { -3.6, 42.8 }, { -1.2, 42.8 }, { 1.2, 42.8 }, { 3.6, 42.8 }, { -3.6, 45.2 }, { -1.2, 45.2 }, { 1.2, 45.2 }, { 3.6, 45.2 } } -- (in the courtyard, the middle arch straight ahead)
@@ -1153,7 +1155,7 @@ end
 local PLAZA = R.LOUNGE_STYLE == "plaza"
 for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, if PLAZA then 40 else 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 },
 	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
-	{ "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 }, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
+	if R.EGG_SIDE then { "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 } else nil, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
 	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
 local LS = R.LOUNGE_S

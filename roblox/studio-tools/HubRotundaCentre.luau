@@ -237,7 +237,7 @@ return function(B, R)
 						if yb < top then
 							B.box(Fl, C, "ArchSpandrel", s * sl[1], s * sl[2], yb, top, -h + 0.05, h - 0.05, P.shell, nil, G)
 							-- (the plaza: the lounge side's face in the hotel's stone, the round room's side as it was)
-							if R.LOUNGE_STYLE == "plaza" then B.box(Fl, C, "ArchSkin", s * sl[1], s * sl[2], yb, top - 0.03, h - 0.05, h + 0.03, "a59d90", nil, G) end
+							if R.LOUNGE_STYLE == "plaza" then B.box(Fl, C, "ArchSkin", s * sl[1], s * sl[2], yb, top - 0.03, h - 0.05, h + 0.03, P.bay, nil, G) end
 						end
 					end
 				end
