@@ -112,6 +112,22 @@ end
 News.MW = require(Shared:WaitForChild("Mastery")) :: any
 News.MUI = require(script.Parent:WaitForChild("MasteryUI")) :: any
 News.mbar = function(_e: any) end
+-- (18 Nov: the owner's loadout wouldn't open, a nil damage on the Shopping Cart Cannon threw while the screen was
+-- built. every number the screen prints goes through News.fmt: a nil or a word where a number should be prints "n/a",
+-- never throws. every part of the screen updates through News.guard, each card and tile on its own: one that throws
+-- is logged once per message and skipped, and the rest still draw)
+function News.fmt(f: string, ...: any): string
+	local ok, s = pcall(string.format, f, ...)
+	return if ok then s else "n/a"
+end
+News.errs = {}
+function News.guard(name: string, fn: any, ...: any)
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		local msg = name .. ": " .. tostring(err)
+		if not News.errs[msg] then News.errs[msg] = true; warn("[jankfire] loadout " .. msg) end
+	end
+end
 
 -- ---------------------------------------------------------------- state from the server (player attributes)
 local function pick(): { [string]: string }
@@ -343,9 +359,9 @@ local function buildArmory()
 		btn.MouseEnter:Connect(function() if state.focus ~= e.id then btn.BackgroundColor3 = T.CARD_HI end end)
 		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = CARD end)
 		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color, new = News.dot(btn, 6, 8) })
-		News.MUI.card(btn, e) -- (its weapon level: LV n and a hairline bar)
+		News.guard("armory level " .. tostring(e.id), News.MUI.card, btn, e) -- (its weapon level: LV n and a hairline bar)
 	end
-	armCount.Text = ("%d live · %d coming soon"):format(live, soon)
+	armCount.Text = News.fmt("%d live · %d coming soon", live, soon)
 	armList.CanvasPosition = Vector2.zero
 end
 
@@ -466,24 +482,27 @@ News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: L
 local function statsFor(id: string): { Roster.Stat }
 	local e = Roster.byId[id]
 	local w = Weapons.list[id]
-	if not w or w.slot == "none" or not e.live then return e.stats end
-	local S = Weapons.S
-	local pel = w.pellets or 1
+	if not e then return {} end
+	if not w or w.slot == "none" or not e.live then return e.stats or {} end
+	-- (a weapon may have no damage, range or rate of its own: the Shopping Cart Cannon runs people over with its cart,
+	-- the TV Remote pauses them. every number is read with tonumber and printed with News.fmt: "n/a" and an empty bar,
+	-- never a throw. 18 Nov: a nil damage here kept the owner's loadout from opening at all)
+	local S = tonumber(Weapons.S) or 1
+	local pel = tonumber(w.pellets) or 1
+	local dmg, range, grow = tonumber(w.dmg), tonumber(w.range), tonumber(w.grow) or 0
+	local cd, rate, rateMax, mag = tonumber(w.cd), tonumber(w.rate), tonumber(w.rateMax), tonumber(w.mag)
 	local out = {}
-	-- (a weapon may have no damage or range of its own: the Shopping Cart Cannon runs people over with its cart, the TV
-	-- Remote pauses them. "n/a", never a nil sum: 18 Nov, a nil here kept the owner's loadout from opening at all)
-	local dmg, range = tonumber(w.dmg), tonumber(w.range)
-	table.insert(out, { label = "DAMAGE", text = if not dmg then "n/a" elseif pel > 1 then ("%g x%d"):format(dmg, pel) else ("%g"):format(dmg), bar = if dmg then math.min(1, dmg * pel / 120) else 0 })
+	table.insert(out, { label = "DAMAGE", text = if not dmg then "n/a" elseif pel > 1 then News.fmt("%g x%d", dmg, pel) else News.fmt("%g", dmg), bar = if dmg then math.min(1, dmg * pel / 120) else 0 })
 	if w.kind == "melee" then
-		local r = 1 / (w.cd or 1)
-		table.insert(out, { label = "SWING RATE", text = ("%.3g/s"):format(r), bar = math.min(1, r / 22) })
-		table.insert(out, { label = "REACH", text = if range then ("%.2g m, +%.2g a kill"):format(range / S, (w.grow or 0) / S) else "n/a", bar = if range then math.min(1, math.sqrt(range / S / 500)) else 0 })
+		local r = 1 / (if cd and cd > 0 then cd else 1)
+		table.insert(out, { label = "SWING RATE", text = News.fmt("%.3g/s", r), bar = math.min(1, r / 22) })
+		table.insert(out, { label = "REACH", text = if range then News.fmt("%.2g m, +%.2g a kill", range / S, grow / S) else "n/a", bar = if range then math.min(1, math.sqrt(math.max(0, range / S / 500))) else 0 })
 		table.insert(out, { label = "MAG", text = "n/a", bar = 0 })
 	else
-		local r = w.rate or (if w.cd then 1 / w.cd else 1)
-		table.insert(out, { label = "FIRE RATE", text = if w.rateMax then ("%g-%g/s"):format(r, w.rateMax) else ("%.2g/s"):format(r), bar = math.min(1, (w.rateMax or r) / 22) })
-		table.insert(out, { label = "RANGE", text = if range then ("%g m"):format(range / S) else "n/a", bar = if range then math.min(1, math.sqrt(range / S / 500)) else 0 })
-		table.insert(out, { label = "MAG", text = if w.mag then tostring(w.mag) else "no reload", bar = math.min(1, (w.mag or 60) / 60) })
+		local r = rate or (if cd and cd > 0 then 1 / cd else 1)
+		table.insert(out, { label = "FIRE RATE", text = if rateMax then News.fmt("%g-%g/s", r, rateMax) else News.fmt("%.2g/s", r), bar = math.min(1, (rateMax or r) / 22) })
+		table.insert(out, { label = "RANGE", text = if range then News.fmt("%g m", range / S) else "n/a", bar = if range then math.min(1, math.sqrt(math.max(0, range / S / 500))) else 0 })
+		table.insert(out, { label = "MAG", text = if mag then tostring(mag) else "no reload", bar = math.min(1, (mag or 60) / 60) })
 	end
 	return out
 end
@@ -823,104 +842,136 @@ end
 
 refresh = function()
 	local p = pick()
+	-- (each part below updates through News.guard, every card and tile on its own: one bad weapon, look or stat is
+	-- logged and skipped, and the rest still draw. 18 Nov)
 	for _, c in cards do
-		local id = p[c.slot]
-		local e = Roster.byId[id]
-		local on = c.slot == state.slot
-		c.name.Text = e.name
-		c.bar.BackgroundColor3 = e.color
-		local wid, md = wrapOf(id)
-		local wr = Roster.wrapById[wid]
-		local item = if c.slot == "utility" then Items.list[id] else nil
-		c.wrap.Text = if item then ("%d %s · %g s each"):format(item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
-			elseif wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
-		c.st.Color = if on then ACCENT else WHITE
-		c.st.Transparency = if on then 0 else T.EDGE_A
-		c.st.Thickness = if on then 2 else 1
-		cardModel(c, id)
+		News.guard("slot card " .. tostring(c.slot), function()
+			local id = p[c.slot]
+			local e = Roster.byId[id]
+			local on = c.slot == state.slot
+			c.name.Text = e.name
+			c.bar.BackgroundColor3 = e.color
+			local wid, md = wrapOf(id)
+			local wr = Roster.wrapById[wid]
+			local item = if c.slot == "utility" then Items.list[id] else nil
+			c.wrap.Text = if item then News.fmt("%d %s · %g s each", item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
+				elseif wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
+			c.st.Color = if on then ACCENT else WHITE
+			c.st.Transparency = if on then 0 else T.EDGE_A
+			c.st.Thickness = if on then 2 else 1
+			cardModel(c, id)
+		end)
 	end
-	buildArmory()
+	News.guard("armory", buildArmory)
 	for _, a in armCards do
-		local e = Roster.byId[a.id]
-		local equipped = p[state.slot] == a.id
-		local focused = state.focus == a.id
-		a.st.Color = if focused then ACCENT else WHITE
-		a.st.Transparency = if focused then 0 elseif equipped then 0.4 else T.EDGE_A
-		a.st.Thickness = if focused then 2 else 1
-		-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
-		a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
-		-- (weapons open by level, a few are Robux and free for now: Unlocks, docs/PROGRESSION.md. training: anything)
-		local U = require(Shared:WaitForChild("Unlocks")) :: any
-		local okU, whyU = U.forPlayer(me, a.id)
-		okU = okU or trying()
-		a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
-			elseif U.robux(a.id) then (if U.WEAPONS_ROBUX_FREE then "ROBUX · FREE FOR NOW" else "ROBUX")
-			elseif not okU then whyU or "LOCKED" else "LIVE · ready"
-		a.tag.TextColor3 = if equipped then ACCENT elseif not e.live or not okU then DIM else GREY
-		a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
+		News.guard("armory tile " .. tostring(a.id), function()
+			local e = Roster.byId[a.id]
+			local equipped = p[state.slot] == a.id
+			local focused = state.focus == a.id
+			a.st.Color = if focused then ACCENT else WHITE
+			a.st.Transparency = if focused then 0 elseif equipped then 0.4 else T.EDGE_A
+			a.st.Thickness = if focused then 2 else 1
+			-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
+			a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
+			-- (weapons open by level, a few are Robux and free for now: Unlocks, docs/PROGRESSION.md. training: anything)
+			local U = require(Shared:WaitForChild("Unlocks")) :: any
+			local okU, whyU = U.forPlayer(me, a.id)
+			okU = okU or trying()
+			a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
+				elseif U.robux(a.id) then (if U.WEAPONS_ROBUX_FREE then "ROBUX · FREE FOR NOW" else "ROBUX")
+				elseif not okU then whyU or "LOCKED" else "LIVE · ready"
+			a.tag.TextColor3 = if equipped then ACCENT elseif not e.live or not okU then DIM else GREY
+			a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
+		end)
 	end
 	-- the focused weapon
 	local e = Roster.byId[state.focus] or Roster.byId[p[state.slot]]
+	if not e then return end
 	local w = Weapons.list[e.id]
-	bigName.Text = string.upper(e.name)
-	soonStamp.Visible = not e.live
-	infoName.Text = e.name; infoChip.BackgroundColor3 = e.color
-	News.mbar(e)
-	slotChipL.Text = Roster.SLOT_NAMES[e.slot]
-	liveChipL.Text = if e.live then '<font color="#6fd08a">●</font>  LIVE ON ROBLOX' else "COMING SOON"
-	liveChipL.TextColor3 = if e.live then TEXT else DIM
-	infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
-	gimText.Text = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
-	local st = statsFor(e.id)
-	for i, row in statRows do
-		local s = st[i]
-		row.name.Text = s and s.label or ""
-		row.val.Text = s and s.text or ""
-		local full = if s and s.text ~= "n/a" then math.clamp(s.bar, 0.03, 1) else 0 -- (nothing to measure: an empty track)
-		tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
-	end
-	local okE, whyE = (require(Shared:WaitForChild("Unlocks")) :: any).forPlayer(me, e.id)
-	if not e.live then equipBtn:set("COMING SOON", false)
-	elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-	elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
-	else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
-	showPreview(e.id)
+	News.guard("header", function()
+		bigName.Text = string.upper(e.name)
+		soonStamp.Visible = not e.live
+		infoName.Text = e.name; infoChip.BackgroundColor3 = e.color
+	end)
+	News.guard("mastery bar", News.mbar, e)
+	News.guard("info", function()
+		slotChipL.Text = Roster.SLOT_NAMES[e.slot]
+		liveChipL.Text = if e.live then '<font color="#6fd08a">●</font>  LIVE ON ROBLOX' else "COMING SOON"
+		liveChipL.TextColor3 = if e.live then TEXT else DIM
+		infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
+		gimText.Text = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
+	end)
+	News.guard("stats", function()
+		local okS, st = pcall(statsFor, e.id)
+		if not okS or type(st) ~= "table" then
+			local why = st
+			News.guard("stats of " .. tostring(e.id), function() error(why, 0) end)
+			st = {}
+		end
+		for i, row in statRows do
+			News.guard("stat row " .. i, function()
+				local s = st[i]
+				row.name.Text = if s then tostring(s.label or "") else ""
+				row.val.Text = if s then tostring(s.text or "") else ""
+				local b = if s then tonumber(s.bar) else nil
+				local full = if b and b == b and s.text ~= "n/a" then math.clamp(b, 0.03, 1) else 0 -- (nothing to measure: an empty track)
+				tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
+			end)
+		end
+	end)
+	News.guard("equip button", function()
+		local okE, whyE = (require(Shared:WaitForChild("Unlocks")) :: any).forPlayer(me, e.id)
+		if not e.live then equipBtn:set("COMING SOON", false)
+		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
+		elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
+		else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
+	end)
+	News.guard("preview", showPreview, e.id)
 	-- wraps for the focused weapon
-	local wid, md = wrapOf(e.id)
-	local shownId = if state.hover and e.live then state.hover else wid
-	local wr = Roster.wrapById[shownId]
-	if wr then
-		local rc = if wr.mastery then ACCENT else Roster.RARITY[wr.rarity].color
-		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(),
-			if wr.mastery then ("MASTERY  ·  LV %d"):format(News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0) else string.upper(Roster.RARITY[wr.rarity].name),
-			if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
-	end
+	local wid, md = "default", nil
+	News.guard("worn wrap", function() wid, md = wrapOf(e.id) end)
+	News.guard("wrap name", function()
+		local shownId = if state.hover and e.live then state.hover else wid
+		local wr = Roster.wrapById[shownId]
+		if wr then
+			local rc = if wr.mastery then ACCENT else Roster.RARITY[wr.rarity].color
+			wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(),
+				if wr.mastery then News.fmt("MASTERY  ·  LV %d", News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0) else string.upper(Roster.RARITY[wr.rarity].name),
+				if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+		end
+	end)
 	noPaint.Visible = not e.live -- (the gadgets take paint since 18 Nov)
 	noPaint.Text = "not on roblox yet."
 	for _, s in swatches do
-		local on = s.wr.id == wid
-		s.tick.Visible = on
-		local lk = swatchLocks[s.wr.id]
-		if lk then lk.Visible = not owns("wrap", s.wr.id); lockLook(lk) end
-		-- (a mastery camo's lock says the weapon level that unlocks it)
-		local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
-		if mg then mg.Text = "LV " .. (News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2) end
-		s.st.Color = if on then ACCENT else WHITE
-		s.st.Transparency = if on then 0 else 0.8
-		s.st.Thickness = if on then 2 else 1
+		News.guard("wrap tile " .. tostring(s.wr and s.wr.id), function()
+			local on = s.wr.id == wid
+			s.tick.Visible = on
+			local lk = swatchLocks[s.wr.id]
+			if lk then lk.Visible = not owns("wrap", s.wr.id); lockLook(lk) end
+			-- (a mastery camo's lock says the weapon level that unlocks it)
+			local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
+			if mg then mg.Text = News.fmt("LV %d", News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2) end
+			s.st.Color = if on then ACCENT else WHITE
+			s.st.Transparency = if on then 0 else 0.8
+			s.st.Thickness = if on then 2 else 1
+		end)
 	end
-	local paints = e.live
-	for m, b in modeBtns do
-		local on = m == md and paints
-		b:set(MODE_NAMES[m], paints, if on then T.CARD_HI else nil)
-		b.mark.Visible = on
-	end
-	hatsRefresh(e)
-	skinsRefresh(e)
-	News.refresh(e)
-	local save = me:GetAttribute("LoadoutSave")
-	saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
-	saveLbl.TextColor3 = if save == "off" then RED else GREY
+	News.guard("paint modes", function()
+		local paints = e.live
+		for m, b in modeBtns do
+			local on = m == md and paints
+			b:set(MODE_NAMES[m], paints, if on then T.CARD_HI else nil)
+			b.mark.Visible = on
+		end
+	end)
+	News.guard("hats", hatsRefresh, e)
+	News.guard("skins", skinsRefresh, e)
+	News.guard("new marks", News.refresh, e)
+	News.guard("save line", function()
+		local save = me:GetAttribute("LoadoutSave")
+		saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
+		saveLbl.TextColor3 = if save == "off" then RED else GREY
+	end)
 end
 
 -- (one bad weapon, look or row must never keep the screen from opening or updating: an error in a refresh is caught and
@@ -954,7 +1005,7 @@ equipBtn.face.MouseButton1Click:Connect(function()
 		state.slot = e.slot
 		play("ting")
 		say(if e.slot == "utility" then ("%s on G. close this to grab it."):format(string.lower(e.name))
-			else ("%s on key %d. close this to grab it."):format(string.lower(e.name), slotIndex(e.slot)))
+			else News.fmt("%s on key %d. close this to grab it.", string.lower(e.name), slotIndex(e.slot)))
 	else
 		play("empty")
 		say(why or "that didn't work.", RED)
@@ -970,7 +1021,7 @@ onSwatch = function(wr)
 	-- VIP, the daily reward or spray cans. 18 Nov)
 	if not owns("wrap", wr.id) and not trying() and wr.mastery then
 		play("empty")
-		say(("%s for the %s unlocks at %s level %d."):format(wr.name, string.lower(e.name), string.lower(e.name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0), RED)
+		say(News.fmt("%s for the %s unlocks at %s level %d.", wr.name, string.lower(e.name), string.lower(e.name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0), RED)
 		return
 	end
 	local ok, why = ask("wrap", e.id, wr.id, md)
@@ -1193,9 +1244,10 @@ skinsRefresh = function(e: any)
 		for _, c in skinRow:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 		table.clear(skinCards)
 		if e.live and #ids + #extra > 0 then
-			skinCard("default", 0, e.id)
-			for i, sid in ids do skinCard(sid, i, e.id) end
-			for i, sid in extra do skinCard(sid, 1000 + i, e.id, true) end
+			-- (each tile on its own: one bad skin row or concept never empties the strip. 18 Nov)
+			News.guard("skin tile default", skinCard, "default", 0, e.id)
+			for i, sid in ids do News.guard("skin tile " .. tostring(sid), skinCard, sid, i, e.id) end
+			for i, sid in extra do News.guard("concept tile " .. tostring(sid), skinCard, sid, 1000 + i, e.id, true) end
 		end
 	end
 	local cur = skinOf(e.id)
@@ -1206,30 +1258,34 @@ skinsRefresh = function(e: any)
 		task.delay(0.1, showWorn, e)
 	end
 	local shownId = if state.skinHover and e.live then state.skinHover else cur
-	if shownId == "default" then
-		sName.Text = "Default"
-	else
-		local nm, rar = skinInfo(shownId)
-		local rr = Roster.RARITY[rar] or Roster.RARITY.common
-		sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
-			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
-	end
-	local src = if shownId ~= "default" and e.live then News.source(shownId) else ""
-	News.src.Text = (if src ~= "" then src .. "  ·  " else "") .. "hover to try it on · click to wear it"
+	News.guard("skin name", function()
+		if shownId == "default" then
+			sName.Text = "Default"
+		else
+			local nm, rar = skinInfo(shownId)
+			local rr = Roster.RARITY[rar] or Roster.RARITY.common
+			sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
+				if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+		end
+		local src = if shownId ~= "default" and e.live then News.source(shownId) else ""
+		News.src.Text = (if src ~= "" then src .. "  ·  " else "") .. "hover to try it on · click to wear it"
+	end)
 	noSkins.Visible = not e.live or #ids + #extra == 0
 	noSkins.Text = if not e.live then "not on roblox yet." else "no skins for this one yet."
 	for _, c in skinCards do
-		local on = c.id == cur
-		c.tick.Visible = on
-		if c.lock then
-			local set = owned.skin
-			-- (a free skin, the Classic set, is everyone's: LootTable's rarity "free")
-			c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true) and select(2, skinInfo(c.id)) ~= "free"
-			lockLook(c.lock)
-		end
-		c.st.Color = if on then ACCENT else WHITE
-		c.st.Transparency = if on then 0 else 0.8
-		c.st.Thickness = if on then 2 else 1
+		News.guard("skin tile " .. tostring(c.id), function()
+			local on = c.id == cur
+			c.tick.Visible = on
+			if c.lock then
+				local set = owned.skin
+				-- (a free skin, the Classic set, is everyone's: LootTable's rarity "free")
+				c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true) and select(2, skinInfo(c.id)) ~= "free"
+				lockLook(c.lock)
+			end
+			c.st.Color = if on then ACCENT else WHITE
+			c.st.Transparency = if on then 0 else 0.8
+			c.st.Thickness = if on then 2 else 1
+		end)
 	end
 end
 onSkin = function(sid: string)
@@ -1274,21 +1330,25 @@ hatsRefresh = function(e: any)
 	local cur = hatOf(e.id)
 	local shownId = if state.hatHover and e.live then state.hatHover else cur
 	local h = GunHats.HATS[shownId]
-	if h then
-		local rc = Roster.RARITY[h.rarity].color
-		hName.Text = ('%s  <font color="#%s">%s</font>%s'):format(h.name, rc:ToHex(), string.upper(Roster.RARITY[h.rarity].name),
-			if state.hatHover and state.hatHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
-	end
+	News.guard("hat name", function()
+		if h then
+			local rc = Roster.RARITY[h.rarity].color
+			hName.Text = ('%s  <font color="#%s">%s</font>%s'):format(h.name, rc:ToHex(), string.upper(Roster.RARITY[h.rarity].name),
+				if state.hatHover and state.hatHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+		end
+	end)
 	noHats.Visible = not e.live or e.slot == "utility"
 	noHats.Text = if e.slot == "utility" then "items don't wear hats." else "not on roblox yet."
 	for _, c in hatCards do
-		local on = c.id == cur
-		c.tick.Visible = on
-		local lk = hatLocks[c.id]
-		if lk then lk.Visible = not owns("hat", c.id); lockLook(lk) end
-		c.st.Color = if on then ACCENT else WHITE
-		c.st.Transparency = if on then 0 else 0.8
-		c.st.Thickness = if on then 2 else 1
+		News.guard("hat tile " .. tostring(c.id), function()
+			local on = c.id == cur
+			c.tick.Visible = on
+			local lk = hatLocks[c.id]
+			if lk then lk.Visible = not owns("hat", c.id); lockLook(lk) end
+			c.st.Color = if on then ACCENT else WHITE
+			c.st.Transparency = if on then 0 else 0.8
+			c.st.Thickness = if on then 2 else 1
+		end)
 	end
 end
 -- ---------------------------------------------------------------- newest first, and the NEW dots (18 Nov)
@@ -1531,15 +1591,17 @@ setOpen = function(v: boolean)
 		state.open = true
 		me:SetAttribute("LoadoutOpen", true)
 		require(script.Parent:WaitForChild("MenuCursor")).set("loadout", true, function() return state.open end)
-		local p = pick()
-		state.focus = p[state.slot]
+		-- (nothing from here to the screen showing may throw: guarded, 18 Nov)
+		News.guard("open focus", function() state.focus = pick()[state.slot] end)
 		-- (something NEW since last time: open on the newest one's weapon and tab, where it's first in the strip. 18 Nov)
-		local _, nt, ng = News.guns()
-		if nt and ng then
-			state.slot = Roster.byId[ng].slot
-			state.focus = ng
-			setTab(if nt == "wrap" then "wraps" elseif nt == "hat" then "hats" else "skins")
-		end
+		News.guard("open on the newest", function()
+			local _, nt, ng = News.guns()
+			if nt and ng and Roster.byId[ng] then
+				state.slot = Roster.byId[ng].slot
+				state.focus = ng
+				setTab(if nt == "wrap" then "wraps" elseif nt == "hat" then "hats" else "skins")
+			end
+		end)
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else ""
 		subtitle.TextColor3 = if trying() then ACCENT else GREY
@@ -1548,9 +1610,9 @@ setOpen = function(v: boolean)
 		for _, g in pg:GetChildren() do
 			if g:IsA("ScreenGui") and g ~= gui and g.Enabled then hidden[g] = true; g.Enabled = false end
 		end
-		fit()
+		News.guard("fit", fit)
 		refresh()
-		applyFilter()
+		News.guard("filter", applyFilter)
 		task.spawn(function() fetchOwned(); if state.open then refresh() end end)
 		gui.Enabled = true
 		for i, x in panelsIn do

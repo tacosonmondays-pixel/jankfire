@@ -881,6 +881,33 @@ Tested in solo Play on the `_studio` profile with primary = Shopping Cart Cannon
 - Wearing the Seraph AR without the set answered "it comes with the Seraph set in the shop".
 - Primary was put back to the AR afterwards.
 
+### Every panel guarded (18 Nov, place version 991)
+
+The live F9 log showed `LoadoutUI:473: invalid argument #2 to 'format' (number expected, got nil)` on every open. The
+owner's live loadout had the cart and the remote picked; they were written by Studio tests before the `_studio`
+stores existed. Main asked for the whole screen to be made safe, not just that one line.
+
+- **`News.fmt(f, ...)`:** every `%d`/`%g` the screen prints goes through it: `string.format` in a pcall, "n/a"
+  on a bad value.
+  - Covers: statsFor (dmg, pellets, rate, rateMax, cd, range, grow), the armory count, a gadget's charges and
+    recharge, the mastery LV lines, and the "on key n" line.
+  - `statsFor` reads every number with `tonumber` first.
+- **`News.guard(name, fn, ...)`:** a pcall that warns `[jankfire] loadout <name>: <error>` once per message.
+  - In `refresh`, each part updates on its own: every slot card, the armory, every armory tile, header, mastery
+    bar, info, stats (and every stat row), equip button, preview, worn wrap, wrap name, every wrap tile, paint modes,
+    hats (name plus every hat tile), skins (every tile as it's built, the name, every tile's lock), the NEW marks and
+    the save line.
+  - In `setOpen`, everything before the screen shows is guarded: the focus, the open-on-newest jump, `fit` and
+    `applyFilter`.
+  - The whole-`refresh` pcall from v986 stays as the last net.
+
+Tested in solo Play on the `_studio` profile (picks cart, remote, katana, frag):
+- L opened the screen on the cart: DAMAGE n/a, FIRE RATE 0.62/s, RANGE 100 m, MAG no reload.
+- Key 2 showed the TV Remote: DAMAGE n/a, FIRE RATE 1/s, RANGE 45 m, MAG no reload (`shop/loadout-remote-opens.jpg`).
+- Keys 3, G and 1 switched cleanly.
+- No `[jankfire] loadout` warnings in the console.
+- Picks went back to ar, pistol, katana, frag.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
