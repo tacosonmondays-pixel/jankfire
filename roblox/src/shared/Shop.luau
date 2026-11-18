@@ -177,6 +177,53 @@ Shop.MONEY = {
 }
 -- what a single costs, by kind and rarity (Robux; unused while free)
 Shop.PRICE = Shop.MONEY.singles
+
+-- ---------------------------------------------------------------- the coins-only shop (18 Nov, the owner: "wraps and skins
+-- that aren't a part of bundles should be coin purchased; the only thing you buy with robux are weapons, gadgets and
+-- bundles, like in rivals"). with the switch on, single items, the owner's deals and containers are bought with coins
+-- only (Purchases.luau takes them on the server), never prompted for Robux (their developer products stay, and a late
+-- receipt is still granted); Robux buys the weapons, bundles and skin sets, coin packs and VIP. OFF until the owner
+-- approves the prices below. (Studio: a play test turns it on with ReplicatedStorage's attribute CoinsOnlyTest)
+Shop.SINGLES_COINS_ONLY = false
+function Shop.coinsOnly(): boolean
+	if Shop.SINGLES_COINS_ONLY then return true end
+	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("CoinsOnlyTest") == true
+end
+-- coin prices, paced to what a player earns (about 1,000-1,500 coins a week from quests and the weekly track): a common
+-- in a day or two, a legendary in a few weeks. containers about what their items are worth on average (never a
+-- duplicate). the owner's deals: the skin's coin price less the deal's percent
+Shop.MONEY.coinPrices = {
+	singles = {
+		skin = { common = 300, rare = 800, epic = 2000, legendary = 5000 },
+		wrap = { common = 200, rare = 500, epic = 1200, legendary = 3000 },
+		hat = { common = 250, rare = 600, epic = 1500, legendary = 3500 },
+		kill = { common = 250, rare = 600, epic = 1500, legendary = 3500 },
+		emote = { common = 250, rare = 600, epic = 1500, legendary = 3500 },
+		border = { common = 150, rare = 400, epic = 900, legendary = 2000 },
+		banner = { common = 150, rare = 400, epic = 900, legendary = 2000 },
+		title = { common = 100, rare = 300, epic = 700, legendary = 1500 },
+	},
+	containers = { crate = 900, bag = 600, spray = 500 },
+}
+-- an offer's coin price in the coins-only shop (n containers), or nil: not sold for coins
+function Shop.coinPrice(o: any, n: number?): number?
+	if type(o) ~= "table" then return nil end
+	local cp = Shop.MONEY.coinPrices :: any
+	if o.type == "single" then
+		local t = cp.singles[o.kind]
+		return if t then t[o.rarity] else nil
+	elseif o.type == "container" then
+		local c = cp.containers[o.id]
+		return if c then c * (n or 1) else nil
+	end
+	return nil
+end
+-- one of the owner's deals in coins: the skin's coin price less the deal's percent, to the nearest 10
+function Shop.coinDealPrice(skin: string, pct: number): number
+	local _, r = Shop.itemInfo("skin", skin)
+	local full = (Shop.MONEY.coinPrices :: any).singles.skin[r] or 0
+	return math.max(10, math.floor(full * (100 - pct) / 100 / 10 + 0.5) * 10)
+end
 Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border", banner = "Background", title = "Title",
 	kill = "Kill Effect", emote = "Emote" }
 

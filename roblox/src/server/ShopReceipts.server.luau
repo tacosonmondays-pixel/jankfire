@@ -85,6 +85,7 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	-- one of the owner's deals: its product is the rarity's and the discount's ("deal:legendary:40")
 	local dskin = string.match(offerId, "^deal:([%w_]+)$")
 	if dskin then
+		if Shop.coinsOnly() then return end -- (the coins-only shop: a deal is coins; Purchases "coins")
 		local D = deals()
 		local d = D and type(D.offerFor) == "function" and D.offerFor(p, dskin)
 		if not d then return end
@@ -95,6 +96,8 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	end
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
+	-- (the coins-only shop: singles and containers are coins, never Robux; their products stay for late receipts)
+	if Shop.coinsOnly() and (o.type == "single" or o.type == "container") then return end
 	-- a paid random item (a container) never goes to a player Roblox's policy keeps them from (the shop's screen hides
 	-- the button; this is the server's own say, the anti-cheat audit, 17 Nov 2026)
 	if o.type == "container" then

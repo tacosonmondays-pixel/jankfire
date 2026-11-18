@@ -15,6 +15,75 @@ attribute `Brass`, `Quests.luau`, the id `"brass"`). Since 18 Nov every screen c
 
 There is no second currency: two would confuse players.
 
+## The coins-only shop (prepared 18 Nov, switch OFF, waiting on the owner's prices)
+
+The owner: "wraps and skins that aren't a part of bundles should be coin purchased; the only thing you buy with robux are
+weapons, gadgets and bundles, like in rivals". Built and tested; in the place since version 1037, but **off**:
+`Shop.SINGLES_COINS_ONLY = false` in `shared/Shop.luau`. Turning it on is that one line, then a publish.
+
+With it on:
+- **Robux:** the four Robux weapons (or coins, as now), bundles and skin sets, coin packs, VIP.
+- **Coins only, no Robux button:**
+  - single wraps, hats, weapon skins, kill effects, emotes, card borders, backgrounds and titles;
+  - the owner's deals (a coin discount);
+  - containers (Crate, Duffel Bag, Spray Can), which tickets still redeem.
+- **The server takes the coins** (`JankfireRemotes.Purchases` "coins": a pending mark, `Quests.spendBrass`, then
+  `Loot.grant` / `Deals.grant`, idempotent by the id; settled on the next join after a crash).
+- **The paid-random-items rules stay:** odds before every open, and no coins for containers where the policy restricts
+  a player.
+- **Not enough coins** opens the COINS tab.
+- **The developer products for singles, deals and containers** stay on Roblox but are no longer prompted. A late
+  receipt for one is still granted.
+- **Gadgets:** none are sold. All 13 live gadgets open by level (Unlocks.LEVEL). The ones that would fit a Robux or
+  coins buy, like the four weapons: Reverse Card, Instant Camera, Pop Quiz, Night Vision Goggles, Speed Trap, Laptop,
+  Rubber Duck. That's the owner's call; nothing is built for it.
+
+**Coin prices** (`Shop.MONEY.coinPrices`), paced to what a player earns: quests pay 30 / 50 / 80 coins (three a day,
+about 160) and the weekly track 525 a week. That's up to about 1,650 a week, and 1,000-1,500 for a regular player:
+
+| Coins | Common | Rare | Epic | Legendary |
+|---|---|---|---|---|
+| Weapon skin | 300 | 800 | 2,000 | 5,000 |
+| Wrap | 200 | 500 | 1,200 | 3,000 |
+| Hat | 250 | 600 | 1,500 | 3,500 |
+| Kill effect | 250 | 600 | 1,500 | 3,500 |
+| Emote | 250 | 600 | 1,500 | 3,500 |
+| Card border | 150 | 400 | 900 | 2,000 |
+| Card background | 150 | 400 | 900 | 2,000 |
+| Card title | 100 | 300 | 700 | 1,500 |
+
+| Containers | Coins | Or tickets |
+|---|---|---|
+| Crate (a weapon skin) | 900 | 12 |
+| Duffel Bag (a hat, card look, kill effect or emote) | 600 | 6 |
+| Spray Can (a wrap for one gun) | 500 | 3 |
+
+Deals: the skin's coin price less the deal's 20-40% (an epic skin at 35% off: 1,300).
+
+**The pace** at about 1,300 a week:
+- a common skin in about 2 days, a rare in 4;
+- an epic in about 1.5 weeks, a legendary in about 4.
+
+Each container costs about what its items are worth on average at the odds (the Crate's skins average about 850), and it
+never gives a duplicate. No change to quest or match rewards is needed for this pace.
+
+**For the owner to look at:**
+- **Coin packs against these prices.** The cheapest pack (1,200 coins for 99 Robux) buys four common skins, and the
+  biggest one's rate makes a legendary skin about 320 Robux of coins. A single legendary used to be 1,200 Robux. If
+  that is too generous, the packs can give fewer coins.
+- **Redeem prices.** With the switch on, the quests' coin redeem prices (QuestData.PRICES: Duffel Bag 2,500, Spray Can
+  1,000) are replaced by the table above; ticket prices are unchanged.
+
+Tested 18 Nov, place version 1037 (`CoinsOnlyTest` on in the Play server only):
+- a legendary skin from the day's singles for 5,000 coins; a second buy said "you have it already";
+- a Spray Can for 500;
+- a Crate refused while restricted;
+- an epic deal at 35% off for 1,300;
+- a bundle refused for coins ("that's sold for robux");
+- the FEATURED and CONTAINERS tabs show coin prices (`money/coins-only-featured.jpg`, `money/coins-only-containers.jpg`).
+
+The loot and coins saves were put back. The test deal stays marked as had on the `_studio` save until the day turns.
+
 ## The switch
 
 Real money is **LIVE** since 18 Nov 2026 (place version 1034, published about 22:36 UTC). The two lines in

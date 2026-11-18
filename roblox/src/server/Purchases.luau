@@ -22,6 +22,10 @@
 -- the remote JankfireRemotes.Purchases (RemoteFunction, made here):
 --   ("state")        -> { ok, owned = { [wid] = true }, free = Unlocks.robuxFree() }
 --   ("brass", wid)   -> Purchases.buyWithBrass
+--   ("coins", offerId, n?) -> Purchases.buyWithCoins: in the coins-only shop (Shop.coinsOnly), a single on sale today, n
+--                      containers (1, 5 or 10; never where Roblox's policy restricts paid random items) or one of your
+--                      deals ("deal:<skin>"), for coins. same three writes as a weapon: a pending mark, the coins
+--                      (Quests.spendBrass), the grant (Loot.grant / Deals.grant, idempotent by the id); settled on join
 --   ("dev", "forget", wid) -> Studio + the place's owner only: takes a bought weapon back (to undo a test)
 -- docs: roblox/docs/MONEY.md
 local Players = game:GetService("Players")
@@ -58,6 +62,27 @@ local function quests(): any
 	if not (m and m:IsA("ModuleScript")) then return nil end
 	local ok, Q = pcall(require, m)
 	return if ok and type(Q) == "table" then Q else nil
+end
+-- another server module, when it's in the place (the loot server, the deals)
+local function module(name: string): any
+	local m = script.Parent:FindFirstChild(name)
+	if not (m and m:IsA("ModuleScript")) then return nil end
+	local ok, M = pcall(require, m)
+	return if ok and type(M) == "table" then M else nil
+end
+-- hand over a coins buy (idempotent by its id: a second call finds it given)
+local function grantCoinsBuy(p: Player, e: any, id: string): boolean
+	local dskin = if type(e.offer) == "string" then string.match(e.offer, "^deal:([%w_]+)$") else nil
+	if dskin then
+		local D = module("Deals")
+		if not D or type(D.grant) ~= "function" then return false end
+		local ok, res = pcall(D.grant, p, dskin, id)
+		return ok and res == true
+	end
+	local L = module("Loot")
+	if not L or type(L.grant) ~= "function" then return false end
+	local ok, res = pcall(L.grant, p, e.offer, id, if (tonumber(e.n) or 1) > 1 then e.n else nil)
+	return ok and res == true
 end
 
 -- the place's owner, in Studio only (the loot server's and Vip's rule)
@@ -173,6 +198,72 @@ function Purchases.buyWithBrass(p: Player, wid: any): any
 	return { ok = true, wid = w }
 end
 
+-- the coins buy, all on the server: the price is the shop's, the coins are taken by the quests' save
+function Purchases.buyWithCoins(p: Player, offerId: any, n: any): any
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return { ok = false, why = "your purchases are still loading" } end
+	if not Shop.coinsOnly() then return { ok = false, why = "that's sold for robux" } end
+	if type(offerId) ~= "string" then return { ok = false, why = "nope" } end
+	local price: number? = nil
+	local count = 1
+	local label = offerId
+	local dskin = string.match(offerId, "^deal:([%w_]+)$")
+	if dskin then
+		local D = module("Deals")
+		local deal = D and type(D.offerFor) == "function" and D.offerFor(p, dskin)
+		if not deal then return { ok = false, why = "that deal isn't yours today" } end
+		price = Shop.coinDealPrice(dskin, deal.pct)
+	else
+		local o = Shop.offer(offerId)
+		if not o then return { ok = false, why = "that isn't for sale" } end
+		local L = module("Loot")
+		if not L then return { ok = false, why = "the shop isn't open" } end
+		if o.type == "single" then
+			if not Shop.onSale(o.id) then return { ok = false, why = "not on sale today" } end
+			if type(L.owns) == "function" and L.owns(p, o.kind, o.item, o.weapon) then return { ok = false, why = "you have it already" } end
+		elseif o.type == "container" then
+			-- (a container is a random item: never for coins where Roblox's policy restricts paid random items)
+			if type(L.restricted) ~= "function" or L.restricted(p) then return { ok = false, why = "not available where you are" } end
+			count = if n == 5 then 5 elseif n == 10 then 10 else 1
+		else
+			return { ok = false, why = "that's sold for robux" }
+		end
+		price = Shop.coinPrice(o, count)
+		label = o.id
+	end
+	if not price or price <= 0 then return { ok = false, why = "that isn't for sale for coins" } end
+	local Q = quests()
+	if not Q or type(Q.spendBrass) ~= "function" then return { ok = false, why = "the wallet isn't open" } end
+	if (tonumber(p:GetAttribute("Brass")) or 0) < price then return { ok = false, why = "not enough coins" } end
+	if s.busy then return { ok = false, why = "one at a time" } end
+	s.busy = true
+	d.nextId = (tonumber(d.nextId) or 0) + 1
+	local id = ("coins:%d:%d"):format(p.UserId, d.nextId)
+	local e = { offer = offerId, n = count, coins = price, t = os.time() }
+	-- 1. the mark (written), 2. the coins (the quests' save), 3. the thing (the loot server or the deals)
+	d.pending[id] = e
+	if not write(s) then
+		d.pending[id] = nil
+		s.busy = false
+		return { ok = false, why = "couldn't save. try again" }
+	end
+	local ok, why = Q.spendBrass(p, price, "shop " .. label, id)
+	if not ok then
+		d.pending[id] = nil
+		write(s)
+		s.busy = false
+		return { ok = false, why = why or "couldn't take the coins" }
+	end
+	local given = grantCoinsBuy(p, e, id)
+	if given then d.pending[id] = nil end
+	write(s)
+	s.busy = false
+	if not given then return { ok = false, why = "paid: it'll arrive when you next join" } end
+	print(("[jankfire] purchases: %s bought %s x%d for %d coins"):format(p.Name, label, count, price))
+	return { ok = true, offer = offerId, n = count }
+end
+
 -- a Brass buy a crash cut short: the weapon if the Brass was taken, else the mark goes. waits for the quests' save
 local function settle(p: Player, s: State)
 	local d = dataOf(p)
@@ -187,7 +278,10 @@ local function settle(p: Player, s: State)
 	if not p.Parent or not Q or type(Q.spent) ~= "function" then return end
 	for id, e in table.clone(d.pending) do
 		local took = Q.spent(p, id)
-		if took == true and type(e) == "table" and forSale(e.wid) then
+		if took == true and type(e) == "table" and type(e.offer) == "string" then
+			-- (a coins buy: the coins went, so it's handed over now; the grant is idempotent by the id)
+			if grantCoinsBuy(p, e, id) then d.pending[id] = nil end
+		elseif took == true and type(e) == "table" and forSale(e.wid) then
 			d.weapons[e.wid] = d.weapons[e.wid] or { t = os.time(), how = "brass", id = id }
 			d.pending[id] = nil
 		elseif took == false then
@@ -217,6 +311,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		return { ok = true, owned = owned, free = Unlocks.robuxFree() }
 	elseif op == "brass" then
 		return Purchases.buyWithBrass(p, a)
+	elseif op == "coins" then
+		return Purchases.buyWithCoins(p, a, b)
 	elseif op == "dev" then
 		if not isDev(p) then return { ok = false, why = "nope" } end
 		local d = dataOf(p)
