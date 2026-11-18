@@ -591,3 +591,24 @@ the gun, so first person has them now (`fp` = their width share there; off while
 colour reaches every layer (`coilShade`). The row: two vines round the barrel (r 6.5 cm, 1.5 turns), one up each wing.
 88 beams a gun. Photos `round17/angel-vines-v701-close-side-fp.jpg` (taken before the bead texture had processed: halo,
 body and core only) and `round17/angel-vines-v701-beads.jpg` (with the beads, over the training hall's dark floor).
+
+**The legendary gadget skins' trails** (18 Nov 2026, place version 840; main's ask, rows in the notes folder's
+`special-skins-trails-sfx.md`). New `Fx.itemFlight(model)`, `Fx.itemLand(model, at)` and `Fx.itemUse(model)`, keyed by
+the skin model's name (Utility.client's itemModel clones `ReplicatedStorage.JankfireSkins.<id>`). The utility session
+calls them (v836): flight in addFlying, landing only when the server's "pd" says it really went off (`x = true`: the
+fuse, or the duck sticking), use as your own bento opens (first person only; nobody else sees the lid). Rows in
+`Fx.ITEM_FX`; a plain gadget or a skin without a row does nothing.
+- Paper Lantern (frag): a thin warm glow trail (Trail on a host part that follows the gadget, camera-facing, 10 cm) and
+  a few tiny embers. At the blast, 20 red and gold paper scraps flung out and fluttering down for 2.4-3.4 s (the first
+  look's 7.5 cm scraps living 2 s vanished in the soot), 9 embers rising, all under Fx.explosion.
+- Incense Burner (smoke bomb): a faint pale smoke thread (3.5 cm, 0.7 s) with small curling wisps. As the cloud starts,
+  7 slow incense curls and one soft bronze glint (under the cloud, by design).
+- Origami Duck: cream and blue paper flecks (8 cm) shed as it flies, a very faint pale trail; a pop of 12 flecks
+  where it lands.
+- Bento Box (medkit): 4 faint steam wisps off the top as the lid lifts.
+- The paper sheet `TEX.paper` (new, `tools/roblox/vfx/paper_sheet.py`): four folded scraps (2x2), grey-shaded faces and
+  a darker rim so a Color tint keeps the fold; each particle holds one random scrap (FlipbookFramerate 0 +
+  FlipbookStartRandom). When a gadget lands, its host stops moving rather than turning the Trail off (a disabled Trail
+  vanishes at once), so the trail fades over its own life.
+- Photos `round18/v840-gadget-skins-trails.jpg` (a test rig flying the skins' own models in loops at 14 m/s in the hub;
+  the duck's larger flecks and the bento's steam are not in the photos).

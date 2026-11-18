@@ -245,5 +245,11 @@
   "sha1": "4e21916c2e19ee04151350b7babb4e07e39119ed",
   "what": "a Beam strip, white, additive, 256 x 64: one soft bead of light in the middle of u, a tight core across v; wrapped and scrolled it runs along the angel rifle's vines of light",
   "uploaded": "2026-11-17 21:23 UTC (the owner's reference clip: coiling ribbons of golden light; tools/roblox/vfx/vine_sprite.py)"
+ },
+ "vfx_paper": {
+  "id": 77284689325332,
+  "sha1": "54d152c9d1b3f0e522d67f49d7e5ec8bf30f4a92",
+  "what": "four folded-paper scraps on a 2x2 sheet (a folded triangle, a folded rhombus, a square with a dog-ear, a twisted strip), grey-shaded with a darker rim for a Color tint; the Paper Lantern and Origami Duck gadget skins' bits",
+  "uploaded": "2026-11-18 05:32 UTC (main's ask: the legendary gadget skins' trails; tools/roblox/vfx/paper_sheet.py)"
  }
 }

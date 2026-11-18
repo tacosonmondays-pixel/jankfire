@@ -163,6 +163,7 @@ local TEX = {
 	soft = "rbxassetid://101944596932707", -- the web's puffsoft.png smoke, 64 frames (8x8): for puffs living 2-4.5 s
 	-- (a one-shot flipbook plays at most 30 frames a second: short-lived ones use the 16-frame sheets)
 	soft4 = "rbxassetid://97407536340250", -- the same smoke, 16 frames (4x4)
+	paper = "rbxassetid://77284689325332", -- four folded-paper scraps (2x2; tools/roblox/vfx/paper_sheet.py), grey-shaded for a Color tint
 	boom4 = "rbxassetid://101632032329716", -- the fireball, 16 frames (4x4, 256 px)
 	feather = "rbxassetid://92745845385867", -- the high-tier skins' bits (SkinSets.FX)
 	petal = "rbxassetid://72396403976507",
@@ -2578,6 +2579,180 @@ do
 	end
 end
 
+-- ---------------------------------------------------------------- the legendary gadget skins in flight and landing
+-- (18 Nov 2026, main's ask; the rows are in special-skins-trails-sfx.md: high-tier skins get their own trails). Gadget
+-- skins are ItemSkins rows; their models are ReplicatedStorage.JankfireSkins.<id>, which Utility.client's itemModel
+-- clones with the skin id as the name. Utility.client calls Fx.itemFlight(model) as a thrown one leaves the hand,
+-- Fx.itemLand(model, at) as it lands or goes off, and Fx.itemUse(model) as a held one is used (the bento's lid).
+-- Deliberately quiet: a thin trail or a few bits, nothing wide in anyone's view, all gone within about 2.5 s. Sizes in
+-- metres (x S)
+local ITEM_FX: { [string]: any } = {
+	-- Paper Lantern (frag): a thin warm glow ribbon with a few tiny embers drifting off it. At the blast, red and gold
+	-- paper scraps are flung out and flutter down, and embers rise, under Fx.explosion's own fireball. (First look in
+	-- Play: 7.5 cm scraps living 2 s vanished in the blast's soot; 16 cm, living past the soot, read)
+	frag_lantern = {
+		trail = { colour = Color3.fromRGB(255, 180, 104), width = 0.1, life = 0.24, glow = 0.85, tr = 0.25 },
+		embers = { colour = Color3.fromRGB(255, 170, 84), rate = 7, size = 0.03 },
+		land = { paper = { { Color3.fromRGB(176, 74, 62), 14 }, { Color3.fromRGB(212, 178, 112), 6 } }, size = 0.16, speed = 7,
+			life = { 2.4, 3.4 }, embers = { colour = Color3.fromRGB(255, 176, 92), n = 9, size = 0.035 } },
+	},
+	-- Incense Burner (smoke bomb): a faint pale smoke thread curling behind it. As the cloud starts, a few slow incense
+	-- curls rise off it with one soft bronze glint (the bell)
+	smoke_censer = {
+		trail = { colour = Color3.fromRGB(214, 208, 198), width = 0.035, life = 0.7, glow = 0, tr = 0.5 },
+		wisps = { colour = Color3.fromRGB(206, 202, 194), rate = 9, size = 0.06, grow = 0.2 },
+		land = { wisps = { colour = Color3.fromRGB(214, 210, 202), n = 7, size = 0.08, grow = 0.32 },
+			glint = Color3.fromRGB(226, 196, 132) },
+	},
+	-- Origami Duck: a few folded-paper flecks fluttering off its path (mostly paper white, some of the folds' blue) and
+	-- a very faint pale trail. A small pop of flecks when it lands (5 cm flecks were dots past a few metres: 8-9 cm)
+	duck_origami = {
+		trail = { colour = Color3.fromRGB(236, 233, 226), width = 0.03, life = 0.16, glow = 0, tr = 0.7 },
+		flecks = { { Color3.fromRGB(231, 227, 216), 3.2 }, { Color3.fromRGB(122, 145, 178), 1.4 } }, fleck = 0.08,
+		land = { paper = { { Color3.fromRGB(231, 227, 216), 8 }, { Color3.fromRGB(122, 145, 178), 4 } }, size = 0.09, speed = 3.5 },
+	},
+	-- Bento Box (medkit): held, not thrown, so no trail. A faint steam rises off the rice as the lid lifts
+	medkit_bento = { use = { colour = Color3.fromRGB(246, 246, 242), n = 4, size = 0.05, grow = 0.18 } },
+}
+Fx.ITEM_FX = ITEM_FX
+local Debris = game:GetService("Debris")
+type ItemTr = { model: Model, part: BasePart, ems: { ParticleEmitter }, trail: Trail?, done: boolean }
+local itemTrs: { ItemTr } = {}
+local itemEms: { [ParticleEmitter]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- (the effect clock reaches them)
+local function itemSpec(model: Instance?): any
+	return if model and model:IsA("Model") then ITEM_FX[model.Name] else nil
+end
+local function itemCentre(model: Model): Vector3
+	local pp = model.PrimaryPart
+	return if pp then pp.Position else model:GetPivot().Position
+end
+local function itemHost(at: Vector3, life: number?): BasePart
+	local p = Instance.new("Part")
+	p.Name = "FxItem"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+	p.Transparency = 1; p.Size = Vector3.one * 0.2; p.CFrame = CFrame.new(at); p.Parent = folder
+	if life then Debris:AddItem(p, life) end
+	return p
+end
+local function itemEmitter(parent: Instance, props: { [string]: any }): ParticleEmitter
+	local e = Instance.new("ParticleEmitter")
+	e.Enabled = false; e.Rate = 0; e.LockedToPart = false
+	for k, v in props do (e :: any)[k] = v end
+	e.TimeScale = TS.k
+	e.Parent = parent
+	itemEms[e] = true
+	return e
+end
+-- a paper scrap: one of the sheet's four, held (a frozen flipbook), tumbling and fluttering down. sz = the scrap's
+-- width; it fills about 0.6 of its cell
+local function paperProps(col: Color3, sz: number, speed: number, life: { number }?): { [string]: any }
+	local w = sz / 0.6 * S * H
+	return { Texture = TEX.paper, FlipbookLayout = FLIP2, FlipbookMode = Enum.ParticleFlipbookMode.Loop, FlipbookFramerate = NR(0),
+		FlipbookStartRandom = true, Color = cs(col), LightInfluence = 0.8, LightEmission = 0, Size = NumberSequence.new(w),
+		Transparency = ns(0, 0, 0.8, 0, 1, 1), Rotation = NR(0, 360), RotSpeed = NR(-280, 280),
+		Lifetime = if life then NR(life[1], life[2]) else NR(1.3, 2.1),
+		Speed = NR(speed * 0.4 * S, speed * S), SpreadAngle = Vector2.new(180, 180), Drag = 3.5,
+		Acceleration = Vector3.new(0, -2.6 * S, 0) }
+end
+-- a tiny ember: the glow's bright middle is under half its width
+local function emberProps(col: Color3, sz: number, rise: number): { [string]: any }
+	local w = sz / 0.45 * S * H
+	return { Texture = TEX.glow, Color = cs(col:Lerp(FWHITE, 0.25), col), LightEmission = 1, LightInfluence = 0, Brightness = 2,
+		Size = ns(0, w, 1, 0), Transparency = ns(0, 0.1, 0.7, 0.3, 1, 1), Lifetime = NR(0.7, 1.1),
+		Speed = NR(0.1 * S, 0.4 * S), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, rise * S, 0), Drag = 2 }
+end
+-- a soft wisp of pale smoke curling up (incense, steam)
+local function wispProps(col: Color3, s0: number, s1: number, rise: number, tr: number): { [string]: any }
+	return { Texture = TEX.soft4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, Color = cs(col), LightInfluence = 0.6,
+		LightEmission = 0, Size = ns(0, s0 * S * H, 1, s1 * S * H), Transparency = ns(0, tr, 0.6, tr + (1 - tr) * 0.45, 1, 1),
+		Lifetime = NR(1.1, 1.6), Speed = NR(0.05 * S, 0.2 * S), SpreadAngle = Vector2.new(25, 25),
+		Acceleration = Vector3.new(0, rise * S, 0), Drag = 1.5, Rotation = NR(0, 360), RotSpeed = NR(-70, 70) }
+end
+function Fx.itemFlight(model: Model)
+	local sp = itemSpec(model)
+	if not sp or not (sp.trail or sp.embers or sp.wisps or sp.flecks) then return end
+	local p = itemHost(itemCentre(model))
+	local tr: ItemTr = { model = model, part = p, ems = {}, trail = nil, done = false }
+	if sp.trail then
+		-- a thin camera-facing ribbon (its width is the gap between the two attachments)
+		local t = sp.trail
+		local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+		a0.Position = Vector3.new(0, t.width * S / 2, 0); a1.Position = Vector3.new(0, -t.width * S / 2, 0)
+		a0.Parent = p; a1.Parent = p
+		local trail = Instance.new("Trail")
+		trail.Attachment0 = a0; trail.Attachment1 = a1; trail.FaceCamera = true
+		trail.Texture = TEX.tracer; trail.TextureMode = Enum.TextureMode.Stretch
+		trail.Color = cs(t.colour, t.colour:Lerp(Color3.new(0, 0, 0), 0.25))
+		trail.Transparency = ns(0, t.tr, 1, 1); trail.WidthScale = ns(0, 1, 1, 0.35)
+		trail.LightEmission = t.glow; trail.LightInfluence = 1 - t.glow; trail.Lifetime = t.life; trail.MinLength = 0.05
+		trail.Parent = p
+		tr.trail = trail
+	end
+	if sp.embers then
+		local e = itemEmitter(p, emberProps(sp.embers.colour, sp.embers.size, 0.5))
+		e.Rate = sp.embers.rate; e.Enabled = true
+		table.insert(tr.ems, e)
+	end
+	if sp.wisps then
+		local w = sp.wisps
+		local e = itemEmitter(p, wispProps(w.colour, w.size, w.grow, 0.25, 0.72))
+		e.Rate = w.rate; e.Enabled = true
+		table.insert(tr.ems, e)
+	end
+	for _, f in sp.flecks or {} do
+		local e = itemEmitter(p, paperProps(f[1], sp.fleck, 0.6))
+		e.Rate = f[2]; e.Enabled = true
+		table.insert(tr.ems, e)
+	end
+	table.insert(itemTrs, tr)
+end
+function Fx.itemLand(model: Model, at: Vector3?)
+	local sp = itemSpec(model)
+	if not sp or not sp.land then return end
+	local L = sp.land
+	local pos = if typeof(at) == "Vector3" then at else itemCentre(model)
+	local p = itemHost(pos, 4)
+	for _, row in L.paper or {} do
+		emit(itemEmitter(p, paperProps(row[1], L.size, L.speed, L.life)), row[2])
+	end
+	if L.embers then
+		emit(itemEmitter(p, emberProps(L.embers.colour, L.embers.size, 1.1)), L.embers.n)
+	end
+	if L.wisps then
+		emit(itemEmitter(p, wispProps(L.wisps.colour, L.wisps.size, L.wisps.grow, 0.35, 0.62)), L.wisps.n)
+	end
+	if L.glint then -- (one soft four-point glint, there and gone)
+		local w = 0.14 * S / 0.97 * H
+		emit(itemEmitter(p, { Texture = TEX.sparkle, Color = cs(L.glint), LightEmission = 1, LightInfluence = 0, Brightness = 2,
+			Size = ns(0, 0, 0.3, w, 1, 0), Transparency = NumberSequence.new(0.1), Lifetime = NR(0.45), Speed = NR(0),
+			Rotation = NR(-15, 15) }), 1)
+	end
+	-- (the flight trail stops here; itemStep lets it fade)
+	for _, tr in itemTrs do if tr.model == model then tr.done = true end end
+end
+function Fx.itemUse(model: Model)
+	local sp = itemSpec(model)
+	if not sp or not sp.use then return end
+	local u = sp.use
+	local ok, cf, size = pcall(model.GetBoundingBox, model)
+	local top = if ok then (cf :: CFrame).Position + Vector3.new(0, (size :: Vector3).Y * 0.45, 0) else itemCentre(model)
+	local p = itemHost(top, 2.5)
+	emit(itemEmitter(p, wispProps(u.colour, u.size, u.grow, 0.3, 0.74)), u.n)
+end
+-- the flight hosts follow their gadget; when it's gone (or has landed) they stop shedding and stand still, so the
+-- trail fades over its own life (a disabled Trail vanishes at once)
+local function itemStep()
+	for i = #itemTrs, 1, -1 do
+		local tr = itemTrs[i]
+		if not tr.done and tr.model.Parent then
+			tr.part.CFrame = CFrame.new(itemCentre(tr.model))
+		else
+			for _, e in tr.ems do e.Enabled = false end
+			Debris:AddItem(tr.part, 2.2)
+			table.remove(itemTrs, i)
+		end
+	end
+end
+
 -- ---------------------------------------------------------------- the effect clock's stepper
 -- tracers fade, lights dim, delayed bits go off, clouds stop feeding; STAT.stepUs = this step's cost (smoothed, us)
 RunService.RenderStepped:Connect(function(rdt: number)
@@ -2611,7 +2786,7 @@ RunService.RenderStepped:Connect(function(rdt: number)
 		if clockT >= tm.at then table.remove(timers, i); tm.fn() end
 	end
 	cloudStep()
-	domeFxStep(dt); spiralStep(dt); holeFxStep(dt); skinStep(); swingFlameStep(dt)
+	domeFxStep(dt); spiralStep(dt); holeFxStep(dt); skinStep(); swingFlameStep(dt); itemStep()
 	for _, rg in rigs do -- the scorch marks fade over 8 s
 		if rg.markT >= 0 then
 			local u = (clockT - rg.markT) / 8
@@ -2626,6 +2801,7 @@ end)
 function Fx.setTimeScale(k: number)
 	TS.k = math.max(0, k)
 	for _, e in ALL do e.TimeScale = TS.k end
+	for e in itemEms do e.TimeScale = TS.k end
 end
 -- (Studio only: the frame captures freeze every copy of this module at once through a workspace attribute)
 if RunService:IsStudio() then
