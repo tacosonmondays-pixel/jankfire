@@ -467,7 +467,7 @@ def dress(L):
             BL(BOOKS[i_h % len(BOOKS)], u0 + 0.6, v0 + 0.8, u0 + 1.6, v0 + 2.0, y1, y1 + 0.25, bev=0.03)
         elif k == 'media':
             BL(FWOOD, u0, v0, u1, v1, y0, y1, bev=0.12)
-            BL(shade(FWOOD, 0.85), u0 + 0.2, v1 - 0.04, u1 - 0.2, v1 + 0.02, 0.3, y1 - 0.3, bev=0.0)
+            BL(shade(FWOOD, 0.85), u0 + 0.2, v1 - 0.04, u1 - 0.2, v1 + 0.06, 0.3, y1 - 0.3, bev=0.0)
             BL(TV, u0 + 0.3, v0 + 0.3, u1 - 0.3, v0 + 0.55, y1 + 0.2, y1 + 2.6, bev=0.05)
             BL(DARK, (u0 + u1) / 2 - 0.4, v0 + 0.25, (u0 + u1) / 2 + 0.4, v0 + 0.9, y1, y1 + 0.2, bev=0.03)
         elif k == 'shelf':

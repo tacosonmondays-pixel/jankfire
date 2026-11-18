@@ -234,7 +234,7 @@ def tile_and_stairs():
         elif m == 'step':
             B('br_stair', TILE, x0, y0, z0, x1, y1, z1, bev=0.0)
             # the nosing on the step's low side (+z: these stairs climb toward -z)
-            B('br_stair', GROUT, x0 + 0.02, y1 - 0.25, z1 - 0.35, x1 - 0.02, y1 + 0.03, z1 + 0.02, bev=0.0)
+            B('br_stair', GROUT, x0 + 0.02, y1 - 0.25, z1 - 0.35, x1 - 0.02, y1 + 0.03, z1 + 0.06, bev=0.0)
         elif m == 'metal':
             # the rails round the stair holes: a tiled half wall with a steel handrail on top (the hit box is solid)
             tiled('br_stair', x0, y0, z0, x1, y1 - 0.3, z1, rows=1.6)

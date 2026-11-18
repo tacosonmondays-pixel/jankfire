@@ -353,8 +353,10 @@ def brick_building(q, mname, col=BRICK, inner=INNER, floor_col=TILE):
     for b in solids('floor', q):
         if id(b) in DONE: continue
         mark(b)
-        B(mi, FLOORW, b[0], b[4] - 0.3, b[2], b[3], b[4], b[5], bev=0.0)
-        B(mi, inner, b[0], b[1], b[2], b[3], b[4] - 0.3, b[5], bev=0.0)
+        fx0, fz0, fx1, fz1 = max(b[0], x0 + T + 0.06), max(b[2], z0 + T + 0.06), min(b[3], x1 - T - 0.06), min(b[5], z1 - T - 0.06)
+        if fx1 > fx0 and fz1 > fz0:
+            B(mi, FLOORW, fx0, b[4] - 0.3, fz0, fx1, b[4], fz1, bev=0.0)
+            B(mi, inner, fx0, b[1], fz0, fx1, b[4] - 0.3, fz1, bev=0.0)
     for b in solids('roof', q):
         if id(b) in DONE: continue
         mark(b)
