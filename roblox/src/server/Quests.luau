@@ -274,6 +274,35 @@ function Quests.grant(p: Player, amount: number, reason: string, id: string?): (
 	print(("[jankfire] quests: +%d Brass to %s (%s)"):format(n, p.Name, reason))
 	return true, nil
 end
+-- the owner's gift (OwnerDev.server's GIFT tab, 18 Nov 2026): Quests.gift(player, brass, tickets, id) -> (ok, why?).
+-- not capped (the owner's own call, checked there: the place's creator only), idempotent by id, logged in grants like
+-- Quests.grant, written before it answers true. not counted as earned (a gift isn't play): a cheat restore leaves it
+function Quests.gift(p: Player, brass: number, tix: number, id: string): (boolean, string?)
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return false, "loading" end
+	local b = if type(brass) == "number" and brass == brass and brass ~= math.huge then math.max(0, math.floor(brass)) else 0
+	local x = if type(tix) == "number" and tix == tix and tix ~= math.huge then math.max(0, math.floor(tix)) else 0
+	if b <= 0 and x <= 0 then return false, "nothing to give" end
+	if type(id) ~= "string" or id == "" then return false, "no id" end
+	local d = s.prof.data
+	for _, g in d.grants do if type(g) == "table" and g.id == id then return true, "already" end end
+	local before = { brass = num(d.brass), tix = num(d.tix), ob = num(d.owed.b), ox = num(d.owed.x) }
+	credit(d, b, x, false)
+	table.insert(d.grants, 1, { t = now(), b = b, x = x, why = "owner gift", id = id })
+	while #d.grants > 50 do table.remove(d.grants) end
+	dirty(s)
+	local prof = s.prof :: Profiles.Profile
+	local saved = if prof.state == "cloud" then Profiles.save(store, prof) else prof.state == "off"
+	if not saved then
+		d.brass, d.tix, d.owed.b, d.owed.x = before.brass, before.tix, before.ob, before.ox
+		table.remove(d.grants, 1)
+		publish(s)
+		return false, "couldn't save"
+	end
+	publish(s)
+	print(("[jankfire] quests: owner gift +%d Brass +%d tickets to %s"):format(b, x, p.Name))
+	return true, nil
+end
 -- the VIP daily's call (the shop session): Quests.giveBrass(player, amount, receiptId) -> boolean, written to the save
 function Quests.giveBrass(p: Player, amount: number, receiptId: string): boolean
 	local ok = Quests.grant(p, amount, "vip daily", receiptId)

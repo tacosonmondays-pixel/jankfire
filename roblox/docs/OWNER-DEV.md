@@ -86,9 +86,29 @@ Each power is a server attribute on the owner. The owner's client acts on it.
   - they leave the game.
 - **Where they go:** a timed or freed release goes to their hub spawn (`Fight.spawnAt`). After a match, that's the hub, or their lobby's plinth if they're in a party.
 
+## GIFT (the menu's second tab)
+
+Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc".
+
+- **Who gets it:** anyone in the server, or you (YOU is first in the list).
+- **What, and the server call that gives it** (never the client; the server re-checks the creator on every gift):
+
+| Kind | Server call |
+|---|---|
+| Crates, Duffel Bags, Spray Cans, 1 to 999 | `Loot.grant(p, id, receipt, n)`: one write, one receipt, once the loot module takes a count (`Loot.GRANT_COUNT`). Until then, `Loot.grant` once per box, 25 at a time. |
+| A shop bundle or skin set, whole | `Loot.grant(p, bundleId, receipt)` |
+| One item from the searchable list (skins, wraps, hats, kill effects, emotes, grapples, card looks) | `Loot.grant(p, "gift:<kind>:<id>", receipt)`. Wraps and hats go on every gun. |
+| Brass and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
+| Coins, any amount | the shop's coins call (`Coins.give`) once coins are in |
+| VIP, for good | the shop's `Vip.grant` once it's in |
+
+- **The receiver** sees one plain line at the top of the screen for 3.5 s, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
+- **The gift log:** every gift is written to DataStore `JankDevGifts_v1` (`JankDevGifts_v1_studio` in Studio), key `log`, last 500: when, giver, receiver (user ids only), what, how many. It's printed to the server log too.
+- **In a match:** a gift works there and doesn't flag the match, because it doesn't change the fight.
+
 ## Nothing counts
 
-- **Saves:** no command writes anyone's saves, stats, rank, quests, currency or loot.
+- **Saves:** no power or command writes anyone's saves, stats, rank, quests, currency or loot. GIFT is the one exception, and it only ever adds.
 - **Damage:** the owner's dev weapons can hurt players outside a match (`Matches.devHit`). Stats and quests only count hits in live matches, so those hits are never counted.
 - **Kills:** a kill outside a match by the owner (a dev weapon, or a fall after a fling) goes through `Fight.devKill`. It shows no kill feed, runs no kill hooks (stats, quests, kill effects, finishers), and the kill and death counts are taken back. The victim respawns in the hub 1 s later.
 - **Victims and the anti-cheat:** victims of a fling, bring or freeze get the anti-cheat's usual pass for a server move (`ACGrace`, `TeleportT`), the same as a TV Remote rewind. They do not get the owner's dev exemption.
@@ -162,3 +182,10 @@ Each power is a server attribute on the owner. The owner's client acts on it.
 - `owner_title_card.jpg`
 - `owner_title_overhead_red_card.jpg`
 - `fling_frozen_midair.jpg`
+
+**GIFT, place version 1015** (solo Play on the owner's `_studio` saves):
+- Gifted to yourself: 3 Crates (stock 0 → 3), the Night Shift bundle, a kill effect, 500 Brass and 2 Crate Tickets. Each answered ok and showed its toast; the HUD showed the Brass and tickets.
+- Coins and VIP answered "not in yet": they wait for the shop's `Coins.give` and `Vip.grant`.
+- Afterwards the three saves (loot, quests, VIP) were put back exactly from a snapshot taken before Play, and an uncached read-back compared equal.
+- Containers go one grant per box (at most 25 at a time) until the loot module takes a count (`Loot.GRANT_COUNT`).
+- Photo: `gift_tab_v1015.jpg`.

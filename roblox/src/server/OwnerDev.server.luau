@@ -23,6 +23,8 @@
 --   the hub (Map.DevJail, a ZonePiece: ZoneCull hides it from anyone not near). sent there = a server move (TeleportT).
 --   out after JAIL_TIME s, on release, when they join a party or a lobby, die, or get moved by anything else; leaving the
 --   game always works. sent from a match: taken out of it first (Matches.pull, as if they'd left; the match is flagged)
+--   GIFT (18 Nov, round 3: "let me gift people stuff"): containers in any number, bundles and skin sets, single items,
+--   Brass, Crate Tickets, coins, VIP, to anyone in the server or yourself (see "gifts" below)
 --   RED CARD (round 2, football style; the one you look at: Y): the owner raises a red card (every client poses the
 --   owner's arm and puts a card in the hand, DevFx "redcard"), a referee's whistle blows (a Pro Sound Effects recording),
 --   the target's screen flashes a red card, and 1.2 s later they're in the jail
@@ -449,6 +451,122 @@ local function redCard(by: Player, t: any, tname: string): any
 	return { ok = true, did = "red card: " .. tname }
 end
 
+-- ------------------------------------------------------------------ gifts
+-- (18 Nov 2026, the owner: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc"). the
+-- GIFT tab's "gift" op. every gift goes through the owning module's own grant, never the client:
+--   container (crate / bag / spray, 1..GIFT_MAX)  Loot.grant(p, id, receipt, n)   (the loot save: one write, one receipt)
+--   bundle (a shop bundle or skin set, whole)     Loot.grant(p, bundleId, receipt)
+--   item (a wrap, hat, skin, kill effect, emote, grapple or card look; wraps and hats on every gun)
+--                                                 Loot.grant(p, "gift:<kind>:<id>", receipt)
+--   brass / tickets (any amount)                  Quests.gift(p, brass, tickets, receipt)
+--   coins (any amount)                            Coins.give(p, n, reason, receipt)   (the shop's, when it's in)
+--   vip (for good)                                Vip.grant(p, reason)                (the shop's, when it's in)
+-- the receiver gets a plain toast ("GIFT · 5 CRATES", DevFx "gift"). every gift is written to a gift log (giver,
+-- receiver, what, how many, when: user ids only) in its own store, Studio apart from live. a gift in a match flags
+-- nothing: it doesn't change the fight
+local GIFT_MAX = 999
+local giftStore: DataStore? = nil
+pcall(function() giftStore = game:GetService("DataStoreService"):GetDataStore(if STUDIO then "JankDevGifts_v1_studio" else "JankDevGifts_v1") end)
+local function giftLog(by: Player, to: Player, what: string, n: number)
+	if not giftStore then return end
+	local row = { t = os.time(), by = by.UserId, to = to.UserId, what = what, n = n }
+	task.spawn(function()
+		pcall(function()
+			(giftStore :: DataStore):UpdateAsync("log", function(old: any)
+				local list = if type(old) == "table" then old else {}
+				table.insert(list, row)
+				while #list > 500 do table.remove(list, 1) end
+				return list
+			end)
+		end)
+	end)
+end
+local mods: { [string]: any } = {}
+local function mod(name: string): any
+	local m = mods[name]
+	if m ~= nil then return m or nil end
+	local sc = script.Parent:FindFirstChild(name)
+	local ok, r = false, nil
+	if sc and sc:IsA("ModuleScript") then ok, r = pcall(require, sc) end
+	mods[name] = if ok and type(r) == "table" then r else false
+	return mods[name] or nil
+end
+local giftN = 0
+local function receipt(to: Player): string
+	giftN += 1
+	return ("devgift-%d-%d-%d"):format(to.UserId, os.time(), giftN)
+end
+local function count(v: unknown, hi: number): number?
+	if type(v) ~= "number" or v ~= v then return nil end
+	local n = math.floor(v)
+	return if n >= 1 and n <= hi then n else nil
+end
+local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknown): any
+	local Loot = mod("Loot")
+	local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop")) :: any
+	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
+	local label, qty, what
+	if kind == "container" then
+		local c = type(id) == "string" and LootTable.CONTAINERS[id]
+		qty = count(n, GIFT_MAX)
+		if not c or not qty then return { ok = false, why = "which container, and 1 to " .. GIFT_MAX } end
+		if not Loot then return { ok = false, why = "no loot module" } end
+		if Loot.GRANT_COUNT == true then -- (the loot module takes a count: one write, one receipt)
+			if not Loot.grant(to, id :: string, receipt(to), qty) then return { ok = false, why = "their loot save isn't ready" } end
+		else -- (until it does: one grant, one save each, so at most 25)
+			if (qty :: number) > 25 then return { ok = false, why = "25 at a time until the loot module takes a count" } end
+			for _ = 1, qty :: number do
+				if not Loot.grant(to, id :: string, receipt(to)) then return { ok = false, why = "their loot save isn't ready" } end
+			end
+		end
+		label = ("%d %s"):format(qty, string.upper(if qty == 1 then c.name else c.plural))
+		what = "container:" .. (id :: string)
+	elseif kind == "bundle" then
+		local o = type(id) == "string" and Shop.byId[id]
+		if not o or o.type ~= "bundle" then return { ok = false, why = "no such bundle" } end
+		if not Loot or not Loot.grant(to, id :: string, receipt(to)) then return { ok = false, why = "their loot save isn't ready" } end
+		label, what, qty = string.upper(o.name), "bundle:" .. (id :: string), 1
+	elseif kind == "item" then
+		local t, iid = string.match(tostring(id), "^(%a+):([%w_]+)$")
+		local info = t and iid and LootTable.info(t, iid)
+		if not info then return { ok = false, why = "no such item" } end
+		if not Loot or not Loot.grant(to, ("gift:%s:%s"):format(t :: string, iid :: string), receipt(to)) then
+			return { ok = false, why = "not given (their loot save isn't ready, or that can't be gifted)" }
+		end
+		label, what, qty = string.upper(info.name), "item:" .. tostring(id), 1
+	elseif kind == "brass" or kind == "tickets" then
+		qty = count(n, 1000000)
+		if not qty then return { ok = false, why = "how many" } end
+		local Q = mod("Quests")
+		if not Q or type(Q.gift) ~= "function" then return { ok = false, why = "not ready" } end
+		local ok, why = Q.gift(to, if kind == "brass" then qty else 0, if kind == "tickets" then qty else 0, receipt(to))
+		if not ok then return { ok = false, why = tostring(why) } end
+		label = ("%d %s"):format(qty, if kind == "brass" then "BRASS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
+		what = kind :: string
+	elseif kind == "coins" then
+		qty = count(n, 10000000)
+		if not qty then return { ok = false, why = "how many" } end
+		local C = mod("Coins")
+		if not C or type(C.give) ~= "function" then return { ok = false, why = "coins aren't in yet" } end
+		local ok, why = C.give(to, qty, "owner gift", receipt(to))
+		if not ok then return { ok = false, why = tostring(why or "not given") } end
+		label, what = ("%d COINS"):format(qty), "coins"
+	elseif kind == "vip" then
+		local V = mod("Vip")
+		if not V or type(V.grant) ~= "function" then return { ok = false, why = "VIP gifts aren't in yet" } end
+		if V.isVip(to) then return { ok = false, why = "already VIP" } end
+		local ok, why = V.grant(to, "owner gift")
+		if not ok then return { ok = false, why = tostring(why or "not given") } end
+		label, what, qty = "VIP", "vip", 1
+	else
+		return { ok = false, why = "nope" }
+	end
+	;(DevFx :: RemoteEvent):FireClient(to, { k = "gift", text = "GIFT · " .. label })
+	giftLog(p, to, what, qty or 1)
+	log(p, ("gift %s x%d to"):format(what, qty or 1), to.Name)
+	return { ok = true, did = ("gave %s %s"):format(to.Name, label) }
+end
+
 -- the one the owner looks at: the eye's ray, the nearest in angle, in sight
 local function aimed(p: Player, look: unknown): any
 	if typeof(look) ~= "Vector3" then return nil end
@@ -522,7 +640,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	elseif op == "players" then
 		return { ok = true, players = list(p), zone = zone }
 	end
-	if zone == "match" and not (op == "set" and (a == "off" or b == false)) then flagMatch(p, p, tostring(op)) end
+	if zone == "match" and op ~= "gift" and not (op == "set" and (a == "off" or b == false)) then flagMatch(p, p, tostring(op)) end
 	if op == "set" then
 		if a == "fly" then s.fly = b == true
 		elseif a == "flySpeed" and type(b) == "number" and b == b then s.flySpeed = math.floor(math.clamp(b, FLY.min, FLY.max) + 0.5)
@@ -542,6 +660,12 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		for _, t in list do release(t, "let go", p, true); n += 1 end
 		log(p, "empty the jail", tostring(n))
 		return { ok = true, did = ("let %d out"):format(n) }
+	elseif op == "gift" then
+		-- a: who gets it (a Player in this server, the owner too), b: { kind, id, n }
+		local to = if typeof(a) == "Instance" and (a :: Instance):IsA("Player") and (a :: Instance).Parent == Players then a :: Player else nil
+		if not to then return { ok = false, why = "nobody" } end
+		if type(b) ~= "table" then return { ok = false, why = "nope" } end
+		return gift(p, to, (b :: any).kind, (b :: any).id, (b :: any).n)
 	elseif op == "unfreezeAll" then
 		local n = unfreezeAll()
 		log(p, "unfreeze all", tostring(n))

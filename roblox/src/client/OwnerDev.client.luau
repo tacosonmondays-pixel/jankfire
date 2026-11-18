@@ -12,7 +12,9 @@
 --       weapons in the hub: DevArms (the hub's weapon checks let it through); a weapon picked here goes into the
 --         loadout's try layer (never saved), like trying one in training
 --       invisible: DevInvisible (the server hides the body): your own client draws a faint ghost of you (DevWas)
---     everyone's too: the red card (DevFx): the owner's arm up with a card, a whistle, a red card on the target's screen
+--     everyone's too: the red card (DevFx): the owner's arm up with a card, a whistle, a red card on the target's screen;
+--     a gift's toast ("GIFT · 5 CRATES")
+--     the GIFT tab: give anyone (or you) containers in any number, bundles, items, coins, Brass, tickets, VIP
 --     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); X flings, Z freezes or
 --     lets go and Y shows a red card to whoever you look at. it works everywhere, matches too: a match a power touches counts for nothing (the
 --     server flags it; the status line says so)
@@ -110,6 +112,40 @@ do
 		s:Play()
 		task.delay(4, function() s:Destroy() end)
 	end
+	-- a gift for you (the owner's GIFT tab): one plain line at the top of the screen for a few seconds
+	local function giftToast(text: string)
+		local g = Instance.new("ScreenGui")
+		g.Name = "DevGiftToast"; g.IgnoreGuiInset = true; g.DisplayOrder = 79; g.ResetOnSpawn = false
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(0.5, 0)
+		f.Position = UDim2.new(0.5, 0, 0, 118)
+		f.Size = UDim2.fromOffset(0, 40)
+		f.AutomaticSize = Enum.AutomaticSize.X
+		f.BackgroundColor3 = Color3.fromRGB(16, 18, 22)
+		f.BackgroundTransparency = 0.12
+		f.BorderSizePixel = 0
+		f.Parent = g
+		local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = f
+		local st = Instance.new("UIStroke"); st.Color = Color3.fromRGB(255, 196, 61); st.Transparency = 0.45; st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; st.Parent = f
+		local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 18); pad.PaddingRight = UDim.new(0, 18); pad.Parent = f
+		local t = Instance.new("TextLabel")
+		t.BackgroundTransparency = 1
+		t.AutomaticSize = Enum.AutomaticSize.X
+		t.Size = UDim2.fromScale(0, 1)
+		t.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+		t.TextSize = 18
+		t.TextColor3 = Color3.fromRGB(240, 242, 245)
+		t.Text = string.sub(text, 1, 60)
+		t.Parent = f
+		g.Parent = me:WaitForChild("PlayerGui")
+		task.delay(3.5, function()
+			local TS = game:GetService("TweenService")
+			TS:Create(f, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+			TS:Create(t, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+			TS:Create(st, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+			task.delay(0.45, function() g:Destroy() end)
+		end)
+	end
 	local function flash(hold: number?)
 		local g = Instance.new("ScreenGui")
 		g.Name = "DevRedCardFlash"
@@ -158,6 +194,7 @@ do
 	end
 	if Fx then
 		Fx.OnClientEvent:Connect(function(d: any)
+			if type(d) == "table" and d.k == "gift" and type(d.text) == "string" then giftToast(d.text); return end
 			if type(d) ~= "table" or d.k ~= "redcard" then return end
 			local by = d.by
 			local ch = typeof(by) == "Instance" and by:IsA("Player") and by.Character or nil
@@ -599,6 +636,228 @@ refreshPlayers = function()
 	end
 end
 
+-- ------------------------------------------------------------------ the GIFT tab
+-- (18 Nov, the owner: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc"): pick who
+-- gets it (anyone in the server, or you), then what: containers in any number, a bundle or skin set, one item from the
+-- searchable list, coins, Brass, Crate Tickets, VIP. the server checks and gives each one (OwnerDev.server, "gift")
+local Gift = { shown = false, refresh = function() end }
+do
+	local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop")) :: any
+	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
+	local tabPowers = button(plate, "TabPowers", "POWERS", UDim2.fromOffset(96, 12), 90)
+	local tabGift = button(plate, "TabGift", "GIFT", UDim2.fromOffset(192, 12), 90)
+	local keep = { [title] = true, [status] = true, [note] = true, [close] = true, [tabPowers] = true, [tabGift] = true }
+	local powersKids: { GuiObject } = {}
+	for _, c in plate:GetChildren() do
+		if c:IsA("GuiObject") and not keep[c] then table.insert(powersKids, c) end
+	end
+	local page = T.new("Frame", { Name = "Gift", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 1, -96), Visible = false }, plate)
+
+	local function list(parent: Instance, name: string, pos: UDim2, size: UDim2): ScrollingFrame
+		local l = T.new("ScrollingFrame", {
+			Name = name, BackgroundColor3 = T.CARD, BackgroundTransparency = 0.2, BorderSizePixel = 0, Position = pos, Size = size,
+			CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 6, ScrollingDirection = Enum.ScrollingDirection.Y,
+		}, parent)
+		T.corner(l, 4)
+		T.new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, l)
+		T.new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 10), PaddingBottom = UDim.new(0, 6) }, l)
+		return l
+	end
+	local function clear(l: Instance) for _, c in l:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end end
+	local function box(parent: Instance, name: string, text: string, pos: UDim2, w: number, hint: string?): TextBox
+		local b = T.new("TextBox", {
+			Name = name, Text = text, PlaceholderText = hint or "", FontFace = T.FONT_BOLD, TextSize = 13, TextColor3 = T.TEXT,
+			PlaceholderColor3 = T.DIM, BackgroundColor3 = T.CARD_HI, BorderSizePixel = 0, ClearTextOnFocus = false,
+			Position = pos, Size = UDim2.fromOffset(w, 28),
+		}, parent)
+		T.corner(b, 4)
+		return b
+	end
+
+	-- who gets it
+	label(page, "ToHead", "TO", 18, 0, 100)
+	local toList = list(page, "To", UDim2.fromOffset(18, 20), UDim2.fromOffset(200, 370))
+	local to: Player = me
+	local function drawTo()
+		clear(toList)
+		local people = { me }
+		for _, q in Players:GetPlayers() do if q ~= me then table.insert(people, q) end end
+		if not table.find(people, to) then to = me end
+		for i, q in people do
+			local b = button(toList, "To_" .. q.UserId, if q == me then "YOU" else q.DisplayName, UDim2.new(), 180, 28)
+			b.LayoutOrder = i
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			T.new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, b)
+			lit(b, q == to)
+			b.Activated:Connect(function() to = q; drawTo() end)
+		end
+	end
+	local function give(kind: string, id: string?, n: number?, what: string)
+		local r = call("gift", to, { kind = kind, id = id, n = n })
+		if type(r) == "table" and r.ok then note.Text = tostring(r.did or what)
+		else note.Text = ("%s: %s"):format(what, tostring(if type(r) == "table" and r.why then r.why else "no answer")) end
+	end
+
+	-- what: the kinds
+	local KX, KW = 232, 650
+	local kinds = { "CONTAINERS", "BUNDLES", "ITEMS", "CURRENCY", "VIP" }
+	local kindBtn: { [string]: TextButton } = {}
+	local kindPage: { [string]: Frame } = {}
+	for i, k in kinds do
+		kindBtn[k] = button(page, "Kind_" .. k, k, UDim2.fromOffset(KX + (i - 1) * 128, 14), 120)
+		kindPage[k] = T.new("Frame", { Name = "Page_" .. k, BackgroundTransparency = 1, Position = UDim2.fromOffset(KX, 52), Size = UDim2.fromOffset(KW, 338), Visible = false }, page)
+	end
+
+	-- containers: which, how many
+	do
+		local P = kindPage.CONTAINERS
+		local which = "crate"
+		local cBtn: { [string]: TextButton } = {}
+		for i, id in { "crate", "bag", "spray" } do
+			local c = LootTable.CONTAINERS[id]
+			cBtn[id] = button(P, "C_" .. id, string.upper(c.name), UDim2.fromOffset((i - 1) * 150, 0), 140, 34)
+		end
+		local function drawC() for id, b in cBtn do lit(b, id == which) end end
+		for id, b in cBtn do b.Activated:Connect(function() which = id; drawC() end) end
+		drawC()
+		label(P, "HowMany", "HOW MANY (1 TO 999)", 0, 54, 200)
+		local nBox = box(P, "Count", "1", UDim2.fromOffset(40, 76), 90)
+		local minus = button(P, "Minus", "-", UDim2.fromOffset(0, 76), 32)
+		local plus = button(P, "Plus", "+", UDim2.fromOffset(138, 76), 32)
+		local function n(): number return math.clamp(math.floor(tonumber(nBox.Text) or 1), 1, 999) end
+		minus.Activated:Connect(function() nBox.Text = tostring(math.max(1, n() - 1)) end)
+		plus.Activated:Connect(function() nBox.Text = tostring(math.min(999, n() + 1)) end)
+		for i, q in { 1, 5, 10, 50, 100 } do
+			local b = button(P, "Q" .. q, tostring(q), UDim2.fromOffset(186 + (i - 1) * 50, 76), 44)
+			b.Activated:Connect(function() nBox.Text = tostring(q) end)
+		end
+		local go = button(P, "Give", "GIVE", UDim2.fromOffset(0, 124), 170, 34)
+		lit(go, true)
+		go.Activated:Connect(function() give("container", which, n(), "containers") end)
+	end
+
+	-- bundles and skin sets, whole
+	do
+		local L = list(kindPage.BUNDLES, "List", UDim2.new(), UDim2.fromOffset(KW, 338))
+		local all = {}
+		for _, b in Shop.bundles do table.insert(all, b) end
+		for _, s in Shop.sets or {} do if not table.find(all, s) then table.insert(all, s) end end
+		for i, o in all do
+			local row = T.new("Frame", { Name = "B_" .. o.id, BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.4, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = i }, L)
+			T.corner(row, 4)
+			local t = T.text(row, "Name", string.upper(o.name), 12, T.TEXT, T.FONT_BOLD)
+			t.Position = UDim2.fromOffset(8, 0); t.Size = UDim2.new(1, -200, 1, 0)
+			local k = T.text(row, "Kind", if o.set then "SKIN SET" else "BUNDLE", 11, T.MUTED, T.FONT_BOLD)
+			k.Position = UDim2.new(1, -190, 0, 0); k.Size = UDim2.fromOffset(100, 30)
+			local g = button(row, "Give", "GIVE", UDim2.new(1, -78, 0, 3), 70, 24)
+			g.TextSize = 11
+			g.Activated:Connect(function() give("bundle", o.id, 1, o.name) end)
+		end
+	end
+
+	-- single items, searchable (wraps and hats go on every gun)
+	do
+		local P = kindPage.ITEMS
+		local search = box(P, "Search", "", UDim2.fromOffset(0, 0), KW, "search: a name, or wrap / hat / skin / emote ...")
+		local L = list(P, "List", UDim2.fromOffset(0, 36), UDim2.fromOffset(KW, 302))
+		local items: { any }? = nil
+		local function all(): { any }
+			if items then return items end
+			local out, seen = {}, {}
+			for _, c in { "crate", "bag", "spray" } do
+				local ok, rows = pcall(LootTable.cosmetics, c)
+				if ok and type(rows) == "table" then
+					for _, it in rows do
+						local key = it.type .. ":" .. it.id
+						if not seen[key] then
+							seen[key] = true
+							table.insert(out, { key = key, name = tostring(it.name), type = it.type, rarity = tostring(it.rarity),
+								hay = string.lower(tostring(it.name) .. " " .. it.type .. " " .. tostring(it.rarity) .. " " .. tostring(it.weapon or "")) })
+						end
+					end
+				end
+			end
+			table.sort(out, function(a, b) return a.name < b.name end)
+			items = out
+			return out
+		end
+		local function draw()
+			clear(L)
+			local q = string.lower(search.Text)
+			local n = 0
+			for _, it in all() do
+				if q ~= "" and not string.find(it.hay, q, 1, true) then continue end
+				n += 1
+				if n > 80 then break end
+				local row = T.new("Frame", { Name = "I_" .. it.key, BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.4, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = n }, L)
+				T.corner(row, 4)
+				local t = T.text(row, "Name", string.upper(it.name), 12, T.TEXT, T.FONT_BOLD)
+				t.Position = UDim2.fromOffset(8, 0); t.Size = UDim2.new(1, -290, 1, 0); t.TextTruncate = Enum.TextTruncate.AtEnd
+				local k = T.text(row, "Kind", string.upper((LootTable.TYPE_NAMES and LootTable.TYPE_NAMES[it.type]) or it.type) .. "  ·  " .. string.upper(it.rarity), 11, T.MUTED, T.FONT_BOLD)
+				k.Position = UDim2.new(1, -280, 0, 0); k.Size = UDim2.fromOffset(196, 28)
+				local g = button(row, "Give", "GIVE", UDim2.new(1, -78, 0, 2), 70, 24)
+				g.TextSize = 11
+				g.Activated:Connect(function() give("item", it.key, 1, it.name) end)
+			end
+			if n == 0 then
+				local row = T.new("Frame", { Name = "None", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28) }, L)
+				local t = T.text(row, "Text", "nothing matches", 12, T.DIM)
+				t.Position = UDim2.fromOffset(8, 0); t.Size = UDim2.new(1, -16, 1, 0)
+			end
+		end
+		search:GetPropertyChangedSignal("Text"):Connect(draw)
+		Gift.items = draw
+	end
+
+	-- coins, Brass, Crate Tickets: any amount
+	do
+		local P = kindPage.CURRENCY
+		for i, c in { { "coins", "COINS" }, { "brass", "BRASS" }, { "tickets", "CRATE TICKETS" } } do
+			local y = (i - 1) * 56
+			label(P, "L_" .. c[1], c[2], 0, y + 6, 160)
+			local b = box(P, "N_" .. c[1], "", UDim2.fromOffset(170, y), 160, "how many")
+			local g = button(P, "Give_" .. c[1], "GIVE", UDim2.fromOffset(340, y), 100)
+			g.Activated:Connect(function()
+				local n = tonumber(b.Text)
+				if not n or n < 1 then note.Text = "type how many"; return end
+				give(c[1], nil, math.floor(n), c[2])
+			end)
+		end
+	end
+
+	-- VIP for good
+	do
+		local P = kindPage.VIP
+		local g = button(P, "GiveVip", "GIVE VIP", UDim2.fromOffset(0, 0), 170, 34)
+		lit(g, true)
+		g.Activated:Connect(function() give("vip", nil, 1, "VIP") end)
+	end
+
+	local kind = "CONTAINERS"
+	local function showKind(k: string)
+		kind = k
+		for name, b in kindBtn do lit(b, name == k) end
+		for name, f in kindPage do f.Visible = name == k end
+		if k == "ITEMS" and Gift.items then Gift.items() end
+	end
+	for name, b in kindBtn do b.Activated:Connect(function() showKind(name) end) end
+	local function showTab(gift: boolean)
+		Gift.shown = gift
+		page.Visible = gift
+		for _, c in powersKids do c.Visible = not gift end
+		lit(tabPowers, not gift)
+		lit(tabGift, gift)
+		if gift then drawTo(); showKind(kind) end
+	end
+	tabPowers.Activated:Connect(function() showTab(false) end)
+	tabGift.Activated:Connect(function() showTab(true) end)
+	showTab(false)
+	Gift.refresh = function() if Gift.shown then drawTo() end end
+	Gift.showTab = showTab
+	Players.PlayerAdded:Connect(function() Gift.refresh() end)
+	Players.PlayerRemoving:Connect(function() task.defer(Gift.refresh) end)
+end
+
 local function setOpen(on: boolean)
 	if open == on then return end
 	open = on
@@ -676,6 +935,7 @@ end)
 if RunService:IsStudio() then
 	me:GetAttributeChangedSignal("DevMenuTest"):Connect(function()
 		local v = me:GetAttribute("DevMenuTest")
-		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false) end
+		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false)
+		elseif v == "gift" then setOpen(true); Gift.showTab(true) end
 	end)
 end
