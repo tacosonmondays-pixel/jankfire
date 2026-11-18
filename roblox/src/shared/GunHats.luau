@@ -166,16 +166,19 @@ local function turnOf(sp: any): CFrame
 	return CFrame.Angles(0, math.rad(sp.yaw or 0), 0) * CFrame.Angles(math.rad(sp.pitch or 0), 0, 0)
 end
 
--- where a hat goes on a spot: (the foot in the gun frame, metres; the turn; the saddle, metres or nil). the googly eyes
--- (round 13, 17 Nov 2026, the owner: "placed on the gun like in JANKFIRE") stand on the gun themselves: no saddle,
--- upright, at their own height (spot.ey; spot.ey3 at the third-person size; measured by hat_spots.py: the pair dropped
--- onto the gun's top) and on a katana's pommel seat on the handle's top (spot.ez)
-local function seatOf(sp: any, id: string, boost: number?): (Vector3, CFrame, number?)
+-- where a hat goes on a spot: (the foot in the gun frame, metres; the turn; the saddle, metres or nil; its size against
+-- the seat's). the googly eyes (round 13, 17 Nov 2026, the owner: "placed on the gun like in JANKFIRE") stand on the gun
+-- themselves: no saddle, upright, at their own height (spot.ey; spot.ey3 at the third-person size; measured by
+-- hat_spots.py: the pair dropped onto the gun's top) and on a katana's pommel seat on the handle's top (spot.ez). they
+-- are drawn D.SIZE.eyes times the seat's size (18 Nov 2026, the owner: "googly eyes need to be larger too"; the heights
+-- are measured at that size)
+local function seatOf(sp: any, id: string, boost: number?): (Vector3, CFrame, number?, number)
+	local grow = if type(D.SIZE) == "table" and type(D.SIZE[id]) == "number" then D.SIZE[id] else 1
 	if id == "eyes" and type(sp.ey) == "number" then
 		local y = if (boost or 1) > 1.01 and type(sp.ey3) == "number" then sp.ey3 else sp.ey
-		return Vector3.new(sp.at.X, y, if type(sp.ez) == "number" then sp.ez else sp.at.Z), CFrame.Angles(0, math.rad(sp.yaw or 0), 0), nil
+		return Vector3.new(sp.at.X, y, if type(sp.ez) == "number" then sp.ez else sp.at.Z), CFrame.Angles(0, math.rad(sp.yaw or 0), 0), nil, grow
 	end
-	return sp.at, turnOf(sp), sp.saddle
+	return sp.at, turnOf(sp), sp.saddle, grow
 end
 
 -- a hat on a weapon model from WeaponModels.build (root = its PrimaryPart, k = studs per metre). any old hat goes.
@@ -189,10 +192,10 @@ function GunHats.attach(m: Model, wid: string, id: string?, k: number, anchored:
 	local sp = (type(skin) == "string" and D.SPOTS[wid .. "@" .. skin]) or D.SPOTS[wid]
 	local root = m.PrimaryPart
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not root then return nil end
-	local at, turn, saddle = seatOf(sp, id, boost)
+	local at, turn, saddle, grow = seatOf(sp, id, boost)
 	local foot = root.CFrame * CFrame.new(at * k) * turn
 	local carrier = if anchored then nil else carrierOf(m, root, foot.Position, foot.UpVector * 0.004 * k)
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1), carrier, if saddle then saddle * k * (boost or 1) else nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1) * grow, carrier, if saddle then saddle * k * (boost or 1) else nil)
 	if hat then hat.Parent = m end
 	return hat
 end
@@ -208,9 +211,9 @@ function GunHats.attachTool(tool: Instance, id: string?): Model?
 	local fr, kk = tool:GetAttribute("HatFrame"), tool:GetAttribute("HatK")
 	local frame: CFrame = if typeof(fr) == "CFrame" then fr else SHRED_FRAME
 	local K: number = if type(kk) == "number" then kk else SHRED_K
-	local at, turn, saddle = seatOf(sp, id, nil)
+	local at, turn, saddle, grow = seatOf(sp, id, nil)
 	local foot = h.CFrame * frame * CFrame.new(at * K) * turn
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, if h.Anchored then nil else h, if saddle then saddle * K else nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s * grow, if h.Anchored then nil else h, if saddle then saddle * K else nil)
 	if hat then hat.Parent = tool end
 	return hat
 end
@@ -225,10 +228,36 @@ function GunHats.attachToolCopy(m: Model, tool: Instance, id: string?): Model?
 	local fr, kk = tool:GetAttribute("HatFrame"), tool:GetAttribute("HatK")
 	local frame: CFrame = if typeof(fr) == "CFrame" then fr else SHRED_FRAME
 	local K: number = if type(kk) == "number" then kk else SHRED_K
-	local at, turn = seatOf(sp, id, nil)
+	local at, turn, _, grow = seatOf(sp, id, nil)
 	local foot = h.CFrame * frame * CFrame.new(at * K) * turn
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s * grow, nil)
 	if hat then hat.Parent = m end
+	return hat
+end
+
+-- a hat on a hand (18 Nov 2026, the owner: "can blood cross be your hand r6 or r15 and googly eyes sit on it like in
+-- the webgame"): the Blood Cross is your own hand as a finger-gun, so its hat stands at the hand's HatSpot, an Attachment
+-- tagged GunHatSpot that the hold code puts on the hand while the weapon is out (AvatarArms.hatSpot: on top of the hand,
+-- the thumb side, just behind the knuckles; +Y out of it, -Z toward the fingertips; attributes Weapon, Owner and K =
+-- that view's studs per metre). the hat is welded to the hand part, so it rides the pose and the bang's flick.
+-- HAND_SEATS: the hat's size there (as a spot's s) and how far its floor sits under the spot (metres, x its size: the
+-- eyes' balls meet the hand's skin a little inside its box). holder = where the hat model goes (first person: the
+-- viewmodel's weapon model, as its GunHat, so GunHats.aim and the view's hide pass take it like any gun's hat)
+GunHats.HAND_SEATS = { bloodcross = { s = 0.6, sink = 0.005 } } :: { [string]: { s: number, sink: number } }
+function GunHats.attachHand(att: Attachment, id: string?, boost: number?, holder: Instance?): Model?
+	local hand = att.Parent
+	local wid, k = att:GetAttribute("Weapon"), att:GetAttribute("K")
+	local seat = if type(wid) == "string" then GunHats.HAND_SEATS[wid] else nil
+	if not (hand and hand:IsA("BasePart") and seat and type(k) == "number") then return nil end
+	if not id or not GunHats.valid(id) or id == "none" then return nil end
+	local grow = if type(D.SIZE) == "table" and type(D.SIZE[id]) == "number" then D.SIZE[id] else 1
+	local size = seat.s * (boost or 1) * grow
+	local foot = att.WorldCFrame * CFrame.new(0, -seat.sink * size * k, 0)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * size, hand, nil)
+	if hat then
+		hat:SetAttribute("HandSpot", true)
+		hat.Parent = holder or hand
+	end
 	return hat
 end
 
@@ -281,11 +310,11 @@ function GunHats.attachDisplay(g: Model, wid: string, id: string?): Model?
 	local s = cp.Size.Magnitude / math.max(tp.Size.Magnitude, 1e-6)
 	local R = cp.CFrame.Rotation * tp.CFrame.Rotation:Inverse()
 	local function map(x: Vector3): Vector3 return cp.Position + R:VectorToWorldSpace((x - tp.Position) * s) end
-	local seat, turn, saddle = seatOf(sp, id, nil)
+	local seat, turn, saddle, grow = seatOf(sp, id, nil)
 	local at = tcf:PointToWorldSpace((seat - (flo + fhi) / 2) * U)
 	local foot = CFrame.new(map(at)) * (R * tcf.Rotation) * turn
 	local spm = (U.X + U.Y + U.Z) / 3 * s
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s, nil, if saddle then saddle * spm else nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s * grow, nil, if saddle then saddle * spm else nil)
 	if hat then hat.Parent = g end
 	return hat
 end

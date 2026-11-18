@@ -283,6 +283,43 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## Bigger Googly Eyes, and the eyes on the Blood Cross hand (18 Nov 2026, place version 942)
+
+The owner: "can blood cross be your hand r6 or r15 and googly eyes sit on it like in the webgame, googly eyes need to be
+larger too".
+
+- **Bigger:** the eyes are drawn 1.4x their seat's size on every gun (`hat_models.EYES_GROW`, written into GunHatData as
+  `D.SIZE = { eyes = 1.4 }`; `GunHats.seatOf` returns that factor and all four attach paths use it). The model and its
+  upload are unchanged. `eyes_seat` finds their rest heights (`ey`, `ey3`) at the new size and `hat_clip.py` checks
+  them there. On a katana's pommel seat the eyes sit `EYE_INSET` x 1.4 in from the handle's end.
+- **A seat can stand its eyes elsewhere along the gun** (`"ez"` in `hat_spots.json`): the Seraph Pistol's eyes are 1 cm
+  back (`ez` -0.07). At 1.4x at -0.08, its third-person pupils ran 1.6 mm into the slide's front (`slide_wzN__v2`).
+- **Clip check, all 129 seats, first and third person** (`--hat eyes` over every gun in the report, 258 rows merged):
+  no pupil in any gun and no gun in the eyes. The balls' depth is the designed 1 mm x size, so it is deeper now (2.5 mm
+  on the cart in third person). The Candle Revolver's balls go 3.4 mm into its glass vial in first person at every
+  position along the gun. Many rows now read "0.0 on -": the kit models' top pieces aren't closed solids, which the
+  inside test needs. The plain rifle reads 0.0 even at the old size. Contact is set by rays dropped onto the real
+  surface (`eyes_rest`), so the eyes can't float.
+- **Studio (place version 942):** GunHats, GunHatData and GunHatsClient pushed whole, each guarded by the old length.
+  Rays from under each ball, 10 seats, both sizes: -0.8 to -3.0 mm (into the gun). Exceptions, both in third person:
+  the Assault Rifle +2.3 / +3.0 and the Candle Revolver's left ball +8.0. In Blender those balls rest on the rifle's
+  rail rib edge (`trim_wzN__black`) and on the candle's glass vial (`body_wzN__vial`). Studio's rays hit collision
+  hulls, the old caveat, read shallower this time. Photos: `gun-hats/eyes-1.4-before.jpg`, `eyes-1.4-after.jpg`.
+- **The Blood Cross hand** (`GunHats.attachHand`, `GunHats.HAND_SEATS.bloodcross = { s = 0.6, sink = 0.005 }`):
+  - The Blood Cross is your own hand as a finger-gun, built by the hold session.
+  - While it is out, the hold code puts a `HatSpot` Attachment on the hand part (`AvatarArms.hatSpot`, tagged
+    `GunHatSpot`): on the thumb side, just behind the knuckles, +Y out of the hand, -Z to the fingertips. Its
+    attributes are `Weapon`, `Owner` (UserId; 0 on test bodies) and `K` (that view's studs per metre).
+  - `GunHatsClient` watches the tag and welds the owner's Blood Cross hat to the hand part there, so it rides the pose
+    and the bang's flick.
+  - First person: the hat is the viewmodel weapon model's `GunHat`, so `GunHats.aim` and Arsenal's hide pass take it
+    like any gun hat (it hides while you aim).
+  - Third person: the hat sits on the body's hand at `GunHats.THIRD`. The spot leaving takes the hat with it; a new
+    pick (`Hats`) puts it back on.
+  - The hand's collision is a box, so rays can't measure the mitten's real top: `sink` 0.005 (x size) is the hold
+    session's estimate, to be judged on photos.
+  - R6 bodies: the hold session will put the spot at the end of `Right Arm`; nothing changes here.
+
 ## The fused Hand Slapper (18 Nov 2026, place version 899)
 
 The guns session fused the slapper's hand into one piece (commit ceb280d, `sdf_kit.py`, place version 896). The thumb's
@@ -688,7 +725,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
 blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, batch C, Classic batch 1 and the Ducky Pistol rebuild in place version 824, and
-the two-form scythe v3 and Classic batches 2 and 3 in place version 847, batch D in place version 869, the Shopping Cart Cannon in place version 884, the card deck and lasso in place version 888, and the fused Hand Slapper rechecked in place version 899.
+the two-form scythe v3 and Classic batches 2 and 3 in place version 847, batch D in place version 869, the Shopping Cart Cannon in place version 884, the card deck and lasso in place version 888, the fused Hand Slapper rechecked in place version 899, and the Googly Eyes 1.4x plus the Blood Cross hand in place version 942.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset

@@ -369,6 +369,11 @@ PUPIL_Z = 0.0149   # how far forward of each white ball's centre (toward the muz
 EYE_SINK = 0.001   # how far the balls go into the gun where they touch (x their size): a contact patch, no gap
 THIRD = 1.5        # GunHats.THIRD: the third-person size, which rests at its own height on a round top
 EYE_INSET = 0.028  # on a seat off a katana's pommel end (pitch 90) the eyes sit on the handle's top this far in
+# (18 Nov 2026, the owner: "googly eyes need to be larger too"): the eyes are drawn EYES_GROW times the seat's size on
+# every gun. The model and its upload stay as they are; GunHats scales them (GunHatData's SIZE, written by hat_spots.py),
+# eyes_seat finds their rest height at that size and hat_clip.py checks them at it
+EYES_GROW = 1.4
+SIZE = {'eyes': EYES_GROW}
 
 
 @hat
@@ -420,8 +425,9 @@ def eyes_seat(top, sp):
        size and at the third-person size, and their z (on a katana's pommel seat, pitch 90: upright on the handle's
        top, EYE_INSET in from its end)"""
     x, z = sp.get('x', 0.0), sp['z']
-    if sp.get('pitch', 0) == 90: z -= EYE_INSET
-    s = sp.get('s', 1.0)
+    if sp.get('pitch', 0) == 90: z -= EYE_INSET * EYES_GROW
+    if 'ez' in sp: z = sp['ez']  # (a seat may stand its eyes elsewhere along the gun than its hats: hat_spots.json "ez")
+    s = sp.get('s', 1.0) * EYES_GROW
     return x, eyes_rest(top, x, z, sp.get('yaw', 0), s), eyes_rest(top, x, z, sp.get('yaw', 0), s * THIRD), z
 
 

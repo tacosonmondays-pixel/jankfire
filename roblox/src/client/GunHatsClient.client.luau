@@ -38,6 +38,71 @@ local function racks()
 	return n
 end
 me:GetAttributeChangedSignal("Hats"):Connect(racks)
+
+-- hats on hands (GunHats.attachHand; 18 Nov 2026, the Blood Cross: your own hand is the weapon): wherever the hold code
+-- puts a HatSpot (an Attachment tagged GunHatSpot, AvatarArms.hatSpot), the owner's hat for that weapon stands on it.
+-- first person (the spot is in the camera): inside the viewmodel's weapon model as its GunHat, so it hides while you aim
+-- and with the view, like a gun's hat; third person: on the body's hand, GunHats.THIRD bigger. a spot that goes takes
+-- its hat with it; a new pick (the Hats attribute) puts every spot's hat on again
+local CS = game:GetService("CollectionService")
+local onSpot: { [Attachment]: Model } = {}
+local function placeSpot(att: Instance)
+	if not att:IsA("Attachment") then return end
+	local old = onSpot[att]
+	if old then old:Destroy(); onSpot[att] = nil end
+	local wid = att:GetAttribute("Weapon")
+	if type(wid) ~= "string" or not att.Parent then return end
+	local uid = att:GetAttribute("Owner")
+	local who = if type(uid) == "number" and uid ~= 0 then Players:GetPlayerByUserId(uid) else me -- (0: a test body)
+	local id = GunHats.hatFor(who, wid)
+	if not id then return end
+	local cam = workspace.CurrentCamera
+	local fp = cam ~= nil and att:IsDescendantOf(cam)
+	local holder: Instance? = nil
+	if fp then
+		local m: Instance = att
+		while m.Parent and m.Parent ~= cam do m = m.Parent :: Instance end
+		local was = m:FindFirstChild("GunHat")
+		if m:IsA("Model") and not (was and not was:GetAttribute("HandSpot")) then
+			if was then was:Destroy() end
+			holder = m
+		end
+	end
+	local hat = GunHats.attachHand(att, id, if fp then nil else GunHats.THIRD, holder)
+	if hat then onSpot[att] = hat end
+end
+local function dropSpot(att: Instance)
+	local hat = onSpot[att :: Attachment]
+	if hat then hat:Destroy(); onSpot[att :: Attachment] = nil end
+end
+for _, a in CS:GetTagged("GunHatSpot") do task.defer(placeSpot, a) end
+CS:GetInstanceAddedSignal("GunHatSpot"):Connect(function(a) task.defer(placeSpot, a) end)
+CS:GetInstanceRemovedSignal("GunHatSpot"):Connect(dropSpot)
+-- (a pick changes: that player's Hats attribute puts the hats on their spots again)
+local function mine(att: Instance, p: Player): boolean
+	local uid = att:GetAttribute("Owner")
+	return uid == p.UserId or ((uid == 0 or uid == nil) and p == me)
+end
+local function repick(p: Player)
+	for _, a in CS:GetTagged("GunHatSpot") do
+		if mine(a, p) then placeSpot(a) end
+	end
+end
+local function watch(p: Player) p:GetAttributeChangedSignal("Hats"):Connect(function() repick(p) end) end
+for _, p in Players:GetPlayers() do watch(p) end
+Players.PlayerAdded:Connect(watch)
+-- (a spot whose hand went loses its hat; a hat the view rebuilt away while its spot stayed goes back on)
+RunService.Heartbeat:Connect(function()
+	for att, hat in onSpot do
+		if not att.Parent then
+			if hat.Parent then hat:Destroy() end
+			onSpot[att] = nil
+		elseif not hat.Parent then
+			onSpot[att] = nil
+			task.defer(placeSpot, att)
+		end
+	end
+end)
 task.spawn(function()
 	-- (the hub may still be arriving: try a few times)
 	for _ = 1, 6 do
