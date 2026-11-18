@@ -10,7 +10,7 @@
 -- for 8 s) they fire at whoever is inside the end, and their shots never cross the line. the end is
 -- Hub.TrainingGround.LiveFire (TrainingV2): Zone (its box), LiveButton (with the Prompt), lamps (attribute Lamp), and
 -- the attribute Line (the z the shots stop at). the dummies are cardboard-coloured with a ring on the chest now, the
--- shooters slate with a red one, and no name tags
+-- shooters slate with a red one, and no name tags. since 18 Nov: rails, the practice lane and the heal pads (below)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -27,12 +27,40 @@ type Fighter = Rules.Fighter
 local Dummies = {}
 local S = Weapons.S
 local list: { Fighter } = {}
-local brain: { [Fighter]: { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number } } = {}
+type Brain = { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number, span: number?, speed: number?, every: number?, lane: boolean, jumpT: number }
+local brain: { [Fighter]: Brain } = {}
 local Fight: any
 local applyHitscan: any
 local TAN, SLATE, LEGS = Color3.fromRGB(180, 154, 122), Color3.fromRGB(98, 102, 111), Color3.fromRGB(74, 78, 87)
 local RED, PALE = Color3.fromRGB(200, 70, 60), Color3.fromRGB(236, 234, 228)
+local LIGHT, HEAVY = Color3.fromRGB(214, 200, 178), Color3.fromRGB(122, 104, 86) -- (the practice lane's 50 and 300 HP dummies)
 local function shooter(name: string): boolean return string.sub(name, 1, 7) == "Plinker" end
+
+-- the practice lane (18 Nov, the owner: "can the training hub be like the overwatch training one to an extent like the
+-- indoor part except for the shoot range"): the yard's side hall's three run on rails (a spot's Span: studs each way,
+-- Speed: walk speed; any spot with a Span is a rail: the yard's strafer and the course's Runner too), and two consoles at
+-- the lane's start set, for everyone in it, how they act (BEHAVIOUR: strafe, strafe and jump, shoot back, still) and
+-- their health (HEALTH: 100, 300, 50). shoot back is the live-fire shooters' burst, at players inside the side hall only.
+-- the lane is Hub.TrainingGround.Practice (TrainingV2): Zone, BehaviourButton and HealthButton (each with a Prompt),
+-- Board (PracticeBoard.client paints it). heal pads anywhere in the training ground: a Model with the attributes Heal
+-- (HP) and Every (s); its HealPlus parts dim while it comes back
+local MODES = { "strafe", "jump", "shoot", "still" }
+local MODE_TEXT = { strafe = "Strafe", jump = "Strafe and jump", shoot = "Shoot back", still = "Still" }
+local CLASSES = { 100, 300, 50 }
+local practice = { mode = "strafe", hp = 100 }
+local pf: Instance? = nil
+local pads: { { m: Model, at: Vector3, heal: number, every: number, readyAt: number } } = {}
+local function laneShoots(f: Fighter): boolean
+	local b = brain[f]
+	return b ~= nil and b.lane and practice.mode == "shoot"
+end
+local function inPractice(pos: Vector3): boolean
+	local z = (pf and pf:FindFirstChild("Zone")) :: BasePart?
+	if not z then return false end
+	local rel = z.CFrame:PointToObjectSpace(pos)
+	local h = z.Size / 2
+	return math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z
+end
 
 -- the live-fire end
 local LIVE_FOR, EMPTY_FOR = 90, 8
@@ -108,8 +136,11 @@ local function body(name: string, color: Color3): Model
 end
 
 local function make(f: Fighter)
-	local plinker = shooter(f.name)
-	local m = body(f.name, if plinker then SLATE else TAN)
+	local plinker = shooter(f.name) or laneShoots(f)
+	local b0 = brain[f]
+	local max = f.maxHp or Weapons.HP
+	local tone = if plinker then SLATE elseif b0 and b0.lane and max > Weapons.HP then HEAVY elseif b0 and b0.lane and max < Weapons.HP then LIGHT else TAN
+	local m = body(f.name, tone)
 	-- a target ring on the chest (red on the shooters, so you know which ones shoot back)
 	local torso = (m:FindFirstChild("UpperTorso") or m:FindFirstChild("Torso")) :: BasePart?
 	if torso then
@@ -162,8 +193,8 @@ function Dummies.slip(f: Fighter)
 end
 
 -- the Plinker's burst: the server's own ray from its eye (a bot fires on the server, web botFire), same spread maths
-local function plink(f: Fighter)
-	if not live then return end
+local function plink(f: Fighter, lane: boolean?)
+	if not lane and not live then return end
 	local eye = Fight.eye(f)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
@@ -173,7 +204,7 @@ local function plink(f: Fighter)
 		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" and not (t.ref :: Player):GetAttribute("RangeRun") and not (t.ref :: Player):GetAttribute("OnLot") then
 			local c = Fight.root(t)
 			-- (nor through smoke: the web game's bots can't see through it either, room.js canSee)
-			if c and inLive(c.Position) and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) and not (Fight.smokeBlocks and Fight.smokeBlocks(eye, c.Position)) then best, bestD = t, (c.Position - eye).Magnitude end
+			if c and (if lane then inPractice(c.Position) else inLive(c.Position)) and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) and not (Fight.smokeBlocks and Fight.smokeBlocks(eye, c.Position)) then best, bestD = t, (c.Position - eye).Magnitude end
 		end
 	end
 	if not best then return end
@@ -183,7 +214,7 @@ local function plink(f: Fighter)
 		local tc = (Fight.root(best) :: BasePart).Position
 		root.CFrame = CFrame.lookAt(root.Position, Vector3.new(tc.X, root.Position.Y, tc.Z))
 	end
-	local shots = 5
+	local shots = if lane then 3 else 5
 	task.spawn(function()
 		for _ = 1, shots do
 			if not f.alive or not best.alive or not Fight.live then return end
@@ -194,7 +225,7 @@ local function plink(f: Fighter)
 			local aim = (tf + Vector3.new(0, 3.5, 0) - e).Unit
 			local d = Hitbox.spreadDir(aim, (w.spread :: number) * 1 + 0.045, math.random(), math.random())
 			local cap = w.range :: number
-			local line = lf and lf:GetAttribute("Line")
+			local line = if lane then nil else lf and lf:GetAttribute("Line")
 			if type(line) == "number" and d.Z > 1e-4 then cap = math.min(cap, math.max(0, (line - e.Z) / d.Z)) end -- (never past the line)
 			local hitMap = Fight.castMap(e, d, cap)
 			local mapT = if hitMap then (hitMap.Position - e).Magnitude else cap
@@ -208,6 +239,86 @@ local function plink(f: Fighter)
 			task.wait(1 / Weapons.fireRate(w, f.hp))
 		end
 	end)
+end
+
+-- the practice lane's consoles and the heal pads (found again whenever the training ground is rebuilt)
+local function practiceFolder(): Instance?
+	local map = workspace:FindFirstChild("Map")
+	local hub = map and map:FindFirstChild("Hub")
+	local tg = hub and hub:FindFirstChild("TrainingGround")
+	return tg and tg:FindFirstChild("Practice")
+end
+local function promptOf(name: string): ProximityPrompt?
+	local b = pf and pf:FindFirstChild(name)
+	local p = b and b:FindFirstChild("Prompt")
+	return if p and p:IsA("ProximityPrompt") then p else nil
+end
+local function paintConsoles()
+	local a = promptOf("BehaviourButton")
+	if a then a.ObjectText = "Dummies: " .. MODE_TEXT[practice.mode]; a.ActionText = "Change" end
+	local h = promptOf("HealthButton")
+	if h then h.ObjectText = "Dummy health: " .. practice.hp; h.ActionText = "Change" end
+end
+local function respawnLane()
+	for _, f in list do
+		local b = brain[f]
+		if b and b.lane then
+			f.maxHp = if practice.hp ~= Weapons.HP then practice.hp else nil
+			b.flip, b.jumpT, b.shoot = 0, 0, os.clock() + 1.5
+			Fight.spawn(f)
+		end
+	end
+end
+local function nextIn<T>(t: { T }, v: T): T
+	local i = table.find(t, v) or 0
+	return t[i % #t + 1]
+end
+local function wirePractice()
+	local f = practiceFolder()
+	if f == pf then return end
+	pf = f
+	local a = promptOf("BehaviourButton")
+	if a then a.Triggered:Connect(function() if pf == f then practice.mode = nextIn(MODES, practice.mode); respawnLane(); paintConsoles() end end) end
+	local h = promptOf("HealthButton")
+	if h then h.Triggered:Connect(function() if pf == f then practice.hp = nextIn(CLASSES, practice.hp); respawnLane(); paintConsoles() end end) end
+	paintConsoles()
+	table.clear(pads)
+	local tg = f and f.Parent
+	if tg then
+		for _, m in tg:GetDescendants() do
+			local heal = m:GetAttribute("Heal")
+			if m:IsA("Model") and type(heal) == "number" then
+				local every = m:GetAttribute("Every")
+				table.insert(pads, { m = m, at = m:GetPivot().Position, heal = heal, every = if type(every) == "number" then every else 10, readyAt = 0 })
+			end
+		end
+	end
+end
+local function dimPad(m: Model, used: boolean)
+	m:SetAttribute("Ready", not used)
+	for _, d in m:GetDescendants() do if d:IsA("BasePart") and d.Name == "HealPlus" then d.Transparency = if used then 0.8 else 0 end end
+end
+-- a heal pad: stand on it with less than your full health and it gives you Heal HP, then comes back after Every s
+local function tickPads(n: number)
+	for _, pd in pads do
+		if not pd.m.Parent or n < pd.readyAt then continue end
+		if pd.m:GetAttribute("Ready") == false then dimPad(pd.m, false) end
+		for _, p in Players:GetPlayers() do
+			local fp = Fight.of(p)
+			local ch = p.Character
+			local r = (ch and ch:FindFirstChild("HumanoidRootPart")) :: BasePart?
+			if not fp or not fp.alive or not r then continue end
+			local d = r.Position - pd.at
+			if Vector3.new(d.X, 0, d.Z).Magnitude > 2.6 or d.Y < -1 or d.Y > 6 then continue end
+			local max = fp.maxHp or Weapons.HP
+			if fp.hp >= max then continue end
+			fp.hp = math.min(max, fp.hp + pd.heal)
+			Fight.syncHp(fp)
+			pd.readyAt = n + pd.every
+			dimPad(pd.m, true)
+			break
+		end
+	end
 end
 
 function Dummies.tick(n: number)
@@ -225,7 +336,9 @@ function Dummies.tick(n: number)
 			end
 			setLive(false)
 		end
+		wirePractice()
 	end
+	tickPads(n)
 	if live then
 		for _, p in Players:GetPlayers() do
 			local ch = p.Character
@@ -241,12 +354,23 @@ function Dummies.tick(n: number)
 		if not f.alive or not hum or not root then continue end
 		if root.Position.Y < (killY :: number) then Fight.void(f); continue end
 		if hum.PlatformStand and n > b.slipUntil then hum.PlatformStand = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-		if string.sub(f.name, 1, 5) == "Dummy" and n > b.flip and not hum.PlatformStand then
-			b.flip = n + 1.6; b.side = -b.side
-			hum:MoveTo(b.home + Vector3.new(b.side * 4 * S, 0, 0))
-		elseif shooter(f.name) and n > b.shoot then
+		local span = b.span
+		if span and not (b.lane and practice.mode == "still") and n > b.flip and not hum.PlatformStand then
+			-- (a rail: to one end and back at its own speed; the yard's first strafer keeps its 1.6 s flip)
+			local sp = b.speed or 22
+			hum.WalkSpeed = sp
+			b.side = -b.side
+			b.flip = n + (b.every or (2 * span / sp + 0.35))
+			hum:MoveTo(b.home + Vector3.new(b.side * span, 0, 0))
+		end
+		if b.lane and practice.mode == "jump" and n > b.jumpT and not hum.PlatformStand then
+			b.jumpT = n + 1.2 + math.random() * 0.8
+			hum.Jump = true
+		end
+		local lane = laneShoots(f)
+		if (shooter(f.name) or lane) and n > b.shoot then
 			b.shoot = n + 3
-			plink(f)
+			plink(f, lane)
 		end
 	end
 end
@@ -257,13 +381,19 @@ function Dummies.init(fight: any, apply: any)
 	local spots = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("DummySpots")
 	local sp = Fight.spawnPoints()
 	-- (18 Nov: the yard's side hall has three more, Stand3, Stand4 and the second strafer Dummy2, only where their spots are)
-	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2", "Stand3", "Stand4", "Dummy2" } do
+	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2", "Stand3", "Stand4", "Dummy2", "Runner" } do
 		local f = Rules.newFighter("dummy", if string.sub(name, 1, 5) == "Stand" then "Stand" else name, nil)
 		local spot = spots and spots:FindFirstChild(name) :: BasePart?
 		if not spot and not spots and i > 2 then continue end
 		if not spot and i > 5 then continue end
 		local home = if spot then spot.Position else (sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0))
-		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0 }
+		local railSpan = spot and spot:GetAttribute("Span")
+		local span: number? = if type(railSpan) == "number" then railSpan elseif string.sub(name, 1, 5) == "Dummy" then 4 * S else nil
+		local railSpeed = spot and spot:GetAttribute("Speed")
+		local lane = spot ~= nil and spot:GetAttribute("Lane") == "practice"
+		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0, span = span,
+			speed = if type(railSpeed) == "number" then railSpeed else nil, every = if type(railSpan) == "number" then nil else 1.6, lane = lane, jumpT = 0 }
+		if lane and practice.hp ~= Weapons.HP then f.maxHp = practice.hp end
 		table.insert(list, f)
 		table.insert(Fight.all, f)
 		Fight.spawn(f)
@@ -279,6 +409,21 @@ function Dummies.init(fight: any, apply: any)
 			return { live = live, left = math.max(0, liveUntil - os.clock()), folder = lf ~= nil }
 		end
 		bf.Parent = game:GetService("ServerStorage")
+		-- ServerStorage.PracticeTest: "mode" (strafe, jump, shoot, still), "hp" (100, 300, 50), "state"
+		local pt = Instance.new("BindableFunction")
+		pt.Name = "PracticeTest"
+		pt.OnInvoke = function(op: string, v: any): any
+			if op == "mode" and table.find(MODES, v) then practice.mode = v; respawnLane(); paintConsoles()
+			elseif op == "hp" and table.find(CLASSES, v) then practice.hp = v; respawnLane(); paintConsoles() end
+			local out = {}
+			for _, f in list do
+				local b = brain[f]
+				local r = Fight.root(f)
+				table.insert(out, { name = f.name, lane = b.lane, hp = f.hp, max = f.maxHp or Weapons.HP, at = r and r.Position, alive = f.alive })
+			end
+			return { mode = practice.mode, hp = practice.hp, pads = #pads, folder = pf ~= nil, dummies = out }
+		end
+		pt.Parent = game:GetService("ServerStorage")
 	end
 end
 

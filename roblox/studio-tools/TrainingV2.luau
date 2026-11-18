@@ -44,7 +44,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 19
+T.PUSH = 20
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -83,7 +83,14 @@ T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -
 -- (18 Nov, more room: the standing two 18 apart, not 14; the side hall's three in a line down its middle, x -43.8: one
 -- standing at 10 m, one on a round stand at 20 m, the second strafer at 30 m, where nothing stands in his way)
 T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -9, 239, -8173.5 }, Stand2 = { 9, 239, -8173.5 },
-	Stand3 = { -43.8, 240, -8173.5 }, Stand4 = { -43.8, 243.2, -8206 }, Dummy2 = { -43.8, 240, -8236 } } -- (the standing ones just before the 10 m line, their rings clear of it)
+	Stand3 = { -42.5, 240, -8173.5 }, Stand4 = { -43.8, 240, -8206 }, Dummy2 = { -48, 246, -8236 }, Runner = { -98, 240, -8210 } } -- (the standing ones just before the 10 m line, their rings clear of it)
+-- (18 Nov, the practice pass: the owner, "can the training hub be like the overwatch training one to an extent like the
+-- indoor part except for the shoot range that can stay as is". the side hall is the practice lane: its three on rails,
+-- slow at 10 m, quicker at 20 m, quickest at 30 m up on the deck, set by the lane's consoles (Dummies.luau); the course
+-- has a runner on a long rail between its towers, to shoot at while you swing. { span each way, walk speed }; a spot with
+-- a Span is a rail. the yard's own strafer keeps its old 12 at 22, with no attributes)
+T.RAILS = { Stand3 = { 6, 8 }, Stand4 = { 10, 14 }, Dummy2 = { 7, 20 }, Runner = { 18, 14 } }
+T.LANE = { Stand3 = true, Stand4 = true, Dummy2 = true }
 T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (the stage, the door)
 T.ZONE = { -140, 86, 220, 312, -8058, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier; down to 220 for the basement; west to -140 since the course grew and south to -8058 for the gold dummies' door, 18 Nov)
 -- the back lot's way down (17 Nov, the owner: the lot's EXIT door "seemly leads no where, can it be like a basement
@@ -125,7 +132,7 @@ T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid,
 -- those the same in every game
 -- (the first run's finds: the console's top; the shop shelf's top, where you could stand with your head in the headsets
 -- on the slatwall)
-T.HEAD = { eye = 4.5, near = 1.0, body = V3(1.2, 3.2, 1.2), margin = 0.8, guard = { "ConsoleTop", "ShelfTop", "AisleTarget" } } -- (the side hall's target since 18 Nov: a mesh on the end wall you could walk your face into)
+T.HEAD = { eye = 4.5, near = 1.0, body = V3(1.2, 3.2, 1.2), margin = 0.8, guard = { "ConsoleTop", "ShelfTop", "AisleTarget", "PracticeTop" }, bodiesOnly = { PracticeTop = true } } -- (the side hall's target since 18 Nov: a mesh on the end wall you could walk your face into)
 
 local function folderIn(parent, name)
 	local f = parent:FindFirstChild(name)
@@ -594,6 +601,40 @@ local PIERS = { -8162, -8178, -8194, -8210, -8226, -8242 }
 -- stage's pier; past that (the live-fire end) the wall stays whole. x0 = its west wall's face, x1 = the columns' faces
 local AISLE = { x0 = -58, x1 = -29.6, ceil = 262, head = 256, open = STAGE.z + 3.5 }
 AISLE.x = (AISLE.x0 + AISLE.x1) / 2
+-- the practice lane's deck (18 Nov): the far third raised 6, a slate mass with the ledges' white nose, stairs up its
+-- arcade side; the 30 m dummy runs on it. from the lane you shoot up at it; from it you fight down the lane
+AISLE.deck = { x1 = -38, z0 = -8226, top = 246, steps = 8 }
+-- a rail across a floor (the practice pass): a dark bed under the dummy's track, chunky stops at its ends (none where
+-- the floor's own step ends it), its pale middle the distance line drawn there or its own (o.line)
+local function rail(B, x, y, z, span, o)
+	o = o or {}
+	local half = span + 1.4
+	B.blk("Scenery", "RailBed", x - half, x + half, y + 0.005, y + 0.025, z - 1.2, z + 1.2, P.deep, { ghost = true })
+	if o.line then B.blk("Scenery", "RailLine", x - half, x + half, y + 0.03, y + 0.06, z - 0.25, z + 0.25, P.line, { ghost = true }) end
+	if o.stops ~= false then
+		for _, sx in { -1, 1 } do
+			local ex = x + sx * (half + 0.6)
+			B.blk("Shell", "RailStop", ex - 0.6, ex + 0.6, y, y + 0.9, z - 1.3, z + 1.3, P.pier2)
+			B.blk("Shell", "RailStopCap", ex - 0.65, ex + 0.65, y + 0.9, y + 1.05, z - 1.35, z + 1.35, P.trim)
+		end
+	end
+end
+-- a heal pad (the practice pass): stand on it under full health for +Heal HP; it comes back after Every s (Dummies.luau)
+local function healPad(B, x, y, z)
+	local m = Instance.new("Model")
+	m.Name = "HealPad"
+	local parts = {
+		B.drum("Shell", "HealPadBase", x, z, y, y + 0.3, 4.6, P.pier2),
+		B.drum("Scenery", "HealPadRing", x, z, y + 0.3, y + 0.34, 4.0, P.trim, { ghost = true }),
+		B.blk("Scenery", "HealPlus", x - 1.3, x + 1.3, y + 0.34, y + 0.42, z - 0.42, z + 0.42, P.chill, { ghost = true, mat = NEON }),
+		B.blk("Scenery", "HealPlus", x - 0.42, x + 0.42, y + 0.34, y + 0.43, z - 1.3, z + 1.3, P.chill, { ghost = true, mat = NEON }),
+	}
+	for _, q in parts do q.Parent = m end
+	m:SetAttribute("Heal", 75); m:SetAttribute("Every", 10); m:SetAttribute("Ready", true)
+	m.WorldPivot = B.at(CF(x, y, z))
+	m.Parent = B.root.Scenery
+	return m
+end
 local function aisle(B)
 	local x0, x1, ax, top = AISLE.x0, AISLE.x1, AISLE.x, AISLE.ceil + 2.5
 	local wx = -YX - 4 -- (-28: the yard's wall's outside, now the arcade's back)
@@ -642,28 +683,86 @@ local function aisle(B)
 		B.blk("Shell", "Dado", x0, wx, Y0, Y0 + 1.2, z[1], z[2], P.floor2, { ghost = true })
 		B.blk("Shell", "Band", x0, wx, Y0 + 8, Y0 + 8.6, z[1], z[1] + (z[2] - z[1]) * 1.5, P.trim, { ghost = true })
 	end
-	-- the floor: a pale line at every pier, the 10, 20 and 30 m lines and their numbers (to the arcade side, clear of the stand)
-	for _, z in PIERS do B.line(x0 + 1.85, z, x1, z, Y0 + 0.01, 0.7, P.line, "PierLine") end
-	for k, z in { -8176, -8206, -8236 } do
-		B.blk("Scenery", "DistLine", x0 + 1.85, x1, Y0 + 0.03, Y0 + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true })
-		B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, 6, 2.4, CF(x1 - 4.2, Y0 + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	-- the deck at the far end, its stairs up the arcade side (to the arcade's wall, whole there), its landing
+	local D = AISLE.deck
+	local pr = folderIn(B.root, "Practice")
+	B.blk("Shell", "Deck", x0, D.x1, Y0, D.top, D.z0, YZ1, P.ledge)
+	B.part("Shell", "Nose", CF((x0 + D.x1) / 2, D.top - 0.1, D.z0 + 0.1), V3(D.x1 - x0, 1.4, 1.4), P.trim, { cyl = true })
+	B.blk("Scenery", "EdgeLight", x0, D.x1, D.top - 1.3, D.top - 1.0, D.z0 + 0.05, D.z0 + 0.2, P.litEdge, { ghost = true, mat = NEON })
+	local rise = (D.top - Y0) / D.steps
+	for k = 1, D.steps do
+		local za, zb = D.z0 - (k - 1) * 2, D.z0 - k * 2
+		B.blk("Shell", "DeckStep", D.x1, wx, Y0, Y0 + k * rise, za, zb, P.ledge)
+		B.part("Shell", "StepNose", CF((D.x1 + wx) / 2, Y0 + k * rise - 0.3, za + 0.05), V3(wx - D.x1, 0.6, 0.6), P.trim, { cyl = true })
 	end
-	-- its dummies: a ring where the standing one stands, the round stand at 20 m (the shooters' kind), the strafer's track
-	local s3, s4 = T.DUMMIES.Stand3, T.DUMMIES.Stand4
-	B.drum("Scenery", "StandRing", s3[1], s3[3], Y0 + 0.03, Y0 + 0.06, 4, P.trim, { ghost = true })
-	B.drum("Scenery", "StandRingIn", s3[1], s3[3], Y0 + 0.06, Y0 + 0.1, 2.9, P.floor2, { ghost = true })
-	B.put("tv_pulpit", CF(s4[1], Y0, s4[3]), { name = "AisleStand" })
-	B.drum("Collision", "AisleStandSolid", s4[1], s4[3], Y0, Y0 + 2, 12.4, P.pier, { tr = 1, noShadow = true })
-	B.drum("Shell", "AisleStandTop", s4[1], s4[3], Y0 + 1.9, s4[2] - 0.3, 8, P.pier2)
-	B.drum("Shell", "AisleStandLip", s4[1], s4[3], s4[2] - 0.35, s4[2], 8.5, P.trim)
+	B.blk("Shell", "DeckLanding", D.x1, wx, Y0, D.top, D.z0 - 2 * D.steps, YZ1, P.ledge)
+	-- the board on the deck's face: your own numbers, painted on your screen by PracticeBoard.client
+	local bw, bh = 16, 3.6
+	local board = Instance.new("Part")
+	board.Name = "Board"; board.Anchored = true; board.CanCollide = false; board.CanQuery = false; board.CanTouch = false; board.CastShadow = false
+	board.Size = V3(bw, bh, 0.25); board.Color = Color3.fromHex(P.board); board.Material = SP
+	board.CFrame = B.at(CFrame.lookAt(V3((x0 + D.x1) / 2, Y0 + 0.5 + bh / 2, D.z0 + 0.15), V3((x0 + D.x1) / 2, Y0 + 0.5 + bh / 2, D.z0 + 10)))
+	local g = Instance.new("SurfaceGui")
+	g.Name = "Gui"; g.Face = Enum.NormalId.Front; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 40; g.LightInfluence = 0
+	for i, c in { { "Damage", "DAMAGE", "0" }, { "Dps", "DPS", "-" }, { "Ttk", "TIME TO KILL", "-" } } do
+		local col = Instance.new("Frame")
+		col.Name = c[1]; col.BackgroundTransparency = 1; col.Size = UDim2.fromScale(1 / 3, 1); col.Position = UDim2.fromScale((i - 1) / 3, 0)
+		local lab = Instance.new("TextLabel")
+		lab.Name = c[1] .. "Label"; lab.BackgroundTransparency = 1; lab.Size = UDim2.fromScale(0.9, 0.26); lab.Position = UDim2.fromScale(0.05, 0.1)
+		lab.TextScaled = true; lab.Text = c[2]; lab.TextColor3 = Color3.fromHex(P.grey)
+		lab.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.SemiBold)
+		lab.Parent = col
+		local val = Instance.new("TextLabel")
+		val.Name = c[1] .. "Value"; val.BackgroundTransparency = 1; val.Size = UDim2.fromScale(0.9, 0.5); val.Position = UDim2.fromScale(0.05, 0.4)
+		val.TextScaled = true; val.Text = c[3]; val.TextColor3 = Color3.fromHex(P.pale)
+		val.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+		val.Parent = col
+		col.Parent = g
+	end
+	g.Parent = board
+	board.Parent = pr
+	-- the rails: slow at 10 m, quicker on the 20 m line, quickest on the deck's 30 m line
+	local s3, s4, s5 = T.DUMMIES.Stand3, T.DUMMIES.Stand4, T.DUMMIES.Dummy2
+	rail(B, s3[1], Y0, s3[3], T.RAILS.Stand3[1], { line = true })
+	rail(B, s4[1], Y0, s4[3], T.RAILS.Stand4[1])
+	rail(B, s5[1], D.top, s5[3], T.RAILS.Dummy2[1])
+	-- the floor: a pale line at every pier short of the deck, the 10 and 20 m lines on the floor and the 30 m on the deck,
+	-- their numbers to the arcade side
+	for _, z in PIERS do if z > D.z0 + 1 then B.line(x0 + 1.85, z, x1, z, Y0 + 0.01, 0.7, P.line, "PierLine") end end
+	for k, z in { -8176, -8206, -8236 } do
+		local fy, xe = if z < D.z0 then D.top else Y0, if z < D.z0 then D.x1 else x1
+		B.blk("Scenery", "DistLine", x0 + 1.85, xe, fy + 0.03, fy + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true })
+		B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, 6, 2.4, CF(xe - 4.2, fy + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	end
+	-- the two consoles at the lane's start (the live-fire console's kind; hold E): BEHAVIOUR and HEALTH (Dummies.luau)
+	local function console(name, word, cx, cz, hex)
+		local ch = Y0 + 2.55
+		B.blk("Shell", "ConsoleBase", cx - 1.6, cx + 1.6, Y0, ch - 0.55, cz + 1.2, cz - 1.2, P.slate)
+		B.part("Shell", "PracticeTop", CF(cx, ch, cz) * CFrame.Angles(math.rad(28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
+		local btn = B.part("Scenery", name, CF(cx, ch, cz) * CFrame.Angles(math.rad(28), 0, 0) * CF(0, 0.45, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), hex, { cyl = true, ghost = true })
+		btn.Parent = pr
+		local pp = Instance.new("ProximityPrompt")
+		pp.Name = "Prompt"; pp.ActionText = "Change"; pp.ObjectText = word; pp.HoldDuration = 0.3
+		pp.MaxActivationDistance = 8; pp.RequiresLineOfSight = false; pp.KeyboardKeyCode = Enum.KeyCode.E
+		pp.Parent = btn
+		B.text("ConsoleWord", { { word, P.pale, "B", 1 } }, 2.9, 0.55, CF(cx, Y0 + 1.15, cz + 1.24) * CFrame.Angles(0, math.pi, 0), { plate = P.slate, thick = 0.05 })
+	end
+	console("BehaviourButton", "BEHAVIOUR", x0 + 5.5, YZ0 - 14, P.amber)
+	console("HealthButton", "HEALTH", x0 + 11.5, YZ0 - 14, P.chill)
+	healPad(B, x1 - 4.9, Y0, YZ0 - 10)
+	-- the lane's box: the dummies shoot back only at players inside it
+	local zone = Instance.new("Part")
+	zone.Name = "Zone"; zone.Anchored = true; zone.Transparency = 1; zone.CanCollide = false; zone.CanQuery = false; zone.CanTouch = false
+	zone.Size = V3(wx - x0, AISLE.ceil - Y0, (YZ0 - 4) - YZ1); zone.CFrame = B.cf((x0 + wx) / 2, (Y0 + AISLE.ceil) / 2, (YZ0 - 4 + YZ1) / 2)
+	zone.Parent = pr
 	-- cover along the far wall, as on the yard's east walk: a chest-high wall, then a head-high one, centred in their bays
 	B.put("tv_cover", CF(x0 + 4.8, Y0, -8170) * CFrame.Angles(0, math.pi / 2, 0), { name = "Cover" })
 	B.solid("CoverBox", CF(x0 + 4.8, Y0 + 2.35, -8170), V3(2.4, 4.7, 10))
 	for _, dz in { -2.5, 2.5 } do B.put("tv_block", CF(x0 + 4.8, Y0, -8186 + dz), { name = "Block" }) end
 	B.solid("BlockBox", CF(x0 + 4.8, Y0 + 3.8, -8186), V3(5, 7.6, 10))
 	-- the end: the big target on the end wall, lit from the last bay
-	B.put("tv_target", CF(ax, 251, YZ1 + 0.75), { name = "AisleTarget" })
-	B.lamp(ax, AISLE.ceil - 1.5, YZ1 + 9, "spot", 24, 0.6, P.lampWhite, { look = V3(ax, 248, YZ1), angle = 70 })
+	B.put("tv_target", CF(ax, 254, YZ1 + 0.75), { name = "AisleTarget", scale = 0.75 }) -- (over the deck since 18 Nov)
+	B.lamp(ax, AISLE.ceil - 1.5, YZ1 + 9, "spot", 24, 0.6, P.lampWhite, { look = V3(ax, 254, YZ1), angle = 70 })
 end
 local function yard(B)
 	-- floors: the walks and both ends at the yard's floor, the lane a step down with a half-step at each end
@@ -807,7 +906,10 @@ local function yard(B)
 	pr.MaxActivationDistance = 9; pr.RequiresLineOfSight = false; pr.KeyboardKeyCode = Enum.KeyCode.E
 	pr.Parent = btn
 	local dm = T.DUMMIES.Dummy
-	-- (the moving one strafes along the 20 m line: it is his track)
+	-- (the moving one strafes along the 20 m line: it is his track; since 18 Nov a rail's bed under it, the lane's step
+	-- for its stops)
+	rail(B, dm[1], LANE.y, dm[3], 11.4, { stops = false })
+	healPad(B, YX - 4, STAGE.y, YZ1 + 6) -- (the live-fire end: on the stage by the east wall, clear of the door and the stand)
 	-- the shooters' round stands at the live-fire end's far corners
 	local pk = T.DUMMIES.Plinker
 	for _, n in { "Plinker", "Plinker2" } do
@@ -843,7 +945,12 @@ local function yard(B)
 	aisle(B)
 	-- the dummies' spots
 	local ds = folderIn(B.mk, "DummySpots")
-	for n, d in T.DUMMIES do B.marker(ds, n, d[1], d[2], d[3], V3(d[1], d[2], d[3] + 10)) end
+	for n, d in T.DUMMIES do
+		local m = B.marker(ds, n, d[1], d[2], d[3], V3(d[1], d[2], d[3] + 10))
+		local r = T.RAILS[n]
+		if r then m:SetAttribute("Span", r[1]); m:SetAttribute("Speed", r[2]) end
+		if T.LANE[n] then m:SetAttribute("Lane", "practice") end
+	end
 end
 
 -- ---------------------------------------------------------------- the firing range (Cardboard Carl's)
@@ -1485,6 +1592,10 @@ local function course(B)
 	B.drum("Collision", "TowerSolid", TOWER.x, TOWER.z, Y0, TOWER.top, 16.6, P.pier, { tr = 1, noShadow = true })
 	B.put("tv_towerOct", CF(TOWER2.x, Y0, TOWER2.z), { name = "TowerFar", scale = TOWER2.scale })
 	B.drum("Collision", "TowerSolid", TOWER2.x, TOWER2.z, Y0, Y0 + (TOWER.top - Y0) * TOWER2.scale, 16.6 * TOWER2.scale, P.pier, { tr = 1, noShadow = true })
+	-- the runner (18 Nov, the practice pass): a dummy on a long rail across the main hall between the towers, to shoot
+	-- at while you swing over it
+	local rn = T.DUMMIES.Runner
+	rail(B, rn[1], Y0, rn[3], T.RAILS.Runner[1], { line = true })
 	-- grapple rings on the beam crossings: over the strip as you come in, over the tower (from the skylight's bars), down
 	-- the hall in a zigzag, over the far tower, and by ledge 3 and the gallery
 	for _, h in { { -57.2, -8130 }, { -84.4, -8130 }, { CXM, TOWER.z }, { -111.6, -8210 }, { -84.4, -8226 }, { TOWER2.x, TOWER2.z }, { -111.6, -8274 } } do
@@ -1692,6 +1803,7 @@ local function headGuards(B): number
 		local lo, hi = cf.Position.Y - h.Y - 3, cf.Position.Y + h.Y + 8
 		local g = B.boxSrc:Clone()
 		g.Name = "HeadGuard"; g:SetAttribute("For", d.Name)
+		if T.HEAD.bodiesOnly and T.HEAD.bodiesOnly[d.Name] then g.CanQuery = false end -- (the practice lane's consoles: you shoot over them)
 		g.Size = V3(2 * (h.X + m), hi - lo, 2 * (h.Z + m)); g.CFrame = CF(cf.Position.X, (lo + hi) / 2, cf.Position.Z)
 		g.Parent = B.root.Collision
 		n += 1
