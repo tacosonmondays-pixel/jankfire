@@ -283,6 +283,35 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## Seats on batch A: minigun, water pistol, nail gun, bread, hand slapper (17 Nov 2026, place version 779)
+
+The guns session built the five new weapons as kit models (commit f13f243, `gun_batch_a.py`) and proposed a seat for
+each, a little under the web's hat sizes. `hat_spots.json` gets five new lines; three seats moved after the clip check.
+Photo: `gun-hats/batchA-seats.jpg` (a different hat on each, from the front left).
+
+| Gun | Seat (z, s) | Where | Why it moved |
+|---|---|---|---|
+| Minigun | 0.036, 1.15 | the carry handle's bar over the receiver | (the guns session's seat, at the web's size) |
+| Water Pistol | -0.09, 0.6 | the clear tank's top between the sights (the web's own seat) | behind the notch the brims hit the rear sight (5 mm) |
+| Nail Gun | -0.06, 0.75 | the housing's flat top between the sights | (the guns session's seat) |
+| Bread | -0.45, 1.35 | the dome's crest behind the last slash | at -0.39 the dome's slope sank the feet 4.5 mm |
+| Hand Slapper | -0.51, 0.6, x -0.008 | the thumb's tip | on the hand's top edge the brims cut up to 4.8 mm into the hand, which rises to the thumb behind |
+
+- **Sizes** follow the web's hat sizes against the AR's (web 0.12 = our 1.0): minigun 0.14, bread 0.16, nail gun
+  0.09, water pistol 0.07. The thumb is only 3 cm across, so the slapper takes 0.6 (the web: 0.09).
+- **Clipping** (`hat_clip.py`, the twelve hats on the five guns, first and third person, 120 rows): feet at most
+  2.5 mm in (the bread's crust; the design sink is 2 mm). Bodies are at most 0.2 mm in (the cowboy brim grazing the water
+  pistol's tank), and no gun is in a hat. The googly eyes rest at most 1.9 mm into the bread at the third-person
+  size. The report is now 2,352 rows.
+- **What each hat rides** (`carrierOf`, the smallest piece under the foot): the minigun's handle (not the spinning
+  barrels), the water pistol's tank shell (not the water inside, which scales as it empties), the nail gun's body,
+  the bread's crust and the slapper's hand (the hat swings with the slap).
+- **Studio (place version 779):** `GunHatData` pushed as a guarded patch. On the five built guns, both sizes, the
+  cowboy's foot reads exactly 2.0 mm in on every seat. The eyes read 0.4 to 1.9 mm in; on the round thumb one ball
+  rests 0.9 mm above it.
+- **Trap:** importing `hat_spots.py` from another script runs its `main()` and rewrites `GunHatData.luau` (there is no
+  `__main__` guard). Use `--profile` instead, or copy `tree()` / `top()`. Then re-pin the Angel rifle line.
+
 ## Seats for the space-western pair and the Japanese concepts (17 Nov 2026, place version 481)
 
 The guns session installed 17 skins in place version 478. Ten are live: Dust Drover and Star Drover on the revolver,
@@ -490,7 +519,7 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724.
+- **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
