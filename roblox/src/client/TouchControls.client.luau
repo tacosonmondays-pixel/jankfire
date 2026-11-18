@@ -19,10 +19,18 @@
 --     touch.autofire, touch.lefty), saved per player there.
 --   * the hub: no weapons, so the fight buttons go and the PLAY / PARTY / PROFILE / SHOP / LOADOUT stack moves to the
 --     right (the left is the stick's).
+--   * the layout is the player's (18 Nov, TouchLayout.luau + the editor TouchEdit.client, opened from Settings): every
+--     button, the stick, the top row and the weapon / health boxes can be moved, sized, faded, hidden or given another
+--     action, and extra buttons added; three layouts per player in their settings save. the defaults are the web's
+--   * a phone (short side under 600 points) gets a compact HUD: the fight HUD's guis drawn smaller (Theme.guiK), the
+--     weapon box (item, ammo, slot chips) small at the bottom left of the middle, clear of the gun; a slim health
+--     plate with the speed over it in the corner; the top row slim and moved under the scoreboard if they'd touch;
+--     swipe the ammo plate sideways to change weapon (a tap still reloads, on letting go)
 -- Test hook (Studio): player attribute TouchForce = true turns it all on with a mouse and keyboard; TouchTest takes
 -- "down:<id>", "up:<id>", "tap:<id>", "stick:<x>,<y>" (-1..1, "stick:0,0" lets go), "look:<dx>,<dy>" (points),
--- "chip:<1-3>", "item:down" / "item:up", "ammo", "auto:on|off", "assist:<0-1.5>", "settings", "pill:<emote|auto|settings>", "state" (writes TouchState as JSON), "fake:844x390" (the HUD laid
--- out in a phone-sized box: Studio's device emulator can't be driven from a script), "real".
+-- "chip:<1-3>", "item:down" / "item:up", "ammo", "swipe:<1|-1>", "auto:on|off", "assist:<0-1.5>", "settings", "pill:<emote|auto|settings>", "state" (writes TouchState as JSON), "fake:844x390" (the HUD laid
+-- out in a phone-sized box: Studio's device emulator can't be driven from a script), "real". (ids are the layout's:
+-- fire, jump, crouch, aim, hook, melee, swap, reload, wave, yank, x1..x6; TouchState's "pressed" is the last action)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -32,6 +40,7 @@ local HttpService = game:GetService("HttpService")
 
 local Keys = require(script.Parent:WaitForChild("Keys"))
 local T = require(script.Parent:WaitForChild("Theme"))
+local TL = require(script.Parent:WaitForChild("TouchLayout"))
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
@@ -163,16 +172,17 @@ local function fakeScreen(sz: Vector2?)
 		pad.AnchorPoint, pad.Position, pad.Size = Vector2.zero, UDim2.new(), UDim2.fromScale(1, 1)
 		return
 	end
-	local s = math.max(1, sz.Y / 720)
-	local function box(o: GuiObject)
+	local s0 = math.max(1, sz.Y / 720)
+	local function box(o: GuiObject, k: number)
 		local sc = o:FindFirstChildOfClass("UIScale")
 		fakeSaved[o] = { o.AnchorPoint, o.Position, o.Size, if sc then sc.Scale else nil }
 		o.AnchorPoint, o.Position = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5)
+		local s = s0 * k
 		if sc then sc.Scale = s; o.Size = UDim2.fromOffset(sz.X / s, sz.Y / s) else o.Size = UDim2.fromOffset(sz.X, sz.Y) end
 	end
 	for _, g in pg:GetChildren() do
 		local f = g:IsA("ScreenGui") and g:FindFirstChild("Scaled")
-		if f and f:IsA("GuiObject") then box(f) end
+		if f and f:IsA("GuiObject") then box(f, T.hudScale * (T.guiK[g.Name] or 1)) end -- (the phone HUD's own size: phoneScale)
 	end
 	pad.AnchorPoint, pad.Position, pad.Size = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromOffset(sz.X, sz.Y)
 	local e = T.new("Frame", { Name = "FakeScreen", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
@@ -181,37 +191,25 @@ local function fakeScreen(sz: Vector2?)
 	fakeEdge = e
 end
 
-type Btn = { id: string, key: any, label: string, x: number, y: number, d: number, look: boolean?, fight: boolean?,
-	toggle: boolean?, katana: boolean?, scythe: boolean?, body: boolean?, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, finger: any, lit: boolean }
+-- the buttons come from the player's layout (TouchLayout: the web's places by default; moved, sized, given another
+-- action or added in the editor). each knows its layout record and its action: the key it presses and how it behaves.
+-- the "wave" button is the katana's slash wave (shown with the katana out, lit with the meter full) and, with the
+-- Scythe out, its FORM switch (the same key; you never carry both); "yank" shows while your rope is on a person and
+-- the yank is ready (Move.client)
+type Btn = { id: string, act: string, A: any, rec: any, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, lit: boolean }
 local BTNS: { Btn } = {}
 local byId: { [string]: Btn } = {}
-local function def(id: string, key: any, label: string, x: number, y: number, d: number, o: { [string]: boolean }?)
-	local b: any = { id = id, key = key, label = label, x = x, y = y, d = d, down = false, lit = false }
-	if o then for k, v in o do b[k] = v end end
-	table.insert(BTNS, b)
-	byId[id] = b
-end
-def("fire", MB1, "FIRE", 100, 92, 84, { look = true, fight = true })
-def("jump", Enum.KeyCode.Space, "JUMP", 36, 50, 58)
-def("crouch", Enum.KeyCode.C, "SLIDE", 34, 120, 50)
-def("aim", MB2, "AIM", 44, 184, 50, { look = true, fight = true, toggle = true })
-def("hook", Enum.KeyCode.E, "HOOK", 112, 176, 56, { look = true })
-def("melee", Enum.KeyCode.Three, "STAB", 176, 152, 44, { fight = true })
-def("swap", nil, "SWAP", 180, 98, 44, { fight = true })
-def("reload", Enum.KeyCode.R, "RELOAD", 176, 44, 46, { fight = true })
-def("wave", Enum.KeyCode.Q, "WAVE", 112, 240, 52, { fight = true, katana = true }) -- (the katana's slash wave: shown with the katana out, lit with the meter full)
-def("form", Enum.KeyCode.Q, "FORM", 112, 240, 52, { fight = true, scythe = true }) -- (the Scythe <-> its rifle, in the wave's spot: you never carry both)
-def("yank", Enum.KeyCode.F, "YANK", 56, 244, 50, { fight = true, body = true }) -- (the grapple's yank: shown while your rope is on a person and it's ready. Move.client)
-local TEXT_SIZE: { [string]: number } = { fire = 17, jump = 13, hook = 13, crouch = 12, aim = 12 }
+local lastPress = "" -- (the last action a button pressed: TouchState, for tests)
 
-type Pill = { face: TextButton, lit: boolean }
+type Pill = { face: TextButton, lit: boolean, rec: any }
 local pills: { [string]: Pill } = {}
+local recs: { [string]: any } = {} -- the layout's records by id (buttons, pills, the stick, the boxes)
 
 -- ---------------------------------------------------------------- fingers
 -- touch / mouse input -> { kind = "btn" | "look" | "stick", id, last }
-type Finger = { kind: string, id: string?, last: Vector2 }
+type Finger = { kind: string, id: string?, last: Vector2, start: Vector2?, swiped: boolean? }
 local fingers: { [any]: Finger } = {}
-local boxUp: { [string]: () -> () } = {} -- (the HUD boxes' "let go", below)
+local boxUp: { [string]: (any) -> () } = {} -- (the HUD boxes' "let go", below: given the finger)
 local lookAcc = Vector2.zero
 local mv = { finger = nil :: any, ox = 0, oy = 0, f = false, b = false, l = false, r = false, sprint = false }
 local testStick: Vector2? = nil
@@ -227,9 +225,7 @@ end
 local function setAim(on: boolean)
 	if on == aimOn then return end
 	aimOn = on
-	Keys.press(MB2, on)
-	local b = byId.aim
-	b.lit = on
+	Keys.press(MB2, on) -- (lit on every AIM button: the Heartbeat)
 end
 
 local autoReset: () -> () -- (auto fire, below)
@@ -238,8 +234,9 @@ local function btnDown(b: Btn)
 	if b.down then return end
 	b.down = true
 	b.scale.Scale = 0.92
-	if b.id == "aim" and S.aim then setAim(not aimOn); return end
-	if b.id == "swap" then
+	lastPress = b.act
+	if b.act == "aim" and S.aim then setAim(not aimOn); return end
+	if b.act == "swap" then
 		local l = lo()
 		local want = swapHist.prev and table.find(l, swapHist.prev)
 		if not want then
@@ -249,17 +246,22 @@ local function btnDown(b: Btn)
 		Keys.tap(SLOT_KEYS[want :: number])
 		return
 	end
-	if b.id == "fire" then fireThumb = true; autoReset() end
-	if b.key then Keys.press(b.key, true) end
+	if b.act == "fire" then fireThumb = true; autoReset() end
+	local key = b.A and b.A.key
+	if key then Keys.press(key, true) end
 end
 local function btnUp(b: Btn)
 	if not b.down then return end
 	b.down = false
 	b.scale.Scale = 1
-	if b.id == "aim" and S.aim then return end
-	if b.id == "swap" then return end
-	if b.id == "fire" then fireThumb = false end
-	if b.key then Keys.press(b.key, false) end
+	if b.act == "aim" and S.aim then return end
+	if b.act == "swap" then return end
+	if b.act == "fire" then
+		fireThumb = false
+		for _, o in BTNS do if o ~= b and o.down and o.act == "fire" then fireThumb = true end end -- (two FIRE buttons)
+	end
+	local key = b.A and b.A.key
+	if key then Keys.press(key, false) end
 end
 
 local itemDown = false
@@ -267,6 +269,12 @@ local function itemPress(down: boolean)
 	if down == itemDown then return end
 	itemDown = down
 	Keys.press(Enum.KeyCode.G, down)
+end
+-- the next (1) or the one before (-1) of your three, from the one in your hands
+local function swipeWeapon(dir: number)
+	local l = lo()
+	local cur = table.find(l, heldWeapon() or "") or 1
+	Keys.tap(SLOT_KEYS[(cur - 1 + dir) % 3 + 1])
 end
 
 local function stickEnd()
@@ -285,8 +293,10 @@ local function stickSet(dx: number, dy: number, m: number)
 	local run = fw and m > 0.9 -- all the way up = run
 	if run ~= mv.sprint then mv.sprint = run; Keys.press(Enum.KeyCode.LeftShift, run) end
 end
+local function stickR(): number return 52 * S.size * (if recs.stick then recs.stick.s else 1) end -- (the ring's radius)
+local function stickFixed(): boolean return recs.stick ~= nil and recs.stick.act == "fixed" end
 local function stickMove(pos: Vector2)
-	local r = 52 * S.size
+	local r = stickR()
 	local dx, dy = (pos.X - mv.ox) / r, (pos.Y - mv.oy) / r
 	local m = math.sqrt(dx * dx + dy * dy)
 	if m > 1 then dx /= m; dy /= m end
@@ -309,8 +319,9 @@ local function releaseAll()
 end
 
 -- ---------------------------------------------------------------- building it
-local function style(face: TextButton, lit: boolean, accentEdge: boolean?)
-	local a = math.clamp(S.alpha, 0.15, 1)
+-- own: this button's own see-through from the layout (x the TOUCH tab's BUTTON OPACITY)
+local function style(face: TextButton, lit: boolean, accentEdge: boolean?, own: number?)
+	local a = math.clamp(S.alpha * (own or 1), 0.1, 1)
 	face.BackgroundColor3 = if lit then T.ACCENT else T.BG
 	face.BackgroundTransparency = if lit then 1 - a else 1 - a * 0.72
 	face.TextColor3 = if lit then T.INK else T.TEXT
@@ -324,22 +335,8 @@ end
 
 local function applyLook()
 	if not built then return end
-	local ts = S.size
-	for _, b in BTNS do
-		b.face.Size = UDim2.fromOffset(b.d * ts, b.d * ts)
-		b.face.Position = if S.lefty then UDim2.new(0, b.x * ts, 1, -b.y * ts) else UDim2.new(1, -b.x * ts, 1, -b.y * ts)
-		b.face.TextSize = math.max(10, (TEXT_SIZE[b.id] or 10) * ts)
-		style(b.face, b.lit, b.id == "fire")
-	end
-	local r = 104 * ts
-	stickRing.Size = UDim2.fromOffset(r, r)
-	stickKnob.Size = UDim2.fromOffset(46 * ts, 46 * ts)
-	for _, p in pills do
-		p.face.Size = UDim2.fromOffset(0, 34 * ts)
-		p.face.TextSize = math.max(10, 12 * ts)
-		style(p.face, p.lit)
-	end
-	topRow.Size = UDim2.fromOffset(0, 34 * ts)
+	for _, b in BTNS do style(b.face, b.lit, b.act == "fire", b.rec.a) end
+	for _, p in pills do style(p.face, p.lit, nil, if p.rec then p.rec.a else 1) end
 end
 
 -- the top row's buttons
@@ -366,6 +363,40 @@ local function newFace(parent: Instance, name: string, label: string, round: boo
 	T.edge(f)
 	return f
 end
+-- the words' size on a round button d points across (a long word a size down)
+local function textFor(label: string, d: number): number
+	return math.floor(math.clamp(d * (if #label >= 6 then 0.2 else 0.24), 9, 17) + 0.5)
+end
+
+-- the buttons, made again from the layout each time it changes (the editor saved, another layout picked)
+local function rebuildButtons()
+	releaseAll()
+	for _, b in BTNS do b.face:Destroy() end
+	table.clear(BTNS)
+	table.clear(byId)
+	table.clear(recs)
+	for _, r in TL.active() do
+		recs[r.id] = r
+		local A = if r.kind == "btn" then TL.ACTIONS[r.act] else nil
+		if A then
+			local b: any = { id = r.id, act = r.act, A = A, rec = r, down = false, lit = false }
+			local face = newFace(pad, r.id, TL.label(r), true)
+			b.face, b.scale = face, T.new("UIScale", {}, face)
+			b.stroke = face:FindFirstChildOfClass("UIStroke")
+			face.InputBegan:Connect(function(io: InputObject)
+				if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= MB1 then return end
+				if not active or settingsOpen() then return end
+				fingers[fingerKey(io)] = { kind = "btn", id = b.id, last = Vector2.new(io.Position.X, io.Position.Y) }
+				btnDown(b)
+			end)
+			table.insert(BTNS, b)
+			byId[r.id] = b
+		elseif r.kind == "pill" and pills[r.id] then
+			pills[r.id].rec = r
+		end
+	end
+	applyLook()
+end
 
 local function build()
 	readSettings()
@@ -378,7 +409,7 @@ local function build()
 	fullGui.ScreenInsets = Enum.ScreenInsets.None
 	full = T.new("Frame", { Name = "Full", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, fullGui) :: Frame
 
-	-- the stick: a thin ring and a knob. resting (faint) on the left; live where the thumb lands
+	-- the stick: a thin ring and a knob. resting (faint) where the layout puts it; live where the thumb lands
 	stickRing = T.new("Frame", { Name = "Stick", AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = T.BG,
 		BackgroundTransparency = 0.8, Size = UDim2.fromOffset(104, 104) }, pad) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickRing)
@@ -387,52 +418,88 @@ local function build()
 		BackgroundColor3 = T.TEXT, BackgroundTransparency = 0.5, Size = UDim2.fromOffset(46, 46) }, stickRing) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickKnob)
 
-	for _, b in BTNS do
-		local face = newFace(pad, b.id, b.label, true)
-		local sc = T.new("UIScale", {}, face) :: UIScale
-		b.face, b.scale = face, sc
-		b.stroke = face:FindFirstChildOfClass("UIStroke") :: UIStroke
-		face.InputBegan:Connect(function(io: InputObject)
-			if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= MB1 then return end
-			if not active or settingsOpen() then return end
-			fingers[fingerKey(io)] = { kind = "btn", id = b.id, last = Vector2.new(io.Position.X, io.Position.Y) }
-			btnDown(b)
-		end)
+	-- the top row: SETTINGS, AUTO and EMOTE, each placed on its own (TL.place: right to left along the top, or where
+	-- the player put it)
+	topRow = T.new("Frame", { Name = "Top", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, pad) :: Frame
+	for _, id in { "emote", "auto", "settings" } do
+		local f = newFace(topRow, id, TL.base(id).label, false)
+		pills[id] = { face = f, lit = false, rec = nil }
+		f.Activated:Connect(function() pillPress(id) end)
 	end
 
-	-- the top row, fire side: EMOTE, AUTO and SETTINGS
-	topRow = T.new("Frame", { Name = "Top", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -16, 0, 12),
-		BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 34) }, pad) :: Frame
-	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, topRow)
-	for i, p in { { "emote", "EMOTE" }, { "auto", "AUTO" }, { "settings", "SETTINGS" } } do
-		local f = newFace(topRow, p[1], p[2], false)
-		f.AnchorPoint = Vector2.zero
-		f.LayoutOrder = i
-		f.AutomaticSize = Enum.AutomaticSize.X
-		T.new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, f)
-		pills[p[1]] = { face = f, lit = false }
-		f.Activated:Connect(function() pillPress(p[1]) end)
-	end
-
-	-- the weapon chips (slots 1-3), bottom middle; the ammo plate and the item plate stack over them (moved there
-	-- on a phone: the corner is the thumb's, like the web's touch.css)
-	chips = T.new("Frame", { Name = "Chips", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.fromOffset(312, 30), BackgroundTransparency = 1 }, pad) :: Frame
+	-- the weapon chips (slots 1-3): the bottom row of the weapon box (TL "weapon": the item plate, the ammo plate, these),
+	-- inside the HUD's own scaled frame so they line up with the plates
+	chips = T.new("Frame", { Name = "Chips", Size = UDim2.fromOffset(236, 28), BackgroundTransparency = 1 }, pad) :: Frame
 	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, chips)
+		Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, chips)
 	for i = 1, 3 do
 		local f = newFace(chips, "Slot" .. i, "", false)
 		f.AnchorPoint = Vector2.zero
 		f.LayoutOrder = i
-		f.Size = UDim2.fromOffset(100, 30)
-		f.TextSize = 11
+		f.Size = UDim2.fromOffset(76, 28)
+		f.TextSize = 12
 		f.FontFace = T.FONT_BOLD
 		f.TextTruncate = Enum.TextTruncate.AtEnd
-		T.new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, f)
+		T.new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, f)
 		f.Activated:Connect(function() if active and not settingsOpen() then Keys.tap(SLOT_KEYS[i]) end end)
 	end
-	applyLook()
+	rebuildButtons()
+	TL.changed.Event:Connect(function() if built then rebuildButtons() end end)
+end
+
+-- ---------------------------------------------------------------- where everything goes (every frame)
+-- the safe area's size, and Roblox's own buttons (top left) in its points
+local function area(): (number, number, Rect?)
+	local sz = pad.AbsoluteSize
+	return sz.X, sz.Y, TL.avoid(pad.AbsolutePosition, fake ~= nil)
+end
+-- the HUD's design pixels to points (its Scaled frame's scale: the screen's, HUD SIZE, a phone's)
+local function hudSd(): number
+	local g = pg:FindFirstChild("JankfireFight")
+	local u = g and g:FindFirstChild("Scaled") and (g :: any).Scaled:FindFirstChildOfClass("UIScale")
+	return if u then u.Scale else T.scaleNow() * T.hudScale
+end
+-- a point in the safe area's points, as a position in a HUD gui's scaled frame (its design pixels)
+local function toHud(gname: string, p: Vector2): UDim2?
+	local g = pg:FindFirstChild(gname)
+	local sc = g and g:FindFirstChild("Scaled")
+	local u = sc and sc:FindFirstChildOfClass("UIScale")
+	if not sc or not u or not sc:IsA("GuiObject") then return nil end
+	local d = pad.AbsolutePosition + p - sc.AbsolutePosition
+	return UDim2.fromOffset(math.floor(d.X / u.Scale + 0.5), math.floor(d.Y / u.Scale + 0.5))
+end
+local stickHome = Vector2.new(100, 220) -- (the stick's resting middle, in the safe area)
+local function setIf(o: GuiObject, pos: UDim2, size: UDim2?)
+	if o.Position ~= pos then o.Position = pos end
+	if size and o.Size ~= size then o.Size = size end
+end
+local function placeAll()
+	local W, H, avoid = area()
+	if W < 10 or H < 10 then return end
+	local ts, sd = S.size, hudSd()
+	for _, b in BTNS do
+		local c, s = TL.place(b.rec, W, H, ts, sd, S.lefty, avoid)
+		setIf(b.face, UDim2.fromOffset(c.X, c.Y), UDim2.fromOffset(s.X, s.Y))
+		local tx = textFor(b.face.Text, s.X)
+		if b.face.TextSize ~= tx then b.face.TextSize = tx end
+	end
+	local pt = TL.pillTop(pg, pad.AbsolutePosition, W, ts)
+	for id, p in pills do
+		local r = p.rec or recs[id]
+		if r then
+			local c, s = TL.place(r, W, H, ts, sd, S.lefty, avoid, pt)
+			setIf(p.face, UDim2.fromOffset(c.X, c.Y), UDim2.fromOffset(s.X, s.Y))
+			local tx = math.max(9, math.floor(11 * ts * r.s + 0.5))
+			if p.face.TextSize ~= tx then p.face.TextSize = tx end
+		end
+	end
+	local sr = recs.stick
+	if sr then
+		local c, s = TL.place(sr, W, H, ts, sd, S.lefty, avoid)
+		stickHome = c
+		local ring = UDim2.fromOffset(s.X, s.X)
+		if stickRing.Size ~= ring then stickRing.Size = ring; stickKnob.Size = UDim2.fromOffset(s.X * 0.44, s.X * 0.44) end
+	end
 end
 
 -- ---------------------------------------------------------------- touches on the screen (not on a button)
@@ -447,13 +514,20 @@ UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if io.UserInputType ~= Enum.UserInputType.Touch or gp or not uiLive() then return end
 	local pos = Vector2.new(io.Position.X, io.Position.Y)
 	local o, sz = safeRect()
-	local stickSide = if S.lefty then pos.X > o.X + sz.X * 0.58 else pos.X < o.X + sz.X * 0.42
+	-- the stick's side: the side of the screen it rests on, out to 42 % (or a bit past where it rests); a FIXED stick
+	-- (the layout) only takes a thumb that lands on or near it, and stays where it is
+	local rel, r, fixed = pos - o, stickR(), stickFixed()
+	local stickSide = if fixed then (rel - stickHome).Magnitude <= r * 1.5
+		elseif stickHome.X < sz.X / 2 then rel.X < math.max(sz.X * 0.42, stickHome.X + r * 1.5)
+		else rel.X > math.min(sz.X * 0.58, stickHome.X - r * 1.5)
 	if mv.finger == nil and stickSide then
 		mv.finger = io
-		mv.ox, mv.oy = pos.X, pos.Y
+		local base = if fixed then o + stickHome else pos
+		mv.ox, mv.oy = base.X, base.Y
 		fingers[io] = { kind = "stick", last = pos }
 		stickRing:SetAttribute("Live", true)
-		stickRing.Position = UDim2.fromOffset(pos.X - o.X, pos.Y - o.Y)
+		stickRing.Position = UDim2.fromOffset(base.X - o.X, base.Y - o.Y)
+		if fixed then stickMove(pos) end
 	else
 		fingers[io] = { kind = "look", last = pos }
 	end
@@ -466,8 +540,16 @@ UIS.InputChanged:Connect(function(io: InputObject)
 	if not f then return end
 	local pos = Vector2.new(io.Position.X, io.Position.Y)
 	if f.kind == "stick" then stickMove(pos); return end
+	if f.kind == "box" then -- (the ammo plate: a sideways swipe changes weapon)
+		if f.id == "Ammo" and not f.swiped and f.start and math.abs(pos.X - f.start.X) > 26 then
+			f.swiped = true
+			swipeWeapon(if pos.X > f.start.X then 1 else -1)
+		end
+		f.last = pos
+		return
+	end
 	local b = f.id and byId[f.id]
-	if f.kind == "look" or (b and b.look) then lookAcc += pos - f.last end
+	if f.kind == "look" or (b and b.A.look) then lookAcc += pos - f.last end
 	f.last = pos
 end)
 UIS.InputEnded:Connect(function(io: InputObject)
@@ -478,7 +560,7 @@ UIS.InputEnded:Connect(function(io: InputObject)
 	if not f then return end
 	fingers[k] = nil
 	if f.kind == "btn" and f.id and byId[f.id] then btnUp(byId[f.id])
-	elseif f.kind == "box" and f.id and boxUp[f.id] then boxUp[f.id]()
+	elseif f.kind == "box" and f.id and boxUp[f.id] then boxUp[f.id](f)
 	elseif f.kind == "stick" then stickEnd() end
 end)
 
@@ -740,12 +822,27 @@ local function autoFrame(now: number)
 end
 
 -- ---------------------------------------------------------------- the HUD's boxes on a phone
--- FightHud's ammo plate and Utility's item plate move to the bottom middle over the weapon chips; each gets a clear
--- button laid over it (ammo: reload; item: G for as long as you hold it). put back when touch goes off
+-- the weapon box (layout "weapon"): Utility's item plate, FightHud's ammo plate and the slot chips, stacked; each plate
+-- gets a clear button laid over it (ammo: a tap reloads when you let go, a sideways swipe changes weapon; item: G for
+-- as long as you hold it). the health box (layout "health"): the speed plate over a slimmer health plate. all of it put
+-- back when touch goes off
 local moved: { [GuiObject]: UDim2 } = {}
+local resized: { [GuiObject]: UDim2 } = {}
 local overlays: { [string]: TextButton } = {}
 boxUp = {}
-local function placeHudBox(name: string, pos: UDim2, onDown: () -> (), onUp: (() -> ())?)
+local function placePlate(gname: string, name: string, pos: UDim2, size: UDim2?)
+	local g = pg:FindFirstChild(gname)
+	local sc = g and g:FindFirstChild("Scaled")
+	local plate = sc and sc:FindFirstChild(name)
+	if not plate or not plate:IsA("GuiObject") then return end
+	if not moved[plate] then moved[plate] = plate.Position end
+	if plate.Position ~= pos then plate.Position = pos end
+	if size then
+		if not resized[plate] then resized[plate] = plate.Size end
+		if plate.Size ~= size then plate.Size = size end
+	end
+end
+local function placeHudBox(name: string, pos: UDim2, onDown: () -> (), onUp: ((any) -> ())?)
 	if onUp then boxUp[name] = onUp end
 	local fight = pg:FindFirstChild("JankfireFight")
 	local sc = fight and fight:FindFirstChild("Scaled")
@@ -759,7 +856,8 @@ local function placeHudBox(name: string, pos: UDim2, onDown: () -> (), onUp: (()
 		b.InputBegan:Connect(function(io: InputObject)
 			if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= MB1 then return end
 			if not active or settingsOpen() then return end
-			fingers[fingerKey(io)] = { kind = "box", id = name, last = Vector2.new(io.Position.X, io.Position.Y) }
+			local at = Vector2.new(io.Position.X, io.Position.Y)
+			fingers[fingerKey(io)] = { kind = "box", id = name, last = at, start = at }
 			onDown()
 		end)
 		overlays[name] = b
@@ -807,8 +905,33 @@ end
 local function putBack()
 	for o, p in moved do if o.Parent then o.Position = p end end
 	table.clear(moved)
+	for o, z in resized do if o.Parent then o.Size = z end end
+	table.clear(resized)
 	for _, b in overlays do b:Destroy() end
 	table.clear(overlays)
+end
+
+-- ---------------------------------------------------------------- a phone's HUD size
+-- on a phone (short side under 600 points) the fight HUD is drawn smaller: its plates are laid out for a 720-tall
+-- screen, and at 1x on a 390-point phone they took a third of the view (the owner's screenshot, 18 Nov). Theme.guiK
+-- is the factor its Scaled frames take (Theme.scaled reads it); the menus keep their own phone layouts
+local HUD_GUIS = { "JankfireFight", "JankfireHud", "JankfireModes" }
+local phoneK: number? = nil
+local function refit(name: string)
+	local g = pg:FindFirstChild(name)
+	local f = g and g:FindFirstChild("Scaled")
+	local sc = f and f:FindFirstChildOfClass("UIScale")
+	if not f or not sc or not f:IsA("GuiObject") then return end
+	local s = T.scaleNow() * T.hudScale * (T.guiK[name] or 1)
+	sc.Scale = s
+	f.Size = UDim2.fromScale(1 / s, 1 / s)
+end
+local function phoneScale()
+	local want: number? = if active and not tablet() then math.clamp(viewport().Y / 560, 0.62, 0.86) else nil
+	if want == phoneK then return end
+	phoneK = want
+	for _, n in HUD_GUIS do T.guiK[n] = want end
+	if fake then fakeScreen(fake) else for _, n in HUD_GUIS do refit(n) end end
 end
 
 -- ---------------------------------------------------------------- on / off
@@ -850,6 +973,7 @@ local function setActive(on: boolean)
 	else
 		releaseAll()
 		putBack()
+		phoneScale() -- (the HUD back to its own size)
 		if built then gui.Enabled = false; chips.Visible = false; chips.Parent = pad end
 		pcall(function() GuiService.TouchControlsEnabled = true end)
 		pcall(function() (me :: any).DevTouchMovementMode = Enum.DevTouchMovementMode.UserChoice end)
@@ -863,22 +987,25 @@ end
 -- ---------------------------------------------------------------- every frame: what shows
 local lastWeapon: string? = nil
 local lastLo = ""
+local function editOpen(): boolean return me:GetAttribute("TouchEditOpen") == true end -- (the layout editor: TouchEdit.client)
 RunService.Heartbeat:Connect(function()
 	local want = Keys.isTouch()
 	if want ~= active then setActive(want) end
 	if not active or not built then return end
 	if readSettings() then applyLook() end
 	if not controls or not cameraInput then hookModules() end
+	phoneScale()
 	local ch = alive()
 	local z = zone()
 	local hub = z == "hub" or z == nil
 	local fight = fightZone()
-	local shown = ch ~= nil and not menuOpen()
+	local shown = ch ~= nil and not menuOpen() and not editOpen()
 	if gui.Enabled ~= shown then
 		gui.Enabled = shown
 		if not shown then releaseAll() end
 	end
 	if not fight and aimOn then setAim(false) end
+	placeAll()
 	-- the settings panel's reminder ("P settings") goes: the SETTINGS button is here
 	local sg = pg:FindFirstChild("JankSettings")
 	local hint = sg and sg:FindFirstChild("Scaled") and (sg :: any).Scaled:FindFirstChild("Hint")
@@ -891,26 +1018,34 @@ RunService.Heartbeat:Connect(function()
 	local yt = me:GetAttribute("YankT")
 	local onBody = me:GetAttribute("HookBody") == true and not (type(yt) == "number" and workspace:GetServerTimeNow() < yt)
 	for _, b in BTNS do
-		local vis = (fight or not b.fight) and not watching and (not b.katana or kat) and (not b.scythe or scy) and (not b.body or onBody)
+		local A = b.A
+		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody)
 		if b.face.Visible ~= vis then b.face.Visible = vis end
-		local lit = (b.id == "aim" and aimOn) or (b.id == "wave" and edgeFull)
-		if lit ~= b.lit or b.face.BackgroundColor3 ~= (if lit then T.ACCENT else T.BG) then b.lit = lit; style(b.face, lit, b.id == "fire") end
+		if A.q then -- (the katana's WAVE, or the Scythe's FORM in its place)
+			local word = if scy then "FORM" else "WAVE"
+			if b.face.Text ~= word then b.face.Text = word end
+		end
+		local lit = (b.act == "aim" and aimOn) or (b.act == "wave" and kat and edgeFull)
+		if lit ~= b.lit or b.face.BackgroundColor3 ~= (if lit then T.ACCENT else T.BG) then b.lit = lit; style(b.face, lit, b.act == "fire", b.rec.a) end
+	end
+	for id, p in pills do
+		local hid = p.rec ~= nil and p.rec.hid
+		local vis = not hid and (id ~= "auto" or fight)
+		if p.face.Visible ~= vis then p.face.Visible = vis end
 	end
 	local autoP = pills.auto
-	autoP.face.Visible = fight
-	if autoP.lit ~= S.auto then autoP.lit = S.auto; style(autoP.face, S.auto) end
+	if autoP.lit ~= S.auto then autoP.lit = S.auto; style(autoP.face, S.auto, nil, if autoP.rec then autoP.rec.a else 1) end
 	stickRing.Visible = not watching
+	local own = if recs.stick then recs.stick.a else 1
 	if not stickRing:GetAttribute("Live") then
-		local ts = S.size
-		local _, sz = safeRect()
-		stickRing.Position = UDim2.fromOffset(100 * ts, sz.Y - 170 * ts)
-		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha * 0.55
-		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha * 0.55
+		stickRing.Position = UDim2.fromOffset(stickHome.X, stickHome.Y)
+		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha * own * 0.55
+		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha * own * 0.55
 	else
-		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha
-		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha
+		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha * own
+		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha * own
 	end
-	-- the weapon chips sit in the HUD's own frame, so they line up with the plates moved over them; names from your
+	-- the weapon chips sit in the HUD's own frame, so they line up with the plates over them; names from your
 	-- loadout, the one in your hands marked
 	local fightGui = pg:FindFirstChild("JankfireFight")
 	local hudFrame = fightGui and fightGui:FindFirstChild("Scaled")
@@ -940,16 +1075,29 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	end
-	-- the HUD boxes, over the chips (design pixels of the HUD's own scaled frame), in every zone (the hub has a
-	-- holstered ammo plate too); the speed readout goes up over the health plate, clear of the chips
-	placeHudBox("Ammo", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64), function() Keys.tap(Enum.KeyCode.R) end)
-	placeHudBox("Utility", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64 - 6 - 42), function() itemPress(true) end, function() itemPress(false) end)
-	local hudGui = pg:FindFirstChild("JankfireHud")
-	local speed = hudGui and hudGui:FindFirstChild("Scaled") and (hudGui :: any).Scaled:FindFirstChild("Speed")
-	if speed and speed:IsA("GuiObject") then
-		if not moved[speed] then moved[speed] = speed.Position end
-		local want = UDim2.new(0, 24, 1, -88 - 8 - 64)
-		if speed.Position ~= want then speed.Position = want end
+	-- the weapon box and the health box, where the layout puts them (design pixels of the HUD's own scaled frames), in
+	-- every zone (the hub has a holstered ammo plate too)
+	local Wa, Ha, avoid = area()
+	local sd = hudSd()
+	local wr, hr = recs.weapon, recs.health
+	if wr and Wa > 10 then
+		local c, s = TL.place(wr, Wa, Ha, S.size, sd, S.lefty, avoid)
+		local o = toHud("JankfireFight", c - s / 2)
+		if o then
+			placeHudBox("Utility", o + UDim2.fromOffset(2, 0), function() itemPress(true) end, function() itemPress(false) end)
+			placeHudBox("Ammo", o + UDim2.fromOffset(2, 48), function() end, function(f: any)
+				if not (f and f.swiped) then Keys.tap(Enum.KeyCode.R) end -- (a tap reloads; a swipe changed weapon instead)
+			end)
+			local cp = o + UDim2.fromOffset(0, 118)
+			if chips.Position ~= cp then chips.Position = cp end
+		end
+	end
+	if hr and Wa > 10 then
+		local c, s = TL.place(hr, Wa, Ha, S.size, sd, S.lefty, avoid)
+		local tl = c - s / 2
+		local o1, o2 = toHud("JankfireHud", tl), toHud("JankfireFight", tl)
+		if o1 then placePlate("JankfireHud", "Speed", o1) end
+		if o2 then placePlate("JankfireFight", "Hp", o2 + UDim2.fromOffset(0, 70), UDim2.fromOffset(160, 64)) end
 	end
 	placeHub(if hub then "hub" elseif fight then "away" else nil)
 end)
@@ -978,7 +1126,7 @@ me:GetAttributeChangedSignal("TouchTest"):Connect(function()
 		elseif built then
 			testStick = Vector2.new(vx, vy)
 			-- (drawn as a thumb would push it, where the stick rests)
-			local r = 52 * S.size
+			local r = stickR()
 			local m = math.max(1, Vector2.new(vx, vy).Magnitude)
 			stickRing:SetAttribute("Live", true)
 			stickKnob.Position = UDim2.new(0.5, vx / m * r * 0.62, 0.5, vy / m * r * 0.62)
@@ -991,6 +1139,7 @@ me:GetAttributeChangedSignal("TouchTest"):Connect(function()
 		if i and SLOT_KEYS[i] then Keys.tap(SLOT_KEYS[i]) end
 	elseif cmd == "item" then itemPress(a == "down")
 	elseif cmd == "ammo" then Keys.tap(Enum.KeyCode.R)
+	elseif cmd == "swipe" then swipeWeapon(if tonumber(a) == -1 then -1 else 1)
 	elseif cmd == "auto" then S.auto = a ~= "off"; set("touch.autofire", S.auto); autoReset()
 	elseif cmd == "settings" then releaseAll(); Keys.tap(Enum.KeyCode.P)
 	elseif cmd == "pill" then pillPress(a or "")
@@ -1008,6 +1157,26 @@ me:GetAttributeChangedSignal("TouchTest"):Connect(function()
 			touchCtl = GuiService.TouchControlsEnabled, look = cam and { cam.CFrame.LookVector.X, cam.CFrame.LookVector.Y, cam.CFrame.LookVector.Z },
 			assist = AS.t and math.floor(math.deg(AS.t.ang) * 10) / 10, assistK = S.assist,
 			fingers = (function() local n = 0; for _ in fingers do n += 1 end; return n end)(),
+			pressed = lastPress, slot = TL.slot(), phoneK = phoneK, editing = editOpen(),
+			-- where everything is (the safe area's points: middle x, y and width) and whether it shows
+			btns = (function()
+				local out = {}
+				for _, b in BTNS do
+					local p, z = b.face.AbsolutePosition - pad.AbsolutePosition, b.face.AbsoluteSize
+					table.insert(out, { b.id, b.act, math.floor(p.X + z.X / 2), math.floor(p.Y + z.Y / 2), math.floor(z.X), b.face.Visible })
+				end
+				return out
+			end)(),
+			pills = (function()
+				local out = {}
+				for id, p in pills do
+					local q, z = p.face.AbsolutePosition - pad.AbsolutePosition, p.face.AbsoluteSize
+					out[id] = { math.floor(q.X + z.X / 2), math.floor(q.Y + z.Y / 2), math.floor(z.X), p.face.Visible }
+				end
+				return out
+			end)(),
+			stick = { math.floor(stickHome.X), math.floor(stickHome.Y), math.floor(stickRing.AbsoluteSize.X), if recs.stick then recs.stick.act else "" },
+			area = { math.floor(pad.AbsoluteSize.X), math.floor(pad.AbsoluteSize.Y) },
 		}))
 	end
 end)

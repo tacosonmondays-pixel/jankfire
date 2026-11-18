@@ -100,6 +100,8 @@ function T.hex(c: Color3): string return "#" .. c:ToHex() end
 -- and fires rescaled)
 T.hudScale = 1
 T.rescaled = Instance.new("BindableEvent")
+-- (a phone: TouchControls draws the fight HUD's guis smaller there, T.guiK[<ScreenGui name>] = 0.7 or so. nil = 1)
+T.guiK = {} :: { [string]: number }
 function T.scaleNow(): number
 	local cam = workspace.CurrentCamera
 	return math.clamp((if cam then cam.ViewportSize.Y else 720) / 720, 1, 2)
@@ -111,7 +113,7 @@ function T.scaled(gui: Instance): Frame
 	local f = T.new("Frame", { Name = "Scaled", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, gui)
 	local sc = T.new("UIScale", {}, f)
 	local function fit()
-		local s = T.scaleNow() * T.hudScale
+		local s = T.scaleNow() * T.hudScale * (T.guiK[gui.Name] or 1)
 		sc.Scale = s
 		f.Size = UDim2.fromScale(1 / s, 1 / s)
 	end

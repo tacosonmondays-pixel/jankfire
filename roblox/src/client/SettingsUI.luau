@@ -467,6 +467,14 @@ local function codeRow()
 end
 
 -- ------------------------------------------------------------------ the tabs
+-- (a phone: the touch layout editor, TouchEdit.client: move, size, fade, hide and remap the touch buttons. at the top of
+-- CONTROLS while the touch controls are on, and of TOUCH)
+function UI.touchEditRow()
+	button({ label = "TOUCH LAYOUT", sub = "move, resize and remap the buttons", text = "EDIT", click = function()
+		me:SetAttribute("SettingsOpen", false)
+		me:SetAttribute("TouchEditOpen", true)
+	end })
+end
 local function percentOff(v) return if v <= 0 then "OFF" else px(v) end
 local XH_PRESETS = {
 	{ "DEFAULT", "X1CFFFFFF82510A2" },
@@ -477,6 +485,7 @@ local XH_PRESETS = {
 
 tabs = {
 	{ id = "controls", title = "CONTROLS", reset = { "look.", "fov", "aim.toggle", "crouch.toggle", "sprint.toggle", "gfx.shake", "gfx.recoil" }, build = function()
+		if me:GetAttribute("TouchOn") == true then UI.touchEditRow() end
 		section("MOUSE")
 		slider({ key = "look.sens", label = "SENSITIVITY", min = 0.05, max = 3, step = 0.01, fmt = function(v) return ("%.2f"):format(v) end })
 		slider({ key = "look.ySpeed", label = "VERTICAL SENSITIVITY", sub = "multiplier on up and down", min = 0.5, max = 1.5, step = 0.01, fmt = pct, scale = 100 })
@@ -666,6 +675,7 @@ tabs = {
 		return UIS.TouchEnabled or me:GetAttribute("TouchOn") == true or me:GetAttribute("TouchForce") == true
 			or me:GetAttribute("SettingsAllTabs") == true
 	end, build = function()
+		UI.touchEditRow()
 		slider({ key = "touch.sens", label = "TOUCH SENSITIVITY", min = 0.3, max = 3, step = 0.05, fmt = times })
 		slider({ key = "touch.size", label = "BUTTON SIZE", sub = "on top of the device's own size", min = 0.7, max = 1.4, step = 0.05, fmt = pct, scale = 100 })
 		slider({ key = "touch.assist", label = "AIM ASSIST", min = 0, max = 1.5, step = 0.05,
