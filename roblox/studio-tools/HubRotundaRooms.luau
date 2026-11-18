@@ -1125,32 +1125,75 @@ return function(B, R)
 		-- not the size of a sniper"): the long guns along the top row, the shorter ones and the sidearms under them, room
 		-- between
 		local GUN_K = 3.5 -- (the sniper 7.3 long, the AR 4.2, the pistol 1.2)
-		local racks = {
-			{ -1, 46.6, { { "w_sniper" }, { "w_ar", "w_pistol" } } }, { -1, 57.4, { { "w_lmg" }, { "w_smg", "w_revolver" } } },
-			{ 1, 46.6, { { "w_burst", "w_marbles" }, { "w_shotgun", "w_sawnoff" } } }, { 1, 57.4, { { "w_redline" }, { "w_katana" } } },
+		-- (18 Nov, main: "the armory racks show only the 12 plain guns. add the newer weapons ... so every live weapon has a
+		-- rack spot": one long board down each wall, three rows: the primaries on the west wall, longest on top; the melee
+		-- weapons over the secondaries on the east wall, by the bench. a live weapon none of these rows names (a new one)
+		-- goes on the shortest row. lengths are world studs, the places along the board the round room's units: / K)
+		local KW = if B.warp then B.warp.K else 1
+		local walls = {
+			{ -1, 40, 62.5, { { "w_sniper", "w_dmr", "w_lmg", "w_chicken", "w_autoshot" }, { "w_burst", "w_ar", "w_lever", "w_shotgun", "w_minigun", "w_redline" },
+				{ "w_cart", "w_laser", "w_bowling", "w_shredder", "w_smg", "w_banana", "w_tennis", "w_nailgun", "w_bow" } } },
+			{ 1, 42.2, 62.5, { { "w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_knife", "w_slipper" },
+				{ "w_blower", "w_marbles", "w_sawnoff", "w_water", "w_revolver", "w_bloodcross", "w_pistol" },
+				{ "w_taser", "w_akimbo", "w_remote", "w_cig", "w_lasso", "w_snowball", "w_cards" } } },
 		}
 		local weapons = game.ReplicatedStorage:FindFirstChild("JankfireWeapons")
-		local function long(w)
+		-- a gun's size on the board: { along the row, out from the board } in world studs; the bow lies along its row (it
+		-- stands taller than a row), the card deck shows its face
+		local LAY = { w_bow = "lay", w_cards = "face" }
+		local function size(w)
 			local t = weapons and weapons:FindFirstChild(w)
-			if not t then return 0 end
+			if not t then return nil end
 			local _, sz = t:GetBoundingBox()
-			return sz.Z * GUN_K
+			sz *= GUN_K
+			if LAY[w] == "lay" then return Vector3.new(sz.Y, sz.Z, sz.X) end
+			if LAY[w] == "face" then return Vector3.new(sz.X, sz.Y, sz.Z) end
+			return Vector3.new(sz.Z, sz.Y, sz.X)
 		end
-		for _, rk in racks do
-			local s, d = rk[1], rk[2]
-			B.box(F, C, "GunBoard", s * 12.55, s * 13, 2.4, 8.2, d - 4.8, d + 4.8, P.pier, nil, G)
-			B.box(F, S, "GunCounter", s * 11.3, s * 12.96, 0, 2, d - 4.8, d + 4.8, P.pier2)
-			B.box(F, C, "GunBoardLedge", s * 11.1, s * 13, 2, 2.4, d - 5, d + 5, P.cream, nil, G)
-			B.box(F, C, "GunBoardLight", s * 12.3, s * 13, 8.2, 8.6, d - 4.8, d + 4.8, P.pier2, nil, G)
-			B.box(F, C, "GunBoardGlow", s * 12.35, s * 12.9, 8.06, 8.16, d - 4.4, d + 4.4, P.strip, Neon, G)
-			B.lamp(F, s * 10.6, 7.4, d, 11, 0.8)
-			for row, names in rk[3] do
-				local lens, total = {}, (#names - 1) * 0.9
-				for i, w in names do lens[i] = long(w); total += lens[i] end
-				local at = -total / 2
-				for i, w in names do
-					B.gun(F, w, nil, s * 12.2, if row == 1 then 6.5 else 4, d + at + lens[i] / 2, if s > 0 then 90 else -90, "Rack_" .. w, GUN_K)
-					at += lens[i] + 0.9
+		do -- every live weapon on a row
+			local named = {}
+			for _, wl in walls do for _, row in wl[4] do for _, w in row do named[w] = true end end end
+			local ok, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
+			if ok then
+				for _, e in Roster.list do
+					local w = "w_" .. e.id
+					if e.live and e.slot ~= "utility" and not named[w] and size(w) then
+						local best, bl = nil, math.huge
+						for _, wl in walls do for _, row in wl[4] do
+							local l = 0
+							for _, x in row do local z = size(x); if z then l += z.X + 0.9 end end
+							if l < bl then best, bl = row, l end
+						end end
+						table.insert(best, w); named[w] = true
+					end
+				end
+			end
+		end
+		local ROWY = { 7.6, 5.6, 3.6 }
+		for _, wl in walls do
+			local s, d0, d1 = wl[1], wl[2], wl[3]
+			local dm = (d0 + d1) / 2
+			B.box(F, C, "GunBoard", s * 12.55, s * 13, 2.4, 8.8, d0, d1, P.pier, nil, G)
+			B.box(F, S, "GunCounter", s * 11.3, s * 12.96, 0, 2, d0, d1, P.pier2)
+			B.box(F, C, "GunBoardLedge", s * 11.1, s * 13, 2, 2.4, d0 - 0.2, d1 + 0.2, P.cream, nil, G)
+			B.box(F, C, "GunBoardLight", s * 12.3, s * 13, 8.8, 9.2, d0, d1, P.pier2, nil, G)
+			B.box(F, C, "GunBoardGlow", s * 12.35, s * 12.9, 8.66, 8.76, d0 + 0.4, d1 - 0.4, P.strip, Neon, G)
+			for _, d in { d0 + (d1 - d0) / 6, dm, d1 - (d1 - d0) / 6 } do B.lamp(F, s * 10.6, 7.6, d, 11, 0.7) end
+			for row, names in wl[4] do
+				local list, total = {}, 0
+				for _, w in names do
+					local z = size(w)
+					if z then table.insert(list, { w, z }); total += z.X end
+				end
+				total += (#list - 1) * 0.9
+				local at = dm - total / KW / 2
+				for _, it in list do
+					local w, z = it[1], it[2]
+					local x = s * (12.55 - (z.Z / 2 + 0.15) / KW) -- (its back just off the board's face, however deep it is)
+					local g = B.gun(F, w, nil, x, ROWY[row], at + z.X / KW / 2, if s > 0 then 90 else -90, "Rack_" .. w, GUN_K)
+					if g and LAY[w] == "lay" then g:PivotTo(g:GetPivot() * CFrame.Angles(math.rad(90), 0, 0))
+					elseif g and LAY[w] == "face" then g:PivotTo(g:GetPivot() * CFrame.Angles(0, math.rad(90), 0)) end
+					at += (z.X + 0.9) / KW
 				end
 			end
 		end

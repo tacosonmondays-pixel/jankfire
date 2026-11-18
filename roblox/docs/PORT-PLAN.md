@@ -2050,6 +2050,20 @@ The owner: "maybe make the hub larger and extend the size of the balcony so its 
   - The training and playground zones are clear of the bigger hub.
   - One solo Play: the player spawns in the lobby, the 12 pads are live, the regulars are out, and the console shows nothing from the hub.
 
+## 50. Hub: the armory racks hold every live weapon, 18 November 2026 (place version 994)
+
+Main: "the armory racks show only the 12 plain guns. Add the newer weapons ... so every live weapon has a rack spot." In HubRotundaRooms, the armory has one long board down each wall with three rows:
+- **West wall:** the primaries, longest on top.
+- **East wall, by the bench:** the melee weapons over the secondaries.
+
+How it lays them out:
+- Lengths are world studs (the kit model × `GUN_K` 3.5). Places along the board are divided by the hall's scale, so the spacing is right at any `R.HALL_K`.
+- Each gun's back sits just off the board's face, however deep it is: the scythe, the scales and the shredder no longer sink into it.
+- The bow lies along its row (it stands taller than a row), and the card deck turns its face out (`LAY`).
+- A live weapon (Roster, not utility) that no row names goes on the shortest row by itself.
+
+Live: 39 of the 41 live weapons hang. The Shredder and the Blood Cross have no model in `ReplicatedStorage.JankfireWeapons` yet; they will hang once their models are there and the hub is rebuilt. `R.check`: 0 problems. Sheet: `roblox/docs/hub/hub_bigger_994.jpg` (with the bigger hall's before and after).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
