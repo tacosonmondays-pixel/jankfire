@@ -205,6 +205,7 @@ local SIZE: number = Holds.size or 1
 -- which look a weapon is held in: holds.json keeps three per weapon (before / after / combined) and "use" picks one;
 -- a Play test can show one look on every weapon at once through the player's HoldLook attribute
 local LookPlayer = game:GetService("Players").LocalPlayer
+local IS_STUDIO = game:GetService("RunService"):IsStudio()
 local function look(wid: string): any
 	local row = Holds.holds[wid]
 	if not row then return nil end
@@ -857,6 +858,10 @@ function VM.update(dt: number, c: Ctx)
 	if VM.hitStop > 0 then VM.hitStop -= dt; adt = 0 end
 	if clip then
 		clip.t += adt * (clip.rate or 1)
+		-- (Studio photos, 18 Nov 2026, the scythe's overhead) the player's VMClipHold attribute (s) freezes the playing
+		-- clip there; raise it to step on, clear it to let the clip finish
+		local hold = if IS_STUDIO then LookPlayer:GetAttribute("VMClipHold") else nil
+		if type(hold) == "number" and clip.t > hold then clip.t = hold end
 		local a = Anims[clip.name]
 		for i, ev in a.events do
 			if not clip.fired[i] and clip.t >= ev[1] then

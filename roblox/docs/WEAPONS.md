@@ -123,6 +123,21 @@ Kills, hits and time held in either form count as the Scythe (Weapons.base, Rost
 **The scythe form's swing.** Slow, wide and long, and two hits kill. Since the rifle came in it swings a little slower
 and reaches a little less (was 0.80 s and 3.6 m), so it no longer out-kills the Katana.
 
+**An overhead since later on 18 Nov** (the owner: *"can you do an overhead with the scythe like an overhead
+animation"*). Both swings (`swing_scythe`, and `swing_scythe2` every other swing) now raise the scythe up past the top
+of your view, the blade turned to lead, then bring it down onto the crosshair: the first from up on the right, the blade
+hooking in just left of the crosshair; the second straight down the middle. The down-stroke runs 0.16 s to 0.30 s, so
+the hit at 0.24 s comes with the blade 92% of the way down. Damage, reach, cone and timing are unchanged: the old
+sweep's wind-up was already 0.24 s and the new motion fits it. Third person plays the same clip round the grip
+(ThirdPerson `swingRig`), so everyone sees the overhead.
+- **Why hand-keyed, not generated:** the swing is a viewmodel clip (Anims.luau, mirrored in `tools/roblox/anims.mjs`),
+  the same system every melee swing uses. Studio's `generate_animation` and Mixamo clips are whole-body R15 animations
+  that know nothing about a held weapon (the Nov 14 trial scored weapon moves 2-4 out of 10), so they were not used.
+- **Keyed offline on the real model:** a strip renderer (scratch `swing_strip.py`) draws the clip on the kit's own
+  triangles at the game's 80 degree view, frame by frame, as Viewmodel places it.
+- **Studio photos:** the player attribute `VMClipHold` (Studio only, Viewmodel.luau) freezes the playing clip at that
+  time; raise it to step on, clear it to let the clip finish.
+
 | | Scythe | Katana | Knife |
 |---|---|---|---|
 | damage | 50 | 48 | 55 (x3 from behind) |
@@ -138,19 +153,33 @@ and reaches a little less (was 0.80 s and 3.6 m), so it no longer out-kills the 
 
 | | |
 |---|---|
-| distance | 8 m (24 studs), flat along your look, stopped 2 studs short of a wall |
-| time | 0.22 s (about 36 m/s) |
-| charges | one: the next comes 6 s after the last |
+| distance | 12 m (36 studs; was 8 m), flat along your look, stopped 2 studs short of a wall |
+| time | 0.28 s (about 43 m/s; was 0.22 s) |
+| charges | two, like Tracer's Blink: they come back one at a time, each 6 s after the last one started (both spent: one back at 6 s, the other at 12 s) |
+| kill refund | a kill with the Scythe, either form (a fall it knocked them into too), gives a charge back at once, like Genji's dash |
+| HUD | the owner: *"can little circles under your crosshair indentify how many dash charges you have and they fill over time"*. Two small circles just under the crosshair while the scythe form is held, drawn like the crosshair's bars (white, a dark rim): full = ready, an empty one fills from the bottom as it comes back, a kill fills one at once (its rim flashes teal, the charge click plays). They sit under the grapple's ranked pips when those show (`ScytheDash.client`) |
 | recovery | 0.35 s after the dash: no swing, guard or dash (`castUntil`) |
 | hit | the first enemy within 1.4 m of the path takes 25 and a 18 m/s shove along it (+4 up); one target only |
 | invulnerability | none: you can be shot, hit and hooked the whole way |
 | katana guard | a guard facing the dash parries it: no damage, and the dasher is staggered and shoved off (the melee parry) |
 | grapple | a hook on you stays on you through the dash (it's tied to your body), so it doesn't dodge hooks |
-| anti-cheat | the server stamps ACGrace for the dash + 0.4 s |
+| anti-cheat | the server stamps ACGrace for the dash + 0.4 s (each dash its own) |
+| the count | the server's: DashN, DashT0 (server time the one coming back started, 0 = full) and DashRefundT on the player; a fresh life starts full |
 
 **Kill and escape values.**
-- Dash into a swing: 25 + 50 = 75 by 0.81 s (the dash, the recovery, the wind-up). A second swing kills at 1.76 s. That closes 8 m, and the kill comes about half a second after the Katana's standing still.
-- As an escape it's 8 m once every 6 s. Everyone has the grapple, so the dash adds a short burst, not a getaway. Ranked uses the same numbers.
+- Dash into a swing: 25 + 50 = 75 by 0.87 s (the dash 0.28, the recovery 0.35, the wind-up 0.24). A second swing kills at 1.82 s. That closes 12 m.
+- Two dashes into a swing: 25 + 25 + 50 = 100 at 1.50 s (0.63 + 0.63 + 0.24), if both dashes catch the same target. The first shoves them 18 m/s along the path and the second, 12 m long, catches up. It closes up to 24 m but spends both charges, so the next dash is 6 s away unless that kill refunds one.
+- A kill gives one charge back, so the dash chains through a fight like Genji's: kill, dash to the next one, kill, dash again.
+- As an escape it's 24 m at once (two dashes 0.63 s apart), then 12 m every 6 s. Everyone has the grapple, so the dash is still a burst, not a getaway. Ranked uses the same numbers.
+
+**Tested in one solo Play, place version 909** (training yard; photos in `docs/scythe/`):
+- **The overhead in first person:** frozen with `VMClipHold` at 0.16 s (raised: the haft goes up out of the top of the view) and 0.24 s (the hit: the blade down in front, hooking in under the crosshair). Then a real click killed a training Stand set to 40 HP with one overhead (Kill remote: `w = "scythe"`). `overhead-raised-v909.jpg`, `overhead-hit-v909.jpg`, `overhead-kill-refund-v909.jpg`, sheet `overhead-sheet-v909.jpg`; the offline strip of both swings is `overhead-strip-offline.png`.
+- **Distance:** every dash's server path was 36.0 studs (12 m) on open floor (4 dashes). The body carries on about 6 studs after the dash ends (the next dash started from x -51 after one planned to end at -45), so a dash moves you about 42 studs (14 m) in all. The old 8 m dash carried the same way.
+- **Two back to back:** DashN went 2, 1, 0 for two dashes 0.7 s apart through the dash remote, both full length. (A third press with none left is refused by the server's count; that press wasn't tried in the test.)
+- **The kill refund:** the Stand kill logged a refund (`w = scythe`, `v = Stand`), raised the count at once and set DashRefundT; the circle's rim flashed teal.
+- **Anti-cheat:** with the movement checks on (`StudioOn`), two 36-stud dashes gave 0 points, 0 catches and no verdicts.
+- **The circles:** `dash-circles-zoom-v909.png` shows both ready, one spent and filling, the refund's teal rim, and both spent.
+- **Not checked:** the swing in third person (it plays the same clip round the grip), a second player's view, and a phone or controller.
 
 **The rifle form.** Server hitscan like every gun. Right click scopes; it has its own mag and reload.
 
@@ -174,20 +203,21 @@ and reaches a little less (was 0.80 s and 3.6 m), so it no longer out-kills the 
 | rifle's first shot | 0.15 s after that (0.6 s after the key) |
 | refused | within 0.6 s of a swing's click, 0.35 s of a shot, during a dash or its recovery, while staggered or stunned, mid-switch |
 | reload | switching cancels it; each form keeps its own ammo for the life |
-| dash | only in the scythe form; its 6 s cooldown runs through switches |
+| dash | only in the scythe form; its charges keep coming back through switches, and a rifle kill refunds one too |
 | the look | the blade slides down the haft behind the grip and turns on its edge as the stock, a scope comes up out of the haft, the teal collar is the muzzle (GunParts eases the pieces across; everyone sees it via the FormT attribute) |
 
 **Combos across the switch.** The switch never makes a kill faster than one form alone.
 - Rifle headshot (81), then the scythe: switch at 0.35 s, swing ready at 0.8 s, kill at 1.04 s. The rifle's own second shot kills at 1.0 s.
 - Swing (50), then the rifle: switch at 0.6 s, first shot at 1.2 s, a kill only with a headshot. Two swings kill at 1.19 s.
-- Dash (25), then the rifle: the recovery ends at 0.57 s, first shot at 1.17 s, a kill with a headshot (106). That's level with the Katana standing still (1.12 s), and it needs both the dash and the headshot to land.
+- Dash (25), then the rifle: the recovery ends at 0.63 s, first shot at 1.23 s, a kill with a headshot (106). That's about level with the Katana standing still (1.12 s), and it needs both the dash and the headshot to land.
 
 **Time to kill, both forms.**
 
 | | best case | every hit to the body |
 |---|---|---|
 | Scythe (swing) | 1.19 s | 1.19 s |
-| Scythe (dash + swings) | 1.76 s (closes 8 m) | 1.76 s |
+| Scythe (dash + swings) | 1.82 s (closes 12 m) | 1.82 s |
+| Scythe (two dashes + swing) | 1.50 s (closes up to 24 m) | 1.50 s |
 | Scythe rifle | 1.0 s | 2.0 s |
 | Katana | 1.12 s | 1.12 s |
 | Sniper | 0 s | 0.91 s |

@@ -125,16 +125,18 @@ const A = {
   ], events: [[0.29, 'thwack']] },
   draw_bread: { keys: [K(0, [0.12, -0.5, 0.12], [-0.9, 0.1, 0.5]), K(0.22, [0, 0.03, 0], [0.12, 0, -0.06], 'snap'), K(0.34, [0, -0.012, 0], [-0.05, 0, 0.02]), K(0.46)], events: [[0.2, 'thwack']] },
   // ---- the Scythe (18 Nov 2026): a slow wide reap both ways, its draw, and the switch to its rifle and back
+  // (18 Nov 2026, the owner: "can you do an overhead with the scythe") both swings are overheads: up past the top of
+  // your view, then down onto the crosshair (scratch swing_strip.py renders a clip on the kit triangles)
   swing_scythe: { hit: 0.24, keys: [
-    K(0), K(0.16, [0.2, 0.15, 0.15], [0.4, -1.2, -0.6]),
-    K(0.3, [-0.38, -0.06, -0.2], [-0.25, 1.95, 0.85], 'snap'),
-    K(0.48, [-0.42, -0.09, -0.16], [-0.3, 2.1, 0.92]),
+    K(0), K(0.16, [0.02, 0.08, -0.06], [0.702, 0.074, 0.575]),
+    K(0.3, [-0.15, -0.01, -0.12], [-1.118, 0.794, 1.125], 'snap'),
+    K(0.48, [-0.16, -0.06, -0.1], [-1.298, 0.814, 1.175]),
     K(0.78),
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   swing_scythe2: { hit: 0.24, keys: [
-    K(0), K(0.16, [-0.35, 0.18, 0.1], [0.5, 1.6, 0.6]),
-    K(0.3, [0.12, -0.08, -0.2], [-0.25, -1.25, -0.75], 'snap'),
-    K(0.48, [0.14, -0.11, -0.16], [-0.3, -1.35, -0.8]),
+    K(0), K(0.16, [-0.04, 0.1, -0.06], [0.752, 0.424, 0.275]),
+    K(0.3, [-0.2, -0.03, -0.12], [-1.298, 0.674, 0.725], 'snap'),
+    K(0.48, [-0.2, -0.08, -0.1], [-1.448, 0.694, 0.775]),
     K(0.78),
   ], events: [[0.2, 'whoosh']], trail: [0.16, 0.44] },
   draw_scythe: { keys: [K(0, [0, -0.3, 0], [0, 0, -Math.PI * 2]), K(0.42, [0, 0.02, 0], [0.05, 0, 0], 'snap'), K(0.55)], events: [[0.38, 'shing']] },

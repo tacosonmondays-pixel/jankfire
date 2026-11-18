@@ -35,9 +35,10 @@ export type Weapon = {
 	-- nothing in your hands but your own (the owner, 18 Nov 2026: "Blood cross and zombie hand can just be our normal
 	-- hand!! Zombie will just turn it green!!"): WeaponModels builds no model, only the spots
 	bare: boolean?,
-	-- the Scythe's right click (ScytheDash.server): a flat dash of dist studs in time s, once every cd s (one charge),
-	-- then recover s with no swing, guard or dash; the first enemy on its path (within width) takes dmg and a shove
-	dash: { dist: number, time: number, cd: number, recover: number, dmg: number, kb: number, kbUp: number, width: number }?,
+	-- the Scythe's right click (ScytheDash.server): a flat dash of dist studs in time s, `charges` of them, each coming
+	-- back cd s after the last started (one at a time, like Tracer's Blink; a Scythe kill gives one back at once), then
+	-- recover s with no swing, guard or dash; the first enemy on its path (within width) takes dmg and a shove
+	dash: { dist: number, time: number, cd: number, charges: number?, recover: number, dmg: number, kb: number, kbUp: number, width: number }?,
 	-- a weapon with two forms (the Scythe and its rifle, Rules.equip): the key "form" (Q) turns it into `to` in `time` s
 	-- (no swing, dash, shot or reload meanwhile), the gun's first shot `fireDelay` s after that; not within `swingLock` s
 	-- of a swing's click or `shotLock` s of a shot. formOf: this row is the second form of that loadout weapon (it shares
@@ -629,13 +630,15 @@ local W: { [string]: Weapon } = {
 	},
 	-- (the owner, 18 Nov 2026: "Bring scythe in as a weapon, balance it especially its dash", then "It's a sniper too
 	-- remember") the web game's killstreak Scythe as a loadout melee, toned down (WEAPONS.md "Scythe"): a slow wide reap
-	-- that two-hits, a right-click dash with one charge, a cooldown and a recovery, no invulnerability; Q turns it into
-	-- its rifle (scythe_rifle). each form a little under the specialist: the Katana up close, the Sniper at range
+	-- (an overhead since the owner's "can you do an overhead with the scythe": Anims swing_scythe / swing_scythe2) that
+	-- two-hits, a right-click dash with two charges ("two charges like tracer, a kill recharges the dash like genji, the
+	-- dash travels farther!": 12 m, was 8), a recovery, no invulnerability; Q turns it into its rifle (scythe_rifle).
+	-- each form a little under the specialist: the Katana up close, the Sniper at range
 	scythe = {
 		id = "scythe", name = "Scythe", slot = "melee", kind = "melee", color = rgb(0x3ee6c8),
-		desc = "a slow, wide reap that kills in two. right click dashes you forward and cuts the first one in your way. q turns it into a rifle.",
+		desc = "a slow, wide overhead reap that kills in two. right click dashes you forward and cuts the first one in your way. q turns it into a rifle.",
 		cd = 0.95, range = 3.3 * S, cone = 0.95, dmg = 50, kb = 18 * S, kbUp = 6 * S, hitT = 0.24, speedMul = 0.95,
-		dash = { dist = 8 * S, time = 0.22, cd = 6, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
+		dash = { dist = 12 * S, time = 0.28, cd = 6, charges = 2, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
 		form = { to = "scythe_rifle", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
 		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },

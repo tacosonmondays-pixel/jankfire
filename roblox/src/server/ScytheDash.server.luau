@@ -1,12 +1,18 @@
 --!strict
 -- the Scythe's dash (the owner, 18 Nov 2026: "Bring scythe in as a weapon, balance it especially its dash"; WEAPONS.md
--- "Scythe"). right click with the scythe out: the server checks it (yours, out, alive, not stunned or mid-swing, one
--- charge on its cooldown), finds the path (flat along your look, dash.dist studs, stopped short of a wall), hands it to
--- your client to run (DashV / DashUntil on you; ACGrace so the anti-cheat lets the burst through) and cuts the first
--- enemy within dash.width of that path: dash.dmg and a shove along it. a katana guard facing the dash parries it: no
--- damage, you're staggered instead. no invulnerability; after it, dash.recover s with no swing, guard or dash
+-- "Scythe"). right click with the scythe out: the server checks it (yours, out, alive, not stunned or mid-swing, a
+-- charge left), finds the path (flat along your look, dash.dist studs, stopped short of a wall), hands it to your
+-- client to run (DashV / DashUntil on you; ACGrace so the anti-cheat lets the burst through) and cuts the first enemy
+-- within dash.width of that path: dash.dmg and a shove along it. a katana guard facing the dash parries it: no damage,
+-- you're staggered instead. no invulnerability; after it, dash.recover s with no swing, guard or dash
+-- (the owner, later on 18 Nov: "the dash can you get two charges like tracer, a kill recharges the dash like genji, the
+-- dash travels farther!") dash.charges charges, coming back one at a time dash.cd s apart (Tracer's Blink); a kill with
+-- the Scythe in either form gives one back at once (Genji's Swift Strike); 12 m (was 8). the count is the server's, on
+-- the player: DashN (charges left), DashT0 (server time the one coming back started; 0 = full), DashRefundT (server
+-- time of the last kill's refund). ScytheDash.client draws them as small circles under the crosshair
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
@@ -24,7 +30,59 @@ if not DashR then
 end
 local W = Weapons.list
 local now = os.clock
+local function snow(): number return workspace:GetServerTimeNow() end
 local _ = Players
+local SCY = (W :: any).scythe.dash -- (the charges are the Scythe's: they count on through its rifle form)
+
+-- ------------------------------------------------------------------ the charges (server time)
+type Charge = { n: number, t0: number? } -- left; when the one coming back started (nil = full)
+local charges: { [any]: Charge } = setmetatable({}, { __mode = "k" }) :: any
+local MAX = SCY.charges or 1
+local function update(c: Charge, sn: number)
+	while c.n < MAX and c.t0 ~= nil and sn - (c.t0 :: number) >= SCY.cd do
+		c.n += 1
+		c.t0 = if c.n < MAX then (c.t0 :: number) + SCY.cd else nil
+	end
+end
+local function publish(f: Rules.Fighter, c: Charge)
+	if f.kind ~= "player" then return end
+	local p = f.ref :: Player
+	p:SetAttribute("DashN", c.n)
+	p:SetAttribute("DashT0", c.t0 or 0)
+end
+local function chargeOf(f: Rules.Fighter): Charge
+	local c = charges[f]
+	if not c then c = { n = MAX, t0 = nil }; charges[f] = c end
+	update(c, snow())
+	return c
+end
+-- (Studio play tests) the last dashes and refunds
+local log: { any } = {}
+local function note(e: any)
+	table.insert(log, e)
+	if #log > 20 then table.remove(log, 1) end
+end
+
+-- a fresh life starts full
+Fight.onSpawn(function(f: Rules.Fighter)
+	local c = { n = MAX, t0 = nil }
+	charges[f] = c
+	publish(f, c)
+end)
+-- a kill with the Scythe (either form; a fall it knocked them into too) gives a charge back at once
+Fight.onKill(function(info: Rules.KillInfo)
+	local k = info.k
+	if not k or not k.alive then return end
+	local w = if info.w == "void" then info.via else info.w
+	if type(w) ~= "string" or Weapons.base(w) ~= "scythe" then return end
+	local c = chargeOf(k)
+	if c.n >= MAX then return end
+	c.n += 1
+	if c.n >= MAX then c.t0 = nil end
+	publish(k, c)
+	if k.kind == "player" then (k.ref :: Player):SetAttribute("DashRefundT", snow()) end
+	note({ k = "refund", by = k.name, v = info.v.name, w = info.w, n = c.n, t = snow() })
+end)
 
 ;(DashR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, look: unknown)
 	if p:GetAttribute("Zone") == "hub" or typeof(look) ~= "Vector3" then return end
@@ -36,7 +94,8 @@ local _ = Players
 	if not D then return end
 	local n = now()
 	if n < f.staggerUntil or (f.castUntil and n < f.castUntil) or Rules.parryOpen(f, n) or Rules.transforming(f, n) then return end
-	if not Rules.gate(f, "dash", n, D.cd / 0.9) then return end -- (one charge: the next only after cd s)
+	local c = chargeOf(f)
+	if c.n <= 0 then return end -- (none left: the next comes back SCY.cd s after the last one started)
 	local root = Fight.root(f)
 	if not root then return end
 	local flat = Vector3.new((look :: Vector3).X, 0, (look :: Vector3).Z)
@@ -48,6 +107,12 @@ local _ = Players
 	local hit = Fight.castMap(from, flat, len + 2)
 	if hit then len = math.max(0, (hit.Position - from).Magnitude - 2) end
 	local to = from + flat * len
+	-- spend the charge: the one coming back starts now if none was
+	local sn = snow()
+	c.n -= 1
+	if c.t0 == nil then c.t0 = sn end
+	publish(f, c)
+	note({ k = "dash", by = f.name, from = from, to = to, len = len, n = c.n, t = sn })
 	f.castUntil = n + D.time + D.recover -- (no swing or guard through the dash and its recovery)
 	p:SetAttribute("ACGrace", n + D.time + 0.4) -- (the anti-cheat: this burst is the server's say)
 	p:SetAttribute("DashV", flat * (len / D.time))
@@ -87,3 +152,35 @@ local _ = Players
 		end
 	end)
 end)
+
+-- ------------------------------------------------------------------ Studio play tests
+--   local S = game.ServerStorage.JankScytheTest
+--   S:Invoke("state", player)  -> { n, t0, max, cd, now }
+--   S:Invoke("fill", player)   -> full charges
+--   S:Invoke("set", player, n) -> n charges left, the next one starting to come back now (a refund test)
+--   S:Invoke("log", "clear"?)  -> the last dashes { from, to, len, n } and refunds (and empties it)
+if RunService:IsStudio() then
+	local ServerStorage = game:GetService("ServerStorage")
+	local old = ServerStorage:FindFirstChild("JankScytheTest")
+	if old then old:Destroy() end
+	local bf = Instance.new("BindableFunction")
+	bf.Name = "JankScytheTest"
+	bf.OnInvoke = function(what: string, a: any, b: any): any
+		if what == "log" then
+			local out = table.clone(log)
+			if a == "clear" then table.clear(log) end
+			return out
+		end
+		local f = if typeof(a) == "Instance" then Fight.byPlayer[a :: Player] else nil
+		if not f then return nil end
+		local c = chargeOf(f)
+		if what == "fill" then c.n, c.t0 = MAX, nil; publish(f, c) end
+		if what == "set" and type(b) == "number" then
+			c.n = math.clamp(math.floor(b), 0, MAX)
+			c.t0 = if c.n < MAX then snow() else nil
+			publish(f, c)
+		end
+		return { n = c.n, t0 = c.t0, max = MAX, cd = SCY.cd, now = snow() }
+	end
+	bf.Parent = ServerStorage
+end

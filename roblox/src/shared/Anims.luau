@@ -250,15 +250,19 @@ return {
 		},
 		events = { { 0.2, "thwack" } },
 	},
+	-- (the owner, 18 Nov 2026: "can you do an overhead with the scythe like an overhead animation") both swings are
+	-- overheads: up past the top of your view (the blade turned to lead), then down onto the crosshair, the blade hooking
+	-- in at the hit (0.24, 92% of the way down). the first from up on the right, hooking in just left of the crosshair;
+	-- the second straight down the middle. third person plays the same clip round the grip (ThirdPerson swingRig)
 	swing_scythe = {
 		hit = 0.24,
 		trail = { 0.16, 0.44 },
 		dur = 0.78,
 		keys = {
 			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
-			{ t = 0.16, p = { 0.2, 0.15, 0.15 }, r = { 0.4, -1.2, -0.6 }, e = "smooth" },
-			{ t = 0.3, p = { -0.38, -0.06, -0.2 }, r = { -0.25, 1.95, 0.85 }, e = "snap" },
-			{ t = 0.48, p = { -0.42, -0.09, -0.16 }, r = { -0.3, 2.1, 0.92 }, e = "smooth" },
+			{ t = 0.16, p = { 0.02, 0.08, -0.06 }, r = { 0.702, 0.074, 0.575 }, e = "smooth" },
+			{ t = 0.3, p = { -0.15, -0.01, -0.12 }, r = { -1.118, 0.794, 1.125 }, e = "snap" },
+			{ t = 0.48, p = { -0.16, -0.06, -0.1 }, r = { -1.298, 0.814, 1.175 }, e = "smooth" },
 			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
 		},
 		events = { { 0.2, "whoosh" } },
@@ -269,9 +273,9 @@ return {
 		dur = 0.78,
 		keys = {
 			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
-			{ t = 0.16, p = { -0.35, 0.18, 0.1 }, r = { 0.5, 1.6, 0.6 }, e = "smooth" },
-			{ t = 0.3, p = { 0.12, -0.08, -0.2 }, r = { -0.25, -1.25, -0.75 }, e = "snap" },
-			{ t = 0.48, p = { 0.14, -0.11, -0.16 }, r = { -0.3, -1.35, -0.8 }, e = "smooth" },
+			{ t = 0.16, p = { -0.04, 0.1, -0.06 }, r = { 0.752, 0.424, 0.275 }, e = "smooth" },
+			{ t = 0.3, p = { -0.2, -0.03, -0.12 }, r = { -1.298, 0.674, 0.725 }, e = "snap" },
+			{ t = 0.48, p = { -0.2, -0.08, -0.1 }, r = { -1.448, 0.694, 0.775 }, e = "smooth" },
 			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
 		},
 		events = { { 0.2, "whoosh" } },
