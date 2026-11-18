@@ -56,8 +56,8 @@ local Config = {
 	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in
 	-- stock (while we test); LOOT_ROBUX = sell them through developer products (Shop.luau's product ids; receipts:
 	-- ShopReceipts.server.luau -> Loot.grant). off until the owner turns it on
-	LOOT_FREE = true,
-	LOOT_ROBUX = false,
+	LOOT_FREE = false, -- (real money on, 18 Nov 2026, the owner: "Lets get the shop going!". docs/MONEY.md)
+	LOOT_ROBUX = true,
 	-- server checks (generous: movement is the client's, the server only catches teleports)
 	check = {
 		maxSpeed = 140 * S, -- studs/s, well past any bhop/grapple speed the web game sees

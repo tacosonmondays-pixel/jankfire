@@ -17,20 +17,21 @@ There is no second currency: two would confuse players.
 
 ## The switch
 
-Real money is **off**. Two lines in `roblox/src/shared/Config.luau` turn it on:
+Real money is **on** in the place since version 1034 (18 Nov; live once the owner publishes). The two lines in
+`roblox/src/shared/Config.luau`:
 
-| Switch | Now | For real money |
+| Switch | Now (version 1034) | Off again |
 |---|---|---|
-| `Config.LOOT_FREE` | `true`: everything in the shop is free to claim | `false` |
-| `Config.LOOT_ROBUX` | `false`: no prompt is ever shown, `ProcessReceipt` isn't even set | `true` (**the** switch: `Shop.ROBUX`) |
-| `Unlocks.WEAPONS_ROBUX_FREE` (`shared/Unlocks.luau`) | `true`: the four Robux weapons are free for everyone (FREE FOR NOW) | `false` |
+| `Config.LOOT_FREE` | `false`: things cost Robux (or coins / tickets for a redeem) | `true`: everything free to claim |
+| `Config.LOOT_ROBUX` | `true` (**the** switch, `Shop.ROBUX`): prompts and receipts on | `false`: no prompt, no `ProcessReceipt` |
+| `Unlocks.WEAPONS_ROBUX_FREE` (`shared/Unlocks.luau`) | `true`: the four Robux weapons are free for everyone (FREE FOR NOW), the owner's call | `false`: they must be bought |
 
 - While `LOOT_FREE` is on, `Shop.free()` wins: nothing prompts even with `LOOT_ROBUX` on. The coin packs then read NOT
   FOR SALE YET, with their prices struck through.
 - `WEAPONS_ROBUX_FREE` only locks the weapons. With it off and `LOOT_ROBUX` still off, they can be bought with coins
   but not with Robux.
 
-## Going live (prepared 18 Nov, not done yet)
+## Going live (flipped in Studio 18 Nov, place version 1034; live once the owner publishes)
 
 The owner: "Lets get the shop going!". It is one change, in one Studio turn under main's OWNER HOLD:
 
@@ -39,6 +40,13 @@ The owner: "Lets get the shop going!". It is one change, in one Studio turn unde
 2. Put the VIP pass on sale: `PATCH /game-passes/v1/universes/10776367667/game-passes/2093409349` with `isForSale`
    true (scope `game-pass:write`). `Shop.VIP_PASS` is already 2093409349.
 3. The owner publishes.
+
+Done in Studio, place version 1034: steps 1 and 3 wait on the owner's publish; then step 2 (the VIP pass goes on sale
+only once the live game has the code that grants it). Sanity Play before the save:
+- the 1,200-coin pack and the Crate showed Roblox's real purchase prompts (cancelled: `PromptProductPurchaseFinished`
+  with false for 3733204424 and 3733200177);
+- the VIP tile's buy prompted the pass;
+- the items claimed while free were all still owned.
 
 `Unlocks.WEAPONS_ROBUX_FREE` is not part of it: the four Robux weapons stay free for everyone until the owner decides.
 That is a separate decision, because it locks weapons people use today, and ranked is open (PROGRESSION.md, "Ranked").
