@@ -989,6 +989,31 @@ Every `bow()` call site now calls `soft_bow`:
 - **Triangles:** +0.8k to +1.3k a skin, and +4.1k on the B rifle (three bows).
 - Picture: `gun-models/fused-batch3.jpg`.
 
+### The Royal Duck Pistol's crown on the head (18 November 2026, live in place version 935)
+
+The owner: "ducky tripo on the pistol the crown isnt on the ducks head". On `pistol_ducky_tripo` (the Royal Duck
+Pistol), Tripo's crown was a 7.6 mm pip worn at a slant on the head's left, 15 mm off its middle; seen from the side it
+was not on the head. In `gun_sets_tripo_rebuild.py` it is now:
+- upright and centred on the top of the head, twice the size (about 15 mm across on the 40 mm head);
+- sat down 3.5 mm into the head and fused to it (`sdf_kit.fuse`, a 1.5 mm fillet), so head and crown are one moulded
+  piece, painted gold on the duck's yellow;
+- its own piece, `slide_wzN__crown` (node slide: it kicks with the slide). Its tips reach y 0.063, above the 0.0585
+  sight line just in front of the post, so it must hide while aiming: the hold session adds it to
+  `holds.json` `ads.skins.pistol_ducky_tripo.hide`.
+
+The other three Royal Duck guns (SMG, katana, sniper) already wear their crowns centred on top of the head; they are
+unchanged.
+
+**Checked:**
+- `gun_check`: 98 solids, 0 loose.
+- Flicker: 0 hits at the display scale. At hand scale only the old grip and mag pair shows; nothing near the crown.
+- All 12 hats clean, first and third person; the hat seat on the slide at z -0.08 is unchanged.
+- **Upload:** asset 112094016285338, 14,068 triangles. Loaded with `W.run` and a row kept out of the committed book,
+  as before: the gun is Tripo-derived, so it stays out of git. The old skin model is in
+  `PolishBackup.SkinBackups.pistol_ducky_tripo_v1`.
+- No display name carries "Tripo": the four are the Royal Duck SMG, Katana, Sniper and Pistol (`SkinSets.SKINS`, the
+  shop's file). Their ids keep `_tripo`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

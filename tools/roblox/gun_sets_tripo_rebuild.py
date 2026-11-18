@@ -24,8 +24,11 @@
 #     nose (0.5 mm into it: a seam, not a gap), a touch narrower and lower than the slide, with a blue inset and three
 #     white bubbles each side; Tripo's duck head in front of it with its open bill and eyes, made rounder (wider,
 #     deeper, a little lower: from the eye its top hides behind the slide's, so the front post stands against the sky)
-#     and sunk into the block; Tripo's small crown worn at a slant on the head's left (centred it showed in the notch
-#     beside the post). The block's flat top is the hat seat (hats ride the piece under them, hide while aiming).
+#     and sunk into the block; Tripo's crown upright and centred ON the head, twice its size, sat down into it and
+#     fused (one moulded head-and-crown, 18 Nov; it was worn at a slant on the head's left, off the head from the
+#     side). Its tips rise above the aim line, so it is its own piece slide_wzN__crown that the hold hides while
+#     aiming (holds.json ads.skins). The block's flat top is the hat seat (hats ride the piece under them, hide while
+#     aiming).
 #     The barrel (node body) stays put: its bore is in the duck's mouth at rest and shows out of it when the slide kicks,
 #     a link under it holds it to the frame.
 #   - FRAME (node body): pearl, a rail line along each side, the recoil plug (gold ring, dark bore) under the head, the
@@ -410,20 +413,27 @@ def pistol_ducky_tripo():
             w = wf(v.co) - HC
             v.co = P(HC.x + w.x * 1.12, (HC.y + w.y) * 0.95, HC.z + w.z * 1.12)
         add_bm(g, dst, plain(T[src], sharp=sharp))
-    # the crown: a little bigger, worn at a slant on the head's left (first person sees it). Centred on top it showed
-    # in the notch beside the front post; here, from the eye, it hides behind the notch's left ear, under the aim line
-    from mathutils.bvhtree import BVHTree
+    # the crown ON THE HEAD (18 Nov 2026, the owner: "ducky tripo on the pistol the crown isnt on the ducks head"):
+    # upright, centred on the crown of the head, twice Tripo's size (about 15 mm across on the 40 mm head: Tripo's
+    # was a 7.6 mm pip that read as a stray part), sitting down onto it (sunk 3.5 mm) and fused to it (sdf_kit.fuse, a
+    # 1.5 mm fillet: one moulded head-and-crown, painted gold on the duck's yellow). Its own piece slide_wzN__crown
+    # (node slide: it kicks with the slide), so the hold can hide it while aiming: it rises above the aim line (the
+    # head's top is 7 mm under it). (Before: worn at a slant on the head's left, 15 mm off its middle, to keep it out
+    # of the notch; seen from the side it was not on the head)
     crown = T['slide_wzN__gold']
-    head = BVHTree.FromBMesh(T['slide_wzA__duck'])
-    foot = Vector((0.0, min(wf(v.co).y for v in crown.verts), sum(wf(v.co).z for v in crown.verts) / len(crown.verts)))
-    at = Vector((-0.0152, 0.0, -0.2395))
-    hit = head.ray_cast(P(at.x, 0.1, at.z), Vector((0, 0, -1)))
-    at.y = (wf(hit[0]).y if hit[0] else 0.05) - 0.0016
-    a = math.radians(32.0)
-    for v in crown.verts:
-        d = (wf(v.co) - foot) * 1.15
-        v.co = P(at.x + d.x * math.cos(a) - d.y * math.sin(a), at.y + d.x * math.sin(a) + d.y * math.cos(a), at.z + d.z)
-    add_bm(g, 'slide_wzN__gold', plain(crown, sharp=40.0))
+    cw = [wf(v.co) for v in crown.verts]
+    foot = Vector((sum(w.x for w in cw) / len(cw), min(w.y for w in cw), sum(w.z for w in cw) / len(cw)))
+    hw = [wf(v.co) for v in T['slide_wzA__duck'].verts]   # (already placed: the rounder head)
+    top = max(hw, key=lambda w: w.y)
+    at = Vector((0.0, top.y - 0.0035, top.z - 0.001))
+    for v, w in zip(crown.verts, cw):
+        d = (w - foot) * 2.0
+        v.co = P(at.x + d.x, at.y + d.y, at.z + d.z)
+    g.slot('crown', PAL['gold'])
+    add_bm(g, 'slide_wzN__crown', plain(crown, sharp=40.0))
+    import sdf_kit as SDF
+    SDF.fuse(g, [(('slide_wzN', 'duck'), 0), (('slide_wzN', 'crown'), 0.0015)], h=0.0004, tris=2600, name='duckcrown',
+             smooth=1, seam_k=1.0)
     # the wings: onto this grip's panels at three quarters of Tripo's size (this grip is slimmer), on the panel's upper
     # part, lying flat: their back sunk into the panel, 2.3 mm proud of it as before
     wing = T['grip_wzN__wing']
