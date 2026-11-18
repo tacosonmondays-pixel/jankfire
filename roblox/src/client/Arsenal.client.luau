@@ -756,7 +756,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
 		elseif W[held] and W[held].kind == "proj" then -- (batch C: the projectiles)
 			local eye, look = eyeAndAim()
-			if minigun.proj.throw(held, eye, look) then VM.kick(W[held].recoilVM, 0.8, false, 1, 1); TP.fired(held, false) end
+			if minigun.proj.throw(held, eye, look) then VM.kick(W[held].recoilVM, 0.8, false, 1, 1); VM.shot(W[held]); TP.fired(held, false) end
 		else
 			cancelReload() -- (a reload with rounds left: the shot wins)
 			if not W[held].auto and now >= nextShot[held] then fireGun(now) end

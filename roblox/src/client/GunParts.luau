@@ -19,6 +19,7 @@ export type State = {
 	-- (the Scythe's two forms) each moving node's offset to where it sits in the other form (root space), the switch's
 	-- length; and whether whose gun this is has been looked up (a third-person copy is parented after attach)
 	form: { [string]: CFrame }?, formTime: number?, ownerSeen: boolean?,
+	shotT: number?, -- (weapons batch C) when it last fired: the round in the muzzle is gone till it's refilled
 }
 -- your own last form switch (os.clock: Arsenal sets it); anyone else's is their FormT attribute (server time, Combat)
 GunParts.myFormT = -math.huge
@@ -84,6 +85,7 @@ function GunParts.shot(st: State, w: any)
 	local cyl = st.parts.cylinder
 	if cyl then st.cylTo += cyl.step or math.pi / 3 end
 	st.hamT, st.kickT = 0, 0
+	st.shotT = os.clock()
 	if w.heatUp then st.heat = math.min(1, st.heat + w.heatUp / (w.rate or 1)) end
 end
 
@@ -286,6 +288,9 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 			end
 		end
 	end
+	-- (weapons batch C) the round sitting in the muzzle (the rubber chicken's head, the tennis ball in the bore) is gone
+	-- from the shot till `back` s later, when the next one is in (parts.refill = { node, back })
+	if P.refill and os.clock() - (st.shotT or -math.huge) < P.refill.back then hide[P.refill.node] = true end
 	-- (the Scythe) a form switch just now: the moving pieces come across from where they sat in the other form
 	if not st.owner and not st.ownerSeen then
 		local m = st.root.Parent

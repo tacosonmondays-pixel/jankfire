@@ -385,7 +385,8 @@ local W: { [string]: Weapon } = {
 		snd = "chicken_fire", snd2 = "chicken_squeak", -- (the launcher's thunk, and the rubber chicken's squeak with it)
 		recoilVM = { back = 1.6, up = 6, roll = 1, side = 0.2, punch = 0.03 },
 		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
-		mdl = { lo = Vector3.new(-0.08, -0.15, -0.6), hi = Vector3.new(0.08, 0.1, 0.4), muzzle = Vector3.new(0, 0, -0.6), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.05, -0.25) },
+		mdl = { lo = Vector3.new(-0.0885, -0.2066, -0.7903), hi = Vector3.new(0.0885, 0.091, 0.622), muzzle = Vector3.new(0, 0, -0.62), grip = Vector3.new(0, -0.1322, 0.0798), fore = Vector3.new(0, -0.134, -0.272),
+			parts = { refill = { node = "bird", back = 0.7 } } }, -- (the kit model's, v813: the next chicken's head pokes out of the muzzle)
 	},
 	banana = {
 		id = "banana", name = "Peel Shooter", slot = "primary", kind = "proj", proj = "peel", color = rgb(0xffe135),
@@ -394,7 +395,7 @@ local W: { [string]: Weapon } = {
 		snd = "banana_fire",
 		recoilVM = { back = 0.6, up = 2, roll = 0.8, side = 0.15, punch = 0.008 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
-		mdl = { lo = Vector3.new(-0.06, -0.15, -0.5), hi = Vector3.new(0.06, 0.12, 0.3), muzzle = Vector3.new(0, 0.02, -0.5), grip = Vector3.new(0, -0.1, 0.08), fore = Vector3.new(0, -0.04, -0.25) },
+		mdl = { lo = Vector3.new(-0.0477, -0.2172, -0.3625), hi = Vector3.new(0.0497, 0.068, 0.226), muzzle = Vector3.new(0, 0, -0.3625), sight = Vector3.new(0, 0.068, 0.0778), grip = Vector3.new(0, -0.0882, 0.0965), fore = Vector3.new(0, -0.004, -0.2) }, -- (the kit model's, v813)
 	},
 	tennis = {
 		id = "tennis", name = "Tennis Ball Launcher", slot = "primary", kind = "proj", proj = "ball", color = rgb(0xd4ff3a),
@@ -404,7 +405,8 @@ local W: { [string]: Weapon } = {
 		snd = "tennis_fire",
 		recoilVM = { back = 0.9, up = 3, roll = 0.8, side = 0.15, punch = 0.012 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
-		mdl = { lo = Vector3.new(-0.07, -0.16, -0.45), hi = Vector3.new(0.07, 0.15, 0.3), muzzle = Vector3.new(0, 0.03, -0.45), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.04, -0.22) },
+		mdl = { lo = Vector3.new(-0.08, -0.1889, -0.545), hi = Vector3.new(0.08, 0.2, 0.0448), muzzle = Vector3.new(0, 0.03, -0.545), grip = Vector3.new(0, -0.0837, 0), fore = Vector3.new(0, -0.062, -0.36),
+			parts = { refill = { node = "ball", back = 0.4 } } }, -- (the kit model's, v813: the next ball waits in the bore)
 	},
 	snowball = {
 		id = "snowball", name = "Snowball", slot = "secondary", kind = "proj", proj = "snow", color = rgb(0xdff4ff),
@@ -413,7 +415,7 @@ local W: { [string]: Weapon } = {
 		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0.5, side = 0.1, punch = 0.004 },
 		vm = { p = Vector3.new(0.18, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
-		mdl = { lo = Vector3.new(-0.065, -0.065, -0.065), hi = Vector3.new(0.065, 0.065, 0.065), muzzle = Vector3.new(0, 0, -0.07), grip = Vector3.new(0, 0, 0) },
+		mdl = { lo = Vector3.new(-0.069, -0.0494, -0.1481), hi = Vector3.new(0.0731, 0.088, -0.0096), muzzle = Vector3.new(0, 0.02, -0.08), grip = Vector3.new(0, 0.02, -0.08) }, -- (the kit model's, v813: the ball in the hand)
 	},
 	-- (the owner, 18 Nov 2026: cast from your own hand, no model) a bolt of blood from your fingertip, stylised: a deep red X
 	bloodcross = {

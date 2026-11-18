@@ -47,17 +47,27 @@ local LOOK = {
 }
 type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number }
 local live: { [number]: Live } = {}
-local function shape(k: string): BasePart
+-- the kit models for the shots (guns-remodel, v813: JankfireWeapons w_pj_*, built in metres, nose along -Z, origin at
+-- the middle); a kind with none (the tennis ball, the blood cross) stays a simple shape
+local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball" } :: { [string]: string }
+local function kit(name: string): Model?
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
-	local t = lib and lib:FindFirstChild("pj_" .. k)
-	if t and t:IsA("Model") then
-		local m = t:Clone()
+	local t = lib and lib:FindFirstChild(name)
+	if not t or not t:IsA("Model") then return nil end
+	local m = t:Clone()
+	m:ScaleTo(m:GetScale() * S) -- (metres to studs: S studs a metre)
+	return m
+end
+local function shape(k: string): BasePart
+	local m = if KIT[k] then kit(KIT[k]) else nil
+	if m then
 		local root = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
 		if root then
-			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end end
+			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end end
 			m.Parent = folder
 			return root :: BasePart
 		end
+		m:Destroy()
 	end
 	local L = LOOK[k] or LOOK.ball
 	local part = Instance.new("Part")
@@ -140,11 +150,9 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			else Fx.impact(at, Vector3.yAxis, nil, Enum.Material.Fabric, { hole = false, scale = 0.6 }) end
 		end
 	elseif k == "peel" and type(f.id) == "number" and typeof(f.p) == "Vector3" then
-		local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
-		local t = lib and lib:FindFirstChild("pj_peel")
+		local m = kit("w_pj_peel")
 		local part: BasePart
-		if t and t:IsA("Model") then
-			local m = t:Clone()
+		if m then
 			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false end end
 			m:PivotTo(CFrame.new(f.p + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.random() * 6.28, 0))
 			m.Parent = folder
