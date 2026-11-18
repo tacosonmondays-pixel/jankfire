@@ -36,6 +36,7 @@ local GAMES = {
 	arm = require(script.Parent:WaitForChild("MiniArm")) :: any,
 	board = require(script.Parent:WaitForChild("MiniBoard")) :: any,
 	arcade = require(script.Parent:WaitForChild("MiniArcade")) :: any,
+	box = require(script.Parent:WaitForChild("MiniBox")) :: any,
 }
 
 export type Table = { id: string, kind: string, model: Model, cf: CFrame, seats: { [string]: Seat }, who: { [string]: any }, prompts: { [string]: ProximityPrompt }, bots: { [string]: Model }, g: any }
@@ -154,8 +155,20 @@ local function newTable(kind: string, cf: CFrame, n: number): Table?
 		local box = part(model, "Box", cf * CFrame.new(0, 3.8, 0), Vector3.new(3.4, 7.6, 2.8), { CanCollide = true, CanQuery = true })
 		box.Name = "Collision"
 		CollectionService:AddTag(model, "MiniArcade")
+	elseif kind == "box" then
+		-- the gym's ring: nothing built, the ring is the hub's. two marks on the mat, where each boxer stands
+		for _, side in { "A", "B" } do
+			att(root, "Stand" .. side, CFrame.new(0, 0, if side == "A" then L.gap else -L.gap) * FACE[side])
+		end
 	end
-	if kind == "arm" or kind == "board" then
+	if kind == "box" then
+		for _, side in { "A", "B" } do
+			local a = att(root, "PromptAt" .. side, CFrame.new(0, 3, if side == "A" then L.mark else -L.mark))
+			local pr = prompt(a, MG.TITLE.box, "Box", 8)
+			pr:SetAttribute("MiniSide", side)
+			T.prompts[side] = pr
+		end
+	elseif kind == "arm" or kind == "board" then
 		for _, side in { "A", "B" } do
 			local seat = Instance.new("Seat")
 			seat.Name = "Seat" .. side
@@ -243,6 +256,50 @@ local function afterSit(T: Table, side: string, hum: Humanoid)
 	end
 end
 
+-- where a boxer stands (the ring: no seats), its root's CFrame for a body of this humanoid
+local function standCF(T: Table, side: string, hum: Humanoid?, root: BasePart?): CFrame
+	local L = MG.L.box
+	local at = T.cf * CFrame.new(0, 0, if side == "A" then L.gap else -L.gap) * FACE[side]
+	local up = (if root then root.Size.Y / 2 else 1) + (if hum and hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight else 2) + 0.05
+	return at + Vector3.new(0, up, 0)
+end
+
+-- boxing gloves on a boxer's hands for the bout (on = false: off again). the kit's mg_glove (its origin is the middle of
+-- a hand, the cuff up the forearm), sized to the hand, welded; a corner's colour each (A muted red, B muted blue)
+local GLOVE_COLOUR = { A = Color3.fromRGB(150, 62, 58), B = Color3.fromRGB(58, 84, 140) }
+-- (`whom`: the one leaving, whom ctx.leave has already taken out of T.who: without it a leaver kept the gloves on)
+function ctx.gloves(T: Table, side: string, on: boolean, whom: any?)
+	local who = if whom ~= nil then whom else T.who[side]
+	local ch: Model? = if typeof(who) == "Instance" and who:IsA("Player") then who.Character
+		elseif type(who) == "table" and who.Character then who.Character else T.bots[side]
+	if not ch then return end
+	for _, c in ch:GetChildren() do if c.Name == "MiniGlove" then c:Destroy() end end
+	if not on then return end
+	local hum = ch:FindFirstChildOfClass("Humanoid")
+	local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
+	for _, hand in { "Right", "Left" } do
+		local h = ch:FindFirstChild(if r6 then hand .. " Arm" else hand .. "Hand") :: BasePart?
+		local src = kitModel("mg_glove")
+		if not h or not src then if src then src:Destroy() end; continue end
+		-- (an R15 hand ~0.3 across gets a glove about twice its size; an R6 arm is a stud wide: the glove at its end)
+		local k = if r6 then 1.15 else math.clamp(math.max(h.Size.X, h.Size.Z) / 0.36, 0.7, 1.5)
+		local at = if r6 then h.CFrame * CFrame.new(0, -h.Size.Y / 2 + 0.15, 0) else h.CFrame * CFrame.new(0, -0.05 * k, 0)
+		src.Name = "MiniGlove"
+		for _, p in src:GetDescendants() do
+			if not p:IsA("BasePart") then continue end
+			local rel = p.CFrame -- (the kit's own frame: relative to the hand's middle)
+			p.Size *= k
+			p.CFrame = at * (rel - rel.Position + rel.Position * k)
+			p.Anchored = false; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Massless = true
+			if string.find(p.Name, "a3a3a3", 1, true) then p.Color = GLOVE_COLOUR[side] end
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = h; w.Part1 = p
+			w.Parent = p
+		end
+		src.Parent = ch
+	end
+end
+
 -- a bot sits down at T's seat `side` (or gets up: on = false)
 function ctx.botSeat(T: Table, side: string, level: string?)
 	local old = T.bots[side]
@@ -250,9 +307,9 @@ function ctx.botSeat(T: Table, side: string, level: string?)
 		T.bots[side] = nil
 		local hum = old:FindFirstChildOfClass("Humanoid")
 		if hum then hum.Sit = false end
-		local w = T.seats[side]:FindFirstChild("SeatWeld")
+		local w = T.seats[side] and T.seats[side]:FindFirstChild("SeatWeld")
 		if w then w:Destroy() end
-		for _, c in old:GetDescendants() do if c:IsA("IKControl") then c:Destroy() end end
+		for _, c in old:GetDescendants() do if c:IsA("IKControl") or c.Name == "MiniGlove" then c:Destroy() end end
 		old.Parent = ServerStorage
 		table.insert(spareBots, old)
 	end
@@ -264,12 +321,25 @@ function ctx.botSeat(T: Table, side: string, level: string?)
 	local rig = table.remove(spareBots) or makeBot()
 	if not rig then return end
 	T.bots[side] = rig
+	rig:SetAttribute("MiniSide", side) -- (the boxing client finds each corner's body by this)
 	T.who[side] = { bot = true, level = level }
 	local seat = T.seats[side]
 	local hum = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local root = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not seat then
+		-- (the ring: the bot stands on its mark, its root held still; the boxing client plays its moves)
+		if root then root.Anchored = true end
+		local an = hum:FindFirstChildOfClass("Animator")
+		if an then for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end end
+		rig:SetAttribute("SitPlaying", nil)
+		rig:PivotTo(standCF(T, side, hum, root))
+		rig.Parent = T.model
+		ctx.refresh(T)
+		return
+	end
+	if root then root.Anchored = false end
 	rig:PivotTo(seat.CFrame * CFrame.new(0, 3, 0))
 	rig.Parent = T.model
-	local root = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then pcall(function() root:SetNetworkOwner(nil) end) end
 	seat:Sit(hum)
 	task.spawn(afterSit, T, side, hum)
@@ -294,7 +364,7 @@ function ctx.refresh(T: Table)
 		m:SetAttribute(side .. "Id", if who then ctx.idOf(who) else nil)
 		local open = who == nil or (ctx.isBot(who) and GAMES[T.kind].canReplaceBot(T))
 		T.prompts[side].Enabled = open
-		T.prompts[side].ActionText = if who and ctx.isBot(who) then "Challenge" elseif side == "P" then "Play" else "Sit"
+		T.prompts[side].ActionText = if who and ctx.isBot(who) then "Challenge" elseif side == "P" then "Play" elseif T.kind == "box" then "Box" else "Sit"
 	end
 end
 
@@ -333,6 +403,8 @@ function ctx.join(p: Player, T: Table, side: string)
 			local g = inGame[p]
 			if g and g.t == T and g.side == side and hum.Parent and hum.SeatPart ~= seat then ctx.leave(p, "stood") end
 		end)
+	elseif T.kind == "box" then -- (the ring: onto your mark, facing the other one)
+		ch:PivotTo(standCF(T, side, hum, root))
 	else -- (the arcade: stand at the cabinet, facing the screen)
 		local L = MG.L.arcade
 		local at = T.cf * CFrame.new(L.stand)
@@ -447,6 +519,18 @@ local function build()
 			table.insert(spots, { kind = s:GetAttribute("Game") :: string, cf = s.CFrame })
 		end
 	end
+	-- the boxing ring: the hub's own "box" marker, else the gym's RingMat (its top's middle, the look along its right)
+	local hasBox = false
+	for _, sp in spots do if sp.kind == "box" then hasBox = true end end
+	if not hasBox then
+		for _, d in hub:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == "RingMat" then
+				local top = d.Position + d.CFrame.UpVector * (d.Size.Y / 2)
+				table.insert(spots, { kind = "box", cf = CFrame.lookAt(top, top + d.CFrame.RightVector) })
+				break
+			end
+		end
+	end
 	if #spots == 0 then
 		for _, sp in MG.SPOTS do
 			table.insert(spots, { kind = sp[1], cf = CFrame.new(sp[2], sp[3], sp[4]) * CFrame.Angles(0, math.rad(sp[5] or 0), 0) })
@@ -467,7 +551,7 @@ task.spawn(build)
 if RunService:IsStudio() then
 	local bf = Instance.new("BindableFunction")
 	bf.Name = "JankMiniTest"
-	bf.OnInvoke = function(what: string, a: any, b: any, c: any): any
+	bf.OnInvoke = function(what: string, a: any, b: any, c: any, d: any): any
 		if what == "state" then
 			local out = {}
 			for id, T in tables do
@@ -498,9 +582,17 @@ if RunService:IsStudio() then
 			-- it acts only through ("as", tableId, side, data), exactly as a client's message would
 			local T = tables[a]
 			if not T or T.who[b] ~= nil then return "seat taken" end
-			local rig = table.remove(spareBots) or makeBot()
+			-- (d = "r6": an R6 body, for the boxing R6 check)
+			local rig: Model? = nil
+			if d == "r6" then
+				local ok, m = pcall(function() return Players:CreateHumanoidModelFromDescription(botDesc, Enum.HumanoidRigType.R6) end)
+				if ok then rig = m; for _, x in (m :: Model):GetDescendants() do if x:IsA("BasePart") then x.CanCollide = false; x.Massless = true end end end
+			else
+				rig = table.remove(spareBots) or makeBot()
+			end
 			if not rig then return "no body" end
 			rig.Name = "StandIn"
+			rig:SetAttribute("MiniSide", b)
 			local fake = { standIn = true, UserId = -7, DisplayName = "STAND-IN", Name = "StandIn", Character = rig, Parent = Players,
 				GetNetworkPing = function() return 0.05 end }
 			T.bots[b] = rig
@@ -511,6 +603,11 @@ if RunService:IsStudio() then
 				local hum = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
 				seat:Sit(hum)
 				task.spawn(afterSit, T, b, hum)
+			elseif T.kind == "box" then
+				local hum = rig:FindFirstChildOfClass("Humanoid") :: Humanoid
+				local rr = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if rr then rr.Anchored = true end
+				rig:PivotTo(standCF(T, b, hum, rr))
 			end
 			T.who[b] = fake
 			ctx.refresh(T)

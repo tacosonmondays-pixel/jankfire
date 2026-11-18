@@ -10,11 +10,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local I = {}
 I.ASSET = 134966926271798 -- (tools/roblox/minigame_models.py, 18 Nov 2026)
+I.MORE = { 93628648477968 } -- (tools/roblox/boxing_models.py, 19 Nov 2026: mg_glove) every upload whose pieces join the kit
 local MAT = { plastic = Enum.Material.SmoothPlastic, neon = Enum.Material.Neon, wood = Enum.Material.SmoothPlastic, fabric = Enum.Material.SmoothPlastic }
 
 function I.run(id: number?): string
 	local ok, container = pcall(function() return InsertService:LoadAsset(id or I.ASSET) end)
 	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
+	if not id then
+		for _, more in I.MORE do
+			local ok2, c2 = pcall(function() return InsertService:LoadAsset(more) end)
+			if not ok2 or not c2 then return "LOAD FAILED " .. more .. " " .. tostring(c2) end
+			for _, d in c2:GetChildren() do d.Parent = container end
+			c2:Destroy()
+		end
+	end
 	local root = ReplicatedStorage:FindFirstChild("JankfireMiniGames")
 	if not root then
 		root = Instance.new("Folder")

@@ -543,8 +543,10 @@ function H.step(dt: number, aim: number, scopeHide: boolean, wid: string?, sprea
 	hurtA = math.max(0, hurtA - dt * 0.9)
 	local rim = math.max(hurtA, lowA)
 	for _, r in rims do r.BackgroundTransparency = 1 - rim end
-	-- (no crosshair through the scope, over the end screen or under the settings panel)
+	-- (no crosshair through the scope, over the end screen, under the settings panel, or in a hub mini-game: at a
+	-- table, the cabinet or the boxing ring it sat over the hands and the board. MiniGames.server sets MiniGame)
 	local shown = not scopeHide and not endPanel.Visible and me:GetAttribute("SettingsOpen") ~= true
+		and me:GetAttribute("MiniGame") == nil
 	cross.Visible = shown
 	-- aiming down a gun's sights: the sights mark the middle and the crosshair goes (Rivals, Valorant); a dot sight
 	-- (Viewmodel's AimSight: the Redline) shows its red dot; a gun with no sights keeps a faint crosshair

@@ -36,7 +36,7 @@ local MG = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Mini
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("MiniGame") :: RemoteEvent
 
 local MODS: { [string]: any } = {}
-for kind, name in { arm = "MiniArmUI", board = "MiniBoardUI", arcade = "MiniArcadeUI" } do
+for kind, name in { arm = "MiniArmUI", board = "MiniBoardUI", arcade = "MiniArcadeUI", box = "MiniBoxUI" } do
 	local ok, m = pcall(require, J:WaitForChild(name) :: ModuleScript)
 	if ok then MODS[kind] = m else warn("[MiniGames] " .. name .. ": " .. tostring(m)) end
 end

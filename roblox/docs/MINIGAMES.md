@@ -114,3 +114,117 @@ The owner said: "when I sit down at the table all my accessories come off and im
 - Winning still moves the hands to the left of the screen, like the meter.
 - The slam's shake stays.
 - Photo: `docs/minigames/seated_arm_side.jpg`.
+
+## Your crosshair at the games (19 Nov 2026, place version 1010)
+
+The gun's crosshair sat in the middle of the screen, over the locked hands and the board (main, 19 Nov). `FightHud.step` now hides it while the server's `MiniGame` player attribute is set: seated at a table, at the cabinet, or in the ring. It comes back the moment you leave. The scythe's charge circles follow it, as they follow the crosshair everywhere.
+
+## BOXING (19 Nov 2026, place version 1010)
+
+The owner asked: "when you step into the ring can it be a boxing mini game? perfect dodge, counter b low, upper cut jab, hook, we can look through mixamo for those! weave duck you know !"
+
+**Where:** the hub gym's ring.
+
+- The hub's builder drops a `MiniGameSpot` with `Game = "box"` at the middle of `RingMat`'s top, its look along the ring's right (`RingMatLine`).
+- Until that marker is live, the server falls back to the `RingMat` part itself, giving the same spot.
+- The two corners stand at ±2.3 studs along the look. The prompts "Box" sit at ±4.6.
+
+**Joining:** the "Box" prompt in either corner.
+
+- Alone: BOT · EASY, MEDIUM or HARD.
+- Two people: both step in and the bout starts.
+- LEAVE works like the other games. Mid-bout it asks twice and you forfeit.
+- Gloves are welded on for the bout only: the kit's `mg_glove` (one fused fist, cream cuff, a thin gold band), sized to your hand. Corner A is muted red, B muted blue. On R6 the glove sits at the end of the arm.
+
+**Offence** (wind-up / recovery in seconds, damage, stamina):
+
+| Move | Wind-up | Recovery | Damage | Stamina | Notes |
+|---|---|---|---|---|---|
+| JAB | 0.20 | 0.22 | 5 | 5 | fast, short |
+| HOOK | 0.36 | 0.38 | 11 | 10 | big; your right hand, so it arrives on their left |
+| UPPERCUT | 0.48 | 0.45 | 16 | 15 | big; x1.4 into a duck |
+| BODY | 0.30 | 0.34 | 8 | 8 | the low shot: a block doesn't stop it; drains 10 of their stamina |
+
+**Defence:**
+
+- **BLOCK** (held): a blocked punch does 15-25% of its damage and costs the blocker 7 stamina. Holding it drains stamina. A block at 0 stamina is no block. It never stops a body shot.
+- **DUCK:** slips jabs and hooks for 0.42 s, and eats the uppercut.
+- **WEAVE** left or right: slips the jab, the uppercut and the body shot, and a hook only from the side you weave to (the tell shows an arrow).
+- **A perfect dodge:** a dodge that starts in the last 0.15 s before the punch lands.
+  - The world slows to 0.3 speed for 0.4 s and the camera leans in.
+  - An amber ring and "PERFECT · COUNTER" appear.
+  - The puncher is left open for 0.75 s.
+  - Your punch in the next 0.9 s is a COUNTER: x1.8 damage, a faster wind-up, and always big.
+
+**Feel:**
+
+- A landed big punch freezes both bodies for 0.085 s (hit-stop), with a ring at the spot and a light shake.
+- A knockdown gets a heavier shake.
+
+**Bars and winning:**
+
+- Health 100 and stamina 100 for both. Stamina refills at 15 a second after 0.6 s without punching. A punch thrown without the stamina it costs does half damage.
+- A knockdown at 0 health: up after 4 s with 55, then 40, then 25.
+- The third knockdown ends it: KNOCKOUT.
+- Otherwise it goes to the most damage over 3 rounds of 45 s, with 5 s rests (+12 health each).
+
+**The bot** reads your wind-up and dodges, blocks, or takes the hit. Difficulty sets:
+
+- its own wind-up (x1.7, x1.35, x1.12: easy is slow and readable);
+- how often it reads you (18%, 38%, 58%);
+- its reaction time;
+- feints (0, 12%, 25%);
+- how often it blocks.
+
+**Controls:**
+
+- **Keyboard and mouse:** click JAB, right click HOOK, E UPPER, S + a punch BODY, F BLOCK (held), C or Ctrl DUCK, Q / R WEAVE.
+- **Pad:** RT jab, RB hook, Y upper, X body, LT block, A duck, a flick of the left stick or the d-pad weaves.
+- **Touch:** buttons.
+- A short keys line sits at the bottom. No other text.
+
+**Camera:** a side-on 3/4 shot from your right, 9.5 studs out, turned 14° toward your corner. Your whole look stays (the table rules).
+
+**Animations:**
+
+- Mixamo mocap retargeted to R15 with `tools/blender/mixamo_r15.py`, uploaded as 12 animations: idle bounce, jab, lead and rear hooks, uppercut, body jab, high block, head, big and body hits, knockdown, get-up.
+- The ids are in `MG.BOX.CLIPS`.
+- Duck, weave and the open stagger are procedural poses.
+- An R6 body gets procedural poses for everything.
+- The FBX files stay in the vault (`JANKFIRE Vault/Assets/mixamo-18nov-boxing`), never in git.
+
+**Sounds:** recordings only, no crowd or voices:
+
+- `hurt` and `bread_bonk` for a landed punch, with `lasso_slam` on a big one;
+- `land` for a block;
+- `swing` for a dodge;
+- `wave_fly` for a perfect dodge;
+- `bowl_hit` for a knockdown;
+- `door_vip_bell` pitched down for the bell.
+
+**Files:**
+
+- `server/MiniBox.luau`: the bout, the rules, the bot.
+- `client/MiniBoxUI.luau`: poses, clips, the screen, input, the camera.
+- `MG.BOX` and `L.box` in `shared/MiniGames.luau`.
+- `tools/roblox/boxing_models.py`: the glove, asset 93628648477968. `MiniGameImport.MORE` merges it into the kit.
+
+**Test hooks:**
+
+- `JankMiniTest:Invoke("sit", p, "box1", "A")`, then `("op", p, { op = "bot", level = "easy" })`.
+- A second boxer: `("standin", "box1", "B", nil, "r6")`, with `("as", "box1", "B", { op = "act", a = "hook", t = now })`.
+- Client `MiniTest`:
+  - `box:auto`: perfect-dodges every punch and counters;
+  - `box:<act>`, `box:block:on|off`;
+  - `box:hold:<s>`: freezes your next perfect dodge for a photo.
+
+**Tested** in solo Play on the owner's R15 avatar against the EASY bot:
+
+- Five perfect dodges in a row, each followed by a big counter.
+- Three knockdowns, the get-ups between them, and YOU WIN · KNOCKOUT with the bot and AGAIN buttons.
+- An R6 stand-in in corner B: gloves at the ends of its arms, its guard and hook poses.
+- No crosshair while in the ring; it is back after leaving.
+- The anti-cheat with `StudioOn`: 0 points, no verdicts.
+- The first test found the gloves staying on after you left. `ctx.leave` clears the seat before the game's `left` hook runs, so the hook couldn't find your body. Fixed in place version 1013 (the leaver is passed in), and checked: 2 gloves during the bout, none after leaving.
+
+**Photos:** `docs/minigames/box_*.jpg`: the side shot mid-hook (with the tell), the knockdown, the KO, and the R6 stand-in.
