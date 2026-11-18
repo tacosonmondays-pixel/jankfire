@@ -97,7 +97,7 @@
  "blower": 106333648762648,
  "cig": 79741146687966,
  "laser": 73742511188419,
- "scythe": 110044320642145,
+ "scythe": 85216379918244,
  "chicken": 80611464745945,
  "banana": 93071088017256,
  "tennis": 119133949305427,
@@ -113,5 +113,6 @@
  "shotgun@shotgun_classic": 119175765278669,
  "sniper@sniper_classic": 131732975740829,
  "revolver@revolver_classic": 121391793855763,
- "sawnoff@sawnoff_classic": 79016023102932
+ "sawnoff@sawnoff_classic": 79016023102932,
+ "scythe_rifle": 79754902375039
 }

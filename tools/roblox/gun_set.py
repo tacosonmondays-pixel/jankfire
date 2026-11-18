@@ -212,6 +212,10 @@ BUILD.update(gun_batch_b.BUILD)
 # their projectiles pj_chicken, pj_banana, pj_peel, pj_snowball (tools/roblox/gun_batch_c.py)
 import gun_batch_c
 BUILD.update(gun_batch_c.BUILD)
+# the scythe in two forms (18 Nov 2026): w_scythe (melee) and w_scythe_rifle from one builder, the same two moving
+# nodes (blade, scope) in both; replaces batch C's scythe (tools/roblox/gun_scythe.py)
+import gun_scythe
+BUILD.update(gun_scythe.BUILD)
 
 
 # ------------------------------------------------------------------------- the skin: Carl's Cardboard on the C rifle
