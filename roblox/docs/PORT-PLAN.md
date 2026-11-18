@@ -1963,6 +1963,12 @@ The owner on v940: "the lobby area looks like the outside of a hotel rather than
 - A full-width built-out wall must not also get the bay window's floor under it: their bottoms meet in one plane.
 - Studio's id changed after the PC restart at 16:48 UTC (now `4c07f65f-…`). Use `list_roblox_studios` when a call says the Studio is gone.
 
+**The egg nook's door (place version 963).** The owner: "fix the hole where the jankfire npc is, it opens when you put his code in".
+- The side-8 gallery opening into the hub egg's nook is now shut for everyone by `Map.Hub.Rotunda.Shell.EggNookDoor`. HubRotundaCentre builds it with the hub.
+- It is a solid Part in the wall's cream, flush with the round room's inner face inside the dark window frame, tagged and attributed `EggNookDoor`. The nook room behind it is unchanged.
+- LoreLife.client (lore-npcs) hides it and turns its collision off, on that player's screen only, once they have entered the code.
+- Live check: still 0 problems.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

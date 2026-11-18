@@ -134,6 +134,13 @@ return function(B, R)
 			for _, s in { -1, 1 } do B.box(F, C, "WindowFrame", s * N[1], s * (N[1] + 0.6), N[2] - 0.2, N[3] + 0.6, A - 0.4, A, P.pier, nil, G) end
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[3], N[3] + 0.6, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[2] - 0.2, N[2], A - 0.4, A, P.pier, nil, G)
+			-- (18 Nov, the owner: "fix the hole where the jankfire npc is, it opens when you put his code in". the opening is
+			-- shut for everyone by a finished panel in the wall's cream, flush with the wall's face inside its frame, solid;
+			-- LoreLife.client hides it and turns its collision off, on that player's screen only, once they have entered the
+			-- code. its NAME is the contract (EggNookDoor, anywhere under Map.Hub); the room behind it is untouched)
+			local door = B.box(F, S, "EggNookDoor", -N[1], N[1], N[2], N[3], A, A + 0.5, P.cream)
+			door:SetAttribute("EggNookDoor", true)
+			game:GetService("CollectionService"):AddTag(door, "EggNookDoor")
 			local FY, TOPY, D1 = R.LOUNGE_H + 1, N[3] + 1.1, A + T + 6 -- (its floor: the top of the lounge's lid; in the plaza a bay window's floor, HubRotundaRooms)
 			local NW = if R.LOUNGE_STYLE == "plaza" then "958d80" else P.shell2 -- (the plaza: the bay window's body in the hotel's stone)
 			for _, s in { -1, 1 } do B.box(F, S, "NicheWall", s * (N[1] + 0.9), s * (N[1] + 1.3), FY, TOPY, A + T, D1, NW) end
