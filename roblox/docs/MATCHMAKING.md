@@ -357,6 +357,24 @@ The owner: "allow us to change weapons before first round and between rounds".
   ![CHANGE LOADOUT before round 1](matchmaking/39_change_loadout_hint.jpg)
   ![the picker in the break, dead: SMG for next round](matchmaking/40_loadout_between_rounds.jpg)
 
+### Spawns rotate every round (18 Nov 2026)
+
+The owner: "rotate spawns".
+- **The rule:** `Matches.teamSpawns` asks `sideOf(m, team)`, which is (team - 1 + a random shift drawn once per match +
+  round - 1) % teams + 1. Side 1 is the arena's "att" TeamSpawns, 2 is "def", 3 is "mid" (or the fallback spawns
+  where an arena has no "mid" parts).
+  - In round 1 each team gets a random side.
+  - After that, two teams swap ends every round, and in a 1v1v1 each player moves one group round.
+  - Which teammate gets which spot within a side is as before.
+- Ranked and casual work the same way. Classic modes keep their own spawning (Modes.luau).
+- **Everything that puts a body on its round spawn** asks `teamSpawns`: `spawnAt`, and the shop session's round-start
+  hold (`spawnSpot`, which puts survivors back exactly on their spot with no speed). So the hold uses the rotated end.
+- **Commits:** 1595a79 is my three hunks. They went into Studio with the shop session's install (its 0423565, place
+  version 767).
+- **Tested** in Studio (18 Nov, 03:11 UTC, solo, ghost matches advanced with `JankMatchTest("between")`):
+  - A 1v1 on BAZAAR: my side spawned def, att, def.
+  - A 1v1v1 on ROOFTOP: att, def, the middle (the fallback spawns: RooftopV3 has no "mid" parts), then att again.
+
 ### No hub menus in a match or a map room (18 Nov 2026)
 
 The owner: "disable like all the other menus because I can open shop and stats during a match". Then, from the live
