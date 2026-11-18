@@ -6,7 +6,20 @@
 -- wears it when the player's Skins attribute picks it. Upload pieces are named "<gadget>@<skin>_<node>__<look>".
 local ASSET = 0 -- <- the upload's asset id
 local INFO = nil :: any -- <- items.json, as a Luau table
+-- a BAKED skin (tools/roblox/item_bake.py: the json's items[id].bake / own_uv): the uploaded maps' Image ids, per skin.
+-- baked = the atlas maps every baked piece wears (those pieces get NoWrap: a wrap leaves the finish alone); own = the
+-- tiling picture the own-UV pieces wear until a wrap replaces it (WeaponModels.wrap stashes it and puts it back)
+local MAPS = {} :: any -- <- { [id] = { baked = { color =, normal =, rough = }, own = { color =, normal =, rough = } } }
 local S = 3
+local function surface(p: BasePart, m: any)
+	if not (m and p:IsA("MeshPart")) then return end
+	local sa = Instance.new("SurfaceAppearance")
+	if m.color then sa.ColorMap = "rbxassetid://" .. m.color end
+	if m.normal then sa.NormalMap = "rbxassetid://" .. m.normal end
+	if m.rough then sa.RoughnessMap = "rbxassetid://" .. m.rough end
+	if m.metal then sa.MetalnessMap = "rbxassetid://" .. m.metal end
+	sa.Parent = p
+end
 
 local function look(p: BasePart, code: string)
 	local kind, hex = string.sub(code, 1, 1), string.sub(code, 2, 7)
@@ -62,6 +75,12 @@ for id, info in INFO.items do
 				end
 			end
 		end
+		local bk, mp = info.bake, MAPS[id]
+		if mp and node and type(bk) == "table" and table.find(bk.pieces, node) then
+			surface(c, mp.baked); c:SetAttribute("NoWrap", true); c:SetAttribute("Baked", true)
+		elseif mp and node and type(info.own_uv) == "table" and table.find(info.own_uv, node) then
+			surface(c, mp.own)
+		end
 		c.Size = p.Size * K
 		c.CFrame = CFrame.new((p.Position - origin) * K)
 		c.Parent = m
@@ -78,7 +97,16 @@ for id, info in INFO.items do
 	m:SetAttribute("SkinName", info.name)
 	m:SetAttribute("FileLo", flo); m:SetAttribute("FileHi", fhi)
 	local old = lib:FindFirstChild(m.Name)
-	if old then old:Destroy() end
+	if old then -- (the one it replaces goes to ServerStorage.PolishBackup.ItemSkins, numbered)
+		local pb = game.ServerStorage:FindFirstChild("PolishBackup") or Instance.new("Folder", game.ServerStorage)
+		pb.Name = "PolishBackup"
+		local bk = pb:FindFirstChild("ItemSkins") or Instance.new("Folder", pb)
+		bk.Name = "ItemSkins"
+		local n = 1
+		while bk:FindFirstChild(old.Name .. "_v" .. n) do n += 1 end
+		old.Name = old.Name .. "_v" .. n
+		old.Parent = bk
+	end
 	m.Parent = lib
 	local _, size = m:GetBoundingBox()
 	table.insert(out, ("%s: %d pieces, %.2f x %.2f x %.2f studs"):format(m.Name, #parts, size.X, size.Y, size.Z))

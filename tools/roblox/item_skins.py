@@ -211,7 +211,9 @@ def medkit_doctorbag():
 RICE, UME, LEAF, CLOTH, LACQ_R = 'e9e5da', 'a3463f', '5f8059', '4b5f80', '9c403a'
 
 
-def medkit_bento():
+def medkit_bento_v1():
+    """the first Bento Box (18 Nov, place v823): kept for the before/after sheet (the owner: "bento box doesnt look
+       very good": the knot was blobs)"""
     g = Gun('x_medkit_bento')
     g.slot('lacq', LACQ); g.slot('red', LACQ_R); g.slot('gold', GOLD); g.slot('cloth', CLOTH); g.slot('rice', RICE)
     g.slot('ume', UME); g.slot('leaf', LEAF)
@@ -243,6 +245,262 @@ def medkit_bento():
         blob(g, 'lidknot__cloth', 0.016, 0.03, 0.013, (sx * 0.024, yT + 0.034, 0), sub=3, rot=(0, 0, -sx * 0.6), warp=ear)
         blob(g, 'lidknot__cloth', 0.036, 0.007, 0.018, (sx * 0.05, yT + 0.007, 0.004), sub=3, rot=(0, sx * 0.3, 0))
     g.spots = {'grip': GRIP['medkit'], 'gripRot': [0, 0, 0]}
+    return g
+
+
+# ---- the Bento Box, second take (owner, 18 Nov 2026: "bento box doesnt look very good, did you tripo a ribbon
+# already"): our lacquer box from the kit, the owner's Tripo bow (decoration only) fused onto a cloth band, and a baked
+# lacquer surface (tools/roblox/item_bake.py). The Tripo file stays in the vault; only this code is in git.
+TRIPO_BOW = os.environ.get('JF_TRIPO_BOW', r'C:\Users\soup2\Documents\JANKFIRE Vault\Assets\tripo-17nov\bow.glb')
+URUSHI, SHU, MAKIE = '2b2527', '8a3a2e', 'a88f58'     # black lacquer, vermilion lacquer, gold (maki-e)
+INDIGO = '465a7c'
+
+
+def rr_loft(g, piece, X, Z, RC, prof, n=6, cx=0.0, cz=0.0, cap0=True, cap1=True):
+    """a rounded-rectangle solid seen from above (half sizes X, Z, corner radius RC, middle at cx, cz) lofted through
+       prof = [(inset, y)] from the bottom up: each row the outline inset by `inset`. Round edges, a lip, a recess or
+       a cup's inner wall are just rows; the two end rows are capped (a cup's last row is its floor). Smooth sides"""
+    bm = bmesh.new()
+    rows = []
+    for inset, y in prof:
+        pts = rrect(X - inset, Z - inset, max(RC - inset, 0.0015), n=n)
+        rows.append([bm.verts.new(P(cx + px, y, cz + pz)) for px, pz in pts])
+    m = len(rows[0])
+    for A, Bb in zip(rows, rows[1:]):
+        for i in range(m):
+            k = (i + 1) % m
+            bm.faces.new([A[i], A[k], Bb[k], Bb[i]])
+    caps = []
+    if cap0: caps.append(bm.faces.new(rows[0]))
+    if cap1: caps.append(bm.faces.new(rows[-1][::-1]))
+    _out(bm)
+    g._add(piece, bm, smooth=lambda f: f not in caps)
+
+
+def quarter(i0, y0, i1, y1, steps=4, first='i'):
+    """a quarter round from (inset i0, y0) to (i1, y1), the first point left out. first = the coordinate that moves
+       first: 'i' leaving a flat cap or floor (the inset changes first), 'y' leaving an upright wall"""
+    pts = []
+    for k in range(1, steps + 1):
+        t = k / steps * math.pi / 2
+        a, b = (math.sin(t), 1 - math.cos(t)) if first == 'i' else (1 - math.cos(t), math.sin(t))
+        pts.append((i0 + (i1 - i0) * a, y0 + (y1 - y0) * b))
+    return pts
+
+
+def band_sweep(path, width, thick, D, folds=None):
+    """a cloth band: a flat stadium section `width` x `thick` swept along `path` = [(z, y)] in the item's x = 0 plane,
+       its bottom on the path, its thickness out from the box (the side away from the path's left turn). width(i) and
+       folds(i, x) -> offset give a gathered middle. UVs: u along the band, v across, at D tiles per metre (the wrap
+       scale). Returns a closed bmesh (Blender frame)"""
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    n = len(path)
+    tang = []
+    for i in range(n):
+        a, b = path[max(0, i - 1)], path[min(n - 1, i + 1)]
+        dz, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dz, dy)
+        tang.append((dz / L, dy / L))
+    arc = [0.0]
+    for i in range(1, n):
+        arc.append(arc[-1] + math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]))
+    S = 14
+    rows, uvs = [], []
+    for i, (z, y) in enumerate(path):
+        tz, ty = tang[i]
+        nz, ny = -ty, tz            # (the path runs front -> over -> back: its left normal points out from the box)
+        if ny < 0 and abs(nz) < 0.2: nz, ny = -nz, -ny
+        w = width(i)
+        sec = []
+        r = thick / 2
+        for k in range(S):          # a stadium: two half circles at x = +-(w/2 - r), around the section middle
+            t = k / S * 2 * math.pi
+            side = 1 if math.cos(t) >= 0 else -1
+            xx = side * (w / 2 - r) + r * math.cos(t)
+            hh = r + r * math.sin(t)
+            if folds: hh += folds(i, xx)
+            sec.append((xx, z + nz * hh, y + ny * hh))
+        rows.append([bm.verts.new(P(x, yy, zz)) for x, zz, yy in sec])
+        uvs.append([(arc[i] * D, x * D) for x, zz, yy in sec])
+    for j in range(n - 1):
+        for k in range(S):
+            k2 = (k + 1) % S
+            f = bm.faces.new([rows[j][k], rows[j][k2], rows[j + 1][k2], rows[j + 1][k]])
+            for l, (jj, kk) in zip(f.loops, ((j, k), (j, k2), (j + 1, k2), (j + 1, k))):
+                l[uvl].uv = uvs[jj][kk]
+    for j in (0, n - 1):
+        f = bm.faces.new(rows[j] if j else rows[j][::-1])
+        for l, v in zip(f.loops, f.verts):
+            kk = rows[j].index(v)
+            l[uvl].uv = uvs[j][kk]
+    _out(bm)
+    return bm
+
+
+def tripo_bow(at, span, tilt, squash, floor, D, target=2600):
+    """the owner's Tripo bow (vault TRIPO_BOW), cleaned (weld, the biggest part, holes, normals, a plain Collapse
+       decimate: the steps in GUN-MODELS.md, "Tripo pieces"), turned to face the player (item +z), `span` wide across
+       its loops, its depth squashed, laid back `tilt` radians (its face looks up at first person, the loops lean
+       forward, the tails run back), its knot's middle at `at`, and everything under `floor` (item y) eased down onto
+       it (the tails and the undersides lie on the band). UVs: a flat projection on the bow's face at D tiles a metre.
+       Returns a bmesh (Blender frame)"""
+    had = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=TRIPO_BOW)
+    new = [o for o in bpy.data.objects if o not in had]
+    bm = bmesh.new()
+    for o in new:
+        if o.type != 'MESH': continue
+        me = o.data.copy(); me.transform(o.matrix_world); bm.from_mesh(me); bpy.data.meshes.remove(me)
+    for o in new: bpy.data.objects.remove(o)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-4)
+    # the biggest connected part
+    bm.verts.ensure_lookup_table()
+    seen, parts = set(), []
+    for v in bm.verts:
+        if v.index in seen: continue
+        st, part = [v], []
+        seen.add(v.index)
+        while st:
+            a = st.pop(); part.append(a)
+            for e in a.link_edges:
+                b = e.other_vert(a)
+                if b.index not in seen: seen.add(b.index); st.append(b)
+        parts.append(part)
+    parts.sort(key=len)
+    for p in parts[:-1]: bmesh.ops.delete(bm, geom=p, context='VERTS')
+    bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=64)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new('bow'); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new('bow', me); bpy.context.scene.collection.objects.link(o)
+    dm = o.modifiers.new('d', 'DECIMATE'); dm.decimate_type = 'COLLAPSE'
+    dm.ratio = min(1.0, target / max(1, len(me.polygons)))
+    dg = bpy.context.evaluated_depsgraph_get()
+    bm = bmesh.new(); bm.from_mesh(o.evaluated_get(dg).to_mesh())
+    bpy.data.objects.remove(o); bpy.data.meshes.remove(me)
+    # Tripo's frame (Blender z up, its front at -y) -> the item frame (x, y up, z back): the front faces +z (the player)
+    pts = [(v.co.x, v.co.z, -v.co.y) for v in bm.verts]
+    xs = [p[0] for p in pts]
+    W = max(xs) - min(xs)
+    knot = [p for p in pts if abs(p[0]) < 0.06 * W / 0.98 and 0.33 < p[1] / max(p2[1] for p2 in pts) < 0.7]
+    kx = sum(p[0] for p in knot) / len(knot); ky = sum(p[1] for p in knot) / len(knot)
+    kz = sum(p[2] for p in knot) / len(knot)
+    s = span / W
+    ca, sa = math.cos(-tilt), math.sin(-tilt)
+    def soft(d, k=0.0025): return k * math.log1p(math.exp(d / k)) if d < 8 * k else d
+    uvl = bm.loops.layers.uv.new('UVMap')
+    face = {}
+    for v, (x, y, z) in zip(bm.verts, pts):
+        x, y, z = (x - kx) * s, (y - ky) * s, (z - kz) * s * squash
+        face[v] = (x * D, y * D)
+        y, z = y * ca - z * sa, y * sa + z * ca
+        y += at[1]; z += at[2]; x += at[0]
+        y = floor + soft(y - floor)
+        v.co = P(x, y, z)
+    for f in bm.faces:
+        for l in f.loops: l[uvl].uv = face[l.vert]
+    _out(bm)
+    return bm
+
+
+def fuse(a, b):
+    """one cloth piece: the EXACT boolean union of two closed bmeshes (UVs ride along). Returns a bmesh"""
+    ms = []
+    for bm, nm in ((a, 'fa'), (b, 'fb')):
+        me = bpy.data.meshes.new(nm); bm.to_mesh(me); bm.free(); ms.append(me)
+    oa = bpy.data.objects.new('fa', ms[0]); ob = bpy.data.objects.new('fb', ms[1])
+    for o in (oa, ob): bpy.context.scene.collection.objects.link(o)
+    md = oa.modifiers.new('u', 'BOOLEAN'); md.operation = 'UNION'; md.solver = 'EXACT'; md.object = ob
+    dg = bpy.context.evaluated_depsgraph_get()
+    out = bmesh.new(); out.from_mesh(oa.evaluated_get(dg).to_mesh())
+    for o in (oa, ob): bpy.data.objects.remove(o)
+    for me in ms: bpy.data.meshes.remove(me)
+    return out
+
+
+def medkit_bento():
+    g = Gun('x_medkit_bento')
+    g.slot('lacq', URUSHI); g.slot('shu', SHU); g.slot('gold', MAKIE); g.slot('cloth', INDIGO)
+    g.slot('rice', RICE); g.slot('ume', UME); g.slot('egg', 'cfae5c'); g.slot('leaf', LEAF); g.slot('tomato', 'a8473a')
+    g.slot('stem', '9fae7c')
+    # a two-tier jubako in black lacquer, vermilion inside: soft rounded tiers on a low foot, a vermilion lip in the
+    # seam, a lid with a raised rim round a sunk panel. Gold maki-e plum blossoms and inlay lines are baked into the
+    # lacquer (item_bake.py paints them). An indigo furoshiki band runs over the lid with the owner's Tripo bow fused on
+    # where it ties; two vermilion chopsticks are tucked under the band. Inside the top tier, three compartments:
+    # rice with a plum, rolled omelette, greens and a tomato. The lid (every lid* part) swings open about its front
+    # bottom edge while you heal; the band, the bow and the sticks ride on it
+    X, Z, RC = 0.122, 0.066, 0.026
+    # the foot and the lower tier
+    rr_loft(g, 'body__lacq', X - 0.01, Z - 0.01, RC - 0.01, [(0.002, -0.092)] + quarter(0.002, -0.092, 0.0, -0.090, 2) + [(0.0, -0.081)])
+    y0, y1, er = -0.083, -0.024, 0.007
+    rr_loft(g, 'body__lacq', X, Z, RC, [(er, y0)] + quarter(er, y0, 0.0, y0 + er) + [(0.0, y1 - er)] + quarter(0.0, y1 - er, er, y1, first='y'))
+    # the vermilion lip in the seam
+    rr_loft(g, 'body__lacq', X - 0.003, Z - 0.003, RC - 0.003, [(0.0015, -0.0265)] + quarter(0.0015, -0.0265, 0.0, -0.025, 2) + [(0.0, -0.0185)] + quarter(0.0, -0.0185, 0.0015, -0.017, 2, first='y'))
+    # the upper tier: a cup (outer wall, a rounded lip, the inner wall down to the floor)
+    e2 = 0.004
+    cup = [(e2, -0.018)] + quarter(e2, -0.018, 0.0, -0.018 + e2) + [(0.0, 0.037)]
+    cup += [(0.003 - 0.003 * math.cos(t), 0.037 + 0.003 * math.sin(t)) for t in (math.pi * k / 6 for k in range(1, 7))]
+    cup += [(0.006, 0.010)] + [(0.006 + 0.003 * (1 - math.cos(t)), 0.010 - 0.003 * math.sin(t)) for t in (math.pi / 2 * k / 3 for k in range(1, 4))]
+    rr_loft(g, 'body__lacq', X, Z, RC, cup)
+    # the compartments' walls (vermilion: the bake paints the inside)
+    g.box('body__lacq', (0.019, 0.025), (0.005, 0.034), (-Z + 0.005, Z - 0.005), bev=0.0015)
+    g.box('body__lacq', (0.025, X - 0.005), (0.005, 0.030), (-0.003, 0.003), bev=0.0015)
+    # the food
+    rr_loft(g, 'food__rice', 0.0665, Z - 0.0072, 0.016, [(0.0, 0.0075), (0.0, 0.021)] + quarter(0.0, 0.021, 0.008, 0.029, 4, first='y'), cx=-0.0485)
+    # (the plum sits in a corner on a shiso leaf: never one red dot in the middle of the white rice, a flag's look)
+    blob(g, 'food__leaf', 0.019, 0.0016, 0.013, (-0.087, 0.0296, 0.031), sub=3, rot=(0, 0.55, 0))
+    blob(g, 'food__ume', 0.0105, 0.008, 0.0105, (-0.089, 0.0335, 0.031), sub=3)
+    for x in (0.0365, 0.0575, 0.0785, 0.0995):
+        g.box('food__egg', (x - 0.0095, x + 0.0095), (0.0072, 0.031), (-0.057, -0.006), bev=0.0045)
+    g.box('food__leaf', (0.027, X - 0.0075), (0.0075, 0.0105), (0.0045, Z - 0.0075), bev=0.0015)
+    # broccoli: a pale stem under a dome of little florets
+    for (x, z, r, turn) in ((0.047, 0.031, 0.0145, 0.2), (0.071, 0.045, 0.0125, 1.1)):
+        yt_ = 0.0245
+        g.cyl('food__stem', 0.0045, (x, 0.0105, z), (x, yt_ - 0.002, z), sides=10, bev=0.0, r2=0.006)
+        # (the head is ONE distance-field solid: the florets rise out of the dome on real fillets, never balls stuck on)
+        import sdf_kit as SDF
+        parts = [SDF.ellipsoid((x, yt_, z), (r * 0.8, r * 0.45, r * 0.8))]
+        for k in range(7):
+            a_ = turn + k * 2 * math.pi / 6
+            rr = 0.0 if k == 6 else r * 0.55
+            parts.append(SDF.ellipsoid((x + math.cos(a_) * rr, yt_ + (0.006 if k == 6 else 0.0035), z + math.sin(a_) * rr), (r * 0.36, r * 0.32, r * 0.36)))
+        head = SDF.union(*parts, k=r * 0.22)
+        bmh = SDF.mesh(head, (x - r * 1.3, yt_ - r * 0.8, z - r * 1.3), (x + r * 1.3, yt_ + r * 1.2, z + r * 1.3), h=0.0007, tris=420, name='broc')
+        g._add('food__leaf', bmh, smooth=lambda f: True)
+    blob(g, 'food__tomato', 0.0125, 0.0115, 0.0125, (0.097, 0.0225, 0.03), sub=3)
+    g.cyl('food__leaf', 0.0015, (0.097, 0.033, 0.03), (0.0985, 0.037, 0.0305), sides=6, bev=0.0)
+    # the lid: rounded sides, a raised rim, a sunk panel; its own node
+    XL, ZL = X + 0.0015, Z + 0.0015
+    lid = [(0.004, 0.0412)] + quarter(0.004, 0.0412, 0.0, 0.0452) + [(0.0, 0.0705)] + quarter(0.0, 0.0705, 0.004, 0.0745, first='y')
+    lid += [(0.009, 0.0745)] + [(0.009 + 0.003 * math.sin(t), 0.0715 + 0.003 * math.cos(t)) for t in (math.pi / 2 * k / 3 for k in range(1, 4))]
+    lid += [(0.012, 0.070)] + quarter(0.012, 0.070, 0.0135, 0.0685, 2, first='y')
+    rr_loft(g, 'lid__lacq', XL, ZL, RC + 0.0015, lid)
+    # two chopsticks on the panel, under the band
+    yp = 0.0685
+    g.cyl('lidsticks__shu', 0.0033, (0.088, yp + 0.0033, 0.025), (-0.088, yp + 0.0021, 0.0215), sides=12, bev=0.0008, r2=0.0021)
+    g.cyl('lidsticks__shu', 0.0033, (0.086, yp + 0.0033, 0.0345), (-0.09, yp + 0.0021, 0.0395), sides=12, bev=0.0008, r2=0.0021)
+    # the furoshiki band over the lid, gathered where it ties, and the Tripo bow fused onto it
+    import gun_uvs
+    D = B.UV_SCALE / gun_uvs.TILE_M
+    zf, zb, yb, yt, cr = -ZL - 0.0004, ZL + 0.0004, 0.0445, 0.0749, 0.0045
+    path = [(zf, yb), (zf, 0.058), (zf, yt - cr)]
+    path += [(zf + cr * (1 - math.cos(t)), yt - cr + cr * math.sin(t)) for t in (math.pi / 2 * k / 4 for k in range(1, 5))]
+    for k in range(1, 24):
+        z = zf + cr + (zb - zf - 2 * cr) * k / 24
+        path.append((z, yt + 0.0026 * math.exp(-(z / 0.02) ** 2)))
+    path += [(zb - cr + cr * math.sin(t), yt - cr + cr * math.cos(t)) for t in (math.pi / 2 * k / 4 for k in range(0, 5))]
+    path += [(zb, 0.058), (zb, yb)]
+    def gather(i): return math.exp(-(path[i][0] / 0.024) ** 2) if path[i][1] > yt - 0.001 else 0.0
+    band = band_sweep(path, lambda i: 0.05 - 0.024 * gather(i), 0.0032, D,
+                      folds=lambda i, x: 0.0011 * gather(i) * math.cos(x / 0.0065 * math.pi))
+    bow = tripo_bow((0.0, 0.0915, -0.004), 0.14, math.radians(64), 0.72, yt + 0.0034, D, target=2100)
+    cloth = fuse(band, bow)
+    _out(cloth)
+    g._add('lidcloth__cloth', cloth, smooth=lambda f: True)
+    g.spots = {'grip': GRIP['medkit'], 'gripRot': [0, 0, 0], 'hinge': [0, 0.0412, -ZL]}
+    g.own_uv = {'lidcloth'}                     # (keeps its band + bow UVs: export_all leaves it out of the unfold)
+    g.bake = {'pieces': ['body', 'food', 'lid', 'lidsticks'], 'paint': 'bento'}   # (item_bake.py: atlas + maps)
     return g
 
 
@@ -398,7 +656,7 @@ SKIN_WRAP = {
     'frag@keg': {'a': ['body'], 'b': ['lid', 'hoops']},
     'frag@lantern': {'a': ['body'], 'b': ['caps']},
     'medkit@doctorbag': {'a': ['body', 'lid'], 'b': ['straps', 'lidhandle']},
-    'medkit@bento': {'a': ['body', 'lid'], 'b': ['lidcloth', 'lidknot']},
+    'medkit@bento': {'a': ['lidcloth']},   # (v2: the wrap prints on the furoshiki; the baked lacquer keeps its finish)
     'smoke@coffeepot': {'a': ['body', 'lid', 'spout'], 'b': ['handle']},
     'smoke@censer': {'a': ['body', 'lid'], 'b': ['band', 'feet']},
     'duck@decoy': {'a': ['body'], 'b': ['breast', 'tail', 'wings']},
