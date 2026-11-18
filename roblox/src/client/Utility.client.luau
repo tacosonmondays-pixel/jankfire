@@ -43,7 +43,7 @@ local function myChar(): (Model?, Humanoid?, BasePart?)
 	if not ch or not hum or not root or hum.Health <= 0 then return nil, nil, nil end
 	return ch, hum, root
 end
-local function inHub(): boolean return me:GetAttribute("Zone") == "hub" end
+local function inHub(): boolean return me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true end -- (DevArms: the owner's dev weapons, OwnerDev)
 local function menuOpen(): boolean return me:GetAttribute("LoadoutOpen") == true end
 local function thirdPerson(): boolean
 	local _, _, root = myChar()

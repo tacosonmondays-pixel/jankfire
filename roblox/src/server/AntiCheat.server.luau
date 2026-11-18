@@ -53,6 +53,11 @@ local function isAdmin(p: Player): boolean
 	local ok, rank = pcall(function() return p:GetRankInGroup(game.CreatorId) end)
 	return ok and rank == 255
 end
+-- the owner's dev powers are on (OwnerDev.server: fly, noclip, run speed, weapons in the hub; DevOn stays 3 s after the
+-- last goes off). only the server writes DevOn, and only the place's creator ever counts: nobody else gets the pass
+local function devOn(p: Player): boolean
+	return p:GetAttribute("DevOn") == true and game.CreatorType == Enum.CreatorType.User and p.UserId == game.CreatorId
+end
 
 -- ------------------------------------------------------------------ the world's solid geometry
 -- what's moved on clients only (the server's copy stands still or shut), so the server can't judge a body against it:
@@ -315,6 +320,7 @@ type St = {
 	heard: number, beatT: number, lagFrom: number?, lagEnd: number, lagLen: number, arcLag: boolean,
 	stillHeard: number, pingHi: number,
 	lookT: number, -- the last look (how long a still look lasted)
+	dev: boolean, -- the owner's dev powers were on at the last look (devOn)
 }
 local st: { [Player]: St } = {}
 
@@ -327,7 +333,7 @@ local function fresh(): St
 		probes = 0, probeT = 0, selfT = -math.huge, cfWrites = 0, kickSeen = -math.huge,
 		baseY = 0, baseT = -math.huge, maxY = 0, v0 = 0, speedNow = 0, knownGround = false, hookAsks = {}, noCharge = {},
 		heard = now(), beatT = now(), lagFrom = nil, lagEnd = -math.huge, lagLen = 0, arcLag = false, stillHeard = 0, pingHi = 0,
-		lookT = now(),
+		lookT = now(), dev = false,
 	}
 end
 
@@ -546,6 +552,18 @@ local function look(p: Player, s: St)
 	-- (Studio: the movement checks are off unless a test turns them on, script attribute StudioOn: other sessions'
 	-- Play tests move their test player in ways no client could)
 	if STUDIO and not script:GetAttribute("StudioOn") then s.trusted = nil; return end
+	-- the owner's dev powers: no movement checks while they're on (a verdict says so: the panel's last line), a fresh
+	-- start from wherever the body is when they go off
+	if devOn(p) then
+		if not s.dev then s.dev = true; verdict(s, "dev", "dev powers on: movement not checked", "dev") end
+		s.trusted = nil
+		return
+	elseif s.dev then
+		s.dev = false
+		verdict(s, "dev", "dev powers off", "dev")
+		restart(s, nil, 1)
+		return
+	end
 	local t = now()
 	local pos = root.Position
 	-- (the ping a player gets room for: the highest lately, falling pingFall s a second. spikes come back)
@@ -802,6 +820,7 @@ end)
 
 local function flag(p: Player, s: St, kind: string, info: string)
 	if now() - (s.flagT[kind] or -math.huge) < C.flagEvery then return end
+	if devOn(p) then info = "[dev] " .. info end -- (the owner, dev powers on: dev weapons on anyone in the hub)
 	s.flagT[kind] = now()
 	verdict(s, kind, info, "flag")
 	Log.add(p, kind, "flag", info)
@@ -972,6 +991,7 @@ local function playerRow(p: Player): { [string]: any }
 		points = if s then math.floor(ACR.points(s.points, now()) + 0.5) else 0,
 		last = if last then ("%s %s: %s"):format(last.kind, last.act, last.info) else nil,
 		hits = if s then s.hits else 0, heads = if s then s.heads else 0, snaps = if s then s.snaps else 0, smoke = if s then s.smoke else 0,
+		dev = devOn(p),
 	}
 end
 local probed: { [Player]: boolean } = {}

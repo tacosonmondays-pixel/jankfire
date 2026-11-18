@@ -91,7 +91,7 @@ local budget: { [Player]: { n: number, t: number } } = {}
 	b.n = math.min(60, b.n + (now() - b.t) * 40); b.t = now()
 	if b.n < 1 then return end
 	b.n -= 1
-	if p:GetAttribute("Zone") == "hub" then return end
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" or not W[wid] or (W[wid] :: any).kind ~= "hold" then return end
 	if f.held ~= wid or not f.alive then return end
@@ -142,7 +142,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local w = W[s.wid] :: any
 		if not w then continue end
 		local alive = f.alive and f.held == s.wid and n >= f.staggerUntil
-			and not (f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub") -- (the hub is weapons-free)
+			and not (f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" and (f.ref :: Player):GetAttribute("DevArms") ~= true) -- (the hub is weapons-free)
 		if not alive then
 			if s.down and w.hold == "blow" then fx(f, "blow", { on = false }) end
 			if s.down and w.hold == "beam" then fx(f, "charge", { on = false }) end

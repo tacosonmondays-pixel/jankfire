@@ -352,7 +352,7 @@ local function barTargets(): ({ GuiObject }, string, string)
 	if v then addShown(out, v) end
 	if #out > 0 then return out, "row", "vote" end
 	-- the hub's menu column, then SETTINGS
-	for _, n in { "JankLoadoutButton", "JankPlayButton", "JankShopButton", "JankProfileButton", "JankQuestsButton" } do
+	for _, n in { "JankLoadoutButton", "JankPlayButton", "JankShopButton", "JankProfileButton", "JankQuestsButton", "JankDevButton" } do -- (JankDevButton: the owner's only, OwnerDev.client)
 		addShown(out, pg:FindFirstChild(n))
 	end
 	table.sort(out, function(a, b) return a.AbsolutePosition.Y < b.AbsolutePosition.Y end)

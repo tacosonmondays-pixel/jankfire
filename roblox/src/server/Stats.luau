@@ -139,6 +139,7 @@ local function liveFor(s: State?): boolean
 	local c = s.cur :: Cur
 	if c.test then return true end
 	if c.m and c.m.ghost and not testCount then return false end -- (a Studio ghost match: not real)
+	if c.m and c.m.dev then return false end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
 	local mi = Matches.matchOf(s.p)
 	return mi ~= nil and mi.id == c.id and mi.phase == "live"
 end
@@ -323,6 +324,7 @@ local function finish(p: Player, res: string, score: string?)
 	local d = dataOf(s)
 	if not d then return end
 	if c.m and c.m.ghost and not testCount then return end -- (a Studio ghost match is never recorded)
+	if c.m and c.m.dev then return end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
 	-- the match's record first (a restore reads it), then the totals (not for a cheater restored here)
 	table.insert(d.log, 1, { id = c.key, t = os.time(), mode = c.mode, map = c.arena, team = c.team, ranked = if c.ranked then true else nil, r = res,
 		k = c.k, d = c.d, rp = c.rp, rw = c.rw, xp = c.xp, foes = c.foes, mates = c.mates })
@@ -365,6 +367,7 @@ local function hookMatches()
 	end)
 	Matches.onRound(function(m: any, winner: number)
 		if m.ghost and not testCount then return end
+		if m.dev then return end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
 		for t, list in m.teams do
 			for _, p in list do
 				local s = st[p]
@@ -465,7 +468,12 @@ local function cardOf(target: Player, viewer: Player?): any
 	return extra(target, viewer, card)
 end
 
+-- the OWNER title is the place's creator's alone (CardStyles.OWNER), whatever any save or test says
+local function creator(p: Player): boolean
+	return game.CreatorType == Enum.CreatorType.User and p.UserId > 0 and p.UserId == game.CreatorId
+end
 local function owns(p: Player, t: string, id: string): boolean
+	if CardStyles.isOwnerOnly and CardStyles.isOwnerOnly(t, id) then return creator(p) end
 	if CardStyles.isFree(t, id) then return true end
 	local s = st[p]
 	if s and s.devAll and CardStyles.info(t, id) then return true end -- (a Studio test: wear anything, this session only)
@@ -773,6 +781,12 @@ local function added(p: Player)
 	if st[p] ~= s then Profiles.release(store, prof); return end
 	s.prof = prof
 	cleanLook(p, prof.data)
+	-- (the OWNER title goes on for the creator once, the first visit after it came; they can take it off like any other)
+	if creator(p) and prof.data.ownerTitle ~= true and CardStyles.info("title", "owner") then
+		prof.data.ownerTitle = true
+		prof.data.look.title = "owner"
+		prof.dirty = true
+	end
 	s.ready = true
 	prof.onLost.Event:Connect(function() publish(s) end)
 	publish(s)

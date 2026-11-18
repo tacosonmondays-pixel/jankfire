@@ -94,13 +94,13 @@ local function refresh(g: Tag)
 	local i = CardStyles.info("title", id)
 	local words = if i and type(i.text) == "string" then i.text else ""
 	g.label.Text = words
-	g.label.TextColor3 = (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242)
+	CardStyles.styleTitle(g.label, id, (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242)) -- (OWNER: its shimmer)
 	local ch = charOf(g.p)
 	local head = ch and ch:FindFirstChild("Head") :: BasePart?
 	if not pcall(function() g.bb.Parent = head or folder end) then
 		rebuild(g)
 		g.label.Text = words
-		g.label.TextColor3 = (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242)
+		CardStyles.styleTitle(g.label, id, (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242))
 		g.bb.Parent = head or folder
 	end
 	g.head = head

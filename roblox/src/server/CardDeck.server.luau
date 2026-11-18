@@ -159,7 +159,7 @@ local function blast(f: Fighter, ult: boolean, rank: number)
 end
 
 local function play(p: Player, i: unknown, eye: unknown, aim: unknown)
-	if p:GetAttribute("Zone") == "hub" then return end
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) then return end
 	local f = Fight.byPlayer[p]
 	if not f or not f.alive or f.held ~= "cards" or not table.find(Rules.loadoutOf(f), "cards") then return end
 	if typeof(eye) ~= "Vector3" or typeof(aim) ~= "Vector3" or type(i) ~= "number" then return end

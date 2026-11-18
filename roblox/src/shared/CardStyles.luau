@@ -25,6 +25,7 @@ C.RARITY_COLOR = {
 	epic = Color3.fromRGB(162, 108, 226), legendary = Color3.fromRGB(240, 178, 52),
 	vip = Color3.fromRGB(255, 208, 72),
 	secret = Color3.fromRGB(232, 132, 206), -- (the web game's pink, a step quieter)
+	owner = Color3.fromRGB(240, 206, 128), -- (the OWNER title's: a warm white-gold, under its shimmer)
 }
 -- "vip": the VIP pack's own (the shop session's): never in a container (LootTable rolls only the rarities it knows),
 -- never in the shop's rotation or bundles (forSale leaves them out), owned only through Loot.grant of the VIP offer
@@ -40,7 +41,16 @@ end
 C.SECRET = "secret"
 function C.isSecret(t: string, id: string): boolean
 	local i = C.info(t, id)
-	return i ~= nil and i.rarity == C.SECRET
+	return i ~= nil and (i.rarity == C.SECRET or i.rarity == C.OWNER) -- (the OWNER title too: never sold, never rolled, never in a bundle)
+end
+-- "owner" (18 Nov 2026, the owner: "can you give me a special title for being owner"): the OWNER title, the place's
+-- creator's alone. worn only by them (Stats.owns asks the creator id, whatever any save says), put on for them once
+-- (Stats), never sold, rolled, bundled or granted (isSecret above keeps it out of the shop's and loot's lists), hidden
+-- in the card's picker for everyone else. drawn with its own slow gold-white shimmer (C.styleTitle)
+C.OWNER = "owner"
+function C.isOwnerOnly(t: string, id: string): boolean
+	local i = C.info(t, id)
+	return i ~= nil and i.rarity == C.OWNER
 end
 
 -- id = { name, rarity }, in the order the picker shows them
@@ -76,6 +86,7 @@ C.CREDITS = {
 } :: { [string]: string }
 -- titles: id, the words, rarity (the web medals keep their own words)
 local TITLES = {
+	{ "owner", "OWNER", "owner", "Owner" }, -- (the place's creator's alone: C.OWNER)
 	{ "none", "", "free" }, { "rookie", "ROOKIE", "free" }, { "new_hire", "NEW HIRE", "free" },
 	{ "first", "FIRST BLOOD", "common" }, { "multi2", "TWO FOR ONE", "common" }, { "revenge", "FILED A COMPLAINT", "common" },
 	{ "pacifist", "CONSCIENTIOUS OBJECTOR", "common" },
@@ -143,7 +154,7 @@ function C.forSale(t: string): { Item }
 	local out = {}
 	for _, id in C.ORDER[t] or {} do
 		local i = C.ITEMS[t][id]
-		if i.rarity ~= "free" and i.rarity ~= C.VIP_ONLY and i.rarity ~= C.SECRET then table.insert(out, i) end
+		if i.rarity ~= "free" and i.rarity ~= C.VIP_ONLY and i.rarity ~= C.SECRET and i.rarity ~= C.OWNER then table.insert(out, i) end
 	end
 	return out
 end
@@ -154,7 +165,7 @@ end
 function C.titleColor(id: string?): Color3
 	local i = C.info("title", id)
 	local c = C.RARITY_COLOR[if i then i.rarity else "free"]
-	if i and i.rarity == C.VIP_ONLY then return c end -- (VIP keeps its full gold)
+	if i and (i.rarity == C.VIP_ONLY or i.rarity == C.OWNER) then return c end -- (VIP keeps its full gold; OWNER its own)
 	return c:Lerp(Color3.fromRGB(236, 238, 242), 0.35)
 end
 
@@ -351,6 +362,46 @@ function C.paintBorder(frame: GuiObject, id: string?, corner: number?)
 	end
 end
 
+-- a title's words in a label: its colour, and the OWNER title's shimmer (a slow gold-white light running across the
+-- words, every 5.5 s: 3.5 s across, 2 s still). clients only; one Heartbeat runs every shimmer there is. call it again
+-- when the label shows another title: the shimmer comes off
+C.OWNER_GOLD = Color3.fromRGB(232, 190, 96)
+C.OWNER_WHITE = Color3.fromRGB(255, 251, 238)
+local shimmers = setmetatable({}, { __mode = "k" }) :: { [UIGradient]: boolean }
+local shimmerOn = false
+function C.styleTitle(label: TextLabel, id: string?, color: Color3?)
+	local old = label:FindFirstChild("OwnerShimmer")
+	local i = C.info("title", id)
+	if not (i and i.rarity == C.OWNER) then
+		if old then old:Destroy() end
+		label.TextColor3 = color or C.titleColor(id)
+		return
+	end
+	label.TextColor3 = Color3.new(1, 1, 1) -- (the gradient's colours are the colour)
+	local g = (old :: UIGradient?) or Instance.new("UIGradient")
+	g.Name = "OwnerShimmer"
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, C.OWNER_GOLD), ColorSequenceKeypoint.new(0.4, C.OWNER_GOLD),
+		ColorSequenceKeypoint.new(0.5, C.OWNER_WHITE), ColorSequenceKeypoint.new(0.6, C.OWNER_GOLD),
+		ColorSequenceKeypoint.new(1, C.OWNER_GOLD),
+	})
+	g.Offset = Vector2.new(-1, 0)
+	g.Parent = label
+	local RunService = game:GetService("RunService")
+	if not RunService:IsClient() then return end
+	shimmers[g] = true
+	if shimmerOn then return end
+	shimmerOn = true
+	RunService.Heartbeat:Connect(function()
+		if next(shimmers) == nil then return end
+		local t = os.clock() % 5.5
+		local x = if t < 3.5 then -1 + 2 * (t / 3.5) else 1
+		for sg in shimmers do
+			if sg.Parent then sg.Offset = Vector2.new(x, 0) else shimmers[sg] = nil end
+		end
+	end)
+end
+
 -- a small sample of one item in `frame` (a shop tile, the picker): the background, the border, or a title on slate
 function C.preview(t: string, id: string, frame: GuiObject)
 	for _, c in frame:GetChildren() do if c.Name == "Banner" or c.Name == "Border" or c.Name == "Title" then c:Destroy() end end
@@ -369,6 +420,7 @@ function C.preview(t: string, id: string, frame: GuiObject)
 			FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold) }, frame)
 		local cap = frame:FindFirstChild("Title") :: TextLabel
 		new("UITextSizeConstraint", { MaxTextSize = 15 }, cap)
+		C.styleTitle(cap, id)
 	end
 end
 -- (the loot reel's name for it: LootTable's card hook calls picture(t, id, frame) to draw a card look on a reel card)

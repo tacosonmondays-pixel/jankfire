@@ -85,6 +85,16 @@ Mark any new client-animated solid with `ACPass = true`.
 - `ACGrace` (an `os.clock()` time): no movement checks until then.
 - `ACSpeed` (a multiplier above 1): for a mode that runs everyone faster, set for the whole match. It multiplies the ground-speed limit and a rope's throw (the climb check). The classic modes' Spoons & Grapples sets 1.6.
 
+**The owner's dev menu (18 Nov 2026, `OwnerDev.server`, docs/OWNER-DEV.md).**
+
+- `devOn(p)` is true only while the server's `DevOn` attribute is set and the player is the place's creator. `DevOn` is set while any dev power is on (fly, noclip, run speed, weapons in the hub), and for 3 s after the last one goes off.
+- While it's true:
+  - No movement checks run.
+  - The verdict "dev powers on: movement not checked" is the owner's last line in the panel.
+  - The owner's aim flags are written with a `[dev]` prefix.
+- When it goes off, the checks start afresh after a 1 s grace.
+- Nobody else gets this pass. A fling, freeze or bring victim gets only the usual server-move pass (`ACGrace`, `TeleportT`), the same as a TV Remote rewind.
+
 ### The ladder
 
 1. **Put back.** The body goes back to its last clear look; a flyer goes back to its last spot on the ground. The trusted spot stays there. A client that ignores the put back is measured from that spot again and caught again.

@@ -356,7 +356,7 @@ end
 local rideT: { [Player]: number } = {}
 ;(CartR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, op: unknown, a: unknown, b: unknown)
 	if op == "fire" then
-		if p:GetAttribute("Zone") == "hub" or typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
+		if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
 		local lk = b :: Vector3
 		if lk.Magnitude < 0.5 or lk.Magnitude > 1.5 then return end
 		fire(p, a :: Vector3, lk.Unit)

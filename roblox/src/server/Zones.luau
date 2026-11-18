@@ -28,8 +28,11 @@ function Zones.of(p: Player): string
 	return tostring(p:GetAttribute("Zone") or "hub")
 end
 
+-- (and the owner with dev weapons on in the hub, OwnerDev.server's DevArms: any weapon goes in the loadout's try layer
+-- there, never saved, gone when it's switched off)
 function Zones.training(p: Player): boolean
-	return Zones.TRAINING[Zones.of(p)] == true
+	local z = Zones.of(p)
+	return Zones.TRAINING[z] == true or (z == "hub" and p:GetAttribute("DevArms") == true)
 end
 
 return Zones

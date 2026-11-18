@@ -290,7 +290,7 @@ end
 		-- (LassoSpin: everyone's copy of you spins the loop overhead, ThirdPerson; off at the throw)
 		if f.held == "lasso" then spin0[f] = now(); p:SetAttribute("LassoSpin", true) end
 	elseif op == "throw" then
-		if p:GetAttribute("Zone") == "hub" or typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
+		if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
 		local lk = b :: Vector3
 		if lk.Magnitude < 0.5 or lk.Magnitude > 1.5 then return end
 		throw(p, a :: Vector3, lk.Unit, c)

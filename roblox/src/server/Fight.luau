@@ -34,6 +34,9 @@ Fight.live = true
 -- the hub's hooks (Matches.luau replaces these)
 Fight.allow = function(_by: Fighter?, _t: Fighter): boolean return true end
 Fight.holdRespawn = function(_f: Fighter): boolean return false end
+-- (OwnerDev.server) a kill by the owner's dev powers outside a match: counts for nothing (Fight.died); back after this many s
+Fight.devKill = nil :: ((Rules.KillInfo) -> boolean)?
+Fight.DEV_RESPAWN = 1
 Fight.spawnAt = nil :: ((Fighter) -> (Vector3, Vector3?))?
 -- the items' hooks (Utility.luau replaces these): a shield bubble dropping a hit (by = the attacker; from = where
 -- damage with nobody behind it came from), a smoke cloud in a sight line (bots' eyes)
@@ -170,7 +173,8 @@ local HAND_K = 3 * 1.5
 -- the hub is weapons-free (owner, 2026-11-14): a player standing in the hub (Zone "hub") holds nothing; the training
 -- room and matches arm you as usual. HubHolster re-runs this whenever your Zone changes
 function Fight.holstered(f: Fighter): boolean
-	return f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub"
+	-- (DevArms: the owner's dev weapons in the hub, OwnerDev.server; only the server sets it, only on the owner)
+	return f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" and (f.ref :: Player):GetAttribute("DevArms") ~= true
 end
 function Fight.showWeapon(f: Fighter)
 	local m = Fight.model(f)
@@ -285,6 +289,17 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 				end
 			end
 		end)
+	end
+	-- a kill outside a match by the owner's dev powers (a dev weapon in the hub, a fall after a fling: OwnerDev.server
+	-- says so) counts for nothing: no feed, no kill hooks (stats, quests, kill effects, finishers), no score, and the
+	-- victim is back at once
+	if Fight.devKill and Fight.devKill(info) then
+		if info.k and info.k ~= v and v.kind ~= "dummy" then info.k.kills = math.max(0, info.k.kills - 1) end
+		v.deaths = math.max(0, v.deaths - 1)
+		task.delay(Fight.DEV_RESPAWN or 1, function()
+			if not v.alive and table.find(Fight.all, v) then Fight.spawn(v) end
+		end)
+		return
 	end
 	local k = info.k
 	if k and k.kind == "player" then

@@ -85,7 +85,7 @@ Fight.onKill(function(info: Rules.KillInfo)
 end)
 
 ;(DashR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, look: unknown)
-	if p:GetAttribute("Zone") == "hub" or typeof(look) ~= "Vector3" then return end
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or typeof(look) ~= "Vector3" then return end
 	local f = Fight.byPlayer[p]
 	if not f or not f.alive then return end
 	local wid = f.held

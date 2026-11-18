@@ -148,7 +148,7 @@ local function drawBar(dt: number)
 	if not bar or not bar.f.Parent then bar = buildBar() end
 	local b = bar
 	if not b then return end
-	local on = VM.wid == "cig" and me:GetAttribute("Zone") ~= "hub" and me.Character ~= nil and firstPerson()
+	local on = VM.wid == "cig" and (me:GetAttribute("Zone") ~= "hub" or me:GetAttribute("DevArms") == true) and me.Character ~= nil and firstPerson()
 	if b.f.Visible ~= on then b.f.Visible = on end
 	if not on then shown = 0; return end
 	local now = os.clock()

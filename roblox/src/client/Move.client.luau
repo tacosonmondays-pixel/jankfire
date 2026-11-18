@@ -280,6 +280,7 @@ local spawnHeld = false
 RunService.PreSimulation:Connect(function(dt: number)
 	local ch, hum, root = character()
 	if not ch or not hum or not root or not lv then return end
+	if Body.flying then lastSet = nil; return end -- (the owner's dev fly drives the body itself: OwnerDev.client)
 	if player:GetAttribute("SpawnHold") then
 		if not spawnHeld then spawnHeld = true; releaseHook(false) end
 		for k, v in Movement.newState() do (st :: any)[k] = v end
@@ -403,7 +404,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		elseif fwd and math.abs(look.Y) > 0.3 then up = look.Y * spd end
 		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
 	else
-		st.speedMul = Body.speedMul * Body.boost * Body.wet -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming; soaked)
+		st.speedMul = Body.speedMul * Body.boost * Body.wet * Body.devSpeed -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming; soaked)
 		st.grip = Body.grip -- (soaked by a Water Pistol: slidey)
 		st.hookMul = tonumber(player:GetAttribute("ModeHook")) or 1 -- (spoons & grapples: the rope pulls x1.35, Modes.luau)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
@@ -530,7 +531,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 			hum:Move(Vector3.zero, false)
 		end
 	else
-		hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul * Body.boost
+		hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul * Body.boost * Body.devSpeed
 	end
 	-- the camera drops for a crouch / slide, the body sinks a bit into a slide (jank)
 	eye += (Movement.eyeTarget(st) - eye) * math.min(1, dt * 14)

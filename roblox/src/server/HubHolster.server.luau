@@ -24,7 +24,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if acc < 0.25 then return end
 	acc = 0
 	for _, p in Players:GetPlayers() do
-		if p:GetAttribute("Zone") ~= "hub" then continue end
+		if p:GetAttribute("Zone") ~= "hub" or p:GetAttribute("DevArms") == true then continue end -- (DevArms: the owner's dev weapons, OwnerDev.server)
 		local ch = p.Character
 		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 		if hum and ch:FindFirstChildOfClass("Tool") then hum:UnequipTools() end

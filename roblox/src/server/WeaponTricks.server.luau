@@ -89,7 +89,7 @@ local function pick(f: Fighter, look: Vector3, range: number, cone: number): Fig
 	return best
 end
 local function holding(p: Player, wid: string): Fighter?
-	if p:GetAttribute("Zone") == "hub" then return nil end
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) then return nil end
 	local f = Fight.byPlayer[p]
 	if not f or not f.alive or f.held ~= wid then return nil end
 	if now() < f.staggerUntil then return nil end

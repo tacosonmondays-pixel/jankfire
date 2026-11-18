@@ -105,7 +105,7 @@ local function wrapA(a: number): number
 end
 local function fightZone(): boolean
 	local z = me:GetAttribute("Zone")
-	return z ~= "hub" and z ~= "staging"
+	return (z ~= "hub" or me:GetAttribute("DevArms") == true) and z ~= "staging" -- (DevArms: the owner's dev weapons, OwnerDev)
 end
 local function strength(): number
 	if S("pad.assist") == false then return 0 end

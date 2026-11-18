@@ -346,7 +346,7 @@ local function canWave(): boolean
 	if VM.wid ~= "katana" then return false end
 	if me:GetAttribute("EdgeFull") ~= true then return false end
 	local z = me:GetAttribute("Zone")
-	if z == "hub" or me:GetAttribute("LoadoutOpen") == true or me:GetAttribute("MenuCursor") == true then return false end
+	if (z == "hub" and me:GetAttribute("DevArms") ~= true) or me:GetAttribute("LoadoutOpen") == true or me:GetAttribute("MenuCursor") == true then return false end
 	if os.clock() < (tonumber(me:GetAttribute("KatanaCast")) or 0) then return false end
 	local ch = me.Character
 	return ch ~= nil and ch:FindFirstChildOfClass("Tool") == nil
@@ -521,7 +521,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if not meter or not meter.Parent then meter = buildMeter() end
 	local mtr = meter
 	if mtr then
-		local on = VM.wid == "katana" and me:GetAttribute("Zone") ~= "hub" and me.Character ~= nil
+		local on = VM.wid == "katana" and (me:GetAttribute("Zone") ~= "hub" or me:GetAttribute("DevArms") == true) and me.Character ~= nil
 		if mtr.Visible ~= on then mtr.Visible = on end
 		if on then
 			local e = math.clamp(tonumber(me:GetAttribute("Edge")) or 0, 0, 1)

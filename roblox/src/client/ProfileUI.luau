@@ -303,6 +303,7 @@ local function header(parent: Instance, c: any)
 	end
 	if tt ~= "" then
 		local tl = txt(hdr, tt, 14, CardStyles.titleColor(c.look.title), T.FONT_HEAVY)
+		CardStyles.styleTitle(tl, c.look.title) -- (OWNER: its shimmer)
 		at(tl, x, lineY, nameW, 18)
 		tl.ZIndex = 3
 	end
@@ -561,7 +562,7 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 		for _, id in CardStyles.ORDER[t] do
 			-- (a found one, rarity "secret": not shown until you have it, or it gives the hiding place away)
 			local si = CardStyles.info(t, id)
-			if si and si.rarity == "secret" and not (owned ~= nil and owned[t] ~= nil and owned[t][id] == true) then continue end
+			if si and (si.rarity == "secret" or si.rarity == "owner") and not (owned ~= nil and owned[t] ~= nil and owned[t][id] == true) then continue end -- (and the OWNER title: the creator's alone)
 			table.insert(ids, id)
 		end
 		-- (newest first, 18 Nov: what you have, newest first; then the free ones, the plain one first; then the rest)
@@ -684,6 +685,7 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 		n.ZIndex = 3
 		local tt = CardStyles.titleText(r.look and r.look.title)
 		local s2 = txt(b, if tt ~= "" then tt else ("@" .. r.name), 12, if tt ~= "" then CardStyles.titleColor(r.look.title) else T.MUTED, T.FONT_BOLD)
+		if tt ~= "" then CardStyles.styleTitle(s2, r.look.title) end
 		at(s2, 20 + av, 34, rw - av - 170 - shift, 16)
 		s2.ZIndex = 3
 		local mx = rw - bs - 54

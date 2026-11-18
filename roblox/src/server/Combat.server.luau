@@ -431,7 +431,7 @@ end
 
 -- one trigger pull: (weapon, eye, pellet end points (<= 12, the tracers + where the marbles go), hits per victim)
 -- the hub is weapons-free: no shots, swings or guards there (Fight.holstered); training and matches only
-local function holstered(p: Player): boolean return p:GetAttribute("Zone") == "hub" end
+local function holstered(p: Player): boolean return p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true end -- (DevArms: the owner's dev weapons, OwnerDev.server)
 FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends: unknown, hits: unknown, opt: unknown)
 	if not spend(p) or holstered(p) then return end
 	-- opt: the shot's claims, each one checked: fan (a fanned Revolver shot: it only ever lowers the damage), path

@@ -1182,7 +1182,7 @@ local function onCook(f: Fighter, id: unknown)
 	local t = now()
 	local fr = free(f)
 	if fr then Items.refill(c) end
-	if not f.alive or p:GetAttribute("Zone") == "hub" or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
+	if not f.alive or (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
 		or s.quiz or s.trap or not Fight.eye(f) then
 		publish(f)
 		ItemFx:FireClient(p, { k = "cookx", o = p.UserId, why = "no" }) -- (your screen drops the ring and the hand)
@@ -1205,7 +1205,7 @@ local function cookThrow(f: Fighter, i: unknown, o: unknown, d: unknown)
 	if not ck or i ~= ck.id then return end
 	if not f.alive then return end
 	local p = f.ref :: Player
-	if p:GetAttribute("Zone") == "hub" then -- (carried into the weapons-free hub: it's gone, nothing happens)
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) then -- (carried into the weapons-free hub: it's gone, nothing happens)
 		s.cook = nil
 		ItemFx:FireAllClients({ k = "cookx", o = p.UserId, why = "gone" })
 		return
@@ -1228,7 +1228,7 @@ local function blowInHand(f: Fighter)
 	if not ck then return end
 	s.cook = nil
 	local uid = uidOf(f)
-	if f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" then
+	if f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" and (f.ref :: Player):GetAttribute("DevArms") ~= true then
 		ItemFx:FireAllClients({ k = "cookx", o = uid, why = "gone" })
 		return
 	end
@@ -1261,7 +1261,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if i == "radar" then onRadar(f, o, d); return end -- (the speed trap: G held is free, only a ticket spends)
 	if i == "camera" then -- (the camera's first press, the snap, is free; the print below costs the charge)
 		local s0 = stateOf(f)
-		if s0.item == "camera" and not s0.photo and f.alive and not s0.quiz and not s0.jail and not s0.trap and p:GetAttribute("Zone") ~= "hub" then
+		if s0.item == "camera" and not s0.photo and f.alive and not s0.quiz and not s0.jail and not s0.trap and (p:GetAttribute("Zone") ~= "hub" or p:GetAttribute("DevArms") == true) then
 			if now() - s0.useT < (if free(f) then Items.SPAM_FREE else Items.SPAM) then return end
 			local fr = Fight.root(f)
 			if not fr then return end -- (the body's gone mid-life)
@@ -1282,7 +1282,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	-- not alive, in the hub (weapons-free), not your item, not on roblox yet, out of charges, too soon: the real count
 	-- goes back so the HUD can't drift
 	-- (sitting a quiz: no items; the goggles' flash only with them on)
-	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
+	if not f.alive or (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
 		or s.quiz or s.trap or (i == "nvg" and not s.nvOn) then
 		publish(f)
 		return

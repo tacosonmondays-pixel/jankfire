@@ -124,7 +124,7 @@ local function heldWeapon(): string?
 	return if type(id) == "string" then id else nil
 end
 -- (weapons work in a match, in training and on the playground)
-local function fightZone(): boolean local z = zone(); return z == "match" or z == "training" or z == "playground" end
+local function fightZone(): boolean local z = zone(); return z == "match" or z == "training" or z == "playground" or me:GetAttribute("DevArms") == true end -- (DevArms: the owner's dev weapons in the hub, OwnerDev)
 
 -- ---------------------------------------------------------------- the layer
 local gui: ScreenGui

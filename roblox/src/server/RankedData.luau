@@ -469,6 +469,7 @@ local function rate(p: Player, m: any, team: number, won: boolean, left: boolean
 	local s = st[p]
 	local d = dataOf(p)
 	if not s or not d or s.done[m.id] then return nil end
+	if m.dev then return nil end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
 	local rated = m.rated
 	if type(rated) ~= "table" or type(rated.teams) ~= "table" or not rated.teams[team] then return nil end
 	s.done[m.id] = true
@@ -518,6 +519,7 @@ end
 local function onEnd(m: any, winner: number?)
 	if not m.ranked or type(m.rated) ~= "table" then return end
 	for p, im in inRanked do if im.m == m then inRanked[p] = nil end end
+	if m.dev then return end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
 	for t, list in m.teams do
 		for _, p in list do
 			if p.Parent then

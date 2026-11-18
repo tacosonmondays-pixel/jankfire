@@ -22,6 +22,10 @@ Body.onKnock = nil :: ((Vector3) -> ())?
 Body.onStep = nil :: ((any, Vector3, number) -> ())?
 -- a run-speed boost on top of speedMul (the pop quiz's gold star: x1.25 for 4 s, Utility.client.luau)
 Body.boost = 1
+-- (the owner's dev menu, OwnerDev.client) run speed x this (the server's DevSpeed), and flying: while it flies the
+-- body, the movement script stands down (Move.client)
+Body.devSpeed = 1
+Body.flying = false
 -- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
 Body.speedMul = 1
 -- (weapons batch A, 18 Nov 2026; WeaponStates.client sets these from the server's attributes on you) soaked by a Water

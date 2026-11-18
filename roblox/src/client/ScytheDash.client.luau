@@ -84,7 +84,7 @@ RunService.RenderStepped:Connect(function()
 	local id = held()
 	local w = if id then W[id] else nil
 	-- (the scythe form only, alive, out of the hub, and only while the crosshair itself is up)
-	local show = w ~= nil and w.dash ~= nil and hum ~= nil and hum.Health > 0 and me:GetAttribute("Zone") ~= "hub"
+	local show = w ~= nil and w.dash ~= nil and hum ~= nil and hum.Health > 0 and (me:GetAttribute("Zone") ~= "hub" or me:GetAttribute("DevArms") == true)
 		and fight ~= nil and (fight :: ScreenGui).Enabled and cross ~= nil and (cross :: GuiObject).Visible
 	if gui.Enabled ~= show then gui.Enabled = show end
 	if not show then return end

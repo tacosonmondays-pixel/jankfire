@@ -103,6 +103,8 @@ function Matches.matchOf(p: Player): { id: number, key: string, mode: string, ar
 	if not im then return nil end
 	return { id = im.m.id, key = im.m.key, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase, ranked = im.m.ranked == true, queue = im.m.queue }
 end
+-- (OwnerDev.server) may the owner's dev weapons hurt this player out of a match
+Matches.devHit = nil :: ((Player, Player) -> boolean)?
 -- (Party.luau) where a player who is not in a match respawns instead of the hub: their private lobby's plinth, or nil
 Matches.homeOf = nil :: ((Player) -> CFrame?)?
 -- (Recorder.luau) at a match's end: hold it for a replay? { wait = s on the end screen, total = s until home, label }
@@ -145,6 +147,8 @@ function Matches.allow(by: Fighter?, t: Fighter): boolean
 	if t.kind == "dummy" then return true end -- anyone can hit a dummy
 	local tp = t.ref :: Player
 	if by.kind == "dummy" then return Matches.zoneOf(tp) == "training" end -- the dummies only shoot back in their room
+	-- (the owner's dev weapons, out of a match: anyone else out of one too. it counts for nothing: Fight.devKill)
+	if Matches.devHit and by.kind == "player" and (Matches.devHit :: any)(by.ref :: Player, tp) then return true end
 	local a, b = inMatch[by.ref :: Player], inMatch[tp]
 	-- (a classic mode can have sides of its own: infection's survivors and zombies, Modes.luau)
 	if a and b and a.m == b.m and a.m.rules and a.m.rules.allow then return a.m.phase == "live" and a.m.rules.allow(a.m, by, t, a.team ~= b.team) end

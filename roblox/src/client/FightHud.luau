@@ -377,6 +377,10 @@ local endScale = T.new("UIScale", {}, endPanel)
 local MID = Enum.TextXAlignment.Center
 local endKicker = T.text(endPanel, "Kicker", "MATCH OVER", 12, T.MUTED, T.FONT_BOLD, MID)
 at(endKicker, UDim2.fromOffset(28, 24), UDim2.new(1, -56, 0, 14))
+-- (a match the owner used dev powers in counts for nothing, OwnerDev.server: a small quiet tag says so; MatchDev on you)
+local endDev = T.text(endPanel, "DevTag", "DEV", 11, T.DIM, T.FONT_BOLD, Enum.TextXAlignment.Right)
+at(endDev, UDim2.new(1, -78, 0, 22), UDim2.fromOffset(50, 14))
+endDev.Visible = false
 local endTitle = T.text(endPanel, "Title", "", 40, T.TEXT, T.FONT_TITLE, MID)
 at(endTitle, UDim2.fromOffset(28, 44), UDim2.new(1, -56, 0, 48))
 endTitle.TextScaled = true
@@ -414,6 +418,7 @@ function H.endScreen(winner: string?, iWon: boolean, board: { { any } }, nextIn:
 	endTitle.Text = if iWon then "YOU WIN" elseif winner then string.upper(winner .. " wins") else "NOBODY WINS (no kills, no glory)"
 	endTitle.TextColor3 = if iWon then T.ACCENT else T.TEXT
 	endScore.Text = lastScore
+	endDev.Visible = me:GetAttribute("MatchDev") ~= nil
 	endRule.BackgroundColor3 = if iWon then T.ACCENT else T.DIM
 	local n = 0
 	for i, r in board do
