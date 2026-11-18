@@ -84,6 +84,12 @@ function T.key(parent: Instance, letter: string, pos: UDim2): Frame
 			parent.TextXAlignment = Enum.TextXAlignment.Center
 		end
 	end
+	-- a controller: while one is in your hands the cap shows the pad's button for the same action, in the same cap (Pad)
+	local pm = script.Parent:FindFirstChild("Pad")
+	if pm then
+		local ok, Pad = pcall(require, pm)
+		if ok and type(Pad) == "table" and (Pad :: any).chip then pcall((Pad :: any).chip, f, letter) end
+	end
 	return f
 end
 function T.hex(c: Color3): string return "#" .. c:ToHex() end

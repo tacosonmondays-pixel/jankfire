@@ -439,6 +439,18 @@ function W.close()
 	MenuCursor.set("wheel", false)
 	me:SetAttribute("LoadoutOpen", W.savedOpen)
 end
+-- a controller in your hands: its right stick (Pad.luau), or nil
+local PadMod: any = nil
+local function padStick(): Vector2?
+	if PadMod == nil then
+		local m = script.Parent:FindFirstChild("Pad")
+		local ok, r = false, nil
+		if m then ok, r = pcall(require, m) end
+		PadMod = if ok and type(r) == "table" then r else false
+	end
+	if not PadMod or not PadMod.on() then return nil end
+	return PadMod.stick(2)
+end
 -- the slot the mouse points at: by its angle from the middle (a dead zone in the middle)
 RunService.RenderStepped:Connect(function()
 	if not W.open then return end
@@ -447,6 +459,16 @@ RunService.RenderStepped:Connect(function()
 	local c = disc.AbsolutePosition + disc.AbsoluteSize / 2
 	local d = m - c
 	local sc = disc.AbsoluteSize.X / (RING * 2 + CELL + 40)
+	-- (a controller: the right stick points instead of the mouse, and the slot stays picked when the stick springs back)
+	local ps = if W.touch then nil else padStick()
+	if ps then
+		if ps.Magnitude > 0.5 then
+			local a = math.deg(math.atan2(-ps.Y, ps.X)) + 90
+			W.hover = math.floor(((a + 360 / Flair.SLOTS / 2) % 360) / (360 / Flair.SLOTS)) + 1
+		end
+		show()
+		return
+	end
 	if d.Magnitude > 70 * sc and not W.touch then
 		local a = math.deg(math.atan2(d.Y, d.X)) + 90
 		W.hover = math.floor(((a + 360 / Flair.SLOTS / 2) % 360) / (360 / Flair.SLOTS)) + 1
@@ -517,6 +539,13 @@ onBegan(function(io: any, gp: boolean)
 		return
 	end
 	if io.KeyCode == Enum.KeyCode.Escape and W.open then W.close(); return end
+	-- (a controller's bumpers turn the page, as the mouse wheel does)
+	if W.open and (io.KeyCode == Enum.KeyCode.ButtonL1 or io.KeyCode == Enum.KeyCode.ButtonR1) and #rbxList() > 0 then
+		local total = 1 + rbxPages(#rbxList())
+		local n = W.page + (if io.KeyCode == Enum.KeyCode.ButtonR1 then 1 else -1)
+		setPage(if n > total then 1 elseif n < 1 then total else n)
+		return
+	end
 	if gp then return end
 	if E.id and (WEAPON_KEYS[io.KeyCode] or io.UserInputType == Enum.UserInputType.MouseButton1
 		or io.UserInputType == Enum.UserInputType.MouseButton2) then

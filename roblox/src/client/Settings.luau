@@ -44,6 +44,12 @@ Settings.DEFAULTS = {
 	-- is the web game's aim help, 0 = off)
 	["touch.sens"] = 1, ["touch.size"] = 1, ["touch.alpha"] = 0.75, ["touch.assist"] = 1, ["touch.autofire"] = true,
 	["touch.lefty"] = false, ["touch.aimToggle"] = true,
+	-- controller (the CONTROLLER tab; PadLook.client turns the view, Binds reads the hold / toggles; CONTROLLER.md):
+	-- look speed and its aim and up-down parts, the right stick's inner deadzone and the outer one (from the edge), the
+	-- response curve, the speed-up held all the way over, aim assist (a pad only) and its strength
+	["pad.sens"] = 1, ["pad.ads"] = 1, ["pad.ySpeed"] = 1, ["pad.invert"] = false, ["pad.dead"] = 0.12, ["pad.outer"] = 0.05,
+	["pad.curve"] = "standard", ["pad.accel"] = true, ["pad.assist"] = true, ["pad.assistK"] = 1,
+	["pad.aimToggle"] = false, ["pad.crouchToggle"] = false, ["pad.sprintToggle"] = true,
 } :: { [string]: any }
 
 -- the page's tabs and their rows: SettingsUI fills its own; other scripts add with Settings.row

@@ -495,6 +495,8 @@ for i, md in Roster.MODES do
 	end
 	b.face.MouseEnter:Connect(function() state.modeHover = md; if state.open then refresh() end end)
 	b.face.MouseLeave:Connect(function() if state.modeHover == md then state.modeHover = nil; if state.open then refresh() end end end)
+	b.face.SelectionGained:Connect(function() state.modeHover = md; if state.open then refresh() end end) -- (a controller's pick tries it on, as the mouse's hover)
+	b.face.SelectionLost:Connect(function() if state.modeHover == md then state.modeHover = nil; if state.open then refresh() end end end)
 	modeBtns[md] = b
 end
 local filters = { "all", "common", "rare", "epic", "legendary" }
@@ -709,6 +711,8 @@ for i, wr in Roster.wraps do
 	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
 	chip.MouseEnter:Connect(function() onHover(wr.id) end)
 	chip.MouseLeave:Connect(function() onHover(nil) end)
+	chip.SelectionGained:Connect(function() onHover(wr.id) end) -- (a controller's pick tries it on, as the mouse's hover)
+	chip.SelectionLost:Connect(function() onHover(nil) end)
 	chip.MouseButton1Click:Connect(function() onSwatch(wr) end)
 	table.insert(swatches, { wr = wr, holder = holder, chip = chip, shadow = shadow, st = st, tick = tick })
 	swatchLocks[wr.id] = lockOver(chip, 8)
@@ -973,6 +977,8 @@ for i, hid in GunHats.ORDER do
 	new("UITextSizeConstraint", { MaxTextSize = 14 }, nm)
 	chip.MouseEnter:Connect(function() state.hatHover = hid; if state.open then refresh() end end)
 	chip.MouseLeave:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
+	chip.SelectionGained:Connect(function() state.hatHover = hid; if state.open then refresh() end end) -- (a controller's pick tries it on)
+	chip.SelectionLost:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onHat(hid) end)
 	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM })
 	hatLocks[hid] = lockOver(chip, 8)
@@ -1035,6 +1041,8 @@ local function skinCard(sid: string, order: number, wid: string, concept: boolea
 	new("UITextSizeConstraint", { MaxTextSize = 14 }, nm)
 	chip.MouseEnter:Connect(function() state.skinHover = sid; if state.open then refresh() end end)
 	chip.MouseLeave:Connect(function() if state.skinHover == sid then state.skinHover = nil end; if state.open then refresh() end end)
+	chip.SelectionGained:Connect(function() state.skinHover = sid; if state.open then refresh() end end) -- (a controller's pick tries it on)
+	chip.SelectionLost:Connect(function() if state.skinHover == sid then state.skinHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onSkin(sid) end)
 	if concept then
 		holder:SetAttribute("Concept", true)
@@ -1387,6 +1395,12 @@ UIS.InputBegan:Connect(function(io, gp)
 		play("click")
 		refresh()
 	end
+end)
+
+-- a controller's B backs out (PadNav.client asks through the player attribute MenuBack)
+me:GetAttributeChangedSignal("MenuBack"):Connect(function()
+	local v = me:GetAttribute("MenuBack")
+	if state.open and type(v) == "string" and string.sub(v, 1, 7) == "loadout" then setOpen(false) end
 end)
 
 -- the screen follows the server: picks / wraps / save status changing, a match grabbing you, a death

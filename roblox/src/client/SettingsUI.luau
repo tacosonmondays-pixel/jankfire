@@ -17,8 +17,11 @@ local T = require(script.Parent:WaitForChild("Theme"))
 local Settings = require(script.Parent:WaitForChild("Settings"))
 local Binds = require(script.Parent:WaitForChild("Binds"))
 local XH = require(script.Parent:WaitForChild("Crosshair"))
+local Pad = require(script.Parent:WaitForChild("Pad")) -- (the controller's button pictures and names: the CONTROLLER tab)
 
 local UI = { capturing = false }
+-- a controller steps a slider: its grab is what gets selected, left and right nudge it (PadNav.client)
+UI.nudge = setmetatable({}, { __mode = "k" })
 local W, H = 1000, 640 -- the page in design pixels (Theme's 720-tall screen)
 local RAIL = 212
 local ROW_H = 60
@@ -133,6 +136,9 @@ local function slider(def)
 	end
 	local grab = T.new("TextButton", { Name = "Grab", BackgroundTransparency = 1, Text = "", Position = UDim2.new(0, -10, 0, -14), Size = UDim2.new(1, 20, 1, 28), ZIndex = 3 }, track)
 	grab.MouseButton1Down:Connect(function(x) dragging = s; s.setFromX(x) end)
+	box.Selectable = false
+	grab.NextSelectionLeft = grab; grab.NextSelectionRight = grab
+	UI.nudge[grab] = function(d) setV(get() + d * math.max(def.step or 0, (def.max - def.min) / 40)) end
 	box.FocusLost:Connect(function()
 		local n = tonumber(string.match(box.Text, "%-?[%d%.]+") or "")
 		if n then setV(n / (def.scale or 1)) end
@@ -319,6 +325,43 @@ local function keyRow(a)
 	refresh()
 	return r
 end
+-- ------------------------------------------------------------------ a controller button (the CONTROLLER tab): the pad's
+-- own picture of the button and its name. select it, press it, then press the new button (the KEYBINDS' third column)
+local function padRow(a)
+	local r, ctl = rowFrame(a.label, nil, 48, "Pad_" .. a.id)
+	local b = T.new("TextButton", { Name = "Cap3", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(170, 32),
+		AutoButtonColor = false, BackgroundColor3 = T.BG, BorderSizePixel = 0, FontFace = T.FONT_BOLD, TextSize = 13, TextColor3 = T.TEXT, Text = "" }, ctl)
+	T.corner(b, 5)
+	T.edge(b, nil, 0.8)
+	T.new("UIPadding", { PaddingLeft = UDim.new(0, 30) }, b)
+	local g = T.new("ImageLabel", { Name = "Glyph", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, -24, 0.5, 0),
+		Size = UDim2.fromOffset(22, 22), ScaleType = Enum.ScaleType.Fit, ImageColor3 = T.TEXT }, b)
+	local function refresh()
+		local name = Binds.get(a.id)[3]
+		local on = listening and listening.id == a.id and listening.slot == 3
+		b.Text = if on then "PRESS A BUTTON" elseif name == "" then "—" else Pad.short(name)
+		g.Image = if on or name == "" then "" else Pad.image(name)
+		b.BackgroundColor3 = if on then T.ACCENT else T.BG
+		b.TextColor3 = if on then T.INK elseif name == "" then T.DIM else T.TEXT
+	end
+	b.MouseButton1Click:Connect(function()
+		if listening and listening.id == a.id and listening.slot == 3 then return end
+		stopListening(false)
+		task.defer(function()
+			listening = { id = a.id, slot = 3, refresh = refresh, cap = b }
+			UI.capturing = true
+			ContextActionService:BindActionAtPriority("JankBindSink", function(_, state, io)
+				if state == Enum.UserInputState.Begin then task.defer(UI.capture, io) end
+				return Enum.ContextActionResult.Sink
+			end, false, 4000, Enum.UserInputType.Keyboard, Enum.UserInputType.Gamepad1)
+			refresh()
+		end)
+	end)
+	onKey("bind." .. a.id, refresh)
+	table.insert(capRefresh, refresh)
+	refresh()
+	return r
+end
 local function fixedRow(f)
 	local r, ctl = rowFrame(f.label, nil, 48)
 	r.BackgroundTransparency = 0.5
@@ -336,7 +379,7 @@ local function capture(io)
 	if not listening then return end
 	local l = listening
 	local k = io.KeyCode
-	if k == Enum.KeyCode.Escape then stopListening(true); return end
+	if k == Enum.KeyCode.Escape or k == Enum.KeyCode.ButtonSelect then stopListening(true); return end -- (a pad's View cancels)
 	if k == Enum.KeyCode.Backspace or k == Enum.KeyCode.Delete then
 		Binds.set(l.id, l.slot, "")
 		stopListening(false)
@@ -442,8 +485,6 @@ tabs = {
 		slider({ key = "look.ads", label = "ZOOM SENSITIVITY RATIO", sub = "iron sights and red dots", min = 0.2, max = 2, step = 0.01, fmt = times })
 		slider({ key = "look.sniper", label = "SCOPED SENSITIVITY", sub = "Sniper, 4x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
 		slider({ key = "look.dmr", label = "SCOPED SENSITIVITY", sub = "Second Opinion, 2.6x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
-		section("CONTROLLER")
-		slider({ key = "look.pad", label = "CONTROLLER SENSITIVITY", min = 0.2, max = 3, step = 0.05, fmt = times })
 		section("VIEW")
 		slider({ key = "fov", label = "FIELD OF VIEW", sub = "vertical, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
 		switch({ key = "fov.kick", label = "FOV KICK", sub = "the view widens as you speed up" })
@@ -473,6 +514,36 @@ tabs = {
 			keyRow(a)
 		end
 	end, onReset = function() Binds.resetAll() end },
+	{ id = "pad", title = "CONTROLLER", reset = { "pad." }, build = function()
+		section("LOOK", "the right stick")
+		slider({ key = "pad.sens", label = "LOOK SENSITIVITY", min = 0.2, max = 3, step = 0.05, fmt = times })
+		slider({ key = "pad.ads", label = "AIM SENSITIVITY", sub = "multiplier while aiming down sights", min = 0.2, max = 2, step = 0.05, fmt = times })
+		slider({ key = "pad.ySpeed", label = "VERTICAL SENSITIVITY", sub = "multiplier on up and down", min = 0.5, max = 1.5, step = 0.01, fmt = pct, scale = 100 })
+		switch({ key = "pad.invert", label = "INVERT LOOK Y" })
+		choice({ key = "pad.curve", label = "RESPONSE CURVE", options = { { "linear", "LINEAR" }, { "standard", "STANDARD" }, { "dynamic", "DYNAMIC" } } })
+		slider({ key = "pad.dead", label = "INNER DEADZONE", sub = "how far the stick moves before you turn", min = 0, max = 0.4, step = 0.01, fmt = pct, scale = 100 })
+		slider({ key = "pad.outer", label = "OUTER DEADZONE", sub = "how near the edge counts as all the way", min = 0, max = 0.3, step = 0.01, fmt = pct, scale = 100 })
+		switch({ key = "pad.accel", label = "LOOK ACCELERATION", sub = "turning speeds up with the stick held all the way" })
+		section("AIM ASSIST", "controller only, never a mouse; ranked holds it to 60%")
+		switch({ key = "pad.assist", label = "AIM ASSIST" })
+		slider({ key = "pad.assistK", label = "AIM ASSIST STRENGTH", min = 0.1, max = 1, step = 0.05, fmt = pct, scale = 100 })
+		section("HOLD OR TOGGLE")
+		local ht = { { false, "HOLD" }, { true, "TOGGLE" } }
+		choice({ key = "pad.aimToggle", label = "AIM DOWN SIGHTS", options = ht })
+		choice({ key = "pad.crouchToggle", label = "CROUCH", options = ht })
+		choice({ key = "pad.sprintToggle", label = "SPRINT", options = ht })
+		section("BUTTONS", ("select one, press %s, then press the new button. %s cancels"):format(Pad.short("ButtonA"), Pad.short("ButtonSelect")))
+		for _, f in { { label = "MOVE", kb = "", pad = Pad.short("Thumbstick1") }, { label = "LOOK", kb = "", pad = Pad.short("Thumbstick2") },
+			{ label = "JUMP", kb = "", pad = Pad.short("ButtonA") }, { label = "MENUS AND SETTINGS", kb = "", pad = Pad.short("ButtonSelect") },
+			{ label = "BACK OUT OF A MENU", kb = "", pad = Pad.short("ButtonB") } } do fixedRow(f) end
+		for _, a in Binds.ACTIONS do padRow(a) end
+	end, onReset = function()
+		-- (the controller column only: the keyboard's keys stay as they are)
+		for _, a in Binds.ACTIONS do
+			local b, d = Binds.get(a.id), Binds.default(a.id)
+			if b[3] ~= d[3] then Settings.set("bind." .. a.id, table.concat({ b[1], b[2], d[3] }, "|")) end
+		end
+	end },
 	{ id = "crosshair", title = "CROSSHAIR", reset = { "xh." }, build = function()
 		preview()
 		local pr = T.new("Frame", { Name = "Presets", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = nextOrder() }, list)
@@ -629,6 +700,7 @@ function UI.show(id)
 	for _, t in tabs do if t.id == id then tab = t end end
 	if not tab then return end
 	current = tab
+	UI.tabId = id -- (a controller's bumpers step the tabs: PadNav.client)
 	clearList()
 	header.Text = tab.title
 	message.Text = ""

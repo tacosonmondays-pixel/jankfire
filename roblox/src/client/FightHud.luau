@@ -561,13 +561,26 @@ if hint then
 		local parts = {}
 		-- (each key in white, what it does in grey)
 		local function key(k: string, what: string) table.insert(parts, ('<font color="%s"><b>%s</b></font> %s'):format(T.hex(T.TEXT), k, what)) end
-		local B = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them: Settings > KEYBINDS)
-		for i, id in ids do key(B.label("slot" .. i), if WL[id] then WL[id].name else id) end
+		local B0 = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them: Settings > KEYBINDS)
+		-- (a controller in your hands: its buttons, and an action with none is left out. Pad.luau)
+		local pm = script.Parent:FindFirstChild("Pad")
+		local okP, P = false, nil :: any
+		if pm then okP, P = pcall(require, pm) end
+		local pad = okP and P.on()
+		local B = { label = function(id: string): string
+			if not pad then return B0.label(id) end
+			local b = P.button(id)
+			return if b ~= "" then P.short(b) else ""
+		end }
+		local function key2(k: string, what: string) if k ~= "" and k ~= "hold " then key(k, what) end end
+		if pad then key2(B.label("next"), "next weapon"); key2(B.label("slot3"), "melee") else
+			for i, id in ids do key(B.label("slot" .. i), if WL[id] then WL[id].name else id) end
+		end
 		local item = Items.list[lp:GetAttribute("Item") :: any]
-		if item and item.live then key(B.label("item"), string.lower(item.name)) end
+		if item and item.live then key2(B.label("item"), string.lower(item.name)) end
 		for _, p in { { B.label("loadout"), "loadout" }, { B.label("fire"), "fire" }, { B.label("aim"), "aim / parry" }, { B.label("reload"), "reload" }, { B.label("sprint"), "run" },
 			{ B.label("crouch"), "slide" }, { "hold " .. B.label("grapple"), "grapple" }, { B.label("camera"), "camera" }, { "hold " .. B.label("keys"), "show keys" } } do
-			key(p[1], p[2])
+			key2(p[1], p[2])
 		end
 		local line = hint :: TextLabel
 		line.Text = table.concat(parts, "     ")
@@ -576,6 +589,10 @@ if hint then
 	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)
 	lp:GetAttributeChangedSignal("Item"):Connect(keysLine)
 	Settings.onAny(function(k: string) if string.sub(k, 1, 5) == "bind." then keysLine() end end)
+	task.spawn(function() -- (and when a controller is picked up or put down)
+		local okP, P = pcall(require, script.Parent:WaitForChild("Pad", 10))
+		if okP and type(P) == "table" and P.changed then P.changed.Event:Connect(keysLine) end
+	end)
 end
 end)
 

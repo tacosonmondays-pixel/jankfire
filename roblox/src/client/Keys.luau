@@ -73,6 +73,13 @@ function Keys.tap(code: any)
 	Keys.press(code, true)
 	Keys.press(code, false)
 end
+-- a test's pretend controller button (PadLook.client's PadTest "press:ButtonR2"): every Keys.began / ended listener
+-- hears it as a pad's (UserInputType Gamepad1, no Touch field), so Binds matches the player's own controller column
+function Keys.padPress(code: any, down: boolean)
+	local io = { KeyCode = code, UserInputType = Enum.UserInputType.Gamepad1,
+		UserInputState = if down then Enum.UserInputState.Begin else Enum.UserInputState.End, Position = Vector3.zero, Delta = Vector3.zero }
+	for _, fn in (if down then beganFns else endedFns) do task.spawn(fn, io, false) end
+end
 -- a touch button's own count (TouchControls lets go of everything it holds when a menu opens)
 function Keys.heldByTouch(code: any): boolean return (held[code] or 0) > 0 end
 
@@ -100,7 +107,14 @@ end
 LETTER["E"] = "HOOK"
 
 function Keys.say(text: string): string
-	if not Keys.isTouch() then return text end
+	if not Keys.isTouch() then
+		-- (a controller in your hands: the keys swapped for its buttons, Pad.say)
+		local pm = script.Parent:FindFirstChild("Pad")
+		local ok, Pad = false, nil
+		if pm then ok, Pad = pcall(require, pm) end
+		if ok and type(Pad) == "table" and (Pad :: any).on() then return (Pad :: any).say(text) end
+		return text
+	end
 	local s = text
 	-- "the shop [B]": the button is on screen with its name, the key goes
 	s = string.gsub(s, "%s*%[(%u)%]", function(k: string): string? return if LETTER[k] then "" else nil end)

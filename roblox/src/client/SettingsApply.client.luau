@@ -54,9 +54,13 @@ task.spawn(function()
 	local ok, CI = pcall(require, ci)
 	if not ok or type(CI) ~= "table" or type((CI :: any).getRotation) ~= "function" then return end
 	local orig = (CI :: any).getRotation
+	-- (a controller in your hands: its stick turns the view itself, with its own curve, deadzones and aim assist,
+	-- PadLook.client. Pad.on is false the moment the mouse moves, so a pad lying on the desk never takes the mouse's turn)
+	local okP, Pad = pcall(require, script.Parent:WaitForChild("Pad"))
 	;(CI :: any).getRotation = function(dt: number, ...)
 		local r: Vector2 = orig(dt, ...)
 		if r.X == 0 and r.Y == 0 then return r end
+		if okP and (Pad :: any).on() then return Vector2.zero end
 		local last = UIS:GetLastInputType()
 		local k = 1
 		if string.sub(last.Name, 1, 7) == "Gamepad" then k = (S("look.pad") :: number) * aimK()
