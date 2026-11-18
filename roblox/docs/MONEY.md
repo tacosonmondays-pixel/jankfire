@@ -30,13 +30,32 @@ Real money is **off**. Two lines in `roblox/src/shared/Config.luau` turn it on:
 - `WEAPONS_ROBUX_FREE` only locks the weapons. With it off and `LOOT_ROBUX` still off, they can be bought with coins
   but not with Robux.
 
-**Before the switch goes on:**
+## Going live (prepared 18 Nov, not done yet)
 
-1. Put the VIP pass on sale (Creator Hub > Monetization > Passes). It was made off sale.
-2. Answer the experience questionnaire: the game has paid random items (the containers). See LOOT.md, "Roblox's rules
-   for paid random items". The odds and PolicyService parts are already built.
-3. Decide whether paid weapons may be used in ranked (PROGRESSION.md, "Ranked").
-4. Publish.
+The owner: "Lets get the shop going!". It is one change, in one Studio turn under main's OWNER HOLD:
+
+1. `Config.luau`: `LOOT_FREE = false`, `LOOT_ROBUX = true` (two lines; the shop session's prepared swap checks the
+   base and compile, then saves).
+2. Put the VIP pass on sale: `PATCH /game-passes/v1/universes/10776367667/game-passes/2093409349` with `isForSale`
+   true (scope `game-pass:write`). `Shop.VIP_PASS` is already 2093409349.
+3. The owner publishes.
+
+`Unlocks.WEAPONS_ROBUX_FREE` is not part of it: the four Robux weapons stay free for everyone until the owner decides.
+That is a separate decision, because it locks weapons people use today, and ranked is open (PROGRESSION.md, "Ranked").
+
+Also for the owner, on the Creator Hub:
+- Answer the experience questionnaire: the game has paid random items (the containers). See LOOT.md, "Roblox's rules
+  for paid random items". The odds and PolicyService parts are already built.
+
+**Players keep everything they claimed while the shop was free.** Nothing is taken back at go-live:
+- items claimed (wraps, hats, skins, card looks, kill effects, emotes) stay in the loot save;
+- containers in stock stay, and still open;
+- a deal had stays had;
+- **a free VIP claim stays VIP for good** (`Vip.luau`: a claim made while the shop was free keeps counting; only the
+  claim itself needed the shop free; since 18 Nov);
+- if the Robux weapons are ever locked, `WeaponsKept` keeps the ones a player already used (PROGRESSION.md).
+
+Only new claims stop: CLAIM buttons become BUY, and containers need stock or a purchase to open.
 
 ## Every price (one table: `Shop.MONEY` in `shared/Shop.luau`)
 

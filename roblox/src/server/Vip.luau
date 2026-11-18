@@ -4,7 +4,8 @@
 -- is VIP (the only place that does) and hands them the VIP pack through the loot server.
 --   who is VIP: the game pass (MarketplaceService:UserOwnsGamePassAsync on join, PromptGamePassPurchaseFinished for a
 --   purchase made now) once Shop.VIP_PASS is set; while the shop is free (Shop.free(), Config.LOOT_FREE) anyone can
---   claim it from the shop ("Get VIP (free while testing)"), kept in a small save so it lasts; and the place's owner in
+--   claim it from the shop ("Get VIP (free while testing)"), kept in a small save so it lasts, and it still counts once
+--   real money is on (players keep what they claimed while it was free: docs/MONEY.md); and the place's owner in
 --   Studio can turn it on or off for a session (the "dev" op), to test the VIP room both ways.
 --   the pack: the shop's offer "vip" (Shop.vipItems: every skin, wrap, hat and card look the loot module calls VIP-only),
 --   given by Loot.grant(p, "vip", "vip-<signature>"): a pack that gains items later is granted again, once, and only the
@@ -139,9 +140,10 @@ end
 local function joined(p: Player)
 	if ownsPass(p) then make(p, "pass") return end
 	local r = record(p)
-	-- (a gift lasts whatever the switches; a free claim only counts while the shop is free)
+	-- (a gift lasts whatever the switches; so does a claim made while the shop was free: players keep what they claimed
+	-- then, 18 Nov. only the claim itself needs the shop free: op "claim")
 	if r and r.gift == true then make(p, "gift")
-	elseif r and r.free == true and Shop.free() then make(p, "free") end
+	elseif r and r.free == true then make(p, "free") end
 end
 
 -- the owner's gift (OwnerDev's GIFT tab, 18 Nov 2026): Vip.gift(player, on?) -> (ok, why?). VIP for good whatever the
