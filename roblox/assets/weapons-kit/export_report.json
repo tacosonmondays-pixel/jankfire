@@ -6899,7 +6899,7 @@
    {
     "name": "forend_wzA__wood",
     "upload": "forend_wzA__wood__p463a31",
-    "tris": 68,
+    "tris": 164,
     "look": {
      "color": "463a31",
      "metal": 0.0,
@@ -6923,7 +6923,7 @@
    {
     "name": "grip_wzA__wood",
     "upload": "grip_wzA__wood__p463a31",
-    "tris": 56,
+    "tris": 332,
     "look": {
      "color": "463a31",
      "metal": 0.0,
@@ -6934,13 +6934,13 @@
     },
     "lo": [
      -0.027,
-     -0.1281,
+     -0.1273,
      0.05
     ],
     "hi": [
      0.027,
-     0.0256,
-     0.1667
+     0.0254,
+     0.1668
     ],
     "paint": "p463a31"
    },
@@ -6957,12 +6957,12 @@
      "tex": false
     },
     "lo": [
-     -0.032,
+     -0.029,
      -0.1372,
      0.0988
     ],
     "hi": [
-     0.032,
+     0.029,
      -0.0758,
      0.1732
     ],
@@ -7019,7 +7019,7 @@
    {
     "name": "hinge_trim_wzN__steel",
     "upload": "hinge_trim_wzN__steel__p8a8f98",
-    "tris": 568,
+    "tris": 1536,
     "look": {
      "color": "8a8f98",
      "metal": 0.0,
@@ -7029,40 +7029,16 @@
      "tex": false
     },
     "lo": [
-     -0.054,
-     -0.01,
+     -0.0528,
+     -0.0088,
      -0.311
     ],
     "hi": [
-     0.054,
-     0.044,
-     -0.293
+     0.0528,
+     0.0428,
+     -0.305
     ],
     "paint": "p8a8f98"
-   },
-   {
-    "name": "hinge_trim_wzN__black",
-    "upload": "hinge_trim_wzN__black__p16171b",
-    "tris": 184,
-    "look": {
-     "color": "16171b",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0448,
-     -0.0008,
-     -0.3
-    ],
-    "hi": [
-     0.0448,
-     0.0348,
-     -0.296
-    ],
-    "paint": "p16171b"
    },
    {
     "name": "hinge_trim_wzN__brass",
@@ -7091,7 +7067,7 @@
    {
     "name": "hinge_wzB__dark",
     "upload": "hinge_wzB__dark__p353840",
-    "tris": 612,
+    "tris": 988,
     "look": {
      "color": "353840",
      "metal": 0.0,
@@ -7103,7 +7079,7 @@
     "lo": [
      -0.0528,
      -0.03,
-     -0.296
+     -0.305
     ],
     "hi": [
      0.0528,
@@ -7233,7 +7209,7 @@
     "paint": "p7e7254"
    }
   ],
-  "tris": 3428,
+  "tris": 4960,
   "lo": [
    -0.0548,
    -0.1372,
@@ -7244,7 +7220,7 @@
    0.0685,
    0.1732
   ],
-  "bytes": 314812,
+  "bytes": 425880,
   "turned": true,
   "meta": {
    "kind": "weapon",

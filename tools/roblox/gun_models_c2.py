@@ -239,11 +239,17 @@ def sawnoff():
     # (18 Nov 2026, the owner: "Double barrel shotgun looks scuffed and unsmooth!!": the barrels, their sawn ends, the
     # fences and the shells are round now (24 / 16 sides) instead of octagons; sizes and spots unchanged)
     RS = 24
-    # the barrels (node "hinge": they break open round the pin), chambered at the back; the sawn ends (hinge_trim)
+    # the barrels (node "hinge": they break open round the pin): each a muzzle half with a real dark bore (the main
+    # session, 18 Nov: "pale solid discs with no dark bore ... read as capped tubes") and a breech half chambered at
+    # the back, overlapping 2 mm inside; the sawn end a thin bright steel ring round the bore (raw metal at the cut)
     for sx in (-1, 1):
-        tube(g, 'hinge_wzB__dark', R, -0.012, -0.296, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07), sides=RS)
-        g.cylz('hinge_trim_wzN__steel', R + 0.0012, -0.311, -0.293, y=BY, x=sx * BX, sides=RS, bev=0.002, hole=(0.0178, 0.014))
-        g.cylz('hinge_trim_wzN__black', 0.018, -0.3, -0.296, y=BY, x=sx * BX, sides=RS, bev=0)
+        # (the ring is 6 mm long: its front face then sits more than gun_zfix's 5 mm from the barrel's end face behind
+        # it, so the z-fight fix moves nothing; at 2 mm it pushed the ring off the barrel and opened a slit)
+        # (the halves overlap 12 mm, so the breech half's end chamfer sits wholly inside the muzzle half: at 2 mm it
+        # showed as a seam line round the barrel)
+        tube(g, 'hinge_wzB__dark', R, -0.305, -0.14, y=BY, x=sx * BX, bev=0.0, hole=(0.0145, 0.13), sides=RS)
+        tube(g, 'hinge_wzB__dark', R, -0.012, -0.152, y=BY, x=sx * BX, bev=0.003, hole=(0.0145, 0.07), sides=RS)
+        g.ring('hinge_trim_wzN__steel', R, 0.0145, (sx * BX, BY, -0.311), (sx * BX, BY, -0.305), sides=RS, bev=0.0008)
     # the rib on top (and under) between the barrels, the bead, the lump under the breech
     g.box('hinge_wzB__frame', (-0.009, 0.009), (0.028, 0.0445), (-0.296, -0.014), bev=0.003)
     g.box('hinge_wzB__frame', (-0.009, 0.009), (-0.012, 0.006), (-0.296, -0.014), bev=0.003)
@@ -268,8 +274,12 @@ def sawnoff():
         g.prism(n + '_wzN__steel', [(0.038, 0.014), (0.068, 0.014), (0.072, 0.03), (0.087, 0.05), (0.092, 0.065),
                                     (0.079, 0.068), (0.062, 0.05), (0.046, 0.043), (0.024, 0.045), (0.021, 0.034),
                                     (0.038, 0.029)], 0.015, bev=0.003, x=sx * 0.016)
-    # the splinter forend (wood) and its iron on the knuckle
-    g.prism('forend_wzA__wood', [(-0.24, 0.0), (-0.098, 0.0), (-0.098, -0.03), (-0.112, -0.04), (-0.226, -0.04), (-0.24, -0.028)], 0.088, bev=0.009)
+    # the splinter forend (wood) and its iron on the knuckle. The wood (forend here, the grip below) is built in look
+    # B's soft round edges (18 Nov: the C chamfer read faceted on the wood), the steel stays C
+    import gunkit as _gk
+    _gk.use_style('B')
+    g.prism('forend_wzA__wood', [(-0.24, 0.0), (-0.098, 0.0), (-0.098, -0.03), (-0.112, -0.04), (-0.226, -0.04), (-0.24, -0.028)], 0.088, bev=0.012)
+    _gk.use_style('C')
     g.box('forend_iron_wzN__dark', (-0.032, 0.032), (-0.038, -0.002), (-0.104, -0.085), bev=0.004)
     # the loop guard and one trigger (owner: "remove one trigger since it has 2")
     loop(g, 'body_wzN__dark', -0.024, 0.078, -0.082, -0.03, 0.013, 0.022, c=0.014)
@@ -277,7 +287,9 @@ def sawnoff():
     # what is left of the stock: the raked pistol grip, a stub of the comb over it, a dark cap on the sawn end
     RK = -0.593
     gp = raked(0.104, -0.058, 0.134, 0.062, RK, taper=0.006)
-    g.prism('grip_wzA__wood', [(0.05, 0.026), (0.106, 0.024), gp[1], gp[0], (0.05, -0.034)], 0.054, bev=0.011)
+    _gk.use_style('B')
+    g.prism('grip_wzA__wood', [(0.05, 0.026), (0.106, 0.024), gp[1], gp[0], (0.05, -0.034)], 0.054, bev=0.014)
+    _gk.use_style('C')
     s_, c_ = math.sin(RK), math.cos(RK)
     g.prism('grip_wzN__dark', raked(0.104 - 0.057 * s_, -0.058 - 0.057 * c_, 0.024, 0.08, RK), 0.058, bev=0.005)
     return g
