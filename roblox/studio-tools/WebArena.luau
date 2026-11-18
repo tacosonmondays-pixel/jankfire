@@ -28,7 +28,7 @@ local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 94128644758934,
-	Backrooms = 108478509833298, Forest = 130312556142076, ArcticCabin = 112062417043410,
+	Backrooms = 90729509487800, Forest = 130312556142076, ArcticCabin = 112062417043410,
 	Skatepark = 136264837347101, Station = 128616205227124 } :: { [string]: number }
 
 local hex = Color3.fromHex
@@ -79,6 +79,15 @@ function W.import(name: string, id: number?): string
 		d.CastShadow = kind == "plastic"
 		d.DoubleSided = false
 		d:SetAttribute("Kind", kind)
+		-- a picture on this colour's pieces (the layout's `surfaces`, 18 Nov 2026: the Backrooms' wallpaper, carpet,
+		-- ceiling tiles, pool tiles; the builder gives those meshes world-scaled UVs, so the picture repeats in studs)
+		local pic = L.surfaces and L.surfaces[string.lower(h)]
+		if pic then
+			for _, old in d:GetChildren() do if old:IsA("SurfaceAppearance") then old:Destroy() end end
+			local sa = Instance.new("SurfaceAppearance")
+			sa.ColorMap = pic
+			sa.Parent = d
+		end
 		groups[model] = groups[model] or {}
 		table.insert(groups[model], d)
 	end

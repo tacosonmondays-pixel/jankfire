@@ -1002,4 +1002,6 @@ return {
 		{ "point", -144, -4, 122, 0, -1, 0, 0.8, 26, 0, "eef4f0" },
 		{ "point", -144, -4, 158, 0, -1, 0, 0.8, 26, 0, "eef4f0" },
 	},
+	-- the kit's surfaces: a SurfaceAppearance picture per piece colour (WebArena; the meshes carry world UVs)
+	surfaces = { ["c4ae63"] = "rbxassetid://134099267801892", ["958660"] = "rbxassetid://100786749937660", ["e2dbc9"] = "rbxassetid://72927483684048", ["e4e6e1"] = "rbxassetid://122749145143312" },
 }

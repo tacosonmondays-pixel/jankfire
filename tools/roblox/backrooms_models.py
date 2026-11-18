@@ -325,11 +325,55 @@ def lights():
             for xx in frange(x0 + 14, x1 - 6, 36.0): light('point', xx, -4.0, (z0 + z1) / 2, (0, -1, 0), 0.8, 26, 0, 'eef4f0'); n += 1
     print('LIGHTS', n)
 
+# ================================================================ surfaces (18 Nov 2026; the owner: "Can you add texture to the back rooms map!!")
+# the wallpaper, carpet, ceiling-tile and pool-tile meshes get world-scaled box-projected UVs (one picture repeat per
+# TEX size in studs; the wallpaper's repeat is floor to ceiling, so its damp stain sits on the floor), and the layout
+# names a picture per colour (L.surfaces): WebArena puts a SurfaceAppearance with it on those meshes.
+# The pictures: tools/roblox/backrooms_textures.py (low contrast, no text, no code-like grids)
+TEX = {WALL: (6.3, 12.6), CARPET: (24.0, 24.0), CEILC: (8.0, 8.0), TILE: (3.0, 3.0)}
+SURFACES = {WALL: 'rbxassetid://134099267801892', CARPET: 'rbxassetid://100786749937660', CEILC: 'rbxassetid://72927483684048', TILE: 'rbxassetid://122749145143312'}
+
+def add_uvs(objs):
+    n = 0
+    for ob in objs:
+        hx = ob.name.rsplit('_', 1)[-1]
+        if hx not in TEX: continue
+        tu, tv = TEX[hx]
+        me = ob.data
+        uvl = me.uv_layers.new(name='UVMap')
+        for poly in me.polygons:
+            nb = poly.normal
+            rn = (nb.x, nb.z, -nb.y)                     # (Blender -> Roblox axes, before turn_for_roblox)
+            ax = max(range(3), key=lambda i: abs(rn[i]))
+            for li in poly.loop_indices:
+                v = me.vertices[me.loops[li].vertex_index].co
+                r = (v.x, v.z, -v.y)
+                if ax == 1: uv = (r[0] / tu, r[2] / tv)          # floors and ceilings
+                elif ax == 0: uv = (r[2] / tu, r[1] / tv)        # walls facing x
+                else: uv = (r[0] / tu, r[1] / tv)                # walls facing z
+                uvl.data[li].uv = uv
+        n += 1
+    print('UVS on %d meshes' % n)
+
+_flush_plain = K.flush
+def _flush_uv(*a, **k):
+    objs = _flush_plain(*a, **k)
+    add_uvs(objs)
+    return objs
+K.flush = _flush_uv
+
 # ================================================================ build
 floors(); walls(); ceilings(); tile_and_stairs(); office(); lights()
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + L.MATS[b[6]] for b in L.SOLID]
 K.write_layout(LAYOUT, INFO, solid, [], [tuple(p) for p in L.SPAWNS], L.TEAM, water=[tuple(w) for w in L.WATER],
                src='tools/roblox/backrooms_models.py', rot=[])
+if os.path.exists(LAYOUT) and 'WALLPAPER_ID' not in ''.join(SURFACES.values()):   # (the pictures' ids into the layout)
+    with open(LAYOUT, encoding='utf-8') as f: _txt = f.read()
+    _txt = _txt.rstrip()
+    assert _txt.endswith('}')
+    _txt = _txt[:-1] + ('\t-- the kit\'s surfaces: a SurfaceAppearance picture per piece colour (WebArena; the meshes carry world UVs)\n'
+                        '\tsurfaces = { %s },\n}\n' % ', '.join('["%s"] = "%s"' % (k, v) for k, v in SURFACES.items()))
+    with open(LAYOUT, 'w', newline='\n') as f: f.write(_txt)
 _tri = {}
 for (mname, key), items in K.PIECES.items():
     _tri[mname] = _tri.get(mname, 0) + sum(sum(len(f.verts) - 2 for f in bm.faces) for bm, M in items)
