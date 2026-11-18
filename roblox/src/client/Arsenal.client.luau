@@ -652,12 +652,24 @@ local function swing(now: number, heavy: boolean?)
 	if hv then
 		clip = "stab_" .. held
 	else
-		swingAlt = (now - lastSwing < 0.75) and not swingAlt
+		-- the swing chain while you keep swinging (within 0.75 s, or the weapon's own cooldown + 0.35 s for a slow one: the
+		-- Scythe's 0.95 s cooldown never let its second swing play): swing_<id>, swing_<id>2, then swing_<id>3 and
+		-- swing_<id>4 if the weapon has them, round again; a pause starts it over. (18 Nov 2026, the Scythe's mocap: a
+		-- 3-hit chain and a finisher; workspace attribute ScytheExtras = false keeps it to swings 1 and 2.) every link
+		-- is the same swing to the server: damage, reach and timing don't change along the chain
+		local within = now - lastSwing < math.max(0.75, ((if hv then hv.cd else w.cd) :: number) + 0.35)
+		local len = 1
+		while len < 4 and Anims["swing_" .. held .. tostring(len + 1)] do len += 1 end
+		if held == "scythe" and workspace:GetAttribute("ScytheExtras") == false then len = math.min(len, 2) end
+		local at = if within then ((minigun :: any).swingN or 1) + 1 else 1
+		if at > len then at = 1 end
+		;(minigun :: any).swingN = at
+		swingAlt = at == 2
 		lastSwing = now
-		clip = if swingAlt and Anims["swing_" .. held .. "2"] then "swing_" .. held .. "2" else "swing_" .. held
+		clip = if at == 1 then "swing_" .. held else "swing_" .. held .. tostring(at)
 	end
 	VM.play(clip)
-	TP.swing(if hv then false else swingAlt, if hv then clip else nil) -- (third person: the stab plays its own clip, ThirdPerson.luau)
+	TP.swing(if hv then false else swingAlt, clip) -- (third person: the same link of the chain, or the stab: ThirdPerson.luau)
 	local lk = camera.CFrame.LookVector
 	SwingR:FireServer(held, if hv then true else nil, math.atan2(-lk.X, -lk.Z)) -- (where you look: a katana swing's front for the crit return)
 	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil }

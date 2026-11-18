@@ -543,6 +543,9 @@ local function dropGun(r: Rig)
 	r.holdR, r.holdL, r.ride = nil, nil, nil
 	r.grab = {}
 	r.clip, r.follow, r.kat = nil, nil, nil
+	local mo = (r :: any).mocap -- (the Scythe's mocap swing: stopped with the weapon)
+	if mo and mo.mine and mo.track then pcall(function() mo.track:Stop(0.1) end) end
+	;(r :: any).mocap = nil
 	table.clear(r.shown)
 end
 
@@ -833,9 +836,48 @@ local function katRig(r: Rig, name: string)
 	if r.wid ~= "katana" then return end
 	r.kat = { name = name, t = 0 }
 end
+-- (18 Nov 2026, the owner: "can you find scythe attack animations online please for first person and 3rd person") a
+-- melee clip with a `tp` animation id (Anims: the Scythe's Mixamo swings) plays on an R15 body's own Animator instead
+-- of the clip round the grip: yours on your own body (it replicates, so everyone sees it); everyone else's arrives
+-- that way too and is found by its id. while it plays (r.mocap) stepRig blends the waist, the neck and the right arm
+-- toward what the animation put there, the weapon rides in that right fist (its hold frame on the fist's grip) and the
+-- left hand stays on the weapon's own hold by IK. R6 bodies keep the clip round the grip
+local mocapAnims: { [string]: Animation } = {}
+local mocapClips: { [string]: any }? = nil -- (every clip with a tp id, by its "rbxassetid://" id)
+local function mocapByIds(): { [string]: any }
+	if not mocapClips then
+		local m = {}
+		for _, a in Anims do if type(a) == "table" and a.tp then m["rbxassetid://" .. tostring(a.tp)] = a end end
+		mocapClips = m
+	end
+	return mocapClips :: { [string]: any }
+end
+local function mocapSwing(r: Rig, A: any): boolean
+	if (r :: any).r6 or not r.J or not r.J.Waist or not A.tp then return false end
+	local old = (r :: any).mocap
+	if old and old.mine and old.track then pcall(function() old.track:Stop(0.05) end) end
+	local mo = { t = 0, dur = A.tpDur or A.dur, id = "rbxassetid://" .. tostring(A.tp), track = nil :: AnimationTrack?, mine = r.ch == me.Character }
+	if mo.mine then
+		local an = r.hum:FindFirstChildOfClass("Animator")
+		if an then
+			local anim = mocapAnims[mo.id]
+			if not anim then anim = Instance.new("Animation"); anim.AnimationId = mo.id; mocapAnims[mo.id] = anim end
+			local ok, tr = pcall(function() return an:LoadAnimation(anim) end)
+			if ok and tr then
+				tr.Priority = Enum.AnimationPriority.Action4
+				tr.Looped = false
+				tr:Play(0.05, 1, 1)
+				mo.track = tr
+			end
+		end
+	end
+	;(r :: any).mocap = mo
+	return true
+end
 local function swingRig(r: Rig, alt: boolean?, name: string?)
 	local now = os.clock()
-	local a = if alt == nil then (now - r.lastSwing < 0.75 and not r.katAlt) else alt
+	local cdw = W[r.wid] and tonumber(W[r.wid].cd) or 0 -- (a slow weapon's swings still alternate: Arsenal's rule)
+	local a = if alt == nil then (now - r.lastSwing < math.max(0.75, cdw + 0.35) and not r.katAlt) else alt
 	r.katAlt = a
 	r.lastSwing = now
 	-- (the hold session) a melee weapon plays its own first-person clip: the slash (every other one the backhand) or
@@ -843,6 +885,8 @@ local function swingRig(r: Rig, alt: boolean?, name: string?)
 	if r.cls == "melee" then
 		local n = name or ("swing_" .. r.wid .. (if a then "2" else ""))
 		if not Anims[n] then n = "swing_" .. r.wid end
+		if Anims[n] and Anims[n].tp and mocapSwing(r, Anims[n]) then r.clip = nil; return end -- (the Scythe's mocap)
+		if Anims[n] and Anims[n].r6 and Anims[Anims[n].r6] then n = Anims[n].r6 end -- (an R6 body: the hand-keyed swing)
 		if Anims[n] then r.clip = { name = n, t = 0, rate = 1 } end
 		return
 	end
@@ -1344,6 +1388,34 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local wantLow = (sprint and hum.FloorMaterial ~= Enum.Material.Air or ride > 0.5) and r.aim < 0.2 and now - r.lastFire > 0.6 and not reloading
 		and r.cls ~= "katana"
 	r.low += ((if wantLow then 1 else 0) - r.low) * math.min(1, dt * 8)
+	-- (the Scythe's mocap swing, mocapSwing) how far in it is, and what its animation put on the joints this frame
+	-- (read before anything here writes them)
+	local mo = (r :: any).mocap
+	local moW = 0
+	local aWaist: CFrame?, aNeck: CFrame?, aSh: CFrame?, aElb: CFrame?, aWr: CFrame? = nil, nil, nil, nil, nil
+	if mo then
+		if not mo.track and not mo.mine and mo.t < 0.4 then -- (everyone else's: the track that came over the network)
+			local an = hum:FindFirstChildOfClass("Animator")
+			local ids = mocapByIds()
+			if an then
+				for _, tr in an:GetPlayingAnimationTracks() do
+					local A = tr.Animation and ids[tr.Animation.AnimationId]
+					if A then mo.track = tr; mo.dur = A.tpDur or A.dur; break end
+				end
+			end
+		end
+		mo.t += dt
+		if mo.track and mo.track.IsPlaying and mo.track.TimePosition > 0 then mo.t = mo.track.TimePosition end
+		if mo.t >= mo.dur then
+			(r :: any).mocap = nil
+		else
+			moW = smoothstep(mo.t / 0.06) * (1 - smoothstep((mo.t - (mo.dur - 0.14)) / 0.14))
+			local Jm, Ar = r.J, r.arms.Right
+			aWaist = if Jm.Waist then Jm.Waist.j.Transform else nil
+			aNeck = Jm.Neck.j.Transform
+			aSh, aElb, aWr = Ar.sh.j.Transform, Ar.elb.j.Transform, Ar.wr.j.Transform
+		end
+	end
 	-- ---- the chest: turned into the stance, part of the look pitch, the walk's sway taken out
 	local J = r.J
 	local e = smoothstep(r.aim)
@@ -1365,6 +1437,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	if J.Waist then
 		local Tw = (J.Waist.c0.Rotation:Inverse() * LT:Inverse() * Rut * J.Waist.c1.Rotation)
 		J.Waist.j.Transform = if on >= 0.999 then Tw else J.Waist.j.Transform:Lerp(Tw, on)
+		if moW > 0 and aWaist then J.Waist.j.Transform = J.Waist.j.Transform:Lerp(aWaist, moW) end -- (the mocap's waist)
 	else
 		Rut = LT -- (R6: no waist, the chest stays where the body has it; the aim is all in the arms and the head)
 	end
@@ -1375,6 +1448,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	if r.cls == "katana" then Hq = Q end
 	local Tn = J.Neck.c0.Rotation:Inverse() * Hq * J.Neck.c1.Rotation
 	J.Neck.j.Transform = if on >= 0.999 then Tn else J.Neck.j.Transform:Lerp(Tn, on)
+	if moW > 0 and aNeck then J.Neck.j.Transform = J.Neck.j.Transform:Lerp(aNeck, moW) end -- (the mocap's head)
 	local headCF = CF(r.nk) * Hq * CF(-r.headC1.Position)
 	local eye = headCF * (TP.T.eye * r.Hs)
 	-- ---- the gun
@@ -1386,6 +1460,15 @@ local function stepRig(r: Rig, dt: number, now: number)
 		if clip then
 			local p, crot = sampleClip(clip.name, clip.t)
 			G = G * CF(p * r.k * TP.T.clipK) * crot
+		end
+		-- (the Scythe's mocap swing) the weapon in the animated right fist: the hand as its joints have it (chest space),
+		-- the weapon's right-hand hold frame on the fist's grip
+		if moW > 0 and aSh and aElb and aWr and r.holdR then
+			local Ar = r.arms.Right
+			local UA = Ar.sh.c0 * aSh * Ar.sh.c1:Inverse()
+			local LA = UA * Ar.elb.c0 * aElb * Ar.elb.c1:Inverse()
+			local H = LA * Ar.wr.c0 * aWr * Ar.wr.c1:Inverse()
+			G = G:Lerp(H * Ar.grip * (r.holdR :: CFrame):Inverse(), moW)
 		end
 		-- the kick about the grip, then the sprint's lowering about the grip
 		local gp = r.gripPt
@@ -1629,7 +1712,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	end
 	-- ---- the arms: IK onto the hands. a free left hand (a pistol) goes back to the animation's own swing
 	local r6 = (r :: any).r6 == true -- (an R6 body: each arm one block, aimed on its shoulder)
-	if handR then if r6 then solveArmR6(R, handR, on, r.poseR == "hand") else solveArm(R, handR, poleR, on) end end
+	if handR then if r6 then solveArmR6(R, handR, on, r.poseR == "hand") else solveArm(R, handR, poleR, on * (1 - moW)) end end -- (the mocap's own right arm)
 	local leftOn = handL ~= nil and (r.holdL ~= nil or r.tool ~= nil or itemMix > 0 or r.leftW > 0)
 	if handL and leftOn then
 		local wgt = on

@@ -2,6 +2,7 @@
 
 run:  blender.exe -b --factory-startup -P tools/blender/mixamo_r15.py -- <in.fbx> <out.rbxm> [--name N] [--hip 2.2]
       [--priority idle|movement|action|core] [--no-loop] [--blend 6] [--every 1] [--keep-drift]
+      [--from F] [--to F] [--warp "s:t,s:t,..."] [--upper]
 then: upload <out.rbxm> through Open Cloud as assetType "Animation" (approved at once; the id plays on any R15 Animator).
       Open Cloud refuses an XML file for an Animation ("not supported yet"), so a .rbxm out is built from the .rbxmx it
       writes beside it with Rojo (ROJO, or ~/.aftman/tool-storage/rojo-rbx/rojo/7.7.1/rojo.exe). an .rbxmx out is just
@@ -21,6 +22,10 @@ how (17 Nov 2026, the shopkeeper's and the hub regulars' mocap idles):
     stays. --keep-drift keeps it all.
   * looping clips (last frame = the first) drop the last frame; others get their last --blend frames eased into the first.
   * prints a summary: frames, length, how far the hips sway, each part's largest turn.
+  (18 Nov 2026, the scythe's mocap attacks) --from / --to keep only those source frames; --warp maps each keyframe's
+  time (seconds from --from) through a piecewise-linear line of source:clip pairs, so a strike's hit can land when
+  the game judges it; --upper keys only the waist, the head and the arms (the hips, the legs and the root are left
+  unkeyed: weight 0), so the legs keep walking under it.
 """
 import bpy, sys, math, json
 from mathutils import Matrix, Vector, Quaternion
@@ -38,12 +43,16 @@ BLEND = int(opt('--blend', '6'))
 LOOP = '--no-loop' not in argv
 KEEP_DRIFT = '--keep-drift' in argv
 PRIORITY = { 'idle': 0, 'movement': 1, 'action': 2, 'core': 1000 }[opt('--priority', 'idle')]
+UPPER = '--upper' in argv
+WARP = [tuple(float(x) for x in kv.split(':')) for kv in opt('--warp', '').split(',') if kv]
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=src, automatic_bone_orientation=False)
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 act = arm.animation_data.action
 f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+if '--from' in argv: f0 = max(f0, int(opt('--from', f0)))
+if '--to' in argv: f1 = min(f1, int(opt('--to', f1)))
 fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
 
 M = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))  # Blender world -> Roblox world
@@ -130,18 +139,27 @@ def cf_xml(name, pos, R):
     v = [pos.x, pos.y, pos.z] + [R[i][j] for i in range(3) for j in range(3)]
     tags = ['X', 'Y', 'Z', 'R00', 'R01', 'R02', 'R10', 'R11', 'R12', 'R20', 'R21', 'R22']
     return '<CoordinateFrame name="%s">%s</CoordinateFrame>' % (name, ''.join('<%s>%.6f</%s>' % (t, x, t) for t, x in zip(tags, v)))
+UNKEYED = { 'HumanoidRootPart', 'LowerTorso' } if UPPER else set()
+LEGS = { 'LeftUpperLeg', 'RightUpperLeg' }
 def pose_xml(part, rots, hips):
-    R = Matrix.Identity(3) if part == 'HumanoidRootPart' else rots[part]
-    pos = hips if part == 'LowerTorso' else Vector((0, 0, 0))
-    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []))
-    return ('<Item class="Pose" referent="%s"><Properties><string name="Name">%s</string>%s<float name="Weight">1</float>'
-            '<token name="EasingStyle">0</token><token name="EasingDirection">0</token></Properties>%s</Item>') % (nref(), part, cf_xml('CFrame', pos, R), kids)
+    R = Matrix.Identity(3) if part == 'HumanoidRootPart' or part in UNKEYED else rots[part]
+    pos = hips if part == 'LowerTorso' and not UPPER else Vector((0, 0, 0))
+    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS))
+    wt = 0 if part in UNKEYED else 1
+    return ('<Item class="Pose" referent="%s"><Properties><string name="Name">%s</string>%s<float name="Weight">%d</float>'
+            '<token name="EasingStyle">0</token><token name="EasingDirection">0</token></Properties>%s</Item>') % (nref(), part, cf_xml('CFrame', pos, R), wt, kids)
+def warp(t):
+    if not WARP: return t
+    if t <= WARP[0][0]: return WARP[0][1] + (t - WARP[0][0])
+    for (s0, d0), (s1, d1) in zip(WARP, WARP[1:]):
+        if t <= s1: return d0 + (t - s0) * (d1 - d0) / (s1 - s0)
+    return WARP[-1][1] + (t - WARP[-1][0])
 items = []
 for i, (rots, hips) in enumerate(poses):
-    t = (frames[i] - frames[0]) / fps
+    t = warp((frames[i] - frames[0]) / fps)
     items.append('<Item class="Keyframe" referent="%s"><Properties><string name="Name">Keyframe</string><float name="Time">%.5f</float></Properties>%s</Item>'
                  % (nref(), t, pose_xml('HumanoidRootPart', rots, hips)))
-length = (frames[-1] - frames[0]) / fps + (EVERY / fps if LOOP else 0)
+length = warp((frames[-1] - frames[0]) / fps) + (EVERY / fps if LOOP else 0)
 if LOOP:  # (the loop's last key: the first pose again at the full length, so the track's Length is the whole cycle)
     rots, hips = poses[0]
     items.append('<Item class="Keyframe" referent="%s"><Properties><string name="Name">Keyframe</string><float name="Time">%.5f</float></Properties>%s</Item>'

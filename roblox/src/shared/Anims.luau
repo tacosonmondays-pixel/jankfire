@@ -250,11 +250,162 @@ return {
 		},
 		events = { { 0.2, "thwack" } },
 	},
-	-- (the owner, 18 Nov 2026: "can you do an overhead with the scythe like an overhead animation") both swings are
-	-- overheads: up past the top of your view (the blade turned to lead), then down onto the crosshair, the blade hooking
-	-- in at the hit (0.24, 92% of the way down). the first from up on the right, hooking in just left of the crosshair;
-	-- the second straight down the middle. third person plays the same clip round the grip (ThirdPerson swingRig)
+	-- the Scythe's swings (18 Nov 2026, the owner: "can you find scythe attack animations online please for first person
+	-- and 3rd person"): Mixamo mocap (the owner's account; the clips stay in the vault, Assets/mixamo-18nov, never git),
+	-- picked from a contact sheet of 14. swing_scythe = A1 Great Sword Downward Slash (the overhead the owner asked for
+	-- before), swing_scythe2 = B2 Heavy Weapon Swing. first person: tools/roblox/mocap_vm.py (the scythe rigid in the
+	-- right fist, its turn the mocap's own, the grip moving 0.35 of the mocap's way about the rest spot, the view looking
+	-- at the hit; source a / hit / e warped to 0.07 / 0.24 / 0.62 s so the server's 0.24 s hit lands on the cut).
+	-- third person: tp = the same window as an R15 Animation (tools/blender/mixamo_r15.py --upper), played by
+	-- ThirdPerson on R15 bodies; R6 bodies play the hand-keyed overheads that came before (r6 = swing_scythe*_hk)
 	swing_scythe = {
+		hit = 0.24,
+		trail = { 0.17, 0.42 },
+		dur = 0.78,
+		slerp = { 0.9981, -0.3736, -0.3745 }, -- (the rest turn, vm r + holds tilt: the keys blend as whole turns)
+		tp = 93915182836177, tpDur = 0.62, r6 = "swing_scythe_hk", -- (third person: the same mocap on an R15 body, upper body only; ThirdPerson mocapSwing)
+		keys = {
+			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+			{ t = 0.07, p = { 0.115, -0.022, 0.12 }, r = { -0.452, -3.064, 0.438 }, e = "smooth" },
+			{ t = 0.0842, p = { 0.119, -0.004, 0.12 }, r = { -0.291, -3.347, 0.041 }, e = "linear" },
+			{ t = 0.0983, p = { 0.119, 0.021, 0.12 }, r = { -0.074, -3.492, -0.362 }, e = "linear" },
+			{ t = 0.1125, p = { 0.112, 0.049, 0.12 }, r = { 0.112, -3.464, -0.728 }, e = "linear" },
+			{ t = 0.1267, p = { 0.107, 0.08, 0.12 }, r = { 0.142, -3.328, -0.98 }, e = "linear" },
+			{ t = 0.1408, p = { 0.108, 0.113, 0.12 }, r = { 0.041, -3.224, -1.123 }, e = "linear" },
+			{ t = 0.155, p = { 0.106, 0.144, 0.097 }, r = { -0.168, -3.142, -1.098 }, e = "linear" },
+			{ t = 0.1692, p = { 0.09, 0.163, 0.048 }, r = { -0.477, -2.917, -0.867 }, e = "linear" },
+			{ t = 0.1833, p = { 0.07, 0.158, 0.002 }, r = { -0.797, -2.468, -0.689 }, e = "linear" },
+			{ t = 0.1975, p = { 0.052, 0.128, -0.025 }, r = { -1.349, -1.999, -0.854 }, e = "linear" },
+			{ t = 0.2117, p = { 0.038, 0.08, -0.032 }, r = { -2.433, -1.921, -1.523 }, e = "linear" },
+			{ t = 0.2258, p = { 0.021, 0.032, -0.025 }, r = { -3.258, -2.215, -1.833 }, e = "linear" },
+			{ t = 0.24, p = { 0, 0, 0 }, r = { -3.706, -2.437, -1.809 }, e = "linear" },
+			{ t = 0.2762, p = { -0.01, -0.019, 0.049 }, r = { -3.934, -2.633, -1.827 }, e = "linear" },
+			{ t = 0.3124, p = { -0.012, -0.022, 0.098 }, r = { -3.981, -2.81, -1.934 }, e = "linear" },
+			{ t = 0.3486, p = { -0.012, -0.019, 0.12 }, r = { -3.937, -2.849, -2.027 }, e = "linear" },
+			{ t = 0.3848, p = { -0.015, -0.017, 0.12 }, r = { -3.845, -2.733, -2.08 }, e = "linear" },
+			{ t = 0.421, p = { -0.014, -0.019, 0.12 }, r = { -3.707, -2.552, -2.122 }, e = "linear" },
+			{ t = 0.4571, p = { -0.01, -0.017, 0.118 }, r = { -3.488, -2.361, -2.151 }, e = "linear" },
+			{ t = 0.4933, p = { -0.003, -0.011, 0.095 }, r = { -3.175, -2.234, -2.107 }, e = "linear" },
+			{ t = 0.5295, p = { 0.006, -0.001, 0.073 }, r = { -2.81, -2.211, -1.953 }, e = "linear" },
+			{ t = 0.5657, p = { 0.016, 0.014, 0.054 }, r = { -2.521, -2.286, -1.767 }, e = "linear" },
+			{ t = 0.6019, p = { 0.028, 0.025, 0.044 }, r = { -2.381, -2.395, -1.615 }, e = "linear" },
+			{ t = 0.62, p = { 0.034, 0.032, 0.036 }, r = { -2.359, -2.483, -1.491 }, e = "linear" },
+			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+		},
+		events = { { 0.19, "whoosh" } },
+	},
+	swing_scythe2 = {
+		hit = 0.24,
+		trail = { 0.17, 0.42 },
+		dur = 0.78,
+		slerp = { 0.9981, -0.3736, -0.3745 }, -- (the rest turn, vm r + holds tilt: the keys blend as whole turns)
+		tp = 96474909456484, tpDur = 0.62, r6 = "swing_scythe2_hk", -- (third person: the same mocap on an R15 body, upper body only; ThirdPerson mocapSwing)
+		keys = {
+			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+			{ t = 0.07, p = { -0.047, 0.071, 0.11 }, r = { -0.883, 0.632, -0.461 }, e = "smooth" },
+			{ t = 0.0813, p = { -0.041, 0.078, 0.12 }, r = { -0.989, 0.757, -0.476 }, e = "linear" },
+			{ t = 0.0927, p = { -0.033, 0.087, 0.12 }, r = { -1.112, 0.908, -0.446 }, e = "linear" },
+			{ t = 0.104, p = { -0.02, 0.098, 0.12 }, r = { -1.239, 1.089, -0.392 }, e = "linear" },
+			{ t = 0.1153, p = { -0.003, 0.109, 0.12 }, r = { -1.366, 1.296, -0.33 }, e = "linear" },
+			{ t = 0.1267, p = { 0.019, 0.122, 0.12 }, r = { -1.539, 1.521, -0.219 }, e = "linear" },
+			{ t = 0.138, p = { 0.044, 0.135, 0.12 }, r = { -2.089, 1.747, 0.275 }, e = "linear" },
+			{ t = 0.1493, p = { 0.073, 0.146, 0.12 }, r = { -0.667, 2.178, -1.2 }, e = "linear" },
+			{ t = 0.1607, p = { 0.101, 0.15, 0.12 }, r = { -1.263, 2.502, -0.716 }, e = "linear" },
+			{ t = 0.172, p = { 0.127, 0.144, 0.107 }, r = { -1.61, 2.889, -0.631 }, e = "linear" },
+			{ t = 0.1833, p = { 0.142, 0.124, 0.07 }, r = { -1.931, 3.294, -0.769 }, e = "linear" },
+			{ t = 0.1947, p = { 0.143, 0.096, 0.035 }, r = { -2.26, 3.644, -1.041 }, e = "linear" },
+			{ t = 0.206, p = { 0.127, 0.066, 0.006 }, r = { -2.62, 3.873, -1.32 }, e = "linear" },
+			{ t = 0.2173, p = { 0.095, 0.039, -0.013 }, r = { -3.002, 3.947, -1.547 }, e = "linear" },
+			{ t = 0.2287, p = { 0.05, 0.016, -0.016 }, r = { -3.335, 3.902, -1.735 }, e = "linear" },
+			{ t = 0.24, p = { 0, 0, 0 }, r = { -3.599, 3.808, -1.921 }, e = "linear" },
+			{ t = 0.2653, p = { -0.047, -0.006, 0.033 }, r = { -3.808, 3.68, -2.098 }, e = "linear" },
+			{ t = 0.2907, p = { -0.083, 0.003, 0.075 }, r = { -3.942, 3.545, -2.255 }, e = "linear" },
+			{ t = 0.316, p = { -0.101, 0.021, 0.111 }, r = { -4.025, 3.495, -2.429 }, e = "linear" },
+			{ t = 0.3413, p = { -0.102, 0.037, 0.12 }, r = { -4.147, 3.527, -2.618 }, e = "linear" },
+			{ t = 0.3667, p = { -0.093, 0.046, 0.12 }, r = { -4.301, 3.507, -2.768 }, e = "linear" },
+			{ t = 0.392, p = { -0.084, 0.051, 0.12 }, r = { -4.386, 3.428, -2.846 }, e = "linear" },
+			{ t = 0.4173, p = { -0.079, 0.056, 0.12 }, r = { -4.383, 3.376, -2.884 }, e = "linear" },
+			{ t = 0.4427, p = { -0.079, 0.059, 0.12 }, r = { -4.341, 3.383, -2.878 }, e = "linear" },
+			{ t = 0.468, p = { -0.081, 0.059, 0.12 }, r = { -4.295, 3.43, -2.827 }, e = "linear" },
+			{ t = 0.4933, p = { -0.083, 0.055, 0.12 }, r = { -4.249, 3.505, -2.77 }, e = "linear" },
+			{ t = 0.5187, p = { -0.084, 0.047, 0.12 }, r = { -4.208, 3.62, -2.725 }, e = "linear" },
+			{ t = 0.544, p = { -0.083, 0.037, 0.116 }, r = { -4.166, 3.788, -2.672 }, e = "linear" },
+			{ t = 0.5693, p = { -0.081, 0.025, 0.095 }, r = { -4.098, 4.001, -2.581 }, e = "linear" },
+			{ t = 0.5947, p = { -0.075, 0.014, 0.072 }, r = { -3.974, 4.236, -2.432 }, e = "linear" },
+			{ t = 0.62, p = { -0.064, 0.007, 0.049 }, r = { -3.741, 4.461, -2.198 }, e = "linear" },
+			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+		},
+		events = { { 0.19, "whoosh" } },
+	},
+	-- (the chain's third hit, an extra: D3 Great Sword High Spin Attack, 14_gs_high_spin 0.72-1.45 s, hit 1.17 s: the last
+	-- 200 degrees of its spin into the cut; third person keeps the body facing your aim, so the spin is in the arms)
+	swing_scythe3 = {
+		hit = 0.24,
+		trail = { 0.17, 0.42 },
+		dur = 0.78,
+		slerp = { 0.9981, -0.3736, -0.3745 }, -- (the rest turn, vm r + holds tilt: the keys blend as whole turns)
+		tp = 122538121952075, tpDur = 0.62, r6 = "swing_scythe_hk", -- (third person: the same mocap on an R15 body, upper body only)
+		keys = {
+			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+			{ t = 0.0751, p = { 0.094, 0.075, 0.12 }, r = { -1.184, -0.13, -1.87 }, e = "smooth" },
+			{ t = 0.0878, p = { 0.105, 0.107, 0.12 }, r = { -1.099, -0.079, -1.303 }, e = "linear" },
+			{ t = 0.1004, p = { 0.105, 0.128, 0.12 }, r = { -1.105, 0.334, -0.933 }, e = "linear" },
+			{ t = 0.1131, p = { 0.098, 0.13, 0.12 }, r = { -1.277, 0.803, -0.638 }, e = "linear" },
+			{ t = 0.1258, p = { 0.091, 0.122, 0.12 }, r = { -1.661, 1.092, -0.119 }, e = "linear" },
+			{ t = 0.1385, p = { 0.09, 0.109, 0.12 }, r = { -2.128, 1.188, 0.525 }, e = "linear" },
+			{ t = 0.1512, p = { 0.101, 0.097, 0.12 }, r = { -2.486, 1.169, 1.189 }, e = "linear" },
+			{ t = 0.1639, p = { 0.121, 0.086, 0.12 }, r = { -2.76, 1.083, 1.823 }, e = "linear" },
+			{ t = 0.1766, p = { 0.14, 0.08, 0.12 }, r = { -3.127, 0.997, 2.318 }, e = "linear" },
+			{ t = 0.1893, p = { 0.144, 0.071, 0.096 }, r = { -3.676, 0.494, 2.608 }, e = "linear" },
+			{ t = 0.2019, p = { 0.131, 0.06, 0.058 }, r = { -4.406, -0.247, 2.322 }, e = "linear" },
+			{ t = 0.2146, p = { 0.096, 0.05, 0.024 }, r = { -5.462, -0.394, 1.741 }, e = "linear" },
+			{ t = 0.2273, p = { 0.047, 0.031, 0.003 }, r = { -6.347, -0.258, 1.346 }, e = "linear" },
+			{ t = 0.24, p = { 0, 0, 0 }, r = { -7.093, 0.052, 1.15 }, e = "linear" },
+			{ t = 0.2847, p = { -0.034, -0.036, 0.024 }, r = { -7.368, 0.513, 1.134 }, e = "linear" },
+			{ t = 0.3294, p = { -0.05, -0.062, 0.066 }, r = { -7.27, 0.906, 1.091 }, e = "linear" },
+			{ t = 0.3741, p = { -0.054, -0.076, 0.109 }, r = { -7.15, 1.098, 1.051 }, e = "linear" },
+			{ t = 0.4188, p = { -0.052, -0.078, 0.12 }, r = { -7.193, 1.161, 1.104 }, e = "linear" },
+			{ t = 0.4635, p = { -0.048, -0.074, 0.12 }, r = { -7.265, 1.188, 1.133 }, e = "linear" },
+			{ t = 0.5082, p = { -0.041, -0.071, 0.12 }, r = { -7.22, 1.236, 1.053 }, e = "linear" },
+			{ t = 0.5529, p = { -0.034, -0.071, 0.12 }, r = { -7.053, 1.26, 0.887 }, e = "linear" },
+			{ t = 0.5976, p = { -0.027, -0.073, 0.12 }, r = { -6.893, 1.194, 0.763 }, e = "linear" },
+			{ t = 0.62, p = { -0.021, -0.075, 0.12 }, r = { -6.829, 1.039, 0.771 }, e = "linear" },
+			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+		},
+		events = { { 0.19, "whoosh" } },
+	},
+	-- (the chain's finisher, an extra: E1 Two Hand Sword Combo's last strike, 11_2h_sword_combo 2.00-2.45 s, hit 2.20 s,
+	-- a rising cut. extras off (workspace attribute ScytheExtras = false): swings 1 and 2 only, as before)
+	swing_scythe4 = {
+		hit = 0.24,
+		trail = { 0.17, 0.42 },
+		dur = 0.78,
+		slerp = { 0.9981, -0.3736, -0.3745 }, -- (the rest turn, vm r + holds tilt: the keys blend as whole turns)
+		tp = 126447507787950, tpDur = 0.62, r6 = "swing_scythe2_hk", -- (third person: the same mocap on an R15 body, upper body only)
+		keys = {
+			{ t = 0, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+			{ t = 0.07, p = { -0.078, 0.176, 0.022 }, r = { -0.51, -2.468, -0.707 }, e = "smooth" },
+			{ t = 0.0983, p = { -0.078, 0.165, 0.009 }, r = { -0.685, -2.406, -0.88 }, e = "linear" },
+			{ t = 0.1267, p = { -0.072, 0.144, -0.007 }, r = { -1.004, -2.535, -1.114 }, e = "linear" },
+			{ t = 0.155, p = { -0.063, 0.118, -0.023 }, r = { -1.316, -2.769, -1.255 }, e = "linear" },
+			{ t = 0.1833, p = { -0.052, 0.086, -0.033 }, r = { -1.661, -3.028, -1.263 }, e = "linear" },
+			{ t = 0.2117, p = { -0.028, 0.036, -0.03 }, r = { -2.049, -3.196, -1.209 }, e = "linear" },
+			{ t = 0.24, p = { 0, 0, 0 }, r = { -3.258, -3.051, -0.597 }, e = "linear" },
+			{ t = 0.2907, p = { 0.026, -0.007, 0.053 }, r = { -4.04, -2.282, -0.263 }, e = "linear" },
+			{ t = 0.3413, p = { 0.042, 0.009, 0.114 }, r = { -3.763, -1.523, 0.198 }, e = "linear" },
+			{ t = 0.392, p = { 0.039, 0.031, 0.12 }, r = { -5.081, -0.721, -1.104 }, e = "linear" },
+			{ t = 0.4427, p = { 0.01, 0.074, 0.12 }, r = { -5.107, -0.309, -1.067 }, e = "linear" },
+			{ t = 0.4933, p = { -0.035, 0.107, 0.12 }, r = { -5.304, 0.088, -1.201 }, e = "linear" },
+			{ t = 0.544, p = { -0.076, 0.125, 0.12 }, r = { -5.498, 0.524, -1.283 }, e = "linear" },
+			{ t = 0.5947, p = { -0.105, 0.14, 0.12 }, r = { -6.09, 1.065, -1.172 }, e = "linear" },
+			{ t = 0.62, p = { -0.121, 0.15, 0.12 }, r = { -6.49, 1.214, -0.986 }, e = "linear" },
+			{ t = 0.78, p = { 0, 0, 0 }, r = { 0, 0, 0 }, e = "smooth" },
+		},
+		events = { { 0.19, "whoosh" } },
+	},
+	-- (the hand-keyed overheads that came before the mocap, 18 Nov 2026: R6 bodies play these in third person, the mocap
+	-- clips' r6 field names them)
+	swing_scythe_hk = {
 		hit = 0.24,
 		trail = { 0.16, 0.44 },
 		dur = 0.78,
@@ -267,7 +418,7 @@ return {
 		},
 		events = { { 0.2, "whoosh" } },
 	},
-	swing_scythe2 = {
+	swing_scythe2_hk = {
 		hit = 0.24,
 		trail = { 0.16, 0.44 },
 		dur = 0.78,

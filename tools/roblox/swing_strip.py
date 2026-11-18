@@ -42,6 +42,33 @@ def sample(t):
     return np.array(k0['p']) + (np.array(k1['p']) - np.array(k0['p'])) * e, np.array(k0['r']) + (np.array(k1['r']) - np.array(k0['r'])) * e
 
 
+# (a slerp clip: Viewmodel.sample lerps the two keys' whole turns, euler(slerp + r), the short way round)
+SL = c.get('slerp')
+def quat(R):
+    w = math.sqrt(max(0, 1 + R[0][0] + R[1][1] + R[2][2])) / 2
+    x = math.copysign(math.sqrt(max(0, 1 + R[0][0] - R[1][1] - R[2][2])) / 2, R[2][1] - R[1][2])
+    y = math.copysign(math.sqrt(max(0, 1 - R[0][0] + R[1][1] - R[2][2])) / 2, R[0][2] - R[2][0])
+    z = math.copysign(math.sqrt(max(0, 1 - R[0][0] - R[1][1] + R[2][2])) / 2, R[1][0] - R[0][1])
+    return np.array([w, x, y, z])
+def qmat(q):
+    w, x, y, z = q / np.linalg.norm(q)
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+def sample_rot(t):
+    k0, k1 = keys[0], keys[-1]
+    if t <= keys[0]['t']: k1 = keys[0]
+    for i in range(len(keys) - 1):
+        if keys[i]['t'] <= t < keys[i + 1]['t']: k0, k1 = keys[i], keys[i + 1]; break
+    span = k1['t'] - k0['t']
+    u = min(1, max(0, (t - k0['t']) / span)) if span > 0 else 1
+    e = EASE[k1['e']](u)
+    q0 = quat(np.array(angles(list(np.array(SL) + np.array(k0['r'])))))
+    q1 = quat(np.array(angles(list(np.array(SL) + np.array(k1['r'])))))
+    if np.dot(q0, q1) < 0: q1 = -q1
+    return qmat(q0 + (q1 - q0) * e)
+
+
 cols = 5
 rows = (len(times) + cols - 1) // cols
 img = Image.new('RGB', (FW * cols, FH * rows), (40, 42, 46))
@@ -53,7 +80,7 @@ tf = math.tan(math.radians(fov) / 2)
 info = []
 for i, t in enumerate(times):
     dp, dr = sample(t)
-    R = np.array(angles([r[j] + tilt[j] + dr[j] for j in range(3)]))
+    R = sample_rot(t) if SL else np.array(angles([r[j] + tilt[j] + dr[j] for j in range(3)]))
     pos = np.array([(p[j] + shift[j]) * S for j in range(3)]) + dp * S
     fr = Image.new('RGB', (FW, FH), (58, 60, 66))
     for n, tv in tris.items():

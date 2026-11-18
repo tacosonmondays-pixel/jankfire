@@ -149,6 +149,49 @@ sweep's wind-up was already 0.24 s and the new motion fits it. Third person play
 | time to kill, every swing landing | 1.19 s | 1.12 s | 0.52 s |
 | run speed | x0.95 | x1 | x1.1 |
 
+**Mocap swings since the evening of 18 Nov** (the owner: *"can you find scythe attack animations online please for
+first person and 3rd person"*). Both swings are now Mixamo motion capture (the owner's Mixamo account; downloaded
+through the site, kept in the vault at `Assets/mixamo-18nov`, never in git), picked from a contact sheet of 14 clips
+(`side-session-notes/local_4152679c.../scythe-mocap-sheet.png`; the shortlist and its letters are in that folder).
+- **The chain** (the owner on the sheet: *"we can try both"*): while you keep swinging, the swings run 1 overhead
+  (A1 Great Sword Downward Slash) -> 2 reap (B2 Heavy Weapon Swing) -> 3 spin (D3 Great Sword High Spin, the last 200
+  degrees of its spin into the cut) -> 4 finisher (E1 Two Hand Sword Combo's last strike, a rising cut) -> back to 1. A
+  pause starts it over. The other 10 clips stay in the vault.
+- **Switch the extras off:** set the workspace attribute `ScytheExtras` to false (Studio: select Workspace, Attributes)
+  and the Scythe goes back to swings 1 and 2 only, to compare. Unset or true = the full chain.
+- **The numbers don't change along the chain:** every link is the same swing to the server (50 damage, 3.3 m reach,
+  0.95 rad cone, the hit 0.24 s after the click, 0.95 s between swings), so the chain is looks, not damage: 4 swings
+  take 3.8 s, two hits still kill (1.19 s), and the dash-then-swing combo is the same (75 by 0.87 s). The dash code was
+  not touched.
+- **Chains really chain now.** Arsenal alternated swings only when the next click came within 0.75 s, but the Scythe's
+  cooldown is 0.95 s, so its second swing never played (the hand-keyed one didn't either). The window is now 0.75 s or
+  the weapon's cooldown + 0.35 s, whichever is longer (1.3 s for the Scythe); faster weapons are unchanged.
+- **Timing:** each clip's wind-up start, hit and follow-through are warped onto 0.07, 0.24 and 0.62 s, so the blade
+  lands as the server judges the hit (0.24 s). Damage, reach, cone and cooldown are unchanged.
+- **First person** (`tools/roblox/mocap_vm.py`): the scythe sits rigidly in the mocap's right fist (the haft along the
+  fist's -x, the blade leading the cut at the hit). Its turn is the mocap's own; the grip moves 0.35 of the mocap's way
+  about the rest spot, anchored there at the hit and kept at least 0.32 m from the eye. The view looks at where the
+  blade lands, tipped 70% of the way down to it. Keys blend as whole turns (`slerp`). Checked on the kit model with
+  `swing_strip.py`.
+- **Third person:** the same windows as R15 Animations, upper body only (`mixamo_r15.py --upper --warp`), so the legs
+  keep walking: overhead `93915182836177`, reap `96474909456484`, spin `122538121952075`, finisher `126447507787950`
+  (Anims `tp`). Upper body only means the body keeps facing your aim: the spin's 360-degree turn is in the arms, not
+  the feet (a whole turn can't fit before a hit at 0.24 s). Your own client plays the track on your
+  body and Roblox replicates it to everyone. ThirdPerson blends the waist, the head and the right arm toward the track,
+  the scythe rides in the animated right fist, and the left hand stays on the haft by IK. R6 bodies keep the
+  hand-keyed overheads (`swing_scythe_hk`, `swing_scythe2_hk`).
+- **Tools:** `tools/blender/mocap_sample.py` (joints per frame), `tools/roblox/mocap_lib.py`, `mocap_strip.py`
+  (contact sheets). The chain at a glance, first and third person: `scythe-chain-strip.png` in the same notes folder.
+- **Tested in one solo Play, place version 979** (training yard, R15 body; photos in `docs/scythe/`):
+  - **First person:** 1, 2, 3 and 4 clicks a second apart, each frozen at the hit with `VMClipHold` 0.24. The chain
+    stepped overhead, reap, spin, finisher (`chain1..4-*-v979.jpg`, together in `chain-sheet-v979.jpg`).
+  - **Third person:** the overhead's track (`93915182836177`, 0.62 s) played on your own body, and frozen at its hit
+    the scythe sits in the animated hands (`chain-tp-overhead-hit-v979.jpg`).
+  - **The pushed scripts** (Anims, ThirdPerson, Arsenal) matched the clone byte for byte.
+  - **Not checked:** another player's view of the replicated track, an R6 body, a phone or controller, and the extras
+    switched off (`ScytheExtras = false`, which only shortens the chain to 1 and 2). The offline strips are
+    `chain-strip-offline.png` and `mocap-contact-sheet.png`.
+
 **The dash** (right click; `ScytheDash.server`). The server decides it, and the client only runs the path it's given.
 
 | | |
