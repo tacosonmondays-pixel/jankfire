@@ -179,14 +179,18 @@ local function scythe(b: Builder, rifle: boolean)
 		bx(b, "scope", 0.02, 0.06, 0.06, 0x2b2e35, 0, -0.045, -0.42),
 	}
 	if rifle then
-		local set = (Weapons.list :: any).scythe.mdl.parts.form.set
+		-- (read with care: a stale Weapons, an old require cache in Edit, has no turn data; the pieces stay put then)
+		local sc = (Weapons.list :: any).scythe
+		local F = sc and sc.mdl and sc.mdl.parts and sc.mdl.parts.form
+		local set = F and F.set
 		for _, p in moving do
-			local off = set[p.Name].cf :: CFrame
+			local d = set and set[p.Name]
+			local off = if d and typeof(d.cf) == "CFrame" then d.cf else CFrame.identity
 			p.CFrame = b.root.CFrame * CFrame.new(off.Position * b.k) * off.Rotation * b.root.CFrame:ToObjectSpace(p.CFrame)
 		end
-		spot(b, "Muzzle", Vector3.new(0, 0, -1.305))
+		spot(b, "Muzzle", Vector3.new(0, 0, -1.38)) -- (the ported brake face: scythe v3)
 		spot(b, "Mid", Vector3.new(0, 0, -0.6))
-		spot(b, "Sight", Vector3.new(0, 0.0775, -0.095))
+		spot(b, "Sight", Vector3.new(0, 0.0775, -0.072))
 	else
 		spot(b, "Muzzle", Vector3.new(-0.7, 0.02, -1.16))
 		spot(b, "Mid", Vector3.new(-0.3, 0.02, -1.25))

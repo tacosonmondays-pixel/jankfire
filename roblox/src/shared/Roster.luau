@@ -130,7 +130,7 @@ add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live =
 add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = true, gimmick = "fast slashes. right click: a heavy stab. from behind it's three times the hit.",
 	desc = "Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "REACH", text = "2.6 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
-add({ id = "scythe", slot = "melee", name = "Scythe", color = "3ee6c8", live = false, gimmick = "a slow wide reap that kills in two, a dash on right click, and Q turns it into a rifle.",
+add({ id = "scythe", slot = "melee", name = "Scythe", color = "3ee6c8", live = true, gimmick = "a slow wide reap that kills in two, a dash on right click, and Q turns it into a rifle.",
 	desc = "A big scythe that is also a rifle. As a scythe: slow and wide, two hits kill, and right click dashes you 8 m forward through the first enemy in your way (one dash every 6 seconds). Press Q and it turns into a scoped rifle: 45 a shot, 81 to the head, 4 in the mag. Switching takes a moment.",
 	stats = { { label = "DAMAGE", text = "50 / 45", bar = 0.42 }, { label = "FIRE RATE", text = "1.05/s", bar = 0.06 }, { label = "REACH", text = "3.3 m", bar = 0.08 }, { label = "DASH", text = "8 m / 6 s", bar = 0.5 } } })
 add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = true, gimmick = "point blank: shoves them straight away from you and knocks them off their feet.",
