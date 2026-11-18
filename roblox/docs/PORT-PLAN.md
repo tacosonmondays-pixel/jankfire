@@ -2064,6 +2064,20 @@ How it lays them out:
 
 Live: 39 of the 41 live weapons hang. The Shredder and the Blood Cross have no model in `ReplicatedStorage.JankfireWeapons` yet; they will hang once their models are there and the hub is rebuilt. `R.check`: 0 problems. Sheet: `roblox/docs/hub/hub_bigger_994.jpg` (with the bigger hall's before and after).
 
+## 51. Hub lobby: the fountain's water fills its basin, streams that fall like water, 18 November 2026 (place version 998)
+
+The owner on v976: "stream is a little unnatural and the water doesnt fill the whole fountain".
+- **Why it went ragged:** the water was a 1.2-stud skin, 0.3 of one voxel, and Terrain broke it into patches with dry floor at every edge.
+- **The water now:** the basin sits in a pit through the lobby floor (the floor is four pieces round a hole, `FHOLE` 10). The water is one full voxel deep plus 0.3 of the next, so its surface lies whole at 1.2 over the floor. It runs one voxel past the basin's inner faces, under walls now 4 studs thick, so the voxels' ragged shore stays inside the walls.
+- Checked live: 72 water voxels, all inside the walls' outer faces, none outside. Bottom layer 1.0, top 0.3.
+- **The streams:** six thin streams arc out from the bowl's lip, leaving it level and falling into the water.
+  - Each is two Beams: a clear sheet and a brighter core. They are clear at the lip and whiter as they fall, thin at the top and wider where they land, with the moving streak texture.
+  - Where each lands: a ripple spreading flat on the water (image 120028923650373), a little mist (75957014180315) and drops.
+- The duck is unchanged. The fountain's middle (`FWC`, on Terrain's grid) is worked out before the floor now, which needs it for the hole.
+- The two south palms moved out to x ±11, clear of the thicker walls.
+- **Checks:** the staging copy's `R.check` and the live one both found 0 problems. The flicker finder's only fountain hits are the pit floor's and the walls' outer edges meeting under the lobby floor, where they can't be seen.
+- Sheet: `roblox/docs/hub/hub_fountain_998.jpg`; also in the shared notes folder.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

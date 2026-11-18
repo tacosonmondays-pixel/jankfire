@@ -199,7 +199,19 @@ return function(B, R)
 		local function FSouth(xc) return F7 * CFrame.new(xc, 0, -DS) * CFrame.new(0, 0, A) end
 
 		-- ---- the floor: the courtyard (the round room's stone), the arcades a step darker
-		B.box(F7, S, "PlazaFloor", -X, X, -2.1, -0.05, cd - 1, DS, FLOOR) -- (its top 0.05 under the round room's floor, which lies over its front)
+		-- the fountain's middle, on Terrain's 4-stud grid (world studs), and the pit its water sits in: the floor has a hole
+		-- FHOLE across each way of the middle, which the basin's thick walls cover (HubRotundaRooms' fountain, below)
+		local FD = 59 -- (the fountain's middle, in the lobby's frame)
+		local FK = if B.warp then B.warp.K else 1
+		local fc0 = if B.warp then R.warpPoint(B.warp, B.O, F7 * Vector3.new(0, 0, -FD)) else F7 * Vector3.new(0, 0, -FD)
+		local FWC = Vector3.new(math.round(fc0.X / 4) * 4, B.O.Y, math.round(fc0.Z / 4) * 4)
+		local FHOLE = 10
+		do
+			local hx, hd, hh = -(FWC.X - B.O.X) / FK, (FWC.Z - B.O.Z) / FK, FHOLE / FK -- (the lobby's frame: x = -world X, d = world Z, / K)
+			B.box(F7, S, "PlazaFloor", -X, X, -2.1, -0.05, cd - 1, hd - hh, FLOOR) -- (its top 0.05 under the round room's floor, which lies over its front)
+			B.box(F7, S, "PlazaFloor", -X, X, -2.1, -0.05, hd + hh, DS, FLOOR)
+			for _, sp in { { -X, hx - hh }, { hx + hh, X } } do B.box(F7, S, "PlazaFloor", sp[1], sp[2], -2.1, -0.05, hd - hh, hd + hh, FLOOR) end
+		end
 		for _, s in { -1, 1 } do B.box(F7, S, "PlazaFloor", s * X, s * (OUT + 2), -2.1, -0.05, cd, BACK + 2, FLOOR2) end
 		B.box(F7, S, "PlazaFloor", -X, X, -2.1, -0.05, DS, BACK + 2, FLOOR2) -- (bottoms under the VIP room's floor's)
 
@@ -415,34 +427,33 @@ return function(B, R)
 			table.insert(list, { l.X, -l.Z })
 		end
 		B.spawns(list, 0.16)
-		local FD = 59 -- (the fountain's middle)
-		for _, run in { { A + T + 0.2, mid }, { FD + 7.45, BACK - 0.3 } } do -- (the second from the fountain's floor ring on)
+		for _, run in { { A + T + 0.2, mid }, { FD + 13 / FK, BACK - 0.3 } } do -- (the second from past the fountain's basin on)
 			B.paint(F7, "Runner", -2.2, 2.2, -0.05, run[1], run[2], P.carpet, 0.03)
 			for _, s in { -1, 1 } do B.paint(F7, "RunnerEdge", s * 2.2, s * 2.6, -0.05, run[1], run[2], P.creamHi, 0.03) end
 		end
 
 		-- ---- the fountain (18 Nov, the owner: "this is scary, we have plenty cute ducks already we can use, can the water
-		-- trickling look like actual water like what we used for the pools in rooftop"): a square basin of real Terrain
-		-- water, set on Terrain's 4-stud grid so the water fills it exactly (the hub's look leaves Terrain's water as saved:
-		-- the Rooftop v3 pool's), a column and a bowl, OUR rubber duck on top (JankfireItems.x_duck, the moulded one), and
-		-- water pouring from the bowl's rim: beams of a moving streak texture, a little splash where each lands. all in world
-		-- studs, its middle on the grid nearest the old one; a ring set in the floor round it
+		-- trickling look like actual water like what we used for the pools in rooftop"; then, of the first go: "stream is a
+		-- little unnatural and the water doesnt fill the whole fountain"). a square basin of real Terrain water in world
+		-- studs, its middle on Terrain's grid (FWC): its walls 4 thick, so the water can run a whole voxel past their inner
+		-- faces and the voxels' ragged shore stays inside them; the water a full voxel deep in a pit through the floor plus
+		-- 1.2 over it, so its surface lies whole and flat (a 1.2 skin alone broke up). the hub's look leaves Terrain's water
+		-- as saved: the Rooftop v3 pool's. a column and a bowl, OUR rubber duck on top (JankfireItems.x_duck), and six thin
+		-- streams arcing out from the bowl's lip into the water, a ripple and a little mist where each lands
 		do
-			local c0 = R.warpPoint(B.warp, B.O, F7 * Vector3.new(0, 0, -FD))
-			if not B.warp then c0 = F7 * Vector3.new(0, 0, -FD) end
-			local wc = Vector3.new(math.round(c0.X / 4) * 4, B.O.Y, math.round(c0.Z / 4) * 4)
-			local Fw = CFrame.new(wc) * CFrame.Angles(0, math.pi, 0) -- (turned as the lobby's frame: d grows south)
-			local HW, WL = 8, 1.2 -- (the water's half width, its depth: whole voxels across, 0.3 of one up)
+			local wc = FWC
+			local Fw = CFrame.new(wc) * CFrame.Angles(0, math.pi, 0)
+			local HW, WT, WL, PIT = 8, 4, 1.2, 4 -- (the water's half width inside the walls, the walls' thickness, the surface over the floor, the pit's depth)
 			local was = B.mark
 			B.mark = B.warp ~= nil
-			B.box(Fw, C, "FountainFloor", -HW, HW, -0.04, 0.02, -HW, HW, "3f5a60", nil, G)
+			B.box(Fw, S, "FountainFloor", -(HW + WT), HW + WT, -PIT - 0.4, -PIT, -(HW + WT), HW + WT, "3a5157")
 			for _, sg in { -1, 1 } do
-				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + 1.2), -0.04, 1.7, -(HW + 1.2), HW + 1.2, TRIM)
-				B.box(Fw, S, "FountainWall", -HW, HW, -0.04, 1.69, sg * HW, sg * (HW + 1.2), TRIM)
-				B.box(Fw, C, "FountainCoping", sg * (HW - 0.2), sg * (HW + 1.6), 1.7, 2.15, -(HW + 1.6), HW + 1.6, TRIM2, nil, G)
-				B.box(Fw, C, "FountainCoping", -(HW - 0.2), HW - 0.2, 1.72, 2.13, sg * (HW - 0.2), sg * (HW + 1.6), TRIM2, nil, G)
+				B.box(Fw, S, "FountainWall", sg * HW, sg * (HW + WT), -PIT - 0.04, 1.7, -(HW + WT), HW + WT, TRIM)
+				B.box(Fw, S, "FountainWall", -HW, HW, -PIT - 0.04, 1.69, sg * HW, sg * (HW + WT), TRIM)
+				B.box(Fw, C, "FountainCoping", sg * (HW - 0.2), sg * (HW + WT + 0.4), 1.7, 2.15, -(HW + WT + 0.4), HW + WT + 0.4, TRIM2, nil, G)
+				B.box(Fw, C, "FountainCoping", -(HW - 0.2), HW - 0.2, 1.72, 2.13, sg * (HW - 0.2), sg * (HW + WT + 0.4), TRIM2, nil, G)
 			end
-			B.cyl(Fw, S, "FountainColumn", 0, -0.04, 4.6, 0, 2.6, TRIM)
+			B.cyl(Fw, S, "FountainColumn", 0, -PIT - 0.02, 4.6, 0, 2.6, TRIM)
 			B.cyl(Fw, C, "FountainColumnRing", 0, 1.5, 1.9, 0, 3.1, TRIM2, nil, G)
 			local bowl = B.cyl(Fw, S, "FountainBowl", 0, 4.6, 5.2, 0, 6.6, TRIM2)
 			B.cyl(Fw, C, "FountainBowlLip", 0, 5.2, 5.5, 0, 6.9, TRIM2, nil, G)
@@ -465,43 +476,67 @@ return function(B, R)
 			else
 				B.missing.x_duck = 1
 			end
-			-- the water pouring from the bowl's rim into the basin: eight streams, a splash where each lands
-			local tex = "rbxassetid://112358151691374"
-			local floorPart = B.root.Scenery:FindFirstChild("FountainFloor")
-			for k = 0, 7 do
-				local an = (k + 0.5) * math.pi / 4
+			-- six streams: each a clear thin sheet leaving the lip level and falling in a curve, whiter as it falls, and a
+			-- thinner brighter core inside it; where it lands a ripple spreading on the water, a little mist and drops
+			local STREAM, RIPPLE, MIST = "rbxassetid://112358151691374", "rbxassetid://120028923650373", "rbxassetid://75957014180315"
+			local floorPart = B.root.Shell:FindFirstChild("FountainFloor")
+			for k = 0, 5 do
+				local an = (k + 0.5) * math.pi / 3
 				local dir = Vector3.new(math.cos(an), 0, math.sin(an))
 				local a0 = Instance.new("Attachment"); a0.Name = "Pour"; a0.Parent = bowl
-				a0.WorldPosition = wc + dir * 3.35 + Vector3.new(0, 5.3, 0)
+				a0.WorldPosition = wc + dir * 3.5 + Vector3.new(0, 5.35, 0)
+				a0.WorldAxis = dir; a0.WorldSecondaryAxis = Vector3.new(0, 1, 0)
 				local a1 = Instance.new("Attachment"); a1.Name = "Land"; a1.Parent = floorPart or bowl
-				a1.WorldPosition = wc + dir * 4.7 + Vector3.new(0, WL, 0)
-				local bm = Instance.new("Beam")
-				bm.Name = "Stream"; bm.Attachment0 = a0; bm.Attachment1 = a1
-				bm.Texture = tex; bm.TextureMode = Enum.TextureMode.Wrap; bm.TextureLength = 2.5; bm.TextureSpeed = 1.4
-				bm.Width0 = 0.55; bm.Width1 = 0.95; bm.CurveSize0 = 1.6; bm.CurveSize1 = 0; bm.Segments = 14; bm.FaceCamera = true
-				bm.Color = ColorSequence.new(Color3.fromRGB(214, 236, 242)); bm.LightEmission = 0.15; bm.LightInfluence = 0.8
-				bm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.8, 0.35), NumberSequenceKeypoint.new(1, 0.7) })
-				-- (the curve bows out from the rim: Attachment0's +X along the stream's way out)
-				a0.Axis = dir; a0.SecondaryAxis = Vector3.new(0, 1, 0)
-				bm.Parent = bowl
-				local sp = Instance.new("ParticleEmitter")
-				sp.Name = "Splash"; sp.Rate = 14; sp.Lifetime = NumberRange.new(0.25, 0.45); sp.Speed = NumberRange.new(2, 4)
-				sp.SpreadAngle = Vector2.new(35, 35); sp.EmissionDirection = Enum.NormalId.Top; sp.Acceleration = Vector3.new(0, -32, 0)
-				sp.Size = NumberSequence.new(0.14, 0.05); sp.LightEmission = 0.1
-				sp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+				a1.WorldPosition = wc + dir * 5.9 + Vector3.new(0, WL + 0.05, 0)
+				a1.WorldAxis = Vector3.new(0, -1, 0); a1.WorldSecondaryAxis = dir
+				for layer = 1, 2 do
+					local core = layer == 2
+					local bm = Instance.new("Beam")
+					bm.Name = if core then "StreamCore" else "Stream"
+					bm.Attachment0 = a0; bm.Attachment1 = a1
+					bm.Texture = STREAM; bm.TextureMode = Enum.TextureMode.Wrap; bm.TextureLength = if core then 1.2 else 1.8
+					bm.TextureSpeed = if core then 2.6 else 2
+					bm.Width0 = if core then 0.12 else 0.3; bm.Width1 = if core then 0.28 else 0.7
+					bm.CurveSize0 = if core then 1.7 else 1.9; bm.CurveSize1 = if core then 1.3 else 1.5
+					bm.Segments = 20; bm.FaceCamera = true
+					bm.Color = ColorSequence.new(Color3.fromRGB(176, 214, 222), Color3.fromRGB(238, 247, 249))
+					bm.LightEmission = if core then 0.25 else 0.08; bm.LightInfluence = 0.9
+					bm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, if core then 0.5 else 0.72), NumberSequenceKeypoint.new(0.55, if core then 0.25 else 0.45),
+						NumberSequenceKeypoint.new(0.9, if core then 0.2 else 0.4), NumberSequenceKeypoint.new(1, 0.85) })
+					bm.Parent = bowl
+				end
+				local rp = Instance.new("ParticleEmitter") -- (a ring spreading flat on the water)
+				rp.Name = "Ripple"; rp.Texture = RIPPLE; rp.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+				rp.EmissionDirection = Enum.NormalId.Top; rp.Speed = NumberRange.new(0.01); rp.Rate = 2.6; rp.Lifetime = NumberRange.new(1, 1.3)
+				rp.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 2.4) })
+				rp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+				rp.Color = ColorSequence.new(Color3.fromRGB(232, 244, 246)); rp.LightEmission = 0.1; rp.Parent = a1
+				local ms = Instance.new("ParticleEmitter") -- (a little mist)
+				ms.Name = "Mist"; ms.Texture = MIST; ms.EmissionDirection = Enum.NormalId.Top; ms.Speed = NumberRange.new(0.4, 1.2)
+				ms.SpreadAngle = Vector2.new(60, 60); ms.Rate = 5; ms.Lifetime = NumberRange.new(0.6, 1)
+				ms.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1.1) })
+				ms.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 1) })
+				ms.Color = ColorSequence.new(Color3.fromRGB(236, 246, 248)); ms.Parent = a1
+				local sp = Instance.new("ParticleEmitter") -- (drops)
+				sp.Name = "Splash"; sp.Rate = 9; sp.Lifetime = NumberRange.new(0.25, 0.4); sp.Speed = NumberRange.new(1.5, 3)
+				sp.SpreadAngle = Vector2.new(30, 30); sp.EmissionDirection = Enum.NormalId.Top; sp.Acceleration = Vector3.new(0, -32, 0)
+				sp.Size = NumberSequence.new(0.1, 0.04); sp.LightEmission = 0.1
+				sp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
 				sp.Color = ColorSequence.new(Color3.fromRGB(228, 242, 246)); sp.Parent = a1
 			end
 			B.mark = was
-			-- the water itself: Terrain, only in the live hub (a staging copy has none), the last build's cleared first
+			-- the water itself: Terrain, only in the live hub (a staging copy has none), the last build's cleared first. it
+			-- fills the pit and the voxel ring under the walls: whole voxels across, a full one deep, then 0.3 of the next
 			if B.live then
 				local hub = workspace.Map.Hub
 				local T0 = workspace.Terrain
 				local old = hub:GetAttribute("FountainWater")
-				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, 2, 0)), Vector3.new(4 * HW + 8, 8, 4 * HW + 8), Enum.Material.Air) end
-				T0:FillBlock(CFrame.new(wc + Vector3.new(0, WL / 2, 0)), Vector3.new(2 * HW, WL, 2 * HW), Enum.Material.Water)
+				if typeof(old) == "Vector3" then T0:FillBlock(CFrame.new(old + Vector3.new(0, 0, 0)), Vector3.new(2 * (HW + WT) + 16, 16, 2 * (HW + WT) + 16), Enum.Material.Air) end
+				local hwW = HW + WT
+				T0:FillBlock(CFrame.new(wc + Vector3.new(0, (WL - PIT) / 2, 0)), Vector3.new(2 * hwW, WL + PIT, 2 * hwW), Enum.Material.Water)
 				hub:SetAttribute("FountainWater", wc)
 			end
-			B.box(F7, C, "FountainRing", -0.1, 0.1, -0.06, 0.03, FD - 0.1, FD + 0.1, P.cream, nil, { ghost = true, tr = 1 }) -- (a marker only: the old floor ring went with the round basin)
+			B.box(F7, C, "FountainRing", -0.1, 0.1, -0.06, 0.03, FD - 0.1, FD + 0.1, P.cream, nil, { ghost = true, tr = 1 }) -- (a marker only)
 		end
 		B.lamp(F7, 0, 9.2, FD, 16, 0.6, P.warm, { spot = true, angle = 60 })
 
@@ -554,7 +589,7 @@ return function(B, R)
 			end)
 		end
 		for _, s in { -1, 1 } do
-			tree(s * 12.5, 39, 20 * s); tree(s * 12.5, 57, -35 * s); tree(s * 10, 64.5, 70 * s) -- (clear of the square basin)
+			tree(s * 12.5, 39, 20 * s); tree(s * 12.5, 57, -35 * s); tree(s * 11, 64.5, 70 * s) -- (clear of the square basin and its thick walls)
 		end
 
 		-- ---- the mini-games' two tables either side, between the palms, each on a rug with a border (the seating went to
