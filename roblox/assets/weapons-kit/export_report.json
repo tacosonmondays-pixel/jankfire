@@ -86940,5 +86940,1057 @@
   },
   "uv": true,
   "paint": "kit"
+ },
+ "w_cards": {
+  "pieces": [
+   {
+    "name": "deck_wzA__back",
+    "upload": "deck_wzA__back__p56607a",
+    "tris": 204,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0392,
+     0.0488,
+     -0.0156
+    ],
+    "hi": [
+     0.0392,
+     0.1672,
+     -0.0149
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "deck_wzN__card",
+    "upload": "deck_wzN__card__pdcd8ce",
+    "tris": 800,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.045,
+     0.043,
+     -0.0156
+    ],
+    "hi": [
+     0.045,
+     0.173,
+     -0.0
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "fan1_wzA__back",
+    "upload": "fan1_wzA__back__p56607a",
+    "tris": 310,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1035,
+     0.0067,
+     0.0115
+    ],
+    "hi": [
+     0.0268,
+     0.1562,
+     0.0122
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "fan1_wzN__card",
+    "upload": "fan1_wzN__card__pdcd8ce",
+    "tris": 214,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.1039,
+     0.0063,
+     0.0115
+    ],
+    "hi": [
+     0.0272,
+     0.1566,
+     0.0141
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "fan2_wzA__back",
+    "upload": "fan2_wzA__back__p56607a",
+    "tris": 310,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0755,
+     0.0168,
+     0.0087
+    ],
+    "hi": [
+     0.0362,
+     0.1588,
+     0.0094
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "fan2_wzN__card",
+    "upload": "fan2_wzN__card__pdcd8ce",
+    "tris": 214,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0759,
+     0.0164,
+     0.0087
+    ],
+    "hi": [
+     0.0366,
+     0.1592,
+     0.0113
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "fan3_wzA__back",
+    "upload": "fan3_wzA__back__p56607a",
+    "tris": 310,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0446,
+     0.0254,
+     0.0059
+    ],
+    "hi": [
+     0.0446,
+     0.1546,
+     0.0066
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "fan3_wzN__card",
+    "upload": "fan3_wzN__card__pdcd8ce",
+    "tris": 214,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.045,
+     0.025,
+     0.0059
+    ],
+    "hi": [
+     0.045,
+     0.155,
+     0.0085
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "fan4_wzA__back",
+    "upload": "fan4_wzA__back__p56607a",
+    "tris": 310,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0362,
+     0.0168,
+     0.0031
+    ],
+    "hi": [
+     0.0755,
+     0.1588,
+     0.0038
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "fan4_wzN__card",
+    "upload": "fan4_wzN__card__pdcd8ce",
+    "tris": 214,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0366,
+     0.0164,
+     0.0031
+    ],
+    "hi": [
+     0.0759,
+     0.1592,
+     0.0057
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "fan5_wzA__back",
+    "upload": "fan5_wzA__back__p56607a",
+    "tris": 310,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0268,
+     0.0067,
+     0.0003
+    ],
+    "hi": [
+     0.1035,
+     0.1562,
+     0.001
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "fan5_wzN__card",
+    "upload": "fan5_wzN__card__pdcd8ce",
+    "tris": 214,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0272,
+     0.0063,
+     0.0003
+    ],
+    "hi": [
+     0.1039,
+     0.1566,
+     0.0029
+    ],
+    "paint": "pdcd8ce"
+   }
+  ],
+  "tris": 3624,
+  "lo": [
+   -0.1039,
+   0.0063,
+   -0.0156
+  ],
+  "hi": [
+   0.1039,
+   0.173,
+   0.0141
+  ],
+  "bytes": 218692,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "cards",
+   "set": "kit",
+   "lo": [
+    -0.1039,
+    0.0063,
+    -0.0156
+   ],
+   "hi": [
+    0.1039,
+    0.173,
+    0.0141
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.035,
+     -0.001
+    ],
+    "muzzle": [
+     0.0,
+     0.155,
+     0.0072
+    ],
+    "hat": [
+     0.0,
+     0.173,
+     -0.0065
+    ]
+   },
+   "pivots": {
+    "fan1": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "fan2": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "fan3": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "fan4": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "fan5": [
+     0.0,
+     0.0,
+     0.0016
+    ]
+   },
+   "hatAt": [
+    [
+     0.0,
+     0.173,
+     -0.0065
+    ],
+    0.05
+   ],
+   "hat_size": 0.05,
+   "fan": [
+    "fan1",
+    "fan2",
+    "fan3",
+    "fan4",
+    "fan5"
+   ],
+   "fanPivot": [
+    0.0,
+    0.0
+   ],
+   "fanRadius": 0.09,
+   "fanStep": 0.22
+  },
+  "nodes": {
+   "deck_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "deck_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "fan1_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "turned": false
+   },
+   "fan1_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0128
+    ],
+    "turned": false
+   },
+   "fan2_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "turned": false
+   },
+   "fan2_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.01
+    ],
+    "turned": false
+   },
+   "fan3_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "turned": false
+   },
+   "fan3_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0072
+    ],
+    "turned": false
+   },
+   "fan4_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "turned": false
+   },
+   "fan4_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0044
+    ],
+    "turned": false
+   },
+   "fan5_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0016
+    ],
+    "turned": false
+   },
+   "fan5_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0016
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_pj_card": {
+  "pieces": [
+   {
+    "name": "card_wzA__card",
+    "upload": "card_wzA__card__pdcd8ce",
+    "tris": 320,
+    "look": {
+     "color": "dcd8ce",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.045,
+     -0.0016,
+     -0.065
+    ],
+    "hi": [
+     0.045,
+     0.0016,
+     0.065
+    ],
+    "paint": "pdcd8ce"
+   },
+   {
+    "name": "card_wzB__back",
+    "upload": "card_wzB__back__p56607a",
+    "tris": 204,
+    "look": {
+     "color": "56607a",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.039,
+     -0.0016,
+     -0.059
+    ],
+    "hi": [
+     0.039,
+     -0.0011,
+     0.059
+    ],
+    "paint": "p56607a"
+   },
+   {
+    "name": "pip_c_wzN__ink",
+    "upload": "pip_c_wzN__ink__p25262c",
+    "tris": 282,
+    "look": {
+     "color": "25262c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.014,
+     0.0006,
+     -0.0128
+    ],
+    "hi": [
+     0.014,
+     0.0052,
+     0.0145
+    ],
+    "paint": "p25262c"
+   },
+   {
+    "name": "pip_d_wzN__red",
+    "upload": "pip_d_wzN__red__pa33b41",
+    "tris": 118,
+    "look": {
+     "color": "a33b41",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0105,
+     -0.0008,
+     -0.0145
+    ],
+    "hi": [
+     0.0105,
+     0.003,
+     0.0145
+    ],
+    "paint": "pa33b41"
+   },
+   {
+    "name": "pip_h_wzN__red",
+    "upload": "pip_h_wzN__red__pa33b41",
+    "tris": 142,
+    "look": {
+     "color": "a33b41",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0116,
+     -0.0005,
+     -0.0105
+    ],
+    "hi": [
+     0.0116,
+     0.003,
+     0.0106
+    ],
+    "paint": "pa33b41"
+   },
+   {
+    "name": "pip_j_wzN__red",
+    "upload": "pip_j_wzN__red__pa33b41",
+    "tris": 118,
+    "look": {
+     "color": "a33b41",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0138,
+     -0.0006,
+     -0.0145
+    ],
+    "hi": [
+     0.0138,
+     0.003,
+     0.0117
+    ],
+    "paint": "pa33b41"
+   },
+   {
+    "name": "pip_s_wzN__ink",
+    "upload": "pip_s_wzN__ink__p25262c",
+    "tris": 186,
+    "look": {
+     "color": "25262c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0116,
+     0.0006,
+     -0.0144
+    ],
+    "hi": [
+     0.0116,
+     0.0052,
+     0.0145
+    ],
+    "paint": "p25262c"
+   }
+  ],
+  "tris": 1370,
+  "lo": [
+   -0.045,
+   -0.0016,
+   -0.065
+  ],
+  "hi": [
+   0.045,
+   0.0052,
+   0.065
+  ],
+  "bytes": 82432,
+  "turned": true,
+  "meta": {
+   "kind": "proj",
+   "id": "pj_card",
+   "set": "kit",
+   "lo": [
+    -0.045,
+    -0.0016,
+    -0.065
+   ],
+   "hi": [
+    0.045,
+    0.0052,
+    0.065
+   ],
+   "spots": {
+    "centre": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "nose": [
+     0.0,
+     0.0,
+     -0.065
+    ]
+   },
+   "pivots": {
+    "pip_h": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "pip_s": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "pip_c": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "pip_d": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "pip_j": [
+     0.0,
+     0.0016,
+     0.0
+    ]
+   },
+   "pips": {
+    "h": "pip_h",
+    "s": "pip_s",
+    "c": "pip_c",
+    "d": "pip_d",
+    "j": "pip_j"
+   }
+  },
+  "nodes": {
+   "card_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "card_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "pip_c_wzN": {
+    "at": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "turned": false
+   },
+   "pip_d_wzN": {
+    "at": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "turned": false
+   },
+   "pip_h_wzN": {
+    "at": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "turned": false
+   },
+   "pip_j_wzN": {
+    "at": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "turned": false
+   },
+   "pip_s_wzN": {
+    "at": [
+     0.0,
+     0.0016,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_lasso": {
+  "pieces": [
+   {
+    "name": "coil_wzA__rope",
+    "upload": "coil_wzA__rope__pb09264",
+    "tris": 4608,
+    "look": {
+     "color": "b09264",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0723,
+     -0.2367,
+     -0.0581
+    ],
+    "hi": [
+     0.0663,
+     0.0866,
+     0.0963
+    ],
+    "paint": "pb09264"
+   },
+   {
+    "name": "coil_wzN__leather",
+    "upload": "coil_wzN__leather__p4b3c32",
+    "tris": 48,
+    "look": {
+     "color": "4b3c32",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0724,
+     -0.09,
+     0.041
+    ],
+    "hi": [
+     -0.0462,
+     -0.0665,
+     0.0685
+    ],
+    "paint": "p4b3c32"
+   },
+   {
+    "name": "loop_wzA__rope",
+    "upload": "loop_wzA__rope__pb09264",
+    "tris": 2904,
+    "look": {
+     "color": "b09264",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0768,
+     -0.2767,
+     -0.0981
+    ],
+    "hi": [
+     0.1262,
+     0.073,
+     0.0347
+    ],
+    "paint": "pb09264"
+   }
+  ],
+  "tris": 7560,
+  "lo": [
+   -0.0768,
+   -0.2767,
+   -0.0981
+  ],
+  "hi": [
+   0.1262,
+   0.0866,
+   0.0963
+  ],
+  "bytes": 374332,
+  "turned": true,
+  "meta": {
+   "kind": "weapon",
+   "id": "lasso",
+   "set": "kit",
+   "lo": [
+    -0.0768,
+    -0.2767,
+    -0.0981
+   ],
+   "hi": [
+    0.1262,
+    0.0866,
+    0.0963
+   ],
+   "spots": {
+    "grip": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "muzzle": [
+     0.0138,
+     -0.1578,
+     -0.0405
+    ],
+    "lead": [
+     0.0575,
+     -0.0563,
+     -0.0153
+    ],
+    "eye": [
+     0.086,
+     -0.2355,
+     0.0012
+    ],
+    "hat": [
+     -0.0088,
+     0.0876,
+     0.0099
+    ]
+   },
+   "pivots": {
+    "loop": [
+     0.05747,
+     -0.05628,
+     -0.01532
+    ]
+   },
+   "hatAt": [
+    [
+     -0.0088,
+     0.0876,
+     0.0099
+    ],
+    0.065
+   ],
+   "hat_size": 0.065
+  },
+  "nodes": {
+   "coil_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "coil_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "loop_wzA": {
+    "at": [
+     0.05747,
+     -0.05628,
+     -0.01532
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
+ },
+ "w_pj_loop": {
+  "pieces": [
+   {
+    "name": "loop_wzA__rope",
+    "upload": "loop_wzA__rope__pb09264",
+    "tris": 2616,
+    "look": {
+     "color": "b09264",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.5495,
+     -0.035,
+     -0.5499
+    ],
+    "hi": [
+     0.5494,
+     0.035,
+     0.6237
+    ],
+    "paint": "pb09264"
+   }
+  ],
+  "tris": 2616,
+  "lo": [
+   -0.5495,
+   -0.035,
+   -0.5499
+  ],
+  "hi": [
+   0.5494,
+   0.035,
+   0.6237
+  ],
+  "bytes": 118104,
+  "turned": true,
+  "meta": {
+   "kind": "proj",
+   "id": "pj_loop",
+   "set": "kit",
+   "lo": [
+    -0.5495,
+    -0.035,
+    -0.5499
+   ],
+   "hi": [
+    0.5494,
+    0.035,
+    0.6237
+   ],
+   "spots": {
+    "centre": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "nose": [
+     0.0,
+     0.0,
+     -0.55
+    ],
+    "eye": [
+     -0.0455,
+     0.0,
+     0.6125
+    ]
+   }
+  },
+  "nodes": {
+   "loop_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   }
+  },
+  "uv": true,
+  "paint": "kit"
  }
 }

@@ -23,7 +23,9 @@ MOVING = {'ar': ['mag', 'charge'], 'smg': ['mag', 'charge'], 'burst': ['mag', 'c
           'pj_chicken': [], 'pj_banana': [], 'pj_peel': [], 'pj_snowball': [],
           'bowling': ['ball'], 'pj_bowling': [], 'remote': ['ir'], 'slipper': [], 'pj_slipper': [],
           'bow': ['string'], 'pj_arrow': ['tip'], 'scales': [],
-          'cart': ['load'], 'pj_cart': ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']}
+          'cart': ['load'], 'pj_cart': ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr'],
+          'cards': ['fan1', 'fan2', 'fan3', 'fan4', 'fan5'], 'pj_card': ['pip_h', 'pip_s', 'pip_c', 'pip_d', 'pip_j'],
+          'lasso': ['loop'], 'pj_loop': []}
 
 
 def solids(g):
