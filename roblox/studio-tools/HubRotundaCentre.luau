@@ -23,7 +23,7 @@ return function(B, R)
 	local mode = {}
 	for _, md in R.MODES do mode[md.side] = md end
 	-- what a way out is called and the colour of its word and floor line
-	local WAY = { gym = { "gym", "GYM", P.pale, P.cream }, lounge = { "lounge", if R.LOUNGE_STYLE == "plaza" then "PLAZA" else "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" },
+	local WAY = { gym = { "gym", "GYM", P.pale, P.cream }, lounge = { "lounge", if R.LOUNGE_STYLE == "plaza" then "LOBBY" else "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" },
 		arcade = { nil, nil, P.pale, P.cream } } -- (the arches either side of the lounge's: no word of their own)
 	local ACCENT = P.doorGlow or P.glow -- (the building's one accent: the way to go)
 
@@ -135,7 +135,7 @@ return function(B, R)
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[3], N[3] + 0.6, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "WindowFrame", -N[1], N[1], N[2] - 0.2, N[2], A - 0.4, A, P.pier, nil, G)
 			local FY, TOPY, D1 = R.LOUNGE_H + 1, N[3] + 1.1, A + T + 6 -- (its floor: the top of the lounge's lid; in the plaza a bay window's floor, HubRotundaRooms)
-			local NW = if R.LOUNGE_STYLE == "plaza" then "8e877c" else P.shell2 -- (the plaza: the bay window's body in the hotel's stone)
+			local NW = if R.LOUNGE_STYLE == "plaza" then "958d80" else P.shell2 -- (the plaza: the bay window's body in the hotel's stone)
 			for _, s in { -1, 1 } do B.box(F, S, "NicheWall", s * (N[1] + 0.9), s * (N[1] + 1.3), FY, TOPY, A + T, D1, NW) end
 			B.box(F, S, "NicheWall", -(N[1] + 1.3), N[1] + 1.3, FY, TOPY, D1, D1 + 0.4, NW)
 			B.box(F, S, "NicheLid", -(N[1] + 1.3), N[1] + 1.3, TOPY, TOPY + 0.4, A + T, D1 + 0.4, NW)

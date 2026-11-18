@@ -1936,6 +1936,33 @@ The owner asked for the lounge as "like a hotel plaza", because the add-ons look
 - The kit pier's shaft, corbel and head share their back plane. In the plaza those backs show in the arcades, so they share one colour there (`PIERC`).
 - Arches' world-stud stones and the round room's lintels stay the hall's own colours inside. The plaza side gets thin skins: `ArchSkin` in HubRotundaCentre and `FaceSkin` in Rooms.
 
+## 47. Hub v3: the hotel plaza turned into an indoor lobby, 18 November 2026 (place version 953)
+
+The owner on v940: "the lobby area looks like the outside of a hotel rather than the inside now!". Main relayed the rest of the brief: the bay boxes become part of the wall, no windows, a closed ceiling, exposure down, indoor plants, keep the rest. Same builder and footprint. The switch value is still `R.LOUNGE_STYLE = "plaza"`; the word over the middle arch now reads LOBBY.
+
+**What changed** (all in `plaza()`, HubRotundaRooms):
+- **Ceiling.** The glass roof, daylight field, rafters and gables are gone. One flat plaster ceiling (`PLASTER`) covers the whole wing. It is coffered by beams (`CX` along, `CD` across, laid out so a coffer is centred on each chandelier), with a warm downlight in every other coffer and a rose over each chandelier.
+- **Walls over the arcades.**
+  - No windows, shutters, balconies or flower boxes.
+  - A **mezzanine gallery** runs round the west, east and south walls. It sits on the band's top, 2.6 out from the walls, with an edge, turned balusters and a rail; the side runs start at d 34, clear of the egg nook's box.
+  - On the gallery wall: a wood dado and rail, a panelled wood door to each room (a double door over the VIP door), a moulded plaster panel over each door, and a sconce between each pair of doors.
+- **The bay boxes over the side arches are part of the wall.** Each of sides 6 and 8 is built out to the box's old front, from over the arch to the ceiling (`FaceMass`). The same lines cross its front, with a framed wood panel where the window was. Side 8's mass is built round the hub egg's nook, whose walls and lid stay HubRotundaCentre's (their stone now matches). Side 7 keeps its balcony, now with a wood door and a plaster panel.
+- **Arcades.** No awnings and no glass. The lounge bays are framed fronts, and the porter's door is a panelled wood door. The dado is the lobby's wood, no longer the hub's ochre.
+- **Lobby floor.** Palms in pots (ringed trunk, two tiers of long leaves) replace the round trees. A seating group stands either side on a bordered rug: a sofa, two armchairs and a low wood table.
+- **Exposure down.** The paint is a step darker (`STONE`, `TRIM` and the rest). The lamps are lower: courtyard 0.25, chandeliers 0.6, sconces 0.2, arcades 0.4.
+
+**Checks.**
+- Live `R.check`: 0 problems, leaks 0, 12 of 12 pads walked to, the regulars' ways clear.
+- Flicker finder: the biggest visible hit left is 2.2 sq studs, a bottom face at floor level.
+- One solo Play: the player spawns on the lobby floor, all 12 pads are live, the regulars are out, and nothing from the hub shows in the console.
+- The lore code panel stands clear at its corner, (-167.2, 240.1, -9899.4).
+- Sheet: `roblox/docs/hub/hub_hotel_lobby_953.jpg`.
+
+**Traps.**
+- Two stacked rugs need their tops at least 0.06 apart, or they flicker over their whole area.
+- A full-width built-out wall must not also get the bay window's floor under it: their bottoms meet in one plane.
+- Studio's id changed after the PC restart at 16:48 UTC (now `4c07f65f-…`). Use `list_roblox_studios` when a call says the Studio is gone.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
