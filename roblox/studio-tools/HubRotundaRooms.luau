@@ -8,8 +8,9 @@
 --                hotel plaza instead: a courtyard in front of the three arches under a glass roof, hotel rooms round it
 --                over arcades (the boutique, the lounge and bar, the reception, the VIP door), a fountain, trees
 --   the gym      (east) the locker room with the boxing ring, only for looks
---   the armory   (west, on the spawn's left) cut corners; the game's own weapons on boards down both walls, and at
---                the far end of its aisle the red gate to the training ground
+--   the armory   (west, on the spawn's left) display bays between rounded pilasters down both walls, the game's own
+--                weapons and gadgets on backlit panels in them, a glass showcase in the middle, and at the far end of its
+--                aisle the gate to the training ground
 -- called by HubRotunda.build with its helpers (B)
 return function(B, R)
 	local P, G = B.P, B.G
@@ -1147,147 +1148,241 @@ return function(B, R)
 	-- ------------------------------------------------------------ the armory and the training gate (side 10, west)
 	do
 		local F = B.side(10)
-		hall(F, "Armory", 38, 5, 11, P.shell, P.floor, P.shell2)
-		for _, s in { -1, 1 } do cut(F, "HallCut", s, 5, 11, D0, 38, 2.4, P.pier) end
-		B.panel(F, 0, 11, 34.6, 2.4, 4); B.lamp(F, 0, 10, 34.6, 13, 0.7)
-		room(F, "Armory", -13, 13, 38, 64, 12, 5, 11, P.shell, P.floor2, P.shell2)
-		for _, s in { -1, 1 } do
-			cut(F, "ArmoryCut", s, 13, 12, 38, 64, 3.4, P.pier)
-			B.box(F, C, "ArmoryBase", s * 12.7, s * 13, 0, 0.8, 38, 64, P.pier, nil, G)
-		end
-		for _, d in { 45, 56 } do B.panel(F, 0, 12, d, 1.8, 6); B.lamp(F, 0, 10.8, d, 22, 0.8, P.light, { shadows = d == 45 }) end
-		-- cases on the counters
-		-- (no cases on the counters any more: the owner's play-test, 16 Nov, found an SMG through a case and the katana
-		-- through an ammo box. the boards' guns have the counters to themselves; R.check's OVERLAP test keeps it so)
-		-- (no guide line down the aisle to the gate: the owner called floor lines and arrows "ugly and redundant". the gate
-		-- reads on its own: TRAINING GROUND over the laser frame at the aisle's end)
-		-- the weapon boards: the game's own weapon models on dark boards over a counter, a light over each. every gun at its
-		-- true size, one scale for all (the owner, 16 Nov: they "look massive, at least scale them, because a revolver is
-		-- not the size of a sniper"): the long guns along the top row, the shorter ones and the sidearms under them, room
-		-- between
-		local GUN_K = 3.5 -- (the sniper 7.3 long, the AR 4.2, the pistol 1.2)
-		-- (18 Nov, main: "the armory racks show only the 12 plain guns. add the newer weapons ... so every live weapon has a
-		-- rack spot": one long board down each wall, three rows: the primaries on the west wall, longest on top; the melee
-		-- weapons over the secondaries on the east wall, by the bench. a live weapon none of these rows names (a new one)
-		-- goes on the shortest row. lengths are world studs, the places along the board the round room's units: / K)
+		-- (18 Nov, the owner, of the armory: "this whole room needs a makeover its an ugly mess". so: architecture first,
+		-- each long wall a run of three display bays between thick rounded pilasters, a backlit panel at the back of each
+		-- over a deep sill with a thin teal line; a coffered ceiling, two beams over the inner pilasters and a light strip in
+		-- each coffer; a framed portal at the doorway instead of the angled blocks; a dark runner down the middle. the guns
+		-- at one bigger display scale on brackets, one class to a bay group: the primaries down the west wall, the
+		-- secondaries, the melee and the gadgets down the east. a glass case in the middle with the newest live weapon
+		-- turning in it. the crates, the lockers, the benches and the workbench went. quiet greys as the lobby's, white
+		-- light, teal only as lines, no words)
+		local WALL, PIL, PIL2, SILL = P.bay, P.pier2, P.pier, P.cream
+		local LINE = P.doorGlow or P.glow
+		hall(F, "Armory", 38, 5, 11, WALL, P.floor, P.dome)
+		B.panel(F, 0, 11, 34.6, 2.4, 4); B.lamp(F, 0, 10, 34.6, 13, 0.6)
+		room(F, "Armory", -13, 13, 38, 64, 12, 5, 11, WALL, P.floor2, P.dome)
 		local KW = if B.warp then B.warp.K else 1
-		local walls = {
-			{ -1, 40, 62.5, { { "w_sniper", "w_dmr", "w_lmg", "w_chicken", "w_autoshot" }, { "w_burst", "w_ar", "w_lever", "w_shotgun", "w_minigun", "w_redline" },
-				{ "w_cart", "w_laser", "w_bowling", "w_shredder", "w_smg", "w_banana", "w_tennis", "w_nailgun", "w_bow" } } },
-			{ 1, 42.2, 62.5, { { "w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_knife", "w_slipper" },
-				{ "w_blower", "w_marbles", "w_sawnoff", "w_water", "w_revolver", "w_bloodcross", "w_pistol" },
-				{ "w_taser", "w_akimbo", "w_remote", "w_cig", "w_lasso", "w_snowball", "w_cards" } } },
-		}
+		local PILS = { { 38, 39.4 }, { 46.2, 47.6 }, { 54.4, 55.8 }, { 62.6, 64 } }
+		local BAYS = { { 39.4, 46.2 }, { 47.6, 54.4 }, { 55.8, 62.6 } }
+		local DEEP = 1.6 -- (how far a pilaster and a sill stand out of the wall)
+		local FACE = 13 - DEEP
+		-- the ceiling: beams over the two inner pairs of pilasters, a light strip down each coffer either side
+		for k = 2, 3 do B.box(F, C, "CeilingBeam", -13, 13, 11.2, 12, PILS[k][1], PILS[k][2], PIL, nil, G) end
+		for _, sg in { { 38.6, 46.2 }, { 47.6, 54.4 }, { 55.8, 63.4 } } do
+			for _, sx in { -1, 1 } do
+				B.box(F, C, "CeilingStripFrame", sx * 4.3, sx * 5.7, 11.7, 12, sg[1] + 0.4, sg[2] - 0.4, PIL, nil, G)
+				B.box(F, C, "CeilingStrip", sx * 4.55, sx * 5.45, 11.6, 11.7, sg[1] + 0.6, sg[2] - 0.6, P.strip, Neon, G)
+			end
+		end
+		for _, d in { 43, 59 } do B.lamp(F, 0, 10.4, d, 20, 0.55, P.light, { shadows = d == 43 }) end
+		-- the doorway from the hall: a framed portal, square jambs with round fronts, a lintel, a teal line up each jamb
+		for _, sx in { -1, 1 } do
+			B.box(F, S, "PortalJamb", sx * 5, sx * 6.6, -0.04, 10.6, 38, 39.2, PIL)
+			B.cyl(F, C, "PortalJambRound", sx * 5.8, -0.04, 10.6, 39.2, 1.6, PIL, nil, G)
+			B.box(F, C, "PortalLine", sx * 4.92, sx * 5.01, 0.3, 10.3, 38.05, 38.95, LINE, Neon, G)
+		end
+		B.box(F, S, "PortalHead", -6.6, 6.6, 10.6, 11.2, 38, 39.7, PIL)
+		-- the floor: a dark runner down the middle. (no teal lines along it: lines down the aisle to the gate are what the
+		-- owner called "ugly and redundant", 16 Nov)
+		B.paint(F, "ArmoryRunner", -3, 3, 0, 40.4, 62.4, "2c3138")
+
+		-- ---- the bays. per wall: a pilaster at each end and between, a bay between each two with a deep sill at its foot, a
+		-- head at its top, a backlit panel at its back and a lamp in front of it
+		for _, sx in { -1, 1 } do
+			for _, pl in PILS do
+				local dc = (pl[1] + pl[2]) / 2
+				B.box(F, S, "Pilaster", sx * FACE, sx * 13, -0.04, 10.6, pl[1], pl[2], PIL)
+				B.cyl(F, C, "PilasterRound", sx * FACE, -0.04, 10.6, dc, pl[2] - pl[1], PIL, nil, G)
+				B.box(F, C, "PilasterBase", sx * (FACE - 0.9), sx * 13, -0.04, 0.9, pl[1] - (if pl[1] == 38 then 0 else 0.15), pl[2] + (if pl[2] == 64 then 0 else 0.15), PIL2, nil, G)
+				B.box(F, C, "PilasterCap", sx * (FACE - 0.9), sx * 13, 10.6, 11.2, pl[1] - (if pl[1] == 38 then 0 else 0.15), pl[2] + (if pl[2] == 64 then 0 else 0.15), SILL, nil, G)
+			end
+			for _, by in BAYS do
+				local dc = (by[1] + by[2]) / 2
+				B.box(F, S, "BaySill", sx * FACE, sx * 13, -0.04, 1.8, by[1], by[2], PIL2)
+				B.box(F, C, "BaySillTop", sx * (FACE - 0.15), sx * 13, 1.8, 2.1, by[1], by[2], SILL, nil, G)
+				B.box(F, C, "BaySillLine", sx * (FACE - 0.06), sx * (FACE + 0.02), 1.42, 1.58, by[1] + 0.25, by[2] - 0.25, LINE, Neon, G)
+				B.box(F, C, "BayHead", sx * FACE, sx * 13, 9.9, 10.6, by[1], by[2], PIL2, nil, G)
+				-- (the panel pale and lit, not glowing: a glowing one washed the guns out to shadows. its light is a strip under the
+				-- head and the lamp in front)
+				B.box(F, C, "BayPanel", sx * 12.82, sx * 13, 2.1, 9.9, by[1] + 0.05, by[2] - 0.05, "d3d8db", nil, G)
+				B.box(F, C, "BayGlow", sx * (12.82 - 0.5), sx * 12.82, 9.78, 9.9, by[1] + 0.1, by[2] - 0.1, P.strip, Neon, G)
+				B.lamp(F, sx * 9.6, 7.8, dc, 11, 0.55)
+			end
+		end
+
+		-- ---- what is on show. a weapon any list leaves out (a new live one) joins its class's group; a weapon with no model
+		-- yet keeps an empty pair of brackets its length (the Shredder, the Blood Cross: they fill in when their models
+		-- exist and the hub is rebuilt). sizes are world studs { along the row, up, out of the panel }; places along a
+		-- bay are the round room's units (/ K)
+		local GUN_K = 4 -- (one display scale for every weapon: the sniper 8.3 long, the AR 4.8, the pistol 1.4)
+		local ITEM = 1.6 -- (a gadget's biggest side)
 		local weapons = game.ReplicatedStorage:FindFirstChild("JankfireWeapons")
-		-- a gun's size on the board: { along the row, out from the board } in world studs; the bow lies along its row (it
-		-- stands taller than a row), the card deck shows its face
+		local items = game.ReplicatedStorage:FindFirstChild("JankfireItems")
 		local LAY = { w_bow = "lay", w_cards = "face" }
 		local function size(w)
-			local t = weapons and weapons:FindFirstChild(w)
+			local lib = if w:sub(1, 2) == "x_" then items else weapons
+			local t = lib and lib:FindFirstChild(w)
 			if not t then return nil end
 			local _, sz = t:GetBoundingBox()
-			sz *= GUN_K
+			if w:sub(1, 2) == "x_" then sz *= ITEM / math.max(sz.X, sz.Y, sz.Z, 0.01) else sz *= GUN_K end
 			if LAY[w] == "lay" then return Vector3.new(sz.Y, sz.Z, sz.X) end
 			if LAY[w] == "face" then return Vector3.new(sz.X, sz.Y, sz.Z) end
 			return Vector3.new(sz.Z, sz.Y, sz.X)
 		end
-		do -- every live weapon on a row
+		local GROUPS = {
+			{ side = -1, bays = { 1, 2, 3 }, rows = 4, slot = "primary", names = { "w_sniper", "w_dmr", "w_lmg", "w_chicken", "w_autoshot", "w_burst", "w_ar",
+				"w_lever", "w_shotgun", "w_minigun", "w_redline", "w_cart", "w_laser", "w_bowling", "w_shredder", "w_smg", "w_tennis", "w_banana", "w_nailgun", "w_bow" } },
+			{ side = 1, bays = { 1 }, rows = 4, slot = "secondary", names = { "w_blower", "w_marbles", "w_sawnoff", "w_water", "w_revolver", "w_bloodcross", "w_pistol",
+				"w_taser", "w_akimbo", "w_remote", "w_cig", "w_lasso", "w_cards", "w_snowball" } },
+			{ side = 1, bays = { 2 }, rows = 4, slot = "melee", names = { "w_bread", "w_scythe", "w_katana", "w_slapper", "w_scales", "w_knife", "w_slipper" } },
+			{ side = 1, bays = { 3 }, rows = 4, slot = "utility", shelves = true, names = {} },
+		}
+		do
 			local named = {}
-			for _, wl in walls do for _, row in wl[4] do for _, w in row do named[w] = true end end end
+			for _, g in GROUPS do for _, w in g.names do named[w] = true end end
 			local ok, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
 			if ok then
 				for _, e in Roster.list do
-					local w = "w_" .. e.id
-					if e.live and e.slot ~= "utility" and not named[w] and size(w) then
-						local best, bl = nil, math.huge
-						for _, wl in walls do for _, row in wl[4] do
-							local l = 0
-							for _, x in row do local z = size(x); if z then l += z.X + 0.9 end end
-							if l < bl then best, bl = row, l end
-						end end
-						table.insert(best, w); named[w] = true
+					local w = (if e.slot == "utility" then "x_" else "w_") .. e.id
+					if e.live and not named[w] then
+						local into = GROUPS[3] -- (a class no group names joins the melee bay, the one with the most room)
+						for _, g in GROUPS do if g.slot == e.slot then into = g end end
+						table.insert(into.names, w); named[w] = true
 					end
 				end
 			end
 		end
-		local ROWY = { 7.6, 5.6, 3.6 }
-		for _, wl in walls do
-			local s, d0, d1 = wl[1], wl[2], wl[3]
-			local dm = (d0 + d1) / 2
-			B.box(F, C, "GunBoard", s * 12.55, s * 13, 2.4, 8.8, d0, d1, P.pier, nil, G)
-			B.box(F, S, "GunCounter", s * 11.3, s * 12.96, 0, 2, d0, d1, P.pier2)
-			B.box(F, C, "GunBoardLedge", s * 11.1, s * 13, 2, 2.4, d0 - 0.2, d1 + 0.2, P.cream, nil, G)
-			B.box(F, C, "GunBoardLight", s * 12.3, s * 13, 8.8, 9.2, d0, d1, P.pier2, nil, G)
-			B.box(F, C, "GunBoardGlow", s * 12.35, s * 12.9, 8.66, 8.76, d0 + 0.4, d1 - 0.4, P.strip, Neon, G)
-			for _, d in { d0 + (d1 - d0) / 6, dm, d1 - (d1 - d0) / 6 } do B.lamp(F, s * 10.6, 7.6, d, 11, 0.7) end
-			for row, names in wl[4] do
-				local list, total = {}, 0
-				for _, w in names do
-					local z = size(w)
-					if z then table.insert(list, { w, z }); total += z.X end
+		local CAP = (BAYS[1][2] - BAYS[1][1]) * KW - 1.2 -- (a row's room)
+		local GAP = 0.7
+		local function show(w, x, y, d, sx, name)
+			if w:sub(1, 2) ~= "x_" then
+				local g = B.gun(F, w, nil, x, y, d, if sx > 0 then 90 else -90, name, GUN_K)
+				if g and LAY[w] == "lay" then g:PivotTo(g:GetPivot() * CFrame.Angles(math.rad(90), 0, 0))
+				elseif g and LAY[w] == "face" then g:PivotTo(g:GetPivot() * CFrame.Angles(0, math.rad(90), 0)) end
+				return g
+			end
+			local t = items and items:FindFirstChild(w)
+			if not t then B.missing[w] = 1; return nil end
+			local g = t:Clone(); g.Name = name
+			for _, tag in Tags:GetTags(g) do Tags:RemoveTag(g, tag) end
+			for _, q in g:GetDescendants() do
+				if q:IsA("BasePart") then q.Anchored = true; q.CanCollide = false; q.CanQuery = false; q.CanTouch = false; q.CastShadow = false
+				elseif q:IsA("LuaSourceContainer") or q:IsA("Sound") or q:IsA("ParticleEmitter") or q:IsA("Light") or q:IsA("Beam") or q:IsA("Trail") or q:IsA("ProximityPrompt") then q:Destroy() end
+			end
+			local _, sz = g:GetBoundingBox()
+			g:ScaleTo(g:GetScale() * ITEM / math.max(sz.X, sz.Y, sz.Z, 0.01))
+			local bcf = g:GetBoundingBox()
+			local at = F * CFrame.new(x, y, -d) * CFrame.Angles(0, math.rad(if sx > 0 then 180 else 0), 0)
+			if B.warp then at = CFrame.new(R.warpPoint(B.warp, B.O, at.Position)) * at.Rotation end
+			g:PivotTo(at * g:GetPivot():ToObjectSpace(bcf):Inverse())
+			g.PrimaryPart = nil; g.WorldPivot = at
+			g:SetAttribute("Warped", true)
+			g.Parent = B.root.Scenery
+			B.count += 1
+			return g
+		end
+		for _, g in GROUPS do
+			local list = {}
+			for _, w in g.names do
+				local z = size(w)
+				if z then table.insert(list, { w = w, z = z })
+				elseif w:sub(1, 2) == "w_" then table.insert(list, { w = w, z = Vector3.new(3, 1, 0.4), missing = true }) end
+			end
+			table.sort(list, function(a, b) return a.z.X > b.z.X end)
+			-- longest first, each into the emptiest row that still has room: the rows come out about even
+			local rows = {}
+			for _, bi in g.bays do for r = 1, g.rows do table.insert(rows, { bay = bi, r = r, items = {}, used = 0 }) end end
+			for _, it in list do
+				local best
+				for _, rw in rows do
+					local need = it.z.X + (if #rw.items > 0 then GAP else 0)
+					if rw.used + need <= CAP and (not best or rw.used < best.used) then best = rw end
 				end
-				total += (#list - 1) * 0.9
-				local at = dm - total / KW / 2
-				for _, it in list do
-					local w, z = it[1], it[2]
-					local x = s * (12.55 - (z.Z / 2 + 0.15) / KW) -- (its back just off the board's face, however deep it is)
-					local g = B.gun(F, w, nil, x, ROWY[row], at + z.X / KW / 2, if s > 0 then 90 else -90, "Rack_" .. w, GUN_K)
-					if g and LAY[w] == "lay" then g:PivotTo(g:GetPivot() * CFrame.Angles(math.rad(90), 0, 0))
-					elseif g and LAY[w] == "face" then g:PivotTo(g:GetPivot() * CFrame.Angles(0, math.rad(90), 0)) end
-					at += (z.X + 0.9) / KW
+				if not best then -- (no room left anywhere: the emptiest row takes it)
+					for _, rw in rows do if not best or rw.used < best.used then best = rw end end
+				end
+				best.used += it.z.X + (if #best.items > 0 then GAP else 0)
+				table.insert(best.items, it)
+			end
+			-- the rows' heights: on shelves for the gadgets; for the guns the same rows across the group's bays, the
+			-- tallest gun of each row deciding its band, the gaps between even from the sill to the head
+			local ys = {}
+			if g.shelves then
+				ys = { 2.1, 3.95, 5.8, 7.65 }
+			else
+				local hs, sum = {}, 0
+				for r = 1, g.rows do
+					hs[r] = 0.6
+					for _, rw in rows do if rw.r == r then for _, it in rw.items do hs[r] = math.max(hs[r], it.z.Y) end end end
+					sum += hs[r]
+				end
+				local top, bottom = 9.55, 2.55
+				local gap = math.max((top - bottom - sum) / (g.rows + 1), 0.25)
+				local y = top
+				for r = 1, g.rows do y -= gap + hs[r] / 2; ys[r] = y; y -= hs[r] / 2 end
+			end
+			for _, rw in rows do
+				if #rw.items == 0 then continue end
+				local by = BAYS[rw.bay]
+				local sx = g.side
+				if g.shelves and rw.r > 1 then
+					B.box(F, C, "BayShelf", sx * (12.82 - 1.15), sx * 12.82, ys[rw.r] - 0.14, ys[rw.r], by[1] + 0.05, by[2] - 0.05, SILL, nil, G)
+				end
+				local total = GAP * (#rw.items - 1)
+				for _, it in rw.items do total += it.z.X end
+				local at = (by[1] + by[2]) / 2 - total / KW / 2
+				for _, it in rw.items do
+					local z = it.z
+					local dc = at + z.X / KW / 2
+					local x = sx * (12.82 - (z.Z / 2 + (if g.shelves then 0.15 else 0.3)) / KW)
+					local y = if g.shelves then ys[rw.r] + z.Y / 2 + 0.01 else ys[rw.r]
+					if not it.missing then show(it.w, x, y, dc, sx, "Rack_" .. it.w) end
+					if not g.shelves then -- two rounded pegs out of the panel under it
+						local half = math.max(z.X * 0.28, 0.3) / KW
+						local out = (math.max(z.Z, 0.4) + 0.4) / KW
+						for _, sg in { -1, 1 } do
+							B.box(F, C, "Bracket", sx * (12.82 - out), sx * 12.82, y - z.Y / 2 - 0.24, y - z.Y / 2 - 0.02, dc + sg * half - 0.1, dc + sg * half + 0.1, SILL, nil, G)
+						end
+					end
+					at += (z.X + GAP) / KW
 				end
 			end
 		end
 		-- (18 Nov: the sawn-off's hinge lies 0.014 under and 0.017 over its frame in the kit model: thinned on show here)
 		local saw = B.root.Scenery:FindFirstChild("Rack_w_sawnoff")
 		if saw then B.unseam(saw:FindFirstChild("hinge_wzB__dark", true), 0.06) end
-		-- kit along the walls, the aisle left clear
-		-- a gun maintenance bench where the tool bench was (the owner, 16 Nov, of the workbench with the pegboard and the
-		-- toolboxes: "can we fix that crafting station or replace it with something else?"): a heavy bench against the near
-		-- wall, a rifle lying on a cleaning mat, a vice, a few rounds and a cleaning rod by it, two ammo cans on the shelf
-		-- under it, a warm lamp over it. chunky pieces, flat colours, no text
+		-- (and two gadgets whose kit pieces lie a hair off their bodies' tops, seen on the shelves: raised clear of them)
+		for _, k in { { "Rack_x_laptop", "well", -0.04 }, { "Rack_x_medkit", "tray", -0.05 } } do
+			local m = B.root.Scenery:FindFirstChild(k[1])
+			if m then B.unseam(m:FindFirstChild(k[2], true), k[3], "bottom") end
+		end
+
+		-- ---- the showcase in the middle: a round plinth, a glass case, the newest live primary turning inside it (HubSpin),
+		-- a teal ring at its foot, a light in its cap. the ways to the gate pass either side of it (R.WALKS)
 		do
-			local bench = Instance.new("Model"); bench.Name = "GunBench"
-			local x0, x1, d0, d1 = 6.6, 12.4, 38.15, 41.1 -- (its footprint: the near wall's face is at d 38)
-			local parts = {
-				B.box(F, C, "BenchTop", x0, x1, 2.9, 3.4, d0, d1, P.wood),
-				B.box(F, C, "BenchShelf", x0 + 0.3, x1 - 0.3, 0.8, 1.05, d0 + 0.2, d1 - 0.3, P.pier2),
-				B.box(F, C, "BenchBack", x0, x1, 3.4, 4.4, d0, d0 + 0.35, P.pier2),
-				B.box(F, C, "Mat", 7.8, 12.2, 3.4, 3.46, 39, 41, P.band, nil, G),
-				B.box(F, C, "ViceBase", 6.85, 7.65, 3.4, 3.8, 39.3, 40.5, P.pier),
-				B.box(F, C, "ViceJaw", 6.95, 7.55, 3.8, 4.35, 39.4, 39.62, P.pier2),
-				B.box(F, C, "ViceJaw", 6.95, 7.55, 3.8, 4.35, 40.18, 40.4, P.pier2),
-			}
-			for _, lx in { x0 + 0.25, x1 - 0.25 } do
-				for _, ld in { d0 + 0.3, d1 - 0.3 } do table.insert(parts, B.box(F, C, "BenchLeg", lx - 0.25, lx + 0.25, 0, 2.9, ld - 0.25, ld + 0.25, P.pier)) end
+			local DC = 51
+			B.cyl(F, S, "ShowcaseBase", 0, -0.04, 1.2, DC, 3.6, PIL2)
+			B.cyl(F, C, "ShowcaseRing", 0, 1.2, 1.32, DC, 3.75, LINE, Neon, G)
+			B.cyl(F, S, "ShowcasePlinth", 0, 1.32, 2.6, DC, 3.2, SILL)
+			B.cyl(F, C, "ShowcaseGlass", 0, 2.6, 6.9, DC, 3, "d8eef2", Enum.Material.Glass, { tr = 0.75 })
+			B.cyl(F, C, "ShowcaseCap", 0, 6.9, 7.3, DC, 3.3, SILL, nil, G)
+			B.cyl(F, C, "ShowcaseCapLight", 0, 6.78, 6.86, DC, 2.2, P.strip, Neon, G)
+			B.lamp(F, 0, 6.5, DC, 9, 0.9, P.light, { spot = true, angle = 90 })
+			local feature
+			local ok, Roster = pcall(require, game.ReplicatedStorage.Jankfire.Roster)
+			if ok then
+				for _, e in Roster.list do
+					if e.live and e.slot == "primary" and weapons and weapons:FindFirstChild("w_" .. e.id) then feature = "w_" .. e.id end
+				end
 			end
-			for k, rx in { 11.45, 11.7, 11.95 } do
-				local r = B.cyl(F, C, "Round", rx, 3.4, 3.4 + 0.42 + 0.04 * k, 38.8, 0.18, "b8a985", nil, G)
-				table.insert(parts, r)
+			if feature then
+				local _, sz = weapons[feature]:GetBoundingBox()
+				local k = math.min(3.2 / math.max(sz.X, sz.Z, 0.01), 3.2 / math.max(sz.Y, 0.01))
+				local g = B.gun(F, feature, nil, 0, 4.75, DC, 0, "ArmoryFeature", k)
+				if g then g:SetAttribute("Spin", 0.6); Tags:AddTag(g, "HubSpin") end
 			end
-			local rod = B.box(F, C, "CleaningRod", 8.1, 11, 3.46, 3.58, 38.79, 38.91, P.pier, nil, G)
-			rod.Shape = Enum.PartType.Cylinder
-			table.insert(parts, rod)
-			for _, cx in { 7.9, 9.9 } do
-				table.insert(parts, B.box(F, C, "AmmoCan", cx - 0.7, cx + 0.7, 1.05, 1.85, 38.7, 40.6, "5f6b5a"))
-				table.insert(parts, B.box(F, C, "AmmoCanHandle", cx - 0.4, cx + 0.4, 1.85, 1.95, 39.57, 39.73, "434a55", nil, G))
-			end
-			for _, p in parts do p.Parent = bench end
-			bench.Parent = B.root.Scenery
-			B.solid("GunBenchBox", Vector3.new(x1 - x0, 3.4, d1 - d0), F * CFrame.new((x0 + x1) / 2, 1.7, -(d0 + d1) / 2))
-			local gun = B.gun(F, "w_burst", nil, 10, 3.46 + 0.03 + 0.06 * GUN_K, 40, 0, "Bench_w_burst", GUN_K)
-			if gun then gun:PivotTo(gun:GetPivot() * CFrame.Angles(0, 0, math.pi / 2)) end -- (lying on its side)
-			B.lamp(F, 9.6, 7.2, 39.8, 9, 0.6, P.warm, { spot = true, angle = 70, face = Enum.NormalId.Bottom })
 		end
-		-- a locker corner like a real one (the owner: the old lockers and bench were "too close together and looks
-		-- awkward"): the lockers against the near wall, the bench parallel in front of them with 3 studs to walk between
-		B.put(F, R.prop("rk_lockers", "bc_lockers"), "Lockers", -9.2, 0, 38.05, 180, { back = true, scale = 0.9, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
-		B.put(F, R.prop("rk_bench", "bc_bench"), "Bench", -8.6, 0, 44.2, 180, { solid = true, color = { ["3b2a52"] = P.wood } })
-		for _, k in { { -10.1, 52, 0.8 }, { 10.1, 52, 0.8 }, { -10.9, 62.2, 0.9 } } do
-			B.put(F, "wh_crate", "Crate", k[1], 0, k[2], 12, { scale = k[3] * 0.6, solid = true, color = { ff4fd8 = P.band, a8703a = P.wood, ["8a5a32"] = "9c8a6c" } })
-		end
-		B.put(F, "bc_hardcase", "HardCase", 10.6, 0, 62, -20, { solid = true, color = { ["2f3b2a"] = P.pier2 } })
-		B.put(F, "bc_ammocrate", "AmmoCrate", 10.8, 1.7, 62, 10, { color = { ["4a5a2c"] = "66705a", ["3a4622"] = "566050" } })
+
 		-- the gate: a chunky frame on the far wall and in it the gate's kit, the same on the training side (GateKit; owner,
 		-- 17 Nov: "can the laser fence be on both side of the hub and same with the garage door because its weird to have
 		-- the grid on one side and a garage door on the other"): a roll-up garage door with the laser fence just inside it.

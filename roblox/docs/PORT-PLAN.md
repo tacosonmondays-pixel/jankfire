@@ -2092,6 +2092,28 @@ The owner on v976: "stream is a little unnatural and the water doesnt fill the w
 - Staging and live `R.check`: 0 problems. No flicker in the fountain. No water past the hidden ring.
 - Photo: `roblox/docs/hub/hub_fountain_1004.jpg`.
 
+## 52. Hub: the armory's makeover, 18 November 2026 (place version 1008)
+
+The owner, of the armory: "this whole room needs a makeover its an ugly mess". It was rebuilt in `HubRotundaRooms` (side 10):
+
+- **Architecture.** Each long wall is three display bays between four thick pilasters with round fronts. Each bay has a deep sill with a thin teal line, a head beam, a pale back panel lit by a strip under the head, and a lamp in front of it. The ceiling is coffered: two beams over the inner pilasters and a light strip either side in each coffer. The doorway is a framed portal (square jambs with round fronts, a lintel, a teal line up each jamb) instead of the angled blocks. A dark runner goes down the middle, with no lines along it (the owner called aisle lines "ugly and redundant").
+- **On show.** Every weapon is at one display scale (`GUN_K` 4: the sniper is 8.3 long, the pistol 1.4) on a pair of brackets:
+  - the primaries down the west wall, 3 bays × 4 rows;
+  - the sidearms, then the melee, down the east wall;
+  - the gadgets (`JankfireItems`, largest side 1.6) on shelves in the east wall's third bay.
+- **Placement rules.**
+  - Rows fill longest first into the emptiest row, so they come out about even.
+  - Row heights follow each row's tallest gun, with even gaps from the sill to the head.
+  - A live weapon no list names joins its class's group (`Roster`).
+  - A weapon with no model keeps an empty pair of brackets, which fill when the hub is rebuilt. These are the Shredder and the Blood Cross; the quiz gadget has no model yet either.
+- **Centrepiece.** A glass case on a round plinth in the middle (d 51) with a teal ring at its foot. Inside it, the newest live primary (now the Shopping Cart Cannon) turns slowly: tag `HubSpin`, `Spin` 0.6. `R.WALKS` passes either side of it.
+- **Removed.** The crates, the lockers, the bench, the gun bench and the cases.
+- **Checks.**
+  - Staging and live `R.check`: 0 problems, 0 overlaps, 0 leaks.
+  - The flicker finder over the whole staging copy shows no hits in the armory. The laptop's and the medkit's kit seams are raised clear, the same way as the sawn-off.
+  - Note: `ZFight.start` scans its roots' descendants, so pass folders or models, not single parts (a list of parts scans nothing).
+- Sheet: `roblox/docs/hub/hub_armory_1008.jpg` (before and after, from the doorway).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
