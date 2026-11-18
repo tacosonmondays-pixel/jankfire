@@ -30,6 +30,7 @@ function P.throw(held: string, eye: Vector3, look: Vector3): boolean
 	local r = Remotes:FindFirstChild("Throw")
 	if r and r:IsA("RemoteEvent") then r:FireServer(held, eye, look) end
 	if w.snd then Sfx.play(w.snd) end
+	if w.snd2 then task.delay(0.03, Sfx.play, w.snd2) end
 	return true
 end
 
@@ -117,6 +118,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local kind = w and w.proj or "ball"
 		live[f.id] = { part = shape(kind), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0 }
 		if f.by ~= me.UserId and w and w.snd then Sfx.play(w.snd, f.p, 0.8) end
+		if f.by ~= me.UserId and w and w.snd2 then task.delay(0.03, Sfx.play, w.snd2, f.p, 0.8) end
 	elseif k == "proju" and type(f.id) == "number" then
 		local L = live[f.id]
 		if L and typeof(f.p) == "Vector3" and typeof(f.v) == "Vector3" then

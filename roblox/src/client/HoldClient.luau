@@ -55,6 +55,16 @@ function H.release(wid: string?)
 		if k > 0.5 then Body.push(-look * 5 * k * Weapons.S) end -- (a big beam kicks you back)
 	end
 end
+-- what your held trigger is doing now, for poses (hold-hands: the Hot Sauce raised to the mouth while you swig):
+-- the weapon and how far into its charge you are, 0..1 (the sauce: of its 3 s swig; the laser: of its charge), or nil
+function H.charging(): (string?, number)
+	local w = st.wid and W[st.wid] :: any
+	if not st.down or not w then return nil, 0 end
+	local held = os.clock() - st.t0
+	if w.hold == "breath" then return st.wid, math.clamp(held / w.maxCharge, 0, 1) end
+	if w.hold == "beam" then return st.wid, math.clamp(held / w.charge, 0, 1) end
+	return st.wid, 1
+end
 -- the laser slows you while it charges (Arsenal multiplies your run speed by this)
 function H.speed(): number
 	local w = st.wid and W[st.wid] :: any

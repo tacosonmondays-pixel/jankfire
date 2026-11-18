@@ -42,7 +42,7 @@ export type Weapon = {
 	bounces: number?, bonus: number?, minBounce: number?, freezeAt: number?, freeze: number?, frostDecay: number?,
 	cost: number?, thin: { cd: number, dmg: number, heal: number }?, fuse: number?, burst: number?, blastR: number?, blastDmg: number?,
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
-	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?,
+	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?, snd2: string?, -- (snd2: a second layer on the shot)
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
 	-- soaked people within chainR, up to chainMax in all, each chainStun s + chainDmg; self = your own stun firing it wet
 	zap: { stun: number, wet: number, chainR: number, chainMax: number, chainStun: number, chainDmg: number, self: number }?,
@@ -373,7 +373,8 @@ local W: { [string]: Weapon } = {
 		id = "chicken", name = "Chicken Rocket", slot = "primary", kind = "proj", proj = "rocket", color = rgb(0xffe14d),
 		desc = "rubber chickens that explode. shoot your own feet to rocket jump.",
 		cd = 0.85, speed = 36 * S, grav = 6, r = 0.35 * S, radius = 7.5 * S, dmg = 55, kb = 34 * S, selfKb = 1.0, range = 200 * S,
-		snd = "chicken_fire",
+		snd = "chicken_fire", snd2 = "chicken_squeak", -- (the launcher's thunk, and the rubber chicken's squeak with it)
+		recoilVM = { back = 1.6, up = 6, roll = 1, side = 0.2, punch = 0.03 },
 		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
 		mdl = { lo = Vector3.new(-0.08, -0.15, -0.6), hi = Vector3.new(0.08, 0.1, 0.4), muzzle = Vector3.new(0, 0, -0.6), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.05, -0.25) },
 	},
@@ -382,6 +383,7 @@ local W: { [string]: Weapon } = {
 		desc = "hard bananas that bonk and make them slip. misses stay on the floor as peels for 30 s.",
 		auto = true, cd = 0.3, speed = 42 * S, grav = 18, r = 0.25 * S, dmg = 14, kb = 9 * S, bounce = 0.35, range = 200 * S,
 		snd = "banana_fire",
+		recoilVM = { back = 0.6, up = 2, roll = 0.8, side = 0.15, punch = 0.008 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
 		mdl = { lo = Vector3.new(-0.06, -0.15, -0.5), hi = Vector3.new(0.06, 0.12, 0.3), muzzle = Vector3.new(0, 0.02, -0.5), grip = Vector3.new(0, -0.1, 0.08), fore = Vector3.new(0, -0.04, -0.25) },
 	},
@@ -391,6 +393,7 @@ local W: { [string]: Weapon } = {
 		cd = 0.5, speed = 40 * S, grav = 14, r = 0.1 * S, bounce = 0.8, dmg = 20, kb = 7 * S, kbUp = 2.5 * S, life = 4.5,
 		bounces = 5, bonus = 0.3, minBounce = 3, range = 200 * S,
 		snd = "tennis_fire",
+		recoilVM = { back = 0.9, up = 3, roll = 0.8, side = 0.15, punch = 0.012 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
 		mdl = { lo = Vector3.new(-0.07, -0.16, -0.45), hi = Vector3.new(0.07, 0.15, 0.3), muzzle = Vector3.new(0, 0.03, -0.45), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.04, -0.22) },
 	},
@@ -399,6 +402,7 @@ local W: { [string]: Weapon } = {
 		desc = "barely hurts. 4 hits freeze them solid, one more shatters them.",
 		cd = 0.3, speed = 46 * S, grav = 10, r = 0.13 * S, dmg = 9, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
 		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
+		recoilVM = { back = 0.3, up = 1.5, roll = 0.5, side = 0.1, punch = 0.004 },
 		vm = { p = Vector3.new(0.18, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
 		mdl = { lo = Vector3.new(-0.065, -0.065, -0.065), hi = Vector3.new(0.065, 0.065, 0.065), muzzle = Vector3.new(0, 0, -0.07), grip = Vector3.new(0, 0, 0) },
 	},
@@ -409,6 +413,7 @@ local W: { [string]: Weapon } = {
 		bare = true, cd = 0.7, speed = 75 * S, grav = 0, r = 0.15 * S, life = 2, cost = 12, thin = { cd = 1.1, dmg = 34, heal = 12 },
 		fuse = 0.6, burst = 0.25, dmg = 75, blastR = 3 * S, blastDmg = 35, kb = 6 * S, range = 150 * S,
 		snd = "blood_fire",
+		recoilVM = { back = 0.4, up = 3, roll = 0, side = 0, punch = 0.004 }, -- (a short upward flick of the hand)
 		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
 		-- (bare: only these spots are built, the fingertip the bolt leaves from and the hand)
 		mdl = { lo = Vector3.new(-0.02, -0.02, -0.1), hi = Vector3.new(0.02, 0.02, 0.02), muzzle = Vector3.new(0, 0, -0.1), grip = Vector3.new(0, 0, 0) },

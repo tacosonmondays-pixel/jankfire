@@ -105,10 +105,12 @@ local budget: { [Player]: { n: number, t: number } } = {}
 		if w.hold == "beam" and (s.beam or n < s.cdUntil) then return end -- (a beam running, or the cooldown)
 		if w.hold == "breath" and s.exhaleUntil and n < s.exhaleUntil then return end
 		s.down, s.t0, s.coughed = true, n, nil
+		if w.hold == "breath" then p:SetAttribute("Swig", true) end -- (everyone's third person: the bottle at the mouth)
 		if w.hold == "blow" then fx(f, "blow", { on = true }) end
 		if w.hold == "beam" then fx(f, "charge", { on = true }) end
 	elseif mode == false and s.down then
 		s.down = false
+		p:SetAttribute("Swig", nil)
 		local held = n - s.t0
 		if w.hold == "blow" then fx(f, "blow", { on = false })
 		elseif w.hold == "breath" and not s.coughed then
@@ -168,6 +170,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		elseif w.hold == "breath" then
 			if s.down and not s.coughed and n - s.t0 > w.coughAt then
 				s.coughed, s.down = true, false
+				if f.kind == "player" then (f.ref :: Player):SetAttribute("Swig", nil) end
 				Fight.hurt(f, w.cough or 12, nil, s.wid, false, nil, nil, nil, true)
 				fx(f, "cough", {})
 			end
