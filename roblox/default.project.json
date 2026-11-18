@@ -32,6 +32,9 @@
         "Parry": {
           "$className": "RemoteEvent"
         },
+        "KatanaWave": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

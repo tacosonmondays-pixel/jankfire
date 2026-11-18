@@ -15,6 +15,8 @@ local Marbles = require(Shared:WaitForChild("Marbles"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Fight = require(script.Parent:WaitForChild("Fight"))
 local Dummies = require(script.Parent:WaitForChild("Dummies"))
+local Katana = require(script.Parent:WaitForChild("Katana")) -- (the katana's crit return, edge meter and slash wave: docs/KATANA.md)
+local Zones = require(script.Parent:WaitForChild("Zones")) -- (training: no guard cooldown)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -23,6 +25,7 @@ local AimR = remote("Aim") -- right click with a scoped gun: the server times th
 
 local W = Weapons.list
 local S = Weapons.S
+local EDGE = Weapons.EDGE
 local now = os.clock
 type Fighter = Rules.Fighter
 
@@ -65,10 +68,12 @@ local function ammoSync(p: Player, f: Fighter, wid: string, why: string?)
 end
 
 -- ------------------------------------------------------------------ hitscan
--- a parried shot: no damage; a perfect parry sends the same bullets back into the shooter, credited to the parrier
+-- a parried shot: no damage; a perfect parry sends the same bullets back into the shooter, credited to the parrier.
+-- every one fills the parrier's edge meter (Katana.luau); n = the guard's count so far (clients play the first big)
 local function parriedShot(t: Fighter, f: Fighter, wid: string, n: number, h: number, pr: number, eye: Vector3)
 	local from = chest(t) or eye
-	FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = uid(t), att = uid(f), pf = pr == 2, kind = "shot", from = from, to = eye })
+	FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = uid(t), att = uid(f), pf = pr == 2, kind = "shot", from = from, to = eye, n = t.parryN })
+	Katana.charge(t, f, Weapons.damage(W[wid], n, h) * (if pr == 2 then EDGE.perfect else EDGE.block))
 	if pr == 2 and f.alive then
 		local back = Weapons.damage(W[wid], n, h)
 		if W[wid].lethalHead and h > 0 then back = math.max(back, f.hp) end -- (a Sniper headshot stays lethal on its way home)
@@ -88,6 +93,8 @@ end
 local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: number, eye: Vector3, x: { mul: number?, qs: boolean?, ns: boolean? }?)
 	local c = chest(t)
 	if not c then return end
+	-- a katana swing cutting it (the crit return, before the guard: you can't guard mid-swing anyway)
+	if Rules.critAt(t, eye - c, Fight.facing(t), now()) and Fight.allow(f, t) then Katana.crit(t, f, wid, n, h, eye); return end
 	local pr = Rules.parryAt(t, eye - c, Fight.facing(t), now())
 	if pr > 0 then parriedShot(t, f, wid, n, h, pr, eye); return end
 	local w = W[wid]
@@ -333,11 +340,12 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	if W[wid].marbles then makePatch(f, e, ends :: { Vector3 }) end
 end)
 
-SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown)
+SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown, yaw: unknown)
 	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" then return end
-	if Rules.swing(f, wid, now(), heavy == true) then return end -- (heavy: the knife's right-click stab)
+	-- (heavy: the knife's right-click stab; yaw: where you looked, the front of a katana swing's crit return)
+	if Rules.swing(f, wid, now(), heavy == true, yaw) then return end
 	Fight.shot(f, wid)
 	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId, h = if heavy == true then true else nil,
 		clip = if heavy == true then "stab_" .. wid else nil }) -- (clip: the stab others see, ThirdPerson.luau)
@@ -373,6 +381,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 			Fight.knock(f, shove, "parry")
 			Rules.tagged(f, t, "parry", now())
 			FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = uid(t), att = uid(f), pf = pr == 2, kind = "melee", st = f.staggerUntil - now(), from = tp })
+			Katana.charge(t, f, if pr == 2 then EDGE.meleePerfect else EDGE.melee)
 			callout(t, if pr == 2 then "PERFECT PARRY!" else "PARRY!", 0.9)
 			callout(f, "PARRIED", 0.8)
 			continue
@@ -399,12 +408,23 @@ AimR.OnServerEvent:Connect(function(p: Player, on: unknown)
 	if f then Rules.aim(f, on == true, now()) end
 end)
 
-ParryR.OnServerEvent:Connect(function(p: Player, yaw: unknown)
+-- the guard: (yaw) right click down opens it, (yaw, "turn") while held its front follows your look, (yaw, false) the
+-- let-go closes it (Rules: up to PARRY.hold s held, at least PARRY.win on a tap). everyone sees it go up and down
+ParryR.OnServerEvent:Connect(function(p: Player, yaw: unknown, mode: unknown)
 	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f then return end
-	if Rules.parryStart(f, now(), yaw) then return end
-	FxR:FireAllClients({ k = "guard", model = Fight.model(f), by = p.UserId })
+	if mode == false then
+		if Rules.parryStop(f, now()) then
+			FxR:FireAllClients({ k = "guardEnd", model = Fight.model(f), by = p.UserId, at = (f.parryEnd :: number) - now() })
+		end
+		return
+	elseif mode == "turn" then
+		Rules.parryTurn(f, now(), yaw)
+		return
+	end
+	if Rules.parryStart(f, now(), yaw, Zones.training(p)) then return end
+	FxR:FireAllClients({ k = "guard", model = Fight.model(f), by = p.UserId, hold = Weapons.PARRY.hold })
 end)
 
 -- a late joiner gets the marbles already on the floor
@@ -425,6 +445,7 @@ end)
 
 require(script.Parent:WaitForChild("Matches")).init(Fight) -- the hub, its pads and the matches (before anyone spawns)
 Dummies.init(Fight, applyHitscan)
+Katana.init(Fight, applyHitscan) -- the edge meter, the crit return's payout and the slash wave (+ ServerStorage.JankKatanaTest in Studio)
 require(script.Parent:WaitForChild("RangeTest")).init(Fight) -- Cardboard Carl's: the pop-up target lane in the training hall
 require(script.Parent:WaitForChild("Utility")).init(Fight) -- the item on G: charges, throws, blasts, domes, clouds, the medkit
 require(script.Parent:WaitForChild("Loadout")).init(Fight) -- keys 1 2 3 + G + wraps, saved (before anyone spawns)

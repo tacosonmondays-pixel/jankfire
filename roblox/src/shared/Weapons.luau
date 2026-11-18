@@ -276,7 +276,7 @@ local W: { [string]: Weapon } = {
 	},
 	katana = {
 		id = "katana", name = "Katana", slot = "melee", kind = "melee", color = rgb(0xe8e8f0),
-		desc = "grows longer with every kill. right click parries; a perfect parry sends the bullets home.",
+		desc = "grows longer with every kill. hold right click to parry every bullet from the front; a timed swing sends them back twice as hard; parry enough and the blade sends a slash wave.",
 		cd = 0.5, range = 2.8 * S, cone = 0.7, dmg = 48, kb = 6 * S, kbUp = 2 * S, grow = 0.5 * S, growMax = 30, hitT = 0.12,
 		vm = { p = Vector3.new(0.1, -0.185, -0.44) * S, r = Vector3.new(0.85, -0.7, 0.25), s = 0.85 },
 	},
@@ -312,8 +312,29 @@ local Weapons = {
 	S = S,
 	list = W,
 	loadout = { "redline", "marbles", "katana" }, -- keys 1, 2, 3
-	-- katana right click (shared/weapons.js PARRY): times in s, arc = the full front cone in degrees
-	PARRY = { win = 0.35, perfect = 0.15, cd = 0.8, slack = 0.05, arc = 140, shove = 14 * S, shoveUp = 5 * S, stagger = 0.55, perfectMul = 1.4 },
+	-- katana right click (shared/weapons.js PARRY): times in s, arc = the full front cone in degrees. (owner, 18 Nov
+	-- 2026: "allow katana parry to parry as many bullets") the guard stays up while right click is held, up to `hold` s
+	-- (a tap still gives `win`), and blocks every bullet and pellet from the front in it; its first `perfect` s send
+	-- them home. the cooldown after it grows with how long it was held: `cd` after a tap, cd + `holdCd` after a full
+	-- hold. while held, its front follows your look (`turn` updates a second). docs/KATANA.md
+	PARRY = { win = 0.35, hold = 1.5, perfect = 0.15, cd = 0.8, holdCd = 0.6, slack = 0.05, arc = 140, turn = 10,
+		shove = 14 * S, shoveUp = 5 * S, stagger = 0.55, perfectMul = 1.4 },
+	-- a katana swing as a counter (owner: "if you manually swing it to counter bullets it does a crit return!"; called
+	-- Return to Sender in docs/KATANA.md, never on screen): bullets from the swing's front arc that reach you `from` to
+	-- `to` s after the click (the blade's sweep, + `slack` for the network) go back into the shooter at `mul` x their
+	-- damage, credited to the katana (as "parry")
+	CRIT = { from = 0.02, to = 0.2, slack = 0.04, arc = 110, mul = 2 },
+	-- the edge meter: what you parry fills it, in points = the stopped hit's damage x block / perfect / crit (a melee
+	-- swing parried: melee / meleePerfect). full at `max`, x `train` in training; emptied by the wave or a death
+	EDGE = { max = 240, block = 1, perfect = 1.25, crit = 1.5, melee = 30, meleePerfect = 40, train = 3 },
+	-- the slash wave with a full meter (owner: "build enough parry and you can send a large forward slash"; called Cold
+	-- Front in docs/KATANA.md, never on screen): a wide ice-blue crescent leaves `windup` s after the key, flies `speed`
+	-- studs/s along your look (pitch kept within +-`pitch` degrees) for up to `range` studs, stops at the first wall on
+	-- its line, and hurts up to `pierce` enemies it passes through (each once) for `dmg`, shoving them along it. a guard
+	-- in front of it breaks it. hit box: `width` studs side to side, `height` up and down round its line. `lock` s with
+	-- no swing or guard for the caster
+	WAVE = { windup = 0.12, lock = 0.45, speed = 60 * S, range = 40 * S, width = 6 * S, height = 2 * S, dmg = 70, pierce = 3,
+		kb = 9 * S, kbUp = 4 * S, pitch = 20 },
 	-- the hit boxes (shared/physics.js), from the feet: body x/z +-0.52 m, y 0..1.62; head +-0.38, y 1.62..2.30
 	BOX = { bodyR = 0.52 * S, bodyTop = 1.62 * S, headR = 0.38 * S, headTop = 2.30 * S },
 	-- marbles on the floor (shared/marbles.js MSLIP)

@@ -114,6 +114,8 @@ function VM.heat(): number return if VM.parts then VM.parts.heat else 0 end
 function VM.playing(): string? return clip and clip.name end
 function VM.clipT(): number? return clip and clip.t end
 function VM.stop() clip = nil; dropProp() end
+-- (the katana's held guard, 18 Nov 2026) keep the playing clip at time t while it's `name`: the parry pose stays up
+function VM.holdAt(name: string, t: number) if clip and clip.name == name and clip.t > t then clip.t = t end end
 
 -- how hard a gun kicks, by its kind (the owner, 17 Nov 2026: "can the gun not shoot up when you shoot or at least
 -- not as aggressively?"). the web game's rows stay; on top: up = the gun's upward pitch, punch = the view punch's,

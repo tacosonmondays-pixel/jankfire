@@ -56,6 +56,9 @@ local firedT = -math.huge
 local lastSwing, swingAlt, nextSwing = -math.huge, false, 0
 local pending: { t: number, w: string?, heavy: boolean? }? = nil -- (the swing waiting for its hit time: which weapon, a heavy stab)
 local parryT, parryReady, parryBuf = -math.huge, 0, -math.huge
+-- the held guard (18 Nov 2026): up while right click is held (to PARRY.hold), when it closed, the last "turn" sent,
+-- the last parry sound (a spray's are spaced out). the wave's no-swing time is the attribute KatanaCast (Katana.client)
+local guard = { up = false, close = -math.huge, turn = 0, snd = 0 }
 local staggerUntil = -math.huge
 local shake = 0
 local view = { pitch = 0, yaw = 0 } -- the visual offsets applied to the camera last frame (removed again next frame)
@@ -505,7 +508,7 @@ local function swing(now: number, heavy: boolean?)
 	if not w or w.kind ~= "melee" then return end
 	local hv = if heavy then w.heavy else nil
 	if heavy and not hv then return end
-	if now < nextSwing or now < staggerUntil or now - parryT < P.win then return end
+	if now < nextSwing or now < staggerUntil or guard.up or now < guard.close or now < (tonumber(me:GetAttribute("KatanaCast")) or 0) then return end
 	nextSwing = now + ((if hv then hv.cd else w.cd) :: number)
 	local clip: string
 	if hv then
@@ -517,7 +520,8 @@ local function swing(now: number, heavy: boolean?)
 	end
 	VM.play(clip)
 	TP.swing(if hv then false else swingAlt, if hv then clip else nil) -- (third person: the stab plays its own clip, ThirdPerson.luau)
-	SwingR:FireServer(held, if hv then true else nil)
+	local lk = camera.CFrame.LookVector
+	SwingR:FireServer(held, if hv then true else nil, math.atan2(-lk.X, -lk.Z)) -- (where you look: a katana swing's front for the crit return)
 	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil }
 end
 
@@ -568,19 +572,37 @@ local function resolveSwing()
 	VM.jolt(-1.5)
 end
 
+-- right click with the katana: the guard goes up and stays while the button is held (to PARRY.hold s; a tap still
+-- gives PARRY.win), and the server parries every bullet from the front in it (Rules.parryAt). the cooldown is known
+-- at the let-go: the longer it was held, the longer (none in training)
 local function tryParry(now: number)
-	if held ~= "katana" then return end
-	if now < parryReady or now < staggerUntil or pending or now - equipT < 0.12 then
+	if held ~= "katana" or guard.up then return end
+	if now < parryReady or now < staggerUntil or pending or now - equipT < 0.12 or now < (tonumber(me:GetAttribute("KatanaCast")) or 0) then
 		parryBuf = now -- an early press is kept for 250 ms
 		return
 	end
 	parryBuf = -math.huge
 	parryT = now
-	parryReady = now + P.win + P.cd
+	guard.up, guard.close, guard.turn = true, now + P.win, now
+	parryReady = math.huge -- (set at the let-go)
 	VM.play("parry_katana")
 	TP.parry()
 	local lk = camera.CFrame.LookVector
 	ParryR:FireServer(math.atan2(-lk.X, -lk.Z)) -- where you look: the server's "front" for this guard
+end
+-- the let-go (cap: the hold ran out, and the server closes it on its own)
+local function guardEnd(now: number, cap: boolean?)
+	if not guard.up then return end
+	guard.up = false
+	guard.close = math.max(parryT + P.win, math.min(now, parryT + P.hold))
+	local heldFor = math.clamp(guard.close - parryT, P.win, P.hold)
+	local z = me:GetAttribute("Zone")
+	parryReady = if z == "training" or z == "playground" then guard.close + 0.05
+		else parryT + heldFor + P.cd + P.holdCd * (heldFor - P.win) / (P.hold - P.win)
+	if not cap then
+		local lk = camera.CFrame.LookVector
+		ParryR:FireServer(math.atan2(-lk.X, -lk.Z), false)
+	end
 end
 
 -- ---------------------------------------------------------------- input
@@ -623,13 +645,17 @@ Keys.began(function(io: InputObject, gp: boolean)
 		end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
-		if W[held] and W[held].heavy then swing(now, true) else tryParry(now) end -- (the knife stabs; the katana parries)
+		if W[held] and W[held].heavy then swing(now, true)
+		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then reload()
 	end
 end)
 Keys.ended(function(io: InputObject)
 	if Binds.is("fire", io) then trigger = false
-	elseif Binds.is("aim", io) then aimHeld = Binds.press("aim", false, aimHeld) end
+	elseif Binds.is("aim", io) then
+		aimHeld = Binds.press("aim", false, aimHeld)
+		if not aimHeld then guardEnd(os.clock()) end -- (the katana's guard comes down with the button)
+	end
 end)
 UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
 	if io.UserInputType ~= Enum.UserInputType.MouseWheel or io.Position.Z == 0 or toolOut() or menuOpen() or inHub() then return end
@@ -728,9 +754,14 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 	elseif f.k == "parry" then
 		local from = if typeof(f.from) == "Vector3" then f.from else nil
 		local mine = f.by == me.UserId
+		-- (a held guard's 2nd, 3rd... bullet of a spray: smaller sparks and pop, the sound spaced out, a light jolt)
+		local first = f.pf or not (type(f.n) == "number" and f.n > 1)
 		if from then
-			Fx.sparks(from + Vector3.new(0, 1.5, 0), Vector3.yAxis, if f.pf then 40 else 26, if f.pf then 0.22 else 0.15)
-			Sfx.play(if f.pf then "parry_perfect" else "parry", if mine then nil else from)
+			Fx.sparks(from + Vector3.new(0, 1.5, 0), Vector3.yAxis, if f.pf then 40 elseif first then 26 else 12, if f.pf then 0.22 elseif first then 0.15 else 0.09)
+			if first or now - guard.snd > 0.085 then
+				guard.snd = now
+				Sfx.play(if f.pf then "parry_perfect" else "parry", if mine then nil else from, if first then nil else 0.75)
+			end
 		end
 		if f.kind == "shot" and f.pf and from and typeof(f.to) == "Vector3" then -- the bullets go home
 			Fx.tracer(from, f.to, Color3.new(1, 1, 1), 0.07 * S, 0.3)
@@ -738,10 +769,10 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 			Sfx.play("ricochet", if mine then nil else from)
 		end
 		if mine then
-			VM.hitStop = if f.pf then 0.13 else 0.09
-			VM.jolt(if f.pf then 3 else 2)
-			H.flash(if f.pf then 0.8 else 0.5, if f.pf then 0.3 else 0.2)
-			shake = math.max(shake, if f.pf then 0.45 else 0.25)
+			VM.hitStop = if f.pf then 0.13 elseif first then 0.09 else 0.02
+			VM.jolt(if f.pf then 3 elseif first then 2 else 0.7)
+			H.flash(if f.pf then 0.8 elseif first then 0.5 else 0.1, if f.pf then 0.3 elseif first then 0.2 else 0.08)
+			shake = math.max(shake, if f.pf then 0.45 elseif first then 0.25 else 0.12)
 		end
 		if f.att == me.UserId and f.kind == "melee" and type(f.st) == "number" then -- your swing got parried
 			staggerUntil = now + math.clamp(f.st, 0, 1)
@@ -814,6 +845,7 @@ me:GetAttributeChangedSignal("Kat"):Connect(function() VM.setKatana(kat()) end)
 me.CharacterAdded:Connect(function()
 	resetAmmo()
 	pending, staggerUntil, parryT, parryReady = nil, -math.huge, -math.huge, 0
+	guard.up, guard.close = false, -math.huge
 	bloom, aim, shake = 0, 0, 0
 	climb.p, climb.y = 0, 0
 	H.dead(nil)
@@ -889,11 +921,27 @@ RunService.RenderStepped:Connect(function(dt: number)
 		fireGun(now, true)
 	end
 	if pending and now >= pending.t then resolveSwing() end
-	if hum and parryBuf > -math.huge and now - parryBuf < 0.25 and now >= parryReady and not pending and now >= staggerUntil then tryParry(now) end
-	-- the parry ring
+	if hum and aimHeld and parryBuf > -math.huge and now - parryBuf < 0.25 and now >= parryReady and not pending and now >= staggerUntil then tryParry(now) end
+	-- the held guard: down at the hold's end (or with the katana put away); while up, the pose holds and its front turns
+	-- with your look (PARRY.turn a second)
+	if guard.up then
+		if held ~= "katana" or not hum then guardEnd(now)
+		elseif now - parryT >= P.hold then guardEnd(now, true)
+		else
+			local vm, tp = VM :: any, TP :: any
+			if vm.holdAt then vm.holdAt("parry_katana", 0.2) end
+			if tp.holdKat then tp.holdKat(me.Character, "guard", 0.2) end
+			if now - guard.turn >= 1 / P.turn then
+				guard.turn = now
+				local lk = camera.CFrame.LookVector
+				ParryR:FireServer(math.atan2(-lk.X, -lk.Z), "turn")
+			end
+		end
+	end
+	-- the parry ring: full while the guard is up, draining over its cooldown
 	if held == "katana" then
-		if now - parryT < P.win then H.parryRing("open", 1)
-		elseif now < parryReady then H.parryRing("drain", 1 - (parryReady - now) / P.cd)
+		if guard.up or now < guard.close then H.parryRing("open", 1)
+		elseif now < parryReady then H.parryRing("drain", 1 - (parryReady - now) / math.max(0.05, parryReady - guard.close))
 		elseif now - parryReady < 0.25 then H.parryRing("ready", 1)
 		else H.parryRing("hidden", 0) end
 	else H.parryRing("hidden", 0) end

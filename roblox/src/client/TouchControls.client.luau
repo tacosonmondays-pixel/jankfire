@@ -182,7 +182,7 @@ local function fakeScreen(sz: Vector2?)
 end
 
 type Btn = { id: string, key: any, label: string, x: number, y: number, d: number, look: boolean?, fight: boolean?,
-	toggle: boolean?, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, finger: any, lit: boolean }
+	toggle: boolean?, katana: boolean?, face: TextButton, scale: UIScale, stroke: UIStroke, down: boolean, finger: any, lit: boolean }
 local BTNS: { Btn } = {}
 local byId: { [string]: Btn } = {}
 local function def(id: string, key: any, label: string, x: number, y: number, d: number, o: { [string]: boolean }?)
@@ -199,6 +199,7 @@ def("hook", Enum.KeyCode.E, "HOOK", 112, 176, 56, { look = true })
 def("melee", Enum.KeyCode.Three, "STAB", 176, 152, 44, { fight = true })
 def("swap", nil, "SWAP", 180, 98, 44, { fight = true })
 def("reload", Enum.KeyCode.R, "RELOAD", 176, 44, 46, { fight = true })
+def("wave", Enum.KeyCode.Q, "WAVE", 112, 240, 52, { fight = true, katana = true }) -- (the katana's slash wave: shown with the katana out, lit with the meter full)
 local TEXT_SIZE: { [string]: number } = { fire = 17, jump = 13, hook = 13, crouch = 12, aim = 12 }
 
 type Pill = { face: TextButton, lit: boolean }
@@ -883,10 +884,11 @@ RunService.Heartbeat:Connect(function()
 	-- an emote or a replay owns the camera: nothing to press but SETTINGS
 	local cam = workspace.CurrentCamera
 	local watching = cam ~= nil and cam.CameraType == Enum.CameraType.Scriptable and me:GetAttribute("Emote") == nil
+	local kat, edgeFull = heldWeapon() == "katana", me:GetAttribute("EdgeFull") == true
 	for _, b in BTNS do
-		local vis = (fight or not b.fight) and not watching
+		local vis = (fight or not b.fight) and not watching and (not b.katana or kat)
 		if b.face.Visible ~= vis then b.face.Visible = vis end
-		local lit = (b.id == "aim" and aimOn)
+		local lit = (b.id == "aim" and aimOn) or (b.id == "wave" and edgeFull)
 		if lit ~= b.lit or b.face.BackgroundColor3 ~= (if lit then T.ACCENT else T.BG) then b.lit = lit; style(b.face, lit, b.id == "fire") end
 	end
 	local autoP = pills.auto

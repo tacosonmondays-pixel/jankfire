@@ -21,14 +21,16 @@ Rules.AIM_PAD = 2 -- studs added round a target's boxes when the server re-check
 
 export type Ammo = { mag: number, reloadUntil: number }
 export type Tag = { by: Fighter, w: string, t: number }
-export type Swing = { t: number, w: string, hit: { [Fighter]: boolean }, heavy: boolean? } -- (heavy: the knife's right-click stab)
+export type Swing = { t: number, w: string, hit: { [Fighter]: boolean }, heavy: boolean?, yaw: number? } -- (heavy: the knife's right-click stab; yaw: where you looked as you swung, the crit return's front)
 export type Fighter = {
 	id: number, kind: string, name: string, ref: any,
 	hp: number, alive: boolean, spawnT: number, diedT: number, held: string, equipT: number,
 	ammo: { [string]: Ammo }, gate: { [string]: number },
 	kat: number, parryT: number, parryN: number, staggerUntil: number,
 	swing: Swing?, tag: Tag?, slipT: number, kills: number, deaths: number,
-	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
+	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw); a held guard follows your look
+	parryEnd: number?, -- when the guard closes: the hold cap while right click is down, then the let-go (at least P.win in)
+	edge: number?, castUntil: number?, -- the katana's edge meter (Katana.luau), and no swing or guard until castUntil (the wave)
 	-- keys 1 2 3 (Loadout.luau): the weapons you carry this life, and the picks waiting for your next (re)arm
 	loadout: { string }?, nextLoadout: { string }?,
 	-- a classic mode's kit (Modes.luau, web p.forced): armed instead of your picks while it's set (1 to 3 weapons), and
@@ -82,6 +84,7 @@ end
 function Rules.spawn(f: Fighter, now: number)
 	f.hp, f.alive, f.spawnT = f.maxHp or Weapons.HP, true, now
 	f.kat, f.parryT, f.staggerUntil, f.swing, f.tag = 0, -math.huge, -math.huge, nil, nil
+	f.parryEnd, f.edge, f.castUntil = nil, 0, nil
 	Rules.arm(f, now)
 end
 
@@ -324,7 +327,7 @@ end
 
 -- a melee swing (the click). the hits come at the animation's hit time, each checked against this swing. heavy = the
 -- knife's right-click stab (web heavyAttack): its own numbers, and it puts the slash on its longer cooldown too
-function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?): string?
+function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?, yaw: any): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
 	local w = W[wid]
 	local hv = if heavy then w.heavy else nil
@@ -332,9 +335,10 @@ function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?): string
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
 	if now < f.staggerUntil then return "staggered" end
-	if now - f.parryT < P.win then return "guarding" end
+	if Rules.parryOpen(f, now) then return "guarding" end
+	if f.castUntil and now < f.castUntil then return "casting" end
 	if not Rules.gate(f, "swing", now, (if hv then hv.cd else w.cd) :: number) then return "too fast" end
-	f.swing = { t = now, w = wid, hit = {}, heavy = hv ~= nil }
+	f.swing = { t = now, w = wid, hit = {}, heavy = hv ~= nil, yaw = if finite(yaw) then yaw else nil }
 	return nil
 end
 
@@ -362,33 +366,89 @@ function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeC
 	return nil
 end
 
--- right click with the katana out: opens the 0.35 s guard
-function Rules.parryStart(f: Fighter, now: number, yaw: any): string?
+-- right click with the katana out: opens the guard. it stays up while the button is held, up to P.hold s, and at least
+-- P.win s on a tap (Rules.parryStop is the let-go). free = training (no cooldowns there: the owner, 17 Nov 2026)
+function Rules.parryStart(f: Fighter, now: number, yaw: any, free: boolean?): string?
 	if not f.alive then return "dead" end
 	if f.held ~= "katana" then return "no katana" end
 	if now < f.staggerUntil then return "staggered" end
-	if now - f.parryT < (P.win + P.cd) * 0.9 then return "cooldown" end
+	if f.castUntil and now < f.castUntil then return "casting" end
+	if Rules.parryOpen(f, now) then return "open" end
+	if not free and now < Rules.parryReady(f) then return "cooldown" end
 	if f.swing and now - f.swing.t < W.katana.hitT :: number then return "mid-swing" end
-	f.parryT, f.parryN = now, 0
+	f.parryT, f.parryN, f.parryEnd = now, 0, now + P.hold
 	f.parryYaw = if finite(yaw) then yaw else nil
 	return nil
 end
 
--- is a hit from direction `inc` (parrier -> source) parried? 0 no, 1 parried, 2 perfect. facing = the parrier's look
+-- is the guard up right now (no slack: Rules.parryAt adds it for late hits)
+function Rules.parryOpen(f: Fighter, now: number): boolean
+	return now >= f.parryT and now <= (f.parryEnd or f.parryT + P.win)
+end
+
+-- the cooldown after a guard: P.cd after a tap, growing to P.cd + P.holdCd after a full hold
+function Rules.parryCd(held: number): number
+	local k = math.clamp((held - P.win) / (P.hold - P.win), 0, 1)
+	return P.cd + P.holdCd * k
+end
+
+-- when the next guard may open: the guard's length and its cooldown, less 10% for network slack (the web's rule)
+function Rules.parryReady(f: Fighter): number
+	if f.parryT == -math.huge then return -math.huge end
+	local held = math.clamp((f.parryEnd or f.parryT + P.win) - f.parryT, P.win, P.hold)
+	return f.parryT + (held + Rules.parryCd(held)) * 0.9
+end
+
+-- right click let go: the guard closes now (a tap still keeps its first P.win s). false if it had already closed
+function Rules.parryStop(f: Fighter, now: number): boolean
+	if not f.parryEnd or now > f.parryEnd then return false end
+	f.parryEnd = math.max(f.parryT + P.win, now)
+	return true
+end
+
+-- a held guard turning with your look (the client's yaw, at most P.turn a second: Combat's budget)
+function Rules.parryTurn(f: Fighter, now: number, yaw: any): boolean
+	if not Rules.parryOpen(f, now) or not finite(yaw) then return false end
+	f.parryYaw = yaw
+	return true
+end
+
+-- is `inc` (from the defender towards the source) inside the front arc round `facing`? from (nearly) right above or
+-- below always counts
+local function inArc(inc: Vector3, facing: Vector3, arcDeg: number): boolean
+	local len = inc.Magnitude
+	local flat = Vector3.new(inc.X, 0, inc.Z)
+	if len > 1e-6 and flat.Magnitude >= 0.3 * len then
+		local ff = Vector3.new(facing.X, 0, facing.Z)
+		if ff.Magnitude < 1e-6 then return false end
+		local cosA = math.clamp(flat.Unit:Dot(ff.Unit), -1, 1)
+		if math.deg(math.acos(cosA)) > arcDeg / 2 then return false end
+	end
+	return true
+end
+
+-- is a hit from direction `inc` (parrier -> source) parried? 0 no, 1 parried, 2 perfect. facing = the parrier's look.
+-- every hit in the guard counts, however many (a shotgun's pellets, a whole spray)
 function Rules.parryAt(t: Fighter, inc: Vector3, facing: Vector3, now: number): number
 	if not t.alive or t.held ~= "katana" then return 0 end
 	local age = now - t.parryT
-	if age < 0 or age > P.win + P.slack then return 0 end
-	local len = inc.Magnitude
-	local flat = Vector3.new(inc.X, 0, inc.Z)
-	if len > 1e-6 and flat.Magnitude >= 0.3 * len then -- (from right above or below always counts)
-		local ff = Vector3.new(facing.X, 0, facing.Z)
-		if ff.Magnitude < 1e-6 then return 0 end
-		local cosA = math.clamp(flat.Unit:Dot(ff.Unit), -1, 1)
-		if math.deg(math.acos(cosA)) > P.arc / 2 then return 0 end
-	end
+	if age < 0 or now > (t.parryEnd or t.parryT + P.win) + P.slack then return 0 end
+	if not inArc(inc, facing, P.arc) then return 0 end
 	t.parryN += 1
 	return if age <= P.perfect + P.slack then 2 else 1
+end
+
+-- a crit return: is the katana's swing cutting a bullet from `inc` (defender -> source) right now? the swing's own
+-- front (its yaw; `facing` if the client sent none), within CRIT.from..CRIT.to s of the click (+ slack)
+local C = Weapons.CRIT
+function Rules.critAt(t: Fighter, inc: Vector3, facing: Vector3, now: number): boolean
+	if not t.alive or t.held ~= "katana" then return false end
+	local sw = t.swing
+	if not sw or sw.w ~= "katana" or sw.heavy then return false end
+	local age = now - sw.t
+	if age < C.from - C.slack or age > C.to + C.slack then return false end
+	local face = if sw.yaw then Vector3.new(-math.sin(sw.yaw), 0, -math.cos(sw.yaw)) else facing
+	return inArc(inc, face, C.arc)
 end
 
 -- a parried melee attacker: staggered and shoved away from the parrier (studs/s). returns the shove

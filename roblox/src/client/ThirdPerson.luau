@@ -750,6 +750,12 @@ function TP.cancelReload()
 end
 function TP.swing(alt: boolean, name: string?) local r = myRig(); if r then swingRig(r, alt, name) end end -- (name: a melee clip, the knife's stab)
 function TP.parry() local r = myRig(); if r then katRig(r, "guard") end end
+-- (the katana's held guard, 18 Nov 2026) a body's katana clip kept at time t while it's `name`: the guard stays up
+-- while its right click is held (Arsenal for yours, Katana.client for everyone else's, every frame)
+function TP.holdKat(m: Instance?, name: string, t: number)
+	local r = rigFor(m)
+	if r and r.kat and r.kat.name == name and r.kat.t > t then r.kat.t = t end
+end
 
 local function rigOfUid(uid: any): Rig?
 	if type(uid) ~= "number" then return nil end

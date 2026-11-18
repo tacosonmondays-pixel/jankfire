@@ -116,8 +116,8 @@ add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", li
 add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", live = false, gimmick = "",
 	desc = "Barely hurts. Every hit adds frost; 4 hits freezes them solid. Hit a frozen target and they shatter.",
 	stats = { { label = "DAMAGE", text = "9", bar = 0.08 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "katana", slot = "melee", name = "Katana", color = "e8e8f0", live = true, gimmick = "every kill adds half a metre of blade. right click parries; a perfect one sends the bullets home.",
-	desc = "Every kill makes the blade longer and your reach further (resets when you die). Right click parries: bullets, rockets and swords from the front bounce off, and a perfect parry sends bullets straight back.",
+add({ id = "katana", slot = "melee", name = "Katana", color = "e8e8f0", live = true, gimmick = "every kill adds half a metre of blade. hold right click to parry; a timed swing sends bullets back twice as hard.",
+	desc = "Every kill makes the blade longer and your reach further (resets when you die). Hold right click to parry: every bullet and sword from the front bounces off, and the first moment of the guard sends bullets straight back. Swing into incoming bullets at the right moment and they go back at double damage. Parry enough and the blade sends a wide slash wave forward.",
 	stats = { { label = "DAMAGE", text = "48", bar = 0.4 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "REACH", text = "2.8 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
 add({ id = "bread", slot = "melee", name = "Bread", color = "d9a35b", live = false, gimmick = "",
 	desc = "A huge loaf. Home run hits. Smack the floor or a wall to pogo off it.",
