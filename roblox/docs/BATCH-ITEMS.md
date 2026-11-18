@@ -455,3 +455,63 @@ per-utility wraps.
   really went off (the fuse ran out, or the duck stuck), so a landing effect never plays for one that ran out of life,
   fell into the void, hit a dome or was culled by the room cap.
 - Every call is guarded and does nothing for a gadget without a skin layer.
+
+## The Bento Box, second take (owner, 18 Nov 2026: "bento box doesnt look very good, did you tripo a ribbon already")
+
+The first Bento Box's knot was built from separate blobs (a middle, two ears, two tails): the segmented look the owner
+calls AI-looking. The box itself was flat fills. The second take (place version 901, tool commit 4f6253b):
+
+- **The box is ours, from the kit** (`medkit_bento()` in `tools/roblox/item_skins.py`; the first one is kept as
+  `medkit_bento_v1()` for the sheets):
+  - a two-tier jubako in black lacquer on a low foot, every edge a soft round (`rr_loft`: a rounded-rectangle solid
+    lofted through rows of insets and heights; a round edge, a lip, a recess or a cup's inner wall is just rows);
+  - a vermilion lip in the seam between the tiers;
+  - a lid with a raised rim round a sunk panel;
+  - the top tier a real cup with vermilion walls and floor, split into three compartments: rice with black sesame and
+    a plum on a shiso leaf in its corner (never one red dot in the middle of white rice: a flag's look), rolled
+    omelette, broccoli and a tomato on a leaf;
+  - two vermilion chopsticks with gold bands, tucked under the band on the lid.
+- **The bow is the owner's Tripo bow** (vault `Assets/tripo-17nov/bow.glb`; Tripo for decoration only):
+  - cleaned the GUN-MODELS.md way (weld, the biggest part, holes, a plain Collapse to about 2,100 triangles);
+  - turned to face the player, laid back 64 degrees so first person sees its face, its depth squashed to 72%;
+  - its underside and tails eased down onto the band (a soft floor), then fused with the band by an exact boolean
+    union into ONE cloth piece (`lidcloth`). The band is a swept flat section (`band_sweep`) that gathers to half its
+    width with soft folds where it goes into the knot.
+- **A baked lacquer surface** (`tools/roblox/item_bake.py`, new): every piece but the cloth goes into one 1024 atlas.
+  - Cycles bakes the AO, the light by facing, the convex edges, the creases, and each texel's position and normal.
+  - A painter lays the colours by rule in the item's own frame: black outside; vermilion inside the top tier, in the
+    seam and under the lid; gold inlay lines round the tiers, the lid's foot and the rim.
+  - Gold maki-e plum branches (five-petal blossoms, buds, tapering branches as smooth signed-distance shapes) on the
+    lid's panel, both long sides and the ends, raised in the NormalMap.
+  - The NormalMap is a Bevel node (soft rounded edges) over a Bump of that relief. The RoughnessMap is glossy lacquer,
+    satin gold, matte food.
+  - The ColorMap is composed like artist_kit's bake, with the gold lit like a metal.
+- **The cloth** wears a seamless tiling picture on the wrap UVs (`tools/roblox/cloth_tile.py`): indigo crepe with a
+  quiet wave-scale print, one 512 px tile = one wrap tile.
+- **Wraps print on the furoshiki.** The cloth is the skin's one wrap piece (zone a). The baked pieces carry `NoWrap`, so
+  a wrap leaves the lacquer alone. `WeaponModels.wrap` stashes the cloth's own picture and puts it back when the wrap
+  comes off.
+- **The contract is kept:**
+  - every `lid*` part (`lid`, `lidsticks`, `lidcloth`) swings about the `lid` piece's front bottom edge;
+  - the grip is unchanged;
+  - about 9,600 triangles in 10 pieces.
+- **Uploads:**
+  - model 123232955001356;
+  - Images: colour 108218789197067, normal 127665416311554, rough 95977448715324, cloth colour 111587350301553, cloth
+    normal 112333109129546, cloth rough 129833091360678 (the shared flat 0.8).
+  - Every map was looked at full size first, and the normal and rough maps went through `bake_guard.py`.
+  - `item_skin_import.luau` takes the map ids (MAPS) and moves the replaced model to
+    `ServerStorage.PolishBackup.ItemSkins`.
+- **Rebuild:**
+  - `blender -b --factory-startup -P tools/roblox/item_bake.py -- <out> medkit@bento [--sheet | --open]`, then
+    `python tools/roblox/cloth_tile.py <out>`. Use Blender's own `5.3/python/bin/python.exe`: it has numpy and Pillow.
+  - The Tripo file and everything made from it (renders, the upload glb, the sheet) stay out of git. The before/after
+    sheet is in the main session's notes folder: `bento-v2-sheet.jpg`.
+- **Seen in one solo Play in training** (picked through the real loadout remote, training's try layer):
+  - in hand with its lid swinging open: the vermilion inside, rice, omelette, broccoli and tomato, gold blossoms on the
+    black lacquer;
+  - fully open, with the bow and chopsticks riding the lid;
+  - in the loadout's preview, maps and all.
+  - The first open shot showed the omelette compartment empty for a moment (its mesh still streaming in); the second
+    showed it filled.
+- **Wraps on it were not tried in Play** (the cloth's own picture and the stash/restore are WeaponModels' standard path).
