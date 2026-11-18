@@ -112,6 +112,31 @@ do
 		s:Play()
 		task.delay(4, function() s:Destroy() end)
 	end
+	-- a gift to someone, said in the chat for everyone (the server's line: "<giver> gifted <receiver> <what>"), in the gold
+	-- accent: the legacy chat's system message (this place's), or a TextChatService system message if the place moves
+	local function giftChat(text: string)
+		local line = string.sub(text, 1, 120)
+		local TCS = game:GetService("TextChatService")
+		if TCS.ChatVersion == Enum.ChatVersion.TextChatService then
+			local chans = TCS:FindFirstChild("TextChannels")
+			local ch = chans and chans:FindFirstChild("RBXGeneral")
+			if ch and ch:IsA("TextChannel") then
+				local esc = (string.gsub((string.gsub((string.gsub(line, "&", "&amp;")), "<", "&lt;")), ">", "&gt;"))
+				pcall(function() (ch :: TextChannel):DisplaySystemMessage(('<font color="#FFC43D">%s</font>'):format(esc)) end)
+			end
+			return
+		end
+		task.spawn(function()
+			local SG = game:GetService("StarterGui")
+			for _ = 1, 10 do
+				local ok = pcall(function()
+					SG:SetCore("ChatMakeSystemMessage", { Text = line, Color = Color3.fromRGB(255, 196, 61), Font = Enum.Font.SourceSansBold, TextSize = 18 })
+				end)
+				if ok then return end
+				task.wait(0.5)
+			end
+		end)
+	end
 	-- a gift for you (the owner's GIFT tab): one plain line at the top of the screen for a few seconds
 	local function giftToast(text: string)
 		local g = Instance.new("ScreenGui")
@@ -194,7 +219,12 @@ do
 	end
 	if Fx then
 		Fx.OnClientEvent:Connect(function(d: any)
-			if type(d) == "table" and d.k == "gift" and type(d.text) == "string" then giftToast(d.text); return end
+			-- (a gift: the present plays it, GiftReveal.client; in a match it waits for a break, so the toast says it came)
+			if type(d) == "table" and d.k == "gift" and type(d.text) == "string" then
+				if me:GetAttribute("Zone") == "match" or type(d.items) ~= "table" then giftToast(d.text) end
+				return
+			end
+			if type(d) == "table" and d.k == "giftchat" and type(d.text) == "string" then giftChat(d.text); return end
 			if type(d) ~= "table" or d.k ~= "redcard" then return end
 			local by = d.by
 			local ch = typeof(by) == "Instance" and by:IsA("Player") and by.Character or nil

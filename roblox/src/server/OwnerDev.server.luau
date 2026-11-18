@@ -491,6 +491,13 @@ local function mod(name: string): any
 	mods[name] = if ok and type(r) == "table" then r else false
 	return mods[name] or nil
 end
+-- every gift to someone else is said in the server's chat, to everyone (the owner, 18 Nov: "when you gift someone it has
+-- to be noticeable, write a chat message in the roblox chat"): "<giver> gifted <receiver> <what>", built here from the
+-- two display names and the thing's own plain name, never from anything typed. each client posts it as a system line
+-- (OwnerDev.client: the legacy chat's ChatMakeSystemMessage here, a TextChatService system message if the place moves)
+local function announceGift(byName: string, toName: string, what: string)
+	(DevFx :: RemoteEvent):FireAllClients({ k = "giftchat", text = ("%s gifted %s %s"):format(byName, toName, what) })
+end
 local giftN = 0
 local function receipt(to: Player): string
 	giftN += 1
@@ -505,7 +512,8 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 	local Loot = mod("Loot")
 	local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop")) :: any
 	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
-	local label, qty, what
+	local label, qty, what, plain
+	local items: { any } = {} -- (what the receiver's present reveals: GiftReveal.client, on the loot opening's cards)
 	if kind == "container" then
 		local c = type(id) == "string" and LootTable.CONTAINERS[id]
 		qty = count(n, GIFT_MAX)
@@ -520,12 +528,19 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 			end
 		end
 		label = ("%d %s"):format(qty, string.upper(if qty == 1 then c.name else c.plural))
+		plain = ("%d %s"):format(qty, if qty == 1 then c.name else c.plural)
+		local so = Shop.byId[id]
+		items = { { type = "container", id = id, name = c.name, rarity = if so and so.rarity then so.rarity else "rare", n = qty } }
 		what = "container:" .. (id :: string)
 	elseif kind == "bundle" then
 		local o = type(id) == "string" and Shop.byId[id]
 		if not o or o.type ~= "bundle" then return { ok = false, why = "no such bundle" } end
 		if not Loot or not Loot.grant(to, id :: string, receipt(to)) then return { ok = false, why = "their loot save isn't ready" } end
-		label, what, qty = string.upper(o.name), "bundle:" .. (id :: string), 1
+		label, what, qty, plain = string.upper(o.name), "bundle:" .. (id :: string), 1, tostring(o.name)
+		for _, it in (if type(Shop.contents) == "function" then Shop.contents(o) else {}) :: any do
+			local inf = type(it) == "table" and LootTable.info(it.kind, it.id)
+			if inf and #items < 12 then table.insert(items, { type = it.kind, id = it.id, name = inf.name, rarity = inf.rarity, weapon = it.weapon or inf.weapon }) end
+		end
 	elseif kind == "item" then
 		local t, iid = string.match(tostring(id), "^(%a+):([%w_]+)$")
 		local info = t and iid and LootTable.info(t, iid)
@@ -533,7 +548,8 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		if not Loot or not Loot.grant(to, ("gift:%s:%s"):format(t :: string, iid :: string), receipt(to)) then
 			return { ok = false, why = "not given (their loot save isn't ready, or that can't be gifted)" }
 		end
-		label, what, qty = string.upper(info.name), "item:" .. tostring(id), 1
+		label, what, qty, plain = string.upper(info.name), "item:" .. tostring(id), 1, tostring(info.name)
+		items = { { type = t, id = iid, name = info.name, rarity = info.rarity, weapon = info.weapon } }
 	elseif kind == "brass" or kind == "coins" or kind == "tickets" then
 		if kind == "coins" then kind = "brass" end -- (coins are Brass: the shop's word, 18 Nov)
 		qty = count(n, 1000000)
@@ -543,6 +559,8 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		local ok, why = Q.gift(to, if kind == "brass" then qty else 0, if kind == "tickets" then qty else 0, receipt(to))
 		if not ok then return { ok = false, why = tostring(why) } end
 		label = ("%d %s"):format(qty, if kind == "brass" then "COINS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
+		plain = ("%d %s"):format(qty, if kind == "brass" then "Coins" elseif qty == 1 then "Crate Ticket" else "Crate Tickets")
+		items = { { type = if kind == "brass" then "brass" else "tix", id = kind, name = if kind == "brass" then "Coins" else "Crate Tickets", rarity = "rare", n = qty } }
 		what = kind :: string
 	elseif kind == "vip" then
 		local V = mod("Vip")
@@ -550,7 +568,8 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		if V.isVip(to) then return { ok = false, why = "already VIP" } end
 		local ok, why = V.gift(to, true)
 		if not ok then return { ok = false, why = tostring(why or "not given") } end
-		label, what, qty = "VIP", "vip", 1
+		label, what, qty, plain = "VIP", "vip", 1, "VIP"
+		items = { { type = "vip", id = "vip", name = "VIP", rarity = "vip" } }
 	elseif kind == "weapon" then
 		local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
 		local Roster = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Roster")) :: any
@@ -560,11 +579,13 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 		if not Pu or type(Pu.giveWeapon) ~= "function" then return { ok = false, why = "weapon gifts aren't in yet" } end
 		local ok, why = Pu.giveWeapon(to, id :: string, "gift", receipt(to))
 		if not ok then return { ok = false, why = tostring(why or "not given") } end
-		label, what, qty = string.upper(e.name), "weapon:" .. (id :: string), 1
+		label, what, qty, plain = string.upper(e.name), "weapon:" .. (id :: string), 1, tostring(e.name)
+		items = { { type = "weapon", id = id, name = e.name, rarity = "legendary" } }
 	else
 		return { ok = false, why = "nope" }
 	end
-	;(DevFx :: RemoteEvent):FireClient(to, { k = "gift", text = "GIFT · " .. label })
+	;(DevFx :: RemoteEvent):FireClient(to, { k = "gift", text = "GIFT · " .. label, from = p.DisplayName, items = items })
+	if to ~= p then announceGift(p.DisplayName, to.DisplayName, plain or label) end -- (the owner, 18 Nov: "it has to be noticeable")
 	giftLog(p, to, what, qty or 1)
 	log(p, ("gift %s x%d to"):format(what, qty or 1), to.Name)
 	return { ok = true, did = ("gave %s %s"):format(to.Name, label) }
@@ -876,6 +897,9 @@ if STUDIO then
 			return handle(a, b, c, d)
 		elseif op == "log" then
 			return lines
+		elseif op == "giftLine" then -- (a gift's chat line to a stand-in receiver's name: a = the giver, b = the name, c = what)
+			announceGift((a :: Player).DisplayName, tostring(b), tostring(c))
+			return true
 		end
 		return nil
 	end

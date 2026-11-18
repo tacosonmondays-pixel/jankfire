@@ -103,6 +103,19 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 | A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | `Purchases.giveWeapon(p, wid, "gift", receipt)` (the shop's) |
 
 - **The receiver** sees one plain line at the top of the screen for 3.5 s, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
+- **Everyone in the server sees it in the chat** (since 18 Nov: the owner said "it has to be noticeable"). A gift to someone else posts one gold system line, such as "Pompompoo gifted Sam 5 Crates" or "... gifted Sam VIP".
+  - The server builds the line from the two display names and the item's own plain name, never from anything typed.
+  - Each client posts it: `ChatMakeSystemMessage` in this place's legacy chat, or a TextChatService system message if the place ever moves to it.
+  - A gift to yourself posts nothing.
+- **The receiver's present** (since 18 Nov; the owner: "a present box come up and appear, use squash and stretch, it comes up, spins and opens to reveal what you've received"; `client/GiftReveal.client.luau`).
+  - **The box:** chunky and navy, with a gold ribbon and bow, in a ViewportFrame at the middle of the screen, under "GIFT FROM <giver>".
+  - **The motion:** it pops up from below, squashed on arrival, stretched as it rises, and settles with an overshoot. Two wobbles, then a fast spin that slows. The lid pops off with a squash, a burst of light and confetti. The squash and stretch rescale the box's own parts in 3D.
+  - **The reveal:** the loot opening's own cards (`LootOpening.card`, exported for this), with "x5" on a count, and a grid for a bundle.
+  - **Sounds:** recorded ones from the library: `pop`, `slap_whoosh`, `loot_pop`, and `loot_win_<best rarity>`.
+  - **Skipping and closing:** any key, click or tap jumps to the reveal. CLOSE, or B on a pad, puts it away (`Pad.MENUS.giftbox`).
+  - **In a match:** it waits for the break between rounds (`LoadoutWindow`) or the hub, and the small toast says it came. It never plays over a live round or a loot opening.
+  - **Self-gifts** play the present too (for tests), and stay silent in chat.
+  - **Studio test hook:** `GiftHold` = "rise" / "spin" / "reveal" holds the animation at that moment for a photo.
 - **The gift log:** every gift is written to DataStore `JankDevGifts_v1` (`JankDevGifts_v1_studio` in Studio), key `log`, last 500: when, giver, receiver (user ids only), what, how many. It's printed to the server log too.
 - **In a match:** a gift works there and doesn't flag the match, because it doesn't change the fight.
 
@@ -201,3 +214,8 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 - 250 coins landed with "GIFT · 250 COINS".
 - VIP: "already VIP" for an owner who is VIP. With Vip's Studio dev lock on, the gift made them VIP.
 - The loot, quests, VIP and purchases `_studio` saves were restored exactly afterwards.
+
+**GIFT present and chat line, place version 1042:**
+- 3 crates gifted to yourself played the present: rise, spin, then the Crate card with x3. Photos: `gift_present_rise.jpg`, `gift_present_spin.jpg`, `gift_present_reveal.jpg`.
+- The chat line to a stand-in name showed in gold: "Pompompoo gifted TestFriend 5 Crates". The self-gift posted nothing.
+- **Not tested yet:** a bundle's grid, a gift held back during a match, and closing with B on a pad.

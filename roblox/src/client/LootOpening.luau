@@ -2066,7 +2066,9 @@ function Opening.reward(spec: any): string
 	return out
 end
 
--- (for others: the shop's previews, LootShow.client.luau)
+-- (for others: the shop's previews, LootShow.client.luau; the gift present's reveal, GiftReveal.client: card + its size)
+Opening.card = card
+Opening.CARD = { w = CARD_W, h = CARD_H }
 Opening.container = container
 Opening.openBox = openBox
 Opening.prizeModel = prizeModel
