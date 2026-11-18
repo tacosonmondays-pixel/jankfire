@@ -288,6 +288,12 @@ function WeaponModels.build(id: string, k: number, skin: string?): Model?
 	m.PrimaryPart = root
 	local b: Builder = { model = m, root = root, k = k }
 	if fn then fn(b) else buildPlain(b, mdl, row.color) end
+	-- (a bare weapon: the Zombie Claw, the Blood Cross. your own hands hold nothing, so only the spots stay, for the
+	-- swing's smear and the hold; no template is fitted)
+	if row and row.bare then
+		for _, c in m:GetChildren() do if c:IsA("BasePart") and c ~= root then c:Destroy() end end
+		return m
+	end
 	for _, c in m:GetChildren() do if c:IsA("BasePart") and c ~= root then c:SetAttribute("Code", true) end end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
 	local tmpl = lib and lib:FindFirstChild("w_" .. look)

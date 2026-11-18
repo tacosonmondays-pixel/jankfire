@@ -32,6 +32,9 @@ export type Weapon = {
 	soak: { dur: number, slow: number, grip: number }?,
 	nails: { n: number, win: number, dur: number, safe: number, reach: number, lift: number, off: number, stick: number }?,
 	pogo: number?, slip: boolean?, radial: boolean?,
+	-- nothing in your hands but your own (the owner, 18 Nov 2026: "Blood cross and zombie hand can just be our normal
+	-- hand!! Zombie will just turn it green!!"): WeaponModels builds no model, only the spots
+	bare: boolean?,
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?,
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
@@ -454,6 +457,7 @@ local W: { [string]: Weapon } = {
 		id = "claw", name = "Zombie Claw", slot = "mode", kind = "melee", color = rgb(0x7dff4f),
 		desc = "infection only. two swipes and they turn.",
 		cd = 0.45, range = 2.6 * S, cone = 0.85, dmg = 55, kb = 8 * S, kbUp = 3 * S, hitT = 0.1, speedMul = 1.3,
+		bare = true, -- (your own hands, tinted green while you're a zombie: AvatarArms + Modes' ZombieTint)
 		vm = { p = Vector3.new(0.18, -0.22, -0.4) * S, r = Vector3.new(0.05, -0.15, 0), s = 0.85 },
 	},
 	-- kill credit only: bullets parried back, parry shoves into the smog

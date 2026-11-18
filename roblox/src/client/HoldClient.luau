@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Body = require(script.Parent:WaitForChild("Body"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
+local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local H = {}
@@ -90,6 +91,7 @@ me.CharacterAdded:Connect(function() st.down, st.fuel, st.exhaleUntil, st.cdUnti
 
 -- ---------------------------------------------------------------- everyone's: the server's Fx
 local loops: { [string]: { e: ParticleEmitter?, s: Sound?, untilT: number? } } = {}
+local beamT: { [string]: number } = {} -- (when each shooter's beam last ticked: its zap plays once, on the first)
 local function handOf(model: any): (Vector3?, Vector3?)
 	if typeof(model) ~= "Instance" then return nil, nil end
 	if model == me.Character then
@@ -164,7 +166,13 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	elseif f.k == "cough" then
 		local p = handOf(f.model)
 		if p then Fx.impact(p, Vector3.yAxis, nil, Enum.Material.Slate, { hole = false, scale = 1.4 }) end
+	elseif f.k == "charge" and f.on then
+		local p = handOf(f.model)
+		if p then Sfx.play("laser_whine", if f.model == me.Character then nil else p, 0.8) end -- (the charge rising)
 	elseif f.k == "beam" and typeof(f.a) == "Vector3" and typeof(f.b) == "Vector3" then
+		local t = os.clock()
+		if t - (beamT[key] or -1) > 0.3 then Sfx.play("laser_fire", if f.model == me.Character then nil else f.a, 1) end
+		beamT[key] = t
 		-- the beam: a green tube as wide as its reach (r grows with the charge, kq) round a white core
 		local wide = (0.22 + 0.48 * math.clamp(tonumber(f.kq) or 0, 0, 1)) * Weapons.S
 		local p = handOf(f.model) or f.a
