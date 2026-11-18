@@ -328,12 +328,12 @@ H.byArena.SuburbV2 = "suburb2"
 -- hazards, the mast's red lights) doing the rest; dark but readable: a player shows at 150 studs
 H.looks.forest = {
 	Lighting = {
-		Ambient = Color3.fromRGB(96, 104, 124), OutdoorAmbient = Color3.fromRGB(104, 116, 142), Brightness = 1.4,
-		ExposureCompensation = 0.25, EnvironmentDiffuseScale = 0.3, EnvironmentSpecularScale = 0.25,
+		Ambient = Color3.fromRGB(132, 140, 160), OutdoorAmbient = Color3.fromRGB(144, 154, 180), Brightness = 2.0,
+		ExposureCompensation = 0.55, EnvironmentDiffuseScale = 0.3, EnvironmentSpecularScale = 0.25,
 		ClockTime = 0.6, GeographicLatitude = 60, ColorShift_Top = Color3.fromRGB(150, 170, 210),
 		FogColor = Color3.fromRGB(46, 56, 76), FogStart = 80, FogEnd = 620,
 	},
-	Atmosphere = { Density = 0.42, Offset = 0.05, Haze = 1.8, Glare = 0, Color = Color3.fromRGB(70, 84, 110), Decay = Color3.fromRGB(38, 46, 64) },
+	Atmosphere = { Density = 0.36, Offset = 0.05, Haze = 1.6, Glare = 0, Color = Color3.fromRGB(92, 106, 132), Decay = Color3.fromRGB(58, 68, 90) },
 	Bloom = { Intensity = 0.45, Size = 24, Threshold = 1.6 },
 	ColorCorrection = { Brightness = 0.02, Contrast = 0.12, Saturation = -0.18, TintColor = Color3.fromRGB(226, 234, 255) },
 	SunRays = { Intensity = 0 },
@@ -380,8 +380,8 @@ H.byArena.ArcticCabin = "arctic"
 -- city, the floodlights already on
 H.looks.skatepark = {
 	Lighting = {
-		Ambient = Color3.fromRGB(126, 118, 112), OutdoorAmbient = Color3.fromRGB(150, 138, 128), Brightness = 2.2,
-		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
+		Ambient = Color3.fromRGB(118, 110, 104), OutdoorAmbient = Color3.fromRGB(138, 128, 120), Brightness = 2.0,
+		ExposureCompensation = -0.3, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
 		ClockTime = 13.0, GeographicLatitude = 86, ColorShift_Top = Color3.fromRGB(255, 214, 170),
 		FogColor = Color3.fromRGB(220, 196, 176), FogStart = 400, FogEnd = 2600,
 	},

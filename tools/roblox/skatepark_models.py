@@ -378,8 +378,9 @@ def edge():
             else: cyl(m, STEEL2, c, 1.0, a, 0.16, 7.6, segs=6, bev=0.0)
             if i < n:   # a dark mesh panel between posts (reads as chain-link from afar)
                 b0, b1 = a + 0.2, a + (a1 - a0) / n - 0.2
-                if along_x: B(m, '6a6f74', b0, 1.0, c - 0.03, b1, 8.4, c + 0.03, bev=0.0, kind='glass')
-                else: B(m, '6a6f74', c - 0.03, 1.0, b0, c + 0.03, 8.4, b1, bev=0.0, kind='glass')
+                # (kind 'water': SmoothPlastic at a quarter transparent in WebArena: a dark mesh, without glass's sky sheen)
+                if along_x: B(m, '50555a', b0, 1.0, c - 0.03, b1, 8.4, c + 0.03, bev=0.0, kind='water')
+                else: B(m, '50555a', c - 0.03, 1.0, b0, c + 0.03, 8.4, b1, bev=0.0, kind='water')
     # floodlight masts round the park: tall posts, a bank of lamps, a real light aimed in (Roblox's range is 60)
     for (x, z) in ((-X - 6, -Z - 6), (X + 6, -Z - 6), (-X - 6, Z + 6), (X + 6, Z + 6), (-40.0, -Z - 6), (40.0, -Z - 6), (-40.0, Z + 6), (40.0, Z + 6)):
         cyl(m, STEEL2, x, 0.0, z, 0.55, 34.0, segs=10, bev=0.1)
