@@ -123,8 +123,10 @@ local function dummyFolder(): Instance return workspace:FindFirstChild("Dummies"
 
 -- the lot's sounds play from the panel over the door, for everyone near it
 local function sound(name: string)
+	-- (18 Nov: the panel can stand by the TOP door; the garage door's own sounds stay at the garage, in Lot.DoorSounds)
+	local ds = lot and lot:FindFirstChild("DoorSounds")
 	local panel = lot and lot:FindFirstChild("Panel")
-	local s = panel and panel:FindFirstChild(name, true)
+	local s = (ds and ds:FindFirstChild(name, true)) or (panel and panel:FindFirstChild(name, true))
 	if s and s:IsA("Sound") then s:Play() end
 end
 

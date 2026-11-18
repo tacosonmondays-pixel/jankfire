@@ -1160,6 +1160,25 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - With the key, the TOP door read OPEN and walking in took me to the playground in 1.0 s.
   - **The lore session re-seats** Auntie and Todd, whose v2 spots (the watch steps, the far tower) are gone.
   - Photos: `training/v3_rooms_before_after.jpg`.
+- **18 Nov, the owner's training fixes (place version 964, TrainingV2 push 23, TrainingLot push 19):** the owner, with four screenshots: "get rid of these teleporters, this button is redundant, move the stairs to fill this space, these shooting dummies are now redundant, the dummy prop that displays how many you've found should be moved to the door that leads to the teleporter, make the teleporter have a cool green effect".
+  - **The "teleporters" were the course's jump pads.** All five are gone. One had ended up inside the watch steps when v3.1 ran the walk to the south wall.
+    - The watch steps are now walkable (14 steps of 1), with a cheek wall on the hall side.
+    - A stair (16 steps, both sides closed by cheek walls with pale caps) climbs from the bridge's middle straight up to the TOP door, in the space the two gallery pads flanked.
+    - The way up is now: the watch steps, the walk, the bridge, the stair. The core's ledge is reached by its bridge, its top by the grapple rings.
+    - The overlook stair in the dummies hall got the same cheek on its open side (the main session: "a raw sawtooth profile") and now runs to the wall, with no slot behind it.
+  - **"This button" was the live-fire console, and "these shooting dummies" were its two shooters.** Gone: the console, the shooters (`T.DUMMIES` has no Plinker, Plinker2; Dummies.luau never puts a shooter at a spawn point when its spot is missing), their stands, the live-fire line, posts, word and heal pad (`T.NO_LIVE`; T.check reports it). The stage stays, as the garage door's floor. The practice lane's own shoot-back stays.
+  - **The gold dummies' panel** (LOCKED/OPEN, the three men, the clock, the hint) stands on the TOP gallery's back wall beside the door (`T.LOT_PANEL`). Its labels are DUMMIES, RANGE, COURSE.
+    - It is still `Lot.Panel`, painted per player by TrainingDoors.client.
+    - The door's own LOCKED plate is gone (`EGG_DOOR.plate = false`): the panel says it.
+    - The garage keeps KEEP CLEAR and its own sounds in `Lot.DoorSounds` (TheLot looks there first): its whirr and clatter stay at the garage.
+  - **The teleporter's green** (`EGG_DOOR.green`, TrainingLot `portalGreen`):
+    - the ring's middle a glowing green and its thin line green neon;
+    - on its plane, swirling green puffs (spinning, staying in the ring), a few motes drifting out into the room, and a soft green light;
+    - a quiet looped hum heard only near it (Pro Sound Effects, 9125674114, `L.PORTAL_HUM`);
+    - nothing rises above the ring.
+  - **Checks:** sealed (0 leaks), head room 0 within 0.6, plate-to-Carl 0 of 27, the gun sessions' line clear, the lot closed, the egg door shut. ZFight: 1 pair.
+  - **Play:** no shooters in the world. Walking from the bridge took me up the stair onto the gallery. The panel by the TOP door showed its clock. With the key the door rolled up onto the green portal. The Studio save was put back.
+  - Photos: `training/training_owner_fixes_v964.jpg`.
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

@@ -44,12 +44,12 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 22
+T.PUSH = 23
 T.VERSION = "v2"
 -- the dummies room and the course (18 Nov, the owner: "instead of an extension can you do a complete remodel ... these two
 -- rooms can be redone entirely"): "v3" = PolishBackup.TrainingRooms (roblox/studio-tools/TrainingRooms.luau) builds them
 -- new, "v2" = this module's own yard (with its side hall) and course (with its strip), one switch away
-T.ROOMS = "v3" -- (live since place version VER; "v2" brings back the old yard and course)
+T.ROOMS = "v3" -- (live since place version 917; "v2" brings back the old yard and course)
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
 T.P = {
@@ -2140,7 +2140,7 @@ function T.check(stage): string
 	local gui = r and r:FindFirstChild("Board") and r.Board:FindFirstChild("Gui")
 	for _, n in { "RowEasy", "RowMedium", "RowHard", "Line" } do need(gui and gui:FindFirstChild(n), "Board.Gui." .. n) end
 	local lf = tg:FindFirstChild("LiveFire")
-	need(lf and lf:FindFirstChild("Zone") and lf:FindFirstChild("LiveButton") and lf.LiveButton:FindFirstChild("Prompt"), "LiveFire (Zone, LiveButton.Prompt)")
+	if not T.NO_LIVE then need(lf and lf:FindFirstChild("Zone") and lf:FindFirstChild("LiveButton") and lf.LiveButton:FindFirstChild("Prompt"), "LiveFire (Zone, LiveButton.Prompt)") end
 	need(tg:FindFirstChild("PropCollision") and tg.PropCollision:FindFirstChild("RangeCounterBox"), "PropCollision.RangeCounterBox")
 	if bad > 0 then return table.concat(out, "\n") end
 	-- every marker inside the zone
@@ -2156,9 +2156,13 @@ function T.check(stage): string
 		return hit == nil, hit
 	end
 	-- the shooters stand inside the live-fire end and fire only there
-	local zp = lf.Zone
-	local function inLive(p) local rel = zp.CFrame:PointToObjectSpace(p); local h = zp.Size / 2; return math.abs(rel.X) <= h.X and math.abs(rel.Z) <= h.Z end
-	table.insert(out, ("shooters inside the live-fire end: %d of 2"):format((if inLive(ds.Plinker.Position) then 1 else 0) + (if ds:FindFirstChild("Plinker2") and inLive(ds.Plinker2.Position) then 1 else 0)))
+	if not T.NO_LIVE then
+		local zp = lf.Zone
+		local function inLive(p) local rel = zp.CFrame:PointToObjectSpace(p); local h = zp.Size / 2; return math.abs(rel.X) <= h.X and math.abs(rel.Z) <= h.Z end
+		table.insert(out, ("shooters inside the live-fire end: %d of 2"):format((if inLive(ds.Plinker.Position) then 1 else 0) + (if ds:FindFirstChild("Plinker2") and inLive(ds.Plinker2.Position) then 1 else 0)))
+	else
+		table.insert(out, "no live-fire end (T.NO_LIVE): live fire " .. tostring(lf ~= nil) .. ", shooters' spots " .. tostring(ds:FindFirstChild("Plinker") ~= nil))
+	end
 	local blocked, lines = 0, 0
 	for _, pl in r.Plates:GetChildren() do
 		local eye = pl.Position + V3(0, 4.9, 0)

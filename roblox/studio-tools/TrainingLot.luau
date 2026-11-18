@@ -32,7 +32,7 @@ local RAD = math.rad
 
 L.KIT = 102031091411579 -- the kit's Model asset (tl_kit_5: lot_models.py; kit 5: flicker fixes in the frames and the roller)
 L.PORTAL_KIT = 125041627506798 -- the gold dummies' portal (te_portal_1: tools/roblox/egg_portal_models.py), L.import(L.PORTAL_KIT)
-L.PUSH = 18
+L.PUSH = 19
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -289,45 +289,64 @@ local function garage()
 	tl2.Face = Enum.NormalId.Back; tl2.Color = Color3.fromRGB(255, 222, 176); tl2.Range = 22; tl2.Brightness = 1.2; tl2.Angle = 100
 	tl2.Parent = tp
 	-- the panels: deep mid-slate housings, the words on a darker inset, no strips
-	local function housing(x0, x1)
-		blk("GaragePanel", x0, x1, 243.6, 256, yardFace, yardFace + 1.5, C.housing)
-		blk("GaragePanelInset", x0 + 0.6, x1 - 0.6, 244.2, 255.4, yardFace + 1.5, yardFace + 1.62, C.inset)
+	-- (18 Nov, the owner: "the dummy prop that displays how many you've found should be moved to the door that leads to
+	-- the teleporter": with TV.LOT_PANEL the gold dummies' panel stands by the TOP door, the garage keeps KEEP CLEAR and its
+	-- own sounds in DoorSounds; without it, both panels are the garage's as before)
+	local PL = TV.LOT_PANEL
+	local function housingAt(x, y0, face)
+		blk("GaragePanel", x - 3.9, x + 3.9, y0, y0 + 12.4, face, face + 1.5, C.housing)
+		blk("GaragePanelInset", x - 3.3, x + 3.3, y0 + 0.6, y0 + 11.8, face + 1.5, face + 1.62, C.inset)
+		B.lamp(x, y0 + 13.9, face + 5, "spot", 16, 2.5, "ffdeb0", { look = V3(x, y0 + 5.9, face + 1.6), angle = 60 })
 	end
-	housing(15.6, 23.4); housing(-23.4, -15.6)
-	-- (judge round 3: the panels read near-black; a warm spot on each from the vault)
-	for _, x in { -19.5, 19.5 } do B.lamp(x, 257.5, yardFace + 5, "spot", 16, 2.5, "ffdeb0", { look = V3(x, 249.5, yardFace + 1.6), angle = 60 }) end
-	local front = yardFace + 1.66
+	housingAt(-19.5, 243.6, yardFace) -- (KEEP CLEAR's)
+	local px, py, pface = 19.5, 243.6, yardFace
+	if PL then px, py, pface = PL.x, PL.y, PL.face end
+	housingAt(px, py, pface)
+	local front = pface + 1.66
 	local panel = LOT.Panel
-	sign("PanelHead", { { "LOCKED", P.amber, "B", 1 } }, 5.4, 1.3, 19.5, 254.6, front, V3(19.5, 0, -8000), { clear = true }).Parent = panel
-	for i, x in { 17.3, 19.5, 21.7 } do
-		for _, q in cardMan("Pip", x, 249.7, front, 3.0, C.pipOff, 0.5, { ghost = true }) do q:SetAttribute("Pip", i); q.Parent = panel end
-		sign("PipLabel", { { ({ "YARD", "RANGE", "COURSE" })[i], P.grey, "S", 1 } }, 2.1, 0.5, x, 248.9, front, V3(x, 0, -8000), { clear = true }).Parent = panel
+	local labels = (PL and PL.labels) or { "YARD", "RANGE", "COURSE" }
+	sign("PanelHead", { { "LOCKED", P.amber, "B", 1 } }, 5.4, 1.3, px, py + 11, front, V3(px, 0, -8000), { clear = true }).Parent = panel
+	for i, dx in { -2.2, 0, 2.2 } do
+		local x = px + dx
+		for _, q in cardMan("Pip", x, py + 6.1, front, 3.0, C.pipOff, 0.5, { ghost = true }) do q:SetAttribute("Pip", i); q.Parent = panel end
+		sign("PipLabel", { { labels[i], P.grey, "S", 1 } }, 2.1, 0.5, x, py + 5.3, front, V3(x, 0, -8000), { clear = true }).Parent = panel
 	end
 	local tm = Instance.new("Part")
 	tm.Name = "Timer"; tm.Anchored = true; tm.CanCollide = false; tm.CanQuery = false; tm.CanTouch = false; tm.CastShadow = false
 	tm.Transparency = 1; tm.Size = V3(5.4, 1.2, 0.1)
-	tm.CFrame = B.at(CFrame.lookAt(V3(19.5, 246.9, front), V3(19.5, 246.9, -8000)))
+	tm.CFrame = B.at(CFrame.lookAt(V3(px, py + 3.3, front), V3(px, py + 3.3, -8000)))
 	local g = Instance.new("SurfaceGui")
 	g.Name = "Gui"; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 40; g.LightInfluence = 0
 	local tl = Instance.new("TextLabel")
 	tl.Name = "Text"; tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true; tl.Text = "1:30"
 	tl.TextColor3 = Color3.fromHex(P.pale); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
 	tl.Parent = g; g.Parent = tm; tm.Parent = panel
-	-- (the door's own sounds play from here: TheLot plays Ding, Open, Close and Buzz)
+	-- the sounds: the hunt's (a find's ding, the key's whirr, time's up) in the panel's Timer, painted on the finder's
+	-- screen (TrainingDoors.client); the garage door's own (its whirr up and down, the locked clatter) in DoorSounds at the
+	-- garage when the panel stands elsewhere (TheLot looks there first)
 	local lib2 = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireSounds")
+	local ds = tm
+	if PL then
+		ds = Instance.new("Part")
+		ds.Name = "DoorSounds"; ds.Anchored = true; ds.CanCollide = false; ds.CanQuery = false; ds.CanTouch = false; ds.CastShadow = false
+		ds.Transparency = 1; ds.Size = V3(1, 1, 1); ds.CFrame = B.cf(19.5, 250, yardFace + 2)
+		ds.Parent = LOT
+	end
 	-- (16 Nov: it rolls up as you walk up to it. a motor's whirr up and down, a clatter when it is locked)
-	for name, src in { Ding = { "ting", 1 }, Open = { "whirr", 0.8 }, Close = { "whirr", 0.62 }, Buzz = { "whoops", 1 }, Rattle = { "clatter", 0.85 } } do
+	for name, src in { Ding = { "ting", 1, tm }, Open = { "whirr", 0.8, tm }, Close = { "whirr", 0.62, ds }, Buzz = { "whoops", 1, tm }, Rattle = { "clatter", 0.85, ds } } do
 		local s = lib2 and lib2:FindFirstChild(src[1])
 		if s and s:IsA("Sound") then
-			local c = s:Clone(); c.Name = name; c.PlaybackSpeed = s.PlaybackSpeed * src[2]
-			c.RollOffMinDistance = 30; c.RollOffMaxDistance = 400; c.Parent = tm
+			for _, home in (if src[3] == tm and name == "Open" and ds ~= tm then { tm, ds } else { src[3] }) do
+				local c = s:Clone(); c.Name = name; c.PlaybackSpeed = s.PlaybackSpeed * src[2]
+				c.RollOffMinDistance = 30; c.RollOffMaxDistance = 400; c.Parent = home
+			end
 		end
 	end
-	sign("PanelHint", { { 'ask the <font color="#f2b84b">gold</font> ones.', P.grey, "S", 1 } }, 6, 1.35, 19.5, 245, front, V3(19.5, 0, -8000), { clear = true, rich = true }).Parent = panel
-	sign("KeepClear", { { "KEEP", P.amber, "B", 1 }, { "CLEAR", P.amber, "B", 1 } }, 5.4, 3.6, -19.5, 250.6, front, V3(-19.5, 0, -8000), { clear = true })
+	sign("PanelHint", { { 'ask the <font color="#f2b84b">gold</font> ones.', P.grey, "S", 1 } }, 6, 1.35, px, py + 1.4, front, V3(px, 0, -8000), { clear = true, rich = true }).Parent = panel
+	sign("KeepClear", { { "KEEP", P.amber, "B", 1 }, { "CLEAR", P.amber, "B", 1 } }, 5.4, 3.6, -19.5, 250.6, yardFace + 1.66, V3(-19.5, 0, -8000), { clear = true }) -- (the garage's own face: the panel's may be by the TOP door)
 	for k = 0, 5 do -- the door's hazard band across the panel's foot, so the panel belongs to the door
 		local x0 = -22.8 + 1.1 * k
-		blk("PanelHazard", x0, x0 + 1.1, 244.5, 245.7, front - 0.1, front + 0.05, if k % 2 == 0 then P.amber else P.slate)
+		blk("PanelHazard", x0, x0 + 1.1, 244.5, 245.7, yardFace + 1.56, yardFace + 1.71, if k % 2 == 0 then P.amber else P.slate)
 	end
 	-- the beacons (the yard's two over the panels; two more on the lot's canopy). turned so one lens faces you
 	local function beacon(x, y, z, yaw)
@@ -582,6 +601,50 @@ end
 -- a step; no light column, the owner: "I dont like the pillar of light from the teleporter"); its trigger is the black
 -- middle, so a key holder walks through the door, across the room and into the ring
 local EGG_COL = { slat = "6b7079", slat2 = "5f646d", frame = "4a4f58", back = "2b2d33" }
+-- the portal's green (18 Nov, the owner: "make the teleporter have a cool green effect"; earlier, "I dont like the pillar
+-- of light from the teleporter"): its middle a deep green that glows, its thin line green, and on its plane swirling
+-- green energy (spinning soft puffs), a few motes drifting out into the room, a soft green light and a low hum (Pro
+-- Sound Effects' "Metallic Glow Constant Deep Ticking Bassy Hum 2", 9125674114, looped, quiet, heard only near it).
+-- nothing rises above the ring: no column, no beam
+L.PORTAL_HUM = "rbxassetid://9125674114"
+local function portalGreen(pm, at)
+	for _, d in pm:GetDescendants() do
+		if d:IsA("BasePart") and (string.match(d.Name, "_17181c$") or string.match(d.Name, "_f0a53a$")) then d.Material = NEON end
+	end
+	local fx = Instance.new("Part")
+	fx.Name = "EggPortalFx"; fx.Anchored = true; fx.CanCollide = false; fx.CanQuery = false; fx.CanTouch = false; fx.CastShadow = false
+	fx.Transparency = 1; fx.Size = V3(5.6, 0.2, 5.6)
+	fx.CFrame = B.at(at * CF(0, 3.9, 0) * CFrame.Angles(math.pi / 2, 0, 0)) -- (the ring's middle; its Y along the ring's axis, to you)
+	local function emitter(name)
+		local e = Instance.new("ParticleEmitter")
+		e.Name = name; e.Shape = Enum.ParticleEmitterShape.Disc; e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		e.EmissionDirection = Enum.NormalId.Top; e.LightEmission = 1; e.LightInfluence = 0
+		e.Parent = fx
+		return e
+	end
+	local sw = emitter("Swirl")
+	sw.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	sw.Color = ColorSequence.new(Color3.fromRGB(110, 255, 160), Color3.fromRGB(20, 190, 95))
+	sw.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(0.5, 1.9), NumberSequenceKeypoint.new(1, 0.6) })
+	sw.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.5), NumberSequenceKeypoint.new(0.75, 0.6), NumberSequenceKeypoint.new(1, 1) })
+	sw.Lifetime = NumberRange.new(1.4, 2.2); sw.Rate = 26; sw.Speed = NumberRange.new(0.05, 0.25)
+	sw.Rotation = NumberRange.new(0, 360); sw.RotSpeed = NumberRange.new(110, 190); sw.ZOffset = 0.4
+	local mt = emitter("Motes")
+	mt.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	mt.Color = ColorSequence.new(Color3.fromRGB(200, 255, 215), Color3.fromRGB(60, 255, 140))
+	mt.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
+	mt.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	mt.Lifetime = NumberRange.new(1.4, 2.4); mt.Rate = 10; mt.Speed = NumberRange.new(0.6, 1.5)
+	mt.SpreadAngle = Vector2.new(35, 35); mt.Drag = 0.6; mt.Acceleration = V3(0, 0.4, 0); mt.ZOffset = 0.4
+	local pl = Instance.new("PointLight")
+	pl.Color = Color3.fromRGB(70, 255, 140); pl.Range = 14; pl.Brightness = 1.4; pl.Shadows = false; pl.Parent = fx
+	local hum = Instance.new("Sound")
+	hum.Name = "Hum"; hum.SoundId = L.PORTAL_HUM; hum.Looped = true; hum.Volume = 0.3
+	hum.RollOffMode = Enum.RollOffMode.InverseTapered; hum.RollOffMinDistance = 6; hum.RollOffMaxDistance = 38
+	hum.Playing = true; hum.Parent = fx
+	fx.Parent = B.root.LotScenery
+	return fx
+end
 L.EGG_DEPTH = 3.2
 L.PORTAL_BACK = 1.25 -- (the ring's plane, in front of the room's back wall)
 local function eggDoor(EGG)
@@ -644,8 +707,10 @@ local function eggDoor(EGG)
 		-- at the ring when you go) and runs back to the room's back wall: LaserDoors looks every 0.1 s, a walking body
 		-- crosses 2 studs in that, and the first trigger (1.9 deep) was crossed between two looks (Play, 18 Nov)
 		local ring = ROOM - L.PORTAL_BACK
-		local pm = B.put("te_portal", F * CF(0, 0, -ring), { name = "EggPortalRing", raw = true })
+		local pm = B.put("te_portal", F * CF(0, 0, -ring), { name = "EggPortalRing", raw = true,
+			color = if EGG.green then { ["17181c"] = "1c7a44", f0a53a = "3ddc84" } else nil })
 		if pm then pm.Parent = B.root.LotScenery end
+		if pm and EGG.green then portalGreen(pm, F * CF(0, 0, -ring)) end
 		B.solid("EggPortalStep", F * CF(0, 0.3, -(ring - 0.9)), V3(10.6, 0.6, 3.2))
 		local t0, t1 = ring - 1.6, ROOM - 0.1
 		trig.Size = V3(6.0, 6.4, t1 - t0)
@@ -654,10 +719,12 @@ local function eggDoor(EGG)
 		local lr = F * CF(0, 9.6, -(ring - 2.2))
 		B.lamp(lr.X, lr.Y, lr.Z, "point", 10, 0.45, "ffc27a")
 	end
-	-- LOCKED over it (a key holder's screen says OPEN), in the gold dummies' gold, no other words
+	-- LOCKED over it (a key holder's screen says OPEN), in the gold dummies' gold, no other words (none since 18 Nov where
+	-- the gold dummies' panel stands beside the door: EGG.plate == false)
 	local pw = math.min(4.4, W - 1)
 	local py = math.min(H + 0.85, ch - 1.3) -- (on the fill over the frame; low ceilings: as high as fits)
 	local plate = box("LotScenery", "EggPlate", -pw / 2, pw / 2, py, py + 1.1, -0.12, 0, P.board, { ghost = true })
+	if EGG.plate == false then plate.Transparency = 1 end
 	local pg = Instance.new("SurfaceGui")
 	pg.Name = "Gui"; pg.Face = Enum.NormalId.Back; pg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; pg.PixelsPerStud = 40; pg.LightInfluence = 0
 	local tl = Instance.new("TextLabel")
@@ -665,7 +732,7 @@ local function eggDoor(EGG)
 	tl.TextScaled = true; tl.Text = "LOCKED"
 	tl.TextColor3 = Color3.fromRGB(242, 184, 75); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
 	tl.Parent = pg; pg.Parent = plate
-	plate.Parent = door
+	if EGG.plate == false then plate:Destroy() else plate.Parent = door end
 	door.Parent = B.root.LotShell
 	CollectionService:AddTag(door, "EggDoor")
 	local lp = F * CF(0, math.min(H + 2.6, ch - 0.6), 1.2)
@@ -1707,7 +1774,8 @@ function L.check(tg, mk, T, O): { string }
 	local EGG = T and T.EGG_DOOR
 	if EGG then
 		local ed = tg:FindFirstChild("EggDoor", true)
-		need(ed and (EGG.room or ed:FindFirstChild("EggBack")) and ed:FindFirstChild("EggBlock") and ed:FindFirstChild("EggPlate"), "EggDoor (back, block, plate)")
+		need(ed and (EGG.room or ed:FindFirstChild("EggBack")) and ed:FindFirstChild("EggBlock") and (EGG.plate == false or ed:FindFirstChild("EggPlate")), "EggDoor (back, block, plate)")
+		if EGG.green then need(tg:FindFirstChild("EggPortalFx", true), "the portal's green (EggPortalFx)") end
 		if EGG.room then need(tg:FindFirstChild("EggPortalRing", true) and tg:FindFirstChild("EggPortalStep", true), "the portal (EggPortalRing, EggPortalStep: L.import(L.PORTAL_KIT) first)") end
 		local ep = doors and doors:FindFirstChild("EggPortal")
 		need(ep and ep:GetAttribute("NeedKey") == "LotKey" and ep:GetAttribute("Land") == "PlaygroundArrive", "Doors.EggPortal (NeedKey LotKey, Land PlaygroundArrive)")

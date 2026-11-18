@@ -386,6 +386,7 @@ function Dummies.init(fight: any, apply: any)
 		local spot = spots and spots:FindFirstChild(name) :: BasePart?
 		if not spot and not spots and i > 2 then continue end
 		if not spot and i > 5 then continue end
+		if not spot and spots and shooter(name) then continue end -- (18 Nov: the v3 rooms have no shooters; never one at a spawn point)
 		local home = if spot then spot.Position else (sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0))
 		local railSpan = spot and spot:GetAttribute("Span")
 		local span: number? = if type(railSpan) == "number" then railSpan elseif string.sub(name, 1, 5) == "Dummy" then 4 * S else nil

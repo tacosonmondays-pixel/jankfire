@@ -34,7 +34,7 @@ D.DECK = { x0 = -64, x1 = -30, z0 = -8226, top = 246 } -- the practice lane's 30
 -- blockout read close to the old yard) the overlook: a mezzanine across the front wall over the muster's arch, a stair
 -- up the east side; the gantry: the hall's centrepiece, a steel bridge across the whole hall at the 20 m line on three
 -- towers, the practice lane's 20 m dummy riding a rail on it
-D.MEZ = { z1 = -8156, top = 259, thick = 1.6, stair = { x0 = 16, x1 = 22, n = 19 } }
+D.MEZ = { z1 = -8156, top = 259, thick = 1.6, stair = { x0 = 16, x1 = 24, n = 19 } }
 D.GANTRY = { z = -8206, half = 3, top = 256, deep = 4, towers = { { -64, -58 }, { -27, -21 }, { 18, 24 } }, towerTop = 262 }
 -- the course: the lobby (low), the hall (tall)
 local LOB = { x0 = -68, x1 = -30, z0 = -8102, z1 = -8142, ceil = 256 }
@@ -48,7 +48,11 @@ C.WALK = { x0 = C.x0, x1 = C.x0 + 8, z0 = -8102, z1 = -8282, top = 254, gap = { 
 -- (v3.1) the watch steps up the south wall to the walk's start (a way up anyone can walk, a place to sit and watch); the
 -- east block, a platform mass against the east wall, reached across the hall by a steel bridge from the walk; a pad from
 -- its far end up onto the TOP gallery
-C.STEPS = { x0 = -84, run = 4.8, rise = 2, n = 7, z0 = -8102, z1 = -8114 }
+C.STEPS = { x0 = -84, run = 2.4, rise = 1, n = 14, z0 = -8102, z1 = -8114 } -- (walkable since 18 Nov: the pads are gone)
+-- the stair up to the TOP gallery (18 Nov, the owner, of the two pads either side of the dark floor in front of the
+-- gallery: "get rid of these teleporters", "move the stairs to fill this space"): from the bridge's north edge straight
+-- up to the gallery on the TOP door's axis, solid under, cheek walls both sides
+C.GSTAIR = { x0 = C.xm - 8, x1 = C.xm + 8, n = 16, rise = 1, run = 1.25 }
 C.BLOCK = { x0 = -86, x1 = C.x1, z0 = -8250, z1 = -8276, top = 254 }
 C.BRIDGE = { z0 = -8256, z1 = -8262, post = -105 }
 C.GAL = { z0 = -8282, top = 270 } -- the TOP gallery: the hall's width, from z0 to the north wall
@@ -64,12 +68,15 @@ function R.apply(t, k)
 	-- the dummies: the main lane's as before (the Plinker's view of the spawns and the gun sessions' test line hold),
 	-- the practice lane's down its middle, the course's runner on a rail between the core and the gallery
 	T.DUMMIES = {
-		Dummy = { 0, Y0, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 },
+		Dummy = { 0, Y0, -8206 }, -- (no Plinker, Plinker2 since 18 Nov: the owner, "these shooting dummies are now redundant")
 		Stand1 = { -9, Y0, -8173.5 }, Stand2 = { 9, Y0, -8173.5 },
 		Stand3 = { -44, Y0, -8173.5 }, Stand4 = { -44, D.GANTRY.top, D.GANTRY.z }, Dummy2 = { -50, D.DECK.top, -8238 },
 		Runner = { C.xm, Y0, -8226 },
 	}
 	T.RAILS = { Stand3 = { 6, 8 }, Stand4 = { 10, 14 }, Dummy2 = { 8, 20 }, Runner = { 16, 14 } }
+	-- (18 Nov, the owner: "this button is redundant", "these shooting dummies are now redundant": no live-fire end, no
+	-- console, no shooters; the practice lane's own shoot-back stays)
+	T.NO_LIVE = true
 	T.LANE = { Stand3 = true, Stand4 = true, Dummy2 = true }
 	-- gold Carl 1: on the practice deck's far corner by the big target (shot from the lane below); gold Carl 3: on the
 	-- core's top, looking back at the lobby's way in
@@ -79,7 +86,12 @@ function R.apply(t, k)
 	T.TOPD3 = { x = C.xm, y = C.GAL.top, w = 12, h = 10.5, frame = C.z1 + 4.2, face = C.z1 + 5.8, back = T.FACE + 0.3, cut = 1.95, jamb = 1.8 }
 	local td = T.TOPD3
 	T.EGG_DOOR = { cf = CFrame.lookAt(V3(td.x, td.y, td.face), V3(td.x, td.y, td.face - 1)), w = 8.4, h = 8.6,
-		cw = td.w, ch = td.h, wall = P.recess, room = td.face - td.back, door = 2.4 }
+		cw = td.w, ch = td.h, wall = P.recess, room = td.face - td.back, door = 2.4,
+		plate = false, green = true } -- (the panel beside it says LOCKED/OPEN; the owner: "make the teleporter have a cool green effect")
+	-- the gold dummies' panel (the owner: "the dummy prop that displays how many you've found should be moved to the door
+	-- that leads to the teleporter"): on the gallery's back wall beside the TOP frame, west of it (TrainingLot builds it;
+	-- x its middle, y its housing's foot, face the wall's face, labels under its three men)
+	T.LOT_PANEL = { x = td.x - 14, y = td.y + 1.6, face = C.z1, labels = { "DUMMIES", "RANGE", "COURSE" } }
 	-- the seal test's points inside these rooms (T.check adds the muster's, the range's and the basement's)
 	R.SEAL = {
 		V3(0, Y0 + 4, -8200), V3(0, 256, -8200), V3(0, 266, -8240), V3(-44, Y0 + 4, -8170), V3(-44, 262, -8200),
@@ -113,6 +125,7 @@ local function longWall(side, dir, zs, za, zb, y0, top, clere, o)
 		-- a sconce on the pier's face (the old yard's): a dark housing, a warm light let into it, a warm lamp
 		if o.sconce then
 			local f, y = side + dir * 2, if type(o.sconce) == "function" then o.sconce(z) else o.sconce
+			if not y then continue end
 			blk("Scenery", "SconceHousing", f, f + dir * 0.6, y, y + 3, z - 0.9, z + 0.9, P.dark)
 			blk("Scenery", "SconceLight", f + dir * 0.55, f + dir * 0.7, y + 0.4, y + 2.6, z - 0.55, z + 0.55, P.warm, { ghost = true, mat = NEON })
 			B.lamp(f + dir * 1.4, y + 1.5, z, "point", 13, 0.4, P.warm)
@@ -211,6 +224,24 @@ local function slab(name, x0, x1, z0, z1, top, thick, edges)
 		end
 	end
 end
+-- a cheek wall up a stair's open side, so it shows no sawtooth: a wedge under the slope from the foot (a0, floor y0) to
+-- the head (a1, y1), a band of even height over it and a pale cap, the stair running along axis "x" or "z"; c0..c1 the
+-- wall's thickness across
+local function cheek(axis, a0, a1, y0, y1, c0, c1, hex)
+	local L, H = math.abs(a1 - a0), y1 - y0
+	local up = 1.2
+	local am, cm, w = (a0 + a1) / 2, (c0 + c1) / 2, math.abs(c1 - c0)
+	local dir = if a1 > a0 then 1 else -1
+	local cf
+	if axis == "z" then
+		cf = CF(cm, y0 + H / 2, am) * (if dir > 0 then CFrame.identity else CFrame.Angles(0, math.pi, 0))
+	else
+		cf = CF(am, y0 + H / 2, cm) * CFrame.Angles(0, if dir > 0 then math.pi / 2 else -math.pi / 2, 0)
+	end
+	B.part("Shell", "Cheek", cf, V3(w, H, L), hex, { wedge = true })
+	B.ramp("Shell", "CheekBand", axis, a0, y0 + up, a1, y1 + up, c0, c1, hex, { thick = up + 0.15 })
+	B.ramp("Shell", "CheekCap", axis, a0, y0 + up + 0.3, a1, y1 + up + 0.3, math.min(c0, c1) - 0.15, math.max(c0, c1) + 0.15, P.trim, { thick = 0.3 })
+end
 -- a console (the live-fire console's kind; hold E): its button goes in folder f with a Prompt
 local function console(f, name, word, cx, cz, hex, action, objectText)
 	local ch = Y0 + 2.55
@@ -261,7 +292,7 @@ local function hallShell()
 	blk("Shell", "HallFront", -9.9, 9.9, MTOP, top, z0 + 4, z0, P.wall)
 	-- the bones
 	longWall(x0, 1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 }, { sconce = function(z) return if z < D.DECK.z0 + 1 then 255.5 else 249.5 end, haunch = true }) -- (over the deck: clear of an eye on it)
-	longWall(x1, -1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 }, { sconce = function(z) return if z < D.STAGE.z + 1 then 251.5 elseif z > D.MEZ.z1 - 30 then 255.5 else 249.5 end, haunch = true })
+	longWall(x1, -1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 }, { sconce = function(z) return if z < D.STAGE.z + 1 then 251.5 elseif z > D.MEZ.z1 - 30 then nil else 249.5 end, haunch = true })
 	endBones(z0, -1, { -44 }, x0, D.split - 1.6, Y0, D.pierTop, { 261, 266 })
 	endBones(z0, -1, {}, D.split + 1.6, x1, Y0, D.pierTop, { 261, 266 })
 	endWall(z0, -1, x0, x1, Y0, { skip = { -10.5, 10.5 } })
@@ -309,6 +340,7 @@ local function overlook()
 		blk("Shell", "OverlookStep", sx0, sx1, Y0, Y0 + k * rise, za, zb, P.ledge)
 		B.part("Shell", "StepNose", CF((sx0 + sx1) / 2, Y0 + k * rise - 0.3, za + 0.05), V3(sx1 - sx0, 0.6, 0.6), P.trim, { cyl = true })
 	end
+	cheek("z", zTop - n * 1.5, zTop, Y0, M.top, sx0 - 0.6, sx0, P.slate) -- (main: "a raw sawtooth profile" from the hall)
 	B.lamp((x0 + x1) / 2, M.top + 6, z0 - 6, "point", 40, 0.45, P.lampWhite)
 end
 -- the gantry: a deep steel girder across the hall at the 20 m line, three towers under it (the west wall, the lane wall's
@@ -334,7 +366,7 @@ local function gantry()
 end
 
 local function mainLane()
-	local x1, z0, z1 = D.x1, D.z0, D.z1
+	local x1, z1 = D.x1, D.z1
 	-- the floor's marks: a pale line under every frame, the strafer's rail, the distance lines and their numbers
 	for _, z in D.PIERS do
 		if z > D.STAGE.z + 2 then B.line(D.split + 1.2, z, x1 - 2, z, Y0 + 0.01, 0.7, P.line, "PierLine") end
@@ -346,37 +378,9 @@ local function mainLane()
 	end
 	local dm = T.DUMMIES.Dummy
 	K.rail(B, dm[1], Y0, dm[3], 11.4, {})
-	-- the live-fire end: its line, LIVE FIRE on the stage, a post at each end of the line, the console where you come in
-	local lf = K.folderIn(B.root, "LiveFire")
-	lf:SetAttribute("Line", B.at(CF(0, 0, T.LIVE.line)).Position.Z)
-	local zp = Instance.new("Part")
-	zp.Name = "Zone"; zp.Anchored = true; zp.Transparency = 1; zp.CanCollide = false; zp.CanQuery = false; zp.CanTouch = false
-	zp.Size = V3(x1 - D.split, 30, T.LIVE.line - z1); zp.CFrame = B.cf((D.split + x1) / 2, Y0 + 15, (T.LIVE.line + z1) / 2)
-	zp.Parent = lf
-	local n = math.floor((x1 - D.split) / 2)
-	for k = 0, n - 1 do
-		local a = D.split + 2 * k
-		blk("Scenery", "LiveBand", a, a + 2, Y0 + 0.03, Y0 + 0.07, T.LIVE.line + 0.7, T.LIVE.line - 0.7, if k % 2 == 0 then P.amber else P.slate, { ghost = true })
-	end
-	B.text("LiveWord", { { "LIVE FIRE", P.amber, "B", 1 } }, 13, 2.8, CF(0, D.STAGE.y + 0.05, D.STAGE.z - 2.5) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
-	for _, x in { D.split + 2.6, x1 - 2.6 } do
-		blk("Shell", "LivePost", x - 0.7, x + 0.7, Y0, Y0 + 7, T.LIVE.line + 0.7, T.LIVE.line - 0.7, P.slate)
-		local lamp = blk("Scenery", "LiveLamp", x - 0.9, x + 0.9, Y0 + 7, Y0 + 8.4, T.LIVE.line + 0.9, T.LIVE.line - 0.9, "6b4a46", { ghost = true })
-		lamp:SetAttribute("Lamp", true)
-		lamp.Parent = lf
-		local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 70, 50); pl.Range = 16; pl.Brightness = 1.2; pl.Enabled = false; pl.Parent = lamp
-	end
-	local btn = console(lf, "LiveButton", nil, 16.5, z0 - 5, "8a3a33", "Live fire on", "Shooting dummies")
-	btn:SetAttribute("Lamp", true)
-	K.healPad(B, x1 - 4, D.STAGE.y, z1 + 6)
-	-- the shooters' round stands at the live-fire end's far corners
-	for _, nm in { "Plinker", "Plinker2" } do
-		local q = T.DUMMIES[nm]
-		B.put("tv_pulpit", CF(q[1], D.STAGE.y, q[3]), { name = "PlinkerStand" })
-		B.drum("Collision", "PlinkerStandSolid", q[1], q[3], D.STAGE.y, D.STAGE.y + 2, 12.4, P.pier, { tr = 1, noShadow = true })
-		B.drum("Shell", "PlinkerTop", q[1], q[3], D.STAGE.y + 1.9, q[2] - 0.3, 8, P.pier2)
-		B.drum("Shell", "PlinkerTopLip", q[1], q[3], q[2] - 0.35, q[2], 8.5, P.trim)
-	end
+	-- (no live-fire end since 18 Nov, the owner: "this button is redundant", "these shooting dummies are now redundant":
+	-- its console, its two shooters on their round stands, its line, posts, word and heal pad are gone; the stage
+	-- stays, the garage door's floor)
 	-- two spots on the garage door, from the last bay
 	B.lamp(-8, 263, z1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, z1), angle = 70 })
 	B.lamp(8, 263, z1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, z1), angle = 70 })
@@ -572,7 +576,8 @@ local function courseRoute()
 	for _, seg in { { W.gap[1], W.gap[1] }, { W.gap[2], W.gap[2] } } do
 		B.part("Shell", "Nose", CF((W.x0 + W.x1) / 2, W.top - 0.1, seg[1]), V3(W.x1 - W.x0, 1.4, 1.4), P.trim, { cyl = true })
 	end
-	-- the watch steps: broad 2-high steps up the south wall from the lobby's side to the walk's start, their noses lit
+	-- the watch steps: broad walkable steps up the south wall from the lobby's side to the walk's start, noses lit, a
+	-- cheek wall on the hall's side
 	local ST = C.STEPS
 	for k = 1, ST.n do
 		local xa, xb = ST.x0 - (k - 1) * ST.run, ST.x0 - k * ST.run
@@ -581,6 +586,7 @@ local function courseRoute()
 		blk("Scenery", "EdgeLight", xa + 0.05, xa + 0.2, Y0 + k * ST.rise - 1.3, Y0 + k * ST.rise - 1.0, ST.z0, ST.z1, P.litEdge, { ghost = true, mat = NEON })
 	end
 	local lx = ST.x0 - ST.n * ST.run
+	cheek("x", ST.x0, lx, Y0, W.top, ST.z1 - 0.6, ST.z1, P.slate)
 	blk("Shell", "WatchLanding", W.x1, lx, Y0, W.top, ST.z0, ST.z1, P.ledge)
 	B.part("Shell", "Nose", CF((W.x1 + lx) / 2, W.top - 0.1, ST.z1), V3(lx - W.x1, 1.4, 1.4), P.trim, { cyl = true })
 	-- the east block: a pale mass against the east wall with panels, the white nose round its open edges
@@ -604,7 +610,18 @@ local function courseRoute()
 	end
 	blk("Shell", "BridgePost", BR.post - 1.2, BR.post + 1.2, Y0, W.top - 2.4, BR.z0 - 1.8, BR.z1 + 1.8, P.pier2)
 	blk("Shell", "PierBase", BR.post - 1.45, BR.post + 1.45, Y0, Y0 + 1.3, BR.z0 - 1.55, BR.z1 + 1.55, P.deep)
-	B.pad((BK.x0 + BK.x1) / 2, BK.top, BK.z1 + 4, V3(0, 56, -12)) -- (the block's far end up onto the gallery)
+	-- the stair from the bridge up to the gallery
+	local GS = C.GSTAIR
+	local zf = BR.z1
+	for k = 1, GS.n do
+		local za, zb = zf - (k - 1) * GS.run, zf - k * GS.run
+		blk("Shell", "GalleryStep", GS.x0, GS.x1, Y0, W.top + k * GS.rise, za, zb, P.ledge)
+		B.part("Shell", "StepNose", CF((GS.x0 + GS.x1) / 2, W.top + k * GS.rise - 0.3, za - 0.05), V3(GS.x1 - GS.x0, 0.6, 0.6), P.trim, { cyl = true })
+	end
+	for _, c in { { GS.x0 - 0.6, GS.x0 }, { GS.x1, GS.x1 + 0.6 } } do
+		cheek("z", zf, zf - GS.n * GS.run, W.top, G.top, c[1], c[2], P.slate)
+		blk("Shell", "StairSide", c[1], c[2], Y0, W.top, zf, zf - GS.n * GS.run, P.slate) -- (the cheek carried down to the floor)
+	end
 	for _, z in C.GZ do
 		if z < W.z0 and z > W.z1 and not (z < W.gap[1] and z > W.gap[2]) then
 			blk("Shell", "Bracket", W.x0, W.x1 - 1, W.top - 5.4, W.top - 1.4, z - 1.4, z + 1.4, P.pier)
@@ -640,12 +657,8 @@ local function courseRoute()
 	for _, sz in { -1, 1 } do
 		B.part("Shell", "Nose", CF((W.x1 + px0) / 2, W.top - 0.1, CO.z + sz * 3), V3(px0 - W.x1, 1.4, 1.4), P.trim, { cyl = true })
 	end
-	-- jump pads (gravity 78: a pad's v rises about v^2 / 156): the floor to the walk's start, the floor to the core's
-	-- south ledge, the ledge to the core's top, the walk's far end up onto the gallery
-	B.pad(W.x1 + 8, Y0, W.z0 - 10, V3(-12, 52, 0))
-	B.pad(CO.x, Y0, pz0 + 6, V3(0, 52, -8))
-	B.pad(px1 - 2, CO.ledge, CO.z, V3(-5, 56, 0))
-	B.pad(W.x0 + 4, W.top, W.z1 + 8, V3(0, 56, -10))
+	-- (no jump pads since 18 Nov, the owner: "get rid of these teleporters": the watch steps, the bridge and the stair are
+	-- the way up; the core's top is the grapple rings')
 	-- grapple rings on the beams: over the floor run, and from the core's top north to the gallery
 	for _, h in { { C.xm - 14, -8150 }, { C.xm + 14, -8166 }, { C.xm, -8230 }, { C.xm - 10, -8262 } } do
 		B.put("tv_hoop", CF(h[1], C.top, h[2]), { name = "GrappleRing" })
