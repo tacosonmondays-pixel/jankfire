@@ -192,6 +192,7 @@ SkinSets.FX = {
 	-- gun moves. Everything takes a wrap's glow colour (tint; gold with none); thinner in first person (fp), and the idle bits off there while aiming (the wings are hidden then too). The halo's top is 5 cm under
 	-- the sight line
 	ar_seraph_tripo = {
+		aim = 0.6, -- (aim: kept on while you aim, at this share, never in the sight picture: the owner, "when you scope with the seraph a lot of details are lost and the vfx too")
 		idle = {
 			{ kind = "aura", colour = Color3.fromRGB(255, 204, 110), rate = 2.4, life = 1.5, size = 0.15,
 				at = { { 0, 0.015, -0.556 } }, tint = true, fp = 0.6 },
@@ -241,6 +242,7 @@ SkinSets.FX = {
 	-- moves; the halo and brake bits stay the rifle's. Sniper and burst at the rifle's rates; pistol and katana (wings at
 	-- 0.45) about half the rates and sizes. The katana's pair mirrors across y (one wing up, one down): explicit lists.
 	sniper_seraph = { -- (the Seraph Sniper: the headliner's wings)
+		aim = 0.6,
 		idle = {
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
 				at = { { 0.034, 0.0751, 0.5178 }, { 0.045, 0.0645, 0.4108 }, { 0.019, 0.0923, 0.5731 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
@@ -260,6 +262,7 @@ SkinSets.FX = {
 		bullet = { kind = "feathers" },
 	},
 	burst_seraph = { -- (the Seraph Burst Rifle: the headliner's wings)
+		aim = 0.6,
 		idle = {
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
 				at = { { 0.034, 0.0776, 0.4896 }, { 0.045, 0.0633, 0.383 }, { 0.019, 0.0967, 0.5443 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
@@ -279,6 +282,7 @@ SkinSets.FX = {
 		bullet = { kind = "feathers" },
 	},
 	pistol_seraph = { -- (the Seraph Pistol: the headliner's wings, lighter)
+		aim = 0.6,
 		idle = {
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 1.2, life = 1.8, size = 0.013, drift = "fall",
 				at = { { 0.0226, 0.0606, 0.0032 }, { 0.0275, 0.0525, -0.0445 }, { 0.0158, 0.0701, 0.0275 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
@@ -298,6 +302,7 @@ SkinSets.FX = {
 		bullet = { kind = "feathers" },
 	},
 	katana_seraph = { -- (the Seraph Katana: the headliner's wings, lighter)
+		aim = 0.6,
 		idle = {
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 1.2, life = 1.8, size = 0.013, drift = "fall",
 				at = { { -0.0029, 0.167, -0.1104 }, { -0.0079, 0.1233, -0.1311 }, { 0.0038, 0.1923, -0.1042 }, { -0.0029, -0.167, -0.1104 }, { -0.0079, -0.1233, -0.1311 }, { 0.0038, -0.1923, -0.1042 } }, fp = 0.3 }, -- (shed off the wings' outer edges)

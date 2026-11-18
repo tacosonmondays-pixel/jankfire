@@ -2000,8 +2000,26 @@ end
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
 	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number,
 	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart?, tint: { ParticleEmitter },
-	coils: { any }, coilBeams: { any } }
+	coils: { any }, coilBeams: { any }, aimT: number?, aimed: boolean? }
 local skinned: { [Model]: SkinFx } = {}
+-- each idle emitter's own rate (an aimed gun with spec.aim runs them at a share of it)
+local idleRate: { [ParticleEmitter]: number } = setmetatable({}, { __mode = "k" }) :: any
+-- the idle points riding a piece: where each sits on it at full size. a piece the aim folds away carries TuckScale (the
+-- hold session's ads tuck: 1 at the hip, smaller aimed), and its points move in with it so they stay on the wing
+local rideBase: { [Attachment]: Vector3 } = setmetatable({}, { __mode = "k" }) :: any
+local rideWatched: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local function rideWatch(piece: BasePart)
+	if rideWatched[piece] then return end
+	rideWatched[piece] = true
+	piece:GetAttributeChangedSignal("TuckScale"):Connect(function()
+		local sc = piece:GetAttribute("TuckScale")
+		local f = if type(sc) == "number" then sc else 1
+		for _, a in piece:GetChildren() do
+			local b = if a:IsA("Attachment") then rideBase[a] else nil
+			if b then (a :: Attachment).Position = b * f end
+		end
+	end)
+end
 local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
 	local id = model:GetAttribute("Skin")
@@ -2136,6 +2154,18 @@ local function coilPlace(cl: any, t: number)
 		local tan = cl.d + (cl.e2 * c_ - cl.e1 * s_) * (cl.r * w * cl.spin)
 		cl.atts[j].CFrame = CFrame.fromMatrix(cl.a + cl.d * u + rad * cl.r, tan.Unit, rad)
 	end
+	-- (a vine on a piece that the aim folds away, a spec with `aim`: it goes where its piece goes)
+	local pc = cl.piece :: BasePart?
+	if pc and cl.root then
+		local cur = (cl.root :: BasePart).CFrame:ToObjectSpace(pc.CFrame)
+		local sc = pc:GetAttribute("TuckScale")
+		local f = if type(sc) == "number" then sc else 1
+		local inv = cl.rel0:Inverse()
+		for j = 0, cl.n do
+			local c0 = inv * cl.atts[j].CFrame -- (in the piece's own frame as it was built)
+			cl.atts[j].CFrame = cur * (c0.Rotation + c0.Position * f)
+		end
+	end
 end
 -- (re)colour a skin's flames, lit parts and vines from its gun's wrap; cheap to call: only acts when the wrap changed
 skinGlow = function(S_: any, force: boolean?)
@@ -2171,6 +2201,25 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			if v > best then best = v; S_.vis = d end
 		end
 	end
+	-- (a spec with `aim`: the hold session folds the pieces that cross the sight picture out of it as you aim (holds.json
+	-- ads tuck rows), so each idle point rides the gun piece nearest it, and its bits go where that piece goes)
+	local ridePieces: { BasePart } = {}
+	if type(sp.aim) == "number" then
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") and d ~= root and d.Transparency < 0.99 and not d:FindFirstAncestor("GunHat") then table.insert(ridePieces, d) end
+		end
+	end
+	local function nearestPiece(w: Vector3): BasePart?
+		local best, bd = nil, math.huge
+		for _, b in ridePieces do
+			local l = b.CFrame:PointToObjectSpace(w)
+			local h = b.Size / 2
+			local q = Vector3.new(math.max(math.abs(l.X) - h.X, 0), math.max(math.abs(l.Y) - h.Y, 0), math.max(math.abs(l.Z) - h.Z, 0))
+			local dd = q.Magnitude
+			if dd < bd then best, bd = b, dd end
+		end
+		return if bd < 0.05 * k then best else nil
+	end
 	for _, e in sp.idle or {} do
 		-- (e.fp: the rate's share in first person, your own gun; 0 = none there)
 		local fpK = if S_.fp and type(e.fp) == "number" then e.fp else 1
@@ -2183,10 +2232,16 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 		for _, p in pts do
 			local att = Instance.new("Attachment")
 			att.Name = "SkinFx"; att.Position = p * k; att.Parent = root
+			local piece = if #ridePieces > 0 then nearestPiece(att.WorldPosition) else nil
+			if piece then
+				local w = att.WorldPosition; att.Parent = piece; att.WorldPosition = w
+				rideBase[att] = att.Position; rideWatch(piece)
+			end
 			local em = rigEmitter(att, skinProps(e, (e.size or 0.02) * k, k))
 			em.LockedToPart = model:IsDescendantOf(workspace.CurrentCamera) -- (first person: they ride with the view)
 			if em.FlipbookMode == ONESHOT then oneshot(em, 16) end
 			em.Rate = (e.rate or 1) * fpK / #pts
+			idleRate[em] = em.Rate
 			em.Enabled = not e.afterFire
 			if e.afterFire then table.insert(S_.after, em) else table.insert(S_.idle, em) end
 			if e.tint then table.insert(S_.tint, em) end
@@ -2306,7 +2361,11 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 					atts[j] = att
 				end
 				local cl = { atts = atts, a = ab[1] * k, d = d, e1 = e1, e2 = e2, r = r, T = T, n = nArc,
-					spin = if ai == 2 then -1 else 1, rate = c.spin or 1.5, phase = (i - 1) / n * 2 * math.pi }
+					spin = if ai == 2 then -1 else 1, rate = c.spin or 1.5, phase = (i - 1) / n * 2 * math.pi } :: any
+				if #ridePieces > 0 then -- (rides the piece nearest its middle: the hold session's aim tucks)
+					local pc = nearestPiece(root.CFrame:PointToWorldSpace(cl.a + cl.d * 0.5))
+					if pc then cl.piece = pc; cl.root = root; cl.rel0 = root.CFrame:ToObjectSpace(pc.CFrame) end
+				end
 				coilPlace(cl, clockT)
 				table.insert(S_.coils, cl)
 				for j = 0, nArc - 1 do
@@ -2397,6 +2456,8 @@ function Fx.skinOff(model: Model)
 	skinned[model] = nil
 	local root = model.PrimaryPart
 	if root then for _, c in root:GetChildren() do if c.Name == "SkinFx" then c:Destroy() end end end
+	-- (and the idle points that ride a piece: a spec with `aim`)
+	for _, c in model:GetDescendants() do if c.Name == "SkinFx" and c:IsA("Attachment") then c:Destroy() end end
 end
 -- the registered skinned gun whose muzzle a shot left from: the nearest within 2.5 studs. (round 12 in first person:
 -- the first one within reach was often the copy hidden in your character's hand, a stud or two from the viewmodel's,
@@ -2535,6 +2596,36 @@ local function swingFlameStep(dt: number)
 		if mid and tip then Fx.bladeFlames(sw.m, mid.WorldPosition, tip.WorldPosition) end
 	end
 end
+-- (18 Nov, the owner on the Seraph set: "when you scope with the seraph a lot of details are lost and the vfx too".
+-- A skin whose spec has `aim` (a rate share) keeps its idle bits and vines on while you aim in first person, thinner,
+-- but nothing in the sight picture: an emitter or a vine piece whose spot is there is off, checked ten times a second.
+-- The sight picture: the middle fifth across, from 14 % of the height above the centre to 22 % below it (rising bits
+-- from just under it drift up into it))
+local function inSight(cam: Camera, p: Vector3): boolean
+	local v, on = cam:WorldToViewportPoint(p)
+	if not on or v.Z <= 0 then return false end
+	local vp = cam.ViewportSize
+	local dx, dy = v.X / vp.X - 0.5, v.Y / vp.Y - 0.5
+	return math.abs(dx) < 0.1 and dy > -0.14 and dy < 0.22
+end
+local function aimSift(S_: SkinFx, cam: Camera)
+	local share = S_.spec.aim
+	for _, e in S_.idle do
+		local a = e.Parent
+		local off = a ~= nil and a:IsA("Attachment") and inSight(cam, (a :: Attachment).WorldPosition)
+		-- (or on a piece the aim fades out: its bits would hang in the air)
+		local pc = a and a.Parent
+		if not off and pc and pc:IsA("BasePart") and (pc.LocalTransparencyModifier >= 0.99 or pc.Transparency >= 0.99) then off = true end
+		e.Enabled = not off
+		local r = idleRate[e]
+		if r then e.Rate = r * share end
+	end
+	for _, cb in S_.coilBeams do
+		local b = cb.b :: Beam
+		local a0, a1 = b.Attachment0, b.Attachment1
+		b.Enabled = not ((a0 ~= nil and inSight(cam, a0.WorldPosition)) or (a1 ~= nil and inSight(cam, a1.WorldPosition)))
+	end
+end
 local function skinStep()
 	local cam = workspace.CurrentCamera
 	local fov = if cam then cam.FieldOfView else 70
@@ -2547,11 +2638,21 @@ local function skinStep()
 		do
 			local vis = S_.vis
 			local hidden = vis == nil or vis.Parent == nil or vis.LocalTransparencyModifier >= 0.99 or vis.Transparency >= 0.99
-			local quiet = hidden or (S_.fp and aiming)
+			local keep = type(S_.spec.aim) == "number" and S_.spec.aim > 0
+			local quiet = hidden or (S_.fp and aiming and not keep)
 			if quiet ~= S_.quiet then
 				S_.quiet = quiet
 				for _, e in S_.idle do e.Enabled = not quiet; if hidden then e:Clear() end end
 				for _, cb in S_.coilBeams do cb.b.Enabled = not quiet end
+			end
+			if S_.fp and keep and not quiet and cam then
+				if aiming then
+					if not S_.aimed or clockT - (S_.aimT or 0) > 0.1 then S_.aimed = true; S_.aimT = clockT; aimSift(S_, cam) end
+				elseif S_.aimed then -- (back at the hip: all of it, at full rate)
+					S_.aimed = false
+					for _, e in S_.idle do e.Enabled = true; local r = idleRate[e]; if r then e.Rate = r end end
+					for _, cb in S_.coilBeams do cb.b.Enabled = true end
+				end
 			end
 		end
 		if (#S_.flames > 0 or #S_.lit > 0 or #S_.coilBeams > 0) and clockT - S_.glowT > 1 then S_.glowT = clockT; skinGlow(S_) end
