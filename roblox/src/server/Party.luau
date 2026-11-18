@@ -693,15 +693,26 @@ local function find(p: Player): (boolean, string?)
 	local mode = PlayConfig.byId[pt.mode]
 	local ok, why = PlayConfig.fits(mode, #pt.members, pt.ranked)
 	if not ok then return false, why end
+	local priv = PlayConfig.private(mode, #pt.members) -- (the party fills the duel by itself: private, never ranked)
 	local lo, hi, sum = math.huge, -math.huge, 0
 	for _, m in pt.members do
-		if pt.ranked and m.player and not RankedData.ready(m.player) then return false, m.display .. "'s ranked data is still loading" end
+		if pt.ranked and not priv and m.player and not RankedData.ready(m.player) then return false, m.display .. "'s ranked data is still loading" end
 		local r = ratingFor(m, pt.mode)
 		lo, hi, sum = math.min(lo, r), math.max(hi, r), sum + r
 		if m.player and Matches.matchOf(m.player) then return false, m.display .. " is in a match" end
 	end
-	if pt.ranked and hi - lo > Ranked.PARTY_SPREAD then
+	if pt.ranked and not priv and hi - lo > Ranked.PARTY_SPREAD then
 		return false, ("ranked parties must be within %d rating of each other"):format(Ranked.PARTY_SPREAD)
+	end
+	-- (18 Nov 2026) a party that fills a duel by itself (2 for 1V1, 3 for 1V1V1, 4 for 2V2): a private match among
+	-- itself, at once (PlayConfig.private). no queue, no other servers, never ranked: the casual key, whatever the
+	-- switch says. it votes on its map like any casual duel; start() splits the party into the sides
+	if priv then
+		local e: Queue.Entry = { key = Queue.key(pt.mode, false), mode = pt.mode, ranked = false, since = now(),
+			size = #pt.members, rating = sum / #pt.members, owner = pt, state = "found" }
+		pt.entry = e
+		onFormed(e.key, { { e } })
+		return true, nil
 	end
 	-- a party's own pick without FILL FROM QUICKPLAY: the party plays it alone, now, never rated
 	if partyPicked(pt) and not pt.fill then
@@ -823,9 +834,17 @@ local function start(f: Found): boolean
 	-- the sides as the queue formed them, but a classic team mode splits whole parties into two (a quickplay vote only
 	-- offers one when they split), or a party alone into two halves
 	local groups: { { Member } } = {}
+	-- (a private duel: the party fills the mode by itself and is split into its sides, a fresh random split each time)
+	local priv = #all == 1 and PlayConfig.private(cfg, #entryMembers(all[1]))
 	if (cfg :: any).sides == 2 and #all == 1 then
 		groups = { {}, {} }
 		for i, m in entryMembers(all[1]) do table.insert(groups[(i - 1) % 2 + 1], m) end
+	elseif priv then
+		local ms = table.clone(entryMembers(all[1]))
+		for i = #ms, 2, -1 do local j = math.random(i); ms[i], ms[j] = ms[j], ms[i] end
+		local n = (cfg :: any).teams :: number
+		for t = 1, n do groups[t] = {} end
+		for i, m in ms do table.insert(groups[(i - 1) % n + 1], m) end
 	else
 		local teams = if (cfg :: any).sides == 2 then (Queue.split(all, PlayConfig.PARTY_MAX) or f.teams) else f.teams
 		for t, list in teams do
@@ -849,8 +868,10 @@ local function start(f: Found): boolean
 			end
 		end
 	end
-	-- (one party alone is never rated: friends could farm each other. the queue only forms a ranked match of two or more)
-	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated, arena = f.map }
+	-- (one party alone is never rated: friends could farm each other. the queue only forms a ranked match of two or more.
+	-- 18 Nov 2026: and a party alone, a private duel or a PARTY-card pick without fill, counts for nothing at all:
+	-- private, like an owner's dev match, so no stats, XP, mastery or quests either)
+	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated, arena = f.map, private = #all == 1 }
 	-- (Studio only: a match with stand-ins in it can't play out, so it is held and ends after testHold.secs)
 	if standIns and RunService:IsStudio() then
 		local win = testHold.win
@@ -880,11 +901,19 @@ local function start(f: Found): boolean
 			if o.ticket then task.spawn(CrossServer.withdraw, o.ticketKey or e.key, o.ticket); o.ticket, o.ticketKey = nil, nil end
 			o.entry, o.found = nil, nil
 			if o.members and o.leader then
-				-- the whole party comes back to the room after the match (built now if everyone had left it)
 				local pt = o :: PartyT
-				ensureRoom(pt)
-				for _, mem in pt.members do
-					if mem.player then mem.inRoom = true; mem.player:SetAttribute("Lobby", pt.id) end
+				if priv then
+					-- a private duel: back to the hub after it, still a party (PLAY again opens the room)
+					for _, mem in pt.members do
+						if mem.player then mem.inRoom = false; mem.player:SetAttribute("Lobby", nil) end
+					end
+					closeRoomIfEmpty(pt)
+				else
+					-- the whole party comes back to the room after the match (built now if everyone had left it)
+					ensureRoom(pt)
+					for _, mem in pt.members do
+						if mem.player then mem.inRoom = true; mem.player:SetAttribute("Lobby", pt.id) end
+					end
 				end
 				pt.match = m.id
 				pushParty(pt)

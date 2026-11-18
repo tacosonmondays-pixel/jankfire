@@ -148,6 +148,7 @@ local function liveFor(s: State?): boolean
 	if c.test then return true end
 	if c.m and c.m.ghost and not testCount then return false end -- (a Studio ghost match: not real)
 	if c.m and c.m.dev then return false end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
+	if c.m and c.m.private then return false end -- (a party alone, a private duel: Party.luau, counts for nothing)
 	local mi = Matches.matchOf(s.p)
 	return mi ~= nil and mi.id == c.id and mi.phase == "live"
 end
@@ -162,7 +163,7 @@ local function masteryCounts(s: State?): boolean
 	if not s or not s.cur or watched[s.p.UserId] then return false end
 	local c = s.cur :: Cur
 	if c.test then return true end
-	return c.m ~= nil and not (c.m.ghost and not testCount) and not c.m.dev
+	return c.m ~= nil and not (c.m.ghost and not testCount) and not c.m.dev and not c.m.private
 end
 -- who hurt whom lately, for assists: victim -> { attacker -> { t (last hurt), w = { [weapon] = damage } } }
 local hurtBy: { [Fighter]: { [Fighter]: { t: number, w: { [string]: number } } } } = setmetatable({}, { __mode = "k" }) :: any
@@ -382,6 +383,7 @@ local function finish(p: Player, res: string, score: string?)
 	if not d then return end
 	if c.m and c.m.ghost and not testCount then return end -- (a Studio ghost match is never recorded)
 	if c.m and c.m.dev then return end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
+	if c.m and c.m.private then return end -- (a party alone, a private duel: Party.luau, counts for nothing)
 	-- the match's record first (a restore reads it), then the totals (not for a cheater restored here)
 	table.insert(d.log, 1, { id = c.key, t = os.time(), mode = c.mode, map = c.arena, team = c.team, ranked = if c.ranked then true else nil, r = res,
 		k = c.k, d = c.d, rp = c.rp, rw = c.rw, xp = c.xp, foes = c.foes, mates = c.mates })
@@ -425,6 +427,7 @@ local function hookMatches()
 	Matches.onRound(function(m: any, winner: number)
 		if m.ghost and not testCount then return end
 		if m.dev then return end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
+		if m.private then return end -- (a party alone, a private duel: Party.luau, counts for nothing)
 		for t, list in m.teams do
 			for _, p in list do
 				local s = st[p]

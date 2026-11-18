@@ -85,8 +85,18 @@ PlayConfig.FOUND = 3 -- s from MATCH FOUND to the arena
 PlayConfig.TICK = 0.5 -- s between matchmaking passes
 
 -- can a party of `n` play this mode (it must fit one team), and may it be ranked?
+-- (18 Nov 2026, the owner: "if you're in a party of 2 you can search 1v1, it'll just send you to a private matching
+-- 1v1!") a party exactly the size of a duel mode's whole match (2 for 1V1, 3 for 1V1V1, 4 for 2V2) plays it among
+-- itself, at once: no queue, no other servers, never ranked whatever the switch says, and it counts for nothing
+-- (Matches' m.private: no stats, XP, mastery, quests or rank), so friends can't farm each other
+function PlayConfig.private(mode: any, n: number): boolean
+	return mode ~= nil and mode.ladder ~= "party" and type(mode.teams) == "number" and type(mode.size) == "number"
+		and n >= 2 and n == mode.teams * mode.size
+end
+
 function PlayConfig.fits(mode: Mode?, n: number, ranked: boolean): (boolean, string?)
 	if not mode then return false, "pick a mode" end
+	if PlayConfig.private(mode, n) then return true, nil end -- (the whole match in one party: private, any switch)
 	if n > mode.size then
 		return false, if mode.size == 1 then ("solo only: your party is %d"):format(n) else ("%d a side: your party is %d"):format(mode.size, n)
 	end

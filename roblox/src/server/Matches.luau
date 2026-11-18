@@ -61,6 +61,7 @@ type Match = {
 	queue: string?, -- (the Play queue's matches: its queue key, "ranked:2v2"; nil = a pad match)
 	ranked: boolean?, -- (a ranked match: RankedData rates it at the end)
 	rated: any?, -- (everyone's rating when it started, stand-ins too: RankedData)
+	private: boolean?, -- (a party alone, Party.luau: counts for nothing, like a dev match: Stats, Quests)
 	rules: any?, -- (a classic mode's match, Matches.startMode: Modes.luau runs its spawns, respawns, clock, HUD, board and end)
 	ms: any?, -- (and keeps its state here)
 	liveAt: number?, -- (the os.clock() the next round goes live: the loadout window shuts then, LoadoutWindow)
@@ -632,7 +633,7 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 	lastArena[pad] = arena
 	local m: Match = { id = nextId, key = SERVER_TAG .. "-" .. nextId .. "-" .. os.time(), mode = if opts and opts.mode then opts.mode else pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
 		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil,
-		rules = if opts then opts.rules else nil }
+		rules = if opts then opts.rules else nil, private = if opts and opts.private == true then true else nil }
 	table.insert(live, m)
 	if not m.queue then padLast[pad] = m end -- (a Play-queue match isn't the pad's: its sign keeps its own)
 	each(m, function(p, t)
@@ -1250,7 +1251,7 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 		for _, m in live do
 			local n = 0
 			each(m, function() n += 1 end)
-			table.insert(out.live, { id = m.id, pad = m.pad.Name, arena = m.arena, site = m.site.model.Name, copy = m.site.copy, phase = m.phase, round = m.round, players = n, ghost = m.ghost ~= nil })
+			table.insert(out.live, { id = m.id, pad = m.pad.Name, arena = m.arena, site = m.site.model.Name, copy = m.site.copy, phase = m.phase, round = m.round, players = n, ghost = m.ghost ~= nil, private = m.private == true, ranked = m.ranked == true })
 		end
 		for model in busy do table.insert(out.sites, model:GetFullName()) end
 		for pad, cd in padCount do out.pads[pad.Name] = { arena = cd.arena, site = cd.site.model.Name, left = cd.at - os.clock() } end

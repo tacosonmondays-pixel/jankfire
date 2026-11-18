@@ -321,6 +321,7 @@ local function matchCounts(s: State, c: Cur): boolean
 	if watched[s.p.UserId] then return false end
 	if isGhost(c) and not testCount then return false end
 	if c.m ~= nil and c.m.dev then return false end -- (a match the owner used dev powers in, OwnerDev.server: counts for nothing)
+	if c.m ~= nil and c.m.private then return false end -- (a party alone, a private duel: Party.luau, counts for nothing)
 	return true
 end
 -- the took-part rule, waived only for a Studio test's ghost match (nobody to hurt in one)

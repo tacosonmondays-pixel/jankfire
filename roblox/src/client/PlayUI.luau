@@ -462,6 +462,7 @@ local function modeList()
 	for _, m in PlayConfig.MODES do
 		if ranked and not m.ranked then continue end
 		local fits, why = PlayConfig.fits(m, n, ranked)
+		local priv = PlayConfig.private(m, n) -- (the party fills it by itself: a private match, never ranked)
 		local picked = pt ~= nil and pt.mode == m.id
 		local card = new("TextButton", { Name = m.id, AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
 			BackgroundColor3 = if picked then T.CARD_HI else T.CARD, BackgroundTransparency = if picked then 0.05 else (if ranked then 0.4 else 0.2),
@@ -472,9 +473,9 @@ local function modeList()
 			local pb = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Position = UDim2.fromOffset(0, 8), Size = UDim2.new(0, 3, 1, -16), ZIndex = 3 }, card)
 			T.corner(pb, 2)
 		end
-		local nm = text(card, "Name", m.name, if c then 16 else 21, if fits then T.TEXT else T.DIM, T.FONT_TITLE); nm.ZIndex = 3
+		local nm = text(card, "Name", if priv then m.name .. " · PRIVATE" else m.name, if c then 16 else 21, if fits then T.TEXT else T.DIM, T.FONT_TITLE); nm.ZIndex = 3
 		nm.Position = UDim2.fromOffset(14, if c then 5 else 9); nm.Size = UDim2.new(1, -90, 0, if c then 20 else 26)
-		local sub = if not fits then (why or "") elseif m.teams == 3 then "three solo sides · first to 5 rounds" else ("%d a side · first to 5 rounds"):format(m.size)
+		local sub = if not fits then (why or "") elseif priv then "your party only · never ranked" elseif m.teams == 3 then "three solo sides · first to 5 rounds" else ("%d a side · first to 5 rounds"):format(m.size)
 		local s2 = text(card, "Sub", sub, if c then 10 else 12, if fits then T.MUTED else T.DIM, T.FONT); s2.ZIndex = 3
 		s2.Position = UDim2.fromOffset(14, if c then 25 else 36); s2.Size = UDim2.new(1, if ranked then (if c then -64 else -120) else -24, 0, 16)
 		s2.TextTruncate = Enum.TextTruncate.AtEnd
@@ -692,7 +693,8 @@ local function bottomBar()
 		-- (a classic mode picked on the PARTY card without FILL FROM QUICKPLAY: the party plays it alone, now)
 		local pm = PlayConfig.byId[pt.mode] :: any
 		local alone = pm ~= nil and pm.ladder == "party" and not pm.quick and not pt.fill
-		local b = button(bottom, "Find", if alone then "START MATCH" else "FIND MATCH", true, UDim2.fromOffset(bw, bh), UDim2.fromOffset((W - bw) // 2, y))
+		local priv = PlayConfig.private(pm, #pt.members) -- (a duel the party fills by itself)
+		local b = button(bottom, "Find", if priv then "START PRIVATE" elseif alone then "START MATCH" else "FIND MATCH", true, UDim2.fromOffset(bw, bh), UDim2.fromOffset((W - bw) // 2, y))
 		b.FontFace = T.FONT_SHOUT; b.TextSize = if c then 16 else 20
 		b.MouseButton1Click:Connect(function() task.spawn(ask, "find") end)
 		main = b
