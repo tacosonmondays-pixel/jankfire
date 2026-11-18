@@ -527,8 +527,13 @@ Main's rules (below) are kept: an early start once everyone is in is the same id
   it appears and lets go the moment the round goes live. Moving was free in the count before this. An anchored body
   doesn't move, so the anti-cheat's checks have nothing to judge: with the movement checks on (StudioOn), a 20 s
   window held gave 0 points and no verdicts.
-- READY locks your set for the round: the header's button, Enter (the new `ready` bind, READY (LOCK IN LOADOUT),
-  MENUS, controller D-pad up) or a tap. It goes through the `MatchReady` remote to `Matches.ready`; the server sets
+- READY locks your set for the round: the header's button, Space (the new `ready` bind, READY (LOCK IN LOADOUT),
+  MENUS, controller D-pad up; Enter until the owner asked for Space, 18 Nov) or a tap. While the window is open the
+  ready key is sunk at ContextActionService priority 3500, so Space only readies: no jump, and none queued for the
+  moment the hold lets go (MatchLoadout also clears Humanoid.Jump then). Shut, Space is a jump again. A saved custom bind
+  is kept (Settings stores only what differs from the default). Tested at place version 757: Space readied in round 1's
+  window and in a break's (`docs/shop/match-ready-space.jpg`), the hold let go with no jump either time (Running, y
+  unchanged), and in the live round Space jumped (4.9 studs). It goes through the `MatchReady` remote to `Matches.ready`; the server sets
   `LoadoutReady` on you, and `Loadout.luau` refuses picks after that ("you're locked in for this round").
 - Who is ready: `ReadyTeams` on every player in the match, per team "1" a player locked in, "0" not ("1,0|0"). The
   header draws one tick a player, by team, after a thin bar in the team's colour. No names.

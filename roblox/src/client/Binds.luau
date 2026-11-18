@@ -18,23 +18,24 @@ local Settings = require(script.Parent:WaitForChild("Settings")) :: any
 
 local Binds = {}
 
-export type Action = { id: string, label: string, group: string, kb: { string }, pad: string?, toggle: string? }
+export type Action = { id: string, label: string, group: string, kb: { string }, pad: string?, toggle: string?, padToggle: string? }
 -- (order = the order of the KEYBINDS tab)
 Binds.ACTIONS = {
 	{ id = "fire", label = "FIRE", group = "WEAPONS", kb = { "MouseButton1" }, pad = "ButtonR2" },
-	{ id = "aim", label = "AIM DOWN SIGHTS", group = "WEAPONS", kb = { "MouseButton2" }, pad = "ButtonL2", toggle = "aim.toggle" },
+	{ id = "aim", label = "AIM DOWN SIGHTS", group = "WEAPONS", kb = { "MouseButton2" }, pad = "ButtonL2", toggle = "aim.toggle", padToggle = "pad.aimToggle" },
 	{ id = "reload", label = "RELOAD", group = "WEAPONS", kb = { "R" }, pad = "ButtonX" },
 	{ id = "slot1", label = "PRIMARY WEAPON", group = "WEAPONS", kb = { "One" } },
 	{ id = "slot2", label = "SECONDARY WEAPON", group = "WEAPONS", kb = { "Two" } },
-	{ id = "slot3", label = "MELEE WEAPON", group = "WEAPONS", kb = { "Three" } },
+	{ id = "slot3", label = "MELEE WEAPON", group = "WEAPONS", kb = { "Three" }, pad = "ButtonR3" },
 	{ id = "slot4", label = "SPECIAL WEAPON", group = "WEAPONS", kb = { "Four" } },
 	{ id = "next", label = "NEXT WEAPON", group = "WEAPONS", kb = {}, pad = "ButtonY" },
-	{ id = "item", label = "UTILITY", group = "WEAPONS", kb = { "G" }, pad = "ButtonR1" },
-	{ id = "flash", label = "UTILITY ALT", group = "WEAPONS", kb = { "N", "MouseButton3" } },
-	{ id = "sprint", label = "SPRINT", group = "MOVEMENT", kb = { "LeftShift", "RightShift" }, pad = "ButtonL3", toggle = "sprint.toggle" },
-	{ id = "crouch", label = "CROUCH", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle" },
-	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonL1" },
-	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "ButtonR3" },
+	{ id = "item", label = "UTILITY", group = "WEAPONS", kb = { "G" }, pad = "ButtonL1" },
+	{ id = "flash", label = "UTILITY ALT", group = "WEAPONS", kb = { "N", "MouseButton3" }, pad = "DPadUp" }, -- (a pad's D-Up is READY only before a round, held at your spawn: the two share it. CONTROLLER.md)
+	{ id = "wave", label = "KATANA SLASH WAVE", group = "WEAPONS", kb = { "Q" }, pad = "DPadLeft" }, -- (with the katana's edge meter full: Katana.client)
+	{ id = "sprint", label = "SPRINT", group = "MOVEMENT", kb = { "LeftShift", "RightShift" }, pad = "ButtonL3", toggle = "sprint.toggle", padToggle = "pad.sprintToggle" },
+	{ id = "crouch", label = "CROUCH", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle", padToggle = "pad.crouchToggle" },
+	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonR1" },
+	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "DPadDown" },
 	{ id = "emote", label = "EMOTE WHEEL", group = "MENUS", kb = { "T" }, pad = "DPadRight" },
 	{ id = "loadout", label = "LOADOUT", group = "MENUS", kb = { "L" } },
 	{ id = "play", label = "PLAY MENU", group = "MENUS", kb = { "M" } },
@@ -43,7 +44,7 @@ Binds.ACTIONS = {
 	{ id = "profile", label = "PROFILE", group = "MENUS", kb = { "K" } },
 	{ id = "settings", label = "SETTINGS", group = "MENUS", kb = { "P" } },
 	{ id = "cursor", label = "TOGGLE CURSOR", group = "MENUS", kb = { "LeftAlt" } }, -- (frees the mouse to click the screen: CursorToggle.client)
-	{ id = "ready", label = "READY (LOCK IN LOADOUT)", group = "MENUS", kb = { "Return" }, pad = "DPadUp" }, -- (before a round: MatchLoadout.client)
+	{ id = "ready", label = "READY (LOCK IN LOADOUT)", group = "MENUS", kb = { "Space" }, pad = "DPadUp" }, -- (before a round: MatchLoadout.client. Space since 18 Nov, the owner: you're held at your spawn then, so it can't be a jump; MatchLoadout sinks it while the window is open)
 	{ id = "keys", label = "SHOW KEY HINTS (HOLD)", group = "MENUS", kb = { "H" } },
 	{ id = "quickjoin", label = "QUICK JOIN", group = "MENUS", kb = { "F" } }, -- (the hub pad pop-up: QuickJoinUI)
 } :: { Action }
@@ -53,6 +54,7 @@ Binds.FIXED = { -- (shown in the tab, greyed: Roblox's own controls)
 	{ label = "MOVE LEFT", kb = "A", pad = "Left stick" },
 	{ label = "MOVE RIGHT", kb = "D", pad = "Left stick" },
 	{ label = "JUMP", kb = "Space", pad = "A" },
+	{ label = "LOOK", kb = "Mouse", pad = "Right stick" },
 }
 -- never bindable: Roblox's menu, chat, console and screenshot keys
 Binds.RESERVED = { Escape = true, Slash = true, Backquote = true, F9 = true, F11 = true, F12 = true, Unknown = true, ButtonStart = true, ButtonSelect = true }
@@ -95,13 +97,17 @@ local function hits(name: string, io: any): boolean
 	return io.KeyCode.Name == name
 end
 local lastTouch = false -- (the last input Binds.is matched came from a touch button)
+local lastPad = false -- (...or from a controller: its own hold / toggle settings, pad.*Toggle)
 local function isRaw(id: string, io: any): boolean
 	-- (a real InputObject has no Touch field: reading it throws. only the touch buttons' pretend inputs are tables)
 	local touch = typeof(io) == "table" and io.Touch == true
 	local b = if touch then defaults[id] else binds[id]
 	if not b then return false end
 	local yes = hits(b[1], io) or hits(b[2], io) or hits(b[3], io)
-	if yes then lastTouch = touch end
+	if yes then
+		lastTouch = touch
+		lastPad = not touch and typeof(io.UserInputType) == "EnumItem" and string.sub(io.UserInputType.Name, 1, 7) == "Gamepad"
+	end
 	return yes
 end
 -- every key and click in the game goes through here, so it can never throw: a slip falls back to the default keys
@@ -142,11 +148,14 @@ function Binds.down(id: string): boolean
 	return held(b[1]) or held(b[2]) or held(b[3])
 end
 
--- hold or toggle (Settings: aim.toggle, crouch.toggle, sprint.toggle)
+-- hold or toggle (Settings: aim.toggle, crouch.toggle, sprint.toggle; a controller has its own, read when the last
+-- press was a pad's: pad.aimToggle, pad.crouchToggle, pad.sprintToggle)
 local state: { [string]: boolean } = {}
 function Binds.toggles(id: string): boolean
 	local a = byId[id]
-	return a ~= nil and a.toggle ~= nil and Settings.get(a.toggle) == true
+	if a == nil then return false end
+	local key = if lastPad and a.padToggle then a.padToggle else a.toggle
+	return key ~= nil and Settings.get(key) == true
 end
 -- (a touch button's press is always a hold: TouchControls holds AIM down itself while its own toggle is on)
 function Binds.press(id: string, down: boolean, cur: boolean?): boolean

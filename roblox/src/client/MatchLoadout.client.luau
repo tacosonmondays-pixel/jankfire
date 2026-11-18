@@ -13,8 +13,11 @@
 -- and opens the slot's picker on PRIMARY: every live weapon for that slot, each a picture in your looks, the one you
 -- have marked. one click picks it; the picker stays open for the next slot (click a slot, or 1 2 3 4). L, Esc or DONE
 -- closes it, and the window shutting closes it too. on a phone the slots are tapped straight away.
--- READY (18 Nov, the owner: "until move people lock in their set once both are ready"): the header's READY button, Enter
--- (the "ready" key, Binds) or a tap locks your set for the round (the MatchReady remote: Matches.ready; LoadoutReady on
+-- READY (18 Nov, the owner: "until move people lock in their set once both are ready"): the header's READY button, Space
+-- (the "ready" key, Binds; the owner: "instead of enter to ready up in loadout phase can it be space") or a tap locks
+-- your set for the round. while the window is open the ready key is taken before anything else sees it (a sink at
+-- ContextActionService priority 3500): Space readies and never jumps, and no jump waits for the hold to let go. shut,
+-- Space is a jump again (the MatchReady remote: Matches.ready; LoadoutReady on
 -- you after). one tick a player, by team, says who has (ReadyTeams). everyone in: the window shuts early and the round
 -- goes live 3 s later; whoever doesn't lock in keeps what they had.
 -- desktop: the strip sits low in the middle, the picker over it. phone (or a small screen): the strip sits at the top
@@ -25,6 +28,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ContextActionService = game:GetService("ContextActionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Roster = require(Shared:WaitForChild("Roster")) :: any
@@ -173,7 +177,7 @@ local function layout()
 	secs.TextSize = if sm then 18 else 22
 	sub.AnchorPoint = Vector2.new(1, 0); sub.Position = UDim2.new(1, -60, 0, 0); sub.Size = UDim2.new(0, 220, 1, -3)
 	track.Position = UDim2.new(0, 10, 1, -4); track.Size = UDim2.new(1, -20, 0, 2)
-	local rw = if sm then 76 else 112
+	local rw = if sm then 76 else 124
 	readyB.Size = UDim2.fromOffset(rw, G.hh - 10); readyB.Position = UDim2.new(1, if sm then -50 else -62, 0.5, -1)
 	ticks.Position = UDim2.fromOffset(if t then 92 else 124, math.floor(G.hh / 2) - 1); ticks.Size = UDim2.fromOffset(w - (if t then 92 else 124) - rw - 70, 14)
 	for i, tl in tiles do
@@ -342,10 +346,40 @@ setTray = function(slot: string?)
 	draw()
 end
 
+-- the ready key, sunk while the window is open (Space is jump the rest of the time). a mouse button bind is left to
+-- the Keys path below
+local readyUp: () -> ()
+local sinking = false
+local function sinkReady(on: boolean)
+	if on == sinking then return end
+	sinking = on
+	if on then
+		local codes = {}
+		for _, n in Binds.get("ready") do
+			if n ~= "" and string.sub(n, 1, 11) ~= "MouseButton" then
+				local ok, kc = pcall(function() return (Enum.KeyCode :: any)[n] end)
+				if ok and kc then table.insert(codes, kc) end
+			end
+		end
+		if #codes == 0 then sinking = false; return end
+		ContextActionService:BindActionAtPriority("JankReadyKey", function(_, state: Enum.UserInputState, _io: InputObject)
+			if UIS:GetFocusedTextBox() then return Enum.ContextActionResult.Pass end
+			if state == Enum.UserInputState.Begin then readyUp() end
+			return Enum.ContextActionResult.Sink
+		end, false, 3500, table.unpack(codes))
+	else
+		pcall(function() ContextActionService:UnbindAction("JankReadyKey") end)
+		-- (a jump asked for while you were held doesn't go off as the hold lets go)
+		local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
+		if hum then hum.Jump = false end
+	end
+end
+
 local function setShown(v: boolean)
 	if v == S.shown then return end
 	S.shown = v
 	root.Visible = v
+	sinkReady(v)
 	if v then
 		S.total = math.max(windowLeft() or 1, 1)
 		layout()
@@ -365,7 +399,7 @@ task.spawn(function()
 	local r = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("MatchReady", 60)
 	if r and r:IsA("RemoteFunction") then readyR = r end
 end)
-local function readyUp()
+readyUp = function()
 	if isReady() or S.readying or not windowLeft() or not readyR then return end
 	S.readying = true
 	setTray(nil)
