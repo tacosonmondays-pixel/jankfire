@@ -38,6 +38,7 @@ local offGone = false -- the off hand has let go (a plain gun's reload)
 local rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero }
 local punch = { x = Vector3.zero, v = Vector3.zero }
 local kick = 0
+local kickUp = 0 -- (kick's upward tilt, scaled by VM.feel: the rearward push keeps kick whole)
 local bobPh, breathT = 0, 0
 local sway = Vector2.zero
 local runK = 0
@@ -113,14 +114,34 @@ function VM.playing(): string? return clip and clip.name end
 function VM.clipT(): number? return clip and clip.t end
 function VM.stop() clip = nil; dropProp() end
 
--- a shot: the gun's recoil row on the springs + a camera view punch (public/js/weapons.js kickVM)
+-- how hard a gun kicks, by its kind (the owner, 17 Nov 2026: "can the gun not shoot up when you shoot or at least
+-- not as aggressively?"). the web game's rows stay; on top: up = the gun's upward pitch, punch = the view punch's,
+-- climb = the camera's own climb (Arsenal) with hold = the pause after a shot before the camera eases back to where
+-- you aimed. the rearward punch is kept whole. the automatics least, the snipers and shotguns a little more
+local HEAVY = { sniper = true, shotgun = true, sawnoff = true, marbles = true, autoshot = true }
+local FEEL = {
+	auto = { up = 0.35, punch = 0.5, climb = 0.4, hold = 0.05 },
+	semi = { up = 0.4, punch = 0.6, climb = 0.5, hold = 0.06 },
+	heavy = { up = 0.5, punch = 0.7, climb = 0.6, hold = 0.09 },
+}
+VM.FEEL = FEEL
+function VM.feel(wid: string, w: any): { up: number, punch: number, climb: number, hold: number }
+	if HEAVY[wid] then return FEEL.heavy end
+	if w and w.auto and (w.rate or 0) >= 6 then return FEEL.auto end
+	return FEEL.semi
+end
+
+-- a shot: the gun's recoil row on the springs + a camera view punch (public/js/weapons.js kickVM). up / pm scale the
+-- upward pitch and the view punch (VM.feel, and Settings' visual recoil: gfx.recoil, nil = 1)
 local function rnd(): number return (if math.random() < 0.5 then -1 else 1) * (0.5 + math.random() * 0.5) end
-function VM.kick(row: { back: number, up: number, roll: number, side: number, punch: number }?, mul: number, fast: boolean)
+function VM.kick(row: { back: number, up: number, roll: number, side: number, punch: number }?, mul: number, fast: boolean, up: number?, pm: number?)
 	local r = row or { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 }
+	local u, p = up or 1, pm or 1
 	rec.pv += Vector3.new(r.side * rnd(), 0, r.back) * mul
-	rec.rv += Vector3.new(r.up, 0, r.roll * rnd()) * mul
-	punch.v += Vector3.new(r.punch, r.punch * 0.35 * rnd(), r.punch * 0.5 * rnd()) * mul * 21
+	rec.rv += Vector3.new(r.up * u, 0, r.roll * rnd()) * mul
+	punch.v += Vector3.new(r.punch * p, r.punch * 0.35 * rnd(), r.punch * 0.5 * rnd()) * mul * 21
 	kick += if fast then 0.25 else 1
+	kickUp += (if fast then 0.25 else 1) * u
 end
 -- a landed parry / hit: a jolt on the blade
 function VM.jolt(up: number) rec.rv += Vector3.new(up, 0, 0); rec.pv += Vector3.new(0, 0, up * 0.3) end
@@ -728,6 +749,7 @@ function VM.update(dt: number, c: Ctx)
 		punch.v += (-160 * punch.x - 18 * punch.v) * h; punch.x += punch.v * h
 	end
 	kick = math.max(0, kick - 6 * dt)
+	kickUp = math.max(0, kickUp - 6 * dt)
 	swap = math.max(0, swap - 5 * dt)
 	local base, rot = w.vm.p, w.vm.r
 	local row = look(VM.wid)
@@ -786,7 +808,7 @@ function VM.update(dt: number, c: Ctx)
 		baseRot *= fr
 		pos += fp * S
 	end
-	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
+	local jig = CFrame.fromEulerAnglesXYZ(rx + (kickUp * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
 	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
 	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you

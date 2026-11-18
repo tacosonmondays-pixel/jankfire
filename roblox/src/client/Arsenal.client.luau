@@ -164,11 +164,24 @@ local function targets(): { { m: Model, feet: Vector3 } }
 	return out
 end
 
--- ---------------------------------------------------------------- camera: kick (stays, like the web game) + punch/shake (visual)
-local function kickCam(pitch: number, yaw: number)
+-- ---------------------------------------------------------------- camera: kick + punch/shake (visual)
+-- the kick climbs the real look (the web game's, cut by VM.feel's climb); since 17 Nov 2026 (the owner: "can the gun
+-- not shoot up when you shoot or at least not as aggressively?") what a shot climbed eases back toward where you aimed
+-- once the gun's hold after its last shot is over (a ~0.1 s ease), so sustained fire no longer walks off the target.
+-- only the climb is taken back: your own mouse moves stay yours
+local climb = { p = 0, y = 0, t = 0, hold = 0.06 }
+local function kickCam(pitch: number, yaw: number, hold: number?)
 	camera.CFrame = camera.CFrame * CFrame.Angles(pitch, yaw, 0)
+	climb.p += pitch; climb.y += yaw; climb.t = os.clock(); climb.hold = hold or 0.06
 end
-RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value + 1, function()
+RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value + 1, function(dt: number)
+	if (climb.p ~= 0 or climb.y ~= 0) and os.clock() - climb.t > climb.hold then
+		local k = 1 - math.exp(-12 * dt)
+		local dp, dy = climb.p * k, climb.y * k
+		if math.abs(climb.p) < 1e-4 and math.abs(climb.y) < 1e-4 then dp, dy = climb.p, climb.y end
+		camera.CFrame = camera.CFrame * CFrame.Angles(-dp, -dy, 0)
+		climb.p -= dp; climb.y -= dy
+	end
 	-- the camera module reads the look back each frame, so visual offsets are applied as a change from last frame's
 	local pr = VM.punch()
 	local px, py, pz = pr:ToEulerAnglesXYZ()
@@ -431,9 +444,12 @@ local function fireGun(now: number, fan: boolean?)
 	-- your own feel: shove, climb, bloom, the gun kicks, flash, brass, tracer / marbles, sound
 	local km = if F then F.kick else 1
 	Body.push(-look * (w.recoil or 0) * km)
-	kickCam((w.kick or 0) * km * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * km * 0.5)
+	local fl = VM.feel(held, w) -- (how hard this kind of gun kicks: the climb, its upward tilt, the view punch)
+	kickCam((w.kick or 0) * km * fl.climb * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * km * fl.climb * 0.5, fl.hold)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
-	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8)
+	local vis = Settings.get("gfx.recoil") -- (a visual-only recoil slider, 0..1; nil = 1)
+	vis = if type(vis) == "number" then math.clamp(vis, 0, 1) else 1
+	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8, fl.up * vis, fl.punch * vis)
 	VM.shot(w) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms
 	TP.fired(held, F ~= nil) -- (and the gun in your character's hands kicks, for you in third person and for everyone)
 	if w.cycle then VM.follow(w.cycle.clip, w.cycle.at) end -- then the pump / the bolt / the lever
@@ -773,6 +789,7 @@ me.CharacterAdded:Connect(function()
 	resetAmmo()
 	pending, staggerUntil, parryT, parryReady = nil, -math.huge, -math.huge, 0
 	bloom, aim, shake = 0, 0, 0
+	climb.p, climb.y = 0, 0
 	H.dead(nil)
 	held = ""
 	equip(lo()[1])
@@ -881,6 +898,19 @@ RunService.RenderStepped:Connect(function(dt: number)
 		if c.Name == "ShredderViewmodel" then
 			local o = c:FindFirstChild("Owner") :: ObjectValue?
 			if o and not (o.Value and o.Value:IsDescendantOf(game)) then c:Destroy() end
+		end
+	end
+	-- its heat bar (PlayerGui.ShredderHeat) the same way: shown only while its Shredder is in your living hands, cleared
+	-- once that Shredder is gone (owner, 17 Nov 2026: the bar stayed up after switching guns)
+	local pg = me:FindFirstChildOfClass("PlayerGui")
+	if pg then
+		for _, g in pg:GetChildren() do
+			if g.Name == "ShredderHeat" and g:IsA("ScreenGui") then
+				local o = g:FindFirstChild("Owner") :: ObjectValue?
+				local t = o and o.Value
+				if not (t and t:IsDescendantOf(game)) then g:Destroy()
+				elseif g.Enabled and not (hum and me.Character and t.Parent == me.Character) then g.Enabled = false end
+			end
 		end
 	end
 	H.scope(scoped and not thirdPerson(), if held == "sniper" then "full" else "short") -- (only the Sniper blacks the screen)

@@ -21,6 +21,10 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "ShredderHeat"
 gui.ResetOnSpawn = true
 gui.Enabled = false
+-- (whose bar this is: this script stops with its tool, at a death or a re-arm that swaps the tool, and can't hide the
+-- bar then, so the game's own client hides a bar whose Shredder isn't in your hands: Arsenal "the Shredder's bar")
+local owner = Instance.new("ObjectValue")
+owner.Name = "Owner"; owner.Value = tool; owner.Parent = gui
 local panel = T.plate(T.scaled(gui), "Heat", UDim2.new(0.5, -120, 1, -150), UDim2.fromOffset(240, 40))
 local label = T.text(panel, "Label", "SHREDDER HEAT", 11, T.MUTED, T.FONT_BOLD)
 label.Position = UDim2.fromOffset(14, 7)
@@ -31,18 +35,28 @@ local fill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColo
 T.corner(fill, 3)
 gui.Parent = lp:WaitForChild("PlayerGui")
 
-tool.Equipped:Connect(function() gui.Enabled = true end)
+-- the bar shows only while this Shredder is in your hands and you're alive (checked every frame below too)
+local function inHand(): boolean
+	local ch = lp.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	return ch ~= nil and tool.Parent == ch and hum ~= nil and hum.Health > 0
+end
+tool.Equipped:Connect(function() gui.Enabled = inHand() end)
 tool.Unequipped:Connect(function()
 	gui.Enabled = false
 	if firing then firing = false; remote:FireServer("stop") end
 end)
-tool.AncestryChanged:Connect(function() if not tool:IsDescendantOf(game) then gui:Destroy() end end)
+tool.AncestryChanged:Connect(function()
+	if not tool:IsDescendantOf(game) then gui:Destroy() else gui.Enabled = inHand() end
+end)
 
 local lamps = {}
 for _, d in ipairs(tool:GetDescendants()) do if d:IsA("BasePart") and d.Name:match("^sh_lamp") then table.insert(lamps, d) end end
 
 local acc, wasHot = 0, false
 RunService.Heartbeat:Connect(function(dt)
+	local shown = inHand()
+	if gui.Enabled ~= shown then gui.Enabled = shown end
 	if not tool.Parent then return end
 	local mine = tool.Parent == lp.Character
 	if firing and mine then
