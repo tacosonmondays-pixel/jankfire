@@ -1430,5 +1430,49 @@
  "92c5605f51dca3b3ac5bcd3a825731f393a8735f": {
   "file": "nebula_emit.png",
   "id": 89061714432334
+ },
+ "6dfece199a85004c1186887536b0a08752bfd0c1": {
+  "file": "mastery_gold_color.png",
+  "id": 130622728798351
+ },
+ "eff1dd6e480d67b42db225564f8d5ec1d9fa4244": {
+  "file": "mastery_gold_normal.png",
+  "id": 128603838172462
+ },
+ "cded72b2bc2cb2c172113936a9de00887e8f51d1": {
+  "file": "mastery_gold_emit.png",
+  "id": 81065111873965
+ },
+ "31c1d43dd8d2554f66c92bb973ee81f7bb4ab1f7": {
+  "file": "mastery_damascus_color.png",
+  "id": 118290104831624
+ },
+ "83f2302f2efbd6f959ad06c38dd8276bdcdc08a8": {
+  "file": "mastery_damascus_normal.png",
+  "id": 117012597225160
+ },
+ "f5c1c38505e96035e50dea6a3c4b0ae6ce87b299": {
+  "file": "mastery_damascus_rough.png",
+  "id": 130534313726833
+ },
+ "02c02dd36e4e37979ecd5cb7801505d3761d7a5c": {
+  "file": "mastery_diamond_color.png",
+  "id": 98426720486663
+ },
+ "98c52c8d2100a5032e3ef03933b7441f3ee0700a": {
+  "file": "mastery_diamond_normal.png",
+  "id": 123031553049513
+ },
+ "5a8fd55ed8d1f16449593b1a58328200bb2eab8d": {
+  "file": "mastery_diamond_emit.png",
+  "id": 84104506709557
+ },
+ "ca2b0b1c5debb8521132855071646bb137b6fd8e": {
+  "file": "mastery_galaxy_color.png",
+  "id": 108151539368204
+ },
+ "b04c8ef47b9eedd95503f8ac04f417e672d1eac5": {
+  "file": "mastery_galaxy_emit.png",
+  "id": 106302759894946
  }
 }

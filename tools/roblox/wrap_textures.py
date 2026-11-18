@@ -2440,6 +2440,147 @@ def bowling(t: Tex):
     return {}
 
 
+# ====================================================================== the mastery camos
+# WEAPON MASTERY (18 Nov 2026, the owner: "level up weapons to unlock gold, damascus, diamond and galaxy camo for their
+# respective guns"): four wraps earned per gun by levelling it (the weapon-mastery session's unlocks), never sold and
+# never in a container. A prestige ladder, each a clear step up: polished gold, then pattern-welded steel, then a
+# faceted crystal that sparkles and glows, then Dark Matter, a deep space camo that moves (client/WrapAnim). Our own
+# art, drawn here like every wrap; the upload rules hold (no code-like stripes, no text, no logos).
+
+@design('mastery_gold')
+def mastery_gold(t: Tex):
+    """mastery gold: polished warm gold, rich and pale in broad soft swathes like light rolling over a curved surface,
+       a fine engine-turned brushing along the gun, and a few small glints that swell and fade (WrapAnim: glint)"""
+    n, U, V = t.n, t.U, t.V
+    r = t.rng
+    sw = FBM([(1, 2), (2, 3)], 901, 0.5)(U, V)             # broad soft swathes (the polish catching the light)
+    t.rgb[:] = mix('a8752a', 'e6bc5a', smoothstep(-0.5, 0.5, sw))
+    t.fill(smoothstep(0.3, 0.7, sw) * 0.7, 'f6dc94')    # pale highlights where the swathe is brightest
+    t.metal[:] = 1.0
+    t.rough[:] = 0.2 - 0.06 * smoothstep(0.2, 0.7, sw)
+    # a fine brushing along the gun (u): long soft grooves a few pixels apart, faint in the normal map only
+    br = FBM([(64, 2), (128, 4)], 902, 0.6)(U, V)
+    t.height[:] = 0.18 * br
+    # the glints: a few small four-point sparkles (they bloom at the swell) and a soft sheen round each
+    for x, y in scatter(r, n, 7, 260):
+        ro = r.uniform(9, 14)
+        X, Y, idx = t.box(x - ro * 3, y - ro * 3, x + ro * 3, y + ro * 3)
+        halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.6)) * 0.35
+        t.paint(idx, halo, 'fff1c8', emit=halo)
+        t.paint(idx, cover(sd_sparkle(x, y, ro, 0.12, 0)(X, Y)), '#fff8e6', emit=1.0)
+    return {'emissive': 3.0, 'tint': 'ffe2a0', 'accent': 'f3c862'}
+
+
+@design('mastery_damascus')
+def mastery_damascus(t: Tex):
+    """mastery damascus: pattern-welded steel, wide flowing layers folded into ripples and drops (the ladder and
+       raindrop forge patterns), bright and dark steel greys with a faint warm temper in the dark layers; the dark
+       layers etched a little deeper and duller"""
+    U, V = t.U, t.V
+    wu = U + 0.06 * FBM([2, 4], 911)(U, V)
+    wv = V + 0.06 * FBM([2, 4], 912)(U, V)
+    f = FBM([(2, 2), (4, 4)], 913, 0.55)(wu, wv)
+    # raindrops: a few soft rings the layers bend round
+    drops = np.zeros_like(U)
+    r = t.rng
+    for x, y in scatter(r, t.n, 6, 300):
+        dx = np.abs(t.X - x); dx = np.minimum(dx, t.n - dx)
+        dy = np.abs(t.Y - y); dy = np.minimum(dy, t.n - dy)
+        drops += np.exp(-np.hypot(dx, dy) / 70.0)
+    ph = 13.0 * f + 5.0 * wv + 3.2 * drops                   # (6.5 was zebra-bold: real pattern welds are many fine layers)
+    s = np.sin(ph * TAU)
+    bright = smoothstep(-0.45, 0.45, s)
+    edge = 1 - np.abs(s)                                      # (a thin lighter seam where two layers meet)
+    lum = 0.43 + 0.12 * bright + 0.04 * smoothstep(0.8, 1.0, edge)
+    steel = lum[..., None] * np.array([1.0, 1.01, 1.04], np.float32)
+    temper = lum[..., None] * hexrgb('c9a77a') * 1.05          # the faint warm temper in the dark layers
+    t.rgb[:] = np.clip(steel + (temper - steel) * ((1 - bright) * 0.28)[..., None], 0, 1)
+    t.metal[:] = 1.0
+    t.rough[:] = 0.42 - 0.18 * bright
+    t.height[:] = bright * 0.9
+    return {'accent': 'd9c3a0'}
+
+
+@design('mastery_diamond')
+def mastery_diamond(t: Tex):
+    """mastery diamond: faceted crystal, pale ice-white facets each turned a little differently (the normal map),
+       a faint prismatic tint that differs facet to facet, bright fine edges where facets meet, and small sparkles at
+       a few corners that bloom; the tint sweeps through the spectrum in hand (WrapAnim: iris)"""
+    n = t.n
+    r = t.rng
+    pts = scatter(r, n, 34, 110)
+    d1, d2, ids = voronoi(n, pts)
+    k = len(pts)
+    hue = np.array([r.uniform(0, 1) for _ in range(k)], np.float32)
+    tilt = np.array([[r.uniform(-0.32, 0.32), r.uniform(-0.32, 0.32)] for _ in range(k)], np.float32)
+    px = np.array([p[0] for p in pts], np.float32); py = np.array([p[1] for p in pts], np.float32)
+    # each facet a flat plane at its own tilt (relief in pixels: the normal map turns it into the facet's light)
+    dx = t.X - px[ids]; dx = (dx + n / 2) % n - n / 2
+    dy = t.Y - py[ids]; dy = (dy + n / 2) % n - n / 2
+    t.height[:] = dx * tilt[ids, 0] + dy * tilt[ids, 1]
+    # pale ice with a faint prismatic tint per facet (hue -> rgb at low saturation), lighter toward each facet's middle
+    h6 = hue[ids] * 6.0
+    prism = np.stack([np.clip(np.abs(h6 - 3) - 1, 0, 1), np.clip(2 - np.abs(h6 - 2), 0, 1), np.clip(2 - np.abs(h6 - 4), 0, 1)], -1)
+    # each facet lit as a cut face: brighter the more its tilt faces a light from the upper left, a few dark ones
+    lit = 0.8 + 1.1 * (-tilt[:, 0] * 0.7 - tilt[:, 1] * 0.7)
+    shade = np.clip(lit + np.array([r.uniform(-0.06, 0.06) for _ in range(k)], np.float32), 0.5, 1.0)
+    base = hexrgb('eef3fa')
+    t.rgb[:] = (base + (prism - 0.5) * 0.07) * shade[ids][..., None] + (smoothstep(60, 0, d1) * 0.04)[..., None]
+    edge = smoothstep(2.5, 0.6, (d2 - d1) * 0.5)
+    t.fill(edge, 'ffffff', emit=0.32)                          # the fine bright edges (glow, under every Bloom)
+    t.metal[:] = 0.6                                           # (over 0.5: no satin floor, so it stays glassy)
+    t.rough[:] = 0.1
+    for x, y in scatter(r, n, 6, 300):                          # sparkles at a few corners: they bloom
+        ro = r.uniform(10, 15)
+        X, Y, idx = t.box(x - ro * 3, y - ro * 3, x + ro * 3, y + ro * 3)
+        halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.5)) * 0.3
+        t.paint(idx, halo, 'f4f8ff', emit=halo)
+        t.paint(idx, cover(sd_sparkle(x, y, ro, 0.12, math.radians(r.uniform(-15, 15)))(X, Y)), '#ffffff', emit=1.0)
+    t.normal_k = 0.9
+    return {'emissive': 4.0, 'tint': 'f2f6ff', 'accent': 'cfe4ff'}
+
+
+@design('mastery_galaxy')
+def mastery_galaxy(t: Tex):
+    """mastery galaxy, DARK MATTER: the top tier, a space camo. Big organic camo shapes cut a deep blue-black field;
+       inside the shapes, space: violet and teal gas glowing round fine round stars and a few bright twinkles; a thin
+       glowing rim where each shape meets the dark. In hand it moves (client/WrapAnim: the gas drifts violet to teal,
+       stars twinkle)"""
+    n, U, V = t.n, t.U, t.V
+    r = t.rng
+    wu = U + 0.045 * FBM([3, 6], 921)(U, V)
+    wv = V + 0.045 * FBM([3, 6], 922)(U, V)
+    f = FBM([(2, 3), (4, 6), (8, 12)], 923, 0.45)(wu, wv)
+    shape = field_cover(f, 0.0)                                # the camo shapes (about half the tile)
+    t.rgb[:] = hexrgb('07080f')
+    g1 = smoothstep(-0.1, 0.6, FBM([2, 4, 8], 924, 0.55)(wu, wv))
+    g2 = smoothstep(-0.05, 0.6, FBM([3, 6, 12], 925, 0.55)(wu + 0.31, wv))
+    space = hexrgb('0d0a22') + g1[..., None] * (hexrgb('6a3cc8') - hexrgb('0d0a22')) * 0.8
+    space = space + (g2 * (1 - g1 * 0.5))[..., None] * (hexrgb('1fa8b8') - space) * 0.55
+    t.rgb[:] = t.rgb * (1 - shape[..., None]) + space * shape[..., None]
+    gas = np.clip(g1 * 0.55 + g2 * 0.45, 0, 1)
+    t.emit[:] = gas * shape * 0.55                              # the gas glows inside the shapes
+    # the rim: a thin glowing line along each shape's edge
+    eb = blur_wrap(shape, 3)                                   # (the shape's edge widened to a few pixels)
+    rim = smoothstep(0.12, 0.45, eb) * smoothstep(0.88, 0.55, eb)
+    t.fill(rim * 0.8, 'b7a4ff', emit=0.9)
+    t.rough[:] = 0.3
+    S = StarLight(t)
+    for _ in range(900):
+        x, y = r.uniform(0, n), r.uniform(0, n)
+        k = r.uniform() ** 3
+        S.dot(x, y, 1.5 + 1.3 * k, (0.3 + 0.6 * k) * float(shape[int(y) % n, int(x) % n] * 0.85 + 0.15), star_colour(r))
+    S.done()
+    for x, y in scatter(r, n, 6, 260):                          # a few bright twinkles inside the shapes
+        if shape[int(y) % n, int(x) % n] < 0.5: continue
+        ro = r.uniform(16, 24)
+        X, Y, idx = t.box(x - ro * 1.5, y - ro * 1.5, x + ro * 1.5, y + ro * 1.5)
+        halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.3)) * 0.5
+        t.paint(idx, halo, 'e4dcff', emit=halo)
+        t.paint(idx, cover(sd_sparkle(x, y, ro, 0.14, 0)(X, Y)), '#ffffff', emit=1.0)
+    return {'emissive': 5.5, 'tint': 'ffffff', 'accent': 'a78bff'}
+
+
 # ====================================================================== the run
 # IN-HAND COLOUR. In the training hall a held gun's colours come out with more contrast and less blue than the map:
 # measured over three Play rounds on Tiger, Hazard, Sakura, Carbon (16 Nov 2026), red and green land near
@@ -2449,7 +2590,7 @@ def bowling(t: Tex):
 HALL_A = np.array([1.2, 1.2, 1.05], np.float32)
 HALL_B = np.array([-33, -33, -35], np.float32) / 255.0
 HALL_K = 0.7          # how far towards the full inverse (not all the way: other zones light the guns more neutrally)
-HALL_TUNED = {'galaxy', 'nebula', 'camo', 'hex', 'tiger', 'sakura', 'carbon', 'hazard', 'damascus'}
+HALL_TUNED = {'galaxy', 'nebula', 'camo', 'hex', 'tiger', 'sakura', 'carbon', 'hazard', 'damascus', 'mastery_damascus', 'mastery_galaxy'}
 # SATIN: a non-metal wrap is never glossier than this: up-facing faces of glossy wraps mirrored the hall's ceiling
 # lights as pale blank slabs (round 4: Kintsugi, Galaxy, Nebula)
 ROUGH_MIN = 0.36

@@ -56,6 +56,12 @@ local SPEC: { [string]: Spec } = {
 	-- (after the Rivals study: there every top-tier wrap moves, so the two still Legendary pictures move too)
 	missing = { k = "breathe", p = 1.8, lo = 0.8, hi = 1.15 },     -- the missing-texture glow hums
 	rainbow = { k = "iris", p = 10.0, sat = 0.08 },                -- a slow shimmer across the stripes
+	-- the mastery camos (18 Nov 2026, weapon mastery): gold glints now and then; damascus's temper shifts very faintly;
+	-- the diamond's facets sweep through the spectrum; Mastery Galaxy's gas drifts violet to teal and breathes
+	mastery_gold = { k = "glint", p = 5.5, lo = 0.45, hi = 1.5 },
+	mastery_damascus = { k = "iris", p = 14.0, sat = 0.05 },
+	mastery_diamond = { k = "iris", p = 9.0, sat = 0.1 },
+	mastery_galaxy = { k = "drift", p = 12.0, p2 = 6.0, lo = 0.8, hi = 1.15, a = Color3.fromHex("d2b8ff"), b = Color3.fromHex("a8f0ff") },
 }
 script:SetAttribute("Animated", (function() local n = 0; for _ in SPEC do n += 1 end; return n end)())
 
@@ -202,6 +208,10 @@ local FX: { [string]: FxSpec } = {
 	tokyo = { kind = "dot", col = Color3.fromHex("ff6ad8"), col2 = Color3.fromHex("5ad8ff"), rate = 3, size = 0.009, life = 1.0, rise = 0.2 },
 	ducky = { kind = "bubble", col = Color3.fromHex("f1e9ea"), rate = 1.1, size = 0.026, life = 1.8, rise = 0.25 },
 	holo = { kind = "sparkle", col = Color3.fromHex("ffffff"), rate = 2, size = 0.015, life = 0.6, rise = 0 },
+	-- (the mastery camos: gold glints off the gold, the diamond and Mastery Galaxy twinkle where they sit)
+	mastery_gold = { kind = "sparkle", col = Color3.fromHex("ffe6a0"), rate = 2.2, size = 0.018, life = 0.7, rise = 0.1 },
+	mastery_diamond = { kind = "twinkle", col = Color3.fromHex("ffffff"), col2 = Color3.fromHex("d8ecff"), rate = 4, size = 0.014, life = 1.6, rise = 0 },
+	mastery_galaxy = { kind = "twinkle", col = Color3.fromHex("f0e4ff"), col2 = Color3.fromHex("c8f4ff"), rate = 5, size = 0.016, life = 2.2, rise = 0 },
 }
 local function nseq(...: number): NumberSequence
 	local a, k = { ... }, {}

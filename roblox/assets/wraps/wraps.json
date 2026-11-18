@@ -447,6 +447,52 @@
    "emit": 0.0
   }
  },
+ "mastery_damascus": {
+  "maps": {
+   "color": "mastery_damascus_color.png",
+   "normal": "mastery_damascus_normal.png",
+   "rough": "mastery_damascus_rough.png",
+   "metal": 1.0,
+   "emit": 0.0
+  },
+  "accent": "d9c3a0"
+ },
+ "mastery_diamond": {
+  "maps": {
+   "color": "mastery_diamond_color.png",
+   "normal": "mastery_diamond_normal.png",
+   "rough": 0.1,
+   "metal": 0.6,
+   "emit": "mastery_diamond_emit.png"
+  },
+  "emissive": 4.0,
+  "tint": "f2f6ff",
+  "accent": "cfe4ff"
+ },
+ "mastery_galaxy": {
+  "maps": {
+   "color": "mastery_galaxy_color.png",
+   "normal": null,
+   "rough": 0.36,
+   "metal": 0.0,
+   "emit": "mastery_galaxy_emit.png"
+  },
+  "emissive": 5.5,
+  "tint": "ffffff",
+  "accent": "a78bff"
+ },
+ "mastery_gold": {
+  "maps": {
+   "color": "mastery_gold_color.png",
+   "normal": "mastery_gold_normal.png",
+   "rough": 0.2,
+   "metal": 1.0,
+   "emit": "mastery_gold_emit.png"
+  },
+  "emissive": 3.0,
+  "tint": "ffe2a0",
+  "accent": "f3c862"
+ },
  "meat": {
   "maps": {
    "color": "meat_color.png",

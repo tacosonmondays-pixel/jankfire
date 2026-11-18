@@ -388,6 +388,31 @@ The particle density setting already scales the wrap particles (SettingsApply sc
 - Trap: `open_cloud_invoke` timed out twice while another session's Play test was running; one call during my own
   lock went straight through.
 
+## The mastery camos (18 Nov 2026)
+
+The owner: "level up weapons to unlock gold, damascus, diamond and galaxy camo for their respective guns". The
+weapon-mastery session builds the levels and the unlocks (per gun); these are the four pictures, a prestige ladder.
+Ids `mastery_gold`, `mastery_damascus`, `mastery_diamond`, `mastery_galaxy` (Roster rows with `mastery = true`, all
+legendary; the Roster rows and names are the weapon-mastery session's). They're never sold and never in a container,
+bundle or gift: Roster moves every `mastery` wrap out of `Roster.wraps` into `Roster.masteryWraps` (still in
+`wrapById`), so the Spray Cans and the shop's rotation never see them; grants come only through
+`Loot.grant("mastery:<camo>@<gun>")` (Gold at gun level 10, Damascus 20, Diamond 30, Galaxy 40). A camo counts as
+live once `ReplicatedStorage.JankfireWraps.<id>` exists.
+
+| wrap | look | glow (strength) | moves (WrapAnim) |
+| --- | --- | --- | --- |
+| Mastery Gold | polished warm gold (full metal, gloss 0.2) in broad rich-to-pale swathes, a faint brushing along the gun | seven small four-point glints bloom (3.0, tint ffe2a0) | glint every 5.5 s; gold sparkles drift off it |
+| Mastery Damascus | pattern-welded steel: many fine flowing layers folded into ripples and drops, bright and dark steel with a faint warm temper in the dark ones, etched deeper and duller | none | the temper shifts very faintly (iris, 14 s) |
+| Mastery Diamond | faceted crystal: pale ice facets, each a cut face lit from the upper left, a faint prismatic tint, bright fine edges (metal 0.6, gloss 0.1) | edges glow under Bloom, six corner sparkles bloom (4.0) | the spectrum sweeps the facets (iris, 9 s); white twinkles where it sits |
+| Mastery Galaxy | the top tier, a space camo: organic camo shapes cut a blue-black field, inside them violet and teal gas, round stars and a few four-point twinkles, a glowing lilac rim round each shape | gas, stars, twinkles and rims (5.5) | the gas drifts violet to teal and breathes; stars twinkle (as Nebula) |
+
+In the pickers the glow ones (gold, diamond, galaxy) get the halo and their effects drawn over the gun
+("Glow you can see"). Damascus and Mastery Galaxy skip the in-hand colour pass (HALL_TUNED). Maps: 11 uploads (all
+Approved), ids in `assets.json`; checked full size (colour, normal, roughness, glow) for codes, stripes and text.
+`bake_guard.py` is for Tripo bake atlases (it softens their packed strips and drops stray metal marks); these
+seamless tiles have no strips and flat metal, so it had nothing to do, and running it would break the book's
+checksum match.
+
 ## Redrawing or adding a wrap
 
 ```bash
