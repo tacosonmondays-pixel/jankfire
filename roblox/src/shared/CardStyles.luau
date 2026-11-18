@@ -24,6 +24,7 @@ C.RARITY_COLOR = {
 	free = Color3.fromRGB(150, 156, 166), common = Color3.fromRGB(122, 178, 104), rare = Color3.fromRGB(78, 150, 226),
 	epic = Color3.fromRGB(162, 108, 226), legendary = Color3.fromRGB(240, 178, 52),
 	vip = Color3.fromRGB(255, 208, 72),
+	secret = Color3.fromRGB(232, 132, 206), -- (the web game's pink, a step quieter)
 }
 -- "vip": the VIP pack's own (the shop session's): never in a container (LootTable rolls only the rarities it knows),
 -- never in the shop's rotation or bundles (forSale leaves them out), owned only through Loot.grant of the VIP offer
@@ -31,6 +32,15 @@ C.VIP_ONLY = "vip"
 function C.isVip(t: string, id: string): boolean
 	local i = C.info(t, id)
 	return i ~= nil and i.rarity == C.VIP_ONLY
+end
+-- "secret": found, never bought or rolled (18 Nov 2026: the hub's hidden mannequin of the web game's player gives the
+-- OG title, server/HubEgg.server.luau). never in a container (LootTable rolls only the rarities it knows), never in the
+-- shop (forSale and Shop leave them out), owned only through Loot.grant of "egg:<type>:<id>" (Shop.offer); the card's
+-- picker shows one only once it is yours
+C.SECRET = "secret"
+function C.isSecret(t: string, id: string): boolean
+	local i = C.info(t, id)
+	return i ~= nil and i.rarity == C.SECRET
 end
 
 -- id = { name, rarity }, in the order the picker shows them
@@ -92,6 +102,7 @@ local TITLES = {
 	{ "jank_certified", "JANK CERTIFIED", "legendary" }, { "patient_zero", "PATIENT ZERO", "epic" },
 	{ "duck_rain_survivor", "DUCK RAIN SURVIVOR", "epic" }, { "spoon_main", "SPOON MAIN", "rare" },
 	{ "vip", "VIP", "vip", "VIP" }, -- (the VIP pack's title, words "VIP"; 4th: its name when it isn't sentence case)
+	{ "og", "OG", "secret", "OG" }, -- (found: the hub's hidden mannequin, 18 Nov)
 }
 
 C.ORDER = { border = {}, banner = {}, title = {} } :: { [string]: { string } }
@@ -128,7 +139,7 @@ function C.forSale(t: string): { Item }
 	local out = {}
 	for _, id in C.ORDER[t] or {} do
 		local i = C.ITEMS[t][id]
-		if i.rarity ~= "free" and i.rarity ~= C.VIP_ONLY then table.insert(out, i) end
+		if i.rarity ~= "free" and i.rarity ~= C.VIP_ONLY and i.rarity ~= C.SECRET then table.insert(out, i) end
 	end
 	return out
 end

@@ -1062,6 +1062,30 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Test hook (Studio): `ServerStorage.PracticeTest` "mode" / "hp" / "state".
   - Checks: sealed (0 leaks), head room 0 within 0.6, Carl lines 0 of 27, the egg door shut. Play: two real sniper hits on the 10 m dummy (55, 55 KO) read DAMAGE 110, DPS 79, TIME TO KILL 1.40 s on the board; HEALTH 300 gave the lane 300/300; shoot back took me 100 to 32 in 4.8 s; the heal pad healed and went dim; the prompts read "Dummies: Still" and "Dummy health: 300"; back to strafe and 100.
   - Photos: `training/practice_lane_sheet.jpg`.
+- **18 Nov, the hub egg (place version 809, HubEgg push 2):** the owner: "Can there be a secret Easter egg hidden somewhere in the hub a backfire manaqueen player?? With the exact crusty look" (backfire: JANKFIRE). The web game's player stands hidden in Hub v3 as a mannequin on its plinth. Touching it gives the OG title once.
+  - **The look is the web's own code, not a redraw:**
+    - `tools/roblox/hub_egg_dump.mjs` runs the web's `buildCharacter` (copied from `public/js/models.js`) and the real `clothes.js` in Node, with three 0.170.0 from a local copy (`hub_egg_hooks.mjs`, env `THREE_DIR`).
+    - It uses the default look: Sash + Shorts, the default skin, the first player colour (pink), the locker mannequin's weight shift and the character screen's plinth (`preview.js`).
+    - Every triangle and its colour goes to `roblox/assets/hub-egg/mannequin.json`. `tools/roblox/hub_egg_mannequin.py` makes the upload: 3 studs to the web metre, flat shaded, baked vertex colours.
+    - Three pieces: the mannequin, the plinth, and the outline everyone else saw on a web player (`remote.js`: each piece 1.12x, inside out, in its colour; only its rim shows).
+    - Nothing is cleaned up: six-sided limbs, 6 x 4 ball joints, the egg head with its mould seam, the price tag on the arm.
+  - **Placing:** `PolishBackup.HubEgg` (`E.build(spot)`, `E.check()`, asset 139602935358805) builds `workspace.Map.Hub.HubEgg`, outside the Rotunda, so the hub's `R.build` leaves it.
+    - For now it stands in the upstairs crescent's east dead end (56 degrees round, radius 70), checked clear (nothing in its box, flush on the floor, 17 studs of head room).
+    - That spot is in plain view from the last upstairs pad, so a better-hidden nook is with the hub session.
+  - **Finding it** (`server/HubEgg.server.luau`): walk into its unseen box round the plinth, or use its "Touch" prompt (phone and controller too).
+    - The first time, `Loot.grant(p, "egg:title:og", "hubegg-<uid>")` gives the OG title, kept in your loot save, with one receipt per player.
+    - A small line says "NEW TITLE · OG" (Hud's small kind). A slice of Pro Sound Effects' "Musical Toy Top 1" (1.3 to 3.0 s) plays in your own PlayerGui, so only you hear it.
+    - After that, the prompt only plays the slice again.
+  - **The secret rarity** (`CardStyles` rarity `"secret"`, pink) is never sold or rolled:
+    - `forSale` leaves it out; `Shop.secret` keeps it out of singles and the day's six; LootTable rolls only the rarities it knows.
+    - `Shop.offer("egg:<kind>:<id>")` is a pass, so the loot server's "buy" refuses it.
+    - The card's picker shows a secret title only once it is yours.
+  - **Play test** (solo, v809):
+    - "buy" of `title:og` gave "that isn't for sale"; of `egg:title:og`, "comes with VIP".
+    - Stepping up to the plinth gave OG in 0.2 s. The line showed. The slice played (TimePosition 1.51 at 0.3 s, Interface group) and was gone after 2.2 s.
+    - Then OG was taken off and found a second time the same way.
+    - The save was put back exactly (titles: vip). The test hook is `ServerStorage.HubEggTest` "state" / "find". In Studio each find has a fresh receipt, so it can be found again.
+  - Trap: the game's controller ignores `Humanoid:MoveTo` from a test. Step the body with `PivotTo` (and `TeleportT`).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

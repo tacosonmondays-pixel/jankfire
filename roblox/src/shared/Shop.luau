@@ -85,6 +85,12 @@ function Shop.dailyOnly(kind: string, id: string): boolean
 	local D = Shop.VipDaily :: any
 	return D ~= nil and D.isExclusive(kind, id) == true
 end
+-- a found thing (CardStyles rarity "secret": the hub egg's OG title): never sold, only "egg:<kind>:<id>" through the
+-- server's Loot.grant (Shop.offer)
+function Shop.secret(kind: string, id: string): boolean
+	local C = Shop.CardStyles :: any
+	return Shop.isCard(kind) and C ~= nil and type(C.isSecret) == "function" and C.isSecret(kind, id) == true
+end
 -- kept under the bare id, not "<id>@<weapon>": card looks, kill effects and emotes (no gun) and weapon skins (already
 -- one gun's)
 function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCard(kind) or Shop.isFlair(kind) end
@@ -546,7 +552,7 @@ end
 -- "skin:<id>" (its weapon is its own: the offer carries it, the id doesn't); or one card look, "border:<id>" /
 -- "banner:<id>" / "title:<id>", kill effect "kill:<id>" or emote "emote:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
-	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) or Shop.dailyOnly(kind, id) then return nil end
+	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) or Shop.dailyOnly(kind, id) or Shop.secret(kind, id) then return nil end
 	if Shop.isFlair(kind) and not Shop.flairForSale(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
@@ -569,6 +575,14 @@ function Shop.offer(id: any): Offer?
 		local name, rarity = Shop.itemInfo(dk, did)
 		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
 			items = { { kind = dk, id = did, weapon = if dk == "skin" then Shop.skinWeapon(did) else nil } } }
+	end
+	-- (a found thing's prize, the hub egg's: never on sale, only the server's Loot.grant takes it)
+	local ek, eid = string.match(id, "^egg:(%a+):([%w_]+)$")
+	if ek and eid then
+		if not Shop.secret(ek, eid) or not Shop.exists(ek, eid) then return nil end
+		local name, rarity = Shop.itemInfo(ek, eid)
+		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
+			items = { { kind = ek, id = eid } } }
 	end
 	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
 	if kind and item and weapon and not Shop.gunless(kind) then return single(kind, item, weapon) end
@@ -651,7 +665,7 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 		for _, k in { "border", "banner", "title" } do
 			for _, cid in ((Shop.CardStyles :: any).ORDER[k] or {}) :: { string } do
 				local _, r = Shop.itemInfo(k, cid)
-				if r ~= "free" and not Shop.vipOnly(k, cid) then table.insert(cards, k .. ":" .. cid) end
+				if r ~= "free" and not Shop.vipOnly(k, cid) and not Shop.secret(k, cid) then table.insert(cards, k .. ":" .. cid) end
 			end
 		end
 	end

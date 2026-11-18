@@ -519,7 +519,13 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 	for _, t in CardStyles.TYPES do
 		sectionTitle(parent, string.upper(CardStyles.TYPE_NAMES[t]) .. "S", 0, y, W)
 		y += 24
-		local ids = CardStyles.ORDER[t]
+		local ids = {}
+		for _, id in CardStyles.ORDER[t] do
+			-- (a found one, rarity "secret": not shown until you have it, or it gives the hiding place away)
+			local si = CardStyles.info(t, id)
+			if si and si.rarity == "secret" and not (owned ~= nil and owned[t] ~= nil and owned[t][id] == true) then continue end
+			table.insert(ids, id)
+		end
 		local tw = if L.compact then 150 else 168
 		local th = if t == "title" then math.max(52, L.btn + 8) else 92
 		local gap = 10
