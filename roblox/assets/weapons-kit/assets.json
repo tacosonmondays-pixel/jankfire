@@ -114,5 +114,9 @@
  "sniper@sniper_classic": 131732975740829,
  "revolver@revolver_classic": 121391793855763,
  "sawnoff@sawnoff_classic": 79016023102932,
- "scythe_rifle": 79754902375039
+ "scythe_rifle": 79754902375039,
+ "lmg@lmg_classic": 86825183979050,
+ "dmr@dmr_classic": 75552269033012,
+ "lever@lever_classic": 109039109961114,
+ "autoshot@autoshot_classic": 90004626635462
 }

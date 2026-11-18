@@ -44,7 +44,9 @@ STEEL_C = '6e737c'    # bare steel: struts, bipod, rings, rivets, a bare barrel
 NAMES = {'ar@ar_classic': 'Classic Assault Rifle', 'burst@burst_classic': 'Classic Burst Rifle',
          'smg@smg_classic': 'Classic SMG', 'pistol@pistol_classic': 'Classic Pistol',
          'shotgun@shotgun_classic': 'Classic Shotgun', 'sniper@sniper_classic': 'Classic Sniper',
-         'revolver@revolver_classic': 'Classic Revolver', 'sawnoff@sawnoff_classic': 'Classic Sawed-Off'}
+         'revolver@revolver_classic': 'Classic Revolver', 'sawnoff@sawnoff_classic': 'Classic Sawed-Off',
+         'lmg@lmg_classic': 'Classic LMG', 'dmr@dmr_classic': 'Classic Marksman Rifle',
+         'lever@lever_classic': 'Classic Lever Rifle', 'autoshot@autoshot_classic': 'Classic Auto Shotgun'}
 
 
 # ------------------------------------------------------------------------------------------------- local pieces
@@ -655,7 +657,269 @@ def sawnoff_classic():
     return g
 
 
+# ================================================================================================ BATCH 3 (18 Nov 2026)
+# the LMG, Marksman Rifle, Lever Rifle and Auto Shotgun, the same rules as batch 2.
+from gun_models_c1 import belt_path, mag_ribs
+from gun_models_c2 import ring_prism, cut_rect
+
+OD = '4a4f3c'      # olive drab: an ammunition can
+
+
+# =========================================================================================== LMG: the classic GPMG
+def lmg_classic():
+    """CLASSIC LMG, a belt-fed general-purpose machine gun (60-type): the long parkerised receiver with the port on the
+       right and the charging handle, the flat feed cover with three ribs (node "cover", it lifts round its back), the
+       leaf rear sight's ring behind it; the belt (belt_00 .. belt_11, the live links' places) running up out of an
+       olive ammunition can (node "mag") into the feed tray on the left; the barrel bare and hot ahead of the forearm
+       (piece "lmg_heat"), the carry handle on it, the gas cylinder under it with the bipod folded back beneath, the
+       hooded front post on its collar, the long slotted flash hider; a ribbed polymer forearm, the pistol grip in a
+       bow guard, the long stock with the shoulder rest folded on top and a dark butt plate"""
+    g, base = skin('lmg', 'lmg_classic')
+    g.slot('frame', PARK); g.slot('cover', PARK_L); g.slot('poly', POLY); g.slot('dark', BLUED); g.slot('black', BLACK)
+    g.slot('link', '50545d'); g.slot('can', OD)
+    BY, SY = 0.02, g.spots['sight'][1]  # 0.10379
+    # the receiver (the port on the right: a recess, a near-black floor 6 mm over its bottom)
+    def rec(t, p): t.prism(p, [(-0.205, -0.05), (-0.17, -0.064), (0.15, -0.064), (0.19, -0.04), (0.19, 0.052), (-0.205, 0.052)], 0.074, bev=0.008)
+    def rec_cut(t, p): t.box(p, (0.025, 0.06), (0.012, 0.042), (-0.12, 0.0), bev=0)
+    cut(g, 'body_wzB__frame', rec, rec_cut)
+    g.box('trim_wzN__black', (0.02, 0.031), (0.0135, 0.0405), (-0.1185, -0.0015), bev=0.0008)
+    g.box('body_wzB__dark', (0.037, 0.058), (-0.01, 0.016), (-0.182, -0.15), bev=0.004)  # the charging handle
+    # the feed cover (node "cover"): flat, three ribs across, a latch at its back
+    g.prism('cover_wzA__cover', [(-0.15, 0.048), (0.07, 0.048), (0.07, 0.078), (0.058, 0.088), (-0.13, 0.088), (-0.15, 0.074)],
+            0.072, bev=0.007, wtop=0.06)
+    for z0 in (-0.1, -0.04, 0.02):
+        g.box('cover_wzA__cover', (-0.0275, 0.0275), (0.07, 0.0915), (z0, z0 + 0.014), bev=0.003)
+    g.box('cover_wzB__frame', (-0.02, 0.02), (0.05, 0.084), (0.066, 0.09), bev=0.004)
+    # the rear sight: the leaf's block behind the cover, the ring on it (the aim line through it)
+    g.box('sight_wzB__dark', (-0.017, 0.017), (0.046, 0.064), (0.095, 0.13), bev=0.004)
+    SG.rifle_rear(g, 'sight_wzN__dark', 0.112, SY, 0.064, w=0.038, ears=False)
+    # the feed tray on the left (its mouth a recess) and the belt: the live gun's twelve links, low on the side
+    def tray(t, p): t.box(p, (-0.048, -0.036), (-0.018, 0.034), (-0.128, -0.032), bev=0.004)
+    def mouth(t, p): t.box(p, (-0.06, -0.042), (-0.008, 0.024), (-0.12, -0.04), bev=0)
+    cut(g, 'body_wzB__dark', tray, mouth)
+    links, pitch = belt_path((-0.072, -0.072), (-0.094, -0.03), (-0.052, 0.008), 12)
+    for k, (x, y, ang) in enumerate(links):  # belt_00 at the tray, belt_11 at the can (the can's end runs out first)
+        z0, z1 = (-0.115, -0.05) if k % 2 == 0 else (-0.108, -0.043)
+        g.xprism('belt_%02d_wzN__link' % k, rot_rect(x, y, pitch * 0.82, 0.017, ang), z0, z1, bev=0.0015)
+    # the ammunition can (node "mag"): an olive can with a dark lid (they ABUT), the lip the belt leaves by
+    g.box('mag_wzA__can', (-0.086, 0.022), (-0.236, -0.074), (-0.178, 0.0), bev=0.008)
+    g.box('mag_wzB__dark', (-0.089, 0.025), (-0.074, -0.06), (-0.181, 0.003), bev=0.004)
+    g.box('mag_wzB__dark', (-0.084, -0.054), (-0.08, -0.058), (-0.124, -0.036), bev=0.004)
+    # the barrel: inside the forearm and receiver, then bare and hot ahead of it (piece "lmg_heat", the game warms
+    # it), the collar and hooded front post, the long slotted flash hider; all 24 sides
+    g.cyl('barrel_wzB__dark', 0.019, (0, BY, -0.43), (0, BY, -0.19), sides=24, flat=False, bev=0.0)
+    g.cyl('lmg_heat_wzN__dark', 0.019, (0, BY, -0.805), (0, BY, -0.43), sides=24, flat=False, bev=0.0)
+    def hider(t, p): t.cylz(p, 0.023, -0.87, -0.8, y=BY, sides=24, bev=0.002, hole=(0.0105, 0.03))
+    def slots(t, p):
+        for ang in (30, 90, 150, 210, 270, 330):
+            t.xprism(p, rot_rect(0, BY, 0.012, 0.0055, ang, r0=0.02), -0.858, -0.814, bev=0)
+    cut(g, 'barrel_wzB__dark', hider, slots)
+    g.ring('sight_wzN__dark', 0.0225, 0.0175, (0, BY, -0.79), (0, BY, -0.775), sides=24, bev=0.0015)
+    SG.rifle_front(g, 'sight_wzN__dark', -0.7825, SY, BY + 0.0215, w=0.032)
+    # the gas cylinder and its block; the bipod's clamp with both legs folded back under it, their feet
+    g.cyl('barrel_wzB__dark', 0.014, (0, BY - 0.036, -0.62), (0, BY - 0.036, -0.3), sides=24, flat=False, bev=0.002)
+    g.box('barrel_wzB__dark', (-0.021, 0.021), (BY - 0.054, BY + 0.012), (-0.632, -0.6), bev=0.005)
+    g.box('bipod_wzB__frame', (-0.024, 0.024), (BY - 0.062, BY - 0.024), (-0.596, -0.57), bev=0.005)
+    for sx in (-1, 1):
+        g.box('bipod_wzB__frame', tuple(sorted((sx * 0.006, sx * 0.02))), (BY - 0.07, BY - 0.054), (-0.586, -0.46), bev=0.004)
+        g.box('bipod_wzB__frame', tuple(sorted((sx * 0.004, sx * 0.024))), (BY - 0.078, BY - 0.05), (-0.472, -0.448), bev=0.005)
+    # the carry handle standing on the barrel (its bar under the aim line)
+    loop(g, 'handle_wzB__frame', -0.47, -0.31, 0.03, 0.09, 0.013, 0.016, c=0.016)
+    # the forearm (polymer) round the barrel's root and the gas cylinder: three grooves along each side
+    FORE = [(-0.44, -0.03), (-0.428, -0.058), (-0.22, -0.064), (-0.206, -0.05), (-0.206, 0.034), (-0.44, 0.032)]
+    def fore(t, p): t.prism(p, FORE, 0.08, bev=0.008, wtop=0.066)
+    def grooves(t, p):
+        for sx in (-1, 1):
+            for y0 in (-0.042, -0.024, -0.006):
+                t.box(p, tuple(sorted((sx * 0.034, sx * 0.06))), (y0, y0 + 0.006), (-0.418, -0.232), bev=0)
+    cut(g, 'fore_wzA__poly', fore, grooves)
+    # the pistol grip (the live grip's place and rake), the bow guard, the trigger
+    g.prism('grip_wzB__poly', raked(0.142, -0.132, 0.18, 0.066, -0.297, taper=0.005), 0.052, bev=0.01)
+    loop(g, 'guard_wzB__dark', 0.0, 0.125, -0.132, -0.044, 0.014, 0.026, c=0.018)  # (its bar's underside 6 mm in the receiver)
+    trigger(g, 'guard_wzB__dark', 0.058, -0.064, -0.1)
+    # the long stock, the shoulder rest folded on its top, the dark butt plate (it ABUTS the stock)
+    g.prism('stock_wzA__poly', [(0.19, -0.052), (0.19, 0.05), (0.505, 0.05), (0.52, 0.042), (0.52, -0.152), (0.45, -0.154),
+                                 (0.33, -0.09), (0.26, -0.066)], 0.064, bev=0.01)
+    g.box('stock_wzN__frame', (-0.02, 0.02), (0.049, 0.057), (0.42, 0.512), bev=0.002)
+    g.prism('stock_wzB__dark', [(0.52, 0.05), (0.545, 0.05), (0.545, -0.158), (0.52, -0.158)], 0.066, bev=0.006)
+    return g
+
+
+# ========================================================================================== DMR: the battle rifle
+def dmr_classic():
+    """CLASSIC MARKSMAN RIFLE, a scoped semi-auto battle rifle (14-type marksman build): a one-piece walnut stock with
+       a semi-pistol grip and an upper handguard over the barrel, the steel butt plate and front band, the parkerised
+       receiver with the port on top, the operating rod and its handle on the right (node "charge"), the gas
+       cylinder and its lock under the barrel, the slotted flash suppressor; a modest 24-sided scope on a side
+       mount's bridge over the receiver; the box magazine (node "mag") ahead of the bow guard"""
+    g, base = skin('dmr', 'dmr_classic')
+    g.slot('wood', WOOD); g.slot('frame', '4a4c52'); g.slot('dark', BLUED); g.slot('black', BLACK)
+    g.slot('glass', '5f7484', 'g', 0.6)
+    BY, SY = 0.02, g.spots['sight'][1]  # 0.11996
+    # the barrel, the flash suppressor (slots cut through its sides)
+    g.cyl('barrel_wzB__dark', 0.017, (0, BY, -0.83), (0, BY, -0.19), sides=24, flat=False, bev=0.0)
+    def sup(t, p): t.cylz(p, 0.0205, -0.8915, -0.818, y=BY, sides=24, bev=0.002, hole=(0.0095, 0.03))
+    def sup_slots(t, p):
+        for ang in (30, 90, 150, 210, 330):
+            t.xprism(p, rot_rect(0, BY, 0.012, 0.0055, ang, r0=0.018), -0.876, -0.83, bev=0)
+    cut(g, 'barrel_wzB__dark', sup, sup_slots)
+    # the gas cylinder and its lock, the steel front band (it ABUTS the stock's tip)
+    g.cyl('barrel_wzB__dark', 0.0145, (0, BY - 0.032, -0.665), (0, BY - 0.032, -0.5), sides=24, flat=False, bev=0.002)
+    g.box('barrel_wzB__dark', (-0.019, 0.019), (BY - 0.05, BY + 0.016), (-0.668, -0.638), bev=0.004)
+    g.box('barrel_wzB__frame', (-0.029, 0.029), (-0.036, 0.03), (-0.571, -0.555), bev=0.004)
+    # the receiver (parkerised), its port on top to the right
+    def rec(t, p): t.prism(p, [(-0.2, -0.012), (0.115, -0.012), (0.13, 0.004), (0.13, 0.042), (0.11, 0.05), (-0.2, 0.05)],
+                           0.048, bev=0.006)
+    def port(t, p): t.box(p, (0.006, 0.04), (0.03, 0.06), (-0.1, 0.02), bev=0)
+    cut(g, 'body_wzB__frame', rec, port)
+    # the operating rod along the right and its handle (node "charge")
+    g.box('charge_wzB__dark', (0.021, 0.029), (0.016, 0.028), (-0.19, -0.03), bev=0.002)
+    g.box('charge_wzB__dark', (0.024, 0.044), (0.014, 0.034), (-0.032, 0.01), bev=0.003)
+    g.cyl('charge_wzB__dark', 0.0105, (0.04, 0.024, -0.011), (0.058, 0.024, -0.011), sides=16, bev=0.002)
+    # the walnut (soft edges): the one-piece stock with its semi-pistol grip, the upper handguard over the barrel
+    STOCK = [(-0.555, 0.004), (-0.2, 0.01), (0.13, 0.014), (0.165, 0.04), (0.52, 0.058), (0.574, 0.06), (0.574, -0.175),
+             (0.43, -0.152), (0.32, -0.142), (0.29, -0.152), (0.255, -0.162), (0.22, -0.148), (0.17, -0.06), (0.15, -0.046),
+             (-0.11, -0.04), (-0.5, -0.034), (-0.555, -0.02)]
+    def woods():
+        g.prism('stock_wzA__wood', STOCK, 0.06, bev=0.011)
+        g.prism('guard_wzA__wood', [(-0.46, 0.008), (-0.2, 0.008), (-0.2, 0.048), (-0.214, 0.054), (-0.44, 0.052),
+                                    (-0.46, 0.042)], 0.044, bev=0.008)
+    wood(woods)
+    g.prism('stock_wzB__frame', [(0.574, 0.06), (0.5878, 0.058), (0.5878, -0.173), (0.574, -0.175)], 0.062, bev=0.003)
+    # the bow guard and trigger (steel), the box magazine (node "mag": the live one's place and curve), its plate
+    loop(g, 'body_wzB__frame', 0.04, 0.16, -0.095, -0.024, 0.012, 0.022, c=0.018)  # (its bar's underside 10 mm in the wood)
+    trigger(g, 'body_wzB__frame', 0.11, -0.04, -0.072)
+    MF, MB = [(-0.088, -0.03), (-0.091, -0.1), (-0.105, -0.162)], [(0.03, -0.03), (0.028, -0.1), (0.016, -0.166)]
+    fb, bb = curved_mag(g, 'mag_wzB__dark', MF, MB, 0.054, bev=0.008)
+    mag_ribs(g, 'mag_wzB__dark', MF, MB, (-0.075, -0.12), 0.06)
+    plate(g, 'mag_wzB__dark', fb, bb, 0.016, 0.06, bev=0.005)
+    # the side mount: a plate on the receiver's left, its bridge over the top; the modest scope on two rings
+    g.xprism('scope_wzB__frame', [(-0.0385, 0.016), (-0.022, 0.016), (-0.022, 0.069), (0.01, 0.069), (0.01, 0.0795),
+                                  (-0.0385, 0.0795)], -0.064, 0.034, bev=0.002)
+    SG.scope_slim(g, 'scope_wzB__dark', -0.23, 0.17, SY, r=0.0205, bell=0.029, eye=0.027, lens_piece='lens_wzN__glass',
+                  mounts=((-0.048, 0.0795), (0.018, 0.0795)), turret=False, bell_len=0.06, eye_len=0.06, sides=24)
+    g.cyl('scope_wzN__dark', 0.0115, (0, SY + 0.016, -0.023), (0, SY + 0.036, -0.023), sides=24, bev=0.0015)
+    g.cyl('scope_wzN__dark', 0.0115, (0.016, SY, -0.023), (0.036, SY, -0.023), sides=24, bev=0.0015)
+    return g
+
+
+# ===================================================================================== LEVER RIFLE: the carbine
+def lever_classic():
+    """CLASSIC LEVER RIFLE, a lever-action carbine (94-type): a blued receiver with the bright bolt along its top, the
+       loading gate on the right and a saddle ring on the left, a round 24-sided barrel over a full tube magazine with
+       its cap, the front barrel band; a walnut forend with a steel cap and a straight walnut stock with a curved
+       steel butt plate; the big lever loop (node "lever") and the spur hammer (node "lhammer"); the notch on the
+       barrel and the brass bead at the muzzle"""
+    g, base = skin('lever', 'lever_classic')
+    g.slot('wood', WOOD); g.slot('blue', '3a3d44'); g.slot('steel', STEEL_C); g.slot('brass', '8a7a52'); g.slot('dark', BLUED)
+    g.slot('black', BLACK)
+    BY, TY, SY = 0.02, -0.019, g.spots['sight'][1]  # the bore, the tube, the aim line (0.06)
+    # the receiver: its loading gate (right) a shallow recess; the bolt along its top; the saddle ring on the left
+    def rec(t, p): t.prism(p, [(-0.13, 0.042), (0.06, 0.042), (0.075, 0.034), (0.142, 0.022), (0.142, -0.036), (0.1, -0.062),
+                               (-0.116, -0.062), (-0.13, -0.048)], 0.054, bev=0.008)
+    def gate(t, p): t.box(p, (0.022, 0.04), (-0.042, -0.016), (-0.104, -0.056), bev=0)
+    cut(g, 'body_wzA__blue', rec, gate)
+    g.box('body_wzN__steel', (-0.011, 0.011), (0.036, 0.047), (-0.07, 0.068), bev=0.003)
+    g.cyl('body_wzN__steel', 0.005, (-0.026, -0.025, 0.085), (-0.0345, -0.025, 0.085), sides=12, bev=0.001)
+    g.ring('body_wzN__steel', 0.017, 0.0115, (-0.0355, -0.04, 0.085), (-0.0315, -0.04, 0.085), sides=24, bev=0.001)
+    # the barrel and the tube (24 sides), the tube's cap (it ABUTS the tube), the front band round both
+    g.cyl('barrel_wzB__blue', 0.021, (0, BY, -0.71), (0, BY, -0.12), sides=24, flat=False, bev=0.002, hole=(0.0105, 0.03))
+    g.cyl('barrel_wzB__blue', 0.0145, (0, TY, -0.688), (0, TY, -0.12), sides=24, flat=False, bev=0.0)
+    g.cyl('barrel_wzN__steel', 0.0155, (0, TY, -0.7), (0, TY, -0.688), sides=24, flat=False, bev=0.0015)
+    g.xprism('barrel_wzB__blue', cut_rect(-0.026, 0.026, TY - 0.02, BY + 0.026, 0.012), -0.648, -0.628, bev=0.004)
+    # the walnut (soft edges): the forend round the barrel's foot and the tube, the straight stock
+    BUTT = [(0.462, -0.002), (0.466, -0.04), (0.468, -0.09), (0.464, -0.148)]
+    def woods():
+        g.prism('fore_wzA__wood', [(-0.36, 0.02), (-0.13, 0.02), (-0.13, -0.044), (-0.345, -0.044), (-0.36, -0.032)], 0.05, bev=0.008)
+        g.prism('stock_wzA__wood', [(0.13, 0.024), (0.2, 0.01)] + BUTT + [(0.31, -0.112), (0.22, -0.076), (0.148, -0.044),
+                                                                       (0.13, -0.034)], 0.05, bev=0.009)
+    wood(woods)
+    g.box('fore_wzB__blue', (-0.0265, 0.0265), (-0.046, 0.024), (-0.376, -0.36), bev=0.004)
+    g.prism('stock_wzB__blue', [(z + 0.014, y) for z, y in BUTT] + BUTT[::-1], 0.052, bev=0.004)
+    # the spur hammer (node "lhammer", under the aim line), the lever (node "lever": the bar from its pivot, the big loop)
+    g.prism('lhammer_wzN__dark', [(0.07, 0.012), (0.102, 0.012), (0.106, 0.034), (0.128, 0.046), (0.136, 0.054),
+                                  (0.124, 0.0585), (0.096, 0.05), (0.074, 0.041)], 0.016, bev=0.003)
+    g.box('lever_wzN__dark', (-0.0085, 0.0085), (-0.074, -0.058), (-0.042, 0.03), bev=0.004)
+    ring_prism(g, 'lever_wzN__dark',
+               [(0.016, -0.06), (0.1, -0.06), (0.142, -0.046), (0.158, -0.07), (0.15, -0.106), (0.124, -0.13), (0.088, -0.138),
+                (0.05, -0.132), (0.024, -0.114), (0.01, -0.086)],
+               [(0.032, -0.075), (0.096, -0.075), (0.13, -0.062), (0.142, -0.076), (0.136, -0.1), (0.116, -0.118), (0.088, -0.124),
+                (0.056, -0.119), (0.036, -0.104), (0.026, -0.086)], 0.018, bev=0.004)
+    trigger(g, 'body_wzB__dark', 0.052, -0.06, -0.088)
+    # the sights: the notch leaf on the barrel, the brass bead on its blade at the muzzle
+    SG.notch(g, 'sight_wzN__dark', -0.2, SY, BY + 0.019, 0.028, depth=0.006, nw=0.3, nd=0.005, neck=0.0055)
+    SG.bead(g, 'sight_wzN__brass', -0.689, SY, BY + 0.019, r=0.0032, stem_piece='sight_wzN__dark', stem_w=0.006, stem_d=0.008)
+    return g
+
+
+# =================================================================================== AUTO SHOTGUN: the drum auto
+def autoshot_classic():
+    """CLASSIC AUTO SHOTGUN, a drum-fed automatic shotgun (12-gauge carbine type): an upper (the port on the right, the
+       charging handle) on a polymer lower with its magazine well, the carry handle with the rear notch on its back,
+       a fat round handguard with vents between a steel ring and a dark cap, the barrel with its triangular front
+       sight tower (blade between two ears) and a slotted muzzle device; the big round drum (node "mag", 24 sides,
+       recessed faces and hubs) under the well; a pistol grip in a bow guard, a fixed stock with a dark butt plate"""
+    g, base = skin('autoshot', 'autoshot_classic')
+    g.slot('frame', '4a4d55'); g.slot('deck', '53565e'); g.slot('poly', '34363c'); g.slot('dark', BLUED); g.slot('black', BLACK)
+    g.slot('drum', '5c6068')
+    BY, SY = 0.02, g.spots['sight'][1]  # 0.07796
+    # the lower (polymer) with the magazine well, the upper (parkerised) ABUTTING it; the port (right) a recess
+    g.prism('body_wzA__poly', [(-0.23, -0.008), (0.2, -0.008), (0.2, -0.042), (0.186, -0.058), (-0.04, -0.058), (-0.042, -0.08),
+                                (-0.16, -0.08), (-0.175, -0.06), (-0.23, -0.044)], 0.07, bev=0.008)
+    def upper(t, p): t.prism(p, [(-0.23, -0.008), (0.2, -0.008), (0.2, 0.036), (-0.23, 0.036)], 0.064, bev=0.007)
+    def port(t, p): t.box(p, (0.022, 0.05), (0.004, 0.028), (-0.13, -0.045), bev=0)
+    cut(g, 'body_wzB__frame', upper, port)
+    g.box('trim_wzN__black', (0.016, 0.0265), (0.0055, 0.0265), (-0.1285, -0.0465), bev=0.0008)
+    g.box('charge_wzB__dark', (0.032, 0.056), (0.008, 0.03), (-0.035, 0.0), bev=0.005)
+    # the carry handle (a lighter loop), the rear notch on its back
+    ring_prism(g, 'handle_wzA__deck', cut_rect(-0.1, 0.135, 0.03, 0.068, 0.01), cut_rect(-0.074, 0.08, 0.044, 0.056, 0.004),
+               0.032, bev=0.005)
+    SG.notch(g, 'sight_wzN__dark', 0.11018, SY, 0.068, 0.026, depth=0.008, nw=0.34, nd=0.0045)
+    # the handguard: a steel ring, the fat round guard with five vents a side, a dark cap (all ABUT along the barrel)
+    round_bar(g, 'guard_wzB__frame', -0.245, -0.23, 0.0, 0.0, 0.042, 0.054, 0.032, ch=0.003)
+    def hg(t, p): round_bar(t, p, -0.462, -0.245, 0.0, 0.0, 0.039, 0.051, 0.03, ch=0.0)
+    def vents(t, p):
+        for sx in (-1, 1):
+            for k in range(5):
+                z0 = -0.44 + k * 0.04
+                t.box(p, tuple(sorted((sx * 0.03, sx * 0.06))), (-0.024, 0.026), (z0, z0 + 0.016), bev=0)
+    cut(g, 'guard_wzA__poly', hg, vents)
+    round_bar(g, 'guard_wzB__dark', -0.476, -0.462, 0.0, 0.0, 0.041, 0.053, 0.031, ch=0.003)
+    # the barrel (24 sides), the front sight tower with its blade between two ears, the slotted muzzle device
+    g.cyl('barrel_wzB__dark', 0.019, (0, BY, -0.705), (0, BY, -0.2), sides=24, flat=False, bev=0.0)
+    g.prism('sight_wzB__dark', [(-0.522, BY - 0.024), (-0.48, BY - 0.024), (-0.48, 0.006), (-0.494, 0.056), (-0.508, 0.056),
+                                 (-0.522, 0.026)], 0.03, bev=0.004, wtop=0.018)
+    for sx in (-1, 1):
+        g.box('sight_wzN__dark', tuple(sorted((sx * 0.0075, sx * 0.0115))), (0.052, 0.082), (-0.507, -0.495), bev=0.0012)
+    SG.blade(g, 'sight_wzN__dark', -0.501, SY, 0.055, w=0.0055, depth=0.008)
+    def dev(t, p): t.cylz(p, 0.025, -0.76, -0.7, y=BY, sides=24, bev=0.002, hole=(0.0125, 0.03))
+    def dev_slots(t, p):
+        for ang in (45, 135, 225, 315):
+            t.xprism(p, rot_rect(0, BY, 0.013, 0.007, ang, r0=0.022), -0.75, -0.712, bev=0)
+    cut(g, 'barrel_wzB__dark', dev, dev_slots)
+    # the drum (node "mag"): its neck into the well, the round drum with a recess in each face and a hub in it
+    g.box('mag_wzB__dark', (-0.026, 0.026), (-0.09, -0.04), (-0.152, -0.048), bev=0.006)
+    def drum(t, p): t.cyl(p, 0.088, (-0.039, -0.14, -0.1), (0.039, -0.14, -0.1), sides=24, bev=0.008)
+    def faces(t, p):
+        for sx in (-1, 1):
+            t.cyl(p, 0.066, (sx * 0.035, -0.14, -0.1), (sx * 0.05, -0.14, -0.1), sides=24, bev=0)
+    cut(g, 'mag_wzA__drum', drum, faces)
+    for sx in (-1, 1):
+        g.cyl('mag_wzN__dark', 0.022, (sx * 0.03, -0.14, -0.1), (sx * 0.043, -0.14, -0.1), sides=24, bev=0.002)
+    # the pistol grip (the live grip's place and rake), the bow guard (its bar's underside 6 mm in the lower), trigger
+    g.prism('grip_wzB__poly', raked(0.135, -0.125, 0.16, 0.062, -0.36, taper=0.005), 0.052, bev=0.01)
+    loop(g, 'grip_wzB__poly', -0.004, 0.105, -0.112, -0.038, 0.014, 0.026, c=0.016)
+    trigger(g, 'grip_wzB__poly', 0.042, -0.052, -0.086)
+    # the fixed stock, the dark butt plate (it ABUTS the stock)
+    g.prism('stock_wzA__poly', [(0.2, 0.034), (0.47, 0.03), (0.47, -0.136), (0.43, -0.14), (0.25, -0.06), (0.2, -0.056)],
+            0.06, bev=0.01)
+    g.prism('stock_wzB__dark', [(0.47, 0.032), (0.506, 0.032), (0.506, -0.142), (0.47, -0.142)], 0.064, bev=0.007)
+    return g
+
+
 SKINS = {'ar@ar_classic': ar_classic, 'smg@smg_classic': smg_classic, 'burst@burst_classic': burst_classic,
          'pistol@pistol_classic': pistol_classic,
          'shotgun@shotgun_classic': shotgun_classic, 'sniper@sniper_classic': sniper_classic,
-         'revolver@revolver_classic': revolver_classic, 'sawnoff@sawnoff_classic': sawnoff_classic}
+         'revolver@revolver_classic': revolver_classic, 'sawnoff@sawnoff_classic': sawnoff_classic,
+         'lmg@lmg_classic': lmg_classic, 'dmr@dmr_classic': dmr_classic, 'lever@lever_classic': lever_classic,
+         'autoshot@autoshot_classic': autoshot_classic}
