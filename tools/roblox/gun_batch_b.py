@@ -30,13 +30,15 @@
 #             intake (charcoal drum, black rings) on the left (the side first person sees), a pull starter on the right,
 #             an orange top handle with a black grip sleeve and a steel trigger (grip), an orange outlet collar, a long
 #             light grey tube with a ribbed black fore grip (fore) and an orange nozzle with a black mouth (muzzle).
-#   - CIG     w_cig = HOT SAUCE (the Cigarette's stand-in on Roblox; the game's id stays `cig`). A chunky woozy
-#             hot-sauce bottle lying along the gun, the cap forward (-z): the bottle in the sauce's red (round short
-#             shoulders, a long skinny neck, a lip bead), a plain cream label band round the back of the body and a cream
-#             band on the neck (flat colour, nothing on them), a dark ribbed cap (node `tip`: the cap, its origin at the
-#             cap's tip (0, 0, -0.118), where the fire comes out). Held round the body like a small bottle.
-#             (round 2: clear glass over the sauce washed it to a pale mauve and, with a long tapered shoulder and a
-#             big label, read as a wine bottle; now opaque red with a sauce bottle's round shoulders)
+#   - CIG     w_cig = HOT SAUCE (the Cigarette's stand-in on Roblox; the game's id stays `cig`). A hot-sauce bottle
+#             lying along the gun, the cap forward (-z): slim and tall, a short rounded shoulder and a SHORT narrow neck;
+#             clear red-tinted glass over a bright red sauce core (2.5 mm in; the shoulder and neck above it are empty
+#             glass, so it reads as see-through sauce); a cream label band with a raised red chili pepper and its green
+#             stem on each side (flat colour, no text); a green flip-top cap: a base, a hinge groove, a domed lid with a
+#             thumb tab on top and a dispensing nub (node `tip`: the cap, its origin at the nub's tip (0, 0, -0.118),
+#             where the fire comes out). Held round the body like a small bottle.
+#             (v2, 18 Nov, the main session: v1's long neck, dark cap, dark red body and plain label read as a wine or
+#             beer bottle, a content risk for a bottle you swig; v1 before that: pale glass washed the sauce to mauve)
 #   - LASER   w_laser (Big Laser Pointer). An office laser pointer the size of a leg, hip-held in two hands: one long
 #             smooth plum tube on the axis, a steel nose with the lens (node `emitter`, Neon), a ribbed charcoal finger
 #             band at the front (fore), the thumb button on top in a charcoal bezel (node `button`, Neon; origin at the
@@ -249,24 +251,41 @@ def cig():
     """HOT SAUCE, the Cigarette's stand-in (see the file's header)"""
     gunkit.use_style('B')
     g = Batch('w_cig')
-    g.slot('sauce', '86302a'); g.slot('label', 'd3cbb6'); g.slot('cap', '3a3d45')
-    # ---- the bottle: a slim woozy sauce bottle in the sauce's red (round body, sloped shoulder, a long neck, a lip bead)
-    # (round, short shoulders into a long skinny neck: a hot-sauce bottle, not a wine bottle's long taper)
-    g.put('bottle_wzB__sauce', lathe([(0.0085, -0.094), (0.011, -0.0925), (0.011, -0.0865), (0.0095, -0.0845), (0.0095, -0.036),
-                                      (0.0108, -0.031), (0.0145, -0.0255), (0.019, -0.0205), (0.022, -0.016), (0.0233, -0.012),
-                                      (0.0235, -0.008), (0.0235, 0.081), (0.022, 0.0865), (0.018, 0.0895), (0.0, 0.0895)], segs=32))
-    # ---- the plain label band round the back of the body and a band on the neck (cream, nothing on them)
-    g.put('label_wzA__label', soft(tube(0.026, 0.0225, (0, 0, 0.02), (0, 0, 0.075), sides=32), 0.001, seg=1))
-    g.put('label_wzA__label', soft(tube(0.0122, 0.0088, (0, 0, -0.08), (0, 0, -0.068), sides=32), 0.0008, seg=1))
-    # ---- the cap (node `tip`): dark, ribbed round its side, a domed top; origin at its tip
-    cap = lathe([(0.0, -0.118), (0.006, -0.1175), (0.0105, -0.1155), (0.0132, -0.112), (0.0135, -0.107), (0.0135, -0.082),
-                 (0.0, -0.082)], segs=36)
-    ribs = [cyl(0.002, (0.0142 * math.cos(2 * math.pi * k / 12), 0.0142 * math.sin(2 * math.pi * k / 12), -0.109),
-                (0.0142 * math.cos(2 * math.pi * k / 12), 0.0142 * math.sin(2 * math.pi * k / 12), -0.078), sides=8) for k in range(12)]
-    g.put('tip_wzB__cap', cut(cap, *ribs))
+    g.slot('glass', 'cc3d2e', 'g', 0.4); g.slot('sauce', 'a82219'); g.slot('label', 'ddd4bc')
+    g.slot('chili', 'b8352a'); g.slot('green', '4a8a3c')
+    # ---- the bottle: clear red glass, slim and tall, a short rounded shoulder, a short narrow neck under the cap
+    g.put('bottle_wzN__glass', lathe([(0.0085, -0.1005), (0.0105, -0.099), (0.0105, -0.094), (0.0095, -0.092), (0.0095, -0.08),
+                                      (0.0105, -0.076), (0.014, -0.071), (0.018, -0.066), (0.0202, -0.061), (0.021, -0.056),
+                                      (0.021, 0.084), (0.0198, 0.0875), (0.017, 0.0895), (0.0, 0.0895)], segs=32))
+    # the sauce inside, 2.5 mm in from the glass, up into the shoulder (the neck above it is empty glass)
+    g.put('sauce_wzB__sauce', lathe([(0.0125, -0.0655), (0.0158, -0.062), (0.0178, -0.0575), (0.0185, -0.053), (0.0185, 0.082),
+                                     (0.0172, 0.0855), (0.0145, 0.087), (0.0, 0.087)], segs=32))
+    # ---- the label band (cream) and, on each side, a raised red chili pepper with a green stem standing on it
+    g.put('label_wzA__label', soft(tube(0.0235, 0.0195, (0, 0, 0.0), (0, 0, 0.06), sides=48), 0.001, seg=1))
+    ZC = 0.033
+    pep = outline([(ZC - 0.0215, 0.002, 's'), (ZC - 0.019, 0.0085, 's'), (ZC - 0.008, 0.0095, 's'), (ZC + 0.004, 0.0065, 's'),
+                   (ZC + 0.013, 0.001, 's'), (ZC + 0.019, -0.0045, 's'), (ZC + 0.0225, -0.0105, 'c'), (ZC + 0.0145, -0.0075, 's'),
+                   (ZC + 0.005, -0.0052, 's'), (ZC - 0.005, -0.0042, 's'), (ZC - 0.014, -0.0042, 's'), (ZC - 0.0195, -0.0025, 's')],
+                  step=0.002)
+    calyx = outline(rrect(ZC - 0.0225, ZC - 0.0155, -0.0045, 0.0115, 0.002), step=0.002)
+    stalk = [(ZC - 0.0225, 0.0055), (ZC - 0.026, 0.0072), (ZC - 0.0285, 0.0102), (ZC - 0.027, 0.0118), (ZC - 0.0248, 0.0092),
+             (ZC - 0.022, 0.0085)]
+    for sx in (-1, 1):   # (the chili 2 mm proud of the label, the stem 2 mm proud of the chili: no two faces level)
+        g.put('chili_wzN__chili', cut(prism(pep, 0.03, x=sx * 0.015), tube(0.0255, 0.0215, (0, 0, -0.01), (0, 0, 0.07), sides=48),
+                                      op='INTERSECT'))
+        stem = union(prism(calyx, 0.03, x=sx * 0.015), prism(stalk, 0.03, x=sx * 0.015))
+        # (its underside 1.7 mm off the chili's: level, the two flickered inside the label)
+        g.put('chili_wzN__green', cut(stem, tube(0.0275, 0.0232, (0, 0, -0.01), (0, 0, 0.07), sides=48), op='INTERSECT'))
+    # ---- the green flip-top cap (node `tip`): a base over the neck's lip, a hinge groove, a domed lid with a thumb tab on
+    # top, a dispensing nub; origin at the nub's tip
+    cap = lathe([(0.0, -0.118), (0.0035, -0.118), (0.0042, -0.1172), (0.0042, -0.1146), (0.0075, -0.1142), (0.0105, -0.113),
+                 (0.0125, -0.1105), (0.013, -0.108), (0.013, -0.1045), (0.0118, -0.1035), (0.0118, -0.1025), (0.0132, -0.1015),
+                 (0.0132, -0.0935), (0.0125, -0.0925), (0.0, -0.0925)], segs=36)
+    tab = prism(outline(rrect(-0.1125, -0.1055, 0.009, 0.0158, 0.0018)), 0.009)
+    g.put('tip_wzB__green', soft(union(cap, tab), 0.0006, seg=1))
     g.origins['tip'] = (0.0, 0.0, -0.118)
     g.spots = {'muzzle': (0.0, 0.0, -0.118), 'grip': (0.0, 0.0, 0.05)}
-    g.hat = ((0.0, 0.0235, 0.0), 0.04)    # (on the body's crest ahead of the label: flat, the label 6 mm past the brim)
+    g.hat = ((0.0, 0.021, -0.025), 0.04)  # (on the glass crest between the shoulder and the label: flat, 11 mm clear of each)
     return g.done()
 
 

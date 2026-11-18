@@ -72530,11 +72530,35 @@
  "w_cig": {
   "pieces": [
    {
-    "name": "bottle_wzB__sauce",
-    "upload": "bottle_wzB__sauce__p86302a",
-    "tris": 894,
+    "name": "bottle_wzN__glass",
+    "upload": "bottle_wzN__glass__gcc3d2e66",
+    "tris": 830,
     "look": {
-     "color": "86302a",
+     "color": "cc3d2e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 0.4,
+     "tex": false
+    },
+    "lo": [
+     -0.021,
+     -0.021,
+     -0.1005
+    ],
+    "hi": [
+     0.021,
+     0.021,
+     0.0895
+    ],
+    "paint": "gcc3d2e66"
+   },
+   {
+    "name": "chili_wzN__chili",
+    "upload": "chili_wzN__chili__pb8352a",
+    "tris": 484,
+    "look": {
+     "color": "b8352a",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -72542,23 +72566,47 @@
      "tex": false
     },
     "lo": [
-     -0.0235,
-     -0.0235,
-     -0.094
+     -0.0255,
+     -0.0105,
+     0.0115
     ],
     "hi": [
-     0.0235,
-     0.0235,
-     0.0895
+     0.0255,
+     0.0097,
+     0.0555
     ],
-    "paint": "p86302a"
+    "paint": "pb8352a"
+   },
+   {
+    "name": "chili_wzN__green",
+    "upload": "chili_wzN__green__p4a8a3c",
+    "tris": 336,
+    "look": {
+     "color": "4a8a3c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0275,
+     -0.0045,
+     0.0045
+    ],
+    "hi": [
+     0.0275,
+     0.0118,
+     0.0175
+    ],
+    "paint": "p4a8a3c"
    },
    {
     "name": "label_wzA__label",
-    "upload": "label_wzA__label__pd3cbb6",
-    "tris": 1024,
+    "upload": "label_wzA__label__pddd4bc",
+    "tris": 768,
     "look": {
-     "color": "d3cbb6",
+     "color": "ddd4bc",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -72566,23 +72614,23 @@
      "tex": false
     },
     "lo": [
-     -0.026,
-     -0.026,
-     -0.08
+     -0.0235,
+     -0.0235,
+     -0.0
     ],
     "hi": [
-     0.026,
-     0.026,
-     0.075
+     0.0235,
+     0.0235,
+     0.06
     ],
-    "paint": "pd3cbb6"
+    "paint": "pddd4bc"
    },
    {
-    "name": "tip_wzB__cap",
-    "upload": "tip_wzB__cap__p3a3d45",
-    "tris": 622,
+    "name": "sauce_wzB__sauce",
+    "upload": "sauce_wzB__sauce__pa82219",
+    "tris": 446,
     "look": {
-     "color": "3a3d45",
+     "color": "a82219",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -72590,43 +72638,67 @@
      "tex": false
     },
     "lo": [
-     -0.0134,
-     -0.0134,
+     -0.0185,
+     -0.0185,
+     -0.0655
+    ],
+    "hi": [
+     0.0185,
+     0.0185,
+     0.087
+    ],
+    "paint": "pa82219"
+   },
+   {
+    "name": "tip_wzB__green",
+    "upload": "tip_wzB__green__p4a8a3c",
+    "tris": 1776,
+    "look": {
+     "color": "4a8a3c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0132,
+     -0.0132,
      -0.118
     ],
     "hi": [
-     0.0134,
-     0.0134,
-     -0.082
+     0.0132,
+     0.0158,
+     -0.0925
     ],
-    "paint": "p3a3d45"
+    "paint": "p4a8a3c"
    }
   ],
-  "tris": 2540,
+  "tris": 4640,
   "lo": [
-   -0.026,
-   -0.026,
+   -0.0275,
+   -0.0235,
    -0.118
   ],
   "hi": [
-   0.026,
-   0.026,
+   0.0275,
+   0.0235,
    0.0895
   ],
-  "bytes": 138232,
+  "bytes": 232248,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "cig",
    "set": "kit",
    "lo": [
-    -0.026,
-    -0.026,
+    -0.0275,
+    -0.0235,
     -0.118
    ],
    "hi": [
-    0.026,
-    0.026,
+    0.0275,
+    0.0235,
     0.0895
    ],
    "spots": {
@@ -72642,8 +72714,8 @@
     ],
     "hat": [
      0.0,
-     0.0235,
-     0.0
+     0.021,
+     -0.025
     ]
    },
    "pivots": {
@@ -72656,15 +72728,23 @@
    "hatAt": [
     [
      0.0,
-     0.0235,
-     0.0
+     0.021,
+     -0.025
     ],
     0.04
    ],
    "hat_size": 0.04
   },
   "nodes": {
-   "bottle_wzB": {
+   "bottle_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "chili_wzN": {
     "at": [
      0.0,
      0.0,
@@ -72673,6 +72753,14 @@
     "turned": false
    },
    "label_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sauce_wzB": {
     "at": [
      0.0,
      0.0,
