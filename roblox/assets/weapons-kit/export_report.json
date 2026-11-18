@@ -57918,7 +57918,7 @@
    {
     "name": "grip_wzA__wood",
     "upload": "grip_wzA__wood__p6b4a32",
-    "tris": 56,
+    "tris": 136,
     "look": {
      "color": "6b4a32",
      "metal": 0.0,
@@ -58324,7 +58324,7 @@
     "paint": "pa8874a"
    }
   ],
-  "tris": 6440,
+  "tris": 6520,
   "lo": [
    -0.0748,
    -0.1373,
@@ -58335,7 +58335,7 @@
    0.0673,
    0.1746
   ],
-  "bytes": 568576,
+  "bytes": 576736,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -58684,7 +58684,7 @@
    {
     "name": "grip_wzA__wood",
     "upload": "grip_wzA__wood__pc8a67c",
-    "tris": 56,
+    "tris": 136,
     "look": {
      "color": "c8a67c",
      "metal": 0.0,
@@ -58732,7 +58732,7 @@
    {
     "name": "grip_wzN__wrap",
     "upload": "grip_wzN__wrap__p2e2836",
-    "tris": 220,
+    "tris": 124,
     "look": {
      "color": "2e2836",
      "metal": 0.0,
@@ -58756,7 +58756,7 @@
    {
     "name": "grip_wzN__glow",
     "upload": "grip_wzN__glow__n4effed",
-    "tris": 56,
+    "tris": 92,
     "look": {
      "color": "45e6d6",
      "metal": 0.0,
@@ -58768,13 +58768,13 @@
     },
     "lo": [
      -0.0345,
-     -0.1021,
+     -0.1073,
      0.0861
     ],
     "hi": [
-     0.0296,
+     0.033,
      -0.0374,
-     0.1481
+     0.1546
     ],
     "paint": "n4effed"
    },
@@ -59068,7 +59068,7 @@
     "paint": "pa8874a"
    }
   ],
-  "tris": 6500,
+  "tris": 6520,
   "lo": [
    -0.0748,
    -0.1373,
@@ -59079,7 +59079,7 @@
    0.0673,
    0.1746
   ],
-  "bytes": 567828,
+  "bytes": 568428,
   "turned": true,
   "meta": {
    "kind": "weapon",

@@ -766,22 +766,39 @@ def _sawnoff(skinid, star):
     # ---- the grip (the sawn-off's rake) and its cap; the wrap round its lower middle: Dust stitched leather (raised
     # stitch dashes along both edges), Star a dark wrap in two bands with a row of light slots between them
     gp = raked(SO_GRIP[0], SO_GRIP[1], 0.134, 0.062, SO_RK, taper=0.006)
-    g.prism('grip_wzA__wood', [(0.05, 0.026), (0.106, 0.024), gp[1], gp[0], (0.05, -0.034)], 0.054, bev=0.011)
-    g.prism('grip_wzN__%s' % ('metal2' if star else 'metal'), raked(*rk(0, -0.064), 0.016, 0.08, SO_RK), 0.06, bev=0.005)
     V0, V1 = -0.053, -0.005
     def hd(v): return 0.031 + 0.006 * (0.5 - v / 0.134) + 0.003
+    # (18 Nov 2026, the hub's flicker scan: under the wrap the wood is cut back to a core 11 mm inside the wrap's faces
+    # (x 0.019, u hd - 0.011); a wood face 3 mm under the wrap's own z-fought in players' hands)
+    def grip_wood(t, p):
+        t.prism(p, [(0.05, 0.026), (0.106, 0.024), gp[1], gp[0], (0.05, -0.034)], 0.054, bev=0.011)
+    def under_wrap(t, p):
+        for sx in (-1, 1):
+            t.prism(p, rk_quad(-0.09, 0.09, V0, V1), 0.031, x=sx * 0.0345, bev=0.0)
+            uc0, uc1 = sx * (hd(V0) - 0.011), sx * (hd(V1) - 0.011)
+            t.prism(p, [rk(uc0, V0), rk(sx * 0.09, V0), rk(sx * 0.09, V1), rk(uc1, V1)], 0.09, bev=0.0)
+    cut(g, 'grip_wzA__wood', grip_wood, under_wrap)
+    g.prism('grip_wzN__%s' % ('metal2' if star else 'metal'), raked(*rk(0, -0.064), 0.016, 0.08, SO_RK), 0.06, bev=0.005)
     if not star:
         g.prism('grip_wzN__wrap', [rk(-hd(V0), V0), rk(hd(V0), V0), rk(hd(V1), V1), rk(-hd(V1), V1)], 0.06, bev=0.003)
         for v in (V0 + 0.0045, V1 - 0.0045):
             for u in (-0.024, -0.012, 0.0, 0.012, 0.024):
                 side(g, 'grip_wzN__stitch', rk_quad(u - 0.0032, u + 0.0032, v - 0.0013, v + 0.0013), 0.03, 0.004)
     else:
+        # two wrap bands, and between them a 9 mm ring of four light slots split by three dark dividers, all flush with
+        # the bands' faces (18 Nov 2026: the old strip sat 6 mm from the bands' ends, parallel)
         VM = (V0 + V1) / 2
-        for va, vb in ((V0, VM - 0.0032), (VM + 0.0032, V1)):
+        G0, G1 = VM - 0.0045, VM + 0.0045
+        for va, vb in ((V0, G0), (G1, V1)):
             g.prism('grip_wzN__wrap', [rk(-hd(va), va), rk(hd(va), va), rk(hd(vb), vb), rk(-hd(vb), vb)], 0.066, bev=0.003)
-        g.prism('grip_wzN__glow', rk_quad(-hd(VM) + 0.0065, hd(VM) - 0.0065, VM - 0.0028, VM + 0.0028), 0.0592, bev=0.0)
+        edges = [None, -0.018, -0.014, -0.002, 0.002, 0.014, 0.018, None]
+        for i in range(0, 8, 2):
+            ua, ub = edges[i], edges[i + 1]
+            pa = [rk(-hd(G0), G0), rk(-hd(G1), G1)] if ua is None else [rk(ua, G0), rk(ua, G1)]
+            pb = [rk(hd(G1), G1), rk(hd(G0), G0)] if ub is None else [rk(ub, G1), rk(ub, G0)]
+            g.prism('grip_wzN__glow', [pa[0], pb[1], pb[0], pa[1]], 0.066, bev=0.0)
         for u in (-0.016, 0.0, 0.016):
-            g.prism('grip_wzN__wrap', rk_quad(u - 0.002, u + 0.002, VM - 0.0058, VM + 0.0058), 0.066, bev=0.0008)
+            g.prism('grip_wzN__wrap', rk_quad(u - 0.002, u + 0.002, G0, G1), 0.066, bev=0.0)
     # the concho above the wrap (left): Dust a scalloped silver saddle disc with a dome; Star a slotted brass emitter
     cz, cy = rk(0.002, 0.021)
     if not star:
