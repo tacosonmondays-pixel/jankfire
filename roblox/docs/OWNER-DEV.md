@@ -148,10 +148,17 @@ Each power is a server attribute on the owner. The owner's client acts on it.
 
 **Not tested yet:**
 - On a second real player: fling, freeze, jail and the red card on a player rather than a stand-in, jailing someone out of a real match, and invisible as seen from another client.
-- The jail's 60 s release (the Play test stopped before it ran out).
-- The overhead OWNER title and the card's shimmer.
+
+**Photo turn, 17:12 UTC (no code change):**
+- A stand-in sent to the jail came out at 60 s and stood back at its home spot.
+- The player card shows OWNER in gold under the name. The overhead OWNER title shows in gold.
+- A second stand-in flung and frozen 28 studs up.
+- Studio's Play-mode `screen_capture` camera won't frame your own avatar, so these were shot through a held Scriptable camera. The red-card pose was only caught from behind.
 
 **Photos:** `docs/owner-dev/`:
 - `menu_v950.jpg`
 - `jail_v950.jpg`
 - `red_card_flash_v950.jpg`
+- `owner_title_card.jpg`
+- `owner_title_overhead_red_card.jpg`
+- `fling_frozen_midair.jpg`
