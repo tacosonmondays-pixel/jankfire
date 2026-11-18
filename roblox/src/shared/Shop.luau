@@ -585,6 +585,16 @@ function Shop.offer(id: any): Offer?
 		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
 			items = { { kind = ek, id = eid } } }
 	end
+	-- (a gift: anything that exists, given by the server alone through Loot.grant, never on sale or in the shop: a lore
+	-- NPC's prize, 18 Nov, the Janitor's "gift:grapple:plunger". a wrap or hat takes its gun after an @ ("gift:wrap:galaxy@smg"),
+	-- else it's on every gun. type "pass": the loot server's "buy" refuses it)
+	local gk, gid, gw = string.match(id, "^gift:(%a+):([%w_]+)@?([%w_]*)$")
+	if gk and gid then
+		local info = if LootTable and type(LootTable.info) == "function" then LootTable.info(gk, gid) else nil
+		if type(info) ~= "table" then return nil end
+		return { id = id, type = "pass", name = info.name, rarity = info.rarity, blurb = "", robux = 0, productId = nil,
+			items = { { kind = gk, id = gid, weapon = if gw ~= "" then gw elseif gk == "skin" then Shop.skinWeapon(gid) else nil } } }
+	end
 	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
 	if kind and item and weapon and not Shop.gunless(kind) then return single(kind, item, weapon) end
 	local ck, cid = string.match(id, "^(%a+):([%w_]+)$")
