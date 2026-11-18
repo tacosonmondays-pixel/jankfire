@@ -1422,5 +1422,13 @@
  "fb906449f8096b0227f19e8055e6998643107aec": {
   "file": "triangulum_chip.png",
   "id": 77205152958807
+ },
+ "e9fc33d3a36f70b0294ff4a4009a5bc47ef45d6b": {
+  "file": "geode_emit.png",
+  "id": 82262081498012
+ },
+ "92c5605f51dca3b3ac5bcd3a825731f393a8735f": {
+  "file": "nebula_emit.png",
+  "id": 89061714432334
  }
 }

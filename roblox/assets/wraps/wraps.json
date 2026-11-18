@@ -7,7 +7,7 @@
    "metal": 0.0,
    "emit": "arcade_emit.png"
   },
-  "emissive": 4.0,
+  "emissive": 5.0,
   "tint": "ffffff"
  },
  "arctic": {
@@ -36,7 +36,7 @@
    "metal": 0.0,
    "emit": "aurora_emit.png"
   },
-  "emissive": 1.2,
+  "emissive": 5.0,
   "tint": "ffffff"
  },
  "bigwave": {
@@ -59,7 +59,7 @@
    "hole": "blackhole_hole.png",
    "swatch": "blackhole_chip.png"
   },
-  "emissive": 1.5,
+  "emissive": 3.0,
   "tint": "ffffff"
  },
  "bowling": {
@@ -160,7 +160,7 @@
    "metal": "circuit_metal.png",
    "emit": "circuit_emit.png"
   },
-  "emissive": 4.5,
+  "emissive": 7.0,
   "tint": "7dff6a"
  },
  "copper": {
@@ -180,7 +180,7 @@
    "metal": 0.0,
    "emit": "corp_emit.png"
   },
-  "emissive": 0.9,
+  "emissive": 5.0,
   "tint": "ffffff"
  },
  "crackle": {
@@ -209,7 +209,7 @@
    "metal": 0.0,
    "emit": "crt_emit.png"
   },
-  "emissive": 1.4,
+  "emissive": 2.4,
   "tint": "ffffff"
  },
  "damascus": {
@@ -286,7 +286,7 @@
    "metal": 0.0,
    "emit": "galaxy_emit.png"
   },
-  "emissive": 1.2,
+  "emissive": 4.5,
   "tint": "ffffff"
  },
  "geode": {
@@ -295,8 +295,10 @@
    "normal": "geode_normal.png",
    "rough": 0.36,
    "metal": 0.0,
-   "emit": 0.0
-  }
+   "emit": "geode_emit.png"
+  },
+  "emissive": 4.5,
+  "tint": "ffffff"
  },
  "glitch": {
   "maps": {
@@ -306,7 +308,7 @@
    "metal": 0.0,
    "emit": "glitch_emit.png"
   },
-  "emissive": 3.4,
+  "emissive": 5.0,
   "tint": "ffffff"
  },
  "granite": {
@@ -335,7 +337,7 @@
    "metal": 0.0,
    "emit": "hex_emit.png"
   },
-  "emissive": 5.0,
+  "emissive": 6.0,
   "tint": "4fd8ff"
  },
  "hivis": {
@@ -355,7 +357,7 @@
    "metal": "holo_metal.png",
    "emit": "holo_emit.png"
   },
-  "emissive": 0.5,
+  "emissive": 4.0,
   "tint": "ffffff"
  },
  "jade": {
@@ -393,7 +395,7 @@
    "metal": "kintsugi_metal.png",
    "emit": "kintsugi_emit.png"
   },
-  "emissive": 4.2,
+  "emissive": 5.5,
   "tint": "ffd27a"
  },
  "koi": {
@@ -413,7 +415,7 @@
    "metal": 0.0,
    "emit": "lava_emit.png"
   },
-  "emissive": 5.5,
+  "emissive": 6.0,
   "tint": "ffffff"
  },
  "lavalamp": {
@@ -424,7 +426,7 @@
    "metal": 0.0,
    "emit": "lavalamp_emit.png"
   },
-  "emissive": 1.0,
+  "emissive": 1.6,
   "tint": "ffffff"
  },
  "leopard": {
@@ -480,7 +482,7 @@
    "metal": 0.0,
    "emit": "missing_emit.png"
   },
-  "emissive": 0.8,
+  "emissive": 2.5,
   "tint": "ffffff"
  },
  "moss": {
@@ -500,7 +502,7 @@
    "metal": 0.0,
    "emit": "nebula_emit.png"
   },
-  "emissive": 3.6,
+  "emissive": 6.5,
   "tint": "ffffff"
  },
  "numsoup": {
@@ -520,7 +522,7 @@
    "metal": 0.0,
    "emit": "opal_emit.png"
   },
-  "emissive": 0.7,
+  "emissive": 2.0,
   "tint": "ffffff"
  },
  "organ": {
@@ -630,7 +632,7 @@
    "metal": 0.0,
    "emit": "stained_emit.png"
   },
-  "emissive": 0.6,
+  "emissive": 6.0,
   "tint": "ffffff"
  },
  "stonks": {
@@ -641,7 +643,7 @@
    "metal": 0.0,
    "emit": "stonks_emit.png"
   },
-  "emissive": 4.0,
+  "emissive": 5.0,
   "tint": "ffffff"
  },
  "sushi": {
@@ -697,7 +699,7 @@
    "metal": 0.0,
    "emit": "tokyo_emit.png"
   },
-  "emissive": 4.5,
+  "emissive": 5.5,
   "tint": "ffffff"
  },
  "triangulum": {
@@ -711,7 +713,7 @@
    "hole": "triangulum_glow.png",
    "swatch": "triangulum_chip.png"
   },
-  "emissive": 2.0,
+  "emissive": 4.0,
   "tint": "ffffff",
   "accent": "ffe7a6",
   "decal_style": "mark",
@@ -744,7 +746,7 @@
    "metal": 0.0,
    "emit": "vapor_emit.png"
   },
-  "emissive": 1.1,
+  "emissive": 2.2,
   "tint": "ffffff"
  },
  "washi": {

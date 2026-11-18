@@ -18,6 +18,17 @@
 local CS = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+-- Settings, GRAPHICS > OTHER PLAYERS' SKIN EFFECTS ("animated wraps and flames"): when it is off, a gun held by someone
+-- else keeps its wrap still (no breathing, no particles); your own gun, the racks and the pickers move as ever
+local othersOff = false
+local function isOthers(x: Instance): boolean
+	for _, p in Players:GetPlayers() do
+		if p ~= Players.LocalPlayer and p.Character and x:IsDescendantOf(p.Character) then return true end
+	end
+	return false
+end
 
 local TAU = math.pi * 2
 local HZ = 20
@@ -51,8 +62,21 @@ script:SetAttribute("Animated", (function() local n = 0; for _ in SPEC do n += 1
 type Entry = { spec: Spec, es: number, tint: Color3, col: Color3, near: boolean }
 local live: { [SurfaceAppearance]: Entry } = {}
 
+-- (a picture shown in a ViewportFrame glows PREVIEW_GAIN times as strongly: see THE PICKERS below. Before the animation
+-- reads its strength, so a breathing wrap breathes round the raised glow)
+local PREVIEW_GAIN = 1.6
+-- (the script's attribute PreviewGlowOff = true turns the gain and the halos off, for before / after photos; a preview
+-- built while it is on keeps its gain)
+local function gain(inst: SurfaceAppearance)
+	if script:GetAttribute("PreviewGlowOff") then return end
+	if inst:GetAttribute("PreviewGain") or not inst:FindFirstAncestorOfClass("ViewportFrame") then return end
+	inst:SetAttribute("PreviewGain", true)
+	inst.EmissiveStrength *= PREVIEW_GAIN
+end
+
 local function add(inst: Instance)
 	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) then return end
+	gain(inst)
 	local id = inst:GetAttribute("Wrap")
 	local spec = if type(id) == "string" then SPEC[id] else nil
 	if not spec then return end
@@ -169,7 +193,9 @@ local FX: { [string]: FxSpec } = {
 	-- (size in metres and rise in metres a second squared, as Fx's skin specs; x the gun's studs per metre)
 	lava = { kind = "ember", col = Color3.fromHex("ffb04a"), col2 = Color3.fromHex("ff3a10"), rate = 7, size = 0.014, life = 1.2, rise = 0.6 },
 	kintsugi = { kind = "sparkle", col = Color3.fromHex("ffd98a"), rate = 2.5, size = 0.02, life = 0.7, rise = 0.1 },
-	nebula = { kind = "sparkle", col = Color3.fromHex("f4d2ff"), rate = 3, size = 0.018, life = 0.8, rise = 0.1 },
+	-- (18 Nov, the owner: "can you make nebula twinkle": stars that fade bright and dim where they sit, each at its own
+	-- slow pace, about ten on a rifle at once; the drawn four-point stars keep their bloom under them)
+	nebula = { kind = "twinkle", col = Color3.fromHex("f6dcff"), col2 = Color3.fromHex("dce6ff"), rate = 5, size = 0.016, life = 2.2, rise = 0 },
 	galaxy = { kind = "dot", col = Color3.fromHex("dfe6ff"), rate = 4, size = 0.01, life = 1.0, rise = 0 },
 	hex = { kind = "dot", col = Color3.fromHex("6fe2ff"), rate = 3, size = 0.009, life = 1.4, rise = 0.25 },
 	circuit = { kind = "dot", col = Color3.fromHex("8dff7a"), rate = 2.5, size = 0.008, life = 0.6, rise = 0.1 },
@@ -195,6 +221,12 @@ local function fxProps(e: FxSpec, s: number): { [string]: any }
 			Size = nseq(0, 0, 0.35, e.size * s, 1, 0), Transparency = NumberSequence.new(0.1), Lifetime = life,
 			Speed = NumberRange.new(0.02 * s, 0.08 * s), SpreadAngle = Vector2.new(180, 180), Acceleration = up, Drag = 2,
 			Rotation = NumberRange.new(-15, 15), RotSpeed = NumberRange.new(-40, 40) }
+	elseif e.kind == "twinkle" then -- (a star that fades in, holds, fades out where it is: no drift; lives 0.6 to 1.4 x)
+		local w = e.size * s
+		return { Texture = TEXF.sparkle, Color = col, LightInfluence = 0, LightEmission = 1, Brightness = 3,
+			Size = nseq(0, w * 0.55, 0.5, w, 1, w * 0.55), Transparency = nseq(0, 1, 0.3, 0.08, 0.55, 0, 0.75, 0.2, 1, 1),
+			Lifetime = NumberRange.new(e.life * 0.6, e.life * 1.4), Speed = NumberRange.new(0, 0), SpreadAngle = Vector2.zero,
+			Acceleration = Vector3.zero, Drag = 0, Rotation = NumberRange.new(-20, 20), RotSpeed = NumberRange.new(-4, 4) }
 	elseif e.kind == "bubble" then -- (a soap bubble: rises with a drift, swells a touch, pops)
 		local w = e.size * s
 		return { Texture = TEXF.bubble, Color = col, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
@@ -223,6 +255,7 @@ local function rebuild(gun: Instance)
 	local old = gunFx[gun]
 	if old then for _, e in old.ems do e:Destroy() end; gunFx[gun] = nil end
 	if not gun.Parent then return end
+	if othersOff and isOthers(gun) then return end
 	local spec: FxSpec?, pieces = nil, {}
 	for _, sa in gun:GetDescendants() do
 		if not (sa:IsA("SurfaceAppearance") and sa.Name == "WrapSA" and sa.Parent and sa.Parent:IsA("BasePart")) then continue end
@@ -248,11 +281,13 @@ local function rebuild(gun: Instance)
 		for k, v in fxProps(spec, s) do (em :: any)[k] = v end
 		-- (first person, the VFX session's round 12 photos: Lava's embers rose into the upper middle of the view, one
 		-- inside the middle fifth; 0.55 of the life keeps them round the gun, a third of the climb)
-		if fp then em.Lifetime = NumberRange.new(em.Lifetime.Min * 0.55, em.Lifetime.Max * 0.55) end
+		-- (a twinkle stays where it was born, so it keeps its whole life and rides the gun everywhere)
+		local still = spec.kind == "twinkle"
+		if fp and not still then em.Lifetime = NumberRange.new(em.Lifetime.Min * 0.55, em.Lifetime.Max * 0.55) end
 		em.Shape = Enum.ParticleEmitterShape.Box
 		em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
 		em.Rate = spec.rate * area(b) / total
-		em.LockedToPart = fp
+		em.LockedToPart = fp or still
 		em.Parent = b
 		table.insert(G.ems, em)
 	end
@@ -273,6 +308,15 @@ CS:GetInstanceRemovedSignal("WrapSA"):Connect(function(inst)
 	local gun = saGun[inst]
 	saGun[inst] = nil
 	if gun and not dirty[gun] then dirty[gun] = true; task.defer(rebuild, gun) end
+end)
+-- (OTHER PLAYERS' SKIN EFFECTS, above: a change rebuilds every gun's particles)
+task.spawn(function()
+	local ok, Settings = pcall(function() return require(script.Parent:WaitForChild("Settings")) :: any end)
+	if not ok or type(Settings) ~= "table" then return end
+	Settings.watch("gfx.othersSkin", function(v: any)
+		othersOff = v == false
+		for _, gun in saGun do if not dirty[gun] then dirty[gun] = true; task.defer(rebuild, gun) end end
+	end)
 end)
 -- on / off: hidden (first person hides your world gun, third person the viewmodel), aiming (first person), far
 local wideFov = 70
@@ -295,6 +339,165 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
+-- THE PICKERS (18 Nov 2026, the owner: "can you add a glow to certain textures like a brighter glow? I can't see it
+-- when applying it really"): a ViewportFrame (the loadout, the match loadout, the shop, crates) draws no Bloom, so a
+-- glow wrap's light can't spread past its lines there as it does in the world. In one, a glowing picture glows
+-- PREVIEW_GAIN times as strongly (gain, above), and a wrap that glows at least HALO_MIN (its book strength) gets a soft
+-- halo behind the weapon in its glow colour (the picture's Accent), breathing slowly: an ImageLabel just behind the
+-- frame, fitted every frame round the weapon as the frame's camera sees it (so it follows the loadout's turning gun).
+-- A frame whose parent lays its children out (a list or a grid) gets the gain only: a halo there would take a slot.
+-- The painted half decides: a dark second half alone (HANDLE / BUSINESS END's other side) gets no halo.
+-- Particles don't draw in a ViewportFrame either, so a glowing wrap with WRAP EFFECTS (FX) gets a few of them drawn
+-- over the weapon as images instead (MOTES): Nebula's twinkles fading in and out where they sit, Lava's embers rising,
+-- Galaxy's dots, Kintsugi's and Holo's glints, at points on its picture pieces, following the turning gun
+local HALO_MIN = 1.5
+local HALO_TEX = TEXF.glow
+type Mote = { img: ImageLabel, part: BasePart, off: Vector3, t0: number, life: number }
+type Halo = { img: ImageLabel, vp: ViewportFrame, sas: { [Instance]: number }, col: Color3, a: number, wid: string?,
+	motes: { Mote }, due: number }
+local MOTES = { twinkle = { n = 7, size = 0.06, tex = "sparkle" }, sparkle = { n = 4, size = 0.05, tex = "sparkle" },
+	dot = { n = 5, size = 0.032, tex = "glow" }, ember = { n = 5, size = 0.04, tex = "glow" }, bubble = { n = 3, size = 0.06, tex = "bubble" } }
+local halos: { [ViewportFrame]: Halo } = {}
+local function bookOf(sa: Instance): SurfaceAppearance?
+	local id = sa:GetAttribute("Wrap")
+	local lib = ReplicatedStorage:FindFirstChild("JankfireWraps")
+	local b = if type(id) == "string" and lib then lib:FindFirstChild(id) else nil
+	return if b and b:IsA("SurfaceAppearance") then b else nil
+end
+local function addHalo(inst: Instance)
+	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) then return end
+	if inst.Color ~= Color3.new(1, 1, 1) then return end -- (the painted half only)
+	local vp = inst:FindFirstAncestorOfClass("ViewportFrame")
+	local book = bookOf(inst)
+	if not (vp and book and book.EmissiveStrength >= HALO_MIN) then return end
+	local acc = book:GetAttribute("Accent")
+	local col = (if typeof(acc) == "Color3" then acc else Color3.new(1, 1, 1)):Lerp(Color3.new(1, 1, 1), 0.15)
+	local h = halos[vp]
+	if not h then
+		local par = vp.Parent
+		if not (par and par:IsA("GuiBase2d")) or par:FindFirstChildWhichIsA("UIGridStyleLayout") then return end
+		local img = Instance.new("ImageLabel")
+		img.Name = "WrapGlowHalo"
+		img.BackgroundTransparency = 1
+		img.Image = HALO_TEX
+		img.ImageTransparency = 1
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.ZIndex = vp.ZIndex - 1
+		img.Active = false
+		img.Selectable = false
+		img.Parent = par
+		h = { img = img, vp = vp, sas = {}, col = col, a = 0, motes = {}, due = 0 }
+		halos[vp] = h
+	end
+	local hh = h :: Halo
+	hh.sas[inst] = book.EmissiveStrength
+	hh.col = col
+	local wid = inst:GetAttribute("Wrap")
+	hh.wid = if type(wid) == "string" then wid else nil
+	local strongest = 0
+	for _, es in hh.sas do strongest = math.max(strongest, es) end
+	hh.a = math.clamp(0.3 + strongest * 0.05, 0.38, 0.6) -- (the halo's opacity at the top of its breath)
+end
+for _, sa in CS:GetTagged("WrapSA") do addHalo(sa) end
+CS:GetInstanceAddedSignal("WrapSA"):Connect(addHalo)
+local function dropHalo(vp: ViewportFrame)
+	local h = halos[vp]
+	if h then
+		h.img:Destroy()
+		for _, mo in h.motes do mo.img:Destroy() end
+		halos[vp] = nil
+	end
+end
+local CORNERS = { -1, 1 }
+RunService.RenderStepped:Connect(function()
+	if next(halos) == nil then return end
+	local t = workspace:GetServerTimeNow()
+	for vp, h in halos do
+		local model: Instance? = nil
+		for sa in h.sas do
+			if sa.Parent and sa:IsDescendantOf(vp) then
+				if not model then
+					local m = sa.Parent :: Instance
+					while m.Parent and m.Parent ~= vp and m.Parent:IsA("Model") do m = m.Parent end
+					model = m
+				end
+			else
+				h.sas[sa] = nil
+			end
+		end
+		if not model or not vp.Parent or h.img.Parent ~= vp.Parent then dropHalo(vp); continue end
+		local cam = vp.CurrentCamera
+		local abs = vp.AbsoluteSize
+		local show = vp.Visible and cam ~= nil and abs.X > 4 and abs.Y > 4 and model:IsA("Model") and not script:GetAttribute("PreviewGlowOff")
+		if show then
+			-- the weapon's box as the frame's camera sees it: the eight corners, projected
+			local cf, size = (model :: Model):GetBoundingBox()
+			local th = math.tan(math.rad((cam :: Camera).FieldOfView) / 2)
+			local aspect = abs.X / abs.Y
+			local x0, x1, y0, y1 = math.huge, -math.huge, math.huge, -math.huge
+			for _, sx in CORNERS do for _, sy in CORNERS do for _, sz in CORNERS do
+				local p = (cam :: Camera).CFrame:PointToObjectSpace(cf:PointToWorldSpace(size * Vector3.new(sx, sy, sz) / 2))
+				local d = math.max(-p.Z, 0.05)
+				local fx, fy = 0.5 + p.X / d / (th * aspect) / 2, 0.5 - p.Y / d / th / 2
+				x0, x1, y0, y1 = math.min(x0, fx), math.max(x1, fx), math.min(y0, fy), math.max(y1, fy)
+			end end end
+			local w, ht = (x1 - x0) * 1.3, math.max((y1 - y0) * 1.9, (x1 - x0) * aspect * 0.42) -- (fractions of the frame)
+			local cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+			local P, S, A = vp.Position, vp.Size, vp.AnchorPoint
+			h.img.Position = UDim2.new(P.X.Scale + S.X.Scale * (cx - A.X), P.X.Offset + S.X.Offset * (cx - A.X),
+				P.Y.Scale + S.Y.Scale * (cy - A.Y), P.Y.Offset + S.Y.Offset * (cy - A.Y))
+			h.img.Size = UDim2.new(S.X.Scale * w, S.X.Offset * w, S.Y.Scale * ht, S.Y.Offset * ht)
+			h.img.ImageColor3 = h.col
+			h.img.ImageTransparency = 1 - h.a * (0.82 + 0.18 * math.sin(TAU * t / 3.0))
+			-- the motes: born at a random point in a random picture piece's box, faded in and out over their life
+			local spec = if h.wid then FX[h.wid] else nil
+			local kind = if spec then MOTES[spec.kind] else nil
+			if spec and kind and #h.motes < kind.n and t >= h.due then
+				local pieces = {}
+				for sa in h.sas do
+					local p = sa.Parent
+					if p and p:IsA("BasePart") then table.insert(pieces, p) end
+				end
+				if #pieces > 0 then
+					local p = pieces[math.random(#pieces)]
+					local img = Instance.new("ImageLabel")
+					img.Name = "WrapMote"
+					img.BackgroundTransparency = 1
+					img.Image = (TEXF :: any)[kind.tex]
+					img.ImageColor3 = if spec.col2 and math.random() < 0.5 then spec.col2 else spec.col
+					img.ImageTransparency = 1
+					img.AnchorPoint = Vector2.new(0.5, 0.5)
+					img.Rotation = math.random(-20, 20)
+					img.Active = false
+					img.Parent = vp -- (a frame's own children draw over its picture)
+					local z = p.Size * 0.45
+					table.insert(h.motes, { img = img, part = p, t0 = t, life = spec.life * (0.6 + 0.8 * math.random()),
+						off = Vector3.new((math.random() * 2 - 1) * z.X, (math.random() * 2 - 1) * z.Y, (math.random() * 2 - 1) * z.Z) })
+				end
+				h.due = t + spec.life / kind.n * (0.5 + math.random())
+			end
+			local gw = (x1 - x0) * aspect -- (the weapon's width on screen, in frame heights)
+			for i = #h.motes, 1, -1 do
+				local mo = h.motes[i]
+				local k = (t - mo.t0) / mo.life
+				if k >= 1 or not mo.part.Parent or not spec or not kind then mo.img:Destroy(); table.remove(h.motes, i); continue end
+				local wp = mo.part.CFrame:PointToWorldSpace(mo.off)
+				if spec.kind == "ember" then wp += Vector3.new(0, k * 0.5, 0) end
+				local p = (cam :: Camera).CFrame:PointToObjectSpace(wp)
+				local d = math.max(-p.Z, 0.05)
+				mo.img.Position = UDim2.fromScale(0.5 + p.X / d / (th * aspect) / 2, 0.5 - p.Y / d / th / 2)
+				local sz = kind.size * gw * (if spec.kind == "twinkle" then 0.75 + 0.25 * math.sin(math.pi * k) else 1)
+				mo.img.Size = UDim2.fromScale(sz / aspect, sz)
+				mo.img.ImageTransparency = 1 - 0.95 * math.sin(math.pi * k) ^ (if spec.kind == "twinkle" then 1.5 else 1)
+			end
+		else
+			for _, mo in h.motes do mo.img:Destroy() end
+			table.clear(h.motes)
+		end
+		h.img.Visible = show
+	end
+end)
+
 local acc, nearAcc, worst, worstAcc = 0, 0, 0, 0
 RunService.Heartbeat:Connect(function(dt: number)
 	acc += dt; nearAcc += dt; worstAcc += dt
@@ -307,7 +510,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local at = cam.CFrame.Position
 		for sa, e in live do
 			local p = sa.Parent
-			e.near = not (p and p:IsA("BasePart") and p:IsDescendantOf(workspace)) or (p.Position - at).Magnitude < NEAR
+			local was = e.near
+			e.near = (not (p and p:IsA("BasePart") and p:IsDescendantOf(workspace)) or (p.Position - at).Magnitude < NEAR)
+				and not (othersOff and p ~= nil and isOthers(p))
+			-- (a piece that stops moving rests at its own look, not wherever the breath left it)
+			if was and not e.near then sa.EmissiveStrength = e.es; sa.EmissiveTint = e.tint; sa.Color = e.col end
 		end
 	end
 	local t = workspace:GetServerTimeNow() -- (one clock for everyone: the same wrap pulses in step on every screen)

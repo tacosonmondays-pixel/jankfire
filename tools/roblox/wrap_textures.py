@@ -199,7 +199,7 @@ def galaxy(t: Tex):
     for x, y in scatter(r, n, 7, 260, taken=[(gx, gy, R * 1.4) for gx, gy, R in gal]):
         S.dot(x, y, r.uniform(4.2, 5.4), 1.0, star_colour(r), glow=0.26, glow_r=r.uniform(12, 16))
     S.done()
-    return {'emissive': 1.2, 'tint': 'ffffff'}
+    return {'emissive': 4.5, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.2)
 
 
 def camo_layers(t: Tex, base, light, mid, dark, seed, cut=(0.02, 0.12, 0.2), stretch=1.0):
@@ -398,7 +398,7 @@ def neon_hex(t: Tex):
     t.emit[:] = np.maximum(line, halo * 0.35)
     t.height[:] = hpanel * 3.0
     t.rough[:] = 0.6 - 0.14 * a     # satin panels (at 0.28 they mirrored the hall's warm walls in game)
-    return {'emissive': 5.0, 'tint': '4fd8ff'}   # RADIANT (the owner: "a brighter glow"; was 3.5)   # the filaments bloom (GLOW, see lava); the halo (0.35) doesn't
+    return {'emissive': 6.0, 'tint': '4fd8ff'}   # RADIANT (the owner: "a brighter glow"; was 3.5)   # the filaments bloom (GLOW, see lava); the halo (0.35) doesn't   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 5)
 
 
 @design('damascus')
@@ -445,7 +445,7 @@ def holo(t: Tex):
         sd = (sd_star(x, y, ro, ro * 0.42, 5, r.uniform(0, TAU), round_=1.4) if five
               else sd_sparkle(x, y, ro, 0.17, r.uniform(-0.25, 0.25)))(X, Y)
         t.paint(idx, cover(sd), '#f6f4f0', emit=0.5, rough=0.2, metal=0.4)
-    return {'emissive': 0.5, 'tint': 'ffffff'}
+    return {'emissive': 4.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.5)
 
 @design('urban')
 def urban(t: Tex):
@@ -577,7 +577,7 @@ def kintsugi(t: Tex):
     t.fill(gold, 'd29a2c', metal=1.0, rough=0.24, emit=1.0)   # the seams glow and bloom (GLOW, see lava)
     t.fill(np.clip(gold - 0.6, 0, 1) * 1.2, 'f0c868')
     t.height[:] = gold * 0.7
-    return {'emissive': 4.2, 'tint': 'ffd27a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)
+    return {'emissive': 5.5, 'tint': 'ffd27a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4.2)
 
 
 @design('seigaiha')
@@ -701,7 +701,7 @@ def circuit(t: Tex):
                 t.shape((px - 6, cy - ch / 2 - 20, px + 6, cy + ch / 2 + 20), sd_round_rect(px, cy + sy * (ch / 2 + 8), 5, 9, 2.0), color='c9a246', metal=1.0, rough=0.3)
         t.shape((cx - cw / 2 - 2, cy - ch / 2 - 2, cx + cw / 2 + 2, cy + ch / 2 + 2), sd_round_rect(cx, cy, cw / 2, ch / 2, 6), color='17181c', rough=0.35, height=1.5)
         t.shape((cx - cw / 2, cy - ch / 2, cx - cw / 2 + 20, cy - ch / 2 + 20), sd_circle(cx - cw / 2 + 12, cy - ch / 2 + 12, 4), color='2c2d33')
-    return {'emissive': 4.5, 'tint': '7dff6a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)
+    return {'emissive': 7.0, 'tint': '7dff6a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4.5)
 
 
 @design('stained')
@@ -732,7 +732,7 @@ def stained(t: Tex):
     t.emit[:] = (1 - lead) * smoothstep(150, 0, d1) * 0.35
     t.height[:] = np.clip(1 - edge / 8.0, 0, 1) * 1.6
     t.rough[:] = np.where(lead > 0.5, 0.6, 0.36)
-    return {'emissive': 0.6, 'tint': 'ffffff'}
+    return {'emissive': 6.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.6)
 
 @design('marble')
 def marble(t: Tex):
@@ -800,7 +800,7 @@ def lava(t: Tex):
     t.emit[:] = np.clip(np.maximum(core, hot * 0.3), 0, 1)
     t.height[:] = smoothstep(2, 16, edge) * 2.0
     t.rough[:] = 0.75 - 0.4 * hot
-    return {'emissive': 5.5, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.6)
+    return {'emissive': 6.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.6)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 5.5)
 
 
 @design('brushed')
@@ -869,7 +869,10 @@ def nebula(t: Tex):
     t.rgb[:] = hexrgb('120a2a')
     t.fill(a * 0.85, '7a48d8'); t.fill(a * a * 0.6, 'd65ac4'); t.fill(b * (1 - a * 0.6) * 0.7, '2e5ad0')
     t.fill((a * b) * 0.5, 'f2a6e6')
-    t.emit[:] = np.clip(a * 0.35 + b * 0.25, 0, 1)
+    # GLOW 18 Nov (the owner: "the lighter purple parts have a brighter glow"): the pale purple gas (violet to lilac, where
+    # red and blue are both up) glows full, so it blooms in hand; the dark violet and the blue stay a soft glow under it
+    purple = smoothstep(0.14, 0.44, np.minimum(t.rgb[..., 0], t.rgb[..., 2]))   # (red and blue both up: violet to lilac)
+    t.emit[:] = np.clip(np.maximum(a * 0.3 + b * 0.22, purple), 0, 1)
     t.rough[:] = 0.3
     r = t.rng
     S = StarLight(t)
@@ -887,7 +890,7 @@ def nebula(t: Tex):
         halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.3)) * 0.5
         t.paint(idx, halo, 'f0d0ff', emit=halo)
         t.paint(idx, cover(sd), '#ffffff', emit=1.0)
-    return {'emissive': 3.6, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.8)   # the twinkles bloom; the gas (<= 0.6) glows under it
+    return {'emissive': 6.5, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "make nebula twinkle and the lighter purple parts have a brighter glow"; was 3.6): the pale purple gas and the stars bloom, the rest glows under it; the twinkle is client/WrapAnim's (FX nebula)
 
 
 @design('sweater')
@@ -1016,7 +1019,7 @@ def missing(t: Tex):
     t.rgb[:] = hexrgb('0b0b0d')
     t.fill(q, 'd400b8', emit=0.55)
     t.rough[:] = 0.4
-    return {'emissive': 0.8, 'tint': 'ffffff'}
+    return {'emissive': 2.5, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.8)
 
 
 @design('ketchup')
@@ -1302,7 +1305,7 @@ def tokyo(t: Tex):
                 hx, hy = bx - math.cos(ang + s_ * 0.6) * L * 0.4, by - math.sin(ang + s_ * 0.6) * L * 0.4
                 t.paint(idx, cover(sd_segment(bx, by, hx, hy, 2.4)(X, Y)), c2, emit=1.0)
     t.rough[:] = 0.25
-    return {'emissive': 4.5, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 5.5, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4.5)
 
 
 @design('cheese')
@@ -1641,7 +1644,7 @@ def crt(t: Tex):
     t.rgb[:] = 0.04 + lit * 0.85
     t.emit[:] = np.clip(lit.max(-1), 0, 1)
     t.rough[:] = 0.08
-    return {'emissive': 1.4, 'tint': 'ffffff'}
+    return {'emissive': 2.4, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.4)
 
 
 @design('sheet')
@@ -1714,7 +1717,7 @@ def glitch(t: Tex):
             t.fill(line, 'ff2ad8' if r.uniform() < 0.5 else '2affe0', emit=1.0)
         y += h
     t.rough[:] = 0.3
-    return {'emissive': 3.4, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.6)   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 5.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.6)   # thin neon lines bloom (GLOW, see lava)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 3.4)
 
 
 @design('meat')
@@ -1753,7 +1756,7 @@ def corp(t: Tex):
         t.shape((x - R - 30, y - R - 30, x + R + 30, y + R + 30), lambda X, Y, x=x, y=y, R=R: np.abs(np.hypot(X - x, Y - y) - R - 16) - 6, color='e04aa8', emit=0.6)
         smiley(t, x, y, R, 'ecc834', '121214')
     t.rough[:] = 0.3
-    return {'emissive': 0.9, 'tint': 'ffffff'}
+    return {'emissive': 5.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.9)
 
 
 @design('jersey')
@@ -1842,7 +1845,15 @@ def geode(t: Tex):
     t.rgb[:] = t.rgb * (1 - pocket[..., None]) + fc * pocket[..., None]
     t.height[:] = pocket * facet * 1.5
     t.rough[:] = 0.12
-    return {}
+    # GLOW (18 Nov 2026, the owner: "can you add a glow to certain textures"): the crystal pockets light up from inside,
+    # a soft core (under every Bloom threshold) and thin bright ridges where the facets meet (they bloom), fading out
+    # toward the pocket's rim; the agate bands stay dark
+    s = (ang + math.pi) / TAU * 18
+    ridge_px = np.abs(s - np.round(s)) * (TAU / 18) * d1
+    ridge = smoothstep(2.4, 0.7, ridge_px) * (0.35 + 0.65 * smoothstep(74, 14, d1))
+    core = (0.6 * smoothstep(76, 46, d1) + 0.4 * smoothstep(46, 0, d1)) * (0.75 + 0.25 * (1 - facet))   # (pale facets brighter)
+    t.emit[:] = np.clip(np.maximum(core * 0.42, ridge * 0.9) * pocket, 0, 1)
+    return {'emissive': 4.5, 'tint': 'ffffff'}
 
 
 @design('arcade')
@@ -1867,7 +1878,7 @@ def arcade(t: Tex):
             poly = transform([(0, -26), (24, 16), (-24, 16)], x, y, a)
             t.shape(bbox_of(poly), sd_polygon(poly), color=c, emit=1.0)
     t.rough[:] = 0.9
-    return {'emissive': 4.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.8)   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 5.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.8)   # thin neon lines bloom (GLOW, see lava)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4)
 
 
 # NOT a texture wrap: on 16 Nov 2026 the owner's Roblox account was moderated over this wrap's first upload, which
@@ -1980,7 +1991,7 @@ def opal(t: Tex):
     t.rgb[:] = t.rgb * (1 - show[..., None] * 0.75) + fire * show[..., None] * 0.75
     t.emit[:] = show * 0.6
     t.rough[:] = 0.08
-    return {'emissive': 0.7, 'tint': 'ffffff'}
+    return {'emissive': 2.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.7)
 
 
 @design('lavalamp')
@@ -1999,7 +2010,7 @@ def lavalamp(t: Tex):
         inner = smoothstep(1.0, 3.0, field)
         t.fill(m, mix(cols[0], cols[1], inner), emit=1.0)
     t.rough[:] = 0.1
-    return {'emissive': 1.0, 'tint': 'ffffff'}
+    return {'emissive': 1.6, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1)
 
 
 @design('vapor')
@@ -2023,7 +2034,7 @@ def vapor(t: Tex):
     t.fill(np.maximum(gx, gy) * floor, 'ff4fc4', emit=1.0)
     t.fill(cover(np.abs(t.Y - n * 0.66) - 3), '4fd8ff', emit=1.0)
     t.rough[:] = 0.25
-    return {'emissive': 1.1, 'tint': 'ffffff'}
+    return {'emissive': 2.2, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.1)
 
 
 @design('aurora')
@@ -2045,7 +2056,7 @@ def aurora(t: Tex):
     t.fill(np.clip(light * 0.85, 0, 1), col)
     t.emit[:] = np.clip(light * 0.75, 0, 1)
     t.rough[:] = 0.4
-    return {'emissive': 1.2, 'tint': 'ffffff'}
+    return {'emissive': 5.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.2)
 
 @design('blackhole')
 def blackhole(t: Tex):
@@ -2087,7 +2098,7 @@ def blackhole(t: Tex):
         t.paint(idx, a * amp, col, emit=a * amp * 0.55)
     t.rough[:] = 0.3
     # (the tile's brightest is 0.55 x 1.5, under every Bloom threshold: the decal's ring is the one thing that blooms)
-    return {'emissive': 1.5, 'tint': 'ffffff', 'more_maps': hole_images(os.path.join(OUT['dir'], 'blackhole'), t)}
+    return {'emissive': 3.0, 'tint': 'ffffff', 'more_maps': hole_images(os.path.join(OUT['dir'], 'blackhole'), t)}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.5)
 
 
 def hole_images(stem, t: Tex, n=1024, seed=7):
@@ -2325,7 +2336,7 @@ def triangulum(t: Tex):
     S.done(emit=0.7, rough=0.3)
     more, stars = tri_mark_images(os.path.join(OUT['dir'], 'triangulum'), t)
     # (the tile's stars at 0.7 to 1.0 x 2: they bloom a little; the mark's stars, in the glow decal, bloom the most)
-    return {'emissive': 2.0, 'tint': 'ffffff', 'accent': 'ffe7a6', 'more_maps': more, 'decal_style': 'mark', 'decal_aspect': 2,
+    return {'emissive': 4.0, 'tint': 'ffffff', 'accent': 'ffe7a6', 'more_maps': more, 'decal_style': 'mark', 'decal_aspect': 2,   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 2)
             'decal_stars': stars}
 
 
@@ -2407,7 +2418,7 @@ def stonks(t: Tex):
     for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
         t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
     t.rough[:] = 0.2
-    return {'emissive': 4.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 5.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4)
 
 
 @design('bowling')
