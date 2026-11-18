@@ -108,10 +108,12 @@ local function lightPop(at: Vector3, color: Color3, bright: number, range: numbe
 end
 
 -- (Studio photos) the player attribute KatanaFreeze = "crit" or "wave" stops the effect clocks (this script's and Fx's,
--- through FxTimeScale on this client only) a moment into the next crit flash or wave flight
+-- through FxTimeScale on this client only) a moment into the next crit flash or wave flight (KatanaFreezeAt: how many
+-- seconds into the flash or the flight)
 local function freezeSoon(kind: string, after: number)
 	if not RunService:IsStudio() or me:GetAttribute("KatanaFreeze") ~= kind then return end
-	task.delay(after, function() workspace:SetAttribute("FxTimeScale", 0) end)
+	local at = tonumber(me:GetAttribute("KatanaFreezeAt"))
+	task.delay(if at and kind == "wave" then after - 0.16 + at elseif at then at else after, function() workspace:SetAttribute("FxTimeScale", 0) end)
 end
 
 -- ------------------------------------------------------------------ the crit return
@@ -122,7 +124,9 @@ local function onCrit(f: any)
 	if not from then return end
 	local mine = f.by == me.UserId
 	local dir = if to and (to - from).Magnitude > 0.1 then (to - from).Unit else camera.CFrame.LookVector
-	local at = from + dir * 1.6 + Vector3.new(0, 0.6, 0) -- (the blade, between you and the shooter)
+	-- (the blade, between you and the shooter; your own a stride further out and smaller: it's right at your eye)
+	local at = from + dir * (if mine then 3.2 else 1.6) + Vector3.new(0, if mine then 0.9 else 0.6, 0)
+	local k = if mine then 0.5 else 1
 	local key = f.by or f.model or "?"
 	local now = os.clock()
 	local again = lastCrit[key] ~= nil and now - (lastCrit[key] :: number) < 0.07 -- (a spray's 2nd, 3rd bullet in one swing)
@@ -135,16 +139,16 @@ local function onCrit(f: any)
 	if not again then
 		-- the sharp flash: a four-point star, a soft ice halo, hard white streaks thrown back the way the bullets came
 		burstAt(at, {
-			{ n = 1, Texture = TEX.sparkle, Size = ns(0, 2.4, 0.35, 3.1, 1, 0.4), Lifetime = nr(0.13), Speed = nr(0),
+			{ n = 1, Texture = TEX.sparkle, Size = ns(0, 2.4 * k, 0.35, 3.1 * k, 1, 0.4 * k), Lifetime = nr(0.13), Speed = nr(0),
 				Rotation = nr(0, 45), Color = cs(Color3.new(1, 1, 1)), Transparency = ns(0, 0, 0.6, 0.1, 1, 1), Brightness = 4 },
-			{ n = 1, Texture = TEX.glow, Size = ns(0, 2.5, 1, 5.5), Lifetime = nr(0.2), Speed = nr(0),
-				Color = cs(ICE), Transparency = ns(0, 0.15, 1, 1), Brightness = 2 },
+			{ n = 1, Texture = TEX.glow, Size = ns(0, 2.5 * k, 1, 5.5 * k), Lifetime = nr(0.2), Speed = nr(0),
+				Color = cs(ICE), Transparency = ns(0, if mine then 0.4 else 0.15, 1, 1), Brightness = if mine then 1.4 else 2 },
 			{ n = 14, Texture = TEX.streak, Size = ns(0, 0.35, 1, 0.05), Lifetime = nr(0.1, 0.2), Speed = nr(40, 75),
 				SpreadAngle = Vector2.new(28, 28), Orientation = Enum.ParticleOrientation.VelocityParallel,
 				cf = CFrame.lookAt(at, at + dir) * CFrame.Angles(-math.pi / 2, 0, 0),
 				Color = cs(Color3.new(1, 1, 1), ICE), Transparency = ns(0, 0, 1, 1), Drag = 3, Brightness = 3 },
 		}, 0.25)
-		lightPop(at, ICE_HOT, 3.2, 18, 0.18)
+		lightPop(at, ICE_HOT, if mine then 2 else 3.2, 18, 0.18)
 		Fx.sparks(at, dir, 30, 0.2)
 		freezeSoon("crit", 0.035)
 	else

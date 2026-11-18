@@ -200,6 +200,37 @@ All of it is ×3 in training. Teammates' shots never count.
 5. For the crit: when `state.swingT` is fresh, spray six rounds. Then click.
 6. For the wave: set the Stand's HP to 60 and press Q.
 
-### Results
+### Results (18 Nov 2026, solo Play in training, place v769 / v770)
 
-(filled in after the Play test)
+The stand-in shooter was a training `Stand`, firing through the real hitscan path (`JankKatanaTest "spray"`, so the
+guard, crit and meter code all ran). All four checks passed, with no script errors.
+
+| Check | What happened |
+|---|---|
+| Spray fully parried | 18 SMG rounds at 16 a second during one held guard: all 18 parried, 0 HP lost. The guard closed at the let-go after 1.4 s |
+| Crit return by swing | A real left click, then the Stand fired six rounds the moment the swing reached the server. The first four (the swing's window) went back at ×2: 14 each, 56 off the Stand. The last two, 0.25 s and 0.31 s in, hit me (2 × 4.9) |
+| Meter filling | 0 → 240 (full) from that one spray (training ×3). +126 from the four crits. Shown in the plate as 5 bars, full ones glowing |
+| Wave | From a full meter, in the Stand's direction: it passed through a Stand (70, alive) and a 60 HP Stand (killed). It stopped on the wall behind them, 35.5 studs out (`waveEnd wall`). The first run hit one Stand and stopped at 33.5 |
+
+**Photos** in `docs/katana/`:
+
+- `katana-sheet.jpg`: all four in one sheet.
+- `wave-midflight-v769.jpg`: the wave mid-flight, frozen 0.055 s into its flight.
+- `crit-return-flash-v770.jpg`: the crit flash, frozen 0.03 s in, as the defender sees it. A first version at the blade, 1.6 studs from the eye, filled a sixth of the screen. Your own flash now sits a stride further out and at half the size.
+- `hud-meter-v769.jpg` and its zoomed crop: the meter at 70%.
+
+**Test traps.**
+
+- `JankTest "all"` lists more than one fighter named `Stand`. The spray hook fires from the FIRST one, so take positions from the first match. My first run held the guard facing the wrong Stand, and every bullet rightly got through.
+- A `user_mouse_input` `moveTo` can turn the first-person camera. Point the camera (`CFrame` once, Custom) after the move, then press.
+- Once mid-test, keys and clicks stopped reaching the game. The direct remotes still work for the server's side:
+  - `Parry:FireServer(yaw)` and `(yaw, false)`;
+  - `Swing:FireServer("katana", nil, yaw)`;
+  - `KatanaWave:FireServer(look)`.
+- For a side photo, set the client's `LoadoutOpen = true` while the camera is Scriptable. Otherwise ShoulderCam's watchdog puts the camera back after 0.7 s.
+
+**Not checked in Play:**
+
+- the phone's WAVE button (its row and visibility are code-only);
+- a second player seeing your guard hold, the crescent and the flash. Others' clients get the same Fx events; the third-person guard hold goes through `TP.holdKat`;
+- the Lune unit tests (`tests/weapons.luau` updated for the held guard and the crit). Lune isn't installed on this PC.
