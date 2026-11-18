@@ -98,6 +98,10 @@ TP.T = {
 		cheek = V(-0.12, 0, -0.2), poleR = V(1, -0.8, 0.8), poleL = V(-0.5, -1.3, -0.2) },
 	pistol = { twist = 0.22, twistAds = 0.38, waist = 0.4, ads = V(0.02, -0.06, -0.62), hip = V(0.08, -0.44, 0.04), hipRot = V(-0.05, 0.1, 0),
 		cheek = V(-0.06, 0, -0.12), poleR = V(0.9, -1, 0.3), poleL = V(-0.6, -1.2, -0.2) },
+	-- (the hold session, 18 Nov 2026) Lefty & Righty: square on, a pistol out in each hand (the left one the right's
+	-- mirror across the chest), elbows out both sides
+	akimbo = { twist = 0, twistAds = 0, waist = 0.4, ads = V(0.02, -0.06, -0.62), hip = V(0.12, -0.44, 0.02), hipRot = V(-0.05, 0.08, 0),
+		cheek = V(0, 0, 0), poleR = V(0.9, -1, 0.3), poleL = V(-0.9, -1, 0.3) },
 	-- (the hold session, 17 Nov 2026) the one-handed melee weapons: low at the right hip, blade forward; never aimed
 	melee = { twist = 0.18, twistAds = 0.18, waist = 0.4, ads = V(0.02, -0.06, -0.62), hip = V(0.12, -0.5, 0.1), hipRot = V(-0.1, 0.12, 0),
 		cheek = V(0, 0, 0), poleR = V(0.9, -1, 0.3), poleL = V(-0.6, -1.2, -0.2) },
@@ -162,10 +166,10 @@ local KAT = {
 }
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
-local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso: 18 Nov)
+local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true, akimbo = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso, Lefty & Righty: 18 Nov)
 -- a weapon held in another class's stance (its moves still its own class's: the Scythe swings as a melee weapon, held low
 -- with both hands like the LMG: 18 Nov 2026)
-local STANCE: { [string]: string } = { scythe = "heavy" }
+local STANCE: { [string]: string } = { scythe = "heavy", akimbo = "akimbo" }
 local function classOf(wid: string): string
 	if wid == "katana" then return "katana" end
 	-- (the hold session, 17 Nov 2026) every other melee weapon is one-handed: the Knife (its Spoon skin), the Zombie
@@ -207,6 +211,11 @@ local EASE = {
 local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 local function v3(a: { number }): Vector3 return V(a[1], a[2], a[3]) end
 local function eul(v: Vector3): CFrame return CFrame.fromEulerAnglesXYZ(v.X, v.Y, v.Z) end
+-- a frame seen in a mirror across the chest's middle (x -> -x): Lefty & Righty's left gun from the right one
+local function mirrorX(cf: CFrame): CFrame
+	local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
+	return CFrame.new(-x, y, z, r00, -r01, -r02, -r10, r11, r12, -r20, r21, r22)
+end
 local function wrapAng(a: number): number
 	a = (a + math.pi) % (2 * math.pi) - math.pi
 	return a
@@ -459,6 +468,7 @@ local function dropGun(r: Rig)
 		end
 	end
 	r.gun, r.groot, r.weld, r.parts, r.muzzle = nil, nil, nil, nil, nil
+	;(r :: any).gun2 = nil -- (Lefty & Righty's left gun: inside r.gun, gone with it)
 	r.holdR, r.holdL, r.ride = nil, nil, nil
 	r.grab = {}
 	r.clip, r.follow, r.kat = nil, nil, nil
@@ -589,10 +599,33 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	local wd = Instance.new("Weld")
 	wd.Name = "TPWeld"; wd.Part0 = r.ut; wd.Part1 = root; wd.C0 = CF(0, -0.5, -1); wd.Parent = root
 	r.gun, r.groot, r.weld = m, root, wd
+	-- (the hold session, 18 Nov 2026) Lefty & Righty: a second gun for the left hand, posed as the first one's mirror
+	-- across the chest's middle (stepRig); inside the first, so it hides and goes with it
+	if w and w.hands == 2 then
+		local m2 = WeaponModels.build(wid, r.k, if type(skin) == "string" then skin else nil)
+		if m2 and m2.PrimaryPart then
+			m2.Name = "TPGun2"
+			local root2 = m2.PrimaryPart
+			if r.player then
+				local wrId, wrMode = WeaponModels.wrapFor(r.player, wid)
+				if wrId then WeaponModels.wrap(m2, wrId, wrMode) end
+			end
+			local parts2 = GunParts.attach(m2, root2, r.k, w.mdl and w.mdl.parts)
+			for _, d in m2:GetDescendants() do
+				if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false; d.CanCollide = false; d.Massless = true end
+			end
+			m2:PivotTo(r.ut.CFrame * CF(0, -0.5, -1))
+			local wd2 = Instance.new("Weld")
+			wd2.Name = "TPWeld2"; wd2.Part0 = r.ut; wd2.Part1 = root2; wd2.C0 = CF(0, -0.5, -1); wd2.Parent = root2
+			m2.Parent = m
+			;(r :: any).gun2 = { model = m2, weld = wd2, parts = parts2, muzzle = root2:FindFirstChild("Muzzle") }
+		end
+	end
 	local list = {}
 	for _, d in m:GetDescendants() do if d:IsA("BasePart") then table.insert(list, d) end end;
 	(r :: any).gunParts = list
 	grabsFor(r)
+	if (r :: any).gun2 then r.grab = {} end -- (Lefty & Righty: the left hand keeps its own gun through a reload)
 	m.Parent = r.ch
 	r.on = 0
 	-- the draw: the gun comes up (the katana from the hip)
@@ -668,8 +701,10 @@ end
 TP.rigFor = rigFor
 
 -- the muzzle of the gun a body holds as everyone sees it (Arsenal's tracers and flashes start here)
-function TP.muzzle(m: Instance?): Vector3?
+function TP.muzzle(m: Instance?, hand: number?): Vector3?
 	local r = rigFor(m)
+	local g2 = r and (r :: any).gun2
+	if hand == 1 and g2 and g2.muzzle and g2.muzzle.Parent then return g2.muzzle.WorldPosition end -- (Lefty's)
 	if r and r.muzzle and r.muzzle.Parent and (r.gun or r.tool) then return r.muzzle.WorldPosition end
 	return nil
 end
@@ -1198,6 +1233,14 @@ local function stepRig(r: Rig, dt: number, now: number)
 		end
 	else
 		if r.weld then r.weld.C0 = G end
+		local g2 = (r :: any).gun2 -- (Lefty & Righty: the left gun, the right one's mirror)
+		local G2 = if g2 then mirrorX(G) else nil
+		if g2 and G2 then
+			g2.weld.C0 = G2
+			if g2.parts and w and dist < TP.T.far then
+				GunParts.step(g2.parts, dt, { clip = nil, t = 0, anims = Anims, ammo = w.mag or 0, mag = w.mag or 0, reloading = false, now = now, firedT = r.lastFire }, w)
+			end
+		end
 		-- the moving pieces (near bodies only)
 		if r.parts and w and dist < TP.T.far then
 			GunParts.step(r.parts, dt, {
@@ -1214,14 +1257,14 @@ local function stepRig(r: Rig, dt: number, now: number)
 		end
 		if r.holdR then handR = handOn(R, G * r.holdR, if r.poseR == "hand" then "hand" else "grip", r.turnR, poleR) end
 		if r.holdL then
-			local F = G * r.holdL
+			local F = (G2 or G) * r.holdL -- (Lefty & Righty: on the left gun's grip)
 			local gunBack = G:VectorToWorldSpace(Vector3.zAxis)
 			-- the off hand: on the handguard (riding the pump), or at the reload's moving piece
 			if r.ride then
 				local p = r.ride.piece
 				F = G * ((p.last or p.rest) * r.ride.rel)
 			end
-			if r.cls ~= "katana" then F = within(L, F, gunBack, 0.18 * r.k) end
+			if r.cls ~= "katana" and not G2 then F = within(L, F, gunBack, 0.18 * r.k) end
 			handL = handOn(L, F, r.poseL, r.turnL, poleL)
 		end
 		-- reloads: the off hand takes the magazine / the cylinder / the shells down and back

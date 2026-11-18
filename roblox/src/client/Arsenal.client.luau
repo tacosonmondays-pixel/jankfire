@@ -187,8 +187,8 @@ local function inHub(): boolean
 	return me:GetAttribute("Zone") == "hub"
 end
 -- the muzzle of the gun a character holds (third person: yours, or someone else's)
-local function heldMuzzle(m: Instance?): Vector3?
-	local tp = TP.muzzle(m) -- (the gun as everyone sees it held: ThirdPerson)
+local function heldMuzzle(m: Instance?, hand: number?): Vector3?
+	local tp = TP.muzzle(m, hand) -- (the gun as everyone sees it held: ThirdPerson; hand 1: Lefty's)
 	if tp then return tp end
 	local wpn = m and m:FindFirstChild("HeldWeapon")
 	local root = wpn and wpn:IsA("Model") and wpn.PrimaryPart
@@ -618,7 +618,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 	end
 	local fpv = not thirdPerson()
 	-- the muzzle: the viewmodel's in first person, the gun in your character's hand in third person
-	local mz = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eye + look * 2)
+	local mz = (if fpv then nil else heldMuzzle(me.Character, hand)) or VM.attachment("Muzzle", hand) or (eye + look * 2) -- (hand 1: Lefty's own muzzle)
 	-- every gun's look comes from its row in Weapons (fx, tracer, snd): nothing here is per weapon
 	local fx = w.fx or {}
 	-- the flash (not through the scope: it hides the gun, flash and all) and the tracers, bent at a bounce, by the web's

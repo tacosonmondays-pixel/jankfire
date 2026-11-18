@@ -45,6 +45,26 @@ local runK = 0
 local feel = { ground = 0, slide = 0, slip = 0, speed = 0, swig = 0 } -- (the body's state, eased: VM.update)
 -- the swig's pose: where the bottle goes (camera space, metres), its tip up (radians) plus more over the swig, its roll
 local SWIG = { at = Vector3.new(0.1, -0.17, -0.26), tip = -2.0, more = -0.3, roll = -0.2 } -- (the cap down to your mouth below the screen, the fist and the base low on the right: ~63/74 and 62/63 %)
+-- Lefty & Righty (18 Nov 2026, weapons-port's akimbo: hands = 2): a second gun in your left hand, the first one's
+-- mirror across the screen's middle, with recoil springs and a reload dip of its own. hand 1 = Lefty (left click: this
+-- second gun, your left hand); hand 2 = Righty (right click: the main model, your right hand). a reload is a dip of
+-- that one gun down and back up, not a clip (the off hand has a gun of its own to hold)
+type Spring = { p: Vector3, pv: Vector3, r: Vector3, rv: Vector3 }
+type Twin = { model: Model, root: BasePart, parts: any, rec: Spring, kick: number, kickUp: number, dip: { t0: number, dur: number } }
+local twin: Twin? = nil
+local dipR = { t0 = -10, dur = 0 } -- (Righty's reload dip: the main gun)
+local DIP = { p = Vector3.new(0.03, -0.2, 0.08), tip = -0.7 } -- (how far a reloading gun drops: metres, camera space; its tip, radians)
+local function dipOf(d: { t0: number, dur: number }): number
+	local t = os.clock() - d.t0
+	if d.dur <= 0 or t >= d.dur or t < 0 then return 0 end
+	local function sm(u: number) u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+	return sm(t / math.min(0.25, d.dur * 0.3)) * (1 - sm((t - (d.dur - 0.3)) / 0.3))
+end
+-- a frame seen in a mirror across the camera's middle (x -> -x): the left gun's pose from the right one's
+local function mirrorX(cf: CFrame): CFrame
+	local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
+	return CFrame.new(-x, y, z, r00, -r01, -r02, -r10, r11, r12, -r20, r21, r22)
+end
 local lastLook: Vector3? = nil
 local needles: { Weld } = {}
 local needleAng = -2.3
@@ -94,7 +114,13 @@ function VM.play(name: string)
 end
 -- a gun's reload: its own clip, or (a plain gun with none yet) the Assault Rifle's, played faster or slower so it
 -- ends when the reload does. empty = the mag ran dry (Plan B has a reload of its own for that: the slide is dropped)
-function VM.reload(wid: string, secs: number, empty: boolean?)
+function VM.reload(wid: string, secs: number, empty: boolean?, hand: number?)
+	local wr = Weapons.list[wid]
+	if wr and wr.hands == 2 then -- (Lefty & Righty: that one gun dips for the reload)
+		local d = if hand == 1 and twin then (twin :: Twin).dip else dipR
+		d.t0 = os.clock(); d.dur = secs
+		return
+	end
 	local name = if Anims["reload_" .. wid] then "reload_" .. wid else "reload_ar"
 	if empty and Anims[name .. "_empty"] then name ..= "_empty" end
 	local a = Anims[name]
@@ -109,7 +135,11 @@ function VM.follow(name: string, delay: number)
 	if Anims[name] then follow = { name = name, at = os.clock() + delay } end
 end
 -- a shot went off: the cylinder turns, the hammer falls, the slide kicks, the barrel warms (GunParts)
-function VM.shot(w: any)
+function VM.shot(w: any, hand: number?)
+	if hand == 1 and twin then -- (Lefty's own slide)
+		if (twin :: Twin).parts then GunParts.shot((twin :: Twin).parts, w) end
+		return
+	end
 	if VM.parts then GunParts.shot(VM.parts, w) end
 end
 function VM.heat(): number return if VM.parts then VM.parts.heat else 0 end
@@ -141,9 +171,18 @@ end
 -- a shot: the gun's recoil row on the springs + a camera view punch (public/js/weapons.js kickVM). up / pm scale the
 -- upward pitch and the view punch (VM.feel, and Settings' visual recoil: gfx.recoil, nil = 1)
 local function rnd(): number return (if math.random() < 0.5 then -1 else 1) * (0.5 + math.random() * 0.5) end
-function VM.kick(row: { back: number, up: number, roll: number, side: number, punch: number }?, mul: number, fast: boolean, up: number?, pm: number?)
+function VM.kick(row: { back: number, up: number, roll: number, side: number, punch: number }?, mul: number, fast: boolean, up: number?, pm: number?, hand: number?)
 	local r = row or { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 }
 	local u, p = up or 1, pm or 1
+	if hand == 1 and twin then -- (Lefty: its own springs; the view punch is shared)
+		local T = twin :: Twin
+		T.rec.pv += Vector3.new(r.side * rnd(), 0, r.back) * mul
+		T.rec.rv += Vector3.new(r.up * u, 0, r.roll * rnd()) * mul
+		T.kick += if fast then 0.25 else 1
+		T.kickUp += (if fast then 0.25 else 1) * u
+		punch.v += Vector3.new(r.punch * p, r.punch * 0.35 * rnd(), r.punch * 0.5 * rnd()) * mul * 21
+		return
+	end
 	rec.pv += Vector3.new(r.side * rnd(), 0, r.back) * mul
 	rec.rv += Vector3.new(r.up * u, 0, r.roll * rnd()) * mul
 	punch.v += Vector3.new(r.punch * p, r.punch * 0.35 * rnd(), r.punch * 0.5 * rnd()) * mul * 21
@@ -693,6 +732,8 @@ function VM.set(wid: string, kat: number)
 	bow = nil
 	if lasso and (lasso :: Lasso).moved then ((lasso :: Lasso).moved :: Attachment).Position = Vector3.zero end
 	lasso = nil
+	twin = nil -- (it was a child of the old model: gone with it)
+	dipR.t0, dipR.dur = -10, 0
 	VM.wid = wid
 	needles, vents = {}, {}
 	adsHide = {}
@@ -753,6 +794,22 @@ function VM.set(wid: string, kat: number)
 	hands(m, root)
 	if wid == "bow" then bow = bowSetup(m, root) end
 	if wid == "lasso" then lasso = lassoSetup(m) end
+	if w.hands == 2 then -- (Lefty & Righty: the left gun, a second copy with its own moving pieces and your wrap)
+		local m2 = WeaponModels.build(wid, k, VM.skin)
+		if m2 and m2.PrimaryPart then
+			local r2 = m2.PrimaryPart
+			r2.Anchored = true
+			for _, d in m2:GetDescendants() do
+				if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false end
+			end
+			if wrId then WeaponModels.wrap(m2, wrId, wrMode) end
+			local st2 = GunParts.attach(m2, r2, k, w.mdl and w.mdl.parts)
+			m2.Name = "Lefty"
+			m2.Parent = m
+			twin = { model = m2, root = r2, parts = st2, rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero },
+				kick = 0, kickUp = 0, dip = { t0 = -10, dur = 0 } }
+		end
+	end
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
 	for _, n in m:GetChildren() do
@@ -775,9 +832,10 @@ function VM.set(wid: string, kat: number)
 	VM.play(if wid == "katana" then "draw_katana" elseif w.draw and Anims[w.draw] then w.draw else "draw_gun")
 end
 
-function VM.attachment(name: string): Vector3?
+function VM.attachment(name: string, hand: number?): Vector3?
 	local m = VM.model
-	local a = m and m.PrimaryPart and m.PrimaryPart:FindFirstChild(name) :: Attachment?
+	local root = if hand == 1 and twin then (twin :: Twin).root else m and m.PrimaryPart -- (hand 1: Lefty's own muzzle)
+	local a = root and root:FindFirstChild(name) :: Attachment?
 	return a and a.WorldPosition
 end
 
@@ -834,9 +892,15 @@ function VM.update(dt: number, c: Ctx)
 		rec.pv += (-220 * rec.p - 20 * rec.pv) * h; rec.p += rec.pv * h
 		rec.rv += (-200 * rec.r - 18 * rec.rv) * h; rec.r += rec.rv * h
 		punch.v += (-160 * punch.x - 18 * punch.v) * h; punch.x += punch.v * h
+		if twin then
+			local tr = (twin :: Twin).rec
+			tr.pv += (-220 * tr.p - 20 * tr.pv) * h; tr.p += tr.pv * h
+			tr.rv += (-200 * tr.r - 18 * tr.rv) * h; tr.r += tr.rv * h
+		end
 	end
 	kick = math.max(0, kick - 6 * dt)
 	kickUp = math.max(0, kickUp - 6 * dt)
+	if twin then (twin :: Twin).kick = math.max(0, (twin :: Twin).kick - 6 * dt); (twin :: Twin).kickUp = math.max(0, (twin :: Twin).kickUp - 6 * dt) end
 	swap = math.max(0, swap - 5 * dt)
 	local base, rot = w.vm.p, w.vm.r
 	local row = look(VM.wid)
@@ -900,7 +964,11 @@ function VM.update(dt: number, c: Ctx)
 		pos = pos:Lerp(ads, e)
 		rx, ry, rz = rx * (1 - e), ry * (1 - e), rz * (1 - e)
 	end
+	local posNoRec = pos -- (Lefty & Righty: the left gun mirrors this, with its own kick and the sway kept one way)
+	local swayP = Vector3.new(0.2 * sway.X * S, -0.12 * sway.Y * S, 0)
 	pos += Vector3.new(rec.p.X * ra, rec.p.Y * (1 - c.aim * 0.3), (kick * 0.04 * S + rec.p.Z) * ra)
+	local dR = if twin then dipOf(dipR) else 0 -- (Righty reloading: down and back)
+	if dR > 0 then pos += DIP.p * S * dR end
 	local baseRot = crot or CFrame.fromEulerAnglesXYZ(rot.X, rot.Y, rot.Z)
 	if ads and c.aim > 0 and not crot then baseRot = CFrame.fromEulerAnglesXYZ(rot.X, rot.Y, rot.Z):Lerp(CFrame.identity, c.aim) end
 	if VM.wid == "katana" then
@@ -938,7 +1006,15 @@ function VM.update(dt: number, c: Ctx)
 		pos = pos:Lerp(SWIG.at * S, e)
 		drink = CFrame.Angles((SWIG.tip + SWIG.more * (c.swig or 1)) * e, 0, SWIG.roll * e)
 	end
+	if dR > 0 then jig *= CFrame.Angles(DIP.tip * dR, 0, 0) end
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * drink * jig * baseRot
+	if twin then -- (Lefty: the right gun's pose in a mirror, its own kick and reload dip on top)
+		local T = twin :: Twin
+		local dL = dipOf(T.dip)
+		local mir = mirrorX(CFrame.new(posNoRec - swayP) * CFrame.fromEulerAnglesXYZ(rx, ry, rz) * baseRot)
+		local off = Vector3.new(T.rec.p.X * ra, T.rec.p.Y, (T.kick * 0.04 * S + T.rec.p.Z) * ra) + Vector3.new(-DIP.p.X, DIP.p.Y, DIP.p.Z) * S * dL + swayP
+		T.root.CFrame = camera.CFrame * CFrame.new(off) * mir * CFrame.fromEulerAnglesXYZ((T.kickUp * 0.12 + T.rec.r.X) * ra + DIP.tip * dL, 0, -T.rec.r.Z * ra)
+	end
 	local bowPull = 0 -- (the Bow's string pulled back, studs: the right hand rides it, below)
 	if bow then
 		local B = bow :: Bow
@@ -1029,6 +1105,12 @@ function VM.update(dt: number, c: Ctx)
 			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
 		}, w)
 	end
+	if twin and (twin :: Twin).parts then -- (Lefty's slide and pieces)
+		GunParts.step((twin :: Twin).parts, dt, {
+			clip = nil, t = 0, anims = Anims,
+			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = false, now = c.now, firedT = c.firedT,
+		}, w)
+	end
 	-- your arms, last: they read where the magazine, the pump and the props are this frame
 	if armsOn then
 		local to, mix, under = offHand(m, m.PrimaryPart)
@@ -1052,6 +1134,10 @@ function VM.update(dt: number, c: Ctx)
 			end
 		elseif L then
 			AvatarArms.override(m, "Right", nil, 0)
+		end
+		if twin then -- (Lefty & Righty: your left hand on the left gun's grip)
+			local rel = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
+			if rel then to, mix, under = (twin :: Twin).root.CFrame * rel, 1, false end
 		end
 		placeLoader(m.PrimaryPart, to, mix, c.hidden)
 		AvatarArms.override(m, "Left", to, mix, under)
