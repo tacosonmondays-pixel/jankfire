@@ -66,7 +66,7 @@ end)
 local hud = T.new("ScreenGui", { Name = "JankShopButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 local face = T.new("TextButton", {
 	Name = "Shop", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -174), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "SHOP",
+	Position = require(script.Parent:WaitForChild("HubStack")).pos("Shop"), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "SHOP",
 	TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left,
 }, T.scaled(hud))
 T.corner(face); T.edge(face)

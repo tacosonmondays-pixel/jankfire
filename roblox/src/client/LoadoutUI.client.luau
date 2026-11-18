@@ -1742,7 +1742,7 @@ end)
 -- ---------------------------------------------------------------- the hub button
 local hudGui = new("ScreenGui", { Name = "JankLoadoutButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 -- (a plate like the HUD's, just above the health plate, with the key it's on)
-local hubBtn = button(T.scaled(hudGui), "LOADOUT", "white", UDim2.new(0, 24, 1, -132), UDim2.fromOffset(136, 36))
+local hubBtn = button(T.scaled(hudGui), "LOADOUT", "white", require(script.Parent:WaitForChild("HubStack")).pos("Loadout"), UDim2.fromOffset(136, 36)) -- (the stack's order: HubStack)
 hubBtn.base = T.BG; hubBtn.face.BackgroundColor3 = T.BG; hubBtn.face.BackgroundTransparency = T.BG_A
 hubBtn.face.TextSize = 13; hubBtn.face.TextXAlignment = Enum.TextXAlignment.Left
 new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, hubBtn.face)

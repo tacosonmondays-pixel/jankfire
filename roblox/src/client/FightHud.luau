@@ -158,6 +158,14 @@ at(wSub, UDim2.fromOffset(28, 35), UDim2.fromOffset(190, 16))
 local ammoText = T.text(ammoPlate, "Count", "", 34, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 at(ammoText, UDim2.new(1, -122, 0, 6), UDim2.fromOffset(106, 38))
 ammoText.RichText = true
+-- the hub is weapons-free, so it shows no weapon card and no health (owner, 18 Nov: "holstered weapon and hp and m/s
+-- should not be visible"); both are back in training, the playground, a map room and a match (Hud.luau: m/s the same)
+local function hubBare()
+	local bare = me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true -- (DevArms: the owner's dev weapons)
+	if hpPlate.Visible == bare then hpPlate.Visible = not bare end
+	if ammoPlate.Visible == bare then ammoPlate.Visible = not bare end
+end
+me:GetAttributeChangedSignal("Zone"):Connect(hubBare); me:GetAttributeChangedSignal("DevArms"):Connect(hubBare); hubBare()
 function H.hp(hp: number)
 	local v = math.max(0, math.ceil(hp))
 	if v ~= hpShown then

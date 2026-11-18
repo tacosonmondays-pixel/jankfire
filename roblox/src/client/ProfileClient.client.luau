@@ -76,7 +76,7 @@ local hud = T.new("ScreenGui", { Name = "JankProfileButton", ResetOnSpawn = fals
 local scaled = T.scaled(hud)
 local face = T.new("TextButton", {
 	Name = "Profile", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -216), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "PROFILE",
+	Position = require(script.Parent:WaitForChild("HubStack")).pos("Profile"), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "PROFILE",
 	TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left,
 }, scaled)
 T.corner(face); T.edge(face)

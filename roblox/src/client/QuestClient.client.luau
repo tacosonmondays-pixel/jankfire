@@ -61,12 +61,12 @@ me:GetAttributeChangedSignal("QuestTest"):Connect(function()
 	end
 end)
 
--- ------------------------------------------------------------------ the button, over PLAY
+-- ------------------------------------------------------------------ the button, under PLAY (the stack's order: HubStack)
 local hud = T.new("ScreenGui", { Name = "JankQuestsButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 local root = T.scaled(hud)
 local face = T.new("TextButton", {
 	Name = "Quests", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -358), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "QUESTS",
+	Position = require(script.Parent:WaitForChild("HubStack")).pos("Quests"), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "QUESTS",
 	TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left,
 }, root)
 T.corner(face); T.edge(face)

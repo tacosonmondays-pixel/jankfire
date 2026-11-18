@@ -110,11 +110,11 @@ UIS.InputBegan:Connect(function(io, gp)
 	task.spawn(play)
 end)
 
--- the button: amber, the top of the hub's stack (PROFILE, SHOP, LOADOUT under it), with its key
+-- the button: amber, the top of the hub's stack (QUESTS, PARTY, PROFILE, SHOP, LOADOUT under it: HubStack), with its key
 local hud = T.new("ScreenGui", { Name = "JankPlayButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 local face = T.new("TextButton", {
 	Name = "Play", AutoButtonColor = false, BackgroundColor3 = T.ACCENT, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -312), Size = UDim2.fromOffset(136, 42), FontFace = T.FONT_SHOUT, TextSize = 16, Text = "PLAY",
+	Position = require(script.Parent:WaitForChild("HubStack")).pos("Play"), Size = UDim2.fromOffset(136, 42), FontFace = T.FONT_SHOUT, TextSize = 16, Text = "PLAY",
 	TextColor3 = T.INK, TextXAlignment = Enum.TextXAlignment.Left,
 }, T.scaled(hud))
 T.corner(face)
@@ -124,10 +124,10 @@ key.BackgroundColor3 = T.INK
 face.MouseEnter:Connect(function() face.BackgroundColor3 = T.ACCENT:Lerp(Color3.new(1, 1, 1), 0.18) end)
 face.MouseLeave:Connect(function() face.BackgroundColor3 = T.ACCENT end)
 face.MouseButton1Click:Connect(function() task.spawn(play) end)
--- PARTY, under it: everyone in the server, invites, cards (PartyUI). it counts your party when you have one
+-- PARTY, under QUESTS: everyone in the server, invites, cards (PartyUI). it counts your party when you have one
 local partyB = T.new("TextButton", {
 	Name = "Party", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-	Position = UDim2.new(0, 24, 1, -262), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "PARTY",
+	Position = require(script.Parent:WaitForChild("HubStack")).pos("Party"), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "PARTY",
 	TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, RichText = true,
 }, face.Parent)
 T.corner(partyB); T.edge(partyB)

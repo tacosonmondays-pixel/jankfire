@@ -24,6 +24,15 @@ local speedNum = T.text(speed, "Value", "0", 24, T.TEXT, T.FONT_HEAVY, Enum.Text
 speedNum.Position = UDim2.fromOffset(0, 11); speedNum.Size = UDim2.new(1, 0, 0, 26)
 local speedSub = T.text(speed, "Unit", "m/s", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
 speedSub.Position = UDim2.fromOffset(0, 40); speedSub.Size = UDim2.new(1, 0, 0, 14); speedSub.RichText = true
+-- (not in the hub, like FightHud's health and weapon card: owner, 18 Nov)
+do
+	local me = Players.LocalPlayer
+	local function hubBare()
+		local bare = me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true
+		if speed.Visible == bare then speed.Visible = not bare end
+	end
+	me:GetAttributeChangedSignal("Zone"):Connect(hubBare); me:GetAttributeChangedSignal("DevArms"):Connect(hubBare); hubBare()
+end
 
 -- the announcer line: wide white capitals over a short amber rule, upper middle of the screen. behind it a soft dark
 -- band that fades out to both sides, so the words read over a bright sign or the sky

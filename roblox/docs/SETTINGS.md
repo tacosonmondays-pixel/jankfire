@@ -123,3 +123,22 @@ Studio only: the player attribute `SettingsTest` drives it (`"set:look.sniper=0.
 `SettingsAllTabs = true` shows the TOUCH tab on a desktop. Rows are named `Row_<key>` (dots as `_`), key rows
 `Key_<action>` with caps `Cap1`..`Cap3`, pills `Pill_<value>`, swatches `Swatch_<value>`, so a test can click them by
 path.
+
+## The hub's menu stack and HUD (18 Nov, place version 1020)
+
+The owner: "M play should be at the top of the menus on the left in the main hub; holstered weapon and hp and m/s
+should not be visible".
+
+- **Order:** `client/HubStack.luau` holds the left-hand stack's order, top to bottom: PLAY, QUESTS, PARTY, PROFILE,
+  SHOP, LOADOUT. Each button's script asks `HubStack.pos(id)` for its spot (8 px gaps, ending just over the health
+  plate), so a new button or a new order is one line there.
+  - The phone layout (TouchControls moves the same buttons to the right) follows the positions.
+  - So does a controller (PadNav sorts the column by height).
+  - Phones' saved layouts (`tl<n>.<id>`) don't hold these buttons, so nothing old overrides the order.
+- **Hub HUD:** in the `hub` zone (the player's `Zone` attribute, from `Matches.zoneOf`), FightHud hides the health
+  plate and the weapon card, and Hud hides the m/s plate.
+  - All three are back in training, the playground, a map room (`staging`) and a match.
+  - They also show while the owner's dev weapons are out (`DevArms`), as Arsenal arms you then.
+
+Sheet: `settings/hub-menu-order-before-after.jpg` (the old layout in the hub; the new one in the hub, in training, and on
+a phone-sized screen in the hub).
