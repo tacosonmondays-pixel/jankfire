@@ -39,7 +39,9 @@ local started = false
 
 -- the free claims while testing, kept so a claim lasts (one small key per player; the loot save is the loot session's)
 local store: DataStore? = nil
-pcall(function() store = DataStoreService:GetDataStore("JankfireVip_v1") end)
+-- (Studio keeps its own, never the live game's: 18 Nov, Studio play tests run on the owner's account and shared the
+-- live record, like the loadout did. "_studio" as Profiles.new does)
+pcall(function() store = DataStoreService:GetDataStore(if RunService:IsStudio() then "JankfireVip_studio" else "JankfireVip_v1") end)
 
 local function loot(): any
 	local m = script.Parent:FindFirstChild("Loot")
