@@ -182,7 +182,7 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 		if note == "OVERHEATED" then subColor = T.DANGER end
 	elseif w.kind == "melee" then
 		-- (right click: the katana parries, the knife stabs, the claw does nothing)
-		sub = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
+		sub = if kat > 0 then (if kat == 1 then "%d kill · %.1f m" else "%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S)
 			elseif w.heavy then "RMB stab" elseif w.id == "katana" then "RMB parry" else ""
 	else
 		count = ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
