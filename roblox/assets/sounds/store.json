@@ -1656,6 +1656,258 @@
     ],
     "L": -16
    }
+  ],
+  "gun_minigun": [
+   {
+    "id": 9116922304,
+    "title": "Minigun Metallic Reflections 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.3,
+     0.38
+    ],
+    "L": -24
+   },
+   {
+    "id": 9116922596,
+    "title": "Minigun Metallic Reflections 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.5,
+     0.58
+    ],
+    "L": -24
+   },
+   {
+    "id": 9116922611,
+    "title": "Minigun Metallic Reflections 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.7,
+     0.78
+    ],
+    "L": -24
+   }
+  ],
+  "minigun_spinup": [
+   {
+    "id": 9116980359,
+    "title": "Motor Whine Electric Whirring Buzzing 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.65
+    ],
+    "L": -12
+   }
+  ],
+  "minigun_spin": [
+   {
+    "id": 9116980359,
+    "title": "Motor Whine Electric Whirring Buzzing 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.8,
+     2.8
+    ],
+    "L": -12
+   }
+  ],
+  "minigun_spindown": [
+   {
+    "id": 9116980359,
+    "title": "Motor Whine Electric Whirring Buzzing 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     3,
+     3.9
+    ],
+    "L": -15
+   }
+  ],
+  "gun_water": [
+   {
+    "id": 9119518756,
+    "title": "Spray Bottle 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.18
+    ],
+    "L": -30
+   },
+   {
+    "id": 9119519807,
+    "title": "Spray Bottle 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.02,
+     0.2
+    ],
+    "L": -28
+   },
+   {
+    "id": 9119519818,
+    "title": "Spray Bottle 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.06,
+     0.24
+    ],
+    "L": -29
+   }
+  ],
+  "water_soak": [
+   {
+    "id": 9117946641,
+    "title": "Puddle Stomps Small Water Splashes 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -43
+   },
+   {
+    "id": 9117947974,
+    "title": "Puddle Stomps Small Water Splashes 18 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -47
+   }
+  ],
+  "gun_nailgun": [
+   {
+    "id": 9117052716,
+    "title": "Nail Gun Pneumatic Air Bursts 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.07,
+     0.18
+    ],
+    "L": -22
+   },
+   {
+    "id": 9117051336,
+    "title": "Nail Gun Pneumatic Air Bursts 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.19,
+     0.31
+    ],
+    "L": -24
+   },
+   {
+    "id": 9117052397,
+    "title": "Nail Gun Pneumatic Air Bursts 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.21,
+     0.34
+    ],
+    "L": -21
+   }
+  ],
+  "nail_wall": [
+   {
+    "id": 9119579178,
+    "title": "Staple Gun 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.13,
+     0.4
+    ],
+    "L": -19
+   }
+  ],
+  "nail_pinned": [
+   {
+    "id": 9117053526,
+    "title": "Nail Gun Single And Rapid Fire Nails 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.02,
+     0.6
+    ],
+    "L": -14
+   }
+  ],
+  "bread_bonk": [
+   {
+    "id": 9113497639,
+    "title": "Body Hit Ham Hits 12 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -31
+   },
+   {
+    "id": 9113487557,
+    "title": "Body Hit 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -26
+   }
+  ],
+  "slap_hit": [
+   {
+    "id": 9114771792,
+    "title": "Hand Slap Claps 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.25
+    ],
+    "L": -27
+   },
+   {
+    "id": 9114772106,
+    "title": "Hand Slap Claps 10 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.25
+    ],
+    "L": -27
+   }
+  ],
+  "slap_whoosh": [
+   {
+    "id": 9120972321,
+    "title": "Wood Whoosh Slicing Air Quick Swings 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.02,
+     0.3
+    ],
+    "L": -30
+   }
+  ],
+  "draw_minigun": [
+   {
+    "id": 9116357621,
+    "title": "Machine Gun Bolt 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.7
+    ],
+    "L": -21
+   }
+  ],
+  "reload_minigun": [
+   {
+    "id": 9113103014,
+    "title": "Ammo Box Movement 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     3
+    ],
+    "L": -37
+   }
   ]
  },
  "vol": {
@@ -1688,7 +1940,11 @@
   "loot_pop": 2.4,
   "loot_win_epic": 1.8,
   "loot_win_legendary": 2,
-  "framepop": 0.18
+  "framepop": 0.18,
+  "minigun_spinup": 0.12,
+  "minigun_spin": 0.12,
+  "minigun_spindown": 0.12,
+  "water_soak": 6
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -1733,7 +1989,21 @@
   "wave_fly": -29,
   "wave_hit": -23,
   "wave_wall": -23,
-  "edge_full": -30
+  "edge_full": -30,
+  "gun_minigun": -23,
+  "minigun_spinup": -30,
+  "minigun_spin": -30,
+  "minigun_spindown": -30,
+  "gun_water": -26,
+  "water_soak": -28,
+  "gun_nailgun": -22,
+  "nail_wall": -31,
+  "nail_pinned": -25,
+  "bread_bonk": -22,
+  "slap_hit": -21,
+  "slap_whoosh": -27,
+  "draw_minigun": -26,
+  "reload_minigun": -26
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -1759,6 +2029,32 @@
   "wave_cast": 0.03,
   "wave_fly": 0.03,
   "wave_hit": 0.03,
-  "wave_wall": 0.03
+  "wave_wall": 0.03,
+  "gun_minigun": 0.03,
+  "gun_water": 0.04,
+  "gun_nailgun": 0.03,
+  "nail_wall": 0.05,
+  "nail_pinned": 0.03,
+  "bread_bonk": 0.03,
+  "slap_hit": 0.03,
+  "slap_whoosh": 0.03,
+  "water_soak": 0.04
+ },
+ "loop": {
+  "minigun_spin": true
+ },
+ "roll": {
+  "gun_water": [
+   8,
+   200
+  ],
+  "water_soak": [
+   6,
+   120
+  ],
+  "nail_wall": [
+   6,
+   150
+  ]
  }
 }

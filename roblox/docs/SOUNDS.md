@@ -1,3 +1,32 @@
+# Weapons batch A: minigun, water gun, nail gun, bread, slap (18 Nov 2026, place version 771)
+
+Asked for by the weapons-port session. All are Pro Sound Effects recordings, levelled from `store.json` like the
+others. Two new `store.json` fields, handled by `store_sounds.mjs`: `loop` (the Sound is Looped, over its region) and
+`roll` ([RollMin, RollMax] attributes: how far Sfx lets a copy out in the world carry).
+
+| name | for | take(s): id, title, cut (s) | Volume | notes |
+| --- | --- | --- | --- | --- |
+| `gun_minigun` | one shot at 25/s | 9116922304 / 9116922596 / 9116922611 Minigun Metallic Reflections 1 / 2 / 3, 80 ms slices (0.3, 0.5, 0.7 s in) | 1.04 | slices of a real burst: at 25/s two overlap and run together into the burst. Levelled on the burst's L −24, not the slice's |
+| `minigun_spinup` | 0.6 s | 9116980359 Motor Whine Electric Whirring Buzzing 11, 0.05–0.65 (the motor starting) | 0.12 | the same motor as the loop and the spindown, so they join |
+| `minigun_spin` | the barrels spinning | same recording, 0.8–2.8, **Looped** | 0.12 | steady part of the whine. Play it by cloning the library Sound: `Sfx.play`'s copy is destroyed after 6 s |
+| `minigun_spindown` | 0.9 s | same recording, 3.0–3.9 (the motor stopping) | 0.12 | |
+| `gun_water` | one squirt at 9/s | 9119518756 / 9119519807 / 9119519818 Spray Bottle 1 / 2 / 4, ~0.15 s each | 1.3 | carries 8–200 studs (`roll`) |
+| `water_soak` | the soaked person | 9117946641 / 9117947974 Puddle Stomps Small Water Splashes 3 / 18, whole | 6 (set) | quiet recordings, so Volume set by hand; carries 6–120 |
+| `gun_nailgun` | one shot at 11/s | 9117052716 / 9117051336 / 9117052397 Nail Gun Pneumatic Air Bursts 4 / 7 / 1, one burst each (~0.12 s) | 0.96 | |
+| `nail_wall` | a nail into the wall, quiet | 9119579178 Staple Gun 1, 0.13–0.4 | 0.23 | carries 6–150 |
+| `nail_pinned` | 4–5 nails into a pinned person | 9117053526 Nail Gun Single And Rapid Fire Nails 1, 0.02–0.6 | 0.26 | |
+| `bread_bonk` | a big loaf hitting someone | 9113497639 Body Hit Ham Hits 12 and 9113487557 Body Hit 7, 0–0.3 | 1.95 | soft heavy thuds, nothing squeaky. The two takes sit 5 dB apart (L −31 / −26) |
+| `slap_hit` | a big flat slap | 9114771792 / 9114772106 Hand Slap Claps 3 / 10, 0–0.25 | 1.84 | |
+| `slap_whoosh` | the slap's swing | 9120972321 Wood Whoosh Slicing Air Quick Swings 4, 0.02–0.3 | 1.3 | |
+| `draw_minigun` | the heavy draw | 9116357621 Machine Gun Bolt 4, 0–0.7 (bolt back and home) | 0.52 | |
+| `reload_minigun` | the 3.5 s reload | 9113103014 Ammo Box Movement 2, 0.1–3.0 | 3 (the cap) | an ammo can handled, opened and shut, over 2.9 s |
+
+Volume groups (SettingsApply `kind`): `gun_*` and `draw_minigun` follow WEAPONS. The rest follow EFFECTS unless
+they're added to WEAPON_NAMES. Checked in Edit: every clip loads, every cut measured. Not heard in Play. The spin loop's
+seam (2.8 → 0.8 s) wasn't checked by ear.
+
+---
+
 # Grenade cooking and the katana's new moves: eight new sounds (18 Nov 2026, place version 749)
 
 Asked for by the utility session (the owner: "allow us to cook grenades pls") and the katana session (endless

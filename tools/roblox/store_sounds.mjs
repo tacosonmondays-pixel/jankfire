@@ -6,6 +6,8 @@
 // its category's level: the target per name is the one render_sfx.mjs used (roblox/assets/sounds/v2/list.json,
 // "target", LUFS) moved onto the analyzer's scale by store.json's "offset" (measured on the v2 renders).
 // a region plays only that slice of a clip (one shot out of a sequence, one footstep out of a walk).
+// store.loop[name] = true makes the Sound Looped (a region loops just that slice); store.roll[name] = [min, max] sets
+// its RollMin / RollMax attributes (how far Sfx lets a copy out in the world carry, studs).
 // prints the Luau to paste into Studio (Edit): node tools/roblox/store_sounds.mjs [only=skin_,zone_] > swap.luau
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,7 +34,10 @@ for (const [name, takes] of Object.entries(store.sounds)) {
   const vol = store.vol?.[name] ?? Math.max(0.05, Math.min(3, Math.pow(10, (target - L) / 20))); // (store.vol: set by ear-substitute after Play)
   const t = takes.map((k) => `{${k.id},${k.region ? k.region[0] : -1},${k.region ? k.region[1] : -1}}`).join(',');
   const j = store.jitter?.[name];
-  rows.push(`{"${name}",${Math.round(vol * 100) / 100},{${t}}${j != null ? ',' + j : ''}}`);
+  const lp = store.loop?.[name] === true;
+  const rl = store.roll?.[name];
+  const extra = j != null || lp || rl ? `,${j ?? 'nil'},${lp ? 'true' : 'nil'}${rl ? `,${rl[0]},${rl[1]}` : ''}` : '';
+  rows.push(`{"${name}",${Math.round(vol * 100) / 100},{${t}}${extra}}`);
 }
 console.log(`-- JankfireSounds from the licensed library (tools/roblox/store_sounds.mjs, roblox/assets/sounds/store.json)
 local lib = game.ReplicatedStorage.JankfireSounds
@@ -49,12 +54,14 @@ local function apply(s, take)
 end
 local n, takes = 0, 0
 for _, d in ipairs(D) do
-	local name, vol, list, jit = d[1], d[2], d[3], d[4]
+	local name, vol, list, jit, loop, rmin, rmax = d[1], d[2], d[3], d[4], d[5], d[6], d[7]
 	local s = lib:FindFirstChild(name)
 	if not s then s = Instance.new("Sound"); s.Name = name; s.Parent = lib end
 	if s:GetAttribute("SoundIdV2") == nil then s:SetAttribute("SoundIdV2", s.SoundId); s:SetAttribute("VolumeV2", s.Volume) end
 	s.Volume = vol
 	if jit then s:SetAttribute("Jitter", jit) end
+	if loop then s.Looped = true end
+	if rmin then s:SetAttribute("RollMin", rmin); s:SetAttribute("RollMax", rmax) end
 	apply(s, list[1])
 	for _, c in ipairs(lib:GetChildren()) do if string.match(c.Name, "^(.-)#%d+$") == name then c:Destroy() end end
 	for k = 2, #list do
