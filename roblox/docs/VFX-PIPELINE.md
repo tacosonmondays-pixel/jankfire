@@ -679,3 +679,12 @@ closes or the held skin has no row; FightHud itself is unchanged. It reads the h
 Any skin can have one: `scope = { colour, glow = 0..1, bits = { texture = "feather" | "sparkle", colour, n, size },
 shimmer = { colour, n } }` (size is a share of the screen's height). Only `sniper_seraph` has one so far.
 Before and after: `docs/vfx/round19/seraph-scope-v988.jpg`.
+
+### The Seraph effects on the aim tucks (checked on place version 989)
+
+With hold-hands' tuck rows live (the rifle's `rwing_*` and the pistol's `slide_*` wing pieces shrink to 0.85 toward a
+pivot as you aim, `TuckScale` on each piece), the effects ride them as built in v978. Aimed in Studio: the rifle has 20 of
+49 emitters on (the rest are in the sight picture), and all 24 on its tucked wings stay on them, scaled with them. The
+pistol has 0 of 24 on, because its wings sit behind the slide in the middle of the view. The burst has 24 of 24 on, with
+its wings below the view. No change was needed. Photos (rifle, pistol, burst, aimed):
+`docs/vfx/round19/seraph-aim-tuck-v989.jpg`.
