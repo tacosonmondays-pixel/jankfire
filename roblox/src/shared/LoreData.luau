@@ -32,6 +32,11 @@ L.CATS = { "cat_biscuit", "cat_beans", "cat_gravy", "cat_meatloaf", "cat_gremlin
 -- BOARD MEMBER is never granted (its CardStyles row stays, so anyone who has it keeps it; ProfileUI hides an unowned
 -- secret). Their models, rigs, spots and lines stay in the repo: true + LoreSpots.build(L.CATS) brings them back
 L.CATS_ON = false
+-- (18 Nov 2026, the owner: "can you get these npcs out of the hubs and maps like now??", "they appear when you put the
+-- code in"): off = an NPC is seen only in its code's cutscene, never placed at its spot afterwards (LoreLife.client),
+-- the HR guy never visits (HrGuy.server) and the egg nook stays shut. On = they live at their spots after their code.
+-- The spots stay as data either way (PolishBackup.LoreSpots)
+L.PLACE_IN_WORLD = false
 if L.CATS_ON then for _, id in L.CATS do table.insert(L.ORDER, id) end end
 -- does a find of this one count? (only what's in ORDER: a parked one doesn't)
 function L.counts(id: any): boolean

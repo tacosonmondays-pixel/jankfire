@@ -577,6 +577,12 @@ local function place(src: Instance)
 	if rig then for name in rig.pieces do src:WaitForChild(name, 5) end else task.wait(0.3) end
 	if not src.Parent or placed[id] then return end
 	src.Archivable = true
+	if not Data.PLACE_IN_WORLD then
+		-- (out of the world: only its cutscene uses it, cloned from this hidden copy)
+		placed[id] = src :: Model
+		src.Destroying:Connect(function() if placed[id] == src then placed[id] = nil end end)
+		return
+	end
 	local m = src:Clone()
 	for _, d in m:GetDescendants() do if d:IsA("BaseScript") then d:Destroy() end end
 	m.Parent = localFolder
@@ -907,14 +913,34 @@ me:GetAttributeChangedSignal("Zone"):Connect(function()
 end)
 
 -- ------------------------------------------------------------------ the hub egg's prompt and lamp: off until its code
+-- and the nook's door: every part named EggNookDoor (the hub's own in Map.Hub, or LoreSpots' stand-in in Map.Lore) is a
+-- solid finished panel over the nook's opening for everyone, and only opens (hidden, no collisions, on this screen
+-- alone) for a player who has entered JANK, while the NPCs are placed in the world at all (LoreData.PLACE_IN_WORLD)
 local eggHidden: boolean? = nil
+local function doors(map: Instance?): { BasePart }
+	local out = {}
+	if not map then return out end
+	for _, d in map:GetDescendants() do
+		if d.Name == "EggNookDoor" then
+			if d:IsA("BasePart") then table.insert(out, d) end
+			for _, p in d:GetDescendants() do if p:IsA("BasePart") then table.insert(out, p) end end
+		end
+	end
+	return out
+end
 local function eggApply()
 	local map = workspace:FindFirstChild("Map")
 	local hub = map and map:FindFirstChild("Hub")
 	local e = hub and hub:FindFirstChild("HubEgg")
-	local hide = not seen.egg
-	if hide == eggHidden or not e then return end
+	local hide = not seen.egg or not Data.PLACE_IN_WORLD
+	if hide == eggHidden then return end
 	eggHidden = hide
+	for _, p in doors(map) do
+		if p:GetAttribute("DoorCollide") == nil then p:SetAttribute("DoorCollide", p.CanCollide) end
+		p.LocalTransparencyModifier = if hide then 0 else 1
+		p.CanCollide = if hide then p:GetAttribute("DoorCollide") == true else false
+	end
+	if not e then return end
 	for _, d in e:GetDescendants() do
 		if d:IsA("ProximityPrompt") then d.Enabled = not hide
 		elseif d:IsA("Light") then d.Enabled = not hide

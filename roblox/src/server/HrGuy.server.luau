@@ -24,6 +24,7 @@
 -- Studio play tests: ServerStorage.HrTest (BindableFunction, Studio only): "state", "come" (he visits the first player
 -- now, wherever they are), "leave", "take" (he has the first player now).
 local Players = game:GetService("Players")
+local LoreData = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("LoreData")) :: any
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
@@ -273,6 +274,7 @@ RunService.Heartbeat:Connect(function(dt)
 		if p:GetAttribute("OnLot") == true then lotSince[p] = lotSince[p] or now else lotSince[p] = nil end
 	end
 	if not S.on then
+		if not LoreData.PLACE_IN_WORLD then return end -- (the NPCs are out of the world: no visits)
 		-- called (just revealed him): he comes the moment they're alone on the lot
 		for p in called do
 			if p.Parent and lonely(p) and visit(p) then called[p] = nil; return end

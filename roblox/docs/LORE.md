@@ -71,6 +71,16 @@ codes weekly by weekly at some point".
   then simply gone. SKIP (Space, B, or the button) after the first 1.2 s; never in a match (it stops if a match takes
   you). Afterwards it's at its own spot for you to go and find. A code you already used plays it again with its
   "again" line, giving nothing new.
+- **Out of the hubs and maps entirely, for now** (the owner, 18 Nov evening: "can you get these npcs out of the hubs and
+  maps like now??", "they appear when you put the code in"): `LoreData.PLACE_IN_WORLD = false`. A code's NPC is seen
+  only in its cutscene and is never placed at its spot afterwards (its delivered copy stays hidden in the player's
+  PlayerGui for the cutscene to clone); the HR guy makes no visits; the egg nook stays shut. Set it to `true` and they
+  live at their spots after their codes again (the spots are kept as data).
+- **The egg nook's door**: the nook's opening over the west arch (the "hole") is closed by a solid panel,
+  `Map.Lore.EggNookDoor` (a stand-in made at place version 954 in the wall's own lintel colour: 6.7 x 6.3 x 0.6 at
+  (-216.66, 264.21, -9965.40), facing the round room, 0.3 behind the wall's face). LoreLife.client opens every part
+  named `EggNookDoor` (in Map.Lore or Map.Hub; the hub session may build its own) for a player only once they've
+  entered JANK and only while `PLACE_IN_WORLD` is on: hidden and no collisions on their screen alone.
 - **Reward codes** (book rows with `kind = "reward"`; what each gives: `REWARDS` in LoreNPCs): a code that gives items
   instead of an NPC, once per player (`Loot.grant` of shop-gui's `gift:<kind>:<id>` offers, one receipt per player and
   item; the save's `claims`). The screen shows what it gave (names from LootTable), or CLAIMED. First one:
