@@ -270,10 +270,22 @@ The remote `Flair` takes `("pet", id)` ("" for none), and `state` returns `pets`
 - Each screen draws every player's pet, one anchored model per pet in `workspace.ClientPets`, moved with one `BulkMoveTo` a
   frame. A pet more than 165 studs from your camera is parked out of the world and not moved at all; it snaps back to its
   owner when you come near.
-- It keeps a few studs behind its owner, off to one side, and catches up faster the further behind it is. It walks the floor
-  under it (one ray now and then, ignoring bodies, pets and things you walk through) and turns slowly to its owner when they
-  stop. It jumps back to them after a teleport (the body moved 25+ studs in a frame), past 42 studs behind, or 12+ studs
-  above or below for 1.2 s (pads, lifts).
+- It walks where its owner walked: a trail of the owner's footing (points 0.5 studs apart, only while they stand on
+  something), heading for the point a few studs back along it, off to one side when there's room. So it goes round corners
+  and up the same stairs, not through a wall the owner went round. It catches up faster the further behind it is and turns
+  slowly to its owner when they stop.
+- **The floor** (18 Nov, v922; the owner: "also the pet clips through too"):
+  - Every frame, two rays from the pet's OWN height (2.4 over its feet; they ignore bodies, pets and things you walk through):
+    one under it, one a step ahead. Take 1 looked only now and then, from the owner's height: under a balcony that found the
+    floor above and lifted the pet through it, and on stairs it eased up late into the steps.
+  - Its feet never go below the floor under it. It rises as a step comes (the look-ahead) and eases down steps and slopes.
+  - Over a gap it keeps its height for 0.6 s, then takes its owner's trail's.
+  - A wall in its way stops it and it slides along it.
+- It jumps back to its owner in four cases:
+  - after a teleport (the body moved 25+ studs in a frame);
+  - past 42 studs behind;
+  - 12+ studs above or below for 1.2 s (pads, lifts);
+  - held by a wall (barely moving, 3+ studs behind) for a second.
 - No collisions, queries or touches: it can't be shot, stood on or block anything. Your own is hidden while it's in front of
   you in first person, and any pet right at the camera is hidden too.
 - Gaits are sums of sines (`client/PetRig.luau`): the mannequin's pieces turn about its feet (the waddle). The dog's and
@@ -302,6 +314,14 @@ the copy of you.
 - With the slug and the dog parked: granting them answers "no such pet", and no kennel is placed in the Gut.
 - Not tested live: the train-pass and kennel finds, which need a Gut match. They're parked now anyway.
 - Photos: `flair/pets-mannequin-hub.jpg`, `flair/pets-picker.jpg`.
+- **The floor fix (v922):** the owner walked up the hub's two ring steps (gym floor 239.98, steps 240.70 and 241.40) and back
+  down; then on the training bay's step, and the lounge floor.
+  - Measured every frame against the floor under the pet: worst sink 0.000 on every route.
+  - Up to 1.35 over the floor for a frame or two, gliding down off the top step.
+  - Inside a part for 1 frame of 71.
+  - Training itself couldn't be walked: the hall is sealed against a teleported test player, who lands back in the hub. The
+    pet then sat on the lounge floor at its exact height (239.95).
+  - Photo: `flair/pets-floor-steps.jpg`.
 
 ## Settings hooks (the settings page, P)
 
