@@ -666,3 +666,16 @@ over the floor (thorns on each arm). Walls and floors get a soft scorch glow, a 
 a puff. When you're the one crossed, your screen pulses red and flashes, with no symbol. The pop and the bolt kept v944's
 look, with the critic's round 2 kept small: five thin streaks, sparks a little bigger, a slightly longer tapered trail.
 Sheet: `docs/vfx/round19/blood-cross-v955.jpg`.
+
+## The Seraph sniper's scope rim (18 Nov 2026, place version 988)
+
+Scoped, a sniper hides itself behind FightHud's scope (black round a lens), so the Seraph skin's own effects can't
+show there. `ScopeRim.client` (a new LocalScript) gives the scope the skin's touch instead, from a `scope` row on the
+skin's `SkinSets.FX` entry: six soft gold rings round the lens edge (a little inside it, then out over the black,
+breathing slowly), white feathers drifting in the black beside the lens (left and right, where there is most black),
+and sparkles twinkling on the rim. Nothing goes further into the lens than the rim, so the crosshair and the view stay
+clear. It only adds its own frames (`SkinRim`) under `PlayerGui.JankfireFight.Scope` and removes them when the scope
+closes or the held skin has no row; FightHud itself is unchanged. It reads the held skin off Viewmodel (`VM.skin`).
+Any skin can have one: `scope = { colour, glow = 0..1, bits = { texture = "feather" | "sparkle", colour, n, size },
+shimmer = { colour, n } }` (size is a share of the screen's height). Only `sniper_seraph` has one so far.
+Before and after: `docs/vfx/round19/seraph-scope-v988.jpg`.

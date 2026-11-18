@@ -243,6 +243,10 @@ SkinSets.FX = {
 	-- 0.45) about half the rates and sizes. The katana's pair mirrors across y (one wing up, one down): explicit lists.
 	sniper_seraph = { -- (the Seraph Sniper: the headliner's wings)
 		aim = 0.6,
+		-- (scoped, the gun hides behind the scope: ScopeRim.client gives the scope a soft gold glow round the lens, white
+		-- feathers drifting in the black beside it and a shimmer of sparkles on the rim; never inside the lens)
+		scope = { colour = Color3.fromRGB(255, 210, 120), glow = 0.9, bits = { texture = "feather", colour = Color3.fromRGB(250, 244, 230), n = 8, size = 0.05 },
+			shimmer = { colour = Color3.fromRGB(255, 240, 200), n = 12 } },
 		idle = {
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
 				at = { { 0.034, 0.0751, 0.5178 }, { 0.045, 0.0645, 0.4108 }, { 0.019, 0.0923, 0.5731 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
