@@ -132,7 +132,7 @@ def concrete_bits():
     for b in solids('cover'):
         x0, y0, z0, x1, y1, z1 = b[:6]
         if (x1 - x0) > 6 and (z1 - z0) > 2 and y1 - y0 < 3 and abs(x0) > 70: continue    # (inside the clubhouse: display_table())
-        B(m, CONC, x0, y0, z0, x1, y1, z1, bev=0.2)
+        B(m, CONC, x0, y0 - 0.05, z0, x1, y1, z1, bev=0.2)     # (sunk 0.05 into the floor it sits on)
         long_x = (x1 - x0) >= (z1 - z0)
         for e in ((z0, z0 + 0.25), (z1 - 0.25, z1)) if long_x else ((x0, x0 + 0.25), (x1 - 0.25, x1)):
             if long_x: B(m, STEEL, x0 + 0.1, y1 - 0.2, e[0] - 0.03, x1 - 0.1, y1 + 0.03, e[1] + 0.03, bev=0.03)
@@ -141,8 +141,9 @@ def concrete_bits():
     qs = [t[1] for t in tags('qpipe')]
     for b in solids('step'):
         if any(q[0] - 0.01 <= b[0] and b[3] <= q[3] + 0.01 and q[2] - 0.01 <= b[2] and b[5] <= q[5] + 0.01 for q in qs): continue
-        B('sp_conc', CONC2, b[0], b[1], b[2], b[3], b[4] - 0.2, b[5], bev=0.06)
-        B('sp_conc', CONC, b[0], b[4] - 0.2, b[2], b[3], b[4], b[5], bev=0.06)
+        # (one piece a step: no two looks share a face; inset 0.05 along its width, off any wall it runs beside)
+        if (b[5] - b[2]) >= (b[3] - b[0]): B('sp_conc', CONC, b[0], b[1] - 0.05, b[2] + 0.05, b[3], b[4], b[5] - 0.05, bev=0.06)
+        else: B('sp_conc', CONC, b[0] + 0.05, b[1] - 0.05, b[2], b[3] - 0.05, b[4], b[5], bev=0.06)
 
 def quarter_pipes():
     m = 'sp_conc'
@@ -176,8 +177,7 @@ def quarter_pipes():
             if bm2.faces[0].normal.z * want < 0: bmesh.ops.reverse_faces(bm2, faces=bm2.faces)
             K.put(m, 'plastic', CONC2, bm2, I4)
         dx0, dx1 = (x0, top) if s > 0 else (top, x1)
-        B(m, CONC2, dx0, 0.0, z0, dx1, 5.8, z1, bev=0.2)
-        B(m, CONC, dx0, 5.8, z0, dx1, 6.0, z1, bev=0.05)
+        B(m, CONC2, dx0, -0.05, z0, dx1, 6.0, z1, bev=0.2)       # (the deck in one piece: a cap on it fought its top)
         cylz(m, STEEL, z0, z1, top, 5.95, 0.3, segs=10, bev=0.0)
 
 # ================================================================ the clubhouses
@@ -226,15 +226,15 @@ def clubhouses():
             thin_x = (ox1 - ox0) < (oz1 - oz0)
             e = 0.18
             if thin_x:
-                parts = [(oz0 - 0.4, oy1, oz1 + 0.4, oy1 + 0.4), (oz0 - 0.4, oy0, oz0, oy1), (oz1, oy0, oz1 + 0.4, oy1)]
-                if kind == 'window': parts.append((oz0 - 0.4, oy0 - 0.4, oz1 + 0.4, oy0))
+                parts = [(oz0 - 0.4, oy1 - 0.08, oz1 + 0.4, oy1 + 0.4), (oz0 - 0.4, oy0, oz0 + 0.08, oy1), (oz1 - 0.08, oy0, oz1 + 0.4, oy1)]
+                if kind == 'window': parts.append((oz0 - 0.4, oy0 - 0.4, oz1 + 0.4, oy0 + 0.08))
                 for (a0, b0, a1, b1) in parts: B(m, STEEL2, ox0 - e, b0, a0, ox1 + e, b1, a1, bev=0.03)
                 if kind == 'door' and abs(abs((ox0 + ox1) / 2) - abs(xf)) < 1.0:
                     B(m, ACCENT, xf, oy1 + 0.8, oz0 - 1.5, xf + s * 3.4, oy1 + 1.3, oz1 + 1.5, bev=0.15)
                     B(m, ACCENT2, xf + s * 3.2, oy1 + 0.2, oz0 - 1.5, xf + s * 3.45, oy1 + 1.3, oz1 + 1.5, bev=0.06)
             else:
-                parts = [(ox0 - 0.4, oy1, ox1 + 0.4, oy1 + 0.4), (ox0 - 0.4, oy0, ox0, oy1), (ox1, oy0, ox1 + 0.4, oy1)]
-                if kind == 'window': parts.append((ox0 - 0.4, oy0 - 0.4, ox1 + 0.4, oy0))
+                parts = [(ox0 - 0.4, oy1 - 0.08, ox1 + 0.4, oy1 + 0.4), (ox0 - 0.4, oy0, ox0 + 0.08, oy1), (ox1 - 0.08, oy0, ox1 + 0.4, oy1)]
+                if kind == 'window': parts.append((ox0 - 0.4, oy0 - 0.4, ox1 + 0.4, oy0 + 0.08))
                 for (a0, b0, a1, b1) in parts: B(m, STEEL2, a0, b0, oz0 - e, a1, b1, oz1 + e, bev=0.03)
         # inside: the counter (wood, a pale top), the rack with decks on it, a display table
         for b in L.SOLID:
