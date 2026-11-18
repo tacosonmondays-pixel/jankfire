@@ -106,7 +106,7 @@ local TITLES = {
 	-- (found: the hidden NPCs round the hub, LoreNPCs.server, 18 Nov; one each for the web's five and the HR guy, OVERDUE for all)
 	{ "lore_gary", "REGIONAL MANAGER", "secret" }, { "lore_dale", "OUT OF ORDER", "secret" }, { "lore_janitor", "HAS SEEN THINGS", "secret" },
 	{ "lore_smiles", "MANDATORY FUN", "secret" }, { "lore_todd", "INTERN", "secret" }, { "lore_hr", "HAD A QUICK CHAT", "secret" },
-	{ "lore_all", "OVERDUE", "secret" },
+	{ "lore_all", "OVERDUE", "secret" }, { "lore_cats", "BOARD MEMBER", "secret" }, -- (BOARD MEMBER: all five hidden cats)
 }
 
 C.ORDER = { border = {}, banner = {}, title = {} } :: { [string]: { string } }

@@ -49,6 +49,77 @@ R.auntie = {
 		["auntie_spine"] = { joint = "spine", at = {0, 0.8187, -0.008} },
 	},
 }
+R.cat_beans = {
+	asset = 93210967665665,
+	joints = {
+		{ name = "npc", parent = nil, cf = {0, 0, 0, 0, 0, 0, 1}, pos = {0, 0, 0}, rot = {0, 0, 0}, k = 3.5 },
+		{ name = "body", parent = "npc", cf = {0, 0.4644, 0, 0, 0, 0, 1}, pos = {0, 0.1021, 0}, rot = {0, 0, 0}, k = 4.55, moves = true },
+		{ name = "neck", parent = "body", cf = {0, 0.3412, -0.8645, -0.0255, 0.0123, -0.0003, 0.9996}, pos = {0, 0.075, -0.19}, rot = {-0.051, 0.0246, 0}, k = 4.55, moves = true },
+		{ name = "tailBase", parent = "body", cf = {0, 0.091, 0.91, 0.7243, 0, 0, 0.6895}, pos = {0, 0.02, 0.2}, rot = {1.62, 0, 0}, k = 4.55, moves = true },
+	},
+	pieces = {
+		["cat_beans_body"] = { joint = "body", at = {-0.0064, -0.0037, -0.0486} },
+		["cat_beans_neck"] = { joint = "neck", at = {-0.0033, 0.2397, -0.1999} },
+		["cat_beans_tailBase"] = { joint = "tailBase", at = {-0.2617, 0.6919, 0.1689} },
+	},
+}
+R.cat_biscuit = {
+	asset = 112460455465490,
+	joints = {
+		{ name = "npc", parent = nil, cf = {0, 0, 0, 0, 0, 0, 1}, pos = {0, 0, 0}, rot = {0, 0, 0}, k = 3.5 },
+		{ name = "body", parent = "npc", cf = {0, 0.5182, 0, 0, 0, 0, 1}, pos = {0, 0.1139, 0}, rot = {0, 0, 0}, k = 4.55, moves = true },
+		{ name = "neck", parent = "body", cf = {0, 0.3412, -0.8645, 0.048, 0.004, 0.0002, 0.9988}, pos = {0, 0.075, -0.19}, rot = {0.0961, 0.008, 0}, k = 4.55, moves = true },
+		{ name = "tailBase", parent = "body", cf = {0, 0.091, 0.91, 0.7675, 0, 0, 0.641}, pos = {0, 0.02, 0.2}, rot = {1.75, 0, 0}, k = 4.55, moves = true },
+	},
+	pieces = {
+		["cat_biscuit_body"] = { joint = "body", at = {-0.0064, -0.0438, -0.0218} },
+		["cat_biscuit_neck"] = { joint = "neck", at = {-0.0033, 0.2397, -0.1999} },
+		["cat_biscuit_tailBase"] = { joint = "tailBase", at = {-0.2769, 0.3447, 0.3724} },
+	},
+}
+R.cat_gravy = {
+	asset = 121215043109640,
+	joints = {
+		{ name = "npc", parent = nil, cf = {0, 0, 0, 0, 0, 0, 1}, pos = {0, 0, 0}, rot = {0, 0, 0}, k = 3.5 },
+		{ name = "body", parent = "npc", cf = {0, 0.8618, 0.2275, 0.2715, 0, 0, 0.9624}, pos = {0, 0.1894, 0.05}, rot = {0.55, 0, 0}, k = 4.55, moves = true },
+		{ name = "neck", parent = "body", cf = {0, 0.3412, -0.8645, -0.1827, 0.0047, -0.0009, 0.9831}, pos = {0, 0.075, -0.19}, rot = {-0.3676, 0.0096, 0}, k = 4.55, moves = true },
+		{ name = "tailBase", parent = "body", cf = {0, 0.091, 0.91, 0.7675, 0, 0, 0.641}, pos = {0, 0.02, 0.2}, rot = {1.75, 0, 0}, k = 4.55, moves = true },
+	},
+	pieces = {
+		["cat_gravy_body"] = { joint = "body", at = {-0.0064, -0.3406, -0.0216} },
+		["cat_gravy_neck"] = { joint = "neck", at = {-0.0037, 0.2803, -0.2003} },
+		["cat_gravy_tailBase"] = { joint = "tailBase", at = {-0.2252, 0.3301, 0.3005} },
+	},
+}
+R.cat_gremlin = {
+	asset = 83809526231883,
+	joints = {
+		{ name = "npc", parent = nil, cf = {0, 0, 0, 0, 0, 0, 1}, pos = {0, 0, 0}, rot = {0, 0, 0}, k = 3.5 },
+		{ name = "body", parent = "npc", cf = {0, 0.7569, 0.105, 0, 0, 0, 1}, pos = {0, 0.1125, 0}, rot = {0, 0, 0}, k = 4.55, moves = true },
+		{ name = "neck", parent = "body", cf = {0, 0.3412, -0.8645, 0.1229, -0.0058, -0.0007, 0.9924}, pos = {0, 0.075, -0.19}, rot = {0.2464, -0.0116, 0}, k = 4.55, moves = true },
+		{ name = "tailBase", parent = "body", cf = {0, 0.091, 0.91, 0.2715, 0, 0, 0.9624}, pos = {0, 0.02, 0.2}, rot = {0.55, 0, 0}, k = 4.55, moves = true },
+	},
+	pieces = {
+		["cat_gremlin_body"] = { joint = "body", at = {-0.0064, -0.0438, -0.0218} },
+		["cat_gremlin_neck"] = { joint = "neck", at = {-0.0033, 0.2397, -0.1999} },
+		["cat_gremlin_tailBase"] = { joint = "tailBase", at = {0.0551, 0.3626, 0.6351} },
+		["cat_gremlin_box"] = { joint = "npc", at = {0.0035, 0.7158, -0.0315} },
+	},
+}
+R.cat_meatloaf = {
+	asset = 107622185893410,
+	joints = {
+		{ name = "npc", parent = nil, cf = {0, 0, 0, 0, 0, 0, 1}, pos = {0, 0, 0}, rot = {0, 0, 0}, k = 3.5 },
+		{ name = "body", parent = "npc", cf = {0, 0.4568, 0, 0, 0, 0.6631, 0.7485}, pos = {0, 0.1004, 0}, rot = {0, 0, 1.45}, k = 4.55, moves = true },
+		{ name = "neck", parent = "body", cf = {0, 0.3412, -0.8645, 0.1088, 0.0577, -0.3841, 0.9151}, pos = {0, 0.075, -0.19}, rot = {0.246, 0.0219, -0.7975}, k = 4.55, moves = true },
+		{ name = "tailBase", parent = "body", cf = {0, 0.091, 0.91, 0.7675, 0, 0, 0.641}, pos = {0, 0.02, 0.2}, rot = {1.75, 0, 0}, k = 4.55, moves = true },
+	},
+	pieces = {
+		["cat_meatloaf_body"] = { joint = "body", at = {-0.0065, -0.1735, -0.0404} },
+		["cat_meatloaf_neck"] = { joint = "neck", at = {-0.0033, 0.2397, -0.1999} },
+		["cat_meatloaf_tailBase"] = { joint = "tailBase", at = {-0.0414, 0.7205, 0.245} },
+	},
+}
 R.dale = {
 	asset = 103094968163437,
 	joints = {

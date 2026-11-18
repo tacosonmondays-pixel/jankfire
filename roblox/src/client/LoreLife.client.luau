@@ -407,6 +407,69 @@ local function castUpdate(n: Npc, dt: number, t: number, ctx: any)
 	J.head.rot[1] += st.lx
 end
 
+-- ------------------------------------------------------------------ the board of directors (the web's updateCat)
+-- one cohesive body, head and tail (lore_cat_meshes.py): breathing, a lazy look round (or at you, close), the tail's
+-- slow curl and swish, a flick now and then. Pet (their prompt): a reaction, as on the web
+local PET = { "squint", "squint", "blink", "headbutt", "stretch", "roll", "swat" }
+local function catRest(n: Npc)
+	if n.st.rest then return end
+	local r = {}
+	for name, j in n.J do r[name] = { pos = table.clone(j.pos), rot = table.clone(j.rot) } end
+	n.st.rest = r
+end
+local function petCat(n: Npc, now: number)
+	local pose = n.model:GetAttribute("Pose")
+	local k = PET[math.random(1, #PET)]
+	if k == "roll" and pose ~= "side" and pose ~= "lie" then k = "headbutt" end
+	if k == "stretch" and (pose == "box" or pose == "sit") then k = "blink" end
+	n.st.pet = { t = now, k = k, dur = if k == "stretch" then 2.4 elseif k == "roll" then 2.6 elseif k == "swat" then 1.2 else 2.0 }
+	say(n, { if k == "swat" then "*swat*" elseif k == "blink" then "*slow blink*" elseif k == "stretch" then "*stretches*" elseif k == "headbutt" then "*headbutts your hand*" else "*purrs*" })
+end
+local function catUpdate(n: Npc, dt: number, t: number, ctx: any)
+	local J, st = n.J, n.st
+	if not (J.body and J.neck and J.tailBase) then return end
+	catRest(n)
+	local R = st.rest
+	local now = os.clock()
+	local pet = st.pet
+	if pet and now - pet.t > pet.dur then pet = nil; st.pet = nil end
+	local pk = if pet then (now - pet.t) / pet.dur else 0
+	local K = if pet then pet.k else ""
+	-- look at you when you're close (a lazy, clamped head turn), otherwise a slow look round
+	local wy = math.sin(t * 0.23) * 0.35 + math.sin(t * 0.61) * 0.15
+	local wx = math.sin(t * 0.37) * 0.08
+	if ctx.eye then
+		local np = worldOf(n, J.neck).Position
+		local dx, dy, dz = ctx.eye.X - np.X, ctx.eye.Y - np.Y, ctx.eye.Z - np.Z
+		local d = math.sqrt(dx * dx + dz * dz)
+		if d < 7 * 3.5 then
+			wy = clamp(wrapA(math.atan2(-dx, -dz) - ctx.yaw), -1.1, 1.1)
+			wx = clamp(math.atan2(dy, d) * 0.8, -0.5, 0.6)
+		end
+	end
+	st.ly = lerp(st.ly or 0, wy, math.min(1, dt * 3))
+	st.lx = lerp(st.lx or 0, wx, math.min(1, dt * 3))
+	-- body: breathing (a purr's rumble while petted)
+	local purr = if pet and K ~= "swat" then (1 - pk) * 0.004 else 0
+	J.body.pos[2] = R.body.pos[2] + math.sin(t * 2.6) * 0.003 + (if purr > 0 then (math.random() - 0.5) * purr else 0)
+	J.body.rot = { R.body.rot[1], R.body.rot[2], R.body.rot[3] }
+	J.neck.rot = { R.neck.rot[1] + st.lx, R.neck.rot[2] + st.ly, R.neck.rot[3] }
+	local tailUp, lash = 0, 0
+	if K == "squint" or K == "headbutt" then tailUp = bump(pk) end
+	if K == "headbutt" then J.neck.rot[1] += bump(math.min(1, pk * 2)) * 0.5 end
+	if K == "stretch" then
+		local s2 = bump(math.min(1, pk * 1.25))
+		J.body.rot[1] -= s2 * 0.38; J.body.pos[2] += s2 * 0.05; J.neck.rot[1] -= s2 * 0.55; tailUp = s2
+	end
+	if K == "roll" then J.body.rot[3] = lerp(R.body.rot[3], R.body.rot[3] + 1.45, bump(math.min(1, pk * 1.1))) end
+	if K == "swat" then lash = bump(math.min(1, pk * 1.4)); J.neck.rot[1] += lash * 0.12 end
+	-- the tail: a slow swish, up when happy, lashing when annoyed, a flick every few seconds
+	st.flickAt = st.flickAt or (t + 2)
+	if t > st.flickAt + 0.5 then st.flickAt = t + 2 + math.random() * 4 end
+	local fl = bump((t - st.flickAt) / 0.5)
+	J.tailBase.rot = { lerp(R.tailBase.rot[1], 0.35, tailUp) + fl * 0.15, R.tailBase.rot[2], R.tailBase.rot[3] + math.sin(t * (if lash > 0 then 9 else 1.4)) * (if lash > 0 then 0.3 else 0.09) }
+end
+
 -- ------------------------------------------------------------------ finding the models
 local function adopt(m: Instance)
 	if not m:IsA("Model") or npcs[m] then return end
@@ -445,6 +508,7 @@ local function adopt(m: Instance)
 		pr.Triggered:Connect(function()
 			local e = Data.get(n.id)
 			if not e then return end
+			if e.kind == "cat" then petCat(n, os.clock()); return end
 			n.heard += 1
 			local beat = e.beats[n.heard + 1]
 			if not beat then beat = e.again; n.heard = #e.beats end
@@ -475,7 +539,7 @@ LoreR.OnClientEvent:Connect(function(op: string, id: string, first: boolean)
 			if e then
 				-- the opening (if they haven't said it yet), then the gift line
 				local lines = {}
-				if not n.nearSaid then for _, l in e.beats[1] do table.insert(lines, l) end; n.nearSaid = true; n.heard = math.max(n.heard, 0) end
+				if not n.nearSaid and e.beats[1] then for _, l in e.beats[1] do table.insert(lines, l) end; n.nearSaid = true; n.heard = math.max(n.heard, 0) end
 				for _, l in (if first then e.got else e.again) do table.insert(lines, l) end
 				say(n, lines)
 			end
@@ -514,7 +578,7 @@ RunService.RenderStepped:Connect(function(dt)
 		-- the opening beat, once per approach
 		if d < SAY_NEAR and not n.nearSaid then
 			local e = Data.get(n.id)
-			if e then
+			if e and e.beats[1] then
 				say(n, e.beats[1]); n.nearSaid = true; n.heard = 0
 				if e.greet then playClip(n, e.greet) end
 			end
@@ -531,7 +595,7 @@ RunService.RenderStepped:Connect(function(dt)
 			rp = rp, yaw = n.yaw,
 		}
 		local up = UPDATE[n.id]
-		if up then up(n, dt, now + n.t0, ctx) elseif n.J.spine then castUpdate(n, dt, now + n.t0, ctx) end
+		if up then up(n, dt, now + n.t0, ctx) elseif n.J.tailBase then catUpdate(n, dt, now + n.t0, ctx) elseif n.J.spine then castUpdate(n, dt, now + n.t0, ctx) end
 		solve(n)
 		for _, pc in n.pieces do
 			table.insert(parts, pc.part)

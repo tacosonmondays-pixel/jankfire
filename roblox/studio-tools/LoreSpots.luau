@@ -51,6 +51,17 @@ L.SPOTS = {
 		area = "back lot: in the bay inside the garage, among the drums and tyres" },
 	eotm = { at = Vector3.new(-120, 303, -8684), look = Vector3.new(0, 0, 1), visit = Vector3.new(3, 0, -4),
 		area = "back lot: on top of the finish tower" },
+	-- the board of directors (cats). y given where the thing they lie on can't be hit by a ray (a mesh prop)
+	cat_biscuit = { at = Vector3.new(54, 260.25, -8106), y = 260.25, look = Vector3.new(0, 0, 1), visit = Vector3.new(0, 0, -5),
+		area = "training: loafing on the range canopy's roof, over the gun shop" },
+	cat_beans = { at = Vector3.new(6, 248.6, -8566), y = 248.6, look = Vector3.new(-1, 0, 0), visit = Vector3.new(6, 0, 0),
+		area = "back lot: lying on top of the single container south of the house" },
+	cat_gravy = { at = Vector3.new(-186, 247.6, -9913), y = 247.6, up = 9.5, look = Vector3.new(-14, 0, -17), visit = Vector3.new(-6, -7.6, -7),
+		area = "the Rotunda lounge: sitting on top of the fridge, chairing" },
+	cat_meatloaf = { at = Vector3.new(72, 226.4, -8280), look = Vector3.new(-1, 0, 0), visit = Vector3.new(-6, 0, 0),
+		area = "the basement: flopped on his side by the warm boiler" },
+	cat_gremlin = { at = Vector3.new(-268, 239.98, -9990), y = 239.98, look = Vector3.new(0, 0, 1), visit = Vector3.new(0, 0, 6),
+		area = "the Rotunda armory: in a cardboard box by the gun counter (clear of the walk to the training gate)" },
 	overtime = { at = Vector3.new(-150, 240, -8712), look = Vector3.new(1, 0, 1), visit = Vector3.new(7, 0, 7),
 		area = "back lot: the far south-west corner by the back fence, watching" },
 } :: { [string]: any }
@@ -86,6 +97,11 @@ function L.frame(id: string): (CFrame?, string?)
 	if not s then return nil, "no spot" end
 	rayParams.FilterDescendantsInstances = excludes()
 	local y = s.at.Y
+	if s.y then
+		local look0 = Vector3.new(s.look.X, 0, s.look.Z).Unit
+		local at0 = Vector3.new(s.at.X, s.y, s.at.Z)
+		return CFrame.lookAt(at0, at0 + look0), nil
+	end
 	if s.top then
 		local best = -math.huge
 		for _, p in workspace:GetPartBoundsInBox(CFrame.new(s.at + Vector3.new(0, 1, 0)), Vector3.new(1, 8, 1)) do
@@ -174,6 +190,8 @@ function L.make(id: string): (Model?, string?)
 	m.Name = "Lore_" .. id
 	m:SetAttribute("LoreId", id)
 	m:SetAttribute("Asset", rig.asset)
+	local POSE = { cat_biscuit = "loaf", cat_beans = "lie", cat_gravy = "sit", cat_meatloaf = "side", cat_gremlin = "box" }
+	if POSE[id] then m:SetAttribute("Pose", POSE[id]) end -- (LoreLife: which pet reactions suit the pose)
 	local root = Instance.new("Part")
 	root.Name = "Root"; root.Size = Vector3.new(1, 0.2, 1); root.CFrame = base; root.Transparency = 1
 	plain(root)
@@ -181,6 +199,7 @@ function L.make(id: string): (Model?, string?)
 	m.PrimaryPart = root
 	local s = L.SPOTS[id]
 	if s.visit then root:SetAttribute("Visit", s.visit) end
+	if s.up then root:SetAttribute("Up", s.up) end -- (LoreNPCs: how far over your feet they can be and still be found)
 	local joints = L.restJoints(rig)
 	-- Smiles' balloons sit over his glove at rest (the web puts them there every frame)
 	if id == "smiles" and joints.armL then
@@ -210,10 +229,10 @@ function L.make(id: string): (Model?, string?)
 	-- the TALK prompt (the client shows the next lines when it is used; finding them needs only coming near)
 	local pa = Instance.new("Attachment")
 	pa.Name = "PromptAt"
-	pa.Position = Vector3.new(0, 4.6, 0)
+	pa.Position = Vector3.new(0, if e.kind == "cat" then 1.8 else 4.6, 0)
 	pa.Parent = root
 	local pr = Instance.new("ProximityPrompt")
-	pr.Name = "Talk"; pr.ActionText = "Talk"; pr.ObjectText = e.name
+	pr.Name = "Talk"; pr.ActionText = if e.kind == "cat" then "Pet" else "Talk"; pr.ObjectText = e.name
 	pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
 	pr.MaxActivationDistance = 11; pr.RequiresLineOfSight = false
 	pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton

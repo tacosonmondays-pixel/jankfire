@@ -22,9 +22,21 @@ The owner: "Perhaps the hidden NPCs including guy from hr can be rehidden around
 | Employee of the Month | cast | back lot: on the finish tower |
 | Mr. Overtime | cast | back lot: the far south-west corner by the fence |
 | The Tall Guy From HR | `public/js/hrguy.js`, `shared/hr.js`, `server/hrguy.js` | rarely, on the back lot, to someone alone there |
+| Biscuit (CFO, tabby, loaf) | `public/js/lorecats.js` | training: on the range canopy's roof over the gun shop |
+| Beans (VP of sitting, tux) | cats | back lot: lying on top of the single container south of the house |
+| Princess Gravy (chair of the board) | cats | the Rotunda lounge: sitting on top of the fridge |
+| Meatloaf (head of synergy) | cats | the basement: flopped on his side by the boiler |
+| Gremlin (head of legal) | cats | the Rotunda armory: in a cardboard box by the gun counter |
 
 Left out (no gore): Dot and Mina grown into the flesh wall, Bev the meat mechanic, the Gut Choir, the Stomach Bishop.
-Not yet: the five hidden cats (the board of directors), the Timekeeping Collector, the Unpaid Intern, Sister Agenda.
+Not yet: the Timekeeping Collector, the Unpaid Intern, Sister Agenda.
+
+The cats are ONE cohesive body each (the owner's rule for creatures, 18 Nov: no stacked primitives):
+`tools/roblox/lore_cat_dump.mjs` (the web's `buildCat` in each cat's own pose, three moving pieces: body with legs,
+head with ears, tail) + `blender -b -P tools/roblox/lore_cat_meshes.py` (each piece's solid parts voxel-remeshed and
+smoothed into one skin, painted from the web's parts: stripes and patches win where they lie on the fur; eyes, nose,
+crown, glasses, tie and lanyard kept on the surface). Pet them (their prompt): a purr, a slow blink, a headbutt, a
+stretch, a roll, the odd swat. All five: the secret title BOARD MEMBER (`lore_cats`).
 
 ## How they're made (nothing redrawn)
 

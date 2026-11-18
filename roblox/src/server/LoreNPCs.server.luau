@@ -70,7 +70,8 @@ local function inReach(r: BasePart, at: BasePart): boolean
 	local d = at.Position - feet
 	local flat = Vector3.new(d.X, 0, d.Z).Magnitude
 	local reach = (at:GetAttribute("Reach") :: number?) or LoreData.REACH
-	return flat < reach and d.Y < LoreData.UP and d.Y > -LoreData.DOWN
+	local up = (at:GetAttribute("Up") :: number?) or LoreData.UP -- (a cat up on a fridge: findable from the floor)
+	return flat < reach and d.Y < up and d.Y > -LoreData.DOWN
 end
 
 local function publish(p: Player)
@@ -127,6 +128,10 @@ local function allFound(s: State): boolean
 	for _, id in LoreData.ORDER do if not s.prof.data.found[id] then return false end end
 	return true
 end
+local function allCats(s: State): boolean
+	for _, id in LoreData.CATS do if not s.prof.data.found[id] then return false end end
+	return true
+end
 
 local function find(p: Player, id: string)
 	local s = st[p]
@@ -145,6 +150,10 @@ local function find(p: Player, id: string)
 		if TITLES[id] and titleFor(p, "lore_" .. id) then
 			task.wait(if note then 2.8 else 0)
 			CalloutR:FireClient(p, "NEW TITLE · " .. TITLES[id], 2.6)
+		end
+		if LoreData.get(id).kind == "cat" and allCats(s) and titleFor(p, "lore_cats") then
+			task.wait(2.8)
+			CalloutR:FireClient(p, "NEW TITLE · BOARD MEMBER", 2.6)
 		end
 		if allFound(s) and titleFor(p, "lore_all") then
 			task.wait(2.8)
@@ -170,7 +179,9 @@ local function added(p: Player)
 	publish(p)
 	-- (someone who found everything before OVERDUE existed, or whose grant didn't save: theirs now, quietly)
 	task.delay(8, function()
-		if st[p] == s and s.ready and allFound(s) then titleFor(p, "lore_all") end
+		if st[p] ~= s or not s.ready then return end
+		if allCats(s) then titleFor(p, "lore_cats") end
+		if allFound(s) then titleFor(p, "lore_all") end
 	end)
 end
 for _, p in Players:GetPlayers() do task.spawn(added, p) end

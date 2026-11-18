@@ -25,7 +25,10 @@ export type Entry = {
 L.REACH, L.UP, L.DOWN = 8.4, 7.2, 7.8
 
 L.ORDER = { "gary", "dale", "janitor", "smiles", "todd", "hr",
-	"auntie", "lumps", "gordo", "mina", "sharon", "dumpling", "pallet_jack", "eotm", "overtime" } :: { string }
+	"auntie", "lumps", "gordo", "mina", "sharon", "dumpling", "pallet_jack", "eotm", "overtime",
+	"cat_biscuit", "cat_beans", "cat_gravy", "cat_meatloaf", "cat_gremlin" } :: { string }
+-- the board of directors (the five cats): finding all five gives the secret title BOARD MEMBER (LoreNPCs)
+L.CATS = { "cat_biscuit", "cat_beans", "cat_gravy", "cat_meatloaf", "cat_gremlin" } :: { string }
 
 L.NPCS = {
 	gary = {
@@ -171,6 +174,19 @@ L.NPCS = {
 		got = { "the bottom. two hundred and forty-four quarters of back pay. i'm here to collect." },
 		again = { "you're absent. everyone's absent. i don't know where everyone goes." },
 	},
+	-- THE BOARD OF DIRECTORS (shared/secrets.js, public/js/lorecats.js): five cats, the web's own, each ONE cohesive
+	-- body (lore_cat_meshes.py). they don't talk: TALK is "Pet" (LoreLife: a purr, a slow blink, a headbutt, a stretch,
+	-- a roll, the odd swat), and the lines are what they do
+	cat_biscuit = { id = "cat_biscuit", name = "BISCUIT", title = "chief financial officer", kind = "cat",
+		beats = {}, got = { "*purrs*" }, again = { "*slow blink*" } },
+	cat_beans = { id = "cat_beans", name = "BEANS", title = "vp of sitting", kind = "cat",
+		beats = {}, got = { "*purrs*" }, again = { "*slow blink*" } },
+	cat_gravy = { id = "cat_gravy", name = "PRINCESS GRAVY", title = "chair of the board", kind = "cat",
+		beats = {}, got = { "*purrs*" }, again = { "*slow blink*" } },
+	cat_meatloaf = { id = "cat_meatloaf", name = "MEATLOAF", title = "head of synergy", kind = "cat",
+		beats = {}, got = { "*purrs*" }, again = { "*slow blink*" } },
+	cat_gremlin = { id = "cat_gremlin", name = "GREMLIN", title = "head of legal", kind = "cat",
+		beats = {}, got = { "*mrrp*" }, again = { "*slow blink*" } },
 } :: { [string]: Entry }
 
 -- how many there are to find (the profile card's "n / N")
