@@ -69,6 +69,35 @@ local pressT = -math.huge
 local burstLeft = 0
 local fanNext = 0
 local fanArmed = false -- a fan needs a fresh click after running dry, reloading or aiming
+-- (weapons batch A) the Minigun's barrels: spin 0..1, whether the server was told the trigger is down, the motor's
+-- looped whine (a Sound of ours while it spins), GunParts (it turns the barrels from GunParts.mySpin)
+local minigun = { spin = 0, on = false, snd = nil :: Sound?, parts = require(script.Parent:WaitForChild("GunParts")) :: any }
+function minigun.send(on: boolean)
+	local r = Remotes:FindFirstChild("Spin")
+	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
+end
+function minigun.loop(on: boolean, vol: number, pitch: number)
+	local s = minigun.snd
+	if on and not s then
+		local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		local src = lib and lib:FindFirstChild("minigun_spin")
+		if not (src and src:IsA("Sound")) then return end
+		local c = src:Clone()
+		c.Looped = true
+		c:SetAttribute("BaseVol", src.Volume)
+		c.Parent = game:GetService("SoundService")
+		c:Play()
+		minigun.snd, s = c, c
+	elseif not on and s then
+		s:Destroy()
+		minigun.snd = nil
+		return
+	end
+	if s then
+		s.Volume = (tonumber(s:GetAttribute("BaseVol")) or 0.5) * vol
+		s.PlaybackSpeed = pitch
+	end
+end
 local scoped, scopedAt = false, -math.huge
 local aimSent = false
 
@@ -325,6 +354,7 @@ local function reload()
 	burstLeft = 0
 	fanArmed = false
 	ReloadR:FireServer(held)
+	if w.reloadSnd then Sfx.play(w.reloadSnd) end -- (a whole reload's own recording: the Minigun's ammo box)
 	VM.reload(held, w.reload :: number, a.mag <= 0)
 	TP.reload(held, w.reload :: number, a.mag <= 0)
 end
@@ -352,7 +382,7 @@ end
 
 VM.onEvent = function(ev: string)
 	Sfx.skinEvent(held, ev) -- (a special skin's own reload / cycle / swing layer: shared/SkinSounds)
-	if ev == "whoosh" then Sfx.play("swing")
+	if ev == "whoosh" then Sfx.play(if W[held] and W[held].swingSnd then W[held].swingSnd :: string else "swing")
 	elseif ev == "shing" then Sfx.play("ting")
 	elseif ev == "click" then Sfx.play("click")
 	elseif ev == "glug" then Sfx.play("glug")
@@ -372,6 +402,7 @@ VM.onEvent = function(ev: string)
 	elseif ev == "pumpBack" or ev == "boltBack" or ev == "boltUp" or ev == "coverUp" or ev == "break" or ev == "cylOut" then Sfx.play("click", nil, 0.9, 0.85)
 	elseif ev == "pumpHome" or ev == "boltHome" or ev == "boltDown" or ev == "leverClack" or ev == "close" or ev == "cylIn"
 		or ev == "slideHome" or ev == "hkSlap" or ev == "cock" then Sfx.play("click", nil, 1, 1.35)
+	elseif ev == "clunk" and W[held] and W[held].drawSnd then Sfx.play(W[held].drawSnd :: string) -- (the Minigun's heavy draw)
 	elseif ev == "coverSlam" or ev == "clunk" then Sfx.play("thwack", nil, 0.5, 0.8)
 	elseif ev == "belt" or ev == "casings" or ev == "eject" or ev == "spinCyl" or ev == "loaderTwist" then Sfx.play("marble", nil, 0.5, 1.3)
 	else Sfx.play("click", nil, 0.6) end
@@ -563,6 +594,11 @@ local function resolveSwing()
 		local h = workspace:Raycast(eye, look * reach, mapParams)
 		local wx = Fx.waterCross(eye, if h then h.Position else eye + look * reach)
 		if wx then Fx.splash(wx, 0.45)
+		elseif h and w.pogo then
+			-- (weapons batch A) the Bread smacks the floor or a wall and pogos you off it, the way you looked (web 1171)
+			Body.push(-look * w.pogo)
+			Fx.impact(h.Position, h.Normal, h.Instance, h.Material, { hole = false, scale = 1.2 })
+			Sfx.play(w.hitSnd or "bonk", h.Position, 0.8)
 		elseif h then Fx.slash(h.Position, h.Normal, h.Instance, h.Material, look); Sfx.play("tink", h.Position, 0.7) end
 		return
 	end
@@ -571,7 +607,7 @@ local function resolveSwing()
 	VM.hitStop = if hv then 0.11 else 0.06
 	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
 	if firstAt then Fx.skinHit(VM.model, firstAt) end -- (a high-tier katana's own burst: Sakura's petals, Ribbon Duck's sparkles)
-	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else "bonk")
+	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else (w.hitSnd or "bonk")) -- (the Bread thuds, the Slapper slaps)
 	Sfx.skinHit(wid)
 	if hv then Sfx.play("crunch") end
 	shake = math.max(shake, if hv then 0.6 else 0.35)
@@ -935,7 +971,28 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local holstered = inHub()
 	if holstered then trigger, aimHeld = false, false; if hum and toolOut() then hum:UnequipTools() end end
 	if holstered then burstLeft = 0 end
-	if hum and (trigger or burstLeft > 0) and w and w.auto and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
+	-- (weapons batch A) the Minigun: the barrels spin up over spinup s while the trigger is held and down over spindown
+	-- s once it's let go; it fires only at full spin. the server is told when the trigger goes down and up (Spin) and
+	-- keeps its own spin, so a client can't skip it. GunParts turns the barrels from GunParts.mySpin
+	local spinning = false
+	if w and w.spinup then
+		local a2 = ammo[held]
+		spinning = hum ~= nil and trigger and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true
+			and a2 ~= nil and a2.mag > 0 and a2.reloadUntil == 0
+		minigun.spin = if spinning then math.min(1, minigun.spin + dt / w.spinup) else math.max(0, minigun.spin - dt / (w.spindown or 0.9))
+	else
+		minigun.spin = 0
+	end
+	if spinning ~= minigun.on then
+		minigun.on = spinning
+		minigun.send(spinning)
+		-- (the motor: a spin-up as the trigger goes down, a spin-down as it's let go; the steady whine in between)
+		if spinning and minigun.spin < 0.9 then Sfx.play("minigun_spinup", nil, 1, 0.6 / (w and w.spinup or 0.6) * (1 + minigun.spin * 0.6))
+		elseif not spinning and minigun.spin > 0.25 then Sfx.play("minigun_spindown", nil, minigun.spin) end
+	end
+	minigun.parts.mySpin = minigun.spin
+	minigun.loop(minigun.on and minigun.spin >= 0.98, 1, 1)
+	if hum and (trigger or burstLeft > 0) and w and w.auto and (not w.spinup or minigun.spin >= 1) and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
 		local n = 0
 		-- (a Hat Trick burst always finishes, even on a tap)
 		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end

@@ -41,7 +41,7 @@ add({ id = "smg", slot = "primary", name = "SMG", color = "6bd3c8", live = true,
 add({ id = "shotgun", slot = "primary", name = "Shotgun", color = "e0a060", live = true, gimmick = "ten pellets. shoot the floor and it throws you into the sky.",
 	desc = "10 pellets. Shoot the floor to launch yourself.",
 	stats = { { label = "DAMAGE", text = "8 x10", bar = 0.67 }, { label = "FIRE RATE", text = "1.33/s", bar = 0.06 }, { label = "RANGE", text = "80 m", bar = 0.4 }, { label = "MAG", text = "6", bar = 0.1 } } })
-add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live = false, gimmick = "",
+add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live = false, gimmick = "spins up for 0.6 s, then 25 a second. the bullets shove people, and the recoil can fly you.",
 	desc = "Spins up then never stops. Its bullets shove people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "25/s", bar = 1 }, { label = "RANGE", text = "200 m", bar = 0.63 }, { label = "MAG", text = "250", bar = 1 } } })
 add({ id = "sniper", slot = "primary", name = "Sniper", color = "a2457c", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
@@ -77,8 +77,8 @@ add({ id = "lever", slot = "primary", name = "Yeehaw", color = "a58640", live = 
 add({ id = "autoshot", slot = "primary", name = "Lawn Mower", color = "4ad66b", live = true, gimmick = "an automatic shotgun. less per shot than the pump, but it never stops.",
 	desc = "An automatic shotgun with a box mag. Less per shot than the pump, but it never stops. Mows lawns. And people.",
 	stats = { { label = "DAMAGE", text = "5 x8", bar = 0.33 }, { label = "FIRE RATE", text = "3/s", bar = 0.14 }, { label = "RANGE", text = "60 m", bar = 0.35 }, { label = "MAG", text = "10", bar = 0.17 } } })
-add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", live = false, gimmick = "",
-	desc = "Fires nails, fast. Land enough in a row and they get nailed to the wall behind them like a poster.",
+add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", live = false, gimmick = "six nails in a row pin them to the wall behind them for a second.",
+	desc = "Fires nails, fast. Land six in a row and they are nailed to the wall behind them for a second.",
 	stats = { { label = "DAMAGE", text = "9", bar = 0.08 }, { label = "FIRE RATE", text = "11/s", bar = 0.5 }, { label = "RANGE", text = "120 m", bar = 0.49 }, { label = "MAG", text = "36", bar = 0.6 } } })
 add({ id = "tennis", slot = "primary", name = "Tennis Ball Launcher", color = "d4ff3a", live = false, gimmick = "",
 	desc = "Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.",
@@ -119,23 +119,23 @@ add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", 
 add({ id = "katana", slot = "melee", name = "Katana", color = "e8e8f0", live = true, gimmick = "every kill adds half a metre of blade. hold right click to parry; a timed swing sends bullets back twice as hard.",
 	desc = "Every kill makes the blade longer and your reach further (resets when you die). Hold right click to parry: every bullet and sword from the front bounces off, and the first moment of the guard sends bullets straight back. Swing into incoming bullets at the right moment and they go back at double damage. Parry enough and the blade sends a wide slash wave forward.",
 	stats = { { label = "DAMAGE", text = "48", bar = 0.4 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "REACH", text = "2.8 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
-add({ id = "bread", slot = "melee", name = "Bread", color = "d9a35b", live = false, gimmick = "",
+add({ id = "bread", slot = "melee", name = "Bread", color = "d9a35b", live = false, gimmick = "home runs people along your aim. smack the floor or a wall to pogo off it.",
 	desc = "A huge loaf. Home run hits. Smack the floor or a wall to pogo off it.",
-	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "REACH", text = "4.2 m", bar = 0.09 }, { label = "MAG", text = "it's a loaf", bar = 1 } } })
+	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "REACH", text = "4.2 m", bar = 0.09 }, { label = "KNOCKBACK", text = "38 m/s", bar = 0.7 } } })
 add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live = false, gimmick = "",
 	desc = "Thrown like a boomerang. Curves into the nearest enemy in front of it, then flies back to you. Hits on the way out and on the way back.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = true, gimmick = "fast slashes. right click: a heavy stab. from behind it's three times the hit.",
 	desc = "Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "REACH", text = "2.6 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
-add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = false, gimmick = "",
+add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = false, gimmick = "point blank: shoves them straight away from you and knocks them off their feet.",
 	desc = "A big toy hand on a stick. Point blank only. Launches them and makes them slip.",
-	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "1.25/s", bar = 0.06 }, { label = "REACH", text = "1.9 m", bar = 0.06 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
+	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "1.25/s", bar = 0.06 }, { label = "REACH", text = "1.9 m", bar = 0.06 }, { label = "KNOCKBACK", text = "55 m/s", bar = 1 } } })
 add({ id = "scales", slot = "melee", name = "Scales of Justice", color = "ffc83a", live = false, gimmick = "",
 	desc = "Hits as hard as they deserve: leaders, streakers and your killer take up to x3. Right click summons a pillar of light on someone far away: weaker, slow to recharge, and they can step out of it.",
 	stats = { { label = "DAMAGE", text = "35", bar = 0.29 }, { label = "FIRE RATE", text = "1.67/s", bar = 0.08 }, { label = "REACH", text = "3.2 m", bar = 0.08 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
-add({ id = "water", slot = "secondary", name = "Water Pistol", color = "3fb8ff", live = false, gimmick = "",
-	desc = "A big plastic squirt gun. Whoever it hits gets soaked: they drip, slip a bit and slow down for a few seconds. Puts out fire. Makes tasers a lot worse.",
+add({ id = "water", slot = "secondary", name = "Water Pistol", color = "3fb8ff", live = false, gimmick = "every squirt that lands soaks them for 4 s: slower, and slippery underfoot.",
+	desc = "A big plastic squirt gun. Whoever it hits is soaked for 4 seconds: they drip, slide about and run slower.",
 	stats = { { label = "DAMAGE", text = "1", bar = 0.01 }, { label = "FIRE RATE", text = "9/s", bar = 0.41 }, { label = "RANGE", text = "26 m", bar = 0.23 }, { label = "MAG", text = "40", bar = 0.67 } } })
 add({ id = "taser", slot = "secondary", name = "Taser", color = "e8ff3a", live = false, gimmick = "",
 	desc = "Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don't fire it wet.",

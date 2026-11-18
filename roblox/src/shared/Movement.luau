@@ -15,6 +15,7 @@ export type State = {
 	slip: number?, -- seconds of slipping left (marbles): no grip, no jumping, no steering (public/js/player.js)
 	speedMul: number?, -- run speed x this (the gun you hold, aiming: public/js/weapons.js ME.speedMul)
 	hookMul: number?, -- the grapple's pull x this (spoons & grapples: 1.35, web G.hookMul)
+	grip: number?, -- ground friction x this (soaked by a Water Pistol: 0.3, web ME.wetGrip)
 	slideT: number, slideCd: number, slideArmed: boolean, slideAir: number, -- the slide's time left, its cooldown, crouch let go since, time off the ground
 }
 export type Input = {
@@ -150,7 +151,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 				event = "slideJump"
 			end
 		else
-			st.vx, st.vz = Movement.friction(st.vx, st.vz, if st.sliding then Config.slideFric else Config.fric, dt)
+			st.vx, st.vz = Movement.friction(st.vx, st.vz, (if st.sliding then Config.slideFric else Config.fric) * (st.grip or 1), dt)
 			if not st.sliding and wl > 0 then
 				st.vx, st.vz = Movement.accelerate(st.vx, st.vz, inp.wx, inp.wz, Config.gSpeed * moveMul, Config.gAccel * math.max(1, moveMul), dt)
 			end

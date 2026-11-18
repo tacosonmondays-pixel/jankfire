@@ -13,7 +13,12 @@ export type State = {
 	root: BasePart, k: number, parts: { [string]: any }, all: { Piece }, nodes: { [string]: { Piece } },
 	cylA: number, cylTo: number, hamT: number, kickT: number, heat: number, heatPiece: BasePart?, heatShown: number,
 	jarShow: number?, jarBob: number?,
+	-- (weapons batch A) the Minigun's barrels: their turn and how fast; whose gun (nil = your viewmodel); the Water
+	-- Pistol's tank as shown (0..1, eased) and each tank piece's full size
+	barA: number?, spinV: number?, owner: Player?, waterShow: number?, waterSize: { [BasePart]: Vector3 }?,
 }
+-- your own Minigun's spin, 0..1 (Arsenal sets it every frame); anyone else's comes from their Spin attribute
+GunParts.mySpin = 0
 export type Ctx = { clip: string?, t: number, anims: any, ammo: number, mag: number, reloading: boolean, now: number, firedT: number }
 
 local function nodeOf(name: string): string
@@ -42,6 +47,7 @@ function GunParts.attach(m: Model, root: BasePart, k: number, parts: { [string]:
 		table.insert(list, piece)
 		if parts.heat and string.find(c.Name, parts.heat.piece, 1, true) then st.heatPiece = c end
 	end
+	st.owner = game:GetService("Players"):GetPlayerFromCharacter(m.Parent)
 	return st
 end
 
@@ -219,6 +225,38 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 	if P.crank and c.reloading and c.clip == "reload_marbles" then -- one full turn as the lid shuts (no jump at the end)
 		local u = math.clamp((c.t - P.crank.times[1]) / (P.crank.times[2] - P.crank.times[1]), 0, 1)
 		if u > 0 and u < 1 then move.crank = about(P.crank.at * k, rx(-u * u * (3 - 2 * u) * 2 * math.pi)) end
+	end
+	-- (weapons batch A) the Minigun's barrels turn round the gun's own axis, 40 rad/s at full spin (web weapons.js 1721).
+	-- yours from GunParts.mySpin; someone else's eases up and down from their Spin attribute
+	if P.barrels then
+		local owner = st.owner
+		local mine = owner == nil or owner == game:GetService("Players").LocalPlayer
+		local want = if mine then GunParts.mySpin elseif owner and owner:GetAttribute("Spin") == true then 1 else 0
+		local v = st.spinV or 0
+		v = if mine then want elseif want > v then math.min(want, v + dt / 0.6) else math.max(want, v - dt / 0.9)
+		st.spinV = v
+		st.barA = ((st.barA or 0) + v * dt * 40) % (math.pi * 2)
+		if v > 0 or (st.barA or 0) ~= 0 then move.barrels = about(P.barrels.at * k, rz(st.barA :: number)) end
+	end
+	-- the Water Pistol's tank (web secondaries.js 672): the water inside drains with the ammo and fills on the reload
+	if P.water then
+		local list = st.nodes.water
+		if list then
+			local full = if c.reloading then 1 else math.clamp(c.ammo / math.max(1, c.mag), 0, 1)
+			local shown = st.waterShow or full
+			shown += (full - shown) * math.min(1, dt * 10)
+			st.waterShow = shown
+			local sizes = st.waterSize or {}
+			st.waterSize = sizes
+			local f = math.max(0.04, shown)
+			for _, pc in list do
+				local rest = sizes[pc.part] or pc.part.Size
+				sizes[pc.part] = rest
+				local want = Vector3.new(rest.X, rest.Y * f, rest.Z)
+				if (pc.part.Size - want).Magnitude > 1e-4 then pc.part.Size = want end
+				move.water = CFrame.new(0, -(1 - f) * rest.Y / 2, 0)
+			end
+		end
 	end
 	-- the whole gun round the hand (the lever's spin-cock, the Revolver's twirl): every piece, never the hands
 	local tw = sample(c, "twirl")

@@ -1546,6 +1546,42 @@ The owner: "bring back tbagging explosion". Ported from the web (`player.js` cro
 - **Stats:** T-Bag kills, and falls after your grapple, now count as kills (count, streak, xp), not as a weapon row (`Stats.luau` only counted roster weapons, so both went uncounted). Coin and quest rewards follow the kills as they do for any kill.
 - **Tested in Play:** 13 presses: the glow and sizzle on, still alive; the presses aged out and it cooled; 14 presses: the blast, a training dummy in range (30 HP left) died credited to the player via "tbag", and the player died, "tbag", no killer. Photo: `docs/tbag/tbag_warning_and_blast_v753.jpg`.
 
+## 40. Balance pass: the Revolver's fan and the Redline's top speed, 18 November 2026 (place version 761)
+
+The owner: "revolver needs to either do less damage or be less accurate the longer you hold it, redline damage at higher speeds needs to maybe be capped? its super strong". Commit 7b0fe84. The numbers, before and after, are in WEAPONS.md "Balance pass, 18 Nov 2026".
+
+- **Revolver:** the tap is unchanged (40, 0.003 spread). Each fanned shot in a row is weaker and wilder: 24 x 0.88 each time (24, 21.1, 18.6, 16.4, 14.4), at spread 0.045 + 0.03 each time (up to 0.165). A 0.45 s pause or a tap starts a new string. A held cylinder still kills at 3 to 5 m. At 12 m it kills 49% of the time (was 93%), at 20 m 16% (was 53%).
+- **The server fires fanned shots** (`Combat` `serverShot`): it rolls the spread itself and casts the bullet with both bounces against everyone's boxes where the shooter saw them, then echoes the path. The shooter's tracer comes from the echo (the `Arsenal` Shot handler).
+- **Redline:** past 12 shots a second, only a quarter of the extra rate becomes damage (`over`, `Weapons.shotDmg`). DPS is 60 / 120 / 126 / 143 at 100 / 62 / 50 / 10 HP (was up to 204).
+
+## 41. The remaining web weapons: audit and batch A, 18 November 2026
+
+23 of the web game's 40 loadout weapons were still missing. The list, each one's gimmick and the batch order are in the shared notes, `weapons-port-audit.md`:
+
+| batch | weapons |
+|---|---|
+| A | minigun, water, nailgun, bread, slapper |
+| B | akimbo, taser, blower, cig (renamed), laser |
+| C, a projectile engine | chicken, snowball, banana, tennis, bloodcross |
+| D | bowling, slipper, scales, remote, bow |
+| E | cart, lasso, cards |
+
+**Batch A (in progress).**
+- **Rows:** in `Weapons.luau`.
+- **Gimmicks:**
+  - Minigun: a spin-up held by the server (a `Spin` remote, `Rules.spin` / `spinLevel`, refused as "not spun up"). The barrels turn (`GunParts` `barrels`) and others see them through the `Spin` attribute. The recoil flight is the usual `Body.push`.
+  - Water Pistol: a soak, `SoakUntil` in server time. `WeaponStates.client` sets `Body.wet` / `Body.grip`, and `Movement`'s friction is multiplied by `st.grip`. A wet screen edge, drips on soaked people, the stream instead of a tracer (`Fx.waterArc`), and the tank draining (`GunParts` `water`).
+  - Nail Gun: 6 nails from one shooter in 1.2 s pin the victim to the wall behind them (`Combat` `nailHit` / `pinTo`). A player gets `PinAt` / `PinUntil` / `ACGrace`, and `Body.pin` pulls them in `Move`. A dummy is anchored. Nails stay in walls (`Fx.nailIn`), big nails go through the pinned person, and the shooter gets a `PINNED` callout.
+  - Bread: a pogo off the map on a swing that hits nobody (`Arsenal` `resolveSwing`).
+  - Hand Slapper: `radial` knockback and `slip` in the `MeleeHit` handler.
+- **Clips:** `swing_bread`, `swing_bread2`, `swing_slapper`, `draw_heavy`, `draw_melee`, `draw_bread` (`anims.mjs` + `Anims.luau`).
+- **Coming from other sessions:**
+  - the kit models, from guns-remodel;
+  - the hold rows and third-person poses, from hold-hands;
+  - the recordings, from sounds;
+  - the hat seats, from weapon-hats, once the models are in.
+- The Roster rows stay `live = false` until the models and holds are in.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

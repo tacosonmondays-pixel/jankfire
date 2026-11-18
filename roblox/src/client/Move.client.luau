@@ -337,7 +337,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 	local held = keys.jump or touchHeld
 	-- (a fresh press jumps you now, below: a released key has already told the Humanoid "no jump" this frame, and a
 	-- held one only gets it to jump again about 0.13 s after landing, past the bhop window)
-	local jumpNow = grounded and fresh and not st.hook and not Body.slipping()
+	local jumpNow = grounded and fresh and not st.hook and not Body.slipping() and not Body.pinned()
 	local inp: Movement.Input = {
 		wx = md.X, wz = md.Z, forward = fwd, sprint = keys.sprint, crouch = keys.crouch,
 		jump = held or (grounded and fresh and not Body.slipping()), jumpPressed = keys.jumpPressed, fresh = fresh,
@@ -384,11 +384,22 @@ RunService.PreSimulation:Connect(function(dt: number)
 		elseif fwd and math.abs(look.Y) > 0.3 then up = look.Y * spd end
 		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
 	else
-		st.speedMul = Body.speedMul * Body.boost -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming)
+		st.speedMul = Body.speedMul * Body.boost * Body.wet -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming; soaked)
+		st.grip = Body.grip -- (soaked by a Water Pistol: slidey)
 		st.hookMul = tonumber(player:GetAttribute("ModeHook")) or 1 -- (spoons & grapples: the rope pulls x1.35, Modes.luau)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
 	end
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
+	-- (weapons batch A) nailed to a wall by a Nail Gun: pulled to the spot (web primaries.js: (spot - pos) x 14, at most
+	-- 30 m/s), no gravity, no jumping, until the pin's time is up. you can still aim and shoot
+	local pin = Body.pin
+	if pin and Body.pinned() then
+		local d = pin.at + Vector3.new(0, 3, 0) - chest
+		local v = d * 14
+		if v.Magnitude > 90 then v = v.Unit * 90 end
+		st.vx, st.vy, st.vz = v.X, v.Y, v.Z
+		Body.kick() -- (Move's fling guard: our own pull)
+	end
 	if event == "grappleJump" then
 		dropRope(); GrappleRemote:FireServer("release")
 		Hud.callout("GRAPPLE JUMP", 0.6)

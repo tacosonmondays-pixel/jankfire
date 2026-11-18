@@ -171,7 +171,7 @@ local KINDS: { { string } } = {
 	{ "*: recharging", "small" }, { "REVERSED", "small" }, { "ROPE SNAPPED", "small" }, { "POP QUIZ FOR ", "small" },
 	{ "TICKET", "small" }, { "BUSTED!", "small" }, { "PHOTO TAKEN", "small" }, { "* WENT IN YOUR PHOTO", "small" },
 	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },
-	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" },
+	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" }, { "PINNED", "small" }, -- (PINNED: your Nail Gun pinned them, weapons batch A)
 	-- (the classic modes, Modes.luau: a bullet earned and somebody else going out are what just happened, quietly)
 	{ "+1 BULLET", "small" }, { "* IS OUT OF LIVES", "small" }, { "KILL CONFIRMED", "small" }, { "KILL DENIED", "small" },
 	{ "BOING", "cut" }, { "BONK", "cut" }, { "MARBLES!", "cut" }, { "WHOOPS!", "cut" }, { "dummy down", "cut" },

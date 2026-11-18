@@ -1004,6 +1004,11 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 		end
 	end
 	if fx.spray or #ends == 0 then return end -- (the marbles are their own tracers)
+	if fx.water then -- (weapons batch A) the Water Pistol: a sagging stream, not a tracer
+		for _, e in ends do Fx.waterArc(at.Position, e, fpv) end
+		return
+	end
+	if fx.nails then for _, e in ends do Fx.nailIn(at.Position, e) end end -- (the Nail Gun's nails stay in the wall)
 	local col = (if sk and sk.glow and #sk.flames > 0 then sk.glow else nil) or (if sk then sk.spec.tracer else nil) or w.tracer
 		or Color3.fromRGB(255, 240, 160)
 	local wide = (w.thick or (if fast then 0.03 else 0.045) * S) * (if sk and sk.glow and #sk.flames > 0 then 1.6 else 1)
@@ -1032,6 +1037,60 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 		for _, e in ends do line(a, e, taper, true, true) end
 	end
 end
+
+-- (weapons batch A, 18 Nov 2026) the Water Pistol's squirt (web secondaries.js waterArc): six short segments from the
+-- nozzle to where it landed, sagging in the middle (up to 0.9 m), two quiet blues, 0.13 s; drops where it lands
+local WATER_A, WATER_B = Color3.fromRGB(150, 205, 240), Color3.fromRGB(95, 170, 225)
+function Fx.waterArc(from: Vector3, to: Vector3, fpv: boolean)
+	local d = to - from
+	local L = d.Magnitude
+	if L < 0.3 then return end
+	local a = from
+	if fpv and L > 6 then a += d.Unit * 2 end -- (not a line out of your eye)
+	local sag = math.min(0.9 * S, L * 0.06)
+	local prev = a
+	for i = 1, 6 do
+		local u = i / 6
+		local p = a:Lerp(to, u) - Vector3.new(0, sag * 4 * u * (1 - u), 0)
+		Fx.tracer(prev, p, if i % 2 == 0 then WATER_A else WATER_B, (0.05 - 0.02 * u) * S, 0.13, if i == 1 and fpv then 0.15 else nil)
+		prev = p
+	end
+	local hit = castMap(to - d.Unit * 0.6, d.Unit * 1.2)
+	local wx = Fx.waterCross(from, to)
+	if wx then Fx.splash(wx, 0.1)
+	elseif hit then emAt(DROPS_S, hit.Position, hit.Normal):Emit(4) end
+end
+-- a few drops off someone soaked (WeaponStates.client), or a burst of them (n) as a squirt soaks them
+function Fx.drip(at: Vector3, n: number?)
+	emAt(DROPS_S, at, if n then Vector3.yAxis else -Vector3.yAxis):Emit(n or 1)
+end
+
+-- the Nail Gun's nails in the walls (web primaries.js nailSegs): where a shot ended on the map, a nail sticks out of it
+-- along the shot for 10 s (at most 160, the oldest goes first). everyone's shots (Fx.gunShot)
+local nails: { { p: BasePart, t: number } } = {}
+function Fx.nailIn(from: Vector3, to: Vector3)
+	local d = to - from
+	if d.Magnitude < 1 then return end
+	local hit = castMap(to - d.Unit * 0.6, d.Unit * 1.2)
+	if not hit then return end
+	local n = Instance.new("Part")
+	n.Name = "Nail"; n.Anchored = true; n.CanCollide = false; n.CanQuery = false; n.CanTouch = false; n.CastShadow = false
+	n.Material = Enum.Material.Metal; n.Color = Color3.fromRGB(176, 182, 190)
+	n.Shape = Enum.PartType.Cylinder; n.Size = Vector3.new(0.5, 0.06, 0.06)
+	-- (a cylinder's length is its X: along the shot, half of it in the wall)
+	n.CFrame = CFrame.lookAt(hit.Position, hit.Position + d.Unit) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.new(0.05, 0, 0)
+	n.Parent = folder
+	table.insert(nails, { p = n, t = os.clock() })
+	while #nails > 160 do local o = table.remove(nails, 1); if o then o.p:Destroy() end end
+	if math.random() < 0.3 then Sfx.play("nail_wall", hit.Position, 0.6) end
+end
+task.spawn(function()
+	while true do
+		task.wait(1)
+		local now = os.clock()
+		while #nails > 0 and now - nails[1].t > 10 do local o = table.remove(nails, 1); if o then o.p:Destroy() end end
+	end
+end)
 
 -- the old single star (kept for anything that still calls it): the muzzle without the smoke
 function Fx.flash(at: CFrame, big: boolean, color: Color3?, _lightRange: number?)

@@ -43,6 +43,7 @@ export type Fighter = {
 	lev: { to: Fighter, k: number, t: number }?, bst: { to: Fighter?, k: number, t0: number }?,
 	qsT: number?, aimT: number?,
 	fanN: number?, -- the Revolver: fanned shots in the string so far (0 after a tap)
+	spin: { lvl: number, t: number, on: boolean }?, -- the Minigun's barrels: the spin level at t, rising while on (Rules.spin)
 	-- a range Carl (RangeTest): the one runner who may hurt him (anything else that is not nil: nobody may)
 	onlyFor: any?,
 }
@@ -73,6 +74,7 @@ function Rules.arm(f: Fighter, now: number)
 	f.swing = nil
 	table.clear(f.lastShot); table.clear(f.shotLog)
 	f.lev, f.bst, f.qsT, f.aimT = nil, nil, nil, nil
+	f.spin = nil
 	table.clear(f.ammo) -- (nothing left over from weapons you no longer carry)
 	for _, id in lo do
 		local w = W[id]
@@ -127,7 +129,23 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 	if a and a.reloadUntil > 0 and now < a.reloadUntil then a.reloadUntil = 0 end
 	f.held, f.equipT = wid, now
 	f.aimT = nil -- (the sights come down with the swap)
+	f.spin = nil -- (and the Minigun stops spinning)
 	return nil
+end
+
+-- the Minigun's barrels (weapons batch A; the web server never checks the spin): the client says when its trigger goes
+-- down (on) and up (Combat Spin); the server keeps its own level the same way, up over spinup s and down over spindown
+-- s, so a quick re-press is full again sooner, and refuses a shot before it's full (Rules.fire)
+function Rules.spinLevel(f: Fighter, now: number): number
+	local s, w = f.spin, W[f.held]
+	if not s or not w or not w.spinup then return 0 end
+	if s.on then return math.min(1, s.lvl + (now - s.t) / w.spinup) end
+	return math.max(0, s.lvl - (now - s.t) / (w.spindown or 0.9))
+end
+function Rules.spin(f: Fighter, on: boolean, now: number)
+	local w = W[f.held]
+	if not f.alive or not w or not w.spinup then f.spin = nil; return end
+	f.spin = { lvl = Rules.spinLevel(f, now), t = now, on = on }
 end
 
 function Rules.reload(f: Fighter, wid: any, now: number): string?
@@ -163,6 +181,8 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 		a.reloadUntil = 0
 	end
 	if a.mag <= 0 then return "empty", 1 end
+	-- (the Minigun: not before the barrels are up to speed; JITTER + a little of slack for the trigger's message)
+	if w.spinup and Rules.spinLevel(f, now + Rules.JITTER + 0.05) < 1 then return "not spun up", 1 end
 	-- the rate comes from the SERVER's HP (a client can't claim low HP to make the Redline scream)
 	local iv = 1 / Weapons.fireRate(w, f.hp)
 	local mul = 1

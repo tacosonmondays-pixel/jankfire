@@ -152,6 +152,27 @@ BUILD.knife = function(b)
 	spot(b, "Mid", Vector3.new(0, 0.0012, -0.0797))
 	spot(b, "Grip", Vector3.new(0, 0, 0.03))
 end
+-- (weapons batch A, 18 Nov 2026) code stand-ins for the Bread and the Hand Slapper until their kit models are in
+-- JankfireWeapons (w_bread, w_slapper; the guns-remodel session builds them): the grip at the origin, the tip along -Z
+BUILD.bread = function(b)
+	bx(b, "loaf", 0.2, 0.15, 1.42, 0xc8965a, 0, 0.02, -0.68)
+	bx(b, "crust", 0.17, 0.04, 1.36, 0xa87448, 0, 0.105, -0.68)
+	for i = 0, 4 do bx(b, "score", 0.18, 0.012, 0.03, 0x8e6038, 0, 0.128, -0.2 - i * 0.26, -0.35) end
+	bx(b, "heel", 0.16, 0.12, 0.2, 0xb88450, 0, 0.0, 0.1)
+	spot(b, "Muzzle", Vector3.new(0, 0, -1.45)) -- (the kit model's spots: export_report.json)
+	spot(b, "Mid", Vector3.new(0, 0.0011, -0.5865))
+	spot(b, "Grip", Vector3.new(0, 0.002, 0.12))
+end
+BUILD.slapper = function(b)
+	cylZ(b, "stick", 0.016, 0.5, 0xd6d0c6, 0, 0, -0.18)
+	bx(b, "grip", 0.04, 0.04, 0.14, 0x3a3d45, 0, 0, 0.05)
+	bx(b, "hand", 0.17, 0.035, 0.18, 0xd68aa6, 0, 0, -0.56)
+	for i = 0, 3 do bx(b, "hand", 0.032, 0.03, 0.1, 0xd68aa6, -0.06 + i * 0.04, 0, -0.69) end
+	bx(b, "hand", 0.035, 0.03, 0.09, 0xd68aa6, 0.1, 0, -0.55, 0.0)
+	spot(b, "Muzzle", Vector3.new(0, 0, -0.7))
+	spot(b, "Mid", Vector3.new(0, 0, -0.28475))
+	spot(b, "Grip", Vector3.new(0, 0, 0.055))
+end
 -- the knife's spoon look (web knife_spoon: a serving spoon that still stabs)
 BUILD.spoon = function(b)
 	cylZ(b, "handle", 0.009, 0.2, 0xc8ccd2, 0, 0, -0.02)

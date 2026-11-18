@@ -23,6 +23,17 @@ export type Weapon = {
 	ricochet: number?, -- the Revolver's bounces
 	over: { at: number, keep: number }?, -- the Redline: past `at` shots a second, the extra rate is only `keep` as deadly (Weapons.shotDmg)
 	heatUp: number?, heatDown: number?, -- the Belt Sander's barrel (looks and sound only)
+	-- weapons batch A (18 Nov 2026, WEAPONS.md): the Minigun fires only `spinup` s after the trigger went down (the server
+	-- holds it to that too) and spins down over `spindown` s; the Water Pistol's squirts soak whoever they hit (`dur` s at
+	-- x`slow` run speed and x`grip` ground friction); the Nail Gun pins whoever takes `n` of one shooter's nails inside
+	-- `win` s to the wall behind them (Combat nailHit); the Bread's swing that finds nobody but the map pogos you off it
+	-- at `pogo` studs/s; the Hand Slapper shoves straight away from you (`radial`) and slips them
+	spinup: number?, spindown: number?,
+	soak: { dur: number, slow: number, grip: number }?,
+	nails: { n: number, win: number, dur: number, safe: number, reach: number, lift: number, off: number, stick: number }?,
+	pogo: number?, slip: boolean?, radial: boolean?,
+	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
+	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?,
 	cycle: { clip: string, at: number }?, draw: string?, -- the clip after every shot (pump, bolt, lever), its own draw
 	-- melee
 	cd: number?, cone: number?, kb: number?, kbUp: number?, grow: number?, growMax: number?, hitT: number?,
@@ -34,7 +45,7 @@ export type Weapon = {
 	-- one row here + a model + a sound, with no code of its own. big = the big muzzle flash, brass = a casing a shot,
 	-- spray = the pellets are the tracer (the marbles), hole = false: chips, not holes. snd = the shot's Sound in
 	-- JankfireSounds; tacho = the Redline's three renders by HP instead
-	fx: { big: boolean?, brass: boolean?, spray: boolean?, hole: boolean?, scale: number?, shake: number?, splash: boolean?, vol: number? }?,
+	fx: { big: boolean?, brass: boolean?, spray: boolean?, hole: boolean?, scale: number?, shake: number?, splash: boolean?, vol: number?, water: boolean?, nails: boolean? }?,
 	snd: string?, tacho: boolean?,
 	-- the model: its Blender file's bounds (tools/roblox/export_weapons.py prints them) and the spots the hands and
 	-- effects use, in the file's frame (metres, -Z forward). WeaponModels builds a plain stand-in from these until the
@@ -230,6 +241,41 @@ local W: { [string]: Weapon } = {
 			parts = { mag = { at = Vector3.new(0, -0.04552, -0.07582) }, charge = {} },
 		},
 	},
+	-- ---- weapons batch A (18 Nov 2026): stats from shared/weapons.js, vm + recoilVM from public/js/weapons.js (VM,
+	-- RECOIL), WEAPONS.md has each one's section. mdl = the stand-in until the kit model is in JankfireWeapons
+	minigun = {
+		id = "minigun", name = "Minigun", slot = "primary", kind = "hitscan", color = rgb(0xc8c8c8),
+		desc = "spins up, then never stops. the bullets shove people, and the recoil is strong enough to fly on.",
+		auto = true, rate = 25, mag = 250, reload = 3.5, pellets = 1, dmg = 6, head = 1.5, spread = 0.045,
+		kb = 1.7 * S, recoil = 1.25 * S, kick = 0.004, range = 200 * S, spinup = 0.6, spindown = 0.9,
+		ads = { zoom = 1.15, spread = 0.6 }, tracer = rgb(0xfff0a0),
+		fx = { brass = true, shake = 0.03 }, snd = "gun_minigun", draw = "draw_heavy", drawSnd = "draw_minigun", reloadSnd = "reload_minigun",
+		recoilVM = { back = 0.35, up = 0.9, roll = 1.2, side = 0.25, punch = 0.004 },
+		vm = { p = Vector3.new(0.22, -0.26, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
+		mdl = {
+			lo = Vector3.new(-0.079, -0.252, -0.75), hi = Vector3.new(0.1054, 0.15, 0.2),
+			muzzle = Vector3.new(0, 0, -0.75), grip = Vector3.new(0, -0.13, 0.143), fore = Vector3.new(0, -0.14, -0.15),
+			parts = { barrels = { at = Vector3.new(0, 0, -0.45) } },
+		},
+	},
+	nailgun = {
+		id = "nailgun", name = "Nail Gun", slot = "primary", kind = "hitscan", color = rgb(0xff6f3c),
+		desc = "fires nails, fast. six in a row and they're nailed to the wall behind them.",
+		auto = true, rate = 11, mag = 36, reload = 1.9, pellets = 1, dmg = 9, head = 1.6, spread = 0.022,
+		bloom = 0.003, maxBloom = 0.045, kb = 0.5 * S, recoil = 0.25 * S, kick = 0.006, range = 120 * S,
+		tracer = rgb(0xd8dde4), thick = 0.018 * S,
+		nails = { n = 6, win = 1.2, dur = 1.1, safe = 2.5, reach = 7 * S, lift = 0.35 * S, off = 0.42 * S, stick = 10 },
+		ads = { zoom = 1.35, spread = 0.35 },
+		fx = { nails = true, shake = 0.05 }, snd = "gun_nailgun",
+		recoilVM = { back = 0.8, up = 2.6, roll = 1.8, side = 0.25, punch = 0.01 },
+		vm = { p = Vector3.new(0.2, -0.155, -0.42) * S, r = Vector3.new(0, 0.3, 0), s = 0.6 },
+		mdl = {
+			lo = Vector3.new(-0.06, -0.205, -0.358), hi = Vector3.new(0.06, 0.1744, 0.134),
+			muzzle = Vector3.new(0, 0.04, -0.358), sight = Vector3.new(0, 0.1744, 0.1324),
+			grip = Vector3.new(0, -0.06, 0.05), fore = Vector3.new(0, -0.03, -0.2),
+			parts = { mag = { at = Vector3.new(0, -0.07, -0.1555) } },
+		},
+	},
 	revolver = {
 		id = "revolver", name = "Revolver", slot = "secondary", kind = "hitscan", color = rgb(0xe0c070),
 		desc = "six shots, a twirl after every one. tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
@@ -286,6 +332,24 @@ local W: { [string]: Weapon } = {
 			},
 		},
 	},
+	-- (weapons batch A) a plain hitscan squirt gun: 1 a squirt, but every squirt that lands soaks them (Combat soakHit)
+	water = {
+		id = "water", name = "Water Pistol", slot = "secondary", kind = "hitscan", color = rgb(0x3fb8ff),
+		desc = "a big plastic squirt gun. whoever it hits gets soaked: they slip about and slow down for a few seconds.",
+		auto = true, rate = 9, mag = 40, reload = 1.6, pellets = 1, dmg = 1, head = 1.5, spread = 0.03,
+		kb = 0.6 * S, recoil = 0, kick = 0.002, range = 26 * S,
+		soak = { dur = 4, slow = 0.72, grip = 0.3 },
+		ads = { zoom = 1.2, spread = 0.5 }, tracer = rgb(0x9fd8ff),
+		fx = { water = true, hole = false, shake = 0 }, snd = "gun_water",
+		recoilVM = { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 },
+		vm = { p = Vector3.new(0.18, -0.18, -0.355) * S, r = Vector3.new(0.02, 0.08, 0), s = 0.74 },
+		mdl = {
+			lo = Vector3.new(-0.038, -0.1568, -0.29), hi = Vector3.new(0.038, 0.136, 0.1553),
+			muzzle = Vector3.new(0, 0.01, -0.29), sight = Vector3.new(0, 0.136, 0.09),
+			grip = Vector3.new(0, -0.09, 0.108),
+			parts = { water = { at = Vector3.new(0, 0.0545, -0.0775) }, pump = { travel = 0.03 } },
+		},
+	},
 	katana = {
 		id = "katana", name = "Katana", slot = "melee", kind = "melee", color = rgb(0xe8e8f0),
 		desc = "grows longer with every kill. hold right click to parry every bullet from the front; a timed swing sends them back twice as hard; parry enough and the blade sends a slash wave.",
@@ -302,6 +366,22 @@ local W: { [string]: Weapon } = {
 		heavy = { dmg = 90, cd = 0.95, range = 2.2 * S, cone = 0.6, kb = 16 * S, kbUp = 4 * S, hitT = 0.29 },
 		draw = "draw_knife",
 		vm = { p = Vector3.new(0.17, -0.2, -0.42) * S, r = Vector3.new(0.12, -0.22, 0.08), s = 0.85 },
+	},
+	-- (weapons batch A) home runs along your aim; a swing that finds nobody but the floor or a wall pogos you off it
+	bread = {
+		id = "bread", name = "Bread", slot = "melee", kind = "melee", color = rgb(0xd9a35b),
+		desc = "a huge loaf. home runs people along your aim, and smacking the floor pogos you into the sky.",
+		cd = 0.55, range = 4.2 * S, cone = 0.8, dmg = 40, kb = 38 * S, kbUp = 10 * S, hitT = 0.19, pogo = 16 * S,
+		draw = "draw_bread", hitSnd = "bread_bonk",
+		vm = { p = Vector3.new(0.3, -0.3, -0.42) * S, r = Vector3.new(0.35, 0.2, -0.25), s = 0.55 },
+	},
+	-- (weapons batch A) point blank, barely hurts: shoves them straight away from you and they slip
+	slapper = {
+		id = "slapper", name = "Hand Slapper", slot = "melee", kind = "melee", color = rgb(0xff7ab8),
+		desc = "a giant toy hand on a stick. point blank only, barely hurts, sends them flying and off their feet.",
+		cd = 0.8, range = 1.9 * S, cone = 0.8, dmg = 15, kb = 55 * S, kbUp = 14 * S, hitT = 0.17, slip = true, radial = true,
+		draw = "draw_melee", hitSnd = "slap_hit", swingSnd = "slap_whoosh",
+		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.25, 0.1, 0), s = 0.7 },
 	},
 	-- the zombie claw (shared/weapons.js claw): infection's only weapon, handed out by the mode, never in a loadout
 	claw = {

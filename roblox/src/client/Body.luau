@@ -24,6 +24,15 @@ Body.onStep = nil :: ((any, Vector3, number) -> ())?
 Body.boost = 1
 -- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
 Body.speedMul = 1
+-- (weapons batch A, 18 Nov 2026; WeaponStates.client sets these from the server's attributes on you) soaked by a Water
+-- Pistol: run speed x wet, ground friction x grip (slidey). pinned by a Nail Gun: pulled to `at` (where your feet go)
+-- until `untilT` (workspace:GetServerTimeNow()), no jumping
+Body.wet, Body.grip = 1, 1
+Body.pin = nil :: { at: Vector3, untilT: number }?
+function Body.pinned(): boolean
+	local p = Body.pin
+	return p ~= nil and workspace:GetServerTimeNow() < p.untilT
+end
 -- when one of our own moves last threw you (a push, a knock, a slip, a ledge launch, a shredder pull). Move's fling
 -- guard lets a sudden jump in speed through only just after one of these: anything else is a collision spike
 Body.kickT = -10

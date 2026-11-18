@@ -85,6 +85,75 @@ local function parriedShot(t: Fighter, f: Fighter, wid: string, n: number, h: nu
 	end
 end
 
+-- ------------------------------------------------------------------ weapons batch A (18 Nov 2026, WEAPONS.md)
+-- the Water Pistol (web secondaries.js soak): every squirt that lands soaks them for soak.dur s. their own client runs
+-- slower and slides (WeaponStates.client reads SoakUntil, the server clock's end time: workspace:GetServerTimeNow), and
+-- everyone sees them drip. a dummy carries it on its model (drips only). refreshed at most every 0.45 s
+local function wetHit(t: Fighter, w: Weapons.Weapon)
+	local sk = w.soak :: any
+	local m = Fight.model(t)
+	if not m then return end
+	local sNow = workspace:GetServerTimeNow()
+	local holder: Instance = if t.kind == "player" then t.ref :: Player else m
+	local old = holder:GetAttribute("SoakUntil")
+	if type(old) == "number" and sNow + sk.dur - old < 0.45 then return end
+	holder:SetAttribute("SoakUntil", sNow + sk.dur)
+	if type(old) ~= "number" or old < sNow then FxR:FireAllClients({ k = "soak", model = m }) end
+end
+
+-- the Nail Gun (web primaries.js nailHit / pinTo): every nail that lands stays on its victim for nails.win s; once one
+-- shooter has nails.n of them there, the victim is nailed to the wall behind them (along the shot, flat, within
+-- nails.reach) for nails.dur s, or to the floor where they stand with no wall in reach, and can't be pinned again
+-- until nails.safe s after. a player's own client holds them there (Body.pin, from PinAt / PinUntil); a dummy is
+-- anchored. everyone sees the big nails (Fx "pin")
+local nailLog: { [Fighter]: { { t: number, by: Fighter } } } = setmetatable({}, { __mode = "k" }) :: any
+local pinEnd: { [Fighter]: number } = setmetatable({}, { __mode = "k" }) :: any
+local function pinTo(t: Fighter, f: Fighter, w: Weapons.Weapon, dir: Vector3)
+	local N = w.nails :: any
+	local feet, m = Fight.feet(t), Fight.model(t)
+	if not feet or not m then return end
+	local flat = Vector3.new(dir.X, 0, dir.Z)
+	local spot, nrm = feet, Vector3.zero
+	if flat.Magnitude > 1e-3 then
+		local hit = Fight.castMap(feet + Vector3.new(0, 1.1 * S, 0), flat.Unit, N.reach)
+		if hit and math.abs(hit.Normal.Y) < 0.5 then
+			nrm = hit.Normal
+			local at = hit.Position + hit.Normal * N.off
+			spot = Vector3.new(at.X, feet.Y + N.lift, at.Z)
+		end
+	end
+	local n = now()
+	pinEnd[t] = n + N.dur
+	if t.kind == "player" then
+		local p = t.ref :: Player
+		p:SetAttribute("ACGrace", n + N.dur + 0.5) -- (the anti-cheat: this pull is the server's say)
+		p:SetAttribute("PinAt", spot)
+		p:SetAttribute("PinUntil", workspace:GetServerTimeNow() + N.dur)
+	else
+		local r = Fight.root(t)
+		if r then
+			r.Anchored = true
+			r.CFrame = CFrame.new(spot + Vector3.new(0, Hitbox.ROOT_UP, 0)) * r.CFrame.Rotation
+			task.delay(N.dur, function() if r.Parent then r.Anchored = false end end)
+		end
+	end
+	FxR:FireAllClients({ k = "pin", model = m, at = spot, n = nrm, dur = N.dur, by = uid(f) })
+	callout(f, "PINNED", 0.8)
+end
+local function nailHit(f: Fighter, t: Fighter, w: Weapons.Weapon, dir: Vector3)
+	local N = w.nails :: any
+	local n = now()
+	local pe = pinEnd[t]
+	if pe and n < pe + N.safe then return end -- (pinned now, or only just let go)
+	local log = nailLog[t] or {}
+	nailLog[t] = log
+	while #log > 0 and (n - log[1].t > N.win or #log >= 24) do table.remove(log, 1) end
+	table.insert(log, { t = n, by = f })
+	local mine = 0
+	for _, e in log do if e.by == f then mine += 1 end end
+	if mine >= N.n then table.clear(log); pinTo(t, f, w, dir) end
+end
+
 -- eye = where the bullet's last leg started (the shooter's eye, or the last wall a Revolver bullet bounced off).
 -- x = what the shot itself brings (the Fire handler): its damage multiplier (a fanned Revolver shot), a quick-scope
 -- or no-scope claim. the dummies' shots bring none. the gimmicks are all judged here, from the server's own clock:
@@ -120,6 +189,11 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	-- a no-scope is a callout and nothing else: the hit landed, and the server's own clock says the scope was down
 	if done > 0 and w.noscope and x and x.ns and f.aimT == nil then
 		callout(f, ("NO SCOPE %dm"):format(math.floor(to.Magnitude / S + 0.5)), 1.0)
+	end
+	-- (weapons batch A) a squirt soaks them, a nail counts toward the pin
+	if done > 0 and t.alive then
+		if w.soak then wetHit(t, w) end
+		if w.nails and to.Magnitude > 1e-3 then nailHit(f, t, w, to.Unit) end
 	end
 end
 
@@ -251,6 +325,7 @@ local function tryEquip(p: Player, wid: string)
 	local why = Rules.equip(f, wid, now())
 	if why == "too fast" then task.delay(0.16, tryEquip, p, wid); return end
 	if why == nil and f.held ~= before then
+		p:SetAttribute("Spin", nil) -- (a Minigun put away stops spinning: Rules.equip)
 		Fight.showWeapon(f)
 		FxR:FireAllClients({ k = "equip", model = Fight.model(f), w = f.held })
 	end
@@ -481,7 +556,15 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 			if flatF.Magnitude > 1e-3 and toT.Magnitude > 1e-3 and flatF.Unit:Dot(toT.Unit) > 0.45 then dmg *= w.backstab; hs = true end
 		end
 		local kb = lk.Unit * (if hv then hv.kb else (w.kb or 0)) + Vector3.new(0, if hv then hv.kbUp else (w.kbUp or 0), 0)
-		Fight.hurt(t, dmg, f, wid, hs, kb, tp)
+		-- (weapons batch A) the Hand Slapper: straight away from you along the server's own attacker -> victim line, its
+		-- up and down too (web radial), + kbUp
+		local away = tp - fr.Position
+		if w.radial and away.Magnitude > 1e-3 then kb = away.Unit * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0) end
+		local done = Fight.hurt(t, dmg, f, wid, hs, kb, tp)
+		if done > 0 and w.slip and t.alive then -- (and onto their back: the marbles' slip)
+			t.slipT = now()
+			if t.kind == "player" then SlipR:FireClient(t.ref :: Player, wid) else Dummies.slip(t) end
+		end
 	end
 end)
 
@@ -489,6 +572,23 @@ AimR.OnServerEvent:Connect(function(p: Player, on: unknown)
 	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if f then Rules.aim(f, on == true, now()) end
+end)
+
+-- (weapons batch A) the Minigun's trigger: (true) the barrels start spinning up, (false) let go. the server keeps the
+-- spin itself (Rules.spin: no shot before it's full) and everyone sees the barrels turn (the player's Spin attribute)
+local SpinR = Remotes:FindFirstChild("Spin") :: RemoteEvent?
+if not SpinR then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "Spin"
+	r.Parent = Remotes
+	SpinR = r
+end
+(SpinR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, on: unknown)
+	if not spend(p) or holstered(p) or type(on) ~= "boolean" then return end
+	local f = Fight.byPlayer[p]
+	if not f then return end
+	Rules.spin(f, on, now())
+	p:SetAttribute("Spin", if on and f.spin ~= nil then true else nil)
 end)
 
 -- the guard: (yaw) right click down opens it, (yaw, "turn") while held its front follows your look, (yaw, false) the

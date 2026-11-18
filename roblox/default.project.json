@@ -35,6 +35,9 @@
         "KatanaWave": {
           "$className": "RemoteEvent"
         },
+        "Spin": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },
