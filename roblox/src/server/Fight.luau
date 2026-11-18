@@ -177,6 +177,7 @@ function Fight.showWeapon(f: Fighter)
 	if not m then return end
 	local old = m:FindFirstChild("HeldWeapon")
 	if old then old:Destroy() end
+	if not f.alive then return end -- (a dead body holds nothing: Fight.died took its gun)
 	if Fight.holstered(f) then return end
 	local hand = m:FindFirstChild("RightHand") :: BasePart? or m:FindFirstChild("Right Arm") :: BasePart?
 	if not hand then return end
@@ -265,6 +266,16 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 	local hum = Fight.hum(v)
 	if hum and hum.Health > 0 then hum.Health = 0 end
 	local m = Fight.model(v)
+	-- the gun goes with the life (18 Nov 2026, the owner: "after you kill someone their gun is still there"). every
+	-- client hides the server's HeldWeapon and draws its own copy (ThirdPerson), and lets the server's be seen again
+	-- when the body goes limp: so the server's gun and its hat came apart with the body, were flung with it, and stayed
+	-- (for everyone) till the body went. it goes now, in the same step as the Health that tells the clients. a Tool
+	-- in the hand (the Shredder) goes back into the backpack
+	if m then
+		local hw = m:FindFirstChild("HeldWeapon")
+		if hw then hw:Destroy() end
+		if hum and m:FindFirstChildOfClass("Tool") then pcall(function() hum:UnequipTools() end) end
+	end
 	if m and vel then
 		task.defer(function()
 			for _, p in m:GetDescendants() do
