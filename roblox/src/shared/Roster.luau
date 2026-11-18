@@ -49,8 +49,8 @@ add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live
 add({ id = "sniper", slot = "primary", name = "Sniper", color = "a2457c", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
 	desc = "Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "0.91/s", bar = 0.04 }, { label = "RANGE", text = "500 m", bar = 1 }, { label = "MAG", text = "5", bar = 0.08 } } })
-add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = true, gimmick = "exploding rubber chickens. shoot your own feet to rocket jump.",
-	desc = "Rubber chickens that explode. Shoot your feet to rocket jump.",
+add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = true, gimmick = "exploding rubber chickens. every shot kicks you the other way: aim down to fly.",
+	desc = "Rubber chickens that explode. Every shot's back-blast kicks you the other way to your aim: aim down to fly, chain a few to stay up. Shoot your feet to rocket jump.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "1.18/s", bar = 0.05 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = "6b7bff", live = true, gimmick = "rolls a bowling ball along the floor that knocks over everyone in its way.",
 	desc = "Rolls along the floor and bowls over everyone in the way.",
@@ -58,7 +58,7 @@ add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = 
 add({ id = "bow", slot = "primary", name = "Bow", color = "c88a4a", live = true, gimmick = "",
 	desc = "Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).",
 	stats = { { label = "DAMAGE", text = "70", bar = 0.58 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", live = true, gimmick = "bananas that bonk and slip them. misses stay on the floor as peels for 30 s.",
+add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", live = true, gimmick = "bananas that bonk and slip them. misses stay on the floor as peels for 12 s.",
 	desc = "Hard bananas that bonk and make them slip. Misses stay on the floor as peels.",
 	stats = { { label = "DAMAGE", text = "14", bar = 0.12 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "laser", slot = "primary", name = "Big Laser Pointer", color = "39ff14", live = true, gimmick = "hold to charge, let go for a beam through everyone in a line. a tap is a little zap.",

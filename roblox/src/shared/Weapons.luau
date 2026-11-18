@@ -399,8 +399,13 @@ local W: { [string]: Weapon } = {
 	-- numbers x3 for studs (side notes weapons-batchC-spec.md has the traced rules)
 	chicken = {
 		id = "chicken", name = "Chicken Rocket", slot = "primary", kind = "proj", proj = "rocket", color = rgb(0xffe14d),
-		desc = "rubber chickens that explode. shoot your own feet to rocket jump.",
+		desc = "rubber chickens that explode. every shot kicks you the other way: aim down to fly. shoot your own feet to rocket jump.",
 		cd = 0.85, speed = 36 * S, grav = 6, r = 0.35 * S, radius = 7.5 * S, dmg = 55, kb = 34 * S, selfKb = 1.0, range = 200 * S,
+		-- (owner, 18 Nov 2026: "if you press left click with the rocket launcher it does like s thrust explosion so you can
+		-- use it propel yourself through the air!") every shot's back-blast shoves you the other way to your aim, 18 m/s,
+		-- on the ground or in the air, no damage (WeaponProj.server). against 26 m/s² and 0.85 s a shot, a chain aimed down
+		-- climbs for a few shots, then sinks slowly. your upward speed after it is capped at 32 m/s (thrustCapUp)
+		thrust = 18 * S, thrustCapUp = 32 * S,
 		snd = "chicken_fire", snd2 = "chicken_squeak", -- (the launcher's thunk, and the rubber chicken's squeak with it)
 		recoilVM = { back = 1.6, up = 6, roll = 1, side = 0.2, punch = 0.03 },
 		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
@@ -409,7 +414,7 @@ local W: { [string]: Weapon } = {
 	},
 	banana = {
 		id = "banana", name = "Peel Shooter", slot = "primary", kind = "proj", proj = "peel", color = rgb(0xffe135),
-		desc = "hard bananas that bonk and make them slip. misses stay on the floor as peels for 30 s.",
+		desc = "hard bananas that bonk and make them slip. misses stay on the floor as peels for 12 s.",
 		auto = true, cd = 0.3, speed = 42 * S, grav = 18, r = 0.25 * S, dmg = 14, kb = 9 * S, bounce = 0.35, range = 200 * S,
 		snd = "banana_fire",
 		recoilVM = { back = 0.6, up = 2, roll = 0.8, side = 0.15, punch = 0.008 },

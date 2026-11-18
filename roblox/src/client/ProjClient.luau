@@ -134,12 +134,18 @@ local function loopOn(part: Instance, name: string)
 	c.Parent = part
 	c:Play()
 end
+-- the whole drawn thing a part belongs to (a kit model's root can sit inside a node model: destroying only its parent
+-- left the rest lying there, the owner's peels that never went away)
+local function topOf(part: Instance): Instance
+	local top = part
+	while top.Parent and top.Parent ~= folder and top.Parent ~= workspace do top = top.Parent :: Instance end
+	return top
+end
 local function drop(id: number)
 	local L = live[id]
 	if not L then return end
 	live[id] = nil
-	local m = L.part.Parent
-	if m and m ~= folder and m:IsA("Model") then m:Destroy() else L.part:Destroy() end
+	topOf(L.part):Destroy()
 end
 RunService.RenderStepped:Connect(function(dt: number)
 	local map = workspace:FindFirstChild("Map")
@@ -157,13 +163,13 @@ RunService.RenderStepped:Connect(function(dt: number)
 		L.spin += dt * 18
 		local face = if L.v.Magnitude > 0.1 then CFrame.lookAt(L.p, L.p + L.v) else CFrame.new(L.p)
 		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" then face elseif L.k == "card" then face * CFrame.Angles(0, L.spin * 2, 0) else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
-		local m = L.part.Parent
-		if m and m:IsA("Model") and m ~= folder then (m :: Model):PivotTo(cf) else L.part.CFrame = cf end
+		local m = topOf(L.part)
+		if m:IsA("Model") then m:PivotTo(cf) else L.part.CFrame = cf end
 	end
 end)
 
 -- ---------------------------------------------------------------- peels, frost, the blood cross
-local peels: { [number]: BasePart } = {}
+local peels: { [number]: Instance } = {} -- (the whole peel: its kit model or the stand-in part)
 local function rootOf(m: any): BasePart?
 	return if typeof(m) == "Instance" then (m :: Instance):FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 end
@@ -214,8 +220,8 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local kind = L and L.k
 		-- (batch D: an arrow in a wall stays there a few seconds)
 		if f.stuck and L then
-			local m = L.part.Parent
-			if m and m ~= folder and m:IsA("Model") then
+			local m = topOf(L.part)
+			if m:IsA("Model") then
 				live[f.id] = nil
 				task.delay(4, function() m:Destroy() end)
 			else
@@ -238,6 +244,17 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			elseif kind == "peel" then Fx.impact(at, Vector3.yAxis, nil, Enum.Material.SmoothPlastic, { hole = false, scale = 0.8 }); Sfx.play("bonk", at, 0.8)
 			else Fx.impact(at, Vector3.yAxis, nil, Enum.Material.Fabric, { hole = false, scale = 0.6 }) end
 		end
+	elseif k == "thrust" and typeof(f.p) == "Vector3" then
+		-- (owner, 18 Nov 2026) the Chicken Rocket's back-blast behind the launcher. close to your own camera (yours, in first
+		-- person or the shoulder camera) the fireball would fill the screen: a puff and the boom instead
+		local cam = workspace.CurrentCamera
+		if cam and (cam.CFrame.Position - f.p).Magnitude < 3.5 * Weapons.S then
+			Fx.impact(f.p, if typeof(f.d) == "Vector3" then f.d else Vector3.yAxis, nil, Enum.Material.Slate, { hole = false, scale = 1.2 })
+			Sfx.play("boom", nil, 0.35)
+		else
+			Fx.explosion(f.p, 1.5 * Weapons.S)
+			Sfx.play("boom", f.p, 0.55)
+		end
 	elseif k == "projn" and type(f.ids) == "table" and type(f.ps) == "table" and type(f.vs) == "table" then
 		-- (batch E) a whole fan of cards in one message
 		for i, id in f.ids do
@@ -251,28 +268,55 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	elseif k == "bowlstrike" and typeof(f.p) == "Vector3" then
 		Sfx.play("bowl_strike", f.p, 1) -- (batch D: three down)
 	elseif k == "peel" and type(f.id) == "number" and typeof(f.p) == "Vector3" then
+		-- (owner, 18 Nov 2026: "they clip throught the floor") the peel lies flat on the surface it landed on (the server's
+		-- normal: slopes and steps too), turned at random about it, its lowest point on the surface
+		local nrm = if typeof(f.n) == "Vector3" and f.n.Magnitude > 0.5 then (f.n :: Vector3).Unit else Vector3.yAxis
 		local m = kit("w_pj_peel")
-		local part: BasePart
+		local root: Instance
 		if m then
-			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false end end
-			m:PivotTo(CFrame.new(f.p + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, math.random() * 6.28, 0))
-			m.Parent = folder
-			part = (m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")) :: BasePart
+			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end end
+			root = m
 		else
-			part = Instance.new("Part")
+			local part = Instance.new("Part")
 			part.Size = Vector3.new(1.0, 0.12, 0.9); part.Color = Color3.fromRGB(225, 200, 85); part.Material = Enum.Material.SmoothPlastic
 			part.Anchored = true; part.CanCollide = false; part.CanQuery = false; part.CastShadow = false
-			part.CFrame = CFrame.new(f.p + Vector3.new(0, 0.06, 0)) * CFrame.Angles(0, math.random() * 6.28, 0)
-			part.Parent = folder
+			root = part
 		end
-		peels[f.id] = part
+		local rx = (if math.abs(nrm.Y) < 0.95 then Vector3.yAxis else Vector3.xAxis):Cross(nrm).Unit
+		local base = CFrame.fromMatrix(f.p, rx, nrm) * CFrame.Angles(0, math.random() * 2 * math.pi, 0)
+		local function place(cf: CFrame) if root:IsA("Model") then root:PivotTo(cf) else (root :: BasePart).CFrame = cf end end
+		place(base)
+		local low = math.huge -- (how far the lowest corner sits along the normal from the hit point)
+		local parts = if root:IsA("BasePart") then { root } else root:GetDescendants()
+		for _, b in parts do
+			if not b:IsA("BasePart") then continue end
+			local h = b.Size / 2
+			for _, c in { Vector3.new(1, 1, 1), Vector3.new(1, 1, -1), Vector3.new(1, -1, 1), Vector3.new(1, -1, -1), Vector3.new(-1, 1, 1), Vector3.new(-1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(-1, -1, -1) } do
+				low = math.min(low, (b.CFrame * (h * c) - f.p):Dot(nrm))
+			end
+		end
+		if low < math.huge then place(base + nrm * (0.02 - low)) end
+		root.Parent = folder
+		peels[f.id] = root
 	elseif k == "peelx" and type(f.id) == "number" then
-		local part = peels[f.id]
+		local root = peels[f.id]
 		peels[f.id] = nil
-		if part then
-			if f.s then Sfx.play("bonk", part.Position, 0.6, 1.3) end
-			local m = part.Parent
-			if m and m ~= folder and m:IsA("Model") then m:Destroy() else part:Destroy() end
+		if root then
+			local at = if root:IsA("Model") then root:GetPivot().Position elseif root:IsA("BasePart") then root.Position else nil
+			if f.s then
+				if at then Sfx.play("bonk", at, 0.6, 1.3) end
+				root:Destroy() -- (stepped on: gone at once)
+			else
+				-- (its time is up: it fades out, not a pop)
+				local list = if root:IsA("BasePart") then { root } else root:GetDescendants()
+				local t0 = os.clock()
+				local conn: RBXScriptConnection
+				conn = RunService.RenderStepped:Connect(function()
+					local k2 = math.clamp((os.clock() - t0) / 0.6, 0, 1)
+					for _, b in list do if b:IsA("BasePart") then b.LocalTransparencyModifier = k2 end end
+					if k2 >= 1 then conn:Disconnect(); root:Destroy() end
+				end)
+			end
 		end
 	elseif k == "frost" or k == "freeze" then
 		local r = rootOf(f.model)

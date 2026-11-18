@@ -49,7 +49,7 @@ local feel = { ground = 0, slide = 0, slip = 0, speed = 0, swig = 0 } -- (the bo
 -- the camera's right) from tip to tip + more over the swig, and leaned (radians about your look: the base a little right
 -- of the crosshair). it gets there UP and OVER: the turn runs the long way round (+2 pi), the cap rising first.
 -- SaucePour.client draws the sauce falling
-local SWIG = { cap = Vector3.new(0.01, -0.07, -0.13), tip = -2.45, more = 0.45, lean = -0.3 }
+local SWIG = { cap = Vector3.new(0.01, -0.06, -0.14), tip = -2.8, more = 0.4, lean = -0.3 } -- (owner, 18 Nov: "can you make the bottle tilted towards us": the neck more back at you)
 -- Lefty & Righty (18 Nov 2026, weapons-port's akimbo: hands = 2): a second gun in your left hand, the first one's
 -- mirror across the screen's middle, with recoil springs and a reload dip of its own. hand 1 = Lefty (left click: this
 -- second gun, your left hand); hand 2 = Righty (right click: the main model, your right hand). a reload is a dip of

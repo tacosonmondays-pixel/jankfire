@@ -6,7 +6,7 @@
 -- and decides every hit; clients replay the flight from its spawn (Fx "proj") and draw the bounces, hits and ends the
 -- server sends ("proju", "projx"). kinds (the row's `proj`):
 --   rocket: explodes on the first wall or body (radius, falloff, the shooter's own blast only shoves: the rocket jump)
---   peel: bonks a body (+ slip), bounces off walls, on the floor it leaves a peel for 30 s that trips the next one over it
+--   peel: bonks a body (+ slip), bounces off walls, on the floor it leaves a peel for 12 s that trips the next one over it
 --   ball: bounces up to 5 times off anything, each bounce +30% (the tennis ball)
 --   snow: a hit adds frost (decaying), 4 freeze them solid for 2.4 s; a hit on someone frozen shatters them
 --   blood: costs 12 HP a shot (thin and free when you can't pay), sticks in whoever it hits; 0.6 s later the cross
@@ -124,6 +124,8 @@ end
 
 -- ------------------------------------------------------------------ the peels on the floor
 type Peel = { id: number, p: Vector3, owner: Fighter, t0: number }
+-- (owner, 18 Nov 2026: "banans should disappear after a while": 30 s read as forever) how long a peel lies there
+local PEEL_LIFE = 12
 local peels: { Peel } = {}
 local function dropPeel(pl: Peel, tripped: boolean)
 	local i = table.find(peels, pl)
@@ -442,6 +444,18 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 		p:SetAttribute("SlipperOut", true) -- (your hand is empty till it's back: the hold, Arsenal)
 	end
 	fx("proj", { id = pr.id, w = wid, by = uid(f), model = Fight.model(f), p = pr.p, v = pr.v, g = w.grav, r = r, thin = thin, tip = tip })
+	-- (owner, 18 Nov 2026) the Chicken Rocket's back-blast: every shot shoves you the other way to your aim (aim down to
+	-- go up, behind you to dash), on the ground or in the air; no damage. your upward speed after it is capped
+	-- (thrustCapUp). a shot whose blast will reach you (the floor at your feet, a wall in your face) is the old rocket
+	-- jump on its own: no back-blast on top (both together threw you 60 m up in a test)
+	if w.thrust and not sphere(eye, w.r, look * w.radius) then
+		local push = -look * w.thrust
+		local vy = if root then root.AssemblyLinearVelocity.Y else 0
+		if push.Y > 0 then push = Vector3.new(push.X, math.clamp(w.thrustCapUp - vy, 0, push.Y), push.Z) end
+		Fight.knock(f, push, wid)
+		p:SetAttribute("ACGrace", math.max(tonumber(p:GetAttribute("ACGrace")) or 0, n + 1.5)) -- (the anti-cheat: the launch is the server's)
+		fx("thrust", { by = uid(f), p = eye - look * 1.2 * S, d = -look })
+	end
 end
 ;(ThrowR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, look: unknown, c: unknown)
 	if p:GetAttribute("Zone") == "hub" then return end
@@ -515,7 +529,7 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 			local pl: Peel = { id = nextId, p = hit.Position, owner = pr.owner, t0 = now() }
 			table.insert(peels, pl)
 			while #peels > 40 do dropPeel(peels[1], false) end
-			fx("peel", { id = pl.id, p = pl.p })
+			fx("peel", { id = pl.id, p = pl.p, n = nrm }) -- (n: the surface it lies flat on, ProjClient)
 			return false
 		end
 		-- a bounce: the hit's normal part turned round (x bounce), the ball's slides lose a little
@@ -558,10 +572,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if not ok or not alive then table.remove(projs, i) end
 	end
 	local n = now()
-	-- peels: inert for 0.6 s, then the first body over one slips on it (its owner too); 30 s at most
+	-- peels: inert for 0.6 s, then the first body over one slips on it (its owner too); PEEL_LIFE at most
 	for i = #peels, 1, -1 do
 		local pl = peels[i]
-		if n - pl.t0 > 30 then dropPeel(pl, false); continue end
+		if n - pl.t0 > PEEL_LIFE then dropPeel(pl, false); continue end
 		if n - pl.t0 < 0.6 then continue end
 		for _, t in Fight.all do
 			if not t.alive then continue end
