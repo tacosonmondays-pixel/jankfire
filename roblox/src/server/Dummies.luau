@@ -241,7 +241,7 @@ function Dummies.tick(n: number)
 		if not f.alive or not hum or not root then continue end
 		if root.Position.Y < (killY :: number) then Fight.void(f); continue end
 		if hum.PlatformStand and n > b.slipUntil then hum.PlatformStand = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-		if f.name == "Dummy" and n > b.flip and not hum.PlatformStand then
+		if string.sub(f.name, 1, 5) == "Dummy" and n > b.flip and not hum.PlatformStand then
 			b.flip = n + 1.6; b.side = -b.side
 			hum:MoveTo(b.home + Vector3.new(b.side * 4 * S, 0, 0))
 		elseif shooter(f.name) and n > b.shoot then
@@ -256,10 +256,12 @@ function Dummies.init(fight: any, apply: any)
 	Fight.makeDummy = make
 	local spots = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("DummySpots")
 	local sp = Fight.spawnPoints()
-	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2" } do
+	-- (18 Nov: the yard's side hall has three more, Stand3, Stand4 and the second strafer Dummy2, only where their spots are)
+	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2", "Stand3", "Stand4", "Dummy2" } do
 		local f = Rules.newFighter("dummy", if string.sub(name, 1, 5) == "Stand" then "Stand" else name, nil)
 		local spot = spots and spots:FindFirstChild(name) :: BasePart?
 		if not spot and not spots and i > 2 then continue end
+		if not spot and i > 5 then continue end
 		local home = if spot then spot.Position else (sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0))
 		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0 }
 		table.insert(list, f)

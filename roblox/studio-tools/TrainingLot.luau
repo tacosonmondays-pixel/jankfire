@@ -31,13 +31,13 @@ local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
 L.KIT = 102031091411579 -- the kit's Model asset (tl_kit_5: lot_models.py; kit 5: flicker fixes in the frames and the roller)
-L.PUSH = 15
+L.PUSH = 16
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
 L.DOOR = { x = 12, y0 = 242, y1 = 258.5, z = -8260 }              -- the opening x -12..12, y 242..258.5
 L.BAY = { x = 22, z0 = -8262, z1 = -8300, top = 264 }             -- the loading bay, inside
-L.FACE = { x0 = -100, x1 = 92, z0 = -8300, z1 = -8304, top = 284 } -- the façade the lot sees
+L.FACE = { x0 = -146, x1 = 92, z0 = -8300, z1 = -8304, top = 284 } -- the façade the lot sees (west end -100 until 18 Nov: the course grew west)
 L.GOLD = { -- the gold Carls: feet, and a point he looks toward
 	-- (16 Nov, the owner: a lone gold dummy in a wall opening "seems random". so each stands where targets belong: one
 	-- among the dummy yard's marked dummies on its 30 m line, one on the range's first beam, one on top of the course's
@@ -678,7 +678,7 @@ local function bay(beacon)
 	-- piers, two gate towers either side of the portal, a window set 2 deep in every bay
 	local F = L.FACE
 	local exitX0, exitX1 = 52, 64 -- (full scale since judge round 3: it read bolted on)
-	local WIN = { { -92, -72 }, { -68, -40 }, { 40, 70 }, { 74, 86 } }
+	local WIN = { { -92, -72 }, { -68, -40 }, { 40, 70 }, { 74, 86 }, { -140, -120 }, { -116, -96 } } -- (the last two: the stretch added 18 Nov)
 	local holes = { { -18, 18, Y - 0.05, TOP }, { exitX0, exitX1, G, G + 12 } }
 	for _, b in WIN do table.insert(holes, { b[1] + 2.5, b[2] - 2.5, 268, 279 }) end
 	wallX("Facade", F.x0, F.x1, 236, F.top, F.z0, F.z1, P.wall, holes)
@@ -703,7 +703,7 @@ local function bay(beacon)
 	blk("FacadePlinth", 40, exitX0 - 1.2, G - 1, G + 2, F.z1, F.z1 - 0.6, P.slate)
 	blk("FacadePlinth", exitX1 + 1.2, F.x1 + 0.4, G - 1, G + 2, F.z1, F.z1 - 0.6, P.slate)
 	blk("FacadeCornice", F.x0 - 1, F.x1 + 1, F.top - 2, F.top, F.z1, F.z1 - 1.6, P.trim)
-	for _, x in { -94, -70, 72, 88 } do
+	for _, x in { -142, -118, -94, -70, 72, 88 } do
 		blk("FacadePier", x - 2, x + 2, G - 1, F.top - 2, F.z1, F.z1 - 3, P.pier)
 		blk("FacadePierCap", x - 2.4, x + 2.4, F.top - 2.8, F.top - 2, F.z1, F.z1 - 3.4, P.trim)
 	end
@@ -805,7 +805,7 @@ local function land()
 	roll(-204, -8250, -204, -8790, 52, 228)   -- west
 	roll(204, -8250, 204, -8790, 52, 228)     -- east
 	roll(-240, -8754, 240, -8754, 52, 228)    -- south
-	roll(-240, -8282, -101, -8282, 52, 228)   -- north, beside the hall
+	roll(-240, -8282, F.x0 - 1, -8282, 52, 228) -- north, beside the hall (it ends at the façade's end)
 	roll(93, -8282, 240, -8282, 52, 228)
 	roll(-232, -8250, -232, -8620, 80, 222)
 	roll(232, -8250, 232, -8620, 80, 222)
@@ -1423,6 +1423,8 @@ end
 -- ---------------------------------------------------------------- build (called by TrainingV2.build with its context)
 function L.build(b, T): string
 	B, P, TV = b, T.P, T
+	-- (18 Nov: the course was rebuilt bigger; its tower stands where TrainingV2 says)
+	if TV.COURSE then L.GOLD[3] = { "course tower", TV.COURSE.tower, V3(-30, TV.COURSE.tower.Y, -8122) } end
 	local root = B.root
 	for _, n in { "LotShell", "LotScenery" } do folderIn(root, n) end
 	LOT = folderIn(root, "Lot")

@@ -29,6 +29,10 @@
 -- grounds, you have to do like a little easter egg to get it or something"): the yard ends on a garage door, and
 -- behind it THE BACK LOT, built by ServerStorage.PolishBackup.TrainingLot (roblox/studio-tools/TrainingLot.luau) from
 -- here; the zone and the barrier take the lot in. the door and the egg are the server's: TheLot.server.luau.
+-- push 19 (18 Nov, a friend found the hub cramped; the owner: "perhaps in the training hub too the dummies and course
+-- section"): the yard has a side hall through an arcade in its west wall (aisle), and the course is an L twice the floor
+-- (course): its entry strip from the same passage, its main hall north to the lot's facade. the range, the mirror and
+-- the muster are as they were.
 -- a build wipes and remakes: change the builder, never the built parts. coordinates are the world's (the old hall's
 -- site); a staging copy is the same build moved T.STAGE along x.
 local T = {}
@@ -40,7 +44,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 18
+T.PUSH = 19
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -76,9 +80,12 @@ T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -
 -- (16 Nov, the owner: "maybe have dummies marked every so many meters, and an area where you can activate dummies that
 -- shoot back": two standing dummies on the 10 m line, the moving one on the 20 m line, and the two that shoot back at
 -- the far corners of the live-fire end, past the 30 m line)
-T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -7, 239, -8173.5 }, Stand2 = { 7, 239, -8173.5 } } -- (the standing two just before the 10 m line, their rings clear of it)
+-- (18 Nov, more room: the standing two 18 apart, not 14; the side hall's three in a line down its middle, x -43.8: one
+-- standing at 10 m, one on a round stand at 20 m, the second strafer at 30 m, where nothing stands in his way)
+T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -9, 239, -8173.5 }, Stand2 = { 9, 239, -8173.5 },
+	Stand3 = { -43.8, 240, -8173.5 }, Stand4 = { -43.8, 243.2, -8206 }, Dummy2 = { -43.8, 240, -8236 } } -- (the standing ones just before the 10 m line, their rings clear of it)
 T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (the stage, the door)
-T.ZONE = { -94, 86, 220, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier; down to 220 for the basement)
+T.ZONE = { -140, 86, 220, 312, -8058, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier; down to 220 for the basement; west to -140 since the course grew and south to -8058 for the gold dummies' door, 18 Nov)
 -- the back lot's way down (17 Nov, the owner: the lot's EXIT door "seemly leads no where, can it be like a basement
 -- section?"): the façade's opening (door, x) leads onto a landing at the top of a stairwell cut into the range's
 -- backstop (well: range() leaves it out of the backstop and the end wall); the stairs run down east to floor, and the
@@ -107,7 +114,7 @@ T.BASEMENT.exit = {
 -- onto a portal to the playground for whoever has found them): TrainingLot's eggDoor builds it where this says, nil = not
 -- built. { cf = the floor in the middle of the opening's face, its -Z the way you walk in (the corridor's end wall
 -- TrainingLot.EGG_DEPTH behind it), w, h = the opening, cw, ch = the corridor's width and height, wall = their colour }
-T.EGG_DOOR = nil :: { cf: CFrame, w: number?, h: number?, cw: number?, ch: number?, wall: string? }?
+T.EGG_DOOR = nil :: { cf: CFrame, w: number?, h: number?, cw: number?, ch: number?, wall: string? }? -- (set with the course since 18 Nov: EGGC)
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
 T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
 -- head room (16 Nov, the hold session: strafing into the yard's console put your eye 0.6 from its top, which then filled
@@ -118,7 +125,7 @@ T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid,
 -- those the same in every game
 -- (the first run's finds: the console's top; the shop shelf's top, where you could stand with your head in the headsets
 -- on the slatwall)
-T.HEAD = { eye = 4.5, near = 1.0, body = V3(1.2, 3.2, 1.2), margin = 0.8, guard = { "ConsoleTop", "ShelfTop" } }
+T.HEAD = { eye = 4.5, near = 1.0, body = V3(1.2, 3.2, 1.2), margin = 0.8, guard = { "ConsoleTop", "ShelfTop", "AisleTarget" } } -- (the side hall's target since 18 Nov: a mesh on the end wall you could walk your face into)
 
 local function folderIn(parent, name)
 	local f = parent:FindFirstChild(name)
@@ -580,6 +587,84 @@ local YX, YZ0, YZ1 = 24, -8146, -8258
 local LANE = { x = 13, z0 = -8158, z1 = -8218, y = 239 }
 local STAGE = { z = -8228, y = 242 } -- the far third: a stage for the Plinker, a step up from the walks (z -8226..-8228)
 local PIERS = { -8162, -8178, -8194, -8210, -8226, -8242 }
+-- the side hall (18 Nov: a friend found the hub cramped, and the owner, "perhaps in the training hub too the dummies and
+-- course section"): the yard's west wall opens on an arcade into a second lane the yard's length, 28 wide under a flat
+-- coffered ceiling, with its own three dummies, cover along its far wall and the big target on its end wall. the vaulted
+-- hall itself is as it was. the arcade: the yard's own piers stand free as its columns from the yard's front to the
+-- stage's pier; past that (the live-fire end) the wall stays whole. x0 = its west wall's face, x1 = the columns' faces
+local AISLE = { x0 = -58, x1 = -29.6, ceil = 262, head = 256, open = STAGE.z + 3.5 }
+AISLE.x = (AISLE.x0 + AISLE.x1) / 2
+local function aisle(B)
+	local x0, x1, ax, top = AISLE.x0, AISLE.x1, AISLE.x, AISLE.ceil + 2.5
+	local wx = -YX - 4 -- (-28: the yard's wall's outside, now the arcade's back)
+	B.blk("Shell", "AisleFloor", x0 - 4, wx, 236, Y0, YZ0, YZ1 - 4, P.floor)
+	B.blk("Shell", "AisleWallW", x0 - 4, x0, 236, top, YZ0, YZ1 - 4, P.wall)
+	B.blk("Shell", "AisleFront", x0 - 4, wx, 236, top, YZ0, YZ0 - 4, P.wall)
+	B.blk("Shell", "AisleEnd", x0 - 4, wx, 236, top, YZ1, YZ1 - 4, P.wall)
+	B.blk("Shell", "AisleCeiling", x0 - 4, wx + 2, AISLE.ceil, top, YZ0, YZ1 - 4, P.ceil) -- (into the yard's wall over the arcade)
+	-- the arcade: a column at every pier in the open stretch (the pier's own block and cap stay on the yard's side), a
+	-- rounded white nose under the head of every opening on both faces
+	local cols = {}
+	for _, z in PIERS do if z > AISLE.open then table.insert(cols, z) end end
+	for _, z in cols do
+		B.blk("Shell", "ArcadeColumn", x1, -YX, Y0, AISLE.head, z - 1.5, z + 1.5, P.pier)
+		B.blk("Shell", "ArcadeBase", x1 - 0.25, wx, Y0, Y0 + 1.3, z - 1.75, z + 1.75, P.deep)
+	end
+	local edges = { YZ0 - 4 }
+	for _, z in cols do table.insert(edges, z + 1.5); table.insert(edges, z - 1.5) end
+	table.insert(edges, AISLE.open)
+	for i = 1, #edges, 2 do
+		local za, zb = edges[i], edges[i + 1]
+		for _, x in { wx, -YX } do
+			B.part("Shell", "ArcadeNose", CF(x, AISLE.head, (za + zb) / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(za - zb, 1.4, 1.4), P.trim, { cyl = true })
+		end
+	end
+	-- the far wall's piers on the same lines, beams across the ceiling from them to the arcade, a lit panel in every bay
+	for _, z in PIERS do
+		B.blk("Shell", "Pier", x0, x0 + 1.6, Y0, AISLE.ceil - 2.6, z - 1.5, z + 1.5, P.pier)
+		B.blk("Shell", "PierBase", x0, x0 + 1.85, Y0, Y0 + 1.3, z - 1.75, z + 1.75, P.deep)
+		B.blk("Shell", "AisleBeam", x0, wx + 1, AISLE.ceil - 2.6, AISLE.ceil + 0.1, z - 1.15, z + 1.15, P.pier)
+		B.blk("Scenery", "SconceHousing", x0 + 1.6, x0 + 2.2, 249.5, 252.5, z - 0.9, z + 0.9, P.dark)
+		B.blk("Scenery", "SconceLight", x0 + 2.15, x0 + 2.3, 249.9, 252.1, z - 0.55, z + 0.55, P.warm, { ghost = true, mat = NEON })
+	end
+	for _, z in { -8178, -8226 } do B.lamp(x0 + 3, 251, z, "point", 13, 0.4, P.warm) end
+	local bays = { (YZ0 - 4 + PIERS[1]) / 2 }
+	for i = 1, #PIERS - 1 do table.insert(bays, (PIERS[i] + PIERS[i + 1]) / 2) end
+	table.insert(bays, (PIERS[#PIERS] + YZ1) / 2)
+	for _, z in bays do
+		B.blk("Scenery", "AislePanel", ax - 4, ax + 4, AISLE.ceil - 0.2, AISLE.ceil - 0.02, z - 4, z + 4, P.panel, { ghost = true, mat = NEON })
+	end
+	for i, z in { -8170, -8202, -8234 } do B.lamp(ax, AISLE.ceil - 1, z, "spot", 30, 1.0, P.lampWhite, { angle = 115, shadows = i == 2 }) end
+	-- base strip and band on its three walls (the yard's at the same heights)
+	B.blk("Shell", "Dado", x0, x0 + 0.2, Y0, Y0 + 1.2, YZ0 - 4, YZ1, P.floor2, { ghost = true })
+	B.blk("Shell", "Band", x0, x0 + 0.3, Y0 + 8, Y0 + 8.6, YZ0 - 4, YZ1, P.trim, { ghost = true })
+	for _, z in { { YZ0 - 4, YZ0 - 4.2 }, { YZ1, YZ1 + 0.2 } } do
+		B.blk("Shell", "Dado", x0, wx, Y0, Y0 + 1.2, z[1], z[2], P.floor2, { ghost = true })
+		B.blk("Shell", "Band", x0, wx, Y0 + 8, Y0 + 8.6, z[1], z[1] + (z[2] - z[1]) * 1.5, P.trim, { ghost = true })
+	end
+	-- the floor: a pale line at every pier, the 10, 20 and 30 m lines and their numbers (to the arcade side, clear of the stand)
+	for _, z in PIERS do B.line(x0 + 1.85, z, x1, z, Y0 + 0.01, 0.7, P.line, "PierLine") end
+	for k, z in { -8176, -8206, -8236 } do
+		B.blk("Scenery", "DistLine", x0 + 1.85, x1, Y0 + 0.03, Y0 + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true })
+		B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, 6, 2.4, CF(x1 - 4.2, Y0 + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	end
+	-- its dummies: a ring where the standing one stands, the round stand at 20 m (the shooters' kind), the strafer's track
+	local s3, s4 = T.DUMMIES.Stand3, T.DUMMIES.Stand4
+	B.drum("Scenery", "StandRing", s3[1], s3[3], Y0 + 0.03, Y0 + 0.06, 4, P.trim, { ghost = true })
+	B.drum("Scenery", "StandRingIn", s3[1], s3[3], Y0 + 0.06, Y0 + 0.1, 2.9, P.floor2, { ghost = true })
+	B.put("tv_pulpit", CF(s4[1], Y0, s4[3]), { name = "AisleStand" })
+	B.drum("Collision", "AisleStandSolid", s4[1], s4[3], Y0, Y0 + 2, 12.4, P.pier, { tr = 1, noShadow = true })
+	B.drum("Shell", "AisleStandTop", s4[1], s4[3], Y0 + 1.9, s4[2] - 0.3, 8, P.pier2)
+	B.drum("Shell", "AisleStandLip", s4[1], s4[3], s4[2] - 0.35, s4[2], 8.5, P.trim)
+	-- cover along the far wall, as on the yard's east walk: a chest-high wall, then a head-high one, centred in their bays
+	B.put("tv_cover", CF(x0 + 4.8, Y0, -8170) * CFrame.Angles(0, math.pi / 2, 0), { name = "Cover" })
+	B.solid("CoverBox", CF(x0 + 4.8, Y0 + 2.35, -8170), V3(2.4, 4.7, 10))
+	for _, dz in { -2.5, 2.5 } do B.put("tv_block", CF(x0 + 4.8, Y0, -8186 + dz), { name = "Block" }) end
+	B.solid("BlockBox", CF(x0 + 4.8, Y0 + 3.8, -8186), V3(5, 7.6, 10))
+	-- the end: the big target on the end wall, lit from the last bay
+	B.put("tv_target", CF(ax, 251, YZ1 + 0.75), { name = "AisleTarget" })
+	B.lamp(ax, AISLE.ceil - 1.5, YZ1 + 9, "spot", 24, 0.6, P.lampWhite, { look = V3(ax, 248, YZ1), angle = 70 })
+end
 local function yard(B)
 	-- floors: the walks and both ends at the yard's floor, the lane a step down with a half-step at each end
 	B.blk("Shell", "YardFloor", -YX - 4, -LANE.x, 236, Y0, YZ0 + 0.1, STAGE.z + 2, P.floor)
@@ -600,7 +685,9 @@ local function yard(B)
 	-- (16 Nov, the owner: "there is a roof in the dummy part of the training hub that lets you clip through it and get
 	-- outside": the vault is a mesh nothing touches, and these walls stopped at its springing, so over the vault the
 	-- sides were open. the walls go up to the roof now, and thick unseen solids line the vault's inside)
-	B.blk("Shell", "YardWallW", -YX - 4, -YX, 236, 272, YZ0, YZ1, P.wall)
+	-- (18 Nov: the west wall is the side hall's arcade: whole over the openings' heads and along the live-fire end)
+	B.blk("Shell", "YardWallW", -YX - 4, -YX, AISLE.head, 272, YZ0, YZ1, P.wall)
+	B.blk("Shell", "YardWallW", -YX - 4, -YX, 236, AISLE.head, AISLE.open, YZ1, P.wall)
 	B.blk("Shell", "YardWallE", YX, YX + 4, 236, 272, YZ0, YZ1, P.wall)
 	do
 		local R = (48 * 48 / 4 + 10 * 10) / (2 * 10) -- the vault's arc (tv_rib, tv_vault): span 48, rise 10 from y 258
@@ -625,8 +712,9 @@ local function yard(B)
 	end
 	-- base strip and band along both long walls and the end
 	for _, sx in { -1, 1 } do
-		B.blk("Shell", "Dado", sx * YX, sx * (YX - 0.2), Y0, Y0 + 1.2, YZ0, YZ1, P.floor2, { ghost = true })
-		B.blk("Shell", "Band", sx * YX, sx * (YX - 0.3), Y0 + 8, Y0 + 8.6, YZ0, YZ1, P.trim, { ghost = true })
+		local z0 = if sx < 0 then AISLE.open else YZ0 -- (the west one only where the wall is whole)
+		B.blk("Shell", "Dado", sx * YX, sx * (YX - 0.2), Y0, Y0 + 1.2, z0, YZ1, P.floor2, { ghost = true })
+		B.blk("Shell", "Band", sx * YX, sx * (YX - 0.3), Y0 + 8, Y0 + 8.6, z0, YZ1, P.trim, { ghost = true })
 	end
 	B.blk("Shell", "Dado", -YX, -24, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true }) -- (clear of the lot's panels)
 	B.blk("Shell", "Dado", 24, YX, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
@@ -739,8 +827,9 @@ local function yard(B)
 	B.lamp(-8, 263, YZ1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, YZ1), angle = 70 })
 	B.lamp(8, 263, YZ1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, YZ1), angle = 70 })
 	-- cover in the side bays, alternating: a head-high wall on one side and a chest-high wall on the other, then the
-	-- other way round; two low walls in the lane before the stage; the middle kept open
-	for _, c in { { -1, -8186, "high" }, { 1, -8186, "low" }, { -1, -8202, "low" }, { 1, -8202, "high" } } do
+	-- other way round; two low walls in the lane before the stage; the middle kept open. (18 Nov: the west walk's two
+	-- went into the side hall, so the arcade's openings stay clear)
+	for _, c in { { 1, -8186, "low" }, { 1, -8202, "high" } } do
 		local x, z = c[1] * 19.2, c[2]
 		if c[3] == "high" then
 			for _, dz in { -2.5, 2.5 } do B.put("tv_block", CF(x, Y0, z + dz), { name = "Block" }) end
@@ -751,6 +840,7 @@ local function yard(B)
 		end
 	end
 
+	aisle(B)
 	-- the dummies' spots
 	local ds = folderIn(B.mk, "DummySpots")
 	for n, d in T.DUMMIES do B.marker(ds, n, d[1], d[2], d[3], V3(d[1], d[2], d[3] + 10)) end
@@ -1193,33 +1283,87 @@ end
 
 -- ---------------------------------------------------------------- the movement course
 -- the tallest room: ledges up the west wall with jump pads, a gallery along the north wall, an eight-sided tower under
--- a skylight drum with an open chute back down to the start, a pit to slide-jump on the slide lane, grapple rings
--- hanging from the ceiling beams, the playground's secret bullseye high on the north wall
-local CX0, CX1, CZ0, CZ1, CTOP = -86, -30, -8102, -8230, 288
+-- a skylight drum, grapple rings hanging from the ceiling beams, the playground's secret bullseye high on the north wall.
+-- (18 Nov, more room: a friend found the hub cramped, and the owner: "perhaps in the training hub too the dummies and
+-- course section". it is an L now. the same short passage from the muster comes into an entry strip the course's whole
+-- width, and the main hall runs north from the strip, 194 long, to the back lot's façade (the yard's side hall lies
+-- east of it). the same pieces spread along the longer walls, a second, taller tower at the far end, and grapple rings
+-- on the beam crossings from the entrance to the gallery: one long swing run)
+local CX0, CX1, CZ0, CZ1, CTOP = -132, -64, -8102, -8296, 288 -- the main hall: west and east walls' faces, south and north, the beams' undersides
+local STRIP = { x1 = -30, z1 = -8144 } -- the entry strip: from the west wall to the passage's wall (x), from the south wall to its north wall (z)
+local CXM = (CX0 + CX1) / 2 -- -98: the main hall's axis (the start bay, the tower, the skylight, the top)
+local GX = {} -- the beams along the hall: on the axis and every 13.6 out, the last two over the strip only
+for k = -2, 4 do table.insert(GX, CXM + 13.6 * k) end
+local GZ = { -8114, -8130 } -- the beams across: two over the strip, then every 16 down the main hall
+for z = -8162, -8274, -16 do table.insert(GZ, z) end
 local LEDGES = { -- { name, x0, x1, z0, z1, top }
-	{ "Ledge1", -86, -74, -8102, -8150, 250 },
-	{ "Ledge2", -86, -74, -8154, -8198, 260 },
-	{ "Ledge3", -86, -74, -8202, -8230, 270 },
-	{ "Gallery", -74, -42, -8218, -8230, 270 },
+	{ "Ledge1", CX0, CX0 + 12, CZ0, -8166, 250 },
+	{ "Ledge2", CX0, CX0 + 12, -8170, -8230, 260 },
+	{ "Ledge3", CX0, CX0 + 12, -8234, CZ1, 270 },
+	{ "Gallery", CX0 + 12, -76, -8282, CZ1, 270 },
 }
-local TOWER = { x = -58, z = -8170, top = 268 }
-local SKY = { x0 = -72, x1 = -44, z0 = -8150, z1 = -8182, top = 306 } -- the skylight drum, on the beam lines round the tower
+local TOWER = { x = CXM, z = -8178, top = 268 }
+local TOWER2 = { x = CXM + 13.6, z = -8258, scale = 1.2 } -- the far tower: the same kit piece a fifth bigger (top 273.6)
+local SKY = { x0 = CXM - 13.6, x1 = CXM + 13.6, z0 = -8162, z1 = -8194, top = 306 } -- the skylight drum, on the beam lines round the tower
+T.COURSE = { tower = V3(TOWER.x, TOWER.top, TOWER.z) } -- (TrainingLot: gold Carl 3 stands on the tower)
+-- the gold dummies' door (17 Nov, the owner, of a dead end: "this should be the locked door connected to the dummies!
+-- Since when its unlocked the garage door will open a portal to the floating training area", "its up the ramp on the
+-- left side of the training hub"; 18 Nov, the main session: build it into this rebuild where a ramp on the left still
+-- leads to it). come from the muster into the course and on your left, in the strip's south wall, a framed opening:
+-- a ramp up (rise over ramp) into a corridor that ends on the locked roll-up door (TrainingLot.eggDoor). x = its axis,
+-- w = its width inside, ceil = its ceiling, face = the door's face (z)
+local EGGC = { x = -44, w = 12, ramp = 16, rise = 4, flat = 12, ceil = 256 }
+EGGC.face = CZ0 + 4 + EGGC.ramp + EGGC.flat -- (-8070: from the wall's outside face, up the ramp and along the level)
+T.EGG_DOOR = { cf = CFrame.lookAt(V3(EGGC.x, Y0 + EGGC.rise, EGGC.face), V3(EGGC.x, Y0 + EGGC.rise, EGGC.face + 1)), w = 8.4, h = 9.96,
+	cw = EGGC.w, ch = EGGC.ceil - Y0 - EGGC.rise, wall = P.wall }
+local function eggCorridor(B)
+	local x0, x1 = EGGC.x - EGGC.w / 2, EGGC.x + EGGC.w / 2
+	local zIn, top = CZ0 + 4, Y0 + EGGC.rise -- (the course wall's outside face; the level floor)
+	local zUp = zIn + EGGC.ramp
+	local zEnd = EGGC.face + 3.2 -- (TrainingLot.EGG_DEPTH: the end wall's face, behind the door)
+	B.ramp("Shell", "EggRamp", "z", zIn, Y0, zUp, top, x0, x1, P.floor)
+	B.blk("Shell", "EggRampFill", x0, x1, 236, Y0 - 0.5, zIn, zUp, P.floor)
+	B.blk("Shell", "EggFloor", x0, x1, 236, top, zUp, zEnd + 4, P.floor)
+	for _, sx in { -1, 1 } do
+		local wx = EGGC.x + sx * EGGC.w / 2
+		B.blk("Shell", "EggWall", wx, wx + sx * 4, 236, EGGC.ceil + 2, zIn - 0.05, zEnd + 4, P.warmWall)
+		-- (the owner's shot: warm walls, a dark skirting, the upper corners cut off)
+		B.ramp("Shell", "EggDado", "z", zIn, Y0 + 1.2, zUp, top + 1.2, wx, wx - sx * 0.2, P.floor2, { thick = 1.2, ghost = true })
+		B.blk("Shell", "EggDado", wx, wx - sx * 0.2, top, top + 1.2, zUp, zEnd, P.floor2, { ghost = true })
+		B.part("Shell", "EggChamfer", CF(wx, EGGC.ceil, (zIn + zEnd) / 2) * CFrame.Angles(0, 0, math.rad(45)), V3(2.4, 2.4, zEnd - zIn), P.warmWall)
+	end
+	B.blk("Shell", "EggCeiling", x0 - 4, x1 + 4, EGGC.ceil, EGGC.ceil + 2, zIn - 0.05, zEnd + 4, P.ceil)
+	B.blk("Shell", "EggEnd", x0 - 4, x1 + 4, 236, EGGC.ceil + 2, zEnd, zEnd + 4, P.wall)
+	B.blk("Scenery", "EggLight", x0 + 2, x1 - 2, EGGC.ceil - 0.2, EGGC.ceil - 0.02, EGGC.face - 9, EGGC.face - 4, P.panel, { ghost = true, mat = NEON })
+	B.lamp(EGGC.x, EGGC.ceil - 1, EGGC.face - 6.5, "point", 18, 0.7, P.lampWhite)
+	-- the mouth: the muster's frame, in the course's south wall
+	B.put("tv_frameMid", CF(EGGC.x, Y0, CZ0 + 2), { name = "FrameEgg" })
+end
 local function course(B)
-	-- the floor, whole. (the long-jump pit, its slide lane, words, lines and numbers went on 16 Nov, the owner: "this
-	-- jumping thing is redundant")
-	B.blk("Shell", "CourseFloor", CX0 - 3.95, CX1, 234, Y0, CZ0 + 3.95, CZ1 - 3.95, P.courseFloor)
-	-- walls (the east one with the passage from the muster)
-	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, CTOP + 4, CZ0 + 4, MZ + PASS, P.courseWall)
-	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, CTOP + 4, MZ - PASS, CZ1 - 4, P.courseWall)
-	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, MY + 12, CTOP + 4, MZ + PASS, MZ - PASS, P.courseWall)
-	B.blk("Shell", "CourseWallW", CX0 - 4, CX0, 234, CTOP + 4, CZ0 + 4, CZ1 - 4, P.courseWall)
-	-- (rework 5: the south wall, the end of the view from the gallery, opens into a deep lit bay on the tower's axis,
+	local SX1, SZ1, W2 = STRIP.x1, STRIP.z1, CTOP + 4
+	-- the floor, whole: the strip and the main hall. (the long-jump pit, its slide lane, words, lines and numbers went on
+	-- 16 Nov, the owner: "this jumping thing is redundant")
+	B.blk("Shell", "CourseFloor", CX0 - 3.95, SX1, 234, Y0, CZ0 + 3.95, SZ1, P.courseFloor)
+	B.blk("Shell", "CourseFloor", CX0 - 3.95, CX1, 234, Y0, SZ1, CZ1 - 3.95, P.courseFloor)
+	-- walls: the strip's east one with the passage from the muster, its north one (the yard's side hall behind it), the
+	-- main hall's east one, west and north
+	B.blk("Shell", "CourseWallE", SX1, SX1 + 4, 234, W2, CZ0 + 4, MZ + PASS, P.courseWall)
+	B.blk("Shell", "CourseWallE", SX1, SX1 + 4, 234, W2, MZ - PASS, SZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallE", SX1, SX1 + 4, MY + 12, W2, MZ + PASS, MZ - PASS, P.courseWall)
+	B.blk("Shell", "CourseWallIn", CX1, SX1 + 4, 234, W2, SZ1, SZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, W2, SZ1 - 4, CZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallW", CX0 - 4, CX0, 234, W2, CZ0 + 4, CZ1 - 4, P.courseWall)
+	B.blk("Shell", "CourseWallN", CX0 - 4, CX1 + 4, 234, W2, CZ1, CZ1 - 4, P.courseWall)
+	-- (rework 5: the south wall, the end of the view from the gallery, opens into a deep lit bay on the main hall's axis,
 	-- framed in the ledges' rounded white noses)
-	local SB = { x0 = TOWER.x - 13, x1 = TOWER.x + 13, y0 = 246, y1 = 282, back = CZ0 + 8 }
-	B.blk("Shell", "CourseWallS", CX0 - 4, SB.x0, 234, CTOP + 4, CZ0 + 4, CZ0, P.courseWall)
-	B.blk("Shell", "CourseWallS", SB.x1, CX1 + 4, 234, CTOP + 4, CZ0 + 4, CZ0, P.courseWall)
+	local SB = { x0 = CXM - 13, x1 = CXM + 13, y0 = 246, y1 = 282, back = CZ0 + 8 }
+	B.blk("Shell", "CourseWallS", CX0 - 4, SB.x0, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+	local ex0, ex1 = EGGC.x - 6.05, EGGC.x + 6.05 -- (the egg corridor's mouth: the frames' 12 x 12 holes, 0.05 bigger all round)
+	B.blk("Shell", "CourseWallS", SB.x1, ex0, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+	B.blk("Shell", "CourseWallS", ex1, SX1 + 4, 234, W2, CZ0 + 4, CZ0, P.courseWall)
+	B.blk("Shell", "CourseWallS", ex0, ex1, Y0 + 12.05, W2, CZ0 + 4, CZ0, P.courseWall)
 	B.blk("Shell", "CourseWallS", SB.x0, SB.x1, 234, SB.y0, CZ0 + 4, CZ0, P.courseWall)
-	B.blk("Shell", "CourseWallS", SB.x0, SB.x1, SB.y1, CTOP + 4, CZ0 + 4, CZ0, P.courseWall)
+	B.blk("Shell", "CourseWallS", SB.x0, SB.x1, SB.y1, W2, CZ0 + 4, CZ0, P.courseWall)
 	B.blk("Shell", "StartBaySill", SB.x0, SB.x1, 234, SB.y0, SB.back, CZ0 + 4, P.ledge)
 	B.blk("Shell", "StartBayBack", SB.x0 - 2, SB.x1 + 2, 234, SB.y1 + 2, SB.back + 1, SB.back, P.ledge)
 	B.blk("Shell", "StartBayCheek", SB.x0 - 2, SB.x0, SB.y0, SB.y1 + 2, SB.back, CZ0 + 4, P.courseWall)
@@ -1227,43 +1371,55 @@ local function course(B)
 	B.blk("Shell", "StartBayHead", SB.x0, SB.x1, SB.y1, SB.y1 + 2, SB.back, CZ0 + 4, P.ceil)
 	B.blk("Shell", "StartBayPanel", SB.x0 + 3, SB.x1 - 3, SB.y0 + 3, SB.y1 - 5, SB.back - 0.05, SB.back - 0.35, P.ledgePanel)
 	B.blk("Scenery", "StartBayLight", SB.x0 + 1, SB.x1 - 1, SB.y1 - 0.25, SB.y1, SB.back - 0.2, CZ0 + 3.6, P.litEdge, { ghost = true, mat = NEON })
-	B.lamp(TOWER.x, SB.y1 - 3, CZ0 + 5, "point", 22, 0.8, P.lampWhite)
+	B.lamp(CXM, SB.y1 - 3, CZ0 + 5, "point", 22, 0.8, P.lampWhite)
 	for _, x in { SB.x0, SB.x1 } do
 		B.part("Shell", "StartBayNose", CF(x, (SB.y0 + SB.y1) / 2, CZ0 - 0.1) * CFrame.Angles(0, 0, math.pi / 2), V3(SB.y1 - SB.y0 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
 	end
 	for _, y in { SB.y0, SB.y1 } do
-		B.part("Shell", "StartBayNose", CF(TOWER.x, y, CZ0 - 0.1), V3(SB.x1 - SB.x0 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
+		B.part("Shell", "StartBayNose", CF(CXM, y, CZ0 - 0.1), V3(SB.x1 - SB.x0 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
 	end
-	B.blk("Shell", "CourseWallN", CX0 - 4, CX1 + 4, 234, CTOP + 4, CZ1, CZ1 - 4, P.courseWall)
-	for _, w in { { CX1, CX1 - 0.2, CZ0, MZ + PASS }, { CX1, CX1 - 0.2, MZ - PASS, CZ1 } } do
+	for _, w in {
+		{ SX1, SX1 - 0.2, CZ0, MZ + PASS }, { SX1, SX1 - 0.2, MZ - PASS, SZ1 }, { CX1, CX1 - 0.2, SZ1, CZ1 },
+	} do
 		B.blk("Shell", "Dado", w[1], w[2], Y0, Y0 + 1.2, w[3], w[4], P.floor2, { ghost = true })
 	end
-	-- piers on the beam grid down the east wall (the ceiling's beams land on them), bands at the ledges' heights
-	for _, z in { -8134, -8150, -8166, -8182, -8198, -8214 } do
-		local y0 = Y0 -- (the pit's are gone: every pier stands on the floor)
-		B.blk("Shell", "Pier", CX1, CX1 - 2.4, y0, CTOP, z - 1.6, z + 1.6, P.pier)
-		B.blk("Shell", "PierBase", CX1, CX1 - 2.65, y0, y0 + 1.3, z - 1.85, z + 1.85, P.deep)
+	-- (the strip's north wall is the first thing you face coming in: two broad steps against it, a place to stand and
+	-- watch the course, slate masses with the ledges' white noses on their edges)
+	for _, t in { { Y0 + 3, SZ1 + 10 }, { Y0 + 6, SZ1 + 5 } } do
+		B.blk("Shell", "WatchStep", CX1 + 0.1, SX1 - 0.1, Y0, t[1], SZ1, t[2], P.ledge)
+		B.part("Shell", "Nose", CF((CX1 + SX1) / 2, t[1] - 0.1, t[2] + 0.1), V3(SX1 - CX1 - 0.2, 1.4, 1.4), P.trim, { cyl = true })
+		B.blk("Scenery", "EdgeLight", CX1 + 0.1, SX1 - 0.1, t[1] - 1.3, t[1] - 1.0, t[2] + 0.05, t[2] + 0.2, P.litEdge, { ghost = true, mat = NEON })
+	end
+	-- piers on the beam grid (the ceiling's beams land on them): down the main hall's east wall, and two on the strip's
+	-- north wall
+	for _, z in GZ do
+		if z > SZ1 then continue end
+		B.blk("Shell", "Pier", CX1, CX1 - 2.4, Y0, CTOP, z - 1.6, z + 1.6, P.pier)
+		B.blk("Shell", "PierBase", CX1, CX1 - 2.65, Y0, Y0 + 1.3, z - 1.85, z + 1.85, P.deep)
+	end
+	for _, x in GX do
+		if x < CX1 then continue end
+		B.blk("Shell", "Pier", x - 1.6, x + 1.6, Y0, CTOP, SZ1, SZ1 + 2.4, P.pier)
+		B.blk("Shell", "PierBase", x - 1.85, x + 1.85, Y0, Y0 + 1.3, SZ1, SZ1 + 2.65, P.deep)
 	end
 	-- (rework 5: the beams land on the west wall too: piers from a corbel above head height on ledge 3, so the high
 	-- wall over the ledges has the same rhythm as the east one)
-	for k = 1, 7 do
-		local z = CZ0 - 16 * k
+	for _, z in GZ do
 		B.blk("Shell", "PierW", CX0, CX0 + 2.4, 279, CTOP, z - 1.6, z + 1.6, P.pier)
 		B.blk("Shell", "PierWCorbel", CX0, CX0 + 2.8, 277.6, 279, z - 2, z + 2, P.pier2)
 	end
 	-- the coffered ceiling: beams both ways, lit panels in every other coffer, and over the tower a skylight drum open
 	-- to the sky (the beams across it stay, as its bars)
 	local cy0, cy1 = CTOP + 4, CTOP + 6
-	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, CZ0 + 4, SKY.z0 - 1.15, P.ceil)
-	B.blk("Shell", "CourseCoping", CX1 + 2.6, CX1 + 4.6, cy0 - 1, cy1 + 1.2, CZ0 + 4.4, CZ1 - 4.4, P.wall2, { nq = true })
-	B.blk("Shell", "CourseBand", CX1 + 4, CX1 + 4.3, 276, 277, CZ0 + 4, CZ1 - 4, P.trim, { ghost = true })
+	B.blk("Shell", "CourseCeiling", CX0 - 4, SX1 + 4, cy0, cy1, CZ0 + 4, SZ1, P.ceil)
+	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, SZ1, SKY.z0 - 1.15, P.ceil)
 	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, SKY.z1 + 1.15, CZ1 - 4, P.ceil)
 	B.blk("Shell", "CourseCeiling", CX0 - 4, SKY.x0 + 1.15, cy0, cy1, SKY.z0 - 1.15, SKY.z1 + 1.15, P.ceil)
 	B.blk("Shell", "CourseCeiling", SKY.x1 - 1.15, CX1 + 4, cy0, cy1, SKY.z0 - 1.15, SKY.z1 + 1.15, P.ceil)
-	local zb = {}
-	for k = 1, 7 do table.insert(zb, CZ0 - 16 * k) end
-	for _, z in zb do B.blk("Shell", "CeilingBeam", CX0, CX1, CTOP, CTOP + 4, z - 1.15, z + 1.15, P.pier) end
-	for _, x in { -44, -58, -72 } do B.blk("Shell", "CeilingBeam", x - 1.15, x + 1.15, CTOP, CTOP + 4, CZ0, CZ1, P.pier) end
+	B.blk("Shell", "CourseCoping", SX1 + 2.6, SX1 + 4.6, cy0 - 1, cy1 + 1.2, CZ0 + 4.4, SZ1 - 4.4, P.wall2, { nq = true })
+	B.blk("Shell", "CourseBand", SX1 + 4, SX1 + 4.3, 276, 277, CZ0 + 4, SZ1 - 4, P.trim, { ghost = true })
+	for _, z in GZ do B.blk("Shell", "CeilingBeam", CX0, if z > SZ1 then SX1 else CX1, CTOP, CTOP + 4, z - 1.15, z + 1.15, P.pier) end
+	for _, x in GX do B.blk("Shell", "CeilingBeam", x - 1.15, x + 1.15, CTOP, CTOP + 4, CZ0, if x < CX1 then CZ1 else SZ1, P.pier) end
 	for _, w in {
 		{ SKY.x0 - 1.2, SKY.x0 + 1.2, SKY.z0 + 1.2, SKY.z1 - 1.2 }, { SKY.x1 - 1.2, SKY.x1 + 1.2, SKY.z0 + 1.2, SKY.z1 - 1.2 },
 		{ SKY.x0 - 1.2, SKY.x1 + 1.2, SKY.z0 + 1.2, SKY.z0 - 1.2 }, { SKY.x0 - 1.2, SKY.x1 + 1.2, SKY.z1 + 1.2, SKY.z1 - 1.2 },
@@ -1276,16 +1432,25 @@ local function course(B)
 	B.blk("Shell", "SkyCoping", SKY.x0 - 1.6, SKY.x1 + 1.6, SKY.top, SKY.top + 0.6, SKY.z1 + 1.6, SKY.z1 - 1.6, P.wall2)
 	B.blk("Shell", "SkyCoping", SKY.x0 - 1.6, SKY.x0 + 1.6, SKY.top, SKY.top + 0.6, SKY.z0, SKY.z1, P.wall2)
 	B.blk("Shell", "SkyCoping", SKY.x1 - 1.6, SKY.x1 + 1.6, SKY.top, SKY.top + 0.6, SKY.z0, SKY.z1, P.wall2)
-	local xs = { -79, -65, -51, -37 }
-	for row = 0, 7 do
-		local z = CZ0 - 8 - 16 * row
+	-- a lit panel in every other coffer (the coffers' middles: between the beam lines, and the half bays at the walls)
+	local xs, zs = {}, {}
+	for i = 1, #GX - 1 do table.insert(xs, (GX[i] + GX[i + 1]) / 2) end
+	table.insert(xs, (GX[#GX] + SX1) / 2)
+	table.insert(zs, (CZ0 + GZ[1]) / 2)
+	for i = 1, #GZ - 1 do table.insert(zs, if GZ[i] > SZ1 and GZ[i + 1] < SZ1 then (GZ[i] + SZ1) / 2 else (GZ[i] + GZ[i + 1]) / 2) end
+	table.insert(zs, (GZ[#GZ] + CZ1) / 2)
+	table.insert(zs, 4, (SZ1 + GZ[3]) / 2) -- (the strip's last bay and the main hall's first meet on the strip's wall)
+	for row, z in zs do
 		for col, x in xs do
+			local inHall = x < CX1 or z > SZ1
 			local inSky = x > SKY.x0 and x < SKY.x1 and z < SKY.z0 and z > SKY.z1
-			if (row + col) % 2 == 0 and not inSky then
+			if inHall and not inSky and (row + col) % 2 == 0 then
 				B.blk("Scenery", "CoffersPanel", x - 4, x + 4, CTOP + 3.75, CTOP + 3.95, z - 4, z + 4, P.panel, { ghost = true, mat = NEON })
-				if row % 2 == 0 then B.lamp(x, CTOP + 3.2, z, "spot", 62, 1.1, P.lampWhite, { angle = 120, shadows = (row == 6 and col == 2) }) end
 			end
 		end
+	end
+	for i, l in { { -118.4, -8122 }, { -91.2, -8122 }, { -50.4, -8122 }, { -77.6, -8170 }, { -118.4, -8202 }, { -77.6, -8234 }, { -118.4, -8266 }, { CXM, -8285 } } do
+		B.lamp(l[1], CTOP + 3.2, l[2], "spot", 62, 1.1, P.lampWhite, { angle = 120, shadows = i == 4 })
 	end
 	-- the ledges up the west wall and the gallery along the north wall: a slab with a pale fascia and a pale lip at the
 	-- edge, thick columns under the front
@@ -1308,38 +1473,40 @@ local function course(B)
 			B.text("LedgeNo", { { n, P.amber, "B", 1 } }, 3.4, 3.8, CF(x1 + 0.5, top - 3.6, mid) * CFrame.Angles(0, -math.pi / 2, 0), { plate = P.board, thick = 0.2 })
 		end
 	end
-	-- jump pads: floor to ledge 1 (its arrows to the ledge's wall), ledge 1 to 2, 2 to 3. (the one by the tower that
-	-- threw you onto its top went on 16 Nov, the owner: "the one near the cylinder, is redundant. the one that lifts
-	-- you should face toward the wall": the ring over the tower takes your grapple up there)
-	B.pad(-66, Y0, -8136, V3(-14, 52, 0))
-	B.pad(-80, 250, -8143, V3(0, 52, -14))
-	B.pad(-80, 260, -8191, V3(0, 52, -14))
-	-- the tower (eight-sided, under the skylight), and the open chute from its top back down to the start
+	-- jump pads: floor to ledge 1 (its arrows to the ledge's wall), ledge 1 to 2, 2 to 3, each 7 short of the ledge's end.
+	-- (the one by the tower that threw you onto its top went on 16 Nov, the owner: "the one near the cylinder, is
+	-- redundant. the one that lifts you should face toward the wall": the ring over the tower takes your grapple up there)
+	B.pad(CX0 + 20, Y0, -8134, V3(-14, 52, 0))
+	B.pad(CX0 + 6, 250, LEDGES[1][5] + 7, V3(0, 52, -14))
+	B.pad(CX0 + 6, 260, LEDGES[2][5] + 7, V3(0, 52, -14))
+	-- the towers: the eight-sided one under the skylight, the bigger one at the far end, off the axis toward the gallery's
+	-- end. (the open chute from the tower's top went on 16 Nov, the owner: "what is the slope to the cylinder thingy?")
 	B.put("tv_towerOct", CF(TOWER.x, Y0, TOWER.z), { name = "Tower" })
 	B.drum("Collision", "TowerSolid", TOWER.x, TOWER.z, Y0, TOWER.top, 16.6, P.pier, { tr = 1, noShadow = true })
-	-- (the open chute from the tower's top back down to the start went on 16 Nov, the owner: "what is the slope to the
-	-- cylinder thingy?" from below it read as a ramp up to the tower, and the pad already does that. you drop off)
-	-- grapple rings hanging from the ceiling beams: over the pit, between the tower and the gallery, over the tower (from
-	-- the skylight's bars), over the start
-	for _, h in { { -37, -8198 }, { -58, -8198 }, { -58, -8166 }, { -72, -8134 }, { -44, -8134 } } do
+	B.put("tv_towerOct", CF(TOWER2.x, Y0, TOWER2.z), { name = "TowerFar", scale = TOWER2.scale })
+	B.drum("Collision", "TowerSolid", TOWER2.x, TOWER2.z, Y0, Y0 + (TOWER.top - Y0) * TOWER2.scale, 16.6 * TOWER2.scale, P.pier, { tr = 1, noShadow = true })
+	-- grapple rings on the beam crossings: over the strip as you come in, over the tower (from the skylight's bars), down
+	-- the hall in a zigzag, over the far tower, and by ledge 3 and the gallery
+	for _, h in { { -57.2, -8130 }, { -84.4, -8130 }, { CXM, TOWER.z }, { -111.6, -8210 }, { -84.4, -8226 }, { TOWER2.x, TOWER2.z }, { -111.6, -8274 } } do
 		B.put("tv_hoop", CF(h[1], CTOP, h[2]), { name = "GrappleRing" })
 	end
-	-- the playground's secret: a bullseye high on the north wall over the gallery. too high to jump to: grapple into it
 	-- the top: a deep frame on the north wall at the gallery's middle, lit, with its word (the course's far end)
-	B.put("tv_frameWide", CF(TOWER.x, 270, CZ1 + 1.8), { name = "FrameTop", scale = 0.75 })
-	B.blk("Shell", "TopPanel", TOWER.x - 6, TOWER.x + 6, 270, 280.5, CZ1 + 0.05, CZ1 + 0.3, P.recess)
-	B.blk("Scenery", "TopLight", TOWER.x - 5, TOWER.x + 5, 279.6, 279.9, CZ1 + 0.3, CZ1 + 1.6, P.warm, { ghost = true, mat = NEON })
-	B.lamp(TOWER.x, 278, CZ1 + 3, "point", 16, 0.7, P.warm)
-	B.text("WordTOP", { { "TOP", P.amber, "B", 1 } }, 7, 1.5, CF(TOWER.x, 280.9, CZ1 + 3.85) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
+	B.put("tv_frameWide", CF(CXM, 270, CZ1 + 1.8), { name = "FrameTop", scale = 0.75 })
+	B.blk("Shell", "TopPanel", CXM - 6, CXM + 6, 270, 280.5, CZ1 + 0.05, CZ1 + 0.3, P.recess)
+	B.blk("Scenery", "TopLight", CXM - 5, CXM + 5, 279.6, 279.9, CZ1 + 0.3, CZ1 + 1.6, P.warm, { ghost = true, mat = NEON })
+	B.lamp(CXM, 278, CZ1 + 3, "point", 16, 0.7, P.warm)
+	B.text("WordTOP", { { "TOP", P.amber, "B", 1 } }, 7, 1.5, CF(CXM, 280.9, CZ1 + 3.85) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
+	-- the playground's secret: a bullseye high on the north wall over ledge 3. too high to jump to: grapple into it
 	-- (the line and arrow from the door to the first pad went on 16 Nov: "an arrow that looks ugly and is redundant")
-	local bx, by, bz = -80, 283, CZ1 + 0.45 -- (over ledge 3, off the line you see from the entrance)
+	local bx, by, bz = CX0 + 6, 283, CZ1 + 0.45 -- (over ledge 3, off the line you see from the entrance)
 	B.put("tv_target", CF(bx, by, bz), { name = "SecretBullseye", scale = 0.6 })
 	B.trigger("ToPlayground", bx - 3, bx + 3, by - 3, by + 3, CZ1 + 1.2, CZ1 + 4.2)
 	local ta = folderIn(B.doors, "TrainingArrive")
-	for _, x in { -84, -80, -76 } do
+	for _, x in { CX0 + 2, CX0 + 6, CX0 + 10 } do
 		local p = B.marker(ta, "TrainingArrive", x, 270.1, CZ1 + 6, V3(x, 270, CZ1 + 20))
 		p:SetAttribute("Built", "TrainingV2")
 	end
+	eggCorridor(B)
 end
 
 -- ---------------------------------------------------------------- the zone, the barrier, the finish
@@ -1796,7 +1963,10 @@ function T.check(stage): string
 		V3(0, MY + 4, MZ), V3(0, MY + 14, MZ), V3(0, MY + 26, MZ), V3(12, MY + 4, MZ + 8), V3(-12, MY + 12, MZ - 8),
 		S5:PointToWorldSpace(V3(0, MY + 4, -(A + WALL + 3))), V3(26, MY + 4, MZ), V3(-26, MY + 4, MZ),
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
-		V3(-58, Y0 + 4, -8120), V3(-40, Y0 + 4, -8200), V3(-80, 274, -8225), V3(-58, 286, -8166), V3(-50, 280, -8130),
+		V3(-58, Y0 + 4, -8120), V3(CXM, Y0 + 4, -8120), V3(-80, 274, -8225), V3(CXM, 286, TOWER.z), V3(-50, 280, -8130),
+		V3(-90, Y0 + 4, -8240), V3(CX0 + 6, 274, CZ1 + 6), V3(-100, 282, CZ1 + 8), V3(-70, 270, -8200), V3(CX0 + 30, 285, -8125),
+		V3(TOWER2.x, Y0 + 40, TOWER2.z), V3(EGGC.x, Y0 + 3, CZ0 + 8), V3(EGGC.x, Y0 + 9, EGGC.face - 6), -- (the course since 18 Nov: the strip, the main hall, over ledge 3, the gallery, the far tower)
+		V3(AISLE.x, Y0 + 4, -8160), V3(AISLE.x, AISLE.ceil - 4, -8200), V3(AISLE.x, Y0 + 4, -8250), V3(AISLE.x1 + 1, 250, -8186), -- (the yard's side hall, and in an opening of its arcade)
 		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
 		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)
 	}
