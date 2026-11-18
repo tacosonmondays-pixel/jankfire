@@ -1084,6 +1084,8 @@ R.LEAKS = {}
 -- its size; it starts 0.4 over the floor }
 R.KEEP = {
 	{ "Dumpling, the lore NPCs session's kid, in the gym's south corner (Map.Lore)", Vector3.new(76, 0, -3.5), Vector3.new(4, 4.6, 4) },
+	{ "Princess Gravy, the lore NPCs session's cat, on top of the lounge's fridge (Map.Lore)", Vector3.new(14, 7.3, 87.2), Vector3.new(2, 3, 2.6) }, -- (from 0.1 over the fridge's top; its north face just past the bay's beam over it)
+	{ "Gremlin, the lore NPCs session's cat in a box, on the armory floor by the gun counter (Map.Lore)", Vector3.new(-68, 0, 10), Vector3.new(2, 1.8, 3.2) },
 }
 -- what must show from every spawn point besides the pads' plates and boards: { what, its name in Scenery }
 R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }
