@@ -29,7 +29,7 @@ local W = {}
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 94128644758934,
 	Backrooms = 108478509833298, Forest = 130312556142076, ArcticCabin = 112062417043410,
-	Skatepark = 136264837347101 } :: { [string]: number }
+	Skatepark = 136264837347101, Station = 128616205227124 } :: { [string]: number }
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new

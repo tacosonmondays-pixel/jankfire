@@ -392,6 +392,22 @@ H.looks.skatepark = {
 } :: Look
 H.plainSky.skatepark = true
 H.byArena.Skatepark = "skatepark"
+-- STATION (WebArena; tools/roblox/station_arena_models.py, a new medium arena): a small-town terminus at golden hour, a
+-- train waiting. A warm low sun from the south, a little west (across the teams' line), warm haze
+H.looks.station = {
+	Lighting = {
+		Ambient = Color3.fromRGB(134, 124, 114), OutdoorAmbient = Color3.fromRGB(156, 140, 124), Brightness = 2.2,
+		ExposureCompensation = -0.15, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
+		ClockTime = 14.6, GeographicLatitude = 78, ColorShift_Top = Color3.fromRGB(255, 214, 170),
+		FogColor = Color3.fromRGB(224, 206, 186), FogStart = 400, FogEnd = 2400,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.08, Haze = 1.4, Glare = 0.12, Color = Color3.fromRGB(232, 206, 176), Decay = Color3.fromRGB(180, 140, 110) },
+	Bloom = { Intensity = 0.24, Size = 22, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = -0.06, TintColor = Color3.fromRGB(255, 244, 230) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.station = true
+H.byArena.Station = "station"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)
