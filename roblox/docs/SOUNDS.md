@@ -1,3 +1,27 @@
+# Grenade cooking and the katana's new moves: eight new sounds (18 Nov 2026, place version 749)
+
+Asked for by the utility session (the owner: "allow us to cook grenades pls") and the katana session (endless
+parry, a crit return on a timed swing, a charged slash wave). All are Pro Sound Effects recordings, cut and levelled
+by `store_sounds.mjs only=...` from `store.json`; L is the analyzer loudness of the cut.
+
+| name | plays | take(s): Pro Sound Effects id, title, cut (s) | L | Volume |
+| --- | --- | --- | --- | --- |
+| `pin` | on you as you start cooking a frag or smoke (G) | 9114659833 Grenade Pull Pin 2, whole (0.33 s) | −40 | 3 (the cap) |
+| `fuse_tick` | on you, 4 times in a cooked grenade's last second | 9114071134 Dial Switch Twisting Sharp Ticking 79, 0.13–0.23; 9114068074 … Ticking 26, 0.18–0.28 | −42 / −44 | 2.6 |
+| `crit_return` | the katana batting a bullet back on a timed swing | 9119028721 Sever Metal Hit 2, 0–0.6; 9119746759 Sword Hit 3, 0–0.4 | −12 / −15 | 0.55 (1.5 dB over `parry_perfect`) |
+| `wave_cast` | the charged slash wave leaving the blade | 9120728815 Whoosh Heavy Punches 1 and 9120729339 … 7, both 0.03–0.6 | −19 | 0.65 |
+| `wave_fly` | the wave in flight, positional | 9119227910 Slow Whoosh Beefy Airy Pass By 4, 0–0.85; 9119228137 … 6, 0–0.8 | −27 | 0.73 |
+| `wave_hit` | the wave hitting a body | 9113502506 Body Hits 8, 0–0.45 | −25 | 1.16 |
+| `wave_wall` | the wave breaking on a wall: impact + short ice crackle | 9114857473 Ice Chunk Drop Onto Concrete Some Break 3, 0.38–1.1; 9114857058 … 5, 0.33–1.03 | −18 / −19 | 0.55 |
+| `edge_full` | the katana meter full, on you only | 9119076918 Shing Ringy 4, 0.03–0.6 | −16 | 0.18 |
+
+Pitch jitter 3% on all but `pin` and `edge_full`. Every cut was measured in Studio: each ends 35 dB or more below
+its peak, except `wave_wall`'s first take, which stops 21 dB down inside its crackle. `Sword Stab 1` was dropped from
+`wave_hit`: its second sound runs past the cut. Volume groups (SettingsApply `kind`): all eight fall under EFFECTS,
+since none is `gun_`/`skin_` or in WEAPON_NAMES. Checked in Edit (each clip loads), not heard in Play.
+
+---
+
 # Gunfire where it happens (17 Nov 2026, place version 737)
 
 The owner, from the live preview: "gun fire audio should be proportional to where players are". `Sfx.luau` now

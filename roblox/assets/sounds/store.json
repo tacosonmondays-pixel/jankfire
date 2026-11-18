@@ -1513,6 +1513,149 @@
     ],
     "L": -35
    }
+  ],
+  "pin": [
+   {
+    "id": 9114659833,
+    "title": "Grenade Pull Pin 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -40
+   }
+  ],
+  "fuse_tick": [
+   {
+    "id": 9114071134,
+    "title": "Dial Switch Twisting Sharp Ticking 79 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.13,
+     0.23
+    ],
+    "L": -42
+   },
+   {
+    "id": 9114068074,
+    "title": "Dial Switch Twisting Sharp Ticking 26 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     0.28
+    ],
+    "L": -44
+   }
+  ],
+  "crit_return": [
+   {
+    "id": 9119028721,
+    "title": "Sever Metal Hit 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -12
+   },
+   {
+    "id": 9119746759,
+    "title": "Sword Hit 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.4
+    ],
+    "L": -15
+   }
+  ],
+  "wave_cast": [
+   {
+    "id": 9120728815,
+    "title": "Whoosh Heavy Punches 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.6
+    ],
+    "L": -19
+   },
+   {
+    "id": 9120729339,
+    "title": "Whoosh Heavy Punches 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.6
+    ],
+    "L": -19
+   }
+  ],
+  "wave_fly": [
+   {
+    "id": 9119227910,
+    "title": "Slow Whoosh Beefy Airy Pass By 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.85
+    ],
+    "L": -27
+   },
+   {
+    "id": 9119228137,
+    "title": "Slow Whoosh Beefy Airy Pass By 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -27
+   }
+  ],
+  "wave_hit": [
+   {
+    "id": 9113502506,
+    "title": "Body Hits 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.45
+    ],
+    "L": -25
+   }
+  ],
+  "wave_wall": [
+   {
+    "id": 9114857473,
+    "title": "Ice Chunk Drop Onto Concrete Some Break 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.38,
+     1.1
+    ],
+    "L": -18
+   },
+   {
+    "id": 9114857058,
+    "title": "Ice Chunk Drop Onto Concrete Some Break 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     1.03
+    ],
+    "L": -19
+   }
+  ],
+  "edge_full": [
+   {
+    "id": 9119076918,
+    "title": "Shing Ringy 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.6
+    ],
+    "L": -16
+   }
   ]
  },
  "vol": {
@@ -1582,7 +1725,15 @@
   "pad_launch": -27,
   "ranked_fire": -25,
   "hook_empty": -31,
-  "hook_ready": -32
+  "hook_ready": -32,
+  "pin": -28,
+  "fuse_tick": -34,
+  "crit_return": -18,
+  "wave_cast": -22,
+  "wave_fly": -29,
+  "wave_hit": -23,
+  "wave_wall": -23,
+  "edge_full": -30
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -1602,6 +1753,12 @@
   "zone_lot": 0.03,
   "zone_vip": 0.03,
   "zone_lobby": 0.03,
-  "pad_launch": 0.04
+  "pad_launch": 0.04,
+  "fuse_tick": 0.03,
+  "crit_return": 0.03,
+  "wave_cast": 0.03,
+  "wave_fly": 0.03,
+  "wave_hit": 0.03,
+  "wave_wall": 0.03
  }
 }
