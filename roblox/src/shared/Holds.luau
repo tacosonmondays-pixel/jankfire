@@ -55,7 +55,7 @@ return {
 		blower = { Right = { pose = "fist", at = V(0, 0.2015, 0.06), rot = V(-1.5708, 0, 0), size = 0.85 }, Left = { pose = "wrap", at = V(0, -0.03, -0.31), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.0367, -0.0063, 0), scale = 1 },
 		cig = { Right = { pose = "fist", at = V(0, 0, 0.05), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.0391, 0.0507, 0), scale = 1 },
 		laser = { Right = { pose = "grip", at = V(0, -0.0984, 0.132), rot = V(-0.29671, 0, 0), size = 0.85 }, Left = { pose = "wrap", at = V(0, 0, -0.28), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.06, 0.1145, 0), scale = 1 },
-		bloodcross = { Right = { pose = "hand", at = V(0, 0, -0.05), rot = V(1.5708, 0, 0), size = 1 }, shift = V(-0.0987, 0.1105, 0), scale = 1 },
+		bloodcross = { Right = { pose = "hand", at = V(0, 0, -0.05), rot = V(1.5708, 0, 0), size = 1 }, shift = V(-0.05, 0.03, 0), scale = 1, tilt = V(0.13963, 0.7854, 0.43633) },
 		scythe = { Right = { pose = "fist", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.9 }, Left = { pose = "fist", at = V(0, 0, -0.45), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.02, -0.02, 0), scale = 1, tilt = V(0.69813, -0.5236, -0.17453) },
 		scythe_rifle = { Right = { pose = "fist", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.9 }, Left = { pose = "wrap", at = V(0, 0, -0.45), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.0257, 0.0556, 0), scale = 1, ads = { aimZ = 0, kind = "scope" } },
 		chicken = { Right = { pose = "grip", at = V(0, -0.142, 0.082), rot = V(-0.29671, 0, 0), size = 0.8 }, Left = { pose = "grip", at = V(0, -0.134, -0.272), rot = V(-0.13963, 0, 0), size = 0.82 }, shift = V(-0.0317, 0.0583, 0), scale = 1 },

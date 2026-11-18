@@ -68,8 +68,9 @@ end
 local function tieRope(i: Info, p: Player, a1: Attachment)
 	dropRope(i)
 	local root = (p.Character :: Model):FindFirstChild("HumanoidRootPart")
-	local hand = (p.Character :: Model):FindFirstChild("RightHand") or root
-	local a0 = hand and hand:FindFirstChildWhichIsA("Attachment")
+	-- (the hold session, 18 Nov 2026: R6 bodies too) the hand: R15's RightHand, an R6 body's Right Arm (its grip at the end)
+	local hand = (p.Character :: Model):FindFirstChild("RightHand") or (p.Character :: Model):FindFirstChild("Right Arm") or root
+	local a0 = hand and ((hand.Name == "Right Arm" and hand:FindFirstChild("RightGripAttachment")) or hand:FindFirstChildWhichIsA("Attachment"))
 	local b = Instance.new("Beam")
 	b.Name = "Rope_" .. p.UserId -- (AntiCheat reads this name: on a rope, no fly checks)
 	b.Attachment0 = a0; b.Attachment1 = a1

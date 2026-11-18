@@ -103,6 +103,35 @@ local function spot(part: BasePart, name: string): Vector3?
 	return if a and a:IsA("Attachment") then a.Position else nil
 end
 
+-- (the hold session, 18 Nov 2026; the owner: "your hand r6 or r15") a blocky R6 body has one part per arm, no hand or
+-- forearm: its hand and forearm are cut from that arm (its colour and surface), a hand a third of the arm long and a
+-- forearm of the rest, with the joints an R15 limb carries, so everything below holds them like any other
+local function r6Parts(arm: BasePart, side: string): (BasePart, BasePart)
+	local function piece(size: Vector3): Part
+		local p = Instance.new("Part")
+		p.Size = size; p.Color = arm.Color; p.Material = arm.Material; p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+		return p
+	end
+	local s = arm.Size
+	local hand = piece(Vector3.new(s.X, s.Y * 0.3, s.Z))
+	hand.Name = side .. "Hand"
+	local w = Instance.new("Attachment"); w.Name = side .. "WristRigAttachment"; w.Position = Vector3.new(0, hand.Size.Y / 2, 0); w.Parent = hand
+	local g = Instance.new("Attachment"); g.Name = side .. "GripAttachment"; g.CFrame = CFrame.Angles(-math.pi / 2, 0, 0); g.Parent = hand
+	local fore = piece(Vector3.new(s.X * 0.95, s.Y * 0.6, s.Z * 0.95))
+	fore.Name = side .. "LowerArm"
+	local fw = Instance.new("Attachment"); fw.Name = side .. "WristRigAttachment"; fw.Position = Vector3.new(0, -fore.Size.Y / 2, 0); fw.Parent = fore
+	local fe = Instance.new("Attachment"); fe.Name = side .. "ElbowRigAttachment"; fe.Position = Vector3.new(0, fore.Size.Y / 2, 0); fe.Parent = fore
+	return hand, fore
+end
+-- a body's hand and forearm for a side: its own (R15), or cut from its arm (R6)
+local function srcOf(ch: Model, side: string): (BasePart?, BasePart?)
+	local h, f = ch:FindFirstChild(side .. "Hand"), ch:FindFirstChild(side .. "LowerArm")
+	if h and f and h:IsA("BasePart") and f:IsA("BasePart") then return h, f end
+	local arm = ch:FindFirstChild(side .. " Arm")
+	if arm and arm:IsA("BasePart") then return r6Parts(arm, side) end
+	return nil, nil
+end
+
 -- a limb's own frame at a joint: its Y along the limb toward the elbow end, its X the part's X squared to that
 local function basisAt(joint: Vector3, toElbow: Vector3): CFrame
 	local y = if toElbow.Magnitude > 1e-4 then toElbow.Unit else Vector3.yAxis
@@ -197,8 +226,12 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 	local ch = Players.LocalPlayer and Players.LocalPlayer.Character
 	local rows = AvatarArms.rows(wid, skin)
 	if not ch or not rows or not ch:FindFirstChildOfClass("Humanoid") then return false end
+	local src: { [string]: { BasePart } } = {}
 	for _, side in { "Right", "Left" } do
-		if rows[side] and not (ch:FindFirstChild(side .. "Hand") and ch:FindFirstChild(side .. "LowerArm")) then return false end
+		if not rows[side] then continue end
+		local h, f = srcOf(ch, side)
+		if not h or not f then return false end
+		src[side] = { h, f }
 	end
 	local kit = AvatarArms.look() == "kit"
 	local arms = Instance.new("Model")
@@ -221,8 +254,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 	for _, side in { "Right", "Left" } do
 		local row = rows[side]
 		if not row then continue end
-		local srcHand = ch:FindFirstChild(side .. "Hand") :: BasePart
-		local srcFore = ch:FindFirstChild(side .. "LowerArm") :: BasePart
+		local srcHand, srcFore = src[side][1], src[side][2]
 		local hand, fore = limb(srcHand), limb(srcFore)
 		-- the hand keeps its shape; the forearm keeps its section (a little slimmer) and is drawn out to leave the screen
 		local f = AvatarArms.HAND * S * row.size * (scale or 1) / math.max(srcHand.Size.X, srcHand.Size.Z)
