@@ -52,10 +52,10 @@ add({ id = "sniper", slot = "primary", name = "Sniper", color = "a2457c", live =
 add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = true, gimmick = "exploding rubber chickens. shoot your own feet to rocket jump.",
 	desc = "Rubber chickens that explode. Shoot your feet to rocket jump.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "1.18/s", bar = 0.05 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = "6b7bff", live = false, gimmick = "rolls a bowling ball along the floor that knocks over everyone in its way.",
+add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = "6b7bff", live = true, gimmick = "rolls a bowling ball along the floor that knocks over everyone in its way.",
 	desc = "Rolls along the floor and bowls over everyone in the way.",
 	stats = { { label = "DAMAGE", text = "45", bar = 0.38 }, { label = "FIRE RATE", text = "0.77/s", bar = 0.03 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "bow", slot = "primary", name = "Bow", color = "c88a4a", live = false, gimmick = "",
+add({ id = "bow", slot = "primary", name = "Bow", color = "c88a4a", live = true, gimmick = "",
 	desc = "Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).",
 	stats = { { label = "DAMAGE", text = "70", bar = 0.58 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", live = true, gimmick = "bananas that bonk and slip them. misses stay on the floor as peels for 30 s.",
@@ -124,7 +124,7 @@ add({ id = "katana", slot = "melee", name = "Katana", color = "e8e8f0", live = t
 add({ id = "bread", slot = "melee", name = "Bread", color = "d9a35b", live = true, gimmick = "home runs people along your aim. smack the floor or a wall to pogo off it.",
 	desc = "A huge loaf. Home run hits. Smack the floor or a wall to pogo off it.",
 	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "REACH", text = "4.2 m", bar = 0.09 }, { label = "KNOCKBACK", text = "38 m/s", bar = 0.7 } } })
-add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live = false, gimmick = "a boomerang: it curves into the nearest enemy, then flies back to you.",
+add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live = true, gimmick = "a boomerang: it curves into the nearest enemy, then flies back to you.",
 	desc = "Thrown like a boomerang. Curves into the nearest enemy in front of it, then flies back to you. Hits on the way out and on the way back.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = true, gimmick = "fast slashes. right click: a heavy stab. from behind it's three times the hit.",
@@ -136,7 +136,7 @@ add({ id = "scythe", slot = "melee", name = "Scythe", color = "3ee6c8", live = t
 add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = true, gimmick = "point blank: shoves them straight away from you and knocks them off their feet.",
 	desc = "A big toy hand on a stick. Point blank only. Launches them and makes them slip.",
 	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "1.25/s", bar = 0.06 }, { label = "REACH", text = "1.9 m", bar = 0.06 }, { label = "KNOCKBACK", text = "55 m/s", bar = 1 } } })
-add({ id = "scales", slot = "melee", name = "Scales of Justice", color = "ffc83a", live = false, gimmick = "hits leaders, streakers and your killer up to x3. right click: a pillar of light far away.",
+add({ id = "scales", slot = "melee", name = "Scales of Justice", color = "ffc83a", live = true, gimmick = "hits leaders, streakers and your killer up to x3. right click: a pillar of light far away.",
 	desc = "Hits as hard as they deserve: leaders, streakers and your killer take up to x3. Right click summons a pillar of light on someone far away: weaker, slow to recharge, and they can step out of it.",
 	stats = { { label = "DAMAGE", text = "35", bar = 0.29 }, { label = "FIRE RATE", text = "1.67/s", bar = 0.08 }, { label = "REACH", text = "3.2 m", bar = 0.08 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
 add({ id = "water", slot = "secondary", name = "Water Pistol", color = "3fb8ff", live = true, gimmick = "every squirt that lands soaks them for 4 s: slower, and slippery underfoot.",
@@ -145,7 +145,7 @@ add({ id = "water", slot = "secondary", name = "Water Pistol", color = "3fb8ff",
 add({ id = "taser", slot = "secondary", name = "Taser", color = "e8ff3a", live = true, gimmick = "two darts on wires: a second of stun. it jumps through everyone soaked nearby. don't fire it soaked.",
 	desc = "Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don't fire it wet.",
 	stats = { { label = "DAMAGE", text = "18", bar = 0.15 }, { label = "FIRE RATE", text = "0.8/s", bar = 0.04 }, { label = "RANGE", text = "9 m", bar = 0.13 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = false, gimmick = "left click pauses them for a second, right click rewinds them 2 seconds.",
+add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = true, gimmick = "left click pauses them for a second, right click rewinds them 2 seconds.",
 	desc = "Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago. Batteries not included.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "45 m", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "",
