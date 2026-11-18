@@ -3,6 +3,9 @@
 #
 #   blender -b --factory-startup -P tools/roblox/hat_clip.py -- [--set kit] [--third 1.5] [--hat <id> ...] [gun ...]
 #
+# Writes roblox/assets/hats/clip_report.json. Named guns only update their own rows in it; no guns = every gun, the
+# report written afresh; --hat = nothing written.
+#
 # Placement is the game's own (GunHats.attach): the foot on the gun's top under the spot, `sink` into it, lifted by the
 # spot's saddle, turned by yaw / pitch, sized by s (x THIRD in third person); the googly eyes (round 13) at their own
 # height, upright and with no saddle (hat_models.eyes_seat, GunHats' seatOf). The moving bits are swept: the
@@ -174,9 +177,18 @@ def main():
         for bm in g.pieces.values(): bm.free()
     if ONLY: return
     out = os.path.join(HERE, '..', '..', 'roblox', 'assets', 'hats', 'clip_report.json')
-    json.dump([dict(zip(('gun', 'view', 'hat', 'foot_mm', 'body_mm', 'gun_mm', 'foot_on', 'body_on', 'gun_piece'), r)) for r in rows],
-              open(out, 'w'), indent=0)
-    print('WROTE', out)
+    new = [dict(zip(('gun', 'view', 'hat', 'foot_mm', 'body_mm', 'gun_mm', 'foot_on', 'body_on', 'gun_piece'), r)) for r in rows]
+    if argv and os.path.exists(out):
+        # (a gun list: those guns' rows replace theirs in the full report, in place, and new ones go on the end; the rest
+        # of the report stays. Only a run over every gun writes the report from scratch)
+        key = lambda r: (r['gun'], r['view'], r['hat'])
+        fresh = {key(r): r for r in new}
+        old = json.load(open(out))
+        merged = [fresh.pop(key(r), r) for r in old]
+        new = merged + [r for r in new if key(r) in fresh]
+        print('MERGED %d rows into the report (%d new)' % (len(rows), len(new) - len(old)))
+    json.dump(new, open(out, 'w'), indent=0)
+    print('WROTE', out, len(new), 'rows')
 
 
 if __name__ == '__main__':
