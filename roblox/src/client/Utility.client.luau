@@ -293,6 +293,16 @@ local CLIPS = {
 		K(0, 0, 0.0, -0.42, 0, 0, 0), K(0.1, -0.06, 0.34, -0.66, -0.7, 0, 0), K(0.18, -0.25, 0.1, -0.8, -0.3, 0, 0.1),
 		K(0.46, -0.55, -1.4, -0.8, 0.5, 0, 0.2) },
 		cam = { { 0, 0, 0 }, { 0.1, 0.012, 0 }, { 0.25, 0, 0 } } },
+	-- cooking a grenade (Items.COOK): up in front, a twist that pulls the pin (0.13), then up and back by your shoulder
+	-- where it's held for as long as G is (the clip's last key holds); cookThrow lets it go from there (0.03 s)
+	cook = { dur = 60, out = 59.9, release = 1e9, inT = 0.04, keys = {
+		K(0, -0.85, -1.35, -0.9, 0.6, 0.3, 0.4), K(0.08, -0.62, -0.66, -1.15, 0.2, 0.3, 0.3), K(0.13, -0.6, -0.6, -1.12, 0.25, 0.3, -0.25),
+		K(0.2, -0.64, -0.64, -1.14, 0.2, 0.3, 0.35), K(0.36, -0.98, -0.34, -0.98, 0.86, 0.4, 0.56), K(0.5, -0.95, -0.36, -1.0, 0.84, 0.4, 0.55) },
+		cam = { { 0, 0, 0 }, { 0.13, -0.008, 0 }, { 0.3, 0, 0 } } },
+	cookThrow = { dur = 0.45, out = 0.27, release = 0.03, inT = 0.001, keys = {
+		K(0, -0.95, -0.36, -1.0, 0.84, 0.4, 0.55), K(0.03, -0.45, -0.36, -1.75, -0.5, 0.15, 0.1),
+		K(0.1, -0.22, -0.78, -2.0, -1.05, 0.05, -0.1), K(0.23, -0.28, -1.5, -1.5, -0.9, 0.0, -0.2), K(0.45, -0.8, -1.6, -1.0, 0.4, 0.2, 0.3) },
+		cam = { { 0, 0, 0 }, { 0.05, -0.03, -0.015 }, { 0.23, 0, 0 } } },
 }
 local function hermite(p0: any, p1: any, p2: any, p3: any, t0: number, t1: number, t2: number, t3: number, u: number): any
 	local span = t2 - t1
@@ -351,10 +361,10 @@ local function dropHand()
 	h.model:Destroy()
 	if h.own then h.own:Destroy() end
 end
-local function startHand(id: string)
+local function startHand(id: string, clipName: string?)
 	dropHand()
 	if thirdPerson() or not VM.model then return end
-	local clip = CLIPS[id] or CLIPS.throw
+	local clip = CLIPS[clipName or id] or CLIPS.throw
 	if id == "nvg" then return end -- (the goggles go on your head, not in your hand: the hand that puts them on is "goggles")
 	local m = itemModel(id)
 	m:ScaleTo(FP_K * (FP_SIZE[id] or 1))
@@ -424,6 +434,8 @@ local function releasePoint(): Vector3?
 	return h.model:GetPivot().Position
 end
 
+-- (what the rest of the script calls in the cook, camera and wand blocks below: the main chunk has a 200 local limit)
+local X = {} :: any
 -- ---------------------------------------------------------------- pressing G
 local lastUse = -math.huge
 local toggleGoggles: () -> () -- (the goggles below)
@@ -445,6 +457,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	if me:GetAttribute("Trap") then Sfx.play("blub", nil, 0.6); Hud.callout("you are in a bubble", 0.7); return end
 	if it.id == "nvg" then toggleGoggles(); return end
 	if it.id == "radar" then radarHold(true); return end
+	if X.cooking() then X.cookRelease(); return end -- (a cooked grenade whose key-up was lost: this press throws it)
 	local t = os.clock()
 	-- (training, ItemFree: only the short training gap between two presses)
 	local useGap = if me:GetAttribute("ItemFree") == true then Items.SPAM_FREE_CLIENT else Items.SPAM_CLIENT
@@ -492,6 +505,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	end
 	lastUse = t
 	pend = { n = n - 1, t = t }
+	if X.cooks(it.id) then X.cookStart(it.id); return end -- (a grenade: the pin comes out, G up throws it)
 	-- from your eye (the camera itself in first person, so it leaves from under the crosshair), along your look
 	local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
 	ItemR:FireServer(it.id, eye, camera.CFrame.LookVector)
@@ -608,6 +622,7 @@ local function addFlying(m: any)
 		fuse = if type(m.fuse) == "number" then m.fuse else w.fuse, model = model,
 		axis = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5).Unit, ang = 0, off = Vector3.zero, mine = mine,
 		lamp = model:FindFirstChild("lamp", true) :: BasePart? }
+	if X.pinParts then for _, q in X.pinParts(model) do q.Transparency = 1 end end -- (thrown: the pin's out)
 	-- yours leaves from your hand and slides onto the server's line within a moment
 	local rel = if mine then releasePoint() else nil
 	if rel then vis.off = rel - m.p end
@@ -1496,6 +1511,7 @@ radarHold = function(on: boolean)
 end
 ;(require(script.Parent:WaitForChild("Keys")) :: any).ended(function(io: InputObject)
 	if radarOn and require(script.Parent:WaitForChild("Binds")).is("item", io) then radarHold(false) end
+	if X.cooking() and require(script.Parent:WaitForChild("Binds")).is("item", io) then X.cookRelease() end -- (a cooked grenade goes)
 end)
 local function radarStep()
 	if not radarOn then return end
@@ -1617,8 +1633,122 @@ do
 	end
 end
 
+-- ---------------------------------------------------------------- cooking a grenade (Items.COOK)
+-- G down with the frag or the smoke bomb pulls the pin (the server starts the fuse on its own clock), G up throws it
+-- with what's left. a ring of ticks round the crosshair drains while you hold it (warm in the last second, with four
+-- ticks you hear); held to the end it goes off in your hand: the server says so ("cookx"). others hear the pin come out
+-- and see it held up (ThirdPerson's "cook" pose); a quick tap throws it as it always did
+do
+local CK = Items.COOK
+local cooking: { id: string, t0: number, total: number, ticks: number }? = nil
+local N, RAD = 28, 22
+local WARM = Color3.fromRGB(255, 176, 92)
+local ring = T.new("Frame", { Name = "CookRing", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(2 * RAD + 10, 2 * RAD + 10), Visible = false, ZIndex = 5 }, overlay)
+local ticks: { Frame } = {}
+for i = 1, N do
+	local a = (i - 1) / N * math.pi * 2
+	local tk = T.new("Frame", { Name = "T" .. i, BorderSizePixel = 0, BackgroundColor3 = T.TEXT, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, math.sin(a) * RAD, 0.5, -math.cos(a) * RAD), Size = UDim2.fromOffset(2, 6), Rotation = math.deg(a), ZIndex = 5 }, ring)
+	T.corner(tk, 1)
+	local sk = Instance.new("UIStroke"); sk.Color = Color3.new(0, 0, 0); sk.Transparency = 0.55; sk.Thickness = 1; sk.Parent = tk
+	ticks[i] = tk
+end
+-- the pin and its ring on a grenade model (they're out once it's cooking or thrown)
+local function pinParts(m: Instance): { BasePart }
+	local out = {}
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and (string.match(d.Name, "^pin") or string.match(d.Name, "^ring")) then table.insert(out, d) end
+	end
+	return out
+end
+X.pinParts = pinParts
+X.cooks = function(id: string): boolean return CK.ids[id] == true and L[id] ~= nil and L[id].proj ~= nil end
+X.cooking = function(): boolean return cooking ~= nil end
+X.cookStart = function(id: string)
+	local w = Items.PROJ[L[id].proj :: string]
+	local ck = { id = id, t0 = os.clock(), total = CK.grace + w.fuse, ticks = 0 }
+	cooking = ck
+	ItemR:FireServer("cook", id)
+	Sfx.play("pin")
+	startHand(id, "cook")
+	local h = hand
+	if h and h.id == id then
+		h.extra = { cook = true, out = false, pins = pinParts(h.model), lamp = h.model:FindFirstChild("lamp", true), t0 = ck.t0, total = ck.total }
+	end
+	handStep()
+end
+X.cookRelease = function()
+	local ck = cooking
+	if not ck then return end
+	cooking = nil
+	ring.Visible = false
+	local _, _, root = myChar()
+	if not root then return end
+	local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
+	ItemR:FireServer(ck.id, eye, camera.CFrame.LookVector)
+	if os.clock() - ck.t0 < CK.grace then
+		startHand(ck.id) -- (a tap: the throw as it always was)
+	else
+		startHand(ck.id, "cookThrow") -- (from where it was held up: the snap forward)
+		local h = hand
+		if h then h.extra = { cook = true, out = true, pins = pinParts(h.model) } end
+	end
+	handStep()
+	Sfx.play("swing")
+end
+-- the hand holding it: the pin comes out at 0.13 s, the lamp on top blinks faster as the fuse runs down
+X.cookHand = function(h: any, t: number)
+	local e = h.extra
+	if e.out or t >= 0.13 then for _, q in e.pins do q.Transparency = 1 end end
+	local lamp = e.lamp
+	if not e.out and lamp and lamp:IsA("BasePart") then
+		local left = e.total - (os.clock() - e.t0)
+		local hz = if left < 0.6 then 12 elseif left < 1.2 then 6 else 3
+		lamp.Transparency = if t < 0.13 or math.floor(os.clock() * hz * 2) % 2 == 0 then 0 else 0.85
+	end
+end
+-- the ring: drains clockwise from the top over the whole fuse; the last second warm, with a tick every quarter
+X.cookStep = function()
+	local ck = cooking
+	if not ck then
+		if ring.Visible then ring.Visible = false end
+		return
+	end
+	local el = os.clock() - ck.t0
+	local _, _, root = myChar()
+	if not root or el > ck.total + 1.5 then cooking = nil; ring.Visible = false; return end -- (the server's "cookx" normally ends it first)
+	local left = math.max(0, ck.total - el)
+	ring.Visible = not menuOpen()
+	local lit = math.ceil(left / ck.total * N)
+	local col = if left < 1 then WARM else T.TEXT
+	for i, tk in ticks do
+		tk.BackgroundColor3 = col
+		tk.BackgroundTransparency = if i > N - lit then 0 else 0.82
+	end
+	if left > 0 and left < 1 then
+		local want = math.min(4, math.floor((1 - left) * 4) + 1)
+		while ck.ticks < want do ck.ticks += 1; Sfx.play("fuse_tick") end
+	end
+end
+-- the server: someone pulled a pin (you hear theirs where they stand); a cooked grenade is over (it went off in the
+-- hand, was dropped by a death, went with you into the hub, or the server said no)
+X.onCook = function(m: any)
+	if m.o == me.UserId then return end
+	local at = middleOf(if typeof(m.model) == "Instance" then m.model else nil)
+	if at then Sfx.play("pin", at) end
+end
+X.onCookEnd = function(m: any)
+	if m.o ~= me.UserId then return end
+	cooking = nil
+	ring.Visible = false
+	if m.why == "no" then pend = nil end
+	local h = hand
+	if h and h.extra and h.extra.cook and not h.extra.out then dropHand() end
+end
+end
+
 -- (what the rest of the script calls in the camera and wand blocks below: the main chunk has a 200 local limit)
-local X = {} :: any
 -- ---------------------------------------------------------------- the instant camera (web public/js/photo.js)
 do
 -- nobody uploads a picture: the server says where a photo was taken (the spot, which way it looked) and every client
@@ -1995,6 +2125,7 @@ local function laptopStep(h: Hand, t: number)
 	end
 end
 extraStep = function(h: Hand, t: number)
+	if h.extra.cook then X.cookHand(h, t); return end
 	if h.id == "print" then X.printStep(h, t) elseif h.id == "wand" then wandStep(h, t) elseif h.id == "laptop" then laptopStep(h, t) end
 end
 
@@ -2191,6 +2322,8 @@ local function onFx(m: any)
 	local k = m.k
 	if k == "ps" and m.w == "soap" then X.addSoap(m)
 	elseif k == "ps" then addFlying(m)
+	elseif k == "cook" then X.onCook(m)
+	elseif k == "cookx" then X.onCookEnd(m)
 	elseif k == "pb" then
 		local v = if type(m.id) == "number" then flying[m.id] else nil
 		if v and typeof(m.p) == "Vector3" and typeof(m.v) == "Vector3" then
@@ -2285,5 +2418,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 	X.thumbStep()
 	X.soapStep()
 	X.trapStep(dt)
+	X.cookStep()
 	hudStep()
 end)

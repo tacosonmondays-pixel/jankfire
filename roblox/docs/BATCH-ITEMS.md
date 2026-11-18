@@ -85,7 +85,7 @@ drift. Blast hits, heals and blocks are never reported by a client.
 | --- | --- | --- | --- | --- |
 | popper shove on the Stand, 8 studs ahead | 50 m/s along you -> them + 12 up, no damage | (0, 45.2, -149.7) studs/s | **(0, 43.7, -135.1)** at its first physics step (one frame of gravity, and the floor's grip on a standing dummy) | ok |
 | popper kick on you | 17 m/s back along your look + 5 up | (0, 15, 51) | **(0, 13.7, 50.8)** (one frame of gravity and friction) | ok |
-| reverse card | for 3 s every hit on you goes back | | the Plinker's burst while the card was up: the **Plinker** took the 7, credited to you, "reflect" fx; its bursts after the 3 s hit you again (13, 7) | ok |
+| reverse card | for 3 s every hit on you goes back (1.8 s since 18 Nov: the nerf below) | | the Plinker's burst while the card was up: the **Plinker** took the 7, credited to you, "reflect" fx; its bursts after the 3 s hit you again (13, 7) | ok |
 | duck flight | homes on the nearest enemy ahead | | thrown at 0.05 s, homing on the Stand at once, stuck at **0.25 s** | ok |
 | duck hole | opens 0.3 s after sticking, 3 s, then pops | pops 3.55 s after the throw | opened on the Stand (age -0.30), popped at **3.55 s** | ok |
 | duck end blast | 45 x f (f = 1 in the middle) | 45 on the Stand it's stuck to | **45** | ok |
@@ -99,7 +99,7 @@ drift. Blast hits, heals and blocks are never reported by a client.
   1.5 m), 9 m plus a speed allowance, against where each target is and was a moment ago (lag), in clear sight. Each gets
   50 m/s along you -> them (feet to feet) + 12 up, no damage, and is tagged (a fall is yours). Your own kick back
   (17 m/s back along your look + 5 up) is your client's, like the web game.
-- **Reverse Card.** 3 s; `Fight.hurt` asks `Fight.reflects` after the dome check and swaps attacker and victim (the
+- **Reverse Card.** 3 s (cut to **1.8 s** on 18 Nov, the owner's nerf); `Fight.hurt` asks `Fight.reflects` after the dome check and swaps attacker and victim (the
   shove mirrored in x and z), so every hit that goes through `hurt` comes back: bullets, swings, blasts with a
   thrower, popper shoves, the duck's end blast. Ends on death.
 - **Rubber Duck.** Homes (25 m, 60 degree cone, 3 rad/s, in sight, faster than 4 m/s), sticks to whoever it touches;
@@ -296,3 +296,38 @@ Play test (real G presses, solo): in training, Rubber Duck 4 presses 0.3 s apart
 back), Shield Bubble 3 presses = 3 domes (holds 1, 28 s), Frag 5 presses 0.25 s apart = 5 frags (holds 2); `ItemN`
 stayed full, `ItemAt` 0, the plate's pips full. Back in the hub `ItemFree` was gone. In a one-player match: Frag 4
 presses 0.55 s apart = 2 frags, then `ItemN` 0, the 18 s clock running and the plate filling from empty: as before.
+
+### Cooking grenades, and a shorter Reverse Card (owner's asks, place version 756)
+
+The owner: "allow us to cook grenades pls". The frag and the smoke bomb cook; the Rubber Duck (it homes and sticks) and
+the Pop Quiz's calculator (it hits) stay as they were.
+
+- **Hold G** (your item key: Binds "item", so a pad's LB and the phone's item button too) to pull the pin; **let go** to
+  throw. The server notes when the pin came out (its own clock) and throws with what is left of the fuse: the first
+  0.2 s are free, so a tap throws with the whole fuse as before (`Items.COOK`: grace 0.2, min 0.05).
+- **Too long:** past 0.2 + the fuse (2.4 s for the frag, 1.5 s for the smoke bomb) it goes off in your hand. The frag's
+  blast hurts you like anyone (`explode(..., held)`): your own kill, nobody's credit. The smoke bomb just smokes.
+- **Killed with the pin out:** it drops where you fell with what is left of its fuse, still yours. Carried into the hub,
+  it's gone.
+- **On screen:** a ring of 28 ticks round the crosshair drains clockwise from the top over the whole fuse, warm in the
+  last second (no text). Your hand pulls the pin (it and its ring disappear), holds it up by your shoulder with the lamp
+  blinking faster, and snaps it forward on release. Thrown grenades fly without their pin now.
+- **Others:** hear the pin where you stand and see your left hand up at the top of the throw's wind-up with the
+  grenade, pin out (`ThirdPerson` item kind "cook", from ItemFx "cook" / "cookx").
+- **Sounds:** `pin` as you press, `fuse_tick` four times in the last second: recordings from the sound session.
+- Same charges and cooldowns everywhere (the charge is spent at the pin pull); free in training like everything else.
+
+Play test, real G presses (solo, training):
+
+| check | expected | result | |
+| --- | --- | --- | --- |
+| cooked throw, airburst | blows in the air | held 1.87 s: thrown with **0.53 s** left, burst **5.3 studs over the floor**, no bounce | ok |
+| cooked throw (first try) | fuse = 2.2 - (held - 0.2) | held 1.26 s: thrown with 1.14 s, went off 1.15 s later | ok |
+| tap | whole fuse | thrown with **2.2 s** | ok |
+| held 3 s | goes off in hand at 2.4 s | "cookx" boom at **2.40 s**, 102 damage from yourself, dead, kills still 0 | ok |
+| let go on the last frame | thrown with the minimum | let go ~17 ms before the end: thrown with **0.05 s**, burst 4.7 studs ahead; no damage to you (your own frag only shoves you, as always) | ok |
+
+![the fuse ring round the crosshair while a frag is held](items/cook-ring.jpg)
+
+**Reverse Card** ("can you nerf duration of reverse card"): **3 s -> 1.8 s** (40% off), charges 1 and recharge 22 s
+kept. Play: the card's broadcast says 1.8 s and the server's clock ran out on time.

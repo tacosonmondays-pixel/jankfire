@@ -170,8 +170,8 @@ add({ id = "smoke", slot = "utility", name = "Smoke Bomb", color = "9aa0a8", liv
 add({ id = "popper", slot = "utility", name = "Party Popper", color = "ff6bd0", live = true, gimmick = "a confetti blast that shoves everyone in front of you away, hard, and throws you backwards. no damage: all ledges.",
 	desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes.",
 	stats = st("CHARGES", "2", 1, "RECHARGE", "9 s each", 0.21, "DAMAGE", "0", 0.02, "SHOVE", "9 m cone", 0.6) })
-add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = true, gimmick = "for 3 s every bullet, swing, blast and shove aimed at you goes back to whoever sent it.",
-	desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.",
+add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = true, gimmick = "for 1.8 s every bullet, swing, blast and shove aimed at you goes back to whoever sent it.",
+	desc = "For 1.8 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.",
 	stats = st("CHARGES", "1", 0.5, "RECHARGE", "22 s", 0.52, "LASTS", "3 s", 0.2, "SENDS BACK", "everything", 1) })
 add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", live = true, gimmick = "G blows 4 soap bubbles. the first enemy one touches floats off in a giant bubble for 5 s: no moving, no shooting. any hit pops it. over the void, that's your kill.",
 	desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s (no moving, no shooting), then pops and drops them. Over the void, that's your kill.",

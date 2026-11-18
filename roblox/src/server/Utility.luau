@@ -43,7 +43,9 @@ type St = { item: string, nextItem: string?, ic: Items.Ic?, save: { [string]: It
 	-- the instant camera: the photo you're holding (where you stood, which way you looked)
 	photo: { n: number, pos: Vector3, yaw: number, pitch: number }?,
 	-- the bubble wand: sealed in (by whom, till when, the float, where the bubble has your feet now, the lag slack)
-	trap: { by: Fighter?, untilT: number, v: Vector3, at: Vector3, atT: number, slack: number, ack: boolean, off: boolean }?, trapSafe: number }
+	trap: { by: Fighter?, untilT: number, v: Vector3, at: Vector3, atT: number, slack: number, ack: boolean, off: boolean }?, trapSafe: number,
+	-- a grenade being cooked: which item, its thrown kind, when the pin came out (the server's clock)
+	cook: { id: string, k: string, t0: number }? }
 local st: { [Fighter]: St } = {}
 local function stateOf(f: Fighter): St
 	local s = st[f]
@@ -138,8 +140,9 @@ local function cast(o: Vector3, r: number, move: Vector3): (number?, Vector3?)
 end
 
 -- the frag's blast (web room.js explodeAt): everyone whose centre is in the radius, walls or not (web rule). owner =
--- the thrower (no damage to themselves, the whole shove); a thrower who has left: nobody's, judged from the blast point
-local function explode(at: Vector3, owner: Fighter?, wid: string, w: Items.Proj)
+-- the thrower (no damage to themselves, the whole shove); a thrower who has left: nobody's, judged from the blast point.
+-- held = it went off in the owner's hand (cooked too long): they take the blast like anyone, as their own kill
+local function explode(at: Vector3, owner: Fighter?, wid: string, w: Items.Proj, held: boolean?)
 	ItemFx:FireAllClients({ k = "boom", w = wid, p = at, r = w.radius })
 	local R = w.radius :: number
 	for _, t in table.clone(Fight.all) do
@@ -152,7 +155,7 @@ local function explode(at: Vector3, owner: Fighter?, wid: string, w: Items.Proj)
 		if dist > R then continue end
 		local f = 1 - dist / R
 		local dir = if dist > 0.1 * S then to.Unit else Vector3.yAxis
-		local self = owner ~= nil and t == owner
+		local self = owner ~= nil and t == owner and not held
 		local k = (w.kb :: number) * (0.4 + 0.6 * f)
 		local kb = dir * k + Vector3.new(0, (w.kbUp :: number) * f, 0)
 		local dmg = if self then 0 else (w.dmg :: number) * (0.3 + 0.7 * f)
@@ -175,19 +178,20 @@ local function smokeAt(at: Vector3)
 	ItemFx:FireAllClients({ k = "smoke", id = cl.id, p = cl.p, r = cl.r, left = sm.dur })
 end
 
-local function throw(f: Fighter, k: string, o: Vector3, d: Vector3, vel: Vector3)
+local function throw(f: Fighter, k: string, o: Vector3, d: Vector3, vel: Vector3, fuse: number?)
 	local w = Items.PROJ[k]
 	local p0, v0 = Items.launch(k, o, d, vel)
 	-- (not out through a wall the throw point is pressed against: start where the hand is clear)
 	local gap = p0 - o
-	local hd = cast(o, w.r, gap)
+	local hd = if gap.Magnitude > 1e-4 then cast(o, w.r, gap) else nil
 	if hd then p0 = o + gap.Unit * math.max(0, hd - 0.05) end
 	nextId += 1
+	local fz = fuse or w.fuse -- (a cooked one: only what's left of it)
 	local pr: Pr = { id = nextId, k = k, owner = f, uid = uidOf(f), p = p0, v = v0, r = w.r, bounce = w.bounce, grav = w.grav,
-		born = now(), fuse = w.fuse, life = w.life, syncT = 0, hsync = 0 }
+		born = now(), fuse = fz, life = math.max(w.life - (w.fuse - fz), fz + 0.5), syncT = 0, hsync = 0 }
 	table.insert(projs, pr)
 	while #projs > MAX_PROJ do dropProj(projs[1]) end
-	ItemFx:FireAllClients({ k = "ps", id = pr.id, w = k, p = p0, v = v0, o = pr.uid, fuse = w.fuse })
+	ItemFx:FireAllClients({ k = "ps", id = pr.id, w = k, p = p0, v = v0, o = pr.uid, fuse = fz })
 end
 
 -- ------------------------------------------------------------------ the rubber duck (room.js duckFly / makeHole / tickHoles)
@@ -1166,6 +1170,87 @@ local function tickTraps()
 	end
 end
 
+-- ------------------------------------------------------------------ cooking a grenade (Items.COOK)
+-- G down ("cook", the item): the same checks and the same charge as a throw, spent now; the pin is out and the fuse
+-- runs from this moment on the server's own clock. everyone hears the pin and sees it held up ("cook")
+local function onCook(f: Fighter, id: unknown)
+	local p = f.ref :: Player
+	local s = stateOf(f)
+	if type(id) ~= "string" or id ~= s.item or not Items.COOK.ids[id] or s.cook then return end
+	local it = L[id]
+	local c = charges(s)
+	local t = now()
+	local fr = free(f)
+	if fr then Items.refill(c) end
+	if not f.alive or p:GetAttribute("Zone") == "hub" or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
+		or s.quiz or s.trap or not Fight.eye(f) then
+		publish(f)
+		ItemFx:FireClient(p, { k = "cookx", o = p.UserId, why = "no" }) -- (your screen drops the ring and the hand)
+		return
+	end
+	s.useT = t
+	if not fr then Items.spend(c, t) end
+	s.cook = { id = id, k = it.proj :: string, t0 = t }
+	publish(f)
+	ItemFx:FireAllClients({ k = "cook", o = p.UserId, model = Fight.model(f), w = id, left = Items.COOK.grace + Items.PROJ[it.proj :: string].fuse })
+end
+-- what's left of a cooked grenade's fuse right now
+local function cookLeft(ck: { id: string, k: string, t0: number }): number
+	return Items.PROJ[ck.k].fuse - math.max(0, now() - ck.t0 - Items.COOK.grace)
+end
+-- G up: it leaves your hand like any throw, with only what's left of its fuse (at least COOK.min)
+local function cookThrow(f: Fighter, i: unknown, o: unknown, d: unknown)
+	local s = stateOf(f)
+	local ck = s.cook
+	if not ck or i ~= ck.id then return end
+	if not f.alive then return end
+	local p = f.ref :: Player
+	if p:GetAttribute("Zone") == "hub" then -- (carried into the weapons-free hub: it's gone, nothing happens)
+		s.cook = nil
+		ItemFx:FireAllClients({ k = "cookx", o = p.UserId, why = "gone" })
+		return
+	end
+	local eye = Fight.eye(f)
+	if not eye then return end
+	s.cook = nil
+	local from = eye
+	if finiteV(o) then
+		local off = (o :: Vector3) - eye
+		if off.Magnitude <= Items.EYE and (off.Magnitude < 0.05 or not Fight.castMap(eye, off.Unit, off.Magnitude)) then from = o :: Vector3 end
+	end
+	local dir = if finiteV(d) and (d :: Vector3).Magnitude > 1e-3 then (d :: Vector3).Unit else Vector3.new(0, 0, -1)
+	throw(f, ck.k, from, dir, throwVel(f), math.max(Items.COOK.min, cookLeft(ck)))
+end
+-- held past its fuse: it goes off in your hand (the frag hurts you like anyone: your own kill; the smoke just smokes)
+local function blowInHand(f: Fighter)
+	local s = stateOf(f)
+	local ck = s.cook
+	if not ck then return end
+	s.cook = nil
+	local uid = uidOf(f)
+	if f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" then
+		ItemFx:FireAllClients({ k = "cookx", o = uid, why = "gone" })
+		return
+	end
+	local eye = Fight.eye(f)
+	local feet = Fight.feet(f)
+	local at = if eye then eye - Vector3.new(0, 0.35 * S, 0) elseif feet then feet + Vector3.new(0, Items.CENTRE, 0) else nil
+	ItemFx:FireAllClients({ k = "cookx", o = uid, why = "boom" })
+	if not at then return end
+	if ck.k == "frag" then explode(at, f, "frag", Items.PROJ.frag, true)
+	elseif ck.k == "smokegren" then smokeAt(at) end
+end
+-- killed with the pin out: it drops where you fell, with what's left of its fuse (still yours)
+local function dropCook(f: Fighter)
+	local s = st[f]
+	local ck = s and s.cook
+	if not s or not ck then return end
+	s.cook = nil
+	ItemFx:FireAllClients({ k = "cookx", o = uidOf(f), why = "dropped" })
+	local feet = Fight.feet(f)
+	if feet then throw(f, ck.k, feet + Vector3.new(0, Items.CENTRE, 0), Vector3.zero, Vector3.zero, math.max(Items.COOK.min, cookLeft(ck))) end
+end
+
 local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if not spendMsg(p) then return end
 	local f = Fight.byPlayer[p]
@@ -1185,8 +1270,10 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 			return
 		end
 	end
+	if i == "cook" then onCook(f, o); return end -- (G down with a grenade: the pin comes out)
 	if type(i) ~= "string" or not table.find(Items.ORDER, i) then return end
 	local s = stateOf(f)
+	if s.cook then cookThrow(f, i, o, d); return end -- (G up with the pin out: thrown with what's left of its fuse)
 	local c = charges(s)
 	local t = now()
 	local it = L[i]
@@ -1276,6 +1363,7 @@ local function tick(dt: number)
 	-- the medkit: 26 HP a second until the 45 is spent, never past 100 (web tickItems: it doesn't eat overheal, and
 	-- the heal keeps draining while you're full)
 	for f, s in st do
+		if s.cook and t - s.cook.t0 >= Items.COOK.grace + Items.PROJ[s.cook.k].fuse then blowInHand(f) end
 		if s.heal > 0 then
 			if not f.alive then s.heal = 0; continue end
 			local a = math.min(s.heal, (L.medkit.healRate :: number) * dt)
@@ -1320,6 +1408,7 @@ function Utility.init(fight: any)
 	-- a new life: the item you picked meanwhile, full charges (a gadget keeps its own), no heal left over
 	fight.onSpawn(function(f: Fighter)
 		local s = stateOf(f)
+		if s.cook then s.cook = nil; ItemFx:FireAllClients({ k = "cookx", o = uidOf(f), why = "gone" }) end
 		if s.nextItem then s.item, s.nextItem = s.nextItem, nil end
 		s.ic = nil
 		s.heal = 0
@@ -1338,6 +1427,7 @@ function Utility.init(fight: any)
 	fight.onKill(function(info: any)
 		local s = st[info.v]
 		if s then
+			if s.cook then dropCook(info.v) end
 			s.heal = 0
 			if s.trap then popTrap(info.v, "dead") end
 			if s.quiz then endQuiz(info.v, -1, true) end
@@ -1393,6 +1483,7 @@ function Utility.test(f: Fighter, id: string?): any
 	if id and L[id] then s.item, s.nextItem, s.ic = id, nil, Items.fresh(id); publish(f) end
 	local c = charges(s)
 	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp, free = free(f),
+		cook = if s.cook then now() - s.cook.t0 else nil, cookLeft = if s.cook then cookLeft(s.cook) else nil,
 		reverse = math.max(0, s.reverseUntil - now()), nv = s.nvOn, quiz = s.quiz ~= nil, invuln = math.max(0, s.invulnUntil - now()),
 		ads = math.max(0, s.adsUntil - now()),
 		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil,

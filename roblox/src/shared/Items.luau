@@ -20,6 +20,12 @@ Items.SPAM_CLIENT = 0.42
 -- 17 Nov 2026: "training room should also have no cooldown on stuff since its for training")
 Items.SPAM_FREE = 0.2
 Items.SPAM_FREE_CLIENT = 0.22
+-- COOKING (the owner, 18 Nov 2026: "allow us to cook grenades pls"): the items with a fuse that only counts down (the
+-- frag, the smoke bomb; the duck homes and sticks, the calculator hits: those stay as they are). G down pulls the pin
+-- and the fuse starts on the server's clock; G up throws it with what is left. the first `grace` s are free, so a
+-- tap throws with the whole fuse as before; past grace + fuse it goes off in your hand (the frag's blast hurts you
+-- too: your own kill, nobody's credit). a cooked throw keeps at least `min` s of fuse
+Items.COOK = { grace = 0.2, min = 0.05, ids = { frag = true, smoke = true } :: { [string]: boolean } }
 Items.EYE = 4 * S -- a claimed throw point must be this close to the server's eye (and in clear sight of it), else the eye is used
 Items.SWAP = 5.25 -- s into a life a new pick still lands at once (web selectItem: 5 s + a round trip, max 1 s)
 Items.THROW = 0.7 * S -- thrown items leave this far along your look from the throw point (web makeProj call)
@@ -51,7 +57,7 @@ Items.list = {
 	popper = { id = "popper", name = "Party Popper", color = hex("ff6bd0"), charges = 2, recharge = 9, live = true,
 		desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes." },
 	reverse = { id = "reverse", name = "Reverse Card", color = hex("ff3b3b"), charges = 1, recharge = 22, live = true,
-		desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it." },
+		desc = "For 1.8 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it." },
 	wand = { id = "wand", name = "Bubble Wand", color = hex("9fe8ff"), charges = 2, recharge = 32, carry = true, live = true,
 		desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops and drops them. Over the void, that's your kill." },
 	camera = { id = "camera", name = "Instant Camera", color = hex("c9a7ff"), charges = 1, recharge = 42, carry = true, live = true,
@@ -105,8 +111,9 @@ Items.CENTRE = 0.9 * S -- a person's centre over their feet (web room.js center)
 -- angle that close: 1.5 m), in sight, gets kb along you -> them (feet to feet) + kbUp; you fly back recoil along
 -- your look + lift up. no damage. the cone is judged against where each target is and was a moment ago (lag)
 Items.POPPER = { range = 9 * S, cone = 0.6, close = 1.5 * S, kb = 50 * S, kbUp = 12 * S, recoil = 17 * S, lift = 5 * S }
--- the reverse card (web WEAPONS.reverse :242): for dur s every hit aimed at you goes back to whoever sent it
-Items.REVERSE = { dur = 3 }
+-- the reverse card (web WEAPONS.reverse :242): for dur s every hit aimed at you goes back to whoever sent it. the web
+-- game's 3 s cut by 40% (the owner, 18 Nov 2026: "can you nerf duration of reverse card"); charges and recharge as the web
+Items.REVERSE = { dur = 1.8 }
 -- the laptop (web ADS :558, server/ads.js): the enemy nearest your aim (their feet + aimUp) within range and the cone,
 -- nothing solid closer than slack short of them; n pop-ups for dur s (sure of them come back once), then safe s before
 -- the next laptop can reach them

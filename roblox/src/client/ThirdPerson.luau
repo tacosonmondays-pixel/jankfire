@@ -786,6 +786,13 @@ Remotes:WaitForChild("ItemFx").OnClientEvent:Connect(function(f: any)
 			-- (this arrives as the item leaves the hand: the arm starts from the top of its wind-up and swings through)
 			if r.item then r.item.t = TP.T.throw[2].t end
 		elseif w == "soap" then itemRig(r, "wand", "use") end
+	elseif f.k == "cook" then -- (a grenade held up with its pin out, until it's thrown, goes off or drops: Utility's cooking)
+		itemRig(r, if f.w == "smoke" then "smoke" else "frag", "cook")
+	elseif f.k == "cookx" then
+		if r.item and r.item.kind == "cook" then
+			if r.item.model then r.item.model:Destroy() end
+			r.item = nil
+		end
 	elseif USED[f.k] then
 		itemRig(r, USED[f.k], "use")
 	end
@@ -1187,6 +1194,26 @@ local function stepRig(r: Rig, dt: number, now: number)
 				itemMix = smoothstep(it.t / 0.08) * (1 - smoothstep((it.t - (last - 0.2)) / 0.2))
 				handL = if handL then handL:Lerp(hand, itemMix) else hand
 				if it.model then it.model:Destroy(); it.model = nil end -- (the thrown item is drawn in flight by the items client)
+			end
+		elseif it.kind == "cook" then
+			-- a grenade being cooked: up at the top of the throw's wind-up with its pin out, held there until it's thrown
+			-- (the throw's "ps" takes over from that key), goes off or drops ("cookx"); never longer than 4 s
+			if it.t >= 4 then
+				if it.model then it.model:Destroy() end
+				r.item = nil
+			else
+				local F = CF(L.S) * Q * CF(T.throw[2].p * r.u)
+				local hand = F * L.gripInv
+				itemMix = smoothstep(it.t / 0.14)
+				handL = if handL then handL:Lerp(hand, itemMix) else hand
+				if not it.model then
+					it.model = itemModel(r, it.id)
+					if it.model then
+						for _, d in it.model:GetDescendants() do
+							if d:IsA("BasePart") and (string.match(d.Name, "^pin") or string.match(d.Name, "^ring")) then d.Transparency = 1 end
+						end
+					end
+				end
 			end
 		else
 			local u = T.use[it.id] or T.use.medkit
