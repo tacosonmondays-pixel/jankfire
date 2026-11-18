@@ -125,11 +125,24 @@ local function rope(a0: Attachment, a1: Attachment): Beam
 	b.Parent = a1.Parent
 	return b
 end
-type Fly = { ring: Part, p: Vector3, v: Vector3, g: number }
+type Fly = { ring: BasePart, p: Vector3, v: Vector3, g: number }
 local flying: { [number]: Fly } = {}
-type Rope = { far: Part, beam: Beam, ring: Part, snd: Sound? }
+type Rope = { far: Part, beam: Beam, ring: BasePart, snd: Sound? }
 local ropes: { [Instance]: Rope } = {}
-local function ringPart(at: Vector3): Part
+local function ringPart(at: Vector3): BasePart
+	-- the kit's loop (w_pj_loop, metres, flat) when it's in; a plain ring till then
+	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
+	local t = lib and lib:FindFirstChild("w_pj_loop")
+	if t and t:IsA("Model") then
+		local m = t:Clone()
+		m:ScaleTo(m:GetScale() * S)
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end end
+		m:PivotTo(CFrame.new(at))
+		m.Parent = folder
+		local root = (m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")) :: BasePart
+		root:SetAttribute("KitLoop", true)
+		return root
+	end
 	local ring = Instance.new("Part")
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Size = Vector3.new(0.08, 1.1 * S, 1.1 * S)
@@ -139,11 +152,19 @@ local function ringPart(at: Vector3): Part
 	ring.Parent = folder
 	return ring
 end
+local function placeRing(ring: BasePart, at: Vector3)
+	local m = ring.Parent
+	if ring:GetAttribute("KitLoop") and m and m:IsA("Model") then m:PivotTo(CFrame.new(at)) else ring.CFrame = CFrame.new(at) * CFrame.Angles(0, 0, math.pi / 2) end
+end
+local function killRing(ring: BasePart)
+	local m = ring.Parent
+	if ring:GetAttribute("KitLoop") and m and m:IsA("Model") then m:Destroy() else ring:Destroy() end
+end
 local function dropRope(holder: Instance)
 	local r = ropes[holder]
 	if not r then return end
 	ropes[holder] = nil
-	r.far:Destroy(); r.ring:Destroy()
+	r.far:Destroy(); killRing(r.ring)
 	if r.snd then r.snd:Destroy() end
 end
 Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
@@ -154,7 +175,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	elseif f.k == "loopx" and type(f.id) == "number" then
 		local fl = flying[f.id]
 		flying[f.id] = nil
-		if fl then fl.ring:Destroy() end
+		if fl then killRing(fl.ring) end
 		if f.caught and typeof(f.p) == "Vector3" then Sfx.play("lasso_catch", f.p, 1) end
 	elseif f.k == "lassohold" and typeof(f.holder) == "Instance" and typeof(f.p) == "Vector3" then
 		dropRope(f.holder)
@@ -166,7 +187,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		local r = ropes[f.holder]
 		if r then
 			r.far.CFrame = CFrame.new(f.p)
-			r.ring.CFrame = CFrame.new(f.p) * CFrame.Angles(0, 0, math.pi / 2) -- (the loop round the waist)
+			placeRing(r.ring, f.p) -- (the loop round the waist)
 		end
 	elseif f.k == "lassoend" and typeof(f.holder) == "Instance" then
 		dropRope(f.holder)
@@ -180,7 +201,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	for _, fl in flying do
 		fl.v -= Vector3.new(0, fl.g * dt, 0)
 		fl.p += fl.v * dt
-		fl.ring.CFrame = CFrame.new(fl.p) * CFrame.Angles(0, 0, math.pi / 2)
+		placeRing(fl.ring, fl.p)
 	end
 	local now = os.clock()
 	-- holding: stream where you aim and how long you want the rope

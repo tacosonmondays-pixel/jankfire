@@ -486,6 +486,7 @@ local W: { [string]: Weapon } = {
 		id = "lasso", name = "Lasso", slot = "secondary", kind = "lasso", color = rgb(0xe0b070),
 		desc = "hold to spin the loop, let go to throw. catch someone and they swing on your rope: the wheel, r and f reel it. click to let go and they fly. walls and floors hurt.",
 		cd = 0.35, range = 28 * S,
+		mdl = { parts = { refill = { node = "loop", back = 2.5 } } } :: any, -- (the kit's loop leaves your fist with the throw)
 		snd = "lasso_throw",
 		recoilVM = { back = 0.6, up = 2, roll = 1, side = 0.3, punch = 0.006 },
 		vm = { p = Vector3.new(0.2, -0.22, -0.38) * S, r = Vector3.new(0, 0, 0), s = 0.9 },
@@ -498,7 +499,8 @@ local W: { [string]: Weapon } = {
 		snd = "gun_cart",
 		recoilVM = { back = 2.6, up = 6, roll = 1, side = 0.2, punch = 0.04 },
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.6 },
-		mdl = { lo = Vector3.new(-0.16, -0.22, -0.6), hi = Vector3.new(0.16, 0.16, 0.3), muzzle = Vector3.new(0, 0, -0.6), grip = Vector3.new(0, -0.13, 0.08), fore = Vector3.new(0, -0.1, -0.28) },
+		mdl = { lo = Vector3.new(-0.1384, -0.221, -0.74), hi = Vector3.new(0.1384, 0.2095, 0.0754), muzzle = Vector3.new(0, 0, -0.66), grip = Vector3.new(0, -0.1382, 0.036), fore = Vector3.new(0, -0.1599, -0.29),
+			parts = { refill = { node = "load", back = 1.2 } } }, -- (the kit model's, 724781e: the next cart sits in the mouth till it's fired)
 	},
 	-- a hand of 5 from a 54-card deck: right click picks, left click plays, R a new hand (CardDeck.server; the cards fly
 	-- in WeaponProj "card")

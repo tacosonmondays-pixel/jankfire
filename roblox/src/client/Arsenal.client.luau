@@ -855,6 +855,7 @@ Keys.ended(function(io: InputObject)
 	if Binds.is("fire", io) then trigger = false; minigun.hold.release(held)
 		if W[held] and W[held].kind == "lasso" then -- (batch E: the Lasso's let-go throws the loop)
 			local eye, look = eyeAndAim()
+			if minigun.lasso.spinning() > 0 then VM.shot(W[held]) end -- (the loop leaves the fist: GunParts refill)
 			minigun.lasso.release(eye, look)
 		end
 		-- (batch D: the Bow's let-go: the arrow, drawn as far as you held it)
