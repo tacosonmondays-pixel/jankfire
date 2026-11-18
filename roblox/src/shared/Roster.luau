@@ -47,7 +47,7 @@ add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live
 add({ id = "sniper", slot = "primary", name = "Sniper", color = "a2457c", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
 	desc = "Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "0.91/s", bar = 0.04 }, { label = "RANGE", text = "500 m", bar = 1 }, { label = "MAG", text = "5", bar = 0.08 } } })
-add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = false, gimmick = "",
+add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = false, gimmick = "exploding rubber chickens. shoot your own feet to rocket jump.",
 	desc = "Rubber chickens that explode. Shoot your feet to rocket jump.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "1.18/s", bar = 0.05 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = "6b7bff", live = false, gimmick = "",
@@ -56,7 +56,7 @@ add({ id = "bowling", slot = "primary", name = "Bowling Ball Launcher", color = 
 add({ id = "bow", slot = "primary", name = "Bow", color = "c88a4a", live = false, gimmick = "",
 	desc = "Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).",
 	stats = { { label = "DAMAGE", text = "70", bar = 0.58 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", live = false, gimmick = "",
+add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", live = false, gimmick = "bananas that bonk and slip them. misses stay on the floor as peels for 30 s.",
 	desc = "Hard bananas that bonk and make them slip. Misses stay on the floor as peels.",
 	stats = { { label = "DAMAGE", text = "14", bar = 0.12 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "laser", slot = "primary", name = "Big Laser Pointer", color = "39ff14", live = false, gimmick = "hold to charge, let go for a beam through everyone in a line. a tap is a little zap.",
@@ -80,7 +80,7 @@ add({ id = "autoshot", slot = "primary", name = "Auto Shotgun", color = "4ad66b"
 add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", live = true, gimmick = "six nails in a row pin them to the wall behind them for a second.",
 	desc = "Fires nails, fast. Land six in a row and they are nailed to the wall behind them for a second.",
 	stats = { { label = "DAMAGE", text = "9", bar = 0.08 }, { label = "FIRE RATE", text = "11/s", bar = 0.5 }, { label = "RANGE", text = "120 m", bar = 0.49 }, { label = "MAG", text = "36", bar = 0.6 } } })
-add({ id = "tennis", slot = "primary", name = "Tennis Ball Launcher", color = "d4ff3a", live = false, gimmick = "",
+add({ id = "tennis", slot = "primary", name = "Tennis Ball Launcher", color = "d4ff3a", live = false, gimmick = "balls that bounce up to 5 times, harder every bounce. bank it round a corner.",
 	desc = "Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5cff", live = false, gimmick = "",
@@ -104,7 +104,7 @@ add({ id = "sawnoff", slot = "secondary", name = "Sawed-Off", color = "e05a3a", 
 add({ id = "cig", slot = "secondary", name = "Hot Sauce", color = "ff7a1a", live = false, gimmick = "hold to take a swig, let go to breathe fire for as long as you held it. too long and it burns you.",
 	desc = "Hold to take a swig of hot sauce. Let go and you breathe fire for as long as you held it, up to 3.6 seconds. Let go past 3 seconds, or hold past 4.5, and it burns you instead.",
 	stats = { { label = "DAMAGE", text = "5", bar = 0.04 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "13 m", bar = 0.16 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "bloodcross", slot = "secondary", name = "Blood Cross", color = "ff1f3d", live = false, gimmick = "",
+add({ id = "bloodcross", slot = "secondary", name = "Blood Cross", color = "ff1f3d", live = false, gimmick = "every shot costs 12 HP. it sticks, a cross bursts out, they pop. a kill pays it back.",
 	desc = "No gun: you shoot blood out of your fingertip and every shot costs you 12 HP. Out of blood? It still fires, thin and weak. The bolt sticks to whoever it hits, a cross bursts out of their body and they pop. A kill pays the blood back.",
 	stats = { { label = "DAMAGE", text = "75", bar = 0.63 }, { label = "FIRE RATE", text = "1.43/s", bar = 0.06 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "blower", slot = "secondary", name = "Leaf Blower", color = "ff9a3a", live = false, gimmick = "pushes people away for 4 s of fuel. point it at the floor and you hover.",
@@ -113,7 +113,7 @@ add({ id = "blower", slot = "secondary", name = "Leaf Blower", color = "ff9a3a",
 add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", live = false, gimmick = "",
 	desc = "Hold 5 cards. Right click picks one, left click plays it, R redraws. Every card you play flicks cards at where you aim. Spades throw a whole fan, hearts heal, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", live = false, gimmick = "",
+add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", live = false, gimmick = "4 hits freeze them solid for 2.4 s. one more shatters them.",
 	desc = "Barely hurts. Every hit adds frost; 4 hits freezes them solid. Hit a frozen target and they shatter.",
 	stats = { { label = "DAMAGE", text = "9", bar = 0.08 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "katana", slot = "melee", name = "Katana", color = "e8e8f0", live = true, gimmick = "every kill adds half a metre of blade. hold right click to parry; a timed swing sends bullets back twice as hard.",

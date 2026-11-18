@@ -41,6 +41,9 @@
         "Zap": {
           "$className": "RemoteEvent"
         },
+        "Throw": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

@@ -74,6 +74,9 @@ local fanArmed = false -- a fan needs a fresh click after running dry, reloading
 local minigun = { spin = 0, on = false, snd = nil :: Sound?, parts = require(script.Parent:WaitForChild("GunParts")) :: any, zapNext = 0 } -- (zapNext: the Taser's next click)
 -- (weapons batch B) the held-trigger weapons (the Leaf Blower, the Hot Sauce, the Big Laser Pointer): HoldClient
 minigun.hold = require(script.Parent:WaitForChild("HoldClient")) :: any
+-- (weapons batch C) the projectile weapons (the Chicken Rocket, the Peel Shooter, the Tennis Ball Launcher, the
+-- Snowball, the Blood Cross): ProjClient sends the click, the server flies them
+minigun.proj = require(script.Parent:WaitForChild("ProjClient")) :: any
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -704,6 +707,9 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
+		elseif W[held] and W[held].kind == "proj" then -- (batch C: the projectiles)
+			local eye, look = eyeAndAim()
+			if minigun.proj.throw(held, eye, look) then VM.kick(W[held].recoilVM, 0.8, false, 1, 1); TP.fired(held, false) end
 		else
 			cancelReload() -- (a reload with rounds left: the shot wins)
 			if not W[held].auto and now >= nextShot[held] then fireGun(now) end
@@ -1016,7 +1022,12 @@ RunService.RenderStepped:Connect(function(dt: number)
 	minigun.parts.mySpin = minigun.spin
 	minigun.hold.step(dt, held) -- (the held-trigger weapons: where you look, your thrust, a swap lets go)
 	minigun.loop(minigun.on and minigun.spin >= 0.98, 1, 1)
-	if hum and (trigger or burstLeft > 0) and w and w.auto and (not w.spinup or minigun.spin >= 1) and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
+	-- (the Peel Shooter: held down, it keeps firing at its own rate; the projectiles have no magazine)
+	if hum and trigger and w and w.kind == "proj" and w.auto and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true then
+		local eye, look = eyeAndAim()
+		if minigun.proj.throw(held, eye, look) then VM.kick(w.recoilVM, 0.6, false, 1, 1); TP.fired(held, false) end
+	end
+	if hum and (trigger or burstLeft > 0) and w and w.auto and w.kind == "hitscan" and (not w.spinup or minigun.spin >= 1) and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true and now >= (nextShot[held] or 0) then
 		local n = 0
 		-- (a Hat Trick burst always finishes, even on a tap)
 		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end

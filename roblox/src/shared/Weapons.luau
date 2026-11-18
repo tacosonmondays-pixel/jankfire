@@ -35,6 +35,12 @@ export type Weapon = {
 	-- nothing in your hands but your own (the owner, 18 Nov 2026: "Blood cross and zombie hand can just be our normal
 	-- hand!! Zombie will just turn it green!!"): WeaponModels builds no model, only the spots
 	bare: boolean?,
+	-- weapons batch C, the projectiles (kind "proj", WeaponProj.server flies them): proj = "rocket" | "peel" | "ball" |
+	-- "snow" | "blood", speed / grav (studs/s, /s^2), r (studs), life (s); the rocket's radius and selfKb, the ball's
+	-- bounces / bonus / minBounce, the snowball's frost, the blood cross's cost / thin / fuse / burst / blast
+	proj: string?, speed: number?, grav: number?, life: number?, radius: number?, selfKb: number?, bounce: number?,
+	bounces: number?, bonus: number?, minBounce: number?, freezeAt: number?, freeze: number?, frostDecay: number?,
+	cost: number?, thin: { cd: number, dmg: number, heal: number }?, fuse: number?, burst: number?, blastR: number?, blastDmg: number?,
 	-- own recordings (JankfireSounds): a melee hit, a melee swing's whoosh, the draw's clunk, a whole reload
 	hitSnd: string?, swingSnd: string?, drawSnd: string?, reloadSnd: string?,
 	-- weapons batch B: the Taser (kind "zap", the server picks who it hits): stun s (x wet if soaked), the chain through
@@ -361,6 +367,52 @@ local W: { [string]: Weapon } = {
 			parts = { water = { at = Vector3.new(0, 0.0545, -0.0775) }, pump = { travel = 0.03 } },
 		},
 	},
+	-- ---- weapons batch C (18 Nov 2026): the projectiles. the server flies every one (WeaponProj.server); the web's
+	-- numbers x3 for studs (side notes weapons-batchC-spec.md has the traced rules)
+	chicken = {
+		id = "chicken", name = "Chicken Rocket", slot = "primary", kind = "proj", proj = "rocket", color = rgb(0xffe14d),
+		desc = "rubber chickens that explode. shoot your own feet to rocket jump.",
+		cd = 0.85, speed = 36 * S, grav = 6, r = 0.35 * S, radius = 7.5 * S, dmg = 55, kb = 34 * S, selfKb = 1.0, range = 200 * S,
+		snd = "chicken_fire",
+		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
+		mdl = { lo = Vector3.new(-0.08, -0.15, -0.6), hi = Vector3.new(0.08, 0.1, 0.4), muzzle = Vector3.new(0, 0, -0.6), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.05, -0.25) },
+	},
+	banana = {
+		id = "banana", name = "Peel Shooter", slot = "primary", kind = "proj", proj = "peel", color = rgb(0xffe135),
+		desc = "hard bananas that bonk and make them slip. misses stay on the floor as peels for 30 s.",
+		auto = true, cd = 0.3, speed = 42 * S, grav = 18, r = 0.25 * S, dmg = 14, kb = 9 * S, bounce = 0.35, range = 200 * S,
+		snd = "banana_fire",
+		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
+		mdl = { lo = Vector3.new(-0.06, -0.15, -0.5), hi = Vector3.new(0.06, 0.12, 0.3), muzzle = Vector3.new(0, 0.02, -0.5), grip = Vector3.new(0, -0.1, 0.08), fore = Vector3.new(0, -0.04, -0.25) },
+	},
+	tennis = {
+		id = "tennis", name = "Tennis Ball Launcher", slot = "primary", kind = "proj", proj = "ball", color = rgb(0xd4ff3a),
+		desc = "fuzzy balls that bounce up to 5 times and hit harder every bounce. bank it round a corner.",
+		cd = 0.5, speed = 40 * S, grav = 14, r = 0.1 * S, bounce = 0.8, dmg = 20, kb = 7 * S, kbUp = 2.5 * S, life = 4.5,
+		bounces = 5, bonus = 0.3, minBounce = 3, range = 200 * S,
+		snd = "tennis_fire",
+		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
+		mdl = { lo = Vector3.new(-0.07, -0.16, -0.45), hi = Vector3.new(0.07, 0.15, 0.3), muzzle = Vector3.new(0, 0.03, -0.45), grip = Vector3.new(0, -0.1, 0.1), fore = Vector3.new(0, -0.04, -0.22) },
+	},
+	snowball = {
+		id = "snowball", name = "Snowball", slot = "secondary", kind = "proj", proj = "snow", color = rgb(0xdff4ff),
+		desc = "barely hurts. 4 hits freeze them solid, one more shatters them.",
+		cd = 0.3, speed = 46 * S, grav = 10, r = 0.13 * S, dmg = 9, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
+		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
+		vm = { p = Vector3.new(0.18, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
+		mdl = { lo = Vector3.new(-0.065, -0.065, -0.065), hi = Vector3.new(0.065, 0.065, 0.065), muzzle = Vector3.new(0, 0, -0.07), grip = Vector3.new(0, 0, 0) },
+	},
+	-- (the owner, 18 Nov 2026: cast from your own hand, no model) a bolt of blood from your fingertip, stylised: a deep red X
+	bloodcross = {
+		id = "bloodcross", name = "Blood Cross", slot = "secondary", kind = "proj", proj = "blood", color = rgb(0xff1f3d),
+		desc = "every shot costs you 12 HP. it sticks in them, a cross bursts out and they pop. a kill pays the blood back.",
+		bare = true, cd = 0.7, speed = 75 * S, grav = 0, r = 0.15 * S, life = 2, cost = 12, thin = { cd = 1.1, dmg = 34, heal = 12 },
+		fuse = 0.6, burst = 0.25, dmg = 75, blastR = 3 * S, blastDmg = 35, kb = 6 * S, range = 150 * S,
+		snd = "blood_fire",
+		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
+		-- (bare: only these spots are built, the fingertip the bolt leaves from and the hand)
+		mdl = { lo = Vector3.new(-0.02, -0.02, -0.1), hi = Vector3.new(0.02, 0.02, 0.02), muzzle = Vector3.new(0, 0, -0.1), grip = Vector3.new(0, 0, 0) },
+	},
 	-- (weapons batch B) the Leaf Blower: hold it, everyone in the cone is shoved away from you (0 damage: a fall is yours),
 	-- 4 s of fuel that refills when you let go; pointed at the floor, its thrust holds you up
 	blower = {
@@ -370,8 +422,8 @@ local W: { [string]: Weapon } = {
 		snd = "blower_loop",
 		vm = { p = Vector3.new(0.2, -0.22, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
 		mdl = {
-			lo = Vector3.new(-0.08, -0.2, -0.87), hi = Vector3.new(0.08, 0.12, 0.25),
-			muzzle = Vector3.new(0, -0.03, -0.87), grip = Vector3.new(0, -0.06, 0.08), fore = Vector3.new(0, -0.02, -0.3),
+			lo = Vector3.new(-0.094, -0.11, -0.87), hi = Vector3.new(0.093, 0.224, 0.17),
+			muzzle = Vector3.new(0, -0.03, -0.87), grip = Vector3.new(0, 0.2015, 0.06), fore = Vector3.new(0, -0.03, -0.31),
 		},
 	},
 	-- (weapons batch B) the web game's Cigarette as a Roblox-safe Hot Sauce (no tobacco on Roblox; the same gimmick, id
@@ -385,8 +437,8 @@ local W: { [string]: Weapon } = {
 		snd = "breath_loop",
 		vm = { p = Vector3.new(0.16, -0.17, -0.3) * S, r = Vector3.new(0.1, 0.1, 0), s = 1.0 },
 		mdl = {
-			lo = Vector3.new(-0.03, -0.1, -0.03), hi = Vector3.new(0.03, 0.11, 0.03),
-			muzzle = Vector3.new(0, 0.11, 0), grip = Vector3.new(0, -0.02, 0),
+			lo = Vector3.new(-0.026, -0.026, -0.118), hi = Vector3.new(0.026, 0.026, 0.0895),
+			muzzle = Vector3.new(0, 0, -0.118), grip = Vector3.new(0, 0, 0.05), -- (the cap forward: guns-remodel 3dd4d82)
 		},
 	},
 	-- (weapons batch B) the Big Laser Pointer: hold to charge (1.2 s, slower on your feet), let go for a beam through
@@ -399,8 +451,8 @@ local W: { [string]: Weapon } = {
 		snd = "laser_fire", tracer = rgb(0x7dff5a),
 		vm = { p = Vector3.new(0.2, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
 		mdl = {
-			lo = Vector3.new(-0.06, -0.12, -0.42), hi = Vector3.new(0.06, 0.08, 0.45),
-			muzzle = Vector3.new(0, 0, -0.42), grip = Vector3.new(0, -0.08, 0.12), fore = Vector3.new(0, -0.02, -0.15),
+			lo = Vector3.new(-0.0475, -0.1705, -0.4205), hi = Vector3.new(0.0475, 0.0535, 0.3635),
+			muzzle = Vector3.new(0, 0, -0.42), grip = Vector3.new(0, -0.0984, 0.132), fore = Vector3.new(0, 0, -0.28),
 		},
 	},
 	-- (weapons batch B, 18 Nov 2026) two darts on wires (web secondaries.js zapOne): the server picks the target from
@@ -415,8 +467,8 @@ local W: { [string]: Weapon } = {
 		recoilVM = { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 },
 		vm = { p = Vector3.new(0.165, -0.14, -0.31) * S, r = Vector3.new(0.03, 0.12, -0.1), s = 0.95 },
 		mdl = {
-			lo = Vector3.new(-0.025, -0.12, -0.172), hi = Vector3.new(0.025, 0.07, 0.1),
-			muzzle = Vector3.new(0, 0.012, -0.172), sight = Vector3.new(0, 0.066, 0.093), grip = Vector3.new(0, -0.07, 0.04),
+			lo = Vector3.new(-0.0305, -0.1487, -0.199), hi = Vector3.new(0.0305, 0.066, 0.1039),
+			muzzle = Vector3.new(0, 0.012, -0.172), sight = Vector3.new(0, 0.066, 0.093), grip = Vector3.new(0, -0.068, 0.06),
 		},
 	},
 	katana = {
