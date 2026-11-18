@@ -63,18 +63,21 @@ Redline and the Marble Shotgun.
 `Unlocks.ROBUX`: **Minigun**, **Big Laser Pointer**, **Chicken Rocket**, **Lefty & Righty**. These are the flashiest
 signature weapons. All four are on Roblox: Lefty & Righty went live with batch E (place version 891).
 
-All four stay Robux exclusives (18 Nov, shop-gui's call when weapons batches C and D went live). A pass id of 0 blocks
-nobody while the switch below is on: everyone can pick them at any level now. They don't get a level as well.
+All four stay Robux exclusives (18 Nov, shop-gui's call when weapons batches C and D went live). They don't get a
+level as well.
 
 - **`Unlocks.WEAPONS_ROBUX_FREE = true`** (the owner's switch, like `Config.LOOT_FREE`). While it's on, everyone has
-  them at any level. The loadout marks them ROBUX · FREE FOR NOW, and the match picker ROBUX · FREE.
-- **Switched off,** each needs its game pass. `Unlocks.ROBUX[id].pass` is 0, a placeholder: the owner makes the passes
-  and puts their ids there. Keep the switch on until every live one has its real pass: switched off with a 0, that
-  weapon is locked for everyone (bar the keep list and the dev unlock), with nothing to buy. Nothing here creates a product or sets a price. The server-side check for owning a pass
-  (a `RobuxOwned` attribute the server sets from `MarketplaceService:UserOwnsGamePassAsync`) still has to be written
-  when the passes exist. `Unlocks.forPlayer` already reads that attribute.
-- **The shop** doesn't list weapons. It would need a WEAPONS shelf with the passes once they exist; that's left for
-  then.
+  them at any level. The loadout marks them ROBUX · FREE FOR NOW, and the match picker ROBUX · FREE. Code asks
+  `Unlocks.robuxFree()`, which a Studio play test of the paid shop can turn off (MONEY.md, "Testing in Studio").
+- **Switched off,** each must be bought, once, for good (18 Nov: game passes are not used; `pass` stays 0):
+  - with Robux: a developer product, `weapon:<id>`;
+  - or with Brass, which the server takes.
+
+  Prices are in `Shop.MONEY.weapons`: Minigun and Lefty & Righty 249 Robux or 5,000 Brass; Big Laser Pointer and
+  Chicken Rocket 199 or 4,000. The server keeps what you bought (`Purchases.luau`) and sets `RobuxOwned`, which
+  `Unlocks.forPlayer` reads.
+- **Where to buy:** the shop's WEAPONS tab, or the loadout, whose EQUIP button splits into Robux and Brass for a
+  locked one. Everything about money is in MONEY.md.
 
 ## Ranked
 

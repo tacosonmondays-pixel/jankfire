@@ -477,6 +477,68 @@ for i = 1, 4 do
 end
 local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 614), UDim2.fromOffset(376, 60))
 News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: LV, XP, the next camo)
+-- buying a Robux weapon (Unlocks.ROBUX) here once they aren't free for everyone (Unlocks.robuxFree): the equip button
+-- halves, Robux on the left (the shop's prompt, ShopBuy "weapon:<id>"), Brass on the right (the server takes it,
+-- JankfireRemotes.Purchases "brass", after a second press to be sure). prices: Shop.MONEY.weapons. 18 Nov
+News.Shop = require(Shared:WaitForChild("Shop")) :: any
+News.brassBtn = button(info, "", "white", UDim2.fromOffset(214, 614), UDim2.fromOffset(184, 60))
+News.brassBtn.holder.Visible = false
+News.armT = 0
+function News.weaponOffer(wid: string): any
+	local ok, o = pcall(News.Shop.weaponOffer, wid)
+	return if ok then o else nil
+end
+function News.digits(n: number): string
+	local s = tostring(math.floor(n))
+	while true do
+		local k
+		s, k = string.gsub(s, "^(%d+)(%d%d%d)", "%1,%2")
+		if k == 0 then return s end
+	end
+end
+function News.split(on: boolean)
+	equipBtn.holder.Size = UDim2.fromOffset(if on then 184 else 376, 60)
+	News.brassBtn.holder.Visible = on
+end
+function News.buyLook(e: any)
+	local o = News.weaponOffer(e.id)
+	local S = News.Shop
+	equipBtn:set(News.digits(o.robux) .. " ROBUX", S.ROBUX == true and S.productFor(o) ~= nil)
+	local armed = News.arm == e.id and os.clock() - News.armT < 4
+	local have = tonumber(me:GetAttribute("Brass")) or 0
+	News.brassBtn:set(if armed then "SURE? " .. News.digits(o.brass) else News.digits(o.brass) .. " BRASS", have >= o.brass)
+end
+function News.payRobux(e: any)
+	local o = News.weaponOffer(e.id)
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("ShopBuy")
+	if not o or not News.Shop.ROBUX or not News.Shop.productFor(o) or not (r and r:IsA("RemoteEvent")) then
+		play("empty"); say("not for sale for robux yet.", RED)
+		return
+	end
+	(r :: RemoteEvent):FireServer(o.id)
+end
+News.brassBtn.face.MouseButton1Click:Connect(function()
+	if not News.brassBtn.enabled then return end
+	local e = Roster.byId[state.focus]
+	if not e or News.buyFor ~= e.id or not News.weaponOffer(e.id) then return end
+	if News.arm ~= e.id or os.clock() - News.armT > 4 then
+		News.arm, News.armT = e.id, os.clock()
+		play("click"); refresh()
+		task.delay(4.1, function() if News.arm == e.id then News.arm = nil; refresh() end end)
+		return
+	end
+	News.arm = nil
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Purchases")
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("brass", e.id) end)
+	if ok and type(res) == "table" and res.ok then
+		play("ting"); say(string.lower(e.name) .. " is yours. equip it.")
+	else
+		play("empty"); say(if ok and type(res) == "table" and type(res.why) == "string" then res.why else "that didn't work.", RED)
+	end
+	refresh()
+end)
 
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
 local function statsFor(id: string): { Roster.Stat }
@@ -878,7 +940,7 @@ refresh = function()
 			local okU, whyU = U.forPlayer(me, a.id)
 			okU = okU or trying()
 			a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
-				elseif U.robux(a.id) then (if U.WEAPONS_ROBUX_FREE then "ROBUX · FREE FOR NOW" else "ROBUX")
+				elseif U.robux(a.id) then (if U.robuxFree() then "ROBUX · FREE FOR NOW" elseif okU then "LIVE · yours" else "ROBUX")
 				elseif not okU then whyU or "LOCKED" else "LIVE · ready"
 			a.tag.TextColor3 = if equipped then ACCENT elseif not e.live or not okU then DIM else GREY
 			a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
@@ -921,7 +983,12 @@ refresh = function()
 	end)
 	News.guard("equip button", function()
 		local okE, whyE = (require(Shared:WaitForChild("Unlocks")) :: any).forPlayer(me, e.id)
+		-- (a Robux weapon you don't have while they aren't free: buy it here, Robux or Brass. 18 Nov)
+		local buy = e.live and not okE and not trying() and p[e.slot] ~= e.id and whyE == "ROBUX" and News.weaponOffer(e.id) ~= nil
+		News.buyFor = if buy then e.id else nil
+		News.split(buy)
 		if not e.live then equipBtn:set("COMING SOON", false)
+		elseif buy then News.buyLook(e)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
 		elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
 		else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
@@ -1000,6 +1067,7 @@ equipBtn.face.MouseButton1Click:Connect(function()
 	if not equipBtn.enabled then return end
 	local e = Roster.byId[state.focus]
 	if not e or not e.live then return end
+	if News.buyFor == e.id then News.payRobux(e); return end -- (a Robux weapon you don't have: its prompt)
 	local ok, why = ask("pick", e.slot, e.id)
 	if ok then
 		state.slot = e.slot
@@ -1695,7 +1763,7 @@ end)
 -- the screen follows the server: picks / wraps / save status changing, a match grabbing you, a death
 -- (what you own: asked when the screen opens and whenever you win something)
 me:GetAttributeChangedSignal("LootOwned"):Connect(function() task.spawn(function() fetchOwned(); if state.open then refresh() end end) end)
-for _, a in { "LoadoutNext", "Wraps", "LoadoutSave", "Hats", "Skins", "Trying", "Level", "WeaponsKept", "UnlockAll" } do
+for _, a in { "LoadoutNext", "Wraps", "LoadoutSave", "Hats", "Skins", "Trying", "Level", "WeaponsKept", "UnlockAll", "RobuxOwned", "Brass" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if state.open then refresh() end end)
 end
 -- (in or out of training with the screen up: the TRY line and marks follow)

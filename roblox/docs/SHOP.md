@@ -910,6 +910,10 @@ Tested in solo Play on the `_studio` profile (picks cart, remote, katana, frag):
 
 ## Robux, later
 
+Since 18 Nov all of this is in **MONEY.md**: the switch, every price (`Shop.MONEY`), the VIP pass and the developer
+products with their ids, receipts, the Robux weapons for Robux or Brass, the Brass packs and the WEAPONS tab. Steps 1-5
+below are kept for the history.
+
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the
    singles) and paste their ids into `Shop.PRODUCTS`.
 2. Turn `Config.LOOT_FREE` off and `Config.LOOT_ROBUX` on.

@@ -12,6 +12,7 @@
 -- for other server scripts (the hub's VIP room door):
 --   local Vip = require(game.ServerScriptService.Jankfire:WaitForChild("Vip"))
 --   Vip.isVip(player) -> boolean, Vip.changed:Connect(function(player, isVip) end)
+--   Vip.gift(player, on?) -> (ok, why?): the owner's gift, VIP for good whatever the switches (on = false takes it back)
 -- for the clients: the player attribute "VIP" (true / nil), set here only (a client can't make itself VIP: never trust
 -- it for a decision), and the remote JankfireRemotes.Vip (RemoteFunction, made here), which answers a table:
 --   ("get")    -> { ok, vip, why ("pass" | "free" | "dev"), free, robux, pass, price, dev }
@@ -104,7 +105,7 @@ end
 local function make(p: Player, reason: string)
 	if not p.Parent then return end
 	-- (a game pass outranks a free claim, which outranks the owner's test unlock)
-	local rank: { [string]: number } = { dev = 1, free = 2, pass = 3 }
+	local rank: { [string]: number } = { dev = 1, free = 2, gift = 3, pass = 4 }
 	local had = why[p]
 	if had and (rank[had] or 0) >= (rank[reason] or 0) then show(p); return end
 	why[p] = reason
@@ -123,21 +124,52 @@ local function ownsPass(p: Player): boolean
 	return false
 end
 
--- a free claim from before (only counts while the shop is free)
-local function claimedFree(p: Player): boolean
-	if not Shop.free() or not store then return false end
+-- the player's VIP key from before: { free = claimed while the shop was free, gift = the owner's gift }; nil if none
+local function record(p: Player): any
+	if not store then return nil end
 	local s = store :: DataStore
 	for _ = 1, 3 do
 		local ok, v = pcall(function() return s:GetAsync("u" .. p.UserId) end)
-		if ok then return type(v) == "table" and v.free == true end
+		if ok then return if type(v) == "table" then v else nil end
 		task.wait(1)
 	end
-	return false
+	return nil
 end
 
 local function joined(p: Player)
 	if ownsPass(p) then make(p, "pass") return end
-	if claimedFree(p) then make(p, "free") end
+	local r = record(p)
+	-- (a gift lasts whatever the switches; a free claim only counts while the shop is free)
+	if r and r.gift == true then make(p, "gift")
+	elseif r and r.free == true and Shop.free() then make(p, "free") end
+end
+
+-- the owner's gift (OwnerDev's GIFT tab, 18 Nov 2026): Vip.gift(player, on?) -> (ok, why?). VIP for good whatever the
+-- shop's switches (a free claim only counts while the shop is free): saved first on the player's key, then made at
+-- once. on = false takes a gift back (a pass, or a claim while free, still counts)
+function Vip.gift(p: Player, on: boolean?): (boolean, string?)
+	local give = on ~= false
+	if store then
+		local s = store :: DataStore
+		local ok = pcall(function()
+			s:UpdateAsync("u" .. p.UserId, function(old: any)
+				local v = if type(old) == "table" then old else {}
+				v.gift = if give then true else nil
+				v.giftAt = if give then os.time() else nil
+				return v
+			end)
+		end)
+		if not ok then return false, "couldn't save" end
+	end
+	if give then
+		devOff[p] = nil
+		make(p, "gift")
+	elseif why[p] == "gift" then
+		why[p] = nil
+		show(p)
+		task.spawn(joined, p)
+	end
+	return true, if store then nil else "this session only: no save"
 end
 
 local lastAsk: { [Player]: number } = {}
@@ -155,7 +187,11 @@ local function handle(p: Player, op: unknown, a: unknown): any
 		-- (saved first, so the claim lasts; if the save is down it still counts for this session)
 		if store then
 			local s = store :: DataStore
-			pcall(function() s:UpdateAsync("u" .. p.UserId, function() return { free = true, at = os.time() } end) end)
+			pcall(function() s:UpdateAsync("u" .. p.UserId, function(old: any)
+				local v = if type(old) == "table" then old else {} -- (kept: a gift on the same key)
+				v.free = true; v.at = os.time()
+				return v
+			end) end)
 		end
 		devOff[p] = nil
 		make(p, "free")

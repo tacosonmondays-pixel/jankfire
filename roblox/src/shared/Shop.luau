@@ -16,6 +16,7 @@
 -- anything while the loot switch is on (Config.LOOT_FREE; Shop.free()) and no purchase prompt is ever shown while
 -- Shop.ROBUX is false (ShopReceipts.server.luau routes receipts once it's on). docs: roblox/docs/SHOP.md
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Roster = require(script.Parent:WaitForChild("Roster"))
 local GunHatData = require(script.Parent:WaitForChild("GunHatData")) :: any
@@ -97,8 +98,20 @@ function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCa
 
 -- ---------------------------------------------------------------- switches
 -- real-money purchases: Config.LOOT_ROBUX (the loot module's switch, off). false = no prompt is ever shown and
--- ShopReceipts doesn't even take receipts (nothing can be charged)
+-- ShopReceipts doesn't even take receipts (nothing can be charged). THE switch for real money: docs/MONEY.md
 Shop.ROBUX = Config.LOOT_ROBUX == true
+-- (Studio only: a play test of the paid shop. the Play server sets ReplicatedStorage's attribute MoneyTest = true (never
+-- saved: Play's copy goes when it stops): Robux on and free off, here and on every client, and the Robux weapons locked
+-- (Unlocks.robuxFree). Studio test purchases charge nothing. a live game never reads it. 18 Nov)
+Shop.testMoney = false
+if RunService:IsStudio() then
+	local function sync()
+		Shop.testMoney = ReplicatedStorage:GetAttribute("MoneyTest") == true
+		Shop.ROBUX = Shop.testMoney or Config.LOOT_ROBUX == true
+	end
+	sync()
+	ReplicatedStorage:GetAttributeChangedSignal("MoneyTest"):Connect(sync)
+end
 -- the featured rotation turns over every day at 00:00 UTC
 Shop.ROTATE = 86400
 -- how many single items the daily rotation shows
@@ -106,6 +119,7 @@ Shop.DAILY = 6
 
 -- free while we test: Config.LOOT_FREE when the loot module has added it, else free
 function Shop.free(): boolean
+	if Shop.testMoney then return false end
 	if Config.LOOT_FREE ~= nil then return Config.LOOT_FREE == true end
 	return true
 end
@@ -119,17 +133,47 @@ function Shop.rank(r: string): number return RANK[r] or 0 end
 -- the VIP pack's own rarity colour (the player cards' VIP gold): a VIP thing reads "VIP", not a rarity
 Shop.VIP_COLOR = Color3.fromRGB(255, 208, 72)
 
--- what a single costs, by kind and rarity (Robux; unused while free)
-Shop.PRICE = {
-	wrap = { free = 0, common = 75, rare = 150, epic = 300, legendary = 600 },
-	hat = { free = 0, common = 100, rare = 200, epic = 400, legendary = 750 },
-	skin = { free = 0, common = 150, rare = 300, epic = 600, legendary = 1200 },
-	border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
-	banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
-	title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
-	kill = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
-	emote = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
+-- ---------------------------------------------------------------- every price, in one table (18 Nov, the owner: "make
+-- them for the shop bundles as well, bundles, coins, buying weapons with coins"). Robux numbers are what the developer
+-- products and the VIP pass were made at: change one here AND on its product (Creator Hub > Monetization), or the
+-- prompt charges Roblox's price while the shop shows this one (with Robux on, the shop reads the products' own prices:
+-- ShopUI.livePrices). Brass = the quests' soft currency (QuestData); what Brass and tickets redeem a container for is
+-- QuestData.PRICES (the quests session's). the list of products and ids: docs/MONEY.md
+Shop.MONEY = {
+	vip = 399, -- the VIP game pass (Shop.VIP_PASS)
+	containers = { crate = 120, bag = 90, spray = 60 },
+	-- one item, by kind and rarity (singles share one product per kind and rarity: "wrap:epic")
+	singles = {
+		wrap = { free = 0, common = 75, rare = 150, epic = 300, legendary = 600 },
+		hat = { free = 0, common = 100, rare = 200, epic = 400, legendary = 750 },
+		skin = { free = 0, common = 150, rare = 300, epic = 600, legendary = 1200 },
+		border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
+		banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
+		title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
+		kill = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
+		emote = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
+	},
+	-- a themed bundle costs this share of its items' singles, rounded to ..9 (a skin set: its whole worth, no discount;
+	-- the owner's deals: Shop.DEAL_OFF below)
+	bundleShare = 0.6,
+	-- the Robux-exclusive weapons (Unlocks.ROBUX): Robux, or Brass, each its own price. kept for good once bought
+	weapons = {
+		minigun = { robux = 249, brass = 5000 },
+		laser = { robux = 199, brass = 4000 }, -- (Big Laser Pointer)
+		chicken = { robux = 199, brass = 4000 }, -- (Chicken Rocket)
+		akimbo = { robux = 249, brass = 5000 }, -- (Lefty & Righty)
+	},
+	-- Brass for Robux: a bigger pack gives a little more (bonus), never so much that Brass bought with Robux redeems a
+	-- container for less than the container's own Robux price (QuestData.PRICES: a Spray Can is 1,000 Brass)
+	brass = {
+		{ id = "brass_500", brass = 500, bonus = 0, robux = 39 },
+		{ id = "brass_1100", brass = 1000, bonus = 100, robux = 79 },
+		{ id = "brass_2400", brass = 2000, bonus = 400, robux = 159 },
+		{ id = "brass_6500", brass = 5000, bonus = 1500, robux = 399 },
+	},
 }
+-- what a single costs, by kind and rarity (Robux; unused while free)
+Shop.PRICE = Shop.MONEY.singles
 Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border", banner = "Background", title = "Title",
 	kill = "Kill Effect", emote = "Emote" }
 
@@ -323,11 +367,11 @@ end
 -- game's CONTAINERS): crates hold weapon skins, duffel bags hats, spray cans wraps
 -- (the words on screen say what it is and nothing else: the owner's no-flavour-text rule)
 Shop.containers = {
-	{ id = "crate", type = "container", name = "Crate", rarity = "epic", robux = 120, productId = nil,
+	{ id = "crate", type = "container", name = "Crate", rarity = "epic", robux = Shop.MONEY.containers.crate, productId = nil,
 		blurb = "One weapon skin you don't have yet.", pool = "weapon skins" },
-	{ id = "bag", type = "container", name = "Duffel Bag", rarity = "rare", robux = 90, productId = nil,
+	{ id = "bag", type = "container", name = "Duffel Bag", rarity = "rare", robux = Shop.MONEY.containers.bag, productId = nil,
 		blurb = "One hat you don't have yet, for one gun.", pool = "hats" },
-	{ id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = 60, productId = nil,
+	{ id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = Shop.MONEY.containers.spray, productId = nil,
 		blurb = "One wrap you don't have yet, for one gun.", pool = "wraps" },
 } :: { Offer }
 -- (the Duffel Bag also holds the player card's looks and the kill effects and emotes, once the loot module keeps them)
@@ -476,7 +520,7 @@ for _, b in Shop.bundles do
 	for _, it in b.items :: { Item } do worth += Shop.singlePrice(it.kind, it.id) end
 	-- (a skin set is never discounted, the owner, 18 Nov: its own price is its pieces' whole worth. the other bundles,
 	-- wraps, hats and card looks, are 40% under theirs)
-	b.robux = if b.set then worth else math.floor(worth * 0.6 / 10 + 0.5) * 10 - 1
+	b.robux = if b.set then worth else math.floor(worth * Shop.MONEY.bundleShare / 10 + 0.5) * 10 - 1
 	b.productId = nil
 	b.blurb = Shop.describe(b.items)
 	Shop.byId[b.id] = b
@@ -518,10 +562,10 @@ for _, id in GunHatData.ORDER do
 end
 
 -- ---------------------------------------------------------------- VIP (a game pass; Vip.luau decides who has it)
--- the game pass's id once it's made on the Creator Hub (Monetization > Passes); 0 = not made yet. with Shop.ROBUX on
--- and this set, the shop's GET VIP shows Roblox's pass prompt; while the shop is free anyone can claim VIP
-Shop.VIP_PASS = 0
-Shop.vip = { id = "vip", type = "pass", name = "VIP", rarity = "vip", robux = 399, productId = nil,
+-- the game pass (made 18 Nov 2026 by the main session, off sale, 399 Robux, the gold Royal Duck icon). with Shop.ROBUX on
+-- the shop's GET VIP shows Roblox's pass prompt; while the shop is free anyone can still claim VIP (Vip.luau)
+Shop.VIP_PASS = 2093409349
+Shop.vip = { id = "vip", type = "pass", name = "VIP", rarity = "vip", robux = Shop.MONEY.vip, productId = nil,
 	blurb = "The Ducky pack, the VIP room and a daily reward.",
 	perks = { "The Ducky pack: its weapon skins, a wrap and a hat on every gun, a card border and a title",
 		"The VIP room in the hub", "A daily reward from Trisangle in the VIP room" } } :: any
@@ -802,6 +846,45 @@ function Shop.soon(containerId: string): boolean
 	return LootTable ~= nil and type(LootTable.soon) == "function" and LootTable.soon(containerId) == true
 end
 
+-- ---------------------------------------------------------------- the Robux weapons and Brass (18 Nov)
+-- the Robux-exclusive weapons (Unlocks.ROBUX) as offers, "weapon:<id>": bought once and kept for good, with Robux (its
+-- developer product, ShopReceipts) or with Brass (taken by the server: Purchases.luau). prices: Shop.MONEY.weapons
+local function digits(n: number): string
+	local s = tostring(math.floor(n))
+	while true do
+		local k
+		s, k = string.gsub(s, "^(%d+)(%d%d%d)", "%1,%2")
+		if k == 0 then return s end
+	end
+end
+Shop.WEAPON_IDS = {} :: { string } -- (cheapest first)
+for wid in Shop.MONEY.weapons do table.insert(Shop.WEAPON_IDS, wid) end
+table.sort(Shop.WEAPON_IDS, function(a: string, b: string): boolean
+	local x, y = (Shop.MONEY.weapons :: any)[a].robux, (Shop.MONEY.weapons :: any)[b].robux
+	return if x ~= y then x < y else a < b
+end)
+function Shop.weaponOffer(wid: any): any
+	if type(wid) ~= "string" then return nil end
+	local m = (Shop.MONEY.weapons :: any)[wid]
+	local e = Roster.byId[wid]
+	if not m or not e then return nil end
+	return { id = "weapon:" .. wid, type = "weapon", name = e.name, rarity = "legendary", blurb = "", robux = m.robux,
+		brass = m.brass, productId = nil, weapon = wid }
+end
+-- Brass for Robux, "brass:<id>" (Shop.MONEY.brass, in order): amount = what lands, the pack's bonus in it
+function Shop.brassPacks(): { any }
+	local out = {}
+	for _, b in Shop.MONEY.brass do
+		table.insert(out, { id = "brass:" .. b.id, type = "brass", name = digits(b.brass + b.bonus) .. " Brass", rarity = "common",
+			blurb = "", robux = b.robux, amount = b.brass + b.bonus, bonus = b.bonus, productId = nil })
+	end
+	return out
+end
+function Shop.brassPack(id: any): any
+	for _, o in Shop.brassPacks() do if o.id == id then return o end end
+	return nil
+end
+
 -- ---------------------------------------------------------------- developer products (off while Shop.ROBUX is false)
 -- when real prices go on: make one developer product per container and bundle on the Creator Hub (Monetization >
 -- Developer Products, priced as `robux` above) and paste its id here. singles share one product per kind and rarity
@@ -831,6 +914,10 @@ end
 -- the developer product an offer is bought with (nil: not for sale for Robux yet). missing = for a skin set, how
 -- many of its skins the buyer still lacks (fewer than all: the "complete the set" product for that count)
 function Shop.productFor(o: Offer, missing: number?): number?
+	if o.type == "weapon" or o.type == "brass" then -- ("weapon:minigun", "brass:brass_500")
+		local wp = Shop.PRODUCTS[o.id]
+		return if type(wp) == "number" and wp > 0 then wp else nil
+	end
 	if o.type == "single" then
 		local pid = Shop.PRODUCTS[(o.kind :: string) .. ":" .. o.rarity]
 		return if type(pid) == "number" and pid > 0 then pid else nil

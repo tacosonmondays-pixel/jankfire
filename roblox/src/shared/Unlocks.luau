@@ -10,9 +10,18 @@
 -- when unlocks came in, whatever their level; UnlockAll (the owner, and Studio by default) opens everything.
 -- the same rules run on the server (Loadout refuses a pick) and the clients (the locks shown), from the player's
 -- attributes: Level (Stats), WeaponsKept, UnlockAll (Loadout), all set by the server.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
 local Unlocks = {}
 
-Unlocks.WEAPONS_ROBUX_FREE = true -- (the owner's switch, like Config.LOOT_FREE. off: the passes below are needed)
+Unlocks.WEAPONS_ROBUX_FREE = true -- (the owner's switch, like Config.LOOT_FREE. off: the Robux weapons must be bought)
+-- whether the Robux weapons are free for everyone right now (the switch; a Studio play test of the paid shop,
+-- ReplicatedStorage's MoneyTest, locks them like the switch off would: Shop.luau. never in a live game)
+function Unlocks.robuxFree(): boolean
+	if Unlocks.WEAPONS_ROBUX_FREE and RunService:IsStudio() and ReplicatedStorage:GetAttribute("MoneyTest") == true then return false end
+	return Unlocks.WEAPONS_ROBUX_FREE
+end
 
 -- weapon id -> the level it opens at (not listed: level 1). the weapons not on Roblox yet have one ready for the day
 -- they go live
@@ -45,8 +54,9 @@ Unlocks.LEVEL = {
 	-- (every ported weapon is live since place version 891. a weapon that isn't live shows in no lock or level-up list)
 } :: { [string]: number }
 
--- the Robux exclusives: { pass = the game pass id (0: not made yet) }. a pass of 0 blocks nobody while the switch above
--- is on; keep it on until every live one here has its real pass, or that weapon is locked for everyone (bar kept/UnlockAll)
+-- the Robux exclusives. since 18 Nov they're bought in the shop, not with game passes: with Robux (a developer product,
+-- "weapon:<id>") or with Brass, prices in Shop.MONEY.weapons; the server keeps what you bought (Purchases.luau) and
+-- sets your RobuxOwned. pass stays 0 (unused). the WEAPONS tab and the loadout sell them once the switch above is off
 Unlocks.ROBUX = {
 	minigun = { pass = 0 },
 	laser = { pass = 0 }, -- Big Laser Pointer
@@ -65,7 +75,7 @@ function Unlocks.check(wid: string, level: number, kept: { [string]: boolean }?,
 	if all then return true, nil end
 	if kept and kept[wid] then return true, nil end
 	if Unlocks.ROBUX[wid] then
-		if Unlocks.WEAPONS_ROBUX_FREE or ownsPass then return true, nil end
+		if Unlocks.robuxFree() or ownsPass then return true, nil end
 		return false, "ROBUX"
 	end
 	local need = Unlocks.level(wid)
@@ -73,8 +83,7 @@ function Unlocks.check(wid: string, level: number, kept: { [string]: boolean }?,
 	return false, "LEVEL " .. need
 end
 
--- the same from a player's attributes (Level, WeaponsKept, UnlockAll: the server's). a Robux pass is the server's to
--- check once passes exist (RobuxOwned: "minigun,laser")
+-- the same from a player's attributes (Level, WeaponsKept, UnlockAll, RobuxOwned "laser,minigun": all the server's)
 function Unlocks.kept(p: Player): { [string]: boolean }
 	local out = {}
 	local s = p:GetAttribute("WeaponsKept")

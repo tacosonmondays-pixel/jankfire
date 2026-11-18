@@ -303,6 +303,72 @@ function Quests.gift(p: Player, brass: number, tix: number, id: string): (boolea
 	print(("[jankfire] quests: owner gift +%d Brass +%d tickets to %s"):format(b, x, p.Name))
 	return true, nil
 end
+-- Brass bought with Robux (the shop's Brass packs, ShopReceipts.server.luau, the shop session's, 18 Nov):
+-- Quests.buyBrass(player, amount, receiptId) -> (ok, why?). no daily cap and not counted as earned (a cheat restore
+-- never takes bought Brass back), idempotent by receiptId in its own list (d.bought, not the last 50 grants: the same
+-- receipt twice pays once, the second answers true, "already"), written before it answers true. "loading" = try later
+function Quests.buyBrass(p: Player, amount: number, receiptId: string): (boolean, string?)
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return false, "loading" end
+	if type(amount) ~= "number" or amount ~= amount or amount < 1 or amount == math.huge then return false, "bad amount" end
+	if type(receiptId) ~= "string" or receiptId == "" then return false, "no id" end
+	local d = s.prof.data
+	if type(d.bought) ~= "table" then d.bought = {} end
+	if d.bought[receiptId] ~= nil then return true, "already" end
+	local n = math.floor(amount)
+	d.brass = num(d.brass) + n
+	d.bought[receiptId] = { t = now(), b = n }
+	dirty(s)
+	local prof = s.prof :: Profiles.Profile
+	local saved = if prof.state == "cloud" then Profiles.save(store, prof) else prof.state == "off"
+	if not saved then
+		d.brass = num(d.brass) - n
+		d.bought[receiptId] = nil
+		publish(s)
+		return false, "couldn't save"
+	end
+	publish(s)
+	print(("[jankfire] quests: %s bought %d Brass (%s)"):format(p.Name, n, receiptId))
+	return true, nil
+end
+-- spending Brass in the shop (a Robux weapon bought with Brass: Purchases.luau, the shop session's, 18 Nov):
+-- Quests.spendBrass(player, amount, reason, id) -> (ok, why?). takes it only if they have it, idempotent by id (d.spent:
+-- the same id twice takes it once, the second answers true, "already"), written before it answers true
+function Quests.spendBrass(p: Player, amount: number, reason: string, id: string): (boolean, string?)
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return false, "your wallet is still loading" end
+	if type(amount) ~= "number" or amount ~= amount or amount < 1 or amount == math.huge then return false, "bad amount" end
+	if type(id) ~= "string" or id == "" then return false, "no id" end
+	local d = s.prof.data
+	if type(d.spent) ~= "table" then d.spent = {} end
+	if d.spent[id] ~= nil then return true, "already" end
+	local n = math.floor(amount)
+	if num(d.brass) < n then return false, "not enough Brass" end
+	if s.busy then return false, "one at a time" end
+	s.busy = true
+	d.brass = num(d.brass) - n
+	d.spent[id] = { t = now(), b = n, why = string.sub(tostring(reason), 1, 40) }
+	dirty(s)
+	local prof = s.prof :: Profiles.Profile
+	local saved = if prof.state == "cloud" then Profiles.save(store, prof) else prof.state == "off"
+	s.busy = false
+	if not saved then
+		d.brass = num(d.brass) + n
+		d.spent[id] = nil
+		publish(s)
+		return false, "couldn't save. try again"
+	end
+	publish(s)
+	print(("[jankfire] quests: %s spent %d Brass (%s)"):format(p.Name, n, tostring(reason)))
+	return true, nil
+end
+-- was this spend made? (Purchases settles a Brass buy a crash cut short) true / false; nil = the save isn't loaded
+function Quests.spent(p: Player, id: string): boolean?
+	local s = st[p]
+	if not s or not s.ready or not s.prof then return nil end
+	local d = s.prof.data
+	return type(d.spent) == "table" and d.spent[id] ~= nil
+end
 -- the VIP daily's call (the shop session): Quests.giveBrass(player, amount, receiptId) -> boolean, written to the save
 function Quests.giveBrass(p: Player, amount: number, receiptId: string): boolean
 	local ok = Quests.grant(p, amount, "vip daily", receiptId)

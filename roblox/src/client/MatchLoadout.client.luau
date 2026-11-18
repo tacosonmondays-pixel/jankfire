@@ -313,7 +313,7 @@ local function drawTray()
 		c.st.Transparency = if on then 0.15 else 0.9
 		c.btn.BackgroundColor3 = if on then T.CARD_HI else T.CARD
 		local okU, whyU = Unlocks.forPlayer(me, c.id)
-		c.lk.Text = if not okU then (whyU or "LOCKED") elseif Unlocks.robux(c.id) then (if Unlocks.WEAPONS_ROBUX_FREE then "ROBUX · FREE" else "ROBUX") else ""
+		c.lk.Text = if not okU then (whyU or "LOCKED") elseif Unlocks.robux(c.id) then (if Unlocks.robuxFree() then "ROBUX · FREE" else "ROBUX") else ""
 		c.lk.TextColor3 = if okU then T.MUTED else T.TEXT
 		c.vp.ImageTransparency = if okU then 0 else 0.65
 		c.btn.BackgroundTransparency = if S.asking == c.id then 0.45 elseif not okU then 0.5 else 0

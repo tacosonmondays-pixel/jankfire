@@ -30,8 +30,8 @@ local WHITE = Color3.new(1, 1, 1)
 local ROBUX = utf8.char(0xE002) -- the Robux mark (Roblox's fonts draw it)
 
 local ShopUI = {}
-local TABS = { "featured", "deals", "bundles", "containers", "inventory" }
-local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", inventory = "INVENTORY" }
+local TABS = { "featured", "deals", "bundles", "containers", "weapons", "inventory" }
+local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", weapons = "WEAPONS", inventory = "INVENTORY" }
 local LINE = "Free while we test. The prices are for later."
 
 -- everything the screen knows, in one table (keeps the main chunk well under Luau's 200 locals)
@@ -1157,6 +1157,117 @@ function ShopUI.fillContainers()
 	end
 end
 
+-- ------------------------------------------------------------------------ WEAPONS: the Robux weapons, and Brass (18 Nov)
+-- (the owner: "buying weapons with coins make sure thats a thing". the Robux-exclusive weapons, Unlocks.ROBUX, each for
+-- Robux or for Brass, Shop.MONEY.weapons; Brass for Robux below them, Shop.MONEY.brass. a Brass buy is the server's
+-- (JankfireRemotes.Purchases "brass", a second press to be sure); a Robux one the usual prompt (ShopUI.prompt). while the
+-- weapons are free for everyone (Unlocks.robuxFree) their cards say so and sell nothing. docs/MONEY.md)
+local Money = {} -- (the page's state and helpers, one local)
+Money.arm = nil :: string?
+Money.armT = 0
+do
+	local pg_ = UI.pages.weapons
+	UI.gunScroll = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), CanvasSize = UDim2.new(),
+		ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, pg_)
+	UI.gunBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 22) }, UI.gunScroll)
+	UI.gunHead, UI.gunNote = header(UI.gunBar, "WEAPONS", "ROBUX OR BRASS")
+	UI.gunRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, -8, 0, 300) }, UI.gunScroll)
+	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.gunRow)
+	UI.brassBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 22) }, UI.gunScroll)
+	UI.brassHead, UI.brassNote = header(UI.brassBar, "BRASS", "")
+	UI.brassRow = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 170) }, UI.gunScroll)
+	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.brassRow)
+end
+function Money.ask(op: string, a: any?): any
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Purchases")
+	if not (r and r:IsA("RemoteFunction")) then return { ok = false, why = "the till isn't open yet" } end
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer(op, a) end)
+	if not ok or type(res) ~= "table" then return { ok = false, why = "couldn't reach the shop" } end
+	return res
+end
+function Money.owns(wid: string): boolean
+	local s = me:GetAttribute("RobuxOwned")
+	return type(s) == "string" and table.find(string.split(s, ","), wid) ~= nil
+end
+function Money.brassBuy(wid: string)
+	local o = Shop.weaponOffer(wid)
+	if not o then return end
+	if Purse.of("brass") < o.brass then play("empty"); ShopUI.toast("NOT ENOUGH BRASS"); return end
+	if Money.arm ~= wid or os.clock() - Money.armT > 4 then
+		Money.arm, Money.armT = wid, os.clock()
+		play("click"); ShopUI.fillWeapons()
+		task.delay(4.1, function() if Money.arm == wid then Money.arm = nil; if S.open and S.tab == "weapons" then ShopUI.fillWeapons() end end end)
+		return
+	end
+	Money.arm = nil
+	local res = Money.ask("brass", wid)
+	if res.ok then play("ting"); ShopUI.toast(string.upper(o.name) .. " IS YOURS")
+	else play("empty"); ShopUI.toast(string.upper(tostring(res.why or "that didn't work"))) end
+	ShopUI.fillWeapons()
+end
+function ShopUI.fillWeapons()
+	for _, c in UI.gunRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	for _, c in UI.brassRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	local U = require(Shared:WaitForChild("Unlocks")) :: any
+	local free = U.robuxFree()
+	local k = S.compact
+	local pad = if k then 10 else 14
+	-- (heights: the page's own, the weapons getting most of it; on a phone it scrolls)
+	local H = UI.gunScroll.AbsoluteSize.Y
+	local gunH = math.max(if k then 230 else 300, math.floor(H * 0.62) - 30)
+	local brassH = if k then 150 else math.max(160, H - gunH - 30 - 44)
+	UI.gunRow.Size = UDim2.new(1, -8, 0, gunH)
+	UI.brassBar.Position = UDim2.fromOffset(0, 30 + gunH + 14)
+	UI.brassRow.Position = UDim2.fromOffset(0, 30 + gunH + 44); UI.brassRow.Size = UDim2.new(1, -8, 0, brassH)
+	UI.gunScroll.CanvasSize = UDim2.fromOffset(0, 30 + gunH + 44 + brassH)
+	UI.gunNote.Text = if free then "FREE FOR NOW" else "ROBUX OR BRASS"
+	for i, wid in Shop.WEAPON_IDS do
+		local o = Shop.weaponOffer(wid)
+		if not o then continue end
+		local c = card(UI.gunRow, "legendary")
+		c.LayoutOrder = i
+		local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -(if k then 100 else 112)) }, c)
+		V.show(view, V.gun(wid), "hover", 1.0)
+		local name = txt(c, string.upper(o.name), if k then 15 else 18, T.TEXT, T.FONT_TITLE)
+		name.Position = UDim2.new(0, pad, 1, if k then -96 else -106); name.Size = UDim2.new(1, -2 * pad, 0, 22)
+		local own = Money.owns(wid)
+		local line = txt(c, if own then "YOURS" elseif free then "FREE FOR NOW" else "", 11, if own then T.ACCENT else T.SOFT, T.FONT_BOLD)
+		line.Position = UDim2.new(0, pad, 1, if k then -72 else -80); line.Size = UDim2.new(1, -2 * pad, 0, 14)
+		local bh = 44
+		local y = -(bh + (if k then 8 else 12))
+		local rb = button(c, "", "main", UDim2.new(0.5, -(pad + 4), 0, bh), UDim2.new(0, pad, 1, y))
+		local bb = button(c, "", "dark", UDim2.new(0.5, -(pad + 4), 0, bh), UDim2.new(0.5, 4, 1, y))
+		if own or free then
+			rb.face.Size = UDim2.new(1, -2 * pad, 0, bh)
+			bb.face.Visible = false
+			rb.set(if own then "OWNED" else "FREE FOR NOW", false)
+		else
+			rb.set(priceText(o.robux), Shop.ROBUX == true and Shop.productFor(o) ~= nil)
+			local armed = Money.arm == wid and os.clock() - Money.armT < 4
+			bb.set(if armed then "SURE? " .. commas(o.brass) else commas(o.brass) .. " BRASS", Purse.of("brass") >= o.brass)
+		end
+		rb.face.MouseButton1Click:Connect(function() if not own and not free then ShopUI.prompt(o) end end)
+		bb.face.MouseButton1Click:Connect(function() if not own and not free then Money.brassBuy(wid) end end)
+	end
+	for i, bo in Shop.brassPacks() do
+		local c = card(UI.brassRow, nil)
+		c.LayoutOrder = i
+		local amt = txt(c, commas(bo.amount), if k then 22 else 30, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
+		amt.Position = UDim2.new(0, 0, 0, if k then 10 else 18); amt.Size = UDim2.new(1, 0, 0, if k then 26 else 34)
+		local sub = txt(c, if bo.bonus > 0 then "BRASS  ·  " .. commas(bo.bonus) .. " MORE" else "BRASS", 12, if bo.bonus > 0 then T.ACCENT else T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		sub.Position = UDim2.new(0, 0, 0, if k then 38 else 56); sub.Size = UDim2.new(1, 0, 0, 16)
+		local b = button(c, "", "main", UDim2.new(1, -2 * pad, 0, 40), UDim2.new(0, pad, 1, -(40 + pad)))
+		b.set(priceText(bo.robux), Shop.ROBUX == true and Shop.productFor(bo) ~= nil)
+		b.face.MouseButton1Click:Connect(function() ShopUI.prompt(bo) end)
+	end
+	UI.brassNote.Text = "YOU HAVE " .. commas(Purse.of("brass"))
+end
+for _, a in { "RobuxOwned", "Brass" } do
+	me:GetAttributeChangedSignal(a):Connect(function() if S.open and S.tab == "weapons" then ShopUI.fillWeapons() end end)
+end
+ReplicatedStorage:GetAttributeChangedSignal("MoneyTest"):Connect(function() if S.open then ShopUI.refill() end end)
+
 -- ------------------------------------------------------------------------ DEALS: the owner's three picks for you today
 -- (the owner, 17 Nov: "I give players 3 special discounts on random skins if you talk to me!". the server picks and
 -- keeps them: Deals.luau, JankfireRemotes.Deals "get" / "buy"; the rules are Shop.DEAL_*. the owner's shopkeeper in the
@@ -2023,7 +2134,11 @@ function ShopUI.livePrices()
 			if price then
 				local o = Shop.byId[key]
 				local kind, r = string.match(key, "^(%a+):(%a+)$")
-				if o then o.robux = price
+				local wid = string.match(key, "^weapon:([%w_]+)$")
+				local bid = string.match(key, "^brass:([%w_]+)$")
+				if wid and (Shop.MONEY.weapons :: any)[wid] then (Shop.MONEY.weapons :: any)[wid].robux = price
+				elseif bid then for _, b in Shop.MONEY.brass do if b.id == bid then b.robux = price end end
+				elseif o then o.robux = price
 				elseif kind and (Shop.PRICE :: any)[kind] then (Shop.PRICE :: any)[kind][r] = price end
 			end
 		end
@@ -2214,6 +2329,7 @@ function ShopUI.tab(t: string)
 	if t == "featured" then ShopUI.fillFeatured()
 	elseif t == "bundles" then ShopUI.fillBundles()
 	elseif t == "containers" then ShopUI.fillContainers()
+	elseif t == "weapons" then ShopUI.fillWeapons()
 	elseif t == "deals" then ShopUI.fillDeals()
 	elseif t == "inventory" then ShopUI.fillInventory() end
 end
