@@ -62,7 +62,7 @@ local LOOK = {
 	arrow = { Color3.fromRGB(120, 90, 60), "Block", Vector3.new(0.12, 0.12, 2.4) },
 	card = { Color3.fromRGB(245, 245, 240), "Block", Vector3.new(0.27, 0.03, 0.39) }, -- (batch E)
 }
-type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number, r: number? }
+type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin: number, r: number?, t0: number? }
 local live: { [number]: Live } = {}
 -- the kit models for the shots (guns-remodel, v813: JankfireWeapons w_pj_*, built in metres, nose along -Z, origin at
 -- the middle); a kind with none (the tennis ball, the blood cross) stays a simple shape
@@ -156,6 +156,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 	end
 	local map = workspace:FindFirstChild("Map")
 	if map then floorParams.FilterDescendantsInstances = { map } end
+	-- (owner, 18 Nov 2026: nothing out for ever) a shot the server never ended goes after its longest life (6 s) + 1.5
+	local tnow = os.clock()
+	for id, L in live do
+		if L.t0 and tnow - L.t0 > 7.5 then drop(id) end
+	end
 	for _, L in live do
 		L.v -= Vector3.new(0, L.g * S * dt, 0)
 		L.p += L.v * dt
@@ -202,7 +207,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if k == "proj" and type(f.id) == "number" and typeof(f.p) == "Vector3" and typeof(f.v) == "Vector3" then
 		local w = W[f.w] :: any
 		local kind = w and w.proj or "ball"
-		live[f.id] = { part = shape(kind, tonumber(f.r)), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0, r = tonumber(f.r) }
+		live[f.id] = { part = shape(kind, tonumber(f.r)), p = f.p, v = f.v, g = tonumber(f.g) or 0, k = kind, spin = 0, r = tonumber(f.r), t0 = os.clock() }
 		if kind == "bowl" then loopOn(live[f.id].part, "bowl_roll") end -- (batch D: the ball's roll, wherever it goes)
 		if kind == "arrow" then
 			local part = live[f.id].part
@@ -241,6 +246,12 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		drop(f.id)
 		if not at then return end
 		if f.c then Sfx.play("slipper_catch", at, 0.7) end -- (batch D: the slipper back in your hand)
+		if f.brk and not f.x and not f.b then
+			-- (owner, 18 Nov 2026) it broke: its bounces or its time ran out. a small burst and a sound per kind
+			local snd = if kind == "peel" then "glorp" elseif kind == "bowl" then "clatter" elseif kind == "card" then "plip" else "pop"
+			Fx.impact(at, Vector3.yAxis, nil, if kind == "bowl" then Enum.Material.Slate else Enum.Material.SmoothPlastic, { hole = false, scale = if kind == "bowl" then 1 else 0.6 })
+			Sfx.play(snd, at, 0.7)
+		end
 		if kind == "arrow" and f.b then Sfx.play("arrow_hit", at, 0.9) end
 		if f.x then
 			Fx.explosion(at, tonumber(f.r) or 22.5)
@@ -268,7 +279,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 			if type(id) ~= "number" or typeof(p) ~= "Vector3" or typeof(v) ~= "Vector3" then continue end
 			local part = shape("card")
 			pips(part, if type(f.suit) == "string" then f.suit else nil)
-			live[id] = { part = part, p = p, v = v, g = tonumber(f.g) or 0, k = "card", spin = math.random() * 6, r = tonumber(f.r) }
+			live[id] = { part = part, p = p, v = v, g = tonumber(f.g) or 0, k = "card", spin = math.random() * 6, r = tonumber(f.r), t0 = os.clock() }
 		end
 		if f.by ~= me.UserId then Sfx.play("card_throw", f.ps[1], 0.7) end
 	elseif k == "bowlstrike" and typeof(f.p) == "Vector3" then

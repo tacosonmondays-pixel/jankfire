@@ -8,6 +8,9 @@
 --   rocket: explodes on the first wall or body (radius, falloff, the shooter's own blast only shoves: the rocket jump)
 --   peel: bonks a body (+ slip), bounces off walls, on the floor it leaves a peel for 12 s that trips the next one over it
 --   ball: bounces up to 5 times off anything, each bounce +30% (the tennis ball)
+--   (owner, 18 Nov 2026: "After a few bounces make it break, because otherwise it's out forever until it hits something")
+--   every bouncing or rolling shot breaks after `bounces` (3 unless its row says more: the tennis ball's 5) and lives
+--   MAX_LIFE s at most; the end is always sent (projx, brk = it broke), even if its step errors
 --   snow: a hit adds frost (decaying), 4 freeze them solid for 2.4 s; a hit on someone frozen shatters them
 --   blood: costs 12 HP a shot (thin and free when you can't pay), sticks in whoever it hits; 0.6 s later the cross
 --     bursts out of them, 0.25 s after that it pops: the target and a small blast. a kill pays the HP back
@@ -470,7 +473,7 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 	end
 end
 ;(ThrowR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, look: unknown, c: unknown)
-	if p:GetAttribute("Zone") == "hub" then return end
+	if (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) then return end
 	if type(wid) ~= "string" or typeof(eye) ~= "Vector3" or typeof(look) ~= "Vector3" then return end
 	local lk = look :: Vector3
 	if lk.Magnitude < 0.5 or lk.Magnitude > 1.5 or (eye :: Vector3).Magnitude > 1e6 then return end
@@ -500,12 +503,13 @@ Volley.Event:Connect(function(p: Player, eye: Vector3, dirs: { Vector3 }, dmg: n
 end)
 
 -- ------------------------------------------------------------------ every Heartbeat
+local MAX_LIFE, BOUNCES = 6, 3 -- (the hard cap on any shot's life, s; bounces before one breaks, unless its row says)
 local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 	local w = W[pr.wid] :: any
 	local age = now() - pr.t0
 	if pr.k == "slipper" then return slipperStep(pr, w, dt, age) end
-	if age > (w.life or 6) or not table.find(Fight.all, pr.owner) then
-		fx("projx", { id = pr.id, p = pr.p })
+	if age > math.min(w.life or 5, MAX_LIFE) or not table.find(Fight.all, pr.owner) then
+		fx("projx", { id = pr.id, p = pr.p, brk = true })
 		return false
 	end
 	if pr.k == "ball" and age > 1 and pr.v.Magnitude < 0.5 * S then fx("projx", { id = pr.id, p = pr.p }); return false end
@@ -555,13 +559,15 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 				pr.v = tangent * 0.995 - nrm * vn * e
 				if math.abs(pr.v.Y) < 1.2 * S then pr.v = Vector3.new(pr.v.X, 0, pr.v.Z) end
 			else
+				pr.b += 1 -- (a wall: it breaks on the BOUNCES-th)
+				if pr.b >= (w.bounces or BOUNCES) then fx("projx", { id = pr.id, p = pr.p, brk = true }); return false end
 				pr.v = tangent - nrm * vn * e
 				fx("proju", { id = pr.id, p = pr.p, v = pr.v })
 			end
 		elseif pr.k == "ball" then
 			if math.abs(vn) > (w.minBounce or 3) * S then
 				pr.b += 1
-				if pr.b > w.bounces then fx("projx", { id = pr.id, p = pr.p, tb = pr.b }); return false end
+				if pr.b > w.bounces then fx("projx", { id = pr.id, p = pr.p, tb = pr.b, brk = true }); return false end
 				pr.v = tangent * 0.94 - nrm * vn * e
 				fx("proju", { id = pr.id, p = pr.p, v = pr.v, b = pr.b })
 			else
@@ -569,6 +575,8 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 				if nrm.Y > 0.7 and math.abs(pr.v.Y) < 1.2 * S then pr.v = Vector3.new(pr.v.X, 0, pr.v.Z) end
 			end
 		else
+			pr.b += 1 -- (anything else that bounces, the banana off a wall: it breaks on the BOUNCES-th)
+			if pr.b >= (w.bounces or BOUNCES) then fx("projx", { id = pr.id, p = pr.p, brk = true }); return false end
 			pr.v = tangent - nrm * vn * e
 			fx("proju", { id = pr.id, p = pr.p, v = pr.v })
 		end
@@ -581,6 +589,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 	for i = #projs, 1, -1 do
 		local pr = projs[i]
 		local ok, alive = pcall(stepOne, pr, dt)
+		if not ok then
+			-- (a step that errors used to drop the shot here without a word: every client kept flying it for ever)
+			warn("[WeaponProj] step failed, " .. tostring(pr.k) .. ": " .. tostring(alive))
+			pcall(fx, "projx", { id = pr.id, p = pr.p, brk = true, err = true })
+		end
 		if not ok or not alive then table.remove(projs, i) end
 	end
 	local n = now()
@@ -673,7 +686,7 @@ end)
 ;(BowDrawR :: RemoteEvent).OnServerEvent:Connect(function(p: Player, on: unknown)
 	local f = Fight.byPlayer[p]
 	local w = f and f.held and W[f.held] :: any
-	if on == true and f and f.alive and w and w.kind == "bow" and p:GetAttribute("Zone") ~= "hub" and now() >= f.staggerUntil then
+	if on == true and f and f.alive and w and w.kind == "bow" and (p:GetAttribute("Zone") ~= "hub" or p:GetAttribute("DevArms") == true) and now() >= f.staggerUntil then
 		if p:GetAttribute("BowDrawT") == nil then p:SetAttribute("BowDrawT", workspace:GetServerTimeNow()) end
 	else
 		p:SetAttribute("BowDrawT", nil)
