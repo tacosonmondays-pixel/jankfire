@@ -283,6 +283,35 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## The two-form scythe (v3) and Classic skins batches 2 and 3 (18 Nov 2026, place version 847)
+
+The guns session remodelled the scythe into two kit models from one builder (`gun_scythe.py`): `scythe` (melee) and
+`scythe_rifle`. In the rifle form the blade slides back to become the stock and a scope rises out of the receiver.
+v3 (commit 2bd5f1d) gave both forms a richer silhouette and a wider heel with cheek pads and lock-pin domes. Classic
+skins batches 2 (commit efa6d1e: pump shotgun, scoped bolt-action sniper, single-action revolver, side-by-side
+sawed-off) and 3 (commit 9912a5c: belt-fed LMG, scoped marksman rifle, lever-action carbine, auto shotgun) went live
+too, so all twelve Classic skins are in. Photo: `gun-hats/batchD-seats.jpg`.
+
+- **The scythe (both forms):** z 0.122, s 0.75, on the heel's flat top at the butt (the guns session's seat). The heel is
+  static and the same in both forms. The batch C seat on the blade's top had to go: the blade is now a moving node.
+  The rifle's scope rises 6.45 cm at z -0.24, well ahead of the hat.
+- **Classic lever:** z -0.02, on the bright bolt bar along the receiver's top. At the lever's -0.09 the brims hit the
+  bar's front face (4.6 mm). The solver's -0.06 sat half on the bar and half over a 5 mm drop.
+- **The other seven** (shotgun, sniper, revolver, sawed-off, LMG, marksman, auto shotgun) keep their base guns' seats.
+  `hat_spots.py` gives a skin its gun's spot and measures the height on the skin, and all twelve hats are clean on
+  them. On the Classic sniper, `hat_solve.py` offered z -0.021 with no saddle: a 4 mm ring band round the scope tube,
+  with the foot floating over the tube in front and behind. That's the Ducky Pistol trap again, so it keeps the
+  sniper's 13 mm saddle at z 0.039.
+- **Clipping** (`hat_clip.py`, the ten models, 240 rows): feet at most 2.0 mm, no body or gun clips, googly eyes at most
+  1.3 mm. The report is now 2,904 rows.
+- **Watch the shared tree:** batch 3 was uncommitted while batch 2 was being seated, and `hat_spots.py` measured it
+  too. Diff the regenerated data and keep only the lines that are live.
+- **Studio (place version 847):** `GunHatData` pushed as a guarded patch. On the ten built models, at both sizes, the
+  cowboy's foot reads exactly its 2.0 mm sink on eight. The Classic sniper and marksman read their saddles
+  (13 and 4 mm, as the base guns). Every hat rides a static piece: the scythe's on `heel_wzB__frame` in both forms,
+  not the blade. The scythe reads 9.6 mm in, but that is the heel's collision hull (its slot and pads). The side photo
+  shows the hat's foot on the heel's drawn top.
+
 ## Seats on batch C, the Classic skins and the Ducky Pistol rebuild (18 Nov 2026, place version 824)
 
 The guns session's commit 342127e (place version 813) brought batch C (the scythe, chicken rocket, peel shooter, tennis
@@ -596,7 +625,8 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
-blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, and batch C, the Classic skins and the Ducky Pistol rebuild in place version 824.
+blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, batch C, Classic batch 1 and the Ducky Pistol rebuild in place version 824, and
+the two-form scythe v3 and Classic batches 2 and 3 in place version 847.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
