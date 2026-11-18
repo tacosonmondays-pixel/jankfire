@@ -201,6 +201,19 @@ Players can still use Roblox's own Report in the Esc menu. Ours is extra evidenc
 
 **Storage:** DataStore `JankReports_v1`. A Studio test uses its own store, `JankReports_v1_studio` (since 18 Nov), with `s_` keys, so test reports never mix with real ones. Erasing a real player's reports has to be done from a live server.
 
+**Trades (18 Nov, from the owner's trade log, `Trading.lookup`; docs/TRADING.md).** These are read when shown, not stored in the report:
+- A report's detail lists the reported player's last 20 trades: when, with whom (id and name), what each side gave, and the state.
+- PLAYERS rows have a TRADES button.
+- CONFIRM CHEATER's answer carries the cheater's trades in the restore window, and the panel opens that list.
+
+The panel only shows trades; nothing is ever reversed from here. Reversing trades is a later decision (TRADING.md).
+
+**Tested in place version 1038** with a fake trade in the Studio trade log (the owner gave a Galaxy wrap on the SMG to user 1 for 2 Crates):
+- TRADES listed it with names resolved.
+- The Studio report about user 1 showed it from their side.
+- CONFIRM CHEATER on user 1 returned it in the restore window; they were unconfirmed after.
+- The log was put back exactly afterwards.
+
 | Key | Holds |
 |---|---|
 | `index` | the newest 500 reports' summaries (who, by whom, why, when, state) |

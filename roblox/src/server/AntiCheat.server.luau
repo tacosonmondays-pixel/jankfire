@@ -979,6 +979,50 @@ local uidArg = Reports.validUid
 local function reportId(v: unknown): string?
 	return if type(v) == "string" and #v <= 40 and string.match(v, "^%w+$") then v else nil
 end
+-- the owner's trade log (Trading.lookup, docs/TRADING.md): a player's trades for the panel's TRADES, a report's detail
+-- and CONFIRM CHEATER (who got things from a cheater). report only: nothing is ever reversed from here
+local TradingMod: any = nil
+local LootTableMod: any = nil
+local function sideText(sd: any): string
+	if LootTableMod == nil then
+		local ok, L = pcall(require, ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable"))
+		LootTableMod = if ok and type(L) == "table" then L else false
+	end
+	local bits = {}
+	for _, it in (if type(sd.gives) == "table" then sd.gives else {}) :: any do
+		if type(it) ~= "table" then continue end
+		local info = LootTableMod and type(LootTableMod.pairInfo) == "function" and LootTableMod.pairInfo(it.t, it.k)
+		local gun = string.match(tostring(it.k), "@([%w_]+)$")
+		table.insert(bits, (if info then tostring(info.name) else tostring(it.k)) .. (if gun then " (" .. gun .. ")" else ""))
+	end
+	for kind, n in (if type(sd.stock) == "table" then sd.stock else {}) :: any do
+		local c = LootTableMod and LootTableMod.CONTAINERS and LootTableMod.CONTAINERS[kind]
+		table.insert(bits, ("%d %s"):format(tonumber(n) or 0, if c then (if n == 1 then c.name else c.plural) else tostring(kind)))
+	end
+	return if #bits > 0 then table.concat(bits, ", ") else "nothing"
+end
+-- since: only trades from then on (CONFIRM CHEATER's restore window; nil or 0 = all the log keeps)
+local function tradesOf(uid: number, since: number?): { any }
+	if TradingMod == nil then
+		local m = script.Parent:FindFirstChild("Trading")
+		local ok, T2 = false, nil
+		if m and m:IsA("ModuleScript") then ok, T2 = pcall(require, m) end
+		TradingMod = if ok and type(T2) == "table" then T2 else false
+	end
+	if not TradingMod or type(TradingMod.lookup) ~= "function" then return {} end
+	local ok, list = pcall(TradingMod.lookup, uid, 20)
+	if not ok or type(list) ~= "table" then return {} end
+	local out = {}
+	for _, rec in list do
+		if type(rec) ~= "table" or type(rec.a) ~= "table" or type(rec.b) ~= "table" then continue end
+		if since and since > 0 and (tonumber(rec.t) or 0) < since then continue end
+		local mine, other = if rec.a.id == uid then rec.a else rec.b, if rec.a.id == uid then rec.b else rec.a
+		table.insert(out, { t = tonumber(rec.t) or 0, id = tostring(rec.id), state = rec.state, with = tonumber(other.id) or 0,
+			withName = if type(other.name) == "string" then other.name else Reports.nameOf(tonumber(other.id) or 0),
+			gave = sideText(mine), got = sideText(other) })
+	end
+	return out
+end
 local function textArg(v: unknown, max: number): string
 	if type(v) ~= "string" then return "" end
 	return string.sub(string.gsub(v, "[%c]", " "), 1, max)
@@ -1024,6 +1068,7 @@ local probed: { [Player]: boolean } = {}
 		local id = reportId(a)
 		if not id then return nil end
 		local ok, r = pcall(Reports.get, id)
+		if ok and type(r) == "table" and type(r.who) == "number" then r.trades = tradesOf(r.who) end -- (a scam report: what changed hands)
 		return if ok then r else nil
 	elseif op == "dismiss" then
 		local id = reportId(a)
@@ -1038,7 +1083,12 @@ local probed: { [Player]: boolean } = {}
 		local from = Reports.confirm(uid, if b == "all" then 0 else nil, p.UserId)
 		local id = reportId(c)
 		if id then Reports.setState(id, "confirmed", p.UserId) end
-		return { ok = true, since = from }
+		-- (their trades in the restore window: who got things from them. shown, never reversed: docs/TRADING.md)
+		return { ok = true, since = from, trades = tradesOf(uid, if type(from) == "number" then from else nil) }
+	elseif op == "trades" then
+		local uid = uidArg(a)
+		if not uid then return { ok = false, why = "no such user id" } end
+		return { ok = true, list = tradesOf(uid) }
 	elseif op == "unconfirm" then
 		local uid = uidArg(a)
 		if not uid then return { ok = false, why = "no such user id" } end

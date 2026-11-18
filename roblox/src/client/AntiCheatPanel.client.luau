@@ -107,6 +107,13 @@ local function answer(what: string, res: any): string
 end
 
 local tab = "players"
+-- (a player's trades, from the owner's trade log: their TRADES button, or what CONFIRM CHEATER found in its window.
+-- report only: nothing is reversed. docs/TRADING.md)
+local tradeShow: { title: string, list: { any } }? = nil
+local function showTrades(title: string, res: any)
+	if type(res) ~= "table" then return end
+	tradeShow = { title = title, list = if type(res.list) == "table" then res.list elseif type(res.trades) == "table" then res.trades else {} }
+end
 local detail: string? = nil -- (the report open in REPORTS)
 local refresh: () -> ()
 
@@ -132,6 +139,7 @@ do
 	act("Confirm", "CONFIRM CHEATER", 140, function(n)
 		local r = call("confirm", n)
 		note.Text = answer("confirmed " .. n, r) .. (if type(r) == "table" and r.since then (if r.since > 0 then ", since " .. os.date("%d %b", r.since) else ", everything") else "")
+		if type(r) == "table" and r.ok then showTrades(("TRADES OF %d IN THE RESTORE WINDOW (who got things from them; nothing is reversed)"):format(n), r); refresh() end
 	end)
 	act("Unconfirm", "UNCONFIRM", 100, function(n) note.Text = answer("unconfirmed " .. n, call("unconfirm", n)) end)
 	act("Erase", "ERASE DATA", 100, function(n)
@@ -167,6 +175,28 @@ local function empty(text: string)
 	cell(row, "Empty", text, 6, 600, T.MUTED, nil, 13)
 end
 
+-- ------------------------------------------------------------------ TRADES (the owner's trade log)
+local function tradeLines(list: { any })
+	for _, e in list do
+		local tr = rowFrame(40, 0.75)
+		cell(tr, "Time", hhmm(tonumber(e.t) or 0), 8, 92, T.MUTED, nil, 12, 2)
+		cell(tr, "With", ("with %s (%s)"):format(tostring(e.withName), tostring(e.with)), 102, 260, T.TEXT, T.FONT_BOLD, 12, 2)
+		cell(tr, "State", if e.state then string.upper(tostring(e.state)) else "", 640, 100, T.DIM, T.FONT_BOLD, 11, 2)
+		cell(tr, "Gave", "gave: " .. tostring(e.gave), 18, 360, T.SOFT, nil, 12, 20)
+		cell(tr, "Got", "got: " .. tostring(e.got), 384, 360, T.SOFT, nil, 12, 20)
+	end
+end
+local function tradeView()
+	clear()
+	local sh = tradeShow :: { title: string, list: { any } }
+	local head = rowFrame(30, 0.2)
+	cell(head, "Title", sh.title, 10, 640, T.TEXT, T.FONT_BOLD, 13, 6)
+	local back = button(head, "Back", "BACK", UDim2.new(1, -66, 0, 2), 60)
+	back.Activated:Connect(function() tradeShow = nil; refresh() end)
+	if #sh.list == 0 then empty("No trades in the log."); return end
+	tradeLines(sh.list)
+end
+
 -- ------------------------------------------------------------------ PLAYERS
 local function playerRows(rows: { any })
 	clear()
@@ -190,7 +220,14 @@ local function playerRows(rows: { any })
 				end)
 			end
 			act("KICK", 54, function() note.Text = answer("kicked " .. tostring(r.name), call("kick", r.uid, "")); refresh() end)
-			act("CONFIRM", 76, function() note.Text = answer("confirmed " .. tostring(r.name), call("confirm", r.uid)) end)
+			act("CONFIRM", 76, function()
+				local res = call("confirm", r.uid)
+				note.Text = answer("confirmed " .. tostring(r.name), res)
+				if type(res) == "table" and res.ok then showTrades(("TRADES OF %s IN THE RESTORE WINDOW (who got things from them; nothing is reversed)"):format(string.upper(tostring(r.name))), res); refresh() end
+			end)
+			local tb = button(row, "TRADES", "TRADES", UDim2.new(1, -(x + 70), 0, 13), 70)
+			x += 76
+			tb.Activated:Connect(function() showTrades(("TRADES OF %s"):format(string.upper(tostring(r.name))), call("trades", r.uid)); refresh() end)
 			act("CLEAR", 60, function() note.Text = answer("cleared " .. tostring(r.name), call("clear", r.uid)); refresh() end)
 		end
 	end
@@ -252,6 +289,7 @@ local function reportDetail(r: any)
 	act("CONFIRM", 76, function()
 		local res = call("confirm", r.who, nil, r.id)
 		note.Text = answer("confirmed " .. tostring(r.whoName), res) .. (if type(res) == "table" and res.since then (if res.since > 0 then ", since " .. os.date("%d %b", res.since) else ", everything") else "")
+		if type(res) == "table" and res.ok then showTrades(("TRADES OF %s IN THE RESTORE WINDOW (who got things from them; nothing is reversed)"):format(string.upper(tostring(r.whoName))), res); refresh() end
 	end, true)
 	-- the reported player's anti-cheat state when the report was made
 	local f = r.flags
@@ -271,6 +309,11 @@ local function reportDetail(r: any)
 	end
 	local rr = rowFrame(22, 0.6)
 	cell(rr, "Rec", if r.rec then ("match recording kept (%d KB)"):format(math.floor((tonumber(r.recBytes) or 0) / 1024)) else "no match recording", 8, 740, T.SOFT, nil, 12, 2)
+	-- their trades, newest first (a scam report: what really changed hands)
+	local trs = if type(r.trades) == "table" then r.trades else {}
+	local th = rowFrame(22, 0.6)
+	cell(th, "Trades", if #trs > 0 then ("trades: the last %d in the log"):format(#trs) else "trades: none in the log", 8, 740, T.SOFT, T.FONT_BOLD, 12, 2)
+	tradeLines(trs)
 	-- the public chat it kept (the reported player's lines stand out)
 	local ch = rowFrame(22, 0.6)
 	cell(ch, "Chat", ("public chat, the %d lines before the report"):format(#(r.chat or {})), 8, 740, T.SOFT, T.FONT_BOLD, 12, 2)
@@ -285,7 +328,9 @@ end
 refresh = function()
 	if not gui.Enabled then return end
 	order = 0
-	if tab == "players" then
+	if tradeShow then
+		tradeView()
+	elseif tab == "players" then
 		local rows = call("players")
 		if type(rows) == "table" then playerRows(rows) end
 	elseif tab == "log" then
@@ -302,6 +347,7 @@ end
 local function setTab(t: string)
 	tab = t
 	detail = nil
+	tradeShow = nil
 	for k, b in tabs do
 		b.BackgroundColor3 = if k == t then T.ACCENT else T.CARD_HI
 		b.TextColor3 = if k == t then T.INK else T.TEXT

@@ -96,8 +96,21 @@ comes off by itself: Loot fires `changed`, and the loadout, flair and the card e
 `JankfireTrades_v1`.
 
 **The owner's lookup:** `Trading.lookup(userId, n)` returns the last n trades that user was in, straight from the ledger
-(both ids and names, the items, the time), here or not. It's for the REPORT / CONFIRM CHEATER tools; they don't call it
-yet.
+(both ids and names, the items, the time), here or not. The owner's anti-cheat panel (F7) uses it, since 18 Nov:
+
+- **PLAYERS:** each row's TRADES button lists that player's last 20 trades: when, with whom, what each side gave.
+- **REPORTS:** a report's detail shows the reported player's trades, so a scam report can be checked against what really changed hands.
+- **CONFIRM CHEATER:** after the restores, the panel lists the cheater's trades in the restore window, so the owner can see who got things from them.
+
+The panel only shows trades; it never reverses one.
+
+**Later decision: reversing trades.** Taking a cheater's trades back is not built, and needs its own careful design:
+- an innocent partner may have traded the items on, opened, worn or sold them;
+- a reversal must never take more than the trade gave;
+- each side's save is session-locked, and the partner may be in another server;
+- it should probably be the owner's choice per trade, not automatic.
+
+Until then, the owner reads the list and decides by hand.
 
 ## Studio tests
 
