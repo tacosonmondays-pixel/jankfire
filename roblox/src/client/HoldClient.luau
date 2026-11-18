@@ -17,7 +17,7 @@ local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local H = {}
 local me = Players.LocalPlayer
 local W = Weapons.list
-local st = { wid = nil :: string?, down = false, t0 = 0, aimT = 0, fuel = 4, exhaleUntil = 0, cdUntil = 0 }
+local st = { wid = nil :: string?, down = false, t0 = 0, aimT = 0, fuel = 4, exhaleUntil = 0, cdUntil = 0, exhaleLen = 0, exhaleK = 0 }
 
 local function send(wid: string, mode: any, look: Vector3?)
 	local r = Remotes:FindFirstChild("Hold")
@@ -47,7 +47,9 @@ function H.release(wid: string?)
 	local _, look = cam()
 	send(st.wid :: string, false, look)
 	if w.hold == "breath" and held > 0.12 and held <= w.maxCharge then
-		st.exhaleUntil = now + math.min(held, w.maxCharge) * w.exhaleMul
+		st.exhaleLen = math.min(held, w.maxCharge) * w.exhaleMul
+		st.exhaleUntil = now + st.exhaleLen
+		st.exhaleK = math.min(held, w.maxCharge) / w.maxCharge -- (the Hot Sauce's bar starts its drain from here)
 	elseif w.hold == "beam" then
 		local k = math.clamp((held - w.tap) / (w.charge - w.tap), 0, 1)
 		local dur = w.dur[1] + (w.dur[2] - w.dur[1]) * k
@@ -64,6 +66,13 @@ function H.charging(): (string?, number)
 	if w.hold == "breath" then return st.wid, math.clamp(held / w.maxCharge, 0, 1) end
 	if w.hold == "beam" then return st.wid, math.clamp(held / w.charge, 0, 1) end
 	return st.wid, 1
+end
+-- the Hot Sauce's breath of fire still to come, as the share of a full swig it started from (SaucePour's bar drains
+-- with it), 0 when you're not breathing fire
+function H.exhale(): number
+	local left = st.exhaleUntil - os.clock()
+	if left <= 0 or st.exhaleLen <= 0 then return 0 end
+	return st.exhaleK * left / st.exhaleLen
 end
 -- the laser slows you while it charges (Arsenal multiplies your run speed by this)
 function H.speed(): number

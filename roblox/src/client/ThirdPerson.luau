@@ -75,7 +75,7 @@ local ID = CFrame.identity
 TP.T = {
 	scale = 1.95, kMin = 2, kMax = 4.5, -- the gun: studs per metre of its file = scale x u, clamped
 	size = { katana = 1.3 }, -- a weapon's own size on top (a sword read short at the guns' scale)
-	swig = { mouth = V(0, -0.25, -0.6), tip = -2.6 }, -- the Hot Sauce's swig: where the cap meets the mouth (head sizes), the bottle's tip (radians: the cap back into the mouth, the base up and out)
+	swig = { mouth = V(0, -0.08, -0.85), tip = -2.75, more = 0.8 }, -- the Hot Sauce's swig (owner, 18 Nov: "turned and poured into your mouth", "reach up and over to your mouth"): the cap a little above and in front of the mouth (head sizes from the head's middle; SaucePour.client draws the sauce falling into it), the bottle's tip at the start (radians: the cap back toward the mouth, the base up and out; reached the long way round, up and over) and how much more it tips up over the 3 s swig
 	-- (the hold session, 18 Nov 2026) weapons-port's Lasso and cart, from the player's attributes. spin: the coil's fist
 	-- over the head from the right shoulder (chest space, u), going round `circle` u, `rev` turns a second, the loop
 	-- `loop` u round; pull: that fist on the rope (aim space from the shoulder, u), `lead` u to the other fist along it;
@@ -1177,13 +1177,20 @@ local function stepRig(r: Rig, dt: number, now: number)
 		-- sizes from its middle), eased in and out
 		if r.wid == "cig" then
 			local who = Players:GetPlayerFromCharacter(r.ch)
-			local want = if who and who:GetAttribute("Swig") == true then 1 else 0
+			local holder: Instance = who or r.ch -- (a TPRig test body: its own Swig attribute)
+			local on = holder:GetAttribute("Swig") == true
+			local want = if on then 1 else 0
 			local ra = r :: any
-			ra.swig = (ra.swig or 0) + (want - (ra.swig or 0)) * math.min(1, dt * 8)
+			if on and not ra.swigT then ra.swigT = os.clock() elseif not on then ra.swigT = nil end -- (when this swig began)
+			ra.swig = (ra.swig or 0) + (want - (ra.swig or 0)) * math.min(1, dt * 5) -- (the up-and-over, ~0.45 s)
 			if ra.swig > 0.001 then
 				local sw = TP.T.swig
-				local M = CF(headCF * (sw.mouth * r.Hs)) * Hq * ANG(sw.tip, 0, 0) * CF(0, 0, 0.118 * r.k)
-				G = G:Lerp(M, smoothstep(ra.swig))
+				local k = if ra.swigT then math.clamp((os.clock() - ra.swigT) / 3, 0, 1) else 1 -- (3 s: the swig's maxCharge)
+				-- (up and over: the tip eased by angle the long way round (+2 pi), so the hand comes up to the head and the
+				-- cap rises and turns over to the mouth; a Lerp of the whole turn went down and away, as if dumping it)
+				local e = smoothstep(ra.swig)
+				local M = CF(headCF * (sw.mouth * r.Hs)) * Hq * ANG((sw.tip + sw.more * smoothstep(k) + 2 * math.pi) * e, 0, 0) * CF(0, 0, 0.118 * r.k)
+				G = G:Lerp(M, e)
 			end
 		end
 		-- (the hold session, 18 Nov 2026) weapons-port's Lasso (TP.T.lasso): spinning, the coil's fist goes round over

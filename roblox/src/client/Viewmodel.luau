@@ -43,8 +43,13 @@ local bobPh, breathT = 0, 0
 local sway = Vector2.zero
 local runK = 0
 local feel = { ground = 0, slide = 0, slip = 0, speed = 0, swig = 0 } -- (the body's state, eased: VM.update)
--- the swig's pose: where the bottle goes (camera space, metres), its tip up (radians) plus more over the swig, its roll
-local SWIG = { at = Vector3.new(0.1, -0.17, -0.26), tip = -2.0, more = -0.3, roll = -0.2 } -- (the cap down to your mouth below the screen, the fist and the base low on the right: ~63/74 and 62/63 %)
+-- the swig's pose (owner, 18 Nov 2026: "turned and poured into your mouth", then "it looks like your dumping it down,
+-- make it reach up and over to your mouth"): the cap a little above and in front of your mouth (camera space, metres;
+-- low in the screen), the neck back at you and the base up toward the top middle: tipped about the cap (radians about
+-- the camera's right) from tip to tip + more over the swig, and leaned (radians about your look: the base a little right
+-- of the crosshair). it gets there UP and OVER: the turn runs the long way round (+2 pi), the cap rising first.
+-- SaucePour.client draws the sauce falling
+local SWIG = { cap = Vector3.new(0.01, -0.07, -0.13), tip = -2.45, more = 0.45, lean = -0.3 }
 -- Lefty & Righty (18 Nov 2026, weapons-port's akimbo: hands = 2): a second gun in your left hand, the first one's
 -- mirror across the screen's middle, with recoil springs and a reload dip of its own. hand 1 = Lefty (left click: this
 -- second gun, your left hand); hand 2 = Righty (right click: the main model, your right hand). a reload is a dip of
@@ -922,7 +927,7 @@ function VM.update(dt: number, c: Ctx)
 	feel.slide += ((if c.slide then 1 else 0) - feel.slide) * e10
 	feel.slip += ((if c.slipping then 1 else 0) - feel.slip) * e10
 	feel.speed += (c.speed - feel.speed) * e10
-	feel.swig += ((if c.swig then 1 else 0) - feel.swig) * math.min(1, dt * 8)
+	feel.swig += ((if c.swig then 1 else 0) - feel.swig) * math.min(1, dt * 5) -- (5: the swig's up-and-over reads, ~0.45 s)
 	-- footstep bob: one dip per foot strike
 	local spd = feel.speed / S
 	local stride = math.min(4.3, 1.2 + 0.29 * spd)
@@ -1003,13 +1008,19 @@ function VM.update(dt: number, c: Ctx)
 		rx -= 0.25 * L.hold
 	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kickUp * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
-	-- the Hot Sauce's swig (18 Nov 2026, weapons-port's hold-to-swig): the bottle comes down in front of your mouth, its
-	-- cap tipping up toward you as the swig goes on (c.swig 0..1), and back down as you let go
+	-- the Hot Sauce's swig (18 Nov 2026, weapons-port's hold-to-swig; turned and poured since the owner's ask): the cap
+	-- comes to just above your mouth and the bottle tips up about it as the swig goes on (c.swig 0..1, base rising), and
+	-- back down as you let go. the turn is about the cap: pos puts the model's Muzzle (the cap) on SWIG.cap
 	local drink = CFrame.identity
 	if feel.swig > 0.001 then
 		local e = feel.swig * feel.swig * (3 - 2 * feel.swig)
-		pos = pos:Lerp(SWIG.at * S, e)
-		drink = CFrame.Angles((SWIG.tip + SWIG.more * (c.swig or 1)) * e, 0, SWIG.roll * e)
+		local mz = m.PrimaryPart:FindFirstChild("Muzzle")
+		local capAt = if mz and mz:IsA("Attachment") then mz.Position else Vector3.new(0, 0, -0.118 * S)
+		local tipNow = SWIG.tip + SWIG.more * math.clamp(c.swig or 1, 0, 1)
+		-- (eased by angle, not a Lerp of the turn: a Lerp takes the short way, cap down and away, as if dumping it)
+		local R = CFrame.Angles(0, 0, SWIG.lean * e) * CFrame.Angles((tipNow + 2 * math.pi) * e, 0, 0)
+		pos = pos:Lerp(SWIG.cap * S - (R * baseRot):VectorToWorldSpace(capAt), e)
+		drink = R
 	end
 	if dR > 0 then jig *= CFrame.Angles(DIP.tip * dR, 0, 0) end
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * drink * jig * baseRot
