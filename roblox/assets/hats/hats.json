@@ -105,24 +105,20 @@
  },
  "eyes": {
   "lo": [
-   -0.0329,
-   -0.0,
-   -0.0329
+   -0.0384,
+   0.0,
+   -0.0236
   ],
   "hi": [
-   0.0329,
-   0.0312,
-   0.0329
+   0.0384,
+   0.0372,
+   0.0186
   ],
-  "tris": 4752,
+  "tris": 3984,
   "pieces": [
-   "cap__cap",
-   "band__gold",
    "eye__eye",
    "pupil_l__pupil",
-   "pupil_r__pupil",
-   "foot__foot",
-   "foot__gold"
+   "pupil_r__pupil"
   ]
  },
  "tophat": {

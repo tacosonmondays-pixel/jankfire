@@ -244,6 +244,45 @@ set's darker brass reads dull as Metal. `gun-hats/star-tricorne.png` has the Ble
   - Play (client): each star rests at 0.35 and flares to 0.05 in turn (front, back-left, back-right), then all three
     rest. The HATS row holds 13 cards at 86 px (1,220 of 1,226 px).
 
+## Round 13: the Googly Eyes straight on the gun (17 Nov 2026, place version 724)
+
+The owner: "googly eyes should just be placed on the gun like in JANKFIRE!". The web game's eyes are two white balls side
+by side with a black pupil ball pushed forward on each, straight on the gun's top, with no base (`public/js/skins.js`
+`eyes()`). Ours had sat on a slate plate (round 5), then been set into a grey felt cap looking up and back at the
+player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault Rifle, Plan B and the Sniper).
+
+- **Model** (`hat_models.eyes`): two warm-white balls (radius 18.6 mm, centres 19.8 mm either side), a slate-black
+  pupil ball (radius 8.7 mm) 14.9 mm forward of each, looking along the barrel toward the muzzle. These are the web's
+  sizes at one web hat unit = 6.2 cm. No foot, no cap, no brass: 3 pieces (`eye`, `pupil_l`, `pupil_r`), 3,984
+  triangles. From the player's own eye you see the backs of the two balls, as in the web game; other players see the
+  pupils.
+- **Rattle:** a new random offset every frame, up to 3 mm sideways and up and down (the web's 0.05 of a hat unit).
+  `GunHats.step` no longer waits 0.11 s between rattles (only the eyes rattle).
+- **Seats:** the eyes stand on the gun themselves, so each seat has its own height for them.
+  - `hat_models.eyes_rest` drops the pair straight down onto the gun's top until a ball touches (rays under every
+    ball, the pupils too), then sinks it 1 mm (times its size).
+  - `hat_spots.py` writes that into every spot: `ey` (first person, the racks, the loadout) and `ey3` (the
+    third-person size, 1.5x, which rests lower on a round top). On a katana's pommel seat (pitch 90) the eyes sit
+    upright on the handle's top, 2.8 cm in from its end (`ez`).
+  - `GunHats` places them with `seatOf(sp, id, boost)` in all four attach paths: upright, at that height, with no
+    saddle (the scoped guns' slate pucks are not drawn under them).
+  - Against the other hats' seats: up to 8 mm lower on round scopes and tubes (they straddle them), a little higher
+    where something stands up under one ball (the calculator Plan B's key, 7.8 mm).
+- **Clipping** (`hat_clip.py`: the eyes on all 93 seats, first and third person, 186 rows; the balls count as the
+  foot, `hat_models.SEATED`; the pupils' rattle is swept): the balls at most 1.4 mm into a gun (the designed 1 mm
+  times size), the pupils nowhere in a gun, no gun in the eyes. The report is still 2,232 rows.
+- **Upload:** round 13, asset 123597118644451, all twelve hats. The other eleven are unchanged (identical bounds and
+  pieces).
+- **The Angel rifle (Tripo) keeps its live height by hand:** `hat_spots.py` now reads the vault's newer angel mesh
+  (the unreleased bake option), which is 0.72 mm lower at the seat. So `ar@ar_seraph_tripo` stays at 0.06672 and its
+  eyes are raised by 0.72 mm. Run `hat_spots.py` again when the guns session installs that version.
+- **Studio (place version 724):**
+  - Pushes: `GunHats` and `GunHatData`, as guarded find/replace patches.
+  - Import: `H.load(123597118644451)` loaded twelve hats; `H.check()`: hats ok.
+  - Built guns (13 seats, both sizes): every ball touches its gun, 0.2 to 3.5 mm in by Studio's rays (collision
+    shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
+    carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
+
 ## Seats for the space-western pair and the Japanese concepts (17 Nov 2026, place version 481)
 
 The guns session installed 17 skins in place version 478. Ten are live: Dust Drover and Star Drover on the revolver,
@@ -451,7 +490,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 12** (asset 100913123667082: the eleven hats plus the Star Tricorne), place version 554. Round 11
+- **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724.
+  Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447

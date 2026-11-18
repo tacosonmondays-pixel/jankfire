@@ -4,8 +4,9 @@
 #   blender -b --factory-startup -P tools/roblox/hat_clip.py -- [--set kit] [--third 1.5] [--hat <id> ...] [gun ...]
 #
 # Placement is the game's own (GunHats.attach): the foot on the gun's top under the spot, `sink` into it, lifted by the
-# spot's saddle, turned by yaw / pitch, sized by s (x THIRD in third person). The moving bits are swept: the propeller
-# round its axis, the halo through its bob. A point counts as inside a solid when it is behind the nearest face of that
+# spot's saddle, turned by yaw / pitch, sized by s (x THIRD in third person); the googly eyes (round 13) at their own
+# height, upright and with no saddle (hat_models.eyes_seat, GunHats' seatOf). The moving bits are swept: the
+# propeller round its axis, the halo through its bob, the pupils through their rattle. A point counts as inside a solid when it is behind the nearest face of that
 # solid (each gun and hat piece is split into its closed solids first, since solids overlap inside a piece).
 # Reported per pair: FOOT = how deep the hat's foot goes in (it is meant to sit `sink` = 2 mm in), BODY = how deep the
 # rest of the hat goes in, GUN = how deep any part of the gun goes into the hat. mm in the gun's own metres; the worst
@@ -108,8 +109,9 @@ def gun_top(isl, x, z):
     return best
 
 
-def hat_points(h, M, moves):
-    """(foot points, body points, [body islands]) in Blender world, the moving bits swept"""
+def hat_points(h, M, moves, seated=()):
+    """(foot points, body points, [body islands]) in Blender world, the moving bits swept. seated = nodes that stand on
+       the gun themselves (hat_models.SEATED: the googly eyes' balls): they count as the foot"""
     foot, body, bpieces = [], [], []
     for (node, slot), bm in h.pieces.items():
         mv = moves.get(node)
@@ -118,10 +120,14 @@ def hat_points(h, M, moves):
             frames = [Matrix.Rotation(math.radians(a), 4, 'Z') for a in range(0, 360, 15)]
         elif mv and mv['kind'] == 'bob':
             frames = [Matrix.Translation(Vector((0, 0, d * mv['amp']))) for d in (-1, 0, 1)]
+        elif mv and mv['kind'] == 'rattle':  # (u, v in the hat frame: x right, y up, z back -> Blender x, -z, y)
+            u = Vector((mv['u'][0], -mv['u'][2], mv['u'][1])) * mv['amp']
+            v = Vector((mv['v'][0], -mv['v'][2], mv['v'][1])) * mv['amp']
+            frames = [Matrix.Translation(u * a + v * b) for a in (-1, 0, 1) for b in (-1, 0, 1)]
         pts = [M @ (fr @ v.co) for fr in frames for v in bm.verts]
-        (foot if node == 'foot' else body).extend(pts)
+        (foot if node == 'foot' or node in seated else body).extend(pts)
         # (the hat's own solids, placed, for the gun-into-hat test: only the rest pose)
-        b2 = bm.copy(); b2.transform(M); bpieces.append((node, b2))
+        b2 = bm.copy(); b2.transform(M); bpieces.append(('foot' if node in seated else node, b2))
     return foot, body, bpieces
 
 
@@ -136,6 +142,7 @@ def main():
         x, z = sp.get('x', 0.0), sp['z']
         if 'y' in sp: y = sp['y'] - sp.get('sink', 0.0)
         else: y = gun_top(gisl, x, z) - sp.get('sink', 0.002)
+        topf = lambda a, b: gun_top(gisl, a, b)
         for scale_name, boost in (('fp', 1.0), ('tp', THIRD)):
             for hid in (ONLY or hat_models.HATS):
                 h = hat_models.make(hid)
@@ -146,8 +153,14 @@ def main():
                       @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X')
                       @ Matrix.Translation(Vector((0, sp.get('saddle', 0.0) * boost, 0)))
                       @ Matrix.Scale(sp.get('s', 1.0) * boost, 4))
+                if hid in hat_models.SEATED:
+                    # (the googly eyes stand on the gun themselves: their own height at this size, upright, no saddle)
+                    ex, _, _, ez = hat_models.eyes_seat(topf, sp)
+                    ey = hat_models.eyes_rest(topf, ex, ez, sp.get('yaw', 0), sp.get('s', 1.0) * boost)
+                    mw = (Matrix.Translation(Vector((ex, ey, ez))) @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
+                          @ Matrix.Scale(sp.get('s', 1.0) * boost, 4))
                 M = to_blender(mw)
-                foot, body, bpieces = hat_points(h, M, hat_models.MOVES.get(hid, {}))
+                foot, body, bpieces = hat_points(h, M, hat_models.MOVES.get(hid, {}), hat_models.SEATED.get(hid, ()))
                 fd, fw = depth_inside(foot, gisl)
                 bd, bw = depth_inside(body, gisl)
                 hisl = islands(bpieces)

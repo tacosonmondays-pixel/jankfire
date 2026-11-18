@@ -10,6 +10,8 @@
 # hat_spots.json, per weapon: z (along the gun, metres, -z = toward the muzzle), x (sideways, default 0), s (the hat's
 # size, 1 = as built, about 7 cm across), yaw (degrees, default 0), sink (metres the foot goes into the surface,
 # default 0.002), y (a fixed height instead of the measured one), note (why it sits there).
+# The googly eyes stand on the gun themselves (round 13): every spot also gets their own floor height, ey (and ey3 at the
+# third-person size), the pair dropped onto the gun's top there (hat_models.eyes_rest), and ez where it is not z.
 import bpy, bmesh, sys, os, json, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mathutils import Vector
@@ -114,6 +116,9 @@ def main():
     w('-- pitch = degrees about x after that (90: the hat stands on the back end, the katana\'s pommel), saddle = metres:')
     w('-- the hat stands that much higher on a slate puck (a round scope or barrel under a flat foot).')
     w('-- y was measured on the kit model (the top of the gun under the spot)')
+    w("-- ey / ey3 = the googly eyes' own floor height there (they stand on the gun with no foot or saddle, upright): the")
+    w("-- pair dropped straight down onto the gun's top until a ball touches, 1 mm (x size) in; ey3 at the third-person")
+    w("-- size (GunHats.THIRD). ez = their z where it is not the spot's (off a katana's pommel end: on the handle's top)")
     w('-- a skin ("<gun>@<skin>", gun_set.py SKINS) has its own line: its gun spot (or its own in hat_spots.json) with the')
     w('-- height measured on the skin model. GunHats uses it when the built gun carries the attribute Skin = "<skin>"')
     w('D.SPOTS = {')
@@ -127,18 +132,21 @@ def main():
     for wid, sp in spots.items():
         if wid.startswith('_'): continue
         x, z = sp.get('x', 0.0), sp['z']
+        t, lo, hi = tree(wid)
         if 'y' in sp:
             y = sp['y'] - sp.get('sink', 0.0)
         else:
-            t, lo, hi = tree(wid)
             y = top(t, x, z)
             if y is None: raise SystemExit('%s: nothing under the spot (%g, %g)' % (wid, x, z))
             y -= sp.get('sink', 0.002)
+        _, ey, ey3, ez = hat_models.eyes_seat(lambda a, b: top(t, a, b), sp)
+        if ey is None or ey3 is None: raise SystemExit('%s: nothing under the googly eyes (%g, %g)' % (wid, x, ez))
         note = sp.get('note', '')
         sad = (', saddle = %g' % sp['saddle']) if sp.get('saddle') else ''
-        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g%s },%s' % (wid if '@' not in wid else '["%s"]' % wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0), sad,
+        eye = ', ey = %g, ey3 = %g' % (round(ey, 5), round(ey3, 5)) + (', ez = %g' % round(ez, 5) if abs(ez - z) > 1e-6 else '')
+        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g%s%s },%s' % (wid if '@' not in wid else '["%s"]' % wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0), sad, eye,
           ('  -- ' + note) if note else ''))
-        print('SPOT', wid, round(x, 4), round(y, 4), round(z, 4), 's', sp.get('s', 1.0))
+        print('SPOT', wid, round(x, 4), round(y, 4), round(z, 4), 's', sp.get('s', 1.0), 'eyes', round(ey, 4), round(ey3, 4), round(ez, 4))
     w('}')
     w('')
     w('return D')

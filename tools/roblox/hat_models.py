@@ -260,8 +260,9 @@ FOOT_H = 0.0045    # the foot's height: every hat stands this much higher than i
 # each hat's size against how it is built (applied round the foot), a turn round its up axis, its foot
 SIZE = {'crown': 1.3, 'duck': 1.12, 'halo': 1.0, 'cone': 1.05, 'chef': 0.95, 'royalduck': 1.05, 'tricorne': 0.85}
 TURN = {'duck': 35}  # degrees, the face toward the gun's left: the side the player sees in first person
+# (round 13: not the googly eyes, which stand on the gun themselves)
 FOOT = {'party': 0.031, 'cowboy': 0.0255, 'chef': 0.0275, 'propeller': 0.0325, 'tophat': 0.025, 'halo': 0.016,
-        'crown': 0.0315, 'duck': 0.026, 'eyes': 0.0315, 'cone': 0.029, 'royalduck': 0.0235, 'tricorne': 0.0235}
+        'crown': 0.0315, 'duck': 0.026, 'cone': 0.029, 'royalduck': 0.0235, 'tricorne': 0.0235}
 
 
 @hat
@@ -352,29 +353,81 @@ def propeller():
     return g
 
 
-EYE_TILT = math.radians(30)  # the eyes face up and back: the player behind the gun and anyone beside them see them
-EYE_SPLAY = math.radians(30)  # (round 8) and out to the sides, so other players see a face, not the eyes' backs
-EYE_R = 0.019
-EYE_X = 0.0215
+# THE GOOGLY EYES, round 13 (17 Nov 2026, the owner: "googly eyes should just be placed on the gun like in
+# JANKFIRE!"): the web game's eyes (public/js/skins.js eyes(): two white balls sph(0.3) at x = +-0.32, a black ball
+# sph(0.14) pushed 0.24 forward on each, the pupils rattling), straight on the gun's top. No foot, no cap, no saddle:
+# the two balls stand on the gun themselves (SEATED), looking forward along the barrel. One web hat unit is about
+# 6.2 cm here (the web chef's band r 0.4 = ours 2.45 cm), which gives the size the old eyes already had.
+# They sit at their own height on every seat (eyes_rest: the pair dropped straight down onto the gun's top until a
+# ball touches, then EYE_SINK in), so on a rail or a round scope they straddle it; hat_spots.py writes that height
+# into each spot (ey, and ey3 at the third-person size), and GunHats places the eyes there.
+# (rounds 4 to 8 had them on a slate plate, then set into a felt cap looking up and back at the player)
+EYE_R = 0.0186     # the white balls' radius
+EYE_X = 0.0198     # their centres, either side of the seat
+PUPIL_R = 0.0087   # the black balls'
+PUPIL_Z = 0.0149   # how far forward of each white ball's centre (toward the muzzle) its pupil's centre is
+EYE_SINK = 0.001   # how far the balls go into the gun where they touch (x their size): a contact patch, no gap
+THIRD = 1.5        # GunHats.THIRD: the third-person size, which rests at its own height on a round top
+EYE_INSET = 0.028  # on a seat off a katana's pommel end (pitch 90) the eyes sit on the handle's top this far in
 
 
 @hat
 def eyes():
-    """GOOGLY EYES: a low grey felt cap with two big googly eyes set into its top, looking up and back at the player
-       (round 6: on their own they read as a sticker, not a hat); the pupils rattle"""
+    """GOOGLY EYES: two white balls side by side straight on the gun, a black pupil ball pushed forward on each,
+       looking along the barrel (the web game's eyes); the pupils rattle"""
     g = Gun('hat_eyes')
-    g.slot('cap', '59606c'); g.slot('eye', 'd6d3cb'); g.slot('pupil', '2a2c33'); g.slot('gold', GOLD)
-    R, Hc = 0.03, 0.02
-    lathe(g, 'cap__cap', [(0, 0), (R, 0)] + arc(0, 0, R, Hc, 0, 90, 10)[1:], 32)
-    torus(g, 'band__gold', R - 0.0003, 0.0016, T(0, 0.004, 0), sides=40, minor=8)
-    r = 0.0145
+    g.slot('eye', 'd6d3cb'); g.slot('pupil', '2a2c33')
     for s_, node in ((-1, 'pupil_l'), (1, 'pupil_r')):
-        x = s_ * 0.0145
-        # on the cap's surface, a little toward the back, facing up and back
-        M = T(x, 0.0145, 0.006) @ RZ(-s_ * EYE_SPLAY) @ RX(EYE_TILT)
-        lathe(g, 'eye__eye', [(0, 0), (r, 0), (r, 0.0025)] + arc(0, 0.0025, r, 0.007, 0, 90, 8)[1:], 32, M=M)
-        lathe(g, node + '__pupil', rounded([(0, 0.0091), (0.0066, 0.0091), (0.0066, 0.0115), (0, 0.0115)], [0, 0.001, 0.001]), 24, M=M)
+        x = s_ * EYE_X
+        blob(g, 'eye__eye', (x, EYE_R, 0.0), (EYE_R, EYE_R, EYE_R), sides=36, rings=20)
+        blob(g, node + '__pupil', (x, EYE_R, -PUPIL_Z), (PUPIL_R, PUPIL_R, PUPIL_R), sides=24, rings=14)
     return g
+
+
+def eyes_balls(S=1.0):
+    """the eyes' balls at size S, hat frame: [(x, y, z, r)] (the white ones and the pupils)"""
+    out = []
+    for s_ in (-1, 1):
+        out.append((s_ * EYE_X * S, EYE_R * S, 0.0, EYE_R * S))
+        out.append((s_ * EYE_X * S, EYE_R * S, -PUPIL_Z * S, PUPIL_R * S))
+    return out
+
+
+def eyes_rest(top, x, z, yaw=0.0, S=1.0, rings=12, around=24):
+    """the googly eyes' foot height on a gun (the y of their hat frame's floor, weapon frame): the pair at size S,
+       turned `yaw` degrees round the gun's up axis, centred on (x, z), dropped straight down onto the gun's top until
+       a ball touches, then EYE_SINK x S into it. top(x, z) = the highest surface of the gun there, None = nothing.
+       Every ball's underside is tried column by column. None when nothing is under the eyes"""
+    c, s = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    need = None
+    for bx, by, bz, r in eyes_balls(S):
+        # (round the up axis as GunHats' CFrame.Angles(0, yaw, 0): x' = x cos + z sin, z' = -x sin + z cos)
+        cx, cz = x + bx * c + bz * s, z - bx * s + bz * c
+        for i in range(rings + 1):
+            rho = r * i / rings
+            dy = -math.sqrt(max(r * r - rho * rho, 0.0))  # the underside at that distance from the ball's axis
+            for j in range(around if i else 1):
+                a = 2 * math.pi * j / around
+                ys = top(cx + rho * math.cos(a), cz + rho * math.sin(a))
+                if ys is None: continue
+                y = ys - dy - by  # the floor height at which this column of the ball just touches
+                if need is None or y > need: need = y
+    return None if need is None else need - EYE_SINK * S
+
+
+def eyes_seat(top, sp):
+    """the eyes' own seat on a spot (a hat_spots.json line): (x, ey, ey3, z) = their floor height at the first-person
+       size and at the third-person size, and their z (on a katana's pommel seat, pitch 90: upright on the handle's
+       top, EYE_INSET in from its end)"""
+    x, z = sp.get('x', 0.0), sp['z']
+    if sp.get('pitch', 0) == 90: z -= EYE_INSET
+    s = sp.get('s', 1.0)
+    return x, eyes_rest(top, x, z, sp.get('yaw', 0), s), eyes_rest(top, x, z, sp.get('yaw', 0), s * THIRD), z
+
+
+# the nodes that stand on the gun themselves, with no foot under them: they count as the hat's foot in the clip check
+# (hat_clip.py; they are meant to sit EYE_SINK in where they touch)
+SEATED = {'eyes': ('eye',)}
 
 
 @hat
@@ -640,12 +693,10 @@ def make(hid):
 MOVES = {
     'propeller': {'prop': {'kind': 'spin', 'speed': 9.0}},  # (round 7: calmer: it sits in view the whole time)
     'halo': {'halo': {'kind': 'bob', 'amp': 0.0022, 'speed': 1.2}},
-    # the pupils rattle in the eyes' own plane: u = the eyes' right, v = their up (hat frame, from EYE_TILT)
-    # (round 8: each eye splayed to its side: each pupil rattles in its own eye's plane)
-    'eyes': {n: {'kind': 'rattle', 'amp': 0.002,
-                 'u': [round(c, 4) for c in (RZ(-s_ * EYE_SPLAY) @ RX(EYE_TILT)).to_3x3() @ Vector((1, 0, 0))],
-                 'v': [round(c, 4) for c in (RZ(-s_ * EYE_SPLAY) @ RX(EYE_TILT)).to_3x3() @ Vector((0, 0, 1))]}
-             for s_, n in ((-1, 'pupil_l'), (1, 'pupil_r'))},
+    # the pupils rattle as the web game's do (round 13): a new random jitter every frame, up to 3 mm (the web's 0.05 of
+    # a hat unit) sideways (u) and up and down (v), across the front of their eye
+    'eyes': {n: {'kind': 'rattle', 'amp': 0.003, 'u': [1.0, 0.0, 0.0], 'v': [0.0, 1.0, 0.0]}
+             for n in ('pupil_l', 'pupil_r')},
     # (round 12) the tricorne's three stars twinkle one after another: front, back-left, back-right, then a rest.
     # twinkle = a brightness pulse on the part's Transparency: it rests dim + `dim` above its own and flares to `lift`
     # below it for the first `width` of each turn (speed = turns a second), `phase` later than the turn's start

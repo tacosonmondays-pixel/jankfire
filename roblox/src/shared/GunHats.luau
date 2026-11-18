@@ -166,6 +166,18 @@ local function turnOf(sp: any): CFrame
 	return CFrame.Angles(0, math.rad(sp.yaw or 0), 0) * CFrame.Angles(math.rad(sp.pitch or 0), 0, 0)
 end
 
+-- where a hat goes on a spot: (the foot in the gun frame, metres; the turn; the saddle, metres or nil). the googly eyes
+-- (round 13, 17 Nov 2026, the owner: "placed on the gun like in JANKFIRE") stand on the gun themselves: no saddle,
+-- upright, at their own height (spot.ey; spot.ey3 at the third-person size; measured by hat_spots.py: the pair dropped
+-- onto the gun's top) and on a katana's pommel seat on the handle's top (spot.ez)
+local function seatOf(sp: any, id: string, boost: number?): (Vector3, CFrame, number?)
+	if id == "eyes" and type(sp.ey) == "number" then
+		local y = if (boost or 1) > 1.01 and type(sp.ey3) == "number" then sp.ey3 else sp.ey
+		return Vector3.new(sp.at.X, y, if type(sp.ez) == "number" then sp.ez else sp.at.Z), CFrame.Angles(0, math.rad(sp.yaw or 0), 0), nil
+	end
+	return sp.at, turnOf(sp), sp.saddle
+end
+
 -- a hat on a weapon model from WeaponModels.build (root = its PrimaryPart, k = studs per metre). any old hat goes.
 -- anchored = true for a model that is moved by pivoting it (the loadout's previews); boost = a size factor on top of
 -- the spot's (GunHats.THIRD for a gun in someone's hands). returns the hat or nil
@@ -177,9 +189,10 @@ function GunHats.attach(m: Model, wid: string, id: string?, k: number, anchored:
 	local sp = (type(skin) == "string" and D.SPOTS[wid .. "@" .. skin]) or D.SPOTS[wid]
 	local root = m.PrimaryPart
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not root then return nil end
-	local foot = root.CFrame * CFrame.new(sp.at * k) * turnOf(sp)
+	local at, turn, saddle = seatOf(sp, id, boost)
+	local foot = root.CFrame * CFrame.new(at * k) * turn
 	local carrier = if anchored then nil else carrierOf(m, root, foot.Position, foot.UpVector * 0.004 * k)
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1), carrier, if sp.saddle then sp.saddle * k * (boost or 1) else nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1), carrier, if saddle then saddle * k * (boost or 1) else nil)
 	if hat then hat.Parent = m end
 	return hat
 end
@@ -195,8 +208,9 @@ function GunHats.attachTool(tool: Instance, id: string?): Model?
 	local fr, kk = tool:GetAttribute("HatFrame"), tool:GetAttribute("HatK")
 	local frame: CFrame = if typeof(fr) == "CFrame" then fr else SHRED_FRAME
 	local K: number = if type(kk) == "number" then kk else SHRED_K
-	local foot = h.CFrame * frame * CFrame.new(sp.at * K) * turnOf(sp)
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, if h.Anchored then nil else h, if sp.saddle then sp.saddle * K else nil)
+	local at, turn, saddle = seatOf(sp, id, nil)
+	local foot = h.CFrame * frame * CFrame.new(at * K) * turn
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, if h.Anchored then nil else h, if saddle then saddle * K else nil)
 	if hat then hat.Parent = tool end
 	return hat
 end
@@ -211,7 +225,8 @@ function GunHats.attachToolCopy(m: Model, tool: Instance, id: string?): Model?
 	local fr, kk = tool:GetAttribute("HatFrame"), tool:GetAttribute("HatK")
 	local frame: CFrame = if typeof(fr) == "CFrame" then fr else SHRED_FRAME
 	local K: number = if type(kk) == "number" then kk else SHRED_K
-	local foot = h.CFrame * frame * CFrame.new(sp.at * K) * turnOf(sp)
+	local at, turn = seatOf(sp, id, nil)
+	local foot = h.CFrame * frame * CFrame.new(at * K) * turn
 	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, nil)
 	if hat then hat.Parent = m end
 	return hat
@@ -266,10 +281,11 @@ function GunHats.attachDisplay(g: Model, wid: string, id: string?): Model?
 	local s = cp.Size.Magnitude / math.max(tp.Size.Magnitude, 1e-6)
 	local R = cp.CFrame.Rotation * tp.CFrame.Rotation:Inverse()
 	local function map(x: Vector3): Vector3 return cp.Position + R:VectorToWorldSpace((x - tp.Position) * s) end
-	local at = tcf:PointToWorldSpace((sp.at - (flo + fhi) / 2) * U)
-	local foot = CFrame.new(map(at)) * (R * tcf.Rotation) * turnOf(sp)
+	local seat, turn, saddle = seatOf(sp, id, nil)
+	local at = tcf:PointToWorldSpace((seat - (flo + fhi) / 2) * U)
+	local foot = CFrame.new(map(at)) * (R * tcf.Rotation) * turn
 	local spm = (U.X + U.Y + U.Z) / 3 * s
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s, nil, if sp.saddle then sp.saddle * spm else nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s, nil, if saddle then saddle * spm else nil)
 	if hat then hat.Parent = g end
 	return hat
 end
@@ -288,14 +304,14 @@ function GunHats.aim(m: Model, aim: number, clip: string?)
 end
 
 -- ------------------------------------------------------------------ the moving bits (client, every frame)
--- spin: round the hat's up axis; bob: up and down; rattle: a new jitter in the eyes' plane twenty times a second;
+-- spin: round the hat's up axis; bob: up and down; rattle: a new jitter across the eye every frame (the web game's
+-- googly pupils; round 13: it was every 0.11 s while the eyes looked back at their owner);
 -- twinkle: a brightness pulse on the part's Transparency (the Star Tricorne's stars, one after another; aiming hides
 -- the hat through LocalTransparencyModifier, so the two never fight).
 -- a welded bit is moved through its joint, an anchored one (a preview, a rack, the Shredder's first-person copy) from
 -- its hat's foot. bits far from the camera are left alone
 local live: { [BasePart]: boolean } = {}
 local started = false
-local rattleT = 0
 local camPos = Vector3.zero
 function GunHats.step(dt: number)
 	if not started then
@@ -307,9 +323,6 @@ function GunHats.step(dt: number)
 	local now = os.clock()
 	local cam = workspace.CurrentCamera
 	if cam then camPos = cam.CFrame.Position end
-	rattleT += dt
-	local doRattle = rattleT >= 0.11 -- (round 7: a calmer rattle: the pupils sit in view the whole time)
-	if doRattle then rattleT = 0 end
 	for p in live do
 		if not p.Parent then live[p] = nil; continue end
 		if p:IsDescendantOf(workspace) and (p.Position - camPos).Magnitude > 150 then continue end
@@ -336,7 +349,6 @@ function GunHats.step(dt: number)
 		elseif kind == "bob" then
 			off = rest + Vector3.new(0, math.sin(now * speed * 2 * math.pi) * amp, 0)
 		elseif kind == "rattle" then
-			if not doRattle then continue end
 			local u, v = p:GetAttribute("HatU"), p:GetAttribute("HatV")
 			local du = if typeof(u) == "Vector3" then u else Vector3.xAxis
 			local dv = if typeof(v) == "Vector3" then v else Vector3.yAxis

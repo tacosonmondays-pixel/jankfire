@@ -126,8 +126,16 @@ def gun_tree(g):
     return t
 
 
-def spot_matrix(wid, g):
-    sp = SPOTS[wid]
+def spot_matrix(wid, g, hid=None):
+    sp = SPOTS.get(wid) or SPOTS[wid.split('@')[0]]
+    if hid in hat_models.SEATED:  # (the googly eyes stand on the gun themselves: their own height, upright, no saddle)
+        t = gun_tree(g)
+        def topf(a, b):
+            hit = t.ray_cast(Vector((a, -b, 1.0)), Vector((0, 0, -1)))
+            return hit[0].z if hit[0] is not None else None
+        ex, ey, _, ez = hat_models.eyes_seat(topf, sp)
+        return (Matrix.Translation(Vector((ex, ey, ez))) @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
+                @ Matrix.Scale(sp.get('s', 1.0), 4))
     x, z = sp.get('x', 0.0), sp['z']
     if 'y' in sp: y = sp['y']
     else:
@@ -156,7 +164,7 @@ elif mode in ('eye', 'side'):
     for wid in guns:
         sc = reset()
         g = GUNS.SKINS[wid]() if '@' in wid else GUNS.BUILD[wid]()
-        hm = spot_matrix(wid, g)
+        hm = spot_matrix(wid, g, hid)
         h = hat_models.make(hid) if hid != 'none' else None
         if mode == 'eye':
             at = hold_matrix(wid)
