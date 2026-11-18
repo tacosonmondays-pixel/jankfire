@@ -750,7 +750,7 @@ local function stepCut(dt: number)
 			pos = c.finish; look = flat(c.camB - c.finish, c.face); moving = nil; vis = 1
 		else
 			local k = (t - T2) / CUT_LEAVE
-			pos = c.finish + c.exit * (k * 5.5); look = c.exit; moving = 1; vis = math.max(0, 1 - k * 1.25)
+			pos = c.finish + c.exit * (k * (c.exitRun or 5.5)); look = c.exit; moving = 1; vis = math.max(0, 1 - k * 1.25)
 		end
 		c.look = if c.look then flat(c.look:Lerp(look, math.min(1, dt * 7)), look) else look
 		if moving then n.walk = (n.walk or 0) + dt * 8.5 * moving else n.walk = 0 end
@@ -805,13 +805,43 @@ local function startCut(id: string, again: boolean?)
 	rayP.FilterDescendantsInstances = { me.Character :: Instance, localFolder, cutFolder }
 	-- the way in: the longest clear, floored run (up to 16 studs) among directions round the panel's far side, never
 	-- from the camera's side
+	-- (body-wide, and against every visible part's box near the panel: imported meshes with queries off, like the
+	-- arcade's piers, are missed by rays. a body-sized box steps out along the way in half studs till it touches one)
+	local boxes: { { Vector3 } } = {}
+	local map = workspace:FindFirstChild("Map")
+	for _, root in { map and map:FindFirstChild("Hub"), pm } do
+		if not root then continue end
+		for _, p in (root :: Instance):GetDescendants() do
+			if p:IsA("BasePart") and p.Transparency < 1 and (p.Position - finish).Magnitude < 40 then
+				local cf, sz = p.CFrame, p.Size / 2
+				local ex = Vector3.new(
+					math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
+					math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
+					math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
+				if p.Position.Y + ex.Y > finish.Y + 0.3 then table.insert(boxes, { p.Position - ex, p.Position + ex }) end
+			end
+		end
+	end
+	local function bodyHits(at: Vector3): boolean
+		local lo, hi = at + Vector3.new(-1.3, 0.3, -1.3), at + Vector3.new(1.3, 6, 1.3)
+		for _, b in boxes do
+			if b[1].X < hi.X and b[2].X > lo.X and b[1].Y < hi.Y and b[2].Y > lo.Y and b[1].Z < hi.Z and b[2].Z > lo.Z then return true end
+		end
+		return false
+	end
+	local function clearRun(dir: Vector3, maxRun: number): number
+		local d = 0.5
+		while d <= maxRun do
+			if bodyHits(finish + dir * d) then return math.max(0, d - 1) end
+			d += 0.5
+		end
+		return maxRun
+	end
 	local best, bestDir = 0, away
 	for _, deg in { 0, 30, -30, 60, -60, 90, -90, 120, -120 } do
 		local dir = (CFrame.Angles(0, math.rad(deg), 0) * away)
 		if dir:Dot(face) > 0.55 then continue end
-		local run = 16
-		local hit = workspace:Raycast(finish + Vector3.new(0, 2.5, 0), dir * run, rayP)
-		if hit then run = hit.Distance - 2 end
+		local run = clearRun(dir, 16)
 		-- (floor all the way: step back from the far end till there is)
 		while run > 3 do
 			local p = finish + dir * run
@@ -884,6 +914,7 @@ local function startCut(id: string, again: boolean?)
 	local cam = workspace.CurrentCamera
 	cut = {
 		id = id, again = again, t0 = os.clock(), actor = actor, start = start, finish = finish, face = face, exit = exit,
+		exitRun = clearRun(exit, 5.5),
 		camA = clampCam(finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0)),
 		camB = clampCam(finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0)),
 		camC = clampCam(finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0)),
