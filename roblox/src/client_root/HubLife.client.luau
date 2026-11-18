@@ -1,6 +1,6 @@
 --!strict
 -- the hub's little bits of life, on your screen only (the server's copies stay still): models tagged "HubSpin" turn
--- (attribute Spin, rad/s; Bob = studs up and down), the JANK NEWS 24 ticker ("HubTicker") scrolls, the boot camp
+-- (attribute Spin, rad/s; Bob = studs up and down), parts tagged "HubBreathe" glow up and down, the JANK NEWS 24 ticker ("HubTicker") scrolls, the boot camp
 -- tips screen ("HubTip") changes every 7 s. only while you're near the hub.
 -- it also swaps the lighting: the hub's warm look (the Lanes), the training hall's, the playground's, the saved look in a match
 local CollectionService = game:GetService("CollectionService")
@@ -71,6 +71,21 @@ CollectionService:GetInstanceAddedSignal("HubSpin"):Connect(addSpin)
 CollectionService:GetInstanceRemovedSignal("HubSpin"):Connect(function(inst) spinners[inst :: Model] = nil end)
 for _, m in CollectionService:GetTagged("HubSpin") do addSpin(m) end
 
+-- parts tagged "HubBreathe" breathe (18 Nov 2026, the jump pads' lit ring and light column: the owner, "how do we make it
+-- more obvious that there are pads on second floor"): their see-through goes between BreatheLo and BreatheHi over
+-- BreathePeriod s, a light in them brighter as they are. all on one clock, so the two jump pads breathe together
+type Breather = { light: Light?, b0: number }
+local breathers: { [BasePart]: Breather } = {}
+local function addBreathe(inst: Instance)
+	if inst:IsA("BasePart") and not breathers[inst] then
+		local l = inst:FindFirstChildWhichIsA("Light")
+		breathers[inst] = { light = l, b0 = if l then l.Brightness else 0 }
+	end
+end
+CollectionService:GetInstanceAddedSignal("HubBreathe"):Connect(addBreathe)
+CollectionService:GetInstanceRemovedSignal("HubBreathe"):Connect(function(inst) breathers[inst :: BasePart] = nil end)
+for _, p in CollectionService:GetTagged("HubBreathe") do addBreathe(p) end
+
 local camera = workspace.CurrentCamera
 local tipT, tipI = 0, 1
 RunService.RenderStepped:Connect(function(dt: number)
@@ -84,6 +99,17 @@ RunService.RenderStepped:Connect(function(dt: number)
 		local a = (if type(spin) == "number" then spin else 0.5) * s.t
 		local y = if type(bob) == "number" then math.sin(s.t * 2) * bob else 0
 		m:PivotTo(s.base * CFrame.new(0, y, 0) * CFrame.Angles(0, a, 0))
+	end
+	local now = os.clock()
+	for p, b in breathers do
+		if not p.Parent then breathers[p] = nil; continue end
+		if (p.Position - cam).Magnitude > 260 then continue end
+		local lo, hi, per = p:GetAttribute("BreatheLo"), p:GetAttribute("BreatheHi"), p:GetAttribute("BreathePeriod")
+		if type(lo) ~= "number" or type(hi) ~= "number" then continue end
+		local k = (math.sin(now / (if type(per) == "number" and per > 0 then per else 3) * 2 * math.pi) + 1) / 2 -- (1: the brightest)
+		local tr = hi + (lo - hi) * k
+		if math.abs(p.Transparency - tr) > 0.004 then p.Transparency = tr end
+		if b.light then b.light.Brightness = b.b0 * (0.45 + 0.55 * k) end
 	end
 	for _, t in CollectionService:GetTagged("HubTicker") do
 		if t:IsA("TextLabel") then

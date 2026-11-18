@@ -87,6 +87,7 @@ return function(B, R)
 	end
 	-- its pads, left to right, round the outer wall
 	local nU = #R.UPPER
+	local upPads = {}
 	for i, u in R.UPPER do
 		local b = (i - (nU + 1) / 2) * R.UP_PITCH
 		local F = B.lf(b)
@@ -99,6 +100,7 @@ return function(B, R)
 		B.box(F, C, "UpperBand", -w, w, UY + 9.4, UY + 9.9, OUT - 0.25, OUT, P.cream, nil, G)
 		local dP = OUT - 1.2 - md.dp / 2
 		local pad = B.pad(F, md, 0, UY, dP)
+		upPads[i] = pad
 		local bw = md.w - 1.4
 		B.board(pad, F, md, bw, bw / 2, 0, UY + 5.4, OUT - 0.45, 0, { thick = 0.4 })
 		B.box(F, C, "BoardFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 5.4 - bw / 4 - 0.35, UY + 5.4 + bw / 4 + 0.35, OUT - 0.25, OUT - 0.02, P.pier2, nil, G)
@@ -157,5 +159,46 @@ return function(B, R)
 		B.box(F, C, "EndBand", -s * 1.6, -s * 1.75, 5.5, 7.2, w0 + 3, D0, P.band, nil, G)
 		-- (no pot plant here any more: the owner, 16 Nov, after a play-test: "in the match pads theres random pots on the
 		-- ground?". the walk past the lifts keeps clear floor)
+	end
+
+	-- ---- UPSTAIRS (18 Nov 2026, the owner: "how do we make it more obvious that there are pads on second floor"): over each
+	-- jump pad, on the gallery wall where it lands you (in a banner's place), a board with the pads up there that that
+	-- jump pad leads to, each row its mode and the live count. each row is a part inside its pad's model, so Matches
+	-- writes the count on it as on the pad's own board (every label named Status in the pad). the east jump pad (side 3)
+	-- leads to the middle pad and the ones east of it, as the check's walk goes
+	local mid = (nU + 1) / 2
+	for _, e in { { 3, 1 }, { 11, -1 } } do
+		local F = B.side(e[1])
+		local list = {}
+		for i = 1, nU do if (e[2] > 0 and i >= mid) or (e[2] < 0 and i < mid) then table.insert(list, i) end end
+		if e[2] > 0 then -- (listed nearest first: from the east doorway the eastmost pad, the highest number, is the nearest)
+			table.sort(list, function(a, b) return a > b end)
+		end
+		B.box(F, C, "UpBoard", -4.6, 4.6, 15.3, 24.2, A - 0.5, A - 0.2, P.plate, nil, G)
+		for _, s in { -1, 1 } do B.box(F, C, "UpBoardJamb", s * 4.6, s * 5.1, 15.1, 24.4, A - 0.75, A - 0.15, P.creamHi, nil, G) end
+		B.box(F, C, "UpBoardHead", -4.6, 4.6, 23.9, 24.4, A - 0.75, A - 0.15, P.creamHi, nil, G)
+		B.box(F, C, "UpBoardSill", -4.6, 4.6, 15.1, 15.6, A - 0.75, A - 0.15, P.creamHi, nil, G)
+		B.box(F, C, "UpBoardCove", -4.4, 4.4, 23.75, 23.9, A - 0.7, A - 0.5, P.strip, Neon, G)
+		B.text(F, "UpBoardTitle", { { "UPSTAIRS", P.pale, "B", 1 } }, 7.6, 1.5, 0, 22.75, A - 0.56, 0, { flush = true, thick = 0.1, pps = 50 })
+		local rh = math.min(1.6, 6.1 / #list)
+		for k, i in list do
+			local pad = upPads[i]
+			if not pad then continue end
+			local md = R.MODES[R.UPPER[i].mode]
+			local row = B.text(F, "Mirror", { { md.title, P.pale, "B", 1 } }, 8, rh * 0.84, 0, 21.6 - (k - 0.5) * rh, A - 0.56, 0, { flush = true, thick = 0.1, pps = 50 })
+			local gui = row:FindFirstChild("Gui")
+			local l1 = gui and gui:FindFirstChild("Line1")
+			if l1 then
+				l1.Size = UDim2.new(0.3, 0, 0.92, 0); l1.Position = UDim2.new(0.03, 0, 0.04, 0); l1.TextXAlignment = Enum.TextXAlignment.Left
+				local counts = {}
+				for t = 1, md.teams do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(R.TEAM[t], md.size)) end
+				local st = l1:Clone()
+				st.Name = "Status"; st.RichText = true; st.Text = table.concat(counts, "   vs   "); st.TextColor3 = Color3.new(1, 1, 1)
+				st.Size = UDim2.new(0.6, 0, 0.92, 0); st.Position = UDim2.new(0.37, 0, 0.04, 0); st.TextXAlignment = Enum.TextXAlignment.Right
+				st.Parent = gui
+			end
+			row:SetAttribute("Mirror", true) -- (a copy of the pad's count, away from the pad)
+			row.Parent = pad
+		end
 	end
 end

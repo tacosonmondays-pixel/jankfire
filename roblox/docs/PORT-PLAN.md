@@ -1640,6 +1640,71 @@ The owner, about grappling onto people (section 37): "when you grapple someone m
   - Not tested: two real players (a yanked player's own movement friction stops them; a solo test can't show it) and the teammate pull.
   - Photo: `docs/grapples/grapple_yank_v796.jpg` (the taut rope to the Plinker in the air, its streak from the block).
 
+## 43. Hub v3: the spawn lounge and the way upstairs, 18 November 2026 (place version 810)
+
+The owner asked two things, both relayed by the main session:
+- "Can the current lounge be turned into a part of a larger lounge where players will now spawn making the central [room] feel more spacious!!"
+- "how do we make it more obvious that there are pads on second floor"
+
+Plan picture: `roblox/docs/hub/hub_lounge_plan.jpg`. Photos from the Play test: `roblox/docs/hub/hub_lounge_photos_v810.jpg`.
+
+**The lounge** (HubRotundaRooms, the lounge block):
+- Today's lounge stays whole, with its numbers unchanged, as the middle bay of a big room. Its walls and hall are gone.
+  - It moved `R.LOUNGE_S` = 8 further out (10.8 in Hub v3), with the VIP room behind it.
+  - Its old ceiling is now a timber-edged canopy on two posts.
+- The big room is 75.6 x 55 in Hub v3, as wide as the round room, with a 20-tall ceiling (`R.LOUNGE_X` = 28, `R.LOUNGE_H` = 16 before the warp).
+  - It opens onto the round room through three round arches: sides 6, 7 and 8 (`R.OPEN` "arcade").
+  - The ceiling's triangles in front of the side arches are WedgeParts laid flat (`LoungeLidCorner`), with their slope on the round room's wall.
+- What's in it:
+  - The spawn rug (an accent ring) on the front floor.
+  - The showroom down the west wall: bundle plinths in slots 1, 2 and 4. Slot 3 stays on side 9; the trophy case stays on side 5.
+  - Two seating groups down the east wall.
+  - Timber beams and white panels in the ceiling, a wood dado and a cream cornice.
+  - Looticus has a 7th spot by the showroom.
+- The spawns: `R.SPAWNS`, 8 markers in two rows facing the arches, far enough back that the first look takes in all three. Everything that places you reads the same `Hub.HubSpawns` folder, so nothing else changed:
+  - Matches' `spawnAt`, the map room's return, QuickJoin, `Fight.spawn`'s `TeleportT`.
+  - `HubArrive` (training's way home) stays in the round room by the armory.
+
+**Upstairs, obvious:**
+- The jump pads: an accent ring (`JumpGlow`, with a light) round each pad, and a light column (`JumpColumn`, `R.JUMP_COLUMN`) up past the balcony. The column is kept narrow so it stays out of the walks to the outer lifts.
+  - Both breathe on your screen: `HubLife.client`'s new `HubBreathe` tag, with attributes `BreatheLo`, `BreatheHi` and `BreathePeriod`, and the light following.
+- The UPSTAIRS boards (HubRotundaLifts, the end): on the gallery wall over each jump pad, in a banner's place. Each lists the pads that jump pad leads to (east: 7, 6, 5, 4; west: 1, 2, 3) with live counts.
+  - Each row is a part named `Mirror` inside its pad's model, so `Matches.padSign` writes the count on it as on the pad's own board.
+- The four doorways into the second floor: an accent line round each opening (`UpperGlow`, `UpperGlowHead`) and an accent light just inside.
+- No floor strip: the owner had the floor lines taken out on 16 Nov.
+
+**R.check:**
+- The lifts, their boards and the words over the ways out are tested from `R.PLATFORM_LOOK`, the old spawn rows: where you come out onto the platform.
+- From every spawn, `R.FIRST_LOOK` must show one each of: the name, a jump pad's column, a lit doorway upstairs, and the 2V2 lift's pad.
+- The lounge's own things (the duck, bundles 1, 2 and 4) are tested from `R.LOUNGE_LOOK`, the front of the rug.
+- The walk to all 12 pads starts at the middle of the spawns and goes out through the middle arch.
+- New walks through the three arches, and new leak points in the lounge.
+
+**The hub egg's nook** (training-v2 asked for a hidden spot that takes some exploring; main gave it the egg):
+- The gallery window over the west arch (`R.EGG_SIDE` = 8) is a real opening, `R.EGG_NICHE` = { half width, sill, head }. It's dark, in the same frame as the others.
+- Behind it is a small closed room on the lounge's roof: in Hub v3 about 8.6 wide, 8.1 deep and 8.4 tall, floor y 260.96.
+- You reach it from the balcony with a hop of about 3 studs (the jump is about 4.9). The hop is untested in Play.
+- The egg is training-v2's, in `Map.Hub.HubEgg`, outside the Rotunda: no rebuild wipes it and R.check doesn't look at it. The room has its own leak point.
+
+**Checks:**
+- Live R.check: 0 problems, 0 leaks, 0 overlaps, 321 sight lines with none hidden, 12 pads walked to from the new spawn, the regulars' 14 ways clear.
+- Solo Play:
+  - You spawn on a spawn marker in the lounge, zone hub.
+  - Standing on 2v2_u1's pink side turns its UPSTAIRS row from 0/2 to 1/2 together with the pad's own board, and back to 0/2 after stepping off.
+  - On the client the column and ring breathe (column 0.84 to 0.90, ring 0.10 to 0.38 in 0.8 s).
+- CROSS_SERVER stays false.
+
+**Not tested:**
+- The VIP push-out (the owner counts as VIP in Studio).
+- Several players spawning at once.
+- Phones (the arches and the board from a small screen).
+- The hop into the egg nook.
+
+**Traps:**
+- The column first sat in the walks to the 1V1 and 4V4 lifts. A see-through part still counts in the keep-clear test, so the column was made narrower.
+- From the rug's middle, the canopy's front post hid bundle 2. The lounge's sight point is the rug's front.
+- A Mirror row lives in the round room but belongs to an upper pad's model. Anything that ever uses a pad's bounding box would see it stretch to the gallery wall. Nothing does today: Matches, QuickJoin and PadGlow only look for `Side*`, `Slot` and `Glow`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

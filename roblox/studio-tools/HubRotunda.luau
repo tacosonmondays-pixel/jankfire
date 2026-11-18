@@ -20,11 +20,12 @@
 --   R.build("stage")   a copy to look at, under workspace.Map.HubStage at R.STAGE (its pads are for show)
 --   R.compare()        one copy of each palette side by side (R.COMPARE), to photograph; R.unstage() takes them away
 --   R.build("live")    the real hub: Hub.Rotunda (Shell, Scenery, Collision), its five pads in Hub.QueuePads, spawn markers
---                      in Hub.HubSpawns, where the training hall's door lands you in Hub.Doors.HubArrive, the training
+--                      in Hub.HubSpawns (in the lounge since 18 Nov), where the training hall's door lands you in Hub.Doors.HubArrive, the training
 --                      gate's trigger in Hub.Doors. each of those is marked Built = "Rotunda". it takes the bowling
 --                      centre away first (Hub.Lanes and everything marked Built = "HubLab")
---   R.check()          keep-clear zones, leaks, sight lines from every spawn point (pads, boards, the name, every door's
---                      name, one thing inside each room)
+--   R.check()          keep-clear zones, leaks, sight lines (from where you come onto the platform: pads, boards, the
+--                      name, every door's name; one thing inside each room; from every spawn point in the lounge: the
+--                      first look, R.FIRST_LOOK), the walk from the spawn to every pad, the regulars' ways
 --   R.switch("lanes")  the bowling centre back (HubLab builds it; HubLab's own build also takes the Rotunda away, so
 --                      HubLab's usage line alone does the same). R.switch("rotunda") = build("live") and check
 -- a build wipes and remakes the hub: change the builder, never the built parts. the rooms are in three part modules
@@ -57,7 +58,30 @@ R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 22.5
 -- where you appear every lift is framed by its own two piers (from the room's own middle they would be too far round
 -- to the sides to be in a first look)
 R.FOCUS = 6
-R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "gym", [7] = "lounge", [10] = "armory" }
+-- (sides 6 and 8, "arcade": since 18 Nov the two arches either side of the lounge's, three round arches in a row onto
+-- the big lounge where you spawn)
+R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "gym", [6] = "arcade", [7] = "lounge", [8] = "arcade", [10] = "armory" }
+-- THE SPAWN LOUNGE (18 Nov 2026, the owner: "Can the current lounge be turned into a part of a larger lounge where players
+-- will now spawn making the central [room] feel more spacious!!"). the small lounge is now the middle bay of a lounge as
+-- wide as the round room, open onto it through the three arches (sides 6, 7, 8): its walls and hall gone, it and the VIP
+-- room behind it moved R.LOUNGE_S further out, its low ceiling kept as a timber canopy over it. you appear on a round rug
+-- on the lounge's front floor, facing the arches (Hub.HubSpawns: the same markers as before, only where they stand
+-- changed). HubRotundaRooms builds it. LOUNGE_X = half its width inside, LOUNGE_H = its ceiling
+R.LOUNGE_S, R.LOUNGE_X, R.LOUNGE_H = 8, 28, 16
+-- the jump pads' lit ring (18 Nov: the way up made obvious): its radius, a little outside the pad's own rim
+R.JUMP_GLOW = 4
+-- the hub egg's hiding place (18 Nov; the egg is training-v2's, Map.Hub.HubEgg): the gallery window over this side is an
+-- opening { half its width, its sill, its head } into a little room on the lounge's roof (HubRotundaCentre)
+R.EGG_SIDE, R.EGG_NICHE = 8, { 2.3, 17, 23.4 }
+R.JUMP_COLUMN = 1.8 -- (and its light column's: narrower than the pad, so it stays out of the walks to the outer lifts)
+-- where you appear: { x, d } in the lounge's frame (side 7: x to the right as you look out of the round room, d out)
+R.SPAWNS = { { -3.6, 39.2 }, { -1.2, 39.2 }, { 1.2, 39.2 }, { 3.6, 39.2 }, { -3.6, 41.6 }, { -1.2, 41.6 }, { 1.2, 41.6 }, { 3.6, 41.6 } } -- (far enough back that the first look takes in all three arches)
+-- where the lifts must all be framed from: the platform's south edge, where you come out onto it from the lounge (the
+-- spawn rows stood here until 18 Nov). { x, d } in the north frame, on the platform's top
+-- where the lounge's own things (the duck, the showroom's bundles) must show from: the front of the spawn rug, { x, d } in
+-- the lounge's frame, the eye 5.2 up
+R.LOUNGE_LOOK = { 0, 34 }
+R.PLATFORM_LOOK = { { -2.4, -8.4 }, { -0.8, -8.4 }, { 0.8, -8.4 }, { 2.4, -8.4 }, { -2.4, -9.9 }, { -0.8, -9.9 }, { 0.8, -9.9 }, { 2.4, -9.9 } }
 local TEAM = { "ff4fd8", "37d6ff", "ffe14d" } -- the teams' colours, in Matches' order
 R.TEAM = TEAM
 -- the five modes, left to right as you spawn: its side of the round room, and its pad's width and depth
@@ -1060,12 +1084,23 @@ for _, md in R.MODES do
 	table.insert(R.LEAKS, { b, 0, 6, 43, R.FOCUS }); table.insert(R.LEAKS, { b, 0, 10, 56, R.FOCUS })
 	table.insert(R.SIGHTS, { md.title .. " over its way in", "Way_" .. md.id })
 end
-for _, w in { { "the way to the lounge", LOUNGE, -4.2, 4.2, 14, 41, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
+-- (the lounge's three arches: from the platform's foot out through each into the lounge, and its front floor to the spawn rug)
+for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, 34, 0 },
+	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
 	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
-for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 }, { LOUNGE, 0, 5, 70 }, { LOUNGE, 6, 8, 76 }, { GYM, 0, 6, 35 }, { GYM, 0, 9, 50 }, { GYM, 0, 9, 70 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
-for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", true },
+local LS = R.LOUNGE_S
+for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 + LS }, { LOUNGE, 0, 5, 70 + LS }, { LOUNGE, 6, 8, 76 + LS },
+	{ LOUNGE, -22, 8, 40 }, { LOUNGE, 22, 8, 40 }, { LOUNGE, -22, 12, 62 }, { LOUNGE, 22, 12, 62 }, { LOUNGE, -24, 6, 29 }, { LOUNGE, 24, 6, 29 }, { LOUNGE, -13, 14, 31 }, { LOUNGE, 13, 14, 31 }, { 8 * STEP, 0, 20, 34 },
+	{ GYM, 0, 6, 35 }, { GYM, 0, 9, 50 }, { GYM, 0, 9, 70 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
+-- (w[3]: true = a thing in a room, looked for from the middle of the platform only; "lounge" = in the lounge, looked
+-- for from the front of the spawn rug, R.LOUNGE_LOOK)
+for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", "lounge" },
 	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target at the gym's far end", "Target", true } } do table.insert(R.SIGHTS, w) end
+-- what every spawn point must show on the first look out of the lounge (any one of each group's parts, by name in
+-- Scenery or a pad): the way to the pads and the way up
+R.FIRST_LOOK = { { "the name over the middle lift", "GalleryName" }, { "a jump pad's light column", "JumpColumn" }, { "a lit doorway into the second floor", "UpperGlowHead" },
+	{ "the 2V2 lift's pad", "pad:2v2" } }
 -- the second floor: its walk stays clear; inside it no ray gets out
 do
 	local UY = R.UP_Y
@@ -1076,7 +1111,9 @@ do
 		table.insert(R.LEAKS, { b, 0, UY + 6, 46, R.FOCUS }); table.insert(R.LEAKS, { b, 0, UY + 10, 62, R.FOCUS })
 	end
 end
-for k = 1, 3 do table.insert(R.SIGHTS, { "the bundle hologram on plinth " .. k, "HoloBundle" .. k, true }) end
+-- (the bundles: 3 on side 9 by the arches, 1, 2 and 4 in the lounge's showroom)
+for _, k in { 1, 2, 4 } do table.insert(R.SIGHTS, { "the bundle hologram on plinth " .. k, "HoloBundle" .. k, "lounge" }) end
+table.insert(R.SIGHTS, { "the bundle hologram on plinth 3", "HoloBundle3", true })
 
 local function obb(cfA, hA, cfB, hB)
 	local A = { cfA.RightVector, cfA.UpVector, cfA.LookVector }
@@ -1112,6 +1149,13 @@ function R.check(stage)
 			end
 		end
 	end
+	-- (the middle of the spawn points, on the floor: the spawn rug in the lounge since 18 Nov)
+	local spawnMid, nS = Vector3.zero, 0
+	for _, s in W.spawns:GetChildren() do
+		if W.live and s:GetAttribute("Built") ~= R.MARK then continue end
+		spawnMid += s.Position - Vector3.new(0, 0.1, 0); nS += 1
+	end
+	spawnMid = if nS > 0 then spawnMid / nS else O
 	local pads = {}
 	for _, pad in W.pads:GetChildren() do
 		if pad:IsA("Model") and (pad:GetAttribute("Built") == R.MARK or not W.live) then
@@ -1194,7 +1238,9 @@ function R.check(stage)
 		local function lf(b, x, y, d) return WP(R.frame(O, b, 0, R.FOCUS) * Vector3.new(x, y, -d)) end
 		local function mf(b, x, y, d) return WP(R.frame(O, b, 0) * Vector3.new(x, y, -d)) end
 		local UY, ST = R.UP_Y, 360 / R.N
-		local start = mf(0, 0, 1.3, -9.7) -- (between the two spawn rows)
+		-- (from the middle of the spawn points, in the lounge since 18 Nov, out through the middle arch to TA, then on)
+		local start = spawnMid
+		local TA = mf(180, 0, 0, 25)
 		local nUp = #R.UPPER
 		local function upBearing(i) return (i - (nUp + 1) / 2) * R.UP_PITCH end
 		-- each jump pad's throw, once
@@ -1260,7 +1306,7 @@ function R.check(stage)
 				local s = if idx >= (nUp + 1) / 2 then 1 else -1 -- (the middle pad and the east ones: the east jump pad)
 				local L, J = land[s], padAt[s]
 				if not L or not J then continue end -- (the throw's problem is listed already)
-				if not walk({ start, J }, pad.Name) then continue end
+				if not walk({ start, TA, J }, pad.Name) then continue end
 				local pts = { L, mf(s * 2.5 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 31), lf(s * R.liftBearing(2), 0, UY, 40) }
 				for i = if s > 0 then nUp else 1, idx, -s do table.insert(pts, lf(upBearing(i), 0, UY, 47)) end
 				table.insert(pts, front); table.insert(pts, onto)
@@ -1268,7 +1314,7 @@ function R.check(stage)
 			else
 				local rel = CFrame.new(WP(R.frame(O, 0, 0, R.FOCUS).Position)):PointToObjectSpace(front)
 				local b = math.deg(math.atan2(rel.X, -rel.Z))
-				walk({ start, mf(0, if b >= 0 then 7 else -7, 1.24, 0), lf(b, 0, 0, R.reach(b, R.A + R.WALL + 3)), front, onto }, pad.Name)
+				walk({ start, TA, mf(0, if b >= 0 then 7 else -7, 1.24, 0), lf(b, 0, 0, R.reach(b, R.A + R.WALL + 3)), front, onto }, pad.Name)
 			end
 		end
 	end
@@ -1312,10 +1358,11 @@ function R.check(stage)
 		if sign then for _, k in { -0.3, 0, 0.3 } do table.insert(targets, { "the board of " .. pad.Name, sign, sign.Position + sign.CFrame.RightVector * (sign.Size.X * k), pad }) end end
 	end
 	local inside = {} -- (looked for from the middle of the platform only: a room is not seen into from every spawn point)
+	local insideL = {} -- (the lounge's: from the middle of the spawn rug)
 	for _, w in R.SIGHTS do
 		local q, fam = room.Scenery:FindFirstChild(w[2]), nil
 		if q and q:IsA("Model") then fam = q; q = q.PrimaryPart or q:FindFirstChildWhichIsA("BasePart", true) end
-		if q then table.insert(if w[3] then inside else targets, { w[1], q, if fam then fam:GetBoundingBox().Position else q.Position, fam }) else table.insert(issues, "SIGHT: nothing called " .. w[2] .. " to look for") end
+		if q then table.insert(if w[3] == "lounge" then insideL elseif w[3] then inside else targets, { w[1], q, if fam then fam:GetBoundingBox().Position else q.Position, fam }) else table.insert(issues, "SIGHT: nothing called " .. w[2] .. " to look for") end
 	end
 	local sights, lines, shut, spawnN = {}, 0, 0, 0
 	-- (where each jump pad lands you: the nearest doorway into the second floor must show from there)
@@ -1336,17 +1383,58 @@ function R.check(stage)
 		local by = hidden(O + Vector3.new(0, 5.9, 0), t[3], t[2], t[4])
 		if by then shut += 1; table.insert(sights, ("SIGHT: %s hides %s from the middle of the platform"):format(by.Name, t[1])) end
 	end
-	for _, s in W.spawns:GetChildren() do
-		if W.live and s:GetAttribute("Built") ~= R.MARK then continue end
-		spawnN += 1
-		local eye = s.Position + Vector3.new(0, 4.7, 0)
+	for _, t in insideL do
+		lines += 1
+		local by = hidden(WP(R.frame(O, 180, 0) * Vector3.new(R.LOUNGE_LOOK[1], 5.2, -R.LOUNGE_LOOK[2])), t[3], t[2], t[4])
+		if by then shut += 1; table.insert(sights, ("SIGHT: %s hides %s from the front of the spawn rug"):format(by.Name, t[1])) end
+	end
+	-- the lifts' pads and boards, the name and every way out's word: from where you come out onto the platform (they were
+	-- tested from the spawn points while those stood there)
+	for _, lp in R.PLATFORM_LOOK do
+		local eye = WP(R.frame(O, 0, 0) * Vector3.new(lp[1], 1.3, -lp[2])) + Vector3.new(0, 4.7, 0)
 		for _, t in targets do
 			lines += 1
 			local by = hidden(eye, t[3], t[2], t[4])
 			if by then
 				shut += 1
-				local line = ("SIGHT: %s hides %s from the spawn point at (%.1f, %.1f)"):format(by.Name, t[1], s.Position.X - O.X, s.Position.Z - O.Z)
+				local line = ("SIGHT: %s hides %s from the platform at (%.1f, %.1f)"):format(by.Name, t[1], eye.X - O.X, eye.Z - O.Z)
 				if not seen[line] then seen[line] = true; table.insert(sights, line) end
+			end
+		end
+	end
+	-- the first look from every spawn point (18 Nov, the main session: "from the new spawn, take one look round. The way up
+	-- and the pads upstairs should be obvious within a few seconds"): one of each R.FIRST_LOOK group must show
+	local groups = {}
+	for _, g in R.FIRST_LOOK do
+		local list = {}
+		local padId = g[2]:match("^pad:(.+)$")
+		if padId then
+			for _, pad in pads do
+				if pad.Name ~= padId then continue end
+				for _, c in pad:GetChildren() do if c:IsA("BasePart") and c.Name:sub(1, 4) == "Side" then table.insert(list, { c, c.Position, pad }) end end
+			end
+		else
+			for _, q in room.Scenery:GetChildren() do if q.Name == g[2] and q:IsA("BasePart") then table.insert(list, { q, q.Position, nil }) end end
+		end
+		if #list == 0 then table.insert(issues, "SIGHT: nothing called " .. g[2] .. " for the first look") end
+		table.insert(groups, { g[1], list })
+	end
+	for _, s in W.spawns:GetChildren() do
+		if W.live and s:GetAttribute("Built") ~= R.MARK then continue end
+		spawnN += 1
+		local eye = s.Position + Vector3.new(0, 4.7, 0)
+		for _, g in groups do
+			if #g[2] == 0 then continue end
+			lines += 1
+			local ok, by = false, nil
+			for _, c in g[2] do
+				local h = hidden(eye, c[2], c[1], c[3])
+				if not h then ok = true; break end
+				by = by or h
+			end
+			if not ok then
+				shut += 1
+				table.insert(sights, ("SIGHT: from the spawn point at (%.1f, %.1f) no %s shows (%s in the way)"):format(s.Position.X - O.X, s.Position.Z - O.Z, g[1], if by then by.Name else "?"))
 			end
 		end
 	end
@@ -1473,14 +1561,19 @@ end
 
 -- camera spots for pictures: name = { eye, looking at }, each { bearing, x, y, d }. R.view(name) gives world points
 R.VIEWS = {
-	spawn = { { 0, 0, 5.9, -6 }, { 0, 0, 7, 50 } }, centre = { { 180, 0, 8, 23 }, { 0, 0, 11, 20 } }, dome = { { 180, 0, 3.5, 15 }, { 0, 0, 30, 3 } },
+	-- (18 Nov: spawn = from the spawn rug out through the arches; lounge_spawn = the lounge from the rug; upstairs = the way
+	-- up from the rug; jump = a jump pad and its board from the round room)
+	spawn = { { LOUNGE, 0, 5.9, 40.4 }, { 0, 0, 8, 30 } }, lounge_spawn = { { LOUNGE, 0, 6.4, 33.2 }, { LOUNGE, 0, 3.6, 62 } }, upstairs = { { LOUNGE, 0, 5.9, 40.4 }, { 0, 0, 17, 27 } },
+	lounge_wide = { { LOUNGE, -25.5, 10, 30 }, { LOUNGE, 10, 2.5, 58 } }, lounge_wide2 = { { LOUNGE, 25.5, 10, 30 }, { LOUNGE, -10, 2.5, 58 } },
+	jump = { { 180, 4, 5.9, 18 }, { 3 * STEP, 0, 12, 24 } }, platform = { { 0, 0, 5.9, -9 }, { 0, 0, 7, 50 } },
+	centre = { { 180, 0, 8, 23 }, { 0, 0, 11, 20 } }, dome = { { 180, 0, 3.5, 15 }, { 0, 0, 30, 3 } },
 	balcony = { { 180, 0, 19.2, 25 }, { 0, 0, 9, 32 } }, lifts = { { 334.3, 0, 5.2, 34.5 }, { 22, 0, 8, 52 } }, lift = { { 0, 0, 6, 33 }, { 0, 0, 9, 56 } },
-	back = { { 0, 0, 5.5, 41 }, { 180, 0, 9, 30 } }, lounge_door = { { 0, 0, 5.9, 3 }, { 180, 0, 5, 46 } }, lounge = { { 180, 6.5, 5.6, 39.5 }, { 180, -3, 4.2, 52 } },
+	back = { { 0, 0, 5.5, 41 }, { 180, 0, 9, 30 } }, lounge_door = { { 0, 0, 5.9, 3 }, { 180, 0, 5, 46 + LS } }, lounge = { { 180, 6.5, 5.6, 39.5 + LS }, { 180, -3, 4.2, 52 + LS } },
 	gym_door = { { GYM + 180, 0, 5.9, 4 }, { GYM, 0, 6.5, 70 } }, gym = { { GYM, -1, 5.9, 39.5 }, { GYM, 3, 3.5, 66 } },
 	gym_back = { { GYM, 12, 9, 70 }, { GYM, -6, 3, 46 } },
 	training_door = { { ARM + 180, 0, 5.9, 4 }, { ARM, 0, 5.5, 60 } }, armory = { { ARM, 8.5, 6, 39.5 }, { ARM, -7, 5.5, 58 } },
-	holo = { { 180, 0, 5.94, 9 }, { 0, 0, 6, 0 } }, holo_across = { { 90, 0, 5.4, 24 }, { 0, 0, 6, 0 } }, showroom = { { 0, 0, 6.2, 7 }, { 180, 0, 4.6, 27 } },
-	plinth = { { 6 * STEP, -5, 5.6, 15.5 }, { 6 * STEP, 0, 4.8, 25 } },
+	holo = { { 180, 0, 5.94, 9 }, { 0, 0, 6, 0 } }, holo_across = { { 90, 0, 5.4, 24 }, { 0, 0, 6, 0 } }, showroom = { { LOUNGE, 8, 6.2, 40 }, { LOUNGE, 26, 4.6, 50 } },
+	plinth = { { 9 * STEP, -5, 5.6, 15.5 }, { 9 * STEP, 0, 4.8, 25 } }, arches = { { 0, 0, 7, 8 }, { 180, 0, 6, 32 } },
 }
 -- every view as "name x y z x y z" lines, for the screen capture tool
 function R.views()

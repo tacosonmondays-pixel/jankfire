@@ -1,8 +1,10 @@
 --!nocheck
 -- THE ROTUNDA, part 3: the three rooms off the round room, each down a short hall that frames it.
---   the lounge   (south, behind the spawn, on the axis) small, low and warm: brick, timber beams, seats on a raised
---                wooden border round a sunk middle, and the hologram duck turning over its projector; behind its far
---                wall, through a door on the axis, the VIP room
+--   the lounge   (south, on the axis) where you appear since 18 Nov: a big room as wide as the round room, open onto it
+--                through three arches, the spawn rug on its front floor, the showroom down its west wall, seats down
+--                its east wall; in its middle the old small lounge as a bay under a timber canopy (brick, beams, seats
+--                on a raised wooden border round a sunk middle, the hologram duck turning over its projector); behind
+--                its far wall, through a door on the axis, the VIP room
 --   the gym      (east) the locker room with the boxing ring, only for looks
 --   the armory   (west, on the spawn's left) cut corners; the game's own weapons on boards down both walls, and at
 --                the far end of its aisle the red gate to the training ground
@@ -47,10 +49,138 @@ return function(B, R)
 	end
 
 	-- ------------------------------------------------------------ the lounge (side 7, due south)
+	-- (18 Nov 2026, the owner: "Can the current lounge be turned into a part of a larger lounge where players will now spawn
+	-- making the central [room] feel more spacious!!". the small warm lounge, everything in it, is the middle bay of a big
+	-- one now, moved R.LOUNGE_S further out with the VIP room behind it (frame F below: its numbers as they were): its
+	-- walls and hall gone, its low ceiling kept as a timber canopy on two posts and the far wall. round it the big room
+	-- (frame F7): as wide as the round room, open onto it through the three arches of sides 6, 7 and 8
+	-- (HubRotundaCentre), your spawn rug on its front floor (R.SPAWNS), the showroom's plinths down its west wall, seats
+	-- along its east wall, timber beams and white panels under a high ceiling)
 	do
-		local F = B.side(7)
-		hall(F, "Lounge", 38, 5, 10.4, P.brick, P.wood, P.beam, Brick, Wood, Wood)
-		room(F, "Lounge", -14, 14, 38, 60, 11, 5, 10.4, P.brick, P.carpet, P.shell2, Brick, nil, { 2.45, 9.15 }) -- (the VIP door: below)
+		local F7 = B.side(7)
+		local LS, LX, LH = R.LOUNGE_S, R.LOUNGE_X, R.LOUNGE_H
+		local F = F7 * CFrame.new(0, 0, -LS)
+		local FAR = 60 + LS -- the far wall's face (the VIP door's), in F7
+		local ACCENT = P.doorGlow or P.glow
+		local seat = { ["3b2a52"] = P.creamHi, ff4fd8 = P.band }
+		do
+			local wo = B.wid(A + T) / 2 -- (a side's outer half width: where an arch's side meets the lounge's)
+			local rcO = (A + T) / math.cos(math.pi / R.N)
+			local cx, cd = rcO * math.sin(3 * math.pi / R.N), rcO * math.cos(3 * math.pi / R.N) -- the round room's corner between the arches' sides and 5 / 9
+			local FLOOR, WALL, LID = "4a4542", P.brick, P.shell2
+			-- the floor: the front (its top under the round room's floor and the arches' thresholds), each side's front and
+			-- wing; the bay keeps its own carpet (below)
+			B.box(F7, S, "LoungeFloor", -cx, cx, -2, -0.02, cd - 1, 36 + LS, FLOOR)
+			for _, s in { -1, 1 } do
+				B.box(F7, S, "LoungeFloor", s * cx, s * (LX + 2), -2, -0.02, cd, 36 + LS, FLOOR)
+				B.box(F7, S, "LoungeFloor", s * 16, s * (LX + 2), -2, -0.02, 36 + LS, FAR + 2, FLOOR)
+			end
+			-- the walls: each side's, a short one each side of the arches into the round room's corner, the far wall either
+			-- side of and over the VIP door
+			for _, s in { -1, 1 } do
+				B.box(F7, S, "LoungeWall", s * LX, s * (LX + 2), 0, LH, cd, FAR + 2, WALL, Brick)
+				B.box(F7, S, "LoungeWall", s * (cx - 0.6), s * LX, 0, LH, cd, cd + 2, WALL, Brick)
+				B.box(F7, S, "LoungeWall", s * 2.45, s * LX, 0, LH, FAR, FAR + 2, WALL, Brick)
+			end
+			B.box(F7, S, "LoungeWall", -2.45, 2.45, 9.15, LH, FAR, FAR + 2, WALL, Brick)
+			-- the ceiling: from the round room's wall face out, each side's front, and the triangle over the floor in front of
+			-- an arch's side (a wedge laid flat: its slope on the round room's wall)
+			B.box(F7, S, "LoungeLid", -(LX + 2), LX + 2, LH, LH + 1, A + T, FAR + 2, LID)
+			for _, s in { -1, 1 } do
+				B.box(F7, S, "LoungeLid", s * cx, s * (LX + 2), LH, LH + 1, cd, A + T, LID)
+				local w = B.box(F7, S, "LoungeLidCorner", 0, 1, LH, LH + 1, cd, A + T, LID, nil, { wedge = true })
+				local vY, vZ = Vector3.new(-s, 0, 0), Vector3.new(0, 0, -1)
+				w.Size = Vector3.new(1, cx - wo, A + T - cd)
+				w.CFrame = F7 * CFrame.fromMatrix(Vector3.new(s * (cx + wo) / 2, LH + 0.5, -(cd + A + T) / 2), vY:Cross(vZ), vY, vZ)
+			end
+			-- the walls' trim: a wood dado to hand height and a pale ledge along each side wall and the far wall's wings, a
+			-- cream cornice under the ceiling all round
+			for _, s in { -1, 1 } do
+				B.box(F7, C, "LoungeDado", s * (LX - 0.22), s * LX, 0, 3.6, cd + 2, FAR, P.wood, Wood, G)
+				B.box(F7, C, "LoungeLedge", s * (LX - 0.5), s * LX, 3.6, 3.95, cd + 2, FAR, P.creamHi, nil, G)
+				B.box(F7, C, "LoungeDado", s * 16.4, s * (LX - 0.22), 0, 3.6, FAR - 0.22, FAR, P.wood, Wood, G)
+				B.box(F7, C, "LoungeLedge", s * 16.4, s * (LX - 0.5), 3.6, 3.95, FAR - 0.5, FAR, P.creamHi, nil, G)
+				B.box(F7, C, "LoungeCornice", s * (LX - 0.8), s * LX, LH - 0.8, LH, cd + 2, FAR - 0.8, P.cream, nil, G)
+				B.box(F7, C, "LoungeCornice", s * cx, s * (LX - 0.8), LH - 0.8, LH, cd + 2, cd + 2.8, P.cream, nil, G)
+			end
+			B.box(F7, C, "LoungeCornice", -LX, LX, LH - 0.8, LH, FAR - 0.8, FAR, P.cream, nil, G)
+			-- timber beams across under the ceiling (one in front of the bay's canopy, two over each wing), white panels
+			-- between them, the lights
+			B.box(F7, C, "LoungeBeam", -(LX - 0.8), LX - 0.8, LH - 1.4, LH, 39.6, 40.8, P.beam, Wood, G)
+			for _, s in { -1, 1 } do
+				for _, d in { 52, 64 } do B.box(F7, C, "LoungeBeam", s * 16.6, s * (LX - 0.8), LH - 1.4, LH, d - 0.6, d + 0.6, P.beam, Wood, G) end
+				B.panel(F7, s * 16, LH, 34.6, 7, 3.4)
+				for _, d in { 46, 58 } do
+					B.panel(F7, s * 22.2, LH, d, 4, 7)
+					B.lamp(F7, s * 22.2, LH - 2.5, d, 22, 0.55, P.warm)
+				end
+			end
+			B.panel(F7, 0, LH, 34.6, 7, 3.4)
+			B.lamp(F7, 0, LH - 2, 35, 26, 0.8, P.light)
+			-- where you appear: a round rug on the front floor, a ring of the accent in it, the spawn points on it looking out
+			-- through the middle arch (Hub.HubSpawns; R.SPAWNS in this frame, B.spawns wants the north frame)
+			local mid = 0
+			for _, sp in R.SPAWNS do mid += sp[2] / #R.SPAWNS end
+			B.cyl(F7, C, "SpawnRug", 0, -0.06, 0.04, mid, 2 * 6.4, P.creamHi, nil, G)
+			B.cyl(F7, C, "SpawnRug", 0, -0.1, 0.08, mid, 2 * 5.9, "57514d", nil, G)
+			B.cyl(F7, C, "RugRing", 0, -0.14, 0.12, mid, 2 * 5.3, ACCENT, Neon, G)
+			B.cyl(F7, C, "SpawnRug", 0, -0.18, 0.16, mid, 2 * 5, "57514d", nil, G)
+			local list = {}
+			for _, sp in R.SPAWNS do
+				local l = B.fr(0):PointToObjectSpace(F7 * Vector3.new(sp[1], 0, -sp[2]))
+				table.insert(list, { l.X, -l.Z })
+			end
+			B.spawns(list, 0.16)
+			-- a big planter in each front corner
+			for _, s in { -1, 1 } do
+				B.put(F7, R.prop("rk_planter", "bc_plantbig"), "Planter", s * 25.2, 0, cd + 4.8, 0, { scale = R.propScale("rk_planter", 1.1, 0.65), solid = true, color = GREEN })
+			end
+			-- the showroom (west, x > 0): three of the shop's bundles on plinths down the wall (slots 1, 2 and 4; 3 is on side
+			-- 9 by the arches), each in front of a dark board in a pale frame with a lit cove, as the round room's were
+			local function showFrame(Fq, plate, l1, l2)
+				B.box(Fq, C, "ShowBoard", -4.2, 4.2, 0.7, 9.6, A - 0.8, A - 0.24, P.plate, nil, G)
+				for _, s in { -1, 1 } do B.box(Fq, C, "ShowJamb", s * 4.2, s * 4.75, -0.04, 10.06, A - 1.05, A - 0.2, P.cream, nil, G) end
+				B.box(Fq, C, "ShowHead", -4.75, 4.75, 9.6, 10.1, A - 1.35, A - 0.2, P.cream, nil, G)
+				B.box(Fq, C, "ShowCove", -4, 4, 9.46, 9.6, A - 1.25, A - 1, P.strip, Neon, G)
+				B.box(Fq, C, "ShowSill", -4.2, 4.2, 0.35, 0.7, A - 1, A - 0.26, P.pier, nil, G)
+				B.text(Fq, plate, { { l1, P.glow, "S", 0.32 }, { l2, P.pale, "B", 0.58 } }, 6.4, 1.4, 0, 8.45, A - 0.8, 0, { flush = true, thick = 0.08, pps = 40 })
+			end
+			for _, e in { { 1, 37.5 }, { 2, 48.5 }, { 4, 59.5 } } do
+				local slot = e[1]
+				local Fq = F7 * CFrame.new(LX, 0, -e[2]) * CFrame.Angles(0, -math.pi / 2, 0) * CFrame.new(0, 0, A) -- (d = A: the wall's face)
+				showFrame(Fq, "ShowName" .. slot, "BUNDLE", "COMING SOON")
+				local dP = A - 3.4
+				B.cyl(Fq, C, "PlinthFoot", 0, 0, 0.35, dP, 4.6, P.pier)
+				B.cyl(Fq, C, "Plinth", 0, 0.35, 1.5, dP, 4, P.cream)
+				B.cyl(Fq, C, "PlinthTop", 0, 1.4, 1.53, dP, 3.6, P.floor2, nil, G)
+				B.cyl(Fq, C, "PlinthRing", 0, 1.36, 1.57, dP, 3, P.glow, Neon, G)
+				B.cyl(Fq, C, "PlinthInner", 0, 1.32, 1.61, dP, 2.6, P.floor2, nil, G)
+				B.cyl(Fq, C, "PlinthLens", 0, 1.28, 1.65, dP, 0.9, P.glow, Neon, G)
+				B.holo(Fq, "HoloBundle" .. slot, "bundle", 0, 5.2, dP, 2.5, 2.8, { slot = slot, base = 5.2 - 1.65, prompt = "View bundle" })
+				B.lamp(Fq, 0, 9.2, A - 1.6, 11, 0.45, P.warm, { spot = true, angle = 70 })
+			end
+			-- the seats (east, x < 0): two groups, each a long sofa on the wall, two armchairs facing it over a low table on a
+			-- round rug, a drop light over the table
+			for _, dc in { 44.5, 58.5 } do
+				B.cyl(F7, C, "WingRug", -22.4, -0.06, 0.04, dc, 11, "56504c", nil, G)
+				B.put(F7, "bc_sofa", "WingSofa", -(LX - 0.55), 0, dc, 90, { back = true, scale = 1.1, solid = true, color = seat })
+				B.put(F7, R.prop("rk_coffeetable", "bc_coffeetable"), "WingTable", -22.4, 0, dc, 90, { solid = true })
+				for _, k in { -1, 1 } do
+					B.put(F7, "bc_armchair", "WingArmchair", -18.4, 0, dc + k * 3.2, -90 + k * 20, { scale = 1.1, solid = true, color = seat })
+				end
+				B.put(F7, "hb_droplight", "DropLight", -22.4, LH, dc, 0, { seat = "top", scale = 0.9, color = { fff1d6 = P.warm } })
+				B.lamp(F7, -22.4, LH - 5.5, dc, 18, 0.7, P.warm)
+			end
+		end
+		-- THE BAY: the old lounge, as it was (its floor, the beams, the seats, the duck), its lid now a canopy over it with a
+		-- timber edge, on two posts at its open front and the far wall
+		B.box(F, S, "LoungeFloor", -16, 16, -2, -0.02, 36, 62, P.carpet)
+		B.box(F, S, "LoungeLid", -16, 16, 11, 12, 36, 62, P.shell2)
+		B.box(F, C, "CanopyEdge", -16.4, 16.4, 10.3, 12.4, 35.6, 36, P.beam, Wood, G)
+		for _, s in { -1, 1 } do
+			B.box(F, C, "CanopyEdge", s * 16, s * 16.4, 10.3, 12.4, 36, 60, P.beam, Wood, G)
+			B.box(F, S, "CanopyPost", s * 14.8, s * 16.3, 0, 11, 36, 37.6, P.beam, Wood) -- (up to the canopy; inside its edge's face)
+		end
 		B.lamp(F, 0, 9.2, 34.5, 12, 0.8, P.warm)
 		-- the raised wooden border the seats stand on, with a dark nosing; the middle stays sunk
 		local function step(x0, x1, d0, d1) B.box(F, S, "LoungeStep", x0, x1, -0.02, 0.6, d0, d1, P.wood, Wood) end
@@ -62,10 +192,7 @@ return function(B, R)
 			B.box(F, C, "Beam", -14, 14, 9.9, 11, d - 0.6, d + 0.6, P.beam, Wood, G)
 			for _, s in { -1, 1 } do B.box(F, C, "LoungePier", s * 13.3, s * 14, 0.6, 9.9, d - 0.7, d + 0.7, P.pier, nil, G) end
 		end
-		for _, k in { { -1, 58.2 }, { 1, 58.2 }, { -1, 39.8 }, { 1, 39.8 } } do
-			local turn = (if k[2] > 50 then -1 else 1) * k[1] * math.pi / 4
-			B.box(F, S, "LoungeCut", k[1] * 12.2 - 2.8, k[1] * 12.2 + 2.8, 0, 11, k[2] - 0.6, k[2] + 0.6, P.brick, Brick, { rot = CFrame.Angles(0, turn, 0) })
-		end
+		-- (its cut corners went with its walls, 18 Nov)
 		-- a wood rail and a pale ledge behind the seats
 		for _, s in { -1, 1 } do
 			B.box(F, C, "LoungeDado", s * 13.8, s * 14, 0.6, 3.6, 43.7, 54.3, P.wood, Wood, G)
@@ -105,6 +232,8 @@ return function(B, R)
 		for k, w in { { "sit", 11.2, 2.35, 46.6, 90 }, { "sit", 11.2, 2.35, 49.6, 90 }, { "sit", -11.2, 2.35, 46.6, -90 }, { "sit", -11.2, 2.35, 49.6, -90 }, { "stand", 6.5, 0, 51.8, -60 }, { "stand", -6.5, 0, 51.8, 60 } } do
 			B.npcPoint(F, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5])
 		end
+		-- (18 Nov) and, the shop's man, by the showroom: between its second and third plinths, looking into the lounge
+		B.npcPoint(F7, "Looticus", 7, "spot", "stand", 21, 0, 54, 90)
 
 		-- ---- the VIP room, behind the lounge (owner, 16 Nov: VIP, the game pass, "lets you enter the VIP room"). its door
 		-- is in the middle of the lounge's far wall, on the spawn's axis behind the duck: dark leaves in a brass frame, VIP
