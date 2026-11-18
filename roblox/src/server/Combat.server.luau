@@ -478,7 +478,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	end
 	-- everyone else's tracers (the shooter drew its own already)
 	for _, o in Players:GetPlayers() do
-		if o ~= p then ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = ends, path = path }) end
+		if o ~= p then ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = ends, path = path, hand = if x.hand == 1 or x.hand == 2 then x.hand else nil }) end -- (hand: Lefty & Righty's gun that fired, 1 left 2 right)
 	end
 	Fight.shotFx(f, wid, ends :: any) -- (the match recorder keeps it for killcams and replays)
 	local seen: { [Fighter]: boolean } = {}

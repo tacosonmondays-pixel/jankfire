@@ -955,7 +955,7 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	local root = wpn and (wpn :: Model).PrimaryPart
 	local mz = root and root:FindFirstChild("Muzzle") :: Attachment?
 	local head = m and m:FindFirstChild("Head") :: BasePart?
-	local from = TP.muzzle(m) or (if mz then mz.WorldPosition elseif head then head.Position else nil)
+	local from = TP.muzzle(m, if s.hand == 2 then 2 elseif s.hand == 1 then 1 else nil) or (if mz then mz.WorldPosition elseif head then head.Position else nil)
 	if not from then return end
 	local ends = {}
 	for i, e in s.ends do if typeof(e) == "Vector3" and i <= 12 then table.insert(ends, e) end end

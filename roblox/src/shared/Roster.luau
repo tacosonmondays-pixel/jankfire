@@ -85,7 +85,7 @@ add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", liv
 add({ id = "tennis", slot = "primary", name = "Tennis Ball Launcher", color = "d4ff3a", live = true, gimmick = "balls that bounce up to 5 times, harder every bounce. bank it round a corner.",
 	desc = "Fuzzy balls that bounce off everything up to 5 times, hitting harder every bounce. Bank it round a corner.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "2/s", bar = 0.09 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5cff", live = false, gimmick = "fires a cart that runs people over; it stays as cover, and you can ride it.",
+add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5cff", live = true, gimmick = "fires a cart that runs people over; it stays as cover, and you can ride it.",
 	desc = "Fires a shopping cart that runs people over. It stays as cover, or hop in (F) and ride it.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "0.63/s", bar = 0.03 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "marbles", slot = "secondary", name = "Marble Shotgun", color = "7fd0ff", live = true, gimmick = "a hundred marbles a shot. whatever misses stays on the floor for 9 s and trips people.",
@@ -97,7 +97,7 @@ add({ id = "revolver", slot = "secondary", name = "Revolver", color = "e0c070", 
 add({ id = "pistol", slot = "secondary", name = "Pistol", color = "a0b4ff", live = true, gimmick = "a plain pistol, out of the holster in a blink. 12 shots.",
 	desc = "A plain pistol. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you're empty.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "5/s", bar = 0.23 }, { label = "RANGE", text = "220 m", bar = 0.66 }, { label = "MAG", text = "12", bar = 0.2 } } })
-add({ id = "akimbo", slot = "secondary", name = "Lefty & Righty", color = "00e5a0", live = false, gimmick = "",
+add({ id = "akimbo", slot = "secondary", name = "Lefty & Righty", color = "00e5a0", live = true, gimmick = "",
 	desc = "Two machine pistols, one per hand. Left click fires lefty, right click fires righty, hold both to hose. They reload one at a time, so keep one busy.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "9/s", bar = 0.41 }, { label = "RANGE", text = "140 m", bar = 0.53 }, { label = "MAG", text = "40", bar = 0.67 } } })
 add({ id = "sawnoff", slot = "secondary", name = "Sawed-Off", color = "e05a3a", live = true, gimmick = "two shells. point blank they go flying. shoot the floor for a little hop.",
@@ -112,7 +112,7 @@ add({ id = "bloodcross", slot = "secondary", name = "Blood Cross", color = "ff1f
 add({ id = "blower", slot = "secondary", name = "Leaf Blower", color = "ff9a3a", live = true, gimmick = "pushes people away for 4 s of fuel. point it at the floor and you hover.",
 	desc = "Pushes people off the map. Point it at the floor to hover.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "16 m", bar = 0.18 }, { label = "MAG", text = "4 s of heat", bar = 0.45 } } })
-add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", live = false, gimmick = "a hand of 5: spades throw, hearts heal, clubs blast, diamonds dash, aces teleport.",
+add({ id = "cards", slot = "secondary", name = "Card Deck", color = "ffffff", live = true, gimmick = "a hand of 5: spades throw, hearts heal, clubs blast, diamonds dash, aces teleport.",
 	desc = "Hold 5 cards. Right click picks one, left click plays it, R redraws. Every card you play flicks cards at where you aim. Spades throw a whole fan, hearts heal, clubs blast, diamonds dash, aces teleport, face cards go ultimate, jokers are random.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "2.86/s", bar = 0.13 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "snowball", slot = "secondary", name = "Snowball", color = "dff4ff", live = true, gimmick = "4 hits freeze them solid for 2.4 s. one more shatters them.",
@@ -148,7 +148,7 @@ add({ id = "taser", slot = "secondary", name = "Taser", color = "e8ff3a", live =
 add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = true, gimmick = "left click pauses them for a second, right click rewinds them 2 seconds.",
 	desc = "Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago. Batteries not included.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "45 m", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "catch someone and swing them round on the rope, then let them fly.",
+add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = true, gimmick = "catch someone and swing them round on the rope, then let them fly.",
 	desc = "Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 
