@@ -798,6 +798,28 @@ Tested in solo Play (the `_studio` save):
 Not done: a photo of the rifle in hand (a pick goes in at the next spawn, and the hub keeps guns holstered), a real
 finisher kill on a dummy, and the code panel's grant (the lore session tests that).
 
+## Where a skin comes from, on the SKINS row (18 Nov, place version 933)
+
+The owner: the SKINS row's header said "from crates" even for skins that never come from one. It now names the shown skin's
+source (the one under the pointer, else the one worn), then how to use the row (`News.source` in LoadoutUI):
+- **from crates:** a skin in no set, not VIP, not free;
+- **<set> set:** a set's piece, such as Seraph set or Tidecrest set;
+- **VIP:** the VIP pack's skins, the Royal Ducks;
+- **VIP daily reward:** Trisangle's skin;
+- **code:** Ducky Classic;
+- **free:** the Classic set;
+- **concept:** the owner's concepts, which only the owner sees.
+
+The plain one (Default) shows only "hover to try it on · click to wear it".
+
+Tested in solo Play on the Assault Rifle:
+- worn Yoroi: "Tidecrest set · hover to try it on · click to wear it";
+- Toy Blaster under the pointer: "from crates";
+- Classic Assault Rifle: "free";
+- Seraph Rifle: "Seraph set" (`docs/shop/skins-row-source.jpg`).
+
+Not seen on screen: VIP, VIP daily reward, code and concept. They come from the same function.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

@@ -1044,7 +1044,8 @@ local sTitle = label(sbar, "SKINS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffs
 sTitle.FontFace = FONT_TITLE
 local sName = label(sbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
 sName.FontFace = FONT_BOLD; sName.RichText = true; sName.TextWrapped = false
-label(sbar, "from crates · hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+-- (where the shown skin comes from, then how to use the row: News.source. 18 Nov)
+News.src = label(sbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
 local skinRow = new("ScrollingFrame", {
 	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
@@ -1176,6 +1177,8 @@ skinsRefresh = function(e: any)
 		sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
 			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
+	local src = if shownId ~= "default" and e.live then News.source(shownId) else ""
+	News.src.Text = (if src ~= "" then src .. "  ·  " else "") .. "hover to try it on · click to wear it"
 	noSkins.Visible = not e.live or #ids + #extra == 0
 	noSkins.Text = if not e.live then "not on roblox yet." else "no skins for this one yet."
 	for _, c in skinCards do
@@ -1256,6 +1259,27 @@ end
 -- the gadgets' too) runs: what you own newest first (the loot save's order), then the free ones (the plain one first),
 -- then the rest as listed. a NEW dot on what's fresh; the shown strip's NEW ones count as seen once you move on (another
 -- tab or weapon, or closing). a dot on a tab, and on an armory weapon, with something new
+-- where a skin comes from, in plain words for the SKINS row's header (the owner, 18 Nov: it said "from crates" for
+-- skins that never come from crates): "from crates", "<set> set", "VIP", "VIP daily reward", "code", "free", "concept"
+function News.source(sid: string): string
+	local mod = Shared:FindFirstChild("LootTable")
+	local ok, L = false, nil
+	if mod then ok, L = pcall(require, mod) end
+	if not ok or type(L) ~= "table" then return "" end
+	if L.concept(sid) then return "concept" end
+	local row = L.SKINS[sid]
+	if type(row) ~= "table" then return "" end
+	if row[2] == "free" then return "free" end
+	if L.exclusive("skin", sid) then return "VIP daily reward" end
+	if L.vipOnly("skin", sid) then return "VIP" end
+	local ss = Shared:FindFirstChild("SkinSets")
+	local okS, S = false, nil
+	if ss then okS, S = pcall(require, ss) end
+	local srow = if okS and type(S) == "table" and type(S.SKINS) == "table" then S.SKINS[sid] else nil
+	local set = if type(srow) == "table" and type(S.SETS) == "table" then S.SETS[srow[4]] else nil
+	if type(set) == "table" then return if set.code then "code" else set.name .. " set" end
+	return "from crates"
+end
 function News.skinGun(id: string): string?
 	local mod = Shared:FindFirstChild("LootTable")
 	local ok, L = false, nil
