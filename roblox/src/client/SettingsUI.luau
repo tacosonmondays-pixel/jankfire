@@ -753,9 +753,11 @@ function UI.build(gui)
 	closeHint.Position = UDim2.new(0, 24, 1, -36); closeHint.Size = UDim2.new(1, -40, 0, 14)
 	local function status()
 		statusText.Text = if Settings.state == "cloud" then "SAVED TO YOUR ACCOUNT" elseif Settings.state == "loading" then "LOADING YOUR SETTINGS" else "KEPT FOR THIS SESSION"
-		closeHint.Text = ("%s TO CLOSE"):format(string.upper(Binds.label("settings")))
+		-- (a controller in your hands: B closes it, PadNav.client)
+		closeHint.Text = ("%s TO CLOSE"):format(if Pad.on() then Pad.short("ButtonB") else string.upper(Binds.label("settings")))
 	end
 	Settings.loaded.Event:Connect(status)
+	Pad.changed.Event:Connect(status)
 	status()
 	UI.status = status
 	-- the content

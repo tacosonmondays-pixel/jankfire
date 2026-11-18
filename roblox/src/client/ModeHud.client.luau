@@ -230,8 +230,11 @@ T.corner(bar); T.edge(bar)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) }, bar)
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or not watching then return end
-	if io.UserInputType == Enum.UserInputType.MouseButton1 or io.KeyCode == Enum.KeyCode.Space or io.KeyCode == Enum.KeyCode.Right then step(1)
-	elseif io.KeyCode == Enum.KeyCode.Left then step(-1) end
+	-- (a controller: A, RB or D-pad right for the next, LB or D-pad left back, as the death camera has it)
+	local k = io.KeyCode
+	if io.UserInputType == Enum.UserInputType.MouseButton1 or k == Enum.KeyCode.Space or k == Enum.KeyCode.Right
+		or k == Enum.KeyCode.ButtonA or k == Enum.KeyCode.ButtonR1 or k == Enum.KeyCode.DPadRight then step(1)
+	elseif k == Enum.KeyCode.Left or k == Enum.KeyCode.ButtonL1 or k == Enum.KeyCode.DPadLeft then step(-1) end
 end)
 local camAt: CFrame? = nil
 RunService:BindToRenderStep("JankModeWatch", Enum.RenderPriority.Camera.Value + 2, function(dt: number)

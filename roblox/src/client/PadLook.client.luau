@@ -256,6 +256,8 @@ if RunService:IsStudio() then
 			me:SetAttribute("PadState", HttpService:JSONEncode({
 				on = Pad.on(), yaw = last.yaw, pitch = last.pitch, slow = last.slow, tug = last.tug, rot = last.rot, ang = last.ang,
 				k = last.k, stick = { last.stick.X, last.stick.Y }, look = { l.X, l.Y, l.Z }, fam = Pad.family(),
+				wid = (Settings.live and Settings.live.wid) or "", aim = (Settings.live and Settings.live.aim) or 0,
+				third = me:GetAttribute("ThirdPerson") == true, assistOn = S("pad.assist"), dead = S("pad.dead"),
 				sel = (function() local o = game:GetService("GuiService").SelectedObject; return o and o:GetFullName() or "" end)(),
 			}))
 		end

@@ -122,6 +122,21 @@ It ports `public/js/aimassist.js` and keeps its rules and ring:
   - `press:<KeyCode>` / `release:<KeyCode>`: a pretend button through `Keys.padPress`. Every Keys listener hears it as a pad's (UserInputType Gamepad1), and Binds matches the player's own controller column.
   - `state`: `PadState` JSON with the look this frame, the slow-down, tug, rotation, target angle, k and the selection.
 - `PadNavTest` attribute: `bar`, `back`, `tab:1`, `nudge:1`, `select:<full name>`. With `PadNavWatch = true`, `PadNavState` holds the top menu and the selection.
+- **Measured in solo Play with a forced pad** (place v765 and v772; photos in `docs/controller/`):
+  - Every key cap swaps to the pad's picture: the View glyph by SETTINGS, the hub menus' caps empty. The controls line reads "Y next weapon, RS melee, LB <item>, RT fire, LT aim / parry, X reload, LS run, B slide, hold RB grapple, D-DOWN camera" (`hud-controller-glyphs-v765.jpg`).
+  - VIEW in the hub puts the ring on the menu column (`hub-view-focus-ring-v772.jpg`).
+  - SETTINGS:
+    - The CONTROLLER tab opens with the ring on a row (`settings-controller-tab-focus-v765.jpg`).
+    - A slider nudge steps LOOK SENSITIVITY 1.00 → 1.10.
+    - RB goes to CROSSHAIR, with the selection on its nearest pill.
+    - B closes it.
+  - The emote wheel: hold D-Right, push the right stick up-right, and slot 2 lights (`emote-wheel-right-stick-v772.jpg`). Letting go plays it and closes the wheel.
+  - Pad buttons through Binds (pretend Gamepad1 presses): RS takes out the katana, and Y goes round to the SMG, then the revolver.
+  - The right stick held fully over turns the shoulder camera about 7° a frame once the acceleration is up.
+  - Aim assist on the training Stand 12 studs away:
+    - Only the move stick pushed, 3.2° off the body: the crosshair settles 0.25° off in 0.6 s.
+    - The look slows to 0.46× near dead on.
+    - From 40 studs behind an arcade column it does nothing (the wall check).
 - **Not tested without a real pad:**
   - Roblox's own selection stepping with a real D-pad and stick
   - A pressing a selected button
