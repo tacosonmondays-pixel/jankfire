@@ -709,6 +709,76 @@ bores, sawn ends and breech fences are 24-sided now (the sawn-off's shells 16): 
 3,428 (asset 84316575014493), Double Barrel 2,416 to 3,440 (asset 116673089549378). 0 z-fight hits on both exports.
 The other look-C guns keep 8-sided tubes: where a gun's barrels ARE the look, give them `sides=24`.
 
+## Classic skins (18 November 2026, all twelve live in place v842)
+
+The owner asked: "can all the guns get like classic skins like an ak an actual burst etc". Each standard gun has a
+`<gun>_classic` skin. It is a plain real-world type in the kit style, with no brands, logos, markings or text.
+- **Builder:** `tools/roblox/gun_skins_classic.py` (`SKINS`, `NAMES`), built with `JF_EXTRA=gun_skins_classic`.
+- **What each skin keeps:** its base gun's spots, sight type and place, mag, and every moving node, so the aim and
+  hold rows carry over. The one exception is a skin-only aim row for `ar_classic`.
+- **Look:** wood is in look B's soft edges, steel in look C. Round parts that are the look have 24 sides. Colours
+  only meet by abutting, and ports are real recesses, so every skin has 0 z-fight pairs as built.
+- **Free for everyone:** the shop session's LootTable rows with rarity "free". Each skin shows once its model is in
+  `JankfireSkins` with its `Weapon` attribute.
+
+| Batch | Skins (asset ids) | Commit |
+|---|---|---|
+| 1 (v813) | AR 130063147377991, Burst 93979575502366, SMG 80884206103353, Pistol 90237823550937 | 342127e |
+| 2 (v831) | Shotgun (field pump) 119175765278669, Sniper (scoped bolt-action) 131732975740829, Revolver (single-action) 121391793855763, Sawed-Off (coach gun) 79016023102932 | efa6d1e |
+| 3 (v842) | LMG (belt-fed) 86825183979050, Marksman Rifle (wood and steel) 75552269033012, Lever Rifle (carbine) 109039109961114, Auto Shotgun (drum-fed) 90004626635462 | 9912a5c |
+
+Node changes on two skins:
+- On `lmg_classic`, `lmg_heat` is the bare barrel, so the whole barrel glows.
+- On `dmr_classic`, `charge` carries its operating rod.
+
+Hats are seated on all twelve (the hats session, v847). `lever_classic` moved its seat onto the bolt bar.
+
+## The Scythe in two forms (18 November 2026, v3 live in place v842)
+
+The owner said "It's a sniper too remember". The Scythe is one weapon with two kit models:
+- `w_scythe` (melee) and `w_scythe_rifle`;
+- built by `tools/roblox/gun_scythe.py`, which `gun_set.py` imports in place of batch C's scythe;
+- the same scale, and the same grip origin (0, 0, 0).
+
+**The mechanism** (the weapons session's design):
+- The **blade** slides down the haft to behind the grip and turns on its edge to become the stock.
+- The **scope** rises out of the receiver.
+- The static teal **collar** becomes the muzzle ring.
+
+**Nodes:** only two move, with the same names and meshes in both files:
+- `blade`: `blade_wzB__steel`, `blade_wzB__tang`, `blade_wzN__edge`;
+- `scope`: `scope_wzB__frame`, `scope_wzB__dark`, `scope_wzN__glass`, `scope_wzN__deck`.
+
+**The turn can't be measured in Roblox.** The exporter bakes every transform, so the rifle's blade arrives as rotated
+vertices in an unrotated part frame. Measuring the offset between the two models gives a slide with no turn. The
+weapons session's rows therefore hold the numbers, and GunParts eases each node about its own root:
+
+| Node | Move | Pivot, melee → rifle |
+|---|---|---|
+| `blade` | `CFrame.new(0.02, 1.23, 0.126, 0,-1,0, 0,0,1, -1,0,0)`: 120° about (-1,1,1)/√3 | (0.012, 0.02, -1.218) → (0, 0.012, 0.114) |
+| `scope` | +0.0645 on y | (0, 0.013, -0.24) → (0, 0.0775, -0.24) |
+
+**Spots:**
+
+| Form | Spots |
+|---|---|
+| Melee | grip (0,0,0), fore (0,0,-0.45), mid (-0.3,0.02,-1.25), muzzle (-0.7,0.02,-1.16) |
+| Rifle | grip (0,0,0), fore (0,0,-0.45), mid (0,0,-0.6), muzzle (0,0,-1.38), sight (0,0.0775,-0.072) |
+
+The hat seat is the static heel top (0, 0.03, 0.122), size 0.09, in both forms.
+
+**Versions:**
+- **v831** (c0716af): the first two-form build.
+- **v3, live in v842** (2bd5f1d): the main session found v831 "too thin and plain" for a level 14–18 signature weapon.
+  v3 adds a vented barrel shroud with steel ferrules, a head socket with a ported brake, a receiver that reads as a
+  gun action (ejection port, bolt handle, trigger guard), a heel the blade's tang nests into as the stock, and a
+  spine-ridged blade. Every join is filleted, and teal is only on the collar. 11,560 triangles each, one connected
+  piece, 0 z-fight pairs.
+- **Ids:** `scythe` 91699962370328, `scythe_rifle` 107753595868965.
+
+**Checked in Play** (the hands session, v842): no fist clipping in either form, and the rifle's scope sits ahead of
+the hand. Sheets: `scythe-v3.jpg`, `classic-batch1..3.jpg` in the shared notes.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
