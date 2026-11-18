@@ -159,6 +159,29 @@ function AvatarArms.fitOver(root: BasePart, k: number, handRel: CFrame, size: Ve
 	end
 end
 
+-- (the hold session, 18 Nov 2026) the Blood Cross's hat spot, agreed with weapon-hats: an Attachment "HatSpot" on the
+-- hand part (tag GunHatSpot; attributes Weapon, Owner = the UserId, K = studs per metre of the weapon in that view),
+-- and GunHats welds the player's hat for that weapon there. on top of the hand in its finger-gun pose: the thumb side,
+-- just behind the knuckles, +Y out of the top, -Z toward the fingertips (the hand's own axes: x palm to back, y to the
+-- wrist, z across, the thumb at -z). first person puts it on the AvatarArms hand, third person on the body's own right
+-- hand; on = false takes it off
+local CollectionService = game:GetService("CollectionService")
+function AvatarArms.hatSpot(hand: BasePart, wid: string, owner: number, k: number, on: boolean)
+	local a = hand:FindFirstChild("HatSpot")
+	if not on then
+		if a then a:Destroy() end
+		return
+	end
+	if a then return end
+	local s = hand.Size
+	local at = Instance.new("Attachment")
+	at.Name = "HatSpot"
+	at.CFrame = CFrame.fromMatrix(Vector3.new(s.X * 0.15, -s.Y * 0.2, -s.Z / 2), Vector3.xAxis, -Vector3.zAxis)
+	at:SetAttribute("Weapon", wid); at:SetAttribute("Owner", owner); at:SetAttribute("K", k)
+	at.Parent = hand
+	CollectionService:AddTag(at, "GunHatSpot")
+end
+
 -- a weapon's hand rows, a skin's own where it has them (the knife's spoon look holds its handle further back)
 function AvatarArms.rows(wid: string, skin: string?): any
 	local rows = Holds.holds[wid]

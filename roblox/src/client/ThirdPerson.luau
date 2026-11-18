@@ -175,7 +175,7 @@ local KAT = {
 }
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
-local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true, akimbo = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso, Lefty & Righty: 18 Nov)
+local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true, akimbo = true, bloodcross = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso, Lefty & Righty, the Blood Cross's finger-gun hand: 18 Nov)
 -- a weapon held in another class's stance (its moves still its own class's: the Scythe swings as a melee weapon, held low
 -- with both hands like the LMG: 18 Nov 2026)
 local STANCE: { [string]: string } = { scythe = "heavy", akimbo = "akimbo" }
@@ -676,6 +676,9 @@ local function release(r: Rig)
 	r.item = nil
 	r.src, r.wid, r.tool = nil, "", nil
 	if r.isMe and r.hum.Parent and r.hum:GetAttribute("TPTurned") then r.hum.AutoRotate = true; r.hum:SetAttribute("TPTurned", nil) end
+	local rh = r.ch:FindFirstChild("RightHand") -- (the Blood Cross's hat spot goes with the weapon: AvatarArms.hatSpot)
+	local hs = rh and rh:FindFirstChild("HatSpot")
+	if hs then hs:Destroy() end
 end
 
 -- what a body is holding: the Shredder (a Tool), the server's HeldWeapon, or (a test rig) its TPWeapon attribute
@@ -1600,6 +1603,15 @@ local function stepRig(r: Rig, dt: number, now: number)
 		bowString(r, bowS, on, if w and w.cd then w.cd else 0.35, now)
 	elseif rx.bowStr then
 		bowString(r, rx.bowS or { up = 0, pull = 0, pv = 0, hand = 0, relT = -10, relPull = 0, was = false }, false, 0, now)
+	end
+	-- (the hold session, 18 Nov 2026) the Blood Cross's hat spot on this body's own right hand (AvatarArms.hatSpot;
+	-- GunHats seats the Googly Eyes there): while it's out, not on yours while you're in first person
+	local rhand = r.ch:FindFirstChild("RightHand")
+	if rhand and rhand:IsA("BasePart") then
+		local want = r.wid == "bloodcross" and not (r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true))
+		if want ~= (rhand:FindFirstChild("HatSpot") ~= nil) then
+			AvatarArms.hatSpot(rhand, "bloodcross", if r.player then r.player.UserId else 0, r.k, want)
+		end
 	end
 	-- (debug / tests: where each hand was sent, chest space, to check the IK landed it there)
 	if r.gun and r.ch:GetAttribute("TPDebug") then

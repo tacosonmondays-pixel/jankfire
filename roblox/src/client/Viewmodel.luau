@@ -140,7 +140,13 @@ function VM.follow(name: string, delay: number)
 	if Anims[name] then follow = { name = name, at = os.clock() + delay } end
 end
 -- a shot went off: the cylinder turns, the hammer falls, the slide kicks, the barrel warms (GunParts)
+-- (the hold session, 18 Nov 2026) the Blood Cross's bang (the owner: "your hand", a finger-gun; the web's bang drops
+-- the thumb and kicks the finger up): your own hand has no fingers to move, so the whole hand flicks up about the
+-- wrist, up `up` rad in `rise` s and back over `fall` s
+local BANG = { up = 0.32, rise = 0.04, fall = 0.17 }
+local bangT0 = -10
 function VM.shot(w: any, hand: number?)
+	if VM.wid == "bloodcross" then bangT0 = os.clock() end
 	if hand == 1 and twin then -- (Lefty's own slide)
 		if (twin :: Twin).parts then GunParts.shot((twin :: Twin).parts, w) end
 		return
@@ -1069,6 +1075,21 @@ function VM.update(dt: number, c: Ctx)
 		drink = R
 	end
 	if dR > 0 then jig *= CFrame.Angles(DIP.tip * dR, 0, 0) end
+	if VM.wid == "bloodcross" then -- (the Blood Cross's bang, BANG above; the root is at your wrist)
+		-- (its hat spot on your hand, AvatarArms.hatSpot: GunHats seats your hat there. the arms are rebuilt now and
+		-- then, so it's put back when it's gone)
+		local arms = m:FindFirstChild("AvatarArms")
+		local hp = arms and (arms:FindFirstChild("RightHand") or arms:FindFirstChild("RightHandTint"))
+		if hp and hp:IsA("BasePart") and not hp:FindFirstChild("HatSpot") then AvatarArms.hatSpot(hp, "bloodcross", LookPlayer.UserId, k, true) end
+		local bt = os.clock() - bangT0
+		local hb = if IS_STUDIO then LookPlayer:GetAttribute("BangHold") else nil -- (Studio photos: the bang held at this time, s)
+		if type(hb) == "number" then bt = hb end
+		if bt >= 0 and bt < BANG.rise + BANG.fall then
+			local function sm(u: number) u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+			local e = if bt < BANG.rise then sm(bt / BANG.rise) else 1 - sm((bt - BANG.rise) / BANG.fall)
+			jig *= CFrame.Angles(BANG.up * e, 0, 0)
+		end
+	end
 	local held = CFrame.new(pos) * drink * jig * baseRot
 	local bowUp = 0 -- (the Bow raised to its draw, 0..1: the elbows go with it, below)
 	if bow then
