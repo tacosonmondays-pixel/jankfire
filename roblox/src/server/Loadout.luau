@@ -363,16 +363,21 @@ local function load(p: Player)
 	if ok and not d.touched then rearmInHub(p) end
 end
 
+-- saves still writing: a server closing waits for them (18 Nov: the last player's leave-save was cut off when the
+-- server shut down, since PlayerRemoving had already taken them out of data and BindToClose saw nobody)
+local inflight = 0
 local function save(p: Player)
 	local d = data[p]
 	if not d or not d.canSave or not d.dirty or not store then return end
 	d.dirty = false
+	inflight += 1
 	local wraps = {}
 	for wid, w in d.wraps do wraps[wid] = { w.id, w.mode } end
 	local kept = {}
 	for wid in d.kept do table.insert(kept, wid) end
 	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins), kept = kept, u = d.u }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
+	inflight -= 1
 	if not ok then
 		d.dirty = true; d.saveAt = os.clock() + 20
 		warn("[jankfire] couldn't save " .. p.Name .. "'s loadout: " .. tostring(err))
@@ -412,11 +417,22 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 	if not d then return false, "still loading" end
 	-- (in training every pick goes into the try layer: never saved, never owned; out of it, a leftover layer goes)
 	local tr = trying(p)
+	-- (the owner's dev weapons in the hub, DevArms (OwnerDev), borrow the try layer for WEAPONS only: a look picked there,
+	-- a skin, a wrap or a hat, is the owner's own and saved like anywhere else, and shows in the layer too. 18 Nov, the
+	-- owner: "it didn't save my skin options": every pick made with DevArms on went into the never-saved layer)
+	local look = op == "wrap" or op == "hat" or op == "skin"
+	local devHub = tr and Zones.TRAINING[Zones.of(p)] ~= true
 	if d.try and not tr then endTry(p) end
-	if tr and not d.try and (op == "pick" or op == "wrap" or op == "hat" or op == "skin") then d.try = copyLayer(d) end
-	local L = layer(d)
-	local free = d.try ~= nil
+	if tr and not d.try and (op == "pick" or (look and not devHub)) then d.try = copyLayer(d) end
+	local L = if look and devHub then d else layer(d)
+	local free = d.try ~= nil and not (look and devHub)
 	local function done()
+		if look and devHub and d.try and type(a) == "string" then
+			local w = d.wraps[a]
+			d.try.wraps[a] = if w then { id = w.id, mode = w.mode } else nil
+			d.try.hats[a] = d.hats[a]
+			d.try.skins[a] = d.skins[a]
+		end
 		if free then publish(p) else changed(p) end
 	end
 	if op == "pick" then
@@ -581,7 +597,8 @@ function Loadout.init(fight: any)
 			task.spawn(function() save(p); left -= 1 end)
 		end
 		local t0 = os.clock()
-		while left > 0 and os.clock() - t0 < 20 do task.wait(0.1) end
+		while (left > 0 or inflight > 0) and os.clock() - t0 < 25 do task.wait(0.1) end
+		if inflight > 0 then warn("[jankfire] the server closed with " .. inflight .. " loadout save(s) still writing") end
 	end)
 end
 
