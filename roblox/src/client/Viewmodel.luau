@@ -236,6 +236,12 @@ local function adsOf(wid: string): (any, any)
 	return a, sk or nil
 end
 local adsHide: { BasePart } = {} -- (this skin's wings, horns and crowns: faded out while you aim)
+-- (the hold session, 18 Nov 2026; the owner: "when you scope with the seraph a lot of details are lost") a skin's pieces
+-- folded out of the sight picture as you aim instead (Holds ads.skins[id].tuck): each group turned, moved and scaled
+-- about its pivot by the aim, the pieces unwelded and placed with the gun every frame
+type TuckPart = { part: BasePart, rel: CFrame, size: Vector3 }
+type Tuck = { parts: { TuckPart }, piv: CFrame, move: Vector3, rot: Vector3, scale: number, s: number }
+local adsTuck: { Tuck } = {}
 
 -- the katana's rest and parry poses (Holds.katana, from tools/roblox/holds.json): a turn and a shift laid over the web
 -- game's clips, so the flat of the blade, the guard and the wrapped handle face you. the cut itself is the web game's:
@@ -795,6 +801,7 @@ function VM.set(wid: string, kat: number)
 	VM.wid = wid
 	needles, vents = {}, {}
 	adsHide = {}
+	adsTuck = {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
 	k = S * w.vm.s * sizeOf(wid)
@@ -837,6 +844,43 @@ function VM.set(wid: string, kat: number)
 				end
 			end
 		end
+	end
+	-- a skin's tuck groups (Holds ads.skins[id].tuck): their pieces come off their welds and are placed every frame
+	local groups = (adsSkin and adsSkin.tuck) or {}
+	-- (Studio tuning: the player's TuckTune attribute, JSON [{pieces, pivot, move, rot (deg), scale}], replaces this
+	-- skin's groups at the next equip)
+	local tt = if IS_STUDIO then LookPlayer:GetAttribute("TuckTune") else nil
+	if type(tt) == "string" and tt ~= "" then
+		local ok, list = pcall(function() return game:GetService("HttpService"):JSONDecode(tt) end)
+		if ok and type(list) == "table" then
+			groups = {}
+			for _, t in list do
+				local function v3(a: any, rad: boolean?): Vector3
+					local m = if rad then math.pi / 180 else 1
+					return if type(a) == "table" then Vector3.new((a[1] or 0) * m, (a[2] or 0) * m, (a[3] or 0) * m) else Vector3.zero
+				end
+				local pcs = {}
+				for _, n in t.pieces or {} do table.insert(pcs, string.lower(n)) end
+				table.insert(groups, { pieces = pcs, pivot = v3(t.pivot), move = v3(t.move), rot = v3(t.rot, true), scale = t.scale or 1 })
+			end
+		end
+	end
+	for _, g in groups do
+		local piv = CFrame.new(g.pivot * k)
+		local T: Tuck = { parts = {}, piv = piv, move = g.move * k, rot = g.rot, scale = g.scale, s = -1 }
+		for _, d in m:GetDescendants() do
+			if not d:IsA("BasePart") or d == root then continue end
+			local n = string.lower(d.Name)
+			for _, pre in g.pieces do
+				if string.sub(n, 1, #pre) == pre and (#n == #pre or string.sub(n, #pre + 1, #pre + 1) == "_") then
+					for _, wc in d:GetChildren() do if wc:IsA("WeldConstraint") or wc:IsA("Weld") then wc:Destroy() end end
+					d.Anchored = true
+					table.insert(T.parts, { part = d, rel = piv:Inverse() * root.CFrame:ToObjectSpace(d.CFrame), size = d.Size })
+					break
+				end
+			end
+		end
+		if #T.parts > 0 then table.insert(adsTuck, T) end
 	end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false end
@@ -1099,6 +1143,19 @@ function VM.update(dt: number, c: Ctx)
 		held, bowUp = bowPose(bow :: Bow, draw, held, pos - base, dt, nSub, h)
 	end
 	m.PrimaryPart.CFrame = camera.CFrame * held
+	if #adsTuck > 0 then -- (a skin's tuck groups: folded out of the sight picture by the aim, placed with the gun)
+		local f = c.aim * c.aim * (3 - 2 * c.aim)
+		local R = m.PrimaryPart.CFrame
+		for _, T in adsTuck do
+			local s = 1 + (T.scale - 1) * f
+			local G = R * T.piv * CFrame.new(T.move * f) * CFrame.fromEulerAnglesXYZ(T.rot.X * f, T.rot.Y * f, T.rot.Z * f)
+			for _, tp in T.parts do
+				tp.part.CFrame = G * CFrame.new(tp.rel.Position * s) * tp.rel.Rotation
+				if s ~= T.s then tp.part.Size = tp.size * s; tp.part:SetAttribute("TuckScale", s) end -- (VFX scales its points on it by this)
+			end
+			T.s = s
+		end
+	end
 	if twin then -- (Lefty: the right gun's pose in a mirror, its own kick and reload dip on top)
 		local T = twin :: Twin
 		local dL = dipOf(T.dip)
