@@ -67,6 +67,7 @@ return {
 		slipper = { Right = { pose = "grip", at = V(0, -0.004, 0.1), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0, 0.04, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
 		scales = { Right = { pose = "grip", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0.08, 0.02, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
 		bow = { Right = { pose = "grip", at = V(0, 0, 0.1132), rot = V(0, 0, 0), size = 0.85 }, Left = { pose = "grip", at = V(-0.012, -0.06, -0.0008), rot = V(0, 0, 0), size = 0.85 }, shift = V(-0.12, 0.16, -0.1), scale = 1.0667, tilt = V(0, 0.54978, 0.20071) },
+		cards = { Right = { pose = "fist", at = V(0, -0.01, 0.02), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.04, 0.01, 0), scale = 1, tilt = V(1.22173, 0.34907, 0) },
 	},
 	katana = {
 		fixes = {
