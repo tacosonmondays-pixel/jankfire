@@ -158,6 +158,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		-- (a Studio test stands a player in a match with the attribute TitleZoneTest: the server rewrites Zone every 0.15 s)
 		local zone = if RunService:IsStudio() and p:GetAttribute("TitleZoneTest") ~= nil then p:GetAttribute("TitleZoneTest") else p:GetAttribute("Zone")
 		local show = on and head ~= nil and g.label.Text ~= "" and zone ~= "match"
+			and me:GetAttribute("Finishing") == nil -- (a finisher or a code's cutscene on your screen: no titles over heads)
 			and not (p ~= me and p:GetAttribute("DevInvisible") == true) -- (the owner gone invisible: OwnerDev.server)
 		local d = if head then (head.Position - camPos).Magnitude else math.huge
 		if show and p == me and d < 4 then show = false end -- (your own: not from your own eyes)

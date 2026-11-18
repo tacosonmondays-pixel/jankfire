@@ -648,6 +648,8 @@ local Th = require(script.Parent:WaitForChild("Theme")) :: any
 local cut: any = nil
 local cutUi: any = nil
 local hiddenGuis: { [ScreenGui]: boolean } = {}
+local hiddenBoards: { [BillboardGui]: boolean } = {} -- (nametags and titles over heads, off while it runs)
+local hiddenNames: { [Humanoid]: Enum.HumanoidDisplayDistanceType } = {}
 local rayP = RaycastParams.new()
 rayP.FilterType = Enum.RaycastFilterType.Exclude
 local endCut: () -> ()
@@ -701,6 +703,10 @@ endCut = function()
 	if c.actor and c.actor.m then c.actor.m:Destroy() end
 	for g in hiddenGuis do if g.Parent then g.Enabled = true end end
 	table.clear(hiddenGuis)
+	for b in hiddenBoards do if b.Parent then b.Enabled = true end end
+	table.clear(hiddenBoards)
+	for h, t in hiddenNames do if h.Parent then h.DisplayDistanceType = t end end
+	table.clear(hiddenNames)
 	if cutUi then cutUi.g.Enabled = false; cutUi.skip.Visible = false end
 	local cam = workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Custom
@@ -911,13 +917,61 @@ local function startCut(id: string, again: boolean?)
 		local h = workspace:Raycast(tgt, d, rayP)
 		return if h then h.Position - d.Unit * 0.8 else p
 	end
+	-- (each set-up: a spot with 3 studs of room round it from every visible part's box, and a clear line to each point
+	-- it watches, found by turning round what it watches from the wanted spot; else the wanted spot pulled in)
+	local function room(p: Vector3): number
+		local best = math.huge
+		for _, b in boxes do
+			local dx = math.max(b[1].X - p.X, 0, p.X - b[2].X)
+			local dy = math.max(b[1].Y - p.Y, 0, p.Y - b[2].Y)
+			local dz = math.max(b[1].Z - p.Z, 0, p.Z - b[2].Z)
+			best = math.min(best, dx * dx + dy * dy + dz * dz)
+		end
+		return math.sqrt(best)
+	end
+	local function lineClear(a: Vector3, b: Vector3): boolean
+		local d = b - a
+		local n = math.max(1, math.floor(d.Magnitude / 0.5))
+		for i = 1, n - 1 do
+			local p = a + d * (i / n)
+			for _, bx in boxes do
+				if p.X > bx[1].X - 0.3 and p.X < bx[2].X + 0.3 and p.Y > bx[1].Y - 0.3 and p.Y < bx[2].Y + 0.3
+					and p.Z > bx[1].Z - 0.3 and p.Z < bx[2].Z + 0.3 then return false end
+			end
+		end
+		return true
+	end
+	local function pickCam(want: Vector3, watch: { Vector3 }): Vector3
+		local centre = watch[1]
+		local fl = Vector3.new(want.X - centre.X, 0, want.Z - centre.Z)
+		local dist0, up = fl.Magnitude, want.Y - centre.Y
+		fl = if dist0 > 1e-3 then fl.Unit else face
+		-- (the best by score: every line clear first, then room up to 3 studs; the first found wins a tie)
+		local best, bestScore = nil, -1
+		for _, deg in { 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 130, -130 } do
+			local dir = CFrame.Angles(0, math.rad(deg), 0) * fl
+			for _, k in { 1, 0.85, 1.2, 0.7 } do
+				local p = centre + dir * (dist0 * k) + Vector3.new(0, up, 0)
+				local r = room(p)
+				if r < 0.8 then continue end
+				local clearN = 0
+				for _, w in watch do if lineClear(p, w) then clearN += 1 end end
+				local score = clearN * 10 + math.min(r, 3)
+				if score > bestScore + 1e-3 then best, bestScore = p, score end
+				if clearN == #watch and r >= 3 then return p end
+			end
+		end
+		return best or clampCam(want)
+	end
+	local exitRun = clearRun(exit, 5.5)
+	local headUp = Vector3.new(0, math.max(3, hgt * 0.6), 0) -- (chest height: clear of hanging lamps)
 	local cam = workspace.CurrentCamera
 	cut = {
 		id = id, again = again, t0 = os.clock(), actor = actor, start = start, finish = finish, face = face, exit = exit,
-		exitRun = clearRun(exit, 5.5),
-		camA = clampCam(finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0)),
-		camB = clampCam(finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0)),
-		camC = clampCam(finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0)),
+		exitRun = exitRun,
+		camA = pickCam(finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0), { (start + finish) / 2 + headUp, start + headUp, finish + headUp }),
+		camB = pickCam(finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0), { finish + headUp }),
+		camC = pickCam(finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0), { finish + exit * (exitRun / 2) + headUp, finish + headUp }),
 		fov = cam.FieldOfView, loadoutWas = me:GetAttribute("LoadoutOpen"), said = false, shot = 0, aim = nil, look = nil,
 	}
 	local okSetup, errSetup = pcall(function()
@@ -926,6 +980,20 @@ local function startCut(id: string, again: boolean?)
 			if g:IsA("ScreenGui") and g ~= u.g and g.Enabled and g.Name ~= "LoreDelivery" then hiddenGuis[g] = true; g.Enabled = false end
 		end
 		u.g.Enabled = true
+		for _, root in { workspace, me:WaitForChild("PlayerGui") } do
+			for _, d in (root :: Instance):GetDescendants() do
+				if d:IsA("BillboardGui") and d.Enabled and d.Name ~= "LoreBubble" and not d:IsDescendantOf(cutFolder) then
+					hiddenBoards[d] = true; d.Enabled = false
+				end
+			end
+		end
+		for _, pl in Players:GetPlayers() do
+			local hum = pl.Character and pl.Character:FindFirstChildOfClass("Humanoid")
+			if hum and hum.DisplayDistanceType ~= Enum.HumanoidDisplayDistanceType.None then
+				hiddenNames[hum] = hum.DisplayDistanceType
+				hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			end
+		end
 		me:SetAttribute("LoadoutOpen", true) -- (hands and guns hold still, no menu opens, the shoulder camera lets go)
 		me:SetAttribute("Finishing", "lore") -- (MenuCursor, PadLook and the death camera treat it like a finisher)
 		controls(false)
