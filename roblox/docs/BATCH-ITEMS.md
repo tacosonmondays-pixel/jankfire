@@ -331,3 +331,42 @@ Play test, real G presses (solo, training):
 
 **Reverse Card** ("can you nerf duration of reverse card"): **3 s -> 1.8 s** (40% off), charges 1 and recharge 22 s
 kept. Play: the card's broadcast says 1.8 s and the server's clock ran out on time.
+
+## Second models (owner, 18 Nov 2026: "Gadgets need better models")
+
+`tools/roblox/item_models2.py` rebuilds the gadgets on the same contract as `item_models.py`. That file is kept as the
+"before" and stays one switch away.
+
+**What stays the same:**
+- each item's size class (within a few mm), its grip and gripRot, and its pivot (the middle);
+- the node names the game reads:
+  - frag and smoke: `lamp`, and the `pin` / `ring` pair, hidden once the pin is out;
+  - calc: `screen` and `body`;
+  - radar: `screen`;
+  - camera: `flash`;
+  - laptop: `body` / `lid` / `screen`, with the hinge on the deck's back edge.
+- None of the gadgets carries hat seats.
+
+**The pipeline:**
+- before/after cells: `tools/roblox/item_sheet.py`;
+- the sheet: `tools/roblox/item_sheet_tile.py`;
+- the upload: `item_models2.py -- <dir> <ids> --name=items_v2a.glb`;
+- the install: `item_import.luau`.
+
+The install first copies the model each one replaces into `ServerStorage.PolishBackup.ItemSets.v1`. To go back, copy
+those models into `ReplicatedStorage.JankfireItems`.
+
+**Batch 1** (place version 802, asset 130837559389880, `roblox/assets/items/items_v2a.json`):
+- **frag:** an egg cut into 8 x 3 chunky blocks, a spoon hugging the body, a big round pull ring;
+- **smoke can:** a ring of vents on the shoulder cap, four low side vents, the spoon down the side;
+- **medkit:** a hard case in two halves with a dark seam, a red panel front and back (no cross), latches, feet and a
+  handle;
+- **shield bubble:** a glowing dome under two crossing steel arcs, cyan slots round the side;
+- **duck:** one body sweeping up into a tail, a two-part beak, eye glints;
+- **popper:** a fluted cone, a crimped paper cap, a pull loop.
+
+The solo Play in training checked the cooking pose (frag, smoke), the frag and duck in flight, and the bubble and
+medkit in hand. The console showed no errors from the items.
+
+![before and after, batch 1](items/models-v2-batch1.jpg)
+![in game: frag and smoke cooking, bubble and medkit in hand, duck and frag thrown](items/models-v2-batch1-play.jpg)
