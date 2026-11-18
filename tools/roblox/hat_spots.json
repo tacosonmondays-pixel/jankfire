@@ -34,6 +34,8 @@
   "bow": {"z": -0.015, "s": 0.3, "sink": 0.001, "note": "batch D: on the riser's small top shelf, forward of the limb that rises behind it (bigger, the brims hit the limb); the bow stands upright, its string moves"},
   "scales": {"z": -0.13, "s": 0.67, "note": "batch D (a melee): on the flat boss over the pivot ball; the guns session's seat"},
   "cart": {"z": -0.47, "s": 1.17, "pitch": 2.2, "note": "batch E (18 Nov 2026): on the barrel's flat light-grey top between the mouth collar and the handle band, off the loaded cart (it moves); the guns session's seat, tipped 2.2 degrees to the barrel's rise (level, the third-person feet went 4.7 mm into its front)"},
+  "cards": {"z": -0.0065, "s": 0.42, "note": "batch E (18 Nov 2026): on the deck block's top edge, 12 mm over the fan of cards in front (they move); the guns session's seat"},
+  "lasso": {"x": -0.0088, "z": 0.0099, "s": 0.54, "note": "batch E: on the crest of the coil's middle arc, its highest point (the lariat loop in front moves and hides on a throw); the guns session's seat"},
   "chicken": {"z": -0.425, "s": 0.75, "note": "batch C: on the tube's crest (the guns session's seat)"},
   "banana": {"z": -0.08, "s": 0.83, "note": "batch C: on the long flat deck between the sights (behind the notch there are only 6.5 cm and the brims hit it; hats hide while you aim)"},
   "tennis": {"z": -0.1, "s": 0.67, "note": "batch C: on the hopper's lid (the guns session's seat)"},
