@@ -67,9 +67,9 @@ return {
 		slipper = { Right = { pose = "grip", at = V(0, -0.004, 0.1), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0, 0.04, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
 		scales = { Right = { pose = "grip", at = V(0, 0, 0), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0.08, 0.02, 0), scale = 1, tilt = V(0.34907, -0.17453, 0) },
 		bow = { Right = { pose = "grip", at = V(0, 0, 0.1132), rot = V(0, 0, 0), size = 0.85 }, Left = { pose = "grip", at = V(-0.012, -0.06, -0.0008), rot = V(0, 0, 0), size = 0.85 }, shift = V(-0.12, 0.16, -0.1), scale = 1.0667, tilt = V(0, 0.54978, 0.20071) },
-		cards = { Right = { pose = "fist", at = V(0, -0.01, 0.02), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.04, 0.01, 0), scale = 1, tilt = V(1.22173, 0.34907, 0) },
+		cards = { Right = { pose = "fist", at = V(0, 0.035, -0.001), rot = V(0, 0, 0), size = 0.9 }, shift = V(-0.02, 0.03, 0), scale = 1, tilt = V(-0.2618, 0.20944, 0) },
 		cart = { Right = { pose = "grip", at = V(0, -0.145, 0.038), rot = V(-0.29671, 0, 0), size = 0.9 }, Left = { pose = "grip", at = V(0, -0.16, -0.29), rot = V(-0.13963, 0, 0), size = 0.9 }, shift = V(-0.06, 0.07, 0), scale = 1 },
-		lasso = { Right = { pose = "fist", at = V(0, 0.004, 0), rot = V(0, 0, 1.5708), size = 0.9 }, Left = { pose = "grip", at = V(-0.06, -0.3, 0.1), rot = V(-1.5708, 0, 0), size = 0.9, away = true }, shift = V(0.02, 0.11, 0), scale = 1, tilt = V(0.17453, 0.43633, 0) },
+		lasso = { Right = { pose = "fist", at = V(0, 0.004, 0), rot = V(0, 0, 1.5708), size = 0.9 }, Left = { pose = "grip", at = V(-0.06, -0.3, 0.1), rot = V(-1.5708, 0, 0), size = 0.9, away = true }, shift = V(0.04, 0.14, 0), scale = 0.8, tilt = V(0.17453, 0.43633, 0) },
 		akimbo = { Right = { pose = "grip", at = V(0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, Left = { pose = "grip", at = V(-0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(-0.3, -0.42, 0.15) }, shift = V(-0.01, 0.06, 0), scale = 0.9, tilt = V(0, 0.06981, 0) },
 	},
 	katana = {
