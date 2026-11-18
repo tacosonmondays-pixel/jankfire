@@ -513,24 +513,30 @@ return function(B, R)
 						NumberSequenceKeypoint.new(0.9, if core then 0.2 else 0.4), NumberSequenceKeypoint.new(1, 0.85) })
 					bm.Parent = bowl
 				end
+				-- (the ripple, the mist and the drops on their own attachment at the landing point, turned as the world is: the
+				-- owner, 18 Nov, "the water ripples are vertical instead of laying on the water". on the stream's own end, whose
+				-- up is the stream's way across, Top sprayed sideways and stood the rings on edge. on the surface: WL)
+				local a2 = Instance.new("Attachment"); a2.Name = "LandFx"; a2.Parent = floorPart or bowl
+				a2.WorldPosition = wc + dir * 5.9 + Vector3.new(0, WL + 0.03, 0)
+				a2.WorldAxis = Vector3.new(1, 0, 0); a2.WorldSecondaryAxis = Vector3.new(0, 1, 0)
 				local rp = Instance.new("ParticleEmitter") -- (a ring spreading flat on the water)
 				rp.Name = "Ripple"; rp.Texture = RIPPLE; rp.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
 				rp.EmissionDirection = Enum.NormalId.Top; rp.Speed = NumberRange.new(0.01); rp.Rate = 2.6; rp.Lifetime = NumberRange.new(1, 1.3)
 				rp.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 2.4) })
 				rp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
-				rp.Color = ColorSequence.new(Color3.fromRGB(232, 244, 246)); rp.LightEmission = 0.1; rp.Parent = a1
+				rp.Color = ColorSequence.new(Color3.fromRGB(232, 244, 246)); rp.LightEmission = 0.1; rp.Parent = a2
 				local ms = Instance.new("ParticleEmitter") -- (a little mist)
 				ms.Name = "Mist"; ms.Texture = MIST; ms.EmissionDirection = Enum.NormalId.Top; ms.Speed = NumberRange.new(0.4, 1.2)
 				ms.SpreadAngle = Vector2.new(60, 60); ms.Rate = 5; ms.Lifetime = NumberRange.new(0.6, 1)
 				ms.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 1.1) })
 				ms.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 1) })
-				ms.Color = ColorSequence.new(Color3.fromRGB(236, 246, 248)); ms.Parent = a1
+				ms.Color = ColorSequence.new(Color3.fromRGB(236, 246, 248)); ms.Parent = a2
 				local sp = Instance.new("ParticleEmitter") -- (drops)
 				sp.Name = "Splash"; sp.Rate = 9; sp.Lifetime = NumberRange.new(0.25, 0.4); sp.Speed = NumberRange.new(1.5, 3)
 				sp.SpreadAngle = Vector2.new(30, 30); sp.EmissionDirection = Enum.NormalId.Top; sp.Acceleration = Vector3.new(0, -32, 0)
 				sp.Size = NumberSequence.new(0.1, 0.04); sp.LightEmission = 0.1
 				sp.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
-				sp.Color = ColorSequence.new(Color3.fromRGB(228, 242, 246)); sp.Parent = a1
+				sp.Color = ColorSequence.new(Color3.fromRGB(228, 242, 246)); sp.Parent = a2
 			end
 			-- the water's volume for the effects (18 Nov, the owner: "are there splashes ripples and sfx for entering waters for
 			-- the fountain"): an invisible part tagged JankWater inside the walls, its top at the surface. Fx makes the splash

@@ -2147,6 +2147,19 @@ The owner, of the armory: "this whole room needs a makeover its an ugly mess". I
 - Flicker finder over the whole staging copy: one 0.03 sq-stud seam inside the Auto Shotgun's own kit model (deck vs guard) at this scale. Everything else the room adds is clean.
 - Kit seams lifted on show: the laptop's well, screen and touchpad, and the medkit's tray.
 
+**The fountain's ripples (place version 1014).** The owner: "the water ripples are vertical instead of laying on the water! which just sort of push you around if you get in the fountain".
+
+- The cause: the ripple, mist and drops emitters sat on each stream's landing attachment, whose up was the stream's way across. `Top` sprayed sideways and stood the rings on edge.
+- The fix: they now have their own attachment, `LandFx`, turned as the world is, at the water line (WL + 0.03; checked at -0.17 over the floor). In Play the rings lie flat.
+
+**Play test (solo, the anti-cheat's checks on with `StudioOn`).**
+- Dropping in turns on Swimming at once, and standing still in the water drifts 0.04 studs, so nothing pushes. Walking in over the rim showed no sideways push either. Inside the walls only the pit floor, the column and the bowl collide; every effect part is a ghost.
+- The anti-cheat stayed quiet: 0 catches, 0 points. The "push" the owner felt was most likely the anti-cheat on the live server, which didn't know the fountain was water before v1012's `JankWater` volume.
+- The hologram pads draw their bundles ("MACHINE SHOP" on slot 5, "THE DUCKY PACK" on the VIP pad), and their prompts carry the bundles' `ShopOpen`.
+- The 24 case prompts are all wired to `tab:featured`. The shop opens there through the same call.
+- Not tested: a real prompt press. In this MCP-driven Play no prompt showed at all, the lobby's existing hologram ones included. Shooting the water also wasn't tested, since the hub gives no weapons.
+- Sheet: `roblox/docs/hub/hub_armory_premium_1014.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
