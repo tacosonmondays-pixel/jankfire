@@ -28,20 +28,31 @@ player attribute `Level` carries it. The player card shows it.
 | 3 | 160 | Burst Rifle, Knife, Medkit |
 | 4 | 360 | Sniper, Party Popper |
 | 5 | 640 | Sawed-Off, Shield Bubble |
-| 6 | 1,000 | LMG, Rubber Duck |
+| 6 | 1,000 | LMG, Rubber Duck, Snowball |
 | 7 | 1,440 | Marksman Rifle, Hand Slapper |
 | 8 | 1,960 | Lever Rifle, Bubble Wand |
-| 9 | 2,560 | Marble Shotgun, Instant Camera |
+| 9 | 2,560 | Marble Shotgun, Instant Camera, Slipper |
 | 10 | 3,240 | Redline, Reverse Card |
-| 12 | 4,840 | Auto Shotgun, Pop Quiz |
-| 14 | 6,760 | Bread, Night Vision Goggles |
+| 12 | 4,840 | Auto Shotgun, Pop Quiz, Bow |
+| 13 | 5,760 | Tennis Ball Launcher |
+| 14 | 6,760 | Bread, Night Vision Goggles, Scythe (melee; the owner asked for it on 18 Nov) |
+| 15 | 7,840 | Peel Shooter, Taser |
 | 16 | 9,000 | Water Pistol, Speed Trap |
+| 17 | 10,240 | Hot Sauce |
 | 18 | 11,560 | Nail Gun, Laptop |
+| 19 | 12,960 | Leaf Blower |
 | 20 | 14,440 | Shredder |
+| 21 | 16,000 | Blood Cross |
+| 22 | 17,640 | Bowling Ball Launcher |
+| 23 | 19,360 | TV Remote |
+| 24 | 21,160 | Scales of Justice |
 
-Not on Roblox yet, with levels ready for when they go live: Scythe 14 (melee; the owner asked for it on 18 Nov), Snowball 6, Slipper 9, Card Deck 11, Bow 12, Tennis Ball
-Launcher 13, Peel Shooter 15, Taser 15, Hot Sauce 17, Leaf Blower 19, Lasso 20, Blood Cross 21, Bowling Ball Launcher
-22, TV Remote 23, Scales of Justice 24, Shopping Cart Cannon 25.
+Level 24 takes about 85 matches. The weapons batches C (place version 835) and D (870) brought the Snowball, Slipper,
+Bow, Tennis Ball Launcher, Peel Shooter, Taser, Hot Sauce, Leaf Blower, Blood Cross, Bowling Ball Launcher, TV Remote and
+Scales of Justice live at the levels they'd been given.
+
+Not on Roblox yet, with levels ready for when they go live: Card Deck 11, Lasso 20, Shopping Cart Cannon 25. A weapon
+that isn't live shows in no lock and no level-up list (`Unlocks.at` takes the live ones).
 
 The new loadout default is the level-1 kit: Assault Rifle, Pistol, Katana, Frag Grenade. Until 18 Nov it was the
 Redline and the Marble Shotgun.
@@ -49,12 +60,17 @@ Redline and the Marble Shotgun.
 ## The Robux weapons
 
 `Unlocks.ROBUX`: **Minigun**, **Big Laser Pointer**, **Chicken Rocket**, **Lefty & Righty**. These are the flashiest
-signature weapons. Only the Minigun is on Roblox now; the other three have their mark ready.
+signature weapons. The Minigun, the Big Laser Pointer and the Chicken Rocket are on Roblox. Lefty & Righty waits for its
+two-gun view, with its mark ready.
+
+All four stay Robux exclusives (18 Nov, shop-gui's call when weapons batches C and D went live). A pass id of 0 blocks
+nobody while the switch below is on: everyone can pick them at any level now. They don't get a level as well.
 
 - **`Unlocks.WEAPONS_ROBUX_FREE = true`** (the owner's switch, like `Config.LOOT_FREE`). While it's on, everyone has
   them at any level. The loadout marks them ROBUX · FREE FOR NOW, and the match picker ROBUX · FREE.
 - **Switched off,** each needs its game pass. `Unlocks.ROBUX[id].pass` is 0, a placeholder: the owner makes the passes
-  and puts their ids there. Nothing here creates a product or sets a price. The server-side check for owning a pass
+  and puts their ids there. Keep the switch on until every live one has its real pass: switched off with a 0, that
+  weapon is locked for everyone (bar the keep list and the dev unlock), with nothing to buy. Nothing here creates a product or sets a price. The server-side check for owning a pass
   (a `RobuxOwned` attribute the server sets from `MarketplaceService:UserOwnsGamePassAsync`) still has to be written
   when the passes exist. `Unlocks.forPlayer` already reads that attribute.
 - **The shop** doesn't list weapons. It would need a WEAPONS shelf with the passes once they exist; that's left for
@@ -99,5 +115,10 @@ server's Level set to 1, so it showed what a fresh level-1 player sees:
 - **The match picker at level 7** (`match-picker-locks.jpg`): Redline LEVEL 10, Shredder LEVEL 20, Lever Rifle LEVEL
   8, Auto Shotgun LEVEL 12, Nail Gun LEVEL 18, all greyed. The Minigun and the Big Laser Pointer (live since weapons
   batch B) read ROBUX · FREE.
+
+- **Batches C and D** (Edit, place version 871): `Unlocks.at` lists each newly live weapon at its level (Snowball at 6,
+  Slipper at 9, Bow at 12, Tennis Ball Launcher at 13, Scythe at 14, Peel Shooter and Taser at 15, Hot Sauce at 17, Leaf
+  Blower at 19, then Blood Cross, Bowling Ball Launcher, TV Remote and Scales of Justice at 21 to 24), and nothing at
+  11 or 25. The Chicken Rocket and Lefty & Righty pass the check at level 1.
 
 Not tested: a real XP gain to the next level (the level was set by hand), the phone, a player with no save at all, and the LV chip at a level the XP agrees with.

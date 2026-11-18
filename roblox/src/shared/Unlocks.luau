@@ -24,29 +24,33 @@ Unlocks.LEVEL = {
 	burst = 3, knife = 3, medkit = 3,
 	sniper = 4, popper = 4,
 	sawnoff = 5, bubble = 5,
-	lmg = 6, duck = 6,
+	lmg = 6, duck = 6, snowball = 6,
 	dmr = 7, slapper = 7,
 	lever = 8, wand = 8,
-	marbles = 9, camera = 9,
+	marbles = 9, camera = 9, slipper = 9,
 	-- the specials and the fun ones later
 	redline = 10, reverse = 10,
-	autoshot = 12, quiz = 12,
-	bread = 14, nvg = 14,
+	autoshot = 12, quiz = 12, bow = 12,
+	tennis = 13,
+	bread = 14, nvg = 14, scythe = 14, -- (the Scythe: the owner asked for it, 18 Nov, and main for a mid-high level)
+	banana = 15, taser = 15,
 	water = 16, radar = 16,
+	cig = 17,
 	nailgun = 18, laptop = 18,
+	blower = 19,
 	shredder = 20,
-	-- not on Roblox yet
-	scythe = 14, -- (melee: the owner asked for it, 18 Nov, and main for a mid-high level)
-	snowball = 6, slipper = 9, cards = 11, bow = 12, tennis = 13, banana = 15, taser = 15, cig = 17, blower = 19,
-	lasso = 20, bloodcross = 21, bowling = 22, remote = 23, scales = 24, cart = 25,
+	bloodcross = 21, bowling = 22, remote = 23, scales = 24,
+	-- not on Roblox yet (18 Nov, place version 870): their levels wait for the day they go live
+	cards = 11, lasso = 20, cart = 25,
 } :: { [string]: number }
 
--- the Robux exclusives: { pass = the game pass id (0: not made yet) }
+-- the Robux exclusives: { pass = the game pass id (0: not made yet) }. a pass of 0 blocks nobody while the switch above
+-- is on; keep it on until every live one here has its real pass, or that weapon is locked for everyone (bar kept/UnlockAll)
 Unlocks.ROBUX = {
 	minigun = { pass = 0 },
-	laser = { pass = 0 }, -- Big Laser Pointer (not on Roblox yet)
-	chicken = { pass = 0 }, -- Chicken Rocket (not on Roblox yet)
-	akimbo = { pass = 0 }, -- Lefty & Righty (not on Roblox yet)
+	laser = { pass = 0 }, -- Big Laser Pointer
+	chicken = { pass = 0 }, -- Chicken Rocket
+	akimbo = { pass = 0 }, -- Lefty & Righty (not on Roblox yet: it waits for its two-gun view)
 } :: { [string]: { pass: number } }
 
 function Unlocks.level(wid: string): number
