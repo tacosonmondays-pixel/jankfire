@@ -433,7 +433,7 @@ local XH_PRESETS = {
 }
 
 tabs = {
-	{ id = "controls", title = "CONTROLS", reset = { "look.", "fov", "aim.toggle", "crouch.toggle", "sprint.toggle", "gfx.shake" }, build = function()
+	{ id = "controls", title = "CONTROLS", reset = { "look.", "fov", "aim.toggle", "crouch.toggle", "sprint.toggle", "gfx.shake", "gfx.recoil" }, build = function()
 		section("MOUSE")
 		slider({ key = "look.sens", label = "SENSITIVITY", min = 0.05, max = 3, step = 0.01, fmt = function(v) return ("%.2f"):format(v) end })
 		slider({ key = "look.ySpeed", label = "VERTICAL SENSITIVITY", sub = "multiplier on up and down", min = 0.5, max = 1.5, step = 0.01, fmt = pct, scale = 100 })
@@ -448,6 +448,7 @@ tabs = {
 		slider({ key = "fov", label = "FIELD OF VIEW", sub = "vertical, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
 		switch({ key = "fov.kick", label = "FOV KICK", sub = "the view widens as you speed up" })
 		switch({ key = "gfx.shake", label = "SCREEN SHAKE" })
+		slider({ key = "gfx.recoil", label = "VISUAL RECOIL", sub = "how much the gun kicks on screen; aim is the same", min = 0, max = 1, step = 0.1, fmt = pct, scale = 100 })
 		section("HOLD OR TOGGLE")
 		local ht = { { false, "HOLD" }, { true, "TOGGLE" } }
 		choice({ key = "aim.toggle", label = "AIM DOWN SIGHTS", options = ht })

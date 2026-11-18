@@ -29,7 +29,7 @@ player loses a setting).
 
 - **CONTROLS.** SENSITIVITY (`look.sens`, Roblox's `MouseDeltaSensitivity`), VERTICAL SENSITIVITY (`look.ySpeed`),
   INVERT MOUSE Y, ZOOM SENSITIVITY RATIO (`look.ads`, sights and red dots), SCOPED SENSITIVITY for the Sniper
-  (`look.sniper`) and the Second Opinion (`look.dmr`), CONTROLLER SENSITIVITY, FIELD OF VIEW, FOV KICK (`fov.kick`),
+  (`look.sniper`) and the Second Opinion (`look.dmr`), CONTROLLER SENSITIVITY, FIELD OF VIEW, FOV KICK (`fov.kick`), VISUAL RECOIL (`gfx.recoil`: the gun's tilt and view punch only, Arsenal),
   SCREEN SHAKE, and hold or toggle for AIM DOWN SIGHTS, CROUCH and SPRINT.
 - **KEYBINDS.** Every action with KEY, ALTERNATE and CONTROLLER columns: FIRE, AIM DOWN SIGHTS, RELOAD, PRIMARY /
   SECONDARY / MELEE / SPECIAL WEAPON, NEXT WEAPON, UTILITY, UTILITY ALT, SPRINT, CROUCH, GRAPPLE, TOGGLE THIRD PERSON,

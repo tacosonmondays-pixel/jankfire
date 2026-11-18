@@ -30,7 +30,8 @@ Settings.DEFAULTS = {
 	-- graphics
 	["gfx.preset"] = "auto", ["gfx.shadows"] = true, ["gfx.particles"] = 1, ["gfx.bloom"] = true, ["gfx.colour"] = true,
 	["gfx.speedLines"] = true, -- (fov.kick and gfx.speedLines: the VFX session's SpeedLines.client reads them, nil = on)
-	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.othersKill"] = true, ["gfx.othersSkin"] = true,
+	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.recoil"] = 1, -- (recoil: visual only, Arsenal scales the gun tilt and view punch)
+	["gfx.othersKill"] = true, ["gfx.othersSkin"] = true,
 	["gfx.othersFinisher"] = true, -- (the finisher session's FinisherClient reads it: off skips finishers you only watch)
 	["gfx.titles"] = true, -- (card titles over players' heads: the cosmetics session's OverheadTitles.client)
 	["gfx.fps"] = false,
