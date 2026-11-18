@@ -87,4 +87,21 @@ Photos are in `docs/minigames/`:
 
 - `minigames_sheet.jpg`: arm wrestling against the stand-in, the draw offer at the board, an arcade run, and the cabinet in the lobby.
 - The kit renders.
-- Two shots from before the camera fix, where a big avatar's accessories and title blocked the table.
+- Two shots from before the 18 Nov camera fix, where a big avatar's accessories and title blocked the table.
+
+## Your look at the tables (19 Nov 2026, place version 1001)
+
+The owner said: "when I sit down at the table all my accessories come off and im bald". The 18 Nov camera fix had hidden every accessory on your own screen while you sat at a table. Now:
+
+- **Your whole look stays.** Hair and accessories are never hidden wholesale.
+- **The cameras look past your head:**
+  - arm wrestling: high behind you and a little to the left, about 2 studs over your head, down onto the grip;
+  - the board: high over your right shoulder.
+- **A measured fade instead:**
+  - The game lists what the camera must see in `api.viewPoints`: the clasp and the pin pads, or the board's corners and middle.
+  - If a line from the camera to one of those points crosses an accessory's part box, that one accessory fades to 0.6, and only while it blocks.
+  - Hair never fades.
+- **Your title over your head** stays hidden on your own screen while you sit.
+- **Everything comes back:** standing up, leaving, and dying mid-game all put it back.
+- **Tested** on the owner's avatar (9 accessories, including hair and a big cake): all 9 stay fully shown at the arm table, the board and the cabinet. After a death mid-game, the screen, camera, movement and prompts all return.
+- **Photos:** `docs/minigames/seated_*.jpg`.

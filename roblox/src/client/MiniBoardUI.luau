@@ -469,9 +469,20 @@ function M.open(api: any, model: Model, side: string)
 	api.camera = function(): CFrame?
 		local r = model:FindFirstChild("Root") :: BasePart?
 		if not r then return nil end
-		local eye = r.CFrame * Vector3.new(0, L.surface + L.cam.up, L.cam.back * mirror)
+		local eye = r.CFrame * Vector3.new((L.cam.side or 0) * mirror, L.surface + L.cam.up, L.cam.back * mirror)
 		local at = r.CFrame * Vector3.new(0, L.surface, -L.cam.aim * mirror)
 		return CFrame.lookAt(eye, at)
+	end
+	-- what the camera must see (MiniGames.client fades an accessory only if it stands in front of one of these)
+	api.viewPoints = function(): { Vector3 }
+		local r = model:FindFirstChild("Root") :: BasePart?
+		if not r then return {} end
+		local e = 4 * L.sq
+		local out = {}
+		for _, o in { Vector3.zero, Vector3.new(-e, 0, e), Vector3.new(e, 0, e), Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e), Vector3.new(0, 0, e), Vector3.new(-e, 0, 0), Vector3.new(e, 0, 0) } do
+			table.insert(out, r.CFrame * (Vector3.new(0, L.surface + 0.3, 0) + o))
+		end
+		return out
 	end
 	api.fov = 58
 	S.step = RunService.RenderStepped:Connect(function(dt: number)

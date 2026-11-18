@@ -112,7 +112,8 @@ local function modelOf(id: string): Model?
 	return nil
 end
 
-local cam = { on = false, saved = nil :: CFrame?, savedType = nil :: Enum.CameraType?, out = nil :: number?, from = nil :: CFrame?, shown = {} :: { [Instance]: number }, savedFov = 70 }
+local cam = { on = false, saved = nil :: CFrame?, savedType = nil :: Enum.CameraType?, out = nil :: number?, from = nil :: CFrame?, shown = {} :: { [Instance]: number }, savedFov = 70,
+	blockT = 0, blocking = nil :: { [Instance]: boolean }? }
 
 local function close()
 	local c = cur
@@ -128,6 +129,8 @@ local function close()
 	if controls then pcall(function() controls:Enable() end) end
 	ProximityPromptService.Enabled = true
 	api.camera = nil
+	api.viewPoints = nil
+	cam.blocking = nil
 	if cam.on then
 		cam.out = os.clock()
 		cam.from = workspace.CurrentCamera.CFrame
@@ -233,6 +236,46 @@ Remote.OnClientEvent:Connect(function(kind: string, data: any)
 end)
 
 -- ------------------------------------------------------------------ the camera (after the emote camera's Camera + 6)
+-- which of your accessories stand between the camera and the game: a line from the camera to each of the game's
+-- view points (api.viewPoints: the board's corners and middle, the clasped hands and the pin pads) tested against each
+-- part's own box (in the part's frame: no CanQuery or collision shape needed). hair is never counted
+local FADE = 0.6
+local function segHitsBox(a: Vector3, b: Vector3, part: BasePart): boolean
+	local p0 = part.CFrame:PointToObjectSpace(a)
+	local p1 = part.CFrame:PointToObjectSpace(b)
+	local h = part.Size / 2
+	local t0, t1 = 0, 1
+	local d = p1 - p0
+	for _, ax in { "X", "Y", "Z" } do
+		local o, v, e = (p0 :: any)[ax], (d :: any)[ax], (h :: any)[ax]
+		if math.abs(v) < 1e-6 then
+			if o < -e or o > e then return false end
+		else
+			local u0, u1 = (-e - o) / v, (e - o) / v
+			if u0 > u1 then u0, u1 = u1, u0 end
+			t0, t1 = math.max(t0, u0), math.min(t1, u1)
+			if t0 > t1 then return false end
+		end
+	end
+	return true
+end
+local function blockers(ch: Model, eye: Vector3): { [Instance]: boolean }
+	local out = {}
+	local pts = api.viewPoints and api.viewPoints() or {}
+	if #pts == 0 then return out end
+	for _, acc in ch:GetChildren() do
+		if not acc:IsA("Accessory") then continue end
+		if (acc :: Accessory).AccessoryType == Enum.AccessoryType.Hair then continue end
+		for _, part in acc:GetDescendants() do
+			if not part:IsA("BasePart") then continue end
+			for _, pt in pts do
+				if segHitsBox(eye, pt, part) then out[acc] = true; break end
+			end
+			if out[acc] then break end
+		end
+	end
+	return out
+end
 RunService:BindToRenderStep("JankMiniCam", Enum.RenderPriority.Camera.Value + 7, function(dt: number)
 	local c = workspace.CurrentCamera
 	local ch = me.Character
@@ -260,16 +303,24 @@ RunService:BindToRenderStep("JankMiniCam", Enum.RenderPriority.Camera.Value + 7,
 		end
 		c.CFrame = cf
 		if api.fov then c.FieldOfView += (api.fov - c.FieldOfView) * k end
-		-- your own body: first person hides it; while the camera is out it's shown, and put back after. what you
-		-- wear (hats, hair, big accessories) and your title over your head stay hidden on YOUR screen while the camera
-		-- is over your shoulder: they stood between you and the table (18 Nov, the first Play test)
+		-- your own body: first person hides it; while the camera is out it's shown, and put back after. your whole look
+		-- stays: hair and accessories are never hidden wholesale (the owner, 19 Nov: "when I sit down at the table all
+		-- my accessories come off and im bald"). the cameras look past your head (MiniGames.L.<game>.cam); only an
+		-- accessory that really stands between the camera and what you're playing (a line from the camera to one of the
+		-- game's api.viewPoints crosses its parts' boxes) fades, to FADE, and only while it does. hair never fades.
+		-- your title over your head stays hidden on your screen while you sit
 		if ch then
 			local clear = api.kind == "arm" or api.kind == "board"
+			if clear and os.clock() - (cam.blockT or 0) > 0.1 then
+				cam.blockT = os.clock()
+				cam.blocking = blockers(ch, c.CFrame.Position)
+			end
 			for _, d in ch:GetDescendants() do
 				if d:IsA("BasePart") or d:IsA("Decal") then
 					local o = d :: any
 					if cam.shown[d] == nil then cam.shown[d] = o.LocalTransparencyModifier end
-					local want = if clear and d:FindFirstAncestorOfClass("Accessory") then 1 else 0
+					local acc = d:FindFirstAncestorOfClass("Accessory")
+					local want = if clear and acc and cam.blocking and cam.blocking[acc] then FADE else 0
 					if o.LocalTransparencyModifier ~= want and d.Name ~= "HumanoidRootPart" then o.LocalTransparencyModifier = want end
 				elseif clear and d:IsA("BillboardGui") and string.sub(d.Name, 1, 6) == "Title_" and d.Enabled then
 					d.Enabled = false -- (OverheadTitles turns it back on in its Heartbeat: after this frame is drawn)

@@ -225,6 +225,13 @@ function M.open(api: any, model: Model, side: string)
 		local at = r.CFrame * (L.pivot + Vector3.new(0, L.reach * 0.75, 0))
 		return CFrame.lookAt(eye, at)
 	end
+	-- what the camera must see: the clasped hands, both pin pads, the table's middle
+	api.viewPoints = function(): { Vector3 }
+		local r = model:FindFirstChild("Root") :: BasePart?
+		local cl = r and r:FindFirstChild("Clasp") :: Attachment?
+		if not r or not cl then return {} end
+		return { cl.WorldPosition, r.CFrame * (L.pin.A + Vector3.new(0, 0.2, 0)), r.CFrame * (L.pin.B + Vector3.new(0, 0.2, 0)), r.CFrame * Vector3.new(0, L.top + 0.2, 0) }
+	end
 	api.fov = 62
 	S.step = game:GetService("RunService").RenderStepped:Connect(function(dt: number)
 		local st = model:GetAttribute("State")
