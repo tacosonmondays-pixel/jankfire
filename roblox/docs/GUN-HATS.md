@@ -283,6 +283,19 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## The Shopping Cart Cannon (batch E, 18 Nov 2026, place version 884)
+
+The guns session's `cart` (commit 724781e, `gun_batch_e.py`, place version 883) seats at z -0.47, s 1.17 (their seat),
+on the barrel's flat light-grey top between the mouth collar and the handle band, off the loaded cart (the `load` node
+moves).
+- **Tipped to the barrel (`pitch` 2.2):** the barrel rises toward the muzzle by 2.2 degrees (9.8 mm over 26 cm). Level
+  hats' feet went into its front edge, 3.4 mm in first person and 4.7 in third. Tipped by the same angle, the worst foot
+  is 2.1 mm, with no body or gun clips (`hat_clip.py`, 24 rows; the googly eyes stand upright and drop onto it as always).
+  It is the first seat tipped by a small `pitch`. GunHats' `turnOf` and the clip tools already apply it.
+- **Studio (place version 884):** `GunHatData` pushed as a guarded patch. On the built cart, at both sizes, the cowboy's
+  foot reads exactly 2.0 mm in, tipped 2.2 degrees. It rides `bore_wzN__dark`, the static barrel, not the loaded
+  cart. The eyes read 1.1 and 1.7 mm. Photo: `gun-hats/cart-seat.jpg`.
+
 ## Seats on batch D: bowling-pin cannon, TV remote, slipper, bow, scales (18 Nov 2026, place version 869)
 
 The guns session built batch D as kit models (commits 76cbc02 and 40f47a7, `gun_batch_d.py` and `gun_batch_d2.py`, place
@@ -652,7 +665,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
 blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, batch C, Classic batch 1 and the Ducky Pistol rebuild in place version 824, and
-the two-form scythe v3 and Classic batches 2 and 3 in place version 847, and batch D in place version 869.
+the two-form scythe v3 and Classic batches 2 and 3 in place version 847, batch D in place version 869, and the Shopping Cart Cannon in place version 884.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
