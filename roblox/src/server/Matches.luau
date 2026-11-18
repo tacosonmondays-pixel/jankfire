@@ -391,12 +391,26 @@ end
 -- afresh there), stopped and anchored. SpawnHold on each player tells Move.client to keep no speed and build none.
 -- the round goes live: stopped again, let go, SpawnHold off. (until 18 Nov a body was anchored 0.6 s after it appeared,
 -- time to sprint a few studs off the spot first.) an anchored body doesn't move: the anti-cheat sees nothing to judge
-local function spawnSpot(m: Match, p: Player, team: number): CFrame?
+-- (standing ON the floor under the spawn mark, found by a ray with every body left out: let go, the first frames are
+-- on the ground and run, not a short fall. was the spawn's own +0.2 studs over standing height until 18 Nov)
+local floorParams = RaycastParams.new()
+floorParams.FilterType = Enum.RaycastFilterType.Exclude
+floorParams.RespectCanCollide = true
+local function spawnSpot(m: Match, p: Player, team: number, root: BasePart?, hum: Humanoid?): CFrame?
 	local list = teamSpawns(m, team)
 	if #list == 0 then return nil end
 	local i = table.find(m.teams[team], p) or 1
 	local cf = list[(i - 1) % #list + 1]
-	local pos = cf.Position + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+	local y = cf.Position.Y + Hitbox.ROOT_UP + 0.2
+	local bodies = {}
+	for _, q in Players:GetPlayers() do if q.Character then table.insert(bodies, q.Character) end end
+	floorParams.FilterDescendantsInstances = bodies
+	local hit = workspace:Raycast(cf.Position + Vector3.new(0, 4, 0), Vector3.new(0, -14, 0), floorParams)
+	if hit and root and hum then
+		local stand = root.Size.Y / 2 + (if hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight else 2)
+		y = hit.Position.Y + stand
+	end
+	local pos = Vector3.new(cf.Position.X, y, cf.Position.Z)
 	local look = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
 	return if look.Magnitude > 1e-3 then CFrame.lookAt(pos, pos + look.Unit) else CFrame.new(pos)
 end
@@ -411,7 +425,7 @@ local function holdSpawns(m: Match, round: number)
 			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 			local f = Fight.byPlayer[p]
 			if not root or not hum or hum.Health <= 0 or held[root] or not f or not f.alive then return end
-			local spot = spawnSpot(m, p, t)
+			local spot = spawnSpot(m, p, t, root, hum)
 			if spot and (root.Position - spot.Position).Magnitude > 0.05 then
 				p:SetAttribute("TeleportT", os.clock())
 				local body = ch :: Model
