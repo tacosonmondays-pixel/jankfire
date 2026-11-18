@@ -283,6 +283,32 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## Seats on batch D: bowling-pin cannon, TV remote, slipper, bow, scales (18 Nov 2026, place version 869)
+
+The guns session built batch D as kit models (commits 76cbc02 and 40f47a7, `gun_batch_d.py` and `gun_batch_d2.py`, place
+version 861) and proposed a seat on a static part of each. The projectiles wear no hats. Photo:
+`gun-hats/batchE-seats.jpg`.
+
+| Model | Seat (z, s) | Where | Why it moved |
+|---|---|---|---|
+| Bowling-pin cannon | -0.207, 0.75 | the belly's crest, off the loaded `ball` (it hides on fire) | (the guns session's seat) |
+| Balance scales (melee) | -0.13, 0.67 | the flat boss over the pivot ball | (the guns session's seat) |
+| TV remote | -0.105, 0.26, sink 1 mm | the face plate between the ring rocker and the big keys | the remote is 5.8 cm wide with keys all over, and at s 0.42 the third-person cowboy brim and propeller visor reached them |
+| Slipper | -0.025, 0.42, sink 1 mm | the toe box's crest between the pom-pom and the collar | at s 0.5 the brims hit the pom-pom (11 mm). The cowboy brim still touches the fluffy collar (1.3 mm) |
+| Bow (upright) | -0.015, 0.3, sink 1 mm | the riser's small top shelf, forward of the limb rising behind it | the shelf is 3 x 4 cm, and bigger, the brims hit the limb (9 mm) |
+
+- **Small hats sink 1 mm, not 2:** at s 0.3 or less, a 2 mm sink puts the hats' lower rims (party cone, chef's band,
+  propeller cap) into the surface. It's the Hot Sauce rule again.
+- **Solver traps again:** `hat_solve.py` offered the remote's z 0.01 (a 1.8 mm step, under the hand), the slipper's
+  -0.094 (on the pom-pom) and the bow's 0.073 (on the string). Every seat here comes from a grid and `hat_clip.py`.
+- **Clipping** (`hat_clip.py`, 120 rows): feet at most 2.8 mm (the slipper's third-person crown on the sloped toe),
+  bodies 1.3 mm (that cowboy brim in the collar's fluff), guns 0.7 mm, the googly eyes 1.1 mm. The report is now 3,024 rows.
+- **Studio (place version 869):** `GunHatData` pushed as a guarded patch. On the five built models, at both sizes, the
+  cowboy's foot reads its sink: the bowling cannon and the scales 2.0 mm, the remote 1.0 and the slipper 0.8 (on the
+  slope). Every hat rides a static piece (the remote's rides an accent-key mesh whose box covers the plate). The bow
+  reads 4.9 mm in on the riser's collision hull, which bridges the step up to the limb. The side photo shows the foot on
+  the shelf's drawn top.
+
 ## The two-form scythe (v3) and Classic skins batches 2 and 3 (18 Nov 2026, place version 847)
 
 The guns session remodelled the scythe into two kit models from one builder (`gun_scythe.py`): `scythe` (melee) and
@@ -626,7 +652,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
 blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, batch C, Classic batch 1 and the Ducky Pistol rebuild in place version 824, and
-the two-form scythe v3 and Classic batches 2 and 3 in place version 847.
+the two-form scythe v3 and Classic batches 2 and 3 in place version 847, and batch D in place version 869.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
