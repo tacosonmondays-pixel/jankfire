@@ -356,8 +356,8 @@ end
 -- a spawned-in NPC stands (in the panel's frame: x right, -z out toward you). The hub session moves it into the hotel
 -- plaza later: change L.PANEL, run L.panel().
 L.PANEL = {
-	at = Vector3.new(-185, 240, -9946), look = Vector3.new(-1, 0, 0), show = Vector3.new(5.6, 0, -0.8),
-	area = "Hub v3 (until the hotel plaza): the spawn lounge, east of the spawn block, facing the spawns",
+	at = Vector3.new(-167.2, 239.95, -9899.42), look = Vector3.new(-1, 0, 0), show = Vector3.new(-1.5, 0, -3),
+	area = "the hotel plaza wing: the corner where the east and south arcades meet, back to the east wall, under a warm lamp (the hub session's spot, 18 Nov).",
 }
 
 function L.panel(): string

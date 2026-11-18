@@ -866,12 +866,19 @@ local function startCut(id: string, again: boolean?)
 		actor = { kind = "rig", m = m, n = n, lift = lift, height = hh }
 	end
 	local hgt = if actor.kind == "rig" then actor.height else actor.height * 0.82
+	-- (a tight corner: a camera set-up behind a wall comes in to just this side of it)
+	local tgt = finish + Vector3.new(0, math.max(3, hgt * 0.8), 0)
+	local function clampCam(p: Vector3): Vector3
+		local d = p - tgt
+		local h = workspace:Raycast(tgt, d, rayP)
+		return if h then h.Position - d.Unit * 0.8 else p
+	end
 	local cam = workspace.CurrentCamera
 	cut = {
 		id = id, again = again, t0 = os.clock(), actor = actor, start = start, finish = finish, face = face, exit = exit,
-		camA = finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0),
-		camB = finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0),
-		camC = finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0),
+		camA = clampCam(finish + face * 13 - away * 4 + Vector3.new(0, 5.5, 0)),
+		camB = clampCam(finish + face * 7.5 + away * 1.8 + Vector3.new(0, math.max(3, hgt * 0.9), 0)),
+		camC = clampCam(finish + face * 10 - exit * 3 + Vector3.new(0, 6, 0)),
 		fov = cam.FieldOfView, loadoutWas = me:GetAttribute("LoadoutOpen"), said = false, shot = 0, aim = nil, look = nil,
 	}
 	local u = ui()
