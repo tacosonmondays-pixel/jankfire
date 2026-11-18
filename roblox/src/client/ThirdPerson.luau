@@ -74,7 +74,7 @@ local ID = CFrame.identity
 -- ------------------------------------------------------------------ tuning (distances in the avatar's arm lengths, u)
 TP.T = {
 	scale = 1.95, kMin = 2, kMax = 4.5, -- the gun: studs per metre of its file = scale x u, clamped
-	size = { katana = 1.3 }, -- a weapon's own size on top (a sword read short at the guns' scale)
+	size = { katana = 1.3, remote = 1.4 }, -- a weapon's own size on top (a sword read short at the guns' scale; the TV Remote hid in the fist: gun-models, 18 Nov)
 	swig = { mouth = V(0, -0.08, -0.85), tip = -2.75, more = 0.8 }, -- the Hot Sauce's swig (owner, 18 Nov: "turned and poured into your mouth", "reach up and over to your mouth"): the cap a little above and in front of the mouth (head sizes from the head's middle; SaucePour.client draws the sauce falling into it), the bottle's tip at the start (radians: the cap back toward the mouth, the base up and out; reached the long way round, up and over) and how much more it tips up over the 3 s swig
 	-- (the hold session, 18 Nov 2026) weapons-port's Lasso and cart, from the player's attributes. spin: the coil's fist
 	-- over the head from the right shoulder (chest space, u), going round `circle` u, `rev` turns a second, the loop
@@ -1683,7 +1683,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 	-- GunHats seats the Googly Eyes there): while it's out, not on yours while you're in first person
 	local rhand = r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm") -- (R6: on the arm, AvatarArms.hatSpot)
 	if rhand and rhand:IsA("BasePart") then
-		local want = r.wid == "bloodcross" and not (r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true))
+		-- (yours: only once the camera is really out and your body shows: right after V the camera is still at your head and
+		-- your body hidden, weapon-hats found the eyes floating there)
+		local want = r.wid == "bloodcross" and not (r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true or rhand.LocalTransparencyModifier > 0.5))
 		if want ~= (rhand:FindFirstChild("HatSpot") ~= nil) then
 			AvatarArms.hatSpot(rhand, "bloodcross", if r.player then r.player.UserId else 0, r.k, want)
 		end
