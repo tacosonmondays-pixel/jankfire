@@ -188,7 +188,7 @@ until Roblox answers):
 
 **Studio test:** the loot remote's `("dev", "restricted", true | false)` (Studio and the owner only, this session only).
 
-Tested 18 Nov, place version 1033 (\`MoneyTest\` on):
+Tested 18 Nov, place version 1033 (`MoneyTest` on):
 - **Restricted:**
   - Robux receipts for a Crate, a Duffel Bag and a Spray Can: NotProcessedYet, stock unchanged;
   - coin redeems of a bag and a can: refused, coins unchanged (9,000);
