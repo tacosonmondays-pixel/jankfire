@@ -682,7 +682,7 @@ carries a hat seat (`meta.spots.hat` / `meta.hatAt`) and moving-node origins (`m
 | `water` | B, light grey toy, blue tank | 8,016 | `water` (liquid, origin on the tank floor: scale y = fill), `pump` | 112537696211238 |
 | `nailgun` | B, muted orange tool, slanted nail strip | 6,706 | `mag` (the strip, origin at its middle) | 84960341833541 |
 | `bread` | B, v2: golden crust, four diagonal score cuts (pale crumb in an oval golden rim), lumps between them, rounded ends, paler underside, paper sleeve grip | 3,638 | none | 92349177871405 (v2, place v786; v1 was 89469059163185) |
-| `slapper` | B, toy hand on a stick | 3,048 | `hand` (origin at the wrist, 0, 0, -0.45) | 122970789665786 |
+| `slapper` | B, toy hand on a stick; since v896 the hand is one fused piece (see "The Hand Slapper in one piece") | 4,696 | `hand` (origin at the wrist, 0, 0, -0.45) | 127326214682088 (v2, place v896; v1 was 122970789665786) |
 
 Batch B (18 November, `tools/roblox/gun_batch_b.py`, live in place v791 via `W.kit` / `W.models` for the five ids):
 
@@ -810,6 +810,55 @@ The weapons session's specs: `weapons-batchD-spec.md` and `weapons-batchE-spec.m
 - **Small-surface hat seats:** size them by the widest brims (the cowboy brim, the propeller visor). The remote, slipper and bow seats came back at s 0.26, 0.42 and 0.3.
 - **Flicker scans:** `zfight_glb.py` at its defaults skips small triangles at hand scale. Run a strict pass as well (`minArea=0.00005`, or every triangle at 12 mm).
 - **Domed pips:** the card's pips are domed and tiered, so no pip face lies parallel to the card face.
+
+## The Hand Slapper in one piece (18 November 2026, live in place version 896)
+
+The owner asked: "the hand slapper can you fuse the fingers so its all one piece?" The old hand was a palm slab with
+five capsule fingers fanned apart and stuck on, so it read as separate sticks.
+
+**What changed:**
+- The hand is now one closed skin: a pillow palm, four fingers pressed together and a thumb.
+- Each finger keeps a rounded tip, with a shallow round groove between neighbours and a slight curl toward the palm.
+- The thumb rises out of a fat root at the palm's top edge, by the wrist.
+- Every join is a real fillet: the fingers 10 mm into each other, the palm and thumb 12 to 14 mm.
+- Unchanged: the dusty rose, the cuff, the stick, the grip, the knob, the `hand` node (origin at the wrist) and the
+  wrap zones (`hand_wzB__hand`, `hand_wzN__cuff`).
+- The spots are unchanged: the middle fingertip is the muzzle at z -0.70, and the grip is at (0, 0, 0.055).
+- The thumb's tip stays where the hats sit: (-0.008, 0.093, -0.51).
+- The bounds narrow at the bottom (y -0.075 to -0.052), since the pinky no longer fans down.
+
+**How it is built:** `tools/roblox/sdf_kit.py`, a small kit for organic one-piece solids. It is worth reusing for
+creatures and food.
+- A shape is a signed distance field: capsules, tapered tubes, ellipsoids and rounded side-view slabs, joined by smooth
+  unions.
+- `mesh()` samples the field on a 1.1 mm grid and builds the skin with surface nets.
+- It then pulls every vertex onto the true surface (Newton steps), decimates to a budget (3,200 triangles for the hand)
+  and relaxes plus re-snaps the vertices.
+- `report()` and `folds()` check the result: one part, no open edges, no face turned against the field.
+- `gun_batch_a.slapper_hand()` is the hand's field. `FK` sets the depth of the finger grooves.
+
+| | before | after |
+|---|---|---|
+| asset | 122970789665786 | 127326214682088 |
+| triangles (whole model) | 3,048 | 4,696 |
+| bounds lo / hi | (-0.0325, -0.075, -0.7) / (0.0325, 0.0953, 0.153) | (-0.0325, -0.0518, -0.6999) / (0.0325, 0.0954, 0.153) |
+
+**Checked:**
+- `gun_check`: 1 group, 0 loose.
+- `gun_zfix`: 0 pairs.
+- `zfight_glb` on the exported glb, at rack and hand scale plus a strict pass: 0 hits.
+- `hat_clip`: all twelve hats in first and third person have foot 2.0 mm (the designed sink), body 0 and gun 0.
+- The install and an in-hand Play test, first and third person.
+- Pictures: `gun-models/slapper-fused.jpg`.
+
+**Lessons:**
+- **Open edges:** a box that is too tight cuts the skin open. A part reaching past the box (here the wrist) leaves
+  open edges, and the decimate then dents the surface next to them. Keep the whole shape inside the box and check
+  `report()` for 0 open edges.
+- **Hidden ends:** an end hidden in another piece still has to stay inside it. The first wrist poked out behind the
+  cuff.
+- **The clip report:** `hat_clip.py` given a gun list rewrites the hats session's `clip_report.json` with only those
+  guns. To check one gun without touching the report, pass every hat with `--hat <id>`, or restore the file afterwards.
 
 ## How it was judged
 

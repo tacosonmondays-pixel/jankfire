@@ -30,10 +30,12 @@
 #   - BREAD    w_bread (look B: organic lofts). A huge domed loaf, 1.79 m in all, held like a bat: five scored slashes
 #              along its top (pale crumb in the cuts), a darker baked base, the tip rounded at z -1.50; its narrow heel
 #              sits in a faceted paper sleeve (the grip) open at the front with a thin lip, twisted shut at the back.
-#   - SLAPPER  w_slapper (look B). A cartoon toy hand (a rounded palm, four puffy fingers fanned a little and curled
-#              toward the palm, a thumb up) in a dusty rose, palm to the left (-x, the side first person sees), with an
-#              off-white glove cuff: node `hand`, origin at the wrist (0, 0, -0.45) where the stick meets the cuff; a
-#              plain light grey stick, a dark ribbed grip and a rose end knob.
+#   - SLAPPER  w_slapper (look B). A cartoon toy hand in a dusty rose, palm to the left (-x, the side first person
+#              sees), with an off-white glove cuff: node `hand`, origin at the wrist (0, 0, -0.45) where the stick meets
+#              the cuff; a plain light grey stick, a dark ribbed grip and a rose end knob. Since 18 Nov the hand is ONE
+#              fused piece (the owner: "fuse the fingers so its all one piece"): a pillow palm, four fingers pressed
+#              together with a shallow round groove between them and a slight curl, a thumb up out of a fat root, all
+#              smooth unions of one distance field (sdf_kit.py), meshed once; the thumb's tip keeps the hats' seat.
 # CONTRACT (the weapons session's specs, roblox/docs/WEAPONS.md; the web models' spots): spots muzzle, grip (where the
 # fist closes), fore (the minigun's front grip), sight (water, nailgun: the aim line), mid (melee: 45 % from grip to
 # tip) and hat (the hat seat). Each gun also carries `hatAt` [[x, y, z], size] (the web's export const hatAt) and
@@ -53,6 +55,7 @@ from gunkit import Gun, P, raked
 from artist_kit import outline, rrect, prism, xprism, cyl, capsule, cut, union, soft, curve_slab, finish, _obj, _link, KEEP
 from gun_melee import Melee, mid_of, split, ball, lathe, loft, W, _raw
 import gun_sights as SG
+import sdf_kit as SDF
 
 FRAME, DARK, DECK, BLACK = '444851', '353840', '676d78', '16171b'
 
@@ -412,21 +415,41 @@ def bread():
 
 
 # ================================================================================================= the hand slapper
+FK = 0.010   # the fingers' fillet into each other (bigger = a shallower groove between them)
+
+
+def slapper_hand():
+    """the fused hand's field (weapon frame, metres): see slapper()"""
+    palm = SDF.slab([(-0.474, -0.006), (-0.520, -0.034), (-0.584, -0.031), (-0.588, 0.025), (-0.530, 0.036),
+                     (-0.474, 0.006)], 0.0185, 0.0165, grow=0.018)
+    back = SDF.ellipsoid((0.005, 0.0, -0.54), (0.017, 0.038, 0.05))      # the back of the hand's swell (+x)
+    palm = SDF.blend(palm, back, 0.010)
+    # fingers: knuckle, middle and tip centres (y high = the index, beside the thumb) and their radii
+    fingers = [SDF.tube([(0.001, 0.034, -0.575), (-0.001, 0.0362, -0.630), (-0.007, 0.0395, -0.6698)], (0.0137, 0.0132, 0.0136)),
+               SDF.tube([(0.001, 0.0113, -0.578), (-0.001, 0.0119, -0.640), (-0.008, 0.0128, -0.6858)], (0.0142, 0.0137, 0.0141)),
+               SDF.tube([(0.001, -0.0123, -0.576), (-0.001, -0.0130, -0.632), (-0.007, -0.0142, -0.6768)], (0.0137, 0.0132, 0.0135)),
+               SDF.tube([(0.001, -0.0350, -0.572), (-0.001, -0.0366, -0.615), (-0.006, -0.0392, -0.6500)], (0.0123, 0.0118, 0.0121))]
+    hand = SDF.blend(palm, SDF.union(*fingers, k=FK), 0.012)
+    # the thumb: up out of the palm's top edge by the wrist, its tip where the hats' seat is (x -0.008, z -0.51)
+    thumb = SDF.capsule((-0.002, 0.026, -0.488), (-0.0067, 0.0799, -0.5118), 0.0185, 0.0155)
+    mound = SDF.ellipsoid((-0.006, 0.026, -0.505), (0.017, 0.02, 0.03))
+    hand = SDF.blend(hand, SDF.blend(thumb, mound, 0.008), 0.014)
+    wrist = SDF.capsule((0.0, 0.0, -0.46), (0.0, 0.0, -0.48), 0.019)   # (its back end at z -0.441, inside the cuff)
+    return SDF.blend(hand, wrist, 0.012)
+
+
 def slapper():
     """THE HAND SLAPPER (see the file's header)"""
     gunkit.use_style('B')
     g = Batch('w_slapper')
     g.slot('hand', 'b98895'); g.slot('cuff', 'd3d5d9'); g.slot('stick', 'b4b8be'); g.slot('grip', '3d4048')
-    # ---- the hand (node `hand`, origin at the wrist): palm to -x, fingers forward, thumb up
-    palm = curve_slab(outline([(-0.458, -0.022, 0.012), (-0.505, -0.054, 0.03), (-0.6, -0.05, 0.02), (-0.606, 0.044, 0.02),
-                               (-0.52, 0.056, 0.03), (-0.458, 0.024, 0.012)]), 0.04, 0.012)
-    F = 0.0148
-    fingers = [capsule(F, (0.0, 0.034, -0.585), (-0.005, 0.05, -0.682), seg=16, rings=10),
-               capsule(F, (0.0, 0.007, -0.59), (-0.006, 0.009, -0.700), seg=16, rings=10),
-               capsule(F, (0.0, -0.02, -0.588), (-0.006, -0.031, -0.688), seg=16, rings=10),
-               capsule(F, (0.0, -0.043, -0.58), (-0.004, -0.064, -0.66), seg=16, rings=10),
-               capsule(0.0165, (-0.002, 0.03, -0.49), (-0.008, 0.094, -0.518), seg=16, rings=10)]
-    g.put('hand_wzB__hand', union(palm, *fingers))
+    # ---- the hand (node `hand`, origin at the wrist): palm to -x, fingers forward, thumb up. ONE fused piece (18 Nov,
+    # the owner: "fuse the fingers so its all one piece"): a signed distance field (sdf_kit) of a pillow palm, four
+    # fingers pressed together with a slight curl to the palm side, a thumb with a fat root and a wrist, every join a
+    # smooth union (the fingers FK into each other, leaving a shallow round groove between them; the palm and thumb
+    # 12-14 mm), meshed once and decimated: no finger primitives stuck on a block
+    g.pieces[('hand_wzB', 'hand')] = SDF.mesh(slapper_hand(), (-0.03, -0.062, -0.712), (0.03, 0.106, -0.424),
+                                             h=0.0011, tris=3200, name='slap_hand')
     g.put('hand_wzN__cuff', soft(lathe([(0.0, -0.436), (0.021, -0.436), (0.0285, -0.4395), (0.032, -0.446), (0.0325, -0.455),
                                         (0.031, -0.465), (0.027, -0.472), (0.0, -0.472)], segs=20), 0.0015, seg=2))
     g.origins['hand'] = (0.0, 0.0, -0.45)
