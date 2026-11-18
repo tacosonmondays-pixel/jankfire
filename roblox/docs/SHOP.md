@@ -741,6 +741,63 @@ Tested in solo Play at place version 910 (the `_studio` save):
 Not tested: the load-time top-up for a new gun (it needs a rejoin), and a past buyer's conversion. The test profile
 owned no whole bundle.
 
+## The Seraph set's headliner, and the two Ducky sets (18 Nov, place version 928)
+
+**Seraph** (the owner: "seraph set as the headliner weapon"):
+- The owner's Tripo angel rifle (`ar_seraph_tripo`) left `SkinSets.CONCEPTS`. It is the Seraph set's rifle and its
+  headliner: "Seraph Rifle", legendary, high, first in `set_seraph.members`, so the set's banner and featured picture
+  show it.
+- The Blender-built `ar_seraph` left the set and its `SkinSets.SKINS` row. It's a concept now: the owner still sees it in
+  the loadout, as "Seraph Rifle (first build)". Its effects (`SkinSets.FX.ar_seraph`) and hat seat stay for that.
+- **Nobody loses it.** `SkinSets.REPLACED = { ar_seraph = "ar_seraph_tripo" }` (`LootTable.REPLACED`): when a save
+  loads, an owned `ar_seraph` becomes `ar_seraph_tripo` in its place in the loot save's order (`Loot.luau` `replaced`),
+  and a worn one too (`Loadout.luau`).
+- **Repointed:**
+  - Ascension (`Finishers.luau`, the finishers session's) plays on `ar_seraph_tripo`.
+  - Its fire and reload sounds (`SkinSounds`, the sound session's) moved to it, keeping their names.
+  - The rifle's own effects (`SkinSets.FX.ar_seraph_tripo`), holds (`ads.skins.ar_seraph_tripo`) and hat seat were
+    already there.
+- The set's price is unchanged at 3,300, its whole worth.
+
+**Ducky** (the owner: "override old ducky set! old ducky set can be claimed via code", "push the tripo set then!"):
+- **The VIP Ducky set** (`set_ducky`) is the owner's four Tripo ducks, out of CONCEPTS:
+  - Royal Duck SMG, Royal Duck Katana, Royal Duck Sniper and Royal Duck Pistol (legendary, high). The names were agreed
+    with the guns-remodel session; the ids stay `*_ducky_tripo`.
+  - VIP holders get them when their pack next loads: `Vip.luau` grants a pack that grew. The VIP card and the hub's
+    VIP plinths show them (`Shop.vipItems`, the SMG first).
+- **Ducky Classic** (`set_ducky_classic`, `code = true`) is the first trio: Bubble Bath, Wish Duck and Ribbon Duck.
+  - Only the hub's code panel gives it. The lore session's code book calls `Loot.grant(p, "gift:skin:<id>", ...)` per
+    skin.
+  - Never VIP, a crate, the shop or a deal: `code` keeps it off the set shelf (`Shop.sets`), and it's set-only like
+    every set.
+  - Whoever has a piece keeps it.
+- **Splashdown** plays on all seven: the four Royal Ducks and the classic three.
+
+Tested in solo Play (the `_studio` save):
+- **An old owner and wearer:** made on the old code, then on the new code's load they owned and wore
+  `ar_seraph_tripo` and no `ar_seraph`.
+- **The Seraph set:**
+  - Claimed with none of it owned, it gave ar_seraph_tripo, sniper_seraph, burst_seraph, pistol_seraph and katana_seraph.
+  - The set is 3,300 (its worth), and its hero is `ar_seraph_tripo`.
+  - The Seraph Rifle isn't a concept, is set-only, has its effects, and `Finishers.forSkin` gives ascension.
+  - `ar_seraph` is a concept with no row.
+- **The loadout** (`docs/shop/seraph-rifle-loadout.jpg`): the Assault Rifle's SKINS opened with the Tripo Seraph
+  Rifle first, worn, with a NEW dot and no CONCEPT tag.
+- **VIP:** the profile (VIP) owned all four Royal Ducks on load and kept the classic trio. All four went on their guns
+  (`ducky-royal-katana-loadout.jpg`: the Royal Duck Katana worn, Seraph Katana and Ribbon Duck beside it).
+  - The VIP pack's skins are just the four.
+  - The sets on sale are Seraph, Infernal, Witching Hour, Tidecrest, Dust Drover and Star Drover: no Ducky set of either
+    kind.
+  - Ducky Classic is set-only and not VIP, and its gift offer resolves.
+- **The finisher test hook:** it armed for ar_seraph_tripo, smg_ducky_tripo, sniper_ducky_tripo, lmg_ducky and
+  revolver_ducky, and refused ar_seraph.
+- None of them is in the Crate.
+- The profile was put back afterwards: its looks and picks as before. Its skins are as before, plus the four Royal
+  Ducks a VIP holder has now (VIP's pack receipt is spent).
+
+Not done: a photo of the rifle in hand (a pick goes in at the next spawn, and the hub keeps guns holstered), a real
+finisher kill on a dummy, and the code panel's grant (the lore session tests that).
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

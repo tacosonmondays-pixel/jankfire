@@ -16,7 +16,8 @@
 local SkinSounds = {}
 
 SkinSounds.skin = {
-	ar_seraph = { fire = "skin_ar_seraph_fire", ev = { magIn = "skin_ar_seraph_reload" } }, -- a glass-chime tail; a plucked string
+	-- (the Seraph set's rifle is the owner's Tripo one since 18 Nov: ar_seraph_tripo; its sounds kept their names. shop-gui)
+	ar_seraph_tripo = { fire = "skin_ar_seraph_fire", ev = { magIn = "skin_ar_seraph_reload" } }, -- a glass-chime tail; a plucked string
 	ar_infernal = { fire = "skin_ar_infernal_fire", ev = { magIn = "skin_ar_infernal_reload" } }, -- a fire whoomp; an ember sizzle
 	smg_pumpkin = { fire = "skin_smg_pumpkin_fire", ev = { magIn = "skin_smg_pumpkin_reload" } }, -- a hollow wooden thock; a creaky lid
 	katana_sakura = { ev = { whoosh = "skin_katana_sakura_swing" }, hit = "skin_katana_sakura_hit" }, -- wind chimes; a wood-block tock

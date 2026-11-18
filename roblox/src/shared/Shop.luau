@@ -413,8 +413,9 @@ if Shop.SkinSets then
 	local ids = if type(K.ordered) == "function" then K.ordered() else {}
 	for _, sid in ids do
 		local s = K.SETS[sid]
-		-- (the VIP set isn't sold: its skins are the VIP pack's)
-		if vipSet(sid, s) then continue end
+		-- (the VIP set isn't sold: its skins are the VIP pack's. nor a code's set: Ducky Classic, only the hub's code panel
+		-- gives it. 18 Nov)
+		if vipSet(sid, s) or s.code == true then continue end
 		local items, top, topR = {}, nil, -1
 		for _, kid in s.members do
 			if Shop.dailyOnly("skin", kid) then continue end -- (the VIP daily reward's own skin never comes in a set)
@@ -527,7 +528,7 @@ function Shop.vipItems(): { Item }
 	if LootTable and type(LootTable.SKINS) == "table" then
 		local ids = {}
 		for id in LootTable.SKINS do if Shop.vipOnly("skin", id) and Shop.skinLive(id) and not Shop.dailyOnly("skin", id) then table.insert(ids, id) end end
-		-- (in the VIP set's own order: its first is the top piece, the Ducky LMG; then the rarest, then by id)
+		-- (in the VIP set's own order: its first is the top piece, the Tripo ducks' SMG since 18 Nov; then the rarest, then by id)
 		local at: { [string]: number } = {}
 		local K = Shop.SkinSets :: any
 		if K and type(K.SETS) == "table" then

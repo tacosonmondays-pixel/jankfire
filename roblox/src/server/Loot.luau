@@ -649,6 +649,29 @@ function Loot.grandfather(p: Player, items: { { type: string, id: string, weapon
 	if s and s.ready then applyOld(p, s) end
 end
 
+-- a skin retired for another (LootTable.REPLACED, 18 Nov: the Seraph set's rifle is the owner's Tripo one): an owned old
+-- one becomes the new one in its place in the list (so its order holds), its NEW mark too. nobody loses anything.
+-- true = the save changed
+local function replaced(d: any): boolean
+	local map = LootTable.REPLACED
+	local list = if type(d.inv) == "table" then d.inv.skin else nil
+	if type(list) ~= "table" or next(map) == nil then return false end
+	local out, seen, n = {}, {}, 0
+	for _, k in list do
+		local to = if type(k) == "string" then map[k] else nil
+		if to then n += 1 end
+		local key = to or k
+		if not seen[key] then seen[key] = true; table.insert(out, key) end
+	end
+	if n == 0 then return false end
+	d.inv.skin = out
+	local f = if type(d.fresh) == "table" then d.fresh.skin else nil
+	if type(f) == "table" then
+		for old, new in map do if f[old] ~= nil then f[new] = f[new] or f[old]; f[old] = nil end end
+	end
+	return true
+end
+
 -- ------------------------------------------------------------------ players
 local function added(p: Player)
 	if st[p] then return end
@@ -665,6 +688,7 @@ local function added(p: Player)
 	if st[p] ~= s then Profiles.release(store, prof); return end
 	s.prof = prof
 	migrate(prof.data)
+	if replaced(prof.data) then prof.dirty = true end -- (the old Seraph Rifle is the Tripo one now: 18 Nov)
 	s.owned = sets(prof.data)
 	everyWraps(s) -- (a shop bundle's wraps on every gun, new guns too: 18 Nov)
 	s.ready = true

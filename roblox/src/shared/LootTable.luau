@@ -172,6 +172,9 @@ do
 		end
 	end
 end
+-- a skin retired for another (SkinSets.REPLACED, 18 Nov: the Seraph set's rifle is the owner's Tripo one): an owned old
+-- one becomes the new one when the save loads (Loot.luau), and a worn one too (Loadout.luau)
+L.REPLACED = (if skinSets and type(skinSets.REPLACED) == "table" then skinSets.REPLACED else {}) :: { [string]: string }
 -- the VIP daily reward's exclusive skin (the shop session's VipDailyData.EXCLUSIVE.skin, 17 Nov): a row so the reward can
 -- give it (Loot.grant of a "pass" offer); it's in no container (L.exclusive). a SkinSets row for it wins
 L.SKINS.sniper_triangulum = L.SKINS.sniper_triangulum or { "Triangulum", "legendary", "sniper" }

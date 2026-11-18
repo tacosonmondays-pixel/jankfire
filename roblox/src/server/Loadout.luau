@@ -30,6 +30,7 @@ local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local GunSkins = require(Shared:WaitForChild("GunSkins"))
+local LootTable = require(Shared:WaitForChild("LootTable")) :: any -- (REPLACED: a retired skin's successor, 18 Nov)
 local Unlocks = require(Shared:WaitForChild("Unlocks")) :: any -- (weapons open by level, a few are Robux: docs/PROGRESSION.md)
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
@@ -305,8 +306,10 @@ local function adopt(d: Data, saved: any)
 	end
 	if type(saved.u) == "number" then d.u = saved.u end
 	if type(saved.skins) == "table" then
-		for wid, s in saved.skins do
+		for wid, s0 in saved.skins do
 			local e = if type(wid) == "string" then Roster.byId[wid] else nil
+			-- (a skin retired for another, LootTable.REPLACED, 18 Nov: a worn old Seraph Rifle is the owner's Tripo one now)
+			local s = if type(s0) == "string" and LootTable.REPLACED[s0] then LootTable.REPLACED[s0] else s0
 			if e and e.live and GunSkins.valid(wid, s) then d.skins[wid] = s end
 		end
 	end

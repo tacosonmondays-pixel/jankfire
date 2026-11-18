@@ -139,6 +139,7 @@ local CONCEPT_NAMES = {
 	ar_cute_a = "Velvet", pistol_cute_a = "Velvet", ar_cute_b = "Starlight", pistol_cute_b = "Starlight",
 	ar_cute_c = "Glasswing", pistol_cute_c = "Glasswing", ar_cute_d = "Sweet Shop", pistol_cute_d = "Sweet Shop",
 	ar_duckling = "Duckling", smg_duckling = "Duckling", pistol_duckling = "Duckling",
+	ar_seraph = "Seraph Rifle (first build)", -- (a concept since 18 Nov: the Tripo one is the set's rifle)
 } :: { [string]: string }
 local function skinInfo(id: string): (string, string)
 	local mod = Shared:FindFirstChild("LootTable")

@@ -18,13 +18,15 @@
 -- legendary); the older skins keep their web rarities and get a tier for the card.
 local SkinSets = {}
 
-export type SetInfo = { name: string, pair: string?, vip: boolean?, colour: Color3, accent: Color3, order: number, members: { string } }
+export type SetInfo = { name: string, pair: string?, vip: boolean?, code: boolean?, colour: Color3, accent: Color3, order: number, members: { string } }
+-- (code = true: only a code at the hub's code panel gives it, never VIP, a crate, the shop or a deal. 18 Nov)
 
 SkinSets.SETS = {
 	set_seraph = {
 		name = "Seraph", pair = "set_infernal", order = 1,
 		colour = Color3.fromRGB(221, 216, 204), accent = Color3.fromRGB(255, 212, 110),
-		members = { "ar_seraph", "sniper_seraph", "burst_seraph", "pistol_seraph", "katana_seraph" },
+		-- (the rifle is the owner's Tripo one since 18 Nov, the headliner: "seraph set as the headliner weapon". shop-gui)
+		members = { "ar_seraph_tripo", "sniper_seraph", "burst_seraph", "pistol_seraph", "katana_seraph" },
 	},
 	set_infernal = {
 		name = "Infernal", pair = "set_seraph", order = 2,
@@ -44,9 +46,18 @@ SkinSets.SETS = {
 		members = { "katana_sakura", "ar_lacquer", "lever_cloudlock", "dmr_nighttide", "sawnoff_twintide" },
 	},
 	set_ducky = { -- VIP (the owner: "the ducky set is a high tier set you get by purchasing vip"): the VIP pack's skins,
-		-- never in crates or the shop. A magical-girl kawaii rubber-duck line ("can you make the duck magical kawaii girl
-		-- kinda thing"): each gun shaped AS a duck, a pink bow with a gold star clip, pearl wings, glowing heart gems
+		-- never in crates or the shop. since 18 Nov the owner's Tripo ducks ("override old ducky set!", "push the tripo set
+		-- then!"): the SMG, the katana, the sniper and the pistol. VIP holders get them when their pack next loads (Vip.luau
+		-- grants a pack that grew); the first trio is set_ducky_classic below
 		name = "Ducky", order = 5, vip = true,
+		colour = Color3.fromRGB(214, 189, 74), accent = Color3.fromRGB(192, 106, 46),
+		members = { "smg_ducky_tripo", "katana_ducky_tripo", "sniper_ducky_tripo", "pistol_ducky_tripo" },
+	},
+	set_ducky_classic = { -- the first Ducky trio (16 Nov): a magical-girl kawaii rubber-duck line ("can you make the duck
+		-- magical kawaii girl kinda thing"), each gun shaped AS a duck, a pink bow with a gold star clip, pearl wings,
+		-- glowing heart gems. since 18 Nov (the owner: "old ducky set can be claimed via code") only the hub's code panel
+		-- gives it (the lore session's code book: Loot.grant "gift:skin:<id>"). whoever has a piece keeps it
+		name = "Ducky Classic", order = 8, code = true,
 		colour = Color3.fromRGB(214, 189, 74), accent = Color3.fromRGB(192, 106, 46),
 		members = { "lmg_ducky", "revolver_ducky", "katana_ducky" },
 	},
@@ -68,7 +79,9 @@ SkinSets.SETS = {
 
 -- id = { name, rarity, weapon, set, tier }. In the pair the rifle is the headline (the high tier: remodel + effects)
 SkinSets.SKINS = {
-	ar_seraph = { "Seraph Rifle", "legendary", "ar", "set_seraph", "high" },
+	-- (the owner's Tripo angel rifle, the set's headliner since 18 Nov; the Blender-built ar_seraph it replaced is a concept
+	-- now, and its owners and wearers get this one when their saves load: REPLACED)
+	ar_seraph_tripo = { "Seraph Rifle", "legendary", "ar", "set_seraph", "high" },
 	katana_seraph = { "Seraph Katana", "epic", "katana", "set_seraph", "mid" },
 	sniper_seraph = { "Seraph Sniper", "epic", "sniper", "set_seraph", "mid" },
 	burst_seraph = { "Seraph Burst Rifle", "epic", "burst", "set_seraph", "mid" },
@@ -88,9 +101,14 @@ SkinSets.SKINS = {
 	lever_cloudlock = { "Cloudlock", "epic", "lever", "set_tidecrest", "mid" },
 	dmr_nighttide = { "Kintsugi", "rare", "dmr", "set_tidecrest", "basic" },
 	sawnoff_twintide = { "Twin Tide", "rare", "sawnoff", "set_tidecrest", "basic" },
-	lmg_ducky = { "Bubble Bath", "legendary", "lmg", "set_ducky", "high" },
-	revolver_ducky = { "Wish Duck", "legendary", "revolver", "set_ducky", "high" },
-	katana_ducky = { "Ribbon Duck", "legendary", "katana", "set_ducky", "high" },
+	lmg_ducky = { "Bubble Bath", "legendary", "lmg", "set_ducky_classic", "high" },
+	revolver_ducky = { "Wish Duck", "legendary", "revolver", "set_ducky_classic", "high" },
+	katana_ducky = { "Ribbon Duck", "legendary", "katana", "set_ducky_classic", "high" },
+	-- the VIP Ducky set since 18 Nov: the owner's Tripo ducks (ids kept; the owner: "dont call the skin ducky tripo")
+	smg_ducky_tripo = { "Royal Duck SMG", "legendary", "smg", "set_ducky", "high" },
+	katana_ducky_tripo = { "Royal Duck Katana", "legendary", "katana", "set_ducky", "high" },
+	sniper_ducky_tripo = { "Royal Duck Sniper", "legendary", "sniper", "set_ducky", "high" },
+	pistol_ducky_tripo = { "Royal Duck Pistol", "legendary", "pistol", "set_ducky", "high" },
 	revolver_dust = { "Dust Drover", "legendary", "revolver", "set_dust", "high" },
 	lever_dust = { "Iron Horse", "legendary", "lever", "set_dust", "high" },
 	sawnoff_dust = { "Wagon Wheel", "epic", "sawnoff", "set_dust", "mid" },
@@ -122,11 +140,15 @@ SkinSets.TIER = {
 -- the VIP daily reward's sniper (17 Nov 2026): the Triangulum, a high-tier skin in no set and not a concept (the shop
 -- session's VipDailyData.EXCLUSIVE marks it daily-only; the loot session lists it in LootTable.SKINS)
 SkinSets.TIER.sniper_triangulum = "high"
+SkinSets.TIER.ar_seraph = "high" -- (the Blender-built Seraph Rifle, a concept since 18 Nov: out of SKINS, its tier kept)
 for id, row in SkinSets.SKINS do SkinSets.TIER[id] = row[5] end
 
 -- the older skins remodelled on 16 Nov (after a review of every skin) that took a new name (the loot session's
 -- LootTable.SKINS holds their names: it applies these)
 SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: { [string]: string }
+-- a skin retired for another (18 Nov, the owner: "seraph set as the headliner weapon"): whoever owns or wears the old one
+-- gets the new one when their save loads (the loot session's Loot.luau and Loadout.luau, through LootTable.REPLACED)
+SkinSets.REPLACED = { ar_seraph = "ar_seraph_tripo" } :: { [string]: string }
 
 -- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
 -- (cute v3, 17 Nov: A-D rebuilt with bigger signature pieces, tools/roblox/gun_sets_cute3.py; E Daydream dropped)
@@ -135,13 +157,12 @@ SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b"
 	-- the Ducklings (17 Nov, the owner: "Can you also tell it to make a few blender ducky skins?"): Wish Duck's family
 	-- built with the Blender-artist method and its baked shade shells (tools/roblox/gun_sets_ducky_art.py)
 	"ar_duckling", "smg_duckling", "pistol_duckling",
-	-- the owner's own Tripo angelic rifle (17 Nov), cleaned with tools/roblox/tripo_gun.py: v1's big rear wings (hidden
-	-- while aiming: holds.json ads.skins.ar_seraph_tripo), no front wings, a pearl-and-gold front sight
-	"ar_seraph_tripo",
-	-- the owner's Tripo Ducky bundle (17 Nov, their picks from the bundle grids), each split into its parts, repaired,
-	-- mirrored and fitted with tools/roblox/tripo_gun.py: SMG, katana (kit blade and candy grip on the Tripo duck guard),
-	-- sniper (the live slim scope) and Plan B (slide/mag/hammer nodes, one low sight)
-	"smg_ducky_tripo", "katana_ducky_tripo", "sniper_ducky_tripo", "pistol_ducky_tripo" } :: { string }
+	-- (the owner's own Tripo angelic rifle, ar_seraph_tripo, left the concepts on 18 Nov: the Seraph set's headliner. the
+	-- Blender-built Seraph Rifle it replaced stays in the place as a concept, for the owner to look at)
+	"ar_seraph",
+	-- (the owner's Tripo Ducky bundle, smg/katana/sniper/pistol_ducky_tripo, left the concepts on 18 Nov: the VIP Ducky
+	-- set, set_ducky above)
+} :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in

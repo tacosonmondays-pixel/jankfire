@@ -31,7 +31,8 @@ export type Row = {
 
 Finishers.LIST = {
 	ascension = { -- Seraph: the victim is lifted up a column of light, two great wings open behind them, feathers fall
-		name = "Ascension", set = "set_seraph", skins = { "ar_seraph" }, theme = "seraph", order = 1, built = true,
+		-- (the Seraph set's rifle is the owner's Tripo one since 18 Nov: ar_seraph_tripo. shop-gui)
+		name = "Ascension", set = "set_seraph", skins = { "ar_seraph_tripo" }, theme = "seraph", order = 1, built = true,
 		colour = Color3.fromRGB(255, 214, 120), accent = Color3.fromRGB(250, 246, 236),
 		grade = { tint = Color3.fromRGB(255, 246, 228), sat = -0.15, con = 0.08, bright = 0.03 }, anim = "lift",
 	},
@@ -41,7 +42,9 @@ Finishers.LIST = {
 		grade = { tint = Color3.fromRGB(255, 222, 205), sat = -0.25, con = 0.18, bright = -0.02 }, anim = "kneel",
 	},
 	splashdown = { -- Ducky (VIP): a giant rubber duck drops out of the sky onto the victim in a burst of soap bubbles
-		name = "Splashdown", set = "set_ducky", skins = { "lmg_ducky", "revolver_ducky", "katana_ducky" }, theme = "ducky",
+		-- (both Ducky sets since 18 Nov: the VIP set's Tripo ducks and the code's Ducky Classic trio. shop-gui)
+		name = "Splashdown", set = "set_ducky", skins = { "smg_ducky_tripo", "katana_ducky_tripo", "sniper_ducky_tripo", "pistol_ducky_tripo",
+			"lmg_ducky", "revolver_ducky", "katana_ducky" }, theme = "ducky",
 		order = 3, built = true, vip = true,
 		colour = Color3.fromRGB(247, 182, 205), accent = Color3.fromRGB(246, 215, 138),
 		grade = { tint = Color3.fromRGB(255, 236, 244), sat = 0.08, con = 0.04, bright = 0.03 }, anim = "shield",
