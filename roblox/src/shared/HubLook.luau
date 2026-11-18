@@ -323,6 +323,58 @@ H.looks.suburb2 = {
 } :: Look
 H.plainSky.suburb2 = true
 H.byArena.SuburbV2 = "suburb2"
+-- SPOOKY FOREST (WebArena; tools/roblox/forest_models.py, the web's Scary Forest): a pine wood at night by a lake. A
+-- moonlit blue-grey, a low cold haze the trunks fade into, warm lamps (the cabin's windows, the camp lantern, the car's
+-- hazards, the mast's red lights) doing the rest; dark but readable: a player shows at 150 studs
+H.looks.forest = {
+	Lighting = {
+		Ambient = Color3.fromRGB(96, 104, 124), OutdoorAmbient = Color3.fromRGB(104, 116, 142), Brightness = 1.4,
+		ExposureCompensation = 0.25, EnvironmentDiffuseScale = 0.3, EnvironmentSpecularScale = 0.25,
+		ClockTime = 0.6, GeographicLatitude = 60, ColorShift_Top = Color3.fromRGB(150, 170, 210),
+		FogColor = Color3.fromRGB(46, 56, 76), FogStart = 80, FogEnd = 620,
+	},
+	Atmosphere = { Density = 0.42, Offset = 0.05, Haze = 1.8, Glare = 0, Color = Color3.fromRGB(70, 84, 110), Decay = Color3.fromRGB(38, 46, 64) },
+	Bloom = { Intensity = 0.45, Size = 24, Threshold = 1.6 },
+	ColorCorrection = { Brightness = 0.02, Contrast = 0.12, Saturation = -0.18, TintColor = Color3.fromRGB(226, 234, 255) },
+	SunRays = { Intensity = 0 },
+	Terrain = { WaterColor = Color3.fromRGB(34, 50, 62), WaterTransparency = 0.35, WaterReflectance = 0.35, WaterWaveSize = 0.05, WaterWaveSpeed = 6 },
+} :: Look
+H.plainSky.forest = true -- (Roblox's own night sky: the moon and the stars)
+H.byArena.Forest = "forest"
+-- BACKROOMS (WebArena; tools/roblox/backrooms_models.py, the web's Backrooms): sealed yellow rooms. No sun: the light is
+-- the ceiling's, a warm yellow-white ambient with a yellowish haze close in and soft bloom on the panels
+H.looks.backrooms = {
+	Lighting = {
+		Ambient = Color3.fromRGB(150, 140, 112), OutdoorAmbient = Color3.fromRGB(120, 112, 90), Brightness = 0,
+		ExposureCompensation = 0.1, EnvironmentDiffuseScale = 0.2, EnvironmentSpecularScale = 0.15,
+		ClockTime = 0, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(0, 0, 0),
+		FogColor = Color3.fromRGB(196, 182, 128), FogStart = 40, FogEnd = 420,
+	},
+	Atmosphere = { Density = 0.4, Offset = 0, Haze = 1.4, Glare = 0, Color = Color3.fromRGB(204, 188, 128), Decay = Color3.fromRGB(170, 150, 96) },
+	Bloom = { Intensity = 0.4, Size = 24, Threshold = 1.7 },
+	ColorCorrection = { Brightness = 0.02, Contrast = 0.1, Saturation = -0.05, TintColor = Color3.fromRGB(255, 248, 228) },
+	SunRays = { Intensity = 0 },
+	Terrain = { WaterColor = Color3.fromRGB(120, 176, 180), WaterTransparency = 0.8, WaterReflectance = 0.25, WaterWaveSize = 0, WaterWaveSpeed = 0 },
+} :: Look
+H.plainSky.backrooms = true
+H.byArena.Backrooms = "backrooms"
+-- ARCTIC CABIN (WebArena; tools/roblox/arctic_models.py, a new arena): a snowy cabin compound on a bright winter
+-- midday. A low sun from the south (about 28 degrees up, across the teams' line), a cool pale haze over the mountains,
+-- bloom held back so the snow never blows out
+H.looks.arctic = {
+	Lighting = {
+		Ambient = Color3.fromRGB(128, 134, 146), OutdoorAmbient = Color3.fromRGB(146, 154, 168), Brightness = 2.1,
+		ExposureCompensation = -0.15, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
+		ClockTime = 13.3, GeographicLatitude = 84, ColorShift_Top = Color3.fromRGB(255, 236, 214),
+		FogColor = Color3.fromRGB(206, 216, 228), FogStart = 300, FogEnd = 2200,
+	},
+	Atmosphere = { Density = 0.34, Offset = 0.06, Haze = 1.6, Glare = 0.08, Color = Color3.fromRGB(212, 222, 232), Decay = Color3.fromRGB(156, 170, 190) },
+	Bloom = { Intensity = 0.16, Size = 20, Threshold = 2.6 },
+	ColorCorrection = { Brightness = -0.02, Contrast = 0.1, Saturation = -0.12, TintColor = Color3.fromRGB(246, 249, 255) },
+	SunRays = { Intensity = 0.015 },
+} :: Look
+H.plainSky.arctic = true
+H.byArena.ArcticCabin = "arctic"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)

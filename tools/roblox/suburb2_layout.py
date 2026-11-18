@@ -452,6 +452,15 @@ def pad_flight(p):
         pos = nxt
     return None
 
+# ================================================================ the detail pass (18 Nov 2026: suburb2_detail.py)
+# the owner: "Suburb needs a bit more detail". Furniture in the houses you go through, mailboxes, shrubs, patio tables,
+# the garage roofs' air-conditioning units and skylights, a kennel, washing-line posts, a mower, hydrants: real hit
+# boxes (DETAIL keeps the list, the kit dresses the same items)
+import sys, suburb2_detail
+suburb2_detail.add_hits(MATS, SOLID, ROT, HOUSES, GARAGES, sys.modules[__name__])
+COLOURS.update({'furn': (170, 150, 140), 'furnw': (190, 150, 110), 'appl': (225, 225, 220), 'yardw': (176, 132, 96),
+                'yardc': (190, 190, 192), 'shrub': (90, 120, 80), 'post': (200, 200, 205)})
+
 # ================================================================ the wall box (18 Nov 2026: tools/roblox/wallbox.py)
 # no lid; the walls 30 studs further out; the back and end hedges (solid to the lid till now, 12 high in the kit) and
 # the ring past them become a step up to 32 (the houses and trees past the hedges reach 31.6): open air over the
