@@ -76,6 +76,13 @@ TP.T = {
 	scale = 1.95, kMin = 2, kMax = 4.5, -- the gun: studs per metre of its file = scale x u, clamped
 	size = { katana = 1.3 }, -- a weapon's own size on top (a sword read short at the guns' scale)
 	swig = { mouth = V(0, -0.25, -0.6), tip = -2.6 }, -- the Hot Sauce's swig: where the cap meets the mouth (head sizes), the bottle's tip (radians: the cap back into the mouth, the base up and out)
+	-- (the hold session, 18 Nov 2026) weapons-port's Lasso and cart, from the player's attributes. spin: the coil's fist
+	-- over the head from the right shoulder (chest space, u), going round `circle` u, `rev` turns a second, the loop
+	-- `loop` u round; pull: that fist on the rope (aim space from the shoulder, u), `lead` u to the other fist along it;
+	-- flailR / flailL: a caught one's hands from the shoulders (chest space, u), waving `wave` u at `waveHz`; ride: a
+	-- cart rider's free left hand out for balance (aim space from the shoulder, u), leant in `lean` radians
+	lasso = { spin = V(0.1, 0.92, -0.05), circle = 0.22, rev = 2.2, loop = 0.75, pull = V(0.12, -0.55, -0.5), lead = 0.3,
+		flailR = V(0.4, 0.75, -0.1), flailL = V(-0.4, 0.75, -0.1), wave = 0.28, waveHz = 3, ride = V(-0.9, -0.3, -0.2), lean = 0.18 },
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
@@ -1068,11 +1075,24 @@ local function stepRig(r: Rig, dt: number, now: number)
 		rec.pv += (-220 * rec.p - 20 * rec.pv) * h; rec.p += rec.pv * h
 		rec.rv += (-200 * rec.r - 18 * rec.rv) * h; rec.r += rec.rv * h
 	end
-	-- sprinting (on the ground, fast, not aiming, not just fired): the gun comes down across the body
+	-- (the hold session, 18 Nov 2026) the Lasso spun / held, caught on one, riding a cart: the player's attributes, eased
+	local plr = Players:GetPlayerFromCharacter(r.ch)
+	local rx = r :: any
+	local function eased(key: string, on: boolean, rate: number): number
+		local v = (rx[key] or 0) + ((if on then 1 else 0) - (rx[key] or 0)) * math.min(1, dt * rate)
+		rx[key] = v
+		return v
+	end
+	local ride = eased("cartRide", plr ~= nil and plr:GetAttribute("RidingCart") ~= nil, 6) -- (not "ride": r.ride is the pump hand's)
+	local lspin = eased("lspin", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoSpin") == true, 9)
+	local lhold = eased("lhold", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoHolding") == true, 9)
+	local flail = eased("flail", plr ~= nil and plr:GetAttribute("LassoHeld") == true, 8)
+	local spinAt: Vector3?, ropeL: CFrame? = nil, nil -- (the spinning fist, chest space; the left fist on the rope)
+	-- sprinting (on the ground, fast, not aiming, not just fired): the gun comes down across the body (riding a cart too)
 	local vel = r.root.AssemblyLinearVelocity
 	local spd = V(vel.X, 0, vel.Z).Magnitude
 	local sprint = if r.isMe then mine.sprint and spd > 12 else spd > TP.T.lowSpeed
-	local wantLow = sprint and hum.FloorMaterial ~= Enum.Material.Air and r.aim < 0.2 and now - r.lastFire > 0.6 and not reloading
+	local wantLow = (sprint and hum.FloorMaterial ~= Enum.Material.Air or ride > 0.5) and r.aim < 0.2 and now - r.lastFire > 0.6 and not reloading
 		and r.cls ~= "katana"
 	r.low += ((if wantLow then 1 else 0) - r.low) * math.min(1, dt * 8)
 	-- ---- the chest: turned into the stance, part of the look pitch, the walk's sway taken out
@@ -1087,7 +1107,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 		local ui = game:GetService("UserInputService")
 		if not ui:GetFocusedTextBox() and Binds.on("crouch") then crouchW = 1 end -- (held or toggled: Binds)
 	elseif pose == "crouch" then crouchW = 1 end
-	local waistPitch = pitch * st.waist - 0.12 * crouchW
+	local waistPitch = pitch * st.waist - 0.12 * crouchW - TP.T.lasso.lean * ride
 	local Rut = ANG(0, yaw + twist, 0) * ANG(waistPitch, 0, 0)
 	local Raim = ANG(0, yaw, 0) * ANG(pitch, 0, 0)
 	local on = r.on
@@ -1129,6 +1149,28 @@ local function stepRig(r: Rig, dt: number, now: number)
 				local sw = TP.T.swig
 				local M = CF(headCF * (sw.mouth * r.Hs)) * Hq * ANG(sw.tip, 0, 0) * CF(0, 0, 0.118 * r.k)
 				G = G:Lerp(M, smoothstep(ra.swig))
+			end
+		end
+		-- (the hold session, 18 Nov 2026) weapons-port's Lasso (TP.T.lasso): spinning, the coil's fist goes round over
+		-- the head; holding someone, it's low and ahead on the rope; caught (whatever they hold), the gun's hand is up
+		-- and waving
+		if r.holdR and (lspin > 0.001 or lhold > 0.001 or flail > 0.001) then
+			local T = TP.T.lasso
+			local RS, inv = r.arms.Right.S, (r.holdR :: CFrame):Inverse()
+			if lhold > 0.001 then
+				local p = RS + Q * (T.pull * r.u)
+				G = G:Lerp(CF(p) * Q * ANG(-math.pi / 2, 0, 0) * inv, smoothstep(lhold))
+				ropeL = CF(p + Q.LookVector * T.lead * r.u) * Q * ANG(-math.pi / 2, 0, 0)
+			end
+			if lspin > 0.001 then
+				local ph = now * 2 * math.pi * T.rev
+				spinAt = RS + (T.spin + V(math.cos(ph), 0, math.sin(ph)) * T.circle) * r.u
+				G = G:Lerp(CF(spinAt :: Vector3) * Q * inv, smoothstep(lspin))
+			end
+			if flail > 0.001 then
+				local wv = now * 2 * math.pi * T.waveHz
+				local p = RS + (T.flailR + V(math.sin(wv), math.cos(wv * 1.3), 0) * T.wave) * r.u
+				G = G:Lerp(CF(p) * Q * inv, smoothstep(flail))
 			end
 		end
 		-- a breath and the stride, small
@@ -1211,6 +1253,24 @@ local function stepRig(r: Rig, dt: number, now: number)
 				if mix > 0 then handL = handL:Lerp(handL + V(-0.15, -0.45, 0.2) * r.u, mix) end
 			end
 		end
+		-- (the hold session, 18 Nov 2026) the other fist on the Lasso's rope; a caught one's other hand up and waving;
+		-- a cart rider's free left hand out for balance (TP.T.lasso)
+		local T = TP.T.lasso
+		if ropeL and lhold > 0.001 then
+			local hand = handOn(L, ropeL :: CFrame, "grip", 0, poleL)
+			handL = if handL then handL:Lerp(hand, lhold) else hand
+			r.leftW = math.max(r.leftW, lhold)
+		end
+		if flail > 0.001 then
+			local wv = now * 2 * math.pi * T.waveHz + 2
+			local hand = CF(L.S + (T.flailL + V(math.sin(wv * 1.1), math.cos(wv), 0) * T.wave) * r.u) * Q * L.gripInv
+			handL = if handL then handL:Lerp(hand, flail) else hand
+			r.leftW = math.max(r.leftW, flail)
+		elseif ride > 0.001 and not r.holdL then
+			local hand = CF(L.S) * Q * CF(T.ride * r.u) * L.gripInv
+			handL = if handL then handL:Lerp(hand, ride) else hand
+			r.leftW = math.max(r.leftW, ride)
+		end
 	end
 	-- ---- items: the left hand throws or holds one up, then goes back
 	local it = r.item
@@ -1273,6 +1333,41 @@ local function stepRig(r: Rig, dt: number, now: number)
 		local wgt = on
 		if not r.holdL and not r.tool then wgt = math.max(itemMix, r.leftW) * on end
 		solveArm(L, handL, poleL, wgt)
+	end
+	-- (the hold session, 18 Nov 2026) the Lasso's loop over the head while it spins, the fist driving it round its
+	-- edge: everyone's, and yours in third person (first person draws its own)
+	local loop = rx.loop :: { BasePart }?
+	if loop and (loop :: { BasePart })[1].Parent ~= r.gun then rx.loop = nil; loop = nil end -- (the gun was rebuilt)
+	if spinAt and lspin > 0.05 and r.gun and not (r.isMe and not thirdPerson()) then
+		if not loop then
+			local list = {}
+			for i = 1, 18 do
+				local p = Instance.new("Part")
+				p.Name = "LassoLoop"; p.Shape = Enum.PartType.Cylinder
+				p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+				p.Material = Enum.Material.SmoothPlastic; p.Color = Color3.fromRGB(214, 178, 118)
+				p.Parent = r.gun
+				list[i] = p
+			end
+			rx.loop = list
+			loop = list
+		end
+		local T = TP.T.lasso
+		local ph = now * 2 * math.pi * T.rev
+		local hand = r.ut.CFrame:PointToWorldSpace(spinAt :: Vector3)
+		local way = r.ut.CFrame:VectorToWorldSpace(V(math.cos(ph), 0, math.sin(ph)))
+		local rad = T.loop * r.u
+		local thick = 0.035 * r.u
+		local mid = CF(hand + V(way.X, 0, way.Z) * rad * 0.85)
+		local seg = 2 * math.pi * rad / 18 + 0.05
+		for i, p in loop :: { BasePart } do
+			local th = (i - 1) / 18 * 2 * math.pi - ph
+			p.Size = V(seg, thick, thick)
+			p.CFrame = mid * ANG(0, th, 0) * CF(rad, 0, 0) * ANG(0, math.pi / 2, 0)
+		end
+	elseif loop then
+		for _, p in loop :: { BasePart } do p:Destroy() end
+		rx.loop = nil
 	end
 	-- (debug / tests: where each hand was sent, chest space, to check the IK landed it there)
 	if r.gun and r.ch:GetAttribute("TPDebug") then
