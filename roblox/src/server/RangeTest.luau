@@ -179,6 +179,7 @@ local function pop(r: Run)
 	hum.MaxHealth = 100; hum.Health = 100
 	hum.Parent = m
 	m:SetAttribute("Dummy", true); m:SetAttribute("Base", base); m:SetAttribute("Owner", r.uid)
+	m:SetAttribute("HitNeck", Hitbox.CUTOUT.neck); m:SetAttribute("HitTop", Hitbox.CUTOUT.top) -- (his painted head is the head box: Hitbox.profile)
 	m.Parent = workspace:FindFirstChild("Dummies") or workspace
 	local f = Rules.newFighter("dummy", "Cardboard Carl", m)
 	f.onlyFor = if r.p then r.p else "ghost"

@@ -43,6 +43,10 @@ end
 -- up to the root, no animation), so the server and every client get the same numbers for R6, R15, short or tall.
 -- the web's fixed boxes put the split at bodyTop, over the middle of a Roblox head: shots at its centre were body hits
 export type Prof = { neck: number, top: number }
+-- a body with no Head part says where its head is with the model attributes HitNeck / HitTop (studs over its feet
+-- line). Cardboard Carl (bc_cutout, tools/roblox/range_models.py): the head is a ten-sided disc of radius 1.12 at
+-- 5.85 over the feet, so 4.75 to 6.97 (the old head box began at 4.86: his chin was a body hit)
+Hitbox.CUTOUT = { neck = 4.75, top = 6.97 }
 local profs: { [Instance]: { t: number, p: Prof? } } = setmetatable({}, { __mode = "k" }) :: any
 local function restInRoot(m: Instance, root: BasePart, part: BasePart): CFrame?
 	local cf, cur = CFrame.identity, part
@@ -70,6 +74,9 @@ function Hitbox.profile(m: Instance?): Prof?
 		local mid = if rest then rest.Position.Y else root.CFrame:PointToObjectSpace(head.Position).Y
 		local up, h = mid + Hitbox.ROOT_UP, head.Size.Y
 		if up > 1 and up < 15 and h > 0.2 and h < 5 then p = { neck = up - h / 2, top = up + h / 2 } end
+	elseif root then
+		local nk, tp = m:GetAttribute("HitNeck"), m:GetAttribute("HitTop")
+		if type(nk) == "number" and type(tp) == "number" and tp > nk then p = { neck = nk, top = tp } end
 	end
 	profs[m] = { t = now, p = p }
 	return p
@@ -92,6 +99,18 @@ end
 function Hitbox.ray(o: Vector3, d: Vector3, feet: Vector3, k: number, pad: number?, prof: Prof?): (number?, boolean)
 	local bl, bh, hl, hh = Hitbox.boxes(feet, k, pad, prof)
 	local tb, th = Hitbox.rayBox(o, d, bl, bh), Hitbox.rayBox(o, d, hl, hh)
+	if th and tb then
+		-- (both: the body box sticks out further than the head box, so a shot rising to the chin clipped its top front
+		-- corner first and was a body hit. decide by the height where the ray passes the body's own middle line: a
+		-- real body, and a cardboard Carl most of all, is thin)
+		local hx, hz = d.X, d.Z
+		local hh2 = hx * hx + hz * hz
+		if hh2 > 1e-6 then
+			local t = -((o.X - feet.X) * hx + (o.Z - feet.Z) * hz) / hh2
+			local y = o.Y + d.Y * t
+			return math.min(tb, th), y >= hl.Y
+		end
+	end
 	if th and (not tb or th <= tb) then return th, true end
 	return tb, false
 end

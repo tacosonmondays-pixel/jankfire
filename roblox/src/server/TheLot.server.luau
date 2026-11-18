@@ -182,6 +182,7 @@ local function makeCarl(e: Entry): any
 	hum.Parent = m
 	m:SetAttribute("Dummy", true); m:SetAttribute("Base", base)
 	if e.gold then m:SetAttribute("GoldCarl", e.gold) end
+	m:SetAttribute("HitNeck", Hitbox.CUTOUT.neck); m:SetAttribute("HitTop", Hitbox.CUTOUT.top) -- (his painted head is the head box: Hitbox.profile)
 	-- (someone's own gold Carl: only on their screen, only their shots land. set before he is in the world)
 	if e.hunt then m:SetAttribute("Owner", e.hunt.uid) end
 	m.Parent = dummyFolder()
