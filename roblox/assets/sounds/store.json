@@ -2710,6 +2710,234 @@
     ],
     "L": -30
    }
+  ],
+  "card_throw": [
+   {
+    "id": 9114035710,
+    "title": "Deck Of Cards 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -38
+   },
+   {
+    "id": 9114035590,
+    "title": "Deck Of Cards 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.38,
+     0.62
+    ],
+    "L": -39
+   }
+  ],
+  "card_deal": [
+   {
+    "id": 9114035348,
+    "title": "Deck Of Cards 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     1.2
+    ],
+    "L": -36
+   }
+  ],
+  "card_heal": [
+   {
+    "id": 9119447936,
+    "title": "Sparkle Bell Tree Wind Chimes 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.2,
+     2.2
+    ],
+    "L": -34
+   }
+  ],
+  "card_blast": [
+   {
+    "id": 9116490163,
+    "title": "Meaty Thud 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     0.6
+    ],
+    "L": -24
+   },
+   {
+    "id": 9116489362,
+    "title": "Meaty Thud 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.23,
+     0.7
+    ],
+    "L": -23
+   }
+  ],
+  "card_dash": [
+   {
+    "id": 9120704978,
+    "title": "Whooshes Fast Wipes Quick Airy Slices 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.32
+    ],
+    "L": -28
+   },
+   {
+    "id": 9120704709,
+    "title": "Whooshes Fast Wipes Quick Airy Slices 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.32
+    ],
+    "L": -32
+   }
+  ],
+  "card_tp": [
+   {
+    "id": 9117830355,
+    "title": "Pop Airy 32 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.15
+    ],
+    "L": -25
+   }
+  ],
+  "gun_cart": [
+   {
+    "id": 9113535176,
+    "title": "Body Slam Low End Thump 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -16
+   }
+  ],
+  "cart_roll": [
+   {
+    "id": 9119096399,
+    "title": "Shopping Cart Roll By 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1.2,
+     3.6
+    ],
+    "L": -35
+   }
+  ],
+  "cart_hit": [
+   {
+    "id": 9119088927,
+    "title": "Shopping Cart 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.22,
+     0.9
+    ],
+    "L": -17
+   },
+   {
+    "id": 9119089217,
+    "title": "Shopping Cart 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.22,
+     0.85
+    ],
+    "L": -19
+   }
+  ],
+  "lasso_spin": [
+   {
+    "id": 9118723476,
+    "title": "Rope Zuzz Twirl Flap 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     4,
+     6.8
+    ],
+    "L": -18
+   }
+  ],
+  "lasso_throw": [
+   {
+    "id": 9125419776,
+    "title": "Cable Swish Telephone Wires Whip Thick Spinning (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.38,
+     0.85
+    ],
+    "L": -27
+   },
+   {
+    "id": 9113611449,
+    "title": "Buggy Whip Light Crack Swish Many Versions 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.38
+    ],
+    "L": -29
+   }
+  ],
+  "lasso_catch": [
+   {
+    "id": 9113463271,
+    "title": "Block Tackle Rope Pulls Movement 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.52
+    ],
+    "L": -19
+   }
+  ],
+  "rope_creak": [
+   {
+    "id": 9118714213,
+    "title": "Rope Creaks Handling Various Creaks 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.5,
+     4.7
+    ],
+    "L": -48
+   }
+  ],
+  "lasso_slam": [
+   {
+    "id": 9113518403,
+    "title": "Body Hit Wall 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.45
+    ],
+    "L": -13
+   },
+   {
+    "id": 9113518407,
+    "title": "Body Hit Wall 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -14
+   }
   ]
  },
  "vol": {
@@ -2750,7 +2978,8 @@
   "blood_boom": 5.5,
   "skin_smoke_censer_cloud": 3.7,
   "skin_duck_origami_land": 4.6,
-  "remote_click": 6
+  "remote_click": 6,
+  "rope_creak": 5.5
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -2860,7 +3089,21 @@
   "remote_click": -29,
   "remote_pause": -26,
   "remote_rewind": -27,
-  "gun_akimbo": -23
+  "gun_akimbo": -23,
+  "card_throw": -28,
+  "card_deal": -29,
+  "card_heal": -28,
+  "card_blast": -21,
+  "card_dash": -27,
+  "card_tp": -26,
+  "gun_cart": -21,
+  "cart_roll": -30,
+  "cart_hit": -22,
+  "lasso_spin": -29,
+  "lasso_throw": -27,
+  "lasso_catch": -25,
+  "rope_creak": -32,
+  "lasso_slam": -22
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -2932,7 +3175,16 @@
   "scales_hit": 0.03,
   "gavel_strike": 0.03,
   "remote_click": 0.03,
-  "gun_akimbo": 0.03
+  "gun_akimbo": 0.03,
+  "card_throw": 0.05,
+  "card_blast": 0.03,
+  "card_dash": 0.04,
+  "card_tp": 0.04,
+  "gun_cart": 0.03,
+  "cart_hit": 0.03,
+  "lasso_throw": 0.04,
+  "lasso_catch": 0.04,
+  "lasso_slam": 0.04
  },
  "loop": {
   "minigun_spin": true,
@@ -2940,7 +3192,10 @@
   "breath_loop": true,
   "bowl_roll": true,
   "flame_burn": true,
-  "gas_hiss": true
+  "gas_hiss": true,
+  "cart_roll": true,
+  "lasso_spin": true,
+  "rope_creak": true
  },
  "roll": {
   "gun_water": [
@@ -2980,6 +3235,18 @@
    120
   ],
   "gas_hiss": [
+   6,
+   100
+  ],
+  "cart_roll": [
+   8,
+   160
+  ],
+  "lasso_spin": [
+   6,
+   140
+  ],
+  "rope_creak": [
    6,
    100
   ]

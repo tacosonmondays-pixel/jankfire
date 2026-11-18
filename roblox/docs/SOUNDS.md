@@ -1,3 +1,31 @@
+# Weapons batch E: Card Deck, Shopping Cart Cannon, Lasso (18 Nov 2026, place version 873)
+
+Asked for by the weapons-port session. All 14 are Pro Sound Effects recordings, with no voices or crowds. The three loops
+are Looped with their own roll-off (`loop`, `roll`).
+
+| name | for | take(s): id, title, cut (s) | Volume |
+| --- | --- | --- | --- |
+| `card_throw` | a card flicked | 9114035710 Deck Of Cards 9, 0–0.3; 9114035590 Deck Of Cards 6, 0.38–0.62 | 3 (the cap) |
+| `card_deal` | a new hand | 9114035348 Deck Of Cards 2, 0–1.2 (a run of riffles) | 2.07 |
+| `card_heal` | the heal | 9119447936 Sparkle Bell Tree Wind Chimes 1, 0.2–2.2 (a real bell tree, rings out) | 1.84 |
+| `card_blast` | a punchy thump | 9116490163 / 9116489362 Meaty Thud 4 / 6 | 1.23 |
+| `card_dash` | a quick whoosh | 9120704978 / 9120704709 Whooshes Fast Wipes Quick Airy Slices 3 / 2, 0–0.32 | 1.3 |
+| `card_tp` | the ace teleport | 9117830355 Pop Airy 32, 0–0.15 | 0.82 |
+| `gun_cart` | the launch thump | 9113535176 Body Slam Low End Thump 1, 0–0.6 | 0.52 |
+| `cart_roll` | the cart rolling, **Looped** | 9119096399 Shopping Cart Roll By 2, 1.2–3.6 (its steady middle) | 1.64 |
+| `cart_hit` | the cart into a body | 9119088927 / 9119089217 Shopping Cart 2 / 5, 0.22–0.9 / 0.22–0.85 | 0.58 |
+| `lasso_spin` | the rope whirling, **Looped** | 9118723476 Rope Zuzz Twirl Flap 1, 4.0–6.8 (its steady part) | 0.26 |
+| `lasso_throw` | the throw | 9125419776 Cable Swish Telephone Wires Whip Thick Spinning, 0.38–0.85; 9113611449 Buggy Whip Light Crack Swish 6, 0–0.38 | 1.04 |
+| `lasso_catch` | the rope snapping tight | 9113463271 Block Tackle Rope Pulls Movement 2, 0.03–0.52 | 0.46 |
+| `rope_creak` | while someone hangs, **Looped** | 9118714213 Rope Creaks Handling Various Creaks 2, 0.5–4.7 (sparse creaks) | 5.5 (set) |
+| `lasso_slam` | a body into a wall or floor | 9113518403 / 9113518407 Body Hit Wall 1 / 2 | 0.35 |
+
+Every cut was measured in Studio. `card_heal` runs 2 s so the bell tree rings out. `lasso_catch` uses one take: the
+other cuts were still sliding. They follow WEAPONS once they're on WEAPON_NAMES (`gun_cart` already does). Not heard in
+Play.
+
+---
+
 # Weapons batch D: bowling launcher, bow, slipper, scales, TV remote, Lefty & Righty (18 Nov 2026, place version 864)
 
 Asked for by the weapons-port session. All 22 are Pro Sound Effects recordings, with no voices or crowds. Loops have
