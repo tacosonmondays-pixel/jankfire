@@ -72,7 +72,7 @@ do
 	end
 end
 
-type Patch = { part: Part, gui: SurfaceGui, group: CanvasGroup, ring: Frame, stroke: UIStroke, alpha: number, target: number, rate: number,
+type Patch = { part: Part, gui: SurfaceGui, group: CanvasGroup, ring: Frame, stroke: UIStroke, lines: { Frame }, thick: number, alpha: number, target: number, rate: number,
 	pos: Vector3?, normal: Vector3?, follow: Vector3?, flashT: number? }
 
 local function circle(parent: Instance, scale: number, see: number): Frame
@@ -102,6 +102,7 @@ local function makePatch(i: number): Patch
 	-- a faint glow, thicker in the middle (three soft discs), then the lines
 	circle(cg, 1, 0.965); circle(cg, 0.66, 0.955); circle(cg, 0.34, 0.95)
 	local px = SIZE * PPS
+	local lines = {}
 	for _, e in edges do
 		local x0, y0, x1, y1, s = e[1], e[2], e[3], e[4], e[5]
 		local f = Instance.new("Frame")
@@ -111,12 +112,13 @@ local function makePatch(i: number): Patch
 		f.Rotation = -math.deg(math.atan2(y1 - y0, x1 - x0))
 		f.BackgroundColor3 = TINT; f.BackgroundTransparency = 1 - 0.85 * s; f.BorderSizePixel = 0
 		f.Parent = cg
+		table.insert(lines, f)
 	end
 	-- the ring that runs out from where a rope bites
 	local ring = circle(cg, 0.1, 1)
 	local st = Instance.new("UIStroke"); st.Color = TINT; st.Thickness = 4; st.Transparency = 1; st.Parent = ring
 	p.Parent = holder
-	return { part = p, gui = g, group = cg, ring = ring, stroke = st, alpha = 0, target = 0, rate = 1 / FADE_OUT, pos = nil, normal = nil }
+	return { part = p, gui = g, group = cg, ring = ring, stroke = st, lines = lines, thick = LINE, alpha = 0, target = 0, rate = 1 / FADE_OUT, pos = nil, normal = nil }
 end
 
 local hookP = makePatch(1)
@@ -131,6 +133,16 @@ local function place(pt: Patch, at: Vector3, n: Vector3, size: number?)
 	if math.abs(pt.part.Size.X - sz) > 0.05 then pt.part.Size = Vector3.new(sz, sz, 0.05) end
 	local up = if math.abs(n.Y) > 0.9 then Vector3.zAxis else Vector3.yAxis
 	pt.part.CFrame = CFrame.lookAt(at + n * 0.08, at + n * 2, up)
+end
+-- far away the grid's lines get thicker (once per placing, not per frame), so a patch 200 studs off still reads
+local function lineFor(dist: number): number
+	return math.floor(math.clamp(LINE * dist / 60, LINE, 10) + 0.5)
+end
+local function thicken(pt: Patch, t: number)
+	if pt.thick == t then return end
+	pt.thick = t
+	for _, f in pt.lines do f.Size = UDim2.fromOffset(f.Size.X.Offset, t) end
+	pt.stroke.Thickness = t + 1
 end
 local function show(pt: Patch, a: number)
 	pt.target = a; pt.rate = 1 / FADE_IN
@@ -164,6 +176,7 @@ player:GetAttributeChangedSignal("HookAt"):Connect(function()
 	local hit = workspace:Raycast(from, d.Unit * (d.Magnitude + 2), params)
 	if hit and (hit.Position - at).Magnitude < 1.5 and shield(hit.Instance, at.Y) then
 		place(hookP, at, hit.Normal, math.clamp(d.Magnitude * 0.1, SIZE, 30)) -- (a far one drawn bigger, so it still reads)
+		thicken(hookP, lineFor(d.Magnitude))
 		show(hookP, 1)
 		ripple(hookP)
 	else
@@ -178,7 +191,9 @@ hitFn.OnInvoke = function(at: Vector3, n: Vector3, part: Instance?): boolean
 	if not shield(part, at.Y) then return false end
 	local pt = hitP[nextHit]
 	nextHit = nextHit % #hitP + 1
-	place(pt, at, n, SIZE * 0.7)
+	local dist = (camera.CFrame.Position - at).Magnitude
+	place(pt, at, n, math.clamp(dist * 0.07, SIZE * 0.7, 24))
+	thicken(pt, lineFor(dist))
 	pt.alpha = 0.9; pt.target = 0; pt.rate = 1 / 0.5
 	return true
 end
