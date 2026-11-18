@@ -264,6 +264,7 @@ local function throw(p: Player, eye: Vector3, look: Vector3, claimS: unknown)
 	local s = math.clamp(if type(claimS) == "number" and claimS == claimS then claimS else 0, 0, 1)
 	s = math.min(s, if spin0[f] then (n - (spin0[f] :: number)) / L.spinT + 0.25 else 0.25)
 	spin0[f] = nil
+	p:SetAttribute("LassoSpin", nil)
 	nextT[f] = n + L.cd
 	local root = Fight.root(f)
 	local inh = if root then root.AssemblyLinearVelocity * L.inherit else Vector3.zero
@@ -286,7 +287,8 @@ end
 	local f = Fight.byPlayer[p]
 	if not f then return end
 	if op == "spin" then
-		if f.held == "lasso" then spin0[f] = now() end
+		-- (LassoSpin: everyone's copy of you spins the loop overhead, ThirdPerson; off at the throw)
+		if f.held == "lasso" then spin0[f] = now(); p:SetAttribute("LassoSpin", true) end
 	elseif op == "throw" then
 		if p:GetAttribute("Zone") == "hub" or typeof(a) ~= "Vector3" or typeof(b) ~= "Vector3" then return end
 		local lk = b :: Vector3
@@ -322,6 +324,13 @@ end)
 
 -- ------------------------------------------------------------------ every Heartbeat: the loops, the holds (120 Hz steps), the flights
 RunService.Heartbeat:Connect(function(dt: number)
+	-- a spin that never became a throw (switched away, died, or held too long): its LassoSpin goes
+	for f, t0 in spin0 do
+		if now() - t0 > 4 or f.held ~= "lasso" or not f.alive then
+			spin0[f] = nil
+			if f.kind == "player" then (f.ref :: Player):SetAttribute("LassoSpin", nil) end
+		end
+	end
 	for i = #loops, 1, -1 do
 		local ok, alive = pcall(stepLoop, loops[i], dt)
 		if not ok or not alive then table.remove(loops, i) end
