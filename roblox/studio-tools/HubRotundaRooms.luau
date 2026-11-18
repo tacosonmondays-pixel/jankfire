@@ -678,7 +678,7 @@ return function(B, R)
 		local d3 = (PDs[#PDs - 1] + PDs[#PDs]) / 2
 		-- the arcade cabinet's marker (MiniGames builds the cabinet): its back to the arcade's north wall, its screen down the
 		-- arcade, 3.4 x 2.8 and 4.5 clear in front (world studs)
-		B.rigid(F7, -23.6, cd + 2 + 1.6 / 1.35, 0, function(Fl)
+		B.rigid(F7, -23.6, cd + 2 + 1.6 / (if B.warp then B.warp.K else 1), 0, function(Fl)
 			local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, -0.1, 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
 			m:SetAttribute("Game", "arcade")
 			game:GetService("CollectionService"):AddTag(m, "MiniGameSpot")

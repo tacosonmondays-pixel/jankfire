@@ -55,7 +55,11 @@ R.PUSH = 61 -- (counts the pushes from the repo into Studio while the builder wa
 R.PROPS = 94371006780646 -- (the kit's Model asset: rk_planter, rk_punchbag, rk_tyres, rk_coffeetable, rk_lockers, rk_dumbbells, rk_bench)
 -- the round room: 14 sides, 28 from the middle to a wall's face, walls and piers 3.4 thick, the ring balcony 14 up and
 -- 5.5 deep. side i is at bearing i * 360 / 14; R.OPEN says which sides are ways out
-R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 22.5
+R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 19.5
+-- (18 Nov, the owner: "maybe make the hub larger and extend the size of the balcony so its not as cramped up there?". the
+-- balcony ring's inner edge came in from 22.5 to 19.5: 8.5 deep in the round room's units, 12.75 studs at R.HALL_K 1.5,
+-- from 7.4. over the two jump pads (sides 3 and 11) it keeps its old edge, R.RING_IN_JUMP: a notch the throw lands in)
+R.RING_IN_JUMP = 22.5
 -- the FOCUS: the point on the platform, 6 south of the middle, that the spawn points stand round and that the five
 -- lifts fan out from. each lift bay lies along the line from the focus through the middle of its opening, so from
 -- where you appear every lift is framed by its own two piers (from the room's own middle they would be too far round
@@ -124,8 +128,9 @@ R.MODES = {
 -- over each of the four outer lifts. the way back down is the balcony's gap over each jump pad.
 R.UP_Y = 14.04 -- the second floor's top (the balcony's floor)
 R.UP_ROOF = 27.45 -- its ceiling (the round room's wall top)
-R.UP_OUT = 66.6 -- the face of its outer wall, from the focus
-R.UP_PITCH = 14.5 -- degrees between its pads, seen from the focus
+R.UP_OUT = 76 -- the face of its outer wall, from the focus (66.6 until 18 Nov: the bigger hall, roomier upstairs)
+R.UP_PITCH = 17.5 -- degrees between its pads, seen from the focus (14.5 until 18 Nov: about three times the floor between two)
+R.UP_END = 64 -- the second floor's end walls, degrees from the focus's north (it reaches past the lift fan's ends, R.endBearing)
 R.UP_SIZE = { ["1v1"] = { 10, 8 }, ["2v2"] = { 12, 9 }, ["3v3"] = { 13.6, 10 } }
 -- its pads left to right: name (= its PadId), mode (R.MODES index)
 R.UPPER = {
@@ -256,7 +261,10 @@ R.COMPARE = { { "arena", Vector3.new(200, 240, -10000) }, { "glow", Vector3.new(
 --              props and display guns keep their size and stand where their place went (R.WARP_MODE), plants and the
 --              jump pads grow with the plan, the regulars, markers and lamps move (lamps reach K times as far)
 -- R.VERSION says what R.build("live") makes: 3 = Hub v3, 2 = the Rotunda as it was (the spare: R.switch("rotunda"))
-R.V3 = { K = 1.35, H = { { 0, 0 }, { 9.5, 9.5 }, { 14.04, 18 }, { 23.5, 27.46 }, { 27.45, 35 }, { 41.3, 53 } } }
+-- the whole hub's scale in plan (Hub v3: 1.35; since 18 Nov, the owner's "make the hub larger", 1.5). heights keep their
+-- band map, R.V3.H. TUNABLE: change it and rebuild; every place the builders and the check take from the warp follows
+R.HALL_K = 1.5
+R.V3 = { K = R.HALL_K, H = { { 0, 0 }, { 9.5, 9.5 }, { 14.04, 18 }, { 23.5, 27.46 }, { 27.45, 35 }, { 41.3, 53 } } }
 R.VERSION = 3
 -- how a kit model takes the warp: "stretch" (its footprint K times, its height by H: the structural kit that must meet
 -- walls and lids, and the jump pads: wider, not taller), "seat" (longer, not deeper or taller: people sit in it),
@@ -1135,7 +1143,7 @@ R.LEAKS = {}
 -- the builder makes may stand in them. Hub v3 only (world numbers): { what, its middle on the floor from the hub's site,
 -- its size; it starts 0.4 over the floor }
 R.KEEP = {
-	{ "Dumpling, the lore NPCs session's kid, in the gym's south corner (Map.Lore)", Vector3.new(76, 0, -3.5), Vector3.new(4, 4.6, 4) },
+	-- (Dumpling's box went on 18 Nov: the lore NPCs, Dumpling too, appear only in their code cutscene now, never in the world)
 }
 -- what must show from every spawn point besides the pads' plates and boards: { what, its name in Scenery }
 R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }

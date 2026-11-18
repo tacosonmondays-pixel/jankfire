@@ -80,11 +80,12 @@ return function(B, R)
 
 	-- ---- the second floor: its slab and floor, its roof, in thin slices round the crescent (each one's inner end tucked
 	-- into the round room's wall), the outer wall behind the pads
+	local EU = math.max(E, R.UP_END or E) -- (the second floor's ends: past the lift fan's since 18 Nov)
 	do
-		local n = math.ceil(2 * E / 3.7)
-		local sl = 2 * E / n
+		local n = math.ceil(2 * EU / 3.7)
+		local sl = 2 * EU / n
 		for k = 0, n - 1 do
-			local c = -E + (k + 0.5) * sl
+			local c = -EU + (k + 0.5) * sl
 			local F = B.lf(c)
 			local w = (OUT + 2) * math.tan(math.rad(sl / 2)) + 0.3
 			B.box(F, S, "UpperSlab", -w, w, LO, FT, R.reach(c, A + T - 1.5), OUT + 2, P.shell2)
@@ -128,7 +129,7 @@ return function(B, R)
 		B.bar(F, C, "UpperCove", 0, 2 * wb, 0.6, OUT - 1.4, ROOF + 0.3, OUT, ROOF - 1.1, P.cream, nil, G)
 		B.box(F, C, "UpperCoveStrip", -wb + 0.6, wb - 0.6, ROOF - 1.4, ROOF - 1.2, OUT - 0.32, OUT - 0.1, P.bayWash or P.strip, Neon, G)
 		-- the ceiling over the walk in coffers: a cream beam across at d 39.5 and at d 52 (the radial ribs are below)
-		for _, d in { 39.5, 52 } do
+		for d = OUT - 14.6, R.reach(b, A + T) + 5, -12.5 do
 			local wd = d * math.tan(math.rad(R.UP_PITCH / 2))
 			B.box(F, C, "UpperBeam", -wd, wd, ROOF - 0.8, ROOF - 0.04, d - 0.5, d + 0.5, P.cream, nil, G)
 		end
@@ -143,8 +144,8 @@ return function(B, R)
 		B.box(F, C, "HeaderFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 9.95, UY + 10.3, OUT - 0.35, OUT - 0.02, P.cream, nil, G)
 		B.box(F, C, "HeaderFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 11.45, UY + 11.8, OUT - 0.35, OUT - 0.02, P.cream, nil, G)
 		B.lamp(F, 0, ROOF - 1.2, dP, 22, 0.9, P.light, { spot = true, angle = 90 })
-		B.panel(F, 0, ROOF, 44, 2.4, 6)
-		B.lamp(F, 0, ROOF - 1.2, 44, 22, 0.6)
+		B.panel(F, 0, ROOF, OUT - 22.6, 2.4, 6)
+		B.lamp(F, 0, ROOF - 1.2, OUT - 22.6, 22, 0.6)
 	end
 	-- the fins that make the bays (between the pads and at each end), a light strip on each one's nose, a cream rib from
 	-- each across the ceiling to the round room's wall
@@ -163,11 +164,11 @@ return function(B, R)
 	-- open on either side": the slab and the roof ran to the end walls, the outer wall only behind the pads)
 	do
 		local b0 = nU / 2 * R.UP_PITCH
-		if E > b0 then
+		if EU > b0 then
 			for _, s in { -1, 1 } do
-				local F = B.lf(s * (b0 + E) / 2)
-				local w = (OUT + 2) * math.tan(math.rad((E - b0) / 2)) + 0.6
-				local wb = OUT * math.tan(math.rad((E - b0) / 2)) - 0.1
+				local F = B.lf(s * (b0 + EU) / 2)
+				local w = (OUT + 2) * math.tan(math.rad((EU - b0) / 2)) + 0.6
+				local wb = OUT * math.tan(math.rad((EU - b0) / 2)) - 0.1
 				B.box(F, S, "UpperWall", -w, w, FT, ROOF + 0.96, OUT, OUT + 2, P.bay)
 				B.box(F, C, "UpperBase", -wb, wb, UY, UY + 1.1, OUT - 0.3, OUT, P.pier, nil, G)
 				B.box(F, C, "UpperBaseCap", -wb, wb, UY + 1.1, UY + 1.25, OUT - 0.42, OUT, P.cream, nil, G)
@@ -201,7 +202,7 @@ return function(B, R)
 		for _, i in { 12, 13, 0, 1 } do
 			local F = B.fr((i + 0.5) * 360 / R.N)
 			B.box(F, C, "UpperInPilaster", -0.95, 0.95, UY - 0.02, ROOF - 1.1, rcO - 0.3, rcO + 0.4, P.pier2, nil, G)
-			B.box(F, C, "UpperInPilasterBase", -1.15, 1.15, UY, UY + 1.1, rcO - 0.3, rcO + 0.55, P.pier, nil, G)
+			B.box(F, C, "UpperInPilasterBase", -1.15, 1.15, UY, UY + 1.1, rcO - 0.3, rcO + 0.4, P.pier, nil, G) -- (no prouder than the shaft: the roomier upstairs' walks pass close, 18 Nov)
 			B.box(F, C, "UpperInPilasterCap", -1.25, 1.25, ROOF - 1.2, ROOF, rcO - 0.3, rcO + 1.05, P.cream, nil, G)
 		end
 	end
@@ -211,19 +212,24 @@ return function(B, R)
 		local e = s * E
 		local F = B.lf(e)
 		local w0 = R.reach(e, A + 1)
-		B.box(F, S, "EndWall", -1.6, 1.6, 0, ROOF, w0, OUT + 2, P.shell)
+		-- (the lift ring's end wall to the second floor's underside; the second floor has its own, further out, since 18 Nov)
+		B.box(F, S, "EndWall", -1.6, 1.6, 0, if EU > E + 0.5 then FT else ROOF, w0, OUT + 2, P.shell)
 		B.box(F, C, "EndBase", -s * 1.6, -s * 1.95, 0, 0.7, w0 + 3, D0, P.pier2, nil, G)
 		B.box(F, C, "EndLedge", -s * 1.6, -s * 2.1, 5, 5.5, w0 + 3, D0, P.cream, nil, G)
 		B.box(F, C, "EndBand", -s * 1.6, -s * 1.75, 5.5, 7.2, w0 + 3, D0, P.band, nil, G)
-		-- on the second floor too: skirting with a cap, a rail at hand height, a cornice, and a lit panel in a pale frame
-		local u0 = R.reach(e, A + T) + 0.4
-		B.box(F, C, "EndUpBase", -s * 1.6, -s * 1.9, UY, UY + 1.1, u0, OUT - 0.3, P.pier, nil, G)
-		B.box(F, C, "EndUpBaseCap", -s * 1.6, -s * 2.02, UY + 1.1, UY + 1.25, u0, OUT - 0.42, P.cream, nil, G)
-		B.box(F, C, "EndUpRail", -s * 1.6, -s * 1.94, UY + 3.3, UY + 3.62, u0, OUT - 0.42, P.cream, nil, G)
-		B.box(F, C, "EndUpCornice", -s * 1.6, -s * 2.4, ROOF - 1, ROOF, u0, OUT - 0.3, P.cream, nil, G)
-		B.box(F, C, "EndUpPanel", -s * 1.6, -s * 1.72, UY + 4.2, UY + 10.2, 47, 57, P.panel, Neon, G)
-		for _, y in { { UY + 3.85, UY + 4.2 }, { UY + 10.2, UY + 10.55 } } do B.box(F, C, "EndUpFrame", -s * 1.6, -s * 1.95, y[1], y[2], 46.65, 57.35, P.cream, nil, G) end
-		for _, d in { { 46.65, 47 }, { 57, 57.35 } } do B.box(F, C, "EndUpFrame", -s * 1.6, -s * 1.95, UY + 4.2, UY + 10.2, d[1], d[2], P.cream, nil, G) end
+		-- the second floor's end wall: skirting with a cap, a rail at hand height, a cornice, and a lit panel in a pale frame
+		local eu = s * EU
+		local Fu = if EU > E + 0.5 then B.lf(eu) else F
+		if EU > E + 0.5 then B.box(Fu, S, "EndWall", -1.6, 1.6, FT, ROOF, R.reach(eu, A + 1), OUT + 2, P.shell) end
+		local u0 = R.reach(eu, A + T) + 0.4
+		local pm = (u0 + OUT) / 2
+		B.box(Fu, C, "EndUpBase", -s * 1.6, -s * 1.9, UY, UY + 1.1, u0, OUT - 0.3, P.pier, nil, G)
+		B.box(Fu, C, "EndUpBaseCap", -s * 1.6, -s * 2.02, UY + 1.1, UY + 1.25, u0, OUT - 0.42, P.cream, nil, G)
+		B.box(Fu, C, "EndUpRail", -s * 1.6, -s * 1.94, UY + 3.3, UY + 3.62, u0, OUT - 0.42, P.cream, nil, G)
+		B.box(Fu, C, "EndUpCornice", -s * 1.6, -s * 2.4, ROOF - 1, ROOF, u0, OUT - 0.3, P.cream, nil, G)
+		B.box(Fu, C, "EndUpPanel", -s * 1.6, -s * 1.72, UY + 4.2, UY + 10.2, pm - 5, pm + 5, P.panel, Neon, G)
+		for _, y in { { UY + 3.85, UY + 4.2 }, { UY + 10.2, UY + 10.55 } } do B.box(Fu, C, "EndUpFrame", -s * 1.6, -s * 1.95, y[1], y[2], pm - 5.35, pm + 5.35, P.cream, nil, G) end
+		for _, d in { { pm - 5.35, pm - 5 }, { pm + 5, pm + 5.35 } } do B.box(Fu, C, "EndUpFrame", -s * 1.6, -s * 1.95, UY + 4.2, UY + 10.2, d[1], d[2], P.cream, nil, G) end
 		-- (no pot plant here any more: the owner, 16 Nov, after a play-test: "in the match pads theres random pots on the
 		-- ground?". the walk past the lifts keeps clear floor)
 	end

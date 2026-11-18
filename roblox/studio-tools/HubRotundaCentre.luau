@@ -98,11 +98,27 @@ return function(B, R)
 			B.lamp(F, 0, 10.8, 25, 15, 0.55)
 		end
 		-- the ring balcony: its slab, its floor, and its rail (none over a jump pad, sides 3 and 11: the way up, and the way
-		-- back down from the second floor)
-		B.box(F, S, "Ring", -wi - 0.05, wi + 0.05, 12, RY, RIN, A, P.cream)
-		B.box(F, C, "RingFloor", -wi, wi, RY, RY + 0.04, RIN + 0.9, A - 0.05, P.floor2, nil, G) -- (its end off the slab's outer face: the flicker finder, 18 Nov)
+		-- back down from the second floor). each side a trapezoid (since the ring went deeper, 18 Nov: one box as wide as the
+		-- side at the wall stuck out in teeth along the inner edge): a middle as wide as the side at the inner edge, and a
+		-- wedge laid flat either side out to the corner lines, so two sides meet on the radial line between them. over the
+		-- jump pads the ring keeps its old edge (R.RING_IN_JUMP), a notch the throw lands in
+		local rin = if i == 3 or i == 11 then R.RING_IN_JUMP or RIN else RIN
+		local function trap(name, folder, r0, r1, y0, y1, hex, o)
+			local c0 = wid(r0) / 2
+			local mid = B.box(F, folder, name, -c0 - 0.05, c0 + 0.05, y0, y1, r0, r1, hex, nil, o)
+			local c1 = wid(r1) / 2 + 0.3 -- (each wedge reaches 0.3 past the corner line at the wall, under its neighbour's: no seam a ray can slip through)
+			for _, s in { -1, 1 } do
+				local w = B.box(F, folder, name, 0, 1, y0, y1, r0, r1, hex, nil, if o then { ghost = o.ghost, wedge = true } else { wedge = true })
+				local vY, vZ = Vector3.new(s, 0, 0), Vector3.new(0, 0, -1)
+				w.Size = Vector3.new(y1 - y0, c1 - c0, r1 - r0)
+				w.CFrame = F * CFrame.fromMatrix(Vector3.new(s * (c0 + c1) / 2, (y0 + y1) / 2, -(r0 + r1) / 2), vY:Cross(vZ), vY, vZ)
+			end
+			return mid
+		end
+		trap("Ring", S, rin, A, 12, RY, P.cream)
+		trap("RingFloor", C, rin + 0.9, A - 0.05, RY, RY + 0.04, P.floor2, G) -- (its end off the slab's outer face: the flicker finder, 18 Nov)
 		if i == 3 or i == 11 then
-			B.paint(F, "GapMark", -wf, wf, RY, RIN, RIN + 0.9, P.ray, 0.02)
+			B.paint(F, "GapMark", -wid(rin) / 2, wid(rin) / 2, RY, rin, rin + 0.9, P.ray, 0.02)
 		else
 			B.put(F, "hb_rail", "Rail", 0, RY, RIN + 0.45, 0, { stretch = Vector3.new(wid(RIN + 0.4) / 9.5, 1, 1), solid = true,
 				color = { ["2e3140"] = P.cream, c4c8d4 = P.creamHi, ["5b6478"] = P.cream, ["17141f"] = P.accent } })
@@ -124,7 +140,7 @@ return function(B, R)
 			B.box(F, C, "GalleryBase", -wi + 0.05, wi - 0.05, RY, RY + 0.6, A - 0.3, A, P.pier, nil, G)
 		end
 		if i == 0 then
-			B.text(F, "GalleryName", { { "JANKFIRE", P.word, "B", 1 } }, 10.6, 3.4, 0, 21.8, A - 0.3, 0, { flush = true, thick = 0.4, pps = 40 }) -- (high enough to clear the rail, seen from the platform)
+			B.text(F, "GalleryName", { { "JANKFIRE", P.word, "B", 1 } }, 10.6, 3.4, 0, 23.2, A - 0.3, 0, { flush = true, thick = 0.4, pps = 40 }) -- (high enough to clear the rail, seen from the platform: 21.8 until the ring went deeper, 18 Nov)
 		elseif i == R.EGG_SIDE then
 			-- (18 Nov: the hub egg's hiding place. the main session gave training-v2 a hub egg, "hidden somewhere in Hub v3 that
 			-- takes some exploring": this side's gallery window is a real opening, dark, in the same frame as the others; a

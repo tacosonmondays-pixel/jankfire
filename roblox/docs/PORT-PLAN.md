@@ -2025,6 +2025,31 @@ The owner on v953 and v963. On the lobby's north wall: "can you remove those blo
 - Checks: live `R.check` 0 problems. One solo Play: the player spawns on the lobby floor, the 12 pads are live, the regulars are out, and the mini-games build on their markers.
 - Sheet: `roblox/docs/hub/hub_lobby_grey_976.jpg`. Next: the bigger hall, planned in `roblox/docs/hub/hub_bigger_plan.jpg`.
 
+## 49. Hub v3: the bigger hall, a deeper balcony, a roomier upstairs, 18 November 2026 (place version 990)
+
+The owner: "maybe make the hub larger and extend the size of the balcony so its not as cramped up there? that might be the issue". This is the plan `roblox/docs/hub/hub_bigger_plan.jpg`, approved by main.
+- **Tunables** (HubRotunda):
+  - `R.HALL_K` = 1.5 (was 1.35): the whole hub's scale in plan; heights keep `R.V3.H`.
+  - `R.RING_IN` = 19.5 (was 22.5): the balcony is 12.75 studs deep, from 7.4.
+  - `R.RING_IN_JUMP` = 22.5: over the two jump pads the ring keeps its old edge, a notch the throw lands in, so the throws are unchanged.
+  - `R.UP_OUT` = 76 (was 66.6) and `R.UP_PITCH` = 17.5° (was 14.5°): about three times the floor between two upper pads.
+  - `R.UP_END` = 64°: the second floor's own end walls, past the lift fan's (`R.endBearing`, 54.3°). The lift ring's end walls stop at the second floor's underside.
+- **The ring's sides** (HubRotundaCentre) are trapezoids now. Each is a middle as wide as the side at the inner edge, plus a wedge laid flat either side out to the radial corner line, reaching 0.3 past it under the neighbour. One box as wide as the side at the wall left teeth along a deeper ring.
+- **Upstairs** (HubRotundaLifts): the walk's coffer beams and light panel go by the outer wall (`OUT` - 14.6, - 27.1 and so on). The inner pilasters' bases are no prouder than their shafts, because the walks pass close.
+- **Other changes:**
+  - The gallery name over the middle lift moved up to 23.2 to clear the nearer rail from the platform.
+  - Dumpling's keep box is gone (the lore NPCs are cutscene-only).
+  - The arcade cabinet's marker no longer assumes K 1.35.
+- **Moved with the lobby:**
+  - the code-panel corner, now at floor (-163.55, 239.95, -9888.25), facing -X, box clear; lore-npcs was told;
+  - the mini-game markers: arm (-181.70, 240, -9928), board (-218.30, 240, -9928), arcade (-164.60, 240, -9957.63);
+  - the fountain's water, now at (-200, 240, -9912), refilled by the build.
+- **Checks:**
+  - Staging found 13 problems; all were fixed before going live.
+  - Live `R.check`: 0 problems, leaks 0, 12 of 12 pads walked to, the regulars' ways clear (934 body boxes).
+  - The training and playground zones are clear of the bigger hub.
+  - One solo Play: the player spawns in the lobby, the 12 pads are live, the regulars are out, and the console shows nothing from the hub.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
