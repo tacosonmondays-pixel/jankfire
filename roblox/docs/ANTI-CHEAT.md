@@ -6,7 +6,7 @@ Later the same day the owner also asked: "Can we have a built in report that sav
 
 Short version:
 
-- **Movement cheats** (teleport, noclip, fly, speed) are checked on the server ten times a second against what the game itself can do to a body. A catch puts the player back, scores points, and enough points is a kick.
+- **Movement cheats** (teleport, noclip, fly, speed) are checked on the server ten times a second against what the game itself can do to a body. A catch puts the player back and scores points. Enough points from catch after catch would be a kick, but **movement kicks are off** (`KICK_MOVE = false`) since a friend was kicked for lag on 18 Nov. Lag itself is no longer a catch: see "Lag" below.
 - **Bans** exist but are switched **off**: banning is the owner's call.
 - **Aim cheats** are only written down for the owner to read. The server never acts on them.
 - **Every remote** was audited. The gaps that were found are fixed, or handed to the session whose file it is.
@@ -22,7 +22,7 @@ Short version:
   - **ESP / wallhacks.** Every client is told where every player is, because it has to draw them.
   - **"No knockback" and "no slip".** The client applies knockback, marble slips and Shredder pulls to itself, and a cheat can ignore them. The server could compare the body's motion after a knock with the knock it sent. That isn't built yet: it's the next check worth adding.
   - **Small speed edges.** A boost that stays inside the margins the game's own moves need (sprint, slides, bhops) isn't distinguishable from good movement.
-  - **Lag switching.** A player who freezes their connection mid-run gets a second of travel time back when they reconnect, because real lag looks the same.
+  - **Lag switching.** A player who freezes their connection gets the gap back when they reconnect (a second at full speed, then 150 studs/s for the rest, up to 4 s), and nothing is judged while they're frozen, because real lag looks the same. A frozen client can't shoot or use anything, so the most it buys is a short head start.
 
 ## The movement checks (server/AntiCheat.server.luau)
 
@@ -35,13 +35,13 @@ Every body is looked at every 0.1 s. Each look checks, in order:
 | **inside** | standing inside a wall or the floor, hiding in geometry | the body's middle (a 0.6 × 1.4 × 0.6 box round the root) overlaps something solid's real shape for 3 looks in a row | 0.3 s |
 | **fly** | hovering, flying up, floating | a parabola is fitted through a window of free-flight looks: its curvature is the body's vertical acceleration. A real body in the air falls at gravity (78 studs/s²); a flyer shows about 0. | the window (1.2 s, 9+ looks) must show at least 45% of gravity, with a fit within 1.5 studs. A bad fit (a bump, a lag burst) proves nothing and is skipped. |
 | **climb** | flying up, "infinite jump" (jumping again in mid-air) | since its last take-off a body can rise at most v0² / 2g: nothing in the air pushes it up. v0 is the most the take-off could give, from the list below. | the climb may reach 1.15 × that + 4 studs |
-| **stall** | an anchored body hanging in the air | no movement at all while nothing is under it | 3 s |
+| **stall** | an anchored body hanging in the air | no movement at all while nothing is under it, **timed only while the client is talking** (its beat or a remote arrives). A frozen connection pauses the clock. | 3 s |
 | **speed** | a ground speed hack | flat speed over 0.5 s, only after 1.6 s on the ground without a break | 1.3 × (run 30 × sprint 1.45 × the lightest gun 1.2 × the gold star 1.25 when on) + 8: 76 studs/s, 93 with the gold star |
 
 **The climb's take-off speed (v0)** is the most generous case:
 
 - **From the ground**: a jump (the slide jump's 33 studs/s, +1) on top of 1.3 × the body's speed then, because a ramp can turn speed into height. If a jump pad is within 14 studs, its throw goes on top of that.
-- **From a push**: the push's size plus a jump.
+- **From a push**: the push's size plus a jump. That includes a push that lands while the body is still standing (within 1.5 s plus a round trip of the take-off). Before 18 Nov a knock straight up from the ground was caught as a climb ("climbed 33 studs, its take-off allows 24").
 - **From a rope**: 180 studs/s (a grapple jump is 1.12 × the rope's 126 pull, plus 33 up).
 
 The ten looks a second can miss a bhop's ground contact, which lasts a few ticks. So a sudden upward kick between two looks, with ground within 6 studs under it, counts as a landing and a new take-off. Each kick also starts a new fit window: an early version fitted two hops and the bounce between them as one curve, and called it hovering. That was the only false catch in the first test, fixed the same day.
@@ -88,8 +88,9 @@ Mark any new client-animated solid with `ACPass = true`.
 ### The ladder
 
 1. **Put back.** The body goes back to its last clear look; a flyer goes back to its last spot on the ground. The trusted spot stays there. A client that ignores the put back is measured from that spot again and caught again.
-2. **Points.** Each catch scores: noclip 3, teleport 2, inside 2, fly 2, stall 2, speed 1. Points count for 180 s.
-3. **Kick** at 10 points inside that window. A flyer who keeps flying is kicked within a few seconds; a false catch would need five in three minutes.
+2. **Points.** Each catch scores: noclip 3, teleport 2, inside 2, fly 2, stall 2, speed 1. A catch within 5 s of a gap with no updates, or while the player's ping has lately been over 300 ms, scores half. **Every catch's points halve every 40 s** (since 18 Nov; before that they counted in full for 180 s).
+3. **Kick** at 10 points, and only from a pattern: at least 4 catches in the last 60 s, the first and last at least 5 s apart. A flyer who keeps flying is caught every second or two and reaches it in about 10 s. A teleporter caught every 10 s reaches it after about 10 teleports. One clump of catches (a lag spike can trip three checks at once) never kicks, and neither does a false catch now and then. Player A's catches (see "Lag": eight climbs over 19 minutes, the last three within about 20 s) come to about 6 points this way, and only 3 of them fall in the last 60 s.
+   - **Movement kicks are off** since 18 Nov: `KICK_MOVE = false` in `server/AntiCheatRules.luau`. A full ladder writes "would kick" to the log and starts counting again. `KICK` (still on) is the master switch; the owner's panel KICK button doesn't read either.
 4. **Ban** only if the owner switches it on. In `server/AntiCheatRules.luau`:
    - `BANS = true` turns on the panel's BAN and UNBAN buttons.
    - `AUTO_BAN = true` also bans after 3 kicks in 7 days.
@@ -97,7 +98,32 @@ Mark any new client-animated solid with `ACPass = true`.
 
    Bans use `Players:BanAsync` (ApplyToUniverse, alt accounts included). The reason and duration go into the review log.
 
-Unsure cases are only written down, never punished. That covers a fly or stall verdict right beside a wall (wedged on an edge, or climbing) and every aim signal.
+Unsure cases are only written down, never punished. That covers a fly or stall verdict right beside a wall (wedged on an edge, or climbing), a climb in an arc that a gap with no updates broke, a noclip line across such a gap, and every aim signal.
+
+### Lag (18 Nov 2026)
+
+The owner, about 02:00 UTC: "my friend got server movement checked because of lag". Movement kicks went off at once (place version 745, commit 363ca82), then the checks were made lag-tolerant.
+
+**What the live log showed** (`JankAntiCheat_v1`, key `log`, read-only; players are A and B here, never their ids):
+
+- **Player B, kicked 01:48:58 UTC (the friend).** Four minutes on one server: a hover fit with a ragged curve (fit 0.70, almost the 0.8 limit), then **"still in the air for 3.1 s"** three times (01:46:43, 01:48:08, 01:48:58), and a climb 1 stud over its line. That's 10 points in 3 minutes. B's other servers show the same ragged connection: hovers beside walls, a 0.3 s "inside" a door. The stall check can't tell a body hanging in the air from a body the server has stopped hearing about: when a connection freezes, the server's copy of the body stays wherever the last update left it, in mid-jump.
+- **Player A, kicked 23:27:12 UTC on 17 Nov.** Eight climb catches over 19 minutes ("climbed 57 studs, its take-off allows 54"), the last three within about 20 s. The catch always lands just past the line because the put back stops the climb there, so the small overshoot proves nothing either way. One cause was found in the tests below: a knock that lands while the body is still standing wasn't counted as the take-off. A could still be a cheat; the new ladder wouldn't have kicked A for this (about 6 points).
+
+**What changed:**
+
+1. **A beat.** Every client fires `JankfireRemotes.ACBeat` (an UnreliableRemoteEvent) 8 times a second, from `client/AntiCheatPanel.client.luau` (it runs for everyone; the panel itself is still owner-only). It's unreliable on purpose, so it stops when the connection does, like physics updates. The server also counts the gameplay remotes (Fire, Equip, Reload, Swing, MeleeHit, Parry, Aim, Item, Grapple) as the client talking.
+2. **Stale looks.** If the body hasn't moved since the last look, nothing has come from the client for 0.5 s, and its beat was going right up to then, the server's copy is old. Nothing is judged on it: no stall, no inside, no fly. A gap of 1 s or more shows in the test hook's verdicts as a `lag` "pardon". It isn't written to the review log: that log is evidence, and a player's first line there dates a CONFIRM's restores (`Reports.evidenceSince`). A catch's own line says whether a gap came just before it.
+   - The beat must have been going until the quiet. A client that drops its beat but keeps shooting isn't lagging.
+   - A body that moves proves its updates are coming, so there's no pardon for a moving body.
+   - The stall clock only pauses during a gap; it never resets. A cheat that hovers and goes quiet now and then is still caught after 3 s of talking time.
+3. **The catch-up.** The first step after a gap gets the usual room for up to a second at full speed, plus 150 studs/s for the whole gap (at most 4 s). A noclip line across the gap is only written down, because the path in between wasn't seen (a walk round a door frame cuts through it in a straight line). The fly fit starts a new window 0.3 s after the gap. A climb in an arc that a gap broke is only written down until the body stands again, because the take-off, a landing or a pad may have come in the gap. The fly fit still judges that arc against gravity.
+4. **Ping.** The room every check gives for ping uses the highest ping lately, falling 20 ms a second, instead of the ping at that instant. Spikes come back.
+5. **Half points on a bad connection.** A catch within 5 s of a gap, or while the ping has lately been over 300 ms, scores half.
+6. **The ladder** (above): points halve every 40 s, and a kick needs 4+ catches in the last 60 s spread over 5+ s.
+7. **Every catch's log line carries the connection:** `[ping 80 ms, high 340 ms, 1.2 s without updates 3 s ago]`.
+8. **The take-off from a push** (see "The climb's take-off speed"): a knock that lands while the body still stands counts.
+
+What a cheat gains from this: going fully quiet (no beat, no remotes, no movement) for a while. A quiet client can't shoot, use items or swing, so it can only hang where it is. When it talks again it's judged from where it is, with a gap's travel room for one step.
 
 In a Studio Play test the movement checks are **off** unless the test turns them on. Other sessions' tests move their player in ways no client could. To turn them on, set the attribute `StudioOn = true` on `ServerScriptService.Jankfire.AntiCheat` in the Play server. Studio never kicks or bans: it writes "would kick" / "would ban".
 
@@ -236,7 +262,8 @@ Found here, then fixed by the session working on that file (it had uncommitted c
 
 `ServerStorage.JankAC` (a BindableFunction that only exists in Studio):
 
-- `:Invoke("state", player)` returns `{ points, verdicts, worst, aim, cfWrites, errors }`. `worst` is how close each check came on that player, where 1 = right at the line.
+- `:Invoke("state", player)` returns `{ points, verdicts, worst, aim, cfWrites, errors, lag, catches }`. `worst` is how close each check came on that player, where 1 = right at the line. `lag` (since 18 Nov) has `heard` and `beat` (seconds since anything, and since the last beat, came from the client), `stale` (a gap going on now), `len` and `ago` (the last gap's length and how long ago it ended), `pingHi`, `stillHeard` (how long the body has hung still while talking) and `arcLag`. Points come back as a decimal now that they halve.
+- **Simulating lag.** `settings().Network.IncomingReplicationLag` freezes nothing in a solo Play test (tried from both sides on 18 Nov). What works is a frozen client. On the Client side, set `ACMute = true` on the player's copy of the script (`PlayerScripts…AntiCheatPanel`, Studio only), and anchor the root mid-jump for a few seconds. With the beat still going, the same anchor is a hover cheat.
 - `"reset"` clears the player's points, verdicts and `worst`.
 - `"knock"` sends a real `Fight.knock` with a given velocity.
 - `"shred"` does what the Shredder does to its victim: the `JFShredded` group and "pull" messages.
@@ -244,6 +271,31 @@ Found here, then fixed by the session working on that file (it had uncommitted c
 Results of the 17 Nov tests: see "Test results" below.
 
 ## Test results
+
+### The lag fix (18 Nov 2026, place version 751)
+
+Studio Play tests with `StudioOn` and one player, on the Rotunda's open dais. "Before" is place version 745 (the old checks with kicks off); "after" is 751.
+
+| Test | Before | After |
+|---|---|---|
+| **A frozen client**: beat muted (`ACMute`) and the root anchored 0.2 s into a jump, 3.6 s, twice | "still in the air for 3.1 s": put back, 2 points | **0 points.** Two `lag` pardons ("no updates for 3.9 s" / "4.0 s"), nothing put back |
+| A frozen client that moves 80 studs during a 3 s freeze (the catch-up) | not run | 0 points; the catch-up step used half its room (teleport worst 0.50) |
+| A server knock straight up from standing, (0, 110, 0), then (0, 80, 40) | **"climbed 33 studs with nothing under it (its take-off allows 24)"**: put back, 2 points | 0 points (climb worst 0.29) |
+
+The cheats, after (all still caught):
+
+| Cheat | Caught as |
+|---|---|
+| Hover: anchored mid-jump for 4 s with the beat going | stall, "still in the air for 3.1 s". This one landed beside a balcony wall, so it was a flag, as before |
+| **Fake lag, then hover**: beat muted 2 s while hanging, then talking again and still hanging 3.8 s | a `lag` pardon for the 2.5 s quiet, then stall, "still in the air for 3.1 s … 2.5 s without updates 3 s ago" (beside the same wall: a flag) |
+| Teleport 250 studs up | teleport, "132 studs in 0.12 s (room 79)", put back |
+| Fly up at 10 studs/s for 13 s | fly, "rising", put back every 1.3 s; **"would kick" after 6 catches in 8 s (11.3 points)**, then counting again |
+
+What the tests couldn't cover: a real network freeze. `settings().Network.IncomingReplicationLag` freezes nothing in a solo Play test, so the lag tests freeze the client instead. The server sees the same thing in both cases: no updates and no beats. Noclip wasn't re-run, because its check only changed for the first step after a gap.
+
+**Movement kicks stay off** (`KICK_MOVE = false`). The lag case passes, but the real-network version is untested, and in a friends-only preview a false kick costs more than a missed cheat. A cheat is still put back on every catch. Every catch line now carries the ping and any gap, so a day of live logs shows whether any "would kick" line lands on an innocent player. If none does, set `KICK_MOVE = true`.
+
+### The first build (17 Nov 2026)
 
 All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. Saved as place version 542. `worst` is how close each check came on that player (1 = the line).
 

@@ -63,9 +63,26 @@ R.C = {
 	noclipMin = 0.1,
 	noclipLen = 30, -- studs: longer steps are the teleport check's (a lag burst's path isn't a straight line)
 	insideFor = 3, -- looks in a row with the body's middle inside something solid
-	-- the ladder: every catch is put back and scores points; enough points inside the window = a kick
-	window = 180, -- s
+	-- lag (18 Nov 2026: a friend on a bad connection was kicked by the stall check, three 3 s freezes in two minutes).
+	-- the client beats 8 times a second (client/AntiCheatPanel.client.luau, remote ACBeat, unreliable). a body that
+	-- hasn't moved while nothing has come from the client for `silent` s is a frozen connection, not a hover: nothing is
+	-- judged on its stale copy. when updates come again, the catch-up step gets room for the gap
+	silent = 0.5, -- s with no beat and no gameplay remote
+	lagMax = 4, -- s: at most this much of a gap is credited
+	lagSpeed = 150, -- studs/s of travel room for each second of the gap, on top of the usual room (a rope pulls 126)
+	lagAfter = 5, -- s after a gap in which a catch counts lagMul of its points
+	pingBad = 0.3, -- s: a ping this high lately (pingHi) counts every catch lagMul too
+	lagMul = 0.5,
+	pingFall = 0.02, -- s a second: the room's ping is the highest lately, coming down this fast (spikes come back)
+	-- the ladder: every catch is put back and scores points, and every catch's points halve every halfLife s. a kick
+	-- takes kickAt points from at least kickMinN catches spread over kickSpan s or more: a flyer or a teleporter caught
+	-- over and over, never one burst (a lag spike can trip three checks at once) and never a catch now and then
+	window = 180, -- s: catches older than this are dropped (by then they're worth under 5%)
+	halfLife = 40, -- s
 	kickAt = 10, -- points
+	kickMinN = 4, -- catches in the last kickWin s
+	kickWin = 60, -- s
+	kickSpan = 5, -- s from the first of those to the last
 	weights = { teleport = 2, noclip = 3, inside = 2, fly = 2, stall = 2, speed = 1 } :: { [string]: number },
 	-- ------------------------------------------------------------------ aim (written down for the owner, never acted on)
 	aimMinHits = 30, -- hits with a one-bullet gun before the head and snap ratios count
@@ -146,7 +163,7 @@ function R.throughSlab(enterNormal: Vector3, exitNormal: Vector3): boolean
 	return enterNormal:Dot(exitNormal) < -0.7
 end
 
--- the ladder: add a catch, drop the old ones, return the points inside the window
+-- the ladder: add a catch, drop the old ones, return the points now (each catch's halved every halfLife s)
 function R.strike(list: { { t: number, w: number } }, now: number, w: number): number
 	table.insert(list, { t = now, w = w })
 	return R.points(list, now)
@@ -154,8 +171,19 @@ end
 function R.points(list: { { t: number, w: number } }, now: number): number
 	while #list > 0 and now - list[1].t > R.C.window do table.remove(list, 1) end
 	local n = 0
-	for _, s in list do n += s.w end
+	for _, s in list do n += s.w * 0.5 ^ (math.max(now - s.t, 0) / R.C.halfLife) end
 	return n
+end
+-- a kick is due: the points, and in the last kickWin s kickMinN catches or more, the first and last kickSpan s apart
+-- at least (one clump of catches is never a kick)
+function R.kickDue(list: { { t: number, w: number } }, now: number): boolean
+	local C = R.C
+	if R.points(list, now) < C.kickAt then return false end
+	local n, first = 0, nil
+	for _, s in list do
+		if now - s.t <= C.kickWin then n += 1; first = first or s.t end
+	end
+	return n >= C.kickMinN and first ~= nil and list[#list].t - first >= C.kickSpan
 end
 
 -- degrees between two yaws (radians), the short way round

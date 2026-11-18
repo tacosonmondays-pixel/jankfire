@@ -17,8 +17,11 @@
 -- flight. a future streak that bends the rules (Moon Boots) sets ACGravity (x gravity) or calls the ACGrace
 -- attribute (os.clock() until): AntiCheat stays out of its way. a mode that runs everyone faster sets ACSpeed (x the
 -- ground limit and a rope's throw; classic modes' Spoons & Grapples: 1.6).
--- a catch is put back where it was last fine, and scores points (AntiCheatRules.C.weights); enough points inside the
--- window is a kick. bans are the owner's switch (C.BANS, off). aim signals (headshot share, snaps before hits, hits
+-- lag is never a catch: a body that stops while its client goes quiet (no beat on ACBeat, no gameplay remote) has a
+-- frozen connection, so nothing is judged on its stale copy, and the catch-up step gets room for the gap.
+-- a catch is put back where it was last fine, and scores points (AntiCheatRules.C.weights) that halve every 40 s; a
+-- kick takes 10 of them from catch after catch (AntiCheatRules.kickDue), and only with C.KICK_MOVE on. bans are the
+-- owner's switch (C.BANS, off). aim signals (headshot share, snaps before hits, hits
 -- through smoke) are only written to the review log: the server never acts on them. a Studio Play test never kicks (it
 -- writes "would kick"): ServerStorage.JankAC (Studio only) reads and resets the state for tests.
 local Players = game:GetService("Players")
@@ -306,6 +309,12 @@ type St = {
 	baseY: number, baseT: number, maxY: number, v0: number,
 	speedNow: number,
 	knownGround: boolean, -- seen standing since the last teleport, spawn or put back
+	-- lag (18 Nov 2026): when the client was last heard (its beat, or a gameplay remote), when its last beat came, a
+	-- silence going on now (since when), the last one that ended (when, how long), the arc it broke, how long the body
+	-- has hung still in the air while the client was talking, the highest ping lately
+	heard: number, beatT: number, lagFrom: number?, lagEnd: number, lagLen: number, arcLag: boolean,
+	stillHeard: number, pingHi: number,
+	lookT: number, -- the last look (how long a still look lasted)
 }
 local st: { [Player]: St } = {}
 
@@ -317,6 +326,8 @@ local function fresh(): St
 		aims = {}, aimT = 0, shot = nil, hits = 0, heads = 0, snaps = 0, smoke = 0, gunHits = 0, flagT = {},
 		probes = 0, probeT = 0, selfT = -math.huge, cfWrites = 0, kickSeen = -math.huge,
 		baseY = 0, baseT = -math.huge, maxY = 0, v0 = 0, speedNow = 0, knownGround = false, hookAsks = {}, noCharge = {},
+		heard = now(), beatT = now(), lagFrom = nil, lagEnd = -math.huge, lagLen = 0, arcLag = false, stillHeard = 0, pingHi = 0,
+		lookT = now(),
 	}
 end
 
@@ -341,6 +352,7 @@ local function restart(s: St, at: Vector3?, grace: number)
 	table.clear(s.samples)
 	s.trusted, s.trustedT = at, now()
 	s.groundSince, s.airSince, s.stillSince = nil, nil, nil
+	s.stillHeard = 0
 	s.insideN = 0
 	s.grace = math.max(s.grace, now() + grace)
 	s.knownGround, s.speedNow = false, 0 -- (until it's seen standing again, its next take-off is unknown)
@@ -404,8 +416,20 @@ local function kick(p: Player, s: St, why: string)
 	p:Kick("Disconnected by the server's movement check. If this was a mistake, rejoin.")
 end
 
+-- the connection, for the log: the ping now, the highest lately, a recent gap with no updates
+local function netInfo(p: Player, s: St): string
+	local t = now()
+	local gap = if t - s.lagEnd < 10 then (", %.1f s without updates %.0f s ago"):format(s.lagLen, t - s.lagEnd) else ""
+	return (" [ping %d ms, high %d ms%s]"):format(math.floor(p:GetNetworkPing() * 1000), math.floor(s.pingHi * 1000), gap)
+end
+-- a catch right after a gap with no updates, or on a bad connection, counts lagMul of its points
+local function laggy(s: St): boolean
+	return now() - s.lagEnd < C.lagAfter or s.pingHi > C.pingBad
+end
+
 -- a catch: put back (to `to`), points, maybe a kick. soft = only written down (the server isn't sure)
 local function caught(p: Player, s: St, kind: string, info: string, to: Vector3?, soft: boolean?)
+	info ..= netInfo(p, s)
 	if soft then
 		verdict(s, kind, info, "flag")
 		if now() - (s.flagT[kind] or -math.huge) > 20 then
@@ -421,12 +445,17 @@ local function caught(p: Player, s: St, kind: string, info: string, to: Vector3?
 		root.AssemblyLinearVelocity = Vector3.zero
 		root.CFrame = CFrame.new(to) * root.CFrame.Rotation
 		-- (the client's updates already on their way still show it where it was: wait them out, a round trip)
-		restart(s, to, 0.15 + 2 * math.clamp(p:GetNetworkPing(), 0, 1))
+		restart(s, to, 0.15 + 2 * math.clamp(math.max(p:GetNetworkPing(), s.pingHi), 0, 1))
 	end
-	local pts = ACR.strike(s.points, now(), C.weights[kind] or 1)
+	-- (points halve every halfLife s: a kick needs catch after catch, kickMinN of them over kickSpan s at least, never
+	-- one burst. a catch on a bad connection counts half)
+	local w = (C.weights[kind] or 1) * (if laggy(s) then C.lagMul else 1)
+	local pts = ACR.strike(s.points, now(), w)
 	verdict(s, kind, info, "put back")
-	Log.add(p, kind, "put back", ("%s; %d/%d points"):format(info, pts, C.kickAt), C.weights[kind] or 1)
-	if pts >= C.kickAt then kick(p, s, ("%d points in %d s, the last: %s (%s)"):format(pts, C.window, kind, info)) end
+	Log.add(p, kind, "put back", ("%s; %.1f/%d points"):format(info, pts, C.kickAt), w)
+	if ACR.kickDue(s.points, now()) then
+		kick(p, s, ("%.1f points (halving every %d s) from %d catches in %.0f s, the last: %s (%s)"):format(pts, C.halfLife, #s.points, now() - s.points[1].t, kind, info))
+	end
 end
 
 -- ------------------------------------------------------------------ the pushes the server knows about
@@ -467,6 +496,34 @@ listen("Grapple", Remotes, function(p, what)
 end)
 listen("ImpactRemote", ReplicatedStorage, function(p, kind) if kind == "launch" or kind == "ragdoll" then pushed(p, 300) end end)
 
+-- ------------------------------------------------------------------ lag: is the client still talking?
+-- the client's beat (client/AntiCheatPanel.client.luau: 8 a second, unreliable, so it stops when the connection does)
+-- and its gameplay remotes. a body that stops moving while none of these come is a frozen connection or a frozen
+-- client (lag), not a hover. the beat has to have been going right up to the quiet (a client that drops its beat but
+-- keeps shooting isn't lagging), and a body that moves proves its updates are coming (no pardon for that either)
+local function heardFrom(p: Player, beat: boolean?)
+	local s = st[p]
+	if not s then return end
+	local t = now()
+	s.heard = t
+	if beat then s.beatT = t end
+end
+do
+	local b = Remotes:FindFirstChild("ACBeat")
+	if not b then
+		local r = Instance.new("UnreliableRemoteEvent")
+		r.Name = "ACBeat"
+		r.Parent = Remotes
+		b = r
+	end
+	if b and b:IsA("UnreliableRemoteEvent") then
+		(b :: UnreliableRemoteEvent).OnServerEvent:Connect(function(p: Player) heardFrom(p, true) end)
+	end
+end
+for _, name in { "Fire", "Equip", "Reload", "Swing", "MeleeHit", "Parry", "Aim", "Item", "Grapple" } do
+	listen(name, Remotes, function(p) heardFrom(p) end)
+end
+
 -- ------------------------------------------------------------------ one look at one body
 local function flatSpeed(samples: { Sample }, since: number): number?
 	local d, t0, t1 = 0, nil, nil
@@ -491,6 +548,10 @@ local function look(p: Player, s: St)
 	if STUDIO and not script:GetAttribute("StudioOn") then s.trusted = nil; return end
 	local t = now()
 	local pos = root.Position
+	-- (the ping a player gets room for: the highest lately, falling pingFall s a second. spikes come back)
+	local dtLook = math.clamp(t - s.lookT, 0, 0.5)
+	s.lookT = t
+	s.pingHi = math.max(math.clamp(p:GetNetworkPing(), 0, 1), s.pingHi - dtLook * C.pingFall)
 	-- a server teleport (laser doors, matches, lobbies, items: the TeleportT stamp) starts afresh from the new spot
 	local tp = p:GetAttribute("TeleportT")
 	if tp ~= s.tp then s.tp = tp; restart(s, nil, 0.5); return end
@@ -514,7 +575,7 @@ local function look(p: Player, s: St)
 	local am = p:GetAttribute("ACSpeed")
 	local sm = if type(am) == "number" and am > 1 then math.min(am, 3) else 1
 	local group = root.CollisionGroup
-	local ping = math.clamp(p:GetNetworkPing(), 0, 1)
+	local ping = s.pingHi
 	-- on a rope: the server's own (Main draws Rope_<id> for a hook it accepted). a hook it refused still swings the
 	-- client until the "cut" gets there, a round trip: that counts too, but only while the client isn't asking more
 	-- than 4 times in 10 s (asking over and over to keep the fly check away is no rope)
@@ -528,11 +589,29 @@ local function look(p: Player, s: St)
 	local step = pos - from
 	local dist = step.Magnitude
 	local lastPush = math.max(s.push, s.rope)
+	-- 0) lag. the body hasn't moved since the last look and the client has sent nothing (no beat, no remote) for
+	-- `silent` s, its beat going until then: its updates have stopped. the server's copy of the body is old, so
+	-- nothing is judged on it (no stall, no inside, no fly). the arc it breaks can't have its take-off trusted
+	if dist <= 0.02 and t - s.heard > C.silent and s.heard - s.beatT < 1 then
+		s.lagFrom = s.lagFrom or s.heard
+		s.arcLag = true
+		return
+	end
+	local resumed = false
+	if s.lagFrom then
+		-- (updates again: a catch-up step gets room for the gap, a straight line across it proves nothing)
+		s.lagLen = math.min(t - s.lagFrom, C.lagMax)
+		s.lagEnd, s.lagFrom, resumed = t, nil, true
+		-- (the test hook's list only: the review log is evidence, and a player's first line there dates a CONFIRM's
+		-- restores, Reports.evidenceSince. a catch's own line says if a gap came just before it)
+		if s.lagLen >= 1 then verdict(s, "lag", ("no updates for %.1f s: nothing judged meanwhile"):format(s.lagLen), "pardon") end
+	end
 	-- 1) teleport. a body that stopped dead mid-run and then jumps ahead is lag catching up: it gets its time back
+	-- (and after a gap with no updates, lagSpeed studs/s for the whole gap on top)
 	local dt = t - s.trustedT
-	if not s.moving then dt = math.min(dt, C.SAMPLE * 2 + ping) end
+	if not s.moving and not resumed then dt = math.min(dt, C.SAMPLE * 2 + ping) end
 	dt = math.min(dt, C.stallCredit + ping)
-	local room = ACR.moveRoom(dt, if t - lastPush < 1.5 then s.pushMag else 0, ping)
+	local room = ACR.moveRoom(dt, if t - lastPush < 1.5 then s.pushMag else 0, ping) + (if resumed then C.lagSpeed * s.lagLen else 0)
 	worst(s, "teleport", dist / room)
 	if dist > room then
 		caught(p, s, "teleport", ("%.0f studs in %.2f s (room %.0f)"):format(dist, dt, room), from)
@@ -552,8 +631,10 @@ local function look(p: Player, s: St)
 		end
 		worst(s, "noclip", n / 2)
 		if n >= 2 then
-			caught(p, s, "noclip", ("through %.1f studs of %s"):format(thick, if what then what.Name else "?"), from)
-			return
+			-- (right after a gap with no updates the path in between wasn't seen: a walk round a door frame cuts through
+			-- it in a straight line. only written down)
+			caught(p, s, "noclip", ("through %.1f studs of %s%s"):format(thick, if what then what.Name else "?", if resumed then ", across a gap with no updates" else ""), from, resumed)
+			if not resumed then return end
 		end
 	end
 	if inside then
@@ -589,7 +670,8 @@ local function look(p: Player, s: St)
 	if on then
 		s.ground = pos
 		s.knownGround = true
-		s.airSince, s.stillSince = nil, nil
+		s.arcLag = false
+		s.airSince, s.stillSince, s.stillHeard = nil, nil, 0
 		s.groundSince = if on == "ground" then (s.groundSince or t) else nil
 	else
 		s.groundSince = nil
@@ -598,9 +680,13 @@ local function look(p: Player, s: St)
 			-- (the take-off: from the last look on the ground. a take-off the server never saw, the body already in the
 			-- air when the watch started again after a teleport or a spawn, gets the most any take-off can give)
 			local from0 = s.ground or pos
-			rebase(s, from0, t, if s.knownGround then takeoffV0(s, from0) else C.ropeV0 * sm)
+			local v0 = if s.knownGround then takeoffV0(s, from0) else C.ropeV0 * sm
+			-- (a push that lands while the body still stands throws it from the ground: a knock straight up was caught
+			-- as a climb on 18 Nov, "climbed 33 studs, its take-off allows 24". the push counts as the take-off's)
+			if t - lastPush < 1.5 + 2 * ping then v0 = math.max(v0, if s.rope >= s.push then C.ropeV0 * sm else s.pushMag + C.jumpV0) end
+			rebase(s, from0, t, v0)
 		end
-		if moved then s.stillSince = nil else s.stillSince = s.stillSince or t end
+		if moved then s.stillSince, s.stillHeard = nil, 0 else s.stillSince = s.stillSince or t end
 	end
 	-- 3) speed on the ground
 	if s.groundSince and t - s.groundSince >= C.groundFor and t - lastPush > 1.2 and not bound then
@@ -620,15 +706,18 @@ local function look(p: Player, s: St)
 	end
 	-- 4) flying: free flight since the last push (a server push gets its round trip), fitted against gravity
 	if s.airSince and not bound then
-		local quietFrom = math.max(s.airSince, lastPush + C.quiet, s.pushAway + C.quiet + C.quietPing * ping)
+		-- (and the looks before a gap with no updates ended: the samples across it aren't one arc)
+		local quietFrom = math.max(s.airSince, lastPush + C.quiet, s.pushAway + C.quiet + C.quietPing * ping, s.lagEnd + C.quiet)
 		local gs = p:GetAttribute("ACGravity")
 		local g = C.GRAV * (if type(gs) == "number" then math.clamp(gs, 0, 2) else 1)
-		-- hanging still in the air
-		if s.stillSince and t - math.max(s.stillSince, quietFrom) >= C.stallFor then
+		-- hanging still in the air, timed only while the client is talking (a stale look never gets here: a frozen
+		-- connection is no hover, and a client that goes quiet now and then only pauses the clock, never resets it)
+		if s.stillSince and t >= quietFrom then s.stillHeard += dtLook end
+		if s.stillSince and s.stillHeard >= C.stallFor then
 			local soft = nearSolid(ch, root)
-			caught(p, s, "stall", ("still in the air for %.1f s%s"):format(t - s.stillSince, if soft then ", beside a wall" else ""), if soft then nil else s.ground, soft)
+			caught(p, s, "stall", ("still in the air for %.1f s%s"):format(s.stillHeard, if soft then ", beside a wall" else ""), if soft then nil else s.ground, soft)
 			if not soft then return end
-			s.stillSince = t
+			s.stillSince, s.stillHeard = t, 0
 		end
 		-- a push (a knock, a rope, an item...) is a new take-off from where the body is now, as fast as the push
 		if lastPush > s.baseT then
@@ -663,8 +752,10 @@ local function look(p: Player, s: St)
 		local allow = s.v0 * s.v0 / (2 * g) * C.climbTol + C.climbAdd
 		worst(s, "climb", climb / allow)
 		if climb > allow then
-			local soft = nearSolid(ch, root)
-			caught(p, s, "fly", ("climbed %.0f studs with nothing under it (its take-off allows %.0f)%s"):format(climb, allow, if soft then ", beside a wall" else ""), if soft then nil else s.ground, soft)
+			-- (beside a wall, or in an arc a gap with no updates broke: the take-off, a landing or a pad may have come
+			-- unseen in the gap. only written down; the fly fit above still judges the arc against gravity)
+			local soft = s.arcLag or nearSolid(ch, root)
+			caught(p, s, "fly", ("climbed %.0f studs with nothing under it (its take-off allows %.0f)%s"):format(climb, allow, if s.arcLag then ", after a gap with no updates" elseif soft then ", beside a wall" else ""), if soft then nil else s.ground, soft)
 			if not soft then return end
 			rebase(s, pos, t, s.v0)
 		end
@@ -833,7 +924,7 @@ end)
 local function flagsOf(uid: number): any
 	local p = Players:GetPlayerByUserId(uid)
 	local s = p and st[p]
-	local out: any = { points = if s then ACR.points(s.points, now()) else 0, recent = {} }
+	local out: any = { points = if s then math.floor(ACR.points(s.points, now()) + 0.5) else 0, recent = {} }
 	if s then
 		for i = math.max(1, #s.verdicts - 11), #s.verdicts do
 			local v = s.verdicts[i]
@@ -878,7 +969,7 @@ local function playerRow(p: Player): { [string]: any }
 	local last = s and s.verdicts[#s.verdicts]
 	return {
 		uid = p.UserId, name = p.Name, display = p.DisplayName,
-		points = if s then ACR.points(s.points, now()) else 0,
+		points = if s then math.floor(ACR.points(s.points, now()) + 0.5) else 0,
 		last = if last then ("%s %s: %s"):format(last.kind, last.act, last.info) else nil,
 		hits = if s then s.hits else 0, heads = if s then s.heads else 0, snaps = if s then s.snaps else 0, smoke = if s then s.smoke else 0,
 	}
@@ -891,7 +982,7 @@ local probed: { [Player]: boolean } = {}
 		return if op == "hello" then { admin = false } else nil
 	end
 	if op == "hello" then
-		return { admin = true, bans = C.BANS, kicks = C.KICK and C.KICK_MOVE and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window, reports = true }
+		return { admin = true, bans = C.BANS, kicks = C.KICK and C.KICK_MOVE and not STUDIO, studio = STUDIO, kickAt = C.kickAt, window = C.window, halfLife = C.halfLife, reports = true }
 	elseif op == "players" then
 		local out = {}
 		for _, q in Players:GetPlayers() do table.insert(out, playerRow(q)) end
@@ -1006,7 +1097,12 @@ if STUDIO then
 			for _, x in s.verdicts do table.insert(v, { t = math.floor((x.t - now()) * 10) / 10, kind = x.kind, info = x.info, act = x.act }) end
 			return { points = ACR.points(s.points, now()), verdicts = v, worst = table.clone(s.worst), cfWrites = s.cfWrites, errors = errors,
 				trusted = s.trusted, air = s.airSince ~= nil, ground = s.groundSince ~= nil,
-				aim = { hits = s.hits, heads = s.heads, snaps = s.snaps, smoke = s.smoke, gunHits = s.gunHits } }
+				aim = { hits = s.hits, heads = s.heads, snaps = s.snaps, smoke = s.smoke, gunHits = s.gunHits },
+				-- (lag: since anything came from the client, since its last beat, a gap going on now, the last gap's
+				-- length and how long ago it ended, the highest ping lately, how long it has hung still while talking)
+				lag = { heard = now() - s.heard, beat = now() - s.beatT, stale = s.lagFrom ~= nil, len = s.lagLen,
+					ago = now() - s.lagEnd, pingHi = s.pingHi, stillHeard = s.stillHeard, arcLag = s.arcLag },
+				catches = #s.points }
 		elseif op == "reset" and s then
 			table.clear(s.points); table.clear(s.verdicts); table.clear(s.worst); s.cfWrites = 0
 			s.hits, s.heads, s.snaps, s.smoke, s.gunHits = 0, 0, 0, 0, 0

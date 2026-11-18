@@ -13,6 +13,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService")
 
+-- everyone's client (not only the owner's): the anti-cheat's beat, 8 a second on an unreliable remote. it stops when
+-- the connection or the client freezes, so the server can tell lag (no beat, no movement) from a body hanging still
+-- in the air (beats, no movement). a Studio test can hold it with the attribute ACMute on this script
+task.spawn(function()
+	local beat = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("ACBeat", 60)
+	if not beat or not beat:IsA("UnreliableRemoteEvent") then return end
+	local studio = game:GetService("RunService"):IsStudio()
+	while true do
+		task.wait(0.125)
+		if not (studio and script:GetAttribute("ACMute")) then (beat :: UnreliableRemoteEvent):FireServer() end
+	end
+end)
+
 local Theme = require(script.Parent:WaitForChild("Theme"))
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local T = Theme
@@ -42,7 +55,7 @@ title.Position = UDim2.fromOffset(18, 12); title.Size = UDim2.fromOffset(300, 26
 local status = T.text(plate, "Status", "", 13, T.MUTED)
 status.Position = UDim2.fromOffset(18, 38); status.Size = UDim2.fromOffset(600, 18)
 status.Text = if hello.studio then "Studio test: kicks and bans are only written down"
-	else ("Kicks %s  ·  Bans %s  ·  %d points in %d s is a kick"):format(if hello.kicks then "on" else "off", if hello.bans then "on" else "off", hello.kickAt or 0, hello.window or 0)
+	else ("Movement kicks %s  ·  Bans %s  ·  %d points is a kick (points halve every %d s)"):format(if hello.kicks then "on" else "off", if hello.bans then "on" else "off", hello.kickAt or 0, hello.halfLife or hello.window or 0)
 
 local function button(parent: Instance, name: string, text: string, pos: UDim2, w: number, accent: boolean?): TextButton
 	local b = T.new("TextButton", {
