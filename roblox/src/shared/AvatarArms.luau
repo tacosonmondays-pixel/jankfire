@@ -45,6 +45,16 @@ AvatarArms.KIT = {
 	sleeveMaterial = Enum.Material.SmoothPlastic,
 }
 
+-- a zombie's hands (Infection: the player attribute ModeZombie, Modes.luau): this green, the Zombie Claw's own since
+-- 17 Nov. the owner, 18 Nov 2026: "Blood cross and zombie hand can just be our normal hand!! Zombie will just turn it
+-- green!!": the claw is your own hand (no model on it), and a zombie's hands go green whatever they hold, back the
+-- moment ModeZombie goes (zombieSync, below). everyone else sees the body's own ZombieTint highlight
+AvatarArms.ZOMBIE = Color3.fromRGB(111, 154, 58)
+local function zombie(): boolean
+	local lp = Players.LocalPlayer
+	return lp ~= nil and lp:GetAttribute("ModeZombie") == true
+end
+
 AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
 AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
 AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
@@ -65,6 +75,7 @@ type Arm = {
 	thick: number, long: number, ang: number,
 	over: CFrame?, mix: number, overUnder: boolean,
 	away: boolean, idle: boolean?, -- (a hand that waits off screen: hidden while nothing calls it)
+	base: { color: Color3, material: Enum.Material, name: string }?, -- (the hand as dressed, for zombieSync)
 }
 -- (a plain table, cleared when the arms are destroyed. NOT a weak one: an Instance's Luau handle can be collected
 -- while the Instance lives on, and a weak key went with it: the forearms froze a moment after every swap)
@@ -211,9 +222,12 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			dress(hand, K.glove, K.material)
 			dress(fore, K.sleeve, K.sleeveMaterial)
 		end
-		-- a tinted hand (the Zombie Claw's green) in either look; named apart so your body colours never repaint it
+		-- a tinted hand (a row's own tint; a zombie's green) in either look; named apart so your body colours never
+		-- repaint it. what it was dressed as stays on its Arm, for zombieSync
 		if row.tint then dress(hand, row.tint, AvatarArms.KIT.material) end
 		hand.Name = side .. (if row.tint then "HandTint" else "Hand"); fore.Name = side .. "LowerArm"
+		local base = { color = hand.Color, material = hand.Material, name = hand.Name }
+		if zombie() then dress(hand, AvatarArms.ZOMBIE, AvatarArms.KIT.material); hand.Name = side .. "HandTint" end
 		hand.Parent = arms; fore.Parent = arms
 		local whole = WHOLE[row.pose] == true
 		if whole then
@@ -227,6 +241,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			hand = hand, fore = fore,
 			gripInv = grip:Inverse(), wrist = hw, mid = basisAt(Vector3.zero, hw), foreInv = basisAt(fw, fe - fw):Inverse(),
 			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false, away = row.away == true,
+			base = base,
 		})
 	end
 	if #list == 0 then return false end
@@ -320,6 +335,24 @@ function AvatarArms.aim(parent: Instance, cam: CFrame)
 			end
 		end
 	end
+end
+
+-- zombieSync: ModeZombie on or off while arms are out: their hands go green, or back to how they were dressed
+if Players.LocalPlayer then
+	Players.LocalPlayer:GetAttributeChangedSignal("ModeZombie"):Connect(function()
+		local on = zombie()
+		for _, list in live do
+			for _, a in list do
+				local b = a.base
+				if not b or not a.hand.Parent then continue end
+				if on then
+					dress(a.hand, AvatarArms.ZOMBIE, AvatarArms.KIT.material); a.hand.Name = a.side .. "HandTint"
+				else
+					a.hand.Color, a.hand.Material, a.hand.Name = b.color, b.material, b.name
+				end
+			end
+		end
+	end)
 end
 
 return AvatarArms
