@@ -4,6 +4,7 @@
 -- movement checks (teleport, noclip, fly, speed) are AntiCheat.server.luau's; damage and hits are Combat's (step 2)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Config"))
@@ -22,6 +23,11 @@ local swapped = MeshSwap.run(map)
 if swapped > 0 then print(("[jankfire] %d Blender models swapped in"):format(swapped)) end
 
 Players.RespawnTime = 2
+-- the parts that stop bodies but no rays (WebArena's flag "c": rails, the columns over the roofs) are in JFRayBlind: it
+-- collides with the players' groups (JFPlayers, JFShredded, VipGuest) but not with Default, where every ray, rope and
+-- bullet is cast. (characters are never left in Default: HubVip and the Shredder put them in JFPlayers / VipGuest)
+pcall(function() PhysicsService:RegisterCollisionGroup("JFRayBlind") end)
+pcall(function() PhysicsService:CollisionGroupSetCollidable("JFRayBlind", "Default", false) end)
 
 type Info = { hookTimes: { number }, rope: Beam?, anchor: Attachment?, last: Vector3?, lastT: number, tp: number? }
 local info: { [Player]: Info } = {}

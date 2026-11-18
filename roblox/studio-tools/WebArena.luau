@@ -99,8 +99,20 @@ function W.import(name: string, id: number?): string
 end
 
 -- ---------------------------------------------------------------- build
+-- "stops you, takes no shots" (flag "c": the Gut's rails, the columns over the roofs, roofs.py): CanQuery off is not
+-- enough, Roblox still lets rays hit a part that collides. so such a part goes into the collision group JFRayBlind, which
+-- collides with the players' groups (JFPlayers, JFShredded, VipGuest) but not with Default, the group every ray, rope
+-- and bullet is cast in (Main.server sets the same up at run time)
+local RAYBLIND = "JFRayBlind"
+local function rayBlindGroup()
+	local PS = game:GetService("PhysicsService")
+	if not PS:IsCollisionGroupRegistered(RAYBLIND) then PS:RegisterCollisionGroup(RAYBLIND) end
+	PS:CollisionGroupSetCollidable(RAYBLIND, "Default", false)
+end
+
 -- the hit boxes (the web's boxes, or a hand-made layout's) into the arena's Solid folder
 local function hitBoxes(L: any, O: Vector3, solid: Instance)
+	pcall(rayBlindGroup)
 	-- the web's boxes: invisible, solid, they take shots (their material and colour: the impact's dust and chips)
 	for i, b in L.solid do
 		if L.mats and type(b[7]) == "number" then b = { b[1], b[2], b[3], b[4], b[5], b[6], table.unpack(L.mats[b[7]]) } end
@@ -125,6 +137,7 @@ local function hitBoxes(L: any, O: Vector3, solid: Instance)
 		p.Name = "Solid"
 		p.Anchored = true; p.CanCollide = true; p.CanTouch = true; p.CastShadow = false
 		p.CanQuery = not string.find(b[9] or "", "c", 1, true)
+		if not p.CanQuery then p.CollisionGroup = RAYBLIND end
 		p.Transparency = 1
 		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
 		p.Material = material(mt[1]); p.Color = hex(mt[2])

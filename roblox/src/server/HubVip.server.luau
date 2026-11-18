@@ -14,8 +14,12 @@ local CollectionService = game:GetService("CollectionService")
 local PhysicsService = game:GetService("PhysicsService")
 
 local DOOR, GUEST = "VipDoor", "VipGuest"
+-- (anyone else: JFPlayers, the Shredder's group for a body, not Default: Default is where rays are cast, and the parts
+-- that stop bodies but not rays (JFRayBlind: the columns over the arenas' roofs, 18 Nov) don't collide with it)
+local PLAIN = "JFPlayers"
 pcall(function() PhysicsService:RegisterCollisionGroup(DOOR) end)
 pcall(function() PhysicsService:RegisterCollisionGroup(GUEST) end)
+pcall(function() PhysicsService:RegisterCollisionGroup(PLAIN) end)
 PhysicsService:CollisionGroupSetCollidable(DOOR, GUEST, false)
 
 local Vip = nil
@@ -32,21 +36,21 @@ end
 CollectionService:GetInstanceAddedSignal("VipDoor"):Connect(door)
 for _, m in CollectionService:GetTagged("VipDoor") do door(m) end
 
--- a character's group: VipGuest for a VIP, Default for anyone else
+-- a character's group: VipGuest for a VIP, JFPlayers for anyone else
 local function setGroup(p: Player)
 	local ch = p.Character
 	if not ch then return end
-	local g = if isVip(p) then GUEST else "Default"
+	local g = if isVip(p) then GUEST else PLAIN
 	for _, d in ch:GetDescendants() do if d:IsA("BasePart") and d.CollisionGroup ~= g then d.CollisionGroup = g end end
 end
 local function watch(p: Player)
 	p.CharacterAdded:Connect(function(ch)
 		setGroup(p)
-		ch.DescendantAdded:Connect(function(d) if d:IsA("BasePart") then d.CollisionGroup = if isVip(p) then GUEST else "Default" end end)
+		ch.DescendantAdded:Connect(function(d) if d:IsA("BasePart") then d.CollisionGroup = if isVip(p) then GUEST else PLAIN end end)
 	end)
 	if p.Character then
 		setGroup(p)
-		p.Character.DescendantAdded:Connect(function(d) if d:IsA("BasePart") then d.CollisionGroup = if isVip(p) then GUEST else "Default" end end)
+		p.Character.DescendantAdded:Connect(function(d) if d:IsA("BasePart") then d.CollisionGroup = if isVip(p) then GUEST else PLAIN end end)
 	end
 end
 Players.PlayerAdded:Connect(watch)
