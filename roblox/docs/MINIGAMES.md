@@ -105,3 +105,12 @@ The owner said: "when I sit down at the table all my accessories come off and im
 - **Everything comes back:** standing up, leaving, and dying mid-game all put it back.
 - **Tested** on the owner's avatar (9 accessories, including hair and a big cake): all 9 stay fully shown at the arm table, the board and the cabinet. After a death mid-game, the screen, camera, movement and prompts all return.
 - **Photos:** `docs/minigames/seated_*.jpg`.
+
+**The arm-wrestling camera since place version 1003** is side-on, like a broadcast shot (main, 19 Nov):
+
+- It sits on your right, 6.6 studs out from the locked hands and 1.7 above them, turned 10° toward your end.
+- Both players are seen from the side, with the hands in the middle of the frame.
+- At 30° the owner's big hat stood in front of the hands, so it was cut to 10°.
+- Winning still moves the hands to the left of the screen, like the meter.
+- The slam's shake stays.
+- Photo: `docs/minigames/seated_arm_side.jpg`.

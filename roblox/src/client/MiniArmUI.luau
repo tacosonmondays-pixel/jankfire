@@ -221,9 +221,13 @@ function M.open(api: any, model: Model, side: string)
 	api.camera = function(): CFrame?
 		local r = model:FindFirstChild("Root") :: BasePart?
 		if not r then return nil end
-		local eye = r.CFrame * Vector3.new(c.side * mirror, L.top + c.up, (L.seat[side].Z) + c.back * mirror - 2.3 * mirror)
-		local at = r.CFrame * (L.pivot + Vector3.new(0, L.reach * 0.75, 0))
-		return CFrame.lookAt(eye, at)
+		-- a low three-quarter shot across the table, like a broadcast one: from your right side, turned c.angle toward
+		-- your end, the locked hands in the middle, both of you side-on (it never looks through anyone's head). winning
+		-- moves the hands to the left of the screen, as the meter does
+		local hands = L.pivot + Vector3.new(0, L.reach * 0.8, 0)
+		local a = math.rad(c.angle)
+		local eye = hands + Vector3.new(math.cos(a) * c.dist * mirror, c.up, math.sin(a) * c.dist * mirror)
+		return CFrame.lookAt(r.CFrame * eye, r.CFrame * (hands - Vector3.new(0, 0.2, 0)))
 	end
 	-- what the camera must see: the clasped hands, both pin pads, the table's middle
 	api.viewPoints = function(): { Vector3 }
@@ -232,7 +236,7 @@ function M.open(api: any, model: Model, side: string)
 		if not r or not cl then return {} end
 		return { cl.WorldPosition, r.CFrame * (L.pin.A + Vector3.new(0, 0.2, 0)), r.CFrame * (L.pin.B + Vector3.new(0, 0.2, 0)), r.CFrame * Vector3.new(0, L.top + 0.2, 0) }
 	end
-	api.fov = 62
+	api.fov = 55
 	S.step = game:GetService("RunService").RenderStepped:Connect(function(dt: number)
 		local st = model:GetAttribute("State")
 		-- the meter: your share, eased

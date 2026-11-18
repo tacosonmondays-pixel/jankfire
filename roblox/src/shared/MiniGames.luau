@@ -42,9 +42,9 @@ MG.L = {
 		elbow = { A = Vector3.new(0.2, 3.4, 0.75), B = Vector3.new(-0.2, 3.4, -0.75) },
 		peg = { A = Vector3.new(-1.1, 3.89, 0.8), B = Vector3.new(1.1, 3.89, -0.8) },
 		pin = { A = Vector3.new(1.0, 3.32, 0), B = Vector3.new(-1.0, 3.32, 0) }, -- the pad A's hand lands on when A loses
-		-- the sitter's camera: high behind and a little left, looking down past the head onto the clasp (it passes ~2
-		-- studs over the head, so hats and hair stay on: the owner, 19 Nov)
-		cam = { back = 3.6, up = 7.25, side = -1.8 },
+		-- the sitter's camera: side-on across the table (main, 19 Nov: "like a broadcast shot"), from the sitter's right,
+		-- turned `angle` degrees toward their end, `dist` studs out from the hands and `up` above them
+		cam = { dist = 6.6, angle = 10, up = 1.7 },
 	},
 	board = {
 		top = 3.0, surface = 3.1, sq = 0.46, -- (the squares' tops; square size)
