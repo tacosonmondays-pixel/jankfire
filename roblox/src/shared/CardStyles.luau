@@ -83,7 +83,7 @@ local TITLES = {
 	{ "apex", "APEX", "legendary" }, { "phantom", "PHANTOM", "epic" }, { "deadeye", "DEADEYE", "epic" },
 	{ "zero_recoil", "ZERO RECOIL", "epic" }, { "nightshade", "NIGHTSHADE", "epic" }, { "headhunter", "HEADHUNTER", "rare" },
 	{ "afterburner", "AFTERBURNER", "rare" }, { "cold_blooded", "COLD BLOODED", "rare" }, { "blackout", "BLACKOUT", "rare" },
-	{ "ironclad", "IRONCLAD", "common" },
+	{ "iron_dome", "IRON DOME", "rare" }, { "ironclad", "IRONCLAD", "common" }, -- (IRON DOME: the owner's, 17 Nov)
 	-- meme
 	{ "sigma", "SIGMA", "epic" }, { "skill_issue", "SKILL ISSUE", "rare" }, { "alpha", "ALPHA", "rare" },
 	{ "lone_wolf", "LONE WOLF", "rare" }, { "sweat", "SWEAT", "common" }, { "npc", "NPC", "common" }, { "bot", "BOT", "common" },

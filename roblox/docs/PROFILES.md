@@ -294,3 +294,4 @@ The owner: "can titles appear above head".
   - JANKFIRE's own: JANK CERTIFIED, PATIENT ZERO, DUCK RAIN SURVIVOR, SPOON MAIN.
   - Photographed in Play on v686 (`docs/profiles/titles-sheet.jpg`): DUCK RAIN SURVIVOR over a stand-in's head, and all of them on the card's CUSTOMIZE tab, where DUCK RAIN SURVIVOR fits on one line.
   - During a real emote there was no HeldWeapon, no Tool and no visible viewmodel.
+- **IRON DOME** (17 Nov, the owner's, id `iron_dome`): one more Cool title, rare, between BLACKOUT and IRONCLAD. Unlocked and shown like the other Cool titles (crates, shop, card, over heads).
