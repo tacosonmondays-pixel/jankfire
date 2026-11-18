@@ -1,3 +1,42 @@
+# Weapons batch D: bowling launcher, bow, slipper, scales, TV remote, Lefty & Righty (18 Nov 2026, place version 864)
+
+Asked for by the weapons-port session. All 22 are Pro Sound Effects recordings, with no voices or crowds. Loops have
+`loop` and `roll` in `store.json` (Looped, their own InverseTapered roll-off).
+
+| name | for | take(s): id, title, cut (s) | Volume |
+| --- | --- | --- | --- |
+| `gun_bowling` | the launch thump | 9116476627 Massive Footstep Impact 1, 0–0.8 | 0.52 |
+| `bowl_roll` | the ball rolling, **Looped** | 9116620884 Metal Drum 50 Gallon Rolling On Blacktop 1, 0.3–2.3 | 0.58 |
+| `bowl_hit` | the ball into a body | 9113535217 Body Slam Low End Thump 2, 0–0.35 | 0.92 |
+| `bowl_strike` | 3+ people hit | 9113559265 Bowling Ping 1, 0.08–1.6: a clatter of hits. Its quiet tail sits at −73 to −99 dB: no alley or crowd bed | 0.29 |
+| `bow_draw` | the string drawn | 9125405163 Bow Stretches Wood Creaking, 0–0.68 | 0.58 |
+| `gun_bow` | the release | 9114001369 Crossbow Fire 12, 0–0.4 | 1.3 |
+| `arrow_hit` | into a body | 9113999366 / 9113999645 Crossbow Bolts Impact 30 / 38, 0–0.3 | 0.92 |
+| `arrow_wall` | into wood or stone | 9113161857 / 9113161406 Arrow In And Hit 19 / 13, the hit only (0.55–1.05 / 0.6–1.15) | 0.23 |
+| `flame_burn` | the flame tip, **Looped** | 9114438917 Fire Sheet 3, 1.0–2.6 | 0.21 |
+| `gas_hiss` | the gas tip, **Looped** | 9113045715 Aerosol Spray Can 4, 0.2–2.0 (steady within 2 dB) | 0.33 |
+| `sleep_hit` | the sleep tip's hit | 9113532998 Body Pats Cloth Hits 4, 0–0.3 | 1.3 |
+| `slipper_throw` | the throw | 9120972323 / 9120972724 Wood Whoosh Slicing Air Quick Swings 3 / 5, ~0.2 s | 3 (the cap) |
+| `slipper_hit` | the soft sole's slap | 9120003720 Thigh Slap 2, 0–0.3 | 0.92 |
+| `slipper_catch` | catching it | 9113819689 Cloth Flap 12, 0–0.3 | 0.73 |
+| `scales_swing` | the swing | 9120728883 / 9120729007 Whoosh Heavy Punches 2 / 3 | 0.62 |
+| `scales_hit` | a heavy brass clang | 9116518524 Metal Bangs 2, 0.18–1.0 (a clang that rings off) | 0.65 |
+| `gavel_strike` | the pillar's gavel bang | 9114559395 / 9114559389 Gavel Hits Big Impacts Reverberant 3 / 5 | 0.87 |
+| `gavel_charge` | the 1 s build before it lands | 9120768499 Wind Suck Backwards Swooshing Build Up 1, 4.4–5.45: the end of a rising swell | 0.92 |
+| `remote_click` | a button click | 9118149753 / 9118150100 Remote Control Button 1 / 2, 0–0.15 | 6 (set) |
+| `remote_pause` | the freeze | 9118090423 Record Scratch Variety Pack 4, 0.28–0.62: cut mid-scratch, so it stops dead | 0.26 |
+| `remote_rewind` | the rewind whir | 9126093771 Tape Machine Flutter Moviola Spinning Rotation, 1.3–2.1 | 0.46 |
+| `gun_akimbo` | one Lefty & Righty shot | 9113029162 / 9113029223 9 Mm Gun Firing 3 / 4, 0.18–0.22 s (short and dry; `gun_smg` uses takes 1/2/5) | 2.07 |
+
+Stand-ins:
+- The library has no bowling-ball roll; a rolling 50-gallon drum is the nearest.
+- `remote_pause` is a record scratch, not a tape stop.
+- Every cut was measured in Studio.
+- They follow WEAPONS once the weapons session adds them to WEAPON_NAMES (`gun_*` already do).
+- Not heard in Play.
+
+---
+
 # The legendary gadget skins' sound layers (18 Nov 2026, place version 834)
 
 Main asked for these, per `special-skins-standard`, from the rows in `special-skins-trails-sfx.md`. Each layer plays
