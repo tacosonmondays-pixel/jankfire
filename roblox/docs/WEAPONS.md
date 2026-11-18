@@ -111,6 +111,43 @@ This spec keeps the web game's names; on Roblox they show as:
 The signature weapons keep their names. Two callouts changed: the Lever Rifle's chain reads "CHAIN x1.30" (was
 "YEEHAW x1.30"), and the Taser's reads "3 LINKED".
 
+## Scythe on Roblox: a loadout melee, 18 Nov 2026
+
+The owner: *"Bring scythe in as a weapon, balance it especially its dash"*. On the web the Scythe was a killstreak reward:
+65 damage, 4.6 m reach, five dash charges, and it folds into a rifle. On Roblox it is a normal melee in the loadout
+(id `scythe`, slot melee, Weapons.luau). The rifle fold isn't ported.
+
+**The swing.** Slow, wide and long, and two hits kill.
+
+| | Scythe | Katana | Knife |
+|---|---|---|---|
+| damage | 50 | 48 | 55 (x3 from behind) |
+| wind-up (hit after the click) | 0.24 s | 0.12 s | 0.10 s |
+| between swings | 0.80 s | 0.50 s | 0.42 s |
+| reach | 3.6 m (10.8 studs) | 2.8 m, +0.5 m a kill | 2.6 m |
+| cone (half-angle) | 0.95 rad | 0.70 rad | 0.75 rad |
+| hits to kill (100 HP) | 2 | 3 | 2 (1 from behind) |
+| time to kill, every swing landing | 1.04 s | 1.12 s | 0.52 s |
+| run speed | x0.95 | x1 | x1.1 |
+
+**The dash** (right click; `ScytheDash.server`). The server decides it, and the client only runs the path it's given.
+
+| | |
+|---|---|
+| distance | 8 m (24 studs), flat along your look, stopped 2 studs short of a wall |
+| time | 0.22 s (about 36 m/s) |
+| charges | one: the next comes 6 s after the last |
+| recovery | 0.35 s after the dash: no swing, guard or dash (`castUntil`) |
+| hit | the first enemy within 1.4 m of the path takes 25 and a 18 m/s shove along it (+4 up); one target only |
+| invulnerability | none: you can be shot, hit and hooked the whole way |
+| katana guard | a guard facing the dash parries it: no damage, and the dasher is staggered and shoved off (the melee parry) |
+| grapple | a hook on you stays on you through the dash (it's tied to your body), so it doesn't dodge hooks |
+| anti-cheat | the server stamps ACGrace for the dash + 0.4 s |
+
+**Kill and escape values.**
+- Dash into a swing: 25 + 50 = 75 by 0.81 s (the dash, the recovery, the wind-up). A second swing kills at 1.61 s. That closes 8 m and kills in about the same time the Katana takes standing next to you.
+- As an escape it's 8 m once every 6 s. Everyone has the grapple, so the dash adds a short burst, not a getaway. Ranked uses the same numbers.
+
 ## Everything at a glance
 
 | weapon | slot | colour | what it does |

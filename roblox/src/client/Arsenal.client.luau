@@ -716,7 +716,10 @@ Keys.began(function(io: InputObject, gp: boolean)
 		end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
-		if W[held] and W[held].heavy then swing(now, true)
+		if W[held] and W[held].dash then -- (the Scythe: right click dashes; the server runs it, ScytheDash.server)
+			local r = Remotes:FindFirstChild("Dash")
+			if r and r:IsA("RemoteEvent") and not Body.stunned() then r:FireServer(camera.CFrame.LookVector) end
+		elseif W[held] and W[held].heavy then swing(now, true)
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then reload()
 	end

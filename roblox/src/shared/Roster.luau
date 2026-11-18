@@ -128,6 +128,9 @@ add({ id = "slipper", slot = "melee", name = "Slipper", color = "ff9ad5", live =
 add({ id = "knife", slot = "melee", name = "Knife", color = "c8d0dc", live = true, gimmick = "fast slashes. right click: a heavy stab. from behind it's three times the hit.",
 	desc = "Left click: fast slashes. Right click: heavy stab (from behind = dead). Comes in a lot of skins.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "REACH", text = "2.6 m", bar = 0.07 }, { label = "MAG", text = "it's a melee", bar = 1 } } })
+add({ id = "scythe", slot = "melee", name = "Scythe", color = "3ee6c8", live = false, gimmick = "a slow wide reap that kills in two. right click dashes you forward through the first one in your way.",
+	desc = "A big scythe: slow, wide and long, two hits kill. Right click dashes you 8 m forward and cuts the first enemy in your way. One dash every 6 seconds, and a moment to recover after.",
+	stats = { { label = "DAMAGE", text = "50", bar = 0.42 }, { label = "FIRE RATE", text = "1.25/s", bar = 0.06 }, { label = "REACH", text = "3.6 m", bar = 0.08 }, { label = "DASH", text = "8 m / 6 s", bar = 0.5 } } })
 add({ id = "slapper", slot = "melee", name = "Hand Slapper", color = "ff7ab8", live = true, gimmick = "point blank: shoves them straight away from you and knocks them off their feet.",
 	desc = "A big toy hand on a stick. Point blank only. Launches them and makes them slip.",
 	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "1.25/s", bar = 0.06 }, { label = "REACH", text = "1.9 m", bar = 0.06 }, { label = "KNOCKBACK", text = "55 m/s", bar = 1 } } })

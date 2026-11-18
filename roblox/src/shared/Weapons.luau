@@ -35,6 +35,9 @@ export type Weapon = {
 	-- nothing in your hands but your own (the owner, 18 Nov 2026: "Blood cross and zombie hand can just be our normal
 	-- hand!! Zombie will just turn it green!!"): WeaponModels builds no model, only the spots
 	bare: boolean?,
+	-- the Scythe's right click (ScytheDash.server): a flat dash of dist studs in time s, once every cd s (one charge),
+	-- then recover s with no swing, guard or dash; the first enemy on its path (within width) takes dmg and a shove
+	dash: { dist: number, time: number, cd: number, recover: number, dmg: number, kb: number, kbUp: number, width: number }?,
 	-- weapons batch C, the projectiles (kind "proj", WeaponProj.server flies them): proj = "rocket" | "peel" | "ball" |
 	-- "snow" | "blood", speed / grav (studs/s, /s^2), r (studs), life (s); the rocket's radius and selfKb, the ball's
 	-- bounces / bonus / minBounce, the snowball's frost, the blood cross's cost / thin / fuse / burst / blast
@@ -500,6 +503,18 @@ local W: { [string]: Weapon } = {
 		cd = 0.55, range = 4.2 * S, cone = 0.8, dmg = 40, kb = 38 * S, kbUp = 10 * S, hitT = 0.19, pogo = 16 * S,
 		draw = "draw_bread", hitSnd = "bread_bonk",
 		vm = { p = Vector3.new(0.3, -0.3, -0.42) * S, r = Vector3.new(0.35, 0.2, -0.25), s = 0.55 },
+	},
+	-- (the owner, 18 Nov 2026: "Bring scythe in as a weapon, balance it especially its dash") the web game's killstreak
+	-- Scythe as a loadout melee, toned down (WEAPONS.md "Scythe"): a slow wide reap that two-hits, and a right-click dash
+	-- with one charge, a cooldown and a recovery, no invulnerability
+	scythe = {
+		id = "scythe", name = "Scythe", slot = "melee", kind = "melee", color = rgb(0x3ee6c8),
+		desc = "a slow, wide reap that kills in two. right click dashes you forward and cuts the first one in your way.",
+		cd = 0.8, range = 3.6 * S, cone = 0.95, dmg = 50, kb = 18 * S, kbUp = 6 * S, hitT = 0.24, speedMul = 0.95,
+		dash = { dist = 8 * S, time = 0.22, cd = 6, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
+		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
+		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
+		vm = { p = Vector3.new(0.22, -0.25, -0.44) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.6 },
 	},
 	-- (weapons batch A) point blank, barely hurts: shoves them straight away from you and they slip
 	slapper = {

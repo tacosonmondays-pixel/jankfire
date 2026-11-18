@@ -163,6 +163,19 @@ BUILD.bread = function(b)
 	spot(b, "Mid", Vector3.new(0, 0.0011, -0.5865))
 	spot(b, "Grip", Vector3.new(0, 0.002, 0.12))
 end
+-- (the Scythe, 18 Nov 2026) a code stand-in until its kit model is in (guns-remodel): a long dark haft, a grip wrap and
+-- a broad curved blade out to the side at the top, the edge facing forward
+BUILD.scythe = function(b)
+	cylZ(b, "haft", 0.022, 1.5, 0x3a3d45, 0, 0, -0.55)
+	bx(b, "wrap", 0.05, 0.05, 0.16, 0x2b2622, 0, 0, 0.05)
+	bx(b, "blade", 0.6, 0.02, 0.12, 0x9aa3ad, -0.28, 0.02, -1.28)
+	bx(b, "blade", 0.32, 0.02, 0.1, 0xb8c0c8, -0.62, 0.02, -1.2, 0.0)
+	bx(b, "collar", 0.07, 0.07, 0.08, 0x3ee6c8, 0, 0, -1.26)
+	spot(b, "Muzzle", Vector3.new(-0.7, 0.02, -1.16))
+	spot(b, "Mid", Vector3.new(-0.3, 0.02, -1.25))
+	spot(b, "Grip", Vector3.new(0, 0, 0))
+	spot(b, "Fore", Vector3.new(0, 0, -0.45))
+end
 BUILD.slapper = function(b)
 	cylZ(b, "stick", 0.016, 0.5, 0xd6d0c6, 0, 0, -0.18)
 	bx(b, "grip", 0.04, 0.04, 0.14, 0x3a3d45, 0, 0, 0.05)

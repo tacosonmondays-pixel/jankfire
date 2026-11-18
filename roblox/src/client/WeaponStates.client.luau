@@ -32,6 +32,10 @@ me:GetAttributeChangedSignal("SoakUntil"):Connect(function()
 	local v = me:GetAttribute("SoakUntil")
 	mine.soakUntil = if type(v) == "number" then v else 0
 end)
+me:GetAttributeChangedSignal("DashUntil"):Connect(function()
+	local v, u = me:GetAttribute("DashV"), me:GetAttribute("DashUntil")
+	if typeof(v) == "Vector3" and type(u) == "number" then Body.dash = { v = v, untilT = u } end
+end)
 me:GetAttributeChangedSignal("StunUntil"):Connect(function()
 	local v = me:GetAttribute("StunUntil")
 	Body.stunUntil = if type(v) == "number" then v else 0
@@ -194,7 +198,19 @@ local function bigNail(cf: CFrame, life: number)
 end
 Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 	if type(f) ~= "table" then return end
-	if f.k == "zap" and type(f.links) == "table" then
+	if f.k == "dash" and typeof(f.a) == "Vector3" and typeof(f.b) == "Vector3" then
+		-- (the Scythe's dash) a teal streak and three fading afterimages along the path
+		Fx.tracer(f.a, f.b, Color3.fromRGB(62, 230, 200), 0.5, 0.25)
+		for i = 1, 3 do
+			local g = Instance.new("Part")
+			g.Size = Vector3.new(2, 5, 1); g.Color = Color3.fromRGB(62, 230, 200); g.Material = Enum.Material.Neon
+			g.Transparency = 0.6 + i * 0.1; g.Anchored = true; g.CanCollide = false; g.CanQuery = false; g.CastShadow = false
+			g.CFrame = CFrame.lookAt((f.a :: Vector3):Lerp(f.b, i / 4), f.b :: Vector3)
+			g.Parent = workspace:FindFirstChild("JankfireFx") or workspace
+			task.delay(0.25, function() g:Destroy() end)
+		end
+		Sfx.play("scythe_dash", f.a :: Vector3, 1)
+	elseif f.k == "zap" and type(f.links) == "table" then
 		-- (weapons batch B) the Taser: two dark wires out to whoever it hit, a yellow bolt down them, cyan bolts on to
 		-- everyone soaked it jumped to (70 ms apart), sparks where they land; or the darts into the wall on a miss
 		local first = f.links[1]

@@ -411,6 +411,13 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
 	-- (weapons batch A) nailed to a wall by a Nail Gun: pulled to the spot (web primaries.js: (spot - pos) x 14, at most
 	-- 30 m/s), no gravity, no jumping, until the pin's time is up. you can still aim and shoot
+	-- (the Scythe's dash: the server's path, run here flat at its speed; the anti-cheat was told, ACGrace)
+	local dsh = Body.dash
+	if dsh and Body.dashing() then
+		st.vx, st.vz = dsh.v.X, dsh.v.Z
+		st.vy = math.max(st.vy, 0)
+		Body.kick()
+	end
 	local pin = Body.pin
 	if pin and Body.pinned() then
 		local d = pin.at + Vector3.new(0, 3, 0) - chest

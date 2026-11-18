@@ -35,6 +35,12 @@ function Body.pinned(): boolean
 end
 -- (weapons batch B) stunned by a Taser until this server time: no moving, jumping, firing or swinging (WeaponStates)
 Body.stunUntil = 0
+-- (the Scythe) the server's dash: this velocity, flat, until this server time (WeaponStates sets it from DashV / DashUntil)
+Body.dash = nil :: { v: Vector3, untilT: number }?
+function Body.dashing(): boolean
+	local d = Body.dash
+	return d ~= nil and workspace:GetServerTimeNow() < d.untilT
+end
 function Body.stunned(): boolean return workspace:GetServerTimeNow() < Body.stunUntil end
 -- when one of our own moves last threw you (a push, a knock, a slip, a ledge launch, a shredder pull). Move's fling
 -- guard lets a sudden jump in speed through only just after one of these: anything else is a collision spike
