@@ -1410,6 +1410,37 @@ Bazaar v2 was built here. Desert v2 and Suburb v2 were built by two parallel hel
   - The map selector and vote (Party.luau) read `Arena.pool`, so they follow the switch.
 - **Not done / not tested:** real 2-player matches, a whole storm in a live match, phones.
 
+## 36. The wall box: no sky lid, walls pushed out, a hologram grid where you hook them, 18 November 2026 (place versions 729 and 730)
+
+The owner: "you can keep wall box but can you remove sky box? that way we can grapple properly? if you get close to wall box, should like a small like grid appear where you grapple? like almost a hologram shield type thing but not the entire box just in the section youre grappling to? can you also push back the wall box a bit on all maps to make them feel larger and give more swingability?"
+
+- **What each arena's boundary was** (all in `workspace.Map`'s ArenaPool, plus v1):
+  - **Rooftop v1, v2, v3, Platform:** no wall box and no lid. The roof or rig ends and you fall to the arena's KillY.
+  - **Crate:** no wall box and no lid: the toy room's walls are look only; off the chest you fall.
+  - **Bazaar (the web port):** no wall box and no lid. Its visible city wall (to 42) is solid; past it the desert hit boxes run out to 900.
+  - **The Gut, Bazaar v2, Desert v2, Suburb v2** (the hand-made ones): invisible walls 10 thick round the edge, solid from under the floor to y 150 (the layouts' `LID`), a 5-thick lid on top, and everything not walkable solid up to the lid. Desert: the outer cliffs solid to the lid from the cliff lines out. Bazaar v2: 48 turned boxes on the town's ellipse. Suburb: the back and end hedges solid to the lid. All hit boxes take shots and grapples (CanQuery on), so a rope aimed at the sky hooked the invisible lid.
+- **The rule, the same on all four walled arenas** (`tools/roblox/wallbox.py`):
+  - **No lid.** A rope aimed at the sky finds nothing ("TOO FAR"), a rope over the old lid height reaches what's really there.
+  - **The sky line** instead (`SkyY`, local 132): over it nothing lifts you higher; the climb eases off and stops 12 studs over (Move.client, any rope, pad or launch). So the old solid-to-the-lid columns, their tops at 150, can't be stood on. Measured in Play: a rope to the wall at y 230 topped out at 141.7. **Out of bounds** 60 over the line (Main.server kills, "OUT OF BOUNDS", only over the arena's site): only a client that skips Move.client gets there.
+  - **The walls go 30 studs further out**, up to 260 (Mat `bound`): Gut 180 x 134, Desert 202 x 152, Bazaar v2 an ellipse 195 x 155, Suburb 206 x 142.
+  - **The step:** from the old edge out to the new walls, solid up to the top of the scenery that stood right behind the old walls (Gut's edge buildings 60, Desert's outer cliffs 90, Bazaar v2's town wall 34, Suburb's hedges and the houses past them 32). Nothing walks into that scenery; above it is open air to swing in. Its top is a ledge (Mat `ledge`): land on it and you slide back in toward the middle (30 along, 18 up a hop; Move.client). Tested: dropped on the Desert's ledge, the body hopped inward off the cliff line onto the mesa.
+  - The inner solid-to-the-lid columns (the Gut's blocks and halls, Bazaar v2's dead space, the desert spires, Suburb's houses) stay as they were: solid to 150, under the sky line out of reach.
+  - Sites, kit limits: no kit changed (the kits never read the wall box), every hit box is within 216 of its origin.
+- **The grid patch** (`src/client/WallGrid.client.luau`): a round hex grid 13 studs across in the game's hologram ice-blue (176, 226, 242), soft toward its rim, no text. It shows where your rope bites the wall box (a ring runs out from the bite; a far bite is drawn bigger, up to 30), where you come within 10 studs of it, and where a bullet hits it. On the step only above the scenery behind it (`EdgeSeen`). It fades out 0.6 s after you let go or leave. Four patches built once (a part, a SurfaceGui with the lines in a CanvasGroup), then only moved and faded; the near search is 9 rays ten times a second, only in a walled arena.
+- **Bullets hit the wall box** on purpose: the walls must take ropes, and they are the same CanQuery. Fx.impact asks WallGrid (`WallGridHit`): on the wall box no chips fly off thin air, the grid flashes where the bullet stopped.
+- **How it's wired:**
+  - Layouts: each `<map>_layout.py` keeps SOLID and ROT as they were (the kits dress from them) and adds `HIT_SOLID`, `HIT_ROT`, `WALLBOX`; `<map>_models.py` writes those into `<Name>Layout.luau` (`skyY`, `edgeTop`, `edgeSeen`). `arena_plan.py`, `arena_check.py` and `gut_plan.py` read the hit lists.
+  - `WebArena`: the arena's attributes `SkyY`, `EdgeTop`, `EdgeSeen` (world y); **`W.solid(name)` rebuilds just the hit boxes** (the kit, the lights and hand-set attributes like the Gut's heart and Suburb's Enabled stay); `W.check` counts extra boxes and reports the wall box.
+  - `Main.server` puts `SkyY` and `ArenaAt` (your site's middle, a copy's own) on you twice a second while your `Arena` is a walled one. `Move.client` reads them; it also writes `HookAt` (where your rope bites) for WallGrid.
+  - `tools/roblox/wallbox_plan.py <layout> <out.jpg>` draws the before/after.
+- **Checks:** regenerating the four layouts before the change gave the committed files byte for byte. After: `W.check` 0 missing, 0 extra, no lid, every spawn on a floor, 0 of 128 team spawn lines open, pads landing as before; `arena_check.py` 0 problems on all four. ZFight reads visible parts only and nothing visible changed. The anti-cheat's checks don't involve a lid: on a rope you're "bound" (no fly checks), the sky line only takes upward speed away (a fall faster than gravity is never a fly or hover verdict), and the ledge's hop (18 up) is under a jump. With StudioOn it gave no verdicts for the teleport and the first rope; its state after the climb to the sky line wasn't read back.
+- **Photos:** `docs/maps/wallbox_play_v730.jpg` (the grid on the Gut, Desert and Bazaar v2 walls, the overhead rope through where the lid was), `docs/maps/wallbox_plan_<map>.jpg` (before and after, solid at swing height, with the heights).
+- **Not done / not sure:**
+  - Over the inner buildings the invisible columns still go to 150, so a rope aimed over a Gut block still bites thin air there. The fix would be to make those columns' tops ray-blind above the buildings' roofs (they'd still stop bodies); it changes what bullets do over roofs, so it's the owner's call.
+  - Hooking from a standstill on flat ground doesn't lift you until you jump (it was like that before).
+  - The test shots have the hub's sky: the test body was put in the arenas outside a real match.
+  - Not tested: a real 2-player match on each map, phones.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
