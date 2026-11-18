@@ -1647,7 +1647,7 @@ The owner, about grappling onto people (section 37): "when you grapple someone m
   - Not tested: two real players (a yanked player's own movement friction stops them; a solo test can't show it) and the teammate pull.
   - Photo: `docs/grapples/grapple_yank_v796.jpg` (the taut rope to the Plinker in the air, its streak from the block).
 
-## 43. Open roofs on the Gut and Suburb v2, 18 November 2026 (place version 812; the Gut's Tube-side plate in the next save)
+## 43. Open roofs on the Gut and Suburb v2, 18 November 2026 (place versions 812 and 821)
 
 The owner: "Suburb we should be able to get on roofs, gut map too!! There are weird ceiling blockers". The blockers were section 36's body-only columns: every building stood solid to the old lid at 150, and v735 made the part above its real roof ray-blind, but it still stopped bodies.
 
@@ -1689,7 +1689,7 @@ The owner: "Suburb we should be able to get on roofs, gut map too!! There are we
   - teleported onto the north block's roof and stood there (photo `docs/maps/gut_roof_v812.jpg`);
   - grappled from it down toward the kiosk dome (the pull flung me past it, as letting go does);
   - set on the west hall's roof, it shed me toward the middle and off its front edge, into the Approach, in 1.8 s.
-  - **Found:** two grapples up from the Tube's roof to the block's dome dropped me through the slot at the Tube's side (fixed above, in the next save). Getting from the Tube's roof up onto the block's roof by grapple still needs the right swing: the block's edge is 12 higher.
+  - **Found:** two grapples up from the Tube's roof to the block's dome dropped me through the slot at the Tube's side. Fixed above, in version 821: a floor at 19.5 there now, and W.check is still clean. Getting from the Tube's roof up onto the block's roof by grapple still needs the right swing: the block's edge is 12 higher.
   - Not tested: Suburb in Play (switched off), and two players.
 
 ## 43. Hub v3: the spawn lounge and the way upstairs, 18 November 2026 (place version 810)
