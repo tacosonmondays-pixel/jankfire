@@ -162,7 +162,7 @@ local function classOf(wid: string): string
 	if W[wid] and W[wid].kind == "melee" then return "melee" end
 	if wid == "shredder" then return "shredder" end
 	if ONE_HAND[wid] then return "pistol" end
-	if wid == "lmg" then return "heavy" end
+	if wid == "lmg" or wid == "minigun" then return "heavy" end -- (the Minigun: held low, 18 Nov 2026)
 	return "rifle"
 end
 TP.classOf = classOf
