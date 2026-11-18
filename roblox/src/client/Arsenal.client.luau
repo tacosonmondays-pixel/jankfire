@@ -167,16 +167,18 @@ end
 -- ---------------------------------------------------------------- camera: kick + punch/shake (visual)
 -- the kick climbs the real look (the web game's, cut by VM.feel's climb); since 17 Nov 2026 (the owner: "can the gun
 -- not shoot up when you shoot or at least not as aggressively?") what a shot climbed eases back toward where you aimed
--- once the gun's hold after its last shot is over (a ~0.1 s ease), so sustained fire no longer walks off the target.
--- only the climb is taken back: your own mouse moves stay yours
-local climb = { p = 0, y = 0, t = 0, hold = 0.06 }
-local function kickCam(pitch: number, yaw: number, hold: number?)
+-- once the gun's hold after its last shot is over (a ~0.1 s ease), and a steady part of it (the gun's pull) even
+-- while you keep firing, so sustained fire no longer walks off the target (the Redline at low HP fires faster than
+-- any hold). only the climb is taken back: your own mouse moves stay yours
+local climb = { p = 0, y = 0, t = 0, hold = 0.06, pull = 0 }
+local function kickCam(pitch: number, yaw: number, hold: number?, pull: number?)
 	camera.CFrame = camera.CFrame * CFrame.Angles(pitch, yaw, 0)
-	climb.p += pitch; climb.y += yaw; climb.t = os.clock(); climb.hold = hold or 0.06
+	climb.p += pitch; climb.y += yaw; climb.t = os.clock(); climb.hold = hold or 0.06; climb.pull = pull or 0
 end
 RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value + 1, function(dt: number)
-	if (climb.p ~= 0 or climb.y ~= 0) and os.clock() - climb.t > climb.hold then
-		local k = 1 - math.exp(-12 * dt)
+	local back = if os.clock() - climb.t > climb.hold then 12 else climb.pull
+	if (climb.p ~= 0 or climb.y ~= 0) and back > 0 then
+		local k = 1 - math.exp(-back * dt)
 		local dp, dy = climb.p * k, climb.y * k
 		if math.abs(climb.p) < 1e-4 and math.abs(climb.y) < 1e-4 then dp, dy = climb.p, climb.y end
 		camera.CFrame = camera.CFrame * CFrame.Angles(-dp, -dy, 0)
@@ -445,11 +447,15 @@ local function fireGun(now: number, fan: boolean?)
 	local km = if F then F.kick else 1
 	Body.push(-look * (w.recoil or 0) * km)
 	local fl = VM.feel(held, w) -- (how hard this kind of gun kicks: the climb, its upward tilt, the view punch)
-	kickCam((w.kick or 0) * km * fl.climb * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * km * fl.climb * 0.5, fl.hold)
+	-- (this shot's own rate: the Redline's climbs to 22 a second as your HP drops. past 10 a second each shot kicks
+	-- that much less, so a faster spray doesn't climb or tilt faster: the owner, 18 Nov 2026, "fix recoil on redline")
+	local rt = 1 / iv
+	local rk = math.min(1, 10 / rt)
+	kickCam((w.kick or 0) * km * rk * fl.climb * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * km * rk * fl.climb * 0.5, fl.hold, fl.pull)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
 	local vis = Settings.get("gfx.recoil") -- (a visual-only recoil slider, 0..1; nil = 1)
 	vis = if type(vis) == "number" then math.clamp(vis, 0, 1) else 1
-	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8, fl.up * vis, fl.punch * vis)
+	VM.kick(w.recoilVM, (if aim > 0.5 then 0.6 else 1) * rk, rt > 8, fl.up * vis, fl.punch * vis)
 	VM.shot(w) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms
 	TP.fired(held, F ~= nil) -- (and the gun in your character's hands kicks, for you in third person and for everyone)
 	if w.cycle then VM.follow(w.cycle.clip, w.cycle.at) end -- then the pump / the bolt / the lever

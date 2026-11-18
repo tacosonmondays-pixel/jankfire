@@ -117,15 +117,17 @@ function VM.stop() clip = nil; dropProp() end
 -- how hard a gun kicks, by its kind (the owner, 17 Nov 2026: "can the gun not shoot up when you shoot or at least
 -- not as aggressively?"). the web game's rows stay; on top: up = the gun's upward pitch, punch = the view punch's,
 -- climb = the camera's own climb (Arsenal) with hold = the pause after a shot before the camera eases back to where
--- you aimed. the rearward punch is kept whole. the automatics least, the snipers and shotguns a little more
+-- you aimed, pull = a steady ease back (per second) even inside the hold, so a spray faster than the hold (the
+-- Redline at low HP: 22 shots a second) can't pile the climb up. the rearward punch is kept whole. the automatics
+-- least, the snipers and shotguns a little more
 local HEAVY = { sniper = true, shotgun = true, sawnoff = true, marbles = true, autoshot = true }
 local FEEL = {
-	auto = { up = 0.35, punch = 0.5, climb = 0.4, hold = 0.05 },
-	semi = { up = 0.4, punch = 0.6, climb = 0.5, hold = 0.06 },
-	heavy = { up = 0.5, punch = 0.7, climb = 0.6, hold = 0.09 },
+	auto = { up = 0.35, punch = 0.5, climb = 0.4, hold = 0.05, pull = 6 },
+	semi = { up = 0.4, punch = 0.6, climb = 0.5, hold = 0.06, pull = 3 },
+	heavy = { up = 0.5, punch = 0.7, climb = 0.6, hold = 0.09, pull = 0 },
 }
 VM.FEEL = FEEL
-function VM.feel(wid: string, w: any): { up: number, punch: number, climb: number, hold: number }
+function VM.feel(wid: string, w: any): { up: number, punch: number, climb: number, hold: number, pull: number }
 	if HEAVY[wid] then return FEEL.heavy end
 	if w and w.auto and (w.rate or 0) >= 6 then return FEEL.auto end
 	return FEEL.semi
