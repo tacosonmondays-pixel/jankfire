@@ -11,7 +11,14 @@
 local InsertService = game:GetService("InsertService")
 
 local E = {}
-E.PUSH = 3
+E.PUSH = 4
+-- PARKED (18 Nov, the hub session, place version 966: the egg nook is gone from the hub, R.EGG_SIDE nil; the owner shows
+-- the lore NPCs and the mannequin only in their code's cutscene, LoreNPCs.server, which keeps the mannequin as Lore_egg).
+-- E.SPOT is open air in the lobby now and nothing may stand there. E.park() leaves only an unseen Touch far under the
+-- hub, no prompt, no lamp, touching off, its recording (Found) in it, so ServerStorage.HubEggFind (the code panel's
+-- find) still answers "found" and plays it for the finder. E.build() refuses while E.PARKED unless given a new spot
+E.PARKED = true
+E.PARK = CFrame.new(-200, 100, -10000) -- (140 under the hub's floor, under its middle: nobody goes there)
 E.ASSET = 139602935358805 -- HubEggMannequin1 (hub_egg_1.glb), Approved 18 Nov
 -- WHERE (18 Nov, the hub session's nook, HubRotunda R.EGG_SIDE / R.EGG_NICHE, kept in every rebuild): the dark gallery
 -- "window" over the west arch into the lounge (side 8) is a real opening onto a small closed room on the lounge's roof,
@@ -89,7 +96,33 @@ local function load(): (Model?, string?)
 	return m, nil
 end
 
+-- parks it (see E.PARKED): the folder holds one unseen Touch at E.PARK with the recording and nothing else
+function E.park(): string
+	E.remove()
+	local f = folderOf()
+	f:SetAttribute("Built", "HubEgg")
+	f:SetAttribute("Push", E.PUSH)
+	f:SetAttribute("Parked", true)
+	local t = Instance.new("Part")
+	t.Name = "Touch"
+	t.Anchored = true; t.CanCollide = false; t.CanQuery = false; t.CanTouch = false; t.CastShadow = false
+	t.Transparency = 1
+	t.Size = Vector3.new(1, 1, 1)
+	t.CFrame = E.PARK
+	t:SetAttribute("Built", "HubEgg")
+	local s = Instance.new("Sound")
+	s.Name = "Found"
+	s.SoundId = E.SOUND
+	s.Volume = E.SOUND_VOLUME
+	s.PlaybackRegionsEnabled = true
+	s.PlaybackRegion = E.SOUND_REGION
+	s.Parent = t
+	t.Parent = f
+	return "hub egg parked: one unseen Touch (no prompt, no lamp, touching off) at " .. tostring(E.PARK.Position) .. ", the recording in it"
+end
+
 function E.build(spot: CFrame?): string
+	if E.PARKED and not spot then return "PARKED (the hub has no nook since place version 966): E.park(), or E.build(spot) at a new spot the hub session has made" end
 	spot = spot or E.SPOT
 	E.remove()
 	local m, why = load()
@@ -148,6 +181,29 @@ function E.check(): string
 	local hub = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub")
 	local f = hub and hub:FindFirstChild("HubEgg")
 	local m = f and f:FindFirstChild("Mannequin")
+	if E.PARKED then
+		-- parked: nothing that shows, takes a touch, prompts or lights anywhere in the folder; the Touch under the hub
+		-- with its recording; nothing of the egg's at the old spot
+		if not f then return "PARKED but no HubEgg folder: run E.park() (HubEggFind would answer no egg)" end
+		local bad = {}
+		for _, d in f:GetDescendants() do
+			if d:IsA("BasePart") and (d.Transparency < 1 or d.CanTouch or d.CanCollide) then table.insert(bad, "shows or touches: " .. d:GetFullName()) end
+			if d:IsA("ProximityPrompt") or d:IsA("Light") or d:IsA("ParticleEmitter") then table.insert(bad, d.ClassName .. ": " .. d:GetFullName()) end
+		end
+		if m then table.insert(bad, "a Mannequin is in the hub's folder") end
+		local t = f:FindFirstChild("Touch")
+		local found = t and t:FindFirstChild("Found")
+		if not (t and t:IsA("BasePart")) then table.insert(bad, "no Touch (HubEggFind answers no egg)")
+		elseif (t.Position - E.PARK.Position).Magnitude > 1 then table.insert(bad, "Touch not at E.PARK: " .. tostring(t.Position)) end
+		if not (found and found:IsA("Sound")) then table.insert(bad, "no Found recording") end
+		local near = 0
+		for _, d in f:GetDescendants() do
+			if d:IsA("BasePart") and (d.Position - E.SPOT.Position).Magnitude < 12 then near += 1 end
+		end
+		if near > 0 then table.insert(bad, near .. " of its parts at the old spot") end
+		return if #bad == 0 then "parked: nothing shows, takes a touch, prompts or lights; Touch under the hub with its recording; the old spot clear of it"
+			else "PARKED, BUT:\n" .. table.concat(bad, "\n")
+	end
 	if not (m and m:IsA("Model")) then return "no hub egg" end
 	local out = {}
 	local cf, size = m:GetBoundingBox()
