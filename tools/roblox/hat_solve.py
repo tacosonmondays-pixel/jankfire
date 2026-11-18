@@ -66,7 +66,9 @@ def solve(wid):
     g = HC.build(wid)
     gisl = HC.islands([('%s__%s' % k, bm) for k, bm in g.pieces.items()])
     gverts = [v.co.copy() for bm in g.pieces.values() for v in bm.verts]
-    hats = [(hid, hat_models.make(hid)) for hid in hat_models.HATS]
+    # (the googly eyes, hat_models.SEATED, stand on the gun at their own seat, hat_models.eyes_seat: hat_clip.py checks
+    # them there; scored here at the common seat their balls read as sunk in, and every seat wanted a saddle)
+    hats = [(hid, hat_models.make(hid)) for hid in hat_models.HATS if hid not in hat_models.SEATED]
     x, z0, s0 = base.get('x', 0.0), base['z'], base.get('s', 1.0)
     if base.get('pitch') == 90:  # (a hat stood on the back end: its seat is that end, its height the spot's)
         back = gun_back(gisl, x, base.get('y', 0.0))

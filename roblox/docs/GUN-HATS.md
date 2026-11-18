@@ -283,6 +283,42 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## Seats on batch B: Lefty & Righty, taser, leaf blower, Hot Sauce, big laser pointer (18 Nov 2026, place version 798)
+
+The guns session built batch B as kit models (commit 3dd4d82, `gun_batch_b.py`, place version 791) and proposed a seat
+for each. Their notes count 0.07 web units as s 1.0, but the live seats use 0.12 = 1.0 (the pistol's 0.07 is s 0.62),
+so these sizes come from the web game on the same scale as the other guns. The Hot Sauce is v2 (346e005: a slim bottle
+that no longer reads as a wine bottle), seated after the guns session's swap. Photo: `gun-hats/batchB-seats.jpg` (four of them: Lefty & Righty does not build in Studio yet).
+
+| Gun | Seat (z, s) | Where | Why it moved |
+|---|---|---|---|
+| Lefty & Righty (`akimbo`) | 0.02, 0.6 | the flat top behind the cocking knob's slot, clear of its 3 cm kick | (the guns session's seat; the pistol's size) |
+| Taser | -0.004, 0.5 | the flat top between the sights | (the guns session's seat) |
+| Leaf Blower | -0.095, 0.7 | the shell's flat top ahead of the handle's front post | at -0.068 the brims hit the post (13 mm) |
+| Hot Sauce (`cig`, v2) | -0.03, 0.3, sink 1 mm | the glass crest between the shoulder and the label | at -0.025 the third-person cowboy brim touched the label. The 1 mm sink suits so small a hat (on v1, at 2 mm, its rims sank into the bottle) |
+| Big Laser Pointer | -0.095, 0.65 | the tube's crest between the thumb button and the meter | at -0.105 the third-person brims reached the button's bezel (4.5 mm) |
+
+- **Never on the hand:** the leaf blower's web seat is on top of the handle bar, but the fist closes round that bar, so
+  the hat stays on the shell ahead of it. The Hot Sauce's hat stays off the label, where the hand holds the bottle.
+- **Lefty & Righty:** the seat is on the centre line (x 0), so a mirrored left-hand copy wears it in the same place.
+- **Clipping** (`hat_clip.py`, the twelve hats on the five guns, first and third person, 120 rows): feet at most 2.2 mm in,
+  bodies at most 0.5 mm (the taser's first-person cowboy brim), guns 0.1 mm. The googly eyes are at most 1.1 mm in. The report
+  is now 2,472 rows.
+- **The smoothed double barrels** (the guns session's f672ec7: 24-sided barrels on the sawn-off and the Double Barrel
+  skin, with no hat ping): the seats' heights are unchanged, and all twelve hats are clean on both (48 rows, all within
+  0.15 mm of before). The googly eyes now rest 0.5 mm higher on the sawn-off's rounder barrels in first person and
+  1.7 mm higher in third person (`ey` 0.04067, `ey3` 0.0415). The sawn-off v3 (5da5c16, bored muzzles, committed while
+  this was in the queue) is also clean, with the same seat and eye heights (feet 2.0 mm, the eyes 1.3 mm).
+- **`hat_solve.py` fixed:** since round 13 it scored the googly eyes at the common seat, where their balls read as sunk in,
+  so every seat it found wanted a saddle (the batch A slapper and water pistol answers too). Hats in
+  `hat_models.SEATED` are now left out of its score; `hat_clip.py` checks them at their own seat.
+- **Studio (place version 798):** `GunHatData` pushed as a guarded patch. Lefty & Righty does not build in Studio yet (a
+  later batch), so its seat waits there. On the other four built guns, at both sizes, the cowboy's foot reads exactly
+  its sink (2.0 mm; 1.0 mm on the Hot Sauce). The eyes read 0.2 to 1.0 mm in. The hats ride the taser's, blower's and
+  laser's bodies, none on a lit or moving part (the taser's LED, the laser's button, meter and emitter). The Hot Sauce's
+  hat rides `sauce_wzB__sauce` inside the glass: it does not move, but if the sauce is ever animated the hat should be
+  given the glass. The sawn-off's new eye heights followed in place version 803 (the v3 built in Studio: cowboy 2.0 mm, eyes 0.8 and 1.3 mm, riding the hinge).
+
 ## Seats on batch A: minigun, water pistol, nail gun, bread, hand slapper (17 Nov 2026, place version 779)
 
 The guns session built the five new weapons as kit models (commit f13f243, `gun_batch_a.py`) and proposed a seat for
@@ -524,7 +560,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779.
+- **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
+blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
