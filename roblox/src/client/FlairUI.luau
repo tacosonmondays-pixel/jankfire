@@ -28,6 +28,11 @@ local S = {
 	cam = { active = false, closing = false, t0 = 0, dur = 0.5, from = CFrame.new(), to = CFrame.new(), saved = CFrame.new(), savedType = Enum.CameraType.Custom },
 	spot = nil :: { s: Vector3, face: Vector3 }?, template = nil :: Model?, dummy = nil :: Model?, savedOpen = false,
 	fake = nil :: Vector2?, -- (a phone-sized test box: FlairUI.fakeScreen)
+	-- (newest first and NEW, 18 Nov: the loot save's order and fresh marks per type, the pets' own; what the shown tab
+	-- has shown, told as seen on a tab change or close; whether you've changed tab since opening)
+	gotAt = {} :: { [string]: { [string]: number } }, fresh = {} :: { [string]: { [string]: number } },
+	petsAt = {} :: { [string]: number }, petsNew = {} :: { [string]: boolean }, pending = {} :: { [string]: { [string]: boolean } },
+	touched = false,
 }
 local controls: any = nil
 task.spawn(function()
@@ -143,8 +148,18 @@ local function flairAnim(): any
 	return if FlairAnimMod then FlairAnimMod else nil
 end
 
+-- the NEW dot (18 Nov, shop-gui: as the loadout's strips): a small quiet amber dot with a dark ring, no words. top left on
+-- a card (the lock and the worn mark sit top right)
+local function newDot(parent: GuiObject, pos: UDim2?): Frame
+	local d = new("Frame", { Name = "New", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = pos or UDim2.fromOffset(7, 7),
+		Size = UDim2.fromOffset(10, 10), ZIndex = 12, Visible = false }, parent)
+	T.corner(d, 5)
+	new("UIStroke", { Color = Color3.fromRGB(8, 9, 12), Thickness = 1.5, Transparency = 0.25 }, d)
+	return d
+end
+
 -- a card: the drawn tile, the name, the rarity
-type Card = { id: string, t: string, btn: TextButton, st: UIStroke, tag: TextLabel, lockF: Frame?, pic: Frame }
+type Card = { id: string, t: string, btn: TextButton, st: UIStroke, tag: TextLabel, lockF: Frame?, pic: Frame, dot: Frame }
 local function card(parent: Instance, t: string, id: string, w: number, h: number, order: number): Card
 	local i = Flair.info(t, id)
 	local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = T.CARD, BorderSizePixel = 0,
@@ -169,7 +184,7 @@ local function card(parent: Instance, t: string, id: string, w: number, h: numbe
 	-- (worn: "EQUIPPED" over the rarity's place on the right)
 	local tag = label(btn, "", 12, UDim2.fromOffset(10, ph + 33), UDim2.fromOffset(w - 20, 18), T.ACCENT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 	tag.ZIndex = 6
-	local c: Card = { id = id, t = t, btn = btn, st = st, tag = tag, lockF = nil, pic = pic }
+	local c: Card = { id = id, t = t, btn = btn, st = st, tag = tag, lockF = nil, pic = pic, dot = newDot(btn) }
 	btn.MouseEnter:Connect(function() btn.BackgroundColor3 = T.CARD_HI end)
 	btn.MouseLeave:Connect(function() btn.BackgroundColor3 = T.CARD end)
 	return c
@@ -223,7 +238,7 @@ local function petCard(parent: Instance, id: string, w: number, h: number, order
 	tag.ZIndex = 6
 	btn.MouseEnter:Connect(function() btn.BackgroundColor3 = T.CARD_HI end)
 	btn.MouseLeave:Connect(function() btn.BackgroundColor3 = T.CARD end)
-	return { id = id, t = "pet", btn = btn, st = st, tag = tag, pic = pic, vp = vp, shown = nil :: boolean?, name = nm }
+	return { id = id, t = "pet", btn = btn, st = st, tag = tag, pic = pic, vp = vp, shown = nil :: boolean?, name = nm, dot = newDot(btn) }
 end
 
 -- ------------------------------------------------------------------ a layout: tabs, the panel and its three tabs' contents
@@ -273,7 +288,7 @@ local function build(L: any): any
 			Text = ({ kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE", pet = "PETS" })[t],
 			TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 }, stage)
 		local rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, L.tabs.ruleY), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, b)
-		V.tabs[t] = { b = b, rule = rule }
+		V.tabs[t] = { b = b, rule = rule, dot = newDot(b, UDim2.fromOffset(0, 2)) } -- (its NEW dot sits just past the word: news)
 		b.MouseButton1Click:Connect(function() onTab(t) end)
 	end
 	local p, s = at(L.done)
@@ -440,9 +455,94 @@ local function paintCard(c: Card, selected: boolean, worn: boolean)
 	if c.lockF then c.lockF.Visible = not mine end
 end
 
+-- ------------------------------------------------------------------ newest first, and NEW (18 Nov, shop-gui)
+-- (the owner: "if you unlock a spray it should be placed at the start of the scroll"; main: the same in every picker)
+-- each grid runs: what you have, newest first (the loot save's order; a pet: the order it was found in), then the free
+-- ones (the plain one first: no kill effect, the rope, no pet), then the rest as listed. a NEW dot on what came since you
+-- last looked, and on its tab; the shown tab's NEW ones count as seen once you change tab or close (flushNew)
+local PLAIN = { kill = "none", grapple = "rope", pet = "" }
+local function isNew(t: string, id: string): boolean
+	if t == "pet" then return S.petsNew[id] == true and S.pets[id] == true end
+	local f = S.fresh[t]
+	return f ~= nil and f[id] ~= nil
+end
+local function flushNew()
+	for t, ids in S.pending do
+		local list = {}
+		for id in ids do
+			table.insert(list, id)
+			if t == "pet" then S.petsNew[id] = nil elseif S.fresh[t] then S.fresh[t][id] = nil end
+		end
+		if #list == 0 then continue end
+		if t == "pet" then
+			task.spawn(ask, "petseen", list)
+		else
+			local lf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+			local lr = lf and lf:FindFirstChild("Loot")
+			if lr and lr:IsA("RemoteFunction") then task.spawn(function() pcall(function() (lr :: RemoteFunction):InvokeServer("seen", t, list) end) end) end
+		end
+	end
+	table.clear(S.pending)
+end
+-- the newest NEW thing: its tab and id (nil: nothing new)
+local function newest(): (string?, string?)
+	local bt, bid, best = nil, nil, -1
+	for _, t in Flair.TYPES do
+		for id, n in S.fresh[t] or {} do if type(n) == "number" and n > best then bt, bid, best = t, id, n end end
+	end
+	if bt then return bt, bid end
+	local pt, pid, pn = nil, nil, -1
+	for id in S.petsNew do
+		local n = tonumber(S.petsAt[id]) or 0
+		if S.pets[id] and n > pn then pt, pid, pn = "pet", id, n end
+	end
+	return pt, pid
+end
+local function news(Vw: any)
+	for t, X in { kill = Vw.K, emote = Vw.M, grapple = Vw.G, pet = Vw.P } do
+		local list = {}
+		for i, c in X.cards do
+			local mine, n = false, 0
+			if t == "pet" then
+				mine = c.id ~= "" and S.pets[c.id] == true
+				n = tonumber(S.petsAt[c.id]) or 0
+			else
+				mine = S.owned[t][c.id] == true and not Flair.isFree(t, c.id)
+				n = if S.gotAt[t] then (S.gotAt[t][c.id] or 0) else 0
+			end
+			local free = c.id == PLAIN[t] or (t ~= "pet" and Flair.isFree(t, c.id))
+			table.insert(list, { c = c, g = if mine then 0 elseif free then 1 else 2, n = n, plain = c.id == PLAIN[t], i = i })
+			local nw = isNew(t, c.id)
+			c.dot.Visible = nw
+			if nw and S.open and S.tab == t then
+				S.pending[t] = S.pending[t] or {}
+				S.pending[t][c.id] = true
+			end
+		end
+		table.sort(list, function(a, b)
+			if a.g ~= b.g then return a.g < b.g end
+			if a.g == 0 and a.n ~= b.n then return a.n > b.n end
+			if a.plain ~= b.plain then return a.plain end
+			return a.i < b.i
+		end)
+		for o, x in list do x.c.btn.LayoutOrder = o end
+	end
+	for t, x in Vw.tabs do
+		local has = false
+		if t == "pet" then
+			for id in S.petsNew do if S.pets[id] then has = true end end
+		else
+			has = next(S.fresh[t] or {}) ~= nil
+		end
+		x.dot.Visible = has
+		x.dot.Position = UDim2.fromOffset(x.b.TextBounds.X + 8, 2)
+	end
+end
+
 local function refresh()
 	if not V then return end
 	local K, M, G = V.K, V.M, V.G
+	news(V)
 	for t, x in V.tabs do
 		x.b.TextColor3 = if S.tab == t then T.TEXT else T.DIM
 		x.rule.Visible = S.tab == t
@@ -533,6 +633,26 @@ local function fetch()
 	end
 	S.pets = {}
 	for _, id in (if type(res.pets) == "table" then res.pets else {}) do S.pets[id] = true end
+	-- (newest first and NEW: the pets' order found and NEW ones from this save; the rest from the loot save)
+	S.petsAt = if type(res.petsAt) == "table" then res.petsAt else {}
+	S.petsNew = {}
+	for _, id in (if type(res.petsNew) == "table" then res.petsNew else {}) do S.petsNew[id] = true end
+	local lf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local lr = lf and lf:FindFirstChild("Loot")
+	if lr and lr:IsA("RemoteFunction") then
+		local ok, inv = pcall(function() return (lr :: RemoteFunction):InvokeServer("inventory") end)
+		if ok and type(inv) == "table" and inv.ok then
+			S.gotAt, S.fresh = {}, {}
+			for _, t in Flair.TYPES do
+				local g = {}
+				for i, k in (if type(inv.order) == "table" and type(inv.order[t]) == "table" then inv.order[t] else {}) do g[k] = i end
+				S.gotAt[t] = g
+				local f = {}
+				for k, n in (if type(inv.fresh) == "table" and type(inv.fresh[t]) == "table" then inv.fresh[t] else {}) do f[k] = n end
+				S.fresh[t] = f
+			end
+		end
+	end
 end
 
 -- ------------------------------------------------------------------ the stand-in: a copy of you in the world
@@ -810,6 +930,12 @@ function FlairUI.open(tab: string?, home: CFrame?)
 	S.pick.emote = if sl[S.slot] ~= "" then sl[S.slot] else Flair.ORDER.emote[1]
 	S.pick.grapple = wornGrapple()
 	S.pick.pet = wornPet()
+	-- (something NEW since last time, and no tab asked for: open on the newest one, picked. 18 Nov)
+	S.touched = false
+	if tab == nil then
+		local nt, nid = newest()
+		if nt and nid then S.tab = nt; S.pick[nt] = nid end
+	end
 	table.clear(S.hidden)
 	for _, g in pg:GetChildren() do
 		if g:IsA("ScreenGui") and g ~= gui and g ~= guiUI and g.Enabled then S.hidden[g] = true; g.Enabled = false end
@@ -836,6 +962,11 @@ function FlairUI.open(tab: string?, home: CFrame?)
 	if controls then pcall(function() controls:Disable() end) end
 	task.spawn(function()
 		fetch()
+		-- (what came since the last fetch: the newest NEW one, if you haven't moved yet)
+		if S.open and tab == nil and not S.touched then
+			local nt, nid = newest()
+			if nt and nid and (nt ~= S.tab or S.pick[nt] ~= nid) then S.tab = nt; S.pick[nt] = nid; previewLoop() end
+		end
 		if S.open then refresh(); if S.tab == "pet" then previewLoop() end end -- (the pet preview drew before it knew what you have found)
 	end)
 	previewLoop()
@@ -843,6 +974,7 @@ end
 
 function FlairUI.close()
 	if not S.open then return end
+	flushNew() -- (what the shown tab showed has been seen)
 	S.open = false
 	S.tok += 1
 	gui.Enabled = false
@@ -878,11 +1010,14 @@ end
 -- ------------------------------------------------------------------ input (both layouts call these)
 onTab = function(t: string)
 	if S.tab == t then return end
+	flushNew() -- (the tab you leave: its NEW ones have been seen)
+	S.touched = true
 	S.tab = t
 	refresh()
 	previewLoop()
 end
 onPick = function(t: string, id: string)
+	S.touched = true
 	S.pick[t] = id
 	refresh()
 	previewLoop()

@@ -21,6 +21,7 @@
 -- remote FlairKill (RemoteEvent, made here): { m = the body, fx = id, k = killer's UserId, from = where they stood } to
 -- every client.
 --   ("pet", id)       -> wear a pet you have found ("" = none)
+--   ("petseen", ids)  -> the picker showed these NEW pets (18 Nov); "state" also sends petsAt (the order found) and petsNew
 -- PETS (18 Nov 2026): found only (server/PetSecrets.server.luau finds them), owned in THIS save (d.pets), never the loot
 -- save, so the shop and the bags never see them. the worn one is the player attribute Pet (every client's Pets.client
 -- draws it). script.PetOps (BindableFunction, for the server's own scripts):
@@ -289,10 +290,24 @@ local function handle(p: Player, op: any, a: any, b: any): any
 	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "state" then
 		local d = dataOf(p)
-		local pets = {}
+		local pets, petsNew = {}, {}
 		for _, id in Flair.PET_ORDER do if ownsPet(p, id) then table.insert(pets, id) end end
+		if d and type(d.petsNew) == "table" then for id in d.petsNew do if ownsPet(p, id) then table.insert(petsNew, id) end end end
 		return { ok = true, kill = worn(p), grapple = wornGrapple(p), emotes = slots(p), owned = ownedList(p),
-			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none", pets = pets, pet = wornPet(p) or "" }
+			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none", pets = pets, pet = wornPet(p) or "",
+			petsAt = if d and type(d.petsAt) == "table" then d.petsAt else {}, petsNew = petsNew }
+	end
+	if op == "petseen" then
+		-- (the picker showed these NEW pets: no NEW dot on them from now on. 18 Nov)
+		local d = dataOf(p)
+		if d and type(d.petsNew) == "table" and type(a) == "table" then
+			for i, id in ipairs(a) do
+				if i > 20 then break end
+				if type(id) == "string" then d.petsNew[id] = nil end
+			end
+			if s.prof then s.prof.dirty = true end
+		end
+		return { ok = true }
 	end
 	if op == "emote" then
 		local ok, why, len, anim = startEmote(p, a)
@@ -458,6 +473,13 @@ local function grantPet(p: Player, id: string): string
 	if type(d.pets) ~= "table" then d.pets = {} end
 	if d.pets[id] == true then return "owned" end
 	d.pets[id] = true
+	-- (newest first and NEW in the picker, 18 Nov, shop-gui: the order pets were found in, and the ones the picker hasn't
+	-- shown yet; "state" sends both, "petseen" clears)
+	d.petsN = (tonumber(d.petsN) or 0) + 1
+	d.petsAt = if type(d.petsAt) == "table" then d.petsAt else {}
+	d.petsAt[id] = d.petsN
+	d.petsNew = if type(d.petsNew) == "table" then d.petsNew else {}
+	d.petsNew[id] = true
 	if type(d.pet) ~= "string" or d.pet == "" then d.pet = id end -- (your first pet comes along at once)
 	changed(p)
 	if CalloutR then CalloutR:FireClient(p, "NEW PET · " .. string.upper(info.name), 2.8) end

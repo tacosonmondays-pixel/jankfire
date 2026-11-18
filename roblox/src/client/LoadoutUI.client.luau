@@ -30,15 +30,9 @@ local ACCENT, TEXT, GREY, DIM, RED = T.ACCENT, T.TEXT, T.MUTED, T.DIM, T.DANGER
 local PANEL, CARD, INK, WHITE = T.BG, T.CARD, T.INK, Color3.new(1, 1, 1)
 local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, T.FONT_TITLE
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.G] = 4 }
-local LINES = {
-	"four slots. choose violence.",
-	"no refunds. some take-backs.",
-	"dress your gun for the job you want.",
-	"pick your poison. it's all poison.",
-	"the armory. touch everything.",
-}
-local MODE_NAMES = { normal = "HANDLE", reverse = "BUSINESS END", full = "FULL SEND" }
-local SOON_GIMMICK = "already in the web game. roblox is still bolting it together."
+-- (plain words only: the owner's no-flavour-text rule. 18 Nov: the jokey subtitles under LOADOUT went, and these names)
+local MODE_NAMES = { normal = "HANDLE", reverse = "BARREL", full = "WHOLE GUN" }
+local SOON_GIMMICK = "not on roblox yet."
 
 local function play(name: string) pcall(Sfx.play, name) end
 local function tw(o: Instance, t: number, props: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?): Tween
@@ -252,7 +246,7 @@ local titleBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fro
 local title = label(titleBox, "LOADOUT", 46, UDim2.fromOffset(0, 0), UDim2.fromOffset(560, 54), TEXT)
 title.FontFace = FONT_TITLE
 new("Frame", { Name = "Rule", BackgroundColor3 = ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 62), Size = UDim2.fromOffset(44, 3) }, titleBox)
-local subtitle = label(titleBox, LINES[1], 18, UDim2.fromOffset(2, 76), UDim2.fromOffset(560, 24), GREY)
+local subtitle = label(titleBox, "", 18, UDim2.fromOffset(2, 76), UDim2.fromOffset(560, 24), GREY) -- (only training's TRY line)
 
 -- done + the save status
 local done = button(stage, "DONE  [L]", "white", UDim2.fromOffset(1700, 40), UDim2.fromOffset(160, 50))
@@ -473,12 +467,12 @@ local function statsFor(id: string): { Roster.Stat }
 		local r = 1 / (w.cd or 1)
 		table.insert(out, { label = "SWING RATE", text = ("%.3g/s"):format(r), bar = math.min(1, r / 22) })
 		table.insert(out, { label = "REACH", text = ("%.2g m, +%.2g a kill"):format(w.range / S, (w.grow or 0) / S), bar = math.min(1, math.sqrt(w.range / S / 500)) })
-		table.insert(out, { label = "MAG", text = "it's a sword", bar = 1 })
+		table.insert(out, { label = "MAG", text = "n/a", bar = 0 })
 	else
 		local r = w.rate or 1
 		table.insert(out, { label = "FIRE RATE", text = if w.rateMax then ("%g-%g/s"):format(r, w.rateMax) else ("%.2g/s"):format(r), bar = math.min(1, (w.rateMax or r) / 22) })
 		table.insert(out, { label = "RANGE", text = ("%g m"):format(w.range / S), bar = math.min(1, math.sqrt(w.range / S / 500)) })
-		table.insert(out, { label = "MAG", text = if w.mag then tostring(w.mag) else "lots", bar = math.min(1, (w.mag or 60) / 60) })
+		table.insert(out, { label = "MAG", text = if w.mag then tostring(w.mag) else "no reload", bar = math.min(1, (w.mag or 60) / 60) })
 	end
 	return out
 end
@@ -531,7 +525,7 @@ new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingTop = UDim.new(0, 14), P
 -- (its ‹ › arrows: added below, once arrows() exists)
 local noPaint = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 108),
-	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no paint on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
+	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "not on roblox yet.", ZIndex = 10, Visible = false, Active = true,
 }, wbar)
 
 -- a swatch: a paint chip with the wrap's palette laid on it like its pattern, a thin line under it in its rarity's colour
@@ -888,7 +882,7 @@ refresh = function()
 			if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noPaint.Visible = not e.live -- (the gadgets take paint since 18 Nov)
-	noPaint.Text = "no paint on vapourware. pick something that's live."
+	noPaint.Text = "not on roblox yet."
 	for _, s in swatches do
 		local on = s.wr.id == wid
 		s.tick.Visible = on
@@ -931,7 +925,7 @@ equipBtn.face.MouseButton1Click:Connect(function()
 			else ("%s on key %d. close this to grab it."):format(string.lower(e.name), slotIndex(e.slot)))
 	else
 		play("empty")
-		say(why or "nope.", RED)
+		say(why or "that didn't work.", RED)
 	end
 	refresh()
 end)
@@ -944,9 +938,9 @@ onSwatch = function(wr)
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
 		play("click")
-		say(if wr.id == "default" then "factory paint. classic." else ("%s, wrapped in %s."):format(string.lower(e.name), wr.name))
+		say(if wr.id == "default" then "factory paint." else ("%s, wrapped in %s."):format(string.lower(e.name), wr.name))
 	else
-		play("empty"); say(why or "nope.", RED)
+		play("empty"); say(why or "that didn't work.", RED)
 	end
 	refresh()
 end
@@ -960,7 +954,7 @@ for md, b in modeBtns do
 		if not e or not e.live then return end
 		local wid = wrapOf(e.id)
 		local ok, why = ask("wrap", e.id, wid, md)
-		if ok then play("click") else say(why or "nope.", RED) end
+		if ok then play("click") else say(why or "that didn't work.", RED) end
 		refresh()
 	end)
 end
@@ -992,7 +986,7 @@ new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) 
 arrows(hatRow, hbar)
 local noHats = new("TextLabel", {
 	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
-	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no hats on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
+	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "not on roblox yet.", ZIndex = 10, Visible = false, Active = true,
 }, hbar)
 -- (each hat on a card: its own little stage, seen from the front left; the googly eyes and the halo, which lean
 -- toward the player holding the gun, turned to face you)
@@ -1182,7 +1176,7 @@ skinsRefresh = function(e: any)
 			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noSkins.Visible = not e.live or #ids + #extra == 0
-	noSkins.Text = if not e.live then "no skins on vapourware. pick something that's live." else "no skins for this one yet."
+	noSkins.Text = if not e.live then "not on roblox yet." else "no skins for this one yet."
 	for _, c in skinCards do
 		local on = c.id == cur
 		c.tick.Visible = on
@@ -1214,7 +1208,7 @@ onSkin = function(sid: string)
 		play("click")
 		say(if sid == "default" then "back to the plain one." else ("%s, now as the %s."):format(string.lower(e.name), string.lower((skinInfo(sid)))))
 	else
-		play("empty"); say(why or "nope.", RED)
+		play("empty"); say(why or "that didn't work.", RED)
 	end
 	refresh()
 end
@@ -1245,7 +1239,7 @@ hatsRefresh = function(e: any)
 			if state.hatHover and state.hatHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noHats.Visible = not e.live or e.slot == "utility"
-	noHats.Text = if e.slot == "utility" then "items don't wear hats." else "no hats on vapourware. pick something that's live."
+	noHats.Text = if e.slot == "utility" then "items don't wear hats." else "not on roblox yet."
 	for _, c in hatCards do
 		local on = c.id == cur
 		c.tick.Visible = on
@@ -1372,9 +1366,9 @@ onHat = function(hid: string)
 	local ok, why = ask("hat", e.id, hid)
 	if ok then
 		play("click")
-		say(if hid == "none" then "hat off. back to business." else ("%s, now in a %s."):format(string.lower(e.name), string.lower(GunHats.HATS[hid].name)))
+		say(if hid == "none" then "hat off." else ("%s, now in a %s."):format(string.lower(e.name), string.lower(GunHats.HATS[hid].name)))
 	else
-		play("empty"); say(why or "nope.", RED)
+		play("empty"); say(why or "that didn't work.", RED)
 	end
 	refresh()
 end
@@ -1455,7 +1449,7 @@ end
 local function canOpen(): (boolean, string?)
 	if not require(script.Parent:WaitForChild("MenuGate")).allowed("loadout") then return false, nil end -- (no hub menus in a match or a map room: MenuGate, play-party-ranked's; the match picker has L in its window)
 	-- (in a match's loadout window the key opens the small picker instead: client/MatchLoadout.luau, play-party-ranked's)
-	if me:GetAttribute("Zone") == "match" then return false, if me:GetAttribute("LoadoutWindow") ~= nil then nil else "NOT MID-MATCH, CHAMP" end
+	if me:GetAttribute("Zone") == "match" then return false, if me:GetAttribute("LoadoutWindow") ~= nil then nil else "NOT MID-MATCH" end
 	local ch = me.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return false, nil end
@@ -1484,7 +1478,7 @@ setOpen = function(v: boolean)
 			setTab(if nt == "wrap" then "wraps" elseif nt == "hat" then "hats" else "skins")
 		end
 		state.hover, state.hatHover, state.modeHover = nil, nil, nil
-		subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else LINES[math.random(#LINES)]
+		subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else ""
 		subtitle.TextColor3 = if trying() then ACCENT else GREY
 		-- the rest of the HUD steps aside while the screen is up (it comes back as it was)
 		table.clear(hidden)
@@ -1582,7 +1576,7 @@ end
 -- (in or out of training with the screen up: the TRY line and marks follow)
 me:GetAttributeChangedSignal("Trying"):Connect(function()
 	if not state.open then return end
-	subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else LINES[math.random(#LINES)]
+	subtitle.Text = if trying() then "TRY ANYTHING HERE  ·  YOUR LOADOUT COMES BACK WHEN YOU LEAVE" else ""
 	subtitle.TextColor3 = if trying() then ACCENT else GREY
 end)
 me:GetAttributeChangedSignal("Zone"):Connect(function()

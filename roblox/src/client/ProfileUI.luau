@@ -148,6 +148,36 @@ local panelCorner = T.corner(panel, 10)
 local scale = new("UIScale", {}, panel)
 
 type View = { tab: string, who: number, card: any?, owned: any?, list: { any }?, loading: boolean, why: string? }
+-- (newest first and NEW in CUSTOMIZE, 18 Nov, shop-gui, as the loadout's strips: the loot save's order and fresh marks for
+-- the card looks; the NEW ones CUSTOMIZE has shown, told as seen when you leave it or close)
+local News = { gotAt = {} :: { [string]: { [string]: number } }, fresh = {} :: { [string]: { [string]: number } },
+	pending = {} :: { [string]: { [string]: boolean } } }
+function News.flush()
+	local lf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local lr = lf and lf:FindFirstChild("Loot")
+	for t, ids in News.pending do
+		local list = {}
+		for id in ids do
+			table.insert(list, id)
+			if News.fresh[t] then News.fresh[t][id] = nil end
+		end
+		if #list > 0 and lr and lr:IsA("RemoteFunction") then
+			task.spawn(function() pcall(function() (lr :: RemoteFunction):InvokeServer("seen", t, list) end) end)
+		end
+	end
+	table.clear(News.pending)
+end
+function News.any(): boolean
+	for _, t in CardStyles.TYPES do if next(News.fresh[t] or {}) ~= nil then return true end end
+	return false
+end
+-- the NEW dot: a small quiet amber dot with a dark ring, no words
+function News.dot(parent: Instance, x: number, y: number, z: number)
+	local d = new("Frame", { Name = "New", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(x, y),
+		Size = UDim2.fromOffset(10, 10), ZIndex = z }, parent)
+	T.corner(d, 5)
+	new("UIStroke", { Color = Color3.fromRGB(8, 9, 12), Thickness = 1.5, Transparency = 0.25 }, d)
+end
 local view: View = { tab = "profile", who = me.UserId, card = nil, owned = nil, list = nil, loading = false }
 local isOpen = false
 local fake: Vector2? = nil -- (a test: lay out as if the screen were this size)
@@ -534,6 +564,21 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 			if si and si.rarity == "secret" and not (owned ~= nil and owned[t] ~= nil and owned[t][id] == true) then continue end
 			table.insert(ids, id)
 		end
+		-- (newest first, 18 Nov: what you have, newest first; then the free ones, the plain one first; then the rest)
+		local rank = {}
+		for i, id in ids do
+			local inf = CardStyles.info(t, id)
+			local free = inf ~= nil and inf.rarity == "free"
+			local mine = not free and owned ~= nil and owned[t] ~= nil and owned[t][id] == true
+			rank[id] = { g = if mine then 0 elseif free then 1 else 2, n = (News.gotAt[t] and News.gotAt[t][id]) or 0, plain = id == CardStyles.DEFAULT[t], i = i }
+		end
+		table.sort(ids, function(a, b)
+			local x, y = rank[a], rank[b]
+			if x.g ~= y.g then return x.g < y.g end
+			if x.g == 0 and x.n ~= y.n then return x.n > y.n end
+			if x.plain ~= y.plain then return x.plain end
+			return x.i < y.i
+		end)
 		local tw = if L.compact then 150 else 168
 		local th = if t == "title" then math.max(52, L.btn + 8) else 92
 		local gap = 10
@@ -551,6 +596,12 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 			local sample = new("Frame", { Name = "Sample", BackgroundColor3 = T.CARD, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, tile)
 			T.corner(sample, 6)
 			CardStyles.preview(t, id, sample)
+			if News.fresh[t] and News.fresh[t][id] ~= nil then
+				-- (NEW: top left, the tick and the lock sit top right; seen once you leave CUSTOMIZE)
+				News.dot(tile, 7, 7, 43)
+				News.pending[t] = News.pending[t] or {}
+				News.pending[t][id] = true
+			end
 			if picked then
 				-- (an amber ring just outside the tile, over the sample's own border, and a tick in its corner)
 				local ring = new("Frame", { Name = "Picked", BackgroundTransparency = 1, Position = UDim2.fromOffset(-4, -4), Size = UDim2.new(1, 8, 1, 8), ZIndex = 40 }, tile)
@@ -709,6 +760,7 @@ local function draw()
 	for _, t in tabs do
 		local b = button(panel, t[2], tx, ty, tw, L.btn, view.tab == t[1])
 		b.Name = "Tab_" .. t[1]
+		if t[1] == "customize" and News.any() then News.dot(b, tw - 16, 6, 45) end -- (something NEW to wear)
 		b.MouseButton1Click:Connect(function()
 			if t[1] == "customize" and not own then UI.open(me.UserId, "customize") else UI.tab(t[1]) end
 		end)
@@ -777,6 +829,23 @@ local function fetch()
 				local o = invoke("owned")
 				if id ~= fetchId then return end
 				view.owned = if o.ok then o.owned else nil
+				-- (the card looks' order and NEW marks: the loot save's, 18 Nov)
+				local lf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+				local lr = lf and lf:FindFirstChild("Loot")
+				if lr and lr:IsA("RemoteFunction") then
+					local okI, inv = pcall(function() return (lr :: RemoteFunction):InvokeServer("inventory") end)
+					if id ~= fetchId then return end
+					if okI and type(inv) == "table" and inv.ok then
+						for _, t in CardStyles.TYPES do
+							local g = {}
+							for i, k in (if type(inv.order) == "table" and type(inv.order[t]) == "table" then inv.order[t] else {}) do g[k] = i end
+							News.gotAt[t] = g
+							local f = {}
+							for k, n in (if type(inv.fresh) == "table" and type(inv.fresh[t]) == "table" then inv.fresh[t] else {}) do f[k] = n end
+							News.fresh[t] = f
+						end
+					end
+				end
 			end
 		end
 		view.loading = false
@@ -814,6 +883,7 @@ function UI.open(userId: number?, tab: string?)
 end
 function UI.tab(t: string)
 	if t == "customize" and view.who ~= me.UserId then UI.open(me.UserId, "customize"); return end
+	if view.tab == "customize" and t ~= "customize" then News.flush() end -- (its NEW ones have been seen)
 	view.tab = t
 	view.why = nil
 	draw()
@@ -822,6 +892,7 @@ end
 function UI.refresh() if isOpen then draw() end end
 function UI.close()
 	if not isOpen then return end
+	News.flush() -- (what CUSTOMIZE showed has been seen)
 	isOpen = false
 	gui.Enabled = false
 	setMenuFlag(false)

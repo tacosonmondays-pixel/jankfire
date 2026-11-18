@@ -656,8 +656,15 @@ when nothing is new.
   on (see below). The marks are capped at 300 per type, and a mark on something no longer owned is dropped.
 - **Phone and pad:** the same strips, so they get the same order and dots. Not checked on a phone screen.
 - **The kill effect, emote, grapple and pet picker** (`FlairUI`, the flair session's) and **the player card looks**
-  (`ProfileUI`, the player-cards session's) aren't changed yet. The data they'd need is the same
-  `"inventory"` `order`/`fresh` and the `"seen"` op.
+  (CUSTOMIZE in `ProfileUI`, the player-cards session's) work the same way (18 Nov, place version 920).
+  - Both ask the Loot remote's `"inventory"` for `order` and `fresh`, and tell `"seen"`.
+  - Pets aren't in the loot save: `FlairServer` now keeps the order they were found in (`d.petsAt`, `d.petsN`) and the
+    NEW ones (`d.petsNew`). `"state"` sends both, and `"petseen"` clears them. A pet found before 18 Nov has no
+    place in that order, so it comes after the newer ones.
+  - The flair picker, opened without a tab (the loadout's button), lands on the newest NEW thing's tab with it picked.
+  - Seen: in the flair picker, when you change tab or close; in CUSTOMIZE, when you leave it or close.
+  - The dot is top left on their cards, because the lock and the worn mark sit top right. A tab with something NEW has
+    one too.
 - `Loot.luau` is the loot session's file; the change is noted in its comments. `LoadoutUI` was at 191 top-level locals,
   so all of this lives in one table (`News`).
 
@@ -669,6 +676,37 @@ Tested in solo Play at place version 910:
   Default, the free ones, then the locked ones.
 - **Closing** cleared the mark: no longer NEW.
 - The test profile was put back afterwards: its 17 pairs, nothing NEW.
+
+Tested at place version 920 (solo Play, the test profile put back afterwards):
+- **10 Duffel Bags** gave 8 hats, the title Ironclad and the background Aurora.
+- **CUSTOMIZE** had a dot on its tab. Aurora was first in BACKGROUNDS with a NEW dot, then Slate (free, worn), then the
+  free ones, then the locked ones (`docs/shop/newest-first-card-looks.jpg`). Ironclad had its dot too. After closing,
+  nothing was NEW.
+- **The Mini Mannequin**, lost and found again through `PetOps`: the flair picker opened on PETS with it first and
+  dotted, and a dot on the PETS tab (`newest-first-pets.jpg`). After closing it wasn't NEW, and it stayed first
+  (found 1st).
+- **The loadout** opened on the Snowball's HATS: Tiny Duck first with its dot, a dot on HATS and on the Hot Sauce's
+  armory card for its new Cowboy Hat (`loadout-plain-hats-new.jpg`). After closing, the Snowball's hat was seen and the
+  other 7 guns' hats were still NEW.
+- Not seen on screen: a kill effect, emote or grapple won (the bags gave none). They run the same code as the pets
+  and the card looks.
+
+## No flavour text on these screens (18 Nov)
+
+The owner's rule, after the photo showed "four slots. choose violence." under LOADOUT. What went:
+- The loadout's five rotating subtitles: "four slots. choose violence.", "no refunds. some take-backs.", "dress your
+  gun for the job you want.", "pick your poison. it's all poison." and "the armory. touch everything." Nothing shows
+  there now, except training's TRY ANYTHING HERE line.
+- "already in the web game. roblox is still bolting it together." (a weapon not live yet): now "not on roblox yet."
+- "no paint / hats / skins on vapourware. pick something that's live." (and the server's "no paint on vapourware"):
+  now "not on roblox yet." and "that weapon isn't on roblox yet".
+- "factory paint. classic." is now "factory paint.", "hat off. back to business." is now "hat off.", and "nope." is
+  now "that didn't work.".
+- "NOT MID-MATCH, CHAMP" is now "NOT MID-MATCH".
+- The wrap modes: BUSINESS END is now BARREL, and FULL SEND is now WHOLE GUN (HANDLE stays).
+- A sword's MAG read "it's a sword" and is now n/a. A weapon with no magazine read "lots" and is now "no reload".
+
+The shop, the openings and the match picker had nothing of the kind. Their lines only say what a thing is or does.
 
 ## Bundle wraps are every gun's (18 Nov)
 

@@ -390,3 +390,16 @@ Known limits / next:
   effects" settings row would be the next step.
 - Rivals hides the crosshair while you emote; ours stays.
 - The loadout's KILL EFFECT · EMOTES button was not photographed (it sits left of DONE at the top).
+
+## Newest first and NEW (18 Nov, shop-gui)
+
+Every grid in this picker runs: what you have, newest first; then the free ones, the plain one first (no kill
+effect, the rope, no pet); then the rest as listed. A small amber NEW dot sits top left on a new card and on its tab
+until you change tab or close.
+- Kill effects, emotes and grapples: the loot save's order and NEW marks (the Loot remote's `"inventory"`, and
+  `"seen"`).
+- Pets: this save's own. `grantPet` records `d.petsAt[id]` (the order found) and `d.petsNew[id]`. `"state"` sends
+  `petsAt` and `petsNew`, and `("petseen", ids)` clears them.
+- Opened without a tab (the loadout's button), the picker lands on the newest NEW thing's tab, with it picked.
+
+Doc: `SHOP.md` (Newest first, and NEW dots). Photo: `docs/shop/newest-first-pets.jpg`.

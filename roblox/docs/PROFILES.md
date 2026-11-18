@@ -295,3 +295,10 @@ The owner: "can titles appear above head".
   - Photographed in Play on v686 (`docs/profiles/titles-sheet.jpg`): DUCK RAIN SURVIVOR over a stand-in's head, and all of them on the card's CUSTOMIZE tab, where DUCK RAIN SURVIVOR fits on one line.
   - During a real emote there was no HeldWeapon, no Tool and no visible viewmodel.
 - **IRON DOME** (17 Nov, the owner's, id `iron_dome`): one more Cool title, rare, between BLACKOUT and IRONCLAD. Unlocked and shown like the other Cool titles (crates, shop, card, over heads).
+
+## CUSTOMIZE: newest first and NEW (18 Nov, shop-gui)
+
+Each row of looks runs: what you have, newest first (the loot save's order); then the free ones, the plain one first;
+then the rest. A small amber NEW dot sits top left on a new look, and on the CUSTOMIZE tab, until you leave CUSTOMIZE
+or close (the Loot remote's `"inventory"` for `order` and `fresh`, and `"seen"`). Doc: `SHOP.md` (Newest first, and
+NEW dots). Photo: `docs/shop/newest-first-card-looks.jpg`.
