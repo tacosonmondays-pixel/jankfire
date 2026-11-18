@@ -283,6 +283,16 @@ player (rounds 6 to 8). Photo: `gun-hats/round13-googly-eyes.jpg` (the Assault R
     shapes; the deeper readings are on keyed parts, as before). There are no saddles under the eyes and the pupils
     carry their rattle. The Angel rifle's balls read exactly 1.0 mm in.
 
+## The fused Hand Slapper (18 Nov 2026, place version 899)
+
+The guns session fused the slapper's hand into one piece (commit ceb280d, `sdf_kit.py`, place version 896). The thumb's
+tip is where it was, so the seat stays (z -0.51, x -0.008, s 0.6). `hat_clip.py` on the new hand, all twelve hats, first
+and third person: feet 2.0 mm (eyes 0.5 and 0.7), bodies 0.0, gun 0.0, every foot on `hand_wzB__hand`. The old hand's
+0.015 mm graze of the chef's hat on the wrist band is gone. The measured top rose 0.04 mm (y 0.09305 to 0.09309) and the
+eyes' floors dropped about 0.2 mm (ey 0.09245, ey3 0.08962); `GunHatData` was pushed with that one line changed.
+- **Studio (place version 899):** `GunHatData` pushed as a guarded patch. On the built slapper, at both sizes, the cowboy's
+  foot reads exactly 2.0 mm in on `hand_wzB__hand` and the eyes 0.5 to 0.8 mm (they rest on the thumb's slope).
+
 ## The card deck and the lasso (batch E part 2, 18 Nov 2026, place version 888)
 
 The guns session's `cards` and `lasso` (commit 01356ec, `gun_batch_e2.py`, place version 887) take their proposed seats.
@@ -678,7 +688,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 13** (asset 123597118644451: the Googly Eyes straight on the gun, their own seats), place version 724; seats on batch A (minigun, water pistol, nail gun, bread, hand slapper) in place version 779 and batch B (taser, leaf
 blower, Hot Sauce, big laser pointer; Lefty & Righty ready) in place version 798, batch C, Classic batch 1 and the Ducky Pistol rebuild in place version 824, and
-the two-form scythe v3 and Classic batches 2 and 3 in place version 847, batch D in place version 869, the Shopping Cart Cannon in place version 884, and the card deck and lasso in place version 888.
+the two-form scythe v3 and Classic batches 2 and 3 in place version 847, batch D in place version 869, the Shopping Cart Cannon in place version 884, the card deck and lasso in place version 888, and the fused Hand Slapper rechecked in place version 899.
   Round 12 (asset 100913123667082: the eleven hats plus the Star Tricorne) went live in place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   77 skins since place version 678 (73 from 628, 72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
