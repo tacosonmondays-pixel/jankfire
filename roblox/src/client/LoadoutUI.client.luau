@@ -361,7 +361,9 @@ local function buildArmory()
 		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color, new = News.dot(btn, 6, 8) })
 		News.guard("armory level " .. tostring(e.id), News.MUI.card, btn, e) -- (its weapon level: LV n and a hairline bar)
 	end
-	armCount.Text = News.fmt("%d live · %d coming soon", live, soon)
+	-- (just the count, the owner, 18 Nov: "get rid of where it says live ready free for now etc"; coming soon only when there are some)
+	local word = if state.slot == "utility" then "gadget" else "weapon"
+	armCount.Text = News.fmt("%d %s%s", live, word, if live == 1 then "" else "s") .. (if soon > 0 then News.fmt(" · %d coming soon", soon) else "")
 	armList.CanvasPosition = Vector2.zero
 end
 
@@ -947,10 +949,13 @@ refresh = function()
 			local U = require(Shared:WaitForChild("Unlocks")) :: any
 			local okU, whyU = U.forPlayer(me, a.id)
 			okU = okU or trying()
+			-- (no status words under the name, the owner, 18 Nov: the key it's on when you carry it, COMING SOON, a Robux
+			-- weapon you don't have its price, a locked one what unlocks it; nothing else)
+			local o = if not okU and U.robux(a.id) then News.weaponOffer(a.id) else nil
 			a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
-				elseif U.robux(a.id) then (if U.robuxFree() then "ROBUX · FREE FOR NOW" elseif okU then "LIVE · yours" else "ROBUX")
-				elseif not okU then whyU or "LOCKED" else "LIVE · ready"
-			a.tag.TextColor3 = if equipped then ACCENT elseif not e.live or not okU then DIM else GREY
+				elseif o then News.digits(o.robux) .. " ROBUX"
+				elseif not okU then whyU or "LOCKED" else ""
+			a.tag.TextColor3 = if equipped then ACCENT elseif o then TEXT elseif not e.live or not okU then DIM else GREY
 			a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
 		end)
 	end

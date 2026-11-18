@@ -1191,7 +1191,7 @@ do
 	UI.gunBar = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 22) }, UI.gunScroll)
 	UI.gunHead, UI.gunNote = header(UI.gunBar, "WEAPONS", "ROBUX OR COINS")
 	UI.gunRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 30), Size = UDim2.new(1, -8, 0, 300) }, UI.gunScroll)
-	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.gunRow)
+	UI.gunGrid = new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 14), CellSize = UDim2.fromOffset(240, 340), SortOrder = Enum.SortOrder.LayoutOrder }, UI.gunRow)
 	local pc = UI.pages.coins
 	UI.coinScroll = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), CanvasSize = UDim2.new(),
 		ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, pc)
@@ -1208,7 +1208,18 @@ do
 	UI.coinAmt = txt(UI.coinHave, "0", 22, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Right)
 	UI.coinAmt.AutomaticSize = Enum.AutomaticSize.X; UI.coinAmt.Size = UDim2.fromOffset(0, 30); UI.coinAmt.LayoutOrder = 2
 	UI.coinRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 52), Size = UDim2.new(1, -8, 0, 320) }, UI.coinScroll)
-	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(0.25, -11, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.coinRow)
+	UI.coinGrid = new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 14), CellSize = UDim2.fromOffset(240, 340), SortOrder = Enum.SortOrder.LayoutOrder }, UI.coinRow)
+end
+-- the WEAPONS and COINS cards are as big as what's on them (the picture, the words, the buttons), in the shop's design
+-- pixels: S.bw is the page's width before UI.scale. (they were sized from AbsoluteSize, which is in screen pixels: on a
+-- big screen the cards came out taller than the window and the amount, bonus and price fell off the bottom, 18 Nov)
+-- n cards in a row, none wider than maxW: the card width, the gap, the padding
+function Money.cells(n: number, maxW: number): (number, number, number)
+	local k = S.compact
+	local gap = if k then 10 else 14
+	local bw = S.bw or 1100
+	local cw = math.floor((bw - 8 - (math.max(n, 1) - 1) * gap) / math.max(n, 1))
+	return math.max(140, math.min(cw, maxW)), gap, if k then 10 else 14
 end
 function Money.ask(op: string, a: any?, b: any?): any
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
@@ -1267,31 +1278,36 @@ function ShopUI.fillWeapons()
 	local U = require(Shared:WaitForChild("Unlocks")) :: any
 	local free = U.robuxFree()
 	local k = S.compact
-	local pad = if k then 10 else 14
-	-- (the page's own height; on a phone it scrolls)
-	local H = UI.gunScroll.AbsoluteSize.Y
-	local gunH = math.max(if k then 230 else 300, H - 40)
-	UI.gunRow.Size = UDim2.new(1, -8, 0, gunH)
-	UI.gunScroll.CanvasSize = UDim2.fromOffset(0, 30 + gunH)
+	local cw, gap, pad = Money.cells(#Shop.WEAPON_IDS, if k then 220 else 300)
+	-- (top to bottom: the gun, its name, the Robux button, the coins button; one button, OWNED or FREE FOR NOW, when
+	-- none of them can be bought)
+	local viewH = math.floor(cw * (if k then 0.52 else 0.68))
+	local bh = 44
+	local anyBuy = false
+	for _, wid in Shop.WEAPON_IDS do if not free and not Money.owns(wid) and Shop.weaponOffer(wid) then anyBuy = true end end
+	local nameY = 6 + viewH + 4
+	local rbY = nameY + 24 + (if k then 6 else 10)
+	local cbY = rbY + bh + 6
+	local ch = (if anyBuy then cbY else rbY) + bh + pad
+	UI.gunGrid.CellSize = UDim2.fromOffset(cw, ch)
+	UI.gunGrid.CellPadding = UDim2.fromOffset(gap, gap)
+	UI.gunRow.Size = UDim2.new(1, -8, 0, ch)
+	UI.gunScroll.CanvasSize = UDim2.fromOffset(0, 30 + ch + 8)
 	UI.gunNote.Text = if free then "FREE FOR NOW" else "ROBUX OR COINS"
 	for i, wid in Shop.WEAPON_IDS do
 		local o = Shop.weaponOffer(wid)
 		if not o then continue end
 		local c = card(UI.gunRow, "legendary")
 		c.LayoutOrder = i
-		local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 1, -(if k then 100 else 112)) }, c)
+		local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, viewH) }, c)
 		V.show(view, V.gun(wid), "hover", 1.0)
 		local name = txt(c, string.upper(o.name), if k then 15 else 18, T.TEXT, T.FONT_TITLE)
-		name.Position = UDim2.new(0, pad, 1, if k then -96 else -106); name.Size = UDim2.new(1, -2 * pad, 0, 22)
+		name.Position = UDim2.fromOffset(pad, nameY); name.Size = UDim2.new(1, -2 * pad, 0, 22)
 		local own = Money.owns(wid)
-		local line = txt(c, if own then "YOURS" elseif free then "FREE FOR NOW" else "", 11, if own then T.ACCENT else T.SOFT, T.FONT_BOLD)
-		line.Position = UDim2.new(0, pad, 1, if k then -72 else -80); line.Size = UDim2.new(1, -2 * pad, 0, 14)
-		local bh = 44
-		local y = -(bh + (if k then 8 else 12))
-		local rb = button(c, "", "main", UDim2.new(0.5, -(pad + 4), 0, bh), UDim2.new(0, pad, 1, y))
-		local bb = button(c, "", "dark", UDim2.new(0.5, -(pad + 4), 0, bh), UDim2.new(0.5, 4, 1, y))
+		local rb = button(c, "", "main", UDim2.new(1, -2 * pad, 0, bh), UDim2.fromOffset(pad, rbY))
+		local bb = button(c, "", "dark", UDim2.new(1, -2 * pad, 0, bh), UDim2.fromOffset(pad, cbY))
 		if own or free then
-			rb.face.Size = UDim2.new(1, -2 * pad, 0, bh)
+			if anyBuy then rb.face.Position = UDim2.fromOffset(pad, cbY) end -- (the one button, at the bottom)
 			bb.face.Visible = false
 			rb.set(if own then "OWNED" else "FREE FOR NOW", false)
 		else
@@ -1306,11 +1322,18 @@ end
 function ShopUI.fillCoins()
 	for _, c in UI.coinRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
 	local k = S.compact
-	local pad = if k then 10 else 14
-	local H = UI.coinScroll.AbsoluteSize.Y
-	local rowH = math.max(if k then 240 else 320, H - 60)
-	UI.coinRow.Size = UDim2.new(1, -8, 0, rowH)
-	UI.coinScroll.CanvasSize = UDim2.fromOffset(0, 52 + rowH)
+	local cw, gap, pad = Money.cells(#Shop.coinPacks(), if k then 220 else 300)
+	-- (top to bottom: the picture with the bonus chip on its corner, the amount big, COINS, the price)
+	local picH = math.floor((cw - 2 * pad) * (if k then 0.6 else 0.78))
+	local amtY = pad + picH + 4
+	local amtH = if k then 28 else 36
+	local subY = amtY + amtH
+	local btnY = subY + 16 + (if k then 6 else 10)
+	local ch = btnY + 44 + pad
+	UI.coinGrid.CellSize = UDim2.fromOffset(cw, ch)
+	UI.coinGrid.CellPadding = UDim2.fromOffset(gap, gap)
+	UI.coinRow.Size = UDim2.new(1, -8, 0, ch)
+	UI.coinScroll.CanvasSize = UDim2.fromOffset(0, 52 + ch + 8)
 	UI.coinAmt.Text = commas(Purse.of("brass"))
 	local sell = Shop.ROBUX == true and not Shop.free()
 	UI.coinNote.Text = if sell then "" else "NOT FOR SALE YET"
@@ -1318,11 +1341,11 @@ function ShopUI.fillCoins()
 		local c = card(UI.coinRow, nil)
 		c.LayoutOrder = i
 		new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, Image = o.image or "", ScaleType = Enum.ScaleType.Fit,
-			Position = UDim2.fromOffset(pad, pad), Size = UDim2.new(1, -2 * pad, 1, -(if k then 118 else 140)) }, c)
+			Position = UDim2.fromOffset(pad, pad), Size = UDim2.new(1, -2 * pad, 0, picH) }, c)
 		local amt = txt(c, commas(o.amount), if k then 24 else 32, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
-		amt.Position = UDim2.new(0, 0, 1, if k then -112 else -128); amt.Size = UDim2.new(1, 0, 0, if k then 28 else 36)
+		amt.Position = UDim2.fromOffset(0, amtY); amt.Size = UDim2.new(1, 0, 0, amtH)
 		local sub = txt(c, "COINS", 12, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Center)
-		sub.Position = UDim2.new(0, 0, 1, if k then -84 else -92); sub.Size = UDim2.new(1, 0, 0, 14)
+		sub.Position = UDim2.fromOffset(0, subY); sub.Size = UDim2.new(1, 0, 0, 14)
 		if o.bonus > 0 then -- (the bonus: a small "+N" chip on the picture)
 			local chip = new("Frame", { Name = "Bonus", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -pad, 0, pad), Size = UDim2.fromOffset(0, 24), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 5 }, c)
@@ -1331,7 +1354,7 @@ function ShopUI.fillCoins()
 			local cl = txt(chip, "+" .. commas(o.bonus), 13, T.INK, T.FONT_BOLD, Enum.TextXAlignment.Center)
 			cl.AutomaticSize = Enum.AutomaticSize.X; cl.Size = UDim2.fromOffset(0, 24); cl.ZIndex = 6
 		end
-		local b = button(c, "", "main", UDim2.new(1, -2 * pad, 0, 44), UDim2.new(0, pad, 1, -(44 + pad)))
+		local b = button(c, "", "main", UDim2.new(1, -2 * pad, 0, 44), UDim2.fromOffset(pad, btnY))
 		b.set(priceText(o.robux), sell and Shop.productFor(o) ~= nil)
 		b.face.MouseButton1Click:Connect(function() if sell then ShopUI.prompt(o) end end)
 	end
@@ -2364,6 +2387,8 @@ function ShopUI.layout()
 	UI.body.Position = UDim2.fromOffset(side, by)
 	UI.body.Size = UDim2.new(1, -2 * side, 1, -(by + bottom))
 	local bw, bh = W - 2 * side, H - by - bottom
+	local wider = S.bw ~= bw or S.compact ~= S.wasCompact
+	S.bw, S.bh, S.wasCompact = bw, bh, compact
 	-- featured: hero on the left, the daily grid on the right
 	local heroW = math.floor(bw * (if compact then 0.46 else 0.48))
 	local gap = if compact then 10 else 14
@@ -2426,6 +2451,13 @@ function ShopUI.layout()
 	UI.odds.Size = UDim2.fromOffset(if compact then 420 else 520, math.min(H - 16, 560))
 	UI.oddsOk.face.Size = UDim2.new(1, -44, 0, 44); UI.oddsOk.face.Position = UDim2.new(0, 22, 1, -56)
 	UI.oddsFoot.Position = UDim2.new(0, 22, 1, -90)
+	-- (the WEAPONS and COINS cards are sized from S.bw: a new width redraws the page that's up)
+	if wider and S.open and (S.tab == "weapons" or S.tab == "coins") then
+		task.defer(function()
+			if not S.open then return end
+			if S.tab == "weapons" then ShopUI.fillWeapons() elseif S.tab == "coins" then ShopUI.fillCoins() end
+		end)
+	end
 end
 function ShopUI.wallet()
 	UI.walletTxt.Text = if Shop.free() then string.format('%s  <font color="%s">FREE FOR NOW</font>', ROBUX, T.hex(T.ACCENT))
