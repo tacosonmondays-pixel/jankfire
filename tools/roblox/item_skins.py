@@ -33,6 +33,7 @@ SKINS = {
     'smoke@censer': ("Incense Burner", "legendary"),
     'duck@decoy': ("Decoy Duck", "rare"),
     'duck@origami': ("Origami Duck", "legendary"),
+    'reverse@skip': ("Skip Card", "common"),
 }
 GRIP = {'frag': [0, 0, 0], 'medkit': [-0.142, 0, 0], 'smoke': [0, -0.01, 0], 'duck': [0, 0, 0.02]}
 
@@ -737,8 +738,39 @@ def duck_origami():
     return g
 
 
+
+def reverse_skip():
+    """SKIP CARD (the Reverse Card's loot skin, 18 Nov 2026): the same card (size, grip), muted teal with the pale
+       border, and its own sign on both faces: a plain skip-ahead mark (two triangles and a bar), big in the middle and
+       small in two corners. No letters or numbers, and not any card game's skip sign (no circle and slash)"""
+    g = Gun('x_reverse@skip')
+    g.slot('body', '2f5f78'); g.slot('rim', B.PALE); g.slot('mark', B.PALE)
+    hw, hh, t = 0.035, 0.0525, 0.0031
+    B.flat2d(g, 'body__body', B.rrect(hw, hh, 0.0075), -t, t)
+    def icon(sc, off, flip):
+        shapes = [[(-0.02, -0.013), (-0.002, 0.0), (-0.02, 0.013)], [(-0.003, -0.013), (0.015, 0.0), (-0.003, 0.013)],
+                  [(0.016, -0.013), (0.0215, -0.013), (0.0215, 0.013), (0.016, 0.013)]]
+        out = []
+        for sh in shapes:
+            pts = [((-x if flip else x) * sc + off[0], y * sc + off[1]) for x, y in sh]
+            out.append(pts[::-1] if flip else pts)
+        return out
+    for sz in (1, -1):
+        z0, z1 = (t - 0.0003, t + 0.0007) if sz > 0 else (-t - 0.0007, -t + 0.0003)
+        B.flat2d(g, 'rim__rim', B.rrect(hw - 0.0028, hh - 0.0028, 0.0055), z0, z1, holes=B.rrect(hw - 0.0052, hh - 0.0052, 0.0035))
+        for pts in icon(1.0, (0.0, 0.0), sz < 0):
+            B.flat2d(g, 'mark__mark', pts, z0, z1)
+        for cx, cy in ((-1, 1), (1, -1)):
+            px = cx * (hw - 0.0105) * (-1 if sz < 0 else 1)
+            py = cy * (hh - 0.0115)
+            for pts in icon(0.24, (px, py), sz < 0):
+                B.flat2d(g, 'mark__mark', pts, z0, z1)
+    g.spots = {'grip': [0, -0.034, 0], 'gripRot': [0, 0, 0]}
+    return g
+
 BUILD_SKINS = {'frag@keg': frag_keg, 'frag@lantern': frag_lantern, 'medkit@doctorbag': medkit_doctorbag, 'medkit@bento': medkit_bento,
-               'smoke@coffeepot': smoke_coffeepot, 'smoke@censer': smoke_censer, 'duck@decoy': duck_decoy, 'duck@origami': duck_origami}
+               'smoke@coffeepot': smoke_coffeepot, 'smoke@censer': smoke_censer, 'duck@decoy': duck_decoy, 'duck@origami': duck_origami,
+               'reverse@skip': reverse_skip}
 # the pieces a wrap paints (zone a = the shell, b = secondary); lamps, the pin, its ring, eyes, food stay their own
 SKIN_WRAP = {
     'frag@keg': {'a': ['body'], 'b': ['lid', 'hoops']},
@@ -749,6 +781,7 @@ SKIN_WRAP = {
     'smoke@censer': {'a': ['body', 'lid'], 'b': ['band', 'feet']},
     'duck@decoy': {'a': ['body'], 'b': ['breast', 'tail', 'wings']},
     'duck@origami': {'a': ['body'], 'b': ['wings', 'tail']},
+    'reverse@skip': {'a': ['body'], 'b': ['rim']},
 }
 ROUND = {'frag@keg': ['body'], 'frag@lantern': ['body'], 'smoke@coffeepot': ['body'], 'smoke@censer': ['body']}
 
