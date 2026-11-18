@@ -76,7 +76,8 @@ function Latch.apart(f: Rules.Fighter, targets: { Rules.Fighter }, wid: string, 
 			if t.alive then
 				local dir = d.Unit
 				local r = room(tr.Position, dir, 8)
-				local v = dir * (L.push * k * r) + Vector3.new(0, L.pushUp * k, 0)
+				local across = if t.kind == "player" then 1 else (L.dummy or 1) -- (a grounded dummy soaks a small push)
+				local v = dir * (L.push * k * r * across) + Vector3.new(0, L.pushUp * k, 0)
 				Fight.knock(t, v, wid)
 				Rules.tagged(t, f, wid, os.clock()) -- (a fall now is yours)
 				table.insert(pushed, { who = t.name, v = v, room = r })

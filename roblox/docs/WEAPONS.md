@@ -198,8 +198,8 @@ the blade for a beat, then the two spring apart.
 | | |
 |---|---|
 | the beat | 0.15 s: the damage lands at once, nobody is shoved yet; your swing hit-stops for the same beat (it was 0.06 s) and the camera kicks a little harder |
-| you | 33 studs/s (11 m/s) back, away from the nearest one you hit, + 15 up: a short hop back |
-| them | 18 studs/s (6 m/s) away from you + 9 up: less than you (the scythe's old shove was 54 + 18) |
+| you | 25.5 studs/s (8.5 m/s) back, away from the nearest one you hit, + 15 up: a short hop back (was 33 in v992, which landed 9.8 studs back) |
+| them | 18 studs/s (6 m/s) away from you + 9 up: less than you (the scythe's old shove was 54 + 18). A training dummy gets x3 across (54): a grounded dummy barely moves under 18 |
 | the finisher | the chain's 4th link pushes both x1.5 (the server counts the chain itself, so a client can't claim it) |
 | walls | each push is cut short by a wall behind that one (scaled by the room in 8-10 studs, never under 12%), so nobody is shoved into or through geometry |
 | the dash | the owner: *"if you make any contact while dashing it auto latches and does that kick back"*. Every server frame the stretch of the dash's path covered since the last one is checked against every enemy body (within 1.4 m across, 4 studs up or down), so a brush past or someone stepping in mid-dash counts. The first contact stops the dash on them (its speed is taken back off you), deals the dash's 25 once, latches and springs apart the same way. A katana guard facing it still parries it |
@@ -215,6 +215,9 @@ Stand on the dummy path; anti-cheat movement checks on):
 - **A glancing dash, 3.4 studs to the side:** contact at 3.5 studs, latched and sprang back and away.
 - **A clean miss, 5.5 studs to the side:** no contact, the full dash (36 studs path, about 47 with the carry).
 - **Anti-cheat:** 0 points, 0 catches through all of it.
+- **Tuned in place version 995** (your hop 33 -> 25.5, a dummy's push x3 across), the same swing: you land **7.7 studs**
+  back, the Stand goes **1.9 studs**, anti-cheat 0 points, 0 catches. A player target gets the plain 18 + 9, about
+  half your hop by the same movement (estimated from your own: no second player in a solo test).
 - **Not checked:** another player as the target (no second player in a solo test), the finisher's x1.5 on a body, a
   wall behind.
 
