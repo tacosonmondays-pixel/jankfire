@@ -1124,6 +1124,42 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Checks: sealed (0 leaks), head room 0 within 0.6, the lot closed, the egg door shut.
   - Photo: `training/muster_passage_before_after.jpg`.
   - The same push carries the v3 rooms (`TrainingRooms.luau`, `T.ROOMS`), still switched off (`"v2"`) until they are judged.
+- **18 Nov, the dummies room and the course redone (place version 917, TrainingV2 push 22, TrainingRooms):** the owner, of the muster with its COURSE and DUMMIES arches: "instead of an extension can you do a complete remodel the only thing I want to keep is the vip room and the shooting range area and the training hub but these two rooms can be redone entirely".
+  - **Kept:** the muster (the training hub), the range, the basement, the back lot and its garage door. The old yard had grown a side hall through an arcade, and the course an entry strip; both read as add-ons.
+  - **The owner's reference** (`practice_range_2.0`, a game's practice compound ripped to a .blend: rendered headless with auto-run off; nothing taken from it, no look or layout copied): a compact multi-level compound under a rock cliff, with building blocks whose roofs are decks, steel bridges between them, and things overhead everywhere. The main session added: vary the height, one centrepiece per room, a less tube-like course.
+  - **One building, the same bones in every room** (`roblox/studio-tools/TrainingRooms.luau`, `PolishBackup.TrainingRooms`; `T.ROOMS = "v3"`, and `"v2"` brings back the old yard and course):
+    - piers on a steady rhythm up the long walls, each with a dark base, a white cap, a haunch where its beam lands, and a sconce;
+    - deep roof beams from wall to wall with rounded white noses, and a flat ceiling with lit panels in every bay;
+    - a dark plinth and a pale band low on the walls, and a band of high pale panels with a lit cove (the clerestory) between the piers.
+  - **The dummies hall** (x -64..24, z -8146..-8258): one hall 88 wide under one roof, with no arcade.
+    - The main lane is on the muster's axis: the 10, 20 and 30 m lines, the strafer, the live-fire stage with its two shooters, and the garage door in the end wall.
+    - The practice lane sits beside it: rails at 10 m and on the gantry, the deck at 30 m with its board, the big target over it.
+    - A waist-high lane wall parts the two lanes.
+    - The centrepiece is the **gantry**: a deep grey girder across the whole hall at the 20 m line, on three towers. It carries the room's one accent, a thin amber line, and a lit underside. The practice lane's 20 m dummy (Stand4) rides a rail on its deck, so you shoot up at it.
+    - The **overlook**: a mezzanine across the front wall above the muster's arch (259) on chunky corbels, with a low parapet and one chunky stair up the east side. It looks down both lanes to the garage end.
+  - **The course** is a low lobby off the muster's west passage (panelled, two benches, two beams), open on its far side into the course hall (x -132..-72, z -8102..-8296), the tallest room. Its piers and beams are 32 apart, a calmer rhythm (at 16 the hall read as "a corridor of piers"). In it:
+    - broad watch steps up the south wall to the walk (2 high, to hop up and to sit on);
+    - the west walk on brackets (254), with a gap to cross;
+    - the core on its plinth under a skylight (the centrepiece), bridged from the walk;
+    - a steel bridge across the hall from the walk to a new east block, with an amber line on its faces;
+    - pads: the floor to the walk, the floor to the core's ledge, the ledge to its top, the walk's end and the block's end up to the gallery;
+    - grapple rings on the beams;
+    - the runner on its rail between the core and the bridge;
+    - at the far end, the TOP gallery (270): a solid mass the hall's width with panels and pilasters. The gold dummies' door (TOP, x -102) and its portal room are in its back wall.
+  - **Gold dummies:** gold 1 moved to the practice deck's far corner (`T.GOLD1`, TrainingLot's `L.GOLD[1]`), gold 3 to the core's top (`T.COURSE`); gold 2 is the range's.
+  - **Checks** (`T.check`, live):
+    - the hall sealed (2184 rays from 84 points, 0 leaks; 4 skins under 2: the 3 old ones and the walk's slab);
+    - head room 0 within 0.6;
+    - plate-to-Carl lines 0 of 27, the gun sessions' test line clear;
+    - arrival points 0 blocked;
+    - the lot closed (0 leaks), the watchtower in view 12/12 from the yard's steps;
+    - the egg door shut (0 gaps);
+    - ZFight: 1 pair.
+  - **Play** (one solo Play; the Studio save put back to egg false, eggAt 0):
+    - Real sniper shots: gold 1 from the practice lane's floor (71.7 studs) did 55, KO, "GOLD 1 OF 3"; gold 3 from the TOP gallery (87.6 studs) did 55, KO, "GOLD 2 OF 3". From behind the gantry's middle tower the server rightly refused the shot.
+    - With the key, the TOP door read OPEN and walking in took me to the playground in 1.0 s.
+  - **The lore session re-seats** Auntie and Todd, whose v2 spots (the watch steps, the far tower) are gone.
+  - Photos: `training/v3_rooms_before_after.jpg`.
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

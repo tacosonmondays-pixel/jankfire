@@ -30,13 +30,27 @@ local D = { x0 = -64, x1 = 24, z0 = -8146, z1 = -8258, split = -24, pierTop = 26
 D.PIERS = { -8162, -8178, -8194, -8210, -8226, -8242 } -- (the frames; 16-stud end bays at the muster and the end wall)
 D.STAGE = { z = -8228, y = 242 } -- the live-fire end's floor, the garage door's sill (TrainingLot: L.DOOR.y0)
 D.DECK = { x0 = -64, x1 = -30, z0 = -8226, top = 246 } -- the practice lane's 30 m deck
+-- (v3.1, after the owner's reference, a compound of levels with steel bridges, and the main session's note that the
+-- blockout read close to the old yard) the overlook: a mezzanine across the front wall over the muster's arch, a stair
+-- up the east side; the gantry: the hall's centrepiece, a steel bridge across the whole hall at the 20 m line on three
+-- towers, the practice lane's 20 m dummy riding a rail on it
+D.MEZ = { z1 = -8156, top = 259, thick = 1.6, stair = { x0 = 16, x1 = 22, n = 19 } }
+D.GANTRY = { z = -8206, half = 3, top = 256, deep = 4, towers = { { -64, -58 }, { -27, -21 }, { 18, 24 } }, towerTop = 262 }
 -- the course: the lobby (low), the hall (tall)
 local LOB = { x0 = -68, x1 = -30, z0 = -8102, z1 = -8142, ceil = 256 }
 local C = { x0 = -132, x1 = -72, z0 = -8102, z1 = -8296, top = 296, open = { -8106, -8138, 254 } } -- (open: the lobby's way in, z and head)
 C.xm = (C.x0 + C.x1) / 2 -- -102
-C.GZ = {}
+C.GZ = {} -- every 16: the walk's brackets
 for z = -8118, -8278, -16 do table.insert(C.GZ, z) end
-C.WALK = { x0 = C.x0, x1 = C.x0 + 8, z0 = -8150, z1 = -8282, top = 254, gap = { -8226, -8234 } } -- the west walk, its gap
+C.FR = {} -- every 32 (v3.2): the piers and the roof's beams (the main session: the hall read as "a long narrow corridor of piers")
+for z = -8118, -8278, -32 do table.insert(C.FR, z) end
+C.WALK = { x0 = C.x0, x1 = C.x0 + 8, z0 = -8102, z1 = -8282, top = 254, gap = { -8226, -8234 } } -- the west walk, its gap
+-- (v3.1) the watch steps up the south wall to the walk's start (a way up anyone can walk, a place to sit and watch); the
+-- east block, a platform mass against the east wall, reached across the hall by a steel bridge from the walk; a pad from
+-- its far end up onto the TOP gallery
+C.STEPS = { x0 = -84, run = 4.8, rise = 2, n = 7, z0 = -8102, z1 = -8114 }
+C.BLOCK = { x0 = -86, x1 = C.x1, z0 = -8250, z1 = -8276, top = 254 }
+C.BRIDGE = { z0 = -8256, z1 = -8262, post = -105 }
 C.GAL = { z0 = -8282, top = 270 } -- the TOP gallery: the hall's width, from z0 to the north wall
 C.CORE = { x = C.xm, z = -8198, plinth = 10, ledge = 254, body = 6, top = 268 } -- the core: plinth half-width, body's
 C.SKY = { x0 = C.xm - 10, x1 = C.xm + 10, z0 = -8188, z1 = -8208, top = 316 }
@@ -52,8 +66,8 @@ function R.apply(t, k)
 	T.DUMMIES = {
 		Dummy = { 0, Y0, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 },
 		Stand1 = { -9, Y0, -8173.5 }, Stand2 = { 9, Y0, -8173.5 },
-		Stand3 = { -44, Y0, -8173.5 }, Stand4 = { -44, Y0, -8206 }, Dummy2 = { -50, D.DECK.top, -8238 },
-		Runner = { C.xm, Y0, -8250 },
+		Stand3 = { -44, Y0, -8173.5 }, Stand4 = { -44, D.GANTRY.top, D.GANTRY.z }, Dummy2 = { -50, D.DECK.top, -8238 },
+		Runner = { C.xm, Y0, -8226 },
 	}
 	T.RAILS = { Stand3 = { 6, 8 }, Stand4 = { 10, 14 }, Dummy2 = { 8, 20 }, Runner = { 16, 14 } }
 	T.LANE = { Stand3 = true, Stand4 = true, Dummy2 = true }
@@ -74,6 +88,7 @@ function R.apply(t, k)
 		V3(C.xm, Y0 + 4, -8130), V3(C.xm, 272, -8150), V3(C.xm, 290, -8250), V3(-128, 258, -8200), V3(C.xm, C.CORE.top + 4, C.CORE.z),
 		V3(C.xm, 306, C.CORE.z), V3(-100, C.GAL.top + 4, -8290), V3(-76, 262, -8120), V3(-80, Y0 + 4, -8270), V3(-126, 284, -8288),
 		V3(td.x, td.y + 4, td.back + 4), V3(td.x, td.y + 8, td.back + 2),
+		V3(0, 263, -8151), V3(-40, 263, -8151), V3(-30, 261, D.GANTRY.z), V3(-79, 258, -8263), V3(-100, 258, -8108),
 	}
 end
 
@@ -90,6 +105,18 @@ local function longWall(side, dir, zs, za, zb, y0, top, clere, o)
 		blk("Shell", "Pier", side, side + dir * 2, y0, top, z - 1.6, z + 1.6, P.pier)
 		blk("Shell", "PierBase", side, side + dir * 2.25, y0, y0 + 1.3, z - 1.85, z + 1.85, P.deep)
 		blk("Shell", "PierCap", side, side + dir * 2.5, top - 1.2, top, z - 1.9, z + 1.9, P.trim)
+		-- the haunch: a chunky wedge under the cap where the beam lands, so pier and beam read as one frame
+		if o.haunch then
+			local f = side + dir * 2
+			B.part("Shell", "Haunch", CF(f + dir * 1.2, top - 1.2 - 1.2, z) * CFrame.Angles(0, dir * math.pi / 2, 0) * CFrame.Angles(math.pi, 0, 0), V3(2.6, 2.4, 2.4), P.pier, { wedge = true })
+		end
+		-- a sconce on the pier's face (the old yard's): a dark housing, a warm light let into it, a warm lamp
+		if o.sconce then
+			local f, y = side + dir * 2, if type(o.sconce) == "function" then o.sconce(z) else o.sconce
+			blk("Scenery", "SconceHousing", f, f + dir * 0.6, y, y + 3, z - 0.9, z + 0.9, P.dark)
+			blk("Scenery", "SconceLight", f + dir * 0.55, f + dir * 0.7, y + 0.4, y + 2.6, z - 0.55, z + 0.55, P.warm, { ghost = true, mat = NEON })
+			B.lamp(f + dir * 1.4, y + 1.5, z, "point", 13, 0.4, P.warm)
+		end
 	end
 	blk("Shell", "Dado", side, side + dir * 0.2, y0, y0 + 1.2, zl, zh, P.floor2, { ghost = true })
 	if not o.noBand then blk("Shell", "Band", side, side + dir * 0.3, y0 + 8, y0 + 8.6, zl, zh, P.trim, { ghost = true }) end
@@ -114,6 +141,32 @@ local function endWall(side, dir, xa, xb, y0, o)
 		if s[2] - s[1] > 0.5 then
 			blk("Shell", "Dado", s[1], s[2], y0, y0 + 1.2, side, side + dir * 0.2, P.floor2, { ghost = true })
 			blk("Shell", "Band", s[1], s[2], y0 + 8, y0 + 8.6, side, side + dir * 0.3, P.trim, { ghost = true })
+		end
+	end
+end
+-- the bones along a short wall (along x): piers at xs and the high pale panels with their lit cove between them (skip:
+-- an x range with no panel, over a doorway)
+local function endBones(side, dir, xs, xa, xb, y0, top, clere, o)
+	o = o or {}
+	local xl, xh = math.min(xa, xb), math.max(xa, xb)
+	for _, x in xs do
+		blk("Shell", "Pier", x - 1.6, x + 1.6, y0, top, side, side + dir * 2, P.pier)
+		blk("Shell", "PierBase", x - 1.85, x + 1.85, y0, y0 + 1.3, side, side + dir * 2.25, P.deep)
+		blk("Shell", "PierCap", x - 1.9, x + 1.9, top - 1.2, top, side, side + dir * 2.5, P.trim)
+	end
+	local edges = { xl }
+	for _, x in xs do table.insert(edges, x - 1.6); table.insert(edges, x + 1.6) end
+	table.insert(edges, xh)
+	table.sort(edges)
+	for i = 1, #edges - 1, 2 do
+		local a, b = edges[i] + 1.2, edges[i + 1] - 1.2
+		local segs = { { a, b } }
+		if o.skip and o.skip[1] < b and o.skip[2] > a then segs = { { a, o.skip[1] }, { o.skip[2], b } } end
+		for _, sg in segs do
+			if sg[2] - sg[1] > 4 then
+				blk("Scenery", "Clerestory", sg[1], sg[2], clere[1], clere[2], side, side + dir * 0.25, P.mass, { ghost = true })
+				blk("Scenery", "ClereLight", sg[1], sg[2], clere[2] - 0.5, clere[2] - 0.25, side + dir * 0.25, side + dir * 0.4, P.litEdge, { ghost = true, mat = NEON })
+			end
 		end
 	end
 end
@@ -207,8 +260,10 @@ local function hallShell()
 	blk("Shell", "HallFront", 9.9, x1 + 4, 236, top, z0 + 4, z0, P.wall)
 	blk("Shell", "HallFront", -9.9, 9.9, MTOP, top, z0 + 4, z0, P.wall)
 	-- the bones
-	longWall(x0, 1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 })
-	longWall(x1, -1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 })
+	longWall(x0, 1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 }, { sconce = function(z) return if z < D.DECK.z0 + 1 then 255.5 else 249.5 end, haunch = true }) -- (over the deck: clear of an eye on it)
+	longWall(x1, -1, D.PIERS, z0, z1, Y0, D.pierTop, { 257, 265 }, { sconce = function(z) return if z < D.STAGE.z + 1 then 251.5 elseif z > D.MEZ.z1 - 30 then 255.5 else 249.5 end, haunch = true })
+	endBones(z0, -1, { -44 }, x0, D.split - 1.6, Y0, D.pierTop, { 261, 266 })
+	endBones(z0, -1, {}, D.split + 1.6, x1, Y0, D.pierTop, { 261, 266 })
 	endWall(z0, -1, x0, x1, Y0, { skip = { -10.5, 10.5 } })
 	endWall(z1, 1, x0, D.DECK.x1, D.DECK.top)
 	endWall(z1, 1, -24, x1, D.STAGE.y, { skip = { -12.6, 12.6 } })
@@ -230,6 +285,52 @@ local function hallShell()
 			B.lamp(-44, D.pierTop - 3, z - 8, "point", 30, 0.5, P.lampWhite)
 		end
 	end
+end
+
+-- the overlook: a mezzanine slab across the front wall on chunky corbels, its open edge with the white nose, a lit
+-- strip and a low parapet; a straight stair up the east side, its treads with noses, solid under
+local function overlook()
+	local M = D.MEZ
+	local x0, x1, z0 = D.x0, D.x1, D.z0
+	slab("Overlook", x0, x1, z0, M.z1, M.top, M.thick, { "z1" })
+	local sx0, sx1 = M.stair.x0, M.stair.x1
+	blk("Shell", "Parapet", x0, sx0, M.top, M.top + 1.1, M.z1 + 0.6, M.z1, P.slate)
+	blk("Shell", "ParapetCap", x0 - 0.1, sx0 + 0.1, M.top + 1.1, M.top + 1.4, M.z1 + 0.75, M.z1 - 0.15, P.trim)
+	for _, x in { -54, -34, -14, 4 } do
+		blk("Shell", "Corbel", x - 1.2, x + 1.2, M.top - M.thick - 3.2, M.top - M.thick, z0, z0 - 6, P.pier)
+		blk("Shell", "CorbelFoot", x - 1.0, x + 1.0, M.top - M.thick - 4.6, M.top - M.thick - 3.2, z0, z0 - 3, P.pier)
+	end
+	-- the stair: rising toward the overlook (to +z) along the east wall
+	local n = M.stair.n
+	local rise = (M.top - Y0) / n
+	local zTop = M.z1
+	for k = 1, n do
+		local za, zb = zTop - (n - k + 1) * 1.5, zTop - (n - k) * 1.5
+		blk("Shell", "OverlookStep", sx0, sx1, Y0, Y0 + k * rise, za, zb, P.ledge)
+		B.part("Shell", "StepNose", CF((sx0 + sx1) / 2, Y0 + k * rise - 0.3, za + 0.05), V3(sx1 - sx0, 0.6, 0.6), P.trim, { cyl = true })
+	end
+	B.lamp((x0 + x1) / 2, M.top + 6, z0 - 6, "point", 40, 0.45, P.lampWhite)
+end
+-- the gantry: a deep steel girder across the hall at the 20 m line, three towers under it (the west wall, the lane wall's
+-- end, the east wall), an amber line along its face (the room's one accent), lit underneath; the practice dummy's rail
+-- on its deck over the practice lane
+local function gantry()
+	local G = D.GANTRY
+	local za, zb = G.z + G.half, G.z - G.half
+	blk("Shell", "GantryGirder", D.x0, D.x1, G.top - G.deep, G.top, za, zb, P.pier)
+	for _, z in { za, zb } do
+		B.part("Shell", "GantryNose", CF((D.x0 + D.x1) / 2, G.top - G.deep, z), V3(D.x1 - D.x0, 1.2, 1.2), P.trim, { cyl = true })
+		B.part("Shell", "GantryNose", CF((D.x0 + D.x1) / 2, G.top, z), V3(D.x1 - D.x0, 1.0, 1.0), P.trim, { cyl = true })
+		local sg = if z == za then 1 else -1
+		blk("Scenery", "GantryLine", D.x0, D.x1, G.top - G.deep / 2 - 0.2, G.top - G.deep / 2 + 0.2, z, z + sg * 0.12, P.amber, { ghost = true })
+	end
+	blk("Scenery", "GantryLight", D.x0 + 2, D.x1 - 2, G.top - G.deep - 0.15, G.top - G.deep, G.z + 1.2, G.z - 1.2, P.litEdge, { ghost = true, mat = NEON })
+	for _, t in G.towers do
+		blk("Shell", "GantryTower", t[1], t[2], Y0, G.towerTop, za + 1, zb - 1, P.pier2)
+		blk("Shell", "GantryTowerBase", t[1] - 0.3, t[2] + 0.3, Y0, Y0 + 1.3, za + 1.3, zb - 1.3, P.deep)
+		blk("Shell", "GantryTowerCap", t[1] - 0.4, t[2] + 0.4, G.towerTop, G.towerTop + 0.8, za + 1.4, zb - 1.4, P.trim)
+	end
+	B.lamp(0, G.top - G.deep - 2, G.z, "point", 26, 0.4, P.lampWhite)
 end
 
 local function mainLane()
@@ -280,8 +381,8 @@ local function mainLane()
 	B.lamp(-8, 263, z1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, z1), angle = 70 })
 	B.lamp(8, 263, z1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, z1), angle = 70 })
 	-- cover on the east walk: a chest-high wall, then a head-high one
-	cover(19.2, -8186, "low")
-	cover(19.2, -8202, "high")
+	cover(14.2, -8194, "low")
+	cover(19.2, -8216, "high")
 end
 
 local function practiceLane()
@@ -289,8 +390,8 @@ local function practiceLane()
 	local DK = D.DECK
 	local pr = K.folderIn(B.root, "Practice")
 	-- the lane wall: waist high, slate with a pale cap, from the 10 m line's front to the stage's step (open at both ends)
-	blk("Shell", "LaneWall", D.split - 1, D.split + 1, Y0, Y0 + 3.2, -8162, -8206, P.slate)
-	blk("Shell", "LaneWallCap", D.split - 1.2, D.split + 1.2, Y0 + 3.2, Y0 + 3.6, -8161.8, -8206.2, P.trim)
+	blk("Shell", "LaneWall", D.split - 1, D.split + 1, Y0, Y0 + 3.2, -8162, -8202, P.slate)
+	blk("Shell", "LaneWallCap", D.split - 1.2, D.split + 1.2, Y0 + 3.2, Y0 + 3.6, -8161.8, -8202.2, P.trim)
 	-- the deck at the far end: a slate mass with the white nose, the board on its face, stairs up its east side
 	slab("Deck", x0, DK.x1, DK.z0, z1, DK.top, DK.top - 236, { "z0" })
 	local steps = 8
@@ -330,7 +431,7 @@ local function practiceLane()
 	-- the rails: slow at 10 m, quicker at 20 m, quickest on the deck at 30 m
 	local s3, s4, s5 = T.DUMMIES.Stand3, T.DUMMIES.Stand4, T.DUMMIES.Dummy2
 	K.rail(B, s3[1], Y0, s3[3], T.RAILS.Stand3[1], { line = true })
-	K.rail(B, s4[1], Y0, s4[3], T.RAILS.Stand4[1])
+	K.rail(B, s4[1], s4[2], s4[3], T.RAILS.Stand4[1])
 	K.rail(B, s5[1], DK.top, s5[3], T.RAILS.Dummy2[1])
 	for _, z in D.PIERS do if z > DK.z0 + 1 then B.line(x0 + 2.2, z, D.split - 1.2, z, Y0 + 0.01, 0.7, P.line, "PierLine") end end
 	for k, z in { -8176, -8206, -8236 } do
@@ -379,7 +480,12 @@ local function lobby()
 	for _, z in { -8111.5, -8132.5 } do
 		blk("Shell", "Pier", x1, x1 - 2, Y0, LOB.ceil - 2, z - 1.6, z + 1.6, P.pier)
 		blk("Shell", "PierBase", x1, x1 - 2.25, Y0, Y0 + 1.3, z - 1.85, z + 1.85, P.deep)
+		blk("Scenery", "SconceHousing", x1 - 2, x1 - 2.6, 247.5, 250.5, z - 0.9, z + 0.9, P.dark)
+		blk("Scenery", "SconceLight", x1 - 2.55, x1 - 2.7, 247.9, 250.1, z - 0.55, z + 0.55, P.warm, { ghost = true, mat = NEON })
 	end
+	-- the long walls panelled: piers lined up with the beams, the pale panels with their lit cove between
+	endBones(z0, -1, { -49 }, x0, x1 - 2, Y0, LOB.ceil - 2, { 245, 252 })
+	endBones(z1, 1, { -49 }, x0, x1 - 2, Y0, LOB.ceil - 2, { 245, 252 })
 	-- two benches against the south wall, facing the course
 	for _, x in { -60, -40 } do B.put("tv_bench", CF(x, Y0, z0 - 2.2), { name = "Bench" }) end
 	B.lamp(-49, LOB.ceil - 2, -8122, "point", 26, 0.6, P.lampWhite)
@@ -411,15 +517,16 @@ local function courseShell()
 	blk("Shell", "CourseWallN", hx0, hx1, 234, hy0, z1, z1 - 4, P.courseWall)
 	blk("Shell", "CourseWallN", hx0, hx1, hy1, top, z1, z1 - 4, P.courseWall)
 	-- bones
-	longWall(x0, 1, C.GZ, z0, z1, Y0, C.top, { 283, 293 }, { noBand = false })
+	longWall(x0, 1, C.FR, z0, z1, Y0, C.top, { 283, 293 }, { sconce = 263, haunch = true }) -- (over the walk, clear of an eye on it)
 	local east = {}
-	for _, z in C.GZ do if z < o[2] - 2 or z > o[1] + 2 then table.insert(east, z) end end
-	longWall(x1, -1, east, o[2], z1, Y0, C.top, { 283, 293 })
+	for _, z in C.FR do if z < o[2] - 2 or z > o[1] + 2 then table.insert(east, z) end end
+	longWall(x1, -1, east, o[2], z1, Y0, C.top, { 283, 293 }, { sconce = 249.5, haunch = true })
 	endWall(z0, -1, x0, x1, Y0)
+	endBones(z0, -1, { -112, -92 }, x0, x1, Y0, C.top, { 283, 293 })
 	-- the roof: beams at the frames, the skylight drum over the core (open to the sky, an unseen lid), lit panels
 	local S = C.SKY
 	local function inSky(x, z) return x > S.x0 - 2 and x < S.x1 + 2 and z < S.z0 + 2 and z > S.z1 - 2 end
-	roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, C.GZ, C.top, 4, 0, { C.xm - 16, C.xm + 16 }, 10, { noSlab = true, skip = inSky })
+	roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, C.FR, C.top - 1, 5, 0, { C.xm - 16, C.xm + 16 }, 10, { noSlab = true, skip = inSky })
 	local cy0, cy1 = C.top + 4, C.top + 6
 	blk("Shell", "CourseCeiling", x0 - 4, x1 + 4, cy0, cy1, z0 + 4, S.z0, P.ceil)
 	blk("Shell", "CourseCeiling", x0 - 4, x1 + 4, cy0, cy1, S.z1, z1 - 4, P.ceil)
@@ -430,14 +537,17 @@ local function courseShell()
 		blk("Shell", "SkyDrum", w[1], w[2], C.top + 4, S.top, w[3], w[4], P.wall2)
 	end
 	B.solid("SkyLid", CF((S.x0 + S.x1) / 2, S.top + 2, (S.z0 + S.z1) / 2), V3(S.x1 - S.x0 + 4, 4, S.z0 - S.z1 + 4))
-	blk("Shell", "SkyCoping", S.x0 - 1.6, S.x1 + 1.6, S.top, S.top + 0.6, S.z0 + 1.6, S.z1 - 1.6, P.wall2)
+	for _, w in { { S.x0 - 1.6, S.x1 + 1.6, S.z0 + 1.6, S.z0 - 1.6 }, { S.x0 - 1.6, S.x1 + 1.6, S.z1 + 1.6, S.z1 - 1.6 },
+		{ S.x0 - 1.6, S.x0 + 1.6, S.z0 - 1.6, S.z1 + 1.6 }, { S.x1 - 1.6, S.x1 + 1.6, S.z0 - 1.6, S.z1 + 1.6 } } do
+		blk("Shell", "SkyCoping", w[1], w[2], S.top, S.top + 0.6, w[3], w[4], P.wall2) -- (a ring round the drum's top, open in the middle)
+	end
 	for _, e in { { x0 - 4.4, x0 - 2.4 }, { x1 + 2.4, x1 + 4.4 } } do
 		blk("Shell", "RoofCoping", e[1], e[2], cy1, cy1 + 2, z0 + 4.4, z1 - 4.4, P.wall2, { nq = true })
 	end
 	-- lamps: down the hall high up, and over the walk
 	for i, z in C.GZ do
 		if i % 2 == 0 then
-			B.lamp(C.xm, C.top - 4, z, "point", 40, 0.55, P.lampWhite)
+			B.lamp(C.xm, C.top - 4, z, "point", 44, 0.55, P.lampWhite)
 			B.lamp(C.WALK.x1 + 2, C.WALK.top + 9, z, "point", 18, 0.4, P.lampWhite)
 		end
 	end
@@ -452,12 +562,49 @@ local function courseRoute()
 	for _, x in { -124, -110, -94, -80 } do
 		blk("Shell", "GalleryPanel", x - 5, x + 5, Y0 + 3, G.top - 5, G.z0 + 0.25, G.z0, P.massPanel, { ghost = true })
 	end
+	for _, x in { -117, -102, -87 } do -- (pilasters between the panels, the middle one under the TOP door)
+		blk("Shell", "GalleryPier", x - 1.6, x + 1.6, Y0, G.top - 1.6, G.z0 + 1, G.z0, P.pier)
+		blk("Shell", "PierBase", x - 1.85, x + 1.85, Y0, Y0 + 1.3, G.z0 + 1.25, G.z0, P.deep)
+	end
+	blk("Shell", "Dado", x0 + 2, x1 - 2, Y0, Y0 + 1.2, G.z0 + 0.2, G.z0, P.floor2, { ghost = true })
 	-- the west walk: on brackets at the frames, a gap to cross, the white nose on its open edge
 	for _, seg in { { W.z0, W.gap[1] }, { W.gap[2], W.z1 } } do slab("Walk", W.x0, W.x1, seg[1], seg[2], W.top, 1.4, { "x1" }) end
 	for _, seg in { { W.gap[1], W.gap[1] }, { W.gap[2], W.gap[2] } } do
 		B.part("Shell", "Nose", CF((W.x0 + W.x1) / 2, W.top - 0.1, seg[1]), V3(W.x1 - W.x0, 1.4, 1.4), P.trim, { cyl = true })
 	end
-	B.part("Shell", "Nose", CF((W.x0 + W.x1) / 2, W.top - 0.1, W.z0), V3(W.x1 - W.x0, 1.4, 1.4), P.trim, { cyl = true })
+	-- the watch steps: broad 2-high steps up the south wall from the lobby's side to the walk's start, their noses lit
+	local ST = C.STEPS
+	for k = 1, ST.n do
+		local xa, xb = ST.x0 - (k - 1) * ST.run, ST.x0 - k * ST.run
+		blk("Shell", "WatchStep", xb, xa, Y0, Y0 + k * ST.rise, ST.z0, ST.z1, P.ledge)
+		B.part("Shell", "Nose", CF(xa + 0.1, Y0 + k * ST.rise - 0.1, (ST.z0 + ST.z1) / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(math.abs(ST.z1 - ST.z0), 1.4, 1.4), P.trim, { cyl = true })
+		blk("Scenery", "EdgeLight", xa + 0.05, xa + 0.2, Y0 + k * ST.rise - 1.3, Y0 + k * ST.rise - 1.0, ST.z0, ST.z1, P.litEdge, { ghost = true, mat = NEON })
+	end
+	local lx = ST.x0 - ST.n * ST.run
+	blk("Shell", "WatchLanding", W.x1, lx, Y0, W.top, ST.z0, ST.z1, P.ledge)
+	B.part("Shell", "Nose", CF((W.x1 + lx) / 2, W.top - 0.1, ST.z1), V3(lx - W.x1, 1.4, 1.4), P.trim, { cyl = true })
+	-- the east block: a pale mass against the east wall with panels, the white nose round its open edges
+	local BK = C.BLOCK
+	blk("Shell", "EastBlock", BK.x0, BK.x1, Y0, BK.top, BK.z0, BK.z1, P.mass)
+	blk("Shell", "CoreBase", BK.x0 - 0.25, BK.x1, Y0, Y0 + 1.3, BK.z0 + 0.25, BK.z1 - 0.25, P.deep)
+	blk("Shell", "BlockPanel", BK.x0 - 0.25, BK.x0, Y0 + 3, BK.top - 3, BK.z0 - 3, BK.z1 + 3, P.massPanel, { ghost = true })
+	for _, z in { BK.z0, BK.z1 } do
+		blk("Shell", "BlockPanel", BK.x0 + 3, BK.x1 - 1, Y0 + 3, BK.top - 3, z, z + (if z == BK.z0 then 0.25 else -0.25), P.massPanel, { ghost = true })
+		B.part("Shell", "Nose", CF((BK.x0 + BK.x1) / 2, BK.top - 0.1, z), V3(BK.x1 - BK.x0, 1.4, 1.4), P.trim, { cyl = true })
+	end
+	B.part("Shell", "Nose", CF(BK.x0, BK.top - 0.1, (BK.z0 + BK.z1) / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(BK.z0 - BK.z1 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
+	-- the steel bridge across the hall, walk to block: a girder deck, noses both sides, an amber line along its faces
+	-- (the course's accent is the same one), a post under its middle
+	local BR = C.BRIDGE
+	blk("Shell", "Bridge", W.x1, BK.x0, W.top - 2.4, W.top, BR.z0, BR.z1, P.pier)
+	for _, z in { BR.z0, BR.z1 } do
+		B.part("Shell", "Nose", CF((W.x1 + BK.x0) / 2, W.top - 0.1, z), V3(BK.x0 - W.x1, 1.2, 1.2), P.trim, { cyl = true })
+		local sg = if z == BR.z0 then 1 else -1
+		blk("Scenery", "BridgeLine", W.x1, BK.x0, W.top - 1.4, W.top - 1.0, z, z + sg * 0.12, P.amber, { ghost = true })
+	end
+	blk("Shell", "BridgePost", BR.post - 1.2, BR.post + 1.2, Y0, W.top - 2.4, BR.z0 - 1.8, BR.z1 + 1.8, P.pier2)
+	blk("Shell", "PierBase", BR.post - 1.45, BR.post + 1.45, Y0, Y0 + 1.3, BR.z0 - 1.55, BR.z1 + 1.55, P.deep)
+	B.pad((BK.x0 + BK.x1) / 2, BK.top, BK.z1 + 4, V3(0, 56, -12)) -- (the block's far end up onto the gallery)
 	for _, z in C.GZ do
 		if z < W.z0 and z > W.z1 and not (z < W.gap[1] and z > W.gap[2]) then
 			blk("Shell", "Bracket", W.x0, W.x1 - 1, W.top - 5.4, W.top - 1.4, z - 1.4, z + 1.4, P.pier)
@@ -528,6 +675,8 @@ end
 function R.build(b): string
 	B = b
 	hallShell()
+	overlook()
+	gantry()
 	mainLane()
 	practiceLane()
 	lobby()

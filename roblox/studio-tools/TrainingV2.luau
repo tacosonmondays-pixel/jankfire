@@ -49,7 +49,7 @@ T.VERSION = "v2"
 -- the dummies room and the course (18 Nov, the owner: "instead of an extension can you do a complete remodel ... these two
 -- rooms can be redone entirely"): "v3" = PolishBackup.TrainingRooms (roblox/studio-tools/TrainingRooms.luau) builds them
 -- new, "v2" = this module's own yard (with its side hall) and course (with its strip), one switch away
-T.ROOMS = "v2" -- (v2 live until the v3 rooms are judged; stage them with a clone whose Source says "v3")
+T.ROOMS = "v3" -- (live since place version VER; "v2" brings back the old yard and course)
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
 T.P = {
