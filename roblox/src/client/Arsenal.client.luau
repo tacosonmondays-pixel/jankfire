@@ -101,6 +101,7 @@ minigun.formUntil, minigun.lastForm, minigun.shotT = 0, {} :: { [string]: string
 -- (WeaponTricks.server); these only keep you from spamming the remotes
 minigun.trickNext = {} :: { [string]: number }
 minigun.cards = require(script.Parent:WaitForChild("CardsClient")) :: any -- (batch E: the Card Deck's hand)
+minigun.lasso = require(script.Parent:WaitForChild("LassoClient")) :: any -- (batch E: the Lasso)
 function minigun.trick(name: string, op: string?, cd: number)
 	local t = os.clock()
 	local key = name .. (op or "")
@@ -763,6 +764,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 	end
 	-- (the Scythe comes out in the form you last had it in; its own key while it's out keeps that form)
 	if want then want = minigun.lastForm[want] or want end
+	if want and me:GetAttribute("LassoHolding") then return end -- (batch E: no switching with someone on your rope)
 	if not want and Binds.is("form", io) and W[held] and W[held].form and not toolOut() then
 		minigun.form(os.clock())
 		return
@@ -790,6 +792,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if W[held] and W[held].kind == "melee" then swing(now)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
+		elseif W[held] and W[held].kind == "lasso" then minigun.lasso.press() -- (batch E: spin, or let go of whoever's on it)
 		elseif W[held] and W[held].kind == "cart" then -- (batch E: the Shopping Cart Cannon; CartServer flies it)
 			if now >= (minigun.trickNext.cart or 0) then
 				minigun.trickNext.cart = now + (W[held].cd or 1.6)
@@ -834,6 +837,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
 			Sfx.play(W[held].snd or "click")
 		elseif W[held] and W[held].kind == "cards" then minigun.cards.select() -- (batch E: the next card along)
+		elseif W[held] and W[held].kind == "lasso" then minigun.lasso.aimPress() -- (batch E: let go)
 		elseif W[held] and W[held].gavel then -- (batch D: the Scales of Justice's pillar of light)
 			if not Body.stunned() then
 				minigun.trick("Gavel", nil, 0.3)
@@ -849,6 +853,10 @@ Keys.began(function(io: InputObject, gp: boolean)
 end)
 Keys.ended(function(io: InputObject)
 	if Binds.is("fire", io) then trigger = false; minigun.hold.release(held)
+		if W[held] and W[held].kind == "lasso" then -- (batch E: the Lasso's let-go throws the loop)
+			local eye, look = eyeAndAim()
+			minigun.lasso.release(eye, look)
+		end
 		-- (batch D: the Bow's let-go: the arrow, drawn as far as you held it)
 		local bt = minigun.proj.bowT
 		if bt and W[held] and W[held].kind == "bow" then

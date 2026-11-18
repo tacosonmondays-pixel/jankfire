@@ -507,6 +507,9 @@ RunService.PreSimulation:Connect(function(dt: number)
 		local over = root.Position.Y - skyY
 		if over > 0 and inArena(root.Position) then st.vy = math.min(st.vy, math.max(0, (SKY_CAP - over) * 5)) end
 	end
+	-- (batch E: on someone's Lasso you go where the server swings you, LassoClient)
+	local hd = Body.held
+	if hd then st.vx, st.vy, st.vz = hd.v.X, hd.v.Y, hd.v.Z end
 	lv.PlaneVelocity = Vector2.new(st.vx, st.vz)
 	if math.abs(st.vy - v.Y) > 1e-3 then root.AssemblyLinearVelocity = Vector3.new(st.vx, st.vy, st.vz) end
 	-- (the Humanoid's own jump lands after this, inside FLING_UP)

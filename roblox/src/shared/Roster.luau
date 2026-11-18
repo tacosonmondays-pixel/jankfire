@@ -148,7 +148,7 @@ add({ id = "taser", slot = "secondary", name = "Taser", color = "e8ff3a", live =
 add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = true, gimmick = "left click pauses them for a second, right click rewinds them 2 seconds.",
 	desc = "Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago. Batteries not included.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "45 m", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "",
+add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "catch someone and swing them round on the rope, then let them fly.",
 	desc = "Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 

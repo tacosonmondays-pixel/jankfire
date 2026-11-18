@@ -39,6 +39,8 @@ Body.stunUntil = 0
 Body.dash = nil :: { v: Vector3, untilT: number }?
 -- (batch E) riding a Shopping Cart: the cart's velocity, flat (CartRide.client drives it; Move runs you along it)
 Body.ride = nil :: { v: Vector3 }?
+-- (batch E) on someone's Lasso: the velocity that takes you where the server says (LassoClient), nothing of your own
+Body.held = nil :: { v: Vector3 }?
 function Body.dashing(): boolean
 	local d = Body.dash
 	return d ~= nil and workspace:GetServerTimeNow() < d.untilT

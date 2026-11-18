@@ -65,6 +65,9 @@
         "Cart": {
           "$className": "RemoteEvent"
         },
+        "Lasso": {
+          "$className": "RemoteEvent"
+        },
         "Aim": {
           "$className": "RemoteEvent"
         },

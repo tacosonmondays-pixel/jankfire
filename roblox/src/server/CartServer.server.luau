@@ -142,9 +142,12 @@ local function stepFree(c: Cart, dt: number)
 	if h.Magnitude > 1e-5 then
 		local hit = cast(boxCF(c), SIZE, h)
 		if hit then
+			-- a step up to 0.6 m, only off the floor (in the air it would climb any wall a step a frame), then down onto it
 			local up = Vector3.new(0, CART.step, 0)
-			if not cast(boxCF(c), SIZE, up) and not cast(boxCF(c, c.p + up), SIZE, h) then
+			if c.ground and not cast(boxCF(c), SIZE, up) and not cast(boxCF(c, c.p + up), SIZE, h) then
 				c.p += up + h
+				local land = cast(boxCF(c), SIZE, -up)
+				if land then c.p -= Vector3.new(0, math.max(0, land.Distance - 0.02), 0) end
 			else
 				c.p += h.Unit * math.max(0, hit.Distance - 0.02)
 				local n = Vector3.new(hit.Normal.X, 0, hit.Normal.Z)
@@ -322,7 +325,21 @@ local function fire(p: Player, eye: Vector3, look: Vector3)
 		id = id, owner = f, p = at, v = look * w.speed + inherit + Vector3.new(0, w.up, 0), yaw = math.atan2(-look.X, -look.Z),
 		state = "fly", t0 = n, rest = 0, rider = nil, hitT = {}, model = m, box = box, ground = false,
 	}
-	if cast(boxCF(c), SIZE * 0.5, Vector3.new(0, 0.01, 0)) then -- (inside the map there: at your feet instead)
+	-- (inside the map there, a shot down at the floor: lifted clear, or at your feet. a cast can't see what it starts in)
+	local function inside(): boolean
+		local mp = workspace:FindFirstChild("Map")
+		if not mp then return false end
+		local op = OverlapParams.new()
+		op.FilterType = Enum.RaycastFilterType.Include
+		op.FilterDescendantsInstances = { mp }
+		for _, part in workspace:GetPartBoundsInBox(boxCF(c), SIZE, op) do
+			if part:IsA("BasePart") and part.CanCollide and part ~= c.box then return true end
+		end
+		return false
+	end
+	local tries = 0
+	while inside() and tries < 6 do tries += 1; c.p += Vector3.new(0, 0.5 * S, 0) end
+	if inside() then
 		local ft = Fight.feet(f)
 		if ft then c.p = ft end
 	end

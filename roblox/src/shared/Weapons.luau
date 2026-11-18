@@ -481,6 +481,15 @@ local W: { [string]: Weapon } = {
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.7 },
 	},
 	-- ------------------------------------------------------------ weapons batch E (18 Nov 2026; weapons-batchE-spec.md)
+	-- hold to spin the loop, let go to throw; catch someone and swing them on the rope (LassoServer, LassoClient)
+	lasso = {
+		id = "lasso", name = "Lasso", slot = "secondary", kind = "lasso", color = rgb(0xe0b070),
+		desc = "hold to spin the loop, let go to throw. catch someone and they swing on your rope: the wheel, r and f reel it. click to let go and they fly. walls and floors hurt.",
+		cd = 0.35, range = 28 * S,
+		snd = "lasso_throw",
+		recoilVM = { back = 0.6, up = 2, roll = 1, side = 0.3, punch = 0.006 },
+		vm = { p = Vector3.new(0.2, -0.22, -0.38) * S, r = Vector3.new(0, 0, 0), s = 0.9 },
+	},
 	-- fires a shopping cart that runs people over; parked it's cover, and you can hop in (F) and ride it (CartServer)
 	cart = {
 		id = "cart", name = "Shopping Cart Cannon", slot = "primary", kind = "cart", color = rgb(0x9b5cff),

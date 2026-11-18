@@ -173,6 +173,7 @@ local KINDS: { { string } } = {
 	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },
 	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" }, { "PINNED", "small" }, { "FROZEN", "small" }, -- (PINNED: your Nail Gun pinned them, weapons batch A)
 	{ "PAUSED", "small" }, { "REWOUND", "small" }, { "SPARE", "cut" }, { "STRIKE", "cut" }, -- (weapons batch D: the TV Remote, the Bowling Ball)
+	{ "CUT", "small" }, { "* m/s", "cut" }, -- (batch E: the Lasso cut by a guard; how fast you flung them)
 	-- (the classic modes, Modes.luau: a bullet earned and somebody else going out are what just happened, quietly)
 	{ "NEW TITLE", "small" }, -- (the hub egg: "NEW TITLE · OG", HubEgg.server)
 	{ "NEW GRAPPLE", "small" }, { "NEW KILL EFFECT", "small" }, { "+1 CRATE", "small" }, { "+1 DUFFEL BAG", "small" }, { "+1 SPRAY CAN", "small" }, -- (a hidden NPC's gift, LoreNPCs.server)
