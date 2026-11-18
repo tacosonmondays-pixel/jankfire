@@ -594,6 +594,13 @@ def duck_decoy():
     blob(g, 'bill__bill', 0.035, 0.016, 0.07, (0, 0.145, -0.25), sub=3, warp=bill)
     for sx in (-1, 1):
         blob(g, 'eye__eye', 0.013, 0.015, 0.01, (sx * 0.068, 0.18, -0.19), sub=2, rot=(0, -0.5 * sx, 0))
+    # ONE CARVED BLOCK (18 Nov 2026; the owner: separate shapes stuck together are what makes a model look AI-made): a
+    # decoy is carved from one piece of wood, so the body, breast, tail, carved wings, neck ring, head, bill and eyes
+    # are melted into one skin (sdf_kit.fuse: fillets where the carver's chisel would round them), still painted by part
+    import sdf_kit as SDF
+    SDF.fuse(g, [(('body', 'body'), 0), (('breast', 'breast'), 0.025), (('tail', 'tail'), 0.02), (('wings', 'tail'), 0.014),
+                 (('neck', 'neck'), 0.008), (('head', 'head'), 0.012), (('bill', 'bill'), 0.006), (('eye', 'eye'), 0.002)],
+             h=0.0022, tris=3200, name='decoy', smooth=1, seam_k=0.8)
     g.spots = {'grip': GRIP['duck'], 'gripRot': [0, 0, 0]}
     return g
 

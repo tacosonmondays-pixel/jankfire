@@ -920,6 +920,27 @@ shapes pushed into each other.
   `ar_cute_e` and `pistol_cute_e` (Daydream), `sawnoff_jp_a`, and two untracked Ducky glbs. `assets.json` is the
   live list.
 
+### Batch 2: fur and pom-poms, the decoy duck (18 November 2026, live in place version 918)
+
+| Model | What changed | Asset (before → after) |
+|---|---|---|
+| `pistol@pistol_cute_a` | the grip's pom-pom: 18 faceted tuft balls on a core, now one fluffy ball. It is built from the tufts' exact shapes (`gun_sets_cute3.pompom_fields`) with 1 mm fillets, two shades painted | 124098310418379 → 71392655287998 |
+| `ar@ar_cute_a` | the pom-pom charm and the fur muff round the stock, the same way (`fur_ring_fields`) | 84347908564143 → 100758003273440 |
+| Decoy Duck gadget skin (`item_skins.duck_decoy`) | one carved block: body, breast, tail, carved wings, neck ring, head, bill and eyes, filleted where a chisel would round them, painted by part | in skins 98860977994294 → `skins_decoy2.glb` 89237275632756 (imported alone) |
+
+**Tried and left as they were:**
+- **The ribbon bows (AR Cute B and D, Pistol Cute B):** they already read as one silhouette. Fused, the D bow's knot came out lumpy. Pistol Cute D's bow shares pieces with the hard slide.
+- **The Pumpkin SMG's vine:** fused, its twisted ridges came out lumpier.
+- **The Pepper sawed-off's calyx:** no visible gain, for +3,800 triangles.
+- **The Cauldron's drips:** flat tongues lying flush on the pot, paint-like.
+
+**Lessons:**
+- **Small, low-poly balls (tufts):** sampling them brings their flat facets back as a faceted crystal. Give fuse the
+  exact shapes instead.
+- **Fillets on fur:** keep them small (1–2 mm). At 3–5 mm the tufts melt into a smooth snowball.
+- **Pre-existing flicker:** the Pistol Cute A grip has 2 to 4 flicker hits at hand scale (the grip's deep panel
+  against the dark grip and the magazine). They were there before the fuse and are not touched here.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

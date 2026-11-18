@@ -483,7 +483,7 @@ def grid_field(verts, tris, h, pad=0.03, smooth=1):
         return (c00 * (1 - ty) + c10 * ty) * (1 - tz) + (c01 * (1 - ty) + c11 * ty) * tz + out_d
     return f
 
-def fuse(g, parts, h=0.001, tris=3000, name='fuse', hold=(), relax_steps=3, pad=0.016, smooth=1):
+def fuse(g, parts, h=0.001, tris=3000, name='fuse', hold=(), relax_steps=3, pad=0.016, smooth=1, seam_k=1.5):
     """FUSE A BUILT MODEL'S STUCK-TOGETHER PARTS INTO ONE SKIN (the owner's "AI-made" tell, 18 Nov). parts: [(piece key
        (node_wz, slot), k[, field[, pick[, kin]]])] of g.pieces (field: that part's exact field, else its solids are
        sampled; pick(point) -> True: only the piece's faces whose centre it picks take part, the rest of the piece
@@ -522,7 +522,7 @@ def fuse(g, parts, h=0.001, tris=3000, name='fuse', hold=(), relax_steps=3, pad=
     whole = fields[0][0]
     for fld, k in fields[1:]: whole = blend(whole, fld, k)
     out = mesh_paint(whole, nearest(*[fl for fl, _ in fields]), [str(i) for i in range(len(keys))], lo - 2 * h,
-                     hi + 2 * h, h=h, tris=tris, name=name, relax_steps=relax_steps, hold=hold)
+                     hi + 2 * h, h=h, tris=tris, name=name, relax_steps=relax_steps, hold=hold, seam_k=seam_k)
     rep = {}
     for i, key in enumerate(keys):
         old = g.pieces.pop(key); old.free()

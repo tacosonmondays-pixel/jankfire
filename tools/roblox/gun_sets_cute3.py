@@ -564,6 +564,63 @@ def pearl_ring(g, piece, c, a, b, x, r, gap=1.03):
     return n
 
 
+def _ell_field(c, axes):
+    """ellip()'s shape as an exact field: an ellipsoid at c with axes [(direction, radius)] x 3"""
+    import numpy as np
+    import sdf_kit as SDF
+    R = np.array([list(Vector(d).normalized()) for d, r in axes]).T
+    return SDF.ellipsoid(tuple(c), tuple(r for d, r in axes), rot=R)
+
+
+def pompom_fields(c, R, n=24, k=1.0):
+    """pompom()'s core and tufts as exact fields: (the main shade's, the second shade's)"""
+    C = Vector(c)
+    fa, fb = [_ell_field(C, [((1, 0, 0), R * 0.8), ((0, 1, 0), R * 0.8), ((0, 0, 1), R * 0.8)])], []
+    for i in range(n):
+        yy = 1 - 2 * (i + 0.5) / n
+        rr = math.sqrt(max(0.0, 1 - yy * yy))
+        th = i * 2.39996
+        d = Vector((rr * math.cos(th), yy, rr * math.sin(th))).normalized()
+        s = R * (0.40 + 0.07 * ((i * 7) % 4) / 3) * k
+        o = d.orthogonal().normalized()
+        (fb if (i % 3 == 0 or yy < -0.75) else fa).append(
+            _ell_field(C + d * (R * (0.6 + 0.4 * (1 - k))), [(o, s), (d.cross(o), s * 0.92), (d, s * 0.72)]))
+    return fa, fb
+
+
+def fur_ring_fields(z, cy, R, r, n=12, rows=3, dz=0.016, flat=0.62):
+    """fur_ring()'s core tube and clumps as exact fields: (the main shade's, the second shade's)"""
+    import numpy as np
+    h = (rows - 1) / 2 * dz + r * 0.5
+    def core(p):   # (the core tube round the z axis at (0, cy), R round, z +- h)
+        q0 = np.sqrt(p[:, 0] ** 2 + (p[:, 1] - cy) ** 2) - R
+        q1 = np.abs(p[:, 2] - z) - h
+        return np.minimum(np.maximum(q0, q1), 0.0) + np.sqrt(np.maximum(q0, 0.0) ** 2 + np.maximum(q1, 0.0) ** 2)
+    fa, fb = [core], []
+    for row in range(rows):
+        for kk in range(n):
+            a = math.pi / 2 + 2 * math.pi * (kk + 0.5 * row) / n
+            rr = r * (1.0 if (kk + row) % 2 == 0 else 0.82)
+            ca, sa = math.cos(a), math.sin(a)
+            (fb if (sa < -0.5 or (kk * 5 + row * 3) % 7 == 0) else fa).append(
+                _ell_field((R * ca, cy + R * sa, z + (row - (rows - 1) / 2) * dz),
+                           [((-sa, ca, 0), rr), ((0, 0, 1), rr * 0.9), ((ca, sa, 0), rr * flat)]))
+    return fa, fb
+
+
+def fuse_soft(g, node, fields, kin, h, tris, seam_k=0.7):
+    """ONE SOFT FORM (18 Nov 2026; the owner: shapes stuck together look AI-made): a fur muff's clumps and a pom-pom's
+       tufts were separate low-poly balls pushed into each other. sdf_kit.fuse melts them into one fluffy skin from
+       their exact shapes (fields: (the main shade's, the second shade's), from pompom_fields / fur_ring_fields; a
+       fillet kin between neighbours), each tuft still painted its own shade. (The bows were tried too: they already
+       read as one shape and came out lumpier, so they stay as built)"""
+    import sdf_kit as SDF
+    fa, fb = fields
+    parts = [((node, 'fur'), 0, SDF.union(*fa, k=kin))]
+    if fb and (node, 'fur2') in g.pieces: parts.append(((node, 'fur2'), kin, SDF.union(*fb, k=kin)))
+    return SDF.fuse(g, parts, h=h, tris=tris, name='soft_' + node, seam_k=seam_k)
+
+
 def pompom(g, pa, pb, c, R, n=24, k=1.0):
     """one soft fluffy ball: a core and n squashed tufts spread round it (two shades)"""
     C = Vector(c)
@@ -668,6 +725,78 @@ def bow(g, node, frame, knot, s, t, sl, fold, knot_sl, angs=(160.0, 20.0), L=1.0
         h = rn * 1.15 if centred else hc + rn * 1.1
         lens(g, node + '__' + sweet, ell(knot, kz * s * 1.05, kz * s * 1.05, n=14), frame, out=h + 0.0055, back=0.0008 if not centred else h,
              back_full=centred)
+
+
+def soft_bow(g, node, frame, knot, s, t, sl, fold, knot_sl, angs=(160.0, 20.0), L=1.0, W=0.66, tails=None,
+             tail_w=(0.28, 0.34), tail_t=None, centred=False, sweet=None, knot_k=(0.21, 0.27), tail_h0=-0.001, h=None,
+             tris=1600):
+    """THE SAME BOW AS bow() (its place, size, loop angles and tails), ONE MOULDED SKIN (18 Nov 2026; the owner: shapes
+       stuck together look AI-made, and every bow in the game should match the Tripo bow's puffy one-piece look): two
+       closed puffy loops (pillows on bow()'s teardrop outlines, thin where they pinch into the knot, fat at their
+       ends), a rounded knot they melt into, the tails as soft ribbon slabs, the sweet (if any) a dome on the knot. One
+       distance field (sdf_kit), painted: loops and tails `sl`, the knot `knot_sl`, the sweet `sweet` (the old inner
+       fold colour is not used: the loops are closed). Its pieces are added to the node's as their own closed skin"""
+    import numpy as np
+    import sdf_kit as SDF
+    O, U, V, N = [np.array(tuple(x), float) for x in frame]
+    rn = t / 2
+    nc = 0.0 if centred else rn * 0.55          # (the loops' middle above the plane: sunk a little into the gun)
+    def local(p):
+        q = p - O
+        return q @ U, q @ V, q @ N
+    def loop(ang):
+        ol = loop_uv(knot, ang, L * s, W * s)
+        d2 = SDF.polygon2(ol)
+        dirv = np.array([math.cos(RAD(ang)), math.sin(RAD(ang))])
+        def f(p):
+            u, v, n = local(p)
+            along = np.clip(((u - knot[0]) * dirv[0] + (v - knot[1]) * dirv[1]) / (L * s), 0.0, 1.0)
+            hx = t * (0.32 + 0.42 * along)
+            q0 = d2(u, v) + hx; q1 = np.abs(n - nc)
+            return np.minimum(np.maximum(q0, q1), 0.0) + np.sqrt(np.maximum(q0, 0.0) ** 2 + np.maximum(q1, 0.0) ** 2) - hx
+        return f
+    loops = SDF.union(*[loop(a) for a in angs], k=0.002)
+    tt = tail_t or t * 0.38
+    tl = []
+    for path in tails or []:
+        tp = tail_poly(path, tail_w[0] * s, tail_w[1] * s, 0.14 * s)
+        d2 = SDF.polygon2(tp)
+        hz = tt / 2; r = min(0.0018, tt * 0.45)
+        n0 = 0.0 if centred else tail_h0 + hz
+        def tf(p, d2=d2, hz=hz, r=r, n0=n0):
+            u, v, n = local(p)
+            q0 = d2(u, v) + r; q1 = np.abs(n - n0) - (hz - r)
+            return np.minimum(np.maximum(q0, q1), 0.0) + np.sqrt(np.maximum(q0, 0.0) ** 2 + np.maximum(q1, 0.0) ** 2) - r
+        tl.append(tf)
+    ribbon = SDF.union(loops, *tl, k=0.0025) if tl else loops
+    kz, ky = knot_k
+    R3 = np.stack([U, V, N], 1)
+    kc = O + U * knot[0] + V * knot[1] + N * nc
+    knotf = SDF.ellipsoid(tuple(kc), (kz * s, ky * s, rn * 1.5), rot=R3)
+    whole = SDF.blend(ribbon, knotf, 0.0025)
+    parts, labels = [ribbon, knotf], [sl, knot_sl]
+    if sweet:
+        sw = SDF.ellipsoid(tuple(kc + N * (rn * 1.2 if not centred else 0.0)), (kz * s * 0.95, kz * s * 0.95, rn * 1.1 + 0.002), rot=R3)
+        whole = SDF.blend(whole, sw, 0.0015); parts.append(sw); labels.append(sweet)
+    # the box round it: the loops, the knot and the tails' outlines, in the frame, then in the weapon frame
+    uv = [pt for a in angs for pt in loop_uv(knot, a, L * s, W * s)]
+    for path in tails or []: uv += tail_poly(path, tail_w[0] * s, tail_w[1] * s, 0.14 * s)
+    nn = [-t * 1.6, t * 1.6] if centred else [-t, t * 1.8 + 0.006]
+    corners = [O + U * a + V * b + N * c for a, b in uv for c in nn]
+    lo = np.min(corners, 0) - 0.004; hi = np.max(corners, 0) + 0.004
+    step = h or min(t / 9, tt / 5)
+    lab_idx = list(range(len(labels)))
+    # (labels that name the same slot share one piece)
+    names = []
+    for lb in labels:
+        if lb not in names: names.append(lb)
+    near = SDF.nearest(*parts)
+    cls = lambda p: np.array([names.index(labels[i]) for i in near(p)])
+    out = SDF.mesh_paint(whole, cls, names, lo, hi, h=step, tris=tris, name='bow_' + node, seam_k=1.0)
+    for lb, bm in out.items():
+        me = bpy.data.meshes.new('bow'); bm.to_mesh(me); bm.free()
+        g._bm(node + '__' + lb).from_mesh(me)
+        bpy.data.meshes.remove(me)
 
 
 def crystal(g, piece, base, tip, r, tipk=0.3, tipr=0.08):
@@ -997,6 +1126,8 @@ def ar_cute_a():
         fz, fy = bez_mag(t, True); bz, by = bez_mag(t, False)
         z, y = fz * 0.55 + bz * 0.45, fy * 0.55 + by * 0.45
         for sx in (-1, 1): pearl(g, 'mag_wzN__pearl', 0.0115, (sx * 0.0278, y, z), n=7, m=3)
+    fuse_soft(g, 'muff_wzN', fur_ring_fields(0.283, 0.03, 0.047, 0.031, n=9, rows=2, dz=0.021, flat=0.62), 0.0018, 0.0011, 1400)
+    fuse_soft(g, 'charm_wzN', pompom_fields((-0.040, -0.152, -0.448), 0.054, n=20, k=1.0), 0.0015, 0.0008, 1100)
     return g
 
 
@@ -1033,6 +1164,7 @@ def pistol_cute_a():
     for sx in (-1, 1):
         for z in (-0.201, -0.190, -0.179, -0.168):
             pearl(g, 'body_wzN__pearl', 0.0055, (sx * 0.0125, -0.0222, z), n=6, m=3)
+    fuse_soft(g, 'grip_wzN', pompom_fields((0.0, -0.1705 - 0.8 * 0.035 + 0.003, 0.0945), 0.035, n=18), 0.0011, 0.0006, 900)
     return g
 
 
