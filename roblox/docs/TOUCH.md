@@ -154,6 +154,13 @@ the editor; the saved layout in play).
     `tl1.stick`.
   - The game rebuilt its buttons from it. Tapping JUMP pressed slot 2 and the revolver came up; tapping the new
     button pressed reload.
-- **Not checked yet**: a rejoin (needs a second Play, next turn), the top row dropping under a match's scoreboard
-  (no match in this test), left-handed, the phone sizes 844 x 390 and a tablet, and a real phone (real drags and two
-  fingers).
+- **Rejoin** (a second Play, 17:26 UTC): the layout came back from the save. JUMP was SLOT 2 at (560, 328) at 75
+  points, the RELOAD extra was there, EMOTE hidden and the stick FIXED. SettingsTest `reset:tl` then cleared every
+  `tl` key (0 left).
+- **The default layout at other sizes**:
+  - 844 x 390 (`touch/phone-hud-844-v957.jpg`): HUD at 0.70.
+  - A 1133 x 744 tablet (`touch/tablet-hud-1133-v957.jpg`): HUD at 1x, buttons at 1.2x, as before.
+- **Not checked yet**:
+  - the top row dropping under a match's scoreboard (no match in these tests)
+  - left-handed
+  - a real phone (real drags, two fingers)
