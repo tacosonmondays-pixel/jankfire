@@ -90,7 +90,7 @@ add({ id = "marbles", slot = "secondary", name = "Marble Shotgun", color = "7fd0
 	desc = "A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).",
 	stats = { { label = "DAMAGE", text = "1.15 x100", bar = 0.96 }, { label = "FIRE RATE", text = "1.11/s", bar = 0.05 }, { label = "RANGE", text = "30 m", bar = 0.24 }, { label = "MAG", text = "2", bar = 0.03 } } })
 add({ id = "revolver", slot = "secondary", name = "Revolver", color = "e0c070", live = true, gimmick = "tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
-	desc = "6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. A headshot does 96: almost a kill.",
+	desc = "6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, each shot wilder and weaker than the last. Ricochets off walls twice. A headshot does 96: almost a kill.",
 	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "2.5/s", bar = 0.11 }, { label = "RANGE", text = "250 m", bar = 0.71 }, { label = "MAG", text = "6", bar = 0.1 } } })
 add({ id = "pistol", slot = "secondary", name = "Plan B", color = "a0b4ff", live = true, gimmick = "a plain pistol for when plan A runs dry. out of the holster in a blink.",
 	desc = "A plain pistol for when plan A runs dry. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you're empty.",

@@ -29,6 +29,68 @@ version for Roblox (batched at the end).
   separate fix, flagged to the coordinator. (Part of the steppiness in these stills is the cloud's software
   renderer, which runs at a few frames a second.)
 
+## Balance pass, 18 Nov 2026 (Roblox only)
+
+The owner, 18 Nov 2026, about 02:45 UTC: *"revolver needs to either do less damage or be less accurate the longer you
+hold it, redline damage at higher speeds needs to maybe be capped? its super strong"*. The web game is unchanged.
+All numbers are against a 100 HP target standing still, aimed at the chest, with the recoil held. Time to kill (TTK)
+counts from the first shot. The tables come from a simulation of the game's own hit boxes (`Hitbox.luau`: body and
+head boxes, bigger past 25 m) and its spread maths (`Hitbox.spreadDir`, a uniform disc).
+
+**Revolver** (`fan` in `Weapons.luau`). The tap is unchanged: 40, 96 on the head, 2.5 a second (100 DPS), spread
+0.003. Three body taps kill in 0.8 s, and a head tap plus a body tap in 0.4 s, at any range. Holding the trigger
+still fans the rest of the cylinder at 6 a second after 0.2 s. Each fanned shot in a row is now weaker and wilder:
+
+| fanned shot | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| damage, before | 28 | 28 | 28 | 28 | 28 |
+| damage, after (x0.88 each) | 24 | 21.1 | 18.6 | 16.4 | 14.4 |
+| spread, before (rad) | 0.065 | 0.065 | 0.065 | 0.065 | 0.065 |
+| spread, after (+0.03 each) | 0.045 | 0.075 | 0.105 | 0.135 | 0.165 |
+
+A whole cylinder held down (the tap, then five fanned shots over 0.87 s):
+
+| distance | before: expected damage, chance it kills, TTK | after |
+|---|---|---|
+| 3 m | 180, 100%, 0.53 s | 134, 100%, 0.53 s |
+| 5 m | 180, 100%, 0.53 s | 130, 100%, 0.53 s |
+| 8 m | 180, 100%, 0.53 s | 118, 85%, 0.57 s |
+| 12 m | 159, 93%, 0.60 s | 100, 49%, 0.56 s |
+| 20 m | 116, 53%, 0.56 s | 75, 16%, 0.51 s |
+| 30 m | 79, 25%, 0.54 s | 61, 6%, 0.51 s |
+| 50 m | 62, 14%, 0.54 s | 52, 2%, 0.51 s |
+
+The fan with every shot landing: 168 DPS before, 113 now. With the tap missed, the fan alone does 94.5 and can't kill
+from full HP. So a held cylinder is a point-blank gamble, and anything past arm's length wants taps.
+- **The server fires the fanned shots** (`Combat.server.luau` `serverShot`). A shot faster than the tap schedule, or
+  flagged as fanned, is a fanned shot whatever the client says. `Rules.fire` counts the string (`f.fanN`; a 0.45 s gap
+  or a tap starts again) and gives its damage and spread (`Weapons.fanShot`). The server rolls the spread round the
+  client's `look` and casts the bullet itself: through the map, with both bounces, against every fighter where the
+  shooter saw them (the server's trail, the shooter's round trip + 0.08 s back, ±0.1 s). Then it sends the bullet's
+  path to everyone. The shooter's client fires no ray of its own for a fanned shot: it shows the flash as you fire,
+  and the tracer, bounce chips and impact when the server's echo comes back (`Arsenal` Shot handler, `fan = true`).
+  So a changed client can't make the fan a laser.
+- Taps stay client-raycast and server-checked as before, since their spread (0.003) is too small to matter.
+
+**Redline** (`over` in `Weapons.luau`, `Weapons.shotDmg`, judged from the server's own HP for the shooter). The fire
+rate still climbs from 6 to 22 a second as your HP drops, with the needle, sound and recoil unchanged. Past 12 a
+second, each shot does less, so only a quarter of the extra rate turns into damage:
+
+| your HP | rate | damage a shot, before → after | DPS, before → after | TTK (every shot lands), before → after |
+|---|---|---|---|---|
+| 100 | 6/s | 10 → 10 | 60 → 60 | 1.50 s → 1.50 s |
+| 62.5 | 12/s | 10 → 10 | 120 → 120 | 0.75 s → 0.75 s |
+| 50 | 14/s | 10 → 9.0 | 140 → 126 | 0.64 s → 0.79 s |
+| 25 | 18/s | 10 → 7.5 | 180 → 135 | 0.50 s → 0.72 s |
+| 10 | 20.4/s | 10 → 7.0 | 204 → 143 | 0.44 s → 0.69 s |
+| near 0 | 22/s | 10 → 6.6 | 220 → 145 | 0.41 s → 0.68 s |
+
+Headshots are x1.8 of the shot's own damage. For comparison: the Assault Rifle does 110 DPS (0.80 s) and the SMG
+112 (0.88 s). So a badly hurt Redline is still the fastest killer, but about 1.3 times a rifle, not twice. By range:
+the bloom never builds (0.0025 a shot against 0.06 a second of recovery), so at 10 m and 25 m every shot lands
+hipfired, and at 50 m hipfire adds about 15% to the TTK (full HP 1.74 s; 10 HP 0.51 s before, 0.96 s after). Aimed,
+everything lands out to 50 m. `keep = 0` would be a hard cap at 120 (0.78 s); `keep = 1` is the old gun.
+
 ## Everything at a glance
 
 | weapon | slot | colour | what it does |
@@ -569,7 +631,8 @@ The lower your HP, the faster it fires. on full health it plods; on 10 HP it scr
 | dmg / head | 10 / ×1.8 → 18 | same |
 | rate → rateMax | 6/s at 100 HP → 22/s at 0 HP | same |
 | rate formula | `rate + (rateMax − rate) · clamp(1 − hp/100, 0, 1)` (`shared/weapons.js:333`) | same |
-| examples | 100 HP: 6/s (60 DPS) · 50 HP: 14/s (140) · 10 HP: 20.4/s (204) | same |
+| examples | 100 HP: 6/s (60 DPS) · 50 HP: 14/s (140) · 10 HP: 20.4/s (204) | 60 · 126 · 143 since 18 Nov (below) |
+| damage past 12/s | none | **18 Nov 2026**: `over = { at = 12, keep = 0.25 }`: a shot does `10 · (12 + (rate − 12) · 0.25) / rate`, rounded up to 0.1 (9.0 at 14/s, 7.5 at 18/s, 7.0 at 20.4/s). See "Balance pass, 18 Nov 2026" |
 | mag / reload | 40 / 1.8 s | same |
 | spread | 0.018 | same |
 | bloom / maxBloom | 0.0025 / 0.06 | same |
@@ -1973,11 +2036,11 @@ six shots, a cowboy twirl after every one, and if you hold the trigger it fans t
 |---|---|---|
 | kind | hitscan, semi-auto (one tap = one shot) | same |
 | damage (tap) | 40, head x2.4 = 96 | same |
-| fan the hammer damage | 28 a shot (head 67.2) | same |
+| fan the hammer damage | 28 a shot (head 67.2) | **18 Nov 2026**: 24 x 0.88 per fanned shot in a row: 24, 21.1, 18.6, 16.4, 14.4 |
 | rate (tap) | 2.5/s (one every 0.4 s) | same |
 | fan rate | 6/s, starts after holding 0.2 s | same |
 | mag / reload | 6 / 2.0 s | same |
-| spread (tap / fan) | 0.003 rad / 0.065 rad (x the hipfire setting) | same |
+| spread (tap / fan) | 0.003 rad / 0.065 rad (x the hipfire setting) | tap the same; **18 Nov 2026** fan 0.045 + 0.03 per fanned shot in a row (0.045 .. 0.165), rolled by the server; a 0.45 s pause or a tap starts a new string |
 | ADS | zoom 1.4, spread x0.2, `p` [0, -0.085, -0.28] m | p [0, -0.255, -0.84] studs |
 | recoil (shove) | 3 m/s (fan: x0.3) | 9 studs/s |
 | kick | 0.07 rad (fan: x0.3) | same |

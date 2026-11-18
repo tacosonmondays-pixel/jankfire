@@ -42,6 +42,7 @@ export type Fighter = {
 	lastShot: { [string]: number }, shotLog: { [string]: { number } },
 	lev: { to: Fighter, k: number, t: number }?, bst: { to: Fighter?, k: number, t0: number }?,
 	qsT: number?, aimT: number?,
+	fanN: number?, -- the Revolver: fanned shots in the string so far (0 after a tap)
 	-- a range Carl (RangeTest): the one runner who may hurt him (anything else that is not nil: nobody may)
 	onlyFor: any?,
 }
@@ -143,8 +144,9 @@ function Rules.reload(f: Fighter, wid: any, now: number): string?
 end
 
 -- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it.
--- returns why it's refused (or nil) and what this shot's damage is multiplied by (the Revolver's fanned shots pay less)
-function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?): (string?, number)
+-- returns why it's refused (or nil), what this shot's damage is multiplied by (the Revolver's fanned shots pay less),
+-- and for a fanned Revolver shot its spread: the server fires that one itself (Combat serverShot), never the client
+function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?): (string?, number, number?)
 	if not inLoadout(f, wid) then return "not your weapon", 1 end
 	if W[wid].kind ~= "hitscan" then return "not a gun", 1 end
 	local w = W[wid]
@@ -164,11 +166,18 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	-- the rate comes from the SERVER's HP (a client can't claim low HP to make the Redline scream)
 	local iv = 1 / Weapons.fireRate(w, f.hp)
 	local mul = 1
+	local spread: number? = nil
+	local fanK = 0
 	if w.fan then
 		-- the Revolver (web revolverHit): nothing goes faster than the fan; full damage only for a shot on the tap
-		-- schedule that isn't flagged as fanned, anything quicker is paid at the fan's damage whatever the client says
+		-- schedule that isn't flagged as fanned, anything quicker is a fanned shot whatever the client says. the k-th
+		-- fanned shot in a row is softer and wilder (Weapons.fanShot); `reset` s without a shot or a tap starts again
 		local last = f.lastShot[wid] or -math.huge
-		if claimFan == true or now - last < iv * 0.9 - Rules.JITTER then mul = w.fan.dmg / w.dmg end
+		if claimFan == true or now - last < iv * 0.9 - Rules.JITTER then
+			fanK = if now - last <= (w.fan.reset or 0.45) then (f.fanN or 0) + 1 else 1
+			local d, s = Weapons.fanShot(w, fanK)
+			mul, spread = d / w.dmg, s
+		end
 		iv = 1 / w.fan.rate
 	end
 	local log: { number }? = nil
@@ -184,8 +193,9 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if not Rules.gate(f, wid, now, iv) then return "too fast", 1 end
 	if log then table.insert(log, now) end
 	f.lastShot[wid] = now
+	if w.fan then f.fanN = fanK end
 	a.mag -= 1
-	return nil, mul
+	return nil, mul, spread
 end
 
 -- the Yeehaw's ramp (web rifleShot): a hit on the same person within `chain` s of your last hit raises k (to rampMax),

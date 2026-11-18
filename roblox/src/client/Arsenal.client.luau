@@ -409,7 +409,7 @@ local function fireGun(now: number, fan: boolean?)
 	local impacts: { RaycastResult } = {}
 	local splashes: { Vector3 } = {}
 	local path: { Vector3 }? = nil -- the Revolver: where this bullet bounced (the server walks the same path)
-	for _ = 1, w.pellets or 1 do
+	for _ = 1, if F then 0 else (w.pellets or 1) do -- (a fanned Revolver shot is the server's to fire: fanEcho)
 		local d = Hitbox.spreadDir(look, spread, math.random(), math.random())
 		local from, left, bounces = eye, w.range, w.ricochet or 0
 		local mh: RaycastResult? = nil
@@ -458,6 +458,10 @@ local function fireGun(now: number, fan: boolean?)
 	if F or path or qs or ns then
 		opt = { fan = if F then true else nil, path = path, qs = if qs then true else nil, ns = if ns then true else nil }
 	end
+	if F then -- (where you look: the server rolls the fan's spread round it, fires the bullet and sends it back, fanEcho)
+		(opt :: any).look = look
+		ends = { eye + look * w.range }
+	end
 	FireR:FireServer(held, eye, ends, list, opt)
 	-- your own feel: shove, climb, bloom, the gun kicks, flash, brass, tracer / marbles, sound
 	local km = if F then F.kick else 1
@@ -485,7 +489,7 @@ local function fireGun(now: number, fan: boolean?)
 	local fx = w.fx or {}
 	-- the flash (not through the scope: it hides the gun, flash and all) and the tracers, bent at a bounce, by the web's
 	-- rules for this gun (Fx.gunShot: size, flash time, tracer width and life)
-	Fx.gunShot(w, CFrame.lookAt(mz, mz + look), ends, path, fpv, scoped and fpv)
+	Fx.gunShot(w, CFrame.lookAt(mz, mz + look), if F then {} else ends, path, fpv, scoped and fpv) -- (fanned: the flash only)
 	if fx.spray then
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
 	elseif fx.brass and not scoped then
@@ -717,7 +721,23 @@ remote("Kill").OnClientEvent:Connect(function(k: any)
 end)
 
 remote("Shot").OnClientEvent:Connect(function(s: any)
-	if type(s) ~= "table" or type(s.ends) ~= "table" or s.by == me.UserId then return end
+	if type(s) ~= "table" or type(s.ends) ~= "table" then return end
+	if s.by == me.UserId then
+		-- your own fanned Revolver shot as the server fired it (Combat serverShot; its flash went off as you fired): the
+		-- tracer from your muzzle, bent at each bounce, chips and a ricochet at each bounce, the impact where it ended
+		local fw = if s.fan == true and type(s.w) == "string" then W[s.w] else nil
+		local fe = s.ends[1]
+		if not fw or typeof(fe) ~= "Vector3" then return end
+		local bp: { Vector3 } = {}
+		if type(s.path) == "table" then for i, b in s.path do if typeof(b) == "Vector3" and i <= 2 then table.insert(bp, b) end end end
+		local fpv = not thirdPerson()
+		local fm = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eyeAndAim())
+		if ((bp[1] or fe) - fm).Magnitude > 0.1 then Fx.gunShot(fw, CFrame.lookAt(fm, bp[1] or fe), { fe }, if #bp > 0 then bp else nil, fpv, true) end
+		local prev = fm
+		for _, b in bp do Fx.shotEnds(prev, { b }, true); Sfx.play("ricochet", b, 0.6); prev = b end
+		Fx.shotEnds(prev, { fe }, false)
+		return
+	end
 	local m = if typeof(s.model) == "Instance" then s.model :: Instance else nil
 	local wpn = m and m:FindFirstChild("HeldWeapon")
 	local root = wpn and (wpn :: Model).PrimaryPart

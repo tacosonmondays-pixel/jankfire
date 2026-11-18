@@ -98,7 +98,7 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	local pr = Rules.parryAt(t, eye - c, Fight.facing(t), now())
 	if pr > 0 then parriedShot(t, f, wid, n, h, pr, eye); return end
 	local w = W[wid]
-	local dmg = Weapons.damage(w, n, h) * (if x and x.mul then x.mul else 1)
+	local dmg = Weapons.damage(w, n, h, f.hp) * (if x and x.mul then x.mul else 1) -- (f.hp: the Redline's cut past 12 a second)
 	local extraKb = 0
 	if w.ramp then
 		local k = Rules.ramp(f, t, w, now())
@@ -271,6 +271,80 @@ ReloadR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 	if why and why ~= "full" and why ~= "already reloading" then ammoSync(p, f, wid, why) end
 end)
 
+-- ------------------------------------------------------------------ the server's own bullet (a fanned Revolver shot)
+-- (owner, 18 Nov 2026: the Revolver should be "less accurate the longer you hold it") the fan's spread is rolled HERE and
+-- the server fires the bullet itself, so a client can't make the fan a laser. it walks the map and everyone's boxes
+-- where the shooter saw them (a round trip and an interpolation step back along the server's trail, +-0.1 s), bouncing
+-- off walls the way Arsenal's bullets do, then tells everyone where it went (the shooter's own tracer comes from it)
+local fanRng = Random.new()
+local function seenAt(t: Fighter, lag: number): { Vector3 }
+	local out = {}
+	local n = now()
+	local tr = Fight.trail[t]
+	if lag <= 0.1 or not tr then
+		local ft = Fight.feet(t)
+		if ft then table.insert(out, ft) end
+	end
+	if tr then
+		for i = #tr, 1, -1 do
+			local age = n - tr[i].t
+			if age > lag + 0.1 then break end
+			if age >= lag - 0.1 then table.insert(out, Hitbox.feet(tr[i].p)) end
+		end
+	end
+	return out
+end
+local function serverShot(p: Player, f: Fighter, wid: string, eye: Vector3, d: Vector3, mul: number)
+	local w = W[wid]
+	local ok, ping = pcall(function() return p:GetNetworkPing() end)
+	local lag = math.clamp((if ok and type(ping) == "number" then ping else 0.1) + 0.08, 0.05, Fight.LAG)
+	local cands: { { t: Fighter, spots: { Vector3 } } } = {}
+	for _, t in Fight.all do
+		if t == f or not t.alive then continue end
+		if t.onlyFor ~= nil and t.onlyFor ~= p then continue end -- (somebody else's range Carl isn't in this shooter's world)
+		local spots = seenAt(t, lag)
+		if #spots > 0 then table.insert(cands, { t = t, spots = spots }) end
+	end
+	local from, left, bounces = eye, w.range, w.ricochet or 0
+	local path: { Vector3 }? = nil
+	local who: Fighter?, head, best = nil, false, left
+	while true do
+		local mh = Fight.castMap(from, d, left)
+		best = if mh then (mh.Position - from).Magnitude else left
+		who, head = nil, false
+		for _, c in cands do
+			for _, ft in c.spots do
+				local tt, hd = Hitbox.ray(from, d, ft, Hitbox.distScale((ft - from).Magnitude))
+				if tt and tt < best then best, who, head = tt, c.t, hd end
+			end
+		end
+		if who or not mh or bounces <= 0 or left - best <= 1 then break end
+		bounces -= 1 -- off the wall (twice): the same bullet carries on with what's left of its range
+		left -= best
+		local at = from + d * best
+		local pp: { Vector3 } = path or {}
+		path = pp
+		table.insert(pp, at)
+		local nrm = (mh :: RaycastResult).Normal
+		d = d - 2 * d:Dot(nrm) * nrm
+		from = at + nrm * 0.05
+	end
+	local e = from + d * best
+	for _, o in Players:GetPlayers() do
+		ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = { e }, path = path, fan = if o == p then true else nil })
+	end
+	Fight.shotFx(f, wid, { e }) -- (the match recorder keeps it for killcams and replays)
+	local t = who
+	if not t then return end
+	local tf, ff = Fight.feet(t), Fight.feet(f)
+	if not tf or not ff then return end
+	local hwhy, n, hh = Rules.hit(f, t, wid, 1, if head then 1 else 0, now(), {
+		dist = (tf - ff).Magnitude, speedF = Fight.speed(f), speedT = Fight.speed(t), los = true,
+	})
+	if hwhy then return end
+	applyHitscan(f, t, wid, n, hh, from, { mul = mul })
+end
+
 -- one trigger pull: (weapon, eye, pellet end points (<= 12, the tracers + where the marbles go), hits per victim)
 -- the hub is weapons-free: no shots, swings or guards there (Fight.holstered); training and matches only
 local function holstered(p: Player): boolean return p:GetAttribute("Zone") == "hub" end
@@ -291,12 +365,21 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	-- the claimed eye must be a clear line from your real head (no firing from the far side of a wall)
 	local off = e - seye
 	local blocked = off.Magnitude > 0.05 and Fight.castMap(seye, off.Unit, off.Magnitude) ~= nil
-	local why, mul = Rules.fire(f, wid, now(), seye, e, blocked, x.fan == true)
+	local why, mul, fanSpread = Rules.fire(f, wid, now(), seye, e, blocked, x.fan == true)
 	if why then
 		if W[wid] then ammoSync(p, f, wid, why) end
 		return
 	end
 	Fight.shot(f, wid) -- (Stats.luau: one more attack for accuracy)
+	if fanSpread then
+		-- a fanned Revolver shot: the client's hits are ignored, the server rolls the spread round where it looked (its
+		-- `look`, else the line to its first end point) and fires the bullet itself
+		local en = ends :: { Vector3 }
+		local look: Vector3? = if finiteV(x.look) and (x.look :: Vector3).Magnitude > 0.5 then (x.look :: Vector3).Unit
+			elseif en[1] and (en[1] - e).Magnitude > 1e-3 then (en[1] - e).Unit else nil
+		if look then serverShot(p, f, wid, e, Hitbox.spreadDir(look, fanSpread, fanRng:NextNumber(), fanRng:NextNumber()), mul) end
+		return
+	end
 	-- a ricochet: the hits are judged from the last wall the bullet really bounced off (a made-up path hits nobody)
 	local from: Vector3? = e
 	local path: { Vector3 }? = nil

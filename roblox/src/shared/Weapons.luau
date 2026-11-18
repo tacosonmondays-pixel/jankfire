@@ -16,7 +16,12 @@ export type Weapon = {
 	burst: number?, burstGap: number?, -- the Hat Trick: shots per burst, the pause after one
 	ramp: number?, rampMax: number?, chain: number?, -- the Yeehaw: +ramp damage per chained hit on the same person
 	quick: number?, qsDmg: number?, qsKb: number?, -- the Second Opinion: the quick-scope window and what it buys
-	fan: { rate: number, hold: number, dmg: number, spread: number, kick: number }?, ricochet: number?, -- the Revolver
+	-- the Revolver's fan: a fanned shot (held trigger) is fired by the SERVER (Combat serverShot). the k-th one in a
+	-- string does dmg x fall^(k-1) with spread + grow x (k-1) (up to maxSpread); `reset` s without a shot, or an aimed
+	-- tap, starts a new string (Weapons.fanShot)
+	fan: { rate: number, hold: number, dmg: number, spread: number, kick: number, fall: number?, grow: number?, maxSpread: number?, reset: number? }?,
+	ricochet: number?, -- the Revolver's bounces
+	over: { at: number, keep: number }?, -- the Redline: past `at` shots a second, the extra rate is only `keep` as deadly (Weapons.shotDmg)
 	heatUp: number?, heatDown: number?, -- the Belt Sander's barrel (looks and sound only)
 	cycle: { clip: string, at: number }?, draw: string?, -- the clip after every shot (pump, bolt, lever), its own draw
 	-- melee
@@ -49,6 +54,10 @@ local W: { [string]: Weapon } = {
 		desc = "the lower your HP, the faster it fires. full health it plods, 10 HP it screams. watch the needle.",
 		auto = true, rate = 6, rateMax = 22, mag = 40, reload = 1.8, pellets = 1, dmg = 10, head = 1.8, spread = 0.018,
 		bloom = 0.0025, maxBloom = 0.06, recoil = 0.3 * S, kick = 0.006, range = 250 * S,
+		-- (owner, 18 Nov 2026: "redline damage at higher speeds needs to maybe be capped? its super strong") the rate
+		-- still climbs to 22, but past 12 a second each shot does less: 60 damage a second at full HP, 120 at 62 HP,
+		-- 126 at 50, 143 at 10 (was 140 and 204). WEAPONS.md "Balance pass, 18 Nov"
+		over = { at = 12, keep = 0.25 },
 		ads = { zoom = 1.4, spread = 0.35 }, tracer = rgb(0xfff0a0),
 		fx = { brass = true, shake = 0.06 }, tacho = true,
 		recoilVM = { back = 0.7, up = 2.4, roll = 1.6, side = 0.2, punch = 0.008 },
@@ -226,7 +235,10 @@ local W: { [string]: Weapon } = {
 		desc = "six shots, a twirl after every one. tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
 		auto = false, rate = 1 / 0.4, mag = 6, reload = 2.0, pellets = 1, dmg = 40, head = 2.4, spread = 0.003,
 		recoil = 3 * S, kick = 0.07, range = 250 * S, ricochet = 2,
-		fan = { rate = 6, hold = 0.2, dmg = 28, spread = 0.065, kick = 0.3 },
+		-- (owner, 18 Nov 2026: "revolver needs to either do less damage or be less accurate the longer you hold it") the
+		-- tap stays 40 and dead accurate; the fanned shots after it go 24, 21, 19, 16, 14 at spreads 0.045 .. 0.165, so a
+		-- held cylinder still kills point blank, misses half of itself at 12 m and most past 20 m (was 28 each at 0.065)
+		fan = { rate = 6, hold = 0.2, dmg = 24, fall = 0.88, spread = 0.045, grow = 0.03, maxSpread = 0.165, reset = 0.45, kick = 0.3 },
 		ads = { zoom = 1.4, spread = 0.2 }, tracer = rgb(0xffd060),
 		fx = { shake = 0.3 }, snd = "gun_revolver",
 		recoilVM = { back = 1.6, up = 13, roll = 2.5, side = 0.2, punch = 0.045 },
@@ -370,8 +382,27 @@ function Weapons.reach(w: Weapon, kat: number): number
 end
 
 -- damage of a hitscan hit: n pellets landed, h of them on the head
-function Weapons.damage(w: Weapon, n: number, h: number): number
-	return w.dmg * (n - h) + w.dmg * (w.head or 1) * h
+function Weapons.damage(w: Weapon, n: number, h: number, hp: number?): number
+	local d = Weapons.shotDmg(w, hp)
+	return d * (n - h) + d * (w.head or 1) * h
+end
+
+-- one bullet's damage before the head multiplier, at the shooter's HP (nil = the row's dmg). the Redline's past
+-- `over.at` shots a second keeps only `over.keep` of the extra rate as damage: 10 a shot up to 12/s, 9.0 at 14/s
+-- (50 HP), 7.0 at 20.4/s (10 HP). rounded up to a tenth, so the hits to kill stay whole (15 x 7.0, not 17 x 5.88)
+function Weapons.shotDmg(w: Weapon, hp: number?): number
+	local o = w.over
+	if not o or hp == nil then return w.dmg end
+	local r = Weapons.fireRate(w, hp)
+	if r <= o.at then return w.dmg end
+	return math.ceil(w.dmg * (o.at + (r - o.at) * o.keep) / r * 10 - 1e-6) / 10
+end
+
+-- the Revolver's k-th fanned shot in a row (1 = the first after the tap): its damage and its spread (Combat rolls it)
+function Weapons.fanShot(w: Weapon, k: number): (number, number)
+	local F = w.fan :: any
+	local i = math.max(1, math.floor(k)) - 1
+	return F.dmg * (F.fall or 1) ^ i, math.min(F.maxSpread or F.spread, F.spread + (F.grow or 0) * i)
 end
 
 -- the shove a gun's hit gives its victim (web room.js applyHitscan): kb a pellet along the shot, kbUp x the share of
