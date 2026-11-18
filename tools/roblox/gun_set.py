@@ -216,6 +216,13 @@ BUILD.update(gun_batch_c.BUILD)
 # nodes (blade, scope) in both; replaces batch C's scythe (tools/roblox/gun_scythe.py)
 import gun_scythe
 BUILD.update(gun_scythe.BUILD)
+# batch D (18 Nov 2026): bowling launcher + ball, TV remote, house slipper + its throw (gun_batch_d.py); recurve bow +
+# arrow, balance scales (gun_batch_d2.py). Each is loaded once its file exists
+for _m in ('gun_batch_d', 'gun_batch_d2'):
+    try:
+        BUILD.update(__import__(_m).BUILD)
+    except ModuleNotFoundError as _e:
+        if _m not in str(_e): raise
 
 
 # ------------------------------------------------------------------------- the skin: Carl's Cardboard on the C rifle
