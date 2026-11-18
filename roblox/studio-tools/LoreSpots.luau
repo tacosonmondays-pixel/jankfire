@@ -56,7 +56,8 @@ L.SPOTS = {
 		area = "training: loafing on the range canopy's roof, over the gun shop" },
 	cat_beans = { at = Vector3.new(6, 248.6, -8566), y = 248.6, look = Vector3.new(-1, 0, 0), visit = Vector3.new(6, 0, 0),
 		area = "back lot: lying on top of the single container south of the house" },
-	cat_gravy = { at = Vector3.new(-186, 247.6, -9913), y = 247.6, up = 9.5, look = Vector3.new(-14, 0, -17), visit = Vector3.new(-6, -7.6, -7),
+	-- (Gravy: 0.4 south of the fridge's middle, because the timber beam over it ends at z -9914.14)
+	cat_gravy = { at = Vector3.new(-186, 247.6, -9912.6), y = 247.6, up = 9.5, look = Vector3.new(-14, 0, -17), visit = Vector3.new(-6, -7.6, -7),
 		area = "the Rotunda lounge: sitting on top of the fridge, chairing" },
 	cat_meatloaf = { at = Vector3.new(72, 226.4, -8280), look = Vector3.new(-1, 0, 0), visit = Vector3.new(-6, 0, 0),
 		area = "the basement: flopped on his side by the warm boiler" },
