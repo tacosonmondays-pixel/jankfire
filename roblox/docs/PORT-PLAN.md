@@ -1745,6 +1745,13 @@ Plan picture: `roblox/docs/hub/hub_lounge_plan.jpg`. Photos from the Play test: 
 - The canopy's end sits inside the far wall instead of on its face.
 - The old lounge's piers stand 0.06 proud of the rail behind the sofas, whose backs no wall hides any more.
 - The jump-pad ring's underside sits off the floor's ring line.
+
+**Then the 8 older hits (place version 852): 0 visible hits left.** Only covered faces nobody can see remain.
+- The gym door's jambs end just past the threshold paint, not on it.
+- The balcony's floor finish stops 0.05 short of the slab's outer face.
+- `B.unseam` (a kit part made thinner along its upright axis) fixes the two kit-model seams on show:
+  - the fridge's dark part, top lowered off the red body's;
+  - the display sawn-off's hinge, which lies 0.014 under and 0.017 over its frame in the kit model itself. The gun model still has that seam in hand.
 - The egg is training-v2's, in `Map.Hub.HubEgg`, outside the Rotunda: no rebuild wipes it and R.check doesn't look at it. The room has its own leak point.
 
 **Checks:**

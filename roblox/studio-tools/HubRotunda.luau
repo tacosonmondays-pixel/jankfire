@@ -809,6 +809,16 @@ function R.new(live, opts)
 		B.box(F, "Scenery", "PanelHousing", x - w / 2 - 0.35, x + w / 2 + 0.35, y - 0.45, y + 0.05, d - l / 2 - 0.35, d + l / 2 + 0.35, P.pier, nil, B.G)
 		return B.box(F, "Scenery", "LightPanel", x - w / 2, x + w / 2, y - 0.55, y - 0.4, d - l / 2, d + l / 2, o.hex or P.panel, Neon, B.G)
 	end
+	-- a kit piece's face that lies on another's (the flicker finder's hits inside a kit model, 18 Nov): the part made `by`
+	-- thinner along its most upright axis, about its middle, or keeping its bottom where it is (keep = "bottom")
+	function B.unseam(p, by, keep)
+		if not (p and p:IsA("BasePart")) then return end
+		local cf = p.CFrame
+		local ys = { math.abs(cf.XVector.Y), math.abs(cf.YVector.Y), math.abs(cf.ZVector.Y) }
+		local k = if ys[1] >= ys[2] and ys[1] >= ys[3] then 1 elseif ys[2] >= ys[3] then 2 else 3
+		p.Size -= Vector3.new(if k == 1 then by else 0, if k == 2 then by else 0, if k == 3 then by else 0)
+		if keep == "bottom" then p.CFrame = cf - Vector3.new(0, by / 2, 0) end
+	end
 	-- paint on a floor whose top is y
 	function B.paint(F, name, x0, x1, y, d0, d1, hex, lift)
 		return B.box(F, "Scenery", name, x0, x1, y + (lift or 0.03), y + (lift or 0.03) + 0.03, d0, d1, hex, nil, B.G)

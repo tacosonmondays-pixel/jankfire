@@ -223,7 +223,8 @@ return function(B, R)
 		end
 		B.lamp(F, 0, 6.4, 58.6, 13, 0.7, P.warm)
 		B.put(F, "bc_arcade", "Arcade", 10.6, 0.6, 56.6, -45, { solid = true, color = { ff4fd8 = P.pier2, ffe14d = P.band, ["120818"] = P.pier } })
-		B.put(F, "bc_fridge", "Fridge", -10.6, 0.6, 56.6, 45, { solid = true })
+		local fridge = B.put(F, "bc_fridge", "Fridge", -10.6, 0.6, 56.6, 45, { solid = true })
+		if fridge then B.unseam(fridge:FindFirstChild("fridge6__plastic_120818", true), 0.05, "bottom") end -- (its top was on the red body's)
 		-- (no "WEAPONS HOLSTERED" sign: the HUD says so, and the owner wants no flavour text)
 		-- a regular (HubNPCs builds them at start): Looticus on the east sofa, at its door end, looking over at the duck.
 		-- (the seat's top on the sofa's cushion: its fabric starts at 1.92, the cushion's top about 2.45)
@@ -520,6 +521,9 @@ return function(B, R)
 				end
 			end
 		end
+		-- (18 Nov: the sawn-off's hinge lies 0.014 under and 0.017 over its frame in the kit model: thinned on show here)
+		local saw = B.root.Scenery:FindFirstChild("Rack_w_sawnoff")
+		if saw then B.unseam(saw:FindFirstChild("hinge_wzB__dark", true), 0.06) end
 		-- kit along the walls, the aisle left clear
 		-- a gun maintenance bench where the tool bench was (the owner, 16 Nov, of the workbench with the pegboard and the
 		-- toolboxes: "can we fix that crafting station or replace it with something else?"): a heavy bench against the near

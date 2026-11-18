@@ -95,7 +95,7 @@ return function(B, R)
 		-- the ring balcony: its slab, its floor, and its rail (none over a jump pad, sides 3 and 11: the way up, and the way
 		-- back down from the second floor)
 		B.box(F, S, "Ring", -wi - 0.05, wi + 0.05, 12, RY, RIN, A, P.cream)
-		B.box(F, C, "RingFloor", -wi, wi, RY, RY + 0.04, RIN + 0.9, A, P.floor2, nil, G)
+		B.box(F, C, "RingFloor", -wi, wi, RY, RY + 0.04, RIN + 0.9, A - 0.05, P.floor2, nil, G) -- (its end off the slab's outer face: the flicker finder, 18 Nov)
 		if i == 3 or i == 11 then
 			B.paint(F, "GapMark", -wf, wf, RY, RIN, RIN + 0.9, P.ray, 0.02)
 		else
@@ -211,7 +211,7 @@ return function(B, R)
 	do
 		local F = B.side(4)
 		for _, s in { -1, 1 } do
-			B.box(F, C, "PortalJamb", s * 4.5, s * 5.4, -0.04, 9.4, A - 0.5, A + T + 0.2, P.creamHi, nil, G)
+			B.box(F, C, "PortalJamb", s * 4.5, s * 5.45, -0.04, 9.4, A - 0.5, A + T + 0.2, P.creamHi, nil, G) -- (just past the threshold's end, not on it)
 			B.spar(F, C, "PortalCut", A - 0.5, A + T + 0.2, 1.1, s * 5.4, 8.8, s * 3.2, 11.1, P.creamHi, nil, G)
 		end
 		B.box(F, C, "PortalHead", -3.4, 3.4, 10.5, 11.1, A - 0.5, A + T + 0.2, P.creamHi, nil, G)
