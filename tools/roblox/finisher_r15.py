@@ -883,6 +883,19 @@ def blade_sweep(cn, at, yaw, t0, t1, n=14, col=INK, width=None, tag='smear'):
                          mat='Neon' if col == INK else 'SmoothPlastic')
 
 
+@frame('tide', 0)
+def m_tide_0():
+    # establish: a locked wide side-on two-shot, killer left, victim right, before any close-up
+    tide_stage()
+    K = rig('k', K_START, 0, {'clip': (SLASH, 0.0)})
+    katana_grip(hand_cf(K))
+    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
+    kh, vh = br(K['LowerTorso'].translation), br(V['LowerTorso'].translation)
+    mid = (kh + vh) / 2
+    lens(mid + Vector((30, 0, 1.4)), mid + Vector((0, 0, 0.6)), 34, 0)
+    return {'name': 'ESTABLISH'}
+
+
 @frame('tide', 1)
 def m_tide_1():
     tide_stage()
@@ -974,7 +987,7 @@ def m_tide_7():
     c = br(V['UpperTorso'].translation) + Vector((0, 0, -0.6))
     brush(c + Vector((-0.75, -2.0, 1.5)), c + Vector((-0.75, 2.4, -1.1)), 0.35, 0.55, (-1, 0, 0), INK, seed=61)
     brush(c + Vector((-0.82, -1.6, 1.25)), c + Vector((-0.82, 2.0, -0.95)), 0.33, 0.16, (-1, 0, 0), SKIN, seed=62, tag='stroke_edge')
-    splats(c + Vector((-0.8, 0.6, 0.0)), 14, 1.4, seed=71)
+    splats(c + Vector((-0.8, 0.6, 0.0)), 6, 1.0, seed=71, size=0.6)
     kp = br(K['UpperTorso'].translation)
     mid = (c + kp) / 2
     lens(mid + Vector((-10.5, 0, 0.2)), mid + Vector((0, 0, 0.2)), 44, 0)
@@ -989,8 +1002,8 @@ def m_tide_8():
     sheath(K)
     V = rig('v', (0, 0, 0), 180, {'clip': ('bx_28_knockdown_liver', 1.2), 'scatter': 0.9})
     vc = br(V['UpperTorso'].translation)
-    petals(vc + Vector((0, 0, 0.6)), 70, 2.8, seed=421, size=1.3)
-    splats(vc, 26, 2.2, seed=81, size=1.4)
+    petals(vc + Vector((0, 0, 0.6)), 80, 2.8, seed=421, size=1.3)
+    splats(vc, 8, 1.6, seed=81, size=0.6)
     lens((-7.5, -7.5, 8.5), (0.5, 1.6, 1.6), 54, 0)
     return {'name': 'PETALS'}
 
