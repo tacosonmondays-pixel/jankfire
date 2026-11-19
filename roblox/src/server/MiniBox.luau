@@ -308,7 +308,9 @@ end
 -- a punch now and then; slips out of reach when it reads one coming (`slip`). never past the ropes (L.box.bound)
 local function botMove(T: any, side: string, ctx: any)
 	local BX = ctx.MG.BOX
-	local L = ctx.MG.L.box
+	-- (this ring's own bound: its marker's Half, the mat's middle to inside its ropes, less a body; else L.box.bound)
+	local half = T.model:GetAttribute("Half")
+	local L = { bound = if type(half) == "number" then half - 1.75 else ctx.MG.L.box.bound }
 	local G = T.g
 	local rig = T.bots[side]
 	local hum = rig and rig:FindFirstChildOfClass("Humanoid")
@@ -510,7 +512,7 @@ function Box.msg(T: any, p: Player, side: string, d: any, ctx: any)
 	end
 end
 
-local pubT = 0
+-- (each ring its own: several bouts run at once, one per ring in the gym)
 function Box.step(T: any, dt: number, ctx: any)
 	local BX = ctx.MG.BOX
 	local G = T.g
@@ -600,8 +602,8 @@ function Box.step(T: any, dt: number, ctx: any)
 			state(T, "rest", ctx)
 		end
 	end
-	pubT += dt
-	if pubT >= 0.1 then pubT = 0; pubBars(T) end
+	G.pubT = (G.pubT or 0) + dt
+	if G.pubT >= 0.1 then G.pubT = 0; pubBars(T) end
 end
 
 return Box

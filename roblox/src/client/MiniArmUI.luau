@@ -251,10 +251,13 @@ function M.open(api: any, model: Model, side: string)
 			local left = MG.ARM.COUNT - (now() - ((model:GetAttribute("At") or now()) :: number))
 			S.status.Text = if left > 0 then tostring(math.ceil(left)) else "GO"
 			S.status.TextColor3 = T.TEXT
-			S.sub.Text = ""
+			-- (the how-to before the bout: the owner, 19 Nov, "give a minitool tip before arm wrestling")
+			local key = if api.isTouch() then "TAP" elseif api.padOn() then "PRESS " .. api.Pad.short("ButtonA") else "PRESS SPACE"
+			S.sub.Text = key .. " WHEN THE NEEDLE IS IN THE ZONE  ·  EACH HIT SHRINKS IT"
 		elseif st == "bout" then
 			local left = now() - ((model:GetAttribute("At") or now()) :: number)
 			S.status.Text = if left < 0.6 then "GO" else ""
+			if left >= 2 then S.sub.Text = "" end -- (the how-to stays a moment into the bout)
 		elseif st == "slam" then
 			local won = model:GetAttribute("Winner") == side
 			S.status.Text = if won then "YOU WIN" else "YOU LOSE"

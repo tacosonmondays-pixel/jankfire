@@ -292,3 +292,127 @@ The owner asked: "when you step into the ring can it be a boxing mini game? perf
   - the KO;
   - the R6 stand-in.
 - The first, fixed-stance version (`box_*.jpg`): the side shot mid-hook, the knockdown, the KO, the R6 stand-in.
+
+## SLAP GOLF (19 Nov 2026)
+
+The owner asked: "mini game where you toss dummies with the hand slapper, almost like mini golf". Our own design:
+
+**The course:** six holes on one raised bed (2 studs high), two rows of three cells, each cell 14 x 38 studs (12 x 36 of lawn inside round wood rails). Everything is plain parts in the hub's quiet colours, built by `server/MiniGolf.luau` (`build`) on the hub's `MiniGameSpot` with `Game = "golf"` (the footprint's middle on the floor, its look along the long side; `MG.L.golf`: 44 x 80 studs).
+
+- **The lawn:** sage green in rolled stripes, 3 studs deep, alternating two tones. Cream bed and stone strips between the cells.
+- **The cup:** a cream rim, a dark hole and a pole with an amber flag carrying the hole's number. The flag is the one accent.
+- **The holes** (all play toward the spot's look; `MG.GOLF.HOLES`):
+
+| Hole | Par | What's on it |
+|---|---|---|
+| 1 | 2 | a log across the lane to tumble over |
+| 2 | 3 | a long planter with bushes down one side: go round it |
+| 3 | 3 | a ramp up to a raised green |
+| 4 | 3 | a bar turning across the lane (it shoves the dummy) |
+| 5 | 3 | five bouncy posts |
+| 6 | 3 | a kicker ramp over a pit: short is out of bounds |
+
+**Playing:**
+
+- **Joining:** the PLAY / JOIN prompt at the front of the course. Up to four golfers; the first one in presses START.
+- **Each golfer** gets the Hand Slapper in their right hand (the weapon's own model, welded) and their own ragdoll dummy: the training room's cardboard dummy, its chest ring's middle in the golfer's colour.
+- **Your shot:**
+  - You stand beside your dummy, on its left, facing your aim: your right hand swings into it, and the camera behind the dummy sees it past you.
+  - Turn the camera to aim: A / D or the arrow keys, drag with the right mouse button, the pad's left stick, or a drag on a phone.
+  - Hold to charge (click, Space, RT or A, the phone's SLAP button): the meter fills in 1.1 s and falls back again.
+  - Let go to slap. The dummy flies along your aim at 10 to 56 studs/s, 0.36 of that upward, tumbling.
+- **The server owns the dummies,** so everyone sees the same flight, and it judges each shot:
+  - **In the cup:** the dummy's middle within 2.8 studs of the cup, low (within 1.6 studs of the lawn), slower than 14 studs/s. One flying over it fast doesn't count (the first test sank a dummy that skimmed over at speed).
+  - **Out of bounds:** off its cell, or down into a pit. It goes back where it was hit from, +1 stroke.
+  - **At rest:** slower than 1.4 studs/s for 0.5 s, or 9 s after the slap.
+- **Turns** go round the golfers who aren't in yet. Picked up at par + 4. A shot not taken in 30 s is taken for you (soft, at the cup).
+- **The card** shows between holes (4 s) and at the end: strokes per hole, the total, and against par. AGAIN (the host) plays another round with whoever's there.
+- **The dummies** are in their own collision group (`MiniGolfDummy`). They touch the course, never people or each other.
+- **No rewards,** like the other hub games, and never in matches.
+
+**Juice:**
+
+- The slap: a whoosh, then a smack whose pitch drops with power, the dummy flashing white, a dust puff, the Slapper's hand squashing, the golfer's arm swinging through (wound back while you charge), and a small shake on your own slap.
+- A bouncy post: `boing`. A rail: `bonk`.
+- The cup: `popper` and `pop`, confetti in the course's colours, the flag wiggling.
+- Out of bounds: `whoops`. The end of a round: `loot_win_rare`.
+- Recordings only.
+
+**Camera:** behind your dummy along your aim (10 back, 5.5 up, looking 9 past it). In flight it chases the dummy. In the lobby and between holes it looks down the next hole.
+
+**Files:**
+
+- `server/MiniGolf.luau`: the course, the dummies (ragdolls made from an R15 body: ball-socket joints in limits, no Humanoid), the turns and the judging.
+- `client/MiniGolfUI.luau`: the screen, the aim and the meter, the camera, the juice, the arm swing.
+- `MG.GOLF` and `MG.L.golf` in `shared/MiniGames.luau`.
+- In the core: one prompt for several places (side `"*"`, `pickSide`), a game's own `refresh`, the course's walk-away box, the stand-in on the first tee, and `JankMiniTest:Invoke("place", kind, cf)` to build a game anywhere for a test.
+
+**Test hooks:**
+
+- `JankMiniTest:Invoke("sit", p, "golf1", "*")`, then `("op", p, { op = "start" })`.
+- A second golfer: `("standin", "golf1", "B")`, then `("as", "golf1", "B", { op = "slap", yaw = ..., power = ... })`.
+- Client `MiniTest`:
+  - `golf:slap:<power>`: at the cup;
+  - `golf:slapyaw:<degrees>:<power>`: that far off the cup line;
+  - `golf:aim:<degrees>`;
+  - `golf:start`.
+
+**SLAP GOLF tested** (place versions 1055 and 1061):
+
+- Built on a test spot over the hub with `JankMiniTest:Invoke("place", "golf", cf)`; the hub's golf wing isn't built yet. The course: 243 parts.
+- You and a stand-in played hole 1 through:
+  - a full-power slap sideways: a rail bonk, then out of bounds (+1, back to the spot);
+  - rests;
+  - both in the cup (4 and 5 strokes);
+  - the hole's card.
+- The first test sank a dummy flying low over the cup at speed. Fixed: the cup now wants it within 1.6 studs of the lawn and slower than 14 studs/s.
+- The first stance put you between the camera and your dummy. Fixed: you now stand at its left, Slapper out.
+- The anti-cheat: 0 points.
+- Photos: `docs/minigames/golf_your_shot.jpg`, `golf_card.jpg`.
+
+## The owner's notes of 19 Nov (place version 1061)
+
+The anti-cheat session forwarded them:
+
+> "hitting skillchecks in arm wrestly makes it smaller, chess pieces should be easier to tell what they are"
+
+> "add seating spots on top of the arcade machine, apeaking of arcade machjine add a leaderboard option, give a minitool tip before arm wrestling, seats ointhe lounge are sittable loot will wait until ther is a seat open if therye all being sat on"
+
+> "seats in vip room work too"
+
+- **Arm wrestling:**
+  - Each side's zone now shrinks with that side's hits (`MG.ARM`):
+    - a hit x0.88, a perfect x0.82, down to 0.05;
+    - a miss gives some back (x1.25, up to the starting 0.15).
+  - The needle still quickens over the bout.
+  - **The tip:** during the countdown, "PRESS SPACE WHEN THE NEEDLE IS IN THE ZONE · EACH HIT SHRINKS IT" (TAP on a phone, the pad's button on a pad). It stays 2 s into the bout.
+- **Chess:**
+  - New pieces (kit v2, asset 96758810630944; `minigame_models.py`):
+    - the pawn's big round head;
+    - the rook's four battlements;
+    - a thicker knight with ears and a long snout (still turned side-on at the table);
+    - the bishop's tall pointed mitre with a slit (a boolean cut, applied before the export);
+    - the queen's crown of eight beads;
+    - the king's big cross.
+  - A clear step in height, from the pawn (0.54) to the king (1.03).
+  - The piece you point at, pick, or have the pad's square on is named under the board (PAWN, KNIGHT ...).
+  - Photos: `chess_pieces_v2.jpg`, `kit_pieces_v2.jpg`.
+- **The arcade:**
+  - **LEADERBOARD** beside START on the attract screen: ALL TIME and THIS SERVER, 10 each, and BACK (pad B closes it too).
+    - The all-time board is each player's best in an OrderedDataStore: `JankArcadeBest`, or `JankArcadeBest_studio` in Studio, so tests never touch the live board.
+    - It is read every 60 s and after each better run.
+    - Tested: a 1,250 run went onto both boards.
+    - Photo: `arcade_leaderboard.jpg`.
+  - The cabinet's own screen takes turns between HIGH SCORES (this server) and ALL-TIME BEST.
+  - Two cushions on the lid (kit v2) and two HubSeat parts on them (`L.arcade.topSeats`).
+- **Seats** (`server/HubSeats.server.luau`, new):
+  - Any part tagged `HubSeat` gets a Seat and a Sit prompt. The server seats you, stamping TeleportT for the anti-cheat; a jump stands you up; touching a seat never sits you.
+  - While someone sits there, `SeatTaken` is set on the tagged part. A regular's place with `NpcHere` counts as taken.
+  - The lounge and VIP sofas are the hub's to tag. It will, once its new layout is live, and make HubNPCs (Looticus and the others) skip or wait on a taken seat.
+  - **Not yet proven:** sitting on the cabinet's lid through the prompt. Triggering the prompt from a test script didn't seat the test player (6.8 studs off, its reach is 7). Next: a reach of 9 and a retest.
+- **Boxing, several rings:**
+  - One bout per `box` marker, all at once.
+  - Each ring's publish timer is its own.
+  - A marker's `Ring` (1..4) names its table (box1..box4).
+  - Its `Half` (the mat's middle to the inside of its ropes, 12.75 for today's mat) sets both the walls and the bot's bound.
+  - For the gym's four rings on the hub's new layout; to test when the hub's staging markers are up.

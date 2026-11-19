@@ -90,27 +90,74 @@ for sx in (1, -1):
 keep('mg_chair')
 
 # ------------------------------------------------------------------ chess (white versions; the importer paints copies)
-def base(r=0.17, h=0.1):
+# (19 Nov 2026, the owner: "chess pieces should be easier to tell what they are"): each piece its own outline and a
+# clear step in height, pawn 0.54 < rook 0.59 < knight 0.66 < bishop 0.84 < queen 0.91 < king 1.03: a pawn's big
+# round head; the rook's four square battlements; the knight's head with a long snout and two ears; the bishop's tall
+# mitre with its slanted slit and a bead on top; the queen's crown of beads; the king's cross. one fused form each
+def base(r=0.18, h=0.1):
     return [(0.0, 0.0), (r, 0.0), (r, h * 0.5), (r * 0.92, h), (r * 0.72, h * 1.25)]
-def piece_lathe(prof, name, segs=28):
-    lathe('plastic', IVORY, prof, segs=segs)
-    keep(name)
 
-piece_lathe(base() + [(0.08, 0.17), (0.07, 0.24), (0.105, 0.27), (0.11, 0.31), (0.1, 0.35), (0.07, 0.39), (0.0, 0.40)], 'mg_pawn')
-piece_lathe(base(0.175) + [(0.12, 0.2), (0.115, 0.36), (0.145, 0.38), (0.145, 0.46), (0.0, 0.46)], 'mg_rook')
-piece_lathe(base(0.17) + [(0.09, 0.2), (0.075, 0.33), (0.105, 0.38), (0.11, 0.44), (0.08, 0.52), (0.04, 0.56), (0.0, 0.57)], 'mg_bishop')
-piece_lathe(base(0.18) + [(0.1, 0.22), (0.08, 0.44), (0.13, 0.5), (0.15, 0.58), (0.11, 0.6), (0.06, 0.62), (0.0, 0.65)], 'mg_queen')
-# the king: its body and a chunky cross, remeshed into one form
-lathe('plastic', IVORY, base(0.185) + [(0.105, 0.22), (0.085, 0.46), (0.135, 0.52), (0.14, 0.58), (0.0, 0.6)], segs=28)
-bx('plastic', IVORY, 0.07, 0.07, 0.17, 0, 0, 0.66, bevel=0.025)
-bx('plastic', IVORY, 0.17, 0.07, 0.06, 0, 0, 0.68, bevel=0.025)
-keep('mg_king'); fuse('mg_king', voxel=0.008, ratio=0.3)
-# the knight: a round base and a stylised horse head grown out of it (one outline, thick, remeshed into the base)
-lathe('plastic', IVORY, base(0.18) + [(0.12, 0.17), (0.0, 0.2)], segs=28)
-HEAD = [(-0.1, 0.12), (0.1, 0.12), (0.12, 0.26), (0.085, 0.34), (0.13, 0.42), (0.13, 0.47), (0.04, 0.52), (-0.02, 0.56),
-        (-0.06, 0.55), (-0.11, 0.47), (-0.13, 0.36), (-0.12, 0.24)]
-prism('plastic', IVORY, HEAD, 0.13, M=RZ(D(-90)), bevel=0.035, segs=2)   # (the face looks along -y: Roblox +Z)
+def cut_slab(sx, sy, sz, at, turn_y):
+    """cut a slab out of the last kept model now (a boolean, applied), then drop the cutter: the export takes the scene"""
+    ob = MODELS[-1][1][0]
+    cm = bpy.data.meshes.new('cutter')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1.0); bmesh.ops.scale(bm, vec=(sx, sy, sz), verts=bm.verts)
+    bm.to_mesh(cm); bm.free()
+    cut = bpy.data.objects.new('cutter', cm)
+    bpy.context.scene.collection.objects.link(cut)
+    cut.matrix_world = Matrix.Translation(at) @ Matrix.Rotation(D(turn_y), 4, 'Y')
+    wn = ob.modifiers.get('wn')
+    if wn: ob.modifiers.remove(wn)
+    bo = ob.modifiers.new('cut', 'BOOLEAN'); bo.operation = 'DIFFERENCE'; bo.object = cut; bo.solver = 'EXACT'
+    dg = bpy.context.evaluated_depsgraph_get()
+    me2 = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    ob.modifiers.clear()
+    old = ob.data
+    ob.data = me2
+    nm = old.name
+    bpy.data.meshes.remove(old)
+    me2.name = nm   # (the mesh keeps its name: the importer reads the model and the colour from it)
+    for p in me2.polygons: p.use_smooth = True
+    w2 = ob.modifiers.new('wn', 'WEIGHTED_NORMAL'); w2.keep_sharp = False; w2.weight = 60
+    bpy.data.objects.remove(cut)
+
+# the pawn: a short neck, a collar, a big round head
+lathe('plastic', IVORY, base(0.17) + [(0.085, 0.17), (0.07, 0.25), (0.115, 0.28), (0.115, 0.31), (0.07, 0.33), (0.0, 0.34)], segs=28)
+ball('plastic', IVORY, 0.12, 0, 0, 0.42, sub=3)
+keep('mg_pawn'); fuse('mg_pawn', voxel=0.008, ratio=0.3)
+# the rook: a straight tower, a wide top and four square battlements round it
+lathe('plastic', IVORY, base(0.19) + [(0.125, 0.2), (0.12, 0.42), (0.168, 0.45), (0.168, 0.5), (0.0, 0.5)], segs=32)
+for k in range(4):
+    a = math.pi / 4 + k * math.pi / 2
+    bx('plastic', IVORY, 0.095, 0.095, 0.1, 0.105 * math.cos(a), 0.105 * math.sin(a), 0.54, bevel=0.015)
+keep('mg_rook'); fuse('mg_rook', voxel=0.008, ratio=0.3)
+# the knight: a round base and a horse's head grown out of it: a long snout forward, two ears, the mane down its back
+lathe('plastic', IVORY, base(0.19) + [(0.125, 0.17), (0.0, 0.2)], segs=28)
+HEAD = [(-0.12, 0.13), (0.11, 0.13), (0.12, 0.27), (0.08, 0.35), (0.17, 0.43), (0.2, 0.49), (0.16, 0.54), (0.06, 0.57),
+        (0.035, 0.66), (0.0, 0.595), (-0.04, 0.66), (-0.07, 0.57), (-0.13, 0.5), (-0.16, 0.38), (-0.14, 0.24)]
+prism('plastic', IVORY, HEAD, 0.17, M=RZ(D(-90)), bevel=0.035, segs=2)   # (the face looks along -y: Roblox +Z)
 keep('mg_knight'); fuse('mg_knight', voxel=0.008, ratio=0.3)
+# the bishop: a slim body, a collar, a tall mitre with a slanted slit cut in its front, a bead on top
+lathe('plastic', IVORY, base(0.18) + [(0.09, 0.2), (0.066, 0.42), (0.118, 0.45), (0.118, 0.48), (0.07, 0.5), (0.1, 0.55),
+                                      (0.108, 0.6), (0.092, 0.67), (0.055, 0.73), (0.0, 0.765)], segs=32)
+ball('plastic', IVORY, 0.042, 0, 0, 0.795, sub=2)
+keep('mg_bishop')
+cut_slab(0.3, 0.17, 0.034, (0.02, -0.09, 0.64), -40)
+fuse('mg_bishop', voxel=0.007, ratio=0.32)
+# the queen: a waisted body flaring into a crown, eight beads round its rim and one on top
+lathe('plastic', IVORY, base(0.19) + [(0.1, 0.22), (0.08, 0.55), (0.13, 0.59), (0.13, 0.62), (0.088, 0.65), (0.14, 0.76),
+                                      (0.125, 0.78), (0.06, 0.77), (0.0, 0.8)], segs=32)
+for k in range(8):
+    a = k * math.pi / 4
+    ball('plastic', IVORY, 0.035, 0.127 * math.cos(a), 0.127 * math.sin(a), 0.795, sub=2)
+ball('plastic', IVORY, 0.06, 0, 0, 0.85, sub=2)
+keep('mg_queen'); fuse('mg_queen', voxel=0.007, ratio=0.32)
+# the king: the tallest, its body and a big chunky cross on top
+lathe('plastic', IVORY, base(0.2) + [(0.11, 0.22), (0.09, 0.6), (0.145, 0.64), (0.145, 0.68), (0.1, 0.71), (0.135, 0.79),
+                                     (0.07, 0.81), (0.0, 0.815)], segs=32)
+bx('plastic', IVORY, 0.08, 0.08, 0.22, 0, 0, 0.92, bevel=0.025)
+bx('plastic', IVORY, 0.21, 0.08, 0.07, 0, 0, 0.95, bevel=0.025)
+keep('mg_king'); fuse('mg_king', voxel=0.008, ratio=0.3)
 
 # ------------------------------------------------------------------ checkers
 lathe('plastic', IVORY, [(0.0, 0.0), (0.19, 0.0), (0.2, 0.03), (0.2, 0.07), (0.185, 0.1), (0.13, 0.1), (0.12, 0.085),
@@ -142,6 +189,8 @@ bx('plastic', '3a3f48', 2.4, 0.06, 2.1, 0, 0.12, 0, bevel=0.0, M=scr)           
 soft('plastic', DARK, W - 0.4, 0.9, 1.0, 0, F + 0.95, 7.05, 0.12, pick='all', segs=2, small=0.0)
 bx('neon', LIGHT, W - 0.75, 0.06, 0.66, 0, F + 0.49, 7.05, bevel=0.0)
 soft('plastic', SLATE2, W, Dp - 0.6, 0.24, 0, 0.3, H - 0.12, 0.1, pick='all', segs=2, small=0.0)          # the lid
+for sx in (1, -1):                                   # two cushions on the lid: seats (19 Nov: MiniGames L.arcade.topSeats)
+    soft('plastic', PAD, 1.25, 1.25, 0.24, sx * 0.75, 0.3, H + 0.12, 0.1, pick='all', segs=2, small=0.0)
 keep('mg_cabinet')
 
 export_all('minigames.glb')

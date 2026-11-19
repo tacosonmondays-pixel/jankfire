@@ -485,9 +485,28 @@ function M.open(api: any, model: Model, side: string)
 		return out
 	end
 	api.fov = 58
+	-- the piece you point at (or have picked, or the pad's square is on), named (the owner, 19 Nov: "chess pieces
+	-- should be easier to tell what they are"; the pieces got their own outlines too)
+	local NAMES = { P = "PAWN", N = "KNIGHT", B = "BISHOP", R = "ROOK", Q = "QUEEN", K = "KING" }
+	S.pieceL = T.text(root, "Piece", "", 18, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center, true)
+	S.pieceL.AnchorPoint = Vector2.new(0.5, 1); S.pieceL.Position = UDim2.new(0.5, 0, 1, -44); S.pieceL.Size = UDim2.fromOffset(300, 24)
 	S.step = RunService.RenderStepped:Connect(function(dt: number)
 		local st = model:GetAttribute("State")
 		local o = if side == "A" then "B" else "A"
+		do
+			local s: number? = S.sel
+			if s == nil and api.padOn() then s = S.cur end
+			if s == nil and not api.isTouch() then
+				local mp = UIS:GetMouseLocation()
+				local inset = game:GetService("GuiService"):GetGuiInset()
+				s = squareAt(mp.X, mp.Y - inset.Y)
+			end
+			local v = views[model]
+			local e = s ~= nil and v and v.pieces[s :: number] or nil
+			local name = e and model:GetAttribute("Game") == "chess" and NAMES[string.upper(tostring(e.c))] or nil
+			S.pieceL.Text = name or ""
+			S.pieceL.TextColor3 = if e and e.side == side then T.ACCENT else T.SOFT
+		end
 		if st == "play" then
 			local mine = model:GetAttribute("Turn") == side
 			local left = MG.BOARD.MOVE_LIMIT - (now() - ((model:GetAttribute("MoveAt") or now()) :: number))

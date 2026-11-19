@@ -26,7 +26,7 @@ local function state(T: any, s: string, ctx: any)
 end
 
 function Arm.setup(T: any, ctx: any)
-	T.g = { state = "open", bal = 0, chk = {}, n = 0, hits = 0, again = {} }
+	T.g = { state = "open", bal = 0, chk = {}, n = 0, hits = 0, again = {}, w = {} }
 	state(T, "open", ctx)
 	set(T, "Bal", 0)
 end
@@ -39,7 +39,7 @@ local function newCheck(T: any, side: string, ctx: any)
 	local A = T.g
 	local MA = ctx.MG.ARM
 	local k = math.clamp((ctx.now() - A.boutT0) / MA.SHRINK, 0, 1)
-	local w = lerp(MA.W0, MA.W1, k)
+	local w = A.w[side] or MA.W0 -- (your own zone: smaller with every hit, MG.ARM.HIT_SHRINK)
 	local per = lerp(MA.T0, MA.T1, k)
 	A.n += 1
 	local chk = { id = A.n, c = rng:NextNumber(0.2 + w * 0.5, 1 - w - 0.04), w = w, T = per, t0 = ctx.now() + MA.GAP }
@@ -80,6 +80,9 @@ local function press(T: any, side: string, pos: number, ctx: any)
 	local d = math.abs(pos - chk.c)
 	local res = if d <= chk.w * MA.PERFECT_K then "perfect" elseif d <= chk.w then "hit" else "miss"
 	local push = if res == "perfect" then MA.PERFECT elseif res == "hit" then MA.HIT else -MA.MISS
+	-- (your next zone: smaller after a hit, more so after a perfect; a miss gives some back)
+	local w0 = A.w[side] or MA.W0
+	A.w[side] = math.clamp(w0 * (if res == "perfect" then MA.PERFECT_SHRINK elseif res == "hit" then MA.HIT_SHRINK else MA.MISS_GROW), MA.W1, MA.W0)
 	A.bal = math.clamp(A.bal + (if side == "A" then push else -push), -1, 1)
 	A.hits += 1
 	set(T, "Bal", A.bal)
@@ -205,6 +208,7 @@ function Arm.step(T: any, dt: number, ctx: any)
 		if now - A.at >= MA.COUNT then
 			state(T, "bout", ctx)
 			A.boutT0 = now
+			A.w = {}
 			A.chk = {}
 			for _, s in { "A", "B" } do newCheck(T, s, ctx) end
 		end

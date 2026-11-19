@@ -37,6 +37,7 @@ local GAMES = {
 	board = require(script.Parent:WaitForChild("MiniBoard")) :: any,
 	arcade = require(script.Parent:WaitForChild("MiniArcade")) :: any,
 	box = require(script.Parent:WaitForChild("MiniBox")) :: any,
+	golf = require(script.Parent:WaitForChild("MiniGolf")) :: any,
 }
 
 export type Table = { id: string, kind: string, model: Model, cf: CFrame, seats: { [string]: Seat }, who: { [string]: any }, prompts: { [string]: ProximityPrompt }, bots: { [string]: Model }, g: any }
@@ -155,11 +156,19 @@ local function newTable(kind: string, cf: CFrame, n: number): Table?
 		local box = part(model, "Box", cf * CFrame.new(0, 3.8, 0), Vector3.new(3.4, 7.6, 2.8), { CanCollide = true, CanQuery = true })
 		box.Name = "Collision"
 		CollectionService:AddTag(model, "MiniArcade")
+		-- the two seats on the lid (HubSeats gives each a Sit prompt; you face out over the screen)
+		for k, at in L.topSeats or {} do
+			local s = part(model, "TopSeat" .. k, cf * CFrame.new(at), Vector3.new(1.2, 0.2, 1.2))
+			CollectionService:AddTag(s, "HubSeat")
+		end
 	elseif kind == "box" then
 		-- the gym's ring: nothing built, the ring is the hub's. two marks on the mat, where each boxer stands
 		for _, side in { "A", "B" } do
 			att(root, "Stand" .. side, CFrame.new(0, 0, if side == "A" then L.gap else -L.gap) * FACE[side])
 		end
+	elseif kind == "golf" then
+		-- slap golf: the whole course is the game's own (MiniGolf.build: the bed, six holes, its PLAY / JOIN prompt)
+		GAMES.golf.build(T, ctx)
 	end
 	if kind == "box" then
 		for _, side in { "A", "B" } do
@@ -168,6 +177,8 @@ local function newTable(kind: string, cf: CFrame, n: number): Table?
 			pr:SetAttribute("MiniSide", side)
 			T.prompts[side] = pr
 		end
+	elseif kind == "golf" then
+		-- (its one prompt, side "*": up to four golfers, the first free place each; made by MiniGolf.build above)
 	elseif kind == "arm" or kind == "board" then
 		for _, side in { "A", "B" } do
 			local seat = Instance.new("Seat")
@@ -398,6 +409,7 @@ end
 
 -- the prompts and the names on the table, from who sits where
 function ctx.refresh(T: Table)
+	if GAMES[T.kind].refresh then GAMES[T.kind].refresh(T, ctx); return end -- (golf: four places, one prompt)
 	local m = T.model
 	for _, side in { "A", "B", "P" } do
 		if not T.prompts[side] then continue end
@@ -426,13 +438,25 @@ function ctx.join(p: Player, T: Table, side: string)
 	if inGame[p] or not allowed(p) then return end
 	local ch, hum, root = bodyOf(p)
 	if not ch or not hum or not root then return end
-	if (root.Position - T.cf.Position).Magnitude > 16 then return end
+	if (root.Position - T.cf.Position).Magnitude > (if T.kind == "golf" then 60 else 16) then return end
+	-- (one prompt for several places, golf's: the game picks the first free one, none while a round's on)
+	if side == "*" then
+		local pick = GAMES[T.kind].pickSide and GAMES[T.kind].pickSide(T)
+		if not pick then return end
+		side = pick
+	end
 	local who = T.who[side]
 	if who ~= nil and not (ctx.isBot(who) and GAMES[T.kind].canReplaceBot(T)) then return end
 	if who ~= nil then ctx.botSeat(T, side, nil); GAMES[T.kind].left(T, side, who, ctx) end
 	T.who[side] = p
 	inGame[p] = { t = T, side = side }
 	p:SetAttribute("TeleportT", os.clock())
+	-- (sitting somewhere else, a hub seat, the cabinet's lid: up first, so the move below takes you)
+	if hum.SeatPart then
+		local w = hum.SeatPart:FindFirstChild("SeatWeld")
+		if w then w:Destroy() end
+		hum.Sit = false
+	end
 	root.AssemblyLinearVelocity = Vector3.zero
 	if T.seats[side] then
 		local seat = T.seats[side]
@@ -447,6 +471,7 @@ function ctx.join(p: Player, T: Table, side: string)
 		end)
 	elseif T.kind == "box" then -- (the ring: onto your mark, facing the other one)
 		ch:PivotTo(standCF(T, side, hum, root))
+	elseif T.kind == "golf" then -- (the course: you stay where you are until your shot puts you by your dummy)
 	else -- (the arcade: stand at the cabinet, facing the screen)
 		local L = MG.L.arcade
 		local at = T.cf * CFrame.new(L.stand)
@@ -545,8 +570,14 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if g.t.kind == "box" then
 			-- (the ring: you walk all over it, so out means well past its ropes, or fallen off it)
 			local l = g.t.cf:PointToObjectSpace(root.Position)
-			local b = MG.L.box.bound + 4
+			local half = g.t.model:GetAttribute("Half")
+			local b = (if type(half) == "number" then half - 1.75 else MG.L.box.bound) + 4
 			if math.abs(l.X) > b or math.abs(l.Z) > b or l.Y < -6 or l.Y > 14 then ctx.leave(p, "away") end
+		elseif g.t.kind == "golf" then
+			-- (the course: anywhere on or by it)
+			local l = g.t.cf:PointToObjectSpace(root.Position)
+			local sz = MG.L.golf.size
+			if math.abs(l.X) > sz.X / 2 + 10 or math.abs(l.Z) > sz.Y / 2 + 10 or l.Y < -6 or l.Y > 20 then ctx.leave(p, "away") end
 		elseif (root.Position - g.t.cf.Position).Magnitude > 14 then ctx.leave(p, "away") end
 	end
 end)
@@ -560,10 +591,10 @@ local function build()
 	folder = Instance.new("Folder")
 	folder.Name = "MiniGames"
 	folder.Parent = hub
-	local spots: { { kind: string, cf: CFrame } } = {}
+	local spots: { { kind: string, cf: CFrame, half: number?, ring: number? } } = {}
 	for _, s in CollectionService:GetTagged("MiniGameSpot") do
 		if s:IsA("BasePart") and s:IsDescendantOf(hub) and MG.L[s:GetAttribute("Game") or ""] then
-			table.insert(spots, { kind = s:GetAttribute("Game") :: string, cf = s.CFrame })
+			table.insert(spots, { kind = s:GetAttribute("Game") :: string, cf = s.CFrame, half = s:GetAttribute("Half"), ring = s:GetAttribute("Ring") })
 		end
 	end
 	-- the boxing ring: the hub's own "box" marker, else the gym's RingMat (its top's middle, the look along its right)
@@ -573,7 +604,7 @@ local function build()
 		for _, d in hub:GetDescendants() do
 			if d:IsA("BasePart") and d.Name == "RingMat" then
 				local top = d.Position + d.CFrame.UpVector * (d.Size.Y / 2)
-				table.insert(spots, { kind = "box", cf = CFrame.lookAt(top, top + d.CFrame.RightVector) })
+				table.insert(spots, { kind = "box", cf = CFrame.lookAt(top, top + d.CFrame.RightVector), half = math.min(d.Size.X, d.Size.Z) / 2 })
 				break
 			end
 		end
@@ -587,7 +618,11 @@ local function build()
 	local n: { [string]: number } = {}
 	for _, s in spots do
 		n[s.kind] = (n[s.kind] or 0) + 1
-		local ok, err = pcall(newTable, s.kind, CFrame.new(s.cf.Position) * s.cf.Rotation, n[s.kind])
+		-- (a marker's own number, the gym's Ring = 1..4, names its table: box1..box4 match the hub's rings)
+		local num = if type(s.ring) == "number" then s.ring else n[s.kind]
+		local ok, err = pcall(newTable, s.kind, CFrame.new(s.cf.Position) * s.cf.Rotation, num)
+		-- (a ring's size: its marker's Half, the mat's middle to inside its ropes; MiniBox and MiniBoxUI fence to it)
+		if ok and err and type(s.half) == "number" then (err :: any).model:SetAttribute("Half", s.half) end
 		if not ok then warn("[MiniGames] building " .. s.kind .. ": " .. tostring(err)) end
 	end
 	folder:SetAttribute("Ready", true)
@@ -655,6 +690,11 @@ if RunService:IsStudio() then
 				local rr = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
 				if rr then rr.Anchored = true end
 				rig:PivotTo(standCF(T, b, hum, rr))
+			elseif T.kind == "golf" then
+				-- (held still by the first tee; its shot puts it by its dummy, like a golfer)
+				local rr = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if rr then rr.Anchored = true end
+				rig:PivotTo(T.cf * CFrame.new(MG.L.golf.cols[1] + 4, MG.L.golf.H + 3, MG.L.golf.rows[1] + 17))
 			end
 			T.who[b] = fake
 			ctx.refresh(T)
@@ -708,6 +748,11 @@ if RunService:IsStudio() then
 			local out = {}
 			for id, T in tables do table.insert(out, id .. " " .. tostring(T.cf.Position)) end
 			return table.concat(out, "\n")
+		elseif what == "place" then
+			-- (a game built at any CFrame for a test, before the hub has a marker for it: ("place", kind, cf); n 9)
+			if typeof(b) ~= "CFrame" or not MG.L[a] then return "no" end
+			local ok, T = pcall(newTable, a, b, 9)
+			return if ok and T then T.id else "failed " .. tostring(T)
 		end
 		return "?"
 	end

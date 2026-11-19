@@ -9,7 +9,7 @@ local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local I = {}
-I.ASSET = 134966926271798 -- (tools/roblox/minigame_models.py, 18 Nov 2026)
+I.ASSET = 96758810630944 -- (tools/roblox/minigame_models.py: v2, 19 Nov 2026, the clearer chess pieces and the cabinet lid's cushions; v1 was 134966926271798)
 I.MORE = { 93628648477968 } -- (tools/roblox/boxing_models.py, 19 Nov 2026: mg_glove) every upload whose pieces join the kit
 local MAT = { plastic = Enum.Material.SmoothPlastic, neon = Enum.Material.Neon, wood = Enum.Material.SmoothPlastic, fabric = Enum.Material.SmoothPlastic }
 

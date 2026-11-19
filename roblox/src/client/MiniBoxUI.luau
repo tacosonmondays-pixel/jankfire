@@ -605,12 +605,15 @@ function M.open(api: any, model: Model, side: string)
 	local ringCF = if ringRoot then ringRoot.CFrame else CFrame.identity
 	S.walls = Instance.new("Folder")
 	S.walls.Name = "MiniBoxWalls" -- (made here, so only your own client has them: they fence in you, no one else)
+	-- (this ring's size: its marker's Half, the mat's middle to inside its ropes, less a little; else L.box.wall)
+	local half = model:GetAttribute("Half")
+	local wall = if type(half) == "number" then half - 0.75 else L.wall
 	for i = 0, 3 do
 		local w = Instance.new("Part")
 		w.Name = "Wall"; w.Anchored = true; w.CanCollide = true; w.CanQuery = false; w.CanTouch = false; w.Transparency = 1
 		w.CastShadow = false
-		w.Size = Vector3.new(L.wall * 2 + 4, 16, 2)
-		w.CFrame = ringCF * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 7, L.wall + 1)
+		w.Size = Vector3.new(wall * 2 + 4, 16, 2)
+		w.CFrame = ringCF * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 7, wall + 1)
 		w.Parent = S.walls
 	end
 	S.walls.Parent = workspace

@@ -23,7 +23,7 @@
 local MG = {}
 
 MG.ZONES = { hub = true, training = true } :: { [string]: boolean }
-MG.TITLE = { arm = "ARM WRESTLING", board = "CHESS · CHECKERS", arcade = "ARCADE", box = "BOXING" } :: { [string]: string }
+MG.TITLE = { arm = "ARM WRESTLING", board = "CHESS · CHECKERS", arcade = "ARCADE", box = "BOXING", golf = "SLAP GOLF" } :: { [string]: string }
 MG.LEVELS = { "easy", "medium", "hard" }
 MG.LEVEL_NAME = { easy = "EASY", medium = "MEDIUM", hard = "HARD" } :: { [string]: string }
 
@@ -58,6 +58,9 @@ MG.L = {
 		-- the screen part (in the cabinet mesh's recess): its centre and its tilt back from upright
 		screen = { at = Vector3.new(0, 5.03, -0.18), tilt = 14, size = Vector2.new(2.36, 2.06) },
 		marquee = { at = Vector3.new(0, 7.05, -0.975), size = Vector2.new(2.65, 0.66) },
+		-- two seats on the lid (the owner, 19 Nov: "add seating spots on top of the arcade machine"): on the kit's two
+		-- cushions, facing out over the screen like it; HubSeats makes them (a Sit prompt each)
+		topSeats = { Vector3.new(-0.75, 7.95, 0.3), Vector3.new(0.75, 7.95, 0.3) },
 	},
 	-- the gym's ring (19 Nov 2026, the owner: "when you step into the ring can it be a boxing mini game? perfect dodge,
 	-- counter b low, upper cut jab, hook ... weave duck you know !", then "I want to freely move in the boxing arena!").
@@ -75,6 +78,21 @@ MG.L = {
 		wall = 12.0,
 		cam = { dist = 7.2, distK = 0.4, angle = 44, up = 3.9, upK = 0.15, lead = 0.55, aim = 1.6, fov = 58 },
 	},
+	-- SLAP GOLF (19 Nov 2026, the owner: "mini game where you toss dummies with the hand slapper, almost like mini
+	-- golf"): six holes on one raised bed, built by server/MiniGolf from MG.GOLF.HOLES. the spot is the footprint's
+	-- middle on the floor, its look along the long side; the bed's lawn is `H` over the floor. each hole is a cell
+	-- `cell` big (x across, z along; rails inside it, 12 x 36 of lawn), at x = cols[i], z = rows[j] from the spot, and
+	-- plays toward -Z (the look). the prompt (PLAY / JOIN) is at `prompt`. the camera: behind your dummy along your
+	-- aim, `back` out and `up` high, looking `ahead` past it; in flight it chases the dummy
+	golf = {
+		H = 2.0,
+		cell = Vector2.new(14, 38),
+		cols = { -15, 0, 15 },
+		rows = { 20, -20 },
+		size = Vector2.new(44, 80), -- the whole footprint (the hub's box for it)
+		prompt = Vector3.new(0, 4.5, 39),
+		cam = { back = 10, up = 5.5, ahead = 9, chase = 11, chaseUp = 6.5, fov = 62 },
+	},
 }
 
 -- fallback spots (world positions on the floor and the look's turn from -Z in degrees: { game, x, y, z, yaw }), used
@@ -86,8 +104,12 @@ MG.SPOTS = {} :: { { any } }
 -- ------------------------------------------------------------------ arm wrestling
 MG.ARM = {
 	COUNT = 3, -- the countdown before a bout
-	-- a check: the needle sweeps 0..1..0 (period T for one crossing); the zone is c +/- w. both shrink over SHRINK s
-	W0 = 0.15, W1 = 0.06, T0 = 1.0, T1 = 0.6, SHRINK = 24,
+	-- a check: the needle sweeps 0..1..0 (period T for one crossing, quickening from T0 to T1 over SHRINK s); the zone
+	-- is c +/- w. the zone shrinks as YOU hit (the owner, 19 Nov: "hitting skillchecks in arm wrestly makes it
+	-- smaller"): it starts at W0, each hit takes it x HIT_SHRINK (a perfect x PERFECT_SHRINK), down to W1; a miss gives
+	-- some back (x MISS_GROW, up to W0). each side's own zone
+	W0 = 0.15, W1 = 0.05, T0 = 1.0, T1 = 0.6, SHRINK = 24,
+	HIT_SHRINK = 0.88, PERFECT_SHRINK = 0.82, MISS_GROW = 1.25,
 	HIT = 0.11, PERFECT = 0.16, MISS = 0.07, -- how far the meter moves (it runs -1..1)
 	PERFECT_K = 0.35, -- a hit within this share of the zone's half width is perfect
 	GAP = 0.2, -- between your press and your next check
@@ -194,6 +216,44 @@ MG.ARCADE = {
 	LIVE_EVERY = 1.5, -- how often a run reports its score to the cabinet's screen
 	-- the server's sanity check on a finished run: what a human could have scored in that time
 	MAX_KILLS_PER_S = 2.2, MAX_PER_KILL = 300 * 3, WAVE_BONUS = 250,
+}
+
+-- ------------------------------------------------------------------ slap golf
+-- up to four golfers (sides A-D, in the order they joined), each with their own ragdoll dummy (the training room's
+-- cardboard one, a ring on its chest in the golfer's colour). on your turn you stand behind your dummy; turn the
+-- camera to aim, hold to charge (the meter runs up and back down), let go to slap: the dummy flies along your aim at
+-- POWER.min..max studs/s, `loft` x that upward, and tumbles. the server owns the dummies (everyone sees the same flight)
+-- and judges it: in the CUP (its middle within CUP_R of the cup, low, slower than CUP_V), out of bounds (off its cell or
+-- down into a pit: back where it was hit from, +1 stroke), or at rest (slower than REST_V for REST_T, or FLY_MAX s up).
+-- picked up at par + MAX_OVER. a shot not taken in SHOT_TIME s is taken for you (soft, at the cup). no rewards
+-- each hole, in its cell's own frame (x across, z along; the lawn's top is y = 0, the tee at +z, the cup toward -z):
+--   tee, cup (x, z; the cup's lawn height is topAt), par, and what's on it:
+--   lawn = { { x0, x1, z0, z1, top } } (default: the whole cell), ramps = { { x0, x1, zHigh, zLow... } } rising from
+--   y0 at z0 to y1 at z1, hump = { z, r, top } (a log across), planter = { x0, x1, z0, z1, h }, posts = { { x, z, r } }
+--   (bouncers), spinner = { x, z, len } (a bar turning SPIN rad/s), pit = { z0, z1 } (no lawn: a drop out of bounds)
+MG.GOLF = {
+	SIDES = { "A", "B", "C", "D" },
+	COLORS = { A = Color3.fromRGB(150, 62, 58), B = Color3.fromRGB(58, 84, 140), C = Color3.fromRGB(70, 118, 82), D = Color3.fromRGB(196, 150, 64) },
+	POWER = { min = 10, max = 56, loft = 0.36 },
+	CHARGE = 1.1, -- s for the meter to fill; then it falls back, and so on
+	REST_V = 1.4, REST_T = 0.5, FLY_MAX = 9,
+	CUP_R = 2.8, CUP_V = 14, CUP_H = 1.6, -- (in: low and slow over the cup; a dummy flying over it at speed is not in)
+	MAX_OVER = 4,
+	SHOT_TIME = 30,
+	BETWEEN = 4, -- s showing the card between holes
+	SPIN = 1.3,
+	SIDE = 2.4, BACK = 0.6, -- where you stand: this far to the left of your dummy and a little back, facing your aim (the slap comes from your right hand; the camera behind the dummy sees it past you)
+	HOLES = {
+		{ par = 2, tee = Vector2.new(0, 15), cup = Vector2.new(0, -13), hump = { z = 0, r = 2.6, top = 0.9 } },
+		{ par = 3, tee = Vector2.new(-3, 15), cup = Vector2.new(3, -13), planter = { 0.5, 6, -5, 18, 1.8 } },
+		{ par = 3, tee = Vector2.new(0, 15), cup = Vector2.new(0, -14),
+			lawn = { { -6, 6, -2, 18, 0 }, { -6, 6, -18, -8, 2.5 } }, ramps = { { -6, 6, -2, -8, 0, 2.5 } } },
+		{ par = 3, tee = Vector2.new(0, 15), cup = Vector2.new(0, -13), spinner = { 0, -1, 11 } },
+		{ par = 3, tee = Vector2.new(-3, 15), cup = Vector2.new(3, -13),
+			posts = { { -3, 6, 1.1 }, { 2.6, 3, 1.1 }, { -2, -2, 1.1 }, { 3, -6, 1.1 }, { -1.5, -9, 1.0 } } },
+		{ par = 3, tee = Vector2.new(0, 15), cup = Vector2.new(0, -13),
+			lawn = { { -6, 6, 2, 18, 0 }, { -6, 6, -18, -8, 0 } }, ramps = { { -6, 6, 2, -1, 0, 1.4 } }, pit = { -1, -8 } },
+	},
 }
 
 return MG

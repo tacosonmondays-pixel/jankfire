@@ -23,9 +23,10 @@ local me = Players.LocalPlayer
 local W, H = 640, 400
 local INK = Color3.fromRGB(21, 24, 30)
 
-local function boardOf(model: Model): { any }
+local function boardOf(model: Model, which: string?): { any }
 	local f = model.Parent
-	local raw = f and f:GetAttribute("ArcadeBoard")
+	-- (which = "all": the all-time board, MiniArcade's ArcadeAllTime; else this server's)
+	local raw = f and f:GetAttribute(if which == "all" then "ArcadeAllTime" else "ArcadeBoard")
 	if type(raw) ~= "string" then return {} end
 	local ok, t = pcall(HttpService.JSONDecode, HttpService, raw)
 	return if ok and type(t) == "table" then t else {}
@@ -80,10 +81,12 @@ function M.world(model: Model, api: any): ((number) -> ())?
 			for i = 5, 6 do rows[i].Text = "" end
 			foot.Text = ""
 		else
+			-- (idle: this server's best, then the all-time board, taking turns)
+			local all = math.floor(os.clock() / 7) % 2 == 1 and #boardOf(model, "all") > 0
 			head.Text = "JANKFIRE"
 			head.TextSize = 30
-			sub.Text = "HIGH SCORES"
-			local b = boardOf(model)
+			sub.Text = if all then "ALL-TIME BEST" else "HIGH SCORES"
+			local b = boardOf(model, if all then "all" else nil)
 			for i = 1, 6 do
 				local e = b[i]
 				rows[i].TextXAlignment = Enum.TextXAlignment.Left
@@ -93,6 +96,12 @@ function M.world(model: Model, api: any): ((number) -> ())?
 		end
 	end
 	draw()
+	task.spawn(function() -- (the idle screen turns between the two boards)
+		while model.Parent do
+			task.wait(7)
+			if type(model:GetAttribute("Live")) ~= "number" then draw() end
+		end
+	end)
 	model:GetAttributeChangedSignal("Live"):Connect(draw)
 	model:GetAttributeChangedSignal("Wave"):Connect(draw)
 	model:GetAttributeChangedSignal("PName"):Connect(draw)
@@ -764,9 +773,52 @@ function M.open(api: any, model: Model, side: string)
 		r.Position = UDim2.fromScale(0, 0.33 + (i - 1) * 0.065); r.Size = UDim2.fromScale(1, 0.06); r.ZIndex = 11
 		G.boardRows[i] = r
 	end
-	G.startB = api.button(at, "Start", "START", UDim2.fromScale(0.5, 0.72), UDim2.fromOffset(170, 42), true)
+	G.startB = api.button(at, "Start", "START", UDim2.new(0.5, -92, 0.72, 0), UDim2.fromOffset(170, 42), true)
 	G.startB.AnchorPoint = Vector2.new(0.5, 0); G.startB.ZIndex = 11
-	G.startB.Activated:Connect(function() if G.mode == "attract" then newRun() end end)
+	G.startB.Activated:Connect(function() if G.mode == "attract" and not G.boardP.Visible then newRun() end end)
+	-- the LEADERBOARD (the owner, 19 Nov: "add a leaderboard option"): the all-time best and this server's, side by side
+	local lbB = api.button(at, "Leaderboard", "LEADERBOARD", UDim2.new(0.5, 92, 0.72, 0), UDim2.fromOffset(170, 42), false)
+	lbB.AnchorPoint = Vector2.new(0.5, 0); lbB.ZIndex = 11
+	local bp = T.new("Frame", { Name = "Board", BackgroundColor3 = INK, BackgroundTransparency = 0.04, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 14, Visible = false }, canvas)
+	G.boardP = bp
+	local bt = T.text(bp, "Title", "LEADERBOARD", 28, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center)
+	bt.Position = UDim2.fromScale(0, 0.05); bt.Size = UDim2.fromScale(1, 0.1); bt.ZIndex = 15
+	local cols: { { TextLabel } } = {}
+	for c, name in { "ALL TIME", "THIS SERVER" } do
+		local x = if c == 1 then 0.04 else 0.52
+		local h = T.text(bp, "Head" .. c, name, 13, T.ACCENT, T.FONT_TITLE, Enum.TextXAlignment.Left)
+		h.Position = UDim2.fromScale(x, 0.18); h.Size = UDim2.fromScale(0.44, 0.06); h.ZIndex = 15
+		cols[c] = {}
+		for i = 1, 10 do
+			local r = T.text(bp, "R" .. c .. "_" .. i, "", 13, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Left)
+			r.Position = UDim2.fromScale(x, 0.25 + (i - 1) * 0.056); r.Size = UDim2.fromScale(0.44, 0.052); r.ZIndex = 15
+			cols[c][i] = r
+		end
+	end
+	local backB = api.button(bp, "Back", "BACK", UDim2.fromScale(0.5, 0.84), UDim2.fromOffset(150, 40), true)
+	backB.AnchorPoint = Vector2.new(0.5, 0); backB.ZIndex = 15
+	local function fillBoards()
+		for c, which in { "all", "server" } do
+			local b = boardOf(model, if which == "all" then "all" else nil)
+			for i = 1, 10 do
+				local e = b[i]
+				cols[c][i].Text = if e then ("%d.  %s   %s"):format(i, string.upper(tostring(e.n)):sub(1, 14), fmt(e.s)) elseif i == 1 then "NO SCORES YET" else ""
+				cols[c][i].TextColor3 = if e and e.n == me.DisplayName then T.ACCENT else T.SOFT
+			end
+		end
+	end
+	G.showBoard = function(on: boolean)
+		bp.Visible = on
+		if on then fillBoards() end
+		api.nav(api.padOn(), if on then backB else G.startB)
+	end
+	lbB.Activated:Connect(function() if G.mode == "attract" then G.showBoard(true) end end)
+	backB.Activated:Connect(function() G.showBoard(false) end)
+	if model.Parent then
+		for _, a in { "ArcadeAllTime", "ArcadeBoard" } do
+			table.insert(G.conns, model.Parent:GetAttributeChangedSignal(a):Connect(function() if bp.Visible then fillBoards() end end))
+		end
+	end
 	G.howL = T.text(at, "How", "", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
 	G.howL.Position = UDim2.fromScale(0, 0.87); G.howL.Size = UDim2.fromScale(1, 0.06); G.howL.ZIndex = 11
 	-- the end of a run
@@ -925,7 +977,11 @@ function M.space(down: boolean, _io: any): boolean
 	return true
 end
 
-function M.back(): boolean return false end
+-- (pad B or Backspace on the LEADERBOARD: back to the attract screen, not out of the game)
+function M.back(): boolean
+	if G.boardP and G.boardP.Visible and G.showBoard then G.showBoard(false); return true end
+	return false
+end
 
 function M.confirmLeave(): string?
 	if G.mode == "play" then return "PRESS AGAIN TO LEAVE: THE RUN ENDS" end
@@ -933,6 +989,8 @@ function M.confirmLeave(): string?
 end
 
 function M.test(v: string): string
+	if v == "arcade:board" then if G.showBoard and G.mode == "attract" then G.showBoard(true) end; return "board" end
+	if v == "arcade:boardoff" then if G.showBoard then G.showBoard(false) end; return "board off" end
 	if v == "arcade:start" then if G.mode ~= "play" then newRun() end; return "started" end
 	if v == "arcade:die" then if G.p then G.p.inv = 0; G.p.dashT = 0; hurt(999) end; return "dead" end
 	if v == "arcade:auto" then G.testAuto = not G.testAuto; return "auto " .. tostring(G.testAuto) end
