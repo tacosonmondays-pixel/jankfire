@@ -284,6 +284,7 @@ L.DAILY_ONLY = { wrap = { triangulum = true }, hat = { tricorne = true }, skin =
 function L.exclusive(t: string, id: string): boolean
 	local own = L.DAILY_ONLY[t]
 	if own and own[id] then return true end
+	if t == "wrap" and id == "packgold" then return true end -- (the big coin packs' Bullion: Shop.PACK_GOLD, 19 Nov)
 	if vipDaily == nil then
 		local m = Shared:FindFirstChild("VipDailyData")
 		if m and m:IsA("ModuleScript") then

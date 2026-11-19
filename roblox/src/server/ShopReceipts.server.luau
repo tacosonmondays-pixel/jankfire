@@ -29,7 +29,7 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("S
 -- VIP (a game pass, not a developer product: no receipt here) is Vip.luau's, its daily reward from Trisangle
 -- VipDaily.luau's, the owner's deals Deals.luau's and the Robux weapons and receipt record Purchases.luau's; requiring
 -- them starts them
-for _, name in { "Vip", "VipDaily", "Deals", "Purchases" } do
+for _, name in { "Vip", "VipDaily", "Deals", "Purchases", "Gifts" } do
 	task.spawn(function()
 		local m = script.Parent:WaitForChild(name, 30)
 		if m and m:IsA("ModuleScript") then
@@ -53,18 +53,35 @@ local function loot(): any return module("Loot") end
 local function deals(): any return module("Deals") end -- (the owner's deals: "deal:<skin>", only the player's own of today)
 local function purchases(): any return module("Purchases") end
 local function quests(): any return module("Quests") end
+local function gifts(): any return module("Gifts") end -- (paid gifts: the receiver's gift box, 19 Nov)
 
 local function prompt(p: Player, offerId: string, pid: number)
 	asked[p.UserId .. ":" .. pid] = { offer = offerId, product = pid, t = os.clock() } -- (per product: a second ask can't strand the first's receipt)
 	MarketplaceService:PromptProductPurchase(p, pid)
 end
 
-Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
+Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown, giftTo: unknown)
 	if not Shop.ROBUX or Shop.free() then return end
 	if type(offerId) ~= "string" then return end
 	local now = os.clock()
 	if (lastAsk[p] or 0) > now - 1 then return end
 	lastAsk[p] = now
+	-- a GIFT (19 Nov): the offer's own product, for someone else (Gifts.check: in this server, or found by name). the ask
+	-- remembers who it's for; the receipt puts it in their gift box (Gifts.send) instead of giving it to the buyer
+	if giftTo ~= nil then
+		local G = gifts()
+		if not G or not Shop.giftsOn() then return end
+		local go = if string.match(offerId, "^coins:[%w_]+$") then Shop.coinPack(offerId) else Shop.offer(offerId)
+		if not go or not Shop.giftable(go) then return end
+		if go.type ~= "coins" and not Shop.onSale(go.id) then return end
+		local okC = G.check(p, giftTo)
+		if not okC then return end
+		local gpid = Shop.productFor(go) -- (a skin set: the whole set's)
+		if not gpid then return end
+		asked[p.UserId .. ":" .. gpid] = { offer = go.id, product = gpid, t = os.clock(), gift = giftTo :: number }
+		MarketplaceService:PromptProductPurchase(p, gpid)
+		return
+	end
 	-- a Robux weapon: only one you don't have yet (a second buy would pay for nothing)
 	local wid = string.match(offerId, "^weapon:([%w_]+)$")
 	if wid then
@@ -128,6 +145,24 @@ local function grant(p: Player, info: any): boolean
 		return false
 	end
 	local pid = tostring(info.PurchaseId)
+	-- a gift (the ask says who for): into the receiver's gift box, written before the receipt is granted
+	local ak0 = info.PlayerId .. ":" .. info.ProductId
+	local ga = asked[ak0]
+	if ga and ga.gift and ga.product == info.ProductId and os.clock() - ga.t <= ASK_TTL then
+		local G = gifts()
+		if not G or type(G.send) ~= "function" then return false end
+		local okG, resG = pcall(G.send, p, ga.gift, ga.offer, pid)
+		if not okG then warn("[jankfire] Gifts.send failed: " .. tostring(resG)) end
+		if okG and resG == true then asked[ak0] = nil; return true end
+		return false
+	end
+	-- VIP bought as a gift whose ask was lost (a server restart between the prompt and the receipt): VIP for the buyer
+	if key == "vipgift" then
+		local V = module("Vip")
+		if not V or type(V.gift) ~= "function" then return false end
+		local okV, resV = pcall(V.gift, p, true)
+		return okV and resV == true
+	end
 	-- a Robux weapon
 	local wid = string.match(key, "^weapon:([%w_]+)$")
 	if wid then
@@ -144,7 +179,16 @@ local function grant(p: Player, info: any): boolean
 		if not bo or not Q or type(Q.buyBrass) ~= "function" then return false end
 		local ok, res = pcall(Q.buyBrass, p, bo.amount, pid)
 		if not ok then warn("[jankfire] Quests.buyBrass failed: " .. tostring(res)) end
-		return ok and res == true
+		if not (ok and res == true) then return false end
+		-- (the big packs' extras: Crates, Bullion, the skin pick; Purchases.packExtras, idempotent by the purchase id)
+		if bo.extras and Shop.packExtrasOn() then
+			local P = purchases()
+			if not P or type(P.packExtras) ~= "function" then return false end
+			local okE, resE = pcall(P.packExtras, p, bo, pid)
+			if not okE then warn("[jankfire] Purchases.packExtras failed: " .. tostring(resE)) end
+			return okE and resE == true
+		end
+		return true
 	end
 	local offerId = key
 	if not Shop.byId[key] then
@@ -166,6 +210,16 @@ local function grant(p: Player, info: any): boolean
 	else
 		local L = loot()
 		if not L or type(L.grant) ~= "function" then return false end
+		-- (a weapon bundle: its Robux weapons first, for good; Purchases.giveWeapon is idempotent. 19 Nov)
+		local wb = Shop.byId[offerId]
+		if wb and wb.weapons then
+			local P = purchases()
+			if not P or type(P.giveWeapon) ~= "function" then return false end
+			for _, wid in wb.weapons :: { string } do
+				local okW, resW = pcall(P.giveWeapon, p, wid, "bundle", pid)
+				if not okW or resW ~= true then warn("[jankfire] a weapon bundle's weapon: " .. tostring(resW)); return false end
+			end
+		end
 		-- (a container for a player Roblox's policy keeps from paid random items is never granted: the receipt waits and
 		-- Roblox returns the Robux. the shop never prompts them; this is for a purchase made some other way. 18 Nov)
 		local co = Shop.byId[offerId]
@@ -216,7 +270,7 @@ if RunService:IsStudio() then
 	if old then old:Destroy() end
 	local fn = Instance.new("BindableFunction")
 	fn.Name = "JankMoneyTest"
-	fn.OnInvoke = function(op: string, uid: number, a: any, b: any): any
+	fn.OnInvoke = function(op: string, uid: number, a: any, b: any, ...: any): any
 		if op == "receipt" then
 			local d = process({ PlayerId = uid, ProductId = a, PurchaseId = tostring(b), CurrencySpent = 0,
 				CurrencyType = Enum.CurrencyType.Robux, PlaceIdWherePurchased = game.PlaceId })
@@ -224,6 +278,11 @@ if RunService:IsStudio() then
 		elseif op == "ask" then
 			if type(a) ~= "string" or type(b) ~= "number" then return false end
 			asked[uid .. ":" .. b] = { offer = a, product = b, t = os.clock() }
+			return true
+		elseif op == "giftask" then -- ("giftask", userId, offerId, productId, toUserId): a gift's ask without a prompt
+			local to = select(1, ...)
+			if type(a) ~= "string" or type(b) ~= "number" or type(to) ~= "number" then return false end
+			asked[uid .. ":" .. b] = { offer = a, product = b, t = os.clock(), gift = to }
 			return true
 		elseif op == "vipgift" then -- ("vipgift", userId, on): Vip.gift, the dev menu's call
 			local p = Players:GetPlayerByUserId(uid)

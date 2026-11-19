@@ -56,6 +56,8 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 	elseif cmd == "openbox" then -- ("openbox:<container>" or "openbox:<container>:<n>": its OPEN button, from any tab)
 		local cid, nn = string.match(rest or "", "^([%w_]+):?(%d*)$")
 		if cid then task.spawn(ShopUI.openBox, cid, tonumber(nn)) end
+	elseif cmd == "pick" then ShopUI.showPick() -- (a big coin pack's skin still waiting: the PICK panel)
+	elseif cmd == "gift" then ShopUI.showGift(rest) -- ("gift:<offer id>": the GIFT panel for it)
 	elseif cmd == "invbench" then -- ("invbench:<n>": Studio, the INVENTORY page timed with n made-up wraps: ShopBench)
 		task.spawn(ShopUI.benchInventory, tonumber(rest) or 600)
 	elseif cmd == "finish" then -- ("finish" or "finish:again": the reveal's DONE or OPEN ANOTHER)

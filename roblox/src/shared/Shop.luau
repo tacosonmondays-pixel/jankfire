@@ -171,8 +171,10 @@ Shop.MONEY = {
 	coins = {
 		{ id = "coins_1200", coins = 1200, bonus = 0, robux = 99, image = "rbxassetid://76861915103827" },
 		{ id = "coins_6500", coins = 6000, bonus = 500, robux = 499, image = "rbxassetid://88259913823049" },
-		{ id = "coins_28000", coins = 24000, bonus = 4000, robux = 1999, image = "rbxassetid://93667428578542" },
-		{ id = "coins_70000", coins = 54000, bonus = 16000, robux = 4500, image = "rbxassetid://125116964696727" },
+		{ id = "coins_28000", coins = 24000, bonus = 4000, robux = 1999, image = "rbxassetid://93667428578542",
+			extras = { pick = "legendary", crates = 1 } }, -- (the extras: Shop.packExtrasOn, below)
+		{ id = "coins_70000", coins = 54000, bonus = 16000, robux = 4500, image = "rbxassetid://125116964696727",
+			extras = { pick = "finisher", gold = true, crates = 3 } },
 	},
 }
 -- what a single costs, by kind and rarity (Robux; unused while free)
@@ -230,6 +232,9 @@ Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border"
 -- wraps that never go in a bundle or the rotation: their picture versions broke Roblox's image rules and they are
 -- plain colour wraps now (roblox-upload-content-rules), or they are the free ones everyone has
 Shop.HELD_BACK = { qr = true, barcode = true, meat = true, organ = true, corp = true, memo = true, jersey = true, default = true }
+-- the big coin packs' own gold wrap (Bullion, Roster): only the 4,500 pack gives it, never the rotation, a bundle or a
+-- container (LootTable.exclusive). not Mastery Gold, which stays earned by weapon level
+Shop.PACK_GOLD = "packgold"
 
 -- wraps and hats are owned PER WEAPON (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
 -- time"): an item is (kind, id, weapon), written "<id>@<weapon>" where one string is needed (Shop.key)
@@ -601,10 +606,38 @@ function Shop.setPrice(o: Offer, missing: number?): number
 	return math.max(0, math.ceil(o.robux * m / total))
 end
 
+-- ---------------------------------------------------------------- weapon bundles (19 Nov, the owner: "we should have
+-- bundles that include some free weapons too, maybe assault bundle can come with like burst minigun smg etc. Explosives
+-- janky can come with like pepper a couple other silly ones"). Robux only (no coins). each one unlocks its Robux weapon
+-- for good (Purchases.giveWeapon: it stays when Unlocks.WEAPONS_ROBUX_FREE goes off) and dresses every weapon in it: a
+-- wrap for that one weapon each (not every gun's, unlike the cosmetic bundles), plus a hat or card looks. wraps, hats and
+-- card looks that exist only (skins are paused). its price is under the sum of its parts (Shop.worth counts the weapon:
+-- Assault 1,359 -> 799, Explosives 1,474 -> 799). shown on the shop's WEAPONS page; not in the BUNDLES grid, the featured
+-- pick or the hub's holograms (those walk Shop.bundles). OFF until the owner reviews them (Studio: WeaponBundlesTest)
+Shop.WEAPON_BUNDLES_ON = false
+function Shop.weaponBundlesOn(): boolean
+	if Shop.WEAPON_BUNDLES_ON then return true end
+	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("WeaponBundlesTest") == true
+end
+local function G(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon } end -- (that gun's only)
+Shop.weaponBundles = {
+	{ id = "wbundle_assault", type = "bundle", name = "Assault", rarity = "legendary", robux = 799, weapons = { "minigun" },
+		items = { G("tiger", "minigun"), G("camo", "ar"), G("tape", "smg"), G("ghost", "burst"), G("moss", "lmg"), G("burl", "dmr"),
+			{ kind = "title", id = "zero_recoil" }, { kind = "banner", id = "camo" } },
+		hero = { weapon = "minigun", wrap = "tiger" },
+		blurb = "The Minigun for good, a wrap for six guns, a title and a background." },
+	{ id = "wbundle_explosives", type = "bundle", name = "Explosives", rarity = "legendary", robux = 799, weapons = { "chicken" },
+		items = { G("lava", "chicken"), H("eyes", "chicken"), G("bowling", "bowling"), G("ketchup", "cig"), G("hazard", "frag"),
+			G("sprinkles", "popper"), G("memphis", "banana"), G("receipt", "cart"), { kind = "banner", id = "flames" } },
+		hero = { weapon = "chicken", wrap = "lava", hat = "eyes" },
+		blurb = "The Chicken Rocket for good, a wrap for seven weapons, a hat and a background." },
+} :: any
+for _, b in Shop.weaponBundles do b.productId = nil; Shop.byId[b.id] = b end
+
 -- the singles the rotation can show (wraps and hats that are not free, not held back and not VIP)
 Shop.singlesPool = {} :: { Item }
 for _, w in Roster.wraps do
-	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] and not Shop.vipOnly("wrap", w.id) and not Shop.dailyOnly("wrap", w.id) then table.insert(Shop.singlesPool, W(w.id)) end
+	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] and w.id ~= Shop.PACK_GOLD and not Shop.vipOnly("wrap", w.id) and not Shop.dailyOnly("wrap", w.id) then table.insert(Shop.singlesPool, W(w.id)) end
 end
 for _, id in GunHatData.ORDER do
 	local h = GunHatData.HATS[id]
@@ -682,6 +715,7 @@ end
 -- "banner:<id>" / "title:<id>", kill effect "kill:<id>" or emote "emote:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
 	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) or Shop.dailyOnly(kind, id) or Shop.secret(kind, id) then return nil end
+	if kind == "wrap" and id == Shop.PACK_GOLD then return nil end -- (the big packs' own)
 	if Shop.setOnly(kind, id) then return nil end -- (a set's piece: only its set sells it, 18 Nov)
 	if Shop.isFlair(kind) and not Shop.flairForSale(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
@@ -714,6 +748,13 @@ function Shop.offer(id: any): Offer?
 		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
 			items = { { kind = ek, id = eid } } }
 	end
+	-- (the big coin packs' Bullion wrap, on every gun: only the server's Loot.grant takes it, Purchases.packExtras)
+	if id == "pack:gold" then
+		if not Roster.wrapById[Shop.PACK_GOLD] then return nil end
+		local name, rarity = Shop.itemInfo("wrap", Shop.PACK_GOLD)
+		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
+			items = { { kind = "wrap", id = Shop.PACK_GOLD, weapon = "ar", every = true } } }
+	end
 	-- (a gift: anything that exists, given by the server alone through Loot.grant, never on sale or in the shop: a lore
 	-- NPC's prize, 18 Nov, the Janitor's "gift:grapple:plunger". a wrap or hat takes its gun after an @ ("gift:wrap:galaxy@smg"),
 	-- else it's on every gun. type "pass": the loot server's "buy" refuses it)
@@ -742,6 +783,11 @@ end
 function Shop.worth(o: Offer): number
 	local n = 0
 	for _, it in Shop.contents(o) do n += Shop.singlePrice(it.kind, it.id) end
+	-- (a weapon bundle's weapon, at its own Robux price)
+	for _, wid in ((o :: any).weapons or {}) :: { string } do
+		local m = (Shop.MONEY.weapons :: any)[wid]
+		if m then n += m.robux end
+	end
 	return n
 end
 
@@ -868,6 +914,8 @@ function Shop.onSale(id: string, t: number?): boolean
 	local o = Shop.offer(id)
 	if not o then return false end
 	if o.type == "pass" then return false end -- (VIP isn't bought through the till: Vip.luau, the game pass)
+	if (o :: any).weapons and not Shop.weaponBundlesOn() then return false end -- (the weapon bundles: their switch)
+	if o.type == "vipgift" and not Shop.giftsOn() then return false end -- (VIP as a gift: the gifts' switch)
 	if o.type ~= "single" then return true end
 	local now = t or os.time()
 	if table.find(Shop.rotation(Shop.day(now)).daily, id) then return true end
@@ -932,12 +980,119 @@ function Shop.coinPacks(): { any }
 	local out = {}
 	for _, b in Shop.MONEY.coins do
 		table.insert(out, { id = "coins:" .. b.id, type = "coins", name = digits(b.coins + b.bonus) .. " Coins", rarity = "common",
-			blurb = "", robux = b.robux, amount = b.coins + b.bonus, bonus = b.bonus, image = b.image, productId = nil })
+			blurb = "", robux = b.robux, amount = b.coins + b.bonus, bonus = b.bonus, image = b.image, productId = nil, extras = (b :: any).extras })
 	end
 	return out
 end
 function Shop.coinPack(id: any): any
 	for _, o in Shop.coinPacks() do if o.id == id then return o end end
+	return nil
+end
+
+-- ---------------------------------------------------------------- the big coin packs' extras (19 Nov, the owner: "the
+-- bigger packs should come with rewards like rivals gives you, weapon skins for the 2 biggest packs, a finisher for a
+-- random weapon I think, a gold wrap, a skin case etc"). 1,999: a legendary weapon skin you PICK and a Crate. 4,500: a
+-- skin with a finisher you pick, the Bullion wrap on every gun and 3 Crates. the skin is chosen from a short list, never
+-- random (a random item bought with Robux would be a paid random item): the pick waits in the buyer's save until it's
+-- made (Purchases.packExtras, ShopUI's PICK panel), so a crash never loses it. own every skin on the list (or Bullion)
+-- already: coins of the same worth instead, and they're told. the Crates follow the paid-random-items rules (odds before
+-- any opening; where Roblox's policy keeps a player from them, coins of the same worth). every purchase gives them again.
+-- OFF until the owner reviews them (Studio: PackExtrasTest)
+Shop.PACK_EXTRAS_ON = false
+function Shop.packExtrasOn(): boolean
+	if Shop.PACK_EXTRAS_ON then return true end
+	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("PackExtrasTest") == true
+end
+-- the lists a skin is picked from: legendary weapon skins that are no set's piece, and the skins with a finisher (every
+-- one is a set's: Shared.Finishers). a skin not in the place drops out (Shop.pickList)
+Shop.PICKS = {
+	legendary = { "ar_keytar", "katana_neon", "sniper_musket", "knife_butterfly", "scythe_reaper", "duck_gold", "spin_aura" },
+	finisher = { "ar_seraph_tripo", "ar_infernal", "katana_sakura", "smg_pumpkin", "revolver_dust", "lever_dust", "revolver_star", "lever_star" },
+}
+Shop.PICK_WORDS = { legendary = "LEGENDARY SKIN", finisher = "FINISHER SKIN" }
+function Shop.pickList(kind: string): { string }
+	local out = {}
+	for _, id in ((Shop.PICKS :: any)[kind] or {}) :: { string } do
+		if Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) then table.insert(out, id) end
+	end
+	return out
+end
+-- what an extra is worth in coins when it's given as coins (the coins-only shop's prices): the skin a legendary skin,
+-- Bullion a legendary wrap, a Crate its coin price
+function Shop.extraCoins(what: string): number
+	local cp = Shop.MONEY.coinPrices :: any
+	if what == "pick" then return cp.singles.skin.legendary end
+	if what == "gold" then return cp.singles.wrap.legendary end
+	if what == "crate" then return cp.containers.crate end
+	return 0
+end
+-- the extras in short words for a pack's card: "+ LEGENDARY SKIN  ·  + CRATE" (restricted: the Crates as coins)
+function Shop.extrasWords(o: any, restricted: boolean?): string?
+	local ex = type(o) == "table" and o.extras
+	if type(ex) ~= "table" or not Shop.packExtrasOn() then return nil end
+	local parts = {}
+	if ex.pick then table.insert(parts, "+ " .. ((Shop.PICK_WORDS :: any)[ex.pick] or "SKIN")) end
+	if ex.gold then table.insert(parts, "+ GOLD WRAP") end
+	local n = tonumber(ex.crates) or 0
+	if n > 0 then
+		table.insert(parts, if restricted then "+ " .. digits(n * Shop.extraCoins("crate")) .. " COINS" elseif n == 1 then "+ CRATE" else "+ " .. n .. " CRATES")
+	end
+	return table.concat(parts, "  ·  ")
+end
+
+-- ---------------------------------------------------------------- gifts (19 Nov, the owner: "weapon bundles should be
+-- gamepasses too! I want people to be able to gift them! Should all passes be game passes?"). Roblox can't gift a game
+-- pass (one is only ever bought for your own account), so what can be gifted stays a developer product and the shop gifts
+-- it itself: the buyer picks someone (in this server, or by name if they've played before), pays through the same
+-- product, and the server's Gifts module puts it in the receiver's gift box (a save of its own) and hands it over the
+-- moment they're in a server, with the present's reveal and a chat line. giftable: bundles (the cosmetic ones, the
+-- weapon bundles, a skin set: the whole set), coin packs, and VIP through its own product ("vipgift": VIP itself stays a
+-- game pass, for yourself). never a container or a single. OFF until the owner has seen it (Studio: GiftsTest)
+Shop.GIFTS_ON = false
+function Shop.giftsOn(): boolean
+	if Shop.GIFTS_ON then return true end
+	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("GiftsTest") == true
+end
+Shop.vipGift = { id = "vipgift", type = "vipgift", name = "VIP", rarity = "vip", robux = Shop.MONEY.vip, productId = nil,
+	blurb = "VIP for someone else: the Ducky pack, the VIP room and its daily reward, for good." } :: any
+Shop.byId.vipgift = Shop.vipGift
+function Shop.giftable(o: any): boolean
+	if type(o) ~= "table" then return false end
+	return o.type == "bundle" or o.type == "coins" or o.type == "vipgift"
+end
+
+-- ---------------------------------------------------------------- early unlocks (19 Nov, the owner: "coin is supposed to
+-- be able to buy weapons early!"). a weapon or gadget that opens at a level (Unlocks.LEVEL, 2 and up) can be bought with
+-- coins before the player gets there, for good: the server takes the coins and keeps it (Purchases "early", the same
+-- three writes as a Robux weapon's coins buy, its RobuxOwned list), and reaching the level later changes nothing. priced
+-- by the level it opens at, under the Robux weapons' coin prices (4,000-5,000). OFF until the owner reviews the prices
+-- (Studio: EarlyTest)
+Shop.EARLY_ON = false
+function Shop.earlyOn(): boolean
+	if Shop.EARLY_ON then return true end
+	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("EarlyTest") == true
+end
+-- coins by the level a weapon opens at (up to that level: that price)
+Shop.MONEY.earlyCoins = {
+	{ upTo = 3, coins = 500 }, { upTo = 6, coins = 1000 }, { upTo = 9, coins = 1500 }, { upTo = 12, coins = 2000 },
+	{ upTo = 15, coins = 2500 }, { upTo = 18, coins = 3000 }, { upTo = 21, coins = 3500 }, { upTo = 99, coins = 4000 },
+}
+-- a weapon's early-unlock price in coins, or nil: not one that opens at a level (a Robux weapon, level 1, not live)
+function Shop.earlyPrice(wid: any): number?
+	if type(wid) ~= "string" then return nil end
+	local e = Roster.byId[wid]
+	if not e or not e.live then return nil end
+	if Shop.Unlocks == nil then
+		local m = script.Parent:FindFirstChild("Unlocks")
+		local ok, U = false, nil
+		if m and m:IsA("ModuleScript") then ok, U = pcall(require, m) end
+		Shop.Unlocks = if ok and type(U) == "table" then U else false
+	end
+	local U = Shop.Unlocks :: any
+	if not U or U.ROBUX[wid] then return nil end
+	local lv = U.LEVEL[wid] or 1
+	if lv <= 1 then return nil end
+	for _, b in (Shop.MONEY :: any).earlyCoins do if lv <= b.upTo then return b.coins end end
 	return nil
 end
 
@@ -988,6 +1143,8 @@ Shop.PRODUCTS = {
 	-- (coin packs)
 	["coins:coins_1200"] = 3733204424, ["coins:coins_6500"] = 3733204431, ["coins:coins_28000"] = 3733204444,
 	["coins:coins_70000"] = 3733204487,
+	-- (the weapon bundles and VIP as a gift: made 19 Nov 2026, prompted only while their switches are on)
+	wbundle_assault = 3733671860, wbundle_explosives = 3733671907, vipgift = 3733671921,
 } :: { [string]: number }
 Shop.byProduct = {} :: { [number]: string } -- product id -> offer id, or a tier ("wrap:epic")
 for key, pid in Shop.PRODUCTS do

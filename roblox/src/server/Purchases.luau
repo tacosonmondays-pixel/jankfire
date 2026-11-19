@@ -27,6 +27,13 @@
 --                      deals ("deal:<skin>"), for coins. same three writes as a weapon: a pending mark, the coins
 --                      (Quests.spendBrass), the grant (Loot.grant / Deals.grant, idempotent by the id); settled on join
 --   ("dev", "forget", wid) -> Studio + the place's owner only: takes a bought weapon back (to undo a test)
+--   ("early", wid)   -> Purchases.buyEarly: a weapon that opens at a level, bought with coins before then (Shop.earlyOn)
+--   ("pick", purchaseId, skinId) -> Purchases.pick: the skin chosen for a big coin pack's waiting pick ("coins": the
+--                      coins instead, when every skin on its list is owned)
+--   ("dev", "extras") / ("dev", "forgetExtras") -> Studio + the owner: their extras records / cleared (a test undone)
+-- the big coin packs' extras (Shop.packExtrasOn): Purchases.packExtras(p, pack, purchaseId) -> boolean, from a coin
+-- pack's receipt (ShopReceipts) or a gifted one (Gifts). the player attribute PackPicks ("<purchaseId>:<kind>,...")
+-- lists the picks still waiting
 -- docs: roblox/docs/MONEY.md
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -49,7 +56,7 @@ local Purchases = {}
 local RECEIPTS_KEPT = 500 -- (the newest; older ones still can't pay twice: every grant is idempotent by its id)
 
 local function template(): any
-	return { v = 1, weapons = {}, receipts = {}, order = {}, pending = {} }
+	return { v = 1, weapons = {}, receipts = {}, order = {}, pending = {}, extras = {}, extrasOrder = {} }
 end
 local store = Profiles.new("JankfirePurchases_v1", template)
 
@@ -156,6 +163,133 @@ function Purchases.giveWeapon(p: Player, wid: string, how: string, id: string?):
 	return true, nil
 end
 
+-- ------------------------------------------------------------------ the big coin packs' extras (19 Nov)
+-- decided once per purchase and written before anything is given (data.extras[purchaseId]): the Crates (or their coins
+-- where Roblox's policy keeps the player from paid random items), Bullion (or its coins if they have it), the skin pick
+-- (waiting until it's made; its coins at once if every skin on its list is theirs). each part goes under its own id
+-- ("<purchase>:crates", ":gold", ":skin"), so a receipt Roblox sends again gives nothing twice
+local EXTRAS_KEPT = 200
+local function extrasOf(d: any): any
+	if type(d.extras) ~= "table" then d.extras = {} end
+	if type(d.extrasOrder) ~= "table" then d.extrasOrder = {} end
+	return d.extras
+end
+local function publishPicks(p: Player)
+	if not p.Parent then return end
+	local d = dataOf(p)
+	local list = {}
+	if d and type(d.extras) == "table" then
+		for pid, e in d.extras do
+			if type(e) == "table" and e.pick == "pick" and not e.got then table.insert(list, { pid, e.kind, tonumber(e.t) or 0 }) end
+		end
+	end
+	table.sort(list, function(a, b) return a[3] < b[3] end)
+	local words = {}
+	for _, x in list do table.insert(words, x[1] .. ":" .. x[2]) end
+	p:SetAttribute("PackPicks", if #words > 0 then table.concat(words, ",") else nil)
+end
+local function ownsAllOf(L: any, p: Player, kind: string): boolean
+	for _, id in Shop.pickList(kind) do if not L.owns(p, "skin", id) then return false end end
+	return true
+end
+function Purchases.packExtras(p: Player, pack: any, pid: string): boolean
+	local ex = type(pack) == "table" and pack.extras
+	if type(ex) ~= "table" then return true end
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return false end
+	local L, Q = module("Loot"), quests()
+	if not L or not Q or type(L.grant) ~= "function" or type(L.owns) ~= "function" or type(Q.buyBrass) ~= "function" then return false end
+	local all = extrasOf(d)
+	local e = all[pid]
+	if type(e) ~= "table" then
+		-- 1. decided and written
+		e = { t = os.time(), pack = pack.id }
+		local n = math.floor(tonumber(ex.crates) or 0)
+		if n > 0 then
+			e.crates = n
+			e.crateHow = if type(L.restricted) ~= "function" or L.restricted(p) then "coins" else "crate"
+		end
+		if ex.gold then e.gold = if L.owns(p, "wrap", Shop.PACK_GOLD, "ar") then "coins" else "wrap" end
+		if type(ex.pick) == "string" then
+			e.kind = ex.pick
+			e.pick = if #Shop.pickList(ex.pick) == 0 or ownsAllOf(L, p, ex.pick) then "coins" else "pick"
+		end
+		all[pid] = e
+		table.insert(d.extrasOrder, pid)
+		-- (the oldest decided ones go past EXTRAS_KEPT; never a pick still waiting)
+		local i = 1
+		while #d.extrasOrder > EXTRAS_KEPT and i <= #d.extrasOrder do
+			local old = all[d.extrasOrder[i]]
+			if type(old) == "table" and old.pick == "pick" and not old.got then i += 1
+			else all[d.extrasOrder[i]] = nil; table.remove(d.extrasOrder, i) end
+		end
+		if not write(s) then
+			all[pid] = nil
+			local j = table.find(d.extrasOrder, pid)
+			if j then table.remove(d.extrasOrder, j) end
+			return false
+		end
+	end
+	-- 2. given, each part under its own id
+	if e.crates then
+		local ok, res
+		if e.crateHow == "coins" then ok, res = pcall(Q.buyBrass, p, e.crates * Shop.extraCoins("crate"), pid .. ":crates")
+		else ok, res = pcall(L.grant, p, "crate", pid .. ":crates", e.crates) end
+		if not ok or res ~= true then return false end
+	end
+	if e.gold == "wrap" then
+		local ok, res = pcall(L.grant, p, "pack:gold", pid .. ":gold")
+		if not ok or res ~= true then return false end
+	elseif e.gold == "coins" then
+		local ok, res = pcall(Q.buyBrass, p, Shop.extraCoins("gold"), pid .. ":gold")
+		if not ok or res ~= true then return false end
+	end
+	if e.pick == "coins" then
+		local ok, res = pcall(Q.buyBrass, p, Shop.extraCoins("pick"), pid .. ":skin")
+		if not ok or res ~= true then return false end
+	end
+	publishPicks(p)
+	print(("[jankfire] purchases: %s's %s extras: crates %s, gold %s, skin %s"):format(p.Name, tostring(pack.id),
+		tostring(e.crateHow), tostring(e.gold), tostring(e.pick)))
+	return true
+end
+-- the skin chosen for a waiting pick ("coins": the coins instead, only when every skin on its list is theirs)
+function Purchases.pick(p: Player, pid: any, skin: any): any
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return { ok = false, why = "still loading" } end
+	if type(pid) ~= "string" or type(skin) ~= "string" then return { ok = false, why = "nope" } end
+	local e = type(d.extras) == "table" and d.extras[pid] or nil
+	if type(e) ~= "table" or e.pick ~= "pick" or type(e.kind) ~= "string" then return { ok = false, why = "nothing to pick" } end
+	if e.got then publishPicks(p); return { ok = true, got = e.got, already = true } end
+	local L, Q = module("Loot"), quests()
+	if not L or not Q or type(L.grant) ~= "function" or type(Q.buyBrass) ~= "function" then return { ok = false, why = "the shop isn't open yet" } end
+	if skin == "coins" then
+		if not ownsAllOf(L, p, e.kind) then return { ok = false, why = "pick a skin you don't have" } end
+	elseif not table.find(Shop.pickList(e.kind), skin) then
+		return { ok = false, why = "that one isn't on the list" }
+	elseif L.owns(p, "skin", skin) then
+		return { ok = false, why = "you have that one" }
+	end
+	if s.busy then return { ok = false, why = "one at a time" } end
+	s.busy = true
+	local ok, res
+	if skin == "coins" then ok, res = pcall(Q.buyBrass, p, Shop.extraCoins("pick"), pid .. ":skin")
+	else ok, res = pcall(L.grant, p, "gift:skin:" .. skin, pid .. ":skin") end
+	if not ok or res ~= true then
+		s.busy = false
+		return { ok = false, why = "couldn't give it. try again" }
+	end
+	-- (given under the pick's own id: a failed write here is fine, the next try finds it given and only marks it)
+	e.got = skin
+	write(s)
+	s.busy = false
+	publishPicks(p)
+	print(("[jankfire] purchases: %s picked %s for %s"):format(p.Name, skin, pid))
+	return { ok = true, got = skin, coins = if skin == "coins" then Shop.extraCoins("pick") else nil }
+end
+
 -- the Brass buy, all on the server: the price is the shop's, the Brass is taken by the quests' save
 function Purchases.buyWithBrass(p: Player, wid: any): any
 	local s = st[p]
@@ -195,6 +329,46 @@ function Purchases.buyWithBrass(p: Player, wid: any): any
 	s.busy = false
 	publish(p)
 	print(("[jankfire] purchases: %s bought the %s for %d Brass"):format(p.Name, w, price))
+	return { ok = true, wid = w }
+end
+
+-- an EARLY unlock (19 Nov): a weapon that opens at a level, with coins before the player gets there, kept for good
+-- (RobuxOwned: Unlocks treats it as open whatever the level). the same three writes as buyWithBrass
+function Purchases.buyEarly(p: Player, wid: any): any
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return { ok = false, why = "your purchases are still loading" } end
+	if not Shop.earlyOn() then return { ok = false, why = "not yet" } end
+	local price = Shop.earlyPrice(wid)
+	if not price then return { ok = false, why = "that one doesn't open at a level" } end
+	local w = wid :: string
+	if d.weapons[w] then return { ok = false, why = "you have it already" } end
+	if Unlocks.forPlayer(p, w) then return { ok = false, why = "it's open for you already" } end
+	local Q = quests()
+	if not Q or type(Q.spendBrass) ~= "function" then return { ok = false, why = "the wallet isn't open" } end
+	if (tonumber(p:GetAttribute("Brass")) or 0) < price then return { ok = false, why = "not enough coins" } end
+	if s.busy then return { ok = false, why = "one at a time" } end
+	s.busy = true
+	local id = "early:" .. w
+	d.pending[id] = { wid = w, brass = price, t = os.time(), how = "early" }
+	if not write(s) then
+		d.pending[id] = nil
+		s.busy = false
+		return { ok = false, why = "couldn't save. try again" }
+	end
+	local ok, why = Q.spendBrass(p, price, "early " .. w, id)
+	if not ok then
+		d.pending[id] = nil
+		write(s)
+		s.busy = false
+		return { ok = false, why = why or "couldn't take the coins" }
+	end
+	d.weapons[w] = { t = os.time(), how = "early", id = id }
+	d.pending[id] = nil
+	write(s)
+	s.busy = false
+	publish(p)
+	print(("[jankfire] purchases: %s unlocked the %s early for %d coins"):format(p.Name, w, price))
 	return { ok = true, wid = w }
 end
 
@@ -281,8 +455,8 @@ local function settle(p: Player, s: State)
 		if took == true and type(e) == "table" and type(e.offer) == "string" then
 			-- (a coins buy: the coins went, so it's handed over now; the grant is idempotent by the id)
 			if grantCoinsBuy(p, e, id) then d.pending[id] = nil end
-		elseif took == true and type(e) == "table" and forSale(e.wid) then
-			d.weapons[e.wid] = d.weapons[e.wid] or { t = os.time(), how = "brass", id = id }
+		elseif took == true and type(e) == "table" and (forSale(e.wid) or Shop.earlyPrice(e.wid) ~= nil) then
+			d.weapons[e.wid] = d.weapons[e.wid] or { t = os.time(), how = if e.how == "early" then "early" else "brass", id = id }
 			d.pending[id] = nil
 		elseif took == false then
 			d.pending[id] = nil
@@ -313,9 +487,20 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		return Purchases.buyWithBrass(p, a)
 	elseif op == "coins" then
 		return Purchases.buyWithCoins(p, a, b)
+	elseif op == "pick" then
+		return Purchases.pick(p, a, b)
+	elseif op == "early" then
+		return Purchases.buyEarly(p, a)
 	elseif op == "dev" then
 		if not isDev(p) then return { ok = false, why = "nope" } end
 		local d = dataOf(p)
+		if a == "extras" and d then return { ok = true, extras = d.extras, order = d.extrasOrder } end
+		if a == "forgetExtras" and d then
+			d.extras = {}; d.extrasOrder = {}
+			write(s)
+			publishPicks(p)
+			return { ok = true }
+		end
 		if a == "forget" and type(b) == "string" and d then
 			d.weapons[b] = nil
 			for id, e in d.pending do if type(e) == "table" and e.wid == b then d.pending[id] = nil end end
@@ -338,6 +523,7 @@ local function load(p: Player)
 	s.ready = true
 	prof.onLost.Event:Connect(function() warn("[jankfire] purchases: another server took " .. p.Name .. "'s save") end)
 	publish(p)
+	publishPicks(p) -- (a big pack's skin pick still waiting: the shop asks again)
 	task.spawn(settle, p, s)
 end
 

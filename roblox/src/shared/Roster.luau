@@ -322,6 +322,10 @@ Roster.wrapById.ducky.vip = true
 -- the VIP daily reward only (17 Nov 2026, the Triangulum trio): VipDailyData.EXCLUSIVE is its daily-only mark, so the
 -- containers, the shop and the VIP pack skip it. Never vip = true here (the VIP pack would give it to every VIP)
 wrap("triangulum", "Triangulum", "legendary", { "2a355f", "bf9c55", "ffe7a6" }, "speck", nil, nil, nil, { 3 })
+-- the big coin packs only (19 Nov 2026, the owner's "a gold wrap" for the 4,500 pack, Shop.PACK_GOLD): Bullion, worn on
+-- every gun. a different gold from Mastery Gold (one polished colour, earned by weapon level): antique gold with bright
+-- gold pieces. never in a container, the rotation or a bundle (LootTable.exclusive, Shop.PACK_GOLD)
+wrap("packgold", "Bullion", "legendary", { "8c6a1e", "f2c94c" }, "speck", "Metal", 0.4)
 -- WEAPON MASTERY (18 Nov 2026, the owner: "level up weapons to unlock gold, damascus, diamond and galaxy camo for their
 -- respective guns"): earned per gun by levelling it (the weapon-mastery session's unlocks), never sold, never in a
 -- container or a bundle (mastery = true). A prestige ladder: polished gold, pattern-welded steel, faceted diamond, then

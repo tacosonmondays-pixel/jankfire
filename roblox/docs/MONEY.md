@@ -60,6 +60,29 @@ about 160) and the weekly track 525 a week. That's up to about 1,650 a week, and
 
 Deals: the skin's coin price less the deal's 20-40% (an epic skin at 35% off: 1,300).
 
+**Early unlocks** (19 Nov, the owner: "coin is supposed to be able to buy weapons early!"). Switch
+`Shop.EARLY_ON = false` (Studio: `EarlyTest`). A weapon or gadget that opens at a level (Unlocks.LEVEL, 2 and up) can
+be bought with coins before the player reaches that level:
+- It's kept for good. The server takes the coins and records it like a Robux weapon (Purchases "early", the
+  RobuxOwned list), and reaching the level later changes nothing.
+- The armory tile says "LV 7 · or 1,500 COINS", and its button says UNLOCK NOW, then SURE?.
+- The shop's WEAPONS tab has an UNLOCK EARLY row with every weapon the player hasn't reached yet.
+- The four Robux weapons keep their own Robux and coin prices.
+
+| Opens at level | Coins |
+|---|---|
+| 2-3 | 500 |
+| 4-6 | 1,000 |
+| 7-9 | 1,500 |
+| 10-12 | 2,000 |
+| 13-15 | 2,500 |
+| 16-18 | 3,000 |
+| 19-21 | 3,500 |
+| 22-25 | 4,000 |
+
+The top band stays under the Robux weapons' coin prices (4,000-5,000). At about 1,300 coins a week, a level-2 weapon
+is about 3 days of coins, and a level-25 one about 3 weeks.
+
 **The pace** at about 1,300 a week:
 - a common skin in about 2 days, a rare in 4;
 - an epic in about 1.5 weeks, a legendary in about 4.
@@ -83,6 +106,117 @@ Tested 18 Nov, place version 1037 (`CoinsOnlyTest` on in the Play server only):
 - the FEATURED and CONTAINERS tabs show coin prices (`money/coins-only-featured.jpg`, `money/coins-only-containers.jpg`).
 
 The loot and coins saves were put back. The test deal stays marked as had on the `_studio` save until the day turns.
+
+## Weapon bundles (built 19 Nov, switch OFF, waiting on the owner's review)
+
+The owner: "we should have bundles that include some free weapons too, maybe assault bundle can come with like burst
+minigun smg etc. Explosives janky can come with like pepper a couple other silly ones". Robux only.
+- **The switch:** `Shop.WEAPON_BUNDLES_ON = false` in `shared/Shop.luau` (Studio: `ReplicatedStorage` attribute
+  `WeaponBundlesTest` in a Play test).
+- **Where they show:** the shop's WEAPONS tab, a WEAPON BUNDLES row under the four Robux weapons. Each card opens the
+  bundle's panel (BUY, and GIFT once gifts are on). They are not in the BUNDLES grid, the featured pick or the hub's
+  holograms; the armory's hologram pads can show them later.
+- **What they give:**
+  - the bundle's Robux weapon, for good (`Purchases.giveWeapon`), so it stays unlocked when `WEAPONS_ROBUX_FREE`
+    goes off;
+  - a wrap for each weapon in it, for that weapon only (the cosmetic bundles' wraps are on every gun);
+  - a hat or card looks.
+  - Existing wraps, hats and card looks only, because skins are paused.
+
+| Bundle | Weapons (each with its wrap) | Also | Parts one by one | Price |
+|---|---|---|---|---|
+| **Assault** | Minigun (Tiger), Assault Rifle (Camo), SMG (Duct Tape), Burst Rifle (Ghost), LMG (Moss), Marksman Rifle (Wood Burl) | title ZERO RECOIL, background Camo | 1,359 | **799** |
+| **Explosives** | Chicken Rocket (Lava, and the Googly Eyes hat), Bowling Ball Launcher (Bowling Alley), Hot Sauce (Ketchup & Mustard), Frag Grenade (Hazard Stripes), Party Popper (Sprinkles), Peel Shooter (Memphis 90s), Shopping Cart Cannon (Receipt) | background Furnace | 1,474 | **799** |
+
+The parts are priced at today's Robux prices: the weapon (Minigun 249, Chicken Rocket 199) plus each wrap, hat and card
+look at its single price. Both bundles cost about 41-46% less than their parts.
+- **Products:** "Assault Weapon Bundle" 3733671860 and "Explosives Weapon Bundle" 3733671907, both 799.
+- **Receipts:** ShopReceipts gives the weapon first, then `Loot.grant` gives the cosmetics. Each step is idempotent by
+  the purchase id.
+
+**For the owner:**
+- **Someone who already owns the weapon** pays the same price. Splitting the price would need a second product per
+  bundle.
+- **"Pepper"** is read as Hot Sauce.
+
+## The big coin packs' extras (built 19 Nov, switch OFF, waiting on the owner's review)
+
+The owner: "the bigger packs should come with rewards like rivals gives you, weapon skins for the 2 biggest packs, a
+finisher for a random weapon I think, a gold wrap, a skin case etc".
+- **The switch:** `Shop.PACK_EXTRAS_ON = false` (Studio: `PackExtrasTest`).
+- **1,999 Robux pack:** 28,000 coins, plus ONE legendary weapon skin the player picks, plus 1 Crate.
+- **4,500 Robux pack:** 70,000 coins, plus ONE skin with a finisher the player picks, plus the Bullion wrap on every
+  gun, plus 3 Crates.
+- **The tiles** list the extras under the coin amount: "+ LEGENDARY SKIN · + CRATE" and
+  "+ FINISHER SKIN · + GOLD WRAP · + 3 CRATES".
+
+**How the skin works:**
+- **Picked, never random.** A random item bought with Robux would be another paid random item.
+- **The pick waits in the buyer's save** (`Purchases`, `data.extras`, the player attribute `PackPicks`) until it's made.
+  The shop's PICK panel comes up right after the purchase and every time the shop opens until then. A crash never
+  loses it.
+- **The lists** (`Shop.PICKS`; any skin not in the place drops out):
+  - legendary: Keytar, Neon Tube, Musket, Butterfly, Reaper, Golden Duck, Anime Aura (legendary skins that are no
+    set's piece);
+  - finisher: Seraph Rifle, Infernal Rifle, Sakura, Pumpkin Patch, Dust Drover, Iron Horse, Star Drover,
+    Streamliner.
+- **Already own the whole list:** the skin comes as 5,000 coins instead (a legendary skin's coin price), and the
+  panel says so.
+
+**Bullion** (`packgold`, Roster) is a new wrap made only for the 4,500 pack:
+- antique gold with bright gold pieces, metal. Not Mastery Gold, which stays earned by weapon level;
+- never in a container, the rotation or a bundle (`Shop.PACK_GOLD`, `LootTable.exclusive`);
+- already owned: 3,000 coins instead.
+
+**The Crates** follow the paid-random-items rules:
+- odds are shown before any opening;
+- a player Roblox's policy restricts gets coins instead, 900 a Crate.
+
+**Every purchase gives the extras again**, with the same coins rules. Each part is decided once, written, then given
+under its own id (`<purchase>:crates`, `:gold`, `:skin`), so a receipt Roblox sends twice gives nothing twice.
+
+**For the owner:**
+- **Every finisher skin is a skin set's piece** (Shared.Finishers): the 4,500 pack gives a player one piece of a set,
+  and buying that set later costs only the pieces they're missing.
+- **The legendary list** leaves out set pieces, so sets keep their own rule.
+
+## Gifts (built 19 Nov, switch OFF, waiting on the owner)
+
+The owner: "weapon bundles should be gamepasses too! I want people to be able to gift them! Should all passes be game
+passes?"
+- **Why not game passes.** Roblox has no gifting of game passes: a pass is only ever bought for your own account. So
+  the bundles stay developer products, and the shop gifts them itself.
+- **VIP stays a game pass** (a perk for yourself). To give VIP to someone else there is a separate product,
+  "VIP Gift" (3733671921, 399), that grants VIP.
+- **The switch:** `Shop.GIFTS_ON = false` (Studio: `GiftsTest`).
+
+**What can be gifted** (`Shop.giftable`):
+- the cosmetic bundles, the weapon bundles, a whole skin set and the coin packs;
+- VIP, through "VIP Gift";
+- never a container or a single item.
+
+**How it works:**
+1. **GIFT** sits beside BUY in a bundle's or set's panel and in VIP's, and next to each coin pack's price.
+2. The buyer picks who gets it: anyone in the server, or a Roblox user name. A name is accepted only if that player has
+   played the game before (a loot save of theirs exists).
+3. The buyer pays the offer's own product. The server remembers who it's for (`ShopReceipts`, the ask).
+4. The receipt writes the gift into the receiver's **gift box** before it's granted. The box is its own data store,
+   `JankfireGiftBox_v1` (`_studio` in Studio, one key per receiver; `server/Gifts.luau`).
+5. The box empties into the receiver's things as soon as they're in a server:
+   - in this server: at once;
+   - in another: that server is told over MessagingService;
+   - offline: on their next join.
+   Each gift is given once, by `gift:<purchase id>`.
+6. **Everyone is told:**
+   - the receiver gets the present-box reveal (GiftReveal, DevFx "gift");
+   - the chat says "<buyer> gifted <receiver> <what>" in the receiver's server, and in the buyer's too if that's
+     another server;
+   - the buyer's shop says "GIFT SENT TO <name>".
+7. **A restricted receiver** (Roblox's paid-random-items policy) never gets a container: a gifted pack's Crates come as
+   coins, decided for the receiver.
+
+If the server restarts between the prompt and the receipt, the ask is lost and the purchase goes to the buyer instead
+(VIP Gift: VIP for the buyer).
 
 ## The switch
 

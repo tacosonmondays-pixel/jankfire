@@ -74,6 +74,8 @@ function Unlocks.robux(wid: string): boolean return Unlocks.ROBUX[wid] ~= nil en
 function Unlocks.check(wid: string, level: number, kept: { [string]: boolean }?, all: boolean?, ownsPass: boolean?): (boolean, string?)
 	if all then return true, nil end
 	if kept and kept[wid] then return true, nil end
+	-- (bought for good: a Robux weapon, or one unlocked early with coins before its level, 19 Nov: RobuxOwned)
+	if ownsPass then return true, nil end
 	if Unlocks.ROBUX[wid] then
 		if Unlocks.robuxFree() or ownsPass then return true, nil end
 		return false, "ROBUX"
