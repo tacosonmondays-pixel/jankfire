@@ -298,8 +298,8 @@ function M.world(model: Model, api: any): ((number) -> ())?
 			if mine then api.shake(0.025, 0.4) end
 		elseif kind == "bell" then
 			local ring1 = root.Position + Vector3.new(0, 6, 0)
-			soundAt("door_vip_bell", ring1, 0.9, 0.55)
-			if move == "start" or move == "end" then task.delay(0.28, function() soundAt("door_vip_bell", ring1, 0.9, 0.55) end) end
+			soundAt("box_bell", ring1, 0.9) -- (a real bell recording: 19 Nov, no pitch tricks)
+			if move == "start" or move == "end" then task.delay(0.28, function() soundAt("box_bell", ring1, 0.9) end) end
 		end
 	end)
 	-- each boxer's body, every frame: its clip, or its pose

@@ -58,7 +58,7 @@ for _, d in ipairs(D) do
 	local name, vol, list, jit, loop, rmin, rmax = d[1], d[2], d[3], d[4], d[5], d[6], d[7]
 	local s = lib:FindFirstChild(name)
 	if not s then s = Instance.new("Sound"); s.Name = name; s.Parent = lib end
-	if s:GetAttribute("SoundIdV2") == nil then s:SetAttribute("SoundIdV2", s.SoundId); s:SetAttribute("VolumeV2", s.Volume) end
+	for _, a in ipairs({ "SoundIdV1", "VolumeV1", "SoundIdV2", "VolumeV2" }) do s:SetAttribute(a, nil) end -- (19 Nov: the old code-rendered takes are retired; no backups kept)
 	s.Volume = vol
 	if jit then s:SetAttribute("Jitter", jit) end
 	if loop then s.Looped = true end

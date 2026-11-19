@@ -1,3 +1,47 @@
+# Code-sound sweep, and the Overdrive Rig (19 Nov 2026, place version 1045)
+
+The owner: "update any code sfx for non-code ones". The sweep:
+- **The code:** every `.luau` in `roblox/src` and `roblox/studio-tools` was searched for Sound creation, audio effects, tweened `PlaybackSpeed`, oscillator or synth words, and `Sfx.play` calls with a pitch.
+- **The place:** every Sound, AudioPlayer and sound-id attribute was scanned (266,197 instances, 408 ids), and each id not in `store.json` was named through `GetProductInfo`.
+
+Roblox can't synthesize audio, so a "code sound" here means one of three things: a clip rendered by our old tools (`render_sfx.mjs`, the v1/v2 sets), a recording pitched to fake a different sound, or a name the code plays that had no Sound (silence, or a pitch-trick fallback).
+
+| where | what it was | now |
+| --- | --- | --- |
+| every library Sound and the training lot's door / timer Sounds | the old code-rendered takes kept as `SoundIdV1` / `SoundIdV2` backup attributes (500 attributes, 150 uploads of ours). Nothing played them | removed; `store_sounds.mjs` no longer writes backups |
+| boxing ring bell (`MiniBoxUI`, start/end/round) | the VIP shop-door bell pitched down to 0.55 to pass as a ring bell | `box_bell`: 9113804421 Church Bell Soft Clanking Hits 1, natural pitch. The library has no boxing bell; this is a real bell |
+| chess / checkers piece (`MiniBoardUI`) | `mini_piece` missing, so the gavel played at pitch 1.7 and volume 0.2 | `mini_piece`: 9125575925 Gavel Movement Set Down Drop Light Wood Bounce, a wooden piece set down |
+| arm-wrestling slam (`MiniArmUI`) | `mini_slam` missing, so a gavel and a body thud were layered | `mini_slam`: 9114459038 / 9114460468 Fist Pounds Table Wooden Impacts 3 / 11 |
+| knife / spoon stab hit (`Arsenal`, `crunch`) | missing: silent | `crunch`: 9113958797 Crack Egg Crunchy 4 |
+| water splash (`Fx.splash`) | missing: silent | `splash`: 9125702439 Mud Puddle Splash Shallow Water Impacts Hits |
+| the falling duck in the duck mode (`ModeHud`, `whistle`) | missing: silent | `whistle`: 9119198140 / 9119197920 Slide Whistle 4 / 3, both measured falling in pitch (spectrum track) |
+| BURST! callout (`Arsenal`) | the katana's draw ring played twice at pitch 1.3 then 1.6: a two-note tune made by pitching one clip | `burst_ding`: 9125485591 Desk Bell Counter Service Single Ringing Ding is in. The two-line swap in Arsenal waits until the two sessions changing Arsenal now have landed |
+
+Checked and kept:
+- The fountain trickle (Freesound 676173, CC0) is a recording.
+- The Gut's subway train (store audio 5870203641) and Desert v2's wind (81404060588532) are store recordings.
+- The other runtime Sounds are Pro Sound Effects: the egg toy top, the portal hum, HR Guy's hiss and drone, the speed-lines wind.
+- These are recordings with a pitch step, not made sounds: the gun-handling clicks at 0.8–1.5, the CHAIN ding rising with the multiplier, the long-jump ding by distance, and jitter.
+- The rendered `.ogg` / `.wav` files in `roblox/assets/sounds/` and the tools that made them stay in git as history. Nothing in the place uses them.
+
+The Overdrive Rig gadget (weapons-port), all Pro Sound Effects:
+
+| name | take(s): id, title, cut (s) | Volume |
+| --- | --- | --- |
+| `rig_on` | 9114583506 Giant Servo Motor Powering Up 1, 0.25–1.0 | 0.37 |
+| `rig_off` | 9125925568 Servo Shut Off Giant Machine Mechanical Quick, 1.3–2.3 (the shut-off) | 0.41 |
+| `rig_break` | 9118201103 Robot Debris Metal Parts Target Drone 1, 0–1.3 | 0.29 |
+| `rig_charge` | 9114246115 Electric Hum 15, 0.6–2.8 (steady to the dB), **Looped**, carries 6–120 | 0.16 |
+| `rig_punch` | 9120006280 / 9120009348 Thruster Blast 1 / 6 | 0.82 |
+| `rig_punch_hit` | 9116673944 Metal Impact Heavy Clunking Hits Scraping 4, 0–0.85 | 0.21 |
+| `rig_missile` | 9120009750 Thruster Blast 13, 0.08–1.2 | 0.37 |
+| `rig_missile_boom` | 9119236749 / 9119236757 Small Explosion 1 / 2 | 1.74 |
+| `rig_denied` | 9119717950 / 9119717971 Switch Clicks Metallic Dull Pops 7 / 9 | 2.07 |
+
+Checked in Edit only: all 16 new clips load, and the MiniBoxUI swap compiles and matches git. Not heard in Play.
+
+---
+
 # Weapons batch E: Card Deck, Shopping Cart Cannon, Lasso (18 Nov 2026, place version 873)
 
 Asked for by the weapons-port session. All 14 are Pro Sound Effects recordings, with no voices or crowds. The three loops
