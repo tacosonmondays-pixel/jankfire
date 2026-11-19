@@ -89,6 +89,9 @@ local function carried(d: Data, out: { string }, slotsOf: { string }): { string 
 	for p, dd in data do
 		if dd == d then
 			for i, slot in slotsOf do
+				-- (a weapon you can't carry now: a Robux one since they were locked, 19 Nov, or a level's you haven't
+				-- reached. the slot's default goes in your hands; your pick stays saved and comes back once it's yours)
+				if out[i] and not Unlocks.forPlayer(p, out[i]) then out[i] = DEFAULT[slot] end
 				if out[i] then out[i] = RankedDraft.carry(p, out[i], DEFAULT[slot], liveOf(slot)) end
 			end
 			break
@@ -639,6 +642,11 @@ local function added(p: Player)
 	-- (the owner, and every Studio test, start with every weapon open: Unlocks. "unlockall" false shows the locks)
 	if RunService:IsStudio() or p.UserId == game.CreatorId then p:SetAttribute("UnlockAll", true) end
 	publish(p)
+	-- (what you may carry changed: a weapon bought or unlocked, a level up, the owner's unlock. the carry check falls back to
+	-- the default for a pick you can't have: it's worked out again now, so a bought weapon is in your hands at once. 19 Nov)
+	for _, a in { "RobuxOwned", "Level", "UnlockAll" } do
+		p:GetAttributeChangedSignal(a):Connect(function() if data[p] then pushNext(p); publish(p) end end)
+	end
 	task.spawn(load, p)
 end
 

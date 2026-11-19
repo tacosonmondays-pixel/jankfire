@@ -15,7 +15,8 @@ local RunService = game:GetService("RunService")
 
 local Unlocks = {}
 
-Unlocks.WEAPONS_ROBUX_FREE = true -- (the owner's switch, like Config.LOOT_FREE. off: the Robux weapons must be bought)
+Unlocks.WEAPONS_ROBUX_FREE = false -- (the owner's switch, like Config.LOOT_FREE. off: the Robux weapons must be bought.
+-- OFF since 19 Nov, the owner: "lock them". a saved pick of one you don't have is carried as the slot's default: Loadout)
 -- whether the Robux weapons are free for everyone right now (the switch; a Studio play test of the paid shop,
 -- ReplicatedStorage's MoneyTest, locks them like the switch off would: Shop.luau. never in a live game)
 function Unlocks.robuxFree(): boolean

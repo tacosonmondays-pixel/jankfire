@@ -84,13 +84,15 @@ end
 -- the offer a gift is for (a coin pack: "coins:<id>"), giftable
 local function offerOf(id: any): any
 	if type(id) ~= "string" then return nil end
-	local o = if string.match(id, "^coins:[%w_]+$") then Shop.coinPack(id) else Shop.byId[id]
+	local o = if string.match(id, "^coins:[%w_]+$") then Shop.coinPack(id) else (Shop.byId[id] or Shop.offer(id))
 	return if o and Shop.giftable(o) then o else nil
 end
 -- its plain name for the chat line and the toasts: "the Assault bundle", "the Seraph skin set", "6,500 Coins", "VIP"
 local function words(o: any): string
 	if o.type == "coins" then return tostring(o.name) end
 	if o.type == "vipgift" then return "VIP" end
+	if o.type == "single" then return "the " .. tostring(o.name) .. " skin" end
+	if o.type == "container" then return "a " .. tostring(o.name) end
 	if o.set then return "the " .. tostring(o.name) .. " skin set" end
 	return "the " .. tostring(o.name) .. " bundle"
 end
@@ -101,6 +103,10 @@ local function revealItems(o: any): { any }
 		return { { type = "brass", id = "brass", name = "Coins", rarity = "rare", n = o.amount } }
 	elseif o.type == "vipgift" then
 		return { { type = "vip", id = "vip", name = "VIP", rarity = "vip" } }
+	elseif o.type == "container" then
+		return { { type = "container", id = o.id, name = o.name, rarity = o.rarity or "rare", n = 1 } }
+	elseif o.type == "single" then
+		return { { type = o.kind, id = o.item, name = o.name, rarity = o.rarity, weapon = o.weapon } }
 	end
 	local Roster = require(Shared:WaitForChild("Roster")) :: any
 	for _, wid in (o.weapons or {}) :: { string } do
@@ -179,7 +185,19 @@ local function giveOne(p: Player, g: any, gid: string): boolean
 		end
 		return true
 	end
-	-- a bundle, a weapon bundle or a skin set: its weapons, then its things (the ones they lack)
+	-- a container: one in their stock, or its coins where Roblox's policy keeps them from paid random items
+	if o.type == "container" then
+		local L, Q = module("Loot"), module("Quests")
+		if not L or type(L.grant) ~= "function" then return false end
+		if type(L.restricted) ~= "function" or L.restricted(p) then
+			if not Q or type(Q.buyBrass) ~= "function" then return false end
+			local ok, res = pcall(Q.buyBrass, p, Shop.coinPrice(o, 1) or 0, gid)
+			return ok and res == true
+		end
+		local ok, res = pcall(L.grant, p, o.id, gid)
+		return ok and res == true
+	end
+	-- a bundle, a weapon bundle, a skin set or a single skin: its weapons, then its things (the ones they lack)
 	if o.weapons then
 		local P = module("Purchases")
 		if not P or type(P.giveWeapon) ~= "function" then return false end

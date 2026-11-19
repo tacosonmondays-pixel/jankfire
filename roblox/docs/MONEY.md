@@ -15,11 +15,52 @@ attribute `Brass`, `Quests.luau`, the id `"brass"`). Since 18 Nov every screen c
 
 There is no second currency: two would confuse players.
 
-## The coins-only shop (prepared 18 Nov, switch OFF, waiting on the owner's prices)
+## THE ROBUX RULE (19 Nov 2026, the owner: "make sure only skins cost robux!" and "weapons shouldnt have a tab then!")
+
+In the place since version 1070 (live at the owner's next publish). `Shop.robuxFor(o)` decides it, and every screen and
+the receipts follow it.
+
+**What Robux buys:**
+- weapon skins, singly or as a skin set (coins buy them too: the buy panel shows Robux first, then "OR N COINS");
+- containers: Crate, Duffel Bag, Spray Can (coins and tickets too; the odds and the restriction checks as before);
+- coin packs (99 / 499 / 1,999 / 4,500, with the big packs' extras) and the VIP pass;
+- gifts of those: a weapon skin, a skin set, coins, a container, VIP ("VIP Gift").
+
+**Coins only:**
+- every weapon:
+  - the four Robux weapons are locked (`Unlocks.WEAPONS_ROBUX_FREE = false`) and bought for their coin price in
+    the loadout's armory (4,000 / 5,000);
+  - level weapons open by level, or early with coins (the early-unlock table);
+- gadgets (by level or early coins);
+- wraps, hats, card looks, kill effects, emotes, and the bundles of those (40% under their pieces' coin prices);
+- the owner's deals (a coin discount on a skin);
+- the weapon bundles (Assault, Explosives): coin bundles in the armory (below).
+
+**The shop has no WEAPONS tab** (its page is never opened; a prompt for it opens FEATURED).
+
+**Already bought for Robux stays bought.** The weapon and weapon-bundle developer products are OFF SALE
+(3733204206, 3733204303, 3733204322, 3733204340, 3733671860, 3733671907): never prompted, never in a gift. Their
+receipts are still granted. The other products for coins-only things stay on sale but are never prompted (late
+receipts granted).
+
+**Loadout:** a saved pick of a weapon the player can't carry now is carried as the slot's default. The pick stays saved
+and comes back the moment the weapon is theirs: bought, unlocked, levelled or gifted. Nothing is erased.
+
+**Tested 19 Nov, place version 1070** (solo Play, the owner's `_studio` saves, restored after):
+- Locking: at level 1 with UnlockAll off, a saved Minigun pick was carried as the AR and the Revolver as the Pistol.
+- Buying back: the Minigun bought for 5,000 coins was in the loadout at once.
+- Dev-menu gift: GIFT gave the Big Laser Pointer.
+- Bundle quotes: Explosives 17,100 coins (parts 22,800); Assault 5,200 with the Minigun already owned.
+- Bundle purchase: buying Assault unlocked the Burst Rifle, LMG and Marksman Rifle and gave its cosmetics, then
+  its quote showed YOURS.
+- Shop screens: no WEAPONS tab; the Crate's panel shows BUY 120 Robux, OR 900 COINS, REDEEM 12 TICKETS.
+- Armory photo: `money/armory-coin-bundles.jpg`.
+
+## The coins-only shop (ON since 19 Nov, the owner approved the prices; live at the next publish)
 
 The owner: "wraps and skins that aren't a part of bundles should be coin purchased; the only thing you buy with robux are
-weapons, gadgets and bundles, like in rivals". Built and tested; in the place since version 1037, but **off**:
-`Shop.SINGLES_COINS_ONLY = false` in `shared/Shop.luau`. Turning it on is that one line, then a publish.
+weapons, gadgets and bundles, like in rivals". Built and tested; in the place since version 1037, and **on** since 19 Nov:
+`Shop.SINGLES_COINS_ONLY = true` in `shared/Shop.luau` (the owner: "Default everything else", the proposed prices accepted).
 
 With it on:
 - **Robux:** the four Robux weapons (or coins, as now), bundles and skin sets, coin packs, VIP.
@@ -61,7 +102,7 @@ about 160) and the weekly track 525 a week. That's up to about 1,650 a week, and
 Deals: the skin's coin price less the deal's 20-40% (an epic skin at 35% off: 1,300).
 
 **Early unlocks** (19 Nov, the owner: "coin is supposed to be able to buy weapons early!"). Switch
-`Shop.EARLY_ON = false` (Studio: `EarlyTest`). A weapon or gadget that opens at a level (Unlocks.LEVEL, 2 and up) can
+`Shop.EARLY_ON = true` since 19 Nov (Studio test attribute: `EarlyTest`). A weapon or gadget that opens at a level (Unlocks.LEVEL, 2 and up) can
 be bought with coins before the player reaches that level:
 - It's kept for good. The server takes the coins and records it like a Robux weapon (Purchases "early", the
   RobuxOwned list), and reaching the level later changes nothing.
@@ -107,11 +148,17 @@ Tested 18 Nov, place version 1037 (`CoinsOnlyTest` on in the Play server only):
 
 The loot and coins saves were put back. The test deal stays marked as had on the `_studio` save until the day turns.
 
-## Weapon bundles (built 19 Nov, switch OFF, waiting on the owner's review)
+## Weapon bundles (ON since 19 Nov; COIN bundles in the armory since the Robux rule, below the top)
+
+Since the owner's Robux rule (top of this file) they are **coins, in the loadout's armory**, not the shop. Each one unlocks
+every weapon in it the player can't carry yet (its Robux weapon at its coin price, each level weapon at its early-unlock
+price) and gives the cosmetics they lack, 25% under those coin prices (`Shop.WBUNDLE_OFF`, Purchases "wbquote" /
+"wbundle"). Assault from nothing: 8,950 coins (parts 11,950). Explosives: 17,100 (parts 22,800). The Robux text below
+is how they were first built.
 
 The owner: "we should have bundles that include some free weapons too, maybe assault bundle can come with like burst
 minigun smg etc. Explosives janky can come with like pepper a couple other silly ones". Robux only.
-- **The switch:** `Shop.WEAPON_BUNDLES_ON = false` in `shared/Shop.luau` (Studio: `ReplicatedStorage` attribute
+- **The switch:** `Shop.WEAPON_BUNDLES_ON = true` since 19 Nov in `shared/Shop.luau` (Studio: `ReplicatedStorage` attribute
   `WeaponBundlesTest` in a Play test).
 - **Where they show:** the shop's WEAPONS tab, a WEAPON BUNDLES row under the four Robux weapons. Each card opens the
   bundle's panel (BUY, and GIFT once gifts are on). They are not in the BUNDLES grid, the featured pick or the hub's
@@ -139,11 +186,11 @@ look at its single price. Both bundles cost about 41-46% less than their parts.
   bundle.
 - **"Pepper"** is read as Hot Sauce.
 
-## The big coin packs' extras (built 19 Nov, switch OFF, waiting on the owner's review)
+## The big coin packs' extras (ON since 19 Nov)
 
 The owner: "the bigger packs should come with rewards like rivals gives you, weapon skins for the 2 biggest packs, a
 finisher for a random weapon I think, a gold wrap, a skin case etc".
-- **The switch:** `Shop.PACK_EXTRAS_ON = false` (Studio: `PackExtrasTest`).
+- **The switch:** `Shop.PACK_EXTRAS_ON = true` since 19 Nov (Studio: `PackExtrasTest`).
 - **1,999 Robux pack:** 28,000 coins, plus ONE legendary weapon skin the player picks, plus 1 Crate.
 - **4,500 Robux pack:** 70,000 coins, plus ONE skin with a finisher the player picks, plus the Bullion wrap on every
   gun, plus 3 Crates.
@@ -180,7 +227,7 @@ under its own id (`<purchase>:crates`, `:gold`, `:skin`), so a receipt Roblox se
   and buying that set later costs only the pieces they're missing.
 - **The legendary list** leaves out set pieces, so sets keep their own rule.
 
-## Gifts (built 19 Nov, switch OFF, waiting on the owner)
+## Gifts (ON since 19 Nov)
 
 The owner: "weapon bundles should be gamepasses too! I want people to be able to gift them! Should all passes be game
 passes?"
@@ -188,7 +235,7 @@ passes?"
   the bundles stay developer products, and the shop gifts them itself.
 - **VIP stays a game pass** (a perk for yourself). To give VIP to someone else there is a separate product,
   "VIP Gift" (3733671921, 399), that grants VIP.
-- **The switch:** `Shop.GIFTS_ON = false` (Studio: `GiftsTest`).
+- **The switch:** `Shop.GIFTS_ON = true` since 19 Nov (Studio: `GiftsTest`).
 
 **What can be gifted** (`Shop.giftable`):
 - the cosmetic bundles, the weapon bundles, a whole skin set and the coin packs;
@@ -294,8 +341,13 @@ isn't granted to the assistant. Watch the first real purchases in the live serve
 - the VIP tile's buy prompted the pass;
 - the items claimed while free were all still owned.
 
-`Unlocks.WEAPONS_ROBUX_FREE` is not part of it: the four Robux weapons stay free for everyone until the owner decides.
-That is a separate decision, because it locks weapons people use today, and ranked is open (PROGRESSION.md, "Ranked").
+`Unlocks.WEAPONS_ROBUX_FREE` was not part of it. The owner decided on 19 Nov ("lock them"), so it's `false` since then:
+- **Locked:** the Minigun, Lefty & Righty, Big Laser Pointer and Chicken Rocket need buying, with Robux or coins
+  (Shop.MONEY.weapons), or come from their weapon bundle or a gift (the dev menu's GIFT, or a paid gift).
+- **Nothing is erased.** A player whose saved pick is one they don't own carries the slot's default (Loadout's carry
+  check, `carried`), and the pick stays saved, so it comes back the moment they own it.
+- **WeaponsKept** (the 18 Nov grandfathering) never held a Robux weapon, because Unlocks.level of one is 1, so no one
+  keeps a free copy.
 
 Also for the owner, on the Creator Hub:
 - Answer the experience questionnaire: the game has paid random items (the containers). See LOOT.md, "Roblox's rules

@@ -73,6 +73,11 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown, giftTo: unkno
 		if not G or not Shop.giftsOn() then return end
 		local go = if string.match(offerId, "^coins:[%w_]+$") then Shop.coinPack(offerId) else Shop.offer(offerId)
 		if not go or not Shop.giftable(go) then return end
+		-- (a container is a paid random item: a buyer Roblox's policy restricts can't buy one, for anyone)
+		if go.type == "container" then
+			local L = loot()
+			if not L or type(L.restricted) ~= "function" or L.restricted(p) then return end
+		end
 		if go.type ~= "coins" and not Shop.onSale(go.id) then return end
 		local okC = G.check(p, giftTo)
 		if not okC then return end
@@ -85,6 +90,7 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown, giftTo: unkno
 	-- a Robux weapon: only one you don't have yet (a second buy would pay for nothing)
 	local wid = string.match(offerId, "^weapon:([%w_]+)$")
 	if wid then
+		if Shop.coinsOnly() then return end -- (19 Nov, the owner: "only skins cost robux": a weapon is coins, in the loadout)
 		local wo = Shop.weaponOffer(wid)
 		local P = purchases()
 		if not wo or not P or not P.ready(p) or P.owns(p, wid) then return end
@@ -114,7 +120,7 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown, giftTo: unkno
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
 	-- (the coins-only shop: singles and containers are coins, never Robux; their products stay for late receipts)
-	if Shop.coinsOnly() and (o.type == "single" or o.type == "container") then return end
+	if Shop.coinsOnly() and not Shop.robuxFor(o) then return end -- (19 Nov: only skins, sets and containers for Robux)
 	-- a paid random item (a container) never goes to a player Roblox's policy keeps them from (the shop's screen hides
 	-- the button; this is the server's own say, the anti-cheat audit, 17 Nov 2026)
 	if o.type == "container" then

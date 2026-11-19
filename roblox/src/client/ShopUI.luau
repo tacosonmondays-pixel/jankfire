@@ -30,7 +30,8 @@ local WHITE = Color3.new(1, 1, 1)
 local ROBUX = utf8.char(0xE002) -- the Robux mark (Roblox's fonts draw it)
 
 local ShopUI = {}
-local TABS = { "featured", "deals", "bundles", "containers", "weapons", "coins", "inventory" }
+-- (no WEAPONS tab since 19 Nov, the owner: "weapons shouldnt have a tab then!": weapons are coins, in the loadout)
+local TABS = { "featured", "deals", "bundles", "containers", "coins", "inventory" }
 local TAB_NAMES = { featured = "FEATURED", deals = "DEALS", bundles = "BUNDLES", containers = "CONTAINERS", weapons = "WEAPONS", coins = "COINS", inventory = "INVENTORY" }
 local LINE = "Free while we test. The prices are for later."
 
@@ -807,13 +808,21 @@ end
 -- the coins-only shop (Shop.coinsOnly, 18 Nov): what an offer costs in coins (n containers), or nil when it's Robux
 function Purse.coins(o: any, n: number?): number?
 	if not o or Shop.free() or not Shop.coinsOnly() then return nil end
+	if o.set then return Shop.coinPrice(o, nil, Till.missing(o)) end -- (a skin set: the skins you lack)
 	return Shop.coinPrice(o, n)
 end
--- what an offer costs, in words: coins in the coins-only shop, else Robux
+-- Robux is the first way to pay for this (19 Nov, the owner's rule: skins, sets, one container; coins as the other way)
+function Purse.robuxFirst(o: any, n: number?): boolean
+	if Shop.free() or not Shop.ROBUX or not Shop.robuxFor(o) then return false end
+	if o.type == "container" and ((n or 1) > 1 or S.restricted) then return false end
+	return Shop.productFor(o, if o.set then Till.missing(o) else nil) ~= nil
+end
+-- what an offer costs, in words: Robux where Robux buys it, else coins
 function Purse.cost(o: any, n: number?): string
 	local c = Purse.coins(o, n)
-	if c then return Purse.words("brass", c) end
-	return priceText((o.robux or 0) * (n or 1))
+	if c and not Purse.robuxFirst(o, n) then return Purse.words("brass", c) end
+	local r = if o.set then bundlePrice(o, Till.missing(o)) else (o.robux or 0) * (n or 1)
+	return priceText(r)
 end
 -- the quests' icon for "brass" / "tix" in a frame (false: QuestUI isn't there, the words say it instead)
 function Purse.icon(kind: string, parent: GuiObject, size: number): boolean
@@ -859,6 +868,7 @@ end
 UI.body = new("Frame", { Name = "Body", BackgroundTransparency = 1 }, UI.stage)
 UI.pages = {}
 for _, t in TABS do UI.pages[t] = new("Frame", { Name = t, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, UI.body) end
+UI.pages.weapons = new("Frame", { Name = "weapons", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, UI.body) -- (built, never opened)
 
 local function header(parent: Instance, text: string, right: string?): (TextLabel, TextLabel)
 	local l = txt(parent, text, 15, T.MUTED, T.FONT_BOLD)
@@ -911,7 +921,7 @@ local function bundleCard(parent: Instance, o: any, order: number): TextButton
 	local rl = rarityLine(c, o.rarity, "BUNDLE", 11)
 	rl.Position = UDim2.new(0, 14, 1, -36); rl.Size = UDim2.new(0.5, 0, 0, 15)
 	local miss = Till.missing(o)
-	local pr = txt(c, if miss == 0 then "OWNED" elseif Shop.free() then priceText(o.robux) .. "   FREE" else priceText(o.robux), 14, if miss == 0 then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	local pr = txt(c, if miss == 0 then "OWNED" elseif Shop.free() then priceText(o.robux) .. "   FREE" else Purse.cost(o), 14, if miss == 0 then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 	pr.RichText = true
 	pr.Position = UDim2.new(0.4, 0, 1, -37); pr.Size = UDim2.new(0.6, -14, 0, 16)
 	c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
@@ -975,7 +985,7 @@ function ShopUI.fillFeatured()
 		local miss = Till.missing(o)
 		UI.heroEyebrow.Text = if o.set then "FEATURED SKIN SET" else "FEATURED BUNDLE"
 		local pr = bundlePrice(o, miss)
-		UI.heroBtn.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(pr) else priceText(pr), miss ~= 0)
+		UI.heroBtn.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(pr) else Purse.cost(o), miss ~= 0)
 	end
 	for _, c in UI.dailyGrid:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
 	for i, id in rot.daily do
@@ -1666,6 +1676,7 @@ function ShopUI.askDeal(skin: string)
 	Purse.row("", 1)
 	UI.cYes.set(if coinsD then "BUY  " .. Purse.words("brass", Shop.coinDealPrice(d.skin, d.pct)) else "CLAIM", true)
 	UI.cItems.Visible = false
+	UI.cAlt.face.Visible = false
 	UI.confirm.Size = UDim2.fromOffset(460, if S.compact then 210 else 230)
 	UI.confirm.Visible = true
 	ShopUI.layer()
@@ -2113,7 +2124,7 @@ function ShopUI.fillInspect()
 		local miss = Till.missing(o)
 		UI.inspNote.Text = (if o.weapons then "the " .. Shop.weaponName(o.weapons[1]) .. " is yours for good. " else "")
 			.. string.format("worth %s %s one by one%s", ROBUX, commas(Shop.worth(o)), if miss > 0 and miss < #o.items then ". you already have " .. (#o.items - miss) else "")
-		UI.inspBuy.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), miss > 0)
+		UI.inspBuy.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. Purse.cost(o), miss > 0)
 	elseif isBox then
 		UI.inspBlurb.Text = o.blurb
 		local have = Till.count(o.id)
@@ -2315,6 +2326,16 @@ do
 		b.face.MouseButton1Click:Connect(function() if b.enabled then ShopUI.redeem(cur) end end)
 		UI.cRedeem[cur] = b
 	end
+	-- (the other way to pay, coins, for something Robux buys first: 19 Nov)
+	UI.cAlt = button(UI.confirm, "", "dark", UDim2.new(1, -44, 0, 44), UDim2.new(0, 22, 1, -114))
+	UI.cAlt.face.ZIndex = 41; UI.cAlt.face.TextSize = 14; UI.cAlt.face.Visible = false
+	UI.cAlt.face.MouseButton1Click:Connect(function()
+		if not UI.cAlt.enabled then return end
+		local o = S.pending and Shop.offer(S.pending)
+		local n = S.pendingN or 1
+		ShopUI.unconfirm()
+		if o and not S.busy then ShopUI.coinTill(o, n) end
+	end)
 end
 -- the REDEEM row for the container being confirmed: its prices, greyed where you're short. returns the height it adds
 function Purse.row(cid: string, n: number): number
@@ -2649,9 +2670,21 @@ function ShopUI.ask(id: string)
 	if free then UI.cBody.Text ..= string.format('<br/><font color="%s">free while we test. later: %s %s</font>', T.hex(T.MUTED), ROBUX, commas(price)) end
 	-- (a container: the REDEEM row, with the quests' wallet)
 	h += Purse.row(if o.type == "container" then o.id else "", n)
+	-- (19 Nov, the owner's rule: Robux first for a skin, a set or one container, coins as the other way on the row over
+	-- BUY; everything else coins only)
+	local rFirst = Purse.robuxFirst(o, n)
+	local coinsN = Purse.coins(o, n)
+	S.payCoins = coinsN ~= nil and not rFirst
 	if o.type == "container" and S.restricted and not free then UI.cYes.set("NOT AVAILABLE HERE", false)
-	elseif Purse.coins(o, n) then UI.cYes.set("BUY  " .. Purse.cost(o, n), canGo) -- (the coins-only shop)
+	elseif S.payCoins then UI.cYes.set("BUY  " .. Purse.words("brass", coinsN :: number), canGo)
 	else UI.cYes.set(if free then (if n > 1 then "CLAIM  x" .. n else "CLAIM") else "BUY  " .. ROBUX .. " " .. commas(price), canGo) end
+	UI.cAlt.face.Visible = rFirst and coinsN ~= nil and not free
+	if UI.cAlt.face.Visible then
+		local above = if UI.cRedeem.tix.face.Visible or UI.cRedeem.brass.face.Visible then 52 else 0
+		UI.cAlt.face.Position = UDim2.new(0, 22, 1, -(114 + above)); UI.cAlt.face.Size = UDim2.new(1, -44, 0, 44)
+		UI.cAlt.set("OR  " .. Purse.words("brass", coinsN :: number), canGo and Purse.of("brass") >= (coinsN :: number))
+		h += 52
+	end
 	UI.confirm.Size = UDim2.fromOffset(math.min(width, (S.W or 1280) - 24), math.min(h, (S.H or 720) - 16))
 	UI.confirm.Visible = true
 	ShopUI.layer()
@@ -2665,7 +2698,7 @@ function ShopUI.commit()
 	if not UI.cYes.enabled then return end
 	ShopUI.unconfirm()
 	if not o or S.busy then return end
-	if Purse.coins(o, n) then ShopUI.coinTill(o, n); return end -- (the coins-only shop: the server takes the coins)
+	if Purse.coins(o, n) and S.payCoins then ShopUI.coinTill(o, n); return end -- (coins: the server takes them)
 	if not Shop.free() and Shop.ROBUX then ShopUI.prompt(o); return end -- (a container, after its odds were shown)
 	S.busy = true
 	local res = if o.type == "container" and n > 1 then Till.ask("buy", id, n) else Till.ask("buy", id)
@@ -3000,7 +3033,7 @@ end
 
 -- ======================================================================== tabs, refills, open / close
 function ShopUI.tab(t: string)
-	if not UI.pages[t] then t = "featured" end -- (a tab this shop doesn't have: a prompt made for a newer one)
+	if not UI.pages[t] or t == "weapons" then t = "featured" end -- (no WEAPONS tab since 19 Nov: a prompt for it opens FEATURED) -- (a tab this shop doesn't have: a prompt made for a newer one)
 	if S.tab ~= t then play("click"); ShopUI.shutOverlays() end -- (a new tab: whatever panel was up goes)
 	S.tab = t
 	for k, b in UI.tabs do b.pick(k == t) end

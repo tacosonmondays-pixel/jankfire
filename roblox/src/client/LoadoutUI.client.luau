@@ -339,6 +339,7 @@ local function buildArmory()
 	armSlot = state.slot
 	for _, c in armCards do c.btn:Destroy() end
 	table.clear(armCards)
+	if News.bundleTiles then News.bundleTiles(state.slot) end -- (the weapon bundles, for coins, over the primaries: 19 Nov)
 	local live, soon = 0, 0
 	for i, e in Roster.list do
 		if e.slot ~= state.slot then continue end
@@ -505,9 +506,19 @@ function News.split(on: boolean)
 	equipBtn.holder.Size = UDim2.fromOffset(if on then 184 else 376, 60)
 	News.brassBtn.holder.Visible = on
 end
+-- (19 Nov, the owner: "make sure only skins cost robux!": a Robux weapon is bought with coins here, one button)
+function News.coinsOnly(): boolean
+	local S = News.Shop
+	return S ~= nil and type(S.coinsOnly) == "function" and S.coinsOnly() == true
+end
 function News.buyLook(e: any)
 	local o = News.weaponOffer(e.id)
 	local S = News.Shop
+	if News.coinsOnly() then
+		local armed = News.arm == e.id and os.clock() - News.armT < 4
+		equipBtn:set(if armed then "SURE? " .. News.digits(o.coins) .. " COINS" else "BUY · " .. News.digits(o.coins) .. " COINS", true)
+		return
+	end
 	equipBtn:set(News.digits(o.robux) .. " ROBUX", S.ROBUX == true and S.productFor(o) ~= nil)
 	local armed = News.arm == e.id and os.clock() - News.armT < 4
 	local have = tonumber(me:GetAttribute("Brass")) or 0
@@ -560,7 +571,11 @@ end
 News.brassBtn.face.MouseButton1Click:Connect(function()
 	if not News.brassBtn.enabled then return end
 	local e = Roster.byId[state.focus]
-	if not e or News.buyFor ~= e.id or not News.weaponOffer(e.id) then return end
+	if e then News.payBrass(e) end
+end)
+-- a Robux weapon for coins (the server takes them: Purchases "brass", after a second press)
+function News.payBrass(e: any)
+	if News.buyFor ~= e.id or not News.weaponOffer(e.id) then return end
 	if (tonumber(me:GetAttribute("Brass")) or 0) < News.weaponOffer(e.id).coins then
 		-- (not enough coins: the shop's COINS tab)
 		play("empty"); say("not enough coins.", RED)
@@ -584,7 +599,71 @@ News.brassBtn.face.MouseButton1Click:Connect(function()
 		play("empty"); say(if ok and type(res) == "table" and type(res.why) == "string" then res.why else "that didn't work.", RED)
 	end
 	refresh()
-end)
+end
+
+-- WEAPON BUNDLES for coins (19 Nov, the owner: "only skins cost robux"): Assault and Explosives as two tiles at the top of
+-- the primaries. a tile shows the server's quote (Purchases "wbquote": the weapons you can't carry yet and the
+-- cosmetics you lack, Shop.WBUNDLE_OFF percent under their coin prices); a press arms it, the second buys ("wbundle")
+News.bTiles = {} :: { any }
+function News.bundleTiles(slot: string)
+	for _, t in News.bTiles do t.btn:Destroy() end
+	table.clear(News.bTiles)
+	local S = News.Shop
+	if slot ~= "primary" or not (S and type(S.weaponBundlesOn) == "function" and S.weaponBundlesOn()) then return end
+	for i, o in S.weaponBundles do
+		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = -10 + i, ZIndex = 4 }, armList)
+		T.corner(btn)
+		T.edge(btn, ACCENT, 0.45)
+		local nm = label(btn, string.upper(o.name) .. " BUNDLE", 19, UDim2.fromOffset(16, 8), UDim2.fromOffset(206, 40), TEXT)
+		nm.FontFace = FONT_BOLD; nm.ZIndex = 5; nm.TextScaled = true
+		new("UITextSizeConstraint", { MaxTextSize = 19 }, nm)
+		local tag = label(btn, "", 16, UDim2.fromOffset(16, 51), UDim2.fromOffset(206, 20), ACCENT)
+		tag.FontFace = FONT_BOLD; tag.ZIndex = 5
+		local t = { id = o.id, btn = btn, tag = tag, price = nil :: number? }
+		table.insert(News.bTiles, t)
+		task.spawn(News.quoteBundle, t)
+		btn.MouseButton1Click:Connect(function() News.buyBundle(t) end)
+	end
+end
+function News.quoteBundle(t: any)
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Purchases")
+	if not r then return end
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("wbquote", t.id) end)
+	if not t.btn.Parent then return end
+	if not (ok and type(res) == "table" and res.ok) then t.tag.Text = ""; return end
+	t.price = tonumber(res.price) or 0
+	local nW = if type(res.weapons) == "table" then #res.weapons else 0
+	local armed = News.arm == t.id and os.clock() - News.armT < 4
+	t.tag.Text = if t.price <= 0 then "YOURS" elseif armed then "SURE? " .. News.digits(t.price) .. " COINS"
+		else (if nW > 0 then nW .. " WEAPONS · " else "") .. News.digits(t.price) .. " COINS"
+end
+function News.buyBundle(t: any)
+	if not t.price or t.price <= 0 then return end
+	if (tonumber(me:GetAttribute("Brass")) or 0) < t.price then
+		play("empty"); say("not enough coins.", RED)
+		local okS, ShopUI = pcall(require, script.Parent:WaitForChild("ShopUI"))
+		if okS and type(ShopUI) == "table" and type(ShopUI.open) == "function" then News.close(); task.delay(0.1, ShopUI.open, "coins") end
+		return
+	end
+	if News.arm ~= t.id or os.clock() - News.armT > 4 then
+		News.arm, News.armT = t.id, os.clock()
+		play("click"); task.spawn(News.quoteBundle, t)
+		task.delay(4.1, function() if News.arm == t.id then News.arm = nil; if t.btn.Parent then News.quoteBundle(t) end end end)
+		return
+	end
+	News.arm = nil
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Purchases")
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("wbundle", t.id) end)
+	if ok and type(res) == "table" and res.ok then
+		play("ting"); say("the bundle is yours. its weapons are unlocked for good.")
+	else
+		play("empty"); say(if ok and type(res) == "table" and type(res.why) == "string" then res.why else "that didn't work.", RED)
+	end
+	refresh()
+	for _, x in News.bTiles do task.spawn(News.quoteBundle, x) end
+end
 
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
 local function statsFor(id: string): { Roster.Stat }
@@ -991,7 +1070,7 @@ refresh = function()
 			-- (a level's weapon can be unlocked early with coins: "LV 7 · or 1,500 COINS", 19 Nov)
 			local ep = if not okU and not o and type(whyU) == "string" and string.sub(whyU, 1, 6) == "LEVEL " then News.earlyPrice(a.id) else nil
 			a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
-				elseif o then News.digits(o.robux) .. " ROBUX"
+				elseif o then (if News.coinsOnly() then News.digits(o.coins) .. " COINS" else News.digits(o.robux) .. " ROBUX")
 				elseif ep then "LV " .. string.sub(whyU :: string, 7) .. " · or " .. News.digits(ep) .. " COINS"
 				elseif not okU then whyU or "LOCKED" else ""
 			a.tag.TextColor3 = if equipped then ACCENT elseif o then TEXT elseif not e.live or not okU then DIM else GREY
@@ -1038,7 +1117,7 @@ refresh = function()
 		-- (a Robux weapon you don't have while they aren't free: buy it here, Robux or Brass. 18 Nov)
 		local buy = e.live and not okE and not trying() and p[e.slot] ~= e.id and whyE == "ROBUX" and News.weaponOffer(e.id) ~= nil
 		News.buyFor = if buy then e.id else nil
-		News.split(buy)
+		News.split(buy and not News.coinsOnly())
 		-- (a level's weapon, early with coins: UNLOCK NOW, then SURE?)
 		local ep = if e.live and not okE and not trying() and p[e.slot] ~= e.id and type(whyE) == "string" and string.sub(whyE, 1, 6) == "LEVEL "
 			then News.earlyPrice(e.id) else nil
@@ -1126,7 +1205,7 @@ equipBtn.face.MouseButton1Click:Connect(function()
 	if not equipBtn.enabled then return end
 	local e = Roster.byId[state.focus]
 	if not e or not e.live then return end
-	if News.buyFor == e.id then News.payRobux(e); return end -- (a Robux weapon you don't have: its prompt)
+	if News.buyFor == e.id then if News.coinsOnly() then News.payBrass(e) else News.payRobux(e) end; return end -- (a Robux weapon you don't have: coins since 19 Nov)
 	if News.earlyFor == e.id then News.payEarly(e); return end -- (a level's weapon, early with coins)
 	local ok, why = ask("pick", e.slot, e.id)
 	if ok then

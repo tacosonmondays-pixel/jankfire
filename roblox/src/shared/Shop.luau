@@ -186,10 +186,23 @@ Shop.PRICE = Shop.MONEY.singles
 -- only (Purchases.luau takes them on the server), never prompted for Robux (their developer products stay, and a late
 -- receipt is still granted); Robux buys the weapons, bundles and skin sets, coin packs and VIP. OFF until the owner
 -- approves the prices below. (Studio: a play test turns it on with ReplicatedStorage's attribute CoinsOnlyTest)
-Shop.SINGLES_COINS_ONLY = false
+Shop.SINGLES_COINS_ONLY = true -- (ON since 19 Nov: the owner approved the coin prices)
 function Shop.coinsOnly(): boolean
 	if Shop.SINGLES_COINS_ONLY then return true end
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("CoinsOnlyTest") == true
+end
+-- what Robux may buy (19 Nov 2026, the owner: "make sure only skins cost robux!" and "weapons shouldnt have a tab
+-- then!"): weapon skins, one at a time or as a skin set (coins buy them too), containers (how skins are sold: coins too,
+-- with the odds and the restriction checks as ever), coin packs and VIP. never a weapon, a weapon bundle, a gadget, a
+-- wrap, hat, card look, kill effect or emote, or a bundle of those: coins only. their developer products stay for the
+-- receipts of what was bought before (the weapon ones are off sale)
+function Shop.robuxFor(o: any): boolean
+	if type(o) ~= "table" then return false end
+	if not Shop.coinsOnly() then return true end
+	if o.type == "single" then return o.kind == "skin" end
+	if o.type == "container" or o.type == "coins" or o.type == "pass" or o.type == "vipgift" then return true end
+	if o.type == "bundle" then return o.set ~= nil end
+	return false
 end
 -- coin prices, paced to what a player earns (about 1,000-1,500 coins a week from quests and the weekly track): a common
 -- in a day or two, a legendary in a few weeks. containers about what their items are worth on average (never a
@@ -208,7 +221,7 @@ Shop.MONEY.coinPrices = {
 	containers = { crate = 900, bag = 600, spray = 500 },
 }
 -- an offer's coin price in the coins-only shop (n containers), or nil: not sold for coins
-function Shop.coinPrice(o: any, n: number?): number?
+function Shop.coinPrice(o: any, n: number?, missing: number?): number?
 	if type(o) ~= "table" then return nil end
 	local cp = Shop.MONEY.coinPrices :: any
 	if o.type == "single" then
@@ -217,6 +230,23 @@ function Shop.coinPrice(o: any, n: number?): number?
 	elseif o.type == "container" then
 		local c = cp.containers[o.id]
 		return if c then c * (n or 1) else nil
+	elseif o.type == "bundle" and not o.weapons and type(o.items) == "table" then
+		-- (19 Nov: a bundle of wraps, hats or card looks, coins only: 40% under its pieces' coin prices, to the nearest 50.
+		-- a skin set: its skins' coin prices, no discount; missing = how many you still lack, pro rata)
+		local sum = 0
+		for _, it in o.items do
+			local t = cp.singles[it.kind]
+			local _, r = Shop.itemInfo(it.kind, it.id)
+			sum += (t and t[r]) or 0
+		end
+		if sum <= 0 then return nil end
+		if o.set then
+			local total = #o.items
+			local m = missing or total
+			if m >= total then return sum end
+			return math.max(10, math.ceil(sum * m / total / 10) * 10)
+		end
+		return math.max(50, math.floor(sum * Shop.MONEY.bundleShare / 50 + 0.5) * 50)
 	end
 	return nil
 end
@@ -614,7 +644,7 @@ end
 -- card looks that exist only (skins are paused). its price is under the sum of its parts (Shop.worth counts the weapon:
 -- Assault 1,359 -> 799, Explosives 1,474 -> 799). shown on the shop's WEAPONS page; not in the BUNDLES grid, the featured
 -- pick or the hub's holograms (those walk Shop.bundles). OFF until the owner reviews them (Studio: WeaponBundlesTest)
-Shop.WEAPON_BUNDLES_ON = false
+Shop.WEAPON_BUNDLES_ON = true -- (ON since 19 Nov, the owner)
 function Shop.weaponBundlesOn(): boolean
 	if Shop.WEAPON_BUNDLES_ON then return true end
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("WeaponBundlesTest") == true
@@ -633,6 +663,39 @@ Shop.weaponBundles = {
 		blurb = "The Chicken Rocket for good, a wrap for seven weapons, a hat and a background." },
 } :: any
 for _, b in Shop.weaponBundles do b.productId = nil; Shop.byId[b.id] = b end
+-- (19 Nov, the owner: "only skins cost robux": the weapon bundles are COIN bundles now, sold in the loadout's armory, not
+-- the shop: every weapon in one you can't carry yet (its Robux weapon, and the level weapons you haven't reached) unlocked
+-- for good, plus its cosmetics you lack, WBUNDLE_OFF percent under their coin prices (a Robux weapon at its coin price,
+-- a level one at its early-unlock price). Purchases "wbquote" / "wbundle". their Robux products are off sale)
+Shop.WBUNDLE_OFF = 25
+function Shop.wbundleWeapons(o: any): { string }
+	local out, seen = {}, {}
+	for _, wid in (o.weapons or {}) :: { string } do if not seen[wid] then seen[wid] = true; table.insert(out, wid) end end
+	for _, it in (o.items or {}) :: { any } do
+		local w = it.weapon
+		if type(w) == "string" and not seen[w] and Roster.byId[w] then seen[w] = true; table.insert(out, w) end
+	end
+	return out
+end
+function Shop.wbundleCoins(o: any, lacksWeapon: (string) -> boolean, lacksItem: (any) -> boolean): (number, number)
+	local full = 0
+	for _, wid in Shop.wbundleWeapons(o) do
+		if lacksWeapon(wid) then
+			local m = (Shop.MONEY.weapons :: any)[wid]
+			full += if m then m.coins else ((Shop :: any).earlyPrice(wid) or 0)
+		end
+	end
+	local cp = Shop.MONEY.coinPrices :: any
+	for _, it in (o.items or {}) :: { any } do
+		if lacksItem(it) then
+			local t = cp.singles[it.kind]
+			local _, r = Shop.itemInfo(it.kind, it.id)
+			full += (t and t[r]) or 0
+		end
+	end
+	if full <= 0 then return 0, 0 end
+	return math.max(50, math.floor(full * (100 - Shop.WBUNDLE_OFF) / 100 / 50 + 0.5) * 50), full
+end
 
 -- the singles the rotation can show (wraps and hats that are not free, not held back and not VIP)
 Shop.singlesPool = {} :: { Item }
@@ -914,7 +977,7 @@ function Shop.onSale(id: string, t: number?): boolean
 	local o = Shop.offer(id)
 	if not o then return false end
 	if o.type == "pass" then return false end -- (VIP isn't bought through the till: Vip.luau, the game pass)
-	if (o :: any).weapons and not Shop.weaponBundlesOn() then return false end -- (the weapon bundles: their switch)
+	if (o :: any).weapons and (not Shop.weaponBundlesOn() or Shop.coinsOnly()) then return false end -- (the weapon bundles: coins in the armory now, never the shop's Robux)
 	if o.type == "vipgift" and not Shop.giftsOn() then return false end -- (VIP as a gift: the gifts' switch)
 	if o.type ~= "single" then return true end
 	local now = t or os.time()
@@ -998,7 +1061,7 @@ end
 -- already: coins of the same worth instead, and they're told. the Crates follow the paid-random-items rules (odds before
 -- any opening; where Roblox's policy keeps a player from them, coins of the same worth). every purchase gives them again.
 -- OFF until the owner reviews them (Studio: PackExtrasTest)
-Shop.PACK_EXTRAS_ON = false
+Shop.PACK_EXTRAS_ON = true -- (ON since 19 Nov, the owner)
 function Shop.packExtrasOn(): boolean
 	if Shop.PACK_EXTRAS_ON then return true end
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("PackExtrasTest") == true
@@ -1048,7 +1111,7 @@ end
 -- moment they're in a server, with the present's reveal and a chat line. giftable: bundles (the cosmetic ones, the
 -- weapon bundles, a skin set: the whole set), coin packs, and VIP through its own product ("vipgift": VIP itself stays a
 -- game pass, for yourself). never a container or a single. OFF until the owner has seen it (Studio: GiftsTest)
-Shop.GIFTS_ON = false
+Shop.GIFTS_ON = true -- (ON since 19 Nov, the owner)
 function Shop.giftsOn(): boolean
 	if Shop.GIFTS_ON then return true end
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("GiftsTest") == true
@@ -1058,7 +1121,11 @@ Shop.vipGift = { id = "vipgift", type = "vipgift", name = "VIP", rarity = "vip",
 Shop.byId.vipgift = Shop.vipGift
 function Shop.giftable(o: any): boolean
 	if type(o) ~= "table" then return false end
-	return o.type == "bundle" or o.type == "coins" or o.type == "vipgift"
+	-- (19 Nov, the owner's rule: gifts are what Robux buys. a weapon skin, a skin set, coins, a container, VIP)
+	if o.type == "coins" or o.type == "vipgift" or o.type == "container" then return true end
+	if o.type == "single" then return o.kind == "skin" end
+	if o.type == "bundle" then return o.set ~= nil end
+	return false
 end
 
 -- ---------------------------------------------------------------- early unlocks (19 Nov, the owner: "coin is supposed to
@@ -1067,7 +1134,7 @@ end
 -- three writes as a Robux weapon's coins buy, its RobuxOwned list), and reaching the level later changes nothing. priced
 -- by the level it opens at, under the Robux weapons' coin prices (4,000-5,000). OFF until the owner reviews the prices
 -- (Studio: EarlyTest)
-Shop.EARLY_ON = false
+Shop.EARLY_ON = true -- (ON since 19 Nov, the owner)
 function Shop.earlyOn(): boolean
 	if Shop.EARLY_ON then return true end
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("EarlyTest") == true
