@@ -34,7 +34,7 @@ Rebind on the CONTROLLER tab or in the KEYBINDS' CONTROLLER column. Select a but
 | D-Up | D-Up | READY before a round; goggles flash in play | move |
 | D-Down | D-Down | third person | move |
 | D-Left | D-Left | katana slash wave (the katana session's) | move / slider down |
-| D-Right | D-Right | emote wheel (hold, point with the right stick, let go) | move / slider up |
+| D-Right | D-Right | emote wheel (hold, point with the right stick, let go); GRAPPLE REEL IN while your rope is out (19 Nov) | move / slider up |
 | left stick | left stick | move | move |
 | right stick | right stick | look | scroll |
 | View | Touchpad | the buttons on screen: a pop-up, else the hub's menus and SETTINGS; in a match, SETTINGS | close SETTINGS |

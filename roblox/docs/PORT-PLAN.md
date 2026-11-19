@@ -2191,6 +2191,52 @@ The owner first said "different wall colors all over the hub!", then narrowed it
 - Staging and live `R.check`: 0 problems, 0 overlaps, 0 leaks. Flicker finder clean.
 - Sheet: `roblox/docs/hub/hub_one_brown_1048.jpg`.
 
+## 55. The grapple's reel, QUICKPLAY's auto-lock, and no grapple before GO, 19 November 2026 (place version 1053)
+
+Three owner asks after the shop went live (play-party-ranked, commit e6ce87d):
+- "the same way how you press F to push people in, I want a button that reels you in";
+- "for quickplay can we try having an auto lock grapple to opponent, like it's on a cooldown?";
+- "dont let player be able to use grapple or gadgets before round starts because you can accidentally waste charges".
+
+- **REEL IN**, the yank's mirror: with your rope on anything (a wall point or a person), you're pulled along it to the
+  hook point.
+  - Keys: GRAPPLE REEL IN in Settings > KEYBINDS (`Binds` id `reel`). Keyboard **X**. A pad's **D-Right**, but only
+    while on a rope; off a rope D-Right stays the emote wheel (FlairClient leaves it to the reel then). Phone: a
+    **REEL** button (56, 304), shown while your rope is out, the reel is ready and the round is live.
+  - How: `Move.client` `tryReel` → the Grapple remote's `"reel"` → `Main.server` `reel()`. The server checks you have
+    a rope, it's in range, the round is live, you're not held, and the cooldown has passed.
+  - The server then gives the anti-cheat its grace for the pull (`ACGrace`), stamps `ReelT` (3 s, `reelCool`) and
+    answers `"reel"` with the pull's time. The client pulls you at `reelSpeed` (55 m/s) until you're there
+    (`reelArrive` off a wall point, `bodyLet` off a person), you let go, or `reelMax` (2 s) runs out. The rope then
+    goes, and 45% of the speed carries on (`reelKeep`).
+  - On an enemy it's the Scythe combo's second step, like a yank (`ScytheCombo.step(..., "yank")`).
+  - Ranked: the hook spent its charge already. The reel has its own 3 s cooldown and costs no charge.
+  - **Clash, the owner only:** the owner's dev menu flings what you look at on X (and freezes on Z, red-cards on Y)
+    at any time (`OwnerDev.client`), so the owner's X reels and flings. Asked to be moved behind the open dev panel
+    or a modifier.
+- **QUICKPLAY auto-lock** (`HookCharges.AUTO = { on, cone = 10, cd = 8 }`):
+  - In a QUICKPLAY match that isn't ranked (`opts.quick` from Party and CrossServer → `m.quick` → the `QuickMatch`
+    attribute), a grapple press with nobody under the crosshair ties onto the opponent nearest the middle of your
+    view within 10°, in range and in sight from your head.
+  - The server checks the same quick-and-not-ranked rule and the cooldown (`HookAutoT`, 8 s), on top of a hook's own
+    range and sight check.
+  - A **LOCK pip** right of the crosshair fills over the cooldown.
+  - Studio test switch: `AutoLockTest` on the player makes it work anywhere, with training dummies as opponents.
+- **Not before GO:** `Matches.roundLocked(p)` and the `RoundLock` attribute (Matches' zone loop) are true in a match
+  that isn't live (the countdown and loadout window, between rounds, the end screen) and in a map room.
+  - The hook, yank and reel are refused there, before a charge is spent: the server cuts with "not yet", and the
+    client throws nothing and says "GRAPPLE AT GO".
+  - A small padlock sits under the crosshair, and ranked's pips dim.
+  - Gadgets: utility-items' own guard reads `RoundLock` (place version 1049).
+- **Tested** (solo Play in the training yard, place version 1053):
+  - Hooked a point 8 studs short of the live-fire barrier, then X: the server answered with `ReelT` set, and I was
+    pulled 8 studs in 0.4 s and let go at the point.
+  - Auto-lock on the Stand dummy 22 studs off, aimed 2.8° to its side: the rope tied onto it (`HookBody`), the server
+    took it and stamped `HookAutoT`. X pulled me from 41 to 6 studs in 0.65 s, and the rope let go at reach.
+  - Through the barrier, the auto-lock correctly found nobody (no line of sight).
+  - Not tested yet: the lock before GO in a real countdown, a real QUICKPLAY match against players, the phone button,
+    and the pad's D-Right.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
