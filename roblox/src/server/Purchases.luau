@@ -372,6 +372,55 @@ function Purchases.buyEarly(p: Player, wid: any): any
 	return { ok = true, wid = w }
 end
 
+-- a WEAPON BUNDLE for coins (19 Nov, the owner: "only skins cost robux"): every weapon in it you can't carry yet
+-- unlocked for good (data.weapons, how "bundle": RobuxOwned), its cosmetics you lack (Loot.grant, idempotent), at
+-- Shop.wbundleCoins. buy false: just the quote. the same three writes as any coins buy, settled on join after a crash
+function Purchases.weaponBundle(p: Player, bid: any, buy: boolean): any
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return { ok = false, why = "your purchases are still loading" } end
+	local o = if type(bid) == "string" then Shop.byId[bid] else nil
+	if not o or not o.weapons or not Shop.weaponBundlesOn() then return { ok = false, why = "that isn't for sale" } end
+	local L = module("Loot")
+	if not L or type(L.owns) ~= "function" then return { ok = false, why = "the shop isn't open" } end
+	local function lacksW(wid: string): boolean return not Unlocks.forPlayer(p, wid) end
+	local function lacksI(it: any): boolean return not L.owns(p, it.kind, it.id, it.weapon) end
+	local price, full = Shop.wbundleCoins(o, lacksW, lacksI)
+	local weapons = {}
+	for _, wid in Shop.wbundleWeapons(o) do if lacksW(wid) then table.insert(weapons, wid) end end
+	if not buy then return { ok = true, price = price, full = full, weapons = weapons } end
+	if price <= 0 then return { ok = false, why = "you have all of it already" } end
+	local Q = quests()
+	if not Q or type(Q.spendBrass) ~= "function" then return { ok = false, why = "the wallet isn't open" } end
+	if (tonumber(p:GetAttribute("Brass")) or 0) < price then return { ok = false, why = "not enough coins" } end
+	if s.busy then return { ok = false, why = "one at a time" } end
+	s.busy = true
+	d.nextId = (tonumber(d.nextId) or 0) + 1
+	local id = ("wbundle:%d:%d"):format(p.UserId, d.nextId)
+	local e = { offer = o.id, weapons = weapons, coins = price, t = os.time() }
+	d.pending[id] = e
+	if not write(s) then
+		d.pending[id] = nil
+		s.busy = false
+		return { ok = false, why = "couldn't save. try again" }
+	end
+	local ok, why = Q.spendBrass(p, price, "bundle " .. o.id, id)
+	if not ok then
+		d.pending[id] = nil
+		write(s)
+		s.busy = false
+		return { ok = false, why = why or "couldn't take the coins" }
+	end
+	for _, wid in weapons do if not d.weapons[wid] then d.weapons[wid] = { t = os.time(), how = "bundle", id = id } end end
+	local given = grantCoinsBuy(p, e, id)
+	if given then d.pending[id] = nil end
+	write(s)
+	s.busy = false
+	publish(p)
+	print(("[jankfire] purchases: %s bought the %s bundle for %d coins (%d weapons)"):format(p.Name, o.id, price, #weapons))
+	return { ok = true, offer = o.id, weapons = weapons }
+end
+
 -- the coins buy, all on the server: the price is the shop's, the coins are taken by the quests' save
 function Purchases.buyWithCoins(p: Player, offerId: any, n: any): any
 	local s = st[p]
@@ -381,6 +430,7 @@ function Purchases.buyWithCoins(p: Player, offerId: any, n: any): any
 	if type(offerId) ~= "string" then return { ok = false, why = "nope" } end
 	local price: number? = nil
 	local count = 1
+	local missing: number? = nil
 	local label = offerId
 	local dskin = string.match(offerId, "^deal:([%w_]+)$")
 	if dskin then
@@ -400,10 +450,16 @@ function Purchases.buyWithCoins(p: Player, offerId: any, n: any): any
 			-- (a container is a random item: never for coins where Roblox's policy restricts paid random items)
 			if type(L.restricted) ~= "function" or L.restricted(p) then return { ok = false, why = "not available where you are" } end
 			count = if n == 5 then 5 elseif n == 10 then 10 else 1
+		elseif o.type == "bundle" and not o.weapons then
+			-- (19 Nov: a bundle of wraps, hats or card looks is coins only; a skin set coins or Robux. what you lack)
+			local miss = 0
+			for _, it in Shop.contents(o) do if not (type(L.owns) == "function" and L.owns(p, it.kind, it.id, it.weapon)) then miss += 1 end end
+			if miss == 0 then return { ok = false, why = "you have all of that already" } end
+			missing = miss
 		else
 			return { ok = false, why = "that's sold for robux" }
 		end
-		price = Shop.coinPrice(o, count)
+		price = Shop.coinPrice(o, count, missing)
 		label = o.id
 	end
 	if not price or price <= 0 then return { ok = false, why = "that isn't for sale for coins" } end
@@ -453,6 +509,10 @@ local function settle(p: Player, s: State)
 	for id, e in table.clone(d.pending) do
 		local took = Q.spent(p, id)
 		if took == true and type(e) == "table" and type(e.offer) == "string" then
+			-- (a weapon bundle's weapons, for good, then its things)
+			if type(e.weapons) == "table" then
+				for _, wid in e.weapons do if type(wid) == "string" and not d.weapons[wid] then d.weapons[wid] = { t = os.time(), how = "bundle", id = id } end end
+			end
 			-- (a coins buy: the coins went, so it's handed over now; the grant is idempotent by the id)
 			if grantCoinsBuy(p, e, id) then d.pending[id] = nil end
 		elseif took == true and type(e) == "table" and (forSale(e.wid) or Shop.earlyPrice(e.wid) ~= nil) then
@@ -491,6 +551,10 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		return Purchases.pick(p, a, b)
 	elseif op == "early" then
 		return Purchases.buyEarly(p, a)
+	elseif op == "wbquote" then
+		return Purchases.weaponBundle(p, a, false)
+	elseif op == "wbundle" then
+		return Purchases.weaponBundle(p, a, true)
 	elseif op == "dev" then
 		if not isDev(p) then return { ok = false, why = "nope" } end
 		local d = dataOf(p)
