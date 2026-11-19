@@ -58,7 +58,7 @@ local Config = {
 		-- when you let go, or after reelMax s; reelKeep of the speed carries on. one every reelCool s (the server's say-so)
 		reelSpeed = 55 * S, reelArrive = 1.5 * S, reelMax = 2, reelKeep = 0.45, reelCool = 3,
 		-- the tie (19 Nov 2026, the owner: "tie, then choose"): a rope on a PERSON doesn't pull you in any more. it ties and
-		-- holds taut: no pull, no lift, its length only ever shortens (never under tieMin), and when they get further than
+		-- holds: no pull, no lift, its length the one it was tied at (never under tieMin), and when they get further than
 		-- that you're dragged after them, tieK x the slack a second, at most tieDrag. then you choose: F yanks them to you,
 		-- X reels you to them, or let go. ropes on walls, ledges and points pull you in as before
 		tieMin = 3.2 * S, tieK = 8, tieDrag = 20 * S,

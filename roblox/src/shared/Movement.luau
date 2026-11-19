@@ -73,9 +73,10 @@ function Movement.ropeStep(h: Hook, px: number, py: number, pz: number, vx: numb
 	if dist < 0.03 then return vx, vy, vz end
 	local nx, ny, nz = dx / dist, dy / dist, dz / dist
 	if h.tie then
-		-- a person on the rope (Config.hook.tieMin): no pull and no lift. the rope holds taut at its length (only ever
-		-- shorter, never under tieMin): never further away, and past it you're dragged after them
-		h.len = math.max(math.min(h.len or dist, dist), H.tieMin)
+		-- a person on the rope (Config.hook.tieMin): no pull and no lift. the rope holds at the length it was tied at
+		-- (never under tieMin; it never shortens: a shortening rope crept you in on every bob): never further away, and
+		-- past it you're dragged after them
+		h.len = h.len or math.max(dist, H.tieMin)
 		local radial = vx * nx + vy * ny + vz * nz
 		if dist >= (h.len :: number) - 0.15 then
 			if radial < 0 then vx -= nx * radial; vy -= ny * radial; vz -= nz * radial; radial = 0 end
