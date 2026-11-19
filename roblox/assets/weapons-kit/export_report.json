@@ -6035,6 +6035,30 @@
     "paint": "p444851"
    },
    {
+    "name": "charge_wzB__dark",
+    "upload": "charge_wzB__dark__p353840",
+    "tris": 44,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     0.032,
+     0.002,
+     0.05
+    ],
+    "hi": [
+     0.06,
+     0.022,
+     0.094
+    ],
+    "paint": "p353840"
+   },
+   {
     "name": "cover_wzA__deck",
     "upload": "cover_wzA__deck__p676d78",
     "tris": 100,
@@ -6373,18 +6397,18 @@
     "paint": "p16171b"
    }
   ],
-  "tris": 2448,
+  "tris": 2492,
   "lo": [
    -0.0605,
    -0.2835,
    -0.47
   ],
   "hi": [
-   0.046,
+   0.06,
    0.091,
    0.395
   ],
-  "bytes": 265048,
+  "bytes": 270516,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -6396,7 +6420,7 @@
     -0.47
    ],
    "hi": [
-    0.046,
+    0.06,
     0.091,
     0.395
    ],
@@ -6446,6 +6470,14 @@
     "turned": false
    },
    "body_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "charge_wzB": {
     "at": [
      0.0,
      0.0,

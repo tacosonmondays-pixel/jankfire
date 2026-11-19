@@ -154,6 +154,9 @@ def redline():
     # (owner: "inclose the trigger area") the guard's front post up into the receiver, and its back into the grip
     g.box('grip_wzB__dark', (-0.011, 0.011), (-0.096, -0.04), (-0.064, -0.046), bev=0.004)
     g.box('grip_wzB__dark', (-0.011, 0.011), (-0.096, -0.078), (0.04, 0.062), bev=0.004)
+    # (19 Nov 2026, the owner: "make sure guns have accurate ways to reload and parts that a normal gun would have") a
+    # charging handle on the right, behind the ejection port: node "charge" (its reload pulls it back like the rifle's)
+    g.box('charge_wzB__dark', (0.032, 0.06), (0.002, 0.022), (0.05, 0.094), bev=0.005)
     return g
 
 

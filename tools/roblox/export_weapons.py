@@ -241,6 +241,14 @@ if '--kit' in flags:
     with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
     book = weapon_paint.write_kit(report, rp)
     print('KIT BOOK', book[0] if book else '(no assets.json yet: upload, write the ids, run again)', book[1] if book else 0, 'guns')
+    # THE PART CONTRACT (gun_parts_contract.py): each gun exported here has its real parts as nodes of their own, and a
+    # skin keeps its base gun's moving parts where the base has them (its reloads and BREAKDOWN then just work). A note,
+    # not a stop: read it before uploading. (a skin's base must be in this report too, to be compared)
+    import gun_parts_contract
+    for f in files:
+        nm = os.path.splitext(os.path.basename(f))[0]
+        notes = gun_parts_contract.check(report, nm)
+        print('PART CONTRACT', nm, 'ok' if not notes else '; '.join(notes))
 else:
     for gun, key in weapon_paint.repaint(report, paint): print('PAINT TABLE LINE MATCHED NOTHING:', gun, key)
     with open(rp, 'w') as fh: json.dump(report, fh, indent=1)

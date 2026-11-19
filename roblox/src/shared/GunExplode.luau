@@ -194,23 +194,29 @@ function GunExplode.plan(m: Model): Plan?
 	if not core then
 		for _, nm in order do if groups[nm].core then core = groups[nm] end end
 	end
-	-- rule 4: a small piece rides with the smallest part whose box (a little grown) holds its middle
-	local grow = L * 0.03
-	for _, pc in loose do
-		local c = (pc.lo + pc.hi) / 2
+	-- rule 4: a small piece rides with the smallest part whose box holds its middle; only if none does, the smallest
+	-- whose box grown a little does (a rivet standing just proud of its part). the boxes are the named parts' own,
+	-- taken before any trim joins them, so one trim never drags the next one along
+	local boxes: { [string]: { Vector3 } } = {}
+	for _, nm in order do boxes[nm] = { groups[nm].lo, groups[nm].hi } end
+	local function holder(c: Vector3, grow: number): Group?
 		local best: Group? = nil
 		local bv = math.huge
 		for _, nm in order do
 			local g = groups[nm]
 			-- (never a hat, a skin's accent or an unnamed big part: a trim isn't theirs)
-			if g.accent or string.sub(nm, 1, 2) == "n:" then continue end
-			local lo, hi = g.lo - Vector3.one * grow, g.hi + Vector3.one * grow
+			if g.accent or string.sub(nm, 1, 2) == "n:" or not boxes[nm] then continue end
+			local lo, hi = boxes[nm][1] - Vector3.one * grow, boxes[nm][2] + Vector3.one * grow
 			if c.X >= lo.X and c.X <= hi.X and c.Y >= lo.Y and c.Y <= hi.Y and c.Z >= lo.Z and c.Z <= hi.Z then
-				local v = vol(g.lo, g.hi)
+				local v = vol(boxes[nm][1], boxes[nm][2])
 				if v < bv then best, bv = g, v end
 			end
 		end
-		local g = best or core or groupOf("core")
+		return best
+	end
+	for _, pc in loose do
+		local c = (pc.lo + pc.hi) / 2
+		local g = holder(c, 0) or holder(c, L * 0.02) or core or groupOf("core")
 		add(g, pc)
 	end
 	local coreC = if core then (core.lo + core.hi) / 2 else (glo + ghi) / 2
@@ -242,9 +248,20 @@ function GunExplode.plan(m: Model): Plan?
 		end
 		g.dir = dir.Unit
 		local proj = math.max(0, v:Dot(g.dir))
-		local ext = g.hi - g.lo
-		local own = math.abs(g.dir.X) * ext.X + math.abs(g.dir.Y) * ext.Y + math.abs(g.dir.Z) * ext.Z
-		local d = math.max(L * 0.16 + proj * 0.55, own * 0.85 + L * 0.05) -- (always past its own length that way)
+		-- (and always clear of the core: the part's near end goes past the core's far end that way, with a gap)
+		local function span(lo: Vector3, hi: Vector3): (number, number)
+			local c, e = (lo + hi) / 2, (hi - lo) / 2
+			local r = math.abs(g.dir.X) * e.X + math.abs(g.dir.Y) * e.Y + math.abs(g.dir.Z) * e.Z
+			local m = c:Dot(g.dir)
+			return m - r, m + r
+		end
+		local clear = 0
+		if core and not g.core then
+			local _, coreFar = span(core.lo, core.hi)
+			local near = span(g.lo, g.hi)
+			clear = coreFar - near + L * 0.06
+		end
+		local d = math.max(L * 0.16 + proj * 0.4, clear)
 		if base == "hat" then d = L * 0.32 elseif base == "wing" or base == "halo" or base == "crown" then d = L * 0.2 + proj * 0.4 end
 		g.dist = if g.core then 0 else math.min(d, L * 0.7) * (o.dist or 1)
 		g.step = if g.core then 0 else (o.step or STEP[base] or 4)
