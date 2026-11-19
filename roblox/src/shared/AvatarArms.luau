@@ -56,6 +56,14 @@ local function zombie(): boolean
 end
 
 AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
+-- a body colour for the first-person limbs: its brightness above SKIN_KNEE eased down (x SKIN_EASE of the rest), so a
+-- very light skin keeps reading as skin this close to the eye and the lamps (19 Nov 2026)
+AvatarArms.SKIN_KNEE, AvatarArms.SKIN_EASE = 0.78, 0.35
+function AvatarArms.skin(c: Color3): Color3
+	local h, s, v = c:ToHSV()
+	if v <= AvatarArms.SKIN_KNEE then return c end
+	return Color3.fromHSV(h, s, AvatarArms.SKIN_KNEE + (v - AvatarArms.SKIN_KNEE) * AvatarArms.SKIN_EASE)
+end
 AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
 AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
 AvatarArms.SLEEVE = 1.6 -- the forearm's thickness against the hand's own scale (0.9 and 1.1 read as a pole under a ball; 1.35 still a thin pole once the guns sat further off in the Rivals layout)
@@ -90,6 +98,8 @@ local function limb(src: BasePart): BasePart
 	c.Massless = true; c.Transparency = 0
 	return c
 end
+
+local GLOW = { [Enum.Material.Neon] = true, [Enum.Material.Glass] = true, [Enum.Material.ForceField] = true }
 
 -- a piece of the kit: the limb's own shape in one flat colour (its skin picture and surface come off)
 local function dress(p: BasePart, color: Color3, material: Enum.Material)
@@ -240,7 +250,8 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 	local arms = Instance.new("Model")
 	arms.Name = "AvatarArms"
 	if not kit then
-		-- (a Humanoid in the model makes the Shirt and BodyColors show on the limbs, as they do on your body)
+		-- (a Humanoid in the model makes the Shirt show on the limbs, as it does on your body. the skin colour is set on
+		-- each limb below, softened: BodyColors would paint it back at full strength)
 		local hum = Instance.new("Humanoid")
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
@@ -249,7 +260,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 		pcall(function() (hum :: any).EvaluateStateMachine = false end)
 		hum.Parent = arms
 		for _, c in ch:GetChildren() do
-			if c:IsA("Shirt") or c:IsA("BodyColors") then c:Clone().Parent = arms end
+			if c:IsA("Shirt") then c:Clone().Parent = arms end
 		end
 	end
 	local S = AvatarArms.STUDS
@@ -280,6 +291,16 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			local K = AvatarArms.KIT
 			dress(hand, K.glove, K.material)
 			dress(fore, K.sleeve, K.sleeveMaterial)
+		else
+			-- (19 Nov 2026, main: a pale avatar's hand read as flat white plastic, even at night: a near-white skin
+			-- under the lamps and the gun's fill light clips. the true tone, its very light end eased down: at or
+			-- below SKIN_KNEE it is untouched, pure white ends about 0.86)
+			hand.Color = AvatarArms.skin(srcHand.Color); fore.Color = AvatarArms.skin(srcFore.Color)
+			for _, p in { hand, fore } do
+				p.Reflectance = 0
+				-- (a glowing or glass limb would read as a lamp this close: the plain surface instead)
+				if GLOW[p.Material] then p.Material = Enum.Material.SmoothPlastic end
+			end
 		end
 		-- a tinted hand (a row's own tint; a zombie's green) in either look; named apart so your body colours never
 		-- repaint it. what it was dressed as stays on its Arm, for zombieSync
