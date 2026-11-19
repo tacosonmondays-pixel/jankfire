@@ -594,11 +594,6 @@ end
 startRound = function(m: Match, early: boolean?)
 	m.round += 1
 	m.phase = "ready"
-	if m.ranked then
-		local ps = {}
-		each(m, function(p) table.insert(ps, p) end)
-		RankedDraft.round(m.key, ps, m.round) -- (a switch counts from round 2's window on)
-	end
 	-- (the loadout window: READY_FIRST before round 1, the rest of WINDOW after a break; everyone ready already: GO)
 	local ready = if early then Matches.GO elseif m.round == 1 then Matches.READY_FIRST else math.max(Matches.READY, Matches.WINDOW - Matches.BETWEEN)
 	m.liveAt = os.clock() + ready
@@ -633,6 +628,11 @@ goLive = function(m: Match, tok: number)
 	m.phase = "live"
 	m.locked = nil
 	m.ready = nil
+	if m.ranked then
+		local ps = {}
+		each(m, function(p) table.insert(ps, p) end)
+		RankedDraft.live(m.key, ps) -- (from now on a loadout change is a switch: RankedDraft)
+	end
 	-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
 	m.roundEnds = os.clock() + ((script:GetAttribute("TestRoundTime") :: number?) or Matches.ROUND_TIME)
 	setHud(m)

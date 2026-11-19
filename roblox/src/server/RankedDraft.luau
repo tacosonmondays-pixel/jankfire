@@ -19,7 +19,7 @@ RankedDraft.WBAN = 10 -- s the weapon ban runs
 RankedDraft.MBAN = 10 -- s the map ban runs
 RankedDraft.SHOW = 2.5 -- s the bans and the map left show before the match
 
-type St = { key: string, bans: { [string]: boolean }, used: number, round: number, counted: { [number]: boolean } }
+type St = { key: string, bans: { [string]: boolean }, used: number, lives: number, counted: { [number]: boolean } } -- (lives: rounds gone live so far)
 local state: { [Player]: St } = {}
 
 local function publish(p: Player, s: St?)
@@ -42,17 +42,18 @@ function RankedDraft.start(key: string, players: { Player }, bans: { string }?)
 	local set = {}
 	for _, id in bans or {} do set[id] = true end
 	for _, p in players do
-		local s: St = { key = key, bans = set, used = 0, round = 1, counted = {} }
+		local s: St = { key = key, bans = set, used = 0, lives = 0, counted = {} }
 		state[p] = s
 		publish(p, s)
 		if RankedDraft.onChange then pcall(RankedDraft.onChange, p) end -- (Loadout: a banned weapon in hand goes)
 	end
 end
--- (Matches) a new round (its loadout window opens): the switches count from round 2
-function RankedDraft.round(key: string, players: { Player }, round: number)
+-- (Matches) a round went live: picks from now on are switches, one per break between rounds (the break opens before
+-- the next round's number goes up, so it's counted by the rounds gone live, not the round number)
+function RankedDraft.live(key: string, players: { Player })
 	for _, p in players do
 		local s = state[p]
-		if s and s.key == key then s.round = round end
+		if s and s.key == key then s.lives += 1 end
 	end
 end
 -- (Matches) out of the match
@@ -69,12 +70,12 @@ function RankedDraft.pick(p: Player, slot: string, id: string): (boolean, string
 	local s = state[p]
 	if not s then return true, nil end
 	if s.bans[id] then return false, "banned this match" end
-	if s.round <= 1 or s.counted[s.round] then return true, nil end
+	if s.lives == 0 or s.counted[s.lives] then return true, nil end
 	if s.used >= RankedDraft.MAX_SWITCHES then
 		return false, ("no switches left: %d a ranked match"):format(RankedDraft.MAX_SWITCHES)
 	end
 	s.used += 1
-	s.counted[s.round] = true
+	s.counted[s.lives] = true
 	publish(p, s)
 	return true, nil
 end
