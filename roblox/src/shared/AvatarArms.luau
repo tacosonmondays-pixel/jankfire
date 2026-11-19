@@ -16,16 +16,16 @@
 --     against it, the arm on its line to the elbow
 --
 -- THE LOOK is a switch (the module's "Look" attribute, if set, wins over LOOK):
---   "kit" (default): your arm shapes in the game's glove and sleeve colours, so the hands look the same whatever the
---     avatar wears (a pale or untextured arm blew out to a plain white shape under the lamps)
---   "avatar": your skin tone and your shirt's sleeves, as on your body
+--   "avatar" (default since 19 Nov 2026, the owner's ask): your skin tone and your shirt's sleeves, as on your body
+--   "kit": your arm shapes in the game's glove and sleeve colours, so the hands look the same whatever the avatar wears
+--     (the default until 19 Nov: a pale or untextured arm blew out to a plain white shape under the lamps)
 -- (a modelled four-finger glove was tried on 2026-11-15 and taken out the same day: the owner wants Roblox's own hands)
 local Players = game:GetService("Players")
 local Holds = require(script.Parent:WaitForChild("Holds")) :: any
 
 local AvatarArms = {}
 
-AvatarArms.LOOK = "kit" -- "kit" | "avatar"
+AvatarArms.LOOK = "avatar" -- "kit" | "avatar" (the owner, 19 Nov 2026: "When you hold your guns it should be your hands and skin, not just black")
 function AvatarArms.look(): string
 	local a = script:GetAttribute("Look")
 	return if a == "kit" or a == "avatar" then a else AvatarArms.LOOK
