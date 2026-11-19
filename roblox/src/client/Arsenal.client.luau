@@ -102,6 +102,7 @@ minigun.formUntil, minigun.lastForm, minigun.shotT = 0, {} :: { [string]: string
 minigun.trickNext = {} :: { [string]: number }
 minigun.cards = require(script.Parent:WaitForChild("CardsClient")) :: any -- (batch E: the Card Deck's hand)
 minigun.lasso = require(script.Parent:WaitForChild("LassoClient")) :: any -- (batch E: the Lasso)
+minigun.rig = require(script.Parent:WaitForChild("RigClient")) :: any -- (the Overdrive Rig gadget: its buttons while suited up)
 function minigun.trick(name: string, op: string?, cd: number)
 	local t = os.clock()
 	local key = name .. (op or "")
@@ -392,6 +393,7 @@ local function equipShredder()
 end
 
 local function equip(wid: string)
+	if me:GetAttribute("Rig") ~= nil then return end -- (the Overdrive Rig: no weapon swaps while suited up)
 	if wid == "shredder" then equipShredder(); return end
 	if wid == held and VM.model then return end
 	if not W[wid] then return end
@@ -794,6 +796,11 @@ Keys.began(function(io: InputObject, gp: boolean)
 	local now = os.clock()
 	-- (the mouse is out, by Toggle Cursor or a menu: a click is for the screen. it doesn't fire, swing or aim: MenuCursor)
 	if me:GetAttribute("MenuCursor") == true and (Binds.is("fire", io) or Binds.is("aim", io)) then return end
+	-- (the Overdrive Rig gadget, 19 Nov 2026: while suited up, LMB is the rocket punch and RMB the missiles: RigClient)
+	if me:GetAttribute("Rig") ~= nil and (Binds.is("fire", io) or Binds.is("aim", io)) then
+		minigun.rig.down(if Binds.is("fire", io) then "fire" else "aim")
+		return
+	end
 	if Binds.is("fire", io) then
 		trigger = true
 		pressT = now
@@ -864,6 +871,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 	end
 end)
 Keys.ended(function(io: InputObject)
+	if Binds.is("fire", io) and minigun.rig.on() then minigun.rig.up("fire") end -- (the Overdrive Rig: the punch on let-go)
 	if Binds.is("fire", io) then trigger = false; minigun.hold.release(held)
 		if W[held] and W[held].kind == "lasso" then -- (batch E: the Lasso's let-go throws the loop)
 			local eye, look = eyeAndAim()
@@ -1076,8 +1084,7 @@ end)
 remote("Callout").OnClientEvent:Connect(function(text: unknown)
 	if type(text) ~= "string" then return end
 	if string.sub(text, 1, 6) == "BURST!" then
-		Sfx.play("ting", nil, 0.8, 1.3)
-		task.delay(0.09, function() Sfx.play("ting", nil, 0.8, 1.6) end)
+		Sfx.play("burst_ding", nil, 0.8) -- (a real desk-bell ding, the sound session's: no more one clip pitched into a tune)
 	elseif string.sub(text, 1, 7) == "CHAIN x" then -- (the Lever Rifle's chain on one person)
 		local mul = tonumber(string.match(text, "x([%d%.]+)")) or 1.15
 		Sfx.play("ting", nil, 0.7, 1 + 0.25 * (mul - 1) / 0.15)

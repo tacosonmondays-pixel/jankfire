@@ -199,6 +199,11 @@ add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", liv
 add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = true, gimmick = "open it at someone: five pop-up ads cover their screen for 7 s. they close them one key at a time.",
 	desc = "Open it at someone. Five pop-up ads cover their screen for 7 s. They close them one key at a time.",
 	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "ADS", "5 for 7 s", 0.5, "RANGE", "45 m", 0.6) })
+-- (the owner, 19 Nov 2026: "can you add the overdrive's rocket punch again as a melee or a gadget? I want the ability to
+-- still shoot out missiles!" the web killstreak as a gadget: Rig.luau, RigClient, Items.overdrive)
+add({ id = "overdrive", slot = "utility", name = "Overdrive Rig", color = "ff2a6d", live = true, gimmick = "g suits you up for 12 s: click to rocket punch, right click for missiles. armour on top of your hp.",
+	desc = "G suits you up for 12 s, or until its 120 armour breaks. Click: rocket punch (hold to charge, up to 75 damage). Right click: 4 homing missiles. No guns or other items while it's on.",
+	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "45 s", 1, "ARMOUR", "120 for 12 s", 0.6, "PUNCH", "35-75", 0.7) })
 
 Roster.wraps = {} :: { Wrap }
 Roster.wrapById = {} :: { [string]: Wrap }

@@ -64,6 +64,7 @@ type Fighter = Rules.Fighter
 type Proj = { id: number, wid: string, k: string, owner: Fighter, p: Vector3, v: Vector3, t0: number, b: number, thin: boolean?,
 	hitT: { [Fighter]: number }?, victims: number?, phase: number?, tg: Fighter?, sync: number?, -- (batch D: who it hit when, the slipper's way out / back and its lock)
 	charge: number?, tip: string?, -- (the Bow's draw and the arrow's tip)
+	tgt: Fighter?, look: Vector3?, seekT: number?, -- (the Overdrive Rig's missiles: who it homes on, the salvo's aim)
 	dmg: number? } -- (batch E: a thrown card's own damage, by its rank)
 
 local projs: { Proj } = {}
@@ -98,7 +99,7 @@ local function sweep(pr: Proj, a: Vector3, b: Vector3, r: number): (Fighter?, nu
 	local age = now() - pr.t0
 	for _, t in Fight.all do
 		if not t.alive then continue end
-		if t == pr.owner and (age < 0.25 or pr.k == "blood" or pr.k == "slipper" or pr.k == "card" or (pr.k == "ball" and pr.b == 0) or (pr.k == "bowl" and age < 0.5)) then continue end
+		if t == pr.owner and (age < 0.25 or pr.k == "blood" or pr.k == "slipper" or pr.k == "card" or (pr.k == "ball" and pr.b == 0) or (pr.k == "bowl" and age < 0.5) or pr.k == "rigmissile") then continue end
 		-- (the bowling ball: once a person every 0.7 s; the slipper: once a person each way)
 		local ht = pr.hitT and pr.hitT[t]
 		if ht and (pr.k == "slipper" or now() - ht < 0.7) then continue end
@@ -207,7 +208,7 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 	local w = W[pr.wid] :: any
 	local d = if pr.v.Magnitude > 1e-3 then pr.v.Unit else Vector3.zAxis
 	local own = t == pr.owner
-	if pr.k == "rocket" then blast(pr, at); return true
+	if pr.k == "rocket" or pr.k == "rigmissile" then blast(pr, at); return true
 	elseif pr.k == "peel" then
 		fx("projx", { id = pr.id, p = at, b = true })
 		if not own then Fight.hurt(t, w.dmg, pr.owner, pr.wid, false, Vector3.new(d.X * w.kb, 3 * S, d.Z * w.kb), at) end
@@ -482,6 +483,36 @@ end)
 
 -- ------------------------------------------------------------------ the Card Deck's volleys (CardDeck.server picks the
 -- cards and their aims; they fly here like every other shot). one spawn message for the whole fan
+-- (the Overdrive Rig gadget, Rig.server: its salvo. n missiles 90 ms apart out of the left forearm's rack, each on one
+-- of the targets it picked (in turn), up first, then homing: stepOne)
+local RigVolley = Instance.new("BindableEvent")
+RigVolley.Name = "JankRigVolley"
+RigVolley.Parent = game:GetService("ServerStorage")
+RigVolley.Event:Connect(function(p: Player, eye: Vector3, look: Vector3, models: { Instance })
+	local f = Fight.byPlayer[p]
+	local w = W.rig_missile :: any
+	if not f or not f.alive or not w then return end
+	local tgs: { Fighter } = {}
+	for _, m in models do local t = Fight.of(m); if t then table.insert(tgs, t) end end
+	local right = look:Cross(Vector3.yAxis)
+	right = if right.Magnitude > 1e-3 then right.Unit else Vector3.xAxis
+	for i = 1, 4 do
+		task.delay((i - 1) * 0.09, function()
+			if not f.alive then return end
+			local from = (Fight.eye(f) or eye) - right * 1.2 * S * 0.5 + Vector3.new(0, 0.3 * S, 0)
+			local up = (Vector3.yAxis + look * 0.35 + right * ((i - 2.5) * 0.18)).Unit
+			-- (indoors the climb hit the ceiling and they all went off up there, 19 Nov test in the training hall: with no
+			-- room overhead for the boost they leave mostly forward, still fanned)
+			if Fight.castMap(from, up, w.speed * w.boost * 1.6 + 2) then up = (look + Vector3.yAxis * 0.2 + right * ((i - 2.5) * 0.12)).Unit end
+			nextId += 1
+			local pr: Proj = { id = nextId, wid = "rig_missile", k = "rigmissile", owner = f, p = from, v = up * w.speed, t0 = now(), b = 0,
+				tgt = if #tgs > 0 then tgs[(i - 1) % #tgs + 1] else nil, look = look, seekT = 0 }
+			table.insert(projs, pr)
+			fx("proj", { id = pr.id, w = "rig_missile", by = uid(f), model = Fight.model(f), p = pr.p, v = pr.v, g = 0, r = w.r })
+		end)
+	end
+end)
+
 local Volley = Instance.new("BindableEvent")
 Volley.Name = "JankCardVolley"
 Volley.Parent = game:GetService("ServerStorage")
@@ -508,6 +539,45 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 	local w = W[pr.wid] :: any
 	local age = now() - pr.t0
 	if pr.k == "slipper" then return slipperStep(pr, w, dt, age) end
+	if pr.k == "rigmissile" and age <= math.min(w.life or 5, MAX_LIFE) then
+		-- (the Overdrive Rig's missile, web rigMissileStep) out of the rack straight up for `boost` s, speeding up; then it
+		-- turns toward its target (re-seeking every 0.2 s: its own if still standing, else the nearest enemy ahead), at most
+		-- `turn` rad/s, and goes off within `fuse` of it. the usual cast below still stops it on a wall or a body
+		local spd = math.min(w.speedMax, w.speed + (w.speedMax - w.speed) * math.clamp(age / 0.8, 0, 1))
+		local dir = if pr.v.Magnitude > 1e-3 then pr.v.Unit else Vector3.yAxis
+		if age > w.boost then
+			if age >= (pr.seekT or 0) then
+				pr.seekT = age + 0.2
+				local tg = pr.tgt
+				if not tg or not tg.alive then
+					tg = nil
+					local best = math.huge
+					for _, v in Fight.all do
+						if v == pr.owner or not v.alive or not Fight.allow(pr.owner, v) then continue end
+						local c = centre(v)
+						if not c then continue end
+						local to = c - pr.p
+						local d = to.Magnitude
+						if d < 75 * S and d > 0.1 and dir:Dot(to / d) > 0.2 and d < best then best, tg = d, v end
+					end
+					pr.tgt = tg
+				end
+			end
+			local want = pr.look or dir
+			local tg = pr.tgt
+			local c = tg and centre(tg)
+			if c then
+				local to = c - pr.p
+				if to.Magnitude < w.fuse then blast(pr, pr.p); return false end
+				want = to.Unit
+			end
+			local ang = math.acos(math.clamp(dir:Dot(want), -1, 1))
+			if ang > 1e-3 then dir = dir:Lerp(want, math.min(1, w.turn * dt / ang)).Unit end
+		end
+		pr.v = dir * spd
+		pr.sync = (pr.sync or 0) - dt
+		if (pr.sync :: number) <= 0 then pr.sync = 0.1; fx("proju", { id = pr.id, p = pr.p, v = pr.v }) end
+	end
 	if age > math.min(w.life or 5, MAX_LIFE) or not table.find(Fight.all, pr.owner) then
 		fx("projx", { id = pr.id, p = pr.p, brk = true })
 		return false
@@ -527,7 +597,7 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 	if hit then
 		local nrm = hit.Normal
 		pr.p = to + nrm * 0.02
-		if pr.k == "rocket" then blast(pr, pr.p); return false end
+		if pr.k == "rocket" or pr.k == "rigmissile" then blast(pr, pr.p); return false end
 		if pr.k == "card" then fx("projx", { id = pr.id, p = pr.p }); return false end
 		if pr.k == "arrow" then
 			-- the first wall stops it: it sticks there (an explosion or gas tip goes off)

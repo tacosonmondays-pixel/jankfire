@@ -706,6 +706,12 @@ local W: { [string]: Weapon } = {
 	grapple = { id = "grapple", name = "Grapple", slot = "none", kind = "grapple", color = rgb(0xc8ccd2), desc = "", dmg = 0, range = 0 },
 	-- the t-bag (18 Nov: 14 crouches in 4 s, your knees explode, TBag.server): its blast's kills and your own death
 	tbag = { id = "tbag", name = "T-Bag", slot = "none", kind = "tbag", color = rgb(0xff8a3a), desc = "", dmg = 0, range = 0 },
+	-- (the Overdrive Rig gadget, 19 Nov 2026, Rig.server: its punch and missiles, for the kill feed and WeaponProj. the
+	-- missile: up for `boost` s, then it homes, `turn` rad/s, speed to speedMax, goes off within `fuse` of its target)
+	rig_punch = { id = "rig_punch", name = "Rocket Punch", slot = "none", kind = "rig", color = rgb(0xff2a6d), desc = "", dmg = 0, range = 0 },
+	rig_missile = { id = "rig_missile", name = "Rig Missile", slot = "none", kind = "rig", proj = "rigmissile", color = rgb(0xff6a3d), desc = "",
+		dmg = 16, radius = 3.2 * S, kb = 12 * S, selfKb = 0, r = 0.25 * S, speed = 16 * S, speedMax = 44 * S, turn = 4.2, boost = 0.25,
+		life = 5, fuse = 1.4 * S, range = 200 * S, grav = 0 } :: any,
 }
 
 local Weapons = {

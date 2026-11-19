@@ -218,6 +218,7 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	-- (not before GO, 19 Nov 2026, the owner: "dont let player be able to use grapple or gadgets before round starts":
 	-- the countdown, the loadout window, between rounds, a map room. refused before a charge is spent)
 	if Matches.roundLocked(p) then return cut("not yet") end
+	if p:GetAttribute("Rig") ~= nil then return cut("rigged") end -- (the Overdrive Rig gadget: no rope while suited up)
 	if not HookCheck.rate(i.hookTimes, os.clock()) then return cut("too many") end
 	local hum, root = alive(p)
 	if not hum or not root then return cut("dead") end

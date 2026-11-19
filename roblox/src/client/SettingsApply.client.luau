@@ -92,6 +92,8 @@ local G = { weapons = group("Weapons", master), effects = group("Effects", maste
 local WEAPON_NAMES = { click = true, empty = true, reload = true, thwack = true, glug = true, rev_up = true, marble = true,
 	boing = true, swing = true, bonk = true, tink = true, ting = true, parry = true, parry_perfect = true, ricochet = true,
 	hit = true, headshot = true, headshot_ko = true, kill = true,
+	rig_on = true, rig_off = true, rig_break = true, rig_charge = true, rig_punch = true, rig_punch_hit = true, -- (the Overdrive Rig gadget)
+	rig_missile = true, rig_missile_boom = true, rig_denied = true,
 	crit_return = true, wave_cast = true, wave_fly = true, wave_hit = true, wave_wall = true, edge_full = true, -- (the katana's moves sit with its parry: 18 Nov)
 	minigun_spinup = true, minigun_spin = true, minigun_spindown = true, reload_minigun = true, water_soak = true,
 	nail_wall = true, nail_pinned = true, bread_bonk = true, slap_hit = true, slap_whoosh = true, -- (weapons batch A, d8fb3a1)

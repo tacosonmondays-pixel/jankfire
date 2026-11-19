@@ -55,6 +55,7 @@ folder.Name = "JankfireProj"
 folder.Parent = workspace
 local LOOK = {
 	rocket = { Color3.fromRGB(235, 205, 80), "Block", Vector3.new(0.5, 0.45, 1.1) },
+	rigmissile = { Color3.fromRGB(255, 106, 61), "Block", Vector3.new(0.3, 0.3, 1.0) }, -- (the Overdrive Rig's, till its kit model is in)
 	peel = { Color3.fromRGB(240, 215, 90), "Block", Vector3.new(0.35, 0.3, 1.0) },
 	ball = { Color3.fromRGB(205, 235, 80), "Ball", Vector3.new(0.6, 0.6, 0.6) },
 	snow = { Color3.fromRGB(240, 246, 252), "Ball", Vector3.new(0.78, 0.78, 0.78) },
@@ -68,7 +69,7 @@ type Live = { part: BasePart, p: Vector3, v: Vector3, g: number, k: string, spin
 local live: { [number]: Live } = {}
 -- the kit models for the shots (guns-remodel, v813: JankfireWeapons w_pj_*, built in metres, nose along -Z, origin at
 -- the middle); a kind with none (the tennis ball, the blood cross) stays a simple shape
-local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball", bowl = "w_pj_bowling", slipper = "w_pj_slipper", arrow = "w_pj_arrow", card = "w_pj_card" } :: { [string]: string }
+local KIT = { rocket = "w_pj_chicken", peel = "w_pj_banana", snow = "w_pj_snowball", bowl = "w_pj_bowling", slipper = "w_pj_slipper", arrow = "w_pj_arrow", card = "w_pj_card", rigmissile = "w_pj_rigmissile" } :: { [string]: string }
 -- (a thrown card shows its suit's pip only: the kit's pip_h / pip_s / pip_c / pip_d / pip_j sit on top of each other)
 local function pips(root: BasePart, suit: string?)
 	local m = root.Parent
@@ -175,7 +176,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 		L.spin += dt * 18
 		local face = if L.v.Magnitude > 0.1 then CFrame.lookAt(L.p, L.p + L.v) else CFrame.new(L.p)
-		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" then face elseif L.k == "card" then face * CFrame.Angles(0, L.spin * 2, 0) else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
+		local cf = if L.k == "rocket" or L.k == "blood" or L.k == "arrow" or L.k == "rigmissile" then face elseif L.k == "card" then face * CFrame.Angles(0, L.spin * 2, 0) else face * CFrame.Angles(L.spin, L.spin * 0.6, 0)
 		local m = topOf(L.part)
 		if m:IsA("Model") then m:PivotTo(cf) else L.part.CFrame = cf end
 	end
@@ -247,7 +248,7 @@ Remotes:WaitForChild("Fx").OnClientEvent:Connect(function(f: any)
 		if kind == "arrow" and f.b then Sfx.play("arrow_hit", at, 0.9) end
 		if f.x then
 			Fx.explosion(at, tonumber(f.r) or 22.5)
-			Sfx.play("boom", at, 1)
+			Sfx.play(if kind == "rigmissile" then "rig_missile_boom" else "boom", at, 1) -- (the Overdrive Rig's missiles: their own)
 		elseif f.b then
 			if kind == "snow" then Fx.drip(at, 8); Sfx.play("thwack", at, 0.7)
 			elseif kind == "peel" then Fx.impact(at, Vector3.yAxis, nil, Enum.Material.SmoothPlastic, { hole = false, scale = 0.8 }); Sfx.play("bonk", at, 0.8)

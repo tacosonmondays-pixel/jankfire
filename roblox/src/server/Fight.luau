@@ -52,6 +52,9 @@ Fight.soaked = function(_t: Fighter, _by: Fighter?, _wid: string, _from: Vector3
 -- the classic modes' hooks (Modes.luau): a hit's damage changed by the mode (one in the chamber's Revolver: 999), and
 -- no items in a mode without them (Utility.luau asks)
 Fight.modDamage = nil :: ((Fighter, number, Fighter?, string) -> number)?
+-- (the Overdrive Rig gadget, Rig.server, 19 Nov 2026) a rigged body's armour takes every hit first; knockback on it x rigKb
+Fight.rigSoak = nil :: ((Fighter, number, Fighter?, string) -> number)?
+Fight.rigKb = 1
 Fight.noItems = function(_f: Fighter): boolean return false end
 
 local FFA = Weapons.FFA
@@ -221,6 +224,8 @@ Fight.syncHp = syncHp
 -- knockback (studs/s): a player's own client moves them, so it goes to their client; a dummy is the server's
 function Fight.knock(t: Fighter, v: Vector3, wid: string)
 	if v.Magnitude < 1e-3 then return end
+	local ru = (t :: any).rigUntil -- (the Overdrive Rig: a rigged body barely moves when hit)
+	if ru and os.clock() < ru then v *= Fight.rigKb end
 	if t.kind == "player" then
 		R.Knock:FireClient(t.ref :: Player, v, wid)
 	else
@@ -346,6 +351,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
 	if Fight.modDamage and amt > 0 then amt = Fight.modDamage(t, amt, by, wid) end
+	if Fight.rigSoak and amt > 0 then amt = Fight.rigSoak(t, amt, by, wid) end -- (the Overdrive Rig's armour first)
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
 	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid, hs) end end

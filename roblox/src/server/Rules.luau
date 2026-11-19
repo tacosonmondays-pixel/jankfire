@@ -135,7 +135,11 @@ Rules.transforming = transforming
 
 -- a rate gate: refuse if it's too soon, else book the next slot. 10% under the real interval + a little early arrival
 -- (jitter) is fine; idle time can't be banked for a burst (at most `JITTER` s of it)
+-- (the Overdrive Rig gadget, Rig.server: while it's on, your own weapons are off. its punch and missiles run elsewhere)
+local function rigged(f: Fighter, now: number): boolean local ru = (f :: any).rigUntil; return ru ~= nil and now < ru end
+Rules.rigged = rigged
 function Rules.gate(f: Fighter, key: string, now: number, iv: number): boolean
+	if rigged(f, now) then return false end
 	local nxt = f.gate[key] or -math.huge
 	if now < nxt then return false end
 	f.gate[key] = math.max(nxt, now - Rules.JITTER) + iv * 0.9
@@ -220,6 +224,7 @@ end
 function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?, hand: any?): (string?, number, number?)
 	if not inLoadout(f, wid) then return "not your weapon", 1 end
 	if W[wid].kind ~= "hitscan" then return "not a gun", 1 end
+	if rigged(f, now) then return "rigged", 1 end
 	local w = W[wid]
 	if not f.alive then return "dead", 1 end
 	if f.held ~= wid then return "not held", 1 end
@@ -415,6 +420,7 @@ end
 -- knife's right-click stab (web heavyAttack): its own numbers, and it puts the slash on its longer cooldown too
 function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?, yaw: any): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
+	if rigged(f, now) then return "rigged" end
 	local w = W[wid]
 	local hv = if heavy then w.heavy else nil
 	if heavy and not hv then return "no heavy attack" end
