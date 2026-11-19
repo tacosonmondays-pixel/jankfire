@@ -218,6 +218,42 @@ passes?"
 If the server restarts between the prompt and the receipt, the ask is lost and the purchase goes to the buyer instead
 (VIP Gift: VIP for the buyer).
 
+## Review build tested (19 Nov 2026, place version 1058, every switch OFF in the place)
+
+A solo Play on the owner's `_studio` saves. Every switch was on in the Play server only (`MoneyTest`,
+`WeaponBundlesTest`, `PackExtrasTest`, `GiftsTest`, `EarlyTest`). Receipts were simulated with
+`JankMoneyTest`; nothing was charged.
+
+**Early unlock** (level 1, UnlockAll off for the test):
+- Revolver for 500 coins: open at once, and RobuxOwned lists it.
+- Buying it again is refused ("you have it already"); so are the level-1 AR and the Robux Minigun.
+
+**Assault receipt:**
+- Minigun kept for good, plus Tiger@minigun, Camo@ar, Wood Burl@dmr, ZERO RECOIL and the Camo background.
+- The same receipt again was granted once only.
+
+**Coin packs, as a restricted player:**
+- 1,999 pack: +28,000 coins, plus 900 coins instead of the Crate, plus a legendary pick waiting.
+- 4,500 pack: +70,000 coins, plus 2,700 coins instead of 3 Crates, plus Bullion on every gun (gadgets too), plus a
+  finisher pick waiting. No container stock was added.
+- **The PICK panel** showed the 4 live legendary skins, then the 8 finisher skins (`money/pack-pick-panel.jpg`).
+  - An off-list skin was refused.
+  - Keytar and Infernal Rifle were given; a second pick under the same purchase gave nothing; PackPicks cleared.
+
+**Gift** (the hook only, to the tester): the Quarry bundle landed through the gift box, with the present reveal
+"GIFT FROM ..." and its six items (`money/gift-reveal.jpg`).
+
+**Restored afterwards:**
+- the loot inventory (42 things, no every-gun marks, stock 0);
+- the quests save, exactly (coins 0);
+- the Minigun and Revolver forgotten, the extras records cleared.
+
+**The look pass:** `money/look-pass-before-after.jpg`, desktop. Phone-size photos are still to take.
+
+**Others' openings:**
+- A bystander's view: `money/bystander-opening.jpg`.
+- The inventory bench (800 wraps): 1.36 s and about 11 fps before; 0.22 s and about 60 fps after.
+
 ## The switch
 
 Real money is **LIVE** since 18 Nov 2026 (place version 1034, published about 22:36 UTC). The two lines in
