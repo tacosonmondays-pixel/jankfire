@@ -291,6 +291,6 @@ Asked for on 19 Nov, with ANNOUNCE: "from my command menu allow me to gift every
   - A huge stand-in (height 1.6, rthro body type): root 5.83 → 3.00; its box's feet went from 2.83 studs above its real feet to 0.00. Both ended with standard scales.
 - **In a match:** a present plays in the pre-round loadout window (a break, by design).
   - **Found:** one that started there stayed up when the round went live, because the reveal waits for CLOSE. In that match, B didn't close it either; most likely the match's own menus take B first (not checked).
-  - Fix: a present that's up when the round goes live is put away at once, and plays again at the next break if its cards weren't shown yet. It's in the next push.
+  - Fixed in place version 1060: a present that's up when the round goes live is put away at once, and plays again at the next break if its cards weren't shown yet. Tested: a present begun 1 s before the round went live was hidden as the round started; at the next break it played again and reached its cards.
 - The loot and quests `_studio` saves were restored exactly afterwards (uncached read-back, compared key by key).
 - **Not tested:** the AIM KEYS toggle by hand (it's a local switch on the key handler, compiled in v1054), and anything across two real live servers (the reach count and the toast come 75 s after an event).

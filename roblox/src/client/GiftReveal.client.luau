@@ -11,7 +11,8 @@
 --        "x5" on a count; a bundle as a grid. the sting is the loot win of the best rarity in it
 --   any click, tap or key jumps to the reveal; CLOSE (or B on a pad) puts it away
 --   in a MATCH it waits (the toast says it came: OwnerDev.client): it plays between rounds (LoadoutWindow), at the end,
---   or back in the hub; never over a live round. one at a time, in the order they came
+--   or back in the hub; never over a live round (one still up when the round goes live is put away at once, and plays
+--   again at the next break if its cards weren't shown yet). one at a time, in the order they came
 -- sounds are recordings from the place's library (Sfx): pop, slap_whoosh, loot_pop, loot_win_<rarity>. no voices
 -- Studio photos: player attribute GiftHold = "rise" / "spin" / "reveal" holds the present at that moment
 local Players = game:GetService("Players")
@@ -231,6 +232,16 @@ local function show(g: any)
 	end))
 	closeNow = false
 	table.insert(conns, close.Activated:Connect(function() closeNow = true end))
+	-- (a present begun in a break is put away the moment the round goes live: never over a live round. if its cards
+	-- weren't shown yet, it plays again at the next break; found in the v1054 test)
+	local live = false
+	table.insert(conns, RunService.Heartbeat:Connect(function()
+		if not live and me:GetAttribute("Zone") == "match" and me:GetAttribute("LoadoutWindow") == nil and me:GetAttribute("GiftHold") == nil then
+			live = true
+			skip = true
+			closeNow = true
+		end
+	end))
 
 	vpHolder.Size = UDim2.fromOffset(300, 300)
 	local function setBox(y: number, sx: number, sy: number, yaw: number, tilt: number)
@@ -277,7 +288,7 @@ local function show(g: any)
 	run(0.45, "wobble", function(t)
 		setBox(0, 1, 1, 0.4, math.sin(t * math.pi * 4) * 0.16 * (1 - t))
 	end)
-	sound("slap_whoosh", 0.6)
+	if not live then sound("slap_whoosh", 0.6) end
 	run(1.05, "spin", function(t)
 		local yaw = 0.4 + ease(t) * math.pi * 6
 		local k = math.sin(t * math.pi)
@@ -287,7 +298,7 @@ local function show(g: any)
 	run(0.12, "squash", function(t)
 		setBox(0, 1 + 0.18 * t, 1 - 0.16 * t, 0.4, 0)
 	end)
-	sound("loot_pop", 0.9)
+	if not live then sound("loot_pop", 0.9) end
 	if not skip then burst() end
 	glow.BackgroundTransparency = 0.15
 	glow.Size = UDim2.fromOffset(40, 40)
@@ -297,6 +308,16 @@ local function show(g: any)
 		lidOff = CFrame.new(1.6 * e, 4.5 * e - 2.5 * t * t, 0) * CFrame.new(0, 3.55, 0) * CFrame.Angles(0, 0, -1.1 * e) * CFrame.new(0, -3.55, 0)
 		setBox(0, lerp(1.18, 1, e), lerp(0.84, 1, e), 0.4, 0)
 	end)
+	if live then -- (the round went live before the cards: away, and again at the next break)
+		table.insert(queue, 1, g)
+		for _, c in conns do c:Disconnect() end
+		T.tween(dim, 0.2, { BackgroundTransparency = 1 })
+		gui.Enabled = false
+		MenuCursor.set("giftbox", false)
+		box:Destroy()
+		playing = false
+		return
+	end
 	-- 4. the reveal: the box fades back, the cards come in
 	local items = if type(g.items) == "table" then g.items else {}
 	local best = "common"
