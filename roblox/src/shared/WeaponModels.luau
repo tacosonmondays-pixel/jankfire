@@ -346,6 +346,10 @@ local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vec
 			local n = string.lower(d.Name)
 			local wz = string.match(n, "_wz(%a+)")
 			if wz then d:SetAttribute("WrapZone", wz) end -- (the wrap zone survives the renames below)
+			-- (and its node and slot, for a skin's accents: WeaponModels.isAccent)
+			local nd, sl = string.match(n, "^(.-)_wz%a+__"), string.match(n, "_wz%a+__(%w+)")
+			if nd then d:SetAttribute("WrapNode", nd) end
+			if sl then d:SetAttribute("WrapSlot", sl) end
 			if string.find(n, "kat_blade", 1, true) then d.Name = "blade"
 			elseif string.find(n, "needle", 1, true) then
 				d.Name = "needle"
@@ -482,6 +486,46 @@ local function paints(mode: string, zone: string): boolean
 	if mode == "full" or zone == "ab" then return true end
 	return if mode == "reverse" then zone == "b" else zone == "a"
 end
+
+-- SKIN ACCENTS (19 Nov 2026, the owner: "my friend wanted the Seraph with the gold accents with full wrap, but full send
+-- covers the entire gun even the accents. Can you fix the split?"). On a skinned gun (the model's Skin attribute) a wrap
+-- paints the skin's body only, in every mode (HANDLE, BARREL, WHOLE GUN), and nothing else touches the accents either (the
+-- other half's dark tone, the glow pieces' Accent colour, the hero decal's trim hiding): they keep the look the skin gave
+-- them. An accent is
+--   - a trim (_wzN: the gold rims, bands and emblems, the lit lines, the crowns, the shade shells over them);
+--   - a glow or glass piece (Neon / Glass);
+--   - a decoration by its node or slot even where it sits in a body zone (the Seraph's and the Ducky line's wings are
+--     _wzA): ACCENT_NODES / ACCENT_SLOTS;
+--   - or what the skin says itself: a piece's attribute Accent (true makes it one, false takes it out).
+-- A plain kit gun (no Skin) keeps the old rule: its trims take the wrap on WHOLE GUN only. Hats are never painted (NoWrap)
+local ACCENT_SLOTS: { [string]: boolean } = { wing = true, feat = true, feat2 = true, halo = true, lit = true, glow = true,
+	cglow = true, wglow = true, shade = true, gem = true, heart = true }
+local ACCENT_NODES: { [string]: boolean } = { rwing = true, lwing = true, wing = true, wings = true, halo = true, crown = true,
+	bow = true, heart = true, gem = true }
+WeaponModels.ACCENT_SLOTS, WeaponModels.ACCENT_NODES = ACCENT_SLOTS, ACCENT_NODES
+-- a piece's node and slot ("<node>_wz<zone>__<slot>"): kept as attributes when a build renames it (fitImported)
+local function nodeSlot(p: BasePart): (string?, string?)
+	local nd, sl = p:GetAttribute("WrapNode"), p:GetAttribute("WrapSlot")
+	if type(nd) == "string" or type(sl) == "string" then
+		return (if type(nd) == "string" then nd else nil), (if type(sl) == "string" then sl else nil)
+	end
+	local n = string.lower(p.Name)
+	return string.match(n, "^(.-)_wz%a+__"), (string.match(n, "_wz%a+__(%w+)") or string.match(n, "__(%w+)"))
+end
+local function skinned(m: Instance): boolean
+	local s = m:GetAttribute("Skin")
+	return type(s) == "string" and s ~= ""
+end
+local function isAccent(p: BasePart, m: Instance): boolean
+	local own = p:GetAttribute("Accent")
+	if type(own) == "boolean" then return own end
+	if zoneOf(p, m) == "n" then return true end
+	if p.Material == Enum.Material.Neon or p.Material == Enum.Material.Glass then return true end
+	local nd, sl = nodeSlot(p)
+	return (sl ~= nil and ACCENT_SLOTS[sl] == true) or (nd ~= nil and ACCENT_NODES[nd] == true)
+end
+WeaponModels.isAccent = isAccent
+WeaponModels.skinned = skinned
 
 local stash: { [BasePart]: SurfaceAppearance } = setmetatable({}, { __mode = "k" }) :: any
 
@@ -730,6 +774,14 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 	for _, p in list do restore(p) end
 	local wr = wrapId and Roster.wrapById[wrapId]
 	if not wr or #wr.pal == 0 then return end
+	-- (a skin's accents are out of the wrap altogether: see isAccent. the gun's length below is still measured over all
+	-- of it, so a fade or bands wrap lies along the gun the same as on the plain one)
+	local whole = list
+	if skinned(m) then
+		local body = {}
+		for _, p in list do if not isAccent(p, m) then table.insert(body, p) end end
+		list = body
+	end
 	local md = if mode and table.find(WeaponModels.MODES, mode) then mode else "normal"
 	-- along the weapon's longest side, in its own frame
 	local ref: CFrame
@@ -740,7 +792,7 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 	end
 	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
 	local at: { [BasePart]: Vector3 } = {}
-	for _, p in list do
+	for _, p in whole do
 		local v = ref:PointToObjectSpace(p.Position)
 		at[p] = v; lo = lo:Min(v); hi = hi:Max(v)
 	end

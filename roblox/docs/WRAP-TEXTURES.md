@@ -61,6 +61,23 @@ The three modes are unchanged: **normal** paints the `_wzA` pieces (the handle s
 (the business end), **full** everything; `_wzN` trims keep their look unless the wrap is on full. Server, client and
 preview paint the same pieces (the picture does not depend on any order).
 
+**On a skin the accents are never painted (19 Nov 2026).** The owner: "my friend wanted the Seraph with the gold
+accents with full wrap, but full send covers the entire gun even the accents. Can you fix the split?" On a gun wearing a
+skin (the model's `Skin` attribute), `WeaponModels.wrap` takes the skin's accents out before anything else, in every
+mode. No wrap picture, no other-half dark tone, no wrap Accent colour on its glow pieces, no hero-decal trim hiding.
+`WeaponModels.isAccent(part, model)` says what an accent is:
+- a trim (`_wzN`: gold rims and bands, emblems, crowns, lit lines, the shade shells over them);
+- a glow or glass piece (Neon / Glass);
+- a decoration by its node or slot even in a body zone (`ACCENT_NODES`: rwing, lwing, wing(s), halo, crown, bow, heart,
+  gem; `ACCENT_SLOTS`: wing, feat(2), halo, lit, glow, cglow, wglow, shade, gem, heart). The Seraph's and the Ducky
+  line's wings are `_wzA`;
+- or the skin's own say: a part attribute `Accent` (true makes it one, false takes it out).
+
+So on a skin, HANDLE paints its `_wzA` body, BARREL its `_wzB` body, WHOLE GUN both; the trims, wings and glow stay as
+the skin was designed. A gold BODY stays wrappable (Golden Sniper, the Flintlock's barrel, the Cloudlock's stock: gold
+in `_wzA`/`_wzB`). Plain kit guns keep the old rule. `fitImported` keeps each piece's node and slot as `WrapNode` /
+`WrapSlot`, so renamed pieces (blade, needle, vent) still answer.
+
 ## Two-tone modes (16 Nov 2026)
 
 The owner asked for "the dual tone wraps like normal reversed full". All three modes work with every textured wrap
@@ -146,7 +163,7 @@ What changed here, the four that matter most for ours:
    with its `Color` set to the wrap's `Second` tone: a grey multiplier that takes the pattern down to about 0.2
    luminance, never lighter than 0.45 of the picture. Its glow drops to 30%. A plain colour wrap gives that half
    its first colour at 35%. Trims (`_wzN`), glow and glass pieces keep their look. FULL SEND still covers
-   everything.
+   everything on a plain gun; on a skin it covers the body only (see "On a skin the accents are never painted").
 2. **Glow pieces take the wrap's accent.** A gun's Neon pieces (sight dots, lamps, vents) take the wrap's `Accent`:
    its brightest saturated colour, lifted to full brightness (cyan for Neon Hex, violet for Galaxy, pink for
    Sakura).
