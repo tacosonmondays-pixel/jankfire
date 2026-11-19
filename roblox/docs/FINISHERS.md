@@ -38,10 +38,18 @@ from them).
 
 | the kill | the cut | who sees it | when |
 |---|---|---|---|
-| the one that **wins the match** | **full**, about 2.9 s | **everyone in the match** | the end-of-match window: the end screen is already up, nobody is playing |
-| the one that **wins a round** (not the match) | **short**, about 1.7 s | the **killer** and the **victim** only | the 3 s between rounds (the round is over, nobody can be hurt) |
-| a classic mode's last kill (Gun Game, Infection…) | **full** | everyone in the match | that mode's end |
+| the one that **wins the match** | **the full scene**, about 4 to 6 s | **everyone in the match** | at the match's end, nobody is playing. The end screen and the play of the match **wait** until it ends or is skipped |
+| the one that **wins a round** (not the match) | **the payoff only**, about 1.5 s | the **killer** and the **victim** only | the 3 s between rounds (the round is over, nobody can be hurt) |
+| a classic mode's last kill (Gun Game, Infection…) | **the full scene** | everyone in the match | that mode's end |
 | any other kill | none (only the kill effect) | | |
+
+The owner set this on 18 Nov: *"these big cinematic finishers are if you win the game and will play at the end of winning
+the entire match"*. Each scene is a small story with full-body acting (a set-up, the action, a stillness, the payoff),
+the weapon's own choreography with the skin's theme on top.
+- The storyboards (19 Nov) are in the side-session notes, `finisher-boards/`: Tidecrest, the Dust standoff, Sniper,
+  Shotgun, Scythe, Chicken Rocket and Minigun.
+- **Built so far:** the 17 Nov cuts, about 2.9 s for the match and 1.7 s for a round, inside the old windows. The scenes
+  and the waiting end screen come next, once the owner has seen the boards.
 
 Rules:
 
@@ -50,7 +58,8 @@ Rules:
   is no shot to show.
 - **Round finishers are only for the two of them.** The other players are between rounds anyway, but a cinematic every
   round for everyone would wear thin in a first-to-5 match. Everyone gets the big one at the end, as Blade Ball does.
-- **Nothing waits on it.** The cuts fit windows that already exist:
+- **Nothing waits on it** (the 17 Nov cuts; the match-end scenes above will hold the end screen instead). The cuts fit
+  windows that already exist:
   - A round's short cut (1.7 s) ends well inside the 3 s between rounds. A round going live or a respawn ends it anyway.
   - The match's full cut starts at the kill and is over before the play of the match is due (3.5 s after the end screen
     opens, which is itself 1.2 s after the kill).
