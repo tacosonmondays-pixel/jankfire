@@ -1120,6 +1120,30 @@ one signature piece goes on:
 Checks: 0 loose; 0 flicker pairs raw and on the exports.
 Hats: the Gatling's hopper and the basket's handles stand where the base seat was, so those two need new seats.
 
+## The Overdrive Rig's forearms and missile (19 November 2026)
+
+The owner's Overdrive Rig gadget (weapons-port's contract: notes `overdrive-gadget-plan.md`) needs two kit models,
+built in `tools/roblox/gun_rig.py`. The web game's `x_rigarms` / `pj_rigmissile` gave the size and what they are; the
+look is our kit's: a quiet mid grey, graphite joints, one accent (the item's `ff2a6d`, a step darker: `c42a5a`) and
+a pink glow.
+- **`w_rig_arms`** (asset 95435024988085, 9,448 triangles). Two giant forearms side by side as first person sees
+  them, the fists to -z.
+  - Nodes `armR` > `fistR`, `armL` > `fistL`: a fist rides its arm. Pivots: the elbows (±0.3, 0, 0.35), the
+    wrists (±0.3, 0, -0.35).
+  - A forearm is 0.70 m: one smooth shell swelling toward the wrist, an elbow drum with steel hub caps, a wrist
+    cuff, an accent armour plate, a piston down the outer side and a glow strip down the inner side.
+  - A fist is 0.30 m and one fused form: palm, four curled fingers with grooves between them, and the thumb. It has a
+    wrist drum, a back plate and an accent knuckle bar.
+  - The left forearm carries the missile rack: a block with an accent band and four steel tubes. The loaded noses
+    are node `ammoL` (pivot (-0.3, 0.152, -0.268)): hide it after a salvo.
+  - Spots: `gripR`/`gripL` (the palm's middle, where the avatar's hand sits), `elbowR`/`elbowL`, `wristR`/`wristL`,
+    `punchR`/`punchL` (the knuckles' front), `m1`..`m4` (the tube mouths), `muzzle` = `m1`, `grip` = `gripR`.
+- **`w_pj_rigmissile`** (asset 85310108600947, 1,298 triangles). A 0.40 m missile, nose to -z: a light body, an
+  accent ogive nose, a graphite band, four swept fins and a nozzle. Spots: `tip`/`nose` (0, 0, -0.2), `tail`
+  (0, 0, 0.2), `centre`.
+
+Checks: no flicker pairs. `gun_check` reports the two arms as two separate groups, which they are by design.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

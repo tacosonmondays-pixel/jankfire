@@ -219,7 +219,8 @@ BUILD.update(gun_scythe.BUILD)
 # batch D (18 Nov 2026): bowling launcher + ball, TV remote, house slipper + its throw (gun_batch_d.py); recurve bow +
 # arrow, balance scales (gun_batch_d2.py). Batch E: shopping cart cannon + the cart (gun_batch_e.py); card deck + a
 # card, lasso + its loop (gun_batch_e2.py). Each is loaded once its file exists
-for _m in ('gun_batch_d', 'gun_batch_d2', 'gun_batch_e', 'gun_batch_e2'):
+# The Overdrive Rig's forearms and missile (19 Nov 2026, gun_rig.py)
+for _m in ('gun_batch_d', 'gun_batch_d2', 'gun_batch_e', 'gun_batch_e2', 'gun_rig'):
     try:
         BUILD.update(__import__(_m).BUILD)
     except ModuleNotFoundError as _e:
