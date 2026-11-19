@@ -107,6 +107,12 @@ function Till.adopt(raw: any)
 		if type(src[o.id]) == "number" then inv.containers[o.id] = src[o.id] end
 	end
 	S.inv = inv
+	-- (a bundle's wraps are every gun's: the inventory shows each once, not once per gun. 19 Nov)
+	local ev = {}
+	for _, id in (if type(raw) == "table" and type(raw.every) == "table" then raw.every else {}) :: { any } do
+		if type(id) == "string" then ev[id] = true end
+	end
+	;(S :: any).invEvery = ev
 end
 function Till.refresh(): boolean
 	local res = Till.ask("inventory")
@@ -605,13 +611,18 @@ function V.show(parent: GuiObject, m: Model?, spin: string, zoom: number?): any
 	local rest = m:GetAttribute("ShopRest")
 	rest = if type(rest) == "number" then rest else REST
 	local s = { vp = vp, cam = cam, r = r, long = long, zoom = zoom or 1.05, model = m, rel = rel, spin = spin, yaw = rest,
-		rest = rest, vel = 0, hot = false, drag = false, dragT = -10, t0 = math.random() * 6 }
+		rest = rest, vel = 0, hot = false, drag = false, dragT = -10, t0 = math.random() * 6, still = false, size = nil :: Vector2?,
+		page = nil :: Instance? }
+	-- (the shop page it's on: nothing is moved for a page that isn't up)
+	local up: Instance? = parent
+	while up and up.Parent and up.Parent ~= UI.body do up = up.Parent end
+	s.page = if up and up.Parent == UI.body then up else nil
 	fitCam(s)
 	m:PivotTo(CFrame.Angles(0.12, s.yaw, 0) * rel:Inverse())
 	table.insert(spins, s)
 	if spin == "hover" then
 		local host = parent:FindFirstAncestorWhichIsA("GuiButton") or parent
-		host.MouseEnter:Connect(function() s.hot = true end)
+		host.MouseEnter:Connect(function() s.hot = true; s.still = false end)
 		host.MouseLeave:Connect(function() s.hot = false end)
 	elseif spin == "drag" then
 		vp.Active = true
@@ -646,8 +657,13 @@ RunService.RenderStepped:Connect(function(dt)
 	for i = #spins, 1, -1 do
 		local s = spins[i]
 		if not s.vp.Parent then table.remove(spins, i); continue end
-		fitCam(s)
+		-- (only what can be seen moves: nothing on a page that isn't up, and a card at rest costs nothing. 19 Nov: the
+		-- inventory can hold hundreds)
+		if s.page and not (s.page :: any).Visible then continue end
+		local a = s.vp.AbsoluteSize
+		if a ~= s.size then s.size = a; fitCam(s) end
 		if s.spin == "none" then continue end
+		if s.spin == "hover" and not s.hot and s.still then continue end
 		local function toward(target: number, rate: number)
 			s.yaw += (((target - s.yaw + math.pi) % (2 * math.pi)) - math.pi) * math.min(1, dt * rate)
 		end
@@ -657,6 +673,7 @@ RunService.RenderStepped:Connect(function(dt)
 			s.vel *= math.max(0, 1 - dt * 3); s.yaw += s.vel * dt * 0.02 -- a flick coasts
 		elseif s.spin == "hover" and not s.hot then
 			toward(s.rest, 3)
+			if math.abs(((s.rest - s.yaw + math.pi) % (2 * math.pi)) - math.pi) < 0.002 then s.yaw = s.rest; s.still = true end
 		else
 			local fast = s.spin == "hover"
 			toward(s.rest + math.sin((now + s.t0) * (if fast then 1.2 else 0.45)) * (if fast then 0.8 else 0.6), if fast then 4 else 1.5)
@@ -1556,8 +1573,31 @@ local function invSection(title: string, count: number, order: number): Frame
 	new("UIGridLayout", { CellPadding = UDim2.fromOffset(10, 10), CellSize = S.invCell, SortOrder = Enum.SortOrder.LayoutOrder }, grid)
 	return grid
 end
-function ShopUI.fillInventory()
-	for _, c in UI.invScroll:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+-- (19 Nov, the owner: "inventory is laggy, it takes a while to load". it was a 3D preview per card, all built at once
+-- (hundreds: a bundle's wrap is on every gun) and every one moved every frame. now a bundle's every-gun wrap is ONE card;
+-- a card's preview is built only once it scrolls near the view, a few a frame (V.pump); the page isn't rebuilt when
+-- nothing on it changed (S.invSig); and a preview at rest costs nothing a frame (V.show: still))
+V.lazy = {} :: { any }
+function V.pump()
+	if #V.lazy == 0 or not S.open or S.tab ~= "inventory" then return end
+	local sc = UI.invScroll
+	local top = sc.AbsolutePosition.Y - 160
+	local bot = sc.AbsolutePosition.Y + sc.AbsoluteSize.Y + 320
+	local keep, made = {}, 0
+	for _, e in V.lazy do
+		if not e.view.Parent then continue end
+		local y = e.view.AbsolutePosition.Y
+		if made < 6 and y + e.view.AbsoluteSize.Y >= top and y <= bot then
+			made += 1
+			V.put(e.view, nil, e.it, "hover", 1.08, e.boost)
+		else
+			table.insert(keep, e)
+		end
+	end
+	V.lazy = keep
+end
+RunService.Heartbeat:Connect(V.pump)
+function ShopUI.fillInventory(force: boolean?)
 	for f, b in UI.invBtns do
 		b.base = if f == S.invFilter then T.CARD_HI else T.CARD
 		b.face.BackgroundColor3 = b.base
@@ -1569,6 +1609,63 @@ function ShopUI.fillInventory()
 	if f == "all" or f == "containers" then
 		for _, o in Shop.containers do if Till.count(o.id) > 0 then table.insert(boxes, o) end end
 	end
+	-- skins, wraps and hats, grouped by the weapon they're for (the loadout's order), rarest first in each
+	local byWeapon: { [string]: { any } } = {}
+	local KORDER = { skin = 1, wrap = 2, hat = 3 }
+	local seenVip: { [string]: boolean } = {}
+	local seenEvery: { [string]: boolean } = {}
+	local every = (S :: any).invEvery or {}
+	for _, kind in { "skin", "wrap", "hat", "border", "banner", "title", "kill", "emote" } do
+		if f == "all" or f == kind or (f == "card" and Shop.isCard(kind)) then
+			for key in S.inv[kind] or {} do
+				local id, w = Shop.unkey(key)
+				if kind == "skin" then w = Shop.skinWeapon(id) end
+				-- (the VIP pack in a section of its own, each thing once: a VIP wrap or hat is on every gun)
+				local vipThing = Shop.vipOnly(kind, id)
+				if vipThing and kind ~= "skin" then w = nil end
+				local dupe = vipThing and seenVip[kind .. ":" .. id]
+				-- (a bundle's wrap is on every gun: one card for it too, under EVERY GUN, shown on your gun)
+				local everyThing = kind == "wrap" and not vipThing and every[id] == true
+				if everyThing then w = nil; dupe = seenEvery[id] == true end
+				if not dupe and Shop.exists(kind, id, w) then
+					if vipThing then seenVip[kind .. ":" .. id] = true end
+					if everyThing then seenEvery[id] = true end
+					local name, r = Shop.itemInfo(kind, id)
+					local g = if vipThing then "_vip" elseif everyThing then "_every" elseif Shop.isCard(kind) then "_card" elseif Shop.isFlair(kind) then "_" .. kind
+						elseif w and Shop.WEAPON_SET[w] then w else "_any"
+					byWeapon[g] = byWeapon[g] or {}
+					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r, vip = vipThing })
+				end
+			end
+		end
+	end
+	local groups = table.clone(Shop.WEAPONS)
+	table.insert(groups, 1, "_vip") -- (the VIP pack, first)
+	table.insert(groups, 2, "_every") -- (the bundles' wraps, on every gun)
+	table.insert(groups, "_any") -- (things kept without a weapon, from an older save)
+	table.insert(groups, "_card") -- (the player card's looks)
+	table.insert(groups, "_kill"); table.insert(groups, "_emote") -- (kill effects, emotes)
+	local GROUP_WORDS = { _vip = "VIP", _every = "every gun", _any = "any weapon", _card = "player card", _kill = "kill effects", _emote = "emotes" }
+	-- (what the page shows, in order: the same as last time, nothing is rebuilt)
+	local sig = { f, tostring(S.invOk) }
+	for _, o in boxes do table.insert(sig, o.id .. "=" .. Till.count(o.id)) end
+	for _, g in groups do
+		local items = byWeapon[g]
+		if items then
+			table.sort(items, function(a, b)
+				if a.kind ~= b.kind then return (KORDER[a.kind] or 9) < (KORDER[b.kind] or 9) end
+				if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
+				if a.name ~= b.name then return a.name < b.name end
+				return a.id < b.id
+			end)
+			for _, it in items do table.insert(sig, g .. ":" .. it.kind .. ":" .. it.id) end
+		end
+	end
+	local sigS = table.concat(sig, ",")
+	if not force and sigS == (S :: any).invSig then return end
+	;(S :: any).invSig = sigS
+	for _, c in UI.invScroll:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+	V.lazy = {}
 	if #boxes > 0 then
 		local grid = invSection("containers", #boxes, 0)
 		for _, o in boxes do
@@ -1589,51 +1686,17 @@ function ShopUI.fillInventory()
 			end
 		end
 	end
-	-- skins, wraps and hats, grouped by the weapon they're for (the loadout's order), rarest first in each
-	local byWeapon: { [string]: { any } } = {}
-	local KORDER = { skin = 1, wrap = 2, hat = 3 }
-	local seenVip: { [string]: boolean } = {}
-	for _, kind in { "skin", "wrap", "hat", "border", "banner", "title", "kill", "emote" } do
-		if f == "all" or f == kind or (f == "card" and Shop.isCard(kind)) then
-			for key in S.inv[kind] or {} do
-				local id, w = Shop.unkey(key)
-				if kind == "skin" then w = Shop.skinWeapon(id) end
-				-- (the VIP pack in a section of its own, each thing once: a VIP wrap or hat is on every gun)
-				local vipThing = Shop.vipOnly(kind, id)
-				if vipThing and kind ~= "skin" then w = nil end
-				local dupe = vipThing and seenVip[kind .. ":" .. id]
-				if not dupe and Shop.exists(kind, id, w) then
-					if vipThing then seenVip[kind .. ":" .. id] = true end
-					local name, r = Shop.itemInfo(kind, id)
-					local g = if vipThing then "_vip" elseif Shop.isCard(kind) then "_card" elseif Shop.isFlair(kind) then "_" .. kind
-						elseif w and Shop.WEAPON_SET[w] then w else "_any"
-					byWeapon[g] = byWeapon[g] or {}
-					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r, vip = vipThing })
-				end
-			end
-		end
-	end
-	local groups = table.clone(Shop.WEAPONS)
-	table.insert(groups, 1, "_vip") -- (the VIP pack, first)
-	table.insert(groups, "_any") -- (things kept without a weapon, from an older save)
-	table.insert(groups, "_card") -- (the player card's looks)
-	table.insert(groups, "_kill"); table.insert(groups, "_emote") -- (kill effects, emotes)
-	local GROUP_WORDS = { _vip = "VIP", _any = "any weapon", _card = "player card", _kill = "kill effects", _emote = "emotes" }
 	for gi, g in groups do
 		local items = byWeapon[g]
 		if items and #items > 0 then
-			table.sort(items, function(a, b)
-				if a.kind ~= b.kind then return (KORDER[a.kind] or 9) < (KORDER[b.kind] or 9) end
-				if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
-				return a.name < b.name
-			end)
 			local grid = invSection(GROUP_WORDS[g] or Shop.weaponName(g), #items, gi)
 			for _, it in items do
 				n += 1; order += 1
 				local c = card(grid, it.rarity)
 				c.LayoutOrder = order
 				local view = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -50) }, c)
-				V.put(view, nil, it, "hover", 1.08, if it.kind == "hat" then 1.6 else nil)
+				-- (its preview when it scrolls near: V.pump)
+				table.insert(V.lazy, { view = view, it = it, boost = if it.kind == "hat" then 1.6 else nil })
 				local name = txt(c, it.name, 15, T.TEXT, T.FONT_BOLD)
 				name.Position = UDim2.new(0, 10, 1, -46); name.Size = UDim2.new(1, -20, 0, 18)
 				local rl = rarityLine(c, it.rarity, Shop.KIND_NAMES[it.kind], 10)
@@ -1656,6 +1719,36 @@ function ShopUI.fillInventory()
 	end
 	UI.invEmpty.Text = if not S.invOk then "can't load your inventory right now."
 		elseif n == 0 then "nothing here yet. claim a bundle or open a container." else ""
+end
+-- (Studio: the INVENTORY page timed with a made-up inventory of n wraps over the guns, the real one put back after. the
+-- result lands on the player's attribute ShopBench: "build=<s> frames=<n> avg=<s> worst=<s> items=<n>". ShopTest
+-- "invbench:<n>")
+function ShopUI.benchInventory(n: number)
+	if not RunService:IsStudio() then return end
+	if not S.open then ShopUI.open("inventory") else ShopUI.tab("inventory") end
+	task.wait(1)
+	local real, realEvery = S.inv, (S :: any).invEvery
+	local fake = table.clone(real)
+	fake.wrap = {}
+	local k = 0
+	for _, g in Shop.WEAPONS do
+		for _, w in Roster.wraps do
+			if k >= n then break end
+			if w.rarity ~= "free" then fake.wrap[Shop.key("wrap", w.id, g)] = true; k += 1 end
+		end
+	end
+	S.inv = fake; (S :: any).invEvery = {}
+	S.invFilter = "all"
+	local t0 = os.clock()
+	;(ShopUI.fillInventory :: any)(true)
+	local build = os.clock() - t0
+	local frames, sum, worst = 0, 0, 0
+	local c = RunService.RenderStepped:Connect(function(dt) frames += 1; sum += dt; worst = math.max(worst, dt) end)
+	task.wait(4)
+	c:Disconnect()
+	S.inv = real; (S :: any).invEvery = realEvery
+	me:SetAttribute("ShopBench", string.format("build=%.3f frames=%d avg=%.4f worst=%.4f items=%d", build, frames, sum / math.max(frames, 1), worst, k))
+	;(ShopUI.fillInventory :: any)(true)
 end
 
 -- ======================================================================== overlays: inspect, odds, confirm, toast

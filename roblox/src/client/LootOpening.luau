@@ -987,20 +987,23 @@ end
 -- ---------------------------------------------------------------- a prize's sign (a ring's prizes, others' openings)
 -- a small dark plate over a prize: its name in its rarity's colour, then its gun and rarity; `header` (someone else's
 -- opening: who opened what) goes on top
-local function prizeSign(parent: Instance, at: Vector3, item: any, header: string?): BillboardGui
+local function prizeSign(parent: Instance, at: Vector3, item: any, header: string?, big: boolean?): BillboardGui
 	local anchor = new("Part", { Name = "PrizeSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
 		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = CFrame.new(at) }, parent)
 	local col = rcol(item.rarity)
 	-- (a fixed size on screen: a sign sized in studs filled the screen over a container right under the camera. the small
 	-- ones only near; the one that says who opened what from further off)
-	local bb = new("BillboardGui", { Size = if header then UDim2.fromOffset(250, 76) else UDim2.fromOffset(176, 46),
-		MaxDistance = if header then 160 else 70, LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
+	-- (big: someone else's opening, read from where you stand, 19 Nov)
+	local bb = new("BillboardGui", { Size = if header then UDim2.fromOffset(if big then 340 else 250, if big then 100 else 76)
+			else UDim2.fromOffset(if big then 236 else 176, if big then 60 else 46),
+		MaxDistance = if header then 160 elseif big then 110 else 70, LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false,
+		SizeOffset = if big then Vector2.new(0, 0.5) else Vector2.zero }, anchor) -- (big: it stands on the anchor, clear of the prize)
 	local plate = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
 	T.corner(plate, 6)
 	new("UIStroke", { Color = col, Thickness = 1.5, Transparency = 0.2 }, plate)
 	local function line(y: number, h: number, text: string, color: Color3, font: Font)
 		new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromScale(0.05, y), Size = UDim2.fromScale(0.9, h), Text = text,
-			TextColor3 = color, FontFace = font, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
+			TextColor3 = color, FontFace = font, TextScaled = true, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
 	end
 	local gun = item.weapon and Roster.byId[item.weapon]
 	local what = if gun then string.upper(gun.name) elseif LootTable.hookFor(item.type) then string.upper(LootTable.TYPE_NAMES[item.type] or item.type) else nil
@@ -1031,7 +1034,15 @@ local function ringPrizes(items: { any }, cfs: { CFrame }): ({ [number]: Model }
 		end
 	end
 	local k = math.min(gunScale(), near * 0.85 / longest)
-	for _, m in models do showAt(m, k) end
+	for _, m in models do
+		showAt(m, k)
+		-- (never in anyone's way: the ring's floor tests and the camera's rays look through it. 19 Nov, the owner:
+		-- "opening containers doesn't always work when there's multiple people": someone else's prizes turning near you
+		-- were solid to your own opening's ring and camera)
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") then d.CanQuery = false; d.CanCollide = false; d.CanTouch = false end
+		end
+	end
 	return models, k
 end
 
@@ -1404,6 +1415,10 @@ local function showOne(d: any)
 	local used, items = {}, {}
 	for i = 1, count do used[i] = cfs[i]; items[i] = d.prizes[i] end
 	local built = ringPrizes(items, used)
+	-- (seen from where you stand, not over their shoulder: bigger than the opener's own. the owner, 19 Nov: "the items are
+	-- small if you look at someone else opening them". in a ring every other prize rides higher, so big ones don't touch)
+	local grow = if count == 1 then 2.0 else 1.6
+	for _, m in built do pcall(function() m:ScaleTo(m:GetScale() * grow) end) end
 	local boxes = {}
 	for i = 1, count do
 		local box = container(kind, k)
@@ -1468,11 +1483,13 @@ local function showOne(d: any)
 					b.from, b.top = b.h, b.h + 2.4
 					if m then
 						b.from = b.h + LIFT + halfHeight(m) + 0.1
-						b.top = math.max(b.h + 2.2, b.from + 0.6)
+						b.top = math.max(b.h + 2.2, b.from + 0.9) + (if count > 1 and i % 2 == 0 then 1.8 else 0)
 						m.Parent = workspace
 						b.prize = m
 					end
-					b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + (if i == bestI then 2.2 else 1.9), 0), item, if i == bestI then header else nil)
+					-- (the sign clear over the prize, however big it's shown)
+					local over = if m then halfHeight(m) + 1.1 else 1.9
+					b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + over + (if i == bestI then 0.4 else 0), 0), item, if i == bestI then header else nil, true)
 				end
 				local u = math.min(1, (now - b.popT) / (if b.arc then 0.8 else 0.45))
 				if not b.opened then
@@ -1502,7 +1519,7 @@ local function showOne(d: any)
 end
 function Opening.show(d: any)
 	if type(d) ~= "table" or typeof(d.cf) ~= "CFrame" or type(d.prizes) ~= "table" or #d.prizes == 0 then return end
-	if showing >= 4 then return end
+	if showing >= 4 or running then return end -- (not while your own opening plays: it has the screen)
 	local c = workspace.CurrentCamera
 	if c and (c.CFrame.Position - (d.cf :: CFrame).Position).Magnitude > 170 then return end
 	showing += 1
