@@ -22,6 +22,7 @@ local ServerStorage = game:GetService("ServerStorage")
 -- the arenas (the Rooftop v1, v2 or v3), the rotation (workspace.Map's ArenaPool) and where copies go
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local MapCards = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("MapCards")) -- (the pads' map vote)
+local RankedDraft = require(script.Parent:WaitForChild("RankedDraft")) -- (ranked: the draft's bans, the loadout switches)
 local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hitbox")) -- (a spawn's root height, as Fight.spawn puts it)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
@@ -462,6 +463,7 @@ end
 local function backToHub(m: Match)
 	if m.rules then m.rules.home(m) end -- (a classic mode: its marks come off first)
 	each(m, function(p)
+		RankedDraft.stop(p)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
 		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil); p:SetAttribute("LoadoutWindow", nil)
@@ -592,6 +594,11 @@ end
 startRound = function(m: Match, early: boolean?)
 	m.round += 1
 	m.phase = "ready"
+	if m.ranked then
+		local ps = {}
+		each(m, function(p) table.insert(ps, p) end)
+		RankedDraft.round(m.key, ps, m.round) -- (a switch counts from round 2's window on)
+	end
 	-- (the loadout window: READY_FIRST before round 1, the rest of WINDOW after a break; everyone ready already: GO)
 	local ready = if early then Matches.GO elseif m.round == 1 then Matches.READY_FIRST else math.max(Matches.READY, Matches.WINDOW - Matches.BETWEEN)
 	m.liveAt = os.clock() + ready
@@ -658,6 +665,12 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 			p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0)
 		end
 	end)
+	-- (a ranked match: the draft's bans hold for it, and loadout switches are counted: RankedDraft.luau)
+	if m.ranked then
+		local ps = {}
+		each(m, function(p) table.insert(ps, p) end)
+		RankedDraft.start(m.key, ps, if opts then opts.bans else nil)
+	end
 	fire(hooks.start, m)
 	if m.rules then m.rules.begin(m) else startRound(m) end
 	return m
@@ -768,7 +781,8 @@ local PICK_SHOW = 1.5
 -- starts its match and cancel(note) runs when a whole side has left)
 type Stage = { pad: Model?, sides: { { Player } }, site: Site?, arena: string, room: any, options: { string },
 	votes: { [number]: string }, ends: number, map: string?, at: number?, test: boolean, shown: { [Player]: boolean }, dirty: boolean,
-	go: ((string) -> ())?, cancel: ((string) -> ())? }
+	go: ((string, any?) -> ())?, cancel: ((string) -> ())?,
+	draft: any? } -- (a ranked draft's own state: Matches.draftRoom below)
 local stages: { Stage } = {}
 local testFill: { [Model]: Player } = {} -- (Studio: Matches.test "padfill")
 local pushR: RemoteEvent? = nil
@@ -816,7 +830,8 @@ local function stageSync(st: Stage, gone: boolean?)
 		each2(st, function(p)
 			now[p] = true
 			if st.dirty or not st.shown[p] then
-				padPush(p, { t = "padvote", vote = { options = view.options, ends = view.ends, counts = view.counts, mine = st.votes[p.UserId] }, map = map })
+				if st.draft then padPush(p, (Matches :: any).draftView(st, p))
+				else padPush(p, { t = "padvote", vote = { options = view.options, ends = view.ends, counts = view.counts, mine = st.votes[p.UserId] }, map = map }) end
 			end
 		end)
 	end
@@ -916,6 +931,112 @@ function Matches.voteRoom(sides: { { Player } }, teamSize: number?, go: (string)
 	stageIn(st, sides)
 	return true
 end
+-- (19 Nov 2026, the owner: "weapon ban at the start of match along with map select and banning maps too"; RankedDraft.luau)
+-- a ranked match's draft in a map room, before it starts: each side bans a live primary (WBAN s: the side's most votes,
+-- a tie drawn, none no ban), then one of three maps from the rotation for teamSize (MBAN s, the cards or the plates);
+-- the map left is played (two left: drawn), shown SHOW s with the bans, then go(map, bans). cancel(note): a whole side
+-- left the room. false = no room or no maps (start without it). test: a Studio test with a ghost side
+local Roster = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Roster")) :: any
+local MX: any = Matches -- (the draft's pieces stageSync, stageStep and padVote call, above)
+function Matches.draftRoom(sides: { { Player } }, teamSize: number?, go: (string, { string }) -> (), cancel: (string) -> (), test: boolean?): boolean
+	if not RankedDraft.ON then return false end
+	local options = MapCards.offer(Arena.pool(teamSize), nil, 3)
+	if #options == 0 then return false end
+	local room = MapRooms.claim()
+	if not room then return false end
+	local wopts = {}
+	for _, e in Roster.list do if e.slot == "primary" and e.live then table.insert(wopts, e.id) end end
+	local side = {}
+	for t, list in sides do for _, p in list do side[p.UserId] = t end end
+	local st: Stage = { sides = {}, arena = options[1], room = room, options = options, votes = {},
+		ends = os.clock() + ((script:GetAttribute("TestDraft") :: number?) or RankedDraft.WBAN), test = test == true, shown = {}, dirty = true,
+		go = go :: any, cancel = cancel,
+		draft = { phase = "wban", wopts = wopts, wvotes = {}, side = side, wbans = {}, mbans = {} } }
+	stageIn(st, sides)
+	return true
+end
+-- a player's view of a draft: the phase's cards, the clock, their side's votes, their own vote, the bans so far
+MX.draftView = function(st: Stage, p: Player): any
+	local d = st.draft
+	local mySide = d.side[p.UserId]
+	local function sideCounts(votes: { [number]: string }): { [string]: number }
+		local out = {}
+		for uid, id in votes do if d.side[uid] == mySide then out[id] = (out[id] or 0) + 1 end end
+		return out
+	end
+	local ends = workspace:GetServerTimeNow() + math.max(0, st.ends - os.clock())
+	local banned = {}
+	for _, id in d.wbans do local e = Roster.byId[id]; table.insert(banned, if e then e.name else id) end
+	if d.phase == "wban" then
+		local opts = {}
+		for _, id in d.wopts do local e = Roster.byId[id]; table.insert(opts, { id = id, title = if e then e.name else id }) end
+		return { t = "padvote", kind = "wban", vote = { options = opts, ends = ends, counts = sideCounts(d.wvotes), mine = d.wvotes[p.UserId] } }
+	end
+	return { t = "padvote", kind = "mban", vote = { options = stageCards(st), ends = ends, counts = sideCounts(st.votes), mine = st.votes[p.UserId] },
+		map = if st.map then padCard(st.map) else nil, banned = banned, mbanned = d.mbans }
+end
+MX.draftVote = function(st: Stage, p: Player, id: any): (boolean, string?)
+	local d = st.draft
+	if type(id) ~= "string" then return false, "?" end
+	if d.phase == "wban" and os.clock() < st.ends and table.find(d.wopts, id) then
+		d.wvotes[p.UserId] = id
+		st.dirty = true
+		return true, nil
+	elseif d.phase == "mban" and os.clock() < st.ends and table.find(st.options, id) then
+		st.votes[p.UserId] = id
+		st.dirty = true
+		return true, nil
+	end
+	return false, "not now"
+end
+-- each side's pick out of a set of votes (RankedDraft.top), one per side, no repeats
+local function sideBans(st: Stage, votes: { [number]: string }, options: { string }): { string }
+	local d = st.draft
+	local out = {}
+	for t = 1, #st.sides do
+		local sv = {}
+		for uid, id in votes do if d.side[uid] == t then sv[uid] = id end end
+		local b = RankedDraft.top(sv, options)
+		if b and not table.find(out, b) then table.insert(out, b) end
+	end
+	return out
+end
+MX.draftStep = function(st: Stage)
+	local d = st.draft
+	local t = os.clock()
+	if d.phase == "mban" then
+		-- standing on a display's plate is a ban for its map
+		each2(st, function(p)
+			local root = rootOf(p)
+			local i = if root then MapRooms.plateAt(st.room, root.Position) else nil
+			local id = if i then st.options[i] else nil
+			if id and st.votes[p.UserId] ~= id then st.votes[p.UserId] = id; st.dirty = true end
+		end)
+	end
+	if d.phase == "wban" and t >= st.ends then
+		d.wbans = sideBans(st, d.wvotes, d.wopts)
+		d.phase = "mban"
+		st.ends = t + ((script:GetAttribute("TestDraft") :: number?) or RankedDraft.MBAN)
+		st.dirty = true
+	elseif d.phase == "mban" and t >= st.ends then
+		d.mbans = sideBans(st, st.votes, st.options)
+		local left = {}
+		for _, id in st.options do if not table.find(d.mbans, id) then table.insert(left, id) end end
+		if #left == 0 then left = table.clone(st.options) end
+		st.map = left[math.random(#left)]
+		st.arena = st.map :: string
+		d.phase = "show"
+		st.at = t + RankedDraft.SHOW
+		st.dirty = true
+	elseif d.phase == "show" and st.at and t >= st.at then
+		stageEnd(st)
+		if st.go then task.spawn(st.go :: any, st.arena, d.wbans) end
+		return
+	end
+	if st.dirty then MapRooms.show(st.room, stageCards(st), MapCards.counts(st.votes), st.map) end
+	stageSync(st)
+	st.dirty = false
+end
 -- every padStep: leavers, the plates, the clock
 local function stageStep()
 	for _, st in table.clone(stages) do
@@ -937,6 +1058,7 @@ local function stageStep()
 			stageCancel(st, "the other side left: back to the hub")
 			continue
 		end
+		if st.draft then (Matches :: any).draftStep(st); continue end -- (a ranked draft: its own phases, below)
 		if not st.map then
 			-- standing on a display's plate is a vote for it
 			each2(st, function(p)
@@ -959,6 +1081,7 @@ end
 function Matches.padVote(p: Player, id: any): (boolean, string?)
 	local st = staged[p]
 	if not st then return false, "no map vote for you right now" end
+	if st.draft then return (Matches :: any).draftVote(st, p, id) end
 	if st.map or os.clock() >= st.ends then return false, "the map is picked" end
 	if type(id) ~= "string" or not table.find(st.options, id) then return false, "not one of the three" end
 	st.votes[p.UserId] = id
@@ -1084,6 +1207,7 @@ function Matches.pull(p: Player): boolean
 	local im = inMatch[p]
 	if not im then return false end
 	local m = im.m
+	RankedDraft.stop(p)
 	inMatch[p] = nil
 	lastZone[p] = "hub"
 	local list = m.teams[im.team]

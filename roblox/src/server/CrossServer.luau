@@ -290,14 +290,14 @@ local function everyone(a: Arrival): { Player }
 end
 -- the match itself, on arena (nil: the rotation's), with whoever of sides is still here. nil and why if it won't start
 -- (everyone goes back to a public server then)
-local function begin(id: string, a: Arrival, sides: { { Player } }, arena: string?): (any, string?)
+local function begin(id: string, a: Arrival, sides: { { Player } }, arena: string?, bans: { string }?): (any, string?)
 	local cfg: any = PlayConfig.byId[a.data.mode]
 	local live = {}
 	for t, list in sides do
 		live[t] = {}
 		for _, p in list do if p.Parent then table.insert(live[t], p) end end
 	end
-	local opts: any = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated, arena = arena, quick = a.data.quick == true }
+	local opts: any = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated, arena = arena, quick = a.data.quick == true, bans = bans }
 	if a.ghost and STUDIO then opts.hold, opts.holdWin = a.ghost, 1 end
 	local okS, r1, r2 = pcall(function()
 		if type(cfg.start) == "function" then return cfg.start(live, opts) end
@@ -335,11 +335,19 @@ local function startArrived(): { any }
 			sendHome(everyone(a), "the match couldn't start: back to a public server")
 		else
 			-- casual: the map room's vote first (three maps from the rotation for the sides' size: a duel's own, a classic
-			-- mode's half its head-count, as at home). ranked: the rotation, no vote. no room free: straight on, rotation
+			-- mode's half its head-count, as at home). ranked: the draft (19 Nov), weapon then map bans. no room free: straight
+			-- on, rotation
 			local size = if cfg.ladder == "party" then (if need >= 4 then math.ceil(need / 2) else nil) else cfg.size
 			if a.data.ranked ~= true and Matches.voteRoom then
 				voting = Matches.voteRoom(sides, size, function(arena: string)
 					begin(id, a, sides, arena)
+				end, function()
+					sendHome(everyone(a), "the other side left: back to a public server")
+				end, a.ghost ~= nil and STUDIO) == true
+			elseif a.data.ranked == true and Matches.draftRoom then
+				-- (ranked: the draft, weapon bans then map bans: Matches.draftRoom, RankedDraft.luau)
+				voting = Matches.draftRoom(sides, size, function(arena: string, bans: { string })
+					begin(id, a, sides, arena, bans)
 				end, function()
 					sendHome(everyone(a), "the other side left: back to a public server")
 				end, a.ghost ~= nil and STUDIO) == true

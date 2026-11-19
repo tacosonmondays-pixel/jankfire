@@ -885,6 +885,48 @@ local function start(f: Found): boolean
 		end
 		opts.hold, opts.holdWin = testHold.secs, win
 	end
+	-- (19 Nov 2026, the owner: "weapon ban at the start of match along with map select and banning maps too") a ranked
+	-- match first runs its draft in a map room (Matches.draftRoom, server/RankedDraft.luau): each side bans a weapon, then
+	-- one of three maps; it then starts here on the map left, with the bans. until then this says "not yet" each second.
+	-- a whole side leaving the room calls it off: everyone back to searching
+	if opts.ranked and Matches.draftRoom then
+		local fd = (f :: any).draft
+		if not fd then
+			fd = {}
+			;(f :: any).draft = fd
+			local n = 0
+			for _, list in sides do n += #list end
+			local size = if (cfg :: any).ladder == "party" then (if n >= 4 then math.ceil(n / 2) else nil) else (cfg :: any).size
+			local okD = Matches.draftRoom(sides, size, function(arena: string, bans: { string })
+				fd.arena, fd.bans, fd.done = arena, bans, true
+				f.at = now()
+			end, function(note: string)
+				fd.cancel = "the other side left the draft: searching again"
+			end, standIns and RunService:IsStudio())
+			if not okD then fd.done = true end -- (no room free: straight on, no draft)
+			return false
+		end
+		if fd.cancel then
+			for _, list in f.teams do
+				for _, e in list do
+					local o = e.owner :: any
+					o.found = nil
+					if o.members and o.leader then
+						e.state = "search"
+						e.since = now()
+						pushParty(o :: PartyT)
+						for _, pl in realMembers(o :: PartyT) do toast(pl, fd.cancel) end
+					else
+						Queue.remove(e)
+					end
+				end
+			end
+			return true -- (this found match is over)
+		end
+		if not fd.done then return false end
+		if fd.arena then opts.arena = fd.arena end
+		opts.bans = fd.bans
+	end
 	-- (a mode from PlayConfig.EXTRA may bring its own start; the duels go through the pads' code)
 	local m = if type((cfg :: any).start) == "function" then (cfg :: any).start(sides, opts) else Matches.startQueued(cfg.pad, sides, opts)
 	if not m then

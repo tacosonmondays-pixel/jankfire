@@ -36,6 +36,7 @@ local Unlocks = require(Shared:WaitForChild("Unlocks")) :: any -- (weapons open 
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
 local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags, one gun at a time)
+local RankedDraft = require(script.Parent:WaitForChild("RankedDraft")) -- (ranked: the draft's weapon bans, 2 switches a match: play-party-ranked's)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
@@ -77,8 +78,26 @@ local function ownedHat(p: Player, d: Data?): string?
 	return if h and Loot.owns(p, "hat", h, "shredder") then h else nil
 end
 -- the SAVED weapons (what f.nextLoadout always carries, so nothing tried can reach a match)
+-- (ranked, 19 Nov 2026: a weapon the match's draft banned is carried as the slot's default, or the first live one not
+-- banned: RankedDraft.carry. your own pick stays saved as it is)
+local function liveOf(slot: string): { string }
+	local out = {}
+	for _, e in Roster.list do if e.slot == slot and e.live then table.insert(out, e.id) end end
+	return out
+end
+local function carried(d: Data, out: { string }, slotsOf: { string }): { string }
+	for p, dd in data do
+		if dd == d then
+			for i, slot in slotsOf do
+				if out[i] then out[i] = RankedDraft.carry(p, out[i], DEFAULT[slot], liveOf(slot)) end
+			end
+			break
+		end
+	end
+	return out
+end
 local function list(d: Data): { string }
-	return { d.pick.primary, d.pick.secondary, d.pick.melee }
+	return carried(d, { d.pick.primary, d.pick.secondary, d.pick.melee }, { "primary", "secondary", "melee" })
 end
 -- every slot in Roster.SLOTS order (what the loadout screen reads): the three weapons, then the item (the ones you
 -- have now: the try layer's while it's on)
@@ -86,7 +105,7 @@ local function slots(d: Data): { string }
 	local L = layer(d)
 	local out = {}
 	for _, slot in Roster.SLOTS do table.insert(out, L.pick[slot] or DEFAULT[slot]) end
-	return out
+	return if d.try then out else carried(d, out, Roster.SLOTS)
 end
 
 -- ------------------------------------------------------------------ what the clients see (player attributes)
@@ -522,6 +541,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 			if not okU then return false, if whyU == "ROBUX" then "a robux weapon" else string.lower(whyU or "locked") .. " unlocks it" end
 		end
 		if L.pick[a] == b then return true, nil end
+		-- (ranked: a banned weapon, or a switch past the match's 2: RankedDraft, play-party-ranked's)
+		if not free then
+			local okD, whyD = RankedDraft.pick(p, a, b)
+			if not okD then return false, whyD end
+		end
 		L.pick[a] = b
 		if not free and (d :: any).heldPick then (d :: any).heldPick[a] = nil end -- (you picked another: the held one goes)
 		done()
@@ -620,6 +644,8 @@ end
 
 function Loadout.init(fight: any)
 	Fight = fight
+	-- (ranked: the draft's bans on or off a player: what they're armed with next is worked out again)
+	RankedDraft.onChange = function(p: Player) pushNext(p); publish(p) end
 	-- every spawn arms you (Rules.spawn -> Rules.arm); then the client hears what's on its keys and gets its tools
 	fight.onSpawn(armed)
 	-- what you own changed (a container opened, your things loaded): what everyone sees follows at once

@@ -11,7 +11,10 @@
 -- and a hub PAD's map vote (18 Nov, the owner: "map select for pads please"): while you stand on a full pad, its
 -- countdown is a map vote (server/Matches.luau, Matches.PAD_VOTE s), the same three cards, keys 1-3 or a tap:
 --   QuickVoteUI.syncPad(msg)  PlayClient, on PlayPush { t = "padvote", vote?, map? } (no vote: it's gone)
--- a party match's vote, if there is one, has the panel first
+-- a party match's vote, if there is one, has the panel first.
+-- a RANKED match's draft (19 Nov 2026, server/RankedDraft.luau, Matches.draftRoom) comes the same way, with kind: "wban"
+-- (BAN A WEAPON: a grid of the primaries, your side's votes on them, tap one) then "mban" (BAN A MAP: the three cards,
+-- keys 1-3; at the end the banned ones are marked and the map left is lit), the weapon bans on the map line
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -79,6 +82,50 @@ function QuickVoteUI.draw()
 	local cam = workspace.CurrentCamera
 	local sz = fake or (if cam then cam.ViewportSize / T.scaleNow() else Vector2.new(1280, 720))
 	local c = sz.Y < 560 or sz.X < 960
+	if cur.kind == "wban" then
+		-- the draft's weapon ban: every primary as a small tile, your side's votes on each, yours lit
+		local opts = cur.mvote.options or {}
+		local cols = if c then 4 else 5
+		local tw, th, g, pad = if c then 100 else 116, if c then 28 else 32, 6, if c then 12 else 16
+		local headH = if c then 30 else 38
+		local rows = math.max(1, math.ceil(#opts / cols))
+		local W = cols * tw + (cols - 1) * g + pad * 2
+		head.Visible = true
+		head.Text = "BAN A WEAPON"
+		head.TextSize = if c then 12 else 14
+		head.Position = UDim2.fromOffset(pad, if c then 8 else 12); head.Size = UDim2.fromOffset(W - pad * 2 - 60, 18)
+		mapHead.Visible = false
+		table.clear(modeIds)
+		table.clear(mapIds)
+		local counts = cur.mvote.counts or {}
+		for i, o in opts do
+			mapIds[i] = o.id
+			local mine = cur.mvote.mine == o.id
+			local col, row = (i - 1) % cols, (i - 1) // cols
+			local b = new("TextButton", { Name = "Weapon" .. i, AutoButtonColor = false, BorderSizePixel = 0, Text = "",
+				BackgroundColor3 = if mine then T.CARD_HI else T.CARD, BackgroundTransparency = 0.05,
+				Position = UDim2.fromOffset(pad + col * (tw + g), headH + row * (th + g)), Size = UDim2.fromOffset(tw, th) }, panel)
+			T.corner(b, 4)
+			if mine then T.edge(b, T.ACCENT, 0.2, 1) end
+			local nm = text(b, "Name", string.upper(o.title or o.id), if c then 10 else 11, if mine then T.ACCENT else T.TEXT, T.FONT_HEAVY)
+			nm.Position = UDim2.fromOffset(8, 0); nm.Size = UDim2.new(1, -28, 1, 0); nm.TextScaled = true
+			new("UITextSizeConstraint", { MaxTextSize = if c then 10 else 11, MinTextSize = 7 }, nm)
+			local k = counts[o.id] or 0
+			if k > 0 then
+				local vc = text(b, "Votes", tostring(k), if c then 10 else 11, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+				vc.Position = UDim2.new(1, -24, 0, 0); vc.Size = UDim2.new(0, 18, 1, 0)
+			end
+			b.MouseButton1Click:Connect(function() voteMap(i) end)
+			table.insert(cards, b)
+		end
+		local H = headH + rows * (th + g) - g + pad
+		panel.Size = UDim2.fromOffset(W, H)
+		panel.Position = UDim2.new(0.5, 0, 1, if c then -126 else -190)
+		clock.AnchorPoint = Vector2.new(1, 0); clock.Position = UDim2.new(1, -pad, 0, if c then 8 else 12); clock.Size = UDim2.fromOffset(60, 18)
+		clock.TextSize = if c then 12 else 14
+		gui.Enabled = true
+		return
+	end
 	local cw, ch, gap, pad = if c then 150 else 180, if c then 66 else 86, if c then 8 else 10, if c then 12 else 16
 	local headH = if c then 30 else 38
 	local modes = if cur.vote then cur.vote.options or {} else {}
@@ -134,6 +181,12 @@ function QuickVoteUI.draw()
 		mapHead.TextSize = if c then 12 else 14
 		local won = cur.map and cur.map.id
 		mapHead.Text = if won then "MAP" else "VOTE FOR THE MAP"
+		local mbanned = if cur.kind == "mban" then (cur.mbanned or {}) else {}
+		if cur.kind == "mban" then
+			-- (the draft: a ban, not a vote for; the weapon bans on the same line)
+			local wb = cur.banned or {}
+			mapHead.Text = (if won then "MAP" else "BAN A MAP") .. (if #wb > 0 then "   ·   BANNED: " .. string.upper(table.concat(wb, ", ")) else "")
+		end
 		local counts = cur.mvote.counts or {}
 		local top = my + headH - (if c then 8 else 12)
 		for i, o in maps do
@@ -154,7 +207,8 @@ function QuickVoteUI.draw()
 			local nm = text(b, "Name", o.title or o.id, if c then 11 else 13, ink, T.FONT_HEAVY)
 			nm.Position = UDim2.fromOffset(8, thumbH + (if c then 4 else 5)); nm.Size = UDim2.new(1, -64, 0, if c then 14 else 16); nm.TextScaled = true
 			new("UITextSizeConstraint", { MaxTextSize = if c then 11 else 13, MinTextSize = 7 }, nm)
-			local vc = text(b, "Votes", votesText(counts[o.id] or 0), if c then 9 else 10, if isWon then T.INK else T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+			local isBanned = table.find(mbanned, o.id) ~= nil
+			local vc = text(b, "Votes", if isBanned then "BANNED" else votesText(counts[o.id] or 0), if c then 9 else 10, if isWon then T.INK elseif isBanned then T.DANGER else T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 			vc.AnchorPoint = Vector2.new(1, 0)
 			vc.Position = UDim2.new(1, -8, 0, thumbH + (if c then 5 else 6)); vc.Size = UDim2.fromOffset(54, 14)
 			if not won then T.key(b, tostring(keyAt + i - 1), UDim2.new(1, -30, 0, 8)) end
@@ -180,7 +234,8 @@ function QuickVoteUI.sync(found: any)
 	QuickVoteUI.draw()
 end
 function QuickVoteUI.syncPad(msg: any)
-	padCur = if type(msg) == "table" and type(msg.vote) == "table" then { mvote = msg.vote, map = msg.map, pad = true } else nil
+	padCur = if type(msg) == "table" and type(msg.vote) == "table" then { mvote = msg.vote, map = msg.map, pad = true,
+		kind = msg.kind, banned = msg.banned, mbanned = msg.mbanned } else nil
 	cur = partyCur or padCur
 	QuickVoteUI.draw()
 end
@@ -192,7 +247,7 @@ end
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4,
 	[Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 }
 Keys.began(function(io: any, gp: boolean)
-	if gp or not cur then return end
+	if gp or not cur or cur.kind == "wban" then return end -- (the weapon ban: tiles only, too many for keys)
 	local i = KEYS[io.KeyCode]
 	if not i then return end
 	local hasModes = cur.vote ~= nil
