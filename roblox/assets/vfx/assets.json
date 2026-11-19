@@ -269,5 +269,47 @@
   "sha1": "54d152c9d1b3f0e522d67f49d7e5ec8bf30f4a92",
   "what": "four folded-paper scraps on a 2x2 sheet (a folded triangle, a folded rhombus, a square with a dog-ear, a twisted strip), grey-shaded with a darker rim for a Color tint; the Paper Lantern and Origami Duck gadget skins' bits",
   "uploaded": "2026-11-18 05:32 UTC (main's ask: the legendary gadget skins' trails; tools/roblox/vfx/paper_sheet.py)"
+ },
+ "vfx_mf_wings": {
+  "id": 117124030009254,
+  "sha1": "262b16e469092b09c2397be0883cba05bcf02590",
+  "what": "Seraph set muzzle flash: two fans of feather-like light swept up either side of a white-hot core, gold, coloured as drawn, 4 variants (2x2, 512 px cells)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_mf_hex": {
+  "id": 84672313374859,
+  "sha1": "e94cea9b2bfcc90a30087ef52b6c6fed35725d50",
+  "what": "Witching Hour set muzzle flash: five or six curling ghost-green wisps round a candle-warm core, a thin violet rim, coloured as drawn, 4 variants (2x2)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_mf_splash": {
+  "id": 97108513980197,
+  "sha1": "4f2681d799b8d9bd237c6ec68d2728a24c38bc39",
+  "what": "Tidecrest set muzzle flash and impact: a water splash crown (tapered spikes, a drop at each tip, gold glints), coloured as drawn, 4 variants (2x2)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_mf_bubbles": {
+  "id": 80815074865124,
+  "sha1": "99ef5b59b46fe8556528ec6fa51b96b698205b3f",
+  "what": "Ducky set muzzle flash and bubble-pop impact: a soft warm core ringed with bubbles, coloured as drawn, 4 variants (2x2)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_mf_powder": {
+  "id": 87788195463624,
+  "sha1": "12b91ffcf219c5f0633ec17011f01c915b2f693e",
+  "what": "Dust Drover set muzzle flash: a ragged black-powder flare, white-yellow to a brown-orange rim, grains, coloured as drawn, 4 variants (2x2)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_mf_ring": {
+  "id": 79954695299527,
+  "sha1": "b00a95b48b5ab3d864df4a3285a26244bd4a6da4",
+  "what": "Star Drover set muzzle flash: a hard-light ring round a teal-white core, a level streak, coloured as drawn, 4 variants (2x2)",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_ink": {
+  "id": 86379501145108,
+  "sha1": "a050fc3499da17bc55772590acc51920ed4b2349",
+  "what": "Tidecrest tracer: a Beam strip 512 x 64, one dry brush stroke along u (ragged edges, bristle lines), white for a tint",
+  "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
  }
 }

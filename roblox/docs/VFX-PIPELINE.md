@@ -688,3 +688,47 @@ pivot as you aim, `TuckScale` on each piece), the effects ride them as built in 
 pistol has 0 of 24 on, because its wings sit behind the slide in the middle of the view. The burst has 24 of 24 on, with
 its wings below the view. No change was needed. Photos (rifle, pistol, burst, aimed):
 `docs/vfx/round19/seraph-aim-tuck-v989.jpg`.
+
+## Every skin set's own shots (19 Nov 2026; pushed 22:18 UTC, the place save failed on Roblox's side)
+
+The owner: "guns will have different vfx based off their skin!" Every gun in a skin set now flashes, traces and lands in
+its set's theme, not only the twelve legendary skins. `SkinSets.SETFX` holds one row per set (`flash` and `tracer`
+colours, `muzzle`, `bullet` and `impact` kinds); `SkinSets.fxOf(id)` returns a skin's own `FX` row with its set's
+fields filled in where the row has none (cached), and Fx's `skinSpec` reads it, so a set gun with no row of its own is
+now a registered skinned gun too. The legendary skins keep their own trails (their `bullet` wins); they gain the set's
+flash drawing and impact.
+
+| Set | Muzzle (`muzzle.kind`, drawing) | Tracer (`bullet.kind`) | Impact (`impact.kind`) |
+|---|---|---|---|
+| Seraph | `wings`: angel wings of light round a white-hot core, a feather flung off each side, a thin gold halo thrown forward | `feathers` | `halo`: gold flare, a halo ring flat on the wall, sparkles, a feather drifting down |
+| Infernal | `inferno`: the flame tongues tinted, a burst of flame and embers flung up | `ember` | `embers`: a flame licking up the wall, an ember spray, a hot glow |
+| Witching Hour | `hex`: five or six curling ghost-green wisps round a candle core, a violet smoke curl | `hex` (new): a pale green S-curved wisp, a violet smoke thread, motes | `hex`: a ghost-green flame lick, a violet puff, motes rising |
+| Tidecrest | `splash`: a water splash crown, ink and water flung forward | `ink` (new): a dark dry-brush stroke (`vfx_ink`) with a thin gold line, ink dripping off | `ink`: the splash crown flat on the wall, ink drops, gold flecks, a gold ripple |
+| Ducky (VIP) | `bubbles`: a warm core ringed with bubbles, a puff of bubbles | `bubbles` in gold (`bits`) | `pop`: the bubble ring flat on the wall, bubbles, drops |
+| Ducky Classic | `hearts`: the flame tongues tinted pink, little hearts | `hearts` (each skin keeps its own) | `hearts`: hearts and sparkles bursting |
+| Dust Drover | `powder`: a ragged black-powder flare, a powder puff (others' guns), sparks | `dust` | `dust`: a dust kick and a ricochet |
+| Star Drover | `ring`: a hard-light ring and level streak, a ring thrown forward | `hardlight` | `ring`: a ring burst flat on the wall, a teal glow, thin sparks |
+
+- **Drawings:** `tools/roblox/vfx/set_flash_sheets.py` (numpy + Pillow, nothing downloaded): six 2x2 flash sheets
+  coloured as drawn (`vfx_mf_wings / hex / splash / bubbles / powder / ring`) and the ink strip. Fx holds one random
+  variant per flash, as the tongues; wings and ring stay level (rotation within 6 degrees). The hex flash always has
+  five or six wisps: a four-armed pinwheel could read as a symbol.
+- **Impacts** play only where a shot meets the map (a short ray at its end, as the nails find the wall); a shot that
+  ends on someone or in the sky keeps its trail kind's own small flourish. Shotguns: the set's impact on two pellets
+  at most, and the pellets past the second draw their line with one bit at most (`cheap`).
+- **Your own gun:** the muzzle's bits halve and nothing lingers in your face (no smoke puffs in first person).
+- **Pools:** the sets' bits use their own emitter pools (`SETP`), coloured on every use, so they never recolour the
+  older trails' pools.
+- **Photo hook (Studio only):** `Fx.JankSetFx:Invoke(setId, at: CFrame, to: Vector3, only?)` fires a set's whole shot
+  from anywhere (only = "muzzle" | "trail" | "impact" for each part at its best age). The photos fire all eight sets
+  side by side at a client-only grey wall and freeze (`FxTimeScale = 0`).
+- Sheets: `docs/vfx/round20/set-fx-design-sheet.jpg` (mocked from the sprites before building, for the owner) and
+  `docs/vfx/round20/set-fx-ingame.jpg` (in Play, frozen: all eight sets side by side from above and behind; the muzzles
+  from the front; the Witching Hour, Tidecrest and Ducky trails and impacts close up).
+- Checked: the hook drew every muzzle, trail and impact kind with no errors; `SkinSets.fxOf` in Edit gave ar_lacquer
+  splash/ink/ink, burst_infernal inferno/ember/embers, smg_pumpkin hex/wisp/hex (its own wisp kept), revolver_star
+  ring/hardlight/ring, sniper_triangulum its own stars only, a skin in no set nothing. Not yet seen: a real set gun
+  fired in first person (`JankTest arm` returned false in that test; to check on the next turn).
+- The place save timed out twice (the console: "Server Save Failure: PublishService AssetUpload failed ... Internal
+  server error", already failing before this turn); the change is in the Team Create session and the next good save
+  carries it.

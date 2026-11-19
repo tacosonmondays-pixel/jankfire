@@ -191,6 +191,15 @@ local TEX = {
 	mflashN = "rbxassetid://94655748843416",
 	mside = "rbxassetid://131614116535562", -- one tongue lying along +X, its root at the left (2x2; see SIDE_X0)
 	msideN = "rbxassetid://131131912689549",
+	-- the skin SETS' own flashes (19 Nov; tools/roblox/vfx/set_flash_sheets.py, coloured as drawn, 2x2 variants) and the
+	-- Tidecrest ink stroke (a Beam strip, white for a tint)
+	mfWings = "rbxassetid://117124030009254", -- Seraph: angel wings of light either side of a white-hot core
+	mfHex = "rbxassetid://84672313374859", -- Witching Hour: five or six curling ghost-green wisps round a candle core
+	mfSplash = "rbxassetid://97108513980197", -- Tidecrest: a water splash crown, a drop at each spike's tip
+	mfBubbles = "rbxassetid://80815074865124", -- Ducky: a soft warm core ringed with bubbles
+	mfPowder = "rbxassetid://87788195463624", -- Dust Drover: a ragged black-powder flare with grains
+	mfRing = "rbxassetid://79954695299527", -- Star Drover: a hard-light ring and a level streak
+	ink = "rbxassetid://86379501145108", -- a dry brush stroke along u (Tidecrest's tracer)
 }
 local function ns(...: number): NumberSequence
 	local a = { ... }
@@ -754,7 +763,11 @@ local function wallNear(pos: Vector3, dir: Vector3): number
 	end
 	return best
 end
-function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast: boolean?)
+-- a skin set's flash drawing (SkinSets.SETFX muzzle.kind; inferno and hearts keep the flame tongues, tinted)
+local MF_TEX: { [string]: string } = { wings = TEX.mfWings, hex = TEX.mfHex, splash = TEX.mfSplash, bubbles = TEX.mfBubbles,
+	powder = TEX.mfPowder, ring = TEX.mfRing }
+local muzzleBurst: (kind: string, pos: Vector3, dir: Vector3, k: number, fpv: boolean, col: Color3?) -> () = function() end
+function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast: boolean?, theme: any?)
 	-- (first person: matched to the web's flash on screen in the frame captures, 16 Nov: 0.45 of the viewmodel's scale)
 	-- (round 2: a quarter bigger, 0.1 m ahead of the muzzle, the handguard hid a quarter of it; others' 1.4x so the star
 	-- reads at range instead of a dot)
@@ -766,10 +779,14 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	-- (17 Nov: the sheet's tongues are coloured as drawn; a skin's flash colour tints the white copy. they fill about half
 	-- a cell where the old star filled it all: x1.8 keeps the flash's size on screen)
 	local f = emAt(if fpv then FLASH else FLASH_TP, pos, dir)
-	f.Texture = if color then TEX.mflashN else TEX.mflash
-	local fs = 0.24 * k * 1.1 * H * 1.8
+	local tk = if theme then theme.kind else nil
+	local mt = if tk then MF_TEX[tk] else nil
+	f.Texture = if mt then mt elseif color then TEX.mflashN else TEX.mflash
+	-- (a set's drawing fills its cell where the tongues fill about half of theirs: x1.25, not x1.8. the wings stay level)
+	local fs = 0.24 * k * 1.1 * H * (if mt then 1.25 else 1.8)
 	f.Size = nsk({ { 0, fs, fs * 0.27 }, { 1, fs, fs * 0.27 } })
-	f.Lifetime = NR(life); f.Color = cs(color or FWHITE)
+	f.Lifetime = NR(life); f.Color = cs(if mt then FWHITE else color or FWHITE)
+	f.Rotation = if tk == "wings" or tk == "ring" then NR(-6, 6) else NR(0, 360)
 	emit(f, 1)
 	-- the flame runs from just behind the star to 0.32 ahead of it, 0.4 long, 0.14 thick (the drawing's flame is 0.3 of
 	-- the texture's height), the same 0.8-1.4 size
@@ -779,8 +796,9 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	-- straight ahead or to either side, dims it; at 2 studs a 1.5 power still lit the wall bright, so squared)
 	local near = wallNear(pos, dir)
 	local dim = math.clamp((near - 0.4) / 4.6, 0.06, 1) ^ 2
-	lightFlash(pos + dir * 0.15 * k, Color3.fromRGB(255, 220, 170), (if fpv then 6 else 8) * math.max(dim, 0.4),
-		(if big then 1.8 else 1.2) * dim, life * 1.4)
+	lightFlash(pos + dir * 0.15 * k, if tk and color then color:Lerp(Color3.fromRGB(255, 236, 210), 0.35) else Color3.fromRGB(255, 220, 170),
+		(if fpv then 6 else 8) * math.max(dim, 0.4), (if big then 1.8 else 1.2) * dim, life * 1.4)
+	if tk then muzzleBurst(tk, pos, dir, k, fpv, color) end
 	-- the smoke: never off your own gun in first person (it would sit in your face)
 	local cam = workspace.CurrentCamera
 	if cam and (pos - cam.CFrame.Position).Magnitude > 1.3 * S
@@ -853,7 +871,34 @@ local TRP = {
 	n = setmetatable({}, { __mode = "k" }) :: any, -- (shots per gun spec: the pumpkin's puff every third)
 }
 for _, e in TRP.puff.list do oneshot(e.pe, 16) end
-type TrailO = { col: Color3, wide: number, life: number, fpv: boolean, taper: number?, first: boolean, last: boolean, spec: any }
+type TrailO = { col: Color3, wide: number, life: number, fpv: boolean, taper: number?, first: boolean, last: boolean, spec: any,
+	cheap: boolean?, impact: boolean? }
+-- (the sets' own pools: their colours are set on every use, so they never recolour the ones above)
+local SETP = {
+	bubble = emitters(6, { Texture = TEX.bubble, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
+		Size = ns(0, 0.1 * S * H, 0.15, 0.2 * S * H, 0.85, 0.21 * S * H, 0.93, 0.24 * S * H, 1, 0.04 * S * H),
+		Transparency = ns(0, 0.5, 0.15, 0, 0.85, 0.05, 0.93, 0.3, 1, 1), Lifetime = NR(0.4, 0.55), Speed = NR(0.1 * S, 0.4 * S),
+		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 1.5, Rotation = NR(-10, 10) }),
+	spark = emitters(8, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1,
+		LightInfluence = 0, Brightness = 3, Transparency = ns(0, 0, 0.7, 0.2, 1, 1), Lifetime = NR(0.25, 0.45),
+		SpreadAngle = Vector2.new(60, 60), Acceleration = Vector3.new(0, -10 * S, 0), Drag = 1.5 }),
+	mote = emitters(6, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 2.2,
+		Transparency = ns(0, 0.2, 0.3, 0.05, 1, 1), Lifetime = NR(0.5, 0.9), SpreadAngle = Vector2.new(60, 60),
+		Acceleration = Vector3.new(0, 1.2 * S, 0), Drag = 2.5 }),
+	lick = emitters(6, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+		FlipbookStartRandom = true, FlipbookFramerate = NR(24, 30), LightEmission = 1, LightInfluence = 0, Brightness = 2,
+		Lifetime = NR(0.28, 0.38), Speed = NR(0.4 * S, 0.8 * S), SpreadAngle = Vector2.new(10, 10), Drag = 4, Rotation = NR(-12, 12),
+		Transparency = ns(0, 0.1, 0.5, 0.15, 1, 1) }),
+	flat = emitters(6, { FlipbookLayout = FLIP2, FlipbookMode = Enum.ParticleFlipbookMode.Loop, FlipbookStartRandom = true,
+		FlipbookFramerate = NR(0), LightEmission = 0.6, LightInfluence = 0, Brightness = 1.4, ZOffset = 0.2,
+		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), Rotation = NR(0, 360),
+		Transparency = ns(0, 0, 0.5, 0.15, 1, 1) }),
+	ink = emitters(6, { Texture = TEX.blob, LightEmission = 0, LightInfluence = 0.15, Transparency = ns(0, 0.05, 0.75, 0.2, 1, 1),
+		Lifetime = NR(0.35, 0.6), SpreadAngle = Vector2.new(45, 45), Acceleration = Vector3.new(0, -22 * S, 0), Drag = 0.5 }),
+	inkBeam = beamPool(12, { Texture = TEX.ink, LightEmission = 0, LightInfluence = 0, Brightness = 1 }),
+}
+for _, e in SETP.flat.list do pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
+for _, e in SETP.lick.list do blend(e.pe) end
 -- points along a -> b at fractions spread over u0..u1 (jittered), skipping any too near the eye
 local function trailPts(a: Vector3, b: Vector3, n: number, u0: number, u1: number, eye: Vector3?, keep: number): { Vector3 }
 	local out = {}
@@ -880,10 +925,15 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 	local eye = if o.fpv and cam then cam.CFrame.Position else nil
 	local keep = 6
 	local u0 = if o.fpv then 0.25 else 0.08
-	local function count(n: number): number return if o.fpv then math.max(1, math.floor(n / 2)) else n end
+	local function count(n: number): number
+		if o.cheap then return if o.first then 1 else 0 end -- (one of a shotgun's pellets: the line, at most a bit)
+		return if o.fpv then math.max(1, math.floor(n / 2)) else n
+	end
 	local function along(pool: EmPool, n: number, d: Vector3?)
 		for _, p in trailPts(a, b, count(n), u0, 0.95, eye, keep) do emit(emAt(pool, p, d or Vector3.yAxis), 1) end
 	end
+	-- (a skin set's impact, SETFX impact, plays where the shot lands instead of the kind's own small flourish)
+	local lastF = o.last and not o.impact and not o.cheap
 	local function glowAt(c: Color3, size: number, life: number)
 		local g = emAt(TRP.glow, b - dir * 0.15, -dir)
 		g.Color = cs(c); g.Size = ns(0, size * 0.6, 0.3, size, 1, size * 0.4); g.Lifetime = NR(life)
@@ -893,13 +943,13 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 	if kind == "feathers" then
 		Fx.tracer(a, b, col, o.wide * 1.1, o.life * 1.15, o.taper)
 		along(TRP.feather, 4)
-		if o.last then glowAt(Color3.fromRGB(255, 214, 130), 0.35 * S, 0.2) end
+		if lastF then glowAt(Color3.fromRGB(255, 214, 130), 0.35 * S, 0.2) end
 	elseif kind == "ember" then
 		Fx.tracer(a, b, Color3.fromRGB(255, 150, 66), o.wide * 0.85, o.life, o.taper)
 		local sa = if o.fpv then a + dir * math.min(len * 0.5, 4) else a
 		beam(TRP.smoke, sa, b, Color3.fromRGB(62, 50, 46), tw * 1.8, tw * 2.8, 0.7, true, if o.fpv then 0.75 else 0.4) -- (round 16: 0.45 s from 0.55 was gone by 0.3)
 		along(TRP.spark, 4, -dir * 0.3 + Vector3.new(0, -0.6, 0))
-		if o.last then
+		if lastF then
 			emit(emAt(TRP.spark, b - dir * 0.1, -dir + Vector3.new(0, 0.6, 0)), 6)
 			glowAt(Color3.fromRGB(255, 120, 50), 0.3 * S, 0.15)
 		end
@@ -922,18 +972,26 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 		end
 	elseif kind == "bubbles" then
 		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
-		along(TRP.bubble, 2)
+		if bs.bits then -- (the Ducky set's own: bubbles in its gold)
+			for _, p in trailPts(a, b, count(3), u0, 0.95, eye, keep) do
+				local e = emAt(SETP.bubble, p, Vector3.yAxis)
+				e.Color = cs(bs.bits)
+				emit(e, 1)
+			end
+		else
+			along(TRP.bubble, 2)
+		end
 	elseif kind == "hearts" then
 		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
 		along(TRP.heart, 5)
-		if o.last then
+		if lastF then
 			local s = emAt(TRP.star, b - dir * 0.15, -dir)
 			s.Color = cs(Color3.fromRGB(255, 226, 150), Color3.fromRGB(255, 160, 200)); s.Speed = NR(0.8 * S, 2 * S)
 			emit(s, 6)
 		end
 	elseif kind == "dust" then
 		Fx.tracer(a, b, col, o.wide * 1.15, o.life, o.taper)
-		if o.last then
+		if lastF then
 			local p = emAt(TRP.puff, b - dir * 0.2, -dir + Vector3.new(0, 0.8, 0))
 			p.Color = cs(Color3.fromRGB(206, 182, 142)); p.Size = grow(0.12 * S * H, 0.45 * S * H)
 			emit(p, 2)
@@ -953,7 +1011,7 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 			r.Color = cs(col); r.Size = ns(0, 0.04 * S, 1, 0.3 * S); r.Lifetime = NR(0.15)
 			emit(r, 1)
 		end
-		if o.last then
+		if lastF then
 			local r = emAt(TRP.ring, b - dir * 0.1, -dir)
 			r.Color = cs(col); r.Size = ns(0, 0.08 * S, 1, 0.6 * S); r.Lifetime = NR(0.22)
 			emit(r, 1)
@@ -974,13 +1032,189 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 			e.Color = cs(col); e.Speed = NR(0.05 * S, 0.2 * S)
 			emit(e, 1)
 		end
-		if o.last then
+		if lastF then
 			local e = emAt(TRP.big, b - dir * 0.2, -dir)
 			e.Color = cs(col)
 			emit(e, 1)
 		end
+	elseif kind == "hex" then -- (Witching Hour) a pale ghost-green wisp, S-curved, a violet smoke thread under it, motes off it
+		local B = beam(TRP.wisp, a, b, col, tw * 0.8 * (o.taper or 1), tw, o.life * 1.3, true)
+		local side = dir:Cross(Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5))
+		side = if side.Magnitude > 1e-3 then side.Unit else dir:Cross(Vector3.yAxis).Unit
+		local x = (dir + side * 0.1).Unit
+		B.a0.WorldCFrame = axisCF(a, x); B.a1.WorldCFrame = axisCF(b, x)
+		B.b.CurveSize0 = len * 0.28; B.b.CurveSize1 = len * 0.28 -- (both along the tilted axis: an S, as the wisp)
+		B.b.Color = cs(Color3.fromRGB(236, 255, 240), col, Color3.fromRGB(150, 132, 220))
+		if not o.cheap then
+			local sa = if o.fpv then a + dir * math.min(len * 0.5, 4) else a
+			beam(TRP.smoke, sa, b, Color3.fromRGB(96, 82, 120), tw * 1.4, tw * 2.2, 0.55, true, if o.fpv then 0.8 else 0.55)
+		end
+		for _, p in trailPts(a, b, count(4), u0, 0.95, eye, keep) do
+			local m = emAt(SETP.mote, p, Vector3.yAxis)
+			m.Color = cs(Color3.fromRGB(196, 255, 210)); m.Size = ns(0, 0.05 * S, 0.4, 0.07 * S, 1, 0); m.Speed = NR(0.2 * S, 0.6 * S)
+			emit(m, 1)
+		end
+	elseif kind == "ink" then -- (Tidecrest) a dark dry-brush stroke with a thin gold line along it, ink dripping off
+		beam(SETP.inkBeam, a, b, col, tw * 1.5 * (o.taper or 1), tw * 1.9, o.life * 1.4, true, 0.05)
+		Fx.tracer(a, b, Color3.fromRGB(255, 214, 130), o.wide * 0.3, o.life, o.taper)
+		for _, p in trailPts(a, b, count(4), u0, 0.95, eye, keep) do
+			local d = emAt(SETP.ink, p, -Vector3.yAxis)
+			d.Color = cs(col); d.Size = ns(0, 0.035 * S, 1, 0.015 * S); d.Speed = NR(0.2 * S, 0.8 * S); d.LightEmission = 0
+			emit(d, 1)
+		end
 	else
 		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+	end
+end
+
+-- ---- the skin SETS' own shots (19 Nov 2026, the owner: "guns will have different vfx based off their skin!"): every gun
+-- in a set flashes, traces and lands in its set's theme (SkinSets.SETFX: muzzle, bullet, impact; a skin's own row wins
+-- field by field). The muzzle's bits are few and quick (your own: fewer, smaller, nothing lingering in your face); an
+-- impact plays only where the shot met the map (a short ray at its end, as the nails find the wall), flat on the
+-- surface or thrown off it along its normal, and on at most two of a shotgun's pellets
+muzzleBurst = function(kind: string, pos: Vector3, dir: Vector3, k: number, fpv: boolean, col: Color3?)
+	local n = if fpv then 0.5 else 1
+	local function cnt(x: number): number return math.max(1, math.floor(x * n + 0.5)) end
+	local side = dir:Cross(Vector3.yAxis)
+	side = if side.Magnitude > 0.1 then side.Unit else Vector3.xAxis
+	if kind == "wings" then -- (Seraph) a feather flung off each side, and a thin gold halo thrown forward
+		if not fpv then
+			for _, sg in { 1, -1 } do emit(emAt(TRP.feather, pos + side * sg * 0.1 * k, side * sg + Vector3.new(0, 0.3, 0) - dir * 0.2), 1) end
+		end
+		local r = emAt(TRP.ring, pos + dir * 0.2 * k, dir)
+		r.Color = cs(Color3.fromRGB(255, 214, 130)); r.Size = ns(0, 0.06 * k, 1, 0.34 * k); r.Lifetime = NR(0.14)
+		emit(r, 1)
+	elseif kind == "inferno" then -- (Infernal) a burst of flame tongues and embers flung up off the muzzle
+		local fb = emAt(FLAMEBURST, pos + dir * 0.1 * k, dir)
+		fb.Color = flameCS(col or Color3.fromRGB(255, 120, 40)); fb.Size = ns(0, 0.1 * k, 0.4, 0.2 * k, 1, 0.08 * k)
+		fb.Speed = NR(1.5 * k, 4 * k)
+		emit(fb, cnt(5))
+		local e = emAt(SETP.spark, pos + dir * 0.15 * k, dir + Vector3.new(0, 0.6, 0))
+		e.Color = cs(Color3.fromRGB(255, 200, 120), Color3.fromRGB(255, 90, 30)); e.Size = ns(0, 0.03 * k * 3.4 * H, 1, 0.01 * k * 3.4 * H)
+		e.Speed = NR(1.5 * k, 3.5 * k)
+		emit(e, cnt(5))
+	elseif kind == "hex" then -- (Witching Hour) a curl of violet-grey smoke off the muzzle (never your own: in your face)
+		if not fpv then
+			local p = emAt(TRP.puff, pos + dir * 0.25 * S, dir + Vector3.new(0, 0.6, 0))
+			p.Color = cs(Color3.fromRGB(122, 104, 146)); p.Size = grow(0.1 * S * H, 0.4 * S * H)
+			emit(p, 1)
+		end
+		local m = emAt(SETP.mote, pos + dir * 0.15 * k, dir + Vector3.new(0, 0.5, 0))
+		m.Color = cs(Color3.fromRGB(196, 255, 210)); m.Size = ns(0, 0.04 * k, 0.4, 0.06 * k, 1, 0); m.Speed = NR(0.6 * k, 1.6 * k)
+		emit(m, cnt(3))
+	elseif kind == "splash" then -- (Tidecrest) ink and water thrown forward in a spray
+		for i, c in { Color3.fromRGB(28, 27, 38), Color3.fromRGB(214, 238, 250) } do
+			local d = emAt(SETP.ink, pos + dir * 0.15 * k, dir + Vector3.new(0, 0.25, 0))
+			d.Color = cs(c); d.Size = ns(0, 0.03 * k, 1, 0.012 * k); d.Speed = NR(2 * k, 5 * k)
+			d.LightEmission = if i == 2 then 0.5 else 0
+			emit(d, cnt(4))
+		end
+	elseif kind == "bubbles" or kind == "hearts" then -- (Ducky) a puff of bubbles; (Ducky Classic) little hearts
+		if kind == "bubbles" then
+			local b = emAt(SETP.bubble, pos + dir * 0.2 * k, dir)
+			b.Color = cs(Color3.fromRGB(255, 240, 190)); b.Speed = NR(0.6 * k, 1.6 * k)
+			emit(b, cnt(3))
+		else
+			emit(emAt(TRP.heart, pos + dir * 0.2 * k, dir), cnt(3))
+		end
+	elseif kind == "powder" then -- (Dust Drover) a black-powder puff (others' guns) and a few sparks
+		if not fpv then
+			local p = emAt(TRP.puff, pos + dir * 0.35 * S, dir + Vector3.new(0, 0.25, 0))
+			p.Color = cs(Color3.fromRGB(82, 76, 70)); p.Size = grow(0.14 * S * H, 0.5 * S * H)
+			emit(p, 2)
+		end
+		local e = emAt(SETP.spark, pos + dir * 0.15 * k, dir)
+		e.Color = cs(Color3.fromRGB(255, 222, 150), Color3.fromRGB(240, 140, 60)); e.Size = ns(0, 0.025 * k * 3.4 * H, 1, 0.008 * k * 3.4 * H)
+		e.Speed = NR(2 * k, 5 * k)
+		emit(e, cnt(4))
+	elseif kind == "ring" then -- (Star Drover) a hard-light ring thrown forward off the muzzle
+		local r = emAt(TRP.ring, pos + dir * 0.3 * k, dir)
+		r.Color = cs(col or Color3.fromRGB(69, 230, 214)); r.Size = ns(0, 0.05 * k, 1, 0.4 * k); r.Lifetime = NR(0.16)
+		emit(r, 1)
+	end
+end
+
+local function setImpact(kind: string, at: Vector3, n: Vector3, col: Color3)
+	local p = at + n * 0.08
+	local function flat(tex: string, c: Color3, s0: number, s1: number, life: number)
+		local f = emAt(SETP.flat, p, n)
+		f.Texture = tex; f.Color = cs(c); f.Size = ns(0, s0, 1, s1); f.Lifetime = NR(life)
+		emit(f, 1)
+	end
+	local function glow(c: Color3, size: number, life: number)
+		local g = emAt(TRP.glow, p, n)
+		g.Color = cs(c); g.Size = ns(0, size * 0.6, 0.3, size, 1, size * 0.4); g.Lifetime = NR(life)
+		emit(g, 1)
+	end
+	local function ringOn(c: Color3, s0: number, s1: number, life: number)
+		local r = emAt(TRP.ring, p, n)
+		r.Color = cs(c); r.Size = ns(0, s0, 1, s1); r.Lifetime = NR(life)
+		emit(r, 1)
+	end
+	local function sparks(c0: Color3, c1: Color3, cnt: number, speed: number, w: number)
+		local e = emAt(SETP.spark, p, n + Vector3.new(0, 0.4, 0))
+		e.Color = cs(c0, c1); e.Size = ns(0, w * S * 3.4 * H, 1, w * 0.3 * S * 3.4 * H); e.Speed = NR(speed * 0.4 * S, speed * S)
+		emit(e, cnt)
+	end
+	local function motes(c: Color3, cnt: number)
+		local m = emAt(SETP.mote, p, n + Vector3.new(0, 1, 0))
+		m.Color = cs(c); m.Size = ns(0, 0.05 * S, 0.4, 0.08 * S, 1, 0); m.Speed = NR(0.4 * S, 1.2 * S)
+		emit(m, cnt)
+	end
+	local function lick(c: Color3, size: number)
+		local l = emAt(SETP.lick, p, Vector3.yAxis + n * 0.3)
+		l.Color = flameCS(c); l.Size = ns(0, size * 0.5, 0.35, size, 1, size * 0.6)
+		emit(l, 1)
+	end
+	if kind == "halo" then -- (Seraph) a gold flare, a halo ring flat on the wall, sparkles, a feather drifting down
+		glow(Color3.fromRGB(255, 214, 130), 0.4 * S, 0.22)
+		ringOn(Color3.fromRGB(255, 214, 130), 0.06 * S, 0.5 * S, 0.24)
+		local s = emAt(TRP.star, p, n)
+		s.Color = cs(Color3.fromRGB(255, 236, 180)); s.Speed = NR(0.8 * S, 2 * S)
+		emit(s, 4)
+		emit(emAt(TRP.feather, p, n), 1)
+	elseif kind == "embers" then -- (Infernal) a flame licking up off the hit, an ember spray, a hot glow
+		glow(Color3.fromRGB(255, 120, 50), 0.35 * S, 0.18)
+		lick(Color3.fromRGB(255, 120, 40), 0.22 * S)
+		sparks(Color3.fromRGB(255, 214, 140), Color3.fromRGB(255, 84, 28), 6, 2.4, 0.05)
+	elseif kind == "hex" then -- (Witching Hour) a ghost-green flame lick, a violet puff, motes rising
+		lick(Color3.fromRGB(150, 255, 176), 0.24 * S)
+		local q = emAt(TRP.puff, p, n + Vector3.new(0, 0.6, 0))
+		q.Color = cs(Color3.fromRGB(122, 104, 146)); q.Size = grow(0.12 * S * H, 0.42 * S * H)
+		emit(q, 1)
+		motes(Color3.fromRGB(196, 255, 210), 3)
+	elseif kind == "ink" then -- (Tidecrest) a water splash crown flat on the wall, ink drops thrown off, a gold ripple
+		flat(TEX.mfSplash, Color3.fromRGB(255, 255, 255), 0.12 * S, 0.42 * S, 0.2)
+		ringOn(Color3.fromRGB(255, 214, 130), 0.08 * S, 0.55 * S, 0.3)
+		local d = emAt(SETP.ink, p, n + Vector3.new(0, 0.5, 0))
+		d.Color = cs(Color3.fromRGB(28, 27, 38)); d.Size = ns(0, 0.04 * S, 1, 0.015 * S); d.Speed = NR(1.5 * S, 3.5 * S)
+		d.LightEmission = 0
+		emit(d, 6)
+		local s = emAt(TRP.star, p, n)
+		s.Color = cs(Color3.fromRGB(255, 214, 130)); s.Speed = NR(0.6 * S, 1.6 * S)
+		emit(s, 3)
+	elseif kind == "pop" then -- (Ducky) a bubble pop: the bubble ring flat on the wall, bubbles off it, drops
+		flat(TEX.mfBubbles, Color3.fromRGB(255, 255, 255), 0.1 * S, 0.36 * S, 0.2)
+		local b = emAt(SETP.bubble, p, n)
+		b.Color = cs(Color3.fromRGB(255, 240, 200)); b.Speed = NR(0.6 * S, 1.6 * S)
+		emit(b, 4)
+		emAt(DROPS_S, p, n):Emit(4)
+	elseif kind == "hearts" then -- (Ducky Classic) hearts and sparkles bursting
+		glow(Color3.fromRGB(255, 176, 210), 0.3 * S, 0.18)
+		local h = emAt(TRP.heart, p, n)
+		emit(h, 4)
+		local s = emAt(TRP.star, p, n)
+		s.Color = cs(Color3.fromRGB(255, 226, 150), Color3.fromRGB(255, 160, 200)); s.Speed = NR(0.8 * S, 2 * S)
+		emit(s, 4)
+	elseif kind == "dust" then -- (Dust Drover) a dust kick and a ricochet
+		local q = emAt(TRP.puff, p, n + Vector3.new(0, 0.8, 0))
+		q.Color = cs(Color3.fromRGB(206, 182, 142)); q.Size = grow(0.12 * S * H, 0.45 * S * H)
+		emit(q, 2)
+		sparks(Color3.fromRGB(255, 230, 170), Color3.fromRGB(240, 150, 70), 3, 3, 0.045)
+	elseif kind == "ring" then -- (Star Drover) a ring burst flat on the wall, a teal glow, thin teal sparks
+		ringOn(col, 0.08 * S, 0.65 * S, 0.24)
+		glow(col, 0.28 * S, 0.14)
+		sparks(Color3.fromRGB(214, 255, 250), col, 4, 2.6, 0.035)
 	end
 end
 
@@ -995,7 +1229,7 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	local sk = skinAt(at.Position)
 	if sk then sk.afterT = clockT; skinShot(sk) end
 	if not noFlash then
-		Fx.muzzle(at, big, fpv, if sk then sk.spec.flash else nil, fast)
+		Fx.muzzle(at, big, fpv, if sk then sk.spec.flash else nil, fast, if sk then sk.spec.muzzle else nil)
 		if sk and sk.glow and #sk.flames > 0 then
 			local fb = emAt(FLAMEBURST, at.Position + at.LookVector * 0.1 * (if fpv then FPK else S), at.LookVector)
 			local kk = if fpv then FPK * 0.6 else S
@@ -1021,11 +1255,31 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	-- (a high-tier skin's own bullet trail, SkinSets.FX[id].bullet: Fx.bulletTrail; its muzzle bits on the first leg only,
 	-- its flourish where the last one ends)
 	local bs = if sk then sk.spec.bullet else nil
+	local imp = if sk and sk.spec.impact then sk.spec.impact.kind else nil
+	local cheapN = 0 -- (a shotgun's pellets past the second: the line and at most one bit)
+	local impN = 0
 	local function line(p: Vector3, q: Vector3, tp: number?, first: boolean, last: boolean)
+		local cheap = #ends > 2 and cheapN >= 2
+		-- (the set's impact where this line met the map, a shotgun's first two pellets only; a line that ends on someone
+		-- or in the sky keeps its kind's own small flourish)
+		local hit: RaycastResult? = nil
+		if imp and last and impN < 2 then
+			local d = q - p
+			if d.Magnitude > 0.5 then
+				hit = castMap(q - d.Unit * 0.6, d.Unit * 1.2)
+				if hit and (KIND[hit.Material] or "hard") == "water" then hit = nil end
+			end
+		end
 		if bs then
-			Fx.bulletTrail(bs, p, q, { col = col, wide = wide, life = life, fpv = fpv, taper = tp, first = first, last = last, spec = bs })
+			Fx.bulletTrail(bs, p, q, { col = col, wide = wide, life = life, fpv = fpv, taper = tp, first = first, last = last, spec = bs,
+				cheap = cheap, impact = hit ~= nil })
 		else
 			Fx.tracer(p, q, col, wide, life, tp)
+		end
+		if last then cheapN += 1 end
+		if hit then
+			impN += 1
+			setImpact(imp :: string, hit.Position, hit.Normal, col)
 		end
 	end
 	if path then
@@ -2027,7 +2281,9 @@ local function skinSpec(model: Model): any
 	local m = Shared:FindFirstChild("SkinSets")
 	if not (m and m:IsA("ModuleScript")) then return nil end
 	local ok, SS = pcall(require, m)
-	return if ok and type(SS) == "table" and SS.FX then SS.FX[id] else nil
+	if not (ok and type(SS) == "table") then return nil end
+	if type(SS.fxOf) == "function" then return SS.fxOf(id) end -- (its own row, its set's shots filled in: SETFX)
+	return if SS.FX then SS.FX[id] else nil
 end
 -- one kind's particle: a texture, how it moves, how it fades. sz = the spec's size (metres) x k
 local function skinProps(e: any, sz: number, k: number): { [string]: any }
@@ -2934,5 +3190,34 @@ task.spawn(function()
 	for _, id in TEX do if type(id) == "string" and id:find("rbxassetid://") then table.insert(list, id) end end
 	pcall(function() game:GetService("ContentProvider"):PreloadAsync(list) end)
 end)
+
+-- (Studio only, for photos and checks) a skin set's whole shot from anywhere, as someone else's shot: the muzzle, the trail
+-- and the impact where it meets anything solid (not only the map). The JankSetFx BindableFunction under this module:
+-- Invoke(setId, at: CFrame, to: Vector3, only: "muzzle" | "trail" | "impact"?) -> whether it hit something (only: that
+-- part alone, so a photo can catch each at its best age)
+if RunService:IsStudio() then
+	local bf = Instance.new("BindableFunction")
+	bf.Name = "JankSetFx"
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	bf.OnInvoke = function(setId: string, at: CFrame, to: Vector3, only: string?): boolean?
+		local m = Shared:FindFirstChild("SkinSets")
+		local ok, SS = pcall(require, m)
+		local row = if ok and type(SS) == "table" and SS.SETFX then SS.SETFX[setId] else nil
+		if not row then return nil end
+		if only == nil or only == "muzzle" then Fx.muzzle(at, false, false, row.flash, false, row.muzzle) end
+		if only == nil or only == "trail" then Fx.bulletTrail(row.bullet, at.Position, to, { col = row.tracer, wide = 0.045 * S, life = 0.2, fpv = false, first = true,
+			last = true, spec = row.bullet, impact = row.impact ~= nil }) end
+		local skip: { Instance } = { folder }
+		if workspace.CurrentCamera then table.insert(skip, workspace.CurrentCamera) end
+		for _, pl in Players:GetPlayers() do if pl.Character then table.insert(skip, pl.Character) end end
+		rp.FilterDescendantsInstances = skip
+		local d = to - at.Position
+		local hit = workspace:Raycast(at.Position, d * 1.05, rp)
+		if hit and row.impact and (only == nil or only == "impact") then setImpact(row.impact.kind, hit.Position, hit.Normal, row.tracer) end
+		return hit ~= nil
+	end
+	bf.Parent = script
+end
 
 return Fx

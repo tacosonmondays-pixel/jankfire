@@ -503,4 +503,48 @@ function SkinSets.progress(setId: string, owns: (string) -> boolean): (number, n
 	return n, #s.members, missing
 end
 
+-- THE SETS' OWN SHOTS (19 Nov 2026, the owner: "guns will have different vfx based off their skin!"): every gun in a set
+-- flashes, traces and lands in its set's theme (Fx.muzzle, Fx.bulletTrail, the impacts in Fx). A skin's own FX row wins
+-- field by field (the legendary skins keep their own trails); a set gun with no row of its own gets the set's. Fx reads
+-- them through SkinSets.fxOf.
+--   flash   the flash's tint and light (Color3)                tracer  the tracer's colour (Color3)
+--   muzzle  { kind }: wings | inferno | hex | splash | bubbles | hearts | powder | ring (the flash drawing and its bits)
+--   bullet  { kind, bits? } (Fx.bulletTrail; bits = the bubbles' colour)
+--   impact  { kind }: halo | embers | hex | ink | pop | hearts | dust | ring (where the shot meets the map)
+SkinSets.SETFX = {
+	set_seraph = { flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95), muzzle = { kind = "wings" },
+		bullet = { kind = "feathers" }, impact = { kind = "halo" } },
+	set_infernal = { flash = Color3.fromRGB(255, 160, 80), tracer = Color3.fromRGB(255, 130, 54), muzzle = { kind = "inferno" },
+		bullet = { kind = "ember" }, impact = { kind = "embers" } },
+	set_halloween = { flash = Color3.fromRGB(255, 196, 130), tracer = Color3.fromRGB(176, 250, 196), muzzle = { kind = "hex" },
+		bullet = { kind = "hex" }, impact = { kind = "hex" } },
+	set_tidecrest = { flash = Color3.fromRGB(255, 228, 170), tracer = Color3.fromRGB(28, 27, 38), muzzle = { kind = "splash" },
+		bullet = { kind = "ink" }, impact = { kind = "ink" } },
+	set_ducky = { flash = Color3.fromRGB(255, 220, 120), tracer = Color3.fromRGB(255, 205, 90), muzzle = { kind = "bubbles" },
+		bullet = { kind = "bubbles", bits = Color3.fromRGB(255, 236, 170) }, impact = { kind = "pop" } },
+	set_ducky_classic = { flash = Color3.fromRGB(255, 176, 210), tracer = Color3.fromRGB(255, 140, 190), muzzle = { kind = "hearts" },
+		bullet = { kind = "hearts" }, impact = { kind = "hearts" } },
+	set_dust = { flash = Color3.fromRGB(255, 206, 140), tracer = Color3.fromRGB(232, 190, 110), muzzle = { kind = "powder" },
+		bullet = { kind = "dust" }, impact = { kind = "dust" } },
+	set_star = { flash = Color3.fromRGB(150, 255, 240), tracer = Color3.fromRGB(69, 230, 214), muzzle = { kind = "ring" },
+		bullet = { kind = "hardlight" }, impact = { kind = "ring" } },
+}
+-- a skin's effects row with its set's shots filled in (nil: neither). cached, so Fx gets the same table every time
+local fxCache: { [string]: any } = {}
+function SkinSets.fxOf(id: string): any
+	local c = fxCache[id]
+	if c ~= nil then return if c == false then nil else c end
+	local own = SkinSets.FX[id]
+	local row = SkinSets.SKINS[id]
+	local set = if row then SkinSets.SETFX[row[4]] else nil
+	local out: any = own
+	if set then
+		out = {}
+		if own then for k, v in own do out[k] = v end end
+		for k, v in set do if out[k] == nil then out[k] = v end end
+	end
+	fxCache[id] = if out == nil then false else out
+	return out
+end
+
 return SkinSets
