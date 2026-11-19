@@ -6,7 +6,7 @@ local Config = require(script.Parent.Config)
 
 local Movement = {}
 
-export type Hook = { ax: number, ay: number, az: number, len: number? }
+export type Hook = { ax: number, ay: number, az: number, len: number?, tie: boolean? } -- (tie: on a person, Config.hook.tieMin)
 export type State = {
 	vx: number, vy: number, vz: number,
 	onGround: boolean, groundTicks: number, combo: number,
@@ -72,6 +72,24 @@ function Movement.ropeStep(h: Hook, px: number, py: number, pz: number, vx: numb
 	local dist = math.sqrt(dx * dx + dy * dy + dz * dz)
 	if dist < 0.03 then return vx, vy, vz end
 	local nx, ny, nz = dx / dist, dy / dist, dz / dist
+	if h.tie then
+		-- a person on the rope (Config.hook.tieMin): no pull and no lift. the rope holds taut at its length (only ever
+		-- shorter, never under tieMin): never further away, and past it you're dragged after them
+		h.len = math.max(math.min(h.len or dist, dist), H.tieMin)
+		local radial = vx * nx + vy * ny + vz * nz
+		if dist >= (h.len :: number) - 0.15 then
+			if radial < 0 then vx -= nx * radial; vy -= ny * radial; vz -= nz * radial; radial = 0 end
+			local over = dist - (h.len :: number)
+			if over > 0 then
+				local want = math.min(over * H.tieK, H.tieDrag)
+				if radial < want then
+					local add = want - radial
+					vx += nx * add; vy += ny * add; vz += nz * add
+				end
+			end
+		end
+		return vx, vy, vz
+	end
 	local pull = if dist > H.near then H.pull * (mul or 1) else 0 -- (mul: a classic mode's stronger pull, web classicRopeStep hookMul)
 	vx += nx * pull * dt; vy += ny * pull * dt; vz += nz * pull * dt
 	vy += grav * H.lift * dt
@@ -135,7 +153,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 	local wl = math.sqrt(inp.wx * inp.wx + inp.wz * inp.wz)
 	if slipping then -- feet gone: next to no friction, no control, no jumping until you're up again
 		if st.onGround then st.vx, st.vz = Movement.friction(st.vx, st.vz, 0.02, dt) end
-	elseif st.onGround and not st.hook then
+	elseif st.onGround and not (st.hook and not st.hook.tie) then -- (tied to a person: you walk as on the ground)
 		-- a bhop (and a slide jump) needs a fresh press. a key just held through the landing still hops (the Humanoid
 		-- re-jumps) but as a plain ground step: friction and the run's acceleration, and the combo back to 0. (the owner,
 		-- 16 Nov 2026: "an actual b hop, not just holding down space"; the web game lets a held key bhop)
@@ -166,7 +184,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 	end
 	if st.hook then
 		st.vx, st.vy, st.vz = Movement.ropeStep(st.hook, chestX, chestY, chestZ, st.vx, st.vy, st.vz, dt, grav, st.hookMul)
-		st.lift = 1
+		st.lift = if st.hook.tie then 0 else 1
 	elseif st.lift > 0 then -- letting go: the rope's share of your weight fades out instead of dropping you
 		st.lift = math.max(0, st.lift - dt / Config.hook.letGo)
 		st.vy += grav * Config.hook.lift * st.lift * dt

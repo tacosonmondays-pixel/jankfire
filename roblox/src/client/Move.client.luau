@@ -47,8 +47,10 @@ local rope: Beam? = nil
 local ropeAnchor: Attachment? = nil
 -- hooked to a person (18 Nov 2026, the owner: "can you make it so you can grapple onto people"; the web's tryHook and
 -- hookPoint): the rope ties onto a living body the hook hit (a player, or a training dummy) at its chest and follows
--- it. it reels you in at the rope's full pull and lets go Config.hook.bodyLet off them, your momentum carrying you into
--- them; it drops if they die, respawn or leave, or once they've been out of your sight Config.hook.bodyBlind. no text
+-- it. since 19 Nov 2026 (the owner: "tie, then choose") it doesn't pull you in: it holds taut (Movement.ropeStep's tie,
+-- Config.hook.tieMin) and you choose: F yanks them to you, X reels you to them (letting go Config.hook.bodyLet off
+-- them), or let go. it drops if they die, respawn or leave, or once they've been out of your sight
+-- Config.hook.bodyBlind. no text
 local hookBody: Model? = nil
 local hookBlind, hookLookT = 0, 0
 local bodyParams = RaycastParams.new()
@@ -209,7 +211,7 @@ local function tryHook()
 	else
 		body = nil
 	end
-	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil }
+	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil, tie = body ~= nil } -- (a person: tied, no pull)
 	GrappleRemote:FireServer("hook", p, body, auto ~= nil)
 	-- our own rope right away (the server draws it for everyone else)
 	local a0 = (ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
@@ -433,7 +435,8 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil
-	-- a person on the rope (above): the end follows their chest; gone, reeled in, or out of sight too long, it lets go
+	-- a person on the rope (above): the end follows their chest; gone or out of sight too long, it lets go (reeled in:
+	-- the reel lets go itself, below)
 	if st.hook and hookBody then
 		local tr = bodyRoot(hookBody)
 		if not tr then
@@ -443,9 +446,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 			local h = st.hook :: any
 			h.ax, h.ay, h.az = c.X, c.Y, c.Z
 			local nowL = os.clock()
-			if (c - chest).Magnitude < Config.hook.bodyLet then
-				releaseHook(true)
-			elseif nowL - hookLookT >= 0.1 then
+			if nowL - hookLookT >= 0.1 then
 				local eye = root.Position + Vector3.new(0, 1.5, 0)
 				bodyParams.FilterDescendantsInstances = { ch, hookBody :: Model }
 				hookBlind = if workspace:Raycast(eye, c - eye, bodyParams) then hookBlind + (nowL - hookLookT) else 0
