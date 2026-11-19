@@ -7,12 +7,15 @@
 # run: blender -b --factory-startup -P tools/roblox/finisher_r15.py -- <outdir> [board[:n,n]]
 #   writes <board>_<n>.png (preview) and <board>_<n>.json (part CFrames, props, lens: Roblox axes) per frame
 import bpy, bmesh, math, json, sys, os, random
+import xml.etree.ElementTree as ET
 from mathutils import Vector, Matrix, Euler, Quaternion
 from bpy_extras.object_utils import world_to_camera_view
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 OUT = argv[0]
 ONLY = {}
+SHEETS = [a_ for a_ in argv[1:] if a_.startswith('sheet:')]
+argv = [a_ for a_ in argv if not a_.startswith('sheet:')]
 for a_ in argv[1:]:
     k_, _, n_ = a_.partition(':')
     ONLY[k_] = {int(x) for x in n_.split(',')} if n_ else None
@@ -73,6 +76,57 @@ JOINTS = [('Root', 'HumanoidRootPart', 'LowerTorso', (0, -1, 0), (0, -0.2, 0)),
           ('LeftAnkle', 'LeftLowerLeg', 'LeftFoot', (0, -0.5472, 0), (0, 0.1019, 0))]
 
 
+CLIPDIR = os.environ.get('FIN_CLIPS', os.path.join(os.path.dirname(OUT.rstrip('/\\')), 'clips'))
+_CLIPS = {}
+PART_JOINT = {p1: name for name, p0, p1, a0, a1 in JOINTS}
+
+
+def clip(name):
+    # the owner's rule (19 Nov): every pose comes from a real reference, here a mocap clip (Mixamo or a MotionBricks take
+    # made from our Mixamo clips), turned into R15 joint rotations by tools/blender/mixamo_r15.py
+    if name not in _CLIPS:
+        tree = ET.parse(os.path.join(CLIPDIR, name + '.rbxmx'))
+        kfs = []
+        for kf in tree.iter('Item'):
+            if kf.get('class') != 'Keyframe':
+                continue
+            t = float(kf.find("Properties/float[@name='Time']").text)
+            poses = {}
+            for ps in kf.iter('Item'):
+                if ps.get('class') != 'Pose':
+                    continue
+                nm = ps.find("Properties/string[@name='Name']").text
+                ce = ps.find("Properties/CoordinateFrame[@name='CFrame']")
+                v = [float(ce.find(tag).text) for tag in ('X', 'Y', 'Z', 'R00', 'R01', 'R02', 'R10', 'R11', 'R12', 'R20', 'R21', 'R22')]
+                poses[nm] = Matrix(((v[3], v[4], v[5], v[0]), (v[6], v[7], v[8], v[1]), (v[9], v[10], v[11], v[2]), (0, 0, 0, 1)))
+            kfs.append((t, poses))
+        kfs.sort(key=lambda x: x[0])
+        _CLIPS[name] = kfs
+    return _CLIPS[name]
+
+
+def clip_len(name):
+    return clip(name)[-1][0]
+
+
+def clip_pose(name, t):
+    kfs = clip(name)
+    t = max(kfs[0][0], min(kfs[-1][0], t))
+    i = 0
+    while i < len(kfs) - 2 and kfs[i + 1][0] <= t:
+        i += 1
+    (t0, a), (t1, b) = kfs[i], kfs[min(i + 1, len(kfs) - 1)]
+    u = 0 if t1 <= t0 else (t - t0) / (t1 - t0)
+    out = {}
+    for part in a:
+        ma, mb = a[part], b.get(part, a[part])
+        q = ma.to_quaternion().slerp(mb.to_quaternion(), u)
+        m = q.to_matrix().to_4x4()
+        m.translation = ma.translation.lerp(mb.translation, u)
+        out[part] = m
+    return out
+
+
 def aim_rot(d, twist=0.0):
     # the joint rotation that turns a limb hanging straight down (0,-1,0) to point along d (in the parent's axes)
     d = Vector(d).normalized()
@@ -84,6 +138,11 @@ def solve(root_cf, pose):
     # pose keys: joint name -> 4x4 rotation; shortcuts: armR/armL/legR/legL (a direction), elbowR/elbowL (bend),
     # kneeR/kneeL (bend), waist/neck/wristR/wristL/ankleR/ankleL (x, y, z degrees)
     R = {}
+    if pose.get('clip'):
+        cn, ct = pose['clip']
+        for part, m in clip_pose(cn, ct).items():
+            if part in PART_JOINT:
+                R[PART_JOINT[part]] = m
     for side, s in (('R', 'Right'), ('L', 'Left')):
         if 'arm' + side in pose:
             R[s + 'Shoulder'] = aim_rot(pose['arm' + side], pose.get('armTwist' + side, 0))
@@ -155,7 +214,11 @@ def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None)
             err = reach(root, pose, side, tb)
             print('   reach', name, side, round(err, 2), flush=True)
     cf = solve(root, pose)
-    if ground and (len(at) < 3 or at[2] == 0):
+    if pose.get('clip'):
+        dy = max(0.0, floor_y - lowest(cf))
+        if dy > 0:
+            cf = {k: CF(0, dy, 0) @ v for k, v in cf.items()}
+    elif ground and (len(at) < 3 or at[2] == 0):
         dy = floor_y - lowest(cf)
         cf = {k: CF(0, dy, 0) @ v for k, v in cf.items()}
     sc_ = pose.get('scatter', 0.0)
@@ -170,9 +233,18 @@ def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None)
     return cf
 
 
+KGRIP = os.environ.get('KGRIP', 'fist')
+
+
 def hand_cf(cf, side='R'):
-    # the katana's grip in the right hand (shared/Holds.luau: at (0,0,-0.045), rot (-90,0,0)); blade along -Z of it
-    return cf[('Right' if side == 'R' else 'Left') + 'Hand'] @ CF(0, 0, -0.045) @ ANG(-90, 0, 0)
+    # the katana's grip frame (blade along its -Z). 'fist': the handle through the closed hand, the blade out of the
+    # thumb side, as the mocap's axe and sword grips hold it; 'fistb' the other way; 'arm': along the fingers
+    h = cf[('Right' if side == 'R' else 'Left') + 'Hand']
+    if KGRIP == 'arm':
+        return h @ CF(0, 0, -0.045) @ ANG(-90, 0, 0)
+    if KGRIP == 'fistb':
+        return h @ CF(0, -0.12, 0) @ ANG(0, 180, 0)
+    return h @ CF(0, -0.12, 0)
 
 
 def wpt(cf_m, local):  # a point in a CFrame's space -> Blender world
@@ -642,7 +714,7 @@ def dust_8():
 def tide_stage():
     stage()
     tree((-8, 11))
-    tree((10, -16), 5.8)
+    tree((-15, -26), 5.8)
     petals((-5, 9, 3), 10, 4, seed=401)
 
 
@@ -770,8 +842,281 @@ def tide_8():
     return {'name': 'PETALS', 'note': 'crane up and out'}
 
 
+# ================================================================== the mocap versions (19 Nov, the owner's rule)
+# every body below plays a real clip at a picked moment (contact sheets: r15sheets/contact_*.jpg); nothing is posed
+# by hand. They replace the keyed frames of the same numbers above.
+def hips_b(cn, t, yaw):
+    # where a clip's hips are at time t (Blender, relative to the rig's base), from its own root motion
+    m = clip_pose(cn, t).get('LowerTorso')
+    off = m.translation if m else Vector((0, 0, 0))
+    w = (ANG(0, yaw, 0) @ Vector((off.x, 0, off.z, 1))).xyz
+    return br(w)
+
+
+def at_for(cn, t, want_b, yaw):
+    # the rig's base so that the clip's hips pass over want_b at time t
+    o = hips_b(cn, t, yaw)
+    return (want_b[0] - o.x, want_b[1] - o.y, 0)
+
+
+SLASH, LOOK, SHEATHE, DRAW = 'inkfall_slash_t1', 'victim_lookaround_t2', 'sheathe_t2', 'quick_draw_t1'
+T_HIT = 2.55
+K_START = at_for(SLASH, T_HIT, (3.3, 0.0), 0)
+K_BACK = (2.6, 6.6)   # after the pass: a few steps on, back to back with the victim (the owner's beat sheet)
+
+
+def blade_sweep(cn, at, yaw, t0, t1, n=14, col=INK, width=None, tag='smear'):
+    # an ink-brush smear along the blade's real path between t0 and t1 (the katana in the right hand of the clip)
+    pts = []
+    for i in range(n + 1):
+        t = t0 + (t1 - t0) * i / n
+        p = rb((at[0], at[1], 0))
+        root = CF(p.x, 3.0, p.z) @ ANG(0, yaw, 0)
+        cf = solve(root, {'clip': (cn, t)})
+        g = hand_cf(cf)
+        pts.append((wpt(g, (0, 0, -0.6)), wpt(g, (0, 0, -2.9))))
+    for i in range(n):
+        (a0, b0), (a1, b1) = pts[i], pts[i + 1]
+        mid0, mid1 = (a0 + b0) / 2, (a1 + b1) / 2
+        L = (b0 - a0).length * (0.4 + 0.6 * i / n)
+        prop_box_between(mid0, mid1 + (mid1 - mid0) * 0.15, 0.08, L, col, up_b=(b0 - a0).normalized(), tag=tag,
+                         mat='Neon' if col == INK else 'SmoothPlastic')
+
+
+@frame('tide', 1)
+def m_tide_1():
+    tide_stage()
+    K = rig('k', K_START, 0, {'clip': (SLASH, 0.67)})
+    katana_grip(hand_cf(K))
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
+    pts = pts_of(K) + [wpt(hand_cf(K), (0, 0, -2.9))]
+    aim_lens(pts, 72, 3, 44, 0, mx=0.62, my=0.6, zmin=1.0)
+    return {'name': 'RUN-UP'}
+
+
+@frame('tide', 2)
+def m_tide_2():
+    tide_stage()
+    K = rig('k', K_START, 0, {'clip': (SLASH, 1.95)})
+    katana_grip(hand_cf(K))
+    pts = pts_of(K) + [wpt(hand_cf(K), (0, 0, -2.9))]
+    aim_lens(pts, 168, -22, 84, -16, mx=0.8, my=0.62, zmin=0.45)
+    return {'name': 'CLOSING'}
+
+
+def m_pass(impact=False):
+    tide_stage()
+    K = rig('k', K_START, 0, {'clip': (SLASH, T_HIT)})
+    katana_grip(hand_cf(K))
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
+    blade_sweep(SLASH, K_START, 0, T_HIT - 0.35, T_HIT, n=16)
+    pts = pts_of(K) + pts_of(V) + [wpt(hand_cf(K), (0, 0, -2.9))]
+    aim_lens(pts, -14, 16, 56, 12, mx=0.84, my=0.66)
+
+
+@frame('tide', 3)
+def m_tide_3():
+    m_pass()
+    return {'name': 'THE PASS'}
+
+
+@frame('tide', 4)
+def m_tide_4():
+    m_pass(True)
+    return {'name': 'CUT FRAME', 'impact': {'bg': [0.97, 0.96, 0.94], 'fg': [0.05, 0.05, 0.07], 'accent': ['smear'], 'accent_col': [0.93, 0.6, 0.72]}}
+
+
+K_END_T = 3.33
+
+
+@frame('tide', 5)
+def m_tide_5():
+    tide_stage()
+    K = rig('k', at_for(SLASH, K_END_T, K_BACK, 0), 0, {'clip': (SLASH, K_END_T)})
+    katana_grip(hand_cf(K))
+    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 1.35), 'face': {'LeftUpperLidRaiser': 0.8, 'RightUpperLidRaiser': 0.8}})
+    petals(br(V['Head'].translation) + Vector((0.5, -1.6, 0.3)), 9, 1.6, seed=411)
+    hp = br(V['Head'].translation)
+    kp = br(K['Head'].translation)
+    lens(hp + Vector((2.2, -6.2, -0.3)), hp * 0.8 + kp * 0.2 + Vector((0, 0, -0.8)), 40, 0)
+    return {'name': 'STILLNESS'}
+
+
+def k_end_spot():
+    return K_BACK
+
+
+@frame('tide', 6)
+def m_tide_6():
+    tide_stage()
+    spot = k_end_spot()
+    at = at_for(SHEATHE, 1.4, spot, 0)
+    K = rig('k', at, 0, {'clip': (SHEATHE, 1.4)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    katana_at_b(a - d * 0.6, d)
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 2.7)})
+    hp = br(K['Head'].translation)
+    pts = [hp + Vector((0, 0, 0.6)), a - d * 1.2, a + d * 2.0, br(K['RightHand'].translation), br(K['LeftHand'].translation)]
+    aim_lens(pts, 212, 8, 40, 6, mx=0.8, my=0.66)
+    return {'name': 'THE SHEATHE'}
+
+
+@frame('tide', 7)
+def m_tide_7():
+    tide_stage()
+    spot = k_end_spot()
+    K = rig('k', at_for(SHEATHE, 2.8, spot, 0), 0, {'clip': (SHEATHE, 2.8)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    katana_at_b(a, d)
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_27_hit_stomach', 0.24)})
+    c = br(V['UpperTorso'].translation) + Vector((0, 0, -0.6))
+    brush(c + Vector((-0.75, -2.0, 1.5)), c + Vector((-0.75, 2.4, -1.1)), 0.35, 0.55, (-1, 0, 0), INK, seed=61)
+    brush(c + Vector((-0.82, -1.6, 1.25)), c + Vector((-0.82, 2.0, -0.95)), 0.33, 0.16, (-1, 0, 0), SKIN, seed=62, tag='stroke_edge')
+    splats(c + Vector((-0.8, 0.6, 0.0)), 14, 1.4, seed=71)
+    kp = br(K['UpperTorso'].translation)
+    mid = (c + kp) / 2
+    lens(mid + Vector((-10.5, 0, 0.2)), mid + Vector((0, 0, 0.2)), 44, 0)
+    return {'name': 'THE CUT LANDS'}
+
+
+@frame('tide', 8)
+def m_tide_8():
+    tide_stage()
+    spot = k_end_spot()
+    K = rig('k', at_for(SHEATHE, 2.8, (spot[0], spot[1] + 1.4), 0), 0, {'clip': (SHEATHE, 2.8)})
+    sheath(K)
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_28_knockdown_liver', 1.2), 'scatter': 0.9})
+    vc = br(V['UpperTorso'].translation)
+    petals(vc + Vector((0, 0, 0.6)), 70, 2.8, seed=421, size=1.3)
+    splats(vc, 26, 2.2, seed=81, size=1.4)
+    lens((-7.5, -7.5, 8.5), (0.5, 1.6, 1.6), 54, 0)
+    return {'name': 'PETALS'}
+
+
+# ---------------- DUST, from the clips
+IDLE_T = 0.0
+
+
+def m_dust_rigs(kclip=(DRAW, IDLE_T), vclip=(DRAW, IDLE_T), kgun_in=True, kface=None, vface=None):
+    K = rig('k', (0, 0, 0), 0, {'clip': kclip, 'face': kface if kface is not None else SQUINT})
+    holster(K, kgun_in)
+    V = rig('v', (DV.x, DV.y, 0), 180, {'clip': vclip, 'face': vface if vface is not None else WIDE})
+    holster(V, True)
+    return K, V
+
+
+@frame('dust', 1)
+def m_dust_1():
+    desert()
+    K, V = m_dust_rigs()
+    hd = K['Head']
+    lens(br((hd @ Vector((0, 0.1, -2.4, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
+    return {'name': "KILLER'S EYES", 'crop': 0.3}
+
+
+@frame('dust', 2)
+def m_dust_2():
+    desert()
+    K, V = m_dust_rigs()
+    hd = V['Head']
+    q = (hd @ Vector((0.38, 0.32, -0.6, 1))).xyz
+    prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
+    lens(br((hd @ Vector((0, 0.1, -2.4, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 4)
+    return {'name': "VICTIM'S EYES", 'crop': 0.3}
+
+
+@frame('dust', 3)
+def m_dust_3():
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12))
+    h = br(K['RightHand'].translation)
+    lens(h + Vector((1.5, -2.8, -0.5)), h + Vector((-0.4, 1.6, 0.3)), 40, -6)
+    return {'name': 'THE HAND'}
+
+
+@frame('dust', 4)
+def m_dust_4():
+    desert()
+    m_dust_rigs()
+    tumbleweed((2.0, 8.5, 1.6), 1.6)
+    lens((25, -1.5, 1.1), (0, 8.5, 2.4), 26, 0)
+    return {'name': 'THE WIDE'}
+
+
+@frame('dust', 5)
+def m_dust_5():
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.75), kgun_in=False)
+    g = revolver_in_hand(K)
+    m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
+    flash(m + (m - br(g.translation)).normalized() * 0.4, 1.1, (1, -0.3, 0.2))
+    puff(m + Vector((0.3, 0.6, 0.2)), 0.5, (0.86, 0.78, 0.62))
+    pts = pts_of(K) + [m + Vector((0, 1.2, 0)), br(V['Head'].translation), br(V['LeftFoot'].translation)]
+    aim_lens(pts, 28, -6, 54, 14, mx=0.84, my=0.66, zmin=0.6)
+    return {'name': 'THE DRAW'}
+
+
+@frame('dust', 6)
+def m_dust_6():
+    desert()
+    K, V = m_dust_rigs(vclip=('bx_27_hit_stomach', 0.12))
+    hit = br(V['UpperTorso'].translation) + Vector((0, -0.55, 0.1))
+    prop_box_between(hit + Vector((0, -0.7, 0)), hit, 0.16, 0.16, (1.0, 0.95, 0.85), mat='Neon', tag='bullet')
+    prop_box_between(hit + Vector((0, -12, -0.4)), hit + Vector((0, -0.7, 0)), 0.05, 0.05, (1.0, 0.95, 0.85), mat='Neon', tag='btrail')
+    flash(hit + Vector((0, -0.2, 0)), 1.1, (-1, -1, 0.1), col=(1.0, 0.95, 0.85), rays=8, tag='shock')
+    vt = br(V['UpperTorso'].translation)
+    lens(vt + Vector((-3.8, -5.0, 0.4)), vt + Vector((0, 0, 0.6)), 40, -8)
+    return {'name': 'HIT FRAME', 'impact': {'bg': [0.04, 0.03, 0.03], 'fg': [1.0, 0.72, 0.32], 'accent': ['bullet', 'btrail', 'shock'], 'accent_col': [1.0, 0.95, 0.85]}}
+
+
+@frame('dust', 7)
+def m_dust_7():
+    desert()
+    K, V = m_dust_rigs(vclip=('bx_27_hit_stomach', 0.48))
+    c = br(V['UpperTorso'].translation)
+    for i in range(16):
+        a = 2 * math.pi * i / 16
+        r = 0.9 + 0.5 * (i % 3)
+        q = rb(c + Vector((math.cos(a) * 2.0, 1.4 + abs(math.sin(a)) * 0.8, math.sin(a) * 1.6)))
+        prop('Ball', (r, r, r), CF(q.x, q.y, q.z), SAND if i % 2 else (1.0, 0.86, 0.55), 'Sand', 'dustburst')
+    pts = pts_of(V) + [c + Vector((2.2, 1.6, 1.8)), c + Vector((-2.2, 1.6, -1.6))]
+    aim_lens(pts, 25, -8, 44, -6)
+    return {'name': 'THE HIT'}
+
+
+@frame('dust', 8)
+def m_dust_8():
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.06), kgun_in=False, vclip=('bx_28_knockdown_liver', 1.2))
+    g = revolver_in_hand(K)
+    h = br(K['RightHand'].translation)
+    m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
+    for i, (dz, r) in enumerate(((0.3, 0.2), (0.75, 0.28), (1.25, 0.34))):
+        puff(m + Vector((0.05 * i, 0.05, dz)), r)
+    pts = [br(K['Head'].translation), h + Vector((0, 0, -1.2)), m + Vector((0, 0, 1.4)), br(K['LeftHand'].translation)]
+    aim_lens(pts, 145, 2, 36, 5, mx=0.8, my=0.66)
+    return {'name': 'HOLSTER'}
+
+
 # ------------------------------------------------------------------ run
 setup()
+for sh_ in SHEETS:
+    _, cn, n = sh_.split(':')
+    n = int(n)
+    L = clip_len(cn)
+    for i in range(n):
+        t = L * i / max(1, n - 1)
+        clear()
+        RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear()
+        prop('Block', (60, 1, 60), CF(0, -0.5, 0), FLOORC, 'SmoothPlastic', 'floor')
+        K = rig('k', (0, 0, 0), 0, {'clip': (cn, t)}, ground=False)
+        draw_preview()
+        aim_lens(pts_of(K), 35, 8, 40, 0, mx=0.7, my=0.75)
+        sc.render.filepath = os.path.join(OUT, f'sheet_{cn}_{i:02d}.png')
+        bpy.ops.render.render(write_still=True)
+    print('sheet', cn, n, round(L, 2), flush=True)
 for board, frames in BOARDS.items():
     if ONLY and board not in ONLY:
         continue
