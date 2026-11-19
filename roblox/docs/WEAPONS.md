@@ -247,7 +247,8 @@ remotes from one script, because the 2 s windows are shorter than the test tools
 
 | | |
 |---|---|
-| distance | 12 m (36 studs; was 8 m), flat along your look, stopped 2 studs short of a wall |
+| distance | 12 m (36 studs; was 8 m) along your look, stopped 2 studs short of a wall, a ceiling or the floor |
+| up and down | the owner, 19 Nov 2026: *"scythe dash should be in the direction you look, so up or down too"*. The path follows your whole look, at most 55° up or down. Within 7° of level it stays flat, and a dash looking down while you stand on the ground stays flat too, so it never digs into the floor. Going up, the head's line is checked against the ceiling; going down, the feet's line against the floor, so a dash down from a height stops on it cleanly. **Only one upward dash between touching the ground:** a second one while still in the air goes flat, so dashes, the grapple and the pads never chain into flying. When a dash that went up or down ends, its climb is cut to 12 studs/s and its run to a sprint's (the air would otherwise carry its 105 studs/s on for 50 studs) (`ScytheDash.server`, `Move.client`) |
 | time | 0.28 s (about 43 m/s; was 0.22 s) |
 | charges | two, like Tracer's Blink: they come back one at a time, each 6 s after the last one started (both spent: one back at 6 s, the other at 12 s) |
 | kill refund | a kill with the Scythe, either form (a fall it knocked them into too), gives a charge back at once, like Genji's dash |
@@ -257,8 +258,18 @@ remotes from one script, because the 2 s windows are shorter than the test tools
 | invulnerability | none: you can be shot, hit and hooked the whole way |
 | katana guard | a guard facing the dash parries it: no damage, and the dasher is staggered and shoved off (the melee parry) |
 | grapple | a hook on you stays on you through the dash (it's tied to your body), so it doesn't dodge hooks |
-| anti-cheat | the server stamps ACGrace for the dash + 0.4 s (each dash its own) |
+| anti-cheat | the server stamps ACGrace for the dash + 0.4 s (each dash its own; it covers a dash up or down the same way) |
 | the count | the server's: DashN, DashT0 (server time the one coming back started, 0 = full) and DashRefundT on the player; a fresh life starts full |
+
+**Tested in two solo Plays, place version 1047 (19 Nov)**, in the training hall (open floor, ceiling 30 studs up), firing the Dash remote with set look vectors:
+- Near level (3° down) and 40° down while standing both stayed flat: pitch 0, 36 studs.
+- 35° up: 36 studs, a 19-stud climb at its top 0.45 s in. 40° up under the ceiling: cut to 33.9 studs by the head's line.
+- A second 35° up-dash 0.72 s later, still in the air, went flat (pitch 0).
+- After an up-dash the speed through the air is now 43 studs/s, a sprint; it was 105 before the cap. Two dashes moved you 59 studs in all.
+- 45° down from 21 studs up: cut to 29 studs by the feet's line. It landed on the floor 0.3 s later with no damage.
+- A level dash into the Stand still latched and sprang back.
+- The anti-cheat (StudioOn) logged 0 points, 0 catches and no verdicts in every case.
+- Not tried: real mouse looks, a second player as the target, R6, a phone or a controller.
 
 **Kill and escape values.**
 - Dash into a swing: 25 + 50 = 75 by 0.87 s (the dash 0.28, the recovery 0.35, the wind-up 0.24). A second swing kills at 1.82 s. That closes 12 m.

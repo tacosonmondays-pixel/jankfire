@@ -479,12 +479,26 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
 	-- (weapons batch A) nailed to a wall by a Nail Gun: pulled to the spot (web primaries.js: (spot - pos) x 14, at most
 	-- 30 m/s), no gravity, no jumping, until the pin's time is up. you can still aim and shoot
-	-- (the Scythe's dash: the server's path, run here flat at its speed; the anti-cheat was told, ACGrace)
+	-- (the Scythe's dash: the server's path, run here at its speed, up or down too; the anti-cheat was told, ACGrace)
 	local dsh = Body.dash
+	local BodyA: any = Body -- (dashWas: the dash ran last frame)
 	if dsh and Body.dashing() then
 		st.vx, st.vz = dsh.v.X, dsh.v.Z
-		st.vy = math.max(st.vy, 0)
+		-- (19 Nov 2026: the dash follows your look, up or down too) its own climb or drop while it runs; a level one keeps you off the floor as before
+		st.vy = if math.abs(dsh.v.Y) > 1 then dsh.v.Y else math.max(st.vy, 0)
 		Body.kick()
+		BodyA.dashWas = dsh.v
+	elseif BodyA.dashWas then
+		-- the dash just ended: one that went up or down keeps almost none of its burst (a dash, not a launch): its climb
+		-- 12 studs/s at most, its run a sprint's at most (in the air nothing else would slow it)
+		local was: Vector3 = BodyA.dashWas
+		BodyA.dashWas = nil
+		if math.abs(was.Y) > 1 then
+			if st.vy > 12 then st.vy = 12 end
+			local cap = Config.gSpeed * Config.sprintMul
+			local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)
+			if hs > cap then st.vx, st.vz = st.vx * cap / hs, st.vz * cap / hs end
+		end
 	end
 	-- (batch E: on a Shopping Cart you go where it rolls; CartRide.client drives it)
 	local rd = Body.ride

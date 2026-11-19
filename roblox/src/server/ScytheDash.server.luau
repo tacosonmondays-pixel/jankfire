@@ -33,6 +33,8 @@ local now = os.clock
 local function snow(): number return workspace:GetServerTimeNow() end
 local _ = Players
 local SCY = (W :: any).scythe.dash -- (the charges are the Scythe's: they count on through its rifle form)
+local MAX_PITCH, DEAD_PITCH = math.rad(55), math.rad(7) -- (the dash up or down: at most, and near level counts as level)
+local upUsed: { [any]: boolean } = setmetatable({}, { __mode = "k" }) :: any -- (an up-dash since you last touched ground)
 
 -- ------------------------------------------------------------------ the charges (server time)
 type Charge = { n: number, t0: number? } -- left; when the one coming back started (nil = full)
@@ -98,24 +100,45 @@ end)
 	if c.n <= 0 then return end -- (none left: the next comes back SCY.cd s after the last one started)
 	local root = Fight.root(f)
 	if not root then return end
-	local flat = Vector3.new((look :: Vector3).X, 0, (look :: Vector3).Z)
-	if flat.Magnitude < 0.2 then flat = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z) end
+	local lk = look :: Vector3
+	if lk.Magnitude < 0.2 then lk = root.CFrame.LookVector end
+	lk = lk.Unit
+	local flat = Vector3.new(lk.X, 0, lk.Z)
+	if flat.Magnitude < 0.05 then flat = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z) end
 	flat = flat.Unit
-	-- the path: from the chest along the look, short of any wall in the way (a body's width back from it)
+	-- (the owner, 19 Nov 2026: "scythe dash should be in the direction you look, so up or down too") the path follows your
+	-- whole look, at most MAX_PITCH up or down. near level (DEAD_PITCH) stays flat, and so does a dash down while you
+	-- stand on the ground (never into the floor). up only once between touching the ground: a second one while still in
+	-- the air goes flat, so dashes, the grapple and the pads never chain into flying
+	local pitch = math.clamp(math.asin(math.clamp(lk.Y, -1, 1)), -MAX_PITCH, MAX_PITCH)
+	local hum = Fight.hum(f)
+	local grounded = hum ~= nil and hum.FloorMaterial ~= Enum.Material.Air
+	if grounded then upUsed[f] = nil end
+	if math.abs(pitch) < DEAD_PITCH or (pitch < 0 and grounded) then pitch = 0 end
+	if pitch > 0 then
+		if upUsed[f] then pitch = 0 else upUsed[f] = true end
+	end
+	local dir = flat * math.cos(pitch) + Vector3.new(0, math.sin(pitch), 0)
+	-- the path: from the chest along it, short of the first wall in the way (a body's width back from it); going up the
+	-- head's line checks the ceiling too, going down the feet's line the floor (it stops clean on it)
 	local from = root.Position
 	local len = D.dist
-	local hit = Fight.castMap(from, flat, len + 2)
-	if hit then len = math.max(0, (hit.Position - from).Magnitude - 2) end
-	local to = from + flat * len
+	local lines = { Vector3.zero }
+	if pitch > 0 then table.insert(lines, Vector3.new(0, 1.6, 0)) elseif pitch < 0 then table.insert(lines, Vector3.new(0, -2.4, 0)) end
+	for _, off in lines do
+		local hit = Fight.castMap(from + off, dir, len + 2)
+		if hit then len = math.max(0, math.min(len, (hit.Position - (from + off)).Magnitude - 2)) end
+	end
+	local to = from + dir * len
 	-- spend the charge: the one coming back starts now if none was
 	local sn = snow()
 	c.n -= 1
 	if c.t0 == nil then c.t0 = sn end
 	publish(f, c)
-	note({ k = "dash", by = f.name, from = from, to = to, len = len, n = c.n, t = sn })
+	note({ k = "dash", by = f.name, from = from, to = to, len = len, n = c.n, t = sn, pitch = math.deg(pitch) })
 	f.castUntil = n + D.time + D.recover -- (no swing or guard through the dash and its recovery)
 	p:SetAttribute("ACGrace", n + D.time + 0.4) -- (the anti-cheat: this burst is the server's say)
-	p:SetAttribute("DashV", flat * (len / D.time))
+	p:SetAttribute("DashV", dir * (len / D.time))
 	p:SetAttribute("DashUntil", workspace:GetServerTimeNow() + D.time)
 	FxR:FireAllClients({ k = "dash", model = Fight.model(f), a = from, b = to })
 	-- (the owner, 18 Nov 2026: "if you make any contact while dashing it auto latches and does that kick back") the dash
@@ -161,7 +184,7 @@ end)
 	end
 	local function sweep(): boolean
 		local el = now() - n
-		local at = from + flat * (len * math.clamp(el / D.time, 0, 1))
+		local at = from + dir * (len * math.clamp(el / D.time, 0, 1))
 		local seg = at - prev
 		local sl = seg.Magnitude
 		for _, t in Fight.all do
