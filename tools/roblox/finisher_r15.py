@@ -15,7 +15,8 @@ argv = sys.argv[sys.argv.index('--') + 1:]
 OUT = argv[0]
 ONLY = {}
 SHEETS = [a_ for a_ in argv[1:] if a_.startswith('sheet:')]
-argv = [a_ for a_ in argv if not a_.startswith('sheet:')]
+VIDS = [a_.split(':', 1)[1] for a_ in argv[1:] if a_.startswith('video:')]   # video:tide -> the moving cut, frame by frame
+argv = [a_ for a_ in argv if not a_.startswith('sheet:') and not a_.startswith('video:')]
 for a_ in argv[1:]:
     k_, _, n_ = a_.partition(':')
     ONLY[k_] = {int(x) for x in n_.split(',')} if n_ else None
@@ -269,8 +270,11 @@ PROPS = []   # {'shape': 'Block'|'Ball'|'Cylinder'|'Wedge', 'size': (x,y,z) Robl
 KATANA = []  # Roblox CFrames of the katana grip (the place's katana_sakura, scaled x3)
 
 
+PROP_TR = [0.0]   # the transparency given to props made while it is set (a fading stroke in the video)
+
+
 def prop(shape, size, cf, col, mat='SmoothPlastic', tag=''):
-    PROPS.append({'shape': shape, 'size': tuple(size), 'cf': cf, 'col': col, 'mat': mat, 'tag': tag})
+    PROPS.append({'shape': shape, 'size': tuple(size), 'cf': cf, 'col': col, 'mat': mat, 'tag': tag, 'tr': PROP_TR[0]})
 
 
 def prop_box_between(a_b, b_b, w, h, col, up_b=(0, 0, 1), mat='SmoothPlastic', tag=''):
@@ -453,6 +457,8 @@ def draw_preview():
             s = SIZE[n]
             bl_box(f"{r['name']}_{n}", s, m, r['col'], bevel=min(s) * 0.2)
     for p in PROPS:
+        if p.get('tr', 0) >= 0.5:
+            continue
         bl_box('prop_' + p['tag'], p['size'], p['cf'], p['col'], p['shape'])
     for g in GUNS:
         m = g['cf']
@@ -560,12 +566,14 @@ def desert():
     prop_box_between((-6.5, -6.2, 1.7), (-6.5, 2.2, 1.7), 0.2, 0.25, WOOD, tag='fence')
 
 
-def tumbleweed(at_b, r=1.6, seed=5):
+def tumbleweed(at_b, r=1.6, seed=5, rot=0.0, axis=(1, 0, 0)):
+    # rot: how far it has rolled (radians about axis, Blender) - the same twigs, turned
     rnd = random.Random(seed)
     c = Vector(at_b)
+    R = Matrix.Rotation(rot, 3, Vector(axis))
     for i in range(44):
-        a = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * r * rnd.uniform(0.6, 1.0)
-        b = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * r * rnd.uniform(0.6, 1.0)
+        a = R @ (Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * r * rnd.uniform(0.6, 1.0))
+        b = R @ (Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))).normalized() * r * rnd.uniform(0.6, 1.0))
         prop_box_between(c + a, c + b, 0.07, 0.07, (0.60, 0.46, 0.30) if i % 3 else (0.50, 0.38, 0.24), tag='tumbleweed')
 
 
@@ -711,11 +719,15 @@ def dust_8():
 # ================================================================== TIDECREST on R15
 # Blender layout: the victim at the origin facing -Y (toward the run-up); the killer runs along +Y past them on the
 # victim's right (x = +2.3) and ends behind them, back to back (+Y)
-def tide_stage():
+def tide_stage(s=None):
+    # s: the video's clock (seconds); the loose petals drift with it
     stage()
     tree((-8, 11))
     tree((-15, -26), 5.8)
-    petals((-5, 9, 3), 10, 4, seed=401)
+    if s is None:
+        petals((-5, 9, 3), 10, 4, seed=401)
+    else:
+        petals_drift((-5, 9, 3), 10, 4, s, seed=401)
 
 
 SPRINT = {'armR': (0.15, -0.55, 0.82), 'elbowR': 25, 'wristR': (-25, 0, 0), 'armL': (-0.1, -0.25, -0.95), 'elbowL': 95,
@@ -1113,8 +1125,419 @@ def m_dust_8():
     return {'name': 'HOLSTER'}
 
 
+# ================================================================== VIDEO: the moving cut (main, 19 Nov: the owner wants to
+# judge it as a video). Each shot is a function of its frame number: the bodies play their clips frame by frame, the
+# lens moves on a path, the effects grow with time. 24 fps. S keeps a shot's numbers from its first frame (a lens that
+# must not jitter); VT[0] is the video's own clock (petals drift across cuts).
+FPS = 24
+VIDEO = {}
+S = {}
+VT = [0.0]
+
+
+def shot(video, name, nframes):
+    def deco(fn):
+        VIDEO.setdefault(video, []).append((name, nframes, fn))
+        return fn
+    return deco
+
+
+def ease(u):
+    u = max(0.0, min(1.0, u))
+    return u * u * (3 - 2 * u)
+
+
+def lerpv(a, b, u):
+    return Vector(a).lerp(Vector(b), u)
+
+
+def peek_rig(name, at, yaw, pose):
+    # a body's parts at another moment (to frame a lens on where they will be), not added to the scene
+    n0 = len(RIGS)
+    cf = rig(name, at, yaw, pose)
+    del RIGS[n0:]
+    return cf
+
+
+def petals_drift(center_b, n, spread, s, seed=19, size=1.0, vel=(0.6, -0.3, -0.35), spin=140):
+    rnd = random.Random(seed)
+    for i in range(n):
+        base = Vector(center_b) + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.6, 1))) * spread
+        ph = rnd.uniform(0, 6.28)
+        p = rb(base + Vector(vel) * s + Vector((math.sin(ph + s * 3) * 0.25, 0, math.cos(ph + s * 2.3) * 0.12)))
+        a = (rnd.uniform(0, 360) + spin * s, rnd.uniform(0, 360) + spin * 0.7 * s, rnd.uniform(0, 360))
+        prop('Block', (0.32 * size, 0.04, 0.22 * size), CF(p.x, p.y, p.z) @ ANG(*a), SAKURA, 'SmoothPlastic', 'petal')
+
+
+def burst(center_b, n, reach_, u, seed, kind='petal', size=1.0, fall=1.2):
+    # pieces thrown out from a point: fast at first, slowing, then falling (u: 0 -> 1 over the burst)
+    rnd = random.Random(seed)
+    k = 1 - (1 - max(0.0, min(1.0, u))) ** 2.2
+    for i in range(n):
+        d = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.3, 1))).normalized()
+        r = reach_ * rnd.uniform(0.35, 1.0)
+        p = rb(Vector(center_b) + d * r * k + Vector((0, 0, -fall * u * u)))
+        if kind == 'petal':
+            a = (rnd.uniform(0, 360) + 300 * u, rnd.uniform(0, 360) + 200 * u, rnd.uniform(0, 360))
+            prop('Block', (0.32 * size, 0.04, 0.22 * size), CF(p.x, p.y, p.z) @ ANG(*a),
+                 SAKURA if i % 4 else (0.98, 0.86, 0.9), 'SmoothPlastic', 'petal')
+        else:
+            sz = 0.18 * size * rnd.uniform(0.6, 1.6) * (1 - 0.5 * u)
+            prop('Ball', (sz, sz, sz), CF(p.x, p.y, p.z), INK, 'SmoothPlastic', 'splat')
+
+
+IMPACT_TIDE = {'bg': [0.97, 0.96, 0.94], 'fg': [0.05, 0.05, 0.07], 'accent': ['smear'], 'accent_col': [0.93, 0.6, 0.72]}
+STROKE_HIT = {'bg': [0.97, 0.96, 0.94], 'fg': [0.05, 0.05, 0.07], 'accent': ['stroke', 'stroke_edge'], 'accent_col': [0.93, 0.6, 0.72]}
+
+
+def tv_k(at, t):
+    K = rig('k', at, 0, {'clip': (SLASH, t)})
+    katana_grip(hand_cf(K))
+    return K
+
+
+@shot('tide', 'ESTABLISH', 14)
+def tv_establish(i, n):
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    K = tv_k(K_START, 0.3 * u)
+    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.3 * u)})
+    if i == 0:
+        S['mid'] = (br(K['LowerTorso'].translation) + br(V['LowerTorso'].translation)) / 2
+    mid = S['mid']
+    lens(mid + Vector((30 - 3 * ease(u), 0, 1.4)), mid + Vector((0, 0, 0.6)), 34, 0)
+
+
+@shot('tide', 'RUN-UP', 22)
+def tv_runup(i, n):
+    t = 0.35 + i / FPS
+    tide_stage(VT[0])
+    K = tv_k(K_START, t)
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.3 + i / FPS)})
+    blade_sweep(SLASH, K_START, 0, t - 0.12, t, n=6)
+    h = br(K['LowerTorso'].translation)
+    if i == 0:
+        # side-on, tracking: framed on the stride in the middle of the shot, then carried along with the hips
+        Km = peek_rig('k', K_START, 0, {'clip': (SLASH, t + (n - 1) / FPS / 2)})
+        hm = br(Km['LowerTorso'].translation)
+        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, -2.9))], 72, 3, 44, 0, mx=0.55, my=0.55, zmin=1.0)
+        S['off'], S['coff'], S['z'], S['cz'] = pos - hm, c - hm, pos.z, c.z
+    pos, c = h + S['off'], h + S['coff']
+    pos.z, c.z = S['z'], S['cz']
+    lens(pos, c, 44, 0)
+
+
+@shot('tide', 'CLOSING', 10)
+def tv_closing(i, n):
+    u = i / (n - 1)
+    t = 1.6 + i / FPS
+    tide_stage(VT[0])
+    K = tv_k(K_START, t)
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.3 + (22 + i) / FPS)})
+    blade_sweep(SLASH, K_START, 0, t - 0.12, t, n=6)
+    ut = br(K['UpperTorso'].translation)
+    if i == 0:
+        # on the floor in their path, framed on where they arrive; the lens punches wider as they close
+        Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, 1.6 + (n - 1) / FPS)})
+        # from the side of their path (az 125): straight ahead puts the victim's back against the lens
+        pos, c = aim_lens(pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 125, -18, 84, -16, mx=0.7, my=0.6, zmin=0.45)
+        S['pos'], S['c'], S['ute'] = pos, c, br(Ke['UpperTorso'].translation)
+    lens(S['pos'], S['c'] + (ut - S['ute']) * 0.7, 60 + 24 * ease(u), -16)
+
+
+@shot('tide', 'THE PASS', 11)
+def tv_pass(i, n):
+    u = i / (n - 1)
+    t = T_HIT - 0.25 + 0.25 * u
+    tide_stage(VT[0])
+    K = tv_k(K_START, t)
+    rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.15 + 0.2 * u)})
+    t0 = T_HIT - 0.35
+    if t > t0 + 0.03:
+        blade_sweep(SLASH, K_START, 0, t0, t, n=max(3, int(16 * (t - t0) / 0.35)))
+    if i == 0:
+        Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, T_HIT)})
+        Ve = peek_rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
+        S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, -2.9))], -14, 16, 56, 12,
+                                    mx=0.84, my=0.66)
+    # the one fast whip: the lens leans after the blade
+    tip = wpt(hand_cf(K), (0, 0, -1.8))
+    look = S['c'] * 0.8 + tip * 0.2
+    S['pass_look'] = look
+    lens(S['pos'], look, 56, 12 - 4 * u)
+
+
+@shot('tide', 'CUT FRAME', 2)
+def tv_cutframe(i, n):
+    tide_stage(VT[0])
+    tv_k(K_START, T_HIT)
+    rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
+    blade_sweep(SLASH, K_START, 0, T_HIT - 0.35, T_HIT, n=16)
+    lens(S['pos'], S['pass_look'], 56, 8)
+    return {'impact': IMPACT_TIDE}
+
+
+@shot('tide', 'STILLNESS', 26)
+def tv_still(i, n):
+    u = i / (n - 1)
+    s = i / FPS
+    tide_stage(VT[0])
+    K = tv_k(at_for(SLASH, K_END_T, K_BACK, 0), min(K_END_T, 2.95 + s))
+    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.75 + s), 'face': {'LeftUpperLidRaiser': 0.8, 'RightUpperLidRaiser': 0.8}})
+    hp = br(V['Head'].translation)
+    if i == 0:
+        S['hp0'], S['kp0'] = hp, br(K['Head'].translation)
+    hp0, kp0 = S['hp0'], S['kp0']
+    petals_drift(hp0 + Vector((0.5, -1.6, 0.3)), 9, 1.6, s, seed=411, vel=(0.5, -0.2, -0.3))
+    pos = lerpv(hp0 + Vector((2.2, -6.2, -0.3)), hp0 + Vector((1.8, -5.0, -0.25)), ease(u))
+    lens(pos, (hp * 0.5 + hp0 * 0.5) * 0.8 + kp0 * 0.2 + Vector((0, 0, -0.8)), 40, 0)
+
+
+@shot('tide', 'THE SHEATHE', 19)
+def tv_sheathe(i, n):
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    at = at_for(SHEATHE, 1.4, K_BACK, 0)
+    K = rig('k', at, 0, {'clip': (SHEATHE, 1.0 + 0.4 * u)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    katana_at_b(a - d * (1.5 * (1 - ease(u))), d)   # the last inches slide home; the guard meets the mouth at the end
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 1.85 + i / FPS)})
+    if i == 0:
+        Ke = peek_rig('k', at, 0, {'clip': (SHEATHE, 1.4)})
+        a2, b2, d2 = sheath_line(Ke)
+        hp = br(Ke['Head'].translation)
+        pts = [hp + Vector((0, 0, 0.6)), a2 - d2 * 1.2, a2 + d2 * 2.0, br(Ke['RightHand'].translation), br(Ke['LeftHand'].translation)]
+        S['pos'], S['c'] = aim_lens(pts, 212, 8, 40, 6, mx=0.8, my=0.66)
+    lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.9, ease(u)), S['c'], 40, 6)
+
+
+@shot('tide', 'THE CUT LANDS', 12)
+def tv_cutlands(i, n):
+    s = i / FPS
+    tide_stage(VT[0])
+    K = rig('k', at_for(SHEATHE, 2.8, K_BACK, 0), 0, {'clip': (SHEATHE, min(2.8, 2.35 + s))})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    katana_at_b(a, d)
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_27_hit_stomach', 0.05 + s)})
+    if i == 0:
+        S['c'] = br(V['UpperTorso'].translation) + Vector((0, 0, -0.6))
+        S['kp'] = br(K['UpperTorso'].translation)
+    c = S['c']
+    PROP_TR[0] = 0.0 if i < 4 else min(0.85, (i - 4) * 0.1)   # the stroke fades after the hit
+    brush(c + Vector((-0.75, -2.0, 1.5)), c + Vector((-0.75, 2.4, -1.1)), 0.35, 0.55, (-1, 0, 0), INK, seed=61)
+    brush(c + Vector((-0.82, -1.6, 1.25)), c + Vector((-0.82, 2.0, -0.95)), 0.33, 0.16, (-1, 0, 0), SKIN, seed=62, tag='stroke_edge')
+    PROP_TR[0] = 0.0
+    if i >= 2:
+        burst(c + Vector((-0.8, 0.6, 0.0)), 10, 2.0, (i - 2) / 10, seed=71, kind='splat', size=0.7)
+    mid = (c + S['kp']) / 2
+    lens(mid + Vector((-10.5, 0, 0.2)), mid + Vector((0, 0, 0.2)), 44, 0)
+    if i < 2:
+        return {'impact': STROKE_HIT}
+
+
+@shot('tide', 'PETALS', 22)
+def tv_petals(i, n):
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    K = rig('k', at_for(SHEATHE, 2.8, K_BACK, 0), 0, {'clip': (SHEATHE, 2.8)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    katana_at_b(a, d)
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_28_knockdown_liver', 0.9 + 0.54 * u), 'scatter': 1.1 * ease(u)})
+    if i == 0:
+        S['vc'] = br(V['UpperTorso'].translation)
+    vc = S['vc']
+    burst(vc + Vector((0, 0, 0.4)), 80, 3.2, u, seed=421, size=1.3, fall=0.8)
+    burst(vc, 8, 1.8, u, seed=81, kind='splat', size=0.6)
+    lens(lerpv((-6.0, -6.0, 6.0), (-8.5, -8.5, 10.5), ease(u)), lerpv((0.5, 1.6, 1.6), (0.5, 1.6, 0.9), u), 54, 0)
+
+
+# ---------------- DUST, moving: the standoff (eyes, eyes, the hand, the wide, the draw, the hit, the spin home)
+@shot('dust', "KILLER'S EYES", 14)
+def dv_keyes(i, n):
+    u = i / (n - 1)
+    desert()
+    b = max(0.0, 1 - abs(u - 0.55) / 0.14)   # one slow blink in the hold
+    K, V = m_dust_rigs(kface=dict(SQUINT, LeftEyeClosed=0.55 + 0.45 * b, RightEyeClosed=0.55 + 0.45 * b))
+    hd = K['Head']
+    lens(br((hd @ Vector((0, 0.1, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
+
+
+@shot('dust', "VICTIM'S EYES", 12)
+def dv_veyes(i, n):
+    u = i / (n - 1)
+    desert()
+    dart = math.sin(u * math.pi * 3)          # the eyes dart one way, the other, back
+    K, V = m_dust_rigs(vface=dict(WIDE, EyesLookLeft=max(0.0, dart), EyesLookRight=max(0.0, -dart)))
+    hd = V['Head']
+    q = (hd @ Vector((0.38, 0.32 - 0.3 * u, -0.6, 1))).xyz   # the bead of sweat runs down
+    prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
+    lens(br((hd @ Vector((0, 0.1, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 4)
+
+
+@shot('dust', 'THE HAND', 14)
+def dv_hand(i, n):
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12 * ease(u)))    # the hand creeps down toward the holster
+    if i == 0:
+        S['h'] = br(K['RightHand'].translation)
+    h0 = S['h']
+    lens(h0 + Vector((1.5, -2.8 + 0.35 * u, -0.5)), h0 + Vector((-0.4, 1.6, 0.3)), 40, -6)
+
+
+@shot('dust', 'THE WIDE', 29)
+def dv_wide(i, n):
+    u = i / (n - 1)
+    desert()
+    m_dust_rigs(kclip=(DRAW, 0.12))
+    y = 12.5 - 8.5 * u                       # rolls right to left across the street between them
+    r = 1.6
+    tumbleweed((2.0, y, r + 0.25 * abs(math.sin(u * 9))), r, rot=-(12.5 - y) / r, axis=(1, 0, 0))
+    lens((25, -1.5, 1.1), (0, 8.5, 2.4), 26, 0)
+
+
+DRAW_OUT = 0.3   # from here on the revolver is in the hand, not the holster
+
+
+@shot('dust', 'THE DRAW', 8)
+def dv_draw(i, n):
+    u = i / (n - 1)
+    t = 0.12 + 0.63 * u
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, t), kgun_in=t < DRAW_OUT)
+    if i == 0:
+        Ke = peek_rig('k', (0, 0, 0), 0, {'clip': (DRAW, 0.75)})
+        Ve = peek_rig('v', (DV.x, DV.y, 0), 180, {'clip': (DRAW, IDLE_T)})
+        n0 = len(GUNS)
+        g = revolver_in_hand(Ke)
+        del GUNS[n0:]
+        m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
+        pts = pts_of(Ke) + [m + Vector((0, 1.2, 0)), br(Ve['Head'].translation), br(Ve['LeftFoot'].translation)]
+        S['pos'], S['c'] = aim_lens(pts, 28, -6, 54, 14, mx=0.84, my=0.66, zmin=0.6)
+    if t >= DRAW_OUT:
+        g = revolver_in_hand(K)
+        if u > 0.8:   # the shot: muzzle flash on the last frames
+            m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
+            flash(m + (m - br(g.translation)).normalized() * 0.4, 1.1, (1, -0.3, 0.2))
+            puff(m + Vector((0.3, 0.6, 0.2)), 0.5, (0.86, 0.78, 0.62))
+    lens(S['pos'], S['c'], 54, 14 + 4 * u)
+
+
+@shot('dust', 'HIT FRAME', 2)
+def dv_hitframe(i, n):
+    return m_dust_6()
+
+
+@shot('dust', 'THE HIT', 19)
+def dv_hit(i, n):
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.75), kgun_in=False, vclip=('bx_27_hit_stomach', 0.12 + 0.78 * u ** 1.6))
+    revolver_in_hand(K)
+    c = br(V['UpperTorso'].translation)
+    if i == 0:
+        S['c'] = c
+        Ve = peek_rig('v', (DV.x, DV.y, 0), 180, {'clip': ('bx_27_hit_stomach', 0.9)})
+        c0 = c
+        pts = pts_of(V) + pts_of(Ve) + [c0 + Vector((2.2, 1.6, 1.8)), c0 + Vector((-2.2, 1.6, -1.6))]
+        S['pos'], S['look'] = aim_lens(pts, 25, -8, 44, -6)
+    c0 = S['c']
+    k = 1 - (1 - u) ** 2.5   # the gold dust bursts out behind them and slows
+    for j in range(16):
+        a = 2 * math.pi * j / 16
+        r = (0.9 + 0.5 * (j % 3)) * (0.4 + 0.6 * k)
+        q = rb(c0 + Vector((math.cos(a) * 2.0 * k, 0.4 + (1.0 + abs(math.sin(a)) * 0.8) * k, math.sin(a) * 1.6 * k + 0.3 * u)))
+        PROP_TR[0] = 0.5 * u
+        prop('Ball', (r, r, r), CF(q.x, q.y, q.z), SAND if j % 2 else (1.0, 0.86, 0.55), 'Sand', 'dustburst')
+        PROP_TR[0] = 0.0
+    lens(S['pos'], S['look'], 44, -6)
+
+
+@shot('dust', 'HOLSTER', 26)
+def dv_holster(i, n):
+    u = i / (n - 1)
+    t = 0.75 - 0.69 * ease(u)       # the draw played backwards: the revolver goes home
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, t), kgun_in=t < DRAW_OUT, vclip=('bx_28_knockdown_liver', 1.2 + 0.4 * u))
+    h = br(K['RightHand'].translation)
+    if t >= DRAW_OUT:
+        g = revolver_in_hand(K)
+        if 0.1 < u < 0.55:          # the spin: a gold ring sweeping round the hand
+            sweep = (u - 0.1) / 0.45
+            ink_arc(h + Vector((0.1, 0.0, -0.1)), 0.85, 30 + 260 * sweep, 30 + 260 * sweep + 200, 0.08, 0.02, (1.0, 0.88, 0.6), n=16, tag='spin')
+    if i == 0:
+        Ke = peek_rig('k', (0, 0, 0), 0, {'clip': (DRAW, 0.06)})
+        g0 = revolver_in_hand(Ke)
+        GUNS.pop()
+        m0 = br((g0 @ Vector((0, 0.2, -1.5, 1))).xyz)
+        S['m'] = m0
+        he = br(Ke['RightHand'].translation)
+        pts = [br(Ke['Head'].translation) + Vector((0, 0, 0.9)), he + Vector((0, 0, -1.2)), m0 + Vector((0, 0, 1.4)), br(Ke['LeftHand'].translation)]
+        S['pos'], S['c'] = aim_lens(pts, 145, 2, 36, 5, mx=0.8, my=0.64)
+    # a curl of smoke rising and thinning from where the muzzle was
+    for j, (dz, r) in enumerate(((0.3, 0.2), (0.75, 0.28), (1.25, 0.34))):
+        PROP_TR[0] = min(0.9, 0.2 + 0.7 * u)
+        puff(S['m'] + Vector((0.05 * j + 0.2 * u, 0.05, dz + 0.9 * u)), r * (1 + 0.6 * u))
+        PROP_TR[0] = 0.0
+    lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.88, ease(u)), S['c'], 36, 5)
+
+
+def frame_data(info):
+    return {'name': info.get('name', ''), 'impact': info.get('impact'), 'crop': info.get('crop', 0),
+            'lens': {'cf': comps(CAMS['cf']), 'fov': CAMS['fov']},
+            'rigs': [{'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}} for r in RIGS],
+            'props': [dict({'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'],
+                            'mat': p['mat'], 'tag': p['tag']}, **({'tr': round(p['tr'], 2)} if p.get('tr') else {})) for p in PROPS],
+            'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
+            'faces': {r['name']: r['face'] for r in RIGS if r.get('face')}}
+
+
 # ------------------------------------------------------------------ run
+if VIDS:
+    RW, RH = int(os.environ.get('FIN_VW', 640)), int(os.environ.get('FIN_VH', 360))
 setup()
+for vname in VIDS:
+    vdir = os.path.join(OUT, 'video_' + vname)
+    os.makedirs(vdir, exist_ok=True)
+    allv, shots, k = {}, [], 0
+    for sname, nf, fn in VIDEO[vname]:
+        S.clear() if sname != 'CUT FRAME' else None
+        for i in range(nf):
+            VT[0] = k / FPS
+            clear()
+            RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear()
+            info = fn(i, nf) or {}
+            info['name'] = sname
+            if not os.environ.get('FIN_NOPNG'):
+                draw_preview()
+                sc.render.filepath = os.path.join(vdir, f'{k:03d}.png')
+                bpy.ops.render.render(write_still=True)
+            allv[f'v{k:03d}'] = frame_data(info)
+            k += 1
+        shots.append([sname, nf])
+        print('shot', vname, sname, nf, flush=True)
+    # the fixed set (floor, pillars, trees) is the same in every frame: stored once as '_stage'
+    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa')
+    first = None
+    for key in sorted(allv):
+        f = allv[key]
+        st = [p for p in f['props'] if p['tag'] in STATIC]
+        if first is None:
+            first = st
+        if st == first:
+            f['props'] = [p for p in f['props'] if p['tag'] not in STATIC]
+            f['stage'] = True
+    allv['_stage'] = {'props': first or []}
+    with open(os.path.join(vdir, 'frames.json'), 'w') as fh:
+        json.dump(allv, fh, separators=(',', ':'))
+    with open(os.path.join(vdir, 'shots.json'), 'w') as fh:
+        json.dump({'fps': FPS, 'shots': shots}, fh)
+    print('video', vname, k, 'frames', flush=True)
+if VIDS:
+    sys.exit(0)
 for sh_ in SHEETS:
     _, cn, n = sh_.split(':')
     n = int(n)
