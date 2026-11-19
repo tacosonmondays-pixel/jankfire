@@ -304,7 +304,10 @@ if __name__ == '__main__':
         out_dir = argv[0]
         os.makedirs(out_dir, exist_ok=True)
         ALL = dict(BUILD); ALL.update(SKINS)
+        import gun_explode_split
         for wid in (argv[1:] or list(ALL)):
             g = ALL[wid]()
+            # (the base guns' mixed pieces cut into their real parts for the exploded view: gun_explode_split.py)
+            for old, new, n_ in gun_explode_split.split(g, wid): print('  SPLIT', wid, old, '->', new, n_, 'faces')
             path, lo, hi, tris, n = g.export(out_dir)
             print('BUILT', wid, PICK.get(wid.split('@')[0], ''), tris, 'tris', n, 'pieces', 'lo', lo, 'hi', hi, '->', path)

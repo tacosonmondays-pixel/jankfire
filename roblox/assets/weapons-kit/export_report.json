@@ -26,6 +26,30 @@
     "paint": "p353840"
    },
    {
+    "name": "barrel_wzN__black",
+    "upload": "barrel_wzN__black__p16171b",
+    "tris": 88,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0322,
+     0.0047,
+     -0.7032
+    ],
+    "hi": [
+     0.0322,
+     0.0253,
+     -0.6568
+    ],
+    "paint": "p16171b"
+   },
+   {
     "name": "body_wzA__deck",
     "upload": "body_wzA__deck__p676d78",
     "tris": 56,
@@ -145,6 +169,30 @@
      -0.5131
     ],
     "paint": "n7dff4f"
+   },
+   {
+    "name": "fsight_wzN__dark",
+    "upload": "fsight_wzN__dark__p353840",
+    "tris": 216,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.016,
+     0.069,
+     -0.52
+    ],
+    "hi": [
+     0.016,
+     0.134,
+     -0.51
+    ],
+    "paint": "p353840"
    },
    {
     "name": "grip_wzB__dark",
@@ -291,6 +339,54 @@
     "paint": "p4d5640"
    },
    {
+    "name": "rail_wzN__black",
+    "upload": "rail_wzN__black__p16171b",
+    "tris": 484,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0138,
+     0.0919,
+     -0.0994
+    ],
+    "hi": [
+     0.0138,
+     0.1052,
+     0.1696
+    ],
+    "paint": "p16171b"
+   },
+   {
+    "name": "rail_wzN__frame",
+    "upload": "rail_wzN__frame__p444851",
+    "tris": 44,
+    "look": {
+     "color": "444851",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.013,
+     0.087,
+     -0.115
+    ],
+    "hi": [
+     0.013,
+     0.098,
+     0.2
+    ],
+    "paint": "p444851"
+   },
+   {
     "name": "rivet_wzN__steel",
     "upload": "rivet_wzN__steel__p757a84",
     "tris": 240,
@@ -315,33 +411,9 @@
     "paint": "p757a84"
    },
    {
-    "name": "sight_wzN__frame",
-    "upload": "sight_wzN__frame__p444851",
-    "tris": 44,
-    "look": {
-     "color": "444851",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.013,
-     0.087,
-     -0.115
-    ],
-    "hi": [
-     0.013,
-     0.098,
-     0.2
-    ],
-    "paint": "p444851"
-   },
-   {
     "name": "sight_wzN__dark",
     "upload": "sight_wzN__dark__p353840",
-    "tris": 484,
+    "tris": 268,
     "look": {
      "color": "353840",
      "metal": 0.0,
@@ -352,12 +424,12 @@
     },
     "lo": [
      -0.0235,
-     0.069,
-     -0.52
+     0.087,
+     0.203
     ],
     "hi": [
      0.0235,
-     0.134,
+     0.1325,
      0.2425
     ],
     "paint": "p353840"
@@ -413,7 +485,7 @@
    {
     "name": "trim_wzN__black",
     "upload": "trim_wzN__black__p16171b",
-    "tris": 616,
+    "tris": 44,
     "look": {
      "color": "16171b",
      "metal": 0.0,
@@ -423,14 +495,14 @@
      "tex": false
     },
     "lo": [
-     -0.0322,
-     0.0047,
-     -0.7032
+     0.031,
+     0.012,
+     -0.08
     ],
     "hi": [
      0.0464,
-     0.1052,
-     0.1696
+     0.05,
+     0.1
     ],
     "paint": "p16171b"
    }
@@ -446,7 +518,7 @@
    0.134,
    0.469
   ],
-  "bytes": 337020,
+  "bytes": 338944,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -499,6 +571,14 @@
     ],
     "turned": false
    },
+   "barrel_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
    "body_wzA": {
     "at": [
      0.0,
@@ -532,6 +612,14 @@
     "turned": false
    },
    "dot_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "fsight_wzN": {
     "at": [
      0.0,
      0.0,
@@ -580,6 +668,14 @@
     "turned": false
    },
    "mark_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "rail_wzN": {
     "at": [
      0.0,
      0.0,
@@ -6468,9 +6564,9 @@
  "w_revolver": {
   "pieces": [
    {
-    "name": "body_wzA__frame",
-    "upload": "body_wzA__frame__p434751",
-    "tris": 548,
+    "name": "barrel_wzA__frame",
+    "upload": "barrel_wzA__frame__p434751",
+    "tris": 180,
     "look": {
      "color": "434751",
      "metal": 0.0,
@@ -6481,11 +6577,59 @@
     },
     "lo": [
      -0.0222,
-     -0.1038,
+     -0.022,
      -0.29
     ],
     "hi": [
      0.0222,
+     0.066,
+     -0.11
+    ],
+    "paint": "p434751"
+   },
+   {
+    "name": "barrel_wzN__dark",
+    "upload": "barrel_wzN__dark__p353840",
+    "tris": 48,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0027,
+     0.065,
+     -0.278
+    ],
+    "hi": [
+     0.0027,
+     0.0829,
+     -0.258
+    ],
+    "paint": "p353840"
+   },
+   {
+    "name": "body_wzA__frame",
+    "upload": "body_wzA__frame__p434751",
+    "tris": 368,
+    "look": {
+     "color": "434751",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.021,
+     -0.1038,
+     -0.125
+    ],
+    "hi": [
+     0.021,
      0.07,
      0.0873
     ],
@@ -6662,7 +6806,7 @@
    {
     "name": "sight_wzN__dark",
     "upload": "sight_wzN__dark__p353840",
-    "tris": 148,
+    "tris": 100,
     "look": {
      "color": "353840",
      "metal": 0.0,
@@ -6673,8 +6817,8 @@
     },
     "lo": [
      -0.014,
-     0.065,
-     -0.278
+     0.069,
+     0.027
     ],
     "hi": [
      0.014,
@@ -6695,7 +6839,7 @@
    0.0833,
    0.1373
   ],
-  "bytes": 233464,
+  "bytes": 235420,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -6730,6 +6874,22 @@
    }
   },
   "nodes": {
+   "barrel_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "barrel_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
    "body_wzA": {
     "at": [
      0.0,
@@ -7382,6 +7542,30 @@
     "paint": "p353840"
    },
    {
+    "name": "barrel_wzN__black",
+    "upload": "barrel_wzN__black__p16171b",
+    "tris": 28,
+    "look": {
+     "color": "16171b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0162,
+     0.0088,
+     -0.718
+    ],
+    "hi": [
+     0.0162,
+     0.0412,
+     -0.706
+    ],
+    "paint": "p16171b"
+   },
+   {
     "name": "bead_wzN__brass",
     "upload": "bead_wzN__brass__p74705f",
     "tris": 20,
@@ -7404,6 +7588,30 @@
      -0.6649
     ],
     "paint": "p74705f"
+   },
+   {
+    "name": "bead_wzN__dark",
+    "upload": "bead_wzN__dark__p353840",
+    "tris": 48,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0032,
+     0.0562,
+     -0.673
+    ],
+    "hi": [
+     0.0032,
+     0.0669,
+     -0.663
+    ],
+    "paint": "p353840"
    },
    {
     "name": "body_wzB__frame",
@@ -7528,7 +7736,7 @@
    {
     "name": "sight_wzN__dark",
     "upload": "sight_wzN__dark__p353840",
-    "tris": 148,
+    "tris": 100,
     "look": {
      "color": "353840",
      "metal": 0.0,
@@ -7539,8 +7747,8 @@
     },
     "lo": [
      -0.02,
-     0.0562,
-     -0.673
+     0.057,
+     -0.0431
     ],
     "hi": [
      0.02,
@@ -7624,7 +7832,7 @@
    {
     "name": "trim_wzN__black",
     "upload": "trim_wzN__black__p16171b",
-    "tris": 72,
+    "tris": 44,
     "look": {
      "color": "16171b",
      "metal": 0.0,
@@ -7634,13 +7842,13 @@
      "tex": false
     },
     "lo": [
-     -0.0162,
+     0.0325,
      -0.005,
-     -0.718
+     -0.15
     ],
     "hi": [
      0.051,
-     0.0412,
+     0.035,
      -0.05
     ],
     "paint": "p16171b"
@@ -7657,7 +7865,7 @@
    0.0712,
    0.407
   ],
-  "bytes": 154424,
+  "bytes": 155988,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -7703,6 +7911,14 @@
   },
   "nodes": {
    "barrel_wzB": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "barrel_wzN": {
     "at": [
      0.0,
      0.0,
@@ -9253,7 +9469,7 @@
    {
     "name": "barrel_wzN__black",
     "upload": "barrel_wzN__black__p16171b",
-    "tris": 180,
+    "tris": 296,
     "look": {
      "color": "16171b",
      "metal": 0.0,
@@ -9263,12 +9479,12 @@
      "tex": false
     },
     "lo": [
-     -0.059,
+     -0.066,
      -0.039,
-     -0.79
+     -1.488
     ],
     "hi": [
-     0.059,
+     0.066,
      0.079,
      -0.674
     ],
@@ -9369,6 +9585,78 @@
      0.085
     ],
     "paint": "p676d78"
+   },
+   {
+    "name": "fore_wzA__body",
+    "upload": "fore_wzA__body__p523847",
+    "tris": 80,
+    "look": {
+     "color": "523847",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0449,
+     -0.088,
+     -0.68
+    ],
+    "hi": [
+     0.0449,
+     0.008,
+     0.07
+    ],
+    "paint": "p523847"
+   },
+   {
+    "name": "fore_wzN__dark",
+    "upload": "fore_wzN__dark__p353840",
+    "tris": 44,
+    "look": {
+     "color": "353840",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0511,
+     -0.062,
+     -0.52
+    ],
+    "hi": [
+     0.0511,
+     -0.03,
+     -0.15
+    ],
+    "paint": "p353840"
+   },
+   {
+    "name": "grip_wzA__body",
+    "upload": "grip_wzA__body__p523847",
+    "tris": 44,
+    "look": {
+     "color": "523847",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.03,
+     -0.2616,
+     0.085
+    ],
+    "hi": [
+     0.03,
+     -0.0394,
+     0.1916
+    ],
+    "paint": "p523847"
    },
    {
     "name": "guard_wzB__frame",
@@ -9590,7 +9878,7 @@
    {
     "name": "stock_wzA__body",
     "upload": "stock_wzA__body__p523847",
-    "tris": 228,
+    "tris": 104,
     "look": {
      "color": "523847",
      "metal": 0.0,
@@ -9600,45 +9888,21 @@
      "tex": false
     },
     "lo": [
-     -0.0449,
-     -0.2616,
-     -0.68
+     -0.042,
+     -0.2526,
+     0.05
     ],
     "hi": [
-     0.0449,
+     0.042,
      0.088,
      0.594
     ],
     "paint": "p523847"
    },
    {
-    "name": "stock_wzN__dark",
-    "upload": "stock_wzN__dark__p353840",
-    "tris": 44,
-    "look": {
-     "color": "353840",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0511,
-     -0.062,
-     -0.52
-    ],
-    "hi": [
-     0.0511,
-     -0.03,
-     -0.15
-    ],
-    "paint": "p353840"
-   },
-   {
     "name": "trim_wzN__black",
     "upload": "trim_wzN__black__p16171b",
-    "tris": 160,
+    "tris": 44,
     "look": {
      "color": "16171b",
      "metal": 0.0,
@@ -9648,13 +9912,13 @@
      "tex": false
     },
     "lo": [
-     -0.066,
-     -0.01,
-     -1.488
+     0.0335,
+     0.012,
+     -0.19
     ],
     "hi": [
-     0.066,
-     0.05,
+     0.042,
+     0.046,
      -0.07
     ],
     "paint": "p16171b"
@@ -9671,7 +9935,7 @@
    0.1585,
    0.594
   ],
-  "bytes": 369224,
+  "bytes": 370816,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -9764,6 +10028,30 @@
     ],
     "turned": false
    },
+   "fore_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "fore_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "grip_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
    "guard_wzB": {
     "at": [
      0.0,
@@ -9813,14 +10101,6 @@
     "turned": false
    },
    "stock_wzA": {
-    "at": [
-     0.0,
-     0.0,
-     0.0
-    ],
-    "turned": false
-   },
-   "stock_wzN": {
     "at": [
      0.0,
      0.0,
