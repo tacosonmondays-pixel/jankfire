@@ -29,6 +29,18 @@ local function stamp(t: number): number return workspace:GetServerTimeNow() + (t
 
 local Utility = {}
 local Fight: any = nil
+-- the Overdrive Rig (weapons-port's ModuleScript ServerScriptService.Jankfire.Rig: start(f) -> true | false, why;
+-- on(f); the player attribute Rig is set while rigged). required when first used, so this runs before the rig is in
+-- the place: the gadget's use is then refused without spending its charge
+local RigX = { m = nil :: any }
+function RigX.mod(): any
+	if RigX.m then return RigX.m end
+	local mod = script.Parent:FindFirstChild("Rig")
+	if not (mod and mod:IsA("ModuleScript")) then return nil end
+	local ok, r = pcall(require, mod)
+	if ok and type(r) == "table" and type(r.start) == "function" then RigX.m = r end
+	return RigX.m
+end
 
 -- ------------------------------------------------------------------ who carries what
 type Quiz = { by: Fighter, ok: number, untilT: number, at: Vector3, botAt: number?, botOk: boolean? }
@@ -1256,6 +1268,8 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	local f = Fight.byPlayer[p]
 	if not f then return end
 	if Fight.noItems(f) then publish(f); return end -- (a classic mode with no items: one in the chamber, gun game)
+	if i ~= "ans" and p:GetAttribute("Rig") ~= nil then publish(f); return end -- (in the Overdrive Rig: no other item, no second suit-up)
+	if i ~= "ans" and p:GetAttribute("RoundLock") == true then publish(f); return end -- (before GO / between rounds: gadgets wait, nothing spent)
 	if i == "nv" then onNv(f, o); return end -- (G with the goggles: on / off, free)
 	if i == "ans" then onAnswer(f, o); return end -- (a pop quiz answer, 0-3)
 	if i == "radar" then onRadar(f, o, d); return end -- (the speed trap: G held is free, only a ticket spends)
@@ -1283,7 +1297,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	-- goes back so the HUD can't drift
 	-- (sitting a quiz: no items; the goggles' flash only with them on)
 	if not f.alive or (p:GetAttribute("Zone") == "hub" and p:GetAttribute("DevArms") ~= true) or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
-		or s.quiz or s.trap or (i == "nvg" and not s.nvOn) then
+		or s.quiz or s.trap or (i == "nvg" and not s.nvOn) or (i == "overdrive" and not RigX.mod()) then
 		publish(f)
 		return
 	end
@@ -1318,6 +1332,16 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 		nvFlash(f, from, dir)
 	elseif i == "camera" then
 		printPhoto(f, dir)
+	elseif i == "overdrive" then
+		local r = RigX.mod()
+		local ok, started = false, false
+		if r then ok, started = pcall(r.start, f) end
+		if not (ok and started == true) and not fr then
+			-- (the rig said no: the charge comes back)
+			c.n += 1
+			if c.n >= it.charges then c.next = 0 end
+			publish(f)
+		end
 	end
 end
 

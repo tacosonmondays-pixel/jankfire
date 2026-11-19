@@ -10,7 +10,7 @@ local Items = {}
 Items.S = S
 
 -- the loadout screen's order (web ITEM_ORDER, shared/weapons.js:368, plus radar and laptop pushed after it)
-Items.ORDER = { "frag", "medkit", "bubble", "duck", "smoke", "popper", "reverse", "wand", "camera", "quiz", "nvg", "radar", "laptop" }
+Items.ORDER = { "frag", "medkit", "bubble", "duck", "smoke", "popper", "reverse", "wand", "camera", "quiz", "nvg", "radar", "laptop", "overdrive" }
 Items.DEFAULT = "frag" -- (web DEFAULT_LOADOUT.item)
 
 Items.SPAM = 0.4 -- s between two uses the server accepts (web room.js useItem: 400 ms; the client waits 420)
@@ -70,6 +70,9 @@ Items.list = {
 		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
 	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = true,
 		desc = "Open it at someone. Five pop-up ads cover their screen for 7 s. They close them one key at a time." },
+	-- (the Overdrive Rig, 19 Nov: G suits you up; server/Rig.luau runs it, weapons-port's. carry: dying doesn't refill it)
+	overdrive = { id = "overdrive", name = "Overdrive Rig", color = hex("ff2a6d"), charges = 1, recharge = 45, carry = true, live = true,
+		desc = "G suits you up for 12 s, or until its armour breaks. Click: rocket punch. Right click: missiles. No guns or other items while it's on." },
 } :: { [string]: Item }
 
 -- the thrown ones (web shared/weapons.js WEAPONS.frag :262, smokegren :264): speed along your look, + up, + this

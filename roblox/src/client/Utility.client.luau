@@ -466,6 +466,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	local it = if type(id) == "string" then L[id] else nil
 	if not it or not it.live then return end
 	if me:GetAttribute("Quiz") then return end -- (sitting a pop quiz: no items)
+	if me:GetAttribute("RoundLock") == true then Sfx.play("empty", nil, 0.5); return end -- (before GO / between rounds: gadgets wait for the round, no throw, nothing spent)
 	if me:GetAttribute("Trap") then Sfx.play("blub", nil, 0.6); Hud.callout("you are in a bubble", 0.7); return end
 	if it.id == "nvg" then toggleGoggles(); return end
 	if it.id == "radar" then radarHold(true); return end
@@ -521,6 +522,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	-- from your eye (the camera itself in first person, so it leaves from under the crosshair), along your look
 	local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
 	ItemR:FireServer(it.id, eye, camera.CFrame.LookVector)
+	if it.id == "overdrive" then return end -- (the rig: no hand throw here, its own arms and sounds are RigClient's)
 	if it.id == "camera" then
 		startHand("print")
 		printIn()
@@ -1292,6 +1294,7 @@ end
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or not require(script.Parent:WaitForChild("Binds")).is("flash", io) then return end -- (N / the middle button, or the player's own)
 	if me:GetAttribute("Item") ~= "nvg" or me:GetAttribute("NV") ~= true or menuOpen() or inHub() then return end
+	if me:GetAttribute("RoundLock") == true then Sfx.play("empty", nil, 0.5); return end -- (before GO: the flash waits too)
 	local _, _, root = myChar()
 	if not root then return end
 	local n = charges()

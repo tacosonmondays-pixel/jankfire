@@ -48,7 +48,7 @@ Q.CLASSES = {
 	smg = { name = "the SMG", ids = { "smg" } },
 	katana = { name = "the Katana", ids = { "katana" } },
 	shredder = { name = "the Shredder", ids = { "shredder" } },
-	item = { name = "your item", ids = { "frag", "medkit", "bubble", "duck", "smoke", "popper", "reverse", "wand", "camera", "quiz", "nvg", "radar", "laptop" } },
+	item = { name = "your item", ids = { "frag", "medkit", "bubble", "duck", "smoke", "popper", "reverse", "wand", "camera", "quiz", "nvg", "radar", "laptop", "overdrive" } },
 }
 -- weapon id -> its groups
 Q.CLASS_OF = {} :: { [string]: { string } }

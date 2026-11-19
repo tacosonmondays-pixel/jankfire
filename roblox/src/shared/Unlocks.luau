@@ -48,7 +48,7 @@ Unlocks.LEVEL = {
 	cig = 17,
 	nailgun = 18, laptop = 18,
 	blower = 19,
-	shredder = 20, lasso = 20,
+	shredder = 20, lasso = 20, overdrive = 20,
 	bloodcross = 21, bowling = 22, remote = 23, scales = 24,
 	cart = 25,
 	-- (every ported weapon is live since place version 891. a weapon that isn't live shows in no lock or level-up list)
