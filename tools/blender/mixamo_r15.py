@@ -1,6 +1,6 @@
 """Mixamo clip (.fbx, mixamorig skeleton) -> a Roblox R15 KeyframeSequence (.rbxmx), headless.
 
-run:  blender.exe -b --factory-startup -P tools/blender/mixamo_r15.py -- <in.fbx> <out.rbxm> [--name N] [--hip 2.2]
+run:  blender.exe -b --factory-startup -P tools/blender/mixamo_r15.py -- <in.fbx | in.json> <out.rbxm> [--name N] [--hip 2.2]
       [--priority idle|movement|action|core] [--no-loop] [--blend 6] [--every 1] [--keep-drift]
       [--from F] [--to F] [--warp "s:t,s:t,..."] [--upper]
 then: upload <out.rbxm> through Open Cloud as assetType "Animation" (approved at once; the id plays on any R15 Animator).
@@ -46,14 +46,20 @@ PRIORITY = { 'idle': 0, 'movement': 1, 'action': 2, 'core': 1000 }[opt('--priori
 UPPER = '--upper' in argv
 WARP = [tuple(float(x) for x in kv.split(':')) for kv in opt('--warp', '').split(',') if kv]
 
-bpy.ops.wm.read_factory_settings(use_empty=True)
-bpy.ops.import_scene.fbx(filepath=src, automatic_bone_orientation=False)
-arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
-act = arm.animation_data.action
-f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+# (19 Nov 2026, the MotionBricks trial) a .json in = tools/motionbricks/mixamo_rot_sample.py's shape (every bone's world
+# turn per frame and the hips' head, Blender axes, with the rest), e.g. mb_gen.py's takes: no Blender import needed
+JS = json.load(open(src)) if src.lower().endswith('.json') else None
+if JS is None:
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=src, automatic_bone_orientation=False)
+    arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
+    act = arm.animation_data.action
+    f0, f1 = int(round(act.frame_range[0])), int(round(act.frame_range[1]))
+else:
+    f0, f1 = 0, len(JS['frames']) - 1
 if '--from' in argv: f0 = max(f0, int(opt('--from', f0)))
 if '--to' in argv: f1 = min(f1, int(opt('--to', f1)))
-fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
+fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base if JS is None else JS['fps']
 
 M = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))  # Blender world -> Roblox world
 P = 'mixamorig:'
@@ -76,22 +82,29 @@ TREE = { 'HumanoidRootPart': ['LowerTorso'], 'LowerTorso': ['UpperTorso', 'LeftU
 def rot3(m4):
     m = m4.to_3x3()
     return Matrix([c.normalized() for c in m.transposed()]).transposed()  # (columns to unit length: the armature is at 0.01)
-mw = arm.matrix_world
-rest = { b.name: rot3(mw @ b.matrix_local) for b in arm.data.bones }
-hips_rest = mw @ arm.data.bones[P + 'Hips'].head_local
+if JS is None:
+    mw = arm.matrix_world
+    rest = { b.name: rot3(mw @ b.matrix_local) for b in arm.data.bones }
+    hips_rest = mw @ arm.data.bones[P + 'Hips'].head_local
+else:
+    rest = { P + b: Matrix(r['rot']) for b, r in JS['rest'].items() }
+    hips_rest = Vector(JS['rest']['Hips']['head'])
 mix_hip = hips_rest.z  # metres over the floor (Mixamo stands at z = 0)
 scale = HIP / mix_hip
 
 frames = list(range(f0, f1 + 1, EVERY))
 raw = []  # per frame: { part: world rotation (Roblox) }, hips offset (Roblox, studs)
 for f in frames:
-    bpy.context.scene.frame_set(f)
+    if JS is None: bpy.context.scene.frame_set(f)
     W = { 'HumanoidRootPart': Matrix.Identity(3) }
     for part, bone, parent, Q in PARTS:
-        pb = arm.pose.bones[P + bone]
-        D = rot3(mw @ pb.matrix) @ rest[P + bone].transposed()
+        if JS is None:
+            pb = arm.pose.bones[P + bone]
+            D = rot3(mw @ pb.matrix) @ rest[P + bone].transposed()
+        else:
+            D = Matrix(JS['frames'][f]['rot'][bone]) @ rest[P + bone].transposed()
         W[part] = M @ D @ M.transposed() @ Q
-    h = mw @ arm.pose.bones[P + 'Hips'].head
+    h = mw @ arm.pose.bones[P + 'Hips'].head if JS is None else Vector(JS['frames'][f]['head']['Hips'])
     off = M @ (h - hips_rest) * scale
     raw.append((W, Vector(off)))
 

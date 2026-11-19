@@ -1,0 +1,527 @@
+{
+ "inkfall_slash": {
+  "note": "Tidecrest (Inkfall): a run in over ~7 m into a horizontal slash. the run is asked for with our idle pose as moving targets (carry); standstill targets 7 m away came out as a forward flip",
+  "context": {
+   "clip": "05_dune_breathing_idle",
+   "at": 1.0
+  },
+  "targets": [
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.0,
+    "poses": 4,
+    "move": [
+     1.6,
+     0
+    ],
+    "carry": 3.5,
+    "tokens": [
+     [
+      7
+     ],
+     [
+      8
+     ],
+     [
+      9
+     ],
+     [
+      10
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.0,
+    "poses": 4,
+    "move": [
+     3.2,
+     0
+    ],
+    "carry": 5.5,
+    "tokens": [
+     [
+      6
+     ],
+     [
+      7
+     ],
+     [
+      7
+     ],
+     [
+      8
+     ]
+    ]
+   },
+   {
+    "clip": "05_axe_horizontal",
+    "at": 0.4,
+    "poses": 4,
+    "move": [
+     2.2,
+     0
+    ],
+    "carry": 2.5,
+    "tokens": [
+     [
+      6
+     ],
+     [
+      6
+     ],
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   {
+    "clip": "05_axe_horizontal",
+    "at": 0.86,
+    "poses": 4,
+    "move": [
+     0.4,
+     0
+    ],
+    "carry": 0.6,
+    "tokens": [
+     [
+      6
+     ],
+     [
+      6
+     ],
+     [
+      6
+     ],
+     [
+      7
+     ]
+    ]
+   },
+   {
+    "clip": "05_axe_horizontal",
+    "at": 2.0,
+    "poses": 1,
+    "move": [
+     0.1,
+     0
+    ],
+    "tokens": [
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ]
+    ]
+   }
+  ]
+ },
+ "sheathe": {
+  "note": "a sword sheathe after the slash: blade brought to the left hip, slid home, hands back to rest (targets: our idle pose with the hands placed by IK)",
+  "context": {
+   "clip": "05_axe_horizontal",
+   "at": 2.3
+  },
+  "targets": [
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.0,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "edit": [
+     {
+      "reach": "Right",
+      "to": [
+       0.16,
+       1.0,
+       0.34
+      ],
+      "pole": [
+       -0.6,
+       1.1,
+       -0.1
+      ]
+     },
+     {
+      "reach": "Left",
+      "to": [
+       0.19,
+       0.96,
+       0.12
+      ],
+      "pole": [
+       0.6,
+       1.0,
+       -0.3
+      ]
+     },
+     {
+      "joint": "Chest",
+      "yaw": 12
+     },
+     {
+      "joint": "Head",
+      "pitch": 12
+     }
+    ],
+    "tokens": [
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      11,
+      12
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.0,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "edit": [
+     {
+      "reach": "Right",
+      "to": [
+       0.15,
+       0.98,
+       0.13
+      ],
+      "pole": [
+       -0.6,
+       1.1,
+       -0.2
+      ]
+     },
+     {
+      "reach": "Left",
+      "to": [
+       0.19,
+       0.95,
+       0.1
+      ],
+      "pole": [
+       0.6,
+       1.0,
+       -0.3
+      ]
+     },
+     {
+      "joint": "Head",
+      "pitch": 6
+     }
+    ],
+    "tokens": [
+     [
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.5,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "tokens": [
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      12,
+      13
+     ]
+    ]
+   }
+  ]
+ },
+ "victim_lookaround": {
+  "note": "a victim's confused look-around: left, right, a shrug, back to rest (targets: our idle pose turned and posed)",
+  "context": {
+   "clip": "05_dune_breathing_idle",
+   "at": 1.0
+  },
+  "targets": [
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.2,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "edit": [
+     {
+      "joint": "Chest",
+      "yaw": 14
+     },
+     {
+      "joint": "Neck1",
+      "yaw": 12
+     },
+     {
+      "joint": "Head",
+      "yaw": 28,
+      "pitch": -4
+     }
+    ],
+    "tokens": [
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      12,
+      13
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.6,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "edit": [
+     {
+      "joint": "Chest",
+      "yaw": -16
+     },
+     {
+      "joint": "Neck1",
+      "yaw": -14
+     },
+     {
+      "joint": "Head",
+      "yaw": -32,
+      "pitch": 6,
+      "roll": -6
+     }
+    ],
+    "tokens": [
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      11,
+      12
+     ],
+     [
+      13,
+      14
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 2.0,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "edit": [
+     {
+      "reach": "Right",
+      "to": [
+       -0.36,
+       1.02,
+       0.24
+      ],
+      "pole": [
+       -0.9,
+       0.8,
+       -0.2
+      ]
+     },
+     {
+      "reach": "Left",
+      "to": [
+       0.36,
+       1.02,
+       0.24
+      ],
+      "pole": [
+       0.9,
+       0.8,
+       -0.2
+      ]
+     },
+     {
+      "joint": "Head",
+      "roll": 12,
+      "pitch": -6
+     }
+    ],
+    "tokens": [
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      12,
+      13
+     ]
+    ]
+   },
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 2.5,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "tokens": [
+     [
+      8,
+      9
+     ],
+     [
+      9,
+      10
+     ],
+     [
+      10,
+      11
+     ],
+     [
+      12,
+      13
+     ]
+    ]
+   }
+  ]
+ },
+ "quick_draw": {
+  "note": "High Noon: a quick draw from rest to the right arm straight out at the target, then held (targets: our idle pose with the arm pointed)",
+  "context": {
+   "clip": "05_dune_breathing_idle",
+   "at": 1.0
+  },
+  "targets": [
+   {
+    "clip": "05_dune_breathing_idle",
+    "at": 1.0,
+    "poses": 1,
+    "move": [
+     0,
+     0
+    ],
+    "turn": -12,
+    "edit": [
+     {
+      "point": "Right",
+      "dir": [
+       0.12,
+       0.05,
+       1.0
+      ]
+     },
+     {
+      "joint": "Chest",
+      "yaw": 6
+     },
+     {
+      "joint": "Head",
+      "yaw": 8
+     }
+    ],
+    "hold": 0.4,
+    "tokens": [
+     [
+      6
+     ],
+     [
+      6,
+      7
+     ],
+     [
+      7,
+      8
+     ],
+     [
+      8,
+      9
+     ]
+    ]
+   }
+  ]
+ }
+}
