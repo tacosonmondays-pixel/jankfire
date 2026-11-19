@@ -346,6 +346,7 @@ local Fx = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("DevFx
 if Fx then
 	Fx.OnClientEvent:Connect(function(d: any)
 		if type(d) ~= "table" or d.k ~= "gift" or type(d.items) ~= "table" then return end
+		if #queue >= 8 then return end -- (a run of gifts: the first eight play, the rest are in the save all the same)
 		table.insert(queue, { from = d.from, items = d.items })
 	end)
 end

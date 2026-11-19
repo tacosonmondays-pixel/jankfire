@@ -14,9 +14,13 @@
 --       invisible: DevInvisible (the server hides the body): your own client draws a faint ghost of you (DevWas)
 --     everyone's too: the red card (DevFx): the owner's arm up with a card, a whistle, a red card on the target's screen;
 --     a gift's toast ("GIFT · 5 CRATES")
---     the GIFT tab: give anyone (or you) containers in any number, bundles, items, Brass (the coins), tickets, VIP, Robux weapons
---     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); X flings, Z freezes or
---     lets go and Y shows a red card to whoever you look at. it works everywhere, matches too: a match a power touches counts for nothing (the
+--     the GIFT tab: give anyone (or you) containers in any number, bundles, items, Brass (the coins), tickets, VIP, Robux weapons;
+--       or EVERYONE HERE / ALL SERVERS (19 Nov: the players there right now, once each; ALL SERVERS asks twice)
+--     the ANNOUNCE tab: a line for everyone in this server or every server (the server filters it first; the banner is
+--       AnnounceBanner.client's, the chat line is giftChat's)
+--     the menu: F8, "/dev" in chat, or the small DEV button (touch, pad: VIEW reaches it); with AIM KEYS on (off by
+--     default; X is also the grapple's reel-in) X flings, Z freezes or lets go and Y shows a red card to whoever you
+--     look at, and a DEV KEYS ON chip shows. it works everywhere, matches too: a match a power touches counts for nothing (the
 --     server flags it; the status line says so)
 -- plain and functional on purpose: no flavour text (the owner's rule)
 local Players = game:GetService("Players")
@@ -115,7 +119,7 @@ do
 	-- a gift to someone, said in the chat for everyone (the server's line: "<giver> gifted <receiver> <what>"), in the gold
 	-- accent: the legacy chat's system message (this place's), or a TextChatService system message if the place moves
 	local function giftChat(text: string)
-		local line = string.sub(text, 1, 120)
+		local line = string.sub(text, 1, 200)
 		local TCS = game:GetService("TextChatService")
 		if TCS.ChatVersion == Enum.ChatVersion.TextChatService then
 			local chans = TCS:FindFirstChild("TextChannels")
@@ -574,8 +578,24 @@ end
 -- the right half: everyone else
 local PL_X, PL_W = 398, 484
 label(plate, "PlayersHead", "PLAYERS", PL_X, 66, 100)
-local hint = T.text(plate, "Hint", "X  fling   ·   Z  freeze / let go   ·   Y  red card   (whoever you look at)", 12, T.DIM, T.FONT, Enum.TextXAlignment.Right)
-hint.Position = UDim2.fromOffset(PL_X + 60, 66); hint.Size = UDim2.fromOffset(PL_W - 60, 16)
+local hint = T.text(plate, "Hint", "X  fling  ·  Z  freeze / let go  ·  Y  red card  (whoever you look at)", 12, T.DIM, T.FONT, Enum.TextXAlignment.Right)
+hint.Position = UDim2.fromOffset(PL_X + 60, 66); hint.Size = UDim2.fromOffset(PL_W - 60 - 136, 16)
+-- AIM KEYS (19 Nov: X is the grapple's REEL IN too): X / Z / Y do nothing for the dev menu until this is on. it stays on
+-- until you turn it off (this session), and a small DEV KEYS ON chip shows under the DEV button while it is
+local aimKeys = false
+local keysChip: TextLabel? = nil -- (made with the DEV button, below)
+local aimB = button(plate, "AimKeys", "AIM KEYS: OFF", UDim2.fromOffset(PL_X + PL_W - 128, 62), 128, 24)
+aimB.TextSize = 11
+local function drawAim()
+	lit(aimB, aimKeys)
+	aimB.Text = if aimKeys then "AIM KEYS: ON" else "AIM KEYS: OFF"
+	if keysChip then keysChip.Visible = aimKeys end
+end
+aimB.Activated:Connect(function()
+	aimKeys = not aimKeys
+	drawAim()
+	note.Text = if aimKeys then "aim keys on: X flings, Z freezes, Y shows a red card to whoever you look at" else "aim keys off: X, Z and Y are the game's again"
+end)
 local plist = T.new("ScrollingFrame", {
 	Name = "Players", BackgroundColor3 = T.CARD, BackgroundTransparency = 0.2, BorderSizePixel = 0,
 	Position = UDim2.fromOffset(PL_X, 86), Size = UDim2.fromOffset(PL_W, 350),
@@ -678,7 +698,8 @@ do
 	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
 	local tabPowers = button(plate, "TabPowers", "POWERS", UDim2.fromOffset(96, 12), 90)
 	local tabGift = button(plate, "TabGift", "GIFT", UDim2.fromOffset(192, 12), 90)
-	local keep = { [title] = true, [status] = true, [note] = true, [close] = true, [tabPowers] = true, [tabGift] = true }
+	local tabAnnounce = button(plate, "TabAnnounce", "ANNOUNCE", UDim2.fromOffset(288, 12), 100)
+	local keep = { [title] = true, [status] = true, [note] = true, [close] = true, [tabPowers] = true, [tabGift] = true, [tabAnnounce] = true }
 	local powersKids: { GuiObject } = {}
 	for _, c in plate:GetChildren() do
 		if c:IsA("GuiObject") and not keep[c] then table.insert(powersKids, c) end
@@ -708,24 +729,44 @@ do
 
 	-- who gets it
 	label(page, "ToHead", "TO", 18, 0, 100)
-	local toList = list(page, "To", UDim2.fromOffset(18, 20), UDim2.fromOffset(200, 370))
-	local to: Player = me
+	local toList = list(page, "To", UDim2.fromOffset(18, 20), UDim2.fromOffset(200, 318))
+	-- (19 Nov, round 4: "gift everyone"): EVERYONE HERE (this server) and ALL SERVERS (every live server): the players
+	-- there right now, once each; nobody who joins later. ALL SERVERS asks for a second press
+	local everyNote = T.text(page, "EveryoneNote", "EVERYONE = the players there right now, once each. Anyone joining later gets nothing.", 11, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+	everyNote.Position = UDim2.fromOffset(18, 342); everyNote.Size = UDim2.fromOffset(200, 48)
+	everyNote.TextWrapped = true; everyNote.TextYAlignment = Enum.TextYAlignment.Top
+	local to: any = me -- (a Player, or "server" / "all")
 	local function drawTo()
 		clear(toList)
-		local people = { me }
+		local people: { any } = { "server", "all", me }
 		for _, q in Players:GetPlayers() do if q ~= me then table.insert(people, q) end end
 		if not table.find(people, to) then to = me end
 		for i, q in people do
-			local b = button(toList, "To_" .. q.UserId, if q == me then "YOU" else q.DisplayName, UDim2.new(), 180, 28)
+			local name = if q == "server" then "EVERYONE HERE" elseif q == "all" then "ALL SERVERS" elseif q == me then "YOU" else q.DisplayName
+			local b = button(toList, "To_" .. (if type(q) == "string" then q else tostring(q.UserId)), name, UDim2.new(), 180, 28)
 			b.LayoutOrder = i
 			b.TextXAlignment = Enum.TextXAlignment.Left
 			T.new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, b)
 			lit(b, q == to)
+			if type(q) == "string" and q ~= to then b.TextColor3 = T.ACCENT end
 			b.Activated:Connect(function() to = q; drawTo() end)
 		end
 	end
+	local armed: { key: string, t: number }? = nil
 	local function give(kind: string, id: string?, n: number?, what: string)
-		local r = call("gift", to, { kind = kind, id = id, n = n })
+		local r
+		if to == "server" or to == "all" then
+			local key = ("%s|%s|%s|%s"):format(to, kind, tostring(id), tostring(n))
+			if to == "all" and not (armed and armed.key == key and os.clock() - armed.t < 5) then
+				armed = { key = key, t = os.clock() }
+				note.Text = ("ALL SERVERS: press GIVE again to send %s to everyone in every server"):format(string.upper(what))
+				return
+			end
+			armed = nil
+			r = call("giftAll", to, { kind = kind, id = id, n = n })
+		else
+			r = call("gift", to, { kind = kind, id = id, n = n })
+		end
 		if type(r) == "table" and r.ok then note.Text = tostring(r.did or what)
 		else note.Text = ("%s: %s"):format(what, tostring(if type(r) == "table" and r.why then r.why else "no answer")) end
 	end
@@ -765,7 +806,10 @@ do
 		end
 		local go = button(P, "Give", "GIVE", UDim2.fromOffset(0, 124), 170, 34)
 		lit(go, true)
-		go.Activated:Connect(function() give("container", which, n(), "containers") end)
+		go.Activated:Connect(function()
+			local c = LootTable.CONTAINERS[which]
+			give("container", which, n(), ("%d %s"):format(n(), if n() == 1 then c.name else c.plural))
+		end)
 	end
 
 	-- bundles and skin sets, whole
@@ -874,6 +918,59 @@ do
 		end
 	end
 
+	-- ANNOUNCE (19 Nov, round 4: "write announcements that go across the screen across all servers"): the text, then
+	-- this server or every server (a second press). the server has Roblox's filter check it before anyone sees it
+	-- (OwnerDev.server); everyone gets the banner (AnnounceBanner.client) and a chat line
+	local apage = T.new("Frame", { Name = "Announce", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 1, -96), Visible = false }, plate)
+	do
+		local MAXA = 120
+		label(apage, "AHead", ("ANNOUNCEMENT (UP TO %d LETTERS)"):format(MAXA), 18, 0, 400)
+		local cnt = T.text(apage, "Count", "0 / " .. MAXA, 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
+		cnt.Position = UDim2.fromOffset(782, 0); cnt.Size = UDim2.fromOffset(100, 16)
+		local tb = box(apage, "Text", "", UDim2.fromOffset(18, 22), 864, "type the announcement here")
+		tb.Size = UDim2.fromOffset(864, 64)
+		tb.TextWrapped = true
+		tb.TextXAlignment = Enum.TextXAlignment.Left
+		tb.TextYAlignment = Enum.TextYAlignment.Top
+		tb.TextSize = 16
+		T.new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), PaddingTop = UDim.new(0, 8) }, tb)
+		tb:GetPropertyChangedSignal("Text"):Connect(function()
+			local n = utf8.len(tb.Text) or #tb.Text
+			if n > MAXA then
+				local cut = utf8.offset(tb.Text, MAXA + 1)
+				tb.Text = string.sub(tb.Text, 1, (cut or (MAXA + 1)) - 1)
+				return
+			end
+			cnt.Text = ("%d / %d"):format(n, MAXA)
+		end)
+		local here = button(apage, "SendHere", "SEND TO THIS SERVER", UDim2.fromOffset(18, 100), 220, 34)
+		local every = button(apage, "SendAll", "SEND TO ALL SERVERS", UDim2.fromOffset(246, 100), 220, 34)
+		lit(here, true)
+		local info = T.text(apage, "Info", ("Roblox's filter checks it before anyone sees it; if the filter doesn't answer, nothing is sent. Everyone gets a banner across the screen for about 6 s and a line in the chat. One every %d s."):format(10), 12, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+		info.Position = UDim2.fromOffset(18, 146); info.Size = UDim2.fromOffset(864, 40)
+		info.TextWrapped = true; info.TextYAlignment = Enum.TextYAlignment.Top
+		local armedAt = -math.huge
+		local function send(scope: string)
+			if tb.Text == "" then note.Text = "type the announcement first"; return end
+			if scope == "all" and os.clock() - armedAt > 5 then
+				armedAt = os.clock()
+				note.Text = "ALL SERVERS: press SEND TO ALL SERVERS again to send it"
+				return
+			end
+			armedAt = -math.huge
+			note.Text = "the filter is checking it..."
+			local r = call("announce", tb.Text, scope)
+			if type(r) == "table" and r.ok then
+				note.Text = tostring(r.did or "sent")
+				tb.Text = ""
+			else
+				note.Text = "not sent: " .. tostring(if type(r) == "table" and r.why then r.why else "no answer")
+			end
+		end
+		here.Activated:Connect(function() send("server") end)
+		every.Activated:Connect(function() send("all") end)
+	end
+
 	local kind = "CONTAINERS"
 	local function showKind(k: string)
 		kind = k
@@ -882,17 +979,22 @@ do
 		if k == "ITEMS" and Gift.items then Gift.items() end
 	end
 	for name, b in kindBtn do b.Activated:Connect(function() showKind(name) end) end
-	local function showTab(gift: boolean)
-		Gift.shown = gift
-		page.Visible = gift
-		for _, c in powersKids do c.Visible = not gift end
-		lit(tabPowers, not gift)
-		lit(tabGift, gift)
-		if gift then drawTo(); showKind(kind) end
+	-- which: "powers", "gift", "announce" (true / false: gift / powers, as before)
+	local function showTab(which: any)
+		local w = if which == true then "gift" elseif which == false then "powers" else tostring(which)
+		Gift.shown = w == "gift"
+		page.Visible = w == "gift"
+		apage.Visible = w == "announce"
+		for _, c in powersKids do c.Visible = w == "powers" end
+		lit(tabPowers, w == "powers")
+		lit(tabGift, w == "gift")
+		lit(tabAnnounce, w == "announce")
+		if w == "gift" then drawTo(); showKind(kind) end
 	end
-	tabPowers.Activated:Connect(function() showTab(false) end)
-	tabGift.Activated:Connect(function() showTab(true) end)
-	showTab(false)
+	tabPowers.Activated:Connect(function() showTab("powers") end)
+	tabGift.Activated:Connect(function() showTab("gift") end)
+	tabAnnounce.Activated:Connect(function() showTab("announce") end)
+	showTab("powers")
 	Gift.refresh = function() if Gift.shown then drawTo() end end
 	Gift.showTab = showTab
 	Players.PlayerAdded:Connect(function() Gift.refresh() end)
@@ -945,6 +1047,14 @@ do
 	T.corner(b, 4)
 	T.edge(b, T.ACCENT, 0.6)
 	b.Activated:Connect(toggle)
+	local chip = T.new("TextLabel", {
+		Name = "DevKeys", Text = "DEV KEYS ON", FontFace = T.FONT_BOLD, TextSize = 10, TextColor3 = T.INK,
+		BackgroundColor3 = T.ACCENT, BackgroundTransparency = 0.05, BorderSizePixel = 0, Visible = false,
+		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 132), Size = UDim2.fromOffset(74, 16),
+	}, bg)
+	T.corner(chip, 3)
+	keysChip = chip
+	drawAim()
 end
 
 -- F8, "/dev", X and Z
@@ -964,7 +1074,7 @@ UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or typing() then return end
 	if io.KeyCode == Enum.KeyCode.F8 then
 		toggle()
-	elseif io.KeyCode == Enum.KeyCode.X or io.KeyCode == Enum.KeyCode.Z or io.KeyCode == Enum.KeyCode.Y then
+	elseif aimKeys and (io.KeyCode == Enum.KeyCode.X or io.KeyCode == Enum.KeyCode.Z or io.KeyCode == Enum.KeyCode.Y) then
 		local lk = lookDir()
 		if not lk then return end
 		local res = call(if io.KeyCode == Enum.KeyCode.X then "flingAim" elseif io.KeyCode == Enum.KeyCode.Z then "freezeAim" else "redcardAim", lk)
@@ -977,6 +1087,8 @@ if RunService:IsStudio() then
 	me:GetAttributeChangedSignal("DevMenuTest"):Connect(function()
 		local v = me:GetAttribute("DevMenuTest")
 		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false)
-		elseif v == "gift" then setOpen(true); Gift.showTab(true) end
+		elseif v == "gift" then setOpen(true); Gift.showTab("gift")
+		elseif v == "announce" then setOpen(true); Gift.showTab("announce")
+		elseif v == "keys" then aimKeys = not aimKeys; drawAim() end
 	end)
 end

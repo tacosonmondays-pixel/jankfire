@@ -25,6 +25,9 @@
 --   game always works. sent from a match: taken out of it first (Matches.pull, as if they'd left; the match is flagged)
 --   GIFT (18 Nov, round 3: "let me gift people stuff"): containers in any number, bundles and skin sets, single items,
 --   Brass, Crate Tickets, coins, VIP, to anyone in the server or yourself (see "gifts" below)
+--   GIFT EVERYONE and ANNOUNCE (19 Nov, round 4: "gift everyone stuff and write announcements that go across the screen
+--   across all servers"): to everyone in this server or in every live server (MessagingService), once per player per
+--   event; announcements through Roblox's filter first (see "gift everyone, and announcements" below)
 --   RED CARD (round 2, football style; the one you look at: Y): the owner raises a red card (every client poses the
 --   owner's arm and puts a card in the hand, DevFx "redcard"), a referee's whistle blows (a Pro Sound Effects recording),
 --   the target's screen flashes a red card, and 1.2 s later they're in the jail
@@ -35,7 +38,8 @@
 -- every command is printed to the server log: "[dev] <owner> <what> <target>"
 -- Studio tests: attribute TestNotOwner = true on this script makes the owner a stranger (every command refused);
 -- ServerStorage.JankDev (Studio only): "state" (the owner's switches, who's frozen, the log), "as" (player, op, a, b:
--- a command as that player), "log"
+-- a command as that player), "log", "giftLine", "event" (play an event as another server would), "forget" (an event id),
+-- "events" (what came in over MessagingService)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -45,6 +49,7 @@ local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local Rules = require(script.Parent:WaitForChild("Rules")) :: any
 local Zones = require(script.Parent:WaitForChild("Zones")) :: any
 local Matches = require(script.Parent:WaitForChild("Matches")) :: any
+local GiftFx = require(script.Parent:WaitForChild("GiftFx")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local STUDIO = RunService:IsStudio()
@@ -431,13 +436,7 @@ local function toJail(by: Player, t: any, tname: string, why: string): any
 end
 
 -- ------------------------------------------------------------------ the red card
-local DevFx = Remotes:FindFirstChild("DevFx")
-if not DevFx or not DevFx:IsA("RemoteEvent") then
-	local e = Instance.new("RemoteEvent")
-	e.Name = "DevFx"
-	e.Parent = Remotes
-	DevFx = e
-end
+local DevFx = GiftFx.remote -- (JankfireRemotes.DevFx: the red card, gifts, announcements; GiftFx makes it)
 local carding: { [Player]: number } = {}
 local function redCard(by: Player, t: any, tname: string): any
 	if now() - (carding[by] or -math.huge) < CARD_POSE + 0.3 then return { ok = false, why = "one card at a time" } end
@@ -454,32 +453,36 @@ end
 -- ------------------------------------------------------------------ gifts
 -- (18 Nov 2026, the owner: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc"). the
 -- GIFT tab's "gift" op. every gift goes through the owning module's own grant, never the client:
---   container (crate / bag / spray, 1..GIFT_MAX)  Loot.grant(p, id, receipt, n)   (the loot save: one write, one receipt)
+--   container (crate / bag / spray, 1..999)       Loot.grant(p, id, receipt, n)   (the loot save: one write, one receipt)
 --   bundle (a shop bundle or skin set, whole)     Loot.grant(p, bundleId, receipt)
 --   item (a wrap, hat, skin, kill effect, emote, grapple or card look; wraps and hats on every gun)
 --                                                 Loot.grant(p, "gift:<kind>:<id>", receipt)
 --   brass ("coins": the same thing) / tickets     Quests.gift(p, brass, tickets, receipt)
 --   vip (for good)                                Vip.gift(p, true)                   (the shop's: saved in JankfireVip)
 --   weapon (a Robux one: Unlocks.ROBUX)           Purchases.giveWeapon(p, wid, "gift", receipt)   (the shop's)
--- the receiver gets a plain toast ("GIFT · 5 CRATES", DevFx "gift"). every gift is written to a gift log (giver,
--- receiver, what, how many, when: user ids only) in its own store, Studio apart from live. a gift in a match flags
--- nothing: it doesn't change the fight
-local GIFT_MAX = 999
+-- what a thing is called and what its present shows come from GiftFx.describe (shared with the shop's paid gifts).
+-- the receiver gets the present (GiftFx.present: GiftReveal.client; a toast in a match, the present at the break),
+-- and a gift to someone else is said in the server's chat for everyone (GiftFx.say, 18 Nov: "when you gift someone it
+-- has to be noticeable"): "<giver> gifted <receiver> <what>", from the two display names and the thing's own plain
+-- name, never from anything typed. every gift is written to a gift log (giver, receiver, what, how many, when: user ids
+-- only) in its own store, Studio apart from live. a gift in a match flags nothing: it doesn't change the fight
 local giftStore: DataStore? = nil
 pcall(function() giftStore = game:GetService("DataStoreService"):GetDataStore(if STUDIO then "JankDevGifts_v1_studio" else "JankDevGifts_v1") end)
-local function giftLog(by: Player, to: Player, what: string, n: number)
+local function storeRow(key: string, row: any, keep: number)
 	if not giftStore then return end
-	local row = { t = os.time(), by = by.UserId, to = to.UserId, what = what, n = n }
 	task.spawn(function()
 		pcall(function()
-			(giftStore :: DataStore):UpdateAsync("log", function(old: any)
+			(giftStore :: DataStore):UpdateAsync(key, function(old: any)
 				local list = if type(old) == "table" then old else {}
 				table.insert(list, row)
-				while #list > 500 do table.remove(list, 1) end
+				while #list > keep do table.remove(list, 1) end
 				return list
 			end)
 		end)
 	end)
+end
+local function giftLog(by: Player, to: Player, what: string, n: number)
+	storeRow("log", { t = os.time(), by = by.UserId, to = to.UserId, what = what, n = n }, 500)
 end
 local mods: { [string]: any } = {}
 local function mod(name: string): any
@@ -491,104 +494,267 @@ local function mod(name: string): any
 	mods[name] = if ok and type(r) == "table" then r else false
 	return mods[name] or nil
 end
--- every gift to someone else is said in the server's chat, to everyone (the owner, 18 Nov: "when you gift someone it has
--- to be noticeable, write a chat message in the roblox chat"): "<giver> gifted <receiver> <what>", built here from the
--- two display names and the thing's own plain name, never from anything typed. each client posts it as a system line
--- (OwnerDev.client: the legacy chat's ChatMakeSystemMessage here, a TextChatService system message if the place moves)
-local function announceGift(byName: string, toName: string, what: string)
-	(DevFx :: RemoteEvent):FireAllClients({ k = "giftchat", text = ("%s gifted %s %s"):format(byName, toName, what) })
-end
 local giftN = 0
 local function receipt(to: Player): string
 	giftN += 1
 	return ("devgift-%d-%d-%d"):format(to.UserId, os.time(), giftN)
 end
-local function count(v: unknown, hi: number): number?
-	if type(v) ~= "number" or v ~= v then return nil end
-	local n = math.floor(v)
-	return if n >= 1 and n <= hi then n else nil
+-- give one player a described thing (GiftFx.describe) under the receipt rid, through the module that owns it.
+-- (true, "already") when there was nothing new to give: the same receipt again (a second delivery of one event), VIP
+-- they have, a weapon they own
+local function give(to: Player, spec: any, rid: string): (boolean, string?)
+	local k = spec.kind
+	if k == "container" or k == "bundle" or k == "item" then
+		local Loot = mod("Loot")
+		if not Loot then return false, "no loot module" end
+		if type(Loot.hasReceipt) == "function" and Loot.hasReceipt(to, rid) then return true, "already" end
+		if k == "container" then
+			if Loot.GRANT_COUNT == true then -- (the loot module takes a count: one write, one receipt)
+				if not Loot.grant(to, spec.id, rid, spec.qty) then return false, "their loot save isn't ready" end
+			else -- (until it does: one grant, one save each, so at most 25)
+				if spec.qty > 25 then return false, "25 at a time until the loot module takes a count" end
+				for i = 1, spec.qty do
+					if not Loot.grant(to, spec.id, rid .. "-" .. i) then return false, "their loot save isn't ready" end
+				end
+			end
+		elseif k == "bundle" then
+			if not Loot.grant(to, spec.id, rid) then return false, "their loot save isn't ready" end
+		elseif not Loot.grant(to, "gift:" .. spec.id, rid) then
+			return false, "not given (their loot save isn't ready, or that can't be gifted)"
+		end
+		return true, nil
+	elseif k == "brass" or k == "tickets" then
+		local Q = mod("Quests")
+		if not Q or type(Q.gift) ~= "function" then return false, "not ready" end
+		local ok, why = Q.gift(to, if k == "brass" then spec.qty else 0, if k == "tickets" then spec.qty else 0, rid)
+		if not ok then return false, tostring(why) end
+		return true, if why == "already" then "already" else nil
+	elseif k == "vip" then
+		local V = mod("Vip")
+		if not V or type(V.gift) ~= "function" then return false, "VIP gifts aren't in yet" end
+		if V.isVip(to) then return true, "already" end
+		local ok, why = V.gift(to, true)
+		if not ok then return false, tostring(why or "not given") end
+		return true, nil
+	elseif k == "weapon" then
+		local Pu = mod("Purchases")
+		if not Pu or type(Pu.giveWeapon) ~= "function" then return false, "weapon gifts aren't in yet" end
+		local ok, why = Pu.giveWeapon(to, spec.id, "gift", rid)
+		if not ok then return false, tostring(why or "not given") end
+		return true, if why == "already" then "already" else nil
+	end
+	return false, "nope"
 end
 local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknown): any
-	local Loot = mod("Loot")
-	local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop")) :: any
-	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
-	local label, qty, what, plain
-	local items: { any } = {} -- (what the receiver's present reveals: GiftReveal.client, on the loot opening's cards)
-	if kind == "container" then
-		local c = type(id) == "string" and LootTable.CONTAINERS[id]
-		qty = count(n, GIFT_MAX)
-		if not c or not qty then return { ok = false, why = "which container, and 1 to " .. GIFT_MAX } end
-		if not Loot then return { ok = false, why = "no loot module" } end
-		if Loot.GRANT_COUNT == true then -- (the loot module takes a count: one write, one receipt)
-			if not Loot.grant(to, id :: string, receipt(to), qty) then return { ok = false, why = "their loot save isn't ready" } end
-		else -- (until it does: one grant, one save each, so at most 25)
-			if (qty :: number) > 25 then return { ok = false, why = "25 at a time until the loot module takes a count" } end
-			for _ = 1, qty :: number do
-				if not Loot.grant(to, id :: string, receipt(to)) then return { ok = false, why = "their loot save isn't ready" } end
+	local spec, why = GiftFx.describe(kind, id, n)
+	if not spec then return { ok = false, why = why } end
+	local ok, how = give(to, spec, receipt(to))
+	if not ok then return { ok = false, why = how } end
+	if how == "already" then return { ok = false, why = "they have it already" } end
+	GiftFx.present(to, p.DisplayName, spec)
+	if to ~= p then GiftFx.say(p.DisplayName, to.DisplayName, spec.plain) end
+	giftLog(p, to, spec.what, spec.qty)
+	log(p, ("gift %s x%d to"):format(spec.what, spec.qty), to.Name)
+	return { ok = true, did = ("gave %s %s"):format(to.Name, spec.label) }
+end
+
+-- ------------------------------------------------------------------ gift everyone, and announcements
+-- (19 Nov 2026, round 4, the owner: "from my command menu allow me to gift everyone stuff and write announcements that
+-- go across the screen across all servers, it'll be helpful for admin abuse!!"). both are EVENTS:
+--   { id, k = "gift" | "announce", by = the owner's user id, from = the owner's display name, kind/item/qty or text }
+-- "this server" plays the event here. "all servers" publishes it once over MessagingService (EVENT_TOPIC: only this
+-- game's own servers can publish to it, and only an owner's command here does; a server plays only events whose by is
+-- the place's creator) and every live server plays it for the players it has right then:
+--   GIFT EVERYONE: each player gets the thing under the receipt "ownerev-<id>" (Loot's receipts, Quests' grants), so
+--   one event never gives anyone twice: not a second delivery, not a player who hopped servers. VIP they have or a
+--   weapon they own is skipped. a save still loading is tried again for a minute. then their present (in a match: at
+--   the break) and one chat line per server, "<owner> gifted everyone <what>". players who join later get nothing
+--   ANNOUNCE: typed text, so Roblox's filter has it on the owner's server before anything is sent or shown
+--   (TextService:FilterStringAsync(text, owner, PublicChat), then GetNonChatStringForBroadcastAsync); a filter that
+--   doesn't answer sends nothing. every client shows the banner (AnnounceBanner.client: across the screen for about
+--   6 s; smaller, high and clear of the crosshair in a match) and the chat gets "[ANNOUNCEMENT] <owner>: <text>"
+-- a server plays an event id once (seen). each server adds itself to the event's reach (a MemoryStore hash map, a day);
+-- REACH_WAIT s on, the owner's server reads it, logs it, writes the event to the gift log ("events") and toasts the owner
+-- limits: one gift-everyone every EVERYONE_GAP s, one announcement every ANNOUNCE_GAP s (MessagingService takes far more)
+-- Studio: its own topic and map (JankOwnerEvent_studio, jfs_ownerev): a test never reaches a live server
+local MessagingService = game:GetService("MessagingService")
+local MemoryStoreService = game:GetService("MemoryStoreService")
+local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
+local EVENT_TOPIC = if STUDIO then "JankOwnerEvent_studio" else "JankOwnerEvent"
+local REACH_MAP = if STUDIO then "jfs_ownerev" else "jf_ownerev"
+local REACH_WAIT = 75 -- s
+local EVERYONE_GAP = 5 -- s
+local ANNOUNCE_GAP = 10 -- s
+local ANNOUNCE_MAX = 120 -- characters
+local seen: { [string]: number } = {}
+local received = 0 -- (events that came in over MessagingService: Studio's check of the publish -> receive path)
+local function newId(): string
+	return ("%x%s"):format(os.time(), string.sub((string.gsub(HttpService:GenerateGUID(false), "-", "")), 1, 8))
+end
+local function reach(id: string, players: number)
+	task.spawn(function()
+		pcall(function()
+			MemoryStoreService:GetHashMap(REACH_MAP):UpdateAsync(id, function(old: any)
+				local v = if type(old) == "table" then old else { s = 0, p = 0 }
+				v.s = (tonumber(v.s) or 0) + 1
+				v.p = (tonumber(v.p) or 0) + players
+				return v
+			end, 86400)
+		end)
+	end)
+end
+-- is it an owner's event this server hasn't played? (marks it played)
+local function accept(ev: any): (boolean, string?)
+	if type(ev) ~= "table" or type(ev.id) ~= "string" or #ev.id < 4 or #ev.id > 40 then return false, "not an event" end
+	if game.CreatorType ~= Enum.CreatorType.User or ev.by ~= game.CreatorId then return false, "not the owner's" end
+	if seen[ev.id] then return false, "already" end
+	seen[ev.id] = os.time()
+	return true, nil
+end
+-- everyone here gets the thing (each in its own thread: a loading save is tried again for a minute); the reach counts
+-- those given once all are done
+local function giveEveryone(spec: any, id: string, fromName: string): number
+	local list = Players:GetPlayers()
+	local left, gave = #list, 0
+	local rid = "ownerev-" .. id
+	for _, q in list do
+		task.spawn(function()
+			for _ = 1, 20 do
+				if not q.Parent then break end
+				local ok, how = give(q, spec, rid)
+				if ok then
+					if how ~= "already" then
+						gave += 1
+						GiftFx.present(q, fromName, spec)
+					end
+					break
+				end
+				task.wait(3)
 			end
-		end
-		label = ("%d %s"):format(qty, string.upper(if qty == 1 then c.name else c.plural))
-		plain = ("%d %s"):format(qty, if qty == 1 then c.name else c.plural)
-		local so = Shop.byId[id]
-		items = { { type = "container", id = id, name = c.name, rarity = if so and so.rarity then so.rarity else "rare", n = qty } }
-		what = "container:" .. (id :: string)
-	elseif kind == "bundle" then
-		local o = type(id) == "string" and Shop.byId[id]
-		if not o or o.type ~= "bundle" then return { ok = false, why = "no such bundle" } end
-		if not Loot or not Loot.grant(to, id :: string, receipt(to)) then return { ok = false, why = "their loot save isn't ready" } end
-		label, what, qty, plain = string.upper(o.name), "bundle:" .. (id :: string), 1, tostring(o.name)
-		for _, it in (if type(Shop.contents) == "function" then Shop.contents(o) else {}) :: any do
-			local inf = type(it) == "table" and LootTable.info(it.kind, it.id)
-			if inf and #items < 12 then table.insert(items, { type = it.kind, id = it.id, name = inf.name, rarity = inf.rarity, weapon = it.weapon or inf.weapon }) end
-		end
-	elseif kind == "item" then
-		local t, iid = string.match(tostring(id), "^(%a+):([%w_]+)$")
-		local info = t and iid and LootTable.info(t, iid)
-		if not info then return { ok = false, why = "no such item" } end
-		if not Loot or not Loot.grant(to, ("gift:%s:%s"):format(t :: string, iid :: string), receipt(to)) then
-			return { ok = false, why = "not given (their loot save isn't ready, or that can't be gifted)" }
-		end
-		label, what, qty, plain = string.upper(info.name), "item:" .. tostring(id), 1, tostring(info.name)
-		items = { { type = t, id = iid, name = info.name, rarity = info.rarity, weapon = info.weapon } }
-	elseif kind == "brass" or kind == "coins" or kind == "tickets" then
-		if kind == "coins" then kind = "brass" end -- (coins are Brass: the shop's word, 18 Nov)
-		qty = count(n, 1000000)
-		if not qty then return { ok = false, why = "how many" } end
-		local Q = mod("Quests")
-		if not Q or type(Q.gift) ~= "function" then return { ok = false, why = "not ready" } end
-		local ok, why = Q.gift(to, if kind == "brass" then qty else 0, if kind == "tickets" then qty else 0, receipt(to))
-		if not ok then return { ok = false, why = tostring(why) } end
-		label = ("%d %s"):format(qty, if kind == "brass" then "COINS" elseif qty == 1 then "CRATE TICKET" else "CRATE TICKETS")
-		plain = ("%d %s"):format(qty, if kind == "brass" then "Coins" elseif qty == 1 then "Crate Ticket" else "Crate Tickets")
-		items = { { type = if kind == "brass" then "brass" else "tix", id = kind, name = if kind == "brass" then "Coins" else "Crate Tickets", rarity = "rare", n = qty } }
-		what = kind :: string
-	elseif kind == "vip" then
-		local V = mod("Vip")
-		if not V or type(V.gift) ~= "function" then return { ok = false, why = "VIP gifts aren't in yet" } end
-		if V.isVip(to) then return { ok = false, why = "already VIP" } end
-		local ok, why = V.gift(to, true)
-		if not ok then return { ok = false, why = tostring(why or "not given") } end
-		label, what, qty, plain = "VIP", "vip", 1, "VIP"
-		items = { { type = "vip", id = "vip", name = "VIP", rarity = "vip" } }
-	elseif kind == "weapon" then
-		local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
-		local Roster = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Roster")) :: any
-		local e = type(id) == "string" and Roster.byId[id]
-		if not e or not (type(Unlocks.robux) == "function" and Unlocks.robux(id)) then return { ok = false, why = "not a Robux weapon" } end
-		local Pu = mod("Purchases")
-		if not Pu or type(Pu.giveWeapon) ~= "function" then return { ok = false, why = "weapon gifts aren't in yet" } end
-		local ok, why = Pu.giveWeapon(to, id :: string, "gift", receipt(to))
-		if not ok then return { ok = false, why = tostring(why or "not given") } end
-		label, what, qty, plain = string.upper(e.name), "weapon:" .. (id :: string), 1, tostring(e.name)
-		items = { { type = "weapon", id = id, name = e.name, rarity = "legendary" } }
-	else
-		return { ok = false, why = "nope" }
+			left -= 1
+			if left == 0 then reach(id, gave) end
+		end)
 	end
-	;(DevFx :: RemoteEvent):FireClient(to, { k = "gift", text = "GIFT · " .. label, from = p.DisplayName, items = items })
-	if to ~= p then announceGift(p.DisplayName, to.DisplayName, plain or label) end -- (the owner, 18 Nov: "it has to be noticeable")
-	giftLog(p, to, what, qty or 1)
-	log(p, ("gift %s x%d to"):format(what, qty or 1), to.Name)
-	return { ok = true, did = ("gave %s %s"):format(to.Name, label) }
+	if #list == 0 then reach(id, 0) end
+	return #list
+end
+local function play(ev: any, how: string): (boolean, string?)
+	local from = string.sub(tostring(ev.from or "The owner"), 1, 32)
+	if ev.k == "announce" then
+		if type(ev.text) ~= "string" or ev.text == "" then return false, "no text" end
+		local text = string.sub(ev.text, 1, ANNOUNCE_MAX * 4)
+		DevFx:FireAllClients({ k = "announce", text = text, from = from })
+		GiftFx.line(("[ANNOUNCEMENT] %s: %s"):format(from, text))
+		reach(ev.id, #Players:GetPlayers())
+		print(("[dev] event %s (%s): announcement shown to %d players"):format(ev.id, how, #Players:GetPlayers()))
+		return true, nil
+	elseif ev.k == "gift" then
+		local spec, why = GiftFx.describe(ev.kind, ev.item, ev.qty)
+		if not spec then return false, why end
+		local n = giveEveryone(spec, ev.id, from)
+		GiftFx.say(from, "everyone", spec.plain)
+		print(("[dev] event %s (%s): %s x%d for everyone here (%d players)"):format(ev.id, how, spec.what, spec.qty, n))
+		return true, nil
+	end
+	return false, "nope"
+end
+task.spawn(function()
+	for i = 1, 6 do
+		local ok, err = pcall(function()
+			MessagingService:SubscribeAsync(EVENT_TOPIC, function(msg: any)
+				received += 1
+				local ev = if type(msg) == "table" then msg.Data else nil
+				if accept(ev) then
+					local ok2, why = play(ev, "msg")
+					if not ok2 then warn("[dev] an owner event didn't play here: " .. tostring(why)) end
+				end
+			end)
+		end)
+		if ok then return end
+		warn(("[dev] owner events: no subscription yet (%s)"):format(tostring(err)))
+		task.wait(10 * i)
+	end
+end)
+-- the owner starts one: here, or everywhere (published first; if that fails nothing happens, live)
+local last = { gift = -math.huge, announce = -math.huge }
+local function startEvent(p: Player, ev: any, scope: string, what: string): (boolean, string?)
+	local ok, why = accept(ev)
+	if not ok then return false, why end
+	local note = nil
+	if scope == "all" then
+		local sent, err = pcall(function() MessagingService:PublishAsync(EVENT_TOPIC, ev) end)
+		if not sent then
+			if not STUDIO then return false, "couldn't reach the other servers: nothing sent" end
+			note = "(Studio: the publish was refused, so this server only)"
+			log(p, "owner event publish refused in Studio:", string.sub(tostring(err), 1, 100))
+		end
+	end
+	local played, why2 = play(ev, "here")
+	if not played then return false, why2 end
+	task.delay(REACH_WAIT, function()
+		local r: any = nil
+		pcall(function() r = MemoryStoreService:GetHashMap(REACH_MAP):GetAsync(ev.id) end)
+		local servers = if type(r) == "table" then tonumber(r.s) else nil
+		local players = if type(r) == "table" then tonumber(r.p) else nil
+		local line = ("event %s (%s, %s): reached %s servers, %s players"):format(ev.id, scope, what,
+			if servers then tostring(servers) else "?", if players then tostring(players) else "?")
+		log(p, line, nil)
+		storeRow("events", { t = os.time(), by = p.UserId, id = ev.id, k = ev.k, scope = scope, what = what, servers = servers, players = players }, 200)
+		if p.Parent then
+			DevFx:FireClient(p, { k = "gift", text = ("%s · %s SERVERS · %s PLAYERS"):format(if ev.k == "announce" then "ANNOUNCEMENT" else "GIFT EVERYONE",
+				if servers then tostring(servers) else "?", if players then tostring(players) else "?") })
+		end
+	end)
+	return true, note
+end
+local function giftEveryone(p: Player, scope: unknown, b: unknown): any
+	if scope ~= "server" and scope ~= "all" then return { ok = false, why = "this server or all servers" } end
+	if type(b) ~= "table" then return { ok = false, why = "nope" } end
+	local spec, why = GiftFx.describe((b :: any).kind, (b :: any).id, (b :: any).n)
+	if not spec then return { ok = false, why = why } end
+	local wait = EVERYONE_GAP - (now() - last.gift)
+	if wait > 0 then return { ok = false, why = ("one every %d s: %d s to go"):format(EVERYONE_GAP, math.ceil(wait)) } end
+	last.gift = now()
+	local ev = { id = newId(), k = "gift", by = p.UserId, from = string.sub(p.DisplayName, 1, 32), kind = spec.kind, item = spec.id, qty = spec.qty }
+	local ok, note = startEvent(p, ev, scope :: string, spec.what)
+	if not ok then last.gift = -math.huge; return { ok = false, why = note } end
+	log(p, ("gift everyone (%s): %s x%d, event"):format(scope :: string, spec.what, spec.qty), ev.id)
+	return { ok = true, id = ev.id, did = (if scope == "all" then "sent to every server: %s for everyone there now" else "gave everyone here %s"):format(spec.label)
+		.. (if note then " " .. note else "") }
+end
+local announcing = false
+local function announce(p: Player, text: unknown, scope: unknown): any
+	if scope ~= "server" and scope ~= "all" then return { ok = false, why = "this server or all servers" } end
+	if type(text) ~= "string" then return { ok = false, why = "type something" } end
+	local t = string.gsub(text, "%c", " ")
+	t = string.gsub(t, "%s+", " ")
+	t = string.match(t, "^%s*(.-)%s*$") or ""
+	local len = utf8.len(t)
+	if not len or len == 0 then return { ok = false, why = "type something" } end
+	if len > ANNOUNCE_MAX then return { ok = false, why = ("%d letters at most"):format(ANNOUNCE_MAX) } end
+	if announcing then return { ok = false, why = "one at a time" } end
+	local wait = ANNOUNCE_GAP - (now() - last.announce)
+	if wait > 0 then return { ok = false, why = ("one every %d s: %d s to go"):format(ANNOUNCE_GAP, math.ceil(wait)) } end
+	announcing = true
+	local clean: string? = nil
+	local okF = pcall(function()
+		local res = TextService:FilterStringAsync(t, p.UserId, Enum.TextFilterContext.PublicChat)
+		clean = res:GetNonChatStringForBroadcastAsync()
+	end)
+	if not okF or type(clean) ~= "string" or clean == "" then
+		announcing = false
+		return { ok = false, why = "Roblox's filter didn't answer: nothing sent" }
+	end
+	local ev = { id = newId(), k = "announce", by = p.UserId, from = string.sub(p.DisplayName, 1, 32), text = clean }
+	local ok, note = startEvent(p, ev, scope :: string, "announcement")
+	announcing = false
+	if not ok then return { ok = false, why = note } end
+	last.announce = now()
+	log(p, ("announce (%s): %s"):format(scope :: string, clean :: string), nil)
+	return { ok = true, id = ev.id, filtered = clean ~= t,
+		did = (if scope == "all" then "announced in every server" else "announced here") .. (if clean ~= t then " (the filter changed some of it)" else "")
+			.. (if note then " " .. note else "") }
 end
 
 -- the one the owner looks at: the eye's ray, the nearest in angle, in sight
@@ -664,7 +830,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	elseif op == "players" then
 		return { ok = true, players = list(p), zone = zone }
 	end
-	if zone == "match" and op ~= "gift" and not (op == "set" and (a == "off" or b == false)) then flagMatch(p, p, tostring(op)) end
+	if zone == "match" and op ~= "gift" and op ~= "giftAll" and op ~= "announce" and not (op == "set" and (a == "off" or b == false)) then flagMatch(p, p, tostring(op)) end
 	if op == "set" then
 		if a == "fly" then s.fly = b == true
 		elseif a == "flySpeed" and type(b) == "number" and b == b then s.flySpeed = math.floor(math.clamp(b, FLY.min, FLY.max) + 0.5)
@@ -690,6 +856,10 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		if not to then return { ok = false, why = "nobody" } end
 		if type(b) ~= "table" then return { ok = false, why = "nope" } end
 		return gift(p, to, (b :: any).kind, (b :: any).id, (b :: any).n)
+	elseif op == "giftAll" then -- (a: "server" or "all", b: { kind, id, n })
+		return giftEveryone(p, a, b)
+	elseif op == "announce" then -- (a: the text, b: "server" or "all")
+		return announce(p, a, b)
 	elseif op == "unfreezeAll" then
 		local n = unfreezeAll()
 		log(p, "unfreeze all", tostring(n))
@@ -898,8 +1068,20 @@ if STUDIO then
 		elseif op == "log" then
 			return lines
 		elseif op == "giftLine" then -- (a gift's chat line to a stand-in receiver's name: a = the giver, b = the name, c = what)
-			announceGift((a :: Player).DisplayName, tostring(b), tostring(c))
+			GiftFx.say((a :: Player).DisplayName, tostring(b), tostring(c))
 			return true
+		elseif op == "event" then -- (a = an event, as another server gets it over MessagingService: played once per id)
+			local ok, why = accept(a)
+			if not ok then return { ran = false, why = why } end
+			local played, why2 = play(a, "test")
+			return { ran = played, why = why2 }
+		elseif op == "forget" then -- (a = an event id: this server forgets it played it, like a server that never had it)
+			seen[tostring(a)] = nil
+			return true
+		elseif op == "events" then -- (how many came in over MessagingService; the ids played here)
+			local ids = {}
+			for id in seen do table.insert(ids, id) end
+			return { received = received, seen = ids, topic = EVENT_TOPIC }
 		end
 		return nil
 	end

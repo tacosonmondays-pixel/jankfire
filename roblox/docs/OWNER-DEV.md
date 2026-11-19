@@ -33,10 +33,11 @@ Files:
 - **Keyboard:** F8, or `/dev` in chat. In the legacy chat the server hears `/dev` and bumps the `DevPanel` attribute.
 - **Touch:** the small DEV button in the top-right corner, under the currency box. Only the owner has it.
 - **Controller:** VIEW reaches the DEV button (it's in PadNav's menu column). Once the menu is open, B backs out.
-- **Hotkeys, menu open or not:**
+- **Hotkeys, menu open or not, only while AIM KEYS is on:**
   - **X** flings whoever you're looking at.
   - **Z** freezes or lets go of whoever you're looking at.
   - **Y** shows a red card to whoever you're looking at.
+  - **AIM KEYS** (since 19 Nov, because X is also the grapple's REEL IN) is a toggle at the top right of the POWERS tab. It's off by default and stays on until you turn it off (for the session). While it's on, a small gold "DEV KEYS ON" chip shows under the DEV button. While it's off, X, Z and Y do nothing for the dev menu, so X is just reel-in. Ctrl isn't used as a modifier, because Ctrl is crouch.
 - The menu frees the mouse but doesn't hold you still (it's a cursor-only MenuCursor name). You can fly with it open.
 
 ## The powers
@@ -102,7 +103,8 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 | VIP, for good | `Vip.gift(p, true)` (the shop's): saved on the player's key in `JankfireVip` |
 | A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | `Purchases.giveWeapon(p, wid, "gift", receipt)` (the shop's) |
 
-- **The receiver** sees one plain line at the top of the screen for 3.5 s, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
+- **The receiver** gets the present (below). In a match the present waits, and one plain line shows at the top of the screen for 3.5 s instead, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
+- **Who it's for:** TO also lists EVERYONE HERE and ALL SERVERS (since 19 Nov; see GIFT EVERYONE below).
 - **Everyone in the server sees it in the chat** (since 18 Nov: the owner said "it has to be noticeable"). A gift to someone else posts one gold system line, such as "Pompompoo gifted Sam 5 Crates" or "... gifted Sam VIP".
   - The server builds the line from the two display names and the item's own plain name, never from anything typed.
   - Each client posts it: `ChatMakeSystemMessage` in this place's legacy chat, or a TextChatService system message if the place ever moves to it.
@@ -118,6 +120,57 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
   - **Studio test hook:** `GiftHold` = "rise" / "spin" / "reveal" holds the animation at that moment for a photo.
 - **The gift log:** every gift is written to DataStore `JankDevGifts_v1` (`JankDevGifts_v1_studio` in Studio), key `log`, last 500: when, giver, receiver (user ids only), what, how many. It's printed to the server log too.
 - **In a match:** a gift works there and doesn't flag the match, because it doesn't change the fight.
+
+## GIFT EVERYONE
+
+Asked for on 19 Nov, with ANNOUNCE: "from my command menu allow me to gift everyone stuff and write announcements that go across the screen across all servers, it'll be helpful for admin abuse!!"
+
+- **Where:** on the GIFT tab, pick EVERYONE HERE (this server) or ALL SERVERS (every live server) at the top of TO, then any gift button: containers in any number, bundles, items, coins, Crate Tickets, VIP, Robux weapons.
+  - ALL SERVERS asks for a second press of the same GIVE within 5 s.
+- **Who gets it:** the players in the server right then, once each. Anyone who joins later gets nothing, because it's a live event. The tab says so under the list.
+- **How it travels:** an event `{ id, k = "gift", by, from, kind, item, qty }`.
+  - "This server" plays it here.
+  - "All servers" publishes it once over MessagingService (topic `JankOwnerEvent`; `JankOwnerEvent_studio` in Studio, so a test never reaches a live server), and every live server plays it.
+  - Only this game's own servers can publish to the topic, and only the owner's command does. A server plays only events whose `by` is the place's creator, and each event id only once.
+  - If the publish fails on a live server, nothing happens anywhere, and the menu says so.
+- **Exactly once per player:** each player gets it under the receipt `ownerev-<id>`.
+  - Loot's receipts (`Loot.hasReceipt`, new) and Quests' grant ids make a second delivery, a retry, or a player who hopped servers give nothing.
+  - VIP they already have, or a Robux weapon they own, is skipped.
+  - A save still loading is tried again every 3 s for a minute.
+- **What people see:** each player gets their present (at the break in a match). Each server gets one chat line, such as "Pompompoo gifted everyone 3 Crates".
+- **Limits:** one gift-everyone every 5 s.
+- **Reach and the log:** each server adds itself and the players it gave to a MemoryStore hash map (`jf_ownerev`, or `jfs_ownerev` in Studio, kept a day).
+  - 75 s later the owner's server reads it, prints it to the dev log, writes the event to the gift log (key `events`, last 200: when, id, kind, scope, what, servers, players), and toasts the owner: "GIFT EVERYONE · 12 SERVERS · 84 PLAYERS".
+
+## ANNOUNCE (the menu's third tab)
+
+- **The tab:** a text box (up to 120 letters, with a counter), SEND TO THIS SERVER, and SEND TO ALL SERVERS (asks for a second press within 5 s).
+- **Roblox's filter first:** the owner's server runs `TextService:FilterStringAsync(text, owner, Enum.TextFilterContext.PublicChat)`, then `GetNonChatStringForBroadcastAsync()`, before anything is sent or shown.
+  - If the filter doesn't answer, nothing is sent, and the menu says so.
+  - If the filter changed words, the menu says that too.
+  - Only the filtered text travels, shown as plain text (never rich text).
+- **How it travels:** the same events as GIFT EVERYONE (`k = "announce"`, `text`), here or over MessagingService to every server, each id once.
+- **What everyone sees:** `client/AnnounceBanner.client.luau`.
+  - A dark band sweeps in across the screen between two gold lines. "ANNOUNCEMENT · <OWNER>" and the line ride in from the right and land in the middle.
+  - It holds about 6 s (a long line a little longer), then the line rides off to the left and the band follows.
+  - Outside a match: a big band in the upper third, with up to 30 px text, shrunk to fit.
+  - In a match: a slimmer band high on the screen, well clear of the crosshair, with up to 21 px text.
+  - Sounds: `slap_whoosh` as it sweeps in, `ting` as the line lands. One at a time, with at most 3 waiting.
+  - The chat gets the same line in gold: "[ANNOUNCEMENT] Pompompoo: <text>".
+- **Limits:** one announcement every 10 s.
+- **Reach:** reach, log and toast as for GIFT EVERYONE ("ANNOUNCEMENT · 12 SERVERS · 84 PLAYERS").
+
+## For other code: GiftFx (the shared gift look)
+
+`server/GiftFx.luau` is what a gift looks like to people, for anything on the server that gives something. The shop's paid gifts can use it. It gives nothing itself; call it after the owning module (Loot, Quests, Vip, Purchases) has answered yes.
+
+| Call | What it does |
+|---|---|
+| `GiftFx.describe(kind, id, n) -> spec?, why?` | Names a giftable thing and builds its present cards. kind: `"container"` (id crate / bag / spray, n 1 to 999), `"bundle"` (a shop bundle or skin set id), `"item"` (id `"<type>:<id>"`), `"brass"` or `"coins"` (n 1 to 1,000,000), `"tickets"`, `"vip"`, `"weapon"` (a Robux weapon). spec = `{ kind, id, qty, label = "5 CRATES", plain = "5 Crates", items, what }`. |
+| `GiftFx.present(to, fromName, spec)` | The receiver's present box (GiftReveal.client). In a match: the toast now, the present at the break. |
+| `GiftFx.say(byName, toName, what)` | "<by> gifted <to> <what>" as a gold system line in this server's chat, for everyone. Use display names and `spec.plain`, never typed text. |
+| `GiftFx.line(text)` | Any gold system line (announcements use it). Typed text must be filtered first. |
+| `GiftFx.remote` | The RemoteEvent all of it goes through (`JankfireRemotes.DevFx`, made by GiftFx). |
 
 ## Nothing counts
 
@@ -154,7 +207,11 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
   - `"state"`: the owner's switches, who's frozen, and the log.
   - `"as"` (player, op, a, b): runs a command as that player.
   - `"log"`: the log.
-- **Client:** the player attribute `DevMenuTest` = `"open"` or `"close"` opens or closes the menu.
+  - `"giftLine"` (giver, name, what): a gift's chat line to a stand-in name.
+  - `"event"` (an event table): plays it as another server would on receiving it (each id once).
+  - `"forget"` (an event id): this server forgets it played that id, as a server that never had it would.
+  - `"events"`: how many events came in over MessagingService, and the ids played here.
+- **Client:** the player attribute `DevMenuTest` = `"open"`, `"close"`, `"gift"` or `"announce"` opens or closes the menu, or opens it on that tab. `AnnounceTest` = a text shows the banner on your screen only; `AnnounceHold = true` holds it there.
 - **Commands from the Client datamodel:**
   ```lua
   game.ReplicatedStorage.JankfireRemotes.OwnerDev:InvokeServer("set", "fly", true)
@@ -219,3 +276,21 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 - 3 crates gifted to yourself played the present: rise, spin, then the Crate card with x3. Photos: `gift_present_rise.jpg`, `gift_present_spin.jpg`, `gift_present_reveal.jpg`.
 - The chat line to a stand-in name showed in gold: "Pompompoo gifted TestFriend 5 Crates". The self-gift posted nothing.
 - **Not tested yet:** a bundle's grid, a gift held back during a match, and closing with B on a pad.
+
+**GIFT EVERYONE, ANNOUNCE, body size, AIM KEYS: place version 1054** (one solo Play on the owner's `_studio` saves, 19 Nov):
+- **The bundle present:** Night Shift revealed 5 cards in a row, under "GIFT FROM POMPOMPOO". B on a pad (PadNavTest "back") closed it in the hub. Photo: `gift_present_bundle.jpg`.
+- **EVERYONE HERE:** 1 crate, stock 0 → 1.
+  - The same event id played again (as a second delivery) was refused: "already".
+  - With this server made to forget the id (as a server the player hopped to), the event played again and gave nothing: the receipt held, and the stock stayed at 1.
+- **ALL SERVERS:** the publish came back over MessagingService (`JankOwnerEvent_studio`) in 1.3 s. The echo was ignored, and the stock went up by exactly one (1 → 2).
+- **ANNOUNCE:** "one every 10 s" refused a second send at once.
+  - The hub banner shows big in the upper third, and the match banner slim and high, under the score bar and clear of the crosshair. Photos: `announce_hub.jpg`, `announce_match.jpg`.
+  - The filter ran: in Studio it returns the text as typed.
+- **Body size:** the owner's own R15 body spawned with standard scales and its root 3.00 studs over the feet (the hit box's feet 0.04 studs off the real ones).
+  - A tiny stand-in (scales 0.5): root 1.60 → 3.00 studs; its box's feet went from 1.40 studs below its real feet to 0.00.
+  - A huge stand-in (height 1.6, rthro body type): root 5.83 → 3.00; its box's feet went from 2.83 studs above its real feet to 0.00. Both ended with standard scales.
+- **In a match:** a present plays in the pre-round loadout window (a break, by design).
+  - **Found:** one that started there stayed up when the round went live, because the reveal waits for CLOSE. In that match, B didn't close it either; most likely the match's own menus take B first (not checked).
+  - Fix: a present that's up when the round goes live is put away at once, and plays again at the next break if its cards weren't shown yet. It's in the next push.
+- The loot and quests `_studio` saves were restored exactly afterwards (uncached read-back, compared key by key).
+- **Not tested:** the AIM KEYS toggle by hand (it's a local switch on the key handler, compiled in v1054), and anything across two real live servers (the reach count and the toast come 75 s after an event).

@@ -656,6 +656,14 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any, n: number?): bo
 	return true
 end
 
+-- has this player's save taken this receipt id already? (the owner's gift-everyone events: a second delivery of one
+-- event id gives nothing and shows no second present. a save not loaded here answers false)
+function Loot.hasReceipt(p: Player, id: string): boolean
+	local s = st[p]
+	local d = s and s.prof and s.prof.data
+	return d ~= nil and type(d.receipts) == "table" and table.find(d.receipts, tostring(id)) ~= nil
+end
+
 -- (Studio tests only: every pair pred(type, key) says yes to comes off this player's save, its NEW mark too, and the
 -- receipts rcpt(id) says yes to. a test's grants undone (MasteryXp's "drop"). returns how many pairs went)
 function Loot.testDrop(p: Player, pred: (string, string) -> boolean, rcpt: ((string) -> boolean)?): number
