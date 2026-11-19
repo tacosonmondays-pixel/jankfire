@@ -10,6 +10,11 @@
 local HookCharges = {}
 HookCharges.CHARGES = 2
 HookCharges.CD = 6 -- s (the web's 8 was set for the royale's big map; the owner asked for a short one)
+-- QUICKPLAY's auto-lock grapple (19 Nov 2026, the owner: "for quickplay can we try having an auto lock grapple to
+-- opponent, like it's on a cooldown?"): in a QUICKPLAY match (not ranked, not a duel), a grapple press that hits no
+-- one but is aimed within cone degrees of an opponent in range and in sight ties onto them. one every cd s (the HUD's
+-- LOCK pip). on = false turns it off everywhere
+HookCharges.AUTO = { on = true, cone = 10, cd = 8 }
 
 export type State = { n: number, t0: number? } -- charges left; when the charge coming back started (nil = full)
 

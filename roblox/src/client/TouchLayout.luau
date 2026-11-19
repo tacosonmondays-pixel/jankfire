@@ -21,7 +21,8 @@ local MB1, MB2 = Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton
 local K = Enum.KeyCode
 
 -- what a button can do. look: a thumb on it steers the view too; fight: only where weapons work; q: the katana's wave or
--- the Scythe's form (shown with one of them out); body: the grapple's yank (shown while your rope is on a person)
+-- the Scythe's form (shown with one of them out); body: the grapple's yank (shown while your rope is on a person);
+-- rope: the grapple's reel (shown while your rope is on anything)
 TL.ACTIONS = {
 	fire = { key = MB1, label = "FIRE", look = true, fight = true },
 	aim = { key = MB2, label = "AIM", look = true, fight = true },
@@ -39,6 +40,7 @@ TL.ACTIONS = {
 	emote = { key = K.T, label = "EMOTE" },
 	wave = { key = K.Q, label = "WAVE", fight = true, q = true },
 	yank = { key = K.F, label = "YANK", fight = true, body = true },
+	reel = { key = K.X, label = "REEL", rope = true },
 } :: { [string]: any }
 -- the editor's ACTION list, in this order (only actions whose listeners hear Keys: the goggles' flash listens to the
 -- keyboard alone, so it isn't here)
@@ -57,6 +59,7 @@ TL.ITEMS = {
 	{ id = "reload", kind = "btn", act = "reload", x = 176, y = 44, d = 46 },
 	{ id = "wave", kind = "btn", act = "wave", x = 112, y = 240, d = 52, fixed = true },
 	{ id = "yank", kind = "btn", act = "yank", x = 56, y = 244, d = 50, fixed = true },
+	{ id = "reel", kind = "btn", act = "reel", x = 56, y = 304, d = 50, fixed = true },
 	{ id = "settings", kind = "pill", label = "SETTINGS", w = 84, keep = true },
 	{ id = "auto", kind = "pill", label = "AUTO", w = 54 },
 	{ id = "emote", kind = "pill", label = "EMOTE", w = 64 },

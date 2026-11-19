@@ -38,6 +38,7 @@ Binds.ACTIONS = {
 	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonR1" },
 	{ id = "ride", label = "RIDE A CART", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (on top of a Shopping Cart: hop in and out. CartRide.client)
 	{ id = "yank", label = "GRAPPLE YANK", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (with your rope on a person: pull them to you. never in the hub, so F is QUICK JOIN's there; B is crouch's, nothing mid-rope: Move.client)
+	{ id = "reel", label = "GRAPPLE REEL IN", group = "MOVEMENT", kb = { "X" }, pad = "DPadRight" }, -- (with your rope on anything: pull yourself along it. a pad's D-Right is the emote wheel's off a rope: Move.client, FlairClient)
 	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "DPadDown" },
 	{ id = "emote", label = "EMOTE WHEEL", group = "MENUS", kb = { "T" }, pad = "DPadRight" },
 	{ id = "loadout", label = "LOADOUT", group = "MENUS", kb = { "L" } },

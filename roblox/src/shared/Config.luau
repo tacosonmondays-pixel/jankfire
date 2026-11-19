@@ -52,6 +52,11 @@ local Config = {
 		-- more when you're above them, up to yankClimb more). someone you can't hurt (a teammate) gets yankMate of it, a
 		-- rescue. one every yankCool s (the server's say-so). not in the hub
 		yankSpeed = 30 * S, yankUp = 9 * S, yankClimb = 10 * S, yankAir = 0.7, yankMate = 0.45, yankCool = 3,
+		-- the reel (19 Nov 2026, the owner: "the same way how you press F to push people in, I want a button that reels you
+		-- in"): with your rope on anything (a wall or a person), the REEL key pulls YOU along it to the hook point at
+		-- reelSpeed, the yank's mirror. it ends when you get there (reelArrive off a wall point, bodyLet off a person),
+		-- when you let go, or after reelMax s; reelKeep of the speed carries on. one every reelCool s (the server's say-so)
+		reelSpeed = 55 * S, reelArrive = 1.5 * S, reelMax = 2, reelKeep = 0.45, reelCool = 3,
 	},
 	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in
 	-- stock (while we test); LOOT_ROBUX = sell them through developer products (Shop.luau's product ids; receipts:

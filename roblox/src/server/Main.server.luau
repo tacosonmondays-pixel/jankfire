@@ -111,7 +111,7 @@ local function yank(p: Player, i: Info)
 	if not tm or not hum or not root then return stop("nobody there") end
 	local ready = p:GetAttribute("YankT")
 	if type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.15 then return stop("recharging") end -- (a little slack for the clocks)
-	if not YANK_ZONES[Matches.zoneOf(p)] or p:GetAttribute("LoadoutWindow") ~= nil then return stop("not here") end
+	if not YANK_ZONES[Matches.zoneOf(p)] or p:GetAttribute("LoadoutWindow") ~= nil or Matches.roundLocked(p) then return stop("not here") end
 	local tp = Players:GetPlayerFromCharacter(tm)
 	local tf = Fight.of(tp or tm)
 	local troot = tm:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -157,16 +157,67 @@ local function yank(p: Player, i: Info)
 	dropRope(i)
 end
 
-GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: unknown, body: unknown)
+-- the reel (19 Nov 2026, the owner: "the same way how you press F to push people in, I want a button that reels you
+-- in"; Move.client's tryReel): with your rope on anything, you're pulled along it to its point, the yank's mirror. here:
+-- the say-so (a rope of yours, in range, after GO, not held, one every reelCool: ReelT on you, server time), the
+-- anti-cheat told (ACGrace for the pull's time), and "reel" back with that time; the client does the moving and lets go
+-- when it gets there. on an enemy it's the Scythe combo's second step, like a yank (ScytheCombo)
+local function reel(p: Player, i: Info)
+	local function stop(why: string)
+		dropRope(i)
+		GrappleRemote:FireClient(p, "cut", why)
+	end
+	local hum, root = alive(p)
+	if not hum or not root or not i.rope or not i.anchor or not i.anchor.Parent then return stop("no rope") end
+	local ready = p:GetAttribute("ReelT")
+	if type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.15 then return end -- (too soon: the rope stays)
+	if Matches.roundLocked(p) or p:GetAttribute("LoadoutWindow") ~= nil then return stop("not yet") end
+	if p:GetAttribute("Trap") or p:GetAttribute("Jail") or p:GetAttribute("Quiz") then return stop("held") end
+	local to = (i.anchor :: Attachment).WorldPosition
+	local dist = (to - root.Position).Magnitude
+	if dist > Config.hook.range + Config.check.hookSlack + 20 then return stop("out of range") end
+	local H = Config.hook
+	local dur = math.min(H.reelMax, dist / H.reelSpeed + 0.2)
+	p:SetAttribute("ACGrace", os.clock() + dur + 0.8) -- (the anti-cheat: this pull is the server's say)
+	p:SetAttribute("ReelT", workspace:GetServerTimeNow() + H.reelCool)
+	local tm = i.body
+	if tm then
+		local mf, tf = Fight.byPlayer[p], Fight.of(Players:GetPlayerFromCharacter(tm) or tm)
+		if mf and tf and mf ~= tf and Fight.allow(mf, tf) then
+			pcall(function() require(script.Parent:WaitForChild("ScytheCombo")).step(mf :: any, tf, "yank") end)
+		end
+	end
+	GrappleRemote:FireClient(p, "reel", dur)
+end
+
+-- QUICKPLAY's auto-lock (shared/HookCharges.AUTO): a hook the client tied onto an opponent it wasn't aimed straight at.
+-- only in a QUICKPLAY match that isn't ranked, one every AUTO.cd (HookAutoT on you, server time). the body check is a
+-- hook's own (range, sight)
+local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any
+local function autoOk(p: Player): boolean
+	local A = HC.AUTO
+	if not (A and A.on) then return false end
+	local im = Matches.matchOf(p)
+	local test = RunService:IsStudio() and p:GetAttribute("AutoLockTest") == true -- (Studio: try it anywhere)
+	if not test and (not im or not (im :: any).quick or im.ranked) then return false end
+	local ready = p:GetAttribute("HookAutoT")
+	return not (type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.2)
+end
+
+GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: unknown, body: unknown, isAuto: unknown)
 	local i = info[p]
 	if not i or type(what) ~= "string" then return end
 	if what == "release" then dropRope(i); return end
 	if what == "yank" then yank(p, i); return end
+	if what == "reel" then reel(p, i); return end
 	if what ~= "hook" then return end
 	local function cut(why: string)
 		dropRope(i)
 		GrappleRemote:FireClient(p, "cut", why)
 	end
+	-- (not before GO, 19 Nov 2026, the owner: "dont let player be able to use grapple or gadgets before round starts":
+	-- the countdown, the loadout window, between rounds, a map room. refused before a charge is spent)
+	if Matches.roundLocked(p) then return cut("not yet") end
 	if not HookCheck.rate(i.hookTimes, os.clock()) then return cut("too many") end
 	local hum, root = alive(p)
 	if not hum or not root then return cut("dead") end
@@ -190,6 +241,10 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 		local chestAt = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
 		local badB = HookCheck.body((chestAt - root.Position).Magnitude, Fight.sees(from, tf))
 		if badB then return cut(badB) end
+		if isAuto == true then
+			if not autoOk(p) then return cut("no auto-lock") end
+			p:SetAttribute("HookAutoT", workspace:GetServerTimeNow() + HC.AUTO.cd)
+		end
 		if not HookChargeServer.allow(p) then return cut("recharging") end
 		local mf = Fight.byPlayer[p]
 		if mf and mf ~= tf and Fight.allow(mf, tf) then Rules.tagged(tf, mf, "grapple", os.clock()) end

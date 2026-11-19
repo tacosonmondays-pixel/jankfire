@@ -198,7 +198,7 @@ local function matchmake(reserve: () -> string?): { any }
 			-- (one party alone is never rated: friends could farm each other)
 			local isRanked = ranked and n >= 2
 			-- (the match server reads the match from here, not from the teleport data, which passes through clients)
-			pcall(function() results():SetAsync("m:" .. matchId, { mode = modeId, ranked = isRanked, rated = rated }, 300) end)
+			pcall(function() results():SetAsync("m:" .. matchId, { mode = modeId, ranked = isRanked, rated = rated, quick = k.mode == PlayConfig.QUICKPLAY }, 300) end)
 			for t, list in teams do
 				for _, e in list do
 					(e :: any).state = "found"
@@ -297,7 +297,7 @@ local function begin(id: string, a: Arrival, sides: { { Player } }, arena: strin
 		live[t] = {}
 		for _, p in list do if p.Parent then table.insert(live[t], p) end end
 	end
-	local opts: any = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated, arena = arena }
+	local opts: any = { queue = "cross:" .. id, ranked = a.data.ranked == true, rated = a.data.rated, arena = arena, quick = a.data.quick == true }
 	if a.ghost and STUDIO then opts.hold, opts.holdWin = a.ghost, 1 end
 	local okS, r1, r2 = pcall(function()
 		if type(cfg.start) == "function" then return cfg.start(live, opts) end

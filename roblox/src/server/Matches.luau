@@ -61,6 +61,7 @@ type Match = {
 	queue: string?, -- (the Play queue's matches: its queue key, "ranked:2v2"; nil = a pad match)
 	ranked: boolean?, -- (a ranked match: RankedData rates it at the end)
 	rated: any?, -- (everyone's rating when it started, stand-ins too: RankedData)
+	quick: boolean?, -- (a QUICKPLAY match: the grapple's auto-lock, shared/HookCharges.AUTO)
 	private: boolean?, -- (a party alone, Party.luau: counts for nothing, like a dev match: Stats, Quests)
 	rules: any?, -- (a classic mode's match, Matches.startMode: Modes.luau runs its spawns, respawns, clock, HUD, board and end)
 	ms: any?, -- (and keeps its state here)
@@ -139,6 +140,15 @@ function Matches.zoneOf(p: Player): string
 	local pz = hub:FindFirstChild("PlaygroundZone") :: BasePart?
 	if root and pz and inside(pz, root.Position, 4) then return "playground" end
 	return "hub"
+end
+-- (19 Nov 2026, the owner: "dont let player be able to use grapple or gadgets before round starts") not yet GO: in a
+-- match that isn't live (the countdown and loadout window, between rounds, the end screen) or in a map room. the grapple,
+-- yank and reel (Main.server) and the gadgets (Utility) are refused before anything is spent; RoundLock on the player
+-- (the heartbeat below) tells the clients
+function Matches.roundLocked(p: Player): boolean
+	if staged[p] then return true end
+	local im = inMatch[p]
+	return im ~= nil and im.m.phase ~= "live"
 end
 
 -- ------------------------------------------------------------------ the hooks Fight asks
@@ -633,7 +643,8 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 	lastArena[pad] = arena
 	local m: Match = { id = nextId, key = SERVER_TAG .. "-" .. nextId .. "-" .. os.time(), mode = if opts and opts.mode then opts.mode else pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true,
 		queue = if opts then opts.queue else nil, ranked = if opts then opts.ranked == true else nil, rated = if opts then opts.rated else nil,
-		rules = if opts then opts.rules else nil, private = if opts and opts.private == true then true else nil }
+		rules = if opts then opts.rules else nil, private = if opts and opts.private == true then true else nil,
+		quick = if opts and opts.quick == true then true else nil }
 	table.insert(live, m)
 	if not m.queue then padLast[pad] = m end -- (a Play-queue match isn't the pad's: its sign keeps its own)
 	each(m, function(p, t)
@@ -1132,6 +1143,12 @@ function Matches.init(fight: any)
 		for _, p in Players:GetPlayers() do
 			local z = Matches.zoneOf(p)
 			if p:GetAttribute("Zone") ~= z then p:SetAttribute("Zone", z) end
+			-- (RoundLock: the grapple, the yank, the reel and the gadgets wait for GO. QuickMatch: QUICKPLAY's auto-lock)
+			local lock = if Matches.roundLocked(p) then true else nil
+			if p:GetAttribute("RoundLock") ~= lock then p:SetAttribute("RoundLock", lock) end
+			local imq = inMatch[p]
+			local quick = if imq and imq.m.quick and not imq.m.ranked then true else nil
+			if p:GetAttribute("QuickMatch") ~= quick then p:SetAttribute("QuickMatch", quick) end
 			local f = Fight.byPlayer[p]
 			if f and f.alive and z ~= "match" then
 				lastZone[p] = z

@@ -530,6 +530,8 @@ local WEAPON_KEYS = { [Enum.KeyCode.One] = true, [Enum.KeyCode.Two] = true, [Enu
 onBegan(function(io: any, gp: boolean)
 	if UIS:GetFocusedTextBox() then return end
 	if emoteKey(io) then
+		-- (on a rope a pad's D-Right is the grapple's REEL IN: Move.client, play-party-ranked's)
+		if io.KeyCode == Enum.KeyCode.DPadRight and me:GetAttribute("OnRope") == true then return end
 		-- (the phone's EMOTE button: a tap opens the touch wheel, a tap again closes it)
 		if typeof(io) == "table" and io.Touch then if W.open then W.close() else W.openWheel(true) end; return end
 		if W.open then W.close(); return end

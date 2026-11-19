@@ -871,7 +871,8 @@ local function start(f: Found): boolean
 	-- (one party alone is never rated: friends could farm each other. the queue only forms a ranked match of two or more.
 	-- 18 Nov 2026: and a party alone, a private duel or a PARTY-card pick without fill, counts for nothing at all:
 	-- private, like an owner's dev match, so no stats, XP, mastery or quests either)
-	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated, arena = f.map, private = #all == 1 }
+	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated, arena = f.map, private = #all == 1,
+		quick = f.mode == PlayConfig.QUICKPLAY } -- (quick: QUICKPLAY's grapple auto-lock, shared/HookCharges.AUTO)
 	-- (Studio only: a match with stand-ins in it can't play out, so it is held and ends after testHold.secs)
 	if standIns and RunService:IsStudio() then
 		local win = testHold.win

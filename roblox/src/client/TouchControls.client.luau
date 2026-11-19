@@ -1017,9 +1017,11 @@ RunService.Heartbeat:Connect(function()
 	local scy = heldWeapon() == "scythe" or heldWeapon() == "scythe_rifle"
 	local yt = me:GetAttribute("YankT")
 	local onBody = me:GetAttribute("HookBody") == true and not (type(yt) == "number" and workspace:GetServerTimeNow() < yt)
+	local rt = me:GetAttribute("ReelT") -- (the reel: on a rope, ready, after GO)
+	local onRope = me:GetAttribute("OnRope") == true and me:GetAttribute("RoundLock") ~= true and not (type(rt) == "number" and workspace:GetServerTimeNow() < rt)
 	for _, b in BTNS do
 		local A = b.A
-		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody)
+		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope)
 		if b.face.Visible ~= vis then b.face.Visible = vis end
 		if A.q then -- (the katana's WAVE, or the Scythe's FORM in its place)
 			local word = if scy then "FORM" else "WAVE"
