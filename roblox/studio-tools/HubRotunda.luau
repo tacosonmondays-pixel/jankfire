@@ -222,6 +222,22 @@ local function over(base, t, remap)
 	for k, v in remap or {} do p.remap[k] = v end
 	return p
 end
+-- THE HUB'S WALL COLOURS (18-19 Nov, the owner: "different wall colors all over the hub!", then "keep the beige
+-- accents, I just wanted the brown trim to be the same brown across the rooms"): one table. the greys (walls, piers,
+-- lids, bands), the beige accents (columns, rails, coping, frames) and ONE brown for every brown trim, wainscot, dado and
+-- door in every room. the glow palette's keys below point here, so every builder paints from it; R.check's PALETTE test
+-- flags any wall-like part off it. the owner's own exceptions: the VIP room's look, the training gate's kit
+R.HUB_WALLS = {
+	shell = "535a66", shell2 = "5c636f", pier = "68707c", pier2 = "747c88", bay = "6a727e", dome = "727a86", band = "6c6862", -- the greys
+	cream = "b3aea4", creamHi = "c4bfb5", -- the beige accents
+	brown = "5c4d42", -- the one brown (the lobby's wainscots, doors and dados; the round hall's dado; any new brown trim)
+}
+-- what counts as a wall-like part for the check (by name), and what it lets be
+R.HUB_WALLISH = { "Wall", "Lintel", "Pilaster", "Pier", "Dado", "Jamb", "Cornice", "Fin$", "FinNose", "Band", "Banner", "Recess",
+	"Spandrel", "Skin$", "Cut$", "Frame", "Rail$", "^Rib$", "Baluster", "Cove", "Sill", "Slope", "Head", "^Door", "ShopDoor",
+	"Corbel", "Keystone", "Mullion", "Fascia" }
+R.HUB_WALLS_EXCEPT = { "^Vip", "^Gate", "^Training", "^Laser", "^Shutter", "BayPanel", "^Case" }
+local HW = R.HUB_WALLS
 R.PALETTES = {
 	arena = ARENA,
 	glow = over(ARENA, {
@@ -229,13 +245,14 @@ R.PALETTES = {
 		-- near-black". so the pink, cyan and yellow are left to the pads and their boards; the building has ONE accent, a soft
 		-- aqua, on the platform's ring, the floor lines, the lit strips and the ring over the showpiece; the piers are a
 		-- mid slate, paler than the walls; floor, walls, piers and dome are four clearly different values)
-		shell = "535a66", shell2 = "5c636f", pier = "68707c", pier2 = "747c88", cream = "b3aea4", creamHi = "c4bfb5",
-		wood = "a48f6c", band = "6c6862", dome = "727a86", floor = "41464f", floor2 = "393e46", deck = "3a3f48", padBase = "3a3f48", bay = "6a727e",
+		-- (the greys, the beige accents and the one brown from R.HUB_WALLS, above; wood stays for furniture only)
+		shell = HW.shell, shell2 = HW.shell2, pier = HW.pier, pier2 = HW.pier2, cream = HW.cream, creamHi = HW.creamHi, brown = HW.brown,
+		wood = "a48f6c", band = HW.band, dome = HW.dome, floor = "41464f", floor2 = "393e46", deck = "3a3f48", padBase = "3a3f48", bay = HW.bay,
 		-- (round 2's judge, 16 Nov: teal had become a second base colour. so the aqua is kept to the floor lines and the
 		-- platform's ring; the wall band, the gallery's panels and the ring overhead go neutral, the training word white)
 		plate = "262a34", accent = "b3aea4", glow = "6fc9c9", ray = "4c8a8e", dim = "6a6e74", word = "e8eef2", pale = "e8eef2", strip = "d8eef2", panel = "8e98a2", sky = "7f8a96",
 		train = "e8eef2", bayWash = "fff1dc", padCalm = 0.18,
-		light = "e8f0f4", edge = "8e98a2", carpet = "4f4846", gymWall = "c9bfae", gymFloor = "4c515a",
+		light = "e8f0f4", edge = "8e98a2", carpet = "4f4846", gymWall = HW.creamHi, gymFloor = "4c515a", -- (the gym's walls: the beige accent's own tone, not a beige of their own)
 		brick = "80746e", beam = "6b5a4c", -- (the lounge: flat brick under its warm lamps read salmon; a warm taupe and darker timber)
 		doorGlow = "5fbcbf", halo = "d8eef2", -- (a line on every threshold; the ring over the showpiece)
 	}, { f4f8ff = "d8eef2", ["17141f"] = "434a55", ["2e3140"] = "434a55", ["2a2d38"] = "434a55", ["1b1b20"] = "434a55", ["1a1824"] = "434a55",
@@ -1649,6 +1666,35 @@ function R.check(stage)
 				way(w, ("%s's %s"):format(who, if mode == "loop" then "loop" else "walk along the rail"))
 			end
 		end
+	end
+	-- the walls' colours (18-19 Nov, the owner: "I just wanted the brown trim to be the same brown across the rooms"):
+	-- every wall-like part (by its name, R.HUB_WALLISH; upright, opaque, not neon or glass; the piers' kit models too) must
+	-- be one of R.HUB_WALLS' colours: the greys, the beige accents, the one brown. the owner's exceptions and the training
+	-- gate's kit (R.HUB_WALLS_EXCEPT) are let be
+	do
+		local okHex = {}
+		for _, hex in R.HUB_WALLS do okHex[string.lower(hex)] = true end
+		local function wallish(n)
+			for _, pat in R.HUB_WALLS_EXCEPT do if string.find(n, pat) then return false end end
+			for _, pat in R.HUB_WALLISH do if string.find(n, pat) then return true end end
+			return false
+		end
+		local off = {}
+		local function test(p, label)
+			if not p:IsA("BasePart") or p.Transparency >= 0.5 or p.Material == Enum.Material.Neon or p.Material == Enum.Material.Glass then return end
+			if not wallish(label) then return end
+			local cf, sz = p.CFrame, p.Size
+			if math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z < 2.4 then return end
+			local hex = string.lower(p.Color:ToHex())
+			if not okHex[hex] then local k = label .. " " .. hex; off[k] = (off[k] or 0) + 1 end
+		end
+		for _, f in room:GetChildren() do
+			for _, c in f:GetChildren() do
+				if c:IsA("BasePart") then test(c, c.Name)
+				elseif c:IsA("Model") and c.Name == "Pier" then for _, q in c:GetDescendants() do test(q, "Pier") end end
+			end
+		end
+		for k, n in off do table.insert(issues, ("PALETTE: %s (x%d) is off the hub's wall colours (R.HUB_WALLS)"):format(k, n)) end
 	end
 	local problems = #issues
 	for _, line in sights do table.insert(issues, line) end

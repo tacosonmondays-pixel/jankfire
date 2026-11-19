@@ -184,7 +184,7 @@ return function(B, R)
 		local FLOOR, FLOOR2 = P.floor, P.floor2
 		local PIERC = { ["2e3140"] = P.pier, a4aab8 = P.pier2, ["5b6478"] = P.pier2, f4f8ff = P.strip } -- (the piers' light slots warm too; shaft, corbel and head one colour: their backs share a plane, seen from the arcades)
 		local LIT = "dcbf8f" -- (a shop's window lit warm)
-		local WOOD, WOOD2, PLASTER = "5c4d42", "514338", P.dome -- (the lobby's panelling and doors; its ceiling)
+		local WOOD, WOOD2, PLASTER = P.brown, P.brown, P.dome -- (the lobby's panelling and doors, the hub's one brown; its ceiling)
 		local wo = B.wid(A + T) / 2 -- (a round-room side's outer half width)
 		local rcO = (A + T) / math.cos(math.pi / R.N)
 		local cx, cd = rcO * math.sin(3 * math.pi / R.N), rcO * math.cos(3 * math.pi / R.N) -- the round room's outer corner between sides 6 / 8 and 5 / 9
@@ -877,9 +877,9 @@ return function(B, R)
 			-- the walls' trim: a wood dado to hand height and a pale ledge along each side wall and the far wall's wings, a
 			-- cream cornice under the ceiling all round
 			for _, s in { -1, 1 } do
-				B.box(F7, C, "LoungeDado", s * (LX - 0.22), s * LX, 0, 3.6, cd + 2, FAR, P.wood, Wood, G)
+				B.box(F7, C, "LoungeDado", s * (LX - 0.22), s * LX, 0, 3.6, cd + 2, FAR, P.brown, nil, G)
 				B.box(F7, C, "LoungeLedge", s * (LX - 0.5), s * LX, 3.6, 3.95, cd + 2, FAR, P.creamHi, nil, G)
-				B.box(F7, C, "LoungeDado", s * 16.4, s * (LX - 0.22), 0, 3.6, FAR - 0.22, FAR, P.wood, Wood, G)
+				B.box(F7, C, "LoungeDado", s * 16.4, s * (LX - 0.22), 0, 3.6, FAR - 0.22, FAR, P.brown, nil, G)
 				B.box(F7, C, "LoungeLedge", s * 16.4, s * (LX - 0.5), 3.6, 3.95, FAR - 0.5, FAR, P.creamHi, nil, G)
 				B.box(F7, C, "LoungeCornice", s * (LX - 0.8), s * LX, LH - 0.8, LH, cd + 2, FAR - 0.8, P.cream, nil, G)
 				B.box(F7, C, "LoungeCornice", s * cx, s * (LX - 0.8), LH - 0.8, LH, cd + 2, cd + 2.8, P.cream, nil, G)
@@ -996,7 +996,7 @@ return function(B, R)
 		-- (its cut corners went with its walls, 18 Nov)
 		-- a wood rail and a pale ledge behind the seats
 		for _, s in { -1, 1 } do
-			B.box(F, C, "LoungeDado", s * 13.8, s * 14, 0.6, 3.6, 43.7, 54.3, P.wood, Wood, G)
+			B.box(F, C, "LoungeDado", s * 13.8, s * 14, 0.6, 3.6, 43.7, 54.3, P.brown, nil, G)
 			B.box(F, C, "LoungeLedge", s * 13.5, s * 14, 3.6, 3.95, 43.7, 54.3, P.creamHi, nil, G)
 		end
 		-- the duck: a projector on a round rug in the sunk middle, a faint beam, the duck turning in it

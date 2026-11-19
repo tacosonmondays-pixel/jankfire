@@ -2170,6 +2170,27 @@ The owner, of the armory: "this whole room needs a makeover its an ugly mess". I
 - Staging and live `R.check`: 0 problems, 0 overlaps. Flicker finder: clean (past the known Auto Shotgun kit seam).
 - Photo: `roblox/docs/hub/hub_armory_noshowcase_1023.jpg` (from the doorway).
 
+## 54. Hub: one brown for every trim, the wall colours in one table, a palette test (place version 1048)
+
+The owner first said "different wall colors all over the hub!", then narrowed it: "keep the beige accents, I just wanted the brown trim to be the same brown across the rooms".
+
+- **`R.HUB_WALLS` (HubRotunda) is the one table:**
+  - the greys: shell, shell2, pier, pier2, bay, dome, band;
+  - the beige accents: cream b3aea4 and creamHi c4bfb5, unchanged;
+  - ONE brown, 5c4d42.
+- **The glow palette's keys point at it.** `P.brown` is new.
+  - The lobby's dados, doors and door panels, and the round hall's dado, now all use `P.brown`.
+  - The round hall dado was a paler wood (a48f6c) that read mustard under the lamps, by the HOW TO PLAY board.
+  - The khaki bay-window body (958d80) is a grey now, and the gym's walls are the beige accent's own tone.
+  - `P.wood` stays for furniture only.
+- **R.check's PALETTE test.**
+  - Every wall-like part (by name, `R.HUB_WALLISH`; upright, opaque, not neon or glass; the piers' kit models too) must be one of `R.HUB_WALLS`' colours.
+  - The exceptions are `R.HUB_WALLS_EXCEPT`: the VIP room and the training gate's kit.
+- **An all-grey first version was reverted** (it went live briefly on 18 Nov, unsaved by me) after the owner's correction. The lamps keep their warm colours.
+- **The jump pads' teal light** reaches 8 (12 world), down from 12: it washed the HOW TO PLAY wall teal.
+- Staging and live `R.check`: 0 problems, 0 overlaps, 0 leaks. Flicker finder clean.
+- Sheet: `roblox/docs/hub/hub_one_brown_1048.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

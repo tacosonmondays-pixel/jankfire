@@ -90,7 +90,7 @@ return function(B, R)
 		else
 			B.box(F, S, "Wall", -wo, wo, -0.1, 27.45, A, A + T, P.shell)
 			B.box(F, C, "Base", -5.3, 5.3, 0, 0.7, A - 0.35, A, P.pier, nil, G)
-			B.box(F, C, "Dado", -5.3, 5.3, 0.7, 5, A - 0.22, A, P.wood, Wood, G)
+			B.box(F, C, "Dado", -5.3, 5.3, 0.7, 5, A - 0.22, A, P.brown, nil, G) -- (the one brown: it was a paler wood that read mustard under the lamps, 19 Nov)
 			B.box(F, C, "Ledge", -5.3, 5.3, 5, 5.5, A - 0.6, A, P.cream, nil, G)
 			B.box(F, C, "Band", -5.3, 5.3, 5.5, 7.2, A - 0.12, A, P.band, nil, G)
 			B.bar(F, C, "Slope", 0, 10.6, 0.5, A - 1.7, 12, A, 10.3, P.shell2, nil, G)
@@ -158,7 +158,7 @@ return function(B, R)
 			door:SetAttribute("EggNookDoor", true)
 			game:GetService("CollectionService"):AddTag(door, "EggNookDoor")
 			local FY, TOPY, D1 = R.LOUNGE_H + 1, N[3] + 1.1, A + T + 6 -- (its floor: the top of the lounge's lid; in the plaza a bay window's floor, HubRotundaRooms)
-			local NW = if R.LOUNGE_STYLE == "plaza" then "958d80" else P.shell2 -- (the plaza: the bay window's body in the hotel's stone)
+			local NW = P.shell2 -- (the bay window's body: one of the hub's greys; it was the old hotel's khaki stone, a colour of its own. 19 Nov)
 			for _, s in { -1, 1 } do B.box(F, S, "NicheWall", s * (N[1] + 0.9), s * (N[1] + 1.3), FY, TOPY, A + T, D1, NW) end
 			B.box(F, S, "NicheWall", -(N[1] + 1.3), N[1] + 1.3, FY, TOPY, D1, D1 + 0.4, NW)
 			B.box(F, S, "NicheLid", -(N[1] + 1.3), N[1] + 1.3, TOPY, TOPY + 0.4, A + T, D1 + 0.4, NW)
@@ -302,7 +302,7 @@ return function(B, R)
 		-- it, tag HubBreathe: see-through between BreatheLo and BreatheHi, BreathePeriod s a breath, the light with it. Its
 		-- light column up past the balcony went the same day, the owner: "I dont like the pillar of light from the teleporter")
 		local ring = B.cyl(F, C, "JumpGlow", 0, -0.07, 0.13, 18.2, 2 * R.JUMP_GLOW, ACCENT, Neon, { ghost = true, tr = 0.2 })
-		local gl = Instance.new("PointLight"); gl.Color = Color3.fromHex(ACCENT); gl.Range = 12; gl.Brightness = 1.2; gl.Shadows = false; gl.Parent = ring
+		local gl = Instance.new("PointLight"); gl.Color = Color3.fromHex(ACCENT); gl.Range = 8; gl.Brightness = 1.2; gl.Shadows = false; gl.Parent = ring -- (range 8, 12 world: at 12 it washed the HOW TO PLAY wall teal, 18 Nov)
 		for _, q in { { ring, 0.1, 0.5 } } do
 			q[1]:SetAttribute("BreatheLo", q[2]); q[1]:SetAttribute("BreatheHi", q[3]); q[1]:SetAttribute("BreathePeriod", 2.6)
 			Tags:AddTag(q[1], "HubBreathe")
