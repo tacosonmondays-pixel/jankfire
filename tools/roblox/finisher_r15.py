@@ -1354,8 +1354,10 @@ def tv_petals(i, n):
     lens(lerpv((-6.0, -6.0, 6.0), (-8.5, -8.5, 10.5), ease(u)), lerpv((0.5, 1.6, 1.6), (0.5, 1.6, 0.9), u), 54, 0)
 
 
-# ---------------- DUST, moving: the standoff (eyes, eyes, the hand, the wide, the draw, the hit, the spin home)
-@shot('dust', "KILLER'S EYES", 14)
+# ---------------- DUST, moving: the standoff. The owner (19 Nov): "add suspense and close ups to the western style" -
+# eyes, eyes, the killer's hand, the victim's hand, the sweat, the far wide with the tumbleweed, then one last tighter
+# look at the eyes before the snap: the close-ups get tighter and shorter as it builds (6.0 s, the window's longest)
+@shot('dust', "KILLER'S EYES", 13)
 def dv_keyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1365,7 +1367,7 @@ def dv_keyes(i, n):
     lens(br((hd @ Vector((0, 0.1, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
 
 
-@shot('dust', "VICTIM'S EYES", 12)
+@shot('dust', "VICTIM'S EYES", 11)
 def dv_veyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1377,7 +1379,7 @@ def dv_veyes(i, n):
     lens(br((hd @ Vector((0, 0.1, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 4)
 
 
-@shot('dust', 'THE HAND', 14)
+@shot('dust', "KILLER'S HAND", 12)
 def dv_hand(i, n):
     u = i / (n - 1)
     desert()
@@ -1388,7 +1390,32 @@ def dv_hand(i, n):
     lens(h0 + Vector((1.5, -2.8 + 0.35 * u, -0.5)), h0 + Vector((-0.4, 1.6, 0.3)), 40, -6)
 
 
-@shot('dust', 'THE WIDE', 29)
+@shot('dust', "VICTIM'S HAND", 10)
+def dv_vhand(i, n):
+    # the reverse: over the victim's hip to the killer small down the street; the hand shakes as it creeps down (the
+    # same clip, its time trembling round the moment, not a pose made by hand)
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12), vclip=(DRAW, 0.03 + 0.06 * ease(u) + 0.012 * math.sin(i * 2.3)))
+    if i == 0:
+        S['vh'] = br(V['RightHand'].translation)
+    h0 = S['vh']
+    lens(h0 + Vector((-1.5, 2.8 - 0.3 * u, -0.5)), h0 + Vector((0.4, -1.6, 0.3)), 38, 6)
+
+
+@shot('dust', 'SWEAT', 8)
+def dv_sweat(i, n):
+    # tight on the victim's cheek: the bead of sweat runs down
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12), vclip=(DRAW, 0.09))
+    hd = V['Head']
+    q = (hd @ Vector((0.42, 0.02 - 0.32 * u, -0.6, 1))).xyz
+    prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
+    lens(br((hd @ Vector((1.5, 0.05, -1.7, 1))).xyz), br((hd @ Vector((0.25, -0.05, -0.5, 1))).xyz), 22, -8)
+
+
+@shot('dust', 'THE WIDE', 28)
 def dv_wide(i, n):
     u = i / (n - 1)
     desert()
@@ -1397,6 +1424,17 @@ def dv_wide(i, n):
     r = 1.6
     tumbleweed((2.0, y, r + 0.25 * abs(math.sin(u * 9))), r, rot=-(12.5 - y) / r, axis=(1, 0, 0))
     lens((25, -1.5, 1.1), (0, 8.5, 2.4), 26, 0)
+
+
+@shot('dust', 'EYES AGAIN', 7)
+def dv_eyes2(i, n):
+    # one last look, tighter and shorter than the first: the squint narrows to a slit
+    u = i / (n - 1)
+    desert()
+    sq = 0.6 + 0.3 * ease(u)
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12), kface=dict(SQUINT, LeftEyeClosed=sq, RightEyeClosed=sq))
+    hd = K['Head']
+    lens(br((hd @ Vector((0, 0.12, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.12, -0.55, 1))).xyz), 11, 0)
 
 
 DRAW_OUT = 0.3   # from here on the revolver is in the hand, not the holster

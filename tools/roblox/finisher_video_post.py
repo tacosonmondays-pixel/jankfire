@@ -22,7 +22,7 @@ FX = {
         'speed': {'THE DRAW': (0.2, -1)},
         'flash_after': {'HIT FRAME': 3},
         'grey': {},
-        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3},   # the eyes in a thin band
+        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34},   # the eyes in a thin band, thinner each time
     },
 }
 
