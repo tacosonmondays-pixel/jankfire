@@ -22,7 +22,8 @@ local K = Enum.KeyCode
 
 -- what a button can do. look: a thumb on it steers the view too; fight: only where weapons work; q: the katana's wave or
 -- the Scythe's form (shown with one of them out); body: the grapple's yank (shown while your rope is on a person);
--- rope: the grapple's reel (shown while your rope is on anything)
+-- rope: shown while your rope is on anything; lock: the AUTO GRAPPLE (shown in a match after GO; the id stays "reel":
+-- it was the reel till 19 Nov 2026, so saved layouts keep their place)
 TL.ACTIONS = {
 	fire = { key = MB1, label = "FIRE", look = true, fight = true },
 	aim = { key = MB2, label = "AIM", look = true, fight = true },
@@ -40,7 +41,7 @@ TL.ACTIONS = {
 	emote = { key = K.T, label = "EMOTE" },
 	wave = { key = K.Q, label = "WAVE", fight = true, q = true },
 	yank = { key = K.F, label = "YANK", fight = true, body = true },
-	reel = { key = K.X, label = "REEL", rope = true },
+	reel = { key = K.X, label = "LOCK", lock = true },
 } :: { [string]: any }
 -- the editor's ACTION list, in this order (only actions whose listeners hear Keys: the goggles' flash listens to the
 -- keyboard alone, so it isn't here)

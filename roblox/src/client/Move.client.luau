@@ -47,10 +47,9 @@ local rope: Beam? = nil
 local ropeAnchor: Attachment? = nil
 -- hooked to a person (18 Nov 2026, the owner: "can you make it so you can grapple onto people"; the web's tryHook and
 -- hookPoint): the rope ties onto a living body the hook hit (a player, or a training dummy) at its chest and follows
--- it. since 19 Nov 2026 (the owner: "tie, then choose") it doesn't pull you in: it holds taut (Movement.ropeStep's tie,
--- Config.hook.tieMin) and you choose: F yanks them to you, X reels you to them (letting go Config.hook.bodyLet off
--- them), or let go. it drops if they die, respawn or leave, or once they've been out of your sight
--- Config.hook.bodyBlind. no text
+-- it. it reels you in at the rope's full pull and lets go Config.hook.bodyLet off them, your momentum carrying you into
+-- them; it drops if they die, respawn or leave, or once they've been out of your sight Config.hook.bodyBlind. no text.
+-- (Config.hook.TIE, off: the rope ties and holds instead of pulling, Movement.ropeStep's tie)
 local hookBody: Model? = nil
 local hookBlind, hookLookT = 0, 0
 local bodyParams = RaycastParams.new()
@@ -118,6 +117,7 @@ end
 -- server; it tells the anti-cheat (ACGrace) and answers "reel", and then you're pulled along the rope to its point at
 -- Config.hook.reelSpeed till you get there, let go, or reelMax runs out. one every reelCool (ReelT, the server's)
 local function tryReel(): boolean
+	if not Config.hook.REEL then return false end -- (off since 19 Nov 2026: X is the AUTO GRAPPLE, tryLock below)
 	if not st.hook or reel or player:GetAttribute("RoundLock") then return false end
 	local ready = player:GetAttribute("ReelT")
 	if type(ready) == "number" and workspace:GetServerTimeNow() < ready then return false end
@@ -127,19 +127,25 @@ local function tryReel(): boolean
 	return true
 end
 
--- QUICKPLAY's auto-lock (shared/HookCharges.AUTO; the server sets QuickMatch on you in a QUICKPLAY match, not ranked):
--- the opponent nearest the middle of your view within AUTO.cone degrees, in range and in sight from your head
+-- the opponent nearest the middle of your view within cone degrees, in range and in sight from your head: the AUTO
+-- GRAPPLE on X (tryLock below, shared/HookCharges.LOCK) and QUICKPLAY's old passive auto-lock (HookCharges.AUTO, off)
 local HC = require(Shared:WaitForChild("HookCharges")) :: any
-local function autoTarget(head: Vector3, ch: Model): (Model?, BasePart?)
-	local A = HC.AUTO
-	-- (Studio: AutoLockTest on you tries it anywhere, the training dummies counting as opponents)
-	local test = RunService:IsStudio() and player:GetAttribute("AutoLockTest") == true
-	if not (A and A.on) or (player:GetAttribute("QuickMatch") ~= true and not test) then return nil, nil end
+-- (Studio: AutoLockTest on you tries both anywhere, the training dummies counting as opponents)
+local function lockTest(): boolean return RunService:IsStudio() and player:GetAttribute("AutoLockTest") == true end
+local function cooled(): boolean
 	local ready = player:GetAttribute("HookAutoT")
-	if type(ready) == "number" and workspace:GetServerTimeNow() < ready then return nil, nil end
+	return not (type(ready) == "number" and workspace:GetServerTimeNow() < ready)
+end
+-- the passive one's say-so: on, a QUICKPLAY match (QuickMatch on you, set by the server), cooled down
+local function passiveAuto(): boolean
+	local A = HC.AUTO
+	return A ~= nil and A.on == true and (player:GetAttribute("QuickMatch") == true or lockTest()) and cooled()
+end
+local function autoTarget(head: Vector3, ch: Model, cone: number): (Model?, BasePart?)
+	local test = lockTest()
 	local myArena, myTeam = player:GetAttribute("Arena"), player:GetAttribute("Team")
 	local cam = camera.CFrame
-	local best: Model?, bestRoot: BasePart?, bestAng = nil, nil, math.rad(A.cone)
+	local best: Model?, bestRoot: BasePart?, bestAng = nil, nil, math.rad(cone)
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Exclude
 	local cands: { Model } = {}
@@ -175,8 +181,9 @@ local function character(): (Model?, Humanoid?, BasePart?)
 	return ch, hum, root
 end
 
--- E: fire the hook where you look (map only: the city's deco can't be hooked, same as the web game's boxes)
-local function tryHook()
+-- E: fire the hook where you look (map only: the city's deco can't be hooked, same as the web game's boxes). locked =
+-- the AUTO GRAPPLE's target (tryLock below): the hook goes onto them whatever is under the crosshair
+local function tryHook(locked: Model?, lockedRoot: BasePart?)
 	local ch, hum, root = character()
 	if not ch or not hum or not root or st.hook then return end
 	-- (not before GO: the countdown, the loadout window, between rounds, a map room. nothing is thrown or spent)
@@ -192,9 +199,9 @@ local function tryHook()
 	local target = if aim then aim.Position else cam.Position + cam.LookVector * (Config.hook.range + 40)
 	local dir = target - head
 	local hit = if dir.Magnitude > 1e-3 then workspace:Raycast(head, dir.Unit * math.min(dir.Magnitude + 1, Config.hook.range), params) else nil
-	-- (QUICKPLAY: no one under the crosshair, but an opponent near it: the auto-lock ties onto them)
-	local auto: Model?, autoRoot: BasePart? = nil, nil
-	if not (hit and bodyOf(hit.Instance)) then auto, autoRoot = autoTarget(head, ch) end
+	-- (the AUTO GRAPPLE's target; or QUICKPLAY's passive auto-lock, off: no one under the crosshair, but an opponent near it)
+	local auto: Model?, autoRoot: BasePart? = locked, lockedRoot
+	if not auto and not (hit and bodyOf(hit.Instance)) and passiveAuto() then auto, autoRoot = autoTarget(head, ch, HC.AUTO.cone) end
 	if not hit and not auto then
 		Hud.callout("TOO FAR", 0.5)
 		return
@@ -203,7 +210,7 @@ local function tryHook()
 	local p = if auto and autoRoot then autoRoot.Position else (hit :: RaycastResult).Position
 	local body = if auto then auto else bodyOf((hit :: RaycastResult).Instance)
 	local troot = if body then bodyRoot(body) else nil
-	if auto then HookChargesUI.autoUsed() end
+	if auto then HookChargesUI.autoUsed(if locked then HC.LOCK.cd else HC.AUTO.cd) end
 	if body and troot then -- (a person: the rope ties onto them)
 		p = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
 		hookBody, hookBlind, hookLookT = body, 0, os.clock()
@@ -211,8 +218,9 @@ local function tryHook()
 	else
 		body = nil
 	end
-	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil, tie = body ~= nil } -- (a person: tied, no pull)
-	GrappleRemote:FireServer("hook", p, body, auto ~= nil)
+	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil, tie = body ~= nil and Config.hook.TIE == true } -- (TIE off: a person pulls you in too)
+	-- (the 4th: "lock" = the AUTO GRAPPLE, true = the passive auto-lock: the server checks each one's own rule)
+	GrappleRemote:FireServer("hook", p, body, if locked then "lock" elseif auto then true else nil)
 	-- our own rope right away (the server draws it for everyone else)
 	local a0 = (ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
 	local a1 = Instance.new("Attachment")
@@ -232,6 +240,24 @@ local function tryHook()
 	rope, ropeAnchor = b, a1
 end
 
+-- X: the AUTO GRAPPLE (19 Nov 2026, the owner: "Can X instad of reel in since it already automatically reels in, you
+-- have a charge that auto the grapple to you roppenent on a decently long cooldown"; shared/HookCharges.LOCK). in a
+-- match after GO: your grapple onto the opponent nearest the middle of your view within LOCK.cone, a normal hook on
+-- them (it pulls you in; ranked: a charge). one every LOCK.cd (HookAutoT, the server's; the LOCK pip). nobody there:
+-- nothing fires, nothing is spent
+local function tryLock()
+	local L = HC.LOCK
+	if not (L and L.on) then return end
+	local ch, hum, root = character()
+	if not ch or not hum or not root or st.hook then return end
+	if player:GetAttribute("Zone") ~= "match" and not lockTest() then return end
+	if player:GetAttribute("RoundLock") then Hud.note("GRAPPLE AT GO", 0.7); return end
+	if HookChargesUI.lockWait() > 0 then HookChargesUI.lockNotReady(); return end
+	local body, troot = autoTarget(root.Position + Vector3.new(0, 1.5, 0), ch, L.cone)
+	if not body or not troot then Hud.note("NO TARGET", 0.6); return end
+	tryHook(body, troot)
+end
+
 GrappleRemote.OnClientEvent:Connect(function(what: string, arg: any)
 	if what == "cut" then -- the server said no (out of range, no line to it, too many hooks)
 		releaseHook(false)
@@ -249,7 +275,9 @@ Keys.began(function(io: InputObject, gp: boolean)
 	end
 	local k = io.KeyCode
 	if Binds.is("yank", io) then tryYank() end -- (on its own: its keys are shared, F with QUICK JOIN, a pad's B with crouch)
-	if Binds.is("reel", io) then tryReel() end -- (on its own too: a pad's D-Right is the emote wheel's off a rope)
+	-- (on its own too. X: the AUTO GRAPPLE; the reel's when Config.hook.REEL is on. a pad's D-Right is the emote wheel's
+	-- outside a live match round: FlairClient)
+	if Binds.is("reel", io) then if Config.hook.REEL then tryReel() else tryLock() end end
 	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", true)
 	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", true)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true; pressT = os.clock()
@@ -435,8 +463,8 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil
-	-- a person on the rope (above): the end follows their chest; gone or out of sight too long, it lets go (reeled in:
-	-- the reel lets go itself, below)
+	-- a person on the rope (above): the end follows their chest; gone, reeled in, or out of sight too long, it lets go
+	-- (a tie, Config.hook.TIE, holds however close: only a reel lets go there, below)
 	if st.hook and hookBody then
 		local tr = bodyRoot(hookBody)
 		if not tr then
@@ -446,7 +474,9 @@ RunService.PreSimulation:Connect(function(dt: number)
 			local h = st.hook :: any
 			h.ax, h.ay, h.az = c.X, c.Y, c.Z
 			local nowL = os.clock()
-			if nowL - hookLookT >= 0.1 then
+			if not h.tie and (c - chest).Magnitude < Config.hook.bodyLet then
+				releaseHook(true)
+			elseif nowL - hookLookT >= 0.1 then
 				local eye = root.Position + Vector3.new(0, 1.5, 0)
 				bodyParams.FilterDescendantsInstances = { ch, hookBody :: Model }
 				hookBlind = if workspace:Raycast(eye, c - eye, bodyParams) then hookBlind + (nowL - hookLookT) else 0

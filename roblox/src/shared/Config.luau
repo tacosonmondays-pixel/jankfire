@@ -55,12 +55,16 @@ local Config = {
 		-- the reel (19 Nov 2026, the owner: "the same way how you press F to push people in, I want a button that reels you
 		-- in"): with your rope on anything (a wall or a person), the REEL key pulls YOU along it to the hook point at
 		-- reelSpeed, the yank's mirror. it ends when you get there (reelArrive off a wall point, bodyLet off a person),
-		-- when you let go, or after reelMax s; reelKeep of the speed carries on. one every reelCool s (the server's say-so)
+		-- when you let go, or after reelMax s; reelKeep of the speed carries on. one every reelCool s (the server's say-so).
+		-- REEL = false since 19 Nov 2026 (the owner: a grapple on someone "already automatically reels in"): X is the AUTO
+		-- GRAPPLE now (shared/HookCharges.LOCK). the reel's code stays, off
+		REEL = false,
 		reelSpeed = 55 * S, reelArrive = 1.5 * S, reelMax = 2, reelKeep = 0.45, reelCool = 3,
-		-- the tie (19 Nov 2026, the owner: "tie, then choose"): a rope on a PERSON doesn't pull you in any more. it ties and
-		-- holds: no pull, no lift, its length the one it was tied at (never under tieMin), and when they get further than
-		-- that you're dragged after them, tieK x the slack a second, at most tieDrag. then you choose: F yanks them to you,
-		-- X reels you to them, or let go. ropes on walls, ledges and points pull you in as before
+		-- the tie (19 Nov 2026): a rope on a PERSON doesn't pull you in; it ties and holds: no pull, no lift, its length the
+		-- one it was tied at (never under tieMin), and when they get further than that you're dragged after them, tieK x
+		-- the slack a second, at most tieDrag. TIE = false: OFF, a rope on a person pulls you in as it always did (the
+		-- owner's "it already automatically reels in" was praise, relayed as a complaint; v1066 had it on)
+		TIE = false,
 		tieMin = 3.2 * S, tieK = 8, tieDrag = 20 * S,
 	},
 	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in

@@ -81,8 +81,28 @@ T.edge(autoB, T.ACCENT, 0.35, 1)
 local autoFill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0, 1),
 	Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 1) }, autoB)
 T.corner(autoFill, 2)
+-- (19 Nov 2026: the AUTO GRAPPLE on X, HC.LOCK, uses the same pip: shown in any match, filling over LOCK.cd, a flash
+-- when it's ready again; pressed too soon, the not-ready sound and the seconds left on the quiet line)
 local autoUntil = 0 -- (this screen's guess till HookAutoT comes back)
-function HookChargesUI.autoUsed() autoUntil = now() + ((HC.AUTO and HC.AUTO.cd) or 8) end
+local autoCd = (HC.LOCK and HC.LOCK.cd) or 15 -- (the cooldown the pip fills over: the last one used)
+local flashT = -10
+function HookChargesUI.autoUsed(cd: number?)
+	autoCd = cd or autoCd
+	autoUntil = now() + autoCd
+end
+-- s till the AUTO GRAPPLE is ready (0 = ready): this screen's guess or the server's HookAutoT, the later
+function HookChargesUI.lockWait(): number
+	local srv = me:GetAttribute("HookAutoT")
+	return math.max(0, math.max(autoUntil, if type(srv) == "number" then srv else 0) - now())
+end
+function HookChargesUI.lockNotReady()
+	Hud.note(("AUTO GRAPPLE · %d S"):format(math.max(1, math.ceil(HookChargesUI.lockWait()))), 0.9)
+	pcall(Sfx.play, "hook_empty")
+end
+GrappleRemote.OnClientEvent:Connect(function(what: string)
+	-- (a cut: the server spent no cooldown unless it set HookAutoT; back to its word)
+	if what == "cut" then local srv = me:GetAttribute("HookAutoT"); autoUntil = if type(srv) == "number" then srv else 0 end
+end)
 function HookChargesUI.locked(): boolean return me:GetAttribute("RoundLock") == true end
 
 local lastN = s.n
@@ -91,7 +111,9 @@ RunService.RenderStepped:Connect(function()
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	local alive = hum ~= nil and hum.Health > 0
 	local lockedNow = alive and HookChargesUI.locked() and me:GetAttribute("Zone") ~= "hub"
-	local auto = alive and HC.AUTO and HC.AUTO.on and me:GetAttribute("QuickMatch") == true
+	local test = RunService:IsStudio() and me:GetAttribute("AutoLockTest") == true
+	local auto = alive and ((HC.LOCK and HC.LOCK.on and (me:GetAttribute("Zone") == "match" or test))
+		or (HC.AUTO and HC.AUTO.on and me:GetAttribute("QuickMatch") == true))
 	local show = HookChargesUI.limited() and alive
 	if gui.Enabled ~= (show or lockedNow or auto) then gui.Enabled = show or lockedNow or auto end
 	if lockF.Visible ~= lockedNow then lockF.Visible = lockedNow end
@@ -102,10 +124,13 @@ RunService.RenderStepped:Connect(function()
 		local srv = me:GetAttribute("HookAutoT")
 		local untilT = math.max(autoUntil, if type(srv) == "number" then srv else 0)
 		if type(srv) == "number" and srv < autoUntil - 1 then autoUntil = srv end -- (the server let it go sooner: a cut)
-		local cd = (HC.AUTO and HC.AUTO.cd) or 8
-		local k = math.clamp(1 - (untilT - now()) / cd, 0, 1)
+		local k = math.clamp(1 - (untilT - now()) / autoCd, 0, 1)
+		if k >= 1 and autoFill.Size.Y.Scale < 1 then flashT = os.clock() end -- (ready again: a flash)
 		autoFill.Size = UDim2.fromScale(1, k)
 		autoFill.BackgroundColor3 = if k >= 1 then T.ACCENT else T.MUTED
+		local f = math.clamp((os.clock() - flashT) / 0.35, 0, 1)
+		local px = math.floor(10 + 8 * (1 - f) + 0.5)
+		if autoB.Size.X.Offset ~= px then autoB.Size = UDim2.fromOffset(px, px) end
 	end
 	if not show then lastN = s.n; return end
 	local _, frac = HC.nextIn(s, now())

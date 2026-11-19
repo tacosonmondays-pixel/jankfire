@@ -167,6 +167,7 @@ local function reel(p: Player, i: Info)
 		dropRope(i)
 		GrappleRemote:FireClient(p, "cut", why)
 	end
+	if not Config.hook.REEL then return end -- (off since 19 Nov 2026: X is the AUTO GRAPPLE. the rope stays)
 	local hum, root = alive(p)
 	if not hum or not root or not i.rope or not i.anchor or not i.anchor.Parent then return stop("no rope") end
 	local ready = p:GetAttribute("ReelT")
@@ -190,16 +191,20 @@ local function reel(p: Player, i: Info)
 	GrappleRemote:FireClient(p, "reel", dur)
 end
 
--- QUICKPLAY's auto-lock (shared/HookCharges.AUTO): a hook the client tied onto an opponent it wasn't aimed straight at.
--- only in a QUICKPLAY match that isn't ranked, one every AUTO.cd (HookAutoT on you, server time). the body check is a
--- hook's own (range, sight)
+-- a hook the client fired at an opponent it wasn't aimed straight at. kind "lock": the AUTO GRAPPLE on X
+-- (shared/HookCharges.LOCK, 19 Nov 2026): any match, ranked too (after GO: the hook's own RoundLock check), one every
+-- LOCK.cd. kind "auto": QUICKPLAY's passive auto-lock (HookCharges.AUTO, off since then): a QUICKPLAY match that isn't
+-- ranked, one every AUTO.cd. both: HookAutoT on you (server time); the body check is a hook's own (range, sight)
 local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any
-local function autoOk(p: Player): boolean
-	local A = HC.AUTO
+local function autoOk(p: Player, kind: string): boolean
+	local A = if kind == "lock" then HC.LOCK else HC.AUTO
 	if not (A and A.on) then return false end
 	local im = Matches.matchOf(p)
 	local test = RunService:IsStudio() and p:GetAttribute("AutoLockTest") == true -- (Studio: try it anywhere)
-	if not test and (not im or not (im :: any).quick or im.ranked) then return false end
+	if not test then
+		if not im then return false end
+		if kind == "auto" and (not (im :: any).quick or im.ranked) then return false end
+	end
 	local ready = p:GetAttribute("HookAutoT")
 	return not (type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.2)
 end
@@ -242,11 +247,11 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 		local chestAt = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
 		local badB = HookCheck.body((chestAt - root.Position).Magnitude, Fight.sees(from, tf))
 		if badB then return cut(badB) end
-		if isAuto == true then
-			if not autoOk(p) then return cut("no auto-lock") end
-			p:SetAttribute("HookAutoT", workspace:GetServerTimeNow() + HC.AUTO.cd)
-		end
+		local autoKind = if isAuto == "lock" then "lock" elseif isAuto == true then "auto" else nil
+		if autoKind and not autoOk(p, autoKind) then return cut("no auto-lock") end
 		if not HookChargeServer.allow(p) then return cut("recharging") end
+		-- (the cooldown only once the hook is sure: a ranked hook with no charge left spends none)
+		if autoKind then p:SetAttribute("HookAutoT", workspace:GetServerTimeNow() + (if autoKind == "lock" then HC.LOCK.cd else HC.AUTO.cd)) end
 		local mf = Fight.byPlayer[p]
 		if mf and mf ~= tf and Fight.allow(mf, tf) then Rules.tagged(tf, mf, "grapple", os.clock()) end
 		local a1 = Instance.new("Attachment")

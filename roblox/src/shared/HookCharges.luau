@@ -13,8 +13,15 @@ HookCharges.CD = 6 -- s (the web's 8 was set for the royale's big map; the owner
 -- QUICKPLAY's auto-lock grapple (19 Nov 2026, the owner: "for quickplay can we try having an auto lock grapple to
 -- opponent, like it's on a cooldown?"): in a QUICKPLAY match (not ranked, not a duel), a grapple press that hits no
 -- one but is aimed within cone degrees of an opponent in range and in sight ties onto them. one every cd s (the HUD's
--- LOCK pip). on = false turns it off everywhere
-HookCharges.AUTO = { on = true, cone = 10, cd = 8 }
+-- LOCK pip). on = false turns it off everywhere. OFF since 19 Nov 2026: the AUTO GRAPPLE on X (LOCK, below) replaced it
+HookCharges.AUTO = { on = false, cone = 10, cd = 8 }
+-- the AUTO GRAPPLE (19 Nov 2026, the owner: "Can X instad of reel in since it already automatically reels in, you have
+-- a charge that auto the grapple to you roppenent on a decently long cooldown"): X (Binds "reel", a pad's D-Right in a
+-- live match, the phone's LOCK) fires your grapple at the opponent nearest the middle of your view within cone
+-- degrees, in range and in sight from your head. it's a normal hook on them: it pulls you in, and in ranked it spends a
+-- charge. every match mode, ranked too, after GO only; one every cd s (HookAutoT on you, the server's; the HUD's LOCK
+-- pip). no one there: nothing fires and nothing is spent. on = false turns it off everywhere
+HookCharges.LOCK = { on = true, cone = 30, cd = 15 }
 
 export type State = { n: number, t0: number? } -- charges left; when the charge coming back started (nil = full)
 
