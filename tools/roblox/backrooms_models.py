@@ -91,23 +91,9 @@ def wall_trims(x0, y0, z0, x1, y1, z1, top_face=None, model='br_wall', col=WALL,
         band(-0.05, BASE_H, 0.09, BASE)
         band(BASE_H - 0.05, WAIN_H, 0.05, lo)
         band(RAIL0, RAIL1, 0.12, RAIL)
-    # seams on the upper band, on the world's 6-stud rhythm, not within half a stud of an end
-    ya, yb = max(y0, RAIL1), min(y1, top_face if top_face else y1)
-    if yb - ya > 1.0 and not pillar:
-        if sx < sz:
-            u0, u1 = z0, z1
-        else:
-            u0, u1 = x0, x1
-        k = math.ceil((u0 + 0.5) / SEAM_EVERY)
-        while k * SEAM_EVERY < u1 - 0.5:
-            u = k * SEAM_EVERY
-            if sx < sz: B(model, SEAM, x0 - 0.03, ya, u - 0.09, x1 + 0.03, yb, u + 0.09, bev=0.0)
-            else: B(model, SEAM, u - 0.09, ya, z0 - 0.03, u + 0.09, yb, z1 + 0.03, bev=0.0)
-            k += 1
-    elif pillar and yb - ya > 1.0:
-        # a pillar's corners: four slim darker strips up its upper band
-        for (cx, cz) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):
-            B(model, SEAM, cx - 0.12, ya, cz - 0.12, cx + 0.12, yb, cz + 0.12, bev=0.0)
+    # (19 Nov 2026: the upper band's dark seams every 6 studs and the pillars' dark corner strips are gone. With them
+    # the walls read as boarding: the owner, "it looks like wood plank walls". The wallpaper's own fine repeat carries
+    # the band now)
 
 WALLS = [b for b in L.SOLID if b[6] == 'wallpaper']
 def _in_other(b, p):
@@ -330,9 +316,9 @@ def lights():
 # TEX size in studs; the wallpaper's repeat is floor to ceiling, so its damp stain sits on the floor), and the layout
 # names a picture per colour (L.surfaces): WebArena puts a SurfaceAppearance with it on those meshes.
 # The pictures: tools/roblox/backrooms_textures.py (low contrast, no text, no code-like grids)
-TEX = {WALL: (6.3, 12.6), CARPET: (24.0, 24.0), CEILC: (8.0, 8.0), TILE: (3.0, 3.0)}
+TEX = {WALL: (6.3, 12.6), WALL_LO: (6.3, 4.2), CARPET: (24.0, 24.0), CEILC: (8.0, 8.0), TILE: (3.0, 3.0)}   # (WALL_LO: the lower panel, 19 Nov)
 # (19 Nov 2026: the wallpaper redrawn as fine-patterned paper with a baseboard; the first, 134099267801892, read as planks)
-SURFACES = {WALL: 'rbxassetid://92583302593824', CARPET: 'rbxassetid://100786749937660', CEILC: 'rbxassetid://72927483684048', TILE: 'rbxassetid://122749145143312'}
+SURFACES = {WALL: 'rbxassetid://92583302593824', WALL_LO: 'rbxassetid://98849919072655', CARPET: 'rbxassetid://100786749937660', CEILC: 'rbxassetid://72927483684048', TILE: 'rbxassetid://122749145143312'}
 
 def add_uvs(objs):
     n = 0

@@ -4,6 +4,7 @@
 #   wallpaper.png  512 x 1024: one repeat is 6.3 studs wide and 12.6 tall (floor to ceiling): a pale, faded mono-yellow
 #                  paper with a fine repeat (0.39-stud stripes, a hairline, a small diamond), a painted baseboard, grime
 #                  and damp stains near the floor (19 Nov 2026; the first, wallpaper_v1, read as wood planks)
+#   wainscot.png   512 x 344: 6.3 x 4.2 studs: the lower wall panel (painted, grime and water marks near the floor)
 #   carpet.png     1024 x 1024: 24 studs: damp beige-yellow pile (fine noise), mottling, a few darker damp patches
 #   ceiling.png    512 x 512: 8 studs: off-white acoustic tile face, fine pits and speckle (the T-bar grid is modelled)
 #   pooltile.png   512 x 512: 3 studs, 2 x 2 tiles: pale glazed tiles, each a hair different, soft grout lines (the
@@ -143,6 +144,50 @@ def wallpaper_v1():
     return save('wallpaper_v1.png', rgb)
 
 
+def wainscot():
+    """(19 Nov 2026) the lower wall panel (the kit's WALL_LO band, 0.6 to 3.35 studs, between the baseboard and the rail):
+    the brief asked for damp stains and grime near the floor, and the wallpaper's own floor end is hidden behind this
+    panel. A painted surface a shade darker than the paper, fine roller grain, grime rising from the baseboard, scuffs at
+    knee height, a few ragged water marks wicking up. 512 x 344 px = 6.3 x 4.2 studs (82 px a stud), its bottom the floor;
+    seamless across. Its own noise stream."""
+    g3 = np.random.default_rng(3907)
+    H, W = 344, 512
+    PX = 344 / 4.2
+    base = hexrgb('b4a46e')
+    y = np.arange(H)[:, None].repeat(W, 1).astype(np.float64)
+    x = np.arange(W)[None, :].repeat(H, 0).astype(np.float64)
+    hgt = (H - 1 - y) / PX
+    shade = 1.0 + 0.012 * pnoise(H, W, 0.7, g=g3) + 0.02 * pnoise(H, W, 3.0, aniso=(1.0, 0.25), g=g3) + 0.03 * pnoise(H, W, 60.0, g=g3)
+    rgb = base[None, None, :] * shade[:, :, None]
+    grime = np.exp(-np.maximum(hgt - 0.6, 0) / 0.45) * (0.65 + 0.35 * (0.5 + 0.5 * pnoise(H, W, 10.0, g=g3)))
+    rgb *= (1 - 0.16 * grime)[:, :, None]
+    # scuffs: soft dark smears about knee high (feet, chairs), a few, wrapping
+    sc = np.zeros((H, W))
+    for (cx, cy, w, h) in ((90.0, 1.1, 60.0, 0.12), (260.0, 0.9, 40.0, 0.09), (400.0, 1.35, 75.0, 0.1), (480.0, 0.8, 30.0, 0.08)):
+        dx = np.minimum(np.abs(x - cx), W - np.abs(x - cx)) / w
+        sc = np.maximum(sc, np.exp(-dx ** 2 - ((hgt - cy) / h) ** 2))
+    rgb *= (1 - 0.08 * sc)[:, :, None]
+    # water marks wicking up from the baseboard
+    mottle = 0.55 + 0.45 * (0.5 + 0.5 * pnoise(H, W, 12.0, g=g3))
+    stain = np.zeros((H, W)); tidel = np.zeros((H, W))
+    for (cxs, wdt, top, skew) in ((150.0, 120.0, 1.9, 0.4), (350.0, 80.0, 1.3, -0.5), (470.0, 70.0, 1.6, 0.3)):
+        dxs = x[0] - cxs
+        dxs = (dxs + W / 2) % W - W / 2                                            # (wrapping, signed)
+        dx = np.abs(dxs) / wdt * (1 + skew * np.sign(dxs))                         # (one side longer than the other)
+        prof = np.clip((1.0 - dx) / 0.8, 0, 1)
+        prof = prof * prof * (3 - 2 * prof)
+        wob = 0.32 * pnoise(1, W, 4.5, g=g3)[0] + 0.12 * pnoise(1, W, 1.3, g=g3)[0]
+        edge = 0.6 + (top - 0.6) * prof ** 0.6 + wob * prof                       # (ragged, flat-ish, not a dome)
+        inside = np.clip((edge[None, :] - hgt) / 0.35, 0, 1) * (prof[None, :] > 0.02)
+        stain = np.maximum(stain, inside * mottle)
+        t1 = np.exp(-((hgt - edge[None, :]) / 0.03) ** 2) * (0.5 + 0.5 * pnoise(H, W, 6.0, g=g3))
+        tidel = np.maximum(tidel, t1 * np.clip(prof[None, :] * 3, 0, 1) * (0.6 + 0.4 * mottle))
+    brown = hexrgb('80693e')
+    k = np.clip(stain * 0.21 + tidel * 0.2, 0, 0.36)[:, :, None]
+    rgb = rgb * (1 - k) + brown[None, None, :] * k
+    return save('wainscot.png', rgb)
+
+
 def carpet():
     N = 1024
     base = hexrgb('958660')
@@ -200,7 +245,7 @@ def pooltile():
 
 
 imgs = [wallpaper_v1(), carpet(), ceiling(), pooltile()]
-imgs = [wallpaper()] + imgs[1:]
+imgs = [wallpaper()] + imgs[1:] + [wainscot()]
 if '--sheet' in sys.argv:
     # a look at each at its real repeat: wallpaper 2 x 1, the rest 2 x 2, side by side
     tiles = []

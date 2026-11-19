@@ -28,7 +28,7 @@ local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 105919865840853,
-	Backrooms = 119038836389515, Forest = 82632705219845, ArcticCabin = 112062417043410,
+	Backrooms = 114408994542661, Forest = 82632705219845, ArcticCabin = 112062417043410,
 	Skatepark = 119318569961702, Station = 95570686035667 } :: { [string]: number }
 
 local hex = Color3.fromHex
