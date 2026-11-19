@@ -1126,7 +1126,11 @@ task.spawn(function()
 end)
 
 -- ---------------------------------------------------------------- every frame
-RunService.RenderStepped:Connect(function(dt: number)
+-- (the hold session, 19 Nov 2026; the owner: "gun models like vibrate in game") after the camera, not on RenderStepped:
+-- RenderStepped fires before the camera's own step, so the gun was placed on last frame's camera and shook against
+-- it by however far the camera then moved (measured walking: 0.83 studs a frame on average, 2 at most). bound just
+-- after JankfireCamera (Camera + 1), the gun, its muzzle and the shot's eye all use the camera you see
+RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value + 2, function(dt: number)
 	local now = os.clock()
 	local _, hum, root = myChar()
 	local w = W[held]
