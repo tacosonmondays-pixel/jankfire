@@ -28,7 +28,7 @@ local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 105919865840853,
-	Backrooms = 119038836389515, Forest = 130312556142076, ArcticCabin = 112062417043410,
+	Backrooms = 119038836389515, Forest = 82632705219845, ArcticCabin = 112062417043410,
 	Skatepark = 119318569961702, Station = 95570686035667 } :: { [string]: number }
 
 local hex = Color3.fromHex
@@ -213,6 +213,52 @@ local function hitBoxes(L: any, O: Vector3, solid: Instance)
 		p.Parent = solid
 		if i % 200 == 0 then task.wait() end
 	end
+	-- (19 Nov 2026, the Forest: hit shapes that are the shape you see; forest_layout.py) flags: "c" stops you and takes
+	-- no shots (JFRayBlind, as above); "q" takes shots and stops nothing (ankle-high rocks, logs lying on the floor)
+	local function flagged(p: BasePart, fl: string?)
+		local f = fl or ""
+		p.Anchored = true; p.CanTouch = true; p.CastShadow = false
+		p.CanCollide = not string.find(f, "q", 1, true)
+		p.CanQuery = not string.find(f, "c", 1, true)
+		if not p.CanQuery then p.CollisionGroup = RAYBLIND end
+		p.Transparency = 1
+		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+	end
+	-- cylinders: { a x, y, z, b x, y, z, radius, index into mats, flags } (trunks, posts, poles, logs, boulders)
+	for i, b in (L.solidC or {}) do
+		local mt = L.mats[b[8]]
+		local a, e = V3(b[1], b[2], b[3]), V3(b[4], b[5], b[6])
+		local d = (e - a).Unit
+		local u = if math.abs(d.Y) < 0.9 then Vector3.yAxis else Vector3.xAxis
+		local y = d:Cross(u).Unit:Cross(d)
+		local p = Instance.new("Part")
+		p.Name = "Solid"
+		p.Shape = Enum.PartType.Cylinder -- (its axis is its X)
+		flagged(p, b[9])
+		p.Material = material(mt[1]); p.Color = hex(mt[2])
+		p.Size = V3((e - a).Magnitude, b[7] * 2, b[7] * 2)
+		p.CFrame = CFrame.fromMatrix(O + (a + e) / 2, d, y)
+		p:SetAttribute("Mat", mt[3])
+		p.Parent = solid
+		if i % 200 == 0 then task.wait() end
+	end
+	-- turned boxes ("b") and wedges ("w"): { centre x, y, z, x axis x, y, z, y axis x, y, z, size x, y, z, index into
+	-- mats, kind, flags } (the floor's sloped and twisted quads; a wedge's tall side is its back, +Z)
+	for i, b in (L.solidT or {}) do
+		local mt = L.mats[b[13]]
+		local X = V3(b[4], b[5], b[6]).Unit
+		local Y = V3(b[7], b[8], b[9])
+		Y = (Y - X * X:Dot(Y)).Unit -- (the layout's 4 decimals: square them up again)
+		local p: BasePart = if b[14] == "w" then Instance.new("WedgePart") else Instance.new("Part")
+		p.Name = "Solid"
+		flagged(p, b[15])
+		p.Material = material(mt[1]); p.Color = hex(mt[2])
+		p.Size = V3(b[10], b[11], b[12])
+		p.CFrame = CFrame.fromMatrix(O + V3(b[1], b[2], b[3]), X, Y)
+		p:SetAttribute("Mat", mt[3])
+		p.Parent = solid
+		if i % 200 == 0 then task.wait() end
+	end
 end
 
 -- the wall box of a walled arena (18 Nov 2026, tools/roblox/wallbox.py): no lid; the sky line (SkyY: Move.client lets
@@ -381,6 +427,14 @@ local function segHits(a: Vector3, b: Vector3, p: BasePart): boolean
 			if t0 > t1 then return false end
 		end
 	end
+	-- (a cylinder, its axis X: inside the box's slabs, does the segment come within its radius of the axis?)
+	if p:IsA("Part") and (p :: Part).Shape == Enum.PartType.Cylinder then
+		local r = math.min(h.Y, h.Z)
+		local A = d.Y * d.Y + d.Z * d.Z
+		local t = if A > 1e-12 then math.clamp(-(pa.Y * d.Y + pa.Z * d.Z) / A, t0, t1) else t0
+		local y, z = pa.Y + d.Y * t, pa.Z + d.Z * t
+		return y * y + z * z <= r * r
+	end
 	return true
 end
 
@@ -410,6 +464,11 @@ function W.check(name: string): string
 		table.insert(want, { V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2), V3(b[4] - b[1], b[5] - b[2], b[6] - b[3]) })
 	end
 	for _, b in (L.solidR or {}) do table.insert(want, { V3(b[1], b[2], b[3]), V3(b[4], b[5], b[6]) }) end
+	for _, b in (L.solidC or {}) do
+		local a, e = V3(b[1], b[2], b[3]), V3(b[4], b[5], b[6])
+		table.insert(want, { (a + e) / 2, V3((e - a).Magnitude, b[7] * 2, b[7] * 2) })
+	end
+	for _, b in (L.solidT or {}) do table.insert(want, { V3(b[1], b[2], b[3]), V3(b[10], b[11], b[12]) }) end
 	for _, w in want do
 		local c, size = w[1], w[2]
 		local found = false
@@ -467,10 +526,10 @@ function W.check(name: string): string
 	local a1, n1 = floored(root.Spawns)
 	local a2, n2 = floored(root.TeamSpawns)
 	table.insert(out, ("spawns on a floor: %d of %d; team spawns: %d of %d"):format(a1, n1, a2, n2))
-	-- 3. team spawn sight lines (through the hit boxes)
+	-- 3. team spawn sight lines (through the hit shapes that take shots; cylinders as cylinders)
 	local solids = root.Solid:GetChildren()
 	local function blocked(a: Vector3, b: Vector3): boolean
-		for _, p in solids do if (p :: BasePart).CanCollide and segHits(a, b, p :: BasePart) then return true end end
+		for _, p in solids do if (p :: BasePart).CanQuery and segHits(a, b, p :: BasePart) then return true end end
 		return false
 	end
 	local att, def = {}, {}

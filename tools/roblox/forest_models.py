@@ -301,6 +301,10 @@ def chainlink(b):
 
 def rock(m, col, b, seed, sub=2):
     """a boulder over a box: a lumpy rounded mass a little bigger than the box, its foot sunk into the ground"""
+    bm, M = rock_mesh(b, seed, sub)
+    K.put(m, 'plastic', col, bm, M)
+
+def rock_mesh(b, seed, sub=2):
     x0, y0, z0, x1, y1, z1 = b
     sx, sy, sz = x1 - x0, y1 - y0, z1 - z0
     bm = bmesh.new()
@@ -313,34 +317,14 @@ def rock(m, col, b, seed, sub=2):
         v.co = d * (1.0 + n)
         v.co.x *= sx * 0.58; v.co.y *= sy * 0.62; v.co.z *= sz * 0.58
         if v.co.y < -sy * 0.3: v.co.y = -sy * 0.3 - (v.co.y + sy * 0.3) * 0.2     # (a flatter foot)
-    K.put(m, 'plastic', col, bm, Tr((x0 + x1) / 2, y0 + sy * 0.42, (z0 + z1) / 2))
+    return bm, Tr((x0 + x1) / 2, y0 + sy * 0.42, (z0 + z1) / 2)
 
 def rocks(items):
     """the web's boulders (a big block, a smaller one on it, a mossy one shoved against them: touching boxes are one
-    boulder), standing stones (one tall box), the camp's ring stones"""
-    par = list(range(len(items)))
-    def find(i):
-        while par[i] != i: par[i] = par[par[i]]; i = par[i]
-        return i
-    for i, (a, _) in enumerate(items):
-        for j in range(i + 1, len(items)):
-            b = items[j][0]
-            if a[0] <= b[3] + 0.1 and b[0] <= a[3] + 0.1 and a[2] <= b[5] + 0.1 and b[2] <= a[5] + 0.1 and a[1] <= b[4] + 0.1 and b[1] <= a[4] + 0.1:
-                par[find(i)] = find(j)
-    groups = {}
-    for i, it in enumerate(items): groups.setdefault(find(i), []).append(it)
-    for k, g in enumerate(groups.values()):
-        for mat in ('rockf', 'rockmoss'):
-            bs = [b for (b, m) in g if m == mat]
-            if not bs: continue
-            bb = (min(b[0] for b in bs), min(b[1] for b in bs), min(b[2] for b in bs), max(b[3] for b in bs), max(b[4] for b in bs), max(b[5] for b in bs))
-            sx, sy, sz = bb[3] - bb[0], bb[4] - bb[1], bb[5] - bb[2]
-            col = ROCK if mat == 'rockf' else MOSS
-            if len(g) == 1 and sy > 1.4 * max(sx, sz):                          # a standing stone: a rough monolith
-                x0, y0, z0, x1, y1, z1 = bb
-                rock('fo_rocks', col, (x0 - 0.2, y0 - sy * 0.1, z0 - 0.2, x1 + 0.2, y1 + sy * 0.05, z1 + 0.2), 2000 + k, sub=2)
-            else:
-                rock('fo_rocks', col, bb, 1000 + k * 7 + (mat == 'rockmoss'), sub=2 if max(sx, sy, sz) > 2.5 else 1)
+    boulder), standing stones (one tall box), the camp's ring stones. which boxes make one boulder, its seed and its
+    detail: forest_layout.rock_groups (19 Nov 2026: the boulders' hit shapes are made from the same list)"""
+    for (bb, mat, seed, sub) in L.rock_groups(items):
+        rock('fo_rocks', ROCK if mat == 'rockf' else MOSS, bb, seed, sub=sub)
 
 def dress():
     tents = {}
@@ -551,9 +535,49 @@ cabin_extras(); camp_extras(); tower_extras(); mast_extras(); road_extras(); doc
 HIT = L.MATS
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
 rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.HIT_ROT]
+cylb = [tuple(c[:7]) + HIT[c[7]] + (c[8],) for c in L.HIT_CYL]
+tiltb = [tuple(t[:12]) + HIT[t[12]] + (t[13], t[14]) for t in L.HIT_TILT]
 INFO.update(L.WALLBOX)
 water = [tuple(w) for w in L.WATER + L.WATER_FAR]
-K.write_layout(LAYOUT, INFO, solid, [], [tuple(p) for p in L.SPAWNS], L.TEAM, water=water, src='tools/roblox/forest_models.py', rot=rotb)
+K.write_layout(LAYOUT, INFO, solid, [], [tuple(p) for p in L.SPAWNS], L.TEAM, water=water, src='tools/roblox/forest_models.py', rot=rotb, cyl=cylb, tilt=tiltb)
+
+# (19 Nov 2026) the boulders' hit cylinders must sit inside the drawn rocks: points on each cylinder's side, tested
+# against the rock's own mesh (inside when the nearest face looks away from the point)
+BADS = []
+def hull_check():
+    from mathutils.bvhtree import BVHTree
+    worst, bad, n, under, uworst = 0.0, 0, 0, 0, 0.0
+    for (bb, mat, seed, sub, hgt, fl) in L.ROCKS:
+        bm, M = rock_mesh(bb, seed, sub)
+        cy = M.translation.y
+        foot = min(v.co.y for v in bm.verts if v.co.y >= -(bb[4] - bb[1]) * 0.3 - 1e-6) + cy   # (its lowest edge: the dish's rim)
+        bm.transform(M)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        tree = BVHTree.FromBMesh(bm)
+        x0, y0, z0, x1, y1, z1 = bb
+        for c in L.CYL:
+            if c[7] != mat or not (x0 - 0.5 <= c[0] <= x1 + 0.5 and z0 - 0.5 <= c[2] <= z1 + 0.5) or abs(c[0] - c[3]) > 1e-6: continue
+            lo, hi, r = min(c[1], c[4]), max(c[1], c[4]), c[6]
+            for k in range(5):
+                yy = lo + (hi - lo) * (k + 0.5) / 5
+                for a in range(16):
+                    pt = Vector((c[0] + r * math.cos(a * math.pi / 8), yy, c[2] + r * math.sin(a * math.pi / 8)))
+                    hit = tree.find_nearest(pt)
+                    if hit[0] is None: continue
+                    n += 1
+                    out = (pt - hit[0]).dot(hit[1])
+                    if out > 0.02:
+                        # (under the rock's foot, between the floor and the rock's lowest edge, the rock overhangs it:
+                        # counted apart; only what's beside the rock's sides counts as showing)
+                        g = L.floor_min([(pt.x, pt.z)])
+                        if yy <= foot + 0.05 or yy <= g + 0.1: under += 1; uworst = max(uworst, out)
+                        else:
+                            bad += 1; worst = max(worst, out)
+                            if len(BADS) < 400: BADS.append((round(out, 2), round(yy - foot, 2), round(hi - yy, 2), round(r, 2), mat, sub, round(c[0], 1), round(c[2], 1)))
+        bm.free()
+    print('HULL CHECK: %d points on the boulders\' hit cylinders, %d outside the drawn rock\'s sides (worst %.2f studs), %d under its foot (worst %.2f)' % (n, bad, worst, under, uworst))
+hull_check()
+for _b in sorted(BADS, reverse=True)[:3]: print('HULL OUT (worst: out, over the foot, under the top, radius, mat, sub, x, z)', _b)
 print('LAYOUT SIZE %d characters' % os.path.getsize(LAYOUT))
 _tri = {}
 for (mname, key), items in K.PIECES.items():

@@ -1,9 +1,9 @@
 # The Backrooms' surfaces (18 Nov 2026; the owner: "Can you add texture to the back rooms map!!"). Four seamless,
 # low-contrast pictures, drawn here from noise (ours, not any creator's art), for SurfaceAppearances on the kit's wall,
 # carpet, ceiling-tile and pool-tile meshes (backrooms_models.py gives those meshes world-scaled UVs):
-#   wallpaper.png  512 x 1024: one repeat is 6.3 studs wide and 12.6 tall (floor to ceiling): a faded mono-yellow paper
-#                  with soft vertical stripes and a faint lozenge repeat in the wide bands, grain, a few fade blotches,
-#                  and a soft damp stain climbing a little way up from the floor
+#   wallpaper.png  512 x 1024: one repeat is 6.3 studs wide and 12.6 tall (floor to ceiling): a pale, faded mono-yellow
+#                  paper with a fine repeat (0.39-stud stripes, a hairline, a small diamond), a painted baseboard, grime
+#                  and damp stains near the floor (19 Nov 2026; the first, wallpaper_v1, read as wood planks)
 #   carpet.png     1024 x 1024: 24 studs: damp beige-yellow pile (fine noise), mottling, a few darker damp patches
 #   ceiling.png    512 x 512: 8 studs: off-white acoustic tile face, fine pits and speckle (the T-bar grid is modelled)
 #   pooltile.png   512 x 512: 3 studs, 2 x 2 tiles: pale glazed tiles, each a hair different, soft grout lines (the
@@ -23,9 +23,9 @@ def hexrgb(h):
     return np.array([int(h[i:i + 2], 16) for i in (0, 2, 4)], dtype=np.float64)
 
 
-def pnoise(h, w, sigma_px, aniso=(1.0, 1.0)):
+def pnoise(h, w, sigma_px, aniso=(1.0, 1.0), g=None):
     """periodic (seamless) smooth noise, zero mean, unit-ish amplitude: white noise blurred in the frequency domain"""
-    n = rng.standard_normal((h, w))
+    n = (g or rng).standard_normal((h, w))
     fy = np.fft.fftfreq(h)[:, None] * h
     fx = np.fft.fftfreq(w)[None, :] * w
     sy, sx = sigma_px * aniso[0], sigma_px * aniso[1]
@@ -43,6 +43,76 @@ def save(name, arr):
 
 
 def wallpaper():
+    """(19 Nov 2026) the owner: "backrooms wall texture is hard to see, it looks like wood plank walls because of it".
+    The first wallpaper's 1.6-stud bands with a dark line at each edge read as boards and their joints. This one is
+    paper you can tell from across a room: a pale, faded mono-yellow with a fine repeat 0.39 studs across (soft
+    alternating stripes, a hairline pinstripe, a small diamond in every light stripe, half-dropped), low contrast so it
+    never shimmers far off; a low baseboard painted along the floor with its shadow line, grime rising a little from it,
+    a few damp stains with brown tide lines (not one band all round), a breath of smoke under the ceiling.
+    512 x 1024 px = 6.3 x 12.6 studs (81 px a stud); the picture's bottom is the floor. Seamless across."""
+    g2 = np.random.default_rng(2611)
+    H, W = 1024, 512
+    PX = 1024 / 12.6                                   # px per stud
+    base = hexrgb('cec18c')
+    y = np.arange(H)[:, None].repeat(W, 1).astype(np.float64)
+    x = np.arange(W)[None, :].repeat(H, 0).astype(np.float64)
+    hgt = (H - 1 - y) / PX                             # studs over the floor
+    # the stripes: 32 px (0.39 studs) a pair, a light one and a dark one, soft edges; a hairline in the dark one
+    ph = (x % 32) / 32.0
+    light = 0.5 * (1 + np.tanh((0.25 - np.abs(ph - 0.25)) * 40))     # 1 across the first half
+    shade = 1.0 + 0.035 * light - 0.02 * (1 - light)
+    hair = np.exp(-((ph - 0.75) * 32 / 0.9) ** 2)                   # (1 px wide, the dark stripe's middle)
+    shade += 0.05 * hair
+    # the small diamond: in every light stripe, 32 px a repeat up the wall, every other stripe dropped half a repeat
+    col = (x // 32) % 2
+    cx = (x % 32) - 8.0
+    cy = ((y + 16 * col) % 32) - 16.0
+    dia = np.abs(cx) / 4.5 + np.abs(cy) / 7.0
+    motif = np.clip(1.0 - np.abs(dia - 0.8) * 3.2, 0, 1) * light     # an outline diamond
+    dot = np.clip(1.0 - dia * 3.5, 0, 1) * light                     # its centre
+    shade -= 0.095 * motif + 0.06 * dot
+    # paper grain, a soft fade
+    shade += 0.012 * pnoise(H, W, 0.8, g=g2) + 0.025 * pnoise(H, W, 70.0, g=g2)
+    rgb = base[None, None, :] * shade[:, :, None]
+    # grime rising from the floor, uneven
+    grime = np.exp(-np.maximum(hgt - 0.55, 0) / 0.8) * (0.7 + 0.3 * (0.5 + 0.5 * pnoise(H, W, 12.0, g=g2)))
+    rgb *= (1 - 0.13 * grime)[:, :, None]
+    # damp stains: three, of their own shapes, rising from the baseboard (wrapping round the tile's sides)
+    stain = np.zeros((H, W))
+    tidel = np.zeros((H, W))
+    mottle = 0.55 + 0.45 * (0.5 + 0.5 * pnoise(H, W, 14.0, g=g2))
+    for (cxs, wdt, top) in ((70.0, 130.0, 2.2), (300.0, 80.0, 1.25), (430.0, 100.0, 1.7)):
+        dx = np.minimum(np.abs(x[0] - cxs), W - np.abs(x[0] - cxs)) / wdt          # (wrapping)
+        prof = np.clip((1.0 - dx) / 0.65, 0, 1)
+        prof = prof * prof * (3 - 2 * prof)                                        # (a flat-topped rise, soft sides)
+        wob = 0.28 * pnoise(1, W, 7.0, g=g2)[0] + 0.07 * pnoise(1, W, 1.6, g=g2)[0]
+        edge = 0.5 + (top - 0.5) * prof + wob * np.sqrt(prof)                      # its edge's height, studs: ragged
+        inside = np.clip((edge[None, :] - hgt) / 0.35, 0, 1) * (prof[None, :] > 0.02)
+        stain = np.maximum(stain, inside * mottle)
+        ring2 = 0.5 + (edge - 0.5) * 0.72                                          # (an older, fainter mark inside)
+        t1 = np.exp(-((hgt - edge[None, :]) / 0.035) ** 2)
+        t2 = 0.5 * np.exp(-((hgt - ring2[None, :]) / 0.03) ** 2)
+        tidel = np.maximum(tidel, np.maximum(t1, t2) * np.clip(prof[None, :] * 3, 0, 1) * (0.6 + 0.4 * mottle))
+    brown = hexrgb('8d7748')
+    k = np.clip(stain * 0.17 + tidel * 0.2, 0, 0.32)[:, :, None]
+    rgb = rgb * (1 - k) + brown[None, None, :] * k
+    # smoke under the ceiling
+    rgb *= (1 - 0.05 * np.exp(-((12.6 - hgt) / 0.5)))[:, :, None]
+    # the baseboard: 0.5 studs, a painted board (warm grey-beige), a light bevel on its top, its shadow on the paper
+    bb = 0.5
+    board = hgt < bb
+    bcol = hexrgb('9a8e70') * (1 + 0.03 * pnoise(H, W, 3.0, aniso=(0.3, 3.0), g=g2))[:, :, None]
+    bcol = bcol * (1 - 0.12 * np.exp(-hgt / 0.12))[:, :, None]                     # (scuffed dark at the floor)
+    bevel = np.exp(-((hgt - (bb - 0.05)) / 0.025) ** 2)
+    bcol = bcol * (1 + 0.16 * bevel)[:, :, None]
+    rgb = np.where(board[:, :, None], bcol, rgb)
+    shadow = np.exp(-np.maximum(hgt - bb, 0) / 0.06) * (hgt >= bb)
+    rgb *= (1 - 0.22 * shadow)[:, :, None]
+    return save('wallpaper.png', rgb)
+
+def wallpaper_v1():
+    """the first wallpaper (18 Nov; read as planks): kept so the shared noise stream gives the carpet, ceiling and tiles
+    their uploaded pictures"""
     H, W = 1024, 512
     base = hexrgb('c4ae63')
     y = np.arange(H)[:, None].repeat(W, 1)
@@ -70,7 +140,7 @@ def wallpaper():
     k = np.clip(s * 0.30 + tide * 0.14, 0, 0.36)[:, :, None]
     brown = hexrgb('8a7542')
     rgb = (rgb * (1 - k) + brown[None, None, :] * k) * (1 - 0.07 * s[:, :, None])
-    return save('wallpaper.png', rgb)
+    return save('wallpaper_v1.png', rgb)
 
 
 def carpet():
@@ -129,7 +199,8 @@ def pooltile():
     return save('pooltile.png', rgb)
 
 
-imgs = [wallpaper(), carpet(), ceiling(), pooltile()]
+imgs = [wallpaper_v1(), carpet(), ceiling(), pooltile()]
+imgs = [wallpaper()] + imgs[1:]
 if '--sheet' in sys.argv:
     # a look at each at its real repeat: wallpaper 2 x 1, the rest 2 x 2, side by side
     tiles = []

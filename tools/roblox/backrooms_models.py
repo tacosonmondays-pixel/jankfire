@@ -331,7 +331,8 @@ def lights():
 # names a picture per colour (L.surfaces): WebArena puts a SurfaceAppearance with it on those meshes.
 # The pictures: tools/roblox/backrooms_textures.py (low contrast, no text, no code-like grids)
 TEX = {WALL: (6.3, 12.6), CARPET: (24.0, 24.0), CEILC: (8.0, 8.0), TILE: (3.0, 3.0)}
-SURFACES = {WALL: 'rbxassetid://134099267801892', CARPET: 'rbxassetid://100786749937660', CEILC: 'rbxassetid://72927483684048', TILE: 'rbxassetid://122749145143312'}
+# (19 Nov 2026: the wallpaper redrawn as fine-patterned paper with a baseboard; the first, 134099267801892, read as planks)
+SURFACES = {WALL: 'rbxassetid://92583302593824', CARPET: 'rbxassetid://100786749937660', CEILC: 'rbxassetid://72927483684048', TILE: 'rbxassetid://122749145143312'}
 
 def add_uvs(objs):
     n = 0

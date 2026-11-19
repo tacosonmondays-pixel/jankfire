@@ -6,7 +6,7 @@ import sys, os, math, importlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 L = importlib.import_module(sys.argv[1])
 # (the hit boxes as built: with the wall box applied when the layout has one, tools/roblox/wallbox.py)
-HSOLID = getattr(L, 'HIT_SOLID', L.SOLID)
+HSOLID = list(getattr(L, 'HIT_SOLID', L.SOLID)) + list(getattr(L, 'CHECK_EXTRA', []))  # (CHECK_EXTRA: stand-ins for round and tilted hit shapes, forest_layout)
 HROT = getattr(L, 'HIT_ROT', getattr(L, 'ROT', []))
 
 boxes = [(b[0], b[1], b[2], b[3], b[4], b[5]) for b in HSOLID]
