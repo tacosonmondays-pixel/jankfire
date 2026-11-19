@@ -77,6 +77,8 @@ local function itemModel(id: string, skin: string?): Model?
 	end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
 	local t = lib and lib:FindFirstChild(itemNames[id] or ("x_" .. id))
+	-- (a gadget whose model is a kit weapon: the Overdrive Rig is its two forearms, guns-remodel's w_rig_arms)
+	if not t and id == "overdrive" then local wl = ReplicatedStorage:FindFirstChild("JankfireWeapons"); t = wl and wl:FindFirstChild("w_rig_arms") end
 	if t and t:IsA("Model") then return t:Clone() end
 	local e = Roster.byId[id]
 	return crate(if e then e.color else GREY)
