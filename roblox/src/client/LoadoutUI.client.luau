@@ -511,6 +511,40 @@ function News.buyLook(e: any)
 	local have = tonumber(me:GetAttribute("Brass")) or 0
 	News.brassBtn:set(if armed then "SURE? " .. News.digits(o.coins) else News.digits(o.coins) .. " COINS", true, if have >= o.coins then nil else CARD)
 end
+-- an EARLY unlock (19 Nov): a weapon that opens at a level, with coins before then (Shop.earlyOn; the server takes the
+-- coins: Purchases "early", after a second press to be sure; not enough: the shop's COINS tab)
+function News.earlyPrice(wid: string): number?
+	local S = News.Shop
+	if not (S and type(S.earlyOn) == "function" and S.earlyOn()) then return nil end
+	local ok, v = pcall(S.earlyPrice, wid)
+	return if ok and type(v) == "number" then v else nil
+end
+function News.payEarly(e: any)
+	local price = News.earlyPrice(e.id)
+	if not price then return end
+	if (tonumber(me:GetAttribute("Brass")) or 0) < price then
+		play("empty"); say("not enough coins.", RED)
+		local okS, ShopUI = pcall(require, script.Parent:WaitForChild("ShopUI"))
+		if okS and type(ShopUI) == "table" and type(ShopUI.open) == "function" then News.close(); task.delay(0.1, ShopUI.open, "coins") end
+		return
+	end
+	if News.arm ~= e.id or os.clock() - News.armT > 4 then
+		News.arm, News.armT = e.id, os.clock()
+		play("click"); refresh()
+		task.delay(4.1, function() if News.arm == e.id then News.arm = nil; refresh() end end)
+		return
+	end
+	News.arm = nil
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Purchases")
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("early", e.id) end)
+	if ok and type(res) == "table" and res.ok then
+		play("ting"); say(string.lower(e.name) .. " is yours for good. equip it.")
+	else
+		play("empty"); say(if ok and type(res) == "table" and type(res.why) == "string" then res.why else "that didn't work.", RED)
+	end
+	refresh()
+end
 function News.payRobux(e: any)
 	local o = News.weaponOffer(e.id)
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
@@ -952,8 +986,11 @@ refresh = function()
 			-- (no status words under the name, the owner, 18 Nov: the key it's on when you carry it, COMING SOON, a Robux
 			-- weapon you don't have its price, a locked one what unlocks it; nothing else)
 			local o = if not okU and U.robux(a.id) then News.weaponOffer(a.id) else nil
+			-- (a level's weapon can be unlocked early with coins: "LV 7 · or 1,500 COINS", 19 Nov)
+			local ep = if not okU and not o and type(whyU) == "string" and string.sub(whyU, 1, 6) == "LEVEL " then News.earlyPrice(a.id) else nil
 			a.tag.Text = if equipped then onKey(state.slot) elseif not e.live then "COMING SOON"
 				elseif o then News.digits(o.robux) .. " ROBUX"
+				elseif ep then "LV " .. string.sub(whyU :: string, 7) .. " · or " .. News.digits(ep) .. " COINS"
 				elseif not okU then whyU or "LOCKED" else ""
 			a.tag.TextColor3 = if equipped then ACCENT elseif o then TEXT elseif not e.live or not okU then DIM else GREY
 			a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
@@ -1000,8 +1037,15 @@ refresh = function()
 		local buy = e.live and not okE and not trying() and p[e.slot] ~= e.id and whyE == "ROBUX" and News.weaponOffer(e.id) ~= nil
 		News.buyFor = if buy then e.id else nil
 		News.split(buy)
+		-- (a level's weapon, early with coins: UNLOCK NOW, then SURE?)
+		local ep = if e.live and not okE and not trying() and p[e.slot] ~= e.id and type(whyE) == "string" and string.sub(whyE, 1, 6) == "LEVEL "
+			then News.earlyPrice(e.id) else nil
+		News.earlyFor = if ep then e.id else nil
 		if not e.live then equipBtn:set("COMING SOON", false)
 		elseif buy then News.buyLook(e)
+		elseif ep then
+			local armed = News.arm == e.id and os.clock() - News.armT < 4
+			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
 		elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
 		else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
@@ -1081,6 +1125,7 @@ equipBtn.face.MouseButton1Click:Connect(function()
 	local e = Roster.byId[state.focus]
 	if not e or not e.live then return end
 	if News.buyFor == e.id then News.payRobux(e); return end -- (a Robux weapon you don't have: its prompt)
+	if News.earlyFor == e.id then News.payEarly(e); return end -- (a level's weapon, early with coins)
 	local ok, why = ask("pick", e.slot, e.id)
 	if ok then
 		state.slot = e.slot
