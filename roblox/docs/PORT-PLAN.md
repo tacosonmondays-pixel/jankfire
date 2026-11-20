@@ -2332,6 +2332,19 @@ The owner on the crescent of section 57: "It just feels so empty, but I dont wan
   - Arch stones, jambs and wall heads: never share a face with the wall they dress. Stand them 0.06 proud, or stop them at the wall's face.
   - The column kit has neon strips: set them to the trim's SmoothPlastic after `B.put`, or they read as glare strips.
 
+## 59. Hub: the gym and the locker room, main's notes, live, 20 November 2026 (place version 1135)
+
+The main session's five notes on the gym and locker room of section 58, then two proportion fixes ("so they read as the real things"). All in HubRotundaRooms.
+
+- **Ring lamps:** the square dark frames are gone. Each ring has one light cream `LampBeam` on two thin `BeamRod`s, with two droplights hanging from it.
+- **Corner pads:** slim round covers of padded vinyl (SmoothPlastic, not Leather, which read as marble), from just under the bottom rope to just over the top one, about 1.3x the post's width. The post is slimmer (1.1), each pad has two dark straps, red and blue on opposite corners and two neutral. The ropes are 2*PO-1.2 long, so their ends sit inside the pads.
+- **Heavy bags:** tall cylinders, 3x as tall as wide in world studs (the warp makes widths 1.5x, so 1.33 pre-warp by 6 tall), their bottoms at hip height. Each hangs on a short chain from a steel `BagRail` on two arms off the far wall.
+- **The gym's padded lower walls:** smooth vinyl too (the leather grain read as stone).
+- **Locker room:** tall lockers in full banks along both long walls (`bank()`: a body on a recessed plinth under a cream cap, a door per column 1.8 world studs apart with two vent slits and a handle; 39 doors). One bench row down the middle, broken on the door's line. The hooks, wall bench and cubbies made way; the counter, showers and towel cart stay.
+- **The round timer:** kept as it is (main: either reading is fine, no numbers).
+- Live `R.check`: 0 problems. Flicker: nothing new. hub-minigames checked the rings read-only before the save: nothing inside the ropes, every corner clear, the beams 11.8 over the mats (the boxing camera is about 8 up).
+- Sheets: `roblox/docs/hub/hub_gym_notes_staging.jpg`, `roblox/docs/hub/hub_gym_notes_live_1135.jpg`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
