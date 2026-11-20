@@ -97,8 +97,11 @@ local function trackFor(hum: Humanoid, id: string, anim: string?): AnimationTrac
 	if tr then return tr end
 	local an = hum:FindFirstChildOfClass("Animator")
 	if not an then return nil end
+	-- (an R6 body plays the emote's R6 take, 20 Nov; a catalog emote has none: nothing to play)
+	local want = if anim then anim else Flair.emoteAnim(id, hum.RigType == Enum.HumanoidRigType.R6)
+	if not want then return nil end
 	local a = Instance.new("Animation")
-	a.AnimationId = if anim then anim else e.anim
+	a.AnimationId = want
 	local ok, t = pcall(an.LoadAnimation, an, a)
 	if not ok or not t then return nil end
 	t.Priority = Enum.AnimationPriority.Action4
@@ -186,7 +189,14 @@ local function startEmote(id: string)
 	local rbx = string.sub(id, 1, 4) == "rbx:"
 	local e = if rbx then { len = 0, loop = false } else Flair.info("emote", id)
 	local tr = trackFor(hum, id, if rbx and type(res.anim) == "string" then res.anim else nil)
-	if not e or not tr then task.spawn(ask, "stop"); return end
+	if not e or not tr then
+		task.spawn(ask, "stop")
+		-- (a catalog emote on an R6 body: it has no R6 take)
+		if e and not rbx and hum.RigType == Enum.HumanoidRigType.R6 then
+			pcall(function() (require(script.Parent:WaitForChild("Hud")) :: any).note("R15 ONLY", 1) end)
+		end
+		return
+	end
 	if not rbx then tr.Looped = e.loop end
 	tr:Play(0.3, 1, 1)
 	E.id, E.track, E.t0, E.len, E.loop, E.rbx = id, tr, os.clock(), e.len, e.loop, rbx

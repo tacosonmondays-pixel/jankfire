@@ -32,6 +32,8 @@ local TEX = {
 	tracer = "rbxassetid://72229869149513", -- a beam core (v runs across)
 	feather = "rbxassetid://92745845385867", -- a soft white feather
 	streak = "rbxassetid://127914373549121", -- a soft white streak
+	flame = "rbxassetid://77597527828324", -- a white flame tongue licking up, 16 frames (4x4), tinted per use
+	smoke = "rbxassetid://97407536340250", -- soft smoke, 16 frames (4x4)
 }
 task.spawn(function()
 	local list = {}
@@ -308,8 +310,9 @@ STEP.shatter = function(r, t, dt)
 	end
 end
 
--- EMBER (rare): the body chars dark with a glowing edge, then burns away from the head down into embers and ash
-STEP.ember = function(r, t, dt)
+-- EMBER, first drawing (17 Nov; kept for before/after rows: KillFxPacks = false on the body): the body chars dark with a
+-- glowing edge, then burns away from the head down into embers and ash
+local function emberV1(r: Run, t: number, dt: number)
 	local s = r.s
 	if not s.h then
 		s.h = highlight(r, Color3.fromRGB(28, 22, 20), Color3.fromRGB(255, 128, 48))
@@ -338,6 +341,199 @@ STEP.ember = function(r, t, dt)
 		s.ep.CFrame = CFrame.new(r.centre.X, line, r.centre.Z) * r.cf.Rotation
 		pour(r, "a", s.em, 70, dt)
 		pour(r, "b", s.ash, 45, dt)
+	end
+end
+
+-- EMBER (rare), second drawing (20 Nov, the VFX practice loop: the Combat VFX pack's fire aura studied, its layering
+-- rebuilt with our own sprites; critic rounds in roblox/docs/vfx/PLAYBOOK.md). In 0.15 s the avatar gives way to a CHAR
+-- SHELL: each body part cloned client-side with its textures stripped, dark warm charcoal in CrackedLava (faint glowing
+-- cracks). It is real geometry, so the fire depth-sorts against it: a Highlight fill would draw over every flame inside
+-- the outline (rounds 3-4). Every part catches at once (a burst of licks at 0.02 s), then burns in three layers on a box
+-- a little bigger than the part: a near-black inner tongue, wide orange licks, a small white-hot core; dark specks
+-- streak up. A burning line runs from the head (0.28 s) to the feet (1.2 s) with a thin glowing band on the cut: each
+-- shell part is sliced down as the line passes it (not popped whole), its fire stops, and nothing hangs above the cut.
+-- Embers rise, ash falls, and a thin pale smoke column lifts from the last burn point at the end
+local EMBER_BODY = {
+	Head = 1, UpperTorso = 1.4, LowerTorso = 1.1, Torso = 1.6,
+	LeftUpperArm = 0.9, LeftLowerArm = 0.85, RightUpperArm = 0.9, RightLowerArm = 0.85,
+	LeftHand = 0.5, RightHand = 0.5, LeftFoot = 0.55, RightFoot = 0.55,
+	LeftUpperLeg = 0.95, LeftLowerLeg = 0.9, RightUpperLeg = 0.95, RightLowerLeg = 0.9,
+	["Left Arm"] = 1.1, ["Right Arm"] = 1.1, ["Left Leg"] = 1.1, ["Right Leg"] = 1.1,
+}
+local function flameSize(size: { number }, k: number): NumberSequence
+	return NumberSequence.new({ NumberSequenceKeypoint.new(0, size[1] * k, size[1] * k * 0.3),
+		NumberSequenceKeypoint.new(0.4, size[2] * k, size[2] * k * 0.3), NumberSequenceKeypoint.new(1, size[3] * k, size[3] * k * 0.25) })
+end
+local function flameLayer(r: Run, at: BasePart, k: number, life: number, size: { number }, c: ColorSequence, le: number,
+	bright: number, z: number, alpha: number): ParticleEmitter
+	return emitter(r, at, {
+		Texture = TEX.flame, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4,
+		FlipbookMode = Enum.ParticleFlipbookMode.OneShot, FlipbookFramerate = NumberRange.new(16 / life),
+		Color = c, LightEmission = le, LightInfluence = 0, Brightness = bright,
+		-- (a negative Squash widens the thin tongue into a lick; positive stretches it thinner, round 3)
+		Size = flameSize(size, k), Squash = ns(0, -0.35, 1, -0.2), Transparency = ns(0, alpha, 0.75, alpha + 0.15, 1, 1),
+		Lifetime = NumberRange.new(life * 0.75, life), Speed = NumberRange.new(1, 2), EmissionDirection = Enum.NormalId.Top,
+		SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, 1, 0), Rotation = NumberRange.new(-22, 22), ZOffset = z,
+		ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
+	})
+end
+local FLAME, INNER, CORE = { 0.56, 0.84, 0.35 }, { 0.4, 0.6, 0.25 }, { 0.32, 0.46, 0.18 } -- (30% smaller, round 7)
+STEP.ember = function(r, t, dt)
+	if r.m:GetAttribute("KillFxPacks") == false then return emberV1(r, t, dt) end
+	local s = r.s
+	if not s.h then
+		-- (the Highlight is only a fallback char for your own body, which gets no shell)
+		s.h = highlight(r, Color3.fromRGB(40, 28, 22), Color3.fromRGB(255, 110, 30))
+		s.shell = {}
+		if not r.own then
+			local char = Instance.new("Model")
+			char.Name = "Char"
+			char.Parent = r.folder
+			table.insert(r.objs, char)
+			for _, p in r.parts do
+				local ok, c = pcall(function() return p.part:Clone() end)
+				if ok and c then
+					for _, kid in c:GetChildren() do if not kid:IsA("SpecialMesh") then kid:Destroy() end end
+					local sm = c:FindFirstChildOfClass("SpecialMesh")
+					if sm then sm.TextureId = "" end
+					if c:IsA("MeshPart") then pcall(function() (c :: any).TextureID = "" end) end
+					c.Anchored = true; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.CastShadow = false
+					c.Color = Color3.fromRGB(58, 42, 34); c.Material = Enum.Material.SmoothPlastic -- (charcoal that still reads on a dark wall)
+					c.Transparency = 1; c.LocalTransparencyModifier = 0; c.CFrame = p.part.CFrame
+					c.Parent = char
+					-- (sliced down the part's own up axis when that's near vertical and the shape follows Size)
+					local up = p.part.CFrame.UpVector
+					s.shell[p] = { c = c, base = p.part.Transparency, cf = p.part.CFrame, size = p.part.Size,
+						slice = sm == nil and math.abs(up.Y) > 0.7, sign = if up.Y >= 0 then 1 else -1 }
+				end
+			end
+			s.h.Adornee = char -- (the rim glows round the char)
+		end
+		local orange = cs(0, Color3.fromRGB(255, 172, 82), 0.35, Color3.fromRGB(250, 112, 32), 1, Color3.fromRGB(158, 40, 16))
+		local inner = cs(0, Color3.fromRGB(30, 18, 14), 1, Color3.fromRGB(18, 12, 10))
+		local core = cs(0, Color3.fromRGB(255, 246, 214), 1, Color3.fromRGB(255, 196, 110))
+		local body, other = {}, {}
+		for _, p in r.parts do
+			local w = EMBER_BODY[p.part.Name]
+			if w and p.part.Parent == r.m then table.insert(body, { p = p, w = w }) else table.insert(other, { p = p, w = 0.8 }) end
+		end
+		table.sort(other, function(a, b) return a.p.part.Size.Magnitude > b.p.part.Size.Magnitude end)
+		for i = 1, math.min(3, #other) do table.insert(body, other[i]) end -- (the hair and a hat burn with the head)
+		s.fires = {}
+		for _, e in body do
+			local p = e.p
+			local box = part(r, p.part.Size * 1.1, p.part.CFrame)
+			local k = math.clamp(p.part.Size.Magnitude / 2.2, 0.6, 1.3)
+			table.insert(s.fires, {
+				p = p, box = box, rate = 46 * e.w, k = k, kNow = k,
+				inner = flameLayer(r, box, k, 0.3, INNER, inner, 0, 1, 0.2, 0.3),
+				flame = flameLayer(r, box, k, 0.34, FLAME, orange, 0.45, 2, 0.5, 0.05),
+				core = flameLayer(r, box, k, 0.22, CORE, core, 0.7, 1, 0.8, 0.15),
+				specks = emitter(r, box, {
+					Texture = TEX.spark, Color = cs(Color3.fromRGB(40, 32, 28)), LightEmission = 0, LightInfluence = 0,
+					Orientation = Enum.ParticleOrientation.VelocityParallel, Size = ns(0, 0, 0.12, 0.11, 1, 0),
+					Lifetime = NumberRange.new(0.2, 0.3), Speed = NumberRange.new(4, 6), EmissionDirection = Enum.NormalId.Top,
+					SpreadAngle = Vector2.new(20, 20), Drag = 1.2, ZOffset = 0.6, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
+				}),
+			})
+		end
+		-- the burn line: a thin glowing band on the cut (many small glow points, not a few soft blobs), embers, ash
+		s.ep = part(r, Vector3.new(r.width * 0.8, 0.3, r.width * 0.4), r.cf)
+		s.band = emitter(r, s.ep, {
+			Texture = TEX.glow, Color = cs(0, Color3.fromRGB(255, 170, 70), 1, Color3.fromRGB(255, 110, 30)), LightEmission = 0.7,
+			LightInfluence = 0, Size = ns(0, 0.17, 1, 0.08), Transparency = ns(0, 0.15, 1, 1),
+			Lifetime = NumberRange.new(0.07, 0.11), Speed = NumberRange.new(0), ZOffset = 0.9,
+		})
+		s.em = emitter(r, s.ep, {
+			Texture = TEX.glow, Color = cs(0, Color3.fromRGB(255, 220, 150), 0.5, Color3.fromRGB(255, 140, 50), 1, Color3.fromRGB(190, 60, 24)),
+			LightEmission = 1, LightInfluence = 0, Size = ns(0, 0.1, 0.7, 0.07, 1, 0), Transparency = ns(0, 0, 0.7, 0.2, 1, 1),
+			Lifetime = NumberRange.new(0.5, 0.85), Speed = NumberRange.new(1.5, 3), EmissionDirection = Enum.NormalId.Top,
+			SpreadAngle = Vector2.new(35, 35), Acceleration = Vector3.new(0, 2, 0), Drag = 0.8,
+		})
+		s.ash = emitter(r, s.ep, {
+			Texture = TEX.chips, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2, FlipbookMode = Enum.ParticleFlipbookMode.Random,
+			Color = cs(0, Color3.fromRGB(78, 74, 70), 1, Color3.fromRGB(64, 62, 60)), LightInfluence = 0.6, LightEmission = 0,
+			Size = ns(0, 0.1, 1, 0.07), Transparency = ns(0, 0.1, 0.6, 0.3, 1, 1), Lifetime = NumberRange.new(0.3, 0.45),
+			Speed = NumberRange.new(0.3, 0.8), SpreadAngle = Vector2.new(70, 70), Acceleration = Vector3.new(0, -2.5, 0), Drag = 2,
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-260, 260),
+		})
+		s.sp = part(r, Vector3.new(0.6, 0.3, 0.4), r.cf)
+		s.smoke = emitter(r, s.sp, {
+			Texture = TEX.smoke, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+			FlipbookFramerate = NumberRange.new(16 / 0.8), FlipbookBlendFrames = true,
+			Color = cs(Color3.fromRGB(95, 90, 85)), LightEmission = 0, LightInfluence = 0.3,
+			Size = ns(0, 0.5, 1, 1.25), Transparency = ns(0, 0.6, 0.5, 0.75, 1, 1), Lifetime = NumberRange.new(0.6, 0.8),
+			Speed = NumberRange.new(2.5, 3.2), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(6, 6),
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-30, 30),
+		})
+	end
+	local h = s.h :: Highlight
+	local charIn = smooth(t / 0.25)
+	local shelled = next(s.shell) ~= nil
+	h.FillTransparency = if shelled then 1 else lerp(1, 0.06, charIn)
+	h.OutlineTransparency = lerp(1, 0.55, charIn) + 0.45 * smooth((t - 1.0) / 0.2)
+	local line = lerp(r.y1 + 0.2, r.y0 - 0.2, clamp01((t - 0.28) / 0.92))
+	local gone: { [any]: number } = {}
+	for _, p in r.parts do
+		local a = clamp01((p.hi - line) / (math.min(p.hi - p.lo, 1.2) + 0.3))
+		gone[p] = a
+		local sh = s.shell[p]
+		if sh then
+			fade(r, p, charIn) -- (the avatar gives way to its char)
+			if sh.slice then
+				-- cut down from the top: the part keeps what's under the line
+				local rem = clamp01((line - p.lo) / math.max(p.hi - p.lo, 0.05))
+				sh.c.Transparency = if rem <= 0.02 then 1 else math.max(sh.base, 1 - charIn)
+				if rem < 1 then
+					local hY = sh.size.Y * rem
+					sh.c.Size = Vector3.new(sh.size.X, math.max(hY, 0.02), sh.size.Z)
+					sh.c.CFrame = sh.cf * CFrame.new(0, -sh.sign * (sh.size.Y - hY) * 0.5, 0)
+				end
+			else
+				sh.c.Transparency = math.max(sh.base, 1 - charIn, a)
+			end
+		else
+			fade(r, p, a)
+		end
+	end
+	-- the catch: a burst on every part at once
+	if not s.caught and t > 0.02 then
+		s.caught = true
+		for _, f in s.fires do f.flame:Emit(many(8)); f.inner:Emit(many(4)); f.core:Emit(many(3)) end
+	end
+	local on = smooth(t / 0.05) * (1 - smooth((t - 1.0) / 0.2))
+	for i, f in s.fires do
+		local left = clamp01((line - f.p.lo) / math.max(f.p.hi - f.p.lo, 0.3)) -- (the share of the part still under the line)
+		if (gone[f.p] or 0) >= 1 then left = 0 end
+		if left <= 0 and not f.out then
+			f.out = true
+			f.flame:Clear(); f.inner:Clear(); f.core:Clear()
+		end
+		local near = clamp01(1 - math.abs(line - (f.p.lo + f.p.hi) * 0.5) / 1.2)
+		local rate = f.rate * on * (if left > 0 then 1 else 0) * (0.6 + 0.7 * near)
+		local kNow = f.k * (0.6 + 0.4 * left) * (0.6 + 0.4 * on)
+		if math.abs(kNow - f.kNow) > 0.06 then
+			f.kNow = kNow
+			f.flame.Size = flameSize(FLAME, kNow)
+			f.inner.Size = flameSize(INNER, kNow)
+			f.core.Size = flameSize(CORE, kNow)
+		end
+		if rate > 0 then
+			pour(r, "f" .. i, f.flame, rate, dt)
+			pour(r, "d" .. i, f.inner, rate * 0.5, dt)
+			pour(r, "c" .. i, f.core, rate * 0.25, dt)
+			pour(r, "s" .. i, f.specks, 14 * on, dt)
+		end
+	end
+	if t > 0.28 and t < 1.2 then
+		s.ep.CFrame = CFrame.new(r.centre.X, line, r.centre.Z) * r.cf.Rotation
+		pour(r, "l", s.band, 220 * on, dt)
+		pour(r, "a", s.em, 26, dt)
+		if line > r.y0 + 0.6 then pour(r, "b", s.ash, 12, dt) end
+	end
+	if t > 0.98 and t < 1.38 then
+		s.sp.CFrame = CFrame.new(r.centre.X, math.max(line, r.y0) + 0.3, r.centre.Z)
+		pour(r, "m", s.smoke, 30, dt)
 	end
 end
 

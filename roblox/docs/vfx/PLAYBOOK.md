@@ -92,3 +92,42 @@ from.
 - **Small textures blur big particles.** A 4x4 flipbook cell is 128 px; stretched over a 30-stud crack, a 1-pixel line
   becomes a blurry rope. Long thin floor marks need one big image (1024 px), not a flipbook.
 - **Clean concentric rings read as a target symbol.** Break rings into arcs and wrap them in jagged shards.
+
+## Fire on a body (kill effects; the Ember practice, 20 Nov, kill-effects session)
+Ember was rebuilt in seven critic rounds against the Combat pack's fire aura. Scores: before 3, then 4, 4, 6, (4 not
+scored: a regression), 5, 6, 6. Sheet: `docs/flair/ember-practice-r1-vs-final.jpg`. Rounds and scores are in
+`docs/FLAIR.md`.
+- **A Highlight fill draws over particles.**
+  - Any flame inside a charred body's outline vanished under the Highlight fill (rounds 3-4). The only fire that read
+    stuck out past the silhouette.
+  - Char a body with a **shell** instead: clone each part client-side, strip its textures (SurfaceAppearance, decals,
+    TextureID), colour it charcoal. It is real geometry, so flames on its surface depth-sort in front of it.
+  - Keep the Highlight only for a rim, as an outline on the shell.
+- **The pack's fire hugs every part.** It does this with three layers per part, emitted from the part's surface (Box,
+  Surface style):
+  - solid colour flames (low LightEmission, high Brightness, so they read on grey);
+  - a smaller near-black flame inside them;
+  - dark specks streaking up.
+
+  One big emitter for the whole body reads as a pillar or a column.
+- **Pick parts by name, not by size.** The "ten biggest parts" were hats, hair and a sword. The arms and legs never
+  caught (round 2).
+- **Squash: positive stretches a particle taller and thinner; negative widens it.** Round 3's "wider" flames came out as
+  slivers.
+- **Fire dies with its part.** When a part has burned away, `Clear()` its emitters. Otherwise tongues hang 1.5-2 studs
+  in the air over nothing, the most-cited fault (rounds 2, 6).
+- **A burn line cuts, it doesn't pop.**
+  - Slice each shell part down its own up axis as the line passes: set Size and CFrame per frame. Do this only for
+    upright parts without a SpecialMesh.
+  - Long parts (a sword, a cape) need their fade capped to about 1.5 studs past the line, or they linger as see-through
+    ghosts.
+- **Catch on frame one.** `Emit()` a burst on every part at once. A rate ramp leaves the first frames bare.
+- **Pure black vanishes on a dark wall.** Use a charcoal around (58,42,34) for char.
+- **Stacked additive flames blow out to white.** The core layer stays at LightEmission ≤ 0.7.
+- **A pack texture on a black background needs LightEmission 1.** Below 1 its black square shows. Quiet it with
+  Brightness and transparency instead (Static, v1125 → v1133).
+- **Photos of VfxEmit effects:** VfxEmit parks and clears an effect on its own clock, even when the effect is frozen.
+  For a frozen photo, add a hidden emitter with `EmitDelay` 25 to the templates and pooled clones.
+- **Practice rounds without touching the place:** upload the module as a lab model, load it in Play only (the server
+  `LoadAsset`s it into ReplicatedStorage, the client clones it next to its siblings and requires it). Push and save only
+  the round you keep.

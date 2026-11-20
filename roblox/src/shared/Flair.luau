@@ -24,7 +24,7 @@ F.COOLDOWN = 2 -- s between emotes (Rivals has none; spam guard)
 
 export type Item = { type: string, id: string, name: string, rarity: string, vip: boolean? }
 export type Kill = Item & { dur: number, tint: Color3 }
-export type Emote = Item & { anim: string, len: number, loop: boolean, catalog: number }
+export type Emote = Item & { anim: string, len: number, loop: boolean, catalog: number, cat: string, anim6: string? }
 
 -- rarity tints (the same as LootTable.RARITY; copied so this module needs nothing else)
 F.RARITY_COLOR = {
@@ -120,6 +120,20 @@ local EMOTES = {
 	{ "tilt", "Tilt", "free", "rbxassetid://10714338461", 4.80, true, 3360692915 },
 	{ "dance", "Dance", "free", "rbxassetid://507771019", 1.08, true, 0 },
 }
+-- (20 Nov, the owner: "Also we added allllllthe emotes right do it") the picker's categories. An emote not listed here
+-- is a DANCE
+F.EMOTE_CATS = { "dance", "gesture", "taunt", "celebration" }
+F.EMOTE_CAT_NAMES = { dance = "DANCES", gesture = "GESTURES", taunt = "TAUNTS", celebration = "CELEBRATIONS" }
+local EMOTE_CAT: { [string]: string } = {
+	wave = "gesture", hello = "gesture", salute = "gesture", point = "gesture", shrug = "gesture", shywave = "gesture",
+	tilt = "gesture",
+	dab = "taunt", flex = "taunt", flap = "taunt", laugh = "taunt", float = "taunt",
+	cheer = "celebration", stadium = "celebration", applaud = "celebration", hypeclap = "celebration",
+}
+-- R6 bodies: the Mixamo set retargeted to R6 (tools/blender/mixamo_r15.py --r6), uploaded as the owner's animations.
+-- A catalog emote is R15 only: on an R6 body it has no animation (F.emoteAnim gives nil)
+local EMOTE_R6: { [string]: string } = {
+}
 
 -- EMOTE MUSIC (19 Nov, the owner: "si there a copyright free instriumental to go with it?"): one track per dance emote
 -- from Roblox's own licensed audio library (its music partners' production music, cleared for use in Roblox
@@ -172,7 +186,14 @@ end
 for _, r in EMOTES do
 	table.insert(F.ORDER.emote, r[1])
 	F.ITEMS.emote[r[1]] = { type = "emote", id = r[1], name = r[2], rarity = r[3], anim = r[4], len = r[5], loop = r[6], catalog = r[7],
-		new = r[8] == true }
+		new = r[8] == true, cat = EMOTE_CAT[r[1]] or "dance", anim6 = EMOTE_R6[r[1]] }
+end
+-- the animation for a body: R6 gets the R6 take (nil when the emote has none), R15 the row's own
+function F.emoteAnim(id: string, r6: boolean?): string?
+	local e = F.ITEMS.emote[id]
+	if not e then return nil end
+	if r6 then return e.anim6 end
+	return e.anim
 end
 for _, r in GRAPPLES do
 	table.insert(F.ORDER.grapple, r[1])

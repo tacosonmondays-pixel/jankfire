@@ -39,7 +39,7 @@ built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the 
 | pixel | Missing Texture | rare | 1.2 | flickers, breaks into small near-black and muted-magenta cubes that drift and blink out |
 | balloon | Balloons | rare | 1.5 | five plain balloons tie on and the body floats up 6.5 studs, fading |
 | shatter | Shatter | rare | 1.0 | glazes like ice for a beat, then breaks into ~28 clear glass wedges with a pack ice burst and frost flakes (KillIceBurst) |
-| ember | Ember | rare | 1.4 | chars dark with a glowing orange edge, burns away from the head down into embers and ash |
+| ember | Ember | rare | 1.4 | turns to a charcoal shell with an orange rim and catches on every part at once (three flame layers per part, dark specks), then burns down from the head: each part is sliced away by a glowing line and its fire goes with it; embers, ash and a few smoke wisps (the VFX practice loop, 20 Nov; see below) |
 | chicken | Chickens | epic | 1.5 | a soft pop of feathers; three small chunky chickens scatter and run off |
 | bsod | Blue Screen | epic | 1.2 | a flat blue panel (FATAL ERROR, player.exe, a filling bar) replaces the body, then switches off like an old monitor. The only kill effect with words: the owner allowed it (17 Nov); drawn live with TextLabels in the game's font, never an uploaded picture |
 | yeet | Yeet | epic | 1.3 | launched straight up, spinning, a dotted streak under it, a glint high above |
@@ -51,6 +51,36 @@ built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the 
 
 All drawn from the VFX pipeline's approved sprites (glow, sparkle, chips, dust 4x4, lumps 4x4, spark, ring, tracer,
 feather) and plain client parts (stone, notes, cubes, balloons, chickens, the duck): no new uploads. Particle `Size` is half the width (VFX-PIPELINE.md).
+
+### Ember, rebuilt in the VFX practice loop (20 Nov, place v1171)
+
+Main for the owner: train on the bought VFX: copy, review, try again. The kill effect that read worst and had a pack
+counterpart was Ember (it showed dots, no fire). Ink reads worse but no pack effect is anything like an ink splash.
+- **The teacher:** the Combat pack's fire aura (Aura 19), recoloured to Ember's orange for the reference rows.
+  - Per body part: a solid fire flipbook (negative LightEmission, Brightness 5), a smaller black flame, and black specks
+    streaking up.
+  - Rebuilt with our own sprites: the white flame sheet `vfx_flame_4x4`, smoke, sparks, glow and chips. No pack
+    texture is used.
+- **Rounds:** each round is a lab copy of KillFx loaded in Play only, five frozen copies (0.15 / 0.4 / 0.7 / 1.0 /
+  1.25 s), on a dark wall and a mid-grey wall. A fresh critic scored each one against the reference and the old Ember.
+
+| round | critic (after / before) | what changed |
+|---|---|---|
+| 1 | 4 / 3 | flames on every part, the char Highlight, burn line |
+| 2 | 4 / 3 | 3 layers, thick fire; arms bare (hats took the "biggest parts"), see-through char, floating flames |
+| 3 | 6 / 3 | parts by name, opaque char, flames die with their part; Squash made slivers |
+| 4 | not scored | opaque Highlight hid the fire again; a char SHELL tested in the same Play fixed it |
+| 5 | 5 / 3 | the shell; the fire still separate sprites |
+| 6 | 6 / 3 | catch burst, bigger 3-layer fire, parts sliced by the line |
+| 7 (kept) | 6 / 3 | flames Cleared with their part, charcoal + rim, orange band, smoke, softer core |
+
+- The score held at 6 for three rounds, so round 7 was kept.
+- **The critics' remaining notes:** the char reads too flat and black on a dark wall; a few tongues still float at the
+  sides; the burn-line flames are a bit tall; there are few dark inner flames.
+- Sheet: `flair/ember-practice-r1-vs-final.jpg`. Lessons: `docs/vfx/PLAYBOOK.md` "Fire on a body".
+- **In code (`KillFx.luau` STEP.ember):**
+  - `KillFxPacks = false` on a body plays the first Ember (`emberV1`), for before/after rows.
+  - The shell isn't built on your own body; there the Highlight is the char.
 
 ### The bought VFX packs on kill effects (20 Nov, place v1116)
 

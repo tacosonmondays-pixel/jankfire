@@ -276,8 +276,11 @@ local function emote(frame: GuiObject, id: string): Handle?
 	local track: AnimationTrack? = nil
 	local loops = e.loop == true
 	local len = math.max(0.8, tonumber(e.len) or 3)
-	if an then
-		local anim = new("Animation", { AnimationId = e.anim })
+	-- (an R6 stand-in plays the emote's R6 take, the flair session 20 Nov; none: it stands still)
+	local hum = sc.m:FindFirstChildOfClass("Humanoid")
+	local animId = if F.emoteAnim then F.emoteAnim(id, hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6) else e.anim
+	if an and animId then
+		local anim = new("Animation", { AnimationId = animId })
 		local ok, tr = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
 		if ok and tr then
 			track = tr

@@ -79,6 +79,28 @@ TREE = { 'HumanoidRootPart': ['LowerTorso'], 'LowerTorso': ['UpperTorso', 'LeftU
          'RightUpperArm': ['RightLowerArm'], 'RightLowerArm': ['RightHand'], 'LeftUpperLeg': ['LeftLowerLeg'], 'LeftLowerLeg': ['LeftFoot'],
          'RightUpperLeg': ['RightLowerLeg'], 'RightLowerLeg': ['RightFoot'] }
 
+# (20 Nov 2026, R6 emotes: the owner keeps R6 allowed) --r6: the same clip for an R6 body. R6 has six rigid parts, so
+# the Torso follows Spine1 (between the hips and the chest) and each arm or leg follows its upper bone turned a third of
+# the way toward its lower one (the limb can't bend: this points it about where the whole limb points). R6's Motor6Ds
+# have turned frames (C0 and C1 share one rotation Rc per joint), so Part1 = Part0 C0 T C1^-1 gives a joint's pose
+# T = Rc^T (W(parent)^T W(part)) Rc; the Root pose also carries the hips' offset, as Rc^T off. --hip 2 is R6's leg length
+R6 = '--r6' in argv
+if R6:
+    PARTS = [
+        ('Torso', 'Spine1', 'HumanoidRootPart', Matrix.Identity(3)),
+        ('Head', 'Head', 'Torso', Matrix.Identity(3)),
+        ('Left Arm', ('LeftArm', 'LeftForeArm', 0.35), 'Torso', RZ(-90)),
+        ('Right Arm', ('RightArm', 'RightForeArm', 0.35), 'Torso', RZ(90)),
+        ('Left Leg', ('LeftUpLeg', 'LeftLeg', 0.35), 'Torso', Matrix.Identity(3)),
+        ('Right Leg', ('RightUpLeg', 'RightLeg', 0.35), 'Torso', Matrix.Identity(3)),
+    ]
+    TREE = { 'HumanoidRootPart': ['Torso'], 'Torso': ['Head', 'Left Arm', 'Right Arm', 'Left Leg', 'Right Leg'] }
+    _root = Matrix(((-1, 0, 0), (0, 0, 1), (0, 1, 0)))  # RootJoint and Neck
+    _right = Matrix(((0, 0, 1), (0, 1, 0), (-1, 0, 0)))  # Right Shoulder, Right Hip
+    _left = Matrix(((0, 0, -1), (0, 1, 0), (1, 0, 0)))  # Left Shoulder, Left Hip
+    RC = { 'Torso': _root, 'Head': _root, 'Right Arm': _right, 'Right Leg': _right, 'Left Arm': _left, 'Left Leg': _left }
+    if '--hip' not in argv: HIP = 2.0
+
 def rot3(m4):
     m = m4.to_3x3()
     return Matrix([c.normalized() for c in m.transposed()]).transposed()  # (columns to unit length: the armature is at 0.01)
@@ -97,18 +119,22 @@ raw = []  # per frame: { part: world rotation (Roblox) }, hips offset (Roblox, s
 for f in frames:
     if JS is None: bpy.context.scene.frame_set(f)
     W = { 'HumanoidRootPart': Matrix.Identity(3) }
-    for part, bone, parent, Q in PARTS:
+    def turn_of(bone):
+        if isinstance(bone, tuple):  # (R6) an upper bone turned part of the way toward its lower one
+            a, b, k = bone
+            return turn_of(a).to_quaternion().slerp(turn_of(b).to_quaternion(), k).to_matrix()
         if JS is None:
-            pb = arm.pose.bones[P + bone]
-            D = rot3(mw @ pb.matrix) @ rest[P + bone].transposed()
-        else:
-            D = Matrix(JS['frames'][f]['rot'][bone]) @ rest[P + bone].transposed()
-        W[part] = M @ D @ M.transposed() @ Q
+            return rot3(mw @ arm.pose.bones[P + bone].matrix) @ rest[P + bone].transposed()
+        return Matrix(JS['frames'][f]['rot'][bone]) @ rest[P + bone].transposed()
+    for part, bone, parent, Q in PARTS:
+        W[part] = M @ turn_of(bone) @ M.transposed() @ Q
     h = mw @ arm.pose.bones[P + 'Hips'].head if JS is None else Vector(JS['frames'][f]['head']['Hips'])
     off = M @ (h - hips_rest) * scale
     raw.append((W, Vector(off)))
 
 def joint_poses(W):
+    if R6:
+        return { part: RC[part].transposed() @ (W[parent].transposed() @ W[part]) @ RC[part] for part, bone, parent, Q in PARTS }
     return { part: W[parent].transposed() @ W[part] for part, bone, parent, Q in PARTS }
 
 # looping: a clip whose last frame is its first drops it; another eases its last BLEND frames into the first
@@ -156,7 +182,10 @@ UNKEYED = { 'HumanoidRootPart', 'LowerTorso' } if UPPER else set()
 LEGS = { 'LeftUpperLeg', 'RightUpperLeg' }
 def pose_xml(part, rots, hips):
     R = Matrix.Identity(3) if part == 'HumanoidRootPart' or part in UNKEYED else rots[part]
-    pos = hips if part == 'LowerTorso' and not UPPER else Vector((0, 0, 0))
+    if R6:
+        pos = RC['Torso'].transposed() @ hips if part == 'Torso' else Vector((0, 0, 0))
+    else:
+        pos = hips if part == 'LowerTorso' and not UPPER else Vector((0, 0, 0))
     kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS))
     wt = 0 if part in UNKEYED else 1
     return ('<Item class="Pose" referent="%s"><Properties><string name="Name">%s</string>%s<float name="Weight">%d</float>'
