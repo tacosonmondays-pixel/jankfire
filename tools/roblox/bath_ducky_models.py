@@ -11,6 +11,7 @@
 # Frames: Blender Z up, the ducks face -Y. NOT pre-turned: an upload lands Blender (x, y, z) at Roblox (-x, z, y)
 # (tools/roblox/rbxglb.py), so a duck's face ends up on the MeshPart's -Z = its LookVector.
 # run: blender -b --factory-startup -P tools/roblox/bath_ducky_models.py -- <giant_seg.glb> <army_seg.glb> <out_dir> [preview]
+#   round 2 (the rubber ducks): ... -- <giant2_seg.glb> <unused> <out_dir> round2 [preview]
 import bpy, bmesh, sys, os, math
 from mathutils import Vector, Matrix
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -279,6 +280,47 @@ def preview(path):
         bpy.ops.render.render(write_still=True)
     bpy.data.objects.remove(cam)
 
+
+# ------------------------------------------------------------------ round 2 (20 Nov): classic rubber ducks
+# the owner on round 1: "I dont like how the ducks look theyre supposed to be rubber ducks". Their own storyboard image
+# shows glossy, bright yellow, round toys with a wide orange beak, stern black eyes, a white foam cap (the giant: a gold
+# crown on it). New Tripo takes (giant 80995e0c, small 87a276c7), segmented the same way. Glossy = Reflectance in Studio.
+RUBBER, BEAK, BEAK_D, EYE_INK, GOLD2 = 'ffcc1f', 'ff8a1a', 'd96a10', '1d1a22', 'f0bf3c'
+
+
+def build_giant2(path):
+    # 0 foam cap  1 body  2/6 wings  3/8 eyes  4 head  5 beak  7 crown  9-13 crown knobs and band  14/15 the stern brows
+    objs = load(path)
+    fit(objs, 10.0)  # (Studio scales it to the scene's size)
+    colours = {0: FOAM, 1: RUBBER, 2: RUBBER, 6: RUBBER, 4: RUBBER, 5: BEAK, 3: EYE_INK, 8: EYE_INK, 14: EYE_INK, 15: EYE_INK, 7: GOLD2}
+    for i, o in enumerate(objs):
+        flat(o, colours.get(i, GOLD2))
+    return join(objs, 'bd2_giant')
+
+
+def build_duck2(path):
+    # the small ducks are the giant without its crown, as in the owner's image (foam-capped, stern, no crown). (The small
+    # take 87a276c7 was sent to Segment too, but that job sat on "Segmenting" for minutes.)
+    objs = load(path)
+    keep = [(i, o) for i, o in enumerate(objs) if not (i == 7 or 9 <= i <= 13)]
+    for i, o in enumerate(objs):
+        if i == 7 or 9 <= i <= 13:
+            bpy.data.objects.remove(o)
+    fit([o for _, o in keep], 1.6)
+    colours = {0: FOAM, 5: BEAK, 3: EYE_INK, 8: EYE_INK, 14: EYE_INK, 15: EYE_INK}
+    for i, o in keep:
+        flat(o, colours.get(i, RUBBER))
+    return join([o for _, o in keep], 'bd2_duck')
+
+
+if 'round2' in argv[3:]:
+    g2 = build_giant2(GIANT)
+    if PREVIEW: preview(os.path.join(OUT, 'prev_giant2'))
+    export([g2], 'bd2_giant')
+    d2 = build_duck2(GIANT)
+    if PREVIEW: preview(os.path.join(OUT, 'prev_duck2'))
+    export([d2], 'bd2_duck')
+    sys.exit(0)
 
 g, l = build_giant()
 if PREVIEW: preview(os.path.join(OUT, 'prev_giant'))

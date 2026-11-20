@@ -1,5 +1,49 @@
 # The Bath Ducky skin reveal (storyboard, 19 Nov 2026)
 
+## Round 2 (20 Nov): rubber ducks, a kaiju rise, a finisher on the opponent
+
+The owner on round 1 (relayed word for word by the VFX session): "I dont like how the ducks look theyre supposed to be
+rubber ducks, I want the reveal to look like the iamge, like a kaiju emeging from the water with a perspective shot!
+then it pans to your oppenent at the door, and then back at you and the ducky, a ide shot of you in the pool staring at
+your enemtn then you and the ducky spray hjim with water".
+
+![round 2](bath-ducky/bath_ducky_finisher_r2.jpg)
+
+Single shots: `bath-ducky/shot_01.jpg` to `shot_06.jpg`.
+
+| # | shot | time | what happens | camera |
+|---|---|---|---|---|
+| 01 | The rise | 0.0-1.4 s | the giant rubber ducky erupts from the pool like a kaiju, huge against the room: splash, light rays | low on the water behind you, looking up past you (the owner's image, beat 03) |
+| 02 | The opponent | 1.4-2.2 s | the lens swings to the opponent, frozen in the doorway | pan to the door, long lens |
+| 03 | You and the ducky | 2.2-3.0 s | back to you and the ducky, both staring him down | low, from the door side |
+| 04 | The standoff | 3.0-4.0 s | wide: you in the pool with the ducky, the enemy across the room | wide, high corner |
+| 05 | The spray | 4.0-5.0 s | you (the skin in your hand) and the ducky spray him with water | over the shoulders, down the jets |
+| 06 | Soaked | 5.0-6.2 s | the jets hit, he is knocked back drenched; the finisher's name and the skin's name | on the opponent, a small tilt |
+
+What changed:
+- **The ducks are classic rubber ducks now:** glossy, round, bright yellow, a wide orange beak, stern black eyes, a white
+  foam cap (the giant wears the gold crown on it). New Tripo takes, four per idea (sheet in the vault:
+  `Assets/tripo-19nov-bath-ducky/bath_ducky_takes_round2.jpg`): giant take 2 `80995e0c` kept (stern eyes, foam cap and
+  crown, like the owner's image). The small floating ducks are that same duck without its crown, as in the owner's
+  image (small take 1 `87a276c7` was picked first, but Tripo's Segment job on it never finished). Gloss is the MeshPart's
+  Reflectance. Uploads: giant `85544912707294`, small `116208755186622`.
+- **It is a finisher now** (the VFX session: "it now plays on an opponent, finisher-style"): about 6 s, so it fits the
+  finishers' match-win scene (`client/FinisherScene.luau`, 4-6 s, the end screen waits; everyone in the match sees it;
+  SPACE / B / SKIP). The set: a tiled pool room with a door and a lit hall behind it, built far off the map.
+- **The opponent** is a real R15 avatar posed from the finisher session's own uploaded victim clips:
+  `victim_lookaround_t2` at the door (the frame where the head turns furthest) and `pulled` when the jets hit (the
+  frame where the head is furthest back). The player stands in the pool in Roblox's own idle, and sprays in the
+  `point` frame with the furthest reach, the VIP Ducky pistol in the hand.
+- The stage script is `tools/roblox/bath_ducky_board2.luau`; the sheet `tools/roblox/bath_ducky_sheet.py ... v2`.
+  Shot in one Studio turn on 20 Nov (place version 1096, the stage removed). The victim clips carry their own root
+  turn, so the script turns the opponent until his chest faces the pool.
+- Still rough on the board: in shot 06 his face is lost in the splash, and the giant's light rays read white, not gold.
+
+The plan further down (round 1's reveal) still holds for how the camera and the skip are built; what changes is when it
+plays: as the skin's finisher on the match-winning kill instead of a one-time unlock reveal.
+
+## Round 1 (19 Nov): the nine-beat reveal
+
 The owner sent their own storyboard for a "BATH DUCKY SKIN" reveal (runtime about 0:25-0:30, comedy / skin reveal),
 asked "are you able to story board this?" and then "we can meshy or tripo the ducks!". This is that storyboard, staged in
 Studio with our own pieces, and a plan for building it as a real in-game cinematic. **Nothing is in the game yet: the

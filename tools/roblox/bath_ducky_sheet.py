@@ -8,6 +8,7 @@ import sys, os, math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
+V2 = 'v2' in sys.argv[3:]  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
 CW, CH = 640, 360            # one panel
 CAP = 92                     # caption under it
 PAD, HEAD = 18, 96
@@ -25,6 +26,19 @@ PANELS = [  # number, title, timing, what happens (the owner's beat), camera
     ('07', 'WATER ATTACK', '0:17-0:22', 'Everyone squirts water at the camera at the same time.', 'quick zoom + shake'),
     ('08', 'SPLASH OUT', '0:22-0:24', 'The screen is completely soaked.', 'full-screen splash'),
     ('09', 'REVEAL END CARD', '0:24-0:28', 'Skin unlocked: the player cheers among the ducks and bubbles.', 'hold, gentle drift'),
+]
+
+
+# round 2 (20 Nov), the owner: "like a kaiju emeging from the water with a perspective shot! then it pans to your
+# oppenent at the door, and then back at you and the ducky, a ide shot of you in the pool staring at your enemtn then
+# you and the ducky spray hjim with water". A finisher now: about 6 s on the match-winning kill.
+PANELS_V2 = [
+    ('01', 'THE RISE', '0.0-1.4 s', 'The giant rubber ducky erupts from the pool like a kaiju, huge against the room.', 'low on the water, looking up past you'),
+    ('02', 'THE OPPONENT', '1.4-2.2 s', 'The lens swings to your opponent, frozen in the doorway.', 'pan to the door, long lens'),
+    ('03', 'YOU AND THE DUCKY', '2.2-3.0 s', 'Back to you and the ducky, both staring him down.', 'low, from the door side'),
+    ('04', 'THE STANDOFF', '3.0-4.0 s', 'Wide: you in the pool with the ducky, the enemy across the room.', 'wide, high corner'),
+    ('05', 'THE SPRAY', '4.0-5.0 s', 'You and the ducky spray him with water.', 'over the shoulders, down the jets'),
+    ('06', 'SOAKED', '5.0-6.2 s', 'The jets hit; he is knocked back, drenched. Finisher and skin name.', 'on the opponent, a small tilt'),
 ]
 
 
@@ -63,7 +77,7 @@ def soak(im):
     return out
 
 
-def end_card(im, skin='BATH DUCKY'):
+def end_card(im, skin='BATH DUCKY', small='SKIN UNLOCKED'):
     """panel 9: the plain label the in-game card shows (a TextLabel there, never baked into an upload)"""
     lay = Image.new('RGBA', im.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(lay)
@@ -73,7 +87,7 @@ def end_card(im, skin='BATH DUCKY'):
     d.rounded_rectangle([x0, y0, x0 + w, y0 + 86], radius=16, fill=(18, 32, 52, 190))
     d.rounded_rectangle([x0 + 18, y0 + 78, x0 + w - 18, y0 + 82], radius=2, fill=(226, 178, 60, 255))
     f1, f2 = font(BOLD, 16), font(BOLD, 40)
-    t1 = 'SKIN UNLOCKED'
+    t1 = small
     d.text(((CW - d.textlength(t1, font=f1)) / 2, y0 + 10), t1, font=f1, fill=(226, 178, 60, 255))
     d.text(((CW - d.textlength(skin, font=f2)) / 2, y0 + 28), skin, font=f2, fill=(255, 255, 255, 255))
     return Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB')
@@ -95,18 +109,29 @@ def main():
         p = os.path.join(SRC, 'p%d.png' % i)
         if os.path.exists(p):
             shots[i] = band(p)
-    if 7 in shots:
-        shots[8] = soak(shots[7])
-    if 9 in shots:
-        shots[9] = end_card(shots[9])
+    panels = PANELS_V2 if V2 else PANELS
+    if V2:
+        if 6 in shots:
+            shots[6] = end_card(shots[6], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK PISTOL'))
+    else:
+        if 7 in shots:
+            shots[8] = soak(shots[7])
+        if 9 in shots:
+            shots[9] = end_card(shots[9])
+    rows = (len(panels) + 2) // 3
     W = PAD + 3 * (CW + PAD)
-    H = HEAD + 3 * (CH + CAP + PAD) + PAD
+    H = HEAD + rows * (CH + CAP + PAD) + PAD
     sheet = Image.new('RGB', (W, H), (24, 26, 32))
     d = ImageDraw.Draw(sheet)
-    d.text((PAD, 20), 'BATH DUCKY SKIN  -  reveal storyboard', font=font(BOLD, 34), fill=(245, 207, 58))
-    d.text((PAD, 62), 'Runtime about 0:25-0:30   |   comedy / skin reveal   |   the owner\'s beats, staged in Studio with our R15 rig, Tripo ducks and tub',
-           font=font(REG, 17), fill=(190, 190, 196))
-    for i, p in enumerate(PANELS):
+    if V2:
+        d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 2', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), "About 6 s on the match-winning kill   |   the owner's notes: rubber ducks, a kaiju rise, the opponent at the door, the spray   |   staged in Studio",
+               font=font(REG, 17), fill=(190, 190, 196))
+    else:
+        d.text((PAD, 20), 'BATH DUCKY SKIN  -  reveal storyboard', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), 'Runtime about 0:25-0:30   |   comedy / skin reveal   |   the owner\'s beats, staged in Studio with our R15 rig, Tripo ducks and tub',
+               font=font(REG, 17), fill=(190, 190, 196))
+    for i, p in enumerate(panels):
         cx = PAD + (i % 3) * (CW + PAD)
         cy = HEAD + (i // 3) * (CH + CAP + PAD)
         im = shots.get(i + 1)
@@ -118,7 +143,7 @@ def main():
         caption(d, cx, cy + CH, p)
     sheet.save(OUT, quality=90)
     for i, im in shots.items():  # the single panels too, full size, for the docs
-        im.save(os.path.join(os.path.dirname(OUT), 'panel_%02d.jpg' % i), quality=92)
+        im.save(os.path.join(os.path.dirname(OUT), ('shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
     print(OUT, sheet.size, sorted(shots))
 
 
