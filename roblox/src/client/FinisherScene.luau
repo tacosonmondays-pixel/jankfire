@@ -87,10 +87,26 @@ local EXTRA: { [string]: any } = {
 			["VICTIM'S HAND"] = 1.5, ["THE WIDE"] = 1.4, ["EYES AGAIN"] = 1.6, ["THEIR EYES"] = 1.6, ["ENEMY REACHES"] = 2.0,
 			["FAR SHOT"] = 1.3 },
 		zoom = { ["EYES AGAIN"] = 1.3, ["THEIR EYES"] = 1.3 },
-		cues = { { 1, "zone_lot", 0.5 }, { 75, "loot_pop", 0.25 }, { 163, "swing", 0.4 },
-			{ 169, "skin_revolver_dust_reload", 0.5 }, { 174, "skin_revolver_dust_reload", 0.7 },
-			{ 181, "skin_revolver_dust_fire", 1 }, { 181, "gun_revolver", 0.8 }, { 181, "round_end", 0.7 },
-			{ 191, "death", 0.6 }, { 211, "skin_revolver_dust_reload", 0.5 } },
+		-- (20 Nov, the owner: "there also no sound effects for the scenes and could we find some western music": all
+		-- recordings, no voices. A number is a Roblox library sound (Pro Sound Effects, licensed to every experience); a
+		-- name is the game's own library (Sfx). The wind and the music drop out before the shot, so the bang lands in
+		-- near silence, and come back after the fall)
+		cues = { { 20, "9120839174", 0.35 }, -- a sign creaks over the street
+			{ 75, "click", 0.4 }, -- the killer's thumb on the hammer
+			{ 95, "9114704545", 0.25 }, -- leather: the enemy's hand by the holster
+			{ 112, "9114518070", 0.45 }, { 128, "9114518070", 0.3 }, -- the tumbleweed rolling through
+			{ 169, "9114701864", 0.8 }, -- the enemy draws: the gun out of the leather
+			{ 174, "9114701864", 1 }, { 176, "click", 0.5 }, -- the killer draws, cocks
+			{ 181, "gun_revolver", 1 }, { 181, "skin_revolver_dust_fire", 0.8 }, -- the shot (a ricochet's long tail on it)
+			{ 182, "9113487557", 0.7 }, -- the bullet into the body
+			{ 191, "9113469691", 0.9 }, { 193, "9114658419", 0.4 }, -- the fall, the dust settling
+			{ 211, "9114704674", 0.6 } }, -- back in the holster
+		audio = {
+			-- (the music: APM's "Gunslingers", an atmospheric western scene-setter from Roblox's licensed library; under
+			-- the MUSIC slider. the wind: Pro Sound Effects' desert wind, under EFFECTS)
+			music = { id = "1841135337", vol = 0.5, out = 166, outT = 0.5, back = 196, backVol = 0.4, backT = 1.2 },
+			bed = { id = "9114057104", vol = 0.5, out = 166, outT = 0.6, back = 196, backVol = 0.22, backT = 1.0, looped = true },
+		},
 		lamps = true,
 		-- (the video's light: a low warm sun with real shadows, a warm haze, a light grade; put back after)
 		look = { clock = 17.2, lat = 35, bright = 2.6, outdoor = Color3.fromRGB(122, 102, 96), ambient = Color3.fromRGB(72, 62, 60),
@@ -573,6 +589,36 @@ local function ghosts(sc: any, s: any, list: any)
 	for gi = #(list or {}) + 1, #sc.ghosts do sc.ghosts[gi].model.Parent = nil end
 end
 
+-- (the eyes' height on this head, in the head's own space, or nil: a dynamic head's eye bones, else a face accessory
+-- that sits on the eyes (glasses, a visor). The owner, on High Noon: the eye shots missed the eyes - their avatar's
+-- eyes sit ~0.4 lower than the stand-in's (its glasses at -0.15 against the stand-in's eyes at +0.24))
+local function eyeY(p: BasePart, k: number): number?
+	local sum, n = 0, 0
+	for _, b in p:GetDescendants() do
+		if b:IsA("Bone") then
+			local nm = string.lower(b.Name)
+			if (nm == "lefteye" or nm == "righteye") then
+				sum += p.CFrame:PointToObjectSpace(b.WorldPosition).Y
+				n += 1
+			end
+		end
+	end
+	if n > 0 then return sum / n end
+	local m = p.Parent
+	if not m then return nil end
+	for _, acc in m:GetChildren() do
+		if acc:IsA("Accessory") and acc.AccessoryType == Enum.AccessoryType.Face then
+			local h = acc:FindFirstChild("Handle") :: BasePart?
+			local at = h and h:FindFirstChildOfClass("Attachment")
+			if h and at and (at.Name == "FaceFrontAttachment" or at.Name == "FaceCenterAttachment") then
+				local rel = p.CFrame:PointToObjectSpace(h.Position)
+				-- (in front of the face, centred, near the middle of the head: a beard or a collar sits lower)
+				if math.abs(rel.X) < 0.3 * k and rel.Z < 0 and math.abs(rel.Y) < 0.35 * k then return rel.Y end
+			end
+		end
+	end
+	return nil
+end
 -- the real body point an anchor names (this frame), and the stand-in's (from the data); offsets scale by the part
 local ANCH = { kH = { "k", "Head" }, kU = { "k", "UpperTorso" }, kL = { "k", "LowerTorso" }, vH = { "v", "Head" },
 	vU = { "v", "UpperTorso" }, vL = { "v", "LowerTorso" }, kR = { "k", "RightHand" }, vR = { "v", "RightHand" } }
@@ -590,7 +636,13 @@ local function realAnchor(sc: any, s: any, key: string): (CFrame?, number)
 		-- an anime head, a big hat or hair puts the eyes elsewhere. The stand-in's face front, (0, 0, -0.6) on its 1.2
 		-- head, lands on this head's own FaceFrontAttachment)
 		local ffa = p:FindFirstChild("FaceFrontAttachment")
-		if ffa and ffa:IsA("Attachment") then return p.CFrame * CFrame.new(ffa.Position - Vector3.new(0, 0, -0.6) * k), k end
+		if ffa and ffa:IsA("Attachment") then
+			local off = ffa.Position - Vector3.new(0, 0, -0.6) * k
+			-- (and at the eyes' own height when this head says where they are: the stand-in's eyes are at +0.24)
+			local ey = eyeY(p, k)
+			if ey then off = Vector3.new(off.X, ey - 0.24 * k, off.Z) end
+			return p.CFrame * CFrame.new(off), k
+		end
 	end
 	return p.CFrame, k
 end
@@ -1093,6 +1145,61 @@ local function drawFx(sc: any, s: any, f: any, T: number)
 	end
 end
 
+-- the scene's sounds on their frames (the short payoff only hears its own). a cue that is all digits is a Roblox library
+-- sound by id (EFFECTS); any other is the game's library by name (Sfx). a scene's audio beds (High Noon: the music under
+-- MUSIC, the wind under EFFECTS) start with it, fade out on their `out` frame and come back on `back`
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+local function groupOf(name: string): SoundGroup?
+	local m = SoundService:FindFirstChild("JankMaster")
+	local g = m and m:FindFirstChild(name)
+	return if g and g:IsA("SoundGroup") then g else nil
+end
+local function ownSound(sc: any, id: string, vol: number, group: string, looped: boolean?): Sound
+	local snd = Instance.new("Sound")
+	snd.Name = "FinisherSound"
+	snd.SoundId = "rbxassetid://" .. id
+	snd.Volume = vol
+	snd.Looped = looped == true
+	snd.SoundGroup = groupOf(group)
+	snd.Parent = SoundService
+	table.insert(sc.sounds, snd)
+	if not looped then snd.Ended:Once(function() snd:Destroy() end) end
+	snd:Play()
+	return snd
+end
+local function fadeTo(snd: Sound?, to: number, t: number)
+	if snd and snd.Parent then TweenService:Create(snd, TweenInfo.new(t, Enum.EasingStyle.Sine), { Volume = to }):Play() end
+end
+local function sounds(sc: any, i: number)
+	sc.sounds = sc.sounds or {}
+	for _, q in sc.ex.cues or {} do
+		if not sc.cued[q] and i >= q[1] and q[1] >= sc.i0 then
+			sc.cued[q] = true
+			if string.match(q[2], "^%d+$") then pcall(ownSound, sc, q[2], q[3], "Effects") else pcall(Sfx.play, q[2], nil, q[3]) end
+		end
+	end
+	local au = sc.ex.audio
+	if not au then return end
+	sc.beds = sc.beds or {}
+	for key, b in au do
+		local st = sc.beds[key]
+		if not st then
+			st = {}
+			sc.beds[key] = st
+			-- (no beds under a payoff that starts after they'd have gone quiet: the short one starts at the draw)
+			if sc.i0 < b.out then
+				local ok, snd = pcall(ownSound, sc, b.id, b.vol, if key == "music" then "Music" else "Effects", b.looped)
+				if ok then st.snd = snd end
+			end
+		end
+		if st.snd then
+			if not st.out and i >= b.out then st.out = true; fadeTo(st.snd, 0, b.outT) end
+			if not st.back and b.back and i >= b.back then st.back = true; fadeTo(st.snd, b.backVol, b.backT) end
+		end
+	end
+end
+
 -- ------------------------------------------------------------------ the scene
 function Scene.start(s: any, kind: string): any
 	local d = dataOf(s.row.scene)
@@ -1308,12 +1415,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 				end
 			end
 		end
-		for _, q in sc.ex.cues or {} do
-			if not sc.cued[q] and i >= q[1] and q[1] >= sc.i0 then
-				sc.cued[q] = true
-				pcall(Sfx.play, q[2], nil, q[3])
-			end
-		end
+		sounds(sc, i)
 		return shot, u, shot == sc.lastShot
 	end
 	-- the bodies
@@ -1379,12 +1481,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	setHit(sc, s, hit, accent)
 	if hit and sc.backdrop then sc.backdrop.CFrame = cam.CFrame * CFrame.new(0, 0, -180) end
 	-- the sounds, on their frames (the short payoff only hears its own)
-	for _, q in sc.ex.cues or {} do
-		if not sc.cued[q] and i >= q[1] and q[1] >= sc.i0 then
-			sc.cued[q] = true
-			pcall(Sfx.play, q[2], nil, q[3])
-		end
-	end
+	sounds(sc, i)
 	return shot, u, shot == sc.lastShot
 end
 
@@ -1398,6 +1495,10 @@ function Scene.stop(s: any)
 	s.scene = nil
 	for _, set in sc.tracks do for _, tr in set do pcall(function() tr:Stop(0) end) end end
 	for _, kit in sc.rev or {} do if kit.ik then kit.ik:Destroy() end end
+	-- (its sounds go with it: a quick fade, so a skip doesn't click)
+	for _, snd in sc.sounds or {} do
+		if snd.Parent then fadeTo(snd, 0, 0.3); task.delay(0.35, function() snd:Destroy() end) end
+	end
 	-- (the place's own light back, as it was before the scene)
 	local was = sc.lookWas
 	if was then
