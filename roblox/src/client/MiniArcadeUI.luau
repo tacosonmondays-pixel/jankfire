@@ -779,7 +779,7 @@ function M.open(api: any, model: Model, side: string)
 	-- the LEADERBOARD (the owner, 19 Nov: "add a leaderboard option"): the all-time best and this server's, side by side
 	local lbB = api.button(at, "Leaderboard", "LEADERBOARD", UDim2.new(0.5, 92, 0.72, 0), UDim2.fromOffset(170, 42), false)
 	lbB.AnchorPoint = Vector2.new(0.5, 0); lbB.ZIndex = 11
-	local bp = T.new("Frame", { Name = "Board", BackgroundColor3 = INK, BackgroundTransparency = 0.04, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 14, Visible = false }, canvas)
+	local bp = T.new("Frame", { Name = "Board", BackgroundColor3 = INK, BackgroundTransparency = 0, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 14, Visible = false }, canvas)
 	G.boardP = bp
 	local bt = T.text(bp, "Title", "LEADERBOARD", 28, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center)
 	bt.Position = UDim2.fromScale(0, 0.05); bt.Size = UDim2.fromScale(1, 0.1); bt.ZIndex = 15

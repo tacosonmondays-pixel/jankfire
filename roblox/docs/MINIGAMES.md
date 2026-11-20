@@ -385,7 +385,7 @@ The anti-cheat session forwarded them:
     - a hit x0.88, a perfect x0.82, down to 0.05;
     - a miss gives some back (x1.25, up to the starting 0.15).
   - The needle still quickens over the bout.
-  - **The tip:** during the countdown, "PRESS SPACE WHEN THE NEEDLE IS IN THE ZONE · EACH HIT SHRINKS IT" (TAP on a phone, the pad's button on a pad). It stays 2 s into the bout.
+  - **The tip:** during the countdown, "PRESS SPACE WHEN THE NEEDLE IS IN THE ZONE · EACH HIT SHRINKS IT" (TAP on a phone, the pad's button on a pad). It stays 2 s into the bout. Seen at place version 1074 (`docs/minigames/arm_tip.jpg`).
 - **Chess:**
   - New pieces (kit v2, asset 96758810630944; `minigame_models.py`):
     - the pawn's big round head;
@@ -401,7 +401,7 @@ The anti-cheat session forwarded them:
   - **LEADERBOARD** beside START on the attract screen: ALL TIME and THIS SERVER, 10 each, and BACK (pad B closes it too).
     - The all-time board is each player's best in an OrderedDataStore: `JankArcadeBest`, or `JankArcadeBest_studio` in Studio, so tests never touch the live board.
     - It is read every 60 s and after each better run.
-    - Tested: a 1,250 run went onto both boards.
+    - Tested: a 1,250 run went onto both boards. The panel is solid since place version 1074 (the attract screen showed through it).
     - Photo: `arcade_leaderboard.jpg`.
   - The cabinet's own screen takes turns between HIGH SCORES (this server) and ALL-TIME BEST.
   - Two cushions on the lid (kit v2) and two HubSeat parts on them (`L.arcade.topSeats`).
@@ -409,7 +409,16 @@ The anti-cheat session forwarded them:
   - Any part tagged `HubSeat` gets a Seat and a Sit prompt. The server seats you, stamping TeleportT for the anti-cheat; a jump stands you up; touching a seat never sits you.
   - While someone sits there, `SeatTaken` is set on the tagged part. A regular's place with `NpcHere` counts as taken.
   - The lounge and VIP sofas are the hub's to tag. It will, once its new layout is live, and make HubNPCs (Looticus and the others) skip or wait on a taken seat.
-  - **Not yet proven:** sitting on the cabinet's lid through the prompt. Triggering the prompt from a test script didn't seat the test player (6.8 studs off, its reach is 7). Next: a reach of 9 and a retest.
+  - The prompt's reach is 9 studs, since the cabinet's lid is over your head.
+  - Studio hook `ServerStorage.JankSeatTest`:
+    - `("sit", player, taggedPart)` runs the prompt's own checks;
+    - `("list")` shows who sits where.
+  - Tested at place version 1074, through that hook:
+    - you sat on the lid's first seat;
+    - `SeatTaken` went true, and its prompt hid;
+    - standing up freed it again.
+  - Photo: the cushions on the lid. Your own body is hidden on your own first-person screen, so it doesn't show sitting there.
+  - A test script's `ProximityPrompt:InputHoldBegin()` never fires a prompt, so use the hook.
 - **Boxing, several rings:**
   - One bout per `box` marker, all at once.
   - Each ring's publish timer is its own.
