@@ -742,7 +742,7 @@ transparency curves over life, speed in frame heights, direction and spread, acc
 RenderStepped connection exists only while something is alive; at most 360 particles on screen and 40 born a frame;
 rates and bursts follow the settings' particle slider (`Fx.density`). `UiParticles.fromEmitter` / `play` read a pack's
 world-space emitter (and its EmitCount / EmitDelay / EmitDuration) as a screen spec.
-- **Legendary reveals:** `UiParticles.fireStrip(frame, colour)` in the rarity colour, in a "RevealFire" frame along the
+- **Legendary reveals (removed, place version 1127):** the owner, on seeing it: "No liked flame there just wanted it as ref", then "No fire for crates"; the picture was only a reference for screen particles. `LootOpening` no longer calls it. What it was: `UiParticles.fireStrip(frame, colour)` in the rarity colour, in a "RevealFire" frame along the
   bottom third of the opening's screen, under the reveal text. A hot glowing base, flame tongues (`vfx_flame_4x4`) about
   half the strip tall, dark smoke above, embers rising well over it. Lit in `LootOpening` when the prize is legendary
   (both the container opening and the VIP daily reward), out as the reveal goes away. Round 1 (v1109) was a row of small
