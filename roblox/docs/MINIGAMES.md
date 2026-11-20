@@ -464,3 +464,10 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
   - the anti-cheat: 0 points;
   - photo: `docs/minigames/concourse_golf_room.jpg`.
   - The room's warm lights make the course look more saturated than in the Square; that's the hub's lighting.
+- **THE ATRIUM** (live since place version 1229; no golf room):
+  - all 8 tables built in `Map.Hub.Atrium.MiniGames` at the hub's spots: board, arm and the two cabinets (`arcade1_atrium`, `arcade2_atrium`) on level 2 (y 255, reached by the jump pads by the spawn), the four 22-stud rings in the gym through the SE portal (`Half` 10.2);
+  - nothing of the hub's stands in any table's room or inside the ropes;
+  - all four level-2 tables seat you (the player's `Hub` reads `atrium`), an arm bout ran there against a stand-in, and a bout ran in `box1_atrium`;
+  - the anti-cheat: 0 points;
+  - photos: `docs/minigames/atrium_arm_level2.jpg`, `atrium_box_ring.jpg`.
+- **THE RING retires** after the Atrium (the hub session's turn, 20 Nov): `Map.Hub.Rotunda` and its 7 markers go, so the bare ids (`box1`, `arm1`, ...) go with them. Tests use the hub ids (`box1_square`, `golf1_concourse`, ...). Nothing here reads the ring directly: markers are found by tag, the `RingMat` fallback runs only when there is no box marker, and `Map.Hub.MiniGames` stays as an empty folder.
