@@ -31,8 +31,40 @@ K.MAT = MAT
 local Tags = game:GetService("CollectionService")
 K.Tags = Tags
 
-local S = { root = nil :: Folder?, site = CFrame.new(), hub = "", count = 0, lamps = 0 }
+-- ------------------------------------------------------------------------------------------------ the style switch
+-- (20 Nov 2026, the owner once the three hubs were in: "This current hub reads less like the old one, last one felt more
+-- like robals with the old design phisophies"; main: rework each hub in the ring's look language, the first look one
+-- switch away.) A hub names its style in K.begin's attrs (Style): "warm" = the hubs as first built (one sand family,
+-- grainy floors, wood); "rivals" = the ring's language (vault: Design principles 1-3, For hubs): a cool two-tone, pale
+-- structure on slate walls and floors, every surface SmoothPlastic, dim but for the lamps, signs, screens and pads.
+-- K.part repaints by hex through K.RIVALS (so every kit piece follows) and drops the grainy materials; the rivals-only
+-- pieces (K.portal, K.wordSign, K.drum, K.coffers, K.haunch, K.floorLine, K.nameBand, K.infoScreen) and the hubs'
+-- own changes sit behind K.rivals(). attrs.Accent: the hub's one accent (seats, the floor's arrows, the signs' bars)
+K.R = { -- the rivals palette, for the new pieces
+	struct = "d6d5d0", structHi = "e6e5e1", wall = "666b74", wall2 = "5b6068", floor = "4c525b", floor2 = "434851",
+	ceil = "52575e", line = "c9c7c1", dark = "3a3e45", screen = "15181d", light = "f5f7fa", slat = "dfe6ee", cool = "e6edf7",
+}
+K.RIVALS = {
+	-- walls: slate
+	["8e8c86"] = "666b74", ["7f7d78"] = "5b6068", ["c4c0b6"] = "6b7078", ["77746c"] = "6c7178", ["6c6862"] = "5c6168",
+	-- structure: off-white, paler than the walls
+	["b3aea4"] = "d6d5d0", ["c4bfb5"] = "e6e5e1", ["68707c"] = "c9cacd", ["747c88"] = "d2d3d5",
+	-- floors: calm slate
+	["6e737b"] = "4f555e", ["62676f"] = "454a52", ["50555d"] = "4a4f58", ["5c616a"] = "51565f", ["4a4644"] = "42464e", ["4f4846"] = "454950",
+	-- ceilings, steel and the darks: mid values, nothing near black
+	["727a86"] = "52575e", ["3a3f47"] = "50555d", ["2d3138"] = "464a51", ["2a2d33"] = "3a3e45", ["3a3d42"] = "40444b",
+	-- the wood and the browns: pale grey and slate (no brown at all)
+	["8a6e55"] = "a9acb0", ["5c4d42"] = "4a4e55", ["4b4048"] = "4c5057",
+	-- seats: the hub's accent
+	["5a4f4a"] = "accent", ["5e6470"] = "accent",
+	-- the lamps' white: a touch cooler
+	["f4f1ea"] = "f5f7fa",
+}
+local KEEP_MAT = { [MAT.Neon] = true, [MAT.Glass] = true, [MAT.ForceField] = true }
+
+local S = { root = nil :: Folder?, site = CFrame.new(), hub = "", count = 0, lamps = 0, style = "warm", accent = "a65a3e" }
 K.S = S
+function K.rivals() return S.style == "rivals" end
 local function c3(h) return Color3.fromHex(h) end
 K.c3 = c3
 
@@ -47,9 +79,30 @@ function K.begin(parent: Instance, name: string, site: CFrame, hubId: string, at
 		local c = Instance.new("Folder"); c.Name = n; c.Parent = f
 	end
 	S.root = f; S.site = site; S.hub = hubId; S.count = 0; S.lamps = 0; S.live = live == true; S.missing = 0
+	S.style = (attrs and attrs.Style) or "warm"; S.accent = (attrs and attrs.Accent) or "a65a3e"
 	if not live then f:SetAttribute("MiniGamesOff", true) end -- (hub-minigames builds nothing on a staging copy)
+	if live then -- (a live build drops its old look zone: K.lookZone makes a new one if the hub wants it)
+		local zf = parent:FindFirstChild("LookZones")
+		local oz = zf and zf:FindFirstChild(name)
+		if oz then oz:Destroy() end
+	end
 	f.Parent = parent
 	return f
+end
+-- the hub's own light (HubLife: a part in Map.Hub.LookZones with the attribute Look names the look for whoever stands in
+-- it; HubLook.looks[look]): a box x0..x1, y0..y1, z0..z1 in the site's frame. live builds only
+function K.lookZone(look, x0, x1, y0, y1, z0, z1)
+	if not S.live then return nil end
+	local root = S.root :: Folder
+	local hub = root.Parent :: Instance
+	local zf = hub:FindFirstChild("LookZones")
+	if not zf then zf = Instance.new("Folder"); zf.Name = "LookZones"; zf.Parent = hub end
+	local p = Instance.new("Part"); p.Name = root.Name
+	p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false; p.Transparency = 1
+	p.Size = Vector3.new(x1 - x0, y1 - y0, z1 - z0); p.CFrame = S.site * CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+	p:SetAttribute("Look", look); p:SetAttribute("Hub", S.hub)
+	p.Parent = zf
+	return p
 end
 function K.folder(name) return (S.root :: Folder):FindFirstChild(name) end
 
@@ -58,6 +111,11 @@ function K.folder(name) return (S.root :: Folder):FindFirstChild(name) end
 function K.part(folder, name, cf, size, hex, mat, o)
 	o = o or {}
 	local p = Instance.new(o.cls or "Part")
+	if S.style == "rivals" then -- (the style switch: the repaint, no grainy materials)
+		local r = K.RIVALS[hex]
+		if r == "accent" then hex = S.accent elseif r then hex = r end
+		if mat and not KEEP_MAT[mat] then mat = SP end
+	end
 	p.Name = name; p.Anchored = true; p.Size = size; p.CFrame = S.site * cf
 	p.Color = c3(hex); p.Material = mat or SP
 	p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
@@ -145,7 +203,8 @@ end
 function K.light(p, range, bright, hex, o)
 	o = o or {}
 	local l = Instance.new(o.kind or "PointLight")
-	l.Range = range; l.Brightness = bright; l.Color = c3(hex or K.P.warm); l.Shadows = o.shadows == true
+	-- (rivals: a cool white unless a lamp asks for warm: warm light only where people stop)
+	l.Range = range; l.Brightness = bright; l.Color = c3(hex or (if S.style == "rivals" then K.R.cool else K.P.warm)); l.Shadows = o.shadows == true
 	if o.kind == "SpotLight" or o.kind == "SurfaceLight" then l.Face = o.face or Enum.NormalId.Bottom; l.Angle = o.angle or 90 end
 	l.Parent = p
 	S.lamps += 1
@@ -154,9 +213,11 @@ end
 -- a white light panel let into a ceiling whose underside is y: w (x) by l (z) in F, a soft light under it
 function K.panel(F, x, y, z, w, l, o)
 	o = o or {}
-	K.box(F, "Scenery", "PanelHousing", x - w / 2 - 0.35, x + w / 2 + 0.35, y - 0.45, y + 0.05, z - l / 2 - 0.35, z + l / 2 + 0.35, K.P.pier, nil, { ghost = true })
-	local p = K.box(F, "Scenery", "LightPanel", x - w / 2, x + w / 2, y - 0.55, y - 0.4, z - l / 2, z + l / 2, o.hex or K.P.light, MAT.Neon, { ghost = true, noshadow = true })
-	if o.range ~= 0 then K.light(p, o.range or 24, (o.bright or 0.55) * 1.5, o.lightHex or K.P.warm, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 150 }) end
+	local rv = S.style == "rivals" -- (rivals: a chunkier housing, the white panel just proud of it)
+	local b, d = if rv then 0.7 else 0.35, if rv then 0.85 else 0.45
+	K.box(F, "Scenery", "PanelHousing", x - w / 2 - b, x + w / 2 + b, y - d, y + 0.05, z - l / 2 - b, z + l / 2 + b, K.P.pier, nil, { ghost = true })
+	local p = K.box(F, "Scenery", "LightPanel", x - w / 2, x + w / 2, y - d - 0.1, y - d + 0.05, z - l / 2, z + l / 2, o.hex or K.P.light, MAT.Neon, { ghost = true, noshadow = true })
+	if o.range ~= 0 then K.light(p, o.range or 24, (o.bright or 0.55) * 1.5, o.lightHex or (if rv then K.R.cool else K.P.warm), { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 150 }) end
 	return p
 end
 -- an invisible marker part (spawns, spots, arrival points): at (x, y, z) in F turned yaw, 2 x 0.2 x 2
@@ -211,6 +272,7 @@ end
 -- proud toward it): posts, head, a lit strip under the head, the name on a dark sign above it facing the room
 function K.thinFrame(F, xa, xb, h, z, title, o)
 	o = o or {}
+	if S.style == "rivals" then return K.portal(F, xa, xb, h, z, title, o) end -- (rivals: a deep framed portal instead)
 	local d = o.depth or 0.5
 	for _, x in { xa, xb } do K.box(F, "Scenery", "OpeningFrame", x - 0.3, x + 0.3, -0.04, h + 0.3, z, z + d, K.P.steel) end
 	K.box(F, "Scenery", "OpeningFrame", xa - 0.3, xb + 0.3, h - 0.05, h + 0.4, z, z + d, K.P.steel)
@@ -237,9 +299,250 @@ function K.column(F, x, z, y0, y1, w, o)
 end
 -- a glass rail along F's x at the edge z (the walkway on +z side of it), from y (the floor) up
 function K.rail(F, x0, x1, y, z)
+	if S.style == "rivals" then -- (rivals: a solid parapet, slate with a pale coping: chunky, no glass)
+		K.box(F, "Scenery", "Parapet", x0, x1, y, y + 3.2, z - 0.5, z + 0.5, K.R.wall2, nil, { solid = true })
+		K.box(F, "Scenery", "ParapetCap", x0 - 0.05, x1 + 0.05, y + 3.2, y + 3.6, z - 0.65, z + 0.65, K.R.struct)
+		return
+	end
 	K.box(F, "Scenery", "RailGlass", x0, x1, y, y + 3.1, z - 0.15, z + 0.15, K.P.glass, MAT.Glass, { tr = 0.6, solid = true })
 	K.box(F, "Scenery", "RailTop", x0, x1, y + 3.1, y + 3.5, z - 0.25, z + 0.25, K.P.cream)
 	K.box(F, "Scenery", "RailFoot", x0, x1, y, y + 0.3, z - 0.25, z + 0.25, K.P.steel)
+end
+
+-- ------------------------------------------------------------------------------------------------ the rivals pieces
+-- a WedgePart standing up in F: its square corner at (x, y) in F's x-y plane, its legs `leg` long toward sx (along x) and
+-- sy (along y), z0..z1 deep; its slope faces away from the corner (a chamfer in a frame's corner)
+function K.chamfer(F, folder, name, x, y, z0, z1, leg, sx, sy, hex, o)
+	o = o or {}; o.cls = "WedgePart"
+	local Y, Z = Vector3.new(0, sy, 0), Vector3.new(-sx, 0, 0)
+	local cf = CFrame.fromMatrix(Vector3.new(x + sx * leg / 2, y + sy * leg / 2, (z0 + z1) / 2), Y:Cross(Z), Y, Z)
+	return K.part(folder, name, F * cf, Vector3.new(math.abs(z1 - z0), leg, leg), hex, nil, o)
+end
+-- a lit word sign facing F's look (as K.sign: the plate in F's plane z, w x h round (x, y)): a dark plate, the word lit
+-- pale, an accent bar under it, a pale housing whose lips stand proud of the plate
+function K.wordSign(F, folder, name, w, h, x, y, z, title, o)
+	o = o or {}
+	local lip = o.lip or 0.4
+	K.box(F, folder, name .. "Housing", x - w / 2 - lip, x + w / 2 + lip, y - h / 2 - lip, y + h / 2 + lip, z - 0.1, z + (o.back or 0.5), K.R.struct)
+	for _, s in { -1, 1 } do
+		K.box(F, folder, name .. "Lip", x - w / 2 - lip, x + w / 2 + lip, y + s * (h / 2 - 0.02), y + s * (h / 2 + lip), z - 0.45, z - 0.05, K.R.struct)
+		K.box(F, folder, name .. "Lip", x + s * (w / 2 - 0.02), x + s * (w / 2 + lip - 0.03), y - h / 2 - 0.1, y + h / 2 + 0.1, z - 0.44, z - 0.06, K.R.struct)
+	end
+	local p = K.box(F, folder, name, x - w / 2, x + w / 2, y - h / 2, y + h / 2, z - 0.25, z, K.R.screen, nil, { solid = false })
+	K.text(p, Enum.NormalId.Front, { { title, o.textHex or "f2f0ea", o.share or 0.6 } }, { pps = o.pps or 46, bright = 2.2 })
+	K.box(F, folder, name .. "Bar", x - w / 2 + 0.5, x + w / 2 - 0.5, y - h / 2 + 0.16, y - h / 2 + 0.34, z - 0.3, z - 0.24, o.accent or S.accent, MAT.Neon, { ghost = true, noshadow = true })
+	return p
+end
+-- (rivals) a deep framed opening, in place of K.thinFrame (the same F, xa, xb, h, z: z the wall's face, the room on +z): a
+-- pale sleeve through the wall standing proud both sides (jambs and a head), the head's inner corners chamfered, a lit
+-- strip under the head, a threshold; the name on a K.wordSign at o.signZ / o.signY facing the room
+function K.portal(F, xa, xb, h, z, title, o)
+	o = o or {}
+	local inn, out, hd, ch = o.inset or 0.8, o.cover or 0.8, o.headD or 1.4, o.chamfer or 1.2
+	local z0, z1 = z - (o.back or 2) - (o.proudBack or 0.6), z + (o.proud or 1.0)
+	local col = K.R.struct
+	for _, sx in { -1, 1 } do
+		local xe = if sx < 0 then xa else xb
+		K.box(F, "Shell", "PortalJamb", xe + sx * out, xe - sx * inn, 0, h - hd + 0.2, z0, z1, col)
+		-- (the chamfer's square corner sunk 0.05 into the jamb and the head: no faces shared)
+		K.chamfer(F, "Scenery", "PortalChamfer", xe - sx * (inn - 0.05), h - hd + 0.05, z0 + 0.05, z1 - 0.05, ch + 0.05, -sx, -1, col)
+	end
+	K.box(F, "Shell", "PortalHead", xa - out, xb + out, h - hd, h + 0.3, z0, z1, col)
+	local lit = K.box(F, "Scenery", "PortalLight", xa + inn + ch + 0.4, xb - inn - ch - 0.4, h - hd - 0.14, h - hd + 0.02, (z0 + z1) / 2 - 0.35, (z0 + z1) / 2 + 0.35, K.R.slat, MAT.Neon, { ghost = true, noshadow = true })
+	K.light(lit, o.range or 14, 0.5, nil, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
+	K.box(F, "Scenery", "PortalSill", xa + inn, xb - inn, -0.08, 0.11, z0, z1, col, nil, { ghost = true }) -- (over the floor's lines and runners)
+	if title then
+		local w = o.signW or math.min(xb - xa - 2, math.max(8, #title * 0.95))
+		local Fs = F * CFrame.new((xa + xb) / 2, 0, o.signZ or (z1 + 0.1)) * CFrame.Angles(0, math.pi, 0) -- (its front looks at the room)
+		K.wordSign(Fs, "Scenery", "WaySign", w, o.signH or 2.4, 0, o.signY or (h + 1.9), 0, title, { accent = o.accent })
+	end
+end
+-- (rivals) a coffered ceiling under y: beams on the lines xs (running along z) and zs (running along x), bosses where they
+-- cross, a lamp panel in every cell; o.skip(cx, cz, w, l) -> true leaves a cell open (a hole for a drum); o.d the depth
+function K.coffers(F, xs, zs, y, o)
+	o = o or {}
+	local d, bw = o.d or 1.8, o.bw or 1.0
+	local skip = o.skip or function() return false end
+	local open = {}
+	for i = 1, #xs - 1 do for j = 1, #zs - 1 do
+		local cx, cz, cw, cl = (xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2, xs[i + 1] - xs[i], zs[j + 1] - zs[j]
+		open[i .. "," .. j] = skip(cx, cz, cw, cl)
+		if not open[i .. "," .. j] and cw >= 5 and cl >= 5 and o.lamps ~= false and (not o.checker or (i + j) % 2 == 0) then
+			local lw = o.lampW or 4.4
+			K.panel(F, cx, y, cz, math.min(lw, cw - 2.6), math.min(lw, cl - 2.6), { bright = o.bright or 0.5, range = o.range or 40, lightHex = o.lightHex })
+		end
+	end end
+	local function on(i, j) return i >= 1 and j >= 1 and i < #xs and j < #zs and not open[i .. "," .. j] end
+	local nb = bw / 2 + 0.15
+	for i = 1, #xs do for j = 1, #zs - 1 do
+		if on(i - 1, j) or on(i, j) then K.box(F, "Scenery", "Coffer", xs[i] - bw / 2, xs[i] + bw / 2, y - d, y + 0.1, zs[j] + nb - 0.05, zs[j + 1] - nb + 0.05, K.R.struct, nil, { ghost = true }) end
+	end end
+	for j = 1, #zs do for i = 1, #xs - 1 do
+		if on(i, j - 1) or on(i, j) then K.box(F, "Scenery", "Coffer", xs[i] + nb - 0.05, xs[i + 1] - nb + 0.05, y - d, y + 0.1, zs[j] - bw / 2, zs[j] + bw / 2, K.R.struct, nil, { ghost = true }) end
+	end end
+	for i = 1, #xs do for j = 1, #zs do
+		if on(i - 1, j - 1) or on(i, j - 1) or on(i - 1, j) or on(i, j) then
+			K.box(F, "Scenery", "CofferBoss", xs[i] - nb, xs[i] + nb, y - d - 0.15, y + 0.13, zs[j] - nb, zs[j] + nb, K.R.structHi, nil, { ghost = true })
+		end
+	end end
+end
+-- (rivals) a haunch: a slanted plank along F's x (x0..x1) from a wall (its face z = zw, at y = yTop - drop) up to the
+-- ceiling (z = zw + run, y = yTop): the room's top corners cut off (an octagonal section). A pale ledge and a lit line
+-- along its foot (o.cove ~= false)
+function K.haunch(F, x0, x1, zw, run, yTop, drop, o)
+	o = o or {}
+	local a, b = Vector3.new(0, yTop - drop, zw), Vector3.new(0, yTop, zw + run)
+	local n = Vector3.new(0, math.abs(run), -math.sign(run) * drop).Unit -- (toward the corner it hides)
+	local th = o.thick or 0.6
+	local mid = Vector3.new((x0 + x1) / 2, 0, 0) + (a + b) / 2 + n * (o.off or th / 2) -- (o.off < 0: under the slope, a rib)
+	K.part("Scenery", o.name or "Haunch", F * CFrame.lookAt(mid, mid + Vector3.xAxis, n), Vector3.new((b - a).Magnitude + (o.extra or 0.1), th, math.abs(x1 - x0)), o.hex or K.R.ceil, nil, { ghost = true })
+	if o.cove ~= false then
+		local sg = math.sign(run)
+		local tr = o.trim or 0 -- (o.trim: the ledge and its line stop short of the ends, where another side's meet them)
+		K.box(F, "Scenery", "HaunchLedge", x0 + tr, x1 - tr, yTop - drop - 0.75, yTop - drop - 0.2, zw - sg * 0.1, zw + sg * 0.8, K.R.struct, nil, { ghost = true })
+		local c = K.box(F, "Scenery", "HaunchCove", x0 + tr + 0.3, x1 - tr - 0.3, yTop - drop - 0.2, yTop - drop - 0.05, zw - sg * 0.05, zw + sg * 0.45, K.R.slat, MAT.Neon, { ghost = true, noshadow = true })
+		if o.light ~= false then K.light(c, o.range or 14, o.bright or 0.35, nil, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 150 }) end
+	end
+end
+-- (rivals) a line on the floor (its top y, default 0) through the points { {x, z}, ... } in F: w wide, a hair proud of the
+-- floor (no plane shared), alternate pieces a hair apart in height where they overlap; a round piece at each joint
+function K.floorLine(F, pts, w, hex, y, o)
+	o = o or {}
+	y = y or 0
+	for i = 1, #pts - 1 do
+		local a, b = pts[i], pts[i + 1]
+		local dx, dz = b[1] - a[1], b[2] - a[2]
+		local len = math.sqrt(dx * dx + dz * dz)
+		local top = y + 0.065 + (i % 2) * 0.01
+		K.part("Scenery", o.name or "FloorLine", F * CFrame.new((a[1] + b[1]) / 2, top - 0.08, (a[2] + b[2]) / 2) * CFrame.Angles(0, math.atan2(dx, dz), 0),
+			Vector3.new(w, 0.16, len), hex, nil, { ghost = true, noshadow = true })
+		if i > 1 then K.cyl(F, "Scenery", o.name or "FloorLine", a[1], y - 0.1, y + 0.04, a[2], w, hex, nil, { ghost = true, noshadow = true }) end
+	end
+end
+-- the points of an arc on the floor: round (cx, cz) at r from angle a0 to a1 (degrees, 0 = +x, 90 = +z), n pieces
+function K.arcPts(cx, cz, r, a0, a1, n)
+	local out = {}
+	for i = 0, n do
+		local a = math.rad(a0 + (a1 - a0) * i / n)
+		table.insert(out, { cx + r * math.cos(a), cz + r * math.sin(a) })
+	end
+	return out
+end
+-- (rivals) an arrow head on the floor at (x, z) in F pointing along (dx, dz), s across
+function K.chevron(F, x, z, dx, dz, s, hex, y)
+	local Fc = F * CFrame.new(x, 0, z) * CFrame.Angles(0, math.atan2(dx, dz), 0) -- (its +z: the way it points)
+	for k, sd in { -1, 1 } do
+		local ax, az = sd * s / 2, -s / 2
+		local len = math.sqrt(ax * ax + az * az)
+		K.part("Scenery", "FloorArrow", Fc * CFrame.new(ax / 2, (y or 0) - 0.01 + (k - 1) * 0.025, az / 2) * CFrame.Angles(0, math.atan2(ax, az), 0),
+			Vector3.new(0.8, 0.16, len + 0.4), hex, nil, { ghost = true, noshadow = true })
+	end
+end
+-- (rivals; R4) THE NAME: a band round (cx, cz) in F, half wide, y0..y1, JANKFIRE lit on all four faces, an accent line
+-- under the word, pale edges above and below
+function K.nameBand(F, cx, cz, half, y0, y1, o)
+	o = o or {}
+	local p = K.box(F, "Shell", "NameBand", cx - half, cx + half, y0, y1, cz - half, cz + half, K.R.screen)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right } do
+		K.text(p, face, { { o.text or "JANKFIRE", "f2f0ea", 0.62 } }, { pps = 40, bright = 2.4 })
+	end
+	K.box(F, "Scenery", "NameBandEdge", cx - half - 0.3, cx + half + 0.3, y0 - 0.5, y0 + 0.05, cz - half - 0.3, cz + half + 0.3, K.R.struct)
+	K.box(F, "Scenery", "NameBandEdge", cx - half - 0.3, cx + half + 0.3, y1 - 0.05, y1 + 0.5, cz - half - 0.3, cz + half + 0.3, K.R.struct)
+	for k = 0, 3 do
+		local Fk = F * CFrame.new(cx, 0, cz) * CFrame.Angles(0, k * math.pi / 2, 0)
+		K.box(Fk, "Scenery", "NameBandBar", -half + 1.2, half - 1.2, y0 + 0.22, y0 + 0.42, -half - 0.06, -half + 0.02, S.accent, MAT.Neon, { ghost = true, noshadow = true })
+	end
+	K.light(p, 18, 0.4, nil)
+	return p
+end
+-- (rivals; R4) THE NAME on a hanging board: two-faced, w x h round F (its faces along F's look and back), pale edges, an
+-- accent line under the word on each face; o.hang = the ceiling's underside (F's y): two pale rods up to it
+function K.nameBoard(F, w, h, o)
+	o = o or {}
+	local p = K.box(F, "Scenery", "NameBoard", -w / 2, w / 2, -h / 2, h / 2, -0.4, 0.4, K.R.screen)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do K.text(p, face, { { o.text or "JANKFIRE", "f2f0ea", 0.62 } }, { pps = 40, bright = 2.4 }) end
+	K.box(F, "Scenery", "NameBoardEdge", -w / 2 - 0.3, w / 2 + 0.3, -h / 2 - 0.5, -h / 2 + 0.05, -0.6, 0.6, K.R.struct)
+	K.box(F, "Scenery", "NameBoardEdge", -w / 2 - 0.3, w / 2 + 0.3, h / 2 - 0.05, h / 2 + 0.5, -0.6, 0.6, K.R.struct)
+	for _, s in { -1, 1 } do
+		K.box(F, "Scenery", "NameBoardBar", -w / 2 + 1.2, w / 2 - 1.2, -h / 2 + 0.22, -h / 2 + 0.42, s * 0.38, s * 0.46, S.accent, MAT.Neon, { ghost = true, noshadow = true })
+		if o.hang then K.box(F, "Scenery", "NameBoardRod", s * (w / 2 - 1.5) - 0.25, s * (w / 2 - 1.5) + 0.25, h / 2 + 0.45, o.hang + 0.1, -0.25, 0.25, K.R.struct) end
+	end
+	K.light(p, 16, 0.35, nil)
+	return p
+end
+-- (rivals; R5) an info screen on a wall: F = its middle on the wall's face, its look out to the viewers; w x h. kind "tips":
+-- its text is HubLife's TIPS, one every 7 s (tag HubTip); "news": o.text, still
+function K.infoScreen(F, w, h, kind, o)
+	o = o or {}
+	K.box(F, "Scenery", "InfoFrame", -w / 2 - 0.6, w / 2 + 0.6, -h / 2 - 0.6, h / 2 + 0.6, -0.7, 0.05, K.R.struct)
+	local p = K.box(F, "Scenery", "InfoScreen", -w / 2, w / 2, -h / 2, h / 2, -0.85, -0.65, K.R.screen)
+	local g = Instance.new("SurfaceGui"); g.Name = "Info"; g.Face = Enum.NormalId.Front; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	g.PixelsPerStud = 30; g.LightInfluence = 0; g.Brightness = 1.8; g.Parent = p
+	local fr = Instance.new("Frame"); fr.Name = "Body"; fr.Size = UDim2.fromScale(1, 1); fr.BackgroundColor3 = c3(K.R.screen); fr.BorderSizePixel = 0; fr.ClipsDescendants = true; fr.Parent = g
+	local hd = Instance.new("TextLabel"); hd.Name = "Head"; hd.BackgroundTransparency = 1; hd.Position = UDim2.fromScale(0.06, 0.08); hd.Size = UDim2.fromScale(0.88, 0.2)
+	hd.Font = Enum.Font.GothamBlack; hd.TextScaled = true; hd.TextXAlignment = Enum.TextXAlignment.Left; hd.TextColor3 = c3(S.accent)
+	hd.Text = if kind == "news" then "NEWS" else "TIPS"; hd.Parent = fr
+	local bar = Instance.new("Frame"); bar.Name = "Rule"; bar.BackgroundColor3 = c3(S.accent); bar.BorderSizePixel = 0; bar.Position = UDim2.fromScale(0.06, 0.31); bar.Size = UDim2.fromScale(0.88, 0.018); bar.Parent = fr
+	local t = Instance.new("TextLabel"); t.Name = "Line"; t.BackgroundTransparency = 1; t.Font = Enum.Font.GothamBold; t.TextColor3 = c3("e8ecf2")
+	t.TextScaled = true; t.TextWrapped = true; t.TextXAlignment = Enum.TextXAlignment.Left; t.TextYAlignment = Enum.TextYAlignment.Top
+	t.Position = UDim2.fromScale(0.06, 0.39); t.Size = UDim2.fromScale(0.88, 0.5)
+	if kind == "news" then
+		t.Text = o.text or ""
+	else
+		t.Text = o.text or "step on a pad in your team's colour to queue. step off to leave the queue."
+		Tags:AddTag(t, "HubTip")
+	end
+	t.Parent = fr
+	K.light(p, 12, 0.3, "cfe0ff")
+	return p
+end
+-- (rivals) THE DRUM: a round lantern over a square hole in a roof (the roof's underside at y; the hole's half side
+-- o.hole, its corners filled here so the drum stands on an octagon): n walls round radius r (inside), a light slat down
+-- each, pale ribs at the corners, pale bands at its foot and top; a cone of planks up to an oculus (a lit disc), pale ribs
+-- and light slats under the planks; a ring of spot lights at its foot. (cx, cz) its middle in F
+function K.drum(F, cx, cz, y, o)
+	o = o or {}
+	local r, h, n, rise, oc = o.r or 12, o.h or 9, o.n or 16, o.rise or 5, o.oc or 4
+	local hole, t = o.hole or r, 1.2
+	local da = 2 * math.pi / n
+	local Fc = F * CFrame.new(cx, 0, cz)
+	local cut = r * math.sqrt(2) -- (x + z on the cut across each corner: the drum's wall stands on it)
+	for _, sx in { -1, 1 } do for _, sz in { -1, 1 } do
+		K.slant(Fc, "Shell", "DrumCorner", sx * hole, sx * (cut - hole), sz * (cut - hole), sz * hole, y, y + 1, K.R.ceil)
+	end end
+	local yt = y + h
+	for i = 0, n - 1 do
+		local a = i * da
+		local Fw = Fc * CFrame.lookAt(Vector3.zero, Vector3.new(math.cos(a), 0, math.sin(a))) -- (its -z: out)
+		local half = (r + t) * math.tan(da / 2) + 0.05
+		K.box(Fw, "Shell", "DrumWall", -half, half, y, yt, -(r + t), -r, K.R.ceil)
+		K.box(Fw, "Scenery", "DrumSlat", -0.45, 0.45, y + 2.2, yt - 1.8, -r - 0.1, -r + 0.15, K.R.slat, MAT.Neon, { ghost = true, noshadow = true })
+		local bh = (i % 2) * 0.04
+		K.box(Fw, "Scenery", "DrumFoot", -half + 0.1, half - 0.1, y - 0.12, y + 1.0 + bh, -r - 0.1, -r + 0.5, K.R.struct, nil, { ghost = true })
+		K.box(Fw, "Scenery", "DrumTop", -half + 0.1, half - 0.1, yt - 1.0 - bh, yt - 0.06, -r - 0.1, -r + 0.6, K.R.struct, nil, { ghost = true })
+		local av = a + da / 2
+		local Fv = Fc * CFrame.lookAt(Vector3.zero, Vector3.new(math.cos(av), 0, math.sin(av)))
+		local rv = r / math.cos(da / 2)
+		K.box(Fv, "Scenery", "DrumRib", -0.6, 0.6, y - 0.16, yt - 0.06, -rv - 0.2, -rv + 0.75, K.R.struct, nil, { ghost = true })
+		-- the cone: a plank on this side, a rib under the seam at its corner, a light slat down its middle
+		local d1, dv = Vector3.new(math.cos(a), 0, math.sin(a)), Vector3.new(math.cos(av), 0, math.sin(av))
+		local p0, p1 = Vector3.new(0, yt, 0) + d1 * (r + 0.4), Vector3.new(0, yt + rise, 0) + d1 * oc
+		local pm, L = (p0 + p1) / 2, (p1 - p0).Magnitude
+		local cf = CFrame.lookAt(pm, p1, Vector3.yAxis)
+		K.part("Shell", "DrumPlank", Fc * cf * CFrame.new(0, 0.3, 0), Vector3.new(2 * (r + 0.4) * math.tan(da / 2) + 0.2, 0.6, L), K.R.ceil)
+		K.part("Scenery", "DrumSlat", Fc * cf * CFrame.new(0, -0.09, -0.6), Vector3.new(0.7, 0.16, L - 3), K.R.slat, MAT.Neon, { ghost = true, noshadow = true })
+		local q0, q1 = Vector3.new(0, yt, 0) + dv * ((r + 0.4) / math.cos(da / 2)), Vector3.new(0, yt + rise, 0) + dv * (oc / math.cos(da / 2))
+		K.part("Scenery", "DrumRib", Fc * CFrame.lookAt((q0 + q1) / 2, q1, Vector3.yAxis) * CFrame.new(0, -0.35, 0), Vector3.new(1.0, 0.8, (q1 - q0).Magnitude), K.R.struct, nil, { ghost = true })
+	end
+	K.cyl(Fc, "Shell", "DrumOculusRing", 0, yt + rise - 0.2, yt + rise + 0.6, 0, 2 * (oc + 1.4), K.R.struct)
+	local ocl = K.cyl(Fc, "Scenery", "DrumOculus", 0, yt + rise - 0.36, yt + rise - 0.22, 0, 2 * oc, K.R.slat, MAT.Neon, { ghost = true, noshadow = true })
+	K.light(ocl, 60, o.oculusBright or 0.6, nil, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 70 })
+	-- the spot ring at the drum's foot, down onto the floor
+	for i = 0, (o.spots or 8) - 1 do
+		local a = (i + 0.5) * 2 * math.pi / (o.spots or 8)
+		local sp = K.box(Fc, "Scenery", "DrumSpot", math.cos(a) * (r - 1.6) - 0.3, math.cos(a) * (r - 1.6) + 0.3, y + 1.2, y + 1.4, math.sin(a) * (r - 1.6) - 0.3, math.sin(a) * (r - 1.6) + 0.3, K.R.struct, nil, { ghost = true, tr = 1, noshadow = true })
+		K.light(sp, o.spotRange or 52, o.spotBright or 0.6, nil, { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 40 })
+	end
 end
 
 -- ------------------------------------------------------------------------------------------------ seats and seating
@@ -280,7 +583,7 @@ function K.cluster(F, o)
 	if o.lampY then
 		K.cyl(F, "Scenery", "PendantCord", 0, o.lampY - 3, o.lampY, -0.5, 0.12, K.P.steel)
 		local l = K.cyl(F, "Scenery", "Pendant", 0, o.lampY - 3.8, o.lampY - 3, -0.5, 2.2, K.P.dark)
-		K.light(K.cyl(F, "Scenery", "PendantGlow", 0, o.lampY - 3.85, o.lampY - 3.75, -0.5, 1.8, K.P.warm, MAT.Neon, { ghost = true }), 14, 0.6)
+		K.light(K.cyl(F, "Scenery", "PendantGlow", 0, o.lampY - 3.85, o.lampY - 3.75, -0.5, 1.8, K.P.warm, MAT.Neon, { ghost = true }), 14, 0.6, K.P.warm) -- (a place to stop: warm)
 	end
 end
 -- a bar facing F's look (the drinkers' side): counter, top, a lit line, stools with seats, shelves behind
@@ -312,7 +615,7 @@ function K.gameSpot(F, game, y, attrs)
 end
 -- a table's place (arm / board): a rug under where the game's table and its two seats go (seats at +-look)
 function K.tableSpot(F, game)
-	K.cyl(F, "Scenery", "TableRug", 0, 0, 0.06, 0, 10, K.P.carpet2, MAT.Fabric)
+	K.cyl(F, "Scenery", "TableRug", 0, 0, 0.06, 0, 10, if S.style == "rivals" then K.P.carpet else K.P.carpet2, MAT.Fabric) -- (rivals: the accent is for seats)
 	K.cyl(F, "Scenery", "TableRugEdge", 0, -0.02, 0.04, 0, 10.6, K.P.cream)
 	return K.gameSpot(F, game)
 end
@@ -588,8 +891,17 @@ local function padSign(F, m, md, w, h, x, y, z, face)
 	local counts = {}
 	for t = 1, md.teams do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
 	local p = K.box(F, "Scenery", "Sign", x - w / 2, x + w / 2, y - h / 2, y + h / 2, z - 0.25, z, "20232e", nil, { parent = m })
-	K.text(p, face, { { md.title, K.P.pale, 0.3 }, { md.kind, "c8cdd6", 0.13, "S" }, { table.concat(counts, "   vs   "), "ffffff", 0.33 },
-		{ "step on a side to queue", "c8c8dc", 0.15, "S" } }, { names = { [3] = "Status", [4] = "Sub" }, pps = 46 })
+	local rv = S.style == "rivals"
+	K.text(p, face, { { md.title, K.P.pale, if rv then 0.26 else 0.3 }, { md.kind, "c8cdd6", if rv then 0.11 else 0.13, "S" }, { table.concat(counts, "   vs   "), "ffffff", if rv then 0.4 else 0.33 },
+		{ "step on a side to queue", "c8c8dc", if rv then 0.12 else 0.15, "S" } }, { names = { [3] = "Status", [4] = "Sub" }, pps = 46, bright = if rv then 2 else nil })
+	if rv then -- (rivals: the board in a pale housing, a bar per side in its team's colour under it: outside the pad's model)
+		K.box(F, "Scenery", "PadBoardHousing", x - w / 2 - 0.35, x + w / 2 + 0.35, y - h / 2 - 0.35, y + h / 2 + 0.35, z - 0.43, z - 0.1, K.R.struct)
+		local n = md.teams
+		for t = 1, n do
+			local xa = x - w / 2 + (t - 1) * w / n
+			K.box(F, "Scenery", "PadBoardBar", xa + 0.2, xa + w / n - 0.2, y - h / 2 - 0.7, y - h / 2 - 0.36, z - 0.4, z - 0.12, K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true })
+		end
+	end
 	return p
 end
 -- (1) PLAYER SPOTS: a low stage in a bay, F at the bay's mouth on the floor, its look into the bay (W across, D deep).
@@ -630,7 +942,7 @@ function K.spotsPad(F, md, bank, name, o)
 		K.box(F, "Scenery", "PadDividerCap", x - 0.3, x + 0.3, 1.6, 1.72, -D + 0.7, -1.3, K.P.dark)
 		K.text(dv, Enum.NormalId.Left, { { md.title, K.P.dark, 0.7 } }); K.text(dv, Enum.NormalId.Right, { { md.title, K.P.dark, 0.7 } })
 	end
-	padSign(F, m, md, o.signW or (W - 0.6), o.signH or 2.0, 0, o.signY or 11.5, o.signZ or 2.0, Enum.NormalId.Back)
+	padSign(F, m, md, o.signW or (W - 0.6), o.signH or (if S.style == "rivals" then 3.0 else 2.0), 0, o.signY or 11.5, o.signZ or 2.0, Enum.NormalId.Back) -- (rivals: a bigger board)
 	return m
 end
 -- (2) PLATFORM (the Atrium): one of an octagon side's two pads on the ground ring. Fk = the side's frame (its look out,
@@ -722,9 +1034,172 @@ function K.gatePad(F, md, bank, name, o)
 	-- the back: a matte panel proud of the wall, framed; a low warm fill under the head (a dim, readable alcove)
 	K.box(F, "Scenery", "GateBack", -W / 2 + 0.3, W / 2 - 0.3, 0.3, 9.4, -D, -D + 0.12, "3a3d42", nil, { noshadow = true })
 	for _, y in { 3.2, 6.4 } do K.box(F, "Scenery", "GateBackRail", -W / 2 + 0.3, W / 2 - 0.3, y - 0.08, y + 0.08, -D + 0.12, -D + 0.2, K.P.steel) end
-	K.light(K.box(F, "Scenery", "GateFill", -0.5, 0.5, 9.0, 9.2, -D / 2 - 0.5, -D / 2 + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }), 9, 0.35, K.P.warm)
-	padSign(F, m, md, W + 1.6, 2.8, 0, 12.3, 0.45, Enum.NormalId.Back)
+	local rv = S.style == "rivals"
+	if rv then -- (rivals: each side's part of the back glows softly in its team's colour: the pads the brightest, most colourful things in view)
+		for t = 1, n do
+			local xa = -W / 2 + (t - 1) * (sw + gap)
+			K.box(F, "Scenery", "GateBackTint", xa + 0.6, xa + sw - 0.6, 1.0, 8.8, -D + 0.12, -D + 0.17, K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, tr = 0.86 })
+		end
+	end
+	K.light(K.box(F, "Scenery", "GateFill", -0.5, 0.5, 9.0, 9.2, -D / 2 - 0.5, -D / 2 + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }), 9, if rv then 0.6 else 0.35, if rv then "f2f4f8" else K.P.warm)
+	padSign(F, m, md, if rv then W - 0.4 else W + 1.6, if rv then 4.0 else 2.8, 0, if rv then 14.5 else 12.3, 0.45, Enum.NormalId.Back) -- (rivals: its housing clear of the fins' pilasters)
 	return m
+end
+
+-- (4) THE PAD (20 Nov 2026, the owner: "also the new pads look hideas referenbce rivals please"): ONE pad for every hub,
+-- a floor plate you step onto, in Rivals' grammar (a plate one step up off the walkway, the teams facing across a low
+-- divider, a spot per player, the count screen right behind, the mode's name over it) in our own shapes
+-- (tools/roblox/pad_models.py: the plinth, the divider, the foot-plates, the pale frame; K.importKit brings them in).
+-- F = the plinth's front middle on the walkway floor, its look into the bay (-Z). Footprint (round 3) 12.74 wide x
+-- 13.4 deep (z 0..-13.4); the gantry at its back is 10.8 wide, 14.2 high (z -11.6..-13.0), its board y 7.65..13.55:
+-- give it a bay at least 13 wide, 14 deep and 14.5 high at the back, its floor flat. o.lampY: the lamps over the
+-- teams (default 13, o.lampY = false: none). The pieces: K.importKit("pads", K.PAD_KIT) once per build.
+-- The contract (play-party, 20 Nov; side-session-notes/HUB-KIT-CONTRACTS.md): a Model in QueuePads; Side1..N flat
+-- plates (local Y up) where people stand, each looking so that minus its look faces the way a joiner should look (the
+-- outer halves at each other, a middle third out at the walkway: QUICK JOIN); a Slot speck per player on its own plate;
+-- a Glow (Team) per side for PadGlow; the Status and Sub labels inside the Model (the count screen)
+-- (round 3, 20 Nov, after two judge rounds: the team's colour is the plate itself, muted, lighting up when the side is
+-- taken; big pale marks in a line per team, the teams facing across a low pale kerb; no strips, no blocks; the board
+-- on an open gantry at the plate's back edge, above the players' heads; the mode across the plinth's front)
+K.PAD = { w = 12.4, d = 13.4, top = 1.2, frameW = 10.8, frameH = 14.2 }
+K.PAD_KIT = 122933038680035 -- (the pad kit's Model asset, round 3: tools/roblox/pad_models.py, uploaded 20 Nov)
+K.TEAM_MUTED = { "b0578f", "3f8fa8", "b08a46" } -- (the teams' colours at rest on a plate; the Glow is the full colour)
+local function padPiece(m, F, tmpl, cf, solid)
+	local lib = game:GetService("ServerStorage"):FindFirstChild("JankfireMeshes")
+	local t = lib and lib:FindFirstChild(tmpl)
+	if not t then S.missing = (S.missing or 0) + 1; return nil end
+	local c = t:Clone()
+	for _, d in c:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true; d.CanCollide = solid == true; d.CanQuery = solid == true; d.CanTouch = solid == true
+			d:SetAttribute("Hub", S.hub); S.count += 1
+		end
+	end
+	c:PivotTo(S.site * F * cf)
+	c.Parent = m
+	return c
+end
+function K.pad(F, md, bank, name, o)
+	o = o or {}
+	local m = padModel(md, bank, name, "plate")
+	local TOP = K.PAD.top
+	padPiece(m, F, "jpad_plinth", CFrame.new(), true)
+	padPiece(m, F, "jpad_totem", CFrame.new(), true)
+	local n = md.teams
+	local span = if n == 2 then { { -5.5, -0.5 }, { 0.5, 5.5 } } else { { -5.5, -2.3 }, { -1.3, 1.3 }, { 2.3, 5.5 } }
+	local z0, z1 = -0.7, -11.4 -- (the plates' front and back)
+	local zc = (z0 + z1) / 2
+	for _, x in (if n == 2 then { 0 } else { -1.8, 1.8 }) do padPiece(m, F, "jpad_divider", CFrame.new(x, TOP, zc), true) end
+	local lampY = if o.lampY == nil then 13 else o.lampY
+	for t = 1, n do
+		local xa, xb = span[t][1], span[t][2]
+		local cx, w, d = (xa + xb) / 2, xb - xa, z0 - z1
+		-- the plate: the team's colour (muted), flat, its look so that minus it is where a joiner faces
+		local face = if t == 1 then Vector3.xAxis elseif t == n then -Vector3.xAxis else Vector3.zAxis
+		local c = Vector3.new(cx, TOP + 0.03, zc)
+		local size = if math.abs(face.X) > 0.5 then Vector3.new(d, 0.1, w) else Vector3.new(w, 0.1, d)
+		local sd = K.part("Scenery", "Side" .. t, F * CFrame.lookAt(c, c - face), size, K.TEAM_MUTED[t], MAT.Concrete, { parent = m, solid = true })
+		sd:SetAttribute("Team", t)
+		-- the Glow (PadGlow: faint while open, full while taken): the plate's top in the team's full colour
+		local g = K.box(F, "Scenery", "Glow", xa + 0.15, xb - 0.15, TOP + 0.09, TOP + 0.12, z1 + 0.15, z0 - 0.15, K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.82 })
+		g:SetAttribute("Team", t)
+		g:SetAttribute("GlowOpen", 0.82); g:SetAttribute("GlowTaken", 0.5) -- (PadGlow, play-party 4063e2e: a whole-plate sheet, so never a solid slab)
+		local gl = Instance.new("PointLight"); gl.Color = c3(K.TEAM[t]); gl.Range = 8; gl.Brightness = 0.12; gl.Shadows = false; gl.Parent = g
+		-- the marks: a line of big pale squares per team (the teams face each other across the kerb); each Slot a square
+		-- of the team's colour in its mark that Matches shows while the place is taken
+		local zs = { zc }
+		if md.size == 2 then zs = { zc + 2.7, zc - 2.7 }
+		elseif md.size == 3 then zs = { zc + 3.4, zc, zc - 3.4 }
+		elseif md.size >= 4 then zs = { zc + 4.05, zc + 1.35, zc - 1.35, zc - 4.05 } end
+		for sl, z in zs do
+			padPiece(m, F, "jpad_spot", CFrame.new(cx, TOP + 0.08, z), false)
+			local q = K.part("Scenery", "Slot", F * CFrame.new(cx, TOP + 0.21, z), Vector3.new(1.4, 0.06, 1.4), K.TEAM[t], MAT.Neon, { ghost = true, tr = 1, noshadow = true, parent = m })
+			q:SetAttribute("Team", t); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
+		end
+		if lampY then
+			K.light(K.box(F, "Scenery", "SideLamp", cx - 0.5, cx + 0.5, lampY - 0.2, lampY, zc - 0.5, zc + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }),
+				16, 0.8, "fff4e6", { kind = "SpotLight", angle = 70 })
+		end
+	end
+	-- the mode across the plinth's front, dark on its pale face
+	local kb = K.box(F, "Scenery", "KerbSign", -4.6, 4.6, 0.12, 1.08, 0.0, 0.06, "c9c5bc", nil, { parent = m, ghost = true, tr = 1 })
+	K.text(kb, Enum.NormalId.Back, { { md.title .. "  ·  " .. md.kind, "353a42", 0.9 } }, { pps = 40, bright = 1 })
+	-- the board on the gantry, above the players' heads: the mode, the counts big (Status), the hint (Sub)
+	local counts = {}
+	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
+	local scr = K.box(F, "Scenery", "Screen", -4.28, 4.28, 7.65, 13.55, -11.8, -11.65, "28324a", nil, { parent = m })
+	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
+	K.text(scr, Enum.NormalId.Back, { { md.title, "f2f0ea", 0.2 }, { table.concat(counts, if n == 2 then "  vs  " else "  ·  "), "ffffff", if n == 2 then 0.36 else 0.25 },
+		{ "step on a side to queue", "c8d0e0", 0.12, "S" } }, { names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
+	K.light(scr, 14, 0.45, "dfe8ff")
+	return m
+end
+-- a pad's mode as a two-faced BLADE sign for a hub's piers (judge round 2: a sign per pad readable down the hall): F at
+-- its middle, its faces along F's look and back (hang it square to the wall, so the faces look up and down the row)
+function K.padBlade(F, md, w, h)
+	w, h = w or 3.4, h or 4.6
+	K.box(F, "Scenery", "BladeHousing", -w / 2 - 0.3, w / 2 + 0.3, -h / 2 - 0.3, h / 2 + 0.3, -0.35, 0.35, K.P.creamHi)
+	local p = K.box(F, "Scenery", "Blade", -w / 2, w / 2, -h / 2, h / 2, -0.45, 0.45, "28324a")
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		K.text(p, face, { { md.title, "f2f0ea", 0.42 }, { md.kind, "c8d0e0", 0.16, "S" } }, { pps = 40, bright = 1.8, bg = "28324a", bgt = 0 }) -- (navy, lit: never a black slab)
+	end
+	K.light(p, 10, 0.3, "dfe8ff")
+	return p
+end
+-- one piece of a Blender kit (a template in JankfireMeshes, its pivot the kit's origin) at cf in F; o.solid: it
+-- collides and is queryable (walls, floors, furniture), else look only; o.folder (default "Scenery"); o.parent
+function K.put(F, tmpl, cf, o)
+	o = o or {}
+	local lib = game:GetService("ServerStorage"):FindFirstChild("JankfireMeshes")
+	local t = lib and lib:FindFirstChild(tmpl)
+	if not t then S.missing = (S.missing or 0) + 1; return nil end
+	local c = t:Clone()
+	for _, d in c:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true; d.CanCollide = o.solid == true; d.CanQuery = o.solid == true; d.CanTouch = o.solid == true
+			if o.noshadow then d.CastShadow = false end
+			d:SetAttribute("Hub", S.hub); S.count += 1
+		end
+	end
+	c:PivotTo(S.site * F * (cf or CFrame.new()))
+	c.Parent = o.parent or K.folder(o.folder or "Scenery")
+	return c
+end
+-- bring a Blender kit (one Model asset holding many models: pieces "<model><n>__<kind>_<hex>") into
+-- ServerStorage.JankfireMeshes as templates, painted from the names; each template's pivot is the kit's own origin (the
+-- exporter turned the pieces, rbxglb.turn_for_roblox: they arrive in the file's frame, front +Z). Edit time only
+local KIT_MAT = { plastic = SP, concrete = MAT.Concrete, neon = MAT.Neon, glass = MAT.Glass, fabric = SP, wood = MAT.Wood, slate = MAT.Slate }
+function K.importKit(kit, id)
+	local ok, container = pcall(function() return game:GetService("InsertService"):LoadAsset(id) end)
+	if not ok or not container then return kit .. " LOAD FAILED " .. tostring(container) end
+	local lib = game:GetService("ServerStorage"):FindFirstChild("JankfireMeshes")
+	local groups, bad = {}, 0
+	for _, d in container:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		local model, kind, h = string.match(d.Name, "^(.-)%d+__(%a+)_(%x%x%x%x%x%x)")
+		if not model or not KIT_MAT[kind] then bad += 1; continue end
+		d.Material = KIT_MAT[kind]; d.Color = c3(h); d.TextureID = ""
+		d.Transparency = if kind == "glass" then 0.35 else 0
+		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+		d.CastShadow = kind ~= "neon" and kind ~= "glass"
+		d:SetAttribute("Kind", kind)
+		groups[model] = groups[model] or {}
+		table.insert(groups[model], d)
+	end
+	local names = {}
+	for nm, parts in groups do
+		local m = Instance.new("Model"); m.Name = nm
+		for _, p in parts do p.Parent = m end
+		m.WorldPivot = CFrame.identity
+		m:SetAttribute("AssetId", id); m:SetAttribute("Kit", kit); m:SetAttribute("FileFrame", true)
+		local old = lib:FindFirstChild(nm); if old then old:Destroy() end
+		m.Parent = lib
+		local _, size = m:GetBoundingBox()
+		table.insert(names, ("%s %d (%.1f x %.1f x %.1f)"):format(nm, #parts, size.X, size.Y, size.Z))
+	end
+	container:Destroy()
+	table.sort(names)
+	return kit .. ": " .. #names .. " models" .. (if bad > 0 then ", " .. bad .. " unnamed pieces" else "") .. "; " .. table.concat(names, ", ")
 end
 
 -- ------------------------------------------------------------------------------------------------ kit models and guns
@@ -869,7 +1344,7 @@ function K.shop(F, len)
 		end
 	end
 	K.sign(F, "Scenery", "ShopSign", len - 4, 1.8, 0, 10.4, 3.6, { { "SHOP", K.P.amber, 0.8 } }, { pps = 40 })
-	K.light(K.box(F, "Scenery", "ShopLight", -len / 2 + 0.5, len / 2 - 0.5, 8.7, 8.9, 2.8, 3.2, K.P.warm, MAT.Neon, { ghost = true }), 16, 0.6)
+	K.light(K.box(F, "Scenery", "ShopLight", -len / 2 + 0.5, len / 2 - 0.5, 8.7, 8.9, 2.8, 3.2, K.P.warm, MAT.Neon, { ghost = true }), 16, 0.6, K.P.warm)
 	local pp = K.box(F, "Scenery", "ShopPromptPart", -0.5, 0.5, 3.8, 4.4, -0.3, 0.3, K.P.pier, nil, { ghost = true, tr = 1 })
 	local pr = Instance.new("ProximityPrompt")
 	pr.Name = "ShopCounterPrompt"; pr.ActionText = "Shop"; pr.ObjectText = "Counter"; pr.HoldDuration = 0; pr.MaxActivationDistance = 9
@@ -959,7 +1434,7 @@ end
 -- a glass showcase on a plinth with a weapon turning in it (HubSpin), facing F's look; a light in its top
 function K.showcase(F, wid, name)
 	K.box(F, "Shell", "ShowBase", -1.6, 1.6, 0, 2.4, -1.6, 1.6, K.P.dark)
-	K.box(F, "Scenery", "ShowBand", -1.65, 1.65, 2.2, 2.4, -1.65, 1.65, K.P.gold, MAT.Metal)
+	K.box(F, "Scenery", "ShowBand", -1.65, 1.65, 2.2, 2.43, -1.65, 1.65, K.P.gold, MAT.Metal)
 	K.box(F, "Scenery", "ShowGlass", -1.5, 1.5, 2.4, 6.6, -1.5, 1.5, K.P.glass, MAT.Glass, { tr = 0.7, solid = true })
 	K.box(F, "Scenery", "ShowTop", -1.6, 1.6, 6.6, 7.0, -1.6, 1.6, K.P.dark)
 	K.light(K.box(F, "Scenery", "ShowLight", -0.9, 0.9, 6.45, 6.6, -0.9, 0.9, K.P.warm, MAT.Neon, { ghost = true }), 8, 0.7)
