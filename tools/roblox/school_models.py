@@ -193,7 +193,7 @@ V2TEX = {
         'concrete': ('959491', 'concrete'), 'pavers': ('a3a4a2', 'b_polished'), 'rubber': ('353638', 'rubber'),
         'chalkboard': ('bcc0bd', None), 'lockers': ('5e6670', 'lockers'), 'brick': ('b6b8b7', 'b_board'),
         'block': ('b3b5b4', 'b_board'), 'hallwall': ('b9bbba', 'b_board'), 'classwall': ('bbbdbc', 'b_board'),
-        'board': ('b8bab9', 'b_board'), 'felt': ('7c806c', 'b_felt'), 'roofdeck': ('939290', 'concrete'),
+        'board': ('b8bab9', 'b_board'), 'felt': ('8a8f78', 'b_felt'), 'roofdeck': ('939290', 'concrete'),
     },
 }
 if V2:
@@ -704,7 +704,7 @@ def LVY(lv): return 32.0 if lv == 'R' else LV[lv]
 STYLE = {
     'v2A': dict(S=12.0, PW=2.4, REC=0.35, frame='5a4434', frameW=1.3, winframe='d9d2c2', sill=None, skirt='4f3b2d',
                 rail='5a4434', cornice=True, fixture='globe', light='ffcf9a', lightB=1.0, lightR=17.5, core='8c7354',
-                shade='e9dfcc', beam=None, bracket='5a4434', parapet=None, cap='5a4434', exitc='2f6a46', transom=True),
+                shade='e9dfcc', beam=None, bracket='5a4434', parapet=None, cap='5a4434', exitc='2f6a46', transom=False),
     'v2B': dict(S=8.0, PW=1.4, REC=0.35, frame='4c5258', frameW=1.4, winframe='4c5258', sill=None, skirt=None,
                 rail=None, cornice=False, fixture='trough', light='e2eaff', lightB=0.95, lightR=17.5, core='7f8a96',
                 shade='dfe5e8', beam=None, bracket=None, parapet=None, cap='4c5258', exitc='2f6a46', transom=False),
@@ -761,6 +761,21 @@ def finish(r):
         return _fin(T['stone'] if A else T['board'], [(0, T['brick'])], rec=0.5)
     return None           # (the roof's parapets: plain)
 
+def vprism(model, col, pts, y0, y1, kind='plastic'):
+    """a flat outline [(x, z), ...] (convex) stood up from y0 to y1, flat shaded, no bevel"""
+    import bmesh
+    bm = bmesh.new()
+    lo = [bm.verts.new((x, y0, z)) for (x, z) in pts]
+    hi = [bm.verts.new((x, y1, z)) for (x, z) in pts]
+    bm.faces.new(lo); bm.faces.new(hi[::-1])
+    n = len(pts)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((lo[i], lo[j], hi[j], hi[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for e in bm.edges: e.smooth = False
+    K.put(model, kind, col, bm)
+
 def articulate(model, b, ax, sign, fin, Ly, top):
     """one wall piece whose room-side face is b's +sign side across `ax` ('x': the face looks along x, the wall runs
     along z): piers on the S grid (world positions, so they line up from piece to piece and level to level) stay full,
@@ -806,7 +821,13 @@ def articulate(model, b, ax, sign, fin, Ly, top):
     floor = ya <= Ly + 0.01
     pr = fin.get('proud', 0.0)               # (round 2: the piers stand proud of the hit face too, for a deeper relief)
     for (a, c) in piers:
-        B3(a, ya, tb, c, yb, tf + sign * pr, fin['pier'])      # (bevelled piers tripled the walls' triangles: the kit passed 20 MB)
+        if c - a > 1.0 and yb - ya > 2.0:      # (round 4: the piers' two front edges chamfered, as the principles ask)
+            tF = tf + sign * pr                 # (a six-sided prism, no extra bevel: K.chamfer took v2B's kit past 20 MB)
+            ch = min(0.35, (c - a) * 0.2)
+            tu = [(tb, a), (tF - sign * ch, a), (tF, a + ch), (tF, c - ch), (tF - sign * ch, c), (tb, c)]
+            vprism(model, fin['pier'], [(t_, u_) if ax == 'x' else (u_, t_) for (t_, u_) in tu], ya, yb)
+        else:
+            B3(a, ya, tb, c, yb, tf + sign * pr, fin['pier'])
         if fin['skirt'] and floor: B3(a, Ly, tf + sign * pr, c, min(Ly + 1.0, yb), tf + sign * (pr + 0.25), fin['skirt'])
     zs = fin['zones']
     for (a, c) in panels:
@@ -889,7 +910,10 @@ def v2_slabs():
                 groups.setdefault(role, set()).add((i, j))
         for role, cells in groups.items():
             for (i0, j0, i1, j1) in L._greedy(cells):
-                bx(M_('sc_floor', lv), T[role], (L.GX0 + i0, Ly - 1.0, L.GZ0 + j0, L.GX0 + i1, Ly, L.GZ0 + j1))
+                # (round 3: two pieces of one floor that only touched showed a bright hairline; they overlap 0.05 now)
+                ex = 0.05 if (i1, j0) in cells else 0.0
+                ez = 0.05 if (i0, j1) in cells else 0.0
+                bx(M_('sc_floor', lv), T[role], (L.GX0 + i0, Ly - 1.0, L.GZ0 + j0, L.GX0 + i1 + ex, Ly, L.GZ0 + j1 + ez))
     for (x0, y0, z0, x1, y1, z1, fm, lv) in L.SLABS:
         if fm == 'rooflid': bx(M_('sc_floor', lv), T['concrete'], (x0, y0, z0, x1, y1, z1))
 
@@ -1026,7 +1050,7 @@ def v2_openings():
         def B3(u0, v0, w0, u1, v1, w1, col, kind_='plastic', bev=0.0):
             if ax == 'x': bx(model, col, (u0, v0, w0, u1, v1, w1), kind_, bev=bev)
             else: bx(model, col, (w0, v0, u0, w1, v1, u1), kind_, bev=bev)
-        fw, pr, fc = ST2['frameW'], (0.6 if VARIANT == 'v2A' else 1.0), ST2['frame']     # (round 2-3: chunkier, deeper frames)
+        fw, pr, fc = ST2['frameW'], 1.1, ST2['frame']     # (round 4: portals 2 deeper than the wall, a stud each side)
         if kind == 'zwin':
             if lv == 'R': continue
             B3(a0 - 0.6, y0, t0 - 0.15, a0, y1, t1 + 0.15, fc); B3(a1, y0, t0 - 0.15, a1 + 0.6, y1, t1 + 0.15, fc)
@@ -1036,10 +1060,11 @@ def v2_openings():
         Lf = LVY(lv)
         head0 = y1 + (1.45 if kind == 'door' else 0.0)          # (a shutter's housing sits over its opening)
         tr = next((t for t in TRANSOMS if t[0] == lv and t[1] == ax and abs(t[2] - line) < 0.01 and abs(t[3] - a0) < 0.01), None)
-        jtop = (tr[6] + 0.4) if tr else head0 + 0.9
+        if tr and tr[5] < head0 + 1.3: tr = None      # (the deeper head covers where the transom was)
+        jtop = (tr[6] + 0.4) if tr else head0 + 1.3
         B3(a0 - fw, Lf, t0 - pr, a0, jtop, t1 + pr, fc, bev=0.08)
         B3(a1, Lf, t0 - pr, a1 + fw, jtop, t1 + pr, fc, bev=0.08)
-        B3(a0 - fw - 0.2, head0, t0 - pr - 0.1, a1 + fw + 0.2, head0 + 0.9, t1 + pr + 0.1, fc, bev=0.08)
+        B3(a0 - fw - 0.3, head0, t0 - pr - 0.15, a1 + fw + 0.3, head0 + 1.3, t1 + pr + 0.15, fc, bev=0.12)
         if tr:
             ty0, ty1 = tr[5], tr[6]
             B3(a0, ty0, (t0 + t1) / 2 - 0.06, a1, ty1, (t0 + t1) / 2 + 0.06, 'e8e2d4', 'glass')
@@ -1121,9 +1146,9 @@ def v2_lights():
         K.light('point', x, 8.6, z, (0, -1, 0), 1.1, 28, 0, 'ffd2a0'); LIGHT_GROUPS.append(0)
     # (the courtyard read black under the night look: a cold moon fill high over it, wide and faint)
     for (x, z) in ((-18, 0), (18, 0)):
-        K.light('point', x, 26.0, z, (0, -1, 0), 0.5, 52, 0, 'a9b9e6'); LIGHT_GROUPS.append(0)
+        K.light('point', x, 26.0, z, (0, -1, 0), 0.35, 52, 0, 'a9b9e6'); LIGHT_GROUPS.append(0)
     for (x, y, z) in COURT_LANTERNS:
-        K.light('point', x, y - 0.6, z, (0, -1, 0), 0.75, 26, 0, 'ffc98e'); LIGHT_GROUPS.append(0)
+        K.light('point', x, y - 0.6, z, (0, -1, 0), 0.95, 30, 0, 'ffc98e'); LIGHT_GROUPS.append(0)
     K.light('point', 0.0, 5.5, 0.0, (0, 1, 0), 0.6, 20, 0, 'ffe2b8'); LIGHT_GROUPS.append(0)     # (the tree, from its planter)
     for (x, z) in ((-90, -50), (-10, -50), (70, -50), (130, -60)):
         K.light('point', x, 44.0, z, (0, -1, 0), 0.6, 40, 0, 'b9c8f0'); LIGHT_GROUPS.append(0)
@@ -1142,11 +1167,25 @@ def v2_lights():
     for r in L.ROOMS:
         if r['lv'] == 'R' or r['tower'] or not r['floor'] or r['look'] in ('court', 'courtair', 'gymair', 'balcony'): continue
         x0, z0, x1, z1 = r['r']
-        K.light('point', (x0 + x1) / 2, LV[r['lv']] + 9.0, (z0 + z1) / 2, (0, -1, 0), 0.2, min(34.0, 0.5 * max(x1 - x0, z1 - z0) + 6.0), 0, tint)
+        K.light('point', (x0 + x1) / 2, LV[r['lv']] + 9.0, (z0 + z1) / 2, (0, -1, 0), 0.3, min(36.0, 0.55 * max(x1 - x0, z1 - z0) + 8.0), 0, tint)
         LIGHT_GROUPS.append(0)
+    # a lamp over every shutter, on both faces (round 3: black shutter bays)
+    for d in L.DOORS:
+        if d['lv'] == 'R': continue
+        mn, mx = d['box']['min'], d['box']['max']
+        K.light('point', (mn[0] + mx[0]) / 2, mx[1] + 1.0, (mn[2] + mx[2]) / 2, (0, -1, 0), 0.45, 13, 0, tint); LIGHT_GROUPS.append(0)
+    # the gym: a sconce on every brick pier at 8 studs, spots under the high bays (round 3: black lower walls)
+    for (px, pz) in GYM_SCONCES:
+        K.light('point', px, 8.0, pz, (0, -1, 0), 0.55, 16, 0, 'ffcf9a' if VARIANT == 'v2A' else 'e2eaff'); LIGHT_GROUPS.append(0)
+    for f in FIXTURES:
+        if f['gym'] and f['lit']:
+            K.light('spot', f['x'], f['y'] - 0.4, f['z'], (0, -1, 0), 1.2, 34, 70, col); LIGHT_GROUPS.append(0)
     # a warm sconce in the corner beside the main stairs, under the floor that carries over them (round 2: a black corner)
     K.light('point', 62.2, 8.4, 18.0, (0, -1, 0), 0.6, 14, 0, 'ffcf9a' if VARIANT == 'v2A' else 'e2eaff'); LIGHT_GROUPS.append(0)
 BASEMENT_RED = ((-50, -20), (-20, -42), (30, -42), (-80, 6))
+# wall sconces in the gym, on its long walls' brick piers (x every 16 on the z walls, z every 16 on the east wall)
+GYM_SCONCES = ([(x, -29.6) for x in (80.0, 112.0, 144.0)] + [(x, 53.6) for x in (80.0, 112.0, 144.0)] +
+               [(157.6, z) for z in (-16.0, 16.0, 48.0)])     # (the lights' spots, 2.4 off the wall lines)
 # wall lanterns on the courtyard's ground-floor piers (the light's spot, 0.9 off the wall): x on the long walls, z on the ends
 COURT_LANTERNS = ([(x, 8.0, -30.6) for x in (-24.0, 24.0)] + [(x, 8.0, 30.6) for x in (-24.0, 24.0)] +
                   [(-38.6, 8.0, z) for z in (-12.0, 12.0)] + [(38.6, 8.0, z) for z in (-12.0, 12.0)])
@@ -1229,7 +1268,7 @@ def v2_ceilings():
         if i % 3 or d['lv'] == 'R': continue
         mn, mx = d['box']['min'], d['box']['max']
         cx, cz = (mn[0] + mx[0]) / 2, (mn[2] + mx[2]) / 2
-        y = mx[1] + 2.95
+        y = mx[1] + 3.2       # (over the deeper heads)
         mf = M_('sc_fix', d['lv'])
         if d['axis'] == 'z':
             bx(mf, '33363a', (cx - 1.1, y - 0.4, cz - 1.2, cx + 1.1, y + 0.4, cz + 1.2), bev=0.1)
@@ -1237,6 +1276,22 @@ def v2_ceilings():
         else:
             bx(mf, '33363a', (cx - 1.2, y - 0.4, cz - 1.1, cx + 1.2, y + 0.4, cz + 1.1), bev=0.1)
             bx(mf, ST2['exitc'], (cx - 0.9, y - 0.25, cz - 1.2, cx + 0.9, y + 0.25, cz + 1.2), 'neon')
+    for (px, pz) in GYM_SCONCES:        # (the gym's sconces: a box, a frosted shade, a core)
+        if pz < 0 or pz > 50:
+            s_ = 1 if pz < 0 else -1
+            w = -32.0 if pz < 0 else 56.0          # the wall line; its pier face is 0.75 off it
+            def Z(a, b): return (min(w + s_ * a, w + s_ * b), max(w + s_ * a, w + s_ * b))
+            za, zb = Z(0.6, 1.8); bx(M_('sc_fix', 'G'), ST2['frame'], (px - 0.7, 8.3, za, px + 0.7, 9.8, zb), bev=0.1)
+            za, zb = Z(0.9, 1.65); bx(M_('sc_fix', 'G'), ST2['shade'], (px - 0.55, 7.0, za, px + 0.55, 8.3, zb), 'glass')
+            za, zb = Z(1.1, 1.45); bx(M_('sc_fix', 'G'), ST2['core'], (px - 0.2, 7.4, za, px + 0.2, 8.0, zb), 'neon')
+        else:                                       # (the east wall's skin face is x 160, its piers 0.25 proud)
+            bx(M_('sc_fix', 'G'), ST2['frame'], (158.6, 8.3, pz - 0.7, 159.9, 9.8, pz + 0.7), bev=0.1)
+            bx(M_('sc_fix', 'G'), ST2['shade'], (158.75, 7.0, pz - 0.55, 159.5, 8.3, pz + 0.55), 'glass')
+            bx(M_('sc_fix', 'G'), ST2['core'], (158.95, 7.4, pz - 0.2, 159.3, 8.0, pz + 0.2), 'neon')
+    for i, (ax_, az_) in enumerate(((-105.0, -5.0), (155.0, -53.0))):      # (the stairwells' landing lamps, boxed)
+        for yy in (-16.0, 0.0, 16.0):
+            bx(M_('sc_fix', lvl_of(yy + 1)), ST2['frame'], (ax_ - 0.9, yy + 13.4, az_ - 0.9, ax_ + 0.9, yy + 14.0, az_ + 0.9), bev=0.1)
+            bx(M_('sc_fix', lvl_of(yy + 1)), ST2['shade'], (ax_ - 0.7, yy + 12.9, az_ - 0.7, ax_ + 0.7, yy + 13.4, az_ + 0.7), 'glass')
     bx(M_('sc_fix', 'G'), ST2['frame'], (62.65, 8.0, 17.3, 63.3, 9.6, 18.7), bev=0.1)                    # (the stair-corner sconce)
     bx(M_('sc_fix', 'G'), ST2['shade'], (62.2, 7.6, 17.45, 62.7, 8.9, 18.55), 'glass')
     bx(M_('sc_fix', 'G'), ST2['core'], (62.35, 7.9, 17.8, 62.6, 8.5, 18.2), 'neon')
@@ -1302,6 +1357,34 @@ def v2_stairs():
     for (za, zb) in ((-32.0, -4.0), (36.0, 56.0)):
         bx('sc_gymdress', ST2['parapet'], (75.4, 16.0, za, 76.1, 19.5, zb))
         bx('sc_gymdress', ST2['cap'], (75.25, 19.5, za, 76.25, 19.9, zb), bev=0.1)
+
+def gym_hoops():
+    """a basketball backboard and hoop on each end wall of the gym: a chunky bracket, a board, a ring of boxes"""
+    m = 'sc_gymdress'
+    for (z, s) in ((-32.0, 1), (56.0, -1)):
+        x = 96.0         # (clear of the shutters at x 118..130 on both end walls)
+        w = z + s * 0.5
+        def Z(a, b): return (min(w + s * a, w + s * b), max(w + s * a, w + s * b))
+        za, zb = Z(0.0, 3.0); bx(m, ST2['frame'], (x - 0.8, 13.0, za, x + 0.8, 14.2, zb), bev=0.1)        # the bracket
+        za, zb = Z(3.0, 3.5); bx(m, 'd9dcdc' if VARIANT == 'v2A' else 'cfd3d6', (x - 3.6, 11.0, za, x + 3.6, 15.4, zb), bev=0.12)
+        za, zb = Z(2.9, 3.0); bx(m, ST2['frame'], (x - 1.2, 12.2, za, x + 1.2, 13.8, zb))                  # (the square on the board)
+        r_ = 1.0
+        zc = w + s * (3.5 + r_ + 0.1)
+        for (a0_, b0_, a1_, b1_) in ((x - r_, zc - r_, x + r_, zc - r_ + 0.3), (x - r_, zc + r_ - 0.3, x + r_, zc + r_),
+                                    (x - r_, zc - r_, x - r_ + 0.3, zc + r_), (x + r_ - 0.3, zc - r_, x + r_, zc + r_)):
+            bx(m, 'b0663a' if VARIANT == 'v2A' else L.ACCENT, (a0_, 11.6, min(b0_, b1_), a1_, 11.9, max(b0_, b1_)))
+
+def tower_soffits():
+    """a sloped slab under every flight of the stairwells (round 3: the steps' undersides showed separate blocks with black
+    gaps)"""
+    m = 'sc_stair'
+    for (x0, x1, xm, zA, zB, f1, f2) in ((-120, -100, -110, (-10, 0), (-34, -26), (-120, -110), (-110, -100)),
+                                        (140, 160, 150, (-58, -48), (-88, -74), (150, 160), (140, 150))):
+        za_edge, zb_edge = zA[0], zB[1]
+        for lv in ('B', 'G', 'U'):
+            Ly = LV[lv]
+            prism(m, STEPC, [(za_edge, Ly - 2.0), (za_edge, Ly - 0.5), (za_edge - 16.0, Ly + 7.5), (za_edge - 16.0, Ly + 6.0)], 'x', f1[0], f1[1])
+            prism(m, STEPC, [(zb_edge, Ly + 6.0), (zb_edge, Ly + 7.5), (zb_edge + 16.0, Ly + 15.5), (zb_edge + 16.0, Ly + 14.0)], 'x', f2[0], f2[1])
 
 def v2_court():
     """the courtyard's covered walk: a deep canopy along all four walls at first-floor height, a fascia, brackets (v2A)"""
@@ -1371,7 +1454,7 @@ def v2_build():
     # (the balcony's rails are solid parapets now)
     L.FENCES[:] = [f for f in _fences if not (75.0 < f[0] < 76.5 and 15.5 < f[1] < 16.5)]
     fences(); L.FENCES[:] = _fences
-    niches_dress(); grounds(); v2_court(); court_lanterns(); v2_facade()
+    niches_dress(); grounds(); v2_court(); court_lanterns(); v2_facade(); gym_hoops(); tower_soffits()
 
 # ---------------------------------------------------------------- the UVs: world-scaled box projection per textured colour
 if not V2:
@@ -1565,11 +1648,11 @@ else:
             import school_props
             if V2:      # (each look's furniture palette: v2A old oak, walnut and sage steel; v2B pale ash and charcoal steel)
                 for _k, _v in {'v2A': dict(WOOD='8c6c4e', WOOD_D='6a4c36', WOOD_L='bb9f7c', METAL='7d8a84', METAL_D='55605a', FABRIC='5e6f68',
-                            LEGT=0.4, NO_FLAG=True, PILLAR_GROW=1.0, LEAF='6b8a52', LEAF_D='5a7644',
-                            TRUNK=2.3, LIMB=1.5),
+                            LEGT=0.4, NO_FLAG=True, PILLAR_GROW=1.0,
+                            TRUNK=1.9, LIMB=1.4, BARK='8a755d', LEAF='6f9058', LEAF_D='5e7c4a'),
                                'v2B': dict(WOOD='c2a986', WOOD_D='8a7559', WOOD_L='d2bf9f', METAL='6a7076', METAL_D='45494e',
                                            STEEL='a9aeb2', FABRIC='5f6a72', LEGT=0.4, NO_FLAG=True, PILLAR_GROW=1.0,
-                                           LEAF='6b8a52', LEAF_D='5a7644', TRUNK=2.3, LIMB=1.5)}[VARIANT].items():
+                                           LEAF='6f9058', LEAF_D='5e7c4a', TRUNK=1.9, LIMB=1.4, BARK='8a755d')}[VARIANT].items():
                     setattr(school_props, _k, _v)
             school_props.furniture(K, L)
         except Exception as e:

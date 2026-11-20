@@ -27,6 +27,7 @@ LEAF, LEAF_D, SOIL, POT = '5d7a48', '4a6339', '5a4a3c', '9c6b52'
 #  than their hit boxes; school_models.py sets them per variant)
 LEGT, NO_FLAG, PILLAR_GROW = 0.2, False, 0.0
 TRUNK, LIMB = 1.5, 0.9         # (the courtyard tree's trunk radius and limb thickness)
+BARK = '6a5a48'
 MIRROR, SCREEN = 'b9c7cc', '1f2326'
 BOOKS = ('8a4f4a', '3f5470', '6b6e45', 'a8874a', '7c7f84', 'c9bfa6', '5e4a5e', '4f6b66')
 FLOORS = (-16.0, 0.0, 16.0, 32.0)
@@ -526,9 +527,9 @@ def m_tree(f, it):
     f.cyl(L.TEXKEY['brick'], 0, -0.05, 0, r, H + 0.05, segs=28, bev=0.12)
     f.cyl(PALE, 0, H - 0.05, 0, r + 0.15, 0.3, segs=28, bev=0.1)                                # the coping
     f.cyl(SOIL, 0, H - 0.1, 0, r - 0.6, 0.25, segs=24, bev=0)
-    f.cyl('6a5a48', 0, H, 0, TRUNK, 12.0, segs=12, bev=0.3, r2=TRUNK * 0.67)                   # the trunk
+    f.cyl(BARK, 0, H, 0, TRUNK, 12.0, segs=12, bev=0.3, r2=TRUNK * 0.67)                       # the trunk
     for (a, h, ln) in ((0.3, 10.0, 6.0), (2.4, 11.5, 5.5), (4.3, 9.5, 6.5)):
-        f.rbox('6a5a48', math.sin(a) * ln * 0.45, h + 2.0, math.cos(a) * ln * 0.45, LIMB, LIMB, ln, yaw=a, pitch=-0.6, bev=0.2)
+        f.rbox(BARK, math.sin(a) * ln * 0.45, h + 2.0, math.cos(a) * ln * 0.45, LIMB, LIMB, ln, yaw=a, pitch=-0.6, bev=LIMB * 0.4)
     for (u, v, w, rr) in ((0, 22, 0, 8.0), (5, 19.5, 2, 5.5), (-5, 20, -2, 5.8), (2, 25.5, -3, 5.0), (-2.5, 18.5, 4.5, 5.2), (3, 18.5, -5, 5.0)):
         f.blob(LEAF if rr > 5.4 else LEAF_D, u, v, w, rr, sy=0.72, sub=2)
     for k in range(6):                                                                           # shrubs in the planter

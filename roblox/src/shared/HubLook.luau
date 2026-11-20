@@ -138,6 +138,25 @@ if script:GetAttribute("TrainingLook") == "v2" then
 	H.looks.training = H.looks.training_v2
 	H.plainSky.training = true
 end
+-- the training area v5 (TrainingCompound, the compound, 20 Nov 2026): a late-afternoon sun, low and warm, and less base
+-- light, so the compound's lamps, its panels in their housings and the green portal glow (the redo's judges, rounds 1-3:
+-- "flat daylight makes nothing glow"); TrainingV2 writes TrainingLook = "v5" when it builds v5 live
+H.looks.training_v5 = with(HUB, {
+	Lighting = {
+		Ambient = Color3.fromRGB(98, 100, 114), OutdoorAmbient = Color3.fromRGB(120, 124, 140), Brightness = 1.8,
+		ExposureCompensation = -0.05, EnvironmentDiffuseScale = 0.35, EnvironmentSpecularScale = 0.3,
+		ClockTime = 16.8, GeographicLatitude = 34, ColorShift_Top = Color3.fromRGB(255, 228, 196),
+	},
+	Atmosphere = { Density = 0.2, Offset = 0.08, Haze = 1.1, Glare = 0.12, Color = Color3.fromRGB(214, 200, 184), Decay = Color3.fromRGB(122, 116, 132) },
+	Bloom = { Intensity = 0.4, Size = 22, Threshold = 1.7 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.08, TintColor = Color3.fromRGB(255, 245, 234) },
+	SunRays = { Intensity = 0.04 },
+})
+H.plainSky.training_v5 = true
+if script:GetAttribute("TrainingLook") == "v5" then
+	H.looks.training = H.looks.training_v5
+	H.plainSky.training = true
+end
 -- the training area's back lot (16 Nov 2026: TrainingLot builds it, TheLot opens it), out in the open behind the
 -- garage door: HubLife picks it for whoever is on the lot (the attribute OnLot). v2's light with more air: a thicker
 -- haze softens the far horizon (the playground's towers stand far beyond the hills to the south)
@@ -435,7 +454,7 @@ H.byArena.JankfieldHigh = "school"
 -- (round 2: the ambient a third lower and neutral; the judges saw the shadows go violet and an even blue fill)
 H.looks.school_v2a = {
 	Lighting = {
-		Ambient = Color3.fromRGB(64, 61, 58), OutdoorAmbient = Color3.fromRGB(54, 57, 70), Brightness = 0.55,
+		Ambient = Color3.fromRGB(68, 65, 61), OutdoorAmbient = Color3.fromRGB(50, 53, 64), Brightness = 0.55,
 		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.2,
 		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
 		FogColor = Color3.fromRGB(26, 28, 40), FogStart = 120, FogEnd = 700,
@@ -449,7 +468,7 @@ H.plainSky.school_v2a = true
 H.byArena.JankfieldHighV2A = "school_v2a"
 H.looks.school_v2b = {
 	Lighting = {
-		Ambient = Color3.fromRGB(62, 63, 66), OutdoorAmbient = Color3.fromRGB(52, 57, 72), Brightness = 0.55,
+		Ambient = Color3.fromRGB(70, 71, 73), OutdoorAmbient = Color3.fromRGB(48, 52, 64), Brightness = 0.55,
 		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.25,
 		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
 		FogColor = Color3.fromRGB(24, 28, 40), FogStart = 120, FogEnd = 700,

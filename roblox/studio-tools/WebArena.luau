@@ -30,7 +30,7 @@ W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 1119400
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 105919865840853,
 	Backrooms = 114408994542661, Forest = 82632705219845, ArcticCabin = 112062417043410,
 	Skatepark = 119318569961702, Station = 95570686035667, JankfieldHigh = 131390597697986,
-	JankfieldHighV2A = 78888284382028, JankfieldHighV2B = 82000519109073 } :: { [string]: number }
+	JankfieldHighV2A = 101642156361708, JankfieldHighV2B = 97107037826202 } :: { [string]: number }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
 -- version of Jankfield High is tagged at a time; the others stay built as spares (JankZombies start can still name one
