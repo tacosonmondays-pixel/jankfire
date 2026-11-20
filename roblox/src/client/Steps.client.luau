@@ -46,6 +46,19 @@ local function padSignal(): any
 	end
 	return PadSignal
 end
+-- the VFX session's Fx (a dust ring on a hard landing, a puff as a slide sets off), found when needed like PadSignal so the
+-- steps never wait on it; each call is pcall'd so an effect can never stop a footstep (20 Nov 2026)
+local FxMod: any = nil
+local function fx(): any
+	if FxMod == nil then
+		local m = script.Parent:FindFirstChild("Fx")
+		if m and m:IsA("ModuleScript") then
+			local ok, F = pcall(require, m)
+			FxMod = if ok and type(F) == "table" then F else false
+		end
+	end
+	return FxMod or nil
+end
 local function mute(s: Instance)
 	if s:IsA("Sound") and MUTE[s.Name] then s.SoundId = "" end
 end
@@ -130,6 +143,7 @@ RunService.Heartbeat:Connect(function(dt)
 			if speed > 14 and now - b.lastLand > 0.25 then
 				b.lastLand = now
 				Sfx.play("land", feet(b), math.clamp((speed - 6) / 40, 0.3, 1.2) * (if b.mine then 0.85 else 1))
+				local F = fx(); if F and F.land then pcall(F.land, feet(b), speed, b.mine) end -- (nothing under 42 studs/s)
 			elseif speed > 4 then
 				step(b)
 			end
@@ -137,7 +151,10 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 		b.fall = 0
 		local sl = sliding(b)
-		if sl and not b.sliding then Sfx.play("slide", feet(b), if b.mine then 0.85 else 1) end
+		if sl and not b.sliding then
+			Sfx.play("slide", feet(b), if b.mine then 0.85 else 1)
+			local F = fx(); if F and F.slide then pcall(F.slide, feet(b), b.root.CFrame.LookVector, b.mine) end
+		end
 		b.sliding = sl
 		local hv = Vector3.new(v.X, 0, v.Z).Magnitude
 		if sl or hv < 3 then
