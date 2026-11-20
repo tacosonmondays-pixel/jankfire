@@ -17,6 +17,10 @@ TEX = {  # our own images (ids in roblox/assets/vfx/assets.json and roblox/docs/
     'hitstar3': 104577603786888, 'gburst2': 109446321378868, 'gring2': 137445507815789, 'splat4': 87402093208786,
     'hairring': 77478194219067, 'hairline': 94387206333196, 'windarc': 115049111171567, 'needle': 120682326983772,
     'dot': 117163101562671,
+    # round 3 (draw_r3.py, the round-2 critic's texture fixes)
+    'hitstar4b': 107149707376006, 'gburst3': 107406496303416, 'hairline2': 92955374417285, 'hairring2': 108479870084917,
+    'burstdisc': 83958316271562, 'windarc2': 99774065189139, 'crack2': 131926890049423, 'puff2': 117654580630043,
+    'brokenring': 96951839735929, 'dagger': 104703641730305,
 }
 OR = {'cam': 0, 'camup': 1, 'par': 2, 'perp': 3}
 DIR = {'right': 0, 'top': 1, 'back': 2, 'left': 3, 'bottom': 4, 'front': 5}
@@ -260,7 +264,110 @@ def r2():
     return E
 
 
-ROUNDS = {1: r1, 2: r2}
+def layer(E, part_name, name):
+    """the emitter `name` inside effect `part_name` (for a round written as patches on the last)"""
+    def walk(d):
+        if d['c'] == 'ParticleEmitter' and d['n'] == name:
+            return d
+        for c in d.get('k', []):
+            r = walk(c)
+            if r:
+                return r
+        return None
+    for d in E:
+        if d['n'] == part_name:
+            r = walk(d)
+            if r:
+                return r
+    raise KeyError(part_name + '.' + name)
+
+
+def drop(E, part_name, name):
+    def walk(d):
+        d['k'] = [c for c in d.get('k', []) if not (c['c'] == 'ParticleEmitter' and c['n'] == name)]
+        for c in d['k']:
+            walk(c)
+    for d in E:
+        if d['n'] == part_name:
+            walk(d)
+
+
+def tex(k):
+    return 'rbxassetid://%d' % TEX[k]
+
+
+def r3():
+    """round 3: the round-2 critic's fixes, as patches on round 2 (scores hit 6, guard 4, dash 4, slash 6, slam 4,
+    explosion 4)"""
+    E = r2()
+    # HIT: star only in frames 0-1 and wider than tall; a bigger ring (0.45 -> 0.9) with sparkles only early, then hair ticks
+    layer(E, 'O_Hit', 'star')['p']['Texture'] = tex('hitstar4b')
+    # GUARD: the burst a squat chunky body (frames 0-1) then three thin separate rings (2-5), gone by 40% of life
+    g = layer(E, 'O_Guard', 'burst')['p']
+    g['Texture'] = tex('gburst3')
+    g['Size'] = NS((0, 3.4), (0.2, 4.4), (0.38, 3), (0.4, 0), (1, 0))
+    layer(E, 'O_Guard', 'ring')['p']['Transparency'] = NS((0, 0), (0.4, 0), (0.6, 1), (1, 1))
+    # DASH: the hairline across the sprite (Squash -1 widens it), one-sided single rings, fewer and smaller bits, strung
+    # out along the path by a spread of speeds
+    for n in ('lines', 'debris', 'bits up', 'bits down'):
+        layer(E, 'O_Dash', n)['p']['Speed'] = NR(4, 12)
+    layer(E, 'O_Dash', 'lines')['p']['Texture'] = tex('hairline2')
+    for n in ('bits up', 'bits down'):
+        layer(E, 'O_Dash', n)['p']['Size'] = NS((0, 0.08), (1, 0.08))
+    c = layer(E, 'O_Dash', 'circles')['p']
+    c['Texture'] = tex('hairring2')
+    c['Transparency'] = NS((0, 1), (0.5, 0.6), (1, 1))
+    layer(E, 'O_Dash', 'glow')['a']['EmitCount'] = 3.0
+    # SLASH: a crisp ray burst for the impact (smaller), the first flash paler and brighter, arcs with a bright main stroke
+    i2 = layer(E, 'O_Slash', 'impact2')['p']
+    i2['Texture'] = tex('burstdisc')
+    i2['Size'] = NS((0, 2), (1, 7))
+    i1 = layer(E, 'O_Slash', 'impact1')['p']
+    i1['Color'] = CS('#bfbfbf')
+    i1['Brightness'] = 4
+    for n in ('spin1', 'spin2', 'spin3', 'spin4', 'spin5'):
+        layer(E, 'O_Slash', n)['p']['Texture'] = tex('windarc2')
+    # GROUND: clouds thrown wide again (a flat belt), small dust back, thin pale cracks full-size from the start and
+    # under the clouds, puffs shrinking instead of holed, fewer chips
+    cl = layer(E, 'O_Slam', 'clouds')['p']
+    cl['Speed'] = NR(5, 25)
+    cl['Drag'] = 2
+    cl['Texture'] = tex('puff2')
+    d = layer(E, 'O_Slam', 'dust')['p']
+    d['Texture'] = tex('dust4')
+    d['Size'] = NS((0, 1), (1, 2.8))
+    d['Transparency'] = NS((0, 0.3), (1, 1))
+    k = layer(E, 'O_Slam', 'crack')['p']
+    k['Texture'] = tex('crack2')
+    k['Color'] = CS('#5a5650')
+    k['ZOffset'] = -3
+    layer(E, 'O_Slam', 'chips')['a']['EmitCount'] = 14.0
+    # EXPLOSION: the flash 70% see-through like the pack, black ink painted black, the flame gone, white dagger licks,
+    # a black broken swirl ring
+    f = layer(E, 'O_X', 'flash')['p']
+    f['Transparency'] = NS((0, 0.7), (0.6, 0.75), (1, 1))
+    f['Brightness'] = 1
+    ink = layer(E, 'O_X', 'ink')['p']
+    ink['Color'] = CS('#000000')
+    ink['LightEmission'] = 0.0
+    ink['LightInfluence'] = 0.0
+    drop(E, 'O_X', 'flame')
+    lk = layer(E, 'O_X', 'licks')['p']
+    lk['Texture'] = tex('dagger')
+    lk['Color'] = CS('#ffffff')
+    for n in ('FlipbookLayout', 'FlipbookMode'):
+        lk.pop(n, None)
+    layer(E, 'O_X', 'shards')['p']['Texture'] = tex('dagger')
+    fr = layer(E, 'O_X', 'firering')['p']
+    fr['Texture'] = tex('brokenring')
+    fr['Color'] = CS('#000000')
+    fr['LightEmission'] = 0.0
+    fr['LightInfluence'] = 0.0
+    fr['Transparency'] = NS((0, 0), (0.7, 0), (1, 1))
+    return E
+
+
+ROUNDS = {1: r1, 2: r2, 3: r3}
 DATA = ROUNDS[ROUND]()
 js = json.dumps(DATA, separators=(',', ':'))
 assert ']==]' not in js

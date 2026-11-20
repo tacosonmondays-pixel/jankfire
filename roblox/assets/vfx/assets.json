@@ -419,5 +419,65 @@
   "sha1": "0a03753546f7713221b737de7fa6a5acb559a0ce",
   "what": "practice: small soft dot, 16 px on 64 (tools/roblox/vfx/practice/draw_r2b.py)",
   "uploaded": "2026-11-20"
+ },
+ "vfx_hitstar4_4x4": {
+  "id": 107149707376006,
+  "sha1": "5bd8f0768faf8f8278148f63fd337a3f64642b1b",
+  "what": "practice: hit flash v4, frames 0-1 a wide 4-point star, 2-5 a big sparkle ring, 6-9 a thin ring with hair ticks, 10-15 empty (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gburst3_4x4": {
+  "id": 107406496303416,
+  "sha1": "e798f2c03962352f0cf0567b46f5cbdff25d7b04",
+  "what": "practice: guard-break burst v3, a squat chunky body with fat short points (0-1), three thin rings (2-5), empty from 6 (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hairline2": {
+  "id": 92955374417285,
+  "sha1": "4504b0507fe687124059721d5c05aa082c0a625a",
+  "what": "practice: hairline across the canvas (along u; Squash -1 widens it) (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hairring2": {
+  "id": 108479870084917,
+  "sha1": "84d87faa5ab3026be2dcd78d3cb2a081c700a4f6",
+  "what": "practice: one hairline ring, bright on one side (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_burstdisc": {
+  "id": 83958316271562,
+  "sha1": "aedf98ec101824e5d4532d35a2afbc8d52a62c50",
+  "what": "practice: 20 hard radial rays round a hot core (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_windarc2": {
+  "id": 99774065189139,
+  "sha1": "6311f9a6d8e98d3a82e7bf2684eabfa6b87ab532",
+  "what": "practice: wind arc with one bright main stroke and 5 feathered lines (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_crack2_4x4": {
+  "id": 131926890049423,
+  "sha1": "dc9e03bc82dca06326ae4f7a18131d88be82c32b",
+  "what": "practice: ground cracks v2, 10 thin radiating arms, full size from frame 0, fading late (tint pale grey, LE 0, ZOffset -3) (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_puff2_4x4": {
+  "id": 117654580630043,
+  "sha1": "07ffbfd4ab8d6ea7a1d6cbff9e595d93869de8e1",
+  "what": "practice: cartoon puff v2, swelling then shrinking and fading (no holes) (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_brokenring": {
+  "id": 96951839735929,
+  "sha1": "67ee8f0af448e66c93f0820fc7940415775aa50b",
+  "what": "practice: hard ring with 3 gaps and tapered ends (paint black for the explosion swirl) (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_dagger": {
+  "id": 104703641730305,
+  "sha1": "4fca08e687ad26a175fc23a0566d5fd0a0ca9db8",
+  "what": "practice: a hard blade 250 px long, widest at 30% (tools/roblox/vfx/practice/draw_r3.py)",
+  "uploaded": "2026-11-20"
  }
 }
