@@ -82,6 +82,11 @@ photographed them. Guard break and Slam stay theirs, for parry and landings: a k
   - For a frozen photo, add a hidden emitter (`EmitDelay` 25, `EmitCount` 1, transparent) to each template and each
     pooled clone in that Play.
   - Before/after rows: six copies, the left three with `KillFxPacks = false`.
+- **Checked** (solo Play, v1116 and v1119; photo `flair/kill-effects-packs-before-after.jpg`):
+  - All four templates play on copies of the owner's avatar and stay within about 4 studs. They are done by 1.4 s.
+  - No script errors.
+  - The first ice burst carried the pack's smoke (a 20-stud white fog), so the smoke layer was dropped.
+  - Shatter's clear glass wedges read dark against a dark wall: they show what's behind them.
 
 How it works:
 - **Server** (`server/FlairServer.server.luau`, hooked on `Fight.onKill`): the killer must be a player, not the victim;
