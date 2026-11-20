@@ -365,10 +365,16 @@ end
 local homeLog: { any } = {} -- (Studio tests: what backHome sent)
 local function backHome(m: any)
 	if type(m.queue) ~= "string" or string.sub(m.queue, 1, 6) ~= "cross:" then return end
-	task.delay((Matches.AFTER or 7) + 0.5, function()
+	-- (20 Nov 2026, the owner: the match-winning cutscene "still gets cut off" live: this teleport ran Matches.AFTER s
+	-- after the end, while a finisher's scene (m.finisherUntil) holds the end screen and the trip home for up to ~15 s.
+	-- now it waits for the real trip home, backToHub setting m.on = false, then goes. 120 s at most)
+	task.spawn(function()
+		local t0 = os.clock()
+		while m.on ~= false and os.clock() - t0 < 120 do task.wait(0.25) end
+		task.wait(0.5)
 		local all = {}
 		for _, list in m.teams do for _, p in list do table.insert(all, p) end end
-		if STUDIO then table.insert(homeLog, { match = m.queue, players = #all, mode = m.mode, ranked = m.ranked == true }) end
+		if STUDIO then table.insert(homeLog, { match = m.queue, players = #all, mode = m.mode, ranked = m.ranked == true, at = os.clock() }) end
 		sendHome(all, nil)
 	end)
 end
