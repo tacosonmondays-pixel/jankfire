@@ -1895,7 +1895,8 @@ function ShopUI.fillInventory(force: boolean?)
 				if it.kind == "skin" then Fin.badge(c, it.id, UDim2.new(1, -6, 0, 6)) end
 				rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
 				local oid = if it.vip then "vip" else Shop.singleId({ kind = it.kind, id = it.id, weapon = it.weapon or (if Shop.gunless(it.kind) then nil else V.yourGun()) })
-				c.MouseButton1Click:Connect(function() ShopUI.inspect(oid) end)
+				-- (a set's piece or a VIP skin isn't sold alone, so it has no page: one with a finisher plays it. 20 Nov)
+				c.MouseButton1Click:Connect(function() if Shop.offer(oid) then ShopUI.inspect(oid) elseif it.kind == "skin" then Fin.preview(it.id) end end)
 			end
 		end
 	end
