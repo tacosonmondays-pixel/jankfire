@@ -331,6 +331,7 @@ local function castLocal(): boolean
 	local len = if near then 0 elseif hit then (hit.Position - from).Magnitude else WV.range
 	local w = makeWave(from, dir, len, WV.speed, WV.windup, true, nil)
 	w.normal = if hit then hit.Normal else nil
+	if Fx.skinWave then Fx.skinWave(me, from, dir, WV.windup) end -- (a skin's layer: the Infernal katana's Crimson Slash; VFX, 20 Nov)
 	pendingMine = w
 	freezeSoon("wave", WV.windup + 0.16)
 	-- the slash itself: your blade's backhand, your body's, the release, a cold flash
@@ -396,6 +397,7 @@ FxR.OnClientEvent:Connect(function(f: any)
 		end
 		local w = makeWave(f.from, (f.dir :: Vector3).Unit, f.len, if type(f.speed) == "number" then f.speed else WV.speed, startIn, mine, f.id)
 		w.normal = if typeof(f.normal) == "Vector3" then f.normal else nil
+		if Fx.skinWave and type(f.by) == "number" then Fx.skinWave(Players:GetPlayerByUserId(f.by), f.from, (f.dir :: Vector3).Unit, startIn) end
 		freezeSoon("wave", math.max(0, startIn) + 0.16)
 		if not mine then
 			local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?

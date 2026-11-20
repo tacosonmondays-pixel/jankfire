@@ -1519,6 +1519,39 @@ function Fx.slide(at: Vector3, look: Vector3, mine: boolean?)
 	pcall(V.play, "DashPuff", CFrame.fromMatrix(at + Vector3.new(0, 0.4, 0), f.Unit, Vector3.yAxis), { scale = 0.4 })
 end
 
+-- the bought Crimson Slash pack's slash (coldd Development; template "CrimsonSlash"; 20 Nov 2026): a crimson crescent
+-- with a black edge, a flash and red sparks. Its crescents lie across the emit direction (the part's top), so the top
+-- points at whoever's watching and everyone sees it face on (photographed: a crimson crescent ring, dark edges, a
+-- dark streak along its top, gone by 0.3 s). (in a do block: Fx's main chunk is near Luau's 200-local limit)
+do
+	function Fx.crimsonSlash(at: Vector3, dir: Vector3, k: number?)
+		local V = vfx()
+		if not V then return end
+		local eye = eyeFor(at, dir)
+		pcall(V.play, "CrimsonSlash", CFrame.lookAt(at, eye) * CFrame.Angles(-math.pi / 2, 0, 0), { scale = k or 0.5 })
+	end
+	-- a katana wave's skin layer (Katana.client calls it as a wave sets off, with the thrower): the Infernal katana's
+	-- wave opens with the Crimson Slash a few studs out, as the wave leaves (its ring is ~27 studs across at scale 1:
+	-- 0.75 is the wave's 6 m)
+	local WAVE_SKIN: { [string]: boolean } = { katana_infernal = true }
+	local GunSkinsM: any = nil
+	function Fx.skinWave(p: Player?, from: Vector3, dir: Vector3, startIn: number?)
+		if not p then return end
+		if GunSkinsM == nil then
+			local m = Shared:FindFirstChild("GunSkins")
+			local ok, M = false, nil
+			if m and m:IsA("ModuleScript") then ok, M = pcall(require, m) end
+			GunSkinsM = if ok and type(M) == "table" then M else false
+		end
+		if not GunSkinsM then return end
+		local ok, id = pcall(GunSkinsM.skinFor, p, "katana")
+		if not ok or type(id) ~= "string" or not WAVE_SKIN[id] then return end
+		-- (your own: 10 studs out and smaller, or it fills your screen for 0.3 s; photographed 20 Nov)
+		local mine = p == Players.LocalPlayer
+		task.delay(math.max(0, startIn or 0), function() Fx.crimsonSlash(from + dir * (if mine then 10 else 3), dir, if mine then 0.45 else 0.75) end)
+	end
+end
+
 -- sparks (fx.js sparks): hot white / pale yellow streaks flying sideways and up off the edge, turning orange, plus a
 -- small white pop (pop = its radius in metres: 0.15, 0.22 for a perfect parry; it just fades)
 function Fx.sparks(at: Vector3, dir: Vector3, n: number, pop: number)
