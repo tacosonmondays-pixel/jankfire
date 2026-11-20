@@ -457,3 +457,10 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
   - a golf hole played through in the room (in the cup in 4), and a bout ran in `box1_square`;
   - the anti-cheat: 0 points;
   - photos: `docs/minigames/square_golf_room.jpg`, `square_box_ring.jpg`.
+- **THE CONCOURSE** (live since place version 1227):
+  - all 8 tables built in `Map.Hub.Concourse.MiniGames` at the hub's spots; golf in its 54 x 94 room east of the hall, the prompt by the west-wall door;
+  - nothing of the hub's stands inside the course;
+  - a golf hole played through (picked up at par + 4, the card shown), and a bout ran in `box1_concourse`;
+  - the anti-cheat: 0 points;
+  - photo: `docs/minigames/concourse_golf_room.jpg`.
+  - The room's warm lights make the course look more saturated than in the Square; that's the hub's lighting.
