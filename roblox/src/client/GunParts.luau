@@ -137,9 +137,20 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 			end
 		end
 	end
+	if P.box then -- (19 Nov 2026) the Minigun's ammo box: off at boxPop, the new one up and seated with the belt [down, back, tip]
+		local v = sample(c, "box")
+		if v then
+			move.box = CFrame.new(0, v[1] * k, (v[2] or 0) * k) * about((P.box.at or Vector3.zero) * k, rx(v[3] or 0))
+			hide.box = v[1] < -0.3
+		end
+	end
 	if P.charge then
 		local v = sample(c, "charge")
 		if v then move.charge = CFrame.new(0, 0, v[1] * k) end
+	end
+	if P.cocker then -- (19 Nov 2026) Lefty & Righty's charging handle: back by travel (m) and home, reload_akimbo
+		local v = sample(c, "cocker")
+		if v then move.cocker = CFrame.new(0, 0, v[1] * (P.cocker.travel or 0.025) * k) end
 	end
 	if P.pump then
 		local v = sample(c, "pump")

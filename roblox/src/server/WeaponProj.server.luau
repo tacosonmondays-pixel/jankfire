@@ -84,6 +84,7 @@ local function callout(f: Fighter, text: string, dur: number)
 end
 local function centre(t: Fighter): Vector3? local ft = Fight.feet(t); return ft and ft + Vector3.new(0, 0.9 * S, 0) end
 local function slip(t: Fighter, wid: string)
+	if now() - t.slipT < Weapons.MSLIP.immune then return end -- (19 Nov 2026, the fling fix: one slip at a time)
 	t.slipT = now()
 	if t.kind == "player" then SlipR:FireClient(t.ref :: Player, wid) else Dummies.slip(t) end
 end
@@ -463,11 +464,23 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 	-- go up, behind you to dash), on the ground or in the air; no damage. your upward speed after it is capped
 	-- (thrustCapUp). a shot whose blast will reach you (the floor at your feet, a wall in your face) is the old rocket
 	-- jump on its own: no back-blast on top (both together threw you 60 m up in a test)
-	if w.thrust and not sphere(eye, w.r, look * w.radius) then
+	-- (19 Nov 2026, the fling fix) none while you're slipping on marbles; and it never takes your run past thrustCapSide
+	-- (a chain of level shots used to stack: nothing in the air slows you)
+	if w.thrust and n - f.slipT >= Weapons.SLIP.time and not sphere(eye, w.r, look * w.radius) then
 		local push = -look * w.thrust
 		if Vector3.new(push.X, 0, push.Z).Magnitude > math.abs(push.Y) then push = Vector3.new(push.X, math.max(push.Y, w.thrustHop or 0), push.Z) end -- (a dash: off your feet)
-		local vy = if root then root.AssemblyLinearVelocity.Y else 0
+		local rv = if root then root.AssemblyLinearVelocity else Vector3.zero
+		local vy = rv.Y
 		if push.Y > 0 then push = Vector3.new(push.X, math.clamp(w.thrustCapUp - vy, 0, push.Y), push.Z) end
+		local vh, ph = Vector3.new(rv.X, 0, rv.Z), Vector3.new(push.X, 0, push.Z)
+		local after = vh + ph
+		local capS = w.thrustCapSide or math.huge
+		if after.Magnitude > capS and after.Magnitude > 1e-3 then
+			-- (never past the cap, nor past your speed now if you're already over it)
+			local keep = after.Unit * math.max(capS, vh.Magnitude)
+			ph = keep - vh
+			push = Vector3.new(ph.X, push.Y, ph.Z)
+		end
 		Fight.knock(f, push, wid)
 		p:SetAttribute("ACGrace", math.max(tonumber(p:GetAttribute("ACGrace")) or 0, n + 1.5)) -- (the anti-cheat: the launch is the server's)
 		fx("thrust", { by = uid(f), p = eye - look * 1.2 * S, d = -look })

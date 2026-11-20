@@ -271,6 +271,9 @@ end
 
 local function slipsOn(t: Fighter, pt: Patch, n: number): boolean
 	if not t.alive or n - t.slipT < Weapons.MSLIP.immune then return false end
+	-- (19 Nov 2026, the fling fix) your own marbles never slip you: shot into a wall or a corner up close, the patch lands
+	-- at your own feet
+	if t == pt.owner then return false end
 	if t.kind == "player" and t ~= pt.owner and n - t.spawnT < Weapons.FFA.protect then return false end
 	local r = Fight.root(t)
 	if not r or math.abs(r.AssemblyLinearVelocity.Y) > 2 * S then return false end -- in the air
@@ -578,7 +581,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 		if w.radial and away.Magnitude > 1e-3 then kb = away.Unit * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0) end
 		local done = Fight.hurt(t, dmg, f, wid, hs, if w.latch then nil else kb, tp) -- (a latch shoves after its beat)
 		if w.latch and done > 0 then table.insert(latched, t) end
-		if done > 0 and w.slip and t.alive then -- (and onto their back: the marbles' slip)
+		if done > 0 and w.slip and t.alive and now() - t.slipT >= Weapons.MSLIP.immune then -- (and onto their back: the marbles' slip. one at a time, the fling fix)
 			t.slipT = now()
 			if t.kind == "player" then SlipR:FireClient(t.ref :: Player, wid) else Dummies.slip(t) end
 		end

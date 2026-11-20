@@ -400,11 +400,21 @@ RunService.PreSimulation:Connect(function(dt: number)
 	-- it says: so a one-step collision spike (brushing a kerb, a sill, a dummy, another player) used to be read back
 	-- in and held, spinning you up and throwing you across the map. a jump in speed that none of our own moves made
 	-- (Body.kick: pushes, knockback, slips, launches; pads and the rope are in lastSet already) is put back
-	if lastSet and not hum.PlatformStand and os.clock() - Body.kickT > 0.15 then
-		local h, hl = Vector3.new(v.X, 0, v.Z), Vector3.new(lastSet.X, 0, lastSet.Z)
+	-- (19 Nov 2026, the owner: marbles or a Chicken Rocket "on certain walls or corners ... launches you super far
+	-- away". the guard was off for a whole slip (PlatformStand) and for 0.15 s after every shove, so a body thrown or
+	-- tumbling into a corner kept the wall's push-back, and on your back there's no friction to eat it. now it stays on:
+	-- through a slip, and just after a throw it lets through what the throw set (Body.throwV), nothing more. a bare kick,
+	-- Move's own pulls and the dash, still passes as before; the grapple's BONK ragdoll, PlatformStand too, stays free)
+	local kicked = os.clock() - Body.kickT <= 0.15
+	local tv = Body.throwV
+	if lastSet and (not hum.PlatformStand or Body.slipping()) and (not kicked or tv) then
+		local ref = lastSet
+		if kicked and tv and Vector3.new(tv.X, 0, tv.Z).Magnitude > Vector3.new(lastSet.X, 0, lastSet.Z).Magnitude then ref = tv end
+		local upRef = if kicked and tv then math.max(lastSet.Y, tv.Y, 0) else math.max(lastSet.Y, 0)
+		local h, hl = Vector3.new(v.X, 0, v.Z), Vector3.new(ref.X, 0, ref.Z)
 		local vy, spiked = v.Y, false
 		if h.Magnitude > hl.Magnitude + FLING_SIDE then h = hl; spiked = true end
-		if not swimming and vy > math.max(lastSet.Y, 0) + FLING_UP then vy = math.max(lastSet.Y, 0); spiked = true end
+		if not swimming and vy > upRef + FLING_UP then vy = upRef; spiked = true end
 		if spiked then
 			v = Vector3.new(h.X, vy, h.Z)
 			root.AssemblyLinearVelocity = v
@@ -508,6 +518,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
 	end
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
+	Body.slipClamp(st) -- (19 Nov 2026, the fling fix: on your back on marbles, no faster than the slip allows)
 	-- (weapons batch A) nailed to a wall by a Nail Gun: pulled to the spot (web primaries.js: (spot - pos) x 14, at most
 	-- 30 m/s), no gravity, no jumping, until the pin's time is up. you can still aim and shoot
 	-- (the Scythe's dash: the server's path, run here at its speed, up or down too; the anti-cheat was told, ACGrace)

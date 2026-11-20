@@ -88,11 +88,8 @@ const A = {
     K(0), K(0.07, [-0.14, 0.1, 0.05], [0.6, 0.7, 0.6], 'in'),
     K(0.14, [0.1, -0.08, -0.12], [-0.5, -0.7, -0.7], 'snap'), K(0.24, [0.12, -0.1, -0.1], [-0.55, -0.8, -0.75]), K(0.42),
   ], events: [[0.08, 'whoosh']], trail: [0.06, 0.22] },
-  // the Redline's 1.8 s pit stop (reloads.js:165-172): tilt, a jerry can tips in three glugs, a wrist-twist rev
-  reload_redline: { keys: [
-    K(0), K(0.2, [0.02, -0.03, 0.02], [0.22, 0.3, 0.5]), K(1.26, [0.02, -0.035, 0.02], [0.24, 0.3, 0.5]),
-    K(1.36, [0.02, -0.02, 0.02], [0.3, 0.32, 0.95], 'snap'), K(1.52, [0.02, -0.03, 0.02], [0.22, 0.3, 0.5]), K(1.8, [0, 0, 0], [0, 0, 0], 'back'),
-  ], events: [[0.5, 'glug'], [0.72, 'glug'], [0.94, 'glug'], [1.3, 'revUp'], [1.6, 'click']] },
+  // (the Redline's 1.8 s jerry-can pit stop, reloads.js:165-172, went on 19 Nov 2026: the owner wants real gun reloads,
+  // so it borrows reload_ar, a mag swap and the charging handle on its kit model's own nodes. Weapons redline mdl.parts)
   // the Marble Shotgun's 1.9 s jar refill (reloads.js:199): lid open, a net bag pours, one bounces out, lid shut, thwack.
   // (17 Nov, the main session: the bag and the hand under it came up through the middle of the screen. the web's timing
   // stays; the gun now rolls well over to the left and drops while it is open, so the jar's mouth faces down-left and

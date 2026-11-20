@@ -123,6 +123,9 @@ local W: { [string]: Weapon } = {
 		fx = { brass = true, shake = 0.06 }, tacho = true,
 		recoilVM = { back = 0.7, up = 2.4, roll = 1.6, side = 0.2, punch = 0.008 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.37) * S, r = Vector3.new(0, 0.04, 0), s = 0.72 },
+		-- (owner, 19 Nov 2026: real gun reloads) its kit model's mag and charging handle move: it borrows reload_ar, a mag
+		-- swap and the handle pulled (guns-remodel's nodes "mag" and "charge")
+		mdl = { parts = { mag = { at = Vector3.new(0, -0.04, -0.15) }, charge = {} } } :: any,
 	},
 	marbles = {
 		id = "marbles", name = "Marble Shotgun", slot = "secondary", kind = "hitscan", color = rgb(0x7fd0ff),
@@ -305,7 +308,7 @@ local W: { [string]: Weapon } = {
 		mdl = {
 			lo = Vector3.new(-0.079, -0.252, -0.75), hi = Vector3.new(0.1054, 0.15, 0.2),
 			muzzle = Vector3.new(0, 0, -0.75), grip = Vector3.new(0, -0.13, 0.143), fore = Vector3.new(0, -0.14, -0.15),
-			parts = { barrels = { at = Vector3.new(0, 0, -0.45) } },
+			parts = { barrels = { at = Vector3.new(0, 0, -0.45) }, box = {} }, -- (box: the ammo box comes off in the reload, GunParts)
 		},
 	},
 	nailgun = {
@@ -412,7 +415,9 @@ local W: { [string]: Weapon } = {
 		-- climbs for a few shots, then sinks slowly. your upward speed after it is capped at 32 m/s (thrustCapUp)
 		-- a mostly level shot also hops you 7 m/s (thrustHop): on the floor a flat shove is eaten by your footing at once
 		-- (4 m/s carried a level dash only 4.5 m in a test: you landed too soon)
-		thrust = 18 * S, thrustCapUp = 32 * S, thrustHop = 7 * S,
+		-- (19 Nov 2026, the fling fix) the back-blast never takes your run past 26 m/s (thrustCapSide), and does nothing
+		-- while you're slipping (WeaponProj.server)
+		thrust = 18 * S, thrustCapUp = 32 * S, thrustHop = 7 * S, thrustCapSide = 26 * S,
 		snd = "chicken_fire", snd2 = "chicken_squeak", -- (the launcher's thunk, and the rubber chicken's squeak with it)
 		recoilVM = { back = 1.6, up = 6, roll = 1, side = 0.2, punch = 0.03 },
 		vm = { p = Vector3.new(0.22, -0.22, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.7 },
@@ -535,7 +540,8 @@ local W: { [string]: Weapon } = {
 		fx = { brass = true, shake = 0.04 }, snd = "gun_akimbo",
 		recoilVM = { back = 0.5, up = 1.8, roll = 1.2, side = 0.2, punch = 0.006 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0.03, 0), s = 0.9 },
-		mdl = { lo = Vector3.new(-0.028, -0.1499, -0.2), hi = Vector3.new(0.028, 0.086, 0.088), muzzle = Vector3.new(0, 0.03, -0.2), grip = Vector3.new(0, -0.064, 0.035) },
+		mdl = { lo = Vector3.new(-0.028, -0.1499, -0.2), hi = Vector3.new(0.028, 0.086, 0.088), muzzle = Vector3.new(0, 0.03, -0.2), grip = Vector3.new(0, -0.064, 0.035),
+			parts = { mag = {}, cocker = { travel = 0.025 } } }, -- (owner, 19 Nov 2026: real reloads. reload_akimbo moves them; the hold session plays it per hand)
 	},
 	-- hold to draw, let go to fire; every arrow has a random tip (WeaponProj "arrow")
 	bow = {
@@ -746,11 +752,16 @@ local Weapons = {
 	-- marbles on the floor (shared/marbles.js MSLIP)
 	MSLIP = {
 		life = 9, land = 0.35, n = 90, rMin = 1.1 * S, rMax = 2.5 * S, room = 10, per = 3, cd = 0.8,
-		walk = 5.5 * S, crouch = 4.5 * S, slide = 7 * S, feetLo = -0.3 * S, feetHi = 0.35 * S, immune = 2,
+		-- (immune: no new slip of any kind for this long after one began: the 1.7 s slip + 1.5 s back on your feet. 19 Nov
+		-- 2026, the owner: marbles in a corner "launches you super far away": slips stacked as you slid. Combat, WeaponProj)
+		walk = 5.5 * S, crouch = 4.5 * S, slide = 7 * S, feetLo = -0.3 * S, feetHi = 0.35 * S, immune = 3.2,
 		thin = 0.55, thinR = 0.85, minN = 10, minR = 0.8 * S,
 	},
 	-- the slip itself (public/js/player.js): 1.7 s, +6 m/s along your look, at least 6.5 m/s up
-	SLIP = { time = 1.7, fwd = 6 * S, up = 6.5 * S },
+	-- (19 Nov 2026, the fling fix) while you slip: never faster than `cap` (a sprint and the slip's own kick), or than
+	-- you were going as it began, that allowance easing down to `cap` by the time you're up (Body.slipClamp); any
+	-- knockback that lands on a slipping body is `knock` at most (Fight.knock, Body's Knock)
+	SLIP = { time = 1.7, fwd = 6 * S, up = 6.5 * S, cap = 20 * S, knock = 10 * S },
 	-- free-for-all (MODES.md Deathmatch): 20 kills or 6 minutes, 2.5 s respawn, 1.2 s spawn protection
 	FFA = { kills = 20, time = 360, respawn = 2.5, protect = 1.2, over = 12 },
 	HP = 100,

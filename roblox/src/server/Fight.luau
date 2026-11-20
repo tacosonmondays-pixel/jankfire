@@ -226,6 +226,10 @@ function Fight.knock(t: Fighter, v: Vector3, wid: string)
 	if v.Magnitude < 1e-3 then return end
 	local ru = (t :: any).rigUntil -- (the Overdrive Rig: a rigged body barely moves when hit)
 	if ru and os.clock() < ru then v *= Fight.rigKb end
+	-- (19 Nov 2026, the fling fix) a body on its back on marbles has nothing to stop it: a knock lands SLIP.knock at most
+	-- (its slip's own shove came first: the Hand Slapper hurts, then slips)
+	local Sl = Weapons.SLIP
+	if now() - (t.slipT or -math.huge) < Sl.time and v.Magnitude > Sl.knock then v = v.Unit * Sl.knock end
 	if t.kind == "player" then
 		R.Knock:FireClient(t.ref :: Player, v, wid)
 	else

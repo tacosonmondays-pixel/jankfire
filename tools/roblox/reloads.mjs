@@ -64,7 +64,23 @@ const TWIRL = {
 };
 
 const SKIP = new Set(['redline', 'marbles']);
-const PARTS = new Set(['mag', 'charge', 'pump', 'bolt', 'cyl', 'lever', 'lhammer', 'cover', 'twirl', 'belt', 'slide', 'hinge', 'shells', 'cock']);
+const PARTS = new Set(['mag', 'charge', 'pump', 'bolt', 'cyl', 'lever', 'lhammer', 'cover', 'twirl', 'belt', 'slide', 'hinge', 'shells', 'cock', 'box', 'cocker']);
+// (the owner, 19 Nov 2026: "make sure guns have accurate ways to reload and parts that a normal gun would have or most of
+// them at least!"; guns-remodel's audit) channels the web clips only had as sounds, timed to those sounds. rows are
+// [t, down, back, tip] like a mag (GunParts): the Minigun's ammo box drops off at boxPop and the new one comes up and
+// seats with the belt; the Nail Gun's strip slides out at the click and back in at nailIn
+const EXTRA = {
+  minigun: { box: [[0, 0, 0, 0], [0.42, 0, 0, 0], [0.5, -0.05, 0.01, 0], [0.72, -0.5, 0.06, 0], [1.9, -0.5, 0, 0], [2.12, -0.06, 0, 0], [2.18, 0.006, 0, 0], [2.26, 0, 0, 0]] },
+  nailgun: { mag: [[0, 0, 0, 0], [0.28, 0, 0, 0], [0.36, -0.04, 0.02, 0], [0.52, -0.36, 0.06, 0], [0.74, -0.36, 0, 0], [0.88, -0.05, 0, 0], [0.93, 0.006, 0, 0], [0.98, 0, 0, 0]] },
+};
+// Lefty & Righty's parts in its 1.5 s per-hand reload (the gun's own dip is the hold session's, Viewmodel: these keys
+// stay still): the mag drops and a fresh one goes in, then the cocker (its charging handle) is pulled
+const KK0 = (t) => ({ t, p: [0, 0, 0], r: [0, 0, 0], e: 'smooth', s: 1 });
+const AKIMBO = {
+  reload_akimbo: { keys: [KK0(0), KK0(1.5)], events: [[0.14, 'magOut'], [1.0, 'magIn'], [1.26, 'chargeBack'], [1.34, 'chargeHome']],
+    ch: { mag: [[0, 0, 0, 0], [0.12, 0, 0, 0], [0.2, -0.05, 0.01, 0], [0.36, -0.36, 0.06, 0], [0.7, -0.36, 0, 0], [0.94, -0.05, 0, 0], [1.0, 0.006, 0, 0], [1.05, 0, 0, 0]],
+      cocker: [[0, 0], [1.24, 0], [1.3, 1], [1.38, 0]] } },
+};
 const WANT = /^(reload_|draw_|lever_cycle)/; // (no inspects: there is no inspect key on Roblox yet)
 const n = (x) => String(Math.round(x * 10000) / 10000);
 const v = (arr) => `{ ${arr.map(n).join(', ')} }`;
@@ -93,11 +109,12 @@ function emit(name, r, mapF = (f) => f) {
   if (lh) out += `\t\tlh = { ${lh.map((row) => v([row[0], row[1], mapF(row[2] ?? 0)])).join(', ')} },\n`;
   out += '\t},\n';
 }
-for (const [id, r] of Object.entries(RL)) if (!SKIP.has(id)) emit('reload_' + id, r);
+for (const [id, r] of Object.entries(RL)) if (!SKIP.has(id)) emit('reload_' + id, EXTRA[id] ? { ...r, ch: { ...(r.ch || {}), ...EXTRA[id] } } : r);
 for (const [name, r] of Object.entries(RIFLES)) if (WANT.test(name)) emit(name, r);
 for (const [name, r] of Object.entries(SIDE)) if (WANT.test(name) && !name.includes('akimbo')) emit(name, r, SIDE_F);
 for (const [name, r] of Object.entries(FOLLOW)) emit(name, r);
 for (const [name, r] of Object.entries(TWIRL)) emit(name, r);
+for (const [name, r] of Object.entries(AKIMBO)) emit(name, r);
 out += '}\n';
 fs.writeFileSync(path.join(ROOT, 'roblox/src/shared/Reloads.luau'), out);
 console.log('clips:', ids.join(', '), '| eases:', [...eases].join(', '), '|', out.length, 'chars');
