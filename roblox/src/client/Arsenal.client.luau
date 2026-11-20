@@ -1011,7 +1011,17 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 		-- (a held guard's 2nd, 3rd... bullet of a spray: smaller sparks and pop, the sound spaced out, a light jolt)
 		local first = f.pf or not (type(f.n) == "number" and f.n > 1)
 		if from then
-			Fx.sparks(from + Vector3.new(0, 1.5, 0), Vector3.yAxis, if f.pf then 40 elseif first then 26 else 12, if f.pf then 0.22 elseif first then 0.15 else 0.09)
+			-- (20 Nov 2026, the bought packs: a guard's first hit or a perfect one gets the pack's guard flash, Fx.parry; a sword
+			-- swing parried, its shock ring and burst, Fx.guardBreak; a spray's later bullets keep just the small sparks)
+			local at = from + Vector3.new(0, 1.5, 0)
+			local dir = if typeof(f.to) == "Vector3" and (f.to - from).Magnitude > 0.05 then (f.to - from).Unit else Vector3.yAxis
+			if f.kind == "melee" and first then
+				Fx.guardBreak(at, dir)
+			elseif first then
+				Fx.parry(at, dir, f.pf == true)
+			else
+				Fx.sparks(at, Vector3.yAxis, 12, 0.09)
+			end
 			if first or now - guard.snd > 0.085 then
 				guard.snd = now
 				Sfx.play(if f.pf then "parry_perfect" else "parry", if mine then nil else from, if first then nil else 0.75)

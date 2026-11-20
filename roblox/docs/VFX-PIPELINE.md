@@ -762,14 +762,28 @@ the particle slider and emits at most 260 particles a frame. Which effect is use
 `pack-effects-usage.md` in main's notes folder.
 - **Hits (v1134, bigger v1136):** `Fx.blood` plays HitPunch1 facing the viewer, scale 0.5 to 1 by damage (x1 to x1.8
   past 25 studs so a far hit still shows), with a few pale sparks.
-- **Parry and guard break (v1136, waiting on the katana session to call them):** `Fx.parry(at, dir, perfect)` plays
-  GuardBlock (recoloured in the template from lime green to warm white, a pale gold glow and a cool white shield),
-  0.55 or 0.75 for a perfect parry, smaller up close (the defender's own blade); `Fx.guardBreak(at, dir)` plays
-  GuardBreak1's ring and GuardBreak2's burst with sparks.
+- **Parry and guard break (v1136; called since v1138):** `Fx.parry(at, dir, perfect)` plays GuardBlock (recoloured in
+  the template from lime green to warm white, a pale gold glow and a cool white shield), 0.55 or 0.75 for a perfect
+  parry, smaller up close (the defender's own blade), with the old sparks (40 / 26); `Fx.guardBreak(at, dir)` plays
+  GuardBreak1's ring and GuardBreak2's burst with sparks. Arsenal.client's Fx "parry" handler calls them (the katana
+  session's pointer): a guard's first hit or a perfect one gets Fx.parry, a sword swing parried Fx.guardBreak, a
+  spray's later bullets only the small sparks (an 18-round spray would be 18 flashes). Everyone sees them.
 - **Hard landings and slides (v1136, waiting on Steps.client to call them):** `Fx.land(feet, fallSpeed, mine)` plays
   HitSlam at 0.12 to 0.28 as a ring of dust puffs, only past 42 studs/s (a plain jump lands at 27.6);
   `Fx.slide(feet, look, mine)` plays DashPuff at 0.4 (a soft glow and streaks thrown behind; tinted grey it all but
   vanished, so it stays white). Your own are only shown in third person; none past 160 studs. Jump pads keep their own
   `PadFlare`.
+- **Black-backed textures (v1138; main, after kill-effects hit it on Static in v1133):** a texture with a black (or
+  dark, low-alpha) background shows that square whenever its emitter's LightEmission is under 1, a dark fringe or slab
+  on a light floor or wall. Such an emitter gets LightEmission 1 (black adds nothing) and is kept quiet through
+  Brightness (at most 2) and 30% more transparency; the pack's negative-LightEmission dark layers are left alone unless
+  their texture is listed as `dark_too` (HitPunch2's black fringe); `dim` textures (already at 1, a faint background
+  that shows as a pale quad under a big Brightness: GuardBreak1's hexagon) only get the Brightness cap. Which textures:
+  checked on a mid-grey screen in Play (every template texture as an ImageLabel), listed in
+  `tools/roblox/vfx/packs/black_backed.json`. The rule is `black_fix.luau` there, and the template builder
+  (`pack_templates.py`, which reads a pack offline) applies it to every template it builds; 10 emitters in the Combat
+  templates got it (HitPunch2, GuardBreak1, HitSlam x4, Slash4 x4; each keeps a BlackFix attribute with what it had).
+  Every sheet is shot on mid-grey as well as dark now (black halos hide on dark). Sheet:
+  `docs/vfx/round20/pack-black-fix.jpg`.
 - Photos: Play stage, clones fired by their attributes and frozen with TimeScale 0 (VfxEmit parks an effect after
   its life, too soon for a capture). Sheets: `docs/vfx/round20/pack-templates-1.jpg`, `docs/vfx/round20/pack-batch2.jpg`.

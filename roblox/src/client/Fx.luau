@@ -1473,13 +1473,13 @@ end
 
 -- a parried blow (the katana's guard; 20 Nov 2026): the Combat VFX pack's guard flash (GuardBlock, recoloured from its lime
 -- green to warm white with a pale gold glow), facing whoever's watching, a little bigger for a perfect parry, kept small up
--- close (the defender's own blade is a few studs from their eye), and the sparks it had before
+-- close (the defender's own blade is a few studs from their eye), and the sparks it had before (40 / 26)
 function Fx.parry(at: Vector3, dir: Vector3, perfect: boolean?)
 	local V = vfx()
 	local eye = eyeFor(at, dir)
 	local k = (if perfect then 0.75 else 0.55) * math.clamp((eye - at).Magnitude / 10, 0.35, 1)
 	if V then pcall(V.play, "GuardBlock", CFrame.lookAt(at, eye), { scale = k }) end
-	if perfect then Fx.sparks(at, dir, 30, 0) else Fx.sparks(at, dir, 10, 0) end
+	if perfect then Fx.sparks(at, dir, 40, 0) else Fx.sparks(at, dir, 26, 0) end
 end
 
 -- a guard broken (20 Nov 2026): the Combat VFX pack's shock ring (GuardBreak1, facing whoever's watching) and its break

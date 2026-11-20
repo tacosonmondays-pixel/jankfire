@@ -1,0 +1,6 @@
+{
+ "_why": "Pack textures (sellers' asset ids) checked on a mid-grey screen in Play, 20 Nov 2026 (docs/vfx/round20/pack-black-fix.jpg): black or dark low-alpha backgrounds / dark rims. black: LightEmission under 1 -> 1. dark_too: also when the pack set a negative LightEmission (a dark layer that reads as a black fringe). dim: already LightEmission 1, a faint background shows under a big Brightness.",
+ "black": ["17405431672", "13634052022", "17406297832", "7216849215", "16937144632"],
+ "dark_too": ["15011447462"],
+ "dim": ["16477162837"]
+}
