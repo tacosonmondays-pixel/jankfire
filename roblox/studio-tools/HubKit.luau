@@ -649,7 +649,7 @@ function K.platformPad(Fk, left, md, bank, name, rin, rout, o)
 	K.box(Fk, "Scenery", "Base", x0, x1, 0, H, -rout, -rin, K.P.padBase, nil, { parent = m, solid = true })
 	K.slant(Fk, "Scenery", "BaseWing", if left then -xi else xi, if left then -xo else xo, -rin, -rout, 0, H, K.P.padBase, nil, { parent = m, solid = true })
 	K.box(Fk, "Scenery", "PadStep", x0, x1, 0, 0.55, -rin, -rin + 1.1, K.P.padBase, nil, { parent = m, solid = true })
-	K.box(Fk, "Scenery", "Edge", x0, x1, H - 0.1, H + 0.02, -rin - 0.45, -rin + 0.12, K.P.creamHi, nil, { parent = m, solid = true })
+	K.box(Fk, "Scenery", "Edge", x0, x1, H - 0.1, H + 0.07, -rin - 0.45, -rin + 0.12, K.P.creamHi, nil, { parent = m, solid = true })
 	local n = md.teams
 	local sw = (x1 - x0) / n
 	for t = 1, n do
@@ -998,7 +998,7 @@ function K.zombieRoom(F, o)
 	K.box(F, "Shell", "ZmWall", x0 - 2, x0, 0, h, zb, -t, P.conc, MAT.Concrete)
 	K.box(F, "Shell", "ZmWall", x1, x1 + 2, 0, h, zb, -t, P.conc, MAT.Concrete)
 	K.box(F, "Shell", "ZmWall", x0 - 2, x1 + 2, 0, h, zb - 2, zb, P.conc, MAT.Concrete)
-	for _, x in { x0 + 0.2, x1 - 0.2 } do K.box(F, "Scenery", "ZmStain", x - 0.06, x + 0.06, 0, 2.2, zb + 0.5, -t - 0.5, "4f4d48", MAT.Concrete) end
+	for _, x in { x0 + 0.06, x1 - 0.06 } do K.box(F, "Scenery", "ZmStain", x - 0.05, x + 0.05, 0, 2.2, zb + 0.5, -t - 0.5, "4f4d48", MAT.Concrete) end
 	-- boarded windows on the back wall (a dark pane, a frame, planks nailed across at angles)
 	local W = { (x0 + x1) / 2 - (x1 - x0) * 0.22, (x0 + x1) / 2 + (x1 - x0) * 0.22 }
 	for i, wx in W do
@@ -1006,14 +1006,14 @@ function K.zombieRoom(F, o)
 		for _, e in { { -2.6, -2.4 }, { 2.4, 2.6 } } do K.box(F, "Scenery", "ZmFrame", wx + e[1], wx + e[2], 3.4, 8.2, zb, zb + 0.3, P.plank, MAT.Wood) end
 		for _, y in { 3.4, 8 } do K.box(F, "Scenery", "ZmFrame", wx - 2.6, wx + 2.6, y, y + 0.2, zb, zb + 0.3, P.plank, MAT.Wood) end
 		for k, a in { -9, 7, -4 } do
-			zmPart(F, "ZmBoard", CFrame.new(wx, 4.3 + k * 1.15, zb + 0.42) * CFrame.Angles(0, 0, math.rad(a + i * 3)), Vector3.new(6.2, 0.75, 0.16), if k == 2 then P.ply else P.plank, MAT.Wood)
+			zmPart(F, "ZmBoard", CFrame.new(wx, 4.3 + k * 1.15, zb + 0.38 + k * 0.05) * CFrame.Angles(0, 0, math.rad(a + i * 3)), Vector3.new(6.2, 0.75, 0.16), if k == 2 then P.ply else P.plank, MAT.Wood)
 		end
 	end
 	-- a boarded door in the side wall (x1), and the open doorway's broken leaf, swung in against the x0 side
 	local bz = zb + 4.5
 	K.box(F, "Scenery", "ZmDoorFrame", x1 - 0.3, x1, 0, 7.8, bz - 2.1, bz + 2.1, P.plank, MAT.Wood)
 	K.box(F, "Scenery", "ZmDoorPanel", x1 - 0.35, x1 - 0.3, 0, 7.5, bz - 1.8, bz + 1.8, "4a4844")
-	for k, a in { -14, 10, -6 } do zmPart(F, "ZmBoard", CFrame.new(x1 - 0.5, 1.8 + k * 1.7, bz) * CFrame.Angles(math.rad(a), 0, 0), Vector3.new(0.16, 0.75, 4.6), P.plank, MAT.Wood) end
+	for k, a in { -14, 10, -6 } do zmPart(F, "ZmBoard", CFrame.new(x1 - 0.46 - k * 0.05, 1.8 + k * 1.7, bz) * CFrame.Angles(math.rad(a), 0, 0), Vector3.new(0.16, 0.75, 4.6), P.plank, MAT.Wood) end
 	local dw = o.door or 5
 	zmPart(F, "ZmLeaf", CFrame.new(-dw / 2 - 2.6, 3.85, -t - 0.5) * CFrame.Angles(0, math.rad(-8), math.rad(4)), Vector3.new(4.4, 7.6, 0.25), P.ply, MAT.Wood, { solid = true }) -- (off its hinges, leant against the wall beside the doorway)
 	zmPart(F, "ZmLeafPlank", CFrame.new(-dw / 2 - 2.6, 4.2, -t - 0.7) * CFrame.Angles(0, math.rad(-8), math.rad(32)), Vector3.new(4.6, 0.6, 0.12), P.plank, MAT.Wood)

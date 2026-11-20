@@ -27,32 +27,32 @@ function HA.build(K, parent, name, site, live)
 	local ww = hw(RW + 2) + 0.05
 	for b = 0, 315, 45 do
 		local Fk = sideF(b)
-		for _, s in { -1, 1 } do K.slant(Fk, "Shell", "Floor", 0, s * hw(RW + 2), 0, -RW - 2, -1, 0, P.paving, MAT.Slate) end -- (an octagon: a square slab would meet the gym's and the armory's floors in one plane)
+		for _, s in { -1, 1 } do K.slant(Fk, "Shell", "Floor", 0, s * hw(RW + 2), 0, -RW - 2, -1, 0, "8a8781", MAT.Slate) end -- (an octagon: a square slab would meet the gym's and the armory's floors in one plane)
 		if b == 135 then -- (the gym: its portal on the ground, a window from level 2)
-			for _, s in { -1, 1 } do box(Fk, "Shell", "Wall", s * 12, s * ww, 0, TOP, -RW - 2, -RW, P.wall) end
-			box(Fk, "Shell", "Wall", -12, 12, 10.4, Y2 + 1.5, -RW - 2, -RW, P.wall)
-			box(Fk, "Shell", "Wall", -12, 12, Y2 + 9, TOP, -RW - 2, -RW, P.wall)
+			for _, s in { -1, 1 } do box(Fk, "Shell", "Wall", s * 12, s * ww, 0, TOP, -RW - 2, -RW, P.wallLt) end
+			box(Fk, "Shell", "Wall", -12, 12, 10.4, Y2 + 1.5, -RW - 2, -RW, P.wallLt)
+			box(Fk, "Shell", "Wall", -12, 12, Y2 + 9, TOP, -RW - 2, -RW, P.wallLt)
 			box(Fk, "Scenery", "GymWindow", -12, 12, Y2 + 1.5, Y2 + 9, -RW - 1.15, -RW - 0.85, P.glass, MAT.Glass, { tr = 0.55, solid = true })
 			for _, x in { -6, 0, 6 } do box(Fk, "Scenery", "WindowMullion", x - 0.15, x + 0.15, Y2 + 1.5, Y2 + 9, -RW - 1.3, -RW - 0.7, P.steel) end
 		elseif b == 225 then
-			K.wall(Fk, "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wall, { { -7, 7, 10.4 } })
+			K.wall(Fk, "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wallLt, { { -7, 7, 10.4 } })
 		elseif b == 180 then -- (the zombies room's doorway, beside the spawn)
-			K.wall(Fk, "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wall, { { 9, 14, 8.5 } })
+			K.wall(Fk, "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wallLt, { { 9, 14, 8.5 } })
 		elseif b == 0 then -- (VIP's front fills level 3 up)
-			box(Fk, "Shell", "Wall", -ww, ww, 0, Y3, -RW - 2, -RW, P.wall)
+			box(Fk, "Shell", "Wall", -ww, ww, 0, Y3, -RW - 2, -RW, P.wallLt)
 		else
-			box(Fk, "Shell", "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wall)
+			box(Fk, "Shell", "Wall", -ww, ww, 0, TOP, -RW - 2, -RW, P.wallLt)
 		end
 		-- the two galleries: level 2 from the void's edge out, level 3 from further out; fascias, glass rails
 		for _, lv in { { RV, Y2 }, { RV3, Y3 } } do
 			local r0, y = lv[1], lv[2]
-			box(Fk, "Shell", "Gallery", -hw(r0), hw(r0), y - 1, y, -RW, -r0, P.floor2)
-			for _, s in { -1, 1 } do K.slant(Fk, "Shell", "Gallery", s * hw(r0), s * hw(RW), -r0, -RW, y - 1, y, P.floor2) end
+			box(Fk, "Shell", "Gallery", -hw(r0), hw(r0), y - 1, y, -RW, -r0, P.wood, MAT.WoodPlanks) -- (wood: a warm floor up there, a warm ceiling under it)
+			for _, s in { -1, 1 } do K.slant(Fk, "Shell", "Gallery", s * hw(r0), s * hw(RW), -r0, -RW, y - 1, y, P.wood, MAT.WoodPlanks) end
 			box(Fk, "Scenery", "GalleryFascia", -hw(r0), hw(r0), y - 1.5, y + 0.2, -r0 - 0.12, -r0 + 0.6, P.cream) -- (its back face behind the rail foot's)
 			K.rail(Fk * CFrame.Angles(0, math.pi, 0), -hw(r0 - 0.4), hw(r0 - 0.4), y, r0 - 0.2)
 		end
 		-- lights under each level and under the roof
-		for _, z in { -26.5, -35 } do K.panel(Fk, 0, Y2 - 1, z, 8, 4, { bright = 0.9, range = 20 }) end -- (the ground ring, under level 2: the blockout's dark spot)
+		for _, z in { -26.5, -35 } do K.panel(Fk, 0, Y2 - 1, z, 8, 4, { bright = 1.5, range = 22 }) end -- (the ground ring, under level 2: the blockout's dark spot)
 		K.panel(Fk, 0, Y3 - 1, -33, 9, 5, { bright = 0.9, range = 20 })
 		K.panel(Fk, 0, TOP, -33, 9, 5, { bright = 0.85, range = 24 })
 		-- a downlight at the void's edge under the roof, onto the middle
@@ -63,7 +63,7 @@ function HA.build(K, parent, name, site, live)
 		for _, s in { -1, 1 } do K.slant(Fk, "Shell", "Roof", s * hw(RV), s * hw(RW + 2), -RV, -RW - 2, TOP, TOP + 1, P.dome) end
 		local a = math.rad(b + 22.5)
 		local rc = RV / math.cos(math.rad(22.5)) + 0.6
-		K.column(F0, math.sin(a) * rc, -math.cos(a) * rc, 0, TOP, 2, { round = true, cap = Y2 - 1 })
+		K.column(F0, math.sin(a) * rc, -math.cos(a) * rc, 0, TOP, 2, { round = true, cap = Y2 - 1, hex = P.creamHi, mat = MAT.SmoothPlastic })
 		K.rod(F0, "Scenery", "RoofRib", Vector3.new(0, TOP - 0.6, 0), Vector3.new(math.sin(a) * rc, TOP - 0.6, -math.cos(a) * rc), 0.9, P.cream, nil, { ghost = true })
 	end
 	box(F0, "Scenery", "Skylight", -RV, RV, TOP + 0.2, TOP + 0.4, -RV, RV, P.light, MAT.Neon, { solid = false, noshadow = true }) -- (queryable: it closes the roof)

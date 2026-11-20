@@ -140,7 +140,7 @@ function HS.build(K, parent, name, site, live)
 		box(F0, "Scenery", "StreetBand", sd * 23.6, sd * 24, 11.6, 12.2, SZ0, SZ1, P.cream)
 		K.light(box(F0, "Scenery", "StreetCove", sd * 23.25, sd * 23.6, 12.05, 12.2, SZ0 + 1, SZ1 - 1, P.light, MAT.Neon, { ghost = true, noshadow = true }), 12, 0.8, P.warm,
 			{ kind = "SurfaceLight", face = Enum.NormalId.Top, angle = 140 })
-		for _, z in { 36, 64, 88 } do box(F0, "Scenery", "StreetPilaster", sd * 23.2, sd * 24, 0, SH, z - 0.8, z + 0.8, P.creamHi) end
+		for _, z in { 36, if sd < 0 then 70 else 64, 88 } do box(F0, "Scenery", "StreetPilaster", sd * 23.2, sd * 24, 0, SH, z - 0.8, z + 0.8, P.creamHi) end -- (west: 70, clear of the code panel's side spots at 54.4 and 65.6)
 	end
 	-- the banquette along the east wall, its small tables
 	box(F0, "Shell", "Banquette", 21.4, 23.2, 0.4, 1.5, 66, 86, P.woodDark, MAT.Wood)

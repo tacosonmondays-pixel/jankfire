@@ -93,8 +93,8 @@ function HC.build(K, parent, name, site, live)
 	K.zombieRoom(CFrame.new(-38, 0, 51.5) * CFrame.Angles(0, math.pi / 2, 0), { x0 = -10.5, x1 = 11.5, d = 18, h = 11, door = 5, guideSide = -1 })
 	-- the VIP end wall: pilasters either side of the VIP front's windows, a cornice over them, a band up high
 	for _, s in { -1, 1 } do for _, x in { 17, 25 } do box(F0, "Scenery", "EndPilaster", s * x - 0.8, s * x + 0.8, 0, T, 69.4, 70, P.pier) end end
-	box(F0, "Scenery", "EndCornice", -25.8, 25.8, 15.4, 16.2, 69.3, 70, P.cream)
-	box(F0, "Scenery", "EndBand", -25.8, 25.8, 24, 24.6, 69.6, 70, P.cream)
+	box(F0, "Scenery", "EndCornice", -26.3, 26.3, 15.4, 16.2, 69.3, 70, P.cream)
+	box(F0, "Scenery", "EndBand", -26.3, 26.3, 24, 24.6, 69.2, 70, P.cream)
 	for _, x in { -8.5, 8.5 } do K.panel(F0 * CFrame.new(0, 0, 0), x, T, 64, 8, 6, { bright = 0.7, range = 36 }) end
 
 	-- ============================================================== THE MIDDLE ISLAND and the big screen
@@ -106,13 +106,11 @@ function HC.build(K, parent, name, site, live)
 		for _, s in { -1, 1 } do K.bench(Fi * CFrame.new(s * 2.6, 0, 0) * CFrame.Angles(0, math.rad(if s < 0 then 90 else -90), 0), 10) end
 	end
 	local scr = box(F0, "Scenery", "LiveScreen", -15, 15, 16, 26, -15.5, -14.5, P.screen) -- (hung from the beam at z -15)
-	K.screen(scr, { Enum.NormalId.Front, Enum.NormalId.Back })
+	K.screen(scr, { Enum.NormalId.Front }) -- (the counts face north; the spawn side carries the SPECTATE board)
+	K.spectateSpot(K.facing(0, -14.5, 0, 1, 21), 28, 9.4, { flush = true })
 	box(F0, "Scenery", "LiveScreenFrame", -15.4, 15.4, 26, 26.5, -15.7, -14.3, P.creamHi)
 	box(F0, "Scenery", "LiveScreenFrame", -15.4, 15.4, 15.5, 16, -15.7, -14.3, P.creamHi)
 	for _, s in { -1, 1 } do cyl(F0, "Scenery", "ScreenRod", s * 12, 26.5, T - 2.6, -15, 0.35, P.steel) end
-	-- the SPECTATE board, hung from the beam at z 25 in front of the counts, facing the spawn
-	K.spectateSpot(K.facing(0, 24.7, 0, 1, 20.8), 16, 9)
-	for _, s in { -1, 1 } do cyl(F0, "Scenery", "SpectateRod", s * 6, 25.3, T - 2.6, 25.0, 0.3, P.steel) end
 
 	-- ============================================================== THE FAR END
 	-- the hall of fame in the east corner: the two ranked boards on the wall, the trophy case between them
