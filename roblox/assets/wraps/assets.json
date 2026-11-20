@@ -1474,5 +1474,21 @@
  "b04c8ef47b9eedd95503f8ac04f417e672d1eac5": {
   "file": "mastery_galaxy_emit.png",
   "id": 106302759894946
+ },
+ "f4967906f38e40086cd038eecf6792964854d965": {
+  "file": "flow_stars_color.png",
+  "id": 90506142503050
+ },
+ "94d6a85d4444905f596e08bda9061598bcf88be6": {
+  "file": "flow_stars_emit.png",
+  "id": 138098836499581
+ },
+ "2be0db3cedf26a92f43948468e66fb92544552d3": {
+  "file": "flow_glint_color.png",
+  "id": 119853642092920
+ },
+ "f86e2db46d7db68f53cf5cfab330752ed681c821": {
+  "file": "flow_glint_emit.png",
+  "id": 119596018117654
  }
 }

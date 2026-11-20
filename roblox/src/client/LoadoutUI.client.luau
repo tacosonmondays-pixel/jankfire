@@ -31,7 +31,7 @@ local PANEL, CARD, INK, WHITE = T.BG, T.CARD, T.INK, Color3.new(1, 1, 1)
 local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, T.FONT_TITLE
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.G] = 4 }
 -- (plain words only: the owner's no-flavour-text rule. 18 Nov: the jokey subtitles under LOADOUT went, and these names)
-local MODE_NAMES = { normal = "HANDLE", reverse = "BARREL", full = "WHOLE GUN" }
+local MODE_NAMES = { normal = "NORMAL", reverse = "REVERSE", full = "FULL" } -- (the owner's words for them, as in Rivals)
 local SOON_GIMMICK = "not on roblox yet."
 
 local function play(name: string) pcall(Sfx.play, name) end
@@ -703,9 +703,9 @@ local wName = label(wbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(42
 wName.FontFace = FONT_BOLD
 wName.RichText = true; wName.TextWrapped = false
 local modeBtns: { [string]: Btn } = {}
--- the three modes: HANDLE paints the handle side (the _wzA pieces), BUSINESS END the barrel end (_wzB), FULL SEND the
--- whole gun; the first two leave the rest in its factory paint, so the gun comes out two-tone. each chip carries a small
--- two-block gun (stock end left, muzzle right) with the painted half lit, and hovering a chip tries it on the preview
+-- the three modes (docs/WRAP-TEXTURES.md "Normal and reverse"): NORMAL lays the pattern on the body (the _wzA pieces)
+-- and the wrap's partner on the metal (_wzB), REVERSE swaps them, FULL lays the pattern everywhere. each chip carries a
+-- small two-block gun (stock end left, muzzle right) with the pattern's blocks lit, and hovering a chip tries it on
 local MODE_HALVES = { normal = { true, false }, reverse = { false, true }, full = { true, true } }
 for i, md in Roster.MODES do
 	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.fromOffset(1250 - 20 - (4 - i) * 154, 10), UDim2.fromOffset(146, 30))

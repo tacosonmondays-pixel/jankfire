@@ -163,7 +163,14 @@ def tones(path):
     top = px[score >= np.quantile(score, 0.98)].mean(0)
     top = top * (max(float(top.max()), 0.85) / max(float(top.max()), 1e-3))   # an accent is bright: its top channel at 0.85 or more
     hx = lambda c: ''.join('%02x' % int(round(max(0.0, min(1.0, float(v))) * 255)) for v in c)
-    return hx((k, k, k)), hx(m * k), hx(top)
+    # Dark (the loadout chip's band) is the wrap's PARTNER colour since 19 Nov 2026 (wrap_partners.py: what the other part
+    # of the gun wears on NORMAL / REVERSE); Second stays the old grey multiplier, used only if WrapPartners lacks a wrap
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from wrap_partners import partner_of
+        return hx((k, k, k)), partner_of(path, os.path.basename(path)[:-len('_color.png')])['c'], hx(top)
+    except Exception:
+        return hx((k, k, k)), hx(m * k), hx(top)
 
 
 if __name__ == '__main__':

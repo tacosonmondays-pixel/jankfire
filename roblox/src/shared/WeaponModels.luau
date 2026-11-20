@@ -379,6 +379,7 @@ function WeaponModels.build(id: string, k: number, skin: string?): Model?
 	root.Anchored = false; root.CanCollide = false; root.CanQuery = false; root.CanTouch = false; root.Massless = true
 	root.Parent = m
 	m.PrimaryPart = root
+	m:SetAttribute("K", k) -- (studs per web metre: client/WrapAnim sizes a moving wrap's overlay by it)
 	local b: Builder = { model = m, root = root, k = k }
 	if fn then fn(b) else buildPlain(b, mdl, row.color) end
 	-- (a bare weapon: the Zombie Claw, the Blood Cross. your own hands hold nothing, so only the spots stay, for the
@@ -528,6 +529,71 @@ WeaponModels.isAccent = isAccent
 WeaponModels.skinned = skinned
 
 local stash: { [BasePart]: SurfaceAppearance } = setmetatable({}, { __mode = "k" }) :: any
+
+-- NORMAL AND REVERSE (19 Nov 2026, the owner: "im still not super content with the wraps can you study how rivals does
+-- wrap reverse and noraml colorswaps?"; docs/WRAP-TEXTURES.md "Normal and reverse"). A Rivals wrap is two designed
+-- looks, its pattern and a PARTNER, and Inverted swaps which parts of the gun wear which; the partner always contrasts
+-- the pattern in lightness, so the gun reads as two tones. Ours was the picture tinted down by a grey to about 0.2
+-- luminance: on a dark picture that half went near black and the gun read as one dark smear. Now every wrap has a
+-- partner (shared/WrapPartners, generated from the colour maps by tools/roblox/wrap_partners.py):
+--   deep  - a light picture: the picture again, tinted (t) to a deep tone of its own hue, so the pattern still shows;
+--   metal - a dark picture: one satin anodised metal in the hue of the wrap's accent (Kintsugi gold, Lava copper,
+--           Galaxy a violet steel).
+-- NORMAL: the pattern on the body (_wzA: receiver deck, handguard, stock), the partner on the metal (_wzB: barrel,
+-- frame, grip, mag). REVERSE swaps them. FULL: the pattern everywhere. On a plain kit gun the body-coloured trims
+-- (_wzN body / deck / frame: the olive mag base and marks) take the partner too, so no factory olive is left; black,
+-- steel and glow trims keep theirs. A plain colour wrap gets a partner the same way from its first colour
+local Partners: { [string]: { k: string, c: Color3, t: Color3? } } = (function()
+	local mod = script.Parent:WaitForChild("WrapPartners", 3)
+	if not mod then return {} end
+	local ok, t = pcall(require, mod)
+	return if ok and type(t) == "table" then t :: any else {}
+end)()
+-- (the metal partner is a SurfaceAppearance made in Edit (maps are PluginSecurity): studio-tools/WrapPartnerBook.luau
+-- builds ReplicatedStorage.JankfireWrapPartner.metal: a white colour map, metal 0.85, roughness 0.4, tinted per wrap)
+local function partnerTemplate(): SurfaceAppearance?
+	local f = ReplicatedStorage:FindFirstChild("JankfireWrapPartner")
+	local s = f and f:FindFirstChild("metal")
+	return if s and s:IsA("SurfaceAppearance") then s else nil
+end
+local TRIM_PARTNER: { [string]: boolean } = { body = true, deck = true, frame = true }
+-- CIE L* of a colour, and a colour from L*, chroma and hue (D65): the partner rule for plain colour wraps
+local function lin(x: number): number return if x <= 0.04045 then x / 12.92 else ((x + 0.055) / 1.055) ^ 2.4 end
+local function gam(x: number): number
+	x = math.clamp(x, 0, 1)
+	return if x <= 0.0031308 then x * 12.92 else 1.055 * x ^ (1 / 2.4) - 0.055
+end
+local function labOf(c: Color3): (number, number, number)
+	local r, g, b = lin(c.R), lin(c.G), lin(c.B)
+	local x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047
+	local y = 0.2126 * r + 0.7152 * g + 0.0722 * b
+	local z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883
+	local function f(v: number): number return if v > 0.008856 then v ^ (1 / 3) else 7.787 * v + 16 / 116 end
+	return 116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))
+end
+local function fromLch(L: number, C: number, h: number): Color3
+	local a, bb = C * math.cos(h), C * math.sin(h)
+	local fy = (L + 16) / 116
+	local fx, fz = fy + a / 500, fy - bb / 200
+	local function inv(f: number): number return if f ^ 3 > 0.008856 then f ^ 3 else (f - 16 / 116) / 7.787 end
+	local x, y, z = inv(fx) * 0.95047, inv(fy), inv(fz) * 1.08883
+	return Color3.new(gam(3.2406 * x - 1.5372 * y - 0.4986 * z), gam(-0.9689 * x + 1.8758 * y + 0.0415 * z),
+		gam(0.0557 * x - 0.2040 * y + 1.0570 * z))
+end
+local function partnerOfColour(c: Color3): { k: string, c: Color3 }
+	local L, a, b = labOf(c)
+	local C, h = math.sqrt(a * a + b * b), math.atan2(b, a)
+	if L >= 46 then return { k = "deep", c = fromLch(math.clamp(L - 40, 16, 30), math.clamp(C * 0.8 + 4, 6, 30), h) } end
+	return { k = "metal", c = fromLch(math.clamp(L + 16, 28, 38), math.clamp(C * 0.35, 6, 22), h) }
+end
+-- a wrap's partner: { k = "deep" | "metal", c = its colour (the chip's band), t = the deep picture's tint }
+function WeaponModels.partner(wrapId: string): { k: string, c: Color3, t: Color3? }?
+	local p = Partners[wrapId]
+	if p then return p end
+	local wr = Roster.wrapById[wrapId]
+	if wr and #wr.pal > 0 then return partnerOfColour(wr.pal[1]) end
+	return nil
+end
 
 -- a wrap with a picture: ReplicatedStorage.JankfireWraps holds one SurfaceAppearance per textured wrap (drawn by
 -- tools/roblox/wrap_textures.py, built by studio-tools/WrapBook.luau; docs/WRAP-TEXTURES.md). It goes on every piece the
@@ -857,15 +923,21 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 		local sa = p:FindFirstChildOfClass("SurfaceAppearance")
 		if sa then stash[p] = sa; sa.Parent = nil end
 	end
-	-- a wrap is a palette (docs/WRAP-TEXTURES.md, after the Rivals study): on HANDLE or BUSINESS END the other half of
-	-- the gun takes a dark tone of the same wrap (the picture tinted down by its Second colour, or the palette's first
-	-- colour darkened), not the gun's factory paint, so the gun reads as one design in two tones. trims (_wzN), glow and
-	-- glass keep their look; the gun's glow pieces take the wrap's Accent
+	-- NORMAL and REVERSE (see "NORMAL AND REVERSE" above): the other part of the gun wears the wrap's PARTNER, not the
+	-- gun's factory paint, so the gun reads as one design in two tones. a skin's accents, glow and glass keep their look;
+	-- the gun's glow pieces take the wrap's Accent (below)
 	if md ~= "full" then
 		local other = if md == "reverse" then "a" else "b"
-		local sec = if pic then pic:GetAttribute("Second") else nil
+		local pt = WeaponModels.partner(wr.id)
+		local tmpl = partnerTemplate()
+		local plain = not skinned(m)
 		for _, p in list do
-			if zoneOf(p, m) ~= other then continue end
+			local z = zoneOf(p, m)
+			if z ~= other then
+				-- (a plain kit gun's body-coloured trims go with the partner in both modes)
+				local _, sl = nodeSlot(p)
+				if not (plain and z == "n" and sl ~= nil and TRIM_PARTNER[sl]) then continue end
+			end
 			if p.Material == Enum.Material.Neon or p.Material == Enum.Material.Glass then continue end
 			local uv = p:IsA("MeshPart") and p:GetAttribute("WrapUV")
 			if pic and unfolded and not uv then continue end
@@ -874,17 +946,26 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 			if old then stash[p] = old; old.Parent = nil end
 			if p:IsA("MeshPart") then p.TextureID = "" end
 			p.Material = Enum.Material.SmoothPlastic; p.Reflectance = 0
-			if pic and uv then
+			local deep = pt == nil or pt.k == "deep"
+			if pic and uv and deep then
 				local s = pic:Clone()
 				s.Name = "WrapSA"
-				s.Color = if typeof(sec) == "Color3" then sec else Color3.new(0.35, 0.35, 0.35)
+				s.Color = if pt and pt.t then pt.t else Color3.new(0.35, 0.35, 0.35)
 				s.EmissiveStrength = pic.EmissiveStrength * 0.3
 				s:SetAttribute("Wrap", wr.id)
+				s:SetAttribute("Partner", true)
 				s:AddTag("WrapSA")
 				s.Parent = p
+			elseif pt and not deep and tmpl and p:IsA("MeshPart") then
+				-- (the anodised metal: no Wrap attribute, so WrapAnim leaves it still)
+				local s = tmpl:Clone()
+				s.Name = "WrapSA"
+				s.Color = pt.c
+				s:SetAttribute("Partner", true)
+				s.Parent = p
+				p.Color = pt.c
 			else
-				local c = wr.pal[1]
-				p.Color = Color3.new(c.R * 0.35, c.G * 0.35, c.B * 0.35)
+				p.Color = if pt then pt.c else wr.pal[1]:Lerp(Color3.new(), 0.65)
 			end
 		end
 	end

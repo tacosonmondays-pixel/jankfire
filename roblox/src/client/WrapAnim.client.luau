@@ -271,7 +271,7 @@ local function rebuild(gun: Instance)
 		if not (sa:IsA("SurfaceAppearance") and sa.Name == "WrapSA" and sa.Parent and sa.Parent:IsA("BasePart")) then continue end
 		local id = sa:GetAttribute("Wrap")
 		local e = if type(id) == "string" then FX[id] else nil
-		if not e or sa.Color ~= Color3.new(1, 1, 1) then continue end -- (the painted half only, not the dark second tone)
+		if not e or sa:GetAttribute("Partner") then continue end -- (the pattern's own pieces only, not the partner)
 		spec = e
 		table.insert(pieces, sa.Parent :: BasePart)
 	end
@@ -356,7 +356,7 @@ end)
 -- halo behind the weapon in its glow colour (the picture's Accent), breathing slowly: an ImageLabel just behind the
 -- frame, fitted every frame round the weapon as the frame's camera sees it (so it follows the loadout's turning gun).
 -- A frame whose parent lays its children out (a list or a grid) gets the gain only: a halo there would take a slot.
--- The painted half decides: a dark second half alone (HANDLE / BUSINESS END's other side) gets no halo.
+-- The pattern's pieces decide: the partner alone (NORMAL / REVERSE's other side) gets no halo.
 -- Particles don't draw in a ViewportFrame either, so a glowing wrap with WRAP EFFECTS (FX) gets a few of them drawn
 -- over the weapon as images instead (MOTES): Nebula's twinkles fading in and out where they sit, Lava's embers rising,
 -- Galaxy's dots, Kintsugi's and Holo's glints, at points on its picture pieces, following the turning gun
@@ -376,7 +376,7 @@ local function bookOf(sa: Instance): SurfaceAppearance?
 end
 local function addHalo(inst: Instance)
 	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) then return end
-	if inst.Color ~= Color3.new(1, 1, 1) then return end -- (the painted half only)
+	if inst:GetAttribute("Partner") then return end -- (the pattern's own pieces only)
 	local vp = inst:FindFirstAncestorOfClass("ViewportFrame")
 	local book = bookOf(inst)
 	if not (vp and book and book.EmissiveStrength >= HALO_MIN) then return end
@@ -506,6 +506,218 @@ RunService.RenderStepped:Connect(function()
 		end
 		h.img.Visible = show
 	end
+end)
+
+-- WRAP FLOW (19 Nov 2026, the owner: "also can some of the wraps be animated?"; docs/WRAP-TEXTURES.md "Moving wraps").
+-- A SurfaceAppearance cannot scroll its picture, but a Texture can (OffsetStudsU / V), and since Roblox's PBR decals a
+-- Texture can glow too (EmissiveMaskContent, EmissiveStrength). So a moving wrap is its still picture plus one or two
+-- see-through glowing Textures over the pattern's biggest pieces, slid along the gun: Galaxy's and Nebula's stars drift
+-- in two layers at two speeds (depth), a soft band of light sweeps along the gold of Kintsugi and Mastery Gold every few
+-- seconds. The pictures are tools/roblox/wrap_flow.py's (round soft dots; one slanted band).
+-- Cost (memory roblox-performance: never write many instances from Lua every frame): each Texture is moved by one
+-- looping linear tween (the engine moves it; no Lua per frame), at most FLOW_PIECES pieces a gun x 3 sides x its layers;
+-- a gun's tweens pause while it is hidden, further than NEAR or (GRAPHICS > OTHER PLAYERS' SKIN EFFECTS off) in someone
+-- else's hands. The attribute FlowTex is how many Textures are moving.
+local TweenService = game:GetService("TweenService")
+-- (the pictures can't be set by a game script while playing: "cannot write EmissiveMaskContent", seen in Play 20 Nov.
+-- So the Textures are made in Edit, ReplicatedStorage.JankfireWrapFlow.stars / .glint, by studio-tools/WrapPartnerBook
+-- with tools/roblox/wrap_flow.py's pictures (stars 90506142503050 + mask 138098836499581, glint 119853642092920 + mask
+-- 119596018117654), and cloned here; only Face, tiles, offsets, Transparency, Color3 and the glow are set, each in a
+-- pcall so one refused property can't stop a gun's layer)
+local function flowTemplate(name: string): Texture?
+	local f = ReplicatedStorage:FindFirstChild("JankfireWrapFlow")
+	local t = f and f:FindFirstChild(name)
+	return if t and t:IsA("Texture") then t else nil
+end
+local function put(x: Instance, prop: string, v: any)
+	pcall(function() (x :: any)[prop] = v end)
+end
+-- tex: the picture; u, v: its tile, in metres of gun (x the gun's K studs a metre); speed: metres a second along the
+-- gun (a glint's tile is long, so its band crosses a rifle once a tile: every u / speed seconds); glow: the Texture's
+-- EmissiveStrength; tint: its colour; a: how much of it shows (1 - Transparency)
+type Layer = { tex: string, u: number, v: number, speed: number, glow: number, tint: Color3?, a: number? }
+local FLOW: { [string]: { Layer } } = {
+	-- (Galaxy: dots only, the owner's rule for it; a fine slow layer and a sparser quicker one in front: depth)
+	galaxy = {
+		{ tex = "stars", u = 0.34, v = 0.34, speed = 0.010, glow = 2.0, tint = Color3.fromHex("dfe6ff"), a = 0.7 },
+		{ tex = "stars", u = 0.62, v = 0.62, speed = 0.024, glow = 3.0, tint = Color3.fromHex("ffffff"), a = 0.9 },
+	},
+	nebula = {
+		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.012, glow = 2.2, tint = Color3.fromHex("f3e2ff"), a = 0.7 },
+		{ tex = "stars", u = 0.64, v = 0.64, speed = 0.026, glow = 3.0, tint = Color3.fromHex("e2ecff"), a = 0.9 },
+	},
+	mastery_galaxy = {
+		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.014, glow = 2.4, tint = Color3.fromHex("eadfff"), a = 0.75 },
+		{ tex = "stars", u = 0.66, v = 0.66, speed = 0.03, glow = 3.2, tint = Color3.fromHex("d8f6ff"), a = 0.9 },
+	},
+	triangulum = {
+		{ tex = "stars", u = 0.4, v = 0.4, speed = 0.01, glow = 2.0, tint = Color3.fromHex("fff1cc"), a = 0.6 },
+	},
+	-- (the glints: one band every u / speed seconds, crossing a rifle in under two seconds)
+	kintsugi = { { tex = "glint", u = 3.2, v = 0.7, speed = 0.62, glow = 2.6, tint = Color3.fromHex("ffd98a"), a = 0.9 } },
+	mastery_gold = { { tex = "glint", u = 3.0, v = 0.7, speed = 0.66, glow = 2.4, tint = Color3.fromHex("fff0c8") } },
+	mastery_diamond = { { tex = "glint", u = 3.6, v = 0.7, speed = 0.7, glow = 2.8, tint = Color3.fromHex("eef6ff") } },
+	holo = { { tex = "glint", u = 3.4, v = 0.7, speed = 0.6, glow = 1.8, tint = Color3.fromHex("ffffff"), a = 0.8 } },
+}
+local FLOW_PIECES = 6
+local FLOW_OFFSIGN = 1 -- (which way OffsetStuds moves the picture: set by the Edit test of 19 Nov)
+-- each face's +U and +V in the part's own frame (Roblox lays a Texture as a Decal reads: upright, seen from outside)
+local FACE_UV: { [Enum.NormalId]: { Vector3 } } = {
+	[Enum.NormalId.Left] = { Vector3.new(0, 0, 1), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Right] = { Vector3.new(0, 0, -1), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Front] = { Vector3.new(-1, 0, 0), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Back] = { Vector3.new(1, 0, 0), Vector3.new(0, -1, 0) },
+	[Enum.NormalId.Top] = { Vector3.new(1, 0, 0), Vector3.new(0, 0, 1) },
+	[Enum.NormalId.Bottom] = { Vector3.new(1, 0, 0), Vector3.new(0, 0, -1) },
+}
+local FACES = { Enum.NormalId.Left, Enum.NormalId.Right, Enum.NormalId.Top, Enum.NormalId.Bottom, Enum.NormalId.Front, Enum.NormalId.Back }
+type FlowGun = { texs: { Texture }, tweens: { Tween }, parts: { BasePart }, fp: boolean, on: boolean }
+local flowGuns: { [Instance]: FlowGun } = {}
+local flowSaGun: { [Instance]: Instance } = {}
+local flowDirty: { [Instance]: boolean } = {}
+local function flowCount()
+	local n = 0
+	for _, G in flowGuns do if G.on then n += #G.texs end end
+	script:SetAttribute("FlowTex", n)
+end
+local function flowRebuild(gun: Instance)
+	flowDirty[gun] = nil
+	local old = flowGuns[gun]
+	if old then
+		for _, tw in old.tweens do tw:Cancel() end
+		for _, tx in old.texs do tx:Destroy() end
+		flowGuns[gun] = nil
+	end
+	if not gun.Parent then flowCount(); return end
+	if othersOff and isOthers(gun) then flowCount(); return end
+	local layers: { Layer }?, pieces = nil, {}
+	for _, sa in gun:GetDescendants() do
+		if not (sa:IsA("SurfaceAppearance") and sa.Name == "WrapSA" and sa.Parent and sa.Parent:IsA("BasePart")) then continue end
+		if sa:GetAttribute("Partner") then continue end
+		local id = sa:GetAttribute("Wrap")
+		local L = if type(id) == "string" then FLOW[id] else nil
+		if not L then continue end
+		layers = L
+		table.insert(pieces, sa.Parent :: BasePart)
+	end
+	if not layers or #pieces == 0 then flowCount(); return end
+	local function area(b: BasePart): number local z = b.Size; return z.X * z.Y + z.Y * z.Z + z.X * z.Z end
+	table.sort(pieces, function(a, b) return area(a) > area(b) end)
+	while #pieces > FLOW_PIECES do table.remove(pieces) end
+	-- the gun's own frame and long axis (as WeaponModels.wrap measures it), its studs a metre
+	local ref = if gun:IsA("Model") then gun:GetPivot() else (pieces[1] :: BasePart).CFrame
+	local ext = if gun:IsA("Model") then gun:GetExtentsSize() else Vector3.new(3, 1, 1)
+	local kk = gun:GetAttribute("K")
+	local k = if type(kk) == "number" and kk > 0 then kk else math.max(ext.X, ext.Y, ext.Z) / 0.9
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, d in gun:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 0.99 then
+			local v = ref:PointToObjectSpace(d.Position); lo = lo:Min(v); hi = hi:Max(v)
+		end
+	end
+	local span = hi - lo
+	local axisL = if span.X >= span.Y and span.X >= span.Z then Vector3.xAxis elseif span.Y >= span.Z then Vector3.yAxis else Vector3.zAxis
+	local along = ref:VectorToWorldSpace(axisL)
+	local sides = { -ref.RightVector, ref.RightVector, ref.UpVector } -- (the gun's left, right and top)
+	local G: FlowGun = { texs = {}, tweens = {}, parts = pieces, fp = gun:IsDescendantOf(workspace.CurrentCamera), on = true }
+	for _, p in pieces do
+		local cf, sz = p.CFrame, p.Size
+		for _, want in sides do
+			-- the piece's face that looks most that way
+			local best, bestD = Enum.NormalId.Left, -2
+			for _, f in FACES do
+				local d = cf:VectorToWorldSpace(Vector3.fromNormalId(f)):Dot(want)
+				if d > bestD then best, bestD = f, d end
+			end
+			if bestD < 0.5 then continue end
+			local uv = FACE_UV[best]
+			local n = Vector3.fromNormalId(best)
+			-- which texture axis runs along the gun on this face, its sign, and where the face's U / V start along the gun
+			local gl = cf:VectorToObjectSpace(along)
+			local useV = math.abs(gl:Dot(uv[2])) > math.abs(gl:Dot(uv[1]))
+			local ax = if useV then uv[2] else uv[1]
+			local sign = if ax:Dot(gl) >= 0 then 1 else -1
+			local corner = cf:PointToWorldSpace((n - uv[1] - uv[2]) * sz / 2)
+			local start = (corner - ref.Position):Dot(along)
+			for _, L in layers :: { Layer } do
+				local tmpl = flowTemplate(L.tex)
+				if not tmpl then continue end
+				local tx = tmpl:Clone()
+				tx.Name = "WrapFlow"
+				put(tx, "Face", best)
+				put(tx, "EmissiveStrength", L.glow)
+				put(tx, "EmissiveTint", L.tint or Color3.new(1, 1, 1))
+				put(tx, "Color3", L.tint or Color3.new(1, 1, 1))
+				put(tx, "Transparency", 1 - (L.a or 1))
+				put(tx, "StudsPerTileU", (if useV then L.v else L.u) * k)
+				put(tx, "StudsPerTileV", (if useV then L.u else L.v) * k)
+				put(tx, "ZIndex", 2)
+				if p.LocalTransparencyModifier >= 0.5 then put(tx, "LocalTransparencyModifier", 1) end -- (born hidden: no flash)
+				local tile = L.u * k
+				local base = -FLOW_OFFSIGN * sign * start
+				local prop = if useV then "OffsetStudsV" else "OffsetStudsU"
+				put(tx, prop, base)
+				tx.Parent = p
+				local tw = TweenService:Create(tx, TweenInfo.new(tile / math.max(L.speed * k, 1e-3), Enum.EasingStyle.Linear,
+					Enum.EasingDirection.InOut, -1), { [prop] = base + FLOW_OFFSIGN * sign * tile })
+				tw:Play()
+				table.insert(G.texs, tx)
+				table.insert(G.tweens, tw)
+			end
+		end
+	end
+	flowGuns[gun] = G
+	flowCount()
+end
+local function addFlow(inst: Instance)
+	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) then return end
+	local id = inst:GetAttribute("Wrap")
+	if not (type(id) == "string" and FLOW[id]) then return end
+	local gun = inst.Parent and gunOf(inst.Parent)
+	if not gun then return end
+	flowSaGun[inst] = gun
+	if not flowDirty[gun] then flowDirty[gun] = true; task.defer(flowRebuild, gun) end
+end
+for _, sa in CS:GetTagged("WrapSA") do addFlow(sa) end
+CS:GetInstanceAddedSignal("WrapSA"):Connect(addFlow)
+CS:GetInstanceRemovedSignal("WrapSA"):Connect(function(inst)
+	local gun = flowSaGun[inst]
+	flowSaGun[inst] = nil
+	if gun and not flowDirty[gun] then flowDirty[gun] = true; task.defer(flowRebuild, gun) end
+end)
+task.spawn(function()
+	local ok, Settings = pcall(function() return require(script.Parent:WaitForChild("Settings")) :: any end)
+	if not ok or type(Settings) ~= "table" then return end
+	Settings.watch("gfx.othersSkin", function()
+		for _, gun in flowSaGun do if not flowDirty[gun] then flowDirty[gun] = true; task.defer(flowRebuild, gun) end end
+	end)
+end)
+-- on / off, four times a second: hidden (first person hides your world gun, third person the viewmodel; a Texture
+-- follows its part's LocalTransparencyModifier only through its own) or far
+local flowAcc = 0
+RunService.Heartbeat:Connect(function(dt: number)
+	flowAcc += dt
+	if flowAcc < 0.25 or next(flowGuns) == nil then return end
+	flowAcc = 0
+	local cam = workspace.CurrentCamera
+	local at = if cam then cam.CFrame.Position else Vector3.zero
+	local changed = false
+	for gun, G in flowGuns do
+		if not gun.Parent then
+			for _, tw in G.tweens do tw:Cancel() end
+			for _, tx in G.texs do tx:Destroy() end
+			flowGuns[gun] = nil; changed = true; continue
+		end
+		local b = G.parts[1]
+		local hidden = b == nil or b.Parent == nil or b.LocalTransparencyModifier >= 0.5 or b.Transparency >= 0.99
+		local on = not hidden and (G.fp or (b.Position - at).Magnitude < NEAR)
+		if on ~= G.on then
+			G.on = on; changed = true
+			for _, tw in G.tweens do if on then tw:Play() else tw:Pause() end end
+			for _, tx in G.texs do put(tx, "LocalTransparencyModifier", if hidden then 1 else 0) end
+		end
+	end
+	if changed then flowCount() end
 end)
 
 local acc, nearAcc, worst, worstAcc = 0, 0, 0, 0
