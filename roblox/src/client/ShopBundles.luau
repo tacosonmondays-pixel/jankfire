@@ -550,5 +550,22 @@ return function(C: any): any
 		UI.bundleGrid.Size = UDim2.new(1, 0, 0, math.max(0, y - gap))
 	end
 
+	-- ==================================================================== owned, display only
+	-- an owned skin with no single offer (a set's piece, a VIP skin: neither is sold alone) opens the inspect panel all
+	-- the same, as "view:skin:<id>": OWNED, no BUY and no GIFT, its finisher's PREVIEW where it has one. this offer is
+	-- this client's only, never Shop.offer (the server's Purchases, Gifts and ShopReceipts read that), so it sells nothing
+	X.views = {} :: { [string]: any }
+	function X.viewOffer(id: string): any
+		local kind, iid = string.match(id, "^view:(%a+):(.+)$")
+		if kind ~= "skin" or not iid then return nil end
+		local v = X.views[id]
+		if v then return v end
+		local okI, name, r = pcall(Shop.itemInfo, "skin", iid)
+		if not okI or type(name) ~= "string" or not Till.owns("skin", iid, nil) then return nil end
+		v = { id = id, type = "single", kind = "skin", item = iid, weapon = Shop.skinWeapon(iid), rarity = r or "common", name = name, robux = 0, view = true }
+		X.views[id] = v
+		return v
+	end
+
 	return X
 end

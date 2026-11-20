@@ -1895,8 +1895,9 @@ function ShopUI.fillInventory(force: boolean?)
 				if it.kind == "skin" then Fin.badge(c, it.id, UDim2.new(1, -6, 0, 6)) end
 				rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
 				local oid = if it.vip then "vip" else Shop.singleId({ kind = it.kind, id = it.id, weapon = it.weapon or (if Shop.gunless(it.kind) then nil else V.yourGun()) })
-				-- (a set's piece or a VIP skin isn't sold alone, so it has no page: one with a finisher plays it. 20 Nov)
-				c.MouseButton1Click:Connect(function() if Shop.offer(oid) then ShopUI.inspect(oid) elseif it.kind == "skin" then Fin.preview(it.id) end end)
+				-- (a set's piece or a VIP skin isn't sold alone, so it has no offer: its display-only page (ShopBundles.viewOffer), else
+				-- its finisher plays. 20 Nov)
+				c.MouseButton1Click:Connect(function() if Shop.offer(oid) then ShopUI.inspect(oid) elseif it.kind == "skin" and ShopUI.viewOffer("view:skin:" .. it.id) then ShopUI.inspect("view:skin:" .. it.id) elseif it.kind == "skin" then Fin.preview(it.id) end end)
 			end
 		end
 	end
@@ -2057,7 +2058,7 @@ local function listRow(it: any, order: number, o: any)
 	end)
 end
 function ShopUI.fillInspect()
-	local o = Shop.offer(S.inspect)
+	local o = Shop.offer(S.inspect) or ShopUI.viewOffer(S.inspect)
 	if not o then return end
 	S.preview = nil
 	V.put(UI.inspView, o, nil, "drag", if o.type == "container" then 0.95 elseif o.kind == "hat" then 1.0 else 1.1)
@@ -2191,6 +2192,7 @@ function ShopUI.fillInspect()
 		UI.inspBuy.set(if own then "OWNED" elseif not onSale then "NOT ON SALE TODAY" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. Purse.cost(o), not own and onSale)
 	end
 	Money.giftButton(o) -- (GIFT beside BUY, 19 Nov)
+	if o.view then UI.inspGift.face.Visible = false end -- (owned, display only: nothing to give)
 	-- (a container: its two prices side by side in BUY's place, at every count. 19 Nov)
 	if X and isBox and not Shop.free() and not S.restricted and Till.boxState(o.id) == nil then
 		local n = S.count[o.id] or 1
@@ -2210,7 +2212,7 @@ function Money.giftButton(o: any)
 	end
 end
 function ShopUI.inspect(id: string)
-	if not Shop.offer(id) then return end
+	if not (Shop.offer(id) or ShopUI.viewOffer(id)) then return end -- (or an owned skin's display-only page: ShopBundles)
 	play("click")
 	S.inspect = id
 	ShopUI.fillInspect()
@@ -2592,6 +2594,7 @@ function Money.giftRow(id: number, display: string, name: string, order: number)
 end
 function ShopUI.askCount(cid: string) local X = ShopUI.ext(); if X then X.askCount(cid) else ShopUI.openBox(cid) end end
 function ShopUI.unpanel() Money.unpanel() end -- (PadNav's B)
+function ShopUI.viewOffer(id: string?): any local X = ShopUI.ext(); return if X and type(id) == "string" then X.viewOffer(id) else nil end
 function ShopUI.countTest(v: string?) local X = ShopUI.ext(); if X then X.countTest(v) end end
 function Money.showGift(id: string)
 	local o = if string.match(id, "^coins:[%w_]+$") then Shop.coinPack(id) else Shop.offer(id)
