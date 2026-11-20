@@ -113,7 +113,7 @@ local function board(part: Instance)
 	pr.ObjectText = "Matches"
 	pr.KeyboardKeyCode = Enum.KeyCode.E
 	pr.HoldDuration = 0
-	pr.MaxActivationDistance = 14
+	pr.MaxActivationDistance = 28 -- (boards hang high: the hubs' about 20 studs over the floor)
 	pr.RequiresLineOfSight = false
 	pr:SetAttribute("SpectateOpen", true)
 	pr.Parent = part

@@ -251,7 +251,7 @@ leaveB.MouseButton1Click:Connect(leave)
 local function enter(w: any)
 	if view then return end
 	closePanel()
-	local saved = { Zone = me:GetAttribute("Zone"), Arena = me:GetAttribute("Arena") }
+	local saved = { Zone = me:GetAttribute("Zone"), Arena = me:GetAttribute("Arena"), LoadoutOpen = me:GetAttribute("LoadoutOpen") }
 	local hidden: { [ScreenGui]: boolean } = {}
 	for _, g in pg:GetChildren() do
 		if g:IsA("ScreenGui") and g ~= overlay and g.Enabled then hidden[g] = true; g.Enabled = false end
@@ -261,6 +261,7 @@ local function enter(w: any)
 	-- (the arena's look, its life and the culling follow these two on this client: the server's are put back after)
 	me:SetAttribute("Zone", "match")
 	me:SetAttribute("Arena", w.arena)
+	me:SetAttribute("LoadoutOpen", true) -- (hold still: hands, weapons, movement, the game's keys)
 	MenuCursor.set("watch", true, function() return view ~= nil end)
 	camera.CameraType = Enum.CameraType.Scriptable
 	overlay.Enabled = true
@@ -273,6 +274,7 @@ local function exit()
 	me:SetAttribute("Zone", v.saved.Zone)
 	me:SetAttribute("Arena", v.saved.Arena)
 	MenuCursor.set("watch", false)
+	me:SetAttribute("LoadoutOpen", v.saved.LoadoutOpen)
 	for g in v.hidden do if g.Parent then g.Enabled = true end end
 	camera.CameraType = Enum.CameraType.Custom
 	local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
