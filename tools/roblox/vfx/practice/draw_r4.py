@@ -4,7 +4,7 @@ import sys, os, math
 import numpy as np
 from PIL import Image
 
-OUT = sys.argv[1]
+OUT = sys.argv[1] if len(sys.argv) > 1 else '.'
 SS = 2
 
 
@@ -223,11 +223,12 @@ def teardrop(n=256):
     save_a(down(a, n), 'vfx_teardrop')
 
 
-sheet(hit5, 'vfx_hitstar5_4x4')
-sheet(gburst4, 'vfx_gburst4_4x4')
-sheet(gring3, 'vfx_gring3_4x4')
-hairring3()
-burstdisc2()
-windarc3()
-crack3()
-teardrop()
+if __name__ == '__main__':
+    sheet(hit5, 'vfx_hitstar5_4x4')
+    sheet(gburst4, 'vfx_gburst4_4x4')
+    sheet(gring3, 'vfx_gring3_4x4')
+    hairring3()
+    burstdisc2()
+    windarc3()
+    crack3()
+    teardrop()

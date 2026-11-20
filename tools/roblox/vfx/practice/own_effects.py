@@ -24,6 +24,9 @@ TEX = {  # our own images (ids in roblox/assets/vfx/assets.json and roblox/docs/
     # round 4 (draw_r4.py, the round-3 critic's texture fixes)
     'hitstar5': 128013373146952, 'gburst4': 119901861168715, 'gring3': 80596133395930, 'hairring3': 108259422148782,
     'burstdisc2': 132227938465636, 'windarc3': 108885047117384, 'crack3': 82139269904773, 'teardrop': 99366298965102,
+    # round 5 (draw_r5.py, the round-4 critic's texture fixes)
+    'hitstar6': 97682045081267, 'gburst5': 105289321306791, 'gring4': 109926706217602, 'puff3': 128418655094527,
+    'crack4': 126965788763314, 'inkblob': 85970353866590,
 }
 OR = {'cam': 0, 'camup': 1, 'par': 2, 'perp': 3}
 DIR = {'right': 0, 'top': 1, 'back': 2, 'left': 3, 'bottom': 4, 'front': 5}
@@ -427,7 +430,59 @@ def r4():
     return E
 
 
-ROUNDS = {1: r1, 2: r2, 3: r3, 4: r4}
+def r5():
+    """round 5: the round-4 critic's fixes on round 4 (scores hit 7, guard 6, dash 7, slash 8 = done, slam 5, explosion 6;
+    the slash stays as round 4 left it)"""
+    E = r4()
+    # HIT: five uneven sparkles one frame earlier, the ring line fainter, the arcs from frame 5
+    layer(E, 'O_Hit', 'star')['p']['Texture'] = tex('hitstar6')
+    # GUARD: a squat chunky star, three nearly whole rings, a crisp bright wider ring
+    layer(E, 'O_Guard', 'burst')['p']['Texture'] = tex('gburst5')
+    g = layer(E, 'O_Guard', 'ring')['p']
+    g['Texture'] = tex('gring4')
+    g['Brightness'] = 3
+    g['Size'] = NS((0, 0.5), (0.2, 3.2), (0.4, 5.4), (1, 5.6))
+    # DASH: brighter rings and lines (they barely showed on black), a wider spread of lines, the glow a big faint haze
+    for n in ('circles', 'lines'):
+        layer(E, 'O_Dash', n)['p']['Brightness'] = 1.6
+    layer(E, 'O_Dash', 'lines')['p']['SpreadAngle'] = ['V2', 4, 4]
+    gl = layer(E, 'O_Dash', 'glow')
+    gl['a']['EmitCount'] = 1.0
+    gl['p']['Size'] = NS((0, 5), (1, 5))
+    gl['p']['Transparency'] = NS((0, 1), (0.5, 0.985), (1, 1))
+    # GROUND: cartoon puffs that fill their sprite (the belt and the hollow ring come from them), held full to 80% of life,
+    # clouds thrown wider; cracks thicker at the middle round a dark crater
+    d = layer(E, 'O_Slam', 'dust')['p']
+    d['Texture'] = tex('puff3')
+    d['Transparency'] = NS((0, 0), (0.8, 0), (1, 1))
+    cl = layer(E, 'O_Slam', 'clouds')['p']
+    cl['Texture'] = tex('puff3')
+    cl['Speed'] = NR(10, 40)
+    layer(E, 'O_Slam', 'crack')['p']['Texture'] = tex('crack4')
+    # EXPLOSION: big jagged black ink in front of the flash (ZOffset 9), a black splat core, the needles gone sooner, fewer
+    # and smaller flicks, a shorter flash
+    ink = layer(E, 'O_X', 'ink')['p']
+    ink['Texture'] = tex('inkblob')
+    ink.pop('FlipbookLayout', None)
+    ink.pop('FlipbookMode', None)
+    ink['Size'] = NS((0, 6), (1, 6))
+    ink['ZOffset'] = 9
+    ink['Rotation'] = NR(0)
+    for d0 in E:
+        if d0['n'] == 'O_X':
+            core = em('inkcore', 'splat4', (0.12, 0.18), 5, trans=NS((0, 0), (1, 0)), color='#000000', le=0.0, speed=(0, 10),
+                      spread=(360, 360), flip='4x4', rot=(-180, 180), z=9, count=3)
+            core['p']['LightInfluence'] = 0.0
+            d0['k'][0]['k'].append(core)
+    layer(E, 'O_X', 'shards')['p']['Transparency'] = NS((0, 0), (0.3, 0), (0.5, 1), (1, 1))
+    lk = layer(E, 'O_X', 'licks')
+    lk['a']['EmitCount'] = 3.0
+    lk['p']['Size'] = NS((0, 0), (0.072, 0.95, 0.28), (0.381, 1.4, 0.56), (1, 0.35, 0.35))
+    layer(E, 'O_X', 'flash')['p']['Lifetime'] = NR(0.07)
+    return E
+
+
+ROUNDS = {1: r1, 2: r2, 3: r3, 4: r4, 5: r5}
 DATA = ROUNDS[ROUND]()
 js = json.dumps(DATA, separators=(',', ':'))
 assert ']==]' not in js

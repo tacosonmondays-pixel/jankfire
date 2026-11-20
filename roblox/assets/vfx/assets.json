@@ -527,5 +527,41 @@
   "sha1": "0043335035d8918a314f1a691c1ffe725f2e0105",
   "what": "practice: a fat hard teardrop flick, point along v (tools/roblox/vfx/practice/draw_r4.py)",
   "uploaded": "2026-11-20"
+ },
+ "vfx_hitstar6_4x4": {
+  "id": 97682045081267,
+  "sha1": "88c8181b73cc986fd531120a5aca1e9fdc7563a8",
+  "what": "practice: hit flash v6, five uneven haloed sparkles one frame earlier, broken arcs from frame 5 (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gburst5_4x4": {
+  "id": 105289321306791,
+  "sha1": "5714491833ba5bcde45515bbefd4fb4419baa54c",
+  "what": "practice: guard-break burst v5, a squat chunky star, three nearly whole rings and shards (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gring4_4x4": {
+  "id": 109926706217602,
+  "sha1": "cfcc4b60414928c7fdedc7368dabbf02ca9c5e99",
+  "what": "practice: shock ring v4, a hard thin ring with broken inner arcs (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_puff3_4x4": {
+  "id": 128418655094527,
+  "sha1": "2bdd46622c4be33d58b2ef6e219a51f1a57f5a23",
+  "what": "practice: cartoon puff v3 filling ~90% of the cell, shrinking late (no fade) (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_crack4": {
+  "id": 126965788763314,
+  "sha1": "870001cabb3d6e81089f7446e79d0e069f8a3a9f",
+  "what": "practice: ground cracks v4 (1024 px), thicker at the middle round a dark crater with wedge cracks (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_inkblob": {
+  "id": 85970353866590,
+  "sha1": "6c4bb2bee5240089ca4495d2525d9fa4a73f9be0",
+  "what": "practice: a jagged hard ink blob with a long tail along u (paint black) (tools/roblox/vfx/practice/draw_r5.py)",
+  "uploaded": "2026-11-20"
  }
 }
