@@ -92,6 +92,16 @@ TP.T = {
 	-- arrowScale: the nocked arrow's size against the bow's
 	bow = { twist = -0.85, anchor = V(-0.02, -0.17, 0.08), reach = 0.96, roll = 0.2, poleR = V(1.1, 0.35, 0.9), poleL = V(-0.5, -1.2, 0.1),
 		shake = 0.006, shakeIn = 0.5, kick = 0.05, rock = 0.14, follow = 0.05, hold = 0.22, arrowScale = 0.8 },
+	-- (the hold session, 19 Nov 2026) weapons-port's Overdrive Rig, from the player's attributes (Rig, RigCharge,
+	-- RigPunchT, RigMissT): suited up the gun is away and both fists come up in a guard (guardR / guardL: from each
+	-- shoulder, aim space, u); the punch's wind-up draws the right one back (draw, by the charge, shaking `shake` u at
+	-- full) and the punch throws it out (punch: there in `snap` s, held to `hold`, back by `back`); a salvo kicks the
+	-- left one back (kick, over `kickT` s); poleR / poleL: the elbows (chest space, u). the rig's forearms (gun-models'
+	-- w_rig_arms, RigKit) ride the hands: `size` studs a model metre per u, turned `rot` (x y z radians, mirrored on the
+	-- left) on each hand's grip; the body's own hands and forearms hide under them
+	rig = { guardR = V(-0.12, -0.16, -0.55), guardL = V(0.14, -0.2, -0.5), draw = V(0.1, 0.02, 0.32), punch = V(-0.06, 0.08, -0.4),
+		shake = 0.02, snap = 0.05, hold = 0.28, back = 0.55, kick = V(0, 0.05, 0.16), kickT = 0.32,
+		poleR = V(0.7, -0.7, 0.3), poleL = V(-0.7, -0.7, 0.3), size = 1.6, rot = V(0, 0, 0) },
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
@@ -569,7 +579,7 @@ local function grabsFor(r: Rig)
 	end
 	local pump = biggest(st.nodes.pump)
 	if pump and r.holdL then r.ride = { node = "pump", piece = pump, rel = pump.rest:Inverse() * r.holdL, ch = "pump" } end
-	for node, ch in { mag = "mag", cylinder = "cyl", hinge = "hinge" } do
+	for node, ch in { mag = "mag", cylinder = "cyl", hinge = "hinge", box = "box" } do -- (box: the Minigun's, 19 Nov 2026)
 		local list = st.nodes[node]
 		local main = biggest(list)
 		if main and list then
@@ -739,7 +749,9 @@ local function newRig(ch: Model): Rig?
 	return r
 end
 
+local rigArms: (Rig, boolean, boolean, boolean) -> () -- (the Overdrive Rig's forearms: set below, by stepRig)
 local function release(r: Rig)
+	rigArms(r, false, false, false)
 	dropGun(r)
 	showServerGun(r)
 	if r.item and r.item.model then r.item.model:Destroy() end
@@ -1283,6 +1295,64 @@ local function katanaPose(r: Rig, Q: CFrame): CFrame
 	return CF(chest) * q * CF(p * u) * eul(rot)
 end
 
+-- (the hold session, 19 Nov 2026) the Overdrive Rig's forearms on a body (TP.T.rig): each side's pieces welded to its
+-- hand at the grip (the model's gripR / gripL on the hand's GripAttachment), the body's own hands and forearms hidden
+-- under them (R6: the arm blocks); yours hidden while you're in first person (RigArms.client draws those). on = false
+-- takes them off and shows the body's own again
+local RIG_HIDE = { r15 = { "RightHand", "RightLowerArm", "LeftHand", "LeftLowerArm" }, r6 = { "Right Arm", "Left Arm" } }
+function rigArms(r: Rig, on: boolean, mine: boolean, ammoOut: boolean)
+	local rx = r :: any
+	if not on then
+		if rx.rigParts then
+			for _, p in rx.rigParts do p:Destroy() end
+			for _, p in rx.rigHid do p.LocalTransparencyModifier = 0 end
+			rx.rigParts, rx.rigHid = nil, nil
+		end
+		return
+	end
+	if not rx.rigParts then
+		local Kit = Shared:FindFirstChild("RigKit")
+		local K = if Kit then require(Kit :: ModuleScript) :: any else nil
+		local list = K and K.pieces()
+		if not list then return end
+		local k = TP.T.rig.size * r.u
+		local rot = TP.T.rig.rot
+		local parts, hid = {}, {}
+		local folder = Instance.new("Model")
+		folder.Name = "TPRigArms"
+		for _, pc in list do
+			local side = if pc.side == "r" then "Right" else "Left"
+			local hand = (r.ch:FindFirstChild(side .. "Hand") or r.ch:FindFirstChild(side .. " Arm")) :: BasePart?
+			local ga = hand and hand:FindFirstChild(side .. "GripAttachment") :: Attachment?
+			if not hand or not ga then continue end
+			local p = K.make(pc, k) :: BasePart
+			local s = if pc.side == "r" then 1 else -1
+			local w = Instance.new("Weld")
+			w.Part0 = hand; w.Part1 = p
+			w.C0 = ga.CFrame * CFrame.fromEulerAnglesXYZ(rot.X, rot.Y * s, rot.Z * s) * CF((pc.q - K.GRIP[pc.side]) * k) * pc.rot
+			w.Parent = p
+			if pc.node == "ammol" then p:SetAttribute("RigAmmo", true) end
+			p.Parent = folder
+			table.insert(parts, p)
+		end
+		for _, n in (if (r :: any).r6 then RIG_HIDE.r6 else RIG_HIDE.r15) do
+			local b = r.ch:FindFirstChild(n)
+			if b and b:IsA("BasePart") then table.insert(hid, b) end
+		end
+		folder.Parent = r.ch
+		table.insert(parts, folder :: any)
+		rx.rigParts, rx.rigHid = parts, hid
+	end
+	-- (every frame: your own camera's fade writes your body's parts too)
+	for _, b in rx.rigHid do if b.LocalTransparencyModifier ~= 1 then b.LocalTransparencyModifier = 1 end end
+	for _, p in rx.rigParts do
+		if p:IsA("BasePart") then
+			local want = if mine or (ammoOut and p:GetAttribute("RigAmmo")) then 1 else 0
+			if p.LocalTransparencyModifier ~= want then p.LocalTransparencyModifier = want end
+		end
+	end
+end
+
 local function stepRig(r: Rig, dt: number, now: number)
 	local hum = r.hum
 	if hum.Health <= 0 or not r.root.Parent then release(r); return end
@@ -1362,6 +1432,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local lspin = eased("lspin", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoSpin") == true, 9)
 	local lhold = eased("lhold", r.wid == "lasso" and plr ~= nil and plr:GetAttribute("LassoHolding") == true, 9)
 	local flail = eased("flail", plr ~= nil and plr:GetAttribute("LassoHeld") == true, 8)
+	local rigHolder: Instance = plr or r.ch -- (the Overdrive Rig: a TPRig test body carries its own attributes)
+	local rigged = rigHolder:GetAttribute("Rig") ~= nil
+	local rigW = eased("rigW", rigged, 8)
 	-- the Bow's draw: yours from Arsenal (TP.mine), anyone else's from their BowDrawT (the server clock when their draw
 	-- began: weapons-port's), a TPRig test body's from its own BowDraw (0..1)
 	local bowS: BowS? = nil
@@ -1583,7 +1656,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 		end
 		-- the pieces a reload takes out (a dropped mag) and your own gun in first person: hidden (and scoped in from
 		-- third person, TPScope: ShoulderCam took the camera into your head)
-		local hideAll = r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true)
+		local hideAll = r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true) or rigged -- (the Rig: the gun's away)
 		for _, d in (r :: any).gunParts or {} do
 			local want = if hideAll or d:GetAttribute("Hide") then 1 else 0
 			if r.shown[d] ~= want then r.shown[d] = want; d.LocalTransparencyModifier = want end
@@ -1710,6 +1783,31 @@ local function stepRig(r: Rig, dt: number, now: number)
 			end
 		end
 	end
+	-- ---- (the hold session, 19 Nov 2026) the Overdrive Rig: the guard, the wind-up, the punch, the salvo's kick
+	local rigAmmoOut = false
+	if rigW > 0.001 then
+		local T = TP.T.rig
+		local sNow = workspace:GetServerTimeNow()
+		local c0, pT, mT = rigHolder:GetAttribute("RigCharge"), rigHolder:GetAttribute("RigPunchT"), rigHolder:GetAttribute("RigMissT")
+		local ck = if type(c0) == "number" then math.clamp((sNow - c0) / 0.9, 0, 1) else 0
+		local pa = if type(pT) == "number" then sNow - pT else math.huge
+		local ma = if type(mT) == "number" then sNow - mT else math.huge
+		local pw = if pa < 0 then 0 elseif pa < T.snap then 1 - (1 - pa / T.snap) ^ 3 elseif pa < T.hold then 1
+			elseif pa < T.back then 1 - smoothstep((pa - T.hold) / (T.back - T.hold)) else 0
+		local kw = if ma < 0 then 0 elseif ma < 0.06 then 1 - (1 - ma / 0.06) ^ 3 elseif ma < T.kickT then 1 - smoothstep((ma - 0.06) / (T.kickT - 0.06)) else 0
+		rigAmmoOut = ma >= 0 and ma < 5
+		local j = T.shake * ck * ck
+		local shake = if j > 0 then V((math.random() * 2 - 1) * j, (math.random() * 2 - 1) * j, 0) else Vector3.zero
+		local pr = T.guardR + T.draw * (ck * (1 - pw)) + T.punch * pw + shake
+		local fr = CF(R.S + Q * (pr * r.u)) * Q * R.gripInv
+		local fl = CF(L.S + Q * ((T.guardL + T.kick * kw) * r.u)) * Q * L.gripInv
+		handR = if handR then handR:Lerp(fr, rigW) else fr
+		handL = if handL then handL:Lerp(fl, rigW) else fl
+		r.leftW = math.max(r.leftW, rigW)
+		poleR = poleR:Lerp(R.S + T.poleR * r.u, rigW)
+		poleL = poleL:Lerp(L.S + T.poleL * r.u, rigW)
+	end
+	rigArms(r, rigW > 0.5, r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true), rigAmmoOut)
 	-- ---- the arms: IK onto the hands. a free left hand (a pistol) goes back to the animation's own swing
 	local r6 = (r :: any).r6 == true -- (an R6 body: each arm one block, aimed on its shoulder)
 	if handR then if r6 then solveArmR6(R, handR, on, r.poseR == "hand") else solveArm(R, handR, poleR, on * (1 - moW)) end end -- (the mocap's own right arm)

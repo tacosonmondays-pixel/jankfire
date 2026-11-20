@@ -57,13 +57,24 @@ end
 
 AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
 -- a body colour for the first-person limbs: its brightness above SKIN_KNEE eased down (x SKIN_EASE of the rest), so a
--- very light skin keeps reading as skin this close to the eye and the lamps (19 Nov 2026)
-AvatarArms.SKIN_KNEE, AvatarArms.SKIN_EASE = 0.78, 0.35
-function AvatarArms.skin(c: Color3): Color3
+-- very light skin keeps reading as skin this close to the eye and the lamps (19 Nov 2026). dark = the sun is down:
+-- the gun's fill light (Viewmodel FILL) lights your arms too, and at night it outshines the map's own light on them
+-- (the night Forest, measured: a pale forearm at 208,215,233 with it, 146,158,183 without), so a light skin read as a
+-- white lamp. then the light end comes down by up to SKIN_NIGHT more (none at a value of 0.7 or under, all of it from
+-- 0.95), about what the fill adds there
+AvatarArms.SKIN_KNEE, AvatarArms.SKIN_EASE, AvatarArms.SKIN_NIGHT = 0.78, 0.35, 0.3
+function AvatarArms.skin(c: Color3, dark: boolean?): Color3
 	local h, s, v = c:ToHSV()
-	if v <= AvatarArms.SKIN_KNEE then return c end
-	return Color3.fromHSV(h, s, AvatarArms.SKIN_KNEE + (v - AvatarArms.SKIN_KNEE) * AvatarArms.SKIN_EASE)
+	local v2 = if v <= AvatarArms.SKIN_KNEE then v else AvatarArms.SKIN_KNEE + (v - AvatarArms.SKIN_KNEE) * AvatarArms.SKIN_EASE
+	if dark then
+		local u = math.clamp((v - 0.7) / 0.25, 0, 1)
+		v2 *= 1 - AvatarArms.SKIN_NIGHT * u * u * (3 - 2 * u)
+	end
+	if v2 == v then return c end
+	return Color3.fromHSV(h, s, v2)
 end
+local Lighting = game:GetService("Lighting")
+local function night(): boolean return Lighting:GetSunDirection().Y < 0 end
 AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
 AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
 AvatarArms.SLEEVE = 1.6 -- the forearm's thickness against the hand's own scale (0.9 and 1.1 read as a pole under a ball; 1.35 still a thin pole once the guns sat further off in the Rivals layout)
@@ -84,7 +95,7 @@ type Arm = {
 	over: CFrame?, mix: number, overUnder: boolean,
 	elbowTo: Vector3?, elbowMix: number, -- (AvatarArms.elbowAt: the elbow spot moved for a pose, the Bow's draw)
 	away: boolean, idle: boolean?, -- (a hand that waits off screen: hidden while nothing calls it)
-	base: { color: Color3, material: Enum.Material, name: string }?, -- (the hand as dressed, for zombieSync)
+	base: { color: Color3, material: Enum.Material, name: string, skin: { Color3 }? }?, -- (the hand as dressed, for zombieSync; skin: its body's own hand and forearm colours, for nightSync)
 }
 -- (a plain table, cleared when the arms are destroyed. NOT a weak one: an Instance's Luau handle can be collected
 -- while the Instance lives on, and a weak key went with it: the forearms froze a moment after every swap)
@@ -295,7 +306,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			-- (19 Nov 2026, main: a pale avatar's hand read as flat white plastic, even at night: a near-white skin
 			-- under the lamps and the gun's fill light clips. the true tone, its very light end eased down: at or
 			-- below SKIN_KNEE it is untouched, pure white ends about 0.86)
-			hand.Color = AvatarArms.skin(srcHand.Color); fore.Color = AvatarArms.skin(srcFore.Color)
+			hand.Color = AvatarArms.skin(srcHand.Color, night()); fore.Color = AvatarArms.skin(srcFore.Color, night())
 			for _, p in { hand, fore } do
 				p.Reflectance = 0
 				-- (a glowing or glass limb would read as a lamp this close: the plain surface instead)
@@ -306,7 +317,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 		-- repaint it. what it was dressed as stays on its Arm, for zombieSync
 		if row.tint then dress(hand, row.tint, AvatarArms.KIT.material) end
 		hand.Name = side .. (if row.tint then "HandTint" else "Hand"); fore.Name = side .. "LowerArm"
-		local base = { color = hand.Color, material = hand.Material, name = hand.Name }
+		local base = { color = hand.Color, material = hand.Material, name = hand.Name, skin = if kit or row.tint then nil else { srcHand.Color, srcFore.Color } }
 		if zombie() then dress(hand, AvatarArms.ZOMBIE, AvatarArms.KIT.material); hand.Name = side .. "HandTint" end
 		hand.Parent = arms; fore.Parent = arms
 		local whole = WHOLE[row.pose] == true
@@ -442,6 +453,22 @@ if Players.LocalPlayer then
 				else
 					a.hand.Color, a.hand.Material, a.hand.Name = b.color, b.material, b.name
 				end
+			end
+		end
+	end)
+	-- nightSync: the sun went down or came up (a match's own look, the hub's) while your arms are out: their skin again
+	local wasNight = night()
+	Lighting:GetPropertyChangedSignal("ClockTime"):Connect(function()
+		local now = night()
+		if now == wasNight then return end
+		wasNight = now
+		for _, list in live do
+			for _, a in list do
+				local b = a.base
+				if not b or not b.skin or not a.hand.Parent then continue end
+				b.color = AvatarArms.skin(b.skin[1], now)
+				if a.hand.Name == b.name then a.hand.Color = b.color end -- (not while a zombie's green is on)
+				a.fore.Color = AvatarArms.skin(b.skin[2], now)
 			end
 		end
 	end)

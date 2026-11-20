@@ -65,6 +65,15 @@ local function dipOf(d: { t0: number, dur: number }): number
 	local function sm(u: number) u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 	return sm(t / math.min(0.25, d.dur * 0.3)) * (1 - sm((t - (d.dur - 0.3)) / 0.3))
 end
+-- (19 Nov 2026; the owner, through weapons-port and gun-models' reload audit: "make sure guns have accurate ways to
+-- reload and parts that a normal gun would have") the gun that dips also runs weapons-port's reload_akimbo on its own
+-- moving pieces (GunParts: the mag out and a new one in, the cocker pulled), on the dip's clock stretched to its length
+local function dipClip(d: { t0: number, dur: number }): (string?, number)
+	local a = Anims.reload_akimbo
+	local t = os.clock() - d.t0
+	if not a or d.dur <= 0 or t < 0 or t >= d.dur then return nil, 0 end
+	return "reload_akimbo", t * a.dur / d.dur
+end
 -- a frame seen in a mirror across the camera's middle (x -> -x): the left gun's pose from the right one's
 local function mirrorX(cf: CFrame): CFrame
 	local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
@@ -268,7 +277,7 @@ end
 
 -- ---- the off hand. it is not glued to the gun (AvatarArms places it every frame), so it can do its own part of a
 -- reload instead of leaving the picture: it goes with the magazine out of the gun and back, rides the Shotgun's pump,
--- holds the Redline's can and the marble bag, and stands clear while the Yeehaw spins. (a Grab = a piece it can be
+-- holds the marble bag, and stands clear while the Yeehaw spins. (a Grab = a piece it can be
 -- on, and the grip's frame against that piece: where the fist is, its +Y along the piece toward the thumb)
 type Grab = { part: BasePart, rel: CFrame }
 local armsOn = false -- (your arms are on the weapon: not the stand-in boxes)
@@ -360,7 +369,7 @@ local function offHandSetup(m: Model, root: BasePart)
 		end
 		lidTop = Vector3.new((lo.X + hi.X) / 2, hi.Y, (lo.Z + hi.Z) / 2)
 	end
-	local mags = st.nodes.mag
+	local mags = st.nodes.mag or st.nodes.box -- (the Minigun's ammo box: held from under like a magazine, 19 Nov 2026)
 	local mag = biggest(mags)
 	if mag and mags then
 		-- round the magazine's lower end, the thumb up toward the gun
@@ -519,7 +528,7 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 		end
 	end
 	-- the magazine: there before it leaves, down and back with it, off it once it is home
-	local mk = ch and ch.mag
+	local mk = ch and (ch.mag or ch.box)
 	if mk and magGrab and #mk >= 3 then
 		local t0, t1 = mk[2][1], mk[#mk][1]
 		local mix = smoothstep((t - (t0 - 0.2)) / 0.18) * (1 - smoothstep((t - t1) / 0.22))
@@ -528,7 +537,7 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 	-- the reload props: the can and the bag sit in the hand (under their foot) from when they come up to when they go
 	if prop then
 		-- (when each is out, and how tall it is: VM.props below)
-		local win = if clip.name == "reload_redline" then { 0.2, 1.26, 0.11 } elseif clip.name == "reload_marbles" then { 0.4, 1.35, 0.12 } else nil
+		local win = if clip.name == "reload_marbles" then { 0.4, 1.35, 0.12 } else nil
 		local hold = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
 		if win and hold then
 			local mix = math.min(smoothstep((t - win[1]) / 0.12), 1 - smoothstep((t - (win[2] - 0.2)) / 0.2))
@@ -1222,7 +1231,7 @@ function VM.update(dt: number, c: Ctx)
 		end
 	end
 	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
-	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you
+	-- scope) they go too, or the marble bag hung where the hidden gun is, at the camera, behind you
 	if c.hidden then dropProp() else VM.props(m.PrimaryPart.CFrame) end
 	GunHats.aim(m, c.aim, clip and clip.name) -- (the hat steps out of the sight picture while you aim, like the web game)
 	-- so do a skin's wings, horns and crowns (after Arsenal has set each part's hidden-or-not for this frame)
@@ -1244,15 +1253,18 @@ function VM.update(dt: number, c: Ctx)
 		end
 	end
 	if VM.parts then
+		local cn, ct = if clip then clip.name else nil, if clip then clip.t else 0
+		if twin then cn, ct = dipClip(dipR) end -- (Lefty & Righty: Righty's reload on its own dip)
 		GunParts.step(VM.parts, dt, {
-			clip = if clip then clip.name else nil, t = if clip then clip.t else 0, anims = Anims,
+			clip = cn, t = ct, anims = Anims,
 			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
 		}, w)
 	end
-	if twin and (twin :: Twin).parts then -- (Lefty's slide and pieces)
+	if twin and (twin :: Twin).parts then -- (Lefty's slide and pieces, and its reload on its own dip)
+		local cn2, ct2 = dipClip((twin :: Twin).dip)
 		GunParts.step((twin :: Twin).parts, dt, {
-			clip = nil, t = 0, anims = Anims,
-			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = false, now = c.now, firedT = c.firedT,
+			clip = cn2, t = ct2, anims = Anims,
+			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = cn2 ~= nil, now = c.now, firedT = c.firedT,
 		}, w)
 	end
 	-- your arms, last: they read where the magazine, the pump and the props are this frame
@@ -1299,11 +1311,6 @@ function VM.update(dt: number, c: Ctx)
 		local tk = Weapons.tacho(c.hp)
 		local tgt = -2.3 + 4.6 * tk
 		if tk > 0.85 and c.now - c.firedT < 0.2 then tgt += math.sin(c.now * 1000 * 0.08) * 0.12 end
-		if clip and clip.name == "reload_redline" then -- the rev: forced into the red, wobbles, back
-			local t = clip.t
-			local f = if t < 1.3 then 0 elseif t < 1.42 then (t - 1.3) / 0.12 elseif t < 1.56 then 1 elseif t < 1.76 then 1 - (t - 1.56) / 0.2 else 0
-			tgt += (2.3 - tgt) * f + (if t > 1.46 and t < 1.56 then math.sin(t * 90) * 0.15 else 0)
-		end
 		needleAng += (tgt - needleAng) * math.min(1, dt * 12)
 		for _, nw in needles do nw.C0 = hubCF * CFrame.Angles(needleAng, 0, 0) end
 		local col = Color3.new(0.25 + 0.75 * tk, 0.04 + 0.3 * tk * tk, 0.02 + (if c.now - c.firedT < 0.2 then 0.15 * tk else 0))
@@ -1311,22 +1318,14 @@ function VM.update(dt: number, c: Ctx)
 	end
 end
 
--- the reload props, held by your off hand (timings from roblox/docs/WEAPONS.md, reloads.js): the Redline's red jerry
--- can rises at 0.2 s, tips into the gun 0.36-1.0 s (three glugs), goes by 1.26 s; the marble bag comes over the jar,
--- pours 0.66-1.18 s, then goes
+-- the reload props, held by your off hand (timings from roblox/docs/WEAPONS.md, reloads.js): the marble bag comes over
+-- the jar, pours 0.66-1.18 s, then goes. (the Redline's jerry can went with its pit-stop clip, 19 Nov 2026: it swaps a
+-- mag like the Assault Rifle now)
 local function smooth(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 function VM.props(gun: CFrame)
 	if not clip then return end
 	local t = clip.t
-	if clip.name == "reload_redline" then
-		if t < 0.2 or t > 1.26 then if prop then prop:Destroy(); prop = nil end return end
-		if not prop then prop = Fx.prop("p_jerrycan", Vector3.new(0.035, 0.11, 0.09) * S * SIZE, Color3.fromRGB(200, 20, 15)) end
-		local inn = smooth((t - 0.2) / 0.16) * (1 - smooth((t - 1.0) / 0.26))
-		local tip = if t < 0.36 then 0 elseif t < 1.0 then smooth((t - 0.36) / 0.2) else 1 - smooth((t - 1.0) / 0.2)
-		local wob = if t > 0.45 and t < 1.0 then math.sin(t * 30) * 0.05 else 0
-		local at = gun * CFrame.new(Vector3.new(-0.05, 0.03 + 0.09 * inn, -0.06) * k) * CFrame.new(0, -0.25 * S * (1 - inn), 0)
-		prop:PivotTo(at * CFrame.Angles(0, 0, -1.6 * tip + wob))
-	elseif clip.name == "reload_marbles" then
+	if clip.name == "reload_marbles" then
 		if t < 0.4 or t > 1.35 then if prop then prop:Destroy(); prop = nil end return end
 		if not prop then prop = Fx.prop("p_marblebag", Vector3.new(0.09, 0.12, 0.09) * S * SIZE, Color3.fromRGB(230, 90, 25)) end
 		local inn = smooth((t - 0.4) / 0.2) * (1 - smooth((t - 1.2) / 0.15))
