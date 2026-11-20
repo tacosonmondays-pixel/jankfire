@@ -2386,6 +2386,13 @@ The rest of the pipeline:
 
 Before the kit, a blockout went in at place version 1155 for the mode's first tests. The kit is asset 92051112949016 (W.ASSETS.JankfieldHigh); photos: roblox/docs/maps/school_kit.jpg. weapons-port played the blockout at place version 1157: the nav built over all four levels, zombies came in through windows all over the school and found the squad, nothing stuck. Flicker check: 16 slivers, 0.8 square studs in all, hidden at wall junctions.
 
+**Kit 2, the card, a real zombies game (place version 1174).** Main: the courtyard lamp was a blown-out white cylinder.
+- **The lamps:** the lanterns are now small frosted shades with a dim warm core, and the point light under them does the lighting. The ceiling panels and desk lamps are a softer white. Kit 2 is 131390597697986.
+- **The card:** a courtyard-at-night render (card_render.py with --card), MapCards.JankfieldHigh = 139658727063957.
+- **The Play test:** one solo game through the mode's JankZombies hook. The nav covered all 4 floors in 1.7 s, and in round 6, 24 zombies were alive, coming out of the courtyard sheds and windows.
+- **Found:** a zombies game doesn't apply the school's night look. workspace.Map's Arena attribute stays on the last match's arena, and HubLife picks the look from it. Passed to weapons-port.
+- Photos: roblox/docs/maps/school_ingame.jpg.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

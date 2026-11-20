@@ -75,7 +75,7 @@ def lights():
     for (x, z) in ((84, -12), (84, 36), (120, -12), (120, 36), (148, 12)):          # the gym's high bays
         K.light('point', x, 34.0, z, (0, -1, 0), 1.3, 42, 0, 'fff1df')
     for (x, z) in ((-30, -24), (30, 24), (-30, 24), (30, -24)):                      # the courtyard's lamp posts
-        K.light('point', x, 11.0, z, (0, -1, 0), 1.1, 30, 0, 'ffd9a8')
+        K.light('point', x, 8.6, z, (0, -1, 0), 1.2, 30, 0, 'ffd9a8')
     for (x, z) in ((-90, -50), (-10, -50), (70, -50), (130, -60)):                   # floods on the roof
         K.light('point', x, 44.0, z, (0, -1, 0), 0.9, 40, 0, 'dfe6ff')
     for (tx, tz) in ((-110, -5), (150, -53)):                                        # each stairwell landing
@@ -126,6 +126,8 @@ def zm_luau():
     return '\n'.join(o) + '\n'
 
 def write_layout():
+    if '--no-layout' in K.FLAGS:          # (card_render.py runs this builder: never append to the layout twice)
+        print('layout not written (--no-layout)'); return
     solid = [tuple(b[:6]) + mat_of(b[6]) for b in L.SOLID]
     rot = [tuple(r[:7]) + mat_of(r[7]) + (r[8],) for r in L.ROT]
     tilt = [tuple(t[:12]) + mat_of(t[12]) + (t[13], t[14]) for t in L.TILT]
@@ -418,10 +420,10 @@ def floors_and_ceilings():
         if abs((y - LV.get(lv, 32.0)) - 14.0) < 0.01 and lv != 'R':
             Ly = LV[lv]
             bx(M_('sc_lamp', lv), METAL, (x - 2.3, Ly + 14.55, z - 2.3, x + 2.3, Ly + 14.7, z + 2.3))
-            bx(M_('sc_lamp', lv), 'f6f4ee', (x - 2.0, Ly + 14.45, z - 2.0, x + 2.0, Ly + 14.55, z + 2.0), 'neon')
+            bx(M_('sc_lamp', lv), 'd8d3c6', (x - 2.0, Ly + 14.45, z - 2.0, x + 2.0, Ly + 14.55, z + 2.0), 'neon')
         elif 30 < y < 36:
             K.cyl('sc_lamp_G', METAL, x, 35.2, z, 1.6, 1.8, segs=16)
-            K.cyl('sc_lamp_G', 'f6f4ee', x, 35.0, z, 1.3, 0.2, segs=16, kind='neon')
+            K.cyl('sc_lamp_G', 'd8d3c6', x, 35.0, z, 1.1, 0.2, segs=16, kind='neon')
 
 def stairs_dress():
     m = 'sc_stair'
@@ -610,10 +612,14 @@ def grounds():
         bx('sc_ext', COPING, (a, 30.4, b_, c, 31.4, d_))
         bx('sc_ext', COPING, (a, 14.6, b_, c, 15.2, d_))
     # the courtyard's lamp posts (their lights: lights())
+    # (20 Nov, main: the first lantern was a 1.6-tall neon cylinder, blown out white on camera. Now a small lantern: a
+    #  frosted shade you see the light through, a dim warm core, a cap; the point light under it lights the yard)
     for (x, z) in ((-30, -24), (30, 24), (-30, 24), (30, -24)):
-        K.cyl('sc_court', DARK, x, 0.0, z, 0.35, 10.0, segs=10)
-        K.cyl('sc_court', 'f4e2c0', x, 10.0, z, 0.8, 1.6, segs=12, kind='neon')
-        K.cyl('sc_court', DARK, x, 11.6, z, 1.0, 0.4, segs=12)
+        K.cyl('sc_court', DARK, x, 0.0, z, 0.3, 9.0, segs=10)
+        K.cyl('sc_court', DARK, x, 8.9, z, 0.42, 0.15, segs=12)
+        K.cyl('sc_court', 'e9dfc8', x, 9.05, z, 0.38, 0.7, segs=12, r2=0.3, kind='glass')
+        K.cyl('sc_court', '8a7350', x, 9.15, z, 0.14, 0.45, segs=8, kind='neon')
+        K.cyl('sc_court', DARK, x, 9.75, z, 0.55, 0.2, segs=12, r2=0.2)
 
 # ---------------------------------------------------------------- the UVs: world-scaled box projection per textured colour
 TEXSIZE = {T[k]: ST.TEX[k] for k in ST.TEX}
@@ -689,6 +695,8 @@ def render_school(folder, views, prefix, sky=(0.16, 0.13, 0.22), sun_rot=(60, 0,
     sc.world = w
     sc.render.engine = 'CYCLES'; sc.cycles.samples = 48; sc.cycles.use_denoising = True
     sc.render.resolution_x, sc.render.resolution_y = 1100, 620
+    if '--card' in K.FLAGS:          # (a map-vote card: card_render.py's size and quality)
+        sc.cycles.samples = 128; sc.render.resolution_x, sc.render.resolution_y = 1280, 720
     sc.view_settings.view_transform = 'Standard'
     sc.render.image_settings.file_format = 'JPEG'
     probes = [f.split('=', 1)[1].split(',') for f in K.FLAGS if f.startswith('--probe=')]

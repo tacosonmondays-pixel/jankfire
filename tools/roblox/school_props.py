@@ -667,7 +667,7 @@ def m_scoreboard(f, it):
     for v in (0.9, H - 0.7):
         for k in range(6):
             u = -W / 2 + 1.6 + k * (W - 3.2) / 5
-            f.box('d9a650', u - 0.2, v - 0.2, D / 2 + 0.05, u + 0.2, v + 0.2, D / 2 + 0.16, bev=0, kind='neon')
+            f.box('a88a52', u - 0.2, v - 0.2, D / 2 + 0.05, u + 0.2, v + 0.2, D / 2 + 0.16, bev=0, kind='neon')
 
 
 def m_showers(f, it):
@@ -771,7 +771,7 @@ def m_generator(f, it):
     f.box(METAL_D, -W / 2, -0.05, -D / 2, W / 2, 0.5, D / 2, bev=0.06)                          # skids
     f.box('5f6b5a', -W / 2 + 0.2, 0.5, -D / 2 + 0.2, W / 2 - 1.6, H - 0.4, D / 2 - 0.2, bev=0.35, segs=2)
     f.box(DARK, W / 2 - 1.5, 0.5, -D / 2 + 0.6, W / 2 - 0.1, H - 1.2, D / 2 - 0.6, bev=0.15)      # the panel
-    f.box('d9a650', W / 2 - 1.3, H - 2.0, D / 2 - 0.6, W / 2 - 0.5, H - 1.6, D / 2 - 0.54, kind='neon', bev=0)
+    f.box('a88a52', W / 2 - 1.3, H - 2.0, D / 2 - 0.6, W / 2 - 0.5, H - 1.6, D / 2 - 0.54, kind='neon', bev=0)
     f.cyl(METAL, -W / 2 + 1.0, H - 0.45, -D / 2 + 1.0, 0.35, 2.5, segs=8, bev=0)
 
 
@@ -886,7 +886,7 @@ def m_kiln(f, it):
     f.cyl('9aa0a6', 0, 1.0, 0, W / 2 - 0.1, H - 1.6, segs=8, bev=0.15)                             # octagonal body
     f.cyl(METAL_D, 0, H - 0.65, 0, W / 2 - 0.05, 0.5, segs=8, bev=0.1)                             # the lid
     f.box(DARK, -0.8, 1.8, W / 2 - 0.4, 0.8, 3.0, W / 2 + 0.05, bev=0.05)                         # the controller
-    f.box('d9a650', -0.2, 2.6, W / 2, 0.2, 2.8, W / 2 + 0.1, kind='neon', bev=0)
+    f.box('a88a52', -0.2, 2.6, W / 2, 0.2, 2.8, W / 2 + 0.1, kind='neon', bev=0)
 
 
 def m_drying(f, it):
@@ -952,7 +952,8 @@ def m_bigdesk(f, it):
     f.box(WOOD_D, -W / 2 + 2.8, 0.4, D / 2 - 0.4, W / 2 - 2.8, H - 0.3, D / 2 - 0.15, bev=0.05)
     f.cyl(BRASS, W / 2 - 1.2, H - 0.05, -D / 2 + 1.0, 0.4, 0.15, segs=10, bev=0.03)                # the lamp
     f.cyl(BRASS, W / 2 - 1.2, H + 0.1, -D / 2 + 1.0, 0.07, 1.6, segs=6, bev=0)
-    f.cyl('d9cfa0', W / 2 - 1.2, H + 1.5, -D / 2 + 1.0, 0.6, 0.7, segs=10, bev=0.05, r2=0.35, kind='neon')
+    f.cyl('cfc4a4', W / 2 - 1.2, H + 1.5, -D / 2 + 1.0, 0.6, 0.7, segs=10, bev=0.05, r2=0.35)                # (a shade, not a glow)
+    f.cyl('8a7350', W / 2 - 1.2, H + 1.55, -D / 2 + 1.0, 0.18, 0.3, segs=8, bev=0, kind='neon')
     f.box(DARK, -1.2, H - 0.02, -0.4, 0.8, H + 0.12, 0.9, bev=0.04)                              # a closed laptop
 
 

@@ -20,6 +20,7 @@ MapCards.THUMBS = {
 	ArcticCabin = "rbxassetid://112923749467887", -- ARCTIC CABIN
 	Skatepark = "rbxassetid://92147472353603", -- SKATEPARK
 	Station = "rbxassetid://92722876561811", -- STATION
+	JankfieldHigh = "rbxassetid://139658727063957", -- JANKFIELD HIGH (the zombies school: its courtyard at night, card_render.py)
 } :: { [string]: string }
 
 -- a map vote's three (or fewer) cards out of `pool`, never `last` while there's anything else. pure but for the dice
