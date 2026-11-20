@@ -27,7 +27,8 @@ type Fighter = Rules.Fighter
 local Dummies = {}
 local S = Weapons.S
 local list: { Fighter } = {}
-type Brain = { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number, span: number?, speed: number?, every: number?, lane: boolean, jumpT: number }
+type Brain = { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number, span: number?, speed: number?, every: number?, lane: boolean, jumpT: number,
+	armour: boolean?, healBack: number?, hurtAt: number? }
 local brain: { [Fighter]: Brain } = {}
 local Fight: any
 local applyHitscan: any
@@ -154,6 +155,28 @@ local function make(f: Fighter)
 			disc.Parent = m
 		end
 	end
+	-- (20 Nov 2026, the training redo's dummy yard) an ARMOURED one (a spot's HP over 100) wears a slate plate round the
+	-- ring; a HEAL-BACK one (HealBack: s after your last hit it is whole again) has a pale cross over its ring
+	local bb = brain[f]
+	if torso and bb and (bb.armour or bb.healBack) then
+		local function bit(name: string, size: Vector3, off: CFrame, col: Color3)
+			local q = Instance.new("Part")
+			q.Name = name; q.Size = size; q.Color = col; q.Material = Enum.Material.SmoothPlastic
+			q.CanCollide = false; q.CanQuery = false; q.CanTouch = false; q.Massless = true; q.CastShadow = false
+			q.CFrame = (torso :: BasePart).CFrame * off
+			local w = Instance.new("WeldConstraint"); w.Part0 = torso; w.Part1 = q; w.Parent = q
+			q.Parent = m
+		end
+		local fz = -((torso :: BasePart).Size.Z / 2 + 0.03)
+		if bb.armour then
+			bit("Plate", Vector3.new(2.3, 2.1, 0.12), CFrame.new(0, 0.05, fz), SLATE)
+			bit("PlateRim", Vector3.new(2.5, 0.22, 0.2), CFrame.new(0, 1.12, fz), PALE)
+		end
+		if bb.healBack then
+			bit("Cross", Vector3.new(0.7, 0.18, 0.1), CFrame.new(0, 1.05, fz - 0.1), PALE)
+			bit("Cross", Vector3.new(0.18, 0.7, 0.1), CFrame.new(0, 1.05, fz - 0.1), PALE)
+		end
+	end
 	local b = brain[f]
 	local at = b.home + Vector3.new(0, Hitbox.ROOT_UP + 0.5, 0)
 	m:PivotTo(CFrame.lookAt(at, at + Vector3.zAxis)) -- facing the training room's door
@@ -237,6 +260,37 @@ local function plink(f: Fighter, lane: boolean?)
 			end
 			for _, o in Players:GetPlayers() do ShotR:FireClient(o, { model = Fight.model(f), w = "redline", ends = { e + d * endT } }) end
 			task.wait(1 / Weapons.fireRate(w, f.hp))
+		end
+	end)
+end
+
+-- (20 Nov 2026: the tutorial rooms' practice turret, Tutorials.server) a short Redline burst from f at t, through the same
+-- hitscan as the shooters above, so the katana's guard and crit return, a shield bubble, a reverse card and smoke all
+-- work on it as on any shooter. no zone rules here: the caller picks who
+function Dummies.burst(f: Fighter, t: Fighter, shots: number)
+	if not Fight or not applyHitscan then return end
+	local w = Weapons.list.redline
+	task.spawn(function()
+		for _ = 1, shots do
+			if not f.alive or not t.alive or not Fight.live then return end
+			local tr = Fight.root(t)
+			local e = Fight.eye(f)
+			if not tr or not e then return end
+			if Fight.smokeBlocks and Fight.smokeBlocks(e, tr.Position) then return end
+			local tf = Hitbox.feet(tr.Position)
+			local aim = (tf + Vector3.new(0, 3.5, 0) - e).Unit
+			local d = Hitbox.spreadDir(aim, (w.spread :: number) + 0.03, math.random(), math.random())
+			local cap = w.range :: number
+			local hitMap = Fight.castMap(e, d, cap)
+			local mapT = if hitMap then (hitMap.Position - e).Magnitude else cap
+			local hitT, head = Hitbox.ray(e, d, tf, Hitbox.distScale((tf - e).Magnitude))
+			local endT = mapT
+			if hitT and hitT < mapT then
+				endT = hitT
+				applyHitscan(f, t, "redline", 1, if head then 1 else 0, e)
+			end
+			for _, o in Players:GetPlayers() do ShotR:FireClient(o, { model = Fight.model(f), w = "redline", ends = { e + d * endT } }) end
+			task.wait(0.17)
 		end
 	end)
 end
@@ -367,6 +421,12 @@ function Dummies.tick(n: number)
 			b.jumpT = n + 1.2 + math.random() * 0.8
 			hum.Jump = true
 		end
+		-- (heal-back) whole again HealBack s after the last hit
+		local hb = b.healBack
+		if hb and f.hp < (f.maxHp or Weapons.HP) and n - (b.hurtAt or 0) > hb then
+			f.hp = f.maxHp or Weapons.HP
+			if Fight.syncHp then Fight.syncHp(f) end
+		end
 		local lane = laneShoots(f)
 		if (shooter(f.name) or lane) and n > b.shoot then
 			b.shoot = n + 3
@@ -378,10 +438,12 @@ end
 function Dummies.init(fight: any, apply: any)
 	Fight, applyHitscan = fight, apply
 	Fight.makeDummy = make
+	Fight.onHurt(function(t: Fighter) local b = brain[t]; if b then b.hurtAt = os.clock() end end)
 	local spots = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("DummySpots")
 	local sp = Fight.spawnPoints()
 	-- (18 Nov: the yard's side hall has three more, Stand3, Stand4 and the second strafer Dummy2, only where their spots are)
-	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2", "Stand3", "Stand4", "Dummy2", "Runner" } do
+	-- (20 Nov: the dummy yard's armoured and heal-back ones, only where their spots are)
+	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2", "Stand3", "Stand4", "Dummy2", "Runner", "Armour1", "Armour2", "Heal1", "Heal2" } do
 		local f = Rules.newFighter("dummy", if string.sub(name, 1, 5) == "Stand" then "Stand" else name, nil)
 		local spot = spots and spots:FindFirstChild(name) :: BasePart?
 		if not spot and not spots and i > 2 then continue end
@@ -392,9 +454,13 @@ function Dummies.init(fight: any, apply: any)
 		local span: number? = if type(railSpan) == "number" then railSpan elseif string.sub(name, 1, 5) == "Dummy" then 4 * S else nil
 		local railSpeed = spot and spot:GetAttribute("Speed")
 		local lane = spot ~= nil and spot:GetAttribute("Lane") == "practice"
+		local hpA = spot and spot:GetAttribute("HP")
+		local hbA = spot and spot:GetAttribute("HealBack")
 		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0, span = span,
-			speed = if type(railSpeed) == "number" then railSpeed else nil, every = if type(railSpan) == "number" then nil else 1.6, lane = lane, jumpT = 0 }
+			speed = if type(railSpeed) == "number" then railSpeed else nil, every = if type(railSpan) == "number" then nil else 1.6, lane = lane, jumpT = 0,
+			armour = type(hpA) == "number" and hpA > Weapons.HP, healBack = if type(hbA) == "number" then hbA else nil, hurtAt = 0 }
 		if lane and practice.hp ~= Weapons.HP then f.maxHp = practice.hp end
+		if type(hpA) == "number" then f.maxHp = hpA end
 		table.insert(list, f)
 		table.insert(Fight.all, f)
 		Fight.spawn(f)

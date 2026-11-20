@@ -144,6 +144,10 @@ function Matches.zoneOf(p: Player): string
 	-- the playground (a secret, off through the training hall): its own zone, so its own look, and weapons work there
 	local pz = hub:FindFirstChild("PlaygroundZone") :: BasePart?
 	if root and pz and inside(pz, root.Position, 4) then return "playground" end
+	-- (20 Nov 2026, the training redo) the parkour island (studio-tools/ParkourIsland.luau) counts as the playground: any
+	-- weapon there, the playground's look
+	local kz = hub:FindFirstChild("ParkourZone") :: BasePart?
+	if root and kz and inside(kz, root.Position, 4) then return "playground" end
 	return "hub"
 end
 -- (19 Nov 2026, the owner: "dont let player be able to use grapple or gadgets before round starts") not yet GO: in a

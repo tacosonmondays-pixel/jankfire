@@ -44,12 +44,14 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 23
+T.PUSH = 24
 T.VERSION = "v2"
 -- the dummies room and the course (18 Nov, the owner: "instead of an extension can you do a complete remodel ... these two
 -- rooms can be redone entirely"): "v3" = PolishBackup.TrainingRooms (roblox/studio-tools/TrainingRooms.luau) builds them
 -- new, "v2" = this module's own yard (with its side hall) and course (with its strip), one switch away
-T.ROOMS = "v3" -- (live since place version 917; "v2" brings back the old yard and course)
+-- (20 Nov 2026, the owner: "redo training hub entirely"): "v4" = PolishBackup.TrainingRedo (roblox/studio-tools/
+-- TrainingRedo.luau) wraps the v3 rooms: both halls open to the sky, the tutorial wing west of the course hall
+T.ROOMS = "v4" -- ("v3" = the rooms live from place version 917 to the redo; "v2" brings back the old yard and course)
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
 T.P = {
@@ -1730,9 +1732,10 @@ local function bounds(B, withLot)
 	local lz = T.LOT
 	local zp = Instance.new("Part")
 	zp.Name = "TrainingZone"; zp.Anchored = true; zp.Transparency = 1; zp.CanCollide = false; zp.CanQuery = false; zp.CanTouch = false
-	if withLot then -- one box round the hall and the back lot
-		zp.Size = V3(lz[2] - lz[1] + 4, lz[3] + 4 - z[3], math.abs(lz[4] - 2 - z[5]))
-		zp.CFrame = B.cf((lz[1] + lz[2]) / 2, (z[3] + lz[3] + 4) / 2, (z[5] + lz[4] - 2) / 2)
+	if withLot then -- one box round the hall and the back lot (and the v4 wing, west of the lot's width)
+		local xa, xb = math.min(lz[1] - 2, z[1]), math.max(lz[2] + 2, z[2])
+		zp.Size = V3(xb - xa, lz[3] + 4 - z[3], math.abs(lz[4] - 2 - z[5]))
+		zp.CFrame = B.cf((xa + xb) / 2, (z[3] + lz[3] + 4) / 2, (z[5] + lz[4] - 2) / 2)
 	else
 		zp.Size = V3(z[2] - z[1], z[4] - z[3], math.abs(z[6] - z[5]))
 		zp.CFrame = B.cf((z[1] + z[2]) / 2, (z[3] + z[4]) / 2, (z[5] + z[6]) / 2)
@@ -1772,7 +1775,7 @@ end
 
 -- what a live build owns in the hub (and v1 had): parked whole, put back whole
 local OWNED = { "TrainingGround", "TrainSpawns", "DummySpots", "TrainingZone", "Barrier" }
-local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit", "EggPortal" }
+local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit", "EggPortal", "ToParkour" } -- (ToParkour: v4's TOP teleporter)
 local function clearLive()
 	for _, n in OWNED do local c = hub:FindFirstChild(n); if c then c:Destroy() end end
 	for _, n in OWNED_DOORS do local c = hub.Doors:FindFirstChild(n); if c then c:Destroy() end end
@@ -1918,10 +1921,12 @@ end
 -- the v3 rooms (T.ROOMS): their module sets what the rest reads (T.DUMMIES, T.RAILS, T.LANE, T.COURSE, T.GOLD1,
 -- T.EGG_DOOR, T.TOPD3) now, before anything builds or checks
 local ROOMS3 = nil
-if T.ROOMS == "v3" then
+if T.ROOMS == "v3" or T.ROOMS == "v4" then
 	local src = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingRooms")
-	if src then
+	local src4 = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingRedo")
+	if src and (T.ROOMS == "v3" or src4) then
 		ROOMS3 = require(src:Clone())
+		if T.ROOMS == "v4" then ROOMS3 = require(src4:Clone()).wrap(ROOMS3) end
 		ROOMS3.apply(T, { Y0 = Y0, MY = MY, MZ = MZ, MTOP = MTOP, NEON = NEON, PASS = PASS, folderIn = folderIn, rail = rail, healPad = healPad, topRoom = topRoom })
 	end
 end
@@ -1936,7 +1941,7 @@ function T.build(mode): string
 		local old = workspace.Map:FindFirstChild("TrainingStage"); if old then old:Destroy() end
 	end
 	local B = new(live)
-	if T.ROOMS == "v3" and not ROOMS3 then return "STOPPED: T.ROOMS is v3 but PolishBackup.TrainingRooms is missing" end
+	if (T.ROOMS == "v3" or T.ROOMS == "v4") and not ROOMS3 then return "STOPPED: T.ROOMS is " .. T.ROOMS .. " but PolishBackup.TrainingRooms (or, for v4, TrainingRedo) is missing" end
 	muster(B)
 	if ROOMS3 then ROOMS3.build(B) else yard(B) end
 	range(B)
@@ -2217,7 +2222,7 @@ function T.check(stage): string
 		for x = -1, 1 do for y = -1, 1 do for z = -1, 1 do
 			if x == 0 and y == 0 and z == 0 then continue end
 			rays += 1
-			local h = workspace:Raycast(at + O, V3(x, y, z).Unit * 300, cp)
+			local h = workspace:Raycast(at + O, V3(x, y, z).Unit * 600, cp) -- (600 since v4: the wing's corridor runs 300+ in a line from the muster)
 			if not h then
 				leaks += 1
 				if leaks <= 12 then table.insert(out, ("LEAK from (%.0f, %.0f, %.0f) toward (%d, %d, %d)"):format(at.X, at.Y, at.Z, x, y, z)) end
@@ -2226,7 +2231,7 @@ function T.check(stage): string
 				local n = p.CFrame:VectorToObjectSpace(h.Normal)
 				local t = if math.abs(n.X) > 0.7 then p.Size.X elseif math.abs(n.Y) > 0.7 then p.Size.Y elseif math.abs(n.Z) > 0.7 then p.Size.Z else math.min(p.Size.X, p.Size.Y, p.Size.Z)
 				-- (thin only matters where it is the last thing: past it, nothing)
-				if t < 1.9 and not workspace:Raycast(h.Position + V3(x, y, z).Unit * 0.02, V3(x, y, z).Unit * 300, cp) then thin[p:GetFullName()] = t end
+				if t < 1.9 and not workspace:Raycast(h.Position + V3(x, y, z).Unit * 0.02, V3(x, y, z).Unit * 600, cp) then thin[p:GetFullName()] = t end
 			end
 		end end end
 	end

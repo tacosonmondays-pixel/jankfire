@@ -59,6 +59,13 @@ C.GAL = { z0 = -8282, top = 270 } -- the TOP gallery: the hall's width, from z0 
 C.CORE = { x = C.xm, z = -8198, plinth = 10, ledge = 254, body = 6, top = 268 } -- the core: plinth half-width, body's
 C.SKY = { x0 = C.xm - 10, x1 = C.xm + 10, z0 = -8188, z1 = -8208, top = 316 }
 R.D, R.LOB, R.C = D, LOB, C
+-- (20 Nov 2026, the training redo, v4: PolishBackup.TrainingRedo wraps this module) OPEN = the dummies hall and the
+-- course hall lose their ceilings, lit panels and the skylight drum and stand open to the sky (the deep beams stay, an
+-- open frame), an unseen lid at the walls' tops keeps everyone in (it stops bodies, not rays: the grapple says TOO FAR
+-- at the sky, the seal test still meets it); WESTDOOR = { z0, z1, top }: a doorway in the course hall's west wall (to
+-- the tutorial wing's corridor)
+R.OPEN = false
+R.WESTDOOR = nil
 
 -- ---------------------------------------------------------------- what the rest reads (set before anything builds)
 function R.apply(t, k)
@@ -269,6 +276,14 @@ local function distWord(x, y, z, k, w)
 	B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, w or 7, 2.6, CF(x, y + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
 end
 
+-- an unseen lid over an open-sky room: bodies stop on it, rays pass (CanQuery off: no grapple to the sky, no shots
+-- blocked), the seal test (RespectCanCollide) meets it
+local function skyLid(name, x0, x1, z0, z1, y)
+	local p = blk("Collision", name, x0, x1, y, y + 4, z0, z1, P.wall, { tr = 1, nq = true, noShadow = true })
+	p.CastShadow = false
+	return p
+end
+
 -- ---------------------------------------------------------------- the dummies hall
 local function hallShell()
 	local x0, x1, z0, z1 = D.x0, D.x1, D.z0, D.z1
@@ -305,7 +320,12 @@ local function hallShell()
 		blk("Shell", "PierCap", D.split - 1.9, D.split + 1.9, D.pierTop - 1.2, D.pierTop, w[1], w[1] + w[2] * 2.5, P.trim)
 	end
 	-- the roof: a deep beam at every frame from wall to wall (one span: one room), two rows of lit panels
-	roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, D.PIERS, D.pierTop, D.beamTop - D.pierTop, 2, { -44, 0 }, 14)
+	if R.OPEN then
+		roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, D.PIERS, D.pierTop, D.beamTop - D.pierTop, 2, {}, 14, { noSlab = true })
+		skyLid("HallSkyLid", x0 - 4.5, x1 + 4.5, z0 + 0.5, z1 - 0.5, top)
+	else
+		roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, D.PIERS, D.pierTop, D.beamTop - D.pierTop, 2, { -44, 0 }, 14)
+	end
 	for _, e in { { x0 - 4.4, x0 - 2.4 }, { x1 + 2.4, x1 + 4.4 } } do
 		blk("Shell", "RoofCoping", e[1], e[2], top, top + 2, z0 + 4.4, z1 - 4.4, P.wall2, { nq = true })
 	end
@@ -499,7 +519,23 @@ local function courseShell()
 	local x0, x1, z0, z1 = C.x0, C.x1, C.z0, C.z1
 	local top = C.top + 4 + 2
 	blk("Shell", "CourseFloor", x0 - 3.95, x1, 234, Y0, z0 + 3.95, z1 - 3.95, P.courseFloor)
-	blk("Shell", "CourseWallW", x0 - 4, x0, 234, top, z0 + 4, z1 - 4, P.courseWall)
+	local wd = R.WESTDOOR
+	if wd then
+		blk("Shell", "CourseWallW", x0 - 4, x0, 234, top, z0 + 4, wd.z0, P.courseWall)
+		blk("Shell", "CourseWallW", x0 - 4, x0, wd.top, top, wd.z0, wd.z1, P.courseWall)
+		blk("Shell", "CourseWallW", x0 - 4, x0, 234, top, wd.z1, z1 - 4, P.courseWall)
+		blk("Shell", "WestThreshold", x0 - 4, x0, 234, Y0, wd.z0, wd.z1, P.courseFloor)
+		for _, z in { wd.z0, wd.z1 } do
+			for _, x in { x0 + 0.1, x0 - 4.1 } do
+				B.part("Shell", "OpenNose", CF(x, (Y0 + wd.top) / 2, z) * CFrame.Angles(0, 0, math.pi / 2), V3(wd.top - Y0 + 1.4, 1.4, 1.4), P.trim, { cyl = true })
+			end
+		end
+		for _, x in { x0 + 0.1, x0 - 4.1 } do
+			B.part("Shell", "OpenNose", CF(x, wd.top, (wd.z0 + wd.z1) / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(math.abs(wd.z0 - wd.z1) + 1.4, 1.4, 1.4), P.trim, { cyl = true })
+		end
+	else
+		blk("Shell", "CourseWallW", x0 - 4, x0, 234, top, z0 + 4, z1 - 4, P.courseWall)
+	end
 	blk("Shell", "CourseWallS", x0 - 4, x1 + 4, 234, top, z0 + 4, z0, P.courseWall)
 	-- the east wall: the lobby's way in at the south (a wide opening under a deep lintel), whole north of it
 	local o = C.open
@@ -530,8 +566,22 @@ local function courseShell()
 	-- the roof: beams at the frames, the skylight drum over the core (open to the sky, an unseen lid), lit panels
 	local S = C.SKY
 	local function inSky(x, z) return x > S.x0 - 2 and x < S.x1 + 2 and z < S.z0 + 2 and z > S.z1 - 2 end
-	roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, C.FR, C.top - 1, 5, 0, { C.xm - 16, C.xm + 16 }, 10, { noSlab = true, skip = inSky })
 	local cy0, cy1 = C.top + 4, C.top + 6
+	if R.OPEN then
+		roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, C.FR, C.top - 1, 5, 0, {}, 10, { noSlab = true })
+		skyLid("CourseSkyLid", x0 - 4.5, x1 + 4.5, z0 + 0.5, z1 - 0.5, cy1)
+		for _, e in { { x0 - 4.4, x0 - 2.4 }, { x1 + 2.4, x1 + 4.4 } } do
+			blk("Shell", "RoofCoping", e[1], e[2], cy1, cy1 + 2, z0 + 4.4, z1 - 4.4, P.wall2, { nq = true })
+		end
+		for i, z in C.GZ do
+			if i % 2 == 0 then
+				B.lamp(C.xm, C.top - 4, z, "point", 44, 0.4, P.lampWhite)
+				B.lamp(C.WALK.x1 + 2, C.WALK.top + 9, z, "point", 18, 0.4, P.lampWhite)
+			end
+		end
+		return
+	end
+	roof(x0 - 4, x1 + 4, z0 + 4, z1 - 4, C.FR, C.top - 1, 5, 0, { C.xm - 16, C.xm + 16 }, 10, { noSlab = true, skip = inSky })
 	blk("Shell", "CourseCeiling", x0 - 4, x1 + 4, cy0, cy1, z0 + 4, S.z0, P.ceil)
 	blk("Shell", "CourseCeiling", x0 - 4, x1 + 4, cy0, cy1, S.z1, z1 - 4, P.ceil)
 	blk("Shell", "CourseCeiling", x0 - 4, S.x0, cy0, cy1, S.z0, S.z1, P.ceil)
@@ -685,6 +735,11 @@ local function courseRoute()
 end
 
 -- ---------------------------------------------------------------- build
+-- (v4) the wrapper builds with these, on the same builder
+function R.bind(b) B = b end
+R.H = { blk = blk, longWall = longWall, endWall = endWall, endBones = endBones, roof = roof, slab = slab, cheek = cheek,
+	console = console, cover = cover, distWord = distWord, skyLid = skyLid }
+
 function R.build(b): string
 	B = b
 	hallShell()
@@ -702,6 +757,8 @@ function R.build(b): string
 		local r = T.RAILS[n]
 		if r then m:SetAttribute("Span", r[1]); m:SetAttribute("Speed", r[2]) end
 		if T.LANE[n] then m:SetAttribute("Lane", "practice") end
+		if T.DUMMY_HP and T.DUMMY_HP[n] then m:SetAttribute("HP", T.DUMMY_HP[n]) end -- (v4: the yard's armoured ones)
+		if T.HEALBACK and T.HEALBACK[n] then m:SetAttribute("HealBack", T.HEALBACK[n]) end -- (v4: whole again this long after a hit)
 	end
 	return "rooms v3"
 end

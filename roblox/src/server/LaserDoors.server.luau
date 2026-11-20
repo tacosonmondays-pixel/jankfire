@@ -21,6 +21,18 @@ local hub = workspace:WaitForChild("Map"):WaitForChild("Hub")
 local doors = hub:WaitForChild("Doors")
 
 local last: { [Player]: number } = {}
+-- (20 Nov 2026, the hubs' markers note: HUB-MARKERS.md) training's way back lands you in YOUR hub (HubTravel: the hub
+-- you came from, its HubArrive), falling back to Doors.HubArrive
+local HubTravel: any = nil
+do
+	local m = script.Parent:WaitForChild("HubTravel", 10)
+	if m then local ok, t = pcall(require, m); if ok then HubTravel = t end end
+end
+local function hubArrive(p: Player): BasePart?
+	if not HubTravel then return nil end
+	local ok, a = pcall(HubTravel.arrive, p)
+	return if ok and typeof(a) == "Instance" and a:IsA("BasePart") then a else nil
+end
 
 -- a trigger box in Hub.Doors -> the markers you land on, and what your screen says
 local ROUTES: { { trigger: string, land: () -> Instance?, text: string } } = {
@@ -81,7 +93,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		for _, r in ROUTES do
 			local t = doors:FindFirstChild(r.trigger)
 			if t and t:IsA("BasePart") and inside(t, root.Position) then
-				local s = pick(r.land())
+				local s = if r.trigger == "ToHub" then (hubArrive(p) or pick(r.land())) else pick(r.land())
 				if s then hop(p, ch, root, s, r.text) end
 				went = true
 				break
