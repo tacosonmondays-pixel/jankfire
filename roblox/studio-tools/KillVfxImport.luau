@@ -18,16 +18,23 @@ local M = {}
 -- The colour rule is the VFX session's (pack-effects-usage.md): white-hot cores stay white; saturated colours move to the
 -- accent's hue with about 30% of their saturation taken out; Brightness at most 4; LightEmission within -1..1 (a negative
 -- one only as the pack's own dark layer)
--- `skip` drops the emitters under the pack's attachments of those names
+-- `skip` drops the emitters under the pack's attachments of those names. `tone` quiets one further (the owner's
+-- less-colourful rule): every coloured keypoint gets the accent's hue at saturation `sat`; a glowing emitter's LightEmission
+-- set to `light` (keep 1 for black-backed textures: below 1 their black squares show, 20 Nov photo), Brightness at most
+-- `bright`; `fade` more transparency (0..1); `size` a further size factor
+type Tone = { sat: number, light: number, bright: number, fade: number?, size: number? }
 type Spec = { from: { string }, maxSize: number, kmax: number, life: number, run: number, rate: number?, accent: Color3,
-	part: Vector3, skip: { string }? }
+	part: Vector3, skip: { string }?, tone: Tone? }
 M.SPEC = {
-	-- STATIC: electric bolts crawl over the body (played three times while it flickers)
+	-- STATIC: electric bolts crawl over the body (played three times while it flickers). 20 Nov, main for the owner's
+	-- rule: pale steel-blue / white electric, lower glow (the first build was loud electric blue)
 	KillStaticArc = { from = { "Shock Aura", "Blue Lightning" }, maxSize = 2.8, kmax = 0.8, life = 0.3, run = 0.18, rate = 1.6,
-		accent = Color3.fromRGB(150, 226, 255), part = Vector3.new(1.4, 4.2, 1) },
-	-- STATIC: the snap out to a point
+		accent = Color3.fromRGB(176, 200, 226), part = Vector3.new(1.4, 4.2, 1),
+		tone = { sat = 0.12, light = 1, bright = 0.6, fade = 0.35 } },
+	-- STATIC: the snap out to a point: a small blue core
 	KillStaticPop = { from = { "Eletricity", "Golden Eletricity" }, maxSize = 2.2, kmax = 0.8, life = 0.3, run = 0.12,
-		accent = Color3.fromRGB(150, 226, 255), part = Vector3.new(0.6, 0.6, 0.6) },
+		accent = Color3.fromRGB(140, 180, 228), part = Vector3.new(0.6, 0.6, 0.6),
+		tone = { sat = 0.34, light = 1, bright = 0.8, fade = 0.2, size = 0.5 } },
 	-- SHATTER: the ice burst at the break, frost flakes falling (its "smokes" layer out: a 20-stud white fog, 20 Nov photo)
 	KillIceBurst = { from = { "Frigid Blast" }, maxSize = 3.6, kmax = 0.28, life = 0.9, run = 0.1,
 		accent = Color3.fromRGB(176, 214, 236), part = Vector3.new(0.8, 1.2, 0.8), skip = { "smokes" } },
@@ -94,6 +101,55 @@ local function fit(e: ParticleEmitter, s: Spec)
 	e:SetAttribute("PackFit", string.format("x%.3f", k))
 end
 
+-- the spec's `tone` on one emitter (the size factor against what's already applied, so running it twice is harmless)
+local function toneOne(e: ParticleEmitter, s: Spec)
+	local t = s.tone
+	if not t then return end
+	local ah = s.accent:ToHSV()
+	local kps = {}
+	for _, kp in e.Color.Keypoints do
+		local _, sat, val = kp.Value:ToHSV()
+		table.insert(kps, ColorSequenceKeypoint.new(kp.Time, if sat >= 0.1 then Color3.fromHSV(ah, t.sat, val) else kp.Value))
+	end
+	e.Color = ColorSequence.new(kps)
+	if e.LightEmission > 0 then e.LightEmission = t.light end -- (a dark layer stays as it is)
+	e.Brightness = math.min(e.Brightness, t.bright)
+	local was = tonumber(e:GetAttribute("ToneFade")) or 0
+	local fade = t.fade or 0
+	if fade ~= was then
+		local tk = {}
+		for _, kp in e.Transparency.Keypoints do
+			local base = 1 - (1 - kp.Value) / (1 - was) -- (undo the last fade)
+			table.insert(tk, NumberSequenceKeypoint.new(kp.Time, 1 - (1 - base) * (1 - fade), kp.Envelope))
+		end
+		e.Transparency = NumberSequence.new(tk)
+		e:SetAttribute("ToneFade", fade)
+	end
+	local wasK = tonumber(e:GetAttribute("ToneSize")) or 1
+	local k = t.size or 1
+	if k ~= wasK then
+		e.Size = scaleNS(e.Size, k / wasK)
+		e:SetAttribute("ToneSize", k)
+	end
+end
+
+-- re-tone built templates in place from the spec (no pack source needed): M.tone({ "KillStaticArc", ... })
+function M.tone(names: { string }): string
+	local folder = ReplicatedStorage:FindFirstChild("JankfireVfx")
+	local out = {}
+	for _, name in names do
+		local s = M.SPEC[name]
+		local t = folder and folder:FindFirstChild(name)
+		if not s or not t then table.insert(out, name .. ": missing"); continue end
+		local n = 0
+		for _, d in t:GetDescendants() do
+			if d:IsA("ParticleEmitter") then toneOne(d, s); n += 1 end
+		end
+		table.insert(out, name .. ": toned " .. n)
+	end
+	return table.concat(out, "; ")
+end
+
 function M.build(source: Instance): string
 	local folder = ReplicatedStorage:FindFirstChild("JankfireVfx")
 	if not folder then
@@ -116,6 +172,7 @@ function M.build(source: Instance): string
 				if d:IsA("ParticleEmitter") and not (s.skip and d.Parent and table.find(s.skip, d.Parent.Name)) then
 					local e = d:Clone()
 					fit(e, s)
+					toneOne(e, s)
 					local at = d.Parent
 					if at and at:IsA("Attachment") then
 						local a = p:FindFirstChild(at.Name)

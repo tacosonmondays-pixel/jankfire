@@ -87,6 +87,12 @@ photographed them. Guard break and Slam stay theirs, for parry and landings: a k
   - No script errors.
   - The first ice burst carried the pack's smoke (a 20-stud white fog), so the smoke layer was dropped.
   - Shatter's clear glass wedges read dark against a dark wall: they show what's behind them.
+- **Static toned down** (v1133, main for the owner's less-colourful rule; photo `flair/kill-static-toned.jpg`):
+  - The first build was loud electric blue. It's now white electric with thin blue strands and a small blue core.
+  - How: the spec's `tone` (saturation 0.12 and 0.34, Brightness 0.6 and 0.8, more transparency, the pop at half
+    size). Run `KillVfxImport.tone({...})` to re-tone a built template in place.
+  - Trap: these textures are black-backed. LightEmission below 1 shows their black squares (seen at v1125), so quiet
+    them with Brightness and transparency instead.
 
 How it works:
 - **Server** (`server/FlairServer.server.luau`, hooked on `Fight.onKill`): the killer must be a player, not the victim;
