@@ -59,6 +59,11 @@ Finishers.LIST = {
 		colour = Color3.fromRGB(255, 196, 106), accent = Color3.fromRGB(206, 182, 142),
 		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 }, anim = "spinfall",
 		cut = { full = { { "eyes", 0.72 }, { "chase", 0.5 }, { "impact", 0.42 }, { "resolve", 1.18 } } },
+		-- (20 Nov, the owner: "take out tidecrest put in revolver": the High Noon Western they approved as video
+		-- (western_town_v3) plays in the game on the two real avatars - a standoff in a sunset town, the holsters on
+		-- their hips, the hands reaching onto the guns, one shot; FinisherScene + FinisherSceneData_highnoon(_set).
+		-- a round win plays the draw, the shot and the far shot)
+		scene = "highnoon", sceneLen = { full = 13.82, short = 3.27 },
 	},
 	inkfall = { -- Tidecrest: one ink-wash brush slash across the frame, the victim splits into sakura petals
 		-- (20 Nov, Tidecrest v4.2, the owner: "I think tidecrest is ready for Roblox": the grip, the two-hand draw of the
@@ -121,6 +126,11 @@ Finishers.SCENE_ANIMS = {
 	kp_readys_mainanimation_keyframesequence = "77378208505552",
 	kp_basicattacktypes_dashlight_keyframesequence = "94578161823866",
 	kp_death_actions_deathanimation_keyframesequence = "102418985491836",
+	-- (High Noon, 20 Nov: the quick draw - also played backwards for the re-holster - and the victim's knockdown and
+	-- the fall that stays down)
+	quick_draw_t1 = "89643464186256",
+	bx_30_knockdown_punch = "90235382579488",
+	bx_29_knocked_out_back = "71597412128503",
 } :: { [string]: string }
 
 -- the shot lists: each shot is a camera move (client/Finisher.luau SHOTS) and its length in s. `full` is the match's
@@ -145,7 +155,7 @@ end
 -- the in-game scenes, each behind a switch. 20 Nov, the owner: "take out tidecrest put in revolver" - Tidecrest goes to a
 -- professional, so its scene is OFF and Inkfall plays its normal cut again. FinisherScene and its data stay in the
 -- place; true here brings the scene back (row.sceneOff keeps its id)
-Finishers.SCENE_ON = { inkfall = false } :: { [string]: boolean }
+Finishers.SCENE_ON = { inkfall = false, highnoon = true } :: { [string]: boolean }
 for id, row in Finishers.LIST do
 	if row.scene and Finishers.SCENE_ON[id] == false then
 		(row :: any).sceneOff = row.scene

@@ -16,6 +16,27 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Data = require(script.Parent:WaitForChild("FinisherSceneData")) :: any
+-- (a scene too big for one module comes in parts, FinisherSceneData_<id> and FinisherSceneData_<id>_set: merged into
+-- Data by scene id the first time it's asked for - High Noon's town alone is 74 KB)
+local merged: { [string]: boolean } = {}
+local function dataOf(sid: string?): any
+	if type(sid) ~= "string" then return nil end
+	if not merged[sid] then
+		merged[sid] = true
+		for _, m in script.Parent:GetChildren() do
+			local n = m.Name
+			if m:IsA("ModuleScript") and (n == "FinisherSceneData_" .. sid or n == "FinisherSceneData_" .. sid .. "_set") then
+				local ok, t = pcall(require, m)
+				if ok and type(t) == "table" and type(t[sid]) == "table" then
+					Data[sid] = Data[sid] or {}
+					for k, v in t[sid] do Data[sid][k] = v end
+				end
+			end
+		end
+	end
+	local d = Data[sid]
+	return if type(d) == "table" and d.f and d.stage then d else nil
+end
 local Sfx = require(script.Parent:WaitForChild("Sfx")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Finishers = require(Shared:WaitForChild("Finishers")) :: any
@@ -51,6 +72,25 @@ local EXTRA: { [string]: any } = {
 		trail = { ["THE LENGTH"] = 0.15, CLOSING = 0.1, ["THE PASS"] = 0.35, ["CUT FRAME"] = 0.35 },
 		dust = { ["THE CHARGE"] = true, CLOSING = true, ["THE PASS"] = true },
 	},
+	highnoon = {
+		-- (20 Nov, the owner: "take out tidecrest put in revolver" - the High Noon Western they approved as video,
+		-- western_town_v3: a standoff in a sunset town on the two real avatars, the holsters on their hips, the hands
+		-- reaching onto the guns, one shot; a round win plays the draw, the shot and the far shot)
+		kit = "revolver",
+		short = { shot = "THE DRAW", speed = 1 },
+		-- (the video's retime: the suspense shots held longer, each frame shown this many times as long)
+		stretch = { OVERHEAD = 1.5, ["KILLER'S EYES"] = 1.6, ["VICTIM'S EYES"] = 1.6, ["KILLER'S HAND"] = 1.5,
+			["VICTIM'S HAND"] = 1.5, ["THE WIDE"] = 1.4, ["EYES AGAIN"] = 1.6, ["THEIR EYES"] = 1.6, ["FAR SHOT"] = 1.3 },
+		zoom = { ["EYES AGAIN"] = 1.3, ["THEIR EYES"] = 1.3 },
+		cues = { { 1, "zone_lot", 0.5 }, { 75, "loot_pop", 0.25 }, { 163, "swing", 0.4 },
+			{ 169, "skin_revolver_dust_reload", 0.5 }, { 174, "skin_revolver_dust_reload", 0.7 },
+			{ 181, "skin_revolver_dust_fire", 1 }, { 181, "gun_revolver", 0.8 }, { 181, "round_end", 0.7 },
+			{ 191, "death", 0.6 }, { 211, "skin_revolver_dust_reload", 0.5 } },
+		lamps = true,
+		-- (the video's light: a low warm sun with real shadows, a warm haze, a light grade; put back after)
+		look = { clock = 17.2, lat = 35, bright = 2.6, outdoor = Color3.fromRGB(122, 102, 96), ambient = Color3.fromRGB(72, 62, 60),
+			shiftTop = Color3.fromRGB(255, 196, 150), exposure = 0.15 },
+	},
 }
 
 -- the plan is laid out in Blender's axes (z up, the victim at the origin facing -y): a Blender offset in the stage's
@@ -84,7 +124,7 @@ local function between(p: BasePart, a: Vector3, b: Vector3, w: number, h: number
 end
 
 function Scene.can(row: any, kind: string, kg: any, vg: any): boolean
-	if not row or type(row.scene) ~= "string" or not Data[row.scene] then return false end
+	if not row or type(row.scene) ~= "string" or not dataOf(row.scene) then return false end
 	if kind ~= "full" and kind ~= "short" then return false end
 	for _, g in { kg, vg } do
 		if not g or not g.model or not g.model:FindFirstChild("LowerTorso") or not g.hum then return false end
@@ -376,7 +416,9 @@ local function setHit(sc: any, s: any, on: boolean, accent: { Part }?, inv: bool
 	for _, pool in sc.pools do
 		for _, p in pool do if p:IsA("BasePart") then p.LocalTransparencyModifier = if on and not (accent and table.find(accent, p)) then 1 else 0 end end
 	end
-	for _, m in { s.kg.model, s.vg.model, sc.katModel } do
+	local inked = { s.kg.model, s.vg.model, sc.katModel }
+	for _, km in sc.revModels or {} do table.insert(inked, km) end -- (the holsters, belts and revolvers ink with the bodies)
+	for _, m in inked do
 		if m then
 			local h = m:FindFirstChild("JankSceneHit") :: Highlight?
 			if on then
@@ -391,7 +433,7 @@ local function setHit(sc: any, s: any, on: boolean, accent: { Part }?, inv: bool
 			end
 		end
 	end
-	for _, p in sc.sheath do p.LocalTransparencyModifier = if on then 1 else 0 end
+	for _, p in sc.sheath or {} do p.LocalTransparencyModifier = if on then 1 else 0 end
 	if on then
 		if not sc.backdrop then
 			local b = part(sc.folder, Vector3.new(3000, 3000, 1), ORIGIN, PAPER, Enum.Material.Neon)
@@ -399,14 +441,14 @@ local function setHit(sc: any, s: any, on: boolean, accent: { Part }?, inv: bool
 		end
 		sc.backdrop.Color = BG
 		sc.backdrop.LocalTransparencyModifier = 0
-		sc.trail.Color = ColorSequence.new(s.row.colour)
+		if sc.trail then sc.trail.Color = ColorSequence.new(s.row.colour) end
 		for _, p in accent or {} do
 			sc.orig[p] = sc.orig[p] or { p.Color, p.Material }
 			p.Color = s.row.colour; p.Material = Enum.Material.Neon
 		end
 	else
 		if sc.backdrop then sc.backdrop.LocalTransparencyModifier = 1 end
-		sc.trail.Color = ColorSequence.new(SMEAR)
+		if sc.trail then sc.trail.Color = ColorSequence.new(SMEAR) end
 		for p, o in sc.orig do p.Color = o[1]; p.Material = o[2] end
 		table.clear(sc.orig)
 	end
@@ -528,7 +570,7 @@ end
 
 -- the real body point an anchor names (this frame), and the stand-in's (from the data); offsets scale by the part
 local ANCH = { kH = { "k", "Head" }, kU = { "k", "UpperTorso" }, kL = { "k", "LowerTorso" }, vH = { "v", "Head" },
-	vU = { "v", "UpperTorso" }, vL = { "v", "LowerTorso" } }
+	vU = { "v", "UpperTorso" }, vL = { "v", "LowerTorso" }, kR = { "k", "RightHand" }, vR = { "v", "RightHand" } }
 local function realAnchor(sc: any, s: any, key: string): (CFrame?, number)
 	if key == "mouth" then return sc.mouthCF, 1 end
 	local a = ANCH[key]
@@ -653,6 +695,152 @@ local function placeKitV2(sc: any, s: any, f: any)
 	end
 end
 
+-- ------------------------------------------------------------------ High Noon: the revolvers (20 Nov)
+-- each body's own holster on its hip (a belt and a leather pouch sized to its hips), its revolver in the holster or in
+-- its hand (grip in the palm), the right arm reaching onto the gun through the draw (an IKControl: the hand hovers over
+-- the grip, closes on it, carries it out - the owner: "make the hand reach closer to the gun and pull the gun!"), and
+-- the killer's gun's last moments kept for the smear and the afterimage guns
+local LEATHER = Color3.fromRGB(107, 69, 41)
+local function revolverKit(sc: any, s: any)
+	sc.rev, sc.revModels, sc.gunHist = {}, {}, {}
+	sc.sheath = {}
+	local skins = ReplicatedStorage:FindFirstChild("JankfireSkins")
+	for _, who in { "k", "v" } do
+		local g = if who == "k" then s.kg else s.vg
+		local m = g.model :: Model
+		local lt = m:FindFirstChild("LowerTorso") :: BasePart?
+		if lt then
+			local hw, hd = lt.Size.X / 2, lt.Size.Z / 2
+			local lh = lt:FindFirstChild("LeftHipRigAttachment")
+			if lh and lh:IsA("Attachment") then hw = math.max(hw, math.abs(lh.Position.X) + 0.45) end
+			for _, d in m:GetDescendants() do if d:IsA("WrapLayer") then hw *= 1.12; hd *= 1.18; break end end
+			local km = Instance.new("Model")
+			km.Name = "JankRev" .. who
+			km.Parent = sc.folder
+			table.insert(sc.revModels, km)
+			local kit: any = { hw = hw, hd = hd, leg = (g.hum :: Humanoid).HipHeight / 2, km = km }
+			kit.holster = part(km, Vector3.new(0.32, 0.95, 0.55), ORIGIN, LEATHER, Enum.Material.Leather)
+			kit.belt = part(km, Vector3.new(2 * hw * 1.06, 0.28, 2 * hd * 1.1), ORIGIN, LEATHER, Enum.Material.Leather)
+			local want = if who == "k" and type(s.msg.skin) == "string" then s.msg.skin else "revolver_dust"
+			local tpl = skins and (skins:FindFirstChild(want) or skins:FindFirstChild("revolver_dust"))
+			local function build(tr: number): { any }
+				local out = {}
+				if not tpl then return out end
+				local c = tpl:Clone()
+				for _, p in c:GetDescendants() do
+					if p:IsA("BasePart") then
+						local oc = p.CFrame
+						p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+						p.Size *= 3
+						p.Transparency = math.max(p.Transparency, tr)
+						table.insert(out, { p, CFrame.new(oc.Position * 3) * oc.Rotation })
+					elseif p:IsA("BaseScript") or p:IsA("JointInstance") or p:IsA("Constraint") then
+						p:Destroy()
+					end
+				end
+				c.Parent = km
+				return out
+			end
+			kit.parts = build(0)
+			if who == "k" then kit.ghosts = { build(0.55), build(0.78) } end
+			-- (the grip and the muzzle in the skin's own frame, x3: its attachments, or - the Dust revolver has none -
+			-- the grip the runner used and the front-most corner of its parts, the barrel running along -Z)
+			local ga = tpl and tpl:FindFirstChild("Grip", true)
+			kit.grip = if ga and ga:IsA("Attachment") then ga.WorldPosition * 3 else Vector3.new(0, -0.55, 0.25)
+			local ma = tpl and tpl:FindFirstChild("Muzzle", true)
+			if ma and ma:IsA("Attachment") then
+				kit.muzzle = ma.WorldPosition * 3
+			else
+				local minZ, at = math.huge, Vector3.zero
+				for _, bp in (if tpl then tpl:GetDescendants() else {}) :: { Instance } do
+					if bp:IsA("BasePart") then
+						for _, sx in { -1, 1 } do for _, sy in { -1, 1 } do for _, sz in { -1, 1 } do
+							local w = bp.CFrame * Vector3.new(sx * bp.Size.X / 2, sy * bp.Size.Y / 2, sz * bp.Size.Z / 2)
+							if w.Z < minZ then minZ, at = w.Z, w end
+						end end end
+					end
+				end
+				kit.muzzle = at * 3
+			end
+			-- the reach: an IKControl on the right arm, aimed at an attachment on a hidden anchor
+			local ua = m:FindFirstChild("RightUpperArm")
+			local hand = m:FindFirstChild("RightHand")
+			if ua and hand and ua:IsA("BasePart") and hand:IsA("BasePart") then
+				local holder = part(sc.folder, Vector3.one * 0.1, ORIGIN, LEATHER)
+				holder.Transparency = 1
+				local att = Instance.new("Attachment")
+				att.Parent = holder
+				local ik = Instance.new("IKControl")
+				ik.Type = Enum.IKControlType.Transform
+				ik.ChainRoot = ua; ik.EndEffector = hand; ik.Target = att
+				ik.Weight = 0
+				pcall(function() (ik :: any).SmoothTime = 0 end)
+				ik.Parent = g.hum
+				kit.ik, kit.att = ik, att
+			end
+			sc.rev[who] = kit
+		end
+	end
+end
+local function placeRevolvers(sc: any, s: any, A: any, T: number)
+	for _, who in { "k", "v" } do
+		local g = if who == "k" then s.kg else s.vg
+		local kit = sc.rev[who]
+		local m = g.model :: Model
+		local lt = m:FindFirstChild("LowerTorso") :: BasePart?
+		local hand = m:FindFirstChild("RightHand") :: BasePart?
+		if kit and lt and hand then
+			local hcf = lt.CFrame * CFrame.new(kit.hw * 1.12, -0.45 * kit.leg, -0.05)
+			kit.holster.CFrame = hcf
+			kit.belt.CFrame = lt.CFrame * CFrame.new(0, 0.05, 0)
+			local inH = hcf * CFrame.new(0, 0.15, 0) * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, 0, -0.1)
+			local onGrip = inH * CFrame.new(kit.grip) * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, 0.4 * hand.Size.Y, 0)
+			-- the reach, by the draw's clock: hover over the grip, close on it, carry it out (the re-holster plays the draw
+			-- backwards, so the hand goes home the same way)
+			local e = A[who]
+			local w, target = 0, nil
+			if e and not e[5] and sc.d.clips[e[1]] == "quick_draw_t1" then
+				local t = e[2]
+				w = ease(t / 0.12) * (1 - ease((t - 0.34) / 0.2))
+				if w > 0.002 then
+					local ua = m:FindFirstChild("RightUpperArm") :: BasePart?
+					local up = if ua then (ua.Position - onGrip.Position) * 0.2 else Vector3.zero
+					local hover = CFrame.new(up + lt.CFrame:VectorToWorldSpace(Vector3.new(0.12, 0, -0.04))) * onGrip
+					target = hover:Lerp(onGrip, ease((t - 0.14) / 0.14))
+				end
+			end
+			if kit.ik then
+				kit.ik.Weight = w
+				if target then kit.att.WorldCFrame = target end
+			end
+			-- (the hand the reach is taking this frame: the IK shows on the body a step later)
+			local H = if target then hand.CFrame:Lerp(target, w) else hand.CFrame
+			local gcf: CFrame? = nil
+			if A.gn and A.gn[who] == 1 then
+				local pc = H * CFrame.new(0, -0.4 * hand.Size.Y, 0)
+				gcf = CFrame.new(pc.Position) * pc.Rotation * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(-kit.grip)
+			elseif A.hol and A.hol[who] == 1 then
+				gcf = inH
+			end
+			for _, q in kit.parts do
+				if gcf then q[1].CFrame = (gcf :: CFrame) * q[2]; q[1].LocalTransparencyModifier = 0 else q[1].LocalTransparencyModifier = 1 end
+			end
+			kit.gcf = gcf
+			for _, gl in kit.ghosts or {} do for _, q in gl do q[1].LocalTransparencyModifier = 1 end end
+			if who == "k" and gcf then
+				table.insert(sc.gunHist, { T, gcf })
+				while #sc.gunHist > 1 and T - sc.gunHist[1][1] > 0.35 do table.remove(sc.gunHist, 1) end
+			end
+		end
+	end
+end
+-- the killer's gun as it was dt ago (the nearest kept moment)
+local function gunAt(sc: any, T: number): CFrame?
+	local best = nil
+	for _, h in sc.gunHist do if not best or math.abs(h[1] - T) < math.abs(best[1] - T) then best = h end end
+	return best and best[2]
+end
+
 -- effects (the plan's fx list): each drawn this frame from pooled parts; what isn't drawn this frame hides
 local function fxPart(sc: any, key: string, n: number, make: () -> Part): Part
 	sc.pools[key] = sc.pools[key] or {}
@@ -756,6 +944,125 @@ local function drawFx(sc: any, s: any, f: any, T: number)
 			end)
 			p.CFrame = CFrame.new(c)
 			p.LocalTransparencyModifier = 0
+		elseif kind == "tumble" then
+			-- (High Noon) a tumbleweed: 44 twigs round its centre, the same twigs every frame, turned as it rolls
+			local c = P3(sc, s, f, an, e[3], e[4], e[5])
+			local ax = Vector3.new(e[8], e[9], e[10])
+			local R = CFrame.fromAxisAngle(if ax.Magnitude > 1e-3 then ax.Unit else Vector3.xAxis, e[7])
+			sc.twigs = sc.twigs or {}
+			local tw = sc.twigs[e[11]]
+			if not tw then
+				tw = {}
+				local rnd = Random.new(e[11])
+				local function dir(): Vector3
+					local v = Vector3.new(rnd:NextNumber(-1, 1), rnd:NextNumber(-1, 1), rnd:NextNumber(-1, 1))
+					return if v.Magnitude > 1e-3 then v.Unit else Vector3.yAxis
+				end
+				for _ = 1, 44 do table.insert(tw, { dir() * rnd:NextNumber(0.6, 1), dir() * rnd:NextNumber(0.6, 1) }) end
+				sc.twigs[e[11]] = tw
+			end
+			for j, q in tw do
+				local p = fxPart(sc, "tumble" .. idx, j, function()
+					return part(sc.folder, Vector3.one, ORIGIN, if j % 3 == 0 then Color3.new(0.5, 0.38, 0.24) else Color3.new(0.6, 0.46, 0.3))
+				end)
+				between(p, c + R:VectorToWorldSpace(q[1] * e[6]), c + R:VectorToWorldSpace(q[2] * e[6]), 0.07, 0.07, Vector3.yAxis)
+				p.LocalTransparencyModifier = 0
+			end
+		elseif kind == "flash" or kind == "shock" then
+			-- (High Noon) a muzzle flash at the killer's real muzzle; the shock where the shot lands, on the real chest
+			local kit = sc.rev and sc.rev.k
+			local c: Vector3, fw: Vector3
+			if kind == "flash" and kit and kit.gcf then
+				c = ((kit.gcf :: CFrame) * CFrame.new(kit.muzzle)).Position
+				fw = (kit.gcf :: CFrame).LookVector
+			else
+				c = P3(sc, s, f, an, e[3], e[4], e[5])
+				local v = Vector3.new(e[7], e[8], e[9])
+				fw = if v.Magnitude > 1e-3 then v.Unit else Vector3.zAxis
+			end
+			local size, rays = e[6], e[10]
+			local ux = fw:Cross(Vector3.yAxis)
+			ux = if ux.Magnitude > 1e-3 then ux.Unit else Vector3.xAxis
+			local uy = fw:Cross(ux).Unit
+			local rnd = Random.new(e[11])
+			local col = if kind == "flash" then Color3.new(1, 0.93, 0.62) else Color3.new(1, 0.95, 0.85)
+			for j = 1, rays do
+				local a = 2 * math.pi * (j - 1) / rays + rnd:NextNumber() * 0.4
+				local dv = ux * math.cos(a) + uy * math.sin(a)
+				local p = fxPart(sc, kind .. idx, j, function() return part(sc.folder, Vector3.one, ORIGIN, col, Enum.Material.Neon) end)
+				between(p, c, c + dv * size * rnd:NextNumber(0.7, 1.3), size * 0.14, size * 0.05, fw)
+				p.LocalTransparencyModifier = 0
+				if kind == "shock" then table.insert(sc.accent, p) end
+			end
+			local b = fxPart(sc, kind .. idx, rays + 1, function() return part(sc.folder, Vector3.one, ORIGIN, col, Enum.Material.Neon, Enum.PartType.Ball) end)
+			b.Size = Vector3.one * size * 0.5
+			b.CFrame = CFrame.new(c)
+			b.LocalTransparencyModifier = 0
+			if kind == "shock" then table.insert(sc.accent, b) end
+		elseif kind == "smoke" then
+			local c = P3(sc, s, f, an, e[3], e[4], e[5])
+			local p = fxPart(sc, "smoke" .. idx, 1, function()
+				local q = part(sc.folder, Vector3.one, ORIGIN, Color3.new(0.78, 0.76, 0.74), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+				q.Transparency = 0.35
+				return q
+			end)
+			p.Size = Vector3.one * e[3 + 3]
+			p.CFrame = CFrame.new(c)
+			p.LocalTransparencyModifier = 0
+		elseif kind == "gsmear" then
+			-- (High Noon) the gun's swing out of the holster: its muzzle's path over the last 0.16 s, bright and thinning,
+			-- and two fading copies of the gun behind it - from the real gun's own last moments
+			local kit = sc.rev and sc.rev.k
+			if kit and #sc.gunHist >= 2 then
+				local pts = {}
+				for j = 0, 6 do
+					local gj = gunAt(sc, T - 0.16 * j / 6)
+					if gj then table.insert(pts, (gj * CFrame.new(kit.muzzle * 0.8)).Position) end
+				end
+				for j = 1, #pts - 1 do
+					local p = fxPart(sc, "gsmear" .. idx, j, function() return part(sc.folder, Vector3.one, ORIGIN, Color3.new(1, 0.92, 0.7), Enum.Material.Neon) end)
+					if (pts[j] - pts[j + 1]).Magnitude > 0.02 then
+						between(p, pts[j + 1], pts[j], 0.08, 0.32 * (1 - (j - 1) / 7), Vector3.yAxis)
+						p.Transparency = 0.15 + 0.12 * (j - 1)
+						p.LocalTransparencyModifier = 0
+					else
+						p.LocalTransparencyModifier = 1
+					end
+				end
+				for j, dt in { 0.05, 0.1 } do
+					local gj = gunAt(sc, T - dt)
+					local gl = kit.ghosts and kit.ghosts[j]
+					if gj and gl then for _, q in gl do q[1].CFrame = gj * q[2]; q[1].LocalTransparencyModifier = 0 end end
+				end
+			end
+		elseif kind == "dustc" then
+			-- (High Noon) the dust round the fallen one: 16 puffs spreading and fading
+			local c0 = P3(sc, s, f, an, e[3], e[4], e[5])
+			local k, u = e[6], e[7]
+			local rnd = Random.new(91)
+			for j = 1, 16 do
+				local a0, r0, d0 = rnd:NextNumber(0, 6.28), rnd:NextNumber(0.8, 2.2), rnd:NextNumber(0.3, 1.8)
+				local spread = d0 * (0.3 + 0.9 * k + 0.6 * u)
+				local q = c0 + Vector3.new(math.cos(a0) * spread, -0.7 + 0.6 * u + rnd:NextNumber(0, 0.7), -math.sin(a0) * spread)
+				local rr = r0 * (0.5 + 0.7 * k + 0.5 * u)
+				local p = fxPart(sc, "dustc" .. idx, j, function()
+					return part(sc.folder, Vector3.one, ORIGIN, if j % 2 == 0 then Color3.new(0.84, 0.72, 0.52) else Color3.new(0.95, 0.84, 0.62), Enum.Material.Sand, Enum.PartType.Ball)
+				end)
+				p.Size = Vector3.one * rr
+				p.CFrame = CFrame.new(q.X, math.max(q.Y, ORIGIN.Y + rr * 0.25), q.Z)
+				p.Transparency = math.min(0.97, 0.3 + 0.67 * u)
+				p.LocalTransparencyModifier = 0
+			end
+		elseif kind == "btrail" then
+			-- (High Noon, the owner: "bullet trail doesn't come out of gun for the impact frame") from the real muzzle
+			local kit = sc.rev and sc.rev.k
+			if kit and kit.gcf then
+				local a0 = ((kit.gcf :: CFrame) * CFrame.new(kit.muzzle)).Position
+				local p = fxPart(sc, "btrail" .. idx, 1, function() return part(sc.folder, Vector3.one, ORIGIN, Color3.new(1, 0.95, 0.85), Enum.Material.Neon) end)
+				between(p, a0, P3(sc, s, f, an, e[3], e[4], e[5]), 0.09, 0.09, Vector3.yAxis)
+				p.LocalTransparencyModifier = 0
+				table.insert(sc.accent, p)
+			end
 		end
 	end
 	-- (pools not drawn this frame hide; the petals of the air and the dust keep their own)
@@ -769,7 +1076,7 @@ end
 
 -- ------------------------------------------------------------------ the scene
 function Scene.start(s: any, kind: string): any
-	local d = Data[s.row.scene]
+	local d = dataOf(s.row.scene)
 	local ex = EXTRA[s.row.scene] or {}
 	local sc: any = { d = d, ex = ex, kind = kind, i0 = 1, i1 = #d.f, speed = 1, tracks = {}, cur = {}, hip = {}, pools = {}, cued = {}, orig = {},
 		shotOf = {}, shotStart = {}, lastShot = d.shots[#d.shots][1], v2 = d.sizes ~= nil, lowWas = {}, gOff = {}, used = {}, accent = {} }
@@ -790,6 +1097,17 @@ function Scene.start(s: any, kind: string): any
 		for j = 1, sh[2] do sc.shotOf[k + j] = sh[1]; sc.shotStart[k + j] = k + 1 end
 		k += sh[2]
 	end
+	-- (a plan whose video held some shots longer - High Noon's suspense: each frame's start, in s from i0)
+	if ex.stretch then
+		sc.cum = {}
+		local t = 0
+		for i = sc.i0, sc.i1 do
+			sc.cum[i] = t
+			t += (ex.stretch[sc.shotOf[i]] or 1) / d.fps / sc.speed
+		end
+		sc.cum[sc.i1 + 1] = t
+		sc.total = t
+	end
 	-- the set
 	local folder = Instance.new("Folder")
 	folder.Name = "JankFinisherStage"
@@ -808,6 +1126,39 @@ function Scene.start(s: any, kind: string): any
 		p.CastShadow = q[10] ~= "floor" and q[10] ~= "sky" -- (the painted sky ring and its lid never shade the court)
 		p.Name = q[10]
 		table.insert(sc.setParts, p)
+		if ex.lamps and q[10] == "lamp" then
+			local pl = Instance.new("PointLight")
+			pl.Range = 10; pl.Brightness = 1.6; pl.Shadows = true; pl.Color = Color3.fromRGB(255, 190, 120)
+			pl.Parent = p
+		end
+	end
+	-- (the scene's own light, as its video: the place's Lighting saved first and put back by Scene.stop)
+	if ex.look then
+		local L = game:GetService("Lighting")
+		local lk = ex.look
+		local was: any = { props = {}, added = {} }
+		for _, key in { "ClockTime", "GeographicLatitude", "Brightness", "OutdoorAmbient", "Ambient", "ColorShift_Top",
+			"ColorShift_Bottom", "EnvironmentDiffuseScale", "EnvironmentSpecularScale", "ShadowSoftness", "ExposureCompensation",
+			"GlobalShadows" } do
+			was.props[key] = (L :: any)[key]
+		end
+		local atmo = L:FindFirstChildOfClass("Atmosphere")
+		if atmo then was.atmo = { atmo, atmo.Density, atmo.Offset, atmo.Color, atmo.Decay, atmo.Glare, atmo.Haze } end
+		sc.lookWas = was
+		pcall(function()
+			L.ClockTime = lk.clock; L.GeographicLatitude = lk.lat; L.Brightness = lk.bright
+			L.OutdoorAmbient = lk.outdoor; L.Ambient = lk.ambient; L.ColorShift_Top = lk.shiftTop
+			L.ColorShift_Bottom = Color3.new(0, 0, 0); L.EnvironmentDiffuseScale = 0.45; L.EnvironmentSpecularScale = 0.4
+			L.ShadowSoftness = 0.15; L.ExposureCompensation = lk.exposure; L.GlobalShadows = true
+			local a = atmo
+			if not a then a = Instance.new("Atmosphere"); a.Name = "JankSceneAtmo"; a.Parent = L; table.insert(was.added, a) end
+			a.Density = 0.3; a.Offset = 0.12; a.Color = Color3.fromRGB(222, 176, 134); a.Decay = Color3.fromRGB(176, 118, 92)
+			a.Glare = 0.35; a.Haze = 1.4
+			local cc = Instance.new("ColorCorrectionEffect")
+			cc.Name = "JankSceneGrade"; cc.TintColor = Color3.fromRGB(255, 238, 220); cc.Contrast = 0.08; cc.Saturation = 0.04
+			cc.Parent = L
+			table.insert(was.added, cc)
+		end)
 	end
 	-- the two of them
 	takeBody(s.kg)
@@ -816,11 +1167,21 @@ function Scene.start(s: any, kind: string): any
 		local hum = g.hum :: Humanoid
 		sc.hip[who] = hum.HipHeight + (g.root :: BasePart).Size.Y / 2
 	end
-	katanaKit(sc, s.msg.skin)
+	if ex.kit == "revolver" then revolverKit(sc, s) else katanaKit(sc, s.msg.skin) end
 	return sc
 end
 
 local function frameAt(sc: any, w: number): (number, number)
+	if sc.cum then
+		-- (stretched shots: the frame whose span holds w, and how far through it)
+		local lo, hi = sc.i0, sc.i1
+		while lo < hi do
+			local mid = (lo + hi + 1) // 2
+			if sc.cum[mid] <= w then lo = mid else hi = mid - 1 end
+		end
+		local span = sc.cum[lo + 1] - sc.cum[lo]
+		return lo, if span > 0 then math.clamp((w - sc.cum[lo]) / span, 0, 1) else 0
+	end
 	local fi = sc.i0 + w * sc.d.fps * sc.speed
 	local i = math.clamp(math.floor(fi), sc.i0, sc.i1)
 	return i, math.clamp(fi - i, 0, 1)
@@ -848,6 +1209,9 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = ORIGIN * c
 	cam.FieldOfView = if same then A.fov + (Bf.fov - A.fov) * a else A.fov
+	-- (a shot the video cropped in on: the same push, by the lens)
+	local zf = sc.ex.zoom and sc.ex.zoom[shot]
+	if zf then cam.FieldOfView = math.deg(2 * math.atan(math.tan(math.rad(cam.FieldOfView) / 2) / zf)) end
 	cam.Focus = cam.CFrame * CFrame.new(0, 0, -10)
 	if sc.v2 then
 		-- the lens, riding on its body point
@@ -875,10 +1239,19 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 			local g0 = gripR(s.kg.model)
 			if lh and g0 then sc.m0 = math.max(0.2, (lh.Position - g0.Position).Magnitude - 0.44) end
 		end
-		placeKitV2(sc, s, A)
+		if sc.rev then placeRevolvers(sc, s, A, T) else placeKitV2(sc, s, A) end
 		local life = sc.ex.trail and sc.ex.trail[shot]
-		sc.trail.Enabled = life ~= nil
-		if life then sc.trail.Lifetime = life end
+		if sc.trail then
+			sc.trail.Enabled = life ~= nil
+			if life then sc.trail.Lifetime = life end
+		end
+		-- (the faces the plan sets: a squint, wide eyes - on a head with FaceControls)
+		for who, fv in A.fc or {} do
+			local g = if who == "k" then s.kg else s.vg
+			local hd = g.model:FindFirstChild("Head")
+			local fcs = hd and hd:FindFirstChildOfClass("FaceControls")
+			if fcs then for prop, val in fv do pcall(function() (fcs :: any)[prop] = val end) end end
+		end
 		dust(sc, s.kg, T, sc.ex.dust ~= nil and sc.ex.dust[shot] == true)
 		table.clear(sc.accent)
 		drawFx(sc, s, A, T)
@@ -1005,6 +1378,20 @@ function Scene.stop(s: any)
 	if not sc then return end
 	s.scene = nil
 	for _, set in sc.tracks do for _, tr in set do pcall(function() tr:Stop(0) end) end end
+	for _, kit in sc.rev or {} do if kit.ik then kit.ik:Destroy() end end
+	-- (the place's own light back, as it was before the scene)
+	local was = sc.lookWas
+	if was then
+		local L = game:GetService("Lighting")
+		pcall(function()
+			for key, v in was.props do (L :: any)[key] = v end
+			if was.atmo then
+				local a = was.atmo[1]
+				a.Density, a.Offset, a.Color, a.Decay, a.Glare, a.Haze = was.atmo[2], was.atmo[3], was.atmo[4], was.atmo[5], was.atmo[6], was.atmo[7]
+			end
+		end)
+		for _, inst in was.added do inst:Destroy() end
+	end
 	if sc.folder then sc.folder:Destroy() end
 	for _, g in { s.kg, s.vg } do
 		if g and g.model then

@@ -856,8 +856,24 @@ def desert():
     pass
 
 
+def fx_at(anchor, *a):
+    # an effect recorded on a given anchor (the game re-hangs it from the stand-in's onto the real body's)
+    fa = FXA[0]
+    FXA[0] = anchor
+    fx(*a)
+    FXA[0] = fa
+
+
+def v3d(b):
+    # a Blender direction -> Roblox (no offset)
+    q = rb(b) - rb((0, 0, 0))
+    return (round(q.x, 3), round(q.y, 3), round(q.z, 3))
+
+
 def tumbleweed(at_b, r=1.6, seed=5, rot=0.0, axis=(1, 0, 0)):
     # rot: how far it has rolled (radians about axis, Blender) - the same twigs, turned
+    # (the game builds its own twigs round the same centre: 'tumble' x y z r rot ax ay az seed)
+    fx_at('', 'tumble', *v3r(at_b), float(r), float(rot), *v3d(axis), seed)
     rnd = random.Random(seed)
     c = Vector(at_b)
     R = Matrix.Rotation(rot, 3, Vector(axis))
@@ -868,6 +884,9 @@ def tumbleweed(at_b, r=1.6, seed=5, rot=0.0, axis=(1, 0, 0)):
 
 
 def flash(at_b, size, facing_b, col=(1.0, 0.93, 0.62), rays=7, seed=3, tag='flash'):
+    # (the game: a muzzle flash rides the killer's right hand, a shock the victim's chest: tag x y z size fx fy fz rays seed)
+    fx_at('kR' if tag == 'flash' else 'vU' if tag == 'shock' else FXA[0], tag, *v3r(at_b), float(size),
+          *v3d(Vector(facing_b).normalized()), rays, seed)
     rnd = random.Random(seed)
     f = Vector(facing_b).normalized()
     u = f.cross(Vector((0, 0, 1)))
@@ -885,6 +904,7 @@ def flash(at_b, size, facing_b, col=(1.0, 0.93, 0.62), rays=7, seed=3, tag='flas
 
 
 def puff(at_b, r, col=(0.78, 0.76, 0.74), tag='smoke'):
+    fx_at('kR', tag, *v3r(at_b), float(r))
     q = rb(at_b)
     prop('Ball', (r, r, r), CF(q.x, q.y, q.z), col, 'SmoothPlastic', tag)
 
@@ -2177,6 +2197,8 @@ def dv_draw(i, n):
         S['c'] = m * 0.55 + br(Ve['Head'].translation) * 0.45
     if t >= DRAW_OUT:
         # the smear: the muzzle's path over the last frames, bright and thinning, and two fading gun copies behind
+        # (the game draws both from its own real gun's last moments: 'gsmear' on the hand)
+        fx_at('kR', 'gsmear', 7)
         pts = []
         for j in range(7):
             tj = max(DRAW_OUT, t - 0.16 * j / 6)
@@ -2212,6 +2234,7 @@ def dv_hitframe(i, n):
     m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
     hit = br(V['UpperTorso'].translation) + Vector((0, -0.55, 0.1))
     prop_box_between(m, hit, 0.09, 0.09, (1.0, 0.95, 0.85), mat='Neon', tag='btrail')
+    fx_at('vU', 'btrail', *v3r(hit))   # (the game: from its real muzzle to this point on the real chest)
     flash(hit, 1.4 + 0.15 * i, (0, -1, 0.1), col=(1.0, 0.95, 0.85), rays=9, tag='shock')
     lens(S['pos'] + (S['c'] - S['pos']) * (0.02 * i), S['c'], 70, 18)
     gold, black = [1.0, 0.72, 0.32], [0.04, 0.03, 0.03]
@@ -2298,6 +2321,7 @@ def dv_far(i, n):
     vc = S['vc']
     rnd = random.Random(91)
     k = 1 - (1 - min(1.0, s_ / 0.6)) ** 2.5
+    fx_at('', 'dustc', *v3r(vc), float(k), float(u))   # (the game's own 16 puffs round the fallen one)
     for j in range(16):
         a = rnd.uniform(0, 6.28)
         r0 = rnd.uniform(0.8, 2.2)
@@ -2339,7 +2363,7 @@ def anchors_now():
         out['mouth'] = SEM['mouth']
     for r in RIGS:
         if r['name'] in ('k', 'v') and not r.get('tr'):
-            for key, part in (('H', 'Head'), ('U', 'UpperTorso'), ('L', 'LowerTorso')):
+            for key, part in (('H', 'Head'), ('U', 'UpperTorso'), ('L', 'LowerTorso'), ('R', 'RightHand')):
                 out[r['name'] + key] = comps(r['cf'][part])
     return out
 
