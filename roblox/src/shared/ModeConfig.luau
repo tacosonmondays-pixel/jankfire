@@ -62,7 +62,9 @@ ModeConfig.TAGS = { target = 25, time = 360, life = 30, grab = 1.9 * S, up = 0.9
 ModeConfig.SPOONS = { kit = { "knife" }, speed = 1.6, hook = 1.35 }
 -- web modes.js INFECT: 180 s, patient zero 6 s in (two with 8 or more fighters), 200 HP zombies with the claw
 ModeConfig.INF = { time = 180, delay = 6, two = 8, hp = 200, claw = "claw", color = "#7dff4f" }
-ModeConfig.SIDES = { { name = "PINK", hex = "#ff4fd8" }, { name = "CYAN", hex = "#37d6ff" } }
+-- (20 Nov 2026: shared/TeamColors.luau's first two, the pads' and the duels' palette)
+local TeamColors = require(Shared:WaitForChild("TeamColors")) :: any
+ModeConfig.SIDES = { { name = TeamColors.name(1), hex = TeamColors.hex(1) }, { name = TeamColors.name(2), hex = TeamColors.hex(2) } }
 -- a team mode's queue (Queue.luau's team branch): whole parties on one side each, 1-4 a side, the sides at most one
 -- apart; it goes at 4v4, or once the oldest has waited FILL s with both sides filled
 

@@ -21,6 +21,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 -- the arenas (the Rooftop v1, v2 or v3), the rotation (workspace.Map's ArenaPool) and where copies go
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
+local TeamColors = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("TeamColors")) :: any -- (the teams' names and colours: shared/TeamColors.luau, 20 Nov 2026)
 local MapCards = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("MapCards")) -- (the pads' map vote)
 local RankedDraft = require(script.Parent:WaitForChild("RankedDraft")) -- (ranked: the draft's bans, the loadout switches)
 local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hitbox")) -- (a spawn's root height, as Fight.spawn puts it)
@@ -42,8 +43,11 @@ Matches.AFTER = 7 -- s on the end screen, then back to the hub
 Matches.CLEAR = 3 -- s after a match's players are back in the hub, its site is free again (a copy is cleared)
 Matches.MAX_LIVE = 6 -- sites in use at once (live matches and counting-down pads; the arenas themselves count)
 
-local TEAM_NAMES = { "PINK", "CYAN", "YELLOW" }
-local TEAM_HEX = { "#ff4fd8", "#37d6ff", "#ffe14d" }
+-- (20 Nov 2026, the owner: "maybe lets use differnt accent colors than the rivals one please": shared/TeamColors.luau,
+-- the pads' palette too; TeamColors.OLD = true puts back pink / cyan / yellow)
+local TEAM_NAMES: { string } = {}
+local TEAM_HEX: { string } = {}
+for i = 1, 4 do TEAM_NAMES[i] = TeamColors.name(i); TEAM_HEX[i] = TeamColors.hex(i) end
 
 type Fighter = any
 -- where a match is played: an arena under workspace.Map, or a copy of one in Map.ArenaCopies

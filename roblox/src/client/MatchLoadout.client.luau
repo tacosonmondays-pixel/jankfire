@@ -39,7 +39,8 @@ local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local GunPreview = require(script.Parent:WaitForChild("GunPreview")) :: any
 local Unlocks = require(Shared:WaitForChild("Unlocks")) :: any -- (weapons open by level, a few are Robux: docs/PROGRESSION.md)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
-local TEAM_COLORS = { Color3.fromHex("#ff4fd8"), Color3.fromHex("#37d6ff"), Color3.fromHex("#ffe14d") } -- (the score's)
+local TeamColorsMod = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("TeamColors")) :: any -- (shared/TeamColors.luau: the pads' and the matches' palette, 20 Nov 2026)
+local TEAM_COLORS = { TeamColorsMod.color(1), TeamColorsMod.color(2), TeamColorsMod.color(3), TeamColorsMod.color(4) } -- (the score's)
 
 local me = Players.LocalPlayer
 local new, text = T.new, T.text

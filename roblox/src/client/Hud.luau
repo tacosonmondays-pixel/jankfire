@@ -128,9 +128,12 @@ end
 
 -- the line as it is drawn: capitals, and its key word in colour. a team's name takes the team's colour (the same three
 -- as the pads and the score); with no team in it, the first number (42m, x3, 24) is amber. the words are not changed
-local TEAM = { PINK = "#ff4fd8", CYAN = "#37d6ff", YELLOW = "#ffe14d" }
+-- (20 Nov 2026: the names and colours are shared/TeamColors.luau's, the pads' and the matches' one palette)
+local TeamColorsMod = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("TeamColors")) :: any
+local TEAM: { [string]: string } = {}
 -- (colour-blind modes, Settings > HUD: the team's colour after the player's palette)
-local TEAM_I = { PINK = 1, CYAN = 2, YELLOW = 3 }
+local TEAM_I: { [string]: number } = {}
+for i, e in TeamColorsMod.list() do TEAM[e.name] = TeamColorsMod.hex(i); TEAM_I[e.name] = i end
 local function teamHex(w: string): string
 	local ok, S = pcall(require, script.Parent:WaitForChild("Settings"))
 	return if ok and type(S) == "table" then (S :: any).teamHex(TEAM_I[w]) else TEAM[w]

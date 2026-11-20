@@ -70,12 +70,11 @@ Settings.live = { aim = 0, scoped = false, wid = "", spread = 0 }
 -- the colour-blind palettes for the three team colours (PINK, CYAN, YELLOW: Matches' TEAM_HEX, Hud's TEAM). the red-green
 -- ones are the Okabe-Ito colours nearest each team (made to stay apart for every kind of colour blindness), the
 -- blue-yellow one moves yellow to white and pink to red, the pair that kind of eye mixes up
-Settings.TEAM = { "ff4fd8", "37d6ff", "ffe14d" }
-Settings.CB = {
-	protan = { "d98cbf", "56b4e9", "f0e442" },
-	deutan = { "cc79a7", "56b4e9", "f0e442" },
-	tritan = { "ff5a5a", "35c4c4", "f4f4f4" },
-}
+-- (20 Nov 2026: the teams' palette and its colour-blind sets are shared/TeamColors.luau's: the pads and the matches agree)
+local TeamColorsMod = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("TeamColors")) :: any
+Settings.TEAM = {} :: { string }
+for i = 1, 4 do Settings.TEAM[i] = string.sub(TeamColorsMod.hex(i), 2) end
+Settings.CB = TeamColorsMod.cb() :: { [string]: { string } }
 -- the enemy outline colours (Settings > HUD; the goggles' outlines on everyone else)
 Settings.ENEMY = { green = Color3.fromRGB(190, 255, 200), red = Color3.fromRGB(255, 75, 75), yellow = Color3.fromRGB(255, 225, 77),
 	magenta = Color3.fromRGB(255, 106, 224), cyan = Color3.fromRGB(55, 214, 255), white = Color3.fromRGB(255, 255, 255) }

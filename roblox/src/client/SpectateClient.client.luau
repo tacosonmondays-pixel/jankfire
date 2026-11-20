@@ -25,7 +25,8 @@ local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
 local camera = workspace.CurrentCamera
 local new, text = T.new, T.text
-local TEAM_COLORS = { Color3.fromRGB(255, 79, 216), Color3.fromRGB(55, 214, 255), Color3.fromRGB(255, 225, 77) }
+local TeamColors = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("TeamColors")) :: any
+local TEAM_COLORS = { TeamColors.color(1), TeamColors.color(2), TeamColors.color(3), TeamColors.color(4) }
 
 local function ask(op: string, a: any?): any
 	local ok, res = pcall(function() return Remote:InvokeServer(op, a) end)
