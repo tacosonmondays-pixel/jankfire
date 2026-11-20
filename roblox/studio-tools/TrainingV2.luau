@@ -150,8 +150,9 @@ local function lib() return SS:WaitForChild("JankfireMeshes") end
 -- ---------------------------------------------------------------- the kit
 -- one asset holds every model: a piece is "<model><n>__<kind>_<hex>"; the exporter turned them so they arrive in the
 -- kit's own frame (pivot = the kit origin, the middle of the footprint on the floor; front +Z)
-function T.import(): string
-	local ok, container = pcall(function() return InsertService:LoadAsset(T.KIT) end)
+function T.import(kit: number?): string
+	local KIT = kit or T.KIT
+	local ok, container = pcall(function() return InsertService:LoadAsset(KIT) end)
 	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
 	local groups, bad = {}, 0
 	for _, d in container:GetDescendants() do
@@ -170,7 +171,7 @@ function T.import(): string
 		m.Name = name
 		for _, p in parts do p.Parent = m end
 		m.WorldPivot = CFrame.identity
-		m:SetAttribute("AssetId", T.KIT); m:SetAttribute("Kit", "training"); m:SetAttribute("FileFrame", true)
+		m:SetAttribute("AssetId", KIT); m:SetAttribute("Kit", "training"); m:SetAttribute("FileFrame", true)
 		local old = lib():FindFirstChild(name)
 		if old then old:Destroy() end
 		m.Parent = lib()
@@ -1512,9 +1513,9 @@ local function topRoom(B, D)
 	local front, fb = TOPD.frame + 1.8, TOPD.frame - 1.78 -- (the frame's front; its back, 0.02 inside it)
 	-- the collar: the frame's section carried back to the wall (the wall's colour: from the gallery, the wall steps out
 	-- to meet the frame)
-	B.blk("Shell", "TopCollar", x0 - TOPD.jamb, x0, y0, oy1, fb, CZ1, P.courseWall)
-	B.blk("Shell", "TopCollar", x1, x1 + TOPD.jamb, y0, oy1, fb, CZ1, P.courseWall)
-	B.blk("Shell", "TopCollar", x0, x1, y1, oy1, fb, CZ1, P.courseWall)
+	B.blk("Shell", "TopCollar", x0 - TOPD.jamb, x0, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
+	B.blk("Shell", "TopCollar", x1, x1 + TOPD.jamb, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
+	B.blk("Shell", "TopCollar", x0, x1, y1, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
 	-- the frame itself stops nobody: its jambs and head, unseen and solid, from its front to the collar
 	B.solid("TopFrameSolid", CF(x0 - TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
 	B.solid("TopFrameSolid", CF(x1 + TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
@@ -1529,7 +1530,7 @@ local function topRoom(B, D)
 	end
 	B.blk("Shell", "TopCeiling", x0, x1, y1 - 0.06, y1, fb, TOPD.back, P.ceil)
 	B.blk("Shell", "TopFloor", x0 + 0.3, x1 - 0.3, y0, y0 + 0.06, TOPD.face - 2.4, TOPD.back, P.ledge)
-	B.blk("Shell", "TopBack", x0, x1, y0, y1, TOPD.back, T.FACE, P.warmWall)
+	B.blk("Shell", "TopBack", x0, x1, y0, y1, TOPD.back, (TOPD.backTo or T.FACE), P.warmWall) -- (v5: TOPD.wall / TOPD.backTo: a TOP on any wall)
 	B.blk("Scenery", "TopLight", x0 + 2.6, x1 - 2.6, y1 - 0.24, y1 - 0.06, fb - 0.6, fb - 3.4, P.panel, { ghost = true, mat = NEON })
 	B.lamp(TOPD.x, y1 - 1.2, fb - 2, "point", 14, 0.6, P.warm)
 end
@@ -1939,6 +1940,16 @@ end
 -- the v3 rooms (T.ROOMS): their module sets what the rest reads (T.DUMMIES, T.RAILS, T.LANE, T.COURSE, T.GOLD1,
 -- T.EGG_DOOR, T.TOPD3) now, before anything builds or checks
 local ROOMS3 = nil
+-- (20 Nov 2026, the owner: "oh I though training hub would get enrirelyt redone?") "v5" = PolishBackup.TrainingCompound
+-- (roblox/studio-tools/TrainingCompound.luau): a new compound on new footprints with its own arrival (OWN_ARRIVAL: no
+-- muster); the range (and the shop) as before. vault Hubs/Training redo plan.md
+if T.ROOMS == "v5" then
+	local src5 = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingCompound")
+	if src5 then
+		ROOMS3 = require(src5:Clone())
+		ROOMS3.apply(T, { Y0 = Y0, MY = MY, MZ = MZ, MTOP = MTOP, NEON = NEON, PASS = PASS, folderIn = folderIn, rail = rail, healPad = healPad, topRoom = topRoom })
+	end
+end
 if T.ROOMS == "v3" or T.ROOMS == "v4" then
 	local src = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingRooms")
 	local src4 = SS:FindFirstChild("PolishBackup") and SS.PolishBackup:FindFirstChild("TrainingRedo")
@@ -1959,8 +1970,8 @@ function T.build(mode): string
 		local old = workspace.Map:FindFirstChild("TrainingStage"); if old then old:Destroy() end
 	end
 	local B = new(live)
-	if (T.ROOMS == "v3" or T.ROOMS == "v4") and not ROOMS3 then return "STOPPED: T.ROOMS is " .. T.ROOMS .. " but PolishBackup.TrainingRooms (or, for v4, TrainingRedo) is missing" end
-	muster(B)
+	if (T.ROOMS == "v3" or T.ROOMS == "v4" or T.ROOMS == "v5") and not ROOMS3 then return "STOPPED: T.ROOMS is " .. T.ROOMS .. " but its module (TrainingRooms, TrainingRedo or TrainingCompound) is missing" end
+	if not (ROOMS3 and ROOMS3.OWN_ARRIVAL) then muster(B) end
 	if ROOMS3 then ROOMS3.build(B) else yard(B) end
 	range(B)
 	if not ROOMS3 then course(B) end
@@ -1977,7 +1988,7 @@ function T.build(mode): string
 	local home
 	if live then
 		home = hub
-		setLook("v2")
+		setLook(if T.ROOMS == "v5" then "v5" else "v2") -- (v5 has its own late-afternoon look: HubLook.looks.training_v5)
 	else
 		home = Instance.new("Folder"); home.Name = "TrainingStage"; home.Parent = workspace.Map
 	end
@@ -2033,9 +2044,13 @@ function T.headRoom(stage, step): (string, number)
 	if not tg then return "head room: no TrainingGround", -1 end
 	step = step or 0.5
 	-- (parts you can see but not shoot are read too, and put back after)
-	local was = {}
+	local was, wasGroup = {}, {}
 	for _, d in tg:GetDescendants() do
-		if d:IsA("BasePart") and not d.CanQuery and d.Transparency < 0.95 then was[d] = true; d.CanQuery = true end
+		if d:IsA("BasePart") and not d.CanQuery and (d.Transparency < 0.95 or (d.CanCollide and d.CollisionGroup == (T.RANGE_WALL_GROUP or "JFRayBlind"))) then
+			was[d] = true; d.CanQuery = true
+			-- (a bodies-only guard's group meets the players' groups, not the probe's Default: in Default for the check)
+			if d.CollisionGroup ~= "Default" then wasGroup[d] = d.CollisionGroup; d.CollisionGroup = "Default" end
+		end
 	end
 	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { tg }; rp.RespectCanCollide = true
 	local fit = OverlapParams.new(); fit.FilterType = Enum.RaycastFilterType.Include; fit.FilterDescendantsInstances = { tg }; fit.RespectCanCollide = true
@@ -2121,6 +2136,7 @@ function T.headRoom(stage, step): (string, number)
 	end)
 	body:Destroy(); ball:Destroy(); tight:Destroy()
 	for d in was do d.CanQuery = false end
+	for d, g in wasGroup do d.CollisionGroup = g end
 	if not ok then return "head room: FAILED " .. tostring(err), -1 end
 	local out = {}
 	table.sort(order, function(a, b) return found[a].min < found[b].min or (found[a].min == found[b].min and found[a].n > found[b].n) end)
@@ -2198,8 +2214,9 @@ function T.check(stage): string
 		end
 	end
 	table.insert(out, ("plate-to-Carl sight lines blocked (each plate to its own lane): %d of %d"):format(blocked, lines))
-	local gunOk = clear(V3(-16, 245, -8150) + O, ds.Stand1.Position + V3(0, 4, 0))
-	table.insert(out, "gun sessions' test line (-16, 245, -8150) to Stand1: " .. (if gunOk then "clear" else "BLOCKED"))
+	local tl = T.TESTLINE or V3(-16, 245, -8150) -- (v5 moves the gun sessions' spot: T.TESTLINE)
+	local gunOk = clear(tl + O, ds.Stand1.Position + V3(0, 4, 0))
+	table.insert(out, ("gun sessions' test line (%.0f, %.0f, %.0f) to Stand1: "):format(tl.X, tl.Y, tl.Z) .. (if gunOk then "clear" else "BLOCKED"))
 	-- nothing solid where you appear
 	local op = OverlapParams.new(); op.FilterType = Enum.RaycastFilterType.Include; op.FilterDescendantsInstances = { tg }; op.RespectCanCollide = true
 	local stuck = 0
@@ -2217,13 +2234,15 @@ function T.check(stage): string
 	-- a fast player (grapple, pads) goes through thin skins
 	local cp = RaycastParams.new(); cp.FilterType = Enum.RaycastFilterType.Include; cp.FilterDescendantsInstances = { tg }; cp.RespectCanCollide = true
 	local S5 = sideFrame(nil, 5)
-	local pts = {
+	local pts = if ROOMS3 and ROOMS3.OWN_ARRIVAL then {} else {
 		V3(0, MY + 4, MZ), V3(0, MY + 14, MZ), V3(0, MY + 26, MZ), V3(12, MY + 4, MZ + 8), V3(-12, MY + 12, MZ - 8),
 		S5:PointToWorldSpace(V3(0, MY + 4, -(A + WALL + 3))), V3(26, MY + 4, MZ), V3(-26, MY + 4, MZ),
+	}
+	for _, q in {
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
 		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
 		V3(33, 230, -8277), V3(33, 242, -8296), V3(44, 252, -8291), -- (the walk-out: its landing, the turn in the bank, the corridor)
-	}
+	} do table.insert(pts, q) end
 	local v2pts = {
 		V3(-58, Y0 + 4, -8120), V3(CXM, Y0 + 4, -8120), V3(-80, 274, -8225), V3(CXM, 286, TOWER.z), V3(-50, 280, -8130),
 		V3(-90, Y0 + 4, -8240), V3(CX0 + 6, 274, CZ1 + 6), V3(-100, 282, CZ1 + 8), V3(-70, 270, -8200), V3(CX0 + 30, 285, -8125),
@@ -2232,8 +2251,10 @@ function T.check(stage): string
 		V3(AISLE.x, Y0 + 4, -8160), V3(AISLE.x, AISLE.ceil - 4, -8200), V3(AISLE.x, Y0 + 4, -8250), V3(AISLE.x1 + 1, 250, -8186), -- (the yard's side hall, and in an opening of its arcade)
 	}
 	for _, q in (if ROOMS3 and ROOMS3.SEAL then ROOMS3.SEAL else v2pts) do table.insert(pts, q) end
-	for _, z in { -8154, -8186, -8218, -8250 } do
-		for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
+	if not (ROOMS3 and ROOMS3.OWN_ARRIVAL) then
+		for _, z in { -8154, -8186, -8218, -8250 } do
+			for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
+		end
 	end
 	local leaks, rays, thin = 0, 0, {}
 	for _, at in pts do

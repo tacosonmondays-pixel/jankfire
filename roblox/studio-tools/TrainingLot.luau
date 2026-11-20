@@ -901,12 +901,12 @@ local function land()
 		local a, b = V3(x0, cy, z0), V3(x1, cy, z1)
 		part("Berm", CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0), V3((b - a).Magnitude, dia, dia), C.berm, { cyl = true })
 	end
-	roll(-204, -8250, -204, -8790, 52, 228)   -- west
+	roll(-204, -8262, -204, -8790, 52, 228)   -- west (from behind the v5 course's south wall: it poked into the course)
 	roll(204, -8250, 204, -8790, 52, 228)     -- east
 	roll(-240, -8754, 240, -8754, 52, 228)    -- south
 	roll(-240, -8282, F.x0 - 1, -8282, 52, 228) -- north, beside the hall (it ends at the façade's end)
 	roll(93, -8282, 240, -8282, 52, 228)
-	roll(-232, -8250, -232, -8620, 80, 222)
+	roll(-232, -8262, -232, -8620, 80, 222)
 	roll(232, -8250, 232, -8620, 80, 222)
 	-- (the lumps' and berms' surfaces for the trees: they go into a folder in the place for the rays, then back)
 	-- the near ridge
