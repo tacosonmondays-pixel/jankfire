@@ -198,6 +198,36 @@ local function lerpAngle(a: number, b: number, u: number): number
 	return a + d * u
 end
 
+-- a copy of a ghost's Shredder (its skin's tool when there is one) in its right hand: scripts and sounds out, the
+-- pieces massless and loose, welded at the tool's own Grip as Roblox's RightGrip does. false: none to copy
+local function shredderInto(g: Ghost): boolean
+	local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+	local sk = g.skins.shredder
+	local src = tools and ((sk and tools:FindFirstChild("Shredder@" .. sk)) or tools:FindFirstChild("Shredder"))
+	local hand = g.model:FindFirstChild("RightHand") or g.model:FindFirstChild("Right Arm")
+	if not src or not src:IsA("Tool") or not hand or not hand:IsA("BasePart") then return false end
+	local t = src:Clone()
+	t.Name = "Shredder"
+	for _, d in t:GetDescendants() do
+		if d:IsA("BaseScript") or d:IsA("Sound") then
+			d:Destroy()
+		elseif d:IsA("BasePart") then
+			d.Anchored = false; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.Massless = true
+		end
+	end
+	local h = t:FindFirstChild("Handle")
+	if not h or not h:IsA("BasePart") then t:Destroy(); return false end
+	local att = hand:FindFirstChild("RightGripAttachment")
+	local grip = Instance.new("Weld")
+	grip.Name = "JankShredderGrip"
+	grip.Part0 = hand; grip.Part1 = h
+	grip.C0 = if att and att:IsA("Attachment") then att.CFrame else CFrame.new(0, -hand.Size.Y / 2, 0) * CFrame.Angles(-math.pi / 2, 0, 0)
+	grip.C1 = t.Grip
+	grip.Parent = hand
+	t.Parent = g.model
+	return true
+end
+
 -- a ghost at replay time t: between its two frames around t
 local function poseGhost(g: Ghost, t: number, weapons: { string })
 	local tr = g.track
@@ -223,7 +253,19 @@ local function poseGhost(g: Ghost, t: number, weapons: { string })
 	if wid ~= g.wid then
 		g.wid = wid
 		g.model:SetAttribute("Skin", if wid then g.skins[wid] else nil)
-		g.model:SetAttribute("TPWeapon", wid)
+		-- (the Shredder is a Tool, not a built gun - the owner, 20 Nov: "shreddar rekplay broiken": a ghost's copy has
+		-- every Tool stripped (Replay.clean) and TPWeapon "shredder" left ThirdPerson taking the ghost's own body for
+		-- the tool - no gun, the arms holding nothing. Now the ghost holds a copy of the real one, its skin's own
+		-- ("Shredder@<skin>"), gripped as Roblox grips a held Tool; ThirdPerson then holds it as it does a player's)
+		local had = g.model:FindFirstChild("Shredder")
+		if had and had:IsA("Tool") then had:Destroy() end
+		local og = g.model:FindFirstChild("JankShredderGrip", true)
+		if og then og:Destroy() end
+		if wid == "shredder" and shredderInto(g) then
+			g.model:SetAttribute("TPWeapon", nil)
+		else
+			g.model:SetAttribute("TPWeapon", wid)
+		end
 	end
 	-- the legs: run while moving
 	local speed = if j > i and tr.s[j] > tr.s[i] then (Vector3.new(tr.p[j].X - tr.p[i].X, 0, tr.p[j].Z - tr.p[i].Z)).Magnitude / (tr.s[j] - tr.s[i]) else 0
