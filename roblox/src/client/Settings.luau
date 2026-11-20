@@ -24,7 +24,7 @@ Settings.DEFAULTS = {
 	["fov"] = 80, ["fov.kick"] = true, ["aim.toggle"] = false, ["crouch.toggle"] = false, ["sprint.toggle"] = false,
 	-- crosshair (the defaults draw the crosshair the game always had: four white bars, 8 x 2, 5 px from the middle)
 	["xh.style"] = "cross", ["xh.color"] = "ffffff", ["xh.size"] = 8, ["xh.thick"] = 2, ["xh.gap"] = 5, ["xh.outline"] = 1,
-	["xh.dot"] = 0, ["xh.alpha"] = 1, ["xh.spread"] = false, ["xh.hideAim"] = true,
+	["xh.dot"] = 0, ["xh.alpha"] = 1, ["xh.spread"] = false, ["xh.hideAim"] = true, ["xh.weapon"] = true,
 	-- audio (percent of each group's own level)
 	["vol.master"] = 100, ["vol.weapons"] = 100, ["vol.effects"] = 100, ["vol.ui"] = 100, ["snd.hit"] = true, ["snd.kill"] = true,
 	["vol.music"] = 100, ["snd.emoteMusic"] = true, -- (the dance emotes' music and others' on/off: the flair session's, 19 Nov)

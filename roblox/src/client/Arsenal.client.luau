@@ -524,6 +524,10 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 	if a.reloadUntil > 0 then return end
 	if a.mag <= 0 then Sfx.play("empty"); burstLeft = 0; reload(hand); return end
 	local F = if fan then w.fan else nil
+	if w.fan then -- (the fan's count in this string, the server's rule (Weapons.fanShot): the crosshair opens with it)
+		local fa = a :: any
+		if F then fa.fanK = (if now - (fa.fanT or -1e9) <= (w.fan.reset or 0.45) then (fa.fanK or 0) else 0) + 1; fa.fanT = now else fa.fanK = 0 end
+	end
 	local iv = 1 / Weapons.fireRate(w, hp())
 	nextShot[key] = math.max(nextShot[key] or 0, now - math.min(0.04, iv / 2)) + iv
 	minigun.shotT = now
@@ -1304,7 +1308,9 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 	else
 		smearStep(now, true)
 	end
-	H.step(dt, aim, scoped, held, if w and w.kind ~= "melee" then ((w.spread or 0) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim) else 0)
+	-- (the spread the next shot takes: a fanned Revolver's next fan shot while a string is going)
+	H.step(dt, aim, scoped, held, if w and w.kind ~= "melee" then (((if w.fan and a and ((a :: any).fanK or 0) > 0 and now - ((a :: any).fanT or 0) <= (w.fan.reset or 0.45)
+		then (select(2, Weapons.fanShot(w, (a :: any).fanK + 1))) else (w.spread or 0)) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim)) else 0)
 	-- the Shredder's copy: its own script goes with its tool (a death, a test deleting it) and can't clear it, so a copy
 	-- whose tool is gone would stay in your camera (seen 16 Nov 2026)
 	for _, c in camera:GetChildren() do

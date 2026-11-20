@@ -4,7 +4,8 @@
 -- the page's own preview. one drawing function for both, so the preview is the crosshair.
 -- options (Settings keys xh.*): style cross / dot / circle / t, colour (hex), size (line length), thickness, gap,
 -- outline (0 = none), centre dot (0 = none), opacity, show spread (the gap opens with the gun's spread), hide while
--- aiming. defaults = the crosshair the game always had.
+-- aiming, weapon reticles (a shape per kind of weapon from its own numbers: "weapon reticles" below). defaults =
+-- the crosshair the game always had, with the weapon reticles on.
 -- a share code: "X1" + style letter + colour hex + seven base-36 digits (size, thickness, gap, outline, dot, opacity
 -- in tenths, flags), 16 letters and numbers, e.g. X1CFFFFFF82510A2. nothing else in it, no links.
 local Settings = require(script.Parent:WaitForChild("Settings")) :: any
@@ -43,13 +44,21 @@ function XH.opts(): Opts
 end
 
 -- ------------------------------------------------------------------ drawing
--- each holder keeps its pieces: 4 bars, a dot, a ring (built once, then only resized and recoloured)
-type Pieces = { bars: { Frame }, dot: Frame, ring: Frame, ringStroke: UIStroke, under: Frame, underStroke: UIStroke, strokes: { UIStroke }, key: string }
+-- a shape: bars ({ x, y, width, height }: each one's middle, in pixels from the crosshair's middle), a centre dot (its
+-- size, 0 = none) and a ring (the radius its inner edge sits on, nil = none; ringT its line, ringK its share of the
+-- opacity). the player's own crosshair is one shape (XH.own), each weapon reticle another (XH.drawFor)
+export type Shape = { bars: { { number } }, dot: number, ring: number?, ringT: number?, ringK: number? }
+
+-- each holder keeps its pieces: 8 bars, a dot, a ring and the ring's outline (built once, then only resized and
+-- recoloured)
+local MAX_BARS = 8
+type Pieces = { bars: { Frame }, strokes: { UIStroke }, dot: Frame, dotStroke: UIStroke, ring: Frame, ringStroke: UIStroke,
+	under: Frame, underStroke: UIStroke, key: string }
 local built: { [Frame]: Pieces } = setmetatable({}, { __mode = "k" }) :: any
 
 local function piece(parent: Frame, name: string): (Frame, UIStroke)
 	local f = Instance.new("Frame")
-	f.Name = name; f.BorderSizePixel = 0; f.AnchorPoint = Vector2.new(0.5, 0.5); f.ZIndex = 2
+	f.Name = name; f.BorderSizePixel = 0; f.AnchorPoint = Vector2.new(0.5, 0.5); f.ZIndex = 2; f.Visible = false
 	local s = Instance.new("UIStroke"); s.Color = Color3.new(0, 0, 0); s.Parent = f
 	f.Parent = parent
 	return f, s
@@ -58,18 +67,17 @@ local function build(holder: Frame): Pieces
 	local p = built[holder]
 	if p and p.dot.Parent == holder then return p end
 	for _, c in holder:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end -- (a UIScale on the holder stays)
-	local strokes = {}
-	local bars = {}
-	for i = 1, 4 do
+	local bars, strokes = {}, {}
+	for i = 1, MAX_BARS do
 		local b, s = piece(holder, "Bar" .. i)
 		table.insert(bars, b); table.insert(strokes, s)
 	end
 	local dot, ds = piece(holder, "Dot")
-	table.insert(strokes, ds)
 	local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(0.5, 0); dc.Parent = dot
 	local function round(name: string, z: number): (Frame, UIStroke)
 		local r = Instance.new("Frame")
 		r.Name = name; r.BackgroundTransparency = 1; r.AnchorPoint = Vector2.new(0.5, 0.5); r.Position = UDim2.fromScale(0.5, 0.5); r.ZIndex = z
+		r.Visible = false
 		local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0.5, 0); rc.Parent = r
 		local rs = Instance.new("UIStroke"); rs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; rs.Color = Color3.new(0, 0, 0); rs.Parent = r
 		r.Parent = holder
@@ -77,74 +85,177 @@ local function build(holder: Frame): Pieces
 	end
 	local under, us = round("Under", 1) -- (the ring's outline: drawn first, under it)
 	local ring, rs = round("Ring", 2)
-	p = { bars = bars, dot = dot, ring = ring, ringStroke = rs, under = under, underStroke = us, strokes = strokes, key = "" }
+	p = { bars = bars, strokes = strokes, dot = dot, dotStroke = ds, ring = ring, ringStroke = rs, under = under, underStroke = us, key = "" }
 	built[holder] = p
 	return p
 end
 
--- draw o into holder (a frame centred where the crosshair goes). fade 0..1 (1 = gone), extra = more gap in pixels
--- (the spread). writes only what changed, so it can run every frame
-function XH.draw(holder: Frame, o: Opts, fade: number, extra: number?)
-	local p = build(holder)
+-- the player's own crosshair as a shape: style, size, thickness, gap (+ extra px: the spread), dot
+function XH.own(o: Opts, extra: number?): Shape
 	local gap = o.gap + math.floor((extra or 0) + 0.5)
-	local tr = 1 - o.alpha * (1 - math.clamp(fade, 0, 1))
-	local key = table.concat({ o.style, o.color:ToHex(), o.size, o.thick, gap, o.outline, o.dot, math.floor(tr * 100) }, ",")
+	local bars = {}
+	if o.style == "cross" or o.style == "t" then
+		local a = gap + o.size / 2 -- (each bar sits gap px out from the middle: up, down, left, right; a T has no top)
+		if o.style == "cross" then table.insert(bars, { 0, -a, o.thick, o.size }) end
+		table.insert(bars, { 0, a, o.thick, o.size })
+		table.insert(bars, { -a, 0, o.size, o.thick })
+		table.insert(bars, { a, 0, o.size, o.thick })
+	end
+	return { bars = bars, dot = if o.style == "dot" then (if o.dot > 0 then o.dot else 4) else o.dot,
+		ring = if o.style == "circle" then gap + o.size / 2 else nil, ringT = o.thick, ringK = 1 }
+end
+
+-- draw into holder (a frame centred where the crosshair goes) the player's crosshair (extra = more gap in px), or a
+-- given shape, in o's colour, outline and opacity. fade 0..1 (1 = gone). writes only what changed, so it runs every frame
+function XH.draw(holder: Frame, o: Opts, fade: number, extra: any?)
+	local shape: Shape = if type(extra) == "table" then extra else XH.own(o, if type(extra) == "number" then extra else 0)
+	local p = build(holder)
+	local live = o.alpha * (1 - math.clamp(fade, 0, 1)) -- (how much of it shows)
+	local tr = 1 - live
+	local outT = if o.outline > 0 then tr else 1
+	local rk = shape.ringK or 1
+	local parts = { o.color:ToHex(), o.outline, math.floor(tr * 100), shape.dot, shape.ring or -1, shape.ringT or 0, rk }
+	for _, b in shape.bars do table.insert(parts, table.concat(b, ":")) end
+	local key = table.concat(parts, ",")
 	if key == p.key then return end
 	p.key = key
-	local lines = o.style == "cross" or o.style == "t"
-	local outT = if o.outline > 0 then tr else 1
-	-- the bars: up, down, left, right (a T has no top). each sits gap px out from the middle
-	local dirs = { Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2.new(1, 0) }
-	for i, b in p.bars do
-		local d = dirs[i]
-		local show = lines and not (o.style == "t" and i == 1)
-		b.Visible = show
-		if show then
-			local along = gap + o.size / 2
-			b.Size = if d.X == 0 then UDim2.fromOffset(o.thick, o.size) else UDim2.fromOffset(o.size, o.thick)
-			-- (odd thickness: half a pixel off so the bar lands on whole pixels)
-			b.Position = UDim2.new(0.5, d.X * along, 0.5, d.Y * along)
-			b.BackgroundColor3 = o.color
-			b.BackgroundTransparency = tr
+	local ow = math.max(o.outline, 1)
+	for i, f in p.bars do
+		local b = shape.bars[i]
+		f.Visible = b ~= nil
+		if b then
+			f.Size = UDim2.fromOffset(b[3], b[4])
+			f.Position = UDim2.new(0.5, b[1], 0.5, b[2])
+			f.BackgroundColor3 = o.color
+			f.BackgroundTransparency = tr
+			p.strokes[i].Thickness = ow; p.strokes[i].Transparency = outT
 		end
-		local s = p.strokes[i]
-		s.Thickness = math.max(o.outline, 1); s.Transparency = outT
 	end
-	-- the dot: the centre dot, or the whole crosshair in the dot style
-	local dotSize = if o.style == "dot" then (if o.dot > 0 then o.dot else 4) else o.dot
-	p.dot.Visible = dotSize > 0
-	p.dot.Size = UDim2.fromOffset(dotSize, dotSize)
+	p.dot.Visible = shape.dot > 0
+	p.dot.Size = UDim2.fromOffset(shape.dot, shape.dot)
 	p.dot.Position = UDim2.fromScale(0.5, 0.5)
 	p.dot.BackgroundColor3 = o.color
 	p.dot.BackgroundTransparency = tr
-	local ds = p.strokes[5]
-	ds.Thickness = math.max(o.outline, 1); ds.Transparency = outT
-	-- the ring: its line on the gap + half the size, thickness = the line thickness
-	local circle = o.style == "circle"
-	p.ring.Visible = circle
-	if circle then
-		local r = gap + o.size / 2
+	p.dotStroke.Thickness = ow; p.dotStroke.Transparency = outT
+	-- the ring: its inner edge on the radius (a Border stroke grows outward), so what it rings is inside the line
+	local r = shape.ring
+	local ringT = shape.ringT or o.thick
+	p.ring.Visible = r ~= nil and r > 0
+	if r and r > 0 then
 		local dia = math.max(4, math.floor(r * 2 + 0.5))
 		p.ring.Size = UDim2.fromOffset(dia, dia)
-		p.ringStroke.Thickness = o.thick
+		p.ringStroke.Thickness = ringT
 		p.ringStroke.Color = o.color
-		p.ringStroke.Transparency = tr
+		p.ringStroke.Transparency = 1 - live * rk
 	end
-	-- (a ring can't have an outline of its own: a dark ring under it, outline px wider on both sides, does the job.
-	-- a Border stroke only grows outward, so the dark one starts outline px further in)
-	p.under.Visible = circle and o.outline > 0
+	-- (a ring can't have an outline of its own: a dark ring under it, outline px wider on both sides, does the job. a
+	-- Border stroke only grows outward, so the dark one starts outline px further in)
+	p.under.Visible = p.ring.Visible and o.outline > 0
 	if p.under.Visible then
 		local d = p.ring.Size.X.Offset - o.outline * 2
 		p.under.Size = UDim2.fromOffset(d, d)
-		p.underStroke.Thickness = o.thick + o.outline * 2
-		p.underStroke.Transparency = outT
+		p.underStroke.Thickness = ringT + o.outline * 2
+		p.underStroke.Transparency = 1 - live * rk
 	end
 end
 
--- how many pixels a cone of `spread` (radians, the half-angle the shots land in) covers at the middle of the screen
+-- how many pixels a cone of `spread` covers from the middle of the screen. spread is the cone's edge as the tangent
+-- of its angle, the way Hitbox.spreadDir rolls a shot (the offset across the look is up to spread), so a shot of that
+-- spread lands inside this radius
 function XH.spreadPx(spread: number, fovDeg: number, screenH: number): number
 	if spread <= 0 then return 0 end
-	return math.tan(spread) / math.tan(math.rad(fovDeg) / 2) * screenH / 2
+	return spread / math.tan(math.rad(fovDeg) / 2) * screenH / 2
+end
+
+-- ------------------------------------------------------------------ weapon reticles
+-- WEAPON RETICLES (xh.weapon, on by default): each kind of weapon gets a reticle drawn from its own numbers in
+-- Weapons.luau, read live; colour, outline, opacity, thickness and dot are still the player's. off: the player's own
+-- crosshair on every weapon.
+--   shotgun   (more than one pellet): a circle on the pellet cone. Arsenal's spread (base + bloom, x the sights'
+--             ads.spread as you aim), at this FOV and zoom: every pellet lands inside the line. it stays up, half
+--             faded, down the sights (sights don't show the spread)
+--   auto      (automatics, the burst rifle): the player's own crosshair, its gap always opening with spread + bloom
+--   precision (pistols, the revolver, the lever rifle): a dot and four short ticks just outside the cone; the
+--             revolver's fan opens them shot by shot (Arsenal passes the next fanned shot's spread)
+--   scoped    (sniper, marksman, the scythe's rifle): from the hip a dot and a faint ring on the hip spread (the scope
+--             takes over down the sights)
+--   lob       (launchers, throws, the bow): a dot and short marks under it where the shot has dropped to at 30, 60
+--             and 90 studs (speed and gravity from the row, as WeaponProj flies it); none where the drop is too small
+--   cone      (the leaf blower, the hot sauce, the taser, the TV remote): a faint ring on the cone they reach
+--   point     (melee, the laser, the lasso, the cart): a small dot
+local Weapons = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Weapons")) :: any
+local GRAV_S = 3 -- (WeaponProj.server pulls a shot down by grav x S studs/s^2; S = 3 studs to the metre, Weapons.luau)
+local LOB_AT = { 30, 60, 90 } -- studs out, where the drop marks go
+
+function XH.class(wid: string?): string
+	local w = if wid then Weapons.list[wid] else nil
+	if not w then return "own" end
+	local k = w.kind
+	if k == "hitscan" then
+		if (w.pellets or 1) > 1 then return "shotgun" end
+		if w.ads and w.ads.scope then return "scoped" end
+		if w.auto or w.burst then return "auto" end
+		return "precision"
+	elseif k == "proj" or k == "bow" or k == "cards" then return "lob"
+	elseif (k == "hold" or k == "zap" or k == "remote") and type(w.cone) == "number" then return "cone"
+	elseif k == "melee" or k == "hold" or k == "lasso" or k == "cart" then return "point"
+	end
+	return "own"
+end
+
+-- the reticle's shape for a class. sp = the spread now in px, k = px per unit of tangent at the middle
+local function shapeOf(cls: string, w: any, o: Opts, sp: number, k: number, screenH: number): Shape
+	local big = screenH * 0.45
+	if cls == "shotgun" then
+		return { bars = {}, dot = o.dot, ring = math.clamp(sp, 6, big), ringT = o.thick, ringK = 1 }
+	elseif cls == "auto" then
+		return XH.own(o, math.min(60, sp))
+	elseif cls == "precision" then
+		local len = math.clamp(math.floor(o.size * 0.6 + 0.5), 3, 6)
+		local t = math.min(o.thick, 2)
+		local a = math.floor(2 + o.gap * 0.4 + math.min(sp, big) + 0.5) + len / 2
+		return { bars = { { 0, -a, t, len }, { 0, a, t, len }, { -a, 0, len, t }, { a, 0, len, t } }, dot = math.max(o.dot, 3) }
+	elseif cls == "scoped" then
+		return { bars = {}, dot = math.max(o.dot, 3), ring = math.clamp(sp, 6, big), ringT = 1, ringK = 0.45 }
+	elseif cls == "lob" then
+		local bars = {}
+		local v = (w.speedMax or w.speed or 0) :: number
+		local g = ((w.grav or 0) :: number) * GRAV_S
+		if v > 0 and g > 0 then
+			local last = 0
+			for i, d in LOB_AT do
+				local y = 0.5 * g * d / (v * v) * k -- (the drop at d studs, d / v seconds out, as a slope, in px)
+				if y >= 5 and y <= screenH * 0.3 and y - last >= 6 then
+					table.insert(bars, { 0, math.floor(y + 0.5), 14 - i * 3, math.min(o.thick, 2) })
+					last = y
+				end
+			end
+		end
+		return { bars = bars, dot = math.max(o.dot, 4) }
+	elseif cls == "cone" then
+		return { bars = {}, dot = math.max(o.dot, 3), ring = math.clamp(math.tan(w.cone) * k, 6, big), ringT = math.max(1, o.thick - 1), ringK = 0.6 }
+	end
+	return { bars = {}, dot = math.max(o.dot, 4) } -- point
+end
+
+XH.last = { class = "own", shape = nil :: Shape?, spreadPx = 0 } -- (what was drawn last: Studio tests read it)
+-- the crosshair for the weapon in hand (FightHud, every frame): its reticle, or the player's own crosshair (WEAPON
+-- RETICLES off, or nothing that has one in hand). spread = Arsenal's spread now
+function XH.drawFor(holder: Frame, o: Opts, fade: number, wid: string?, spread: number, cam: Camera?)
+	if not cam then XH.draw(holder, o, fade, 0); return end
+	local h = cam.ViewportSize.Y
+	local k = h / 2 / math.tan(math.rad(cam.FieldOfView) / 2)
+	local sp = math.max(0, spread) * k
+	local cls = if Settings.get("xh.weapon") ~= false then XH.class(wid) else "own"
+	local shape: Shape
+	if cls == "own" then
+		shape = XH.own(o, if o.spread then math.min(60, sp) else 0)
+	else
+		shape = shapeOf(cls, Weapons.list[wid :: string], o, sp, k, h)
+		if cls == "shotgun" then fade *= 0.5 end
+	end
+	XH.last.class = cls; XH.last.shape = shape; XH.last.spreadPx = sp
+	XH.draw(holder, o, fade, shape)
 end
 
 -- ------------------------------------------------------------------ share codes

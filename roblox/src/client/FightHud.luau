@@ -564,9 +564,9 @@ function H.step(dt: number, aim: number, scopeHide: boolean, wid: string?, sprea
 	if shown then
 		local o = XH.opts()
 		if not o.hideAim then fade = 0 end -- (Settings: HIDE WHILE AIMING off keeps it up)
-		local cam = workspace.CurrentCamera
-		local extra = if o.spread and cam then math.min(60, XH.spreadPx(spread or 0, cam.FieldOfView, cam.ViewportSize.Y)) else 0
-		XH.draw(cross, o, fade, extra)
+		-- (the weapon in hand's reticle, Settings > CROSSHAIR > WEAPON RETICLES, from its own numbers; else the player's own
+		-- crosshair, its gap opening with the spread when DYNAMIC is on. Crosshair.luau)
+		XH.drawFor(cross, o, fade, wid, spread or 0, workspace.CurrentCamera)
 	end
 	local d = if kind == "dot" and shown then math.clamp((aim - 0.6) / 0.3, 0, 1) else 0
 	redDot.Visible = d > 0
