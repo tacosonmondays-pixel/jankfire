@@ -112,10 +112,14 @@ local EXTRA: { [string]: any } = {
 		-- (the enemy's hand closes on the holster's grip through VICTIM'S HAND and stays there until the draw - the owner,
 		-- 20 Nov: "the enemies hand should be on their holster after the scene of them moving their hand to the position")
 		holdReach = { v = { from = 95, to = 110 } },
-		lamps = true,
-		-- (the video's light: a low warm sun with real shadows, a warm haze, a light grade; put back after)
-		look = { clock = 17.2, lat = 35, bright = 2.6, outdoor = Color3.fromRGB(122, 102, 96), ambient = Color3.fromRGB(72, 62, 60),
-			shiftTop = Color3.fromRGB(255, 196, 150), exposure = 0.15 },
+		-- (high noon - the owner, 20 Nov: "can it be an actual sky with a sun its high noon after all": Roblox's own sky
+		-- and sun in place of the set's painted sunset ring and the place's sky box, the sun up in the top of THE DRAW's
+		-- low lens (clock 12.9 at latitude -28 puts it there), bright warm daylight, a light desert haze, no lamps lit;
+		-- all put back after)
+		look = { clock = 12.9, lat = -28, bright = 2.8, outdoor = Color3.fromRGB(150, 138, 124), ambient = Color3.fromRGB(96, 88, 80),
+			shiftTop = Color3.fromRGB(255, 236, 206), exposure = -0.1, plainSky = true,
+			atmo = { Density = 0.26, Offset = 0.1, Color = Color3.fromRGB(204, 214, 224), Decay = Color3.fromRGB(204, 172, 132),
+				Glare = 0.4, Haze = 0.5 } },
 	},
 }
 
@@ -1267,6 +1271,9 @@ function Scene.start(s: any, kind: string): any
 		local p = part(stage, Vector3.new(q[2], q[3], q[4]), ORIGIN * cfOf(q[5]), Color3.new(q[6], q[7], q[8]), if q[10] == "sky" then Enum.Material.SmoothPlastic elseif okm then mat else nil, shape)
 		p.CastShadow = q[10] ~= "floor" and q[10] ~= "sky" -- (the painted sky ring and its lid never shade the court)
 		p.Name = q[10]
+		-- (a scene under the engine's own sky leaves the painted ring out: built but unseen, so the plan's hide lists
+		-- still count the set's parts the same way)
+		if q[10] == "sky" and ex.look and ex.look.plainSky then p.Transparency = 1 end
 		table.insert(sc.setParts, p)
 		if ex.lamps and q[10] == "lamp" then
 			local pl = Instance.new("PointLight")
