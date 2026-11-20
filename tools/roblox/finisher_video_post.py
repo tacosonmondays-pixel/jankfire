@@ -13,10 +13,12 @@ BAR = 0.105   # the letterbox of the real cut (client/Finisher.luau)
 # out of the middle. flash_after: shots whose last frame is a hit frame (the next frames fade from white).
 FX = {
     'tide': {
-        'speed': {'RUN-UP': (-1, 0), 'CLOSING': 'zoom', 'THE PASS': (1, -0.15)},
+        # (the owner's shot list, 20 Nov: the long-blade draw, the run-up, the belly pass, the hit frame, back to back,
+        # the winner close on the right as the cut lands behind them; speed lines only on the run - no filler streaks)
+        'speed': {'RUN-UP': (-1, 0)},
         'flash_after': {'CUT FRAME': 3},
-        'flash_at': {'THE CUT LANDS': (2, 3)},       # the stroke's own hit frames are the shot's first 2: fade after
-        'grey': {'PETALS': 0.85},                   # the grade goes near-monochrome; only the petals keep their colour
+        'flash_at': {'THE END': (18, 3)},
+        'grey': {},
     },
     'dust': {
         'speed': {},   # (no speed lines on the draw: the owner read them as filler rain; the gun's own smear moves it)

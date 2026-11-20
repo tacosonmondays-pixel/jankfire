@@ -376,6 +376,14 @@ def sheath(cf):
     return a, d
 
 
+KAT_LEN = [1.0]   # the blade's length, x the normal (set per frame; 1 = the skin as it is)
+
+
+def tipz():
+    # the blade tip along the grip's -Z (studs, the x3 skin) for the current length
+    return -(0.6 + 2.3 * KAT_LEN[0])
+
+
 def katana_grip(m):
     KATANA.append(m)
     KAT_MODE.append('hand')
@@ -470,7 +478,8 @@ def draw_preview():
         bl_box('gun_barrel', (0.2, 0.2, 0.9), m @ CF(0, 0.2, -0.9), (0.12, 0.12, 0.14))
         bl_box('gun_grip', (0.24, 0.6, 0.3), m @ CF(0, -0.35, 0.3), (0.45, 0.3, 0.18))
     for m in KATANA:
-        bl_box('kat_blade', (0.05, 0.27, 2.1), m @ CF(0, 0.1, -1.45), STEEL)
+        L_ = KAT_LEN[0]
+        bl_box('kat_blade', (0.05, 0.27, 2.1 * L_), m @ CF(0, 0.1, -(0.4 + 1.05 * L_)), STEEL)
         bl_box('kat_guard', (0.33, 0.33, 0.1), m @ CF(0, 0, -0.44), GOLD)
         bl_box('kat_grip', (0.13, 0.15, 0.75), m @ CF(0, 0, 0), LACQUER)
 
@@ -942,7 +951,7 @@ def blade_sweep(cn, at, yaw, t0, t1, n=14, col=SMEAR, width=None, tag='smear'):
         root = CF(p.x, 3.0, p.z) @ ANG(0, yaw, 0)
         cf = solve(root, {'clip': (cn, t)})
         g = hand_cf(cf)
-        pts.append((wpt(g, (0, 0, -0.6)), wpt(g, (0, 0, -2.9))))
+        pts.append((wpt(g, (0, 0, -0.6)), wpt(g, (0, 0, tipz()))))
     for i in range(n):
         (a0, b0), (a1, b1) = pts[i], pts[i + 1]
         mid0, mid1 = (a0 + b0) / 2, (a1 + b1) / 2
@@ -1279,7 +1288,7 @@ def tv_k(at, t):
     return K
 
 
-@shot('tide', 'ESTABLISH', 14)
+@shot('tide_old', 'ESTABLISH', 14)
 def tv_establish(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
@@ -1291,8 +1300,49 @@ def tv_establish(i, n):
     lens(mid + Vector((30 - 3 * ease(u), 0, 1.4)), mid + Vector((0, 0, 0.6)), 34, 0)
 
 
+LONG_KAT = 6.0   # the gag's blade: six times the skin's
+
+
+@shot('tide', 'THE DRAW', 16)
+def tv_draw(i, n):
+    # the owner (20 Nov): "the katana gimmick is to get bigger the more kills you get - a gag scene of unsheathing a super
+    # long katana". Tight on the scabbard's mouth at the hip: the blade slides out... and keeps coming, faster and faster,
+    # long after any blade should have ended (the hand is out of the shot; the tip never shows past the scabbard's end)
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    K = rig('k', K_START, 0, {'clip': (SLASH, 0.0)})
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    e = 0.15 + (2.3 * LONG_KAT + 0.6 - 3.0) * (u ** 1.7)    # how far the guard is out of the mouth
+    KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)              # only ever as long as reaches back to the scabbard's end
+    katana_at_b(a - d * e, d)
+    if i == 0:
+        # from the outside of the hip (away from the body), a little behind the mouth, looking out along the blade
+        hips = br(K['LowerTorso'].translation)
+        out = Vector(((a - hips).x, (a - hips).y, 0)).normalized()
+        S['a'], S['d'], S['out'] = a, d, out
+    a, d, out = S['a'], S['d'], S['out']
+    lens(a + out * 1.9 + Vector((0, 0, 0.45)) + d * 0.6, a - d * 2.2, 50, 8)
+
+
+@shot('tide', 'THE LENGTH', 16)
+def tv_length(i, n):
+    # the reveal, wide and low: the whole absurd blade out, its tip resting on the floor far ahead; a beat to take it in
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    KAT_LEN[0] = LONG_KAT
+    K = tv_k(K_START, 0.0)
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.1 + 0.3 * u)})
+    if i == 0:
+        pts = pts_of(K) + [wpt(hand_cf(K), (0, 0, tipz())), wpt(hand_cf(K), (0, 0, tipz() * 0.5))]
+        S['pos'], S['c'] = aim_lens(pts, 290, -6, 40, 6, mx=0.84, my=0.6, zmin=0.6)
+    lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.95, u), S['c'], 40, 6)
+
+
 @shot('tide', 'RUN-UP', 18)
 def tv_runup(i, n):
+    KAT_LEN[0] = LONG_KAT
     t = 0.35 + i / FPS
     tide_stage(VT[0])
     K = tv_k(K_START, t)
@@ -1303,7 +1353,7 @@ def tv_runup(i, n):
         # side-on, tracking: framed on the stride in the middle of the shot, then carried along with the hips
         Km = peek_rig('k', K_START, 0, {'clip': (SLASH, t + (n - 1) / FPS / 2)})
         hm = br(Km['LowerTorso'].translation)
-        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, -2.9))], 298, -10, 78, 16, mx=0.6, my=0.64, zmin=0.35)
+        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, tipz()))], 298, -10, 78, 16, mx=0.6, my=0.64, zmin=0.35)
         S['off'], S['coff'], S['z'], S['cz'] = pos - hm, c - hm, pos.z, c.z
     pos, c = h + S['off'], h + S['coff']
     pos.z, c.z = S['z'], S['cz']
@@ -1313,6 +1363,7 @@ def tv_runup(i, n):
 
 @shot('tide', 'CLOSING', 10)
 def tv_closing(i, n):
+    KAT_LEN[0] = LONG_KAT
     u = i / (n - 1)
     t = 1.6 + i / FPS
     tide_stage(VT[0])
@@ -1324,7 +1375,7 @@ def tv_closing(i, n):
         # on the floor in their path, framed on where they arrive; the lens punches wider as they close
         Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, 1.6 + (n - 1) / FPS)})
         # from the side of their path (az 125): straight ahead puts the victim's back against the lens
-        pos, c = aim_lens(pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 235, -18, 96, 20, mx=0.72, my=0.64, zmin=0.35)
+        pos, c = aim_lens(pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, tipz()))], 235, -18, 96, 20, mx=0.72, my=0.64, zmin=0.35)
         S['pos'], S['c'], S['ute'] = pos, c, br(Ke['UpperTorso'].translation)
     kick_dust(K, VT[0])
     lens(S['pos'], S['c'] + (ut - S['ute']) * 0.85, 70 + 26 * ease(u), 20)
@@ -1332,6 +1383,7 @@ def tv_closing(i, n):
 
 @shot('tide', 'THE PASS', 11)
 def tv_pass(i, n):
+    KAT_LEN[0] = LONG_KAT
     # the owner's manga page (20 Nov): full speed, low and wide from the outside of their line, near profile - the two
     # bodies meet in one blur. Afterimages trace the killer's path, dust is thrown up, the bright smear grows along the
     # blade's real path. The lens sits on the run-up's side of the line, so the killer keeps moving the same way on
@@ -1350,7 +1402,7 @@ def tv_pass(i, n):
     if i == 0:
         Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, T_HIT)})
         Ve = peek_rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
-        S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 215, -6, 62, 7,
+        S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, tipz()))], 215, -6, 62, 7,
                                     mx=0.72, my=0.6, zmin=0.5)
     S['pass_look'] = S['c']
     lens(S['pos'], S['c'], 64, 7 + 3 * u)
@@ -1358,6 +1410,7 @@ def tv_pass(i, n):
 
 @shot('tide', 'CUT FRAME', 3)
 def tv_cutframe(i, n):
+    KAT_LEN[0] = LONG_KAT
     tide_stage(VT[0])
     tv_k(K_START, T_HIT)
     rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
@@ -1367,8 +1420,9 @@ def tv_cutframe(i, n):
     return {'impact': IMPACT_TIDE}
 
 
-@shot('tide', 'BACK TO BACK', 14)
+@shot('tide', 'BACK TO BACK', 12)
 def tv_backtoback(i, n):
+    KAT_LEN[0] = LONG_KAT
     # a held beat: side by side, facing away from each other, nobody looks back; the killer still in the follow-through,
     # the victim frozen in a guard that came too late. Low, in front of the killer, past the victim's back; a slow push
     u = i / (n - 1)
@@ -1382,7 +1436,7 @@ def tv_backtoback(i, n):
     lens(lerpv(S['pos0'], S['m'] + (S['pos0'] - S['m']) * 0.88, ease(u)), S['m'] + Vector((0, 0, 0.1)), 46, 4)
 
 
-@shot('tide', 'STILLNESS', 12)
+@shot('tide_old', 'STILLNESS', 12)
 def tv_still(i, n):
     u = i / (n - 1)
     s = i / FPS
@@ -1398,7 +1452,7 @@ def tv_still(i, n):
     lens(pos, (hp * 0.5 + hp0 * 0.5) * 0.8 + kp0 * 0.2 + Vector((0, 0, -0.8)), 40, 0)
 
 
-@shot('tide', 'THE SHEATHE', 14)
+@shot('tide_old', 'THE SHEATHE', 14)
 def tv_sheathe(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
@@ -1417,7 +1471,7 @@ def tv_sheathe(i, n):
     lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.9, ease(u)), S['c'], 40, 6)
 
 
-@shot('tide', 'THE CUT LANDS', 12)
+@shot('tide_old', 'THE CUT LANDS', 12)
 def tv_cutlands(i, n):
     s = i / FPS
     tide_stage(VT[0])
@@ -1442,7 +1496,7 @@ def tv_cutlands(i, n):
         return {'impact': STROKE_HIT}
 
 
-@shot('tide', 'PETALS', 22)
+@shot('tide_old', 'PETALS', 22)
 def tv_petals(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
@@ -1459,6 +1513,49 @@ def tv_petals(i, n):
     # the manga page's last panel: low past the fallen victim to the winner standing against the sun
     kt = br(K['UpperTorso'].translation)
     lens(lerpv(END_CAM, Vector(END_CAM) * 0.86 + kt * 0.14, ease(u)), kt + Vector((0, 0, 0.2)), 40, 0)
+
+
+@shot('tide', 'THE END', 40)
+def tv_end(i, n):
+    # close on the winner, on the right of the frame; the one they cut stands behind, on the left. The long blade slides
+    # home (the last of it; the scabbard swallows the rest); on the click the cut shows across their belly, they fold and
+    # go down, and come apart into petals on the ground
+    u = i / (n - 1)
+    s_ = i / FPS
+    CLICK = 16
+    tide_stage(VT[0])
+    at = at_for(SHEATHE, 1.0, K_BACK, 0)
+    K = rig('k', at, 0, {'clip': (SHEATHE, 1.0 + 0.4 * min(1.0, i / CLICK) if i <= CLICK else min(2.8, 1.4 + (i - CLICK) / FPS))})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    e = 2.6 * (1 - ease(min(1.0, i / CLICK)))
+    KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)
+    katana_at_b(a - d * e, d)
+    if i < CLICK:
+        vclip = ('bx_18_block_high_center', 0.4)
+    elif i < CLICK + 6:
+        vclip = ('bx_27_hit_stomach', 0.05 + (i - CLICK) / FPS)
+    else:
+        vclip = ('bx_30_knockdown_punch', min(2.0, 0.6 + 1.1 * (i - CLICK - 6) / FPS * 1.6))
+    V = rig('v', (0, 0, 0), 180, {'clip': vclip, 'scatter': 0.6 * ease((i - 30) / 9) if i > 30 else 0.0})
+    if i == 0:
+        S['kc'] = br(K['UpperTorso'].translation)
+        S['vc0'] = br(V['UpperTorso'].translation)
+    kc, vc0 = S['kc'], S['vc0']
+    if i >= CLICK:
+        c = vc0 + Vector((0, 0, -0.6))
+        PROP_TR[0] = 0.0 if i < CLICK + 5 else min(0.9, (i - CLICK - 5) * 0.09)
+        brush(c + Vector((-2.2, -0.8, 0.55)), c + Vector((2.2, -0.8, -0.3)), 0.25, 0.5, (0, -1, 0), INK, seed=61)
+        brush(c + Vector((-1.9, -0.86, 0.4)), c + Vector((1.9, -0.86, -0.2)), 0.22, 0.15, (0, -1, 0), SKIN, seed=62, tag='stroke_edge')
+        PROP_TR[0] = 0.0
+    if i >= CLICK + 10:
+        vb = br(V['UpperTorso'].translation)
+        burst(vb + Vector((0, 0, 0.3)), 60, 2.6, (i - CLICK - 10) / (n - CLICK - 11), seed=421, size=1.2, fall=0.6)
+    cam = kc + Vector((-4.4, 4.2, 0.95))
+    look = kc * 0.38 + vc0 * 0.62 + Vector((0, 0, -0.1))
+    lens(lerpv(cam, kc + (cam - kc) * 0.92, ease(u)), look, 42, 0)
+    if CLICK <= i < CLICK + 2:
+        return {'impact': STROKE_HIT}
 
 
 # ---------------- DUST, moving: the standoff. The owner (19 Nov): "add suspense and close ups to the western style" -
@@ -1701,7 +1798,7 @@ def frame_data(info):
             # (for the game: which clip at what moment, where the root stands, where the katana is)
             'anim': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
                                  'sc': round(r.get('scatter', 0), 3)} for r in RIGS if r.get('clip') and not r.get('tr')},
-            'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)]}
+            'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)], 'katL': round(KAT_LEN[0], 3)}
 
 
 def kat_rel(m, mode):
@@ -1726,7 +1823,7 @@ for vname in VIDS:
         for i in range(nf):
             VT[0] = k / FPS
             clear()
-            RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear(); KAT_MODE.clear()
+            RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear(); KAT_MODE.clear(); KAT_LEN[0] = 1.0
             info = fn(i, nf) or {}
             info['name'] = sname
             if not os.environ.get('FIN_NOPNG'):
