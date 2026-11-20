@@ -110,7 +110,26 @@ def clip_len(name):
     return clip(name)[-1][0]
 
 
+LOOPS = {'mx_ninja_run'}
+
+
 def clip_pose(name, t):
+    if name in LOOPS:
+        kfs = clip(name)
+        L = kfs[-1][0]
+        cyc = math.floor(t / L) if L > 0 else 0
+        out = clip_pose_raw(name, t - cyc * L)
+        if cyc and 'LowerTorso' in out:
+            step = kfs[-1][1]['LowerTorso'].translation - kfs[0][1]['LowerTorso'].translation
+            step.y = 0.0
+            m = out['LowerTorso'].copy()
+            m.translation = m.translation + step * cyc
+            out['LowerTorso'] = m
+        return out
+    return clip_pose_raw(name, t)
+
+
+def clip_pose_raw(name, t):
     kfs = clip(name)
     t = max(kfs[0][0], min(kfs[-1][0], t))
     i = 0
@@ -1303,22 +1322,93 @@ def tv_establish(i, n):
 LONG_KAT = 6.0   # the gag's blade: six times the skin's
 
 
-@shot('tide', 'THE DRAW', 16)
+RUN = 'mx_ninja_run'        # Mixamo "Female Ninja Run": the lowest, most anime run on Mixamo (torso about 60 deg over)
+DRAWC = 'mx_draw_a'         # Mixamo "Draw Sword 1": the hand goes to the hilt at the left hip and pulls it out
+RUN_T = 30 / 24             # the run-up's length (s): long enough to cover the ground, no jump into the pass
+
+
+def run_places():
+    # where the run starts and ends: it ends where the slash take is at 1.6 s (the closing shot picks up from there)
+    if 'run_at' not in S_FIX:
+        h16 = Vector(K_START[:2]) + hips_b(SLASH, 1.6, 0).xy
+        S_FIX['run_at'] = at_for(RUN, RUN_T, (h16.x, h16.y), 0)
+        h0 = Vector(S_FIX['run_at'][:2]) + hips_b(RUN, 0.0, 0).xy
+        S_FIX['run_h0'] = (h0.x, h0.y)
+        S_FIX['draw_at'] = at_for(DRAWC, 0.0, S_FIX['run_h0'], 0)
+        S_FIX['stance_at'] = at_for(SLASH, 0.0, S_FIX['run_h0'], 0)
+    return S_FIX
+
+
+S_FIX = {}
+
+
+def kat_through(K, a, d):
+    # the blade from the hand back through the scabbard's mouth (being drawn or put away): only as long as reaches 3
+    # studs past the mouth (the scabbard hides the rest - the long blade's gag)
+    grip = wpt(hand_cf(K), (0, 0, 0))
+    v = a - grip
+    if v.length < 0.2:
+        KAT_LEN[0] = 1.0
+        katana_at_b(a, d)
+        return
+    dirv = v.normalized()
+    KAT_LEN[0] = max(1.0, (v.length + 3.0 - 0.6) / 2.3)
+    katana_at_b(grip + dirv * 0.44, dirv)
+
+
+def t_grab():
+    # the moment the draw clip's hand is on the hilt (closest to the scabbard's mouth)
+    if 'tg' not in S_FIX:
+        P = run_places()
+        best = (9e9, 0.0)
+        for k in range(26):
+            t = 0.5 * k / 25
+            Kp = peek_rig('k', P['draw_at'], 0, {'clip': (DRAWC, t)})
+            a, b, d = sheath_line(Kp)
+            e = (wpt(hand_cf(Kp), (0, 0, 0)) - (a - d * 0.5)).length
+            if e < best[0]:
+                best = (e, t)
+        S_FIX['tg'] = best[1]
+    return S_FIX['tg']
+
+
+@shot('tide', 'THE DRAW', 14)
 def tv_draw(i, n):
-    # the owner (20 Nov): "the katana gimmick is to get bigger the more kills you get - a gag scene of unsheathing a super
-    # long katana". Tight on the scabbard's mouth at the hip: the blade slides out... and keeps coming, faster and faster,
-    # long after any blade should have ended (the hand is out of the shot; the tip never shows past the scabbard's end)
+    # the owner (20 Nov): the sword has to be UNSHEATHED, not just appear. The hand goes to the hilt and pulls; the
+    # blade comes out of the scabbard's mouth behind it
     u = i / (n - 1)
+    P = run_places()
     tide_stage(VT[0])
-    K = rig('k', K_START, 0, {'clip': (SLASH, 0.0)})
+    t = 0.5 * u
+    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, t)})
     rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
     a, b, d = sheath_line(K)
     sheath(K)
-    e = 0.15 + (2.3 * LONG_KAT + 0.6 - 3.0) * (u ** 1.7)    # how far the guard is out of the mouth
-    KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)              # only ever as long as reaches back to the scabbard's end
+    if t < t_grab():
+        katana_at_b(a, d)
+    else:
+        kat_through(K, a, d)
+    if i == 0:
+        hips = br(K['LowerTorso'].translation)
+        S['pos'], S['c'] = hips + Vector((-3.0, 3.6, 0.9)), a + Vector((0.4, 0.6, 0.55))
+    lens(S['pos'], S['c'], 48, -6)
+
+
+@shot('tide', 'IT KEEPS COMING', 14)
+def tv_coming(i, n):
+    # the gag (the katana grows with kills): tight on the scabbard's mouth, the blade keeps coming out, faster and faster,
+    # long after any blade should have ended (the hand is out of the shot)
+    u = i / (n - 1)
+    P = run_places()
+    tide_stage(VT[0])
+    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, 0.5)})
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.05)})
+    a, b, d = sheath_line(K)
+    sheath(K)
+    e = 1.2 + (2.3 * LONG_KAT + 0.6 - 3.0 - 1.2) * (u ** 1.6)
+    KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)
     katana_at_b(a - d * e, d)
     if i == 0:
-        # from the outside of the hip (away from the body), a little behind the mouth, looking out along the blade
         hips = br(K['LowerTorso'].translation)
         out = Vector(((a - hips).x, (a - hips).y, 0)).normalized()
         S['a'], S['d'], S['out'] = a, d, out
@@ -1326,13 +1416,13 @@ def tv_draw(i, n):
     lens(a + out * 1.9 + Vector((0, 0, 0.45)) + d * 0.6, a - d * 2.2, 50, 8)
 
 
-@shot('tide', 'THE LENGTH', 16)
+@shot('tide', 'THE LENGTH', 14)
 def tv_length(i, n):
     # the reveal, wide and low: the whole absurd blade out, its tip resting on the floor far ahead; a beat to take it in
     u = i / (n - 1)
     tide_stage(VT[0])
     KAT_LEN[0] = LONG_KAT
-    K = tv_k(K_START, 0.0)
+    K = tv_k(run_places()['stance_at'], 0.0)
     rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.1 + 0.3 * u)})
     if i == 0:
         pts = pts_of(K) + [wpt(hand_cf(K), (0, 0, tipz())), wpt(hand_cf(K), (0, 0, tipz() * 0.5))]
@@ -1340,35 +1430,37 @@ def tv_length(i, n):
     lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.95, u), S['c'], 40, 6)
 
 
-@shot('tide', 'RUN-UP', 18)
+@shot('tide', 'RUN-UP', 30)
 def tv_runup(i, n):
+    # the owner (20 Nov): "the run up is too quick and it sort of just teleports to him". The whole approach now, at the
+    # run's own speed (no clip time skipped): low and long, ending where the closing shot carries on
     KAT_LEN[0] = LONG_KAT
-    t = 0.35 + i / FPS
+    P = run_places()
+    t = RUN_T * i / (n - 1)
     tide_stage(VT[0])
-    K = tv_k(K_START, t)
-    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.3 + i / FPS)})
-    blade_sweep(SLASH, K_START, 0, t - 0.12, t, n=6)
+    K = rig('k', P['run_at'], 0, {'clip': (RUN, t)})
+    katana_grip(hand_cf(K))
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.4 + i / FPS)})
     h = br(K['LowerTorso'].translation)
     if i == 0:
-        # side-on, tracking: framed on the stride in the middle of the shot, then carried along with the hips
-        Km = peek_rig('k', K_START, 0, {'clip': (SLASH, t + (n - 1) / FPS / 2)})
+        Km = peek_rig('k', P['run_at'], 0, {'clip': (RUN, RUN_T / 2)})
         hm = br(Km['LowerTorso'].translation)
-        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, tipz()))], 298, -10, 78, 16, mx=0.6, my=0.64, zmin=0.35)
+        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, tipz() * 0.6))], 298, -10, 74, 16, mx=0.62, my=0.66, zmin=0.35)
         S['off'], S['coff'], S['z'], S['cz'] = pos - hm, c - hm, pos.z, c.z
     pos, c = h + S['off'], h + S['coff']
     pos.z, c.z = S['z'], S['cz']
     kick_dust(K, VT[0])
-    lens(pos, c, 78, 16)
+    lens(pos, c, 74, 16)
 
 
-@shot('tide', 'CLOSING', 10)
+@shot('tide', 'CLOSING', 12)
 def tv_closing(i, n):
     KAT_LEN[0] = LONG_KAT
     u = i / (n - 1)
-    t = 1.6 + i / FPS
+    t = 1.6 + 0.5 * i / (n - 1)
     tide_stage(VT[0])
     K = tv_k(K_START, t)
-    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.3 + (22 + i) / FPS)})
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 1.7 + i / FPS)})
     blade_sweep(SLASH, K_START, 0, t - 0.12, t, n=6)
     ut = br(K['UpperTorso'].translation)
     if i == 0:
@@ -1579,7 +1671,7 @@ def dv_keyes(i, n):
     b = max(0.0, 1 - abs(u - 0.55) / 0.14)   # one slow blink in the hold
     K, V = m_dust_rigs(kface=dict(SQUINT, LeftEyeClosed=0.55 + 0.45 * b, RightEyeClosed=0.55 + 0.45 * b))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.1, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
+    lens(br((hd @ Vector((0, 0.24, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.24, -0.55, 1))).xyz), 16, 0)
 
 
 @shot('dust', "VICTIM'S EYES", 18)
@@ -1591,7 +1683,7 @@ def dv_veyes(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.38, 0.32 - 0.3 * u, -0.6, 1))).xyz   # the bead of sweat runs down
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.1, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 4)
+    lens(br((hd @ Vector((0, 0.24, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.24, -0.55, 1))).xyz), 16, 4)
 
 
 @shot('dust', "KILLER'S HAND", 20)
@@ -1649,7 +1741,7 @@ def dv_eyes2(i, n):
     sq = 0.6 + 0.3 * ease(u)
     K, V = m_dust_rigs(kclip=(DRAW, 0.12), kface=dict(SQUINT, LeftEyeClosed=sq, RightEyeClosed=sq))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.12, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.12, -0.55, 1))).xyz), 11, 0)
+    lens(br((hd @ Vector((0, 0.26, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.26, -0.55, 1))).xyz), 11, 0)
 
 
 @shot('dust', 'THEIR EYES', 8)
@@ -1661,7 +1753,7 @@ def dv_veyes2(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.42, -0.1 - 0.1 * u, -0.6, 1))).xyz
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.12, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.12, -0.55, 1))).xyz), 11, -3)
+    lens(br((hd @ Vector((0, 0.26, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.26, -0.55, 1))).xyz), 11, -3)
 
 
 DRAW_OUT = 0.3   # from here on the revolver is in the hand, not the holster
@@ -1781,9 +1873,11 @@ def dv_far(i, n):
     u = i / (n - 1)
     s_ = i / FPS
     desert()
-    tv_ = min(2.0, 0.1 + 1.5 * min(1.0, s_ / 0.85) ** 1.3)
+    # (the owner: "a more natural fall - it sort of stiffens right at the end": the knockdown-punch take ends rigid; this
+    # one, knocked out backwards, folds, drops and settles)
+    tv_ = 1.7 + 1.0 * s_
     tk = 0.75 if s_ < 0.5 else max(0.06, 0.75 - 0.69 * ease((s_ - 0.5) / 0.8))
-    K, V = m_dust_rigs(kclip=(DRAW, tk), kgun_in=tk < DRAW_OUT, vclip=('bx_30_knockdown_punch', tv_))
+    K, V = m_dust_rigs(kclip=(DRAW, tk), kgun_in=tk < DRAW_OUT, vclip=('bx_29_knocked_out_back', tv_))
     if tk >= DRAW_OUT:
         revolver_in_hand(K)
     if i == 0:

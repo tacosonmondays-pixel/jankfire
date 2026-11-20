@@ -21,11 +21,19 @@ FX = {
         'grey': {},
     },
     'dust': {
-        'speed': {},   # (no speed lines on the draw: the owner read them as filler rain; the gun's own smear moves it)
+        # manga focus lines on the draw (radial, rushing in from the frame's edge onto the action); the falling streaks
+        # of v2 read as rain to the owner
+        'speed': {'THE DRAW': 'zoom'},
         'flash_after': {'HIT FRAME': 3},
         'grey': {},
         'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34, 'THEIR EYES': 0.34},
-        'bars_in': {'OVERHEAD'},   # the letterbox slides in over the opening   # the eyes in a thin band, thinner each time
+        'bars_in': {'OVERHEAD'},   # the letterbox slides in over the opening
+        # (the eyes sit high in those frames: moved down into the thin band; the space it leaves is under the top bar)
+        'shift': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3},
+        # the tighter look again: punched in on the eyes (zoom, eye centre x, y); EYES AGAIN's own frames had the eyes
+        # cut off at the top, so it borrows the end of the first look at the killer's eyes
+        'zoom': {'EYES AGAIN': (1.45, 0.5, 0.2), 'THEIR EYES': (1.4, 0.5, 0.2)},
+        'borrow': {'EYES AGAIN': "KILLER'S EYES", 'THEIR EYES': "VICTIM'S EYES"},   # the eyes in a thin band, thinner each time
     },
 }
 
@@ -126,9 +134,29 @@ def main():
             for j in range(ln):
                 fade[k + s0 + j] = 0.5 * (1 - j / ln)
         k += c
+    starts = {}
+    for k, nm in enumerate(names):
+        starts.setdefault(nm, k)
     for k, p in enumerate(frames):
-        im = to_169(Image.open(p).convert('RGB'))
         n, i = names[k], idx[k]
+        b = fx.get('borrow', {}).get(n)
+        if b and b in counts:
+            # (the last frames of the borrowed shot)
+            p = frames[starts[b] + max(0, counts[b] - counts[n]) + i]
+        im = to_169(Image.open(p).convert('RGB'))
+        z = fx.get('zoom', {}).get(n)
+        if z:
+            zz, cx, cy = z
+            cw, chh = W / zz, H / zz
+            left, top = int(cx * W - cw / 2), int(cy * H - chh / 2)
+            canvas = Image.new('RGB', (int(cw), int(chh)), (0, 0, 0))
+            canvas.paste(im.crop((max(0, left), max(0, top), min(W, left + int(cw)), min(H, top + int(chh)))), (max(0, -left), max(0, -top)))
+            im = canvas.resize((W, H), Image.LANCZOS)
+        sh = fx.get('shift', {}).get(n)
+        if sh:
+            moved = Image.new('RGB', im.size, (0, 0, 0))
+            moved.paste(im, (0, int(H * sh)))
+            im = moved
         if n in fx.get('grey', {}):
             u = i / max(1, counts[n] - 1)
             im = grey_but_petals(im, fx['grey'][n] * min(1.0, u * 1.6))
