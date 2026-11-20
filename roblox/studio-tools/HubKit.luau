@@ -540,8 +540,9 @@ function K.golfRoom(F, o)
 	local cz = if south then o.z1 - 10 - 40 else o.z0 + 10 + 40
 	K.gameSpot(F * CFrame.new(cx, 0, cz) * CFrame.Angles(0, if south then 0 else math.pi, 0), "golf") -- (look away from the door's end)
 	for z = o.z0 + 12, o.z1 - 6, 12 do K.box(F, "Scenery", "GolfBeam", o.x0, o.x1, o.h - 1.4, o.h, z - 0.5, z + 0.5, K.P.cream, nil, { ghost = true }) end
-	for _, dx in { -15, 0, 15 } do for _, dz in { -20, 20 } do K.panel(F, cx + dx, o.h, cz + dz, 6, 12, { bright = 0.45 }) end end
-	K.panel(F, cx, o.h, if south then o.z1 - 5 else o.z0 + 5, 20, 3)
+	-- (neutral light: the warm panels over-saturated the lawn and rails, hub-minigames' note)
+	for _, dx in { -15, 0, 15 } do for _, dz in { -20, 20 } do K.panel(F, cx + dx, o.h, cz + dz, 6, 12, { bright = 0.45, lightHex = "eef2f6" }) end end
+	K.panel(F, cx, o.h, if south then o.z1 - 5 else o.z0 + 5, 20, 3, { lightHex = "eef2f6" })
 end
 -- the place the lore session puts the code panel (lore-npcs' LoreNPCs / LoreSpots): F on a wall's face, its look out
 function K.codePanelSpot(F) return K.marker(F, "Scenery", "CodePanelSpot", 0, 0, 0, 0, nil, { "CodePanelSpot" }) end

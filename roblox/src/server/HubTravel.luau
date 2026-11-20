@@ -14,7 +14,7 @@
 local Players = game:GetService("Players")
 
 local HubTravel = {}
-HubTravel.DEFAULT = "ring" -- (new players start in the ring until all three hubs are in: main, 20 Nov, before the owner's publish; the Square stays reachable by HUBS)
+HubTravel.DEFAULT = "square" -- (20 Nov, all three hubs live: main's call, the owner told; the ring is retired to a spare)
 HubTravel.REACH = 520 -- (studs from a hub's site that count as being in it)
 HubTravel.COOLDOWN = 3
 
