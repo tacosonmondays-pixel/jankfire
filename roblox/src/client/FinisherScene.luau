@@ -112,6 +112,13 @@ local EXTRA: { [string]: any } = {
 		-- (the enemy's hand closes on the holster's grip through VICTIM'S HAND and stays there until the draw - the owner,
 		-- 20 Nov: "the enemies hand should be on their holster after the scene of them moving their hand to the position")
 		holdReach = { v = { from = 95, to = 110 } },
+		-- (the grade - the owner, 20 Nov: "can it transistion into that desaturated filter after the shot, but keep it nice
+		-- and glowey without filter ofr the rest of it or a slight orange like in western films?": warm and glowing to the
+		-- shot, easing into the desaturated look over `over` s from the impact frame `at`, held to the end. The scene
+		-- owns it (Finisher.luau's grade asks Scene.grade); cheap: ColorCorrection and a gentle Bloom, no blur)
+		grade = { warm = { tint = Color3.fromRGB(255, 226, 192), sat = 0.06, con = 0.12, bright = 0.02 },
+			cold = { tint = Color3.fromRGB(242, 238, 232), sat = -0.62, con = 0.16, bright = -0.02 }, at = 181, over = 0.4,
+			bloom = { Intensity = 0.55, Size = 26, Threshold = 1.5 } },
 		-- (high noon - the owner, 20 Nov: "can it be an actual sky with a sun its high noon after all": Roblox's own sky
 		-- and sun in place of the set's painted sunset ring and the place's sky box, the sun up in the top of THE DRAW's
 		-- low lens (clock 12.9 at latitude -28 puts it there), bright warm daylight, a light desert haze, no lamps lit;
@@ -655,6 +662,17 @@ local function realAnchor(sc: any, s: any, key: string): (CFrame?, number)
 	end
 	return p.CFrame, k
 end
+-- (the scene's own colour grade this frame, when it has one: Finisher.luau's grade asks; nil = the finisher's own)
+function Scene.grade(s: any): { tint: Color3, sat: number, con: number, bright: number }?
+	local sc = s.scene
+	local g = sc and sc.ex and sc.ex.grade
+	if not g then return nil end
+	local k = if sc.gradeAt then math.clamp((s.w - sc.gradeAt) / g.over, 0, 1) else 0
+	k = k * k * (3 - 2 * k)
+	local a, b = g.warm, g.cold
+	return { tint = a.tint:Lerp(b.tint, k), sat = a.sat + (b.sat - a.sat) * k, con = a.con + (b.con - a.con) * k,
+		bright = a.bright + (b.bright - a.bright) * k }
+end
 -- (how long the letterbox bars take to come in, when a scene says: Finisher.luau's overlay asks)
 function Scene.barsIn(s: any): number?
 	local sc = s.scene
@@ -897,6 +915,16 @@ local function placeRevolvers(sc: any, s: any, A: any, T: number)
 					local up = if ua then (ua.Position - onGrip.Position) * 0.2 else Vector3.zero
 					local hover = CFrame.new(up + lt.CFrame:VectorToWorldSpace(Vector3.new(0.12, 0, -0.04))) * onGrip
 					target = hover:Lerp(onGrip, if held then ease((u - 0.35) / 0.65) else ease((t - 0.14) / 0.14))
+					-- (the nervous hand - the owner, 20 Nov: "also the enemy hand shaking was removed!": the plan shakes it by
+					-- jittering the clip's time round the moment, 0.012 s * sin(frame * 2.3), which swung the old reach's
+					-- weight and so the hand. Held on the grip, the same jitter now lifts it off the grip toward the hover and
+					-- back, up to 0.12 studs, until the draw's own reach takes over)
+					if held and target then
+						local calm = 1 - ease((t - 0.1) / 0.12)
+						local lift = hover.Position - onGrip.Position
+						local dirUp = if lift.Magnitude > 1e-3 then lift.Unit else Vector3.yAxis
+						target = target + dirUp * (0.06 + 0.06 * math.sin(fi * 2.3)) * calm * ease(u / 0.4)
+					end
 				end
 			end
 			if kit.ik then
@@ -1304,6 +1332,17 @@ function Scene.start(s: any, kind: string): any
 			a.Density = 0.3; a.Offset = 0.12; a.Color = Color3.fromRGB(222, 176, 134); a.Decay = Color3.fromRGB(176, 118, 92)
 			a.Glare = 0.35; a.Haze = 1.4
 			for key, v in lk.atmo or {} do (a :: any)[key] = v end
+			-- (a gentle bloom on the sun and the highlights: the place's own Bloom, as the settings leave it on or off)
+			local gb = ex.grade and ex.grade.bloom
+			if gb then
+				for _, e in L:GetChildren() do
+					if e:IsA("BloomEffect") and string.sub(e.Name, 1, 4) ~= "Jank" then
+						was.bloom = was.bloom or {}
+						table.insert(was.bloom, { e, e.Intensity, e.Size, e.Threshold })
+						e.Intensity, e.Size, e.Threshold = gb.Intensity, gb.Size, gb.Threshold
+					end
+				end
+			end
 			-- (the engine's own sky and sun: the place's Skies are parked under Lighting for the scene, put back after)
 			if lk.plainSky then
 				was.skies = {}
@@ -1464,6 +1503,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 			end
 		end
 		sounds(sc, i)
+		if sc.ex.grade and not sc.gradeAt and i >= sc.ex.grade.at then sc.gradeAt = s.w end
 		return shot, u, shot == sc.lastShot
 	end
 	-- the bodies
@@ -1530,6 +1570,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	if hit and sc.backdrop then sc.backdrop.CFrame = cam.CFrame * CFrame.new(0, 0, -180) end
 	-- the sounds, on their frames (the short payoff only hears its own)
 	sounds(sc, i)
+	if sc.ex.grade and not sc.gradeAt and i >= sc.ex.grade.at then sc.gradeAt = s.w end
 	return shot, u, shot == sc.lastShot
 end
 
@@ -1559,6 +1600,7 @@ function Scene.stop(s: any)
 			end
 		end)
 		for _, sk in was.skies or {} do pcall(function() sk[1].Parent = sk[2] end) end
+		for _, b in was.bloom or {} do pcall(function() b[1].Intensity, b[1].Size, b[1].Threshold = b[2], b[3], b[4] end) end
 		if was.park then was.park:Destroy() end
 		for _, inst in was.added do inst:Destroy() end
 	end

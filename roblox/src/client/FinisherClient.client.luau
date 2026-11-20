@@ -21,8 +21,32 @@ local remote = Remotes:WaitForChild("Finisher") :: RemoteEvent
 local function done(msg: any)
 	if msg.kind == "full" then remote:FireServer({ t = "done" }) end
 end
+-- the WORLD finisher (a round won, not the match: client/FinisherWorld.luau, the VFX session's) - no camera, drawn on the
+-- victim's body where it lies. Someone else's, with the settings' "others' finishers" off, isn't played at all: the
+-- body's kill effect just carries on
+local FW: any = nil
+local function world(): any
+	if FW == nil then
+		local m = script.Parent:FindFirstChild("FinisherWorld")
+		local ok, r = false, nil
+		if m then ok, r = pcall(require, m) end
+		FW = if ok and type(r) == "table" then r else false
+	end
+	return if FW then FW else nil
+end
+local worldOn: { Instance } = {}
 remote.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" or msg.t ~= "finisher" then return end
+	if msg.kind == "world" then
+		local w = world()
+		if not (w and w.play) or typeof(msg.victim) ~= "Instance" then return end
+		if msg.role == "watch" and FFx.setting("gfx.othersFinisher", true) == false then return end
+		local ok, err = pcall(w.play, msg.id, msg.victim, { from = if typeof(msg.from) == "Vector3" then msg.from else nil,
+			killer = if typeof(msg.killer) == "Instance" then msg.killer else nil })
+		if not ok then warn("[jankfire] world finisher: " .. tostring(err)) end
+		table.insert(worldOn, msg.victim)
+		return
+	end
 	if msg.role == "watch" and FFx.setting("gfx.othersFinisher", true) == false then done(msg); return end
 	local ok, err = pcall(F.play, msg)
 	if not ok then warn("[jankfire] finisher: " .. tostring(err)) end
@@ -35,9 +59,19 @@ end)
 Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	if type(r) ~= "table" then return end
 	if (r.start or r.hub) and F.isPlaying() then F.stop() end
+	if (r.start or r.hub) and #worldOn > 0 then
+		local w = world()
+		for _, vm in worldOn do if w and w.stop then pcall(w.stop, vm) end end
+		table.clear(worldOn)
+	end
 end)
 me.CharacterAdded:Connect(function()
 	if F.isPlaying() then F.stop() end
+	if #worldOn > 0 then
+		local w = world()
+		for _, vm in worldOn do if w and w.stop then pcall(w.stop, vm) end end
+		table.clear(worldOn)
+	end
 end)
 
 -- (Studio) the dummies' looks as they spawn: a test kill's victim is a dummy whose body has already come apart

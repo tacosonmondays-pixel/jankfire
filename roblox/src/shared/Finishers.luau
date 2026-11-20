@@ -2,9 +2,11 @@
 -- FINISHERS (17 Nov 2026; roblox/docs/FINISHERS.md): a short cinematic that plays when a high-tier skin that owns one
 -- lands the kill that wins a round or the match. The owner: "a cinematic finisher with effects ... only with high tier
 -- skins ... super dynamic and fluid movement, angles, perspective."
---   * the MATCH-WINNING kill plays the full cut (about 2.9 s) for everyone in the match, in the end-of-match window
---     (the end screen is already up and nobody is playing)
---   * a ROUND-WINNING kill plays the short cut (about 1.7 s) for the killer and the victim only, in the 3 s between rounds
+--   * the MATCH-WINNING kill plays the full cut or its scene for everyone in the match; the end screen waits for it
+--   * any other ROUND-WINNING kill plays the WORLD finisher (20 Nov, the owner: "finisher cutscene should only play when
+--     you get the final hit on the game winning round and otherwise it can be like a valorant weapon finisher
+--     instead"): no camera, no bars - the theme claims the victim's body where it lies, about 2 s, seen by everyone
+--     from their own view (client/FinisherWorld.luau)
 --   * a classic mode (Matches.startMode) has no rounds of that kind: only the kill that ends it plays, the full cut
 --   * no other kill plays one, so nobody still playing is ever blinded or held. SPACE / the SKIP button ends it
 -- A finisher is played from the match recording (server/Recorder.luau): the last moments before the kill, on the
@@ -197,7 +199,7 @@ function Finishers.length(kind: string, melee: boolean, row: Row?): number
 	return n
 end
 
--- which cut a kill gets (pure, so it can be tested): nil, "short" or "full"
+-- which cut a kill gets (pure, so it can be tested): nil, "world" or "full" ("short" is no longer chosen)
 --   o.since       s from the kill to now (the round being won / the match ending)
 --   o.owned       the killer's skin on the weapon that killed owns a finisher
 --   o.weapon      the weapon that killed ("void" and "shredder" never play one: no shot to show)
@@ -212,7 +214,7 @@ function Finishers.decide(o: any): string?
 	if type(o.since) ~= "number" or o.since < 0 or o.since > Finishers.FRESH + (if o.event == "end" then 0.75 else 0) then return nil end
 	if o.event == "round" then
 		if o.classic then return nil end
-		return if (o.wins or 0) >= (o.need or math.huge) then "full" else "short"
+		return if (o.wins or 0) >= (o.need or math.huge) then "full" else "world"
 	elseif o.event == "end" then
 		return if o.classic then "full" else nil -- (a normal match's end came from its last round: that one played it)
 	end

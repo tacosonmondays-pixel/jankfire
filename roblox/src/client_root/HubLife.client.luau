@@ -35,6 +35,9 @@ local function zoneLook(): string?
 	return nil
 end
 local function relook(snap: boolean)
+	-- (a finisher scene owns the light while it plays and puts the look back after: no zone look mid-scene - the owner on
+	-- High Noon, 20 Nov: "the filter comes off". The 0.4 s loop below looks again once it's over)
+	if me:GetAttribute("Finishing") then return end
 	local zone = me:GetAttribute("Zone")
 	local an = me:GetAttribute("Arena")
 	if type(an) ~= "string" then an = Arena.name() end

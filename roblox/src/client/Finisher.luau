@@ -535,8 +535,15 @@ local function stepScene(s: any)
 	end
 	local g = s.row.grade
 	local gk = smooth(s.w / 0.25)
+	-- (a scene with its own grade owns it: High Noon's warm noon easing into the desaturated tail at the shot)
+	local sg = if type(Scene.grade) == "function" then Scene.grade(s) else nil
 	if hit then
 		s.cc.TintColor = Color3.new(1, 1, 1); s.cc.Saturation = 0; s.cc.Contrast = 0; s.cc.Brightness = 0
+	elseif sg then
+		s.cc.TintColor = Color3.new(1, 1, 1):Lerp(sg.tint, gk)
+		s.cc.Saturation = sg.sat * gk
+		s.cc.Contrast = sg.con * gk
+		s.cc.Brightness = sg.bright * gk
 	else
 		local grey = if last then 0.6 * smooth(u) else 0
 		s.cc.TintColor = Color3.new(1, 1, 1):Lerp(g.tint, gk * 0.5)

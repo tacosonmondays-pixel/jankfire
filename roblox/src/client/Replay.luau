@@ -443,14 +443,32 @@ if skeyT then skeyT.Text = "SPACE"; skeyT.TextSize = 10 end
 
 -- ------------------------------------------------------------------ playing
 local hidden: { [ScreenGui]: boolean } = {}
-local function hideLive(on: boolean)
-	-- (the live bodies would stand among the ghosts: hidden on this screen while it plays)
+local function sweepLive(on: boolean)
 	for _, p in Players:GetPlayers() do
 		local ch = p.Character
 		if ch then for _, d in ch:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then d.LocalTransparencyModifier = if on then 1 else 0 end end end
 	end
 	local dm = workspace:FindFirstChild("Dummies")
 	if dm then for _, d in dm:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then d.LocalTransparencyModifier = if on then 1 else 0 end end end
+end
+local liveHidden: boolean? = nil
+local liveSweepT = 0
+local function hideLive(on: boolean)
+	-- (the live bodies would stand among the ghosts: hidden on this screen while it plays.) The whole sweep - every
+	-- player's body and every training dummy, thousands of writes - ran every frame of a replay or a finisher: the
+	-- owner on High Noon, live, 20 Nov: "The framerate is a little choppy on the finisher" (and Roblox's automatic
+	-- quality then dropped the grade mid-scene). Now the whole sweep runs when hiding turns on or off and twice a second
+	-- after (a respawn, a new player); between, only your own body, which the camera scripts write every frame
+	local now = os.clock()
+	if on ~= liveHidden or now - liveSweepT > 0.5 then
+		liveHidden, liveSweepT = on, now
+		sweepLive(on)
+		return
+	end
+	if on then
+		local ch = me.Character
+		if ch then for _, d in ch:GetDescendants() do if (d:IsA("BasePart") or d:IsA("Decal")) and (d :: any).LocalTransparencyModifier ~= 1 then (d :: any).LocalTransparencyModifier = 1 end end end
+	end
 end
 
 local function controls(on: boolean)

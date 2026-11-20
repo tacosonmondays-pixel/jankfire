@@ -1,8 +1,10 @@
 --!strict
 -- FINISHERS on the server (shared/Finishers.luau; roblox/docs/FINISHERS.md). It watches the kills and the rounds:
 --   * a round won within Finishers.FRESH s of its last kill, by the killer's team, the killer still standing, the victim
---     a player, the killer's skin on the weapon that killed owning a finisher -> the short cut to the killer and the
---     victim; when that round wins the match -> the full cut to everyone in the match
+--     a player, the killer's skin on the weapon that killed owning a finisher -> the WORLD finisher on the victim's body
+--     for everyone in the match (no camera: client/FinisherWorld.luau); when that round wins the match -> the full cut
+--     (or its scene) to everyone in the match, the end screen waiting for it. (The short cut between rounds is retired,
+--     20 Nov: "finisher cutscene should only play when you get the final hit on the game winning round")
 --   * a classic mode's end (Matches.finish) right after its last kill -> the full cut to everyone in it
 -- What it sends (JankfireRemotes.Finisher, made here if missing): the last Finishers.LEAD s of the match recording
 -- (Recorder.recent), cut down to the killer and the victim, plus who's who. The camera, the bodies and the effects are
@@ -13,6 +15,8 @@
 --                                         player (all = true: to everyone in the server), whatever they wear
 --   ("kill", player, n|name, weapon?)      kill a live training dummy now through Fight.hurt (with that weapon, default ar)
 --   ("decide", table)                      Finishers.decide on a table
+--   ("world", player, skin, n|name)        a WORLD finisher of that skin on a live training dummy's body, to the player
+--                                         (the dummy stands frozen as it is; photos and checks)
 --   ("state")                              what is armed, the last kill of each live match
 --   ("round", player, "full"|"short", skin, ends) the MATCH PATH with one tester: the real round handler (the function
 --                                         Matches.onRound calls) on the player's real match (JankMatchTest "ghost"
@@ -130,6 +134,29 @@ local function play(x: Kill, kind: string, viewers: { Player }, fid: string, ski
 	return true, ("%s %s to %d"):format(fid, kind, #viewers)
 end
 
+-- a WORLD finisher (a round won, not the match): no recording, no camera - every client in the match draws the theme on
+-- the victim's body where it lies (client/FinisherWorld.luau). The body is frozen there first, as a kill effect does
+local function playWorld(x: Kill, viewers: { Player }, fid: string, skin: string): (boolean, string)
+	local vm = Fight.model(x.v)
+	if not vm or not vm.Parent then return false, "no body" end
+	for _, d in vm:GetDescendants() do
+		if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+	end
+	local km = Fight.model(x.k)
+	local kr = km and km:FindFirstChild("HumanoidRootPart") :: BasePart?
+	-- (the VFX session's interface: FinisherWorld.play(id, victim, { from, killer }))
+	local msg = { t = "finisher", kind = "world", id = fid, skin = skin, victim = vm, killer = km, from = if kr then kr.Position else nil,
+		by = x.k.name, byId = if x.k.kind == "player" then (x.k.ref :: Player).UserId else nil }
+	for _, p in viewers do
+		if p.Parent then
+			local m = table.clone(msg)
+			m.role = if x.k.ref == p then "killer" elseif x.v.ref == p then "victim" else "watch"
+			R:FireClient(p, m)
+		end
+	end
+	return true, ("%s world to %d"):format(fid, #viewers)
+end
+
 -- the finisher a killer's skin on that weapon owns
 local function ownedFor(k: any, w: string): (string?, string?)
 	if k.kind ~= "player" then return nil, nil end
@@ -188,7 +215,9 @@ local function onRound(m: any, winner: number): (string?, any)
 		local all = everyone(m)
 		holdFor(m, x.fid, all)
 		return kind, table.pack(play(x, "full", all, x.fid, x.skin))
-	else
+	elseif kind == "world" then
+		return kind, table.pack(playWorld(x, everyone(m), x.fid, x.skin))
+	else -- ("short": retired - Finishers.decide no longer picks it; kept for the "arm" test's short cut)
 		local viewers = { kp }
 		if x.v.kind == "player" and (x.v.ref :: Player).Parent then table.insert(viewers, x.v.ref) end
 		return kind, table.pack(play(x, "short", viewers, x.fid, x.skin))
@@ -261,6 +290,19 @@ if RunService:IsStudio() then
 			return ("hurt %s for %s with %s"):format(t.name, tostring(done), w)
 		elseif op == "decide" then
 			return Finishers.decide(a)
+		elseif op == "world" and typeof(a) == "Instance" and a:IsA("Player") then
+			local fid = Finishers.forSkin(b)
+			if not fid then return "no finisher on " .. tostring(b) end
+			local list = {}
+			for _, x in Fight.all do if x.kind == "dummy" and x.alive then table.insert(list, x) end end
+			local t = list[tonumber(c) or 1]
+			if type(c) == "string" and not tonumber(c) then
+				t = nil
+				for _, x in list do if string.find(x.name, c, 1, true) then t = x; break end end
+			end
+			local f = Fight.byPlayer[a]
+			if not f or not t then return "no fighter or no live dummy (" .. #list .. " live)" end
+			return table.pack(playWorld({ k = f, v = t, w = "test", t = os.clock() }, { a }, fid, b :: string))
 		elseif op == "round" and typeof(a) == "Instance" and a:IsA("Player") then
 			local m = Matches.raw(a)
 			if not m then return "not in a match: JankMatchTest(\"ghost\", pad, nil, secs, player) first" end
