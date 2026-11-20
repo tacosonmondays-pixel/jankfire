@@ -101,7 +101,7 @@ local function spawn(E: Em, n: number)
 		local f = 0
 		if cell then
 			im.ImageRectSize = cell
-			if s.fps == 0 then f = math.random(0, frames - 1) end
+			if s.fps ~= nil then f = math.random(0, frames - 1) end -- (held or looping: a random frame to start from)
 		else
 			im.ImageRectSize = Vector2.zero
 		end
@@ -165,7 +165,7 @@ step = function(dt: number)
 			local frames = s.frames or 1
 			local cols = s.cols or frames
 			local f = if s.fps == 0 then p.frame
-				elseif s.fps then math.floor(p.t * (s.fps :: number)) % frames
+				elseif s.fps then (p.frame + math.floor(p.t * (s.fps :: number))) % frames
 				else math.min(frames - 1, math.floor(u * frames))
 			im.ImageRectOffset = Vector2.new((f % cols) * cell.X, (f // cols) * cell.Y)
 		end
@@ -243,40 +243,65 @@ end
 -- ---- presets (quiet palette: one warm accent)
 local TEX = {
 	flame = "rbxassetid://77597527828324", -- a flame tongue licking up, 16 frames (4x4, 256 px), white for a tint
+	tongues = "rbxassetid://76464949862705", -- groups of flame tongues, 64 frames looping (8x8, 128 px; the RANKED fire)
+	-- the Combat VFX pack's fire flipbook (coldd Development, credited; its Flame Pillar's body), 64 frames (8x8)
+	packFire = "rbxassetid://17406297832",
 	smoke = "rbxassetid://97407536340250", -- soft smoke, 16 frames (4x4, 256 px)
 	glow = "rbxassetid://107753175681578", -- a soft round glow
 	spark = "rbxassetid://73042129135061", -- a short streak
 }
 -- fire along the bottom of a frame (a legendary reveal): flame tongues, smoke above them, embers rising. colour: the
 -- accent (default a legendary gold). returns a handle with :stop() (let it burn down) and :destroy()
-function UiParticles.fireStrip(frame: GuiObject, colour: Color3?): any
-	-- (sizes and speeds in the frame's height; the frame is the bottom third of the screen. round 2, 20 Nov: round 1's
-	-- tongues were a row of small tips along the edge; a low wall of fire needs a hot glowing base, flames about half the
-	-- strip tall, and embers rising well above it)
+function UiParticles.fireStrip(frame: GuiObject, colour: Color3?, fireTex: { id: string, cell: number }?): any
+	-- (sizes and speeds in the frame's height H; the frame is the bottom third of the screen. round 3, 20 Nov, main for
+	-- the owner: "a thick fire WALL: a bright white-hot glowing base, dense overlapping flame bodies, smoke rolling above,
+	-- and embers". round 1 was small tips, round 2 thin wisps)
 	local c = colour or Color3.fromRGB(240, 178, 52)
-	local hot = c:Lerp(Color3.new(1, 1, 1), 0.6)
-	local deep = c:Lerp(Color3.fromRGB(120, 40, 10), 0.55)
-	local base = UiParticles.new(frame, { texture = TEX.glow, rate = 16, life = { 0.8, 1.3 }, size = { { 0, 0.45 }, { 1, 0.7 } },
-		colour = { { 0, hot }, { 1, c } }, alpha = { { 0, 0.62 }, { 0.3, 0.55 }, { 1, 1 } }, area = { -0.04, 1.0, 1.04, 1.06 },
-		speed = { 0.04, 0.1 }, spread = 10, z = 1 })
+	local hot = c:Lerp(Color3.new(1, 1, 1), 0.65)
+	local deep = c:Lerp(Color3.fromRGB(120, 40, 10), 0.5)
+	local ft = fireTex or { id = TEX.tongues, cell = 128 } -- (the pack sheet's size can't be read here: ours is known 1024)
+	-- the glow band: white-hot at the bottom edge through the colour to clear, about 14% of the screen tall, flickering
+	local band = Instance.new("Frame")
+	band.Name = "FireBand"; band.BorderSizePixel = 0; band.BackgroundColor3 = Color3.new(1, 1, 1); band.BackgroundTransparency = 0.05
+	band.AnchorPoint = Vector2.new(0, 1); band.Position = UDim2.fromScale(0, 1); band.Size = UDim2.fromScale(1, 0.42); band.ZIndex = 1
+	local g = Instance.new("UIGradient")
+	g.Rotation = -90
+	g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, hot), ColorSequenceKeypoint.new(0.35, c), ColorSequenceKeypoint.new(1, deep) })
+	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.4, 0.45), NumberSequenceKeypoint.new(1, 1) })
+	g.Parent = band
+	band.Parent = frame
+	local flick = game:GetService("TweenService"):Create(band, TweenInfo.new(0.32, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ BackgroundTransparency = 0.22 })
+	flick:Play()
+	local bodies = UiParticles.new(frame, { texture = ft.id, cell = Vector2.new(ft.cell, ft.cell), frames = 64, cols = 8, fps = 30,
+		rate = 60, life = { 0.7, 1.1 }, size = { { 0, 0.42 }, { 0.35, 0.62 }, { 1, 0.5 } },
+		colour = { { 0, hot }, { 0.5, c }, { 1, deep } }, alpha = { { 0, 0.35 }, { 0.15, 0.02 }, { 0.75, 0.15 }, { 1, 1 } },
+		area = { -0.04, 0.98, 1.04, 1.12 }, speed = { 0.12, 0.26 }, spread = 6, rot = { -6, 6 }, z = 2 })
+	local surge = UiParticles.new(frame, { texture = ft.id, cell = Vector2.new(ft.cell, ft.cell), frames = 64, cols = 8, fps = 30,
+		life = { 0.9, 1.3 }, size = { { 0, 0.5 }, { 0.3, 0.78 }, { 1, 0.4 } },
+		colour = { { 0, hot }, { 0.5, c }, { 1, deep } }, alpha = { { 0, 0.3 }, { 0.15, 0.0 }, { 0.7, 0.2 }, { 1, 1 } },
+		area = { -0.04, 0.95, 1.04, 1.1 }, speed = { 0.2, 0.4 }, spread = 6, z = 2 })
 	local smoke = UiParticles.new(frame, { texture = TEX.smoke, cell = Vector2.new(256, 256), frames = 16, cols = 4,
-		rate = 8, life = { 1.8, 2.6 }, size = { { 0, 0.5 }, { 1, 0.9 } }, colour = { { 0, Color3.fromRGB(64, 50, 44) }, { 1, Color3.fromRGB(34, 30, 30) } },
-		alpha = { { 0, 1 }, { 0.25, 0.78 }, { 1, 1 } }, area = { -0.04, 0.72, 1.04, 0.88 }, speed = { 0.14, 0.24 }, spread = 10,
-		sway = 0.03, rot = { 0, 360 }, spin = { -15, 15 }, z = 1 })
-	local flames = UiParticles.new(frame, { texture = TEX.flame, cell = Vector2.new(256, 256), frames = 16, cols = 4,
-		rate = 70, life = { 0.55, 0.95 }, size = { { 0, 0.3 }, { 0.4, 0.56 }, { 1, 0.4 } },
-		colour = { { 0, hot }, { 0.4, c }, { 1, deep } }, alpha = { { 0, 0.5 }, { 0.12, 0.04 }, { 0.7, 0.22 }, { 1, 1 } },
-		area = { -0.03, 1.0, 1.03, 1.1 }, speed = { 0.3, 0.5 }, spread = 8, rot = { -8, 8 }, z = 2 })
-	local embers = UiParticles.new(frame, { texture = TEX.glow, rate = 34, life = { 1.6, 3.2 },
-		size = { { 0, 0.03 }, { 0.3, 0.036 }, { 1, 0.01 } }, colour = { { 0, hot }, { 0.6, c }, { 1, deep } },
-		alpha = { { 0, 0 }, { 0.8, 0.2 }, { 1, 1 } }, area = { 0, 0.85, 1, 1.0 }, speed = { 0.4, 0.9 }, spread = 22,
-		accel = Vector2.new(0, 0.1), drag = 0.3, sway = 0.04, z = 3 })
-	local all = { base, smoke, flames, embers }
-	for _, e in all do e:enable(true) end
-	base:emit(10); flames:emit(40); embers:emit(24); smoke:emit(4)
+		rate = 14, life = { 2.0, 3.0 }, size = { { 0, 0.6 }, { 1, 1.2 } }, colour = { { 0, Color3.fromRGB(60, 46, 40) }, { 1, Color3.fromRGB(30, 27, 27) } },
+		alpha = { { 0, 1 }, { 0.25, 0.62 }, { 1, 1 } }, area = { -0.06, 0.55, 1.06, 0.8 }, speed = { 0.14, 0.26 }, spread = 10,
+		sway = 0.04, rot = { 0, 360 }, spin = { -12, 12 }, z = 1 })
+	local embers = UiParticles.new(frame, { texture = TEX.glow, rate = 40, life = { 2.4, 4.0 },
+		size = { { 0, 0.03 }, { 0.3, 0.038 }, { 1, 0.012 } }, colour = { { 0, hot }, { 0.6, c }, { 1, deep } },
+		alpha = { { 0, 0 }, { 0.8, 0.2 }, { 1, 1 } }, area = { 0, 0.7, 1, 1.0 }, speed = { 0.7, 1.3 }, spread = 18,
+		accel = Vector2.new(0, 0.12), drag = 0.25, sway = 0.05, z = 3 })
+	local all = { bodies, surge, smoke, embers }
+	for _, e in { bodies, smoke, embers } do e:enable(true) end
+	surge:emit(34); bodies:emit(40); embers:emit(30); smoke:emit(8)
 	local h = {}
-	function h.stop(_: any) for _, e in all do e:stop() end end
-	function h.destroy(_: any) for _, e in all do e:destroy() end end
+	function h.stop(_: any)
+		for _, e in all do e:stop() end
+		flick:Cancel()
+		game:GetService("TweenService"):Create(band, TweenInfo.new(1.2), { BackgroundTransparency = 1 }):Play()
+	end
+	function h.destroy(_: any)
+		for _, e in all do e:destroy() end
+		flick:Cancel(); band:Destroy()
+	end
 	return h
 end
 
