@@ -11,8 +11,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import rbxfull
 
-src, out = sys.argv[1], sys.argv[2]
-picks = [a.split('=', 1) for a in sys.argv[3:]]
+# options: --root=<Service>.<Folder> (default ReplicatedStorage.JankfireVfx; the practice loop builds teachers into
+# ServerStorage.VfxPractice so they never ship); a pick "#<n>=Name" takes the n-th Part under the pack's top folder (for
+# packs whose effects are all called "VFXTemplate")
+args = [a for a in sys.argv[1:] if not a.startswith('--')]
+opts = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
+ROOT_SVC, ROOT_NAME = opts.get('root', 'ReplicatedStorage.JankfireVfx').split('.', 1)
+src, out = args[0], args[1]
+picks = [a.split('=', 1) for a in args[2:]]
 inst, parent = rbxfull.read(src)
 kids = {}
 for c, p in parent.items(): kids.setdefault(p, []).append(c)
@@ -91,14 +97,20 @@ def node(r, top_name=None):
 
 data = []
 for suffix, tname in picks:
-    hits = [r for r in inst if path(r).endswith(suffix) and inst[r]['class'] in ('Part', 'MeshPart')]
+    if suffix.startswith('#'):
+        tops = [r for r in inst if parent.get(r) not in inst]
+        parts = [k for k in kids.get(tops[0], []) if inst[k]['class'] in ('Part', 'MeshPart')]
+        n = int(suffix[1:])
+        hits = [parts[n - 1]] if 0 < n <= len(parts) else []
+    else:
+        hits = [r for r in inst if path(r).endswith(suffix) and inst[r]['class'] in ('Part', 'MeshPart')]
     if not hits: print('NOT FOUND', suffix); continue
     data.append(node(hits[0], tname))
 js = json.dumps(data, separators=(',', ':'))
 assert ']==]' not in js
 lua = '''local data = game:GetService("HttpService"):JSONDecode([==[''' + js + ''']==])
-local root = game.ReplicatedStorage:FindFirstChild("JankfireVfx") or Instance.new("Folder")
-root.Name = "JankfireVfx"; root.Parent = game.ReplicatedStorage
+local root = game:GetService("%ROOTSVC%"):FindFirstChild("%ROOTNAME%") or Instance.new("Folder")
+root.Name = "%ROOTNAME%"; root.Parent = game:GetService("%ROOTSVC%")
 local function val(v)
 	if type(v) ~= "table" then return v end
 	local t = v[1]
@@ -146,5 +158,6 @@ rule = open(os.path.join(HERE, 'black_fix.luau'), encoding='utf-8').read()
 rule = rule.replace('%BLACK%', ', '.join('"%s"' % i for i in bb['black'])).replace('%DARK%', ', '.join('"%s"' % i for i in bb.get('dark_too', []))).replace('%DIM%', ', '.join('"%s"' % i for i in bb.get('dim', [])))
 lua = lua.replace('local made = {}', rule + 'local made = {}', 1).replace('\ttable.insert(made, d.n)', '\tfixTree(t)\n\ttable.insert(made, d.n)', 1)
 assert 'fixTree(t)' in lua
+lua = lua.replace('%ROOTSVC%', ROOT_SVC).replace('%ROOTNAME%', ROOT_NAME)
 open(out, 'w', encoding='utf-8', newline='\n').write(lua)
 print('bytes', len(lua), 'effects', len(data))

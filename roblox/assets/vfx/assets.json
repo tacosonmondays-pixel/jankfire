@@ -311,5 +311,29 @@
   "sha1": "a050fc3499da17bc55772590acc51920ed4b2349",
   "what": "Tidecrest tracer: a Beam strip 512 x 64, one dry brush stroke along u (ragged edges, bristle lines), white for a tint",
   "uploaded": "2026-11-19 21:22 UTC (the owner: \"guns will have different vfx based off their skin!\"; tools/roblox/vfx/set_flash_sheets.py, nothing downloaded)"
+ },
+ "vfx_hitstar_4x4": {
+  "id": 123343427727495,
+  "sha1": "a0a9b024c081d5bd61cd24e8a43db102095f1e74",
+  "what": "practice loop: hit flash flipbook 4x4, a 4-point star bursting into a ring of sparkles that thins and breaks (tools/roblox/vfx/practice/draw_r1.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gbreak_ring_4x4": {
+  "id": 88961349137378,
+  "sha1": "5db595aad9b28fc1ad19030cc5e303adc272f684",
+  "what": "practice loop: shock ring flipbook 4x4, a fat ring thinning as it widens, spikes kicking out, breaking into arcs",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gbreak_burst_4x4": {
+  "id": 113903648900633,
+  "sha1": "35aa186a01c4613149bfdfba3c5cc6130f1d93bf",
+  "what": "practice loop: 8-point starburst flipbook 4x4 with a hot core, rays breaking into shards",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_arc": {
+  "id": 119340562514320,
+  "sha1": "547329bb9ac59972d1e52730dbd7a754cf9e057a",
+  "what": "practice loop: a white crescent slash arc with streak lines (256 px)",
+  "uploaded": "2026-11-20"
  }
 }
