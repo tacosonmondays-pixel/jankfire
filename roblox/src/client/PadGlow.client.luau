@@ -16,7 +16,7 @@ local FLARE = 0.5 -- (seconds the flare takes to settle)
 local PERIOD = 3.4 -- (seconds a breath)
 local FAR = 160 -- (studs from the camera)
 
-type Side = { pad: Model, glow: BasePart, light: PointLight?, team: number, slots: { BasePart }, k: number, phase: number, base: Color3, taken: boolean, flareAt: number, open: number, full: number }
+type Side = { pad: Model, glow: BasePart, light: PointLight?, team: number, slots: { BasePart }, k: number, phase: number, base: Color3, taken: boolean, flareAt: number, open: number, full: number, lightOpen: number, range: number }
 local sides: { Side } = {}
 local known: { [BasePart]: Side } = {}
 
@@ -55,7 +55,9 @@ local function scan()
 					s = { pad = pad, glow = c, light = c:FindFirstChildOfClass("PointLight"), team = t, slots = {}, k = 0, phase = math.random() * PERIOD, base = c.Color, taken = false, flareAt = -math.huge,
 						-- (20 Nov 2026: a Glow may set its own see-through, GlowOpen at rest and GlowTaken with someone on it: the
 						-- hub kit's whole-plate sheet stays soft where a thin rim could go nearly solid)
-						open = (tonumber(c:GetAttribute("GlowOpen")) or OPEN) :: number, full = (tonumber(c:GetAttribute("GlowTaken")) or TAKEN) :: number }
+						open = (tonumber(c:GetAttribute("GlowOpen")) or OPEN) :: number, full = (tonumber(c:GetAttribute("GlowTaken")) or TAKEN) :: number,
+						-- (and its light at rest: GlowLight brightness, GlowRange reach)
+						lightOpen = (tonumber(c:GetAttribute("GlowLight")) or LIGHT_OPEN) :: number, range = (tonumber(c:GetAttribute("GlowRange")) or RANGE) :: number }
 					known[c] = s
 				end
 				s.slots = slots[t] or {}
@@ -93,9 +95,9 @@ RunService.RenderStepped:Connect(function(dt)
 		if g.Color ~= col then g.Color = col end
 		local l = s.light
 		if l then
-			local b = (LIGHT_OPEN * (1 + breath * 3)) * (1 - s.k) + LIGHT_TAKEN * s.k + LIGHT_FLARE * f
+			local b = (s.lightOpen * (1 + breath * 3)) * (1 - s.k) + math.max(LIGHT_TAKEN, s.lightOpen) * s.k + LIGHT_FLARE * f
 			if math.abs(l.Brightness - b) > 0.01 then l.Brightness = b end
-			local r = RANGE + (RANGE_FLARE - RANGE) * f
+			local r = s.range + (math.max(RANGE_FLARE, s.range + 4) - s.range) * f
 			if math.abs(l.Range - r) > 0.05 then l.Range = r end
 		end
 	end

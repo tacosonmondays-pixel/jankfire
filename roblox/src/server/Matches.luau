@@ -1285,7 +1285,9 @@ local function padStep()
 		waiting[pad] = n -- (how many pads are ahead of it)
 	end
 	for pad, s in seen do
-		local sub = "step on a side to queue"
+		-- (a pad may set its own resting line, RestSub: the hub kit's pads rest with "", the hint on a sign at each hall's door)
+		local rest = pad:GetAttribute("RestSub")
+		local sub = if type(rest) == "string" then rest else "step on a side to queue"
 		local c = padCount[pad]
 		if s.full then
 			if not c then
