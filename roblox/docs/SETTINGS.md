@@ -57,8 +57,12 @@ player loses a setting).
   SIZE (on top of the device's own size), AIM ASSIST, BUTTON OPACITY, AUTO FIRE, TOGGLE AIM DOWN SIGHTS, LEFT-HANDED
   LAYOUT. TouchControls (the touch session's) reads them and turns the camera itself; a touch button's press is always
   a hold in `Binds.press` (TouchControls runs its own toggles). More rows can come from `Settings.row("touch", ...)`.
+- **CREDITS** (since 19 Nov): the creators whose packs are in the game, as their licences ask ("with attribution").
+  Section titles and plain lines, nothing to click, read from `shared/Credits.luau` (`Credits.SECTIONS`). A session
+  that brings in outside work adds its line there, as "<what>: <creator> (<pack>)"; the page needs no change.
+  Photo: `settings/settings-credits-tab.jpg`.
 
-Every tab has RESET TO DEFAULT (click twice).
+Every tab but CREDITS has RESET TO DEFAULT (click twice).
 
 ## How the look speed works
 

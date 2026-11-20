@@ -694,6 +694,24 @@ tabs = {
 			elseif def.kind == "choice" then choice({ key = def.key, label = def.label, sub = def.sub, options = def.options }) end
 		end
 	end },
+	{ id = "credits", title = "CREDITS", reset = {}, noReset = true, build = function()
+		-- the creators whose work is in the game: their licences ask for credit where players can see it. the list is
+		-- Shared.Credits (other sessions add their lines there); plain text, nothing to click
+		local sh = ReplicatedStorage:FindFirstChild("Jankfire")
+		local m = sh and sh:FindFirstChild("Credits")
+		local ok, C = pcall(function() return require(m :: ModuleScript) :: any end)
+		if not ok or type(C) ~= "table" or type(C.SECTIONS) ~= "table" then section("THE CREDITS DIDN'T LOAD"); return end
+		for _, s in C.SECTIONS do
+			section(string.upper(tostring(s.title)))
+			for _, line in s.lines or {} do
+				local f = T.new("Frame", { Name = "Credit", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+					LayoutOrder = nextOrder() }, list)
+				local l = T.text(f, "Text", tostring(line), 14, T.TEXT)
+				l.Position = UDim2.fromOffset(4, 0); l.Size = UDim2.new(1, -8, 0, 24)
+				l.AutomaticSize = Enum.AutomaticSize.Y; l.TextWrapped = true
+			end
+		end
+	end },
 }
 
 -- ------------------------------------------------------------------ showing a tab
@@ -718,6 +736,7 @@ function UI.show(id)
 	message.Text = ""
 	resetArmed = 0
 	resetBtn.Text = "RESET TO DEFAULT"
+	resetBtn.Visible = tab.noReset ~= true -- (CREDITS has nothing to reset)
 	tab.build()
 	list.CanvasPosition = Vector2.zero
 	for tid, b in tabButtons do
