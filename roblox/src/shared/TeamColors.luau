@@ -31,9 +31,10 @@ TeamColors.OLD_CB = {
 -- the hub session's pick (20 Nov 2026): EMBER against STEEL, the warm-vs-cool pair that stays apart under protan,
 -- deutan and tritan; the third side IVORY (pale against a warm and a cool, so a 1V1V1 never puts orange beside green for
 -- red-green colour-blind players); SAGE only in a four-way free-for-all, where the colour-blind sets take over
+-- (EMBER and STEEL a little deeper on the hub session's ask: under neon the pads' lanes read redder and bluer than the counts)
 TeamColors.NEW = {
-	{ name = "EMBER", hex = "#ef8a32", muted = "#8a5530" },
-	{ name = "STEEL", hex = "#4d94dc", muted = "#3d5f88" },
+	{ name = "EMBER", hex = "#e8742a", muted = "#85492a" },
+	{ name = "STEEL", hex = "#3f86d6", muted = "#355a86" },
 	{ name = "IVORY", hex = "#efe6d2", muted = "#8d8676" },
 	{ name = "SAGE", hex = "#93c17a", muted = "#56704b" },
 } :: { Entry }
