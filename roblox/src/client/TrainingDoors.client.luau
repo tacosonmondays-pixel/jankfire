@@ -476,11 +476,22 @@ if holoMod and holoMod:IsA("ModuleScript") then
 	local ok, h = pcall(require, holoMod)
 	if ok then Holo = h end
 end
+-- (19 Nov, the owner: "Hologram in the training hub spawns in as you normalally then renders as hologram..": the copy
+-- stood on the spot looking like you while ThirdPerson drew the gun into its hands, and the old statue went first. now
+-- a new statue is made out of sight, HIDE_DOWN studs under its spot (under the floor; ThirdPerson still poses it, it is
+-- well inside TP.T.far), and only when it is frozen with its gun does it come up onto the spot, put on the hologram's
+-- look (every piece see-through until the build-in sweep's first paint brings them in) and take the old one's place,
+-- all in one frame. nobody sees the plain copy; the old statue stays up until then)
+local pending: Model? = nil
+local HIDE_DOWN = 40
+local function dropOne(m: Model?)
+	if not m then return end
+	if Holo then pcall(function() local h = Holo.of(m); if h then h:remove(0) end end) end
+	m:Destroy()
+end
 local function dropHolo()
-	if holo then
-		if Holo then pcall(function() local h = Holo.of(holo); if h then h:remove(0) end end) end
-		holo:Destroy(); holo = nil
-	end
+	dropOne(holo); holo = nil
+	dropOne(pending); pending = nil
 	holoSig = ""
 end
 -- (16 Nov evening, the owner's lag report, 12 fps in training: the mirror was a full 1.8x clone of your avatar with
@@ -513,7 +524,7 @@ local holoItem: string? = nil -- (an item pose it shows: "laptop:use:0.55"), and
 local itemUntil = 0
 local itemSeen: any = nil
 local function buildHolo(ch: Model, spot: BasePart)
-	dropHolo()
+	dropOne(pending); pending = nil -- (a half-made one is dropped; the standing statue stays until its successor is ready)
 	holoFor = ch
 	local hw = ch:FindFirstChild("HeldWeapon")
 	holoHeld = hw
@@ -562,10 +573,12 @@ local function buildHolo(ch: Model, spot: BasePart)
 		hl.DepthMode = Enum.HighlightDepthMode.Occluded
 		hl.Parent = m
 	end
+	local onSpot = spot.CFrame * CFrame.new(0, up + 0.1, 0)
+	pcall(function() m:PivotTo(onSpot * CFrame.new(0, -HIDE_DOWN, 0)) end) -- (out of sight before it is in the world)
 	m.Parent = workspace
 	pcall(function() m:ScaleTo(HOLO_SCALE) end)
-	pcall(function() m:PivotTo(spot.CFrame * CFrame.new(0, up + 0.1, 0)) end)
-	holo = m
+	pcall(function() m:PivotTo(onSpot * CFrame.new(0, -HIDE_DOWN, 0)) end)
+	pending = m
 	-- the pose: Roblox's own idle for a moment, then frozen where it is
 	local an = hum and hum:FindFirstChildOfClass("Animator")
 	if an and hum then
@@ -590,13 +603,13 @@ local function buildHolo(ch: Model, spot: BasePart)
 		-- (until its gun is in its hands and the draw is done: at least 0.6 s, at most 3)
 		while held and os.clock() - t0 < 3 do
 			task.wait()
-			if holo ~= m or not m.Parent then holoBusy = false; return end
+			if pending ~= m or not m.Parent then holoBusy = false; return end
 			local r = TP.rigFor(m)
 			if os.clock() - t0 > 0.6 and r and r.gun and r.clip == nil and r.kat == nil and (holoItem == nil or (r.item and r.item.model)) then break end
 		end
 		if not held then task.wait(0.35) end
 		holoBusy = false
-		if holo ~= m or not m.Parent then return end
+		if pending ~= m or not m.Parent then return end
 		-- frozen where it is: the body anchored, ThirdPerson's gun (and item) copied in as still parts, then let go
 		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true end end
 		if held then
@@ -624,7 +637,19 @@ local function buildHolo(ch: Model, spot: BasePart)
 		for _, d in m:GetDescendants() do
 			if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Humanoid") or d:IsA("AnimationController") then d:Destroy() end
 		end
-		if Holo then pcall(function() Holo.apply(m, { build = 1.5, lines = false, glitch = false, flicker = 0, see = 0.84 }) end) end -- (see 0.84: with no scanlines the neon body bloomed white)
+		-- the swap, in one frame (no yield from here): up onto the spot, the hologram's look on and every piece see-through
+		-- until the sweep's first paint, the old statue gone
+		pending = nil
+		pcall(function() m:PivotTo(onSpot) end)
+		if Holo then
+			pcall(function()
+				local h = Holo.apply(m, { build = 1.5, lines = false, glitch = false, flicker = 0, see = 0.84 }) -- (see 0.84: with no scanlines the neon body bloomed white)
+				for _, sv in (h and h.parts) or {} do sv.p.Transparency = 1 end
+			end)
+		end
+		local old = holo
+		holo = m
+		if old ~= m then dropOne(old) end
 	end)
 end
 local function mirrorStep(_dt: number)
