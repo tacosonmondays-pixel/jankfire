@@ -110,7 +110,7 @@ def clip_len(name):
     return clip(name)[-1][0]
 
 
-LOOPS = {'mx_ninja_run', 'kp_runanimationset_forward_keyframesequence', 'id_06_dune_weight_shift'}
+LOOPS = {'mx_ninja_run', 'kp_runanimationset_forward_keyframesequence', 'id_06_dune_weight_shift', 'mx_sprint_lean'}
 
 
 def clip_pose(name, t):
@@ -2188,7 +2188,11 @@ KDASH = 'kp_basicattacktypes_dashlight_keyframesequence'  # plant, dash-through 
 KDEATH = 'kp_death_actions_deathanimation_keyframesequence'
 IDLE_W = 'id_06_dune_weight_shift'
 LANE_X = -4.5      # the killer's lane, 4.5 studs off the victim: they never overlap on screen; the long blade spans it
-RUN_V = 12.0       # studs/s
+# the run: the owner (20 Nov) - "that run is not it": their reference (a Roblox animation) dashes in a low crouched
+# sprint kicking up dust, so the Mixamo forward-lean sprint (its own root motion, 10.85 studs/s: no foot sliding), not
+# the pack's upright run
+KSPRINT = 'mx_sprint_lean'
+RUN_V = 10.85      # studs/s (the sprint's own speed)
 T4 = {}
 
 
@@ -2543,12 +2547,13 @@ def t4_charge(i, n):
     KAT_LEN[0] = f['Lf']
     sec = i / FPS
     y = run_y(sec)
-    K = rig('k', at_for(KRUN, sec, (LANE_X, y), 0), 0, {'clip': (KRUN, sec)})
+    K = rig('k', at_for(KSPRINT, sec, (LANE_X, y), 0), 0, {'clip': (KSPRINT, sec)})
     kat_trail(K)
     kick_dust(K, VT[0])
     t4_victim(LOOK, 2.2)
+    # (the reference's lens: low, hugging the floor, tracking, a dutch tilt)
     cy = run_y(0) + 3.0 + RUN_V * 0.78 * sec
-    lens(Vector((LANE_X + 9.5, cy - 4.0, 2.0)), Vector((LANE_X + 0.5, cy + 3.5, 1.9)), 50, 0)
+    lens(Vector((LANE_X + 8.5, cy - 4.0, 0.9)), Vector((LANE_X + 0.5, cy + 3.5, 1.6)), 56, 8)
 
 
 @shot('tide', 'CLOSING', 14)
@@ -2561,7 +2566,7 @@ def t4_closing(i, n):
     KAT_LEN[0] = f['Lf']
     if i <= 7:
         sec = (22 + i) / FPS
-        K = rig('k', at_for(KRUN, sec, (LANE_X, run_y(sec)), 0), 0, {'clip': (KRUN, sec)})
+        K = rig('k', at_for(KSPRINT, sec, (LANE_X, run_y(sec)), 0), 0, {'clip': (KSPRINT, sec)})
         kat_trail(K)
     else:
         t = 0.17 * (i - 8) / 5

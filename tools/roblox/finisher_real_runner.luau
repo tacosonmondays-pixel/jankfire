@@ -168,6 +168,43 @@ local function reanchor(cfW, f, anchor)
 	if part == "Head" then pc = pc * CFrame.new(0, EYE_DY[rig] or 0, 0) end
 	return pc * (CFrame.new(rel.Position * k) * rel.Rotation)
 end
+-- the owner (20 Nov): the real bodies sank into the ground (their legs aren't the stand-in's). After posing, each real
+-- body is lifted or lowered so its lowest body point sits exactly where the stand-in's did (standing or lying)
+local BODY = { "Head", "UpperTorso", "LowerTorso", "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm",
+	"RightLowerArm", "RightHand", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot" }
+local function lowCorner(cf, half)
+	local y = math.huge
+	for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do
+		y = math.min(y, (cf * Vector3.new(sx * half.X, sy * half.Y, sz * half.Z)).Y)
+	end end end
+	return y
+end
+local function lowestReal(m)
+	local y = math.huge
+	for _, n in ipairs(BODY) do
+		local p = m:FindFirstChild(n)
+		if p and p:IsA("BasePart") then y = math.min(y, lowCorner(p.CFrame, p.Size / 2)) end
+	end
+	return y
+end
+local function lowestStandin(f, rig)
+	for _, r in ipairs(f.rigs) do
+		if r.name == rig then
+			local y = math.huge
+			for n, t in pairs(r.parts) do
+				if SIZES[n] and n ~= "HumanoidRootPart" then y = math.min(y, lowCorner(C(t), SIZES[n] / 2)) end
+			end
+			return y
+		end
+	end
+	return nil
+end
+local function ground(m, f, rig)
+	local want = lowestStandin(f, rig)
+	if not want or want == math.huge then return end
+	local dy = want - lowestReal(m)
+	if math.abs(dy) > 1e-3 then m:PivotTo(m:GetPivot() + Vector3.new(0, dy, 0)) end
+end
 local SKIP = { sheath = true, holster = true, belt = true }
 local REANCHOR = { glint = "mouth", sweat = "v.Head", stroke = "v.UpperTorso", stroke_edge = "v.UpperTorso",
 	splat = "v.UpperTorso", shock = "v.UpperTorso", flash = "k.RightHand", gsmear = "k.RightHand", smoke = "k.RightHand",
@@ -196,6 +233,7 @@ shared.FinReal = function(key)
 			m.Parent = root
 			place(m, C(a.root))
 			pose(m, a.clip, a.t, a.clip2, a.t2, a.w2)
+			ground(m, f, name)
 			setTr(m, math.min(1, (a.sc or 0) * 1.4))
 			used[name] = true
 		end
@@ -205,6 +243,7 @@ shared.FinReal = function(key)
 		m.Parent = root
 		place(m, C(a.root))
 		pose(m, a.clip, a.t)
+		ground(m, f, name)
 		setTr(m, a.tr)
 		used[name] = true
 	end
