@@ -20,7 +20,7 @@ local RunService = game:GetService("RunService")
 
 local Spectate = {}
 Spectate.ON = true
-Spectate.RANKED = false -- (ranked matches listed, not watchable: see above)
+Spectate.RANKED = false -- (ranked matches listed, not watchable. final: the owner, "Can't spectate ranked since you have to match make for it")
 
 local Matches: any, Party: any
 type W = { id: any, anchored: boolean? }

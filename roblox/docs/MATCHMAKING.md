@@ -794,8 +794,8 @@ The owner: "can there be a board where you can specate current games?" (commits 
   west wall, the Concourse's nave, two on the Atrium's screen cube); the ring has my own over its centre console. Each
   carries a prompt (E, `SpectateOpen`) that opens the WATCH panel. The PLAY screen has a WATCH tab that opens it too.
 - **The panel:** "matches on this server", one row per match with a WATCH button. Matches on other servers
-  (cross-server) aren't listed. RANKED matches are listed but can't be watched (`Spectate.RANKED = false`): a friend
-  watching could call out where everyone is (ghosting).
+  (cross-server) aren't listed. RANKED matches are listed but can't be watched (`Spectate.RANKED = false`, final: the
+  owner, "Can't spectate ranked since you have to match make for it").
 - **Watching:** your body stays where it stood, anchored, with the attribute `Watching` = the match id. You're not in
   the match, so nothing there counts you: hits, zones, ranked, stats and quests ignore you, and the anti-cheat sees a
   body standing still. The server streams the arena to you (`ReplicationFocus`). The camera follows a player:
