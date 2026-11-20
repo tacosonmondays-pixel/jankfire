@@ -142,6 +142,18 @@ for id, row in Finishers.LIST do
 	if row.built then for _, s in row.skins do Finishers.BY_SKIN[s] = id end end
 end
 
+-- the in-game scenes, each behind a switch. 20 Nov, the owner: "take out tidecrest put in revolver" - Tidecrest goes to a
+-- professional, so its scene is OFF and Inkfall plays its normal cut again. FinisherScene and its data stay in the
+-- place; true here brings the scene back (row.sceneOff keeps its id)
+Finishers.SCENE_ON = { inkfall = false } :: { [string]: boolean }
+for id, row in Finishers.LIST do
+	if row.scene and Finishers.SCENE_ON[id] == false then
+		(row :: any).sceneOff = row.scene
+		row.scene = nil
+		row.sceneLen = nil
+	end
+end
+
 -- the finisher a skin owns (built ones only), and its row
 function Finishers.forSkin(skinId: string?): (string?, Row?)
 	if type(skinId) ~= "string" then return nil, nil end
