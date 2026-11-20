@@ -143,13 +143,13 @@ end
 -- "flat daylight makes nothing glow"); TrainingV2 writes TrainingLook = "v5" when it builds v5 live
 H.looks.training_v5 = with(HUB, {
 	Lighting = {
-		Ambient = Color3.fromRGB(98, 100, 114), OutdoorAmbient = Color3.fromRGB(120, 124, 140), Brightness = 1.8,
-		ExposureCompensation = -0.05, EnvironmentDiffuseScale = 0.35, EnvironmentSpecularScale = 0.3,
+		Ambient = Color3.fromRGB(112, 110, 112), OutdoorAmbient = Color3.fromRGB(148, 142, 136), Brightness = 1.8,
+		ExposureCompensation = -0.05, EnvironmentDiffuseScale = 0.22, EnvironmentSpecularScale = 0.3,
 		ClockTime = 16.8, GeographicLatitude = 34, ColorShift_Top = Color3.fromRGB(255, 228, 196),
 	},
 	Atmosphere = { Density = 0.2, Offset = 0.08, Haze = 1.1, Glare = 0.12, Color = Color3.fromRGB(214, 200, 184), Decay = Color3.fromRGB(122, 116, 132) },
 	Bloom = { Intensity = 0.4, Size = 22, Threshold = 1.7 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.08, TintColor = Color3.fromRGB(255, 245, 234) },
+	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = 0.08, TintColor = Color3.fromRGB(255, 245, 234) },
 	SunRays = { Intensity = 0.04 },
 })
 H.plainSky.training_v5 = true
@@ -486,7 +486,7 @@ H.byArena.JankfieldHighV2B = "school_v2b"
 H.looks.hotel = with(HUB, {
 	-- (round 4, judge round 3: "one even warm beige wash") a lower, nearly neutral ambient and a light tint, so the lamps,
 	-- the signs and the pads are the bright things and the ceilings sit darker than the walls
-	Lighting = { Ambient = Color3.fromRGB(78, 77, 78), OutdoorAmbient = Color3.fromRGB(78, 77, 78), ExposureCompensation = 0 },
+	Lighting = { Ambient = Color3.fromRGB(78, 77, 78), OutdoorAmbient = Color3.fromRGB(78, 77, 78), ExposureCompensation = -0.1 }, -- (round 5: a step dimmer)
 	Atmosphere = { Density = 0.05, Color = Color3.fromRGB(52, 48, 44), Decay = Color3.fromRGB(24, 22, 20) },
 	Bloom = { Intensity = 0.5, Size = 22, Threshold = 1.5 },
 	ColorCorrection = { Brightness = 0, Contrast = 0.2, Saturation = 0.05, TintColor = Color3.fromRGB(255, 248, 240) },

@@ -17,7 +17,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from structkit import *
 
-TRIM, TRIM2, BASE, KICK, BACK = '7d7a76', '6b6863', '4a4f57', '3d4148', '33363c'   # (round 5: a mid warm grey, not the room's cream)
+TRIM, TRIM2, BASE, KICK, BACK = '8f8b85', '807c77', '4a4f57', '3d4148', '33363c'   # (round 6: a lighter slate: round 5's went near-black in shadow)
 SPOT = 'e6e1d6'
 reset()
 
@@ -38,7 +38,7 @@ soft('plastic', TRIM2, 1.4, 11.4, 0.6, 0, 0, 0.3, 0.3, pick='top')
 keep('jpad_divider')
 
 # ------------------------------------------------------------------ jpad_spot (a player's mark: a big pale square)
-cy('plastic', SPOT, 1.2, 0.3, 0, 0, 0.15, segs=28, bevel=0.1)          # (round 5: a raised bevelled foot disc)
+cy('plastic', SPOT, 0.7, 0.3, 0, 0, 0.15, segs=24, bevel=0.1)          # (round 6: a small raised foot disc, 1.4 across: the lane's colour shows)
 keep('jpad_spot')
 
 # ------------------------------------------------------------------ jpad_totem (round 3: an open gantry at the plate's back edge)

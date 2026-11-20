@@ -1066,7 +1066,7 @@ end
 -- kerb, thick gantry posts into the plinth, the board raised clear of hats with the mode as big as the counts, and the
 -- mode's blade on the pad's own gantry, not a pier, so it never reads over the next pad)
 K.PAD = { w = 12.4, d = 13.4, top = 1.2, frameW = 10.8, frameH = 14.2 }
-K.PAD_KIT = 81129917407402 -- (the pad kit's Model asset, round 5: tools/roblox/pad_models.py, uploaded 20 Nov; round 4 was 128293586780369)
+K.PAD_KIT = 102127176872071 -- (the pad kit's Model asset, round 6: tools/roblox/pad_models.py, uploaded 20 Nov; round 5 was 81129917407402)
 K.TEAM_MUTED = { "b0578f", "3f8fa8", "b08a46" } -- (the teams' colours at rest on a plate; the Glow is the full colour)
 -- (20 Nov, the owner: "maybe lets use differnt accent colors than the rivals one please") the teams' colours come from
 -- ONE place, ReplicatedStorage.Jankfire.TeamColors (play-party's module: the matches read it too, so pads and matches
@@ -1100,6 +1100,14 @@ local function padPiece(m, F, tmpl, cf, solid)
 	c.Parent = m
 	return c
 end
+-- (main, 20 Nov: in the photos the lit lanes washed out to yellow and pale cyan) the glow's own colour: the team's hue,
+-- deeper and more saturated, so neon keeps it under the bloom (the counts and the HUD keep the team's own hex)
+function K.glowHex(t)
+	local c = c3(K.TEAM[t])
+	local h, s, v = c:ToHSV()
+	if s < 0.2 then return K.TEAM[t] end -- (a pale team stays itself)
+	return Color3.fromHSV(h, math.min(1, s * 1.15), v * 0.78):ToHex()
+end
 function K.pad(F, md, bank, name, o)
 	o = o or {}
 	local m = padModel(md, bank, name, "plate")
@@ -1124,16 +1132,13 @@ function K.pad(F, md, bank, name, o)
 		sd:SetAttribute("Team", t)
 		-- the Glow (PadGlow: half lit while open, full while taken): a sheet over the lane, under the marks; its light
 		-- short and low, so it lights the lane, not the pillars round it (judges, round 4)
-		local g = K.box(F, "Scenery", "Glow", xa + 0.15, xb - 0.15, TOP + 0.085, TOP + 0.1, z1 + 0.15, z0 - 0.15, K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.6 })
+		-- (round 6, judge round 5: the lane must read as its colour, brighter than anything round it; no lit edge bands:
+		-- neon lane edges are the reference's device)
+		local g = K.box(F, "Scenery", "Glow", xa + 0.15, xb - 0.15, TOP + 0.085, TOP + 0.1, z1 + 0.15, z0 - 0.15, K.glowHex(t), MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.45 })
 		g:SetAttribute("Team", t)
-		g:SetAttribute("GlowOpen", 0.6); g:SetAttribute("GlowTaken", 0.25) -- (PadGlow, play-party 4063e2e)
-		g:SetAttribute("GlowLight", 0.6); g:SetAttribute("GlowRange", 5) -- (its light at rest: PadGlow a2121b9)
-		local gl = Instance.new("PointLight"); gl.Color = c3(K.TEAM[t]); gl.Range = 5; gl.Brightness = 0.6; gl.Shadows = false; gl.Parent = g
-		-- (round 5) a lit edge band round the lane, in the team's full colour, steady
-		for _, r in { { xa + 0.1, xb - 0.1, z0 - 0.5, z0 - 0.1 }, { xa + 0.1, xb - 0.1, z1 + 0.1, z1 + 0.5 }, { xa + 0.1, xa + 0.5, z1 + 0.5, z0 - 0.5 }, { xb - 0.5, xb - 0.1, z1 + 0.5, z0 - 0.5 } } do
-			local rim = K.box(F, "Scenery", "Rim", r[1], r[2], TOP + 0.1, TOP + 0.16, r[3], r[4], K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.1 })
-			rim:SetAttribute("Team", t)
-		end
+		g:SetAttribute("GlowOpen", 0.45); g:SetAttribute("GlowTaken", 0.15) -- (PadGlow, play-party 4063e2e)
+		g:SetAttribute("GlowLight", 0.7); g:SetAttribute("GlowRange", 5) -- (its light at rest: PadGlow a2121b9)
+		local gl = Instance.new("PointLight"); gl.Color = c3(K.glowHex(t)); gl.Range = 5; gl.Brightness = 0.7; gl.Shadows = false; gl.Parent = g
 		-- the marks: a line of raised pale discs per team (the teams face each other across the kerb); each Slot a disc
 		-- of the team's colour on its mark that Matches shows while the place is taken
 		local zs = { zc }
@@ -1142,7 +1147,7 @@ function K.pad(F, md, bank, name, o)
 		elseif md.size >= 4 then zs = { zc + 4.05, zc + 1.35, zc - 1.35, zc - 4.05 } end
 		for sl, z in zs do
 			padPiece(m, F, "jpad_spot", CFrame.new(cx, TOP + 0.1, z), false)
-			local q = K.cyl(F, "Scenery", "Slot", cx, TOP + 0.4, TOP + 0.45, z, 1.6, K.TEAM[t], MAT.Neon, { ghost = true, tr = 1, noshadow = true, parent = m })
+			local q = K.cyl(F, "Scenery", "Slot", cx, TOP + 0.4, TOP + 0.45, z, 1.1, K.glowHex(t), MAT.Neon, { ghost = true, tr = 1, noshadow = true, parent = m })
 			q:SetAttribute("Team", t); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
 		end
 		if lampY then
@@ -1164,14 +1169,15 @@ function K.pad(F, md, bank, name, o)
 	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
 	local scr = K.box(F, "Scenery", "Screen", -5.9, 5.9, 8.7, 13.75, -11.3, -11.15, "28324a", nil, { parent = m })
 	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
-	K.text(scr, Enum.NormalId.Back, { { md.title, "f2f0ea", 0.34 }, { table.concat(counts, if n == 2 then " vs " else "  "), "ffffff", if n == 2 then 0.42 else 0.34 },
+	-- (round 6: the mode's name on the board itself, at about 60% of the counts; a matte frame, not a neon halo)
+	K.text(scr, Enum.NormalId.Back, { { md.title .. "  " .. md.kind, "f2f0ea", 0.26 }, { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.44 else 0.36 },
 		{ "", "c8d0e0", 0.1, "S" } }, { names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
 	K.light(scr, 14, 0.45, "dfe8ff")
-	for _, r in { { -6.25, 6.25, 13.75, 14.1 }, { -6.25, 6.25, 8.35, 8.7 }, { -6.25, -5.9, 8.7, 13.75 }, { 5.9, 6.25, 8.7, 13.75 } } do
-		K.box(F, "Scenery", "Bezel", r[1], r[2], r[3], r[4], -11.35, -11.1, "e9eef7", MAT.Neon, { parent = m, ghost = true, noshadow = true, tr = 0.3 })
+	for _, r in { { -6.3, 6.3, 13.75, 14.15 }, { -6.3, 6.3, 8.3, 8.7 }, { -6.3, -5.9, 8.7, 13.75 }, { 5.9, 6.3, 8.7, 13.75 } } do
+		K.box(F, "Scenery", "Bezel", r[1], r[2], r[3], r[4], -11.4, -11.05, "c9ccd2", nil, { parent = m, ghost = true })
 	end
-	-- the head (round 5, in place of the hanging crest): the mode's word on the gantry's head, facing the walk
-	if o.blade ~= false then
+	-- the head (round 5): the mode's word on the gantry's head; round 6: only on request (o.head), the board says it
+	if o.head == true then
 		K.box(F, "Scenery", "Head", -6.1, 6.1, 14.4, 16.0, -13.25, -11.35, "7d7a76", nil, { parent = m, solid = true })
 		local hp = K.box(F, "Scenery", "HeadPlate", -5.7, 5.7, 14.55, 15.85, -11.4, -11.3, "28324a", nil, { parent = m })
 		K.text(hp, Enum.NormalId.Back, { { md.kind, "f2f0ea", 0.8 } }, { pps = 40, bright = 2, bg = "28324a", bgt = 0 })
