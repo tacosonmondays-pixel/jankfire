@@ -192,6 +192,12 @@ clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as 
 - The effects use the VFX pipeline's approved sprites (feather, spark, flame, smoke, bubble, heart, ring, glow,
   sparkle). Nothing new was uploaded.
 - Removed on the spot at the end or on SKIP.
+- **Scene sets are built ahead (20 Nov).** A scene's set, its kit town and the onlookers used to be built in its first
+  frame (a 97-99 ms hitch). Now the server sends `{ kind = "warm", scenes }` to everyone in the match. It goes out in
+  the gap after a round that leaves a team one win from the match, and at a classic mode's start. The scenes are the
+  ones the skins its players wear own. Each client builds those sets then, about 120 boxes or 40 town pieces a frame,
+  parked at the scene's spot far off every map, and fetches their clips and sounds (`FinisherScene` `Scene.warm`).
+  `Scene.start` takes the parked set as it stands. Going home drops an unused one (`Scene.unwarm`).
 
 ### Selling and showing it
 
@@ -240,7 +246,10 @@ The shot lists are shared. A theme only says how its orbit moves and what happen
   recorded), then arm, then kill.
 - The player attribute `FinisherTest`:
   - `preview:<id>` or `preview:<id>:short`: the cut, staged in front of you;
-  - `stop`.
+  - `stop`;
+  - `warm:<sceneId>` builds that scene's set ahead, as the match's warning does (the workspace attribute
+    `FinisherWarm` says when it is ready); `unwarm` drops it. The player attribute `FinisherProf` (Studio) breaks the
+    scene's start down in ms: ghosts, set, look, bodies and the first steps.
 - Workspace attributes for photos:
   - `FinisherSpeed`: 0 to 1, slows the whole cut;
   - `FinisherFreeze`: holds the cut at that many seconds.

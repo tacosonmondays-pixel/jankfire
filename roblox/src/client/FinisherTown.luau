@@ -70,19 +70,42 @@ local function track(n: Npc, key: string): AnimationTrack?
 	return tr
 end
 
--- builds the town and its onlookers under `parent`, the town pivoted on `origin`; returns its state (for Town.step)
-function Town.build(sceneId: string, key: string, parent: Instance, origin: CFrame): any
+-- builds the town and its onlookers under `parent`, the town pivoted on `origin`; returns its state (for Town.step).
+-- `step` (built ahead of the scene, FinisherScene's Scene.warm): the town comes a few pieces at a time and the onlookers
+-- one at a time, `step` called between (it waits a frame); false from it stops the build (nil back)
+local TOWN_CHUNK = 40
+function Town.build(sceneId: string, key: string, parent: Instance, origin: CFrame, step: (() -> boolean)?): any
 	local t = Town.pick(sceneId, key)
 	if not t then return nil end
 	local f = sets() :: Instance
 	local src = f:FindFirstChild(t.set) :: Model
-	local m = src:Clone()
-	m:PivotTo(origin)
-	m.Parent = parent
+	local m: Model
+	if step then
+		-- (each piece moved by the shift that pivots the whole town on `origin`)
+		local shift = origin * src:GetPivot():Inverse()
+		m = Instance.new("Model")
+		m.Name = src.Name
+		m.Parent = parent
+		for n, c in src:GetChildren() do
+			local k = c:Clone()
+			if k:IsA("PVInstance") then
+				k:PivotTo(shift * k:GetPivot())
+			else
+				for _, d in k:GetDescendants() do if d:IsA("BasePart") then d.CFrame = shift * d.CFrame end end
+			end
+			k.Parent = m
+			if n % TOWN_CHUNK == 0 and not step() then return nil end
+		end
+	else
+		m = src:Clone()
+		m:PivotTo(origin)
+		m.Parent = parent
+	end
 	local st = { model = m, npcs = {} :: { Npc } }
 	local proto = f:FindFirstChild("Onlooker") :: Model?
 	if not proto then return st end
 	for i, sp in t.spots do
+		if step and not step() then return nil end
 		local n = proto:Clone()
 		local root = n:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = n:FindFirstChildOfClass("Humanoid")
@@ -114,6 +137,14 @@ function Town.build(sceneId: string, key: string, parent: Instance, origin: CFra
 		table.insert(st.npcs, { model = n, root = root, kind = sp[6], tracks = {}, phase = (i * 0.37) % 1, on = true })
 	end
 	return st
+end
+
+-- (built ahead: every onlooker's clips loaded now, so none loads on the scene's frames)
+function Town.warm(st: any)
+	if not st then return end
+	for _, n in st.npcs do
+		for key in Town.MOVES do track(n, key) end
+	end
 end
 
 -- one clip at a moment, another faded in over it

@@ -2,7 +2,8 @@
 -- roblox/docs/FINISHERS.md). one ends when a round goes live, when you go home, or when you respawn.
 -- the settings page's "gfx.othersFinisher" (default on) turns off finishers you only watch; your own (as the killer or
 -- the victim) always play, and SKIP ends any of them.
--- Studio tests: the player attribute FinisherTest = "preview:<id>" | "preview:<id>:short" | "stop"; training dummies'
+-- Studio tests: the player attribute FinisherTest = "preview:<id>" | "preview:<id>:short" | "stop" | "warm:<sceneId>" |
+-- "unwarm"; training dummies'
 -- looks are kept as they spawn so a test kill's victim has a whole body (Finisher.dummyLooks)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,6 +38,11 @@ end
 local worldOn: { Instance } = {}
 remote.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" or msg.t ~= "finisher" then return end
+	-- (a scene may come at the end of the next round: its set built ahead, parked - Finisher.warm)
+	if msg.kind == "warm" then
+		if type(msg.scenes) == "table" then F.warm(msg.scenes) end
+		return
+	end
 	if msg.kind == "world" then
 		local w = world()
 		if not (w and w.play) or typeof(msg.victim) ~= "Instance" then return end
@@ -59,6 +65,7 @@ end)
 Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	if type(r) ~= "table" then return end
 	if (r.start or r.hub) and F.isPlaying() then F.stop() end
+	if r.hub then F.unwarm() end -- (home: a set built ahead and never played goes)
 	if (r.start or r.hub) and #worldOn > 0 then
 		local w = world()
 		for _, vm in worldOn do if w and w.stop then pcall(w.stop, vm) end end
@@ -105,6 +112,11 @@ me:GetAttributeChangedSignal("FinisherTest"):Connect(function()
 	if type(v) ~= "string" or v == "" then return end
 	me:SetAttribute("FinisherTest", nil)
 	if v == "stop" then F.stop(); return end
+	-- ("warm:<sceneId>" builds a scene's set ahead as the match's warning does; "unwarm" drops it. The workspace attribute
+	-- FinisherWarm says when it's ready)
+	if v == "unwarm" then F.unwarm(); return end
+	local wid = string.match(v, "^warm:([%w_]+)$")
+	if wid then F.warm({ wid }); return end
 	-- ("preview:<id>[:short][:<userId>]": a userId puts that player's own avatar in as the victim, as in a real match)
 	local id, kind, uid = string.match(v, "^preview:([%w_]+):?(%a*):?(%d*)$")
 	if id then

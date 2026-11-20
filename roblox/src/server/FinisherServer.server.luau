@@ -6,6 +6,8 @@
 --     (or its scene) to everyone in the match, the end screen waiting for it. (The short cut between rounds is retired,
 --     20 Nov: "finisher cutscene should only play when you get the final hit on the game winning round")
 --   * a classic mode's end (Matches.finish) right after its last kill -> the full cut to everyone in it
+--   * a round that leaves a team one win from the match, or a classic mode's start -> { kind = "warm", scenes } to
+--     everyone in it: the scenes its end could bring, their sets built ahead on the clients (no hitch at the start)
 -- What it sends (JankfireRemotes.Finisher, made here if missing): the last Finishers.LEAD s of the match recording
 -- (Recorder.recent), cut down to the killer and the victim, plus who's who. The camera, the bodies and the effects are
 -- the client's (client/Finisher.luau). Nothing here holds a round or a match: the cuts fit the windows that are already
@@ -223,7 +225,41 @@ local function onRound(m: any, winner: number): (string?, any)
 		return kind, table.pack(play(x, "short", viewers, x.fid, x.skin))
 	end
 end
-Matches.onRound(function(m: any, winner: number) onRound(m, winner) end)
+-- (built ahead - main, 20 Nov: a scene's first frame built its whole set, a 97-99 ms hitch. Everyone in the match is
+-- told which scenes its end could bring - the ones the skins its players wear own - in the gap after a round that
+-- leaves a team one win from the match, and at a classic mode's start (its end is its only cut); the clients build those
+-- sets then, a chunk a frame, parked off the map: client/FinisherScene.luau's Scene.warm)
+local function scenesOf(m: any): { string }
+	local out, seen = {}, {}
+	for _, p in everyone(m) do
+		local s = p:GetAttribute("Skins")
+		if type(s) ~= "string" then continue end
+		for wid in string.gmatch(s, "([%w_]+)=[%w_]+") do
+			local _, row = Finishers.forSkin(GunSkins.skinFor(p, wid))
+			local sid = row and (row :: any).scene
+			if type(sid) == "string" and not seen[sid] then
+				seen[sid] = true
+				table.insert(out, sid)
+			end
+		end
+	end
+	return out
+end
+local function warm(m: any)
+	local list = scenesOf(m)
+	if #list == 0 then return end
+	for _, p in everyone(m) do R:FireClient(p, { t = "finisher", kind = "warm", scenes = list }) end
+end
+
+Matches.onRound(function(m: any, winner: number)
+	onRound(m, winner)
+	local top = 0
+	for _, n in m.wins or {} do top = math.max(top, n) end
+	if top == Matches.WIN - 1 then warm(m) end -- (one win from the match: the next round may end it)
+end)
+Matches.onStart(function(m: any)
+	if m.rules then warm(m) end
+end)
 
 Matches.onEnd(function(m: any, winner: number?)
 	local x = lastKill[m]

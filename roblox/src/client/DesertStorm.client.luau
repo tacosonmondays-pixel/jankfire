@@ -128,6 +128,9 @@ end
 RunService.RenderStepped:Connect(function(dt)
 	look += dt
 	if look > 2 then look = 0; scan() end
+	-- (a finisher scene owns the light while it plays: its camera is far off the arena, and the storm's haze written over
+	-- the scene's own changed its look mid-scene; the storm carries on when the camera is back)
+	if me:GetAttribute("Finishing") then return end
 	local cam = workspace.CurrentCamera
 	if not cam then return end
 	local atmo = Lighting:FindFirstChildOfClass("Atmosphere")

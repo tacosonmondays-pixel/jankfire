@@ -3,6 +3,8 @@
 -- onlookers. Generated from tools/roblox/highnoon_town.py's spots json; do not edit by hand. Each spot:
 -- { x, y, z (feet, local to the scene ORIGIN), face x, face z (the way they look), kind, floor }
 -- (kind: window | door | barrel duck at the draw; balcony | porch flinch at the shot)
+-- (the owner picked A on 20 Nov: only HighNoonTownA is in the place. B stays here as the spare, a switch away -
+-- tools/roblox/highnoon_town_import.luau brings its set back - and is never loaded while its set isn't there)
 return {
 	highnoon = {
 		A = { set = "HighNoonTownA", spots = {

@@ -124,7 +124,8 @@ local EXTRA: { [string]: any } = {
 		-- (the town - the owner, 20 Nov: "can you fix the scene scenery too? ... make two versions so I can see side by
 		-- side": the kit town "A" (a timber main street, onlookers in the saloon's windows) or "B" (an adobe border town,
 		-- balcony and porch onlookers) in place of the plan's boxes, FinisherTown; the wheel ruts gone ("long rectangle
-		-- strips ... make those go bye bye") and the footprints faint ("the footsteps can they be more subtyle"))
+		-- strips ... make those go bye bye") and the footprints faint ("the footsteps can they be more subtyle")). The
+		-- owner picked A, 20 Nov: B's set is out of the place (tools/roblox/highnoon_town_import.luau brings it back)
 		town = "A", noRuts = true, softPrints = true,
 		-- (the grade - the owner, 20 Nov: "can it transistion into that desaturated filter after the shot, but keep it nice
 		-- and glowey without filter ofr the rest of it or a slight orange like in western films?": warm and glowing to the
@@ -1266,6 +1267,132 @@ local function sounds(sc: any, i: number)
 	end
 end
 
+-- ------------------------------------------------------------------ the set, built now or ahead
+-- (Studio tests: the workspace attribute FinisherTown = "A" | "B" picks a town over the scene's own)
+local function townKeyOf(ex: any): string?
+	local tk = workspace:GetAttribute("FinisherTown")
+	if type(tk) == "string" and game:GetService("RunService"):IsStudio() then return tk end
+	return ex.town
+end
+
+-- the plan's boxes (less what a kit town stands in for) and the kit town with its onlookers, under `stage`. Built
+-- ahead, `step` waits a frame every SET_CHUNK pieces and says whether to go on; false from it stops the build (nil back)
+local SET_CHUNK = 120
+local function buildSet(sid: string, d: any, ex: any, townKey: string?, stage: Instance, step: (() -> boolean)?): ({ any }?, any)
+	local setParts = {}
+	local town = if Town and townKey then Town.pick(sid, townKey) else nil
+	for n, q in d.stage do
+		if step and n % SET_CHUNK == 0 and not step() then return nil, nil end
+		-- (the pieces a kit town stands in for, and the ruts, aren't built at all: a false keeps the hide lists' count)
+		if (town and Town.REPLACED[q[10]]) or (ex.noRuts and q[10] == "rut") or (q[10] == "sky" and ex.look and ex.look.plainSky) then
+			table.insert(setParts, false)
+			continue
+		end
+		local okm, mat = pcall(function() return (Enum.Material :: any)[q[9]] end)
+		local shape = if q[1] == "Ball" then Enum.PartType.Ball elseif q[1] == "Cylinder" then Enum.PartType.Cylinder else nil
+		-- (the painted sky ring is plain paint: Neon blows out white in the game's light)
+		local p = part(stage, Vector3.new(q[2], q[3], q[4]), ORIGIN * cfOf(q[5]), Color3.new(q[6], q[7], q[8]), if q[10] == "sky" then Enum.Material.SmoothPlastic elseif okm then mat else nil, shape)
+		p.CastShadow = q[10] ~= "floor" and q[10] ~= "sky" -- (the painted sky ring and its lid never shade the court)
+		p.Name = q[10]
+		-- (a scene under the engine's own sky leaves the painted ring out: built but unseen, so the plan's hide lists
+		-- still count the set's parts the same way)
+		if q[10] == "sky" and ex.look and ex.look.plainSky then p.Transparency = 1 end
+		if q[10] == "print" and ex.softPrints then
+			-- (a faint print: smaller, nearly the street's own colour, half see-through)
+			p.Size = Vector3.new(p.Size.X * 0.75, p.Size.Y, p.Size.Z * 0.75)
+			p.Color = p.Color:Lerp(Color3.fromRGB(196, 158, 112), 0.6)
+			p.Transparency = 0.55
+			p.CastShadow = false
+		end
+		table.insert(setParts, p)
+		if ex.lamps and q[10] == "lamp" then
+			local pl = Instance.new("PointLight")
+			pl.Range = 10; pl.Brightness = 1.6; pl.Shadows = true; pl.Color = Color3.fromRGB(255, 190, 120)
+			pl.Parent = p
+		end
+	end
+	local st: any = nil
+	if town then
+		local ok, r = pcall(Town.build, sid, townKey :: string, stage, ORIGIN, step)
+		if ok then st = r else warn("[jankfire] finisher town: " .. tostring(r)) end
+		if step and not step() then return nil, nil end
+	end
+	return setParts, st
+end
+
+-- (the opening hitch - main, 20 Nov: the cutscene's first frame took 97-99 ms in both towns, its set, its kit town and
+-- the onlookers all built in that one frame. The server now says when a scene may come - the gap after a round that
+-- leaves a team one win from the match, a classic mode's start - and the set is built then, a chunk a frame, parked
+-- where it plays: ORIGIN, far off every map, where nothing else ever is. The clips and the sounds are fetched with it.
+-- Scene.start takes the parked set as it stands; Scene.unwarm drops it (home, or a new warm for the other town))
+local ContentProvider = game:GetService("ContentProvider")
+local warm: { [string]: any } = {}
+local playing: string? = nil -- (the scene on screen now: no second set of it is built meanwhile)
+
+function Scene.unwarm(sid: string?)
+	for id, w in warm do
+		if sid == nil or id == sid then
+			w.dead = true
+			w.folder:Destroy()
+			warm[id] = nil
+		end
+	end
+end
+
+-- Scene.warm(sceneId) -> boolean   builds that scene's set ahead (true: built, on its way, or already there)
+function Scene.warm(sid: string): boolean
+	local d = dataOf(sid)
+	if not d or playing == sid then return false end
+	local ex = EXTRA[sid] or {}
+	local key = townKeyOf(ex)
+	local w = warm[sid]
+	if w and not w.dead and w.key == key then return true end
+	if w then Scene.unwarm(sid) end
+	local folder = Instance.new("Folder")
+	folder.Name = "JankFinisherStage"
+	folder.Parent = workspace
+	local stage = Instance.new("Folder")
+	stage.Name = "Set"
+	stage.Parent = folder
+	local nw: any = { key = key, folder = folder, stage = stage, ready = false, dead = false }
+	warm[sid] = nw
+	local t0 = os.clock()
+	task.spawn(function()
+		local frames = 0
+		local function step(): boolean
+			task.wait()
+			frames += 1
+			return not nw.dead and folder.Parent ~= nil
+		end
+		local parts, town = buildSet(sid, d, ex, key, stage, step)
+		if not parts or nw.dead then return end
+		if town and Town.warm then pcall(Town.warm, town) end
+		nw.setParts, nw.town, nw.ready = parts, town, true
+		if game:GetService("RunService"):IsStudio() then
+			workspace:SetAttribute("FinisherWarm", ("%s %s ready: %d frames, %.1f s"):format(sid, tostring(key), frames, os.clock() - t0))
+		end
+		-- (the clips and the sounds fetched now, not on their frames)
+		local list = {}
+		for _, clip in d.clips or {} do
+			local id = Finishers.SCENE_ANIMS[clip]
+			if id then
+				local a = Instance.new("Animation")
+				a.AnimationId = "rbxassetid://" .. id
+				table.insert(list, a)
+			end
+		end
+		local function snd(id: string)
+			local x = Instance.new("Sound")
+			x.SoundId = "rbxassetid://" .. id
+			table.insert(list, x)
+		end
+		for _, q in ex.cues or {} do if string.match(q[2], "^%d+$") then snd(q[2]) end end
+		for _, b in ex.audio or {} do snd(b.id) end
+		pcall(function() ContentProvider:PreloadAsync(list) end)
+	end)
+	return true
+end
+
 -- ------------------------------------------------------------------ the scene
 function Scene.start(s: any, kind: string): any
 	local d = dataOf(s.row.scene)
@@ -1300,54 +1427,27 @@ function Scene.start(s: any, kind: string): any
 		sc.cum[sc.i1 + 1] = t
 		sc.total = t
 	end
-	-- the set
-	local folder = Instance.new("Folder")
-	folder.Name = "JankFinisherStage"
-	folder.Parent = workspace
-	sc.folder = folder
-	local stage = Instance.new("Folder")
-	stage.Name = "Set"
-	stage.Parent = folder
-	sc.stage = stage
-	sc.setParts = {}
-	-- (Studio tests: the workspace attribute FinisherTown = "A" | "B" picks a town over the scene's own)
-	local townKey = ex.town
-	local tk = workspace:GetAttribute("FinisherTown")
-	if type(tk) == "string" and game:GetService("RunService"):IsStudio() then townKey = tk end
-	local town = if Town and townKey then Town.pick(s.row.scene, townKey) else nil
-	for _, q in d.stage do
-		-- (the pieces a kit town stands in for, and the ruts, aren't built at all: a false keeps the hide lists' count)
-		if (town and Town.REPLACED[q[10]]) or (ex.noRuts and q[10] == "rut") or (q[10] == "sky" and ex.look and ex.look.plainSky) then
-			table.insert(sc.setParts, false)
-			continue
-		end
-		local okm, mat = pcall(function() return (Enum.Material :: any)[q[9]] end)
-		local shape = if q[1] == "Ball" then Enum.PartType.Ball elseif q[1] == "Cylinder" then Enum.PartType.Cylinder else nil
-		-- (the painted sky ring is plain paint: Neon blows out white in the game's light)
-		local p = part(stage, Vector3.new(q[2], q[3], q[4]), ORIGIN * cfOf(q[5]), Color3.new(q[6], q[7], q[8]), if q[10] == "sky" then Enum.Material.SmoothPlastic elseif okm then mat else nil, shape)
-		p.CastShadow = q[10] ~= "floor" and q[10] ~= "sky" -- (the painted sky ring and its lid never shade the court)
-		p.Name = q[10]
-		-- (a scene under the engine's own sky leaves the painted ring out: built but unseen, so the plan's hide lists
-		-- still count the set's parts the same way)
-		if q[10] == "sky" and ex.look and ex.look.plainSky then p.Transparency = 1 end
-		if q[10] == "print" and ex.softPrints then
-			-- (a faint print: smaller, nearly the street's own colour, half see-through)
-			p.Size = Vector3.new(p.Size.X * 0.75, p.Size.Y, p.Size.Z * 0.75)
-			p.Color = p.Color:Lerp(Color3.fromRGB(196, 158, 112), 0.6)
-			p.Transparency = 0.55
-			p.CastShadow = false
-		end
-		table.insert(sc.setParts, p)
-		if ex.lamps and q[10] == "lamp" then
-			local pl = Instance.new("PointLight")
-			pl.Range = 10; pl.Brightness = 1.6; pl.Shadows = true; pl.Color = Color3.fromRGB(255, 190, 120)
-			pl.Parent = p
-		end
+	-- the set: the one built ahead when there is one (Scene.warm), else built now
+	local c0 = os.clock()
+	local townKey = townKeyOf(ex)
+	local w = warm[s.row.scene]
+	warm[s.row.scene] = nil
+	if w and w.ready and not w.dead and w.key == townKey and w.folder.Parent then
+		sc.folder, sc.stage, sc.setParts, sc.town, sc.warm = w.folder, w.stage, w.setParts, w.town, true
+	else
+		-- (one half built, or for the other town: dropped)
+		if w then w.dead = true; w.folder:Destroy() end
+		local folder = Instance.new("Folder")
+		folder.Name = "JankFinisherStage"
+		folder.Parent = workspace
+		local stage = Instance.new("Folder")
+		stage.Name = "Set"
+		stage.Parent = folder
+		sc.folder, sc.stage = folder, stage
+		sc.setParts, sc.town = buildSet(s.row.scene, d, ex, townKey, stage, nil)
+		sc.setParts = sc.setParts or {}
 	end
-	if town then
-		local ok, st = pcall(Town.build, s.row.scene, townKey, stage, ORIGIN)
-		if ok then sc.town = st else warn("[jankfire] finisher town: " .. tostring(st)) end
-	end
+	local c1 = os.clock()
 	-- (the scene's own light, as its video: the place's Lighting saved first and put back by Scene.stop)
 	if ex.look then
 		local L = game:GetService("Lighting")
@@ -1381,6 +1481,28 @@ function Scene.start(s: any, kind: string): any
 						e.Intensity, e.Size, e.Threshold = gb.Intensity, gb.Size, gb.Threshold
 					end
 				end
+				-- (an arena whose look has no Bloom gets the scene's own for it; not "Jank"-named, so the settings' BLOOM
+				-- switch holds it off as it does the looks' own - SettingsApply)
+				if not was.bloom then
+					local b = Instance.new("BloomEffect")
+					b.Name = "SceneBloom"; b.Intensity = gb.Intensity; b.Size = gb.Size; b.Threshold = gb.Threshold
+					b.Parent = L
+					table.insert(was.added, b)
+				end
+			end
+			-- (one grade in every shot, whatever arena the match was on - main, 20 Nov, the owner on live: "the color
+			-- grading on the dust drover revolver ultimate changes throughout no?": the arena look's own colour
+			-- correction stayed on under the scene's, and its sun rays came and went as the lens turned to the sun and
+			-- away. Those are off for the scene and back on after)
+			if ex.grade then
+				was.post = {}
+				for _, e in L:GetChildren() do
+					if (e:IsA("ColorCorrectionEffect") or e:IsA("SunRaysEffect") or e:IsA("DepthOfFieldEffect") or e:IsA("BlurEffect"))
+						and string.sub(e.Name, 1, 4) ~= "Jank" and e.Enabled then
+						table.insert(was.post, e)
+						e.Enabled = false
+					end
+				end
 			end
 			-- (the engine's own sky and sun: the place's Skies are parked under Lighting for the scene, put back after)
 			if lk.plainSky then
@@ -1398,6 +1520,7 @@ function Scene.start(s: any, kind: string): any
 			table.insert(was.added, cc)
 		end)
 	end
+	local c2 = os.clock()
 	-- the two of them
 	takeBody(s.kg)
 	takeBody(s.vg)
@@ -1406,6 +1529,9 @@ function Scene.start(s: any, kind: string): any
 		sc.hip[who] = hum.HipHeight + (g.root :: BasePart).Size.Y / 2
 	end
 	if ex.kit == "revolver" then revolverKit(sc, s) else katanaKit(sc, s.msg.skin) end
+	-- (Studio: where the start's time went, ms - Finisher.luau adds it to the FinisherProf readout)
+	playing = s.row.scene
+	sc.prof = ("set %.1f%s look %.1f bodies %.1f"):format(1000 * (c1 - c0), if sc.warm then " (built ahead)" else "", 1000 * (c2 - c1), 1000 * (os.clock() - c2))
 	return sc
 end
 
@@ -1680,6 +1806,7 @@ function Scene.stop(s: any)
 	local sc = s.scene
 	if not sc then return end
 	s.scene = nil
+	playing = nil
 	for _, set in sc.tracks do for _, tr in set do pcall(function() tr:Stop(0) end) end end
 	for _, kit in sc.rev or {} do if kit.ik then kit.ik:Destroy() end end
 	-- (its sounds go with it: a quick fade, so a skip doesn't click)
@@ -1699,6 +1826,7 @@ function Scene.stop(s: any)
 		end)
 		for _, sk in was.skies or {} do pcall(function() sk[1].Parent = sk[2] end) end
 		for _, b in was.bloom or {} do pcall(function() b[1].Intensity, b[1].Size, b[1].Threshold = b[2], b[3], b[4] end) end
+		for _, e in was.post or {} do pcall(function() if e.Parent then e.Enabled = true end end) end
 		if was.park then was.park:Destroy() end
 		for _, inst in was.added do inst:Destroy() end
 	end

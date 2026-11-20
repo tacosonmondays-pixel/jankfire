@@ -325,6 +325,18 @@ end
 local fadeTok = 0
 function F.isPlaying(): boolean return st ~= nil end
 
+-- (the server's word that a scene may come soon - FinisherServer, the gap before a round that can end the match: its
+-- set built ahead, parked, so the scene's first frame has nothing left to build. FinisherScene's Scene.warm)
+function F.warm(scenes: { string })
+	if type(Scene.warm) ~= "function" then return end
+	for _, sid in scenes do
+		if type(sid) == "string" then pcall(Scene.warm, sid) end
+	end
+end
+function F.unwarm()
+	if type(Scene.unwarm) == "function" then pcall(Scene.unwarm) end
+end
+
 function F.stop(quiet: boolean?)
 	local s = st
 	if not s then return end
@@ -364,6 +376,7 @@ end
 
 -- ------------------------------------------------------------------ playing
 function F.play(msg: any): boolean
+	local p0 = os.clock()
 	F.stop(true)
 	local row = Finishers.LIST[msg.id]
 	if not row or not row.built then return false end
@@ -403,8 +416,10 @@ function F.play(msg: any): boolean
 		local ok, g = pcall(Replay.makeGhost, slot, inf, tr)
 		return if ok then g else nil
 	end
+	local pg = os.clock()
 	local kg = ghost(msg.focus, ki, kt)
 	local vg = ghost(msg.victim, vi, vt)
+	local pg1 = os.clock()
 	if not kg or not vg then
 		if kg then kg.model:Destroy() end
 		if vg then vg.model:Destroy() end
@@ -454,6 +469,7 @@ function F.play(msg: any): boolean
 	s.S.dir = s.dir
 	-- a scene (the full story) in place of the cut, when this finisher has one and both bodies can act it
 	local sceneKind = if msg.kind == "short" then "short" else "full"
+	local ps = os.clock()
 	if Scene.can(row, sceneKind, kg, vg) then
 		local ok, sc = pcall(Scene.start, s, sceneKind)
 		if ok and sc then
@@ -463,6 +479,7 @@ function F.play(msg: any): boolean
 			warn("[jankfire] finisher scene: " .. tostring(sc))
 		end
 	end
+	local ps1 = os.clock()
 	-- (the events from the start of the cut on; the kill shot itself is the chase's)
 	local t0 = clipTime(s, cut[1][1], 0)
 	while s.ei <= #clip.ev and clip.ev[s.ei].s < t0 - 0.02 do s.ei += 1 end
@@ -497,6 +514,13 @@ function F.play(msg: any): boolean
 	end)
 	controls(false)
 	Replay.hideLive(true)
+	-- (Studio: where the start's time went, ms; stepScene adds its first frames)
+	if RunService:IsStudio() then
+		s.prof = ("play %.1f = ghosts %.1f, scene %.1f [%s], other %.1f"):format(1000 * (os.clock() - p0), 1000 * (pg1 - pg),
+			1000 * (ps1 - ps), if s.scene then s.scene.prof or "" else "none", 1000 * ((os.clock() - p0) - (pg1 - pg) - (ps1 - ps)))
+		s.profN = 0
+		me:SetAttribute("FinisherProf", s.prof)
+	end
 	ContextActionService:BindActionAtPriority("JankFinisherSkip", function(_, state)
 		if state == Enum.UserInputState.Begin then F.stop() end
 		return Enum.ContextActionResult.Sink
@@ -514,7 +538,14 @@ end
 -- one frame of a scene: the scene moves the bodies and the lens; here the overlay - the bars, the names on the last
 -- shot, the grade (neutral on a two-tone hit frame, greying out on the payoff), a white flash after each hit frame
 local function stepScene(s: any)
+	local q0 = os.clock()
 	local _, u, last = Scene.step(s, s.w)
+	if s.profN and s.profN < 3 then
+		-- (Studio: the scene's first frames, ms)
+		s.profN += 1
+		s.prof ..= (" | step%d %.1f"):format(s.profN, 1000 * (os.clock() - q0))
+		me:SetAttribute("FinisherProf", s.prof)
+	end
 	-- (the bars come in over the scene's own opening when it has one - High Noon's overhead zooming in - else at once)
 	local bin = if type(Scene.barsIn) == "function" then Scene.barsIn(s) or 0.2 else 0.2
 	local barK = smooth(s.w / bin) * (1 - smooth((s.w - (s.total - 0.2)) / 0.2))
