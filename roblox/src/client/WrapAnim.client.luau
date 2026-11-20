@@ -55,6 +55,7 @@ local SPEC: { [string]: Spec } = {
 	holo = { k = "iris", p = 8.0, sat = 0.12 },                    -- web: the hue sweeping with the angle
 	-- (after the Rivals study: there every top-tier wrap moves, so the two still Legendary pictures move too)
 	missing = { k = "breathe", p = 1.8, lo = 0.8, hi = 1.15 },     -- the missing-texture glow hums
+	lava = { k = "breathe", p = 3.4, lo = 0.8, hi = 1.15 },        -- (round 2, 20 Nov: the cracks' heat pulses under the rising embers)
 	rainbow = { k = "iris", p = 10.0, sat = 0.08 },                -- a slow shimmer across the stripes
 	-- the mastery camos (18 Nov 2026, weapon mastery): gold glints now and then; damascus's temper shifts very faintly;
 	-- the diamond's facets sweep through the spectrum; Mastery Galaxy's gas drifts violet to teal and breathes
@@ -532,35 +533,82 @@ end
 local function put(x: Instance, prop: string, v: any)
 	pcall(function() (x :: any)[prop] = v end)
 end
--- tex: the picture; u, v: its tile, in metres of gun (x the gun's K studs a metre); speed: metres a second along the
--- gun (a glint's tile is long, so its band crosses a rifle once a tile: every u / speed seconds); glow: the Texture's
--- EmissiveStrength; tint: its colour; a: how much of it shows (1 - Transparency)
-type Layer = { tex: string, u: number, v: number, speed: number, glow: number, tint: Color3?, a: number? }
+-- tex: the picture; u, v: its tile, in metres of gun along it and across it (x the gun's K studs a metre); speed:
+-- metres a second along the gun, toward the stock (negative: toward the muzzle; a glint's tile is long, so its band
+-- crosses a rifle once a tile: every u / speed seconds; 0 = still along); rise: metres a second up the gun's sides (negative: falling; only on the left and right
+-- faces); glow: the Texture's EmissiveStrength; tint: its colour; a: how much of it shows (1 - Transparency); sides:
+-- which of the gun's "left", "right", "top" faces wear it (all three when nil)
+type Layer = { tex: string, u: number, v: number, speed: number, rise: number?, glow: number, tint: Color3?, a: number?,
+	sides: { string }? }
 local FLOW: { [string]: { Layer } } = {
 	-- (Galaxy: dots only, the owner's rule for it; a fine slow layer and a sparser quicker one in front: depth)
 	galaxy = {
-		{ tex = "stars", u = 0.34, v = 0.34, speed = 0.010, glow = 2.0, tint = Color3.fromHex("dfe6ff"), a = 0.7 },
-		{ tex = "stars", u = 0.62, v = 0.62, speed = 0.024, glow = 3.0, tint = Color3.fromHex("ffffff"), a = 0.9 },
+		{ tex = "stars", u = 0.34, v = 0.34, speed = 0.022, glow = 2.0, tint = Color3.fromHex("dfe6ff"), a = 0.7 },
+		{ tex = "stars", u = 0.62, v = 0.62, speed = 0.05, glow = 3.0, tint = Color3.fromHex("ffffff"), a = 0.9 },
 	},
 	nebula = {
-		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.012, glow = 2.2, tint = Color3.fromHex("f3e2ff"), a = 0.7 },
-		{ tex = "stars", u = 0.64, v = 0.64, speed = 0.026, glow = 3.0, tint = Color3.fromHex("e2ecff"), a = 0.9 },
+		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.024, glow = 2.2, tint = Color3.fromHex("f3e2ff"), a = 0.7 },
+		{ tex = "stars", u = 0.64, v = 0.64, speed = 0.052, glow = 3.0, tint = Color3.fromHex("e2ecff"), a = 0.9 },
 	},
 	mastery_galaxy = {
-		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.014, glow = 2.4, tint = Color3.fromHex("eadfff"), a = 0.75 },
-		{ tex = "stars", u = 0.66, v = 0.66, speed = 0.03, glow = 3.2, tint = Color3.fromHex("d8f6ff"), a = 0.9 },
+		{ tex = "stars", u = 0.36, v = 0.36, speed = 0.026, glow = 2.4, tint = Color3.fromHex("eadfff"), a = 0.75 },
+		{ tex = "stars", u = 0.66, v = 0.66, speed = 0.056, glow = 3.2, tint = Color3.fromHex("d8f6ff"), a = 0.9 },
 	},
 	triangulum = {
-		{ tex = "stars", u = 0.4, v = 0.4, speed = 0.01, glow = 2.0, tint = Color3.fromHex("fff1cc"), a = 0.6 },
+		{ tex = "stars", u = 0.4, v = 0.4, speed = 0.02, glow = 2.0, tint = Color3.fromHex("fff1cc"), a = 0.6 },
 	},
 	-- (the glints: one band every u / speed seconds, crossing a rifle in under two seconds)
-	kintsugi = { { tex = "glint", u = 3.2, v = 0.7, speed = 0.62, glow = 2.6, tint = Color3.fromHex("ffd98a"), a = 0.9 } },
+	kintsugi = { { tex = "glint", u = 3.2, v = 0.7, speed = 0.62, glow = 2.1, tint = Color3.fromHex("ffd98a"), a = 0.75 } },
 	mastery_gold = { { tex = "glint", u = 3.0, v = 0.7, speed = 0.66, glow = 2.4, tint = Color3.fromHex("fff0c8") } },
 	mastery_diamond = { { tex = "glint", u = 3.6, v = 0.7, speed = 0.7, glow = 2.8, tint = Color3.fromHex("eef6ff") } },
 	holo = { { tex = "glint", u = 3.4, v = 0.7, speed = 0.6, glow = 1.8, tint = Color3.fromHex("ffffff"), a = 0.8 } },
+	-- ROUND 2 (20 Nov 2026, main for the owner: "how ar ethe animated wraps coming?"). The rule from the Rivals study:
+	-- the pattern moves, the gun's overall brightness stays put, and the motion is slow (a drift you notice, not a
+	-- flicker); one or two layers, the second slower or the other way for depth; light that rises or falls only on the
+	-- gun's sides
+	-- (Lava: embers rise off the cracks, and its glow breathes: SPEC above)
+	lava = { { tex = "embers", u = 0.24, v = 0.24, speed = 0.004, rise = 0.035, glow = 3.2, tint = Color3.fromHex("ffa04a"), a = 0.85,
+		sides = { "left", "right" } } },
+	-- (water: two nets of light drifting against each other, so the caustics shimmer and re-form)
+	bigwave = {
+		{ tex = "caustics", u = 0.3, v = 0.3, speed = 0.018, rise = 0.006, glow = 1.4, tint = Color3.fromHex("d8f2ff"), a = 0.32 },
+		{ tex = "caustics", u = 0.43, v = 0.43, speed = -0.011, glow = 1.1, tint = Color3.fromHex("bfe6ff"), a = 0.22 },
+	},
+	koi = {
+		{ tex = "caustics", u = 0.28, v = 0.28, speed = 0.014, rise = 0.005, glow = 1.3, tint = Color3.fromHex("dff8ff"), a = 0.3 },
+		{ tex = "caustics", u = 0.4, v = 0.4, speed = -0.009, glow = 1.0, tint = Color3.fromHex("c8f0ea"), a = 0.2 },
+	},
+	-- (Aurora: two soft curtains sliding past each other, green over violet)
+	aurora = {
+		{ tex = "curtain", u = 0.7, v = 0.5, speed = 0.03, glow = 2.0, tint = Color3.fromHex("b8ffd8"), a = 0.42 },
+		{ tex = "curtain", u = 1.05, v = 0.5, speed = -0.017, glow = 1.6, tint = Color3.fromHex("e2c4ff"), a = 0.3 },
+	},
+	-- (light running back along the traces and the grooves, head first on the side you see)
+	circuit = { { tex = "pulses", u = 0.9, v = 0.22, speed = 0.26, glow = 3.2, tint = Color3.fromHex("9dff8a"), a = 0.9 } },
+	hex = { { tex = "pulses", u = 0.85, v = 0.2, speed = 0.2, glow = 3.0, tint = Color3.fromHex("7fe8ff"), a = 0.8 } },
+	-- (CRT: a soft bright bar rolling up the screen every ~6 s)
+	crt = { { tex = "scan", u = 0.1, v = 0.4, speed = 0, rise = 0.07, glow = 1.6, tint = Color3.fromHex("dcffe6"), a = 0.5,
+		sides = { "left", "right" } } },
+	-- (Tokyo Night: a light rain over the neon)
+	tokyo = { { tex = "rain", u = 0.3, v = 0.3, speed = 0, rise = -0.22, glow = 1.2, tint = Color3.fromHex("cbd8ff"), a = 0.45,
+		sides = { "left", "right" } } },
+	-- (Sakura Storm: single petals blowing along the gun and down)
+	sakura = { { tex = "petals", u = 0.45, v = 0.45, speed = 0.04, rise = -0.02, glow = 0.5, tint = Color3.fromHex("ffd6e4"), a = 0.9 } },
+	-- (Vaporwave: the neon grid scrolls toward you, like the grid floor under a horizon)
+	vapor = { { tex = "grid", u = 0.16, v = 0.16, speed = 0.06, glow = 2.2, tint = Color3.fromHex("ff74dc"), a = 0.42 } },
+	-- (Lava Lamp: soft blobs rising)
+	lavalamp = { { tex = "blobs", u = 0.4, v = 0.4, speed = 0, rise = 0.022, glow = 1.8, tint = Color3.fromHex("ff9a5a"), a = 0.5,
+		sides = { "left", "right" } } },
+	-- (a slow light through the panes; the opal's fire catching)
+	stained = { { tex = "glint", u = 3.6, v = 0.8, speed = 0.5, glow = 1.6, tint = Color3.fromHex("fff0d6"), a = 0.55 } },
+	opal = { { tex = "glint", u = 3.4, v = 0.7, speed = 0.55, glow = 2.0, tint = Color3.fromHex("f6eaff"), a = 0.7 } },
 }
 local FLOW_PIECES = 6
-local FLOW_OFFSIGN = 1 -- (which way OffsetStuds moves the picture: set by the Edit test of 19 Nov)
+-- (which way OffsetStuds moves the picture: the Edit probe of 20 Nov put the same bar on two slabs, one with
+-- OffsetStudsV 0.5 more, and that bar sat 0.5 stud HIGHER, so a growing offset moves the picture toward -V; with
+-- FACE_UV's axes that makes both signs -1, which also lines a band up across the pieces)
+local FLOW_OFFSIGN = -1
+local FLOW_RISESIGN = -1
 -- each face's +U and +V in the part's own frame (Roblox lays a Texture as a Decal reads: upright, seen from outside)
 local FACE_UV: { [Enum.NormalId]: { Vector3 } } = {
 	[Enum.NormalId.Left] = { Vector3.new(0, 0, 1), Vector3.new(0, -1, 0) },
@@ -618,12 +666,14 @@ local function flowRebuild(gun: Instance)
 	local span = hi - lo
 	local axisL = if span.X >= span.Y and span.X >= span.Z then Vector3.xAxis elseif span.Y >= span.Z then Vector3.yAxis else Vector3.zAxis
 	local along = ref:VectorToWorldSpace(axisL)
-	local sides = { -ref.RightVector, ref.RightVector, ref.UpVector } -- (the gun's left, right and top)
+	local up = ref.UpVector
+	local SIDE = { left = -ref.RightVector, right = ref.RightVector, top = ref.UpVector } -- (the gun's left, right and top)
 	local G: FlowGun = { texs = {}, tweens = {}, parts = pieces, fp = gun:IsDescendantOf(workspace.CurrentCamera), on = true }
 	for _, p in pieces do
 		local cf, sz = p.CFrame, p.Size
-		for _, want in sides do
+		for _, side in { "left", "right", "top" } do
 			-- the piece's face that looks most that way
+			local want = SIDE[side]
 			local best, bestD = Enum.NormalId.Left, -2
 			for _, f in FACES do
 				local d = cf:VectorToWorldSpace(Vector3.fromNormalId(f)):Dot(want)
@@ -632,14 +682,22 @@ local function flowRebuild(gun: Instance)
 			if bestD < 0.5 then continue end
 			local uv = FACE_UV[best]
 			local n = Vector3.fromNormalId(best)
-			-- which texture axis runs along the gun on this face, its sign, and where the face's U / V start along the gun
-			local gl = cf:VectorToObjectSpace(along)
-			local useV = math.abs(gl:Dot(uv[2])) > math.abs(gl:Dot(uv[1]))
-			local ax = if useV then uv[2] else uv[1]
-			local sign = if ax:Dot(gl) >= 0 then 1 else -1
+			-- which texture axis runs along the gun on this face (A) and which across it (C), their signs, and where the
+			-- face's U / V start along and up the gun (so a band crosses the pieces as one)
+			local gl, gu = cf:VectorToObjectSpace(along), cf:VectorToObjectSpace(up)
+			local alongV = math.abs(gl:Dot(uv[2])) > math.abs(gl:Dot(uv[1]))
+			local axA = if alongV then uv[2] else uv[1]
+			local axC = if alongV then uv[1] else uv[2]
+			local sA = if axA:Dot(gl) >= 0 then 1 else -1
+			local sC = if axC:Dot(gu) >= 0 then 1 else -1
+			local upOk = math.abs(axC:Dot(gu)) > 0.5 -- (this face's across axis really runs up the gun: a side)
 			local corner = cf:PointToWorldSpace((n - uv[1] - uv[2]) * sz / 2)
-			local start = (corner - ref.Position):Dot(along)
+			local startA = (corner - ref.Position):Dot(along)
+			local startC = (corner - ref.Position):Dot(up)
 			for _, L in layers :: { Layer } do
+				if L.sides and not table.find(L.sides, side) then continue end
+				local rise = if upOk then (L.rise or 0) else 0
+				if L.speed == 0 and rise == 0 then continue end
 				local tmpl = flowTemplate(L.tex)
 				if not tmpl then continue end
 				local tx = tmpl:Clone()
@@ -649,17 +707,33 @@ local function flowRebuild(gun: Instance)
 				put(tx, "EmissiveTint", L.tint or Color3.new(1, 1, 1))
 				put(tx, "Color3", L.tint or Color3.new(1, 1, 1))
 				put(tx, "Transparency", 1 - (L.a or 1))
-				put(tx, "StudsPerTileU", (if useV then L.v else L.u) * k)
-				put(tx, "StudsPerTileV", (if useV then L.u else L.v) * k)
+				local tileA, tileC = L.u * k, L.v * k
+				put(tx, "StudsPerTileU", if alongV then tileC else tileA)
+				put(tx, "StudsPerTileV", if alongV then tileA else tileC)
 				put(tx, "ZIndex", 2)
 				if p.LocalTransparencyModifier >= 0.5 then put(tx, "LocalTransparencyModifier", 1) end -- (born hidden: no flash)
-				local tile = L.u * k
-				local base = -FLOW_OFFSIGN * sign * start
-				local prop = if useV then "OffsetStudsV" else "OffsetStudsU"
-				put(tx, prop, base)
+				local propA = if alongV then "OffsetStudsV" else "OffsetStudsU"
+				local propC = if alongV then "OffsetStudsU" else "OffsetStudsV"
+				local baseA = -FLOW_OFFSIGN * sA * startA
+				local baseC = -FLOW_RISESIGN * sC * startC
+				put(tx, propA, baseA)
+				put(tx, propC, baseC)
+				-- one looping linear tween; each axis it moves goes a whole number of tiles, so the loop has no seam
+				local goal: { [string]: number } = {}
+				local T: number
+				if L.speed ~= 0 then
+					T = tileA / math.abs(L.speed * k)
+					goal[propA] = baseA + FLOW_OFFSIGN * sA * tileA * math.sign(L.speed)
+					if rise ~= 0 then
+						local nC = math.max(1, math.floor(math.abs(rise * k) * T / tileC + 0.5))
+						goal[propC] = baseC + FLOW_RISESIGN * sC * tileC * nC * math.sign(rise)
+					end
+				else
+					T = tileC / math.abs(rise * k)
+					goal[propC] = baseC + FLOW_RISESIGN * sC * tileC * math.sign(rise)
+				end
 				tx.Parent = p
-				local tw = TweenService:Create(tx, TweenInfo.new(tile / math.max(L.speed * k, 1e-3), Enum.EasingStyle.Linear,
-					Enum.EasingDirection.InOut, -1), { [prop] = base + FLOW_OFFSIGN * sign * tile })
+				local tw = TweenService:Create(tx, TweenInfo.new(T, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), goal)
 				tw:Play()
 				table.insert(G.texs, tx)
 				table.insert(G.tweens, tw)

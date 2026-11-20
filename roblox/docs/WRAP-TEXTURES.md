@@ -489,7 +489,36 @@ the pattern's pieces and slid along the gun (`client/WrapAnim`, WRAP FLOW):
 | Galaxy, Nebula, Mastery Galaxy | two layers of round star dots drift along the gun at two speeds (depth); round dots only (the owner's Galaxy rule) |
 | Triangulum | one faint layer of warm dots drifts |
 | Kintsugi, Mastery Gold, Mastery Diamond, Holo | a soft slanted band of light sweeps along the gun every 4 to 5 s |
+| **Round 2 (20 Nov):** Lava | embers rise up the gun's sides off the cracks, and the cracks' glow breathes (3.4 s) |
+| Big Wave, Koi Pond | two nets of water light (caustics) drift against each other, so they shimmer and re-form |
+| Aurora | two soft curtains slide past each other, green over violet |
+| Circuit Board, Neon Hex | short light pulses run back along the gun, head first on the side you see |
+| CRT | a soft bright bar rolls up the gun's sides every ~6 s |
+| Tokyo Night | a light rain falls down the gun's sides |
+| Sakura Storm | single petals blow back along the gun and down |
+| Vaporwave | a thin neon grid scrolls back along the gun |
+| Lava Lamp | soft blobs rise up the gun's sides |
+| Stained Glass, Opal | a slow, soft light sweep (the glint, quieter) |
 
+How round 2 moves (the Rivals study's rule: the pattern moves, the gun's overall brightness stays put, slow enough to
+read as a drift, never a flicker; one or two layers, the second slower or the other way): a layer has `speed` (metres a
+second along the gun, positive toward the stock) and `rise` (up the gun's sides; negative falls; only on the left and
+right faces, where the texture's across axis really runs up), and `sides` picks which of the gun's left, right and top
+faces wear it. One looping tween moves both offsets, each by a whole number of tiles, so the loop has no seam. The
+signs were found by an Edit probe (20 Nov): the same bar on two slabs, one with `OffsetStudsV` 0.5 more, sat 0.5 stud
+higher, so a growing offset moves the picture toward -V (`FLOW_OFFSIGN` = `FLOW_RISESIGN` = -1; with +1 the band
+didn't line up across pieces and rising layers fell). The pulses' comet heads lead toward the picture's +U, which on
+the gun's left face (what first person sees) points to the stock, so they run that way. The star drift was doubled
+after the first clips (the slow layer moved 4% of a rifle in 4.5 s: nobody would see it).
+
+Round 2 is live in place version 1297. Solo Play (the AR in hand and a world AR on a stand in the training hall):
+0 wrap errors; render CPU 5.86 ms with 40 moving Textures in the world and 5.74 ms with them taken out; a two-layer
+wrap puts 18 to 24 Textures on a gun. Clips: `side-session-notes/wraps-animated/r2-*.mp4` (outside git). From the
+clips: the caustic nets, the aurora curtains, the neon grid and the CRT bar read clearly (a horizontal bar on the gun's
+side reads as a line sweeping up the receiver); Lava's embers and the petals are subtle; the rain and the circuit
+pulses barely showed, so they were made brighter and denser after.
+
+- Clips (20 Nov, `side-session-notes/wraps-animated/`, outside git): the 8 first moving wraps in hand.
 - The pictures: `tools/roblox/wrap_flow.py` draws `flow_stars_*` (150 round soft dots, seamless) and `flow_glint_*`
   (one soft slanted band on a long tile, fading out at the ends), each a colour picture (white, alpha = how much shows)
   and an emissive mask. Uploaded 19 Nov: stars 90506142503050 / 138098836499581, glint 119853642092920 /

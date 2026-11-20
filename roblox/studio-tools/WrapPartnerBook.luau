@@ -29,7 +29,16 @@ if not fl then
 	fl.Name = "JankfireWrapFlow"
 	fl.Parent = RS
 end
-for name, ids in { stars = { 90506142503050, 138098836499581 }, glint = { 119853642092920, 119596018117654 } } do
+local FLOW_IDS = { -- (colour picture, glow mask): tools/roblox/wrap_flow.py, ids also in roblox/assets/wraps/assets.json
+	stars = { 90506142503050, 138098836499581 }, glint = { 119853642092920, 119596018117654 },
+	-- round 2 (20 Nov 2026)
+	embers = { 89475906567636, 134982456858827 }, caustics = { 124130068259573, 134456976506565 },
+	curtain = { 90098317954130, 99349511317536 }, pulses = { 128359552723712, 139339901162334 },
+	scan = { 115697585005812, 136963496615589 }, rain = { 117697635998277, 75627737056988 },
+	petals = { 72032965443587, 123477821102584 }, grid = { 85331936546926, 89070126560295 },
+	blobs = { 137154093505268, 74046826322449 },
+}
+for name, ids in FLOW_IDS do
 	local o = fl:FindFirstChild(name)
 	if o then o:Destroy() end
 	local t = Instance.new("Texture")
@@ -40,4 +49,4 @@ for name, ids in { stars = { 90506142503050, 138098836499581 }, glint = { 119853
 	t.ZIndex = 2
 	t.Parent = fl
 end
-return "JankfireWrapPartner.metal and JankfireWrapFlow.stars / .glint built"
+return "JankfireWrapPartner.metal and " .. #fl:GetChildren() .. " JankfireWrapFlow textures built"
