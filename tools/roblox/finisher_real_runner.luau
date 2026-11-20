@@ -561,6 +561,42 @@ shared.FinReal = function(key)
 		p.Size = Vector3.new(q.size[1], q.size[2], q.size[3])
 		local cf = C(q.cf)
 		if REANCHOR[q.tag] then cf = reanchor(cf, f, REANCHOR[q.tag]) end
+		if q.tag == "btrail" then
+			-- (the owner, 20 Nov: "bullet trail doesn't come out of gun for the impact frame"): the plan's trail runs
+			-- from the stand-in's muzzle; on real bodies it is rebuilt from the real gun's muzzle to the plan's hit point
+			-- re-hung on the real victim's chest
+			local K = R.av.k
+			if not R.muzzle then
+				-- (the skin's Muzzle attachment, or - the Dust revolver has none - the front-most corner of its parts:
+				-- the barrel runs along -Z)
+				local att = REV:FindFirstChild("Muzzle", true)
+				if att and att:IsA("Attachment") then R.muzzle = att.WorldPosition * 3 else
+					local minZ, at = math.huge, Vector3.zero
+					for _, bp in ipairs(REV:GetDescendants()) do
+						if bp:IsA("BasePart") then
+							for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do
+								local w = bp.CFrame * Vector3.new(sx * bp.Size.X / 2, sy * bp.Size.Y / 2, sz * bp.Size.Z / 2)
+								if w.Z < minZ then minZ, at = w.Z, w end
+							end end end
+						end
+					end
+					R.muzzle = at * 3
+				end
+			end
+			local mz = { WorldPosition = R.muzzle / 3 }
+			if K and K.Parent and K:FindFirstChild("RightHand") then
+				local half = cf.LookVector * (q.size[3] / 2)
+				local a, b = cf.Position - half, cf.Position + half
+				local vs = standin(f, "v", "UpperTorso")
+				local far = if vs and (a - vs.Position).Magnitude < (b - vs.Position).Magnitude then a else b
+				local s = (gunInHand(K) * CFrame.new(mz.WorldPosition * 3)).Position
+				local e = reanchor(CFrame.new(far), f, "v.UpperTorso").Position
+				if (e - s).Magnitude > 0.5 then
+					p.Size = Vector3.new(q.size[1], q.size[2], (e - s).Magnitude)
+					cf = CFrame.lookAt((s + e) / 2, e)
+				end
+			end
+		end
 		p.CFrame = cf
 		p.Color = col(q.col)
 		local okm, mat = pcall(function() return Enum.Material[q.mat] end)
