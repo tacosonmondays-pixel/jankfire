@@ -93,6 +93,38 @@ from.
   becomes a blurry rope. Long thin floor marks need one big image (1024 px), not a flipbook.
 - **Clean concentric rings read as a target symbol.** Break rings into arcs and wrap them in jagged shards.
 
+## Rounds 4-5 (the practice loop's later lessons)
+- **Even spacing reads as a badge.**
+  - Eight sparkles evenly round a ring looked like a wreath (hit, round 4: 7).
+  - Five uneven sparkles at irregular angles and sizes read as an impact (round 5: 8).
+  - Spikes evenly round a ring read as a sun or a gear. Clusters where the star's arms were read as the burst
+    breaking up.
+- **Small breaks, not dashes.** Ring breaks of 10-15° read as a shock ring cracking; 30-40° gaps read as a dashed crown.
+- **A sprite's silhouette must fill its cell.** Two layers can share a Size and still read as different sizes if one
+  texture's shape fills 40% of its square and the other's fills 90%. Our dust looked like popcorn until the puff filled
+  its cell (ground impact, 5 → 7).
+- **Fade a shape by its drawing or by its curve, not both.** The puff's frames faded and its Transparency curve faded
+  too, so it was a grey ghost at 0.6 s while the pack's was still solid.
+- **Black ink must sit in front of the flash.** With the flash at ZOffset 8, the ink needs ZOffset 9 or the flash
+  whitewashes it. Then keep the black core short (gone by 0.1 s) and let thin daggers fly out, with gaps between them.
+- **Check the critic's measurements too.** In rounds 3-4 the critic measured two touching copies of the pack's slam as
+  one 330 px belt and asked for a wider spread; the real width was 180 px, which we already matched. Each effect's six
+  copies are a cell apart: measure one.
+
+## Round 6 (the last round)
+- **Know what each setting is doing before you change it.** Before touching a layer, write down which visible feature it
+  makes, and leave alone any value that a feature which already matches depends on.
+  - The ground impact's fast clouds (10-40 studs/s) were what kept the middle of the ring hollow.
+  - Round 6 set them back to the pack's speed (5-25) to match a number, and the hollow ring filled into a mound
+    (ground impact 7 → 6).
+- **Turn "more visible" up in half steps, one setting at a time.** Change Brightness, or Size, or Count, not all three.
+  The dash's speed lines went from invisible on black (round 5) to the loudest thing on grey (round 6).
+- **Bloom wipes out fine edges.** At high Brightness a ±10% wobble or a thin notch disappears, and the shape reads as a
+  clean icon (the guard star still read as a smooth 4-point sparkle). Draw roughness as spikes or notches of at least
+  about 8% of the radius.
+- **Final scores** (round 1 → best): hit 4 → 8, slash 4 → 8, explosion 5 → 8, guard break 3 → 7, dash 2 → 7, ground
+  impact 3 → 7 (round 5; round 6 slipped to 6). Sheets: `docs/vfx/practice/progress/`.
+
 ## Fire on a body (kill effects; the Ember practice, 20 Nov, kill-effects session)
 Ember was rebuilt in seven critic rounds against the Combat pack's fire aura. Scores: before 3, then 4, 4, 6, (4 not
 scored: a regression), 5, 6, 6. Sheet: `docs/flair/ember-practice-r1-vs-final.jpg`. Rounds and scores are in

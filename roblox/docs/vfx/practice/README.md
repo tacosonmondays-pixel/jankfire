@@ -27,6 +27,24 @@ so we get better at making our own. What we learn goes in [PLAYBOOK.md](../PLAYB
 | Ground impact / crack | Combat "Slam" (+ "Crack-02") | JankfireVfx.HitSlam + VfxPractice.T_Crack2 |
 | Explosion | 100+ pack effect #50 (an anime ink blast) | VfxPractice.T_X50 |
 
+## Results (six rounds, 20 Nov 2026)
+| Category | Round 1 | Best | Progress sheet |
+|---|---|---|---|
+| Hit flash | 4 | 8 (round 5) | `progress/hit.jpg` |
+| Slash | 4 | 8 (round 4) | `progress/slash.jpg` |
+| Explosion | 5 | 8 (round 6) | `progress/explosion.jpg` |
+| Guard break | 3 | 7 (round 6) | `progress/guard.jpg` |
+| Dash | 2 | 7 (round 6) | `progress/dash.jpg` |
+| Ground impact | 3 | 7 (round 5; round 6 slipped to 6) | `progress/slam.jpg` |
+
+Each progress sheet shows round 1 against the best round. The lessons are in `docs/vfx/PLAYBOOK.md`.
+
+The critic's notes for a seventh round, if one is wanted:
+- **Guard break:** fewer, mostly whole, thicker rings, and four big blade clusters.
+- **Dash:** speed lines half as bright, and none left after 0.35 s.
+- **Ground impact:** clouds back to 10-40 studs/s and size 1.6, to reopen the hollow middle.
+- **Explosion:** 2-3 fat flicks at 0.2 s instead of about 8 thin needles.
+
 ## Where things live
 - **Studio, all in ServerStorage (never shipped to players):**
   - `ServerStorage.VfxPractice`: the teachers built from the packs (T_*) and our rebuilds (O_*).

@@ -563,5 +563,35 @@
   "sha1": "6c4bb2bee5240089ca4495d2525d9fa4a73f9be0",
   "what": "practice: a jagged hard ink blob with a long tail along u (paint black) (tools/roblox/vfx/practice/draw_r5.py)",
   "uploaded": "2026-11-20"
+ },
+ "vfx_gburst6_4x4": {
+  "id": 93836824735854,
+  "sha1": "13b08a00621181f088cd62b93ee76df1fbba0e90",
+  "what": "practice: guard-break burst v6, a ragged star with side spikes, then thicker rings under blade clusters (tools/roblox/vfx/practice/draw_r6.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gring5_4x4": {
+  "id": 113224225271559,
+  "sha1": "1ce60b779b8fd819d4dc98f211de9c8e9f47d493",
+  "what": "practice: shock ring v5, a hard thin ring with two short inner arcs and 8 uneven streaks (tools/roblox/vfx/practice/draw_r6.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_puff4_4x4": {
+  "id": 75814994222527,
+  "sha1": "0305c3693dad766ea2405633dbe4f6a941373855",
+  "what": "practice: cartoon puff v4, the full cumulus with softer rims, shrinking late (tools/roblox/vfx/practice/draw_r6.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_crack5": {
+  "id": 101305195948274,
+  "sha1": "e404c8b79768597a761e073fdf4a5bc840266451",
+  "what": "practice: ground cracks v5 (1024 px), smoother and thicker with sharper forks round a crater (tools/roblox/vfx/practice/draw_r6.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_inkblob2": {
+  "id": 126275005058846,
+  "sha1": "bdffca3b9b0e9d6dcebaff5e1a5a5df73807c9c9",
+  "what": "practice: ink blob v2, a small core with a long tail along u and long side daggers (paint black) (tools/roblox/vfx/practice/draw_r6.py)",
+  "uploaded": "2026-11-20"
  }
 }

@@ -27,6 +27,9 @@ TEX = {  # our own images (ids in roblox/assets/vfx/assets.json and roblox/docs/
     # round 5 (draw_r5.py, the round-4 critic's texture fixes)
     'hitstar6': 97682045081267, 'gburst5': 105289321306791, 'gring4': 109926706217602, 'puff3': 128418655094527,
     'crack4': 126965788763314, 'inkblob': 85970353866590,
+    # round 6 (draw_r6.py, the round-5 critic's texture fixes)
+    'gburst6': 93836824735854, 'gring5': 113224225271559, 'puff4': 75814994222527, 'crack5': 101305195948274,
+    'inkblob2': 126275005058846,
 }
 OR = {'cam': 0, 'camup': 1, 'par': 2, 'perp': 3}
 DIR = {'right': 0, 'top': 1, 'back': 2, 'left': 3, 'bottom': 4, 'front': 5}
@@ -482,7 +485,44 @@ def r5():
     return E
 
 
-ROUNDS = {1: r1, 2: r2, 3: r3, 4: r4, 5: r5}
+def r6():
+    """round 6, the last: the round-5 critic's fixes on round 5 (hit 8 = done at round 5, slash done at round 4; guard 7,
+    dash 7, slam 7, explosion 7)"""
+    E = r5()
+    # GUARD: the star's long arms survive as blade clusters over thicker rings; a ragged star; inner arcs hugging the ring
+    layer(E, 'O_Guard', 'burst')['p']['Texture'] = tex('gburst6')
+    layer(E, 'O_Guard', 'ring')['p']['Texture'] = tex('gring5')
+    # DASH: brighter, longer, more and wider-spread speed lines; brighter bits
+    ln = layer(E, 'O_Dash', 'lines')
+    ln['p']['Brightness'] = 2.4
+    ln['p']['Size'] = NS((0, 0.9), (1, 0.9))
+    ln['p']['SpreadAngle'] = ['V2', 8, 8]
+    ln['a']['EmitCount'] = 24.0
+    for n in ('bits up', 'bits down'):
+        layer(E, 'O_Dash', n)['p']['Brightness'] = 1.6
+    # GROUND: clouds back to the pack's speed, the ground ring gone, softer varied puffs, smoother thicker cracks
+    cl = layer(E, 'O_Slam', 'clouds')['p']
+    cl['Speed'] = NR(5, 25)
+    cl['Texture'] = tex('puff4')
+    drop(E, 'O_Slam', 'ring')
+    d = layer(E, 'O_Slam', 'dust')['p']
+    d['Texture'] = tex('puff4')
+    d['Size'] = NS((0, 1, 0.4), (1, 2.8, 0.8))
+    d['Rotation'] = NR(-180, 180)
+    layer(E, 'O_Slam', 'crack')['p']['Texture'] = tex('crack5')
+    # EXPLOSION: the black core gone by 0.1 s, more and smaller dagger-like ink, longer first needles
+    c = layer(E, 'O_X', 'inkcore')['p']
+    c['Lifetime'] = NR(0.06, 0.09)
+    c['Size'] = NS((0, 3.5), (1, 3.5))
+    ink = layer(E, 'O_X', 'ink')
+    ink['p']['Size'] = NS((0, 4.5), (1, 4.5))
+    ink['p']['Texture'] = tex('inkblob2')
+    ink['a']['EmitCount'] = 14.0
+    layer(E, 'O_X', 'shards')['p']['Size'] = NS((0, 11, 2.411), (0.093, 7.193, 1.742), (0.134, 2.867, 1.499), (0.286, 1.252, 0.793), (0.517, 0.25, 0.135), (1, 0))
+    return E
+
+
+ROUNDS = {1: r1, 2: r2, 3: r3, 4: r4, 5: r5, 6: r6}
 DATA = ROUNDS[ROUND]()
 js = json.dumps(DATA, separators=(',', ':'))
 assert ']==]' not in js
