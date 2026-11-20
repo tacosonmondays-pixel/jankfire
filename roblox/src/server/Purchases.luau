@@ -18,6 +18,8 @@
 --   Purchases.seen(p, purchaseId) -> boolean              a receipt already granted
 --   Purchases.mark(p, purchaseId, key) -> boolean         remember a granted receipt (written)
 --   Purchases.giveWeapon(p, wid, how, id) -> (ok, why?)   how "robux" | "brass" | "gift"; true once written
+--   Purchases.unlockWeapons(p, wids, how, id) -> (ok, new, why?)  the owner's UNLOCKS: any locked live weapon (a Robux
+--                                                         one or a level one), many in one write; Purchases.lockable(wid)
 --   Purchases.buyWithBrass(p, wid) -> { ok, why?, wid? }  the Brass buy (the remote's "brass")
 -- the remote JankfireRemotes.Purchases (RemoteFunction, made here):
 --   ("state")        -> { ok, owned = { [wid] = true }, free = Unlocks.robuxFree() }
@@ -161,6 +163,34 @@ function Purchases.giveWeapon(p: Player, wid: string, how: string, id: string?):
 	publish(p)
 	print(("[jankfire] purchases: %s has the %s (%s)"):format(p.Name, wid, how))
 	return true, nil
+end
+
+-- the owner's UNLOCKS (19 Nov 2026, OwnerDev.server's GIFT tab: "I want to be able to unlock stuff for my friends!!"):
+-- weapons opened for good, the way an early coin unlock or a bought Robux weapon is (data.weapons: RobuxOwned, which
+-- Unlocks treats as open whatever the level). any live weapon that has a lock: a Robux one, or one that opens past
+-- level 1. the whole list in one write; the ones they have already are skipped. -> (ok, how many were new, why?)
+function Purchases.lockable(wid: any): boolean
+	local Roster = require(Shared:WaitForChild("Roster")) :: any
+	local e = type(wid) == "string" and Roster.byId[wid]
+	return e ~= nil and e ~= false and e.live == true and (Unlocks.robux(wid) or Unlocks.level(wid) > 1)
+end
+function Purchases.unlockWeapons(p: Player, wids: { string }, how: string, id: string?): (boolean, number, string?)
+	local s = st[p]
+	local d = dataOf(p)
+	if not s or not d then return false, 0, "loading" end
+	local new = {}
+	for _, wid in wids do
+		if Purchases.lockable(wid) and not d.weapons[wid] and not table.find(new, wid) then table.insert(new, wid) end
+	end
+	if #new == 0 then return true, 0, "already" end
+	for _, wid in new do d.weapons[wid] = { t = os.time(), how = how, id = id } end
+	if not write(s) then
+		for _, wid in new do d.weapons[wid] = nil end
+		return false, 0, "couldn't save"
+	end
+	publish(p)
+	print(("[jankfire] purchases: %s has %d weapon(s) opened (%s)"):format(p.Name, #new, how))
+	return true, #new, nil
 end
 
 -- ------------------------------------------------------------------ the big coin packs' extras (19 Nov)

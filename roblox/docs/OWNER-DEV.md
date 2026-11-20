@@ -12,7 +12,7 @@ Files:
 
 ## Who and where
 
-- **Only the place's creator** (`game.CreatorId` of a user-owned place) can use it. No name is written in the code.
+- **Only the place's creator** (`game.CreatorId` of a user-owned place) can use it. No name is written in the code. Since 19 Nov the owner can lend the POWERS tab to a friend in the server for a while (FRIENDS, below); everything else stays the owner's.
   - The client builds the menu only for the creator, and only after the server says yes.
   - The server checks the creator on every single command. Anyone else gets "owner only", logged once.
 - **It works everywhere, matches included.** The owner overrode the first "never in a match" rule on 18 Nov: "I can use it in matches, I'm the owner".
@@ -101,7 +101,9 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
 | One item from the searchable list (skins, wraps, hats, kill effects, emotes, grapples, card looks) | `Loot.grant(p, "gift:<kind>:<id>", receipt)`. Wraps and hats go on every gun. |
 | Coins (the game shows Brass as Coins; one currency, internal id brass) and Crate Tickets, any amount | `Quests.gift(p, brass, tickets, receipt)`. Not capped, logged in the quests save's grants, and not counted as earned, so a cheat restore leaves a gift alone. |
 | VIP, for good | `Vip.gift(p, true)` (the shop's): saved on the player's key in `JankfireVip` |
-| A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | `Purchases.giveWeapon(p, wid, "gift", receipt)` (the shop's) |
+| A Robux weapon (`Unlocks.ROBUX`: minigun, laser, chicken, akimbo), for good | On the UNLOCKS page since 19 Nov (below). The old `"weapon"` kind (`Purchases.giveWeapon`) still works for other code. |
+| Account XP, or a level; weapon mastery XP, or a mastery level | `Stats.gift(p, what, receipt)` (XP and UNLOCKS, below) |
+| One weapon with a lock, or UNLOCK ALL WEAPONS | `Purchases.unlockWeapons(p, wids, "gift", receipt)` (XP and UNLOCKS, below) |
 
 - **The receiver** gets the present (below). In a match the present waits, and one plain line shows at the top of the screen for 3.5 s instead, such as "GIFT · 5 CRATES" or "GIFT · VIP" (DevFx "gift"). Containers land in their inventory to open as usual.
 - **Who it's for:** TO also lists EVERYONE HERE and ALL SERVERS (since 19 Nov; see GIFT EVERYONE below).
@@ -120,6 +122,35 @@ Asked for on 18 Nov: "let me gift people stuff! bundles, cases bags cans at any 
   - **Studio test hook:** `GiftHold` = "rise" / "spin" / "reveal" holds the animation at that moment for a photo.
 - **The gift log:** every gift is written to DataStore `JankDevGifts_v1` (`JankDevGifts_v1_studio` in Studio), key `log`, last 500: when, giver, receiver (user ids only), what, how many. It's printed to the server log too.
 - **In a match:** a gift works there and doesn't flag the match, because it doesn't change the fight.
+
+## XP and UNLOCKS (GIFT tab pages, since 19 Nov)
+
+Asked for on 19 Nov: "allow me to also give people xp, I want to be able to unlock stuff for my friends!!" Both pages work with every receiver on TO (a player, YOU, EVERYONE HERE, ALL SERVERS).
+
+- **XP page, account:** GIVE XP adds any amount (1 to 10,000,000; quick 100 / 1,000 / 10,000 / 100,000). SET LEVEL (2 to 500) raises them to the start of that level. For one receiver the page shows their level and XP now.
+- **XP page, weapon mastery:** pick a weapon (every live one). GIVE MASTERY XP adds any amount; SET MASTERY LEVEL (2 to 40, quick LV 10 GOLD / 20 DAMASCUS / 30 DIAMOND / 40 GALAXY) raises that weapon to it. For one receiver it shows that weapon's mastery now.
+- **A level only goes up.** Below it, they're raised to it. At it or past it, nothing happens ("they're past that already"). So SET LEVEL to everyone never lowers anyone.
+- **The normal level system does the rest:** it's the same XP a match gives (`Xp` / `Level` attributes), so the level-up toast and the weapons a level opens come as usual (`UnlockClient`). Mastery goes through `MasteryXp.add` (the weapon-mastery session's call): its level toast, and the camos at their levels (Gold 10, Damascus 20, Diamond 30, Galaxy 40) through `Loot.grant` once each.
+- **Never ranked:** the XP never goes on a match's log (`cur.xp`), so a cheat restore for someone else doesn't take it, and ranked (`RankedData`) never sees it. A cheat restore *of* the receiver resets their XP like any other.
+- **Exactly once:** `Stats.gift` keeps the receipt in the stats save (`data.gifts`, the last 200 ids) next to the XP, so both go in the same write. A gift-everyone event uses `ownerev-<id>` as for the rest.
+- **UNLOCKS page:** UNLOCK ALL WEAPONS, then a list of every weapon with a lock: the 4 premium ones first (PREMIUM), then each level one by its level. UNLOCK opens one. For one receiver each row says THEY HAVE IT, LOCKED FOR THEM, or OPEN (DEV UNLOCK).
+- **How an unlock is kept:** `Purchases.unlockWeapons` writes `data.weapons[wid] = { how = "gift" }`, the same record an early coin unlock leaves. It's in `RobuxOwned`, which `Unlocks` treats as open whatever the level. All of them go in one write; ones they have are skipped; nothing is ever taken away. UNLOCK ALL covers the weapons live at the time; a weapon added later stays locked until it's unlocked too.
+- **The present:** an XP card ("XP" or "LV 12" in big gold letters), a mastery card (the weapon as the loadout shows it, with "LV 10" or "+5,000"), or a weapon card (the weapon) for an unlock, "ALL" for every weapon. The chat line reads "Pompompoo gifted Sam Level 12", "... gifted Sam AR Mastery 10", "... gifted Sam Minigun", "... gifted everyone every weapon".
+- **Never the OWNER title:** `GiftFx.describe` refuses it ("the OWNER title stays yours alone"), and `Stats.owns` would refuse to put it on anyone else anyway.
+- **The VIP page** no longer lists the Robux weapons (they're on UNLOCKS).
+
+## FRIENDS: lend the powers (TEMP DEV, the menu's fourth tab, since 19 Nov)
+
+Asked for on 19 Nov: "allow me to temp give command panel to friends exclude the gifting portion of it".
+
+- **The tab (owner only):** every player in the server, with 15 MIN / 30 MIN / 1 HOUR / UNTIL THEY LEAVE, their state ("DEV UNTIL 21:45", "DEV UNTIL THEY LEAVE"), REVOKE for a friend who has it, and REVOKE ALL. Lending it again sets the new time.
+- **Held by the server's memory only, never saved.** It ends at its time, when they leave, when the server closes, or on REVOKE / REVOKE ALL. Only the place's creator can lend it (checked on the server for every command); a friend never can.
+- **What a friend gets:** the POWERS tab only, opened the same way (F8, `/dev`, the DEV button): fly, noclip, run speed, invisible, weapons in the hub, and fling, freeze, go to, bring, jail, red card (the AIM KEYS too).
+- **What a friend never gets** (the server refuses it by who sent it, `TEMP_OPS`, not just by the hidden tabs): GIFT with XP and UNLOCKS, anything that changes saves or money, ANNOUNCE, the anti-cheat panel (its kicks and bans stay the owner's), lending, UNFREEZE EVERYONE and EMPTY THE JAIL (they'd undo the owner's too). Refused: "the owner's only".
+- **The owner is protected:** a friend can't fling, freeze, bring, jail, red-card or go to the owner ("not the owner"), can't touch another friend with dev ("not another dev"), and can't let go or move someone the owner froze or jailed ("the owner is holding them"). Their dev weapons can't hurt the owner or another friend (`Matches.devHit`).
+- **The same safety as the owner's use:** a match a friend's power touches counts for nothing (`m.dev`); the anti-cheat's `devOn` covers them while it lasts (`DevTemp`, which only OwnerDev.server writes); every command they use is in the server log as `[dev temp] <name> ...` and in the anti-cheat panel's log (kind `tempdev`, "(temp dev from <owner>)"), with the lending and the end too. No OWNER title for them.
+- **What they see:** one plain line at the top as it starts and ends ("DEV ACCESS UNTIL 21:45 · F8", "DEV ACCESS ENDED"), and the menu's status line says "DEV ACCESS UNTIL 21:45". When it ends, every power goes off, the people they froze go free, the menu shuts and the DEV button goes; lent again, it comes back.
+- **Attributes:** `DevTemp` on the friend = the `os.time()` it ends, or 0 = until they leave.
 
 ## GIFT EVERYONE
 
@@ -166,7 +197,8 @@ Asked for on 19 Nov, with ANNOUNCE: "from my command menu allow me to gift every
 
 | Call | What it does |
 |---|---|
-| `GiftFx.describe(kind, id, n) -> spec?, why?` | Names a giftable thing and builds its present cards. kind: `"container"` (id crate / bag / spray, n 1 to 999), `"bundle"` (a shop bundle or skin set id), `"item"` (id `"<type>:<id>"`), `"brass"` or `"coins"` (n 1 to 1,000,000), `"tickets"`, `"vip"`, `"weapon"` (a Robux weapon). spec = `{ kind, id, qty, label = "5 CRATES", plain = "5 Crates", items, what }`. |
+| `GiftFx.describe(kind, id, n) -> spec?, why?` | Names a giftable thing and builds its present cards. kind: `"container"` (id crate / bag / spray, n 1 to 999), `"bundle"` (a shop bundle or skin set id), `"item"` (id `"<type>:<id>"`), `"brass"` or `"coins"` (n 1 to 1,000,000), `"tickets"`, `"vip"`, `"weapon"` (a Robux weapon). Since 19 Nov also `"xp"` (n XP), `"level"` (n the level), `"mastery"` (id a weapon, n XP), `"masterylevel"` (id a weapon, n the level): spec.kind `"xp"`, `spec.stats` = what `Stats.gift` takes. `"unlock"` (id any weapon with a lock) and `"unlockall"`: spec.kind `"unlock"`, `spec.ids` for `Purchases.unlockWeapons`. The OWNER title is refused. spec = `{ kind, id, qty, label = "5 CRATES", plain = "5 Crates", items, what }`. |
+| `GiftFx.lockable(wid)`, `GiftFx.lockables()` | A weapon with a lock (live, and Robux or past level 1), and all of them in roster order. |
 | `GiftFx.present(to, fromName, spec)` | The receiver's present box (GiftReveal.client). In a match: the toast now, the present at the break. |
 | `GiftFx.say(byName, toName, what)` | "<by> gifted <to> <what>" as a gold system line in this server's chat, for everyone. Use display names and `spec.plain`, never typed text. |
 | `GiftFx.line(text)` | Any gold system line (announcements use it). Typed text must be filtered first. |
@@ -211,7 +243,9 @@ Asked for on 19 Nov, with ANNOUNCE: "from my command menu allow me to gift every
   - `"event"` (an event table): plays it as another server would on receiving it (each id once).
   - `"forget"` (an event id): this server forgets it played that id, as a server that never had it would.
   - `"events"`: how many events came in over MessagingService, and the ids played here.
-- **Client:** the player attribute `DevMenuTest` = `"open"`, `"close"`, `"gift"` or `"announce"` opens or closes the menu, or opens it on that tab. `AnnounceTest` = a text shows the banner on your screen only; `AnnounceHold = true` holds it there.
+  - `"grant"` (player, minutes or 0, seconds?): TEMP DEV on that player as if the owner lent it (seconds: a short one to see it run out). With `TestNotOwner` on, the Studio player is the friend. `"revoke"` (player), `"temps"` (who has it, and how long is left).
+  - A training dummy with the attribute `DevStandIn = "owner"` or `"temp"` stands in for the owner or another friend with dev, for the refusals.
+- **Client:** the player attribute `DevMenuTest` = `"open"`, `"close"`, `"gift"`, `"announce"` or `"friends"` opens or closes the menu, or opens it on that tab. `AnnounceTest` = a text shows the banner on your screen only; `AnnounceHold = true` holds it there.
 - **Commands from the Client datamodel:**
   ```lua
   game.ReplicatedStorage.JankfireRemotes.OwnerDev:InvokeServer("set", "fly", true)
@@ -294,3 +328,32 @@ Asked for on 19 Nov, with ANNOUNCE: "from my command menu allow me to gift every
   - Fixed in place version 1060: a present that's up when the round goes live is put away at once, and plays again at the next break if its cards weren't shown yet. Tested: a present begun 1 s before the round went live was hidden as the round started; at the next break it played again and reached its cards.
 - The loot and quests `_studio` saves were restored exactly afterwards (uncached read-back, compared key by key).
 - **Not tested:** the AIM KEYS toggle by hand (it's a local switch on the key handler, compiled in v1054), and anything across two real live servers (the reach count and the toast come 75 s after an event).
+
+### 19 Nov, place version 1079: XP, UNLOCKS and FRIENDS (one solo Play, the owner's `_studio` saves)
+
+- **The push:** one guarded package, 7 scripts (OwnerDev server and client, GiftFx, Stats, Purchases, GiftReveal, AntiCheat): all 44 pairs found in Studio's own text and compiled before anything was written.
+- **XP:**
+  - GIVE XP 5,000 took the owner from 22 XP (level 1) to 5,022 (level 12).
+  - SET LEVEL 12 after that answered "they're past that already", and so did SET LEVEL 5: a level only goes up.
+- **Mastery:** SET MASTERY LEVEL 10 on the Redline (it had none) made it level 10. The Gold camo was granted on its own (`mastery_gold@redline`). The present showed the Redline with "LV 10". Photo: `gift_mastery_card.jpg`.
+- **Unlocks** (with the owner's dev unlock off, so the locks were real):
+  - The Minigun (premium) and the Shopping Cart Cannon (level 25) were locked before and open after (`RobuxOwned` = "cart,minigun").
+  - UNLOCK ALL to EVERYONE HERE took the owned weapons from 2 to 46. Replaying the same event id gave nothing (46 stayed 46).
+- **XP to everyone:** +100 (5,022 → 5,122). Replaying the same event id gave nothing.
+- **The OWNER title** as an item gift: refused, "the OWNER title stays yours alone".
+- **FRIENDS** (the Studio player made a stranger with `TestNotOwner`, then lent dev for 40 s):
+  - **Before the loan:** "owner only".
+  - **During it:** hello answered temp, with its end time. Fly, noclip, weapons and invisible all switched on, with `DevOn` set. On a dummy, fling, go to, bring, freeze and let go, jail and free, and red card all worked.
+  - **Refused:**
+    - The owner's stand-in dummy: "not the owner".
+    - Another friend's stand-in: "not another dev".
+    - GIFT, GIFT EVERYONE, ANNOUNCE, lending, REVOKE ALL, UNFREEZE EVERYONE and EMPTY THE JAIL: "the owner's only".
+  - **Their menu:** POWERS only, with no GIFT, ANNOUNCE or FRIENDS tab and no UNFREEZE EVERYONE or EMPTY THE JAIL. The status line read "DEV ACCESS UNTIL 18:12". The owner's and the friend's rows showed OWNER / DEV with their buttons greyed. Photo: `tempdev_menu.jpg`.
+  - **Every command** went in the server log as `[dev temp] ...` and in the anti-cheat log as `tempdev`, with who lent it.
+  - **The timer:** at 40 s the loan ended. `DevTemp` went, fly went off, and `DevOn` was gone 3 s later. The next command answered "owner only". Their screen showed "DEV ACCESS ENDED", and the menu and the DEV button went.
+  - **Lend and revoke:** lending 15 min set `DevTemp`; REVOKE took it away.
+- The stats, loot and purchases `_studio` saves were restored exactly afterwards (uncached read-back, compared key by key). `TestNotOwner` was cleared before the save.
+- **Not tested:**
+  - "The owner is holding them". A friend freeing someone the owner froze needs two real players.
+  - The FRIENDS tab's buttons by hand. The server ops behind them were tested.
+  - A loan across a real live server with friends.

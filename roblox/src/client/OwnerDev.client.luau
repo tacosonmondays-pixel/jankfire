@@ -229,6 +229,16 @@ do
 				return
 			end
 			if type(d) == "table" and d.k == "giftchat" and type(d.text) == "string" then giftChat(d.text); return end
+			-- (TEMP DEV: the owner lent you the powers, or it ended. one plain line at the top)
+			if type(d) == "table" and d.k == "devaccess" then
+				if d.on == true then
+					local e = tonumber(d.ends) or 0
+					giftToast(if e == 0 then "DEV ACCESS UNTIL YOU LEAVE  ·  F8" else ("DEV ACCESS UNTIL %s  ·  F8"):format(os.date("%H:%M", e)))
+				else
+					giftToast("DEV ACCESS ENDED")
+				end
+				return
+			end
 			if type(d) ~= "table" or d.k ~= "redcard" then return end
 			local by = d.by
 			local ch = typeof(by) == "Instance" and by:IsA("Player") and by.Character or nil
@@ -249,8 +259,11 @@ do
 	end
 end
 
--- ------------------------------------------------------------------ the owner's only
-if not (game.CreatorType == Enum.CreatorType.User and me.UserId > 0 and me.UserId == game.CreatorId) then return end
+-- ------------------------------------------------------------------ the owner's only (and a friend's while the owner lends it)
+-- TEMP DEV (19 Nov: "allow me to temp give command panel to friends exclude the gifting portion of it"): the server
+-- puts DevTemp on a friend the owner lends the powers to (when it ends, os.time, or 0 = until they leave). their menu is
+-- built the first time it comes, with the POWERS tab only; it closes and the DEV button goes when it ends, and comes
+-- back if it's lent again. the server refuses a friend everything else whatever this side shows
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("OwnerDev", 30) :: RemoteFunction?
 if not Remote then return end
 local function call(...: any): any
@@ -258,8 +271,19 @@ local function call(...: any): any
 	local ok, res = pcall(function() return (Remote :: RemoteFunction):InvokeServer(table.unpack(args, 1, args.n)) end)
 	return if ok then res else nil
 end
-local hello = call("hello")
-if type(hello) ~= "table" or hello.owner ~= true then return end
+local creator = game.CreatorType == Enum.CreatorType.User and me.UserId > 0 and me.UserId == game.CreatorId
+local hello = if creator or me:GetAttribute("DevTemp") ~= nil then call("hello") else nil
+while type(hello) ~= "table" or (hello.owner ~= true and hello.temp ~= true) do
+	me:GetAttributeChangedSignal("DevTemp"):Wait()
+	if me:GetAttribute("DevTemp") ~= nil then hello = call("hello") end
+end
+local OWNER = hello.owner == true
+local function lent(): boolean return OWNER or me:GetAttribute("DevTemp") ~= nil end
+local function accessText(): string
+	local e = me:GetAttribute("DevTemp")
+	if type(e) ~= "number" then return "" end
+	return if e == 0 then "dev access until you leave" else "dev access until " .. os.date("%H:%M", e)
+end
 
 local J = script.Parent
 local T = require(J:WaitForChild("Theme")) :: any
@@ -632,9 +656,9 @@ local function drawMe()
 	local words = { hub = "HUB", training = "TRAINING", playground = "PLAYGROUND", staging = "MAP ROOM", match = "MATCH" }
 	local how = if me:GetAttribute("DevOn") == true then "anti-cheat leaves you alone" else "no powers on"
 	if z == "match" then how = if me:GetAttribute("MatchDev") ~= nil then "this match counts for nothing now" else "a power used here makes this match count for nothing" end
-	status.Text = ("%s  ·  %s"):format(words[z] or string.upper(z), how)
+	status.Text = ("%s%s  ·  %s"):format(if OWNER then "" else string.upper(accessText()) .. "  ·  ", words[z] or string.upper(z), how)
 end
-for _, a in { "DevFly", "DevNoclip", "DevArms", "DevFlySpeed", "DevSpeed", "DevOn", "Zone", "MatchDev", "DevInvisible" } do
+for _, a in { "DevFly", "DevNoclip", "DevArms", "DevFlySpeed", "DevSpeed", "DevOn", "Zone", "MatchDev", "DevInvisible", "DevTemp" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if open then drawMe() end end)
 end
 
@@ -666,9 +690,12 @@ refreshPlayers = function()
 		local row = T.new("Frame", { Name = "Row_" .. tostring(r.user or i), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.4, BorderSizePixel = 0,
 			Size = UDim2.new(1, 0, 0, 30), LayoutOrder = i }, plist)
 		T.corner(row, 4)
-		local away = false
+		-- (TEMP DEV: a friend's buttons do nothing on the owner, another friend with dev, or someone the owner holds; the
+		-- server refuses those anyway)
+		local away = not OWNER and (r.owner == true or r.temp ~= nil or r.held == true)
 		cell(row, "Name", tostring(r.name), 8, 96, T.TEXT, T.FONT_BOLD)
-		cell(row, "Zone", if r.jailed then "JAILED" elseif r.frozen then "FROZEN" else string.upper(tostring(r.zone)), 104, 64, if r.frozen or r.jailed then T.ACCENT else T.MUTED)
+		cell(row, "Zone", if r.jailed then "JAILED" elseif r.frozen then "FROZEN" elseif r.owner then "OWNER" elseif r.temp ~= nil then "DEV"
+			else string.upper(tostring(r.zone)), 104, 64, if r.frozen or r.jailed or r.owner or r.temp ~= nil then T.ACCENT else T.MUTED)
 		local x = 170
 		local function act(name: string, text: string, w: number, fn: () -> ())
 			local b = button(row, name, text, UDim2.fromOffset(x, 3), w, 24)
@@ -692,17 +719,29 @@ end
 -- (18 Nov, the owner: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc"): pick who
 -- gets it (anyone in the server, or you), then what: containers in any number, a bundle or skin set, one item from the
 -- searchable list, coins, Brass, Crate Tickets, VIP. the server checks and gives each one (OwnerDev.server, "gift")
-local Gift = { shown = false, refresh = function() end }
+-- (19 Nov, the owner: "allow me to also give people xp, I want to be able to unlock stuff for my friends!!"): XP
+-- (account XP or a level, weapon mastery XP or a mastery level) and UNLOCKS (one weapon, the 4 premium ones too, or
+-- every weapon). they go through the normal levels on the server (Stats.gift, Purchases.unlockWeapons)
+local Gift: any = { shown = false, refresh = function() end }
 do
 	local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop")) :: any
 	local LootTable = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("LootTable")) :: any
 	local tabPowers = button(plate, "TabPowers", "POWERS", UDim2.fromOffset(96, 12), 90)
 	local tabGift = button(plate, "TabGift", "GIFT", UDim2.fromOffset(192, 12), 90)
 	local tabAnnounce = button(plate, "TabAnnounce", "ANNOUNCE", UDim2.fromOffset(288, 12), 100)
-	local keep = { [title] = true, [status] = true, [note] = true, [close] = true, [tabPowers] = true, [tabGift] = true, [tabAnnounce] = true }
+	local tabFriends = button(plate, "TabFriends", "FRIENDS", UDim2.fromOffset(394, 12), 96)
+	local keep = { [title] = true, [status] = true, [note] = true, [close] = true, [tabPowers] = true, [tabGift] = true, [tabAnnounce] = true, [tabFriends] = true }
 	local powersKids: { GuiObject } = {}
 	for _, c in plate:GetChildren() do
 		if c:IsA("GuiObject") and not keep[c] then table.insert(powersKids, c) end
+	end
+	if not OWNER then
+		-- (TEMP DEV: the POWERS tab only, without UNFREEZE EVERYONE / EMPTY THE JAIL, which would undo the owner's too)
+		for _, b in { tabGift, tabAnnounce, tabFriends, unfreezeB, emptyB } do
+			b.Visible = false
+			local i = table.find(powersKids, b)
+			if i then table.remove(powersKids, i) end
+		end
 	end
 	local page = T.new("Frame", { Name = "Gift", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 1, -96), Visible = false }, plate)
 
@@ -736,6 +775,7 @@ do
 	everyNote.Position = UDim2.fromOffset(18, 342); everyNote.Size = UDim2.fromOffset(200, 48)
 	everyNote.TextWrapped = true; everyNote.TextYAlignment = Enum.TextYAlignment.Top
 	local to: any = me -- (a Player, or "server" / "all")
+	local onTo: { () -> () } = {} -- (pages that show something about the receiver: XP, UNLOCKS)
 	local function drawTo()
 		clear(toList)
 		local people: { any } = { "server", "all", me }
@@ -749,7 +789,11 @@ do
 			T.new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, b)
 			lit(b, q == to)
 			if type(q) == "string" and q ~= to then b.TextColor3 = T.ACCENT end
-			b.Activated:Connect(function() to = q; drawTo() end)
+			b.Activated:Connect(function()
+				to = q
+				drawTo()
+				for _, fn in onTo do task.spawn(fn) end
+			end)
 		end
 	end
 	local armed: { key: string, t: number }? = nil
@@ -773,11 +817,11 @@ do
 
 	-- what: the kinds
 	local KX, KW = 232, 650
-	local kinds = { "CONTAINERS", "BUNDLES", "ITEMS", "CURRENCY", "VIP" }
+	local kinds = { "CONTAINERS", "BUNDLES", "ITEMS", "CURRENCY", "VIP", "XP", "UNLOCKS" }
 	local kindBtn: { [string]: TextButton } = {}
 	local kindPage: { [string]: Frame } = {}
 	for i, k in kinds do
-		kindBtn[k] = button(page, "Kind_" .. k, k, UDim2.fromOffset(KX + (i - 1) * 128, 14), 120)
+		kindBtn[k] = button(page, "Kind_" .. k, k, UDim2.fromOffset(KX + (i - 1) * 94, 14), 88)
 		kindPage[k] = T.new("Frame", { Name = "Page_" .. k, BackgroundTransparency = 1, Position = UDim2.fromOffset(KX, 52), Size = UDim2.fromOffset(KW, 338), Visible = false }, page)
 	end
 
@@ -901,21 +945,183 @@ do
 		end
 	end
 
-	-- VIP for good, and the Robux weapons (kept for good)
+	-- VIP for good (the Robux weapons are on UNLOCKS now)
 	do
 		local P = kindPage.VIP
 		local g = button(P, "GiveVip", "GIVE VIP", UDim2.fromOffset(0, 0), 170, 34)
 		lit(g, true)
 		g.Activated:Connect(function() give("vip", nil, 1, "VIP") end)
-		label(P, "WeaponsHead", "ROBUX WEAPONS", 0, 56, 200)
-		local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
-		local ids = {}
-		for wid in (Unlocks.ROBUX or {}) :: any do if Roster.byId[wid] then table.insert(ids, wid) end end
-		table.sort(ids)
-		for i, wid in ids do
-			local b = button(P, "W_" .. wid, string.upper(Roster.byId[wid].name), UDim2.fromOffset(((i - 1) % 4) * 160, 78 + ((i - 1) // 4) * 36), 150)
-			b.Activated:Connect(function() give("weapon", wid, 1, Roster.byId[wid].name) end)
+		local t = T.text(P, "WeaponsMoved", "The premium (Robux) weapons are on UNLOCKS.", 12, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+		t.Position = UDim2.fromOffset(0, 48); t.Size = UDim2.fromOffset(400, 18)
+	end
+
+	local Unlocks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Unlocks")) :: any
+	local Mastery = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Mastery")) :: any
+	local Ranks = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Ranks")) :: any
+	local function commas(n: number): string
+		local r = string.reverse((string.gsub(string.reverse(tostring(math.floor(n))), "(%d%d%d)", "%1,")))
+		return (string.gsub(r, "^,", ""))
+	end
+	local function numOf(b: TextBox): number?
+		local n = tonumber((string.gsub(b.Text, "[,%s]", "")))
+		return if n and n >= 1 then math.floor(n) else nil
+	end
+	local function one(): Player? return if typeof(to) == "Instance" then to :: Player else nil end
+
+	-- XP: account XP or a level; weapon mastery XP or a mastery level. a level only goes up
+	do
+		local P = kindPage.XP
+		label(P, "AccHead", "ACCOUNT XP", 0, 0, 200)
+		local xpBox = box(P, "XpN", "", UDim2.fromOffset(0, 20), 140, "how much XP")
+		local giveXp = button(P, "GiveXp", "GIVE XP", UDim2.fromOffset(148, 20), 110)
+		lit(giveXp, true)
+		for i, q in { 100, 1000, 10000, 100000 } do
+			local b = button(P, "XQ" .. q, commas(q), UDim2.fromOffset(270 + (i - 1) * 70, 20), 64)
+			b.Activated:Connect(function() xpBox.Text = tostring(q) end)
 		end
+		label(P, "LvHead", "SET LEVEL (2 TO 500: ONLY UP)", 0, 58, 260)
+		local lvBox = box(P, "LvN", "", UDim2.fromOffset(0, 78), 140, "level")
+		local setLv = button(P, "SetLevel", "SET LEVEL", UDim2.fromOffset(148, 78), 110)
+		lit(setLv, true)
+		local now = T.text(P, "Now", "", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Left)
+		now.Position = UDim2.fromOffset(270, 78); now.Size = UDim2.fromOffset(380, 28)
+		giveXp.Activated:Connect(function()
+			local n = numOf(xpBox)
+			if not n then note.Text = "type how much XP"; return end
+			give("xp", nil, n, commas(n) .. " XP")
+		end)
+		setLv.Activated:Connect(function()
+			local n = numOf(lvBox)
+			if not n or n < 2 then note.Text = "type a level, 2 or more"; return end
+			give("level", nil, n, "level " .. n)
+		end)
+
+		label(P, "MHead", "WEAPON MASTERY", 0, 122, 200)
+		local wl = list(P, "Weapons", UDim2.fromOffset(0, 142), UDim2.fromOffset(200, 196))
+		local wid: string? = nil
+		local wBtn: { [string]: TextButton } = {}
+		local wName = T.text(P, "Weapon", "pick a weapon", 13, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Left)
+		wName.Position = UDim2.fromOffset(216, 142); wName.Size = UDim2.fromOffset(434, 22)
+		local mxBox = box(P, "MxN", "", UDim2.fromOffset(216, 170), 140, "mastery XP")
+		local giveMx = button(P, "GiveMastery", "GIVE MASTERY XP", UDim2.fromOffset(364, 170), 160)
+		local mlBox = box(P, "MlN", "", UDim2.fromOffset(216, 208), 140, "mastery level")
+		local setMl = button(P, "SetMastery", "SET MASTERY LEVEL", UDim2.fromOffset(364, 208), 160)
+		lit(giveMx, true); lit(setMl, true)
+		local camoNames = {}
+		for i, c in Mastery.CAMOS do
+			table.insert(camoNames, c.level .. " " .. string.lower(c.name))
+			local b = button(P, "ML" .. c.level, ("LV %d · %s"):format(c.level, c.name), UDim2.fromOffset(216 + (i - 1) * 110, 246), 104)
+			b.TextSize = 11
+			b.Activated:Connect(function() mlBox.Text = tostring(c.level) end)
+		end
+		local info = T.text(P, "Info", ("Through the normal levels: the level-up toasts, the weapons a level opens and the camos at their mastery levels (%s) come as usual. A level only goes up. Ranked never sees it."):format(table.concat(camoNames, ", ")), 11, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+		info.Position = UDim2.fromOffset(216, 284); info.Size = UDim2.fromOffset(434, 52)
+		info.TextWrapped = true; info.TextYAlignment = Enum.TextYAlignment.Top
+		local function drawNow()
+			local q = one()
+			if q and q.Parent then
+				local x = tonumber(q:GetAttribute("Xp")) or 0
+				now.Text = ("%s: LV %d, %s XP"):format(string.upper(q.DisplayName), Ranks.levelOf(x), commas(x))
+			else
+				now.Text = "everyone: each goes up from their own level"
+			end
+			if wid then
+				local e = Roster.byId[wid]
+				local base = string.upper(if e then e.name else wid)
+				if q and q.Parent then
+					local mx = Mastery.xpOf(q, wid)
+					wName.Text = ("%s  ·  %s: MASTERY %d (%s XP)"):format(base, string.upper(q.DisplayName), Mastery.levelOf(mx), commas(mx))
+				else
+					wName.Text = base
+				end
+			end
+		end
+		for i, id in Mastery.weapons() do
+			local e = Roster.byId[id]
+			local b = button(wl, "W_" .. id, string.upper(if e then e.name else id), UDim2.new(), 176, 26)
+			b.LayoutOrder = i
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			b.TextSize = 12
+			T.new("UIPadding", { PaddingLeft = UDim.new(0, 8) }, b)
+			wBtn[id] = b
+			b.Activated:Connect(function()
+				wid = id
+				for k, bb in wBtn do lit(bb, k == id) end
+				drawNow()
+			end)
+		end
+		local function wname(): string
+			local e = wid and Roster.byId[wid]
+			return if e then e.name else tostring(wid)
+		end
+		giveMx.Activated:Connect(function()
+			local n = numOf(mxBox)
+			if not wid then note.Text = "pick a weapon first"; return end
+			if not n then note.Text = "type how much mastery XP"; return end
+			give("mastery", wid, n, ("%s %s mastery XP"):format(commas(n), wname()))
+		end)
+		setMl.Activated:Connect(function()
+			local n = numOf(mlBox)
+			if not wid then note.Text = "pick a weapon first"; return end
+			if not n or n < 2 or n > Mastery.MAX then note.Text = ("type a mastery level, 2 to %d"):format(Mastery.MAX); return end
+			give("masterylevel", wid, n, ("%s mastery %d"):format(wname(), n))
+		end)
+		table.insert(onTo, drawNow)
+		Gift.xp = drawNow
+	end
+
+	-- UNLOCKS: any weapon with a lock (the 4 premium ones, and every one that opens at a level), or all of them. for
+	-- good, like an early coin unlock
+	do
+		local P = kindPage.UNLOCKS
+		local all = button(P, "UnlockAll", "UNLOCK ALL WEAPONS", UDim2.fromOffset(0, 0), 220, 34)
+		lit(all, true)
+		local ids = {}
+		for _, e in Roster.list do
+			if e.live and (Unlocks.robux(e.id) or Unlocks.level(e.id) > 1) then table.insert(ids, e.id) end
+		end
+		local info = T.text(P, "Info", ("Every locked weapon (%d: the premium ones and every one that opens at a level), for good. Never takes anything away."):format(#ids), 11, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+		info.Position = UDim2.fromOffset(232, 0); info.Size = UDim2.fromOffset(418, 34)
+		info.TextWrapped = true
+		all.Activated:Connect(function() give("unlockall", nil, nil, "every weapon") end)
+		label(P, "OneHead", "ONE WEAPON", 0, 48, 200)
+		local L = list(P, "List", UDim2.fromOffset(0, 68), UDim2.fromOffset(KW, 270))
+		local rows: { [string]: TextLabel } = {}
+		table.sort(ids, function(a, b)
+			local ra, rb = Unlocks.robux(a), Unlocks.robux(b)
+			if ra ~= rb then return ra end
+			local la, lb = Unlocks.level(a), Unlocks.level(b)
+			if la ~= lb then return la < lb end
+			return a < b
+		end)
+		for i, id in ids do
+			local e = Roster.byId[id]
+			local row = T.new("Frame", { Name = "U_" .. id, BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.4, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = i }, L)
+			T.corner(row, 4)
+			local t = T.text(row, "Name", string.upper(e.name), 12, T.TEXT, T.FONT_BOLD)
+			t.Position = UDim2.fromOffset(8, 0); t.Size = UDim2.new(1, -330, 1, 0); t.TextTruncate = Enum.TextTruncate.AtEnd
+			local k = T.text(row, "Lock", if Unlocks.robux(id) then "PREMIUM" else ("LEVEL %d"):format(Unlocks.level(id)), 11, if Unlocks.robux(id) then T.ACCENT else T.MUTED, T.FONT_BOLD)
+			k.Position = UDim2.new(1, -320, 0, 0); k.Size = UDim2.fromOffset(90, 28)
+			local has = T.text(row, "Has", "", 11, T.DIM, T.FONT_BOLD)
+			has.Position = UDim2.new(1, -224, 0, 0); has.Size = UDim2.fromOffset(140, 28)
+			rows[id] = has
+			local g = button(row, "Give", "UNLOCK", UDim2.new(1, -78, 0, 2), 70, 24)
+			g.TextSize = 11
+			g.Activated:Connect(function() give("unlock", id, 1, e.name) end)
+		end
+		local function drawHas()
+			local q = one()
+			for id, l in rows do
+				if q and q.Parent then
+					local ok = Unlocks.forPlayer(q, id)
+					l.Text = if ok and q:GetAttribute("UnlockAll") == true then "OPEN (DEV UNLOCK)" elseif ok then "THEY HAVE IT" else "LOCKED FOR THEM"
+				else
+					l.Text = ""
+				end
+			end
+		end
+		table.insert(onTo, drawHas)
+		Gift.unlocks = drawHas
 	end
 
 	-- ANNOUNCE (19 Nov, round 4: "write announcements that go across the screen across all servers"): the text, then
@@ -971,29 +1177,87 @@ do
 		every.Activated:Connect(function() send("all") end)
 	end
 
+	-- FRIENDS (19 Nov: "allow me to temp give command panel to friends exclude the gifting portion of it"): lend the
+	-- POWERS tab to a player here for 15 min, 30 min, 1 h or until they leave; REVOKE one, or REVOKE ALL. the server
+	-- holds it (this server only, never saved) and refuses a friend anything but the powers (OwnerDev.server, TEMP DEV)
+	local fpage = T.new("Frame", { Name = "Friends", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 60), Size = UDim2.new(1, 0, 1, -96), Visible = false }, plate)
+	do
+		label(fpage, "FHead", "LEND THE POWERS TAB (NEVER GIFT, XP, UNLOCKS, ANNOUNCE OR THE ANTI-CHEAT PANEL)", 18, 0, 700)
+		local fl = list(fpage, "List", UDim2.fromOffset(18, 20), UDim2.fromOffset(864, 300))
+		local revokeAll = button(fpage, "RevokeAll", "REVOKE ALL", UDim2.fromOffset(18, 330), 140, 30)
+		local info = T.text(fpage, "Info", "This server only, never saved: it ends at its time, when they leave, or when the server closes. They can't do anything to you or another friend with dev. A match they use a power in counts for nothing, and every command they use goes in the anti-cheat panel's log.", 11, T.DIM, T.FONT, Enum.TextXAlignment.Left)
+		info.Position = UDim2.fromOffset(170, 330); info.Size = UDim2.fromOffset(712, 44)
+		info.TextWrapped = true; info.TextYAlignment = Enum.TextYAlignment.Top
+		local function drawF()
+			local res = call("players")
+			clear(fl)
+			if type(res) ~= "table" or not res.ok or type(res.players) ~= "table" then return end
+			local n = 0
+			for _, r in res.players do
+				if typeof(r.ref) ~= "Instance" or not (r.ref :: Instance):IsA("Player") then continue end -- (dummies)
+				n += 1
+				local q = r.ref :: Player
+				local row = T.new("Frame", { Name = "F_" .. tostring(r.user), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.4, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = n }, fl)
+				T.corner(row, 4)
+				local nm = T.text(row, "Name", string.upper(tostring(r.name)), 12, T.TEXT, T.FONT_BOLD)
+				nm.Position = UDim2.fromOffset(8, 0); nm.Size = UDim2.fromOffset(150, 30); nm.TextTruncate = Enum.TextTruncate.AtEnd
+				local e = r.temp
+				local st = T.text(row, "State", if e == 0 then "DEV UNTIL THEY LEAVE" elseif type(e) == "number" then "DEV UNTIL " .. os.date("%H:%M", e) else "", 11,
+					T.ACCENT, T.FONT_BOLD)
+				st.Position = UDim2.fromOffset(162, 0); st.Size = UDim2.fromOffset(170, 30)
+				local x = 336
+				local function act(name: string, text: string, w: number, fn: () -> ())
+					local b = button(row, name, text, UDim2.fromOffset(x, 3), w, 24)
+					b.TextSize = 11
+					x += w + 4
+					b.Activated:Connect(function() fn(); task.delay(0.15, drawF) end)
+				end
+				for _, m in { { 15, "15 MIN" }, { 30, "30 MIN" }, { 60, "1 HOUR" }, { 0, "UNTIL THEY LEAVE" } } do
+					act("Lend" .. m[1], m[2], if m[1] == 0 then 120 else 56, function() said(call("grant", q, m[1]), "lent") end)
+				end
+				if e ~= nil then act("Revoke", "REVOKE", 64, function() said(call("revoke", q), "revoked") end) end
+			end
+			if n == 0 then
+				local row = T.new("Frame", { Name = "Empty", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28) }, fl)
+				local t = T.text(row, "Text", "nobody else here", 12, T.DIM)
+				t.Position = UDim2.fromOffset(8, 0); t.Size = UDim2.new(1, -16, 1, 0)
+			end
+		end
+		revokeAll.Activated:Connect(function() said(call("revokeAll"), "revoked"); task.delay(0.15, drawF) end)
+		Gift.friends = drawF
+		Gift.friendsOn = function() return fpage.Visible end
+	end
+
 	local kind = "CONTAINERS"
 	local function showKind(k: string)
 		kind = k
 		for name, b in kindBtn do lit(b, name == k) end
 		for name, f in kindPage do f.Visible = name == k end
 		if k == "ITEMS" and Gift.items then Gift.items() end
+		if k == "XP" and Gift.xp then Gift.xp() end
+		if k == "UNLOCKS" and Gift.unlocks then Gift.unlocks() end
 	end
 	for name, b in kindBtn do b.Activated:Connect(function() showKind(name) end) end
 	-- which: "powers", "gift", "announce" (true / false: gift / powers, as before)
 	local function showTab(which: any)
 		local w = if which == true then "gift" elseif which == false then "powers" else tostring(which)
+		if not OWNER then w = "powers" end -- (TEMP DEV: the powers only)
 		Gift.shown = w == "gift"
 		page.Visible = w == "gift"
 		apage.Visible = w == "announce"
+		fpage.Visible = w == "friends"
 		for _, c in powersKids do c.Visible = w == "powers" end
 		lit(tabPowers, w == "powers")
 		lit(tabGift, w == "gift")
 		lit(tabAnnounce, w == "announce")
+		lit(tabFriends, w == "friends")
 		if w == "gift" then drawTo(); showKind(kind) end
+		if w == "friends" then task.spawn(Gift.friends) end
 	end
 	tabPowers.Activated:Connect(function() showTab("powers") end)
 	tabGift.Activated:Connect(function() showTab("gift") end)
 	tabAnnounce.Activated:Connect(function() showTab("announce") end)
+	tabFriends.Activated:Connect(function() showTab("friends") end)
 	showTab("powers")
 	Gift.refresh = function() if Gift.shown then drawTo() end end
 	Gift.showTab = showTab
@@ -1011,13 +1275,14 @@ local function setOpen(on: boolean)
 		refreshPlayers()
 	end
 end
-local function toggle() setOpen(not open) end
+local function toggle() if lent() or open then setOpen(not open) end end
 close.Activated:Connect(function() setOpen(false) end)
 gui:GetPropertyChangedSignal("Enabled"):Connect(function() if not gui.Enabled and open then setOpen(false) end end)
 task.spawn(function()
 	while true do
 		task.wait(2)
 		if open then refreshPlayers() end
+		if open and Gift.friendsOn and Gift.friendsOn() then Gift.friends() end
 	end
 end)
 
@@ -1055,6 +1320,16 @@ do
 	T.corner(chip, 3)
 	keysChip = chip
 	drawAim()
+	-- (TEMP DEV: the button goes, the menu shuts and the aim keys go off the moment the owner's loan ends; back if lent again)
+	local function lentNow()
+		bg.Enabled = lent()
+		if not lent() then
+			setOpen(false)
+			if aimKeys then aimKeys = false; drawAim() end
+		end
+	end
+	me:GetAttributeChangedSignal("DevTemp"):Connect(lentNow)
+	lentNow()
 end
 
 -- F8, "/dev", X and Z
@@ -1071,7 +1346,7 @@ local function lookDir(): Vector3?
 	return if cam then cam.CFrame.LookVector else nil
 end
 UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
-	if gp or typing() then return end
+	if gp or typing() or not lent() then return end
 	if io.KeyCode == Enum.KeyCode.F8 then
 		toggle()
 	elseif aimKeys and (io.KeyCode == Enum.KeyCode.X or io.KeyCode == Enum.KeyCode.Z or io.KeyCode == Enum.KeyCode.Y) then
@@ -1089,6 +1364,7 @@ if RunService:IsStudio() then
 		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false)
 		elseif v == "gift" then setOpen(true); Gift.showTab("gift")
 		elseif v == "announce" then setOpen(true); Gift.showTab("announce")
+		elseif v == "friends" then setOpen(true); Gift.showTab("friends")
 		elseif v == "keys" then aimKeys = not aimKeys; drawAim() end
 	end)
 end

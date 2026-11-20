@@ -54,9 +54,11 @@ local function isAdmin(p: Player): boolean
 	return ok and rank == 255
 end
 -- the owner's dev powers are on (OwnerDev.server: fly, noclip, run speed, weapons in the hub; DevOn stays 3 s after the
--- last goes off). only the server writes DevOn, and only the place's creator ever counts: nobody else gets the pass
+-- last goes off). only the server writes DevOn, and only the place's creator ever counts: nobody else gets the pass.
+-- (19 Nov: and a friend the owner lent TEMP DEV, while it lasts: DevTemp, which only OwnerDev.server writes)
 local function devOn(p: Player): boolean
-	return p:GetAttribute("DevOn") == true and game.CreatorType == Enum.CreatorType.User and p.UserId == game.CreatorId
+	if p:GetAttribute("DevOn") ~= true then return false end
+	return (game.CreatorType == Enum.CreatorType.User and p.UserId == game.CreatorId) or p:GetAttribute("DevTemp") ~= nil
 end
 
 -- ------------------------------------------------------------------ the world's solid geometry

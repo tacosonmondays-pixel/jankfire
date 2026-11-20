@@ -39,7 +39,8 @@
 -- Studio tests: attribute TestNotOwner = true on this script makes the owner a stranger (every command refused);
 -- ServerStorage.JankDev (Studio only): "state" (the owner's switches, who's frozen, the log), "as" (player, op, a, b:
 -- a command as that player), "log", "giftLine", "event" (play an event as another server would), "forget" (an event id),
--- "events" (what came in over MessagingService)
+-- "events" (what came in over MessagingService), "grant" (TEMP DEV on a player, minutes or c = seconds, as if by the
+-- owner), "revoke", "temps". a training dummy with DevStandIn = "owner" / "temp" stands in for the owner or a temp dev
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -73,13 +74,54 @@ local function isOwner(p: Player): boolean
 	return game.CreatorType == Enum.CreatorType.User and p.UserId > 0 and p.UserId == game.CreatorId
 end
 
+-- ------------------------------------------------------------------ TEMP DEV: the owner lends the powers to a friend
+-- (19 Nov 2026, the owner: "allow me to temp give command panel to friends exclude the gifting portion of it"). on the
+-- FRIENDS tab the owner picks a player in this server and gives them TEMP DEV for 15 min, 30 min, 1 h, or until they
+-- leave. it's held in this server's memory only, never saved: it ends at its time, when they leave, when the server
+-- closes, or on REVOKE / REVOKE ALL. only the owner grants (a temp dev never can)
+--   a temp dev gets: fly, noclip, run speed, invisible, weapons in the hub, and fling, freeze, go to, bring, jail, red
+--   card, opened the same way (F8, "/dev", the DEV button), the POWERS tab only
+--   never: GIFT with its XP and UNLOCKS, ANNOUNCE, the anti-cheat panel, granting, UNFREEZE EVERYONE / EMPTY THE JAIL,
+--   anything to the owner or another temp dev, or a player the owner is holding (frozen or jailed by the owner).
+--   refused here by who sent it (TEMP_OPS and the checks in handle), not only by the hidden tabs
+--   the same safety as the owner's use: a match their power touches counts for nothing (m.dev), the anti-cheat's devOn
+--   covers them while it lasts (DevTemp, which only this script writes), and every command they use goes in the server
+--   log ("[dev temp] ...") and the anti-cheat panel's log (kind "tempdev"). no OWNER title (that's Stats.owns: the
+--   creator only)
+--   player attribute DevTemp = the os.time() it ends at, or 0 = until they leave (their menu reads it); DevFx
+--   { k = "devaccess", on, ends } tells them as it starts and ends
+local TEMP_TIMES = { [15] = true, [30] = true, [60] = true, [0] = true } :: { [number]: boolean } -- minutes (0 = until they leave)
+type Temp = { untilT: number?, ends: number, by: Player, mins: number }
+local temps: { [Player]: Temp } = {}
+local function isTemp(p: Player): boolean
+	local t = temps[p]
+	return t ~= nil and p.Parent == Players and (t.untilT == nil or now() < (t.untilT :: number))
+end
+local function isDev(p: Player): boolean return isOwner(p) or isTemp(p) end
+-- what a temp dev may send; everything else is the owner's alone
+local TEMP_OPS = { hello = true, state = true, players = true, set = true, fling = true, flingAim = true, freeze = true,
+	freezeAim = true, ["goto"] = true, bring = true, jail = true, release = true, redcard = true, redcardAim = true } :: { [string]: boolean }
+local ACLog: any = nil
+local function acNote(p: Player, act: string, info: string)
+	if ACLog == nil then
+		local m = script.Parent:FindFirstChild("AntiCheatLog")
+		local ok, r = false, nil
+		if m and m:IsA("ModuleScript") then ok, r = pcall(require, m) end
+		ACLog = if ok and type(r) == "table" then r else false
+	end
+	if ACLog then pcall(ACLog.add, p, "tempdev", string.sub(act, 1, 40), info) end
+end
+
 -- ------------------------------------------------------------------ the log
 local lines: { string } = {}
 local function log(p: Player, what: string, target: string?)
-	local line = ("[dev] %s %s%s"):format(p.Name, what, if target then " " .. target else "")
+	local temp = temps[p] ~= nil and not isOwner(p)
+	local line = ("[dev%s] %s %s%s"):format(if temp then " temp" else "", p.Name, what, if target then " " .. target else "")
 	print(line)
 	table.insert(lines, os.date("!%H:%M:%S ") .. line)
 	while #lines > 40 do table.remove(lines, 1) end
+	-- (a temp dev's every command is in the anti-cheat panel's log too, with who lent it)
+	if temp then acNote(p, what, (if target then target .. " " else "") .. "(temp dev from " .. (temps[p] :: Temp).by.Name .. ")") end
 end
 
 -- ------------------------------------------------------------------ a match a dev power touched: counts for nothing
@@ -190,6 +232,9 @@ local function unfreezeAll()
 	for _, t in list do setFrozen(t, false) end
 	return #list
 end
+-- who froze or jailed someone (TEMP DEV: a friend can't undo or touch what the owner is holding; theirs go free when
+-- their access ends). only read while that someone is still frozen or jailed
+local heldBy: { [any]: Player } = {}
 
 -- ------------------------------------------------------------------ invisible
 -- every part and decal of the owner's body (and whatever is added to it while it lasts: a new gun, a hat) goes fully
@@ -450,6 +495,53 @@ local function redCard(by: Player, t: any, tname: string): any
 	return { ok = true, did = "red card: " .. tname }
 end
 
+-- ------------------------------------------------------------------ TEMP DEV: lend, end
+local function holder(t: any): Player?
+	if frozen[t] or jailed[t] then return heldBy[t] end
+	return nil
+end
+-- their access ends (time, left, revoked): every power off, the ones they froze let go, and they're told
+local function endTemp(q: Player, why: string, by: Player?)
+	local t = temps[q]
+	if not t then return end
+	temps[q] = nil
+	if q.Parent then
+		q:SetAttribute("DevTemp", nil)
+		local s = states[q]
+		if s then
+			s.fly, s.noclip, s.speed, s.arms, s.invis = false, false, 1, false, false
+			publish(q, s)
+		end
+		if q:GetAttribute("DevInvisible") == true then setInvisible(q, false) end
+		pcall(function() (DevFx :: RemoteEvent):FireClient(q, { k = "devaccess", on = false }) end)
+	end
+	for f, who in heldBy do
+		if who == q then
+			if frozen[f] then setFrozen(f, false) end
+			heldBy[f] = nil
+		end
+	end
+	log(by or q, ("temp dev ended (%s)"):format(why), if by then q.Name else nil)
+	acNote(q, "temp dev ended", why .. (if by then " by " .. by.Name else ""))
+end
+-- the owner lends it: mins 15 / 30 / 60, or 0 = until they leave (again on someone who has it: the new time).
+-- secs: Studio tests only, a short one to see it run out
+local function grant(by: Player, q: Player, mins: number, secs: number?, test: boolean?): any
+	if not TEMP_TIMES[mins] and not secs then return { ok = false, why = "15, 30 or 60 minutes, or until they leave" } end
+	if not test and (q == by or isOwner(q)) then return { ok = false, why = "not yourself" } end
+	if q.Parent ~= Players then return { ok = false, why = "they've left" } end
+	local long = secs or (if mins > 0 then mins * 60 else nil)
+	local again = temps[q] ~= nil
+	local t: Temp = { untilT = if long then now() + long else nil, ends = if long then os.time() + math.ceil(long) else 0, by = by, mins = mins }
+	temps[q] = t
+	q:SetAttribute("DevTemp", t.ends)
+	pcall(function() (DevFx :: RemoteEvent):FireClient(q, { k = "devaccess", on = true, ends = t.ends, from = string.sub(by.DisplayName, 1, 32) }) end)
+	local what = if secs then ("%d s (test)"):format(math.ceil(secs)) elseif mins > 0 then ("%d min"):format(mins) else "until they leave"
+	log(by, ("temp dev %s (%s)"):format(if again then "changed" else "given", what), q.Name)
+	acNote(q, "temp dev given", what .. ", by " .. by.Name)
+	return { ok = true, did = ("%s has dev %s"):format(q.DisplayName, if long then "for " .. what else "until they leave") }
+end
+
 -- ------------------------------------------------------------------ gifts
 -- (18 Nov 2026, the owner: "let me gift people stuff! bundles, cases bags cans at any quantity coins vip etc"). the
 -- GIFT tab's "gift" op. every gift goes through the owning module's own grant, never the client:
@@ -460,6 +552,16 @@ end
 --   brass ("coins": the same thing) / tickets     Quests.gift(p, brass, tickets, receipt)
 --   vip (for good)                                Vip.gift(p, true)                   (the shop's: saved in JankfireVip)
 --   weapon (a Robux one: Unlocks.ROBUX)           Purchases.giveWeapon(p, wid, "gift", receipt)   (the shop's)
+--   (19 Nov, the owner: "allow me to also give people xp, I want to be able to unlock stuff for my friends!!")
+--   xp: account XP or a level, weapon mastery XP or a mastery level
+--                                                 Stats.gift(p, { xp | level | w + xp | w + level }, receipt)
+--                                                 (the same XP a match gives: the level-up toast, the weapons a level
+--                                                 opens, mastery's camos at their levels; a level only goes up; never
+--                                                 near ranked; the receipt in the stats save with the XP)
+--   unlock: one weapon with a lock (the 4 Robux ones, any level one), or UNLOCK ALL WEAPONS
+--                                                 Purchases.unlockWeapons(p, wids, "gift", receipt)   (for good, like
+--                                                 an early coin unlock: RobuxOwned; one write for all of them)
+--   never the OWNER title (GiftFx.describe refuses it): that stays the owner's alone
 -- what a thing is called and what its present shows come from GiftFx.describe (shared with the shop's paid gifts).
 -- the receiver gets the present (GiftFx.present: GiftReveal.client; a toast in a match, the present at the break),
 -- and a gift to someone else is said in the server's chat for everyone (GiftFx.say, 18 Nov: "when you gift someone it
@@ -542,6 +644,18 @@ local function give(to: Player, spec: any, rid: string): (boolean, string?)
 		local ok, why = Pu.giveWeapon(to, spec.id, "gift", rid)
 		if not ok then return false, tostring(why or "not given") end
 		return true, if why == "already" then "already" else nil
+	elseif k == "unlock" then
+		local Pu = mod("Purchases")
+		if not Pu or type(Pu.unlockWeapons) ~= "function" then return false, "weapon unlocks aren't in yet" end
+		local ok, _, why = Pu.unlockWeapons(to, spec.ids, "gift", rid)
+		if not ok then return false, tostring(why or "not given") end
+		return true, if why == "already" then "already" else nil
+	elseif k == "xp" then
+		local S = mod("Stats")
+		if not S or type(S.gift) ~= "function" then return false, "XP gifts aren't in yet" end
+		local ok, why = S.gift(to, spec.stats, rid)
+		if not ok then return false, tostring(why or "not given") end
+		return true, if why == "already" then "already" else nil
 	end
 	return false, "nope"
 end
@@ -550,7 +664,7 @@ local function gift(p: Player, to: Player, kind: unknown, id: unknown, n: unknow
 	if not spec then return { ok = false, why = why } end
 	local ok, how = give(to, spec, receipt(to))
 	if not ok then return { ok = false, why = how } end
-	if how == "already" then return { ok = false, why = "they have it already" } end
+	if how == "already" then return { ok = false, why = if spec.kind == "xp" then "they're past that already" else "they have it already" } end
 	GiftFx.present(to, p.DisplayName, spec)
 	if to ~= p then GiftFx.say(p.DisplayName, to.DisplayName, spec.plain) end
 	giftLog(p, to, spec.what, spec.qty)
@@ -716,7 +830,9 @@ local function giftEveryone(p: Player, scope: unknown, b: unknown): any
 	local wait = EVERYONE_GAP - (now() - last.gift)
 	if wait > 0 then return { ok = false, why = ("one every %d s: %d s to go"):format(EVERYONE_GAP, math.ceil(wait)) } end
 	last.gift = now()
-	local ev = { id = newId(), k = "gift", by = p.UserId, from = string.sub(p.DisplayName, 1, 32), kind = spec.kind, item = spec.id, qty = spec.qty }
+	-- (the kind as asked, not spec.kind: every server describes it again from these, and "level" or "mastery" come out
+	-- as spec.kind "xp")
+	local ev = { id = newId(), k = "gift", by = p.UserId, from = string.sub(p.DisplayName, 1, 32), kind = (b :: any).kind, item = spec.id, qty = spec.qty }
 	local ok, note = startEvent(p, ev, scope :: string, spec.what)
 	if not ok then last.gift = -math.huge; return { ok = false, why = note } end
 	log(p, ("gift everyone (%s): %s x%d, event"):format(scope :: string, spec.what, spec.qty), ev.id)
@@ -789,13 +905,20 @@ local function list(p: Player): { any }
 	for _, q in Players:GetPlayers() do
 		if q == p then continue end
 		local f = Fight.byPlayer[q]
-		table.insert(out, { ref = q, name = q.DisplayName, user = q.Name, zone = Zones.of(q), frozen = f ~= nil and frozen[f] ~= nil, jailed = f ~= nil and jailed[f] ~= nil })
+		-- (owner = the place's creator, temp = when their TEMP DEV ends, 0 = until they leave; held = the owner holds them)
+		local h = f and holder(f)
+		table.insert(out, { ref = q, name = q.DisplayName, user = q.Name, zone = Zones.of(q), frozen = f ~= nil and frozen[f] ~= nil, jailed = f ~= nil and jailed[f] ~= nil,
+			owner = isOwner(q), temp = if isTemp(q) then (temps[q] :: Temp).ends else nil, held = h ~= nil and isOwner(h) })
 	end
 	table.sort(out, function(a, b) return a.name < b.name end)
 	if STUDIO then
 		for _, f in Fight.all do
 			if f.kind == "dummy" and f.ref and f.alive then
-				table.insert(out, { ref = f.ref, name = f.name, user = "dummy", zone = "dummy", frozen = frozen[f] ~= nil, jailed = jailed[f] ~= nil })
+				-- (a dummy with DevStandIn = "owner" / "temp" stands in for the owner or a temp dev in a test)
+				local si = (f.ref :: Instance):GetAttribute("DevStandIn")
+				local h = holder(f)
+				table.insert(out, { ref = f.ref, name = f.name, user = "dummy", zone = "dummy", frozen = frozen[f] ~= nil, jailed = jailed[f] ~= nil,
+					owner = si == "owner", temp = if si == "temp" then 0 else nil, held = h ~= nil and isOwner(h) })
 			end
 		end
 	end
@@ -815,7 +938,8 @@ end
 local refused: { [Player]: boolean } = {}
 
 local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
-	if not isOwner(p) then
+	local owner = isOwner(p)
+	if not owner and not isTemp(p) then
 		if not refused[p] then
 			refused[p] = true
 			log(p, "refused (not the owner): " .. string.sub(tostring(op), 1, 20), nil)
@@ -823,12 +947,32 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		return { ok = false, why = "owner only" }
 	end
 	if not spend(p) then return { ok = false, why = "slow down" } end
+	-- (a temp dev: the powers only. GIFT, XP, UNLOCKS, ANNOUNCE, granting and the rest are refused by who sent it)
+	if not owner and not TEMP_OPS[tostring(op)] then
+		log(p, "refused (the owner's only): " .. string.sub(tostring(op), 1, 20), nil)
+		return { ok = false, why = "the owner's only" }
+	end
 	local s = stateOf(p)
 	local zone = Zones.of(p)
 	if op == "hello" or op == "state" then
-		return { ok = true, owner = true, studio = STUDIO, zone = zone, state = view(s), log = lines[#lines] }
+		return { ok = true, owner = owner, temp = not owner, ends = if not owner then (temps[p] :: Temp).ends else nil,
+			studio = STUDIO, zone = zone, state = view(s), log = lines[#lines] }
 	elseif op == "players" then
 		return { ok = true, players = list(p), zone = zone }
+	elseif op == "grant" then -- (the owner only: a = the player, b = minutes 15 / 30 / 60, or 0 = until they leave)
+		local q = if typeof(a) == "Instance" and (a :: Instance):IsA("Player") then a :: Player else nil
+		if not q then return { ok = false, why = "nobody" } end
+		return grant(p, q, tonumber(b) or -1, nil)
+	elseif op == "revoke" then -- (a = the player)
+		local q = if typeof(a) == "Instance" and (a :: Instance):IsA("Player") then a :: Player else nil
+		if not q or not temps[q] then return { ok = false, why = "they don't have it" } end
+		endTemp(q, "revoked", p)
+		return { ok = true, did = ("%s's dev access ended"):format(q.DisplayName) }
+	elseif op == "revokeAll" then
+		local list2 = {}
+		for q in temps do table.insert(list2, q) end
+		for _, q in list2 do endTemp(q, "revoked", p) end
+		return { ok = true, did = ("ended %d"):format(#list2) }
 	end
 	if zone == "match" and op ~= "gift" and op ~= "giftAll" and op ~= "announce" and not (op == "set" and (a == "off" or b == false)) then flagMatch(p, p, tostring(op)) end
 	if op == "set" then
@@ -876,6 +1020,21 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		if not t then return { ok = false, why = tname } end
 	end
 	if t == Fight.byPlayer[p] then return { ok = false, why = "not yourself" } end
+	if not owner then
+		-- (TEMP DEV: never the owner, another temp dev, or someone the owner is holding. in Studio a dummy with
+		-- DevStandIn = "owner" / "temp" stands in for one)
+		local tp = if t.kind == "player" then t.ref :: Player else nil
+		local si = if STUDIO and t.kind == "dummy" and typeof(t.ref) == "Instance" then (t.ref :: Instance):GetAttribute("DevStandIn") else nil
+		local why = if (tp and isOwner(tp)) or si == "owner" then "not the owner"
+			elseif (tp and isTemp(tp)) or si == "temp" then "not another dev"
+			else nil
+		local h = holder(t)
+		if not why and h and h ~= p and isOwner(h) then why = "the owner is holding them" end
+		if why then
+			log(p, ("refused (%s): %s"):format(why, tostring(op)), tname)
+			return { ok = false, why = why }
+		end
+	end
 	if not t.alive then return { ok = false, why = "they're down" } end
 	if t.kind == "player" and zoneOfF(t) == "match" then flagMatch(p, t.ref :: Player, tostring(op) .. " on them") end
 	if op == "fling" or op == "flingAim" then
@@ -883,16 +1042,22 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	elseif op == "freeze" or op == "freezeAim" then
 		local on = if op == "freezeAim" then frozen[t] == nil else b ~= false
 		setFrozen(t, on)
+		heldBy[t] = if on then p else nil
 		log(p, if on then "freeze" else "unfreeze", tname)
 		return { ok = true, did = (if on then "froze " else "let go ") .. tname }
 	elseif op == "redcard" or op == "redcardAim" then
-		return redCard(p, t, tname)
+		local res = redCard(p, t, tname)
+		if res.ok then heldBy[t] = p end
+		return res
 	elseif op == "jail" then
 		if jailed[t] then return { ok = false, why = "already in" } end
-		return toJail(p, t, tname, "jail")
+		local res = toJail(p, t, tname, "jail")
+		if res.ok then heldBy[t] = p end
+		return res
 	elseif op == "release" then
 		if not jailed[t] then return { ok = false, why = "not in the jail" } end
 		release(t, "let go", p, true)
+		heldBy[t] = nil
 		return { ok = true, did = "let " .. tname .. " out" }
 	elseif op == "goto" or op == "bring" then
 		local of = Fight.byPlayer[p]
@@ -905,6 +1070,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		else
 			if frozen[t] then setFrozen(t, false) end
 			if jailed[t] then release(t, "brought", p, false) end
+			heldBy[t] = nil
 			local fwd = flatUnit(mr.CFrame.LookVector, Vector3.zAxis)
 			local at = mr.Position + fwd * 5
 			place(t, CFrame.lookAt(at, Vector3.new(mr.Position.X, at.Y, mr.Position.Z)))
@@ -934,7 +1100,9 @@ end
 -- ------------------------------------------------------------------ the hooks Fight and Matches ask
 -- may the owner's dev weapons hurt this player (both out of a match: the hub, training, the playground)
 Matches.devHit = function(by: Player, t: Player): boolean
-	return by:GetAttribute("DevArms") == true and isOwner(by) and HIT_ZONES[Zones.of(by)] == true and HIT_ZONES[Zones.of(t)] == true
+	-- (a temp dev's too, never on the owner or another temp dev)
+	if isTemp(by) and not isOwner(by) and (isOwner(t) or isTemp(t)) then return false end
+	return by:GetAttribute("DevArms") == true and isDev(by) and HIT_ZONES[Zones.of(by)] == true and HIT_ZONES[Zones.of(t)] == true
 end
 -- a kill outside a match by the owner (a dev weapon, a fall after a fling): counts for nothing, back at once
 Fight.DEV_RESPAWN = 1
@@ -942,7 +1110,7 @@ Fight.devKill = function(info: any): boolean
 	local k, v = info.k, info.v
 	if not k or k == v or k.kind ~= "player" or v.kind ~= "player" then return false end
 	local kp, vp = k.ref :: Player, v.ref :: Player
-	return isOwner(kp) and Zones.of(vp) ~= "match" and Zones.of(kp) ~= "match"
+	return isDev(kp) and Zones.of(vp) ~= "match" and Zones.of(kp) ~= "match"
 end
 
 -- ------------------------------------------------------------------ the watch: 5 a second
@@ -1009,18 +1177,24 @@ RunService.Heartbeat:Connect(function(dt: number)
 			if q.Parent then q:SetAttribute("MatchDev", nil) end
 		end
 	end
-	-- (only the server writes these, and only on the owner: anyone else's are wiped)
+	-- TEMP DEV: out at its time
+	for q, tm in temps do
+		if not q.Parent then temps[q] = nil
+		elseif tm.untilT and t >= (tm.untilT :: number) then endTemp(q, "time", nil) end
+	end
+	-- (only the server writes these, and only on the owner or a temp dev: anyone else's are wiped)
 	for _, p in Players:GetPlayers() do
 		if not states[p] and (p:GetAttribute("DevOn") ~= nil or p:GetAttribute("DevArms") ~= nil or p:GetAttribute("DevFly") ~= nil) then
 			for _, k in { "DevOn", "DevArms", "DevFly", "DevNoclip", "DevSpeed" } do p:SetAttribute(k, nil) end
 		end
+		if not temps[p] and p:GetAttribute("DevTemp") ~= nil then p:SetAttribute("DevTemp", nil) end
 	end
 end)
 
 local function added(p: Player)
 	-- "/dev" in the legacy chat opens the menu (OwnerDev.client watches DevPanel)
 	p.Chatted:Connect(function(msg: string)
-		if string.lower(string.sub(msg, 1, 4)) == "/dev" and isOwner(p) then p:SetAttribute("DevPanel", os.clock()) end
+		if string.lower(string.sub(msg, 1, 4)) == "/dev" and isDev(p) then p:SetAttribute("DevPanel", os.clock()) end
 	end)
 	-- a new life is free
 	p.CharacterAdded:Connect(function()
@@ -1032,15 +1206,16 @@ end
 for _, p in Players:GetPlayers() do added(p) end
 Players.PlayerAdded:Connect(added)
 Players.PlayerRemoving:Connect(function(p: Player)
+	if temps[p] then endTemp(p, "left", nil) end
 	if states[p] then
 		states[p] = nil
-		unfreezeAll()
+		if isOwner(p) then unfreezeAll() end -- (the owner leaving lets everyone go; a temp dev's own went free just above)
 	end
 	for _, c in invisConns[p] or {} do c:Disconnect() end
 	invisConns[p] = nil
 	carding[p] = nil
 	local f = Fight.byPlayer[p]
-	if f then frozen[f] = nil; jailed[f] = nil end
+	if f then frozen[f] = nil; jailed[f] = nil; heldBy[f] = nil end
 	budget[p], refused[p], flagged[p] = nil, nil, nil
 end)
 
@@ -1075,6 +1250,17 @@ if STUDIO then
 			if not ok then return { ran = false, why = why } end
 			local played, why2 = play(a, "test")
 			return { ran = played, why = why2 }
+		elseif op == "grant" then -- (TEMP DEV for a test: a = the player, b = minutes or 0, c = seconds instead. with TestNotOwner
+			-- on, the Studio player is the friend, granted as if by the owner)
+			return grant(a, a, tonumber(b) or 0, tonumber(c), true)
+		elseif op == "revoke" then
+			if not temps[a] then return false end
+			endTemp(a, "revoked (test)", nil)
+			return true
+		elseif op == "temps" then
+			local out = {}
+			for q, tm in temps do out[q.Name] = { ends = tm.ends, left = if tm.untilT then (tm.untilT :: number) - now() else -1, live = isTemp(q) } end
+			return out
 		elseif op == "forget" then -- (a = an event id: this server forgets it played it, like a server that never had it)
 			seen[tostring(a)] = nil
 			return true

@@ -33,6 +33,32 @@ end
 local function sound(name: string, vol: number?)
 	if Sfx then pcall(Sfx.play, name, nil, vol) end
 end
+-- (19 Nov, the owner's XP and UNLOCKS) pictures the loot cards don't draw: a weapon (an unlock, or a mastery gift) as
+-- the loadout shows it (GunPreview), and it.big ("XP", "LV 10", "ALL") in large letters over the picture
+local Preview: any = nil
+local function extraPicture(slot: Instance, it: any)
+	local pic = slot:FindFirstChild("Pic", true)
+	if not pic or not pic:IsA("GuiObject") then return end
+	local wid = if type(it.weapon) == "string" then it.weapon elseif it.type == "weapon" and it.id ~= "all" then it.id else nil
+	if wid then
+		if Preview == nil then local ok, m = pcall(require, J:WaitForChild("GunPreview", 5)); Preview = if ok then m else false end
+		if Preview then
+			pcall(function()
+				local vp, cam = Preview.viewport(pic, { Name = "Gun", Size = UDim2.fromScale(1, 1), ZIndex = 2 })
+				Preview.put(vp, cam, wid)
+			end)
+		end
+	end
+	if type(it.big) == "string" then
+		local l = T.text(pic, "Big", it.big, if wid then 26 else 46, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		l.ZIndex = 4
+		if wid then
+			l.AnchorPoint = Vector2.new(0, 1); l.Position = UDim2.new(0, 0, 1, -6); l.Size = UDim2.new(1, 0, 0, 30)
+		else
+			l.Size = UDim2.fromScale(1, 1)
+		end
+	end
+end
 
 local queue: { any } = {}
 local playing = false
@@ -159,6 +185,7 @@ local function drawReveal(items: { any })
 			Size = UDim2.fromOffset(cw, ch), ZIndex = 5 }, holder)
 		local s = T.new("UIScale", { Scale = 0.2 }, slot)
 		local ok = Opening and type(Opening.card) == "function" and pcall(Opening.card, slot, it, 0)
+		if ok and (it.type == "xp" or it.type == "mastery" or it.type == "weapon") then extraPicture(slot, it) end
 		if not ok then
 			local c = T.new("Frame", { BackgroundColor3 = T.CARD, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, slot)
 			T.corner(c, 6)

@@ -812,6 +812,67 @@ function Stats.matchesOf(uid: number, since: number?): { any }?
 	return out
 end
 
+-- ------------------------------------------------------------------ the owner's XP gifts (19 Nov 2026)
+-- the owner's GIFT tab (OwnerDev.server; the owner: "allow me to also give people xp, I want to be able to unlock stuff
+-- for my friends!!"): account XP or a level, and weapon mastery XP or a mastery level. it's the same XP a match gives:
+-- the Xp / Level attributes (the level-up toast and the weapons it opens: UnlockClient), and mastery through
+-- MasteryXp.add (its toast, and the camos at their levels). it's never on a match's log (cur.xp), so a cheat restore
+-- for someone else never takes it, and ranked (RankedData) never sees it. a level only goes UP: below it, they're
+-- raised to its start; at it or past it, nothing happens ("already"). once per receipt id: data.gifts keeps the last
+-- GIFT_IDS ids in this save, with the XP, so both go in the same write
+--   Stats.gift(p, what, rid) -> ok, why?   what = { xp = n } | { level = lv } | { w = weapon, xp = n } | { w = weapon, level = lv }
+--   why "already" = nothing new (the receipt again, the level already reached, mastery maxed)
+local GIFT_IDS = 200
+Stats.GIFT_XP_MAX = 10000000
+Stats.GIFT_LEVEL_MAX = 500
+function Stats.gift(p: Player, what: any, rid: string): (boolean, string?)
+	local s = st[p]
+	local d = dataOf(s)
+	if not s or not s.ready or not d then return false, "their stats save isn't ready" end
+	if type(what) ~= "table" then return false, "nope" end
+	if type(d.gifts) ~= "table" then d.gifts = {} end
+	local id = string.sub(tostring(rid), 1, 80)
+	if table.find(d.gifts, id) then return true, "already" end
+	local n = if type(what.xp) == "number" then math.floor(what.xp) else nil
+	local lv = if type(what.level) == "number" then math.floor(what.level) else nil
+	if what.w ~= nil then
+		local w = if type(what.w) == "string" then (Roster.formOf and Roster.formOf[what.w] or what.w) else nil
+		if not w or not Mastery.levels(w) then return false, "not a weapon with mastery" end
+		if type(d.mx) ~= "table" then d.mx = {} end
+		local before = math.floor(tonumber(d.mx[w]) or 0)
+		local add = 0
+		if lv then
+			add = Mastery.total(math.clamp(lv, 1, Mastery.MAX)) - before
+		elseif n and n >= 1 and n <= Stats.GIFT_XP_MAX then
+			add = n
+		else
+			return false, "how much"
+		end
+		if add <= 0 then return true, "already" end
+		local after = MasteryXp.add(p, w, add, "owner gift")
+		if not after then return false, "their mastery isn't ready" end
+		if after <= before then return true, "already" end
+	elseif lv then
+		if lv < 2 or lv > Stats.GIFT_LEVEL_MAX then return false, "a level from 2 to " .. Stats.GIFT_LEVEL_MAX end
+		local want = Ranks.xpForLevel(lv)
+		if (tonumber(d.xp) or 0) >= want then return true, "already" end
+		d.xp = want
+	elseif n and n >= 1 and n <= Stats.GIFT_XP_MAX then
+		d.xp = math.floor((tonumber(d.xp) or 0) + n)
+	else
+		return false, "how much"
+	end
+	table.insert(d.gifts, id)
+	while #d.gifts > GIFT_IDS do table.remove(d.gifts, 1) end
+	dirty(s)
+	publish(s)
+	return true, nil
+end
+function Stats.hasGift(p: Player, rid: string): boolean
+	local d = dataOf(st[p])
+	return d ~= nil and type(d.gifts) == "table" and table.find(d.gifts, string.sub(tostring(rid), 1, 80)) ~= nil
+end
+
 -- ------------------------------------------------------------------ players
 local function cleanLook(p: Player, d: any)
 	if type(d.look) ~= "table" then d.look = {} end
