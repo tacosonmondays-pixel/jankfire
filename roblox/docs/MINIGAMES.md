@@ -424,4 +424,10 @@ The anti-cheat session forwarded them:
   - Each ring's publish timer is its own.
   - A marker's `Ring` (1..4) names its table (box1..box4).
   - Its `Half` (the mat's middle to the inside of its ropes, 12.75 for today's mat) sets both the walls and the bot's bound.
-  - For the gym's four rings on the hub's new layout; to test when the hub's staging markers are up.
+  - Tested in the gym's four rings (the hub's new layout, live at place version 1086):
+    - the four markers made box1..box4, each with Half 12.75;
+    - in one Play, you vs an easy bot in ring 1 and a Studio stand-in vs a medium bot in ring 2 fought at the same time;
+    - both bots walked on their own;
+    - ring 1's bot was knocked down while ring 2's took the stand-in to 39;
+    - the anti-cheat: 0 points.
+  - Photo: `docs/minigames/box_gym_two_bouts.jpg`.
