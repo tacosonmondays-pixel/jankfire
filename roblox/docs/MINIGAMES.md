@@ -451,3 +451,9 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
   - a staging copy with `MiniGamesOff` built nothing;
   - a bout in `box1_testhub` started;
   - the anti-cheat: 0 points.
+- **THE SQUARE**, the first new hub (live since place version 1203; checked at 1211):
+  - all 8 of its tables built in `Map.Hub.Square.MiniGames` at the hub's spots: arm, board and arcade in the lounge street, the four 22-stud rings in the gym (`Half` 10.2), and golf in its own 54 x 94 room;
+  - nothing of the hub's stands inside the course;
+  - a golf hole played through in the room (in the cup in 4), and a bout ran in `box1_square`;
+  - the anti-cheat: 0 points;
+  - photos: `docs/minigames/square_golf_room.jpg`, `square_box_ring.jpg`.
