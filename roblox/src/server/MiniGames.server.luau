@@ -113,8 +113,9 @@ end
 local FACE = { A = CFrame.identity, B = CFrame.Angles(0, math.pi, 0) } -- (A faces -Z, B faces +Z)
 
 local folder: Folder
-local function newTable(kind: string, cf: CFrame, n: number): Table?
-	local id = kind .. n
+-- (parent: the hub's own MiniGames folder, else the first hub's; suffix: "_<hub>" for a hub's markers that name it)
+local function newTable(kind: string, cf: CFrame, n: number, parent: Instance?, suffix: string?): Table?
+	local id = kind .. n .. (suffix or "")
 	local model = Instance.new("Model")
 	model.Name = "Mini_" .. id
 	model:SetAttribute("Kind", kind)
@@ -209,7 +210,7 @@ local function newTable(kind: string, cf: CFrame, n: number): Table?
 		T.prompts.P = pr
 	end
 	CollectionService:AddTag(model, "MiniGame")
-	model.Parent = folder
+	model.Parent = parent or folder
 	tables[id] = T
 	for side, pr in T.prompts do
 		pr.Triggered:Connect(function(p: Player) ctx.join(p, T, side) end)
@@ -583,49 +584,119 @@ RunService.Heartbeat:Connect(function(dt: number)
 end)
 
 -- ------------------------------------------------------------------ the spots
+-- every hub's markers (20 Nov 2026: the owner wants all three hub concepts built, with travel between them; the hub
+-- session's convention is side-session-notes/HUB-MARKERS.md). a marker is any BasePart under workspace.Map tagged
+-- MiniGameSpot with Game = a kind (MG.L), the hub builders' own:
+--   * a hub is a folder right under Map.Hub (Map.Hub.Square, .Concourse, .Atrium) and its markers carry Hub = its id
+--     ("square"): their tables go into a MiniGames folder inside that hub folder, so they show and hide with it
+--     (ZoneCull culls each child of Map.Hub per client), and their ids carry it: box1_square, arm1_square;
+--   * the legacy ring's markers carry no Hub: their tables stay in Map.Hub.MiniGames as box1, arm1, board1, arcade1
+--     (the tests and the docs use those);
+--   * numbers count per hub and kind; a ring's own Ring (1..4) wins;
+--   * anything under an ancestor with the attribute MiniGamesOff = true is skipped: a builder's staging copy;
+--   * a marker that turns up later (a hub built while the server runs, a Studio test) is built when it appears. one
+--     already built is never built twice
+local built: { [Instance]: boolean } = {}
+local folders: { [Instance]: Folder } = {}
+local mapRef: Instance? = nil
+local counts: { [string]: number } = {}
+type Spot = { kind: string, cf: CFrame, half: number?, ring: number?, hub: string?, holder: Instance }
+-- where a marker's tables live: its hub folder (the ancestor right under Map.Hub) when it names a hub, else Map.Hub
+-- itself; a marker outside Map.Hub: its ancestor right under Map
+local function hubOf(s: Instance): Instance
+	local map = mapRef :: Instance
+	local hubRoot = map:FindFirstChild("Hub")
+	if hubRoot and s:IsDescendantOf(hubRoot) then
+		if s:GetAttribute("Hub") == nil then return hubRoot end
+		local top = s
+		while top.Parent and top.Parent ~= hubRoot do top = top.Parent :: Instance end
+		return top
+	end
+	local top = s
+	while top.Parent and top.Parent ~= map and top.Parent ~= workspace do top = top.Parent :: Instance end
+	return top
+end
+local function folderFor(holder: Instance): Folder
+	local f = folders[holder]
+	if f and f.Parent then return f end
+	local nf = Instance.new("Folder")
+	nf.Name = "MiniGames"
+	nf.Parent = holder
+	folders[holder] = nf
+	return nf
+end
+local function switchedOff(s: Instance): boolean
+	local a: Instance? = s
+	while a and a ~= workspace do
+		if a:GetAttribute("MiniGamesOff") == true then return true end
+		a = a.Parent
+	end
+	return false
+end
+local function spotOf(s: Instance): Spot?
+	if not s:IsA("BasePart") or built[s] or not mapRef or not s:IsDescendantOf(mapRef :: Instance) then return nil end
+	local kind = s:GetAttribute("Game")
+	if type(kind) ~= "string" or not MG.L[kind] or switchedOff(s) then return nil end
+	built[s] = true
+	local hub = s:GetAttribute("Hub")
+	return { kind = kind, cf = s.CFrame, half = s:GetAttribute("Half"), ring = s:GetAttribute("Ring"),
+		hub = if type(hub) == "string" and hub ~= "" then hub else nil, holder = hubOf(s) }
+end
+local function buildSpots(spots: { Spot })
+	table.sort(spots, function(a, b) return a.cf.X + a.cf.Z * 0.001 < b.cf.X + b.cf.Z * 0.001 end)
+	for _, s in spots do
+		local key = (s.hub or "") .. "|" .. s.kind
+		counts[key] = (counts[key] or 0) + 1
+		-- (a marker's own number, the gym's Ring = 1..4, names its table: box1..box4 match the hub's rings)
+		local num = if type(s.ring) == "number" then s.ring else counts[key]
+		local suffix = if s.hub then "_" .. string.lower((string.gsub(s.hub :: string, "%W", ""))) else ""
+		if tables[s.kind .. num .. suffix] then warn("[MiniGames] two markers for " .. s.kind .. num .. suffix .. ": the second is skipped"); continue end
+		local ok, err = pcall(newTable, s.kind, CFrame.new(s.cf.Position) * s.cf.Rotation, num, folderFor(s.holder), suffix)
+		-- (a ring's size: its marker's Half, the mat's middle to inside its ropes; MiniBox and MiniBoxUI fence to it)
+		if ok and err and type(s.half) == "number" then (err :: any).model:SetAttribute("Half", s.half) end
+		if not ok then warn("[MiniGames] building " .. s.kind .. ": " .. tostring(err)) end
+	end
+end
 local function build()
 	local map = workspace:WaitForChild("Map", 60)
-	local hub = map and map:WaitForChild("Hub", 60)
-	if not hub then warn("[MiniGames] no Map.Hub"); return end
+	if not map then warn("[MiniGames] no Map"); return end
+	mapRef = map
+	local hub = map:WaitForChild("Hub", 30) -- (the first hub; the others are wherever their markers are)
 	ReplicatedStorage:WaitForChild("JankfireMiniGames", 60)
-	folder = Instance.new("Folder")
-	folder.Name = "MiniGames"
-	folder.Parent = hub
-	local spots: { { kind: string, cf: CFrame, half: number?, ring: number? } } = {}
+	folder = folderFor(hub or map) -- (the first hub's folder: Studio's "place" test builds there)
+	local spots: { Spot } = {}
 	for _, s in CollectionService:GetTagged("MiniGameSpot") do
-		if s:IsA("BasePart") and s:IsDescendantOf(hub) and MG.L[s:GetAttribute("Game") or ""] then
-			table.insert(spots, { kind = s:GetAttribute("Game") :: string, cf = s.CFrame, half = s:GetAttribute("Half"), ring = s:GetAttribute("Ring") })
-		end
+		local sp = spotOf(s)
+		if sp then table.insert(spots, sp) end
 	end
-	-- the boxing ring: the hub's own "box" marker, else the gym's RingMat (its top's middle, the look along its right)
+	-- the boxing ring when no hub has a "box" marker: the first hub's RingMat (its top's middle, the look along its right)
 	local hasBox = false
 	for _, sp in spots do if sp.kind == "box" then hasBox = true end end
-	if not hasBox then
+	if not hasBox and hub then
 		for _, d in hub:GetDescendants() do
 			if d:IsA("BasePart") and d.Name == "RingMat" then
 				local top = d.Position + d.CFrame.UpVector * (d.Size.Y / 2)
-				table.insert(spots, { kind = "box", cf = CFrame.lookAt(top, top + d.CFrame.RightVector), half = math.min(d.Size.X, d.Size.Z) / 2 })
+				table.insert(spots, { kind = "box", cf = CFrame.lookAt(top, top + d.CFrame.RightVector), half = math.min(d.Size.X, d.Size.Z) / 2, holder = hub })
 				break
 			end
 		end
 	end
 	if #spots == 0 then
 		for _, sp in MG.SPOTS do
-			table.insert(spots, { kind = sp[1], cf = CFrame.new(sp[2], sp[3], sp[4]) * CFrame.Angles(0, math.rad(sp[5] or 0), 0) })
+			table.insert(spots, { kind = sp[1], cf = CFrame.new(sp[2], sp[3], sp[4]) * CFrame.Angles(0, math.rad(sp[5] or 0), 0), holder = hub or map })
 		end
 	end
-	table.sort(spots, function(a, b) return a.cf.X + a.cf.Z * 0.001 < b.cf.X + b.cf.Z * 0.001 end)
-	local n: { [string]: number } = {}
-	for _, s in spots do
-		n[s.kind] = (n[s.kind] or 0) + 1
-		-- (a marker's own number, the gym's Ring = 1..4, names its table: box1..box4 match the hub's rings)
-		local num = if type(s.ring) == "number" then s.ring else n[s.kind]
-		local ok, err = pcall(newTable, s.kind, CFrame.new(s.cf.Position) * s.cf.Rotation, num)
-		-- (a ring's size: its marker's Half, the mat's middle to inside its ropes; MiniBox and MiniBoxUI fence to it)
-		if ok and err and type(s.half) == "number" then (err :: any).model:SetAttribute("Half", s.half) end
-		if not ok then warn("[MiniGames] building " .. s.kind .. ": " .. tostring(err)) end
-	end
-	folder:SetAttribute("Ready", true)
+	buildSpots(spots)
+	for _, f in folders do f:SetAttribute("Ready", true) end
+	-- (a marker that turns up later: its builder sets the attributes right after the tag, so a moment's wait)
+	CollectionService:GetInstanceAddedSignal("MiniGameSpot"):Connect(function(s: Instance)
+		task.wait(0.5)
+		local sp = spotOf(s)
+		if sp then
+			buildSpots({ sp })
+			folderFor(sp.holder):SetAttribute("Ready", true)
+		end
+	end)
 end
 task.spawn(build)
 

@@ -23,7 +23,16 @@ pcall(function()
 	allStore = DataStoreService:GetOrderedDataStore(if RunService:IsStudio() then "JankArcadeBest_studio" else "JankArcadeBest")
 end)
 local names: { [number]: string } = {}
-local allFolder: Instance? = nil
+-- (every hub's cabinets: each MiniGames folder an arcade stands in carries both boards, the same ones; 20 Nov, all three
+-- hubs built side by side)
+local folders: { [Instance]: boolean } = {}
+local allJson = "[]"
+local function toAll(attr: string, json: string)
+	for f in folders do
+		if f.Parent then f:SetAttribute(attr, json) else folders[f] = nil end
+	end
+end
+local reading = false
 local function nameOf(uid: number): string
 	if names[uid] then return names[uid] end
 	local p = Players:GetPlayerByUserId(uid)
@@ -34,8 +43,7 @@ local function nameOf(uid: number): string
 end
 local function readAllTime()
 	local store = allStore
-	local f = allFolder
-	if not store or not f then return end
+	if not store or next(folders) == nil then return end
 	local ok, pages = pcall(function() return store:GetSortedAsync(false, ALL_TIME) end)
 	if not ok or not pages then return end
 	local out = {}
@@ -43,7 +51,8 @@ local function readAllTime()
 		local uid = tonumber(e.key)
 		if uid then table.insert(out, { n = nameOf(uid), s = e.value }) end
 	end
-	f:SetAttribute("ArcadeAllTime", HttpService:JSONEncode(out))
+	allJson = HttpService:JSONEncode(out)
+	toAll("ArcadeAllTime", allJson)
 end
 local function saveBest(p: Player, s: number)
 	local store = allStore
@@ -61,19 +70,24 @@ end
 
 local function publishBoard(T: any)
 	local f = T.model.Parent
-	if f then f:SetAttribute("ArcadeBoard", HttpService:JSONEncode(board)) end
+	if f and not folders[f] then
+		folders[f] = true
+		f:SetAttribute("ArcadeAllTime", allJson) -- (a cabinet's hub that came later: the all-time board at once)
+	end
+	toAll("ArcadeBoard", HttpService:JSONEncode(board))
 end
 
 function Arcade.setup(T: any, ctx: any)
 	T.g = { run = nil }
 	publishBoard(T)
-	if not allFolder then
-		allFolder = T.model.Parent
+	if not reading then
+		reading = true
 		task.spawn(function()
-			while allFolder and (allFolder :: Instance).Parent do
+			while next(folders) ~= nil do
 				readAllTime()
 				task.wait(ALL_EVERY)
 			end
+			reading = false
 		end)
 	end
 end

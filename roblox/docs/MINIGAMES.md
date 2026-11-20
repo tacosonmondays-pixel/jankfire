@@ -431,3 +431,23 @@ The anti-cheat session forwarded them:
     - ring 1's bot was knocked down while ring 2's took the stand-in to 39;
     - the anti-cheat: 0 points.
   - Photo: `docs/minigames/box_gym_two_bouts.jpg`.
+
+## Several hubs at once (20 Nov 2026, place version 1191)
+
+The owner wants all three hub concepts built, with travel between them: THE SQUARE, THE CONCOURSE and THE ATRIUM. The hub session's convention is `side-session-notes/HUB-MARKERS.md`.
+
+- **Markers:** every `MiniGameSpot` under `workspace.Map` makes a table, and all of them run at once.
+- **A hub:** a folder right under `Map.Hub` (`Map.Hub.Square`, ...). Its markers sit in its `Scenery` and carry `Hub` = its id (`"square"`).
+  - Their tables are built in a `MiniGames` folder inside that hub folder. ZoneCull culls each child of `Map.Hub` per client, so a hub's games show and hide with it.
+  - Their ids carry the hub: `box1_square`..`box4_square`, `arm1_square`, `board1_square`, `arcade1_square`, `golf1_square`.
+- **The legacy ring's markers** carry no `Hub`. They stay in `Map.Hub.MiniGames` as `box1`..`box4`, `arm1`, `board1`, `arcade1`.
+- **Numbers** count per hub and kind. A ring's own `Ring` wins. Two markers giving the same id: the second is skipped with a warning.
+- **Staging:** anything under an ancestor with `MiniGamesOff = true` is skipped, so a builder's staging copy builds nothing.
+- **Later markers:** a marker that turns up while a server runs is built when it appears, half a second after its tag. Nothing is built twice.
+- **The arcade boards** (this server's and the all-time) are written to every folder that has a cabinet, so every hub's cabinets show the same boards.
+- **Tested** in one Play:
+  - the ring's 7 tables kept their ids;
+  - a test hub (`Map.Hub.TestHub`, `Hub = "testhub"`, a box, an arcade and an arm marker in its `Scenery`, added during the Play) got `box1_testhub`, `arcade1_testhub` and `arm1_testhub` in its own `MiniGames` folder, with the all-time board on it;
+  - a staging copy with `MiniGamesOff` built nothing;
+  - a bout in `box1_testhub` started;
+  - the anti-cheat: 0 points.
