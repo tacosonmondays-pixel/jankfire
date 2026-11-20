@@ -795,9 +795,9 @@ the particle slider and emits at most 260 particles a frame. Which effect is use
   particle kind `heart`. The Ribbon Duck katana (`katana_ducky`) gets a heart rising off its pommel now and then, and
   sheds hearts on its swings and hits; it shed gold sparkles before.
 - Sheet: `docs/vfx/round20/pack-blast-hearts.jpg`.
-- **The Infernal katana's wave (20 Nov):** the wave opens with the Crimson Slash pack's slash (template
-  `CrimsonSlash`): a crimson crescent ring with dark edges and a dark streak along its top, 0.75 scale (the wave's
-  6 m), 3 studs out, gone by 0.3 s.
+- **The Infernal katana's wave (v1189):** the wave opens with the Crimson Slash pack's slash (template
+  `CrimsonSlash`): a crimson crescent ring with dark edges and a dark streak along its top, gone by 0.3 s. Others see it
+  3 studs out at 0.75 scale (the wave's 6 m); your own sits 10 studs out at 0.45, or it fills your screen.
   - **Calls:** Katana.client calls `Fx.skinWave(thrower, from, dir, startIn)` in two places, as your own wave is drawn
     and as anyone's wave event arrives. Fx checks the thrower's katana skin (`GunSkins.skinFor`; the table `WAVE_SKIN`)
     and plays `Fx.crimsonSlash`.
