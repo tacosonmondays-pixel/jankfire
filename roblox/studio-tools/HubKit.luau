@@ -17,6 +17,7 @@ K.P = { -- the hubs' palette: the ring's greys and creams, one brown, quiet floo
 	steel = "3a3f47", steel2 = "2d3138", dark = "2a2d33", screen = "15181d", glass = "a9bcc4", light = "f4f1ea", warm = "ffd7a0",
 	pale = "e8ecef", amber = "e9a64a", gold = "c9a45a", plum = "4b4048", padBase = "474c54", plant = "5f7a58", plant2 = "6a8562",
 	soil = "3d3631", gymFloor = "4c515a", gymWall = "c4c0b6", canvas = "d9d4c8", tile = "a9adb2", tileW = "d6d6d2", holo = "8fd8ff",
+	wallLt = "8e8c86", wallLt2 = "7f7d78", creamWall = "c4c0b6", ply = "a08868", plank = "8c7454", conc = "77746c",
 }
 K.TEAM = { "ff5ad2", "40d0ff", "e9a64a" } -- (the teams' colours: thin rims and lights only)
 K.MODES = {
@@ -155,7 +156,7 @@ function K.panel(F, x, y, z, w, l, o)
 	o = o or {}
 	K.box(F, "Scenery", "PanelHousing", x - w / 2 - 0.35, x + w / 2 + 0.35, y - 0.45, y + 0.05, z - l / 2 - 0.35, z + l / 2 + 0.35, K.P.pier, nil, { ghost = true })
 	local p = K.box(F, "Scenery", "LightPanel", x - w / 2, x + w / 2, y - 0.55, y - 0.4, z - l / 2, z + l / 2, o.hex or K.P.light, MAT.Neon, { ghost = true, noshadow = true })
-	if o.range ~= 0 then K.light(p, o.range or 22, o.bright or 0.55, o.lightHex or K.P.warm) end
+	if o.range ~= 0 then K.light(p, o.range or 24, (o.bright or 0.55) * 1.5, o.lightHex or K.P.warm, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 150 }) end
 	return p
 end
 -- an invisible marker part (spawns, spots, arrival points): at (x, y, z) in F turned yaw, 2 x 0.2 x 2
@@ -339,6 +340,21 @@ function K.boardSpot(F, board, w, h)
 	local cove = K.box(F, "Scenery", "LiveBoardCove", -w / 2 - 0.2, w / 2 + 0.2, h / 2 + 0.45, h / 2 + 0.7, -0.7, 0, K.P.creamHi)
 	return spot
 end
+-- the SPECTATE board's place (play-party's spectating, 20 Nov: the owner wants a board in the hubs to watch games in
+-- progress): F = the board's middle on its wall (or screen) face, its look out toward the viewers; w x h of board. A frame
+-- (o.flush: none, the face is the frame) and a dark panel, then the marker in front of it: a Part named SpectateBoard (tag
+-- SpectateBoard, Hub), w x h x 0.1, invisible, its front (-Z) face to the viewers; play-party draws the board on it
+function K.spectateSpot(F, w, h, o)
+	o = o or {}
+	local dz = if o.flush then 0 else (o.depth or 0.6)
+	if not o.flush then
+		K.box(F, "Scenery", "SpectateFrame", -w / 2 - 0.45, w / 2 + 0.45, -h / 2 - 0.45, h / 2 + 0.45, -dz, 0, K.P.pier2)
+	end
+	K.box(F, "Scenery", "SpectatePanel", -w / 2, w / 2, -h / 2, h / 2, -dz - 0.08, -dz, K.P.screen)
+	local m = K.box(F, "Scenery", "SpectateBoard", -w / 2, w / 2, -h / 2, h / 2, -dz - 0.18, -dz - 0.08, K.P.screen, nil, { ghost = true, tr = 1, noshadow = true })
+	Tags:AddTag(m, "SpectateBoard")
+	return m
+end
 -- a trophy case (a glass box on a plinth, two shelves of gold trophies, a light in its top) facing F's look
 function K.trophyCase(F, w)
 	w = w or 8
@@ -449,6 +465,7 @@ function K.lockers(F, len)
 		K.box(F, "Scenery", "LockerHandle", x + 0.48, x + 0.6, 3.7, 4.5, -0.18, -0.06, "b8bcc0")
 	end
 end
+-- (everything in F: the Square's F is the identity, the Concourse's turns it to open south)
 -- THE GYM: a room x0..x1, z0..z1 (in F) open on its west side (o.open = { x, za, zb }: the opening's wall line and
 -- width), a rubber floor, padded lower walls, four rings (o.rings) with their spots and lamps, heavy bags on the far
 -- wall, speed bags and a conditioning corner on the north wall, mirrors on the south wall, a round timer over the
@@ -470,25 +487,25 @@ function K.gym(F, o)
 	K.box(F, "Scenery", "GymPad", x0 + 0.4, x1 - 0.35, 0, 5, z0, z0 + 0.35, K.P.pier)
 	K.box(F, "Scenery", "GymPadCap", x1 - 0.45, x1, 5, 5.3, z0, z1, K.P.cream)
 	K.box(F, "Scenery", "GymPadCap", x0 + 0.4, x1 - 0.45, 5, 5.3, z0, z0 + 0.45, K.P.cream)
-	for i, r in o.rings do K.ring(CFrame.new(r[1], 0, r[2]) * CFrame.Angles(0, math.pi / 2, 0), 22, i, h - 7) end
+	for i, r in o.rings do K.ring(F * CFrame.new(r[1], 0, r[2]) * CFrame.Angles(0, math.pi / 2, 0), 22, i, h - 7) end
 	-- girders over the rings, panels between
 	for _, x in { (o.rings[1][1] + o.rings[2][1]) / 2, x0 + 4, x1 - 4 } do K.box(F, "Scenery", "Girder", x - 0.7, x + 0.7, h - 1.6, h, z0, z1, K.P.cream, nil, { ghost = true }) end
 	for _, x in { o.rings[1][1], o.rings[2][1] } do K.panel(F, x, h, 0, 3, 10, { bright = 0.45 }) end
-	K.bags(CFrame.new(x1 - 3.5, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), -(z1 - 6), z1 - 6, 0)
+	K.bags(F * CFrame.new(x1 - 3.5, 0, (z0 + z1) / 2) * CFrame.Angles(0, math.pi / 2, 0), -((z1 - z0) / 2 - 6), (z1 - z0) / 2 - 6, 0)
 	-- the north wall: speed bags under round boards, a kettlebell rack and a medicine-ball rack between
 	for _, x in { x0 + 10, x0 + 18 } do
-		local Fs = CFrame.new(x, 0, z0 + 0.4) * CFrame.Angles(0, math.pi, 0)
+		local Fs = F * CFrame.new(x, 0, z0 + 0.4) * CFrame.Angles(0, math.pi, 0)
 		K.box(Fs, "Scenery", "SpeedBagBracket", -0.3, 0.3, 6.95, 7.25, -2.4, 0, K.P.pier2)
 		K.cyl(Fs, "Scenery", "SpeedBagBoard", 0, 7.25, 7.65, -2.4, 3.4, K.P.woodDark, MAT.Wood)
 		K.cyl(Fs, "Scenery", "SpeedBagSwivel", 0, 6.6, 7.25, -2.4, 0.16, K.P.steel)
 		K.ball(Fs, "Scenery", "SpeedBag", 0, 6.0, -2.4, 1.05, "7a4842")
 	end
-	local Fk = CFrame.new(x1 - 22, 0, z0 + 1.6) * CFrame.Angles(0, math.pi, 0)
+	local Fk = F * CFrame.new(x1 - 22, 0, z0 + 1.6) * CFrame.Angles(0, math.pi, 0)
 	for _, y in { 0.9, 2.6 } do K.box(Fk, "Scenery", "KbShelf", -4.5, 4.5, y, y + 0.3, -1.3, 1.3, K.P.cream) end
 	for _, x in { -4.25, 4.25 } do for _, z in { -1.05, 1.05 } do K.box(Fk, "Shell", "KbLeg", x - 0.18, x + 0.18, 0, 2.85, z - 0.18, z + 0.18, K.P.pier2) end end
 	for i = 0, 4 do K.ball(Fk, "Scenery", "Kettlebell", -3.6 + i * 1.8, 3.55, 0, 1.3, K.P.steel) end
 	for i = 0, 3 do K.ball(Fk, "Scenery", "Kettlebell", -2.7 + i * 1.8, 1.95, 0, 1.5, K.P.pier2) end
-	local Fm = CFrame.new(x1 - 12, 0, z0 + 1.6) * CFrame.Angles(0, math.pi, 0)
+	local Fm = F * CFrame.new(x1 - 12, 0, z0 + 1.6) * CFrame.Angles(0, math.pi, 0)
 	for _, y in { 0.9, 2.8 } do K.box(Fm, "Scenery", "BallShelf", -3.4, 3.4, y, y + 0.3, -1.3, 1.3, K.P.cream) end
 	for _, x in { -3.15, 3.15 } do for _, z in { -1.05, 1.05 } do K.box(Fm, "Shell", "BallLeg", x - 0.18, x + 0.18, 0, 3.05, z - 0.18, z + 0.18, K.P.pier2) end end
 	for i, col in { "6c6862", K.P.woodDark, K.P.steel } do
@@ -496,7 +513,7 @@ function K.gym(F, o)
 		K.ball(Fm, "Scenery", "MedBall", -2.2 + (i - 1) * 2.2, 4.0, 0, 1.9, col)
 	end
 	-- the round timer over the far end, facing the opening
-	local Ft = CFrame.new(x1 - 0.1, 15.5, 0) * CFrame.Angles(0, -math.pi / 2, 0)
+	local Ft = F * CFrame.new(x1 - 0.1, 15.5, (z0 + z1) / 2) * CFrame.Angles(0, -math.pi / 2, 0)
 	K.cyl(Ft * CFrame.Angles(math.pi / 2, 0, 0), "Scenery", "TimerRim", 0, -0.18, 0.18, 0, 6.2, K.P.cream)
 	K.cyl(Ft * CFrame.Angles(math.pi / 2, 0, 0), "Scenery", "TimerFace", 0, 0.18, 0.42, 0, 5.4, "2c2f36")
 	-- the locker room
@@ -508,8 +525,8 @@ function K.gym(F, o)
 		K.box(F, "Shell", "LockerWall", lk.x0, lk.x1, 0, 12, lk.z1, lk.z1 + 2, K.P.gymWall)
 		K.wall(F, "LockerWall", lk.x0, lk.x1, 0, 12, lk.z0 - 2, lk.z0, K.P.gymWall, { { lk.door[1], lk.door[2], 10 } })
 		local len = lk.x1 - lk.x0 - 1
-		K.lockers(CFrame.new((lk.x0 + lk.x1) / 2, 0, lk.z1 - 0.05) * CFrame.Angles(0, 0, 0) * CFrame.new(0, 0, -1.6) * CFrame.Angles(0, 0, 0), len)
-		K.bench(CFrame.new((lk.x0 + lk.x1) / 2, 0, (lk.z0 + lk.z1) / 2 + 2) * CFrame.Angles(0, math.pi, 0), len - 8)
+		K.lockers(F * CFrame.new((lk.x0 + lk.x1) / 2, 0, lk.z1 - 0.05 - 1.6), len)
+		K.bench(F * CFrame.new((lk.x0 + lk.x1) / 2, 0, (lk.z0 + lk.z1) / 2 + 2) * CFrame.Angles(0, math.pi, 0), len - 8)
 		K.panel(F, (lk.x0 + lk.x1) / 2, 12, (lk.z0 + lk.z1) / 2, 10, 3)
 	end
 end
@@ -517,13 +534,14 @@ end
 -- h high, its door at o.door = { wall x, za, zb } on its east wall; the spot 10 studs of floor in from the door's end
 -- (north) plus half the course, its look south; beams, a panel over each hole
 function K.golfRoom(F, o)
-	K.room(F, "Golf", o.x0, o.x1, o.z0, o.z1, o.h, { floor = K.P.carpet, floorMat = MAT.Fabric, holes = { e = { { o.door[2], o.door[3], 10 } } } })
+	local side, south = o.doorSide or "e", o.doorEnd == "s"
+	K.room(F, "Golf", o.x0, o.x1, o.z0, o.z1, o.h, { floor = K.P.carpet, floorMat = MAT.Fabric, holes = { [side] = { { o.door[2], o.door[3], 10 } } } })
 	local cx = (o.x0 + o.x1) / 2
-	local cz = o.z0 + 10 + 40
-	K.gameSpot(CFrame.new(cx, 0, cz) * CFrame.Angles(0, math.pi, 0), "golf") -- (look south, away from the door)
+	local cz = if south then o.z1 - 10 - 40 else o.z0 + 10 + 40
+	K.gameSpot(F * CFrame.new(cx, 0, cz) * CFrame.Angles(0, if south then 0 else math.pi, 0), "golf") -- (look away from the door's end)
 	for z = o.z0 + 12, o.z1 - 6, 12 do K.box(F, "Scenery", "GolfBeam", o.x0, o.x1, o.h - 1.4, o.h, z - 0.5, z + 0.5, K.P.cream, nil, { ghost = true }) end
 	for _, dx in { -15, 0, 15 } do for _, dz in { -20, 20 } do K.panel(F, cx + dx, o.h, cz + dz, 6, 12, { bright = 0.45 }) end end
-	K.panel(F, cx, o.h, o.z0 + 5, 20, 3)
+	K.panel(F, cx, o.h, if south then o.z1 - 5 else o.z0 + 5, 20, 3)
 end
 -- the place the lore session puts the code panel (lore-npcs' LoreNPCs / LoreSpots): F on a wall's face, its look out
 function K.codePanelSpot(F) return K.marker(F, "Scenery", "CodePanelSpot", 0, 0, 0, 0, nil, { "CodePanelSpot" }) end
@@ -573,6 +591,92 @@ local function padSign(F, m, md, w, h, x, y, z, face)
 		{ "step on a side to queue", "c8c8dc", 0.15, "S" } }, { names = { [3] = "Status", [4] = "Sub" }, pps = 46 })
 	return p
 end
+-- (1) PLAYER SPOTS: a low stage in a bay, F at the bay's mouth on the floor, its look into the bay (W across, D deep).
+-- a lit nosing (each side's stretch of its line in the side's colour: Glow), the sides split by low dividers with the
+-- mode's name on them, a marked spot per player (a rim in the side's colour, a dark disc; Matches' Slot speck on it),
+-- a soft light over each side; the Sign over the mouth (o.signY, o.signZ: on the bay's beam, its face to the hall)
+function K.spotsPad(F, md, bank, name, o)
+	o = o or {}
+	local W, D = o.w or 13.4, o.d or 10.4
+	local m = padModel(md, bank, name, "spots")
+	K.box(F, "Scenery", "Base", -W / 2, W / 2, 0, 0.4, -D, 0, K.P.padBase, nil, { parent = m, solid = true })
+	K.box(F, "Scenery", "Edge", -W / 2, W / 2, 0, 0.46, -0.4, 0.06, K.P.creamHi, nil, { parent = m, solid = true }) -- (the nosing)
+	local n = md.teams
+	local gap = 0.5
+	local sw = (W - (n - 1) * gap) / n
+	for t = 1, n do
+		local xa = -W / 2 + (t - 1) * (sw + gap)
+		local xb = xa + sw
+		local sd = K.box(F, "Scenery", "Side" .. t, xa + 0.1, xb - 0.1, 0.4, 0.46, -D + 0.3, -0.45, "4d535c", nil, { parent = m, solid = false })
+		sd:SetAttribute("Team", t)
+		padGlow(F, m, xa + 0.3, xb - 0.3, 0.12, 0.32, 0.06, 0.12, t) -- (the nosing's line under its lip)
+		local cols = if md.size >= 3 then 2 else 1
+		local rows = math.ceil(md.size / cols)
+		for sl = 1, md.size do
+			local c, r = (sl - 1) % cols, math.floor((sl - 1) / cols)
+			local x = xa + sw * (c + 0.5) / cols
+			local z = -1.0 - (D - 2.0) * (r + 0.5) / rows
+			slotSpeck(F, m, x, 0.46, z, t, sl)
+			K.cyl(F, "Scenery", "PlaceRim", x, 0.46, 0.49, z, math.min(2.4, sw / cols - 0.4), K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.5 })
+			K.cyl(F, "Scenery", "PlaceDisc", x, 0.48, 0.52, z, math.min(2.0, sw / cols - 0.8), K.P.dark, nil, { ghost = true, parent = m })
+		end
+		K.light(K.box(F, "Scenery", "SideLamp", (xa + xb) / 2 - 0.5, (xa + xb) / 2 + 0.5, (o.lampY or 12) - 0.2, o.lampY or 12, -D / 2 - 0.5, -D / 2 + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }),
+			14, 0.9, "fff4e6", { kind = "SpotLight", angle = 75 })
+	end
+	for t = 1, n - 1 do
+		local x = -W / 2 + t * (sw + gap) - gap / 2
+		local dv = K.box(F, "Shell", "PadDivider", x - 0.22, x + 0.22, 0.4, 1.6, -D + 0.8, -1.4, K.P.cream)
+		K.box(F, "Scenery", "PadDividerCap", x - 0.3, x + 0.3, 1.6, 1.72, -D + 0.7, -1.3, K.P.dark)
+		K.text(dv, Enum.NormalId.Left, { { md.title, K.P.dark, 0.7 } }); K.text(dv, Enum.NormalId.Right, { { md.title, K.P.dark, 0.7 } })
+	end
+	padSign(F, m, md, o.signW or (W - 0.6), o.signH or 2.0, 0, o.signY or 11.5, o.signZ or 2.0, Enum.NormalId.Back)
+	return m
+end
+-- (2) PLATFORM (the Atrium): one of an octagon side's two pads on the ground ring. Fk = the side's frame (its look out,
+-- x to the right, the side's middle line at x 0); left = the side's left half. Raised 1.1 from rin to rout, its outer end
+-- slanted along the octagon's corner line; a step at its front; a lit rim along the front edge, its stretch per side in
+-- the side's colour (Glow); a thin dark line between the sides; a marked place per player; the Sign floating over the
+-- platform's middle, its face to the middle of the room
+local T225 = math.tan(math.rad(22.5))
+K.T225 = T225
+function K.platformPad(Fk, left, md, bank, name, rin, rout, o)
+	o = o or {}
+	local m = padModel(md, bank, name, "platform")
+	local g = 0.7 -- (the gap at the side's middle line)
+	local xi, xo = rin * T225 - 0.8, rout * T225 - 0.8 -- (the slanted end's x at the inner edge, at the outer edge)
+	local x0, x1 = if left then -xi else g, if left then -g else xi
+	local H = 1.1
+	K.box(Fk, "Scenery", "Base", x0, x1, 0, H, -rout, -rin, K.P.padBase, nil, { parent = m, solid = true })
+	K.slant(Fk, "Scenery", "BaseWing", if left then -xi else xi, if left then -xo else xo, -rin, -rout, 0, H, K.P.padBase, nil, { parent = m, solid = true })
+	K.box(Fk, "Scenery", "PadStep", x0, x1, 0, 0.55, -rin, -rin + 1.1, K.P.padBase, nil, { parent = m, solid = true })
+	K.box(Fk, "Scenery", "Edge", x0, x1, H - 0.1, H + 0.02, -rin - 0.45, -rin + 0.12, K.P.creamHi, nil, { parent = m, solid = true })
+	local n = md.teams
+	local sw = (x1 - x0) / n
+	for t = 1, n do
+		local xa, xb = x0 + (t - 1) * sw, x0 + t * sw
+		local sd = K.box(Fk, "Scenery", "Side" .. t, xa + 0.15, xb - 0.15, H, H + 0.06, -rout + 0.5, -rin - 0.5, "4d535c", nil, { parent = m, solid = false })
+		sd:SetAttribute("Team", t)
+		padGlow(Fk, m, xa + 0.3, xb - 0.3, H + 0.02, H + 0.1, -rin - 0.42, -rin - 0.1, t) -- (the front rim's stretch)
+		local cols = if md.size >= 3 then 2 else 1
+		local rows = math.ceil(md.size / cols)
+		local depth = rout - rin - 2.4
+		for sl = 1, md.size do
+			local c, r = (sl - 1) % cols, math.floor((sl - 1) / cols)
+			local x = xa + sw * (c + 0.5) / cols
+			local z = -rin - 1.6 - depth * (r + 0.5) / rows
+			slotSpeck(Fk, m, x, H + 0.06, z, t, sl)
+			K.cyl(Fk, "Scenery", "PlaceRim", x, H + 0.06, H + 0.09, z, math.min(2.4, sw / cols - 0.5), K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.5 })
+			K.cyl(Fk, "Scenery", "PlaceDisc", x, H + 0.08, H + 0.12, z, math.min(2.0, sw / cols - 0.9), K.P.dark, nil, { ghost = true, parent = m })
+		end
+		if t < n then K.box(Fk, "Scenery", "PadLine", xb - 0.08, xb + 0.08, H + 0.06, H + 0.09, -rout + 0.6, -rin - 0.6, K.P.screen, nil, { ghost = true, parent = m }) end
+	end
+	-- a soft light over it (under the gallery), the floating sign
+	local xm, zm = (x0 + x1) / 2, -(rin + rout) / 2
+	K.light(K.box(Fk, "Scenery", "PadLamp", xm - 0.5, xm + 0.5, (o.lampY or 13.4) - 0.2, o.lampY or 13.4, zm - 0.5, zm + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }),
+		14, 0.55, "f2f4f8", { kind = "SpotLight", angle = 80 })
+	padSign(Fk, m, md, math.min(x1 - x0 - 0.6, 7.4), 3.0, xm, o.signY or 8.8, zm + 0.125, Enum.NormalId.Back)
+	return m
+end
 -- (3) THE GATE: a framed portal set into a wall that you step into. F at its mouth on the floor, its look into the
 -- alcove (W wide, D deep). Each side (team) has its part of the alcove's floor (a half; thirds for 1v1v1) split by a slim
 -- mullion, a thin light up its jamb and a thin rim at its front (Glow), a marked place per player; the mode, its kind and
@@ -614,10 +718,10 @@ function K.gatePad(F, md, bank, name, o)
 		local x = -W / 2 + t * (sw + gap) - gap / 2
 		K.box(F, "Scenery", "GateMullion", x - 0.16, x + 0.16, 0.42, 9.4, -0.5, 0.3, K.P.steel)
 	end
-	-- the back: a grey board proud of the wall, a big soft white light panel in it (the alcove lit from behind)
-	K.box(F, "Scenery", "GateBack", -W / 2 + 0.3, W / 2 - 0.3, 0.3, 9.4, -D, -D + 0.12, "2a3038", nil, { noshadow = true })
-	local lp = K.box(F, "Scenery", "GateLight", -W / 2 + 1.1, W / 2 - 1.1, 1.4, 8.6, -D + 0.12, -D + 0.17, K.P.light, MAT.Neon, { ghost = true, noshadow = true, tr = 0.45 })
-	K.light(lp, 12, 0.7, "f2f4f8", { kind = "SurfaceLight", face = Enum.NormalId.Back, angle = 80 })
+	-- the back: a matte panel proud of the wall, framed; a low warm fill under the head (a dim, readable alcove)
+	K.box(F, "Scenery", "GateBack", -W / 2 + 0.3, W / 2 - 0.3, 0.3, 9.4, -D, -D + 0.12, "3a3d42", nil, { noshadow = true })
+	for _, y in { 3.2, 6.4 } do K.box(F, "Scenery", "GateBackRail", -W / 2 + 0.3, W / 2 - 0.3, y - 0.08, y + 0.08, -D + 0.12, -D + 0.2, K.P.steel) end
+	K.light(K.box(F, "Scenery", "GateFill", -0.5, 0.5, 9.0, 9.2, -D / 2 - 0.5, -D / 2 + 0.5, K.P.pier, nil, { ghost = true, tr = 1, parent = m }), 9, 0.35, K.P.warm)
 	padSign(F, m, md, W + 1.6, 2.8, 0, 12.3, 0.45, Enum.NormalId.Back)
 	return m
 end
@@ -655,7 +759,7 @@ end
 -- a weapon from ReplicatedStorage.JankfireWeapons (w_<id>) or an item (JankfireItems x_<id>) as a display piece: tags,
 -- scripts, sounds, effects and lights gone, anchored, nothing collides or casts; scaled by k (or to len along its Z);
 -- its middle at (x, y, z) in F, its length along F's x turned yaw
-K.GUN_MAX = 1.7 -- (the most a displayed gun is scaled up from its own size)
+K.GUN_MAX = 2.5 -- (the most a displayed gun is scaled up from its own size: a card is not a rifle, a pistol still reads)
 function K.gun(F, src, wname, len, x, y, z, yaw, name, k)
 	local folder = game:GetService("ReplicatedStorage"):FindFirstChild(src)
 	local t = folder and folder:FindFirstChild(wname)
@@ -784,6 +888,7 @@ K.NPCS = { -- (the ring's R.NPCS, the same regulars in every hub)
 	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport", idle = MX.lootIdle, extra = MX.look, extraLen = 4, extraStand = MX.stretch, extraStandLen = 8.9, every = { 15, 30 }, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 },
 	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "pingpong", idle = MX.duneIdle, extra = MX.shift, extraLen = 9.4, every = { 20, 40 }, walk = GEN_WALK },
 	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong", idle = MX.friskIdle, walk = GEN_WALK },
+	ZombieGuide = { pose = "stand", role = "ZOMBIES", prompt = { "Play", "ZombiesQueue", true }, objectText = "Zombies", idle = MX.friskIdle, noLabel = true },
 	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 }, idle = MX.trisIdle, extra = MX.look, extraLen = 4, every = { 12, 25 }, walk = GEN_WALK, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 },
 }
 -- a regular's place (HubNPCs builds them there): a Seat (seated) or a Part, at (x, y, z) in F turned yaw; y = the
@@ -805,7 +910,7 @@ function K.npc(F, who, x, y, z, yaw, o)
 	if info.prompt then
 		local at = Instance.new("Attachment"); at.Name = "PromptAt"; at.Position = Vector3.new(0, if info.pose == "sit" then 1.4 else 3.2, 0); at.Parent = p
 		local pr = Instance.new("ProximityPrompt")
-		pr.Name = info.prompt[1] .. "Prompt"; pr.ActionText = info.prompt[1]; pr.ObjectText = who
+		pr.Name = info.prompt[1] .. "Prompt"; pr.ActionText = info.prompt[1]; pr.ObjectText = info.objectText or who
 		pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
 		pr.MaxActivationDistance = 8; pr.RequiresLineOfSight = false; pr.ClickablePrompt = true
 		pr:SetAttribute(info.prompt[2], info.prompt[3])
@@ -822,9 +927,11 @@ function K.npc(F, who, x, y, z, yaw, o)
 		p:SetAttribute("Rise", info.rise); p:SetAttribute("RiseLen", info.riseLen or 2)
 		p:SetAttribute("Settle", info.settle); p:SetAttribute("SettleLen", info.settleLen or 2.5)
 	end
-	if o.door then p:SetAttribute("Door", (S.site * CFrame.new(o.door)).Position) end
+	if o.door then p:SetAttribute("Door", (S.site * F * CFrame.new(o.door)).Position) end -- (in F: the VIP room's, not the hub's middle)
+	if info.noLabel then p:SetAttribute("NoLabel", true) end
 	p.Parent = K.folder("Scenery")
 	Tags:AddTag(p, "HubNPC")
+	if who == "ZombieGuide" then Tags:AddTag(p, "ZombieGuide") end
 	if info.pose == "sit" then Tags:AddTag(p, "HubSeat") end -- (players sit there too while the regular is away: HubSeats; NpcHere while they're on it)
 	return p
 end
@@ -846,6 +953,125 @@ function K.npcPoint(F, who, index, kind, pose, x, y, z, yaw, o)
 	end
 	Tags:AddTag(p, "NPCPoint")
 	return p
+end
+
+-- a glass showcase on a plinth with a weapon turning in it (HubSpin), facing F's look; a light in its top
+function K.showcase(F, wid, name)
+	K.box(F, "Shell", "ShowBase", -1.6, 1.6, 0, 2.4, -1.6, 1.6, K.P.dark)
+	K.box(F, "Scenery", "ShowBand", -1.65, 1.65, 2.2, 2.4, -1.65, 1.65, K.P.gold, MAT.Metal)
+	K.box(F, "Scenery", "ShowGlass", -1.5, 1.5, 2.4, 6.6, -1.5, 1.5, K.P.glass, MAT.Glass, { tr = 0.7, solid = true })
+	K.box(F, "Scenery", "ShowTop", -1.6, 1.6, 6.6, 7.0, -1.6, 1.6, K.P.dark)
+	K.light(K.box(F, "Scenery", "ShowLight", -0.9, 0.9, 6.45, 6.6, -0.9, 0.9, K.P.warm, MAT.Neon, { ghost = true }), 8, 0.7)
+	local g = K.gun(F, "JankfireWeapons", "w_" .. wid, 2.6, 0, 4.4, 0, 0, name or ("Show_w_" .. wid), nil)
+	if g then g:SetAttribute("Spin", 0.4); g:SetAttribute("SpinNear", 70); Tags:AddTag(g, "HubSpin") end
+	return g
+end
+
+-- ------------------------------------------------------------------------------------------------ the zombies entrance
+-- (20 Nov 2026; the owner: "To all the lobbies can you add like a door that's open with a busted room with a npc just
+-- dummy for now ... or like a makeshift garage ... to represent the zombie mode"; main: make it the way in, Jankfield
+-- High's look, quiet colours, no gore). A wrecked room behind an open doorway in a hub wall. F = the doorway's middle on
+-- the hub side of the wall, on the floor, its look into the room; the wall is o.t thick and the hub builder cuts its hole
+-- (o.door wide, 8.5 high). The room is x o.x0..o.x1 across, o.d deep past the wall, o.h high. Inside: boarded windows, a
+-- dying bulb (HubFlicker), tipped desks and a chair, a workbench with tools, plywood sheets and planks, a boarded door,
+-- a hazard-taped square with the queue prompt (ZombiesSpot, ZombiesQueue: play-party starts the zombies search). Outside:
+-- a ZOMBIES board over the door, the guide (a regular, Who ZombieGuide) beside it (o.guideSide 1 / -1)
+local function zmPart(F, name, cf, size, hex, mat, o)
+	return K.part("Scenery", name, F * cf, size, hex, mat, o)
+end
+local function zmDesk(F, x, z, yaw, tipped)
+	local Fd = F * CFrame.new(x, 0, z) * CFrame.Angles(0, math.rad(yaw), 0)
+	if tipped then Fd = Fd * CFrame.new(0, 1.2, 0) * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, -1.2, 0) end
+	K.box(Fd, "Scenery", "ZmDeskTop", -1.6, 1.6, 2.4, 2.6, -1.1, 1.1, "8a7a62", MAT.Wood, { solid = true })
+	for _, sx in { -1, 1 } do for _, sz in { -1, 1 } do K.box(Fd, "Scenery", "ZmDeskLeg", sx * 1.4 - 0.08, sx * 1.4 + 0.08, 0, 2.4, sz * 0.9 - 0.08, sz * 0.9 + 0.08, K.P.steel) end end
+	K.box(Fd, "Scenery", "ZmDeskShelf", -1.4, 1.4, 1.7, 1.8, -0.9, 0.9, "6f7b80")
+end
+function K.zombieRoom(F, o)
+	local P = K.P
+	local t, d, h = o.t or 2, o.d or 18, o.h or 11
+	local x0, x1 = o.x0, o.x1
+	local zb = -t - d -- (the back wall's inner face)
+	local zm = -t - d / 2
+	-- the shell: a bare concrete box
+	K.box(F, "Shell", "ZmFloor", x0 - 2, x1 + 2, -1, 0, zb - 2, -t, "57554f", MAT.Concrete)
+	K.box(F, "Shell", "ZmLid", x0 - 2, x1 + 2, h, h + 1, zb - 2, -t, P.dome)
+	K.box(F, "Shell", "ZmWall", x0 - 2, x0, 0, h, zb, -t, P.conc, MAT.Concrete)
+	K.box(F, "Shell", "ZmWall", x1, x1 + 2, 0, h, zb, -t, P.conc, MAT.Concrete)
+	K.box(F, "Shell", "ZmWall", x0 - 2, x1 + 2, 0, h, zb - 2, zb, P.conc, MAT.Concrete)
+	for _, x in { x0 + 0.2, x1 - 0.2 } do K.box(F, "Scenery", "ZmStain", x - 0.06, x + 0.06, 0, 2.2, zb + 0.5, -t - 0.5, "4f4d48", MAT.Concrete) end
+	-- boarded windows on the back wall (a dark pane, a frame, planks nailed across at angles)
+	local W = { (x0 + x1) / 2 - (x1 - x0) * 0.22, (x0 + x1) / 2 + (x1 - x0) * 0.22 }
+	for i, wx in W do
+		K.box(F, "Scenery", "ZmPane", wx - 2.4, wx + 2.4, 3.6, 8, zb, zb + 0.08, "1c1e22", nil, { noshadow = true })
+		for _, e in { { -2.6, -2.4 }, { 2.4, 2.6 } } do K.box(F, "Scenery", "ZmFrame", wx + e[1], wx + e[2], 3.4, 8.2, zb, zb + 0.3, P.plank, MAT.Wood) end
+		for _, y in { 3.4, 8 } do K.box(F, "Scenery", "ZmFrame", wx - 2.6, wx + 2.6, y, y + 0.2, zb, zb + 0.3, P.plank, MAT.Wood) end
+		for k, a in { -9, 7, -4 } do
+			zmPart(F, "ZmBoard", CFrame.new(wx, 4.3 + k * 1.15, zb + 0.42) * CFrame.Angles(0, 0, math.rad(a + i * 3)), Vector3.new(6.2, 0.75, 0.16), if k == 2 then P.ply else P.plank, MAT.Wood)
+		end
+	end
+	-- a boarded door in the side wall (x1), and the open doorway's broken leaf, swung in against the x0 side
+	local bz = zb + 4.5
+	K.box(F, "Scenery", "ZmDoorFrame", x1 - 0.3, x1, 0, 7.8, bz - 2.1, bz + 2.1, P.plank, MAT.Wood)
+	K.box(F, "Scenery", "ZmDoorPanel", x1 - 0.35, x1 - 0.3, 0, 7.5, bz - 1.8, bz + 1.8, "4a4844")
+	for k, a in { -14, 10, -6 } do zmPart(F, "ZmBoard", CFrame.new(x1 - 0.5, 1.8 + k * 1.7, bz) * CFrame.Angles(math.rad(a), 0, 0), Vector3.new(0.16, 0.75, 4.6), P.plank, MAT.Wood) end
+	local dw = o.door or 5
+	zmPart(F, "ZmLeaf", CFrame.new(-dw / 2 - 2.6, 3.85, -t - 0.5) * CFrame.Angles(0, math.rad(-8), math.rad(4)), Vector3.new(4.4, 7.6, 0.25), P.ply, MAT.Wood, { solid = true }) -- (off its hinges, leant against the wall beside the doorway)
+	zmPart(F, "ZmLeafPlank", CFrame.new(-dw / 2 - 2.6, 4.2, -t - 0.7) * CFrame.Angles(0, math.rad(-8), math.rad(32)), Vector3.new(4.6, 0.6, 0.12), P.plank, MAT.Wood)
+	-- the workbench along the x0 wall, its tools; plywood sheets against the back wall; planks on the floor
+	local Fb = F * CFrame.new(x0 + 1.3, 0, zm + 1) * CFrame.Angles(0, math.rad(-90), 0)
+	K.box(Fb, "Shell", "ZmBench", -3.2, 3.2, 3.0, 3.3, -1.2, 1.2, P.plank, MAT.Wood)
+	for _, sx in { -1, 1 } do for _, sz in { -1, 1 } do K.box(Fb, "Scenery", "ZmBenchLeg", sx * 3 - 0.15, sx * 3 + 0.15, 0, 3.0, sz * 1 - 0.15, sz * 1 + 0.15, P.plank, MAT.Wood) end end
+	K.box(Fb, "Scenery", "ZmBenchShelf", -3, 3, 0.8, 1.0, -1.0, 1.0, P.plank, MAT.Wood)
+	K.box(Fb, "Scenery", "ZmToolbox", -2.4, -0.8, 3.3, 4.1, -0.6, 0.2, "7a4a40", MAT.Metal)
+	K.box(Fb, "Scenery", "ZmToolboxLid", -2.45, -0.75, 4.1, 4.2, -0.65, 0.25, "6a3e36", MAT.Metal)
+	K.box(Fb, "Scenery", "ZmHammer", 0.2, 1.8, 3.35, 3.5, 0.2, 0.36, "6b5646", MAT.Wood)
+	K.box(Fb, "Scenery", "ZmHammerHead", 1.6, 1.9, 3.3, 3.6, 0.0, 0.56, K.P.steel, MAT.Metal)
+	K.box(Fb, "Scenery", "ZmWrench", 2.2, 3.0, 3.3, 3.38, -0.7, -0.5, "9aa0a6", MAT.Metal)
+	K.box(Fb, "Scenery", "ZmVise", 2.4, 3.1, 3.3, 4.0, 0.6, 1.1, "4d535c", MAT.Metal)
+	local lamp = K.box(Fb, "Scenery", "ZmWorkLamp", -0.3, 0.3, 3.3, 4.6, -1.0, -0.4, "c9a45a", MAT.Metal)
+	K.light(lamp, 11, 0.45, "ffd9a0")
+	for k = 0, 2 do
+		zmPart(F, "ZmPlywood", CFrame.new((x0 + x1) / 2 + (k - 1) * 0.5 + (x1 - x0) * 0.05, 3.6, zb + 0.9 + k * 0.25) * CFrame.Angles(math.rad(-11 - k * 2), math.rad(k * 3), 0), Vector3.new(4.2, 7.2, 0.18), if k == 1 then P.plank else P.ply, MAT.Wood)
+	end
+	for k, pl in { { 0.25, 0.6, 30 }, { -0.15, 0.45, -50 }, { 0.1, 0.3, 75 }, { -0.3, 0.75, 12 } } do
+		zmPart(F, "ZmPlank", CFrame.new(x0 + (x1 - x0) * (0.5 + pl[1]), 0.08 + k * 0.01, -t - d * pl[2]) * CFrame.Angles(0, math.rad(pl[3]), 0), Vector3.new(5, 0.16, 0.7), P.plank, MAT.Wood)
+	end
+	-- school desks: two standing askew, two on their sides; a chair down
+	zmDesk(F, x0 + (x1 - x0) * 0.72, zm + 1.5, 18, false)
+	zmDesk(F, x0 + (x1 - x0) * 0.82, zb + 3.2, -25, true)
+	zmDesk(F, x0 + (x1 - x0) * 0.36, -t - 3.2, 70, true)
+	local Fc = F * CFrame.new(x0 + (x1 - x0) * 0.6, 0.9, -t - 4.2) * CFrame.Angles(0, math.rad(40), math.rad(90))
+	K.box(Fc, "Scenery", "ZmChairSeat", -0.9, 0.9, -0.1, 0.1, -0.9, 0.9, "6f7b80")
+	K.box(Fc, "Scenery", "ZmChairBack", -0.9, 0.9, 0.1, 1.8, 0.75, 0.9, "6f7b80")
+	-- the queue spot: a hazard-taped square on the floor, the prompt in its middle; the mode's name on the back wall
+	local sx, sz = (x0 + x1) / 2 + (o.spotX or 0), zm - 1
+	for i = -3, 2 do
+		for _, e in { { -3, 1 }, { 3, 1 } } do
+			K.box(F, "Scenery", "ZmTape", sx + e[1] - 0.15, sx + e[1] + 0.15, 0.02, 0.05, sz + i + 0.02, sz + i + 0.98, if i % 2 == 0 then P.amber else P.steel2)
+			K.box(F, "Scenery", "ZmTape", sx + i + 0.02, sx + i + 0.98, 0.02, 0.05, sz + e[1] - 0.15, sz + e[1] + 0.15, if i % 2 == 0 then P.amber else P.steel2)
+		end
+	end
+	local spot = K.marker(F, "Scenery", "ZombiesSpot", sx, 0, sz, 0, nil, { "ZombiesSpot" }, { size = Vector3.new(1, 0.2, 1) })
+	local pr = Instance.new("ProximityPrompt")
+	pr.Name = "ZombiesPrompt"; pr.ActionText = "Play"; pr.ObjectText = "Zombies"; pr.HoldDuration = 0; pr.MaxActivationDistance = 9
+	pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.RequiresLineOfSight = false
+	pr:SetAttribute("ZombiesQueue", true)
+	pr.Parent = spot
+	local bsg = K.box(F * CFrame.new(sx, 0, zb + 0.02) * CFrame.Angles(0, math.pi, 0), "Scenery", "ZmBackSign", -3.4, 3.4, 8.7, 10.3, -0.2, 0, P.screen)
+	K.text(bsg, Enum.NormalId.Front, { { "ZOMBIES", P.amber, 0.8 } }, { pps = 46 })
+	-- the dying bulb over the spot (HubFlicker), its cord; a second dim light by the door
+	K.cyl(F, "Scenery", "ZmCord", sx, h - 2.4, h, sz + 1.5, 0.1, K.P.steel2)
+	local bulb = K.ball(F, "Scenery", "ZmBulb", sx, h - 2.6, sz + 1.5, 0.7, "ffe2b0", MAT.Neon, { ghost = true, noshadow = true })
+	K.light(bulb, 22, 1.1, "ffd9a0", { shadows = true })
+	Tags:AddTag(bulb, "HubFlicker")
+	K.light(K.box(F, "Scenery", "ZmFill", -0.5, 0.5, h - 0.4, h - 0.2, -t - 2.5, -t - 1.5, P.pier, nil, { ghost = true, tr = 1 }), 12, 0.35, "c8d0d8")
+	-- outside: the ZOMBIES board over the door, hung a little askew; the guide by the door, facing the hub
+	local Fs = F * CFrame.new(0, 0, 0.32) * CFrame.Angles(0, math.pi, math.rad(-2.5))
+	K.sign(Fs, "Scenery", "ZmSign", 7.4, 1.9, 0, 9.7, 0, { { "ZOMBIES", K.P.dark, 0.78 } }, { plate = P.ply, pps = 46 })
+	for _, x in { -3.2, 3.2 } do K.box(F, "Scenery", "ZmSignNail", x - 0.08, x + 0.08, 9.6, 9.76, 0.32, 0.4, K.P.steel) end
+	local gs = o.guideSide or 1
+	K.npc(F, "ZombieGuide", gs * (dw / 2 + 2.2), 0, 2.2, 180)
+	return spot
 end
 
 -- ------------------------------------------------------------------------------------------------ the VIP room

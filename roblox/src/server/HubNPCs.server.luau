@@ -62,6 +62,14 @@ local SETTLE = { h = { 0, 0.01, 0.07, 0.18, 0.42, 0.7, 0.9, 0.99, 1, 1, 1 }, v =
 local DEF = { stand = "rbxassetid://507766388", sit = "rbxassetid://2506281703", walk = "rbxassetid://507777826" } -- (Roblox's own, R15)
 
 local function userIdOf(spot: BasePart): number?
+	-- (the zombies entrance's guide, 20 Nov 2026: a plain dummy, ServerStorage.JankfireNPCs.ZombieGuide, until the owner picks a
+	-- friend: Map.Hub's attribute ZombieGuideUserId = their user id puts that avatar at every hub's zombies door)
+	if spot:GetAttribute("Who") == "ZombieGuide" then
+		local map = workspace:FindFirstChild("Map")
+		local hub = map and map:FindFirstChild("Hub")
+		local g = hub and hub:GetAttribute("ZombieGuideUserId")
+		return if type(g) == "number" and g > 0 then g else nil
+	end
 	local id = spot:GetAttribute("UserId")
 	if type(id) == "number" and id > 0 then return id end
 	local name = spot:GetAttribute("User")
@@ -271,7 +279,9 @@ local function place(spot: BasePart)
 	end
 	CollectionService:AddTag(m, "HubRegular") -- (HubNPCs.client: their clips and the living layer)
 	local role, badge = spot:GetAttribute("Role"), spot:GetAttribute("Badge")
-	label(m, tostring(who), if type(role) == "string" then role else nil, m:FindFirstChild("Head") :: BasePart?, if type(badge) == "string" then badge else nil)
+	if not spot:GetAttribute("NoLabel") then -- (NoLabel: no name text, the zombies guide's until the owner picks a friend)
+		label(m, tostring(who), if type(role) == "string" then role else nil, m:FindFirstChild("Head") :: BasePart?, if type(badge) == "string" then badge else nil)
+	end
 	-- their points, if they move
 	if type(n.mode) == "string" then
 		local hub = spot:GetAttribute("Hub") -- (the three hubs, 20 Nov: each has its own copy of every regular; a place and its points share Hub, none = the ring)
