@@ -62,11 +62,26 @@ PREVIEW FINISHER).
 **How it is skipped.** SPACE, B on a gamepad, or the SKIP button (bottom right, as the finishers have it) jumps straight
 to the end card; the card closes on any key or CLOSE. A round going live, a respawn or a teleport ends it at once.
 
-**How it is built.** A client-only player like `Finisher.luau`, on a private stage under the map:
-- the camera bound after Roblox's own (`BindToRenderStep`, `RenderPriority.Last` + a margin), Scriptable, eased moves
-  between the board's lenses (push-ins, the rise, the tracking shot, the zoom-and-shake), letterbox bars in and out;
-- the player's own avatar as a clone (the replay's ghost), posed from Roblox's R15 clips: sit, idle, point, cheer, plus
-  a walk cycle for the march and the dynamic head's expressions;
+**How it is built.** Its own client-only module (agreed with the cinematic-finishers session, 20 Nov): it copies the
+pattern of their `client/FinisherScene.luau` (a per-frame plan: the lens CFrame + FOV and each body's clip, moment and
+root, on a private set, blended at screen rate with clips paused and `TimePosition` set every frame). It does not call
+into `Finisher.luau`, which is built round the match recording.
+- **The set** at CFrame (0, 600, -30000) (the finishers' scenes use (0, 600, -24000)).
+- **The camera** bound after Roblox's own (`BindToRenderStep`, `RenderPriority.Last` + a margin), set Scriptable every
+  frame (other scripts flip it), eased moves between the board's lenses (push-ins, the rise, the tracking shot, the
+  zoom-and-shake), letterbox bars in and out. On stop: camera Custom and the old FOV.
+- **While it plays:** hide the other screens every frame (new ones open underneath) and turn controls off; the skip is
+  bound at priority 3600 with Sink; the player's `Finishing` attribute holds its own value ("reveal", the way LoreLife
+  uses "lore"), which DeathCam, the cursor and pad look already treat as "hold"; a safety-net timer clears every flag
+  even if a stop is missed.
+- **Not needed** from the finishers: the replay's wall test (`Replay.clearTo` / `safe`), `clipTime` / `poseGhost`, the
+  theme's effect time scale.
+- **Pacing** (the finishers' Blade Ball notes): cut every 0.4-1.2 s on action, flashes 1-3 frames, long holds only for
+  the joke beats (the stare earns its 2 s). 25 s is fine at a break with SKIP on screen from the first frame.
+- the player's own avatar as a clone (the replay's ghost: set `TPWeapon` nil first and remove the `TPRig` tag about
+  0.05 s later, or the drawn gun stays welded), posed from Roblox's R15 clips: sit, idle, point, cheer, plus a walk
+  cycle for the march and the dynamic head's expressions; bodies hidden with `LocalTransparencyModifier`, never
+  `Transparency`;
 - the ducks as client clones of the board's models, waddling (a roll and a bob per step) on a march path;
 - water, foam and the splash as chunky parts plus the VFX pipeline's approved bubble and splash sprites; the soaked
   screen as a ScreenGui water sheet with beads that run;
