@@ -104,9 +104,14 @@ local EXTRA: { [string]: any } = {
 		audio = {
 			-- (the music: APM's "Gunslingers", an atmospheric western scene-setter from Roblox's licensed library; under
 			-- the MUSIC slider. the wind: Pro Sound Effects' desert wind, under EFFECTS)
-			music = { id = "1841135337", vol = 0.5, out = 166, outT = 0.5, back = 196, backVol = 0.4, backT = 1.2 },
+			-- (the music stays at its level through the shot, the shot on top of it - the owner, 20 Nov: "also the music
+			-- softens at the shot"; only the wind drops out)
+			music = { id = "1841135337", vol = 0.5 },
 			bed = { id = "9114057104", vol = 0.5, out = 166, outT = 0.6, back = 196, backVol = 0.22, backT = 1.0, looped = true },
 		},
+		-- (the enemy's hand closes on the holster's grip through VICTIM'S HAND and stays there until the draw - the owner,
+		-- 20 Nov: "the enemies hand should be on their holster after the scene of them moving their hand to the position")
+		holdReach = { v = { from = 95, to = 110 } },
 		lamps = true,
 		-- (the video's light: a low warm sun with real shadows, a warm haze, a light grade; put back after)
 		look = { clock = 17.2, lat = 35, bright = 2.6, outdoor = Color3.fromRGB(122, 102, 96), ambient = Color3.fromRGB(72, 62, 60),
@@ -876,12 +881,18 @@ local function placeRevolvers(sc: any, s: any, A: any, T: number)
 			local w, target = 0, nil
 			if e and not e[5] and sc.d.clips[e[1]] == "quick_draw_t1" then
 				local t = e[2]
-				w = ease(t / 0.12) * (1 - ease((t - 0.34) / 0.2))
+				local hr = sc.ex.holdReach and sc.ex.holdReach[who]
+				local fi = T * sc.d.fps + 1
+				-- (a held reach: from its shot on, the hand closes on the grip by the shot's end and rests there - whatever the
+				-- clip does - until the draw itself carries it on, past the moment the plain reach is on the grip anyway)
+				local held = hr ~= nil and fi >= hr.from and t < 0.28
+				local u = if held then math.clamp((fi - hr.from) / math.max(hr.to - hr.from, 1), 0, 1) else 0
+				w = if held then ease(u / 0.5) else ease(t / 0.12) * (1 - ease((t - 0.34) / 0.2))
 				if w > 0.002 then
 					local ua = m:FindFirstChild("RightUpperArm") :: BasePart?
 					local up = if ua then (ua.Position - onGrip.Position) * 0.2 else Vector3.zero
 					local hover = CFrame.new(up + lt.CFrame:VectorToWorldSpace(Vector3.new(0.12, 0, -0.04))) * onGrip
-					target = hover:Lerp(onGrip, ease((t - 0.14) / 0.14))
+					target = hover:Lerp(onGrip, if held then ease((u - 0.35) / 0.65) else ease((t - 0.14) / 0.14))
 				end
 			end
 			if kit.ik then
@@ -1193,13 +1204,13 @@ local function sounds(sc: any, i: number)
 			st = {}
 			sc.beds[key] = st
 			-- (no beds under a payoff that starts after they'd have gone quiet: the short one starts at the draw)
-			if sc.i0 < b.out then
+			if not b.out or sc.i0 < b.out then
 				local ok, snd = pcall(ownSound, sc, b.id, b.vol, if key == "music" then "Music" else "Effects", b.looped)
 				if ok then st.snd = snd end
 			end
 		end
 		if st.snd then
-			if not st.out and i >= b.out then st.out = true; fadeTo(st.snd, 0, b.outT) end
+			if not st.out and b.out and i >= b.out then st.out = true; fadeTo(st.snd, 0, b.outT) end
 			if not st.back and b.back and i >= b.back then st.back = true; fadeTo(st.snd, b.backVol, b.backT) end
 		end
 	end
@@ -1285,6 +1296,17 @@ function Scene.start(s: any, kind: string): any
 			if not a then a = Instance.new("Atmosphere"); a.Name = "JankSceneAtmo"; a.Parent = L; table.insert(was.added, a) end
 			a.Density = 0.3; a.Offset = 0.12; a.Color = Color3.fromRGB(222, 176, 134); a.Decay = Color3.fromRGB(176, 118, 92)
 			a.Glare = 0.35; a.Haze = 1.4
+			for key, v in lk.atmo or {} do (a :: any)[key] = v end
+			-- (the engine's own sky and sun: the place's Skies are parked under Lighting for the scene, put back after)
+			if lk.plainSky then
+				was.skies = {}
+				local park = Instance.new("Folder")
+				park.Name = "JankSceneSkyPark"; park.Parent = L
+				for _, c in L:GetChildren() do
+					if c:IsA("Sky") then table.insert(was.skies, { c, c.Parent }); c.Parent = park end
+				end
+				was.park = park
+			end
 			local cc = Instance.new("ColorCorrectionEffect")
 			cc.Name = "JankSceneGrade"; cc.TintColor = Color3.fromRGB(255, 238, 220); cc.Contrast = 0.08; cc.Saturation = 0.04
 			cc.Parent = L
@@ -1529,6 +1551,8 @@ function Scene.stop(s: any)
 				a.Density, a.Offset, a.Color, a.Decay, a.Glare, a.Haze = was.atmo[2], was.atmo[3], was.atmo[4], was.atmo[5], was.atmo[6], was.atmo[7]
 			end
 		end)
+		for _, sk in was.skies or {} do pcall(function() sk[1].Parent = sk[2] end) end
+		if was.park then was.park:Destroy() end
 		for _, inst in was.added do inst:Destroy() end
 	end
 	if sc.folder then sc.folder:Destroy() end
