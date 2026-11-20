@@ -154,8 +154,9 @@ end
 
 -- the in-game scenes, each behind a switch. 20 Nov, the owner: "take out tidecrest put in revolver" - Tidecrest goes to a
 -- professional, so its scene is OFF and Inkfall plays its normal cut again. FinisherScene and its data stay in the
--- place; true here brings the scene back (row.sceneOff keeps its id)
-Finishers.SCENE_ON = { inkfall = false, highnoon = true } :: { [string]: boolean }
+-- place; true here brings the scene back (row.sceneOff keeps its id). High Noon is held OFF for the owner's zombies-fix
+-- publish (main, 20 Nov) until its eye shots and sound are signed off; the revolver plays its normal cut meanwhile
+Finishers.SCENE_ON = { inkfall = false, highnoon = false } :: { [string]: boolean }
 for id, row in Finishers.LIST do
 	if row.scene and Finishers.SCENE_ON[id] == false then
 		(row :: any).sceneOff = row.scene
