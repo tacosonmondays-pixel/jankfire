@@ -230,7 +230,8 @@ def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None)
                 continue
             off = Vector((rs.uniform(-1, 1), rs.uniform(-0.2, 1), rs.uniform(-1, 1))).normalized() * sc_ * rs.uniform(0.4, 1.0)
             cf[k] = CF(*off) @ cf[k] @ ANG(rs.uniform(-40, 40) * sc_, rs.uniform(-40, 40) * sc_, rs.uniform(-40, 40) * sc_)
-    RIGS.append({'name': name, 'cf': cf, 'col': col or (SHOOTER if name == 'k' else VICTIM), 'face': pose.get('face')})
+    RIGS.append({'name': name, 'cf': cf, 'col': col or (SHOOTER if name == 'k' else VICTIM), 'face': pose.get('face'),
+                 'clip': pose.get('clip'), 'scatter': sc_, 'root0': root})
     return cf
 
 
@@ -254,7 +255,7 @@ def wpt(cf_m, local):  # a point in a CFrame's space -> Blender world
 
 # ------------------------------------------------------------------ colours and props (Studio gets the same list)
 SHOOTER = (0.22, 0.25, 0.33)
-VICTIM = (0.82, 0.8, 0.77)
+VICTIM = (0.72, 0.7, 0.67)   # (a shade under the floor: v1's white melted into it)
 SKIN = (0.93, 0.60, 0.72)
 INK = (0.05, 0.05, 0.07)
 SAKURA = (0.95, 0.74, 0.82)
@@ -262,12 +263,13 @@ WOOD = (0.32, 0.23, 0.2)
 LACQUER = (0.10, 0.07, 0.09)
 STEEL = (0.86, 0.88, 0.92)
 GOLD = (0.85, 0.68, 0.32)
-FLOORC = (0.86, 0.86, 0.88)
-PILLAR = (0.72, 0.73, 0.77)
+FLOORC = (0.66, 0.66, 0.69)
+PILLAR = (0.58, 0.59, 0.64)
 RIGS = []
 GUNS = []    # {'model': 'revolver_dust', 'cf': grip frame (Roblox), 'scale': 3}
 PROPS = []   # {'shape': 'Block'|'Ball'|'Cylinder'|'Wedge', 'size': (x,y,z) Roblox, 'cf': 4x4 Roblox, 'col', 'mat', 'tag'}
 KATANA = []  # Roblox CFrames of the katana grip (the place's katana_sakura, scaled x3)
+KAT_MODE = []  # per KATANA entry: 'hand' (in the killer's right hand) or 'free' (placed: the sheath)
 
 
 PROP_TR = [0.0]   # the transparency given to props made while it is set (a fading stroke in the video)
@@ -376,6 +378,7 @@ def sheath(cf):
 
 def katana_grip(m):
     KATANA.append(m)
+    KAT_MODE.append('hand')
 
 
 def katana_at_b(guard_b, dir_b, up_b=(0, 0, 1)):
@@ -391,6 +394,7 @@ def katana_at_b(guard_b, dir_b, up_b=(0, 0, 1)):
     m = Matrix((x, y, z)).transposed().to_4x4()
     m.translation = g + z * 0.44  # the guard sits 0.148 m (x3) up the blade (local -Z) from the grip
     KATANA.append(m)
+    KAT_MODE.append('free')
 
 
 # ------------------------------------------------------------------ Blender preview
@@ -719,9 +723,26 @@ def dust_8():
 # ================================================================== TIDECREST on R15
 # Blender layout: the victim at the origin facing -Y (toward the run-up); the killer runs along +Y past them on the
 # victim's right (x = +2.3) and ends behind them, back to back (+Y)
+def cyclorama(r=120.0, n=32, bands=((1.0, 0.8, 0.52), (0.97, 0.69, 0.53), (0.86, 0.6, 0.6), (0.72, 0.55, 0.64),
+                                     (0.58, 0.5, 0.66), (0.46, 0.44, 0.62)), h=40.0):
+    # a ring of painted sky round the set (Neon: lit the same from every side), warm at the horizon, dusk above; so the
+    # sunset of the opening holds through every shot whichever way the lens looks (v1 swung to a blue sky at the clash)
+    w = 2 * math.pi * r / n * 1.04
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        x, z = math.cos(a) * r, math.sin(a) * r
+        yaw = math.degrees(math.atan2(x, z))
+        for j, col in enumerate(bands):
+            prop('Block', (w, h, 1.0), CF(x, h / 2 + j * h, z) @ ANG(0, yaw, 0), col, 'Neon', 'sky')
+    # the lid (a low lens looking up sees dusk, not the map's sky); none of it casts a shadow (Studio and the game skip
+    # shadows on 'sky')
+    prop('Block', (2.2 * r, 1.0, 2.2 * r), CF(0, h * len(bands) + 0.5, 0), (0.42, 0.41, 0.6), 'Neon', 'sky')
+
+
 def tide_stage(s=None):
     # s: the video's clock (seconds); the loose petals drift with it
     stage()
+    cyclorama()
     tree((-8, 11))
     tree((-15, -26), 5.8)
     if s is None:
@@ -877,7 +898,10 @@ K_START = at_for(SLASH, T_HIT, (3.3, 0.0), 0)
 K_BACK = (2.6, 6.6)   # after the pass: a few steps on, back to back with the victim (the owner's beat sheet)
 
 
-def blade_sweep(cn, at, yaw, t0, t1, n=14, col=INK, width=None, tag='smear'):
+SMEAR = (1.0, 0.95, 0.97)   # the blade's light trail (v1's ink-black fan read as a dark blob: the cut must flash)
+
+
+def blade_sweep(cn, at, yaw, t0, t1, n=14, col=SMEAR, width=None, tag='smear'):
     # an ink-brush smear along the blade's real path between t0 and t1 (the katana in the right hand of the clip)
     pts = []
     for i in range(n + 1):
@@ -892,7 +916,7 @@ def blade_sweep(cn, at, yaw, t0, t1, n=14, col=INK, width=None, tag='smear'):
         mid0, mid1 = (a0 + b0) / 2, (a1 + b1) / 2
         L = (b0 - a0).length * (0.4 + 0.6 * i / n)
         prop_box_between(mid0, mid1 + (mid1 - mid0) * 0.15, 0.08, L, col, up_b=(b0 - a0).normalized(), tag=tag,
-                         mat='Neon' if col == INK else 'SmoothPlastic')
+                         mat='Neon')
 
 
 @frame('tide', 0)
@@ -1530,7 +1554,20 @@ def frame_data(info):
             'props': [dict({'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'],
                             'mat': p['mat'], 'tag': p['tag']}, **({'tr': round(p['tr'], 2)} if p.get('tr') else {})) for p in PROPS],
             'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
-            'faces': {r['name']: r['face'] for r in RIGS if r.get('face')}}
+            'faces': {r['name']: r['face'] for r in RIGS if r.get('face')},
+            # (for the game: which clip at what moment, where the root stands, where the katana is)
+            'anim': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
+                                 'sc': round(r.get('scatter', 0), 3)} for r in RIGS if r.get('clip')},
+            'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)]}
+
+
+def kat_rel(m, mode):
+    if mode == 'hand':
+        return {'mode': 'hand'}
+    k = next((r for r in RIGS if r['name'] == 'k'), None)
+    if not k:
+        return {'mode': 'world', 'cf': comps(m)}
+    return {'mode': 'lt', 'rel': comps(k['cf']['LowerTorso'].inverted() @ m)}
 
 
 # ------------------------------------------------------------------ run
@@ -1546,7 +1583,7 @@ for vname in VIDS:
         for i in range(nf):
             VT[0] = k / FPS
             clear()
-            RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear()
+            RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear(); KAT_MODE.clear()
             info = fn(i, nf) or {}
             info['name'] = sname
             if not os.environ.get('FIN_NOPNG'):
@@ -1558,7 +1595,7 @@ for vname in VIDS:
         shots.append([sname, nf])
         print('shot', vname, sname, nf, flush=True)
     # the fixed set (floor, pillars, trees) is the same in every frame: stored once as '_stage'
-    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa')
+    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa', 'sky')
     first = None
     for key in sorted(allv):
         f = allv[key]
