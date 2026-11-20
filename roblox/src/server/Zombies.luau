@@ -67,6 +67,7 @@ type Game = {
 	members: { Member }, byF: { [Fighter]: Member }, mobs: { Mob }, byMob: { [Fighter]: Mob },
 	fieldT: number, tick: number, lastT: number, templates: { [number]: Model }, prompts: { Instance }, mobId: number,
 	overT: number?, conn: RBXScriptConnection?, id: string, players: { Player },
+	cost: { n: number, sum: number, max: number }, -- (ms a tick: the server cost)
 }
 local G: Game? = nil
 Zombies.game = function(): Game? return G end
@@ -75,15 +76,27 @@ local gameN = 0
 function Zombies.busy(): boolean return G ~= nil end
 -- the zombies maps ready to play: every Model in ServerStorage.ZMMaps with a ZM folder (the test block only while
 -- there's nothing else). never in Arena.pool or the duel / MODES rotations: the queue draws from this
+local function sources(): { Model }
+	local out = {}
+	local lib = ServerStorage:FindFirstChild("ZMMaps")
+	if lib then for _, m in lib:GetChildren() do if m:IsA("Model") and m:FindFirstChild("ZM") then table.insert(out, m) end end end
+	-- (the maps session's: workspace.Map.<name> with ZombiesMap = true, Enabled false, the school since v1155)
+	local wm = workspace:FindFirstChild("Map")
+	if wm then
+		for _, m in wm:GetChildren() do
+			if m:IsA("Model") and m:GetAttribute("ZombiesMap") == true and m:FindFirstChild("ZM") then table.insert(out, m) end
+		end
+	end
+	return out
+end
+local function source(name: string): Model?
+	for _, m in sources() do if m.Name == name then return m end end
+	return nil
+end
 function Zombies.maps(): { string }
 	local out, test = {}, {}
-	local lib = ServerStorage:FindFirstChild("ZMMaps")
-	if lib then
-		for _, m in lib:GetChildren() do
-			if m:IsA("Model") and m:FindFirstChild("ZM") then
-				if m.Name == "ZTest" then table.insert(test, m.Name) else table.insert(out, m.Name) end
-			end
-		end
+	for _, m in sources() do
+		if m.Name == "ZTest" then table.insert(test, m.Name) else table.insert(out, m.Name) end
 	end
 	table.sort(out)
 	return if #out > 0 then out else test
@@ -160,6 +173,12 @@ local function arm(m: Member, hold: string?)
 	end
 	pushRes(m)
 	if f.alive then Fight.showWeapon(f) end
+	if p and hold then
+		local eq = Remotes:FindFirstChild("Equip")
+		task.delay(0.3, function()
+			if p.Parent and f.forced and table.find(f.forced :: { string }, hold) and eq and eq:IsA("RemoteEvent") then eq:FireClient(p, hold) end
+		end)
+	end
 end
 -- a new weapon: a melee replaces your melee; a gun takes a free slot or replaces the gun in your hands
 local function grant(m: Member, wid: string)
@@ -1183,10 +1202,10 @@ end
 function Zombies.start(players: { Player }, mapName: string, _opts: { queue: string }?): (string?, string?)
 	if G then return nil, "busy" end
 	hook()
-	local lib = ServerStorage:FindFirstChild("ZMMaps")
-	local tpl = lib and lib:FindFirstChild(mapName)
-	if not tpl or not tpl:IsA("Model") then return nil, "no map " .. mapName .. " in ServerStorage.ZMMaps" end
+	local tpl = source(mapName)
+	if not tpl then return nil, "no zombies map " .. mapName end
 	local model = tpl:Clone()
+	model:SetAttribute("Enabled", nil) -- (the source sits out of the PvP pool; this copy is the game)
 	model:PivotTo(SITE)
 	model.Parent = workspace
 	local map, why = ZM.read(model)
@@ -1195,11 +1214,17 @@ function Zombies.start(players: { Player }, mapName: string, _opts: { queue: str
 	for _, d in map.doors do table.insert(shutters, d.shutter) end
 	local skip: { Instance } = { dummies() }
 	for _, p in Players:GetPlayers() do if p.Character then table.insert(skip, p.Character) end end
+	local hidden = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d.CanCollide and not d.CanQuery then d.CanQuery = true; table.insert(hidden, d) end
+	end
 	local nav = Nav.build(map.bounds, shutters, skip)
+	for _, d in hidden do d.CanQuery = false end
 	local g: Game = {
 		map = map, model = model, nav = nav, open = {}, areas = {}, n = 0, st = "pre", untilT = now() + R.first,
 		toSpawn = 0, spawnAt = 0, win = {}, members = {}, byF = {}, mobs = {}, byMob = {}, fieldT = now(), tick = 0, lastT = now(),
 		templates = {}, prompts = {}, mobId = 0, overT = nil, conn = nil, id = "", players = {},
+		cost = { n = 0, sum = 0, max = 0 },
 	}
 	gameN += 1
 	g.id = "zm:" .. gameN
@@ -1235,8 +1260,12 @@ function Zombies.start(players: { Player }, mapName: string, _opts: { queue: str
 		local step = math.min(acc, 0.25)
 		acc = 0
 		if G ~= g then return end
+		local t0 = os.clock()
 		local ok, err = pcall(tick, g, step)
 		if not ok then warn("[jankfire] zombies tick: " .. tostring(err)) end
+		local c = (os.clock() - t0) * 1000
+		local cost = g.cost
+		cost.n += 1; cost.sum += c; cost.max = math.max(cost.max, c)
 	end)
 	return g.id, string.format("zombies on %s: %d areas, %d doors, %d windows, %d wall buys; nav %dx%d x%d floors, %d cells in %.2f s",
 		map.label, (function() local c = 0; for _ in map.areas do c += 1 end; return c end)(), #map.doors, #map.windows, #map.buys,
@@ -1300,7 +1329,9 @@ function Zombies.state(): { [string]: any }
 		table.insert(ms, { m.name, m.c, m.f.alive, m.down ~= nil, m.dead, table.concat(kitList(m), ","), m.kills })
 	end
 	return { on = true, n = g.n, st = g.st, toSpawn = g.toSpawn, mobs = mobs, members = ms, open = g.open, cells = g.nav.cells, built = g.nav.built,
-		refusal = Zombies.lastRefusal, areas = g.areas }
+		refusal = Zombies.lastRefusal, areas = g.areas,
+		tickMs = if g.cost.n > 0 then string.format("avg %.2f max %.2f over %d ticks", g.cost.sum / g.cost.n, g.cost.max, g.cost.n) else "",
+		layers = g.nav.L, windows = #g.map.windows, doors = #g.map.doors }
 end
 function Zombies.round(n: number)
 	local g = G
@@ -1346,6 +1377,8 @@ function Zombies.init(fight: any, matches: any?)
 			elseif op == "credits" then Zombies.credits(a, tonumber(b) or 0); return true
 			elseif op == "open" then Zombies.openAll(); return true
 			elseif op == "max" then R.maxAlive = tonumber(a); return true
+			elseif op == "cost" then local g = G; if g then g.cost = { n = 0, sum = 0, max = 0 } end; return true
+			elseif op == "maps" then return Zombies.maps()
 			end
 			return "ops: start, stop, state, round, credits, open, max"
 		end
