@@ -78,9 +78,14 @@ local EXTRA: { [string]: any } = {
 		-- reaching onto the guns, one shot; a round win plays the draw, the shot and the far shot)
 		kit = "revolver",
 		short = { shot = "THE DRAW", speed = 1 },
-		-- (the video's retime: the suspense shots held longer, each frame shown this many times as long)
+		-- (the bars come in over the overhead's push-in, as the video: the owner, "it should start without bars and the
+		-- come in as it zooms in overhead")
+		barsIn = 2.2,
+		-- (the video's retime: the suspense shots held longer, each frame shown this many times as long; the enemy's reach
+		-- held a beat longer still - the owner: "the scene where the enemy goes for the gun last a tiny bit longer")
 		stretch = { OVERHEAD = 1.5, ["KILLER'S EYES"] = 1.6, ["VICTIM'S EYES"] = 1.6, ["KILLER'S HAND"] = 1.5,
-			["VICTIM'S HAND"] = 1.5, ["THE WIDE"] = 1.4, ["EYES AGAIN"] = 1.6, ["THEIR EYES"] = 1.6, ["FAR SHOT"] = 1.3 },
+			["VICTIM'S HAND"] = 1.5, ["THE WIDE"] = 1.4, ["EYES AGAIN"] = 1.6, ["THEIR EYES"] = 1.6, ["ENEMY REACHES"] = 2.0,
+			["FAR SHOT"] = 1.3 },
 		zoom = { ["EYES AGAIN"] = 1.3, ["THEIR EYES"] = 1.3 },
 		cues = { { 1, "zone_lot", 0.5 }, { 75, "loot_pop", 0.25 }, { 163, "swing", 0.4 },
 			{ 169, "skin_revolver_dust_reload", 0.5 }, { 174, "skin_revolver_dust_reload", 0.7 },
@@ -579,7 +584,20 @@ local function realAnchor(sc: any, s: any, key: string): (CFrame?, number)
 	local p = g.model:FindFirstChild(a[2]) :: BasePart?
 	if not p then return nil, 1 end
 	local sz = sc.d.sizes and sc.d.sizes[a[2]]
-	return p.CFrame, if sz then p.Size.Y / sz[2] else 1
+	local k = if sz then p.Size.Y / sz[2] else 1
+	if a[2] == "Head" then
+		-- (the real face, not the head part's middle - the owner, on High Noon: "the next scene isn't really at the eyes":
+		-- an anime head, a big hat or hair puts the eyes elsewhere. The stand-in's face front, (0, 0, -0.6) on its 1.2
+		-- head, lands on this head's own FaceFrontAttachment)
+		local ffa = p:FindFirstChild("FaceFrontAttachment")
+		if ffa and ffa:IsA("Attachment") then return p.CFrame * CFrame.new(ffa.Position - Vector3.new(0, 0, -0.6) * k), k end
+	end
+	return p.CFrame, k
+end
+-- (how long the letterbox bars take to come in, when a scene says: Finisher.luau's overlay asks)
+function Scene.barsIn(s: any): number?
+	local sc = s.scene
+	return sc and sc.ex and sc.ex.barsIn or nil
 end
 local function rehang(sc: any, s: any, f: any, key: string?, cfW: CFrame): CFrame
 	if not key or key == "" or not f.an or not f.an[key] then return cfW end
@@ -813,8 +831,9 @@ local function placeRevolvers(sc: any, s: any, A: any, T: number)
 				kit.ik.Weight = w
 				if target then kit.att.WorldCFrame = target end
 			end
-			-- (the hand the reach is taking this frame: the IK shows on the body a step later)
-			local H = if target then hand.CFrame:Lerp(target, w) else hand.CFrame
+			-- (the gun goes in the hand where the hand IS: the IK already moved it. blending toward the target again pulled
+			-- the gun off the hand - the owner: "after the enemy goes for the gun their hands aren't on the gun")
+			local H = hand.CFrame
 			local gcf: CFrame? = nil
 			if A.gn and A.gn[who] == 1 then
 				local pc = H * CFrame.new(0, -0.4 * hand.Size.Y, 0)

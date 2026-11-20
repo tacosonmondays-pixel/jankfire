@@ -147,6 +147,25 @@ local function showScreens()
 	for g in hidden do if g.Parent then g.Enabled = true end end
 	table.clear(hidden)
 end
+-- (the owner, 20 Nov, on High Noon: "... from then on is blurry": a menu's blur or a depth of field left on - the
+-- loadout's background blur under a preview, the shop's, a flash's - would sit over the cut. every blur and depth of
+-- field in Lighting and on the camera is off while a finisher plays, and back as it was after, however it ends)
+local postOff: { [Instance]: boolean } = {}
+local function postEffects(off: boolean)
+	if off then
+		for _, root in { game:GetService("Lighting"), workspace.CurrentCamera } :: { Instance } do
+			for _, e in root:GetChildren() do
+				if (e:IsA("BlurEffect") or e:IsA("DepthOfFieldEffect")) and (e :: any).Enabled then
+					postOff[e] = true
+					(e :: any).Enabled = false
+				end
+			end
+		end
+	else
+		for e in postOff do if e.Parent then (e :: any).Enabled = true end end
+		table.clear(postOff)
+	end
+end
 local function controls(on: boolean)
 	pcall(function()
 		local c = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
@@ -319,6 +338,7 @@ function F.stop(quiet: boolean?)
 	if s.cc then s.cc:Destroy() end
 	Replay.hideLive(false)
 	showScreens()
+	postEffects(false)
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Custom
 	cam.FieldOfView = s.fov or 70
@@ -468,6 +488,7 @@ function F.play(msg: any): boolean
 	gui.Enabled = true
 	table.clear(hidden)
 	hideScreens()
+	postEffects(true)
 	me:SetAttribute("LoadoutOpen", true) -- (the hands and the guns hold still, no menu opens, the shoulder camera lets go)
 	me:SetAttribute("Finishing", true)
 	-- (a safety net: whatever ends it, the flag that holds back killcams never outlives it)
@@ -494,7 +515,9 @@ end
 -- shot, the grade (neutral on a two-tone hit frame, greying out on the payoff), a white flash after each hit frame
 local function stepScene(s: any)
 	local _, u, last = Scene.step(s, s.w)
-	local barK = smooth(s.w / 0.2) * (1 - smooth((s.w - (s.total - 0.2)) / 0.2))
+	-- (the bars come in over the scene's own opening when it has one - High Noon's overhead zooming in - else at once)
+	local bin = if type(Scene.barsIn) == "function" then Scene.barsIn(s) or 0.2 else 0.2
+	local barK = smooth(s.w / bin) * (1 - smooth((s.w - (s.total - 0.2)) / 0.2))
 	barTop.Size = UDim2.new(1, 0, BAR * barK, 0)
 	barBot.Size = UDim2.new(1, 0, BAR * barK, 0)
 	local nameK = if last then smooth(u / 0.18) else 0
@@ -524,6 +547,7 @@ local function stepScene(s: any)
 	local endK = smooth((s.w - (s.total - 0.18)) / 0.18)
 	fadeF.BackgroundTransparency = 1 - endK
 	hideScreens()
+	postEffects(true)
 	Replay.hideLive(true)
 	if s.w >= s.total then F.stop() end
 end
@@ -658,8 +682,9 @@ function F._step(dt: number)
 	end
 	local endK = smooth((s.w - (s.total - 0.18)) / 0.18)
 	fadeF.BackgroundTransparency = 1 - endK
-	-- everything else stays hidden (a new screen like the end board may open under it)
+	-- everything else stays hidden (a new screen like the end board may open under it), and no blur sits over it
 	hideScreens()
+	postEffects(true)
 	Replay.hideLive(true)
 	if s.w >= s.total then F.stop() end
 end

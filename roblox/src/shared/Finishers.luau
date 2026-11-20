@@ -63,7 +63,7 @@ Finishers.LIST = {
 		-- (western_town_v3) plays in the game on the two real avatars - a standoff in a sunset town, the holsters on
 		-- their hips, the hands reaching onto the guns, one shot; FinisherScene + FinisherSceneData_highnoon(_set).
 		-- a round win plays the draw, the shot and the far shot)
-		scene = "highnoon", sceneLen = { full = 13.82, short = 3.27 },
+		scene = "highnoon", sceneLen = { full = 14.15, short = 3.27 },
 	},
 	inkfall = { -- Tidecrest: one ink-wash brush slash across the frame, the victim splits into sakura petals
 		-- (20 Nov, Tidecrest v4.2, the owner: "I think tidecrest is ready for Roblox": the grip, the two-hand draw of the

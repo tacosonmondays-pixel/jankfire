@@ -61,9 +61,20 @@ me:GetAttributeChangedSignal("FinisherTest"):Connect(function()
 	if type(v) ~= "string" or v == "" then return end
 	me:SetAttribute("FinisherTest", nil)
 	if v == "stop" then F.stop(); return end
-	local id, kind = string.match(v, "^preview:([%w_]+):?(%a*)$")
+	-- ("preview:<id>[:short][:<userId>]": a userId puts that player's own avatar in as the victim, as in a real match)
+	local id, kind, uid = string.match(v, "^preview:([%w_]+):?(%a*):?(%d*)$")
 	if id then
-		local ok, res = pcall(F.preview, id, { kind = if kind == "short" then "short" else "full" })
+		local opts: any = { kind = if kind == "short" then "short" else "full" }
+		if uid and uid ~= "" then
+			local okL, look = pcall(function()
+				local P = game:GetService("Players")
+				local m = P:CreateHumanoidModelFromDescription(P:GetHumanoidDescriptionFromUserId(tonumber(uid) :: number), Enum.HumanoidRigType.R15)
+				m.Name = "Stand-in"
+				return m
+			end)
+			if okL and look then opts.victimLook = look end
+		end
+		local ok, res = pcall(F.preview, id, opts)
 		me:SetAttribute("FinisherTestResult", if ok then tostring(res) else ("error: " .. tostring(res)))
 	end
 end)
