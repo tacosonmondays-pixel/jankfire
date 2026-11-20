@@ -81,6 +81,19 @@ function PlayConfig.classic(): { any }
 	return out
 end
 
+-- ZOMBIES (19 Nov 2026: the owner brought back the web game's co-op wave mode; the mode itself is weapons-port's
+-- server/Zombies.luau, docs/ZOMBIES.md). its own card on the MODES tab (client/ModesTab.luau). co-op: one squad of up
+-- to 4, whole parties and solos packed together oldest first (Queue's formCoop); it starts when full, or COOP_WAIT s
+-- after its oldest began searching, and the mode's bots fill the empty slots. never ranked, never across servers
+-- (CrossServer.crossable), its own maps (Zombies.maps(), never in Arena.pool). not a classic mode: in byId, not in
+-- EXTRA, so QUICKPLAY and the PARTY picker never offer it. the server opens it (ReplicatedStorage attribute
+-- ZombiesOn, Party.luau) once Zombies.luau has its start / busy / maps; till then the card says SOON
+PlayConfig.ZOMBIES = "zombies"
+PlayConfig.COOP_WAIT = 10 -- s a squad short of 4 waits for more before it goes with bots
+-- (no pad: it starts through its own start, Party.luau, and so never gets the duels' map vote either)
+PlayConfig.byId[PlayConfig.ZOMBIES] = { id = PlayConfig.ZOMBIES, name = "ZOMBIES", sub = "co-op waves · a squad of 4 · bots fill the empty slots",
+	teams = 1, size = 4, ranked = false, coop = true } :: any
+
 PlayConfig.PARTY_MAX = 4 -- the biggest team
 PlayConfig.INVITE_TTL = 60 -- s an invite stays open
 PlayConfig.INVITES_PER_MIN = 6

@@ -71,6 +71,7 @@ local lockMap = function(): MemoryStoreHashMap return MemoryStoreService:GetHash
 -- its own server)
 function CrossServer.crossable(mode: string): boolean
 	local m: any = PlayConfig.byId[mode]
+	if m and m.coop then return false end -- (ZOMBIES: one game per server, on this server's own map)
 	return m ~= nil and (mode == PlayConfig.QUICKPLAY or m.ladder ~= "party")
 end
 

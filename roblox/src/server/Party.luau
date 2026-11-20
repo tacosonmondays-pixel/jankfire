@@ -641,6 +641,8 @@ local function setMode(p: Player, mode: any, ranked: any): (boolean, string?)
 	if not pt then return false, "press PLAY first" end
 	if pt.leader.player ~= p then return false, "only the leader picks" end
 	if type(mode) ~= "string" or not PlayConfig.byId[mode] then return false, "no such mode" end
+	-- (ZOMBIES: open once its module is in, ReplicatedStorage's ZombiesOn, Party.init)
+	if mode == PlayConfig.ZOMBIES and ReplicatedStorage:GetAttribute("ZombiesOn") ~= true then return false, "ZOMBIES isn't open yet" end
 	local r = ranked == true
 	local ok, why = PlayConfig.fits(PlayConfig.byId[mode], #pt.members, r)
 	if not ok then return false, why end
@@ -700,6 +702,7 @@ local function find(p: Player): (boolean, string?)
 		local r = ratingFor(m, pt.mode)
 		lo, hi, sum = math.min(lo, r), math.max(hi, r), sum + r
 		if m.player and Matches.matchOf(m.player) then return false, m.display .. " is in a match" end
+		if m.player and m.player:GetAttribute("ZmOn") then return false, m.display .. " is in a ZOMBIES game" end
 	end
 	if pt.ranked and not priv and hi - lo > Ranked.PARTY_SPREAD then
 		return false, ("ranked parties must be within %d rating of each other"):format(Ranked.PARTY_SPREAD)
@@ -861,7 +864,7 @@ local function start(f: Found): boolean
 			local r, rd = ratingFor(m, modeId)
 			table.insert(rated.teams[t], { id = m.id, r = r, rd = rd })
 			if m.player then
-				if not m.player.Parent or Matches.matchOf(m.player) then return false end
+				if not m.player.Parent or Matches.matchOf(m.player) or m.player:GetAttribute("ZmOn") then return false end
 				table.insert(sides[t], m.player)
 			else
 				standIns = true
@@ -1090,6 +1093,48 @@ local function onEnd(m: any)
 	end)
 end
 
+-- ------------------------------------------------------------------ ZOMBIES (PlayConfig.ZOMBIES, 19 Nov 2026)
+-- the co-op mode's own module (weapons-port's server/Zombies.luau): start(players, map, opts) -> (id?, why?), busy(),
+-- maps(), and the onEnd it calls once its game has sent everyone home. a squad the queue formed starts through it (the
+-- mode's start below; Party's start() calls it like any mode's own start). busy, no map or no module: not yet, the
+-- squad waits and tries again
+local function zombiesMod(): any?
+	local mod = script.Parent:FindFirstChild("Zombies")
+	if not mod or not mod:IsA("ModuleScript") then return nil end
+	local ok, Z = pcall(require, mod)
+	if ok and type(Z) == "table" and type(Z.start) == "function" and type(Z.busy) == "function" and type(Z.maps) == "function" then return Z end
+	return nil
+end
+-- (Zombies.onEnd: its game is over and everyone is home) the parties in it come back to their lobby rooms
+local function coopEnded(id: any)
+	for _, pt in parties do
+		if pt.match == id then
+			pt.match = nil
+			place(pt)
+			pushParty(pt)
+		end
+	end
+end
+do
+	local zcfg: any = PlayConfig.byId[PlayConfig.ZOMBIES]
+	zcfg.start = function(sides: { { Player } }, opts: any): any
+		local Z = zombiesMod()
+		if not Z then return nil end
+		local okB, busy = pcall(Z.busy)
+		if not okB or busy then return nil end
+		local okM, maps = pcall(Z.maps)
+		if not okM or type(maps) ~= "table" or #maps == 0 then return nil end
+		local players = sides[1] or {}
+		if #players == 0 then return nil end
+		local okS, id = pcall(Z.start, players, maps[math.random(#maps)], { queue = if opts then opts.queue else nil })
+		if not okS or not id then
+			if not okS then warn("[jankfire] zombies start: " .. tostring(id)) end
+			return nil
+		end
+		return { id = id }
+	end
+end
+
 -- ------------------------------------------------------------------ the remote
 local budget: { [Player]: { n: number, t: number } } = {}
 local function spend(p: Player): boolean
@@ -1237,6 +1282,21 @@ function Party.init(fight: any, matches: any, rankedData: any, remotes: Instance
 	end
 	Matches.homeOf = Party.homeOf
 	Matches.onEnd(onEnd)
+	-- (ZOMBIES: the MODES card opens once its module is in with a map to play, ReplicatedStorage's ZombiesOn; its games
+	-- end through coopEnded)
+	task.spawn(function()
+		while true do
+			local Z = zombiesMod()
+			local on = false
+			if Z then
+				if Z.onEnd ~= coopEnded then Z.onEnd = coopEnded end
+				local okM, maps = pcall(Z.maps)
+				on = okM and type(maps) == "table" and #maps > 0
+			end
+			if ReplicatedStorage:GetAttribute("ZombiesOn") ~= on then ReplicatedStorage:SetAttribute("ZombiesOn", on) end
+			task.wait(5)
+		end
+	end)
 	-- a lobby body stands still on its plinth (anchored) whenever it respawns there
 	Fight.onSpawn(function(f: any)
 		local p = f.ref :: Player

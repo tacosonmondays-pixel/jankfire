@@ -188,10 +188,28 @@ local function formFill(es: { Entry }, quick: { Entry }, m: any, ranked: boolean
 	return out
 end
 
+-- (ZOMBIES, 19 Nov 2026, PlayConfig.ZOMBIES) a co-op squad: whole parties and solos packed oldest first into one team
+-- of up to m.size. it goes when full, or once its oldest has searched PlayConfig.COOP_WAIT s (the mode's bots fill the
+-- rest). pure
+local function formCoop(es: { Entry }, m: any, now: number): { { Entry } }?
+	local open = {}
+	for _, e in es do if e.state == "search" and e.size <= m.size then table.insert(open, e) end end
+	if #open == 0 then return nil end
+	table.sort(open, function(a, b) return a.since < b.since end)
+	local squad, n = {}, 0
+	for _, e in open do
+		if n + e.size <= m.size then table.insert(squad, e); n += e.size end
+		if n >= m.size then break end
+	end
+	if n >= m.size or now - open[1].since >= (PlayConfig.COOP_WAIT or 10) then return { squad } end
+	return nil
+end
+
 -- the teams for one match from this queue's searching entries (oldest first), or nil. pure
 function Queue.form(es: { Entry }, mode: string, ranked: boolean, now: number): { { Entry } }?
 	local m = PlayConfig.byId[mode]
 	if not m then return nil end
+	if (m :: any).coop then return formCoop(es, m, now) end
 	-- a classic mode picked by a party (PARTY card): its own queue topped up from quickplay's. quickplay itself and
 	-- any other free-for-all entry: formFfa
 	if (m :: any).ladder == "party" and not (m :: any).quick then return formFill(es, lists[Queue.key(PlayConfig.QUICKPLAY, ranked)] or {}, m, ranked, now) end

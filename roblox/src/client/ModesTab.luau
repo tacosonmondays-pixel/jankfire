@@ -199,6 +199,30 @@ function ModesTab.draw(ctx: any): number
 	local nt = text(p, "Note", note, if c then 9 else 11, if warn then T.ACCENT else T.MUTED, T.FONT_BOLD); nt.ZIndex = 3
 	nt.Position = UDim2.fromOffset(14, ly); nt.Size = UDim2.fromOffset(iw, 14); nt.TextTruncate = Enum.TextTruncate.AtEnd
 	y += pH + 8
+	-- ZOMBIES (19 Nov 2026, PlayConfig.ZOMBIES): co-op waves, a squad of up to 4 (bots fill the rest). never ranked, so
+	-- not under PARTY RANKED. SOON till the server opens it (ReplicatedStorage's ZombiesOn)
+	if not ctx.pon then
+		local zm: any = PlayConfig.byId[PlayConfig.ZOMBIES]
+		local open = ReplicatedStorage:GetAttribute("ZombiesOn") == true
+		local zOn = mode == PlayConfig.ZOMBIES
+		local zH = if c then 50 else 66
+		local z = new("TextButton", { Name = "Zombies", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
+			BackgroundColor3 = if zOn then T.CARD_HI else T.CARD, BackgroundTransparency = if zOn then 0.05 elseif open then 0.2 else 0.45,
+			Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, zH) }, left)
+		frame(z, zOn)
+		local zn = text(z, "Name", "ZOMBIES", if c then 16 else 21, if open then T.TEXT else T.MUTED, T.FONT_TITLE); zn.ZIndex = 3
+		zn.Position = UDim2.fromOffset(14, if c then 5 else 9); zn.Size = UDim2.new(1, -110, 0, if c then 20 else 26)
+		local zc = text(z, "Count", if open then "1-4 PLAYERS" else "SOON", if c then 9 else 11, if open then T.MUTED else T.ACCENT, T.FONT_BOLD, Enum.TextXAlignment.Right); zc.ZIndex = 3
+		zc.AnchorPoint = Vector2.new(1, 0); zc.Position = UDim2.new(1, -12, 0, if c then 9 else 15); zc.Size = UDim2.fromOffset(100, 14)
+		local zs = text(z, "Sub", "co-op waves · bots fill the empty slots", if c then 10 else 12, T.MUTED, T.FONT); zs.ZIndex = 3
+		zs.Position = UDim2.fromOffset(14, if c then 25 else 36); zs.Size = UDim2.new(1, -24, 0, 16); zs.TextTruncate = Enum.TextTruncate.AtEnd
+		z.MouseButton1Click:Connect(function()
+			if not open then ctx.notice("ZOMBIES isn't open yet"); return end
+			if zm and ctx.n > zm.size then ctx.notice(("ZOMBIES is a squad of %d: your party is %d"):format(zm.size, ctx.n)); return end
+			pickMode(PlayConfig.ZOMBIES)
+		end)
+		y += zH + 8
+	end
 	-- (PARTY RANKED's one rule of its own: the grapple's charges, shared/HookCharges.luau)
 	if ctx.pon then
 		local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any
