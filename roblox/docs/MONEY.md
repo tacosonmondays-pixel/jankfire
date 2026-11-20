@@ -99,6 +99,8 @@ about 160) and the weekly track 525 a week. That's up to about 1,650 a week, and
 | Duffel Bag (a hat, card look, kill effect or emote) | 600 | 6 |
 | Spray Can (a wrap for one gun) | 500 | 3 |
 
+**Both prices, every count** (19 Nov, the owner: "if you have coins the robux icon disappers for containers"). A container's card and its inspect panel show the Robux price (with the Robux mark) and the coin price side by side at x1, x5 and x10 (`ShopBundles.pair`). Before, x5 and x10 had no Robux product, so they showed coins only and the Robux mark vanished. The five and ten packs now have their own products, plain multiples of one (`Shop.containerProduct(cid, n)`, key `"crate:5"`): the client asks `ShopBuy` with `"crate:5"`, and the receipt grants five into stock under the one purchase id (`Loot.grant(p, "crate", pid, 5)`). The same restricted-player and odds checks apply. A coin price you can't afford is greyed; pressing it opens COINS. Pressing it when you can afford it opens the confirm with coins first and Robux as the other way.
+
 Deals: the skin's coin price less the deal's 20-40% (an epic skin at 35% off: 1,300).
 
 **Early unlocks** (19 Nov, the owner: "coin is supposed to be able to buy weapons early!"). Switch
@@ -620,6 +622,9 @@ coins buy, and two servers.
 | `crate` | Crate | 120 | 3733200177 |
 | `bag` | Duffel Bag | 90 | 3733200704 |
 | `spray` | Spray Can | 60 | 3733200725 |
+| `crate:5` / `crate:10` | 5 / 10 Crates | 600 / 1,200 | 3733759267 / 3733759286 |
+| `bag:5` / `bag:10` | 5 / 10 Duffel Bags | 450 / 900 | 3733759307 / 3733759328 |
+| `spray:5` / `spray:10` | 5 / 10 Spray Cans | 300 / 600 | 3733759347 / 3733759369 |
 | `bundle_nightshift` | Night Shift | 1,099 | 3733200745 |
 | `bundle_fieldissue` | Field Issue | 289 | 3733200855 |
 | `bundle_teahouse` | Tea House | 869 | 3733200884 |

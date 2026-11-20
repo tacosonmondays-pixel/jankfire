@@ -14,7 +14,7 @@
 --                             free while Config.LOOT_FREE. paid (Config.LOOT_ROBUX, off for now) goes through the
 --                             shop's prompt and receipt instead (ShopReceipts.server.luau -> Loot.grant)
 --   ("claim", offerId)     -> the same as buy (the shop's word for it while everything is free)
---   ("open", kind, n?)     -> n = 1 / 5 / 10 at once: { prize, item, strip, stop (the first), prizes, items, strips, stops,
+--   ("open", kind, n?)     -> n = 1 to 10 at once (the shop's x1/x5/x10, the inventory's how-many panel): { prize, item, strip, stop (the first), prizes, items, strips, stops,
 --                             n, stock }: uses stock first, or opens free (Config.LOOT_FREE). others nearby see it
 --                             (the LootShow event) unless you turned that off: ("setting", "showOpenings", false)
 --   ("seen", type, keys)   -> the loadout showed these NEW ones (or you picked one): their NEW dots go (18 Nov).
@@ -443,7 +443,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		-- ("open", kind, n): n = 1, 5 or 10 at once, rolled one after another in this one request (the same odds, and
 		-- never a pair twice: each prize is yours before the next roll). fewer left than n: as many as there are
 		if type(a) ~= "string" or not LootTable.CONTAINERS[a] then return { ok = false, why = "no such container" } end
-		local n = if b == 5 then 5 elseif b == 10 then 10 else 1
+		local n = if type(b) == "number" and b == math.floor(b) then math.clamp(b, 1, BUY_MAX) else 1 -- (any count to ten, 19 Nov)
 		local now = os.clock()
 		if now - s.lastOpen < (if n > 1 then 1.2 else 0.6) then return { ok = false, why = "slow down" } end
 		local have = math.floor(tonumber(d.stock[a]) or 0)

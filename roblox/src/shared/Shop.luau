@@ -1173,6 +1173,9 @@ end
 Shop.PRODUCTS = {
 	-- (containers)
 	crate = 3733200177, bag = 3733200704, spray = 3733200725,
+	-- (and in fives and tens, made 19 Nov 2026: every count has its Robux price beside its coin price)
+	["crate:5"] = 3733759267, ["crate:10"] = 3733759286, ["bag:5"] = 3733759307, ["bag:10"] = 3733759328,
+	["spray:5"] = 3733759347, ["spray:10"] = 3733759369,
 	-- (bundles)
 	bundle_nightshift = 3733200745, bundle_fieldissue = 3733200855, bundle_teahouse = 3733200884,
 	bundle_deepspace = 3733200908, bundle_machineshop = 3733201016, bundle_quarry = 3733201039,
@@ -1220,6 +1223,12 @@ for key, pid in Shop.PRODUCTS do
 		local o = Shop.byId[key]
 		if o then o.productId = pid end
 	end
+end
+-- a container's product for n at once: one ("crate"), or the five and ten packs ("crate:5"); nil for another count
+function Shop.containerProduct(cid: string, n: number?): number?
+	local k = math.floor(n or 1)
+	local pid = Shop.PRODUCTS[if k > 1 then cid .. ":" .. k else cid]
+	return if type(pid) == "number" and pid > 0 then pid else nil
 end
 -- the developer product an offer is bought with (nil: not for sale for Robux yet). missing = for a skin set, how
 -- many of its skins the buyer still lacks (fewer than all: the "complete the set" product for that count)

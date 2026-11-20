@@ -2031,7 +2031,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	Timing.start(type(opts) == "table" and opts.pressT or nil)
 	if type(opts) == "table" and opts.replyT then table.insert(Timing.list, ("reply=%.2f"):format(opts.replyT - Timing.t0)) end
 	Timing.mark("play")
-	local want = if type(opts) == "table" and (opts.n == 5 or opts.n == 10) then opts.n else 1
+	local want = if type(opts) == "table" and type(opts.n) == "number" then math.clamp(math.floor(opts.n), 1, 10) else 1
 	local count = if ask then want elseif type(res.prizes) == "table" and #res.prizes > 1 then #res.prizes else 1
 	local base, flat, lay = ground(kind, count)
 	if not base then Opening.release(); return "done" end

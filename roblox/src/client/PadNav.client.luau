@@ -109,6 +109,7 @@ local MENUS: { [string]: Spec } = {
 			if not S then return end
 			local U = S.UI or {}
 			if U.confirm and U.confirm.Visible then S.unconfirm()
+			elseif U.panel and U.panel.Visible and S.unpanel then S.unpanel() -- (the shop's PICK, GIFT and how-many panel: B cancels)
 			elseif U.odds and U.odds.Visible then S.shutOverlays()
 			elseif U.insp and U.insp.Visible then S.back()
 			else S.close() end

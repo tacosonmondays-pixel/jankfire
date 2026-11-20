@@ -827,7 +827,7 @@ end
 -- Robux is the first way to pay for this (19 Nov, the owner's rule: skins, sets, one container; coins as the other way)
 function Purse.robuxFirst(o: any, n: number?): boolean
 	if Shop.free() or not Shop.ROBUX or not Shop.robuxFor(o) then return false end
-	if o.type == "container" and ((n or 1) > 1 or S.restricted) then return false end
+	if o.type == "container" then return not S.restricted and Shop.containerProduct(o.id, n) ~= nil end -- (one, five or ten: each its product)
 	return Shop.productFor(o, if o.set then Till.missing(o) else nil) ~= nil
 end
 -- what an offer costs, in words: Robux where Robux buys it, else coins
@@ -1205,7 +1205,8 @@ function ShopUI.fillBundles()
 		if (a.id == rot.hero) ~= (b.id == rot.hero) then return a.id == rot.hero end
 		return a.robux > b.robux
 	end)
-	for i, o in list do bundleCard(UI.bundleGrid, o, i) end
+	local X = ShopUI.ext()
+	if X then X.rows(list, rot) else for i, o in list do bundleCard(UI.bundleGrid, o, i) end end -- (by rank, posed: 19 Nov)
 end
 
 -- ------------------------------------------------------------------------ CONTAINERS: the three, side by side
@@ -1265,7 +1266,11 @@ function ShopUI.fillContainers()
 		if bs == "soon" then buy.set("COMING SOON", false)
 		elseif bs == "empty" then buy.set("YOU HAVE IT ALL", false)
 		elseif S.restricted and not Shop.free() then if Purse.price(o.id) then buy.set("REDEEM", true) else buy.set("NOT AVAILABLE HERE", false) end
-		else buy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. Purse.cost(o, n), true) end
+		else
+			local coinsN, X = Purse.coins(o, n), ShopUI.ext()
+			if X and coinsN and Purse.robuxFirst(o, n) then X.pair(c, buy, o, n, coinsN) -- (both prices, side by side. 19 Nov)
+			else buy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. Purse.cost(o, n), true) end
+		end
 		buy.face.MouseButton1Click:Connect(function() ShopUI.ask(o.id) end)
 		c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
 	end
@@ -1869,7 +1874,7 @@ function ShopUI.fillInventory(force: boolean?)
 				cnt.Position = UDim2.new(0, 10, 1, -76); cnt.Size = UDim2.new(1, -20, 0, 18)
 				local ob = button(c, "OPEN", "main", UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 1, -48))
 				ob.face.TextSize = 14
-				ob.face.MouseButton1Click:Connect(function() ShopUI.openBox(o.id) end)
+				ob.face.MouseButton1Click:Connect(function() ShopUI.askCount(o.id) end) -- (how many first: 19 Nov)
 			end
 		end
 	end
@@ -2070,6 +2075,8 @@ function ShopUI.fillInspect()
 	local oldPick = UI.inspSide:FindFirstChild("Count")
 	if oldPick then oldPick:Destroy() end
 	UI.inspBuy.face.Position = UDim2.new(0, 0, 1, -48); UI.inspBuy.face.Size = UDim2.new(1, 0, 0, 48)
+	local X = ShopUI.ext()
+	if X then X.unpair(UI.inspBuy.face.Parent) end
 	if isBox then
 		UI.inspOdds.face.Position = UDim2.new(0, 0, 1, -100); UI.inspOdds.face.Size = UDim2.new(1 / 3, -4, 0, 44)
 		local pick = ShopUI.countPicker(UI.inspSide, o.id, 23)
@@ -2183,6 +2190,12 @@ function ShopUI.fillInspect()
 		UI.inspBuy.set(if own then "OWNED" elseif not onSale then "NOT ON SALE TODAY" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. Purse.cost(o), not own and onSale)
 	end
 	Money.giftButton(o) -- (GIFT beside BUY, 19 Nov)
+	-- (a container: its two prices side by side in BUY's place, at every count. 19 Nov)
+	if X and isBox and not Shop.free() and not S.restricted and Till.boxState(o.id) == nil then
+		local n = S.count[o.id] or 1
+		local coinsN = Purse.coins(o, n)
+		if coinsN and Purse.robuxFirst(o, n) then X.pair(UI.inspBuy.face.Parent, UI.inspBuy, o, n, coinsN) end
+	end
 end
 -- (GIFT beside BUY, for what can be gifted: Shop.giftable, VIP as "vipgift"; only with Robux on and gifts on)
 function Money.giftButton(o: any)
@@ -2347,8 +2360,9 @@ do
 		if not UI.cAlt.enabled then return end
 		local o = S.pending and Shop.offer(S.pending)
 		local n = S.pendingN or 1
+		local viaRobux = S.altRobux
 		ShopUI.unconfirm()
-		if o and not S.busy then ShopUI.coinTill(o, n) end
+		if o and not S.busy then if viaRobux then ShopUI.prompt(o, n) else ShopUI.coinTill(o, n) end end
 	end)
 end
 -- the REDEEM row for the container being confirmed: its prices, greyed where you're short. returns the height it adds
@@ -2462,6 +2476,8 @@ function Money.panel(title: string, sub: string, cell: Vector2, withFind: boolea
 	UI.pTitle.Text = title
 	UI.pSub.Text = sub
 	UI.pFind.Visible = withFind
+	UI.pList.Visible = true
+	if UI.pCount then UI.pCount.Visible = false end -- (the how-many panel's: ShopBundles)
 	local listY = if withFind then 140 else 90
 	UI.pList.Position = UDim2.fromOffset(22, listY)
 	UI.pList.Size = UDim2.new(1, -44, 1, -(listY + 80))
@@ -2573,6 +2589,9 @@ function Money.giftRow(id: number, display: string, name: string, order: number)
 	row.MouseButton1Click:Connect(pick)
 	return row, pick
 end
+function ShopUI.askCount(cid: string) local X = ShopUI.ext(); if X then X.askCount(cid) else ShopUI.openBox(cid) end end
+function ShopUI.unpanel() Money.unpanel() end -- (PadNav's B)
+function ShopUI.countTest(v: string?) local X = ShopUI.ext(); if X then X.countTest(v) end end
 function Money.showGift(id: string)
 	local o = if string.match(id, "^coins:[%w_]+$") then Shop.coinPack(id) else Shop.offer(id)
 	if not o or not Shop.giftable(o) or not Shop.giftsOn() then return end
@@ -2632,7 +2651,7 @@ end)
 ShopUI.showPick = Money.showPick
 ShopUI.showGift = Money.showGift
 -- step one of every buy: the confirm panel (with real Robux on, Roblox's own purchase prompt is the confirm instead)
-function ShopUI.ask(id: string)
+function ShopUI.ask(id: string, pay: string?)
 	local o = Shop.offer(id)
 	if not o or S.busy then return end
 	if o.type == "pass" then ShopUI.getVip(); return end -- (VIP: its own claim, not the till)
@@ -2688,7 +2707,8 @@ function ShopUI.ask(id: string)
 	-- BUY; everything else coins only)
 	local rFirst = Purse.robuxFirst(o, n)
 	local coinsN = Purse.coins(o, n)
-	S.payCoins = coinsN ~= nil and not rFirst
+	S.payCoins = coinsN ~= nil and (not rFirst or pay == "coins")
+	S.altRobux = rFirst and S.payCoins -- (coins first, picked on the card: Robux is the other way)
 	if o.type == "container" and S.restricted and not free then UI.cYes.set("NOT AVAILABLE HERE", false)
 	elseif S.payCoins then UI.cYes.set("BUY  " .. Purse.words("brass", coinsN :: number), canGo)
 	else UI.cYes.set(if free then (if n > 1 then "CLAIM  x" .. n else "CLAIM") else "BUY  " .. ROBUX .. " " .. commas(price), canGo) end
@@ -2696,7 +2716,8 @@ function ShopUI.ask(id: string)
 	if UI.cAlt.face.Visible then
 		local above = if UI.cRedeem.tix.face.Visible or UI.cRedeem.brass.face.Visible then 52 else 0
 		UI.cAlt.face.Position = UDim2.new(0, 22, 1, -(114 + above)); UI.cAlt.face.Size = UDim2.new(1, -44, 0, 44)
-		UI.cAlt.set("OR  " .. Purse.words("brass", coinsN :: number), canGo and Purse.of("brass") >= (coinsN :: number))
+		if S.altRobux then UI.cAlt.set("OR  " .. ROBUX .. " " .. commas(price), canGo)
+		else UI.cAlt.set("OR  " .. Purse.words("brass", coinsN :: number), canGo and Purse.of("brass") >= (coinsN :: number)) end
 		h += 52
 	end
 	UI.confirm.Size = UDim2.fromOffset(math.min(width, (S.W or 1280) - 24), math.min(h, (S.H or 720) - 16))
@@ -2713,7 +2734,7 @@ function ShopUI.commit()
 	ShopUI.unconfirm()
 	if not o or S.busy then return end
 	if Purse.coins(o, n) and S.payCoins then ShopUI.coinTill(o, n); return end -- (coins: the server takes them)
-	if not Shop.free() and Shop.ROBUX then ShopUI.prompt(o); return end -- (a container, after its odds were shown)
+	if not Shop.free() and Shop.ROBUX then ShopUI.prompt(o, n); return end -- (a container, after its odds were shown)
 	S.busy = true
 	local res = if o.type == "container" and n > 1 then Till.ask("buy", id, n) else Till.ask("buy", id)
 	S.busy = false
@@ -2861,11 +2882,12 @@ end
 
 -- with real Robux on: the server checks the offer and shows Roblox's own purchase prompt; the receipt comes back
 -- through ShopReceipts.server.luau, which has the loot server grant it
-function ShopUI.prompt(o: any)
+function ShopUI.prompt(o: any, n: number?)
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
 	local r = f and f:FindFirstChild("ShopBuy")
-	if not Shop.ROBUX or not Shop.productFor(o, if o.set then Till.missing(o) else nil) or not (r and r:IsA("RemoteEvent")) then Hud.callout("NOT FOR SALE YET", 1.2); return end
-	(r :: RemoteEvent):FireServer(o.id)
+	local pid = if o.type == "container" then Shop.containerProduct(o.id, n) else Shop.productFor(o, if o.set then Till.missing(o) else nil)
+	if not Shop.ROBUX or not pid or not (r and r:IsA("RemoteEvent")) then Hud.callout("NOT FOR SALE YET", 1.2); return end
+	(r :: RemoteEvent):FireServer(if o.type == "container" and (n or 1) > 1 then o.id .. ":" .. n else o.id) -- (fives and tens: "crate:5")
 end
 
 -- with real Robux on, the prices shown are the developer products' own (Roblox can price a product differently by
@@ -3060,10 +3082,10 @@ function ShopUI.layout()
 	UI.oddsOk.face.Size = UDim2.new(1, -44, 0, 44); UI.oddsOk.face.Position = UDim2.new(0, 22, 1, -56)
 	UI.oddsFoot.Position = UDim2.new(0, 22, 1, -90)
 	-- (the WEAPONS and COINS cards are sized from S.bw: a new width redraws the page that's up)
-	if wider and S.open and (S.tab == "weapons" or S.tab == "coins") then
+	if wider and S.open and (S.tab == "weapons" or S.tab == "coins" or S.tab == "bundles") then
 		task.defer(function()
 			if not S.open then return end
-			if S.tab == "weapons" then ShopUI.fillWeapons() elseif S.tab == "coins" then ShopUI.fillCoins() end
+			if S.tab == "weapons" then ShopUI.fillWeapons() elseif S.tab == "coins" then ShopUI.fillCoins() elseif S.tab == "bundles" then ShopUI.fillBundles() end
 		end)
 	end
 end
@@ -3236,6 +3258,23 @@ gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() if S.open then S
 -- a match grabbing you, a death: the shop shuts
 me:GetAttributeChangedSignal("Zone"):Connect(function() if me:GetAttribute("Zone") == "match" then ShopUI.close() end end)
 
+-- (19 Nov: this file is at Roblox's 200,000-character limit for a Source set from Studio, so newer parts live in
+-- ShopBundles.luau, handed this file's helpers once)
+local ext: any = nil
+function ShopUI.ext(): any
+	if ext == nil then
+		local m = script.Parent:FindFirstChild("ShopBundles")
+		local ok, f = pcall(require, m)
+		ext = false
+		if ok and type(f) == "function" then
+			local ok2, X = pcall(f, { UI = UI, S = S, V = V, T = T, Shop = Shop, Till = Till, Purse = Purse, Money = Money, ShopUI = ShopUI,
+				card = card, rarityColor = rarityColor, txt = txt, button = button, new = new, itemChip = itemChip, play = play, commas = commas,
+				me = me, Roster = Roster, WeaponModels = WeaponModels, GunHats = GunHats, ROBUX = ROBUX })
+			if ok2 and type(X) == "table" then ext = X else warn("[jankfire] shop: ShopBundles: " .. tostring(X)) end
+		end
+	end
+	return ext or nil
+end
 ShopUI.S = S
 ShopUI.UI = UI
 ShopUI.Till = Till

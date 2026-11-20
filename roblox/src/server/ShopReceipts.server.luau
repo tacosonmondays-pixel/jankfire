@@ -117,6 +117,17 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown, giftTo: unkno
 		prompt(p, offerId, dpid)
 		return
 	end
+	-- containers in fives and tens ("crate:5"): their own products, with the same checks as one (19 Nov)
+	local pc, pn = string.match(offerId, "^([%w_]+):(%d+)$")
+	local pco = if pc then Shop.offer(pc) else nil
+	if pco and pco.type == "container" then
+		if not Shop.onSale(pco.id) or (Shop.coinsOnly() and not Shop.robuxFor(pco)) then return end
+		local L = loot()
+		if not L or type(L.restricted) ~= "function" or L.restricted(p) then return end
+		local ppid = Shop.containerProduct(pco.id, tonumber(pn))
+		if ppid then prompt(p, offerId, ppid) end
+		return
+	end
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
 	-- (the coins-only shop: singles and containers are coins, never Robux; their products stay for late receipts)
@@ -195,6 +206,20 @@ local function grant(p: Player, info: any): boolean
 			return okE and resE == true
 		end
 		return true
+	end
+	-- containers in fives and tens ("crate:5"): that many into stock under the one purchase id (Loot.grant n, 19 Nov)
+	local gc, gn = string.match(key, "^([%w_]+):(%d+)$")
+	local gco = if gc then Shop.byId[gc] else nil
+	if gco and gco.type == "container" then
+		local L = loot()
+		if not L or type(L.grant) ~= "function" then return false end
+		if type(L.restricted) == "function" and L.restricted(p) then
+			warn("[jankfire] a container receipt for a restricted player, not granted: " .. pid)
+			return false
+		end
+		local okC, resC = pcall(L.grant, p, gc, pid, tonumber(gn))
+		if not okC then warn("[jankfire] the grant failed: " .. tostring(resC)) end
+		return okC and resC == true
 	end
 	local offerId = key
 	if not Shop.byId[key] then
