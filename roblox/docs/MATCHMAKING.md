@@ -756,6 +756,31 @@ when a cheater was in your match.
 
 ![the notice in the lobby](matchmaking/15_restore_notice.jpg)
 
+### ZOMBIES from the Play screen (19 Nov 2026, place version 1150)
+
+The owner brought back the web game's co-op wave mode. The mode itself (the map, the waves, the bots, its HUD) is
+weapons-port's `server/Zombies.luau` (docs/ZOMBIES.md). This side is the card, the queue and the trip in and out
+(commit 74bc5ea).
+
+- **The card:** ZOMBIES on the MODES tab, under PARTY ("1-4 PLAYERS", "co-op waves · bots fill the empty slots"). Not
+  shown with PARTY RANKED on: it is never ranked. It says SOON until the server opens it: Party sets the
+  ReplicatedStorage attribute `ZombiesOn` once `Zombies` has `start`, `busy` and `maps` and a map to play.
+- **The mode:** `PlayConfig.ZOMBIES`, co-op, one squad of up to 4, unrated, no pad. It is in `byId` but not `EXTRA`,
+  so QUICKPLAY and the PARTY picker never offer it, and it never gets the duels' map vote.
+- **The queue** (`Queue.formCoop`): solos and whole parties packed oldest first into one squad of up to 4. It goes when
+  full, or once its oldest has searched `PlayConfig.COOP_WAIT` (10 s); the mode's bots fill the rest. A party of
+  exactly 4 starts at once. Never across servers (`CrossServer.crossable`): one game per server, on its own map.
+- **The trip:** the mode's start (set in Party) checks `Zombies.busy()`, draws a map from `Zombies.maps()` and calls
+  `Zombies.start(players, map, { queue })`; busy or no map = the squad waits and tries again each second. The party's
+  `match` is the game id ("zm:1"). When the game is over and everyone is home, `Zombies.onEnd(id, players)` (Party's
+  `coopEnded`) puts the parties back in their lobby rooms. Players in a game carry `ZmOn` and can't search.
+- **Tested** (solo Play, the test map ZTest): a ranked ZOMBIES pick was refused ("ZOMBIES has no ranked queue"). A solo
+  search formed after its 10 s wait and the game started: `ZmOn` on, Zone "zombies", the party's match "zm:1", the
+  squad on the map with a revolver. Stopping the game (`JankZombies "stop"`) cleared `ZmOn` and the party's match and
+  put the player back in the party's lobby room.
+
+  ![a solo squad from the queue, in the test map](matchmaking/62_zombies_from_the_queue.jpg)
+
 ## 5. How it is built
 
 | file | what |
