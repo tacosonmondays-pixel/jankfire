@@ -1,0 +1,30 @@
+{
+ "iai_draw_a": {
+  "note": "Tidecrest's two-handed iai draw (owner: a hand on the sheathe and a hand on the blade, the arms go outward as the sword is pulled): from both hands at the left hip (right on the hilt, left on the scabbard just below the mouth) to the arms spread wide across the front at chest height; root still, facing -Z in Roblox. Reversed it is the sheathe.",
+  "context": { "clip": "05_dune_breathing_idle", "at": 1.0, "hold": true,
+    "edit": [ { "joint": "Chest", "yaw": 12 }, { "joint": "Head", "pitch": 10 },
+              { "reach": "Right", "to": [0.12, 0.98, 0.28], "pole": [-0.5, 0.9, -0.2] },
+              { "reach": "Left", "to": [0.17, 0.92, 0.15], "pole": [0.55, 0.9, -0.3] } ] },
+  "targets": [
+   { "clip": "05_dune_breathing_idle", "at": 1.0, "poses": 1, "move": [0, 0],
+     "edit": [ { "joint": "Chest", "yaw": -4 }, { "joint": "Head", "pitch": 3 },
+               { "reach": "Right", "to": [-0.74, 1.14, 0.30], "pole": [-0.3, 0.7, -0.4] },
+               { "reach": "Left", "to": [0.62, 1.04, -0.04], "pole": [0.4, 0.6, -0.5] } ],
+     "tokens": [[7], [8], [9], [10]] }
+  ]
+ },
+ "iai_draw_b": {
+  "note": "the same draw spread a little lower and more to the front (the blade held out at waist-to-chest height)",
+  "context": { "clip": "05_dune_breathing_idle", "at": 1.0, "hold": true,
+    "edit": [ { "joint": "Chest", "yaw": 12 }, { "joint": "Head", "pitch": 10 },
+              { "reach": "Right", "to": [0.12, 0.98, 0.28], "pole": [-0.5, 0.9, -0.2] },
+              { "reach": "Left", "to": [0.17, 0.92, 0.15], "pole": [0.55, 0.9, -0.3] } ] },
+  "targets": [
+   { "clip": "05_dune_breathing_idle", "at": 1.0, "poses": 1, "move": [0, 0],
+     "edit": [ { "joint": "Chest", "yaw": -2 }, { "joint": "Head", "pitch": 6 },
+               { "reach": "Right", "to": [-0.70, 1.02, 0.42], "pole": [-0.3, 0.6, -0.4] },
+               { "reach": "Left", "to": [0.64, 0.96, 0.02], "pole": [0.4, 0.5, -0.5] } ],
+     "tokens": [[7], [8], [9], [10]] }
+  ]
+ }
+}

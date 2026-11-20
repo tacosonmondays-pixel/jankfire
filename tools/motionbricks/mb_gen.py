@@ -14,7 +14,8 @@ run (from a MotionBricks checkout, in its uv environment; see tools/motionbricks
     poses before it. a target is 1-4 poses from a clip (or "same": the last context pose), placed by "move"
     (metres: forward, left) and "turn" (degrees, left) from where the character stands in the clip's facing frame (not
     the hips': a slash twists them 100 degrees), its poses moving on at "carry" m/s (a standstill target far away
-    comes out as a flip), changed by "edit"s:
+    comes out as a flip), changed by "edit"s (a context with "hold": true is its clip's pose at "at", edited, held
+    still for all four context poses):
       { "joint": "Head", "yaw": 30, "pitch": 0, "roll": 0 }   turn a joint (and all below it) about the body's up /
                                                               left / forward axes, degrees (yaw + = to its left,
                                                               pitch + = down/forward, roll + = to its right)
@@ -277,9 +278,18 @@ def main():
             cl = load_clip(clips, rc['context']['clip'])
             t_end = rc['context']['at']
             ctx = []
-            for k in range(4):
-                p = clip_pose(rt_of(rc['context']['clip'], cl), cl, t_end - (3 - k) / FPS)
-                ctx.append(p)
+            if rc['context'].get('hold'):
+                # (20 Nov: a start pose held still, our clip's pose at 'at' with the context's own edits: e.g. both hands
+                # on the hilt and scabbard before an iai draw)
+                p = clip_pose(rt_of(rc['context']['clip'], cl), cl, t_end)
+                p.frame_yaw = 0.0
+                for e in rc['context'].get('edit', []):
+                    p.edit(e)
+                ctx = [p.copy() for _ in range(4)]
+            else:
+                for k in range(4):
+                    p = clip_pose(rt_of(rc['context']['clip'], cl), cl, t_end - (3 - k) / FPS)
+                    ctx.append(p)
             # (the context's last pose's ground point at the origin; its clip faces +Z as Mixamo's in-place clips do. the
             # heading the recipe works in is the CLIP's facing, not the hips': a slash twists the hips 100 degrees and more)
             g0 = ctx[-1].hips.copy()
