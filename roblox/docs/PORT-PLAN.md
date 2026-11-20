@@ -2433,6 +2433,28 @@ The owner (20 Nov): "redo training hub entirely basing it off the overwatch trai
 - `B.text`'s cf look is the way the words face.
 - Never run screen captures in parallel.
 
+## 62. The shooting range: nobody walks down-range, stepping off cancels a run, one runner per lane, 20 November 2026 (place version 1213)
+
+The owner, from the live game with a friend: "Stepping away from the shooting range pad thingy undoes the dumming thingy, my friend went into wher ethe e dummies flip up , also if you step away it should cancel".
+
+**The changes:**
+- **A wall for bodies only** across the lane at the deck's edge, from the floor to the lid (`TrainingGround.Collision.RangeWall`, TrainingV2's `range()`).
+  - It is CanQuery off and in `JFRayBlind`, Main.server's group: it collides with the players' groups (JFPlayers, VipGuest, JFShredded) and not with Default, where every ray, rope and bullet is cast.
+  - So walking, jumping, launches, the grapple's pull and dashes stop at it, while bullets, the sniper's rays, the grapple's aim and physical projectiles in Default (the cart) pass.
+  - A low rail on the deck's edge shows the line.
+- **The way back:** anyone already down-range (the basement's walk-out opens onto the far terrace) is put back on the deck by `Doors.RangeBack` (Land `RangeDeck`) as they come up the lane.
+- **Step off = cancel** (RangeTest): off your plate for 0.75 s ends your run. Your Carl folds away, the score clears and the board's row says free.
+- **One runner per lane:** a second player on a taken lane's plate gets "LANE IN USE · <name>", and takes the lane when it frees if they are still on the plate.
+
+**Tests:** Play, with Studio's ghost runner as player A.
+- The ghost held Easy, and my body on Easy's plate did not start a run; the ghost left, and I took the lane.
+- A ray from my eye to my Carl went clear through the wall, and the hit counted.
+- I stepped off: the run cancelled, the row read free, and no Carl was left.
+- Walking and jumping at the wall: the furthest point was z -8147.7, with the face at -8148.4. A pad launch (70 up, 180 down-range) stopped at -8146.
+- From down-range, walking up the lane put me back on the deck.
+- T.check: plate-to-Carl lines 0 of 27 blocked, sealed 0 leaks, head room 0 within 0.6.
+- **Not run:** two real clients. Studio's MCP can only start a solo Play, so the ghost stood in for the second player.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

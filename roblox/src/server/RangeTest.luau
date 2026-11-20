@@ -47,8 +47,13 @@ local LANES = { "Easy", "Medium", "Hard" }
 -- p = the runner (nil for Studio's ghost), uid = his UserId (-1 for the ghost), who = his name on the board
 type Run = {
 	p: Player?, uid: number, who: string, level: string, score: number, left: number,
-	cur: Fighter?, curAt: number, curUntil: number, nextAt: number, lastSpot: BasePart?,
+	cur: Fighter?, curAt: number, curUntil: number, nextAt: number, lastSpot: BasePart?, offAt: number?,
 }
+-- (20 Nov 2026, the owner, from the live game: "if you step away it should cancel") off your plate this long and your
+-- run is over: your Carl folds away, the score clears, the lane is free. a hop on the plate stays well inside it
+local STEP_GRACE = 0.75
+-- (and one runner per lane: a second player on a taken lane's plate is told so, and takes it when it frees, still on it)
+local toldTaken: { [Player]: string } = {}
 local runs: { Run } = {}
 local best: { [string]: number } = {}       -- the best run per level since the server started
 local mustStepOff: { [Player]: boolean } = {} -- after a run you step off the plates before the next one
@@ -277,6 +282,13 @@ local function tick(dt: number)
 		if p then
 			local f = Fight.byPlayer[p]
 			if not p.Parent or not f or not f.alive or p:GetAttribute("Zone") ~= "training" then finish(r, true); continue end
+			local root = Fight.root(f)
+			if root and onPlate(root.Position) == r.level then
+				r.offAt = nil
+			else
+				r.offAt = r.offAt or now
+				if now - (r.offAt :: number) > STEP_GRACE then finish(r, true); continue end
+			end
 		end
 		if r.cur then
 			if holdUp then r.curUntil = now + LEVELS[r.level].up end
@@ -298,8 +310,19 @@ local function tick(dt: number)
 		local plate = onPlate(root.Position)
 		if not plate then
 			mustStepOff[p] = nil
+			toldTaken[p] = nil
 		elseif not mustStepOff[p] and LEVELS[plate] then
-			start(p, p.UserId, p.DisplayName, plate)
+			local owner: Run? = nil
+			for _, r in runs do if r.level == plate then owner = r end end
+			if owner then
+				if toldTaken[p] ~= plate then
+					toldTaken[p] = plate
+					CalloutR:FireClient(p, ("LANE IN USE · %s"):format(short(owner.who)), 1.4)
+				end
+			else
+				toldTaken[p] = nil
+				start(p, p.UserId, p.DisplayName, plate)
+			end
 		end
 	end
 end
@@ -381,7 +404,7 @@ function RangeTest.init(fight: any)
 	show(IDLE)
 	Fight.onKill(onKill)
 	RunService.Heartbeat:Connect(tick)
-	Players.PlayerRemoving:Connect(function(p: Player) mustStepOff[p] = nil end)
+	Players.PlayerRemoving:Connect(function(p: Player) mustStepOff[p] = nil; toldTaken[p] = nil end)
 	hook()
 end
 

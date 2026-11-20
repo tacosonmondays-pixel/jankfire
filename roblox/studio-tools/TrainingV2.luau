@@ -999,6 +999,7 @@ end
 -- booths under a coffered canopy, then the lane open to the sky between thick portal frames, stepping up in two
 -- kerbed terraces; the Carls stand on three low plinths; the lane ends on a backstop bank and a rack of steel plates
 local RX0, RX1, RZ0, RZ1 = 30, 78, -8102, -8300
+T.RANGE_WALL_GROUP = "JFRayBlind" -- (the range's bodies-only wall: Main.server's group, colliding with the players' groups and not with Default, where rays, ropes and bullets are cast)
 local DECK, DECK_Z = 242, -8148
 local T1Z, T2Z = -8205, -8250
 local RTOP, RTOP_W = 270, 280 -- the walls' tops (the west one higher: the yard and the course stand behind it)
@@ -1044,6 +1045,23 @@ local function range(B)
 	-- (16 Nov, sealing: the lane is open to the sky, so an unseen lid at the walls' tops keeps you inside, and a thick
 	-- one over the canopy)
 	B.solid("RangeLid", CF((RX0 + RX1) / 2, RTOP + 6, (DECK_Z + RZ1) / 2), V3(RX1 - RX0 + 8, 4, DECK_Z - RZ1 + 8)) -- (4 over the walls' tops: no room to stand on them; clear of the gold one on the beam)
+	-- (20 Nov 2026, the owner, from the live game: "my friend went into wher ethe e dummies flip up") nobody walks, jumps,
+	-- grapples or dashes down-range: a wall for BODIES only across the lane at the deck's edge, floor to the lid. It is
+	-- CanQuery off (every ray passes: bullets, the sniper, the grapple's aim, the projectiles' sweeps) and in JFRayBlind,
+	-- the group that collides with the players' groups only (Main.server; the arenas' roof columns use it): physical
+	-- projectiles in Default, like the cart, pass. A low rail on the deck's edge shows the line. Anyone down-range (the basement's
+	-- walk-out opens onto the far terrace) is put back on the deck by RangeBack as they come up the lane
+	pcall(function() game:GetService("PhysicsService"):RegisterCollisionGroup(T.RANGE_WALL_GROUP) end)
+	local bw = B.blk("Collision", "RangeWall", RX0, RX1, Y0, RTOP + 10, DECK_Z - 0.4, DECK_Z - 4.4, P.wall, { tr = 1, nq = true, noShadow = true })
+	bw.CastShadow = false
+	pcall(function() bw.CollisionGroup = T.RANGE_WALL_GROUP end)
+	B.part("Scenery", "RangeRail", CF((RX0 + RX1) / 2, DECK + 1.1, DECK_Z + 0.4) * CFrame.Angles(0, 0, 0), V3(RX1 - RX0 - 0.4, 0.5, 0.5), P.trim, { cyl = true, ghost = true })
+	for x = RX0 + 0.8, RX1 - 0.8, 6.8 do
+		B.blk("Scenery", "RangeRailPost", x - 0.25, x + 0.25, DECK, DECK + 1.1, DECK_Z + 0.15, DECK_Z + 0.65, P.pier2, { ghost = true })
+	end
+	B.trigger("RangeBack", RX0, RX1, Y0, Y0 + 14, DECK_Z - 4.6, DECK_Z - 12, { Land = "RangeDeck" })
+	local rd = Instance.new("Folder"); rd.Name = "RangeDeck"; rd:SetAttribute("Built", "TrainingV2"); rd.Parent = B.doors
+	for _, x in { 44, 54, 64 } do B.marker(rd, "Spot", x, DECK, DECK_Z + 12, V3(x, DECK, DECK_Z - 20)) end
 	-- the rows: a low plinth along each row of Carls, so the rows are there between runs too
 	for _, r in ROWS do
 		B.blk("Shell", "RowPlinth", RX0 + 3.5, RX1 - 3.5, r[2], r[2] + 1.2, r[1] + 1.8, r[1] - 1.8, P.pier2)
@@ -1775,7 +1793,7 @@ end
 
 -- what a live build owns in the hub (and v1 had): parked whole, put back whole
 local OWNED = { "TrainingGround", "TrainSpawns", "DummySpots", "TrainingZone", "Barrier" }
-local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit", "EggPortal", "ToParkour" } -- (ToParkour: v4's TOP teleporter)
+local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit", "EggPortal", "ToParkour", "RangeBack", "RangeDeck" } -- (ToParkour: v4's TOP teleporter; RangeBack/RangeDeck: down-range back onto the deck)
 local function clearLive()
 	for _, n in OWNED do local c = hub:FindFirstChild(n); if c then c:Destroy() end end
 	for _, n in OWNED_DOORS do local c = hub.Doors:FindFirstChild(n); if c then c:Destroy() end end
