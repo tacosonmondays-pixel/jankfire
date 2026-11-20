@@ -482,6 +482,12 @@ if bpy:
         m = C['LowerTorso'] + Vector((hc[0][3], hc[1][3], hc[2][3]))
         d = -Vector((hc[0][2], hc[1][2], hc[2][2]))
         sb = arm.edit_bones.new('Sheath'); sb.head = R2B(m); sb.tail = R2B(m + d * 0.6); sb.parent = bones['LowerTorso']
+        # THE STRETCH (the Tidecrest gag: the blade grows to ~10x): a bone at the GuardFace pointing down the blade; the
+        # blade rides on it, so scaling it along its own length (pose scale Y) stretches the blade alone, its width and
+        # thickness unchanged; BladeTip rides on it too
+        gf = g + Vector((0, 0, Z_FACE))
+        bs = arm.edit_bones.new('BladeStretch'); bs.head = R2B(gf); bs.tail = R2B(gf + Vector((0, 0, -0.6))); bs.parent = kb
+        bs.roll = 0.0
         bpy.ops.object.mode_set(mode='OBJECT')
         for name, sz in SIZE.items():
             bm = bmesh.new()
@@ -612,6 +618,39 @@ if bpy:
                                  for n_, mo in marks.items()}}
         return res
 
+    def stretch_about_face(o, f):
+        """scale an object of the katana along the blade (Blender -Y in the katana's own frame) about the GuardFace"""
+        gf = R2B((0, 0, Z_FACE))
+        M = Matrix.Translation(gf) @ Matrix.Diagonal((1, f, 1, 1)) @ Matrix.Translation(-gf)
+        o.matrix_world = M @ o.matrix_world
+
+    def superlong(style, sub, out, marks, f=10.0):
+        """the ready-made super-long katana (blade x f, handle as is), and the gag renders"""
+        clear(); k, s = build_pair()
+        bpy.data.objects.remove(s, do_unlink=True)
+        for o in list(bpy.data.objects):
+            if o.name.startswith('saya_') or o.name in MARKS_S: bpy.data.objects.remove(o, do_unlink=True)
+        bpy.context.view_layer.update()
+        stretch_about_face(bpy.data.objects['kat_blade'], f)
+        tip = bpy.data.objects['BladeTip']
+        tip.location = R2B((0, TIP[1], Z_FACE + (TIP[2] - Z_FACE) * f))
+        export(os.path.join(sub, 'katana_superlong_x10.glb'), [k]); export(os.path.join(sub, 'katana_superlong_x10.fbx'), [k])
+        # the draw, mid-stretch: the guard 5 studs out of the mouth, the blade already longer than the sheath, its tip
+        # still inside (the sheath hides the rest: the gag)
+        clear(); k, s = build_pair()
+        D = 5.0
+        fs = (D + SAYA_L - 0.6) / BLADE_L
+        place_r(s, T(0, 0, Z_FACE)); place_r(k, T(0, 0, D))
+        bpy.context.view_layer.update()
+        blade = bpy.data.objects['kat_blade']
+        gf = k.matrix_world @ R2B((0, 0, Z_FACE))
+        M = Matrix.Translation(gf) @ Matrix.Diagonal((1, fs, 1, 1)) @ Matrix.Translation(-gf)
+        blade.matrix_world = M @ blade.matrix_world
+        stage()
+        mk = {n_: bpy.data.objects[n_] for n_ in ('Grip', 'GuardFace', 'SheathMouth')}
+        marks[style]['middraw'] = render_views('%s_middraw' % style, [VIEWS_PAIR[0], VIEWS_PAIR[3]], mk, out)
+        return fs
+
     def build_style(style, out, marks, info):
         STYLE[0] = style
         sub = os.path.join(out, style)
@@ -639,11 +678,18 @@ if bpy:
         place_r(k, T(*(C['RightHand'] + V(GRIP_IN_HAND))))
         place_r(s, T(*C['LowerTorso']) @ hip_c0())
         bind(k, ao, 'Katana'); bind(s, ao, 'Sheath')
+        bind(bpy.data.objects['kat_blade'], ao, 'BladeStretch'); bind(bpy.data.objects['BladeTip'], ao, 'BladeStretch')
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(sub, 'r15_katana_rig.blend'))
         export(os.path.join(sub, 'r15_katana_rig.fbx'), [ao])
         stage()
         mk = {n_: bpy.data.objects[n_] for n_ in list(MARKS_K) + list(MARKS_S)}
         marks[style]['rig'] = render_views('%s_rig' % style, VIEWS_RIG, mk, out)
+        # the rig holding the blade stretched x10 (the BladeStretch bone scaled along its length), side on
+        ao.pose.bones['BladeStretch'].scale = (1.0, 10.0, 1.0)
+        bpy.context.view_layer.update()
+        marks[style]['rig10'] = render_views('%s_rig10' % style, [VIEWS_RIG[1]], mk, out)
+        ao.pose.bones['BladeStretch'].scale = (1.0, 1.0, 1.0)
+        info[style]['middraw_scale'] = superlong(style, sub, out, marks)
         # 4. the Studio upload file
         info[style]['roblox_pieces'] = roblox_glb(os.path.join(sub, 'roblox', 'katana_sheath_roblox.glb'))
         return C
@@ -735,6 +781,19 @@ def sheets(out):
                          vn != 'threequarter'), (c * TW, 80 + r * TH))
     legend(d, 80 + TH * len(styles) + 22)
     W.save(os.path.join(out, 'rig_render_sheet.png'))
+    # the stretch gag: the rig holding the blade at x10, and the draw mid-stretch (longer than the sheath already)
+    if all('rig10' in marks[st] for st in styles):
+        W = Image.new('RGB', (TW * 3, 80 + TH * len(styles) + 20), (38, 40, 45))
+        d = ImageDraw.Draw(W)
+        d.text((24, 22), 'THE STRETCH: BladeStretch bone scaled x10 on the rig;  the draw mid-stretch (guard 5 studs out, tip still inside)',
+               font=F, fill=(245, 245, 245))
+        for r, st in enumerate(styles):
+            for c, (img, lab, m) in enumerate(((('%s_rig10_side.png' % st), 'RIG, BLADE x10 - LEFT SIDE', marks[st]['rig10']['side']),
+                                               (('%s_middraw_side.png' % st), 'MID-DRAW - SIDE', marks[st]['middraw']['side']),
+                                               (('%s_middraw_threequarter.png' % st), 'MID-DRAW - THREE-QUARTER', marks[st]['middraw']['threequarter']))):
+                W.paste(tile(os.path.join(rd, img), '%s  %s' % (st.upper(), lab), m, False), (c * TW, 80 + r * TH))
+        W.save(os.path.join(out, 'katana_stretch_sheet.png'))
+        W.resize((W.width // 2, W.height // 2), Image.LANCZOS).save(os.path.join(out, 'katana_stretch_sheet_small.jpg'), quality=88)
     print('SHEETS', out)
 
 
