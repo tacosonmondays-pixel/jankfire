@@ -2345,6 +2345,47 @@ The main session's five notes on the gym and locker room of section 58, then two
 - Live `R.check`: 0 problems. Flicker: nothing new. hub-minigames checked the rings read-only before the save: nothing inside the ropes, every corner clear, the beams 11.8 over the mats (the boxing camera is about 8 up).
 - Sheets: `roblox/docs/hub/hub_gym_notes_staging.jpg`, `roblox/docs/hub/hub_gym_notes_live_1135.jpg`.
 
+## 60. JANKFIELD HIGH, the zombies school, 20 November 2026 (place version 1169)
+
+The owner: "A multi level multi section map, lets bring back zombies!! We can used colored dummies for now!! It'll be a
+big highschool multiple floors courtyard basement classrooms bathrooms etc!! Bring everything we got from jank fire!!"
+The mode is weapons-port's (roblox/docs/ZOMBIES.md, the map contract); the maps session built the school to it.
+
+**The map.** workspace.Map.JankfieldHigh at z -66000. It carries ZombiesMap = true and Enabled = false, so it's out of the PvP pool. Its look is "school", a night.
+
+It starts from the web map shared/zmschool.js (the owner's own design) and grows it into four levels round an open-air courtyard, 280 x 184 studs:
+- **Basement:** the boiler room with the power, a maintenance-tunnel loop, storage, the workshop, a staff restroom.
+- **Ground floor:**
+  - the lobby (the start), with the nurse's office;
+  - the cafeteria with its kitchen; the science lab; three classrooms;
+  - the locker hall with the main stairs;
+  - the double-height gym, with real bleachers up to its balcony; the gym's locker rooms; the weight room;
+  - restrooms; the courtyard.
+- **Upper floor:** the long hall in a ring round the courtyard, the library, the art room (the Cheat Machine), three classrooms, the principal's office (the Warranty Voider), the teachers' lounge, the computer lab, the music room, restrooms.
+- **Roof:** HVAC, a greenhouse, the water tower.
+- **Doors:** 30 shutters from 750 to 2000. The lobby's doors come first, the courtyard (1250) and the power (about 4000 in) in the middle, upstairs after, the roof (1500) and the principal's office (2000) last.
+- **For the mode:** 62 zombie windows (bays, fire escapes, roof cages, drain pits, two courtyard sheds), 20 wall buys, 5 colas, 5 crate spots.
+- **Four ways between floors:** the main stairs, the bleachers, and the west and east stairwells (basement to roof).
+- **Every stair is a 1-in-2 ramp under its drawn steps,** so the mode's nav links the floors (it takes at most 1.6 of rise per 3 of run).
+
+**How it's built.** tools/roblox/school_layout.py is the one source:
+- rooms per level on a 1-stud grid; the walls are worked out from them; doors, doorways and windows are cut by position;
+- the ramps, the furniture as hit boxes, and the ZM markers;
+- offline checks: problems, every room reachable, ramp slopes.
+
+The rest of the pipeline:
+- school_plan.py draws roblox/docs/maps/school_plan.jpg.
+- school_textures.py draws 18 seamless pictures: tile, lino, terrazzo, restroom tile, hall and class walls, block, brick, gym maple, oak, carpet, ceiling tiles, concrete, slate, pavers, rubber, lockers. All are uploaded as Images.
+- school_props.py models every piece of furniture.
+- school_models.py builds the kit:
+  - each wall split per side into its room's finish;
+  - ceilings with white light panels; windows onto the courtyard and the grounds;
+  - the stairs' steps, roof parapets and fences, the grounds;
+  - it also writes JankfieldHighLayout.luau.
+- WebArena builds the ZM folder from the layout's zm table. W.zm(name) redoes just that folder; a layout's `blockout = true` shows the hit boxes.
+
+Before the kit, a blockout went in at place version 1155 for the mode's first tests. The kit is asset 92051112949016 (W.ASSETS.JankfieldHigh); photos: roblox/docs/maps/school_kit.jpg. weapons-port played the blockout at place version 1157: the nav built over all four levels, zombies came in through windows all over the school and found the squad, nothing stuck. Flicker check: 16 slivers, 0.8 square studs in all, hidden at wall junctions.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

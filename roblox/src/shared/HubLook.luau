@@ -412,6 +412,22 @@ H.looks.station = {
 } :: Look
 H.plainSky.station = true
 H.byArena.Station = "station"
+-- JANKFIELD HIGH (WebArena; tools/roblox/school_models.py, the zombies school): a school at night. Roblox's own night sky
+-- (the moon), a cool dim violet outside and a faint haze over the grounds; inside, the ceiling panels light the halls
+H.looks.school = {
+	Lighting = {
+		Ambient = Color3.fromRGB(96, 92, 112), OutdoorAmbient = Color3.fromRGB(84, 80, 108), Brightness = 0.7,
+		ExposureCompensation = 0.1, EnvironmentDiffuseScale = 0.3, EnvironmentSpecularScale = 0.2,
+		ClockTime = 0.5, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 160, 210),
+		FogColor = Color3.fromRGB(40, 34, 58), FogStart = 160, FogEnd = 900,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.04, Haze = 1.2, Glare = 0, Color = Color3.fromRGB(72, 64, 98), Decay = Color3.fromRGB(42, 36, 60) },
+	Bloom = { Intensity = 0.35, Size = 24, Threshold = 1.8 },
+	ColorCorrection = { Brightness = 0.02, Contrast = 0.1, Saturation = -0.08, TintColor = Color3.fromRGB(244, 242, 255) },
+	SunRays = { Intensity = 0 },
+} :: Look
+H.plainSky.school = true
+H.byArena.JankfieldHigh = "school"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)

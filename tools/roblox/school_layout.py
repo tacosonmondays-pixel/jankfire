@@ -320,17 +320,17 @@ DOOR_LIST = [
     ('lobby', 'cafe', 750, 'G', 'z', -32, 64, 12), ('lobby', 'lockers', 750, 'G', 'z', 40, 40, 12),
     ('lobby', 'whall', 1000, 'G', 'z', -40, 40, 12), ('lobby', 'court', 1250, 'G', 'x', 32, 0, 12),
     ('cafe', 'whall', 750, 'G', 'z', -56, 38, 12), ('whall', 'court', 1000, 'G', 'z', -40, 0, 12),
-    ('whall', 'lab', 1000, 'G', 'z', -56, -42, 12), ('whall', 'wstair', 1000, 'G', 'x', 0, -110, 10),
+    ('whall', 'lab', 1000, 'G', 'z', -56, -41, 12), ('whall', 'wstair', 1000, 'G', 'x', 0, -110, 10),
     ('whall', 'nhall', 1000, 'G', 'z', -40, -40, 12), ('lockers', 'nhall', 1000, 'G', 'z', 40, -40, 12),
     ('lockers', 'gymwing', 1000, 'G', 'z', 64, -40, 12), ('lockers', 'gym', 1000, 'G', 'z', 64, 30, 12),
     ('gymwing', 'gym', 750, 'G', 'x', -32, 124, 12), ('gymwing', 'netower', 1000, 'G', 'x', -48, 150, 10),
     ('gym', 'weights', 750, 'G', 'x', 56, 124, 12),
     ('wstair', 'tunnels', 1250, 'B', 'x', 0, -110, 10), ('tunnels', 'boiler', 1250, 'B', 'z', 64, -42, 12),
     ('netower', 'boiler', 1250, 'B', 'x', -48, 150, 10),
-    ('lockers', 'upper', 1250, 'U', 'x', -20, 59, 10), ('gym', 'upper', 1000, 'U', 'z', 64, 36, 12),
+    ('lockers', 'upper', 1250, 'U', 'x', -20, 59.25, 9), ('gym', 'upper', 1000, 'U', 'z', 64, 36, 12),
     ('gym', 'music', 1000, 'U', 'x', 56, 70, 12), ('wstair', 'upper', 1000, 'U', 'x', 0, -110, 10),
     ('netower', 'complab', 1000, 'U', 'x', -48, 150, 10), ('upper', 'library', 1000, 'U', 'x', 48, -48, 12),
-    ('upper', 'art', 1000, 'U', 'z', -56, -42, 12), ('upper', 'office', 2000, 'U', 'x', 48, 0, 12),
+    ('upper', 'art', 1000, 'U', 'z', -56, -41, 12), ('upper', 'office', 2000, 'U', 'x', 48, 0, 12),
     ('upper', 'lounge', 750, 'U', 'x', 48, 52, 12), ('upper', 'complab', 1000, 'U', 'z', 64, -40, 12),
     ('wstair', 'roof', 1500, 'R', 'z', -100, -5, 10), ('netower', 'roof', 1500, 'R', 'z', 140, -53, 10),
 ]
@@ -627,11 +627,11 @@ F('frontdoors', 0, 96, 'G', 12.0, 10.0, 1.0, solid=False, face='n')
 # ---- the nurse: beds, a desk, a cabinet
 for z in (60, 72, 84):
     F('bed', 59.5, z, 'G', 7.0, 2.4, 3.6)
-F('desk_big', 40, 58, 'G', 3.6, 2.6, 7.0)
+F('desk_big', 40, 58, 'G', 3.6, 2.6, 7.0, face='e')
 F('cabinet', 33.4, 88, 'G', 1.6, 6.0, 6.0)
 # ---- the cafeteria: the kitchen behind the serving counter, long tables
 for (z0, z1) in ((30, 44), (50, 76), (82, 94)):
-    F('servery', -96.5, (z0 + z1) / 2, 'G', 3.0, 3.2, z1 - z0)
+    F('servery', -96.5, (z0 + z1) / 2, 'G', 3.0, 3.2, z1 - z0, face='e')
 for (z0, z1) in ((30, 46), (58, 74), (86, 92)):
     F('kitchen', -118.0, (z0 + z1) / 2, 'G', 4.0, 3.6, z1 - z0)
 F('fridge', -108, 30.2, 'G', 6.0, 8.0, 2.4)
@@ -653,14 +653,12 @@ F('skeleton', -60, -37, 'G', 2.0, 5.4, 2.0)
 def lockers(x0, z0, x1, z1, lv, face):
     F('lockers', (x0 + x1) / 2, (z0 + z1) / 2, lv, x1 - x0, 6.5, z1 - z0, face=face)
 lockers(62.4, -32, 64, -24, 'G', 'w')          # the locker hall: its east wall beside the stairs' foot and top
-lockers(40, 4, 41.6, 12, 'G', 'e')
 lockers(-56, -30, -54.4, -22, 'G', 'e'); lockers(-56, -16, -54.4, -2, 'G', 'e'); lockers(-56, 14, -54.4, 26, 'G', 'e')
 lockers(-56, -30, -54.4, -2, 'U', 'e'); lockers(-56, 14, -54.4, 26, 'U', 'e')
 lockers(62.4, -32, 64, -22, 'U', 'w')
 for (x0, x1) in ((-26, -14), (-2, 18), (32, 38)):     # (between the classroom doors)
     lockers(x0, -48, x1, -46.4, 'G', 's'); lockers(x0, -48, x1, -46.4, 'U', 's')
 F('bench', 44, -12, 'G', 2.2, 1.6, 9.0)
-F('trophy', 41.2, -24, 'G', 2.4, 7.5, 8.0)
 # ---- the janitor's room
 F('shelf', 62.6, -70, 'G', 2.4, 8.0, 20.0); F('mopsink', 44, -84, 'G', 4.0, 2.6, 4.0); F('cart', 50, -62, 'G', 3.0, 3.6, 5.0)
 # ---- the courtyard: the big tree, planters, benches, picnic tables, the flagpole, the two sheds
