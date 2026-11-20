@@ -381,7 +381,18 @@ local function spawnAt(f: Fighter): (Vector3, Vector3?)
 	end
 	local list = markers(if lastZone[p] == "training" then "TrainSpawns" else "HubSpawns")
 	if #list == 0 then list = markers("HubSpawns") end
-	if #list == 0 then return (hub:GetAttribute("Origin") :: Vector3) + Vector3.new(0, 3, 0), nil end
+	if #list == 0 then
+		-- (the ring retired, its HubSpawns gone: the first hub folder's own, the Square's on a fresh server)
+		for _, h in hub:GetChildren() do
+			local hs = if h:IsA("Folder") or h:IsA("Model") then h:FindFirstChild("HubSpawns") else nil
+			if hs then for _, c in hs:GetChildren() do if c:IsA("BasePart") then table.insert(list, c) end end end
+			if #list > 0 then break end
+		end
+	end
+	if #list == 0 then
+		local o = hub:GetAttribute("Origin")
+		return (if typeof(o) == "Vector3" then o else Vector3.new(0, 250, 0)) + Vector3.new(0, 3, 0), nil
+	end
 	local s = list[math.random(#list)]
 	return s.Position, s.CFrame.LookVector
 end
