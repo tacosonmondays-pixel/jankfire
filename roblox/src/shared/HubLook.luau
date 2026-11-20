@@ -484,10 +484,12 @@ H.byArena.JankfieldHighV2B = "school_v2b"
 -- THE HOTEL (studio-tools/HubHotel.luau, its look zone): an interior lit by its chandeliers and coffer lamps, so the
 -- ambient a step lower than the hub's and warm, the bloom a little readier for the lamps (judge round 1)
 H.looks.hotel = with(HUB, {
-	Lighting = { Ambient = Color3.fromRGB(92, 84, 76), OutdoorAmbient = Color3.fromRGB(92, 84, 76), ExposureCompensation = 0.05 },
-	Atmosphere = { Density = 0.06, Color = Color3.fromRGB(60, 50, 42), Decay = Color3.fromRGB(28, 22, 18) },
-	Bloom = { Intensity = 0.45, Size = 22, Threshold = 1.7 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.16, Saturation = 0.06, TintColor = Color3.fromRGB(255, 238, 220) },
+	-- (round 4, judge round 3: "one even warm beige wash") a lower, nearly neutral ambient and a light tint, so the lamps,
+	-- the signs and the pads are the bright things and the ceilings sit darker than the walls
+	Lighting = { Ambient = Color3.fromRGB(78, 77, 78), OutdoorAmbient = Color3.fromRGB(78, 77, 78), ExposureCompensation = 0 },
+	Atmosphere = { Density = 0.05, Color = Color3.fromRGB(52, 48, 44), Decay = Color3.fromRGB(24, 22, 20) },
+	Bloom = { Intensity = 0.5, Size = 22, Threshold = 1.5 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.2, Saturation = 0.05, TintColor = Color3.fromRGB(255, 248, 240) },
 })
 
 local function target(name: string): Instance?

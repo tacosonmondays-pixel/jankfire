@@ -1052,8 +1052,8 @@ end
 -- (tools/roblox/pad_models.py: the plinth, the divider, the foot-plates, the pale frame; K.importKit brings them in).
 -- F = the plinth's front middle on the walkway floor, its look into the bay (-Z). Footprint (round 4) 12.74 wide x
 -- 13.4 deep (z 0..-13.4); the gantry at its back is 11.8 wide, 14.4 high (z -11.35..-13.25), its board y 9.25..13.55;
--- the crest (the mode's blade on an arm from the gantry, faces up and down the row) reaches y 18.1 and z -7.6: give it
--- a bay at least 13 wide, 14 deep and 18.5 high (14.8 with o.blade = false), its floor flat. o.lampY: the lamps over
+-- the head (round 5: the mode's word on the gantry's head) reaches y 16.0: give it a bay at least 13 wide, 14 deep
+-- and 16.4 high (14.8 with o.blade = false: no head), its floor flat. o.lampY: the lamps over
 -- the teams (default 13, o.lampY = false: none). The pieces: K.importKit("pads", K.PAD_KIT) once per build.
 -- The contract (play-party, 20 Nov; side-session-notes/HUB-KIT-CONTRACTS.md): a Model in QueuePads; Side1..N flat
 -- plates (local Y up) where people stand, each looking so that minus its look faces the way a joiner should look (the
@@ -1066,8 +1066,25 @@ end
 -- kerb, thick gantry posts into the plinth, the board raised clear of hats with the mode as big as the counts, and the
 -- mode's blade on the pad's own gantry, not a pier, so it never reads over the next pad)
 K.PAD = { w = 12.4, d = 13.4, top = 1.2, frameW = 10.8, frameH = 14.2 }
-K.PAD_KIT = 128293586780369 -- (the pad kit's Model asset, round 4: tools/roblox/pad_models.py, uploaded 20 Nov; round 3 was 122933038680035)
+K.PAD_KIT = 81129917407402 -- (the pad kit's Model asset, round 5: tools/roblox/pad_models.py, uploaded 20 Nov; round 4 was 128293586780369)
 K.TEAM_MUTED = { "b0578f", "3f8fa8", "b08a46" } -- (the teams' colours at rest on a plate; the Glow is the full colour)
+-- (20 Nov, the owner: "maybe lets use differnt accent colors than the rivals one please") the teams' colours come from
+-- ONE place, ReplicatedStorage.Jankfire.TeamColors (play-party's module: the matches read it too, so pads and matches
+-- agree; its OLD switch brings back the values above). Read at build time; without the module the values above stand
+do
+	local jf = game:GetService("ReplicatedStorage"):FindFirstChild("Jankfire")
+	local mod = jf and jf:FindFirstChild("TeamColors")
+	if mod and mod:IsA("ModuleScript") then
+		local ok, TC = pcall(require, mod:Clone())
+		if ok and type(TC) == "table" and type(TC.list) == "function" then
+			local list = TC.list()
+			for i = 1, 3 do
+				local e = list[i]
+				if e then K.TEAM[i] = (string.gsub(e.hex, "#", "")); K.TEAM_MUTED[i] = (string.gsub(e.muted, "#", "")) end
+			end
+		end
+	end
+end
 local function padPiece(m, F, tmpl, cf, solid)
 	local lib = game:GetService("ServerStorage"):FindFirstChild("JankfireMeshes")
 	local t = lib and lib:FindFirstChild(tmpl)
@@ -1092,34 +1109,40 @@ function K.pad(F, md, bank, name, o)
 	padPiece(m, F, "jpad_totem", CFrame.new(), true)
 	local n = md.teams
 	local span = if n == 2 then { { -5.5, -0.5 }, { 0.5, 5.5 } } else { { -5.5, -2.3 }, { -1.3, 1.3 }, { 2.3, 5.5 } }
-	local z0, z1 = -0.7, -11.4 -- (the plates' front and back)
+	local z0, z1 = -0.7, -11.4 -- (the lanes' front and back: they sit 0.4 down inside the plinth's rim)
 	local zc = (z0 + z1) / 2
 	for _, x in (if n == 2 then { 0 } else { -1.8, 1.8 }) do padPiece(m, F, "jpad_divider", CFrame.new(x, TOP, zc), true) end
 	local lampY = if o.lampY == nil then 13 else o.lampY
 	for t = 1, n do
 		local xa, xb = span[t][1], span[t][2]
 		local cx, w, d = (xa + xb) / 2, xb - xa, z0 - z1
-		-- the plate: the team's colour (muted), flat, its look so that minus it is where a joiner faces
+		-- the lane: the team's colour (muted), flat, its look so that minus it is where a joiner faces
 		local face = if t == 1 then Vector3.xAxis elseif t == n then -Vector3.xAxis else Vector3.zAxis
 		local c = Vector3.new(cx, TOP + 0.03, zc)
 		local size = if math.abs(face.X) > 0.5 then Vector3.new(d, 0.1, w) else Vector3.new(w, 0.1, d)
 		local sd = K.part("Scenery", "Side" .. t, F * CFrame.lookAt(c, c - face), size, K.TEAM_MUTED[t], MAT.Concrete, { parent = m, solid = true })
 		sd:SetAttribute("Team", t)
-		-- the Glow (PadGlow: faint while open, full while taken): the plate's top in the team's full colour
+		-- the Glow (PadGlow: half lit while open, full while taken): a sheet over the lane, under the marks; its light
+		-- short and low, so it lights the lane, not the pillars round it (judges, round 4)
 		local g = K.box(F, "Scenery", "Glow", xa + 0.15, xb - 0.15, TOP + 0.085, TOP + 0.1, z1 + 0.15, z0 - 0.15, K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.6 })
 		g:SetAttribute("Team", t)
-		g:SetAttribute("GlowOpen", 0.6); g:SetAttribute("GlowTaken", 0.25) -- (PadGlow, play-party 4063e2e; under the marks, so it never hides them)
-		g:SetAttribute("GlowLight", 0.7); g:SetAttribute("GlowRange", 9) -- (its light at rest: PadGlow a2121b9)
-		local gl = Instance.new("PointLight"); gl.Color = c3(K.TEAM[t]); gl.Range = 9; gl.Brightness = 0.7; gl.Shadows = false; gl.Parent = g
-		-- the marks: a line of big pale discs per team (the teams face each other across the kerb); each Slot a disc of
-		-- the team's colour on its mark that Matches shows while the place is taken
+		g:SetAttribute("GlowOpen", 0.6); g:SetAttribute("GlowTaken", 0.25) -- (PadGlow, play-party 4063e2e)
+		g:SetAttribute("GlowLight", 0.6); g:SetAttribute("GlowRange", 5) -- (its light at rest: PadGlow a2121b9)
+		local gl = Instance.new("PointLight"); gl.Color = c3(K.TEAM[t]); gl.Range = 5; gl.Brightness = 0.6; gl.Shadows = false; gl.Parent = g
+		-- (round 5) a lit edge band round the lane, in the team's full colour, steady
+		for _, r in { { xa + 0.1, xb - 0.1, z0 - 0.5, z0 - 0.1 }, { xa + 0.1, xb - 0.1, z1 + 0.1, z1 + 0.5 }, { xa + 0.1, xa + 0.5, z1 + 0.5, z0 - 0.5 }, { xb - 0.5, xb - 0.1, z1 + 0.5, z0 - 0.5 } } do
+			local rim = K.box(F, "Scenery", "Rim", r[1], r[2], TOP + 0.1, TOP + 0.16, r[3], r[4], K.TEAM[t], MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.1 })
+			rim:SetAttribute("Team", t)
+		end
+		-- the marks: a line of raised pale discs per team (the teams face each other across the kerb); each Slot a disc
+		-- of the team's colour on its mark that Matches shows while the place is taken
 		local zs = { zc }
 		if md.size == 2 then zs = { zc + 2.7, zc - 2.7 }
 		elseif md.size == 3 then zs = { zc + 3.4, zc, zc - 3.4 }
 		elseif md.size >= 4 then zs = { zc + 4.05, zc + 1.35, zc - 1.35, zc - 4.05 } end
 		for sl, z in zs do
 			padPiece(m, F, "jpad_spot", CFrame.new(cx, TOP + 0.1, z), false)
-			local q = K.cyl(F, "Scenery", "Slot", cx, TOP + 0.2, TOP + 0.25, z, 1.6, K.TEAM[t], MAT.Neon, { ghost = true, tr = 1, noshadow = true, parent = m })
+			local q = K.cyl(F, "Scenery", "Slot", cx, TOP + 0.4, TOP + 0.45, z, 1.6, K.TEAM[t], MAT.Neon, { ghost = true, tr = 1, noshadow = true, parent = m })
 			q:SetAttribute("Team", t); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
 		end
 		if lampY then
@@ -1127,23 +1150,31 @@ function K.pad(F, md, bank, name, o)
 				16, 0.8, "fff4e6", { kind = "SpotLight", angle = 70 })
 		end
 	end
-	-- the mode across the plinth's front, dark on its pale face
-	local kb = K.box(F, "Scenery", "KerbSign", -4.6, 4.6, 0.12, 1.08, 0.0, 0.06, "c9c5bc", nil, { parent = m, ghost = true, tr = 1 })
-	K.text(kb, Enum.NormalId.Back, { { md.title .. "  ·  " .. md.kind, "353a42", 0.9 } }, { pps = 40, bright = 1 })
-	-- the board on the gantry, clear of hats: the mode as big as the counts, the counts (Status), Sub (empty at rest:
-	-- Matches writes it; a hub says "step on a side" once, at its pads' entrance)
+	-- the mode across the plinth's front and on both its ends, pale on its grey
+	local label = md.title .. "  ·  " .. md.kind
+	local kb = K.box(F, "Scenery", "KerbSign", -4.6, 4.6, 0.12, 1.08, 0.0, 0.06, "7d7a76", nil, { parent = m, ghost = true, tr = 1 })
+	K.text(kb, Enum.NormalId.Back, { { label, "ece6da", 0.9 } }, { pps = 40, bright = 1.4 })
+	for _, sx in { -1, 1 } do
+		local ke = K.box(F, "Scenery", "KerbSign", sx * 6.38, sx * 6.42, 0.15, 1.05, -12.4, -1.0, "7d7a76", nil, { parent = m, ghost = true, tr = 1 })
+		K.text(ke, if sx > 0 then Enum.NormalId.Right else Enum.NormalId.Left, { { label, "ece6da", 0.9 } }, { pps = 40, bright = 1.4 })
+	end
+	-- the board (round 5: 11.8 x 5.05 in front of the gantry's posts, in a lit bezel): the mode as big as the counts, the
+	-- counts (Status), Sub (empty at rest: Matches writes it; a hub says "step on a side" once, at its pads' entrance)
 	local counts = {}
 	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
-	local scr = K.box(F, "Scenery", "Screen", -4.28, 4.28, 9.25, 13.55, -11.8, -11.65, "28324a", nil, { parent = m })
+	local scr = K.box(F, "Scenery", "Screen", -5.9, 5.9, 8.7, 13.75, -11.3, -11.15, "28324a", nil, { parent = m })
 	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
-	K.text(scr, Enum.NormalId.Back, { { md.title, "f2f0ea", 0.4 }, { table.concat(counts, if n == 2 then "  vs  " else "  ·  "), "ffffff", if n == 2 then 0.4 else 0.3 },
+	K.text(scr, Enum.NormalId.Back, { { md.title, "f2f0ea", 0.34 }, { table.concat(counts, if n == 2 then " vs " else "  "), "ffffff", if n == 2 then 0.42 else 0.34 },
 		{ "", "c8d0e0", 0.1, "S" } }, { names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
 	K.light(scr, 14, 0.45, "dfe8ff")
-	-- the crest: the mode's blade on an arm from the gantry's top, its faces up and down the row
+	for _, r in { { -6.25, 6.25, 13.75, 14.1 }, { -6.25, 6.25, 8.35, 8.7 }, { -6.25, -5.9, 8.7, 13.75 }, { 5.9, 6.25, 8.7, 13.75 } } do
+		K.box(F, "Scenery", "Bezel", r[1], r[2], r[3], r[4], -11.35, -11.1, "e9eef7", MAT.Neon, { parent = m, ghost = true, noshadow = true, tr = 0.3 })
+	end
+	-- the head (round 5, in place of the hanging crest): the mode's word on the gantry's head, facing the walk
 	if o.blade ~= false then
-		K.box(F, "Scenery", "CrestPost", -0.4, 0.4, 14.4, 18.1, -12.3, -11.5, "c9c5bc", nil, { parent = m, solid = true })
-		K.box(F, "Scenery", "CrestArm", -0.4, 0.4, 17.5, 18.1, -11.5, -7.5, "c9c5bc", nil, { parent = m })
-		K.padBlade(F * CFrame.new(0, 15.95, -9.6) * CFrame.Angles(0, math.pi / 2, 0), md, 3.6, 2.7)
+		K.box(F, "Scenery", "Head", -6.1, 6.1, 14.4, 16.0, -13.25, -11.35, "7d7a76", nil, { parent = m, solid = true })
+		local hp = K.box(F, "Scenery", "HeadPlate", -5.7, 5.7, 14.55, 15.85, -11.4, -11.3, "28324a", nil, { parent = m })
+		K.text(hp, Enum.NormalId.Back, { { md.kind, "f2f0ea", 0.8 } }, { pps = 40, bright = 2, bg = "28324a", bgt = 0 })
 	end
 	return m
 end

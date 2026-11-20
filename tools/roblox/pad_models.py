@@ -5,9 +5,9 @@
 # these are the chunky pieces, all in the PAD's frame: the origin is the plinth's front middle on the walkway floor,
 # the front (the walkway) is -Y here (+Z in Roblox), the bay goes back along +Y (-Z in Roblox). 1 unit = 1 stud, Z up.
 #   (round 3, after two judge rounds: the team's colour IS the plate, big marks, no strips, an open gantry)
-#   jpad_plinth   one pale bevelled block, 12.4 x 13.4 x 1.2 (its top border is the kerb round the team plates)
+#   jpad_plinth   one bevelled block, 12.4 x 13.4 x 1.2, mid warm grey, with a 0.4 rim round its top (the lanes sit in it)
 #   jpad_divider  the low pale kerb between the teams, 1.4 x 11.4 x 0.6, rounded on top, its origin at its foot's middle
-#   jpad_spot     a player's mark: one flat pale disc, 2.5 across, 0.1 thick (origin: foot middle) (round 4: the dark
+#   jpad_spot     a player's mark: a raised bevelled pale disc, 2.4 across, 0.3 high (origin: foot middle) (round 4: the dark
 #                 insets read as floor drains)
 #   jpad_totem    the gantry at the plate's back edge (round 4: thick posts 1.6 into the plinth's back corners, the board
 #                 raised clear of hats): posts x 4.3..5.9, the sill z 8.6..9.1, the board's back, a cap z 13.8..14.4;
@@ -17,8 +17,8 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from structkit import *
 
-TRIM, TRIM2, BASE, KICK, BACK = 'c9c5bc', 'b5b1a8', '4a4f57', '3d4148', '33363c'
-SPOT = 'ece8df'
+TRIM, TRIM2, BASE, KICK, BACK = '7d7a76', '6b6863', '4a4f57', '3d4148', '33363c'   # (round 5: a mid warm grey, not the room's cream)
+SPOT = 'e6e1d6'
 reset()
 
 # ------------------------------------------------------------------ jpad_plinth (round 3: one pale bevelled block, a step up)
@@ -26,6 +26,11 @@ reset()
 bx('plastic', TRIM, 12.4, 13.4, 1.2, 0, 6.7, 0.6, bevel=0.3)
 for s in (-1, 1):                                                           # a dark kick band low on each side
     bx('plastic', KICK, 0.3, 12.2, 0.45, s * 6.22, 6.9, 0.3, bevel=0.1)
+# (round 5) a raised rim round the top, so the team lanes sit 0.4 down in it: sides, front, the back under the gantry
+for s in (-1, 1):
+    bx('plastic', TRIM2, 0.7, 13.4, 0.4, s * 5.85, 6.7, 1.4, bevel=0.15)
+bx('plastic', TRIM2, 11.0, 0.7, 0.4, 0, 0.35, 1.4, bevel=0.15)
+bx('plastic', TRIM2, 11.0, 2.0, 0.4, 0, 12.4, 1.4, bevel=0.15)
 keep('jpad_plinth')
 
 # ------------------------------------------------------------------ jpad_divider (a low pale kerb between the teams)
@@ -33,7 +38,7 @@ soft('plastic', TRIM2, 1.4, 11.4, 0.6, 0, 0, 0.3, 0.3, pick='top')
 keep('jpad_divider')
 
 # ------------------------------------------------------------------ jpad_spot (a player's mark: a big pale square)
-cy('plastic', SPOT, 1.25, 0.1, 0, 0, 0.05, segs=28, bevel=0.03)
+cy('plastic', SPOT, 1.2, 0.3, 0, 0, 0.15, segs=28, bevel=0.1)          # (round 5: a raised bevelled foot disc)
 keep('jpad_spot')
 
 # ------------------------------------------------------------------ jpad_totem (round 3: an open gantry at the plate's back edge)
