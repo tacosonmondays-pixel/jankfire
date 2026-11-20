@@ -27,6 +27,7 @@ Settings.DEFAULTS = {
 	["xh.dot"] = 0, ["xh.alpha"] = 1, ["xh.spread"] = false, ["xh.hideAim"] = true,
 	-- audio (percent of each group's own level)
 	["vol.master"] = 100, ["vol.weapons"] = 100, ["vol.effects"] = 100, ["vol.ui"] = 100, ["snd.hit"] = true, ["snd.kill"] = true,
+	["vol.music"] = 100, ["snd.emoteMusic"] = true, -- (the dance emotes' music and others' on/off: the flair session's, 19 Nov)
 	-- graphics
 	["gfx.preset"] = "auto", ["gfx.shadows"] = true, ["gfx.particles"] = 1, ["gfx.bloom"] = true, ["gfx.colour"] = true,
 	["gfx.speedLines"] = true, -- (fov.kick and gfx.speedLines: the VFX session's SpeedLines.client reads them, nil = on)

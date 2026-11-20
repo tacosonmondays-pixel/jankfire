@@ -32,6 +32,8 @@ local S = {
 	-- has shown, told as seen on a tab change or close; whether you've changed tab since opening)
 	gotAt = {} :: { [string]: { [string]: number } }, fresh = {} :: { [string]: { [string]: number } },
 	petsAt = {} :: { [string]: number }, petsNew = {} :: { [string]: boolean }, pending = {} :: { [string]: { [string]: boolean } },
+	-- (the NEW free emotes, 19 Nov: Flair EMOTES' NEW column; the ones you've looked at, from FlairServer's save)
+	freeSeen = {} :: { [string]: boolean }, freeLoaded = false,
 	touched = false,
 }
 local controls: any = nil
@@ -461,18 +463,30 @@ end
 -- ones (the plain one first: no kill effect, the rope, no pet), then the rest as listed. a NEW dot on what came since you
 -- last looked, and on its tab; the shown tab's NEW ones count as seen once you change tab or close (flushNew)
 local PLAIN = { kill = "none", grapple = "rope", pet = "" }
+local function freeNew(id: string): boolean
+	local e = Flair.info("emote", id)
+	return e ~= nil and e.new == true and S.freeLoaded and S.freeSeen[id] ~= true
+end
 local function isNew(t: string, id: string): boolean
 	if t == "pet" then return S.petsNew[id] == true and S.pets[id] == true end
+	if t == "emote" and freeNew(id) then return true end
 	local f = S.fresh[t]
 	return f ~= nil and f[id] ~= nil
 end
 local function flushNew()
 	for t, ids in S.pending do
-		local list = {}
+		local list, freeList = {}, {}
 		for id in ids do
+			if t == "emote" and freeNew(id) then
+				-- (a new free emote: seen in FlairServer's save, not the loot save's)
+				table.insert(freeList, id)
+				S.freeSeen[id] = true
+				continue
+			end
 			table.insert(list, id)
 			if t == "pet" then S.petsNew[id] = nil elseif S.fresh[t] then S.fresh[t][id] = nil end
 		end
+		if #freeList > 0 then task.spawn(ask, "freeseen", freeList) end
 		if #list == 0 then continue end
 		if t == "pet" then
 			task.spawn(ask, "petseen", list)
@@ -491,6 +505,7 @@ local function newest(): (string?, string?)
 		for id, n in S.fresh[t] or {} do if type(n) == "number" and n > best then bt, bid, best = t, id, n end end
 	end
 	if bt then return bt, bid end
+	for _, id in Flair.ORDER.emote do if freeNew(id) then return "emote", id end end -- (a new free emote: the newest is listed first)
 	local pt, pid, pn = nil, nil, -1
 	for id in S.petsNew do
 		local n = tonumber(S.petsAt[id]) or 0
@@ -533,6 +548,7 @@ local function news(Vw: any)
 			for id in S.petsNew do if S.pets[id] then has = true end end
 		else
 			has = next(S.fresh[t] or {}) ~= nil
+			if not has and t == "emote" then for _, id in Flair.ORDER.emote do if freeNew(id) then has = true; break end end end
 		end
 		x.dot.Visible = has
 		x.dot.Position = UDim2.fromOffset(x.b.TextBounds.X + 8, 2)
@@ -637,6 +653,9 @@ local function fetch()
 	S.petsAt = if type(res.petsAt) == "table" then res.petsAt else {}
 	S.petsNew = {}
 	for _, id in (if type(res.petsNew) == "table" then res.petsNew else {}) do S.petsNew[id] = true end
+	S.freeSeen = {}
+	for _, id in (if type(res.freeSeen) == "table" then res.freeSeen else {}) do S.freeSeen[id] = true end
+	S.freeLoaded = type(res.freeSeen) == "table"
 	local lf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
 	local lr = lf and lf:FindFirstChild("Loot")
 	if lr and lr:IsA("RemoteFunction") then

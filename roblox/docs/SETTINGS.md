@@ -39,8 +39,11 @@ player loses a setting).
 - **CROSSHAIR.** A true-size PREVIEW on a dark and a pale ground, four starting points (DEFAULT, DOT, SMALL CROSS,
   CIRCLE), STYLE (cross, dot, circle, T), COLOR (six swatches or any #RRGGBB), SIZE, THICKNESS, GAP, OUTLINE, DOT,
   ALPHA, DYNAMIC (the gap follows the spread), HIDE WHILE AIMING and the CROSSHAIR CODE.
-- **AUDIO.** MASTER, WEAPON, EFFECTS and UI VOLUME (0 to 150 %), HIT SOUND and KILL SOUND. There is no music or voice
-  in the game, so no slider for them.
+- **AUDIO.** MASTER, WEAPON, EFFECTS, UI and MUSIC VOLUME (0 to 150 %), HIT SOUND, KILL SOUND and OTHERS' EMOTE MUSIC.
+  - MUSIC (`vol.music`, the `Music` group, since 19 Nov, the flair session's) is the dance emotes' licensed tracks, played
+    from the dancer (`client/EmoteMusic.client.luau`).
+  - OTHERS' EMOTE MUSIC (`snd.emoteMusic`, default on) turns other players' emote music off. Your own still plays.
+  - There is no voice audio anywhere.
 - **GRAPHICS.** GRAPHICS QUALITY AUTO / LOW / MEDIUM / HIGH (AUTO follows Roblox's own level), SHADOWS, PARTICLE DETAIL,
   BLOOM, COLOR CORRECTION, SPEED LINES (`gfx.speedLines`: streaks, wind and its sound, SpeedLines.client), RENDER
   DISTANCE (ZoneCull), OTHER PLAYERS' KILL EFFECTS, SHOW TITLES (`gfx.titles`, OverheadTitles.client), OTHER

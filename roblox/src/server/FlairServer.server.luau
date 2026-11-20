@@ -64,7 +64,8 @@ local Remote = remote("Flair", "RemoteFunction") :: RemoteFunction
 local KillEvent = remote("FlairKill", "RemoteEvent") :: RemoteEvent
 
 local store = Profiles.new("JankfireFlair_v1", function()
-	return { v = 2, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes), pet = "", pets = {}, seen = {} }
+	return { v = 2, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes), pet = "", pets = {}, seen = {},
+		freeSeen = {} }
 end)
 
 type State = { prof: any, ready: boolean, emote: { id: string, t0: number, len: number, loop: boolean }?, last: number,
@@ -275,6 +276,13 @@ local function spend(s: State): boolean
 	s.budget -= 1
 	return true
 end
+-- the new free emotes (Flair EMOTES' NEW column) this player has looked at: no NEW dot on those (19 Nov)
+local function freeSeenList(p: Player): { string }
+	local d = dataOf(p)
+	local out = {}
+	if d and type(d.freeSeen) == "table" then for id, v in d.freeSeen do if v == true then table.insert(out, id) end end end
+	return out
+end
 local function ownedList(p: Player): any
 	local out = { kill = {}, emote = {}, grapple = {} }
 	for _, t in Flair.TYPES do
@@ -295,7 +303,21 @@ local function handle(p: Player, op: any, a: any, b: any): any
 		if d and type(d.petsNew) == "table" then for id in d.petsNew do if ownsPet(p, id) then table.insert(petsNew, id) end end end
 		return { ok = true, kill = worn(p), grapple = wornGrapple(p), emotes = slots(p), owned = ownedList(p),
 			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none", pets = pets, pet = wornPet(p) or "",
-			petsAt = if d and type(d.petsAt) == "table" then d.petsAt else {}, petsNew = petsNew }
+			petsAt = if d and type(d.petsAt) == "table" then d.petsAt else {}, petsNew = petsNew, freeSeen = freeSeenList(p) }
+	end
+	if op == "freeseen" then
+		-- (the picker showed these new free emotes: their NEW dots go. 19 Nov)
+		local d = dataOf(p)
+		if d and type(a) == "table" then
+			if type(d.freeSeen) ~= "table" then d.freeSeen = {} end
+			for i, id in ipairs(a) do
+				if i > 40 then break end
+				local e = type(id) == "string" and Flair.info("emote", id)
+				if e and e.new then d.freeSeen[id] = true end
+			end
+			if s.prof then s.prof.dirty = true end
+		end
+		return { ok = true }
 	end
 	if op == "petseen" then
 		-- (the picker showed these NEW pets: no NEW dot on them from now on. 18 Nov)
@@ -375,6 +397,7 @@ local function added(p: Player)
 	if type(d.pet) ~= "string" then d.pet = "" end
 	if type(d.pets) ~= "table" then d.pets = {} end
 	if type(d.seen) ~= "table" then d.seen = {} end
+	if type(d.freeSeen) ~= "table" then d.freeSeen = {} end
 	-- (v2, 17 Nov: Roblox's free emotes are the starter set: a wheel saved before then gets them in its empty slots)
 	if (tonumber(d.v) or 1) < 2 then
 		for _, id in Flair.DEFAULT.emotes do

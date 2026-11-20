@@ -586,9 +586,11 @@ tabs = {
 		vol("vol.weapons", "WEAPON VOLUME", "guns, reloads, melee, hits")
 		vol("vol.effects", "EFFECTS VOLUME", "footsteps, impacts, explosions")
 		vol("vol.ui", "UI VOLUME", "menus and crates")
+		vol("vol.music", "MUSIC VOLUME", "emote music")
 		section("FEEDBACK")
 		switch({ key = "snd.hit", label = "HIT SOUND" })
 		switch({ key = "snd.kill", label = "KILL SOUND" })
+		switch({ key = "snd.emoteMusic", label = "OTHERS' EMOTE MUSIC" })
 	end },
 	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.speedLines", "gfx.titles", "gfx.fps" }, build = function()
 		local NAMES = { low = "LOW", med = "MEDIUM", high = "HIGH" }

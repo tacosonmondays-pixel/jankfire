@@ -73,7 +73,28 @@ local GRAPPLES = {
 -- InsertService:LoadAsset + KeyframeSequenceProvider (owned by Roblox, so they play in any game). never sold in the
 -- shop (forSale skips free). a player's OWN bought Roblox emotes are the wheel's second page: FlairServer reads their
 -- avatar's (StarterPlayer.UserEmotesEnabled), ids "rbx:<name>", never stored in this table)
+-- (19 Nov, the owner: "are there free emotes we can take based of current dances memes or trends?" so the catalog's FREE
+-- emotes, Roblox's and creators', sorted by favourites: every one loads with InsertService, holds one full-body R15
+-- animation and no sound. kept: dance, meme and trend moves; left out: named routines (a song's, a creator's or another
+-- game's dance), brands and other games' promos, anything its maker says was generated. our names are plain move names,
+-- never the item's, a song's or a creator's. NEW (the 8th column): listed first, a NEW dot till you've looked. all loop:
+-- they run till you move, like Stadium and Dance. R15 only, as every catalog emote)
 local EMOTES = {
+	{ "worm", "Worm", "free", "rbxassetid://84498222331140", 0.57, true, 135289014127213, true },
+	{ "fancyfeet", "Fancy Feet", "free", "rbxassetid://77495170519075", 1.07, true, 111231750028642, true },
+	{ "dab", "Dab", "free", "rbxassetid://82652632188662", 0.93, true, 75495806621404, true },
+	{ "slidestep", "Slide Step", "free", "rbxassetid://120958185092458", 4.50, true, 127134199058487, true },
+	{ "vibe", "Vibe", "free", "rbxassetid://95586320418454", 4.80, true, 86842013063636, true },
+	{ "flow", "Flow", "free", "rbxassetid://85705364159065", 4.73, true, 132588088326391, true },
+	{ "sway", "Sway", "free", "rbxassetid://115205039111295", 4.93, true, 132074824206003, true },
+	{ "twostep", "Two Step", "free", "rbxassetid://118849962129838", 8.97, true, 105998066457327, true },
+	{ "flap", "Flap", "free", "rbxassetid://96674218109731", 1.17, true, 117234325189261, true },
+	{ "hypeclap", "Hype Clap", "free", "rbxassetid://114657319753837", 4.70, true, 106023350138548, true },
+	{ "float", "Float", "free", "rbxassetid://119959221864675", 2.03, true, 100611991648476, true },
+	{ "flex", "Flex", "free", "rbxassetid://100545491329125", 3.43, true, 117784532603203, true },
+	{ "kickfeet", "Kicking Feet", "free", "rbxassetid://89333774081397", 5.00, true, 128118777898011, true },
+	{ "shywave", "Shy Wave", "free", "rbxassetid://85649907654049", 3.18, true, 80325859644495, true },
+	{ "applaud", "Applaud", "free", "rbxassetid://10713966026", 3.00, true, 5915779043, true },
 	{ "wave", "Wave", "free", "rbxassetid://507770239", 1.75, false, 0 },
 	{ "hello", "Hello", "free", "rbxassetid://10714359093", 1.77, false, 3576686446 },
 	{ "salute", "Salute", "free", "rbxassetid://10714389988", 3.70, false, 3360689775 },
@@ -86,6 +107,37 @@ local EMOTES = {
 	{ "dance", "Dance", "free", "rbxassetid://507771019", 1.08, true, 0 },
 }
 
+-- EMOTE MUSIC (19 Nov, the owner: "si there a copyright free instriumental to go with it?"): one track per dance emote
+-- from Roblox's own licensed audio library (its music partners' production music, cleared for use in Roblox
+-- experiences), instrumental only (the no-voice rule), no melody of any trend song; its stretch starts on a beat.
+-- client/EmoteMusic.client.luau plays it from the dancer (within ~40 studs, the MUSIC slider; others' under the
+-- OTHERS' EMOTE MUSIC switch), never in a live match round.
+--   emote id = { sound, the track's title as the library lists it, from (s), to (s), volume }
+local MUSIC: { [string]: { any } } = {
+-- MUSIC BEGIN
+	-- (APM Music: the library's creator APMOfficial. each starts just before its first strong beat, measured silently
+	-- 19 Nov; a stretch of up to 60 s: an emote ends by 30, so its loop seam is never reached)
+	worm = { "rbxassetid://1835617224", "Check It Out (Nicolas Baudino)", 0.21, 60.21, 0.35 },
+	fancyfeet = { "rbxassetid://1836160504", "Playful Electro Funk (AXS)", 0.00, 60.00, 0.35 },
+	dab = { "rbxassetid://9047105533", "No Smoking (Afro Dizzy)", 0.04, 60.04, 0.35 },
+	slidestep = { "rbxassetid://1835566917", "Soul Dancefloor (Mr De La Main)", 0.24, 60.24, 0.35 },
+	vibe = { "rbxassetid://9043887091", "Lo-fi Chill A (Hip Hop Shop)", 0.28, 60.28, 0.45 },
+	flow = { "rbxassetid://9047105108", "Moving Round The Block (Afro Dizzy)", 0.04, 60.04, 0.35 },
+	sway = { "rbxassetid://9047104411", "Beach Cushions (Afro Dizzy)", 0.13, 60.13, 0.35 },
+	twostep = { "rbxassetid://1841352457", "Discoball (a) (KPM Main Series)", 0.04, 60.04, 0.35 },
+	flap = { "rbxassetid://1836665607", "Hot Potato 60 (John Stuart)", 0.45, 60.45, 0.35 },
+	kickfeet = { "rbxassetid://1838941661", "Jolly Pranks (Yannick Kalfayan)", 0.34, 49.50, 0.35 },
+	float = { "rbxassetid://9046622104", "Chill Groove to Gamma (a) (Lee Briskett)", 0.04, 59.50, 0.35 },
+	hypeclap = { "rbxassetid://9046354385", "Wake Up Beat (Bastien Thomas Deshayes)", 0.45, 60.45, 0.35 },
+	dance = { "rbxassetid://1839705126", "Hype (Samson Robin Penot)", 0.34, 60.34, 0.38 },
+-- MUSIC END
+}
+F.MUSIC = {} :: { [string]: { sound: string, title: string, from: number?, to: number?, volume: number } }
+for id, r in MUSIC do F.MUSIC[id] = { sound = r[1], title = r[2], from = r[3], to = r[4], volume = r[5] } end
+function F.music(id: any): { sound: string, title: string, from: number?, to: number?, volume: number }?
+	return if type(id) == "string" then F.MUSIC[id] else nil
+end
+
 F.ORDER = { kill = {}, emote = {}, grapple = {} } :: { [string]: { string } }
 F.ITEMS = { kill = {}, emote = {}, grapple = {} } :: { [string]: { [string]: any } }
 for _, r in KILLS do
@@ -94,7 +146,8 @@ for _, r in KILLS do
 end
 for _, r in EMOTES do
 	table.insert(F.ORDER.emote, r[1])
-	F.ITEMS.emote[r[1]] = { type = "emote", id = r[1], name = r[2], rarity = r[3], anim = r[4], len = r[5], loop = r[6], catalog = r[7] }
+	F.ITEMS.emote[r[1]] = { type = "emote", id = r[1], name = r[2], rarity = r[3], anim = r[4], len = r[5], loop = r[6], catalog = r[7],
+		new = r[8] == true }
 end
 for _, r in GRAPPLES do
 	table.insert(F.ORDER.grapple, r[1])
@@ -214,6 +267,21 @@ local ARMS = {
 	stadium = { { 0.36, 0.34, 0.24, 0.22, 0.16, 0.08 }, { 0.64, 0.34, 0.76, 0.22, 0.84, 0.08 } },
 	tilt = { { 0.36, 0.34, 0.3, 0.5, 0.28, 0.66 }, { 0.64, 0.34, 0.7, 0.5, 0.72, 0.66 } },
 	dance = { { 0.36, 0.34, 0.24, 0.42, 0.22, 0.26 }, { 0.64, 0.34, 0.74, 0.46, 0.8, 0.6 } },
+	worm = { { 0.36, 0.34, 0.24, 0.46, 0.12, 0.5 }, { 0.64, 0.34, 0.76, 0.46, 0.88, 0.5 } },
+	fancyfeet = { { 0.36, 0.34, 0.26, 0.44, 0.2, 0.58 }, { 0.64, 0.34, 0.74, 0.44, 0.8, 0.58 } },
+	dab = { { 0.36, 0.34, 0.5, 0.24, 0.6, 0.16 }, { 0.64, 0.34, 0.82, 0.22, 0.98, 0.1 } },
+	slidestep = { { 0.36, 0.34, 0.26, 0.48, 0.22, 0.62 }, { 0.64, 0.34, 0.76, 0.4, 0.86, 0.3 } },
+	vibe = { { 0.36, 0.34, 0.24, 0.4, 0.3, 0.26 }, { 0.64, 0.34, 0.74, 0.46, 0.7, 0.6 } },
+	flow = { { 0.36, 0.34, 0.3, 0.22, 0.4, 0.08 }, { 0.64, 0.34, 0.72, 0.5, 0.64, 0.62 } },
+	sway = { { 0.36, 0.34, 0.3, 0.5, 0.36, 0.64 }, { 0.64, 0.34, 0.74, 0.2, 0.7, 0.04 } },
+	twostep = { { 0.36, 0.34, 0.24, 0.44, 0.3, 0.56 }, { 0.64, 0.34, 0.76, 0.44, 0.7, 0.56 } },
+	flap = { { 0.36, 0.34, 0.2, 0.3, 0.06, 0.24 }, { 0.64, 0.34, 0.8, 0.3, 0.94, 0.24 } },
+	hypeclap = { { 0.36, 0.34, 0.3, 0.46, 0.48, 0.42 }, { 0.64, 0.34, 0.7, 0.46, 0.52, 0.42 } },
+	float = { { 0.36, 0.34, 0.22, 0.42, 0.12, 0.5 }, { 0.64, 0.34, 0.78, 0.42, 0.88, 0.5 } },
+	flex = { { 0.36, 0.34, 0.2, 0.34, 0.2, 0.18 }, { 0.64, 0.34, 0.8, 0.34, 0.8, 0.18 } },
+	kickfeet = { { 0.36, 0.34, 0.3, 0.5, 0.4, 0.6 }, { 0.64, 0.34, 0.7, 0.5, 0.6, 0.6 } },
+	shywave = { { 0.36, 0.34, 0.3, 0.5, 0.42, 0.56 }, { 0.64, 0.34, 0.7, 0.28, 0.66, 0.12 } },
+	applaud = { { 0.36, 0.34, 0.3, 0.46, 0.48, 0.38 }, { 0.64, 0.34, 0.7, 0.46, 0.52, 0.38 } },
 }
 
 local function figure(box: Frame, body: Color3, arms: any, lean: number)

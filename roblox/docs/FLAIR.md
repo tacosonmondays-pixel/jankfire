@@ -200,6 +200,67 @@ How it works:
 - **In a match**: while you emote, other players you couldn't see from your own eyes (rays against `workspace.Map`,
   three heights) are hidden from you, refreshed every 0.15 s; teammates stay.
 
+## Trend emotes (19 Nov 2026)
+
+The owner: "are there free emotes we can take based of current dances memes or trends?" Real ones only: the generated
+emotes were "really really bad".
+- **Source 1: the Marketplace's free emotes** (price 0). The public catalog search for Category 12 / Subcategory 39 with
+  MaxPrice 0 gives 43, sorted by favourites.
+  - Seven are Roblox's own. Six were already ours; Applaud is new.
+  - The rest are creator-made free limiteds, mostly given away in other games.
+  - Every pick was checked in Studio: it loads with `InsertService:LoadAsset`, holds exactly one Animation, is R15
+    (KeyframeSequence poses on UpperTorso/LowerTorso), loops, and has no Sound.
+- **Left out:**
+  - named routines: a song's, a creator's or another game's dance (Floss, Griddy, Macarena, the battle-royale default
+    dance, Electro Shuffle, the boat-race "aura" dance);
+  - brands and other IP: a cosmetics brand's emote, a fashion brand's, a snack group's bow, a comic's execution move,
+    another shooter's promo sprint;
+  - one emote its maker says was generated.
+- **Names** are plain move names, never the item's, a song's or a creator's.
+- **The 15**, newest first, all free, with a NEW dot (Flair EMOTES' 8th column) until the equip screen has shown them
+  (FlairServer `freeSeen`, op `freeseen`): Worm, Fancy Feet, Dab, Slide Step, Vibe, Flow, Sway, Two Step, Flap,
+  Hype Clap, Float, Flex, Kicking Feet, Shy Wave, Applaud. Their catalog ids are in `Flair.luau`.
+- **R15 only,** as every catalog emote: on an R6 body the emote doesn't play.
+- **BIRDBRAIN** (the owner asked by name): no free version exists. About ten creator versions, all 55-105 Robux;
+  nothing bought, ripped or hand-made.
+- **Source 2: Mixamo dance mocap** (hip hop, silly dancing, robot, shuffle, breakdance, swing) waits on the owner's
+  Mixamo sign-in. It is real mocap, royalty-free for games; the same rules will apply.
+- Preview: `flair/trend-emotes-sheet.jpg`.
+
+## Emote music (19 Nov 2026)
+
+The owner: "si there a copyright free instriumental to go with it?" An instrumental of a trend song is still that song,
+and covers or "type beats" of its melody are out. So each dance emote gets one track from Roblox's own licensed library.
+- **Source:** APM Music production music (the library's creator APMOfficial), cleared for use in Roblox experiences. Found
+  with `AssetService:SearchAudio` (AudioSubType Music) and kept only where the Creator is APMOfficial: DistroKid artists'
+  songs mostly have vocals, and user uploads aren't cleared.
+- **Picked as instrumentals** by genre and title: beats, grooves and funk, no singer's songs. Not ear-checked, since
+  nobody here can listen.
+- **Timing:** each starts just before its first strong beat (AudioAnalyzer onsets, measured silently, all tracks at once)
+  and plays a 60 s stretch. An emote ends by 30 s, so its loop seam is never reached.
+- **The picks** (`Flair.MUSIC`):
+  - Worm: Check It Out (Nicolas Baudino)
+  - Fancy Feet: Playful Electro Funk (AXS)
+  - Dab: No Smoking (Afro Dizzy)
+  - Slide Step: Soul Dancefloor (Mr De La Main)
+  - Vibe: Lo-fi Chill A (Hip Hop Shop)
+  - Flow: Moving Round The Block (Afro Dizzy)
+  - Sway: Beach Cushions (Afro Dizzy)
+  - Two Step: Discoball (a) (KPM)
+  - Flap: Hot Potato 60 (John Stuart)
+  - Kicking Feet: Jolly Pranks (Yannick Kalfayan)
+  - Float: Chill Groove to Gamma (a) (Lee Briskett)
+  - Hype Clap: Wake Up Beat (Bastien Thomas Deshayes)
+  - Dance: Hype (Samson Robin Penot)
+- **Playing** (`client/EmoteMusic.client.luau`, each screen its own):
+  - A Sound in the dancer's HumanoidRootPart, InverseTapered, full within 8 studs, gone by 40, low (0.35).
+  - It starts with the emote (the player attribute `Emote`) and fades out in 0.25 s when it ends.
+  - Never while a match round is live (Zone `match` with `RoundEnds` set): the hub, lobbies, between rounds and after
+    the match only.
+- **Settings** (AUDIO tab):
+  - MUSIC VOLUME (`vol.music`, a `Music` group under the master);
+  - OTHERS' EMOTE MUSIC (`snd.emoteMusic`). Your own always plays; the slider can still mute it.
+
 ## Grapple skins
 
 The web game's eight (`COSMETICS.grapple`): Rope (free), Chain, Candy Cane (common), Plunger, Jungle Vine (rare), Laser,

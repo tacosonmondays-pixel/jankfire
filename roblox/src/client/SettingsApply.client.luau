@@ -88,7 +88,8 @@ local function group(name: string, parent: Instance): SoundGroup
 	return g :: SoundGroup
 end
 local master = group("JankMaster", SoundService)
-local G = { weapons = group("Weapons", master), effects = group("Effects", master), ui = group("Interface", master) }
+local G = { weapons = group("Weapons", master), effects = group("Effects", master), ui = group("Interface", master),
+	music = group("Music", master) } -- (MUSIC: the dance emotes' tracks, EmoteMusic.client: 19 Nov)
 local WEAPON_NAMES = { click = true, empty = true, reload = true, thwack = true, glug = true, rev_up = true, marble = true,
 	boing = true, swing = true, bonk = true, tink = true, ting = true, parry = true, parry_perfect = true, ricochet = true,
 	hit = true, headshot = true, headshot_ko = true, kill = true,
@@ -127,7 +128,7 @@ pg.DescendantAdded:Connect(function(d) stray(d, true) end)
 local function vol(key: string, g: SoundGroup)
 	Settings.watch(key, function(v: any) g.Volume = math.clamp((if type(v) == "number" then v else 100) / 100, 0, 2) end)
 end
-vol("vol.master", master); vol("vol.weapons", G.weapons); vol("vol.effects", G.effects); vol("vol.ui", G.ui)
+vol("vol.master", master); vol("vol.weapons", G.weapons); vol("vol.effects", G.effects); vol("vol.ui", G.ui); vol("vol.music", G.music)
 -- the hit and kill sounds on / off (Sfx.mute: names Sfx.play skips)
 do
 	local ok, Sfx = pcall(require, script.Parent:WaitForChild("Sfx"))
