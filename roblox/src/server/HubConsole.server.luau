@@ -7,12 +7,16 @@
 -- tagged HubConsoleRim (attribute Mode = the mode's id: the builder's rim panels), its Gui's second line. Nothing to do
 -- while the hub has no console (the layouts before the ring).
 -- (play-party-ranked, 20 Nov: padView and Queue.entries are the sources; require them here, one shared copy.)
+-- (the three hubs, 20 Nov: each hub's big screens are parts tagged HubScreen whose Guis carry a label per mode named
+-- Count_<mode id> (HubKit.screen); they get the same numbers, the bare count)
 local CollectionService = game:GetService("CollectionService")
 
 local Matches = require(script.Parent:WaitForChild("Matches")) :: any
 local Queue = require(script.Parent:WaitForChild("Queue")) :: any
 
 local TAG = "HubConsoleRim"
+local SCREEN = "HubScreen"
+local MODES = { "1v1", "1v1v1", "2v2", "3v3", "4v4" }
 
 local function counts(): { [string]: number }
 	local out: { [string]: number } = {}
@@ -31,6 +35,7 @@ local function counts(): { [string]: number }
 		local mode = rim:GetAttribute("Mode")
 		if type(mode) == "string" and out[mode] == nil then out[mode] = 0 end
 	end
+	for _, mode in MODES do if out[mode] == nil then out[mode] = 0 end end
 	for mode in out do
 		for _, ranked in { false, true } do
 			local ok2, es = pcall(Queue.entries, Queue.key(mode, ranked))
@@ -48,12 +53,24 @@ local shown: { [Instance]: string } = {}
 task.spawn(function()
 	while true do
 		local rims = CollectionService:GetTagged(TAG)
-		if #rims > 0 then
+		local screens = CollectionService:GetTagged(SCREEN)
+		if #rims > 0 or #screens > 0 then
 			local c = counts()
+			for _, sc in screens do
+				for _, g in sc:GetChildren() do
+					if g:IsA("SurfaceGui") then
+						for _, mode in MODES do
+							local l = g:FindFirstChild("Count_" .. mode, true)
+							local text = tostring(c[mode] or 0)
+							if l and l:IsA("TextLabel") and l.Text ~= text then l.Text = text end
+						end
+					end
+				end
+			end
 			for _, rim in rims do
 				local mode = rim:GetAttribute("Mode")
 				local gui = rim:FindFirstChildWhichIsA("SurfaceGui")
-				local line = gui and gui:FindFirstChild("Line2")
+				local line = gui and gui:FindFirstChild("Line2", true)
 				if type(mode) == "string" and line and line:IsA("TextLabel") then
 					local text = ("%d WAITING"):format(c[mode] or 0)
 					if shown[rim] ~= text then shown[rim] = text; line.Text = text end

@@ -865,7 +865,7 @@ local function placeHudBox(name: string, pos: UDim2, onDown: () -> (), onUp: ((a
 end
 
 -- the hub's buttons (QUESTS, PLAY, PARTY, PROFILE, SHOP, LOADOUT: the left-hand stack) go to the right side, same order
-local HUB = { { "JankQuestsButton", nil }, { "JankPlayButton", "Play" }, { "JankPlayButton", "Party" },
+local HUB = { { "JankQuestsButton", nil }, { "JankPlayButton", "Play" }, { "JankPlayButton", "Party" }, { "JankHubsButton", "Hubs" },
 	{ "JankProfileButton", "Profile" }, { "JankShopButton", "Shop" }, { "JankLoadoutButton", nil } }
 local function hubButton(gname: string, child: string?): GuiObject?
 	local g = pg:FindFirstChild(gname)

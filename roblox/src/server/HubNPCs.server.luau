@@ -147,6 +147,15 @@ end
 local function idOf(v: any): string? return if type(v) == "string" and v ~= "" then v else nil end
 
 local npcs = {} -- the ones that move
+-- seats players sit on too (19 Nov 2026, the owner: "seats in the lounge are sittable ... loot will wait until there is
+-- a seat open if they're all being sat on", "seats in vip room work too"): the hub's builder tags the regulars' seat
+-- points HubSeat, so HubSeats gives each one a Sit prompt. while a regular sits on one its NpcHere is true (HubSeats
+-- hides its prompt then); a seat a player sits on (SeatTaken while NpcHere isn't) is passed by: the regular picks
+-- another, or waits while every one is taken
+local function npcHere(p: Instance?, on: boolean)
+	if p and p:IsA("BasePart") and p:GetAttribute("NpcHere") ~= on then p:SetAttribute("NpcHere", on) end
+end
+local function takenByPlayer(p: BasePart): boolean return p:GetAttribute("SeatTaken") == true and p:GetAttribute("NpcHere") ~= true end
 
 -- what they are doing now, for every screen (HubNPCs.client plays the clips from it)
 local function setPhase(n, phase: string, len: number?)
@@ -265,10 +274,12 @@ local function place(spot: BasePart)
 	label(m, tostring(who), if type(role) == "string" then role else nil, m:FindFirstChild("Head") :: BasePart?, if type(badge) == "string" then badge else nil)
 	-- their points, if they move
 	if type(n.mode) == "string" then
+		local hub = spot:GetAttribute("Hub") -- (the three hubs, 20 Nov: each has its own copy of every regular; a place and its points share Hub, none = the ring)
 		for _, p in CollectionService:GetTagged(POINT) do
-			if p:IsA("BasePart") and p:GetAttribute("Who") == who then table.insert(n.points, p) end
+			if p:IsA("BasePart") and p:GetAttribute("Who") == who and p:GetAttribute("Hub") == hub then table.insert(n.points, p) end
 		end
 		table.sort(n.points, function(a, b) return (a:GetAttribute("Index") or 0) < (b:GetAttribute("Index") or 0) end)
+		if n.seated and n.points[1] and n.points[1]:GetAttribute("Pose") == "sit" then npcHere(n.points[1], true) end -- (they start on their first point)
 		if #n.points > 1 then table.insert(npcs, n) end
 	end
 end
@@ -318,12 +329,14 @@ local function getUp(n, p: BasePart): boolean
 	while n.extraOn do task.wait(0.2) end
 	transition(n, "rise", n.root.CFrame, to, RISE)
 	n.seated = false
+	npcHere(p, false)
 	setPhase(n, "stood")
 	return true
 end
 local function sitDown(n, p: BasePart)
 	transition(n, "settle", n.root.CFrame, seatedAt(n, p), SETTLE)
 	n.seated = true
+	npcHere(p, true)
 	setPhase(n, "seated")
 end
 -- turn on the spot (stepping round: the walk at a slow step while they turn)
@@ -395,10 +408,10 @@ local function walkAlong(n, list: { Vector3 })
 end
 -- at a point with nothing in between (after a fault): sat on a seat, or stood facing its way
 local function rest(n, p: BasePart)
-	if isSeat(n, p) then
-		n.root.CFrame = seatedAt(n, p); n.seated = true; setPhase(n, "seated")
+	if isSeat(n, p) and not takenByPlayer(p) then
+		n.root.CFrame = seatedAt(n, p); n.seated = true; npcHere(p, true); setPhase(n, "seated")
 	else
-		n.root.CFrame = standOf(n, p); n.seated = false; setPhase(n, "stood")
+		n.root.CFrame = standOf(n, p); n.seated = false; npcHere(p, false); setPhase(n, "stood")
 	end
 end
 local function pauseAt(n, p: BasePart): number
@@ -411,15 +424,17 @@ end
 local function move(n): number
 	local pts, mode = n.points, n.mode
 	local a = pts[n.at]
-	local function pick(): number
+	local function pick(): number? -- (another of their points; never a seat a player sits on; nil: every one is taken)
 		local f = n.forceTo
-		if type(f) == "number" and f >= 1 and f <= #pts and f ~= n.at then return f end
-		local j = n.at
-		while j == n.at do j = math.random(1, #pts) end
-		return j
+		if type(f) == "number" and f >= 1 and f <= #pts and f ~= n.at and not takenByPlayer(pts[f]) then return f end
+		local free = {}
+		for j, p in pts do if j ~= n.at and not takenByPlayer(p) then table.insert(free, j) end end
+		if #free == 0 then return nil end
+		return free[math.random(1, #free)]
 	end
 	if mode == "teleport" then
 		local j = pick()
+		if not j then return 6 end -- (every other place taken: wait for one to come free)
 		local b = pts[j]
 		local there = standOf(n, b)
 		if blocked(there.Position) then return 5 end
@@ -429,10 +444,15 @@ local function move(n): number
 		n.root.CFrame = there; n.at = j
 		setPhase(n, "stood")
 		puff(there.Position)
-		if isSeat(n, b) then task.wait(0.7 / n.speed); sitDown(n, b) end
+		if isSeat(n, b) then
+			task.wait(0.7 / n.speed)
+			if takenByPlayer(b) then return 6 end -- (someone sat down on it as they came: they stand, and go on soon)
+			sitDown(n, b)
+		end
 		return 60 + math.random() * 60
 	elseif mode == "seats" then
 		local j = pick()
+		if not j then return 6 end -- (every other seat taken: wait for one to come free)
 		local b = pts[j]
 		-- out of the seat, a step out to the front of it, round by the aisles (the door joins the two sides), to the
 		-- front of the other, onto its stand point; their back to it; down. (R.check sweeps a body along the same)
@@ -448,7 +468,10 @@ local function move(n): number
 		walkAlong(n, list)
 		n.at = j
 		turnTo(n, yawOf(b.CFrame))
-		if isSeat(n, b) then task.wait(0.2 / n.speed); sitDown(n, b) end
+		if isSeat(n, b) then
+			if takenByPlayer(b) then return 4 end -- (someone sat down on it while they walked over: they stand, then try another)
+			task.wait(0.2 / n.speed); sitDown(n, b)
+		end
 		return pauseAt(n, b)
 	elseif mode == "loop" or mode == "pingpong" then
 		-- the next stop (loop: onward round; pingpong: a neighbour either way), through the "via" points between

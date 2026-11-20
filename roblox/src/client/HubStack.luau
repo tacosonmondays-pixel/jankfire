@@ -6,7 +6,7 @@
 -- to bottom by position) follow these positions, so they need nothing of their own
 local HubStack = {}
 
-HubStack.ORDER = { "Play", "Quests", "Party", "Profile", "Shop", "Loadout" }
+HubStack.ORDER = { "Play", "Quests", "Party", "Hubs", "Profile", "Shop", "Loadout" } -- (Hubs: travel between the hubs, HubTravelUI, 20 Nov)
 HubStack.HEIGHT = { Play = 42 } :: { [string]: number } -- (the rest 36)
 local X, BOTTOM, GAP, H = 24, -96, 8, 36
 
