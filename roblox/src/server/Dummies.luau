@@ -140,7 +140,7 @@ local function make(f: Fighter)
 	local plinker = shooter(f.name) or laneShoots(f)
 	local b0 = brain[f]
 	local max = f.maxHp or Weapons.HP
-	local tone = if plinker then SLATE elseif b0 and b0.lane and max > Weapons.HP then HEAVY elseif b0 and b0.lane and max < Weapons.HP then LIGHT else TAN
+	local tone = if plinker then SLATE elseif b0 and (b0.armour or (b0.lane and max > Weapons.HP)) then HEAVY elseif b0 and (b0.healBack or (b0.lane and max < Weapons.HP)) then LIGHT else TAN
 	local m = body(f.name, tone)
 	-- a target ring on the chest (red on the shooters, so you know which ones shoot back)
 	local torso = (m:FindFirstChild("UpperTorso") or m:FindFirstChild("Torso")) :: BasePart?
@@ -171,6 +171,26 @@ local function make(f: Fighter)
 		if bb.armour then
 			bit("Plate", Vector3.new(2.3, 2.1, 0.12), CFrame.new(0, 0.05, fz), SLATE)
 			bit("PlateRim", Vector3.new(2.5, 0.22, 0.2), CFrame.new(0, 1.12, fz), PALE)
+			-- (the held katana covers the chest: the shoulders and the head say it too, seen from the lane)
+			for _, sx in { -1, 1 } do bit("Pauldron", Vector3.new(1.2, 0.55, 1.5), CFrame.new(sx * 1.25, 0.95, 0) * CFrame.Angles(0, 0, sx * -0.25), SLATE) end
+		end
+		local head = m:FindFirstChild("Head") :: BasePart?
+		if head and (bb.armour or bb.healBack) then
+			local function hbit(name: string, size: Vector3, off: CFrame, col: Color3)
+				local q = Instance.new("Part")
+				q.Name = name; q.Size = size; q.Color = col; q.Material = Enum.Material.SmoothPlastic
+				q.CanCollide = false; q.CanQuery = false; q.CanTouch = false; q.Massless = true; q.CastShadow = false
+				q.CFrame = (head :: BasePart).CFrame * off
+				local w = Instance.new("WeldConstraint"); w.Part0 = head; w.Part1 = q; w.Parent = q
+				q.Parent = m
+			end
+			local hz = -((head :: BasePart).Size.Z / 2 + 0.03)
+			if bb.armour then
+				hbit("Cap", Vector3.new((head :: BasePart).Size.X + 0.2, 0.45, (head :: BasePart).Size.Z + 0.2), CFrame.new(0, (head :: BasePart).Size.Y / 2 + 0.05, 0), SLATE)
+			else
+				hbit("Cross", Vector3.new(0.6, 0.16, 0.08), CFrame.new(0, 0.25, hz), PALE)
+				hbit("Cross", Vector3.new(0.16, 0.6, 0.08), CFrame.new(0, 0.25, hz), PALE)
+			end
 		end
 		if bb.healBack then
 			bit("Cross", Vector3.new(0.7, 0.18, 0.1), CFrame.new(0, 1.05, fz - 0.1), PALE)
