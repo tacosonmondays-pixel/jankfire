@@ -60,6 +60,15 @@ codes weekly by weekly at some point".
   says (data: `at`, `look`, `show`). Its prompt ("Code", E / X) opens `CodePanel.client`'s screen: CODE, a box,
   ENTER. Keyboard (the box takes the keys, Enter sends, Esc closes), controller (PadNav: the box is picked first, A
   types, B backs out) and phone (tap the box). Hub only (MenuGate `lorecode`); closes when you walk 16 studs off.
+- **A panel in every hub (20 Nov 2026)**: the new hubs (`Map.Hub.Square`, `.Concourse`, `.Atrium`) each have a
+  `CodePanelSpot` marker from the hub builder (a Part, bottom-centre on the floor, LookVector out of the screen,
+  attribute `Hub`). `server/LorePanel.luau` builds the same terminal beside it at run time (`fromSpots`, run by
+  `LoreNPCs.server` at start and every 5 s, so a hub rebuild gets its panel back; nothing is saved into the place, so
+  Edit mode shows no panel). Every panel is tagged `CodePanel`; the screen, the server's 24-stud check and the cutscene
+  use the one nearest you, and the cutscene keeps clear of that panel's own hub. A marker's panel picks its `Show` spot
+  itself: one side 5.6 studs along, 0.8 then 1.8 then 2.6 out (a panel flush on a wall needs the 1.8), else the
+  clearest spot in front. The ring's panel (`L.panel()`) uses the same make with `L.PANEL`'s fixed `show`. Checked
+  in the Square (place v1217).
 - **A right code** (`LoreNPCs.server`, remote `LoreCode` "try"): the NPC is revealed for you for good (saved in
   `JankfireLore_v1`: `seen`, and `codes` = when each was redeemed), its copy is delivered, and it counts as finding it:
   its gift and title as before (the mannequin's OG title through `ServerStorage.HubEggFind`, and the Mini Mannequin pet
