@@ -467,7 +467,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	if not it or not it.live then return end
 	if me:GetAttribute("Quiz") then return end -- (sitting a pop quiz: no items)
 	if me:GetAttribute("RoundLock") == true then Sfx.play("empty", nil, 0.5); return end -- (before GO / between rounds: gadgets wait for the round, no throw, nothing spent)
-	if me:GetAttribute("Trap") then Sfx.play("blub", nil, 0.6); Hud.callout("you are in a bubble", 0.7); return end
+	if me:GetAttribute("Trap") then Sfx.play("blub", nil, 0.6); return end -- (in a bubble: BUBBLED is already up)
 	if it.id == "nvg" then toggleGoggles(); return end
 	if it.id == "radar" then radarHold(true); return end
 	if X.cooking() then X.cookRelease(); return end -- (a cooked grenade whose key-up was lost: this press throws it)
@@ -2223,23 +2223,8 @@ local function soapStep()
 	end
 end
 
--- the view from inside: the world through a film, a bright rim where the wall curves away, two glints, a wobble
-local bub = T.new("Frame", { Name = "Bubble", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 40 }, overlay)
-T.new("Frame", { Name = "Tint", BackgroundColor3 = Color3.fromRGB(196, 228, 246), BackgroundTransparency = 0.9, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 40 }, bub)
-local function pill(name: string, size: UDim2, stroke: number, color: Color3, tr: number, z: number): Frame
-	local f = T.new("Frame", { Name = name, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = size, ZIndex = z }, bub)
-	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, f)
-	T.new("UIStroke", { Thickness = stroke, Color = color, Transparency = tr }, f)
-	return f
-end
-local film = pill("Film", UDim2.fromScale(0.94, 0.94), 1200, Color3.fromRGB(206, 232, 246), 0.7, 41)
-local rim = pill("Rim", UDim2.fromScale(0.94, 0.94), 3, Color3.new(1, 1, 1), 0.3, 42)
-local glintA = pill("GlintA", UDim2.fromScale(0.26, 0.12), 6, Color3.new(1, 1, 1), 0.5, 42)
-glintA.Position = UDim2.fromScale(0.24, 0.17); glintA.Rotation = -20
-local glintB = pill("GlintB", UDim2.fromScale(0.14, 0.07), 4, Color3.new(1, 1, 1), 0.6, 42)
-glintB.Position = UDim2.fromScale(0.8, 0.84); glintB.Rotation = -20
-local bubL = T.text(bub, "Left", "", 18, Color3.fromRGB(226, 242, 250), T.FONT_BOLD, Enum.TextXAlignment.Center, true)
-bubL.AnchorPoint = Vector2.new(0.5, 1); bubL.Position = UDim2.new(0.5, 0, 1, -170); bubL.Size = UDim2.fromOffset(360, 26); bubL.ZIndex = 43
+-- sealed in yourself: no film over your view, no countdown, just BUBBLED on the announcer line while you're in it
+-- (20 Nov 2026, the owner: "can we get rid of the ui for getting bublled and just have a message saying bubbled on screen")
 
 type Trap = { o: number?, model: Instance?, untilT: number, born: number, ball: BasePart?, v: Vector3 }
 local traps: { [string]: Trap } = {}
@@ -2255,7 +2240,7 @@ local function nameOf(model: Instance?): string
 end
 local function endMine(loud: boolean)
 	myTrap = nil
-	bub.Visible = false
+	Hud.calloutOff("BUBBLED")
 	if not loud then return end
 	Sfx.play("bigpop")
 	droplets(camera.CFrame.Position + camera.CFrame.LookVector * 2, 60, 5 * S)
@@ -2276,11 +2261,9 @@ local function onTrap(m: any)
 		if st and st.hook then st.hook = nil; GrappleR:FireServer("release") end
 		Body.push(Vector3.new(0, tr.v.Y, 0)) -- (off the floor, so the Humanoid lets go of it)
 		myTrap = tr
-		bub.Visible = true
 		Sfx.play("glorp")
 		droplets(camera.CFrame.Position + camera.CFrame.LookVector * 2, 30, 4 * S)
-		local by = if type(m.by) == "number" and m.by ~= me.UserId then Players:GetPlayerByUserId(m.by) else nil
-		Hud.callout(if by then "BUBBLED BY " .. string.upper(by.DisplayName) else "BUBBLED", 1.6)
+		Hud.callout("BUBBLED", tr.untilT - os.clock() + 0.4) -- (up while you're in it; endMine takes it down)
 		shake = math.max(shake, 0.3)
 		return
 	end
@@ -2324,14 +2307,7 @@ local function trapStep(dt: number)
 	local mine = myTrap
 	if mine then
 		if n > mine.untilT + 0.4 or not myChar() then endMine(myChar() ~= nil) -- (our timer ran out a hair before the server's pop)
-		else
-			local left = math.max(0, mine.untilT - n)
-			bubL.Text = ("IN A BUBBLE · pops in %.1fs"):format(left)
-			local w = math.sin(n * 2.7) * 0.015
-			film.Size = UDim2.fromScale(0.94 + w, 0.94 - w)
-			rim.Size = film.Size
-			if math.random() < dt * 1.6 then Sfx.play("blub", nil, 0.5, 0.7 + math.random() * 0.6) end
-		end
+		elseif math.random() < dt * 1.6 then Sfx.play("blub", nil, 0.5, 0.7 + math.random() * 0.6) end
 	end
 	for k, tr in traps do
 		if tr.o == me.UserId then continue end

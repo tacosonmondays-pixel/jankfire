@@ -174,12 +174,12 @@ end
 -- first match wins, so a big line is listed before a small one that starts the same way
 local KINDS: { { string } } = {
 	{ "SLIDE JUMP", "train" }, { "GRAPPLE JUMP", "train" }, { "BHOP x", "train" }, { "LEDGE LAUNCH", "train" },
-	{ "BUBBLED BY", "big" },
 	{ "TOO FAR", "small" }, { "killed ", "small" }, { "PERFECT PARRY", "small" }, { "PARRY!", "small" }, { "PARRIED", "small" }, { "CRIT RETURN", "small" },
-	{ "BLOCKED", "small" }, { "CHAIN x", "small" }, { "* LINKED", "small" }, { "QUICK SCOPE", "small" }, { "you are in a bubble", "small" },
+	{ "BLOCKED", "small" }, { "CHAIN x", "small" }, { "* LINKED", "small" }, { "QUICK SCOPE", "small" },
 	{ "*: recharging", "small" }, { "REVERSED", "small" }, { "ROPE SNAPPED", "small" }, { "POP QUIZ FOR ", "small" },
 	{ "TICKET", "small" }, { "BUSTED!", "small" }, { "PHOTO TAKEN", "small" }, { "* WENT IN YOUR PHOTO", "small" },
 	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },
+	{ "BUBBLED", "big" }, -- (you, sealed in a soap bubble: the one word, up while you're in it. after "BUBBLED ", your own hit on someone)
 	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" }, { "PINNED", "small" }, { "FROZEN", "small" }, -- (PINNED: your Nail Gun pinned them, weapons batch A)
 	{ "PAUSED", "small" }, { "REWOUND", "small" }, { "SPARE", "cut" }, { "STRIKE", "cut" }, -- (weapons batch D: the TV Remote, the Bowling Ball)
 	{ "CUT", "small" }, { "* m/s", "cut" }, -- (batch E: the Lasso cut by a guard; how fast you flung them)
@@ -207,6 +207,12 @@ local function kindOf(text: string): string
 end
 
 local token = 0
+local shown: string? = nil -- (the big line up now, as it was asked for, until it fades: Hud.calloutOff)
+local function fadeCall()
+	T.tween(call, 0.25, { TextTransparency = 1, TextStrokeTransparency = 1 })
+	T.tween(callRule, 0.25, { BackgroundTransparency = 1 })
+	T.tween(callBand, 0.25, { BackgroundTransparency = 1 })
+end
 function Hud.callout(text: string, dur: number)
 	local kind = kindOf(text)
 	if kind == "cut" then return end
@@ -217,6 +223,7 @@ function Hud.callout(text: string, dur: number)
 	if kind == "small" then Hud.note(text, dur); return end
 	token += 1
 	local my = token
+	shown = text
 	call.Text = dress(Keys.say(text))
 	call.TextTransparency = 0; call.TextStrokeTransparency = 0.55
 	callRule.BackgroundTransparency = 0
@@ -225,10 +232,16 @@ function Hud.callout(text: string, dur: number)
 	T.tween(callScale, 0.12, { Scale = 1 })
 	task.delay(dur, function()
 		if my ~= token then return end
-		T.tween(call, 0.25, { TextTransparency = 1, TextStrokeTransparency = 1 })
-		T.tween(callRule, 0.25, { BackgroundTransparency = 1 })
-		T.tween(callBand, 0.25, { BackgroundTransparency = 1 })
+		shown = nil
+		fadeCall()
 	end)
+end
+-- takes a big line held for a while down early, if it's still the one up (BUBBLED when the bubble pops before its time)
+function Hud.calloutOff(text: string)
+	if shown ~= text then return end
+	token += 1
+	shown = nil
+	fadeCall()
 end
 
 function Hud.speed(ms: number, sliding: boolean, hooked: boolean)
