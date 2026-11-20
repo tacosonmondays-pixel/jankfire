@@ -303,7 +303,7 @@ emotes were "really really bad".
     uploaded as the owner's Animation.
   - **The ten, listed first and NEW:** Hip Hop, Robot, Shuffle, Breakdance, House, Swing, Tutting, Body Wave, Silly Dance,
     Spin (3.8 to 26.2 s loops). Their ids are in `Flair.luau`.
-  - They're R15 only, like the converter's rig. R6 emotes would need an R6 mode in the converter.
+  - They were R15 only at first. Since 20 Nov each is a merged R15+R6 take (see "All the emotes" below).
 - **The owner's packs (20 Nov),** vetted offline (`side-session-notes/.../packs-20nov-vetting.md`):
   - three are copies of other games' emotes and song routines: OUT;
   - the bought Soul Sword Combat Pack is R6 combat, not emotes. It waits on its licence.
@@ -354,6 +354,39 @@ and covers or "type beats" of its melody are out. So each dance emote gets one t
 - **Settings** (AUDIO tab):
   - MUSIC VOLUME (`vol.music`, a `Music` group under the master);
   - OTHERS' EMOTE MUSIC (`snd.emoteMusic`). Your own always plays; the slider can still mute it.
+
+## All the emotes (20 Nov 2026, place v1185)
+
+The owner: "Also we added allllllthe emotes right do it". **116 emotes now:** 95 DANCES, 9 GESTURES, 7 TAUNTS,
+5 CELEBRATIONS. All are free, and the 81 new ones are listed first with a NEW dot.
+- **Catalog (6 new, R15 only):** Bounce and Strut (dances), Sit and Pose (gestures), Air Sit and Tree (taunts).
+  - Each passed the same checks as the trend set: it loads, holds one R15 Animation, and has no Sound.
+  - Left out:
+    - one that floats and needs a prop;
+    - a duplicate of Pose;
+    - one with no torso keys;
+    - the 12 from 19 Nov: named routines, brands, other games' promos, a comic's move and a generated one.
+- **Mixamo (75 new, the owner's account):** the scythe session downloaded clips 11-85 to the vault
+  (`Assets\mixamo-20nov-emotes`, never git). Song-named clips were skipped.
+  - Names are plain moves, numbered where a style repeats (Samba 2-5, Uprock 2-4, Freeze 2-4).
+  - Raise The Roof is a celebration; the rest are dances.
+  - A clip whose hips travelled across a stage (up to 4.8 studs) is held to 1.5 studs: `mixamo_r15.py --max-sway 1.5`.
+  - Clip 69 was uploaded under a move name (`jf_emote_powermove`): no number joke in any upload.
+- **R6:** every Mixamo emote (the 75 and the first ten) is ONE animation that holds both rigs' poses.
+  - `tools/blender/mixamo_r15.py --r6` retargets to R6 in Blender (R6 joints use RC frames; `--hip 2`).
+  - `tools/blender/merge_r15_r6.py` merges the R15 and R6 trees under one HumanoidRootPart pose per keyframe. It pairs
+    keyframes by nearest time. Checked in Studio on both rigs: worst joint 0.05°.
+  - `Flair.EMOTE_R6` lists them, and `F.emoteAnim(id, r6)` picks the take.
+  - A catalog emote on an R6 body shows `R15 ONLY`.
+  - The bought packs' R6 emotes stay out (copies of other games' emotes, or combat).
+- **Music:** the 74 new Mixamo dances each get an APM track, picked by style and measured the same way (first strong
+  beat in a Client Play test, a 60 s stretch or the track's end). Bounce and Strut reuse Fancy Feet's and Two Step's
+  tracks. Gestures, taunts and celebrations get none. The titles are in `Flair.MUSIC`.
+- **Picker** (`client/FlairUI.luau`, place v1175): chips ALL / DANCES / GESTURES / TAUNTS / CELEBRATIONS, and a SEARCH box
+  that matches names. On an R6 body, catalog cards carry an `R15` tag. The wheel stays 8 slots.
+- **Still to come:** the scythe session is downloading Mixamo's celebrations, gestures and poses (clips 86 onward). They
+  get the same conversion, R6 merge and categories.
+- **Contact sheet:** `flair/emotes-all-contact-sheet.jpg` shows the catalog row and five 15-dancer grids from a Play test.
 
 ## Grapple skins
 
