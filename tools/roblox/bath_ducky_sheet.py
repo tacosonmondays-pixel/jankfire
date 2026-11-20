@@ -129,7 +129,7 @@ def main():
     if V2:
         last = len(panels)
         if last in shots:
-            shots[last] = end_card(shots[last], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK PISTOL'))
+            shots[last] = end_card(shots[last], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK SNIPER'))
     else:
         if 7 in shots:
             shots[8] = soak(shots[7])

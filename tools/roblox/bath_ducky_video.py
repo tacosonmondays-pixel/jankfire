@@ -116,7 +116,7 @@ def flash(im, k):
     return Image.blend(im, Image.new('RGB', (W, H), (255, 255, 255)), k)
 
 
-def card(im, k, small='ROYAL DUCK PISTOL', big='BATH DUCKY'):
+def card(im, k, small='ROYAL DUCK SNIPER', big='BATH DUCKY'):
     """the finisher's name card, plain (the skin's name above the finisher's): no other words"""
     lay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(lay)

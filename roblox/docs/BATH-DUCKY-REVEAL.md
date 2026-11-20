@@ -1,5 +1,14 @@
 # The Bath Ducky skin reveal (storyboard, 19 Nov 2026)
 
+## Which gun: the Royal Duck Sniper only (20 Nov)
+
+The owner (relayed by the finishers session): "Special cutscene should be applied to one gun in the set. Cowboy revolver,
+maybe the ducky sniper seraph ar etc". So this cinematic is the **Royal Duck Sniper's** (`sniper_ducky_tripo`) finisher:
+the finishers session's `Finishers.splashdown` row now lists only that skin, and the Bath Ducky scene is what it plays
+once built (on `client/FinisherScene.luau`, as planned below). Rounds 2-4 show the Royal Duck Pistol in your hand and on
+the name card; the stage and the cut now default to the sniper (`HELD_SKIN` in `bath_ducky_board3.luau`, the card in
+`bath_ducky_video.py`), so the next shoot holds it.
+
 ## Round 4 (20 Nov): a deep tub, real water, sunlight, a Spider-Verse duck
 
 The owner on the round-3 animatic (relayed by the finishers session): "Can the water be actual water and have lighting

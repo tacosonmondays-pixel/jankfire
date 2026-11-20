@@ -212,10 +212,12 @@ local function foamHair(rig)
 	d.Parent = rig
 end
 
--- the skin in the hand (the VIP Ducky pistol, as the finisher's killer holds it); a small rubber duck if it is missing
+-- the skin in the hand: the Royal Duck Sniper (20 Nov, the owner: the special cutscene belongs to one gun in the set,
+-- "maybe the ducky sniper"; Finishers.splashdown lists only sniper_ducky_tripo); a small rubber duck if it is missing
+local HELD_SKIN = "sniper_ducky_tripo"
 local function gunInHand(rig)
 	local skins = RS:FindFirstChild("JankfireSkins")
-	local tpl = skins and skins:FindFirstChild("pistol_ducky_tripo")
+	local tpl = skins and skins:FindFirstChild(HELD_SKIN)
 	local hand, lower = rig.RightHand, rig.RightLowerArm
 	local dir = (hand.Position - lower.Position).Unit
 	local at = hand.Position + dir * 0.15
@@ -237,7 +239,7 @@ local function gunInHand(rig)
 		g.Parent = rig
 		local hi, lo = tpl:GetAttribute("FileHi"), tpl:GetAttribute("FileLo")
 		local tip = Vector3.new(0, (typeof(hi) == "Vector3" and hi.Y or 0.06) * 0.5, (typeof(lo) == "Vector3" and lo.Z or -0.27)) * 3
-		return want * tip, "pistol_ducky_tripo"
+		return want * tip, HELD_SKIN
 	end
 	local d = T.duck:Clone()
 	d:ScaleTo(d:GetScale() * 0.9 / 1.6)
