@@ -785,6 +785,38 @@ weapons-port's `server/Zombies.luau` (docs/ZOMBIES.md). This side is the card, t
   doesn't change: busy() then means "no room for another game". Still to test: a squad of several real players, a
   party of 4, and a second squad starting while one plays.
 
+### Watching matches: the SPECTATE BOARD (20 Nov 2026, place version 1222)
+
+The owner: "can there be a board where you can specate current games?" (commits 8230e30, d5c61aa).
+
+- **The board:** every part tagged `SpectateBoard` gets this server's live matches drawn on its front face: mode, map,
+  score, round and time, the players' display names. The hub session places one per hub (HUB-MARKERS.md: the Square's
+  west wall, the Concourse's nave, two on the Atrium's screen cube); the ring has my own over its centre console. Each
+  carries a prompt (E, `SpectateOpen`) that opens the WATCH panel. The PLAY screen has a WATCH tab that opens it too.
+- **The panel:** "matches on this server", one row per match with a WATCH button. Matches on other servers
+  (cross-server) aren't listed. RANKED matches are listed but can't be watched (`Spectate.RANKED = false`): a friend
+  watching could call out where everyone is (ghosting).
+- **Watching:** your body stays where it stood, anchored, with the attribute `Watching` = the match id. You're not in
+  the match, so nothing there counts you: hits, zones, ranked, stats and quests ignore you, and the anti-cheat sees a
+  body standing still. The server streams the arena to you (`ReplicationFocus`). The camera follows a player:
+  PREV / NEXT (Q / E, arrows, a pad's D-Left / D-Right), FREE CAM (F, a pad's Y: WASD, Space, Ctrl, right mouse or the
+  right stick to look), LEAVE (Backspace, a pad's B, the button). Your client plays the arena's look: it sets its own
+  `Zone` = "match" and `Arena` while watching (HubLife, ZoneCull and the arena scripts follow) and puts the server's
+  values back after; the other screens hide and the game's keys hold still (`LoadoutOpen`).
+- **It ends** on LEAVE, at the match's end (its rounds carry on), with a new body, or leaving the server. Not from a
+  match, a map room, a ZOMBIES game or a searching party; a party can't search while one of it watches, and QUICK JOIN
+  skips watchers.
+- **Code:** `server/Spectate.luau` (remote `JankfireRemotes.Spectate`: list / watch / leave / info),
+  `client/SpectateClient.client.luau`, `Matches.liveInfo` / `watchInfo`, `Party.busy`.
+- **Tested** (solo Play, a held test match on Arctic Cabin): the ring's board and the panel listed it ("1V1 · ARCTIC
+  CABIN · 0–0 · ROUND 1"); WATCH put the camera over the arena with its own look and the overlay; free cam flew with W;
+  the match's end brought everything back (Zone "hub", body unanchored, no stream focus). Not tested: following real
+  players (a solo test has none to follow), and a phone (the buttons are on screen).
+
+  ![the ring's board](matchmaking/63_spectate_board.jpg)
+  ![the WATCH panel](matchmaking/64_spectate_panel.jpg)
+  ![watching a match](matchmaking/65_spectate_view.jpg)
+
 ## 5. How it is built
 
 | file | what |
