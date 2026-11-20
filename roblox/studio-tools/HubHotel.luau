@@ -98,6 +98,7 @@ function HH.build(K, parent, name, site, live)
 	end
 	box(F0, "Scenery", "StairRunner", -2.4, 2.4, 0, 0.04, 2.0, 4.0, PAL.runner, CARPET)
 	for _, sx in { -1, 1 } do K.light(box(F0, "Scenery", "StairFootLight", sx * 6.5 - 0.2, sx * 6.5 + 0.2, 4.4, 4.6, 4.8, 5.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 14, 0.8, PAL.warm) end
+	K.light(box(F0, "Scenery", "StairFrontLight", -0.2, 0.2, 3.0, 3.2, 1.2, 1.6, PAL.lamp, nil, { ghost = true, tr = 1 }), 11, 0.9, PAL.warm) -- (the bottom risers face the spawn: lit from in front)
 	for _, p in { { 10, 8 }, { 15, 18 }, { 22, 26 } } do -- (round 4: the stair lit, not a black slope)
 		K.light(box(F0, "Scenery", "StairLight", -0.3, 0.3, p[1] - 0.1, p[1] + 0.1, p[2] - 0.3, p[2] + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 18, 0.9, PAL.warm)
 	end
@@ -231,8 +232,13 @@ function HH.build(K, parent, name, site, live)
 	-- (round 4) a display plinth in front of reception: the newest premium weapon turning on it, lit from above
 	cyl(F0, "Shell", "ShowPlinth", 16.5, 0, 3.2, -21.5, 3.6, PAL.stone)
 	cyl(F0, "Scenery", "ShowPlinthLip", 16.5, 3.0, 3.3, -21.5, 3.9, PAL.wood)
-	local sg = K.gun(F0, "JankfireWeapons", "w_minigun", 4.6, 16.5, 4.1, -21.5, 0, "Case_w_minigun") or K.gun(F0, "JankfireWeapons", "w_katana", 4.4, 16.5, 4.1, -21.5, 0, "Case_w_katana")
-	if sg then sg:SetAttribute("Spin", 0.5); sg:SetAttribute("SpinNear", 70); game:GetService("CollectionService"):AddTag(sg, "HubSpin") end
+	-- (polish: judges, the gun read as floating) two wood cradles on the plinth, the gun seated on them, still
+	for _, dx in { -1.1, 1.1 } do box(F0, "Scenery", "Cradle", 16.5 + dx - 0.3, 16.5 + dx + 0.3, 3.3, 3.9, -22.1, -20.9, PAL.wood) end
+	local sg = K.gun(F0, "JankfireWeapons", "w_minigun", 4.6, 16.5, 4.6, -21.5, 0, "Case_w_minigun") or K.gun(F0, "JankfireWeapons", "w_katana", 4.4, 16.5, 4.6, -21.5, 0, "Case_w_katana")
+	if sg then
+		local cf, size = sg:GetBoundingBox()
+		sg:PivotTo(sg:GetPivot() + Vector3.new(0, (site or HH.SITE).Position.Y + 3.9 - (cf.Position.Y - size.Y / 2), 0)) -- (its underside on the cradles)
+	end
 	K.light(box(F0, "Scenery", "ShowLight", 16.2, 16.8, 12.4, 12.6, -21.8, -21.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 12, 1.2, PAL.lamp,
 		{ kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 40 })
 	-- the lifts (HUBS travel) on the S wall, a pair either side of the stair
@@ -402,6 +408,16 @@ function HH.build(K, parent, name, site, live)
 	box(F0, "Shell", "SeatStep", 32, 60, 0, 0.8, BZa, 6, PAL.wood2, MAT.WoodPlanks)
 	box(F0, "Scenery", "SeatStepNosing", 32, 60, 0.5, 0.95, 5.5, 6.3, PAL.wood)
 	K.bar(K.at(F0, 62, 14, 90), 14) -- (its drinkers on the west side)
+	-- (polish, judges: the lounge's weakest point) the back-bar: a chunky wood built-in on the E wall behind the bar, three lit
+	-- shelves in it, a cornice; the golf door framed in the same wood, its name over it
+	box(F0, "Shell", "BackBar", 64.9, 66, 0, 11.2, 5.4, 19.2, PAL.wood2)
+	box(F0, "Scenery", "BackBarCornice", 64.4, 66, 11.2, 12.2, 5.0, 19.6, PAL.wood)
+	for _, y in { 4.6, 7.0, 9.4 } do
+		local sh = box(F0, "Scenery", "BackBarShelfLight", 64.85, 64.95, y, y + 0.15, 6.0, 18.6, PAL.warm, MAT.Neon, { ghost = true, noshadow = true, tr = 0.4 })
+		K.light(sh, 8, 0.5, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Left, angle = 120 })
+	end
+	for _, zz in { { 19.2, 20.0 }, { 28.0, 28.8 } } do box(F0, "Scenery", "GolfDoorJamb", 64.6, 66, 0, 10.8, zz[1], zz[2], PAL.wood) end
+	box(F0, "Scenery", "GolfDoorHead", 64.6, 66, 10.0, 10.8, 19.2, 28.8, PAL.wood)
 	for _, x in { 36.2, 55.8 } do
 		put("ht_sofa", at(x, 0.8, 0.2, 0), { solid = true })
 		put("ht_table", at(x, 0.8, 3.4, 0), { solid = true })
@@ -413,16 +429,21 @@ function HH.build(K, parent, name, site, live)
 	for i, y in { 1.45, 1.85 } do
 		K.part("Scenery", "Log", F0 * CFrame.new(46 + (i - 1.5) * 0.6, y, BZa + 1.95), Vector3.new(4.2, 0.55, 0.55), "4a3426", MAT.Wood, { shape = Enum.PartType.Cylinder })
 	end
-	local fire = box(F0, "Scenery", "Fire", 44, 48, 1.2, 2.5, BZa + 1.72, BZa + 1.8, "ff8a3a", MAT.Neon, { ghost = true, noshadow = true, tr = 0.3 })
-	K.light(fire, 11, 0.9, "ff9a50")
+	local fire = box(F0, "Scenery", "Fire", 44, 48, 1.2, 2.2, BZa + 1.72, BZa + 1.8, "ff7a2a", MAT.Neon, { ghost = true, noshadow = true, tr = 0.35 })
+	for i, f in { { 44.9, 1.5, 2.6 }, { 46.0, 1.9, 3.3 }, { 47.1, 1.5, 2.7 } } do -- (shaped flames: tall wedges standing on the logs)
+		local hgt = f[3] - f[2]
+		K.part("Scenery", "Flame", F0 * CFrame.new(f[1], f[2] + hgt / 2 + 0.3, BZa + 2.0), Vector3.new(0.5, hgt, 0.9), if i == 2 then "ffd27a" else "ff9a3a", MAT.Neon,
+			{ cls = "WedgePart", ghost = true, noshadow = true, tr = 0.2 })
+	end
+	K.light(fire, 15, 1.2, "ff9a50")
 	box(F0, "Scenery", "Mantel", 39.4, 52.6, 6.0, 6.7, BZa, BZa + 2.2, PAL.wood)
 	box(F0, "Scenery", "Overmantel", 41.5, 50.5, 7.2, 12.4, BZa, BZa + 0.4, PAL.wood)
-	local mirror = box(F0, "Scenery", "Mirror", 42.2, 49.8, 7.9, 11.7, BZa + 0.4, BZa + 0.5, "cfd6d8", MAT.Glass)
-	mirror.Reflectance = 0.45
+	local mirror = box(F0, "Scenery", "Mirror", 42.2, 49.8, 7.9, 11.7, BZa + 0.4, BZa + 0.5, "7d878c", MAT.Glass) -- (darker: it read as an empty white frame)
+	mirror.Reflectance = 0.35
 	K.tableSpot(K.at(F0, 40, 15, 0), "board"); K.tableSpot(K.at(F0, 52, 23, 0), "arm")
 	K.arcadeSpot(K.at(F0, 36, 29.6, 0)); K.arcadeSpot(K.at(F0, 42, 29.6, 0))
 	K.codePanelSpot(K.at(F0, 46, BZb, 0)) -- (on the S wall, looking north into the bar)
-	palm(64, 0.5); palm(64, 27.5)
+	palm(64, 0.5); palm(59.5, 28.2) -- (the second palm clear of the golf door's new frame)
 	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = -50, z1 = 44, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
 	for _, x in { 78, 94, 110 } do -- (round 5: no black void through the golf room's door)
 		K.light(box(F0, "Scenery", "GolfLight", x - 0.3, x + 0.3, 15.8, 16, 23.7, 24.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 28, 0.9, PAL.lamp)
@@ -471,7 +492,11 @@ function HH.build(K, parent, name, site, live)
 		elseif d:IsA("BasePart") and d.Name == "TableRug" then d.Color = K.c3("8f8a76"); d.Material = MAT.SmoothPlastic -- (the kit's rug is near-black in the lounge's warm light)
 		elseif d:IsA("BasePart") and d.Name:match("^ht_vault%d") then d.Color = K.c3("bdb09b") -- (round 3: the vault a step down: the pads the brightest)
 		elseif d:IsA("BasePart") and d.Name == "StoolStem" then d.Size = Vector3.new(d.Size.X, 1.2, 1.2) -- (thick pedestals)
-		elseif d:IsA("BasePart") and d.Name == "StoolFoot" then d.Size = Vector3.new(d.Size.X, 1.9, 1.9)
+		elseif d:IsA("BasePart") and d.Name == "StoolFoot" then d.Size = Vector3.new(d.Size.X, 1.9, 1.9); d.Color = K.c3("a89466")
+		elseif d:IsA("BasePart") and d.Name == "BarCounter" then d.Color = K.c3(PAL.wood); d.Material = MAT.Wood
+		elseif d:IsA("BasePart") and d.Name == "BarTop" then d.Color = K.c3(PAL.stone)
+		elseif d:IsA("BasePart") and d.Name == "BarShelfWall" then d.Color = K.c3(PAL.wood2)
+		elseif d:IsA("BasePart") and d.Name == "StoolSeat" then d.Color = K.c3("6f8a76")
 		elseif d:IsA("BasePart") and d.Name:match("^ht_coffer") then d.Color = K.c3("c9bca8") -- (round 4: the ceiling a step under the walls)
 		end
 	end

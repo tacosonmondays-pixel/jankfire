@@ -1068,6 +1068,7 @@ end
 K.PAD = { w = 12.4, d = 13.4, top = 1.2, frameW = 10.8, frameH = 14.2 }
 K.PAD_KIT = 102127176872071 -- (the pad kit's Model asset, round 6: tools/roblox/pad_models.py, uploaded 20 Nov; round 5 was 81129917407402; round 7 builds its board in Lua and leaves out jpad_totem)
 K.TEAM_MUTED = { "b0578f", "3f8fa8", "b08a46" } -- (the teams' colours at rest on a plate; the Glow is the full colour)
+K.TEAM_GLOW = {} -- (a palette's own lane-glow colours, when it gives them: TeamColors entries' glow; else K.glowHex derives one)
 -- (20 Nov, the owner: "maybe lets use differnt accent colors than the rivals one please") the teams' colours come from
 -- ONE place, ReplicatedStorage.Jankfire.TeamColors (play-party's module: the matches read it too, so pads and matches
 -- agree; its OLD switch brings back the values above). Read at build time; without the module the values above stand
@@ -1080,7 +1081,10 @@ do
 			local list = TC.list()
 			for i = 1, 3 do
 				local e = list[i]
-				if e then K.TEAM[i] = (string.gsub(e.hex, "#", "")); K.TEAM_MUTED[i] = (string.gsub(e.muted, "#", "")) end
+				if e then
+					K.TEAM[i] = (string.gsub(e.hex, "#", "")); K.TEAM_MUTED[i] = (string.gsub(e.muted, "#", ""))
+					if type(e.glow) == "string" then K.TEAM_GLOW[i] = (string.gsub(e.glow, "#", "")) end -- (a set's own lane glow: pastels)
+				end
 			end
 		end
 	end
@@ -1103,6 +1107,7 @@ end
 -- (main, 20 Nov: in the photos the lit lanes washed out to yellow and pale cyan) the glow's own colour: the team's hue,
 -- deeper and more saturated, so neon keeps it under the bloom (the counts and the HUD keep the team's own hex)
 function K.glowHex(t)
+	if K.TEAM_GLOW[t] then return K.TEAM_GLOW[t] end -- (the palette's own: pastels need a richer glow than they derive to)
 	local c = c3(K.TEAM[t])
 	local h, s, v = c:ToHSV()
 	if s < 0.2 then return K.TEAM[t] end -- (a pale team stays itself)
@@ -1170,7 +1175,7 @@ function K.pad(F, md, bank, name, o)
 	end
 	local label = md.title .. "  ·  " .. md.kind
 	local kb = K.box(F, "Scenery", "KerbSign", -4.6, 4.6, 0.25, 1.35, 0.07, 0.1, "7d7a76", nil, { parent = m, ghost = true, tr = 1 })
-	K.text(kb, Enum.NormalId.Back, { { label, "ece6da", 0.9 } }, { pps = 40, bright = 1.4 })
+	K.text(kb, Enum.NormalId.Back, { { label, "1f2633", 0.9 } }, { pps = 40, bright = 1.4 }) -- (dark on the teams' tinted front: pastels too)
 	for _, sx in { -1, 1 } do
 		local ke = K.box(F, "Scenery", "KerbSign", sx * 6.38, sx * 6.42, 0.15, 1.05, -12.4, -1.0, "7d7a76", nil, { parent = m, ghost = true, tr = 1 })
 		K.text(ke, if sx > 0 then Enum.NormalId.Right else Enum.NormalId.Left, { { label, "ece6da", 0.9 } }, { pps = 40, bright = 1.4 })
@@ -1199,6 +1204,36 @@ function K.pad(F, md, bank, name, o)
 		K.text(hp, Enum.NormalId.Back, { { md.kind, "f2f0ea", 0.8 } }, { pps = 40, bright = 2, bg = "28324a", bgt = 0 })
 	end
 	return m
+end
+-- (20 Nov, the TeamColors flip: main, "never a visible mismatch") recolour pads already built (any design) to the palette
+-- in K.TEAM / K.TEAM_MUTED: colour only, no geometry. Each part or light in a pad Model whose colour is one of the old
+-- teams' colours takes the new one (the Side plates the muted one); a part with a Team attribute and a team colour is
+-- caught either way. old = { full = { hex... }, muted = { hex... } } (the colours the pads were built with). Returns a count
+function K.recolorPads(padsFolder, old)
+	local n = 0
+	local function near(c, hex)
+		local o = c3(hex)
+		return math.abs(c.R - o.R) + math.abs(c.G - o.G) + math.abs(c.B - o.B) < 0.06
+	end
+	local function teamOf(c)
+		for t, hx in old.full do if near(c, hx) then return t, false end end
+		for t, hx in old.muted or {} do if near(c, hx) then return t, true end end
+		return nil
+	end
+	for _, m in padsFolder:GetChildren() do
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") then
+				local t, muted = teamOf(d.Color)
+				if t and K.TEAM[t] then
+					d.Color = c3(if muted or d.Name:match("^Side") then K.TEAM_MUTED[t] elseif d.Material == MAT.Neon then K.glowHex(t) else K.TEAM[t]); n += 1
+				end
+			elseif d:IsA("Light") then
+				local t = teamOf(d.Color)
+				if t and K.TEAM[t] then d.Color = c3(K.glowHex(t)); n += 1 end
+			end
+		end
+	end
+	return n
 end
 -- a pad's mode as a two-faced BLADE sign for a hub's piers (judge round 2: a sign per pad readable down the hall): F at
 -- its middle, its faces along F's look and back (hang it square to the wall, so the faces look up and down the row)
