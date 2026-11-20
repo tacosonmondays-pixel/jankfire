@@ -581,7 +581,8 @@ def draw_preview():
         bl_box('gun_grip', (0.24, 0.6, 0.3), m @ CF(0, -0.35, 0.3), (0.45, 0.3, 0.18))
     for m in KATANA:
         L_ = KAT_LEN[0]
-        bl_box('kat_blade', (0.05, 0.27, 2.1 * L_), m @ CF(0, 0.1, -(0.4 + 1.05 * L_)), STEEL)
+        # (the blade runs 0.6 -> 0.6 + 2.3 L down the grip, as tipz() says - the gag's tip must land where the plan aims it)
+        bl_box('kat_blade', (0.05, 0.27, 2.3 * L_), m @ CF(0, 0.1, -(0.6 + 1.15 * L_)), STEEL)
         bl_box('kat_guard', (0.33, 0.33, 0.1), m @ CF(0, 0, -0.44), GOLD)
         bl_box('kat_grip', (0.13, 0.15, 0.75), m @ CF(0, 0, 0), LACQUER)
 
@@ -2312,6 +2313,35 @@ def front_of(a, d, hips):
     return side
 
 
+def katana_aim(K, clip, t, target, w, gap=0.3):
+    # the pack's sword track, turned (by w, 0..1) to point at target with its tip `gap` short of it
+    m = pack_grip(K, clip, t)
+    g = m.translation.copy()
+    dv = (m @ Vector((0, 0, -1, 0))).xyz.normalized()
+    tr_ = rb(target)
+    want = (tr_ - g).normalized()
+    q = dv.rotation_difference(want)
+    q = Quaternion().slerp(q, w)
+    rot = q.to_matrix().to_4x4()
+    m2 = rot @ Matrix.Translation(-g) @ m
+    m2 = Matrix.Translation(g) @ m2
+    if w > 0.5:
+        # (held out at a face: edge up, the flat to the side, as a guard holds it)
+        z = m2.col[2].xyz.normalized()
+        x = Vector((0, 1, 0)).cross(z)
+        if x.length > 1e-4:
+            x.normalize()
+            y = z.cross(x)
+            r_ = Matrix((x, y, z)).transposed().to_4x4()
+            r_.translation = m2.translation
+            m2 = r_
+    if w > 0:
+        KAT_LEN[0] = max(1.0, ((tr_ - g).length - gap - 0.6) / 2.3) * w + KAT_LEN[0] * (1 - w)
+    KATANA.append(m2)
+    KAT_MODE.append('hand')
+    SEM['kat'] = {'mode': 'pack', 'T': comps(clip_pose(clip, t)['RightHandle']), 'aim': [round(x, 3) for x in tr_], 'w': round(w, 3)}
+
+
 def ring_flash(c, n_lines, r0, r1, cam, seed=5, tag='smear', col=SMEAR):
     # action lines bursting out of a point, in the plane facing the lens (thin Neon slivers)
     fw = (Vector(cam) - c).normalized()
@@ -2444,11 +2474,12 @@ def t4_length(i, n):
     else:
         t = 0.83 + 0.27 * (i - 18) / 7
     K = rig('k', readys_at(), f['yaw_g'], {'clip': (KPR, t)})
-    katana_pack(K, KPR, t)
+    V = t4_victim(LOOK, 1.2 + 1.0 * i / (n - 1))
+    face = br(V['Head'].translation) + Vector((0, 0, -0.05))
+    katana_aim(K, KPR, t, face, ease(min(1.0, max(0.0, (t - 0.5) / 0.33))), gap=0.95)
     SHEATH_LOCAL[0] = hands_sheath(K)
     sheath(K)
     SHEATH_LOCAL[0] = None
-    t4_victim(LOOK, 1.2 + 1.0 * i / (n - 1))
     if 0.3 <= t <= 0.66:
         blade_sweep(KPR, readys_at(), f['yaw_g'], max(0.18, t - 0.16), t, n=12)
     bump = Vector((0, 0, -0.06)) if i == 14 else Vector((0, 0, 0))
@@ -2465,6 +2496,38 @@ def kat_trail(K):
     dirv = (-look * 0.93 + Vector((0, 0, -0.36))).normalized()
     SEM['kat'] = {'mode': 'trail'}
     katana_at_b(g + dirv * 0.44, dirv)
+
+
+@shot('tide', 'THE TIP', 12)
+def t4_tip(i, n):
+    # [the gag's punchline] close on his face from the side: the giant blade's tip held a hair from his nose; his eyes
+    # widen; a bead of sweat
+    f = t4_fit()
+    t4_stage(VT[0])
+    KAT_LEN[0] = f['L']
+    t = 1.10 + 0.12 * i / (n - 1)
+    K = rig('k', readys_at(), f['yaw_g'], {'clip': (KPR, t)})
+    V = t4_victim(LOOK, 2.2 + 0.1 * i / (n - 1), face={'LeftUpperLidRaiser': 1.0, 'RightUpperLidRaiser': 1.0, 'JawDrop': 0.15})
+    hd = br(V['Head'].translation)
+    katana_aim(K, KPR, t, hd + Vector((0, 0, -0.05)), 1.0, gap=0.95 - 0.12 * ease(i / (n - 1)))
+    SHEATH_LOCAL[0] = hands_sheath(K)
+    sheath(K)
+    SHEATH_LOCAL[0] = None
+    if i == 0:
+        # across the blade, at the tip: the blade comes in from the frame's side and stops at his face (a lens on the
+        # blade's own line sees it end-on, as a dot)
+        m = KATANA[-1]
+        tip, grip = wpt(m, (0, 0, tipz())), wpt(m, (0, 0, 0))
+        d = Vector(((tip - grip).x, (tip - grip).y, 0)).normalized()
+        p_ = Vector((d.y, -d.x, 0))
+        if p_.x < 0:
+            p_ = -p_
+        S['pos'] = tip + p_ * 2.9 - d * 2.1 + Vector((0, 0, 0.15))
+        S['c'] = tip.lerp(hd, 0.45) - d * 0.3
+    if i >= 6:
+        prop('Ball', (0.16, 0.22, 0.16), CF(*rb(hd + Vector((0.45, -0.35, 0.25 - 0.05 * (i - 6))))), (0.85, 0.93, 1.0),
+             'Glass', 'sweat')
+    lens(S['pos'], S['c'], 30, 0)
 
 
 def run_y(sec):
@@ -2507,9 +2570,7 @@ def t4_closing(i, n):
     kick_dust(K, VT[0])
     t4_victim('bx_18_block_high_center', 0.10 * max(0.0, (i - 6) / 7))
     hk = br(K['UpperTorso'].translation)
-    u = i / (n - 1)
-    fov = 60 + 25 * (u ** 2.2)
-    lens(Vector((-2.3, 2.9, 0.5)), hk + Vector((0, 0, -0.2)), fov, 11)
+    lens(Vector((-4.2, 4.0, 0.6)), hk + Vector((0, 0, -0.2)), 52, 11)
 
 
 def pass_lens():
@@ -2657,8 +2718,13 @@ def t4_cutlands(i, n):
     V = t4_victim('bx_27_hit_stomach', 0.05 + 0.55 * i / (n - 1))
     if i == 0:
         S['c'] = br(V['UpperTorso'].translation) + Vector((0, 0, -0.55))
+        ut = V['UpperTorso']
+        fr = br((ut @ Vector((0, 0, -1, 0))).xyz)
+        fr = Vector((fr.x, fr.y, 0)).normalized()
+        rt = Vector((fr.y, -fr.x, 0))
+        S['cam'] = S['c'] + fr * 4.8 + rt * 1.6 + Vector((0, 0, 0.45))
     c = S['c']
-    cam = c + Vector((3.4, -4.6, 0.5))
+    cam = S['cam']
     fw = (cam - c).normalized()
     side = fw.cross(Vector((0, 0, 1))).normalized()
     wipe = min(1.0, max(0.0, (i - 1) / 3))
@@ -2704,10 +2770,10 @@ def t4_end(i, n):
         hd = br(K['Head'].translation)
         to_cam = (Vector(T4['end_cam']).xy - hd.xy).normalized().to_3d()
         to_v = (Vector((0.0, 0.0)) - hd.xy).normalized().to_3d()
-        cam = hd + to_cam * 4.6 + Vector((0, 0, -0.55))
-        S['cam'], S['look'] = cam, hd + Vector((0.0, 0.0, -0.45)) + to_v * 1.7
+        cam = hd + to_cam * 6.6 + Vector((0, 0, -1.9))
+        S['cam'], S['look'] = cam, hd + Vector((0.0, 0.0, -1.35)) + to_v * 2.2
     cam, look = S['cam'], S['look']
-    lens(lerpv(cam, look + (cam - look) * 0.97, ease(i / (n - 1))), look, 36, 0)
+    lens(lerpv(cam, look + (cam - look) * 0.97, ease(i / (n - 1))), look, 46, 0)
 
 
 
