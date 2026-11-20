@@ -203,7 +203,7 @@ def reach(root, pose, side, target_b):
     return best[0]
 
 
-def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None):
+def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None, tr=0.0):
     # at: Blender (x, y, z = height of the HRP's base offset), yaw: degrees (0 = facing Blender +Y);
     # body: (pitch, yaw2, roll) of the whole body in degrees (pitch < 0 leans forward)
     p = rb((at[0], at[1], 0))
@@ -231,7 +231,7 @@ def rig(name, at, yaw, pose, body=(0, 0, 0), ground=True, floor_y=0.0, col=None)
             off = Vector((rs.uniform(-1, 1), rs.uniform(-0.2, 1), rs.uniform(-1, 1))).normalized() * sc_ * rs.uniform(0.4, 1.0)
             cf[k] = CF(*off) @ cf[k] @ ANG(rs.uniform(-40, 40) * sc_, rs.uniform(-40, 40) * sc_, rs.uniform(-40, 40) * sc_)
     RIGS.append({'name': name, 'cf': cf, 'col': col or (SHOOTER if name == 'k' else VICTIM), 'face': pose.get('face'),
-                 'clip': pose.get('clip'), 'scatter': sc_, 'root0': root})
+                 'clip': pose.get('clip'), 'scatter': sc_, 'root0': root, 'tr': tr})
     return cf
 
 
@@ -739,10 +739,36 @@ def cyclorama(r=120.0, n=32, bands=((1.0, 0.8, 0.52), (0.97, 0.69, 0.53), (0.86,
     prop('Block', (2.2 * r, 1.0, 2.2 * r), CF(0, h * len(bands) + 0.5, 0), (0.42, 0.41, 0.6), 'Neon', 'sky')
 
 
+def disc(center_b, toward_b, radius, col, tag='sky'):
+    # a flat round (Roblox Cylinder, axis = its X) facing a point
+    a, b = rb(center_b), rb(toward_b)
+    x = (b - a).normalized()
+    z = x.cross(Vector((0, 1, 0))).normalized()
+    y = z.cross(x)
+    m = Matrix((x, y, z)).transposed().to_4x4()
+    m.translation = a
+    prop('Cylinder', (0.6, radius * 2, radius * 2), m, col, 'Neon', tag)
+
+
+END_CAM = (-6.0, -8.5, 1.3)   # (Blender) the last shot's lens: low, in front of both, the winner three-quarter on
+
+
+def sun_b():
+    # the sun sits on the ring's far side on the line from the last shot's lens through the winner's chest
+    c = Vector(END_CAM)
+    k = Vector((K_BACK[0], K_BACK[1], 2.7))
+    d = (k - c).normalized()
+    t = 0.0
+    while (c + d * t).xy.length < 116:
+        t += 0.5
+    return tuple(c + d * t)
+
+
 def tide_stage(s=None):
     # s: the video's clock (seconds); the loose petals drift with it
     stage()
     cyclorama()
+    disc(sun_b(), END_CAM, 15, (1.0, 0.94, 0.8))
     tree((-8, 11))
     tree((-15, -26), 5.8)
     if s is None:
@@ -899,7 +925,7 @@ T_HIT = 2.55
 # where they cut. So they run in on the victim's other side (x = -4): the blade's middle crosses the victim's waist at
 # the hit; and afterwards they stay where the take leaves them - side by side, facing opposite ways (the one-stroke
 # duel's ending), never moved behind the victim between shots
-K_START = at_for(SLASH, T_HIT, (-4.0, 0.0), 0)
+K_START = at_for(SLASH, T_HIT, (-3.2, 0.0), 0)
 _kb = hips_b(SLASH, 3.33, 0)
 K_BACK = (K_START[0] + _kb.x, K_START[1] + _kb.y)   # where the slash take ends (its hips at its last frame)
 
@@ -1265,7 +1291,7 @@ def tv_establish(i, n):
     lens(mid + Vector((30 - 3 * ease(u), 0, 1.4)), mid + Vector((0, 0, 0.6)), 34, 0)
 
 
-@shot('tide', 'RUN-UP', 22)
+@shot('tide', 'RUN-UP', 18)
 def tv_runup(i, n):
     t = 0.35 + i / FPS
     tide_stage(VT[0])
@@ -1306,43 +1332,63 @@ def tv_closing(i, n):
 
 @shot('tide', 'THE PASS', 11)
 def tv_pass(i, n):
+    # the owner's manga page (20 Nov): full speed, low and wide from the outside of their line, near profile - the two
+    # bodies meet in one blur. Afterimages trace the killer's path, dust is thrown up, the bright smear grows along the
+    # blade's real path. The lens sits on the run-up's side of the line, so the killer keeps moving the same way on
+    # screen (a cut that flips screen direction reads as a teleport)
     u = i / (n - 1)
-    t = T_HIT - 0.25 + 0.25 * u
+    t = T_HIT - 0.45 + 0.45 * u
     tide_stage(VT[0])
     K = tv_k(K_START, t)
-    rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.15 + 0.2 * u)})
+    for j, (dt_, tr_) in enumerate(((0.05, 0.55), (0.1, 0.72), (0.15, 0.86))):
+        rig('kg%d' % j, K_START, 0, {'clip': (SLASH, t - dt_)}, tr=tr_)
+    rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.1 + 0.25 * u)})
     t0 = T_HIT - 0.35
     if t > t0 + 0.03:
         blade_sweep(SLASH, K_START, 0, t0, t, n=max(3, int(16 * (t - t0) / 0.35)))
+    kick_dust(K, VT[0])
     if i == 0:
         Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, T_HIT)})
         Ve = peek_rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
-        S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, -2.9))], -14, 16, 56, 12,
-                                    mx=0.84, my=0.66)
-    # the one fast whip: the lens leans after the blade
-    tip = wpt(hand_cf(K), (0, 0, -1.8))
-    look = S['c'] * 0.8 + tip * 0.2
-    S['pass_look'] = look
-    lens(S['pos'], look, 56, 12 - 4 * u)
+        S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 215, -6, 62, 7,
+                                    mx=0.72, my=0.6, zmin=0.5)
+    S['pass_look'] = S['c']
+    lens(S['pos'], S['c'], 64, 7 + 3 * u)
 
 
-@shot('tide', 'CUT FRAME', 2)
+@shot('tide', 'CUT FRAME', 3)
 def tv_cutframe(i, n):
     tide_stage(VT[0])
     tv_k(K_START, T_HIT)
     rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
     blade_sweep(SLASH, K_START, 0, T_HIT - 0.35, T_HIT, n=16)
-    lens(S['pos'], S['pass_look'], 56, 8)
+    # (the hit holds 3 frames; the lens bumps along the cut)
+    lens(S['pos'] + Vector((0, 0.08 * (i + 1), 0)), S['pass_look'], 64, 10)
     return {'impact': IMPACT_TIDE}
 
 
-@shot('tide', 'STILLNESS', 26)
+@shot('tide', 'BACK TO BACK', 14)
+def tv_backtoback(i, n):
+    # a held beat: side by side, facing away from each other, nobody looks back; the killer still in the follow-through,
+    # the victim frozen in a guard that came too late. Low, in front of the killer, past the victim's back; a slow push
+    u = i / (n - 1)
+    tide_stage(VT[0])
+    K = tv_k(K_START, min(K_END_T, 2.75 + 0.25 * u))
+    V = rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35 + 0.05 * u)})
+    if i == 0:
+        kc, vc = br(K['UpperTorso'].translation), br(V['UpperTorso'].translation)
+        S['m'] = (kc + vc) / 2
+        S['pos0'] = S['m'] + Vector((-1.6, 9.5, -0.9))
+    lens(lerpv(S['pos0'], S['m'] + (S['pos0'] - S['m']) * 0.88, ease(u)), S['m'] + Vector((0, 0, 0.1)), 46, 4)
+
+
+@shot('tide', 'STILLNESS', 12)
 def tv_still(i, n):
     u = i / (n - 1)
     s = i / FPS
     tide_stage(VT[0])
-    K = tv_k(K_START, min(K_END_T, 2.95 + s))
-    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.75 + s), 'face': {'LeftUpperLidRaiser': 0.8, 'RightUpperLidRaiser': 0.8}})
+    K = tv_k(K_START, K_END_T)
+    V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.95 + s), 'face': {'LeftUpperLidRaiser': 0.8, 'RightUpperLidRaiser': 0.8}})
     hp = br(V['Head'].translation)
     if i == 0:
         S['hp0'], S['kp0'] = hp, br(K['Head'].translation)
@@ -1352,7 +1398,7 @@ def tv_still(i, n):
     lens(pos, (hp * 0.5 + hp0 * 0.5) * 0.8 + kp0 * 0.2 + Vector((0, 0, -0.8)), 40, 0)
 
 
-@shot('tide', 'THE SHEATHE', 19)
+@shot('tide', 'THE SHEATHE', 14)
 def tv_sheathe(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
@@ -1410,13 +1456,16 @@ def tv_petals(i, n):
     vc = S['vc']
     burst(vc + Vector((0, 0, 0.4)), 80, 3.2, u, seed=421, size=1.3, fall=0.8)
     burst(vc, 8, 1.8, u, seed=81, kind='splat', size=0.6)
-    lens(lerpv((-6.0, -6.0, 6.0), (-8.5, -8.5, 10.5), ease(u)), lerpv((0.5, 1.6, 1.6), (0.5, 1.6, 0.9), u), 54, 0)
+    # the manga page's last panel: low past the fallen victim to the winner standing against the sun
+    kt = br(K['UpperTorso'].translation)
+    lens(lerpv(END_CAM, Vector(END_CAM) * 0.86 + kt * 0.14, ease(u)), kt + Vector((0, 0, 0.2)), 40, 0)
 
 
 # ---------------- DUST, moving: the standoff. The owner (19 Nov): "add suspense and close ups to the western style" -
 # eyes, eyes, the killer's hand, the victim's hand, the sweat, the far wide with the tumbleweed, then one last tighter
-# look at the eyes before the snap: the close-ups get tighter and shorter as it builds (6.0 s, the window's longest)
-@shot('dust', "KILLER'S EYES", 13)
+# look at the eyes before the snap. The owner again (20 Nov): "it goes too quickly ... not enough suspense" - so every
+# hold is long and slow (the standoff alone runs 6 s; 8.3 s in all, past the usual window: the end screen waits)
+@shot('dust', "KILLER'S EYES", 24)
 def dv_keyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1426,7 +1475,7 @@ def dv_keyes(i, n):
     lens(br((hd @ Vector((0, 0.1, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
 
 
-@shot('dust', "VICTIM'S EYES", 11)
+@shot('dust', "VICTIM'S EYES", 20)
 def dv_veyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1438,7 +1487,7 @@ def dv_veyes(i, n):
     lens(br((hd @ Vector((0, 0.1, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 4)
 
 
-@shot('dust', "KILLER'S HAND", 12)
+@shot('dust', "KILLER'S HAND", 20)
 def dv_hand(i, n):
     u = i / (n - 1)
     desert()
@@ -1449,7 +1498,7 @@ def dv_hand(i, n):
     lens(h0 + Vector((1.5, -2.8 + 0.35 * u, -0.5)), h0 + Vector((-0.4, 1.6, 0.3)), 40, -6)
 
 
-@shot('dust', "VICTIM'S HAND", 10)
+@shot('dust', "VICTIM'S HAND", 16)
 def dv_vhand(i, n):
     # the reverse: over the victim's hip to the killer small down the street; the hand shakes as it creeps down (the
     # same clip, its time trembling round the moment, not a pose made by hand)
@@ -1462,7 +1511,7 @@ def dv_vhand(i, n):
     lens(h0 + Vector((-1.5, 2.8 - 0.3 * u, -0.5)), h0 + Vector((0.4, -1.6, 0.3)), 38, 6)
 
 
-@shot('dust', 'SWEAT', 8)
+@shot('dust', 'SWEAT', 14)
 def dv_sweat(i, n):
     # tight on the victim's cheek: the bead of sweat runs down
     u = i / (n - 1)
@@ -1474,7 +1523,7 @@ def dv_sweat(i, n):
     lens(br((hd @ Vector((1.5, 0.05, -1.7, 1))).xyz), br((hd @ Vector((0.25, -0.05, -0.5, 1))).xyz), 22, -8)
 
 
-@shot('dust', 'THE WIDE', 28)
+@shot('dust', 'THE WIDE', 40)
 def dv_wide(i, n):
     u = i / (n - 1)
     desert()
@@ -1485,7 +1534,7 @@ def dv_wide(i, n):
     lens((25, -1.5, 1.1), (0, 8.5, 2.4), 26, 0)
 
 
-@shot('dust', 'EYES AGAIN', 7)
+@shot('dust', 'EYES AGAIN', 10)
 def dv_eyes2(i, n):
     # one last look, tighter and shorter than the first: the squint narrows to a slit
     u = i / (n - 1)
@@ -1585,14 +1634,15 @@ def dv_holster(i, n):
 def frame_data(info):
     return {'name': info.get('name', ''), 'impact': info.get('impact'), 'crop': info.get('crop', 0),
             'lens': {'cf': comps(CAMS['cf']), 'fov': CAMS['fov']},
-            'rigs': [{'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}} for r in RIGS],
+            'rigs': [dict({'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}},
+                          **({'tr': r['tr']} if r.get('tr') else {})) for r in RIGS],
             'props': [dict({'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'],
                             'mat': p['mat'], 'tag': p['tag']}, **({'tr': round(p['tr'], 2)} if p.get('tr') else {})) for p in PROPS],
             'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
             'faces': {r['name']: r['face'] for r in RIGS if r.get('face')},
             # (for the game: which clip at what moment, where the root stands, where the katana is)
             'anim': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
-                                 'sc': round(r.get('scatter', 0), 3)} for r in RIGS if r.get('clip')},
+                                 'sc': round(r.get('scatter', 0), 3)} for r in RIGS if r.get('clip') and not r.get('tr')},
             'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)]}
 
 
@@ -1676,7 +1726,8 @@ for board, frames in BOARDS.items():
         sc.render.filepath = os.path.join(OUT, f'{board}_{n}.png')
         bpy.ops.render.render(write_still=True)
         data = {'name': info['name'], 'impact': info.get('impact'), 'crop': info.get('crop', 0), 'lens': {'cf': comps(CAMS['cf']), 'fov': CAMS['fov']},
-                'rigs': [{'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}} for r in RIGS],
+                'rigs': [dict({'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}},
+                          **({'tr': r['tr']} if r.get('tr') else {})) for r in RIGS],
                 'props': [{'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'], 'mat': p['mat'], 'tag': p['tag']} for p in PROPS],
                 'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
                 'faces': {r['name']: r['face'] for r in RIGS if r.get('face')}}
