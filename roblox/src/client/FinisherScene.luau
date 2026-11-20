@@ -117,7 +117,9 @@ local EXTRA: { [string]: any } = {
 		-- shot, easing into the desaturated look over `over` s from the impact frame `at`, held to the end. The scene
 		-- owns it (Finisher.luau's grade asks Scene.grade); cheap: ColorCorrection and a gentle Bloom, no blur)
 		grade = { warm = { tint = Color3.fromRGB(255, 226, 192), sat = 0.06, con = 0.12, bright = 0.02 },
-			cold = { tint = Color3.fromRGB(242, 238, 232), sat = -0.62, con = 0.16, bright = -0.02 }, at = 181, over = 0.4,
+			-- (the owner, 20 Nov: "after the shot and the person falls then fade toe desaturated": the body lands at
+			-- frames 199-201 and settles by 206 in the plan)
+			cold = { tint = Color3.fromRGB(242, 238, 232), sat = -0.62, con = 0.16, bright = -0.02 }, at = 206, over = 0.7,
 			bloom = { Intensity = 0.55, Size = 26, Threshold = 1.5 } },
 		-- (high noon - the owner, 20 Nov: "can it be an actual sky with a sun its high noon after all": Roblox's own sky
 		-- and sun in place of the set's painted sunset ring and the place's sky box, the sun up in the top of THE DRAW's
@@ -909,7 +911,9 @@ local function placeRevolvers(sc: any, s: any, A: any, T: number)
 				-- clip does - until the draw itself carries it on, past the moment the plain reach is on the grip anyway)
 				local held = hr ~= nil and fi >= hr.from and t < 0.28
 				local u = if held then math.clamp((fi - hr.from) / math.max(hr.to - hr.from, 1), 0, 1) else 0
-				w = if held then ease(u / 0.5) else ease(t / 0.12) * (1 - ease((t - 0.34) / 0.2))
+				-- (held: most of the way on the hand from the shot's first frame, so the shake shows as it starts to move -
+				-- the owner: "can it be shakey from the moment the shot happens")
+				w = if held then 0.6 + 0.4 * ease(u / 0.5) else ease(t / 0.12) * (1 - ease((t - 0.34) / 0.2))
 				if w > 0.002 then
 					local ua = m:FindFirstChild("RightUpperArm") :: BasePart?
 					local up = if ua then (ua.Position - onGrip.Position) * 0.2 else Vector3.zero
@@ -923,7 +927,7 @@ local function placeRevolvers(sc: any, s: any, A: any, T: number)
 						local calm = 1 - ease((t - 0.1) / 0.12)
 						local lift = hover.Position - onGrip.Position
 						local dirUp = if lift.Magnitude > 1e-3 then lift.Unit else Vector3.yAxis
-						target = target + dirUp * (0.06 + 0.06 * math.sin(fi * 2.3)) * calm * ease(u / 0.4)
+						target = target + dirUp * (0.06 + 0.06 * math.sin(fi * 2.3)) * calm
 					end
 				end
 			end
@@ -1386,6 +1390,38 @@ local function frameAt(sc: any, w: number): (number, number)
 	return i, math.clamp(fi - i, 0, 1)
 end
 
+-- (Catmull-Rom through the plan's frames: no step in speed at each plan frame. The owner, 20 Nov: "can teh cowboy thing
+-- be a consistent framerate? ... that smae shot idk why but it feels like its smoother": straight lines between plan
+-- frames read as judder wherever a move eases; the hand shot's lens drifts at one speed, so it looked smooth)
+local function crv(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: number): Vector3
+	local t2 = t * t
+	return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t2 * t)
+end
+local function crn(p0: number, p1: number, p2: number, p3: number, t: number): number
+	local t2 = t * t
+	return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t2 * t)
+end
+-- the plan's effects between two of its frames: each one in both frames blended number by number (a tumbleweed rolls,
+-- dust drifts), so they move on every render frame, not 16 times a second
+local function fxBetween(fa: any, fb: any, a: number): any
+	if not fa or not fb or a <= 0 then return fa end
+	local out = table.create(#fa)
+	for k, ea in fa do
+		local eb = fb[k]
+		if eb and eb[1] == ea[1] and eb[2] == ea[2] and #eb == #ea then
+			local e = table.clone(ea)
+			for n = 3, #ea do
+				local x, y = ea[n], eb[n]
+				if type(x) == "number" and type(y) == "number" and x ~= y then e[n] = x + (y - x) * a end
+			end
+			out[k] = e
+		else
+			out[k] = ea
+		end
+	end
+	return out
+end
+
 function Scene.step(s: any, w: number): (string, number, boolean)
 	local sc = s.scene
 	local d = sc.d
@@ -1403,7 +1439,11 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	local T = (i - 1 + a) / d.fps -- (the scene's own clock, s)
 	-- the lens
 	local cA = cfOf(A.c)
-	local c = if same then cA:Lerp(cfOf(Bf.c), a) else cA
+	local c = cA
+	-- (the neighbours either side, when they're in the same shot)
+	local Pf = if i - 1 >= sc.i0 and sc.shotOf[i - 1] == shot then d.f[i - 1] else nil
+	local Nf = if j + 1 <= sc.i1 and sc.shotOf[j + 1] == shot then d.f[j + 1] else nil
+	if same then c = cA:Lerp(cfOf(Bf.c), a) end -- (a curve through the lens's frames is next: it jumped in KILLER'S HAND)
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = ORIGIN * c
@@ -1418,13 +1458,21 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 			local fa, fb = A[who], Bf[who]
 			if fa then
 				local e = table.clone(fa)
+				local fp = Pf and Pf[who]
+				local fn = Nf and Nf[who]
+				if fp and fp[1] ~= fa[1] then fp = nil end
 				if same and fb and fb[1] == fa[1] then
-					e[2] = fa[2] + (fb[2] - fa[2]) * a
+					local fn2 = if fn and fn[1] == fa[1] then fn else fb
+					e[2] = crn((fp or fa)[2], fa[2], fb[2], fn2[2], a)
 					e[3] = fa[3]
 				end
 				poseV2(sc, who, g, e, A["g" .. who])
 				if same and fb and fb[1] == fa[1] then
-					g.root.CFrame = (ORIGIN * cfOf(fa[3])):Lerp(ORIGIN * cfOf(fb[3]), a) + Vector3.new(0, sc.hip[who] - RIG_HIP + (sc.gOff[who] or 0), 0)
+					local ra, rb = ORIGIN * cfOf(fa[3]), ORIGIN * cfOf(fb[3])
+					local rp = if fp then ORIGIN * cfOf(fp[3]) else ra
+					local rn = if fn and fn[1] == fa[1] then ORIGIN * cfOf(fn[3]) else rb
+					g.root.CFrame = ra:Lerp(rb, a).Rotation + crv(rp.Position, ra.Position, rb.Position, rn.Position, a)
+						+ Vector3.new(0, sc.hip[who] - RIG_HIP + (sc.gOff[who] or 0), 0)
 				end
 				sc.lowWas[who] = lowestOf(g.model)
 			end
@@ -1467,7 +1515,13 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 		end
 		dust(sc, s.kg, T, sc.ex.dust ~= nil and sc.ex.dust[shot] == true)
 		table.clear(sc.accent)
-		drawFx(sc, s, A, T)
+		if same and A.fx and Bf.fx then
+			local F2 = table.clone(A)
+			F2.fx = fxBetween(A.fx, Bf.fx, a)
+			drawFx(sc, s, F2, T)
+		else
+			drawFx(sc, s, A, T)
+		end
 		-- the cut one coming apart (the plan's scatter)
 		local scat = A.v and A.v[4] or 0
 		if scat > 0 then

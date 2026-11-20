@@ -297,8 +297,10 @@ if RunService:IsStudio() then
 			for _, x in Fight.all do if x.kind == "dummy" and x.alive then table.insert(list, x) end end
 			local t = list[tonumber(c) or 1]
 			if type(c) == "string" and not tonumber(c) then
+				-- (an exact name first: "Armour1" mustn't pick "Armour10")
 				t = nil
-				for _, x in list do if string.find(x.name, c, 1, true) then t = x; break end end
+				for _, x in list do if x.name == c then t = x; break end end
+				if not t then for _, x in list do if string.find(x.name, c, 1, true) then t = x; break end end end
 			end
 			local f = Fight.byPlayer[a]
 			if not f or not t then return "no fighter or no live dummy (" .. #list .. " live)" end
