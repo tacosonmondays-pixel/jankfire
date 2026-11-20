@@ -894,8 +894,14 @@ def at_for(cn, t, want_b, yaw):
 
 SLASH, LOOK, SHEATHE, DRAW = 'inkfall_slash_t1', 'victim_lookaround_t2', 'sheathe_t2', 'quick_draw_t1'
 T_HIT = 2.55
-K_START = at_for(SLASH, T_HIT, (3.3, 0.0), 0)
-K_BACK = (2.6, 6.6)   # after the pass: a few steps on, back to back with the victim (the owner's beat sheet)
+# the owner (20 Nov): "the slash misses the target and you somehow appear behind him". The take's slash swings out to
+# the killer's RIGHT, the blade's middle about 4 studs from their hips, and the take ends with them stopped level with
+# where they cut. So they run in on the victim's other side (x = -4): the blade's middle crosses the victim's waist at
+# the hit; and afterwards they stay where the take leaves them - side by side, facing opposite ways (the one-stroke
+# duel's ending), never moved behind the victim between shots
+K_START = at_for(SLASH, T_HIT, (-4.0, 0.0), 0)
+_kb = hips_b(SLASH, 3.33, 0)
+K_BACK = (K_START[0] + _kb.x, K_START[1] + _kb.y)   # where the slash take ends (its hips at its last frame)
 
 
 SMEAR = (1.0, 0.95, 0.97)   # the blade's light trail (v1's ink-black fan read as a dark blob: the cut must flash)
@@ -1210,6 +1216,33 @@ def burst(center_b, n, reach_, u, seed, kind='petal', size=1.0, fall=1.2):
             prop('Ball', (sz, sz, sz), CF(p.x, p.y, p.z), INK, 'SmoothPlastic', 'splat')
 
 
+DUST = {'list': [], 'last': {}}
+
+
+def kick_dust(K, now, col=(0.78, 0.76, 0.74), tag='dust'):
+    # a puff where a foot strikes the floor (the reference's crouched sprint kicks dust at every step); each grows,
+    # drifts back along the run and thins out over half a second
+    for f in ('LeftFoot', 'RightFoot'):
+        q = K[f].translation
+        if q.y < 0.6 and now - DUST['last'].get(f, -9.0) > 0.16:
+            DUST['last'][f] = now
+            DUST['list'].append((now, br(q)))
+    keep = []
+    for t0, pb in DUST['list']:
+        age = now - t0
+        if age > 0.5 or age < 0:
+            continue
+        keep.append((t0, pb))
+        k = age / 0.5
+        PROP_TR[0] = 0.3 + 0.65 * k
+        for dx, dy, dz, r0 in ((0, 0, 0.2, 0.55), (0.35, -0.25, 0.15, 0.42), (-0.3, -0.35, 0.28, 0.36)):
+            r = r0 * (1 + 1.7 * k)
+            q = rb(pb + Vector((dx, dy - 0.9 * k, dz + 0.45 * k)))
+            prop('Ball', (r, r, r), CF(q.x, max(q.y, r * 0.3), q.z), col, 'SmoothPlastic', tag)
+        PROP_TR[0] = 0.0
+    DUST['list'] = keep
+
+
 IMPACT_TIDE = {'bg': [0.97, 0.96, 0.94], 'fg': [0.05, 0.05, 0.07], 'accent': ['smear'], 'accent_col': [0.93, 0.6, 0.72]}
 STROKE_HIT = {'bg': [0.97, 0.96, 0.94], 'fg': [0.05, 0.05, 0.07], 'accent': ['stroke', 'stroke_edge'], 'accent_col': [0.93, 0.6, 0.72]}
 
@@ -1244,11 +1277,12 @@ def tv_runup(i, n):
         # side-on, tracking: framed on the stride in the middle of the shot, then carried along with the hips
         Km = peek_rig('k', K_START, 0, {'clip': (SLASH, t + (n - 1) / FPS / 2)})
         hm = br(Km['LowerTorso'].translation)
-        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, -2.9))], 72, 3, 44, 0, mx=0.55, my=0.55, zmin=1.0)
+        pos, c = aim_lens(pts_of(Km) + [wpt(hand_cf(Km), (0, 0, -2.9))], 298, -10, 78, 16, mx=0.6, my=0.64, zmin=0.35)
         S['off'], S['coff'], S['z'], S['cz'] = pos - hm, c - hm, pos.z, c.z
     pos, c = h + S['off'], h + S['coff']
     pos.z, c.z = S['z'], S['cz']
-    lens(pos, c, 44, 0)
+    kick_dust(K, VT[0])
+    lens(pos, c, 78, 16)
 
 
 @shot('tide', 'CLOSING', 10)
@@ -1264,9 +1298,10 @@ def tv_closing(i, n):
         # on the floor in their path, framed on where they arrive; the lens punches wider as they close
         Ke = peek_rig('k', K_START, 0, {'clip': (SLASH, 1.6 + (n - 1) / FPS)})
         # from the side of their path (az 125): straight ahead puts the victim's back against the lens
-        pos, c = aim_lens(pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 125, -18, 84, -16, mx=0.7, my=0.6, zmin=0.45)
+        pos, c = aim_lens(pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, -2.9))], 235, -18, 96, 20, mx=0.72, my=0.64, zmin=0.35)
         S['pos'], S['c'], S['ute'] = pos, c, br(Ke['UpperTorso'].translation)
-    lens(S['pos'], S['c'] + (ut - S['ute']) * 0.7, 60 + 24 * ease(u), -16)
+    kick_dust(K, VT[0])
+    lens(S['pos'], S['c'] + (ut - S['ute']) * 0.85, 70 + 26 * ease(u), 20)
 
 
 @shot('tide', 'THE PASS', 11)
@@ -1306,7 +1341,7 @@ def tv_still(i, n):
     u = i / (n - 1)
     s = i / FPS
     tide_stage(VT[0])
-    K = tv_k(at_for(SLASH, K_END_T, K_BACK, 0), min(K_END_T, 2.95 + s))
+    K = tv_k(K_START, min(K_END_T, 2.95 + s))
     V = rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.75 + s), 'face': {'LeftUpperLidRaiser': 0.8, 'RightUpperLidRaiser': 0.8}})
     hp = br(V['Head'].translation)
     if i == 0:
@@ -1321,7 +1356,7 @@ def tv_still(i, n):
 def tv_sheathe(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
-    at = at_for(SHEATHE, 1.4, K_BACK, 0)
+    at = at_for(SHEATHE, 1.0, K_BACK, 0)
     K = rig('k', at, 0, {'clip': (SHEATHE, 1.0 + 0.4 * u)})
     a, b, d = sheath_line(K)
     sheath(K)
@@ -1340,7 +1375,7 @@ def tv_sheathe(i, n):
 def tv_cutlands(i, n):
     s = i / FPS
     tide_stage(VT[0])
-    K = rig('k', at_for(SHEATHE, 2.8, K_BACK, 0), 0, {'clip': (SHEATHE, min(2.8, 2.35 + s))})
+    K = rig('k', at_for(SHEATHE, 1.0, K_BACK, 0), 0, {'clip': (SHEATHE, min(2.8, 2.35 + s))})
     a, b, d = sheath_line(K)
     sheath(K)
     katana_at_b(a, d)
@@ -1350,13 +1385,13 @@ def tv_cutlands(i, n):
         S['kp'] = br(K['UpperTorso'].translation)
     c = S['c']
     PROP_TR[0] = 0.0 if i < 4 else min(0.85, (i - 4) * 0.1)   # the stroke fades after the hit
-    brush(c + Vector((-0.75, -2.0, 1.5)), c + Vector((-0.75, 2.4, -1.1)), 0.35, 0.55, (-1, 0, 0), INK, seed=61)
-    brush(c + Vector((-0.82, -1.6, 1.25)), c + Vector((-0.82, 2.0, -0.95)), 0.33, 0.16, (-1, 0, 0), SKIN, seed=62, tag='stroke_edge')
+    brush(c + Vector((-2.2, -0.8, 0.55)), c + Vector((2.2, -0.8, -0.3)), 0.25, 0.5, (0, -1, 0), INK, seed=61)
+    brush(c + Vector((-1.9, -0.86, 0.4)), c + Vector((1.9, -0.86, -0.2)), 0.22, 0.15, (0, -1, 0), SKIN, seed=62, tag='stroke_edge')
     PROP_TR[0] = 0.0
     if i >= 2:
-        burst(c + Vector((-0.8, 0.6, 0.0)), 10, 2.0, (i - 2) / 10, seed=71, kind='splat', size=0.7)
+        burst(c + Vector((0.4, -0.9, 0.0)), 10, 2.0, (i - 2) / 10, seed=71, kind='splat', size=0.7)
     mid = (c + S['kp']) / 2
-    lens(mid + Vector((-10.5, 0, 0.2)), mid + Vector((0, 0, 0.2)), 44, 0)
+    lens(mid + Vector((0.6, -10.5, 0.3)), mid + Vector((0, 0, 0.2)), 44, 0)
     if i < 2:
         return {'impact': STROKE_HIT}
 
@@ -1365,7 +1400,7 @@ def tv_cutlands(i, n):
 def tv_petals(i, n):
     u = i / (n - 1)
     tide_stage(VT[0])
-    K = rig('k', at_for(SHEATHE, 2.8, K_BACK, 0), 0, {'clip': (SHEATHE, 2.8)})
+    K = rig('k', at_for(SHEATHE, 1.0, K_BACK, 0), 0, {'clip': (SHEATHE, 2.8)})
     a, b, d = sheath_line(K)
     sheath(K)
     katana_at_b(a, d)
