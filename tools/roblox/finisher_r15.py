@@ -591,8 +591,21 @@ ROCK = (0.72, 0.49, 0.35)
 CACTUS = (0.42, 0.52, 0.38)
 
 
+DIRT = (0.74, 0.6, 0.42)
+
+
 def desert():
-    prop('Block', (500, 1, 500), CF(0, -0.5, 0), SAND, 'Sand', 'floor')
+    prop('Block', (500, 1, 500), CF(0, -0.5, 0), DIRT, 'Sand', 'ground')
+    for x in (-1.7, 1.7):   # wheel ruts down the street
+        prop_box_between((x, -30, 0.015), (x, 45, 0.015), 0.55, 0.03, (0.6, 0.48, 0.33), mat='Sand', tag='rut')
+    rnd = random.Random(33)
+    for j in range(14):     # footprints between them
+        y = 1.0 + j * 1.15
+        x = (0.35 if j % 2 else -0.35) + rnd.uniform(-0.1, 0.1)
+        q = rb((x, y, 0.012))
+        prop('Block', (0.32, 0.025, 0.55), CF(q.x, q.y, q.z) @ ANG(0, rnd.uniform(-12, 12), 0), (0.63, 0.5, 0.35), 'Sand', 'print')
+    cyclorama(c=(0.0, 8.5), bands=((1.0, 0.76, 0.48), (0.97, 0.64, 0.43), (0.9, 0.54, 0.44), (0.74, 0.48, 0.5),
+                                   (0.56, 0.43, 0.56), (0.42, 0.39, 0.55)), lid=(0.4, 0.38, 0.54))
     for at, size in (((-36, 30), (16, 14, 28)), ((-32, -8), (12, 10, 18)), ((40, 44), (18, 16, 22)), ((-60, 70), (30, 22, 40)), ((70, 10), (20, 18, 30))):
         q = rb((at[0], at[1], 0))
         prop('Block', (size[0], size[1], size[2]), CF(q.x, size[1] / 2, q.z), ROCK, 'Sandstone', 'mesa')
@@ -761,19 +774,19 @@ def dust_8():
 # Blender layout: the victim at the origin facing -Y (toward the run-up); the killer runs along +Y past them on the
 # victim's right (x = +2.3) and ends behind them, back to back (+Y)
 def cyclorama(r=120.0, n=32, bands=((1.0, 0.8, 0.52), (0.97, 0.69, 0.53), (0.86, 0.6, 0.6), (0.72, 0.55, 0.64),
-                                     (0.58, 0.5, 0.66), (0.46, 0.44, 0.62)), h=40.0):
+                                     (0.58, 0.5, 0.66), (0.46, 0.44, 0.62)), h=40.0, c=(0.0, 0.0), lid=(0.42, 0.41, 0.6)):
     # a ring of painted sky round the set (Neon: lit the same from every side), warm at the horizon, dusk above; so the
     # sunset of the opening holds through every shot whichever way the lens looks (v1 swung to a blue sky at the clash)
     w = 2 * math.pi * r / n * 1.04
     for i in range(n):
         a = 2 * math.pi * i / n
-        x, z = math.cos(a) * r, math.sin(a) * r
-        yaw = math.degrees(math.atan2(x, z))
+        x, z = c[0] + math.cos(a) * r, -c[1] + math.sin(a) * r
+        yaw = math.degrees(math.atan2(x - c[0], z + c[1]))
         for j, col in enumerate(bands):
             prop('Block', (w, h, 1.0), CF(x, h / 2 + j * h, z) @ ANG(0, yaw, 0), col, 'Neon', 'sky')
     # the lid (a low lens looking up sees dusk, not the map's sky); none of it casts a shadow (Studio and the game skip
     # shadows on 'sky')
-    prop('Block', (2.2 * r, 1.0, 2.2 * r), CF(0, h * len(bands) + 0.5, 0), (0.42, 0.41, 0.6), 'Neon', 'sky')
+    prop('Block', (2.2 * r, 1.0, 2.2 * r), CF(c[0], h * len(bands) + 0.5, -c[1]), lid, 'Neon', 'sky')
 
 
 def disc(center_b, toward_b, radius, col, tag='sky'):
@@ -1117,11 +1130,24 @@ def m_tide_8():
 IDLE_T = 0.0
 
 
+HATS = [True]
+
+
+def cowboy_hat(cf, col):
+    hd = cf['Head']
+    prop('Cylinder', (0.1, 2.6, 2.6), hd @ CF(0, 0.5, 0) @ ANG(0, 0, 90), col, 'SmoothPlastic', 'hat')
+    prop('Block', (1.15, 0.75, 1.2), hd @ CF(0, 0.9, 0.05), col, 'SmoothPlastic', 'hat')
+    prop('Block', (1.18, 0.14, 1.23), hd @ CF(0, 0.6, 0.05), (0.12, 0.09, 0.07), 'SmoothPlastic', 'hat')
+
+
 def m_dust_rigs(kclip=(DRAW, IDLE_T), vclip=(DRAW, IDLE_T), kgun_in=True, kface=None, vface=None, vgun_in=True, vdz=0.0):
     K = rig('k', (0, 0, 0), 0, {'clip': kclip, 'face': kface if kface is not None else SQUINT})
     holster(K, kgun_in)
     V = rig('v', (DV.x, DV.y, vdz), 180, {'clip': vclip, 'face': vface if vface is not None else WIDE})
     holster(V, vgun_in)
+    if HATS[0]:
+        cowboy_hat(K, (0.24, 0.17, 0.11))
+        cowboy_hat(V, (0.6, 0.47, 0.31))
     return K, V
 
 
@@ -1713,7 +1739,7 @@ def dv_keyes(i, n):
     b = max(0.0, 1 - abs(u - 0.55) / 0.14)   # one slow blink in the hold
     K, V = m_dust_rigs(kface=dict(SQUINT, LeftEyeClosed=0.55 + 0.45 * b, RightEyeClosed=0.55 + 0.45 * b))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.24, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.24, -0.55, 1))).xyz), 16, 0)
+    lens(br((hd @ Vector((0, 0.24, -3.9 + 0.35 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.3, -0.55, 1))).xyz), 18, 0)
 
 
 @shot('dust', "VICTIM'S EYES", 18)
@@ -1725,7 +1751,7 @@ def dv_veyes(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.38, 0.32 - 0.3 * u, -0.6, 1))).xyz   # the bead of sweat runs down
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.24, -2.4 + 0.2 * u, 1))).xyz), br((hd @ Vector((0, 0.24, -0.55, 1))).xyz), 16, 4)
+    lens(br((hd @ Vector((0, 0.24, -3.9 + 0.3 * u, 1))).xyz), br((hd @ Vector((0, 0.3, -0.55, 1))).xyz), 18, 4)
 
 
 @shot('dust', "KILLER'S HAND", 20)
@@ -1783,7 +1809,7 @@ def dv_eyes2(i, n):
     sq = 0.6 + 0.3 * ease(u)
     K, V = m_dust_rigs(kclip=(DRAW, 0.12), kface=dict(SQUINT, LeftEyeClosed=sq, RightEyeClosed=sq))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.26, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.26, -0.55, 1))).xyz), 11, 0)
+    lens(br((hd @ Vector((0, 0.26, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.28, -0.55, 1))).xyz), 13, 0)
 
 
 @shot('dust', 'THEIR EYES', 8)
@@ -1795,7 +1821,7 @@ def dv_veyes2(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.42, -0.1 - 0.1 * u, -0.6, 1))).xyz
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.26, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.26, -0.55, 1))).xyz), 11, -3)
+    lens(br((hd @ Vector((0, 0.26, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.28, -0.55, 1))).xyz), 13, -3)
 
 
 @shot('dust', 'ENEMY REACHES', 8)
@@ -2021,7 +2047,7 @@ for vname in VIDS:
         shots.append([sname, nf])
         print('shot', vname, sname, nf, flush=True)
     # the fixed set (floor, pillars, trees) is the same in every frame: stored once as '_stage'
-    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa', 'sky')
+    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa', 'sky', 'ground', 'rut', 'print')
     first = None
     for key in sorted(allv):
         f = allv[key]
