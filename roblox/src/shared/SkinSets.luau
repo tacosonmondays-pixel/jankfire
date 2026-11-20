@@ -384,11 +384,15 @@ SkinSets.FX = {
 		idle = {
 			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 2.5, life = 0.6, size = 0.01, drift = "rise",
 				at = { { -0.027, 0.002, 0.115 }, { -0.036, 0.048, -0.102 } } }, -- the left pommel heart, the bow's star clip
+			-- (20 Nov: the bought Heart & Butterfly pack's heart, Fx kind "heart", now and then rising off the pommel heart)
+			{ kind = "heart", colour = Color3.fromRGB(255, 150, 196), rate = 1, life = 0.9, size = 0.02, drift = "rise",
+				at = { { -0.027, 0.002, 0.115 } } },
 		},
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)
 			segs = { { { 0, 0.006, -0.26 }, { 0, 0.083, -0.836 } } } },
-		swing = { kind = "sparkle", colour = Color3.fromRGB(255, 214, 150) }, -- (gold sparkles shed along each swing, a burst on a hit)
+		-- (pink pack hearts shed along each swing and a burst of them on a hit; gold sparkles until 20 Nov)
+		swing = { kind = "heart", colour = Color3.fromRGB(255, 160, 200) },
 	},
 	-- the space-western high pieces: warm dust motes and a gold tracer on the frontier side, teal light on the star side; the
 	-- model builder's shot and lever-cycle effects (EFFECTS in gun_sets_west.py) as `shot` / `lever` bursts and a `pulse`

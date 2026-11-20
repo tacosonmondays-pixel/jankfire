@@ -177,7 +177,10 @@ local TEX = {
 	bhshade = "rbxassetid://121099071721160", -- a soft round shade, white (tinted dark: the dark twins)
 	bhflare = "rbxassetid://100443875393789", -- the opening's lens flare: a hot core, a long thin level streak, thin rays
 	-- the high-tier skins' bullet trails (17 Nov; tools/roblox/vfx/trail_sheets.py), white for Fx to tint
-	heart = "rbxassetid://108731430634300", -- a small soft heart (Wish Duck)
+	heart = "rbxassetid://108731430634300", -- a small soft heart (Wish Duck; its shots use packheart since 20 Nov)
+	-- the bought Heart & Butterfly pack's heart (artchive; 20 Nov 2026): a 4x4 one-shot flipbook of a glowing outline heart
+	-- popping in (LightEmission 1 always: a pack texture may have a dark background). The Ducky Classic set's hearts
+	packheart = "rbxassetid://12758468376",
 	dash = "rbxassetid://100999224406963", -- a Beam strip: one dash and a gap along its length, wrapped into a rail (Streamliner)
 	cotton2 = "rbxassetid://96781809339333", -- a thick lumpy smoke puff, 64 frames (8x8; tools/roblox/vfx/cotton_sheet.py)
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
@@ -841,8 +844,8 @@ local TRP = {
 		Color = cs(Color3.fromRGB(255, 230, 242)), Size = ns(0, 0.1 * S * H, 0.15, 0.2 * S * H, 0.85, 0.21 * S * H, 0.93, 0.24 * S * H, 1, 0.04 * S * H),
 		Transparency = ns(0, 0.5, 0.15, 0, 0.85, 0.05, 0.93, 0.3, 1, 1), Lifetime = NR(0.4, 0.55), Speed = NR(0.1 * S, 0.4 * S),
 		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 1.5, Rotation = NR(-10, 10) }),
-	heart = emitters(6, { Texture = TEX.heart, LightEmission = 0.7, LightInfluence = 0, Brightness = 1.6,
-		Color = cs(Color3.fromRGB(255, 150, 196)), Size = nsk({ { 0, 0 }, { 0.3, 0.12 * S * H / 0.6, 0.03 * S }, { 1, 0 } }),
+	heart = emitters(6, { Texture = TEX.packheart, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightEmission = 1, LightInfluence = 0, Brightness = 2,
+		Color = cs(Color3.fromRGB(255, 150, 196)), Size = nsk({ { 0, 0 }, { 0.3, 0.12 * S * H / 0.7, 0.03 * S }, { 1, 0 } }),
 		Transparency = NumberSequence.new(0.05), Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * S, 0.4 * S),
 		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 2, Rotation = NR(-20, 20) }),
 	star = emitters(8, { Texture = TEX.sparkle, LightEmission = 1, LightInfluence = 0, Brightness = 2.5,
@@ -1761,6 +1764,11 @@ function Fx.explosion(at: Vector3, R: number)
 	rig.up.WorldPosition = at + Vector3.new(0, s * 0.12, 0)
 	rig.core.Size = ns(0, 1 * S * 1.6 * H, 1, (1 + r) * S * 1.6 * H)
 	emit(rig.core, 1)
+	-- the bought 100+ Combat VFX pack's burst (skaterstudios; its effect #40, template "BlastBurst"; 20 Nov 2026): a white
+	-- star of spikes inside a shock ring for the first 0.15 s, over the fireball (its middle is open, so the fire shows),
+	-- facing whoever's watching. Its ring's radius is ~3.9 studs at scale 1, so 0.11 R makes it about 0.43 R
+	local V = vfx()
+	if V then pcall(V.play, "BlastBurst", CFrame.lookAt(at, eyeFor(at, Vector3.yAxis)), { scale = math.clamp(R * 0.11, 0.4, 3.5) }) end
 	-- the fireball: 7 copies of the web's boom from a box low over the blast (0.45 r wide, centred 0.25 r up), 4 at once
 	-- and 3 a moment later so their frames differ; each drawn ~8 m (its fire fills 0.6 of the cell); the size follows the
 	-- blast (s = the web's max(3.6, 2.7 r) m: 20 m for the frag)
@@ -2379,6 +2387,11 @@ local function skinProps(e: any, sz: number, k: number): { [string]: any }
 			Size = ns(0, 0, 0.35, sz / 0.97 * H, 1, 0), Transparency = NumberSequence.new(0.1), Lifetime = life,
 			Speed = NR(0.02 * k, 0.1 * k), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, (if fall then -0.2 else 0.25) * k, 0),
 			Drag = 2, Rotation = NR(-15, 15), RotSpeed = NR(-40, 40) }
+	elseif kind == "heart" then -- (the Heart & Butterfly pack's heart: pops in, rises, fades; ~0.7 of its cell)
+		return { Texture = TEX.packheart, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, Color = cs(col), LightInfluence = 0,
+			LightEmission = 1, Brightness = 1.5, Size = ns(0, 0, 0.3, sz / 0.7 * H, 1, sz * 0.8 / 0.7 * H),
+			Transparency = ns(0, 0.1, 0.75, 0.2, 1, 1), Lifetime = life, Speed = NR(0.03 * k, 0.1 * k), SpreadAngle = Vector2.new(40, 40),
+			Acceleration = Vector3.new(0, (if fall then -0.2 else 0.3) * k, 0), Drag = 2, Rotation = NR(-15, 15) }
 	elseif kind == "ember" then -- (the glow's bright middle is under half its width)
 		return { Texture = TEX.glow, Color = cs(col, col:Lerp(Color3.fromRGB(120, 20, 0), 0.6)), LightInfluence = 0, LightEmission = 1, Brightness = 3,
 			Size = ns(0, sz / 0.45 * H, 1, 0), Transparency = ns(0, 0.1, 0.7, 0.3, 1, 1), Lifetime = life,
@@ -2889,7 +2902,7 @@ function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
 			emit(e, 1)
 		end
 		if sw then
-			local e = emAt(if sw.kind == "petal" then TRP.petal else TRP.star, at, v)
+			local e = emAt(if sw.kind == "petal" then TRP.petal elseif sw.kind == "heart" then TRP.heart else TRP.star, at, v)
 			e.Speed = NR(v.Magnitude * 0.04, v.Magnitude * 0.09)
 			if sw.kind ~= "petal" then e.Color = cs(sw.colour or Color3.fromRGB(255, 226, 150)) end
 			emit(e, if S_.fp then 1 else 2)
@@ -2901,7 +2914,7 @@ function Fx.skinHit(model: Model?, at: Vector3)
 	local S_ = if model then skinned[model] else nil
 	local sw = if S_ then S_.spec.swing else nil
 	if not sw then return end
-	local e = emAt(if sw.kind == "petal" then TRP.petal else TRP.star, at, Vector3.yAxis)
+	local e = emAt(if sw.kind == "petal" then TRP.petal elseif sw.kind == "heart" then TRP.heart else TRP.star, at, Vector3.yAxis)
 	e.Speed = NR(1.2 * S, 3 * S)
 	if sw.kind ~= "petal" then e.Color = cs(sw.colour or Color3.fromRGB(255, 226, 150)) end
 	emit(e, 7)

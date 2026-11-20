@@ -785,5 +785,15 @@ the particle slider and emits at most 260 particles a frame. Which effect is use
   templates got it (HitPunch2, GuardBreak1, HitSlam x4, Slash4 x4; each keeps a BlackFix attribute with what it had).
   Every sheet is shot on mid-grey as well as dark now (black halos hide on dark). Sheet:
   `docs/vfx/round20/pack-black-fix.jpg`.
+- **Explosions (v1184):** `Fx.explosion` plays the 100+ pack's burst #40 (template `BlastBurst`) facing the viewer:
+  a white star of spikes inside a shock ring for the first 0.15 s, over our fireball (its middle is open, so the fire
+  shows). It is scaled to `clamp(0.11 R, 0.4, 3.5)`, about 0.43 R across the ring, and shows on the frag, the Chicken
+  Rocket and Overdrive. It was picked from the photographed pack (`docs/vfx/catalogue100/`, 96 effects numbered as the
+  builder's `#n`).
+- **Ducky Classic hearts (v1184):** the set's muzzle, bullet and impact hearts use the Heart & Butterfly pack's heart:
+  a 4x4 one-shot flipbook of a glowing outline heart (`TEX.packheart`, always LightEmission 1). Fx has a new skin
+  particle kind `heart`. The Ribbon Duck katana (`katana_ducky`) gets a heart rising off its pommel now and then, and
+  sheds hearts on its swings and hits; it shed gold sparkles before.
+- Sheet: `docs/vfx/round20/pack-blast-hearts.jpg`.
 - Photos: Play stage, clones fired by their attributes and frozen with TimeScale 0 (VfxEmit parks an effect after
   its life, too soon for a capture). Sheets: `docs/vfx/round20/pack-templates-1.jpg`, `docs/vfx/round20/pack-batch2.jpg`.
