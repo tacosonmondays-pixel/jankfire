@@ -965,6 +965,21 @@ top 100 and a cheat restore telling another server to take it now.
 
   ![the match server's map room, with a vote for SUBURB](matchmaking/49_cross_match_server_map_room.jpg)
 
+- **The trip back waits for a finisher (20 Nov 2026, c44ea9e + 43eeb2f, place v1276).** The owner: the match-winning
+  cutscene "still gets cut off" in a live match. The match server sent everyone back to a public server
+  `Matches.AFTER` + 0.5 s (7.5 s) after the match ended, but a finisher's scene holds the end screen for up to ~15 s
+  (`m.finisherUntil`), so the teleport cut the scene. `CrossServer.backHome` now waits for the real trip home
+  (`m.on == false`, set by `backToHub` after the hold and the end screen; 120 s at most), then 0.5 s, then teleports. The
+  ranked result card waits the same way (while `m.finisherUntil` holds, 30 s at most); the rating itself is still done at
+  the end.
+  - Tested in Studio (one solo Play): a cross-server casual 1V1 with a stand-in rival (`start "ghost" 300`) on Station,
+    a kill on a training dummy, then `JankFinisherTest("round", p, "full", "ar_infernal", true)`. The match ended at
+    1.2 s, the hold ran to 3.9 s, the player was back in the hub at 11.2 s and the trip home was sent at 11.5 s (the
+    old code: 8.7 s, during the end screen; with a 14 s scene, during the scene).
+  - Not testable in Studio: the real teleport and reserved server, a real opponent (the scene itself played to no one:
+    "not both in the recording"), live lag. The ranked card's wait is checked by reading only (a ranked test rates the
+    owner's Studio account).
+
 ### What needs a live check after the owner publishes
 
 Two or more real players, each alone in their own public server (or two friends who join different servers):
