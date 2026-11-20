@@ -25,16 +25,20 @@ export type Plan = { model: Model, root: BasePart?, groups: { Group }, size: num
 -- node -> part (anything not here is sorted by rules 3 and 4)
 local NODE: { [string]: string } = {
 	body = "core", receiver = "core", frame = "core", lower = "core", upper = "core", housing = "core", action = "core",
+	deck = "core", -- (a receiver's top deck)
 	barrel = "barrel", barrels = "barrel", lmg_heat = "barrel", shroud = "barrel", tube = "barrel",
-	muzzle = "muzzle", muz = "muzzle", nozzle = "muzzle", brake = "muzzle", throat = "muzzle",
+	muzzle = "muzzle", muz = "muzzle", nozzle = "muzzle", brake = "muzzle", throat = "muzzle", nose = "muzzle",
 	mag = "mag", magtrack = "mag", clip = "mag", drum = "mag", shells = "mag", load = "mag",
 	stock = "stock", butt = "stock",
-	grip = "grip", grips = "grip", grip2 = "grip", handle = "grip",
+	grip = "grip", grips = "grip", grip2 = "grip", -- (not "handle": on a gun that is a carry handle; it sorts itself)
 	sight = "sight", sights = "sight", fsight = "fsight", bead = "fsight", optic = "scope", scope = "scope", rail = "rail",
 	bolt = "bolt", charge = "bolt", cocker = "bolt", slide = "slide", lever = "lever",
 	hammer = "hammer", lhammer = "hammer", hammerl = "hammer", hammerr = "hammer",
 	cylinder = "cylinder", pump = "pump", forend = "pump", forend_iron = "pump", fore = "fore",
-	guard = "guard", tguard = "tguard", shield = "shield",
+	guard = "guard", tguard = "tguard", shield = "shield", cover = "cover", box = "box", gauge = "gauge",
+	hinge = "hinge", shell1 = "shells", shell2 = "shells", tank = "tank", water = "tank",
+	-- (the Marble Shotgun's jar and its marbles, a hopper's lid: the gimmick's container lifts off whole)
+	marbles_jar = "jar", funnel = "jar", lid = "jar",
 	kat_blade = "blade", blade = "blade", kat_tsuka = "handle", kat_guard = "core",
 	-- a skin's accents: each its own part
 	rwing = "wing", lwing = "wing", wing = "wing", wings = "wing", halo = "halo", crown = "crown", bow = "bow",
@@ -48,6 +52,7 @@ GunExplode.TRIM = TRIM
 -- the belt links of the LMG are its magazine's
 local function nodePart(node: string): string?
 	if string.match(node, "^belt_%d+$") then return "mag" end
+	if string.match(node, "^marble_%d+$") then return "jar" end
 	return NODE[node]
 end
 -- each part's way out (the gun's frame) and its step (1 first)
@@ -55,6 +60,8 @@ local DIR: { [string]: Vector3 } = {
 	barrel = Vector3.new(0, 0, -1), muzzle = Vector3.new(0, 0, -1), blade = Vector3.new(0, 0, -1),
 	mag = Vector3.new(0, -1, 0), pump = Vector3.new(0, -1, 0), fore = Vector3.new(0, -1, 0),
 	guard = Vector3.new(0, -1, 0), tguard = Vector3.new(0, -1, 0), shield = Vector3.new(0, 1, 0),
+	cover = Vector3.new(0, 1, 0), box = Vector3.new(0, -1, 0), gauge = Vector3.new(-1, 0, 0), tank = Vector3.new(0, 1, 0),
+	jar = Vector3.new(0, 1, 0), hinge = Vector3.new(0, -0.25, -1).Unit, shells = Vector3.new(0, 1, 0.3).Unit,
 	stock = Vector3.new(0, 0, 1), handle = Vector3.new(0, 0, 1),
 	grip = Vector3.new(0, -1, 0.35).Unit,
 	sight = Vector3.new(0, 1, 0), fsight = Vector3.new(0, 1, 0), scope = Vector3.new(0, 1, 0), rail = Vector3.new(0, 1, 0),
@@ -66,10 +73,10 @@ local DIR: { [string]: Vector3 } = {
 }
 local STEP: { [string]: number } = {
 	hat = 1, wing = 1, halo = 1, crown = 1, bow = 1, charm = 1,
-	scope = 2, sight = 2, fsight = 2, rail = 2, shield = 2,
-	mag = 3, muzzle = 3,
+	scope = 2, sight = 2, fsight = 2, rail = 2, shield = 2, cover = 2, gauge = 2, tank = 2, jar = 2,
+	mag = 3, muzzle = 3, box = 3, shells = 3,
 	stock = 4, grip = 4, fore = 4, lever = 4, guard = 4, tguard = 4,
-	barrel = 5, pump = 5, blade = 5, handle = 5,
+	barrel = 5, pump = 5, blade = 5, handle = 5, hinge = 5,
 	bolt = 6, slide = 6, hammer = 6, cylinder = 6,
 }
 -- OVERRIDE[weapon id or skin id] = { [part] = { dir = Vector3?, dist = number? (x the usual), step = number? },
@@ -249,17 +256,14 @@ function GunExplode.plan(m: Model): Plan?
 		g.dir = dir.Unit
 		local proj = math.max(0, v:Dot(g.dir))
 		-- (and always clear of the core: the part's near end goes past the core's far end that way, with a gap)
-		local function span(lo: Vector3, hi: Vector3): (number, number)
-			local c, e = (lo + hi) / 2, (hi - lo) / 2
-			local r = math.abs(g.dir.X) * e.X + math.abs(g.dir.Y) * e.Y + math.abs(g.dir.Z) * e.Z
-			local m = c:Dot(g.dir)
-			return m - r, m + r
-		end
+		-- (along the way's main axis only: a part going up and back clears the receiver's top, not its length)
 		local clear = 0
 		if core and not g.core then
-			local _, coreFar = span(core.lo, core.hi)
-			local near = span(g.lo, g.hi)
-			clear = coreFar - near + L * 0.06
+			local dx, dy, dz = math.abs(g.dir.X), math.abs(g.dir.Y), math.abs(g.dir.Z)
+			local ax = if dx >= dy and dx >= dz then "X" elseif dy >= dz then "Y" else "Z"
+			local s = (g.dir :: any)[ax]
+			local gap = if s > 0 then (core.hi :: any)[ax] - (g.lo :: any)[ax] else (g.hi :: any)[ax] - (core.lo :: any)[ax]
+			clear = (gap + L * 0.06) / math.max(math.abs(s), 0.3)
 		end
 		local d = math.max(L * 0.16 + proj * 0.4, clear)
 		if base == "hat" then d = L * 0.32 elseif base == "wing" or base == "halo" or base == "crown" then d = L * 0.2 + proj * 0.4 end
