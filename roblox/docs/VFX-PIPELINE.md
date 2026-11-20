@@ -768,7 +768,7 @@ the particle slider and emits at most 260 particles a frame. Which effect is use
   GuardBreak1's ring and GuardBreak2's burst with sparks. Arsenal.client's Fx "parry" handler calls them (the katana
   session's pointer): a guard's first hit or a perfect one gets Fx.parry, a sword swing parried Fx.guardBreak, a
   spray's later bullets only the small sparks (an 18-round spray would be 18 flashes). Everyone sees them.
-- **Hard landings and slides (v1136, waiting on Steps.client to call them):** `Fx.land(feet, fallSpeed, mine)` plays
+- **Hard landings and slides (v1136; called from Steps.client since v1137, the sounds session's 13537f5):** `Fx.land(feet, fallSpeed, mine)` plays
   HitSlam at 0.12 to 0.28 as a ring of dust puffs, only past 42 studs/s (a plain jump lands at 27.6);
   `Fx.slide(feet, look, mine)` plays DashPuff at 0.4 (a soft glow and streaks thrown behind; tinted grey it all but
   vanished, so it stays white). Your own are only shown in third person; none past 160 studs. Jump pads keep their own
