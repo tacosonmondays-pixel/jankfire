@@ -56,6 +56,13 @@ Fight.modDamage = nil :: ((Fighter, number, Fighter?, string) -> number)?
 Fight.rigSoak = nil :: ((Fighter, number, Fighter?, string) -> number)?
 Fight.rigKb = 1
 Fight.noItems = function(_f: Fighter): boolean return false end
+-- (ZOMBIES, 20 Nov 2026: server/Zombies.luau sets these) a player in a zombies game goes DOWN instead of dying: lastStand
+-- takes the killing hit and returns true. a zombie's hits and its death go to zombieHurt / zombieDied only: no feed, no
+-- quests, no kill effects or finishers, no anti-cheat aim stats. quiet: shots that don't count toward accuracy
+Fight.lastStand = nil :: ((Fighter, number, Fighter?, string) -> boolean)?
+Fight.zombieHurt = nil :: ((Fighter, number, Fighter?, string, boolean?) -> ())?
+Fight.zombieDied = nil :: ((Rules.KillInfo) -> ())?
+Fight.quiet = nil :: ((Fighter) -> boolean)?
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -251,7 +258,10 @@ function Fight.onHurt(fn: (Fighter, number, Fighter?, string, boolean?) -> ()) t
 -- every attack the server took: a shot (Combat's Fire, once it passed Rules.fire) or a swing. Stats.luau's accuracy
 local onShotHooks: { (Fighter, string) -> () } = {}
 function Fight.onShot(fn: (Fighter, string) -> ()) table.insert(onShotHooks, fn) end
-function Fight.shot(f: Fighter, wid: string) for _, fn in onShotHooks do fn(f, wid) end end
+function Fight.shot(f: Fighter, wid: string)
+	if Fight.quiet and Fight.quiet(f) then return end -- (a zombies game: its shots are its own)
+	for _, fn in onShotHooks do fn(f, wid) end
+end
 -- what a shot looked like (its end points) and swings (kind "swing"), for anyone keeping them: the match recorder
 -- (Recorder.luau). each hook runs in a pcall, so a slip there never stops a shot
 local shotFxHooks: { (Fighter, string, { Vector3 }?, string?) -> () } = {}
@@ -298,6 +308,11 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 				end
 			end
 		end)
+	end
+	-- (a zombie: its limbs fly off like anyone's, and the zombies game takes it from here: Zombies.luau)
+	if v.kind == "zombie" then
+		if Fight.zombieDied then Fight.zombieDied(info) end
+		return
 	end
 	-- a kill outside a match by the owner's dev powers (a dev weapon in the hub, a fall after a fling: OwnerDev.server
 	-- says so) counts for nothing: no feed, no kill hooks (stats, quests, kill effects, finishers), no score, and the
@@ -356,9 +371,17 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
 	if Fight.modDamage and amt > 0 then amt = Fight.modDamage(t, amt, by, wid) end
 	if Fight.rigSoak and amt > 0 then amt = Fight.rigSoak(t, amt, by, wid) end -- (the Overdrive Rig's armour first)
+	-- (a zombies game: a hit that would kill puts you down instead, Zombies.luau)
+	if Fight.lastStand and amt > 0 and amt >= t.hp and t.kind ~= "zombie" and Fight.lastStand(t, amt, by, wid) then return t.hp end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
-	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid, hs) end end
+	if done > 0 then
+		if t.kind == "zombie" then
+			if Fight.zombieHurt then Fight.zombieHurt(t, done, by, wid, hs) end
+		else
+			for _, fn in onHurtHooks do fn(t, done, by, wid, hs) end
+		end
+	end
 	syncHp(t)
 	R.Dmg:FireAllClients({
 		to = if t.kind == "player" then (t.ref :: Player).UserId else nil, model = Fight.model(t),

@@ -130,7 +130,11 @@ local function inside(part: BasePart, pos: Vector3, up: number): boolean
 	local h = part.Size / 2
 	return math.abs(rel.X) <= h.X + 0.5 and math.abs(rel.Z) <= h.Z + 0.5 and rel.Y > -h.Y - 1 and rel.Y < h.Y + up
 end
+-- (20 Nov 2026, weapons-port's zombies: Zombies.luau sets it) a zone of its own for a player in a zombies game
+Matches.zoneHook = nil :: ((Player) -> string?)?
 function Matches.zoneOf(p: Player): string
+	local zh = Matches.zoneHook
+	if zh then local z = zh(p); if z then return z end end
 	if inMatch[p] then return "match" end
 	if staged[p] then return "staging" end -- (a map room: server/MapRooms.luau)
 	local ch = p.Character

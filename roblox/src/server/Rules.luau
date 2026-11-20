@@ -9,6 +9,10 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 
 local Rules = {}
+-- (ZOMBIES, 20 Nov 2026: Zombies.luau sets these) after every arm (full mags: put the spare rounds back), and after a
+-- reload took spares (tell the player what's left)
+Rules.onArm = nil :: ((any) -> ())?
+Rules.onRes = nil :: ((any, string) -> ())?
 local W = Weapons.list
 local P = Weapons.PARRY
 local S = Weapons.S
@@ -19,7 +23,7 @@ Rules.JITTER = 0.1 -- s: how much early a shot may arrive (network jitter) witho
 Rules.SHOT_LATE = 0.6 -- s: a melee hit must come this soon after its swing
 Rules.AIM_PAD = 2 -- studs added round a target's boxes when the server re-checks where a shot pointed
 
-export type Ammo = { mag: number, reloadUntil: number }
+export type Ammo = { mag: number, reloadUntil: number, res: number? } -- (res: a zombies game's spare rounds; nil = never runs out)
 export type Tag = { by: Fighter, w: string, t: number }
 export type Swing = { t: number, w: string, hit: { [Fighter]: boolean }, heavy: boolean?, yaw: number? } -- (heavy: the knife's right-click stab; yaw: where you looked as you swung, the crit return's front)
 export type Fighter = {
@@ -91,6 +95,7 @@ function Rules.arm(f: Fighter, now: number)
 		end
 	end
 	f.formUntil = nil
+	if Rules.onArm then Rules.onArm(f) end -- (a zombies game: its spare rounds, Zombies.luau)
 end
 
 -- (re)spawn: full HP, full mags, nothing left over from the last life
@@ -122,7 +127,18 @@ end
 local function ammoOf(f: Fighter, wid: string, now: number): Ammo?
 	local a = f.ammo[wid]
 	local row = W[wid] or W[string.match(wid, "^(.-)@%d$") or ""] -- (a hand's mag: "akimbo@2" is Lefty & Righty's)
-	if a and row and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = row.mag :: number; a.reloadUntil = 0 end
+	if a and row and a.reloadUntil > 0 and now >= a.reloadUntil then
+		local res = a.res
+		if res then
+			-- (zombies: a reload takes what's left of the spares)
+			local take = math.min((row.mag :: number) - a.mag, res)
+			a.mag += take; a.res = res - take
+			if Rules.onRes then Rules.onRes(f, string.match(wid, "^(.-)@%d$") or wid) end
+		else
+			a.mag = row.mag :: number
+		end
+		a.reloadUntil = 0
+	end
 	return a
 end
 -- the key of a gun's mag and rate: Lefty & Righty's right hand has its own ("<id>@2"); every other gun, its id
@@ -214,6 +230,7 @@ function Rules.reload(f: Fighter, wid: any, now: number, hand: any?): string?
 	if not a then return "no ammo" end
 	if a.reloadUntil > 0 then return "already reloading" end
 	if a.mag >= (W[wid].mag :: number) then return "full" end
+	if a.res and a.res <= 0 then return "no spare ammo" end -- (zombies: buy more off the wall)
 	a.reloadUntil = now + (W[wid].reload :: number) * 0.9 -- 10% slack: the client's clock starts a ping earlier
 	return nil
 end
@@ -582,7 +599,7 @@ function Rules.kill(t: Fighter, by: Fighter?, wid: string, now: number): KillInf
 	end
 	if k == t then k = nil end
 	if k then
-		if t.kind ~= "dummy" then k.kills += 1 end -- (test dummies don't score, but they do feed the katana)
+		if t.kind ~= "dummy" and t.kind ~= "zombie" then k.kills += 1 end -- (test dummies and zombies don't score, but they do feed the katana)
 		if wid == "katana" or wid == "parry" then k.kat = math.min(W.katana.growMax :: number, k.kat + 1) end
 	end
 	t.tag = nil

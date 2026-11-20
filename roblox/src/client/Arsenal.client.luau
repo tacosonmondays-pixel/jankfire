@@ -438,6 +438,8 @@ local function reload(hand: number?): boolean
 	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return false end
 	if os.clock() < minigun.formUntil then return false end -- (mid-switch: the Scythe's rifle reloads once it's a rifle)
 	if me:GetAttribute("NoReload") then return false end -- (one in the chamber: kills are the only bullets, Modes.luau)
+	local res = me:GetAttribute("ZmRes_" .. held) -- (zombies, 20 Nov 2026: no spare rounds, no reload; Zombies.luau)
+	if type(res) == "number" and res <= 0 then return false end
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
 	burstLeft = 0
@@ -1163,7 +1165,11 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 	bloom = math.max(0, bloom - 0.06 * dt)
 	-- reload finishes on its own clock
 	local a = ammo[held]
-	if a and a.reloadUntil > 0 and now >= a.reloadUntil then a.mag = w.mag :: number; a.reloadUntil = 0 end
+	if a and a.reloadUntil > 0 and now >= a.reloadUntil then
+		local res = me:GetAttribute("ZmRes_" .. held) -- (zombies: a reload takes what's left of the spares)
+		a.mag = if type(res) == "number" then math.min(w.mag :: number, a.mag + res) else w.mag :: number
+		a.reloadUntil = 0
+	end
 	local a2 = if w and w.hands == 2 then ammo[held .. "@2"] else nil -- (Lefty & Righty's right gun)
 	minigun.cards.show(held == "cards" and hum ~= nil and not toolOut() and not menuOpen()) -- (batch E: the hand's tiles)
 	if a2 and a2.reloadUntil > 0 and now >= a2.reloadUntil then a2.mag = w.mag :: number; a2.reloadUntil = 0 end
