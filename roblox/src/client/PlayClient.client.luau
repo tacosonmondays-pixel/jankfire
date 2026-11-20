@@ -142,6 +142,24 @@ PlayUI.openParty = function() PartyUI.open() end
 -- opens the leaderboard on that tab (the hub's RANKED regular, Frisk1636)
 game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, who)
 	if who ~= me then return end
+	-- (20 Nov 2026, every hub's ZOMBIES room: the hub session's ZombiesSpot and ZombieGuide) a prompt with ZombiesQueue =
+	-- true plays ZOMBIES: PLAY opens (your party's room) on the MODES tab with ZOMBIES picked, and for a solo or the
+	-- party's leader the search starts. the usual refusals show there: not open yet (the card says SOON), only the
+	-- leader picks, a party bigger than the squad. none of it in a match (MenuGate, in play())
+	if prompt:GetAttribute("ZombiesQueue") == true then
+		task.spawn(function()
+			play()
+			local t0 = os.clock()
+			while not (PlayUI.S.party and PlayUI.S.party.room) and os.clock() - t0 < 3 do task.wait(0.1) end
+			if not PlayUI.S.party then return end
+			if not PlayUI.isOpen() then PlayUI.open() end
+			PlayUI.tab("modes")
+			if ReplicatedStorage:GetAttribute("ZombiesOn") ~= true then PlayUI.notice("ZOMBIES isn't open yet"); return end
+			local r = PlayUI.ask("mode", "zombies", false)
+			if r.ok then PlayUI.ask("find") end
+		end)
+		return
+	end
 	local v = prompt:GetAttribute("RankedBoard")
 	if v == nil or v == false then v = prompt:GetAttribute("RankedOpen") end
 	if v == nil or v == false then return end
