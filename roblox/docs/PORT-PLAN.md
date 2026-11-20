@@ -2284,6 +2284,30 @@ you roppenent on a decently long cooldown" (play-party-ranked, commits 1bdf52a; 
   - Not tested: the phone LOCK button and the pad's D-Right in a match (both press the same key path), and a match
     against real players.
 
+## 57. Hub: the owner's new layout, live, 19 November 2026 (place version 1086)
+
+The owner's own sketch (`side-session-notes/owner-hub-layout-sketch-2026-11-19.png`): "new layout for hub, way bigger mirrored pads, still retaining the upper balcony area which can be used as more decorative instead of having pads up there! Gym is now way larger housing 4 rings and an entrance to a locker room, lounge and vip are about the same". Staged three times; main: "staging 3 matches the owner's sketch ... Go live with it".
+
+- **The switch:** `R.LAYOUT` (HubRotunda), from the module's `Layout` attribute. `"mirror"` is the default now; `"lifts"` builds the old hub (the lift ring and its second floor of pads). `R.switch("plaza")` builds it live.
+- **The pads' crescent (new `HubRotundaPads.luau`):** a hall round the north of the round room, `R.PAD_HALL` (from bearing -77 to 77, d 74..90, the mezzanine out to 56).
+  - Ten pads on the ground floor, mirrored, `R.PADS`: from the west end 1v1, 1v1v1, 2v2, 3v3, 4v4 (Bank "lifts"), and back down the east 4v4_e .. 1v1_e (Bank "east"); the two 4v4s meet at due north. Each is bigger (`R.PAD_SIZE`), in its own bay between tall fins with light noses, a board over it, a coffered lid.
+  - Each pad keeps the queue contract (Mode, Size, Teams, Side1..n, Slots, the Status/Sub sign). The east pads carry the plain Mode. Live they go in `Map.Hub.QueuePads` (direct children), as before.
+  - The end walls hold the two ranked boards' spots (`BoardSpot`, Board "duels"/"party", a `BoardPrompt` with `RankedBoard`).
+  - Upstairs is decorative now: the mezzanine with sofa groups looking over the pads, planters, glass rails. No upper pads, no Mirror boards (`R.UPPER = {}`).
+  - The words over the round room's northern openings name the pads behind them (`R.WAY_WORDS`).
+- **The big gym (HubRotundaRooms, `R.GYM2`):** a straight corridor on side 4's own axis, then, square to north like the lounge and the VIP room (the east frame `B.fr(90)`: d east, x south):
+  - a warm-up room (bags, weights, tyres); its west wall 4 thick so the turned corridor's end sits inside it;
+  - the gym, 58 x 64: four rings 2x2 (each with a `MiniGameSpot`, Game "box", Ring 1..4, Half 12.75), a middle aisle to the target on the far wall, girders on a pier;
+  - the locker room off its south wall (south-east): five banks of tall lockers on the south wall, three on the east, padded benches down the middle with a gap on the door's line, a mirror over a counter under a light strip on the west wall, a wall bench and a towel shelf by the door.
+- **Checks (`R.check`) for the new layout:** walks through each northern opening and in front of every pad, the warm-up room's way, the gym's aisles, the locker room's two aisles and its door; leak points in each room; routes walked to all ten pads. Dropped: the gym's target seen from the platform (the corridor is turned).
+- **Moved with it:** Dumpling (a hidden NPC, `LoreSpots`) from the old gym's corner, now outside the walls, to the big gym's north-west corner.
+- Live `R.check`: 0 problems, leaks 0, overlaps 0, 10 pads walked to, regulars' ways 14. Flicker finder: clean (only slivers on the outside of the pad hall's back wall, where nobody sees). `Map.Hub.QueuePads`: 10 direct Models (was 12). The mini-games' arm/chess/arcade spots unchanged, the lore code panel still on PlazaFloor, the parked egg still unseen, `LoreSpots.check` 0 problems. play-party and hub-minigames checked the live build read-only and said OK before the save.
+- Sheets: `roblox/docs/hub/hub_new_layout_staging_3.jpg` (the labelled plan and the rooms), `roblox/docs/hub/hub_new_layout_live_1086.jpg`.
+- Traps:
+  - A plan photo needs the roofs out of the way: hide every part whose bottom is over head height (but the mezzanine's floor and seats) on a STAGING copy, and throw the copy away after. The camera straight down with its look a hair north gives north up, east right.
+  - Screen captures one at a time: several at once time out.
+  - `Lighting.Technology` can't be read from the MCP (RobloxScript capability).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

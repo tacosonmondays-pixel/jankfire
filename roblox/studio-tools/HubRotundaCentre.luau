@@ -76,7 +76,8 @@ return function(B, R)
 			-- its word on the balcony's edge. (no floor lines any more: the owner, 16 Nov, "can you get rid of the lines leading
 			-- to the pads": the five lifts are framed by their own piers and read on their own; the rooms' lines went with them)
 			local id, word, hex
-			if kind == "lift" then id, word, hex = mode[i].id, mode[i].title, P.word
+			if kind == "lift" and R.LAYOUT == "mirror" then id, word, hex = tostring(i), R.WAY_WORDS[i], P.word -- (the owner's layout: the pads that lie that way)
+			elseif kind == "lift" then id, word, hex = mode[i].id, mode[i].title, P.word
 			else id, word, hex = WAY[kind][1], WAY[kind][2], WAY[kind][3] end
 			if kind == "lift" then -- (18 Nov, main: "the five lift bays should read as hotel lifts, with framed doors and a lit header over each": a pale frame inside the opening, a warm lit header over it)
 				for _, s in { -1, 1 } do B.box(F, C, "LiftJamb", s * 4.85, s * 5.2, -0.04, 10.7, A - 0.2, A + 0.3, P.creamHi, nil, G) end -- (against the piers: the ways in and the sight lines to the pads stay as wide)

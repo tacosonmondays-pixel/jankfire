@@ -1047,6 +1047,216 @@ return function(B, R)
 	-- boxing ring and the backwall decor are off center from the entrance ... maybe make it a bit bigger"); lockers and
 	-- benches with room to walk ("too close together and looks awkward"); clear aisles either side of the ring; no floor
 	-- lines)
+	if R.LAYOUT == "mirror" then
+		-- THE GYM in the owner's own layout (19 Nov 2026, the owner's sketch: "Gym is now way larger housing 4 rings and an
+		-- entrance to a locker room"): off the round room's east side a straight corridor (on the side's own axis), then on
+		-- the north-south grid, square to the lounge and the VIP room (main, from the overhead: the block sat turned with
+		-- the round room's side): a warm-up room (the sketch's room box on the east side: the bags, the weights and the
+		-- tyres), the big gym (four rings in two rows, an aisle down the middle and round them, the round target on its far
+		-- wall), and off its south wall the LOCKER ROOM (lockers along its walls, benches before them). R.GYM2 has the plan,
+		-- in the east frame (B.fr(90): d east from the round room's middle, x south)
+		local G2 = R.GYM2
+		local F4 = B.side(4)
+		local F = B.fr(90)
+		hall(F4, "Gym", G2.hall, 5, 11, P.shell2, P.floor, P.shell)
+		for _, d in { 33.4, G2.hall - 4.6 } do -- two pale frames across the corridor
+			for _, s in { -1, 1 } do B.box(F4, C, "HallFrame", s * 4.55, s * 5, 0, 11, d - 0.5, d + 0.5, P.cream, nil, G) end
+			B.box(F4, C, "HallFrame", -5, 5, 10.3, 11, d - 0.5, d + 0.5, P.cream, nil, G)
+		end
+		B.panel(F4, 0, 11, (A + T + G2.hall) / 2, 2.4, 4)
+		B.lamp(F4, 0, 9.6, (A + T + G2.hall) / 2, 14, 0.7)
+		-- where the corridor ends, in the east frame: its end is turned to the grid, so it ends inside the warm-up room's thick
+		-- west wall (AW: the corridor's walls' corners stay in it), a floor and a ceiling patch under and over the joint
+		-- (below the hall's floor and above its lid's underside: no shared planes)
+		local an = G2.ante
+		local sk = math.rad(4 * 360 / R.N - 90)
+		local nearX = math.sin(sk) * (G2.hall - 0.1)
+		local AW = 4
+		local W0 = an.d0 -- (the warm-up room's inside starts here; R.GYM2 keeps the corridor's corners inside its wall)
+		B.box(F, S, "GymJoinFloor", nearX - 9.5, nearX + 9.5, -2.2, -0.08, W0 - AW - 3, W0, P.floor)
+		B.box(F, S, "GymJoinLid", nearX - 9.4, nearX + 9.4, 11.05, 12.55, W0 - AW - 3, W0 - AW + 0.6, P.shell)
+
+		-- ---- the warm-up room: its doors (the corridor's in the west wall, the gym's in the east, each where its way runs), a
+		-- dado and a line round it, the bags along the north wall on a mat, the weights along the south, the tyres in the
+		-- far north corner (out of the way from one door to the other), a light over the middle
+		local ax0, ax1, AD0, AD1, AH = an.x0, an.x1, W0, an.d1, an.h
+		B.box(F, S, "GymAnteFloor", ax0 - 2, ax1 + 2, -2.1, -0.02, AD0 - AW, AD1, P.gymFloor) -- (the gym's floor takes over under the far wall)
+		B.box(F, S, "GymAnteLid", ax0 - 2, ax1 + 2, AH, AH + 1, AD0 - AW, AD1 + 1, P.shell) -- (ends inside the gym's wall over it)
+		B.box(F, S, "GymAnteWall", ax0 - 2, ax0, 0, AH, AD0 - AW, AD1 + 2, P.gymWall)
+		B.box(F, S, "GymAnteWall", ax1, ax1 + 2, 0, AH, AD0 - AW, AD1 + 2, P.gymWall)
+		local function doorWall(dA, dB, cx, hw, hh)
+			B.box(F, S, "GymAnteWall", ax0, cx - hw, 0, AH, dA, dB, P.gymWall)
+			B.box(F, S, "GymAnteWall", cx + hw, ax1, 0, AH, dA, dB, P.gymWall)
+			B.box(F, S, "GymAnteWall", cx - hw, cx + hw, hh, AH, dA, dB, P.gymWall)
+		end
+		-- (the corridor's door: between the corridor's inside faces where they meet the wall's west face, so its jambs stay out
+		-- of the way along the corridor; just under the corridor's lid)
+		doorWall(AD0 - AW, AD0, nearX - 0.35, 5.25, 10.9)
+		doorWall(AD1, AD1 + 2, an.farX, 6, 11)
+		for _, w in { { ax0, ax0 + 0.2 }, { ax1 - 0.2, ax1 } } do
+			B.box(F, C, "GymDado", w[1], w[2], 0, 4, AD0, AD1, P.pier2, nil, G)
+			B.box(F, C, "GymLine", w[1] + (if w[1] == ax0 then 0 else -0.1), w[2] + (if w[1] == ax0 then 0.1 else 0), 4, 4.6, AD0, AD1, P.band, nil, G)
+		end
+		for _, d in { AD0 + 5.5, AD0 + 10 } do
+			B.put(F, R.prop("rk_punchbag", "bc_punchbag"), "PunchBag", ax0 + 2, 0, d, 90, { solid = Vector3.new(3.2, 7.4, 3.2), color = { c8262e = P.pier2, ["17141f"] = P.cream } })
+		end
+		B.paint(F, "Mat", ax0 + 0.3, ax0 + 3.7, -0.02, AD0 + 3.4, AD0 + 12, P.band, 0.03)
+		B.put(F, R.prop("rk_dumbbells", "bc_dumbbells"), "Dumbbells", ax1 - 1.1, 0, (AD0 + AD1) / 2 - 2, -90, { scale = R.propScale("rk_dumbbells", 1, 0.8), solid = true })
+		B.put(F, R.prop("rk_tyres", "bc_tyres"), "Tyres", ax0 + 3.4, 0, AD1 - 3.2, 90, { scale = R.propScale("rk_tyres", 1, 0.6), solid = true })
+		B.panel(F, (ax0 + ax1) / 2, AH, (AD0 + AD1) / 2, 3, 3)
+		B.lamp(F, (ax0 + ax1) / 2, AH - 1.2, (AD0 + AD1) / 2, 24, 0.6)
+
+		-- ---- the gym's shell: floor, lid, walls (the near one round the warm-up room's east wall; the south one with the
+		-- locker room's door), a dado and a line round it, girders across the lid (clear of the rings' light rods and the
+		-- lamps), the middle one on a pier on the north wall and over the locker room's door on the south
+		local x0, x1, d0, d1, gh = G2.x0, G2.x1, G2.d0, G2.d1, G2.h
+		local lk = G2.locker -- { x0, x1, d0, d1, height, its door's middle d }
+		local LDH, LDW = 10, 3.2 -- (the locker room's door: height, half width)
+		B.box(F, S, "GymFloor", x0 - 2, x1 + 2, -2, -0.02, d0 - 2, d1 + 2, P.gymFloor)
+		B.box(F, S, "GymLid", x0 - 2, x1 + 2, gh, gh + 1, d0 - 2, d1 + 2, P.shell)
+		if x0 - 2 < ax0 - 2 then B.box(F, S, "GymWall", x0 - 2, ax0 - 2, 0, gh, d0 - 2, d0, P.gymWall) end
+		if x1 + 2 > ax1 + 2 then B.box(F, S, "GymWall", ax1 + 2, x1 + 2, 0, gh, d0 - 2, d0, P.gymWall) end
+		B.box(F, S, "GymWall", ax0 - 2, ax1 + 2, AH, gh, d0 - 2, d0, P.gymWall)
+		B.box(F, S, "GymWall", x0 - 2, x0, 0, gh, d0, d1, P.gymWall)
+		B.box(F, S, "GymWall", x1, x1 + 2, 0, gh, d0, lk[6] - LDW, P.gymWall)
+		B.box(F, S, "GymWall", x1, x1 + 2, 0, gh, lk[6] + LDW, d1, P.gymWall)
+		B.box(F, S, "GymWall", x1, x1 + 2, LDH, gh, lk[6] - LDW, lk[6] + LDW, P.gymWall)
+		B.box(F, S, "GymWall", x0 - 2, x1 + 2, 0, gh, d1, d1 + 2, P.gymWall)
+		for _, w in { { x0, x0 + 0.2, d0, d1 }, { x1 - 0.2, x1, d0, lk[6] - LDW - 0.5 }, { x1 - 0.2, x1, lk[6] + LDW + 0.5, d1 }, { x0 + 0.2, x1 - 0.2, d1 - 0.2, d1 },
+			{ x0 + 0.2, an.farX - 6, d0, d0 + 0.2 }, { an.farX + 6, x1 - 0.2, d0, d0 + 0.2 } } do
+			if w[2] > w[1] then B.box(F, C, "GymDado", w[1], w[2], 0, 4, w[3], w[4], P.pier2, nil, G) end
+		end
+		for _, w in { { x0, x0 + 0.3, d0, d1 }, { x1 - 0.3, x1, d0, lk[6] - LDW - 0.5 }, { x1 - 0.3, x1, lk[6] + LDW + 0.5, d1 }, { x0 + 0.3, x1 - 0.3, d1 - 0.3, d1 } } do
+			B.box(F, C, "GymLine", w[1], w[2], 4, 4.6, w[3], w[4], P.band, nil, G)
+		end
+		for _, s in { -1, 1 } do B.box(F, C, "DoorJamb", x1 - 0.45, x1, -0.04, LDH, lk[6] + s * LDW - (if s > 0 then 0 else 0.5), lk[6] + s * LDW + (if s > 0 then 0.5 else 0), P.cream, nil, G) end
+		B.box(F, C, "DoorHead", x1 - 0.45, x1, LDH, LDH + 0.5, lk[6] - LDW - 0.5, lk[6] + LDW + 0.5, P.cream, nil, G)
+		local r1, r2 = G2.rings[1][2], G2.rings[3][2]
+		for _, d in { d0 + 2, (r1 + r2) / 2, d1 - 2 } do B.box(F, C, "Girder", x0, x1, gh - 1.6, gh, d - 0.7, d + 0.7, P.cream, nil, G) end
+		B.box(F, S, "GymPier", x0, x0 + 1.4, 0, gh - 2.2, lk[6] - 1.1, lk[6] + 1.1, P.pier) -- (on the north wall, across from the locker room's door)
+		for _, k in { { G2.cx, r1 - 4 }, { G2.cx, r2 - 4 }, { G2.cx, d1 - 6 } } do
+			B.panel(F, k[1], gh, k[2], 3, 6); B.lamp(F, k[1], gh - 1.2, k[2], 26, 0.5)
+		end
+		-- the far wall, on the middle aisle: the round target in a lit recess at eye height
+		do
+			local TY, TX = 9.5, G2.cx
+			B.box(F, C, "RecessBack", TX - 5.6, TX + 5.6, TY - 2.7, TY + 3.3, d1 - 0.65, d1 - 0.35, P.band, nil, G)
+			for _, s in { -1, 1 } do B.box(F, C, "RecessSide", TX + s * 5.6, TX + s * 6.6, TY - 2.7, TY + 3.3, d1 - 2, d1 - 0.3, P.pier, nil, G) end
+			B.box(F, C, "RecessHead", TX - 6.6, TX + 6.6, TY + 3.3, TY + 4, d1 - 2, d1 - 0.3, P.pier, nil, G)
+			B.box(F, C, "RecessSill", TX - 6.6, TX + 6.6, TY - 3.1, TY - 2.7, d1 - 2, d1 - 0.3, P.pier, nil, G)
+			for i, k in ipairs({ { 5.4, P.creamHi }, { 4.3, P.pier }, { 3.2, P.creamHi }, { 2.1, P.pier }, { 1.1, P.glow } }) do
+				local disc = B.cyl(F, C, "Target", TX, 0, 0.12, 0, k[1], k[2], if i == 5 then Neon else nil, G)
+				disc.CFrame = F * CFrame.new(TX, TY, -(d1 - 0.75 - i * 0.1)) * CFrame.Angles(0, math.pi / 2, 0)
+			end
+			for _, s in { -1, 1 } do B.box(F, C, "TargetTick", TX + s * 3.9 - 0.5, TX + s * 3.9 + 0.5, TY - 0.25, TY + 0.25, d1 - 1.05, d1 - 0.65, P.creamHi, nil, G) end
+			B.lamp(F, TX, gh - 1.4, d1 - 8, 18, 1.2, P.warm, { spot = true, angle = 60, face = Enum.NormalId.Front })
+		end
+
+		-- ---- the four rings, each as the gym's one was: 19 across, a padded platform, four fat posts, two fat rounded rails
+		-- each side, two steps up on the door's side, a square light frame over it, a light straight over its middle. each
+		-- has the boxing mini-game's marker on its mat (MiniGameSpot, Game "box", Ring = which, Half: the mini-games
+		-- session runs all four at once)
+		local RS, RH = 9.5, 1.4
+		local PO = RS - 0.7
+		for idx, rg in G2.rings do
+			local RX, RD = rg[1], rg[2]
+			B.box(F, S, "RingBase", RX - RS, RX + RS, 0, RH, RD - RS, RD + RS, P.pier2)
+			B.box(F, C, "RingApron", RX - RS - 0.1, RX + RS + 0.1, RH - 0.4, RH - 0.04, RD - RS - 0.1, RD + RS + 0.1, P.creamHi, nil, G)
+			B.box(F, C, "RingMat", RX - RS + 1, RX + RS - 1, RH, RH + 0.08, RD - RS + 1, RD + RS - 1, P.band, nil, G)
+			B.box(F, C, "RingMatLine", RX - RS + 1, RX + RS - 1, RH + 0.08, RH + 0.12, RD - 0.25, RD + 0.25, P.creamHi, nil, G)
+			B.rigid(F, RX, RD, -90, function(Fl)
+				local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, RH + 0.08 - 0.1, RH + 0.08 + 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
+				m:SetAttribute("Game", "box"); m:SetAttribute("Ring", idx)
+				m:SetAttribute("Half", (RS - 1) * (if B.warp then B.warp.K else 1)) -- (the mat's middle to the inside of its ropes, studs: the mini-games session's)
+				Tags:AddTag(m, "MiniGameSpot")
+			end)
+			B.box(F, S, "RingStep", RX - 2.2, RX + 2.2, 0, RH / 2, RD - RS - 1.2, RD - RS, P.pier2)
+			B.box(F, S, "RingStep", RX - 2.2, RX + 2.2, RH / 2, RH, RD - RS - 0.6, RD - RS, P.pier2)
+			for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do
+				B.cyl(F, C, "RingPost", RX + cx * PO, RH + 0.04, RH + 5, RD + cz * PO, 1.6, P.cream, nil, G)
+				B.cyl(F, C, "RingPostCap", RX + cx * PO, RH + 5, RH + 5.5, RD + cz * PO, 2, P.band, nil, G)
+			end end
+			for _, h in { RH + 2.1, RH + 3.9 } do
+				for _, sd in { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } } do
+					local len = 2 * PO - 1.6
+					local rail = B.box(F, C, "RingRail", 0, len, h - 0.42, h + 0.42, 0, 0.84, P.creamHi, nil, G)
+					rail.Shape = Enum.PartType.Cylinder; rail.Size = Vector3.new(len, 0.84, 0.84)
+					rail.CFrame = F * CFrame.new(RX + sd[1] * PO, h, -(RD + sd[2] * PO)) * (if sd[1] ~= 0 then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity)
+				end
+			end
+			B.lamp(F, RX, gh - 1.6, RD, 30, 1.2, P.light, { spot = true, angle = 75, shadows = idx == 1 })
+			local LF, LY = 7.2, gh - 5
+			for _, s in { -1, 1 } do
+				B.box(F, C, "LightFrame", RX - LF - 0.3, RX + LF + 0.3, LY, LY + 0.6, RD + s * LF - 0.3, RD + s * LF + 0.3, P.pier, nil, G)
+				B.box(F, C, "LightFrame", RX + s * LF - 0.3, RX + s * LF + 0.3, LY + 0.03, LY + 0.6, RD - LF - 0.3, RD + LF + 0.3, P.pier, nil, G)
+			end
+			for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do
+				B.box(F, C, "FrameRod", RX + cx * LF - 0.3, RX + cx * LF + 0.3, LY + 0.6, gh, RD + cz * LF - 0.3, RD + cz * LF + 0.3, P.pier, nil, G)
+				B.put(F, "hb_droplight", "RingLamp", RX + cx * 5, LY, RD + cz * 5, 0, { seat = "top", scale = 0.8, color = { fff1d6 = P.warm } })
+			end end
+			B.lamp(F, RX, LY - 3, RD, 18, 0.7, P.warm)
+		end
+
+		-- ---- the locker room, off the gym's south wall (main, 19 Nov, from the staging photos: "a bare box"; the big things,
+		-- the chunky way): a full row of tall lockers along its south wall and another along its east wall, padded benches
+		-- down the middle (a gap on the door's line), a mirror over a long counter on its west wall under a light strip, a
+		-- wall bench west of the door and a towel shelf east of it; two light panels; its own dado
+		do
+			local lx0, lx1, ld0, ld1, lh = lk[1], lk[2], lk[3], lk[4], lk[5]
+			B.box(F, S, "LockerFloor", lx0, lx1 + 2, -2, -0.02, ld0 - 2, ld1 + 2, P.gymFloor) -- (the gym's floor runs under the wall between)
+			B.box(F, S, "LockerLid", lx0 - 1, lx1 + 2, lh, lh + 1, ld0 - 2, ld1 + 2, P.shell) -- (its end inside the gym's wall, not on its face)
+			B.box(F, S, "LockerWall", lx1, lx1 + 2, 0, lh, ld0 - 2, ld1 + 2, P.gymWall)
+			B.box(F, S, "LockerWall", x1 + 2, lx1, 0, lh, ld0 - 2, ld0, P.gymWall)
+			B.box(F, S, "LockerWall", x1 + 2, lx1, 0, lh, ld1, ld1 + 2, P.gymWall)
+			for _, w in { { lx1 - 0.2, lx1, ld0, ld1 }, { lx0, lx0 + 0.2, ld0, lk[6] - LDW }, { lx0, lx0 + 0.2, lk[6] + LDW, ld1 }, { lx0 + 0.2, lx1 - 0.2, ld0, ld0 + 0.2 }, { lx0 + 0.2, lx1 - 0.2, ld1 - 0.2, ld1 } } do
+				B.box(F, C, "LockerDado", w[1], w[2], 0, 4, w[3], w[4], P.pier2, nil, G)
+			end
+			-- the lockers: banks of three (6.4 across, 2 deep, 7.6 tall) side by side, backs on the dado: five along the south
+			-- wall from the west end, three along the east wall clear of the south row
+			local function lockers(x, d, yaw)
+				B.put(F, R.prop("rk_lockers", "bc_lockers"), "Lockers", x, 0, d, yaw, { back = true, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
+			end
+			for k = 0, 4 do lockers(lx1 - 0.22, ld0 + 0.6 + 3.2 + k * 6.5, -90) end
+			for k = 0, 2 do lockers(lx0 + 0.6 + 3.2 + k * 6.5, ld1 - 0.22, 0) end
+			-- the benches down the middle, two either side of the door's line
+			local BX = (lx0 + lx1) / 2 - 0.5
+			for _, d in { lk[6] - 12.5, lk[6] - 6.5, lk[6] + 6.5, lk[6] + 12.5 } do
+				B.put(F, R.prop("rk_bench", "bc_bench"), "Bench", BX, 0, d, 90, { solid = true, color = { ["3b2a52"] = P.wood } })
+			end
+			-- the west wall: a long counter, a framed mirror over it (a pale panel with a little sheen), a light strip on top
+			local mx0, mx1 = lx0 + 2.5, lx1 - 3
+			B.box(F, S, "Counter", mx0, mx1, 0, 2.9, ld0, ld0 + 1.8, P.pier2)
+			B.box(F, C, "CounterTop", mx0 - 0.2, mx1 + 0.2, 2.9, 3.3, ld0, ld0 + 2.3, P.creamHi, nil, G)
+			B.box(F, C, "MirrorFrame", mx0 - 0.3, mx1 + 0.3, 3.8, 9.2, ld0, ld0 + 0.45, P.cream, nil, G)
+			local mir = B.box(F, C, "LockerMirror", mx0, mx1, 4.1, 8.9, ld0 + 0.45, ld0 + 0.55, "b9c3cc", nil, G)
+			if mir then mir.Reflectance = 0.2 end
+			B.box(F, C, "MirrorLight", mx0, mx1, 9.4, 9.8, ld0, ld0 + 0.5, P.strip, Neon, G)
+			-- the north wall: a wall bench west of the door, a towel shelf east of it with three stacks of folded towels
+			B.put(F, R.prop("rk_bench", "bc_bench"), "WallBench", lx0 + 0.95, 0, lk[6] - 10.5, 90, { solid = true, color = { ["3b2a52"] = P.wood } })
+			B.box(F, S, "TowelShelf", lx0 + 0.2, lx0 + 1.6, 0, 3.4, lk[6] + 6.5, lk[6] + 14.5, P.pier2)
+			B.box(F, C, "TowelShelfTop", lx0 + 0.2, lx0 + 1.8, 3.4, 3.7, lk[6] + 6.3, lk[6] + 14.7, P.creamHi, nil, G)
+			for k = 0, 2 do
+				local d = lk[6] + 8 + k * 2.5
+				for j = 0, 2 do B.box(F, C, "Towel", lx0 + 0.4, lx0 + 1.5, 3.7 + j * 0.45, 4.12 + j * 0.45, d - 0.9, d + 0.9, if j == 1 then P.cream else "dcd7cd", nil, G) end
+			end
+			for _, d in { (ld0 + ld1) / 2 - 9, (ld0 + ld1) / 2 + 9 } do
+				B.panel(F, (lx0 + lx1) / 2, lh, d, 2.4, 4); B.lamp(F, (lx0 + lx1) / 2, lh - 1.2, d, 20, 0.6)
+			end
+		end
+
+		-- ---- a regular (R.NPCS): Dune, the quests guy, walking round the first ring (the middle aisle, between the rows, the
+		-- aisle by the north wall), pausing and facing the ring
+		do
+			local RX, RD = G2.rings[1][1], G2.rings[1][2]
+			local mid = (G2.aisle[1] + G2.aisle[2]) / 2
+			local back = (RD + G2.rings[3][2]) / 2
+			local north = (x0 + 1.4 + RX - RS) / 2 -- (between the north wall's pier and the ring)
+			B.npc(F, "Dune", mid, 0, RD, 90)
+			for k, w in { { "stop", mid, RD, 90 }, { "via", mid, back, 0 }, { "stop", RX, back, 180 }, { "via", north, back, 0 }, { "stop", north, RD, -90 } } do
+				B.npcPoint(F, "Dune", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil })
+			end
+		end
+	else
 	do
 		local F = B.side(4)
 		local GX, GD, GH = R.GYM_BOX[1], R.GYM_BOX[2], R.GYM_BOX[3]
@@ -1172,6 +1382,7 @@ return function(B, R)
 			B.npcPoint(F, "Dune", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil })
 		end
 
+	end
 	end
 
 	-- ------------------------------------------------------------ the armory and the training gate (side 10, west)
