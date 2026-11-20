@@ -1342,6 +1342,28 @@ local sName = label(sbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(52
 sName.FontFace = FONT_BOLD; sName.RichText = true; sName.TextWrapped = false
 -- (where the shown skin comes from, then how to use the row: News.source. 18 Nov)
 News.src = label(sbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+-- (20 Nov, the owner: "you can't preview the finishers in game": a skin that owns a finisher gets a FINISHER pill on its
+-- card here - press it for the full cut on your own avatar against a dummy (Finisher.preview, as the shop's); it takes
+-- the camera and every screen and gives them back. on the card itself, so it is always that skin's finisher (one
+-- button for the row previewed whichever finisher card the pointer last crossed). in News: Luau's 200-local limit)
+News.finOf = function(sid: string?): string?
+	local sm = Shared:FindFirstChild("Finishers")
+	if type(sid) ~= "string" or sid == "default" or not (sm and sm:IsA("ModuleScript")) then return nil end
+	local ok, Fs = pcall(require, sm)
+	if not ok or type(Fs) ~= "table" or type((Fs :: any).forSkin) ~= "function" then return nil end
+	local ok2, fid = pcall((Fs :: any).forSkin, sid)
+	return if ok2 and type(fid) == "string" then fid else nil
+end
+News.finPlay = function(sid: string)
+	local fid = News.finOf(sid)
+	local fm = script.Parent:FindFirstChild("Finisher")
+	if not fid or not (fm and fm:IsA("ModuleScript")) then return end
+	local ok, Fc = pcall(require, fm)
+	if not ok or type(Fc) ~= "table" or type((Fc :: any).preview) ~= "function" then return end
+	if type((Fc :: any).isPlaying) == "function" and (Fc :: any).isPlaying() then return end
+	play("click")
+	task.spawn(pcall, (Fc :: any).preview, fid, { skin = sid })
+end
 local skinRow = new("ScrollingFrame", {
 	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
@@ -1397,6 +1419,13 @@ local function skinCard(sid: string, order: number, wid: string, concept: boolea
 		holder:SetAttribute("Concept", true)
 		local tag = label(chip, "CONCEPT", 10, UDim2.new(1, -62, 0, 3), UDim2.fromOffset(58, 14), GREY, Enum.TextXAlignment.Right)
 		tag.FontFace = FONT_BOLD; tag.ZIndex = 8
+	elseif sid ~= "default" and News.finOf(sid) then
+		-- (its finisher, on the card's foot: press for the full cut; a pad's pick and a tap reach it like the card)
+		local pill = new("TextButton", { Name = "Finisher", AutoButtonColor = true, BackgroundColor3 = Color3.fromRGB(18, 18, 22),
+			BackgroundTransparency = 0.1, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 66), Size = UDim2.fromOffset(CW - 8, 19),
+			FontFace = FONT_BOLD, TextSize = 10, Text = "FINISHER \u{25B6}", TextColor3 = ACCENT, ZIndex = 9 }, chip)
+		T.corner(pill, 3)
+		pill.MouseButton1Click:Connect(function() News.finPlay(sid) end)
 	end
 	table.insert(skinCards, { id = sid, st = st, tick = tick, lock = if sid ~= "default" and not concept then lockOver(chip, 8) else nil,
 		holder = holder, new = News.dot(chip, 9), concept = concept == true })
