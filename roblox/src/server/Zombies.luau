@@ -60,6 +60,7 @@ export type Mob = {
 	target: Member?, wish: Vector3, close: boolean, swingAt: number, nextSwing: number,
 	hits: number, hitAt: { [Member]: number }, seen: number, chk: number, chkPos: Vector3, stuck: number,
 	side: number, sideDir: number, lastHs: boolean, walk: AnimationTrack?,
+	k: number?, -- (its size: ZombieSpecial scales the specials and bosses)
 }
 type Game = {
 	map: ZM.Map, model: Model, nav: Nav.Nav, open: { boolean }, areas: { [string]: boolean },
@@ -316,7 +317,8 @@ local function pickWindow(g: Game, live: { Member }): number?
 	return wins[math.random(1, math.min(3, #wins))]
 end
 local function spawnOne(g: Game, live: { Member }): boolean
-	local wi = pickWindow(g, live)
+	local pw = call("packWindow", g)
+	local wi = if type(pw) == "number" and g.map.windows[pw] then pw else pickWindow(g, live)
 	if not wi then return false end
 	local w = g.map.windows[wi]
 	local speed, kind = ZM.gait(g.n, math.random(), math.random())
@@ -351,6 +353,8 @@ local function spawnOne(g: Game, live: { Member }): boolean
 	table.insert(g.mobs, z)
 	g.byMob[f] = z
 	g.toSpawn -= 1
+	local okS, errS = pcall(call, "spawned", g, z) -- (a special, a boss: ZombieSpecial)
+	if not okS then warn("[jankfire] zombies spawned: " .. tostring(errS)) end
 	return true
 end
 local function removeMob(g: Game, z: Mob, keep: boolean?)
@@ -412,6 +416,8 @@ local function think(g: Game, z: Mob)
 		wish = Vector3.new(wish.X * ca - wish.Z * sa, 0, wish.X * sa + wish.Z * ca)
 	end
 	z.wish = wish
+	local sw = call("steer", g, z)
+	if typeof(sw) == "Vector3" then z.wish = sw; z.close = false end
 end
 local function swipe(g: Game, z: Mob)
 	local t = z.target
@@ -424,7 +430,8 @@ local function swipe(g: Game, z: Mob)
 		if not tr then return end
 		local dv = feetOf(tr) - feetOf(z.root)
 		local hd = flat(dv).Magnitude
-		if hd > R.reachHit or dv.Y < -3.9 or dv.Y > R.reachUp + 0.9 then return end -- dodged
+		local ru = call("reachUp", g, z)
+		if hd > R.reachHit * (z.k or 1) or dv.Y < -3.9 or dv.Y > (if type(ru) == "number" then ru else R.reachUp) + 0.9 then return end -- dodged
 		local from = z.root.Position + Vector3.new(0, 1.5, 0)
 		local to = tr.Position
 		if hd > 2.7 and workspace:Raycast(from, to - from, g.nav.params) then return end -- not through a wall
@@ -432,17 +439,21 @@ local function swipe(g: Game, z: Mob)
 		t.iframe = n + R.iframe
 		local dir = if hd > 1e-3 then flat(dv) / hd else z.root.CFrame.LookVector
 		local cm = call("clawMul", g, t)
-		Fight.hurt(t.f, ZM.claw(g.n) * (if type(cm) == "number" then cm else 1), z.f, "claw", false, dir * 12 + Vector3.new(0, 6, 0), to)
+		local zc = call("zClaw", g, z)
+		Fight.hurt(t.f, ZM.claw(g.n) * (if type(cm) == "number" then cm else 1) * (if type(zc) == "number" then zc else 1), z.f, "claw", false, dir * 12 + Vector3.new(0, 6, 0), to)
 		return
 	end
 	if not t or not t.f.alive or n < z.nextSwing then return end
 	local tr = Fight.root(t.f)
 	if not tr then return end
 	local dv = feetOf(tr) - feetOf(z.root)
-	if flat(dv).Magnitude > R.reach + (if z.kind > 0 then 0.75 else 0) or dv.Y < -3.6 or dv.Y > R.reachUp then return end
+	local ru = call("reachUp", g, z)
+	local reachUp = if type(ru) == "number" then ru else R.reachUp
+	if flat(dv).Magnitude > R.reach * (z.k or 1) + (if z.kind > 0 then 0.75 else 0) or dv.Y < -3.6 or dv.Y > reachUp then return end
+	local cd = call("zCd", g, z)
 	z.swingAt = n + R.windup
-	z.nextSwing = n + R.swipeCd
-	if dv.Y > 3 then z.hum.Jump = true end
+	z.nextSwing = n + R.swipeCd * (if type(cd) == "number" then cd else 1)
+	if dv.Y > 3 and call("canJump", g, z) ~= false then z.hum.Jump = true end
 end
 local function climb(g: Game, z: Mob)
 	local w = g.map.windows[z.win]
@@ -455,8 +466,9 @@ local function climb(g: Game, z: Mob)
 			z.dur = if z.kind > 0 then R.climbRun else R.climb
 			g.win[z.win] = n + z.dur * 0.6
 			-- over the sill (a tween on the anchored body: everyone sees it smooth), then down inside
-			local mid = w.at.Position - Vector3.new(0, 0.6, 0) + Vector3.new(0, Hitbox.ROOT_UP - 1.5, 0)
-			local inAt = w.inn + Vector3.new(0, Hitbox.ROOT_UP, 0)
+			local k = z.k or 1
+			local mid = w.at.Position - Vector3.new(0, 0.6, 0) + Vector3.new(0, Hitbox.ROOT_UP * k - 1.5, 0)
+			local inAt = w.inn + Vector3.new(0, Hitbox.ROOT_UP * k, 0)
 			local look = w.n
 			local t1 = TweenService:Create(z.root, TweenInfo.new(z.dur * 0.5, Enum.EasingStyle.Linear), { CFrame = CFrame.lookAt(mid, mid + look) })
 			local t2 = TweenService:Create(z.root, TweenInfo.new(z.dur * 0.5, Enum.EasingStyle.Linear), { CFrame = CFrame.lookAt(inAt, inAt + look) })
@@ -480,9 +492,11 @@ local function step(g: Game, z: Mob, dt: number)
 	local over = g.st == "over"
 	if not over and (g.tick + z.id) % 3 == 0 then think(g, z) end
 	local tx = Vector3.zero
+	local cap = z.speed
 	if not over then
 		local slow = call("zombieSpeed", g, z)
 		local s = if z.close then 0 else z.speed * (if z.swingAt > 0 then 0.35 else 1) * (if type(slow) == "number" then slow else 1)
+		cap = math.max(z.speed, s) -- (a boss's charge, a Screamer's hype: faster than its walk)
 		tx = z.wish * s
 		local me = z.root.Position
 		for _, o in g.mobs do -- (don't stack up on each other)
@@ -505,7 +519,7 @@ local function step(g: Game, z: Mob, dt: number)
 	end
 	local sp = tx.Magnitude
 	if sp > 0.05 then
-		z.hum.WalkSpeed = math.min(sp, z.speed * 1.3)
+		z.hum.WalkSpeed = math.min(sp, cap * 1.3)
 		z.hum:Move(tx / sp, false)
 	else
 		z.hum:Move(Vector3.zero, false)
@@ -1097,7 +1111,7 @@ end
 local function tick(g: Game, dt: number)
 	g.tick += 1
 	for _, z in table.clone(g.mobs) do
-		if z.ph == "hunt" and z.f.alive and (now() - z.seen > 25 or z.stuck > 8) then removeMob(g, z); g.toSpawn += 1 end -- lost or wedged: again from a window
+		if z.ph == "hunt" and z.f.alive and (now() - z.seen > 25 or z.stuck > 8) then call("lost", g, z); removeMob(g, z); g.toSpawn += 1 end -- lost or wedged: again from a window
 	end
 	if g.st == "over" then
 		for _, z in g.mobs do step(g, z, dt) end
@@ -1295,6 +1309,7 @@ startGame = function(players: { Player }, mapName: string): (string?, string?)
 		p:SetAttribute("ZmOn", true)
 		p:SetAttribute("ZmC", m.c)
 		p:SetAttribute("ZmArena", model.Name)
+		p:SetAttribute("Arena", mapName) -- (HubLife lights your screen by it: the school's own night look, HubLook.byArena)
 		respawn(m)
 	end
 	for i = #g.members + 1, Zombies.SQUAD do addBot(g, i - #players) end
@@ -1338,6 +1353,7 @@ function Zombies.stop(_why: string?)
 		if p and p.Parent then
 			p:SetAttribute("ZmOn", nil); p:SetAttribute("ZmC", nil); p:SetAttribute("ZmDown", nil); p:SetAttribute("ZmOut", nil)
 			p:SetAttribute("ZmArena", nil)
+			p:SetAttribute("Arena", nil)
 			for wid in m.res do p:SetAttribute("ZmRes_" .. wid, nil) end
 			p:SetAttribute("TeleportT", os.clock())
 			f.alive = false

@@ -63,6 +63,7 @@ Fight.lastStand = nil :: ((Fighter, number, Fighter?, string) -> boolean)?
 Fight.zombieHurt = nil :: ((Fighter, number, Fighter?, string, boolean?) -> ())?
 Fight.zombieDied = nil :: ((Rules.KillInfo) -> ())?
 Fight.quiet = nil :: ((Fighter) -> boolean)?
+Fight.hitHs = false -- (the hit being judged right now was a headshot: set by Fight.hurt before modDamage)
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -369,6 +370,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	-- (a shove with no damage still marks who did it, so a fall now is theirs: web hurt tags every hit)
 	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
+	Fight.hitHs = hs -- (this hit's headshot, for modDamage: a zombies Hard Hat, Zombies.luau)
 	if Fight.modDamage and amt > 0 then amt = Fight.modDamage(t, amt, by, wid) end
 	if Fight.rigSoak and amt > 0 then amt = Fight.rigSoak(t, amt, by, wid) end -- (the Overdrive Rig's armour first)
 	-- (a zombies game: a hit that would kill puts you down instead, Zombies.luau)

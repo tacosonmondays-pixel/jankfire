@@ -77,6 +77,16 @@ toast.AnchorPoint = Vector2.new(0.5, 0); toast.Position = UDim2.new(0.5, 0, 0.5,
 local toastT = 0
 local bannerT = 0
 
+-- a boss: its name and HP, top middle
+local bossF = T.plate(root, "Boss", UDim2.new(0.5, -200, 0, 70), UDim2.fromOffset(400, 40))
+bossF.Visible = false
+local bossName = T.text(bossF, "Name", "", 13, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+bossName.Position = UDim2.fromOffset(0, 3); bossName.Size = UDim2.new(1, 0, 0, 16)
+local bossTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.fromOffset(12, 24), Size = UDim2.new(1, -24, 0, 8) }, bossF)
+T.corner(bossTrack, 3)
+local bossFill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.DANGER, Size = UDim2.fromScale(1, 1) }, bossTrack)
+T.corner(bossFill, 3)
+
 -- down: a red edge, how long you have
 local downF = T.new("Frame", { Name = "Down", BackgroundColor3 = Color3.fromRGB(120, 0, 0), BackgroundTransparency = 0.65, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
 local downT = T.text(downF, "Text", "DOWN", 40, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center, true)
@@ -151,6 +161,10 @@ zr.OnClientEvent:Connect(function(x: any)
 		local def = nil
 		for _, d in ZM.DROPS do if d.name == x.name then def = d end end
 		show(tostring(x.name), if def then def.desc else nil, 2.5)
+	elseif x.k == "boss" then
+		if x.st == "warn" then show(tostring(x.name), "on the way", 3)
+		elseif x.st == "meeting" then say(tostring(x.name) .. " called a meeting", false)
+		elseif x.st == "dead" then show(tostring(x.name) .. " DOWN", nil, 3) end
 	elseif x.k == "over" then
 		for _, c in oRows:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 		oTitle.Text = "GAME OVER  ·  ROUND " .. tostring(x.n)
@@ -241,6 +255,14 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 	setChips(rows)
+	-- the boss bar
+	local bn = a and a:GetAttribute("BossName")
+	local bh, bm = a and a:GetAttribute("BossHp"), a and a:GetAttribute("BossMax")
+	bossF.Visible = type(bn) == "string" and type(bh) == "number" and type(bm) == "number" and bm > 0
+	if bossF.Visible then
+		bossName.Text = tostring(bn)
+		bossFill.Size = UDim2.fromScale(math.clamp((bh :: number) / (bm :: number), 0, 1), 1)
+	end
 	local st = a and a:GetAttribute("St")
 	rNum.Text = tostring(a and a:GetAttribute("Round") or 0)
 	local left = a and a:GetAttribute("Left")

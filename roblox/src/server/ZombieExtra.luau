@@ -588,7 +588,8 @@ function ZombieExtra.install(zombies: any)
 		if not t then gs.tear[z] = { at = n + 0.4 + math.random() * 0.6, t0 = n }; return true end
 		if n - t.t0 > 45 then return false end -- (planks going back up as fast as it rips them: it climbs through anyway)
 		if n < t.at then return true end
-		t.at = n + (if z.kind > 0 then R.tearRun else R.tear) * (0.8 + math.random() * 0.4) * (if mod(gs, "brainfreeze") then 2.2 else 1)
+		local tm = Z.ext.tearMul and Z.ext.tearMul(g, z) -- (armless: it headbutts the planks, slowly: ZombieSpecial)
+		t.at = n + (if z.kind > 0 then R.tearRun else R.tear) * (0.8 + math.random() * 0.4) * (if mod(gs, "brainfreeze") then 2.2 else 1) * (if type(tm) == "number" then tm else 1)
 		gs.planks[z.win] -= 1
 		showPlanks(gs, z.win)
 		return gs.planks[z.win] > 0
@@ -695,6 +696,11 @@ function ZombieExtra.install(zombies: any)
 				guns = if m then table.concat(m.guns, ",") else nil, credits = if m then m.c else nil }
 		end
 		return nil
+	end
+	-- (a drop for certain: a boss going down, ZombieSpecial)
+	ext.dropAt = function(g: any, kind: string?, at: Vector3)
+		local gs = GSt[g]
+		if gs then dropAt(g, gs, kind or ZM.dropPick(), at) end
 	end
 	ext.killed = function(g: any, z: any, k: any)
 		local gs = GSt[g]
