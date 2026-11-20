@@ -1562,7 +1562,17 @@ def tv_end(i, n):
 # eyes, eyes, the killer's hand, the victim's hand, the sweat, the far wide with the tumbleweed, then one last tighter
 # look at the eyes before the snap. The owner again (20 Nov): "it goes too quickly ... not enough suspense" - so every
 # hold is long and slow (the standoff alone runs 6 s; 8.3 s in all, past the usual window: the end screen waits)
-@shot('dust', "KILLER'S EYES", 24)
+@shot('dust', 'OVERHEAD', 36)
+def dv_overhead(i, n):
+    # the owner (20 Nov): "the opening shot ... over head of both, but it zooms in, and the borders come in"
+    u = i / (n - 1)
+    desert()
+    m_dust_rigs()
+    mid = Vector((0, DV.y / 2, 0))
+    lens(lerpv(mid + Vector((-15, 0, 44)), mid + Vector((-7.5, 0, 21)), ease(u)), mid + Vector((0, 0, 0.5)), 46 - 8 * ease(u), 0)
+
+
+@shot('dust', "KILLER'S EYES", 20)
 def dv_keyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1572,7 +1582,7 @@ def dv_keyes(i, n):
     lens(br((hd @ Vector((0, 0.1, -2.4 + 0.25 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.1, -0.55, 1))).xyz), 16, 0)
 
 
-@shot('dust', "VICTIM'S EYES", 20)
+@shot('dust', "VICTIM'S EYES", 18)
 def dv_veyes(i, n):
     u = i / (n - 1)
     desert()
@@ -1608,7 +1618,7 @@ def dv_vhand(i, n):
     lens(h0 + Vector((-1.5, 2.8 - 0.3 * u, -0.5)), h0 + Vector((0.4, -1.6, 0.3)), 38, 6)
 
 
-@shot('dust', 'SWEAT', 14)
+@shot('dust_old', 'SWEAT', 14)
 def dv_sweat(i, n):
     # tight on the victim's cheek: the bead of sweat runs down
     u = i / (n - 1)
@@ -1706,7 +1716,7 @@ def dv_hitframe(i, n):
     return m_dust_6()
 
 
-@shot('dust', 'THE HIT', 19)
+@shot('dust_old', 'THE HIT', 19)
 def dv_hit(i, n):
     u = i / (n - 1)
     desert()
@@ -1735,7 +1745,7 @@ def dv_hit(i, n):
     lens(S['pos'], S['look'], 44, -6)
 
 
-@shot('dust', 'HOLSTER', 20)
+@shot('dust_old', 'HOLSTER', 20)
 def dv_holster(i, n):
     u = i / (n - 1)
     t = 0.75 - 0.69 * ease(u)       # the draw played backwards: the revolver goes home
@@ -1764,23 +1774,31 @@ def dv_holster(i, n):
     lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.88, ease(u)), S['c'], 36, 5)
 
 
-@shot('dust', 'FAR SHOT', 36)
+@shot('dust', 'FAR SHOT', 48)
 def dv_far(i, n):
+    # the end, the owner's sketch: far and side-on. The shot rings out; the other one folds and goes down and stays
+    # down, the dust bursts and clears; far off, the shooter puts the revolver home
     u = i / (n - 1)
+    s_ = i / FPS
     desert()
-    K, V = m_dust_rigs(kclip=(DRAW, 0.06), kgun_in=True, vclip=('bx_30_knockdown_punch', 2.0))
+    tv_ = min(2.0, 0.1 + 1.5 * min(1.0, s_ / 0.85) ** 1.3)
+    tk = 0.75 if s_ < 0.5 else max(0.06, 0.75 - 0.69 * ease((s_ - 0.5) / 0.8))
+    K, V = m_dust_rigs(kclip=(DRAW, tk), kgun_in=tk < DRAW_OUT, vclip=('bx_30_knockdown_punch', tv_))
+    if tk >= DRAW_OUT:
+        revolver_in_hand(K)
     if i == 0:
         S['vc'] = br(V['UpperTorso'].translation)
     vc = S['vc']
-    # the dust hanging round them, spreading and thinning out
     rnd = random.Random(91)
-    for j in range(14):
+    k = 1 - (1 - min(1.0, s_ / 0.6)) ** 2.5
+    for j in range(16):
         a = rnd.uniform(0, 6.28)
         r0 = rnd.uniform(0.8, 2.2)
-        d0 = rnd.uniform(0.3, 1.6)
-        q = rb(vc + Vector((math.cos(a) * d0 * (1 + 0.8 * u), math.sin(a) * d0 * (1 + 0.8 * u), -0.6 + 0.5 * u + rnd.uniform(0, 0.6))))
-        PROP_TR[0] = min(0.97, 0.45 + 0.52 * u)
-        rr = r0 * (1 + 0.7 * u)
+        d0 = rnd.uniform(0.3, 1.8)
+        q = rb(vc + Vector((math.cos(a) * d0 * (0.3 + 0.9 * k + 0.6 * u), math.sin(a) * d0 * (0.3 + 0.9 * k + 0.6 * u),
+                            -0.7 + 0.6 * u + rnd.uniform(0, 0.7))))
+        PROP_TR[0] = min(0.97, 0.3 + 0.67 * u)
+        rr = r0 * (0.5 + 0.7 * k + 0.5 * u)
         prop('Ball', (rr, rr, rr), CF(q.x, max(q.y, rr * 0.25), q.z), SAND if j % 2 else (0.95, 0.84, 0.62), 'Sand', 'dustcloud')
         PROP_TR[0] = 0.0
     lens((27.0 - 0.6 * u, DV.y / 2, 2.1), (0, DV.y / 2, 1.6), 33, 0)

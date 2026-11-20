@@ -24,7 +24,8 @@ FX = {
         'speed': {},   # (no speed lines on the draw: the owner read them as filler rain; the gun's own smear moves it)
         'flash_after': {'HIT FRAME': 3},
         'grey': {},
-        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34, 'THEIR EYES': 0.34},   # the eyes in a thin band, thinner each time
+        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34, 'THEIR EYES': 0.34},
+        'bars_in': {'OVERHEAD'},   # the letterbox slides in over the opening   # the eyes in a thin band, thinner each time
     },
 }
 
@@ -136,7 +137,11 @@ def main():
             im = speed_lines(im, sp, 1000 + k)
         if k in fade:
             im = flash(im, fade[k])
-        bars(im, fx.get('bars', {}).get(n, BAR)).save(os.path.join(out, f'{k:03d}.png'))
+        bar = fx.get('bars', {}).get(n, BAR)
+        if n in fx.get('bars_in', set()):
+            uu = i / max(1, counts[n] - 1)
+            bar = BAR * (uu * uu * (3 - 2 * uu))
+        bars(im, bar).save(os.path.join(out, f'{k:03d}.png'))
     print('post', video, len(frames), 'frames ->', out)
 
 
