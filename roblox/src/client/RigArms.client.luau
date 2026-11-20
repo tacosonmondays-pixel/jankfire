@@ -12,7 +12,9 @@
 -- third person (yours and everyone's) is ThirdPerson's: the forearms over the body's own. bound after Arsenal (which
 -- runs at Camera + 2 and shows the gun), so the gun stays hidden the same frame.
 -- Studio tuning: this script's attributes Scale (model size, x the game's 3 studs a metre), RestP / RestR (the rest pose,
--- camera metres / radians for the right arm; the left is its mirror), Unit (camera metres to studs, x 3)
+-- camera metres / radians for the right arm; the left is its mirror), Unit (camera metres to studs, x 3). Studio photos
+-- (a test's mouse never reaches the game): your player's RigChargeHold (0..1) holds the wind-up there, and setting
+-- RigPunchTest (any new value) plays the punch
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -23,6 +25,8 @@ local TP = require(script.Parent:WaitForChild("ThirdPerson")) :: any
 local RigClient: any = nil -- (weapons-port's: required once it's in the place)
 
 local me = Players.LocalPlayer
+local IS_STUDIO = RunService:IsStudio()
+local punchTest: any = nil
 local S = Weapons.S
 local CF, V = CFrame.new, Vector3.new
 
@@ -154,6 +158,9 @@ local function step(dt: number)
 	-- what happened: a new punch, a new salvo (the seconds since went down)
 	local pt, ft = RigClient.punched(), RigClient.fired()
 	if pt and pt < lastPunch then play("rig_punch"); punchFrom = { p = chargeP, r = chargeR } end
+	local ptest = if IS_STUDIO then me:GetAttribute("RigPunchTest") else nil
+	if ptest ~= nil and ptest ~= punchTest then play("rig_punch"); punchFrom = { p = chargeP, r = chargeR } end
+	punchTest = ptest
 	if ft and ft < lastFire then play("rig_miss") end
 	lastPunch, lastFire = pt or math.huge, ft or math.huge
 	for i = #clips, 1, -1 do
@@ -179,6 +186,8 @@ local function step(dt: number)
 	phase += spd * dt / 9 -- (one swing of each arm a stride or so)
 	-- the wind-up
 	ck = RigClient.charge()
+	local hold = if IS_STUDIO then me:GetAttribute("RigChargeHold") else nil
+	if type(hold) == "number" then ck = math.clamp(hold, 0, 1) end
 	cw += ((if ck > 0 then 1 else 0) - cw) * math.min(1, dt * 14)
 	local unit = S * attr("Unit", P.unit)
 	local restP, restR = attr("RestP", P.restP), attr("RestR", P.restR)
