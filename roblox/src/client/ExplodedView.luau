@@ -216,6 +216,22 @@ function ExplodedView.attach(holder: GuiObject): Handle
 	return h
 end
 
+-- Studio tests (keys don't reach an unfocused Studio): the player's attribute ExplodeTest = "on" / "off" / "toggle"
+-- works the view on screen now, as the button would; ExplodeState says what it did ("open ar groups 9", "none")
+local me = game:GetService("Players").LocalPlayer
+if me then
+	me:GetAttributeChangedSignal("ExplodeTest"):Connect(function()
+		local v = me:GetAttribute("ExplodeTest")
+		if v == nil then return end
+		me:SetAttribute("ExplodeTest", nil)
+		local h = active
+		if not (h and h.plan) then me:SetAttribute("ExplodeState", "none"); return end
+		if v == "on" then h.set(true) elseif v == "off" then h.set(false) else h.toggle() end
+		me:SetAttribute("ExplodeState", ("%s %s groups %d"):format(if h.open then "open" else "closed",
+			if h.model then h.model.Name else "?", #h.plan.groups))
+	end)
+end
+
 -- X / Y: the view on screen that showed up last
 UIS.InputBegan:Connect(function(io: InputObject, _gp: boolean)
 	if io.KeyCode ~= Enum.KeyCode.X and io.KeyCode ~= Enum.KeyCode.ButtonY then return end
