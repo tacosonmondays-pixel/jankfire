@@ -2,7 +2,8 @@
 -- KillVfxImport (studio tool, 20 Nov 2026, kill-effects-emotes): builds the kill effects' templates in
 -- ReplicatedStorage.JankfireVfx from the bought Combat VFX pack (coldd Development; credited in Shared.Credits) for
 -- VfxEmit to play (client/KillFx.luau PACK). Run in Edit:
---   require(this).build(source)   source: any Instance holding the pack's effects under their own names
+--   require(this).build(source, only?)   source: any Instance holding the pack's effects under their own names; `only`
+--                                        (a list of template names) rebuilds just those, leaving the rest alone
 --   require(this).check()         what's there, every template's biggest particle and longest life
 -- The pack's own settings never go in git: this copies the effects that are already in the place and only changes
 -- them by the rules below. Each template is cut down to a dead body's size (the kill effect rules: about 4 studs, 1.5 s,
@@ -24,7 +25,7 @@ local M = {}
 -- `bright`; `fade` more transparency (0..1); `size` a further size factor
 type Tone = { sat: number, light: number, bright: number, fade: number?, size: number? }
 type Spec = { from: { string }, maxSize: number, kmax: number, life: number, run: number, rate: number?, accent: Color3,
-	part: Vector3, skip: { string }?, tone: Tone? }
+	part: Vector3, skip: { string }?, tone: Tone?, pack: string? }
 M.SPEC = {
 	-- STATIC: electric bolts crawl over the body (played three times while it flickers). 20 Nov, main for the owner's
 	-- rule: pale steel-blue / white electric, lower glow (the first build was loud electric blue)
@@ -41,7 +42,11 @@ M.SPEC = {
 	-- ASCEND: rays and a soft core as the body glows and lifts
 	KillRays = { from = { "Treasure" }, maxSize = 3.4, kmax = 0.6, life = 0.6, run = 0.8, rate = 1.5,
 		accent = Color3.fromRGB(255, 232, 186), part = Vector3.new(0.5, 0.5, 0.5) },
-	-- (BLAST ZONE waits for a ring from the 100+ pack: Guard break and Slam are parry and landing's)
+	-- BLAST ZONE: the hit's white flash, sparks and a clean shock ring by 0.5 s, left where the body was struck (it flies
+	-- off). 100+ pack #35 (roblox/docs/vfx/catalogue100, b3.jpg), all its 20 emitters scaled alike by 0.4: kmax binds
+	-- before maxSize, so the layers keep their proportions. Its source: pack_templates.py "#35=Ring35" into a scratch folder
+	KillBlastRing = { from = { "Ring35" }, maxSize = 4.5, kmax = 0.4, life = 0.8, run = 0.1,
+		accent = Color3.fromRGB(255, 236, 206), part = Vector3.new(0.6, 0.6, 0.6), pack = "100+ Combat VFX Asset Pack, skaterstudios" },
 } :: { [string]: Spec }
 
 local function maxOf(ns: NumberSequence): number
@@ -150,7 +155,7 @@ function M.tone(names: { string }): string
 	return table.concat(out, "; ")
 end
 
-function M.build(source: Instance): string
+function M.build(source: Instance, only: { string }?): string
 	local folder = ReplicatedStorage:FindFirstChild("JankfireVfx")
 	if not folder then
 		folder = Instance.new("Folder")
@@ -159,6 +164,7 @@ function M.build(source: Instance): string
 	end
 	local out = {}
 	for name, s in M.SPEC do
+		if only and not table.find(only, name) then continue end
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
@@ -190,7 +196,12 @@ function M.build(source: Instance): string
 			end
 		end
 		p:SetAttribute("KillFx", true)
-		p:SetAttribute("From", table.concat(s.from, " + ") .. " (Combat VFX Asset Pack, coldd Development)")
+		p:SetAttribute("From", table.concat(s.from, " + ") .. " (" .. (s.pack or "Combat VFX Asset Pack, coldd Development") .. ")")
+		if #got == 0 then
+			-- nothing found: keep whatever template is there (a missing source never wipes a built one)
+			p:Destroy()
+			continue
+		end
 		local old = folder:FindFirstChild(name)
 		if old then old:Destroy() end
 		p.Parent = folder

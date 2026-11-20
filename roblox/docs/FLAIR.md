@@ -85,8 +85,8 @@ counterpart was Ember (it showed dots, no fire). Ink reads worse but no pack eff
 ### The bought VFX packs on kill effects (20 Nov, place v1116)
 
 The owner: "we purchased the vfx lets use them when we can!!" The weakest kill effects (from the 17 Nov photo sheets) were
-upgraded first: STATIC, SHATTER and ASCEND. BLAST ZONE is next, with a ring from the 100+ pack once the VFX session has
-photographed them. Guard break and Slam stay theirs, for parry and landings: a kill must not look like a parry.
+upgraded first: STATIC, SHATTER and ASCEND. BLAST ZONE followed in v1188 with a ring from the 100+ pack. Guard break
+and Slam stay theirs, for parry and landings: a kill must not look like a parry.
 - **Which pack effect goes where** is in the shared table `side-session-notes/.../pack-effects-usage.md`:
   - KillStaticArc: Shock Aura + Blue Lightning
   - KillStaticPop: Eletricity + Golden Eletricity
@@ -123,6 +123,21 @@ photographed them. Guard break and Slam stay theirs, for parry and landings: a k
     size). Run `KillVfxImport.tone({...})` to re-tone a built template in place.
   - Trap: these textures are black-backed. LightEmission below 1 shows their black squares (seen at v1125), so quiet
     them with Brightness and transparency instead.
+- **Blast Zone** (v1188; photo `flair/kill-blastzone-pack.jpg`):
+  - Its ring is 100+ pack #35 (skaterstudios, credited): a white burst with sparks, then a clean shock ring by 0.5 s.
+    It's left where the body was struck; the body flies off.
+  - All 20 emitters are scaled alike by 0.4 (`kmax` binds before `maxSize`, so the layers keep their proportions).
+    The biggest particle is 4.4 studs; it's done by 0.8 s.
+  - #72 was the other choice; #40 is the explosions' (BlastBurst).
+  - Source: `pack_templates.py ... --root=ServerStorage.KillPackSrc "#35=Ring35"`. Paste its builder in Edit, then
+    `build(KillPackSrc, { "KillBlastRing" })`, then delete KillPackSrc.
+- **Rebuild trap (20 Nov, v1188):** `require()` in Edit caches a ModuleScript for the whole Studio session.
+  - After pushing a new KillVfxImport, the old cached copy ran. It found none of its sources, and the old `build()`
+    replaced all four live templates with empty parts.
+  - A script's `Destroy()` can't be undone, so the four were rebuilt from the Combat pack the same way: `pack_templates.py`
+    with the six effect names, then `build(..., { four names })`. Photos matched v1133 and v1116.
+  - Now, `build(source, only)` builds just the listed templates. A template with no source found is left as it is.
+  - Always require a fresh clone: `local c = M:Clone(); c.Parent = game.ServerStorage; local K = require(c); c:Destroy()`.
 
 How it works:
 - **Server** (`server/FlairServer.server.luau`, hooked on `Fight.onKill`): the killer must be a player, not the victim;
