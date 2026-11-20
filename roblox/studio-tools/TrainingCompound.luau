@@ -529,33 +529,17 @@ local function hallCentre(cx, cz)
 	B.drum("Shell", "HallDrumBand", cx, cz, GY + 6, GY + 7.6, 10, W.slate)
 	B.drum("Shell", "HallDrum", cx, cz, GY + 7.6, GY + 15.4, 10, W.pier2)
 	B.drum("Scenery", "HallDrumGlow", cx, cz, GY + 15.2, GY + 15.4, 12.6, "c9bfae", { ghost = true, mat = NEON })
-	B.drum("Shell", "HallDrumCap", cx, cz, GY + 15.4, GY + 19.4, 13, W.pier2)
-	for _, y in { GY + 15.4, GY + 18.8 } do B.drum("Shell", "HallDrumCapLip", cx, cz, y, y + 0.6, 13.8, W.trim) end
+	local h, s0, s1 = 7, GY + 15.4, GY + 19.4
+	blk("Shell", "SignBox", cx - h, cx + h, s0, s1, cz - h, cz + h, W.pier2, { tex = "TrPaint" })
+	blk("Shell", "SignBoxCap", cx - h - 0.5, cx + h + 0.5, s1, s1 + 0.8, cz - h - 0.5, cz + h + 0.5, W.trim, { tex = "TrPaint" })
+	for _, f in { { 0, 1, "FIELD" }, { 0, -1, "HUB" }, { -1, 0, "RANGE" }, { 1, 0, "TUTORIAL" } } do
+		local fx, fz = cx + f[1] * (h + 0.16), cz + f[2] * (h + 0.16)
+		word("SignBox" .. f[3], f[3], 11, 2.6, facing(fx, (s0 + s1) / 2, fz, fx + f[1] * 20, fz + f[2] * 20), W.board)
+	end
 	-- (the column on up into the skylight, to its lit panel)
-	B.drum("Shell", "SignColumn", cx, cz, GY + 19.4, GH.top + 3.8, 7, W.pier2)
-	B.drum("Shell", "SignColumnCollar", cx, cz, GY + 19.4, GY + 20.6, 8.4, W.trim)
-	-- (each side names the door beyond the drum, as you look at it)
-	for _, sd in { { -1, "RANGE" }, { 1, "TUTORIAL" } } do
-		local sx = sd[1]
-		blk("Shell", "HallDrumSignMount", cx + sx * 4.6, cx + sx * 6.9, GY + 16.1, GY + 18.7, cz - 4.4, cz + 4.4, W.pier2, { tex = "TrPaint" })
-		word("HallDrumSign" .. sd[2], sd[2], 8, 1.9, facing(cx + sx * 7.05, GY + 17.4, cz, cx + sx * 20, cz), W.board)
-	end
-	for _, dz in { -7.5, 7.5 } do B.lamp(cx, GY + 13, cz + dz, "point", 18, 0.45, W.warmLamp) end
-	-- the compound's plan on the north face, read facing south (south up, east right), the gatehouse lit in the accent
-	local fz = cz + 5.6
-	blk("Shell", "MapMount", cx - 4.4, cx + 4.4, d0, GY + 9.6, cz + 2, fz, W.deep, { tex = "TrSlate" })
-	nose("MapMountLip", cx - 4.4, cx + 4.4, GY + 9.6, fz - 0.6, "x", 1.2)
-	local sc, MX, MZ, my = 1 / 52, -126, -8150, GY + 5.6
-	local function piece(name, x0, x1, z0, z1, hex, o)
-		local a0, a1 = cx + (x0 - MX) * sc, cx + (x1 - MX) * sc
-		local b0, b1 = my + (MZ - z0) * sc, my + (MZ - z1) * sc
-		blk("Scenery", name, a0, a1, math.min(b0, b1), math.max(b0, b1), fz, fz + 0.15, hex, o or { ghost = true })
-	end
-	piece("MapField", -100, 20, -8150, -8258, W.floor)
-	piece("MapCourse", -330, -104, -8140, -8254, "a4a6ab")
-	piece("MapHall", -268, -88, -8006, -8120, W.slate)
-	piece("MapRange", 26, 82, -8098, -8304, W.plinth)
-	piece("MapHere", -72, -8, -8064, -8132, W.teal, { ghost = true, mat = NEON })
+	B.drum("Shell", "SignColumn", cx, cz, s1 + 0.8, GH.top + 3.8, 7, W.pier2)
+	B.drum("Shell", "SignColumnCollar", cx, cz, s1 + 0.8, s1 + 2, 8.4, W.trim)
+	for _, dz in { -9, 9 } do B.lamp(cx, GY + 13, cz + dz, "point", 18, 0.45, W.warmLamp) end
 end
 
 -- ---------------------------------------------------------------- the gatehouse (arrival)
@@ -800,9 +784,7 @@ local function field()
 	dressWall("EastWall", "z", x1, -1, z1, z0, 258, 280, { noPlinth = true, bay = 26, holes = { { -8216, -8204, 236, 262 } } })
 	colonnade(-8154, -8246)
 	blk("Shell", "Walkway", x1 - 10, x1, Y0, Y0 + 1, z0, F.stage.z0, "8d9097", { tex = "TrConcrete" })
-	nose("WalkwayKerb", z0, F.stage.z0, Y0 + 1, x1 - 9.4, "z", 1.6)
 	blk("Shell", "Walkway", x0, x0 + 4, Y0, Y0 + 1, z0, F.DECK.z0, "8d9097", { tex = "TrConcrete" })
-	nose("WalkwayKerb", z0, F.DECK.z0, Y0 + 1, x0 + 3.4, "z", 1.6)
 	-- the far third: a terrace between the practice deck (246) and the stage (242) at 244, its stair on the main lane
 	local BA = { x0 = F.DECK.x1, x1 = st.x0, z0 = F.DECK.z0, top = 244 }
 	mass("Bastion", BA.x0, BA.x1, BA.z0, z1, 236, BA.top, { "z0", "x1" })
@@ -1269,11 +1251,6 @@ function C.room(i, r)
 	local zb = z1 - 4 -- (the back wall's face: the wall is z1 - 4 .. z1)
 	blk("Shell", "EndStep", x0, x1, GY, GY + 0.8, zb - 3.2, zb, W.pier2, { tex = "TrPaint" })
 	nose("EndStepNose", x0, x1, GY + 0.45, zb - 3.2, "x", 0.9)
-	for _, sd in { -1, 1 } do
-		local px = r.xm + sd * 16.4
-		blk("Shell", "TargetPost", px - 0.9, px + 0.9, GY + 0.8, GY + 10, zb - 2.4, zb - 0.6, W.pier, { tex = "TrPaint" })
-		B.put("tv_target", CF(px, GY + 14.4, zb - 1.6) * CFrame.Angles(0, math.pi, 0), { name = "EndTarget", scale = 0.55 }) -- (its middle: over head height)
-	end
 	local board = B.text("Board", { { "ROOM " .. i, W.pale, "B", 1 } }, 24, 10, facing(r.xm, GY + 15, zb - 0.35, r.xm, zb - 20), { plate = W.board, thick = 0.3 })
 	board.Parent = f
 	blk("Shell", "BoardFrame", r.xm - 13.8, r.xm + 13.8, GY + 20, GY + 21.8, zb, zb - 3, W.pier, { tex = "TrPaint" })
@@ -1281,7 +1258,7 @@ function C.room(i, r)
 	blk("Shell", "BoardFrame", r.xm - 13.8, r.xm - 12, GY + 10, GY + 20, zb, zb - 3, W.pier, { tex = "TrPaint" })
 	blk("Shell", "BoardFrame", r.xm + 12, r.xm + 13.8, GY + 10, GY + 20, zb, zb - 3, W.pier, { tex = "TrPaint" })
 	blk("Scenery", "BoardEdge", r.xm - 12, r.xm + 12, GY + 9.7, GY + 9.9, zb - 3, zb - 3.1, W.teal, { ghost = true, mat = NEON })
-	B.lamp(r.xm, GY + 7, zb - 6, "point", 14, 0.5, W.teal)
+	B.lamp(r.xm, GY + 7, zb - 6, "point", 14, 0.35, W.warmLamp)
 	for _, z in { z0 + 26, z0 + 80 } do B.lamp(r.xm, top - 7, z, "point", 40, 0.45, W.lamp) end
 	-- what the game reads
 	local zone = Instance.new("Part")
