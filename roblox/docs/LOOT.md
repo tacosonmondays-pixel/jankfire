@@ -228,10 +228,11 @@ back, the bag's flaps folding out, the can's cap landing beside it) for the ring
    lands with a heavy thud, a dust puff and a small camera shake, then hops twice and rocks. The camera eases round
    to a three-quarter view from your side. The HUD steps aside and your hands go (the same `LoadoutOpen` flag the
    loadout screen uses).
-2. **The pop.** It rattles harder and harder for 0.8 s while light leaks from the seam, then the lid / zip / cap goes
-   with a latch snap and a spark burst, and the inside lights up.
-3. **The reel.** The world blurs and greys; a band of 52 cards slides past a fixed amber marker for 6.2 s (an ease-out
-   curve: fast, then a long crawl over the last few), with a tick per card. Each card: the item's picture (a wrap's
+2. **The pop.** It rattles harder and harder while light leaks from the seam (at least 0.25 s, and for as long as
+   the server's answer and the reel's pictures take: see Speed below), then the lid / zip / cap goes with a latch snap
+   and a spark burst, and the inside lights up.
+3. **The reel.** The world blurs and greys; a band of 52 cards slides past a fixed amber marker for 2.4 s (an ease-out
+   curve: fast, then a crawl over the last few), with a tick per card. Only the cards over the band are drawn. Each card: the item's picture (a wrap's
    own texture, a hat's model), its name, its type and rarity, a rarity bar and a soft wash of the rarity colour. The
    reel stops somewhere across the prize card's width, never always dead centre.
 4. **The landing.** The winner grows, the rest go dark, the screen breathes the rarity colour and a sting plays (one
@@ -255,9 +256,37 @@ every gun from the same distance, so a pistol is small in its card and a sniper 
 tool (`JankfireTools.Shredder`, or `Shredder@<skin>`), without its suck field, at the hands' scale (4.5 studs a metre)
 brought to the same scale. Trails and beams are stripped from prizes (a blade's swing trail smeared as it turned).
 
-**SKIP [SPACE]** (a button too): during the drop and pop it cuts straight to a short reel; during the reel it lands at
-once. `opts.quick = true` (repeat opens) skips the drop's height and the rattle and spins for 1.4 s. A death or a
-match taking you ends it at once.
+**SKIP [SPACE]** (a button too): at any point before the landing, the reel lands at once. A death or a match taking
+you ends it at once.
+
+**Speed** (19 Nov, the owner: "opening crates and stuff is still really slow"; it took about 10 s from the press to
+the landing). The shop hands `play()` a function that asks the server instead of the answer (`LootOpening.ASYNC`), so
+the container drops the moment you press OPEN; the answer comes while it falls (the server's roll, the odds, the
+receipts and the paid-random checks are all as they were: only the asking moved). As soon as it's in, `prep()` builds
+the reel's 52 cards a few a frame and the prize's model, and loads their pictures and meshes (`ContentProvider:
+PreloadAsync`, at most 0.6 s); the rattle waits for that. The odds line fills in on its own when the inventory comes
+(it no longer holds the drop). Times: camera in 0.45 s, fall 0.3, bounce 0.32, rattle 0.25+, pop 0.3, reel 2.4, landing
+0.45: about 3.7 s to the landing, 4.2 s to the reveal. **QUICK OPEN** (the switch left of SKIP on the opening screen, remembered in your
+settings as `loot.quick`): a short drop, no reel, the prize comes straight up with its rarity's flash and sting.
+**OPEN ANOTHER** goes straight into the next drop: the camera stays where it is and the screens stay hidden
+(`restore(R, keep)` holds them for the next `play()`, given back after 1.5 s or by `Opening.release()`), and the
+button only shows when there is another to open. **Several at once** (x5, x10) drop round you in a quick ripple, all
+pop together with their prizes and signs, the best one's sting, a moment to look (1.4 s; 0.6 with QUICK OPEN), then
+the grid: no reel for each one. Every opening writes its phases to the player attribute `LootTiming` (`name=seconds`
+from the press: play, reply, inv, drop, made, loaded, rattled, popped, built, landed, reveal, answer, closed; grid for
+several), which is how the before and after numbers were taken.
+
+| Measured in Studio, 19 Nov (place v1085) | before | after |
+|---|---|---|
+| one Crate: press to the drop / to the landing / to the reveal | 0.10 / 8.87 / 9.59 s | 0.01 / 3.70 / 4.15 s |
+| one Duffel Bag / Spray Can, to the reveal | 9.52 / 9.78 s | 4.19 / 4.41 s |
+| Crate x5 / x10, to the grid | 10.80 / 20.19 s | 2.82 / 3.47 s |
+| OPEN ANOTHER to the next drop | 0.65 s (camera home and back) | 0.26 s (camera stays) |
+| QUICK OPEN, one Crate to the reveal | (none) | 1.30 s |
+| SKIP during the drop, to the reveal | (short 1.4 s reel) | 0.90 s |
+| worst frame: one Crate / x10 | 78 / 154 ms (14 over 50 ms) | 28 / 181 ms (2 over 50 ms) |
+
+(The server's answer took 0.05 s in Studio, 0.33 s for ten; the old wait was the animation, not the server.)
 
 Rarity colours are muted versions of the web game's hues (`LootTable.RARITY`): common green-grey, rare blue, epic
 violet, legendary gold.

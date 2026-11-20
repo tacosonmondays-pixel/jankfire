@@ -43,6 +43,20 @@ local Opening = {}
 local running = false
 local current: any = nil -- (the opening that is playing: finish() reaches it)
 function Opening.busy(): boolean return running end
+-- (play() takes a function that asks the server instead of its answer: the container drops at once, 19 Nov)
+Opening.ASYNC = true
+-- (19 Nov: how long each part of an opening takes, from the OPEN press, for the owner's "opening crates and stuff is
+-- still really slow": marks on the player's attribute LootTiming, "name=seconds" each, as they happen)
+local Timing = { t0 = 0, list = {} :: { string } }
+function Timing.start(t0: number?)
+	Timing.t0 = t0 or os.clock()
+	table.clear(Timing.list)
+end
+function Timing.mark(name: string)
+	table.insert(Timing.list, ("%s=%.2f"):format(name, os.clock() - Timing.t0))
+	me:SetAttribute("LootTiming", table.concat(Timing.list, " "))
+end
+Opening.Timing = Timing
 -- end the opening from outside (the shop closing, a test): it skips to the end and play() returns `answer` ("done")
 function Opening.finish(answer: string?)
 	if current then current.result = answer or "done"; current.skip = true end
@@ -53,12 +67,36 @@ function Opening.skip()
 end
 
 -- ---------------------------------------------------------------- timing (seconds)
+-- (19 Nov, the owner: "opening crates and stuff is still really slow": about 3.5 s from the press to the landing, was
+-- about 10. the container drops the moment you press, while the server decides)
 local TIME = {
-	fall = 0.42, bounce = 0.55, rattle = 0.8, pop = 0.5, -- the container
-	spin = 6.2, spinQuick = 1.4, -- the reel
-	land = 0.7, -- the winning card's moment before the reveal
-	rise = 0.65, -- the prize coming up out of the container
+	fall = 0.3, bounce = 0.32, rattle = 0.25, pop = 0.3, -- the container (the rattle: at least this, and while the answer comes)
+	spin = 2.4, spinQuick = 1.0, -- the reel
+	land = 0.45, -- the winning card's moment before the reveal
+	rise = 0.5, -- the prize coming up out of the container
+	camIn = 0.45, -- the camera coming round to the container
+	wait = 10, -- the longest the rattle waits for the server's answer
+	prep = 0.6, -- the longest it waits for the reel's pictures to load once they are built
 }
+local ContentProvider = game:GetService("ContentProvider")
+-- QUICK OPEN (the opening screen's switch, remembered in your settings as "loot.quick"): no reel, the prize comes
+-- straight up with its rarity's flash
+local settingsMod: any = false
+local function settings(): any
+	if settingsMod == false then
+		settingsMod = nil
+		local m = script.Parent:FindFirstChild("Settings")
+		if m and m:IsA("ModuleScript") then
+			local ok, s = pcall(require, m)
+			if ok and type(s) == "table" and type(s.get) == "function" then settingsMod = s end
+		end
+	end
+	return settingsMod
+end
+local function quickOn(): boolean
+	local s = settings()
+	return s ~= nil and s.get("loot.quick") == true
+end
 local CARD_W, CARD_H, GAP = 176, 212, 12
 local STEP = CARD_W + GAP
 
@@ -511,7 +549,7 @@ end
 type Ui = { gui: ScreenGui, box: Frame, stage: Frame, scale: UIScale, head: Frame, headScale: UIScale, title: TextLabel,
 	odds: TextLabel, skip: TextButton, skipScale: UIScale, reel: CanvasGroup, reelScale: UIScale, reelLow: number, strip: Frame,
 	marker: Frame, flash: Frame, reveal: Frame, revealScale: UIScale, rName: TextLabel, rKind: TextLabel, rOn: TextLabel,
-	equip: TextButton, again: TextButton, done: TextButton, s: number, b: number, wide: number }
+	equip: TextButton, again: TextButton, done: TextButton, s: number, b: number, wide: number, quick: TextButton, quickScale: UIScale }
 local function buildUi(): Ui
 	local pg = me:WaitForChild("PlayerGui")
 	-- (the stage keeps to the device's safe area, away from a phone's notch and corners; the dark bands, the flash and
@@ -552,6 +590,24 @@ local function buildUi(): Ui
 	local skip = button(stage, if touch then "SKIP" else "SKIP  [SPACE]", false, UDim2.fromOffset(1870, 1026), UDim2.fromOffset(170, 46))
 	skip.AnchorPoint = Vector2.new(1, 1)
 	local skipScale = new("UIScale", {}, skip)
+	-- QUICK OPEN: on or off for every opening after this one (remembered); placed beside SKIP by fit()
+	local quickB = button(stage, "QUICK OPEN", false, UDim2.fromOffset(1686, 1026), UDim2.fromOffset(220, 46))
+	quickB.Name = "Quick"
+	quickB.AnchorPoint = Vector2.new(1, 1)
+	quickB.TextSize = 15
+	local quickScale = new("UIScale", {}, quickB)
+	local function paintQuick()
+		local on = quickOn()
+		quickB.Text = if on then "QUICK OPEN  ON" else "QUICK OPEN  OFF"
+		quickB.TextColor3 = if on then T.ACCENT else T.SOFT
+	end
+	paintQuick()
+	quickB.MouseButton1Click:Connect(function()
+		local s = settings()
+		if s and type(s.set) == "function" then pcall(s.set, "loot.quick", not quickOn()) end
+		paintQuick()
+		pcall(Sfx.play, "click")
+	end)
 	-- the reel: a band across the middle, cards on a strip that slides left under a fixed marker
 	-- (a CanvasGroup, so the gradient fades the cards themselves out at both ends, not just the band behind them)
 	local reel = new("CanvasGroup", { Name = "Reel", BackgroundColor3 = T.BG, BackgroundTransparency = 0.25, BorderSizePixel = 0,
@@ -581,7 +637,7 @@ local function buildUi(): Ui
 	local again = button(reveal, "OPEN ANOTHER", false, UDim2.fromOffset(390, 160), UDim2.fromOffset(220, 56))
 	local done = button(reveal, "DONE", false, UDim2.fromOffset(630, 160), UDim2.fromOffset(150, 56))
 	return { gui = gui, box = box, stage = stage, scale = scale, head = head, headScale = headScale, title = title, odds = odds,
-		skip = skip, skipScale = skipScale, reel = reel, reelScale = reelScale, reelLow = 1, strip = strip, marker = marker, flash = flash,
+		skip = skip, skipScale = skipScale, quick = quickB, quickScale = quickScale, reel = reel, reelScale = reelScale, reelLow = 1, strip = strip, marker = marker, flash = flash,
 		reveal = reveal, revealScale = revealScale, rName = rName, rKind = rKind, rOn = rOn, equip = equip, again = again, done = done,
 		s = 1, b = 1, wide = 1920 }
 end
@@ -624,6 +680,11 @@ local function fit(ui: Ui)
 		ui.skip.AnchorPoint = Vector2.new(1, 1)
 		ui.skip.Position = UDim2.fromOffset(right, 1026)
 	end
+	-- (QUICK OPEN to the left of SKIP, the same size on a phone)
+	local k = ui.skipScale.Scale
+	ui.quickScale.Scale = k
+	ui.quick.AnchorPoint = ui.skip.AnchorPoint
+	ui.quick.Position = UDim2.fromOffset(right - 170 * k - 14, ui.skip.Position.Y.Offset)
 end
 -- a button's height in stage pixels: `base`, or taller to make TAP points under this boost
 local function tapH(ui: Ui, base: number, boost: number?): number
@@ -739,7 +800,11 @@ type Run = { ui: Ui, kind: string, res: any, opts: any, skip: boolean, skipAt: n
 	cam: { from: CFrame, to: CFrame, t0: number, dur: number, shake: number, shakeT: number, fov: number },
 	blur: BlurEffect, tint: ColorCorrectionEffect, dof: DepthOfFieldEffect, hidden: { [ScreenGui]: boolean },
 	saved: { cf: CFrame, type: Enum.CameraType, fov: number, loadoutOpen: any }, conns: { RBXScriptConnection },
-	spin: number, prizeY: number, prizeFrom: number?, wid: string?, boxes: { any }?, layout: any }
+	spin: number, prizeY: number, prizeFrom: number?, wid: string?, boxes: { any }?, layout: any,
+	-- (19 Nov: fast = QUICK OPEN; prepped = the reel's cards and the prize are made and loaded; count = how many were
+	-- asked for; refused = the server's no; cards / prizeM / built = what prep() made)
+	fast: boolean?, prepped: boolean?, count: number?, refused: any, cards: { Frame }?, prizeM: Model?, prizeWid: string?,
+	prizeTried: boolean?, built: { [number]: Model }? }
 
 local function camTo(R: Run, to: CFrame, dur: number)
 	local c = workspace.CurrentCamera :: Camera
@@ -876,9 +941,22 @@ local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: 
 	ui.reelLow = if low then 0.68 else 1
 	ui.reelScale.Scale = ui.reelLow * ui.b
 	local y = if low then 905 else 540
-	for _, c in ui.strip:GetChildren() do c:Destroy() end
-	local cards = {}
-	for i, it in items do cards[i] = card(ui.strip, it, (i - 1) * STEP) end
+	local cards = R.cards -- (made during the drop by prep())
+	R.cards = nil
+	if not cards or #cards ~= #items then
+		for _, c in ui.strip:GetChildren() do c:Destroy() end
+		cards = {}
+		for i, it in items do cards[i] = card(ui.strip, it, (i - 1) * STEP) end
+	end
+	Timing.mark("built" .. #items)
+	-- (only the cards over the band are drawn: 46 pictures sliding under it cost frames)
+	local function cull(x: number)
+		for i, c in cards do
+			local cx = (i - 1) * STEP + x
+			local v = cx + CARD_W > -STEP and cx < 1920 + STEP
+			if c.Visible ~= v then c.Visible = v end
+		end
+	end
 	local rng = Random.new()
 	local mid = 960
 	-- where the strip ends: the prize card under the marker, somewhere across its width (never right on an edge)
@@ -886,6 +964,7 @@ local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: 
 	local xEnd = mid - ((stop - 1) * STEP + CARD_W / 2) - within
 	local xStart = mid - (2 * STEP + CARD_W / 2) - rng:NextNumber(0, STEP)
 	ui.strip.Position = UDim2.fromOffset(xStart, 28)
+	cull(xStart)
 	ui.reel.Visible = true
 	ui.reel.Position = UDim2.fromOffset(960, y + 40)
 	ui.reel.BackgroundTransparency = 1
@@ -899,6 +978,7 @@ local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: 
 		if R.skip then u = 1 end
 		local x = xStart + (xEnd - xStart) * easeOut(u, p)
 		ui.strip.Position = UDim2.fromOffset(x, 28)
+		cull(x)
 		local idx = math.floor((mid - x) / STEP)
 		if idx ~= lastIdx and not R.skip then
 			lastIdx = idx
@@ -919,13 +999,27 @@ local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: 
 end
 
 -- the world as it was when we're done: camera, HUD, controls, effects
-local function restore(R: Run)
+-- (OPEN ANOTHER, 19 Nov: the next opening takes over the camera where it is and the screens still hidden, so it
+-- drops straight away: held. none within 1.5 s, or Opening.release(): everything goes back)
+local held: any = nil
+local function giveBack(saved: any, hidden: { [ScreenGui]: boolean })
+	local c = workspace.CurrentCamera :: Camera
+	c.CameraType = saved.type
+	c.FieldOfView = saved.fov
+	for g in hidden do if g.Parent then g.Enabled = true end end
+	-- (the mouse goes back to whoever else still has it: the shop between two openings, the loadout under it)
+	MenuCursor.set("loot", false)
+	me:SetAttribute("LoadoutOpen", saved.loadoutOpen == true or MenuCursor.menu()) -- (a real menu: not Toggle Cursor)
+	me:SetAttribute("LootOpening", nil)
+	pcall(function()
+		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
+		controls:Enable()
+	end)
+end
+local function restore(R: Run, keep: boolean?)
 	for _, c in R.conns do c:Disconnect() end
 	pcall(function() RunService:UnbindFromRenderStep("JankLootCam") end)
 	pcall(function() ContextActionService:UnbindAction("JankLootSink") end)
-	local c = workspace.CurrentCamera :: Camera
-	c.CameraType = R.saved.type
-	c.FieldOfView = R.saved.fov
 	R.blur:Destroy(); R.tint:Destroy(); R.dof:Destroy()
 	if R.box then R.box:Destroy() end
 	for _, b in R.boxes or {} do
@@ -933,16 +1027,24 @@ local function restore(R: Run)
 		if b.prize then b.prize:Destroy() end
 	end
 	if R.prize then R.prize:Destroy() end
+	if R.prizeM then R.prizeM:Destroy() end
+	for _, m in R.built or {} do m:Destroy() end
 	R.ui.gui:Destroy()
-	for g in R.hidden do if g.Parent then g.Enabled = true end end
-	-- (the mouse goes back to whoever else still has it: the shop between two openings, the loadout under it)
-	MenuCursor.set("loot", false)
-	me:SetAttribute("LoadoutOpen", R.saved.loadoutOpen == true or MenuCursor.menu()) -- (a real menu: not Toggle Cursor)
-	me:SetAttribute("LootOpening", nil)
-	pcall(function()
-		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
-		controls:Enable()
-	end)
+	if keep then
+		local h = { saved = R.saved, hidden = R.hidden }
+		held = h
+		task.delay(1.5, function()
+			if held == h and not running then held = nil; giveBack(h.saved, h.hidden) end
+		end)
+		return
+	end
+	giveBack(R.saved, R.hidden)
+end
+-- the shop isn't opening another after all: the camera and the screens back now
+function Opening.release()
+	local h = held
+	held = nil
+	if h and not running then giveBack(h.saved, h.hidden) end
 end
 
 -- ---------------------------------------------------------------- equipping a prize (the loadout's own ops)
@@ -973,15 +1075,28 @@ local function equipItem(item: any): (boolean, string?)
 	return false, if ok and type(r) == "table" and type(r.why) == "string" then r.why else "couldn't equip"
 end
 
--- the odds line this open was rolled with (what you owned before it: the prizes are taken back out)
-local function oddsText(kind: string, prizes: { any }): string
-	local owned = {}
-	local okInv, inv = pcall(function() return (Remotes:FindFirstChild("Loot") :: RemoteFunction):InvokeServer("inventory") end)
-	if okInv and type(inv) == "table" and type(inv.owned) == "table" then
-		for t, ids in inv.owned do owned[t] = {}; for _, id in ids do owned[t][id] = true end end
-		for _, q in prizes do if owned[q.type] then owned[q.type][q.key or q.id] = nil end end
-	end
-	return "ODDS  " .. LootTable.oddsLine(LootTable.odds(kind, owned))
+-- the odds line this open was rolled with (what you owned before it: the prizes are taken back out). it comes in
+-- when both the inventory and the server's answer are in: the drop never waits for it (19 Nov)
+local function oddsLater(R: Run)
+	task.spawn(function()
+		local okInv, inv = pcall(function() return (Remotes:FindFirstChild("Loot") :: RemoteFunction):InvokeServer("inventory") end)
+		Timing.mark("inv")
+		local t0 = os.clock()
+		while R.res == nil and R.ui.gui.Parent and os.clock() - t0 < TIME.wait do task.wait() end
+		local res = R.res
+		if not R.ui.gui.Parent or type(res) ~= "table" or res.ok ~= true then return end
+		local prizes = if type(res.prizes) == "table" and #res.prizes > 0 then res.prizes else { res.prize or res.item }
+		local owned = {}
+		if okInv and type(inv) == "table" and type(inv.owned) == "table" then
+			for t, ids in inv.owned do owned[t] = {}; for _, id in ids do owned[t][id] = true end end
+			for _, q in prizes do
+				local t = type(q) == "table" and (q.type or q.kind)
+				if t and owned[t] then owned[t][q.key or q.id] = nil end
+			end
+		end
+		R.ui.odds.Text = "ODDS  " .. LootTable.oddsLine(LootTable.odds(R.kind, owned))
+		tw(R.ui.odds, 0.3, { TextTransparency = 0.1 })
+	end)
 end
 
 -- ---------------------------------------------------------------- a prize's sign (a ring's prizes, others' openings)
@@ -1021,16 +1136,19 @@ end
 
 -- the prizes of a ring, built (true size) and all shown at ONE scale: the game's display scale, or smaller for all of
 -- them together if the longest would touch its neighbour's as they turn. returns the models (by index) and the scale
-local function ringPrizes(items: { any }, cfs: { CFrame }): ({ [number]: Model }, number)
+local function ringPrizes(items: { any }, cfs: { CFrame }, slice: boolean?): ({ [number]: Model }, number)
 	local near = math.huge
 	for i, a in cfs do
 		for j = i + 1, #cfs do near = math.min(near, (a.Position - cfs[j].Position).Magnitude) end
 	end
 	local models, longest = {}, 0.2
+	local f0 = os.clock()
 	for i, item in items do
 		if cfs[i] then
 			local ok, m, _, metres = pcall(prizeModel, item)
 			if ok and m then models[i] = m; longest = math.max(longest, metres) end
+			-- (slice: a few a frame, so the frames keep coming while they fall)
+			if slice and os.clock() - f0 > 0.008 then RunService.RenderStepped:Wait(); f0 = os.clock() end
 		end
 	end
 	local k = math.min(gunScale(), near * 0.85 / longest)
@@ -1054,14 +1172,13 @@ end
 -- round them all, then a grid of everything you got, rarest first, each with EQUIP; OPEN n MORE opens as many again.
 -- SKIP: everything left pops and shows at once
 local function runMany(R: Run): string
-	local ui, kind, res = R.ui, R.kind, R.res
+	local ui, kind = R.ui, R.kind
 	local info = LootTable.CONTAINERS[kind] or LootTable.CONTAINERS.crate
-	local prizes = res.prizes :: { any }
-	local n = #prizes
+	local n = math.max(1, R.count or 1) -- (as many as were asked for: the answer can bring fewer)
 	local cam = workspace.CurrentCamera :: Camera
 	ui.title.Text = ("%s  x%d"):format(string.upper(info.name), n)
-	ui.odds.Text = oddsText(kind, prizes)
-	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
+	tw(ui.title, 0.3, { TextTransparency = 0 })
+	oddsLater(R)
 
 	-- 1. the ring
 	local ch = me.Character
@@ -1086,12 +1203,12 @@ local function runMany(R: Run): string
 		place(b, at, DROP)
 		b.Parent = workspace
 		openBox(b, 0)
-		boxes[i] = { m = b, at = at, h = hgt, t0 = os.clock() + 0.3 + (i - 1) * 0.08, light = light, landed = false }
+		boxes[i] = { m = b, at = at, h = hgt, t0 = os.clock() + 0.08 + (i - 1) * 0.04, light = light, landed = false }
 	end
 	R.height = boxes[1].h
 	local cfs = {}
 	for i, b in boxes do cfs[i] = b.at end
-	local built = ringPrizes(prizes, cfs) -- (all at one scale: a pistol stays smaller than a sniper)
+	-- (the prizes: built by prep() while they fall, once the answer is in, all at one scale)
 	-- the camera: back and up until it sees every container and what will come out of it
 	local pts = {}
 	for _, b in boxes do
@@ -1162,9 +1279,42 @@ local function runMany(R: Run): string
 		if done then break end
 		RunService.RenderStepped:Wait()
 	end
-	if not R.skip then hold(R, 0.25) end
+	if not R.skip then hold(R, 0.1) end
+	-- the answer (nearly always in by now: it was asked for as they began to fall) and the prizes made from it
+	local w0 = os.clock()
+	while true do
+		local r = R.res
+		if r ~= nil and (r.ok ~= true or R.prepped) then break end
+		if r == nil and os.clock() - w0 > TIME.wait then break end
+		RunService.RenderStepped:Wait()
+	end
+	local res = R.res
+	if type(res) ~= "table" or res.ok ~= true or type(res.prizes) ~= "table" or #res.prizes < 1 then
+		-- (the server said no, or never answered: they go, and the shop says why)
+		R.refused = if type(res) == "table" then res else { ok = false, why = "the till didn't answer. try again" }
+		local ms = {}
+		for _, b in boxes do table.insert(ms, b.m) end
+		fadeOut(ms, 0.25)
+		return "refused"
+	end
+	local prizes = res.prizes :: { any }
+	if #prizes < n then
+		-- (fewer left in them for you than you asked for: the ones over go)
+		local extra = {}
+		for i = n, #prizes + 1, -1 do
+			table.insert(extra, boxes[i].m)
+			table.remove(boxes, i)
+			table.remove(cfs, i)
+		end
+		fadeOut(extra, 0.25)
+		for _, m in extra do m:Destroy() end
+		n = #prizes
+		ui.title.Text = ("%s  x%d"):format(string.upper(info.name), n)
+	end
+	local built = R.built or ringPrizes(prizes, cfs) -- (all at one scale: a pistol stays smaller than a sniper)
+	R.built = nil
 
-	-- 2. each in turn: it pops, a quick reel says what's in it, the prize comes up over it with its sign
+	-- 2. they all pop: each prize comes up over its container with its sign
 	tw(R.blur, 0.4, { Size = 2 })
 	tw(R.tint, 0.4, { Brightness = -0.04, Saturation = -0.3, Contrast = 0.05 })
 	local spinT = 0
@@ -1223,63 +1373,51 @@ local function runMany(R: Run): string
 		b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + 1.9, 0), item)
 		if rank >= 3 then particles(b.at.Position + Vector3.new(0, b.h + 0.5, 0), col, if rank == 4 then "big" else "pop") end
 	end
-	if not R.result then R.skip = false end
+	-- (19 Nov, the owner: "opening crates and stuff is still really slow": no reel for each one any more. they pop in
+	-- a quick ripple, each prize up over its container with its sign, the best one's sting and flash, a moment to see
+	-- them, then the grid. SKIP: all at once and straight to the grid)
 	for i, prize in prizes do
-		if R.skip then break end
-		ui.title.Text = ("%s  %d / %d"):format(string.upper(info.name), i, n)
-		if orbit then camTo(R, aimBox(i), 0.45) end
-		pop(i)
-		local items = (res.strips or {})[i]
-		local stop = (res.stops or {})[i]
-		if type(items) ~= "table" or type(stop) ~= "number" or not items[stop] then
-			items, stop = {}, 20
-			for j = 1, 24 do items[j] = prize end
-		end
-		local win = spinReel(R, items, stop, 0.95, true)
-		local col = rcol(prize.rarity)
-		local stroke = win:FindFirstChildOfClass("UIStroke")
-		if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
-		tw(new("UIScale", { Scale = 1 }, win), 0.2, { Scale = 1.08 }, Enum.EasingStyle.Back)
-		show(i, prize)
-		local rank = RANK[prize.rarity] or 1
-		-- (a sting only for the big ones: ten chimes in a row would be noise)
-		if rank >= 3 then
-			snd(if rank == 4 then { "loot_win_legendary", "round_end" } else { "loot_win_epic", "round_start" }, nil, 0.9, 1)
-			ui.flash.BackgroundColor3 = col; ui.flash.BackgroundTransparency = 0.8
-			tw(ui.flash, 0.6, { BackgroundTransparency = 1 })
-		end
-		hold(R, if rank >= 3 then 0.55 else 0.22)
+		pop(i); show(i, prize)
+		if i < n then hold(R, if R.fast then 0.03 else 0.05) end
 	end
-	-- (SKIP: everything left pops and shows at once)
-	for i, prize in prizes do pop(i); show(i, prize) end
-	tw(ui.reel, 0.25, { Position = UDim2.fromOffset(960, 960), BackgroundTransparency = 1 })
-	task.delay(0.25, function() ui.reel.Visible = false end)
-	snd({ "loot_win_rare", "ting" }, nil, 0.8, 1)
+	local best, bestQ = 1, prizes[1]
+	for _, q in prizes do
+		local r = RANK[q.rarity] or 1
+		if r > best then best, bestQ = r, q end
+	end
+	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[best]
+	snd(stings, nil, 0.9, 1)
+	if best >= 2 then
+		ui.flash.BackgroundColor3 = rcol(bestQ.rarity)
+		ui.flash.BackgroundTransparency = if best >= 3 then 0.7 else 0.82
+		tw(ui.flash, 0.6, { BackgroundTransparency = 1 })
+	end
+	if best >= 3 then shake(R, 0.1 * best) end
 	tw(R.blur, 0.4, { Size = 0 })
 	ui.title.Text = ("YOU GOT %d"):format(n)
-	-- a moment to look round the ring at what came out (SKIP: straight on to the list); under a ceiling the camera
-	-- turns once all the way round, starting from the last one
-	if not R.result then R.skip = false end
+	Timing.mark("popped")
+	-- a moment to see what came out; under a ceiling the camera turns part way round the ring meanwhile
+	local look = if R.fast then 0.6 else 1.4
 	if orbit then
-		local d0 = boxes[n].at.Position - centre
+		local d0 = boxes[1].at.Position - centre
 		local a0 = math.atan2(-d0.X, -d0.Z)
-		local turn = if n > 5 then 2 * math.pi else math.pi * 0.9
+		local turn = if n > 5 then math.pi * 0.9 else math.pi * 0.45
 		local t0 = os.clock()
-		local dur = if n > 5 then 4.2 else 2.6
-		while os.clock() - t0 < dur and not R.skip do
-			local u = smooth((os.clock() - t0) / dur)
+		while os.clock() - t0 < look and not R.skip do
+			local u = smooth((os.clock() - t0) / look)
 			local a = a0 + turn * u
 			camTo(R, aimAt(Vector3.new(-math.sin(a), 0, -math.cos(a)), R.height), 0.01)
 			RunService.RenderStepped:Wait()
 		end
 	else
-		hold(R, 2.2)
+		hold(R, look)
 	end
 	ui.skip.Visible = false
 	tw(R.blur, 0.4, { Size = 10 })
 	tw(R.tint, 0.4, { Brightness = -0.12, Saturation = -0.35, Contrast = 0.04 })
 	for _, b in boxes do if b.sign then b.sign.Enabled = false end end
 
+	Timing.mark("grid")
 	-- 3. everything you got, rarest first, each with EQUIP
 	local order = table.clone(prizes)
 	table.sort(order, function(a, b)
@@ -1352,7 +1490,7 @@ local function runMany(R: Run): string
 			Text = "that was everything left in them for you" }, grid)
 		new("UIScale", { Scale = ui.b }, note)
 	end
-	local again = R.opts.again ~= false
+	local again = R.opts.again ~= false and (type(R.opts.canAgain) ~= "function" or R.opts.canAgain() ~= false)
 	-- (the two buttons, TAP points tall, wider in step)
 	local bw = bh / 56
 	local by = if phone then 1080 - 40 - bh else 960
@@ -1375,18 +1513,22 @@ local function runMany(R: Run): string
 	tw(R.blur, 0.3, { Size = 0 })
 	local st = os.clock()
 	local sv = R.saved.cf
-	R.cam.from, R.cam.t0, R.cam.dur = cam.CFrame, os.clock(), 0.45
-	local h = ch and ch:FindFirstChild("Head") :: BasePart?
-	R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
-	R.cam.fov = R.saved.fov
+	local chain = answer == "again" and R.opts.chain == true -- (OPEN n MORE: the camera stays for the next drop)
+	if not chain then
+		R.cam.from, R.cam.t0, R.cam.dur = cam.CFrame, os.clock(), 0.45
+		local h = ch and ch:FindFirstChild("Head") :: BasePart?
+		R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
+		R.cam.fov = R.saved.fov
+	end
 	local all = {}
 	for _, b in boxes do
 		table.insert(all, b.m)
 		if b.prize then table.insert(all, b.prize) end
 	end
 	for i, m in built do if not boxes[i] or boxes[i].prize ~= m then m:Destroy() end end
-	fadeOut(all, 0.45)
-	while os.clock() - st < 0.45 do RunService.RenderStepped:Wait() end
+	local away = if chain then 0.25 else 0.45
+	fadeOut(all, away)
+	while os.clock() - st < away do RunService.RenderStepped:Wait() end
 	return answer :: string
 end
 
@@ -1530,25 +1672,82 @@ function Opening.show(d: any)
 	end)
 end
 
+-- what the reel and the reveal need, made while the container drops and rattles (19 Nov): the reel's cards (a few a
+-- frame), the prize's model (or the ring's prizes), then their pictures and meshes loaded (ContentProvider) for at
+-- most TIME.prep. R.prepped says it's done; the rattle waits for it
+local function stripOf(res: any, prize: any): ({ any }, number)
+	local items, stop = res.strip, res.stop
+	if type(items) ~= "table" or #items == 0 or type(stop) ~= "number" or not items[stop] then
+		items, stop = {}, 40
+		for i = 1, 46 do items[i] = prize end
+	end
+	return items, stop
+end
+local function prep(R: Run)
+	local res = R.res
+	if type(res) ~= "table" or res.ok ~= true then R.prepped = true; return end
+	local ok, err = pcall(function()
+		local load = {}
+		if type(res.prizes) == "table" and #res.prizes > 1 then
+			-- (several: the ring's prizes at their one scale, a few a frame)
+			local boxes = R.boxes
+			if boxes then
+				local cfs = {}
+				for i = 1, math.min(#boxes, #res.prizes) do cfs[i] = boxes[i].at end
+				local built = ringPrizes(res.prizes, cfs, true)
+				if not R.ui.gui.Parent then for _, m in built do m:Destroy() end; return end
+				R.built = built
+				for _, m in built do table.insert(load, m) end
+			end
+		else
+			local prize = res.prize or res.item
+			if type(prize) ~= "table" then return end
+			prize.type = prize.type or prize.kind
+			if not R.fast then
+				local items = stripOf(res, prize)
+				for _, c in R.ui.strip:GetChildren() do c:Destroy() end
+				local cards = {}
+				local f0 = os.clock()
+				for i, it in items do
+					cards[i] = card(R.ui.strip, it, (i - 1) * STEP)
+					cards[i].Visible = false
+					if os.clock() - f0 > 0.008 then RunService.RenderStepped:Wait(); f0 = os.clock() end
+					if not R.ui.gui.Parent then return end
+				end
+				R.cards = cards
+				table.insert(load, R.ui.strip)
+			end
+			local okM, m, wid = pcall(prizeModel, prize)
+			R.prizeTried = true
+			if okM then R.prizeM, R.prizeWid = m, wid end
+			if okM and m then table.insert(load, m) end
+		end
+		Timing.mark("made")
+		if #load > 0 then
+			local done = false
+			task.spawn(function()
+				pcall(function() ContentProvider:PreloadAsync(load) end)
+				done = true
+			end)
+			local t0 = os.clock()
+			while not done and os.clock() - t0 < TIME.prep do task.wait() end
+			Timing.mark(if done then "loaded" else "loadcap")
+		end
+	end)
+	if not ok then warn("[jankfire] the opening's prep: " .. tostring(err)) end
+	R.prepped = true
+end
+
 local function run(R: Run): string
-	local ui, kind, res = R.ui, R.kind, R.res
+	local ui, kind = R.ui, R.kind
 	local info = LootTable.CONTAINERS[kind] or LootTable.CONTAINERS.crate
-	local prize = res.prize or res.item or {}
-	prize.type = prize.type or prize.kind
-	local quick = R.opts.quick == true
+	local quick = R.fast == true -- (QUICK OPEN: a short drop, no reel)
 	local cam = workspace.CurrentCamera :: Camera
 
-	-- title + the odds this open was rolled with
+	-- title + the odds this open was rolled with (the odds come in their own time: oddsLater)
 	ui.title.Text = string.upper(info.name)
-	local owned = {}
-	local okInv, inv = pcall(function() return (Remotes:FindFirstChild("Loot") :: RemoteFunction):InvokeServer("inventory") end)
-	if okInv and type(inv) == "table" and type(inv.owned) == "table" then
-		for t, ids in inv.owned do owned[t] = {}; for _, id in ids do owned[t][id] = true end end
-		-- (the prize is owned by now: the odds you opened with had it still in)
-		if owned[prize.type] then owned[prize.type][prize.key or prize.id] = nil end
-	end
-	ui.odds.Text = "ODDS  " .. LootTable.oddsLine(LootTable.odds(kind, owned))
-	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
+	tw(ui.title, 0.3, { TextTransparency = 0 })
+	oddsLater(R)
 
 	-- 1. the drop: from high up, onto the ground, a heavy bounce, dust; the camera comes round to look
 	local base = R.base
@@ -1570,7 +1769,8 @@ local function run(R: Run): string
 	local look = base.Position + Vector3.new(0, R.height * 0.5, 0)
 	-- (the camera stands a couple of studs in front of you, a little to the side: your own body stays behind it)
 	local eye = base.Position - flat * (3.9 + R.height * 0.62) + right * 1.3 + Vector3.new(0, 2.9 + R.height * 0.4, 0)
-	camTo(R, CFrame.lookAt(eye, look), if quick then 0.35 else 0.75)
+	camTo(R, CFrame.lookAt(eye, look), if quick then 0.35 else TIME.camIn)
+	Timing.mark("drop")
 	R.cam.fov = R.saved.fov -- (your own field of view: the framing was made at it)
 	local fall = if quick then 0.28 else TIME.fall
 	local t0 = os.clock()
@@ -1599,22 +1799,37 @@ local function run(R: Run): string
 		RunService.RenderStepped:Wait()
 	end
 	place(box, base, 0)
-	if not quick then hold(R, 0.15) end
+	if not quick then hold(R, 0.05) end
 
 	-- 2. the rattle, then the pop: light leaks out of the seam, the lid / zip / cap goes
-	if not quick and not R.skip then
-		t0 = os.clock()
-		while os.clock() - t0 < TIME.rattle and not R.skip do
-			local u = (os.clock() - t0) / TIME.rattle
-			local amp = 0.02 + 0.07 * u * u
-			place(box, base, 0, math.sin(os.clock() * 47) * amp, 0, math.sin(os.clock() * 59) * amp,
-				math.sin(os.clock() * 61) * amp * 0.4, math.cos(os.clock() * 53) * amp * 0.3)
-			openPose(R, 0)
-			glow.Brightness = 2.2 * u
-			RunService.RenderStepped:Wait()
-		end
-		place(box, base, 0)
+	-- (19 Nov: at least TIME.rattle (none for QUICK OPEN or after a SKIP), and for as long as the server's answer and
+	-- the reel's pictures take to come in)
+	t0 = os.clock()
+	local need = if quick or R.skip then 0 else TIME.rattle
+	while true do
+		local el = os.clock() - t0
+		local r = R.res
+		if r ~= nil and (r.ok ~= true or R.prepped) and (el >= need or R.skip) then break end
+		if r == nil and el > TIME.wait then break end
+		local u = math.min(1, el / 0.8)
+		local amp = 0.02 + 0.07 * u * u
+		place(box, base, 0, math.sin(os.clock() * 47) * amp, 0, math.sin(os.clock() * 59) * amp,
+			math.sin(os.clock() * 61) * amp * 0.4, math.cos(os.clock() * 53) * amp * 0.3)
+		openPose(R, 0)
+		glow.Brightness = 2.2 * u
+		RunService.RenderStepped:Wait()
 	end
+	place(box, base, 0)
+	Timing.mark("rattled")
+	local res = R.res
+	if type(res) ~= "table" or res.ok ~= true or type(res.prize or res.item) ~= "table" then
+		-- (the server said no, or never answered: the container goes, and the shop says why)
+		R.refused = if type(res) == "table" then res else { ok = false, why = "the till didn't answer. try again" }
+		fadeOut({ box }, 0.25)
+		return "refused"
+	end
+	local prize = res.prize or res.item
+	prize.type = prize.type or prize.kind
 	snd({ "loot_pop", "bigpop", "pop" }, base.Position, 1, 1)
 	shake(R, 0.18)
 	particles(base.Position + Vector3.new(0, R.height, 0), Color3.fromRGB(255, 236, 200), "pop")
@@ -1622,7 +1837,7 @@ local function run(R: Run): string
 		if d:IsA("BasePart") and d.Name == "glow" then d.Transparency = 0; d.Material = Enum.Material.Neon end
 	end
 	local arc = box:GetAttribute("Open") == "pop"
-	local pt = if quick or R.skip then 0.3 elseif arc then 0.8 else TIME.pop
+	local pt = if quick or R.skip then 0.25 elseif arc then 0.55 else TIME.pop
 	t0 = os.clock()
 	while true do
 		local u = math.min(1, (os.clock() - t0) / pt)
@@ -1634,34 +1849,35 @@ local function run(R: Run): string
 		if u >= 1 then break end
 		RunService.RenderStepped:Wait()
 	end
+	Timing.mark("popped")
 
-	-- 3. the reel over the soft world
-	tw(R.blur, 0.4, { Size = 18 })
-	tw(R.tint, 0.4, { Brightness = -0.06, Saturation = -0.5, Contrast = 0.05 })
-	local items = res.strip
-	local stop = res.stop
-	if type(items) ~= "table" or #items == 0 or type(stop) ~= "number" or not items[stop] then
-		items, stop = {}, 40
-		for i = 1, 46 do items[i] = prize end
+	-- 3. the reel over the soft world (QUICK OPEN: no reel, the flash says what it is). a SKIP, now or during the
+	-- drop, lands it at once
+	local win: Frame? = nil
+	if not quick then
+		tw(R.blur, 0.3, { Size = 18 })
+		tw(R.tint, 0.3, { Brightness = -0.06, Saturation = -0.5, Contrast = 0.05 })
+		local items, stop = stripOf(res, prize)
+		win = spinReel(R, items, stop, TIME.spin)
 	end
-	local spinDur = if quick or R.skip then TIME.spinQuick else TIME.spin
-	if not R.result then R.skip = false end -- (the skip that cut the pop doesn't also cut the reel: press again for that)
-	local win = spinReel(R, items, stop, spinDur)
+	Timing.mark("landed")
 
 	-- 4. it lands: the winner grows, the rest go dark, the screen breathes its colour
 	local col = rcol(prize.rarity)
-	for _, c in ui.strip:GetChildren() do
-		if c:IsA("Frame") and c ~= win then
-			local dim = c:FindFirstChild("Dim")
-			if dim then tw(dim :: Frame, 0.3, { BackgroundTransparency = 0.5 }) end
+	if win then
+		for _, c in ui.strip:GetChildren() do
+			if c:IsA("Frame") and c ~= win then
+				local dim = c:FindFirstChild("Dim")
+				if dim then tw(dim :: Frame, 0.3, { BackgroundTransparency = 0.5 }) end
+			end
 		end
+		local sc = new("UIScale", { Scale = 1 }, win)
+		tw(sc, 0.35, { Scale = 1.1 }, Enum.EasingStyle.Back)
+		local stroke = win:FindFirstChildOfClass("UIStroke")
+		if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
 	end
-	local sc = new("UIScale", { Scale = 1 }, win)
-	tw(sc, 0.35, { Scale = 1.1 }, Enum.EasingStyle.Back)
-	local stroke = win:FindFirstChildOfClass("UIStroke")
-	if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
 	ui.flash.BackgroundColor3 = col
-	ui.flash.BackgroundTransparency = 0.72
+	ui.flash.BackgroundTransparency = if quick then 0.55 else 0.72
 	tw(ui.flash, 0.8, { BackgroundTransparency = 1 })
 	local rank = ({ common = 1, rare = 2, epic = 3, legendary = 4 })[prize.rarity] or 1
 	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
@@ -1682,7 +1898,8 @@ local function run(R: Run): string
 	tw(R.tint, 0.5, { Brightness = -0.06, Saturation = -0.3, Contrast = 0.06 })
 	ui.skip.Visible = false
 	tw(ui.title, 0.3, { TextTransparency = 1 }); tw(ui.odds, 0.3, { TextTransparency = 1 })
-	local m, wid = prizeModel(prize)
+	local m, wid -- (made by prep() during the drop; built now if it couldn't be)
+	if R.prizeTried then m, wid = R.prizeM, R.prizeWid; R.prizeM = nil else m, wid = prizeModel(prize) end
 	local shownLen = 4.6
 	if m then
 		showAt(m, gunScale())
@@ -1747,7 +1964,7 @@ local function run(R: Run): string
 	ui.equip.Visible = can
 	ui.equip.Text = if can and eqGun then "EQUIP ON " .. string.upper(Roster.byId[eqGun].name) else "EQUIP"
 	ui.equip.Size = UDim2.fromOffset(math.max(250, #ui.equip.Text * 13 + 40), 56)
-	local again = R.opts.again ~= false
+	local again = R.opts.again ~= false and (type(R.opts.canAgain) ~= "function" or R.opts.canAgain() ~= false)
 	ui.again.Visible = again
 	-- lay the row out in the middle
 	local row = {}
@@ -1773,16 +1990,23 @@ local function run(R: Run): string
 			ui.equip.Text = string.upper(why or "couldn't equip")
 		end
 	end)
+	Timing.mark("reveal")
 	while not answer do
 		if R.result then answer = R.result end
 		RunService.RenderStepped:Wait()
 	end
+	Timing.mark("answer")
 
 	-- 6. away: the prize and the container sink, the camera goes home
 	tw(ui.reveal, 0.25, { Position = UDim2.fromOffset(960, 1100) })
 	tw(R.dof, 0.3, { FarIntensity = 0, NearIntensity = 0 })
 	tw(R.tint, 0.3, { Brightness = 0, Saturation = 0, Contrast = 0 })
 	if R.prize then R.prize:Destroy(); R.prize = nil end
+	if answer == "again" and R.opts.chain == true then
+		-- (OPEN ANOTHER: the camera stays where it is, the next one drops straight into the same spot)
+		fadeOut({ R.box }, 0.2)
+		return answer
+	end
 	local st = os.clock()
 	local sv = R.saved.cf
 	R.cam.from, R.cam.t0, R.cam.dur = cam.CFrame, os.clock(), 0.45
@@ -1798,12 +2022,22 @@ end
 -- ---------------------------------------------------------------- the one entry point
 function Opening.play(kind: string, res: any, opts: any?): string
 	if running then return "busy" end
-	if type(res) ~= "table" or not res.ok or type(res.prize or res.item) ~= "table" then return "done" end
+	-- (res: the server's answer, or a function that asks for it: then the container drops at once and the answer is
+	-- waited for while it rattles. opts.n = how many were asked for. 19 Nov)
+	local ask: any = if type(res) == "function" then res else nil
+	if ask then res = nil
+	elseif type(res) ~= "table" or not res.ok or type(res.prize or res.item) ~= "table" then Opening.release(); return "done" end
 	if not LootTable.CONTAINERS[kind] then kind = "crate" end
-	local count = if type(res.prizes) == "table" and #res.prizes > 1 then #res.prizes else 1
+	Timing.start(type(opts) == "table" and opts.pressT or nil)
+	if type(opts) == "table" and opts.replyT then table.insert(Timing.list, ("reply=%.2f"):format(opts.replyT - Timing.t0)) end
+	Timing.mark("play")
+	local want = if type(opts) == "table" and (opts.n == 5 or opts.n == 10) then opts.n else 1
+	local count = if ask then want elseif type(res.prizes) == "table" and #res.prizes > 1 then #res.prizes else 1
 	local base, flat, lay = ground(kind, count)
-	if not base then return "done" end
+	if not base then Opening.release(); return "done" end
 	running = true
+	local h = held -- (OPEN ANOTHER: the last one's camera and hidden screens)
+	held = nil
 	local cam = workspace.CurrentCamera :: Camera
 	local ui = buildUi()
 	local R: Run = {
@@ -1813,8 +2047,10 @@ function Opening.play(kind: string, res: any, opts: any?): string
 		blur = new("BlurEffect", { Name = "JankLootBlur", Size = 0 }, cam),
 		tint = new("ColorCorrectionEffect", { Name = "JankLootTint" }, cam),
 		dof = new("DepthOfFieldEffect", { Name = "JankLootDof", Enabled = false, FarIntensity = 0.75, NearIntensity = 0, InFocusRadius = 4, FocusDistance = 8 }, cam),
-		hidden = {}, saved = { cf = cam.CFrame, type = cam.CameraType, fov = cam.FieldOfView, loadoutOpen = me:GetAttribute("LoadoutOpen") },
+		hidden = if h then h.hidden else {},
+		saved = if h then h.saved else { cf = cam.CFrame, type = cam.CameraType, fov = cam.FieldOfView, loadoutOpen = me:GetAttribute("LoadoutOpen") },
 		conns = {}, spin = 0, prizeY = 4, wid = nil, boxes = nil, layout = lay,
+		fast = (type(opts) == "table" and opts.quick == true) or quickOn(), prepped = false, count = count,
 	}
 	-- everything else steps aside: the HUD and menus, your hands (LoadoutOpen = a menu is up: Arsenal, Utility and
 	-- Move hold still), the keys that would open other screens
@@ -1823,7 +2059,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	end
 	me:SetAttribute("LoadoutOpen", true)
 	me:SetAttribute("LootOpening", kind)
-	MenuCursor.set("loot", true, function() return running end) -- (the mouse is free and shows to the end: DONE, OPEN ANOTHER)
+	MenuCursor.set("loot", true, function() return running or held ~= nil end) -- (the mouse is free and shows to the end: DONE, OPEN ANOTHER)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
 		controls:Disable()
@@ -1864,12 +2100,24 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
 	if hum then table.insert(R.conns, hum.Died:Connect(bail)) end
 
+	-- the answer: asked for now (the container is already on its way down), then what it needs made while it rattles
+	if ask then
+		task.spawn(function()
+			local okA, r = pcall(ask)
+			Timing.mark("reply")
+			R.res = if okA and type(r) == "table" then r else { ok = false, why = "couldn't reach the till." }
+			prep(R)
+		end)
+	else
+		task.defer(prep, R) -- (after runMany has put its containers down: the ring's prizes go over them)
+	end
 	current = R
-	local many = type(res.prizes) == "table" and #res.prizes > 1
+	local many = count > 1
 	local ok, out = pcall(if many then runMany else run, R)
 	current = nil
-	restore(R)
+	restore(R, ok and out == "again" and R.opts.chain == true)
 	running = false
+	Timing.mark("closed")
 	if not ok then
 		warn("[jankfire] the opening broke: " .. tostring(out))
 		return "done"
@@ -2034,6 +2282,7 @@ function Opening.reward(spec: any): string
 	running = true
 	local cam = workspace.CurrentCamera :: Camera
 	local ui = buildUi()
+	ui.quick.Visible = false -- (a reward: QUICK OPEN is the containers')
 	local R: Run = {
 		ui = ui, kind = "reward", res = { ok = true, prize = prize }, opts = {}, skip = false, skipAt = 0, result = nil,
 		box = nil, prize = nil, base = cam.CFrame, flat = cam.CFrame.LookVector, height = 0, light = nil, rim = nil,

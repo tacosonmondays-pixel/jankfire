@@ -373,6 +373,7 @@ end
 -- ---------------------------------------------------------------- the preview: a showcase table with the weapon spinning over it (centre)
 local previewBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(610, 104), Size = UDim2.fromOffset(800, 736) }, stage)
 local vp, vcam = viewport(previewBox, { Size = UDim2.fromScale(1, 1), Active = true })
+require(script.Parent:WaitForChild("ExplodedView")).attach(previewBox) -- (BREAKDOWN: gun-models' exploded view)
 vcam.FieldOfView = 30
 vcam.CFrame = CFrame.lookAt(Vector3.new(0, 3.4, 15.5), Vector3.new(0, -1.1, 0))
 do -- a low round podium under the weapon: a dark base, a dark top and a thin amber rim. small, so the weapon leads

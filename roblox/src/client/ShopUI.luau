@@ -121,6 +121,19 @@ function Till.refresh(): boolean
 	if res.ok then Till.adopt(res) end
 	return S.invOk
 end
+-- an open's answer, straight into what's shown: what's left in stock and what came out (Till.refresh brings the rest)
+function Till.opened(r: any)
+	if type(r) ~= "table" then return end
+	if type(r.stock) == "table" then
+		for k, v in r.stock do if type(k) == "string" and type(v) == "number" then S.inv.containers[k] = v end end
+	end
+	local list = if type(r.prizes) == "table" then r.prizes else { r.prize }
+	for _, q in list do
+		local t = type(q) == "table" and (q.type or q.kind)
+		local set = t and S.inv[t]
+		if set and (q.key or q.id) then set[q.key or q.id] = true end
+	end
+end
 -- wraps and hats are owned per weapon ("sakura@smg"); a plain "sakura" from an older save counts for every weapon
 function Till.owns(kind: string, id: string, weapon: string?): boolean
 	local _, r = Shop.itemInfo(kind, id)
@@ -1936,6 +1949,7 @@ do
 	local I = UI.insp
 	UI.inspView = new("Frame", { Name = "View", BackgroundColor3 = T.CARD, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 14), Size = UDim2.new(0.58, -14, 1, -28), ZIndex = 22 }, I)
 	T.corner(UI.inspView)
+	require(script.Parent:WaitForChild("ExplodedView")).attach(UI.inspView) -- (BREAKDOWN: gun-models' exploded view)
 	UI.inspHint = txt(UI.inspView, "DRAG TO TURN", 11, T.DIM, T.FONT_BOLD, Enum.TextXAlignment.Center)
 	UI.inspHint.AnchorPoint = Vector2.new(0, 1); UI.inspHint.Position = UDim2.new(0, 0, 1, -10); UI.inspHint.Size = UDim2.new(1, 0, 0, 14); UI.inspHint.ZIndex = 24
 	UI.inspSide = new("Frame", { BackgroundTransparency = 1, Position = UDim2.new(0.58, 14, 0, 14), Size = UDim2.new(0.42, -28, 1, -28), ZIndex = 22 }, I)
@@ -2765,31 +2779,59 @@ function ShopUI.openBox(cid: string, n: number?)
 		if ok and type(L) == "table" and type((L :: any).play) == "function" then Opening = L end
 	end
 	local last: any = nil
+	-- (19 Nov, the owner: "opening crates and stuff is still really slow": the opening starts at the press and asks the
+	-- server while the container drops (LootOpening.ASYNC); OPEN ANOTHER goes straight into the next drop, and only
+	-- shows when there is another to open)
+	local async = Opening ~= nil and Opening.ASYNC == true
+	local function canAgain(): boolean
+		return S.open and (Till.count(cid) >= count or Shop.free()) and Till.boxState(cid) == nil
+	end
 	while true do
 		local function ask(): any return if count > 1 then Till.ask("open", cid, count) else Till.ask("open", cid) end
-		local res = ask()
-		-- (the loot server takes a new open 1.2 s after the last at the soonest: OPEN ANOTHER can be quicker than that)
-		if not res.ok and type(res.why) == "string" and string.find(res.why, "slow down", 1, true) then task.wait(1.3); res = ask() end
-		if not res.ok then Hud.callout(string.upper(res.why or "it won't open"), 1.6); break end
-		last = res
+		local pressT = os.clock() -- (the timing of an opening starts at the press: LootOpening.Timing)
+		local res: any = nil
+		local replyT: number? = nil
+		local function fetch(): any
+			local r = ask()
+			-- (the loot server takes a new open 0.6 s after the last at the soonest (1.2 s for several): OPEN ANOTHER can be quicker)
+			if not r.ok and type(r.why) == "string" and string.find(r.why, "slow down", 1, true) then task.wait(1.3); r = ask() end
+			res, replyT = r, os.clock()
+			if r.ok then Till.opened(r) end
+			return r
+		end
+		if not async then
+			fetch()
+			if not res.ok then Hud.callout(string.upper(res.why or "it won't open"), 1.6); break end
+		end
 		-- the shop steps aside (screen, blur and tint) while the opening plays (it takes the camera and the screen)
+		local was = { gui.Enabled, back.Enabled, UI.blur.Enabled, UI.tint.Enabled }
 		gui.Enabled = false; back.Enabled = false
 		UI.blur.Enabled = false; UI.tint.Enabled = false
 		local how = "done"
 		if Opening then
-			local ok, out = pcall(Opening.play, cid, res, { again = true, n = count })
+			local ok, out = pcall(Opening.play, cid, if async then fetch else res,
+				{ again = true, n = count, pressT = pressT, replyT = replyT, chain = async, canAgain = canAgain })
 			how = if ok and type(out) == "string" then out else "done"
 			if not ok then warn("[jankfire] shop: the opening broke: " .. tostring(out)) end
 		else
 			local it = res.item or res.prize
 			if type(it) == "table" then Hud.callout(string.upper(it.name or Shop.itemInfo(it.kind or it.type, it.id)), 1.6) end
 		end
-		Till.refresh()
+		if async and (type(res) ~= "table" or res.ok ~= true) then
+			-- (the server said no while it dropped, or it never started: the shop comes back, with why)
+			gui.Enabled, back.Enabled, UI.blur.Enabled, UI.tint.Enabled = was[1], was[2], was[3], was[4]
+			local why = if type(res) == "table" and type(res.why) == "string" then res.why elseif how == "busy" then "an opening is already playing" else "it won't open here"
+			Hud.callout(string.upper(why), 1.6)
+			break
+		end
+		last = res
+		task.spawn(Till.refresh) -- (the answer already said what's left: the full list comes in its own time)
 		if how ~= "again" or not S.open then break end
 		-- another: from your stock, or claimed fresh while it's free
 		if Till.count(cid) < count and not Shop.free() then break end
 		if Till.boxState(cid) then break end
 	end
+	if Opening and type(Opening.release) == "function" then Opening.release() end -- (no other after all: everything back)
 	S.busy = false
 	-- (the opening has shown what you got: closing it takes you back to the game, not into the shop's inventory. only
 	-- an open that never started (refused, nothing in stock) leaves you in the shop with its reason)
