@@ -58,3 +58,52 @@ in-betweens back as R15 clips.
   (`--warp`).
 - **Twist:** a slash turns the hips by over 100°. Recipes work in the clip's facing frame, not the hips' facing, or
   the given poses get spun.
+
+# Kimodo (19 Nov 2026)
+
+The owner: "yes but can you put kimodo on my d drive anywhere". NVIDIA's Kimodo (github.com/nv-tlabs/kimodo) does text to
+motion. It can be pinned with constraints: full-body keyframes, hand or foot places and turns, root paths. It uses the
+same SOMA body as MotionBricks, so `soma_retarget.py` serves both.
+
+## Licence
+
+- **Code:** Apache 2.0.
+- **Model:** use only **Kimodo-SOMA-RP-v1.2**, under the NVIDIA Open Model License: commercial use is OK and NVIDIA
+  claims no outputs. Never use **Kimodo-SMPLX-RP-v1**: it is under an R&D-only licence. The BONES-SEED data and the
+  benchmark aren't needed and were not downloaded.
+- **Text encoder:** Meta's **gated** `meta-llama/Meta-Llama-3-8B-Instruct`, under the Llama 3 licence. The owner
+  requests access and logs in themselves. It is read through McGill's LLM2Vec adapters
+  (`McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp` and `...-supervised`).
+- Kimodo output is still generated. The owner judges it against mocap before anything ships.
+
+## Setup on this PC (everything big on D:)
+
+- Clone and venv: `D:\SteamLibrary\AI\kimodo`. The repo is cloned with `GIT_LFS_SKIP_SMUDGE=1`; `.venv` holds torch
+  2.11+cu128 and Kimodo's dependencies.
+- Caches, all set in `D:\SteamLibrary\AI\kimodo-env.sh` (source it first):
+  - `UV_CACHE_DIR=D:\SteamLibrary\AI\uv-cache`
+  - `HF_HUB_CACHE` and `HUGGINGFACE_CACHE_DIR=D:\SteamLibrary\AI\hf-hub`
+  - `TORCH_HOME=D:\SteamLibrary\AI\torch`
+  - `TMP=D:\SteamLibrary\AI\tmp`
+  - `TEXT_ENCODER_DEVICE=cpu`, because the 8B encoder doesn't fit the RTX 4080's 16 GB alongside the model.
+- `HF_HOME` stays at its default, so the owner's token lives where `hf auth login` puts it
+  (`C:\Users\soup2\.cache\huggingface\token`). Never read it, type it or store it elsewhere.
+- Owner's login, in their own PowerShell: `& "D:\SteamLibrary\AI\kimodo\.venv\Scripts\hf.exe" auth login`
+- **No post-processing.** Kimodo's MotionCorrection (foot-skate cleanup and exact constraint hits) is a C++
+  extension. This PC has Visual Studio 2026's compiler but no Windows SDK (`kernel32.lib` is missing), and installing
+  the SDK is a multi-GB system install on C:. So Kimodo isn't pip-installed: it runs from source (`PYTHONPATH` = the
+  repo) with `post_processing=False`. Pins are followed closely, not exactly, and the take JSON records each pin's
+  miss in metres. To get exact pins, add "Windows 11 SDK" in the Visual Studio Installer, then run `pip install -e .`
+  in the repo with `cmake` and `pybind11` installed in the venv, `--no-build-isolation`, and the venv's Scripts folder
+  on PATH.
+
+## Pipeline
+
+1. `kimodo_gen.py <recipes.json> <clips dir> <out dir> [recipe]`, run in the Kimodo venv. Each recipe gets four takes
+   (one call with 4 samples). A `loop` recipe is then generated again, each take pinned to its own first pose at both
+   ends. Pins are our Mixamo poses on Kimodo's somaskel77, which rests in a T-pose with every turn the identity. They
+   were checked: our FK matches Kimodo's to 1e-6 m, and the Mixamo round trip matches to 1e-6.
+2. `mixamo_r15.py take.json take.rbxm --no-loop --keep-drift --priority action` turns a take into an R15 clip.
+3. `r15_sheet.py out.png --frames 8 clip.rbxmx@label ... '#title'` renders a contact sheet in Blender on the place's
+   real R15 rig (the part sizes and joint offsets of tools/roblox/finisher_r15.py). The rig's right side is orange and
+   shows on the image's left; travel in studs is printed per cell.

@@ -1,0 +1,26 @@
+{
+ "_rest_clip": "06_sheathing_sword",
+ "tide_sheathe": {
+  "note": "Tidecrest: the katana slid home at the left hip, the right hand pinned on the hilt at the seat frame (Mixamo Sheathing Sword at its seat, 1.27 s)",
+  "prompt": "A person slowly sheathes a sword at their left hip, sliding the blade back into the scabbard with the right hand.",
+  "duration": 3.5,
+  "pins": [ { "type": "right-hand", "at": 2.4, "pose": { "clip": "06_sheathing_sword", "t": 1.27 } } ]
+ },
+ "dust_spin_holster": {
+  "note": "Dust: a gun spin on the trigger finger, then into the right-hip holster (the hand pinned at the holster: Mixamo Pistol Aim to holster idle at 3.6 s)",
+  "prompt": "A person spins a pistol around their trigger finger, then drops it into the holster on their right hip.",
+  "duration": 4.0,
+  "pins": [ { "type": "right-hand", "at": 3.3, "pose": { "clip": "09_pistol_aim_to_holster", "t": 3.6 } } ]
+ },
+ "victim_stagger_fall": {
+  "note": "a victim's stagger and fall (no pins)",
+  "prompt": "A person is hit hard, staggers backwards and falls down onto their back.",
+  "duration": 4.0
+ },
+ "silly_hiphop_loop": {
+  "note": "one silly hip-hop dance loop (a free pass, then each take pinned to its own first pose at both ends)",
+  "prompt": "A person does a silly hip hop dance.",
+  "duration": 4.0,
+  "loop": true
+ }
+}
