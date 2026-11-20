@@ -46,7 +46,7 @@ type Room = {
 	i: number, folder: Instance, zone: BasePart, origin: CFrame, lamp: BasePart?, board: BasePart?,
 	user: Player?, outAt: number, wid: string?, entry: any, course: Model?, targets: { Target },
 	gates: { { part: BasePart, passed: boolean } }, goalZones: { BasePart }, pits: { BasePart },
-	got: { [string]: any }, t0: number, done: boolean,
+	got: { [string]: any }, t0: number, done: boolean, userHurtAt: number?,
 }
 
 local FREE = Color3.fromHex("8fd8cf") -- (TrainingRedo's WING.ACCENT)
@@ -88,8 +88,8 @@ local function board(r: Room, a: string, b: string?)
 	local g = bd and bd:FindFirstChild("Gui")
 	local l = g and g:FindFirstChild("Line1") :: TextLabel?
 	if l then
-		l.RichText = true
-		l.Text = if b then ("%s\n<font size=\"60\">%s</font>"):format(a, b) else a
+		l.RichText = false
+		l.Text = if b then a .. "\n" .. b else a
 	end
 end
 
@@ -330,6 +330,11 @@ local function targetOf(f: Fighter): (Room?, Target?)
 	return nil, nil
 end
 Fight.onHurt(function(t: Fighter, done: number, by: Fighter?, _wid: string, hs: boolean?)
+	-- (the room's user hit: the practice turret's room heals them back 2 s later, so a drill never kills: Play, 20 Nov)
+	if t.kind == "player" then
+		for _, r in rooms do if r.user == t.ref then r.userHurtAt = os.clock() end end
+		return
+	end
 	if t.kind ~= "dummy" or not by or done <= 0 then return end
 	local r, tg = targetOf(t)
 	if not r or not r.user or by.ref ~= r.user or r.done then return end
@@ -468,9 +473,17 @@ RunService.Heartbeat:Connect(function(dt: number)
 				for _, t in r.targets do
 					if not t.f and t.backAt > 0 and now >= t.backAt then t.backAt = 0; popCarl(r, t) end
 					local f = t.f
-					if t.spec.turret and f and f.alive and uf and uf.alive and now >= (t.fireAt or 0) then
-						t.fireAt = now + 3
-						if (t.fireAt :: number) > 0 and Dummies.burst then Dummies.burst(f, uf, 3) end
+					if t.spec.turret and f and f.alive and uf and uf.alive then
+						if now >= (t.fireAt or 0) then
+							t.fireAt = now + 3
+							if Dummies.burst then Dummies.burst(f, uf, 2) end
+						end
+						-- whole again 2 s after its last hit (two bursts in a row never kill: Play, 20 Nov)
+						local max = uf.maxHp or 100
+						if uf.hp < max and now - (r.userHurtAt or 0) > 2 then
+							uf.hp = max
+							if Fight.syncHp then Fight.syncHp(uf) end
+						end
 					end
 				end
 			end

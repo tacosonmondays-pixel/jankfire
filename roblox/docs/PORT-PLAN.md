@@ -2393,6 +2393,46 @@ Before the kit, a blockout went in at place version 1155 for the mode's first te
 - **Found:** a zombies game doesn't apply the school's night look. workspace.Map's Arena attribute stays on the last match's arena, and HubLife picks the look from it. Passed to weapons-port.
 - Photos: roblox/docs/maps/school_ingame.jpg.
 
+## 61. Training redone (v4): open-sky yard and course, four weapon tutorial rooms, the parkour island, 20 November 2026 (place version 1209)
+
+The owner (20 Nov): "redo training hub entirely basing it off the overwatch training hub in a way? keep shooting range ... the gun shop eveyrthing else good to change, dummy area, shooting range, course outside teleporter to parkour". And: "a room with a course that teraches you how to use each gun ... a button you press it, it pulls up a menu with all the weapons select one, and itll place a small course". The kind of place is a hero shooter's practice range (open, bright, readable); nothing of any game's layout, look or signs is copied. Plan sheet: `training/training_redo_plan.jpg`; photo sheets (staging): `training/training_redo_tutorial_room_staging.jpg`, `training/training_redo_course_parkour_staging.jpg`.
+
+**What changed**
+- **Kept:** the arrival octagon (every hub's door still lands on TrainSpawns), the range and the gun shop, the mirror, the back lot, the basement. The TOP egg door and the gold Carls also stay; they keep v3's footprints.
+- **The dummy yard:** the dummies hall stands open to the sky. Its deep beams stay as an open frame, and an unseen lid sits at the walls' tops (`skyLid`: it stops bodies, rays pass through, and the seal test meets it).
+  - On the old live-fire stage at 30 m: two ARMOURED dummies (300 HP, a slate plate) and two HEAL-BACK ones (whole again 2 s after your last hit).
+  - Still there: the 10 m static pair, the 20 m strafer, and the practice lane with its strafe, jump and health consoles.
+- **The outdoor course:** the course hall stands open to the sky, with the same route. On the TOP gallery, beside the locked TOP door, there is a green teleporter to PARKOUR (`Doors.ToParkour`) that anyone can use.
+- **The weapon tutorial rooms (the centrepiece):** a doorway in the course hall's west wall leads into a corridor and four private rooms (40 × 110 each: panelled walls, a dark grid floor, a projector ring).
+  - Walk into a free room and it's yours: its lamp turns amber, and its mouth is solid for everyone else.
+  - The console (E) opens a menu of every live weapon (PRIMARY, SECONDARY, MELEE, GADGETS) plus a MOVES tab (grapple, slide and jump). The pick comes from training's try layer, owned or not, and goes into your hands.
+  - The room then rebuilds as that weapon's course in the Hologram build-in sweep: posts at 20/26/32 m, strafers and hoppers, pop-ups round corners, groups behind cover, bank-shot walls, back-turned Carls, the scythe's gates and latch post, a ledge to launch onto, a practice turret.
+  - A panel shows the weapon, 1-3 move names with YOUR keys for them, and the goal as it counts up. When the goal is met it shows the time and your best for this visit.
+  - The targets are cardboard Carls that only you see and hit (as on the range).
+  - The practice turret fires real Redline bursts (`Dummies.burst`), so the katana's guard and crit return, the bubble, the reverse card and smoke all work on it. Shots sent back into it are their own goal.
+  - One table per weapon: `src/shared/TutorialData.luau` (course kinds FAR, TRACK, CLOSE, SPLASH, BOUNCE, MELEE, BACKS, DASH, LAUNCH, PARRY, DOME, GUNLINE, GROUP, RUNNER, EMPTY, GRAPPLE, SLIDE).
+  - The move names come from the weapons sessions: notes `TUTORIAL-MOVES.md`.
+- **The parkour island** (`studio-tools/ParkourIsland.luau`, at (1400, 300, -8400)) is built for the moves the game has; there is no wall-run.
+  - Five stations: sprint gaps (8 to 14), slide bars into a 34 gap only a slide jump clears, bhop stones 18 apart, a 100-stud grapple swing between two pillars, and a grapple climb up a tower to the finish.
+  - Checkpoints. A fall puts you back on your last one. The clock runs from leaving the start deck, with splits, your best and today's top five on the start board (`src/server/Parkour.server.luau`).
+  - Its zone (`Hub.ParkourZone`) counts as the playground (Matches.zoneOf): any weapon, the playground's look.
+- **Leaving training** now lands you in your own hub (LaserDoors' ToHub uses `HubTravel.arrive`; HUB-MARKERS.md).
+
+**Files:** `studio-tools/TrainingRedo.luau` (new: wraps v3, `T.ROOMS = "v4"`), `TrainingRooms.luau` (OPEN, WESTDOOR, `R.bind`/`R.H`, HP/HealBack spot attributes), `TrainingV2.luau` (the v4 loader, the zone box over the wing, seal rays 600, `ToParkour` owned), `ParkourIsland.luau` (new); `src/server/Tutorials.server.luau`, `src/shared/TutorialData.luau`, `src/client/TutorialUI.client.luau`, `src/server/Parkour.server.luau` (new); `Dummies.luau` (armour, heal-back, `burst`), `LaserDoors.server.luau`, `Matches.luau` (one zone line).
+
+**Tests:** `ServerStorage.JankTutorialTest` (claim / pick / hit / open / release / state) and `JankParkourTest` (cp / finish / state). Results (staging, then live v1209):
+- sealed, 0 leaks; head room 0 within 0.6; the lot closed; the gold dummies' door shut. The live check first found the rooms' front open above the corridor's roof (`RoomsFront` closes it).
+- Walking in claims the room; the sniper course builds (4 Carls, 8 pieces, ForceField hologram); 4 kills with 3 heads give DONE.
+- The menu opens on the current weapon's tab. A pick through the Loadout remote is ok in training.
+- The turret hits for real in the training zone. At 3-shot bursts it killed the user (Play), so now it fires 2-shot bursts with full HP 2 s after a hit: lowest HP 86 over 10 s.
+- ToParkour lands on the island (zone playground). FromParkour lands at TrainingArrive. ToHub lands in your own hub (HubTravel).
+- Parkour: on, then go, then CP1, then the finish, then the best and the board.
+
+**Traps:**
+- The staging copy is at z +800 (`T.STAGE`); at x +400 the wing would stand in the live range.
+- `B.text`'s cf look is the way the words face.
+- Never run screen captures in parallel.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

@@ -78,6 +78,8 @@ local function corridor()
 		end
 	end
 	blk("Shell", "WingCeiling", x0 - 4, x1, WING.ceil, top, z0 + 4, z1 - 4, P.ceil)
+	-- the rooms' front wall above the corridor's roof (the rooms stand 16 taller: the live check found the gap)
+	blk("Shell", "RoomsFront", x0 - 4, x1, top, WING.rtop + 2, z1, z1 - 4, P.courseWall)
 	-- bones: piers on the front wall facing each room's mouth and between, the dado and band, beams across over them,
 	-- lit panels between the beams
 	local xs = {}

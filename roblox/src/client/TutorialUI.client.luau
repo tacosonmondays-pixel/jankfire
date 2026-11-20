@@ -42,7 +42,8 @@ end
 -- ------------------------------------------------------------------ the panel
 local gui = new("ScreenGui", { Name = "TutorialHud", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 4, Enabled = false }, me:WaitForChild("PlayerGui"))
 local sc = T.scaled(gui)
-local panel = T.plate(sc, "Panel", UDim2.new(0, 16, 0.3, 0), UDim2.fromOffset(250, 60))
+-- (right of the screen: the hub's menu column is on the left)
+local panel = T.plate(sc, "Panel", UDim2.new(1, -266, 0.3, 0), UDim2.fromOffset(250, 60))
 panel.AutomaticSize = Enum.AutomaticSize.Y
 new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10) }, panel)
 new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, panel)
@@ -214,7 +215,8 @@ local function dress(cm: Instance)
 		return
 	end
 	dressed[cm] = true
-	pcall(function() Holo.apply(cm, { build = 1.2, see = 0.35, glitch = false, flicker = 0.02 }) end)
+	-- (no sweeping band: across a whole course it is one big white plate; the build-in scan stays)
+	pcall(function() Holo.apply(cm, { build = 1.2, see = 0.35, band = false, glitch = false, flicker = 0.02 }) end)
 	cm.AncestryChanged:Connect(function() if not cm.Parent then dressed[cm] = nil end end)
 end
 local function mouth(room: Instance)
@@ -238,7 +240,12 @@ task.spawn(function()
 		local hub = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub")
 		local tg = hub and hub:FindFirstChild("TrainingGround")
 		local tut = tg and tg:FindFirstChild("Tutorial")
-		if tut then for _, room in tut:GetChildren() do if room:IsA("Folder") then wireRoom(room) end end end
+		-- (Studio: a staging copy's rooms too, as Tutorials.server)
+		local st = game:GetService("RunService"):IsStudio() and workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("TrainingStage")
+		local stt = st and st:FindFirstChild("TrainingGround") and st.TrainingGround:FindFirstChild("Tutorial")
+		for _, f in { tut, stt } do
+			if f then for _, room in f:GetChildren() do if room:IsA("Folder") then wireRoom(room) end end end
+		end
 		task.wait(3)
 	end
 end)
