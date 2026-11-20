@@ -95,6 +95,31 @@ function K.scale(): number
 	return if type(s) == "number" then math.clamp(s, 0, 1) else 1
 end
 
+-- the bought VFX packs (20 Nov; the owner: "we purchased the vfx lets use them when we can!!"), played through the VFX
+-- session's VfxEmit: templates in ReplicatedStorage.JankfireVfx, recoloured, textures re-uploaded under the owner,
+-- sellers credited in Shared.Credits. Each upgraded effect asks pack() at its beats and keeps its old particles when
+-- pack() says no: no template yet, a shop card's ViewportFrame (particles don't draw there), or the workspace attribute
+-- KillFxPacks = false (the old look, for before/after photos)
+local VfxEmit: any = nil
+local function vfx(): any
+	if VfxEmit == nil then
+		local m = script.Parent:FindFirstChild("VfxEmit")
+		local ok, res = false, nil
+		if m and m:IsA("ModuleScript") then ok, res = pcall(require, m) end
+		VfxEmit = if ok and type(res) == "table" and type(res.play) == "function" then res else false
+	end
+	return if VfxEmit then VfxEmit else nil
+end
+-- template name and size factor: the Kill* templates are built body-sized (a 5-stud body = 1) with our colours baked in
+-- (studio-tools/KillVfxImport.luau; the VFX session's "pack effect -> where" table lists them)
+local PACK: { [string]: { name: string, k: number } } = {
+	arc = { name = "KillStaticArc", k = 1 }, -- Combat VFX / Electricity: bolts crawling over the body
+	pop = { name = "KillStaticPop", k = 1 }, -- Combat VFX / Electricity sparks: the snap out
+	ice = { name = "KillIceBurst", k = 1 }, -- Combat VFX / Hit: Frigid Blast, the break
+	rays = { name = "KillRays", k = 1 }, -- Combat VFX / Misc: Treasure's rays and core, the lift
+	blast = { name = "KillBlastRing", k = 1 }, -- 100+ Combat VFX: a shock ring (to pick: Guard break and Slam are parry and landing's)
+}
+
 -- ------------------------------------------------------------------ a run
 type P = { part: BasePart, lo: number, hi: number, cf: CFrame, decals: { Decal }, want: number? }
 type Run = {
@@ -162,6 +187,19 @@ local function highlight(r: Run, fill: Color3, outline: Color3): Highlight
 	table.insert(r.objs, h)
 	return h
 end
+-- a pack effect (PACK key) at cf, sized to the body; false when it can't play (then the caller draws its old particles).
+-- KillFxPacks = false on the workspace (all) or on one body's model (a before/after photo row) keeps the old look
+local function pack(r: Run, key: string, cf: CFrame, tint: Color3?, k: number?): boolean
+	local p = PACK[key]
+	if not p or r.folder ~= folder or workspace:GetAttribute("KillFxPacks") == false or r.m:GetAttribute("KillFxPacks") == false then
+		return false
+	end
+	local V = vfx()
+	if not V then return false end
+	local sc = p.k * (k or 1) * math.clamp(r.size.Y / 5, 0.6, 1.4)
+	local ok, res = pcall(V.play, p.name, cf, { scale = sc, tint = tint })
+	return ok and res == true
+end
 
 -- ------------------------------------------------------------------ the effects: step(run, t (s since start), dt)
 local STEP: { [string]: (Run, number, number) -> () } = {}
@@ -213,6 +251,8 @@ STEP.shatter = function(r, t, dt)
 	if not s.shards then
 		fadeAll(r, 1)
 		s.h.FillTransparency = 1; s.h.OutlineTransparency = 1
+		-- (the packs: an ice burst with frost flakes at the break; the shards then go clear glass, not grey stone)
+		local pk = pack(r, "ice", r.cf)
 		-- two wedges per body part (the biggest 14 parts), flying out from the middle of the body
 		local list = table.clone(r.parts)
 		table.sort(list, function(a, b) return a.part.Size.Magnitude > b.part.Size.Magnitude end)
@@ -224,7 +264,11 @@ STEP.shatter = function(r, t, dt)
 			for j = 1, 2 do
 				local w = Instance.new("WedgePart")
 				w.Anchored = true; w.CanCollide = false; w.CanQuery = false; w.CanTouch = false; w.CastShadow = false
-				w.Material = Enum.Material.Ice; w.Color = Color3.fromRGB(206, 230, 246); w.Transparency = 0.22; w.Reflectance = 0.12
+				if pk then
+					w.Material = Enum.Material.Glass; w.Color = Color3.fromRGB(214, 236, 250); w.Transparency = 0.45; w.Reflectance = 0.2
+				else
+					w.Material = Enum.Material.Ice; w.Color = Color3.fromRGB(206, 230, 246); w.Transparency = 0.22; w.Reflectance = 0.12
+				end
 				w.Size = Vector3.new(math.clamp(sz.X * 0.6, 0.12, 1.1), math.clamp(sz.Y * 0.55, 0.12, 1.1), math.clamp(sz.Z * 0.6, 0.12, 1.1))
 				local off = Vector3.new(rng:NextNumber(-0.25, 0.25) * sz.X, (j - 1.5) * 0.5 * sz.Y, rng:NextNumber(-0.25, 0.25) * sz.Z)
 				local cf = p.part.CFrame * CFrame.new(off) * CFrame.Angles(rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28), 0)
@@ -244,12 +288,15 @@ STEP.shatter = function(r, t, dt)
 			Size = ns(0, 0.4, 1, 0), Transparency = ns(0, 0, 1, 1), Lifetime = NumberRange.new(0.25, 0.5),
 			Speed = NumberRange.new(3, 8), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 90),
 		}):Emit(many(24))
-		emitter(r, ep, {
-			Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
-			FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(222, 232, 242)), LightInfluence = 0.6, LightEmission = 0.1,
-			Size = ns(0, 0.7, 1, 1.3), Transparency = ns(0, 0.55, 1, 1), Lifetime = NumberRange.new(0.6),
-			Speed = NumberRange.new(0.5, 1.5), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
-		}):Emit(many(5))
+		s.base0 = if pk then 0.45 else 0.22
+		if not pk then
+			emitter(r, ep, {
+				Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+				FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(222, 232, 242)), LightInfluence = 0.6, LightEmission = 0.1,
+				Size = ns(0, 0.7, 1, 1.3), Transparency = ns(0, 0.55, 1, 1), Lifetime = NumberRange.new(0.6),
+				Speed = NumberRange.new(0.5, 1.5), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
+			}):Emit(many(5))
+		end
 	end
 	local g = Vector3.new(0, -52, 0)
 	local fadeK = smooth((t - 0.55) / 0.4)
@@ -257,7 +304,7 @@ STEP.shatter = function(r, t, dt)
 		sh.v += g * dt
 		sh.cf = (sh.cf + sh.v * dt) * CFrame.Angles(sh.spin.X * dt, sh.spin.Y * dt, sh.spin.Z * dt)
 		sh.w.CFrame = sh.cf
-		sh.w.Transparency = lerp(0.22, 1, fadeK)
+		sh.w.Transparency = lerp(s.base0 or 0.22, 1, fadeK)
 	end
 end
 
@@ -363,6 +410,11 @@ STEP.ascend = function(r, t, dt)
 		s.base = {}
 		for _, p in r.parts do s.base[p] = p.part.CFrame end
 	end
+	-- (the packs: rays and a soft core open round the body as it starts to glow)
+	if not s.rays and t >= 0.12 then
+		s.rays = true
+		pack(r, "rays", r.cf)
+	end
 	local h = s.h :: Highlight
 	h.FillTransparency = lerp(1, 0.2, smooth((t - 0.1) / 0.4)) + 0.8 * smooth((t - 1.15) / 0.3)
 	h.OutlineTransparency = lerp(1, 0.5, smooth((t - 0.1) / 0.4)) + 0.5 * smooth((t - 1.15) / 0.3)
@@ -410,6 +462,12 @@ STEP.static = function(r, t, dt)
 	local rng = s.rng or Random.new()
 	s.rng = rng
 	if t < OUT then
+		-- (the packs: electric bolts crawl over the body three times while it flickers, in place of the slice bars)
+		s.arcs = s.arcs or 0
+		if s.arcs < 3 and t >= s.arcs * 0.2 then
+			s.arcs += 1
+			if pack(r, "arc", r.cf) then s.packed = true end
+		end
 		local tick = math.floor(t / 0.05)
 		if tick ~= s.tick then
 			s.tick = tick
@@ -424,7 +482,7 @@ STEP.static = function(r, t, dt)
 			for _, b in s.bars do
 				local y = lerp(r.y0 + 0.2, r.y1 - 0.1, rng:NextNumber())
 				b.CFrame = CFrame.new(r.centre.X, y, r.centre.Z) * r.cf.Rotation
-				b.Transparency = if rng:NextNumber() < 0.6 then 0.15 else 1
+				b.Transparency = if not s.packed and rng:NextNumber() < 0.6 then 0.15 else 1
 			end
 		end
 		return
@@ -439,6 +497,7 @@ STEP.static = function(r, t, dt)
 			Texture = TEX.glow, Color = cs(Color3.fromRGB(205, 242, 255)), LightEmission = 1, LightInfluence = 0,
 			Size = ns(0, 1.1, 1, 0), Transparency = ns(0, 0.1, 1, 0.6), Lifetime = NumberRange.new(0.26), Speed = NumberRange.new(0),
 		}):Emit(1)
+		if pack(r, "pop", CFrame.new(r.centre)) then return end
 		emitter(r, ep, {
 			Texture = TEX.ring, Color = cs(Color3.fromRGB(205, 242, 255)), LightEmission = 1, LightInfluence = 0,
 			Size = ns(0, 0.2, 1, 1.5), Transparency = ns(0, 0.35, 1, 1), Lifetime = NumberRange.new(0.3), Speed = NumberRange.new(0),
@@ -921,7 +980,10 @@ STEP.blastzone = function(r, t, dt)
 	if t < 0.06 then s.h.FillTransparency = lerp(1, 0, t / 0.06); return end
 	if not s.hit then
 		s.hit = true
-		s.ring:Emit(1); s.flash:Emit(1); s.sparks:Emit(many(18))
+		s.flash:Emit(1)
+		-- (the packs: a shock ring from the 100+ pack where the old ring and sparks were, once its template is in)
+		local pk = pack(r, "blast", r.cf)
+		if not pk then s.ring:Emit(1); s.sparks:Emit(many(18)) end
 	end
 	s.h.FillTransparency = lerp(0, 1, smooth((t - 0.06) / 0.2))
 	s.h.OutlineTransparency = lerp(0.3, 1, smooth((t - 0.06) / 0.35))

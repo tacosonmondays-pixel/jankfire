@@ -38,19 +38,50 @@ built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the 
 | cash | Make It Rain | common | 1.4 | the body pops into 22 plain paper notes (no print) that drift down |
 | pixel | Missing Texture | rare | 1.2 | flickers, breaks into small near-black and muted-magenta cubes that drift and blink out |
 | balloon | Balloons | rare | 1.5 | five plain balloons tie on and the body floats up 6.5 studs, fading |
-| shatter | Shatter | rare | 1.0 | glazes like ice for a beat, then breaks into ~28 ice wedges and glints |
+| shatter | Shatter | rare | 1.0 | glazes like ice for a beat, then breaks into ~28 clear glass wedges with a pack ice burst and frost flakes (KillIceBurst) |
 | ember | Ember | rare | 1.4 | chars dark with a glowing orange edge, burns away from the head down into embers and ash |
 | chicken | Chickens | epic | 1.5 | a soft pop of feathers; three small chunky chickens scatter and run off |
 | bsod | Blue Screen | epic | 1.2 | a flat blue panel (FATAL ERROR, player.exe, a filling bar) replaces the body, then switches off like an old monitor. The only kill effect with words: the owner allowed it (17 Nov); drawn live with TextLabels in the game's font, never an uploaded picture |
 | yeet | Yeet | epic | 1.3 | launched straight up, spinning, a dotted streak under it, a glint high above |
 | ink | Ink | epic | 1.2 | floods solid black, bursts into blots, flakes and droplets that fall |
-| static | Static | epic | 1.0 | flickers, jitters and slices like a lost signal, then snaps out to a point |
-| ascend | Ascend | legendary | 1.5 | a soft shaft of warm light (top 2.6 studs over the head) gathers; the body glows, lifts and goes up as motes |
+| static | Static | epic | 1.0 | flickers and jitters like a lost signal while pack electric bolts crawl over it three times (KillStaticArc), then snaps out to a point in a spark burst (KillStaticPop) |
+| ascend | Ascend | legendary | 1.5 | a soft shaft of warm light (top 2.6 studs over the head) gathers; pack rays and a soft core open round the body (KillRays) as it glows, lifts and goes up as motes |
 | duck | Big Duck | legendary | 1.5 | a big rubber duck (round pieces, the game's duck yellow) drops on the body, squashes, gulps, shrinks away |
-| blastzone | Blast Zone | legendary | 1.0 | a white-hot flash and shock ring; the body is knocked clean away from the killer, spinning, out of sight |
+| blastzone | Blast Zone | legendary | 1.0 | a white-hot flash and shock ring; the body is knocked clean away from the killer, spinning, out of sight (a 100+ pack ring to come: KillBlastRing) |
 
 All drawn from the VFX pipeline's approved sprites (glow, sparkle, chips, dust 4x4, lumps 4x4, spark, ring, tracer,
 feather) and plain client parts (stone, notes, cubes, balloons, chickens, the duck): no new uploads. Particle `Size` is half the width (VFX-PIPELINE.md).
+
+### The bought VFX packs on kill effects (20 Nov, place v1116)
+
+The owner: "we purchased the vfx lets use them when we can!!" The weakest kill effects (from the 17 Nov photo sheets) were
+upgraded first: STATIC, SHATTER and ASCEND. BLAST ZONE is next, with a ring from the 100+ pack once the VFX session has
+photographed them. Guard break and Slam stay theirs, for parry and landings: a kill must not look like a parry.
+- **Which pack effect goes where** is in the shared table `side-session-notes/.../pack-effects-usage.md`:
+  - KillStaticArc: Shock Aura + Blue Lightning
+  - KillStaticPop: Eletricity + Golden Eletricity
+  - KillIceBurst: Frigid Blast, without its smoke layer
+  - KillRays: Treasure
+  - All four are from the Combat VFX Asset Pack by coldd Development, credited in `shared/Credits.luau`.
+- **Templates:** they sit in `ReplicatedStorage.JankfireVfx` and are played by the VFX session's `client/VfxEmit.luau`.
+  `studio-tools/KillVfxImport.luau` (PolishBackup) builds them from the pack effects in the place:
+  - It shrinks each emitter to body size. Size, speed and acceleration scale by min(kmax, maxSize ÷ biggest size).
+    Life is capped.
+  - Continuous emitters get `EmitDuration`, so they play as short bursts.
+  - Recolour uses the VFX session's rule: whites stay, other colours turn to the effect's accent with 30% of their
+    saturation out, Brightness ≤ 4, LightEmission -1..1.
+  - The raw effects come in from the VFX session's offline converter (`to_luau.py`, only the named effects, never the
+    Blood folder) and are deleted after the build. The pack's own settings never go in git.
+- **KillFx:**
+  - `PACK` maps keys to template names. `pack(r, key, cf)` plays one sized to the body. It returns false when it can't
+    play: no template, a shop card's ViewportFrame (particles don't draw there), or `KillFxPacks = false` on the
+    workspace or on that body's model. In those cases the effect draws its old particles.
+  - Static's slice bars give way to the bolts. Shatter's dust gives way to the ice burst, and its wedges go clear Glass.
+- **Photos:**
+  - VfxEmit parks (and clears) an effect when its life is up, on its own clock, even while `FlairTimeScale` is 0.
+  - For a frozen photo, add a hidden emitter (`EmitDelay` 25, `EmitCount` 1, transparent) to each template and each
+    pooled clone in that Play.
+  - Before/after rows: six copies, the left three with `KillFxPacks = false`.
 
 How it works:
 - **Server** (`server/FlairServer.server.luau`, hooked on `Fight.onKill`): the killer must be a player, not the victim;
