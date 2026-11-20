@@ -1067,10 +1067,15 @@ local function tick()
 			pushFound(f)
 		end
 		if now() >= f.at then
-			if start(f) then
+			-- (a start may yield: ZOMBIES copies its map and builds its nav, 1.6 s on the school. the next Heartbeat's tick
+			-- runs meanwhile, so the match is held off until this one's done, or it would start twice)
+			f.at = math.huge
+			local okS, started = pcall(start, f)
+			if not okS then warn("[jankfire] play start: " .. tostring(started)) end
+			if okS and started then
 				local i = table.find(founds, f)
 				if i then table.remove(founds, i) end
-			else
+			elseif f.at == math.huge then
 				f.at = now() + 1 -- (all arenas busy, or someone left: again in a second; dropEntry cleans up a leaver)
 			end
 		end
