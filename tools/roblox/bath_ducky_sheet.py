@@ -8,7 +8,8 @@ import sys, os, math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-V5 = 'v5' in sys.argv[3:]  # round 5: slower, the snap, the door and the walk in, the hold in the air, particle water
+V6 = 'v6' in sys.argv[3:]  # round 6: no IN THE AIR, a low tracking walk in, the high shots closer
+V5 = 'v5' in sys.argv[3:] or V6  # round 5: slower, the snap, the door and the walk in, the hold in the air, particle water
 V4 = 'v4' in sys.argv[3:] or V5  # round 4: round 3's shots in the tub room (real water, sunlight, the Spider-Verse duck)
 V3 = 'v3' in sys.argv[3:] or V4  # round 3: the owner's sketch adds the opening (calm, shadow, emerge, eyes) before round 2
 V2 = 'v2' in sys.argv[3:] or V3  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
@@ -79,6 +80,27 @@ for _k, (_n, _d, _w, _c) in enumerate(_V5):
     PANELS_V5.append(('%02d' % (_k + 1), _n, '%.1f-%.1f s' % (_t, _t + _d), _w, _c))
     _t += _d
 
+# round 6 (20 Nov), the owner: "guy walking in needs a different more dynamic angle, also the overhead shot needs to be
+# closer in ... get rid of that [the freeze in the air] and cut straight to him getting drenched"
+_V6 = []
+for _n, _d, _w, _c in _V5:
+    if _n == 'IN THE AIR':
+        continue
+    if _n == 'HE WALKS IN':
+        _w, _c = 'Your opponent strides in through the doorway, seen from the floor.', 'low on the floor ahead of him, tracking back, tilted'
+    if _n == 'THE STANDOFF':
+        _c = 'high over the near side, closer'
+    if _n == 'THE SPRAY':
+        _w, _c = 'You and the ducky fire: two real streams arc off toward the door.', 'high and close on you and the duck'
+    if _n == 'SOAKED':
+        _w = 'Straight to the hit: the splash lands, he is knocked back, drenched. No text on screen.'
+    _V6.append((_n, _d, _w, _c))
+PANELS_V6 = []
+_t = 0.0
+for _k, (_n, _d, _w, _c) in enumerate(_V6):
+    PANELS_V6.append(('%02d' % (_k + 1), _n, '%.1f-%.1f s' % (_t, _t + _d), _w, _c))
+    _t += _d
+
 
 def band(path):
     im = Image.open(path).convert('RGB')
@@ -147,12 +169,12 @@ def main():
         p = os.path.join(SRC, 'p%d.png' % i)
         if os.path.exists(p):
             shots[i] = band(p)
-    panels = PANELS_V5 if V5 else PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
+    panels = PANELS_V6 if V6 else PANELS_V5 if V5 else PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
     if V4:  # (the owner: "that's a pool not a tub!": round 4 is the tub)
         panels = [(p[0], p[1], p[2], p[3].replace('the pool', 'the tub').replace('pool', 'tub'), p[4]) for p in panels]
     if V2:
         last = len(panels)
-        if last in shots:
+        if last in shots and not V6:  # (round 6: no name text on screen, the owner's call)
             shots[last] = end_card(shots[last], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK SNIPER'))
     else:
         if 7 in shots:
@@ -165,7 +187,11 @@ def main():
     H = HEAD + rows * (CH + CAP + PAD) + PAD
     sheet = Image.new('RGB', (W, H), (24, 26, 32))
     d = ImageDraw.Draw(sheet)
-    if V5:
+    if V6:
+        d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 6', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), "About 20 s   |   the owner's notes: a more dynamic walk in, the overhead shot closer, no freeze in the air: straight to the soak   |   one frame of each shot",
+               font=font(REG, 17), fill=(190, 190, 196))
+    elif V5:
         d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 5', font=font(BOLD, 34), fill=(245, 207, 58))
         d.text((PAD, 62), "About 21 s   |   the owner's notes: slower, the head snap, the door and the walk in, the awkward hold in the air, real water   |   one frame of each shot of the animatic",
                font=font(REG, 17), fill=(190, 190, 196))

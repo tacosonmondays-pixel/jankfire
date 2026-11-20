@@ -417,8 +417,10 @@ BD.CAM = {
 	[1] = { { 7.5, 7.6, 3 }, { -15, 18, -2 }, 64, -4 }, -- THE RISE: low on the water behind you, looking up past you
 	[2] = { { 6.2, 9.8, -1.5 }, { 44, 4.6, -1 }, 26, 0 }, -- THE OPPONENT: the lens swings to the door
 	[3] = { { 17, 10.6, 4 }, { -8, 16, -2 }, 60, 0 }, -- YOU AND THE DUCKY: back to them, from the door side
-	[4] = { { -8, 26, 35 }, { 14, 6, -4 }, 60, 0 }, -- THE STANDOFF: wide, the tub and the door
-	[5] = { { -22, 21, 11 }, { 40, 4, -1.5 }, 52, 0 }, -- THE SPRAY: past the duck's head and your shoulder
+	-- round 6 (20 Nov), the owner: "the overhead shot needs to be closer in": both high shots come in (were
+	-- { { -8, 26, 35 }, { 14, 6, -4 }, 60 } and { { -22, 21, 11 }, { 40, 4, -1.5 }, 52 })
+	[4] = { { 8, 18, 24 }, { 10, 6, -3 }, 70, 0 }, -- THE STANDOFF: high over the near side, you and the duck to the door
+	[5] = { { -6, 18, 20 }, { -2, 12, -2 }, 64, 0 }, -- THE SPRAY: high and close on you and the duck firing
 	[6] = { { 37.5, 2.6, -6.5 }, { 43.5, 4.0, -1 }, 50, -3 }, -- SOAKED: on the opponent as the jets hit
 	-- the opening (played before shot 1)
 	[7] = { { -4, 10.2, -4.5 }, { 5.4, 8.2, -2 }, 46, 0 }, -- CALM: in front of you, low over the water
@@ -1199,7 +1201,7 @@ end
 -- the new lenses
 BD.CAM[11] = { { 3, 9.5, 2 }, { -15, 16, -2 }, 50, 0 } -- THE PAUSE AND THE SNAP: on the duck, from you
 BD.CAM[12] = { { 31, 6.5, 9 }, { 46, 5, -1 }, 46, 0 } -- THE DOOR
-BD.CAM[13] = { { 35, 5.5, 5 }, { 45, 4.8, -1 }, 44, 0 } -- HE WALKS IN
+BD.CAM[13] = { { 35, 5.5, 5 }, { 45, 4.8, -1 }, 44, 0 } -- HE WALKS IN (only staging: F[13] tracks low ahead of him since round 6)
 BD.CAM[14] = { { 40.4, 5.3, 1.6 }, { 43.5, 4.9, -1 }, 38, 0 } -- HE LOOKS
 BD.CAM[15] = { { 33.5, 6.6, 11 }, { 40.5, 6.8, -1 }, 54, 2 } -- IN THE AIR
 
@@ -1218,15 +1220,17 @@ F[12] = function(u) -- the door swings open
 	local e, l, f, r = cam(12)
 	lens(e, l, f, r)
 end
-F[13] = function(u) -- he walks in: a walk cycle while his root moves through the doorway
+-- HE WALKS IN, round 6 (the owner: "guy walking in needs a different more dynamic angle"): a low lens on the floor
+-- ahead of him, tracking back as he comes through the door, looking up at him, tilted, a little bob with his steps
+F[13] = function(u)
 	local k = clip("walk")
 	local walkLen = k[#k].t
-	if B.opp then
-		local x = lerp(ROOM.x1 + 5, OPP_AT.X, math.clamp(u * 1.08, 0, 1)) -- (steady steps, a beat to settle at the end)
-		placeOppAt(B.opp, posePlay("walk", (u * 1.7 * 0.8) % walkLen), x)
-	end
-	local e, l, f, r = cam(13)
-	lens(e, l, f, r)
+	local x = lerp(ROOM.x1 + 5, OPP_AT.X, math.clamp(u * 1.08, 0, 1)) -- (steady steps, a beat to settle at the end)
+	if B.opp then placeOppAt(B.opp, posePlay("walk", (u * 1.7 * 0.8) % walkLen), x) end
+	local w = ease(u)
+	local bob = math.abs(math.sin(u * math.pi * 4)) * 0.08
+	local eye = Vector3.new(x - lerp(5.2, 6.8, w), 0.9 + 0.5 * w + bob, -1 + lerp(1.8, 1.2, u))
+	lens(eye, Vector3.new(x, 4.6, -1), lerp(70, 62, w), lerp(11, 5, w))
 end
 F[14] = function(u) -- he looks round; at the end his face drops
 	if B.opp then
@@ -1285,7 +1289,9 @@ end
 
 -- the cut, slower: { shot, captured frames, seconds } (about 21 s, 219 frames; the duck shots at 12 a second, on twos); dt per frame = seconds / frames of physics
 BD.PLAN = { { 7, 10, 1.5 }, { 8, 12, 1.6 }, { 9, 22, 1.8 }, { 10, 19, 1.6 }, { 1, 24, 2.0 }, { 11, 22, 1.8 }, { 12, 12, 1.3 },
-	{ 13, 20, 1.7 }, { 14, 12, 1.2 }, { 3, 8, 1.0 }, { 4, 8, 1.2 }, { 5, 14, 1.2 }, { 15, 12, 1.5 }, { 6, 24, 2.0 } }
+	{ 13, 20, 1.7 }, { 14, 12, 1.2 }, { 3, 8, 1.0 }, { 4, 8, 1.2 }, { 5, 14, 1.2 }, { 6, 24, 2.0 } }
+-- (round 6, the owner: "theres like a freeze frame of him in the air get rid of that and cut straight to him getting
+-- drenched": IN THE AIR, shot 15, is out of the cut; P[15]/F[15] stay for the record)
 local HOLD = { [15] = true }
 function BD.first(n) -- the frame number shot n starts at (for test frames)
 	local i = 0

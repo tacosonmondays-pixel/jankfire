@@ -13,7 +13,10 @@
 # it for a second then he gets splashed"): with `r5`, the 14 shots of tools/roblox/bath_ducky_board4.luau (about 21 s):
 # a white kick and focus lines on the head snap, the awkward hold in the air printed comic-style in silence but for one
 # quack, more captures per second where the duck moves on twos.
-# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir> [comic] [r5]
+# Round 6 (20 Nov, the owner: "guy walking in needs a different more dynamic angle, also the overhead shot needs to be
+# closer in theres like a freeze frame of him in the air get rid of that and cut straight to him getting drenched"): with
+# `r6`, round 5 without IN THE AIR (the spray cuts straight to the soak), about 19.9 s.
+# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir> [comic] [r5|r6]
 #   caps.json maps "f000".. to the capture images (the capture run writes it)
 #   then: blender -b --factory-startup -P tools/roblox/finisher_video_mp4.py -- <out>/frames <out>/cues.json <out.mp4>
 import json, math, os, random, sys
@@ -54,6 +57,8 @@ CUES_R5 = [('CALM', 12, 240313, 0.4, None, None), ('THE SHADOW', 3, 529139, 0.55
            ('THE SNAP', 'snap', 648534, 0.45, None, None), ('THE SPRAY', 0, 367125, 0.75, 40, 10),
            ('THE SPRAY', 2, 349698, 0.35, None, None), ('IN THE AIR', 16, 418509, 0.7, None, None),
            ('SOAKED', 0, 648534, 0.7, None, None), ('SOAKED', 14, 417994, 0.6, None, None)]
+SHOTS_R6 = [s for s in SHOTS_R5 if s[0] != 'IN THE AIR']
+CUES_R6 = [c for c in CUES_R5 if c[0] != 'IN THE AIR']
 COMIC_R5 = {'IT EMERGES', 'THE EYES', 'THE RISE', 'THE SNAP', 'YOU AND THE DUCKY', 'IN THE AIR'}
 
 
@@ -157,8 +162,9 @@ def main():
     caps = json.load(open(sys.argv[1]))
     out = sys.argv[2]
     use_comic = 'comic' in sys.argv[3:]
-    r5 = 'r5' in sys.argv[3:]
-    shots, cues_in, comic_set = (SHOTS_R5, CUES_R5, COMIC_R5) if r5 else (SHOTS, CUES, COMIC)
+    r6 = 'r6' in sys.argv[3:]
+    r5 = 'r5' in sys.argv[3:] or r6
+    shots, cues_in, comic_set = (SHOTS_R6, CUES_R6, COMIC_R5) if r6 else (SHOTS_R5, CUES_R5, COMIC_R5) if r5 else (SHOTS, CUES, COMIC)
     snap = {}
     fr = os.path.join(out, 'frames')
     os.makedirs(fr, exist_ok=True)
@@ -208,7 +214,7 @@ def main():
             if name == 'SOAKED':
                 if k < 2:
                     im = flash(im, [0.5, 0.2][k])
-                if k >= nout - 18:
+                if k >= nout - 18 and not r6:  # (round 6, the owner: "Get rid of the text that says royal duck sniiper bath ducky")
                     im = card(im, min(1, (k - (nout - 18)) / 5))
             im = bars(im)
             im.save(os.path.join(fr, '%03d.png' % j))

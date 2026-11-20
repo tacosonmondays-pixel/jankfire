@@ -9,6 +9,31 @@ once built (on `client/FinisherScene.luau`, as planned below). Rounds 2-4 show t
 the name card; the stage and the cut now default to the sniper (`HELD_SKIN` in `bath_ducky_board3.luau`, the card in
 `bath_ducky_video.py`), so the next shoot holds it.
 
+## Round 6 (20 Nov): a dynamic walk in, closer overheads, no freeze, no text
+
+The owner on the round-5 animatic (relayed by the finishers session): "I think guy walking in needs a different more
+dynamic angle, also the overhead shot needs to be closer in theres like a freeze frame of him in the air get rid of that
+and cut straight to him getting drenched which is the scene aright after", then "Get rid of the text that says royal
+duck sniiper bath ducky".
+
+The video is `bath_ducky_animatic_v4.mp4` (19.9 s, 24 fps, sound), in the notes folder
+`local_f6d4e505.../finisher-boards/video/` and the vault. The sheet:
+
+![round 6](bath-ducky/bath_ducky_finisher_r6.jpg)
+
+What changed (same stage, `bath_ducky_board4.luau`; cut `bath_ducky_video.py <caps> <out> comic r6`, sheet `v6`):
+- **HE WALKS IN:** a low lens on the floor ahead of him, tracking back as he strides through the doorway, looking up
+  at him, tilted (11 to 5 degrees), a little bob with his steps (`F[13]`).
+- **The overhead shots, closer:** both high shots came in. THE STANDOFF is about 40% closer, high over the near side,
+  you and the duck on the left and him at the door on the right; THE SPRAY is high and close on you and the duck
+  firing, the two streams arcing off toward the door.
+- **No freeze:** IN THE AIR is out of the cut; the spray cuts straight to the soak (P[15]/F[15] stay in the stage
+  script for the record). The owner reversed round 5's "pause it for a second".
+- **No text:** the name card ("ROYAL DUCK SNIPER / BATH DUCKY") is gone from the cut and the sheet; the in-game plan
+  below now has nothing on screen but SKIP.
+- Only the three changed shots were reshot (42 frames, Studio turn 08:43 UTC, everything removed, nothing saved); the
+  rest are round 5's captures.
+
 ## Round 5 (20 Nov): slower, the new beats, real water
 
 The owner on the round-4 animatic (relayed by the finishers session): "Ducky cinematic goes by too quickly!! Ducky
@@ -247,7 +272,8 @@ into `Finisher.luau`, which is built round the match recording.
   screen as a ScreenGui water sheet with beads that run;
 - sound from recordings only, no voices: water lapping, a deep bloop as the shadow passes, the big splash, squeaky
   footsteps for the march, silence for the stare, the squirts, then the loot win sting on the card;
-- on screen only the end card's label (SKIN UNLOCKED and the skin's name) and SKIP;
+- on screen only SKIP (round 6, the owner: "Get rid of the text that says royal duck sniiper bath ducky": no name or title
+  text in the cut; earlier plans had the end card's label);
 - cheap on phones: a few dozen parts, particle counts from the settings page.
 
 **Questions for the owner.**
