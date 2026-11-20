@@ -404,9 +404,10 @@ def town_A():
     K.B('hay', C['hay'], 16.0, 0, -22.0, 18.2, 1.3, -20.4, bev=0.3, kind='fabric')
     K.B('hay', C['hay'], 18.0, 0, 4.8, 19.6, 1.3, 6.8, bev=0.3, kind='fabric')
     barrel(-8.9, 14.0, y0=0.62); barrel(-8.3, 13.0, 'wd', y0=0.62); barrel(-8.9, -19.2, y0=0.62); barrel(8.9, 11.0, y0=0.62)
-    # a cowboy behind two barrels on the west boardwalk, by the saloon (the side lenses' background)
+    # barrels on the west boardwalk by the saloon; a cowboy behind the hotel's barrels, well clear of the winner's line in
+    # the far shot (main, 20 Nov: off the killer's shoulder, so it reads as background)
     barrel(-8.2, -2.4, y0=0.62); barrel(-8.4, -1.0, 'wd', y0=0.62)
-    SPOTS.append({'at': [-9.6, 0.62, -1.7], 'face': [1, 0], 'kind': 'barrel', 'floor': 0})
+    SPOTS.append({'at': [-9.6, 0.62, 13.6], 'face': [1, 0], 'kind': 'barrel', 'floor': 0})
     crate(-9.4, 33.0); crate(-8.8, 34.0, 1.0, 0.4); crate(9.5, -27.5)
     water_tower(-26.0, -6.0, 15.0)
     # the street's ends: a church across the south, a barn across the north
