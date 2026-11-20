@@ -54,6 +54,8 @@ player loses a setting).
     - Melee and the rest: a small dot.
     - The spread maths: Hitbox.spreadDir puts a shot up to `spread` across the look (a tangent), so the cone's radius is
       `spread / tan(FOV / 2) x half the screen height` (`XH.spreadPx`).
+    - Sheet: `settings/weapon-reticles-sheet.jpg` (every class drawn by the real code, and the shotgun circle with real
+      pellet holes inside it, from the hip and down the sights).
 - **AUDIO.** MASTER, WEAPON, EFFECTS, UI and MUSIC VOLUME (0 to 150 %), HIT SOUND, KILL SOUND and OTHERS' EMOTE MUSIC.
   - MUSIC (`vol.music`, the `Music` group, since 19 Nov, the flair session's) is the dance emotes' licensed tracks, played
     from the dancer (`client/EmoteMusic.client.luau`).
