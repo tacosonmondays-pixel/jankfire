@@ -42,7 +42,7 @@ TeamColors.SETS = {
 	pastel = {
 		list = {
 			{ name = "BLOSSOM", hex = "#f4a7c8", muted = "#c98aa8", glow = "#e87fb0" },
-			{ name = "SKY", hex = "#a3cbf2", muted = "#7fa3c8", glow = "#6aa8e8" },
+			{ name = "SKY", hex = "#a3cbf2", muted = "#7fa3c8", glow = "#5b88e0" }, -- (glow: #6aa8e8 drifted to cyan under neon)
 			{ name = "BUTTER", hex = "#f5dd8a", muted = "#c9b277", glow = "#e8c45a" },
 			{ name = "MINT", hex = "#a6e3c4", muted = "#7fb89c", glow = "#5fcf9a" },
 		},
