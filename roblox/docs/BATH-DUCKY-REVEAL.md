@@ -1,5 +1,31 @@
 # The Bath Ducky skin reveal (storyboard, 19 Nov 2026)
 
+## Round 4 (20 Nov): a deep tub, real water, sunlight, a Spider-Verse duck
+
+The owner on the round-3 animatic (relayed by the finishers session): "Can the water be actual water and have lighting
+shadows? Can the ducky can you try to have like spiderverse style animation for fun? Also that's a pool not a tub! The
+water also has to be deeper?.. make the scene look prettier".
+
+The video is `bath_ducky_animatic_v2.mp4` (10 s, 24 fps, sound), beside the other finisher videos in the notes folder
+`local_f6d4e505.../finisher-boards/video/` and in the vault. The sheet is the last frame of each shot:
+
+![round 4](bath-ducky/bath_ducky_finisher_r4.jpg)
+
+What changed (stage `tools/roblox/bath_ducky_board3.luau`, the same ten shots and frame plan as round 3):
+- **A tub, not a pool:** a giant clawfoot tub (`bd3_tub`, asset `107087577101161`, built in `bath_ducky_models.py
+  bigtub`): blue-grey outside, white enamel and a rolled rim, gold claw feet and tap, 42 x 26.
+- **Real, deep water:** Roblox Terrain water, shaped to the tub's inside (two blocks and four corner cylinders), with the
+  place's own water look (the Rooftop v3 pool water the owner likes). Chest-deep where you stand on a hidden step. It
+  starts at a 4-stud voxel boundary: a lower start spills under the tub. Filled for the shoot and cleared after.
+- **Light and shadows:** tall open windows on the west wall, where the saved Lighting's late sun sits low, so warm
+  shafts and the window frames' shadows fall across the room and backlight the duck; a warm lens grade on the camera
+  (removed after). Candles, plants, gold, a bath mat.
+- **Spider-Verse duck:** an ink outline round the giant (a Highlight); its own motion (rising, the shadow, the flare
+  lines) stepped on twos while the lens moves on ones; in post, a comic print on its shots (Ben-Day dots in the shadows,
+  the red and blue plates a few pixels off register) with held frames instead of cross-fades (`bath_ducky_video.py comic`).
+- The water jets are plain light blue now: glass jets read as grey pipes (that cut's spray and soak were reshot).
+- Shot in Studio turns at 05:03 and 05:14 UTC (place versions 1142, 1144); stage, Terrain water and grade all removed.
+
 ## Round 3 (20 Nov): the owner's opening sketch
 
 The owner on round 2 (typed in the VFX session, with their own three-panel sketch, notes folder

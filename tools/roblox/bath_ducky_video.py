@@ -4,7 +4,11 @@
 # band at 1280x720, and gets what the real cut draws: the letterbox bars, manga focus lines on the rise, streaks on the
 # whip pan, a white flash on the rise and the glint, and the finisher's card at the end. Then the sound cues (CC0
 # recordings only, no voices: the owner's rule) for tools/roblox/finisher_video_mp4.py.
-# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir>
+# Round 4 (20 Nov, the owner: "Can the ducky can you try to have like spiderverse style animation for fun?"): with
+# `comic`, the duck's shots get the comic-print look on top of the in-engine ink outline and on-twos timing
+# (tools/roblox/bath_ducky_board3.luau): Ben-Day halftone dots in the shadows, a slight colour misprint (red and blue
+# plates off register), and no cross-fades there, so the held poses stay crisp.
+# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir> [comic]
 #   caps.json maps "f000".. to the capture images (the capture run writes it)
 #   then: blender -b --factory-startup -P tools/roblox/finisher_video_mp4.py -- <out>/frames <out>/cues.json <out.mp4>
 import json, math, os, random, sys
@@ -78,6 +82,36 @@ def streaks(im, amount, seed):
     return Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB')
 
 
+COMIC = {'IT EMERGES', 'THE EYES', 'THE RISE', 'YOU AND THE DUCKY'}
+
+
+def comic(im, amount=1.0):
+    """the comic print: the red and blue plates a few pixels off register, Ben-Day dots in the darker half"""
+    r, g, b = im.split()
+    off = int(round(3 * amount))
+    r = r.transform(im.size, Image.AFFINE, (1, 0, -off, 0, 1, 0))
+    b = b.transform(im.size, Image.AFFINE, (1, 0, off, 0, 1, 1))
+    im = Image.merge('RGB', (r, g, b))
+    lum = im.convert('L').resize((W // 8, H // 8), Image.BILINEAR)
+    dots = Image.new('L', (W, H), 255)
+    d = ImageDraw.Draw(dots)
+    px = lum.load()
+    for y in range(H // 8):
+        for x in range(W // 8):
+            v = px[x, y] / 255
+            if v < 0.45:
+                rr = (0.45 - v) * 8.0 * amount
+                cx, cy = x * 8 + 4 + (4 if y % 2 else 0), y * 8 + 4
+                d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=175)
+    shade = Image.merge('RGB', (dots, dots, dots))
+    return Image.blend(im, ImageChops_multiply(im, shade), 0.5)
+
+
+def ImageChops_multiply(a, b):
+    from PIL import ImageChops
+    return ImageChops.multiply(a, b)
+
+
 def flash(im, k):
     return Image.blend(im, Image.new('RGB', (W, H), (255, 255, 255)), k)
 
@@ -102,6 +136,7 @@ def card(im, k, small='ROYAL DUCK PISTOL', big='BATH DUCKY'):
 def main():
     caps = json.load(open(sys.argv[1]))
     out = sys.argv[2]
+    use_comic = 'comic' in sys.argv[3:]
     fr = os.path.join(out, 'frames')
     os.makedirs(fr, exist_ok=True)
     cache = {}
@@ -122,7 +157,10 @@ def main():
             pos = u * (n - 1)
             a = int(math.floor(pos))
             b = min(n - 1, a + 1)
-            im = Image.blend(cap(c0 + a), cap(c0 + b), pos - a) if b != a else cap(c0 + a)
+            if use_comic and name in COMIC:  # held, not blended: the duck stays on twos
+                im = comic(cap(c0 + int(round(pos))))
+            else:
+                im = Image.blend(cap(c0 + a), cap(c0 + b), pos - a) if b != a else cap(c0 + a)
             if name == 'THE RISE':
                 if k < 14:
                     im = focus_lines(im, 1 - k / 14, 900 + k)

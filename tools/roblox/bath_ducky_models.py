@@ -261,6 +261,48 @@ def build_tub():
     return tub, water
 
 
+# round 4 (20 Nov), the owner on the animatic: "that's a pool not a tub! The water also has to be deeper". A giant,
+# deep clawfoot tub: 42 x 26 outside, the rim at 8.6, the inside floor at 1.8 (Studio fills it with Terrain water to 7).
+# Painted like a classic tub: a soft blue-grey outside, white enamel inside and on the rolled rim, gold feet and tap.
+BIG = dict(L=42.0, W=26.0, feet=0.9, h=7.7, wall=1.3, base=0.9, r=9.0)
+TUB_OUT, TUB_IN = 'b8cfdc', 'f4f2ee'
+
+
+def build_bigtub():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    L, Wd, F, Hh, wall, base, r = BIG['L'], BIG['W'], BIG['feet'], BIG['h'], BIG['wall'], BIG['base'], BIG['r']
+    shell = rbox('shell', L, Wd, Hh, (0, 0, F + Hh / 2), r, 2.6, 0.9)
+    cut = rbox('cavity', L - 2 * wall, Wd - 2 * wall, Hh, (0, 0, F + base + Hh / 2), r - wall, 2.2, 0)
+    apply_bool(shell, cut)
+    top = F + Hh
+    ix, iy = L / 2 - wall + 0.05, Wd / 2 - wall + 0.05
+
+    def tub_colour(p):
+        c = p.center
+        inside = (p.normal.x * c.x + p.normal.y * c.y) < 0 and c.z > F + base - 0.1  # (faces turned toward the middle)
+        floor = abs(c.x) < ix and abs(c.y) < iy and c.z < F + base + 0.6 and p.normal.z > 0.5
+        rim = c.z > top - 0.95
+        return TUB_IN if (inside or floor or rim) else TUB_OUT
+    paint(shell, tub_colour)
+    parts = [shell]
+    for sx in (-1, 1):  # claw feet: a fat leg and a paw
+        for sy in (-1, 1):
+            x, y = sx * (L / 2 - 5.0), sy * (Wd / 2 - 3.2)
+            leg = cyl('leg', 1.25, 2.0, (x, y, F - 0.6), r2=0.9); flat(leg, BRASS)
+            paw = ball('paw', (x + sx * 0.35, y + sy * 0.35, 0.8), (1.5, 1.5, 0.85), 18, 12); flat(paw, BRASS)
+            parts += [leg, paw]
+    # the tap at the -x end: a tall pillar on the rim, a spout arching over the water, two knobs
+    tx = -L / 2 + wall * 0.5
+    pil = cyl('pillar', 0.9, 4.2, (tx, 0, top + 2.1)); flat(pil, BRASS)
+    sp = cyl('spout', 0.55, 3.4, (tx + 1.6, 0, top + 3.9), axis='x'); flat(sp, BRASS)
+    lip = cyl('lip', 0.7, 0.9, (tx + 3.2, 0, top + 3.55)); flat(lip, BRASS)
+    parts += [pil, sp, lip]
+    for sy in (-1, 1):
+        k = ball('knob', (tx, sy * 2.2, top + 0.8), (0.85, 0.85, 0.6), 16, 10); flat(k, BRASS)
+        parts.append(k)
+    return join(parts, 'bd3_tub')
+
+
 def preview(path):
     sc = bpy.context.scene
     sc.render.engine = 'BLENDER_WORKBENCH'
@@ -312,6 +354,12 @@ def build_duck2(path):
         flat(o, colours.get(i, RUBBER))
     return join([o for _, o in keep], 'bd2_duck')
 
+
+if 'bigtub' in argv[3:]:
+    t3 = build_bigtub()
+    if PREVIEW: preview(os.path.join(OUT, 'prev_bigtub'))
+    export([t3], 'bd3_tub')
+    sys.exit(0)
 
 if 'round2' in argv[3:]:
     g2 = build_giant2(GIANT)

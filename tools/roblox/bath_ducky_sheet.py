@@ -8,7 +8,8 @@ import sys, os, math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-V3 = 'v3' in sys.argv[3:]  # round 3: the owner's sketch adds the opening (calm, shadow, emerge, eyes) before round 2
+V4 = 'v4' in sys.argv[3:]  # round 4: round 3's shots in the tub room (real water, sunlight, the Spider-Verse duck)
+V3 = 'v3' in sys.argv[3:] or V4  # round 3: the owner's sketch adds the opening (calm, shadow, emerge, eyes) before round 2
 V2 = 'v2' in sys.argv[3:] or V3  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
 CW, CH = 640, 360            # one panel
 CAP = 92                     # caption under it
@@ -123,6 +124,8 @@ def main():
         if os.path.exists(p):
             shots[i] = band(p)
     panels = PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
+    if V4:  # (the owner: "that's a pool not a tub!": round 4 is the tub)
+        panels = [(p[0], p[1], p[2], p[3].replace('the pool', 'the tub').replace('pool', 'tub'), p[4]) for p in panels]
     if V2:
         last = len(panels)
         if last in shots:
@@ -138,7 +141,11 @@ def main():
     H = HEAD + rows * (CH + CAP + PAD) + PAD
     sheet = Image.new('RGB', (W, H), (24, 26, 32))
     d = ImageDraw.Draw(sheet)
-    if V3:
+    if V4:
+        d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 4', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), "About 10 s   |   the owner's notes: a deep tub not a pool, real water, light and shadows, a Spider-Verse duck, prettier   |   the last frame of each shot of the animatic",
+               font=font(REG, 17), fill=(190, 190, 196))
+    elif V3:
         d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 3', font=font(BOLD, 34), fill=(245, 207, 58))
         d.text((PAD, 62), "About 10 s on the match-winning kill   |   the owner's sketch: the calm pool, the shadow over your head, it emerges, flare eyes; then round 2   |   staged in Studio",
                font=font(REG, 17), fill=(190, 190, 196))
@@ -162,7 +169,7 @@ def main():
         caption(d, cx, cy + CH, p)
     sheet.save(OUT, quality=90)
     for i, im in shots.items():  # the single panels too, full size, for the docs
-        im.save(os.path.join(os.path.dirname(OUT), ('r3_shot_%02d.jpg' if V3 else 'shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
+        im.save(os.path.join(os.path.dirname(OUT), ('r4_shot_%02d.jpg' if V4 else 'r3_shot_%02d.jpg' if V3 else 'shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
     print(OUT, sheet.size, sorted(shots))
 
 
