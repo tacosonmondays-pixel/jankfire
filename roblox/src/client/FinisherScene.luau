@@ -1443,7 +1443,15 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	-- (the neighbours either side, when they're in the same shot)
 	local Pf = if i - 1 >= sc.i0 and sc.shotOf[i - 1] == shot then d.f[i - 1] else nil
 	local Nf = if j + 1 <= sc.i1 and sc.shotOf[j + 1] == shot then d.f[j + 1] else nil
-	if same then c = cA:Lerp(cfOf(Bf.c), a) end -- (a curve through the lens's frames is next: it jumped in KILLER'S HAND)
+	if same then
+		local cB = cfOf(Bf.c)
+		local cP = if Pf then cfOf(Pf.c) else cA
+		local cN = if Nf then cfOf(Nf.c) else cB
+		local pos = crv(cP.Position, cA.Position, cB.Position, cN.Position, a)
+		local lk = crv(cP.LookVector, cA.LookVector, cB.LookVector, cN.LookVector, a)
+		local upv = crv(cP.UpVector, cA.UpVector, cB.UpVector, cN.UpVector, a)
+		c = if lk.Magnitude > 1e-4 and upv.Magnitude > 1e-4 then CFrame.lookAt(pos, pos + lk.Unit, upv.Unit) else cA:Lerp(cB, a)
+	end
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = ORIGIN * c
