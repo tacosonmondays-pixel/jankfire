@@ -97,11 +97,12 @@ TP.T = {
 	-- shoulder, aim space, u); the punch's wind-up draws the right one back (draw, by the charge, shaking `shake` u at
 	-- full) and the punch throws it out (punch: there in `snap` s, held to `hold`, back by `back`); a salvo kicks the
 	-- left one back (kick, over `kickT` s); poleR / poleL: the elbows (chest space, u). the rig's forearms (gun-models'
-	-- w_rig_arms, RigKit) ride the hands: `size` studs a model metre per u, turned `rot` (x y z radians, mirrored on the
-	-- left) on each hand's grip; the body's own hands and forearms hide under them
+	-- w_rig_arms, RigKit) ride the body's own forearms, wrist on wrist, the fist out past the hand: `size` times as thick
+	-- as the body's forearm, turned `rot` (x y z radians, mirrored on the left) about the wrist; the body's own hands and
+	-- forearms hide under them
 	rig = { guardR = V(-0.12, -0.16, -0.55), guardL = V(0.14, -0.2, -0.5), draw = V(0.1, 0.02, 0.32), punch = V(-0.06, 0.08, -0.4),
 		shake = 0.02, snap = 0.05, hold = 0.28, back = 0.55, kick = V(0, 0.05, 0.16), kickT = 0.32,
-		poleR = V(0.7, -0.7, 0.3), poleL = V(-0.7, -0.7, 0.3), size = 1.6, rot = V(0, 0, 0) },
+		poleR = V(0.7, -0.7, 0.3), poleL = V(-0.7, -0.7, 0.3), size = 1.25, rot = V(0, 0, 0) },
 	far = 140, -- beyond this many studs from the camera a body is posed every 3rd frame
 	kick = 0.55, -- first person's recoil row x this
 	clipK = 1.1, -- a first-person clip's camera-space metres x the gun's k
@@ -1296,10 +1297,13 @@ local function katanaPose(r: Rig, Q: CFrame): CFrame
 end
 
 -- (the hold session, 19 Nov 2026) the Overdrive Rig's forearms on a body (TP.T.rig): each side's pieces welded to its
--- hand at the grip (the model's gripR / gripL on the hand's GripAttachment), the body's own hands and forearms hidden
--- under them (R6: the arm blocks); yours hidden while you're in first person (RigArms.client draws those). on = false
--- takes them off and shows the body's own again
+-- forearm (R6: the arm block), the model's wrist on the body's wrist and its forearm along the body's (the model runs
+-- fist to -z, so -z goes down the forearm to the hand), sized by the forearm's thickness against the model's (0.26 m
+-- across); the body's own hands and forearms hidden under them (R6: the arm blocks); yours hidden while you're in first
+-- person (RigArms.client draws those). on = false takes them off and shows the body's own again. (first tried on the
+-- hand's grip, the aim's frame: the forearm then ran straight back through the chest whenever the wrist was bent)
 local RIG_HIDE = { r15 = { "RightHand", "RightLowerArm", "LeftHand", "LeftLowerArm" }, r6 = { "Right Arm", "Left Arm" } }
+local RIG_WRIST, RIG_THICK = { r = V(0.3, 0, -0.35), l = V(-0.3, 0, -0.35) }, 0.26
 function rigArms(r: Rig, on: boolean, mine: boolean, ammoOut: boolean)
 	local rx = r :: any
 	if not on then
@@ -1315,21 +1319,22 @@ function rigArms(r: Rig, on: boolean, mine: boolean, ammoOut: boolean)
 		local K = if Kit then require(Kit :: ModuleScript) :: any else nil
 		local list = K and K.pieces()
 		if not list then return end
-		local k = TP.T.rig.size * r.u
 		local rot = TP.T.rig.rot
 		local parts, hid = {}, {}
 		local folder = Instance.new("Model")
 		folder.Name = "TPRigArms"
 		for _, pc in list do
 			local side = if pc.side == "r" then "Right" else "Left"
-			local hand = (r.ch:FindFirstChild(side .. "Hand") or r.ch:FindFirstChild(side .. " Arm")) :: BasePart?
-			local ga = hand and hand:FindFirstChild(side .. "GripAttachment") :: Attachment?
-			if not hand or not ga then continue end
+			local fore = (r.ch:FindFirstChild(side .. "LowerArm") or r.ch:FindFirstChild(side .. " Arm")) :: BasePart?
+			if not fore then continue end
+			local wa = fore:FindFirstChild(side .. "WristRigAttachment") :: Attachment?
+			local wrist = if wa then wa.Position else V(0, -fore.Size.Y / 2, 0)
+			local k = TP.T.rig.size * math.min(fore.Size.X, fore.Size.Z) / RIG_THICK
 			local p = K.make(pc, k) :: BasePart
 			local s = if pc.side == "r" then 1 else -1
 			local w = Instance.new("Weld")
-			w.Part0 = hand; w.Part1 = p
-			w.C0 = ga.CFrame * CFrame.fromEulerAnglesXYZ(rot.X, rot.Y * s, rot.Z * s) * CF((pc.q - K.GRIP[pc.side]) * k) * pc.rot
+			w.Part0 = fore; w.Part1 = p
+			w.C0 = CF(wrist) * ANG(-math.pi / 2, 0, 0) * CFrame.fromEulerAnglesXYZ(rot.X, rot.Y * s, rot.Z * s) * CF((pc.q - RIG_WRIST[pc.side]) * k) * pc.rot
 			w.Parent = p
 			if pc.node == "ammol" then p:SetAttribute("RigAmmo", true) end
 			p.Parent = folder
