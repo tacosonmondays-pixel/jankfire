@@ -16,7 +16,7 @@ local FLARE = 0.5 -- (seconds the flare takes to settle)
 local PERIOD = 3.4 -- (seconds a breath)
 local FAR = 160 -- (studs from the camera)
 
-type Side = { pad: Model, glow: BasePart, light: PointLight?, team: number, slots: { BasePart }, k: number, phase: number, base: Color3, taken: boolean, flareAt: number }
+type Side = { pad: Model, glow: BasePart, light: PointLight?, team: number, slots: { BasePart }, k: number, phase: number, base: Color3, taken: boolean, flareAt: number, open: number, full: number }
 local sides: { Side } = {}
 local known: { [BasePart]: Side } = {}
 
@@ -52,7 +52,10 @@ local function scan()
 				seen[c] = true
 				local s = known[c] -- (kept across rescans: its state, its own colour)
 				if not s then
-					s = { pad = pad, glow = c, light = c:FindFirstChildOfClass("PointLight"), team = t, slots = {}, k = 0, phase = math.random() * PERIOD, base = c.Color, taken = false, flareAt = -math.huge }
+					s = { pad = pad, glow = c, light = c:FindFirstChildOfClass("PointLight"), team = t, slots = {}, k = 0, phase = math.random() * PERIOD, base = c.Color, taken = false, flareAt = -math.huge,
+						-- (20 Nov 2026: a Glow may set its own see-through, GlowOpen at rest and GlowTaken with someone on it: the
+						-- hub kit's whole-plate sheet stays soft where a thin rim could go nearly solid)
+						open = (tonumber(c:GetAttribute("GlowOpen")) or OPEN) :: number, full = (tonumber(c:GetAttribute("GlowTaken")) or TAKEN) :: number }
 					known[c] = s
 				end
 				s.slots = slots[t] or {}
@@ -82,7 +85,7 @@ RunService.RenderStepped:Connect(function(dt)
 		-- (k: 0 open .. 1 taken; up fast, down a little slower)
 		s.k += ((if taken then 1 else 0) - s.k) * math.min(1, dt * (if taken then 14 else 5))
 		local breath = math.sin((now + s.phase) / PERIOD * 2 * math.pi) * BREATH
-		local tr = (OPEN + breath) * (1 - s.k) + TAKEN * s.k
+		local tr = (s.open + breath) * (1 - s.k) + s.full * s.k
 		local f = math.clamp(1 - (now - s.flareAt) / FLARE, 0, 1)
 		f = f * f -- (a quick flash that settles softly)
 		if math.abs(g.Transparency - tr) > 0.004 then g.Transparency = tr end
