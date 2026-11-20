@@ -662,6 +662,43 @@ Main's decision: yes, with the web game's own Jank Royale rule (`shared/royale.j
 
   ![ranked: the third hook refused](matchmaking/33_grapple_charges.jpg)
 
+### Ranked draft: weapon bans, map bans, 2 switches (19 Nov 2026, place version 1066; tested in 1080)
+
+The owner: "limit switches on comp to 2, weapon ban at the start of match along with map select and banning maps too".
+The reading below was confirmed by the owner ("yes"). Casual play is untouched. Code: `server/RankedDraft.luau`, plus
+`Matches.draftRoom` and its draft pieces, a block in Party's start, CrossServer's ranked arrival, two hooks in
+Loadout, and QuickVoteUI's `kind`.
+
+- **When:** every RANKED match, before it starts, in a map room (the pads' rooms, zone "staging", the grapple locked).
+  Both an in-server ranked match (Party) and a cross-server one (CrossServer's arrival) go through it. No room free:
+  the match starts without a draft, on the rotation.
+- **Weapon ban** (`RankedDraft.WBAN`, 10 s): every live primary is a tile ("BAN A WEAPON"). Your side's votes show on
+  the tiles, yours lit. Each side bans its most-voted weapon (a tie is drawn; no votes, no ban). Tiles only, no
+  number keys (too many).
+- **Map ban** (`MBAN`, 10 s): three maps from the rotation for the match's size, as cards and plates. Each side bans
+  one the same way. The map left is played (two left: one is drawn). The header shows "BAN A MAP · BANNED: <weapons>",
+  and the banned cards say BANNED. `SHOW` (2.5 s) shows the result, then the match starts.
+- **The bans hold all match** (`BannedWeapons` on the player). Picking a banned weapon is refused ("banned this
+  match"). A banned weapon in your saved loadout is carried as the slot's default instead (`RankedDraft.carry`); your
+  own saved pick isn't changed.
+- **Switches:** your picks in the loadout window before round 1 are free. After that, each break between rounds in
+  which you change anything counts as one switch (several changes in one break are one). At most 2 a match
+  (`SwitchesLeft`); the third is refused ("no switches left: 2 a ranked match"). Counted by rounds gone live
+  (`RankedDraft.live` in goLive), because the break opens before the round number goes up.
+- **The knobs:** `RankedDraft.ON = false` plays ranked as before; `MAX_SWITCHES`, `WBAN`, `MBAN`, `SHOW` are the
+  numbers. Studio: the Matches attribute `TestDraft` = both phases' seconds.
+- **Tested** (place 1080, a ranked 1v1 against a stand-in, `TestDraft` 7):
+  - The draft room opened (zone staging, `RoundLock` on). The grid showed 20 primaries; my vote on SNIPER took and lit.
+  - Map ban: the header read "BAN A MAP · BANNED: SNIPER"; I banned Platform; the match played Bazaar: Rooftops.
+  - In the match: `SwitchesLeft` 2, `BannedWeapons` "sniper"; picking the sniper was refused "banned this match".
+  - A pick in the round-1 window was free (2 left). Break 1: two changes, one switch (1 left). Break 2: one switch
+    (0 left). Break 3: refused "no switches left: 2 a ranked match".
+  - Before GO, E and X were both refused with "GRAPPLE AT GO" and no rope.
+  - Restored after: the owner's Studio loadout save (primary and secondary) as it was before the test.
+
+  ![the draft's weapon ban](matchmaking/60_draft_weapon_ban.jpg)
+  ![the draft's map ban](matchmaking/61_draft_map_ban.jpg)
+
 ### When a cheater is caught (17 Nov 2026)
 
 The owner: "If someone is caught cheating give back any ranked stuff or stats!!". This works like Valorant's restore

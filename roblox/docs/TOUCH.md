@@ -34,8 +34,8 @@ Ported from the web game (`public/js/touch.js`, `touch.css`, `autofire.js`), 17 
   JUMP (36, 50), SLIDE (34, 120), AIM (44, 184), HOOK (112, 176), STAB (176, 152: slot 3), SWAP (180, 98: your last
   weapon), RELOAD (176, 44). WAVE (112, 240) shows with the katana out. YANK (56, 244, 18 Nov) shows only while
   your rope is on a person and the yank is ready (the player attributes `HookBody` from Move.client and `YankT` from
-  the server); it presses F, the yank's default key. REEL (56, 304, 19 Nov) shows while your rope is out, the reel is
-  ready (`ReelT`) and the round is live (`RoundLock` off); it presses X, the reel's default key. Top row: AUTO, SETTINGS (taps P). The HUD's boxes are buttons too: three weapon chips
+  the server); it presses F, the yank's default key. LOCK (56, 304; the REEL button until 19 Nov, its layout id is still
+  `reel`) shows in a match after GO (`Zone` match, `RoundLock` off), cooling down or not; it presses X, the AUTO GRAPPLE's default key (your grapple onto the opponent nearest your aim; a tap while it cools down says how long). Top row: AUTO, SETTINGS (taps P). The HUD's boxes are buttons too: three weapon chips
   (slots 1-3), the ammo plate (reload) and the item plate (G, held while held).
 - **AIM** is a tap toggle by default (the web's first-run rule): it holds the aim key down while on.
 - **Auto fire** (`autofire.js` rules kept): presses the same fire key as FIRE once the crosshair is on an enemy in

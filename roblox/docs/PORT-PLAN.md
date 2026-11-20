@@ -2248,6 +2248,41 @@ Three owner asks after the shop went live (play-party-ranked, commit e6ce87d):
   - Through the barrier, the auto-lock correctly found nobody (no line of sight).
   - Not tested yet: the lock before GO in a real countdown, a real QUICKPLAY match against players, the phone button,
     and the pad's D-Right.
+  - **Since replaced** (section 56): the reel and the passive QUICKPLAY auto-lock are off; X is the AUTO GRAPPLE. The
+    lock before GO stays.
+
+## 56. The AUTO GRAPPLE on X; the tie and the reel off, 19 November 2026 (place version 1080)
+
+The owner: "Can X instad of reel in since it already automatically reels in, you have a charge that auto the grapple to
+you roppenent on a decently long cooldown" (play-party-ranked, commits 1bdf52a; the tie 7fbd6d4 + 73e8fca).
+
+- **The tie, off.** v1066 made a grapple on a person tie and hold instead of pulling you in. That came from a relay
+  that read the owner's "it automatically reels you towards them" as a complaint; it was praise. `Config.hook.TIE =
+  false`: a grapple on a person pulls you in and lets go at reach, as it always did (and as the live game does). The tie
+  code stays behind the switch (Movement.ropeStep's tie branch: a fixed length, dragged past it).
+- **REEL IN, off** (`Config.hook.REEL = false`): X no longer reels, and the server refuses a reel. Its code stays.
+- **The AUTO GRAPPLE** (`shared/HookCharges.LOCK = { on, cone = 30, cd = 15 }`):
+  - Keys: X (Binds id `reel`, now labelled AUTO GRAPPLE, so rebinds carry over). A pad's D-Right during a live match
+    round; the emote wheel keeps D-Right everywhere else (the hub, training, the countdown, between rounds), because
+    every pad button is taken. The phone's REEL button is now LOCK (layout id still `reel`), shown in a match after GO.
+  - It fires your grapple at the opponent nearest the middle of your view within 30°, in range and in sight from your
+    head (`Move.client` `tryLock` → `tryHook(target)`). It is a normal hook: it pulls you in, it tags them, and in
+    ranked it spends a charge. The 4th argument of the Grapple remote says `"lock"`.
+  - Every match mode, ranked included; after GO only (the hook's own RoundLock check). The server checks the rule
+    (`autoOk(p, "lock")`: in a match) and sets the 15 s cooldown (`HookAutoT`) only once the hook's charge passed.
+  - Nobody in the cone: "NO TARGET", nothing fires, nothing is spent. Pressed while cooling down: "AUTO GRAPPLE · N S"
+    and the not-ready sound (`hook_empty`).
+  - The HUD's LOCK pip (right of the crosshair) shows in any match, fills over the 15 s and flashes when ready.
+  - QUICKPLAY's passive auto-lock (`HookCharges.AUTO`, a 10° assist on E) is off; its code stays.
+- **Tested** (solo Play in the training yard with `AutoLockTest`, then a ranked stand-in match; place 1080):
+  - Aimed away: X said NO TARGET, no rope, `HookAutoT` unset.
+  - Aimed 18° off the Stand dummy: X tied on and pulled me from 25 to 11 studs in 0.5 s (my momentum then carried me
+    past it, as with any pull-in); `HookAutoT` set 15 s ahead. A second X 2 s later: refused, "AUTO GRAPPLE · 14 S".
+  - E on the dummy: pulled from 30 to 2.5 studs in 0.9 s and let go at reach: the pull-in is back.
+  - Anti-cheat with its checks on (`StudioOn`): 0 catches, 0 verdicts (worst teleport ratio 0.12).
+  - Before GO in the ranked match: X and E both refused with "GRAPPLE AT GO", no rope.
+  - Not tested: the phone LOCK button and the pad's D-Right in a match (both press the same key path), and a match
+    against real players.
 
 ## For the next Claude session
 
