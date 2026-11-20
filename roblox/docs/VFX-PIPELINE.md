@@ -732,3 +732,20 @@ flash drawing and impact.
 - The place save timed out twice (the console: "Server Save Failure: PublishService AssetUpload failed ... Internal
   server error", already failing before this turn); the change is in the Team Create session and the next good save
   carries it.
+
+## Screen particles and the legendary reveal fire (20 Nov 2026, place version 1113)
+
+Main for the owner, from a "particle 2D test" reference (thick fire, smoke and embers rising along the bottom of a
+screen; the kind of look, not that artist's effect). Roblox has no GUI particles, so `client/UiParticles.luau` is our
+own: emitters inside a Frame spawn recycled ImageLabels (flipbook cells by `ImageRectOffset`, size, colour and
+transparency curves over life, speed in frame heights, direction and spread, acceleration, drag, sway, spin). One shared
+RenderStepped connection exists only while something is alive; at most 360 particles on screen and 40 born a frame;
+rates and bursts follow the settings' particle slider (`Fx.density`). `UiParticles.fromEmitter` / `play` read a pack's
+world-space emitter (and its EmitCount / EmitDelay / EmitDuration) as a screen spec.
+- **Legendary reveals:** `UiParticles.fireStrip(frame, colour)` in the rarity colour, in a "RevealFire" frame along the
+  bottom third of the opening's screen, under the reveal text. A hot glowing base, flame tongues (`vfx_flame_4x4`) about
+  half the strip tall, dark smoke above, embers rising well over it. Lit in `LootOpening` when the prize is legendary
+  (both the container opening and the VIP daily reward), out as the reveal goes away. Round 1 (v1109) was a row of small
+  tips along the edge; round 2 (v1113) is the wall. Sheet: `docs/vfx/round20/legendary-reveal-fire.jpg`.
+- Next places (main's list): finisher overlays (impact embers, speed sparks over the letterbox, with the
+  cinematic-finishers session) and the rank-up and mastery-camo unlock screens.

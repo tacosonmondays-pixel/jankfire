@@ -550,6 +550,30 @@ type Ui = { gui: ScreenGui, box: Frame, stage: Frame, scale: UIScale, head: Fram
 	odds: TextLabel, skip: TextButton, skipScale: UIScale, reel: CanvasGroup, reelScale: UIScale, reelLow: number, strip: Frame,
 	marker: Frame, flash: Frame, reveal: Frame, revealScale: UIScale, rName: TextLabel, rKind: TextLabel, rOn: TextLabel,
 	equip: TextButton, again: TextButton, done: TextButton, s: number, b: number, wide: number, quick: TextButton, quickScale: UIScale }
+-- a legendary prize's fire along the bottom of the screen, under the reveal (UiParticles.fireStrip in its rarity colour;
+-- the VFX session, 20 Nov: main for the owner, "2D fire, smoke and embers" on the best reveals). nil when the module is
+-- missing; the caller stops it as the reveal goes away
+local UiP: any = nil
+do
+	local m = script.Parent:FindFirstChild("UiParticles")
+	if m and m:IsA("ModuleScript") then
+		local ok, M = pcall(require, m)
+		if ok then UiP = M end
+	end
+end
+local function revealFire(gui: ScreenGui, col: Color3): any
+	if not UiP then return nil end
+	local fr = gui:FindFirstChild("RevealFire") :: Frame?
+	if not fr then
+		fr = new("Frame", { Name = "RevealFire", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1),
+			Size = UDim2.fromScale(1, 0.34), ZIndex = 1 }, gui)
+	end
+	local ok, h = pcall(UiP.fireStrip, fr, col)
+	return if ok then h else nil
+end
+local function fireOut(h: any)
+	if h then pcall(function() h:stop() end); task.delay(2.6, function() pcall(function() h:destroy() end) end) end
+end
 local function buildUi(): Ui
 	local pg = me:WaitForChild("PlayerGui")
 	-- (the stage keeps to the device's safe area, away from a phone's notch and corners; the dark bands, the flash and
@@ -1973,6 +1997,7 @@ local function run(R: Run): string
 	ui.reveal.Visible = true
 	ui.reveal.Position = UDim2.fromOffset(960, 1060)
 	tw(ui.reveal, 0.4, { Position = UDim2.fromOffset(960, 1030) })
+	local fire = if prize.rarity == "legendary" then revealFire(ui.gui, col) else nil
 
 	local answer: string? = nil
 	ui.done.MouseButton1Click:Connect(function() answer = "done" end)
@@ -1998,6 +2023,7 @@ local function run(R: Run): string
 	Timing.mark("answer")
 
 	-- 6. away: the prize and the container sink, the camera goes home
+	fireOut(fire)
 	tw(ui.reveal, 0.25, { Position = UDim2.fromOffset(960, 1100) })
 	tw(R.dof, 0.3, { FarIntensity = 0, NearIntensity = 0 })
 	tw(R.tint, 0.3, { Brightness = 0, Saturation = 0, Contrast = 0 })
@@ -2223,6 +2249,7 @@ local function rewardRun(R: Run, spec: any, prize: any, items: { any }, stop: nu
 	ui.reveal.Visible = true
 	ui.reveal.Position = UDim2.fromOffset(960, 1060)
 	tw(ui.reveal, 0.4, { Position = UDim2.fromOffset(960, 1030) })
+	local fire = if prize.rarity == "legendary" then revealFire(ui.gui, col) else nil
 
 	local answer: string? = nil
 	ui.done.MouseButton1Click:Connect(function() answer = "done" end)
@@ -2245,6 +2272,7 @@ local function rewardRun(R: Run, spec: any, prize: any, items: { any }, stop: nu
 	end
 
 	-- away
+	fireOut(fire)
 	tw(ui.reveal, 0.25, { Position = UDim2.fromOffset(960, 1100) })
 	tw(hs, 0.25, { Scale = bigK * 0.75 })
 	for _, d in holder:GetDescendants() do
