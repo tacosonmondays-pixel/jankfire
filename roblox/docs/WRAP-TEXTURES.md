@@ -504,6 +504,16 @@ the pattern's pieces and slid along the gun (`client/WrapAnim`, WRAP FLOW):
   attribute `FlowTex` counts the moving Textures.
 - Not used: EditableImage (it fails in published games unless the owner turns on "Allow Mesh / Image APIs") and
   swapping whole SurfaceAppearances (a texture load per swap).
+- **Trap (20 Nov):** the reference lists a Texture's `ColorMapContent` / `EmissiveMaskContent` as writable, but a game
+  script in Play gets "cannot write EmissiveMaskContent" (an Edit test runs with plugin rights and hides it). So the two
+  Textures are made in Edit (`ReplicatedStorage.JankfireWrapFlow.stars` / `.glint`, by `studio-tools/WrapPartnerBook.luau`)
+  and WrapAnim clones them, setting only face, tiles, offsets, transparency, colour and glow, each in a pcall.
+- **In hand** (solo Play, place version 1094, the AR in the training hall; `wrap-textures/normal-reverse/`): Galaxy
+  NORMAL (pattern on the body, violet-steel partner, the star layer drifting), Galaxy REVERSE (violet-steel body, the
+  galaxy on the sight ring, rail and front), Nebula NORMAL, Kintsugi NORMAL (dark ceramic with gold seams, bronze-gold
+  partner parts). 0 wrap errors in the console; WrapAnim's step 4 us; render CPU 3.96 ms with the moving layers and
+  3.91 ms with them taken out (108 Textures in the world). The glint's sweep was not caught in a still; check it moving.
+- Before and after in the Edit photo booth: `wrap-textures/normal-reverse/booth-before-after.jpg`.
 
 ## Redrawing or adding a wrap
 
