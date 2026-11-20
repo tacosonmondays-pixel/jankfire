@@ -223,8 +223,18 @@ emotes were "really really bad".
 - **R15 only,** as every catalog emote: on an R6 body the emote doesn't play.
 - **BIRDBRAIN** (the owner asked by name): no free version exists. About ten creator versions, all 55-105 Robux;
   nothing bought, ripped or hand-made.
-- **Source 2: Mixamo dance mocap** (hip hop, silly dancing, robot, shuffle, breakdance, swing) waits on the owner's
-  Mixamo sign-in. It is real mocap, royalty-free for games; the same rules will apply.
+- **Source 2: Mixamo dance mocap** (20 Nov), from the owner's account: real mocap, royalty-free for games.
+  - The scythe session downloaded 10 clips to the vault (`Assets\mixamo-20nov-dance`, never git): FBX Binary, Without
+    Skin, 30 fps.
+  - Clips named after a famous song were skipped (The Twist, Charleston).
+  - `tools/blender/mixamo_r15.py` made each an R15 KeyframeSequence (looped, drift taken out, priority Action). Each was
+    uploaded as the owner's Animation.
+  - **The ten, listed first and NEW:** Hip Hop, Robot, Shuffle, Breakdance, House, Swing, Tutting, Body Wave, Silly Dance,
+    Spin (3.8 to 26.2 s loops). Their ids are in `Flair.luau`.
+  - They're R15 only, like the converter's rig. R6 emotes would need an R6 mode in the converter.
+- **The owner's packs (20 Nov),** vetted offline (`side-session-notes/.../packs-20nov-vetting.md`):
+  - three are copies of other games' emotes and song routines: OUT;
+  - the bought Soul Sword Combat Pack is R6 combat, not emotes. It waits on its licence.
 - Preview: `flair/trend-emotes-sheet.jpg`.
 
 ## Emote music (19 Nov 2026)
@@ -241,7 +251,7 @@ and covers or "type beats" of its melody are out. So each dance emote gets one t
 - **The picks** (`Flair.MUSIC`):
   - Worm: Check It Out (Nicolas Baudino)
   - Fancy Feet: Playful Electro Funk (AXS)
-  - Dab: No Smoking (Afro Dizzy)
+  - Dab: Music Report (Mr De La Main). It replaced "No Smoking" on 20 Nov: no tobacco in a title someone might read.
   - Slide Step: Soul Dancefloor (Mr De La Main)
   - Vibe: Lo-fi Chill A (Hip Hop Shop)
   - Flow: Moving Round The Block (Afro Dizzy)
@@ -252,6 +262,18 @@ and covers or "type beats" of its melody are out. So each dance emote gets one t
   - Float: Chill Groove to Gamma (a) (Lee Briskett)
   - Hype Clap: Wake Up Beat (Bastien Thomas Deshayes)
   - Dance: Hype (Samson Robin Penot)
+  - The Mixamo ten:
+    - Hip Hop: Play Hard - Underscore (Ty Noam Frankel)
+    - Robot: Robot Tiger (Joel Vandroogenbroeck)
+    - Shuffle: No Doubt D (Mark Nolan)
+    - Breakdance: Breakbeat Mansion (Mikel Ross Giffin)
+    - House: Cubico B (Sonoton Music)
+    - Swing: Swing Fever (Laurent Bernadoy)
+    - Tutting: Digital Takeover (Kosinus)
+    - Body Wave: Urban Sweet B (Machan Sasaki Taylor)
+    - Silly Dance: Funk Jam - Underscore (Steve Michael Lucas)
+    - Spin: Soul Groove (A) (Andrew Howard Pask)
+  - Tracks with a quiet intro and no beat in their first 9 s were passed over (Tech Syndrome, The Machine).
 - **Playing** (`client/EmoteMusic.client.luau`, each screen its own):
   - A Sound in the dancer's HumanoidRootPart, InverseTapered, full within 8 studs, gone by 40, low (0.35).
   - It starts with the emote (the player attribute `Emote`) and fades out in 0.25 s when it ends.

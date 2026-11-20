@@ -80,6 +80,20 @@ local GRAPPLES = {
 -- never the item's, a song's or a creator's. NEW (the 8th column): listed first, a NEW dot till you've looked. all loop:
 -- they run till you move, like Stadium and Dance. R15 only, as every catalog emote)
 local EMOTES = {
+	-- (20 Nov: Mixamo dance mocap, the owner's account: real mocap, royalty-free for games; the files stay in the vault,
+	-- never git. turned into R15 by tools/blender/mixamo_r15.py, uploaded as the owner's animations. catalog 0: not
+	-- from the catalog. plain move names: no song, dance-craze or creator names)
+	{ "hiphop", "Hip Hop", "free", "rbxassetid://114828929115775", 13.63, true, 0, true },
+	{ "robot", "Robot", "free", "rbxassetid://135050036429787", 15.43, true, 0, true },
+	{ "shuffle", "Shuffle", "free", "rbxassetid://92140620034458", 7.50, true, 0, true },
+	{ "breakdance", "Breakdance", "free", "rbxassetid://73864693682186", 6.73, true, 0, true },
+	{ "house", "House", "free", "rbxassetid://112985847381423", 26.17, true, 0, true },
+	{ "swing", "Swing", "free", "rbxassetid://78009152121034", 24.70, true, 0, true },
+	{ "tutting", "Tutting", "free", "rbxassetid://132348615519720", 16.93, true, 0, true },
+	{ "bodywave", "Body Wave", "free", "rbxassetid://84309315972486", 16.87, true, 0, true },
+	{ "silly", "Silly Dance", "free", "rbxassetid://87592745053112", 3.83, true, 0, true },
+	{ "spin", "Spin", "free", "rbxassetid://83863709721895", 4.03, true, 0, true },
+	-- (19 Nov: the catalog's free emotes)
 	{ "worm", "Worm", "free", "rbxassetid://84498222331140", 0.57, true, 135289014127213, true },
 	{ "fancyfeet", "Fancy Feet", "free", "rbxassetid://77495170519075", 1.07, true, 111231750028642, true },
 	{ "dab", "Dab", "free", "rbxassetid://82652632188662", 0.93, true, 75495806621404, true },
@@ -119,7 +133,7 @@ local MUSIC: { [string]: { any } } = {
 	-- 19 Nov; a stretch of up to 60 s: an emote ends by 30, so its loop seam is never reached)
 	worm = { "rbxassetid://1835617224", "Check It Out (Nicolas Baudino)", 0.21, 60.21, 0.35 },
 	fancyfeet = { "rbxassetid://1836160504", "Playful Electro Funk (AXS)", 0.00, 60.00, 0.35 },
-	dab = { "rbxassetid://9047105533", "No Smoking (Afro Dizzy)", 0.04, 60.04, 0.35 },
+	dab = { "rbxassetid://1835566966", "Music Report (Mr De La Main)", 0.21, 60.21, 0.35 }, -- (20 Nov: a neutral title)
 	slidestep = { "rbxassetid://1835566917", "Soul Dancefloor (Mr De La Main)", 0.24, 60.24, 0.35 },
 	vibe = { "rbxassetid://9043887091", "Lo-fi Chill A (Hip Hop Shop)", 0.28, 60.28, 0.45 },
 	flow = { "rbxassetid://9047105108", "Moving Round The Block (Afro Dizzy)", 0.04, 60.04, 0.35 },
@@ -130,6 +144,17 @@ local MUSIC: { [string]: { any } } = {
 	float = { "rbxassetid://9046622104", "Chill Groove to Gamma (a) (Lee Briskett)", 0.04, 59.50, 0.35 },
 	hypeclap = { "rbxassetid://9046354385", "Wake Up Beat (Bastien Thomas Deshayes)", 0.45, 60.45, 0.35 },
 	dance = { "rbxassetid://1839705126", "Hype (Samson Robin Penot)", 0.34, 60.34, 0.38 },
+	-- (20 Nov, the Mixamo dances: the same rules, measured the same way)
+	hiphop = { "rbxassetid://1843784816", "Play Hard - Underscore (Ty Noam Frankel)", 0.15, 60.15, 0.35 },
+	robot = { "rbxassetid://1837601838", "Robot Tiger (Joel Vandroogenbroeck)", 0.54, 60.54, 0.45 },
+	shuffle = { "rbxassetid://1847866453", "No Doubt D (Mark Nolan)", 0.11, 60.11, 0.35 },
+	breakdance = { "rbxassetid://1838727070", "Breakbeat Mansion (Mikel Ross Giffin)", 0.21, 60.21, 0.35 },
+	house = { "rbxassetid://1846609871", "Cubico B (Sonoton Music)", 0.24, 60.24, 0.38 },
+	swing = { "rbxassetid://1835956050", "Swing Fever (Laurent Bernadoy)", 0.34, 60.34, 0.45 },
+	tutting = { "rbxassetid://9042784279", "Digital Takeover (Kosinus)", 0.09, 60.09, 0.35 },
+	bodywave = { "rbxassetid://1846607093", "Urban Sweet B (Machan Sasaki Taylor)", 0.21, 60.21, 0.35 },
+	silly = { "rbxassetid://1843481919", "Funk Jam - Underscore (Steve Michael Lucas)", 1.71, 61.71, 0.4 },
+	spin = { "rbxassetid://1840601095", "Soul Groove (A) (Andrew Howard Pask)", 0.41, 64.5, 0.35 },
 -- MUSIC END
 }
 F.MUSIC = {} :: { [string]: { sound: string, title: string, from: number?, to: number?, volume: number } }
@@ -268,6 +293,16 @@ local ARMS = {
 	tilt = { { 0.36, 0.34, 0.3, 0.5, 0.28, 0.66 }, { 0.64, 0.34, 0.7, 0.5, 0.72, 0.66 } },
 	dance = { { 0.36, 0.34, 0.24, 0.42, 0.22, 0.26 }, { 0.64, 0.34, 0.74, 0.46, 0.8, 0.6 } },
 	worm = { { 0.36, 0.34, 0.24, 0.46, 0.12, 0.5 }, { 0.64, 0.34, 0.76, 0.46, 0.88, 0.5 } },
+	hiphop = { { 0.36, 0.34, 0.24, 0.44, 0.3, 0.3 }, { 0.64, 0.34, 0.76, 0.44, 0.7, 0.58 } },
+	robot = { { 0.36, 0.34, 0.22, 0.34, 0.22, 0.18 }, { 0.64, 0.34, 0.78, 0.34, 0.78, 0.5 } },
+	shuffle = { { 0.36, 0.34, 0.26, 0.48, 0.2, 0.6 }, { 0.64, 0.34, 0.74, 0.48, 0.8, 0.6 } },
+	breakdance = { { 0.36, 0.34, 0.2, 0.5, 0.1, 0.62 }, { 0.64, 0.34, 0.8, 0.2, 0.86, 0.06 } },
+	house = { { 0.36, 0.34, 0.24, 0.42, 0.18, 0.3 }, { 0.64, 0.34, 0.76, 0.42, 0.82, 0.3 } },
+	swing = { { 0.36, 0.34, 0.22, 0.4, 0.1, 0.36 }, { 0.64, 0.34, 0.78, 0.4, 0.9, 0.36 } },
+	tutting = { { 0.36, 0.34, 0.24, 0.34, 0.24, 0.2 }, { 0.64, 0.34, 0.76, 0.48, 0.6, 0.48 } },
+	bodywave = { { 0.36, 0.34, 0.2, 0.34, 0.06, 0.34 }, { 0.64, 0.34, 0.8, 0.34, 0.94, 0.34 } },
+	silly = { { 0.36, 0.34, 0.26, 0.24, 0.4, 0.2 }, { 0.64, 0.34, 0.74, 0.24, 0.6, 0.2 } },
+	spin = { { 0.36, 0.34, 0.2, 0.36, 0.06, 0.32 }, { 0.64, 0.34, 0.8, 0.36, 0.94, 0.32 } },
 	fancyfeet = { { 0.36, 0.34, 0.26, 0.44, 0.2, 0.58 }, { 0.64, 0.34, 0.74, 0.44, 0.8, 0.58 } },
 	dab = { { 0.36, 0.34, 0.5, 0.24, 0.6, 0.16 }, { 0.64, 0.34, 0.82, 0.22, 0.98, 0.1 } },
 	slidestep = { { 0.36, 0.34, 0.26, 0.48, 0.22, 0.62 }, { 0.64, 0.34, 0.76, 0.4, 0.86, 0.3 } },
