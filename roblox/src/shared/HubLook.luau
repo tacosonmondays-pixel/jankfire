@@ -85,6 +85,29 @@ H.looks = {
 	}),
 } :: { [string]: Look }
 H.looks.hub.Terrain = { WaterColor = Color3.fromRGB(28, 150, 178), WaterTransparency = 0.5, WaterReflectance = 0.2, WaterWaveSize = 0.03, WaterWaveSpeed = 5 }
+-- THE CYLINDER (hub-originals, 20 Nov 2026; Map.Hub.LookZones.Cylinder names it): indoors, machined steel greys under
+-- cool even light, the breech and the chambers lit by their own panels and lamps, a warm lounge; nothing black
+H.looks.cylinder = with(HUB, {
+	Lighting = { Ambient = Color3.fromRGB(82, 82, 84), OutdoorAmbient = Color3.fromRGB(82, 82, 84), ExposureCompensation = -0.12, EnvironmentDiffuseScale = 0.35, EnvironmentSpecularScale = 0.5 },
+	Atmosphere = { Density = 0.05, Color = Color3.fromRGB(76, 80, 88), Decay = Color3.fromRGB(44, 46, 52) },
+	Bloom = { Intensity = 0.18, Size = 20, Threshold = 2.8 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.15, Saturation = 0.04, TintColor = Color3.fromRGB(246, 248, 255) },
+})
+-- THE STILL (hub-originals, 20 Nov 2026; Map.Hub.LookZones.Still names it): one shot held still in a crater at dusk. A
+-- low warm sun from the south-west rakes the crater floor and lights the monolith's face; a soft warm haze; the well
+-- and the rooms lit by their own panels; nothing black
+H.looks.still = with(HUB, {
+	Lighting = {
+		Ambient = Color3.fromRGB(98, 94, 90), OutdoorAmbient = Color3.fromRGB(116, 112, 108), Brightness = 1.4,
+		ExposureCompensation = -0.5, EnvironmentDiffuseScale = 0.55, EnvironmentSpecularScale = 0.4,
+		ClockTime = 16.9, GeographicLatitude = 55, ColorShift_Top = Color3.fromRGB(255, 218, 188),
+		FogColor = Color3.fromRGB(204, 186, 170), FogStart = 260, FogEnd = 1400,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.12, Haze = 1.1, Glare = 0.06, Color = Color3.fromRGB(202, 194, 186), Decay = Color3.fromRGB(140, 132, 126) },
+	Bloom = { Intensity = 0.3, Size = 22, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.15, Saturation = -0.06, TintColor = Color3.fromRGB(255, 250, 245) },
+	SunRays = { Intensity = 0.05 },
+})
 -- the three show hubs of the hub comparison that were not picked (put away in ServerStorage.PolishBackup.HubArchive,
 -- each with its look zone: a part in Hub.LookZones with the attribute Look names the look for whoever stands inside
 -- it). the fourth, the bowling alley, is the hub now: its look is looks.hub above
