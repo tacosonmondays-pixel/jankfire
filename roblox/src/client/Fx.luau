@@ -1431,15 +1431,23 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if dm then for _, m in dm:GetChildren() do if m:IsA("Model") then wetCheck(m, now) end end end
 end)
 
--- blood: red bits from the chest or head, away from the shooter
+-- a hit on someone (20 Nov 2026; no blood on Roblox, and the owner: "we purchased the vfx lets use them when we can!!"):
+-- the Combat VFX pack's hit flash (VfxEmit "HitPunch1", coldd Development, credited), facing whoever's watching, sized by
+-- the damage, and a few pale sparks off it. (it was red bits, from the web game.) VfxEmit is required on first use: it
+-- requires this module itself (for the particle slider)
+local VfxEmitM: any = nil
 function Fx.blood(at: Vector3, dir: Vector3, dmg: number)
-	local n = math.min(14, 3 + math.floor(dmg * 0.25))
-	for _ = 1, n do
-		local p = piece("fx_dust", Enum.PartType.Block, Vector3.new(0.15, 0.15, 0.15), if math.random() < 0.5 then Color3.fromRGB(200, 20, 30) else Color3.fromRGB(120, 0, 10), Enum.Material.SmoothPlastic)
-		p.CFrame = CFrame.new(at)
-		local v = (dir + Vector3.new(math.random() - 0.5, math.random() * 0.8, math.random() - 0.5)).Unit * (6 + math.random() * 14)
-		add({ p = p, v = v, w = Vector3.new(8, 8, 8), t = 0, life = 0.7, grav = 60, bounce = 0, fade = 0.3, spin = CFrame.identity })
+	if VfxEmitM == nil then
+		local m = script.Parent:FindFirstChild("VfxEmit")
+		local ok, M = false, nil
+		if m and m:IsA("ModuleScript") then ok, M = pcall(require, m) end
+		VfxEmitM = if ok and type(M) == "table" then M else false
 	end
+	local cam = workspace.CurrentCamera
+	local eye = if cam then cam.CFrame.Position else at - dir
+	local k = 0.3 + math.clamp(dmg, 0, 100) / 100 * 0.35
+	if VfxEmitM then pcall(VfxEmitM.play, "HitPunch1", CFrame.lookAt(at, eye), { scale = k }) end
+	sparkBurst(at, (eye - at).Unit + Vector3.new(0, 0.4, 0), math.min(6, 2 + math.floor(dmg / 25)))
 end
 
 -- sparks (fx.js sparks): hot white / pale yellow streaks flying sideways and up off the edge, turning orange, plus a
