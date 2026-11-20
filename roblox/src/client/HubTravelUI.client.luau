@@ -11,6 +11,8 @@ local UserInputService = game:GetService("UserInputService")
 
 local me = Players.LocalPlayer
 local rf = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("HubTravel") :: RemoteFunction
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any -- (the mouse free while the chooser is up: the hub is first person)
+local MenuGate = require(script.Parent:WaitForChild("MenuGate")) :: any
 
 local open = Instance.new("BindableEvent")
 open.Name = "OpenHubs"
@@ -43,7 +45,10 @@ local function label(parent: Instance, text: string, size: number, font: Enum.Fo
 end
 
 local busy = false
-local function close() panel.Visible = false end
+local function close()
+	panel.Visible = false
+	MenuCursor.set("hubs", false)
+end
 local function travel(id: string)
 	if busy then return end
 	busy = true
@@ -66,7 +71,7 @@ local function travel(id: string)
 end
 
 local function show()
-	if busy then return end
+	if busy or not MenuGate.allowed("hubs") then return end
 	local ok, hubs = pcall(function() return rf:InvokeServer("list") end)
 	if not ok or type(hubs) ~= "table" then return end
 	for _, c in panel:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
@@ -98,6 +103,7 @@ local function show()
 	x.Activated:Connect(close)
 	panel.Size = UDim2.fromOffset(420, 14 + 28 + #hubs * 52 + 38 + 14)
 	panel.Visible = true
+	MenuCursor.set("hubs", true, function() return panel.Visible end)
 end
 
 open.Event:Connect(show)
@@ -114,9 +120,15 @@ do
 	}, T.scaled(hud))
 	T.corner(face); T.edge(face)
 	T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, face)
+	T.key(face, "H", UDim2.fromOffset(-34, 7))
 	face.MouseEnter:Connect(function() face.BackgroundTransparency = 0.1 end)
 	face.MouseLeave:Connect(function() face.BackgroundTransparency = T.BG_A end)
 	face.MouseButton1Click:Connect(show)
+	-- H opens and closes it, where the button shows
+	UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+		if gp or io.KeyCode ~= Enum.KeyCode.H then return end
+		if panel.Visible then close() elseif face.Visible then show() end
+	end)
 	RunService.Heartbeat:Connect(function()
 		local z = me:GetAttribute("Zone")
 		local vis = (z == nil or z == "hub") and not me:GetAttribute("LoadoutOpen") and me:GetAttribute("Lobby") == nil
