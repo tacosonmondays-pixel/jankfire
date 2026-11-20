@@ -516,7 +516,11 @@ Round 2 is live in place version 1297. Solo Play (the AR in hand and a world AR 
 wrap puts 18 to 24 Textures on a gun. Clips: `side-session-notes/wraps-animated/r2-*.mp4` (outside git). From the
 clips: the caustic nets, the aurora curtains, the neon grid and the CRT bar read clearly (a horizontal bar on the gun's
 side reads as a line sweeping up the receiver); Lava's embers and the petals are subtle; the rain and the circuit
-pulses barely showed, so they were made brighter and denser after.
+pulses barely showed, so they were made brighter and denser after (live in place version 1304, with clips of the last
+six: Koi Pond, Neon Hex, Stained Glass, Opal, Galaxy with the faster stars, Tokyo's brighter rain; 0 wrap errors).
+All 21 moving wraps (and Black Hole) are EXOTIC rarity (the owner: "If theyre animated theyre exotic rarity"):
+`Roster.EXOTIC`, the shop session's list. A new moving wrap goes into that list and into one spray set (ask the shop
+session). No descriptor words (GLOWS, SHINY) on wraps any more.
 
 - Clips (20 Nov, `side-session-notes/wraps-animated/`, outside git): the 8 first moving wraps in hand.
 - The pictures: `tools/roblox/wrap_flow.py` draws `flow_stars_*` (150 round soft dots, seamless) and `flow_glint_*`

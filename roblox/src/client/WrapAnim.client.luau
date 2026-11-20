@@ -583,14 +583,15 @@ local FLOW: { [string]: { Layer } } = {
 		{ tex = "curtain", u = 0.7, v = 0.5, speed = 0.03, glow = 2.0, tint = Color3.fromHex("b8ffd8"), a = 0.42 },
 		{ tex = "curtain", u = 1.05, v = 0.5, speed = -0.017, glow = 1.6, tint = Color3.fromHex("e2c4ff"), a = 0.3 },
 	},
-	-- (light running back along the traces and the grooves, head first on the side you see)
-	circuit = { { tex = "pulses", u = 0.9, v = 0.22, speed = 0.26, glow = 3.2, tint = Color3.fromHex("9dff8a"), a = 0.9 } },
-	hex = { { tex = "pulses", u = 0.85, v = 0.2, speed = 0.2, glow = 3.0, tint = Color3.fromHex("7fe8ff"), a = 0.8 } },
+	-- (light running back along the traces and the grooves, head first on the side you see; brighter and denser after
+	-- the 20 Nov clips, where they were hard to see)
+	circuit = { { tex = "pulses", u = 0.7, v = 0.16, speed = 0.26, glow = 4.5, tint = Color3.fromHex("b4ffa0"), a = 1 } },
+	hex = { { tex = "pulses", u = 0.7, v = 0.16, speed = 0.2, glow = 4.2, tint = Color3.fromHex("9aeeff"), a = 1 } },
 	-- (CRT: a soft bright bar rolling up the screen every ~6 s)
 	crt = { { tex = "scan", u = 0.1, v = 0.4, speed = 0, rise = 0.07, glow = 1.6, tint = Color3.fromHex("dcffe6"), a = 0.5,
 		sides = { "left", "right" } } },
-	-- (Tokyo Night: a light rain over the neon)
-	tokyo = { { tex = "rain", u = 0.3, v = 0.3, speed = 0, rise = -0.22, glow = 1.2, tint = Color3.fromHex("cbd8ff"), a = 0.45,
+	-- (Tokyo Night: a light rain over the neon; stronger after the 20 Nov clips, where it barely showed)
+	tokyo = { { tex = "rain", u = 0.26, v = 0.26, speed = 0, rise = -0.24, glow = 2.2, tint = Color3.fromHex("d6e0ff"), a = 0.8,
 		sides = { "left", "right" } } },
 	-- (Sakura Storm: single petals blowing along the gun and down)
 	sakura = { { tex = "petals", u = 0.45, v = 0.45, speed = 0.04, rise = -0.02, glow = 0.5, tint = Color3.fromHex("ffd6e4"), a = 0.9 } },
