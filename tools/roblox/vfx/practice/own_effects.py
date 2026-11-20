@@ -10,6 +10,13 @@ TEX = {  # our own images (ids in roblox/assets/vfx/assets.json and roblox/docs/
     'streak': 127914373549121, 'chips': 81145557543325, 'dust4': 123624708348895, 'smoke4': 97407536340250,
     'lumps4': 82728391412819, 'cotton8': 96781809339333, 'boom4': 101632032329716, 'boom8': 92069836286961,
     'hitstar4': 123343427727495, 'gring4': 88961349137378, 'gburst4': 113903648900633, 'arc': 119340562514320,
+    # round 2 (draw_r2.py)
+    'hitstar2': 110290022029129, 'crack4': 137182173760983, 'puff4': 79705209147568, 'ink4': 114628023781415,
+    'thinring': 86499394153319,
+    # round 2, part b (draw_r2b.py, the round-1 critic's texture fixes)
+    'hitstar3': 104577603786888, 'gburst2': 109446321378868, 'gring2': 137445507815789, 'splat4': 87402093208786,
+    'hairring': 77478194219067, 'hairline': 94387206333196, 'windarc': 115049111171567, 'needle': 120682326983772,
+    'dot': 117163101562671,
 }
 OR = {'cam': 0, 'camup': 1, 'par': 2, 'perp': 3}
 DIR = {'right': 0, 'top': 1, 'back': 2, 'left': 3, 'bottom': 4, 'front': 5}
@@ -19,7 +26,7 @@ MODE = {'loop': 0, 'one': 1, 'ping': 2, 'random': 3}
 
 def hexc(h):
     h = h.lstrip('#')
-    return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    return [round(int(h[i:i + 2], 16) / 255, 3) for i in (0, 2, 4)]
 
 
 def NS(*kps):  # NS((t, v[, envelope]), ...); t is the fraction of the particle's life
@@ -166,7 +173,94 @@ def r1():
     return E
 
 
-ROUNDS = {1: r1}
+def r2():
+    """round 2: the round-1 critic's fixes (scores hit 4, guard 3, dash 2, slash 4, slam 3, explosion 5)"""
+    E = []
+    # HIT: a cel-edged star only in the first frames, then a sparse small-sparkle ring on one thin line, gone by
+    # frame 11; size on the pack's straight line
+    E.append(part('O_Hit', [att('Main', [
+        em('star', 'hitstar3', 0.5, NS((0, 0.44), (1, 3.3)), trans=NS((0, 1), (0.08, 0), (0.35, 0), (1, 1)),
+           flip='4x4', orient='perp', direction='front', rot=(-45, 45), bright=1, z=1, locked=True)])]))
+    # GUARD BREAK: a solid jagged burst overdriven to white (Brightness 20) that turns into thick rings and shards and is
+    # gone by 65% of life; the ring jumps out fast and fades from 45%
+    E.append(part('O_Guard', [att('Main', [
+        em('ring', 'gring2', 0.5, NS((0, 0.5), (0.2, 3.2), (0.5, 4.4), (1, 5.1)), trans=NS((0, 0), (0.45, 0), (0.65, 1), (1, 1)),
+           flip='4x4', orient='perp', direction='front', rot=(-360, 360), bright=3, z=1, locked=True),
+        em('burst', 'gburst2', 0.5, NS((0, 3.4), (0.3, 4.4), (0.55, 2), (0.65, 0), (1, 0)), trans=NS((0, 0), (1, 0)),
+           color='#fff8e8', flip='4x4', bright=20, z=4, locked=True)])]))
+    # DASH: hairline rings, hairline streaks, tiny dots, the glow nearly gone
+    pale = '#ecfffc'
+    E.append(part('O_Dash', [
+        em('lines', 'hairline', (0.2, 0.6), 0.62, trans=FADE_IN_OUT, color=pale, speed=7.786, orient='par',
+           direction='left', squash=NS((0, -1), (1, -1)), count=13, delay=0.11),
+        em('debris', 'chips', (0.2, 0.6), NS((0, 0.234), (1, 0)), trans=FADE_IN_OUT, color=pale, speed=7.786,
+           direction='left', rot=(-360, 360), rotspeed=(-1000, 1000), flip='2x2', mode='random', count=5, delay=0.11),
+        em('bits down', 'dot', (0.2, 0.6), 0.15, trans=FADE_IN_OUT, color=pale, speed=7.786, direction='left',
+           accel=(0, -4.672, 0), count=5, delay=0.11),
+        em('bits up', 'dot', (0.2, 0.6), 0.15, trans=FADE_IN_OUT, color=pale, speed=7.786, direction='left',
+           accel=(0, 4.672, 0), count=5, delay=0.11),
+        att('Rings', [em('circles', 'hairring', (0.2, 0.6), NS((0, 0), (0.489, 2.595, 2.076), (1, 5.191)),
+                         trans=NS((0, 1), (0.5, 0.45), (1, 1)), color=pale, speed=5.191, spread=(6, 6), orient='perp',
+                         rot=(-360, 360), rotspeed=-250, count=9)],
+            cf=['CF', 4.817, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 1]),
+        em('glow', 'glow', (0.2, 0.6), 3.114, trans=NS((0, 1), (0.5, 0.975), (1, 1)), color=pale, le=0.5,
+           direction='left', rot=(-360, 360), count=9, delay=0.11)]))
+    # SLASH: solid hot impact flashes (glow, brighter, paler), feathery open wind arcs instead of the solid crescent
+    grey = '#737373'
+    spin = dict(orient='perp', direction='bottom', inout='in', rot=(-360, 360), locked=True, z=1)
+    E.append(part('O_Slash', [att('Main', [
+        em('impact1', 'glow', 0.3, 3, trans=NS((0, 1), (0.2, 0), (0.8, 0), (1, 1)), color=grey, bright=3, spread=(1, 1), **spin),
+        em('spin2', 'windarc', 1.0, NS((0, 0), (1, 14.97)), trans=NS((0, 1), (0.5, 0.869), (1, 1)), le=0.0, speed=2,
+           spread=(5, 5), rotspeed=100, **spin),
+        em('spin3', 'windarc', 1.0, NS((0, 0), (0.487, 12.227), (1, 19.584)), trans=NS((0, 1), (0.5, 0), (1, 1)),
+           color='#525252', bright=0.3, speed=(0, 9.585), spread=(1, 1), drag=9, rotspeed=100, orient='perp',
+           rot=(-360, 360), locked=True, count=4, delay=0.1),
+        em('spin5', 'windarc', 1.0, NS((0, 0), (1, 14)), trans=NS((0, 0), (0.8, 0), (1, 1)), color=grey, le=0.75,
+           speed=17.5, spread=(6, 6), rotspeed=250, **spin),
+        em('impact2', 'glow', 0.3, NS((0, 2), (1, 10)), trans=NS((0, 1), (0.2, 0), (0.8, 0), (1, 1)), color='#bfbfbf',
+           bright=3, spread=(1, 1), **spin),
+        em('spin4', 'windarc', 1.0, NS((0, 0), (1, 9.146)), trans=NS((0, 1), (0.2, 0), (0.8, 0), (1, 1)), color=grey,
+           le=0.75, speed=17.5, spread=(6, 6), rotspeed=250, **spin),
+        em('spin1', 'windarc', 1.0, NS((0, 0), (1, 14)), trans=NS((0, 0), (0.8, 0), (1, 1)), color=grey, le=0.75,
+           speed=17.5, spread=(6, 6), rotspeed=250, **spin)], cf=['CF', 0, -4.801, 0])]))
+    # GROUND IMPACT: dark floor cracks that stay, big packed cartoon puffs in a belt, the ring nearly hidden, dark chips
+    E.append(part('O_Slam', [att('Attachment', [
+        em('crack', 'crack4', 2.0, 30, trans=NS((0, 0), (0.7, 0), (1, 1)), color='#3c3a38', le=0.0, orient='perp',
+           flip='4x4', rot=(-180, 180), count=1),
+        em('ring', 'ring', (0.55, 0.85), NS((0, 0), (1, 22.807, 4.165)), trans=NS((0, 0.75), (1, 1)), color='#6f6f6f',
+           le=0.0, bright=1, spread=(10, 10), orient='perp', rot=(0, 1000), rotspeed=(-150, 150), count=3),
+        em('dust', 'puff4', (0.45, 0.8), NS((0, 2), (1, 4.5)), trans=NS((0, 0), (1, 1)), le=0.0, speed=(35, 75),
+           spread=(0, 1000), drag=10, direction='front', flip='4x4', rot=(-20, 20), count=50),
+        em('chips', 'chips', (0.3, 0.8), 0.35, trans=NS((0, 0), (0.8, 0), (1, 1)), color='#2a2a2a', le=0.0, speed=(25, 50),
+           spread=(1000, 1000), drag=15, flip='2x2', mode='random', rot=90, count=28),
+        em('flare', 'hitstar3', (0.45, 0.65), NS((0, 1.71), (1, 8.812)), trans=NS((0, 0.3), (1, 1)), bright=2,
+           spread=(1000, 1000), orient='perp', flip='4x4', rot=(0, 1000), count=2),
+        em('clouds', 'puff4', (0.65, 1.0), NS((0, 0), (0.25, 2.925, 1.237), (0.54, 4.275, 1.575), (0.885, 1.688, 1.0), (1, 0)),
+           trans=NS((0, 0), (1, 0.2)), le=0.0, speed=(10, 16), spread=(45, 2323), drag=4, direction='left', flip='4x4',
+           rot=(-20, 20), rotspeed=(-30, 30), count=23)])]))
+    # EXPLOSION: a longer soft flash, needle shards, hard black splats (LE -5 draws black), pale flame and ring
+    E.append(part('O_X', [att('Attachment', [
+        em('flash', 'glow', 0.1, 20, trans=NS((0, 0.3), (0.6, 0.35), (1, 1)), bright=3, z=8, locked=True),
+        em('shards', 'needle', 0.5, NS((0, 8.963, 2.411), (0.093, 7.193, 1.742), (0.134, 2.867, 1.499), (0.286, 1.252, 0.793), (0.517, 0.25, 0.135), (1, 0)),
+           trans=NS((0, 0), (1, 0)), bright=4, speed=(145.9, 304), spread=(360, 360), drag=25, accel=(0, -85.125, 0),
+           orient='par', direction='front', count=20),
+        em('ink', 'splat4', (0.1, 0.25), 4, trans=NS((0, 0), (1, 0)), le=-5.0, speed=134.4, spread=(360, 360), drag=40,
+           orient='par', direction='front', flip='4x4', rot=-90, squash=SQUASH_INK, z=1, count=10),
+        em('flame', 'boom4', (0.08, 0.2), 5.246, trans=NS((0, 1), (0.088, 1), (0.136, 0), (1, 0)), color='#ffe2b0', le=0.6,
+           speed=134.4, spread=(360, 360), drag=40, orient='par', direction='front', flip='4x4', rot=-90,
+           squash=SQUASH_INK, count=6),
+        em('licks', 'boom8', (0.362, 0.543), NS((0, 0), (0.072, 2.104, 0.61), (0.381, 3.094, 1.246), (1, 0.78, 0.78)),
+           trans=NS((0, 0), (1, 0)), color='#fff2c8', bright=2, speed=(15.8, 94.8), spread=(80, 80), drag=4.95,
+           orient='par', direction='front', flip='8x8', rot=-90, squash=NS((0, 1.689), (1, 0.902)), count=4),
+        em('dots', 'chips', (0.55, 0.75), NS((0, 0.65, 0.65), (1, 0)), trans=NS((0, 0), (1, 0)), color='#222222', le=0.0,
+           speed=(25.4, 114.3), spread=(360, 360), drag=7, flip='2x2', mode='random', rot=(-360, 360),
+           rotspeed=(-180, 180), count=40),
+        em('firering', 'ring', 0.3, NS((0, 3.95), (1, 10.307)), trans=NS((0, 0.4), (0.4, 1), (1, 1)), color='#fff0d0',
+           rot=(-360, 360), z=-0.243, count=1)])]))
+    return E
+
+
+ROUNDS = {1: r1, 2: r2}
 DATA = ROUNDS[ROUND]()
 js = json.dumps(DATA, separators=(',', ':'))
 assert ']==]' not in js

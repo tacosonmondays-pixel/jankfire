@@ -335,5 +335,89 @@
   "sha1": "547329bb9ac59972d1e52730dbd7a754cf9e057a",
   "what": "practice loop: a white crescent slash arc with streak lines (256 px)",
   "uploaded": "2026-11-20"
+ },
+ "vfx_hitstar2_4x4": {
+  "id": 110290022029129,
+  "sha1": "33bcd20406f1676b5a3e79bb677038a68672f295",
+  "what": "practice: chunky 4-point star with a cut-out middle into a ring of fat sparkles (tools/roblox/vfx/practice/draw_r2.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_crack_4x4": {
+  "id": 137182173760983,
+  "sha1": "83e379ba4b1afecd990ca9c5c0c7e896d12140ca",
+  "what": "practice: ground cracks, branching jagged lines growing from the middle then fading (tint dark, LE 0, lay flat) (tools/roblox/vfx/practice/draw_r2.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_puff_4x4": {
+  "id": 79705209147568,
+  "sha1": "3b1357f862bda7e9a85dbb8c24a42ad1f38f3e56",
+  "what": "practice: cartoon dust puff, lumpy cumulus with a grey underside, swelling then breaking into holes (tools/roblox/vfx/practice/draw_r2.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_inkshard_4x4": {
+  "id": 114628023781415,
+  "sha1": "451dbf755fe330e8b644baca7057812a304cd286",
+  "what": "practice: one long jagged shard spike (unused after the critic: see vfx_splat_4x4) (tools/roblox/vfx/practice/draw_r2.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_thinring": {
+  "id": 86499394153319,
+  "sha1": "a409883d3ee4c5133eed393e81f13d9a9417d912",
+  "what": "practice: thin crisp ring, 2.5% line (tools/roblox/vfx/practice/draw_r2.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hitstar3_4x4": {
+  "id": 104577603786888,
+  "sha1": "be39700a76f2d22fe38144ba94c14fe7f5f776f4",
+  "what": "practice: hit flash v3, frames 0-2 a small fat cel-edged 4-point star, 3-10 a sparse small-sparkle ring on one thin line, 11-15 empty (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gburst2_4x4": {
+  "id": 109446321378868,
+  "sha1": "77ad93a308514532751c17f65a186c4a959e267a",
+  "what": "practice: guard-break burst v2, a jagged 7-armed burst with a solid core, then two thick rings and shards, empty from frame 8 (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gring2_4x4": {
+  "id": 137445507815789,
+  "sha1": "3830873baad01432bff387f03d9f6baf3bc8115f",
+  "what": "practice: shock ring v2, thinning as it widens, uneven radial streaks outside in frames 3-9 (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_splat_4x4": {
+  "id": 87402093208786,
+  "sha1": "5d2f4b3662949aa4a868d398b15d7883f09e2ff6",
+  "what": "practice: ink splat, hard-edged blob with 12 dagger spikes breaking into fragments (use LE -5 to draw black) (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hairring": {
+  "id": 77478194219067,
+  "sha1": "67ae6b488f2a7b7d40b8b015869c9672bd8558ef",
+  "what": "practice: hairline ring, a 3 px line and a fainter one inside, 256 px (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hairline": {
+  "id": 94387206333196,
+  "sha1": "3eb418f239b22da5af2d0799d912e8f61463e07e",
+  "what": "practice: a 3 px tapered line 230 px long on a square canvas (along v, for VelocityParallel) (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_windarc": {
+  "id": 115049111171567,
+  "sha1": "11fa7a253ed5d24e1432bc4f4ccf9c3b7c5a0097",
+  "what": "practice: wind arc, 7 thin broken streak lines over ~140 degrees, no body (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_needle": {
+  "id": 120682326983772,
+  "sha1": "653cf97843d7fedb352cfffd3cb458b399331833",
+  "what": "practice: needle, a hard-edged lens 8 x 240 px (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_dot": {
+  "id": 117163101562671,
+  "sha1": "0a03753546f7713221b737de7fa6a5acb559a0ce",
+  "what": "practice: small soft dot, 16 px on 64 (tools/roblox/vfx/practice/draw_r2b.py)",
+  "uploaded": "2026-11-20"
  }
 }
