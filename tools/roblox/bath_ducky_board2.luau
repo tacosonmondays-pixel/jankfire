@@ -609,9 +609,208 @@ P[10] = function() -- THE EYES: close on it emerging, the eyes clear the water, 
 	shot(BD.CAM[10])
 end
 
+-- ------------------------------------------------------------------ the animatic (20 Nov): the shots in motion
+-- The owner judges finishers as video. BD.frame(i) stages frame i of BD.PLAN: each shot is staged once (BD.panel), then
+-- every frame only moves things: the duck rising, the shadow sliding in, the flare lines growing, the jets reaching
+-- out, the opponent playing his clip, the lens pushing, rising or panning. Captured frame by frame, assembled by
+-- tools/roblox/bath_ducky_video.py (24 fps, letterbox, sound).
+BD.PLAN = { { 7, 8 }, { 8, 10 }, { 9, 12 }, { 10, 10 }, { 1, 17 }, { 2, 10 }, { 3, 6 }, { 4, 8 }, { 5, 12 }, { 6, 14 } }
+
+local CLIPS = {}
+local function clip(name)
+	if CLIPS[name] then return CLIPS[name] end
+	local ks = KSP:GetKeyframeSequenceAsync("rbxassetid://" .. ANIM[name])
+	local kfs = ks:GetKeyframes()
+	table.sort(kfs, function(a, b) return a.Time < b.Time end)
+	local out = {}
+	for _, kf in kfs do
+		local map = {}
+		for _, p in kf:GetDescendants() do
+			if p:IsA("Pose") then map[p.Name] = p.CFrame end
+		end
+		table.insert(out, { t = kf.Time, map = map })
+	end
+	CLIPS[name] = out
+	return out
+end
+-- a clip at time t: the two keyframes round it, blended joint by joint
+local function posePlay(name, t)
+	local k = clip(name)
+	if t <= k[1].t then return k[1].map end
+	if t >= k[#k].t then return k[#k].map end
+	local i = 1
+	while k[i + 1].t < t do i += 1 end
+	local a, b = k[i], k[i + 1]
+	local w = (t - a.t) / math.max(1e-4, b.t - a.t)
+	local m = {}
+	for n, cf in a.map do m[n] = cf:Lerp(b.map[n] or cf, w) end
+	for n, cf in b.map do
+		if not m[n] then m[n] = cf end
+	end
+	return m
+end
+
+local function V(t) return Vector3.new(t[1], t[2], t[3]) end
+local function ease(u) u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+local function lerp(a, b, u) return a + (b - a) * u end
+local function lens(eye, look, fov, roll) shot({ { eye.X, eye.Y, eye.Z }, { look.X, look.Y, look.Z }, fov, roll or 0 }) end
+local function cam(n) local c = BD.CAM[n]; return V(c[1]), V(c[2]), c[3], c[4] or 0 end
+
+-- what the staging of a shot made, each part with its starting state
+local B = {}
+local function grab()
+	B = { parts = {} }
+	for _, d in dyn:GetChildren() do
+		if d:IsA("Model") and d.Name == "BathDucky" then B.giant = d; B.giantCF = d:GetPivot() end
+		if d:IsA("Model") and d.Name == "Opponent" then B.opp = d end
+		if d:IsA("BasePart") then
+			local e = { p = d, cf = d.CFrame, size = d.Size, tr = d.Transparency }
+			table.insert(B.parts, e)
+			if d:IsA("MeshPart") and d.Name == "bd2_giant" then B.shadow = e end
+		end
+	end
+end
+local function isSplash(e) return e.p.Color == C.splash end
+local function isRing(e) return e.p.Color == C.foam and e.tr > 0 end
+local function giantDown(dy) if B.giant then B.giant:PivotTo(B.giantCF - Vector3.new(0, dy, 0)) end end
+local function placeOpp(map)
+	local v = B.opp
+	if not v then return end
+	pose(v, map, L(OPP_AT.X, 0, OPP_AT.Z), math.pi / 2, { ground = O.Y })
+	local lv = v.UpperTorso.CFrame.LookVector
+	local turn = math.atan2(-lv.X, -lv.Z) - math.atan2(1, 0)
+	local c = v.UpperTorso.Position
+	local rot = CFrame.new(c) * CFrame.Angles(0, -turn, 0) * CFrame.new(-c)
+	for _, d in v:GetDescendants() do
+		if d:IsA("BasePart") then d.CFrame = rot * d.CFrame end
+	end
+end
+
+local F = {}
+F[7] = function(u) -- CALM: a slow push-in
+	local e, l, f, r = cam(7)
+	lens(e + (e - l).Unit * 2.5 * (1 - ease(u)), l, f, r)
+end
+F[8] = function(u) -- THE SHADOW: it slides in under the water toward you
+	if B.shadow then B.shadow.p.CFrame = B.shadow.cf - Vector3.new(7 * (1 - ease(u)), 0, 0) end
+	local e, l, f, r = cam(8)
+	lens(e + Vector3.new(0, 0.5 * (1 - ease(u)), 0), l, f, r)
+end
+F[9] = function(u) -- IT EMERGES: the dome comes up, the water runs off once it is out, the lens shudders
+	giantDown(6 * (1 - ease(u)))
+	for _, e in B.parts do
+		if isSplash(e) or isRing(e) then e.p.Transparency = u < 0.45 and 1 or e.tr end
+	end
+	local e, l, f, r = cam(9)
+	local k = u > 0.3 and 1 or 0
+	lens(e + Vector3.new(math.sin(u * 37) * 0.12, math.cos(u * 29) * 0.1, 0) * k, l, f, r)
+end
+F[10] = function(u) -- THE EYES: they clear the water, then the flare lines shoot out
+	giantDown(2.2 * (1 - ease(math.min(u / 0.5, 1))))
+	local k = math.clamp((u - 0.5) / 0.35, 0, 1)
+	for _, e in B.parts do
+		if e.p.Material == Enum.Material.Neon then
+			if e.p:IsA("Part") and e.p.Shape == Enum.PartType.Ball then
+				e.p.Size = e.size * math.max(k, 0.01)
+				e.p.Transparency = k == 0 and 1 or e.tr
+			else
+				local len = e.size.Z
+				local dir = e.cf.LookVector
+				local at = e.cf.Position - dir * len / 2
+				local lk = math.max(len * k, 0.01)
+				e.p.Size = Vector3.new(e.size.X, e.size.Y, lk)
+				e.p.CFrame = CFrame.lookAt(at + dir * lk / 2, at + dir * lk)
+				e.p.Transparency = k == 0 and 1 or e.tr
+			end
+		end
+	end
+	local e, l, f, r = cam(10)
+	lens(e + (l - e).Unit * 1.2 * ease(u), l, f, r)
+end
+F[1] = function(u) -- THE RISE: up out of the water, the splash bursts, the rays come on, the lens rises
+	giantDown(8 * (1 - ease(math.min(u / 0.7, 1))))
+	for _, e in B.parts do
+		if isSplash(e) then e.p.Transparency = u < 0.2 and 1 or e.tr end
+		if e.p.Material == Enum.Material.Neon and math.abs(e.size.Y - 60) < 0.1 then
+			e.p.Transparency = u < 0.45 and 1 or lerp(1, e.tr, (u - 0.45) / 0.55)
+		end
+	end
+	local e, l, f, r = cam(1)
+	lens(e + Vector3.new(0, -0.35 + 1.3 * ease(u), 0), l + Vector3.new(0, -4 * (1 - ease(u)), 0), f, r)
+end
+F[2] = function(u) -- THE OPPONENT: a whip pan off the duck to the door, zooming in; he looks round
+	local e, l, f, r = cam(2)
+	local w = ease(ease(u))
+	lens(e, lerp(Vector3.new(-14, 12, -2), l, w), lerp(60, f, w), r)
+	placeOpp(posePlay("look", 1.0 + 1.8 * u))
+end
+F[3] = function(u) -- YOU AND THE DUCKY: a slow push-in
+	local e, l, f, r = cam(3)
+	lens(e + (e - l).Unit * 3 * (1 - ease(u)), l, f, r)
+end
+F[4] = function(u) -- THE STANDOFF: a slow drift
+	local e, l, f, r = cam(4)
+	lens(e + Vector3.new(-2 * (1 - ease(u)), 0, 0), l, f, r)
+end
+F[5] = function(u) -- THE SPRAY: the beak's jet reaches the door first, the pistol's a beat later
+	local rods = {}
+	for _, e in B.parts do
+		if e.p:IsA("Part") and e.p.Shape == Enum.PartType.Cylinder and isSplash(e) then table.insert(rods, e) end
+	end
+	for _, e in rods do
+		local len = e.size.X
+		local a = e.cf * Vector3.new(-len / 2, 0, 0)
+		local b = e.cf * Vector3.new(len / 2, 0, 0)
+		local dir = (b - a).Unit
+		e.k = math.clamp((u - (e.size.Y > 1 and 0 or 0.15)) / 0.5, 0, 1)
+		e.a, e.dir = a, dir
+		local lk = math.max(len * e.k, 0.01)
+		e.p.Size = Vector3.new(lk, e.size.Y, e.size.Z)
+		e.p.CFrame = CFrame.lookAt(a + dir * lk / 2, a + dir * lk) * CFrame.Angles(0, math.pi / 2, 0)
+		e.p.Transparency = e.k == 0 and 1 or e.tr
+	end
+	for _, e in B.parts do
+		if e.p:IsA("Part") and e.p.Shape == Enum.PartType.Ball and isSplash(e) then
+			for _, rd in rods do
+				local q = e.cf.Position - rd.a
+				local t = q:Dot(rd.dir) / rd.size.X
+				if t > -0.05 and t < 1.05 and (q - rd.dir * q:Dot(rd.dir)).Magnitude < rd.size.Y * 2 then
+					e.p.Transparency = t <= rd.k and e.tr or 1
+				end
+			end
+		end
+	end
+	local e, l, f, r = cam(5)
+	lens(e + Vector3.new(0, math.sin(u * 50) * 0.06, 0), l, f, r)
+end
+F[6] = function(u) -- SOAKED: knocked back through the hit, the lens leans in
+	placeOpp(posePlay("pulled", 0.3 + 1.2 * u))
+	local e, l, f, r = cam(6)
+	lens(e + (l - e).Unit * 1.0 * ease(u), l, f, r - 3 * ease(u))
+end
+
+function BD.frame(i)
+	local s, n0 = nil, 0
+	for _, row in BD.PLAN do
+		if i < n0 + row[2] then s = row; break end
+		n0 += row[2]
+	end
+	if not s then return "past the end" end
+	local u = s[2] > 1 and (i - n0) / (s[2] - 1) or 0
+	if BD.cur ~= s[1] then
+		BD.panel(s[1])
+		grab()
+		BD.cur = s[1]
+		task.wait(1) -- (fresh clones can be missing from a capture taken at once)
+	end
+	F[s[1]](u)
+	return string.format("f%03d shot %d u %.2f", i, s[1], u)
+end
+
 -- ------------------------------------------------------------------ build / panel / clear
 function BD.build()
 	BD.clear(true)
+	BD.cur = nil
 	math.randomseed(20)
 	root = Instance.new("Folder")
 	root.Name = "BathDuckyBoard2"

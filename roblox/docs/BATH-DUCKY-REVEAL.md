@@ -24,6 +24,24 @@ Shot in one Studio turn (place version 1102); the stage is `tools/roblox/bath_du
 `bath_ducky_sheet.py ... v3`. A continuity note for the build: in the opening you lean on the pool's edge; from the rise
 on you stand in the middle of the pool (the cut can cover it, or the rise can be re-blocked at the edge).
 
+### The animatic (20 Nov): round 3 in motion
+
+The owner judges finishers as video (the finishers session relayed "Where duck finish"), so round 3 is also a moving
+animatic: `bath_ducky_animatic_v1.mp4` (10 s, 24 fps, 1280x720, sound), kept out of git like the other finisher videos:
+in the notes folder `local_f6d4e505.../finisher-boards/video/` and the vault's `References/Animation/Bath Ducky reveal/`.
+- 107 Studio frames (place version 1132, the stage removed after): `BD2.frame(i)` in `tools/roblox/bath_ducky_board2.luau`
+  stages each shot once and then only moves things (the duck rising, the shadow sliding in, the flare lines growing, the
+  jets reaching out, the opponent playing his clip, the lens pushing, rising, whip-panning). Two subagents shot them,
+  an execute + capture pair per frame, about 1.7 s a frame.
+- `tools/roblox/bath_ducky_video.py` stretches each shot to its length at 24 fps with cross-fades, adds the letterbox,
+  manga focus lines on the rise, streaks on the whip pan, a flash on the rise and the glint, the name card; then
+  `finisher_video_mp4.py` (the finishers session's) cuts it with the sound.
+- Sound: CC0 recordings already in our library (no voices): a drip, a low hit for the shadow, a gust and an impact for
+  the surge, a singing bowl for the glint, a hit-and-whoosh plus one quack for the rise, a woosh for the pan, an air hiss
+  for the jets, a hit and a body fall for the soak, a last quack. **There is no water recording in the library yet**: a
+  real splash and bubbles would need a new CC0 download.
+- Rough spots: the whip pan's first frames pass through the player's foam hair; the light rays read white.
+
 ## Round 2 (20 Nov): rubber ducks, a kaiju rise, a finisher on the opponent
 
 The owner on round 1 (relayed word for word by the VFX session): "I dont like how the ducks look theyre supposed to be

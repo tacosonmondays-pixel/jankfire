@@ -1,0 +1,161 @@
+# The Bath Ducky finisher as a moving animatic (20 Nov; the finishers session: the owner judges finishers as VIDEO).
+# Studio frames from tools/roblox/bath_ducky_board2.luau (BD.frame(i), BD.PLAN: each shot staged once, then only the
+# moving things move) -> 24 fps: each shot is stretched to its length with cross-fades between captures, cut to its 16:9
+# band at 1280x720, and gets what the real cut draws: the letterbox bars, manga focus lines on the rise, streaks on the
+# whip pan, a white flash on the rise and the glint, and the finisher's card at the end. Then the sound cues (CC0
+# recordings only, no voices: the owner's rule) for tools/roblox/finisher_video_mp4.py.
+# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir>
+#   caps.json maps "f000".. to the capture images (the capture run writes it)
+#   then: blender -b --factory-startup -P tools/roblox/finisher_video_mp4.py -- <out>/frames <out>/cues.json <out.mp4>
+import json, math, os, random, sys
+from PIL import Image, ImageDraw, ImageFont
+
+W, H = 1280, 720
+BAR = 0.105  # the real cut's letterbox (client/Finisher.luau)
+FPS = 24
+# (shot, captures, seconds): the order and counts of BD.PLAN, the lengths of the round-3 board
+SHOTS = [('CALM', 8, 1.0), ('THE SHADOW', 10, 1.0), ('IT EMERGES', 12, 1.0), ('THE EYES', 10, 0.8), ('THE RISE', 17, 1.4),
+         ('THE OPPONENT', 10, 0.8), ('YOU AND THE DUCKY', 6, 0.8), ('THE STANDOFF', 8, 1.0), ('THE SPRAY', 12, 1.0),
+         ('SOAKED', 14, 1.2)]
+SFX_DIRS = [r'C:/Users/soup2/AppData/Local/Temp/claude/b01c297bd4d79264/7b55d040-96ba-4348-b81b-7c20029502cd/scratchpad/' + d
+            for d in ('fs_wav', 'fs_wav2', 'fs_wav3', 'fs_wav5')]
+# the cues: (shot, frame within the shot, freesound id, volume, length in frames or None, fade frames or None)
+# freesound CC0 (credits in the sound session's fs_dl*/CREDITS.md): 240313 marble drop (a drip), 529139 ambient hit,
+# 146932 wind gust (the surge), 430978 low impact, 271370 singing bowl strike (the glint), 736852 transition hit and
+# whoosh, 418509 a single quack, 683101 quick woosh, 367125 air hiss (the jets), 349698 light slow swoosh,
+# 648534 transition hit, 417994 body fall. No water recordings in the library yet: a splash would be a new download.
+CUES = [('CALM', 8, 240313, 0.4, None, None), ('THE SHADOW', 2, 529139, 0.55, None, None),
+        ('IT EMERGES', 0, 146932, 0.35, 40, 12), ('IT EMERGES', 6, 430978, 0.6, None, None),
+        ('THE EYES', 10, 271370, 0.45, 40, 15), ('THE RISE', 0, 736852, 0.85, None, None),
+        ('THE RISE', 13, 418509, 0.9, None, None), ('THE OPPONENT', 2, 683101, 0.7, None, None),
+        ('THE SPRAY', 0, 367125, 0.75, 40, 10), ('THE SPRAY', 2, 349698, 0.35, None, None),
+        ('SOAKED', 0, 648534, 0.7, None, None), ('SOAKED', 11, 417994, 0.6, None, None),
+        ('SOAKED', 18, 418509, 0.6, None, None)]
+
+
+def to_169(im):
+    w, h = im.size
+    bh = round(w * 9 / 16)
+    top = (h - bh) // 2
+    return im.convert('RGB').crop((0, top, w, top + bh)).resize((W, H), Image.LANCZOS)
+
+
+def bars(im, k=1.0):
+    d = ImageDraw.Draw(im)
+    b = int(H * BAR * k)
+    d.rectangle([0, 0, W, b], fill=(0, 0, 0))
+    d.rectangle([0, H - b, W, H], fill=(0, 0, 0))
+    return im
+
+
+def focus_lines(im, amount, seed):
+    """manga focus lines: thin white wedges rushing in from the frame's edge, a clear oval in the middle"""
+    rnd = random.Random(seed)
+    lay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    cx, cy = W / 2, H * 0.45
+    for _ in range(int(70 * amount)):
+        a = rnd.random() * math.tau
+        r0 = rnd.uniform(0.42, 0.62) * W
+        r1 = W * 1.2
+        w = rnd.uniform(0.004, 0.012)
+        p = [(cx + math.cos(a) * r0, cy + math.sin(a) * r0 * 0.75),
+             (cx + math.cos(a - w) * r1, cy + math.sin(a - w) * r1 * 0.75),
+             (cx + math.cos(a + w) * r1, cy + math.sin(a + w) * r1 * 0.75)]
+        d.polygon(p, fill=(255, 255, 255, int(150 * amount)))
+    return Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB')
+
+
+def streaks(im, amount, seed):
+    """the whip pan: horizontal streaks across the frame"""
+    rnd = random.Random(seed)
+    lay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    for _ in range(int(40 * amount)):
+        y = rnd.uniform(0, H)
+        x = rnd.uniform(-200, W)
+        d.rectangle([x, y, x + rnd.uniform(200, 700), y + rnd.uniform(1, 3)], fill=(255, 255, 255, int(110 * amount)))
+    return Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB')
+
+
+def flash(im, k):
+    return Image.blend(im, Image.new('RGB', (W, H), (255, 255, 255)), k)
+
+
+def card(im, k, small='ROYAL DUCK PISTOL', big='BATH DUCKY'):
+    """the finisher's name card, plain (the skin's name above the finisher's): no other words"""
+    lay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    f1 = ImageFont.truetype('C:/Windows/Fonts/arialbd.ttf', 24)
+    f2 = ImageFont.truetype('C:/Windows/Fonts/arialbd.ttf', 62)
+    w = 560
+    x0 = (W - w) // 2
+    y0 = int(H * (1 - BAR)) - 150
+    a = int(255 * k)
+    d.rounded_rectangle([x0, y0, x0 + w, y0 + 128], radius=22, fill=(18, 32, 52, int(190 * k)))
+    d.rounded_rectangle([x0 + 28, y0 + 116, x0 + 28 + (w - 56) * k, y0 + 121], radius=2, fill=(226, 178, 60, a))
+    d.text(((W - d.textlength(small, font=f1)) / 2, y0 + 14), small, font=f1, fill=(226, 178, 60, a))
+    d.text(((W - d.textlength(big, font=f2)) / 2, y0 + 40), big, font=f2, fill=(255, 255, 255, a))
+    return Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB')
+
+
+def main():
+    caps = json.load(open(sys.argv[1]))
+    out = sys.argv[2]
+    fr = os.path.join(out, 'frames')
+    os.makedirs(fr, exist_ok=True)
+    cache = {}
+
+    def cap(i):
+        if i not in cache:
+            cache[i] = to_169(Image.open(caps['f%03d' % i]))
+        return cache[i]
+
+    j = 0
+    start = {}
+    c0 = 0
+    for name, n, sec in SHOTS:
+        nout = round(sec * FPS)
+        start[name] = j
+        for k in range(nout):
+            u = k / max(1, nout - 1)
+            pos = u * (n - 1)
+            a = int(math.floor(pos))
+            b = min(n - 1, a + 1)
+            im = Image.blend(cap(c0 + a), cap(c0 + b), pos - a) if b != a else cap(c0 + a)
+            if name == 'THE RISE':
+                if k < 14:
+                    im = focus_lines(im, 1 - k / 14, 900 + k)
+                if k < 3:
+                    im = flash(im, [0.75, 0.4, 0.15][k])
+            if name == 'THE OPPONENT' and 3 <= k <= 13:
+                im = streaks(im, math.sin((k - 3) / 10 * math.pi), 700 + k)
+            if name == 'THE EYES' and k in (9, 10):
+                im = flash(im, 0.35 if k == 9 else 0.15)
+            if name == 'SOAKED':
+                if k < 2:
+                    im = flash(im, [0.5, 0.2][k])
+                if k >= nout - 18:
+                    im = card(im, min(1, (k - (nout - 18)) / 5))
+            im = bars(im)
+            im.save(os.path.join(fr, '%03d.png' % j))
+            j += 1
+        c0 += n
+    cues = []
+    for shot, f, sid, vol, ln, fade in CUES:
+        path = next((os.path.join(d_, '%d.wav' % sid) for d_ in SFX_DIRS if os.path.exists(os.path.join(d_, '%d.wav' % sid))), None)
+        if not path:
+            print('missing sound', sid)
+            continue
+        c = {'file': path.replace('\\', '/'), 'frame': start[shot] + f, 'vol': vol}
+        if ln:
+            c['len'] = ln
+        if fade:
+            c['fade'] = fade
+        cues.append(c)
+    json.dump(cues, open(os.path.join(out, 'cues.json'), 'w'), indent=1)
+    json.dump({'shots': [[n, round(s * FPS)] for n, _, s in SHOTS]}, open(os.path.join(out, 'shots.json'), 'w'))
+    print('frames', j, 'cues', len(cues), out)
+
+
+main()
