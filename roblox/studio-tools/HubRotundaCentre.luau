@@ -308,8 +308,12 @@ return function(B, R)
 			q[1]:SetAttribute("BreatheLo", q[2]); q[1]:SetAttribute("BreatheHi", q[3]); q[1]:SetAttribute("BreathePeriod", 2.6)
 			Tags:AddTag(q[1], "HubBreathe")
 		end
-		local lines = if i == 3
+		local lines = if i == 3 and R.LAYOUT == "mirror" -- (the owner's layout, 19 Nov: no lifts, no pads upstairs; a full pad goes to the map vote)
+			then { { "HOW TO PLAY", P.pale, "B", 0.28 }, { "1   STEP ON A PAD IN YOUR TEAM'S COLOUR", "d8dbe2", "S", 0.18 }, { "2   WHEN THE PAD IS FULL, VOTE FOR A MAP", "d8dbe2", "S", 0.18 }, { "3   FIRST TO FIVE ROUNDS WINS", "d8dbe2", "S", 0.18 }, { "4   STEP OFF TO LEAVE THE QUEUE", "d8dbe2", "S", 0.18 } }
+			elseif i == 3
 			then { { "HOW TO PLAY", P.pale, "B", 0.28 }, { "1   STEP ON A PAD IN YOUR TEAM'S COLOUR", "d8dbe2", "S", 0.18 }, { "2   THE LIFT GOES UP WHEN THE PAD IS FULL", "d8dbe2", "S", 0.18 }, { "3   FIRST TO FIVE ROUNDS WINS", "d8dbe2", "S", 0.18 }, { "4   STEP OFF TO LEAVE THE QUEUE", "d8dbe2", "S", 0.18 } }
+			elseif R.LAYOUT == "mirror"
+			then { { "PADS   ·   THROUGH THE NORTH ARCHES", "d8dbe2", "S", 0.3 }, { "TRAINING   ·   THROUGH THE ARMORY", "d8dbe2", "S", 0.3 }, { "LOADOUT   ·   PRESS L ANYWHERE", "d8dbe2", "S", 0.3 } }
 			else { { "MORE PADS   ·   UPSTAIRS", "d8dbe2", "S", 0.3 }, { "TRAINING   ·   THROUGH THE ARMORY", "d8dbe2", "S", 0.3 }, { "LOADOUT   ·   PRESS L ANYWHERE", "d8dbe2", "S", 0.3 } } -- (no title, no "holstered" line: the owner, 16 Nov, "I dont want unnecessary flavor text everywhere")
 		B.text(F, if i == 3 then "BoardHow" else "BoardNotice", lines, 9.2, 4.2, 0, 8.1, A - 0.62, 0, { flush = true, thick = 0.3, pps = 40 })
 	end
