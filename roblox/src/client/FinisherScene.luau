@@ -197,6 +197,12 @@ local function takeBody(g: any)
 	local an = (g.hum :: Humanoid):FindFirstChildOfClass("Animator") :: Animator
 	for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end
 	g.root.Anchored = true
+	-- (their shadows on the street - the owner, 20 Nov: "can the characters have their shadow thats also maybe why it
+	-- looks weird they dont have a shadow below them": the replay's ghost copies come with shadows off (Replay.clean,
+	-- cheap for replays); a scene's two cast them, body, hair, clothes and accessories)
+	for _, d in g.model:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 0.9 then d.CastShadow = true end
+	end
 end
 
 local function trackFor(sc: any, who: string, g: any, ci: number): AnimationTrack?
@@ -601,7 +607,7 @@ local function ghosts(sc: any, s: any, list: any)
 			if not ok or not m then return end
 			m.Name = "JankSceneGhost" .. gi
 			for _, d in m:GetDescendants() do
-				if d:IsA("BaseScript") then d:Destroy() elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+				if d:IsA("BaseScript") then d:Destroy() elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end
 			end
 			m.Parent = sc.folder
 			local hum = m:FindFirstChildOfClass("Humanoid")
@@ -840,6 +846,7 @@ local function revolverKit(sc: any, s: any)
 			local kit: any = { hw = hw, hd = hd, leg = (g.hum :: Humanoid).HipHeight / 2, km = km }
 			kit.holster = part(km, Vector3.new(0.32, 0.95, 0.55), ORIGIN, LEATHER, Enum.Material.Leather)
 			kit.belt = part(km, Vector3.new(2 * hw * 1.06, 0.28, 2 * hd * 1.1), ORIGIN, LEATHER, Enum.Material.Leather)
+			kit.holster.CastShadow = true; kit.belt.CastShadow = true
 			local want = if who == "k" and type(s.msg.skin) == "string" then s.msg.skin else "revolver_dust"
 			local tpl = skins and (skins:FindFirstChild(want) or skins:FindFirstChild("revolver_dust"))
 			local function build(tr: number): { any }
@@ -852,6 +859,7 @@ local function revolverKit(sc: any, s: any)
 						p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 						p.Size *= 3
 						p.Transparency = math.max(p.Transparency, tr)
+						p.CastShadow = tr == 0 and p.Transparency < 0.9
 						table.insert(out, { p, CFrame.new(oc.Position * 3) * oc.Rotation })
 					elseif p:IsA("BaseScript") or p:IsA("JointInstance") or p:IsA("Constraint") then
 						p:Destroy()
@@ -1074,14 +1082,59 @@ local function drawFx(sc: any, s: any, f: any, T: number)
 			a2.Size = Vector3.new(sz, 0.04, 0.04); a2.CFrame = CFrame.lookAt(c, c + cam.LookVector)
 			a1.LocalTransparencyModifier = 0; a2.LocalTransparencyModifier = 0
 		elseif kind == "sweat" then
+			-- (a teardrop - the owner, 20 Nov: "the sweat drop is sort of just a b all can it be a little better?": the
+			-- kit's SweatDrop mesh, tools/roblox/sweat_drop.py, a point on top and a full round bottom, glassy and pale,
+			-- upright and turned to the lens; a bright highlight on its upper side and a faint wet line back up the cheek
+			-- to where it formed. It slides down the plan's own path)
 			local c = P3(sc, s, f, an, e[3], e[4], e[5])
+			local H = math.max(0.14, (e[6] or 0.17) * 1.5) -- (its height, studs)
 			local p = fxPart(sc, "sweat" .. idx, 1, function()
-				local q = part(sc.folder, Vector3.new(0.16, 0.22, 0.16), ORIGIN, Color3.new(0.85, 0.93, 1), Enum.Material.Glass, Enum.PartType.Ball)
-				q.Transparency = 0.15
+				local kit = ReplicatedStorage:FindFirstChild("JankfireFinisherSets")
+				local src = kit and kit:FindFirstChild("SweatDrop")
+				local q: any
+				if src and src:IsA("MeshPart") then
+					q = src:Clone()
+					q.Anchored = true; q.CanCollide = false; q.CanQuery = false; q.CanTouch = false
+					q.Parent = sc.folder
+				else
+					q = part(sc.folder, Vector3.new(0.16, 0.22, 0.16), ORIGIN, Color3.new(0.85, 0.93, 1), Enum.Material.Glass, Enum.PartType.Ball)
+				end
+				q.CastShadow = false
+				q.Color = Color3.fromRGB(206, 232, 255); q.Material = Enum.Material.Glass; q.Transparency = 0.2; q.Reflectance = 0.2
 				return q
 			end)
-			p.CFrame = CFrame.new(c)
+			local cam = (workspace.CurrentCamera :: Camera).CFrame
+			local toCam = cam.Position - c
+			toCam = if toCam.Magnitude > 1e-3 then toCam.Unit else Vector3.zAxis
+			local flat = Vector3.new(toCam.X, 0, toCam.Z)
+			local face = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.zAxis
+			if p:IsA("MeshPart") then p.Size = Vector3.new(H * 0.75, H, H * 0.75) else p.Size = Vector3.new(H * 0.7, H, H * 0.7) end
+			p.CFrame = CFrame.lookAt(c, c + face)
 			p.LocalTransparencyModifier = 0
+			-- the highlight: a small bright fleck on the lit upper side, toward the lens
+			local hl = fxPart(sc, "sweat" .. idx, 2, function()
+				local q = part(sc.folder, Vector3.one * 0.03, ORIGIN, Color3.new(1, 1, 1), Enum.Material.Neon, Enum.PartType.Ball)
+				q.Transparency = 0.05
+				return q
+			end)
+			hl.Size = Vector3.new(H * 0.13, H * 0.22, H * 0.06)
+			hl.CFrame = CFrame.lookAt(c + Vector3.yAxis * (H * 0.06) - cam.RightVector * (H * 0.13) + toCam * (H * 0.3), c + toCam * 4)
+			hl.LocalTransparencyModifier = 0
+			-- the wet line: from where it formed (where it was first drawn, this run of frames) down to its top
+			sc.sweatFrom = sc.sweatFrom or {}
+			local from = sc.sweatFrom[idx]
+			if not from or T < from.t or T - from.t > 0.3 then from = { p = c, t = T }; sc.sweatFrom[idx] = from end
+			from.t = T
+			local top = c + Vector3.yAxis * (H * 0.35)
+			if (from.p - top).Magnitude > 0.04 and from.p.Y > top.Y then
+				local wl = fxPart(sc, "sweat" .. idx, 3, function()
+					local q = part(sc.folder, Vector3.one * 0.02, ORIGIN, Color3.fromRGB(220, 238, 255), Enum.Material.Glass)
+					q.Transparency = 0.55
+					return q
+				end)
+				between(wl, from.p, top, H * 0.12, 0.012, toCam)
+				wl.LocalTransparencyModifier = 0
+			end
 		elseif kind == "tumble" then
 			-- (High Noon) a tumbleweed: 44 twigs round its centre, the same twigs every frame, turned as it rolls
 			local c = P3(sc, s, f, an, e[3], e[4], e[5])
