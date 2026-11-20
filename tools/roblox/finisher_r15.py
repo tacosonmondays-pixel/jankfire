@@ -129,17 +129,32 @@ def clip_pose(name, t):
     return clip_pose_raw(name, t)
 
 
+_TRACKS = {}
+
+
 def clip_pose_raw(name, t):
+    # each joint on its own track (a keyframe may leave a joint out: the bought pack does), linear between its keys
     kfs = clip(name)
+    if name not in _TRACKS:
+        tr = {}
+        for kt, poses in kfs:
+            for part, m in poses.items():
+                tr.setdefault(part, []).append((kt, m))
+        _TRACKS[name] = tr
     t = max(kfs[0][0], min(kfs[-1][0], t))
-    i = 0
-    while i < len(kfs) - 2 and kfs[i + 1][0] <= t:
-        i += 1
-    (t0, a), (t1, b) = kfs[i], kfs[min(i + 1, len(kfs) - 1)]
-    u = 0 if t1 <= t0 else (t - t0) / (t1 - t0)
     out = {}
-    for part in a:
-        ma, mb = a[part], b.get(part, a[part])
+    for part, keys in _TRACKS[name].items():
+        if t <= keys[0][0] or len(keys) == 1:
+            out[part] = keys[0][1].copy()
+            continue
+        if t >= keys[-1][0]:
+            out[part] = keys[-1][1].copy()
+            continue
+        i = 0
+        while i < len(keys) - 2 and keys[i + 1][0] <= t:
+            i += 1
+        (t0, ma), (t1, mb) = keys[i], keys[i + 1]
+        u = 0 if t1 <= t0 else (t - t0) / (t1 - t0)
         q = ma.to_quaternion().slerp(mb.to_quaternion(), u)
         m = q.to_matrix().to_4x4()
         m.translation = ma.translation.lerp(mb.translation, u)
@@ -288,6 +303,8 @@ RIGS = []
 GUNS = []    # {'model': 'revolver_dust', 'cf': grip frame (Roblox), 'scale': 3}
 PROPS = []   # {'shape': 'Block'|'Ball'|'Cylinder'|'Wedge', 'size': (x,y,z) Roblox, 'cf': 4x4 Roblox, 'col', 'mat', 'tag'}
 KATANA = []  # Roblox CFrames of the katana grip (the place's katana_sakura, scaled x3)
+SEM = {}     # this frame's semantics: 'sh' (scabbard: hip / lhand + m0), 'kat' (hand / home + push / through /
+             # out + e), 'mouth' (the stand-in's scabbard mouth, Roblox CFrame looking down the scabbard), 'lens' anchor
 KAT_MODE = []  # per KATANA entry: 'hand' (in the killer's right hand) or 'free' (placed: the sheath)
 
 
@@ -398,6 +415,9 @@ def sheath(cf):
     # the scabbard at the left hip, mouth forward and up, running back and down (Roblox axes of the lower torso)
     a, b, _ = sheath_line(cf)
     d = (b - a).normalized()
+    SEM.setdefault('sh', {'mode': 'hip'})
+    ra, rd = rb(a), (rb(b) - rb(a)).normalized()
+    SEM['mouth'] = comps(cf_look(ra, ra + rd))
     up = Vector((0, 0, 1)) - d * d.z
     up = up.normalized() * 0.1 if up.length > 1e-3 else Vector((0, 0, 0))
     a, b = a + up, b + up
@@ -418,6 +438,32 @@ def tipz():
 def katana_grip(m):
     KATANA.append(m)
     KAT_MODE.append('hand')
+    SEM.setdefault('kat', {'mode': 'hand'})
+
+
+# the bought Katana Combat Pack (20 Nov; vault Tools/Packs-20nov/katana-combat, never in git) animates the sword itself:
+# its rig hangs the sword's handle off the right hand (Motor6D C0 = a -90 deg turn about X, C1 = identity) and every clip
+# has a RightHandle track. The sword's blade runs along the handle's +Y; ours runs along our grip frame's -Z, so ours
+# sits at handle * Rx(+90). The hand holds the handle at its origin.
+PACK_C0 = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
+
+
+def pack_grip(K, clip_name, t):
+    # our katana's grip frame (Roblox) from a pack clip's own sword track, or None when the clip has none
+    pz = clip_pose(clip_name, t)
+    T = pz.get('RightHandle')
+    if T is None:
+        return None
+    return K['RightHand'] @ PACK_C0 @ T @ ANG(90, 0, 0)
+
+
+def katana_pack(K, clip_name, t):
+    m = pack_grip(K, clip_name, t)
+    if m is None:
+        return katana_grip(hand_cf(K))
+    KATANA.append(m)
+    KAT_MODE.append('hand')
+    SEM['kat'] = {'mode': 'pack', 'T': comps(clip_pose(clip_name, t)['RightHandle'])}
 
 
 def katana_at_b(guard_b, dir_b, up_b=(0, 0, 1)):
@@ -434,6 +480,7 @@ def katana_at_b(guard_b, dir_b, up_b=(0, 0, 1)):
     m.translation = g + z * 0.44  # the guard sits 0.148 m (x3) up the blade (local -Z) from the grip
     KATANA.append(m)
     KAT_MODE.append('free')
+    SEM.setdefault('kat', {'mode': 'home', 'push': 0.0})
 
 
 # ------------------------------------------------------------------ Blender preview
@@ -583,9 +630,15 @@ def frame(board, n):
 
 
 # ------------------------------------------------------------------ the revolver (the place's revolver_dust, x3)
+def rig_name(cf):
+    return next((r['name'] for r in RIGS if r['cf'] is cf), None)
+
+
 def revolver_in_hand(cf, tr=0.0):
     # the barrel runs on from the forearm, the gun's top toward the back of the hand; the grip sits in the palm
     g = cf['RightHand'] @ CF(0, -0.1, 0) @ ANG(-90, 0, 0) @ CF(0, 0.55, -0.25)
+    if rig_name(cf) and not tr:
+        SEM.setdefault('gun', {})[rig_name(cf)] = 'hand'
     GUNS.append({'model': 'revolver_dust', 'cf': g, 'tr': tr})
     return g
 
@@ -595,6 +648,8 @@ def holster(cf, gun_in=True):
     h = lt @ CF(1.12, -0.45, -0.05)
     prop('Block', (0.32, 0.95, 0.55), h, (0.42, 0.27, 0.16), 'Leather', 'holster')
     prop('Block', (2.12, 0.28, 1.1), lt @ CF(0, 0.05, 0), (0.42, 0.27, 0.16), 'Leather', 'belt')
+    if rig_name(cf):
+        SEM.setdefault('hol', {})[rig_name(cf)] = 'in' if gun_in else 'empty'
     if gun_in:
         GUNS.append({'model': 'revolver_dust', 'cf': h @ CF(0, 0.15, 0) @ ANG(-90, 0, 0) @ CF(0, 0, -0.1)})
     return h
@@ -1409,8 +1464,10 @@ def kat_through(K, a, d):
     v = a - grip
     if v.length < 0.5:
         KAT_LEN[0] = 1.0
+        SEM['kat'] = {'mode': 'home', 'push': 0.0}
         katana_at_b(a, d)
         return
+    SEM['kat'] = {'mode': 'through'}
     dirv = v.normalized()
     KAT_LEN[0] = max(1.0, (v.length + 3.0 - 0.6) / 2.3)
     katana_at_b(grip + dirv * 0.44, dirv)
@@ -1456,6 +1513,7 @@ def hands_sheath(K):
     d = d.normalized() if d.length > 1e-3 else Vector((-1, 0, 0))
     m_ = L - d * mouth_off()
     t_ = m_ + d * 3.3
+    SEM['sh'] = {'mode': 'lhand', 'm0': round(mouth_off(), 3)}
     inv = K['LowerTorso'].inverted()
     return (inv @ Vector((m_.x, m_.y, m_.z, 1)), inv @ Vector((t_.x, t_.y, t_.z, 1)))
 
@@ -1475,6 +1533,7 @@ def tv_draw(i, n):
     SHEATH_LOCAL[0] = None
     push = 0.12 * ease(min(1.0, max(0.0, (i - 3) / 2)))
     KAT_LEN[0] = 1.0
+    SEM['kat'] = {'mode': 'home', 'push': round(push, 3)}
     katana_at_b(a - d * push, d)
     if i >= 4:
         side_ = d.cross(Vector((0, 0, 1))).normalized()
@@ -1534,6 +1593,7 @@ def tv_coming(i, n):
         S['e0'] = max(1.0, (wpt(hand_cf(K), (0, 0, 0)) - a).length - 0.44)
     e = S['e0'] + (2.3 * LONG_KAT + 0.6 - 3.0 - S['e0']) * (u ** 1.6)
     KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)
+    SEM['kat'] = {'mode': 'out', 'e': round(e, 3), 'glints': 1}
     katana_at_b(a - d * e, d)
     km = KATANA[-1]
     for j in range(40):
@@ -2088,7 +2148,31 @@ def frame_data(info):
             # (for the game: which clip at what moment, where the root stands, where the katana is)
             'anim': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
                                  'sc': round(r.get('scatter', 0), 3)} for r in RIGS if r.get('clip') and not r.get('tr')},
-            'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)], 'katL': round(KAT_LEN[0], 3)}
+            # (the see-through afterimages too, for a runner that poses real bodies: their clip, moment and root)
+            'ghost': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
+                                  'tr': r['tr']} for r in RIGS if r.get('clip') and r.get('tr')},
+            'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)], 'katL': round(KAT_LEN[0], 3),
+            'sem': dict(SEM)}
+
+
+def cf_look(a, b):
+    z = -(Vector(b) - Vector(a)).normalized()
+    upv = Vector((0, 1, 0)) if abs(z.y) < 0.98 else Vector((1, 0, 0))
+    x = upv.cross(z).normalized()
+    y = z.cross(x)
+    m = Matrix((x, y, z)).transposed().to_4x4()
+    m.translation = Vector(a)
+    return m
+
+
+# what a close lens follows on a real body (else it stays where it is in the world)
+LENS_ANCHOR = {
+    ('tide', 'THE DRAW'): 'mouth', ('tide', 'IT KEEPS COMING'): 'mouth', ('tide', 'THE SHEATHE'): 'mouth',
+    ('tide', 'THE PULL'): 'k.LowerTorso', ('tide', 'STILLNESS'): 'v.Head', ('tide', 'THE END'): 'k.UpperTorso',
+    ('dust', "KILLER'S EYES"): 'k.Head', ('dust', "VICTIM'S EYES"): 'v.Head', ('dust', 'EYES AGAIN'): 'k.Head',
+    ('dust', 'THEIR EYES'): 'v.Head', ('dust', "KILLER'S HAND"): 'k.LowerTorso', ('dust', "VICTIM'S HAND"): 'v.LowerTorso',
+    ('dust', 'ENEMY REACHES'): 'v.LowerTorso', ('dust', 'THE DRAW'): 'k.LowerTorso',
+}
 
 
 def kat_rel(m, mode):
@@ -2114,8 +2198,11 @@ for vname in VIDS:
             VT[0] = k / FPS
             clear()
             RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear(); KAT_MODE.clear(); KAT_LEN[0] = 1.0
+            SEM.clear()
             info = fn(i, nf) or {}
             info['name'] = sname
+            if (vname, sname) in LENS_ANCHOR:
+                SEM['lens'] = LENS_ANCHOR[(vname, sname)]
             if not os.environ.get('FIN_NOPNG'):
                 draw_preview()
                 sc.render.filepath = os.path.join(vdir, f'{k:03d}.png')
@@ -2153,6 +2240,8 @@ for sh_ in SHEETS:
         RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear()
         prop('Block', (60, 1, 60), CF(0, -0.5, 0), FLOORC, 'SmoothPlastic', 'floor')
         K = rig('k', (0, 0, 0), 0, {'clip': (cn, t)}, ground=False)
+        if pack_grip(K, cn, t) is not None:
+            katana_pack(K, cn, t)     # (a pack clip: its own sword track)
         draw_preview()
         aim_lens(pts_of(K), 35, 8, 40, 0, mx=0.7, my=0.75)
         sc.render.filepath = os.path.join(OUT, f'sheet_{cn}_{i:02d}.png')
