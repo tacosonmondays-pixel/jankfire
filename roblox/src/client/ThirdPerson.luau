@@ -845,8 +845,12 @@ local function reloadRig(r: Rig, secs: number?, empty: boolean?)
 		end
 	end
 end
+-- (20 Nov 2026, the bought Katana Combat Pack) the katana's moves that have pack mocap: KAT move -> its Anims row
+local KATMO = { guard = "kat_block", stagger = "kat_stagger", deflect = "kat_deflect" }
+local katMocap: ((Rig, string) -> boolean)? = nil -- (set below mocapSwing)
 local function katRig(r: Rig, name: string)
 	if r.wid ~= "katana" then return end
+	if katMocap and katMocap(r, name) then r.kat = nil; return end -- (an R15 body plays the pack's own move; R6 keeps KAT)
 	r.kat = { name = name, t = 0 }
 end
 -- (18 Nov 2026, the owner: "can you find scythe attack animations online please for first person and 3rd person") a
@@ -869,7 +873,7 @@ local function mocapSwing(r: Rig, A: any): boolean
 	if (r :: any).r6 or not r.J or not r.J.Waist or not A.tp then return false end
 	local old = (r :: any).mocap
 	if old and old.mine and old.track then pcall(function() old.track:Stop(0.05) end) end
-	local mo = { t = 0, dur = A.tpDur or A.dur, id = "rbxassetid://" .. tostring(A.tp), track = nil :: AnimationTrack?, mine = r.ch == me.Character }
+	local mo = { t = 0, dur = A.tpDur or A.dur, id = "rbxassetid://" .. tostring(A.tp), track = nil :: AnimationTrack?, mine = r.ch == me.Character, holdUntil = nil :: number? }
 	if mo.mine then
 		local an = r.hum:FindFirstChildOfClass("Animator")
 		if an then
@@ -879,7 +883,7 @@ local function mocapSwing(r: Rig, A: any): boolean
 			if ok and tr then
 				tr.Priority = Enum.AnimationPriority.Action4
 				tr.Looped = false
-				tr:Play(0.05, 1, 1)
+				tr:Play(0.05, 1, A.tpSpeed or 1) -- (tpSpeed: the katana's pack clips run faster, so their hit lands on its hitT)
 				mo.track = tr
 			end
 		end
@@ -903,7 +907,12 @@ local function swingRig(r: Rig, alt: boolean?, name: string?)
 		if Anims[n] then r.clip = { name = n, t = 0, rate = 1 } end
 		return
 	end
+	if name and Anims[name] and Anims[name].tp and mocapSwing(r, Anims[name]) then r.kat = nil; return end -- (the katana's pack combo)
 	katRig(r, if a then "swing2" else "swing")
+end
+katMocap = function(r: Rig, name: string): boolean
+	local A = Anims[KATMO[name] or ""]
+	return A ~= nil and A.tp ~= nil and mocapSwing(r, A)
 end
 local function itemRig(r: Rig, id: string, kind: string)
 	if r.item and r.item.model then r.item.model:Destroy() end
@@ -940,8 +949,25 @@ function TP.parry() local r = myRig(); if r then katRig(r, "guard") end end
 -- while its right click is held (Arsenal for yours, Katana.client for everyone else's, every frame)
 function TP.holdKat(m: Instance?, name: string, t: number)
 	local r = rigFor(m)
-	if r and r.kat and r.kat.name == name and r.kat.t > t then r.kat.t = t end
+	if not r then return end
+	-- (20 Nov 2026) the pack's Block on an R15 body: your track stops at its hold time while the button is down
+	-- (AdjustSpeed 0, which everyone sees) and is let go when this stops being called; raised again after a deflect
+	local A = Anims[KATMO[name] or ""]
+	if A and A.tp and not (r :: any).r6 then
+		local mo = (r :: any).mocap
+		if not mo or mo.id ~= "rbxassetid://" .. tostring(A.tp) then
+			if r.isMe and not mo then mocapSwing(r, A) end
+			return
+		end
+		mo.holdUntil = os.clock() + 0.15
+		local tr = mo.track
+		if tr and mo.mine and tr.TimePosition >= (A.tpHold or 0) and tr.Speed ~= 0 then tr:AdjustSpeed(0) end
+		return
+	end
+	if r.kat and r.kat.name == name and r.kat.t > t then r.kat.t = t end
 end
+-- (20 Nov 2026) a katana move on your own body by its KAT name ("deflect": a parry landing)
+function TP.kat(name: string) local r = myRig(); if r then katRig(r, name) end end
 
 local function rigOfUid(uid: any): Rig?
 	if type(uid) ~= "number" then return nil end
@@ -1133,6 +1159,27 @@ local function readState(r: Rig, dt: number)
 			end
 		end
 		-- frozen poses for photos: "TPKatPose" = "swing:0.15", "TPClipPose" = "reload_ar:0.6", "TPItemPose" = "frag:throw:0.12"
+		-- (20 Nov 2026) a pack mocap frozen for photos: "TPMocap" = "kat_light1:0.17" (the Anims row, the clip's own time)
+		local mp = r.ch:GetAttribute("TPMocap")
+		if type(mp) == "string" and mp ~= (r :: any).TPMocap_seen then
+			(r :: any).TPMocap_seen = mp
+			local n, t = string.match(mp, "^([%w_]+):([%d%.]+)$")
+			local A = if n then Anims[n] else nil
+			local an = r.hum:FindFirstChildOfClass("Animator")
+			if A and A.tp and an then
+				local old = (r :: any).mocap
+				if old and old.track then old.track:Stop(0) end
+				local anim = Instance.new("Animation")
+				anim.AnimationId = "rbxassetid://" .. tostring(A.tp)
+				local tr = an:LoadAnimation(anim)
+				tr.Priority = Enum.AnimationPriority.Action4
+				tr.Looped = false
+				tr:Play(0, 1, 0)
+				tr.TimePosition = tonumber(t) or 0
+				;(r :: any).mocap = { t = tr.TimePosition, dur = 99, id = anim.AnimationId, track = tr, mine = false }
+				r.kat = nil
+			end
+		end
 		local kp = r.ch:GetAttribute("TPKatPose")
 		if type(kp) == "string" then
 			local n, t = string.match(kp, "^(%w+):([%d%.]+)$")
@@ -1469,6 +1516,24 @@ local function stepRig(r: Rig, dt: number, now: number)
 	-- (the Scythe's mocap swing, mocapSwing) how far in it is, and what its animation put on the joints this frame
 	-- (read before anything here writes them)
 	local mo = (r :: any).mocap
+	-- (20 Nov 2026) someone else's katana move from the pack: their client plays it on their own body (it replicates);
+	-- spot it by its id so the blend below takes their arms and blade from it
+	if not mo and not r.isMe and r.cls == "katana" and not (r :: any).r6 and now - ((r :: any).moScan or 0) > 0.05 then
+		(r :: any).moScan = now
+		local an = hum:FindFirstChildOfClass("Animator")
+		if an then
+			local ids = mocapByIds()
+			for _, tr in an:GetPlayingAnimationTracks() do
+				local A = tr.Animation and ids[tr.Animation.AnimationId]
+				if A and tr.TimePosition < (A.tpDur or A.dur) - 0.15 then
+					mo = { t = tr.TimePosition, dur = A.tpDur or A.dur, id = tr.Animation.AnimationId, track = tr, mine = false }
+					;(r :: any).mocap = mo
+					r.kat = nil
+					break
+				end
+			end
+		end
+	end
 	local moW = 0
 	local aWaist: CFrame?, aNeck: CFrame?, aSh: CFrame?, aElb: CFrame?, aWr: CFrame? = nil, nil, nil, nil, nil
 	if mo then
@@ -1483,6 +1548,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 			end
 		end
 		mo.t += dt
+		-- (20 Nov 2026) your held Block let go: its track stops, and the blend fades with it
+		if mo.mine and mo.holdUntil and os.clock() > mo.holdUntil and mo.track then mo.track:Stop(0.15); mo.holdUntil = nil end
+		if mo.track and not mo.track.IsPlaying and mo.t < mo.dur - 0.14 then mo.t = mo.dur - 0.14 end -- (a track stopped early)
 		if mo.track and mo.track.IsPlaying and mo.track.TimePosition > 0 then mo.t = mo.track.TimePosition end
 		if mo.t >= mo.dur then
 			(r :: any).mocap = nil
@@ -1533,6 +1601,16 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local G: CFrame
 	if r.cls == "katana" then
 		G = katanaPose(r, Q)
+		-- (20 Nov 2026, the bought Katana Combat Pack) a mocap move: the katana in the animated right hand the way the pack
+		-- holds its own (its blade along the hand's -Z, as ours runs along the model's -Z; our handle's grip on the hand's
+		-- middle, where the pack's handle joint is)
+		if moW > 0 and aSh and aElb and aWr then
+			local Ar = r.arms.Right
+			local UA = Ar.sh.c0 * aSh * Ar.sh.c1:Inverse()
+			local LA = UA * Ar.elb.c0 * aElb * Ar.elb.c1:Inverse()
+			local H = LA * Ar.wr.c0 * aWr * Ar.wr.c1:Inverse()
+			G = G:Lerp(H * CF(0, 0, 0.045 * r.k), moW)
+		end
 	else
 		G = gunPose(r, st, Q, eye, e)
 		if clip then

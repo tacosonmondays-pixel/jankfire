@@ -334,8 +334,8 @@ local function castLocal(): boolean
 	pendingMine = w
 	freezeSoon("wave", WV.windup + 0.16)
 	-- the slash itself: your blade's backhand, your body's, the release, a cold flash
-	VM.play("swing_katana2")
-	if TP and TP.swing then TP.swing(true) end
+	VM.play("kat_wave") -- (the pack's Ultimate, 20 Nov 2026)
+	if TP and TP.swing then TP.swing(true, "kat_wave") end
 	Sfx.play("wave_cast")
 	H.flash(0.16, 0.3, ICE)
 	VM.jolt(-2.5)
@@ -545,4 +545,11 @@ end)
 -- (Studio photos: the meter shown from a script) the attribute KatanaHud = true on the player keeps it built
 if RunService:IsStudio() then
 	me:GetAttributeChangedSignal("KatanaHud"):Connect(function() meter = buildMeter() end)
+	-- (photos) KatanaClip = an Anims row: your first person plays it now (VMClipHold freezes it), and your body too
+	me:GetAttributeChangedSignal("KatanaClip"):Connect(function()
+		local n = me:GetAttribute("KatanaClip")
+		if type(n) ~= "string" then return end
+		VM.play(n)
+		if TP and TP.swing and (string.sub(n, 1, 9) == "kat_light" or n == "kat_wave") then TP.swing(true, n) end
+	end)
 end

@@ -663,12 +663,14 @@ local function swing(now: number, heavy: boolean?)
 		local len = 1
 		while len < 4 and Anims["swing_" .. held .. tostring(len + 1)] do len += 1 end
 		if held == "scythe" and workspace:GetAttribute("ScytheExtras") == false then len = math.min(len, 2) end
+		if held == "katana" and Anims.kat_light3 then len = 3 end -- (20 Nov 2026: the pack's 3-hit combo, kat_light1..3)
 		local at = if within then ((minigun :: any).swingN or 1) + 1 else 1
 		if at > len then at = 1 end
 		;(minigun :: any).swingN = at
 		swingAlt = at == 2
 		lastSwing = now
 		clip = if at == 1 then "swing_" .. held else "swing_" .. held .. tostring(at)
+		if held == "katana" and Anims["kat_light" .. tostring(at)] then clip = "kat_light" .. tostring(at) end
 	end
 	VM.play(clip)
 	TP.swing(if hv then false else swingAlt, clip) -- (third person: the same link of the chain, or the stab: ThirdPerson.luau)
@@ -742,7 +744,7 @@ local function tryParry(now: number)
 	parryT = now
 	guard.up, guard.close, guard.turn = true, now + P.win, now
 	parryReady = math.huge -- (set at the let-go)
-	VM.play("parry_katana")
+	VM.play(if Anims.kat_block then "kat_block" else "parry_katana") -- (the pack's Block, 20 Nov 2026)
 	TP.parry()
 	local lk = camera.CFrame.LookVector
 	ParryR:FireServer(math.atan2(-lk.X, -lk.Z)) -- where you look: the server's "front" for this guard
@@ -1025,12 +1027,18 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 			VM.jolt(if f.pf then 3 elseif first then 2 else 0.7)
 			H.flash(if f.pf then 0.8 elseif first then 0.5 else 0.1, if f.pf then 0.3 elseif first then 0.2 else 0.08)
 			shake = math.max(shake, if f.pf then 0.45 elseif first then 0.25 else 0.12)
+			-- (20 Nov 2026) the guard's first hit, a perfect one or a sword: the pack's deflect, then the Block again
+			if first and held == "katana" and Anims.kat_deflect then
+				VM.play("kat_deflect")
+				local tpx = TP :: any
+				if tpx.kat then tpx.kat("deflect") end
+			end
 		end
 		if f.att == me.UserId and f.kind == "melee" and type(f.st) == "number" then -- your swing got parried
 			staggerUntil = now + math.clamp(f.st, 0, 1)
 			nextSwing = staggerUntil
 			parryReady = math.max(parryReady, staggerUntil)
-			VM.play("staggered")
+			VM.play(if held == "katana" and Anims.kat_stagger then "kat_stagger" else "staggered")
 			shake = math.max(shake, 0.45)
 		end
 	end
@@ -1238,6 +1246,10 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 		else
 			local vm, tp = VM :: any, TP :: any
 			if vm.holdAt then vm.holdAt("parry_katana", 0.2) end
+			if Anims.kat_block then -- (the pack's Block held; raised again once a deflect has played)
+				if vm.holdAt then vm.holdAt("kat_block", Anims.kat_block.hold or 0.07) end
+				if vm.playing and vm.playing() == nil then VM.play("kat_block") end
+			end
 			if tp.holdKat then tp.holdKat(me.Character, "guard", 0.2) end
 			if now - guard.turn >= 1 / P.turn then
 				guard.turn = now
