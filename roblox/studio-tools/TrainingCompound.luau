@@ -577,8 +577,11 @@ local function gatehouse()
 	jambs("RangeJamb", x1 + 2, (rd.z0 + rd.z1) / 2, "z", 16 * 0.85, rd.z0 - rd.z1, 12, 4)
 	jambs("TutorialJamb", x0 - 2, (td.z0 + td.z1) / 2, "z", 16 * 0.72, td.z0 - td.z1, 12, 4)
 	-- (the words on the frames' heads, under their trim bars: the frame's face is half its depth in from the wall's middle)
-	word("WordRANGE", "RANGE", 8.4, 1.4, facing(x1 + 2 - 3 * 0.85 - 0.15, GY + 13.0, (rd.z0 + rd.z1) / 2, x1 - 10, (rd.z0 + rd.z1) / 2))
-	word("WordTUTORIAL", "TUTORIAL", 9, 1.2, facing(x0 - 2 + 3 * 0.72 + 0.15, GY + 11.1, (td.z0 + td.z1) / 2, x0 + 10, (td.z0 + td.z1) / 2))
+	for _, d in { { x1 + 2 - 3 * 0.85, -1, (rd.z0 + rd.z1) / 2, "RANGE" }, { x0 - 2 + 3 * 0.72, 1, (td.z0 + td.z1) / 2, "TUTORIAL" } } do
+		local fx, dir, zc = d[1], d[2], d[3]
+		blk("Shell", "DoorHeader", fx, fx + dir * 0.9, GY + 12.1, GY + 14.3, zc - 6.5, zc + 6.5, W.pier2, { tex = "TrPaint" })
+		word("Word" .. d[4], d[4], 10.5, 1.8, facing(fx + dir * 1.05, GY + 13.2, zc, fx + dir * 20, zc), W.board)
+	end
 	-- the nave and the aisles: square piers on bases, beams across the aisles at each pier, an arcade beam along the
 	-- nave, the aisles' low ceilings, the clerestory over the arcade, the nave's stepped coffers and the lantern
 	for _, nx in { n0, n1 } do
@@ -639,18 +642,7 @@ local function gatehouse()
 	local LY = GY + 0.01
 	B.line(GH.xm, z0 + 6, GH.xm, -8086.5, LY, 1.0, W.line, "AxisLine")
 	B.line(GH.xm, -8109.5, GH.xm, z1 - 1, LY, 1.0, W.line, "AxisLine")
-	local RR = 13
-	for k = 0, 23 do
-		local d0, d1 = k * 15, k * 15 + 15
-		if d0 == 90 or d0 == 270 then d0 += 4 end -- (a gap either side of the axis line: no two lines overlap)
-		if d1 == 90 or d1 == 270 then d1 -= 4 end
-		local a0, a1 = math.rad(d0), math.rad(d1)
-		local p0 = V3(GH.xm + RR * math.cos(a0), 0, -8098 + RR * math.sin(a0))
-		local p1 = V3(GH.xm + RR * math.cos(a1), 0, -8098 + RR * math.sin(a1))
-		local u = (p1 - p0).Unit * 0.06 -- (a hair short at each end: the pieces never overlap)
-		p0 += u; p1 -= u
-		B.line(p0.X, p0.Z, p1.X, p1.Z, LY, 0.8, W.line, "DaisRing")
-	end
+	B.drum("Shell", "DaisStep", GH.xm, -8098, GY, GY + 0.25, 28, "a4a6ab")
 	for _, b in { { 8, x1 - 1, rd.z0 + (rd.z1 - rd.z0) / 2 }, { -8, x0 + 1, td.z0 + (td.z1 - td.z0) / 2 } } do
 		local bx = GH.xm + b[1]
 		local zs = -8098 - math.sqrt(13.6 ^ 2 - b[1] ^ 2)
@@ -802,7 +794,8 @@ local function field()
 	B.part("Scenery", "TargetRim", CF(tx, 258, z1 + 0.75) * CFrame.Angles(0, math.pi / 2, 0), V3(0.12, 22.6, 22.6), W.trim, { cyl = true, ghost = true })
 	B.put("tv_target", CF(tx, 258, z1 + 1.4), { name = "FieldTarget", scale = 1.15 })
 	-- its cream frame (the field's big thing on the axis)
-	blk("Shell", "TargetPanel", tx - 12, tx + 12, 242, 270, z1, z1 + 0.3, W.deep, { tex = "TrSlate" })
+	blk("Shell", "TargetPanel", tx - 12, tx + 12, 242, 270, z1, z1 + 0.3, W.slate, { tex = "TrSlate" })
+	B.lamp(tx, 262, z1 + 9, "point", 30, 0.5, W.lamp)
 	blk("Shell", "TargetFrame", tx - 15, tx + 15, 270, 273.4, z1, z1 + 2, W.pier, { tex = "TrPaint" })
 	blk("Shell", "TargetFrame", tx - 15, tx - 12, 242, 270, z1, z1 + 2, W.pier, { tex = "TrPaint" })
 	blk("Shell", "TargetFrame", tx + 12, tx + 15, 242, 270, z1, z1 + 2, W.pier, { tex = "TrPaint" })
@@ -905,10 +898,8 @@ local function field()
 	g.Parent = board
 	board.Parent = pr
 	-- (the board hangs under the gantry's deck between its west towers, facing the balcony, on two hangers)
-	for _, hx in { -89, -71 } do
-		B.drum("Shell", "BoardLeg", hx, F.gz + 4.15, Y0, Y0 + 5.9, 1.6, W.pier2)
-		B.drum("Shell", "BoardFoot", hx, F.gz + 4.15, Y0, Y0 + 0.6, 2.6, W.plinth)
-	end
+	blk("Shell", "BoardPlinth", -91.6, -68.4, Y0, Y0 + 5.9, F.gz + 3.4, F.gz + 4.6, W.pier2, { tex = "TrPaint", nq = true })
+	nose("BoardPlinthLip", -91.6, -68.4, Y0 + 5.55, F.gz + 4.6, "x", 1.2)
 	blk("Shell", "BoardHousing", -91.6, -68.4, Y0 + 5.9, Y0 + 12.5, F.gz + 4.0, F.gz + 4.3, W.pier2, { tex = "TrPaint" })
 	K.healPad(B, -91, Y0, -8166)
 	local zone = Instance.new("Part")
@@ -1062,6 +1053,7 @@ local function course()
 	nose("StairGateLip", S.z0 + 2.4, z1, 286.4, gx0 + 0.4, "z", 1.4)
 	blk("Scenery", "StairGateSoffit", gx1 + 0.6, gx0 - 0.6, 282.86, 283, S.z0 - 1.6, z1 + 3.6, W.panel, { ghost = true, mat = NEON })
 	B.lamp(S.x0 + 4, 279, (S.z0 + z1) / 2, "point", 22, 0.5, W.lamp)
+	word("StairGateWord", "PARKOUR", 10, 1.8, facing(gx0 + 0.55, 284.3, (S.z0 + 2.4 + z1) / 2, gx0 + 20, (S.z0 + 2.4 + z1) / 2), W.board)
 	-- 7 the TOP: a solid mass the width of the course's west end, the crown arch on its front edge, the egg door and the
 	-- parkour teleporter in its back wall, TrainingArrive on it
 	local TP = CO.TOP
