@@ -579,11 +579,7 @@ local function backToHub(m: Match)
 	task.delay(Matches.CLEAR, releaseSite, m.site)
 end
 
-local function endMatch(m: Match, winner: number?)
-	if m.phase == "over" then return end
-	m.phase = "over"
-	fire(hooks.finish, m, winner)
-	setHud(m)
+local function endScreen(m: Match, winner: number?)
 	local board = if m.rules then m.rules.board(m) else Fight.board(m.fighters)
 	local name = if winner then (if m.rules then m.rules.label(m, winner) else teamLabel(m, winner)) else nil
 	local cols = if m.rules then m.rules.cols(m) else nil -- (the board's two number columns, nil: KILLS, DEATHS)
@@ -597,6 +593,20 @@ local function endMatch(m: Match, winner: number?)
 			cols = cols, mode = if m.rules then m.mode else nil })
 	end)
 	task.delay(if after then after.total else Matches.AFTER, backToHub, m)
+end
+local function endMatch(m: Match, winner: number?)
+	if m.phase == "over" then return end
+	m.phase = "over"
+	fire(hooks.finish, m, winner)
+	setHud(m)
+	-- (a finisher scene of the match's last kill plays to its end first - the owner, 20 Nov: "also the final cutscene
+	-- gets caught off": the end screen came 1.2 s after the winning round and the trip home Matches.AFTER s after that,
+	-- ~8 s from the kill, while a scene runs 14. FinisherServer keeps m.finisherUntil (the scene's length + 1 s at most)
+	-- and brings it in once every viewer's scene has reported done; the end screen and the trip home wait for it)
+	task.spawn(function()
+		while m.phase == "over" and type(m.finisherUntil) == "number" and os.clock() < m.finisherUntil do task.wait(0.1) end
+		endScreen(m, winner)
+	end)
 end
 Matches.finish = endMatch -- (Modes.luau: a classic mode's end, winner = the team that takes it or nil)
 

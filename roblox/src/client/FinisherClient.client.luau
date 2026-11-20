@@ -15,11 +15,21 @@ local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local me = Players.LocalPlayer
 
-Remotes:WaitForChild("Finisher").OnClientEvent:Connect(function(msg: any)
+local remote = Remotes:WaitForChild("Finisher") :: RemoteEvent
+-- (a match's full cut holds its end screen until every viewer's is over: say so when ours is - played out, skipped,
+-- turned off in the settings, or never started)
+local function done(msg: any)
+	if msg.kind == "full" then remote:FireServer({ t = "done" }) end
+end
+remote.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" or msg.t ~= "finisher" then return end
-	if msg.role == "watch" and FFx.setting("gfx.othersFinisher", true) == false then return end
+	if msg.role == "watch" and FFx.setting("gfx.othersFinisher", true) == false then done(msg); return end
 	local ok, err = pcall(F.play, msg)
 	if not ok then warn("[jankfire] finisher: " .. tostring(err)) end
+	task.spawn(function()
+		while F.isPlaying() do task.wait(0.1) end
+		done(msg)
+	end)
 end)
 
 Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)

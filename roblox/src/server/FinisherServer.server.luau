@@ -14,12 +14,14 @@
 --   ("kill", player, n|name, weapon?)      kill a live training dummy now through Fight.hurt (with that weapon, default ar)
 --   ("decide", table)                      Finishers.decide on a table
 --   ("state")                              what is armed, the last kill of each live match
---   ("round", player, "full"|"short", skin) the MATCH PATH with one tester: the real round handler (the function
+--   ("round", player, "full"|"short", skin, ends) the MATCH PATH with one tester: the real round handler (the function
 --                                         Matches.onRound calls) on the player's real match (JankMatchTest "ghost"
 --                                         with the player on team 1) and the player's real last kill in it (a training
 --                                         dummy, counted as a player for this test only); "full" = that round wins the
 --                                         match, "short" = it doesn't. Only Matches' own call is left out: a round
---                                         ends on a kill of a real second player, which one tester can't make
+--                                         ends on a kill of a real second player, which one tester can't make.
+--                                         ends = true: a "full" one then ends the match as Matches' round handler does
+--                                         (Matches.finish 1.2 s on: the end screen and the trip home after the scene)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -47,6 +49,15 @@ local R = remote :: RemoteEvent
 type Kill = { k: any, v: any, w: string, t: number, skin: string?, fid: string? }
 local lastKill: { [any]: Kill } = {} -- each live match's last kill by a player
 local played: { [any]: boolean } = {} -- matches whose last round already played the full cut
+-- the viewers of a match's full cut who haven't reported their scene done yet (Matches.endMatch holds the end screen
+-- on m.finisherUntil: the scene's length + 1 s at most, brought in when this set empties)
+local watching: { [any]: { [Player]: boolean } } = {}
+local function holdFor(m: any, fid: string, viewers: { Player })
+	m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[fid]) + 1
+	local set = {}
+	for _, p in viewers do set[p] = true end
+	watching[m] = set
+end
 local armed: { [Player]: { skin: string?, kind: string, all: boolean } } = {} -- (Studio tests)
 
 -- the weapon a kill counts as (a parry is the katana's)
@@ -173,9 +184,10 @@ local function onRound(m: any, winner: number): (string?, any)
 	if not kind or not x.fid or not x.skin then return nil, "decided none" end
 	if kind == "full" then
 		played[m] = true
-		-- (a scene runs longer than the old cut: the end screen and the play of the match wait for it, Recorder.potmWait)
-		m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[x.fid]) + 0.3
-		return kind, table.pack(play(x, "full", everyone(m), x.fid, x.skin))
+		-- (a scene runs longer than the old cut: the end screen, the trip home and the play of the match wait for it)
+		local all = everyone(m)
+		holdFor(m, x.fid, all)
+		return kind, table.pack(play(x, "full", all, x.fid, x.skin))
 	else
 		local viewers = { kp }
 		if x.v.kind == "player" and (x.v.ref :: Player).Parent then table.insert(viewers, x.v.ref) end
@@ -194,12 +206,33 @@ Matches.onEnd(function(m: any, winner: number?)
 	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
 		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "end", classic = m.rules ~= nil })
 	if kind and x.fid and x.skin then
-		if kind == "full" then m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[x.fid]) + 0.3 end
-		play(x, kind, everyone(m), x.fid, x.skin)
+		local all = everyone(m)
+		if kind == "full" then holdFor(m, x.fid, all) end
+		play(x, kind, all, x.fid, x.skin)
 	end
 end)
 
-Players.PlayerRemoving:Connect(function(p) armed[p] = nil end)
+Players.PlayerRemoving:Connect(function(p)
+	armed[p] = nil
+	for m, set in watching do
+		set[p] = nil
+		if next(set) == nil then watching[m] = nil; if type(m.finisherUntil) == "number" then m.finisherUntil = math.min(m.finisherUntil, os.clock() + 0.3) end end
+	end
+end)
+-- a viewer's full cut is over (played to its end, skipped, or never played): once all of a match's are, the end
+-- screen comes on
+R.OnServerEvent:Connect(function(p: Player, msg: any)
+	if type(msg) ~= "table" or msg.t ~= "done" then return end
+	for m, set in watching do
+		if set[p] then
+			set[p] = nil
+			if next(set) == nil then
+				watching[m] = nil
+				if type(m.finisherUntil) == "number" then m.finisherUntil = math.min(m.finisherUntil, os.clock() + 0.3) end
+			end
+		end
+	end
+end)
 
 -- ------------------------------------------------------------------ Studio tests (ServerStorage.JankFinisherTest)
 if RunService:IsStudio() then
@@ -242,7 +275,14 @@ if RunService:IsStudio() then
 			m.wins[team] = if b == "short" then 1 else Matches.WIN
 			local kind, res = onRound(m, team)
 			m.wins[team] = was
-			return { kind = kind, sent = res, viewers = #everyone(m), match = m.id }
+			if d == true and kind == "full" then
+				local t0 = os.clock()
+				task.delay(1.2, function()
+					a:SetAttribute("FinisherTestEnd", ("finish at %.1f s, hold to %.1f s"):format(os.clock() - t0, (m.finisherUntil or t0) - t0))
+					Matches.finish(m, team)
+				end)
+			end
+			return { kind = kind, sent = res, viewers = #everyone(m), match = m.id, hold = if m.finisherUntil then m.finisherUntil - os.clock() else nil }
 		elseif op == "state" then
 			local out = { armed = {}, matches = {} }
 			for p, x in armed do out.armed[p.Name] = x end

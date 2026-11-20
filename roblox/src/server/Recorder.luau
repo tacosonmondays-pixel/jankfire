@@ -269,8 +269,9 @@ end
 -- how long the end screen holds before the play of the match: its usual wait, or longer while a finisher scene that
 -- started at the winning kill is still playing (FinisherServer sets m.finisherUntil, an os.clock time)
 local function potmWait(m: any): number
+	-- (the end screen now waits for the scene - Matches.endMatch - so the play of the match comes its usual wait after it)
 	local hold = if type(m.finisherUntil) == "number" then m.finisherUntil - os.clock() else 0
-	return math.max(Recorder.POTM.wait, hold)
+	return math.max(0, hold) + Recorder.POTM.wait
 end
 
 local function afterHook(m: any): any?
