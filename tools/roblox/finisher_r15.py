@@ -397,11 +397,14 @@ def sheath_line(cf):
 def sheath(cf):
     # the scabbard at the left hip, mouth forward and up, running back and down (Roblox axes of the lower torso)
     a, b, _ = sheath_line(cf)
-    prop_box_between(a, b, 0.22, 0.34, LACQUER, tag='sheath')
     d = (b - a).normalized()
-    prop_box_between(a + d * 0.3, a + d * 0.5, 0.26, 0.38, SKIN, tag='sheath')
-    prop_box_between(b - d * 0.25, b, 0.26, 0.38, GOLD, tag='sheath')
-    return a, d
+    up = Vector((0, 0, 1)) - d * d.z
+    up = up.normalized() * 0.1 if up.length > 1e-3 else Vector((0, 0, 0))
+    a, b = a + up, b + up
+    prop_box_between(a, b, 0.22, 0.4, LACQUER, tag='sheath')
+    prop_box_between(a + d * 0.3, a + d * 0.5, 0.26, 0.44, SKIN, tag='sheath')
+    prop_box_between(b - d * 0.25, b, 0.26, 0.44, GOLD, tag='sheath')
+    return a - up, d
 
 
 KAT_LEN = [1.0]   # the blade's length, x the normal (set per frame; 1 = the skin as it is)
@@ -496,6 +499,17 @@ def draw_preview():
                 continue
             s = SIZE[n]
             bl_box(f"{r['name']}_{n}", s, m, r['col'], bevel=min(s) * 0.2)
+        f = r.get('face') or {}
+        if 'Head' in r['cf']:
+            hd, hs = r['cf']['Head'], SIZE['Head']
+            shut = f.get('LeftEyeClosed', 0.0)
+            wide = f.get('LeftUpperLidRaiser', 0.0)
+            eh = 0.2 * (1 - 0.75 * shut) + 0.08 * wide
+            for x in (-0.2, 0.2):
+                bl_box(f"{r['name']}_eye", (0.13, eh, 0.02), hd @ CF(x, 0.1, -hs[2] / 2 - 0.006), (0.05, 0.05, 0.06))
+                if f.get('LeftBrowLowerer', 0.0) > 0.3:
+                    bl_box(f"{r['name']}_brow", (0.24, 0.05, 0.02), hd @ CF(x * 1.05, 0.1 + eh / 2 + 0.06, -hs[2] / 2 - 0.006) @
+                           ANG(0, 0, 14 if x < 0 else -14), (0.05, 0.05, 0.06))
     for p in PROPS:
         if p.get('tr', 0) >= 0.5:
             continue
@@ -1366,7 +1380,10 @@ LONG_KAT = 6.0   # the gag's blade: six times the skin's
 
 
 RUN = 'mx_ninja_run'        # Mixamo "Female Ninja Run": the lowest, most anime run on Mixamo (torso about 60 deg over)
-DRAWC = 'mx_draw_a'         # Mixamo "Draw Sword 1": the hand goes to the hilt at the left hip and pulls it out
+DRAWC = 'mb_iai_draw'       # the two-hand iai draw (MotionBricks from our Mixamo poses, the owner's gif): hilt in the
+                            # right hand, scabbard in the left, the arms spreading apart as the blade comes out
+DRAW_LEN = 0.93
+IAI_OUT = 0.62             # where the draw stops (the hands 3.5 studs apart, the sword's line still clear of the belly)
 RUN_T = 30 / 24             # the run-up's length (s): long enough to cover the ground, no jump into the pass
 
 
@@ -1390,7 +1407,7 @@ def kat_through(K, a, d):
     # studs past the mouth (the scabbard hides the rest - the long blade's gag)
     grip = wpt(hand_cf(K), (0, 0, 0))
     v = a - grip
-    if v.length < 0.2:
+    if v.length < 0.5:
         KAT_LEN[0] = 1.0
         katana_at_b(a, d)
         return
@@ -1416,48 +1433,88 @@ def grip_sheath():
 
 
 def t_grab():
-    # the moment the draw clip's hand is on the hilt (closest to the scabbard's mouth)
-    if 'tg' not in S_FIX:
+    # (the take opens on 0.1 s of still grip: both hands on the sword at the left hip)
+    return 0.1
+
+
+def mouth_off():
+    # how far the scabbard's mouth sits from the left hand (toward the hilt): set at the grab, where the guard touches
+    # the mouth (0.44 past the grip)
+    if 'm0' not in S_FIX:
         P = run_places()
-        best = (9e9, 0.0)
-        for k in range(26):
-            t = 0.5 * k / 25
-            Kp = peek_rig('k', P['draw_at'], 0, {'clip': (DRAWC, t)})
-            a, b, d = sheath_line(Kp)
-            e = (wpt(hand_cf(Kp), (0, 0, 0)) - (a - d * 0.5)).length
-            if e < best[0]:
-                best = (e, t)
-        S_FIX['tg'] = best[1]
-    return S_FIX['tg']
+        Kg = peek_rig('k', P['draw_at'], 0, {'clip': (DRAWC, t_grab())})
+        S_FIX['m0'] = max(0.2, (Kg['LeftHand'].translation - hand_cf(Kg).translation).length - 0.44)
+    return S_FIX['m0']
 
 
-@shot('tide', 'THE DRAW', 16)
+def hands_sheath(K):
+    # the scabbard held in the left hand: its mouth mouth_off() from that hand toward the right hand (the hilt), the
+    # scabbard running back from the mouth through the left hand - the LowerTorso-space pair sheath_line uses
+    R = hand_cf(K).translation
+    L = K['LeftHand'].translation
+    d = (L - R)
+    d = d.normalized() if d.length > 1e-3 else Vector((-1, 0, 0))
+    m_ = L - d * mouth_off()
+    t_ = m_ + d * 3.3
+    inv = K['LowerTorso'].inverted()
+    return (inv @ Vector((m_.x, m_.y, m_.z, 1)), inv @ Vector((t_.x, t_.y, t_.z, 1)))
+
+
+@shot('tide', 'THE DRAW', 10)
 def tv_draw(i, n):
-    # the owner (20 Nov, their gif of a draw): tight and square on to the hands - the hilt in one, the scabbard in the
-    # other, the guard between them - and the blade drawn out sideways. A beat with the hand on the hilt, then the pull
-    u = i / (n - 1)
+    # the owner (20 Nov, their gif): "a hand on the sheathe and a hand on the blade". The study's opening (Zenitsu's
+    # thunderclap, Zoro's draw): the hands at the sword, broadside and a little high, tight on the guard between them;
+    # the thumb eases the guard out of the mouth over 3 frames, a glint opens in the gap, and it holds
     P = run_places()
     tide_stage(VT[0])
-    tg = t_grab()
-    SHEATH_LOCAL[0] = grip_sheath()
-    t = tg if u < 0.35 else tg + (0.5 - tg) * ease((u - 0.35) / 0.65)
-    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, t)})
+    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, t_grab())})
     rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
+    SHEATH_LOCAL[0] = hands_sheath(K)
     a, b, d = sheath_line(K)
     sheath(K)
-    if u < 0.35:
-        katana_at_b(a - d * (0.12 * ease(u / 0.35)), d)    # the guard eased off the mouth first (the thumb's push)
-    else:
-        kat_through(K, a, d)
+    SHEATH_LOCAL[0] = None
+    push = 0.12 * ease(min(1.0, max(0.0, (i - 3) / 2)))
+    KAT_LEN[0] = 1.0
+    katana_at_b(a - d * push, d)
+    if i >= 4:
+        side_ = d.cross(Vector((0, 0, 1))).normalized()
+        if side_.dot(a - br(K['LowerTorso'].translation)) < 0:
+            side_ = -side_
+        g = a - d * (push * 0.5) + Vector((0, 0, 0.16)) + side_ * 0.12
+        k_ = 1.5 if i == 5 else 0.8
+        prop('Block', (0.04, 0.36 * k_, 0.04), CF(*rb(g)), (1.0, 0.98, 0.94), 'Neon', 'glint')
+        prop('Block', (0.36 * k_, 0.04, 0.04), CF(*rb(g)), (1.0, 0.98, 0.94), 'Neon', 'glint')
     if i == 0:
-        # square on to the scabbard's line at the mouth, at hand height, from the outside
         hips = br(K['LowerTorso'].translation)
         side = d.cross(Vector((0, 0, 1))).normalized()
         if side.dot(a - hips) < 0:
             side = -side
-        S['pos'], S['c'] = a + side * 2.6 + Vector((0, 0, -1.0)) - d * 0.2, a - d * 0.2 + Vector((0, 0, 0.05))
+        c = a + d * 0.35                     # the guard and the scabbard's mouth, the left hand just in
+        S['pos'], S['c'] = c + side * 2.5 + Vector((0, 0, 0.9)), c
+    lens(S['pos'], S['c'], 34, 0)
+
+
+@shot('tide', 'THE PULL', 14)
+def tv_pull(i, n):
+    # the cut to the body (the study: low, front three-quarter, medium): the arms spread along the belt line, the blade
+    # comes out between them over 12 frames, slower than life; a 2-frame hold with more blade out than a katana has
+    u = i / (n - 1)
+    P = run_places()
+    tide_stage(VT[0])
+    tg = t_grab()
+    t = tg + (IAI_OUT - tg) * ease(min(1.0, i / 11))
+    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, t)})
+    rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.0)})
+    SHEATH_LOCAL[0] = hands_sheath(K)
+    a, b, d = sheath_line(K)
+    sheath(K)
+    kat_through(K, a, d)
     SHEATH_LOCAL[0] = None
-    lens(S['pos'], S['c'], 38, 0)
+    if i == 0:
+        Ke = peek_rig('k', P['draw_at'], 0, {'clip': (DRAWC, IAI_OUT)})
+        pts = pts_of(Ke) + [wpt(hand_cf(Ke), (0, 0, 0)), br(Ke['LeftHand'].translation)]
+        S['pos'], S['c'] = aim_lens(pts, 200, -10, 40, 0, mx=0.86, my=0.8, zmin=0.45)
+    lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.95, u), S['c'], 40, 0)
 
 
 @shot('tide', 'IT KEEPS COMING', 14)
@@ -1467,23 +1524,36 @@ def tv_coming(i, n):
     u = i / (n - 1)
     P = run_places()
     tide_stage(VT[0])
-    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, 0.5)})
+    K = rig('k', P['draw_at'], 0, {'clip': (DRAWC, IAI_OUT)})
     rig('v', (0, 0, 0), 180, {'clip': (LOOK, 0.05)})
-    SHEATH_LOCAL[0] = grip_sheath()
+    SHEATH_LOCAL[0] = hands_sheath(K)
     a, b, d = sheath_line(K)
     sheath(K)
     SHEATH_LOCAL[0] = None
-    e = 1.2 + (2.3 * LONG_KAT + 0.6 - 3.0 - 1.2) * (u ** 1.6)
+    if i == 0:
+        S['e0'] = max(1.0, (wpt(hand_cf(K), (0, 0, 0)) - a).length - 0.44)
+    e = S['e0'] + (2.3 * LONG_KAT + 0.6 - 3.0 - S['e0']) * (u ** 1.6)
     KAT_LEN[0] = max(1.0, (e + 3.0 - 0.6) / 2.3)
     katana_at_b(a - d * e, d)
+    km = KATANA[-1]
+    for j in range(40):
+        x = 0.7 + j * 0.85                       # along the blade from the guard (fixed on the blade: it moves with it)
+        out_ = e - x                             # how far this glint is out of the mouth (inside the scabbard if < 0)
+        if out_ < 0.05 or out_ > 4.5:
+            continue
+        prop('Block', (0.1, 0.28, 0.07), km @ CF(0, 0.1, -(0.44 + x)), (1.0, 0.97, 0.95), 'Neon', 'glint')
+    if i >= 2:
+        burst(a - d * 0.15, 6 + i, 1.2, min(1.0, (i - 2) / 9), seed=500 + i, size=0.8, fall=0.4)
     if i == 0:
         # square on to the blade's way out (across the body now: the scabbard runs through the left hand), from in front
         hips = br(K['LowerTorso'].translation)
         side = d.cross(Vector((0, 0, 1))).normalized()
         if side.dot(a - hips) < 0:
             side = -side
-        S['pos'], S['c'] = a + side * 7.5 + Vector((0, 0, -0.4)) - d * 3.2, a - d * 3.2
-    lens(S['pos'], S['c'], 42, 6)
+        S['pos'], S['c'] = a + side * 3.3 + Vector((0, 0, -0.25)) - d * 0.7, a - d * 0.7
+        S['d'] = d
+    drift = -S['d'] * (0.9 * ease(u))
+    lens(S['pos'] + drift, S['c'] + drift, 42, 6)
 
 
 @shot('tide', 'THE LENGTH', 14)
@@ -1567,22 +1637,25 @@ def tv_pass(i, n):
         S['pos'], S['c'] = aim_lens(pts_of(Ke) + pts_of(Ve) + [wpt(hand_cf(Ke), (0, 0, tipz()))], 215, -6, 62, 7,
                                     mx=0.72, my=0.6, zmin=0.5)
     S['pass_look'] = S['c']
+    if i == 0:
+        S_FIX['pass_side'] = tuple(Vector(((S['pos'] - S['c']).x, (S['pos'] - S['c']).y, 0)).normalized())
     lens(S['pos'], S['c'], 64, 7 + 3 * u)
 
 
-@shot('tide', 'CUT FRAME', 3)
+@shot('tide', 'CUT FRAME', 6)
 def tv_cutframe(i, n):
     KAT_LEN[0] = LONG_KAT
     tide_stage(VT[0])
     tv_k(K_START, T_HIT)
     rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35)})
     blade_sweep(SLASH, K_START, 0, T_HIT - 0.35, T_HIT, n=16)
-    # (the hit holds 3 frames; the lens bumps along the cut)
-    lens(S['pos'] + Vector((0, 0.08 * (i + 1), 0)), S['pass_look'], 64, 10)
+    lens(S['pos'], S['pass_look'], 64, 10)
+    if i in (2, 5):
+        return {'impact': dict(IMPACT_TIDE, bg=IMPACT_TIDE['fg'], fg=IMPACT_TIDE['bg'])}
     return {'impact': IMPACT_TIDE}
 
 
-@shot('tide', 'BACK TO BACK', 12)
+@shot('tide', 'BACK TO BACK', 16)
 def tv_backtoback(i, n):
     KAT_LEN[0] = LONG_KAT
     # a held beat: side by side, facing away from each other, nobody looks back; the killer still in the follow-through,
@@ -1593,9 +1666,9 @@ def tv_backtoback(i, n):
     V = rig('v', (0, 0, 0), 180, {'clip': ('bx_18_block_high_center', 0.35 + 0.05 * u)})
     if i == 0:
         kc, vc = br(K['UpperTorso'].translation), br(V['UpperTorso'].translation)
-        S['m'] = (kc + vc) / 2
-        S['pos0'] = S['m'] + Vector((-1.6, 9.5, -0.9))
-    lens(lerpv(S['pos0'], S['m'] + (S['pos0'] - S['m']) * 0.88, ease(u)), S['m'] + Vector((0, 0, 0.1)), 46, 4)
+        m_ = (kc + vc) / 2
+        S['pos'], S['c'] = m_ + Vector((-3.4, 19.5, 0.7)), m_ + Vector((0, 0, 0.1))
+    lens(S['pos'], S['c'], 23, 0)
 
 
 @shot('tide', 'STILLNESS', 16)
@@ -1618,35 +1691,36 @@ def tv_still(i, n):
 def sheathe_at():
     # the draw clip, played backwards, puts the blade away: its last stance stood where the slash take ends
     if 'sh_at' not in S_FIX:
-        S_FIX['sh_at'] = at_for(DRAWC, 0.5, K_BACK, 0)
+        S_FIX['sh_at'] = at_for(DRAWC, IAI_OUT, K_BACK, 0)
     return S_FIX['sh_at']
 
 
-@shot('tide', 'THE SHEATHE', 20)
+@shot('tide', 'THE SHEATHE', 28)
 def tv_sheathe(i, n):
     # slow, close and low on the hands: the long blade goes back through the scabbard's mouth (the scabbard swallows
     # what it can't hold), the guard meets the mouth on the last frame - the click
     u = i / (n - 1)
     tide_stage(VT[0])
-    t = 0.5 - (0.5 - t_grab()) * ease(u)
+    CLICK = 17
+    w = min(1.0, i / CLICK)
+    t = IAI_OUT - (IAI_OUT - t_grab()) * (1 - (1 - w) ** 2.2)
     K = rig('k', sheathe_at(), 0, {'clip': (DRAWC, t)})
-    SHEATH_LOCAL[0] = grip_sheath()
+    SHEATH_LOCAL[0] = hands_sheath(K)
     a, b, d = sheath_line(K)
     sheath(K)
     SHEATH_LOCAL[0] = None
-    if i == n - 1:
+    if i >= CLICK:
+        KAT_LEN[0] = 1.0
         katana_at_b(a, d)
     else:
         kat_through(K, a, d)
+    hips = br(K['LowerTorso'].translation)
+    side = d.cross(Vector((0, 0, 1))).normalized()
+    if side.dot(a - hips) < 0:
+        side = -side
+    c = a - d * 0.5
+    lens(c + side * 2.8 + Vector((0, 0, -0.55)), c + Vector((0, 0, 0.05)), 38, 0)
     rig('v', (0, 0, 0), 180, {'clip': (LOOK, 2.2 + i / FPS)})
-    if i == 0:
-        hips = br(K['LowerTorso'].translation)
-        out = Vector(((a - hips).x, (a - hips).y, 0)).normalized()
-        dv = (out * 0.6 + Vector((0, 1, 0)) * 0.8).normalized()
-        az = math.degrees(math.atan2(dv.x, -dv.y))
-        pts = [a - d * 0.8, a + d * 0.6, br(K['RightHand'].translation), br(K['LeftHand'].translation), br(K['Head'].translation)]
-        S['pos'], S['c'] = aim_lens(pts, az, 6, 44, -6, mx=0.8, my=0.7)
-    lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.9, ease(u)), S['c'], 44, -6)
 
 
 @shot('tide', 'THE CUT LANDS', 14)
@@ -1654,8 +1728,10 @@ def tv_cutlands(i, n):
     s = i / FPS
     tide_stage(VT[0])
     K = rig('k', sheathe_at(), 0, {'clip': (DRAWC, t_grab())})
+    SHEATH_LOCAL[0] = hands_sheath(K)
     a, b, d = sheath_line(K)
     sheath(K)
+    SHEATH_LOCAL[0] = None
     katana_at_b(a, d)
     V = rig('v', (0, 0, 0), 180, {'clip': ('bx_27_hit_stomach', 0.05 + s)})
     if i == 0:
@@ -1700,9 +1776,11 @@ def tv_end(i, n):
     u = i / (n - 1)
     s_ = i / FPS
     tide_stage(VT[0])
-    K = rig('k', sheathe_at(), 0, {'clip': (DRAWC, max(0.0, t_grab() - 0.6 * s_))})
+    K = rig('k', sheathe_at(), 0, {'clip': (DRAWC, t_grab())})
+    SHEATH_LOCAL[0] = hands_sheath(K)
     a, b, d = sheath_line(K)
     sheath(K)
+    SHEATH_LOCAL[0] = None
     katana_at_b(a, d)
     V = rig('v', (0, 0, bounce(s_, 0.6)), 180, {'clip': ('bx_29_knocked_out_back', min(3.6, 1.75 + 1.25 * s_)),
                                                  'scatter': 0.5 * ease((i - 18) / 11) if i > 18 else 0.0})
@@ -1739,7 +1817,7 @@ def dv_keyes(i, n):
     b = max(0.0, 1 - abs(u - 0.55) / 0.14)   # one slow blink in the hold
     K, V = m_dust_rigs(kface=dict(SQUINT, LeftEyeClosed=0.55 + 0.45 * b, RightEyeClosed=0.55 + 0.45 * b))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.24, -3.9 + 0.35 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.3, -0.55, 1))).xyz), 18, 0)
+    lens(br((hd @ Vector((0, 0.17, -3.9 + 0.35 * ease(u), 1))).xyz), br((hd @ Vector((0, 0.2, -0.55, 1))).xyz), 18, 0)
 
 
 @shot('dust', "VICTIM'S EYES", 18)
@@ -1751,7 +1829,7 @@ def dv_veyes(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.38, 0.32 - 0.3 * u, -0.6, 1))).xyz   # the bead of sweat runs down
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.24, -3.9 + 0.3 * u, 1))).xyz), br((hd @ Vector((0, 0.3, -0.55, 1))).xyz), 18, 4)
+    lens(br((hd @ Vector((0, 0.17, -3.9 + 0.3 * u, 1))).xyz), br((hd @ Vector((0, 0.2, -0.55, 1))).xyz), 18, 4)
 
 
 @shot('dust', "KILLER'S HAND", 20)
@@ -1809,7 +1887,7 @@ def dv_eyes2(i, n):
     sq = 0.6 + 0.3 * ease(u)
     K, V = m_dust_rigs(kclip=(DRAW, 0.12), kface=dict(SQUINT, LeftEyeClosed=sq, RightEyeClosed=sq))
     hd = K['Head']
-    lens(br((hd @ Vector((0, 0.26, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.28, -0.55, 1))).xyz), 13, 0)
+    lens(br((hd @ Vector((0, 0.15, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.16, -0.55, 1))).xyz), 13, 0)
 
 
 @shot('dust', 'THEIR EYES', 8)
@@ -1821,7 +1899,7 @@ def dv_veyes2(i, n):
     hd = V['Head']
     q = (hd @ Vector((0.42, -0.1 - 0.1 * u, -0.6, 1))).xyz
     prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
-    lens(br((hd @ Vector((0, 0.26, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.28, -0.55, 1))).xyz), 13, -3)
+    lens(br((hd @ Vector((0, 0.15, -3.0 + 0.15 * u, 1))).xyz), br((hd @ Vector((0, 0.16, -0.55, 1))).xyz), 13, -3)
 
 
 @shot('dust', 'ENEMY REACHES', 8)

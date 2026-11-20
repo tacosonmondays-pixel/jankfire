@@ -17,7 +17,7 @@ FX = {
         # the winner close on the right as the cut lands behind them; speed lines only on the run - no filler streaks)
         'speed': {'RUN-UP': (-1, 0)},
         'flash_after': {'CUT FRAME': 3},
-        'flash_at': {'THE END': (18, 3)},
+        'flash_at': {'THE END': (18, 3), 'RUN-UP': (0, 1)},
         'grey': {},
     },
     'dust': {
@@ -29,11 +29,11 @@ FX = {
         'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34, 'THEIR EYES': 0.34},
         'bars_in': {'OVERHEAD'},   # the letterbox slides in over the opening
         # (the eyes sit high in those frames: moved down into the thin band; the space it leaves is under the top bar)
-        'shift': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3},
+        'shift': {},
         # the tighter look again: punched in on the eyes (zoom, eye centre x, y); EYES AGAIN's own frames had the eyes
         # cut off at the top, so it borrows the end of the first look at the killer's eyes
-        'zoom': {'EYES AGAIN': (1.45, 0.5, 0.2), 'THEIR EYES': (1.4, 0.5, 0.2)},
-        'borrow': {'EYES AGAIN': "KILLER'S EYES", 'THEIR EYES': "VICTIM'S EYES"},   # the eyes in a thin band, thinner each time
+        'zoom': {'EYES AGAIN': (1.3, 0.5, 0.63), 'THEIR EYES': (1.3, 0.5, 0.55)},
+        'borrow': {},   # the eyes in a thin band, thinner each time
     },
 }
 
