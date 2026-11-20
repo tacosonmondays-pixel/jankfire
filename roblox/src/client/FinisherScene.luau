@@ -651,11 +651,16 @@ function Scene.barsIn(s: any): number?
 	local sc = s.scene
 	return sc and sc.ex and sc.ex.barsIn or nil
 end
-local function rehang(sc: any, s: any, f: any, key: string?, cfW: CFrame): CFrame
+local function rehang(sc: any, s: any, f: any, key: string?, cfW: CFrame, fb: any?, a: number?): CFrame
 	if not key or key == "" or not f.an or not f.an[key] then return cfW end
 	local real, k = realAnchor(sc, s, key)
 	if not real then return cfW end
-	local rel = (ORIGIN * cfOf(f.an[key])):Inverse() * cfW
+	-- (between two plan frames the stand-in's point moves on as smoothly as the real body does: blend it the same way.
+	-- Held at frame A, a moving hip jolted the lens back at every plan frame - the owner, 20 Nov: "after the second zoom
+	-- in of the eyes the camera gets really shakey")
+	local pa = cfOf(f.an[key])
+	if fb and a and a > 0 and fb.an and fb.an[key] then pa = pa:Lerp(cfOf(fb.an[key]), a) end
+	local rel = (ORIGIN * pa):Inverse() * cfW
 	return real * (CFrame.new(rel.Position * k) * rel.Rotation)
 end
 
@@ -1340,8 +1345,6 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	if zf then cam.FieldOfView = math.deg(2 * math.atan(math.tan(math.rad(cam.FieldOfView) / 2) / zf)) end
 	cam.Focus = cam.CFrame * CFrame.new(0, 0, -10)
 	if sc.v2 then
-		-- the lens, riding on its body point
-		if A.la then cam.CFrame = rehang(sc, s, A, A.la, cam.CFrame) end
 		-- the bodies (two clips blended where the plan blends, grounded), the afterimages
 		for who, g in { k = s.kg, v = s.vg } do
 			local fa, fb = A[who], Bf[who]
@@ -1357,6 +1360,22 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 				end
 				sc.lowWas[who] = lowestOf(g.model)
 			end
+		end
+		-- the lens, riding on its body point (after the bodies are placed this frame, so it rides where they are now).
+		-- the body's own small moves - a hip sway, the quick draw - shook it frame to frame where the plan's lens holds
+		-- still (measured: 3 degrees back and forth through THE DRAW), so the lens takes the body's offset smoothed
+		-- (0.25 s), set fresh on every cut
+		if A.la then
+			local planCam = cam.CFrame
+			local off = planCam:Inverse() * rehang(sc, s, A, A.la, planCam, if same and Bf.la == A.la then Bf else nil, a)
+			local now = os.clock()
+			if sc.lensShot ~= shot or not sc.lensOff then
+				sc.lensOff = off
+			else
+				sc.lensOff = (sc.lensOff :: CFrame):Lerp(off, 1 - math.exp(-math.max(now - (sc.lensT or now), 0) / 0.25))
+			end
+			sc.lensShot, sc.lensT = shot, now
+			cam.CFrame = planCam * sc.lensOff
 		end
 		ghosts(sc, s, A.g)
 		-- the scabbard's mouth sits where this body's own left hand holds it (measured once the grab's pose shows)
