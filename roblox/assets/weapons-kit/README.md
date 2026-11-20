@@ -52,7 +52,8 @@ and the slot is the colour. A part can have several pieces, one per colour.
 
 | Kind | Guns | Parts of its own |
 |---|---|---|
-| rifle (mag + charging handle) | AR, SMG, Burst, DMR, Auto Shotgun, Redline | body, barrel, mag, charge, grip, sights (sight / fsight / scope / rail) |
+| rifle (mag + charging handle) | AR, SMG, Burst, Auto Shotgun, Redline | body, barrel, mag, charge, grip, sights (sight / fsight / scope / rail) |
+| thumbhole rifle | DMR (the SVD's skeleton stock: its grip is part of the stock, as on the real gun) | body, barrel, mag, charge, stock, sights |
 | bolt action | Sniper | body, barrel, bolt, mag, stock, scope or sight |
 | pump | Shotgun | body, barrel, pump, stock, sights |
 | lever action | Lever Rifle | body, barrel, lever, lhammer, stock, sight |
@@ -90,4 +91,4 @@ Done so far:
 - AR, Sniper, Shotgun, Revolver (place version 1064).
 - The Redline's new charging handle (installing).
 
-The other guns come in batches. Known: the DMR has no grip of its own yet.
+The other guns come in batches.

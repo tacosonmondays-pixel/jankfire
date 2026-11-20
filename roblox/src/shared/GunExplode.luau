@@ -267,7 +267,7 @@ function GunExplode.plan(m: Model): Plan?
 		end
 		local d = math.max(L * 0.16 + proj * 0.4, clear)
 		if base == "hat" then d = L * 0.32 elseif base == "wing" or base == "halo" or base == "crown" then d = L * 0.2 + proj * 0.4 end
-		g.dist = if g.core then 0 else math.min(d, L * 0.7) * (o.dist or 1)
+		g.dist = if g.core then 0 else math.min(d, L * 0.5) * (o.dist or 1) -- (half the gun at most: it stays in the panel)
 		g.step = if g.core then 0 else (o.step or STEP[base] or 4)
 		maxStep = math.max(maxStep, g.step)
 		for _, p in g.parts do table.insert(g.rel, ref:ToObjectSpace(p.CFrame)) end

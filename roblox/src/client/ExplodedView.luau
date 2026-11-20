@@ -25,7 +25,7 @@ local STAGGER, DUR = 0.09, 0.42             -- going apart: each step this much 
 local STAGGER_IN, DUR_IN = 0.035, 0.24      -- coming back: quicker, the last out first in
 local BLUE, GRID = Color3.fromRGB(13, 36, 78), Color3.fromRGB(120, 170, 235)
 local LINE = Color3.fromRGB(235, 244, 255)
-local ZOOM = 1.34                           -- the preview camera's field of view while apart, times what it was
+local ZOOM = 1.45                           -- the preview camera's field of view while apart, times what it was
 
 local function play(name: string) if okS and type(Sfx) == "table" then pcall((Sfx :: any).play, name) end end
 local function ease(x: number): number

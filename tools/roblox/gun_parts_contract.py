@@ -50,6 +50,8 @@ PIVOT_TOL = 0.02   # metres: a moving part's middle may sit this far from the ba
 # the parts each kind of gun must have as its own pieces (any one of a tuple will do)
 TYPES = {
     'rifle':    ['body', 'barrel', 'mag', 'charge', 'grip', ('sight', 'fsight', 'scope', 'rail')],
+    # (a skeleton / thumbhole stock with the grip in it, as on the real SVD: the grip is the stock's)
+    'thumbhole': ['body', 'barrel', 'mag', 'charge', 'stock', ('sight', 'fsight', 'scope', 'rail')],
     'bolt':     ['body', 'barrel', 'bolt', 'mag', 'stock', ('scope', 'sight')],
     'pump':     ['body', 'barrel', 'pump', 'stock', ('sight', 'fsight', 'bead')],
     'lever':    ['body', 'barrel', 'lever', 'lhammer', 'stock', ('sight', 'bead')],
@@ -64,7 +66,7 @@ TYPES = {
     'katana':   ['kat_blade', 'kat_guard', 'kat_tsuka'],
 }
 GUN_TYPE = {
-    'ar': 'rifle', 'smg': 'rifle', 'burst': 'rifle', 'dmr': 'rifle', 'autoshot': 'rifle', 'redline': 'rifle',
+    'ar': 'rifle', 'smg': 'rifle', 'burst': 'rifle', 'dmr': 'thumbhole', 'autoshot': 'rifle', 'redline': 'rifle',
     'sniper': 'bolt', 'shotgun': 'pump', 'lever': 'lever', 'revolver': 'revolver', 'pistol': 'pistol',
     'sawnoff': 'break', 'lmg': 'lmg', 'minigun': 'minigun', 'nailgun': 'nailgun', 'water': 'water', 'akimbo': 'akimbo',
     'katana': 'katana',
