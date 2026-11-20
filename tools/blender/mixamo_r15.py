@@ -168,6 +168,14 @@ if not KEEP_DRIFT and len(poses) > 1:
     mx = sum(o.x for _, o in lined) / n
     mz = sum(o.z for _, o in lined) / n
     poses = [(r, Vector((o.x - mx, o.y, o.z - mz))) for r, o in lined]
+    # (20 Nov, the emotes: --max-sway S scales the hips' sideways and forward travel down to S studs at most, so a dance
+    # that crosses a stage stays on the spot; up and down untouched)
+    if '--max-sway' in argv:
+        S = float(opt('--max-sway', '1.5'))
+        far = max(max(abs(o.x) for _, o in poses), max(abs(o.z) for _, o in poses))
+        if far > S:
+            k = S / far
+            poses = [(r, Vector((o.x * k, o.y, o.z * k))) for r, o in poses]
 
 # ---------------------------------------------------------------- the .rbxmx
 ref = [0]

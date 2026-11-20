@@ -82,6 +82,7 @@ local DESK = {
 	grid = { 20, 20, 840, 720, 196, 236, 12 }, equip = { 20, 800, 300, 64 }, note = { 340, 820, 520, 24, 16 },
 	ring = { cx = 440, cy = 280, R = 196, cell = 100 },
 	emotes = { 20, 560, 840, 190, 131, 190, 10 }, clear = { 336, 812, 170, 40 }, mnote = { 520, 820, 340, 24, 16 },
+	efilter = { 20, 528, 840, 26, 13, 210 },
 	name = { 1160, 880, 700, 54, 18 },
 }
 local PHONE = {
@@ -91,7 +92,8 @@ local PHONE = {
 	panel = { 16, 62, 548, 372 },
 	grid = { 8, 8, 532, 298, 164, 170, 8 }, equip = { 8, 312, 200, 54 }, note = { 218, 330, 322, 20, 12 },
 	row = { x = 8, y = 8, cell = 58, gap = 8 },
-	emotes = { 8, 74, 532, 232, 164, 170, 8 }, clear = { 216, 312, 150, 54 }, mnote = { 376, 330, 164, 20, 12 },
+	emotes = { 8, 100, 532, 206, 164, 170, 8 }, clear = { 216, 312, 150, 54 }, mnote = { 376, 330, 164, 20, 12 },
+	efilter = { 8, 70, 532, 24, 11, 140 },
 	name = { 590, 352, 360, 30, 13 },
 }
 
@@ -390,6 +392,62 @@ local function build(L: any): any
 		c.btn.MouseButton1Click:Connect(function() onPick("emote", id) end)
 		table.insert(M.cards, c)
 	end
+	-- (20 Nov, the owner: "Also we added allllllthe emotes right do it": with this many, a category row and a search over
+	-- the cards; they keep their order, newest first, and their NEW dots. the wheel stays 8 slots. an emote with no R6
+	-- take shows "R15" on its card when your body is R6)
+	do
+		local fb = L.efilter
+		M.filter = { cat = "all", text = "" }
+		local bar = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(fb[1], fb[2]), Size = UDim2.fromOffset(fb[3], fb[4]),
+			ZIndex = 3 }, M.frame)
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Center }, bar)
+		M.chips = {}
+		local function apply()
+			local char = me.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
+			for _, c in M.cards do
+				local i = Flair.info("emote", c.id)
+				local show = i ~= nil and (M.filter.cat == "all" or i.cat == M.filter.cat)
+					and (M.filter.text == "" or string.find(string.lower(i.name), M.filter.text, 1, true) ~= nil)
+				c.btn.Visible = show
+				local r15 = c.btn:FindFirstChild("R15")
+				if r6 and i and not i.anim6 and not r15 then
+					r15 = new("TextLabel", { Name = "R15", BackgroundColor3 = T.CARD, BackgroundTransparency = 0.15, BorderSizePixel = 0,
+						AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(34, 18), Text = "R15",
+						FontFace = T.FONT_BOLD, TextSize = 11, TextColor3 = T.MUTED, ZIndex = 7 }, c.btn)
+					T.corner(r15, 4)
+				end
+				if r15 then r15.Visible = r6 and i ~= nil and not i.anim6 end
+			end
+			for k, b in M.chips do b.TextColor3 = if k == M.filter.cat then T.TEXT else T.DIM end
+		end
+		M.applyFilter = apply
+		local cats = { "all" }
+		for _, k in Flair.EMOTE_CATS do table.insert(cats, k) end
+		for i, k in cats do
+			local b = new("TextButton", { AutoButtonColor = false, Text = if k == "all" then "ALL" else Flair.EMOTE_CAT_NAMES[k],
+				FontFace = T.FONT_BOLD, TextSize = fb[5], TextColor3 = T.DIM, BackgroundColor3 = T.CARD, BackgroundTransparency = 0.25,
+				BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, fb[4]), LayoutOrder = i, ZIndex = 4 }, bar)
+			new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, b)
+			T.corner(b, 6)
+			b.MouseButton1Click:Connect(function() M.filter.cat = k; apply() end)
+			M.chips[k] = b
+		end
+		local box = new("TextBox", { Name = "Search", Text = "", PlaceholderText = "SEARCH", ClearTextOnFocus = false,
+			FontFace = T.FONT_BOLD, TextSize = fb[5], TextColor3 = T.TEXT, PlaceholderColor3 = T.DIM, BackgroundColor3 = T.CARD,
+			BackgroundTransparency = 0.25, BorderSizePixel = 0, Size = UDim2.fromOffset(fb[6], fb[4]), LayoutOrder = 99,
+			TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 4 }, bar)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, box)
+		T.corner(box, 6)
+		box:GetPropertyChangedSignal("Text"):Connect(function()
+			M.filter.text = string.lower(box.Text)
+			apply()
+		end)
+		M.search = box
+		apply()
+	end
 	p, s = at(L.equip)
 	M.equip = button(M.frame, "PUT IN SLOT 1", "main", p, s)
 	M.equip.face.MouseButton1Click:Connect(function() onEquip("emote") end)
@@ -565,6 +623,7 @@ local function refresh()
 	end
 	K.frame.Visible = S.tab == "kill"
 	M.frame.Visible = S.tab == "emote"
+	if M.applyFilter then M.applyFilter() end -- (the R15 tags follow your body; the filter stays as you left it)
 	G.frame.Visible = S.tab == "grapple"
 	-- pets: found or not (a card redraws its pet only when that changes)
 	local P = V.P
