@@ -286,6 +286,108 @@ local function padParts(L: any, O: Vector3, pads: Instance)
 	end
 end
 
+-- a blockout (20 Nov 2026, Jankfield High: the zombies mode tests its gameplay before the kit is in): the layout says
+-- blockout = true and the hit boxes show in their own colours (glass and "c" fences see-through)
+local function blockout(solid: Instance)
+	for _, p in solid:GetChildren() do
+		if not p:IsA("BasePart") then continue end
+		p.Transparency = if not p.CanQuery then 0.75 elseif p.Material == Enum.Material.Glass then 0.55 else 0
+		p.CastShadow = p.Transparency == 0
+	end
+end
+
+-- the zombies mode's markers (roblox/docs/ZOMBIES.md, weapons-port's contract; 20 Nov 2026, Jankfield High): the
+-- layout's zm table into a Folder "ZM" in the arena. Markers are plain invisible Parts the mode reads (CFrame, Size,
+-- attributes); a marker with a front has its LookVector out of the wall toward the player. The doors' Shutters are real
+-- (they block players, zombies and shots until bought; the mode rolls them up)
+local SHUTTER, HOUSING = hex("8b939a"), hex("5d646a")
+local function zmFolder(root: Instance, L: any, O: Vector3): string
+	local Z = L.zm
+	local old = root:FindFirstChild("ZM")
+	if old then old:Destroy() end
+	local zf = Instance.new("Folder"); zf.Name = "ZM"
+	zf:SetAttribute("Label", Z.label); zf:SetAttribute("Start", Z.start)
+	local function v(t: { number }): Vector3 return O + V3(t[1], t[2], t[3]) end
+	local function facing(at: { number }, n: { number }): CFrame
+		local p = v(at)
+		return CFrame.lookAt(p, p + V3(n[1], n[2], n[3]))
+	end
+	local nb = Z.nav
+	marker(zf, "NavBounds", CF(O + V3((nb[1] + nb[4]) / 2, (nb[2] + nb[5]) / 2, (nb[3] + nb[6]) / 2)), V3(nb[4] - nb[1], nb[5] - nb[2], nb[6] - nb[3]))
+	local areas = folder(zf, "Areas")
+	for _, a in Z.areas do
+		local p = marker(areas, a[1], CF(O + V3((a[3] + a[6]) / 2, (a[4] + a[7]) / 2, (a[5] + a[8]) / 2)), V3(a[6] - a[3], a[7] - a[4], a[8] - a[5]))
+		p:SetAttribute("Label", a[2])
+	end
+	local doors = folder(zf, "Doors")
+	for i, d in Z.doors do
+		local m = Instance.new("Model"); m.Name = ("Door%02d_%s_%s"):format(i, d.a, d.b)
+		m:SetAttribute("A", d.a); m:SetAttribute("B", d.b); m:SetAttribute("Price", d.price); m:SetAttribute("Label", d.label)
+		local mn, mx = v(d.min), v(d.max)
+		local s = Instance.new("Part"); s.Name = "Shutter"
+		s.Anchored = true; s.CanCollide = true; s.CanQuery = true; s.CanTouch = true; s.CastShadow = true
+		s.Material = Enum.Material.Metal; s.Color = SHUTTER
+		s.TopSurface = Enum.SurfaceType.Smooth; s.BottomSurface = Enum.SurfaceType.Smooth
+		s.Size = mx - mn; s.CFrame = CF((mn + mx) / 2)
+		s:SetAttribute("Mat", "metal")
+		s.Parent = m
+		-- the housing: the roller's box over the opening, proud of the wall on both sides (look only)
+		local thin = if s.Size.X < s.Size.Z then "x" else "z"
+		local hs = if thin == "x" then V3(2.4, 1.4, s.Size.Z + 0.8) else V3(s.Size.X + 0.8, 1.4, 2.4)
+		local h = Instance.new("Part"); h.Name = "Housing"
+		h.Anchored = true; h.CanCollide = false; h.CanQuery = false; h.CanTouch = false
+		h.Material = Enum.Material.Metal; h.Color = HOUSING
+		h.Size = hs; h.CFrame = CF(V3(s.Position.X, mx.Y + 0.7, s.Position.Z))
+		h.Parent = m
+		m.PrimaryPart = s
+		m.Parent = doors
+	end
+	local wins = folder(zf, "Windows")
+	for i, w in Z.windows do
+		local m = Instance.new("Model"); m.Name = ("Win%02d_%s"):format(i, w.area)
+		m:SetAttribute("Area", w.area); m:SetAttribute("Kind", w.kind)
+		local n = V3(w.n[1], w.n[2], w.n[3])
+		local into = CFrame.lookAt(v(w.at), v(w.at) + n)
+		local b = marker(m, "Boards", into, V3(w.w, w.h, 0.6))
+		marker(m, "Out", CFrame.lookAt(v(w.out), v(w.out) + n), V3(2, 0.4, 2))
+		marker(m, "In", CFrame.lookAt(v(w.inn), v(w.inn) + n), V3(2, 0.4, 2))
+		m.PrimaryPart = b
+		m.Parent = wins
+	end
+	local buys = folder(zf, "WallBuys")
+	for _, b in Z.buys do
+		local p = marker(buys, b.weapon, facing(b.at, b.n), V3(4, 2, 0.2))
+		p:SetAttribute("Weapon", b.weapon); p:SetAttribute("Price", b.price)
+	end
+	local crate = folder(zf, "Crate")
+	for i, c in Z.crates do
+		local p = marker(crate, "Spot", facing(c.at, c.n), V3(2, 0.4, 2))
+		if i == 1 then p:SetAttribute("Start", true) end
+	end
+	marker(zf, "Power", facing(Z.power.at, Z.power.n), V3(1.4, 2, 0.4))
+	marker(zf, "CheatMachine", facing(Z.mach.at, Z.mach.n), V3(3, 0.4, 1))
+	marker(zf, "Voider", facing(Z.voider.at, Z.voider.n), V3(5, 0.4, 1))
+	local colas = folder(zf, "Colas")
+	for _, c in Z.colas do
+		local p = marker(colas, "Cola_" .. c.cola, facing(c.at, c.n), V3(3.3, 0.4, 1))
+		p:SetAttribute("Cola", c.cola)
+	end
+	local ps = folder(zf, "PlayerSpawns")
+	for i, s in Z.spawns do
+		marker(ps, "Spawn" .. i, facing(s, Z.face), V3(2, 0.4, 2))
+	end
+	zf.Parent = root
+	return ("ZM: %d areas, %d doors, %d windows, %d wall buys, %d crate spots, %d colas, %d player spawns"):format(
+		#areas:GetChildren(), #doors:GetChildren(), #wins:GetChildren(), #buys:GetChildren(), #crate:GetChildren(), #colas:GetChildren(), #ps:GetChildren())
+end
+W.zm = function(name: string): string -- (just the ZM folder again, from the layout)
+	local root = workspace.Map:FindFirstChild(name)
+	if not root then return name .. " is not built" end
+	local L = layout(name)
+	if not L.zm then return name .. " has no zm table" end
+	return zmFolder(root, L, L.origin)
+end
+
 function W.clear(name: string): string
 	local old = workspace.Map:FindFirstChild(name)
 	if old then old:Destroy() end
@@ -322,6 +424,8 @@ function W.build(name: string): string
 	root.WorldPivot = at
 	root.Parent = workspace.Map
 	hitBoxes(L, O, solid)
+	if L.blockout then blockout(solid) end
+	local zmNote = if L.zm then zmFolder(root, L, O) else nil
 	wallBox(root, L, O)
 	padParts(L, O, pads)
 	for i, s in L.spawns do -- plain parts (SpawnLocations would join Roblox's own spawning)
@@ -377,9 +481,10 @@ function W.build(name: string): string
 			nb += 1
 		end end end
 	end
-	if nm == 0 then return "built " .. name .. " WITHOUT its kit (run W.import first)" end
-	return ("built %s at %s: %d kit models, %d hit boxes, %d pads, %d spawns, %d team spawns, %d water, %d lights, %d backdrop parts"):format(
-		name, tostring(O), nm, #L.solid + #(L.solidR or {}), #L.pads, #L.spawns, #team:GetChildren(), #L.water, #L.lights, nb)
+	local zmText = if zmNote then "; " .. zmNote else ""
+	if nm == 0 then return "built " .. name .. (if L.blockout then " as a BLOCKOUT (no kit)" else " WITHOUT its kit (run W.import first)") .. zmText end
+	return ("built %s at %s: %d kit models, %d hit boxes, %d pads, %d spawns, %d team spawns, %d water, %d lights, %d backdrop parts%s"):format(
+		name, tostring(O), nm, #L.solid + #(L.solidR or {}), #L.pads, #L.spawns, #team:GetChildren(), #L.water, #L.lights, nb, zmText)
 end
 
 -- just the hit boxes again, from the layout (the kit, the lights and everything set on the arena by hand stay: the Gut's
@@ -394,8 +499,10 @@ function W.solid(name: string): string
 	local solid = folder(root, "Solid")
 	solid.Parent = nil
 	hitBoxes(L, O, solid)
+	if L.blockout then blockout(solid) end
 	if old then old:Destroy() end
 	solid.Parent = root
+	if L.zm then zmFolder(root, L, O) end
 	wallBox(root, L, O)
 	-- (and the pads again: 18 Nov 2026, the open roofs brought new ones)
 	local oldPads = root:FindFirstChild("Pads")
