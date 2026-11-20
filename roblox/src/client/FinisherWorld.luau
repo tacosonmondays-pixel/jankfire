@@ -395,8 +395,8 @@ STEP.hellgate = function(r, t, dt)
 		s.h = highlight(r, RED, ORANGE)
 		-- the cracks: dark lines, and the same lines glowing orange inside them
 		local grow = ns(0, BH * 0.3, 0.16, BH * 1.05, 1, BH * 1.1)
-		flat(r, TEX.crack, C(36, 20, 14), grow, 1.85, 0, { Transparency = ns(0, 0, 0.85, 0, 1, 1), ZOffset = 0 }):Emit(1)
-		flat(r, TEX.crack, C(255, 120, 40), grow, 1.85, 1, { Brightness = 2.5, Transparency = ns(0, 0.2, 0.85, 0.3, 1, 1), ZOffset = 0.5 }):Emit(1)
+		flat(r, TEX.crack, C(36, 20, 14), grow, 1.75, 0, { Transparency = ns(0, 0, 0.8, 0, 1, 1), ZOffset = 0 }):Emit(1)
+		flat(r, TEX.crack, C(255, 120, 40), grow, 1.75, 1, { Brightness = 2.5, Transparency = ns(0, 0.2, 0.8, 0.3, 1, 1), ZOffset = 0.5 }):Emit(1)
 		-- the fire wall: flames up from a ring round the body
 		s.ring = part(r, Vector3.new(BH * 1.3, 0.3, BH * 1.3), floorAt(r, r.y0 + 0.15))
 		s.flames = emitter(r, s.ring, { Texture = TEX.flame, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4,
@@ -437,6 +437,10 @@ STEP.hellgate = function(r, t, dt)
 	-- the rim flames flare to about 0.8 body heights as the hole closes (1.35-1.6), then stop; none left by 1.75
 	local flare = t > 1.35 and t < 1.6
 	s.flames.Speed = if flare then NR(BH * 1.7, BH * 2.1) else NR(6, 9)
+	if flare ~= s.flaring then -- (the flare's flames are 2.5x as big: the flipbook's flame fills only part of its frame)
+		s.flaring = flare
+		s.flames.Size = if flare then ns(0, BH * 0.45, 0.5, BH * 0.6, 1, BH * 0.2) else ns(0, 1.4, 0.5, 2.0, 1, 0.7)
+	end
 	if t > 0.3 and t < 1.6 then pour(r, "f", s.flames, if flare then 95 else 55, dt); end
 	if t > 0.3 and t < 1.5 then pour(r, "e", s.embers, 16, dt) end
 	if not s.flamesOff and t >= 1.75 then s.flamesOff = true; s.flames:Clear() end
@@ -446,12 +450,12 @@ STEP.hellgate = function(r, t, dt)
 	if not s.plume and t >= 1.45 then
 		local floorY0 = r.y0 + 0.1
 		s.plume = part(r, Vector3.new(BH * 0.4, 0.2, BH * 0.4), floorAt(r, floorY0))
-		local up = BH * 5.4 -- (with gravity BH*3, a 0.35 s streak tops out about 1.7-1.9 body heights up)
-		s.plumeE = emitter(r, s.plume, { Texture = TEX.streak, Color = cs(0, C(14, 6, 5), 0.35, C(122, 14, 10), 1, C(255, 138, 58)),
-			LightEmission = 0.8, Brightness = 2.4, Orientation = Enum.ParticleOrientation.VelocityParallel,
-			Size = ns(0, BH * 0.26, 1, BH * 0.2), Transparency = ns(0, 0, 0.75, 0.15, 1, 1), Lifetime = NR(0.3, 0.38), Rotation = NR(90),
+		local up = BH * 7 -- (with gravity BH*5: 1 body height up by 0.15 s, about 1.9 by 0.3 s)
+		s.plumeE = emitter(r, s.plume, { Texture = TEX.spark, Color = cs(0, C(255, 138, 58), 0.25, C(122, 14, 10), 1, C(58, 8, 6)),
+			LightEmission = 0.1, LightInfluence = 0, Brightness = 1, Orientation = Enum.ParticleOrientation.VelocityParallel,
+			Size = ns(0, BH * 0.28, 1, BH * 0.22), Transparency = ns(0, 0, 0.6, 0.1, 1, 1), Lifetime = NR(0.28, 0.34), Rotation = NR(90),
 			Speed = NR(up * 0.9, up * 1.1), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(17, 17),
-			Acceleration = Vector3.new(0, -BH * 3, 0) })
+			Acceleration = Vector3.new(0, -BH * 5, 0) })
 		s.plumeE:Emit(many(26))
 		emitter(r, s.plume, { Texture = TEX.spark, Color = cs(C(12, 8, 7)), LightEmission = 0, Orientation = Enum.ParticleOrientation.VelocityParallel,
 			Size = ns(0, BH * 0.1, 1, BH * 0.05), Transparency = ns(0, 0, 0.8, 0.1, 1, 1), Lifetime = NR(0.3, 0.38), Speed = NR(up * 0.7, up * 0.95),
@@ -460,9 +464,9 @@ STEP.hellgate = function(r, t, dt)
 		-- the column: two soft beams from the floor to 1.5 body heights (a wide dim one, a narrower brighter core)
 		local base = Vector3.new(r.centre.X, floorY0, r.centre.Z)
 		s.col = {}
-		for _, q in { { BH * 0.75, 1.3, C(170, 40, 16) }, { BH * 0.32, 2.2, C(226, 92, 36) } } do
+		for _, q in { { BH * 0.75, 1.2, C(122, 14, 10), 0.35 }, { BH * 0.25, 1.4, C(176, 48, 20), 0.6 } } do
 			local bm, a0, a1 = beam(r, base, base + Vector3.new(0, BH * 1.5, 0), TEX.glow, q[3], q[1])
-			bm.Brightness = q[2]; bm.Segments = 4
+			bm.Brightness = q[2]; bm.Segments = 4; bm.LightEmission = q[4]
 			table.insert(s.col, bm)
 		end
 		s.ash = emitter(r, s.plume, { Texture = TEX.glow, Color = cs(C(255, 160, 80), C(150, 40, 14)), LightEmission = 1, Brightness = 2.5,
@@ -476,7 +480,7 @@ STEP.hellgate = function(r, t, dt)
 		-- 0.25 s: full at 1.45-1.52, then fading from the top down until 1.7
 		local g = seg(t, 1.5, 1.7)
 		for _, bm in s.col do
-			bm.Transparency = ns(0, lerp(0.25, 1, smooth(seg(g, 0.35, 1))), 0.5, lerp(0.3, 1, smooth(seg(g, 0.15, 0.8))), 1, lerp(0.5, 1, smooth(seg(g, 0, 0.5))))
+			bm.Transparency = ns(0, lerp(0.4, 1, smooth(seg(g, 0.35, 1))), 0.5, lerp(0.45, 1, smooth(seg(g, 0.15, 0.8))), 1, lerp(0.6, 1, smooth(seg(g, 0, 0.5))))
 		end
 	end
 end
@@ -775,7 +779,15 @@ STEP.inkfall = function(r, t, dt)
 			if v == nil then v = (r.base[p].Position - mid):Dot(n) > 0 end
 			s.top[p] = v
 		end
-		s.mid = mid + c.LookVector * 0.6
+		-- (the cut's ink sits just in front of the body's front, measured, so the body never hides it)
+		local L = c.LookVector
+		local front = 0.3
+		for _, p in r.parts do
+			local q = r.base[p]
+			local h = p.part.Size * 0.5
+			front = math.max(front, (q.Position - mid):Dot(L) + math.abs(q.RightVector:Dot(L)) * h.X + math.abs(q.UpVector:Dot(L)) * h.Y + math.abs(q.LookVector:Dot(L)) * h.Z)
+		end
+		s.mid = mid + L * (front + 0.12)
 		-- (the petals spray from along the stroke)
 		s.ep = part(r, Vector3.new(BH * 1.5, BH * 0.3, 0.4), CFrame.fromMatrix(mid, s.dir, n))
 		s.petals = emitter(r, s.ep, { Texture = TEX.petal, Color = cs(C(246, 193, 207), C(229, 143, 168)), LightEmission = 0.4, LightInfluence = 0.3,
@@ -825,27 +837,29 @@ STEP.inkfall = function(r, t, dt)
 	-- (0.5 body heights); the top face rides with the top half
 	if not s.edge and t >= 0.5 then
 		s.edge = {}
+		s.edgeRot = CFrame.fromMatrix(Vector3.zero, s.dir, s.cut.UpVector)
 		for face = 1, 2 do
-			local a, b = s.mid - s.dir * BH * 0.25, s.mid + s.dir * BH * 0.25
-			local gm, g0, g1 = beam(r, a, b, TEX.glow, PINK, BH * 0.14)
-			gm.Brightness = 1.4; gm.ZOffset = -0.3
-			local bm, a0, a1 = beam(r, a, b, TEX.tracer, INK, BH * 0.035)
-			bm.LightEmission = 0; bm.Brightness = 1
-			table.insert(s.edge, { face = face, bm = bm, gm = gm, ends = { a0, a1, g0, g1 }, a = a, b = b })
+			local glow = prop(r, Enum.PartType.Block, Vector3.new(BH * 0.5, BH * 0.075, 0.04), PINK, Enum.Material.Neon)
+			local ink = prop(r, Enum.PartType.Block, Vector3.new(BH * 0.47, BH * 0.035, 0.04), INK)
+			table.insert(s.edge, { face = face, glow = glow, ink = ink })
 		end
 	end
 	if s.edge then
 		local v = smooth(seg(t, 0.5, 0.6)) * (1 - smooth(seg(t, 0.9, 1.0)))
 		local rot = CFrame.fromAxisAngle(axis, turn)
-		local function moved(x: Vector3): Vector3
-			return pivot + rot * (x - pivot) + s.dir * slide + s.cut.UpVector * BH * 0.06 * smooth(seg(t, 0.55, 0.7)) - Vector3.new(0, BH * 0.18 * smooth(seg(t, 0.7, 0.95)), 0)
-		end
+		local look = s.cut.LookVector
 		for _, q in s.edge do
-			local a, b = q.a, q.b
-			if q.face == 2 then a, b = moved(a), moved(b) end
-			q.ends[1].WorldPosition = a; q.ends[2].WorldPosition = b; q.ends[3].WorldPosition = a; q.ends[4].WorldPosition = b
-			q.bm.Transparency = ns(0, 1, 0.15, lerp(1, 0.05, v), 0.85, lerp(1, 0.05, v), 1, 1)
-			q.gm.Transparency = NumberSequence.new(lerp(1, 0.35, v))
+			local cf = CFrame.new(s.mid) * s.edgeRot
+			if q.face == 2 then
+				local pos = pivot + rot * (s.mid - pivot) + s.dir * slide + s.cut.UpVector * BH * 0.06 * smooth(seg(t, 0.55, 0.7)) - Vector3.new(0, BH * 0.18 * smooth(seg(t, 0.7, 0.95)), 0)
+				cf = CFrame.new(pos) * rot * s.edgeRot
+			end
+			-- (the face the cut belongs to: the bottom half's ink sits on its top edge, the top half's on its bottom edge)
+			local off = s.cut.UpVector * BH * (if q.face == 1 then -0.02 else 0.02)
+			q.glow.CFrame = cf + off - look * 0.02
+			q.ink.CFrame = cf + off + look * 0.02
+			q.glow.Transparency = if v > 0.05 then 0.15 + 0.85 * (1 - v) else 1
+			q.ink.Transparency = if v > 0.05 then 1 - v else 1
 		end
 	end
 	fadeAll(r, smooth(seg(t, 0.98, 1.12)))
@@ -911,8 +925,8 @@ STEP.warpout = function(r, t, dt)
 	if not s.inside and t >= 0.3 then
 		s.inside = true
 		local rp = part(r, Vector3.new(s.R * 1.1, s.R * 1.1, 0.1), s.mouthCF * CFrame.new(0, 0, -0.3))
-		emitter(r, rp, { Texture = TEX.sparkle, Color = cs(WHITE), LightEmission = 1, Brightness = 2, Size = ns(0, 0, 0.3, 0.18, 0.9, 0.18, 1, 0),
-			Transparency = ns(0, 0.2, 1, 0.4), Lifetime = NR(0.85), Speed = NR(0), ZOffset = 0.5 }):Emit(18)
+		emitter(r, rp, { Texture = TEX.sparkle, Color = cs(WHITE), LightEmission = 1, Brightness = 3, Size = ns(0, 0, 0.3, 0.3, 0.9, 0.3, 1, 0),
+			Transparency = ns(0, 0.1, 1, 0.3), Lifetime = NR(0.85), Speed = NR(0), ZOffset = 0.5, Rotation = NR(0, 90) }):Emit(20)
 		-- a slow teal swirl in the window
 		local sw = part(r, Vector3.new(0.2, 0.2, 0.2), s.mouthCF * CFrame.new(0, 0, -0.2))
 		emitter(r, sw, { Texture = TEX.arc, Color = cs(TEAL), LightEmission = 0.7, Brightness = 1.2, Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
@@ -982,7 +996,7 @@ STEP.lanternlight = function(r, t, dt)
 		s.a0 = math.atan2(fl.Z, fl.X) -- (the ribs turned so two of them meet down the middle of the face)
 		s.ribs = {}
 		for i = 1, 8 do
-			local p = prop(r, Enum.PartType.Block, Vector3.new(1, 1, 1), if i % 2 == 0 then C(232, 118, 36) else C(212, 100, 30))
+			local p = prop(r, Enum.PartType.Block, Vector3.new(1, 1, 1), if i % 2 == 0 then C(246, 134, 42) else C(230, 116, 34))
 			local m = Instance.new("SpecialMesh"); m.MeshType = Enum.MeshType.Sphere; m.Parent = p
 			table.insert(s.ribs, { p = p, a = s.a0 + (i - 0.5) / 8 * math.pi * 2 })
 		end
