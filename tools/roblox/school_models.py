@@ -21,7 +21,7 @@ VARIANT = ([f.split('=', 1)[1] for f in K.FLAGS if f.startswith('--variant=')] o
 V2 = VARIANT in ('v2A', 'v2B')
 _VNAME = {'v1': 'JankfieldHigh', 'v2A': 'JankfieldHighV2A', 'v2B': 'JankfieldHighV2B'}[VARIANT]
 LAYOUT = os.path.normpath(os.path.join(K.HERE, '..', '..', 'roblox', 'studio-tools', _VNAME + 'Layout.luau'))
-INFO = dict(name=_VNAME, title={'v1': 'JANKFIELD HIGH', 'v2A': 'JANKFIELD HIGH (OLD)', 'v2B': 'JANKFIELD HIGH (NEW)'}[VARIANT],
+INFO = dict(name=_VNAME, title={'v1': 'JANKFIELD HIGH', 'v2A': 'JANKFIELD HIGH (OLD)', 'v2B': 'JANKFIELD HIGH'}[VARIANT],   # (v2B: the owner's pick, 20 Nov)
             look={'v1': 'school', 'v2A': 'school_v2a', 'v2B': 'school_v2b'}[VARIANT], mapId='school',
             kit={'v1': 'school', 'v2A': 'school2a', 'v2B': 'school2b'}[VARIANT],
             origin=(0, 0, {'v1': -66000, 'v2A': -72000, 'v2B': -78000}[VARIANT]), killY=-60, centreX=0, maxTeam=0,
@@ -98,7 +98,7 @@ def zm_luau():
     Z = L.ZM
     q = lambda s: '"%s"' % s.replace('"', '\\"')
     o = ['\t-- the zombies mode\'s markers (roblox/docs/ZOMBIES.md): WebArena builds the ZM folder from this. Local studs.',
-         '\tzm = {', '\t\tlabel = %s, start = %s,' % (q(Z['label'] + {'v1': '', 'v2A': ' (old)', 'v2B': ' (new)'}[VARIANT]), q(Z['start'])),
+         '\tzm = {', '\t\tlabel = %s, start = %s,' % (q(Z['label'] + {'v1': '', 'v2A': ' (old)', 'v2B': ''}[VARIANT]), q(Z['start'])),
          '\t\tnav = %s,' % vec(Z['nav']),
          '\t\t-- areas: { id, label, x0, y0, z0, x1, y1, z1 }', '\t\tareas = {']
     for a in Z['areas']:
