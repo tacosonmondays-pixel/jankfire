@@ -830,25 +830,30 @@ do
 		local P = kindPage.CONTAINERS
 		local which = "crate"
 		local cBtn: { [string]: TextButton } = {}
-		for i, id in { "crate", "bag", "spray" } do
+		-- (the Crate, the Duffel Bag and the six spray sets, four to a row, 20 Nov. the first Spray Can isn't given any more)
+		local kinds = LootTable.SOLD or { "crate", "bag", "spray" }
+		local CW = math.floor((KW - 30) / 4)
+		for i, id in kinds do
 			local c = LootTable.CONTAINERS[id]
-			cBtn[id] = button(P, "C_" .. id, string.upper(c.name), UDim2.fromOffset((i - 1) * 150, 0), 140, 34)
+			local word = if c.base == "spray" then string.upper(c.set) else string.upper(c.name)
+			cBtn[id] = button(P, "C_" .. id, word, UDim2.fromOffset(((i - 1) % 4) * (CW + 10), math.floor((i - 1) / 4) * 40), CW, 34)
 		end
+		local DY = 40 * (math.ceil(#kinds / 4) - 1) -- (the rows past the first push the rest down)
 		local function drawC() for id, b in cBtn do lit(b, id == which) end end
 		for id, b in cBtn do b.Activated:Connect(function() which = id; drawC() end) end
 		drawC()
-		label(P, "HowMany", "HOW MANY (1 TO 999)", 0, 54, 200)
-		local nBox = box(P, "Count", "1", UDim2.fromOffset(40, 76), 90)
-		local minus = button(P, "Minus", "-", UDim2.fromOffset(0, 76), 32)
-		local plus = button(P, "Plus", "+", UDim2.fromOffset(138, 76), 32)
+		label(P, "HowMany", "HOW MANY (1 TO 999)", 0, 54 + DY, 200)
+		local nBox = box(P, "Count", "1", UDim2.fromOffset(40, 76 + DY), 90)
+		local minus = button(P, "Minus", "-", UDim2.fromOffset(0, 76 + DY), 32)
+		local plus = button(P, "Plus", "+", UDim2.fromOffset(138, 76 + DY), 32)
 		local function n(): number return math.clamp(math.floor(tonumber(nBox.Text) or 1), 1, 999) end
 		minus.Activated:Connect(function() nBox.Text = tostring(math.max(1, n() - 1)) end)
 		plus.Activated:Connect(function() nBox.Text = tostring(math.min(999, n() + 1)) end)
 		for i, q in { 1, 5, 10, 50, 100 } do
-			local b = button(P, "Q" .. q, tostring(q), UDim2.fromOffset(186 + (i - 1) * 50, 76), 44)
+			local b = button(P, "Q" .. q, tostring(q), UDim2.fromOffset(186 + (i - 1) * 50, 76 + DY), 44)
 			b.Activated:Connect(function() nBox.Text = tostring(q) end)
 		end
-		local go = button(P, "Give", "GIVE", UDim2.fromOffset(0, 124), 170, 34)
+		local go = button(P, "Give", "GIVE", UDim2.fromOffset(0, 124 + DY), 170, 34)
 		lit(go, true)
 		go.Activated:Connect(function()
 			local c = LootTable.CONTAINERS[which]

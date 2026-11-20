@@ -127,8 +127,8 @@ end
 -- ---------------------------------------------------------------- rarities (the opening's muted colours, LootTable.RARITY;
 -- the loadout's Roster.RARITY if the loot module isn't there)
 Shop.RARITY = if LootTable and LootTable.RARITY then LootTable.RARITY else Roster.RARITY
-Shop.RARITY_ORDER = { "free", "common", "rare", "epic", "legendary" }
-local RANK = { free = 0, common = 1, rare = 2, epic = 3, legendary = 4, vip = 5 }
+Shop.RARITY_ORDER = { "free", "common", "rare", "epic", "legendary", "exotic" }
+local RANK = { free = 0, common = 1, rare = 2, epic = 3, legendary = 4, exotic = 5, vip = 6 }
 function Shop.rank(r: string): number return RANK[r] or 0 end
 -- the VIP pack's own rarity colour (the player cards' VIP gold): a VIP thing reads "VIP", not a rarity
 Shop.VIP_COLOR = Color3.fromRGB(255, 208, 72)
@@ -220,6 +220,17 @@ Shop.MONEY.coinPrices = {
 	},
 	containers = { crate = 900, bag = 600, spray = 500 },
 }
+-- (the spray sets, 20 Nov 2026: each can at the first Spray Can's prices, Robux and coins. their tickets and coins to
+-- redeem are QuestData.PRICES'; their products are in Shop.PRODUCTS)
+do
+	local rc, cc = Shop.MONEY.containers :: any, Shop.MONEY.coinPrices.containers :: any
+	for _, id in (if LootTable and type(LootTable.SPRAY_SETS) == "table" then LootTable.SPRAY_SETS else {}) :: { string } do
+		rc[id] = rc.spray; cc[id] = cc.spray
+	end
+end
+-- (Exotic, 20 Nov: the moving wraps. priced as a Legendary for now, so no price moved: a single, a bundle's worth)
+for _, t in Shop.MONEY.singles :: any do t.exotic = t.legendary end
+for _, t in Shop.MONEY.coinPrices.singles :: any do t.exotic = t.legendary end
 -- an offer's coin price in the coins-only shop (n containers), or nil: not sold for coins
 function Shop.coinPrice(o: any, n: number?, missing: number?): number?
 	if type(o) ~= "table" then return nil end
@@ -228,6 +239,7 @@ function Shop.coinPrice(o: any, n: number?, missing: number?): number?
 		local t = cp.singles[o.kind]
 		return if t then t[o.rarity] else nil
 	elseif o.type == "container" then
+		if o.legacy then return nil end -- (the first Spray Can: not sold any more)
 		local c = cp.containers[o.id]
 		return if c then c * (n or 1) else nil
 	elseif o.type == "bundle" and not o.weapons and type(o.items) == "table" then
@@ -456,9 +468,23 @@ Shop.containers = {
 		blurb = "One weapon skin you don't have yet.", pool = "weapon skins" },
 	{ id = "bag", type = "container", name = "Duffel Bag", rarity = "rare", robux = Shop.MONEY.containers.bag, productId = nil,
 		blurb = "One hat you don't have yet, for one gun.", pool = "hats" },
-	{ id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = Shop.MONEY.containers.spray, productId = nil,
-		blurb = "One wrap you don't have yet, for one gun.", pool = "wraps" },
 } :: { Offer }
+-- the spray sets (the owner, 20 Nov 2026: "can you divide the sprays into different sets?"): a Spray Can each, its wraps
+-- the set's (LootTable.SPRAY_SETS); then the first Spray Can (every wrap): legacy, never sold, kept so the ones in saves
+-- show in INVENTORY and open. boxSet / label: the set's name (CASE 1, DUFFEL BAG SET 1, COSMIC SET) and the name with
+-- it on one line, the loot module's
+for _, id in (if LootTable and type(LootTable.SPRAY_SETS) == "table" then LootTable.SPRAY_SETS else {}) :: { string } do
+	local c = LootTable.CONTAINERS[id]
+	table.insert(Shop.containers, { id = id, type = "container", name = c.name, rarity = "common", robux = Shop.MONEY.containers.spray,
+		productId = nil, blurb = "One wrap from the " .. c.set .. " you don't have yet, for one gun.", pool = "wraps", spray = true } :: any)
+end
+table.insert(Shop.containers, { id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = Shop.MONEY.containers.spray,
+	productId = nil, blurb = "One wrap you don't have yet, for one gun.", pool = "wraps", legacy = true } :: any)
+for _, o in Shop.containers do
+	local c = LootTable and LootTable.CONTAINERS[o.id]
+	local x = o :: any
+	if c then x.boxSet = c.set; x.label = c.label end
+end
 -- (the Duffel Bag also holds the player card's looks and the kill effects and emotes, once the loot module keeps them)
 do
 	local kept: { [string]: boolean } = {}
@@ -979,6 +1005,7 @@ function Shop.onSale(id: string, t: number?): boolean
 	if o.type == "pass" then return false end -- (VIP isn't bought through the till: Vip.luau, the game pass)
 	if (o :: any).weapons and (not Shop.weaponBundlesOn() or Shop.coinsOnly()) then return false end -- (the weapon bundles: coins in the armory now, never the shop's Robux)
 	if o.type == "vipgift" and not Shop.giftsOn() then return false end -- (VIP as a gift: the gifts' switch)
+	if (o :: any).legacy then return false end -- (the first Spray Can: not sold any more, 20 Nov)
 	if o.type ~= "single" then return true end
 	local now = t or os.time()
 	if table.find(Shop.rotation(Shop.day(now)).daily, id) then return true end
@@ -1176,6 +1203,13 @@ Shop.PRODUCTS = {
 	-- (and in fives and tens, made 19 Nov 2026: every count has its Robux price beside its coin price)
 	["crate:5"] = 3733759267, ["crate:10"] = 3733759286, ["bag:5"] = 3733759307, ["bag:10"] = 3733759328,
 	["spray:5"] = 3733759347, ["spray:10"] = 3733759369,
+	-- (the spray sets, made 20 Nov 2026, one, five and ten each. the first Spray Can's three above stay for late receipts)
+	spraycosmic = 3734017670, ["spraycosmic:5"] = 3734017731, ["spraycosmic:10"] = 3734017737,
+	sprayjapan = 3734017743, ["sprayjapan:5"] = 3734017756, ["sprayjapan:10"] = 3734017761,
+	sprayluxe = 3734017820, ["sprayluxe:5"] = 3734017829, ["sprayluxe:10"] = 3734017837,
+	spraywild = 3734017844, ["spraywild:5"] = 3734017857, ["spraywild:10"] = 3734017866,
+	spraydiner = 3734017939, ["spraydiner:5"] = 3734017949, ["spraydiner:10"] = 3734017956,
+	sprayoffice = 3734017965, ["sprayoffice:5"] = 3734017974, ["sprayoffice:10"] = 3734017983,
 	-- (bundles)
 	bundle_nightshift = 3733200745, bundle_fieldissue = 3733200855, bundle_teahouse = 3733200884,
 	bundle_deepspace = 3733200908, bundle_machineshop = 3733201016, bundle_quarry = 3733201039,
@@ -1225,6 +1259,13 @@ for key, pid in Shop.PRODUCTS do
 	end
 end
 -- a container's product for n at once: one ("crate"), or the five and ten packs ("crate:5"); nil for another count
+-- a container's family for its model ("spray" for every Spray Can), and a copy of it painted in its set's colour (20 Nov)
+function Shop.boxBase(id: string): string
+	return if LootTable and type(LootTable.base) == "function" then LootTable.base(id) else id
+end
+function Shop.boxTint(m: Instance, id: string)
+	if LootTable and type(LootTable.tint) == "function" then LootTable.tint(m, id) end
+end
 function Shop.containerProduct(cid: string, n: number?): number?
 	local k = math.floor(n or 1)
 	local pid = Shop.PRODUCTS[if k > 1 then cid .. ":" .. k else cid]

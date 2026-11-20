@@ -6,7 +6,8 @@
 --          (ReplicatedStorage.JankfireSkins.<id>); until then the crate is "coming soon".
 --   bag:   the Duffel Bag: hats (live), kill effects and emotes (Flair, live), the player card's looks (CardStyles),
 --          effects and grapples (not on Roblox yet).
---   spray: the Spray Can (the web game's Box): wraps (live), sprays (not on Roblox yet).
+--   spray sets (20 Nov 2026): six Spray Cans, each a themed set of wraps (L.SPRAY_SETS). the first Spray Can, "spray",
+--          held every wrap: unopened ones still open from that whole pool, but it isn't sold or given any more.
 -- free items are owned by everyone and never roll; `ach` items (achievement rewards) are never in a container.
 -- a wrap or a hat is won for ONE gun (the owner, 16 Nov): what you own is (cosmetic, gun) pairs, "galaxy@ar". a roll
 -- never gives a pair you already own: a rarity by weight among the rarities you still have a pair left in, a gun evenly
@@ -20,16 +21,19 @@ local GunHatData = require(Shared:WaitForChild("GunHatData")) :: any
 
 local L = {}
 
-L.KINDS = { "crate", "bag", "spray" }
+L.KINDS = {} :: { string } -- (every container id: filled in with L.CONTAINERS below)
 
 -- the web game's weights; the colours are ours (muted, the serious look), in the web game's order of hues
-L.RARITY_ORDER = { "common", "rare", "epic", "legendary" }
+L.RARITY_ORDER = { "common", "rare", "epic", "legendary", "exotic" }
 L.RARITY = {
 	free = { name = "Free", weight = 0, color = Color3.fromRGB(150, 156, 166) },
 	common = { name = "Common", weight = 55, color = Color3.fromRGB(122, 178, 104) },
 	rare = { name = "Rare", weight = 28, color = Color3.fromRGB(78, 150, 226) },
 	epic = { name = "Epic", weight = 13, color = Color3.fromRGB(162, 108, 226) },
 	legendary = { name = "Legendary", weight = 4, color = Color3.fromRGB(240, 178, 52) },
+	-- (20 Nov 2026, the owner: "If theyre animated theyre exotic rarity": the wraps whose pattern moves, Roster.EXOTIC.
+	-- 1 to the others' 100: in a spray set (three each) about one open in a hundred. its colour is our own rose)
+	exotic = { name = "Exotic", weight = 1, color = Color3.fromRGB(232, 74, 108) },
 }
 
 export type Item = { type: string, id: string, key: string, name: string, rarity: string, weapon: string? }
@@ -98,11 +102,71 @@ function L.ownTypes(): { string }
 	return out
 end
 
+-- set: the name of what's in it (the owner, 20 Nov 2026: "the current skins in the case set is case 1, duffel bag set
+-- 1"); label: the name and the set in one, where one line is all there is (INVENTORY, the opening's title)
 L.CONTAINERS = {
-	crate = { name = "Crate", plural = "Crates", desc = "weapon skins", types = { "skin" } },
-	bag = { name = "Duffel Bag", plural = "Duffel Bags", desc = "hats, kill effects, emotes and grapples", types = { "hat", "effect", "kill", "emote", "grapple" } },
-	spray = { name = "Spray Can", plural = "Spray Cans", desc = "wraps and sprays", types = { "wrap", "spray" } },
+	crate = { name = "Crate", plural = "Crates", set = "Case 1", label = "Crate · Case 1", desc = "weapon skins", types = { "skin" } },
+	bag = { name = "Duffel Bag", plural = "Duffel Bags", set = "Duffel Bag Set 1", label = "Duffel Bag · Set 1", desc = "hats, kill effects, emotes and grapples", types = { "hat", "effect", "kill", "emote", "grapple" } },
+	-- (the first Spray Can: every wrap. legacy: never sold or given again (a new grant of it is a spray set: L.fresh);
+	-- the ones in saves still open, from this whole pool)
+	spray = { name = "Spray Can", plural = "Spray Cans", set = "Mixed", label = "Spray Can · Mixed", desc = "wraps and sprays", types = { "wrap", "spray" }, base = "spray", legacy = true },
+} :: { [string]: any }
+
+-- ------------------------------------------------------------------ the spray sets
+-- (the owner, 20 Nov 2026: "can you divide the sprays into different sets?"): the wraps that can roll, in six themed
+-- sets, each its own Spray Can with its own pool and odds, the can's cap and stripe in the set's colour (band). every
+-- such wrap is in exactly one set, and every set has three of the moving ones (Exotic: Roster.EXOTIC), so each set's
+-- Exotic chance is the same. a wrap added to Roster and in no set here goes in the newest set (L.SPRAY_LOOSE; Studio's
+-- output says so): give it one. the ids start with "spray" (LootFloor sizes them by that) and are letters only (the
+-- LootStock attribute is read with %a). each list: commons, rares, epics, legendaries, then its three Exotics
+L.SPRAY_SETS = { "spraycosmic", "sprayjapan", "sprayluxe", "spraywild", "spraydiner", "sprayoffice" }
+local SPRAY: { [string]: any } = {
+	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "magenta", "matte", "ice", "ghost", "neon", "geode", "fade", "rainbow", "galaxy", "nebula", "blackhole" } },
+	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "cream", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "urushi", "damascus", "koi", "sakura", "bigwave" } },
+	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "marble", "jade", "copper", "carbon", "gold", "titanium", "lchrome", "kintsugi", "holo", "stained" } },
+	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "moss", "burl", "digital", "denim", "plaid", "tiger", "leopard", "zebra", "organ", "meat", "lava", "aurora", "opal" } },
+	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "ketchup", "creamsicle", "bubblegum", "sprinkles", "watermelon", "candycorn", "cheese", "china", "bowling", "memphis", "pizza", "arcade", "dice", "racing", "glitch", "lavalamp", "vapor", "tokyo" } },
+	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "receipt", "barcode", "bubblewrap", "sheet", "memo", "qr", "numsoup", "sweater", "corp", "stonks", "missing", "crt", "circuit", "hex" } },
 }
+L.SPRAY_LOOSE = L.SPRAY_SETS[#L.SPRAY_SETS]
+L.SPRAY_OF = {} :: { [string]: string } -- (a wrap id -> its set's container id)
+for _, id in L.SPRAY_SETS do
+	local s = SPRAY[id]
+	L.CONTAINERS[id] = { name = s[1] .. " Spray Can", plural = s[1] .. " Spray Cans", set = s[1] .. " Set", label = s[1] .. " Spray Can",
+		desc = "wraps", types = { "wrap" }, base = "spray", band = s[2], wraps = s[3] }
+	for _, w in s[3] do L.SPRAY_OF[w] = id end
+end
+L.KINDS = { "crate", "bag" }
+for _, id in L.SPRAY_SETS do table.insert(L.KINDS, id) end
+table.insert(L.KINDS, "spray")
+L.SOLD = {} :: { string } -- (what the shop sells: every kind but the first Spray Can)
+for _, k in L.KINDS do if not L.CONTAINERS[k].legacy then table.insert(L.SOLD, k) end end
+
+-- a container's family: "spray" for every Spray Can (its model, its size on the floor, how it opens), else its own id
+function L.base(kind: any): string
+	local c = if type(kind) == "string" then L.CONTAINERS[kind] else nil
+	return if c and c.base then c.base else tostring(kind)
+end
+-- what a new grant of this kind gives: the first Spray Can becomes one of the spray sets, at random (anything that still
+-- names "spray": the VIP daily reward, the lore NPCs, a gift or a receipt from before the sets). any other: itself
+function L.fresh(kind: string, rng: Random?): string
+	local c = L.CONTAINERS[kind]
+	if not (c and c.legacy) then return kind end
+	local r = rng or Random.new()
+	return L.SPRAY_SETS[r:NextInteger(1, #L.SPRAY_SETS)]
+end
+-- a copy of a container painted in its set's colour: the can's amber parts (its cap and stripe; a stand-in's accent)
+function L.tint(m: Instance, kind: string)
+	local c = L.CONTAINERS[kind]
+	local band = c and c.band
+	if not band then return end
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			local h, s, v = d.Color:ToHSV()
+			if h > 0.07 and h < 0.15 and s > 0.45 and v > 0.6 then d.Color = band end
+		end
+	end
+end
 
 -- every weapon skin of the web game: id = { name, rarity, weapon } (COSMETICS.model, SKINS_2, STREAK_SKINS; the free
 -- Kitchen Knife and the achievement-only Golden Sniper are left out: they never roll)
@@ -394,7 +458,9 @@ function L.cosmetics(kind: string): { Item }
 	for _, t in c.types do
 		if t == "wrap" then
 			for _, w in Roster.wraps do
-				if w.rarity ~= "free" and L.RARITY[w.rarity] and not L.vipOnly(t, w.id) then table.insert(out, { type = t, id = w.id, key = w.id, name = w.name, rarity = w.rarity }) end
+				-- (a spray set: its own wraps only. a wrap in no set is the newest set's, L.SPRAY_LOOSE)
+				local mine = c.wraps == nil or (L.SPRAY_OF[w.id] or L.SPRAY_LOOSE) == kind
+				if mine and w.rarity ~= "free" and L.RARITY[w.rarity] and not L.vipOnly(t, w.id) then table.insert(out, { type = t, id = w.id, key = w.id, name = w.name, rarity = w.rarity }) end
 			end
 		elseif t == "hat" then
 			for _, id in GunHats.ORDER do
@@ -621,6 +687,18 @@ function L.oddsLine(o: Odds): string
 		end
 	end
 	return table.concat(parts, "  ·  ")
+end
+
+-- (Studio: a wrap that can roll but is in no spray set says so in the output, so it gets one; meanwhile it's the newest
+-- set's, L.SPRAY_LOOSE)
+if game:GetService("RunService"):IsStudio() then
+	task.defer(function()
+		local loose = {}
+		for _, w in Roster.wraps do
+			if w.rarity ~= "free" and L.RARITY[w.rarity] and not L.SPRAY_OF[w.id] and not L.vipOnly("wrap", w.id) and not L.exclusive("wrap", w.id) then table.insert(loose, w.id) end
+		end
+		if #loose > 0 then warn("[jankfire] loot: wraps in no spray set (the " .. L.CONTAINERS[L.SPRAY_LOOSE].set .. " holds them for now): " .. table.concat(loose, ", ")) end
+	end)
 end
 
 return L

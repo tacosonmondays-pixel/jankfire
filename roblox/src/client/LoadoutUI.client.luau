@@ -339,7 +339,7 @@ local function buildArmory()
 	armSlot = state.slot
 	for _, c in armCards do c.btn:Destroy() end
 	table.clear(armCards)
-	if News.bundleTiles then News.bundleTiles(state.slot) end -- (the weapon bundles, for coins, over the primaries: 19 Nov)
+	if News.bundleTiles then News.bundleTiles(state.slot) end -- (the weapon bundles, for coins, shut at the END of the primaries: 20 Nov)
 	local live, soon = 0, 0
 	for i, e in Roster.list do
 		if e.slot ~= state.slot then continue end
@@ -602,17 +602,42 @@ function News.payBrass(e: any)
 	refresh()
 end
 
--- WEAPON BUNDLES for coins (19 Nov, the owner: "only skins cost robux"): Assault and Explosives as two tiles at the top of
--- the primaries. a tile shows the server's quote (Purchases "wbquote": the weapons you can't carry yet and the
--- cosmetics you lack, Shop.WBUNDLE_OFF percent under their coin prices); a press arms it, the second buys ("wbundle")
+-- WEAPON BUNDLES for coins (19 Nov, the owner: "only skins cost robux"): Assault and Explosives. at the END of the
+-- primaries, shut (20 Nov, the owner: "in loadout under armory I dontl ike that the bundles apear at the top, its
+-- annoying"): the weapons first, in their order, then one plain BUNDLES tile that opens the bundle tiles after it (and
+-- shuts them again); shut each time the armory is built. a bundle tile shows the server's quote (Purchases "wbquote":
+-- the weapons you can't carry yet and the cosmetics you lack, Shop.WBUNDLE_OFF percent under their coin prices); a
+-- press arms it, the second buys ("wbundle")
 News.bTiles = {} :: { any }
+News.bOpen = false
 function News.bundleTiles(slot: string)
 	for _, t in News.bTiles do t.btn:Destroy() end
 	table.clear(News.bTiles)
+	if News.bHead then News.bHead:Destroy(); News.bHead = nil end
+	News.bOpen = false
 	local S = News.Shop
 	if slot ~= "primary" or not (S and type(S.weaponBundlesOn) == "function" and S.weaponBundlesOn()) then return end
+	local head = new("TextButton", { Name = "BundlesRow", Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BackgroundTransparency = 0.4,
+		BorderSizePixel = 0, LayoutOrder = 100000, ZIndex = 4 }, armList)
+	T.corner(head)
+	T.edge(head)
+	local hl = label(head, "", 16, UDim2.fromOffset(16, 0), UDim2.new(1, -32, 1, 0), GREY)
+	hl.FontFace = FONT_BOLD; hl.ZIndex = 5
+	News.bHead = head
+	local function draw()
+		hl.Text = News.fmt("WEAPON BUNDLES (%d)  ·  %s", #S.weaponBundles, if News.bOpen then "HIDE" else "SHOW")
+		for _, t in News.bTiles do t.btn.Visible = News.bOpen end
+	end
+	News.bToggle = function() News.bOpen = not News.bOpen; draw() end -- (a Studio test's press: LoadoutTest "bundles")
+	head.MouseButton1Click:Connect(function()
+		News.bOpen = not News.bOpen
+		play("click"); draw()
+		if News.bOpen then task.defer(function() armList.CanvasPosition = Vector2.new(0, math.max(0, armList.AbsoluteCanvasSize.Y - armList.AbsoluteWindowSize.Y)) end) end
+	end)
+	head.MouseEnter:Connect(function() head.BackgroundColor3 = T.CARD_HI end)
+	head.MouseLeave:Connect(function() head.BackgroundColor3 = CARD end)
 	for i, o in S.weaponBundles do
-		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = -10 + i, ZIndex = 4 }, armList)
+		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = 100000 + i, ZIndex = 4, Visible = false }, armList)
 		T.corner(btn)
 		T.edge(btn, ACCENT, 0.45)
 		local nm = label(btn, string.upper(o.name) .. " BUNDLE", 19, UDim2.fromOffset(16, 8), UDim2.fromOffset(206, 40), TEXT)
@@ -625,6 +650,7 @@ function News.bundleTiles(slot: string)
 		task.spawn(News.quoteBundle, t)
 		btn.MouseButton1Click:Connect(function() News.buyBundle(t) end)
 	end
+	draw()
 end
 function News.quoteBundle(t: any)
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
@@ -723,7 +749,7 @@ for i, md in Roster.MODES do
 	b.face.SelectionLost:Connect(function() if state.modeHover == md then state.modeHover = nil; if state.open then refresh() end end end)
 	modeBtns[md] = b
 end
-local filters = { "all", "common", "rare", "epic", "legendary" }
+local filters = { "all", "common", "rare", "epic", "legendary", "exotic" }
 local filterBtns: { [string]: TextButton } = {}
 for i, f in filters do
 	local t = new("TextButton", {
@@ -799,17 +825,6 @@ local function paintChip(chip: Frame, wr: Roster.Wrap)
 		for i = 1, 6 do table.insert(cols, pal[(i - 1) % #pal + 1]) end
 		g.Color = bands(cols)
 	end
-end
-local function finishWord(wr: Roster.Wrap): string?
-	local sa = WRAPS and WRAPS:FindFirstChild(wr.id)
-	if sa then local f = sa:GetAttribute("Finish"); return if type(f) == "string" then f else nil end
-	if wr.neon then return "GLOWS" end
-	local m = wr.mat
-	if m == "Metal" or m == "Foil" then return "SHINY" end
-	if m == "Glass" or m == "Ice" or m == "ForceField" then return "SEE-THRU" end
-	if m == "CrackedLava" then return "HOT" end
-	if m and m ~= "Plastic" then return string.upper(m) end
-	return nil
 end
 -- what you own (Loot.luau, the Loot remote): a wrap or hat is won for ONE gun ("<id>@<weapon>"), so the bars show
 -- a lock on what you don't own for the gun being edited, and where it is won. you can still hover it to try it on; the
@@ -954,15 +969,8 @@ for i, wr in News.MW.wrapList() do -- (Roster.wraps, then the mastery camos)
 	local st = T.edge(chip, nil, 0.8)
 	paintChip(chip, wr)
 	for _, d in chip:GetChildren() do if d:IsA("TextLabel") then d.ZIndex = 6 end end
-	local fw = finishWord(wr)
-	if fw then
-		-- (the finish word, on a small dark pill in the chip's corner)
-		local l = label(chip, fw, 12, UDim2.new(1, -3, 1, -3), UDim2.fromOffset(0, 16), WHITE, Enum.TextXAlignment.Center)
-		l.AnchorPoint = Vector2.new(1, 1); l.AutomaticSize = Enum.AutomaticSize.X; l.FontFace = FONT_BOLD; l.ZIndex = 6; l.TextWrapped = false
-		l.BackgroundColor3 = PANEL; l.BackgroundTransparency = 0.2
-		T.corner(l, 3)
-		new("UIPadding", { PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }, l)
-	end
+	-- (no finish word on the chip, GLOWS / SHINY / METAL ...: 20 Nov, the owner, "get rid of the text that says glows shiny
+	-- etc". the rarity and the name are what a wrap says)
 	local tick = label(chip, "✓", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
 	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
 	local nm = label(holder, wr.name, 14, UDim2.fromOffset(0, 64), UDim2.fromOffset(86, 28), GREY, Enum.TextXAlignment.Center)
@@ -1140,9 +1148,9 @@ refresh = function()
 		local shownId = if state.hover and e.live then state.hover else wid
 		local wr = Roster.wrapById[shownId]
 		if wr then
-			local rc = if wr.mastery then ACCENT else Roster.RARITY[wr.rarity].color
+			local rc = Roster.RARITY[wr.rarity].color -- (a mastery camo too: its rarity, Exotic for the three that move)
 			wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(),
-				if wr.mastery then News.fmt("MASTERY  ·  LV %d", News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0) else string.upper(Roster.RARITY[wr.rarity].name),
+				if wr.mastery then News.fmt("%s  ·  MASTERY LV %d", string.upper(Roster.RARITY[wr.rarity].name), News.MW.byId[wr.id] and News.MW.byId[wr.id].level or 0) else string.upper(Roster.RARITY[wr.rarity].name),
 				if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 		end
 	end)
@@ -1924,6 +1932,19 @@ UIS.InputBegan:Connect(function(io, gp)
 	end
 end)
 
+-- (Studio tests, 20 Nov: the player attribute LoadoutTest = "open" / "close" / "slot:<slot>" / "bundles" (the armory's
+-- BUNDLES tile pressed) / "scroll:end" (the armory to its end): a mouse or a key doesn't reach an unfocused Studio)
+if RunService:IsStudio() then
+	me:GetAttributeChangedSignal("LoadoutTest"):Connect(function()
+		local v = me:GetAttribute("LoadoutTest")
+		if type(v) ~= "string" then return end
+		me:SetAttribute("LoadoutTest", nil)
+		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false)
+		elseif string.sub(v, 1, 5) == "slot:" then state.slot = string.sub(v, 6); state.focus = pick()[state.slot]; refresh()
+		elseif v == "bundles" and News.bToggle then News.bToggle()
+		elseif v == "scroll:end" then armList.CanvasPosition = Vector2.new(0, math.max(0, armList.AbsoluteCanvasSize.Y - armList.AbsoluteWindowSize.Y)) end
+	end)
+end
 -- a controller's B backs out (PadNav.client asks through the player attribute MenuBack)
 me:GetAttributeChangedSignal("MenuBack"):Connect(function()
 	local v = me:GetAttribute("MenuBack")

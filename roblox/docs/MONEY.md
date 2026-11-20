@@ -97,7 +97,7 @@ about 160) and the weekly track 525 a week. That's up to about 1,650 a week, and
 |---|---|---|
 | Crate (a weapon skin) | 900 | 12 |
 | Duffel Bag (a hat, card look, kill effect or emote) | 600 | 6 |
-| Spray Can (a wrap for one gun) | 500 | 3 |
+| Spray Can, any of the six sets (a wrap for one gun) | 500 | 3 |
 
 **Both prices, every count** (19 Nov, the owner: "if you have coins the robux icon disappers for containers"). A container's card and its inspect panel show the Robux price (with the Robux mark) and the coin price side by side at x1, x5 and x10 (`ShopBundles.pair`). Before, x5 and x10 had no Robux product, so they showed coins only and the Robux mark vanished. The five and ten packs now have their own products, plain multiples of one (`Shop.containerProduct(cid, n)`, key `"crate:5"`): the client asks `ShopBuy` with `"crate:5"`, and the receipt grants five into stock under the one purchase id (`Loot.grant(p, "crate", pid, 5)`). The same restricted-player and odds checks apply. A coin price you can't afford is greyed; pressing it opens COINS. Pressing it when you can afford it opens the confirm with coins first and Robux as the other way.
 
@@ -157,6 +157,11 @@ every weapon in it the player can't carry yet (its Robux weapon at its coin pric
 price) and gives the cosmetics they lack, 25% under those coin prices (`Shop.WBUNDLE_OFF`, Purchases "wbquote" /
 "wbundle"). Assault from nothing: 8,950 coins (parts 11,950). Explosives: 17,100 (parts 22,800). The Robux text below
 is how they were first built.
+
+**Where in the armory** (20 Nov 2026, the owner: "in loadout under armory I dontl ike that the bundles apear at the top, its
+annoying"): the PRIMARY weapons come first, in their order, and the two bundles sit at the very END behind one plain
+"WEAPON BUNDLES (2) · SHOW" tile that opens them (HIDE shuts them; shut whenever the armory is built again). Prices
+and the quote / buy flow are unchanged (`News.bundleTiles`, LoadoutUI).
 
 The owner: "we should have bundles that include some free weapons too, maybe assault bundle can come with like burst
 minigun smg etc. Explosives janky can come with like pepper a couple other silly ones". Robux only.
@@ -621,10 +626,16 @@ coins buy, and two servers.
 |---|---|---|---|
 | `crate` | Crate | 120 | 3733200177 |
 | `bag` | Duffel Bag | 90 | 3733200704 |
-| `spray` | Spray Can | 60 | 3733200725 |
+| `spray` | Spray Can (the first, mixed one: not prompted since 20 Nov, kept for late receipts) | 60 | 3733200725 |
 | `crate:5` / `crate:10` | 5 / 10 Crates | 600 / 1,200 | 3733759267 / 3733759286 |
 | `bag:5` / `bag:10` | 5 / 10 Duffel Bags | 450 / 900 | 3733759307 / 3733759328 |
 | `spray:5` / `spray:10` | 5 / 10 Spray Cans | 300 / 600 | 3733759347 / 3733759369 |
+| `spraycosmic` (`:5` / `:10`) | Cosmic Spray Can (5 / 10) | 60 / 300 / 600 | 3734017670 / 3734017731 / 3734017737 |
+| `sprayjapan` (`:5` / `:10`) | Japan Spray Can (5 / 10) | 60 / 300 / 600 | 3734017743 / 3734017756 / 3734017761 |
+| `sprayluxe` (`:5` / `:10`) | Luxe Spray Can (5 / 10) | 60 / 300 / 600 | 3734017820 / 3734017829 / 3734017837 |
+| `spraywild` (`:5` / `:10`) | Wild Spray Can (5 / 10) | 60 / 300 / 600 | 3734017844 / 3734017857 / 3734017866 |
+| `spraydiner` (`:5` / `:10`) | Diner Spray Can (5 / 10) | 60 / 300 / 600 | 3734017939 / 3734017949 / 3734017956 |
+| `sprayoffice` (`:5` / `:10`) | Office Spray Can (5 / 10) | 60 / 300 / 600 | 3734017965 / 3734017974 / 3734017983 |
 | `bundle_nightshift` | Night Shift | 1,099 | 3733200745 |
 | `bundle_fieldissue` | Field Issue | 289 | 3733200855 |
 | `bundle_teahouse` | Tea House | 869 | 3733200884 |

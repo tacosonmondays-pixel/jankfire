@@ -20,8 +20,8 @@ local SkinSets: any = if okS then SkinSetsX else nil
 local R = {}
 
 R.TYPES = { "wrap", "hat", "skin", "kill", "emote", "border", "banner", "title" }
-R.RARITIES = { common = true, rare = true, epic = true, legendary = true } :: { [string]: boolean }
-R.KINDS = { "crate", "bag", "spray" } -- (unopened containers)
+R.RARITIES = { common = true, rare = true, epic = true, legendary = true, exotic = true } :: { [string]: boolean }
+R.KINDS = table.clone(LootTable.KINDS or { "crate", "bag", "spray" }) -- (unopened containers: every kind, the spray sets too)
 
 R.LEVEL = 5 -- player level (Stats' Level) to trade
 R.AGE = 7 -- days: a Roblox account at least this old (fewer alt scams)

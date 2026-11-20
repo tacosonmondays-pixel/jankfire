@@ -550,6 +550,59 @@ return function(C: any): any
 		UI.bundleGrid.Size = UDim2.new(1, 0, 0, math.max(0, y - gap))
 	end
 
+	-- ==================================================================== CONTAINERS: crates and bags, then the spray sets
+	-- (20 Nov 2026, the owner: "the current skins in the case set is case 1, duffel bag set 1, but can you divide the
+	-- sprays into different sets?"): the Crate (CASE 1) and the Duffel Bag (SET 1) side by side, then SPRAY SETS three to
+	-- a row, every card ShopUI.boxCard's, on one page that scrolls (it keeps its place when filled again). the first Spray
+	-- Can isn't sold: it shows in INVENTORY while you have some
+	function X.boxes()
+		local page = UI.pages.containers
+		UI.boxRow.Visible = false
+		local sc = page:FindFirstChild("BoxScroll") :: ScrollingFrame?
+		if not sc then
+			sc = new("ScrollingFrame", { Name = "BoxScroll", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+				CanvasSize = UDim2.new(), ScrollBarThickness = 4, ScrollingDirection = Enum.ScrollingDirection.Y }, page)
+		end
+		local s = sc :: ScrollingFrame
+		for _, c in s:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+		local k = S.compact
+		local gap = if k then 10 else 14
+		-- (the page's size in the shop's own units: its AbsoluteSize is on screen, after the shop's UIScale)
+		local k0 = 1
+		local a: Instance? = s.Parent
+		while a do
+			local u = a:FindFirstChildOfClass("UIScale")
+			if u then k0 *= u.Scale end
+			a = a.Parent
+		end
+		local W = (if s.AbsoluteSize.X > 100 then s.AbsoluteSize.X / k0 else (S.bw or 1100)) - 16
+		local H = if s.AbsoluteSize.Y > 100 then s.AbsoluteSize.Y / k0 else 520
+		local h = math.max(if k then 250 else 420, H - 34) -- (a row fills the page, its heading above it)
+		local y = 4 -- (and 4 in from the left: room for a card's lift under the mouse)
+		local function head(text: string)
+			local l = txt(s, text, 15, T.MUTED, T.FONT_BOLD)
+			l.Position = UDim2.fromOffset(4, y); l.Size = UDim2.new(1, -16, 0, 22)
+			y += 30
+		end
+		local function row(list: { any }, per: number)
+			local w = (W - (per - 1) * gap) / per
+			for i, o in list do
+				local col = (i - 1) % per
+				if i > 1 and col == 0 then y += h + gap end
+				local c = ShopUI.boxCard(s, o, i)
+				c.Position = UDim2.fromOffset(4 + col * (w + gap), y); c.Size = UDim2.fromOffset(w, h)
+			end
+			if #list > 0 then y += h + gap end
+		end
+		local top, sprays = {}, {}
+		for _, o in Shop.containers do
+			if not o.legacy then table.insert(if o.spray then sprays else top, o) end
+		end
+		head("CRATES AND BAGS"); row(top, 2)
+		head("SPRAY SETS"); row(sprays, 3)
+		s.CanvasSize = UDim2.fromOffset(0, y)
+	end
+
 	-- ==================================================================== owned, display only
 	-- an owned skin with no single offer (a set's piece, a VIP skin: neither is sold alone) opens the inspect panel all
 	-- the same, as "view:skin:<id>": OWNED, no BUY and no GIFT, its finisher's PREVIEW where it has one. this offer is

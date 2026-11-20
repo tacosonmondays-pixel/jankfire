@@ -23,6 +23,7 @@ Roster.RARITY = {
 	rare = { name = "Rare", color = hex("4fb4ff") },
 	epic = { name = "Epic", color = hex("c46bff") },
 	legendary = { name = "Legendary", color = hex("ffb31a") },
+	exotic = { name = "Exotic", color = hex("ff5a82") }, -- (the moving wraps, Roster.EXOTIC: 20 Nov)
 }
 Roster.MODES = { "normal", "reverse", "full" }
 
@@ -339,5 +340,15 @@ for _, id in { "mastery_gold", "mastery_damascus", "mastery_diamond", "mastery_g
 -- list, so none of them can ever hold a camo. the loadout's WRAPS strip adds them back: Shared.Mastery.wrapList)
 Roster.masteryWraps = {} :: { Wrap }
 for i = #Roster.wraps, 1, -1 do if Roster.wraps[i].mastery then table.insert(Roster.masteryWraps, 1, table.remove(Roster.wraps, i) :: Wrap) end end
+-- EXOTIC (20 Nov 2026, the owner: "If theyre animated theyre exotic rarity"): every wrap whose pattern moves (the wraps
+-- session's list: WrapAnim's moving textures, its round 2, and Black Hole's turning hole) is Exotic, the tier above
+-- Legendary. in the spray sets, three a set (LootTable.SPRAY_SETS); Triangulum and the mastery camos keep their own
+-- routes (the VIP daily reward, weapon level) and only read Exotic. a wrap that starts moving: add its id here
+Roster.EXOTIC = { "galaxy", "nebula", "blackhole", "koi", "sakura", "bigwave", "kintsugi", "holo", "stained", "lava", "aurora", "opal",
+	"lavalamp", "vapor", "tokyo", "crt", "circuit", "hex", "triangulum", "mastery_gold", "mastery_diamond", "mastery_galaxy" }
+for _, id in Roster.EXOTIC do
+	local w = Roster.wrapById[id]
+	if w then w.rarity = "exotic" end
+end
 
 return Roster

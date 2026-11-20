@@ -31,10 +31,13 @@ Q.STEPS = {
 Q.FULL = Q.STEPS[#Q.STEPS].at
 
 -- what the shop asks for a container (Shared.Shop ids). tix = Crate Tickets, brass = Brass; nil = not for that
+-- (20 Nov 2026: every spray set's can redeems for what the first Spray Can did, Q.SPRAY; that one, "spray", isn't sold
+-- any more. the set ids are LootTable.SPRAY_SETS': keep the two the same)
+Q.SPRAY = { tix = 3, brass = 1000 }
 Q.PRICES = {
 	crate = { tix = 12 },
 	bag = { tix = 6, brass = 2500 },
-	spray = { tix = 3, brass = 1000 },
+	spraycosmic = Q.SPRAY, sprayjapan = Q.SPRAY, sprayluxe = Q.SPRAY, spraywild = Q.SPRAY, spraydiner = Q.SPRAY, sprayoffice = Q.SPRAY,
 }
 Q.CURRENCY = { brass = "Coins", tix = "Crate Tickets", tix1 = "Crate Ticket" } -- (brass is shown as Coins since 18 Nov: one currency, the owner's "coins")
 

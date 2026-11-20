@@ -30,8 +30,10 @@ The loadout only wears wraps and hats you own (`Loot.owns`, the loot session's c
 
 Three kinds of offer, each with an id:
 
-- **containers** `crate`, `bag`, `spray` (Crate, Duffel Bag, Spray Can): one random item you don't own yet. Crates
-  hold weapon skins (the ones whose models are in the place), Duffel Bags hats and card looks, Spray Cans wraps. Names
+- **containers** `crate` (Crate, CASE 1), `bag` (Duffel Bag, SET 1) and the six spray sets `spraycosmic` ...
+  `sprayoffice` (20 Nov; the first Spray Can `spray` is legacy, not sold: LOOT.md "The spray sets"): one random item you
+  don't own yet. Crates hold weapon skins (the ones whose models are in the place), Duffel Bags hats and card looks, Spray
+  Cans wraps, each can its own set's. The CONTAINERS page scrolls: crates and bags, then SPRAY SETS. Names
   and prices are the shop's; the pools and odds are the loot module's, read through `Shop.odds(id, owned)`
   (`LootTable.odds`, the function the server rolls by), so the screen never shows numbers the server doesn't use.
   The odds depend on what you own; when you own everything in one it reads YOU HAVE IT ALL.

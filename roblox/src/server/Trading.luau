@@ -158,7 +158,7 @@ local function stockOf(d: any, kind: string): number
 	return math.max(0, math.floor(tonumber(d.stock and d.stock[kind]) or 0))
 end
 -- everything this save holds that a trade could show, tradeable or not (the picker), types in R.TYPES order
-local RANK = { legendary = 1, epic = 2, rare = 3, common = 4 }
+local RANK = { exotic = 0, legendary = 1, epic = 2, rare = 3, common = 4 }
 local function inventory(d: any): { any }
 	local out = {}
 	for _, t in R.TYPES do

@@ -348,9 +348,9 @@ local function show(g: any)
 	-- 4. the reveal: the box fades back, the cards come in
 	local items = if type(g.items) == "table" then g.items else {}
 	local best = "common"
-	local rank = { common = 1, rare = 2, epic = 3, legendary = 4, vip = 4 }
+	local rank = { common = 1, rare = 2, epic = 3, legendary = 4, vip = 4, exotic = 5 }
 	for _, it in items do if (rank[it.rarity] or 0) > (rank[best] or 0) then best = it.rarity end end
-	sound("loot_win_" .. (if best == "vip" then "legendary" else best), 0.8)
+	sound("loot_win_" .. (if best == "vip" or best == "exotic" then "legendary" else best), 0.8) -- (an Exotic: the Legendary's sting)
 	T.tween(vpHolder, 0.25, { Size = UDim2.fromOffset(0, 0) })
 	drawReveal(items)
 	close.Visible = true

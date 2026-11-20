@@ -77,6 +77,10 @@ local function at(o: GuiObject, x: number, y: number, w: number, h: number)
 end
 local KIND_NAMES = { crate = "CRATE", bag = "DUFFEL BAG", spray = "SPRAY CAN" }
 local KIND_PLURAL = { crate = "CRATES", bag = "DUFFEL BAGS", spray = "SPRAY CANS" }
+for _, k in TradeRules.KINDS do -- (the spray sets, 20 Nov: their names from the loot module)
+	local c = LootTable.CONTAINERS[k]
+	if c and not KIND_NAMES[k] then KIND_NAMES[k] = string.upper(c.name); KIND_PLURAL[k] = string.upper(c.plural) end
+end
 local function stockLine(stock: any): string
 	local parts = {}
 	for _, k in TradeRules.KINDS do

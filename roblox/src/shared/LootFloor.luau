@@ -97,6 +97,12 @@ local ROOM = {
 	bag = { w = 3.98, front = 1.8, back = 1.8, h = 2.1, shut = 2.0 },
 	spray = { w = 2.3, front = 0.64, back = 1.25, h = 3.6, shut = 3.56 },
 }
+-- (every Spray Can, the spray sets' too: "spraycosmic" and the rest, LootTable.SPRAY_SETS, has the first can's size and room)
+for _, t in { F.SIZE, ROOM } :: { any } do
+	setmetatable(t, { __index = function(self: any, k: any): any
+		return if type(k) == "string" and string.sub(k, 1, 5) == "spray" then rawget(self, "spray") else nil
+	end })
+end
 local GAP = 0.6 -- (between two containers side by side)
 
 -- a container's room at its shown size times k: width, front, back, open height, shut height

@@ -22,7 +22,43 @@ out; nothing was invented.
 | --- | --- | --- | --- |
 | Crate | `crate` | weapon skins (`COSMETICS.model`, `SKINS_2`, streak skins) | the 25 skins whose models are in (`ReplicatedStorage.JankfireSkins.<skin id>`, the guns session's; place v385). Each new skin model joins by itself. A skin is already one gun's |
 | Duffel Bag | `bag` | hats, effects, kill effects, grapples | the 8 hats that aren't free, each won for one gun: 8 x 16 = 128 pairs |
-| Spray Can | `spray` | wraps and sprays (the web game's Box) | the 99 wraps that aren't free, each won for one gun: 99 x 16 = 1,584 pairs |
+| Spray Can (six sets) | `spraycosmic`, `sprayjapan`, `sprayluxe`, `spraywild`, `spraydiner`, `sprayoffice` | wraps and sprays (the web game's Box) | the 99 wraps that aren't free, in six themed sets of 13 to 21 (below), each won for one gun |
+| Spray Can · Mixed (legacy) | `spray` | | all 99 wraps. Not sold or given since 20 Nov; unopened ones in saves still open from this whole pool |
+
+**Names and sets** (20 Nov 2026, the owner: "the current skins in the case set is case 1, duffel bag set 1, but can
+you divide the sprays into different sets?"). Each container has a `set` and a one-line `label` in
+`LootTable.CONTAINERS`: the Crate is CASE 1 ("Crate · Case 1"), the Duffel Bag DUFFEL BAG SET 1 ("Duffel Bag · Set 1").
+Later cases and bags become Case 2, Set 2. The shop card shows the set above the name, INVENTORY and the opening's title
+show the label.
+
+**The spray sets** (same day). The Spray Can's one pool became six themed sets, each its own container with its own
+pool, odds, shop card and products: COSMIC, JAPAN, LUXE, WILD, DINER and OFFICE (`LootTable.SPRAY_SETS`, the lists
+in `SPRAY` there). Every wrap that can roll is in exactly one set, and every set has exactly three Exotics (below).
+Never a mastery camo, a VIP wrap, the daily-only Triangulum or the coin packs' Bullion. Each can is the Spray Can
+model with its cap and stripe in the set's colour (`LootTable.tint` repaints its amber parts; `band`). The sheet of the
+sets, with every wrap and its odds: the notes folder's `spray-sets.md`.
+- Ids start with "spray" (`LootFloor` sizes every can as the first one by that) and are letters only (`LootStock` is
+  read with `%a`). `LootTable.base(kind)` = "spray" for all of them: the model, the floor room, the cap that pops.
+- A wrap added to Roster and in no set goes in the newest set (`L.SPRAY_LOOSE`), and Studio's output warns: give it a set.
+- The first Spray Can, `spray`, is legacy: `Shop.onSale` and `Shop.coinPrice` refuse it, the loot server's "buy" says
+  "not sold any more", it opens only from stock, and its redeem price is gone (QuestData.PRICES). Its three products stay
+  for late receipts.
+- **Anything that still grants "spray"** (the VIP daily reward's Spray Can, Dale's gift, a gift or receipt from before)
+  gives a spray set at random instead: `Loot.grant` -> `grantOffer` -> `LootTable.fresh`, one roll per can.
+- The owner's GIFT menu lists the Crate, the Duffel Bag and the six sets (`LootTable.SOLD`). Dev "stock" gives 5 of every
+  kind, the legacy can too (for tests). Trading lists every kind (`TradeRules.KINDS` = `LootTable.KINDS`; trading is off).
+**EXOTIC** (same day, the owner: "If theyre animated theyre exotic rarity"). Every wrap whose pattern moves is Exotic,
+the tier above Legendary: `Roster.EXOTIC` (the wraps session's list: Galaxy, Nebula, Black Hole, Koi Pond, Sakura Storm,
+Big Wave, Kintsugi, Holo Foil, Stained Glass, Lava, Aurora, Opal, Lava Lamp, Vaporwave, Tokyo Night, CRT, Circuit
+Board, Neon Hex, plus Triangulum and Mastery Gold, Diamond and Galaxy, which keep their own routes). `LootTable.RARITY`
+weight 1 against 55 / 28 / 13 / 4, in its own rose (232, 74, 108); `Roster.RARITY`, `Shop.RARITY_ORDER` and the ranks
+have it. Three per spray set, so each set's Exotic chance is about 1% and each Exotic about 0.33% a can. The reveal: the
+Legendary sting, a stronger glow and shake, a bigger burst and a rising rose-to-white shimmer (`particles` "exotic").
+Priced as a Legendary for now (`Shop.MONEY.singles[kind].exotic`), so no single or bundle price moved. Words like
+GLOWS / SHINY / METAL on wrap chips are gone (the loadout's `finishWord`, removed): a wrap shows its name and rarity.
+
+- The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
+  card `ShopUI.boxCard`.
 
 The guns are the 16 live weapons that take paint (`LootTable.weapons`: Roster live, not an item on G; the Shredder
 included). A hat only goes on a gun with a seat for it (`GunHatData.SPOTS`): all 16 today.

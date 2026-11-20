@@ -137,6 +137,7 @@ local function part(m: Instance, name: string, size: Vector3, cf: CFrame, color:
 		TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, m)
 end
 local function standIn(kind: string): Model
+	kind = LootTable.base(kind) -- (a spray set's can is the first can's shape: container() paints it)
 	local d = STAND_IN[kind] or STAND_IN.crate
 	local m = Instance.new("Model")
 	m.Name = kind
@@ -163,8 +164,9 @@ end
 -- (Shared.LootFloor.SIZE: bigger than the model, the owner's "can the bags be larger?") times k
 local function container(kind: string, k: number?): Model
 	local lib = ReplicatedStorage:FindFirstChild("JankfireLoot")
-	local t = lib and lib:FindFirstChild(kind)
+	local t = lib and (lib:FindFirstChild(kind) or lib:FindFirstChild(LootTable.base(kind)))
 	local m = if t and t:IsA("Model") then t:Clone() else standIn(kind)
+	LootTable.tint(m, kind) -- (a spray set's can: its cap and stripe in the set's colour)
 	local low = math.huge
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -836,9 +838,19 @@ local function particles(at: Vector3, color: Color3, kind: string): Part
 			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) }),
 			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
 			Color = ColorSequence.new(color), LightEmission = 0.8, EmissionDirection = Enum.NormalId.Top }, p)
-		e:Emit(if kind == "big" then 60 else 26)
+		e:Emit(if kind == "exotic" then 80 elseif kind == "big" then 60 else 26)
 	end
-	task.delay(2.5, function() p:Destroy() end)
+	if kind == "exotic" then
+		-- (an Exotic, 20 Nov: after the burst a slow shimmer rises round it, its rose going white, twice)
+		local up = new("ParticleEmitter", { Texture = "rbxasset://textures/particles/sparkles_main.dds", Rate = 0, Lifetime = NumberRange.new(1.2, 2.0),
+			Speed = NumberRange.new(2, 5), SpreadAngle = Vector2.new(180, 180), Drag = 1, Acceleration = Vector3.new(0, 3, 0),
+			Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) }),
+			Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
+			Color = ColorSequence.new(color, Color3.new(1, 1, 1)), LightEmission = 1, EmissionDirection = Enum.NormalId.Top }, p)
+		up:Emit(40)
+		task.delay(0.4, function() if up.Parent then up:Emit(30) end end)
+	end
+	task.delay(if kind == "exotic" then 3.2 else 2.5, function() p:Destroy() end)
 	return p
 end
 
@@ -1048,7 +1060,7 @@ function Opening.release()
 end
 
 -- ---------------------------------------------------------------- equipping a prize (the loadout's own ops)
-local RANK = { common = 1, rare = 2, epic = 3, legendary = 4 }
+local RANK = { common = 1, rare = 2, epic = 3, legendary = 4, exotic = 5 } -- (Exotic: the moving wraps, 20 Nov)
 -- the gun a prize goes on: its own (a wrap or hat is won for one gun; a skin is one gun's)
 local function gunOf(item: any): string?
 	local w = item.weapon or (item.type == "skin" and (LootTable.SKINS[item.id] or {})[3]) or nil
@@ -1176,7 +1188,7 @@ local function runMany(R: Run): string
 	local info = LootTable.CONTAINERS[kind] or LootTable.CONTAINERS.crate
 	local n = math.max(1, R.count or 1) -- (as many as were asked for: the answer can bring fewer)
 	local cam = workspace.CurrentCamera :: Camera
-	ui.title.Text = ("%s  x%d"):format(string.upper(info.name), n)
+	ui.title.Text = ("%s  x%d"):format(string.upper(info.label or info.name), n)
 	tw(ui.title, 0.3, { TextTransparency = 0 })
 	oddsLater(R)
 
@@ -1309,7 +1321,7 @@ local function runMany(R: Run): string
 		fadeOut(extra, 0.25)
 		for _, m in extra do m:Destroy() end
 		n = #prizes
-		ui.title.Text = ("%s  x%d"):format(string.upper(info.name), n)
+		ui.title.Text = ("%s  x%d"):format(string.upper(info.label or info.name), n)
 	end
 	local built = R.built or ringPrizes(prizes, cfs) -- (all at one scale: a pistol stays smaller than a sniper)
 	R.built = nil
@@ -1371,7 +1383,7 @@ local function runMany(R: Run): string
 			b.prize = m
 		end
 		b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + 1.9, 0), item)
-		if rank >= 3 then particles(b.at.Position + Vector3.new(0, b.h + 0.5, 0), col, if rank == 4 then "big" else "pop") end
+		if rank >= 3 then particles(b.at.Position + Vector3.new(0, b.h + 0.5, 0), col, if rank >= 5 then "exotic" elseif rank == 4 then "big" else "pop") end
 	end
 	-- (19 Nov, the owner: "opening crates and stuff is still really slow": no reel for each one any more. they pop in
 	-- a quick ripple, each prize up over its container with its sign, the best one's sting and flash, a moment to see
@@ -1385,7 +1397,7 @@ local function runMany(R: Run): string
 		local r = RANK[q.rarity] or 1
 		if r > best then best, bestQ = r, q end
 	end
-	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[best]
+	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[best]
 	snd(stings, nil, 0.9, 1)
 	if best >= 2 then
 		ui.flash.BackgroundColor3 = rcol(bestQ.rarity)
@@ -1745,7 +1757,7 @@ local function run(R: Run): string
 	local cam = workspace.CurrentCamera :: Camera
 
 	-- title + the odds this open was rolled with (the odds come in their own time: oddsLater)
-	ui.title.Text = string.upper(info.name)
+	ui.title.Text = string.upper(info.label or info.name) -- ("COSMIC SPRAY CAN", "CRATE · CASE 1")
 	tw(ui.title, 0.3, { TextTransparency = 0 })
 	oddsLater(R)
 
@@ -1879,14 +1891,14 @@ local function run(R: Run): string
 	ui.flash.BackgroundColor3 = col
 	ui.flash.BackgroundTransparency = if quick then 0.55 else 0.72
 	tw(ui.flash, 0.8, { BackgroundTransparency = 1 })
-	local rank = ({ common = 1, rare = 2, epic = 3, legendary = 4 })[prize.rarity] or 1
-	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
+	local rank = RANK[prize.rarity] or 1
+	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
 	snd(stings, nil, 1, 1)
 	glow.Color = col
 	glow.Brightness = 2 + rank
 	if rank >= 3 then
 		shake(R, 0.12 * rank)
-		particles(base.Position + Vector3.new(0, R.height, 0), col, if rank == 4 then "big" else "pop")
+		particles(base.Position + Vector3.new(0, R.height, 0), col, if rank >= 5 then "exotic" elseif rank == 4 then "big" else "pop")
 	end
 	if not R.result then R.skip = false end
 	hold(R, if quick then 0.35 else TIME.land)
@@ -2178,7 +2190,7 @@ local function rewardRun(R: Run, spec: any, prize: any, items: { any }, stop: nu
 	ui.flash.BackgroundTransparency = 0.72
 	tw(ui.flash, 0.8, { BackgroundTransparency = 1 })
 	local rank = RANK[prize.rarity] or 1
-	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
+	local stings = ({ { "loot_win_common", "ting" }, { "loot_win_rare", "ting" }, { "loot_win_epic", "round_start" }, { "loot_win_legendary", "round_end", "round_start" }, { "loot_win_legendary", "round_end", "round_start" } })[rank]
 	snd(stings, nil, 1, 1)
 	if not R.result then R.skip = false end
 	hold(R, TIME.land)

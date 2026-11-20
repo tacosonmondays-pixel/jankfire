@@ -135,9 +135,9 @@ function Loot.ownedOf(p: Player): { [string]: { [string]: boolean } }
 end
 
 local function stockOf(s: State): { [string]: number }
-	local out = { crate = 0, bag = 0, spray = 0 }
+	local out = {}
 	local d = s.prof and s.prof.data
-	if d then for _, k in LootTable.KINDS do out[k] = math.max(0, math.floor(tonumber(d.stock[k]) or 0)) end end
+	for _, k in LootTable.KINDS do out[k] = if d then math.max(0, math.floor(tonumber(d.stock[k]) or 0)) else 0 end
 	return out
 end
 
@@ -145,7 +145,10 @@ local function publish(p: Player)
 	local s = st[p]
 	if not s or not p.Parent then return end
 	local stock = stockOf(s)
-	p:SetAttribute("LootStock", ("bag=%d;crate=%d;spray=%d"):format(stock.bag, stock.crate, stock.spray))
+	local bits = {}
+	for k, n in stock do table.insert(bits, k .. "=" .. n) end
+	table.sort(bits)
+	p:SetAttribute("LootStock", table.concat(bits, ";")) -- ("bag=0;crate=1;spray=2;spraycosmic=0;...": every kind, 20 Nov)
 	p:SetAttribute("LootOwned", s.rev)
 	p:SetAttribute("LootSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
 	local set = s.prof and s.prof.data.settings
@@ -237,7 +240,16 @@ end
 local function grantOffer(s: State, o: any, n: number?, uncapped: boolean?): { LootTable.Item }
 	local got = {}
 	if o.type == "container" then
-		if LootTable.CONTAINERS[o.id] then addStock(s, { [o.id] = n or 1 }, uncapped) end
+		local c = LootTable.CONTAINERS[o.id]
+		if c and c.legacy then
+			-- (the first Spray Can, from anything that still gives "spray": the VIP daily reward, the lore NPCs, a gift or a
+			-- receipt from before the sets. each one a spray set at random instead, LootTable.fresh. 20 Nov)
+			local g = {}
+			for _ = 1, n or 1 do local id = LootTable.fresh(o.id, rng); g[id] = (g[id] or 0) + 1 end
+			addStock(s, g, uncapped)
+		elseif c then
+			addStock(s, { [o.id] = n or 1 }, uncapped)
+		end
 		return got
 	end
 	local c = catalog()
@@ -414,6 +426,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		if type(o) ~= "table" then return { ok = false, why = "that isn't for sale" } end
 		-- (a game pass's pack, the VIP one: only the shop's Vip module gives it, through Loot.grant)
 		if o.type == "pass" then return { ok = false, why = "comes with VIP" } end
+		if o.type == "container" and LootTable.CONTAINERS[o.id] and LootTable.CONTAINERS[o.id].legacy then return { ok = false, why = "not sold any more" } end
 		if o.type == "single" and c and type(c.onSale) == "function" and not c.onSale(a) then return { ok = false, why = "that one's not in today's shop" } end
 		local n = if o.type == "container" and type(b) == "number" and b == math.floor(b) then b else 1
 		if n < 1 or n > BUY_MAX then return { ok = false, why = ("1 to %d at a time"):format(BUY_MAX) } end
@@ -447,6 +460,11 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		local now = os.clock()
 		if now - s.lastOpen < (if n > 1 then 1.2 else 0.6) then return { ok = false, why = "slow down" } end
 		local have = math.floor(tonumber(d.stock[a]) or 0)
+		-- (the first Spray Can opens only from stock, even while containers are free: it isn't given any more. 20 Nov)
+		if LootTable.CONTAINERS[a].legacy then
+			if have <= 0 then return { ok = false, why = "no spray cans left" } end
+			n = math.min(n, have)
+		end
 		if have < n and not Config.LOOT_FREE then
 			return { ok = false, why = if have <= 0 then ("no %s left"):format(string.lower(LootTable.CONTAINERS[a].plural)) else ("you only have %d"):format(have) }
 		end
@@ -523,12 +541,19 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		elseif a == "reset" then
 			d.inv = {}
 			for _, t in TYPES() do d.inv[t] = {} end
-			d.stock = { crate = 0, bag = 0, spray = 0 }
+			d.stock = {}
+			for _, k in LootTable.KINDS do d.stock[k] = 0 end
 			d.fresh = {}
 			d.every = {}
 			s.owned = sets(d)
 		elseif a == "stock" then
-			addStock(s, { crate = 5, bag = 5, spray = 5 })
+			local g = {}
+			for _, k in LootTable.KINDS do g[k] = 5 end -- (every kind: the spray sets and the first Spray Can too)
+			addStock(s, g)
+		elseif a == "setstock" and type(b) == "table" then
+			-- (a test's containers put back as they were: { kind = n }, every kind not named 0. saved. 20 Nov)
+			d.stock = {}
+			for _, k in LootTable.KINDS do d.stock[k] = math.max(0, math.floor(tonumber((b :: any)[k]) or 0)) end
 		elseif a == "restricted" then
 			-- (Studio tests: act as a player Roblox's policy keeps from paid random items, or not; this session only)
 			s.restricted = b == true

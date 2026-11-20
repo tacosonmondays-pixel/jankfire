@@ -393,9 +393,9 @@ end
 -- calm greys, one amber latch or band
 function V.container(id: string): Model
 	local lib = ReplicatedStorage:FindFirstChild("JankfireLoot")
-	local t = lib and (lib:FindFirstChild(id) or lib:FindFirstChild("c_" .. id))
-	-- (a container rests turned a little off its front: its latch / zip / band side to you)
-	if t and t:IsA("Model") then local m = t:Clone(); settle(m); m:SetAttribute("ShopRest", math.pi - 0.55); return m end
+	local t = lib and (lib:FindFirstChild(id) or lib:FindFirstChild("c_" .. id) or lib:FindFirstChild(Shop.boxBase(id)))
+	-- (a container rests turned a little off its front: its latch / zip / band side to you. a spray set's can: its colour)
+	if t and t:IsA("Model") then local m = t:Clone(); settle(m); Shop.boxTint(m, id); m:SetAttribute("ShopRest", math.pi - 0.55); return m end
 	local m = Instance.new("Model")
 	local function p(shape: Enum.PartType, size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?): Part
 		return new("Part", { Shape = shape, Anchored = true, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth, CastShadow = false }, m)
@@ -433,6 +433,7 @@ function V.container(id: string): Model
 	m.PrimaryPart = nil
 	m.WorldPivot = CFrame.identity
 	m:SetAttribute("ShopRest", math.pi - 0.55)
+	Shop.boxTint(m, id)
 	return m
 end
 -- an item on the weapon it's for: a wrap paints it, a hat sits on it (boost: the hat drawn bigger, for small cards).
@@ -1216,16 +1217,22 @@ do
 	new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 0), CellSize = UDim2.new(1 / 3, -10, 1, 0), SortOrder = Enum.SortOrder.LayoutOrder }, UI.boxRow)
 end
 function ShopUI.fillContainers()
+	local X = ShopUI.ext()
+	if X then X.boxes(); return end -- (crates and bags, then the spray sets, on a page that scrolls: ShopBundles, 20 Nov)
 	for _, c in UI.boxRow:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	for i, o in Shop.containers do if not (o :: any).legacy then ShopUI.boxCard(UI.boxRow, o, i) end end
+end
+-- one container's card: its picture, its set and name, what's in it, ODDS and how many, OPEN and BUY
+function ShopUI.boxCard(parent: Instance, o: any, i: number): TextButton
 	local k = S.compact
-	for i, o in Shop.containers do
-		local c = card(UI.boxRow, nil)
+	do
+		local c = card(parent, nil)
 		c.LayoutOrder = i
 		-- (on a phone the words squeeze up so the preview keeps some room)
 		local textH = if k then 162 else 236
 		local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, if k then 26 else 40), Size = UDim2.new(1, 0, 1, -(textH + (if k then 26 else 40))) }, c)
 		V.show(view, V.offerModel(o), "slow", 0.95)
-		local eb = txt(c, "CONTAINER  ·  ONE RANDOM ITEM", 11, T.MUTED, T.FONT_BOLD)
+		local eb = txt(c, string.upper(o.boxSet or "CONTAINER") .. "  ·  ONE RANDOM ITEM", 11, T.MUTED, T.FONT_BOLD)
 		eb.Position = UDim2.fromOffset(if k then 12 else 18, if k then 10 else 16); eb.Size = UDim2.new(1, -36, 0, 14)
 		local pad = if k then 12 else 18
 		local name = txt(c, string.upper(o.name), if k then 20 else 26, T.TEXT, T.FONT_TITLE)
@@ -1273,6 +1280,7 @@ function ShopUI.fillContainers()
 		end
 		buy.face.MouseButton1Click:Connect(function() ShopUI.ask(o.id) end)
 		c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
+		return c
 	end
 end
 
@@ -1868,8 +1876,8 @@ function ShopUI.fillInventory(force: boolean?)
 				c.LayoutOrder = order
 				local view = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -78) }, c)
 				V.show(view, V.container(o.id), "hover", 1.0)
-				local name = txt(c, o.name, 15, T.TEXT, T.FONT_BOLD)
-				name.Position = UDim2.new(0, 10, 1, -76); name.Size = UDim2.new(1, -20, 0, 18)
+				local name = txt(c, (o :: any).label or o.name, 15, T.TEXT, T.FONT_BOLD)
+				name.Position = UDim2.new(0, 10, 1, -76); name.Size = UDim2.new(1, -54, 0, 18) -- (clear of the count)
 				local cnt = txt(c, "x" .. have, 13, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 				cnt.Position = UDim2.new(0, 10, 1, -76); cnt.Size = UDim2.new(1, -20, 0, 18)
 				local ob = button(c, "OPEN", "main", UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 1, -48))

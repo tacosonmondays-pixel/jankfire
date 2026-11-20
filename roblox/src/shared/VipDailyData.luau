@@ -40,7 +40,7 @@ D.TABLE = {
 	-- rare: the skin case
 	{ id = "crate", kind = "container", cid = "crate", w = 10, tier = "rare", rarity = "epic" },
 	-- the best: only here
-	{ id = "x_wrap", kind = "wrap", w = 4, tier = "best", rarity = "legendary" },
+	{ id = "x_wrap", kind = "wrap", w = 4, tier = "best", rarity = "exotic" }, -- (Triangulum moves: Exotic since 20 Nov)
 	{ id = "x_hat", kind = "hat", w = 3, tier = "best", rarity = "legendary" },
 	{ id = "x_skin", kind = "skin", w = 3, tier = "best", rarity = "legendary" },
 } :: { Entry }

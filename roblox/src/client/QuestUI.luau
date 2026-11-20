@@ -321,8 +321,8 @@ local function walletRow(parent: Instance, x: number, y: number, w: number, h: n
 	local compact = L.compact
 	row(c, p, 10, 22, { { icon = "tix", s = 18 }, { text = comma(state.tix or 0), size = 16, font = T.FONT_HEAVY }, { gap = 4 },
 		{ text = "CRATE TICKETS", size = 11, color = T.MUTED } })
-	local line = ("Crate %d · Duffel Bag %d · Spray Can %d tickets"):format(QD.PRICES.crate.tix or 0, QD.PRICES.bag.tix or 0, QD.PRICES.spray.tix or 0)
-	local line2 = ("Duffel Bag %s · Spray Can %s Coins"):format(comma(QD.PRICES.bag.brass or 0), comma(QD.PRICES.spray.brass or 0))
+	local line = ("Crate %d · Duffel Bag %d · Spray Can %d tickets"):format(QD.PRICES.crate.tix or 0, QD.PRICES.bag.tix or 0, QD.SPRAY.tix or 0)
+	local line2 = ("Duffel Bag %s · Spray Can %s Coins"):format(comma(QD.PRICES.bag.brass or 0), comma(QD.SPRAY.brass or 0))
 	local bw = if compact then w - p * 2 else 150
 	at(txt(c, line, 12, T.SOFT, T.FONT), p, 36, w - p * 2 - (if compact then 0 else bw + 12), 16)
 	at(txt(c, line2, 12, T.MUTED, T.FONT), p, 54, w - p * 2 - (if compact then 0 else bw + 12), 16)
