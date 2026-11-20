@@ -15,10 +15,12 @@ FX = {
     'tide': {
         # (the owner's shot list, 20 Nov: the long-blade draw, the run-up, the belly pass, the hit frame, back to back,
         # the winner close on the right as the cut lands behind them; speed lines only on the run - no filler streaks)
-        'speed': {'RUN-UP': (-1, 0)},
-        'flash_after': {'CUT FRAME': 3},
-        'flash_at': {'THE END': (18, 3), 'RUN-UP': (0, 1)},
-        'grey': {},
+        # v4 (the review's rebuild): lines along the charge, focus lines on the closing and the pass, the ring flash
+        # on the grip, two white frames after the cut frame, the ending going grey but for the petals
+        'speed': {'THE CHARGE': (-1, 0), 'CLOSING': 'zoom', 'THE PASS': 'zoom'},
+        'flash_after': {'CUT FRAME': 2},
+        'flash_at': {'THE GRIP': (11, 3)},
+        'grey': {'THE END': 0.85},
     },
     'dust': {
         # manga focus lines on the draw (radial, rushing in from the frame's edge onto the action); the falling streaks
