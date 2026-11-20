@@ -58,6 +58,8 @@ from.
   - Draw speed lines, needles and daggers across the canvas, or give them Rotation 90.
   - Round 2's vertical hairlines came out as short ticks across the flight.
   - Round 3's vertical daggers made a polygon "cage" round the blast instead of needles pointing out.
+  - World finishers, round 6 (20 Nov): our soft streak (127914373549121) and spark (73042129135061) textures are both
+    drawn along v, so a rising crown or plume of them flew sideways until they got Rotation 90.
 - **A ring with one bright side reads as motion.** The dash's rings are a single hair line, bright on one side.
   A double line read as a stack of contour lines.
 - **Grey at LE 0.75 is wind; white at LE 1 is energy.**

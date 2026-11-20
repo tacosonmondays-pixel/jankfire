@@ -474,7 +474,7 @@ STEP.hellgate = function(r, t, dt)
 			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, 3, 0), Drag = 1 })
 		s.ash.Shape = Enum.ParticleEmitterShape.Box
 	end
-	if s.plumeE and t < 1.52 then pour(r, "plumeAcc", s.plumeE, 120, dt) end
+	if s.plumeE and t < 1.66 then pour(r, "plumeAcc", s.plumeE, if t < 1.52 then 120 else 45, dt) end
 	if s.ash and not s.ashOut and t >= 1.6 then s.ashOut = true; s.ash:Emit(many(25)) end
 	if s.col then
 		-- 0.25 s: full at 1.45-1.52, then fading from the top down until 1.7
@@ -647,7 +647,7 @@ STEP.highnoon = function(r, t, dt)
 		-- the sand off the body: fine streaks blowing downwind, from a thin slab that follows the dissolving line
 		s.ep = part(r, Vector3.new(0.4, 0.6, r.width), CFrame.fromMatrix(r.centre, s.wind, Vector3.yAxis))
 		s.sand = emitter(r, s.ep, { Texture = TEX.streak, Color = cs(C(226, 198, 144), SAND), LightEmission = 0.5, Orientation = Enum.ParticleOrientation.VelocityParallel,
-			Size = ns(0, 0.3, 1, 0.12), Transparency = ns(0, 0.1, 0.6, 0.25, 1, 1), Lifetime = NR(0.5, 0.8), Speed = NR(10, 18),
+			Size = ns(0, 0.3, 1, 0.12), Transparency = ns(0, 0.1, 0.6, 0.25, 1, 1), Lifetime = NR(0.45, 0.58), Speed = NR(10, 18),
 			EmissionDirection = Enum.NormalId.Right, SpreadAngle = Vector2.new(12, 12), Acceleration = Vector3.new(0, 2, 0), Drag = 1 })
 		s.devil = {}
 	end
@@ -779,19 +779,11 @@ STEP.inkfall = function(r, t, dt)
 			if v == nil then v = (r.base[p].Position - mid):Dot(n) > 0 end
 			s.top[p] = v
 		end
-		-- (the cut's ink sits just in front of the body's front, measured, so the body never hides it)
-		local L = c.LookVector
-		local front = 0.3
-		for _, p in r.parts do
-			local q = r.base[p]
-			local h = p.part.Size * 0.5
-			front = math.max(front, (q.Position - mid):Dot(L) + math.abs(q.RightVector:Dot(L)) * h.X + math.abs(q.UpVector:Dot(L)) * h.Y + math.abs(q.LookVector:Dot(L)) * h.Z)
-		end
-		s.mid = mid + L * (front + 0.12)
+		s.mid = mid + c.LookVector * 0.6
 		-- (the petals spray from along the stroke)
 		s.ep = part(r, Vector3.new(BH * 1.5, BH * 0.3, 0.4), CFrame.fromMatrix(mid, s.dir, n))
 		s.petals = emitter(r, s.ep, { Texture = TEX.petal, Color = cs(C(246, 193, 207), C(229, 143, 168)), LightEmission = 0.4, LightInfluence = 0.3,
-			Size = ns(0, 0.75, 1, 0.55), Squash = NumberSequence.new(0.6), Transparency = ns(0, 0, 0.75, 0.15, 1, 1), Lifetime = NR(0.7, 0.95), Speed = NR(3, 7),
+			Size = ns(0, 0.75, 1, 0.55), Squash = NumberSequence.new(0.6), Transparency = ns(0, 0, 0.75, 0.15, 1, 1), Lifetime = NR(0.55, 0.68), Speed = NR(3, 7),
 			SpreadAngle = Vector2.new(180, 180), Acceleration = s.dir * 4 + Vector3.new(0, 1.5, 0), Drag = 1.8, Rotation = NR(0, 360), RotSpeed = NR(-260, 260) })
 	end
 	-- the stroke: drawn in 0.1 s at 0.15, held, gone by 1.25
@@ -837,29 +829,27 @@ STEP.inkfall = function(r, t, dt)
 	-- (0.5 body heights); the top face rides with the top half
 	if not s.edge and t >= 0.5 then
 		s.edge = {}
-		s.edgeRot = CFrame.fromMatrix(Vector3.zero, s.dir, s.cut.UpVector)
 		for face = 1, 2 do
-			local glow = prop(r, Enum.PartType.Block, Vector3.new(BH * 0.5, BH * 0.075, 0.04), PINK, Enum.Material.Neon)
-			local ink = prop(r, Enum.PartType.Block, Vector3.new(BH * 0.47, BH * 0.035, 0.04), INK)
-			table.insert(s.edge, { face = face, glow = glow, ink = ink })
+			local a, b = s.mid - s.dir * BH * 0.25, s.mid + s.dir * BH * 0.25
+			local gm, g0, g1 = beam(r, a, b, TEX.glow, PINK, BH * 0.14)
+			gm.Brightness = 1.4; gm.ZOffset = -0.3
+			local bm, a0, a1 = beam(r, a, b, TEX.tracer, INK, BH * 0.035)
+			bm.LightEmission = 0; bm.Brightness = 1
+			table.insert(s.edge, { face = face, bm = bm, gm = gm, ends = { a0, a1, g0, g1 }, a = a, b = b })
 		end
 	end
 	if s.edge then
 		local v = smooth(seg(t, 0.5, 0.6)) * (1 - smooth(seg(t, 0.9, 1.0)))
 		local rot = CFrame.fromAxisAngle(axis, turn)
-		local look = s.cut.LookVector
+		local function moved(x: Vector3): Vector3
+			return pivot + rot * (x - pivot) + s.dir * slide + s.cut.UpVector * BH * 0.06 * smooth(seg(t, 0.55, 0.7)) - Vector3.new(0, BH * 0.18 * smooth(seg(t, 0.7, 0.95)), 0)
+		end
 		for _, q in s.edge do
-			local cf = CFrame.new(s.mid) * s.edgeRot
-			if q.face == 2 then
-				local pos = pivot + rot * (s.mid - pivot) + s.dir * slide + s.cut.UpVector * BH * 0.06 * smooth(seg(t, 0.55, 0.7)) - Vector3.new(0, BH * 0.18 * smooth(seg(t, 0.7, 0.95)), 0)
-				cf = CFrame.new(pos) * rot * s.edgeRot
-			end
-			-- (the face the cut belongs to: the bottom half's ink sits on its top edge, the top half's on its bottom edge)
-			local off = s.cut.UpVector * BH * (if q.face == 1 then -0.02 else 0.02)
-			q.glow.CFrame = cf + off - look * 0.02
-			q.ink.CFrame = cf + off + look * 0.02
-			q.glow.Transparency = if v > 0.05 then 0.15 + 0.85 * (1 - v) else 1
-			q.ink.Transparency = if v > 0.05 then 1 - v else 1
+			local a, b = q.a, q.b
+			if q.face == 2 then a, b = moved(a), moved(b) end
+			q.ends[1].WorldPosition = a; q.ends[2].WorldPosition = b; q.ends[3].WorldPosition = a; q.ends[4].WorldPosition = b
+			q.bm.Transparency = ns(0, 1, 0.15, lerp(1, 0.05, v), 0.85, lerp(1, 0.05, v), 1, 1)
+			q.gm.Transparency = NumberSequence.new(lerp(1, 0.35, v))
 		end
 	end
 	fadeAll(r, smooth(seg(t, 0.98, 1.12)))

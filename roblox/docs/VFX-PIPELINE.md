@@ -806,3 +806,67 @@ the particle slider and emits at most 260 particles a frame. Which effect is use
   - **Sheet:** `docs/vfx/round20/crimson-slash.jpg`.
 - Photos: Play stage, clones fired by their attributes and frozen with TimeScale 0 (VfxEmit parks an effect after
   its life, too soon for a capture). Sheets: `docs/vfx/round20/pack-templates-1.jpg`, `docs/vfx/round20/pack-batch2.jpg`.
+
+## World finishers (20 Nov 2026, place versions 1244 to 1289)
+
+The owner (relayed by main): finishers should be "more like kill effects", using the VFX we bought, and "finisher
+cutscene should only play when you get the final hit on the game winning round and otherwise it can be like a
+valorant weapon finisher instead". So each finisher skin got a **world finisher**: about 2 s on the victim's real
+body, seen by everyone from their own view, with no camera, screen or HUD effects. The cinematic stays for the
+match-winning kill only (routing: the finishers session, v1242; `FINISHERS.md`).
+
+- **Study:** the vault's `Research\Valorant finishers.md`: what Valorant's in-world finishers do (a themed effect at
+  the body, 1.5 to 3 s, readable from any distance, no camera), the rules we took from it, and our eight. Inspired by,
+  never copied: no names, shapes, art or sounds of theirs. No frames were saved.
+- **Module:** `src/client/FinisherWorld.luau` (interface in the notes folder's `world-finishers.md`). `FW.play(id,
+  victim, opts)`; one STEP function per finisher, run every frame on the body's own parts (moved, faded, shelled) plus
+  our own parts, beams and emitters in `workspace.JankWorldFinisher`, all destroyed at the finisher's length. Past
+  600 studs from the camera it only hides the body. `WorldFinisherTimeScale` (0 to 1) freezes or slows every running
+  finisher for photos.
+- **The eight:** Ascension (Seraph AR: lit white, rises into a shaft with feather wings, bursts into feathers under a
+  gold halo), Hellgate (Infernal AR: cracks, a fire ring, chars and sinks into a black hole, then a dark-red streak
+  plume as the hole shuts), Splashdown (Ducky sniper: whirlpool, spins down the drain, a splash crown, a rubber duck
+  bobs up), High Noon (Dust revolver: a sand twister erodes the body top-down, a tumbleweed rolls through), Inkfall
+  (Sakura katana: one ink stroke, the top half slides off, both halves go to petals), Warp Out (Star revolver: a teal
+  ring opens behind it and yanks it in, snapping shut in a crackle), Lantern Light (Pumpkin SMG: a pumpkin closes over
+  it, its carved face lights, it pops in a warm cloud), Starchart (Triangulum sniper: night-blue, stars on the joints,
+  lines between them, the constellation rises).
+- **Photos:** a Play stage 900 studs up, five copies of your own character at five ages (each finisher started that
+  long before a freeze), plus all eight from about 100 studs. `tools/roblox/vfx/world_sheet.py` stacks the strips.
+  Rounds 1 to 8 are in `docs/vfx/world/` (round 8 = the final check, v1289); a separate critic agent scored every round. Before/after sheet: main's notes
+  folder, `world_finishers.jpg`.
+- **Scores (critic, out of 10), round 1 to round 7:**
+
+  | Finisher | R1 | R2 | R3 | R4 | R5 | R6 | R7 | final |
+  |---|---|---|---|---|---|---|---|---|
+  | Ascension | 5 | 6 | 7 | 8 | 8 | 8 | 8 | 8 |
+  | Hellgate | 4 | 7 | 7 | 6 | 5 (errored) | 7 | 8 | 8 |
+  | Splashdown | 6 | 6 | 6 | 7 | 7 | 8 | 8 | 8 |
+  | High Noon | 4 | 4 | 5 | 7 | 8 | 8 | 8 | 8 |
+  | Inkfall | 3 | 5 | 5 | 6 | 7 | 8 | 7 | 8 (round 6's cut restored) |
+  | Warp Out | 5 | 6 | 6 | 7 | 8 | 8 | 8 | 8 |
+  | Lantern Light | 6 | 7 | 6 | 8 | 8 | 8 | 8 | 8 |
+  | Starchart | 5 | 7 | 8 | 8 | 8 | 8 | 8 | 8 |
+
+- **Polish the critic would still do:** Ascension's feather burst wider (about 1.3 body heights); Starchart's lines
+  drawn visibly head to feet; High Noon's tumbleweed rounder with a visible spin; Splashdown's crown with 8 to 10 crisp
+  droplets and a faint blue; Inkfall's ink on the cut as a tapered brush line with a soft pink (round 7's solid bars
+  read as a censor bar and were taken out).
+
+### Lessons
+- **A VelocityParallel streak flies along its texture's u axis.** Our streak and spark textures are drawn along v:
+  give them Rotation 90, or a crown or plume flies sideways (the PLAYBOOK rule; broken and fixed again in round 6).
+  Squash on such a streak turned it across its flight too.
+- **A soft streak texture at a large size is a blob.** For a plume, use the hard thin spark streak, end its colour
+  dark and transparent, and paint (LightEmission 0.1, Brightness 1) rather than add. A bright additive red ball is the loudest
+  thing on screen.
+- **A Highlight's fill draws over beams and particles on the body.** Ink across a highlighted body has to be
+  geometry in front of the body's measured front, or it only shows where it sticks out. And a solid bar there reads as
+  a censor bar: taper it, or leave it out.
+- **Split a body by limb, not by height.** Arms hang past the waist; a part left behind stretches across the gap (the
+  "white connecting line" in Inkfall's round 5).
+- **Beam rings: segments two chords long, overlapping by half.** A tracer texture fades at its ends, so short
+  segments read as beads.
+- **Two values must not share a key.** `pour(r, key, ...)` keeps its running count in `r.s[key]`. A pour key equal to
+  a part's name (`s.cone`) added a number to a Part and stopped the finisher mid-way (round 5's Hellgate).
+- **A flipbook flame fills only part of its frame.** To get a flame a given height, size the particle about 2.5x that.
