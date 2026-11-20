@@ -56,13 +56,28 @@ type Kill = { k: any, v: any, w: string, t: number, skin: string?, fid: string? 
 local lastKill: { [any]: Kill } = {} -- each live match's last kill by a player
 local played: { [any]: boolean } = {} -- matches whose last round already played the full cut
 -- the viewers of a match's full cut who haven't reported their scene done yet (Matches.endMatch holds the end screen
--- on m.finisherUntil: the scene's length + 1 s at most, brought in when this set empties)
+-- on m.finisherUntil: the scene's length + HOLD_SLACK s at most, brought in when this set empties)
 local watching: { [any]: { [Player]: boolean } } = {}
+-- (the cap: the scene's length + HOLD_SLACK s. A client starts its scene a little after the server sends it - the clip
+-- over the network, the ghosts built - so the cap leaves room for that; it is only reached if a viewer never reports)
+local HOLD_SLACK = 4
 local function holdFor(m: any, fid: string, viewers: { Player })
-	m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[fid]) + 1
+	local len = Finishers.length("full", false, Finishers.LIST[fid])
+	local t0 = os.clock()
+	m.finisherUntil = t0 + len + HOLD_SLACK
+	m.finisherFrom = t0
 	local set = {}
 	for _, p in viewers do set[p] = true end
 	watching[m] = set
+	-- (the live cut-off hunt, 20 Nov: the server's console says how the hold ended)
+	task.delay(len + HOLD_SLACK + 0.1, function()
+		local left = watching[m]
+		if left and next(left) then
+			local names = {}
+			for p in left do table.insert(names, p.Name) end
+			print(("[jankfire] FinisherHold: the cap ended it after %.1f s, still playing for %s"):format(os.clock() - t0, table.concat(names, ", ")))
+		end
+	end)
 end
 local armed: { [Player]: { skin: string?, kind: string, all: boolean } } = {} -- (Studio tests)
 
@@ -294,6 +309,7 @@ R.OnServerEvent:Connect(function(p: Player, msg: any)
 			if next(set) == nil then
 				watching[m] = nil
 				if type(m.finisherUntil) == "number" then m.finisherUntil = math.min(m.finisherUntil, os.clock() + 0.3) end
+				print(("[jankfire] FinisherHold: every viewer done %.1f s after it was sent"):format(os.clock() - (m.finisherFrom or os.clock())))
 			end
 		end
 	end

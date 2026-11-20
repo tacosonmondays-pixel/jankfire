@@ -337,10 +337,13 @@ function F.unwarm()
 	if type(Scene.unwarm) == "function" then pcall(Scene.unwarm) end
 end
 
-function F.stop(quiet: boolean?)
+function F.stop(quiet: boolean?, why: string?)
 	local s = st
 	if not s then return end
 	st = nil
+	-- (one line per finisher, whatever ends it - the owner, 20 Nov: the cutscene still cut off in a live match; the F9
+	-- console says what ended it, and when. No line at all: the client itself went - a teleport)
+	print(("[jankfire] FinisherStop: %s at %.2f of %.2f s%s"):format(why or "?", s.w or 0, s.total or 0, if s.scene then " (scene)" else ""))
 	pcall(function() RunService:UnbindFromRenderStep("JankFinisherCam") end)
 	pcall(function() ContextActionService:UnbindAction("JankFinisherSkip") end)
 	if s.react then pcall(function() s.react:Stop(0) end) end
@@ -377,7 +380,7 @@ end
 -- ------------------------------------------------------------------ playing
 function F.play(msg: any): boolean
 	local p0 = os.clock()
-	F.stop(true)
+	F.stop(true, "a new finisher")
 	local row = Finishers.LIST[msg.id]
 	if not row or not row.built then return false end
 	local theme = FFx.THEMES[row.theme]
@@ -454,8 +457,18 @@ function F.play(msg: any): boolean
 		local c = K0 + UP * 1.3
 		return room(c, { K0 + fwd * 5 + right * sd * 4.9 - UP * 1.6, K0 + fwd * 3.3 + right * sd * 3 - UP * 1.2, V0 + right * sd * 3.9 + UP * 0.4 })
 	end
-	Replay.gatherCamParts((K0 + V0) / 2)
-	local side = if sideRoom(-1) > sideRoom(1) + 0.2 then -1 else 1
+	-- (a scene plays on its own set under its own lens: the map's camera walls and the room test are the cut's alone. The
+	-- walls are every solid part of the map near the kill - a sweep of the whole map, several ms of the scene's first
+	-- frame; main, 20 Nov: "The cutscene's first frame should hold the 60 fps cap too")
+	local sceneKind = if msg.kind == "short" then "short" else "full"
+	local willScene = Scene.can(row, sceneKind, kg, vg)
+	local pc = os.clock()
+	local side = 1
+	if not willScene then
+		Replay.gatherCamParts((K0 + V0) / 2)
+		side = if sideRoom(-1) > sideRoom(1) + 0.2 then -1 else 1
+	end
+	local pc1 = os.clock()
 	local cam = workspace.CurrentCamera :: Camera
 	local s: any = {
 		msg = msg, row = row, theme = theme, cut = cut, total = total, w = 0, tk = tk, tv = tv, kt = kt, vt = vt,
@@ -468,15 +481,15 @@ function F.play(msg: any): boolean
 	}
 	s.S.dir = s.dir
 	-- a scene (the full story) in place of the cut, when this finisher has one and both bodies can act it
-	local sceneKind = if msg.kind == "short" then "short" else "full"
 	local ps = os.clock()
-	if Scene.can(row, sceneKind, kg, vg) then
+	if willScene then
 		local ok, sc = pcall(Scene.start, s, sceneKind)
 		if ok and sc then
 			s.scene = sc
 			s.total = sc.total
 		else
 			warn("[jankfire] finisher scene: " .. tostring(sc))
+			Replay.gatherCamParts((K0 + V0) / 2) -- (the cut plays instead: its camera walls after all)
 		end
 	end
 	local ps1 = os.clock()
@@ -508,28 +521,32 @@ function F.play(msg: any): boolean
 	postEffects(true)
 	me:SetAttribute("LoadoutOpen", true) -- (the hands and the guns hold still, no menu opens, the shoulder camera lets go)
 	me:SetAttribute("Finishing", true)
+	print(("[jankfire] FinisherStart: %s %s%s, %.2f s"):format(tostring(msg.id), tostring(msg.kind), if s.scene then " scene" else "", s.total))
 	-- (a safety net: whatever ends it, the flag that holds back killcams never outlives it)
 	task.delay(s.total + 3, function()
 		if not st and me:GetAttribute("Finishing") then me:SetAttribute("Finishing", nil) end
 	end)
+	local ph = os.clock()
 	controls(false)
 	Replay.hideLive(true)
+	local ph1 = os.clock()
 	-- (Studio: where the start's time went, ms; stepScene adds its first frames)
 	if RunService:IsStudio() then
-		s.prof = ("play %.1f = ghosts %.1f, scene %.1f [%s], other %.1f"):format(1000 * (os.clock() - p0), 1000 * (pg1 - pg),
-			1000 * (ps1 - ps), if s.scene then s.scene.prof or "" else "none", 1000 * ((os.clock() - p0) - (pg1 - pg) - (ps1 - ps)))
+		s.prof = ("play %.1f = ghosts %.1f, walls %.1f, scene %.1f [%s], hide %.1f, other %.1f"):format(1000 * (os.clock() - p0), 1000 * (pg1 - pg),
+			1000 * (pc1 - pc), 1000 * (ps1 - ps), if s.scene then s.scene.prof or "" else "none", 1000 * (ph1 - ph),
+			1000 * ((os.clock() - p0) - (pg1 - pg) - (pc1 - pc) - (ps1 - ps) - (ph1 - ph)))
 		s.profN = 0
 		me:SetAttribute("FinisherProf", s.prof)
 	end
 	ContextActionService:BindActionAtPriority("JankFinisherSkip", function(_, state)
-		if state == Enum.UserInputState.Begin then F.stop() end
+		if state == Enum.UserInputState.Begin then F.stop(nil, "skipped (key)") end
 		return Enum.ContextActionResult.Sink
 	end, false, 3600, Enum.KeyCode.Space, Enum.KeyCode.ButtonB)
 	RunService:BindToRenderStep("JankFinisherCam", Enum.RenderPriority.Last.Value + 72, function(dt: number)
 		local ok, err = pcall(F._step, dt)
 		if not ok then
 			warn("[jankfire] finisher: " .. tostring(err))
-			F.stop()
+			F.stop(nil, "an error")
 		end
 	end)
 	return true
@@ -587,14 +604,14 @@ local function stepScene(s: any)
 	hideScreens()
 	postEffects(true)
 	Replay.hideLive(true)
-	if s.w >= s.total then F.stop() end
+	if s.w >= s.total then F.stop(nil, "the end") end
 end
 
 -- one frame
 function F._step(dt: number)
 	local s = st
 	if not s then return end
-	if Replay.isPlaying() then F.stop(true); return end
+	if Replay.isPlaying() then F.stop(true, "a replay started"); return end
 	dt = math.min(dt, 0.1)
 	-- (test knobs: slow the whole cut, or hold it at a moment, for photos)
 	local speed = workspace:GetAttribute("FinisherSpeed")
@@ -724,7 +741,7 @@ function F._step(dt: number)
 	hideScreens()
 	postEffects(true)
 	Replay.hideLive(true)
-	if s.w >= s.total then F.stop() end
+	if s.w >= s.total then F.stop(nil, "the end") end
 end
 
 -- a shot begins
@@ -866,6 +883,6 @@ function F.preview(fid: string, opts: any?): boolean
 		melee = W[wid] and W[wid].kind == "melee", by = me.DisplayName, role = "killer", preview = true, previewLook = previewLook })
 end
 
-skipB.MouseButton1Click:Connect(function() F.stop() end)
+skipB.MouseButton1Click:Connect(function() F.stop(nil, "skipped (button)") end)
 
 return F

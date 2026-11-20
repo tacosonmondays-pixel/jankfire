@@ -64,7 +64,7 @@ end)
 
 Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	if type(r) ~= "table" then return end
-	if (r.start or r.hub) and F.isPlaying() then F.stop() end
+	if (r.start or r.hub) and F.isPlaying() then F.stop(nil, if r.hub then "home" else "a round started") end
 	if r.hub then F.unwarm() end -- (home: a set built ahead and never played goes)
 	if (r.start or r.hub) and #worldOn > 0 then
 		local w = world()
@@ -73,7 +73,7 @@ Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	end
 end)
 me.CharacterAdded:Connect(function()
-	if F.isPlaying() then F.stop() end
+	if F.isPlaying() then F.stop(nil, "a respawn") end
 	if #worldOn > 0 then
 		local w = world()
 		for _, vm in worldOn do if w and w.stop then pcall(w.stop, vm) end end
@@ -111,7 +111,7 @@ me:GetAttributeChangedSignal("FinisherTest"):Connect(function()
 	local v = me:GetAttribute("FinisherTest")
 	if type(v) ~= "string" or v == "" then return end
 	me:SetAttribute("FinisherTest", nil)
-	if v == "stop" then F.stop(); return end
+	if v == "stop" then F.stop(nil, "test stop"); return end
 	-- ("warm:<sceneId>" builds a scene's set ahead as the match's warning does; "unwarm" drops it. The workspace attribute
 	-- FinisherWarm says when it's ready)
 	if v == "unwarm" then F.unwarm(); return end

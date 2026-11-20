@@ -55,9 +55,18 @@ Remotes:WaitForChild("Replay").OnClientEvent:Connect(function(msg: any)
 	elseif msg.t == "potm" then
 		potmTok += 1
 		local my = potmTok
+		-- (20 Nov 2026, the owner, live: "during a match the cutscene animatin gets cut off still": the server times the play
+		-- of the match for after a finisher's scene - its `at` ~17 s out, the scene's hold plus the end screen's moment -
+		-- but the wait here stopped at 10 s, so the replay started ~11 s into the 14 s scene, and a finisher ends when a
+		-- replay starts. Studio's test matches have no play of the match, so only a live match showed it. Now the whole
+		-- wait, and never over a finisher: it waits for that to end; going home first drops it)
 		local wait = (tonumber(msg.at) or 0) - workspace:GetServerTimeNow()
-		task.delay(math.clamp(wait, 0, 10), function()
+		task.delay(math.clamp(wait, 0, 45), function()
 			if my ~= potmTok then return end
+			local t0 = os.clock()
+			while me:GetAttribute("Finishing") and os.clock() - t0 < 25 do task.wait(0.1) end
+			if my ~= potmTok then return end
+			if os.clock() - t0 > 0.05 then print(("[jankfire] the play of the match waited %.1f s for a finisher"):format(os.clock() - t0)) end
 			Replay.play(msg)
 		end)
 	end
@@ -68,6 +77,7 @@ Remotes:WaitForChild("Round").OnClientEvent:Connect(function(r: any)
 	if type(r) ~= "table" then return end
 	if (r.start or r.over or r.hub) and Replay.mode() == "killcam" then Replay.stop() end
 	if r.hub and Replay.mode() == "potm" then Replay.stop() end
+	if r.hub then potmTok += 1 end -- (home: one still waiting doesn't start here)
 end)
 
 -- a test hook (Play tests driven from Studio): the local player's attribute ReplayTest = "stop" ends a replay;
