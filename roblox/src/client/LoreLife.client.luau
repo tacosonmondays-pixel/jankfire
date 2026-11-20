@@ -967,11 +967,13 @@ local function startCut(id: string, again: boolean?)
 		local fl = Vector3.new(want.X - centre.X, 0, want.Z - centre.Z)
 		local dist0, up = fl.Magnitude, want.Y - centre.Y
 		fl = if dist0 > 1e-3 then fl.Unit else face
-		-- (the best by score: every line clear first, then room up to 3 studs; the first found wins a tie)
+		-- (the best by score: every line clear first, then room up to 3 studs; the first found wins a tie. its distance is
+		-- kept first, turning all the way round, before it comes nearer: 20 Nov, the Square's panel on a wall had the
+		-- close-up pulled in to 5 studs, the NPC cut off at the knees)
 		local best, bestScore = nil, -1
-		for _, deg in { 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 130, -130 } do
-			local dir = CFrame.Angles(0, math.rad(deg), 0) * fl
-			for _, k in { 1, 0.85, 1.2, 0.7 } do
+		for _, k in { 1, 0.85, 1.2, 0.7 } do
+			for _, deg in { 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 130, -130 } do
+				local dir = CFrame.Angles(0, math.rad(deg), 0) * fl
 				local p = centre + dir * (dist0 * k) + Vector3.new(0, up, 0)
 				local r = room(p)
 				if r < 0.8 then continue end

@@ -7,7 +7,8 @@
 --   LorePanel.make(base, parent, show?, scan?) -> (Model, string)
 --     base   the floor point under its front middle; its LookVector is the way the screen faces (where you stand)
 --     show   where the NPC stops, in the panel's frame (x right, -z out toward you); nil = picked here: the clearer of
---            its two sides (5.6 studs out), else the clearest 3 x 3 near where you stand, from the boxes of every
+--            its two sides (5.6 studs out; 0.8, else 1.8, else 2.6 in front, for a panel flush on a wall), else the
+--            clearest 3 x 3 near where you stand, from the boxes of every
 --            visible part under `scan` (meshes with queries off count too)
 --   LorePanel.fromSpots() -> string
 --     every CodePanelSpot under Map.Hub (a hub builder's marker: a Part with its bottom-centre on the floor, its
@@ -59,11 +60,14 @@ end
 local function pickShow(base: CFrame, scan: Instance?, skip: Instance?): Vector3
 	local boxes = boxesNear(scan, base.Position, skip)
 	local best, bestRoom = nil, -1
-	for _, c in { Vector3.new(5.6, 0, -0.8), Vector3.new(-5.6, 0, -0.8) } do
-		local r = room(boxes, (base * CFrame.new(c)).Position, 1.5)
-		if r > bestRoom then best, bestRoom = c, r end
+	-- (its two sides, a step further out each time: a panel flush on a wall has the wall's box under 0.8 out)
+	for _, z in { -0.8, -1.8, -2.6 } do
+		for _, c in { Vector3.new(5.6, 0, z), Vector3.new(-5.6, 0, z) } do
+			local r = room(boxes, (base * CFrame.new(c)).Position, 1.5)
+			if r > bestRoom then best, bestRoom = c, r end
+		end
+		if best and bestRoom >= 1 then return best end
 	end
-	if best and bestRoom >= 1 then return best end
 	for x = -4, 4, 0.5 do
 		for z = -2, -9, -0.5 do
 			local c = Vector3.new(x, 0, z)
