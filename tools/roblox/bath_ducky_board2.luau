@@ -17,7 +17,7 @@ local O = Vector3.new(-9400, 800, -8600) -- the floor of the set, far off every 
 local IDS = { giant = 85544912707294, duck = 116208755186622 } -- the round-2 uploads (bd2_giant, bd2_duck)
 BD.IDS = IDS
 local ANIM = {
-	idle = 507766666, point = 507770453, -- Roblox's own R15 idle and point
+	idle = 507766666, point = 507770453, sit = 2506281703, -- Roblox's own R15 idle, point and sit
 	look = 77808638913840, -- victim_lookaround_t2: standing, looking round (FinisherScene's)
 	pulled = 122059547987683, -- yanked backwards off the feet, arms reaching forward (Warp Out's victim clip)
 }
@@ -169,6 +169,8 @@ local function pose(rig, map, pos, yaw, opts)
 		local low = math.huge
 		for _, n in { "LeftFoot", "RightFoot" } do low = math.min(low, cfs[n].Position.Y - SIZES[n].Y / 2) end
 		shift = Vector3.new(0, opts.ground - low, 0)
+	elseif opts.hips then
+		shift = Vector3.new(0, opts.hips - cfs.LowerTorso.Position.Y, 0)
 	end
 	for _, d in rig:GetDescendants() do
 		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") or d:IsA("Weld") or d:IsA("WeldConstraint") then d:Destroy() end
@@ -184,6 +186,7 @@ end
 
 -- the dynamic head's own expressions (FaceControls)
 local EXPR = {
+	closed = { LeftEyeClosed = 1, RightEyeClosed = 1, LeftLipCornerPuller = 0.55, RightLipCornerPuller = 0.55, LeftCheekRaiser = 0.3, RightCheekRaiser = 0.3 },
 	shout = { JawDrop = 0.75, LeftEyeUpperLidRaiser = 1, RightEyeUpperLidRaiser = 1, LeftInnerBrowRaiser = 1, RightInnerBrowRaiser = 1, EyesLookUp = 1 },
 	stern = { LeftBrowLowerer = 1, RightBrowLowerer = 1, LeftEyeClosed = 0.3, RightEyeClosed = 0.3, LipsTogether = 0.6, LeftLipCornerDown = 0.3, RightLipCornerDown = 0.3 },
 	puzzled = { LeftInnerBrowRaiser = 0.8, RightOuterBrowRaiser = 0.6, JawDrop = 0.15, EyesLookLeft = 0.4 },
@@ -371,6 +374,11 @@ BD.CAM = {
 	[4] = { { -6, 18, 29 }, { 10, 3, -3 }, 60, 0 }, -- THE STANDOFF: wide, the pool and the door
 	[5] = { { -19, 13, 10 }, { 30, 3, -1.5 }, 52, 0 }, -- THE SPRAY: over the duck's and the player's shoulders
 	[6] = { { 27.5, 2.6, -6.5 }, { 33.5, 4.0, -1 }, 50, -3 }, -- SOAKED: on the opponent as the jets hit
+	-- the opening (played before shot 1)
+	[7] = { { -6, 3.2, -4 }, { 3.6, 1.0, -2 }, 48, 0 }, -- CALM: in front of you, low over the water
+	[8] = { { 6.4, 2.6, -1.2 }, { -10, -0.8, -2 }, 58, 0 }, -- THE SHADOW: just behind and above your head, down the pool
+	[9] = { { -8, 9, 24 }, { -13, 0.5, -2 }, 52, 0 }, -- IT EMERGES: wide on the pool from the near side
+	[10] = { { -1.5, 0.4, -1 }, { -9.8, 1.4, -2 }, 46, 4 }, -- THE EYES: low at the water, close on the face
 }
 
 -- ------------------------------------------------------------------ the shots
@@ -492,6 +500,115 @@ P[6] = function() -- soaked: the jets hit, he is knocked back
 	shot(BD.CAM[6])
 end
 
+-- ------------------------------------------------------------------ the opening (the owner's sketch, 20 Nov)
+-- "I want a shot of the pool with the shadow in it like over the head and behind, and it emerges then blame that the
+-- rise shot and them everything folows your story board", then "maybe a shot focus on it emerging from the water with
+-- anime flare lines from the eyes". The sheet plays them before shot 1: CALM, SHADOW, EMERGE, EYES, then the rise.
+local RELAX_AT = Vector3.new(3.6, 0, -2) -- leaning back on the pool's edge (x 6), facing the pool (-X)
+local EYE = Vector3.new(0.124, 0.679, -0.282) -- the giant's eyes in its own frame, per unit of height (measured)
+
+local function relaxer(expr)
+	local p = newRig("player")
+	pose(p, POSE.sit, L(RELAX_AT.X, 0, RELAX_AT.Z), math.pi / 2, { tilt = 0.45, hips = O.Y + WATER - 1.0 })
+	foamHair(p)
+	face(p, expr)
+	foamPile(L(RELAX_AT.X - 0.6, WATER, RELAX_AT.Z), 2.6, 16, 0.3, 0.7)
+	return p
+end
+
+local function setWater(colour, tr)
+	local w = root:FindFirstChild("Water")
+	w.Color, w.Transparency = colour, tr
+end
+
+-- water running off a dome: thin sheets down its sides, drops, and foam rings spreading on the surface
+local function pour(centre, radius, top, n)
+	for i = 0, n - 1 do
+		local a = i / n * math.pi * 2 + math.random() * 0.3
+		local d = Vector3.new(math.cos(a), 0, math.sin(a))
+		local p0 = centre + d * radius * 0.55 + Vector3.new(0, top - centre.Y - radius * 0.25, 0)
+		local p1 = centre + d * radius * 1.02
+		rod(p0, p1, 0.12 + math.random() * 0.12, C.splash, { tr = 0.3, shadow = false })
+		for k = 1, 3 do
+			ball(p1 + Vector3.new(0, math.random() * 2, 0) + d * math.random() * 0.8, 0.08 + math.random() * 0.12, C.splash, { tr = 0.2, shadow = false })
+		end
+	end
+	for ring = 1, 3 do
+		local r = radius * (1.1 + ring * 0.35)
+		for i = 0, 27 do
+			local a = i / 28 * math.pi * 2
+			ball(centre + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), 0.25 + 0.1 * (3 - ring), C.foam, { tr = 0.25 * ring, shadow = false })
+		end
+	end
+end
+
+-- anime flare lines off an eye: a white glint and thin light streaks, warm white with one gold line (quiet palette)
+local function flare(at, toward)
+	ball(at, 0.45, Color3.fromRGB(255, 250, 238), { mat = Enum.Material.Neon, shadow = false })
+	local right = toward:Cross(Vector3.yAxis).Unit
+	for _, s in { { 0, 14, 0.07, false }, { 180, 9, 0.06, false }, { 35, 6, 0.05, true }, { 145, 5, 0.05, false },
+		{ -30, 5, 0.05, false }, { -150, 4, 0.04, false }, { 90, 3.2, 0.05, false } } do
+		local a = math.rad(s[1])
+		local dir = (right * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
+		part(Vector3.new(s[3], s[3], s[2]), CFrame.lookAt(at + dir * s[2] / 2, at + dir * s[2]),
+			s[4] and Color3.fromRGB(255, 205, 90) or Color3.fromRGB(255, 244, 214), { mat = Enum.Material.Neon, tr = 0.15, shadow = false })
+	end
+end
+
+local function eyesOf(g)
+	local _, size = g:GetBoundingBox()
+	local h = size.Y
+	local piv = g:GetPivot()
+	return piv * Vector3.new(-EYE.X * h, EYE.Y * h, EYE.Z * h), piv * Vector3.new(EYE.X * h, EYE.Y * h, EYE.Z * h)
+end
+
+P[7] = function() -- CALM: relaxing in the pool, nothing wrong yet
+	setWater(C.water, 0.35)
+	relaxer("closed")
+	floaters()
+	shot(BD.CAM[7])
+end
+
+P[8] = function() -- THE SHADOW: over your head, from behind: a huge duck shape in the water ahead of you
+	setWater(Color3.fromRGB(46, 88, 122), 0.45)
+	relaxer("closed")
+	floaters()
+	local g = T.giant:Clone()
+	local main = g:FindFirstChildWhichIsA("MeshPart")
+	local sh = main:Clone()
+	-- the duck's side profile (round head, beak, body, tail: an arch), laid flat just under the surface, head toward you
+	sh.Size = Vector3.new(0.4, main.Size.Y * 0.85, main.Size.Z * 0.85)
+	sh.Color, sh.CastShadow, sh.Reflectance = Color3.fromRGB(8, 14, 24), false, 0
+	sh.CFrame = CFrame.fromMatrix(L(-9, WATER - 0.45, -2), Vector3.new(0, 1, 0), Vector3.new(1, 0, 0), Vector3.new(0, 0, -1))
+	sh.Parent = dyn
+	g:Destroy()
+	shot(BD.CAM[8])
+end
+
+P[9] = function() -- IT EMERGES: wide on the pool, the crown and the foam cap break the surface, water pouring off
+	setWater(C.water, 0.35)
+	relaxer("shout")
+	floaters()
+	local g = giant(WATER + 6 - GIANT_H)
+	local top = L(DUCK_AT.X, WATER + 6, DUCK_AT.Z)
+	pour(L(DUCK_AT.X + 1, WATER, DUCK_AT.Z), 6.5, top.Y, 16)
+	shot(BD.CAM[9])
+end
+
+P[10] = function() -- THE EYES: close on it emerging, the eyes clear the water, flare lines off them
+	setWater(C.water, 0.35)
+	local g = giant(WATER + 1.3 - EYE.Y * GIANT_H)
+	local l, r = eyesOf(g)
+	local toward = Vector3.new(1, 0, 0)
+	flare(l + toward * 0.4, toward)
+	flare(r + toward * 0.4, toward)
+	pour(L(DUCK_AT.X + 2, WATER, DUCK_AT.Z), 7.5, O.Y + WATER + 1.3 + 0.32 * GIANT_H, 20)
+	for _, q in dyn:GetChildren() do -- this close, the sheets of water read as bars across the face: drops and rings only
+		if q:IsA("Part") and q.Shape == Enum.PartType.Cylinder and q.Material ~= Enum.Material.Neon then q:Destroy() end
+	end
+	shot(BD.CAM[10])
+end
+
 -- ------------------------------------------------------------------ build / panel / clear
 function BD.build()
 	BD.clear(true)
@@ -510,6 +627,7 @@ function BD.build()
 		if d:IsA("BasePart") then SIZES[d.Name] = d.Size end
 	end
 	POSE.idle = pickPose("idle")
+	POSE.sit = pickPose("sit")
 	local reach = function(cfs) return -(cfs.RightHand.Position.Z) + cfs.RightHand.Position.Y * 0.3 end
 	local t1, t2, t3
 	POSE.point, t1 = pickPose("point", reach)

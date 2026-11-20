@@ -1,5 +1,29 @@
 # The Bath Ducky skin reveal (storyboard, 19 Nov 2026)
 
+## Round 3 (20 Nov): the owner's opening sketch
+
+The owner on round 2 (typed in the VFX session, with their own three-panel sketch, notes folder
+`local_f6d4e505.../bath-ducky-owner-sketch-opening.png`): "I want a shot of the pool with the shadow in it like over the
+head and behind, and it emerges then blame that the rise shot and them everything folows your story board", then
+"actually maybe a shot focus on it emerging from the water with anime flare lines from the eyes".
+
+![round 3](bath-ducky/bath_ducky_finisher_r3.jpg)
+
+Single shots: `bath-ducky/r3_shot_01.jpg` to `r3_shot_04.jpg` (the opening); shots 05-10 are round 2's `shot_01.jpg` to `shot_06.jpg`, unchanged:
+
+| # | shot | time | what happens | camera |
+|---|---|---|---|---|
+| 01 | Calm | 0.0-1.0 s | you relax in the pool, leaning on the edge, eyes shut (sketch 1) | low over the water, in front |
+| 02 | The shadow | 1.0-2.0 s | over your head: a huge duck-shaped shadow slides in under the water (sketch 2) | just behind and above your head |
+| 03 | It emerges | 2.0-3.0 s | wide on the pool: the crown and foam cap break the surface, water pouring off, foam rings (sketch 3) | wide, from the near side |
+| 04 | The eyes | 3.0-3.8 s | close as it surfaces: the eyes clear the water, anime flare lines off them (warm white, one gold line) | low at the water line, close |
+| 05-10 | round 2 | 3.8-10.0 s | the rise, the opponent, you and the ducky, the standoff, the spray, soaked | as round 2 |
+
+About 10 s in all, past the finishers' 4-6 s match-win window: the end screen would wait longer (the owner's call).
+Shot in one Studio turn (place version 1102); the stage is `tools/roblox/bath_ducky_board2.luau` shots 7-10, the sheet
+`bath_ducky_sheet.py ... v3`. A continuity note for the build: in the opening you lean on the pool's edge; from the rise
+on you stand in the middle of the pool (the cut can cover it, or the rise can be re-blocked at the edge).
+
 ## Round 2 (20 Nov): rubber ducks, a kaiju rise, a finisher on the opponent
 
 The owner on round 1 (relayed word for word by the VFX session): "I dont like how the ducks look theyre supposed to be

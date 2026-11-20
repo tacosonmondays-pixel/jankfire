@@ -8,7 +8,8 @@ import sys, os, math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-V2 = 'v2' in sys.argv[3:]  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
+V3 = 'v3' in sys.argv[3:]  # round 3: the owner's sketch adds the opening (calm, shadow, emerge, eyes) before round 2
+V2 = 'v2' in sys.argv[3:] or V3  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
 CW, CH = 640, 360            # one panel
 CAP = 92                     # caption under it
 PAD, HEAD = 18, 96
@@ -40,6 +41,18 @@ PANELS_V2 = [
     ('05', 'THE SPRAY', '4.0-5.0 s', 'You and the ducky spray him with water.', 'over the shoulders, down the jets'),
     ('06', 'SOAKED', '5.0-6.2 s', 'The jets hit; he is knocked back, drenched. Finisher and skin name.', 'on the opponent, a small tilt'),
 ]
+
+# round 3 (20 Nov), the owner's sketch and notes: "I want a shot of the pool with the shadow in it like over the head and
+# behind, and it emerges then blame that the rise shot and them everything folows your story board", then "maybe a shot
+# focus on it emerging from the water with anime flare lines from the eyes". The opening comes first, then round 2.
+PANELS_V3 = [
+    ('01', 'CALM', '0.0-1.0 s', 'You relax in the pool. Calm water, the floating ducks.', 'low over the water, in front'),
+    ('02', 'THE SHADOW', '1.0-2.0 s', 'Over your head: a huge duck-shaped shadow slides in under the water.', 'just behind and above your head'),
+    ('03', 'IT EMERGES', '2.0-3.0 s', 'Wide on the pool: the crown and foam cap break the surface, water pouring off.', 'wide, from the near side'),
+    ('04', 'THE EYES', '3.0-3.8 s', 'Close as it surfaces: the eyes clear the water, flare lines streak off them.', 'low at the water line, close'),
+]
+TIMES_V3 = ['3.8-5.2 s', '5.2-6.0 s', '6.0-6.8 s', '6.8-7.8 s', '7.8-8.8 s', '8.8-10.0 s']
+PANELS_V3 += [('%02d' % (k + 5), p[1], TIMES_V3[k], p[3], p[4]) for k, p in enumerate(PANELS_V2)]
 
 
 def band(path):
@@ -105,25 +118,31 @@ def caption(d, x, y, p):
 
 def main():
     shots = {}
-    for i in range(1, 10):
+    for i in range(1, 11):
         p = os.path.join(SRC, 'p%d.png' % i)
         if os.path.exists(p):
             shots[i] = band(p)
-    panels = PANELS_V2 if V2 else PANELS
+    panels = PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
     if V2:
-        if 6 in shots:
-            shots[6] = end_card(shots[6], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK PISTOL'))
+        last = len(panels)
+        if last in shots:
+            shots[last] = end_card(shots[last], 'BATH DUCKY', os.environ.get('BD_SKIN', 'ROYAL DUCK PISTOL'))
     else:
         if 7 in shots:
             shots[8] = soak(shots[7])
         if 9 in shots:
             shots[9] = end_card(shots[9])
-    rows = (len(panels) + 2) // 3
-    W = PAD + 3 * (CW + PAD)
+    cols = 5 if V3 else 3
+    rows = (len(panels) + cols - 1) // cols
+    W = PAD + cols * (CW + PAD)
     H = HEAD + rows * (CH + CAP + PAD) + PAD
     sheet = Image.new('RGB', (W, H), (24, 26, 32))
     d = ImageDraw.Draw(sheet)
-    if V2:
+    if V3:
+        d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 3', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), "About 10 s on the match-winning kill   |   the owner's sketch: the calm pool, the shadow over your head, it emerges, flare eyes; then round 2   |   staged in Studio",
+               font=font(REG, 17), fill=(190, 190, 196))
+    elif V2:
         d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 2', font=font(BOLD, 34), fill=(245, 207, 58))
         d.text((PAD, 62), "About 6 s on the match-winning kill   |   the owner's notes: rubber ducks, a kaiju rise, the opponent at the door, the spray   |   staged in Studio",
                font=font(REG, 17), fill=(190, 190, 196))
@@ -132,8 +151,8 @@ def main():
         d.text((PAD, 62), 'Runtime about 0:25-0:30   |   comedy / skin reveal   |   the owner\'s beats, staged in Studio with our R15 rig, Tripo ducks and tub',
                font=font(REG, 17), fill=(190, 190, 196))
     for i, p in enumerate(panels):
-        cx = PAD + (i % 3) * (CW + PAD)
-        cy = HEAD + (i // 3) * (CH + CAP + PAD)
+        cx = PAD + (i % cols) * (CW + PAD)
+        cy = HEAD + (i // cols) * (CH + CAP + PAD)
         im = shots.get(i + 1)
         if im is None:
             d.rectangle([cx, cy, cx + CW, cy + CH], fill=(50, 52, 60))
@@ -143,7 +162,7 @@ def main():
         caption(d, cx, cy + CH, p)
     sheet.save(OUT, quality=90)
     for i, im in shots.items():  # the single panels too, full size, for the docs
-        im.save(os.path.join(os.path.dirname(OUT), ('shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
+        im.save(os.path.join(os.path.dirname(OUT), ('r3_shot_%02d.jpg' if V3 else 'shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
     print(OUT, sheet.size, sorted(shots))
 
 
