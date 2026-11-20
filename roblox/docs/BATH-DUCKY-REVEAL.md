@@ -9,6 +9,45 @@ once built (on `client/FinisherScene.luau`, as planned below). Rounds 2-4 show t
 the name card; the stage and the cut now default to the sniper (`HELD_SKIN` in `bath_ducky_board3.luau`, the card in
 `bath_ducky_video.py`), so the next shoot holds it.
 
+## Round 5 (20 Nov): slower, the new beats, real water
+
+The owner on the round-4 animatic (relayed by the finishers session): "Ducky cinematic goes by too quickly!! Ducky
+emerges pause on him, his head snaps!! Enemy walks in after opening door shot of enemy looking the shot of in air like I
+mentioned it's supposed to be awkward and silly so pause it for a second then he gets splashed used some of the new vfx
+we got for the water, also the water that comes off the duck should be actual water with physics rn it's just like code
+built tubes ??"
+
+The video is `bath_ducky_animatic_v3.mp4` (21.4 s, 24 fps, sound), beside the others in the notes folder
+`local_f6d4e505.../finisher-boards/video/` and in the vault. The sheet is one frame of each shot:
+
+![round 5](bath-ducky/bath_ducky_finisher_r5.jpg)
+
+What changed (stage `tools/roblox/bath_ducky_board4.luau`, shared.BD4; cut `bath_ducky_video.py <caps> <out> comic r5`):
+- **Slower:** 14 shots, about 21 s (round 4 was 10 s): CALM 1.5, THE SHADOW 1.6, IT EMERGES 1.8, THE EYES 1.6, THE RISE
+  2.0, THE SNAP 1.8, THE DOOR 1.3, HE WALKS IN 1.7, HE LOOKS 1.2, YOU AND THE DUCKY 1.0, THE STANDOFF 1.2, THE SPRAY 1.2,
+  IN THE AIR 1.5, SOAKED 2.0. The duck's shots are captured at 12 a second (on twos at 24 fps).
+- **The pause and the snap:** after the rise, a held low look at the duck, dripping, turned a little away; then it snaps
+  round to face you in two frames (a small overshoot), with a white kick, focus lines and a jolt in post.
+- **The door, the walk in, the look:** the door swings open on the lit hall with him behind it; he walks in (Roblox's
+  own R15 walk, his root carried through the doorway); a close shot of him looking round, his face dropping at the end.
+  He is no longer in the doorway before the door opens (round 4 had him there from the rise).
+- **The awkward hold:** as the streams come at him he jumps in fright (a frame of Roblox's R15 jump, lifted off the
+  floor) and the picture holds on him in the air for 1.5 s, the streams frozen a breath away, silent but for one quack;
+  then the splash lands.
+- **Real water:** every drop is a particle now (ParticleEmitters with gravity and drag), no more parts: water sheeting
+  off the duck's body and pouring off its head as it rises, a crown of water thrown up round it, rings spreading on the
+  surface, bubbles, and the two jets as real streams that arc under gravity (aimed a little high so they fall onto him).
+  Edit-mode particles do simulate in Studio: `BD.frame(i)` runs every emitter for the frame's slice of time
+  (TimeScale 1, wait, TimeScale 0), so each capture is the next moment of the same simulation. Frames must be shot in
+  order; a shot's first frame restarts its water.
+- **The pack's VFX:** the hit is the bought Combat pack's slam (`ReplicatedStorage.JankfireVfx.HitSlam`: streaks and a
+  ring) recoloured to water and shrunk, with our own splash crown (the Tidecrest sprite) and thrown drops. The pack's
+  `KillIceBurst` was tried first: its snowflake sprites read as snow.
+- Shot in Studio turns at 06:29, 06:34, 06:46 and 06:56 UTC (219 frames by capture helpers, in order); stage, Terrain
+  water and grade removed each time, nothing saved (the place is unchanged).
+- Still rough: in THE EYES little water shows (the head is mostly under); HE LOOKS ends on the back of his head as he
+  turns; the door swings out into the hall, so the shot reads as light flooding in rather than the door itself moving.
+
 ## Round 4 (20 Nov): a deep tub, real water, sunlight, a Spider-Verse duck
 
 The owner on the round-3 animatic (relayed by the finishers session): "Can the water be actual water and have lighting

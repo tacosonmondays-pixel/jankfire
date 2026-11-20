@@ -8,7 +8,12 @@
 # `comic`, the duck's shots get the comic-print look on top of the in-engine ink outline and on-twos timing
 # (tools/roblox/bath_ducky_board3.luau): Ben-Day halftone dots in the shadows, a slight colour misprint (red and blue
 # plates off register), and no cross-fades there, so the held poses stay crisp.
-# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir> [comic]
+# Round 5 (20 Nov, the owner: "Ducky cinematic goes by too quickly!! Ducky emerges pause on him, his head snaps!! Enemy
+# walks in after opening door shot of enemy looking the shot of in air ... it's supposed to be awkward and silly so pause
+# it for a second then he gets splashed"): with `r5`, the 14 shots of tools/roblox/bath_ducky_board4.luau (about 21 s):
+# a white kick and focus lines on the head snap, the awkward hold in the air printed comic-style in silence but for one
+# quack, more captures per second where the duck moves on twos.
+# run: py tools/roblox/bath_ducky_video.py <caps.json> <out dir> [comic] [r5]
 #   caps.json maps "f000".. to the capture images (the capture run writes it)
 #   then: blender -b --factory-startup -P tools/roblox/finisher_video_mp4.py -- <out>/frames <out>/cues.json <out.mp4>
 import json, math, os, random, sys
@@ -35,6 +40,21 @@ CUES = [('CALM', 8, 240313, 0.4, None, None), ('THE SHADOW', 2, 529139, 0.55, No
         ('THE SPRAY', 0, 367125, 0.75, 40, 10), ('THE SPRAY', 2, 349698, 0.35, None, None),
         ('SOAKED', 0, 648534, 0.7, None, None), ('SOAKED', 11, 417994, 0.6, None, None),
         ('SOAKED', 18, 418509, 0.6, None, None)]
+
+# round 5: the order, captures and lengths of bath_ducky_board4.luau's BD.PLAN
+SHOTS_R5 = [('CALM', 10, 1.5), ('THE SHADOW', 12, 1.6), ('IT EMERGES', 22, 1.8), ('THE EYES', 19, 1.6), ('THE RISE', 24, 2.0),
+            ('THE SNAP', 22, 1.8), ('THE DOOR', 12, 1.3), ('HE WALKS IN', 20, 1.7), ('HE LOOKS', 12, 1.2),
+            ('YOU AND THE DUCKY', 8, 1.0), ('THE STANDOFF', 8, 1.2), ('THE SPRAY', 14, 1.2), ('IN THE AIR', 12, 1.5),
+            ('SOAKED', 24, 2.0)]
+SNAP_AT = 0.62  # where in THE SNAP the head turns (F[11] in the board)
+CUES_R5 = [('CALM', 12, 240313, 0.4, None, None), ('THE SHADOW', 3, 529139, 0.55, None, None),
+           ('IT EMERGES', 0, 146932, 0.35, 44, 14), ('IT EMERGES', 14, 430978, 0.6, None, None),
+           ('THE EYES', 25, 271370, 0.45, 40, 15), ('THE RISE', 0, 736852, 0.85, None, None),
+           ('THE RISE', 30, 418509, 0.9, None, None), ('THE SNAP', 'snap', 683101, 0.8, None, None),
+           ('THE SNAP', 'snap', 648534, 0.45, None, None), ('THE SPRAY', 0, 367125, 0.75, 40, 10),
+           ('THE SPRAY', 2, 349698, 0.35, None, None), ('IN THE AIR', 16, 418509, 0.7, None, None),
+           ('SOAKED', 0, 648534, 0.7, None, None), ('SOAKED', 14, 417994, 0.6, None, None)]
+COMIC_R5 = {'IT EMERGES', 'THE EYES', 'THE RISE', 'THE SNAP', 'YOU AND THE DUCKY', 'IN THE AIR'}
 
 
 def to_169(im):
@@ -137,6 +157,9 @@ def main():
     caps = json.load(open(sys.argv[1]))
     out = sys.argv[2]
     use_comic = 'comic' in sys.argv[3:]
+    r5 = 'r5' in sys.argv[3:]
+    shots, cues_in, comic_set = (SHOTS_R5, CUES_R5, COMIC_R5) if r5 else (SHOTS, CUES, COMIC)
+    snap = {}
     fr = os.path.join(out, 'frames')
     os.makedirs(fr, exist_ok=True)
     cache = {}
@@ -149,7 +172,7 @@ def main():
     j = 0
     start = {}
     c0 = 0
-    for name, n, sec in SHOTS:
+    for name, n, sec in shots:
         nout = round(sec * FPS)
         start[name] = j
         for k in range(nout):
@@ -157,7 +180,7 @@ def main():
             pos = u * (n - 1)
             a = int(math.floor(pos))
             b = min(n - 1, a + 1)
-            if use_comic and name in COMIC:  # held, not blended: the duck stays on twos
+            if use_comic and name in comic_set:  # held, not blended: the duck stays on twos
                 im = comic(cap(c0 + int(round(pos))))
             else:
                 im = Image.blend(cap(c0 + a), cap(c0 + b), pos - a) if b != a else cap(c0 + a)
@@ -166,9 +189,21 @@ def main():
                     im = focus_lines(im, 1 - k / 14, 900 + k)
                 if k < 3:
                     im = flash(im, [0.75, 0.4, 0.15][k])
+            if name == 'THE SNAP':  # the head turns: a white kick, focus lines, the frame knocked sideways
+                if int(round(pos)) >= math.floor((n - 1) * SNAP_AT) and 'k' not in snap:
+                    snap['k'] = k
+                if 'k' in snap and k - snap['k'] < 6:
+                    t = k - snap['k']
+                    im = focus_lines(im, 1 - t / 6, 950 + k)
+                    if t < 2:
+                        im = flash(im, [0.35, 0.12][t])
+                    if t < 3:
+                        im = im.transform(im.size, Image.AFFINE, (1, 0, [10, -6, 3][t], 0, 1, 0))
+            if r5 and name == 'THE EYES' and k in (int(nout * 0.68), int(nout * 0.68) + 1):
+                im = flash(im, 0.35 if k == int(nout * 0.68) else 0.15)
             if name == 'THE OPPONENT' and 3 <= k <= 13:
                 im = streaks(im, math.sin((k - 3) / 10 * math.pi), 700 + k)
-            if name == 'THE EYES' and k in (9, 10):
+            if not r5 and name == 'THE EYES' and k in (9, 10):
                 im = flash(im, 0.35 if k == 9 else 0.15)
             if name == 'SOAKED':
                 if k < 2:
@@ -180,7 +215,9 @@ def main():
             j += 1
         c0 += n
     cues = []
-    for shot, f, sid, vol, ln, fade in CUES:
+    for shot, f, sid, vol, ln, fade in cues_in:
+        if f == 'snap':
+            f = snap.get('k', 0)  # (frames within the shot)
         path = next((os.path.join(d_, '%d.wav' % sid) for d_ in SFX_DIRS if os.path.exists(os.path.join(d_, '%d.wav' % sid))), None)
         if not path:
             print('missing sound', sid)
@@ -192,7 +229,7 @@ def main():
             c['fade'] = fade
         cues.append(c)
     json.dump(cues, open(os.path.join(out, 'cues.json'), 'w'), indent=1)
-    json.dump({'shots': [[n, round(s * FPS)] for n, _, s in SHOTS]}, open(os.path.join(out, 'shots.json'), 'w'))
+    json.dump({'shots': [[n, round(s * FPS)] for n, _, s in shots]}, open(os.path.join(out, 'shots.json'), 'w'))
     print('frames', j, 'cues', len(cues), out)
 
 

@@ -8,7 +8,8 @@ import sys, os, math, random
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
-V4 = 'v4' in sys.argv[3:]  # round 4: round 3's shots in the tub room (real water, sunlight, the Spider-Verse duck)
+V5 = 'v5' in sys.argv[3:]  # round 5: slower, the snap, the door and the walk in, the hold in the air, particle water
+V4 = 'v4' in sys.argv[3:] or V5  # round 4: round 3's shots in the tub room (real water, sunlight, the Spider-Verse duck)
 V3 = 'v3' in sys.argv[3:] or V4  # round 3: the owner's sketch adds the opening (calm, shadow, emerge, eyes) before round 2
 V2 = 'v2' in sys.argv[3:] or V3  # round 2: the six-shot finisher (the owner's notes of 20 Nov)
 CW, CH = 640, 360            # one panel
@@ -54,6 +55,29 @@ PANELS_V3 = [
 ]
 TIMES_V3 = ['3.8-5.2 s', '5.2-6.0 s', '6.0-6.8 s', '6.8-7.8 s', '7.8-8.8 s', '8.8-10.0 s']
 PANELS_V3 += [('%02d' % (k + 5), p[1], TIMES_V3[k], p[3], p[4]) for k, p in enumerate(PANELS_V2)]
+
+# round 5 (20 Nov), the owner: "Ducky cinematic goes by too quickly!! Ducky emerges pause on him, his head snaps!! Enemy
+# walks in after opening door shot of enemy looking the shot of in air ... awkward and silly so pause it for a second then
+# he gets splashed". The 14 shots of tools/roblox/bath_ducky_board4.luau, about 21 s.
+_V5 = [('CALM', 1.5, 'You relax in the tub. Calm water, the floating ducks.', 'low over the water, in front'),
+       ('THE SHADOW', 1.6, 'Over your head: a huge duck-shaped shadow slides in under the water.', 'just behind and above your head'),
+       ('IT EMERGES', 1.8, 'The crown and foam cap break the surface; water thrown up and pouring off.', 'wide, from the near side'),
+       ('THE EYES', 1.6, 'The eyes clear the water, flare lines streak off them.', 'low at the water line, close'),
+       ('THE RISE', 2.0, 'Up like a kaiju: water streaming off it, a crown of splash, rays.', 'low on the water, looking up past you'),
+       ('THE SNAP', 1.8, 'A held look at it, dripping, turned away... then its head snaps round to you.', 'low, close on the duck'),
+       ('THE DOOR', 1.3, 'The door swings open on the lit hall; a figure behind it.', 'across the room, on the door'),
+       ('HE WALKS IN', 1.7, 'Your opponent walks in through the doorway.', 'on the door, a little closer'),
+       ('HE LOOKS', 1.2, 'Close on him looking round; his face drops when he sees it.', 'close, his face'),
+       ('YOU AND THE DUCKY', 1.0, 'Back to you and the ducky, both staring him down.', 'low, from the door side'),
+       ('THE STANDOFF', 1.2, 'Wide: you in the tub with the ducky, the enemy across the room.', 'wide, high corner'),
+       ('THE SPRAY', 1.2, 'You and the ducky fire: two real streams arcing across the room.', 'over the shoulders, down the jets'),
+       ('IN THE AIR', 1.5, 'He jumps in fright and the picture holds on him mid-air, the streams a breath away.', 'held, a slow creep'),
+       ('SOAKED', 2.0, 'The splash lands; he is knocked back, drenched. Finisher and skin name.', 'on the opponent, a small tilt')]
+PANELS_V5 = []
+_t = 0.0
+for _k, (_n, _d, _w, _c) in enumerate(_V5):
+    PANELS_V5.append(('%02d' % (_k + 1), _n, '%.1f-%.1f s' % (_t, _t + _d), _w, _c))
+    _t += _d
 
 
 def band(path):
@@ -119,11 +143,11 @@ def caption(d, x, y, p):
 
 def main():
     shots = {}
-    for i in range(1, 11):
+    for i in range(1, 15):
         p = os.path.join(SRC, 'p%d.png' % i)
         if os.path.exists(p):
             shots[i] = band(p)
-    panels = PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
+    panels = PANELS_V5 if V5 else PANELS_V3 if V3 else PANELS_V2 if V2 else PANELS
     if V4:  # (the owner: "that's a pool not a tub!": round 4 is the tub)
         panels = [(p[0], p[1], p[2], p[3].replace('the pool', 'the tub').replace('pool', 'tub'), p[4]) for p in panels]
     if V2:
@@ -141,7 +165,11 @@ def main():
     H = HEAD + rows * (CH + CAP + PAD) + PAD
     sheet = Image.new('RGB', (W, H), (24, 26, 32))
     d = ImageDraw.Draw(sheet)
-    if V4:
+    if V5:
+        d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 5', font=font(BOLD, 34), fill=(245, 207, 58))
+        d.text((PAD, 62), "About 21 s   |   the owner's notes: slower, the head snap, the door and the walk in, the awkward hold in the air, real water   |   one frame of each shot of the animatic",
+               font=font(REG, 17), fill=(190, 190, 196))
+    elif V4:
         d.text((PAD, 20), 'BATH DUCKY  -  finisher storyboard, round 4', font=font(BOLD, 34), fill=(245, 207, 58))
         d.text((PAD, 62), "About 10 s   |   the owner's notes: a deep tub not a pool, real water, light and shadows, a Spider-Verse duck, prettier   |   the last frame of each shot of the animatic",
                font=font(REG, 17), fill=(190, 190, 196))
@@ -168,7 +196,7 @@ def main():
             sheet.paste(im, (cx, cy))
         caption(d, cx, cy + CH, p)
     sheet.save(OUT, quality=90)
-    for i, im in shots.items():  # the single panels too, full size, for the docs
+    for i, im in ({} if V5 else shots).items():  # the single panels too, full size, for the docs (not round 5's)
         im.save(os.path.join(os.path.dirname(OUT), ('r4_shot_%02d.jpg' if V4 else 'r3_shot_%02d.jpg' if V3 else 'shot_%02d.jpg' if V2 else 'panel_%02d.jpg') % i), quality=92)
     print(OUT, sheet.size, sorted(shots))
 
