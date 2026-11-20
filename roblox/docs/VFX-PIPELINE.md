@@ -749,3 +749,27 @@ world-space emitter (and its EmitCount / EmitDelay / EmitDuration) as a screen s
   tips along the edge; round 2 (v1113) is the wall. Sheet: `docs/vfx/round20/legendary-reveal-fire.jpg`.
 - Next places (main's list): finisher overlays (impact embers, speed sparks over the letterbox, with the
   cinematic-finishers session) and the rank-up and mastery-camo unlock screens.
+
+## The bought VFX packs in the game (20 Nov 2026, place versions 1134 and 1136)
+
+The owner: "we purchased the vfx lets use them when we can!!". The packs (BuiltByBit: coldd Development's Combat VFX and
+Crimson Slash, skaterstudios' 100+ Combat VFX, artchive's Heart & Butterfly; Standard EULA, credited in
+`shared/Credits.luau` and the settings' CREDITS tab; the raw files never go in git) are read offline and rebuilt as
+templates in `ReplicatedStorage.JankfireVfx` (one Part per effect, no Blood folder). `client/VfxEmit.luau` plays them:
+`VfxEmit.play(name, cframe, { scale, tint, parent })` clones from a pool, fires each emitter by the pack's own
+EmitCount / EmitDelay / EmitDuration / TimeScale_* attributes (what the VFX Editor and Emit(n) plugins read), follows
+the particle slider and emits at most 260 particles a frame. Which effect is used where: the shared table
+`pack-effects-usage.md` in main's notes folder.
+- **Hits (v1134, bigger v1136):** `Fx.blood` plays HitPunch1 facing the viewer, scale 0.5 to 1 by damage (x1 to x1.8
+  past 25 studs so a far hit still shows), with a few pale sparks.
+- **Parry and guard break (v1136, waiting on the katana session to call them):** `Fx.parry(at, dir, perfect)` plays
+  GuardBlock (recoloured in the template from lime green to warm white, a pale gold glow and a cool white shield),
+  0.55 or 0.75 for a perfect parry, smaller up close (the defender's own blade); `Fx.guardBreak(at, dir)` plays
+  GuardBreak1's ring and GuardBreak2's burst with sparks.
+- **Hard landings and slides (v1136, waiting on Steps.client to call them):** `Fx.land(feet, fallSpeed, mine)` plays
+  HitSlam at 0.12 to 0.28 as a ring of dust puffs, only past 42 studs/s (a plain jump lands at 27.6);
+  `Fx.slide(feet, look, mine)` plays DashPuff at 0.4 (a soft glow and streaks thrown behind; tinted grey it all but
+  vanished, so it stays white). Your own are only shown in third person; none past 160 studs. Jump pads keep their own
+  `PadFlare`.
+- Photos: Play stage, clones fired by their attributes and frozen with TimeScale 0 (VfxEmit parks an effect after
+  its life, too soon for a capture). Sheets: `docs/vfx/round20/pack-templates-1.jpg`, `docs/vfx/round20/pack-batch2.jpg`.

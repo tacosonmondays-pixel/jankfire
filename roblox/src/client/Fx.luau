@@ -1431,23 +1431,89 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if dm then for _, m in dm:GetChildren() do if m:IsA("Model") then wetCheck(m, now) end end end
 end)
 
--- a hit on someone (20 Nov 2026; no blood on Roblox, and the owner: "we purchased the vfx lets use them when we can!!"):
--- the Combat VFX pack's hit flash (VfxEmit "HitPunch1", coldd Development, credited), facing whoever's watching, sized by
--- the damage, and a few pale sparks off it. (it was red bits, from the web game.) VfxEmit is required on first use: it
--- requires this module itself (for the particle slider)
+-- the bought VFX packs' effects (VfxEmit; the owner: "we purchased the vfx lets use them when we can!!"; sellers credited
+-- in shared/Credits.luau). VfxEmit is required on first use: it requires this module itself (for the particle slider)
 local VfxEmitM: any = nil
-function Fx.blood(at: Vector3, dir: Vector3, dmg: number)
+local function vfx(): any
 	if VfxEmitM == nil then
 		local m = script.Parent:FindFirstChild("VfxEmit")
 		local ok, M = false, nil
 		if m and m:IsA("ModuleScript") then ok, M = pcall(require, m) end
 		VfxEmitM = if ok and type(M) == "table" then M else false
 	end
+	return VfxEmitM
+end
+-- where whoever's watching is (the camera), or a point back along dir
+local function eyeFor(at: Vector3, dir: Vector3): Vector3
 	local cam = workspace.CurrentCamera
-	local eye = if cam then cam.CFrame.Position else at - dir
-	local k = 0.3 + math.clamp(dmg, 0, 100) / 100 * 0.35
-	if VfxEmitM then pcall(VfxEmitM.play, "HitPunch1", CFrame.lookAt(at, eye), { scale = k }) end
+	local e = if cam then cam.CFrame.Position else at - dir
+	if (e - at).Magnitude < 0.05 then e = at - dir end
+	return e
+end
+-- (a body's own effects at its feet are only played for you in third person: in first person they'd be under or in front
+-- of your eye; nothing for a body more than 160 studs off)
+local function nearFeet(at: Vector3, mine: boolean?): boolean
+	if mine and Players.LocalPlayer:GetAttribute("ThirdPerson") ~= true then return false end
+	local cam = workspace.CurrentCamera
+	return not cam or (cam.CFrame.Position - at).Magnitude < 160
+end
+
+-- a hit on someone (20 Nov 2026; no blood on Roblox): the Combat VFX pack's hit flash (VfxEmit "HitPunch1", coldd
+-- Development), facing whoever's watching, sized by the damage, and a few pale sparks off it. (it was red bits, from the
+-- web game.) Made half again as big later on 20 Nov (it read as a speck at 9 studs) and a little bigger still far off, so the shooter
+-- sees a hit at 50 studs
+function Fx.blood(at: Vector3, dir: Vector3, dmg: number)
+	local V = vfx()
+	local eye = eyeFor(at, dir)
+	local far = (eye - at).Magnitude
+	local k = (0.5 + math.clamp(dmg, 0, 100) / 100 * 0.5) * math.clamp(far / 25, 1, 1.8)
+	if V then pcall(V.play, "HitPunch1", CFrame.lookAt(at, eye), { scale = k }) end
 	sparkBurst(at, (eye - at).Unit + Vector3.new(0, 0.4, 0), math.min(6, 2 + math.floor(dmg / 25)))
+end
+
+-- a parried blow (the katana's guard; 20 Nov 2026): the Combat VFX pack's guard flash (GuardBlock, recoloured from its lime
+-- green to warm white with a pale gold glow), facing whoever's watching, a little bigger for a perfect parry, kept small up
+-- close (the defender's own blade is a few studs from their eye), and the sparks it had before
+function Fx.parry(at: Vector3, dir: Vector3, perfect: boolean?)
+	local V = vfx()
+	local eye = eyeFor(at, dir)
+	local k = (if perfect then 0.75 else 0.55) * math.clamp((eye - at).Magnitude / 10, 0.35, 1)
+	if V then pcall(V.play, "GuardBlock", CFrame.lookAt(at, eye), { scale = k }) end
+	if perfect then Fx.sparks(at, dir, 30, 0) else Fx.sparks(at, dir, 10, 0) end
+end
+
+-- a guard broken (20 Nov 2026): the Combat VFX pack's shock ring (GuardBreak1, facing whoever's watching) and its break
+-- burst (GuardBreak2), with a spray of sparks
+function Fx.guardBreak(at: Vector3, dir: Vector3)
+	local V = vfx()
+	local eye = eyeFor(at, dir)
+	local k = 0.6 * math.clamp((eye - at).Magnitude / 10, 0.4, 1)
+	local cf = CFrame.lookAt(at, eye)
+	if V then
+		pcall(V.play, "GuardBreak1", cf, { scale = k })
+		pcall(V.play, "GuardBreak2", cf, { scale = k })
+	end
+	Fx.sparks(at, dir, 24, 0)
+end
+
+-- a hard landing (Steps.client calls it with the feet and the fall speed; 20 Nov 2026): the Combat VFX pack's ground slam
+-- (HitSlam) shrunk to a ring of dust and a few chips at the feet. Only past a plain jump's landing (27.6 studs/s): a fall of
+-- a few metres or down off a jump pad; bigger the harder
+function Fx.land(at: Vector3, speed: number, mine: boolean?)
+	if speed < 42 or not nearFeet(at, mine) then return end
+	local V = vfx()
+	if not V then return end
+	pcall(V.play, "HitSlam", CFrame.new(at), { scale = 0.12 + math.clamp((speed - 42) / 80, 0, 1) * 0.16 })
+end
+
+-- a slide setting off (Steps.client, with the feet and the way the body faces; 20 Nov 2026): the Combat VFX pack's dash
+-- puff (DashPuff) small: a soft glow and streaks thrown back behind the slide (left white: greyed it all but vanished)
+function Fx.slide(at: Vector3, look: Vector3, mine: boolean?)
+	local f = Vector3.new(look.X, 0, look.Z)
+	if f.Magnitude < 0.01 or not nearFeet(at, mine) then return end
+	local V = vfx()
+	if not V then return end
+	pcall(V.play, "DashPuff", CFrame.fromMatrix(at + Vector3.new(0, 0.4, 0), f.Unit, Vector3.yAxis), { scale = 0.4 })
 end
 
 -- sparks (fx.js sparks): hot white / pale yellow streaks flying sideways and up off the edge, turning orange, plus a
