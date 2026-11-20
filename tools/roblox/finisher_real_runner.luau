@@ -211,7 +211,7 @@ local function reanchor(cfW, f, anchor)
 	if not (s and p and SIZES[part]) then return cfW end
 	local rel = s:Inverse() * cfW
 	local k = p.Size.Y / SIZES[part].Y
-	local pc = p.CFrame
+	local pc = if part == "RightHand" and R.handCF and R.handCF[m] then R.handCF[m] else p.CFrame
 	if part == "Head" then pc = pc * CFrame.new(0, EYE_DY[rig] or 0, 0) end
 	return pc * (CFrame.new(rel.Position * k) * rel.Rotation)
 end
@@ -253,33 +253,124 @@ local function ground(m, f, rig)
 	if math.abs(dy) > 1e-3 then m:PivotTo(m:GetPivot() + Vector3.new(0, dy, 0)) end
 end
 -- the revolver (the owner, 20 Nov: "the gun isn't held in her hand ... it sort of snaps off their waist"): in the hand
--- its own Grip attachment sits in the palm at the plan's hold angle; at rest it hangs where THIS body's hand reaches at
--- the draw's grab (the quick draw at 0.3 s), already at the angle the hand takes it - so the hand closes on it and
--- carries it out, no jump
+-- its own Grip attachment sits in the palm at the plan's hold angle; at rest it sits in the holster on the hip, grip
+-- up, and the hand reaches onto it (reach below) and carries it out
 local REV = game.ReplicatedStorage.JankfireSkins.revolver_dust
-local GRAB = { quick_draw_t1 = 0.3 }
 local function gunGripRel(): Vector3
 	if R.gunGrip then return R.gunGrip end
 	local att = REV:FindFirstChild("Grip", true)
 	R.gunGrip = if att and att:IsA("Attachment") then att.WorldPosition * 3 else Vector3.new(0, -0.55, 0.25)
 	return R.gunGrip
 end
+local function handCF(m)
+	-- the right hand as the reach left it this frame (its joints are set, the part may not have moved yet)
+	return (R.handCF and R.handCF[m]) or m.RightHand.CFrame
+end
 local function palm(m)
 	local h = m.RightHand
-	return h.CFrame * CFrame.new(0, -0.4 * h.Size.Y, 0)
+	return handCF(m) * CFrame.new(0, -0.4 * h.Size.Y, 0)
 end
 local function gunInHand(m)
 	local pc = palm(m)
 	return CFrame.new(pc.Position) * pc.Rotation * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(-gunGripRel())
 end
-local function holsterRelOf(name, m, clip)
-	R.holRel = R.holRel or {}
-	if R.holRel[name] then return R.holRel[name] end
-	local t = GRAB[clip] or 0.3
-	local was = m:GetPivot()
-	pose(m, clip, t)
-	R.holRel[name] = m.LowerTorso.CFrame:Inverse() * gunInHand(m)
-	return R.holRel[name]
+-- the reach (the owner, 20 Nov: "Holsters were fine before, just make the hand reach closer to the gun and pull the
+-- gun!"): the draw clip's hand passes a hand's length off THIS body's holster, so the right arm is bent onto the gun -
+-- a two-bone reach laid over the clip's own pose (the clip still moves the body; only the arm is pulled to the gun):
+-- the hand hovers just over the grip while it waits, closes on the grip at the grab, then eases back into the clip as
+-- the gun comes out with it (the plan's re-holster plays the draw backwards, so it gets the same reach in reverse)
+local function inHolster(m)
+	local hcf = holsterCF(m)
+	return hcf * CFrame.new(0, 0.15, 0) * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, 0, -0.1)
+end
+local function handOnGrip(m)
+	-- the RightHand CFrame that puts the palm on the holstered gun's grip (gunInHand turned inside out)
+	local pc = inHolster(m) * CFrame.new(gunGripRel()) * CFrame.Angles(math.rad(90), 0, 0)
+	return pc * CFrame.new(0, 0.4 * m.RightHand.Size.Y, 0)
+end
+local function sm(x) x = math.clamp(x, 0, 1); return x * x * (3 - 2 * x) end
+-- clip times: hover reached by `hover`, hover -> grip over grip0..grip1, on the grip until out0 (the plan hands the gun
+-- over between 0.30 and 0.35), back into the clip by out1
+local REACH = { quick_draw_t1 = { hover = 0.12, grip0 = 0.14, grip1 = 0.28, out0 = 0.34, out1 = 0.54 } }
+local HOVER = Vector3.new(0.12, 0, -0.04) -- the hover's sideways part (lower-torso axes): out, a touch forward
+local function turn(v1, v2)
+	local ax = v1:Cross(v2)
+	if ax.Magnitude < 1e-6 then return CFrame.identity end
+	return CFrame.fromAxisAngle(ax.Unit, math.acos(math.clamp(v1:Dot(v2), -1, 1)))
+end
+local function jframes(j)
+	-- a joint's two frames (Part1 = Part0 * f0 * Transform * f1:Inverse()): Motor6D C0/C1, or (the layered avatars'
+	-- rigs) an AnimationConstraint's two attachments
+	if j:IsA("Motor6D") then return j.C0, j.C1, j.Part0 end
+	if j:IsA("AnimationConstraint") and j.Attachment0 and j.Attachment1 then
+		return j.Attachment0.CFrame, j.Attachment1.CFrame, j.Attachment0.Parent
+	end
+	return nil
+end
+local function armTo(m, Hd)
+	-- bend the right arm (shoulder, elbow, wrist joints) so the hand lands on Hd, the elbow keeping the clip's side
+	local UA, LA, H = m:FindFirstChild("RightUpperArm"), m:FindFirstChild("RightLowerArm"), m:FindFirstChild("RightHand")
+	local sh = UA and UA:FindFirstChild("RightShoulder")
+	local el = LA and LA:FindFirstChild("RightElbow")
+	local wr = H and H:FindFirstChild("RightWrist")
+	if not (sh and el and wr) then return nil end
+	local s0, s1, sp0 = jframes(sh)
+	local e0, e1 = jframes(el)
+	local w0, w1 = jframes(wr)
+	if not (s0 and e0 and w0 and sp0) then return nil end
+	local P0, UAc, LAc = sp0.CFrame, UA.CFrame, LA.CFrame
+	local S = (UAc * s1).Position
+	local E = (UAc * e0).Position
+	local a = (e0.Position - s1.Position).Magnitude
+	local b = (w0.Position - e1.Position).Magnitude
+	local dv = (Hd * w1).Position - S
+	if a < 1e-3 or b < 1e-3 or dv.Magnitude < 1e-3 then return nil end
+	local u = dv.Unit
+	local d = math.clamp(dv.Magnitude, math.abs(a - b) + 1e-3, a + b - 1e-3)
+	local pv = (E - S) - u * (E - S):Dot(u)
+	if pv.Magnitude < 1e-3 then local back = -P0.LookVector; pv = back - u * back:Dot(u) end
+	pv = pv.Unit
+	local ca = math.clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1)
+	local E2 = S + u * (a * ca) + pv * (a * math.sqrt(1 - ca * ca))
+	local r1 = CFrame.new(S) * turn((E - S).Unit, (E2 - S).Unit) * CFrame.new(-S)
+	local UA2, LA1 = r1 * UAc, r1 * LAc
+	local W1 = (LA1 * w0).Position
+	local r2 = CFrame.new(E2) * turn((W1 - E2).Unit, ((S + u * d) - E2).Unit) * CFrame.new(-E2)
+	local LA2 = r2 * LA1
+	local Wj = (LA2 * w0).Position
+	local H2 = CFrame.new(Wj - Hd.Rotation * w1.Position) * Hd.Rotation
+	-- (a joint's Transform set by hand does nothing in Edit on these rigs - the Animator owns it - so for this frame the
+	-- three arm joints are let go and the arm's parts are set where the reach puts them; unreach() joins them again
+	-- before the next pose)
+	R.armOff = R.armOff or {}
+	R.armOff[m] = { joints = { sh, el, wr }, parts = { UA, LA, H } }
+	sh.Enabled, el.Enabled, wr.Enabled = false, false, false
+	UA.Anchored, LA.Anchored, H.Anchored = true, true, true
+	UA.CFrame, LA.CFrame, H.CFrame = UA2, LA2, H2
+	return H2
+end
+local function unreach(m)
+	local off = R.armOff and R.armOff[m]
+	if not off then return end
+	for _, p in ipairs(off.parts) do p.Anchored = false end
+	for _, j in ipairs(off.joints) do j.Enabled = true end
+	R.armOff[m] = nil
+end
+local function reach(m, a)
+	local rc = a and REACH[a.clip]
+	if not rc or a.clip2 or not m:FindFirstChild("RightHand") then return end
+	local t = a.t
+	local w = sm(t / rc.hover) * (1 - sm((t - rc.out0) / (rc.out1 - rc.out0)))
+	if w < 0.002 then return end
+	local grip = handOnGrip(m)
+	-- (hovering a fifth of the way from the grip up toward the shoulder, a touch out: bodies differ a lot - a short
+	-- one's holster sits nearly at shoulder height, so a fixed lift sent her hand up behind her)
+	local ua = m:FindFirstChild("RightUpperArm")
+	local up = ua and (ua.Position - grip.Position) * 0.2 or Vector3.zero
+	local hover = CFrame.new(up + m.LowerTorso.CFrame:VectorToWorldSpace(HOVER)) * grip
+	local target = hover:Lerp(grip, sm((t - rc.grip0) / (rc.grip1 - rc.grip0)))
+	local H2 = armTo(m, m.RightHand.CFrame:Lerp(target, w))
+	if H2 then R.handCF = R.handCF or {}; R.handCF[m] = H2 end
 end
 local SKIP = { sheath = true, holster = true, belt = true }
 local REANCHOR = { glint = "mouth", sweat = "v.Head", stroke = "v.UpperTorso", stroke_edge = "v.UpperTorso",
@@ -301,21 +392,19 @@ shared.FinReal = function(key)
 	for _, ch in ipairs(root:GetChildren()) do
 		if not string.match(ch.Name, "^real_") then ch:Destroy() end
 	end
-	-- 1. the bodies: the killer and victim (and the killer's afterimages) on their roots, posed from the clips
-	for name, a in pairs(f.anim or {}) do
-		if (f.sem and f.sem.hol and f.sem.hol[name]) and R.av[name] and not (R.holRel and R.holRel[name]) then
-			R.av[name].Parent = root
-			holsterRelOf(name, R.av[name], "quick_draw_t1")
-		end
-	end
+	-- 1. the bodies: the killer and victim (and the killer's afterimages) on their roots, posed from the clips (the
+	-- right arm then reaching onto the holstered gun through the draw)
 	local used = {}
+	R.handCF = {}
 	for name, a in pairs(f.anim or {}) do
 		local m = R.av[name]
 		if m then
 			m.Parent = root
+			unreach(m)
 			place(m, C(a.root))
 			pose(m, a.clip, a.t, a.clip2, a.t2, a.w2)
 			ground(m, f, name)
+			reach(m, a)
 			setTr(m, math.min(1, (a.sc or 0) * 1.4))
 			used[name] = true
 		end
@@ -438,20 +527,16 @@ shared.FinReal = function(key)
 		end
 	end
 	-- 3. holsters and revolvers, from each body's own hips and hand
+	-- (the owner, 20 Nov: the holster hung where the hand reached came off the body - so it stays on the hip, and the
+	-- hand reaches onto the gun there (reach above): at the hand-over the hand is already on the grip, so the gun in the
+	-- hand sits where the holstered one sat, and comes out with the hand)
 	for name, state in pairs(sem.hol or {}) do
 		local m = R.av[name]
 		if m and used[name] then
-			local lt = m.LowerTorso
-			local _, _, hw, hd = holsterCF(m)
-			local a = f.anim[name]
-			local rel = R.holRel and R.holRel[name]
-			if rel then
-				local gcf = lt.CFrame * rel
-				-- (the leather round the barrel's half, hanging from the belt)
-				part(Vector3.new(0.36, 0.5, 1.15), gcf * CFrame.new(gunGripRel()) * CFrame.new(0, 0.1, -0.55), LEATHER, Enum.Material.Leather)
-				if state == "in" then placeKit(REV, gcf, 3, "gun") end
-			end
+			local hcf, lt, hw, hd = holsterCF(m)
+			part(Vector3.new(0.32, 0.95, 0.55), hcf, LEATHER, Enum.Material.Leather)
 			part(Vector3.new(2 * hw * 1.06, 0.28, 2 * hd * 1.1), lt.CFrame * CFrame.new(0, 0.05, 0), LEATHER, Enum.Material.Leather)
+			if state == "in" then placeKit(REV, inHolster(m), 3, "gun") end
 		end
 	end
 	for name, state in pairs(sem.gun or {}) do
@@ -459,7 +544,8 @@ shared.FinReal = function(key)
 		if m and used[name] and state == "hand" then placeKit(REV, gunInHand(m), 3, "gun") end
 	end
 	for _, g in ipairs(f.guns or {}) do
-		if g.tr then placeKit(game.ReplicatedStorage.JankfireSkins[g.model], C(g.cf), 3, "gun", g.tr) end
+		-- (the afterimage guns ride the real hand, not the stand-in's)
+		if g.tr then placeKit(game.ReplicatedStorage.JankfireSkins[g.model], reanchor(C(g.cf), f, "k.RightHand"), 3, "gun", g.tr) end
 	end
 
 	-- 4. the stage and the effects (body-bound ones moved onto the real parts)
