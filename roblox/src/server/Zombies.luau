@@ -93,6 +93,10 @@ local function sources(): { Model }
 end
 local function source(name: string): Model?
 	for _, m in sources() do if m.Name == name then return m end end
+	-- (a spare named outright, out of the rotation, ZombiesMap off: a test can still play it. maps() never lists it)
+	local wm = workspace:FindFirstChild("Map")
+	local spare = wm and wm:FindFirstChild(name)
+	if spare and spare:IsA("Model") and spare:FindFirstChild("ZM") then return spare end
 	return nil
 end
 function Zombies.maps(): { string }
@@ -1201,6 +1205,9 @@ local function hook()
 		local g = G
 		local z = g and g.byMob[t]
 		local a = by and member(by)
+		if g and z and a and Weapons.base(wid) == "revolver" then
+			amt *= R.revolverDmg / math.max(1, W.revolver.dmg :: number) -- (zombies keep the revolver's old 40)
+		end
 		if g and z and a then
 			local x = call("hitZombie", g, z, amt, a, wid)
 			if type(x) == "number" then amt = x end

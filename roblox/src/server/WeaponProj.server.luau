@@ -19,7 +19,7 @@
 --     along its roll, once a person every 0.7 s (its thrower too, after 0.5 s); 2 people is a SPARE, 3 a STRIKE
 --   slipper: a boomerang, one out at a time. out: it locks the nearest enemy ahead it can see and curves in (out for
 --     0.45 s, 1 s while locked); then (or off a wall) it flies straight back to you through walls and you catch it.
---     30 and a shove on everyone it passes, both ways
+--     24 and a shove on everyone it passes, both ways (30 till the 20 Nov nerf)
 --   arrow (the Bow, kind "bow": hold to draw, let go to fire): the draw c (the client's, never more than the time since
 --     your last arrow allows) sets its speed 45..115 m/s and damage 30..70 (x1.5 above the shoulders); it stops at the
 --     first wall. every arrow has a random tip, the next one rolled after each shot (BowTip on you): regular, power

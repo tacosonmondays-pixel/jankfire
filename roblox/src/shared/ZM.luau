@@ -19,6 +19,8 @@ ZM.R = {
 	crate = 950, spin = 3.6, offer = 8,
 	cola = 2500, colaMax = 3,
 	guns = 2, startGuns = { "revolver" }, startMelee = "knife",
+	revolverDmg = 40, -- (the revolver's damage the zombies' HP is tuned to: one tap kills in round 1. it stays this in here
+	-- after the 20 Nov PvP nerf to 33: Zombies.luau scales revolver hits on zombies by revolverDmg / its dmg)
 	planks = 6, tear = 1.3, tearRun = 0.85, board = 0.6, boardPay = 10, boardCap = 20,
 	climb = 1.35, climbRun = 0.85,
 	maxAlive = nil :: number?, -- (a test knob: overrides the cap)

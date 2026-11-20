@@ -15,6 +15,8 @@ export type Weapon = {
 	lethalHead: boolean?, noscope: boolean?, -- the Sniper: a player's headshot always kills; unscoped hits get a callout
 	burst: number?, burstGap: number?, -- the Hat Trick: shots per burst, the pause after one
 	ramp: number?, rampMax: number?, chain: number?, -- the Yeehaw: +ramp damage per chained hit on the same person
+	-- (20 Nov 2026, the shotgun buff) damage falls off with distance (studs): full to `from`, easing to x`min` at `to`
+	falloff: { from: number, to: number, min: number }?,
 	quick: number?, qsDmg: number?, qsKb: number?, -- the Second Opinion: the quick-scope window and what it buys
 	-- the Revolver's fan: a fanned shot (held trigger) is fired by the SERVER (Combat serverShot). the k-th one in a
 	-- string does dmg x fall^(k-1) with spread + grow x (k-1) (up to maxSpread); `reset` s without a shot, or an aimed
@@ -130,7 +132,8 @@ local W: { [string]: Weapon } = {
 	marbles = {
 		id = "marbles", name = "Marble Shotgun", slot = "secondary", kind = "hitscan", color = rgb(0x7fd0ff),
 		desc = "a hundred marbles a shot. point blank it's a one-shot, and they stay on the floor to slip on.",
-		auto = false, rate = 1 / 0.9, mag = 2, reload = 1.9, pellets = 100, dmg = 1.15, head = 1.3, spread = 0.27,
+		-- (owner, 20 Nov 2026: "buff shotguns") spread 0.27 -> 0.24: the point-blank one-shot holds out to ~8 studs (97%, was 31%)
+		auto = false, rate = 1 / 0.9, mag = 2, reload = 1.9, pellets = 100, dmg = 1.15, head = 1.3, spread = 0.24,
 		recoil = 4 * S, kick = 0.07, range = 30 * S, marbles = true, ads = { zoom = 1.15, spread = 0.8 },
 		fx = { big = true, spray = true, hole = false, scale = 0.7, shake = 0.35, splash = false }, snd = "gun_marbles",
 		recoilVM = { back = 2.0, up = 8, roll = 2.6, side = 0.35, punch = 0.04 },
@@ -186,7 +189,9 @@ local W: { [string]: Weapon } = {
 	shotgun = {
 		id = "shotgun", name = "Shotgun", slot = "primary", kind = "hitscan", color = rgb(0xe0a060),
 		desc = "ten pellets, best up close. shoot the floor to launch yourself up.",
-		auto = false, rate = 1 / 0.75, mag = 6, reload = 2.0, pellets = 10, dmg = 8, head = 1.5, spread = 0.075,
+		-- (owner, 20 Nov 2026: "buff shotguns") 8 -> 10 a pellet: a point-blank body shot kills (100) out to 12 studs, then
+		-- the falloff eases it to x0.75 at 30, so 20 studs stays two shots as before
+		auto = false, rate = 1 / 0.75, mag = 6, reload = 2.0, pellets = 10, dmg = 10, head = 1.5, spread = 0.075, falloff = { from = 12, to = 30, min = 0.75 },
 		recoil = 17 * S, kick = 0.08, range = 80 * S, ads = { zoom = 1.2, spread = 0.65 },
 		fx = { big = true, shake = 0.5 }, snd = "gun_shotgun", cycle = { clip = "pump_shotgun", at = 0.22 },
 		recoilVM = { back = 2.4, up = 9, roll = 3, side = 0.3, punch = 0.05 },
@@ -282,7 +287,9 @@ local W: { [string]: Weapon } = {
 	autoshot = {
 		id = "autoshot", name = "Auto Shotgun", slot = "primary", kind = "hitscan", color = rgb(0x4ad66b),
 		desc = "an automatic shotgun with a box mag. less per shot than the pump, but it keeps firing while you hold.",
-		auto = true, rate = 3, mag = 10, reload = 2.4, pellets = 8, dmg = 5, head = 1.5, spread = 0.07,
+		-- (owner, 20 Nov 2026: "buff shotguns") 5 -> 5.75 a pellet (+15%, 46 a shot): still three up close, two with pellets on
+		-- the head; the falloff keeps mid range where it was
+		auto = true, rate = 3, mag = 10, reload = 2.4, pellets = 8, dmg = 5.75, head = 1.5, spread = 0.07, falloff = { from = 12, to = 30, min = 0.75 },
 		recoil = 5.5 * S, kick = 0.045, range = 60 * S, ads = { zoom = 1.2, spread = 0.7 },
 		fx = { big = true, brass = true, shake = 0.3 }, snd = "gun_autoshot", draw = "draw_autoshot",
 		recoilVM = { back = 1.9, up = 6.5, roll = 2.4, side = 0.35, punch = 0.04 },
@@ -332,12 +339,15 @@ local W: { [string]: Weapon } = {
 	revolver = {
 		id = "revolver", name = "Revolver", slot = "secondary", kind = "hitscan", color = rgb(0xe0c070),
 		desc = "six shots, a twirl after every one. tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
-		auto = false, rate = 1 / 0.4, mag = 6, reload = 2.0, pellets = 1, dmg = 40, head = 2.4, spread = 0.003,
+		-- (owner, 20 Nov 2026: "nerf revolver dmg") 40 -> 33: 4 body shots to kill instead of 3 (1.2 s, was 0.8); a head is
+		-- still x2.4 (79), so a head and a body kill in 2. the fan went 24 -> 20 with it. every skin is this row. (zombies keep
+		-- the old 40: their HP is tuned to it, Zombies.luau)
+		auto = false, rate = 1 / 0.4, mag = 6, reload = 2.0, pellets = 1, dmg = 33, head = 2.4, spread = 0.003,
 		recoil = 3 * S, kick = 0.07, range = 250 * S, ricochet = 2,
 		-- (owner, 18 Nov 2026: "revolver needs to either do less damage or be less accurate the longer you hold it") the
-		-- tap stays 40 and dead accurate; the fanned shots after it go 24, 21, 19, 16, 14 at spreads 0.045 .. 0.165, so a
-		-- held cylinder still kills point blank, misses half of itself at 12 m and most past 20 m (was 28 each at 0.065)
-		fan = { rate = 6, hold = 0.2, dmg = 24, fall = 0.88, spread = 0.045, grow = 0.03, maxSpread = 0.165, reset = 0.45, kick = 0.3 },
+		-- tap stays dead accurate; the fanned shots after it go 20, 17.6, 15.5, 13.6, 12 (24 .. 14 before the 20 Nov nerf) at
+		-- spreads 0.045 .. 0.165, so a held cylinder still kills point blank, misses half of itself at 12 m and most past 20 m
+		fan = { rate = 6, hold = 0.2, dmg = 20, fall = 0.88, spread = 0.045, grow = 0.03, maxSpread = 0.165, reset = 0.45, kick = 0.3 },
 		ads = { zoom = 1.4, spread = 0.2 }, tracer = rgb(0xffd060),
 		fx = { shake = 0.3 }, snd = "gun_revolver",
 		recoilVM = { back = 1.6, up = 13, roll = 2.5, side = 0.2, punch = 0.045 },
@@ -368,7 +378,8 @@ local W: { [string]: Weapon } = {
 	sawnoff = {
 		id = "sawnoff", name = "Sawed-Off", slot = "secondary", kind = "hitscan", color = rgb(0xe05a3a),
 		desc = "a sawed-off double. two shells, point blank they go flying, shoot the floor for a little hop.",
-		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9, head = 1.3, spread = 0.11,
+		-- (owner, 20 Nov 2026: "buff shotguns") 9 -> 9.5: one stray pellet no longer saves them point blank (11 land = 104)
+		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9.5, head = 1.3, spread = 0.11,
 		kb = 3.4 * S, kbUp = 9 * S, recoil = 10 * S, kick = 0.09, range = 32 * S,
 		ads = { zoom = 1.12, spread = 0.7 }, tracer = rgb(0xffa060),
 		fx = { big = true, shake = 0.5 }, snd = "gun_sawnoff", draw = "draw_sawnoff",
@@ -447,7 +458,10 @@ local W: { [string]: Weapon } = {
 	snowball = {
 		id = "snowball", name = "Snowball", slot = "secondary", kind = "proj", proj = "snow", color = rgb(0xdff4ff),
 		desc = "low damage. 4 hits freeze them solid, one more shatters them.",
-		cd = 0.3, speed = 46 * S, grav = 10, r = 0.13 * S, dmg = 9, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
+		-- (owner, 20 Nov 2026: "buff snowball") 9 -> 11 a hit (+22%: 44 before the freeze, was 36) and a faster, flatter
+		-- throw (46 -> 54 m/s, gravity 10 -> 7: at 20 m it lands 0.06 s sooner and drops half as much). still 4 to freeze
+		-- and one to shatter
+		cd = 0.3, speed = 54 * S, grav = 7, r = 0.13 * S, dmg = 11, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
 		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0.5, side = 0.1, punch = 0.004 },
 		vm = { p = Vector3.new(0.18, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
@@ -479,10 +493,12 @@ local W: { [string]: Weapon } = {
 			parts = { refill = { node = "ball", back = 1.0 } } }, -- (the kit model's, 76cbc02: the loaded ball goes with the shot)
 	},
 	-- a boomerang: curves into the nearest enemy ahead, then back to your hand (WeaponProj "slipper")
+	-- (owner, 20 Nov 2026: "nerf slipper dmg") 30 -> 24 a hit (-20%): a throw that lands both ways was 60, four hits
+	-- (two throws) killed; now 48, and it takes a fifth hit (the third throw). 25 would still have killed in four
 	slipper = {
 		id = "slipper", name = "Slipper", slot = "melee", kind = "proj", proj = "slipper", color = rgb(0xff9ad5),
 		desc = "thrown like a boomerang. it curves into the nearest enemy in front of it, then flies back to you. it hits both ways.",
-		cd = 0.5, speed = 32 * S, grav = 0, r = 0.3 * S, out = 0.45, back = 38 * S, dmg = 30, kb = 22 * S, kbUp = 6 * S, life = 3,
+		cd = 0.5, speed = 32 * S, grav = 0, r = 0.3 * S, out = 0.45, back = 38 * S, dmg = 24, kb = 22 * S, kbUp = 6 * S, life = 3,
 		homeR = 30 * S, homeCone = 70, homeTurn = 5, outLock = 1, range = 30 * S,
 		snd = "slipper_throw", hitSnd = "slipper_hit",
 		recoilVM = { back = 0.8, up = 3, roll = 2, side = 0.4, punch = 0.01 },
@@ -808,6 +824,14 @@ function Weapons.shotDmg(w: Weapon, hp: number?): number
 	local r = Weapons.fireRate(w, hp)
 	if r <= o.at then return w.dmg end
 	return math.ceil(w.dmg * (o.at + (r - o.at) * o.keep) / r * 10 - 1e-6) / 10
+end
+
+-- (20 Nov 2026, the shotgun buff) a hit's damage at this distance (studs) for a weapon with a falloff, else 1
+function Weapons.falloffMul(w: Weapon, dist: number): number
+	local f = w.falloff
+	if not f or dist <= f.from then return 1 end
+	if dist >= f.to then return f.min end
+	return 1 - (1 - f.min) * (dist - f.from) / (f.to - f.from)
 end
 
 -- the Revolver's k-th fanned shot in a row (1 = the first after the tap): its damage and its spread (Combat rolls it)

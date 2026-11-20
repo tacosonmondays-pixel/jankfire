@@ -169,6 +169,7 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	if pr > 0 then parriedShot(t, f, wid, n, h, pr, eye); return end
 	local w = W[wid]
 	local dmg = Weapons.damage(w, n, h, f.hp) * (if x and x.mul then x.mul else 1) -- (f.hp: the Redline's cut past 12 a second)
+	if w.falloff then dmg *= Weapons.falloffMul(w, (c - eye).Magnitude) end -- (the shotguns: full up close, less at range)
 	local extraKb = 0
 	if w.ramp then
 		local k = Rules.ramp(f, t, w, now())
