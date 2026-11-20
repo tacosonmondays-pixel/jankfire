@@ -15,7 +15,7 @@
 #   ht_baluster    a solid parapet run, 8 long: plinth, a framed recessed field, a rounded cap; 3.4 high, 1.6 deep
 #   ht_newel       a newel post, 1.8 x 1.8 x 3.9 with a cap
 #   ht_coffer      a coffer cell, 14 x 16, beams 1.4 wide and 2.0 deep, a recessed lamp housing in the middle (ceiling)
-#   ht_chandelier  a ring chandelier, 10 across, 4.6 down from the ceiling: brass ring, cream drum, warm lamps
+#   ht_chandelier  (round 3) a ceiling ring light, 10 across and 1.8 deep: one thick brass ring, a glowing ring inside
 #   ht_palm        a palm in a big pot, about 8 high
 #   ht_sofa        a sofa, 7.4 x 3.3 x 2.9 (upholstery in the hotel's one accent)
 #   ht_armchair    an armchair, 3.6 x 3.3 x 2.9
@@ -27,7 +27,8 @@
 #   ht_sconce      a wall lamp, 1.2 x 0.9 x 1.8, its middle at the origin (wall piece)
 #   ht_lift        lift doors in a deep surround, 11.6 x 12.15 (wall piece; HUBS travel stands in front)
 #   ht_vault       one 17-long bay of the ballroom's barrel vault: the shell from the walls' top (18) up to 26.6
-#   ht_vaultrib    a vault rib, 1.4 wide, from wall to wall, with a springer block each end
+#   ht_vaultrib    a vault rib, 2.4 wide and 1.8 deep, from wall to wall, with a springer block each end
+#   ht_trophy      (round 3) the ballroom's end piece: a big two-handled cup on a stepped stone plinth, 16 high
 #   ht_wallpanel   a raised moulded panel, 6 x 10 (wall piece) for the bare plaster fields
 # run: blender -b --factory-startup -P tools/roblox/hotel_models.py -- <out_dir> [preview.jpg]
 import sys, os, math
@@ -105,37 +106,34 @@ def coffer():
 coffer(); keep('ht_coffer')
 
 def chandelier():
-    # (round 2) a thick ring, four thick spokes, eight big lamps (judge round 1: thin spokes and candles read as noise)
-    cy('plastic', CREAM, 1.4, 0.4, 0, 0, -0.2, bevel=0.12)                    # ceiling rose
-    cy('plastic', BRASS, 0.35, 3.0, 0, 0, -1.9, bevel=0.08)                   # the rod
-    lathe('plastic', BRASS, ring_prof(4.8, 0.75, 10), M=T(0, 0, -4.0), segs=28, cap=False)
-    lathe('plastic', CREAM, [(0.0, 0.0), (1.2, 0.0), (1.35, 0.5), (1.2, 1.4), (0.0, 1.4)], M=T(0, 0, -4.7), segs=16)
+    # (round 3) a ceiling ring light: a canopy, four short drops, ONE thick brass ring with a glowing ring inside it; no
+    # spokes, no bulbs (judge round 2), and only 1.8 deep, so it hangs above the galleries' sight lines to the signs
+    cy('plastic', CREAM, 2.6, 0.4, 0, 0, -0.2, bevel=0.14)                    # canopy: z 0..-0.4
     for i in range(4):
         a = i * math.pi / 2 + math.pi / 4
-        bx('plastic', BRASS, 4.0, 0.6, 0.6, 2.9 * math.cos(a), 2.9 * math.sin(a), -4.0, bevel=0.15, rot=RZ(a))
-    for i in range(8):
-        a = i * math.pi / 4
-        bx('neon', WARM, 0.9, 0.9, 1.1, 4.8 * math.cos(a), 4.8 * math.sin(a), -2.85, bevel=0.15)
-        cy('plastic', BRASS, 0.65, 0.3, 4.8 * math.cos(a), 4.8 * math.sin(a), -3.5, bevel=0.08)
-    lathe('neon', WARM, [(0.0, 0.0), (1.0, 0.05), (0.9, 0.55), (0.0, 0.6)], M=T(0, 0, -5.3), segs=16)
+        cy('plastic', BRASS, 0.22, 0.6, 4.4 * math.cos(a), 4.4 * math.sin(a), -0.7, bevel=0.06)
+        bx('plastic', BRASS, 2.2, 0.5, 0.35, 3.3 * math.cos(a), 3.3 * math.sin(a), -0.35, bevel=0.1, rot=RZ(a))
+    lathe('plastic', BRASS, ring_prof(4.4, 0.6, 12), M=T(0, 0, -1.2), segs=36, cap=False)   # the ring: z -0.6..-1.8
+    lathe('neon', WARM, ring_prof(3.55, 0.3, 8), M=T(0, 0, -1.3), segs=32, cap=False)       # its inner glow
 chandelier(); keep('ht_chandelier')
 
 # ------------------------------------------------------------------ furniture and planting
 def palm():
-    lathe('plastic', POT, [(0.0, 0.0), (1.1, 0.0), (1.45, 1.9), (1.65, 2.0), (1.65, 2.3), (0.0, 2.3)], segs=16)
-    cy('plastic', SOIL, 1.4, 0.1, 0, 0, 2.2, bevel=0.0)
-    z = 2.2
-    for i, (r0, r1, h, dx) in enumerate([(0.42, 0.36, 2.0, 0.0), (0.36, 0.3, 1.9, 0.15), (0.3, 0.26, 1.6, 0.3)]):
-        cy('plastic', TRUNK, r0, h, dx, 0, z + h / 2, bevel=0.08, r2=r1)
+    # (round 3) fewer, broader, thicker fronds (judge round 2: thin flat blades)
+    lathe('plastic', POT, [(0.0, 0.0), (1.2, 0.0), (1.55, 1.9), (1.75, 2.0), (1.75, 2.4), (0.0, 2.4)], segs=18)
+    cy('plastic', SOIL, 1.5, 0.1, 0, 0, 2.3, bevel=0.0)
+    z = 2.3
+    for i, (r0, r1, h, dx) in enumerate([(0.5, 0.44, 2.0, 0.0), (0.44, 0.38, 1.9, 0.15), (0.38, 0.32, 1.6, 0.3)]):
+        cy('plastic', TRUNK, r0, h, dx, 0, z + h / 2, bevel=0.1, r2=r1)
         z += h - 0.1
     top = (0.35, 0, z)
-    for i in range(7):
-        a = i * 2 * math.pi / 7
+    for i in range(6):
+        a = i * 2 * math.pi / 6 + 0.3
         hexc = LEAF if i % 2 == 0 else LEAF2
-        leaf = [(0, 0), (1.6, 0.55), (4.2, 0.0), (1.6, -0.55)]
-        M = T(*top) @ RZ(a) @ RY(math.radians(28))
-        prism('plastic', hexc, [(u, v * 0.25) for u, v in leaf], 1.2, M=M @ RX(math.radians(0)), bevel=0.06)
-    ball('plastic', LEAF2, 0.5, top[0], top[1], top[2] + 0.1)
+        leaf = [(0, 0), (1.5, 0.75), (3.9, 0.0), (1.5, -0.75)]
+        M = T(*top) @ RZ(a) @ RY(math.radians(30))
+        prism('plastic', hexc, [(u, v * 0.5) for u, v in leaf], 1.9, M=M, bevel=0.12)
+    ball('plastic', LEAF2, 0.65, top[0], top[1], top[2] + 0.1)
 palm(); keep('ht_palm')
 
 def seat(L):
@@ -227,11 +225,23 @@ def arc(r, n=18):
 shell = arc(R) + arc(R + 0.7)[::-1]
 prism('plastic', VAULT, shell, 17.0, bevel=0.0)
 keep('ht_vault')
-rib = arc(R - 1.2) + arc(R + 0.05)[::-1]
-prism('plastic', CREAM2, rib, 1.4, bevel=0.15)
+rib = arc(R - 1.8) + arc(R + 0.05)[::-1]                                       # (round 3: 2.4 wide, 1.8 deep)
+prism('plastic', CREAM2, rib, 2.4, bevel=0.3)
 for s in (-1, 1):
-    bx('plastic', CREAM, 2.0, 2.0, 2.4, s * 25.2, 0, 17.0, bevel=0.2)          # springers on the wall tops
+    bx('plastic', CREAM, 2.8, 2.8, 2.6, s * 24.8, 0, 17.0, bevel=0.3)          # springers on the wall tops
 keep('ht_vaultrib')
+
+# ------------------------------------------------------------------ the ballroom's end piece (round 3: ONE big thing on axis)
+GOLD, GOLD2 = 'c9a254', 'b08c45'
+bx('plastic', STONE2, 8.0, 8.0, 1.6, 0, 0, 0.8, bevel=0.35)                    # plinth: z 0..1.6
+bx('plastic', STONE, 6.4, 6.4, 1.2, 0, 0, 2.2, bevel=0.3)                      # z 1.6..2.8
+lathe('plastic', GOLD, [(0.0, 2.8), (2.5, 2.8), (2.5, 3.5), (1.7, 4.1), (0.85, 4.9), (0.7, 6.9), (1.15, 7.4), (1.25, 7.9),
+                       (1.6, 8.2), (3.3, 9.0), (4.5, 10.5), (5.0, 12.4), (5.1, 13.9), (5.45, 14.3), (5.45, 14.8),
+                       (4.7, 14.8), (4.5, 14.3), (0.0, 13.8)], segs=40)
+lathe('plastic', GOLD2, ring_prof(1.3, 0.35, 10), M=T(0, 0, 7.6), segs=28, cap=False)  # the knot on the stem
+for sx in (-1, 1):
+    lathe('plastic', GOLD, ring_prof(1.9, 0.55, 12), M=T(sx * 5.0, 0, 11.6) @ RX(math.pi / 2), segs=24, cap=False)
+keep('ht_trophy')
 
 export_all('hotel.glb')
 if len(sys.argv) > sys.argv.index('--') + 2:

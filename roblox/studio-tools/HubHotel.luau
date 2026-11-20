@@ -13,11 +13,11 @@
 local HH = {}
 HH.ID, HH.FOLDER, HH.TITLE, HH.ORDER = "hotel", "Hotel", "THE HOTEL", 4
 HH.SITE = CFrame.new(-200, 240, -17400)
-HH.KIT = 140589799606267 -- (the hotel kit's Model asset: tools/roblox/hotel_models.py, uploaded 20 Nov)
+HH.KIT = 124554368492862 -- (the hotel kit's Model asset: tools/roblox/hotel_models.py, uploaded 20 Nov)
 local PAL = {
 	wall = "d6cbb8", wall2 = "cbbfab", floor = "d2c9ba", floor2 = "b9ae9e", runner = "3f5a4a", carpet = "6e5a4c",
 	carpet2 = "7a6556", ceil = "e3d9c7", stone = "cdc2b1", stone2 = "b5aa98", accent = "4d6a58", wood = "6e5340",
-	dark = "3a3530", warm = "ffe2b8", lamp = "ffe6c8",
+	dark = "3a3530", wood2 = "5b4434", warm = "ffe2b8", lamp = "ffe6c8",
 }
 HH.PAL = PAL
 local function mat(name, fallback) local ok, m = pcall(function() return (Enum.Material :: any)[name] end); return if ok and m then m else fallback end
@@ -49,8 +49,8 @@ function HH.build(K, parent, name, site, live)
 	K.wall(FS, "Wall", -30, 30, 0, MZ, -34, -32, PAL.wall, { { 16.5, 27.5, 11 }, { -26, -22, 8.5 } }, PLASTER) -- (south: its x runs west)
 	for _, s in { -1, 1 } do box(F0, "Shell", "Wall", s * 20, s * 30, MZ, H + 1, 32, 34, PAL.wall, PLASTER) end -- (VIP's front fills x -20..20)
 	box(F0, "Shell", "Roof", -30, 30, H, H + 1, -34, 34, PAL.ceil, PLASTER)
-	-- the ceiling (round 2): 4 x 4 deep coffers, 14 x 16, each with a recessed lamp; two chandeliers hung from the beams'
-	-- crossings on the axis (over the fountain, over the stair)
+	-- the ceiling (round 2): 4 x 4 deep coffers, 14 x 16, each with a recessed lamp; two ring lights at the beams'
+	-- crossings on the axis (round 3: flush, 1.8 deep, above the galleries' sight lines to the signs)
 	for _, cx in { -21, -7, 7, 21 } do for _, cz in { -24, -8, 8, 24 } do
 		put("ht_coffer", at(cx, H, cz))
 		local lp = box(F0, "Scenery", "CofferLamp", cx - 2.2, cx + 2.2, H - 0.45, H - 0.38, cz - 2.2, cz + 2.2, "fff4e6", MAT.Neon, { ghost = true, noshadow = true })
@@ -58,7 +58,7 @@ function HH.build(K, parent, name, site, live)
 	end end
 	for _, cz in { -16, 16 } do
 		put("ht_chandelier", at(0, H - 2, cz))
-		K.light(box(F0, "Scenery", "ChandelierLight", -0.3, 0.3, H - 6.6, H - 6.4, cz - 0.3, cz + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 24, 1.2, PAL.lamp)
+		K.light(box(F0, "Scenery", "ChandelierLight", -0.3, 0.3, H - 4.4, H - 4.2, cz - 0.3, cz + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 28, 1.0, PAL.lamp)
 	end
 	-- the cornice round the top of the walls
 	for x = -24, 24, 8 do put("ht_cornice", at(x, H, -32, 0)); put("ht_cornice", at(x, H, 32, 180)) end
@@ -105,6 +105,13 @@ function HH.build(K, parent, name, site, live)
 		box(F0, "Scenery", "Runner", s * 3, s * 10.2, 0, 0.04, -29.2, -27.7, PAL.runner, CARPET)
 		box(F0, "Scenery", "Runner", s * 3, s * 10.2, 0, 0.04, -12.3, -10.8, PAL.runner, CARPET)
 	end
+	-- (round 3) the ways from the spawn, inlaid in the same green (judge round 2): across the spawn to the gym's door, to
+	-- the lounge's door, to the armory's mouth (TRAINING), and from the fountain's ring to reception
+	local function way(x0, x1, z0, z1) box(F0, "Scenery", "RunnerBranch", x0, x1, 0, 0.04, z0, z1, PAL.runner, CARPET) end
+	way(-27.5, 14.75, -3.95, -2.45)
+	way(13.25, 14.75, -2.45, 14.75); way(14.75, 27.5, 13.25, 14.75)
+	way(-14.75, -13.25, -2.45, 30); way(-24, -14.75, 28.5, 30)
+	way(11.7, 21.5, -16.75, -15.25)
 	-- the spawn: a round medallion in the marble, eight places facing north, the arrival point
 	cyl(F0, "Scenery", "SpawnRing", 0, -0.02, 0.07, -3.2, 9.2, PAL.stone2, MARBLE)
 	cyl(F0, "Scenery", "SpawnPlate", 0, 0.07, 0.1, -3.2, 7.6, PAL.runner, CARPET)
@@ -126,12 +133,16 @@ function HH.build(K, parent, name, site, live)
 	for _, s in { -1, 1 } do put("ht_pilaster", at(s * 13.6, 0, -32, 0), { solid = true }) end
 	-- (judge round 1: the door says what it is for, the name is its own big board over it)
 	local Fn = CFrame.new(0, 0, -31.45) * CFrame.Angles(0, math.pi, 0)
-	K.wordSign(Fn, "Scenery", "WaySign", 10, 2.2, 0, 17.7, 0, "PLAY", { accent = PAL.accent })
-	K.wordSign(Fn, "Scenery", "NameSign", 16, 3.2, 0, 21.3, 0, "JANKFIRE", { accent = PAL.accent })
+	K.wordSign(Fn, "Scenery", "WaySign", 10, 2.2, 0, 17.7, 0, "PLAY", { accent = PAL.accent, bg = NAVY })
+	K.wordSign(Fn, "Scenery", "NameSign", 16, 3.2, 0, 21.3, 0, "JANKFIRE", { accent = PAL.accent, bg = NAVY })
 	-- raised panels in the bare plaster over the galleries (N and S walls' ends)
 	for _, sx in { -1, 1 } do
 		K.put(FN, "ht_wallpanel", at(sx * 24, MZ + 1, -32, 0))
 		K.put(FS, "ht_wallpanel", at(sx * 24, MZ + 1, -32, 0))
+		for _, x in { sx * 20.9, sx * 27.1 } do -- (round 3: the galleries end on a lit wall, not a dark one)
+			K.put(FN, "ht_sconce", at(x, MZ + 5.5, -32, 0))
+			K.light(box(FN, "Scenery", "SconceLight", x - 0.2, x + 0.2, MZ + 5.4, MZ + 5.6, -31.4, -31.0, PAL.lamp, nil, { ghost = true, tr = 1 }), 12, 0.6, PAL.lamp)
+		end
 	end
 	-- the walls' lower half: a panelled wood dado; sconces and room doors upstairs
 	-- (in FW a world z is local x -z, in FE it is +z; the walls' faces: N and S at local z -32, W and E at -28)
@@ -146,13 +157,12 @@ function HH.build(K, parent, name, site, live)
 	dadoRun(FW, -28, -32, 32, { { -6, 6 }, { -22, -10 } })
 	dadoRun(FE, -28, -32, 32, { { 8, 22 }, { -24, -8 } })
 	dadoRun(FS, -32, -28, 28, { { 14.5, 29.5 }, { -28, -20 }, { -18, -6 }, { 4, 17 } })
-	for _, z in { -24, -8, 8, 24 } do -- (the rooms along the galleries; the W wall's N half carries SPECTATE)
-		if z > 0 then K.put(FW, "ht_doors", at(-z, MZ, -28, 0)) end
+	for _, z in { -24, -8, 8, 24 } do -- (the rooms along the galleries)
+		K.put(FW, "ht_doors", at(-z, MZ, -28, 0))
 		K.put(FE, "ht_doors", at(z, MZ, -28, 0))
 	end
-	K.spectateSpot(K.facing(-28, -16, 1, 0, 20.6), 16, 7)
 	-- the ways out named on the gallery fascias, big enough to read from the middle (judge round 1)
-	local function fascia(x, z, dx, dz, w, title) K.wordSign(K.facing(x, z, dx, dz), "Scenery", "WaySign", w, 2.0, 0, 12.9, 0, title, { accent = PAL.accent }) end
+	local function fascia(x, z, dx, dz, w, title) K.wordSign(K.facing(x, z, dx, dz), "Scenery", "WaySign", w, 2.0, 0, 12.9, 0, title, { accent = PAL.accent, bg = NAVY }) end
 	fascia(-19.7, 0, 1, 0, 8, "GYM")
 	fascia(19.7, 15.2, -1, 0, 10, "LOUNGE")
 	fascia(19.7, -16, -1, 0, 8, "SHOP")
@@ -187,62 +197,131 @@ function HH.build(K, parent, name, site, live)
 	pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.RequiresLineOfSight = false
 	pr:SetAttribute("ShopOpen", "tab:featured")
 	pr.Parent = pp
+	-- (round 3) the display wall behind reception (judge round 2: "nothing says what is sold"): pale panelling, four lit
+	-- cases above head height, a gun in each, the cases' backs glowing warm
+	box(F0, "Scenery", "ShopWall", 27.4, 28, 0, 12.8, -25.4, -6.6, PAL.ceil, PLASTER)
+	for i, wid in { "ar", "sniper", "shotgun", "smg" } do
+		local zc = -22 + (i - 1) * 4.4
+		box(F0, "Scenery", "CaseBack", 27.2, 27.4, 6.0, 11.0, zc - 1.8, zc + 1.8, "f3e6cf", MAT.Neon, { ghost = true, noshadow = true, tr = 0.35 })
+		box(F0, "Scenery", "CaseSill", 26.4, 27.4, 5.4, 6.0, zc - 2.2, zc + 2.2, PAL.wood, nil, { ghost = true })
+		box(F0, "Scenery", "CaseHead", 26.4, 27.4, 11.0, 11.6, zc - 2.2, zc + 2.2, PAL.wood, nil, { ghost = true })
+		for _, sz in { -1, 1 } do box(F0, "Scenery", "CaseSide", 26.4, 27.4, 5.4, 11.6, zc + sz * 1.8, zc + sz * 2.2, PAL.wood, nil, { ghost = true }) end
+		K.gun(F0, "JankfireWeapons", "w_" .. wid, 3.2, 26.9, 8.5, zc, -90, "Show_w_" .. wid)
+		K.light(box(F0, "Scenery", "CaseLight", 26.7, 27.1, 10.6, 10.8, zc - 0.2, zc + 0.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 7, 0.8, PAL.lamp)
+	end
 	-- the lifts (HUBS travel) on the S wall, a pair either side of the stair
 	put("ht_lift", at(12, 0, 32, 180))
 	put("ht_lift", at(-10.4, 0, 32, 180))
 	K.travelTerminal(K.at(F0, 12, 27.3, 0))
-	K.wordSign(K.facing(12, 30.35, 0, -1), "Scenery", "LiftSign", 4.2, 1.0, 0, 10.8, 0, "HUBS", { accent = PAL.accent })
+	K.wordSign(K.facing(12, 30.35, 0, -1), "Scenery", "LiftSign", 4.2, 1.0, 0, 10.8, 0, "HUBS", { accent = PAL.accent, bg = NAVY })
 
-	-- ============================================================== THE BALLROOM (the pads; x -26..26, z -34..-136)
-	-- (round 2: 17-long bays for the bigger pad, a darker vault and carpet, a lit cove where the vault springs, a blade
-	-- sign over every pad, runner branches to every pad, the hall ending on a lit set piece: the counts over the trophies)
+	-- ============================================================== THE BALLROOM (the pads; x -26..26, z -34..-153)
+	-- (round 2: 17-long bays for the bigger pad, a cove where the vault springs, runner branches to every pad)
+	-- (round 3, judges round 2/3: a pale stone floor; each pad in front of its own lit recess (the wall pushed back 2.5
+	-- between the pilasters); thick ribs; the chandeliers a step down so the pads are the brightest things; each pad's
+	-- blade on its own gantry; ONE thing on the end wall: the big cup in a lit niche. And (main, the copy risk: a straight
+	-- mirrored hall reads as the reference's pad runway) a CROSSING in the middle: the third bay opens into two side
+	-- alcoves (the spectate board W, the hall's counts E) under the skylight, the walk splitting round a round settee;
+	-- two pads a side before it, three after)
 	local BAY = 17
-	local BZ0, BZ1 = -34, -34 - 6 * BAY
-	box(F0, "Shell", "Floor", -28, 28, -1, 0, BZ1 - 2, BZ0, "75604f", CARPET) -- (round 2: a step darker than the lobby, never near-black)
-	for _, s in { -1, 1 } do box(F0, "Shell", "Wall", s * 26, s * 28, 0, 18.6, BZ1 - 2, BZ0, PAL.wall2, PLASTER) end
-	box(F0, "Shell", "Wall", -28, 28, 0, 28, BZ1 - 2, BZ1, PAL.wall2, PLASTER)
-	for k = 0, 5 do put("ht_vault", at(0, 0, BZ0 - BAY / 2 - k * BAY), { solid = true }) end
-	for k = 0, 6 do put("ht_vaultrib", at(0, 0, BZ0 - k * BAY)) end
-	box(F0, "Shell", "VaultLid", -28, 28, 27.4, 28.4, BZ1 - 2, BZ0, PAL.ceil, PLASTER) -- (closes the space over the shell)
+	local BZ0 = -34
+	local BZ1 = BZ0 - 7 * BAY
+	local PADBAY = { 0, 1, 3, 4, 5 } -- (the bays the pads stand in, in K.MODES order; bay 2 the crossing, bay 6 the stage)
+	local XB = 2 -- (the crossing's bay)
+	local function bz(k) return BZ0 - k * BAY end -- (bay k runs bz(k) .. bz(k + 1))
+	box(F0, "Shell", "Floor", -40, 40, -1, 0, BZ1 - 2, BZ0, "c2b4a0", MARBLE)
+	for _, s in { -1, 1 } do
+		box(F0, "Shell", "Wall", s * 28.5, s * 30.5, 0, 18.6, bz(XB) - 1.8, BZ0, PAL.wall2, PLASTER) -- (the recesses' backs)
+		box(F0, "Shell", "Wall", s * 28.5, s * 30.5, 0, 18.6, BZ1 - 2, bz(XB + 1) + 1.8, PAL.wall2, PLASTER)
+		box(F0, "Shell", "Wall", s * 26, s * 28.5, 17.4, 18.6, BZ1 - 2, BZ0, PAL.wall2, PLASTER) -- (their head, the crossing's lintel)
+		box(F0, "Shell", "Wall", s * 26, s * 28.5, 0, 17.4, BZ0 - 1.8, BZ0, PAL.wall2, PLASTER)
+		box(F0, "Shell", "Wall", s * 26, s * 28.5, 0, 17.4, BZ1 - 2, bz(6) + 1.8, PAL.wall2, PLASTER) -- (the stage's bay: solid)
+		for k = 1, 5 do box(F0, "Shell", "Wall", s * 26, s * 28.5, 0, 17.4, bz(k) - 1.8, bz(k) + 1.8, PAL.wall2, PLASTER) end
+		for _, k in PADBAY do -- (each pad's recess lit from its head, warm, onto its back)
+			local rl = box(F0, "Scenery", "RecessLight", s * 26.3, s * 28.2, 17.25, 17.4, bz(k + 1) + 2.2, bz(k) - 2.2, PAL.warm, MAT.Neon, { ghost = true, noshadow = true })
+			K.light(rl, 18, 0.9, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 150 })
+		end
+		-- the crossing's alcove: 10 deep, as tall as the recesses, a flat lit ceiling
+		local za, zb = bz(XB) - 1.8, bz(XB + 1) + 1.8
+		box(F0, "Shell", "Wall", s * 38, s * 40, 0, 18.6, zb - 2, za + 2, PAL.wall2, PLASTER)
+		for _, zz in { za, zb } do box(F0, "Shell", "Wall", s * 28.5, s * 38, 0, 18.6, if zz == za then za else zz - 2, if zz == za then za + 2 else zz, PAL.wall2, PLASTER) end
+		box(F0, "Shell", "AlcoveLid", s * 26, s * 40, 17.4, 18.6, zb - 2, za + 2, PAL.ceil, PLASTER)
+		for _, zz in { za - 3.4, zb + 3.4 } do K.panel(F0, s * 33, 17.4, zz, 3, 4, { bright = 0.7, range = 18, lightHex = PAL.warm }) end
+		put("ht_sofa", at(s * 30.4, 0, (za + zb) / 2, if s < 0 then -90 else 90), { solid = true }) -- (its back to the hall, facing the board)
+	end
+	-- W: the spectate board (play-party draws the games on it); E: the hall's counts (IN QUEUE, HubConsole writes it)
+	local zx = (bz(XB) + bz(XB + 1)) / 2
+	K.spectateSpot(K.facing(-37.95, zx, 1, 0, 9.0), 11.6, 7.4)
+	box(F0, "Scenery", "CountFrame", 37.4, 37.95, 3.6, 15.4, zx - 6.6, zx + 6.6, PAL.ceil, PLASTER)
+	local cb = box(F0, "Scenery", "CountBoard", 37.2, 37.4, 4.2, 14.8, zx - 6, zx + 6, NAVY)
+	K.screen(cb, { Enum.NormalId.Left })
+	box(F0, "Shell", "Wall", -30.5, 30.5, 0, 28, BZ1 - 2, BZ1, PAL.wall2, PLASTER)
+	for k = 0, 6 do put("ht_vault", at(0, 0, BZ0 - BAY / 2 - k * BAY), { solid = true }) end
+	for k = 0, 7 do put("ht_vaultrib", at(0, 0, bz(k))) end
+	box(F0, "Shell", "VaultLid", -30.5, 30.5, 27.4, 28.4, BZ1 - 2, BZ0, PAL.ceil, PLASTER) -- (closes the space over the shell)
 	for _, s in { -1, 1 } do
 		box(F0, "Scenery", "CoveLedge", s * 24.9, s * 26.05, 17.4, 17.9, BZ1, BZ0, PAL.ceil, PLASTER, { ghost = true })
 		local cv = box(F0, "Scenery", "Cove", s * 24.9, s * 25.4, 17.9, 18.0, BZ1 + 0.5, BZ0 - 0.5, PAL.warm, MAT.Neon, { ghost = true, noshadow = true })
-		K.light(cv, 22, 0.6, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Top, angle = 150 })
+		K.light(cv, 22, 0.5, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Top, angle = 150 })
 	end
-	for k = 1, 5 do
-		local z = BZ0 - k * BAY
-		for _, s in { -1, 1 } do put("ht_pilasterMid", at(s * 26, 0, z, if s < 0 then 90 else -90), { solid = true }) end
+	for k = 1, 6 do
+		for _, s in { -1, 1 } do put("ht_pilasterMid", at(s * 26, 0, bz(k), if s < 0 then 90 else -90), { solid = true }) end
 	end
-	for _, k in { 1, 3, 5 } do
+	-- the crossing's skylight: a lit panel in the vault's crown, in a deep frame
+	local SZ0, SZ1 = bz(XB) - 2.5, bz(XB + 1) + 2.5
+	local sk = box(F0, "Scenery", "Skylight", -4, 4, 25.75, 25.85, SZ1, SZ0, "fff6e8", MAT.Neon, { ghost = true, noshadow = true })
+	K.light(sk, 30, 0.8, "fff6e8", { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
+	for _, sx in { -1, 1 } do box(F0, "Scenery", "SkylightFrame", sx * 4, sx * 5.2, 24.9, 25.9, SZ1 - 1.2, SZ0 + 1.2, PAL.ceil, PLASTER) end
+	for _, zz in { SZ0, SZ1 } do box(F0, "Scenery", "SkylightFrame", -5.2, 5.2, 25.1, 25.9, zz - 0.6, zz + 0.6, PAL.ceil, PLASTER) end
+	for _, k in { 1, 4 } do
 		local cz = BZ0 - BAY / 2 - k * BAY
-		put("ht_chandelier", at(0, 26.6, cz))
-		K.light(box(F0, "Scenery", "ChandelierLight", -0.3, 0.3, 21.4, 21.6, cz - 0.3, cz + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 36, 1.4, PAL.lamp)
+		put("ht_chandelier", at(0, 25.9, cz))
+		K.light(box(F0, "Scenery", "ChandelierLight", -0.3, 0.3, 22.4, 22.6, cz - 0.3, cz + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 34, 1.05, PAL.lamp)
 	end
-	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, BZ1 + 15.5, BZ0, PAL.runner, CARPET)
-	-- the pads: five a side, 1V1 nearest the doors, each in its bay facing the walkway; a branch of the runner to each;
-	-- a blade over each, square to the wall, read from up and down the hall
-	for k, md in K.MODES do
-		local z = BZ0 - BAY / 2 - (k - 1) * BAY
+	-- the crossing's middle: a round settee (a hotel's borne) on a low stone dais; the walk splits round it
+	cyl(F0, "Shell", "CrossDais", 0, 0, 0.5, zx, 13, PAL.stone, MARBLE)
+	cyl(F0, "Scenery", "CrossDaisNosing", 0, 0.45, 0.6, zx, 13.4, PAL.stone2)
+	cyl(F0, "Shell", "BorneSeat", 0, 0.5, 2.1, zx, 8.4, "6f8a76", CARPET)
+	cyl(F0, "Scenery", "BorneBase", 0, 0.5, 0.9, zx, 8.8, PAL.wood)
+	cyl(F0, "Shell", "BorneBack", 0, 2.1, 4.6, zx, 3.2, "6f8a76", CARPET)
+	cyl(F0, "Scenery", "BorneCap", 0, 4.6, 5.0, zx, 3.6, PAL.wood)
+	-- the floor: a stone walk down the middle (split round the dais), a pale threshold from it into each pad
+	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, bz(XB) - 0.6, BZ0, "a8998a", MARBLE)
+	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, BZ1 + 15.5, bz(XB + 1) + 0.6, "a8998a", MARBLE)
+	for _, sx in { -1, 1 } do box(F0, "Scenery", "Runner", sx * 7.2, sx * 10.2, 0, 0.04, bz(XB + 1) + 0.6, bz(XB) - 0.6, "a8998a", MARBLE) end
+	for _, zz in { bz(XB) - 0.6, bz(XB + 1) + 0.6 } do box(F0, "Scenery", "Runner", -10.2, 10.2, 0, 0.04, zz - 1.5, zz + 1.5, "a8998a", MARBLE) end
+	-- one sign at the hall's entrance says how the pads work (round 4 of the pads: not on every board)
+	for _, sx in { -1, 1 } do box(F0, "Scenery", "SignRod", sx * 6 - 0.2, sx * 6 + 0.2, 15.6, 25.6, -47.2, -46.8, PAL.stone) end
+	K.wordSign(K.facing(0, -47, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 14.6, 0, "STEP ON A SIDE TO QUEUE", { accent = PAL.accent, bg = NAVY })
+	-- the pads: five a side in K.MODES order (1V1 nearest the doors), each in its bay facing the walk (its blade on its
+	-- own gantry); a pale threshold into each
+	for i, md in K.MODES do
+		local z = BZ0 - BAY / 2 - PADBAY[i] * BAY
 		K.pad(K.facing(-12.4, z, -1, 0), md, "lifts", md.id, { lampY = 16 })
 		K.pad(K.facing(12.4, z, 1, 0), md, "east", md.id .. "_e", { lampY = 16 })
 		for _, s in { -1, 1 } do
-			box(F0, "Scenery", "RunnerBranch", s * 3, s * 12.4, 0, 0.04, z - 0.75, z + 0.75, PAL.runner, CARPET)
-			K.padBlade(CFrame.new(s * 23.0, 16.8, z), md, 3.4, 4.0)
-			K.light(box(F0, "Scenery", "BayWash", s * 19 - 0.3, s * 19 + 0.3, 18.4, 18.6, z - 0.3, z + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 24, 0.9, PAL.warm,
+			box(F0, "Scenery", "Threshold", s * 3, s * 12.4, 0, 0.04, z - 1.5, z + 1.5, "d6cab6", MARBLE)
+			K.light(box(F0, "Scenery", "BayWash", s * 19 - 0.3, s * 19 + 0.3, 18.4, 18.6, z - 0.3, z + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 24, 0.6, PAL.warm,
 				{ kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 70 })
 		end
 	end
-	-- the stage: a two-step dais; on the end wall the trophies (with the ranked boards either side) and over them the
-	-- hall's own count board (IN QUEUE, HubConsole writes it) in a pale frame, lit warm
-	box(F0, "Shell", "Stage", -24, 24, 0, 1.2, BZ1, BZ1 + 14, PAL.wood, MAT.WoodPlanks)
-	box(F0, "Shell", "StageStep", -24, 24, 0, 0.6, BZ1 + 14, BZ1 + 15.2, PAL.wood, MAT.WoodPlanks)
+	-- the stage: a two-step dais; the end wall ONE thing: the big cup on the dais in a tall niche lit from behind, two
+	-- spots on it from the vault; the ranked boards on the stage bay's side walls, facing in
+	box(F0, "Shell", "Stage", -24, 24, 0, 1.2, BZ1, BZ1 + 14, "8a6a50", MAT.WoodPlanks)
+	box(F0, "Shell", "StageStep", -24, 24, 0, 0.6, BZ1 + 14, BZ1 + 15.2, "8a6a50", MAT.WoodPlanks)
 	box(F0, "Scenery", "StageNosing", -24, 24, 1.2, 1.4, BZ1 + 13.6, BZ1 + 14.2, PAL.stone)
-	K.trophyWall(K.at(F0, 0, BZ1 + 0.05, 180, 1.2)) -- (with the two ranked boards either side)
-	box(F0, "Scenery", "CountFrame", -10.2, 10.2, 14.6, 24.4, BZ1, BZ1 + 0.8, PAL.ceil, PLASTER)
-	local cb = box(F0, "Scenery", "CountBoard", -9.2, 9.2, 15.4, 23.6, BZ1 + 0.8, BZ1 + 1.0, NAVY)
-	K.screen(cb, { Enum.NormalId.Back })
-	K.light(box(F0, "Scenery", "CountWash", -0.3, 0.3, 25.6, 25.8, BZ1 + 4, BZ1 + 4.6, PAL.lamp, nil, { ghost = true, tr = 1 }), 22, 0.8, PAL.warm,
-		{ kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 60 })
+	box(F0, "Scenery", "NicheGlow", -9, 9, 1.2, 22.6, BZ1, BZ1 + 0.3, "ead2a8", MAT.Neon, { tr = 0.45, ghost = true, noshadow = true })
+	for _, sx in { -1, 1 } do box(F0, "Scenery", "NicheJamb", sx * 9, sx * 11.4, 0, 24.2, BZ1, BZ1 + 2.0, PAL.ceil, PLASTER) end
+	box(F0, "Scenery", "NicheHead", -11.4, 11.4, 22.6, 24.2, BZ1, BZ1 + 2.0, PAL.ceil, PLASTER)
+	box(F0, "Shell", "TrophyPlinth", -5, 5, 1.2, 4.2, BZ1 + 1, BZ1 + 11, PAL.stone, MARBLE) -- (the cup high enough to read over the crossing)
+	put("ht_trophy", at(0, 4.2, BZ1 + 6), { solid = true })
+	for _, sx in { -1, 1 } do K.light(box(F0, "Scenery", "StageLight", sx * 18 - 0.3, sx * 18 + 0.3, 11.8, 12, BZ1 + 8 - 0.3, BZ1 + 8 + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 26, 0.9, PAL.warm) end
+	for _, sx in { -1, 1 } do
+		local sp = K.part("Scenery", "TrophySpot", F0 * CFrame.lookAt(Vector3.new(sx * 7, 22, BZ1 + 20), Vector3.new(0, 9, BZ1 + 6)), Vector3.new(0.4, 0.4, 0.4), PAL.lamp, nil, { ghost = true, tr = 1 })
+		local l = Instance.new("SpotLight"); l.Face = Enum.NormalId.Front; l.Range = 32; l.Brightness = 2.2; l.Angle = 36; l.Color = K.c3(PAL.lamp); l.Shadows = true; l.Parent = sp
+	end
+	K.boardSpot(K.facing(-25.95, BZ1 + 8.5, 1, 0, 8.4), "duels", 9.6, 7.4)
+	K.boardSpot(K.facing(25.95, BZ1 + 8.5, -1, 0, 8.4), "party", 9.6, 7.4)
 
 	-- ============================================================== THE GYM AND BOXING CLUB (west)
 	K.gym(CFrame.Angles(0, math.pi, 0), { x0 = 30, x1 = 92, z0 = -32, z1 = 32, h = 24, rings = { { 46, -14 }, { 76, -14 }, { 46, 14 }, { 76, 14 } },
@@ -252,25 +331,36 @@ function HH.build(K, parent, name, site, live)
 
 	-- ============================================================== THE LOUNGE BAR (east: x 30..66, z -2..30, low)
 	local BX0, BX1, BZa, BZb, BH = 30, 66, -2, 30, 14
-	box(F0, "Shell", "Floor", BX0, BX1 + 2, -1, 0, BZa - 2, BZb + 2, PAL.wood, MAT.WoodPlanks)
+	box(F0, "Shell", "Floor", BX0, BX1 + 2, -1, 0, BZa - 2, BZb + 2, "8a6a50", MAT.WoodPlanks)
 	box(F0, "Shell", "Roof", BX0, BX1 + 2, BH, BH + 1, BZa - 2, BZb + 2, PAL.ceil, PLASTER)
 	box(F0, "Shell", "Wall", BX0, BX1, 0, BH, BZa - 2, BZa, PAL.wall2, PLASTER)
 	box(F0, "Shell", "Wall", BX0, BX1, 0, BH, BZb, BZb + 2, PAL.wall2, PLASTER)
 	K.wall(CFrame.Angles(0, -math.pi / 2, 0), "Wall", BZa - 2, BZb + 2, 0, BH, -(BX1 + 2), -BX1, PAL.wall2, { { 20, 28, 10 } }, PLASTER) -- (the golf room's door)
 	put("ht_doorS", at(30, 0, 14, 90)) -- (the bar's side of the door from the lobby)
 	put("ht_doorS", at(28, 0, 14, -90))
-	for x = BX0 + 3, BX1 - 3, 6 do box(F0, "Scenery", "Beam", x - 0.6, x + 0.6, BH - 1.4, BH + 0.1, BZa, BZb, PAL.wood, MAT.Wood, { ghost = true }) end
-	for _, p in { { 38, 6 }, { 50, 6 }, { 38, 22 }, { 50, 22 }, { 60, 14 } } do K.panel(F0, p[1], BH, p[2], 3, 3, { bright = 0.6, range = 16, lightHex = PAL.warm }) end
+	-- (round 3, judge round 2: the lounge fell to near-black and was a plain box) a cream coffered ceiling, lamps in the
+	-- coffers, three ring lights; a raised seating step along the N wall
+	for x = BX0 + 6, BX1 - 6, 6 do box(F0, "Scenery", "Beam", x - 0.8, x + 0.8, BH - 1.4, BH + 0.1, BZa, BZb, PAL.ceil, PLASTER, { ghost = true }) end
+	for _, z in { 6, 14, 22 } do box(F0, "Scenery", "Beam", BX0, BX1, BH - 1.4, BH + 0.1, z - 0.8, z + 0.8, PAL.ceil, PLASTER, { ghost = true }) end
+	for _, p in { { 39, 2 }, { 51, 2 }, { 57, 18 }, { 39, 26 }, { 57, 26 } } do K.panel(F0, p[1], BH, p[2], 3, 3, { bright = 1.0, range = 22, lightHex = PAL.warm }) end
+	for _, p in { { 39, 10 }, { 51, 10 }, { 45, 18 } } do
+		put("ht_chandelier", at(p[1], BH, p[2]))
+		K.light(box(F0, "Scenery", "ChandelierLight", p[1] - 0.3, p[1] + 0.3, BH - 2.6, BH - 2.4, p[2] - 0.3, p[2] + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 20, 0.9, PAL.lamp)
+	end
+	box(F0, "Shell", "SeatStep", 32, 60, 0, 0.8, BZa, 6, PAL.wood2, MAT.WoodPlanks)
+	box(F0, "Scenery", "SeatStepNosing", 32, 60, 0.6, 0.85, 5.7, 6.1, PAL.stone)
 	K.bar(K.at(F0, 62, 14, 90), 14) -- (its drinkers on the west side)
 	for _, x in { 36, 46, 56 } do
-		put("ht_sofa", at(x, 0, 0.2, 0), { solid = true })
-		put("ht_table", at(x, 0, 3.4, 0), { solid = true })
+		put("ht_sofa", at(x, 0.8, 0.2, 0), { solid = true })
+		put("ht_table", at(x, 0.8, 3.4, 0), { solid = true })
 	end
 	K.tableSpot(K.at(F0, 40, 15, 0), "board"); K.tableSpot(K.at(F0, 52, 23, 0), "arm")
 	K.arcadeSpot(K.at(F0, 36, 29.6, 0)); K.arcadeSpot(K.at(F0, 42, 29.6, 0))
 	K.codePanelSpot(K.at(F0, 46, BZb, 0)) -- (on the S wall, looking north into the bar)
 	palm(64, 0.5); palm(64, 27.5)
 	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = -50, z1 = 44, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
+	K.wordSign(K.facing(65.95, 24, -1, 0), "Scenery", "WaySign", 8, 1.6, 0, 11.9, 0, "SLAP GOLF", { accent = PAL.accent, bg = NAVY })
+	K.light(box(F0, "Scenery", "DoorLight", 70.6, 71, 9, 9.2, 23.8, 24.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 22, 0.8, PAL.warm) -- (no black void through the door)
 
 	-- ============================================================== THE ARMORY (south-west) and THE SERVICE CORRIDOR (south-east)
 	K.armory(CFrame.new(-22, 0, 0) * CFrame.Angles(0, math.pi, 0), { d0 = 34, d1 = 80, w = 5.5, h = 12, door = "HotelToTraining" })
@@ -282,14 +372,14 @@ function HH.build(K, parent, name, site, live)
 
 	-- ============================================================== THE REGULARS
 	-- Looticus: behind reception, on the W sofa, behind the bar
-	local LOOT = { { "stand", 27.0, 0, -16, 90 }, { "sit", -25.6, 1.3, 14.4, 90 }, { "sit", -25.6, 1.3, 17.6, 90 }, { "stand", 64.4, 0, 14, -90 } }
+	local LOOT = { { "stand", 26.8, 0, -16, 90 }, { "sit", -25.6, 1.3, 14.4, 90 }, { "sit", -25.6, 1.3, 17.6, 90 }, { "stand", 64.4, 0, 14, -90 } }
 	K.npc(F0, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(F0, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	-- Frisk1636: along the ballroom's stage
-	local BZ1 = -34 - 6 * 17
+	local BZ1 = -34 - 7 * 17
 	local FR = { { "stop", -14 }, { "via", -6 }, { "stop", 0 }, { "via", 6 }, { "stop", 14 } }
-	K.npc(F0, "Frisk1636", FR[1][2], 1.2, BZ1 + 9, 0)
-	for k, w in FR do K.npcPoint(F0, "Frisk1636", k, w[1], "stand", w[2], 1.2, BZ1 + 9, 0, { pause = if w[1] == "stop" then { 8, 16 } else nil }) end
+	K.npc(F0, "Frisk1636", FR[1][2], 1.2, BZ1 + 12, 0)
+	for k, w in FR do K.npcPoint(F0, "Frisk1636", k, w[1], "stand", w[2], 1.2, BZ1 + 12, 0, { pause = if w[1] == "stop" then { 8, 16 } else nil }) end
 	-- Dune: round three sides of the gym's first ring
 	local Fg = CFrame.Angles(0, math.pi, 0)
 	local DU = { { "stop", 32.5, -14, -90 }, { "via", 32.5, -27.4, 180 }, { "stop", 46, -27.4, 180 }, { "via", 61, -27.4, 180 }, { "stop", 61, -14, 90 } }
@@ -298,13 +388,22 @@ function HH.build(K, parent, name, site, live)
 	for _, d in f:GetDescendants() do
 		if d:IsA("BasePart") and (d.Name == "SpectatePanel" or d.Name == "LiveBoardPanel") then
 			d.Color = K.c3(NAVY)
-			for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do -- (a lit navy face under whatever the board shows)
-				local g = Instance.new("SurfaceGui"); g.Name = "Rest"; g.Face = face; g.LightInfluence = 0; g.Brightness = 1
-				g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 4; g.Parent = d
+			for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do -- (a lit navy face, with its name, under whatever the board shows)
+				local g = Instance.new("SurfaceGui"); g.Name = "Rest"; g.Face = face; g.LightInfluence = 0; g.Brightness = 1.4
+				g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 20; g.Parent = d
 				local fr = Instance.new("Frame"); fr.Size = UDim2.fromScale(1, 1); fr.BackgroundColor3 = K.c3(NAVY); fr.BorderSizePixel = 0; fr.Parent = g
+				local t = Instance.new("TextLabel"); t.BackgroundTransparency = 1; t.Size = UDim2.fromScale(0.8, 0.16); t.Position = UDim2.fromScale(0.1, 0.08)
+				t.Font = Enum.Font.GothamBlack; t.TextScaled = true; t.TextColor3 = K.c3("c8d0e0")
+				t.Text = if d.Name == "SpectatePanel" then "SPECTATE" else "RANKED"; t.Parent = fr
 			end
 		elseif d:IsA("Frame") and d.Parent and d.Parent:IsA("SurfaceGui") and d.Parent.Parent and d.Parent.Parent.Name == "CountBoard" then d.BackgroundColor3 = K.c3(NAVY)
-		elseif d:IsA("BasePart") and d.Name == "TableRug" then d.Color = K.c3("7d6654") end -- (the kit's rug is near-black in the lounge's warm light)
+		elseif d:IsA("BasePart") and d.Name == "TableRug" then d.Color = K.c3("9a8f7c") -- (the kit's rug is near-black in the lounge's warm light)
+		elseif d:IsA("BasePart") and d.Name:match("^ht_vault%d") then d.Color = K.c3("bdb09b") -- (round 3: the vault a step down: the pads the brightest)
+		elseif d:IsA("BasePart") and d.Name == "StoolStem" then d.Size = Vector3.new(d.Size.X, 0.9, 0.9) -- (thick pedestals)
+		elseif d:IsA("BasePart") and d.Name == "Bottle" then -- (a coffee bar's mugs: no bottles; judge round 2, the content rating)
+			local h = d.Size.X
+			d.Size = Vector3.new(0.9, 0.95, 0.95); d.CFrame = d.CFrame - Vector3.new(0, (h - 0.9) / 2, 0); d.Color = K.c3("efe6d6"); d.Name = "Mug"
+		end
 	end
 	return f
 end
@@ -320,21 +419,24 @@ end
 function HH.walks(K)
 	local F0 = CFrame.new()
 	return {
-		{ "to the ballroom's doors", F0, -6, 6, -38, -28.5 }, { "round the fountain W", F0, -14, -10, -26, -13 }, { "round the fountain E", F0, 10, 14, -26, -13 },
-		{ "the ballroom's walk", F0, -10, 10, -118, -36 }, { "into the gym", F0, -34, -24, -3, 3 }, { "into the bar", F0, 24, 34, 11, 17 },
+		{ "to the ballroom's doors", F0, -6, 6, -38, -28.5 }, { "behind reception", F0, 26.3, 27.3, -23, -9 }, { "round the fountain W", F0, -14, -10, -26, -13 }, { "round the fountain E", F0, 10, 14, -26, -13 },
+		{ "the ballroom's walk", F0, -10, 10, -66, -36 }, { "the ballroom's walk on", F0, -10, 10, -135, -87 },
+		{ "round the crossing W", F0, -11.5, -7.5, -86, -67 }, { "round the crossing E", F0, 7.5, 11.5, -86, -67 },
+		{ "into the W alcove", F0, -36, -27, -83, -80.6 }, { "into the E alcove", F0, 27, 36, -83, -80.6 }, { "into the gym", F0, -34, -24, -3, 3 }, { "into the bar", F0, 24, 34, 11, 17 },
 		{ "into the armory", F0, -26, -18, 26.5, 35 }, { "into the service corridor", F0, 22.5, 25.5, 26, 34.5 },
 		{ "to the lifts", F0, 9, 15, 20, 26 }, { "the W gallery", F0, -27, -22, -30, 22, 14 }, { "the E gallery", F0, 22, 27, -30, 22, 14 },
 	}
 end
 function HH.leaks()
 	local F0 = CFrame.new()
-	return { { F0, 0, 8, 0 }, { F0, 0, 20, -10 }, { F0, 0, 8, -70 }, { F0, 0, 14, -110 }, { F0, -60, 8, 0 }, { F0, 48, 6, 14 }, { F0, -22, 6, 56 }, { F0, 15, 6, 44 }, { F0, 0, 18, 44 }, { F0, 96, 6, 0 } }
+	return { { F0, 0, 8, 0 }, { F0, 0, 20, -10 }, { F0, 0, 8, -70 }, { F0, 0, 14, -110 }, { F0, -33, 8, -76.5 }, { F0, 33, 8, -76.5 }, { F0, 0, 14, -140 }, { F0, -60, 8, 0 }, { F0, 48, 6, 14 }, { F0, -22, 6, 56 }, { F0, 15, 6, 44 }, { F0, 0, 18, 44 }, { F0, 96, 6, 0 } }
 end
 local MZv = 14
 HH.SHOTS = {
 	{ "spawn", Vector3.new(0, 5.4, 1.5), Vector3.new(0, 9, -30) },
 	{ "lobby from the gallery", Vector3.new(-24, MZv + 5.4, 26), Vector3.new(8, 8, -20) },
 	{ "ballroom", Vector3.new(0, 6.5, -37), Vector3.new(0, 5, -100) },
+	{ "the crossing", Vector3.new(-8, 7, -62), Vector3.new(30, 6, -78) },
 	{ "pads close", Vector3.new(4, 6, -55), Vector3.new(-22, 4, -64) },
 	{ "the stair and the suite", Vector3.new(0, 6, -10), Vector3.new(0, 14, 30) },
 	{ "reception", Vector3.new(4, 6, -10), Vector3.new(26, 4, -18) },

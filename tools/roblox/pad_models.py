@@ -6,17 +6,19 @@
 # the front (the walkway) is -Y here (+Z in Roblox), the bay goes back along +Y (-Z in Roblox). 1 unit = 1 stud, Z up.
 #   (round 3, after two judge rounds: the team's colour IS the plate, big marks, no strips, an open gantry)
 #   jpad_plinth   one pale bevelled block, 12.4 x 13.4 x 1.2 (its top border is the kerb round the team plates)
-#   jpad_divider  the low pale kerb between the teams, 1.0 x 11.4 x 0.45, its origin at its foot's middle
-#   jpad_spot     a player's mark, a pale rounded square 2.6 x 2.6 x 0.08 with a darker inset (origin: foot middle)
-#   jpad_totem    the gantry at the plate's back edge: two posts, the board's sill (z 7.1..7.6), the board's back, a
-#                 cap at 14.2; 10.8 wide, y 11.6..13.0
+#   jpad_divider  the low pale kerb between the teams, 1.4 x 11.4 x 0.6, rounded on top, its origin at its foot's middle
+#   jpad_spot     a player's mark: one flat pale disc, 2.5 across, 0.1 thick (origin: foot middle) (round 4: the dark
+#                 insets read as floor drains)
+#   jpad_totem    the gantry at the plate's back edge (round 4: thick posts 1.6 into the plinth's back corners, the board
+#                 raised clear of hats): posts x 4.3..5.9, the sill z 8.6..9.1, the board's back, a cap z 13.8..14.4;
+#                 11.8 wide, y 11.5..13.1
 # run: blender -b --factory-startup -P tools/roblox/pad_models.py -- <out_dir> [preview.jpg]
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from structkit import *
 
 TRIM, TRIM2, BASE, KICK, BACK = 'c9c5bc', 'b5b1a8', '4a4f57', '3d4148', '33363c'
-SPOT, SPOTIN = 'dcd8cf', '40444b'
+SPOT = 'ece8df'
 reset()
 
 # ------------------------------------------------------------------ jpad_plinth (round 3: one pale bevelled block, a step up)
@@ -27,21 +29,20 @@ for s in (-1, 1):                                                           # a 
 keep('jpad_plinth')
 
 # ------------------------------------------------------------------ jpad_divider (a low pale kerb between the teams)
-soft('plastic', TRIM2, 1.0, 11.4, 0.45, 0, 0, 0.225, 0.2, pick='top')
+soft('plastic', TRIM2, 1.4, 11.4, 0.6, 0, 0, 0.3, 0.3, pick='top')
 keep('jpad_divider')
 
 # ------------------------------------------------------------------ jpad_spot (a player's mark: a big pale square)
-soft('plastic', SPOT, 2.6, 2.6, 0.08, 0, 0, 0.04, 0.04, pick='top')
-bx('plastic', SPOTIN, 1.5, 1.5, 0.1, 0, 0, 0.05, bevel=0.02)
+cy('plastic', SPOT, 1.25, 0.1, 0, 0, 0.05, segs=28, bevel=0.03)
 keep('jpad_spot')
 
 # ------------------------------------------------------------------ jpad_totem (round 3: an open gantry at the plate's back edge)
 YC, Z0 = 12.3, 1.2          # its middle (depth 1.4: y 11.6..13.0), it stands on the plinth's top
 for s in (-1, 1):
-    bx('plastic', TRIM, 1.0, 1.4, 12.4, s * 4.8, YC, Z0 + 6.2, bevel=0.25)            # posts: x 4.3..5.3, z 1.2..13.6
-bx('plastic', TRIM2, 8.6, 1.2, 0.5, 0, YC, Z0 + 6.15, bevel=0.12)                    # the sill under the board: z 7.1..7.6
-bx('plastic', TRIM, 10.8, 1.8, 0.6, 0, YC, Z0 + 12.4 + 0.3, bevel=0.22)              # the cap: z 13.6..14.2
-bx('plastic', BACK, 8.6, 0.3, 6.0, 0, YC + 0.55, Z0 + 9.4, bevel=0.05)                # the board's back
+    bx('plastic', TRIM, 1.6, 1.6, 12.6, s * 5.1, YC, Z0 + 6.3, bevel=0.35)            # posts: x 4.3..5.9, z 1.2..13.8
+bx('plastic', TRIM2, 8.6, 1.3, 0.5, 0, YC, 8.85, bevel=0.14)                         # the sill under the board: z 8.6..9.1
+bx('plastic', TRIM, 11.8, 1.9, 0.6, 0, YC, 14.1, bevel=0.25)                         # the cap: z 13.8..14.4
+bx('plastic', BACK, 8.6, 0.3, 4.7, 0, YC + 0.55, 11.45, bevel=0.05)                  # the board's back: z 9.1..13.8
 keep('jpad_totem')
 
 export_all('pads.glb')
