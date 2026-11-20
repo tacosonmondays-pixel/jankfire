@@ -524,7 +524,15 @@ local function onEnd(m: any, winner: number?)
 		for _, p in list do
 			if p.Parent then
 				local res = rate(p, m, t, winner == t)
-				if res and push then (push :: any)(p, { t = "ranked", result = res }) end
+				-- (the card waits for a finisher's scene, m.finisherUntil, as the end screen does: it came up over the scene
+				-- before. the rating itself is done now. 30 s at most)
+				if res and push then
+					task.spawn(function()
+						local t0 = os.clock()
+						while type(m.finisherUntil) == "number" and os.clock() < m.finisherUntil and os.clock() - t0 < 30 do task.wait(0.1) end
+						if p.Parent then (push :: any)(p, { t = "ranked", result = res }) end
+					end)
+				end
 			end
 		end
 	end
