@@ -129,11 +129,20 @@ local function room(i, r)
 	for _, w in { { x0, 1 }, { x1, -1 } } do
 		local side, dir = w[1], w[2]
 		blk("Shell", "Plinth", side, side + dir * 0.35, Y0, Y0 + 1.4, z0, z1, P.deep)
+		-- (v4.2, main: "bare white corridors when empty"): two tiers, a dark wainscot under a chair rail and pale panels
+		-- over it, and a pilaster at every second seam (a steady rhythm down the room: 4 bays a side)
 		local n = math.floor((z0 - z1) / WING.SEAM + 0.5)
 		local step = (z0 - z1) / n
 		for k = 0, n - 1 do
 			local a, b = z0 - k * step - 0.35, z0 - (k + 1) * step + 0.35
-			blk("Shell", "WallPanel", side, side + dir * 0.3, Y0 + 1.6, 262, a, b, P.mass)
+			blk("Shell", "Wainscot", side, side + dir * 0.3, Y0 + 1.6, 248, a, b, P.ledgePanel)
+			blk("Shell", "WallPanel", side, side + dir * 0.3, 248.6, 262, a, b, P.mass)
+		end
+		blk("Shell", "ChairRail", side, side + dir * 0.6, 248, 248.6, z0, z1, P.trim)
+		for k = 2, n - 2, 2 do
+			local z = z0 - k * step
+			blk("Shell", "Pilaster", side, side + dir * 1.1, Y0, 262.4, z - 1, z + 1, P.pier2)
+			blk("Shell", "PilasterBase", side, side + dir * 1.35, Y0, Y0 + 1.6, z - 1.2, z + 1.2, P.deep)
 		end
 		blk("Shell", "CoveShelf", side, side + dir * 0.9, 262.4, 263, z0, z1, P.trim)
 		blk("Scenery", "CoveLight", side + dir * 0.2, side + dir * 0.35, 263, 263.25, z0 - 0.5, z1 + 0.5, P.litEdge, { ghost = true, mat = Enum.Material.Neon })
@@ -148,14 +157,44 @@ local function room(i, r)
 	B.drum("Shell", "ProjectorLens", r.xm, pz, 268.2, 268.6, 6, P.dark)
 	B.drum("Scenery", "ProjectorEye", r.xm, pz, 268.05, 268.2, 2.4, WING.ACCENT, { ghost = true, mat = Enum.Material.Neon })
 	-- the console, left of the way in, its word toward the mouth
+	-- (v4.2) the lit ring on the floor under the projector, where the courses come from (pale, not the accent)
+	for _, ring in { { 23, 21.8 }, { 13, 12 } } do
+		B.drum("Scenery", "FloorRing", r.xm, pz, Y0 + 0.02, Y0 + 0.05, ring[1], P.litEdge, { ghost = true, mat = Enum.Material.Neon })
+		B.drum("Scenery", "FloorRingIn", r.xm, pz, Y0 + 0.05, Y0 + 0.08, ring[2], WING.FLOOR, { ghost = true })
+	end
+	-- the console: a desk across the left of the way in, its screen tilted toward you, the accent (teal) on its front
+	-- edge and screen only; the Console part (the server reads its Prompt) is its top's middle
 	local c = WING.CONSOLE
-	local btn = H.console(f, "Console", "WEAPONS", r.xm + c.dx, c.z, P.pier2, "Weapons", "Tutorial")
-	local pp = btn:FindFirstChild("Prompt")
-	if pp then pp.HoldDuration = 0; pp.MaxActivationDistance = 9 end
+	local cx, cz = r.xm + c.dx, c.z
+	blk("Shell", "DeskBase", cx - 3.6, cx + 3.6, Y0, Y0 + 2.7, cz - 1.0, cz + 1.0, P.slate)
+	blk("Shell", "DeskPlinth", cx - 3.8, cx + 3.8, Y0, Y0 + 0.5, cz - 1.2, cz + 1.2, P.deep)
+	blk("Shell", "DeskTop", cx - 4.2, cx + 4.2, Y0 + 2.7, Y0 + 3.05, cz - 1.5, cz + 1.5, P.pier2)
+	blk("Scenery", "DeskEdge", cx - 4.2, cx + 4.2, Y0 + 2.45, Y0 + 2.65, cz + 1.0, cz + 1.12, WING.ACCENT, { ghost = true, mat = Enum.Material.Neon })
+	local scr = B.part("Shell", "DeskScreen", CF(cx, Y0 + 4.25, cz - 0.9) * CFrame.Angles(math.rad(-20), 0, 0), V3(6.4, 2.6, 0.3), P.board)
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "Gui"; sg.Face = Enum.NormalId.Back; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sg.PixelsPerStud = 40; sg.LightInfluence = 0
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(0.86, 0.5); tl.Position = UDim2.fromScale(0.07, 0.25); tl.TextScaled = true
+	tl.Text = "WEAPONS"; tl.TextColor3 = Color3.fromHex(WING.ACCENT); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+	tl.Parent = sg
+	sg.Parent = scr
+	B.part("Shell", "DeskScreenStand", CF(cx, Y0 + 3.2, cz - 1.0), V3(1.2, 0.5, 0.6), P.deep)
+	local lp = B.lamp(cx, Y0 + 5.2, cz + 2.4, "point", 11, 0.6, WING.ACCENT)
+	local btn = Instance.new("Part")
+	btn.Name = "Console"; btn.Anchored = true; btn.Transparency = 1; btn.CanCollide = false; btn.CanQuery = false; btn.CanTouch = false
+	btn.Size = V3(1, 1, 1); btn.CFrame = B.cf(cx, Y0 + 3.6, cz)
+	btn.Parent = f
+	local pp = Instance.new("ProximityPrompt")
+	pp.Name = "Prompt"; pp.ActionText = "Weapons"; pp.ObjectText = "Tutorial"; pp.HoldDuration = 0
+	pp.MaxActivationDistance = 9; pp.RequiresLineOfSight = false; pp.KeyboardKeyCode = Enum.KeyCode.E
+	pp.Parent = btn
 	-- the back wall's board: the weapon, its moves and the goal (TutorialUI paints it for the room's user)
 	local board = B.text("Board", { { "", P.pale, "B", 1 } }, 24, 10, CF(r.xm, 259, z1 + 0.2) * CFrame.Angles(0, math.pi, 0), { plate = P.board, thick = 0.3 }) -- (facing into the room)
 	board.Parent = f
 	blk("Shell", "BoardFrame", r.xm - 12.8, r.xm + 12.8, 253.4, 264.6, z1, z1 + 0.15, P.trim, { ghost = true })
+	-- (v4.2) the board's accent: a teal strip under it and a soft light on it
+	blk("Scenery", "BoardEdge", r.xm - 12, r.xm + 12, 253.1, 253.35, z1 + 0.15, z1 + 0.35, WING.ACCENT, { ghost = true, mat = Enum.Material.Neon })
+	B.lamp(r.xm, 251, z1 + 6, "point", 14, 0.5, WING.ACCENT)
 	-- what the game reads
 	local zone = Instance.new("Part")
 	zone.Name = "Zone"; zone.Anchored = true; zone.Transparency = 1; zone.CanCollide = false; zone.CanQuery = false; zone.CanTouch = false
@@ -233,6 +272,50 @@ local function parkourPortal()
 	B.text("ParkourWord", { { "PARKOUR", P.pale, "B", 1 } }, 9, 1.8, CF(pk.x, top + 11.2, -8295.7) * CFrame.Angles(0, math.pi, 0), { plate = P.board, thick = 0.2 })
 end
 
+-- ---------------------------------------------------------------- the range: each lane's distances on its floor
+-- (v4.2: the side walls already say 15 / 30 / 45 M; now each lane says it too, flat on its floor in front of each row,
+-- read from the plates. TrainingV2's range: lanes x 40 / 54 / 68, rows at z -8183 / -8228 / -8273 on floors 240 / 244 / 248)
+local function rangeWords()
+	for _, row in { { -8183, 240, 15 }, { -8228, 244, 30 }, { -8273, 248, 45 } } do
+		for _, lx in { 40, 54, 68 } do
+			B.text("LaneDistance", { { ("%d M"):format(row[3]), P.pale, "B", 1 } }, 5, 2, CF(lx, row[2] + 0.05, row[1] + 5.4) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+		end
+	end
+end
+
+-- ---------------------------------------------------------------- the open halls' surfaces
+-- (v4.2, main: "the course hall from above is very pale and grey; add contrast and the real surface textures") in the
+-- dummies hall and the course hall only: concrete walls a step warmer, slate floors a step darker, the deep beams
+-- dark steel, the piers concrete. Trims, noses and the lit strips keep their smooth pale paint (the edges still read)
+local SURF = {
+	wall = { Enum.Material.Concrete, "a1998e" },
+	floor = { Enum.Material.Slate, "5f5e5a" },
+	beam = { Enum.Material.Metal, "4b5058" },
+	pier = { Enum.Material.Concrete, "858890" },
+}
+local function surfaces()
+	local O = B.O
+	local function inHalls(p)
+		local x, z = p.Position.X - O.X, p.Position.Z - O.Z
+		return (x > -137 and x < -67 and z < -8097 and z > -8301) or (x > -69 and x < 29 and z < -8141 and z > -8263)
+	end
+	local n = 0
+	for _, p in B.root.Shell:GetChildren() do
+		if not p:IsA("BasePart") or not inHalls(p) then continue end
+		local nm = p.Name
+		local k = if string.match(nm, "^CourseWall") or string.match(nm, "^HallWall") or nm == "HallEnd" or nm == "HallFront" then "wall"
+			elseif nm == "CourseFloor" or nm == "HallFloor" or nm == "Stage" or nm == "StageStep" or nm == "Threshold" or nm == "WestThreshold" then "floor"
+			elseif nm == "RoofBeam" then "beam"
+			elseif nm == "Pier" then "pier" else nil
+		if k then
+			p.Material = SURF[k][1]
+			p.Color = Color3.fromHex(SURF[k][2])
+			n += 1
+		end
+	end
+	return n
+end
+
 -- ---------------------------------------------------------------- the wrapper
 function W.wrap(r3)
 	R3 = r3
@@ -273,6 +356,9 @@ function W.wrap(r3)
 		corridor()
 		for i, r in WING.ROOMS do room(i, r) end
 		parkourPortal()
+		local nS = surfaces()
+		rangeWords()
+		msg ..= (" (%d hall surfaces)"):format(nS)
 		return msg .. " + v4: open sky, the tutorial wing (" .. #WING.ROOMS .. " rooms)"
 	end
 	return o

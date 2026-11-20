@@ -2433,6 +2433,21 @@ The owner (20 Nov): "redo training hub entirely basing it off the overwatch trai
 - `B.text`'s cf look is the way the words face.
 - Never run screen captures in parallel.
 
+**The polish pass (v4.2, place version 1215), after main's notes on the live sheets:**
+- **Tutorial rooms** ("bare white corridors when empty"): two-tier walls with a dark wainscot, a chair rail and pale panels over it. A pilaster at every second seam gives 4 bays a side.
+  - A lit double ring on the floor under the projector, pale (not the accent).
+  - The console is now a desk: a slate base and plinth, a top with a tilted screen reading WEAPONS. The teal accent is only on the desk's front edge, its screen and the board's strip, each with a soft teal light. Its `Console` part still holds the Prompt.
+- **Open halls** ("very pale and grey from above"): in the dummies hall and the course hall only.
+  - Walls are concrete, a step warmer; floors and stages slate, a step darker; the deep beams dark steel; the piers concrete.
+  - Trims, noses and lit strips keep the smooth pale paint.
+- **Parkour island** ("floats over a flat grey void"):
+  - Rock columns under every deck, and rock pillars.
+  - A cloud deck 450 under the course (one 2040-wide slab, east of the back lot's hills).
+  - Ten rock spires in tiers of turned blocks, standing out of the clouds at a distance (no collision).
+  - A sign at each station with its move only: SPRINT GAPS, SLIDE, BHOP, GRAPPLE, CLIMB.
+- **Range:** each lane's distance (15 / 30 / 45 M) on its floor in front of each row. The side-wall boards were already there. No moving-target rail: the range's Carls are per-player pop-ups, and the yard has the rails.
+- Results: T.check clean live (sealed 0 leaks, head room 0 within 0.6, plate-to-Carl 0 of 27, the lot closed, the gold door shut); 65 hall surfaces in real materials; 5 station signs; the island's box clear. Sheet: `training/training_polish_v1215.jpg`. The dummy yard's Play photos (its dummies only stand in Play) come next.
+
 ## 62. The shooting range: nobody walks down-range, stepping off cancels a run, one runner per lane, 20 November 2026 (place version 1213)
 
 The owner, from the live game with a friend: "Stepping away from the shooting range pad thingy undoes the dumming thingy, my friend went into wher ethe e dummies flip up , also if you step away it should cancel".

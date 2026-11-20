@@ -25,7 +25,9 @@ P.PORTAL_KIT = "te_portal"
 P.LEG = -110 -- how far down the columns under the decks go (local)   -- the egg door's ring (TrainingLot imports it into JankfireMeshes)
 
 -- the paint (TrainingV2's family): quiet masses, pale tops, one accent on the checkpoints and lines
-local C = { mass = "a9a59e", side = "8f9299", top = "d8d3ca", trim = "e2ded5", dark = "5a5f69", accent = "8fd8cf", green = "3ddc84", core = "1c7a44" }
+local C = { mass = "a9a59e", side = "8f9299", top = "d8d3ca", trim = "e2ded5", dark = "5a5f69", accent = "8fd8cf", green = "3ddc84", core = "1c7a44",
+	rock = "6f6a63", rock2 = "7d766d", rock3 = "5e5a55", cloud = "eef1f4" }
+local ROCK = Enum.Material.Rock
 
 -- the plan, local: x right, z forward (into the course: world -z), y up from the site
 P.START = { x0 = -20, x1 = 20, z0 = -15, z1 = 15, top = 0 }
@@ -68,7 +70,7 @@ local function deck(name, x0, x1, z0, z1, top, depth)
 	local w, d = math.abs(x1 - x0), math.abs(z1 - z0)
 	local cw, cd = math.max(2.5, w * 0.45), math.max(2.5, d * 0.45)
 	local cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
-	blk(m, "Column", cx - cw / 2, cx + cw / 2, P.LEG, top - depth, cz - cd / 2, cz + cd / 2, C.side, { mat = CONC })
+	blk(m, "Column", cx - cw / 2, cx + cw / 2, P.LEG, top - depth, cz - cd / 2, cz + cd / 2, C.rock, { mat = ROCK })
 	blk(m, "ColumnCap", cx - cw / 2 - 0.6, cx + cw / 2 + 0.6, top - depth - 1.2, top - depth, cz - cd / 2 - 0.6, cz + cd / 2 + 0.6, C.dark)
 	blk(m, "Top", x0, x1, top - 0.6, top, z0, z1, C.top)
 	for _, e in { { x0, x1, z0, z0 }, { x0, x1, z1, z1 } } do
@@ -145,6 +147,74 @@ local function portal(name, x, z, top, face, say)
 	return trig
 end
 
+-- ------------------------------------------------------------------ the setting
+-- the cloud deck: one huge pale slab far under the course (no collision: a fall still puts you back at FallY, long before
+-- it), kept east of the back lot's hills (x > 600) so nothing else in the world is cut by it
+P.CLOUD = { y = -90, cx = 220, cz = 130, size = 2040 }
+-- spires: { x, z, width, height over the cloud }, local. tiers of turned blocks, each a little smaller and turned
+P.SPIRES = {
+	{ -260, 160, 60, 210 }, { -180, 420, 46, 150 }, { 120, 520, 70, 260 }, { 420, 470, 52, 180 }, { 620, 260, 80, 300 },
+	{ 560, -40, 44, 140 }, { 300, -260, 66, 230 }, { -60, -300, 50, 170 }, { -340, -90, 40, 120 }, { 760, 520, 36, 110 },
+}
+P.SIGNS = { -- { text, x, z, top, face: the local direction it faces (its readers come from there) }
+	-- (on each deck's far edge, off the line you run: the stones and the swing go along z 240)
+	{ "SPRINT GAPS", -12, 12, 0, "back" }, { "SLIDE", -9, 127, 8, "back" }, { "BHOP", 11.4, 248.4, 8, "west" },
+	{ "GRAPPLE", 159.4, 249.4, 8, "west" }, { "CLIMB", 283.4, 249.4, 8, "west" },
+}
+local function setting()
+	local cl = P.CLOUD
+	local deck = blk(root.Scenery, "CloudDeck", cl.cx - cl.size / 2, cl.cx + cl.size / 2, cl.y - 1, cl.y, cl.cz - cl.size / 2, cl.cz + cl.size / 2, C.cloud, { ghost = true })
+	deck.Transparency = 0.35 -- (see-through: a haze the columns rise out of, not a floor)
+	deck.Material = Enum.Material.SmoothPlastic
+	local rng = Random.new(7)
+	for i, sp in P.SPIRES do
+		local x, z, w, h = sp[1], sp[2], sp[3], sp[4]
+		local y = cl.y - 20
+		local tiers = 4
+		for t = 1, tiers do
+			local tw = w * (1 - (t - 1) * 0.2)
+			local th = h / tiers * (if t == tiers then 1.15 else 1)
+			local part = Instance.new("Part")
+			part.Name = "Spire" .. i
+			part.Anchored = true; part.CanCollide = false; part.CanQuery = false; part.CanTouch = false; part.CastShadow = false
+			part.Size = V3(tw, th + 2, tw * (0.75 + rng:NextNumber() * 0.3))
+			part.CFrame = CF(W(x + rng:NextNumber(-3, 3), y + th / 2, z + rng:NextNumber(-3, 3))) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0)
+			part.Color = Color3.fromHex(if t % 2 == 0 then C.rock2 else C.rock); part.Material = ROCK
+			part.Parent = root.Scenery
+			count += 1
+			y += th
+		end
+	end
+end
+-- a station's sign: a dark plate on two short posts, its move in pale letters
+local function sign(text, x, z, top, face)
+	local w = math.max(5, #text * 0.9 + 1.6)
+	local yaw = if face == "back" then 0 elseif face == "west" then -math.pi / 2 else math.pi
+	-- (local +z is world -z: "back" = it faces the way you came, world +z)
+	local at = W(x, top + 3.4, z)
+	local cf = CF(at) * CFrame.Angles(0, yaw, 0)
+	local plate = Instance.new("Part")
+	plate.Name = "StationSign"; plate.Anchored = true; plate.CanCollide = false; plate.CanQuery = false; plate.CanTouch = false
+	plate.Size = V3(w, 1.9, 0.3); plate.CFrame = cf
+	plate.Color = Color3.fromHex(C.dark); plate.Material = SP
+	local g = Instance.new("SurfaceGui")
+	g.Name = "Gui"; g.Face = Enum.NormalId.Back; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 40; g.LightInfluence = 0
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(0.9, 0.78); tl.Position = UDim2.fromScale(0.05, 0.11); tl.TextScaled = true
+	tl.Text = text; tl.TextColor3 = Color3.fromHex("eceae4"); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+	tl.Parent = g
+	g.Parent = plate
+	plate.Parent = root.Scenery
+	for _, s in { -1, 1 } do
+		local post = Instance.new("Part")
+		post.Name = "SignPost"; post.Anchored = true; post.CanTouch = false
+		post.Size = V3(0.5, 2.6, 0.5); post.CFrame = cf * CF(s * (w / 2 - 0.6), -2.25, 0.25)
+		post.Color = Color3.fromHex(C.side); post.Material = SP
+		post.Parent = root.Scenery
+	end
+	count += 3
+end
+
 -- ------------------------------------------------------------------ build
 function P.remove()
 	local hub = workspace.Map.Hub
@@ -214,7 +284,7 @@ function P.build(): string
 	for i, x in P.STONES do deck("Stone" .. i, x - 3, x + 3, 237, 243, 8, 5) end
 	-- 4 grapple pillars
 	for i, pl in P.PILLARS do
-		blk(root.Course, "Pillar" .. i, pl[1] - 4, pl[1] + 4, P.LEG, 52, pl[2] - 4, pl[2] + 4, C.side, { mat = CONC })
+		blk(root.Course, "Pillar" .. i, pl[1] - 4, pl[1] + 4, P.LEG, 52, pl[2] - 4, pl[2] + 4, C.rock2, { mat = ROCK })
 		blk(root.Course, "PillarCap", pl[1] - 4.4, pl[1] + 4.4, 52, 53.2, pl[2] - 4.4, pl[2] + 4.4, C.top)
 	end
 	-- 5 the tower: a mass with ledges up its south face (toward CP4), the finish on top
@@ -229,6 +299,10 @@ function P.build(): string
 	blk(root.Course, "FinishLine", tw.x0 + 1, tw.x1 - 1, tw.top, tw.top + 0.08, tw.z0 + 1, tw.z0 + 1.6, C.accent, { ghost = true, mat = NEON })
 	portal("ParkourAgain", tw.x0 + 6, tw.z1 - 4.6, tw.top, -1, { land = "ParkourArrive", text = "PARKOUR" })
 	portal("FromParkour2", tw.x1 - 6, tw.z1 - 4.6, tw.top, -1, { land = "TrainingArrive", text = "BACK TO TRAINING" })
+	-- (v2, main: "floats over a flat grey void... give it a setting") a sea of cloud under it, rock spires standing out of
+	-- it round the island at a distance, and a sign at each station (its move only)
+	setting()
+	for _, sg in P.SIGNS do sign(sg[1], sg[2], sg[3], sg[4], sg[5]) end
 	-- what Parkour.server reads
 	zone("Start", S.x0, S.x1, S.top - 1, S.top + 12, S.z0, S.z1)
 	zone("Finish", tw.x0, tw.x1, tw.top, tw.top + 12, tw.z0, tw.z1)
