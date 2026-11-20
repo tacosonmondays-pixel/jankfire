@@ -14,10 +14,19 @@ import school_layout as L
 
 OUT_DIR = K.ARGS[0] if K.ARGS else os.path.join(K.HERE, 'out_school')
 PREVIEW = K.ARGS[1] if len(K.ARGS) > 1 else None
-LAYOUT = os.path.normpath(os.path.join(K.HERE, '..', '..', 'roblox', 'studio-tools', 'JankfieldHighLayout.luau'))
-INFO = dict(name='JankfieldHigh', title='JANKFIELD HIGH', look='school', mapId='school', kit='school',
-            origin=(0, 0, -66000), killY=-60, centreX=0, maxTeam=0,
-            about='a hand-made zombies map (tools/roblox/school_layout.py), built to roblox/docs/ZOMBIES.md')
+# (20 Nov 2026, the owner: "can you do school v2? I like the layout is great jhust need to be rebuilt, try school v2A
+#  and v2B couple different looks ... make it a little darker, maybe the ceiling lights flicker". --variant=v2A | v2B:
+#  the same layout, its own arena (name, site, look, kit). v1 is the default and builds exactly as before)
+VARIANT = ([f.split('=', 1)[1] for f in K.FLAGS if f.startswith('--variant=')] or ['v1'])[0]
+V2 = VARIANT in ('v2A', 'v2B')
+_VNAME = {'v1': 'JankfieldHigh', 'v2A': 'JankfieldHighV2A', 'v2B': 'JankfieldHighV2B'}[VARIANT]
+LAYOUT = os.path.normpath(os.path.join(K.HERE, '..', '..', 'roblox', 'studio-tools', _VNAME + 'Layout.luau'))
+INFO = dict(name=_VNAME, title={'v1': 'JANKFIELD HIGH', 'v2A': 'JANKFIELD HIGH (OLD)', 'v2B': 'JANKFIELD HIGH (NEW)'}[VARIANT],
+            look={'v1': 'school', 'v2A': 'school_v2a', 'v2B': 'school_v2b'}[VARIANT], mapId='school',
+            kit={'v1': 'school', 'v2A': 'school2a', 'v2B': 'school2b'}[VARIANT],
+            origin=(0, 0, {'v1': -66000, 'v2A': -72000, 'v2B': -78000}[VARIANT]), killY=-60, centreX=0, maxTeam=0,
+            about='a hand-made zombies map (tools/roblox/school_layout.py), built to roblox/docs/ZOMBIES.md'
+                  + ('' if not V2 else '; look ' + VARIANT + ' (chunky rebuild, school_models.py --variant)'))
 
 # the hit boxes' looks: layout material -> (Roblox material for impacts, colour, name). In the blockout these are what
 # you see too: quiet greys and creams, colour only where a room needs it to read
@@ -31,7 +40,7 @@ MATS = {
     'carpet': ('Fabric', '7c8590', 'carpet'), 'wood': ('WoodPlanks', 'a77d55', 'wood'),
     'roofdeck': ('Concrete', '9b9a93', 'roofdeck'), 'grass': ('Grass', '56703f', 'grass'), 'stair': ('Concrete', 'b1ada3', 'stair'),
     'rooflid': ('Concrete', '8d8b85', 'rooflid'), 'mainstair': ('Concrete', 'b6b1a6', 'stair'), 'landing': ('Concrete', 'b6b1a6', 'stair'),
-    'fill': ('Concrete', 'a39e93', 'stair'), 'towerwall': ('Concrete', 'b9b5ab', 'block'), 'bleacher': ('WoodPlanks', 'b98d5c', 'bleacher'),
+    'fill': ('Concrete', 'a39e93', 'stair'), 'parapet': ('Concrete', 'd8d0c0', 'plaster'), 'towerwall': ('Concrete', 'b9b5ab', 'block'), 'bleacher': ('WoodPlanks', 'b98d5c', 'bleacher'),
     'post': ('Metal', '7f868c', 'metal'), 'ramp': ('Concrete', 'bdb8ac', 'stair'), 'fence': ('Metal', '969da3', 'fence'),
     'hedge': ('Grass', '4b6639', 'hedge'), 'grating': ('DiamondPlate', '6c7177', 'grating'), 'roofg': ('Concrete', '7b7975', 'roof'),
     'greenglass': ('Glass', 'b9d8c2', 'glass'), 'furn': ('SmoothPlastic', 'b8b1a3', 'furniture'),
@@ -89,7 +98,7 @@ def zm_luau():
     Z = L.ZM
     q = lambda s: '"%s"' % s.replace('"', '\\"')
     o = ['\t-- the zombies mode\'s markers (roblox/docs/ZOMBIES.md): WebArena builds the ZM folder from this. Local studs.',
-         '\tzm = {', '\t\tlabel = %s, start = %s,' % (q(Z['label']), q(Z['start'])),
+         '\tzm = {', '\t\tlabel = %s, start = %s,' % (q(Z['label'] + {'v1': '', 'v2A': ' (old)', 'v2B': ' (new)'}[VARIANT]), q(Z['start'])),
          '\t\tnav = %s,' % vec(Z['nav']),
          '\t\t-- areas: { id, label, x0, y0, z0, x1, y1, z1 }', '\t\tareas = {']
     for a in Z['areas']:
@@ -142,6 +151,9 @@ def write_layout():
     if SURFACES:
         extra += ('\t-- the kit\'s surfaces: a SurfaceAppearance picture per piece colour (WebArena; the meshes carry world UVs)\n'
                   '\tsurfaces = { %s },\n' % ', '.join('["%s"] = "%s"' % (L.TEXKEY[k], v) for k, v in sorted(SURFACES.items())))
+    if V2 and any(LIGHT_GROUPS):
+        extra += ('\t-- the flickering lights: light index -> group (SchoolLife.client flickers each group, and the kit\'s sc_flk<group>)\n'
+                  '\tlightGroups = { %s },\n' % ', '.join('[%d] = %d' % (i + 1, g) for i, g in enumerate(LIGHT_GROUPS) if g))
     txt = txt[:-1] + extra + '}\n'
     with open(LAYOUT, 'w', newline='\n') as f: f.write(txt)
     print('LAYOUT %s: %d chars' % (LAYOUT, len(txt)))
@@ -154,12 +166,53 @@ SURFACES = {k: 'rbxassetid://%d' % v for k, v in {
     'ceiling': 101271808462044, 'concrete': 92719214966737, 'chalkboard': 126513689391105, 'pavers': 90576630175655,
     'rubber': 78191784089177, 'lockers': 124572738338924}.items()}
 
+# ---------------------------------------------------------------- v2: each look's pictures, role by role
+# role -> (colour key, picture). The v1 roles keep their names (the furniture and the shared code read them through
+# L.TEXKEY); the new roles (stone, plaster, tile, felt, board, paint...) only the v2 kit uses. A picture is a name in
+# school_textures.TEX (v1's) or TEX2 (v2's); its uploaded id comes from SURFACES (v1) or TEX2_IDS (v2)
+TEX2_IDS = {       # (the v2 pictures, uploaded 20 Nov 2026 as Images, all approved)
+    'a_terrazzo': 94976107123385, 'a_plaster': 93967757955287, 'a_tile': 95035963336200, 'a_brick': 128782282184054,
+    'a_stone': 113102432800653, 'a_hextile': 100342179355756, 'b_polished': 92915607470710, 'b_board': 96774896908235,
+    'b_felt': 91358210670842, 'b_vinyl': 84138425132700, 'b_porcelain': 91515197562193, 'b_whiteboard': 111184054506765,
+    'b_ceiling': 110957618175256}
+V2TEX = {
+    'v2A': {
+        'lino': ('cdbfa9', 'a_terrazzo'), 'terrazzo': ('cbbda6', 'a_terrazzo'), 'cafetile': ('b8ab96', 'cafetile'),
+        'rtile_floor': ('dedad0', 'a_hextile'), 'rtile_wall': ('e2e3de', 'rtile_wall'), 'woodfloor': ('a07752', 'woodfloor'),
+        'gymwood': ('c9a06a', 'gymwood'), 'carpet': ('7a8088', 'carpet'), 'ceiling': ('e2dbcd', 'a_plaster'),
+        'concrete': ('97948d', 'concrete'), 'pavers': ('a49784', 'pavers'), 'rubber': ('343538', 'rubber'),
+        'chalkboard': ('4a5a50', None), 'lockers': ('6e7c86', 'lockers'), 'brick': ('7f5446', 'a_brick'),
+        'block': ('bdbab2', 'block'), 'hallwall': ('ddd5c4', 'a_plaster'), 'classwall': ('dcd4c3', 'a_plaster'),
+        'stone': ('cfc6b4', 'a_stone'), 'plaster': ('ddd6c5', 'a_plaster'), 'tile': ('8e9a8a', 'a_tile'),
+        'roofdeck': ('96938c', 'concrete'),
+    },
+    'v2B': {
+        'lino': ('a7a8a6', 'b_polished'), 'terrazzo': ('a5a6a4', 'b_polished'), 'cafetile': ('cbc6be', 'b_porcelain'),
+        'rtile_floor': ('cfcac2', 'b_porcelain'), 'rtile_wall': ('d2cec7', 'b_porcelain'), 'woodfloor': ('8e98a1', 'b_vinyl'),
+        'gymwood': ('cca673', 'gymwood'), 'carpet': ('6f7680', 'carpet'), 'ceiling': ('c8c9c6', 'b_ceiling'),
+        'concrete': ('959491', 'concrete'), 'pavers': ('a3a4a2', 'b_polished'), 'rubber': ('353638', 'rubber'),
+        'chalkboard': ('bcc0bd', None), 'lockers': ('5e6670', 'lockers'), 'brick': ('b6b8b7', 'b_board'),
+        'block': ('b3b5b4', 'b_board'), 'hallwall': ('b9bbba', 'b_board'), 'classwall': ('bbbdbc', 'b_board'),
+        'board': ('b8bab9', 'b_board'), 'felt': ('7c806c', 'b_felt'), 'roofdeck': ('939290', 'concrete'),
+    },
+}
+if V2:
+    _tk = V2TEX[VARIANT]
+    L.TEXKEY = {k: v[0] for k, v in _tk.items()}
+    L.ACCENT = '3f7f86' if VARIANT == 'v2A' else 'b07a3a'          # (one accent: muted teal / muted amber)
+    _v1ids = dict(SURFACES)
+    SURFACES = {}
+    for _k, (_hx, _img) in _tk.items():
+        if _img in _v1ids: SURFACES[_k] = _v1ids[_img]
+        elif _img in TEX2_IDS: SURFACES[_k] = 'rbxassetid://%d' % TEX2_IDS[_img]
+
 # ================================================================ THE KIT: the architecture (furniture: school_props.py)
 import school_textures as ST
 T = L.TEXKEY
 PAINT, WOODTRIM, METAL, DARK, FRAME, GLASS = 'ddd4c2', '8f6f50', 'a7adb2', '4a4f55', '9aa1a6', 'b8d4dc'
 GRASS, HEDGE, ASPHALT, WALK, COPING, PLINTH, POST, MESH = '5a7344', '4d6a3b', '3e4043', 'b5b0a6', 'a5a198', '8a857b', '6a7076', 'a9b1b6'
 STEPC, NOSE = 'bdb8ad', '585d63'
+if V2: NOSE = '737980'      # (round 2: the dark nosings read as black stripes)
 LV = L.LV
 def lvl_of(y):
     return 'B' if y < -8 else ('G' if y < 8 else ('U' if y < 24 else 'R'))
@@ -186,9 +239,13 @@ def wallcol(r):
     if lk in PANELLED: return PAINT
     return T[WALLTEX.get(lk, 'classwall')]
 
+_DUMP = [tuple(float(v) for v in f.split('=', 1)[1].split(',')) for f in K.FLAGS if f.startswith('--dump=')]
 def bx(model, col, b, kind='plastic', bev=0.0):
     x0, y0, z0, x1, y1, z1 = b
     if x1 - x0 < 1e-3 or y1 - y0 < 1e-3 or z1 - z0 < 1e-3: return
+    for d in _DUMP:     # (--dump=x0,y0,z0,x1,y1,z1: print every box touching that region, for z-fight hunts)
+        if x0 <= d[3] and x1 >= d[0] and y0 <= d[4] and y1 >= d[1] and z0 <= d[5] and z1 >= d[2]:
+            print('BOX', model, col, tuple(round(v, 3) for v in b))
     # (unbevelled boxes shade flat: smoothed normals on a big slab's edges drew dark seams between floor pieces)
     K.B(model, col, x0, y0, z0, x1, y1, z1, bev=bev, kind=kind, flat=bev <= 0)
 
@@ -455,6 +512,7 @@ def stairs_dress():
         elif kind == 'towerwall': bx(m, T['block'], (x0, y0, z0, x1, y1, z1))
         elif kind == 'fill': bx(m, STEPC, (x0, y0, z0, x1, y1, z1))
         elif kind == 'post': bx('sc_gymdress', METAL, (x0, y0, z0, x1, y1, z1), bev=0.15)
+        elif kind == 'parapet': bx(m, PAINT, (x0, y0, z0, x1, y1, z1))
     # the bleachers: grey risers, a wooden seat board on each row, rails down both sides
     for k in range(1, 17):
         xa, xb = 108 - 2.0 * k, 108 - 2.0 * (k - 1)
@@ -493,6 +551,19 @@ def fences():
         thin = min(sx, sz)
         if thin > 1.0: continue
         cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+        if V2 and inside(cx, cz) and y0 >= 30.0 and sy > 4.0:   # (v2: a solid parapet 3 high, framed glass above it)
+            m = 'sc_roofdress'
+            def P3(u0, v0, w0, u1, v1, w1, col, kind='plastic'):
+                if along_x: bx(m, col, (u0, v0, cz + w0, u1, v1, cz + w1), kind)
+                else: bx(m, col, (cx + w0, v0, u0, cx + w1, v1, u1), kind)
+            ua, ub = (x0, x1) if along_x else (z0, z1)
+            P3(ua, y0, -0.45, ub, y0 + 3.0, 0.45, ST2['parapet'])
+            P3(ua, y0 + 3.0, -0.6, ub, y0 + 3.5, 0.6, ST2['cap'])
+            P3(ua, y0 + 3.5, -0.08, ub, y1 - 0.4, 0.08, GLASS, 'glass')
+            P3(ua, y1 - 0.4, -0.3, ub, y1, 0.3, ST2['frame'])
+            uu = ua + 3.0
+            while uu < ub - 1.0: P3(uu - 0.3, y0 + 3.5, -0.3, uu + 0.3, y1 - 0.4, 0.3, ST2['frame']); uu += 6.0
+            continue
         if inside(cx, cz) and y0 >= 30.0 and sy > 4.0:          # the roof's fence: posts, rails, mesh
             m = 'sc_roofdress'
             n = max(1, int(round(ln / 6.0)))
@@ -608,6 +679,7 @@ def grounds():
     # a stone plinth along the foot of the outside walls and a cornice band at the roof line
     for (a, b_, c, d_) in ((X0 - 2.3, Z0 - 2.3, X1 + 2.3, Z0 - 2.0), (X0 - 2.3, Z1 + 2.0, X1 + 2.3, Z1 + 2.3),
                           (X0 - 2.3, Z0 - 2.0, X0 - 2.0, Z1 + 2.0), (X1 + 2.0, Z0 - 2.0, X1 + 2.3, Z1 + 2.0)):
+        if V2: continue          # (v2: v2_facade)
         bx('sc_ext', PLINTH, (a, -0.2, b_, c, 2.0, d_))
         bx('sc_ext', COPING, (a, 30.4, b_, c, 31.4, d_))
         bx('sc_ext', COPING, (a, 14.6, b_, c, 15.2, d_))
@@ -621,9 +693,694 @@ def grounds():
         K.cyl('sc_court', '8a7350', x, 9.15, z, 0.14, 0.45, segs=8, kind='neon')
         K.cyl('sc_court', DARK, x, 9.75, z, 0.55, 0.2, segs=12, r2=0.2)
 
+# ================================================================ v2 (20 Nov 2026): CHUNKY first, a subtle texture on top
+# The owner, about the hubs that day: "by old design I meant lke the chunker structes you know? we just add subtle
+# texture to them now"; about the school: "make it a little darker, maybe the ceiling lights flicker". The layout and
+# every hit box stay; only the look changes. The rule that keeps the hit boxes honest: a pier's face IS the hit wall's
+# face and the wall between piers is RECESSED behind it, so nothing a player walks past stands proud of the hit box (but
+# a skirting on a pier, 0.25, a cornice over head height, and the frames round an opening's edges).
+CEIL = L.CEIL
+def LVY(lv): return 32.0 if lv == 'R' else LV[lv]
+STYLE = {
+    'v2A': dict(S=12.0, PW=2.4, REC=0.35, frame='5a4434', frameW=1.3, winframe='d9d2c2', sill=None, skirt='4f3b2d',
+                rail='5a4434', cornice=True, fixture='globe', light='ffcf9a', lightB=1.0, lightR=17.5, core='8c7354',
+                shade='e9dfcc', beam=None, bracket='5a4434', parapet=None, cap='5a4434', exitc='2f6a46', transom=True),
+    'v2B': dict(S=8.0, PW=1.4, REC=0.35, frame='4c5258', frameW=1.4, winframe='4c5258', sill=None, skirt=None,
+                rail=None, cornice=False, fixture='trough', light='e2eaff', lightB=0.95, lightR=17.5, core='7f8a96',
+                shade='dfe5e8', beam=None, bracket=None, parapet=None, cap='4c5258', exitc='2f6a46', transom=False),
+}
+ST2 = STYLE.get(VARIANT, STYLE['v2A'])
+if V2:
+    _A = VARIANT == 'v2A'
+    ST2['sill'] = T['stone'] if _A else T['board']
+    ST2['beam'] = T['plaster'] if _A else T['ceiling']
+    ST2['parapet'] = T['plaster'] if _A else T['board']
+
+HALLS = ('hall', 'lobby', 'landing', 'stairhole', 'cafe')
+CLASSY = ('classroom', 'lab', 'art', 'music', 'complab', 'nurse')
+SERVICE = ('storage', 'janitor', 'workshop', 'tunnel', 'boiler', 'tower')
+GYMS = ('gym', 'balcony', 'gymair', 'weights')
+def _fin(pier, zones, S=None, PW=None, rail=None, skirt=None, plinth=None, cornice=False, rec=None):
+    d = dict(pier=pier, zones=zones, rail=rail, skirt=skirt, plinth=plinth, cornice=cornice and ST2['cornice'],
+             S=S or ST2['S'], PW=PW or ST2['PW'], lo=zones[0][1], hi=zones[-1][1], proud=0.25)
+    if rec is not None: d['rec'] = rec; d['proud'] = 0.0      # (outside: flush piers, a deeper recess)
+    return d
+
+def finish(r):
+    """the wall finish of the room a wall half faces: the piers' colour, the panels' zones [(height over the floor,
+    colour)], a rail (height, colour), a skirting (proud on the piers, flush in the panels) or a flush plinth, a cornice;
+    None: a flat wall in one colour (the restrooms: tile from floor to ceiling)"""
+    lk = 'exterior' if r is None else r['look']
+    A = VARIANT == 'v2A'
+    if lk in ('restroom', 'lockerroom'):      # (tile between piers: the restrooms were the last flat walls)
+        if A: return _fin(T['plaster'], [(0, T['rtile_wall'])], cornice=True)
+        return _fin(T['board'], [(0, T['rtile_wall'])])
+    if lk in HALLS and r is not None and r['id'] == 'lockers':
+        return _fin(T['stone'] if A else T['board'], [(0, T['lockers']), (7.0, T['plaster'] if A else T['felt'])],
+                    rail=(7.0, ST2['rail']) if A else None, skirt=ST2['skirt'] if A else None, plinth=None if A else (0.6, T['board']), cornice=True)
+    if lk in HALLS:
+        if A: return _fin(T['stone'], [(0, T['tile']), (4.5, T['plaster'])], rail=(4.5, ST2['rail']), skirt=ST2['skirt'], cornice=True)
+        return _fin(T['board'], [(0, T['board']), (1.0, T['felt']), (9.5, T['board'])], plinth=(1.0, T['board']))
+    if lk in CLASSY:
+        if A: return _fin(T['plaster'], [(0, 'b9ae99'), (4.0, T['plaster'])], rail=(4.0, ST2['rail']), skirt=ST2['skirt'], cornice=True)
+        return _fin(T['board'], [(0, 'aeb0ac'), (3.6, T['felt']), (10.5, 'bec0bc')], plinth=(0.8, T['board']))   # (round 2: a felt pinboard band)
+    if lk in PANELLED:
+        if A: return _fin('8f6b4c', [(0, '94714f'), (4.5, T['plaster'])], rail=(4.5, ST2['rail']), skirt=ST2['skirt'], cornice=True)
+        return _fin('a68b66', [(0, T['felt'])], plinth=(0.8, T['board']))
+    if lk in SERVICE or lk in GYMS:
+        big = lk in GYMS
+        zones = [(0, T['felt'])] if (not A and lk in ('gymair', 'balcony')) else [(0, T['block'])]    # (v2B: felt up top in the gym)
+        return _fin(T['brick'] if A else T['board'], zones, S=16.0 if big else None, PW=3.0 if big else None,
+                    skirt='5e5e5b' if A else None)
+    if lk in ('court', 'courtair'):
+        f_ = _fin(T['stone'] if A else T['board'], [(0, T['brick'])], skirt=T['stone'] if A else None,
+                  plinth=None if A else (1.0, T['board']))
+        f_['proud'] = 1.0            # (round 2: "turn the white strips into piers that stand out")
+        return f_
+    if lk == 'exterior':
+        return _fin(T['stone'] if A else T['board'], [(0, T['brick'])], rec=0.5)
+    return None           # (the roof's parapets: plain)
+
+def articulate(model, b, ax, sign, fin, Ly, top):
+    """one wall piece whose room-side face is b's +sign side across `ax` ('x': the face looks along x, the wall runs
+    along z): piers on the S grid (world positions, so they line up from piece to piece and level to level) stay full,
+    their face is the hit face; the panels between them step back REC"""
+    x0, y0, z0, x1, y1, z1 = b
+    rec = fin.get('rec', ST2['REC'])
+    if ax == 'x': u0, u1, t0, t1 = z0, z1, x0, x1
+    else: u0, u1, t0, t1 = x0, x1, z0, z1
+    if abs(t1 - t0) < rec + 0.15: rec = max(0.0, abs(t1 - t0) - 0.15)
+    tf = t1 if sign > 0 else t0                        # the face
+    tb = t0 if sign > 0 else t1                        # the back
+    tr = tf - sign * rec                               # the recessed face
+    def B3(ua, ya, ta, ub, yb, tb_, col, bev=0.0):
+        if ub - ua < 0.02 or yb - ya < 0.02: return
+        lo_t, hi_t = min(ta, tb_), max(ta, tb_)
+        if hi_t - lo_t < 0.02: return
+        if ax == 'x': bx(model, col, (lo_t, ya, ua, hi_t, yb, ub), bev=bev)
+        else: bx(model, col, (ua, ya, lo_t, ub, yb, hi_t), bev=bev)
+    ya, yb = max(y0, Ly), min(y1, top)
+    if y0 < ya: B3(u0, y0, tb, u1, min(y1, ya), tf, fin['lo'])                 # (in the slab)
+    if y1 > yb and yb >= y0: B3(u0, max(yb, y0), tb, u1, y1, tf, fin['hi'])   # (over the ceiling)
+    if yb <= ya: return
+    S, PW = fin['S'], fin['PW']
+    piers = []
+    if u1 - u0 < 3.0: piers = [(u0, u1)]                                       # (a short piece is all pier)
+    else:
+        k0, k1 = int(math.floor((u0 - PW) / S)), int(math.ceil((u1 + PW) / S))
+        for k in range(k0, k1 + 1):
+            a, c = max(u0, k * S - PW / 2), min(u1, k * S + PW / 2)
+            if c - a > 0.05: piers.append((a, c))
+        merged = []
+        for (a, c) in piers:
+            if merged and a - merged[-1][1] < 0.6: merged[-1] = (merged[-1][0], c)
+            else: merged.append((a, c))
+        piers = merged
+        if piers and piers[0][0] - u0 < 0.6: piers[0] = (u0, piers[0][1])
+        if piers and u1 - piers[-1][1] < 0.6: piers[-1] = (piers[-1][0], u1)
+    panels, u = [], u0
+    for (a, c) in piers:
+        if a - u > 0.05: panels.append((u, a))
+        u = c
+    if u1 - u > 0.05: panels.append((u, u1))
+    floor = ya <= Ly + 0.01
+    pr = fin.get('proud', 0.0)               # (round 2: the piers stand proud of the hit face too, for a deeper relief)
+    for (a, c) in piers:
+        B3(a, ya, tb, c, yb, tf + sign * pr, fin['pier'])      # (bevelled piers tripled the walls' triangles: the kit passed 20 MB)
+        if fin['skirt'] and floor: B3(a, Ly, tf + sign * pr, c, min(Ly + 1.0, yb), tf + sign * (pr + 0.25), fin['skirt'])
+    zs = fin['zones']
+    for (a, c) in panels:
+        for i, (h, col) in enumerate(zs):
+            za = ya if i == 0 else max(ya, Ly + h)
+            zb = yb if i == len(zs) - 1 else min(yb, Ly + zs[i + 1][0])
+            if zb > za: B3(a, za, tb, c, zb, tr, col)
+        if floor and fin['skirt']: B3(a, Ly, tr, c, min(Ly + 1.0, yb), tf, fin['skirt'])
+        elif floor and fin['plinth']: B3(a, Ly, tr, c, min(Ly + fin['plinth'][0], yb), tf, fin['plinth'][1])
+        if fin['rail']:
+            h = Ly + fin['rail'][0]
+            if ya <= h - 0.3 and yb >= h + 0.3: B3(a, h - 0.3, tr, c, h + 0.3, tf, fin['rail'][1])
+    if fin['cornice'] and ya <= Ly + 13.6 and yb >= Ly + 14.7:
+        B3(u0, Ly + 13.6, tf, u1, Ly + 14.0, tf + sign * (pr + 0.2), ST2['beam'])
+        B3(u0, Ly + 14.0, tf, u1, Ly + 14.7, tf + sign * (pr + 0.5), ST2['beam'])
+
+def cut_rect2(pieces, ax, line, a0, a1, y0, y1, tol=2.6):
+    """cut_rect for v2 pieces (box, colour, model, lv, meta): the meta rides along"""
+    plain = [(p[0], p[1], p[2], (p[3], p[4])) for p in pieces]
+    out = cut_rect(plain, ax, line, a0, a1, y0, y1, tol)
+    return [(b, col, model, lvm[0], lvm[1]) for (b, col, model, lvm) in out]
+
+def window_unit2(model, ax, line, a0, a1, y0, y1, t0, t1, mull=None):
+    """a chunky window: a 0.6 frame through the wall's depth, mullions, a transom bar at two thirds, the glass in the
+    middle, deep sills in and out"""
+    def B3(u0, v0, w0, u1, v1, w1, col, kind='plastic'):
+        if ax == 'x': bx(model, col, (u0, v0, w0, u1, v1, w1), kind)
+        else: bx(model, col, (w0, v0, u0, w1, v1, u1), kind)
+    f, fc = 0.6, ST2['winframe']
+    t0, t1 = t0 + 0.25, t1 - 0.25          # (round 3: the frame sits inside the opening, a reveal round it)
+    B3(a0, y0, t0, a0 + f, y1, t1, fc); B3(a1 - f, y0, t0, a1, y1, t1, fc)
+    B3(a0 + f, y1 - f, t0, a1 - f, y1, t1, fc); B3(a0 + f, y0, t0, a1 - f, y0 + f, t1, fc)
+    tm = (t0 + t1) / 2
+    n = mull if mull is not None else (2 if a1 - a0 > 9 else 1)
+    for i in range(1, n + 1):
+        m = a0 + (a1 - a0) * i / (n + 1)
+        B3(m - 0.32, y0 + f, tm - 0.25, m + 0.32, y1 - f, tm + 0.25, fc)
+    ytr = y0 + (y1 - y0) * 0.66
+    B3(a0 + f, ytr - 0.25, tm - 0.2, a1 - f, ytr + 0.25, tm + 0.2, fc)
+    B3(a0 + f, y0 + f, tm - 0.07, a1 - f, y1 - f, tm + 0.07, GLASS, 'glass')
+    B3(a0 - 0.4, y0 - 0.5, t0 - 0.8, a1 + 0.4, y0, t1 + 0.8, ST2['sill'])
+
+# the stair hole through the upper floor: no ceiling, beams or fittings under it on the floor below
+HOLES = {}
+for _r in L.ROOMS:
+    if _r['look'] == 'stairhole':
+        HOLES.setdefault({'U': 'G', 'G': 'B'}[_r['lv']], []).append(_r['r'])
+def minus(rect, holes):
+    """a rectangle (x0, z0, x1, z1) less the holes: up to four rectangles round each"""
+    out = [rect]
+    for (hx0, hz0, hx1, hz1) in holes:
+        nxt = []
+        for (x0, z0, x1, z1) in out:
+            if hx1 <= x0 or hx0 >= x1 or hz1 <= z0 or hz0 >= z1: nxt.append((x0, z0, x1, z1)); continue
+            if hz0 > z0: nxt.append((x0, z0, x1, hz0))
+            if hz1 < z1: nxt.append((x0, hz1, x1, z1))
+            if hx0 > x0: nxt.append((x0, max(z0, hz0), hx0, min(z1, hz1)))
+            if hx1 < x1: nxt.append((hx1, max(z0, hz0), x1, min(z1, hz1)))
+        out = nxt
+    return [r for r in out if r[2] - r[0] > 0.05 and r[3] - r[1] > 0.05]
+def in_hole(lv, x, z, pad=1.5):
+    return any(hx0 - pad < x < hx1 + pad and hz0 - pad < z < hz1 + pad for (hx0, hz0, hx1, hz1) in HOLES.get(lv, []))
+
+def v2_slabs():
+    """the floors, room by room (v1's slabs are merged by the layout's floor material; v2 gives the classrooms their own
+    floor): the raster's cells grouped by the room's floor role, then the gym's lid"""
+    role_of = {'lino': 'lino', 'tile': 'cafetile', 'terrazzo': 'terrazzo', 'restroomtile': 'rtile_floor', 'concrete': 'concrete',
+               'pavers': 'pavers', 'gymwood': 'gymwood', 'rubber': 'rubber', 'carpet': 'carpet', 'wood': 'woodfloor',
+               'roofdeck': 'roofdeck', 'stair': 'concrete'}
+    for lv in L.ORDER:
+        Ly = LVY(lv)
+        g = L.GRID[lv]
+        groups = {}
+        for i in range(L.NX):
+            for j in range(L.NZ):
+                k = g[i][j]
+                if k < 0 or not L.ROOMS[k]['floor']: continue
+                r = L.ROOMS[k]
+                role = 'woodfloor' if r['look'] in CLASSY and r['fmat'] in ('lino', 'tile') else role_of.get(r['fmat'], 'concrete')
+                groups.setdefault(role, set()).add((i, j))
+        for role, cells in groups.items():
+            for (i0, j0, i1, j1) in L._greedy(cells):
+                bx(M_('sc_floor', lv), T[role], (L.GX0 + i0, Ly - 1.0, L.GZ0 + j0, L.GX0 + i1, Ly, L.GZ0 + j1))
+    for (x0, y0, z0, x1, y1, z1, fm, lv) in L.SLABS:
+        if fm == 'rooflid': bx(M_('sc_floor', lv), T['concrete'], (x0, y0, z0, x1, y1, z1))
+
+def transoms():
+    """(v2A) a glazed light over every doorway between two rooms: (lv, axis, line, a0, a1, y0, y1)"""
+    out = []
+    if not ST2['transom']: return out
+    for o in L.OPENINGS:
+        if o['kind'] != 'doorway': continue
+        lv = lvl_of(o['y0'] + 1.0)
+        if lv in ('B', 'R'): continue
+        ax, line, c = o['axis'], o['line'], (o['a0'] + o['a1']) / 2
+        r_lo = L.room_at(lv, line - 0.5, c) if ax == 'z' else L.room_at(lv, c, line - 0.5)
+        r_hi = L.room_at(lv, line + 0.5, c) if ax == 'z' else L.room_at(lv, c, line + 0.5)
+        if r_lo is None or r_hi is None: continue
+        y0 = o['y1'] + 0.9
+        if y0 + 1.6 > LVY(lv) + 13.2: continue
+        out.append((lv, ax, line, o['a0'], o['a1'], y0, y0 + 1.6))
+    return out
+TRANSOMS = []
+
+def v2_walls():
+    """v1's walls (each half in its room's finish, the outside skins room by room, the windows cut), but every piece
+    keeps which way it faces and which finish it gets, and is then articulated"""
+    pieces = []      # (box, colour, model, lv, meta)  meta: (ax, sign, fin, Ly, top) or None (plain)
+    for w in L.WALLS:
+        lv, (x0, y0, z0, x1, y1, z1) = w['lv'], w['box']
+        Ly = LVY(lv)
+        if w['mat'] == 'glass':
+            # the glass round the stair hole upstairs: a solid upstand 3.6 over the floor, a cap, glass over it in frames
+            m = M_('sc_wall', lv)
+            thin_x = x1 - x0 < z1 - z0
+            c = (x0 + x1) / 2 if thin_x else (z0 + z1) / 2
+            up = Ly + 3.6
+            def G3(a0_, ya_, ta, a1_, yb_, tb_, col, kind='plastic', bev=0.0):
+                if thin_x: bx(m, col, (c + ta, ya_, a0_, c + tb_, yb_, a1_), kind, bev=bev)
+                else: bx(m, col, (a0_, ya_, c + ta, a1_, yb_, c + tb_), kind, bev=bev)
+            a_lo, a_hi = (z0, z1) if thin_x else (x0, x1)
+            G3(a_lo, y0, -0.45, a_hi, up, 0.45, ST2['parapet'])
+            G3(a_lo, up, -0.6, a_hi, up + 0.5, 0.6, ST2['cap'], bev=0.12)
+            G3(a_lo, up + 0.5, -0.1, a_hi, y1 - 0.6, 0.1, GLASS, 'glass')
+            G3(a_lo, y1 - 0.6, -0.35, a_hi, y1, 0.35, ST2['frame'])
+            uu = a_lo
+            while uu < a_hi - 0.1:
+                G3(uu, up + 0.5, -0.3, min(a_hi, uu + 0.6), y1 - 0.6, 0.3, ST2['frame']); uu += 6.0
+            continue
+        if not w['ext']:
+            A_, B_ = L.ROOMS[w['a']], L.ROOMS[w['b']]
+            def clip(r, u0, u1, along_z):
+                lo, hi = (r['r'][1], r['r'][3]) if along_z else (r['r'][0], r['r'][2])
+                return max(u0, lo), min(u1, hi)
+            c = w['line']
+            top = Ly + CEIL if lv != 'R' else y1
+            for (r, sgn) in ((A_, -1), (B_, 1)):
+                fin = finish(r) if lv != 'R' else None
+                col = wallcol(r) if fin is None else fin['hi']
+                if w['axis'] == 'z':
+                    a0, a1 = clip(r, z0, z1, True)
+                    b = (x0, y0, a0, c, y1, a1) if sgn < 0 else (c, y0, a0, x1, y1, a1)
+                    meta = ('x', sgn, fin, Ly, top) if fin else None
+                else:
+                    a0, a1 = clip(r, x0, x1, False)
+                    b = (a0, y0, z0, a1, y1, c) if sgn < 0 else (a0, y0, c, a1, y1, z1)
+                    meta = ('z', sgn, fin, Ly, top) if fin else None
+                pieces.append((b, col, M_('sc_wall', lv), lv, meta))
+            continue
+        # an outside wall: the 0.5 skin facing the room, room by room (as v1), then the brick beyond, its outer face
+        # articulated too (stone or concrete pilasters, recessed brick or board between)
+        thin_x = (x1 - x0) <= 2.5 and (z1 - z0) > 2.5
+        thin_z = (z1 - z0) <= 2.5 and (x1 - x0) > 2.5
+        lvq = lv
+        side = None
+        if thin_x or thin_z:
+            a_lo, a_hi = (z0, z1) if thin_x else (x0, x1)
+            def beside(u, sd):
+                if thin_x: return L.room_at(lvq, (x0 - 0.5) if sd < 0 else (x1 + 0.5), u)
+                return L.room_at(lvq, u, (z0 - 0.5) if sd < 0 else (z1 + 0.5))
+            n_lo = sum(1 for u in range(int(a_lo), int(a_hi)) if beside(u + 0.5, -1) is not None)
+            n_hi = sum(1 for u in range(int(a_lo), int(a_hi)) if beside(u + 0.5, 1) is not None)
+            side = -1 if n_lo > n_hi else 1
+            u = a_lo
+            while u < a_hi - 1e-6:
+                r = beside(u + 0.5, side)
+                u1 = u + 1.0
+                while u1 < a_hi - 1e-6 and beside(u1 + 0.5, side) is r: u1 += 1.0
+                s0, s1 = u, min(u1, a_hi)
+                if thin_x: sk = (x0, y0, s0, x0 + 0.5, y1, s1) if side < 0 else (x1 - 0.5, y0, s0, x1, y1, s1)
+                else: sk = (s0, y0, z0, s1, y1, z0 + 0.5) if side < 0 else (s0, y0, z1 - 0.5, s1, y1, z1)
+                if not (r is None and lv == 'B'):
+                    fin = finish(r) if (r is not None and lv != 'R') else None
+                    col = (fin['hi'] if fin else wallcol(r)) if r is not None else T['brick']
+                    meta = (('x' if thin_x else 'z'), side, fin, Ly, Ly + CEIL) if fin else None     # (faces the room)
+                    pieces.append((sk, col, M_('sc_wall', lv) if r is not None else 'sc_ext', lv, meta))
+                u = u1
+            if thin_x: x0, x1 = (x0 + 0.5, x1) if side < 0 else (x0, x1 - 0.5)
+            else: z0, z1 = (z0 + 0.5, z1) if side < 0 else (z0, z1 - 0.5)
+        if lv == 'B': continue
+        ext = finish(None)
+        meta = (('x' if thin_x else 'z'), -side, ext, Ly, y1) if (side is not None and lv != 'R') else None     # (faces out)
+        pieces.append(((x0, y0, z0, x1, y1, z1), T['brick'], 'sc_ext', lv, meta))
+    for (lv, ax, line, a0, a1, y0, y1) in L.GLASS:
+        pieces = cut_rect2(pieces, ax, line, a0, a1, y0, y1)
+        window_unit2(M_('sc_win', lv), ax, line, a0, a1, y0, y1, line - 0.5, line + 0.5, mull=2)
+    for (lv, ax, line, a0, a1, y0, y1, out) in EXT_WIN:
+        pieces = cut_rect2(pieces, ax, line, a0, a1, y0, y1)
+        t0, t1 = (line, line + 2.0) if out > 0 else (line - 2.0, line)
+        window_unit2(M_('sc_win', lv), ax, line, a0, a1, y0, y1, t0, t1)
+    for (lv, ax, line, a0, a1, y0, y1) in TRANSOMS:
+        pieces = cut_rect2(pieces, ax, line, a0, a1, y0, y1, tol=1.2)
+    for (b, col, model, lv, meta) in pieces:
+        if meta: articulate(model, b, meta[0], meta[1], meta[2], meta[3], meta[4])
+        else: bx(model, col, b)
+
+def v2_copings():
+    for w in L.WALLS:
+        x0, y0, z0, x1, y1, z1 = w['box']
+        if w['lv'] != 'R' or w['mat'] == 'glass' or y1 > 46: continue
+        col = T['stone'] if VARIANT == 'v2A' else T['board']
+        if (x1 - x0) < (z1 - z0): bx('sc_roofdress', col, (x0 - 0.35, y1, z0, x1 + 0.35, y1 + 0.6, z1), bev=0.1)
+        else: bx('sc_roofdress', col, (x0, y1, z0 - 0.35, x1, y1 + 0.6, z1 + 0.35), bev=0.1)
+
+def v2_openings():
+    """deep frames: jambs standing 0.35 proud of the hit face on both sides and a head; a glazed transom over v2A's
+    doorways; the zombie windows get a frame and a deep sill (the mode nails its planks in the opening)"""
+    for o in L.OPENINGS:
+        ax, line, a0, a1, y0, y1, kind = o['axis'], o['line'], o['a0'], o['a1'], o['y0'], o['y1'], o['kind']
+        lv = lvl_of(y0 + 1.0)
+        r_lo = L.room_at(lv, line - 0.5, (a0 + a1) / 2) if ax == 'z' else L.room_at(lv, (a0 + a1) / 2, line - 0.5)
+        r_hi = L.room_at(lv, line + 0.5, (a0 + a1) / 2) if ax == 'z' else L.room_at(lv, (a0 + a1) / 2, line + 0.5)
+        if r_lo is not None and r_hi is not None: t0, t1 = line - 0.5, line + 0.5
+        elif r_lo is None: t0, t1 = line - 2.0, line
+        else: t0, t1 = line, line + 2.0
+        model = M_('sc_frame', lv)
+        def B3(u0, v0, w0, u1, v1, w1, col, kind_='plastic', bev=0.0):
+            if ax == 'x': bx(model, col, (u0, v0, w0, u1, v1, w1), kind_, bev=bev)
+            else: bx(model, col, (w0, v0, u0, w1, v1, u1), kind_, bev=bev)
+        fw, pr, fc = ST2['frameW'], (0.6 if VARIANT == 'v2A' else 1.0), ST2['frame']     # (round 2-3: chunkier, deeper frames)
+        if kind == 'zwin':
+            if lv == 'R': continue
+            B3(a0 - 0.6, y0, t0 - 0.15, a0, y1, t1 + 0.15, fc); B3(a1, y0, t0 - 0.15, a1 + 0.6, y1, t1 + 0.15, fc)
+            B3(a0 - 0.6, y1, t0 - 0.15, a1 + 0.6, y1 + 0.6, t1 + 0.15, fc)
+            if o['y0'] > LVY(lv) + 0.5: B3(a0 - 0.5, y0 - 0.5, t0 - 0.55, a1 + 0.5, y0, t1 + 0.55, ST2['sill'])
+            continue
+        Lf = LVY(lv)
+        head0 = y1 + (1.45 if kind == 'door' else 0.0)          # (a shutter's housing sits over its opening)
+        tr = next((t for t in TRANSOMS if t[0] == lv and t[1] == ax and abs(t[2] - line) < 0.01 and abs(t[3] - a0) < 0.01), None)
+        jtop = (tr[6] + 0.4) if tr else head0 + 0.9
+        B3(a0 - fw, Lf, t0 - pr, a0, jtop, t1 + pr, fc, bev=0.08)
+        B3(a1, Lf, t0 - pr, a1 + fw, jtop, t1 + pr, fc, bev=0.08)
+        B3(a0 - fw - 0.2, head0, t0 - pr - 0.1, a1 + fw + 0.2, head0 + 0.9, t1 + pr + 0.1, fc, bev=0.08)
+        if tr:
+            ty0, ty1 = tr[5], tr[6]
+            B3(a0, ty0, (t0 + t1) / 2 - 0.06, a1, ty1, (t0 + t1) / 2 + 0.06, 'e8e2d4', 'glass')
+            B3(a0 - fw - 0.2, ty1, t0 - pr - 0.1, a1 + fw + 0.2, ty1 + 0.4, t1 + pr + 0.1, fc, bev=0.08)
+            for mm in (a0 + (a1 - a0) / 3, a0 + 2 * (a1 - a0) / 3):
+                B3(mm - 0.2, ty0, t0 - 0.05, mm + 0.2, ty1, t1 + 0.05, fc)
+
+# ---------------------------------------------------------------- the light fittings, planned once (v2_lights, v2_ceilings)
+FIXTURES = []        # dict(x, y, z, lv, room, lit, dead, group, axis, gym)
+LIGHT_GROUPS = []    # per K.LIGHTS entry: its flicker group (0: steady)
+def _hash(*v):
+    h = 2166136261
+    for x in v:
+        for ch in ('%.2f|' % x).encode():
+            h = ((h ^ ch) * 16777619) & 0xffffffff
+    return h / 4294967296.0
+
+def v2_plan():
+    """beams on the S grid across each room's short side, one fitting in the middle of every bay (two or three rows in a
+    wide room); a light on every other fitting (pools of light and shadow), a few dead fittings, and up to two per room
+    that flicker together (the room's group)"""
+    S = ST2['S']
+    room_n = 0
+    for k, r in enumerate(L.ROOMS):
+        lv = r['lv']
+        if lv == 'R' or r['tower'] or not r['floor'] or r['look'] in ('court', 'gymair', 'courtair', 'balcony'): continue
+        x0, z0, x1, z1 = r['r']
+        Ly = LV[lv]
+        gym = r['look'] == 'gym'
+        top = 37.0 if gym else Ly + CEIL
+        Sx = 16.0 if gym else S
+        along_x = (x1 - x0) >= (z1 - z0)
+        a0, a1 = (x0, x1) if along_x else (z0, z1)
+        c0, c1 = (z0, z1) if along_x else (x0, x1)
+        beams = [kk * Sx for kk in range(int(math.ceil((a0 + 1.5) / Sx)), int(math.floor((a1 - 1.5) / Sx)) + 1)]
+        edges = [a0] + beams + [a1]
+        span = c1 - c0
+        rows = 1 if span <= 22 else (2 if span <= 46 else 3)
+        r['_beams'] = beams
+        flick_here = 0
+        room_n += 1
+        grp = (room_n % 22) + 1
+        for bi in range(len(edges) - 1):
+            ua, ub = edges[bi], edges[bi + 1]
+            if ub - ua < 3.0: continue
+            um = (ua + ub) / 2
+            for ri in range(rows):
+                cm = c0 + span * (ri + 0.5) / rows
+                x, z = (um, cm) if along_x else (cm, um)
+                if in_hole(lv, x, z): continue
+                y = top - (2.2 if ST2['fixture'] == 'globe' else 0.6)
+                if gym: y = top - 4.5
+                h = _hash(x, z, Ly)
+                # (a fitting about every 24 studs: every other bay in v2A's 12, every third in v2B's 8. Round 1's judges saw
+                #  every fitting glowing and no pools: now each fitting has its light, and about 1 in 5 is dead)
+                if not gym and (bi + ri) % max(2, int(round(24.0 / Sx))) != 0: continue
+                if r['id'] == 'lobby' and 54.5 < z < 61.5: continue      # (the girder over the lobby's posts)
+                dead = (not gym) and h < 0.2 and (r['look'] in HALLS or r['look'] in SERVICE)
+                f = dict(x=x, y=y, z=z, lv=lv, room=k, lit=not dead, dead=dead, group=0, axis='x' if along_x else 'z', gym=gym)
+                if not dead and not gym and flick_here < 2 and h > 0.86:
+                    f['group'] = grp; flick_here += 1
+                FIXTURES.append(f)
+    print('FIXTURES %d: %d lit, %d flicker, %d dead' % (len(FIXTURES), sum(f['lit'] for f in FIXTURES), sum(1 for f in FIXTURES if f['group']), sum(f['dead'] for f in FIXTURES)))
+
+def v2_lights():
+    col, b, rng = ST2['light'], ST2['lightB'], ST2['lightR']
+    for f in FIXTURES:
+        if not f['lit']: continue
+        if ST2['fixture'] == 'trough' and not f['gym']:
+            # (v2B, round 3: a spot pointing down from just under the lens: a pool on the floor, the ceiling left dim, so
+            #  the lens reads as the light; a point light under it lit the ceiling brighter than the lamp)
+            K.light('spot', f['x'], f['y'] - 0.7, f['z'], (0, -1, 0), 1.6, 21.0, 82, col)
+        else:
+            y = f['y'] - (1.6 if ST2['fixture'] == 'globe' else 3.5)
+            K.light('point', f['x'], y, f['z'], (0, -1, 0), b * (1.2 if f['gym'] else 1.0), rng * (1.7 if f['gym'] else 1.0), 0, col)
+        LIGHT_GROUPS.append(f['group'])
+    # the courtyard's lanterns, the roof's floods (cold, low), the stairwells
+    for (x, z) in ((-30, -24), (30, 24), (-30, 24), (30, -24)):
+        K.light('point', x, 8.6, z, (0, -1, 0), 1.1, 28, 0, 'ffd2a0'); LIGHT_GROUPS.append(0)
+    # (the courtyard read black under the night look: a cold moon fill high over it, wide and faint)
+    for (x, z) in ((-18, 0), (18, 0)):
+        K.light('point', x, 26.0, z, (0, -1, 0), 0.5, 52, 0, 'a9b9e6'); LIGHT_GROUPS.append(0)
+    for (x, y, z) in COURT_LANTERNS:
+        K.light('point', x, y - 0.6, z, (0, -1, 0), 0.75, 26, 0, 'ffc98e'); LIGHT_GROUPS.append(0)
+    K.light('point', 0.0, 5.5, 0.0, (0, 1, 0), 0.6, 20, 0, 'ffe2b8'); LIGHT_GROUPS.append(0)     # (the tree, from its planter)
+    for (x, z) in ((-90, -50), (-10, -50), (70, -50), (130, -60)):
+        K.light('point', x, 44.0, z, (0, -1, 0), 0.6, 40, 0, 'b9c8f0'); LIGHT_GROUPS.append(0)
+    for i, (ax, az, bx_, bz) in enumerate(((-105.0, -5.0, -115.0, -30.0), (155.0, -53.0, 145.0, -81.0))):
+        for y in (-16.0, 0.0, 16.0, 32.0):
+            K.light('point', ax, y + 12.5, az, (0, -1, 0), 0.8, 20, 0, col)       # (over landing A, off the middle wall)
+            LIGHT_GROUPS.append(23 + i if y == 0.0 else 0)      # (each stairwell's ground-floor landing flickers)
+            if y < 32.0:
+                K.light('point', bx_, y + 8.0 + 4.5, bz, (0, -1, 0), 0.7, 18, 0, col)   # (over landing B, half way up)
+                LIGHT_GROUPS.append(0)
+    # emergency lights: a dim green glow over every third shutter; red in the basement's tunnels
+    for (x, z) in BASEMENT_RED:
+        K.light('point', x, -4.0, z, (0, -1, 0), 0.45, 9, 0, 'ff5a46'); LIGHT_GROUPS.append(0)
+    # a faint fill in every room, so no room seen through a doorway is a black hole (round 2: black rooms beyond doors)
+    tint = 'ffe6c8' if VARIANT == 'v2A' else 'e6ecf6'
+    for r in L.ROOMS:
+        if r['lv'] == 'R' or r['tower'] or not r['floor'] or r['look'] in ('court', 'courtair', 'gymair', 'balcony'): continue
+        x0, z0, x1, z1 = r['r']
+        K.light('point', (x0 + x1) / 2, LV[r['lv']] + 9.0, (z0 + z1) / 2, (0, -1, 0), 0.2, min(34.0, 0.5 * max(x1 - x0, z1 - z0) + 6.0), 0, tint)
+        LIGHT_GROUPS.append(0)
+    # a warm sconce in the corner beside the main stairs, under the floor that carries over them (round 2: a black corner)
+    K.light('point', 62.2, 8.4, 18.0, (0, -1, 0), 0.6, 14, 0, 'ffcf9a' if VARIANT == 'v2A' else 'e2eaff'); LIGHT_GROUPS.append(0)
+BASEMENT_RED = ((-50, -20), (-20, -42), (30, -42), (-80, 6))
+# wall lanterns on the courtyard's ground-floor piers (the light's spot, 0.9 off the wall): x on the long walls, z on the ends
+COURT_LANTERNS = ([(x, 8.0, -30.6) for x in (-24.0, 24.0)] + [(x, 8.0, 30.6) for x in (-24.0, 24.0)] +
+                  [(-38.6, 8.0, z) for z in (-12.0, 12.0)] + [(38.6, 8.0, z) for z in (-12.0, 12.0)])
+
+def v2_ceilings():
+    """ceilings (none over the stair hole), beams on the S grid (v2B: soffits along the long walls too: a waffle), and
+    the fittings"""
+    EXPOSED = ('tunnel', 'storage', 'workshop', 'boiler', 'janitor')
+    for k, r in enumerate(L.ROOMS):
+        lv = r['lv']
+        if lv == 'R' or r['tower'] or r['look'] in ('court', 'courtair', 'gymair', 'balcony'): continue
+        x0, z0, x1, z1 = r['r']
+        Ly = LV[lv]
+        gym = r['look'] == 'gym'
+        top = 37.0 if gym else Ly + 15.0
+        g = L.GRID[lv]
+        def inset(side):
+            if side == 'w': i, j = int(x0) - 1 - L.GX0, int((z0 + z1) / 2) - L.GZ0
+            elif side == 'e': i, j = int(x1) - L.GX0, int((z0 + z1) / 2) - L.GZ0
+            elif side == 'n': i, j = int((x0 + x1) / 2) - L.GX0, int(z0) - 1 - L.GZ0
+            else: i, j = int((x0 + x1) / 2) - L.GX0, int(z1) - L.GZ0
+            nb = g[i][j] if 0 <= i < L.NX and 0 <= j < L.NZ else -1
+            if nb < 0: return 0.0
+            return 0.5 if L.needs_wall(k, nb) else 0.0
+        ix0, ix1, iz0, iz1 = x0 + inset('w'), x1 - inset('e'), z0 + inset('n'), z1 - inset('s')
+        holes = HOLES.get(lv, [])
+        mc = M_('sc_ceil', lv)
+        if not gym:
+            c = T['concrete'] if r['look'] in EXPOSED else T['ceiling']
+            for (a, b_, c_, d_) in minus((ix0, iz0, ix1, iz1), holes):
+                bx(mc, c, (a, top - 0.3, b_, c_, top, d_))
+        beams = r.get('_beams', [])
+        along_x = (x1 - x0) >= (z1 - z0)
+        bd = 3.0 if gym else (1.6 if VARIANT == 'v2A' else 1.4)
+        bw = 3.0 if gym else ST2['PW']
+        bcol = ('6c7176' if VARIANT == 'v2A' else T['board']) if gym else (T['concrete'] if r['look'] in EXPOSED else ST2['beam'])
+        rects = []
+        for p in beams:
+            rects.append((p - bw / 2, iz0, p + bw / 2, iz1) if along_x else (ix0, p - bw / 2, ix1, p + bw / 2))
+        if r['id'] == 'lobby':
+            # a girder across the lobby on its two posts' line (z 58), deeper than the beams it carries
+            for (a, b_, c_, d_) in minus((ix0, 56.0, ix1, 60.0), holes):
+                bx(mc, bcol, (a, top - 0.3 - bd - 0.5, b_, c_, top - 0.3, d_))
+        if VARIANT == 'v2B' and not gym:
+            sw = 1.2
+            rects += [(ix0, iz0, ix1, iz0 + sw), (ix0, iz1 - sw, ix1, iz1)] if along_x else [(ix0, iz0, ix0 + sw, iz1), (ix1 - sw, iz0, ix1, iz1)]
+        for ri_, rc in enumerate(rects):
+            dd = bd if ri_ < len(beams) else bd - 0.2          # (v2B's soffits a step shallower than the beams: no shared faces)
+            for (a, b_, c_, d_) in minus(rc, holes):
+                bx(mc, bcol, (a, top - 0.3 - dd, b_, c_, top - 0.3, d_))
+    for f in FIXTURES:
+        x, y, z, lv = f['x'], f['y'], f['z'], f['lv']
+        model = ('sc_flk%dx' % f['group']) if f['group'] else M_('sc_fix', lv)     # (WebArena's import strips trailing digits)
+        core = '3e3d3a' if f['dead'] else ST2['core']
+        ck = 'plastic' if f['dead'] else 'neon'
+        top = 37.0 if f['gym'] else LV[lv] + 15.0
+        mf = M_('sc_fix', lv)
+        if f['gym']:
+            # a high-bay lamp: a chunky shade on a stem, a frosted bowl, a small core
+            K.cyl(mf, ST2['frame'], x, y + 1.6, z, 0.25, top - 0.3 - (y + 1.6), segs=6, bev=0)
+            K.cyl(mf, '5e6368', x, y + 0.4, z, 1.6, 1.3, segs=12, r2=0.7, bev=0.1)
+            K.cyl(model, ST2['shade'], x, y, z, 1.4, 0.45, segs=12, kind='glass', bev=0)
+            K.cyl(model, core, x, y + 0.2, z, 0.5, 0.3, segs=8, kind=ck, bev=0)
+        elif ST2['fixture'] == 'globe':
+            K.cyl(mf, ST2['frame'], x, top - 0.55, z, 0.65, 0.25, segs=10, bev=0)
+            K.cyl(mf, ST2['frame'], x, y + 0.9, z, 0.2, top - 0.55 - (y + 0.9), segs=6, bev=0)
+            K.cyl(mf, ST2['frame'], x, y + 0.75, z, 0.5, 0.3, segs=10, bev=0)
+            K.sphere(model, ST2['shade'], x, y, z, 0.95, segs=12, rings_=8, kind='glass')
+            K.sphere(model, core, x, y, z, 0.32, segs=6, rings_=4, kind=ck)
+        else:
+            al = f['axis'] == 'x'
+            L2, W2 = 2.8, 0.7
+            hx, hz = (L2, W2) if al else (W2, L2)
+            bx(mf, '585e64', (x - hx - 0.15, y - 0.2, z - hz - 0.15, x + hx + 0.15, top - 0.3, z + hz + 0.15), bev=0.1)
+            bx(model, ST2['shade'], (x - hx, y - 0.42, z - hz, x + hx, y - 0.2, z + hz), 'glass')
+            cc = core if f['dead'] else 'a9b8c6'      # (round 3: a brighter lens, nearly the whole diffuser)
+            bx(model, cc, (x - hx + 0.2, y - 0.46, z - hz + 0.15, x + hx - 0.2, y - 0.4, z + hz - 0.15), ck)
+    # the green lamps over every third shutter (no sign, no text) and the basement's red lamps
+    for i, d in enumerate(L.DOORS):
+        if i % 3 or d['lv'] == 'R': continue
+        mn, mx = d['box']['min'], d['box']['max']
+        cx, cz = (mn[0] + mx[0]) / 2, (mn[2] + mx[2]) / 2
+        y = mx[1] + 2.95
+        mf = M_('sc_fix', d['lv'])
+        if d['axis'] == 'z':
+            bx(mf, '33363a', (cx - 1.1, y - 0.4, cz - 1.2, cx + 1.1, y + 0.4, cz + 1.2), bev=0.1)
+            bx(mf, ST2['exitc'], (cx - 1.2, y - 0.25, cz - 0.9, cx + 1.2, y + 0.25, cz + 0.9), 'neon')
+        else:
+            bx(mf, '33363a', (cx - 1.2, y - 0.4, cz - 1.1, cx + 1.2, y + 0.4, cz + 1.1), bev=0.1)
+            bx(mf, ST2['exitc'], (cx - 0.9, y - 0.25, cz - 1.2, cx + 0.9, y + 0.25, cz + 1.2), 'neon')
+    bx(M_('sc_fix', 'G'), ST2['frame'], (62.65, 8.0, 17.3, 63.3, 9.6, 18.7), bev=0.1)                    # (the stair-corner sconce)
+    bx(M_('sc_fix', 'G'), ST2['shade'], (62.2, 7.6, 17.45, 62.7, 8.9, 18.55), 'glass')
+    bx(M_('sc_fix', 'G'), ST2['core'], (62.35, 7.9, 17.8, 62.6, 8.5, 18.2), 'neon')
+    for (x, z) in BASEMENT_RED:
+        bx('sc_fix_B', '33363a', (x - 0.7, -2.4, z - 0.7, x + 0.7, -1.0, z + 0.7), bev=0.1)
+        bx('sc_fix_B', '6e2e2a', (x - 0.5, -2.9, z - 0.5, x + 0.5, -2.4, z + 0.5), 'neon')
+
+def prism(model, col, pts, axis, c0, c1, kind='plastic'):
+    """a convex outline extruded along an axis: axis 'z': pts are (x, y), from z c0 to c1; axis 'x': pts are (z, y)"""
+    import bmesh
+    bm = bmesh.new()
+    if axis == 'z':
+        a = [bm.verts.new((u, v, c0)) for (u, v) in pts]; b = [bm.verts.new((u, v, c1)) for (u, v) in pts]
+    else:
+        a = [bm.verts.new((c0, v, u)) for (u, v) in pts]; b = [bm.verts.new((c1, v, u)) for (u, v) in pts]
+    bm.faces.new(a); bm.faces.new(b[::-1])
+    n = len(pts)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((a[i], b[i], b[j], a[j]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for e in bm.edges: e.smooth = False
+    K.put(model, kind, col, bm)
+
+def v2_stairs():
+    """the treads (as v1); the parapets from the layout (the main stairs' open side, the bleachers' sides) solid with a
+    cap; the balcony's edge a solid parapet on its rail's hit box"""
+    m = 'sc_stair'
+    for k in range(1, 17):
+        za, zb = 22 - 2.0 * k, 22 - 2.0 * (k - 1)
+        bx(m, STEPC, (54.0, 0.0, za, 64.0, k - 0.5, zb))
+        bx(m, NOSE, (54.0, k - 0.62, zb - 0.35, 64.0, k - 0.44, zb + 0.06))
+    for (x0, x1, xm, zA, zB, f1, f2) in ((-120, -100, -110, (-10, 0), (-34, -26), (-120, -110), (-110, -100)),
+                                        (140, 160, 150, (-58, -48), (-88, -74), (150, 160), (140, 150))):
+        za_edge, zb_edge = zA[0], zB[1]
+        for lv in ('B', 'G', 'U'):
+            Ly = LV[lv]
+            for k in range(1, 9):
+                z_a, z_b = za_edge - 2.0 * (k - 1), za_edge - 2.0 * k
+                bx(m, STEPC, (f1[0], Ly + k - 2.0, min(z_a, z_b), f1[1], Ly + k - 0.5, max(z_a, z_b)))
+                bx(m, NOSE, (f1[0], Ly + k - 0.62, max(z_a, z_b) - 0.35, f1[1], Ly + k - 0.44, max(z_a, z_b) + 0.06))
+                z_a, z_b = zb_edge + 2.0 * (k - 1), zb_edge + 2.0 * k
+                bx(m, STEPC, (f2[0], Ly + 8 + k - 2.0, min(z_a, z_b), f2[1], Ly + 8 + k - 0.5, max(z_a, z_b)))
+                bx(m, NOSE, (f2[0], Ly + 8 + k - 0.62, min(z_a, z_b) - 0.06, f2[1], Ly + 8 + k - 0.44, min(z_a, z_b) + 0.35))
+    for (x0, y0, z0, x1, y1, z1, kind) in L.STEPS:
+        if kind == 'landing': bx(m, T['concrete'], (x0, y0, z0, x1, y1, z1))
+        elif kind == 'towerwall': bx(m, T['block'], (x0, y0, z0, x1, y1, z1))
+        elif kind == 'fill': bx(m, STEPC, (x0, y0, z0, x1, y1, z1))
+        elif kind == 'post': bx('sc_gymdress', ST2['parapet'], (x0 - 0.3, y0, z0 - 0.3, x1 + 0.3, y1, z1 + 0.3), bev=0.15)
+        elif kind == 'parapet': pass          # (drawn sloped below)
+    # the sloped parapets over the layout's stepped ones: the main stairs' open side, both sides of the bleachers
+    prism(m, ST2['parapet'], [(22.0, 0.0), (-10.0, 0.0), (-10.0, 19.4), (22.0, 3.4)], 'x', 53.65, 54.35)
+    _rail(m, (54.0, 3.5, 22.0), (54.0, 19.5, -10.0), t=0.85, col=ST2['cap'])
+    for (za, zb) in ((-4.7, -4.0), (36.0, 36.7)):
+        prism('sc_gymdress', ST2['parapet'], [(108.0, 0.0), (108.0, 3.2), (76.0, 19.2), (76.0, 0.0)], 'z', za, zb)
+        _rail('sc_gymdress', (108.0, 3.3, (za + zb) / 2), (76.0, 19.3, (za + zb) / 2), t=0.85, col=ST2['cap'])
+    # the bleachers: grey risers, a seat board each
+    for k in range(1, 17):
+        xa, xb = 108 - 2.0 * k, 108 - 2.0 * (k - 1)
+        bx('sc_gymdress', '8d9196', (xa, 0.0, -4.0, xb, k - 0.5, 36.0))
+        bx('sc_gymdress', 'b7925f', (xb - 1.2, k - 0.56, -3.8, xb + 0.05, k - 0.3, 35.8), bev=0.08)
+    # the balcony: a solid parapet on its rail's hit box
+    for (za, zb) in ((-32.0, -4.0), (36.0, 56.0)):
+        bx('sc_gymdress', ST2['parapet'], (75.4, 16.0, za, 76.1, 19.5, zb))
+        bx('sc_gymdress', ST2['cap'], (75.25, 19.5, za, 76.25, 19.9, zb), bev=0.1)
+
+def v2_court():
+    """the courtyard's covered walk: a deep canopy along all four walls at first-floor height, a fascia, brackets (v2A)"""
+    A = VARIANT == 'v2A'
+    m = 'sc_court'
+    D, y0, y1 = 5.5, 12.0, 13.6       # (round 3: deeper and thicker)
+    roof = '585d61' if A else T['board']
+    fas = ST2['frame'] if A else T['board']
+    e = 0.5 + D
+    spans = [('z', -32.0, -39.5, 39.5, 1), ('z', 32.0, -39.5, 39.5, -1), ('x', -40.0, -32.0 + e, 32.0 - e, 1), ('x', 40.0, -32.0 + e, 32.0 - e, -1)]
+    for (ax, line, a0, a1, inward) in spans:
+        f0 = line + inward * 0.5
+        f1 = f0 + inward * D
+        lo, hi = min(f0, f1), max(f0, f1)
+        ff = (f1 - inward * 0.8, f1)
+        if ax == 'z':
+            bx(m, roof, (a0, y0, lo, a1, y1, hi))
+            bx(m, fas, (a0, y0 - 1.4, min(ff), a1, y1 + 0.3, max(ff)))
+        else:
+            bx(m, roof, (lo, y0, a0, hi, y1, a1))
+            bx(m, fas, (min(ff), y0 - 1.4, a0, max(ff), y1 + 0.3, a1))
+        if True:    # brackets on the piers the lanterns don't use (round 3: "a deep bracketed canopy")
+            k0, k1 = int(math.ceil((a0 + 2) / 12.0)), int(math.floor((a1 - 2) / 12.0))
+            for k in range(k0, k1 + 1):
+                p = k * 12.0
+                if abs(abs(p) - (24.0 if ax == 'z' else 12.0)) < 0.1 or (ax == 'x' and abs(p) < 0.1): continue
+                if ax == 'z': _rail(m, (p, 8.6, f0 + inward * 1.2), (p, y0 - 0.25, f0 + inward * (D - 1.2)), t=0.8, col=ST2['bracket'] or ST2['frame'])
+                else: _rail(m, (f0 + inward * 1.2, 8.6, p), (f0 + inward * (D - 1.2), y0 - 0.25, p), t=0.8, col=ST2['bracket'] or ST2['frame'])
+
+def court_lanterns():
+    """a wall lantern on each of eight ground-floor piers: a chunky bracket box, a frosted shade, a small warm core"""
+    m = 'sc_court'
+    shade = 'e9dfcc' if VARIANT == 'v2A' else 'dfe5e8'
+    core = '8a7350' if VARIANT == 'v2A' else '7f8a96'
+    for (x, y, z) in COURT_LANTERNS:
+        if abs(abs(z) - 30.6) < 0.1:
+            sz = 1 if z < 0 else -1          # (pointing into the yard)
+            w = z - sz * 0.9                 # the wall face
+            def Z(a, b): return (min(w + sz * a, w + sz * b), max(w + sz * a, w + sz * b))
+            za, zb = Z(0.0, 1.3); bx(m, ST2['frame'], (x - 0.6, y - 0.2, za, x + 0.6, y + 1.4, zb), bev=0.1)
+            za, zb = Z(0.3, 1.2); bx(m, shade, (x - 0.5, y - 1.3, za, x + 0.5, y - 0.2, zb), 'glass')
+            za, zb = Z(0.6, 0.9); bx(m, core, (x - 0.18, y - 1.0, za, x + 0.18, y - 0.5, zb), 'neon')
+        else:
+            sx = 1 if x < 0 else -1
+            w = x - sx * 0.9
+            def X(a, b): return (min(w + sx * a, w + sx * b), max(w + sx * a, w + sx * b))
+            xa, xb = X(0.0, 1.3); bx(m, ST2['frame'], (xa, y - 0.2, z - 0.6, xb, y + 1.4, z + 0.6), bev=0.1)
+            xa, xb = X(0.3, 1.2); bx(m, shade, (xa, y - 1.3, z - 0.5, xb, y - 0.2, z + 0.5), 'glass')
+            xa, xb = X(0.6, 0.9); bx(m, core, (xa, y - 1.0, z - 0.18, xb, y - 0.5, z + 0.18), 'neon')
+
+def v2_facade():
+    """the outside: a deep plinth, a string course at the first floor, a heavy cornice under the parapet"""
+    X0, X1, Z0, Z1 = L.FX0, L.FX1, L.FZ0, L.FZ1
+    st = T['stone'] if VARIANT == 'v2A' else T['board']
+    for (a, b_, c, d_) in ((X0 - 2.5, Z0 - 2.5, X1 + 2.5, Z0 - 2.0), (X0 - 2.5, Z1 + 2.0, X1 + 2.5, Z1 + 2.5),
+                          (X0 - 2.5, Z0 - 2.0, X0 - 2.0, Z1 + 2.0), (X1 + 2.0, Z0 - 2.0, X1 + 2.5, Z1 + 2.0)):
+        bx('sc_ext', st, (a, -0.2, b_, c, 2.0, d_))
+        bx('sc_ext', st, (a, 14.7, b_, c, 15.7, d_))
+    for (a, b_, c, d_) in ((X0 - 2.9, Z0 - 2.9, X1 + 2.9, Z0 - 2.0), (X0 - 2.9, Z1 + 2.0, X1 + 2.9, Z1 + 2.9),
+                          (X0 - 2.9, Z0 - 2.0, X0 - 2.0, Z1 + 2.0), (X1 + 2.0, Z0 - 2.0, X1 + 2.9, Z1 + 2.0)):
+        bx('sc_ext', st, (a, 29.9, b_, c, 31.3, d_))
+
+def v2_build():
+    TRANSOMS[:] = transoms()
+    v2_slabs(); v2_walls(); bulkhead_corners(); v2_copings(); v2_openings(); v2_ceilings(); v2_stairs()
+    _fences = list(L.FENCES)
+    # (the balcony's rails are solid parapets now)
+    L.FENCES[:] = [f for f in _fences if not (75.0 < f[0] < 76.5 and 15.5 < f[1] < 16.5)]
+    fences(); L.FENCES[:] = _fences
+    niches_dress(); grounds(); v2_court(); court_lanterns(); v2_facade()
+
 # ---------------------------------------------------------------- the UVs: world-scaled box projection per textured colour
-TEXSIZE = {T[k]: ST.TEX[k] for k in ST.TEX}
-FLOORUP = {T[k] for k in ('hallwall', 'classwall', 'rtile_wall', 'lockers', 'chalkboard')}
+if not V2:
+    TEXSIZE = {T[k]: ST.TEX[k] for k in ST.TEX}
+    FLOORUP = {T[k] for k in ('hallwall', 'classwall', 'rtile_wall', 'lockers', 'chalkboard')}
+else:       # (v2: each role's picture, from TEX or TEX2; only the floor-up pictures start at their floor)
+    _sizes = dict(ST.TEX); _sizes.update(getattr(ST, 'TEX2', {}))
+    TEXSIZE = {hx: _sizes[img] for (hx, img) in V2TEX[VARIANT].values() if img in _sizes}
+    FLOORUP = {hx for (hx, img) in V2TEX[VARIANT].values() if img in ('rtile_wall', 'hallwall', 'classwall', 'lockers', 'chalkboard', 'b_whiteboard')}
 def add_uvs(objs):
     n = 0
     for ob in objs:
@@ -635,7 +1392,7 @@ def add_uvs(objs):
         base = MODEL_BASE.get(model, 0.0) if hx in FLOORUP else 0.0
         me = ob.data
         uvl = me.uv_layers.new(name='UVMap')
-        board = hx == T['chalkboard']
+        board = hx == T['chalkboard']        # (a chalkboard, or v2B's whiteboard: 16 x 6, its own picture)
         for poly in me.polygons:
             nb = poly.normal
             rn = (nb.x, nb.z, -nb.y)                         # (Blender -> Roblox axes)
@@ -673,14 +1430,18 @@ def render_school(folder, views, prefix, sky=(0.16, 0.13, 0.22), sun_rot=(60, 0,
         ob.location = (K.P @ Vector((p[0], p[1], p[2], 1))).xyz
     texdir = [f.split('=', 1)[1] for f in K.FLAGS if f.startswith('--tex=')]
     if texdir:
-        byhex = {T[k]: k for k in ST.TEX}
+        byhex = {T[k]: k for k in ST.TEX} if not V2 else {hx: img for (hx, img) in V2TEX[VARIANT].values()}
+        dirs = texdir[0].split('|')
         imgs = {}
         for ob in bpy.data.objects:
             if ob.type != 'MESH': continue
             hx = ob.name.rsplit('_', 1)[-1]
             if hx not in byhex: continue
             nm = byhex[hx]
-            if nm not in imgs: imgs[nm] = bpy.data.images.load(os.path.join(texdir[0], nm + '.png'))
+            if nm not in imgs:
+                pth = next((os.path.join(d, nm + '.png') for d in dirs if os.path.exists(os.path.join(d, nm + '.png'))), None)
+                if pth is None: continue
+                imgs[nm] = bpy.data.images.load(pth)
             nt = ob.data.materials[0].node_tree
             tn = nt.nodes.new('ShaderNodeTexImage'); tn.image = imgs[nm]
             nt.links.new(tn.outputs['Color'], nt.nodes['Principled BSDF'].inputs['Base Color'])
@@ -743,6 +1504,10 @@ VIEWS = [
     ('office', (24, 22, 70), (-14, 18, 90), 18),
 ]
 
+if V2:
+    VIEWS = [v if v[0] != 'court' else ('court', (-30, 6.5, 22), (24, 9, -24), 18) for v in VIEWS]
+    VIEWS += [('stairtop', (44, 22, 30), (60, 12, -4), 18), ('exit', (-20, 6, 40), (30, 9, 40), 22)]
+
 def check_walls():
     """(--check-walls) does the kit's wall cover every hit wall? at each level's mid height, every 0.25 stud of a hit
     wall's footprint (minus the openings and windows) should be under some wall piece of the kit"""
@@ -751,11 +1516,14 @@ def check_walls():
     def grab(model, col, x0, y0, z0, x1, y1, z1, **kw):
         if kw.get('M') is None: got.append((min(x0, x1), min(y0, y1), min(z0, z1), max(x0, x1), max(y0, y1), max(z0, z1), model, col))
     K.B = grab
-    walls(); bulkhead_corners()
+    if V2: TRANSOMS[:] = transoms(); v2_walls()
+    else: walls()
+    bulkhead_corners()
     K.B = _B
     holes = []
     for (lv, ax, line, a0, a1, y0, y1) in L.GLASS: holes.append((lv, ax, line, a0, a1, y0, y1))
     for (lv, ax, line, a0, a1, y0, y1, out) in EXT_WIN: holes.append((lv, ax, line, a0, a1, y0, y1))
+    if V2: holes += list(TRANSOMS)
     bad = {}
     for w in L.WALLS:
         if w['mat'] == 'glass': continue
@@ -764,6 +1532,9 @@ def check_walls():
         n = 0
         xs = [x0 + 0.125 + 0.25 * i for i in range(int((x1 - x0) / 0.25))]
         zs = [z0 + 0.125 + 0.25 * i for i in range(int((z1 - z0) / 0.25))]
+        if V2:      # (v2's panels are recessed from the faces: check the wall's middle)
+            if x1 - x0 < z1 - z0: xs = [(x0 + x1) / 2]
+            else: zs = [(z0 + z1) / 2]
         for x in xs:
             for z in zs:
                 if any(h[0] == w['lv'] and h[5] <= y <= h[6] and ((h[1] == 'x' and abs(z - h[2]) < 2.2 and h[3] <= x <= h[4]) or (h[1] == 'z' and abs(x - h[2]) < 2.2 and h[3] <= z <= h[4])) for h in holes): continue
@@ -776,7 +1547,8 @@ def check_walls():
     print('WALL GAPS: %d spots' % len(bad))
     for k in sorted(bad)[:40]: print('   ', k, bad[k])
 
-lights()
+if V2: v2_plan(); v2_lights()
+else: lights()
 ext_windows()
 write_layout()
 if '--check-walls' in K.FLAGS:
@@ -786,13 +1558,41 @@ elif '--layout-only' in K.FLAGS:
 else:
     import bpy
     bpy.ops.wm.read_factory_settings(use_empty=True)        # (no default cube in the kit)
-    floors_and_ceilings(); walls(); bulkhead_corners(); copings(); openings_dress(); stairs_dress(); fences(); niches_dress(); grounds()
+    if V2: v2_build()
+    else: floors_and_ceilings(); walls(); bulkhead_corners(); copings(); openings_dress(); stairs_dress(); fences(); niches_dress(); grounds()
     if '--no-furniture' not in K.FLAGS:
         try:
             import school_props
+            if V2:      # (each look's furniture palette: v2A old oak, walnut and sage steel; v2B pale ash and charcoal steel)
+                for _k, _v in {'v2A': dict(WOOD='8c6c4e', WOOD_D='6a4c36', WOOD_L='bb9f7c', METAL='7d8a84', METAL_D='55605a', FABRIC='5e6f68',
+                            LEGT=0.4, NO_FLAG=True, PILLAR_GROW=1.0, LEAF='6b8a52', LEAF_D='5a7644',
+                            TRUNK=2.3, LIMB=1.5),
+                               'v2B': dict(WOOD='c2a986', WOOD_D='8a7559', WOOD_L='d2bf9f', METAL='6a7076', METAL_D='45494e',
+                                           STEEL='a9aeb2', FABRIC='5f6a72', LEGT=0.4, NO_FLAG=True, PILLAR_GROW=1.0,
+                                           LEAF='6b8a52', LEAF_D='5a7644', TRUNK=2.3, LIMB=1.5)}[VARIANT].items():
+                    setattr(school_props, _k, _v)
             school_props.furniture(K, L)
         except Exception as e:
             print('NO FURNITURE YET', repr(e))
+    # (20 Nov, v2: Roblox turns down a kit with a mesh over 20,000 triangles; v2's globes and housings put ~40k in one
+    #  mesh per floor and the upload came back "Unknown Error". Any (model, look) over 18,000 is split into more models)
+    #  (v2B still failed at 18,000 triangles of flat boxes, ~36,000 vertices; 10,000 passes)
+    SPLIT_AT = 10000
+    _big = []
+    for (mname, key), items in list(K.PIECES.items()):
+        tris = [sum(len(f.verts) - 2 for f in bm.faces) for bm, M in items]
+        if sum(tris) <= SPLIT_AT or mname.startswith('sc_flk'): continue
+        chunks, cur, n = [[]], 0, 0
+        for it, t in zip(items, tris):
+            if n + t > SPLIT_AT and chunks[-1]: chunks.append([]); n = 0
+            chunks[-1].append(it); n += t
+        del K.PIECES[(mname, key)]
+        for gi, ch in enumerate(chunks):
+            nm = mname if gi == 0 else mname + 'abcdefghijklmnopqrstuvwxyz'[gi]
+            if nm != mname and mname in MODEL_BASE: MODEL_BASE[nm] = MODEL_BASE[mname]
+            K.PIECES.setdefault((nm, key), []).extend(ch)
+        _big.append((mname, key, sum(tris), len(chunks)))
+    print('SPLIT (model, look, tris, parts):', _big)
     _tri = {}
     for (mname, key), items in K.PIECES.items():
         _tri[mname] = _tri.get(mname, 0) + sum(sum(len(f.verts) - 2 for f in bm.faces) for bm, M in items)

@@ -131,7 +131,9 @@ room('lounge', 'lounge', 'U', (32, 48, 64, 96), 'lounge', 'carpet')
 room('bookroom', 'upper', 'U', (40, -88, 64, -48), 'storage', 'lino', enclosed=True, name='Book Room')
 room('ue', 'upper', 'U', (40, -48, 64, 48), 'hall', 'lino')
 room('landing', 'lockers', 'U', (54, -20, 64, -10), 'landing', 'lino')         # the top of the main stairs, this side of its shutter
-room('stairhole', 'lockers', 'U', (54, -10, 64, 22), 'stairhole', floor=False) # glass to the ceiling round it
+room('stairhole', 'lockers', 'U', (54, -10, 64, 10), 'stairhole', floor=False) # glass to the ceiling round it
+# (20 Nov, the owner: "usually whene theres stairs the floor above is still there". The hole is only over the stairs'
+#  top two thirds now; the upper hall's floor runs on over the bottom third, 9.5 studs over the treads there)
 room('complab', 'complab', 'U', (64, -88, 140, -48), 'complab', 'carpet', enclosed=True)
 room('ucorr', 'complab', 'U', (64, -48, 160, -32), 'hall', 'lino')
 room('balcony', 'gym', 'U', (64, -32, 76, 56), 'balcony', 'gymwood')         # the gym's balcony: you walk up the bleachers, no door
@@ -537,6 +539,9 @@ MS_X0, MS_X1 = 54.0, 64.0
 ramp((59.0, 0.0, 22.0), (59.0, 16.0, -10.0), MS_X1 - MS_X0)
 for k in range(1, 17):            # (the steps' boxes under the ramp: nothing to walk into under the stairs)
     step(MS_X0, 0.0, 22 - 2.0 * k, MS_X1, k - 0.5, 22 - 2.0 * (k - 1), 'mainstair')
+# (20 Nov, v2: a solid parapet up the stairs' open side, stepping with the treads, 3.4 over each; it stops you too)
+for k in range(1, 17):
+    step(MS_X0 - 0.35, 0.0, 22 - 2.0 * k, MS_X0 + 0.35, k - 0.5 + 3.4, 22 - 2.0 * (k - 1), 'parapet')
 STAIRS.append(('main', MS_X0, -10.0, MS_X1, 22.0, 0.0, 16.0, 'north'))
 
 def tower(x0, x1, xm, zA, zB, f1, f2, name, door_side):
@@ -571,6 +576,10 @@ tower(140, 160, 150, (-58, -48), (-88, -74), (150, 160), (140, 150), 'east', 's'
 ramp((108.0, 0.0, 16.0), (76.0, 16.0, 16.0), 40.0, 'bleacher')
 for k in range(1, 17):
     step(108 - 2.0 * k, 0.0, -4, 108 - 2.0 * (k - 1), k - 0.5, 36, 'bleacher')
+# (20 Nov, v2: solid side walls up both sides of the bleachers, stepping with the rows, 3.2 over each)
+for k in range(1, 17):
+    for (za, zb) in ((-4.7, -4.0), (36.0, 36.7)):
+        step(108 - 2.0 * k, 0.0, za, 108 - 2.0 * (k - 1), k - 0.5 + 3.2, zb, 'parapet')
 STAIRS.append(('bleachers', 76, -4, 108, 36, 0.0, 16.0, 'west'))
 FENCES.append((75.6, 16.0, -32.0, 76.0, 19.5, -4.0)); FENCES.append((75.6, 16.0, 36.0, 76.0, 19.5, 56.0))   # the balcony's rail
 for z in (-26.0, -14.0, 42.0, 50.0): step(74.0, 0.0, z - 1.0, 76.0, 15.0, z + 1.0, 'post')                   # posts under it

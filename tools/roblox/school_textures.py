@@ -56,11 +56,42 @@ PIXELS = {
     'rubber': (512, 512), 'lockers': (512, 416),
 }
 
+# ---- the v2 set (20 Nov 2026, Jankfield High v2A / v2B; vault Hubs/Jankfield High v2 plan): subtle surfaces for the
+# chunky rebuild (the shape does the work; the picture only gives the surface life). Written with --v2.
+#   a_terrazzo   1024x1024  12 x 12   v2A halls: warm terrazzo, small soft chips, a faint brass divider every 6 studs
+#   a_plaster    512x512    8 x 8     v2A walls: warm off-white painted plaster, very soft trowel mottling (no lines)
+#   a_tile       512x512    8 x 8     v2A wainscot: deep muted sage-grey glazed tile 2 x 1, running bond, lighter grout
+#   a_brick      512x512    6 x 6     v2A outside/courtyard: older, darker, calmer brick 1.5 x 0.5, warm-grey mortar
+#   a_stone      512x512    8 x 8     v2A piers, pilasters, copings: pale warm limestone, faint 4 x 2 blocks
+#   a_hextile    512x512    4 x 4     v2A restroom floor: small pale warm-white hexagon mosaic, light grout
+#   b_polished   1024x1024  16 x 16   v2B halls: polished concrete, cloudy, fine pale aggregate, saw cuts every 8
+#   b_board      512x512    8 x 8     v2B walls and fins: board-formed concrete, faint 1-stud boards, tie holes 2 x 2
+#   b_felt       512x512    8 x 8     v2B wall panels: acoustic felt, one muted olive-grey, fine soft grain
+#   b_vinyl      1024x1024  16 x 16   v2B classrooms: sheet vinyl, muted cool blue-grey, fine speckle, no tiles
+#   b_porcelain  512x512    16 x 16   v2B restrooms: 4 x 4 stud porcelain tiles, light warm grey, faint veining
+#   b_whiteboard 1024x384   16 x 6    v2B classrooms: a whiteboard, faint ghost smudges only, aluminium frame (not tiled)
+#   b_ceiling    512x512    8 x 8     v2B ceiling coffers: smooth light cast concrete, faint form joints every 4 studs
+#   <blender python> tools/roblox/school_textures.py <out_dir> --v2
+TEX2 = {
+    'a_terrazzo': (12.0, 12.0), 'a_plaster': (8.0, 8.0), 'a_tile': (8.0, 8.0), 'a_brick': (6.0, 6.0),
+    'a_stone': (8.0, 8.0), 'a_hextile': (4.0, 4.0),
+    'b_polished': (16.0, 16.0), 'b_board': (8.0, 8.0), 'b_felt': (8.0, 8.0), 'b_vinyl': (16.0, 16.0),
+    'b_porcelain': (16.0, 16.0), 'b_whiteboard': (16.0, 6.0), 'b_ceiling': (8.0, 8.0),
+}
+PIXELS2 = {
+    'a_terrazzo': (1024, 1024), 'a_plaster': (512, 512), 'a_tile': (512, 512), 'a_brick': (512, 512),
+    'a_stone': (512, 512), 'a_hextile': (512, 512),
+    'b_polished': (1024, 1024), 'b_board': (512, 512), 'b_felt': (512, 512), 'b_vinyl': (1024, 1024),
+    'b_porcelain': (512, 512), 'b_whiteboard': (1024, 384), 'b_ceiling': (512, 512),
+}
+
 if __name__ == '__main__':
     import numpy as np
     from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-    OUT = sys.argv[1] if len(sys.argv) > 1 else 'out_school_tex'
+    _args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    V2 = '--v2' in sys.argv
+    OUT = _args[0] if _args else 'out_school_tex'
     os.makedirs(OUT, exist_ok=True)
 
     def hexrgb(h):
@@ -539,32 +570,268 @@ if __name__ == '__main__':
         rgb = np.where(gap[:, :, None], hexrgb('2b2f33'), rgb)
         return save('lockers', rgb)
 
-    pics = [lino(), cafetile(), terrazzo(), rtile_floor(), rtile_wall(), hallwall(), classwall(), block(), brick(),
-            gymwood(), woodfloor(), carpet(), ceiling(), concrete(), chalkboard(), pavers(), rubber(), lockers()]
-    names = list(TEX)
-    # ---- the contact sheet: each picture 2 x 2 tiled (seams show), its name and stud size under it
-    TH = 300
-    cells = []
-    for nm, im in zip(names, pics):
-        w, h = im.size
-        tile = Image.new('RGB', (w * 2, h * 2))
-        for i in (0, 1):
-            for j in (0, 1): tile.paste(im, (i * w, j * h))
-        s = TH / (h * 2)
-        tile = tile.resize((max(1, int(w * 2 * s)), TH), Image.LANCZOS)
-        cells.append((nm, tile))
-    try: F = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 17)
-    except Exception: F = ImageFont.load_default()
-    cols = 6
-    cells = [(nm, t.resize((int(t.size[0] * min(1.0, 420 / t.size[0])), int(TH * min(1.0, 420 / t.size[0]))), Image.LANCZOS)) for nm, t in cells]
-    cw = 440
-    rows = (len(cells) + cols - 1) // cols
-    sheet = Image.new('RGB', (cols * cw + 20, rows * (TH + 46) + 20), (30, 30, 34))
-    dr = ImageDraw.Draw(sheet)
-    for k, (nm, t) in enumerate(cells):
-        cx, cy = 20 + (k % cols) * cw, 20 + (k // cols) * (TH + 46)
-        sheet.paste(t, (cx, cy))
-        sw, sh = TEX[nm]
-        dr.text((cx, cy + TH + 6), '%s  (%g x %g studs, shown 2x2)' % (nm, sw, sh), font=F, fill=(230, 230, 230))
-    sheet.save(os.path.join(OUT, 'sheet.jpg'), quality=90)
-    print('SHEET', os.path.join(OUT, 'sheet.jpg'), sheet.size)
+    # ================================================================ the v2 set (20 Nov 2026)
+    def a_terrazzo():
+        g = np.random.default_rng(2101)
+        H = W = 1024
+        base = hexrgb('cbbca4')
+        shade = 1 + 0.022 * pnoise(H, W, 70, g=g) + 0.008 * pnoise(H, W, 6, g=g)
+        rgb = tint(shade, base)
+        img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), 'RGB')
+        dr = ImageDraw.Draw(img)
+        cols = [('a79c88', 30), ('b9ad97', 34), ('8f8676', 10), ('d6cbb6', 20), ('a8875c', 6), ('8a8a74', 4)]
+        pool = [c for c, n in cols for _ in range(n)]
+        for _ in range(2600):
+            cx, cy = g.uniform(0, W), g.uniform(0, H)
+            r = g.uniform(1.6, 4.6) if g.uniform() < 0.88 else g.uniform(4.6, 7.0)
+            c = tuple(int(v) for v in hexrgb(pool[g.integers(len(pool))]))
+            n = int(g.integers(5, 8))
+            ang0 = g.uniform(0, 2 * math.pi)
+            pts = [(r * g.uniform(0.6, 1.15) * math.cos(ang0 + 2 * math.pi * k / n), r * g.uniform(0.6, 1.15) * math.sin(ang0 + 2 * math.pi * k / n)) for k in range(n)]
+            for ox in (-W, 0, W):
+                for oy in (-H, 0, H):
+                    if -10 < cx + ox < W + 10 and -10 < cy + oy < H + 10:
+                        dr.polygon([(cx + ox + px, cy + oy + py) for (px, py) in pts], fill=c)
+        a = np.asarray(img).astype(np.float64)
+        for k in range(3): a[:, :, k] = 0.55 * a[:, :, k] + 0.45 * pblur(a[:, :, k], 1.0)     # (soft: polished)
+        y, x = coords(H, W)
+        dmin = np.minimum(np.abs(((x + 256) % 512) - 256), np.abs(((y + 256) % 512) - 256))
+        strip = 1 - smooth(1.2, 2.4, dmin)
+        a = a * (1 - 0.45 * strip[:, :, None]) + hexrgb('a68d5c') * (0.45 * strip[:, :, None])
+        return save('a_terrazzo', a)
+
+    def a_plaster():
+        g = np.random.default_rng(2102)
+        H = W = 512
+        base = hexrgb('e0d6c3')
+        shade = 1 + 0.016 * pnoise(H, W, 34, g=g) + 0.01 * pnoise(H, W, 9, g=g) + 0.005 * pnoise(H, W, 1.2, g=g)
+        # trowel mottling: soft overlapping patches a touch lighter / darker (isotropic: no strokes)
+        sw = pnoise(H, W, 18, g=g)
+        shade += 0.012 * np.tanh(sw * 3)
+        return save('a_plaster', tint(shade, base))
+
+    def a_tile():
+        g = np.random.default_rng(2103)
+        H = W = 512
+        PX = 64.0
+        row, col, lx, ly, d = grid(H, W, 2 * PX, PX, bond=0.5)
+        var = cellrand(g, row, col, 8, 4)
+        base = hexrgb('7b887d')
+        shade = 1 + 0.012 * var + 0.008 * pnoise(H, W, 2, g=g) + 0.01 * pnoise(H, W, 40, g=g)
+        # the glaze: a soft sheen, lighter toward each tile's upper middle, a pillowed edge
+        shade += 0.025 * smooth(0, 10, d) * (1 - ly / PX) * 0.8
+        shade -= 0.03 * (1 - smooth(2, 7, d))
+        rgb = tint(shade, base)
+        gw = 0.08 * PX
+        gm = 1 - smooth(gw / 2 - 0.5, gw / 2 + 0.9, d)
+        grout = tint(1 + 0.02 * pnoise(H, W, 2, g=g), hexrgb('b4b5a8'))
+        return save('a_tile', rgb * (1 - gm[:, :, None]) + grout * gm[:, :, None])
+
+    def a_brick():
+        g = np.random.default_rng(2104)
+        H = W = 512
+        PX = 512 / 6.0
+        bw, bh = 1.5 * PX, 0.5 * PX
+        row, col, lx, ly, d = grid(H, W, bw, bh, bond=0.5)
+        var = cellrand(g, row, col, 12, 4)
+        var2 = cellrand(g, row + 5, col + 2, 12, 4)
+        base = hexrgb('6f4d40')
+        shade = 1 + 0.03 * var + 0.01 * pnoise(H, W, 1.0, g=g) + 0.02 * pnoise(H, W, 7, g=g) + 0.02 * pnoise(H, W, 60, g=g)
+        rgb = tint(shade, base)
+        rgb[:, :, 0] *= 1 + 0.012 * var2
+        rgb[:, :, 2] *= 1 - 0.015 * var2
+        rgb *= (1 + 0.035 * smooth(0, 3, ly) * (1 - smooth(3, 6, ly)) - 0.045 * (1 - smooth(0, 4, bh - ly)))[:, :, None]
+        mw = 0.07 * PX
+        mm = 1 - smooth(mw / 2 - 0.6, mw / 2 + 0.9, d)
+        mortar = tint(1 + 0.035 * pnoise(H, W, 1.5, g=g), hexrgb('958b7b')) * 0.9
+        return save('a_brick', rgb * (1 - mm[:, :, None]) + mortar * mm[:, :, None])
+
+    def a_stone():
+        g = np.random.default_rng(2105)
+        H = W = 512
+        PX = 64.0
+        row, col, lx, ly, d = grid(H, W, 4 * PX, 2 * PX, bond=0.5)
+        var = cellrand(g, row, col, 4, 2)
+        base = hexrgb('cdc4b2')
+        shade = 1 + 0.012 * var + 0.025 * pnoise(H, W, 40, g=g) + 0.012 * pnoise(H, W, 8, g=g) + 0.006 * pnoise(H, W, 1.0, g=g)
+        rgb = tint(shade, base)
+        jm = 1 - smooth(0.4, 1.4, d)
+        return save('a_stone', rgb * (1 - 0.1 * jm[:, :, None]))
+
+    def a_hextile():
+        g = np.random.default_rng(2106)
+        H = W = 512
+        cw, rs = 64.0, 51.2                       # (8 columns, 10 rows: the lattice repeats on the picture's edges)
+        sy = (cw / math.sqrt(3)) / (rs / 1.5)     # (rows a hair squashed so a whole number fit: about 8 %)
+        y, x = coords(H, W)
+        j0 = np.floor(y / rs).astype(int)
+        best = np.full((H, W), 1e9); second = np.full((H, W), 1e9); bi = np.zeros((H, W), int); bj = np.zeros((H, W), int)
+        for dj in (-1, 0, 1, 2):
+            j = j0 + dj
+            cy = j * rs
+            off = (np.mod(j, 2)) * cw / 2
+            i0 = np.floor((x - off) / cw).astype(int)
+            for di in (-1, 0, 1):
+                i = i0 + di
+                cx = i * cw + off
+                dd = np.sqrt((x - cx) ** 2 + ((y - cy) * sy) ** 2)
+                nb = dd < best
+                second = np.where(nb, best, np.minimum(second, dd))
+                bi = np.where(nb, i, bi); bj = np.where(nb, j, bj)
+                best = np.where(nb, dd, best)
+        edge = (second - best) / 2.0
+        var = cellrand(g, bj, bi, 10, 8)
+        base = hexrgb('e3ddd0')
+        shade = 1 + 0.008 * var + 0.006 * pnoise(H, W, 1.5, g=g) + 0.01 * pnoise(H, W, 40, g=g)
+        shade += 0.012 * smooth(0, 6, edge)
+        rgb = tint(shade, base)
+        gm = 1 - smooth(1.0, 2.2, edge)
+        grout = hexrgb('c9c2b4')
+        return save('a_hextile', rgb * (1 - gm[:, :, None]) + grout * gm[:, :, None])
+
+    def b_polished():
+        g = np.random.default_rng(2201)
+        H = W = 1024
+        base = hexrgb('a7a8a5')
+        shade = 1 + 0.045 * pnoise(H, W, 90, g=g) + 0.022 * pnoise(H, W, 22, g=g) + 0.008 * pnoise(H, W, 2, g=g)
+        rgb = tint(shade, base)
+        agg = pnoise(H, W, 0.7, g=g)
+        rgb = rgb * (1 + 0.07 * np.clip((agg - 0.5) * 3, 0, 1))[:, :, None]
+        y, x = coords(H, W)
+        dmin = np.minimum(np.abs(((x + 256) % 512) - 256), np.abs(((y + 256) % 512) - 256))
+        j = 1 - smooth(0.7, 1.8, dmin)
+        return save('b_polished', rgb * (1 - 0.12 * j[:, :, None]))
+
+    def b_board():
+        g = np.random.default_rng(2202)
+        H = W = 512
+        PX = 64.0
+        y, x = coords(H, W)
+        base = hexrgb('b3b6b4')
+        row = np.floor(y / PX).astype(int)
+        rv = g.standard_normal(8)[np.mod(row, 8)]
+        shade = 1 + 0.004 * rv + 0.02 * pnoise(H, W, 32, g=g) + 0.01 * pnoise(H, W, 6, g=g) + 0.006 * pnoise(H, W, 1.0, g=g)
+        ly = y - row * PX
+        seam = 1 - smooth(0.5, 1.6, np.minimum(ly, PX - ly))
+        shade -= 0.014 * seam
+        # tie holes on a 2 x 2 stud grid, offset half a cell: soft small dimples
+        tx = np.abs(((x + 64) % 128) - 64); ty = np.abs(((y + 64) % 128) - 64)
+        tr = np.sqrt(tx ** 2 + ty ** 2)
+        shade -= 0.1 * (1 - smooth(2.5, 4.5, tr))
+        shade += 0.03 * (1 - smooth(4.5, 6.5, tr)) * smooth(3.5, 4.5, tr)
+        blot = np.clip(pnoise(H, W, 20, g=g) - 0.45, 0, 1)
+        shade -= 0.05 * blot
+        return save('b_board', tint(shade, base))
+
+    def b_felt():
+        g = np.random.default_rng(2203)
+        H = W = 512
+        base = hexrgb('6e725f')
+        shade = 1 + 0.018 * pnoise(H, W, 0.7, aniso=(1.0, 2.2), g=g) + 0.012 * pnoise(H, W, 0.7, aniso=(2.2, 1.0), g=g)
+        shade += 0.012 * pnoise(H, W, 5, g=g) + 0.012 * pnoise(H, W, 50, g=g)
+        return save('b_felt', tint(shade, base))
+
+    def b_vinyl():
+        g = np.random.default_rng(2204)
+        H = W = 1024
+        base = hexrgb('8b939b')
+        shade = 1 + 0.018 * pnoise(H, W, 70, g=g) + 0.008 * pnoise(H, W, 8, g=g)
+        f1, f2 = pnoise(H, W, 0.7, g=g), pnoise(H, W, 0.7, g=g)
+        shade += 0.05 * np.clip((f1 - 0.55) * 3, 0, 1) - 0.045 * np.clip((f2 - 0.55) * 3, 0, 1)
+        return save('b_vinyl', tint(shade, base))
+
+    def b_porcelain():
+        g = np.random.default_rng(2205)
+        H = W = 512
+        T = 128.0
+        row, col, lx, ly, d = grid(H, W, T, T)
+        var = cellrand(g, row, col, 4, 4)
+        base = hexrgb('c5c0b6')
+        shade = 1 + 0.01 * var + 0.012 * pnoise(H, W, 24, g=g) + 0.005 * pnoise(H, W, 1.5, g=g)
+        rgb = tint(shade, base)
+        pls = []
+        for _ in range(9):
+            x0, y0 = g.uniform(0, W), g.uniform(0, H)
+            ang = g.uniform(0, 2 * math.pi)
+            pl = [(x0, y0)]
+            ang = g.uniform(-0.5, 0.5) + (0 if g.uniform() < 0.5 else math.pi)       # (mostly one drift direction)
+            for _ in range(int(g.integers(10, 18))):
+                ang += g.normal(0, 0.08)
+                x0 += 12 * math.cos(ang); y0 += 12 * math.sin(ang)
+                pl.append((x0, y0))
+            pls.append(pl)
+        vein = pblur(wrapped_lines(W, H, pls, 2, 255), 3.0)
+        rgb *= (1 - 0.035 * np.clip(vein * 2.0, 0, 1))[:, :, None]
+        gm = 1 - smooth(0.5, 1.4, d)
+        return save('b_porcelain', rgb * (1 - gm[:, :, None]) + hexrgb('a9a499') * gm[:, :, None])
+
+    def b_whiteboard():
+        g = np.random.default_rng(2206)
+        H, W = 384, 1024
+        base = hexrgb('ecefed')
+        shade = 1 + 0.006 * pnoise(H, W, 1.0, g=g) + 0.008 * pnoise(H, W, 60, g=g)
+        rgb = tint(shade, base)
+        # ghost smudges: a few very soft, wide blobs (no strokes, nothing shaped)
+        img = Image.new('L', (W, H), 0)
+        dr = ImageDraw.Draw(img)
+        for _ in range(7):
+            cx, cy = g.uniform(100, W - 100), g.uniform(70, H - 70)
+            rx, ry = g.uniform(60, 160), g.uniform(25, 60)
+            dr.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=int(g.uniform(70, 140)))
+        sm = np.asarray(img.filter(ImageFilter.GaussianBlur(28))).astype(np.float64) / 255.0
+        ghost = hexrgb('c9d0d6')
+        rgb = rgb * (1 - 0.22 * sm[:, :, None]) + ghost * (0.22 * sm[:, :, None])
+        # the aluminium frame round the edge
+        y, x = coords(H, W)
+        dd = np.minimum(np.minimum(x, W - x), np.minimum(y, H - y))
+        fr = dd < 14
+        al = tint(1 + 0.02 * pnoise(H, W, 1.0, g=g) + 0.04 * (1 - smooth(10, 14, dd)), hexrgb('b7bbbe'))
+        rgb = np.where(fr[:, :, None], al, rgb)
+        rgb = np.where(((dd >= 14) & (dd < 16))[:, :, None], rgb * 0.9, rgb)
+        return save('b_whiteboard', rgb)
+
+    def b_ceiling():
+        g = np.random.default_rng(2207)
+        H = W = 512
+        base = hexrgb('c8c9c5')
+        shade = 1 + 0.02 * pnoise(H, W, 36, g=g) + 0.01 * pnoise(H, W, 7, g=g) + 0.005 * pnoise(H, W, 1.0, g=g)
+        y, x = coords(H, W)
+        dmin = np.minimum(np.abs(((x + 128) % 256) - 128), np.abs(((y + 128) % 256) - 128))
+        shade -= 0.05 * (1 - smooth(0.5, 1.5, dmin))
+        return save('b_ceiling', tint(shade, base))
+
+    def contact(names, pics, texd, out_name):
+        TH = 300
+        cells = []
+        for nm, im in zip(names, pics):
+            w, h = im.size
+            tile = Image.new('RGB', (w * 2, h * 2))
+            for i in (0, 1):
+                for j in (0, 1): tile.paste(im, (i * w, j * h))
+            s_ = TH / (h * 2)
+            tile = tile.resize((max(1, int(w * 2 * s_)), TH), Image.LANCZOS)
+            cells.append((nm, tile))
+        try: F = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 17)
+        except Exception: F = ImageFont.load_default()
+        cols = 6
+        cells = [(nm, t.resize((int(t.size[0] * min(1.0, 420 / t.size[0])), int(TH * min(1.0, 420 / t.size[0]))), Image.LANCZOS)) for nm, t in cells]
+        cw = 440
+        rows = (len(cells) + cols - 1) // cols
+        sheet = Image.new('RGB', (cols * cw + 20, rows * (TH + 46) + 20), (30, 30, 34))
+        dr = ImageDraw.Draw(sheet)
+        for k, (nm, t) in enumerate(cells):
+            cx, cy = 20 + (k % cols) * cw, 20 + (k // cols) * (TH + 46)
+            sheet.paste(t, (cx, cy))
+            sw, sh = texd[nm]
+            dr.text((cx, cy + TH + 6), '%s  (%g x %g studs, shown 2x2)' % (nm, sw, sh), font=F, fill=(230, 230, 230))
+        sheet.save(os.path.join(OUT, out_name), quality=90)
+        print('SHEET', os.path.join(OUT, out_name), sheet.size)
+
+    if V2:
+        pics2 = [a_terrazzo(), a_plaster(), a_tile(), a_brick(), a_stone(), a_hextile(),
+                 b_polished(), b_board(), b_felt(), b_vinyl(), b_porcelain(), b_whiteboard(), b_ceiling()]
+        contact(list(TEX2), pics2, TEX2, 'sheet.jpg')
+    else:
+        pics = [lino(), cafetile(), terrazzo(), rtile_floor(), rtile_wall(), hallwall(), classwall(), block(), brick(),
+                gymwood(), woodfloor(), carpet(), ceiling(), concrete(), chalkboard(), pavers(), rubber(), lockers()]
+        contact(list(TEX), pics, TEX, 'sheet.jpg')

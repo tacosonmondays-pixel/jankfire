@@ -29,7 +29,31 @@ local W = {}
 W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
 	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 105919865840853,
 	Backrooms = 114408994542661, Forest = 82632705219845, ArcticCabin = 112062417043410,
-	Skatepark = 119318569961702, Station = 95570686035667, JankfieldHigh = 131390597697986 } :: { [string]: number }
+	Skatepark = 119318569961702, Station = 95570686035667, JankfieldHigh = 131390597697986,
+	JankfieldHighV2A = 78888284382028, JankfieldHighV2B = 82000519109073 } :: { [string]: number }
+
+-- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
+-- version of Jankfield High is tagged at a time; the others stay built as spares (JankZombies start can still name one
+-- for a test). W.schoolVariant("v1" | "v2A" | "v2B") makes that one live; Enabled stays false on all (not PvP maps)
+W.SCHOOLS = { v1 = "JankfieldHigh", v2A = "JankfieldHighV2A", v2B = "JankfieldHighV2B" }
+function W.schoolVariant(which: string): string
+	local live = W.SCHOOLS[which]
+	if not live then return "unknown school version " .. tostring(which) .. " (v1, v2A or v2B)" end
+	local map = workspace:FindFirstChild("Map")
+	local out = {}
+	for k, name in W.SCHOOLS do
+		local m = map and map:FindFirstChild(name)
+		if m then
+			m:SetAttribute("ZombiesMap", name == live)
+			m:SetAttribute("Enabled", false)
+			table.insert(out, k .. (if name == live then " LIVE" else " spare"))
+		else
+			table.insert(out, k .. " not built")
+		end
+	end
+	table.sort(out)
+	return "zombies school: " .. table.concat(out, ", ")
+end
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
@@ -326,7 +350,7 @@ local function zmFolder(root: Instance, L: any, O: Vector3): string
 		local mn, mx = v(d.min), v(d.max)
 		local s = Instance.new("Part"); s.Name = "Shutter"
 		s.Anchored = true; s.CanCollide = true; s.CanQuery = true; s.CanTouch = true; s.CastShadow = true
-		s.Material = Enum.Material.Metal; s.Color = SHUTTER
+		s.Material = Enum.Material.SmoothPlastic; s.Color = SHUTTER -- (matte: Metal read as crumpled leather, 20 Nov)
 		s.TopSurface = Enum.SurfaceType.Smooth; s.BottomSurface = Enum.SurfaceType.Smooth
 		s.Size = mx - mn; s.CFrame = CF((mn + mx) / 2)
 		s:SetAttribute("Mat", "metal")
@@ -336,7 +360,7 @@ local function zmFolder(root: Instance, L: any, O: Vector3): string
 		local hs = if thin == "x" then V3(2.4, 1.4, s.Size.Z + 0.8) else V3(s.Size.X + 0.8, 1.4, 2.4)
 		local h = Instance.new("Part"); h.Name = "Housing"
 		h.Anchored = true; h.CanCollide = false; h.CanQuery = false; h.CanTouch = false
-		h.Material = Enum.Material.Metal; h.Color = HOUSING
+		h.Material = Enum.Material.SmoothPlastic; h.Color = HOUSING
 		h.Size = hs; h.CFrame = CF(V3(s.Position.X, mx.Y + 0.7, s.Position.Z))
 		h.Parent = m
 		m.PrimaryPart = s
@@ -452,7 +476,7 @@ function W.build(name: string): string
 		nm += 1
 		if nm % 6 == 0 then task.wait() end
 	end
-	for _, l in L.lights do
+	for li_, l in L.lights do
 		local pos = O + V3(l[2], l[3], l[4])
 		local dir = V3(l[5], l[6], l[7])
 		local a = marker(lights, "Light", CF(pos), V3(0.4, 0.4, 0.4))
@@ -461,6 +485,9 @@ function W.build(name: string): string
 		li.Brightness = l[8]; (li :: any).Range = l[9]; li.Color = hex(l[11]); li.Shadows = false
 		if l[1] == "spot" then (li :: any).Angle = l[10]; (li :: any).Face = Enum.NormalId.Front end
 		li.Parent = a
+		-- (a layout's lightGroups: this light flickers with its group, SchoolLife.client; 20 Nov, Jankfield High v2)
+		local fg = L.lightGroups and L.lightGroups[li_]
+		if fg then a:SetAttribute("FlickGroup", fg) end
 	end
 	-- the backdrop: look-only boxes too big or too far for the kit (Roblox shrinks an upload past 2,048 studs), as plain
 	-- Parts, each cut into tiles under 2,000 studs a side

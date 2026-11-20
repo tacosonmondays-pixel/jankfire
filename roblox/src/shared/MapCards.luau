@@ -21,6 +21,8 @@ MapCards.THUMBS = {
 	Skatepark = "rbxassetid://92147472353603", -- SKATEPARK
 	Station = "rbxassetid://92722876561811", -- STATION
 	JankfieldHigh = "rbxassetid://139658727063957", -- JANKFIELD HIGH (the zombies school: its courtyard at night, card_render.py)
+	JankfieldHighV2A = "rbxassetid://79637765738576", -- JANKFIELD HIGH v2A (old: the locker hall and the main stairs)
+	JankfieldHighV2B = "rbxassetid://121043658001469", -- JANKFIELD HIGH v2B (new: the same view)
 } :: { [string]: string }
 
 -- a map vote's three (or fewer) cards out of `pool`, never `last` while there's anything else. pure but for the dice

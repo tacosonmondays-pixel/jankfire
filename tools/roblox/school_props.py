@@ -23,6 +23,10 @@ DARK, BLACK, SLATE = '3a3d42', '26282b', '2d3133'
 CREAM, WHITE, PALE = 'e6e0d2', 'eeece6', 'd5d2ca'
 FABRIC, BRASS = '6f7c82', 'b39a62'
 LEAF, LEAF_D, SOIL, POT = '5d7a48', '4a6339', '5a4a3c', '9c6b52'
+# (knobs the v2 builds turn: desk legs at least a third of a stud thick, no classroom pennant, the lobby's posts bigger
+#  than their hit boxes; school_models.py sets them per variant)
+LEGT, NO_FLAG, PILLAR_GROW = 0.2, False, 0.0
+TRUNK, LIMB = 1.5, 0.9         # (the courtyard tree's trunk radius and limb thickness)
 MIRROR, SCREEN = 'b9c7cc', '1f2326'
 BOOKS = ('8a4f4a', '3f5470', '6b6e45', 'a8874a', '7c7f84', 'c9bfa6', '5e4a5e', '4f6b66')
 FLOORS = (-16.0, 0.0, 16.0, 32.0)
@@ -103,9 +107,9 @@ def m_desk(f, it):
     """a student desk with its seat attached: the desktop in front (toward the board), the seat behind"""
     W, D, H = f.W, f.D, f.H
     f.box(WOOD_L, -W / 2, H - 0.18, D / 2 - 1.45, W / 2, H, D / 2, bev=0.08)                 # the top
-    f.box(METAL_D, -W / 2 + 0.25, -0.05, -D / 2 + 0.25, -W / 2 + 0.45, H - 0.15, D / 2 - 0.25, bev=0)  # side frame (a slab of legs)
-    f.box(METAL_D, W / 2 - 0.45, -0.05, -D / 2 + 0.25, W / 2 - 0.25, 0.25, D / 2 - 0.25, bev=0)      # the foot rail
-    f.box(METAL_D, W / 2 - 0.45, -0.05, D / 2 - 0.5, W / 2 - 0.25, H - 0.15, D / 2 - 0.3, bev=0)     # the front leg
+    f.box(METAL_D, -W / 2 + 0.25, -0.05, -D / 2 + 0.25, -W / 2 + 0.25 + LEGT, H - 0.15, D / 2 - 0.25, bev=0)  # side frame (a slab of legs)
+    f.box(METAL_D, W / 2 - 0.25 - LEGT, -0.05, -D / 2 + 0.25, W / 2 - 0.25, 0.25, D / 2 - 0.25, bev=0)      # the foot rail
+    f.box(METAL_D, W / 2 - 0.25 - LEGT, -0.05, D / 2 - 0.3 - LEGT, W / 2 - 0.25, H - 0.15, D / 2 - 0.3, bev=0)     # the front leg
     f.box(f_acc(f), -W / 2 + 0.35, 1.35, -D / 2, W / 2 - 0.35, 1.55, -D / 2 + 1.1, bev=0.08)         # the seat
     f.box(f_acc(f), -W / 2 + 0.45, 1.55, -D / 2, W / 2 - 0.45, H, -D / 2 + 0.18, bev=0.06)           # the back
     f.box(METAL_D, -W / 2 + 0.6, 0.6, D / 2 - 1.3, W / 2 - 0.6, 0.72, D / 2 - 0.3, bev=0)            # the book rack under
@@ -188,6 +192,7 @@ def m_cubbies(f, it):
 
 def m_flag(f, it):
     """a classroom pennant on a short pole (plain: no country, no marks)"""
+    if NO_FLAG: return
     f.cyl(METAL_D, 0, -0.05, 0, 0.35, 0.3, segs=8)
     f.cyl(STEEL, 0, 0.2, 0, 0.07, f.H - 0.2, segs=6, bev=0)
     f.sph(BRASS, 0, f.H + 0.05, 0, 0.16, segs=6, rings=4)
@@ -258,7 +263,7 @@ def m_reception(f, it):
 
 
 def m_pillar(f, it):
-    W, D, H = f.W, f.D, f.H
+    W, D, H = f.W + PILLAR_GROW, f.D + PILLAR_GROW, f.H
     x0, z0 = f.P(-W / 2 + 0.25, -D / 2 + 0.25)
     x1, z1 = f.P(W / 2 - 0.25, D / 2 - 0.25)
     f.K.chamfer(f.m, CREAM, min(x0, x1), f.y + 0.6, min(z0, z1), max(x0, x1), f.y + H - 0.6, max(z0, z1), ch=0.4)
@@ -521,9 +526,9 @@ def m_tree(f, it):
     f.cyl(L.TEXKEY['brick'], 0, -0.05, 0, r, H + 0.05, segs=28, bev=0.12)
     f.cyl(PALE, 0, H - 0.05, 0, r + 0.15, 0.3, segs=28, bev=0.1)                                # the coping
     f.cyl(SOIL, 0, H - 0.1, 0, r - 0.6, 0.25, segs=24, bev=0)
-    f.cyl('6a5a48', 0, H, 0, 1.5, 12.0, segs=12, bev=0.3, r2=1.0)                              # the trunk
+    f.cyl('6a5a48', 0, H, 0, TRUNK, 12.0, segs=12, bev=0.3, r2=TRUNK * 0.67)                   # the trunk
     for (a, h, ln) in ((0.3, 10.0, 6.0), (2.4, 11.5, 5.5), (4.3, 9.5, 6.5)):
-        f.rbox('6a5a48', math.sin(a) * ln * 0.45, h + 2.0, math.cos(a) * ln * 0.45, 0.9, 0.9, ln, yaw=a, pitch=-0.6, bev=0.2)
+        f.rbox('6a5a48', math.sin(a) * ln * 0.45, h + 2.0, math.cos(a) * ln * 0.45, LIMB, LIMB, ln, yaw=a, pitch=-0.6, bev=0.2)
     for (u, v, w, rr) in ((0, 22, 0, 8.0), (5, 19.5, 2, 5.5), (-5, 20, -2, 5.8), (2, 25.5, -3, 5.0), (-2.5, 18.5, 4.5, 5.2), (3, 18.5, -5, 5.0)):
         f.blob(LEAF if rr > 5.4 else LEAF_D, u, v, w, rr, sy=0.72, sub=2)
     for k in range(6):                                                                           # shrubs in the planter

@@ -428,6 +428,48 @@ H.looks.school = {
 } :: Look
 H.plainSky.school = true
 H.byArena.JankfieldHigh = "school"
+-- JANKFIELD HIGH v2A / v2B (20 Nov 2026; school_models.py --variant): the same school rebuilt chunky, darker. The owner:
+-- "make it a little darker, maybe the ceiling lights flicker". A cold moon outside, a low ambient floor (never black where
+-- you play), denser haze; the light comes from every other ceiling fitting (pools and shadow) and SchoolLife.client
+-- flickers a few. v2A (old: brick, terrazzo, timber, globes) a touch warm; v2B (new: concrete, felt, troughs) a touch cool.
+-- (round 2: the ambient a third lower and neutral; the judges saw the shadows go violet and an even blue fill)
+H.looks.school_v2a = {
+	Lighting = {
+		Ambient = Color3.fromRGB(64, 61, 58), OutdoorAmbient = Color3.fromRGB(54, 57, 70), Brightness = 0.55,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.2,
+		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
+		FogColor = Color3.fromRGB(26, 28, 40), FogStart = 120, FogEnd = 700,
+	},
+	Atmosphere = { Density = 0.36, Offset = 0.04, Haze = 1.6, Glare = 0, Color = Color3.fromRGB(52, 56, 76), Decay = Color3.fromRGB(26, 28, 40) },
+	Bloom = { Intensity = 0.4, Size = 24, Threshold = 1.6 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.1, TintColor = Color3.fromRGB(252, 246, 236) },
+	SunRays = { Intensity = 0 },
+} :: Look
+H.plainSky.school_v2a = true
+H.byArena.JankfieldHighV2A = "school_v2a"
+H.looks.school_v2b = {
+	Lighting = {
+		Ambient = Color3.fromRGB(62, 63, 66), OutdoorAmbient = Color3.fromRGB(52, 57, 72), Brightness = 0.55,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.25,
+		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
+		FogColor = Color3.fromRGB(24, 28, 40), FogStart = 120, FogEnd = 700,
+	},
+	Atmosphere = { Density = 0.36, Offset = 0.04, Haze = 1.6, Glare = 0, Color = Color3.fromRGB(50, 56, 78), Decay = Color3.fromRGB(24, 28, 40) },
+	Bloom = { Intensity = 0.4, Size = 24, Threshold = 1.6 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.12, TintColor = Color3.fromRGB(246, 248, 252) },
+	SunRays = { Intensity = 0 },
+} :: Look
+H.plainSky.school_v2b = true
+H.byArena.JankfieldHighV2B = "school_v2b"
+
+-- THE HOTEL (studio-tools/HubHotel.luau, its look zone): an interior lit by its chandeliers and coffer lamps, so the
+-- ambient a step lower than the hub's and warm, the bloom a little readier for the lamps (judge round 1)
+H.looks.hotel = with(HUB, {
+	Lighting = { Ambient = Color3.fromRGB(92, 84, 76), OutdoorAmbient = Color3.fromRGB(92, 84, 76), ExposureCompensation = 0.05 },
+	Atmosphere = { Density = 0.06, Color = Color3.fromRGB(60, 50, 42), Decay = Color3.fromRGB(28, 22, 18) },
+	Bloom = { Intensity = 0.45, Size = 22, Threshold = 1.7 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.16, Saturation = 0.06, TintColor = Color3.fromRGB(255, 238, 220) },
+})
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)
