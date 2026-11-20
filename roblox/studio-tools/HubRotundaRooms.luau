@@ -27,10 +27,24 @@ return function(B, R)
 		for _, s in { -1, 1 } do B.box(F, S, name .. "HallWall", s * hw, s * (hw + 3.2), 0, h + 1, D0 - 0.2, d1 - 0.1, wall, wallMat) end
 		B.box(F, S, name .. "HallLid", -hw - 3.15, hw + 3.15, h, 12.6, D0 - 0.15, d1 - 2, lid, lidMat) -- (meets the room's wall instead of running into it; inside the walls' sides)
 	end
+	-- (the ring layout, R.RING: the round hall is bigger and its middle further north, so a hall from the old round room's
+	-- wall would start inside it. this one starts in the new hall's wall: each wall where its own line crosses it, the
+	-- floor and the lid in two halves the same way. b: the old side's bearing the hall runs on)
+	local function ringHall(F, b, name, d1, hw, h, wall, floor, lid)
+		local K = R.RING
+		local sb, cb = math.sin(math.rad(b)), math.cos(math.rad(b))
+		local function at(x, r) return K.C * cb + math.sqrt(math.max(K.C * K.C * cb * cb - x * x - 2 * x * K.C * sb - K.C * K.C + r * r, 0)) end
+		for _, s in { -1, 1 } do
+			B.box(F, S, name .. "HallWall", s * hw, s * (hw + 3.2), 0, h + 1, at(s * (hw + 1.6), K.R + K.WT / 2), d1 - 0.1, wall)
+			local i0, i1 = at(0, K.R), at(s * (hw + 3.2), K.R)
+			B.box(F, S, name .. "HallFloor", 0, s * (hw + 3.2), -2, -0.05, math.min(i0, i1) - 0.5, d1 - 2, floor)
+			B.box(F, S, name .. "HallLid", 0, s * (hw + 3.15), h, 12.6, math.max(i0, i1) + 0.1, d1 - 2, lid)
+		end
+	end
 	-- a room: floor, lid, four walls, the near wall left open for its hall (hw wide, hh high); far = a doorway in the far
 	-- wall { half its width, its height }
-	local function room(F, name, x0, x1, d0, d1, h, hw, hh, wall, floor, lid, wallMat, floorMat, far)
-		B.box(F, S, name .. "Floor", x0 - 2, x1 + 2, -2, -0.02, d0 - 2, d1 + 2, floor, floorMat)
+	local function room(F, name, x0, x1, d0, d1, h, hw, hh, wall, floor, lid, wallMat, floorMat, far, ftop)
+		B.box(F, S, name .. "Floor", x0 - 2, x1 + 2, -2, ftop or -0.02, d0 - 2, d1 + 2, floor, floorMat)
 		B.box(F, S, name .. "Lid", x0 - 2, x1 + 2, h, h + 1, d0 - 2, d1 + 2, lid)
 		if far then
 			B.box(F, S, name .. "Wall", x0 - 2, -far[1], 0, h, d1, d1 + 2, wall, wallMat)
@@ -1047,7 +1061,7 @@ return function(B, R)
 	-- boxing ring and the backwall decor are off center from the entrance ... maybe make it a bit bigger"); lockers and
 	-- benches with room to walk ("too close together and looks awkward"); clear aisles either side of the ring; no floor
 	-- lines)
-	if R.LAYOUT == "mirror" then
+	if R.LAYOUT ~= "lifts" then
 		-- THE GYM in the owner's own layout (19 Nov 2026, the owner's sketch: "Gym is now way larger housing 4 rings and an
 		-- entrance to a locker room"): off the round room's east side a straight corridor (on the side's own axis), then on
 		-- the north-south grid, square to the lounge and the VIP room (main, from the overhead: the block sat turned with
@@ -1058,8 +1072,8 @@ return function(B, R)
 		local G2 = R.GYM2
 		local F4 = B.side(4)
 		local F = B.fr(90)
-		hall(F4, "Gym", G2.hall, 5, 11, P.shell2, P.floor, P.shell)
-		for _, d in { 33.4, G2.hall - 4.6 } do -- two pale frames across the corridor
+		if R.LAYOUT == "ring" then ringHall(F4, 4 * 360 / R.N, "Gym", G2.hall, 5, 11, P.shell2, P.floor, P.shell) else hall(F4, "Gym", G2.hall, 5, 11, P.shell2, P.floor, P.shell) end
+		for _, d in (if R.LAYOUT == "ring" then { G2.hall - 4.6 } else { 33.4, G2.hall - 4.6 }) do -- two pale frames across the corridor (the ring: its one left)
 			for _, s in { -1, 1 } do B.box(F4, C, "HallFrame", s * 4.55, s * 5, 0, 11, d - 0.5, d + 0.5, P.cream, nil, G) end
 			B.box(F4, C, "HallFrame", -5, 5, 10.3, 11, d - 0.5, d + 0.5, P.cream, nil, G)
 		end
@@ -1107,12 +1121,16 @@ return function(B, R)
 		B.lamp(F, (ax0 + ax1) / 2, AH - 1.2, (AD0 + AD1) / 2, 24, 0.6)
 
 		-- ---- the gym's shell: floor, lid, walls (the near one round the warm-up room's east wall; the south one with the
-		-- locker room's door), a dado and a line round it, girders across the lid (clear of the rings' light rods and the
-		-- lamps), the middle one on a pier on the north wall and over the locker room's door on the south
+		-- locker room's door), girders across the lid (clear of the rings' light rods and the lamps), the middle one on a
+		-- pier on the north wall and over the locker room's door on the south, the far one carrying the heavy bags.
+		-- (20 Nov 2026, the owner: "study boxing gyms and locker rooms"; the study: the vault's References/Hub/boxing gym +
+		-- locker room/study.md. what real ones share, the chunky way: rubber floor tiles, padded lower walls, canvas rings
+		-- with turnbuckle pads and an apron, lamps hung low over each ring, heavy bags on chains in a row, speed bags under
+		-- wall platforms, a mirror wall, a conditioning corner, a round timer. texture only where it is real)
 		local x0, x1, d0, d1, gh = G2.x0, G2.x1, G2.d0, G2.d1, G2.h
 		local lk = G2.locker -- { x0, x1, d0, d1, height, its door's middle d }
 		local LDH, LDW = 10, 3.2 -- (the locker room's door: height, half width)
-		B.box(F, S, "GymFloor", x0 - 2, x1 + 2, -2, -0.02, d0 - 2, d1 + 2, P.gymFloor)
+		B.box(F, S, "GymFloor", x0 - 2, x1 + 2, -2, -0.02, d0 - 2, d1 + 2, P.gymFloor, Enum.Material.Rubber) -- (rubber floor tiles)
 		B.box(F, S, "GymLid", x0 - 2, x1 + 2, gh, gh + 1, d0 - 2, d1 + 2, P.shell)
 		if x0 - 2 < ax0 - 2 then B.box(F, S, "GymWall", x0 - 2, ax0 - 2, 0, gh, d0 - 2, d0, P.gymWall) end
 		if x1 + 2 > ax1 + 2 then B.box(F, S, "GymWall", ax1 + 2, x1 + 2, 0, gh, d0 - 2, d0, P.gymWall) end
@@ -1122,19 +1140,24 @@ return function(B, R)
 		B.box(F, S, "GymWall", x1, x1 + 2, 0, gh, lk[6] + LDW, d1, P.gymWall)
 		B.box(F, S, "GymWall", x1, x1 + 2, LDH, gh, lk[6] - LDW, lk[6] + LDW, P.gymWall)
 		B.box(F, S, "GymWall", x0 - 2, x1 + 2, 0, gh, d1, d1 + 2, P.gymWall)
-		for _, w in { { x0, x0 + 0.2, d0, d1 }, { x1 - 0.2, x1, d0, lk[6] - LDW - 0.5 }, { x1 - 0.2, x1, lk[6] + LDW + 0.5, d1 }, { x0 + 0.2, x1 - 0.2, d1 - 0.2, d1 },
-			{ x0 + 0.2, an.farX - 6, d0, d0 + 0.2 }, { an.farX + 6, x1 - 0.2, d0, d0 + 0.2 } } do
-			if w[2] > w[1] then B.box(F, C, "GymDado", w[1], w[2], 0, 4, w[3], w[4], P.pier2, nil, G) end
-		end
-		for _, w in { { x0, x0 + 0.3, d0, d1 }, { x1 - 0.3, x1, d0, lk[6] - LDW - 0.5 }, { x1 - 0.3, x1, lk[6] + LDW + 0.5, d1 }, { x0 + 0.3, x1 - 0.3, d1 - 0.3, d1 } } do
-			B.box(F, C, "GymLine", w[1], w[2], 4, 4.6, w[3], w[4], P.band, nil, G)
+		-- the lower walls padded (leather panels with seams, a cream cap) on the long walls and the far one
+		local PADH = 5
+		for _, w in { { x0, x0 + 0.35, d0, d1, "d" }, { x1 - 0.35, x1, d0, lk[6] - LDW - 0.5, "d" }, { x1 - 0.35, x1, lk[6] + LDW + 0.5, d1, "d" },
+			{ x0 + 0.35, x1 - 0.35, d1 - 0.35, d1, "x" } } do
+			B.box(F, C, "GymPad", w[1], w[2], 0, PADH, w[3], w[4], P.pier, Enum.Material.Leather, G)
+			B.box(F, C, "GymLine", w[1] + (if w[5] == "d" and w[1] == x0 then 0 else -0.1), w[2] + (if w[5] == "d" and w[1] == x0 then 0.1 else 0), PADH, PADH + 0.35, w[3] - (if w[5] == "x" then 0.1 else 0), w[4], P.cream, nil, G)
+			if w[5] == "d" then
+				for d = w[3] + 4, w[4] - 1, 4 do B.box(F, C, "GymPadSeam", w[1] - (if w[1] == x0 then 0 else 0.04), w[2] + (if w[1] == x0 then 0.04 else 0), 0, PADH + 0.05, d - 0.06, d + 0.06, P.band, nil, G) end -- (a welt just proud of the mat: in its top they flickered)
+			else
+				for x = w[1] + 4, w[2] - 1, 4 do B.box(F, C, "GymPadSeam", x - 0.06, x + 0.06, 0, PADH + 0.05, w[3] - 0.04, w[4], P.band, nil, G) end
+			end
 		end
 		for _, s in { -1, 1 } do B.box(F, C, "DoorJamb", x1 - 0.45, x1, -0.04, LDH, lk[6] + s * LDW - (if s > 0 then 0 else 0.5), lk[6] + s * LDW + (if s > 0 then 0.5 else 0), P.cream, nil, G) end
 		B.box(F, C, "DoorHead", x1 - 0.45, x1, LDH, LDH + 0.5, lk[6] - LDW - 0.5, lk[6] + LDW + 0.5, P.cream, nil, G)
 		local r1, r2 = G2.rings[1][2], G2.rings[3][2]
-		for _, d in { d0 + 2, (r1 + r2) / 2, d1 - 2 } do B.box(F, C, "Girder", x0, x1, gh - 1.6, gh, d - 0.7, d + 0.7, P.cream, nil, G) end
+		for _, d in { d0 + 2, (r1 + r2) / 2, d1 - 4 } do B.box(F, C, "Girder", x0, x1, gh - 1.6, gh, d - 0.7, d + 0.7, P.cream, nil, G) end
 		B.box(F, S, "GymPier", x0, x0 + 1.4, 0, gh - 2.2, lk[6] - 1.1, lk[6] + 1.1, P.pier) -- (on the north wall, across from the locker room's door)
-		for _, k in { { G2.cx, r1 - 4 }, { G2.cx, r2 - 4 }, { G2.cx, d1 - 6 } } do
+		for _, k in { { G2.cx, r1 - 4 }, { G2.cx, r2 - 4 }, { G2.cx, d1 - 9 } } do
 			B.panel(F, k[1], gh, k[2], 3, 6); B.lamp(F, k[1], gh - 1.2, k[2], 26, 0.5)
 		end
 		-- the far wall, on the middle aisle: the round target in a lit recess at eye height
@@ -1152,6 +1175,79 @@ return function(B, R)
 			B.lamp(F, TX, gh - 1.4, d1 - 8, 18, 1.2, P.warm, { spot = true, angle = 60, face = Enum.NormalId.Front })
 		end
 
+		-- the near wall: a mirror wall either side of the door, in cream frames (pale panels with a little sheen)
+		for _, m in { { x0 + 2, an.farX - 8 }, { an.farX + 8, x1 - 2 } } do
+			B.box(F, C, "MirrorFrame", m[1] - 0.35, m[2] + 0.35, 1.0, 8.4, d0, d0 + 0.18, P.cream, nil, G)
+			local mir = B.box(F, C, "GymMirror", m[1], m[2], 1.3, 8.1, d0 + 0.18, d0 + 0.26, "b9c3cc", nil, G)
+			if mir then mir.Reflectance = 0.2 end
+		end
+		-- over the door the ROUND TIMER: a dark face in a cream rim, a ring of twelve lights, two hands (no numbers)
+		do
+			local TX, TY, TD = an.farX, 15.2, d0
+			local function disc(name, dia, t, z, hex, mat)
+				local q = B.cyl(F, C, name, TX, 0, t, 0, dia, hex, mat, G)
+				q.CFrame = F * CFrame.new(TX, TY, -(TD + z)) * CFrame.Angles(0, math.pi / 2, 0)
+				return q
+			end
+			disc("TimerRim", 6.2, 0.35, 0.18, P.cream)
+			disc("TimerFace", 5.4, 0.2, 0.42, "2c2f36")
+			for i = 0, 11 do
+				local a2 = i * math.pi / 6
+				local q = B.cyl(F, C, "TimerLight", 0, 0, 0.12, 0, 0.42, if i == 0 then (P.doorGlow or P.glow) else P.creamHi, Neon, G)
+				q.CFrame = F * CFrame.new(TX + 2.15 * math.sin(a2), TY + 2.15 * math.cos(a2), -(TD + 0.56)) * CFrame.Angles(0, math.pi / 2, 0)
+			end
+			B.box(F, C, "TimerHand", TX - 0.12, TX + 0.12, TY, TY + 1.7, TD + 0.52, TD + 0.62, P.creamHi, nil, G)
+			B.box(F, C, "TimerHand", TX, TX + 1.3, TY - 0.12, TY + 0.12, TD + 0.52, TD + 0.64, P.creamHi, nil, G)
+		end
+		-- the far wall's west half: a row of heavy bags on chains from the far girder, room to move round each
+		local BAGD = d1 - 4
+		for _, bx in { x0 + 3.5, x0 + 9.5, x0 + 15.5, x0 + 21.5 } do
+			B.cyl(F, C, "BagChain", bx, 7.9, gh - 1.6, BAGD, 0.18, P.pier, nil, G)
+			B.cyl(F, S, "HeavyBag", bx, 3.0, 7.6, BAGD, 2.6, "6e4a44", Enum.Material.Leather)
+			B.cyl(F, C, "HeavyBagCap", bx, 7.6, 7.95, BAGD, 2.3, P.creamHi, nil, G)
+			B.cyl(F, C, "HeavyBagBand", bx, 2.85, 3.3, BAGD, 2.66, P.creamHi, nil, G)
+		end
+		-- the far wall's east half: the conditioning corner. a kettlebell rack, a medicine-ball rack, a jump-rope board
+		-- (in world studs: B.rigid keeps their size)
+		B.rigid(F, x1 - 18, d1 - 1.6, 0, function(Fl)
+			for _, y in { 0.9, 2.6 } do B.box(Fl, C, "KbShelf", -4.5, 4.5, y, y + 0.3, -1.3, 1.3, P.cream, nil, G) end
+			for _, x in { -4.25, 4.25 } do for _, z in { -1.05, 1.05 } do B.box(Fl, C, "KbLeg", x - 0.18, x + 0.18, 0, 2.85, z - 0.18, z + 0.18, P.pier2, nil, G) end end -- (inside the shelves' edges and top: no shared faces)
+			for i = 0, 4 do
+				local x = -3.6 + i * 1.8
+				B.ball(Fl, C, "Kettlebell", x, 3.55, 0, 1.3, P.pier, nil, G)
+				B.box(Fl, C, "KbHandle", x - 0.45, x + 0.45, 4.3, 4.55, -0.12, 0.12, P.pier, nil, G)
+				for _, sx in { -1, 1 } do B.box(Fl, C, "KbHandle", x + sx * 0.45 - 0.12, x + sx * 0.45 + 0.12, 3.9, 4.55, -0.12, 0.12, P.pier, nil, G) end
+			end
+			for i = 0, 3 do B.ball(Fl, C, "Kettlebell", -2.7 + i * 1.8, 1.95, 0, 1.5, P.pier2, nil, G) end
+		end)
+		B.rigid(F, x1 - 9, d1 - 1.6, 0, function(Fl)
+			for _, y in { 0.9, 2.8 } do B.box(Fl, C, "BallShelf", -3.4, 3.4, y, y + 0.3, -1.3, 1.3, P.cream, nil, G) end
+			for _, x in { -3.15, 3.15 } do for _, z in { -1.05, 1.05 } do B.box(Fl, C, "BallLeg", x - 0.18, x + 0.18, 0, 3.05, z - 0.18, z + 0.18, P.pier2, nil, G) end end
+			for i, col in { P.band, P.brown, P.pier } do
+				B.ball(Fl, C, "MedBall", -2.2 + (i - 1) * 2.2, 2.1, 0, 1.9, col, Enum.Material.Leather, G)
+				B.ball(Fl, C, "MedBall", -2.2 + (i - 1) * 2.2, 4.0, 0, 1.9, col, Enum.Material.Leather, G)
+			end
+		end)
+		B.rigid(F, x1 - 2.6, d1 - 0.5, 0, function(Fl)
+			B.box(Fl, C, "RopeBoard", -1.9, 1.9, 3.0, 7.8, -0.1, 0.25, P.brown, Enum.Material.Wood, G)
+			for i = 0, 2 do
+				local x = -1.2 + i * 1.2
+				B.box(Fl, C, "RopeHook", x - 0.1, x + 0.1, 7.0, 7.2, -0.6, -0.1, P.pier, nil, G)
+				B.cyl(Fl, C, "JumpRope", x, 3.6, 7.0, -0.45, 0.14, if i == 1 then P.band else P.pier2, nil, G)
+				B.cyl(Fl, C, "RopeGrip", x, 3.0, 3.8, -0.45, 0.32, P.creamHi, nil, G)
+			end
+		end)
+		-- the south wall: two speed bags, each under a round board on a bracket, at head height
+		for _, sd in { G2.rings[2][2] - 6.5, G2.rings[2][2] + 4.5 } do
+			B.rigid(F, x1, sd, 0, function(Fl)
+				B.box(Fl, C, "SpeedBagBracket", -2.4, 0, 6.95, 7.25, -0.3, 0.3, P.pier2, nil, G)
+				B.cyl(Fl, C, "SpeedBagBoard", -2.4, 7.25, 7.65, 0, 3.4, P.brown, Enum.Material.Wood, G)
+				B.cyl(Fl, C, "SpeedBagSwivel", -2.4, 6.6, 7.25, 0, 0.16, P.pier, nil, G)
+				B.ball(Fl, C, "SpeedBag", -2.4, 6.0, 0, 1.05, "7a4842", Enum.Material.Leather, G)
+				B.ball(Fl, C, "SpeedBag", -2.4, 5.55, 0, 0.8, "7a4842", Enum.Material.Leather, G)
+			end)
+		end
+
 		-- ---- the four rings, each as the gym's one was: 19 across, a padded platform, four fat posts, two fat rounded rails
 		-- each side, two steps up on the door's side, a square light frame over it, a light straight over its middle. each
 		-- has the boxing mini-game's marker on its mat (MiniGameSpot, Game "box", Ring = which, Half: the mini-games
@@ -1160,10 +1256,9 @@ return function(B, R)
 		local PO = RS - 0.7
 		for idx, rg in G2.rings do
 			local RX, RD = rg[1], rg[2]
-			B.box(F, S, "RingBase", RX - RS, RX + RS, 0, RH, RD - RS, RD + RS, P.pier2)
+			B.box(F, S, "RingBase", RX - RS, RX + RS, 0, RH, RD - RS, RD + RS, "3c4048", Enum.Material.Fabric) -- (the skirt)
 			B.box(F, C, "RingApron", RX - RS - 0.1, RX + RS + 0.1, RH - 0.4, RH - 0.04, RD - RS - 0.1, RD + RS + 0.1, P.creamHi, nil, G)
-			B.box(F, C, "RingMat", RX - RS + 1, RX + RS - 1, RH, RH + 0.08, RD - RS + 1, RD + RS - 1, P.band, nil, G)
-			B.box(F, C, "RingMatLine", RX - RS + 1, RX + RS - 1, RH + 0.08, RH + 0.12, RD - 0.25, RD + 0.25, P.creamHi, nil, G)
+			B.box(F, C, "RingMat", RX - RS + 1, RX + RS - 1, RH, RH + 0.08, RD - RS + 1, RD + RS - 1, P.creamHi, Enum.Material.Fabric, G) -- (the canvas)
 			B.rigid(F, RX, RD, -90, function(Fl)
 				local m = B.box(Fl, C, "MiniGameSpot", -0.5, 0.5, RH + 0.08 - 0.1, RH + 0.08 + 0.1, -0.5, 0.5, P.pier, nil, { ghost = true, tr = 1 })
 				m:SetAttribute("Game", "box"); m:SetAttribute("Ring", idx)
@@ -1176,16 +1271,20 @@ return function(B, R)
 				B.cyl(F, C, "RingPost", RX + cx * PO, RH + 0.04, RH + 5, RD + cz * PO, 1.6, P.cream, nil, G)
 				B.cyl(F, C, "RingPostCap", RX + cx * PO, RH + 5, RH + 5.5, RD + cz * PO, 2, P.band, nil, G)
 			end end
-			for _, h in { RH + 2.1, RH + 3.9 } do
+			for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do -- (turnbuckle pads round each post: one corner red, the opposite blue)
+				local col = if cx < 0 and cz < 0 then "8f4a45" elseif cx > 0 and cz > 0 then "4a6585" else P.creamHi
+				B.box(F, C, "Turnbuckle", RX + cx * PO - 1, RX + cx * PO + 1, RH + 1.1, RH + 4.5, RD + cz * PO - 1, RD + cz * PO + 1, col, Enum.Material.Leather, G)
+			end end
+			for _, h in { RH + 1.6, RH + 2.8, RH + 4.0 } do
 				for _, sd in { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } } do
 					local len = 2 * PO - 1.6
-					local rail = B.box(F, C, "RingRail", 0, len, h - 0.42, h + 0.42, 0, 0.84, P.creamHi, nil, G)
-					rail.Shape = Enum.PartType.Cylinder; rail.Size = Vector3.new(len, 0.84, 0.84)
+					local rail = B.box(F, C, "RingRail", 0, len, h - 0.31, h + 0.31, 0, 0.62, P.creamHi, nil, G)
+					rail.Shape = Enum.PartType.Cylinder; rail.Size = Vector3.new(len, 0.62, 0.62)
 					rail.CFrame = F * CFrame.new(RX + sd[1] * PO, h, -(RD + sd[2] * PO)) * (if sd[1] ~= 0 then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity)
 				end
 			end
 			B.lamp(F, RX, gh - 1.6, RD, 30, 1.2, P.light, { spot = true, angle = 75, shadows = idx == 1 })
-			local LF, LY = 7.2, gh - 5
+			local LF, LY = 7.2, gh - 8.5 -- (hung low over the ring)
 			for _, s in { -1, 1 } do
 				B.box(F, C, "LightFrame", RX - LF - 0.3, RX + LF + 0.3, LY, LY + 0.6, RD + s * LF - 0.3, RD + s * LF + 0.3, P.pier, nil, G)
 				B.box(F, C, "LightFrame", RX + s * LF - 0.3, RX + s * LF + 0.3, LY + 0.03, LY + 0.6, RD - LF - 0.3, RD + LF + 0.3, P.pier, nil, G)
@@ -1197,48 +1296,85 @@ return function(B, R)
 			B.lamp(F, RX, LY - 3, RD, 18, 0.7, P.warm)
 		end
 
-		-- ---- the locker room, off the gym's south wall (main, 19 Nov, from the staging photos: "a bare box"; the big things,
-		-- the chunky way): a full row of tall lockers along its south wall and another along its east wall, padded benches
-		-- down the middle (a gap on the door's line), a mirror over a long counter on its west wall under a light strip, a
-		-- wall bench west of the door and a towel shelf east of it; two light panels; its own dado
+		-- ---- the locker room, off the gym's south wall (main, 19 Nov: "a bare box"; the owner, 20 Nov: "study ... locker
+		-- rooms"): the three zones real ones have. dry: lockers along the south wall, padded benches between them and the
+		-- middle; grooming: a long counter with three sinks under a mirror and a light strip on the west wall; wet: four
+		-- shower stalls (dividers only) along the east wall, a drain line along their fronts. tiled floor and lower walls;
+		-- hooks over the wall bench west of the door, cubbies east of it, a towel cart by the showers
 		do
 			local lx0, lx1, ld0, ld1, lh = lk[1], lk[2], lk[3], lk[4], lk[5]
-			B.box(F, S, "LockerFloor", lx0, lx1 + 2, -2, -0.02, ld0 - 2, ld1 + 2, P.gymFloor) -- (the gym's floor runs under the wall between)
+			local TILE, TILEW = "a9adb2", "d6d6d2" -- (the floor's tile, the walls' paler tile)
+			local SH = ld1 - 5.5 -- (the stalls' front)
+			B.box(F, S, "LockerFloor", lx0, lx1 + 2, -2, -0.02, ld0 - 2, ld1 + 2, TILE, Enum.Material.CeramicTiles) -- (the gym's floor runs under the wall between)
 			B.box(F, S, "LockerLid", lx0 - 1, lx1 + 2, lh, lh + 1, ld0 - 2, ld1 + 2, P.shell) -- (its end inside the gym's wall, not on its face)
 			B.box(F, S, "LockerWall", lx1, lx1 + 2, 0, lh, ld0 - 2, ld1 + 2, P.gymWall)
 			B.box(F, S, "LockerWall", x1 + 2, lx1, 0, lh, ld0 - 2, ld0, P.gymWall)
 			B.box(F, S, "LockerWall", x1 + 2, lx1, 0, lh, ld1, ld1 + 2, P.gymWall)
-			for _, w in { { lx1 - 0.2, lx1, ld0, ld1 }, { lx0, lx0 + 0.2, ld0, lk[6] - LDW }, { lx0, lx0 + 0.2, lk[6] + LDW, ld1 }, { lx0 + 0.2, lx1 - 0.2, ld0, ld0 + 0.2 }, { lx0 + 0.2, lx1 - 0.2, ld1 - 0.2, ld1 } } do
-				B.box(F, C, "LockerDado", w[1], w[2], 0, 4, w[3], w[4], P.pier2, nil, G)
+			for _, w in { { lx1 - 0.25, lx1, ld0, ld1 }, { lx0, lx0 + 0.25, ld0, lk[6] - LDW }, { lx0, lx0 + 0.25, lk[6] + LDW, ld1 }, { lx0 + 0.25, lx1 - 0.25, ld0, ld0 + 0.25 }, { lx0 + 0.25, lx1 - 0.25, ld1 - 0.25, ld1 } } do
+				B.box(F, C, "LockerTile", w[1], w[2], 0, 6, w[3], w[4], TILEW, Enum.Material.CeramicTiles, G)
 			end
-			-- the lockers: banks of three (6.4 across, 2 deep, 7.6 tall) side by side, backs on the dado: five along the south
-			-- wall from the west end, three along the east wall clear of the south row
-			local function lockers(x, d, yaw)
-				B.put(F, R.prop("rk_lockers", "bc_lockers"), "Lockers", x, 0, d, yaw, { back = true, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
+			-- dry: four banks of lockers along the south wall (backs on the tile), benches down the middle
+			for k = 0, 3 do
+				B.put(F, R.prop("rk_lockers", "bc_lockers"), "Lockers", lx1 - 0.27, 0, ld0 + 0.6 + 3.2 + k * 6.5, -90, { back = true, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
 			end
-			for k = 0, 4 do lockers(lx1 - 0.22, ld0 + 0.6 + 3.2 + k * 6.5, -90) end
-			for k = 0, 2 do lockers(lx0 + 0.6 + 3.2 + k * 6.5, ld1 - 0.22, 0) end
-			-- the benches down the middle, two either side of the door's line
 			local BX = (lx0 + lx1) / 2 - 0.5
-			for _, d in { lk[6] - 12.5, lk[6] - 6.5, lk[6] + 6.5, lk[6] + 12.5 } do
+			for _, d in { lk[6] - 12.5, lk[6] - 6.5, lk[6] + 6.5 } do
 				B.put(F, R.prop("rk_bench", "bc_bench"), "Bench", BX, 0, d, 90, { solid = true, color = { ["3b2a52"] = P.wood } })
 			end
-			-- the west wall: a long counter, a framed mirror over it (a pale panel with a little sheen), a light strip on top
+			-- grooming: the counter with three sinks, the framed mirror over it, a light strip on top
 			local mx0, mx1 = lx0 + 2.5, lx1 - 3
 			B.box(F, S, "Counter", mx0, mx1, 0, 2.9, ld0, ld0 + 1.8, P.pier2)
-			B.box(F, C, "CounterTop", mx0 - 0.2, mx1 + 0.2, 2.9, 3.3, ld0, ld0 + 2.3, P.creamHi, nil, G)
+			B.box(F, C, "CounterTop", mx0 - 0.2, mx1 + 0.2, 2.9, 3.3, ld0, ld0 + 2.3, P.creamHi, Enum.Material.Marble, G)
 			B.box(F, C, "MirrorFrame", mx0 - 0.3, mx1 + 0.3, 3.8, 9.2, ld0, ld0 + 0.45, P.cream, nil, G)
 			local mir = B.box(F, C, "LockerMirror", mx0, mx1, 4.1, 8.9, ld0 + 0.45, ld0 + 0.55, "b9c3cc", nil, G)
 			if mir then mir.Reflectance = 0.2 end
 			B.box(F, C, "MirrorLight", mx0, mx1, 9.4, 9.8, ld0, ld0 + 0.5, P.strip, Neon, G)
-			-- the north wall: a wall bench west of the door, a towel shelf east of it with three stacks of folded towels
-			B.put(F, R.prop("rk_bench", "bc_bench"), "WallBench", lx0 + 0.95, 0, lk[6] - 10.5, 90, { solid = true, color = { ["3b2a52"] = P.wood } })
-			B.box(F, S, "TowelShelf", lx0 + 0.2, lx0 + 1.6, 0, 3.4, lk[6] + 6.5, lk[6] + 14.5, P.pier2)
-			B.box(F, C, "TowelShelfTop", lx0 + 0.2, lx0 + 1.8, 3.4, 3.7, lk[6] + 6.3, lk[6] + 14.7, P.creamHi, nil, G)
-			for k = 0, 2 do
-				local d = lk[6] + 8 + k * 2.5
-				for j = 0, 2 do B.box(F, C, "Towel", lx0 + 0.4, lx0 + 1.5, 3.7 + j * 0.45, 4.12 + j * 0.45, d - 0.9, d + 0.9, if j == 1 then P.cream else "dcd7cd", nil, G) end
+			for i = 0, 2 do
+				B.rigid(F, mx0 + (mx1 - mx0) * (i + 0.5) / 3, ld0 + 1.2, 0, function(Fl)
+					B.cyl(Fl, C, "Sink", 0, 3.3, 3.75, 0, 1.9, "e8e8e4", nil, G)
+					B.cyl(Fl, C, "SinkBowl", 0, 3.72, 3.78, 0, 1.4, "b8bcc0", nil, G)
+					B.cyl(Fl, C, "Tap", 0, 3.3, 4.6, -1.15, 0.22, P.pier2, nil, G)
+					B.box(Fl, C, "TapSpout", -0.11, 0.11, 4.45, 4.65, -1.15, -0.45, P.pier2, nil, G)
+				end)
 			end
+			-- wet: four stalls along the east wall, tiled dividers only, a shower head in each, a drain line along their fronts
+			local nS = 4
+			for i = 1, nS - 1 do
+				local x = lx0 + (lx1 - lx0) * i / nS
+				B.box(F, C, "StallDivider", x - 0.15, x + 0.15, 0, 7.6, SH, ld1 - 0.25, TILEW, Enum.Material.CeramicTiles, G)
+				B.box(F, C, "StallDividerCap", x - 0.22, x + 0.22, 7.6, 7.85, SH - 0.05, ld1 - 0.25, P.cream, nil, G)
+			end
+			for i = 0, nS - 1 do
+				B.rigid(F, lx0 + (lx1 - lx0) * (i + 0.5) / nS, ld1 - 0.25, 0, function(Fl)
+					B.box(Fl, C, "ShowerPipe", -0.12, 0.12, 4.0, 8.6, -0.25, 0, P.pier2, nil, G)
+					B.box(Fl, C, "ShowerArm", -0.12, 0.12, 8.35, 8.6, -1.1, -0.25, P.pier2, nil, G)
+					B.cyl(Fl, C, "ShowerHead", 0, 8.05, 8.35, -1.1, 0.9, P.creamHi, nil, G)
+					B.cyl(Fl, C, "ShowerTap", 0, 4.6, 4.8, -0.3, 0.5, P.pier2, nil, G)
+				end)
+			end
+			B.box(F, C, "DrainLine", lx0 + 0.6, lx1 - 0.6, -0.02, 0.03, SH - 1.0, SH - 0.5, "4a4d52", Enum.Material.DiamondPlate, G)
+			-- the north wall: hooks over a wall bench west of the door, cubbies east of it, a towel cart by the showers
+			B.put(F, R.prop("rk_bench", "bc_bench"), "WallBench", lx0 + 0.95, 0, lk[6] - 10.5, 90, { solid = true, color = { ["3b2a52"] = P.wood } })
+			B.box(F, C, "HookRail", lx0 + 0.25, lx0 + 0.45, 6.0, 6.5, lk[6] - 14, lk[6] - 7, P.brown, Enum.Material.Wood, G)
+			for i = 0, 4 do
+				local d = lk[6] - 13.2 + i * 1.6
+				B.box(F, C, "Hook", lx0 + 0.45, lx0 + 1.0, 6.1, 6.35, d - 0.12, d + 0.12, P.pier2, nil, G)
+			end
+			do
+				local c0, c1 = lk[6] + 6.3, lk[6] + 10.4
+				B.box(F, S, "Cubbies", lx0 + 0.25, lx0 + 1.9, 0, 6.2, c0, c1, P.cream)
+				for r = 0, 2 do for q = 0, 1 do
+					local y, d = 0.6 + r * 1.9, c0 + 0.3 + q * 1.9
+					B.box(F, C, "CubbyHole", lx0 + 1.4, lx0 + 1.92, y, y + 1.5, d, d + 1.6, P.pier2, nil, G)
+					if (r + q) % 2 == 0 then B.box(F, C, "Towel", lx0 + 1.45, lx0 + 1.95, y, y + 0.7, d + 0.1, d + 1.5, "dcd7cd", nil, G) end
+				end end
+			end
+			B.rigid(F, lx0 + 3.0, SH - 1.5, 0, function(Fl)
+				B.box(Fl, C, "TowelCart", -1.4, 1.4, 0.5, 3.0, -1.9, 1.9, "8e8a80", Enum.Material.Fabric, G)
+				B.box(Fl, C, "TowelCartRim", -1.55, 1.55, 3.0, 3.25, -2.05, 2.05, P.pier2, nil, G)
+				for _, x in { -1.1, 1.1 } do for _, z in { -1.6, 1.6 } do B.ball(Fl, C, "CartWheel", x, 0.25, z, 0.5, P.pier, nil, G) end end
+				B.box(Fl, C, "Towel", -1.15, 1.15, 3.25, 3.75, -1.65, 1.65, "dcd7cd", nil, G) -- (on the rim, not in it)
+			end)
 			for _, d in { (ld0 + ld1) / 2 - 9, (ld0 + ld1) / 2 + 9 } do
 				B.panel(F, (lx0 + lx1) / 2, lh, d, 2.4, 4); B.lamp(F, (lx0 + lx1) / 2, lh - 1.2, d, 20, 0.6)
 			end
@@ -1405,9 +1541,9 @@ return function(B, R)
 		local WALL, PIL, PIL2, SILL = P.bay, P.pier2, P.pier, P.cream
 		local LINE = P.doorGlow or P.glow
 		local GLASS, GLASSMAT = "d8eef2", Enum.Material.Glass
-		hall(F, "Armory", 38, 5, 11, WALL, P.floor, P.dome)
+		if R.LAYOUT == "ring" then ringHall(F, 10 * 360 / R.N, "Armory", 37.4, 5, 11, WALL, P.floor, P.dome) else hall(F, "Armory", 38, 5, 11, WALL, P.floor, P.dome) end
 		B.panel(F, 0, 11, 34.6, 2.4, 4); B.lamp(F, 0, 10, 34.6, 13, 0.6)
-		room(F, "Armory", -13, 13, 38, 64, 12, 5, 11, WALL, P.floor2, P.dome)
+		room(F, "Armory", -13, 13, 38, 64, 12, 5, 11, WALL, P.floor2, P.dome, nil, nil, nil, if R.LAYOUT == "ring" then -0.08 else nil) -- (the ring's floor runs over its near corners)
 		local KW = if B.warp then B.warp.K else 1
 		local PILS = { { 38, 39.4 }, { 46.2, 47.6 }, { 54.4, 55.8 }, { 62.6, 64 } }
 		local BAYS = { { 39.4, 46.2 }, { 47.6, 54.4 }, { 55.8, 62.6 } }

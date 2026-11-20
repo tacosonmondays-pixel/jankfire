@@ -44,6 +44,7 @@
         "HubRotundaCentre": { "$path": "studio-tools/HubRotundaCentre.luau" },
         "HubRotundaLifts": { "$path": "studio-tools/HubRotundaLifts.luau" },
         "HubRotundaRooms": { "$path": "studio-tools/HubRotundaRooms.luau" },
+        "HubRotundaRing": { "$path": "studio-tools/HubRotundaRing.luau" },
         "KitImport": { "$path": "studio-tools/KitImport.luau" },
         "HubReskin": { "$path": "studio-tools/HubReskin.luau" },
         "WeaponImport": { "$path": "studio-tools/WeaponImport.luau" },

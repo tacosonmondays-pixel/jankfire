@@ -148,7 +148,7 @@ R.UP_DOORS = { [12] = true, [13] = true, [1] = true, [2] = true } -- the round r
 -- floor of pads, and the big gym (HubRotundaRooms). "lifts" = the hub as it was until then. the module's attribute
 -- Layout picks it, so a staging copy can show the new layout beside the live one. LIVE since 19 Nov 2026 (main: "staging
 -- 3 matches the owner's sketch ... Go live with it"): "mirror" is the default; Layout = "lifts" builds the old one
-R.LAYOUT = script:GetAttribute("Layout") or "mirror"
+R.LAYOUT = script:GetAttribute("Layout") or "ring" -- (the centre redone, live from 20 Nov 2026: R.RING, HubRotundaRing; "mirror" the crescent of 19 Nov, "lifts" the hub before it)
 -- the crescent, from the focus: its ends (degrees either side of north), a deck's front, the back wall's face, the
 -- mezzanine's edge. its pads, each bigger than a lift's (width, depth)
 R.PAD_HALL = { E = 77, D0 = 74, D1 = 90, MEZ = 56 }
@@ -178,6 +178,42 @@ R.GYM2 = { hall = 50, ante = { x0 = 4, x1 = 34, d0 = 50.6, d1 = 72.5, h = 12, fa
 if R.LAYOUT == "mirror" then
 	R.PARTS = { "HubRotundaCentre", "HubRotundaPads", "HubRotundaRooms" }
 	R.UPPER = {} -- (no pads upstairs any more)
+end
+-- THE RING (20 Nov 2026; the owner on the live hub: "It just feels so empty, but I dont want random stuff thrown in! also a
+-- balcanoy facing inwrod and outward and the arches are now so far back? should we redo the center area entirely
+-- again?"): the centre redone as one round hall with the pads in arches straight off it (HubRotundaRing). R.LAYOUT =
+-- "ring" builds it. C: how far north of the old middle the hall's middle is (its south edge stays the old round room's,
+-- where the plaza's arches are); R: its wall's inner face; WT: the wall's depth; RB: the alcoves' back walls; ALID:
+-- their lowered ceiling; CROWN: the pad arches' crowns; GS, GY: the gallery's underside and floor; GI: how far it
+-- overhangs the hall; GD: how deep it runs over the alcoves' fronts round the north; TOP: the ring beam; DOME: the
+-- oculus' height; OC: its radius; FIN: the alcoves' side walls; PADK: the pads' size of R.PAD_SIZE (the arc between the
+-- armory and the gym is what limits ten pads round the hall, not its depth); JUMP: the jump pads' throw (to the gallery)
+R.RING = { C = 10.5, R = 38.5, WT = 3, RB = 60.5, ALID = 10.2, CROWN = 9.4, GS = 16.8, GY = 18, GI = 4, GD = 8, TOP = 30, DOME = 45,
+	OC = 9, FIN = 1.6, PADK = 0.93, JUMP = Vector3.new(0, 66, 7) }
+do -- the ten pads round the hall's north, from the west end: 1v1 .. 4v4, then back down the east 4v4_e .. 1v1_e. each is
+	-- turned in its alcove (R.PAD_SIZE's width runs out from the hall, its depth across); its bay's angle from its depth
+	local K = R.RING
+	local order = { "1v1", "1v1v1", "2v2", "3v3", "4v4", "4v4_e", "3v3_e", "2v2_e", "1v1v1_e", "1v1_e" }
+	local byName = {}
+	for _, p in R.PADS do byName[p.name] = p end
+	local RF = K.R + 1.4
+	local list, tot = {}, 0
+	for _, n in order do
+		local p = byName[n]
+		local id = R.MODES[p.mode].id
+		local w, dp = R.PAD_SIZE[id][1] * K.PADK, R.PAD_SIZE[id][2] * K.PADK
+		local span = math.deg((dp + K.FIN) / RF)
+		table.insert(list, { name = n, mode = p.mode, bank = p.bank, w = w, dp = dp, span = span })
+		tot += span
+	end
+	local at = -tot / 2
+	for _, q in list do q.b0 = at; q.b = at + q.span / 2; q.b1 = at + q.span; at += q.span end
+	K.ALPHA = tot / 2
+	R.RING_PADS = list
+end
+if R.LAYOUT == "ring" then
+	R.PARTS = { "HubRotundaRing", "HubRotundaRooms" }
+	R.UPPER = {}
 end
 -- THE GYM (side 4, HubRotundaRooms), only for looks since the second floor (no pads, no hall behind it): push 37's
 -- locker room with the ring centred on the door's axis
@@ -1204,7 +1240,7 @@ R.KEEP = {
 	-- (Dumpling's box went on 18 Nov: the lore NPCs, Dumpling too, appear only in their code cutscene now, never in the world)
 }
 -- what must show from every spawn point besides the pads' plates and boards: { what, its name in Scenery }
-R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }
+R.SIGHTS = if R.LAYOUT == "ring" then {} else { { "the name on the gallery over the middle lift", "GalleryName" } }
 -- the overlap test: kit models set into walls, lids or floors on purpose are left out; parts are shrunk by this much first
 R.STRUCTURE = { Pier = true, Rail = true, DomeRing = true, Bezel = true, TrainingPortal = true, WallLight = true, DropLight = true, CrownDuck = true, HoloProjector = true, HoloDuck = true }
 R.OVERLAP_GAP = 0.06
@@ -1225,7 +1261,7 @@ if R.LAYOUT == "mirror" then
 		table.insert(R.LEAKS, { p.b, 0, 6, (PH.MEZ + PH.D0) / 2, R.FOCUS }); table.insert(R.LEAKS, { p.b, 0, 20, PH.D0 + 6, R.FOCUS })
 		table.insert(R.LEAKS, { p.b, 0, R.UP_Y + 6, PH.MEZ - 6, R.FOCUS })
 	end
-else
+elseif R.LAYOUT == "lifts" then
 	for _, md in R.MODES do
 		local b = R.liftBearing(md.side)
 		table.insert(R.WALKS, { "the way from the platform to the " .. md.title .. " lift", b, -4.2, 4.2, R.reach(b, 14), R.DECK0 - 0.2, 0, R.FOCUS })
@@ -1237,19 +1273,19 @@ end
 -- (the lounge's three arches: from the platform's foot out through each into the lounge, and its front floor to the spawn rug)
 local PLAZA = R.LOUNGE_STYLE == "plaza"
 for _, w in { { "the way through the lounge's middle arch", LOUNGE, -4.2, 4.2, 14, if PLAZA then 40 else 34, 0 }, { "the way through the east arch", 6 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 },
-	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, if R.LAYOUT == "mirror" then 51 else 44.5, 0 },
+	{ "the way through the west arch", 8 * STEP, -4.2, 4.2, 15, if PLAZA then 31 else 34, 0 }, { "the way to the gym", GYM, -4.5, 4.5, if R.LAYOUT == "ring" then 26 else 14, if R.LAYOUT ~= "lifts" then 51 else 44.5, 0 },
 	if R.EGG_SIDE then { "the hub egg's nook over the west arch", 8 * STEP, -3, 3, 31.6, 37.2, 17 } else nil, -- (kept clear for training-v2's egg, Map.Hub.HubEgg: R.EGG_NICHE)
-	if R.LAYOUT ~= "mirror" then { "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 } else nil,
-	if R.LAYOUT ~= "mirror" then { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 } else nil,
+	if R.LAYOUT == "lifts" then { "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 } else nil,
+	if R.LAYOUT == "lifts" then { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 } else nil,
 	-- (since the armory's makeover, 18 Nov: a row of open cases either side of the aisle, |x| 4.75..7.25, the aisle clear
 	-- between them to the gate, and a lane down each side between the cases and the walls)
-	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -4.5, 4.5, 40.2, 60.4, 0 },
+	{ "the way to the training gate", ARM, -4.2, 4.2, if R.LAYOUT == "ring" then 26 else 14, 60.4, 0 }, { "the armory's aisle", ARM, -4.5, 4.5, 40.2, 60.4, 0 },
 	{ "the armory's west lane", ARM, -10.3, -7.5, 41.6, 60.4, 0 },
 	{ "the armory's east lane", ARM, 7.5, 9.5, 41.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
 local LS = R.LOUNGE_S
 for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { 8 * STEP, 0, 20, 34 },
 	{ GYM, 0, 6, 35 }, { GYM, 0, 9, 50 }, { GYM, 0, 9, 70 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
-if R.LAYOUT == "mirror" then -- (the big gym, square to north (the east frame, bearing 90): the warm-up room's way, the gym's aisles, the locker room's; inside each no ray gets out)
+if R.LAYOUT ~= "lifts" then -- (the big gym, square to north (the east frame, bearing 90): the warm-up room's way, the gym's aisles, the locker room's; inside each no ray gets out)
 	local G2, an, lk = R.GYM2, R.GYM2.ante, R.GYM2.locker
 	local r1, r2 = G2.rings[1][2], G2.rings[3][2]
 	for _, w in { { "the way through the warm-up room", 90, an.x0 + 6, an.x1 - 4, an.d0 + 0.5, an.d1 - 0.5, 0 },
@@ -1259,8 +1295,9 @@ if R.LAYOUT == "mirror" then -- (the big gym, square to north (the east frame, b
 		{ "the gym's aisle between the rings", 90, G2.x0 + 2, G2.x1 - 2, r1 + 9.5 + 0.5, r2 - 9.5 - 1.5, 0 },
 		{ "the door to the locker room", 90, G2.x1 - 3, lk[1] + 3, lk[6] - 2.4, lk[6] + 2.4, 0 },
 		-- (the locker room: an aisle either side of the benches down its middle)
-		{ "the locker room's north aisle", 90, lk[1] + 2.2, (lk[1] + lk[2]) / 2 - 2.3, lk[3] + 2.8, lk[4] - 2.8, 0 },
-		{ "the locker room's south aisle", 90, (lk[1] + lk[2]) / 2 + 1.3, lk[2] - 2.6, lk[3] + 2.8, lk[4] - 2.8, 0 } } do table.insert(R.WALKS, w) end
+		{ "the locker room's north aisle", 90, lk[1] + 3.6, (lk[1] + lk[2]) / 2 - 2.3, lk[3] + 2.8, lk[4] - 8.5, 0 },
+		{ "the locker room's south aisle", 90, (lk[1] + lk[2]) / 2 + 1.3, lk[2] - 3.4, lk[3] + 2.8, lk[4] - 8.5, 0 },
+		{ "the walk along the showers", 90, lk[1] + 5, lk[2] - 0.8, lk[4] - 7.3, lk[4] - 5.7, 0 } } do table.insert(R.WALKS, w) end
 	for _, p in { { 90, G2.cx, 12, (r1 + r2) / 2 }, { 90, (lk[1] + lk[2]) / 2, 6, (lk[3] + lk[4]) / 2 }, { 90, (an.x0 + an.x1) / 2, 6, an.d1 - 10 } } do table.insert(R.LEAKS, p) end
 end
 if PLAZA then -- (the courtyard low and high, each arcade, the VIP room behind the south one)
@@ -1278,7 +1315,18 @@ for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM ove
 	if PLAZA then { "the duck on the plaza's fountain", "FountainDuck", "lounge" } else { "the duck in the lounge", "HoloDuck", "lounge" },
 	{ "the training gate at the armory's far end", "TrainingPortal", true },
 	-- (the owner's layout: the gym is square to north off a turned corridor, so its target no longer lines up with the platform)
-	if R.LAYOUT ~= "mirror" then { "the target at the gym's far end", "Target", true } else nil } do table.insert(R.SIGHTS, w) end
+	if R.LAYOUT == "lifts" then { "the target at the gym's far end", "Target", true } else nil } do table.insert(R.SIGHTS, w) end
+if R.LAYOUT == "ring" then -- (the centre redone: the way into each pad's arch, a walk round the hall between the benches and
+	-- the columns; inside the hall and each alcove no ray gets out)
+	local K = R.RING
+	for _, q in R.RING_PADS do table.insert(R.WALKS, { "the way into pad " .. q.name .. "'s arch", q.b, -2.4, 2.4, K.R - 5, K.R + K.WT + 0.2, 0, -K.C }) end
+	for k = 0, 7 do table.insert(R.WALKS, { "the walk round the hall", k * 45 + 22.5, -3.5, 3.5, 19.5, K.R - 3.4, 0, -K.C }) end
+	for _, q in { R.RING_PADS[1], R.RING_PADS[5], R.RING_PADS[6], R.RING_PADS[10] } do
+		local d = K.R + K.WT + 1 + q.w / 2
+		table.insert(R.LEAKS, { q.b, 0, 6, d, -K.C })
+	end
+	table.insert(R.LEAKS, { 0, 0, 12, 20, -K.C }); table.insert(R.LEAKS, { 0, 0, K.GY + 4, K.R + 2, -K.C })
+end
 -- what every spawn point must show on the first look out of the lounge (any one of each group's parts, by name in
 -- Scenery or a pad): the way to the pads and the way up
 -- (a group's second field may name several parts, "A|B": any one of them will do. 18 Nov, the owner: "I dont like the
@@ -1286,6 +1334,7 @@ for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM ove
 -- UPSTAIRS boards are behind the piers, so the way up there is the lit doorways)
 R.FIRST_LOOK = { { "the name over the middle lift", "GalleryName" }, { "a lit doorway into the second floor", "UpperGlowHead" },
 	if R.LAYOUT == "mirror" then { "the 4V4 word over the north opening", "Way_0" } else { "the 2V2 lift's pad", "pad:2v2" } }
+if R.LAYOUT == "ring" then R.FIRST_LOOK = { { "the console's rim", "ConsoleRim_1v1|ConsoleRim_1v1v1|ConsoleRim_2v2|ConsoleRim_3v3|ConsoleRim_4v4" }, { "the loadout hologram over the console", "HoloLoadout" } } end -- (the cap's middle is inside the console: a ray to it always hits the console)
 -- the second floor: its walk stays clear; inside it no ray gets out
 do
 	local UY = R.UP_Y
@@ -1453,7 +1502,14 @@ function R.check(stage)
 			if hit and hit.Normal.Y > 0.7 then
 				local at = hit.Position
 				local r = Vector3.new(at.X - O.X, 0, at.Z - O.Z).Magnitude
-				if math.abs(at.Y - (O.Y + HY(UY))) < 0.6 and r > R.RING_IN * KK - 0.5 and r < R.A * KK then
+				local okLand = math.abs(at.Y - (O.Y + HY(UY))) < 0.6 and r > R.RING_IN * KK - 0.5 and r < R.A * KK
+				if R.LAYOUT == "ring" then -- (onto the gallery: its floor's height, between its rail and its back)
+					local K = R.RING
+					local Cw = WP(R.frame(O, 0, 0, -K.C).Position)
+					local rc = Vector3.new(at.X - Cw.X, 0, at.Z - Cw.Z).Magnitude
+					okLand = math.abs(at.Y - (O.Y + HY(K.GY))) < 0.6 and rc > (K.R - K.GI + 0.5) * KK and rc < (K.R + K.GD) * KK
+				end
+				if okLand then
 					land[side] = at
 					table.insert(landings, at)
 				else
@@ -1496,6 +1552,17 @@ function R.check(stage)
 				local pts = { L, mf(s * 2.5 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 31), lf(s * R.liftBearing(2), 0, UY, 40) }
 				for i = if s > 0 then nUp else 1, idx, -s do table.insert(pts, lf(upBearing(i), 0, UY, 47)) end
 				table.insert(pts, front); table.insert(pts, onto)
+				walk(pts, pad.Name)
+			elseif R.LAYOUT == "ring" then -- (the centre redone: into the hall through the lobby's arch, round outside the benches, in front of the pad's arch, through it, onto the pad)
+				local K = R.RING
+				local b = pad:GetAttribute("Bearing") or 0
+				local function cp(bb, d) return WP(R.frame(O, bb, d, -K.C).Position) end
+				local pts = { start, TA }
+				local from = if b >= 0 then 180 else -180
+				local n = math.ceil(math.abs(b - from) / 15)
+				for k = 0, n do table.insert(pts, cp(from + (b - from) * k / n, 25)) end
+				table.insert(pts, cp(b, K.R - 3)); table.insert(pts, cp(b, K.R + K.WT + 1.2))
+				table.insert(pts, onto)
 				walk(pts, pad.Name)
 			elseif R.LAYOUT == "mirror" then -- (the owner's layout: out through the nearest opening, then round the crescent's walk)
 				local rel = CFrame.new(WP(R.frame(O, 0, 0, R.FOCUS).Position)):PointToObjectSpace(front)
@@ -1564,7 +1631,7 @@ function R.check(stage)
 	end
 	local sights, lines, shut, spawnN = {}, 0, 0, 0
 	-- (where each jump pad lands you: the nearest doorway into the second floor must show from there)
-	for _, L in landings do
+	for _, L in (if R.LAYOUT == "ring" then {} else landings) do -- (the ring: the throw lands on the gallery, no doorway to find)
 		local best, bd = nil, math.huge
 		for _, q in room.Scenery:GetChildren() do
 			if q.Name == "UpperHead" and (q.Position - L).Magnitude < bd then best, bd = q, (q.Position - L).Magnitude end
@@ -1652,7 +1719,7 @@ function R.check(stage)
 	for _, l in room:GetDescendants() do if l:IsA("Light") then lamps += 1; if l.Shadows then shadows += 1 end end end
 	if shadows > 11 then table.insert(issues, ("LAMPS: %d cast shadows (11 is the limit)"):format(shadows)) end
 	if spawnN < 8 then table.insert(issues, ("SPAWNS: %d spawn markers (8 wanted)"):format(spawnN)) end
-	local wantPads = if R.LAYOUT == "mirror" then #R.PADS else #R.MODES + #R.UPPER
+	local wantPads = if R.LAYOUT ~= "lifts" then #R.PADS else #R.MODES + #R.UPPER
 	if #pads ~= wantPads then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, wantPads)) end
 	-- the regulars' ways (the owner, 17 Nov: "When they stand make sure they don't stand in their seats like clipped into
 	-- it!"): a body (R.NPC_BODY, its feet R.NPC_LIFT over the floor) stood on every point they stop at (a seat's Stand,
@@ -1785,7 +1852,8 @@ function R.check(stage)
 	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d, walked to %d, regulars' ways %d (%d body boxes)"):format(
 		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads, routes, npcWays, npcBoxes)
 	if W.live then PB:SetAttribute("LastOverlapCheck", msg) end
-	if #issues > 40 then local n = #issues; issues = table.move(issues, 1, 40, 1, {}); table.insert(issues, ("... and %d more"):format(n - 40)) end
+	local cap = R.ISSUES_MAX or 40 -- (a staging run may ask for the whole list)
+	if #issues > cap then local n = #issues; issues = table.move(issues, 1, cap, 1, {}); table.insert(issues, ("... and %d more"):format(n - cap)) end
 	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")
 end
 
