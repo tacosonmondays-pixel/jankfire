@@ -850,7 +850,7 @@ local KATMO = { guard = "kat_block", stagger = "kat_stagger", deflect = "kat_def
 local katMocap: ((Rig, string) -> boolean)? = nil -- (set below mocapSwing)
 local function katRig(r: Rig, name: string)
 	if r.wid ~= "katana" then return end
-	if katMocap and katMocap(r, name) then r.kat = nil; return end -- (an R15 body plays the pack's own move; R6 keeps KAT)
+	if katMocap and katMocap(r, name) then r.kat = nil; return end -- (the pack's own move: R15 or its R6 upload)
 	r.kat = { name = name, t = 0 }
 end
 -- (18 Nov 2026, the owner: "can you find scythe attack animations online please for first person and 3rd person") a
@@ -864,16 +864,46 @@ local mocapClips: { [string]: any }? = nil -- (every clip with a tp id, by its "
 local function mocapByIds(): { [string]: any }
 	if not mocapClips then
 		local m = {}
-		for _, a in Anims do if type(a) == "table" and a.tp then m["rbxassetid://" .. tostring(a.tp)] = a end end
+		for _, a in Anims do
+			if type(a) == "table" and a.tp then
+				m["rbxassetid://" .. tostring(a.tp)] = a
+				if a.tp6 then m["rbxassetid://" .. tostring(a.tp6)] = a end -- (20 Nov 2026: the move's R6 upload)
+			end
+		end
 		mocapClips = m
 	end
 	return mocapClips :: { [string]: any }
 end
+-- (20 Nov 2026) the pack's sword joint: its rigs carry the katana on a Motor6D "RightHandle" off the right hand (an R6
+-- body's right arm), C0 turning the handle's Y down the hand's -Z, and its clips turn that joint too (up to 70 deg in
+-- Light02; on R6 it also carries the sword down to the hand, 0.85 studs). a katana body gets an unseen local stand-in
+-- of it so the Animator turns it with the clip, and stepRig reads its Transform like the arms'
+local HANDLE_C0 = ANG(-math.pi / 2, 0, 0)
+local function katHandle(r: Rig): Motor6D?
+	local h = (r :: any).hdl :: Motor6D?
+	if h and h.Parent and h.Part0 and h.Part0.Parent == r.ch then return h end
+	local arm = (r.ch:FindFirstChild("RightHand") or r.ch:FindFirstChild("Right Arm")) :: BasePart?
+	if not arm then return nil end
+	local p = Instance.new("Part")
+	p.Name = "RightHandle"
+	p.Size = V(0.1, 0.1, 0.1)
+	p.Transparency = 1
+	p.CanCollide, p.CanQuery, p.CanTouch, p.Massless, p.CastShadow = false, false, false, true, false
+	local m = Instance.new("Motor6D")
+	m.Name = "RightHandle"
+	m.Part0, m.Part1 = arm, p
+	m.C0 = HANDLE_C0
+	m.Parent = arm
+	p.Parent = r.ch
+	;(r :: any).hdl = m
+	return m
+end
 local function mocapSwing(r: Rig, A: any): boolean
-	if (r :: any).r6 or not r.J or not r.J.Waist or not A.tp then return false end
+	local tpId = if (r :: any).r6 then A.tp6 else A.tp -- (20 Nov 2026: an R6 body plays the move's R6 upload, if any)
+	if not tpId or not r.J or not ((r :: any).r6 or r.J.Waist) then return false end
 	local old = (r :: any).mocap
 	if old and old.mine and old.track then pcall(function() old.track:Stop(0.05) end) end
-	local mo = { t = 0, dur = A.tpDur or A.dur, id = "rbxassetid://" .. tostring(A.tp), track = nil :: AnimationTrack?, mine = r.ch == me.Character, holdUntil = nil :: number? }
+	local mo = { t = 0, dur = A.tpDur or A.dur, id = "rbxassetid://" .. tostring(tpId), track = nil :: AnimationTrack?, mine = r.ch == me.Character, holdUntil = nil :: number? }
 	if mo.mine then
 		local an = r.hum:FindFirstChildOfClass("Animator")
 		if an then
@@ -953,9 +983,10 @@ function TP.holdKat(m: Instance?, name: string, t: number)
 	-- (20 Nov 2026) the pack's Block on an R15 body: your track stops at its hold time while the button is down
 	-- (AdjustSpeed 0, which everyone sees) and is let go when this stops being called; raised again after a deflect
 	local A = Anims[KATMO[name] or ""]
-	if A and A.tp and not (r :: any).r6 then
+	local tpId = if A then (if (r :: any).r6 then A.tp6 else A.tp) else nil
+	if A and tpId then
 		local mo = (r :: any).mocap
-		if not mo or mo.id ~= "rbxassetid://" .. tostring(A.tp) then
+		if not mo or mo.id ~= "rbxassetid://" .. tostring(tpId) then
 			if r.isMe and not mo then mocapSwing(r, A) end
 			return
 		end
@@ -1166,11 +1197,12 @@ local function readState(r: Rig, dt: number)
 			local n, t = string.match(mp, "^([%w_]+):([%d%.]+)$")
 			local A = if n then Anims[n] else nil
 			local an = r.hum:FindFirstChildOfClass("Animator")
-			if A and A.tp and an then
+			local tpId = if A then (if (r :: any).r6 then A.tp6 else A.tp) else nil
+			if A and tpId and an then
 				local old = (r :: any).mocap
 				if old and old.track then old.track:Stop(0) end
 				local anim = Instance.new("Animation")
-				anim.AnimationId = "rbxassetid://" .. tostring(A.tp)
+				anim.AnimationId = "rbxassetid://" .. tostring(tpId)
 				local tr = an:LoadAnimation(anim)
 				tr.Priority = Enum.AnimationPriority.Action4
 				tr.Looped = false
@@ -1518,7 +1550,8 @@ local function stepRig(r: Rig, dt: number, now: number)
 	local mo = (r :: any).mocap
 	-- (20 Nov 2026) someone else's katana move from the pack: their client plays it on their own body (it replicates);
 	-- spot it by its id so the blend below takes their arms and blade from it
-	if not mo and not r.isMe and r.cls == "katana" and not (r :: any).r6 and now - ((r :: any).moScan or 0) > 0.05 then
+	if r.cls == "katana" then katHandle(r) end -- (made before a clip needs it, so the Animator has it)
+	if not mo and not r.isMe and r.cls == "katana" and now - ((r :: any).moScan or 0) > 0.05 then
 		(r :: any).moScan = now
 		local an = hum:FindFirstChildOfClass("Animator")
 		if an then
@@ -1536,6 +1569,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	end
 	local moW = 0
 	local aWaist: CFrame?, aNeck: CFrame?, aSh: CFrame?, aElb: CFrame?, aWr: CFrame? = nil, nil, nil, nil, nil
+	local aHd: CFrame? = nil -- (the pack's sword joint, katHandle)
 	if mo then
 		if not mo.track and not mo.mine and mo.t < 0.4 then -- (everyone else's: the track that came over the network)
 			local an = hum:FindFirstChildOfClass("Animator")
@@ -1559,7 +1593,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 			local Jm, Ar = r.J, r.arms.Right
 			aWaist = if Jm.Waist then Jm.Waist.j.Transform else nil
 			aNeck = Jm.Neck.j.Transform
-			aSh, aElb, aWr = Ar.sh.j.Transform, Ar.elb.j.Transform, Ar.wr.j.Transform
+			aSh, aElb, aWr = Ar.sh.j.Transform, Ar.elb.j.Transform, Ar.wr.j.Transform -- (R6: all three the shoulder)
+			local hm = if r.cls == "katana" then (r :: any).hdl :: Motor6D? else nil
+			aHd = if hm and hm.Parent then hm.Transform else nil
 		end
 	end
 	-- ---- the chest: turned into the stance, part of the look pitch, the walk's sway taken out
@@ -1606,9 +1642,20 @@ local function stepRig(r: Rig, dt: number, now: number)
 		-- middle, where the pack's handle joint is)
 		if moW > 0 and aSh and aElb and aWr then
 			local Ar = r.arms.Right
-			local UA = Ar.sh.c0 * aSh * Ar.sh.c1:Inverse()
-			local LA = UA * Ar.elb.c0 * aElb * Ar.elb.c1:Inverse()
-			local H = LA * Ar.wr.c0 * aWr * Ar.wr.c1:Inverse()
+			local r6 = (r :: any).r6 == true
+			local H: CFrame
+			if r6 then -- (an R6 arm is one block: its frame; the sword joint carries the katana down to the hand)
+				H = Ar.sh.c0 * aSh * Ar.sh.c1:Inverse()
+			else
+				local UA = Ar.sh.c0 * aSh * Ar.sh.c1:Inverse()
+				local LA = UA * Ar.elb.c0 * aElb * Ar.elb.c1:Inverse()
+				H = LA * Ar.wr.c0 * aWr * Ar.wr.c1:Inverse()
+			end
+			-- the sword joint's pose (aHd: the handle = hand * C0 * pose, its Y the blade; our model's -Z is the blade,
+			-- so the model = hand * C0 * pose * C0^-1). R6 without it (not animated yet): the pack's 0.85 down the arm
+			local hd = aHd or ID
+			if r6 and hd.Position.Magnitude < 0.2 then hd = CF(0, 0, -0.85) * hd.Rotation end
+			H = H * HANDLE_C0 * hd * HANDLE_C0:Inverse()
 			G = G:Lerp(H * CF(0, 0, 0.045 * r.k), moW)
 		end
 	else
@@ -1893,7 +1940,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 	rigArms(r, rigW > 0.5, r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true), rigAmmoOut)
 	-- ---- the arms: IK onto the hands. a free left hand (a pistol) goes back to the animation's own swing
 	local r6 = (r :: any).r6 == true -- (an R6 body: each arm one block, aimed on its shoulder)
-	if handR then if r6 then solveArmR6(R, handR, on, r.poseR == "hand") else solveArm(R, handR, poleR, on * (1 - moW)) end end -- (the mocap's own right arm)
+	if handR then if r6 then solveArmR6(R, handR, on * (1 - moW), r.poseR == "hand") else solveArm(R, handR, poleR, on * (1 - moW)) end end -- (the mocap's own right arm)
 	local leftOn = handL ~= nil and (r.holdL ~= nil or r.tool ~= nil or itemMix > 0 or r.leftW > 0)
 	if handL and leftOn then
 		local wgt = on

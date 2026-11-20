@@ -20,4 +20,15 @@ return {
 		equip = { id = 87695619849581, len = 0.667, src = "Animations Equip" }, -- (full body: the finishers)
 		unequip = { id = 109417036578604, len = 0.667, src = "Animations Unequip" }, -- (full body: the finishers)
 	},
+	-- the same pack's R6 file, for R6 bodies (Anims kat_* tp6): each move cut as its R15 one (same length and markers),
+	-- the legs dropped and the root and the Torso unweighted
+	katanaR6 = {
+		block = { id = 111503153459996, len = 2.0, upper = true, src = "Animations Block" },
+		deflect = { id = 79313209306371, len = 1.333, upper = true, src = "Animations DeflectedUp" },
+		light1 = { id = 116226052058452, len = 0.933, upper = true, hit = 0.1667, src = "BasicAttackTypes Light01" },
+		light2 = { id = 101626943092173, len = 0.933, upper = true, hit = 0.1667, src = "BasicAttackTypes Light02" },
+		light3 = { id = 121053388545839, len = 1.25, upper = true, hit = 0.25, src = "BasicAttackTypes Light03" },
+		stagger = { id = 91503477131103, len = 0.667, upper = true, src = "Stagger Types KatanaParry Left" },
+		wave = { id = 94359662741712, len = 1.1, upper = true, hit = 0.1667, src = "BasicAttackTypes Ultimate, from 0.4 s" },
+	},
 }

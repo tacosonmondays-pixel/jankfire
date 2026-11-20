@@ -2,7 +2,8 @@
 # and third person move together. Input: the right hand through a clip, from `katana_pack.py hand` (the pack's own R15
 # rig, forward kinematics; its files never go in git).
 #   py tools/roblox/katana_vm.py <hand.json> <name> --speed k [--win a,b] [--hold h] [--tail s] [--posk 0.4]
-#        [--ymax y] [--tin s] [--tp id] [--tpdur d] [--tpfrom s] [--events "t:sound,..."] [--luau out] [--js out] [--delta]
+#        [--ymax y] [--tin s] [--tp id] [--tp6 id] [--tpdur d] [--tpfrom s] [--events "t:sound,..."] [--luau out] [--js out]
+#        [--delta]   (tp6: the same move's R6 upload, for R6 bodies)
 # How (the pack's own blade, as its swinger sees it):
 #   * the pack's camera: fixed for the whole clip at the body's start (it faces -Z; x right, y up, z back)
 #   * each frame, the pack's hand in that camera; its blade runs along the hand's -Z, as ours along the model's, so our
@@ -115,6 +116,7 @@ if hits: row['hit'] = mt(hits[0])
 if hold is not None: row['hold'] = mt(float(hold))
 if '--tp' in a:
     row['tp'] = int(opt('--tp', '0'))
+    if '--tp6' in a: row['tp6'] = int(opt('--tp6', '0'))
     row['tpSpeed'] = round(speed, 4)
     row['tpDur'] = float(opt('--tpdur', str(round(w1 if w1 < 50 else d['length'], 3))))
     if hold is not None: row['tpHold'] = float(hold)
@@ -133,7 +135,7 @@ if '--luau' in a:
     if 'trail' in row: L.append('\t\ttrail = { %s },' % fmt(row['trail']))
     L.append('\t\tslerp = { %s },' % fmt(row['slerp']))
     if 'tp' in row:
-        L.append('\t\ttp = %d, tpSpeed = %g, tpDur = %g,%s%s' % (row['tp'], row['tpSpeed'], row['tpDur'],
+        L.append('\t\ttp = %d,%s tpSpeed = %g, tpDur = %g,%s%s' % (row['tp'], (' tp6 = %d,' % row['tp6']) if 'tp6' in row else '', row['tpSpeed'], row['tpDur'],
                  (' tpHold = %g,' % row['tpHold']) if 'tpHold' in row else '', (' tpFrom = %g,' % row['tpFrom']) if 'tpFrom' in row else ''))
     L.append('\t\tkeys = {')
     for k in keys: L.append('\t\t\t{ t = %g, p = { %s }, r = { %s }, e = "%s" },' % (k['t'], fmt(k['p']), fmt(k['r']), k['e']))
@@ -149,6 +151,7 @@ if '--js' in a:
     parts.append('slerp: [%s]' % fmt(row['slerp']))
     if 'tp' in row:
         parts.append('tp: %d, tpSpeed: %g, tpDur: %g' % (row['tp'], row['tpSpeed'], row['tpDur']))
+        if 'tp6' in row: parts.append('tp6: %d' % row['tp6'])
         if 'tpHold' in row: parts.append('tpHold: %g' % row['tpHold'])
         if 'tpFrom' in row: parts.append('tpFrom: %g' % row['tpFrom'])
     ks = ',\n    '.join("{ t: %g, p: [%s], r: [%s], e: '%s' }" % (k['t'], fmt(k['p']), fmt(k['r']), k['e']) for k in keys)

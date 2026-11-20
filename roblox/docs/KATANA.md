@@ -174,7 +174,13 @@ uses the same full-body Equip / Unequip uploads.
 | (finishers) | Animations Equip / Unequip, full body | 87695619849581 / 109417036578604 | | Tidecrest |
 | (spare) | Animations Equip, upper | 127861015989285 | | the katana's own draw still uses the hand-made clip |
 
-"Upper body" means the legs are dropped and the root and lower torso unweighted, so the moves play over a walk or a run.
+The pack also has an R6 file with the same 34 moves (same lengths and markers). R6 bodies play the R6 uploads of the
+same seven moves, cut the same way: `PackAnims.katanaR6`, the Anims rows' `tp6`. The Block is 111503153459996, the
+deflect 79313209306371, Light 1 / 2 / 3 116226052058452 / 101626943092173 / 121053388545839, the stagger
+91503477131103 and the wave 94359662741712.
+
+"Upper body" means the legs are dropped and the root and lower torso unweighted (R6: the Torso), so the moves play
+over a walk or a run.
 The clips keep the pack's own timing and markers. The speed is set when they play, so the gameplay numbers don't
 change: the clips follow the timing.
 
@@ -182,16 +188,23 @@ change: the clips follow the timing.
 
 - **Playing:** your own client plays the clip on your own Animator, which replicates to everyone. Everyone else's
   client spots it by its id each frame (`stepRig`) and blends the waist, neck and right arm to it.
-- **The katana:** sits in the animated right hand the way the pack holds its own. Its blade runs along the hand's −Z,
-  with our handle's grip on the hand's middle. The left hand stays on the hilt by IK.
+- **The katana:** sits in the animated right hand the way the pack holds its own. The pack's rigs carry the sword on
+  a joint of its own, a Motor6D `RightHandle` off the right hand (R6: off the right arm). Its C0 turns the handle's Y
+  down the hand's −Z, and the clips turn that joint too: up to 70° in Light02, 25° in the stagger. On R6 the joint also
+  carries the sword 0.85 studs down the arm to where a hand would be.
+- **The sword joint on our bodies:** every katana body gets an unseen local stand-in of that joint (`katHandle`: a
+  0.1-stud part on a Motor6D named `RightHandle`), so the Animator turns it with the clip. `stepRig` reads its
+  Transform with the arms', and the katana model = hand × C0 × that pose × C0⁻¹. The left hand stays on the hilt by IK.
 - **The held guard:** freezes your Block track (`AdjustSpeed(0)`) at its hold time while the button is down
   (`TP.holdKat`). It stops it on release.
-- **R6 bodies** keep the hand-made katana poses (the `KAT` rows), as the scythe's mocap does.
+- **R6 bodies** play the R6 uploads the same way: the arm block's frame, the sword joint's pose, and the right arm left
+  to the clip while it plays. The scythe has no R6 uploads, so it still uses the hand-keyed clips.
 
 **First person** (`Anims.luau` rows `kat_*`, from `tools/roblox/katana_vm.py`):
 
-- **The blade points** where the pack's blade points as its swinger sees it. The turn blends in from our rest hold over
-  the clip's first moment.
+- **The blade points** where the pack's blade points as its swinger sees it: the hand turned by the sword joint's
+  pose (`katana_pack.py hand` takes it in; `--no-handle` gives the first take, the hand alone). The turn blends in
+  from our rest hold over the clip's first moment.
 - **The grip** moves 0.4 of the pack hand's move, never nearer the eye than 0.32 m, nor above eye level. For the Block
   it moves 0.25 and stays 0.12 m below eye level, so the guard doesn't cover the crosshair.
 - **Arsenal plays** `kat_light1..3` as the katana's 3-hit chain (the scythe's chain counter), `kat_block` for the guard
@@ -235,8 +248,22 @@ The test used an R15 player and two stand-ins: an R15 copy and an R6 body. Befor
   the last, so only one shows.
 - **The first-person Block:** points the blade down and to the left across the view, where the pack's swinger has it.
 
-**Not checked:** a second player's view (it uses the scythe's route, which was checked in v979), an R6 player's own body
-(R6 keeps the `KAT` keys), and a phone.
+**Not checked then:** a second player's view and an R6 player's own body (both checked in round 3 below), and a phone.
+
+### Round 3 (20 Nov 2026, main: "the R6 path uses them"; in the place since v1134)
+
+- **Others' view:** both stand-ins played the moves from the server, the way another player's body arrives over the
+  network: an R15 body with the R15 uploads and an R6 body with the R6 uploads. Each was frozen mid-move and shot from
+  in front: `docs/katana/mocap-others-view-r6-v1134.jpg`. Every move shows on both: the guard, the deflect, Light01,
+  Light02, the stagger and the wave. Light03 played but wasn't photographed.
+- **Your own R6 body:** a real R6 respawn with real input. The Animator played the R6 uploads at the moves' speeds:
+  Block ×1.4, Light 1 / 2 / 3 ×1.389 / ×1.389 / ×2.083, the wave ×1.389. The sword joint stand-in was on the body. No
+  errors in the output.
+- **Traps:**
+  - The Assistant's execute_luau puts the camera type back after each call, so a photo camera has to be held by a
+    RenderStep binding.
+  - A clip loaded for the first time reports time 0, so warm each one (play it once) before freezing.
+  - An R6 StarterCharacter has to stay in StarterPlayer for the whole Play; the game respawns you as R15 once it's gone.
 
 ## Server authority, anti-cheat
 

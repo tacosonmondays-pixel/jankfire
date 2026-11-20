@@ -224,7 +224,12 @@ def rig_joints(inst):
     for p1, (p0, a) in R15_JOINTS.items():
         if p1 in parts and p0 in parts: joints[p1] = (p0, att(p0, a), att(p1, a))
     grip = att('RightHand', 'RightGripAttachment')
-    return joints, {'grip': grip}
+    # the sword's own joint: a Motor6D RightHand -> RightHandle, which the clips turn too (up to 70 deg in Light02)
+    h0 = IDENT
+    for r, o in inst.items():
+        if o['class'] == 'Motor6D' and isinstance(o['props'].get('Part1'), int) and nm(inst.get(o['props']['Part1'], {'props': {}})) == 'RightHandle':
+            h0 = o['props'].get('C0', IDENT)
+    return joints, {'grip': grip, 'handle': h0}
 
 def pose_at(inst, seq, t):
     # each joint's Transform at time t: linear between the keyframes that pose it (good enough for a hand's path)
@@ -278,7 +283,7 @@ def world(joints, tf, part):
     p0, c0, c1 = joints[part]
     return cf_mul(cf_mul(cf_mul(world(joints, tf, p0), c0), tf.get(part, IDENT)), cf_inv(c1))
 
-def hand(inst, seq, fps):
+def hand(inst, seq, fps, no_handle=False):
     joints, parts = rig_joints(inst)
     kfs = keyframes(inst, seq)
     length = inst[kfs[-1]]['props'].get('Time', 0)
@@ -287,7 +292,14 @@ def hand(inst, seq, fps):
     for i in range(n):
         t = min(length, i / fps)
         tf = pose_at(inst, seq, t)
-        H = cf_mul(world(joints, tf, 'RightHand'), parts['grip'])  # (the fist's grip: where a held weapon sits)
+        # the fist's grip (where a held weapon sits), turned as the sword's own joint has it: the handle's C0 turn and its
+        # pose's turn (the blade along the result's +Y, as along the grip's when the handle is still). --no-handle: the
+        # grip alone (the first take)
+        if no_handle: H = cf_mul(world(joints, tf, 'RightHand'), parts['grip'])
+        else:
+            th = tf.get('RightHandle', IDENT)
+            turn = tuple([0, 0, 0] + list(cf_mul(parts['handle'], th)[3:]))
+            H = cf_mul(cf_mul(world(joints, tf, 'RightHand'), tuple(list(parts['grip'][:3]) + [1, 0, 0, 0, 1, 0, 0, 0, 1])), turn)
         Hd = world(joints, tf, 'Head')
         L = world(joints, tf, 'LeftHand')
         frames.append({'t': round(t, 4), 'hand': [round(x, 5) for x in H], 'head': [round(x, 5) for x in Hd], 'left': [round(x, 4) for x in L[:3]]})
@@ -316,6 +328,6 @@ if __name__ == '__main__':
         clip = a[2]; out = a[3]
         ref = seqs.get(clip) or next((r for n, r in seqs.items() if clip.lower() in n.lower()), None)
         if ref is None: raise SystemExit('no clip ' + clip)
-        d = hand(inst, ref, int(opt('--fps', '60')))
+        d = hand(inst, ref, int(opt("--fps", "60")), "--no-handle" in a)
         json.dump(d, open(out, 'w'), indent=0)
         print('%s: %d frames, %.3f s, joints %s' % (clip, len(d['frames']), d['length'], ', '.join(d['joints'])))
