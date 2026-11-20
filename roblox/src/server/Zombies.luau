@@ -45,7 +45,7 @@ local GROUP = "JFZombies"
 export type Member = {
 	f: Fighter, p: Player?, name: string, c: number, guns: { string }, melee: string, res: { [string]: number },
 	kills: number, heads: number, downs: number, revives: number, earned: number,
-	hurtT: number, iframe: number, down: { at: CFrame, untilT: number }?, dead: boolean, reviver: Member?, reviveT: number,
+	hurtT: number, iframe: number, down: { at: CFrame, untilT: number, self: number? }?, dead: boolean, reviver: Member?, reviveT: number,
 	field: { d: { [number]: number }, t: number, at: Vector3 }?, prompt: ProximityPrompt?,
 	bot: Bot?, -- (a squad bot: its brain)
 }
@@ -73,7 +73,8 @@ local G: Game? = nil
 Zombies.game = function(): Game? return G end
 local gameN = 0
 -- (play-party's queue, 20 Nov 2026) one game per server: the queue asks before it forms a squad
-function Zombies.busy(): boolean return G ~= nil end
+local starting = 0 -- (a start still yielding: the map copy, the nav, the bodies, ~1.6 s on the school)
+function Zombies.busy(): boolean return G ~= nil or starting > 0 end
 -- the zombies maps ready to play: every Model in ServerStorage.ZMMaps with a ZM folder (the test block only while
 -- there's nothing else). never in Arena.pool or the duel / MODES rotations: the queue draws from this
 local function sources(): { Model }
@@ -103,6 +104,14 @@ function Zombies.maps(): { string }
 end
 -- set by the queue (play-party): called right after stop() has sent everyone home, so the parties go back to their rooms
 Zombies.onEnd = nil :: ((string, { Player }) -> ())?
+-- (stage 2 on: ZombieExtra.luau fills these, the web's zx* / zs* hooks: the power, colas, the Voider, the Cheat
+-- Machine, drops, boards, the crate). each is optional
+Zombies.ext = {} :: { [string]: any }
+local function call(name: string, ...: any): any
+	local fn = Zombies.ext[name]
+	if fn then return fn(...) end
+	return nil
+end
 
 -- ------------------------------------------------------------------ helpers
 local function feetOf(r: BasePart): Vector3 return Hitbox.feet(r.Position) end
@@ -130,6 +139,10 @@ local function publish()
 	a:SetAttribute("BreakUntil", if g.st == "pre" or g.st == "break" then workspace:GetServerTimeNow() + math.max(0, g.untilT - now()) else nil)
 end
 local function give(m: Member, d: number, why: string)
+	if d > 0 then
+		local k = call("creditMul", G, m)
+		if type(k) == "number" then d = math.floor(d * k + 0.5) end
+	end
 	m.c += d
 	if d > 0 then m.earned += d end
 	if m.p then m.p:SetAttribute("ZmC", m.c) end
@@ -139,6 +152,13 @@ local function pay(m: Member, price: number): boolean
 	if m.c < price then say(m, { k = "buy", ok = false, m = "need " .. price }); return false end
 	give(m, -price, "buy")
 	return true
+end
+-- what a gun holds for you in all (mag + spares): the web's zxMaxAmmo (Deep Pockets, the Voider: ZombieExtra)
+local function maxTotal(m: Member, wid: string): number?
+	local total = ZM.ammo(wid)
+	if not total then return nil end
+	local k = call("ammoMul", G, m, wid)
+	return math.floor(total * (if type(k) == "number" then k else 1) + 0.5)
 end
 -- the player's spare rounds, for their HUD and their client's reloads (Arsenal reads ZmRes_<weapon>)
 local function pushRes(m: Member)
@@ -187,20 +207,22 @@ local function grant(m: Member, wid: string)
 	if w.slot == "melee" then
 		m.melee = wid
 	elseif not table.find(m.guns, wid) then
-		if #m.guns < R.guns then
+		if #m.guns < (call("guns", G, m) or R.guns) then
 			table.insert(m.guns, wid)
 		else
 			local i = table.find(m.guns, m.f.held) or #m.guns
 			m.res[m.guns[i]] = nil
 			if m.p then m.p:SetAttribute("ZmRes_" .. m.guns[i], nil) end
+			call("dropGun", G, m, m.guns[i]) -- (its warranty goes with it)
 			m.guns[i] = wid
 		end
 	end
-	local total = ZM.ammo(wid)
+	local total = maxTotal(m, wid)
 	if total and w.mag then m.res[wid] = math.max(0, total - w.mag) end
 	arm(m, wid)
 end
 local function freshKit(m: Member)
+	call("fresh", G, m) -- (back to the start pistol: the Voider's work goes too)
 	if m.p then for wid in m.res do m.p:SetAttribute("ZmRes_" .. wid, nil) end end
 	m.guns = table.clone(R.startGuns)
 	m.melee = R.startMelee
@@ -409,7 +431,8 @@ local function swipe(g: Game, z: Mob)
 		if n < t.iframe then return end
 		t.iframe = n + R.iframe
 		local dir = if hd > 1e-3 then flat(dv) / hd else z.root.CFrame.LookVector
-		Fight.hurt(t.f, ZM.claw(g.n), z.f, "claw", false, dir * 12 + Vector3.new(0, 6, 0), to)
+		local cm = call("clawMul", g, t)
+		Fight.hurt(t.f, ZM.claw(g.n) * (if type(cm) == "number" then cm else 1), z.f, "claw", false, dir * 12 + Vector3.new(0, 6, 0), to)
 		return
 	end
 	if not t or not t.f.alive or n < z.nextSwing then return end
@@ -425,6 +448,7 @@ local function climb(g: Game, z: Mob)
 	local w = g.map.windows[z.win]
 	local n = now()
 	if z.ph == "wait" then
+		if call("tear", g, z) then return end -- (planks first)
 		if g.st ~= "over" and n >= z.t and (g.win[z.win] or 0) <= n then
 			z.ph = "climb"
 			z.t0 = n
@@ -457,7 +481,8 @@ local function step(g: Game, z: Mob, dt: number)
 	if not over and (g.tick + z.id) % 3 == 0 then think(g, z) end
 	local tx = Vector3.zero
 	if not over then
-		local s = if z.close then 0 else z.speed * (if z.swingAt > 0 then 0.35 else 1)
+		local slow = call("zombieSpeed", g, z)
+		local s = if z.close then 0 else z.speed * (if z.swingAt > 0 then 0.35 else 1) * (if type(slow) == "number" then slow else 1)
 		tx = z.wish * s
 		local me = z.root.Position
 		for _, o in g.mobs do -- (don't stack up on each other)
@@ -583,6 +608,7 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	local m = g and g.byF[t]
 	if not g or not m then return false end
 	m.downs += 1
+	local selfT = call("downed", g, m) -- (Get Up Juice: back up by yourself in a few seconds; the colas go)
 	t.alive = false
 	t.hp = 1 -- (the body stays up: HP shows 0, the HUD's down screen takes over)
 	local p = m.p
@@ -590,7 +616,7 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	local anyUp = false
 	for _, o in g.members do if o ~= m and o.f.alive then anyUp = true end end
 	local r = Fight.root(t)
-	if g.st == "over" or not anyUp or not r then
+	if g.st == "over" or not (anyUp or selfT) or not r then
 		bleedOut(m)
 		return true
 	end
@@ -601,7 +627,8 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	local lie = CFrame.lookAt(feet + Vector3.new(0, 1.1, 0), feet + Vector3.new(0, 1.1, 0) + look) * CFrame.Angles(math.rad(-80), 0, 0)
 	r.Anchored = true
 	r.CFrame = lie
-	m.down = { at = CFrame.lookAt(feet + Vector3.new(0, Hitbox.ROOT_UP, 0), feet + Vector3.new(0, Hitbox.ROOT_UP, 0) + look), untilT = now() + R.bleed }
+	m.down = { at = CFrame.lookAt(feet + Vector3.new(0, Hitbox.ROOT_UP, 0), feet + Vector3.new(0, Hitbox.ROOT_UP, 0) + look), untilT = now() + R.bleed,
+		self = if type(selfT) == "number" then now() + selfT else nil }
 	if p then
 		p:SetAttribute("ZmDown", workspace:GetServerTimeNow() + R.bleed)
 		p:SetAttribute("ACGrace", os.clock() + R.bleed + 5)
@@ -699,7 +726,7 @@ local function wirePrompts(g: Game)
 			local m = buyerOf(g, pl)
 			if not m then return end
 			if b.w == m.melee or table.find(m.guns, b.w) then -- already yours: a refill
-				local total = ZM.ammo(b.w)
+				local total = maxTotal(m, b.w)
 				if not total or not w.mag then say(m, { k = "buy", ok = false, m = "you already have it" }); return end
 				local full = math.max(0, total - (w.mag :: number))
 				if (m.res[b.w] or 0) >= full then say(m, { k = "buy", ok = false, m = "ammo full" }); return end
@@ -1001,13 +1028,15 @@ local function squadTick(g: Game, dt: number)
 		local f = m.f
 		if f.alive then
 			if f.hp < (f.maxHp or Weapons.HP) and n - m.hurtT > R.regenAfter then
-				f.hp = math.min(f.maxHp or Weapons.HP, f.hp + R.regen * dt)
+				local rm = call("regenMul", g, m)
+				f.hp = math.min(f.maxHp or Weapons.HP, f.hp + R.regen * dt * (if type(rm) == "number" then rm else 1))
 				Fight.syncHp(f)
 			end
 			continue
 		end
 		local d = m.down
 		if not d then continue end
+		if d.self and n >= d.self and g.st ~= "over" then standUp(m, nil); continue end -- (Get Up Juice)
 		if m.reviver and m.reviver.f.alive then d.untilT += dt -- (paused while someone's reviving you)
 		elseif n >= d.untilT then bleedOut(m) end
 	end
@@ -1047,6 +1076,7 @@ local function gameOver(g: Game)
 	publish()
 end
 local function nextRound(g: Game)
+	call("round", g)
 	g.n += 1
 	g.st = "live"
 	g.toSpawn = ZM.count(g.n, #g.members)
@@ -1076,10 +1106,12 @@ local function tick(g: Game, dt: number)
 	end
 	fields(g)
 	squadTick(g, dt)
+	local okX, errX = pcall(call, "tick", g, dt)
+	if not okX then warn("[jankfire] zombies extra tick: " .. tostring(errX)) end
 	-- over when nobody's up: everyone down or out (someone on their way back in, a respawn loading, still counts as up)
 	local anyUp = false
 	for _, m in g.members do
-		if m.f.alive or (not m.down and not m.dead) then anyUp = true end
+		if m.f.alive or (not m.down and not m.dead) or (m.down and m.down.self) then anyUp = true end
 	end
 	if #g.members > 0 and not anyUp then
 		for _, m in g.members do if m.down then bleedOut(m) end end -- (a downed player with nobody up: out at once)
@@ -1144,6 +1176,13 @@ local function hook()
 		if prevMod then amt = prevMod(t, amt, by, wid) end
 		local m = member(t)
 		if m then m.hurtT = now() end
+		local g = G
+		local z = g and g.byMob[t]
+		local a = by and member(by)
+		if g and z and a then
+			local x = call("hitZombie", g, z, amt, a, wid)
+			if type(x) == "number" then amt = x end
+		end
 		return amt
 	end
 	Fight.lastStand = goDown
@@ -1167,11 +1206,12 @@ local function hook()
 		if k then
 			local w = W[info.w]
 			local melee = (w and w.kind == "melee") or info.w == "slipper"
-			local head = z.lastHs and not melee
+			local head = (z.lastHs or call("allHeads", g) == true) and not melee
 			give(k, if melee or head then R.bonus else R.kill, if melee then "melee" elseif head then "head" else "kill")
 			k.kills += 1
 			if head then k.heads += 1 end
 		end
+		call("killed", g, z, k)
 		removeMob(g, z, true)
 	end
 	Rules.onArm = function(f: any)
@@ -1199,8 +1239,16 @@ end
 -- ------------------------------------------------------------------ start / stop
 -- start a game: (the game's id, a line about the map) or (nil, why). players: the real ones (1 to 4); the squad's bots
 -- fill the empty slots. opts.queue: which queue it came from (kept for the results)
+local startGame: (players: { Player }, mapName: string) -> (string?, string?)
 function Zombies.start(players: { Player }, mapName: string, _opts: { queue: string }?): (string?, string?)
-	if G then return nil, "busy" end
+	if Zombies.busy() then return nil, "busy" end
+	starting += 1 -- (busy from the moment a start begins, play-party's queue: not only once it's done)
+	local ok, id, why = pcall(startGame, players, mapName)
+	starting -= 1
+	if not ok then warn("[jankfire] zombies start: " .. tostring(id)); return nil, "start failed" end
+	return id, why
+end
+startGame = function(players: { Player }, mapName: string): (string?, string?)
 	hook()
 	local tpl = source(mapName)
 	if not tpl then return nil, "no zombies map " .. mapName end
@@ -1251,6 +1299,7 @@ function Zombies.start(players: { Player }, mapName: string, _opts: { queue: str
 	end
 	for i = #g.members + 1, Zombies.SQUAD do addBot(g, i - #players) end
 	wirePrompts(g)
+	call("start", g)
 	model:SetAttribute("Label", map.label)
 	publish()
 	local acc = 0
@@ -1296,6 +1345,7 @@ function Zombies.stop(_why: string?)
 		end
 	end
 	for _, t in g.templates do t:Destroy() end
+	pcall(call, "stop", g)
 	g.model:Destroy()
 	local home = {}
 	for _, p in g.players do if p.Parent then table.insert(home, p) end end
@@ -1353,6 +1403,14 @@ function Zombies.openAll()
 	for i = 1, #g.map.doors do openDoor(g, i, nil) end
 end
 
+-- (the mode's own parts, for ZombieExtra.luau)
+Zombies.X = {
+	give = give, pay = pay, say = say, sayAll = sayAll, member = member, inOpenArea = inOpenArea, arm = arm, grant = grant,
+	pushRes = pushRes, removeMob = removeMob, standUp = standUp, feetOf = feetOf, flat = flat, publish = publish,
+	kitList = kitList, prompt = prompt, buyerOf = buyerOf, maxTotal = maxTotal,
+	fight = function(): any return Fight end,
+}
+
 function Zombies.init(fight: any, matches: any?)
 	Fight = fight
 	Matches = matches
@@ -1380,7 +1438,9 @@ function Zombies.init(fight: any, matches: any?)
 			elseif op == "cost" then local g = G; if g then g.cost = { n = 0, sum = 0, max = 0 } end; return true
 			elseif op == "maps" then return Zombies.maps()
 			end
-			return "ops: start, stop, state, round, credits, open, max"
+			local tx = Zombies.ext.test -- (stage 2's own: ZombieExtra)
+			if tx then local r = tx(op, a, b); if r ~= nil then return r end end
+			return "ops: start, stop, state, round, credits, open, max, cost, maps (+ ZombieExtra's)"
 		end
 	end
 end

@@ -11,7 +11,10 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
+local ZM = require(Shared:WaitForChild("ZM"))
+local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local T = require(script.Parent:WaitForChild("Theme")) :: any
+local Body = require(script.Parent:WaitForChild("Body")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local me = Players.LocalPlayer
@@ -28,6 +31,27 @@ cLabel.Position = UDim2.fromOffset(12, 4); cLabel.Size = UDim2.fromOffset(100, 1
 local cNum = T.text(cPlate, "Num", "500", 22, T.ACCENT, T.FONT_HEAVY)
 cNum.Position = UDim2.fromOffset(12, 17); cNum.Size = UDim2.fromOffset(150, 24)
 local pops = T.new("Frame", { Name = "Pops", BackgroundTransparency = 1, Position = UDim2.fromOffset(192, 104), Size = UDim2.fromOffset(120, 44) }, root)
+local chips = T.new("Frame", { Name = "Chips", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, 152), Size = UDim2.fromOffset(420, 120) }, root)
+T.new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, chips)
+local chipList: { Frame } = {}
+local function setChips(rows: { { text: string, color: Color3 } })
+	for i, r in rows do
+		local c = chipList[i]
+		if not c then
+			c = T.plate(chips, "Chip", UDim2.new(), UDim2.fromOffset(170, 22))
+			local l = T.text(c, "Text", "", 12, T.TEXT, T.FONT_BOLD)
+			l.Position = UDim2.fromOffset(16, 0); l.Size = UDim2.new(1, -20, 1, 0)
+			local dot = T.new("Frame", { Name = "Dot", BorderSizePixel = 0, Position = UDim2.fromOffset(6, 7), Size = UDim2.fromOffset(6, 8) }, c)
+			T.corner(dot, 2)
+			chipList[i] = c
+		end
+		c.LayoutOrder = i
+		c.Visible = true
+		;(c:FindFirstChild("Text") :: TextLabel).Text = r.text
+		;(c:FindFirstChild("Dot") :: Frame).BackgroundColor3 = r.color
+	end
+	for i = #rows + 1, #chipList do chipList[i].Visible = false end
+end
 
 -- the round (bottom left, over the HP card): the number, what's left
 local rPlate = T.plate(root, "Round", UDim2.new(0, 16, 1, -206), UDim2.fromOffset(170, 66))
@@ -116,6 +140,17 @@ zr.OnClientEvent:Connect(function(x: any)
 		if x.st == "down" then say(tostring(x.who) .. " is down", false)
 		elseif x.st == "up" then say(tostring(x.who) .. " is back up", true)
 		elseif x.st == "out" then say(tostring(x.who) .. " is out", false) end
+	elseif x.k == "power" then
+		show("POWER ON", nil, 2.5)
+	elseif x.k == "mach" then
+		if x.st == "win" then
+			local def = ZM.MODS[tostring(x.mod)]
+			show(tostring(x.name or ""), if def then def.desc else nil, 3)
+		end
+	elseif x.k == "drop" then
+		local def = nil
+		for _, d in ZM.DROPS do if d.name == x.name then def = d end end
+		show(tostring(x.name), if def then def.desc else nil, 2.5)
 	elseif x.k == "over" then
 		for _, c in oRows:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 		oTitle.Text = "GAME OVER  ·  ROUND " .. tostring(x.n)
@@ -130,14 +165,82 @@ ProximityPromptService.PromptShown:Connect(function(pr: ProximityPrompt)
 	if pr:GetAttribute("Downed") == me.UserId then pr.Enabled = false end
 end)
 
+local CRATE_IDS = {}
+for id in ZM.CRATE do if W[id] then table.insert(CRATE_IDS, id) end end
+local spinModel: Model? = nil
+local spinId = ""
+local spinNext = 0
+local built: { [string]: Model } = {} -- (each gun built once, shown and hidden)
+local function showWeapon(id: string, at: CFrame)
+	if spinId ~= id or not spinModel then
+		if spinModel then spinModel.Parent = nil end
+		spinModel = nil
+		spinId = id
+		local m = built[id]
+		if not m then
+			local ok, b = pcall(WeaponModels.build, id, 3)
+			if ok and b then
+				for _, d in (b :: Model):GetDescendants() do
+					if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+				end
+				m = b :: Model
+				built[id] = m
+			end
+		end
+		if m then m.Parent = workspace; spinModel = m end
+	end
+	if spinModel then spinModel:PivotTo(at * CFrame.Angles(0, os.clock() * 1.6, 0)) end
+end
+local function crateTick(a: Instance?)
+	local cm = a and a:FindFirstChild("ZMExtra") and (a :: any).ZMExtra:FindFirstChild("Crate")
+	local spin, offer = cm and cm:GetAttribute("Spin"), cm and cm:GetAttribute("Offer")
+	local t = workspace:GetServerTimeNow()
+	local body = cm and cm:FindFirstChild("Body") :: BasePart?
+	if body and type(spin) == "number" and t < spin then
+		if os.clock() >= spinNext then spinNext = os.clock() + 0.12; spinId = "" end
+		local id = if spinId ~= "" then spinId else CRATE_IDS[math.random(1, #CRATE_IDS)]
+		showWeapon(id, body.CFrame * CFrame.new(0, 3.2, 0))
+	elseif body and type(offer) == "number" and t < offer then
+		showWeapon(tostring(cm:GetAttribute("W")), body.CFrame * CFrame.new(0, 3.2, 0))
+	elseif spinModel then
+		spinModel.Parent = nil; spinModel = nil; spinId = ""
+	end
+end
+
 RunService.RenderStepped:Connect(function()
 	local on = me:GetAttribute("ZmOn") == true
+	local spd = me:GetAttribute("ZmSpeed")
+	Body.zm = if on and type(spd) == "number" then spd else 1
 	if gui.Enabled ~= on then
 		gui.Enabled = on
 		if not on then over.Visible = false; banner.Text = ""; toast.Text = "" end
 	end
-	if not on then return end
+	if not on then if spinModel then spinModel.Parent = nil; spinModel = nil end; return end
 	local a = arena()
+	crateTick(a)
+	-- the chips: no power yet, the modifiers running (time left), your colas
+	local rows = {}
+	if a and a:GetAttribute("Power") == false then table.insert(rows, { text = "NO POWER", color = T.DIM }) end
+	local mods = a and a:GetAttribute("Mods")
+	if type(mods) == "string" then
+		for _, e in string.split(mods, ",") do
+			local bits = string.split(e, ":")
+			local def = ZM.MODS[bits[1]]
+			local who = tonumber(bits[3]) or 0
+			if def and (def.team or who == me.UserId) then
+				local left = math.max(0, math.ceil((tonumber(bits[2]) or 0) - workspace:GetServerTimeNow()))
+				table.insert(rows, { text = def.name .. "  " .. left, color = def.color })
+			end
+		end
+	end
+	local colas = me:GetAttribute("ZmColas")
+	if type(colas) == "string" then
+		for _, id in string.split(colas, ",") do
+			local def = ZM.COLAS[id]
+			if def then table.insert(rows, { text = def.name, color = def.color }) end
+		end
+	end
+	setChips(rows)
 	local st = a and a:GetAttribute("St")
 	rNum.Text = tostring(a and a:GetAttribute("Round") or 0)
 	local left = a and a:GetAttribute("Left")
