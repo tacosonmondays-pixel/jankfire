@@ -121,8 +121,15 @@ local function announce(pad: Model, who: Who, v: View)
 	local mode = string.upper(tostring(pad:GetAttribute("Mode") or pad.Name))
 	local waiting = 0
 	for _ in v.on do waiting += 1 end
+	-- (20 Nov 2026, several hubs: HUB-MARKERS.md) only players in the pad's own hub hear about it (their Hub attribute,
+	-- HubTravel's; none = the ring). a hub with no pads of its own yet (not built) takes offers from any
+	local padHub = Matches.padHub(pad)
+	local hubsWithPads: { [string]: boolean } = {}
+	for _, pd in Matches.allPads() do hubsWithPads[Matches.padHub(pd)] = true end
 	for _, q in Players:GetPlayers() do
 		if q == who.player or offers[q] then continue end
+		local qh = Matches.playerHub(q)
+		if qh ~= padHub and hubsWithPads[qh] then continue end
 		if now() - (lastShown[q] or -math.huge) < QuickJoin.GAP then continue end
 		local group = groupFor(q)
 		if not group or not sideFor(v, #group) then continue end
@@ -238,9 +245,17 @@ end
 -- ------------------------------------------------------------------ Studio tests
 function QuickJoin.test(op: string, a: any, b: any, c: any): any
 	if not RunService:IsStudio() then return nil end
-	local pads = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("QueuePads")
+	-- (a pad by name: "1v1" = the first, the ring's; "square:1v1" = that hub's. every hub's pads: Matches.allPads)
+	local function padNamed(x: any): Model?
+		local sx = tostring(x)
+		local hubId, name = string.match(sx, "^(%w+):(.+)$")
+		for _, pd in Matches.allPads() do
+			if pd.Name == (name or sx) and (hubId == nil or Matches.padHub(pd) == hubId) then return pd end
+		end
+		return nil
+	end
 	if op == "qjstand" then
-		local pad = pads and pads:FindFirstChild(tostring(a))
+		local pad = padNamed(a)
 		if not pad or not pad:IsA("Model") then return { ok = false, why = "no pad " .. tostring(a) } end
 		local list = fakes[pad] or {}
 		fakes[pad] = list
@@ -248,7 +263,7 @@ function QuickJoin.test(op: string, a: any, b: any, c: any): any
 		return { ok = true, on = #list }
 	elseif op == "qjoff" then
 		if a == nil then fakes = {} else
-			local pad = pads and pads:FindFirstChild(tostring(a))
+			local pad = padNamed(a)
 			if pad then fakes[pad :: Model] = nil end
 		end
 		return { ok = true }
@@ -262,11 +277,11 @@ function QuickJoin.test(op: string, a: any, b: any, c: any): any
 			local v = viewOf(pad, seen[pad])
 			local n = 0
 			for _ in v.on do n += 1 end
-			if n > 0 then out.pads[pad.Name] = { counts = v.counts, size = v.size, full = v.full } end
+			if n > 0 then out.pads[Matches.padHub(pad) .. ":" .. pad.Name] = { counts = v.counts, size = v.size, full = v.full } end
 		end
 		if typeof(a) == "Instance" and a:IsA("Player") then
 			local o = offers[a]
-			out.offer = if o then { id = o.id, pad = o.pad.Name, who = o.who.name, age = now() - o.at } else nil
+			out.offer = if o then { id = o.id, pad = Matches.padHub(o.pad) .. ":" .. o.pad.Name, who = o.who.name, age = now() - o.at } else nil
 			out.free = freeInHub(a)
 			out.zone = a:GetAttribute("Zone")
 		end

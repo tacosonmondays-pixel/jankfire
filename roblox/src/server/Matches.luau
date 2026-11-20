@@ -178,6 +178,38 @@ local function markers(name: string): { BasePart }
 	return out
 end
 
+-- every hub's queue pads (20 Nov 2026, the owner: "model all 3 and let me travel between hubs"; side-session-notes
+-- HUB-MARKERS.md): the legacy ring's Map.Hub.QueuePads and each hub folder's own (Map.Hub.Square / Concourse /
+-- Atrium .QueuePads), one shared queue. a pad is known by its instance: names repeat across hubs, and its Hub
+-- attribute says whose (none = the ring)
+local function allPads(): { Model }
+	local out = {}
+	local legacy = hub:FindFirstChild("QueuePads")
+	local function add(f: Instance?)
+		if not f then return end
+		for _, c in f:GetChildren() do if c:IsA("Model") then table.insert(out, c) end end
+	end
+	add(legacy)
+	for _, h in hub:GetChildren() do
+		if h ~= legacy and (h:IsA("Folder") or h:IsA("Model")) then add(h:FindFirstChild("QueuePads")) end
+	end
+	return out
+end
+Matches.allPads = allPads
+-- a pad by name for the Studio tests: "1v1" (the first: the ring's), "square:1v1" (that hub's), or the Model itself
+local function padNamed(a: any): Model?
+	if typeof(a) == "Instance" and a:IsA("Model") then return a end
+	local s = tostring(a)
+	local hubId, name = string.match(s, "^(%w+):(.+)$")
+	for _, pad in allPads() do
+		if pad.Name == (name or s) and (hubId == nil or (pad:GetAttribute("Hub") or "ring") == hubId) then return pad end
+	end
+	return nil
+end
+-- the hub a pad belongs to, and a player's (HubTravel's Hub attribute): none = the ring
+function Matches.padHub(pad: Instance): string return (pad:GetAttribute("Hub") :: string?) or "ring" end
+function Matches.playerHub(p: Player): string return (p:GetAttribute("Hub") :: string?) or "ring" end
+
 -- ------------------------------------------------------------------ sites (an arena, or a copy, per live match)
 local function sitesInUse(): number
 	local n = 0
@@ -296,6 +328,19 @@ local function spawnAt(f: Fighter): (Vector3, Vector3?)
 	end
 	local home = Matches.homeOf and Matches.homeOf(p)
 	if home then return home.Position, home.LookVector end
+	-- (20 Nov 2026, several hubs: HUB-MARKERS.md) back to the hub you were in: the hub session's HubTravel.homeOf, a
+	-- spot on your Hub's spawns (asked here, not in Party.homeOf: that one means "in a party room"). required when
+	-- first needed, so neither module loads the other at start
+	if lastZone[p] ~= "training" then
+		local htm = script.Parent:FindFirstChild("HubTravel")
+		if htm and htm:IsA("ModuleScript") then
+			local okR, HT = pcall(require, htm)
+			if okR and type(HT) == "table" and type((HT :: any).homeOf) == "function" then
+				local okH, cf = pcall((HT :: any).homeOf, p)
+				if okH and typeof(cf) == "CFrame" then return cf.Position, cf.LookVector end
+			end
+		end
+	end
 	local list = markers(if lastZone[p] == "training" then "TrainSpawns" else "HubSpawns")
 	if #list == 0 then list = markers("HubSpawns") end
 	if #list == 0 then return (hub:GetAttribute("Origin") :: Vector3) + Vector3.new(0, 3, 0), nil end
@@ -693,12 +738,10 @@ end
 -- why ("busy": every site is in use; the queue tries again). opts = { queue, ranked, rated, hold?, holdWin? }; hold
 -- (Studio tests only) holds the match like a ghost match: it ends after hold s with team holdWin taking it
 function Matches.startQueued(padMode: string, sides: { { Player } }, opts: any): (Match?, string?)
-	local pads = hub:FindFirstChild("QueuePads")
+	-- (any hub's pad of the mode will do: they share its rules. a "lifts" one first, the ring's before the new hubs')
 	local pad: Model? = nil
-	if pads then
-		for _, c in pads:GetChildren() do
-			if c:IsA("Model") and c:GetAttribute("Mode") == padMode and (pad == nil or c:GetAttribute("Bank") == "lifts") then pad = c end
-		end
+	for _, c in allPads() do
+		if c:GetAttribute("Mode") == padMode and (pad == nil or (c:GetAttribute("Bank") == "lifts" and (pad :: Model):GetAttribute("Bank") ~= "lifts")) then pad = c end
 	end
 	if not pad then return nil, "no pad plays " .. padMode end
 	for _, list in sides do for _, p in list do if inMatch[p] then return nil, "in a match" end end end
@@ -1094,16 +1137,19 @@ function Matches.padVote(p: Player, id: any): (boolean, string?)
 end
 
 local function padStep()
-	local pads = hub:FindFirstChild("QueuePads")
-	if not pads then return end
+	-- (every hub's pads, one shared queue: allPads above)
+	local list = allPads()
+	if #list == 0 then return end
+	local present: { [Model]: boolean } = {}
+	for _, pad in list do present[pad] = true end
 	-- a pad taken out of the hub gives back the site it held
 	for pad, c in padCount do
-		if pad.Parent ~= pads then padCount[pad] = nil; releaseSite(c.site) end
+		if not present[pad] then padCount[pad] = nil; releaseSite(c.site) end
 	end
-	for pad in fullSince do if pad.Parent ~= pads then fullSince[pad] = nil end end
+	for pad in fullSince do if not present[pad] then fullSince[pad] = nil end end
 	local claimed: { [Player]: boolean } = {}
 	local seen: { [Model]: { sides: { { Player } }, counts: string, full: boolean } } = {}
-	for _, pad in pads:GetChildren() do
+	for _, pad in list do
 		if not pad:IsA("Model") then continue end
 		local teams, size = pad:GetAttribute("Teams") :: number, pad:GetAttribute("Size") :: number
 		local sides: { { Player } } = {}
@@ -1317,9 +1363,8 @@ end
 function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 	if not RunService:IsStudio() then return nil end
 	if op == "ghost" then
-		local pads = hub:FindFirstChild("QueuePads")
-		local pad = pads and pads:FindFirstChild(tostring(a))
-		if not pad or not pad:IsA("Model") then return nil end
+		local pad = padNamed(a) -- ("1v1", "square:1v1" or the pad: every hub's)
+		if not pad then return nil end
 		local arena = if type(b) == "string" then b else nextArena(pad)
 		local site = claimSite(arena)
 		if not site then return { refused = arena, inUse = sitesInUse(), cap = maxLive() } end
@@ -1337,9 +1382,8 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 		return { id = m.id, arena = arena, site = site.model:GetFullName(), copy = site.copy, pivot = site.model:GetPivot().Position, killY = Arena.killY(site.model), centreX = Arena.centreX(site.model), spawns = sp }
 	elseif op == "padfill" then
 		-- (the pads' map vote alone: pad a counts as full with player b on side 1; its match is held like a ghost match)
-		local pads = hub:FindFirstChild("QueuePads")
-		local pad = pads and pads:FindFirstChild(tostring(a))
-		if not pad or not pad:IsA("Model") or typeof(b) ~= "Instance" or not b:IsA("Player") then return false end
+		local pad = padNamed(a) -- ("1v1", "square:1v1" or the pad: every hub's)
+		if not pad or typeof(b) ~= "Instance" or not b:IsA("Player") then return false end
 		testFill[pad] = b :: Player
 		return true
 	elseif op == "padvotefor" then

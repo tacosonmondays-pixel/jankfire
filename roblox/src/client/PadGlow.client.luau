@@ -24,10 +24,19 @@ local function scan()
 	local seen: { [BasePart]: boolean } = {}
 	local map = workspace:FindFirstChild("Map")
 	local hub = map and map:FindFirstChild("Hub")
-	local pads = hub and hub:FindFirstChild("QueuePads")
-	if not pads then table.clear(sides); table.clear(known); return end
+	-- (20 Nov 2026, several hubs: HUB-MARKERS.md) the ring's Map.Hub.QueuePads and each hub folder's own
+	local list: { Instance } = {}
+	if hub then
+		local legacy = hub:FindFirstChild("QueuePads")
+		if legacy then for _, c in legacy:GetChildren() do table.insert(list, c) end end
+		for _, h in hub:GetChildren() do
+			local qp = if h ~= legacy and (h:IsA("Folder") or h:IsA("Model")) then h:FindFirstChild("QueuePads") else nil
+			if qp then for _, c in qp:GetChildren() do table.insert(list, c) end end
+		end
+	end
+	if #list == 0 then table.clear(sides); table.clear(known); return end
 	table.clear(sides)
-	for _, pad in pads:GetChildren() do
+	for _, pad in list do
 		if not pad:IsA("Model") then continue end
 		local slots: { [number]: { BasePart } } = {}
 		for _, c in pad:GetChildren() do
