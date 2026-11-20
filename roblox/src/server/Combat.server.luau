@@ -753,6 +753,7 @@ end)
 
 require(script.Parent:WaitForChild("Matches")).init(Fight) -- the hub, its pads and the matches (before anyone spawns)
 Dummies.init(Fight, applyHitscan)
+Fight.applyHitscan = applyHitscan -- (the zombies squad's bots shoot through it too, Zombies.luau)
 Katana.init(Fight, applyHitscan) -- the edge meter, the crit return's payout and the slash wave (+ ServerStorage.JankKatanaTest in Studio)
 require(script.Parent:WaitForChild("RangeTest")).init(Fight) -- Cardboard Carl's: the pop-up target lane in the training hall
 require(script.Parent:WaitForChild("Utility")).init(Fight) -- the item on G: charges, throws, blasts, domes, clouds, the medkit

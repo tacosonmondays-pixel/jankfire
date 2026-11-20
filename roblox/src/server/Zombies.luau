@@ -2,8 +2,8 @@
 -- ZOMBIES (the web game's co-op wave survival, server/zombies.js; the owner, 20 Nov 2026: "lets bring back zombies!!
 -- We can used colored dummies for now!!"). A squad of up to 4 on a zombies map (the contract: roblox/docs/ZOMBIES.md).
 -- Endless rounds of zombies climb in through the windows of whichever areas are open and walk the nav grid
--- (ZombieNav.luau) to the nearest of the squad. Hits and kills earn credits, spent with E on shutters and wall guns.
--- A downed player is revived by a friend holding E; when everyone's down it's over.
+-- (ZombieNav.luau) to the nearest of the squad. Hits and kills earn credits, spent with F on shutters and wall guns (F, as on the web: E is the grapple).
+-- A downed player is revived by a friend holding F; when everyone's down it's over.
 --
 -- Zombies are Fighters of kind "zombie": coloured R15 dummies in workspace.Dummies, so every weapon we have hits them
 -- (the clients aim at that folder, Combat and WeaponProj check Fight.byModel). Their hits and deaths stay in here
@@ -47,6 +47,12 @@ export type Member = {
 	kills: number, heads: number, downs: number, revives: number, earned: number,
 	hurtT: number, iframe: number, down: { at: CFrame, untilT: number }?, dead: boolean, reviver: Member?, reviveT: number,
 	field: { d: { [number]: number }, t: number, at: Vector3 }?, prompt: ProximityPrompt?,
+	bot: Bot?, -- (a squad bot: its brain)
+}
+export type Bot = {
+	i: number, gun: string, mag: number, reloadUntil: number, nextShot: number, th: Mob?, td: number, task: Member?,
+	revT0: number, think: number, side: number, sideT: number, chk: number, chkPos: Vector3, stuck: number,
+	spot: { d: { [number]: number }, t: number, at: Vector3 },
 }
 export type Mob = {
 	id: number, f: Fighter, m: Model, hum: Humanoid, root: BasePart, kind: number, speed: number,
@@ -227,16 +233,19 @@ local function template(kind: number): Model
 end
 -- the walk: Roblox's own zombie walk (an animation cycle, never hand-posed). Zombies.WALK can be swapped in a test
 Zombies.WALK = "rbxassetid://616168032"
-local walkAnim: Animation? = nil
-local function walkTrack(hum: Humanoid): AnimationTrack?
+Zombies.BOT_WALK = "rbxassetid://507777826" -- (the squad's bots: Roblox's plain R15 walk)
+local anims: { [string]: Animation } = {}
+local function walkTrack(hum: Humanoid, id: string?): AnimationTrack?
 	local an = hum:FindFirstChildOfClass("Animator")
 	if not an then an = Instance.new("Animator"); (an :: Animator).Parent = hum end
-	if not walkAnim or walkAnim.AnimationId ~= Zombies.WALK then
-		local a = Instance.new("Animation")
-		a.AnimationId = Zombies.WALK
-		walkAnim = a
+	local aid = id or Zombies.WALK
+	local anim = anims[aid]
+	if not anim then
+		anim = Instance.new("Animation")
+		anim.AnimationId = aid
+		anims[aid] = anim
 	end
-	local ok, tr = pcall(function() return (an :: Animator):LoadAnimation(walkAnim :: Animation) end)
+	local ok, tr = pcall(function() return (an :: Animator):LoadAnimation(anim :: Animation) end)
 	if not ok or not tr then return nil end
 	tr.Looped = true
 	tr.Priority = Enum.AnimationPriority.Movement
@@ -523,6 +532,7 @@ local function standUp(m: Member, by: Member?)
 	if r then
 		r.Anchored = false
 		if down then r.CFrame = down.at end
+		if not m.p then pcall(function() (r :: BasePart):SetNetworkOwner(nil) end) end -- (a bot: the server moves it)
 	end
 	f.alive, f.hp, f.spawnT = true, f.maxHp or Weapons.HP, now()
 	m.hurtT = 0
@@ -577,12 +587,12 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 		p:SetAttribute("ZmDown", workspace:GetServerTimeNow() + R.bleed)
 		p:SetAttribute("ACGrace", os.clock() + R.bleed + 5)
 	end
-	-- the revive: hold E over them
+	-- the revive: hold F over them
 	local pr = Instance.new("ProximityPrompt")
 	pr.Name = "ZmRevive"
 	pr.ActionText = "Revive"
 	pr.ObjectText = m.name
-	pr.KeyboardKeyCode = Enum.KeyCode.E
+	pr.KeyboardKeyCode = Enum.KeyCode.F
 	pr.HoldDuration = R.revive
 	pr.MaxActivationDistance = 9
 	pr.RequiresLineOfSight = false
@@ -606,7 +616,7 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	return true
 end
 
--- ------------------------------------------------------------------ doors and wall guns (E)
+-- ------------------------------------------------------------------ doors and wall guns (F)
 local function openDoor(g: Game, i: number, by: Member?)
 	if g.open[i] then return end
 	g.open[i] = true
@@ -628,18 +638,25 @@ local function prompt(parent: BasePart, action: string, object: string, hold: nu
 	local pr = Instance.new("ProximityPrompt")
 	pr.ActionText = action
 	pr.ObjectText = object
-	pr.KeyboardKeyCode = Enum.KeyCode.E
+	pr.KeyboardKeyCode = Enum.KeyCode.F
 	pr.HoldDuration = hold
 	pr.MaxActivationDistance = 9
 	pr.RequiresLineOfSight = false
 	pr.Parent = parent
 	return pr
 end
+Zombies.lastRefusal = ""
 local function buyerOf(g: Game, pl: Player): Member?
 	local f = Fight.byPlayer[pl]
 	local m = f and g.byF[f]
-	if not m or not m.f.alive or g.st == "over" then return nil end
-	if not inOpenArea(m) then return nil end -- (movement is the client's: walking through a shutter buys nothing)
+	if not m then Zombies.lastRefusal = pl.Name .. ": not in this game"; return nil end
+	if not m.f.alive or g.st == "over" then Zombies.lastRefusal = pl.Name .. ": down or over"; return nil end
+	if not inOpenArea(m) then -- (movement is the client's: walking through a shutter buys nothing)
+		local r = Fight.root(m.f)
+		Zombies.lastRefusal = pl.Name .. ": not in an open area (at " .. tostring(r and ZM.areaAt(g.map, feetOf(r))) .. ")"
+		return nil
+	end
+	Zombies.lastRefusal = ""
 	return m
 end
 local function wirePrompts(g: Game)
@@ -677,6 +694,268 @@ local function wirePrompts(g: Game)
 			end
 			if pay(m, b.price) then grant(m, b.w); say(m, { k = "buy", ok = true, m = w.name or b.w }) end
 		end)
+	end
+end
+
+-- ------------------------------------------------------------------ the squad's bots (web server/zmbots.js, its core)
+-- a squad is always Zombies.SQUAD: bots take the empty slots. they stay with the squad, shoot the nearest zombie they can
+-- see (human-ish aim, through Combat's own hit code, Fight.applyHitscan), back off from the ones in their face and revive
+-- whoever's down (people first). they go down like anyone and are revived the same way (hold F over them). their models
+-- live in the arena (not workspace.Dummies: nobody's aim locks onto them) and nothing queries them (shots pass through).
+-- (not yet, as on the web: shopping, items, planks)
+Zombies.SQUAD = 4
+local BOT_SHIRT = { Color3.fromRGB(70, 110, 170), Color3.fromRGB(150, 70, 60), Color3.fromRGB(90, 130, 80), Color3.fromRGB(170, 140, 70) }
+local BOT_SKIN = { Color3.fromRGB(234, 184, 146), Color3.fromRGB(160, 110, 80), Color3.fromRGB(250, 214, 176), Color3.fromRGB(120, 82, 60) }
+local BOT_GUNS = { "revolver", "pistol" }
+local botWalk: { [Member]: AnimationTrack? } = {}
+local function botBody(i: number): Model
+	local shirt, skin = BOT_SHIRT[(i - 1) % 4 + 1], BOT_SKIN[(i - 1) % 4 + 1]
+	local ok, m = pcall(function()
+		local d = Instance.new("HumanoidDescription")
+		d.HeadColor, d.LeftArmColor, d.RightArmColor = skin, skin, skin
+		d.TorsoColor = shirt
+		d.LeftLegColor, d.RightLegColor = Color3.fromRGB(52, 56, 66), Color3.fromRGB(52, 56, 66)
+		return Players:CreateHumanoidModelFromDescription(d, Enum.HumanoidRigType.R15)
+	end)
+	local body: Model = if ok and m then m :: Model else Instance.new("Model")
+	body.Name = "Bot " .. i
+	for _, d in body:GetDescendants() do
+		if d:IsA("BasePart") then d.CollisionGroup = GROUP; d.CanQuery = false; d.Material = Enum.Material.SmoothPlastic end
+	end
+	local hum = body:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayName = "Bot " .. i
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+		hum.NameDisplayDistance = 80
+		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+		hum.BreakJointsOnDeath = true
+		hum.AutoJumpEnabled = false
+	end
+	local hs = body:FindFirstChild("Health")
+	if hs then hs:Destroy() end
+	body:SetAttribute("ZmBot", i)
+	return body
+end
+-- a (new) body at a spawn, full HP, its kit in hand
+local function botSpawn(g: Game, m: Member)
+	local b = m.bot :: Bot
+	local f = m.f
+	local old = f.ref
+	if typeof(old) == "Instance" then
+		Fight.byModel[old :: any] = nil
+		if (old :: Instance).Parent then (old :: Instance):Destroy() end
+	end
+	local body = botBody(b.i)
+	local at, look = spawnPoint(g, m)
+	local pos = at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+	local lk = if look then Vector3.new(look.X, 0, look.Z) else Vector3.xAxis
+	body:PivotTo(CFrame.lookAt(pos, pos + (if lk.Magnitude > 1e-3 then lk.Unit else Vector3.xAxis)))
+	f.ref = body
+	f.forced = kitList(m)
+	Rules.spawn(f, now())
+	f.held = b.gun
+	body.Parent = g.model
+	Fight.byModel[body] = f
+	local r = body:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if r then pcall(function() (r :: BasePart):SetNetworkOwner(nil) end) end
+	m.down, m.dead, m.reviver = nil, false, nil
+	if m.prompt then m.prompt:Destroy(); m.prompt = nil end
+	b.mag, b.reloadUntil, b.task, b.th = (W[b.gun].mag :: number?) or 6, 0, nil, nil
+	Fight.syncHp(f)
+	Fight.showWeapon(f)
+	local hum = body:FindFirstChildOfClass("Humanoid")
+	botWalk[m] = if hum then walkTrack(hum, Zombies.BOT_WALK) else nil
+end
+local function addBot(g: Game, i: number)
+	local gun = BOT_GUNS[math.random(1, #BOT_GUNS)]
+	local f = Rules.newFighter("zbot", "Bot " .. i, nil)
+	local m: Member = {
+		f = f, p = nil, name = "Bot " .. i, c = R.start, guns = { gun }, melee = R.startMelee, res = {},
+		kills = 0, heads = 0, downs = 0, revives = 0, earned = 0, hurtT = 0, iframe = 0, down = nil, dead = false,
+		reviver = nil, reviveT = 0, field = nil, prompt = nil,
+		bot = {
+			i = i, gun = gun, mag = 6, reloadUntil = 0, nextShot = 0, th = nil, td = math.huge, task = nil, revT0 = 0,
+			think = 0, side = 1, sideT = 0, chk = now(), chkPos = Vector3.zero, stuck = 0,
+			spot = { d = {}, t = -math.huge, at = Vector3.new(1e9, 0, 0) },
+		},
+	}
+	table.insert(g.members, m)
+	g.byF[f] = m
+	table.insert(Fight.all, f)
+	botSpawn(g, m)
+end
+local function removeBot(g: Game, m: Member)
+	local fi = table.find(Fight.all, m.f)
+	if fi then table.remove(Fight.all, fi) end
+	g.byF[m.f] = nil
+	m.f.alive = false
+	local body = m.f.ref
+	if typeof(body) == "Instance" then
+		Fight.byModel[body :: any] = nil
+		(body :: Instance):Destroy()
+	end
+	if m.prompt then m.prompt:Destroy() end
+	botWalk[m] = nil
+end
+-- one shot at a zombie: a human-ish miss now and then (more with range), a head now and then
+local function botShoot(_g: Game, m: Member, z: Mob)
+	local b = m.bot :: Bot
+	local f = m.f
+	local w = W[b.gun]
+	local eye = Fight.eye(f)
+	if not eye or not w then return end
+	local tf = feetOf(z.root)
+	local head = math.random() < 0.22
+	local aimAt = tf + Vector3.new(0, if head then 5.2 else 3.4, 0)
+	local dist = (aimAt - eye).Magnitude
+	local err = 0.06 + dist / 500 -- (radians of spread on top of the gun's own: a person's aim, web zhDiff)
+	local d = Hitbox.spreadDir((aimAt - eye).Unit, ((w.spread :: number?) or 0.01) + err, math.random(), math.random())
+	local range = (w.range :: number?) or 300
+	local hitMap = Fight.castMap(eye, d, range)
+	local mapT = if hitMap then (hitMap.Position - eye).Magnitude else range
+	local t, hd = Hitbox.ray(eye, d, tf, Hitbox.distScale((tf - eye).Magnitude), nil, Hitbox.profile(z.m))
+	local endT = mapT
+	if t and t < mapT and Fight.applyHitscan then
+		endT = t
+		Fight.applyHitscan(f, z.f, b.gun, 1, if hd then 1 else 0, eye)
+	end
+	local r = Remotes:FindFirstChild("Shot")
+	if r and r:IsA("RemoteEvent") then r:FireAllClients({ model = Fight.model(f), w = b.gun, ends = { eye + d * endT } }) end
+	b.mag -= 1
+	b.nextShot = now() + 1.3 / math.max(0.5, Weapons.fireRate(w, f.hp)) + 0.15 + math.random() * 0.4 -- (a person's trigger finger)
+	if b.mag <= 0 then b.reloadUntil = now() + ((w.reload :: number?) or 1.5) end
+end
+-- a field to a spot (the downed friend a bot is walking to): redone every 2 s
+local function spotField(g: Game, b: Bot, at: Vector3): { [number]: number }
+	local sp = b.spot
+	if now() - sp.t > 2 or flat(at - sp.at).Magnitude > 3 or sp.t < g.fieldT then
+		Nav.flow(g.nav, g.open, at, sp.d)
+		sp.t, sp.at = now(), at
+	end
+	return sp.d
+end
+local function botStep(g: Game, m: Member, dt: number)
+	local b = m.bot :: Bot
+	local f = m.f
+	local hum = Fight.hum(f)
+	local r = Fight.root(f)
+	if not f.alive or not hum or not r or g.st == "over" then
+		if hum and f.alive then hum:Move(Vector3.zero, false) end
+		return
+	end
+	local n = now()
+	local pos = feetOf(r)
+	local eye = Fight.eye(f) or r.Position
+	-- think: the nearest zombie in sight, who needs reviving
+	if n >= b.think then
+		b.think = n + 0.3 + math.random() * 0.15
+		local th, td = nil :: Mob?, math.huge
+		for _, z in g.mobs do
+			if z.ph ~= "hunt" or not z.f.alive then continue end
+			local d = (z.root.Position - r.Position).Magnitude
+			if d < 66 and d < td then
+				local to = z.root.Position + Vector3.new(0, 1.5, 0) - eye
+				if not workspace:Raycast(eye, to, g.nav.params) then th, td = z, d end
+			end
+		end
+		if th and th ~= b.th then b.nextShot = math.max(b.nextShot, n + 0.35 + math.random() * 0.3) end -- (a moment to react)
+		b.th, b.td = th, td
+		local best, bd = nil :: Member?, math.huge
+		for _, o in g.members do
+			if o == m or not o.down or (o.reviver and o.reviver ~= m) then continue end
+			local orr = Fight.root(o.f)
+			if not orr then continue end
+			local d = (orr.Position - r.Position).Magnitude - (if o.p then 30 else 0) -- (people first)
+			if d < bd then bd, best = d, o end
+		end
+		if b.task ~= best and b.task and b.task.reviver == m then b.task.reviver = nil end
+		b.task = best
+	end
+	-- where to: a downed friend, else stay with the squad (the nearest person up, else anyone up)
+	local wish = Vector3.zero
+	local reviving = false
+	local o = b.task
+	if o and o.down then
+		local orr = Fight.root(o.f)
+		if orr then
+			local at = feetOf(orr)
+			if flat(at - pos).Magnitude > 5.4 then
+				local p = Nav.downhill(g.nav, g.open, spotField(g, b, at), pos)
+				wish = if p then flat(p - pos) else flat(at - pos)
+			else
+				reviving = true
+				if o.reviver ~= m then o.reviver = m; b.revT0 = n end
+				if n - b.revT0 >= R.revive then standUp(o, m); b.task = nil end
+			end
+		end
+	else
+		if o and o.reviver == m then o.reviver = nil end
+		b.task = nil
+		local anchor, ad = nil :: Member?, math.huge
+		for _, a in g.members do
+			if a == m or not a.f.alive then continue end
+			local ar = Fight.root(a.f)
+			if not ar then continue end
+			local d = (ar.Position - r.Position).Magnitude - (if a.p then 1000 else 0)
+			if d < ad then ad, anchor = d, a end
+		end
+		local ar = anchor and Fight.root(anchor.f)
+		if anchor and ar and flat(ar.Position - r.Position).Magnitude > 13.5 then
+			local fl = anchor.field
+			local p = if fl then Nav.downhill(g.nav, g.open, fl.d, pos) else nil
+			wish = if p then flat(p - pos) else flat(ar.Position - r.Position)
+		end
+	end
+	-- a zombie: shoot it; one in our face: back off (sideways a bit), unless we're mid-revive
+	local th = b.th
+	if th and not th.f.alive then th = nil; b.th = nil end
+	if th then
+		local close = b.td < (if th.kind > 0 then 18 else 12.6)
+		if close and not (reviving and b.td > 5.4) then
+			local away = flat(r.Position - th.root.Position)
+			if away.Magnitude > 1e-3 then
+				away = away.Unit
+				wish = away + Vector3.new(-away.Z, 0, away.X) * b.side * 0.6
+				if math.random() < dt * 0.8 then b.side = -b.side end
+			end
+		end
+		if b.reloadUntil > 0 and n >= b.reloadUntil then b.mag = (W[b.gun].mag :: number?) or 6; b.reloadUntil = 0 end
+		if b.reloadUntil == 0 and n >= b.nextShot and (not reviving or b.td < 7.5) then
+			local to = flat(th.root.Position - r.Position)
+			if to.Magnitude > 0.1 then r.CFrame = CFrame.lookAt(r.Position, r.Position + to.Unit) end
+			botShoot(g, m, th)
+		end
+	end
+	-- wedged: hop and sidestep
+	if n - b.chk > 1.1 then
+		local moved = flat(r.Position - b.chkPos).Magnitude
+		if wish.Magnitude > 0.1 and moved < 1.5 then
+			b.stuck += 1; hum.Jump = true; b.sideT = n + 0.6; b.side = -b.side
+		else
+			b.stuck = 0
+		end
+		b.chk, b.chkPos = n, r.Position
+	end
+	if n < b.sideT and wish.Magnitude > 0.1 then
+		local a = b.side * 1.2
+		local ca, sa = math.cos(a), math.sin(a)
+		wish = Vector3.new(wish.X * ca - wish.Z * sa, 0, wish.X * sa + wish.Z * ca)
+	end
+	if wish.Magnitude > 0.1 and not reviving then
+		hum.WalkSpeed = 27
+		hum:Move(wish.Unit, false)
+	else
+		hum:Move(Vector3.zero, false)
+	end
+	local wk = botWalk[m]
+	if wk then
+		local v = flat(r.AssemblyLinearVelocity).Magnitude
+		if v > 1.5 then
+			if not wk.IsPlaying then wk:Play(0.2) end
+			wk:AdjustSpeed(math.clamp(v / 16, 0.6, 1.8))
+		elseif wk.IsPlaying then
+			wk:Stop(0.25)
+		end
 	end
 end
 
@@ -753,7 +1032,10 @@ local function nextRound(g: Game)
 	g.st = "live"
 	g.toSpawn = ZM.count(g.n, #g.members)
 	g.spawnAt = now() + 1.5
-	for _, m in g.members do if not m.f.alive then if m.dead or not m.down then freshKit(m) end; respawn(m) end end
+	for _, m in g.members do
+		if m.f.alive then continue end
+		if m.bot then botSpawn(g, m) else if m.dead or not m.down then freshKit(m) end; respawn(m) end
+	end
 	sayAll({ k = "round", st = "start", n = g.n })
 	publish()
 end
@@ -786,6 +1068,7 @@ local function tick(g: Game, dt: number)
 		return
 	end
 	for _, z in g.mobs do step(g, z, dt) end
+	for _, m in g.members do if m.bot then botStep(g, m, dt) end end
 	if g.st ~= "live" then
 		if now() >= g.untilT then nextRound(g) end
 		if g.tick % 5 == 0 then publish() end
@@ -811,8 +1094,8 @@ local function hook()
 	local prevAllow = Fight.allow
 	Fight.allow = function(by: Fighter?, t: Fighter): boolean
 		local g = G
-		if g then
-			local tz, bz = t.kind == "zombie", by ~= nil and by.kind == "zombie"
+		if g and by ~= nil then -- (nobody behind it: a fall, the void. as for anyone)
+			local tz, bz = t.kind == "zombie", by.kind == "zombie"
 			if tz or bz then
 				if tz and bz then return false end -- (zombies don't hurt zombies)
 				local other = if tz then by else t
@@ -889,7 +1172,7 @@ local function hook()
 	if Matches then
 		Matches.zoneHook = function(p: Player): string?
 			local f = Fight.byPlayer[p]
-			return if f and member(f) then "zombies" else nil
+			return if f and member(f) then "match" else nil -- (a zombies game is a match to every menu: hub buttons hidden, loadouts locked)
 		end
 	end
 end
@@ -941,6 +1224,7 @@ function Zombies.start(players: { Player }, mapName: string, _opts: { queue: str
 		p:SetAttribute("ZmArena", model.Name)
 		respawn(m)
 	end
+	for i = #g.members + 1, Zombies.SQUAD do addBot(g, i - #players) end
 	wirePrompts(g)
 	model:SetAttribute("Label", map.label)
 	publish()
@@ -965,7 +1249,9 @@ function Zombies.stop(_why: string?)
 	G = nil
 	if g.conn then g.conn:Disconnect() end
 	for _, z in table.clone(g.mobs) do removeMob(g, z) end
+	for _, m in table.clone(g.members) do if m.bot then removeBot(g, m) end end
 	for _, m in g.members do
+		if m.bot then continue end
 		local f, p = m.f, m.p
 		if m.prompt then m.prompt:Destroy() end
 		f.forced = nil
@@ -1013,7 +1299,8 @@ function Zombies.state(): { [string]: any }
 	for _, m in g.members do
 		table.insert(ms, { m.name, m.c, m.f.alive, m.down ~= nil, m.dead, table.concat(kitList(m), ","), m.kills })
 	end
-	return { on = true, n = g.n, st = g.st, toSpawn = g.toSpawn, mobs = mobs, members = ms, open = g.open, cells = g.nav.cells, built = g.nav.built }
+	return { on = true, n = g.n, st = g.st, toSpawn = g.toSpawn, mobs = mobs, members = ms, open = g.open, cells = g.nav.cells, built = g.nav.built,
+		refusal = Zombies.lastRefusal, areas = g.areas }
 end
 function Zombies.round(n: number)
 	local g = G

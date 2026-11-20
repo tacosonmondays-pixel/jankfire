@@ -136,6 +136,19 @@ Server (roblox/src/server):
 Shared: `ZM.luau` (the numbers from shared/zombies.js, zmshop.js, zmlimbs.js, plain descriptions).
 Client: `ZombiesClient.luau` (credits with +N, the round tally, F prompts, the downed screen), `ZombieFx.luau`.
 
+How it plugs in (stage 1, place v1154):
+- Zombies are Fighters of kind "zombie" in workspace.Dummies (every weapon hits them; their hits and deaths skip the
+  feed, quests, kill effects and finishers: Fight.zombieHurt / zombieDied). Squad bots are kind "zbot", in the arena.
+- Buying and reviving are ProximityPrompts on **F** (as on the web; E is our grapple, F only yanks while hooked to a
+  person). Shutter 0.3 s, wall gun 0.3 s, revive 3 s.
+- A player in a game reads as Zone **"match"** (Matches.zoneHook), plus attribute ZmOn: every menu already hides and
+  loadouts lock for a match.
+- Spare rounds: Rules Ammo.res; the player's ZmRes_<weapon> attributes; Arsenal's reloads read them.
+- The queue (play-party): Zombies.start(players, map, opts?) -> ("zm:N", info) | (nil, "busy"), Zombies.busy(),
+  Zombies.maps(), Zombies.onEnd(id, players). One game per server for now; several per server land with stage 4
+  (a map copy per game at (0, 600, 24000 + k x 3000), Zombies.MAX_GAMES from measured cost, all state per game).
+- Studio test hook: ServerStorage.JankZombies ("start", "stop", "state", "round", "credits", "open", "max").
+
 Stages (each with a report and a Play sheet or video):
 1. This contract + the core loop on a test map: rounds, spawns, chase, claws, credits, doors, wall buys, downed and
    revive, squad bots.

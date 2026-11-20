@@ -39,7 +39,7 @@ local rLeft = T.text(rPlate, "Left", "", 13, T.SOFT, T.FONT, Enum.TextXAlignment
 rLeft.Position = UDim2.fromOffset(80, 36); rLeft.Size = UDim2.fromOffset(80, 18)
 
 -- your spare rounds (bottom right, over the ammo card)
-local aPlate = T.plate(root, "Spare", UDim2.new(1, -260, 1, -150), UDim2.fromOffset(244, 30))
+local aPlate = T.plate(root, "Spare", UDim2.new(1, -260, 1, -196), UDim2.fromOffset(244, 30)) -- (over the item card)
 local aText = T.text(aPlate, "Text", "", 13, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 aText.Position = UDim2.fromOffset(10, 0); aText.Size = UDim2.new(1, -20, 1, 0)
 
@@ -167,7 +167,7 @@ RunService.RenderStepped:Connect(function()
 	-- down
 	local dn = me:GetAttribute("ZmDown")
 	local out = me:GetAttribute("ZmOut") == true
-	downF.Visible = type(dn) == "number" or out
+	downF.Visible = (type(dn) == "number" or out) and not over.Visible -- (the results take over at the end)
 	if type(dn) == "number" then
 		downT.Text = "DOWN"
 		downS.Text = "bleeding out  " .. math.max(0, math.ceil(dn - workspace:GetServerTimeNow()))
