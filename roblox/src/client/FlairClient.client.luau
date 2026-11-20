@@ -532,7 +532,8 @@ onBegan(function(io: any, gp: boolean)
 	if emoteKey(io) then
 		-- (in a match after GO a pad's D-Right is the AUTO GRAPPLE: Move.client, play-party-ranked's. the wheel has it
 		-- everywhere else: the hub, training, the countdown, between rounds)
-		if io.KeyCode == Enum.KeyCode.DPadRight and me:GetAttribute("Zone") == "match" and me:GetAttribute("RoundLock") ~= true then return end
+		if io.KeyCode == Enum.KeyCode.DPadRight and me:GetAttribute("Zone") == "match" and me:GetAttribute("RoundLock") ~= true
+			and not me:GetAttribute("ZmOn") then return end -- (a ZOMBIES game reads as Zone "match": the wheel keeps D-Right there)
 		-- (the phone's EMOTE button: a tap opens the touch wheel, a tap again closes it)
 		if typeof(io) == "table" and io.Touch then if W.open then W.close() else W.openWheel(true) end; return end
 		if W.open then W.close(); return end

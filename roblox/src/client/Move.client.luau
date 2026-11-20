@@ -251,6 +251,7 @@ local function tryLock()
 	local ch, hum, root = character()
 	if not ch or not hum or not root or st.hook then return end
 	if player:GetAttribute("Zone") ~= "match" and not lockTest() then return end
+	if player:GetAttribute("ZmOn") then return end -- (a ZOMBIES game reads as Zone "match": no opponents to lock onto there)
 	if player:GetAttribute("RoundLock") then Hud.note("GRAPPLE AT GO", 0.7); return end
 	if HookChargesUI.lockWait() > 0 then HookChargesUI.lockNotReady(); return end
 	local body, troot = autoTarget(root.Position + Vector3.new(0, 1.5, 0), ch, L.cone)

@@ -1021,6 +1021,7 @@ RunService.Heartbeat:Connect(function()
 	local onRope = me:GetAttribute("OnRope") == true and me:GetAttribute("RoundLock") ~= true and not (type(rt) == "number" and workspace:GetServerTimeNow() < rt)
 	-- (the AUTO GRAPPLE, LOCK: in a match after GO. shown while it cools down too: a tap then says how long, Move.client)
 	local lockOn = (me:GetAttribute("Zone") == "match" or (RunService:IsStudio() and me:GetAttribute("AutoLockTest") == true)) and me:GetAttribute("RoundLock") ~= true
+		and not me:GetAttribute("ZmOn") -- (a ZOMBIES game reads as Zone "match": no AUTO GRAPPLE there)
 	for _, b in BTNS do
 		local A = b.A
 		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope) and (not A.lock or lockOn)

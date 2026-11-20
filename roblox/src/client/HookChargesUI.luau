@@ -112,7 +112,7 @@ RunService.RenderStepped:Connect(function()
 	local alive = hum ~= nil and hum.Health > 0
 	local lockedNow = alive and HookChargesUI.locked() and me:GetAttribute("Zone") ~= "hub"
 	local test = RunService:IsStudio() and me:GetAttribute("AutoLockTest") == true
-	local auto = alive and ((HC.LOCK and HC.LOCK.on and (me:GetAttribute("Zone") == "match" or test))
+	local auto = alive and ((HC.LOCK and HC.LOCK.on and (me:GetAttribute("Zone") == "match" or test) and not me:GetAttribute("ZmOn"))
 		or (HC.AUTO and HC.AUTO.on and me:GetAttribute("QuickMatch") == true))
 	local show = HookChargesUI.limited() and alive
 	if gui.Enabled ~= (show or lockedNow or auto) then gui.Enabled = show or lockedNow or auto end
