@@ -161,7 +161,82 @@ return function(C: any): any
 	-- it stands, the joints, the Animator and the tag gone (nothing to do a frame), the gun copied first (ThirdPerson takes
 	-- its own away) and dressed in the bundle's wrap and hat. one statue per bundle, kept while your body is the same
 	-- (X.statues). no body (dead, loading) or no gun: the guns' own picture stays. X.POSE: the numbers to tune
-	X.POSE = { pitch = 0, phase = 0.32, camYaw = 34, low = 0.06, fov = 24, settle = 0.9, wideH = 1.06, cardH = 0.78, cardUp = 0.12 }
+	X.POSE = { pose = "sprint", pitch = 0, phase = 0.32, camYaw = 70, low = 0.06, fov = 24, settle = 0.9, wideH = 1.06, cardH = 0.78, cardUp = 0.12 }
+	-- (19 Nov, the owner via main: "more dynamic": the legs and hips from one mid-stride frame of a real run / sprint clip
+	-- in the vault (Mixamo, mixamo-19nov), chosen by the widest stride: scratchpad run_frames.py, the same mapping as
+	-- tools/blender/mixamo_r15.py. a joint's Transform each, x y z then the rotation's 9; the arms, the waist and the
+	-- head are ThirdPerson's (the hold). R15 bodies only: an R6 body keeps its own run, held. compared in Studio on
+	-- BUNDLES: the sprint at a 70-degree camera read best, the gun side-on toward the viewer)
+	X.POSES = {
+		run_lean = { -- (01_run_lean_style100.fbx, frame 7)
+			LowerTorso = { 0, -0.0238, 0, 0.98754, 0.03734, -0.1529, -0.01046, 0.98488, 0.17292, 0.15704, -0.16917, 0.973 },
+			UpperTorso = { 0, 0, 0, 0.67851, -0.40023, 0.61599, 0.05977, 0.86585, 0.49673, -0.73216, -0.30021, 0.61141 },
+			Head = { 0, 0, 0, 0.77056, 0.34353, -0.53687, -0.33174, 0.9354, 0.1224, 0.54423, 0.08379, 0.83474 },
+			LeftUpperArm = { 0, 0, 0, 0.92876, 0.37066, -0.0045, -0.14856, 0.3833, 0.9116, 0.33962, -0.84598, 0.41106 },
+			LeftLowerArm = { 0, 0, 0, 1, 0, 0, 0, 0.8225, -0.56877, 0, 0.56877, 0.8225 },
+			LeftHand = { 0, 0, 0, 0.93167, -0.34052, 0.12666, 0.32406, 0.9365, 0.13401, -0.16425, -0.0838, 0.98285 },
+			RightUpperArm = { 0, 0, 0, -0.37687, -0.72071, 0.58185, 0.80783, -0.56308, -0.17422, 0.45319, 0.40438, 0.79442 },
+			RightLowerArm = { 0, 0, 0, 1, 0, 0, 0, 0.94615, -0.32374, 0, 0.32374, 0.94615 },
+			RightHand = { 0, 0, 0, 0.32691, -0.49841, -0.80294, -0.05702, 0.83767, -0.54319, 0.94333, 0.22336, 0.24543 },
+			LeftUpperLeg = { 0, 0, 0, 0.95342, 0.22496, -0.20096, -0.27637, 0.38452, -0.88077, -0.12086, 0.89529, 0.42878 },
+			LeftLowerLeg = { 0, 0, 0, 0.98615, -0.1255, 0.10848, 0.0864, 0.94682, 0.30994, -0.14161, -0.29628, 0.94455 },
+			LeftFoot = { 0, 0, 0, 0.90179, -0.43124, -0.02835, 0.23828, 0.44141, 0.86509, -0.36055, -0.78688, 0.50082 },
+			RightUpperLeg = { 0, 0, 0, 0.99587, -0.05326, -0.07358, 0.06851, 0.97229, 0.22351, 0.05964, -0.22763, 0.97192 },
+			RightLowerLeg = { 0, 0, 0, 0.98793, -0.09771, 0.12017, -0.08946, 0.27331, 0.95776, -0.12643, -0.95695, 0.26127 },
+			RightFoot = { 0, 0, 0, 0.9537, 0.28365, 0.09996, -0.27167, 0.66996, 0.69091, 0.12901, -0.68607, 0.716 },
+		},
+		sprint = { -- (02_sprint_standard.fbx, frame 13)
+			LowerTorso = { 0, -0.188, 0, 0.9818, -0.09077, -0.16679, 0.13619, 0.9487, 0.28535, 0.13234, -0.30287, 0.9438 },
+			UpperTorso = { 0, 0, 0, 0.91281, 0.40452, -0.05605, -0.29707, 0.7519, 0.58856, 0.28022, -0.52059, 0.80651 },
+			Head = { 0, 0, 0, 0.89907, -0.09166, 0.4281, 0.32745, 0.78983, -0.5186, -0.29059, 0.60644, 0.74013 },
+			LeftUpperArm = { 0, 0, 0, 0.82091, 0.02638, -0.57044, -0.10903, 0.9878, -0.11122, 0.56055, 0.1535, 0.81377 },
+			LeftLowerArm = { 0, 0, 0, 0.9999, 0.01312, -0.00434, -0.00511, 0.05931, -0.99823, -0.01284, 0.99815, 0.05937 },
+			LeftHand = { 0, 0, 0, 0.92344, 0.36138, -0.12912, -0.37939, 0.91029, -0.16563, 0.05768, 0.20194, 0.9777 },
+			RightUpperArm = { 0, 0, 0, 0.89095, -0.30265, 0.33854, 0.33367, 0.942, -0.03599, -0.30801, 0.14503, 0.94026 },
+			RightLowerArm = { 0, 0, 0, 0.97051, -0.22041, -0.09762, -0.07692, 0.10065, -0.99194, 0.22846, 0.9702, 0.08073 },
+			RightHand = { 0, 0, 0, 0.93883, 0.10963, 0.32646, 0.17838, 0.65609, -0.7333, -0.29457, 0.74668, 0.5964 },
+			LeftUpperLeg = { 0, 0, 0, 0.92153, 0.1386, 0.36273, -0.18074, 0.97987, 0.08476, -0.34368, -0.14367, 0.92803 },
+			LeftLowerLeg = { 0, 0, 0, 0.98776, 0.02305, -0.15426, 0.12578, 0.46712, 0.8752, 0.09223, -0.88389, 0.45851 },
+			LeftFoot = { 0, 0, 0, 0.94999, 0.12657, 0.28549, -0.16898, 0.97713, 0.12906, -0.26263, -0.17085, 0.94965 },
+			RightUpperLeg = { 0, 0, 0, 0.97287, 0.22917, -0.03186, -0.15943, 0.5642, -0.8101, -0.16768, 0.7932, 0.58543 },
+			RightLowerLeg = { 0, 0, 0, 0.9916, 0.0245, 0.127, -0.0613, 0.95365, 0.29462, -0.1139, -0.29993, 0.94714 },
+			RightFoot = { 0, 0, 0, 0.99454, -0.01253, -0.1036, 0.01625, 0.99925, 0.03517, 0.10308, -0.03666, 0.994 },
+		},
+		bow_lean = { -- (03_sprint_bow_lean.fbx, frame 13)
+			LowerTorso = { 0, -0.3103, 0, 0.8207, 0.14585, -0.55243, 0.27015, 0.75292, 0.60012, 0.50346, -0.64175, 0.57852 },
+			UpperTorso = { 0, 0, 0, 0.90624, -0.06005, -0.41847, 0.34498, 0.67722, 0.64989, 0.24437, -0.73332, 0.63444 },
+			Head = { 0, 0, 0, 0.6851, 0.61295, 0.3936, 0.33274, 0.21733, -0.91763, -0.64801, 0.75964, -0.05506 },
+			LeftUpperArm = { 0, 0, 0, 0.4664, 0.88456, -0.00392, -0.38566, 0.19935, -0.90085, -0.79608, 0.42167, 0.43412 },
+			LeftLowerArm = { 0, 0, 0, 0.79808, 0.07632, -0.5977, -0.44316, 0.74645, -0.49641, 0.40826, 0.66105, 0.62955 },
+			LeftHand = { 0, 0, 0, 0.92447, 0.16111, 0.34555, -0.15263, 0.98692, -0.05182, -0.34938, -0.00483, 0.93697 },
+			RightUpperArm = { 0, 0, 0, 0.84029, -0.23812, 0.48704, 0.35323, 0.92198, -0.15867, -0.41126, 0.30537, 0.85885 },
+			RightLowerArm = { 0, 0, 0, 0.99864, -0.02249, 0.04701, 0.05163, 0.3044, -0.95114, 0.00708, 0.95228, 0.30515 },
+			RightHand = { 0, 0, 0, 0.9592, -0.28122, 0.0291, 0.28142, 0.93985, -0.19362, 0.0271, 0.19391, 0.98064 },
+			LeftUpperLeg = { 0, 0, 0, 0.91385, 0.02815, 0.40507, 0.11889, 0.93532, -0.33322, -0.38825, 0.35268, 0.8514 },
+			LeftLowerLeg = { 0, 0, 0, 0.95638, -0.23906, 0.16788, -0.01501, 0.53374, 0.84552, -0.29173, -0.81116, 0.50687 },
+			LeftFoot = { 0, 0, 0, 0.99634, -0.064, -0.0566, 0.08285, 0.88554, 0.45712, 0.02086, -0.46014, 0.8876 },
+			RightUpperLeg = { 0, 0, 0, 0.93941, 0.28582, -0.18927, -0.23002, 0.1162, -0.96622, -0.25418, 0.95121, 0.17491 },
+			RightLowerLeg = { 0, 0, 0, 0.96061, 0.18334, 0.20884, -0.27316, 0.76113, 0.58827, -0.0511, -0.62215, 0.78123 },
+			RightFoot = { 0, 0, 0, 0.99708, 0.07624, -0.00346, -0.07428, 0.95911, -0.27311, -0.0175, 0.27257, 0.96198 },
+		},
+		ninja = { -- (05_ninja_run.fbx, frame 14)
+			LowerTorso = { 0, -0.4124, 0, 0.98783, -0.08523, 0.13009, -0.0344, 0.696, 0.71721, -0.15167, -0.71296, 0.6846 },
+			UpperTorso = { 0, 0, 0, 0.94491, 0.23584, -0.227, -0.12221, 0.8975, 0.42373, 0.30367, -0.37265, 0.87688 },
+			Head = { 0, 0, 0, 0.99107, 0.03253, 0.1293, 0.0897, 0.55478, -0.82715, -0.09864, 0.83136, 0.54691 },
+			LeftUpperArm = { 0, 0, 0, 0.80566, 0.45867, -0.37487, -0.31644, 0.86821, 0.38221, 0.50077, -0.18931, 0.84462 },
+			LeftLowerArm = { 0, 0, 0, 0.96155, -0.13354, 0.23997, 0.24597, 0.80738, -0.53631, -0.12213, 0.57472, 0.80919 },
+			LeftHand = { 0, 0, 0, 0.93519, -0.35413, 0.00403, 0.35166, 0.92989, 0.10789, -0.04196, -0.09948, 0.99415 },
+			RightUpperArm = { 0, 0, 0, 0.87663, -0.47434, 0.0807, 0.42348, 0.84024, 0.33862, -0.22843, -0.26267, 0.93745 },
+			RightLowerArm = { 0, 0, 0, 0.95519, 0.28242, 0.08865, -0.19931, 0.83507, -0.51277, -0.21885, 0.47212, 0.85394 },
+			RightHand = { 0, 0, 0, 0.89171, 0.44778, 0.06595, -0.4366, 0.81258, 0.38613, 0.11931, -0.37311, 0.92008 },
+			LeftUpperLeg = { 0, 0, 0, 0.99809, -0.0222, 0.05762, 0.03874, 0.95177, -0.30436, -0.04809, 0.30601, 0.95081 },
+			LeftLowerLeg = { 0, 0, 0, 0.99332, 0.05972, -0.09871, -0.00981, 0.89623, 0.44347, 0.11495, -0.43954, 0.89084 },
+			LeftFoot = { 0, 0, 0, 0.99968, -0.02531, -0.00286, 0.02466, 0.93415, 0.35602, -0.00634, -0.35597, 0.93447 },
+			RightUpperLeg = { 0, 0, 0, 0.96762, -0.17337, 0.18347, 0.09364, -0.42846, -0.8987, 0.23442, 0.88677, -0.39835 },
+			RightLowerLeg = { 0, 0, 0, 0.93299, 0.21252, -0.29047, 0.08688, 0.65022, 0.75476, 0.34927, -0.72942, 0.58818 },
+			RightFoot = { 0, 0, 0, 0.98729, 0.14846, -0.05666, -0.08279, 0.78492, 0.61404, 0.13564, -0.60155, 0.78724 },
+		},
+	}
 	X.statues = {} :: { [string]: any }
 	local function statueCam(cam: Camera, m: Model, wide: boolean)
 		local P = X.POSE
@@ -210,14 +285,23 @@ return function(C: any): any
 		rig:PivotTo(CFrame.new())
 		rig:SetAttribute("Facing", root.CFrame.LookVector)
 		rig.Parent = wm
-		-- the stride: its own run (the avatar's animation pack's, if it has one), held a third of the way in
+		-- the stride: a real run's frame (X.POSES) on an R15 body; else its own run (its animation pack's), held
 		local an = hum:FindFirstChildOfClass("Animator")
+		local pz = X.POSES[X.POSE.pose]
+		if pz and hum.RigType == Enum.HumanoidRigType.R15 then
+			if an then an:Destroy(); an = nil end -- (nothing else writes the legs: the frame stays)
+			for _, j in rig:GetDescendants() do
+				local p1 = if j:IsA("Motor6D") then j.Part1 elseif j:IsA("AnimationConstraint") and j.Attachment1 then j.Attachment1.Parent else nil
+				local v = p1 and pz[p1.Name]
+				if v then (j :: any).Transform = CFrame.new(table.unpack(v)) end
+			end
+		end
 		local live = ch:FindFirstChild("Animate")
 		local runF = live and live:FindFirstChild("run")
 		local a0 = runF and runF:FindFirstChildOfClass("Animation")
 		local id = if a0 and a0.AnimationId ~= "" then a0.AnimationId
 			elseif hum.RigType == Enum.HumanoidRigType.R6 then "rbxassetid://180426354" else "rbxassetid://913376220"
-		if an then
+		if an then -- (no real-run frame for this body: its own run, held)
 			local anim = Instance.new("Animation")
 			anim.AnimationId = id
 			local okT, track = pcall(function() return an:LoadAnimation(anim) end)
@@ -264,6 +348,17 @@ return function(C: any): any
 		end
 		keep.Parent = rig
 		return rig
+	end
+	-- (Studio tests: the player attribute ShopPoseTest = JSON merged into X.POSE, e.g. {"pose":"sprint","camYaw":75};
+	-- the statues are made again and BUNDLES redrawn)
+	if game:GetService("RunService"):IsStudio() then
+		me:GetAttributeChangedSignal("ShopPoseTest"):Connect(function()
+			local okJ, v = pcall(function() return game:GetService("HttpService"):JSONDecode(me:GetAttribute("ShopPoseTest")) end)
+			if not okJ or type(v) ~= "table" then return end
+			for k2, x in v do X.POSE[k2] = x end
+			X.statues = {}
+			if S.open and S.tab == "bundles" then ShopUI.fillBundles() end
+		end)
 	end
 	-- a bundle's statue in the stage frame; done(true) once it stands, done(false) if it can't be made
 	function X.pose(stage: GuiObject, o: any, wide: boolean, done: (boolean) -> ())
