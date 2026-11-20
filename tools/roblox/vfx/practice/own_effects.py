@@ -21,6 +21,9 @@ TEX = {  # our own images (ids in roblox/assets/vfx/assets.json and roblox/docs/
     'hitstar4b': 107149707376006, 'gburst3': 107406496303416, 'hairline2': 92955374417285, 'hairring2': 108479870084917,
     'burstdisc': 83958316271562, 'windarc2': 99774065189139, 'crack2': 131926890049423, 'puff2': 117654580630043,
     'brokenring': 96951839735929, 'dagger': 104703641730305,
+    # round 4 (draw_r4.py, the round-3 critic's texture fixes)
+    'hitstar5': 128013373146952, 'gburst4': 119901861168715, 'gring3': 80596133395930, 'hairring3': 108259422148782,
+    'burstdisc2': 132227938465636, 'windarc3': 108885047117384, 'crack3': 82139269904773, 'teardrop': 99366298965102,
 }
 OR = {'cam': 0, 'camup': 1, 'par': 2, 'perp': 3}
 DIR = {'right': 0, 'top': 1, 'back': 2, 'left': 3, 'bottom': 4, 'front': 5}
@@ -367,7 +370,64 @@ def r3():
     return E
 
 
-ROUNDS = {1: r1, 2: r2, 3: r3}
+def r4():
+    """round 4: the round-3 critic's fixes on round 3 (scores hit 6, guard 5, dash 6, slash 7, slam 4, explosion 6)"""
+    E = r3()
+    # HIT: a smaller star with holes, a wider ring of 8 chunky haloed sparkles, then broken faint arcs with long ticks
+    layer(E, 'O_Hit', 'star')['p']['Texture'] = tex('hitstar5')
+    # GUARD: a small body with long jagged arms, broken rings and shards, the burst gone before 0.2 s, the ring dimmer and
+    # thinner
+    b = layer(E, 'O_Guard', 'burst')['p']
+    b['Texture'] = tex('gburst4')
+    b['Size'] = NS((0, 3.4), (0.2, 4.4), (0.3, 3.6), (0.34, 0), (1, 0))
+    g = layer(E, 'O_Guard', 'ring')['p']
+    g['Texture'] = tex('gring3')
+    g['Brightness'] = 1.5
+    g['Size'] = NS((0, 0.5), (0.2, 3.2), (0.4, 4.8), (1, 5.1))
+    # DASH: a bolder one-sided ring, fewer rings, tiny debris, more lines
+    c = layer(E, 'O_Dash', 'circles')
+    c['p']['Texture'] = tex('hairring3')
+    c['p']['Transparency'] = NS((0, 1), (0.5, 0.35), (1, 1))
+    c['a']['EmitCount'] = 5.0
+    layer(E, 'O_Dash', 'debris')['p']['Size'] = NS((0, 0.1), (1, 0))
+    layer(E, 'O_Dash', 'lines')['a']['EmitCount'] = 18.0
+    # SLASH: a smooth lens with fine rays for the impact, broader softer arcs, the late smear brighter
+    layer(E, 'O_Slash', 'impact2')['p']['Texture'] = tex('burstdisc2')
+    for n in ('spin1', 'spin2', 'spin3', 'spin4', 'spin5'):
+        layer(E, 'O_Slash', n)['p']['Texture'] = tex('windarc3')
+    for n in ('spin1', 'spin4', 'spin5'):
+        layer(E, 'O_Slash', n)['p']['Brightness'] = 1.5
+    # GROUND: the dust as solid puffs (the hollow ring of the pack comes from them), the clouds back to the pack's size,
+    # a crisp single-image crack, darker, shorter, fading
+    d = layer(E, 'O_Slam', 'dust')['p']
+    d['Texture'] = tex('puff2')
+    d['Size'] = NS((0, 1), (1, 2.8))
+    d['Transparency'] = NS((0, 0), (0.6, 0), (1, 1))
+    layer(E, 'O_Slam', 'clouds')['p']['Size'] = NS((0, 0), (0.25, 1.625, 0.687), (0.54, 2.375, 0.875), (0.885, 0.938, 0.562), (1, 0))
+    k = layer(E, 'O_Slam', 'crack')['p']
+    k['Texture'] = tex('crack3')
+    for n in ('FlipbookLayout', 'FlipbookMode'):
+        k.pop(n, None)
+    k['Transparency'] = NS((0, 0.3), (0.6, 0.3), (1, 1))
+    k['Size'] = NS((0, 22), (1, 22))
+    k['Color'] = CS('#2e2c2a')
+    # EXPLOSION: needles along their flight (a VelocityParallel sprite flies along its texture's u axis), a stronger flash,
+    # long ink spikes along the flight, short fat white flicks
+    layer(E, 'O_X', 'shards')['p']['Rotation'] = NR(90)
+    f = layer(E, 'O_X', 'flash')['p']
+    f['Transparency'] = NS((0, 0.45), (0.6, 0.5), (1, 1))
+    f['Brightness'] = 2
+    ink = layer(E, 'O_X', 'ink')['p']
+    ink['Texture'] = tex('ink4')
+    ink['Rotation'] = NR(90)
+    lk = layer(E, 'O_X', 'licks')['p']
+    lk['Texture'] = tex('teardrop')
+    lk['Size'] = NS((0, 0), (0.072, 1.36, 0.4), (0.381, 2.0, 0.8), (1, 0.5, 0.5))
+    lk['Brightness'] = 6
+    return E
+
+
+ROUNDS = {1: r1, 2: r2, 3: r3, 4: r4}
 DATA = ROUNDS[ROUND]()
 js = json.dumps(DATA, separators=(',', ':'))
 assert ']==]' not in js

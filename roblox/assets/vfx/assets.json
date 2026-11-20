@@ -479,5 +479,53 @@
   "sha1": "4fca08e687ad26a175fc23a0566d5fd0a0ca9db8",
   "what": "practice: a hard blade 250 px long, widest at 30% (tools/roblox/vfx/practice/draw_r3.py)",
   "uploaded": "2026-11-20"
+ },
+ "vfx_hitstar5_4x4": {
+  "id": 128013373146952,
+  "sha1": "490ded612e3a900267386890629615af0dfe5987",
+  "what": "practice: hit flash v5, a small star with holes, a wide ring of 8 haloed sparkles, broken faint arcs with long ticks (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gburst4_4x4": {
+  "id": 119901861168715,
+  "sha1": "501b5240a19ec68365c185d72a80cc462a1d192c",
+  "what": "practice: guard-break burst v4, a small body with long jagged arms, then broken rings and shards (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_gring3_4x4": {
+  "id": 80596133395930,
+  "sha1": "141ad1957b2a6b421980d38deb0e4a2909102fba",
+  "what": "practice: shock ring v3, thinner from the start (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_hairring3": {
+  "id": 108259422148782,
+  "sha1": "98a25a9933c7c827ba11988318dfebc01f4223ae",
+  "what": "practice: hairline ring v3, 3 px on its bright side tapering to 1 px (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_burstdisc2": {
+  "id": 132227938465636,
+  "sha1": "1f8b1e2f057d91b60047b39e5d7c23da35b9dcc9",
+  "what": "practice: 32 fine rays over a soft lens fill (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_windarc3": {
+  "id": 108885047117384,
+  "sha1": "4feb76dc42e34a9d6c9c41517d31268030f13aaa",
+  "what": "practice: wind arc v3, a broad soft main stroke and 8 feathered lines (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_crack3": {
+  "id": 82139269904773,
+  "sha1": "4b916b181e9b67b2ea7251f3d3e1f7b5b3b85dab",
+  "what": "practice: ground cracks v3, one 1024 px image, thin radiating lines (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
+ },
+ "vfx_teardrop": {
+  "id": 99366298965102,
+  "sha1": "0043335035d8918a314f1a691c1ffe725f2e0105",
+  "what": "practice: a fat hard teardrop flick, point along v (tools/roblox/vfx/practice/draw_r4.py)",
+  "uploaded": "2026-11-20"
  }
 }

@@ -18,6 +18,10 @@ from.
   - Make the flash hit hard and leave fast: don't make it bigger or longer to compensate.
   - Keep it see-through. Round 2 made it 30% see-through to hold it longer, and it became a blown-out white ball that
     hid everything else (explosion 5 → 4). The pack's 70% is right.
+- **Match where each effect peaks, not just its size.** Find the teacher's strongest frame and its faintest.
+  - The pack's hit is busiest at 0.1 s (a ring of chunky sparkles) and nearly gone at 0.2 s.
+  - Round 3 had the timing right but put our strongest frame at 0.2 s: a full doubled ring. It read wrong although
+    every phase was on time.
 - **Match the beat, not just the size.** In round 2 our hit and guard break had the right shapes but were still a star
   at 0.1 s, when the packs had already turned into rings. Each phase needs the right share of the flipbook: the star
   only in frames 0-1.
@@ -50,8 +54,10 @@ from.
   - Negative LE only darkens what is already dark in the texture. On a white texture, LE -5 only darkened the soft edge
     (round 2's "white petals with dark rims"). The packs' black ink textures are drawn dark. For black ink from a white
     shape, use Color #000 at LE 0 with LightInfluence 0.
-- **Squash -1 widens a sprite.** Draw a speed line ACROSS the canvas (along u), not along it (round 2's dashes came out
-  as short ticks).
+- **A VelocityParallel particle flies along its texture's u axis (left-right).**
+  - Draw speed lines, needles and daggers across the canvas, or give them Rotation 90.
+  - Round 2's vertical hairlines came out as short ticks across the flight.
+  - Round 3's vertical daggers made a polygon "cage" round the blast instead of needles pointing out.
 - **A ring with one bright side reads as motion.** The dash's rings are a single hair line, bright on one side.
   A double line read as a stack of contour lines.
 - **Grey at LE 0.75 is wind; white at LE 1 is energy.**
@@ -80,3 +86,9 @@ from.
 - New textures need a moment to load: preload them (ContentProvider:PreloadAsync) before the first photo, or the first
   shot shows nothing.
 - Freeze-photo the life at fixed ages (0.05 / 0.1 / 0.2 / 0.35 / 0.6 / 1.0 s), pack and ours in the same frame.
+- **For floor effects, check both rows are seen from the same angle.** A row above the camera's axis is seen from lower
+  down than a row below it. Our first rig showed the pack's floor from 18° and ours from 54°, so our ground impact looked
+  round and tall for three rounds. Tilt each row by its own line of sight, or shoot each row alone.
+- **Small textures blur big particles.** A 4x4 flipbook cell is 128 px; stretched over a 30-stud crack, a 1-pixel line
+  becomes a blurry rope. Long thin floor marks need one big image (1024 px), not a flipbook.
+- **Clean concentric rings read as a target symbol.** Break rings into arcs and wrap them in jagged shards.
