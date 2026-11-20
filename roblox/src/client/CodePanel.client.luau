@@ -30,11 +30,28 @@ local MAXLEN = 24
 local S = { gui = nil :: ScreenGui?, box = nil :: TextBox?, status = nil :: TextLabel?, enter = nil :: TextButton?, busy = false,
 	waitUntil = 0, panel = nil :: Model? }
 
-local function panelModel(): Model?
+-- every panel (the hubs' are tagged CodePanel; the ring's is Map.Lore.CodePanel) and the one nearest you
+local CollectionService = game:GetService("CollectionService")
+local function panels(): { Model }
+	local out = {}
+	for _, m in CollectionService:GetTagged("CodePanel") do
+		if m:IsA("Model") and m:IsDescendantOf(workspace) then table.insert(out, m) end
+	end
 	local map = workspace:FindFirstChild("Map")
 	local l = map and map:FindFirstChild("Lore")
-	local m = l and l:FindFirstChild("CodePanel")
-	return if m and m:IsA("Model") then m else nil
+	local old = l and l:FindFirstChild("CodePanel")
+	if old and old:IsA("Model") and not table.find(out, old) then table.insert(out, old) end
+	return out
+end
+local function panelModel(): Model?
+	local ch = me.Character
+	local r = ch and ch:FindFirstChild("HumanoidRootPart")
+	local best, bd = nil, math.huge
+	for _, m in panels() do
+		local d = if r and r:IsA("BasePart") then (m:GetPivot().Position - r.Position).Magnitude else 0
+		if d < bd then best, bd = m, d end
+	end
+	return best
 end
 
 local function close()
@@ -185,8 +202,7 @@ end
 local wired: { [Instance]: boolean } = {}
 task.spawn(function()
 	while true do
-		local m = panelModel()
-		if m then
+		for _, m in panels() do
 			for _, d in m:GetDescendants() do
 				if d:IsA("ProximityPrompt") and not wired[d] then
 					wired[d] = true

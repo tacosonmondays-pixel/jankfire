@@ -7,7 +7,8 @@
 --   local L = require(game.ServerStorage.PolishBackup.LoreSpots:Clone())
 --   print(L.build())          every NPC (or L.build({ "gary" }) for some)
 --   print(L.check())          floor under each, nothing through their body, the find point reachable
---   print(L.panel())          the code panel (Map.Lore.CodePanel) where L.PANEL says
+--   print(L.panel())          the ring's code panel (Map.Lore.CodePanel) where L.PANEL says
+--   print(L.panels())         a panel beside each new hub's CodePanelSpot (Map.Hub.<Square|Concourse|Atrium>)
 -- Each Model: attribute LoreId; "Root" (hidden, on the floor under them, facing their way: the server's find point,
 -- the client's frame, the TALK prompt's attachment PromptAt); the pieces (MeshParts named <id>_<piece>, attribute
 -- Piece); extras (Gary's desk, Dale's machine's block, Smiles' balloon strings). No collisions on the NPCs themselves,
@@ -369,57 +370,18 @@ function L.panel(): string
 	if not hit then return "CodePanel: NO FLOOR under " .. tostring(P.at) end
 	local look = Vector3.new(P.look.X, 0, P.look.Z).Unit
 	local at = Vector3.new(P.at.X, hit.Position.Y, P.at.Z)
-	local base = CFrame.lookAt(at, at + look)
 	local old = f:FindFirstChild("CodePanel")
 	if old then old:Destroy() end
-	local m = Instance.new("Model")
-	m.Name = "CodePanel"
-	local DARK, BODY, TRIM = Color3.fromRGB(70, 74, 82), Color3.fromRGB(184, 178, 166), Color3.fromRGB(196, 162, 88)
-	local function box(name: string, size: Vector3, cf: CFrame, col: Color3, collide: boolean, mat: Enum.Material?): Part
-		local p = Instance.new("Part")
-		p.Name = name; p.Size = size; p.CFrame = cf; p.Color = col
-		p.Material = mat or Enum.Material.SmoothPlastic; p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
-		plain(p, collide)
-		p.CastShadow = true
-		p.Parent = m
-		return p
-	end
-	-- a plinth, the cabinet with one trim band, and the console on top leaning toward you: a screen and a row of keys
-	box("Plinth", Vector3.new(3.4, 0.5, 2.6), base * CFrame.new(0, 0.25, 0.2), DARK, true, Enum.Material.Metal)
-	box("Cabinet", Vector3.new(2.6, 3.4, 1.7), base * CFrame.new(0, 2.2, 0.4), BODY, true)
-	box("Trim", Vector3.new(2.64, 0.2, 1.74), base * CFrame.new(0, 3.35, 0.4), TRIM, false)
-	local head = base * CFrame.new(0, 4.2, 0.15) * CFrame.Angles(math.rad(-28), 0, 0)
-	box("Console", Vector3.new(3.0, 0.55, 2.6), head, BODY, true)
-	local screen = box("Screen", Vector3.new(2.4, 0.06, 1.25), head * CFrame.new(0, 0.29, 0.5), Color3.fromRGB(42, 62, 66), false)
-	local glow = Instance.new("SurfaceLight")
-	glow.Face = Enum.NormalId.Top; glow.Color = Color3.fromRGB(170, 214, 210); glow.Brightness = 0.35; glow.Range = 5; glow.Angle = 70
-	glow.Parent = screen
-	for i = -2, 2 do
-		box("Key", Vector3.new(0.4, 0.1, 0.32), head * CFrame.new(i * 0.5, 0.31, -0.7), DARK, false, Enum.Material.Metal)
-	end
-	-- the prompt (CodePanel.client opens the screen) and where a spawned-in NPC stands, facing where you stand
-	local root = box("Root", Vector3.new(1, 0.2, 1), base * CFrame.new(0, 0.1, 0), DARK, false)
-	root.Transparency = 1
-	local pa = Instance.new("Attachment")
-	pa.Name = "PromptAt"
-	pa.Parent = root -- (parent first: WorldPosition on a loose attachment is kept as its offset)
-	pa.WorldPosition = (head * CFrame.new(0, 1.2, 0)).Position
-	local pr = Instance.new("ProximityPrompt")
-	pr.Name = "Code"; pr.ActionText = "Code"; pr.ObjectText = ""
-	pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
-	pr.MaxActivationDistance = 9; pr.RequiresLineOfSight = false
-	pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton
-	pr.Parent = pa
-	local you = (base * CFrame.new(0, 0, -4.5)).Position
-	local sp = (base * CFrame.new(P.show)).Position
-	local sh = workspace:Raycast(sp + Vector3.new(0, 6, 0), Vector3.new(0, -14, 0), rayParams)
-	local spAt = Vector3.new(sp.X, if sh then sh.Position.Y else at.Y, sp.Z)
-	local show = box("Show", Vector3.new(1, 0.2, 1), CFrame.lookAt(spAt, Vector3.new(you.X, spAt.Y, you.Z)), DARK, false)
-	show.Transparency = 1
-	m.PrimaryPart = root
-	m.WorldPivot = base
-	m.Parent = f
-	return ("CodePanel at %s facing %s; spawn-ins at %s%s"):format(tostring(at), tostring(look), tostring(spAt), if sh then "" else " (NO FLOOR there)")
+	-- (the make is the server's, shared with the hubs' panels: ServerScriptService.Jankfire.LorePanel)
+	local LorePanel = require(game:GetService("ServerScriptService"):WaitForChild("Jankfire"):WaitForChild("LorePanel")) :: any
+	local _, report = LorePanel.make(CFrame.lookAt(at, at + look), f, P.show, nil)
+	return report
+end
+
+-- the new hubs' panels (20 Nov): one beside each CodePanelSpot under Map.Hub (LoreNPCs.server also does this by itself)
+function L.panels(): string
+	local LorePanel = require(game:GetService("ServerScriptService"):WaitForChild("Jankfire"):WaitForChild("LorePanel")) :: any
+	return LorePanel.fromSpots()
 end
 
 function L.build(ids: { string }?): string

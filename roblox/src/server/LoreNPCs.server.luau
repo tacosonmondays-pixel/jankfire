@@ -69,6 +69,7 @@ local Profiles = require(script.Parent:WaitForChild("Profiles")) :: any
 local Loot = require(script.Parent:WaitForChild("Loot")) :: any
 local Book = require(script.Parent:WaitForChild("LoreCodeBook")) :: any
 local Sha256 = require(script.Parent:WaitForChild("Sha256")) :: any
+local LorePanel = require(script.Parent:WaitForChild("LorePanel")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local CalloutR = Remotes:WaitForChild("Callout") :: RemoteEvent
 local LoreR = Remotes:WaitForChild("Lore") :: RemoteEvent
@@ -384,12 +385,15 @@ task.spawn(function()
 end)
 
 -- ------------------------------------------------------------------ the codes
--- the panel (LoreSpots builds it into Map.Lore; its place is data there: L.PANEL)
-local function panel(): Model?
-	local f = lore()
-	local m = f and f:FindFirstChild("CodePanel")
-	return if m and m:IsA("Model") then m else nil
-end
+-- the panels: the ring's (LoreSpots, Map.Lore) and one beside each new hub's CodePanelSpot (LorePanel.fromSpots, made
+-- here at start and again every few seconds: a hub rebuild that wipes its Scenery gets its panel back by itself)
+task.spawn(function()
+	while true do
+		local ok, err = pcall(LorePanel.fromSpots)
+		if not ok then warn("[jankfire] code panels: " .. tostring(err)) end
+		task.wait(5)
+	end
+end)
 -- each code's opening moment (UTC midnight of its day)
 local opensAt: { [string]: number } = {}
 for _, c in Book.CODES do
@@ -430,8 +434,8 @@ local function tryCode(p: Player, text: unknown, test: boolean?): any
 	local z = p:GetAttribute("Zone")
 	if z == "match" or z == "staging" then return { ok = false, why = "far" } end
 	if not test then
-		local m = panel()
 		local r = rootOf(p)
+		local m = r and LorePanel.nearest(r.Position)
 		if not m or not r or (r.Position - m:GetPivot().Position).Magnitude > PANEL_REACH then return { ok = false, why = "far" } end
 	end
 	local d = s.prof.data

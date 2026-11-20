@@ -683,11 +683,24 @@ local function ui(): any
 	cutUi = { g = g, top = top, bot = bot, skip = skip }
 	return cutUi
 end
+-- the code panel nearest you (the hubs' are tagged CodePanel; the ring's is Map.Lore.CodePanel)
 local function panelModel(): Model?
+	local list = {}
+	for _, m in game:GetService("CollectionService"):GetTagged("CodePanel") do
+		if m:IsA("Model") and m:IsDescendantOf(workspace) then table.insert(list, m) end
+	end
 	local map = workspace:FindFirstChild("Map")
 	local l = map and map:FindFirstChild("Lore")
-	local pm = l and l:FindFirstChild("CodePanel")
-	return if pm and pm:IsA("Model") then pm else nil
+	local old = l and l:FindFirstChild("CodePanel")
+	if old and old:IsA("Model") and not table.find(list, old) then table.insert(list, old) end
+	local ch = me.Character
+	local r = ch and ch:FindFirstChild("HumanoidRootPart")
+	local best, bd = nil, math.huge
+	for _, m in list do
+		local d = if r and r:IsA("BasePart") then (m:GetPivot().Position - r.Position).Magnitude else 0
+		if d < bd then best, bd = m, d end
+	end
+	return best
 end
 local function flat(v: Vector3, fallback: Vector3): Vector3
 	local f = Vector3.new(v.X, 0, v.Z)
@@ -815,7 +828,15 @@ local function startCut(id: string, again: boolean?)
 	-- arcade's piers, are missed by rays. a body-sized box steps out along the way in half studs till it touches one)
 	local boxes: { { Vector3 } } = {}
 	local map = workspace:FindFirstChild("Map")
-	for _, root in { map and map:FindFirstChild("Hub"), pm } do
+	-- (the panel's own hub: Map.Hub.<Square|Concourse|Atrium> for theirs, Map.Hub for the ring's)
+	local hubF = map and map:FindFirstChild("Hub")
+	local scanRoot: Instance? = hubF
+	if hubF and pm:IsDescendantOf(hubF) then
+		local a: Instance = pm
+		while a.Parent and a.Parent ~= hubF do a = a.Parent :: Instance end
+		scanRoot = a
+	end
+	for _, root in { scanRoot, pm } do
 		if not root then continue end
 		for _, p in (root :: Instance):GetDescendants() do
 			if p:IsA("BasePart") and p.Transparency < 1 and (p.Position - finish).Magnitude < 40 then
