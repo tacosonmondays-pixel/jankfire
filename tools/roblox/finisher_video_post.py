@@ -19,10 +19,10 @@ FX = {
         'grey': {'PETALS': 0.85},                   # the grade goes near-monochrome; only the petals keep their colour
     },
     'dust': {
-        'speed': {'THE DRAW': (0.2, -1)},
+        'speed': {},   # (no speed lines on the draw: the owner read them as filler rain; the gun's own smear moves it)
         'flash_after': {'HIT FRAME': 3},
         'grey': {},
-        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34},   # the eyes in a thin band, thinner each time
+        'bars': {"KILLER'S EYES": 0.3, "VICTIM'S EYES": 0.3, 'SWEAT': 0.26, 'EYES AGAIN': 0.34, 'THEIR EYES': 0.34},   # the eyes in a thin band, thinner each time
     },
 }
 

@@ -532,10 +532,10 @@ def frame(board, n):
 
 
 # ------------------------------------------------------------------ the revolver (the place's revolver_dust, x3)
-def revolver_in_hand(cf):
+def revolver_in_hand(cf, tr=0.0):
     # the barrel runs on from the forearm, the gun's top toward the back of the hand; the grip sits in the palm
     g = cf['RightHand'] @ CF(0, -0.1, 0) @ ANG(-90, 0, 0) @ CF(0, 0.55, -0.25)
-    GUNS.append({'model': 'revolver_dust', 'cf': g})
+    GUNS.append({'model': 'revolver_dust', 'cf': g, 'tr': tr})
     return g
 
 
@@ -1523,7 +1523,7 @@ def dv_sweat(i, n):
     lens(br((hd @ Vector((1.5, 0.05, -1.7, 1))).xyz), br((hd @ Vector((0.25, -0.05, -0.5, 1))).xyz), 22, -8)
 
 
-@shot('dust', 'THE WIDE', 40)
+@shot('dust', 'THE WIDE', 34)
 def dv_wide(i, n):
     u = i / (n - 1)
     desert()
@@ -1545,11 +1545,25 @@ def dv_eyes2(i, n):
     lens(br((hd @ Vector((0, 0.12, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.12, -0.55, 1))).xyz), 11, 0)
 
 
+@shot('dust', 'THEIR EYES', 8)
+def dv_veyes2(i, n):
+    # and the other one's, as tight: wide and fixed now, no more darting (the owner, 20 Nov: "close ups of eyes on both")
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.12), vclip=(DRAW, 0.09))
+    hd = V['Head']
+    q = (hd @ Vector((0.42, -0.1 - 0.1 * u, -0.6, 1))).xyz
+    prop('Ball', (0.12, 0.17, 0.12), CF(q.x, q.y, q.z), (0.85, 0.92, 1.0), 'Glass', 'sweat')
+    lens(br((hd @ Vector((0, 0.12, -1.9 + 0.12 * u, 1))).xyz), br((hd @ Vector((0, 0.12, -0.55, 1))).xyz), 11, -3)
+
+
 DRAW_OUT = 0.3   # from here on the revolver is in the hand, not the holster
 
 
-@shot('dust', 'THE DRAW', 8)
+@shot('dust', 'THE DRAW', 10)
 def dv_draw(i, n):
+    # a perspective shot: low behind the gun hip, wide, tilted, looking up past the revolver to the victim far down
+    # the street. The gun leaves smears - a bright streak along the muzzle's real path and fading copies of the gun
     u = i / (n - 1)
     t = 0.12 + 0.63 * u
     desert()
@@ -1561,15 +1575,33 @@ def dv_draw(i, n):
         g = revolver_in_hand(Ke)
         del GUNS[n0:]
         m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
-        pts = pts_of(Ke) + [m + Vector((0, 1.2, 0)), br(Ve['Head'].translation), br(Ve['LeftFoot'].translation)]
-        S['pos'], S['c'] = aim_lens(pts, 28, -6, 54, 14, mx=0.84, my=0.66, zmin=0.6)
+        hip = br(Ke['RightUpperLeg'].translation)
+        S['pos'] = hip + Vector((2.5, -3.1, -0.45))
+        S['c'] = m * 0.55 + br(Ve['Head'].translation) * 0.45
     if t >= DRAW_OUT:
+        # the smear: the muzzle's path over the last frames, bright and thinning, and two fading gun copies behind
+        pts = []
+        for j in range(7):
+            tj = max(DRAW_OUT, t - 0.16 * j / 6)
+            Kj = peek_rig('k', (0, 0, 0), 0, {'clip': (DRAW, tj)})
+            gj = Kj['RightHand'] @ CF(0, -0.1, 0) @ ANG(-90, 0, 0) @ CF(0, 0.55, -0.25)
+            pts.append(br((gj @ Vector((0, 0.2, -1.2, 1))).xyz))
+        for j in range(6):
+            if (pts[j] - pts[j + 1]).length > 0.02:
+                PROP_TR[0] = 0.15 + 0.12 * j
+                prop_box_between(pts[j + 1], pts[j], 0.08, 0.32 * (1 - j / 7), (1.0, 0.92, 0.7), mat='Neon', tag='gsmear')
+                PROP_TR[0] = 0.0
+        for j, (dt_, tr_) in enumerate(((0.05, 0.55), (0.1, 0.78))):
+            tj = t - dt_
+            if tj >= DRAW_OUT:
+                Kj = peek_rig('k', (0, 0, 0), 0, {'clip': (DRAW, tj)})
+                revolver_in_hand(Kj, tr=tr_)
         g = revolver_in_hand(K)
         if u > 0.8:   # the shot: muzzle flash on the last frames
             m = br((g @ Vector((0, 0.2, -1.5, 1))).xyz)
             flash(m + (m - br(g.translation)).normalized() * 0.4, 1.1, (1, -0.3, 0.2))
             puff(m + Vector((0.3, 0.6, 0.2)), 0.5, (0.86, 0.78, 0.62))
-    lens(S['pos'], S['c'], 54, 14 + 4 * u)
+    lens(S['pos'], S['c'], 70, 12 + 6 * u)
 
 
 @shot('dust', 'HIT FRAME', 2)
@@ -1581,12 +1613,16 @@ def dv_hitframe(i, n):
 def dv_hit(i, n):
     u = i / (n - 1)
     desert()
-    K, V = m_dust_rigs(kclip=(DRAW, 0.75), kgun_in=False, vclip=('bx_27_hit_stomach', 0.12 + 0.78 * u ** 1.6))
+    tv_ = 0.1 + 1.5 * u ** 1.3
+    K, V = m_dust_rigs(kclip=(DRAW, 0.75), kgun_in=False, vclip=('bx_30_knockdown_punch', tv_))
     revolver_in_hand(K)
+    if u < 0.4:
+        for j, (dt_, tr_) in enumerate(((0.06, 0.6), (0.12, 0.8))):
+            rig('vg%d' % j, (DV.x, DV.y, 0), 180, {'clip': ('bx_30_knockdown_punch', max(0.0, tv_ - dt_))}, tr=tr_)
     c = br(V['UpperTorso'].translation)
     if i == 0:
         S['c'] = c
-        Ve = peek_rig('v', (DV.x, DV.y, 0), 180, {'clip': ('bx_27_hit_stomach', 0.9)})
+        Ve = peek_rig('v', (DV.x, DV.y, 0), 180, {'clip': ('bx_30_knockdown_punch', 1.6)})
         c0 = c
         pts = pts_of(V) + pts_of(Ve) + [c0 + Vector((2.2, 1.6, 1.8)), c0 + Vector((-2.2, 1.6, -1.6))]
         S['pos'], S['look'] = aim_lens(pts, 25, -8, 44, -6)
@@ -1602,12 +1638,12 @@ def dv_hit(i, n):
     lens(S['pos'], S['look'], 44, -6)
 
 
-@shot('dust', 'HOLSTER', 26)
+@shot('dust', 'HOLSTER', 20)
 def dv_holster(i, n):
     u = i / (n - 1)
     t = 0.75 - 0.69 * ease(u)       # the draw played backwards: the revolver goes home
     desert()
-    K, V = m_dust_rigs(kclip=(DRAW, t), kgun_in=t < DRAW_OUT, vclip=('bx_28_knockdown_liver', 1.2 + 0.4 * u))
+    K, V = m_dust_rigs(kclip=(DRAW, t), kgun_in=t < DRAW_OUT, vclip=('bx_30_knockdown_punch', 1.6 + 0.3 * u))
     h = br(K['RightHand'].translation)
     if t >= DRAW_OUT:
         g = revolver_in_hand(K)
@@ -1631,6 +1667,28 @@ def dv_holster(i, n):
     lens(lerpv(S['pos'], S['c'] + (S['pos'] - S['c']) * 0.88, ease(u)), S['c'], 36, 5)
 
 
+@shot('dust', 'FAR SHOT', 36)
+def dv_far(i, n):
+    u = i / (n - 1)
+    desert()
+    K, V = m_dust_rigs(kclip=(DRAW, 0.06), kgun_in=True, vclip=('bx_30_knockdown_punch', 2.0))
+    if i == 0:
+        S['vc'] = br(V['UpperTorso'].translation)
+    vc = S['vc']
+    # the dust hanging round them, spreading and thinning out
+    rnd = random.Random(91)
+    for j in range(14):
+        a = rnd.uniform(0, 6.28)
+        r0 = rnd.uniform(0.8, 2.2)
+        d0 = rnd.uniform(0.3, 1.6)
+        q = rb(vc + Vector((math.cos(a) * d0 * (1 + 0.8 * u), math.sin(a) * d0 * (1 + 0.8 * u), -0.6 + 0.5 * u + rnd.uniform(0, 0.6))))
+        PROP_TR[0] = min(0.97, 0.45 + 0.52 * u)
+        rr = r0 * (1 + 0.7 * u)
+        prop('Ball', (rr, rr, rr), CF(q.x, max(q.y, rr * 0.25), q.z), SAND if j % 2 else (0.95, 0.84, 0.62), 'Sand', 'dustcloud')
+        PROP_TR[0] = 0.0
+    lens((27.0 - 0.6 * u, DV.y / 2, 2.1), (0, DV.y / 2, 1.6), 33, 0)
+
+
 def frame_data(info):
     return {'name': info.get('name', ''), 'impact': info.get('impact'), 'crop': info.get('crop', 0),
             'lens': {'cf': comps(CAMS['cf']), 'fov': CAMS['fov']},
@@ -1638,7 +1696,7 @@ def frame_data(info):
                           **({'tr': r['tr']} if r.get('tr') else {})) for r in RIGS],
             'props': [dict({'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'],
                             'mat': p['mat'], 'tag': p['tag']}, **({'tr': round(p['tr'], 2)} if p.get('tr') else {})) for p in PROPS],
-            'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
+            'katana': [comps(m) for m in KATANA], 'guns': [dict({'model': g['model'], 'cf': comps(g['cf'])}, **({'tr': g['tr']} if g.get('tr') else {})) for g in GUNS],
             'faces': {r['name']: r['face'] for r in RIGS if r.get('face')},
             # (for the game: which clip at what moment, where the root stands, where the katana is)
             'anim': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
@@ -1729,7 +1787,7 @@ for board, frames in BOARDS.items():
                 'rigs': [dict({'name': r['name'], 'col': r['col'], 'parts': {k: comps(v) for k, v in r['cf'].items()}},
                           **({'tr': r['tr']} if r.get('tr') else {})) for r in RIGS],
                 'props': [{'shape': p['shape'], 'size': [round(x, 3) for x in p['size']], 'cf': comps(p['cf']), 'col': p['col'], 'mat': p['mat'], 'tag': p['tag']} for p in PROPS],
-                'katana': [comps(m) for m in KATANA], 'guns': [{'model': g['model'], 'cf': comps(g['cf'])} for g in GUNS],
+                'katana': [comps(m) for m in KATANA], 'guns': [dict({'model': g['model'], 'cf': comps(g['cf'])}, **({'tr': g['tr']} if g.get('tr') else {})) for g in GUNS],
                 'faces': {r['name']: r['face'] for r in RIGS if r.get('face')}}
         with open(os.path.join(OUT, f'{board}_{n}.json'), 'w') as fh:
             json.dump(data, fh)
