@@ -324,6 +324,15 @@ function Party.openBoard(p: Player, tab: string?)
 	push(p, { t = "openBoard", tab = tab })
 end
 -- how many are in this player's party (stand-ins too), 0 when they have none (the quests session: "play 2 matches with your party")
+-- (the SPECTATE BOARD, Spectate.luau) why p can't start watching now, or nil: their party is searching, has a match
+-- found, or is in one
+function Party.busy(p: Player): string?
+	local pt = byPlayer[p]
+	if not pt then return nil end
+	if pt.match then return "your party is in a match" end
+	if pt.entry or pt.found then return "your party is searching: cancel first" end
+	return nil
+end
 function Party.sizeOf(p: Player): number
 	local pt = byPlayer[p]
 	return if pt then #pt.members else 0
@@ -703,6 +712,7 @@ local function find(p: Player): (boolean, string?)
 		lo, hi, sum = math.min(lo, r), math.max(hi, r), sum + r
 		if m.player and Matches.matchOf(m.player) then return false, m.display .. " is in a match" end
 		if m.player and m.player:GetAttribute("ZmOn") then return false, m.display .. " is in a ZOMBIES game" end
+		if m.player and m.player:GetAttribute("Watching") then return false, m.display .. " is watching a match" end
 	end
 	if pt.ranked and not priv and hi - lo > Ranked.PARTY_SPREAD then
 		return false, ("ranked parties must be within %d rating of each other"):format(Ranked.PARTY_SPREAD)

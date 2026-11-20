@@ -30,6 +30,7 @@ local S: any = {
 }
 S.tab = "duels"
 UI.S = S
+UI.openWatch = nil :: (() -> ())? -- (SpectateClient sets it: the WATCH tab opens its panel)
 
 local GOOD = Color3.fromRGB(110, 214, 140) -- a rating gained (the only green: it carries information)
 local new, text = T.new, T.text
@@ -344,19 +345,25 @@ local function modeList()
 	local lead = iLead()
 	local W = L.leftW
 	local ranked = pt ~= nil and pt.ranked == true
-	-- DUELS | MODES
+	-- DUELS | MODES | WATCH (20 Nov 2026: WATCH isn't a tab of its own: it opens the spectate panel, SpectateClient's
+	-- UI.openWatch, with this screen closed)
 	local tabs = new("Frame", { Name = "Tabs", BackgroundTransparency = 1, ZIndex = 3, Position = UDim2.fromOffset(12, 12), Size = UDim2.fromOffset(W - 24, if c then 28 else 34) }, left)
-	for i, id in { "duels", "modes" } do
+	local tabIds = if UI.openWatch then { "duels", "modes", "watch" } else { "duels", "modes" }
+	local tw = 1 / #tabIds
+	for i, id in tabIds do
 		local on = S.tab == id
 		local tb = new("TextButton", { Name = id, AutoButtonColor = false, BorderSizePixel = 0, BackgroundColor3 = if on then T.CARD_HI else T.CARD, ZIndex = 3,
-			BackgroundTransparency = if on then 0 else 0.3, Position = UDim2.new((i - 1) * 0.5, if i == 2 then 3 else 0, 0, 0), Size = UDim2.new(0.5, -3, 1, 0),
+			BackgroundTransparency = if on then 0 else 0.3, Position = UDim2.new((i - 1) * tw, if i > 1 then 3 else 0, 0, 0), Size = UDim2.new(tw, -3, 1, 0),
 			FontFace = T.FONT_HEAVY, TextSize = if c then 11 else 13, Text = string.upper(id), TextColor3 = if on then T.TEXT else T.MUTED }, tabs)
 		T.corner(tb, 5)
 		if on then
 			local b = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.5, 0, 0, 2), ZIndex = 4 }, tb)
 			T.corner(b, 1)
 		end
-		tb.MouseButton1Click:Connect(function() if S.tab ~= id then S.tab = id; refresh() end end)
+		tb.MouseButton1Click:Connect(function()
+			if id == "watch" then if UI.openWatch then UI.openWatch() end; return end
+			if S.tab ~= id then S.tab = id; refresh() end
+		end)
 	end
 	local y = (if c then 28 else 34) + 22
 	if S.tab == "modes" then

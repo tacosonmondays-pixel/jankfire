@@ -214,6 +214,40 @@ end
 function Matches.padHub(pad: Instance): string return (pad:GetAttribute("Hub") :: string?) or "ring" end
 function Matches.playerHub(p: Player): string return (p:GetAttribute("Hub") :: string?) or "ring" end
 
+-- (20 Nov 2026, the SPECTATE BOARD: server/Spectate.luau) this server's live matches as the board shows them: mode,
+-- map, score, round, the round's end (server time), the players' display names a team; and one match's players and
+-- site for a spectator's camera
+function Matches.liveInfo(): { any }
+	local out = {}
+	for _, m in live do
+		if not m.on then continue end
+		local teams = {}
+		for t, list in m.teams do
+			local names = {}
+			for _, p in list do if p.Parent then table.insert(names, p.DisplayName) end end
+			teams[t] = names
+		end
+		table.insert(out, { id = m.id, mode = m.mode, ranked = m.ranked == true, private = m.private == true, arena = m.arena,
+			title = Arena.title(m.arena), wins = table.clone(m.wins), round = m.round, phase = m.phase,
+			ends = if m.phase == "live" and m.roundEnds then workspace:GetServerTimeNow() + math.max(0, m.roundEnds - os.clock()) else nil,
+			teams = teams, classic = m.rules ~= nil })
+	end
+	return out
+end
+function Matches.watchInfo(id: any): any?
+	for _, m in live do
+		if m.id == id and m.on then
+			local users = {}
+			for _, list in m.teams do for _, p in list do if p.Parent then table.insert(users, p.UserId) end end end
+			local model = m.site.model
+			local focus = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+			return { id = m.id, mode = m.mode, arena = m.arena, title = Arena.title(m.arena), users = users,
+				centre = model:GetPivot().Position, focus = focus, ranked = m.ranked == true }
+		end
+	end
+	return nil
+end
+
 -- ------------------------------------------------------------------ sites (an arena, or a copy, per live match)
 local function sitesInUse(): number
 	local n = 0

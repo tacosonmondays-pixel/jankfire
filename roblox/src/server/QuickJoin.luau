@@ -85,6 +85,7 @@ local function onAPad(p: Player): boolean
 end
 local function freeInHub(p: Player): boolean
 	if not p.Parent or p:GetAttribute("Zone") ~= "hub" or p:GetAttribute("Lobby") ~= nil then return false end
+	if p:GetAttribute("Watching") ~= nil then return false end -- (watching a match: Spectate.luau)
 	if Matches.matchOf(p) ~= nil or onAPad(p) then return false end
 	local ch = p.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")

@@ -16,6 +16,7 @@ local CrossServer = require(Jankfire:WaitForChild("CrossServer"))
 local Recorder = require(Jankfire:WaitForChild("Recorder"))
 local QuickJoin = require(Jankfire:WaitForChild("QuickJoin"))
 local Trading = require(Jankfire:WaitForChild("Trading"))
+local Spectate = require(Jankfire:WaitForChild("Spectate"))
 
 -- the remotes (in the saved place and default.project.json; made here too if missing)
 local remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -42,6 +43,8 @@ Recorder.init(Fight, Matches)
 QuickJoin.init(Matches, Party, remotes)
 -- TRADING (Trading.luau, docs/TRADING.md): off until PlayConfig.TRADING_ON; its Studio hook is ServerStorage.JankTradeTest
 Trading.init()
+-- the SPECTATE BOARD (Spectate.luau): this server's matches on a board in each hub and in PLAY's WATCH tab
+Spectate.init(Matches, Party, remotes)
 -- the hub pads' map vote (Matches.padVote): a vote from a player standing on a full pad, through the Play remote
 Party.ops.padvote = function(p: Player, a: any): any
 	local ok, why = Matches.padVote(p, a)
