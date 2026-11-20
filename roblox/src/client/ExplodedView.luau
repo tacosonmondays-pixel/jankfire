@@ -25,7 +25,7 @@ local STAGGER, DUR = 0.09, 0.42             -- going apart: each step this much 
 local STAGGER_IN, DUR_IN = 0.035, 0.24      -- coming back: quicker, the last out first in
 local BLUE, GRID = Color3.fromRGB(13, 36, 78), Color3.fromRGB(120, 170, 235)
 local LINE = Color3.fromRGB(235, 244, 255)
-local ZOOM = 1.45                           -- the preview camera's field of view while apart, times what it was
+local ZOOM = 1.45                           -- (the camera's widening when a plan is missing; fovFor fits the spread)
 
 local function play(name: string) if okS and type(Sfx) == "table" then pcall((Sfx :: any).play, name) end end
 local function ease(x: number): number
@@ -97,6 +97,25 @@ local function backdrop(holder: GuiObject, z: number): (Frame, { Frame })
 	return f, lines
 end
 
+-- how wide the camera goes while apart: as much wider as the gun's spread is longer than the gun (barrel and stock
+-- out at both ends can double it), at least ZOOM, at most 70 degrees
+local function fovFor(plan: any, fov: number): number
+	local ratio = ZOOM
+	if plan then
+		local lo0, hi0 = Vector3.one * math.huge, -Vector3.one * math.huge
+		local lo1, hi1 = lo0, hi0
+		for _, g in plan.groups do
+			lo0 = lo0:Min(g.lo); hi0 = hi0:Max(g.hi)
+			local o = g.dir * g.dist
+			lo1 = lo1:Min(g.lo + o); hi1 = hi1:Max(g.hi + o)
+		end
+		local a, b = hi0 - lo0, hi1 - lo1
+		ratio = math.max(math.max(b.X, b.Y, b.Z) / math.max(a.X, a.Y, a.Z, 1e-3) * 1.08, 1.15)
+	end
+	local half = math.atan(math.tan(math.rad(fov) / 2) * ratio)
+	return math.min(math.deg(half * 2), 70)
+end
+
 local function fade(h: Handle, on: boolean)
 	T.tween(h.backdrop, 0.35, { BackgroundTransparency = if on then 0 else 1 })
 	for _, l in h.grid do
@@ -118,7 +137,7 @@ local function fade(h: Handle, on: boolean)
 	local cam = if vp then vp.CurrentCamera else nil
 	if on and cam and h.fovCam ~= cam then
 		h.fovCam, h.fovBase = cam, cam.FieldOfView
-		T.tween(cam, 0.4, { FieldOfView = math.min(cam.FieldOfView * ZOOM, 70) })
+		T.tween(cam, 0.4, { FieldOfView = fovFor(h.plan, cam.FieldOfView) })
 	elseif not on and h.fovCam then
 		if h.fovCam.Parent then T.tween(h.fovCam, 0.3, { FieldOfView = h.fovBase }) end
 		h.fovCam = nil
