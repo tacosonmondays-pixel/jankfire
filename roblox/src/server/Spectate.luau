@@ -133,10 +133,8 @@ function Spectate.init(matches: any, party: any, remotes: Instance)
 		if not ok then warn("[jankfire] spectate: " .. tostring(res)); return { ok = false, why = "something went wrong" } end
 		return res
 	end
-	-- the match ended: its watchers come back (a new round of the same match is still it)
-	Matches.onEnd(function(m: any)
-		for p, w in watching do if w.id == m.id then Spectate.stop(p) end end
-	end)
+	-- (the match ended: its watchers stay through a finisher's scene and the end screen, and come back with its players,
+	-- when it goes off: the 2 s check below. a new round of the same match is still it)
 	-- a new body (respawned, reset): not watching any more
 	Players.PlayerAdded:Connect(function(p)
 		p.CharacterAdded:Connect(function() if watching[p] then watching[p] = nil; p:SetAttribute("Watching", nil); p:SetAttribute("WatchArena", nil) end end)

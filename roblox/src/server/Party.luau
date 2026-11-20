@@ -1095,9 +1095,13 @@ end
 -- a party's match is over: its players respawn on their plinths (Matches.homeOf) once Matches sends them home
 local function onEnd(m: any)
 	if not m.queue then return end
-	-- (a play of the match keeps everyone in the arena longer: Matches.afterHook says how long)
-	local after = if Matches.afterHook then Matches.afterHook(m) else nil
-	task.delay((if after then after.total else (Matches.AFTER or 7)) + 0.3, function()
+	-- (the real trip home: a finisher's scene (m.finisherUntil, the finishers session, 20 Nov), the end screen and the
+	-- play of the match all move it, so a fixed delay could pull the party into its room mid-scene. backToHub sets
+	-- m.on = false when everyone goes home; 120 s at most)
+	task.spawn(function()
+		local t0 = os.clock()
+		while m.on ~= false and os.clock() - t0 < 120 do task.wait(0.25) end
+		task.wait(0.3)
 		for _, pt in parties do
 			if pt.match == m.id then
 				pt.match = nil
