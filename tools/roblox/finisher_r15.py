@@ -316,6 +316,8 @@ RIGS = []
 GUNS = []    # {'model': 'revolver_dust', 'cf': grip frame (Roblox), 'scale': 3}
 PROPS = []   # {'shape': 'Block'|'Ball'|'Cylinder'|'Wedge', 'size': (x,y,z) Roblox, 'cf': 4x4 Roblox, 'col', 'mat', 'tag'}
 KATANA = []  # Roblox CFrames of the katana grip (the place's katana_sakura, scaled x3)
+FXL = []     # this frame's effects for the game (see fx())
+FXA = ['']   # the anchor the next recorded effects ride on
 SEM = {}     # this frame's semantics: 'sh' (scabbard: hip / lhand + m0), 'kat' (hand / home + push / through /
              # out + e), 'mouth' (the stand-in's scabbard mouth, Roblox CFrame looking down the scabbard), 'lens' anchor
 KAT_MODE = []  # per KATANA entry: 'hand' (in the killer's right hand) or 'free' (placed: the sheath)
@@ -325,6 +327,10 @@ PROP_TR = [0.0]   # the transparency given to props made while it is set (a fadi
 
 
 def prop(shape, size, cf, col, mat='SmoothPlastic', tag=''):
+    if tag in ('glint', 'sweat') and FXA[0] != '-':
+        t_ = cf.translation
+        FXL.append([FXA[0] or ('mouth' if tag == 'glint' else 'vH'), tag, round(t_.x, 3), round(t_.y, 3), round(t_.z, 3),
+                    round(max(size), 3)])
     PROPS.append({'shape': shape, 'size': tuple(size), 'cf': cf, 'col': col, 'mat': mat, 'tag': tag, 'tr': PROP_TR[0]})
 
 
@@ -389,6 +395,8 @@ def ink_arc(center_b, r, a0, a1, w0, w1, col, n=44, height=0.12, tag='smear'):
 
 def brush(a_b, b_b, bulge, width, facing_b, col, n=16, seed=29, tag='stroke'):
     a, b, f = Vector(a_b), Vector(b_b), Vector(facing_b).normalized()
+    fx('stroke', *v3r(a), *v3r(b), float(bulge), float(width), *v3r(a + f), 0 if col == INK else 1, seed,
+       float(PROP_TR[0]))
     d = b - a
     side = d.cross(f).normalized()
     rnd = random.Random(seed)
@@ -400,6 +408,7 @@ def brush(a_b, b_b, bulge, width, facing_b, col, n=16, seed=29, tag='stroke'):
 
 
 def splats(center_b, n, spread, seed=23, size=1.0):
+    fx('splats', *v3r(center_b), n, float(spread), seed, float(size))
     rnd = random.Random(seed)
     for i in range(n):
         p = rb(Vector(center_b) + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))) * spread)
@@ -677,8 +686,155 @@ CACTUS = (0.42, 0.52, 0.38)
 DIRT = (0.74, 0.6, 0.42)
 
 
+# ------------------------------------------------------------------ the western town (20 Nov, the owner: "can you make it
+# a western town now add lighting shadows make it pretty"). The street runs along y (the killer at 0, the victim at 17);
+# false-front buildings line it on boardwalks with porch roofs, posts and lanterns; the east side (+x) leaves an open
+# corral in front of the two side lenses (THE WIDE, the FAR SHOT, about 25 out), a livery closes the street's south end,
+# a church its north; a water tower and the mesas beyond. Muted weathered wood, colour only on a few painted fronts and
+# the lit windows. The lanterns (tag 'lamp') get a warm light in Studio; the sun is the shoot's.
+TW = {'dark': (0.36, 0.26, 0.19), 'mid': (0.5, 0.36, 0.25), 'light': (0.62, 0.48, 0.34), 'roof': (0.3, 0.22, 0.18),
+      'red': (0.55, 0.33, 0.27), 'teal': (0.38, 0.47, 0.46), 'cream': (0.78, 0.7, 0.58), 'ochre': (0.66, 0.52, 0.32),
+      'win': (0.08, 0.07, 0.07), 'lit': (1.0, 0.72, 0.42), 'trim': (0.72, 0.62, 0.48)}
+
+
+def bx(c, size, col, mat='WoodPlanks', tag='bldg', yaw=0.0):
+    # a box centred at c (Blender), size (x, y, z) in Blender axes
+    q = rb(c)
+    prop('Block', (size[0], size[2], size[1]), CF(q.x, q.y, q.z) @ ANG(0, yaw, 0), col, mat, tag)
+
+
+def storefront(y0, y1, side, h, col, rnd, two=False, sign=True):
+    # one false-front building on one side of the street (side -1 = west, +1 = east): its front at |x| = 11
+    s_ = side
+    w = y1 - y0
+    yc = (y0 + y1) / 2
+    xf, depth = 11.0 * s_, 8.0
+    bx((xf + s_ * depth / 2, yc, h / 2), (depth, w, h), TW['mid'] if rnd.random() < 0.5 else TW['dark'])
+    ff = h + 2.2 + rnd.uniform(0, 1.2)
+    bx((xf - s_ * 0.05, yc, ff / 2), (0.3, w, ff), col)                       # the false front
+    bx((xf - s_ * 0.22, yc, ff - 0.2), (0.25, w + 0.2, 0.4), TW['trim'])      # its cornice
+    if sign:
+        bx((xf - s_ * 0.25, yc, ff - 1.3), (0.12, w * 0.7, 0.9), TW['cream'], tag='sign')   # a plain sign board
+    # the porch: roof over the boardwalk, posts, a lantern on one post
+    bx((xf - s_ * 1.6, yc, 3.6), (3.4, w, 0.18), TW['roof'], tag='porch')
+    for py in (y0 + 0.4, y1 - 0.4):
+        bx((xf - s_ * 3.1, py, 1.8), (0.25, 0.25, 3.6), TW['light'], tag='porch')
+    if rnd.random() < 0.7:
+        ly = y1 - 0.4
+        bx((xf - s_ * 3.1, ly - s_ * 0.0, 3.0), (0.32, 0.32, 0.45), TW['dark'], tag='porch')
+        bx((xf - s_ * 3.1, ly, 2.75), (0.26, 0.26, 0.3), TW['lit'], mat='Neon', tag='lamp')
+    # the door and the windows (some lit)
+    bx((xf - s_ * 0.02, yc, 1.25), (0.12, 1.3, 2.5), TW['win'], tag='window')
+    for wy in (y0 + w * 0.2, y1 - w * 0.2):
+        lit = rnd.random() < 0.35
+        bx((xf - s_ * 0.02, wy, 1.9), (0.12, 1.1, 1.3), TW['lit'] if lit else TW['win'], mat='Neon' if lit else 'Glass',
+           tag='window')
+    if two:
+        for wy in (y0 + w * 0.25, yc, y1 - w * 0.25):
+            lit = rnd.random() < 0.3
+            bx((xf - s_ * 0.02, wy, h - 1.6), (0.12, 0.9, 1.2), TW['lit'] if lit else TW['win'], mat='Neon' if lit else 'Glass',
+               tag='window')
+        bx((xf - s_ * 1.0, yc, h - 2.5), (2.0, w, 0.16), TW['dark'], tag='porch')          # the balcony
+        bx((xf - s_ * 1.95, yc, h - 1.95), (0.12, w, 0.12), TW['light'], tag='porch')     # its rail
+    # the boardwalk
+    bx((xf - s_ * 1.6, yc, 0.22), (3.4, w + 0.05, 0.44), TW['light'], tag='walk')
+
+
+def barrel(x, y, rnd):
+    q = rb((x, y, 0.0))
+    prop('Cylinder', (1.3, 0.95, 0.95), CF(q.x, 0.65 + 0.44, q.z) @ ANG(0, 0, 90), TW['mid'], 'Wood', 'prop')
+    prop('Cylinder', (0.08, 1.0, 1.0), CF(q.x, 0.95 + 0.44, q.z) @ ANG(0, 0, 90), TW['dark'], 'Metal', 'prop')
+
+
+def crate(x, y, rnd, z=0.44):
+    s_ = rnd.uniform(0.8, 1.1)
+    bx((x, y, z + s_ / 2), (s_, s_, s_), TW['light'], mat='Wood', tag='prop', yaw=rnd.uniform(-20, 20))
+
+
+def hitching_rail(x, y0, y1):
+    for py in (y0, y1):
+        bx((x, py, 0.55), (0.22, 0.22, 1.1), TW['dark'], mat='Wood', tag='prop')
+    prop_box_between((x, y0, 1.0), (x, y1, 1.0), 0.16, 0.16, TW['mid'], mat='Wood', tag='prop')
+
+
+def water_tower(x, y):
+    for dx, dy in ((-1.6, -1.6), (1.6, -1.6), (-1.6, 1.6), (1.6, 1.6)):
+        bx((x + dx, y + dy, 5.0), (0.35, 0.35, 10.0), TW['dark'], mat='Wood', tag='bldg')
+    q = rb((x, y, 0.0))
+    prop('Cylinder', (4.2, 4.6, 4.6), CF(q.x, 12.1, q.z) @ ANG(0, 0, 90), TW['mid'], 'WoodPlanks', 'bldg')
+    prop('Cylinder', (0.5, 5.0, 5.0), CF(q.x, 14.4, q.z) @ ANG(0, 0, 90), TW['roof'], 'WoodPlanks', 'bldg')
+
+
+def church(y):
+    bx((0.0, y + 4.0, 4.0), (10.0, 8.0, 8.0), TW['cream'], tag='bldg')
+    bx((0.0, y + 4.0, 8.6), (10.6, 8.6, 1.2), TW['roof'], tag='bldg')
+    bx((0.0, y - 0.1, 9.5), (2.4, 2.4, 19.0), TW['cream'], tag='bldg')      # the steeple
+    bx((0.0, y - 0.1, 19.6), (2.8, 2.8, 1.2), TW['roof'], tag='bldg')
+    bx((0.0, y - 0.15, 2.0), (1.8, 0.1, 4.0), TW['dark'], tag='window')     # the doors
+    bx((0.0, y - 0.15, 13.0), (1.0, 0.1, 1.4), TW['lit'], mat='Neon', tag='window')
+
+
+def livery(y):
+    bx((0.0, y - 5.0, 5.0), (16.0, 10.0, 10.0), TW['red'], tag='bldg')
+    bx((0.0, y - 5.0, 10.6), (16.6, 10.6, 1.2), TW['roof'], tag='bldg')
+    bx((0.0, y + 0.05, 3.0), (5.0, 0.12, 6.0), TW['dark'], tag='window')    # the big doors
+    bx((0.0, y + 0.08, 3.0), (5.2, 0.1, 0.25), TW['trim'], tag='bldg')
+    bx((0.0, y + 0.06, 8.0), (2.0, 0.12, 1.6), TW['win'], tag='window')     # the hay loft door
+
+
+def town():
+    rnd = random.Random(1885)
+    fronts = [TW['red'], TW['teal'], TW['cream'], TW['ochre'], TW['light'], TW['mid']]
+    # the west side: a full row, alleys between some
+    y = -40.0
+    k = 0
+    while y < 60:
+        w = rnd.choice((6.0, 7.0, 8.0, 9.0))
+        two = rnd.random() < 0.35
+        h = rnd.uniform(7.0, 8.5) if two else rnd.uniform(4.6, 5.8)
+        storefront(y, y + w, -1, h, fronts[k % len(fronts)], rnd, two=two)
+        y += w + (1.5 if rnd.random() < 0.35 else 0.0)
+        k += 1
+    # the east side: open in front of the side lenses (the corral), buildings beyond it each way
+    for y0, y1 in ((-40.0, -8.0), (24.0, 60.0)):
+        y = y0
+        while y < y1 - 3:
+            w = min(rnd.choice((6.0, 7.0, 8.0)), y1 - y)
+            two = rnd.random() < 0.3
+            h = rnd.uniform(7.0, 8.5) if two else rnd.uniform(4.6, 5.8)
+            storefront(y, y + w, 1, h, fronts[k % len(fronts)], rnd, two=two)
+            y += w + (1.5 if rnd.random() < 0.3 else 0.0)
+            k += 1
+    # the corral: a low two-rail fence, a trough, hay
+    # (its fence runs along the back and the ends, never across the side lenses' sightline to the street)
+    for (xa, ya), (xb, yb) in (((13.0, -7.0), (13.0, -3.5)), ((13.0, 20.5), (13.0, 23.0)), ((13.0, -7.0), (22.0, -7.0)),
+                               ((13.0, 23.0), (22.0, 23.0))):
+        n_ = max(2, int(((xb - xa) ** 2 + (yb - ya) ** 2) ** 0.5 / 3) + 1)
+        for k_ in range(n_):
+            u_ = k_ / (n_ - 1)
+            bx((xa + (xb - xa) * u_, ya + (yb - ya) * u_, 0.6), (0.25, 0.25, 1.2), TW['dark'], mat='Wood', tag='prop')
+        for z in (0.55, 1.05):
+            prop_box_between((xa, ya, z), (xb, yb, z), 0.14, 0.14, TW['mid'], mat='Wood', tag='prop')
+    bx((9.6, -5.5, 0.4), (1.0, 3.0, 0.8), TW['dark'], mat='Wood', tag='prop')      # a trough
+    bx((16.0, 21.5, 0.6), (1.6, 2.2, 1.2), (0.78, 0.66, 0.38), mat='Grass', tag='prop')
+    bx((18.0, -5.8, 0.6), (2.2, 1.6, 1.2), (0.76, 0.64, 0.36), mat='Grass', tag='prop')
+    # the street's ends, the tower, things on the boardwalks
+    livery(-44.0)
+    church(64.0)
+    water_tower(-25.0, 40.0)
+    for x, y_ in ((-8.9, -14.0), (-8.9, 33.0), (8.9, -19.0), (8.9, 30.0), (-9.4, 7.5)):
+        barrel(x, y_, rnd)
+    for x, y_ in ((-9.6, -12.5), (9.7, 36.0), (-9.6, 44.0)):
+        crate(x, y_, rnd)
+    hitching_rail(-7.4, -10.0, -6.0)
+    hitching_rail(-7.4, 26.0, 30.0)
+    hitching_rail(7.4, 30.0, 34.0)
+
+
+
 def desert():
     prop('Block', (500, 1, 500), CF(0, -0.5, 0), DIRT, 'Sand', 'ground')
+    town()
     for x in (-1.7, 1.7):   # wheel ruts down the street
         prop_box_between((x, -30, 0.015), (x, 45, 0.015), 0.55, 0.03, (0.6, 0.48, 0.33), mat='Sand', tag='rut')
     rnd = random.Random(33)
@@ -689,18 +845,15 @@ def desert():
         prop('Block', (0.32, 0.025, 0.55), CF(q.x, q.y, q.z) @ ANG(0, rnd.uniform(-12, 12), 0), (0.63, 0.5, 0.35), 'Sand', 'print')
     cyclorama(c=(0.0, 8.5), bands=((1.0, 0.76, 0.48), (0.97, 0.64, 0.43), (0.9, 0.54, 0.44), (0.74, 0.48, 0.5),
                                    (0.56, 0.43, 0.56), (0.42, 0.39, 0.55)), lid=(0.4, 0.38, 0.54))
-    for at, size in (((-36, 30), (16, 14, 28)), ((-32, -8), (12, 10, 18)), ((40, 44), (18, 16, 22)), ((-60, 70), (30, 22, 40)), ((70, 10), (20, 18, 30))):
+    for at, size in (((-56, 30), (16, 14, 28)), ((-52, -18), (12, 10, 18)), ((48, 50), (18, 16, 22)), ((-70, 80), (30, 22, 40)), ((75, 10), (20, 18, 30))):
         q = rb((at[0], at[1], 0))
         prop('Block', (size[0], size[1], size[2]), CF(q.x, size[1] / 2, q.z), ROCK, 'Sandstone', 'mesa')
-    for at, h in (((-9, 4), 4.4), ((8, 22), 3.6), ((10, -4), 3.0), ((-11, 26), 3.8)):
+    for at, h in (((22, 2), 4.4), ((24, 16), 3.6), ((30, -4), 3.0), ((-30, 26), 3.8)):
         q = rb((at[0], at[1], 0))
         prop('Cylinder', (h, 0.8, 0.8), CF(q.x, h / 2, q.z) @ ANG(0, 0, 90), CACTUS, 'SmoothPlastic', 'cactus')
         prop('Cylinder', (1.0, 0.56, 0.56), CF(q.x + 0.6, h * 0.45, q.z), CACTUS, 'SmoothPlastic', 'cactus')
         prop('Cylinder', (h * 0.35, 0.56, 0.56), CF(q.x + 1.1, h * 0.62, q.z) @ ANG(0, 0, 90), CACTUS, 'SmoothPlastic', 'cactus')
-    for y in (-6, -2, 2):
-        q = rb((-6.5, y, 0))
-        prop('Block', (0.35, 2.2, 0.35), CF(q.x, 1.1, q.z), WOOD, 'Wood', 'fence')
-    prop_box_between((-6.5, -6.2, 1.7), (-6.5, 2.2, 1.7), 0.2, 0.25, WOOD, tag='fence')
+    pass
 
 
 def tumbleweed(at_b, r=1.6, seed=5, rot=0.0, axis=(1, 0, 0)):
@@ -1372,6 +1525,8 @@ def peek_rig(name, at, yaw, pose):
 
 
 def petals_drift(center_b, n, spread, s, seed=19, size=1.0, vel=(0.6, -0.3, -0.35), spin=140):
+    vv = rb(Vector(vel)) - rb(Vector((0, 0, 0)))
+    fx('drift', *v3r(center_b), n, float(spread), float(s), seed, float(size), round(vv.x, 3), round(vv.y, 3), round(vv.z, 3))
     rnd = random.Random(seed)
     for i in range(n):
         base = Vector(center_b) + Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-0.6, 1))) * spread
@@ -1383,6 +1538,7 @@ def petals_drift(center_b, n, spread, s, seed=19, size=1.0, vel=(0.6, -0.3, -0.3
 
 def burst(center_b, n, reach_, u, seed, kind='petal', size=1.0, fall=1.2):
     # pieces thrown out from a point: fast at first, slowing, then falling (u: 0 -> 1 over the burst)
+    fx('burst', *v3r(center_b), n, float(reach_), float(u), seed, 1 if kind == 'splat' else 0, float(size), float(fall))
     rnd = random.Random(seed)
     k = 1 - (1 - max(0.0, min(1.0, u))) ** 2.2
     for i in range(n):
@@ -2173,7 +2329,19 @@ def frame_data(info):
             'ghost': {r['name']: {'clip': r['clip'][0], 't': round(r['clip'][1], 4), 'root': comps(r['cf']['HumanoidRootPart']),
                                   'tr': r['tr']} for r in RIGS if r.get('clip') and r.get('tr')},
             'kat': [kat_rel(m, mode) for m, mode in zip(KATANA, KAT_MODE)], 'katL': round(KAT_LEN[0], 3),
-            'sem': dict(SEM)}
+            'sem': dict(SEM), 'fx': [list(e) for e in FXL], 'anc': anchors_now()}
+
+
+def anchors_now():
+    # the stand-in CFrames the game re-hangs lenses and effects from (onto the real bodies)
+    out = {}
+    if SEM.get('mouth'):
+        out['mouth'] = SEM['mouth']
+    for r in RIGS:
+        if r['name'] in ('k', 'v') and not r.get('tr'):
+            for key, part in (('H', 'Head'), ('U', 'UpperTorso'), ('L', 'LowerTorso')):
+                out[r['name'] + key] = comps(r['cf'][part])
+    return out
 
 
 # ================================================================== TIDECREST v4 (20 Nov): the review's rebuild
@@ -2346,9 +2514,21 @@ def katana_aim(K, clip, t, target, w, gap=0.3):
     SEM['kat'] = {'mode': 'pack', 'T': comps(clip_pose(clip, t)['RightHandle']), 'aim': [round(x, 3) for x in tr_], 'w': round(w, 3)}
 
 
+def fx(*a):
+    FXL.append([FXA[0]] + [round(x, 3) if isinstance(x, float) else x for x in a])
+
+
+def v3r(b):
+    q = rb(b)
+    return (round(q.x, 3), round(q.y, 3), round(q.z, 3))
+
+
 def ring_flash(c, n_lines, r0, r1, cam, seed=5, tag='smear', col=SMEAR):
     # action lines bursting out of a point, in the plane facing the lens (thin Neon slivers)
     fw = (Vector(cam) - c).normalized()
+    fx('ring', *v3r(c), float(r0), float(r1), n_lines, seed, *v3r(Vector(c) + fw), tag)
+    fa = FXA[0]
+    FXA[0] = '-'      # (the lines themselves are the ring's, not glints of their own)
     ux = fw.cross(Vector((0, 0, 1)))
     ux = ux.normalized() if ux.length > 1e-3 else Vector((1, 0, 0))
     uy = ux.cross(fw).normalized()
@@ -2358,6 +2538,7 @@ def ring_flash(c, n_lines, r0, r1, cam, seed=5, tag='smear', col=SMEAR):
         dv = ux * math.cos(a) + uy * math.sin(a)
         p0, p1 = c + dv * r0 * rnd.uniform(0.9, 1.2), c + dv * r1 * rnd.uniform(0.8, 1.15)
         prop_box_between(p0, p1, 0.02, 0.035, col, up_b=fw, mat='Neon', tag=tag)
+    FXA[0] = fa
 
 
 @shot('tide', 'THE GRIP', 16)
@@ -2388,7 +2569,9 @@ def t4_grip(i, n):
         prop('Block', (0.04, 0.4 * k_, 0.04), CF(*rb(g)), (1.0, 0.98, 0.94), 'Neon', 'glint')
         prop('Block', (0.4 * k_, 0.04, 0.04), CF(*rb(g)), (1.0, 0.98, 0.94), 'Neon', 'glint')
     if 11 <= i <= 13:
+        FXA[0] = 'mouth'
         ring_flash(g, 11, 0.25 + 0.25 * (i - 11), 1.2 + 0.6 * (i - 11), S['pos'], seed=31 + i, tag='glint')
+        FXA[0] = ''
     bump = Vector((0, 0, 0.03)) if i == 11 else Vector((0, 0, 0))
     lens(S['pos'] + bump, c + bump, 24, 0)
 
@@ -2733,6 +2916,7 @@ def t4_cutlands(i, n):
     fw = (cam - c).normalized()
     side = fw.cross(Vector((0, 0, 1))).normalized()
     wipe = min(1.0, max(0.0, (i - 1) / 3))
+    FXA[0] = 'vU'
     if wipe > 0:
         PROP_TR[0] = 0.0 if i < 8 else min(0.85, (i - 8) * 0.13)
         a0, a1 = c - side * 2.1 + Vector((0, 0, 0.4)) + fw * 1.7, c + side * 2.1 + Vector((0, 0, -0.3)) + fw * 1.7
@@ -2770,7 +2954,9 @@ def t4_end(i, n):
                       scatter=0.5 * ease((i - 22) / 11) if i > 22 else 0.0)
     if i >= 15:
         vb = br(V['UpperTorso'].translation)
+        FXA[0] = 'vU'
         burst(vb + Vector((0, 0, 0.3)), 70, 2.8, (i - 15) / (n - 16), seed=421, size=1.1, fall=0.5)
+        FXA[0] = ''
     if i == 0:
         hd = br(K['Head'].translation)
         to_cam = (Vector(T4['end_cam']).xy - hd.xy).normalized().to_3d()
@@ -2796,6 +2982,7 @@ def cf_look(a, b):
 LENS_ANCHOR = {
     ('tide', 'THE GRIP'): 'mouth', ('tide', 'THE DRAW'): 'k.UpperTorso', ('tide', 'THE SHEATHE'): 'mouth',
     ('tide', 'STILLNESS'): 'v.Head', ('tide', 'THE END'): 'k.Head', ('tide', 'THE CUT LANDS'): 'v.UpperTorso',
+    ('tide', 'THE TIP'): 'v.Head',
     ('dust', "KILLER'S EYES"): 'k.Head', ('dust', "VICTIM'S EYES"): 'v.Head', ('dust', 'EYES AGAIN'): 'k.Head',
     ('dust', 'THEIR EYES'): 'v.Head', ('dust', "KILLER'S HAND"): 'k.LowerTorso', ('dust', "VICTIM'S HAND"): 'v.LowerTorso',
     ('dust', 'ENEMY REACHES'): 'v.LowerTorso', ('dust', 'THE DRAW'): 'k.LowerTorso',
@@ -2826,6 +3013,8 @@ for vname in VIDS:
             clear()
             RIGS.clear(); PROPS.clear(); KATANA.clear(); GUNS.clear(); KAT_MODE.clear(); KAT_LEN[0] = 1.0
             SEM.clear()
+            FXL.clear()
+            FXA[0] = ''
             info = fn(i, nf) or {}
             info['name'] = sname
             if (vname, sname) in LENS_ANCHOR:
@@ -2839,7 +3028,8 @@ for vname in VIDS:
         shots.append([sname, nf])
         print('shot', vname, sname, nf, flush=True)
     # the fixed set (floor, pillars, trees) is the same in every frame: stored once as '_stage'
-    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa', 'sky', 'ground', 'rut', 'print')
+    STATIC = ('floor', 'pillar', 'tree', 'rock', 'cactus', 'fence', 'mesa', 'sky', 'ground', 'rut', 'print', 'bldg', 'porch',
+              'walk', 'window', 'sign', 'lamp', 'prop')
     first = None
     for key in sorted(allv):
         f = allv[key]

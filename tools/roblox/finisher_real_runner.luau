@@ -37,6 +37,53 @@ local TPL = game.ServerStorage.PolishBackup.AnimTrial.Rig
 
 local R = shared.FinRealState or {}
 shared.FinRealState = R
+-- the shoot's light (20 Nov, the owner: "make it a western town now add lighting shadows make it pretty"): a low warm
+-- sun with real shadows, a warm haze, a light grade. The place's own Lighting is saved first and put back by
+-- shared.FinRealRestore() at the end of the turn - the place's look never changes
+local LOOK = __LOOK__
+local function lookOn()
+	if not LOOK or R.lightWas then return end
+	local L = game:GetService("Lighting")
+	local was = { props = {}, added = {} }
+	for _, k in ipairs({ "ClockTime", "GeographicLatitude", "Brightness", "OutdoorAmbient", "Ambient", "ColorShift_Top",
+		"ColorShift_Bottom", "EnvironmentDiffuseScale", "EnvironmentSpecularScale", "ShadowSoftness", "ExposureCompensation",
+		"GlobalShadows" }) do
+		was.props[k] = L[k]
+	end
+	was.disabled = {}
+	for _, e in ipairs(L:GetChildren()) do
+		if (e:IsA("PostEffect") or e:IsA("Atmosphere")) then
+			if e:IsA("Atmosphere") then was.atmo = { e, e.Density, e.Offset, e.Color, e.Decay, e.Glare, e.Haze }
+			elseif e.Enabled then e.Enabled = false; table.insert(was.disabled, e) end
+		end
+	end
+	R.lightWas = was
+	L.ClockTime = LOOK.clock; L.GeographicLatitude = LOOK.lat; L.Brightness = LOOK.bright
+	L.OutdoorAmbient = LOOK.outdoor; L.Ambient = LOOK.ambient; L.ColorShift_Top = LOOK.shiftTop
+	L.ColorShift_Bottom = Color3.new(0, 0, 0); L.EnvironmentDiffuseScale = 0.45; L.EnvironmentSpecularScale = 0.4
+	L.ShadowSoftness = 0.15; L.ExposureCompensation = LOOK.exposure; L.GlobalShadows = true
+	local a = was.atmo and was.atmo[1]
+	if not a then a = Instance.new("Atmosphere"); a.Name = "JankShootAtmo"; a.Parent = L; table.insert(was.added, a) end
+	a.Density = 0.3; a.Offset = 0.12; a.Color = Color3.fromRGB(222, 176, 134); a.Decay = Color3.fromRGB(176, 118, 92)
+	a.Glare = 0.35; a.Haze = 1.4
+	local cc = Instance.new("ColorCorrectionEffect"); cc.Name = "JankShootGrade"
+	cc.TintColor = Color3.fromRGB(255, 238, 220); cc.Contrast = 0.08; cc.Saturation = 0.04; cc.Parent = L
+	table.insert(was.added, cc)
+end
+shared.FinRealRestore = function()
+	local was = R.lightWas
+	if not was then return "no light to restore" end
+	local L = game:GetService("Lighting")
+	for k, v in pairs(was.props) do L[k] = v end
+	if was.atmo then
+		local a = was.atmo[1]; a.Density, a.Offset, a.Color, a.Decay, a.Glare, a.Haze = was.atmo[2], was.atmo[3], was.atmo[4], was.atmo[5], was.atmo[6], was.atmo[7]
+	end
+	for _, e in ipairs(was.disabled) do e.Enabled = true end
+	for _, e in ipairs(was.added) do e:Destroy() end
+	R.lightWas = nil
+	return "light restored"
+end
+lookOn()
 local root = workspace:FindFirstChild("FinisherRealTemp")
 if not root then root = Instance.new("Folder"); root.Name = "FinisherRealTemp"; root.Parent = workspace end
 
@@ -205,6 +252,35 @@ local function ground(m, f, rig)
 	local dy = want - lowestReal(m)
 	if math.abs(dy) > 1e-3 then m:PivotTo(m:GetPivot() + Vector3.new(0, dy, 0)) end
 end
+-- the revolver (the owner, 20 Nov: "the gun isn't held in her hand ... it sort of snaps off their waist"): in the hand
+-- its own Grip attachment sits in the palm at the plan's hold angle; at rest it hangs where THIS body's hand reaches at
+-- the draw's grab (the quick draw at 0.3 s), already at the angle the hand takes it - so the hand closes on it and
+-- carries it out, no jump
+local REV = game.ReplicatedStorage.JankfireSkins.revolver_dust
+local GRAB = { quick_draw_t1 = 0.3 }
+local function gunGripRel(): Vector3
+	if R.gunGrip then return R.gunGrip end
+	local att = REV:FindFirstChild("Grip", true)
+	R.gunGrip = if att and att:IsA("Attachment") then att.WorldPosition * 3 else Vector3.new(0, -0.55, 0.25)
+	return R.gunGrip
+end
+local function palm(m)
+	local h = m.RightHand
+	return h.CFrame * CFrame.new(0, -0.4 * h.Size.Y, 0)
+end
+local function gunInHand(m)
+	local pc = palm(m)
+	return CFrame.new(pc.Position) * pc.Rotation * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(-gunGripRel())
+end
+local function holsterRelOf(name, m, clip)
+	R.holRel = R.holRel or {}
+	if R.holRel[name] then return R.holRel[name] end
+	local t = GRAB[clip] or 0.3
+	local was = m:GetPivot()
+	pose(m, clip, t)
+	R.holRel[name] = m.LowerTorso.CFrame:Inverse() * gunInHand(m)
+	return R.holRel[name]
+end
 local SKIP = { sheath = true, holster = true, belt = true }
 local REANCHOR = { glint = "mouth", sweat = "v.Head", stroke = "v.UpperTorso", stroke_edge = "v.UpperTorso",
 	splat = "v.UpperTorso", shock = "v.UpperTorso", flash = "k.RightHand", gsmear = "k.RightHand", smoke = "k.RightHand",
@@ -226,6 +302,12 @@ shared.FinReal = function(key)
 		if not string.match(ch.Name, "^real_") then ch:Destroy() end
 	end
 	-- 1. the bodies: the killer and victim (and the killer's afterimages) on their roots, posed from the clips
+	for name, a in pairs(f.anim or {}) do
+		if (f.sem and f.sem.hol and f.sem.hol[name]) and R.av[name] and not (R.holRel and R.holRel[name]) then
+			R.av[name].Parent = root
+			holsterRelOf(name, R.av[name], "quick_draw_t1")
+		end
+	end
 	local used = {}
 	for name, a in pairs(f.anim or {}) do
 		local m = R.av[name]
@@ -359,20 +441,22 @@ shared.FinReal = function(key)
 	for name, state in pairs(sem.hol or {}) do
 		local m = R.av[name]
 		if m and used[name] then
-			local hcf, lt, hw, hd = holsterCF(m)
-			part(Vector3.new(0.32, 0.95, 0.55), hcf, LEATHER, Enum.Material.Leather)
-			part(Vector3.new(2 * hw * 1.06, 0.28, 2 * hd * 1.1), lt.CFrame * CFrame.new(0, 0.05, 0), LEATHER, Enum.Material.Leather)
-			if state == "in" then
-				placeKit(game.ReplicatedStorage.JankfireSkins.revolver_dust, hcf * CFrame.new(0, 0.15, 0) * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, 0, -0.1), 3, "gun")
+			local lt = m.LowerTorso
+			local _, _, hw, hd = holsterCF(m)
+			local a = f.anim[name]
+			local rel = R.holRel and R.holRel[name]
+			if rel then
+				local gcf = lt.CFrame * rel
+				-- (the leather round the barrel's half, hanging from the belt)
+				part(Vector3.new(0.36, 0.5, 1.15), gcf * CFrame.new(gunGripRel()) * CFrame.new(0, 0.1, -0.55), LEATHER, Enum.Material.Leather)
+				if state == "in" then placeKit(REV, gcf, 3, "gun") end
 			end
+			part(Vector3.new(2 * hw * 1.06, 0.28, 2 * hd * 1.1), lt.CFrame * CFrame.new(0, 0.05, 0), LEATHER, Enum.Material.Leather)
 		end
 	end
 	for name, state in pairs(sem.gun or {}) do
 		local m = R.av[name]
-		if m and used[name] and state == "hand" then
-			local g = m.RightHand.CFrame * CFrame.new(0, -0.1, 0) * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, 0.55, -0.25)
-			placeKit(game.ReplicatedStorage.JankfireSkins.revolver_dust, g, 3, "gun")
-		end
+		if m and used[name] and state == "hand" then placeKit(REV, gunInHand(m), 3, "gun") end
 	end
 	for _, g in ipairs(f.guns or {}) do
 		if g.tr then placeKit(game.ReplicatedStorage.JankfireSkins[g.model], C(g.cf), 3, "gun", g.tr) end
@@ -396,6 +480,10 @@ shared.FinReal = function(key)
 		local okm, mat = pcall(function() return Enum.Material[q.mat] end)
 		p.Material = okm and mat or Enum.Material.SmoothPlastic
 		if q.tag == "sky" then p.Material = Enum.Material.SmoothPlastic end   -- (Neon blows out white in the place's light)
+		if q.tag == "lamp" and not f.impact then
+			local pl = Instance.new("PointLight"); pl.Range = 10; pl.Brightness = 1.6; pl.Shadows = true
+			pl.Color = Color3.fromRGB(255, 190, 120); pl.Parent = p
+		end
 		p.Name = q.tag
 		p.Transparency = q.tr or 0
 		local into = stage
@@ -412,8 +500,34 @@ shared.FinReal = function(key)
 		end
 		p.Parent = into
 	end
-	local stg = (f.stage == true and data._stage) or (type(f.stage) == "string" and data[f.stage]) or nil
-	if stg then for _, q in ipairs(stg.props) do addProp(q) end end
+	-- the fixed set (the town is 600+ parts) is built once and kept (a "real_" folder survives the per-frame clear);
+	-- the two-tone hit frames hide it
+	local skey = if f.stage == true then "_stage" elseif type(f.stage) == "string" then f.stage else nil
+	if skey and R.staticKey ~= skey then
+		local old = root:FindFirstChild("real_static")
+		if old then old:Destroy() end
+		local keep = stage
+		stage = Instance.new("Folder"); stage.Name = "real_static"
+		local imp = f.impact
+		f.impact = nil
+		for _, q in ipairs(data[skey].props) do addProp(q) end
+		f.impact = imp
+		stage.Parent = root
+		R.static, R.staticKey, R.staticHidden = stage, skey, false
+		stage = keep
+	end
+	if R.static then
+		local hide = f.impact ~= nil or not skey
+		if hide ~= R.staticHidden then
+			for _, p in ipairs(R.static:GetDescendants()) do
+				if p:IsA("BasePart") then
+					if hide then p:SetAttribute("TrWas", p.Transparency); p.Transparency = 1
+					else p.Transparency = p:GetAttribute("TrWas") or 0 end
+				elseif p:IsA("Light") then p.Enabled = not hide end
+			end
+			R.staticHidden = hide
+		end
+	end
 	for _, q in ipairs(f.props) do addProp(q) end
 	stage.Parent = root
 	if accM then accM.Parent = root end
