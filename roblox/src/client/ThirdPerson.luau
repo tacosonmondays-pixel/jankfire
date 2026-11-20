@@ -484,6 +484,15 @@ local function solveArmR6(a: Arm, H: CFrame, weight: number, whole: boolean?)
 	local T = (sh.c0:Inverse() * A * sh.c1).Rotation
 	sh.j.Transform = if weight >= 0.999 then T else sh.j.Transform:Lerp(T, weight)
 end
+-- (the hold session, 20 Nov 2026; the owner: "shreddar holdiong broke") an R6 arm holding a Tool (the Shredder, welded
+-- to the arm block): aimed at a point only, its roll was left to chance and the tool hung low, pointing off to the side.
+-- the arm takes the hold's whole turn about its shoulder instead (H: where the arm block should be, chest space), so
+-- the tool points where the stance aims it; only its place is the arm's reach
+local function turnArmR6(a: Arm, H: CFrame, weight: number)
+	local sh = a.sh
+	local T = (sh.c0:Inverse() * H * sh.c1).Rotation
+	sh.j.Transform = if weight >= 0.999 then T else sh.j.Transform:Lerp(T, weight)
+end
 -- the hand on a hold frame F (chest space; its Y along the thing held, through the fist), turned about it until the
 -- wrist faces the elbow (AvatarArms' rule); "palm": held from under, the palm up into it
 local function handOn(a: Arm, F: CFrame, pose: string?, turn: number, pole: Vector3): CFrame
@@ -616,6 +625,7 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 		local mz = h and h:FindFirstChild("Muzzle") :: Attachment?
 		local hub = tool:FindFirstChild("sh_hub", true) :: BasePart?
 		local bell = tool:FindFirstChild("sh_bell2", true) :: BasePart?
+		;(r :: any).toolPartial = not (h and mz and hub and bell) -- (stepRig reads it again while a piece is missing)
 		-- (a skin, the Wood Chipper, may not have the hub and the chute: then from the handle to the muzzle, handle's up)
 		if h and mz then
 			local from = if hub then hub.Position else h.Position
@@ -1451,7 +1461,18 @@ local function stepRig(r: Rig, dt: number, now: number)
 	if src ~= r.src or wid ~= r.wid or (not r.gun and not r.tool) then
 		if r.src and r.src ~= src then showServerGun(r) end
 		r.src = src
+		;(r :: any).toolSeen = now
 		buildGun(r, wid, src)
+	elseif r.tool and (r :: any).toolPartial and now - ((r :: any).toolSeen or 0) < 5 and now - ((r :: any).toolTry or 0) > 0.2 then
+		-- (the hold session, 20 Nov 2026; the owner: "shreddar holdiong broke") someone else's Shredder reaches you a
+		-- piece at a time when they take it out (a backpack isn't sent to the others): read on its first frame, its
+		-- Muzzle or its rotor wasn't there yet and the hold was never worked out, so their arm hung with it out to the
+		-- side for good. its frame is read again until every piece it's read from has come (5 s at most)
+		local rx = r :: any
+		rx.toolTry = now
+		local had, on0 = r.toolFrame ~= nil, r.on -- (a frame it already had: the arms don't start their ease again)
+		buildGun(r, wid, src)
+		if had then r.on = on0 end
 	end
 	if not r.gun and not r.tool then return end
 	if src.Name == "HeldWeapon" then hideServerGun(r, src) end
@@ -1940,7 +1961,11 @@ local function stepRig(r: Rig, dt: number, now: number)
 	rigArms(r, rigW > 0.5, r.isMe and (not thirdPerson() or me:GetAttribute("TPScope") == true), rigAmmoOut)
 	-- ---- the arms: IK onto the hands. a free left hand (a pistol) goes back to the animation's own swing
 	local r6 = (r :: any).r6 == true -- (an R6 body: each arm one block, aimed on its shoulder)
-	if handR then if r6 then solveArmR6(R, handR, on * (1 - moW), r.poseR == "hand") else solveArm(R, handR, poleR, on * (1 - moW)) end end -- (the mocap's own right arm)
+	if handR then
+		if r6 and r.tool then turnArmR6(R, handR, on) -- (the Shredder on an R6 arm: the arm takes the tool's turn)
+		elseif r6 then solveArmR6(R, handR, on * (1 - moW), r.poseR == "hand")
+		else solveArm(R, handR, poleR, on * (1 - moW)) end -- (the mocap's own right arm)
+	end
 	local leftOn = handL ~= nil and (r.holdL ~= nil or r.tool ~= nil or itemMix > 0 or r.leftW > 0)
 	if handL and leftOn then
 		local wgt = on
