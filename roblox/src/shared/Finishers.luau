@@ -17,7 +17,7 @@ local Finishers = {}
 export type Row = {
 	name: string, -- (on screen: the finisher's name)
 	set: string, -- SkinSets set id
-	skins: { string }, -- the skins that own it (high tier, or the VIP set)
+	skins: { string }, -- the skin that owns it: ONE gun per set (the owner, 20 Nov: "special cutscene should be applied to one gun in the set")
 	theme: string, -- FinisherFx.THEMES key
 	colour: Color3, -- the theme's main light
 	accent: Color3, -- its second colour
@@ -25,6 +25,8 @@ export type Row = {
 	anim: string?, -- the victim's reaction (Finishers.ANIMS key)
 	cut: any?, -- (optional) its own shot lists by cut kind, in place of CUTS for guns ({ full = { ... } })
 	order: number,
+	scene: string?, -- (optional) the match win plays this scene instead of the cut (client/FinisherScene.luau)
+	sceneLen: { full: number, short: number }?, -- the scene's lengths (s), for the server's end-screen wait
 	vip: boolean?,
 	built: boolean, -- false = planned (a row the next pass builds), never chosen
 }
@@ -43,8 +45,8 @@ Finishers.LIST = {
 	},
 	splashdown = { -- Ducky (VIP): a giant rubber duck drops out of the sky onto the victim in a burst of soap bubbles
 		-- (both Ducky sets since 18 Nov: the VIP set's Tripo ducks and the code's Ducky Classic trio. shop-gui)
-		name = "Splashdown", set = "set_ducky", skins = { "smg_ducky_tripo", "katana_ducky_tripo", "sniper_ducky_tripo", "pistol_ducky_tripo",
-			"lmg_ducky", "revolver_ducky", "katana_ducky" }, theme = "ducky",
+		-- (20 Nov, the owner: "special cutscene should be applied to one gun in the set ... maybe the ducky sniper")
+		name = "Splashdown", set = "set_ducky", skins = { "sniper_ducky_tripo" }, theme = "ducky",
 		order = 3, built = true, vip = true,
 		colour = Color3.fromRGB(247, 182, 205), accent = Color3.fromRGB(246, 215, 138),
 		grade = { tint = Color3.fromRGB(255, 236, 244), sat = 0.08, con = 0.04, bright = 0.03 }, anim = "shield",
@@ -52,18 +54,25 @@ Finishers.LIST = {
 	-- the second pass (17 Nov): the other five high-tier looks
 	highnoon = { -- Dust Drover: a high-noon standoff, the lens pushing in on the shooter's eyes as the world stretches
 		-- behind them (a dolly zoom); the victim spins and drops, a dust devil turns, a tumbleweed rolls through
-		name = "High Noon", set = "set_dust", skins = { "revolver_dust", "lever_dust" }, theme = "dust", order = 4, built = true,
+		-- (20 Nov, the owner: one gun per set owns the cutscene - "Cowboy revolver")
+		name = "High Noon", set = "set_dust", skins = { "revolver_dust" }, theme = "dust", order = 4, built = true,
 		colour = Color3.fromRGB(255, 196, 106), accent = Color3.fromRGB(206, 182, 142),
 		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 }, anim = "spinfall",
 		cut = { full = { { "eyes", 0.72 }, { "chase", 0.5 }, { "impact", 0.42 }, { "resolve", 1.18 } } },
 	},
 	inkfall = { -- Tidecrest: one ink-wash brush slash across the frame, the victim splits into sakura petals
+		-- (20 Nov, Tidecrest v4.2, the owner: "I think tidecrest is ready for Roblox": the grip, the two-hand draw of the
+		-- long blade, the whirl to his face, the sprint, the pass, the hit frame, the freeze, the sheathe's click, the cut
+		-- lands, the winner close on the right as he falls behind; FinisherScene + FinisherSceneData, the video's plan.
+		-- a round win plays the cut landing and the end)
 		name = "Inkfall", set = "set_tidecrest", skins = { "katana_sakura" }, theme = "ink", order = 5, built = true,
+		scene = "inkfall", sceneLen = { full = 10.63, short = 2.04 },
 		colour = Color3.fromRGB(236, 186, 200), accent = Color3.fromRGB(217, 187, 114),
 		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.5, con = 0.16, bright = 0 }, anim = "bowdown",
 	},
 	warpout = { -- Star Drover: the victim is pulled into a teal hard-light ring and the stars streak past in a warp
-		name = "Warp Out", set = "set_star", skins = { "revolver_star", "lever_star" }, theme = "warp", order = 6, built = true,
+		-- (20 Nov, one gun per set: the Star Drover's revolver, as the Dust Drover's)
+		name = "Warp Out", set = "set_star", skins = { "revolver_star" }, theme = "warp", order = 6, built = true,
 		colour = Color3.fromRGB(69, 230, 214), accent = Color3.fromRGB(201, 164, 216),
 		grade = { tint = Color3.fromRGB(226, 246, 255), sat = 0, con = 0.12, bright = -0.02 }, anim = "pulled",
 	},
@@ -93,6 +102,26 @@ Finishers.ANIMS = {
 	cower = { id = "137185623825862", speed = 1.6 }, -- Lantern Light: looks up in fright, stumbles back, crouches low with the arms over the head (take 4)
 	starpose = { id = "125088229863050", speed = 1.6 }, -- Starchart: rises onto the toes, arms and legs spread wide like a star, head up (take 4)
 } :: { [string]: { id: string, speed: number } }
+
+-- the scenes' mocap clips (Roblox animations uploaded 19 Nov from the vault's Mixamo clips and the MotionBricks takes
+-- made from them; the clip names are FinisherSceneData's): clip -> animation id
+Finishers.SCENE_ANIMS = {
+	inkfall_slash_t1 = "94188181886964", -- the run-in and the one big horizontal slash
+	victim_lookaround_t2 = "77808638913840", -- standing, then looking round: nothing happened?
+	sheathe_t2 = "134557117553244", -- the blade slid home at the left hip
+	bx_18_block_high_center = "113614195469370", -- a guard thrown up too late
+	bx_27_hit_stomach = "81006356768412", -- folding over the hit
+	bx_28_knockdown_liver = "72820154953051", -- the knees go, down
+	-- (Tidecrest v4.2, 20 Nov: the two-hand iai draw, the lean sprint, the winner's idle; and from the bought Katana
+	-- Combat Pack - its files stay in the vault, only these uploads are ours - the whirl to a guard, the dash-through
+	-- cut, the death that rolls and settles)
+	mb_iai_draw = "71056343687693",
+	mx_sprint_lean = "107791474095487",
+	id_06_dune_weight_shift = "70471285286190",
+	kp_readys_mainanimation_keyframesequence = "77378208505552",
+	kp_basicattacktypes_dashlight_keyframesequence = "94578161823866",
+	kp_death_actions_deathanimation_keyframesequence = "102418985491836",
+} :: { [string]: string }
 
 -- the shot lists: each shot is a camera move (client/Finisher.luau SHOTS) and its length in s. `full` is the match's
 -- last kill (with a CHARGE close-up on the gun as the theme's light gathers at the muzzle), `short` a round's. a melee kill swaps the bullet chase for a whip round the swing (`melee`)
@@ -139,6 +168,7 @@ function Finishers.cut(kind: string, melee: boolean, row: Row?): { { any } }
 	return Finishers.CUTS[kind] or Finishers.CUTS.full
 end
 function Finishers.length(kind: string, melee: boolean, row: Row?): number
+	if row and row.scene and row.sceneLen then return if kind == "short" then row.sceneLen.short else row.sceneLen.full end
 	local n = 0
 	for _, s in Finishers.cut(kind, melee, row) do n += s[2] end
 	return n

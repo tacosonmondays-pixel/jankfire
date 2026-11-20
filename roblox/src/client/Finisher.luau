@@ -13,6 +13,8 @@
 -- shot ever sits inside a wall. Live bodies and the other screens are hidden while it plays, letterbox bars come in,
 -- the colours are graded for the theme. SPACE / B / the SKIP button end it; so does a round going live, a respawn, or
 -- a replay starting. It takes the camera only: nothing waits on it.
+-- A finisher with a SCENE (Finishers row `scene`, 19 Nov: Inkfall) plays that instead: a small story acted by the two
+-- avatars with mocap clips on a set of its own (client/FinisherScene.luau); the overlay, the skip and the grade are here.
 -- F.play(msg) -> boolean     msg = the server's (t = "finisher", id, kind, clip, focus, victim, w, skin, melee, by, role)
 -- F.preview(id, opts?)       the same cut staged in front of you, from a made-up recording (the shop's preview, tests)
 -- F.stop()                   F.isPlaying()
@@ -30,6 +32,7 @@ local Fx = require(script.Parent:WaitForChild("Fx")) :: any
 local Sfx = require(script.Parent:WaitForChild("Sfx")) :: any
 local TP = require(script.Parent:WaitForChild("ThirdPerson")) :: any
 local FFx = require(script.Parent:WaitForChild("FinisherFx")) :: any
+local Scene = require(script.Parent:WaitForChild("FinisherScene")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Finishers = require(Shared:WaitForChild("Finishers")) :: any
 local Weapons = require(Shared:WaitForChild("Weapons")) :: any
@@ -310,6 +313,7 @@ function F.stop(quiet: boolean?)
 	pcall(function() RunService:UnbindFromRenderStep("JankFinisherCam") end)
 	pcall(function() ContextActionService:UnbindAction("JankFinisherSkip") end)
 	if s.react then pcall(function() s.react:Stop(0) end) end
+	if s.scene then pcall(Scene.stop, s) end
 	for _, g in { s.kg, s.vg } do if g and g.model then g.model:Destroy() end end
 	if s.run then FFx.clear(s.run) end
 	if s.cc then s.cc:Destroy() end
@@ -428,6 +432,17 @@ function F.play(msg: any): boolean
 		lastCF = cam.CFrame, fadeOut = false, held = false,
 	}
 	s.S.dir = s.dir
+	-- a scene (the full story) in place of the cut, when this finisher has one and both bodies can act it
+	local sceneKind = if msg.kind == "short" then "short" else "full"
+	if Scene.can(row, sceneKind, kg, vg) then
+		local ok, sc = pcall(Scene.start, s, sceneKind)
+		if ok and sc then
+			s.scene = sc
+			s.total = sc.total
+		else
+			warn("[jankfire] finisher scene: " .. tostring(sc))
+		end
+	end
 	-- (the events from the start of the cut on; the kill shot itself is the chase's)
 	local t0 = clipTime(s, cut[1][1], 0)
 	while s.ei <= #clip.ev and clip.ev[s.ei].s < t0 - 0.02 do s.ei += 1 end
@@ -475,6 +490,44 @@ function F.play(msg: any): boolean
 	return true
 end
 
+-- one frame of a scene: the scene moves the bodies and the lens; here the overlay - the bars, the names on the last
+-- shot, the grade (neutral on a two-tone hit frame, greying out on the payoff), a white flash after each hit frame
+local function stepScene(s: any)
+	local _, u, last = Scene.step(s, s.w)
+	local barK = smooth(s.w / 0.2) * (1 - smooth((s.w - (s.total - 0.2)) / 0.2))
+	barTop.Size = UDim2.new(1, 0, BAR * barK, 0)
+	barBot.Size = UDim2.new(1, 0, BAR * barK, 0)
+	local nameK = if last then smooth(u / 0.18) else 0
+	nameT.TextTransparency = 1 - nameK
+	skinT.TextTransparency = 1 - nameK
+	rule.Size = UDim2.fromOffset(math.floor(220 * easeOut(nameK, 3)), 2)
+	local hit = Scene.hitNow(s)
+	if s.wasHit and not hit then s.flashT = s.w end
+	s.wasHit = hit
+	if s.flashT then
+		local k = math.clamp((s.w - s.flashT) / 0.15, 0, 1)
+		flashF.BackgroundColor3 = Color3.new(1, 1, 1)
+		flashF.BackgroundTransparency = lerp(0.45, 1, k)
+		if k >= 1 then s.flashT = nil end
+	end
+	local g = s.row.grade
+	local gk = smooth(s.w / 0.25)
+	if hit then
+		s.cc.TintColor = Color3.new(1, 1, 1); s.cc.Saturation = 0; s.cc.Contrast = 0; s.cc.Brightness = 0
+	else
+		local grey = if last then 0.6 * smooth(u) else 0
+		s.cc.TintColor = Color3.new(1, 1, 1):Lerp(g.tint, gk * 0.5)
+		s.cc.Saturation = math.max(-1, g.sat * 0.35 * gk - grey)
+		s.cc.Contrast = g.con * 0.6 * gk
+		s.cc.Brightness = g.bright * gk
+	end
+	local endK = smooth((s.w - (s.total - 0.18)) / 0.18)
+	fadeF.BackgroundTransparency = 1 - endK
+	hideScreens()
+	Replay.hideLive(true)
+	if s.w >= s.total then F.stop() end
+end
+
 -- one frame
 function F._step(dt: number)
 	local s = st
@@ -488,6 +541,11 @@ function F._step(dt: number)
 	local before = s.w
 	s.w += dt
 	if type(freeze) == "number" then s.w = math.min(s.w, freeze) end
+	if s.scene then
+		me:SetAttribute("FinisherT", math.floor(s.w * 100) / 100)
+		stepScene(s)
+		return
+	end
 	local moving = s.w > before + 1e-6
 	FFx.timeScale(s.run, if not moving then 0 else (if s.shotName == "impact" then 0.35 elseif s.shotName == "chase" then 0.25 else 1)
 		* (if type(speed) == "number" then math.clamp(speed, 0.02, 1) else 1))

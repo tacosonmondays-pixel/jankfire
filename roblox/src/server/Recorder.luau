@@ -266,11 +266,19 @@ local function onRound(m: any, winner: number)
 end
 
 -- Matches asks at the end: hold the end screen for the play of the match? { wait, total, label } or nil
+-- how long the end screen holds before the play of the match: its usual wait, or longer while a finisher scene that
+-- started at the winning kill is still playing (FinisherServer sets m.finisherUntil, an os.clock time)
+local function potmWait(m: any): number
+	local hold = if type(m.finisherUntil) == "number" then m.finisherUntil - os.clock() else 0
+	return math.max(Recorder.POTM.wait, hold)
+end
+
 local function afterHook(m: any): any?
 	local s = byMatch[m.id]
 	local b = s and s.best
 	if not b then return nil end
-	return { wait = Recorder.POTM.wait, total = Recorder.POTM.wait + clipLen(b) + 1.2, label = "play of the match in %d" }
+	local w = potmWait(m)
+	return { wait = w, total = w + clipLen(b) + 1.2, label = "play of the match in %d" }
 end
 
 local function onStart(m: any)
@@ -286,7 +294,7 @@ local function onEnd(m: any, _winner: number?)
 	local b = s.best
 	if b then
 		local c = Recorder.clip(s, b.t0, math.min(b.t1, b.t0 + Recorder.POTM.max, now()))
-		local msg = { t = "potm", clip = c, focus = b.focus, label = b.label, name = b.name, at = workspace:GetServerTimeNow() + Recorder.POTM.wait,
+		local msg = { t = "potm", clip = c, focus = b.focus, label = b.label, name = b.name, at = workspace:GetServerTimeNow() + potmWait(m),
 			slowKills = true }
 		for _, list in m.teams do for _, p in list do if p.Parent then remote:FireClient(p, msg) end end end
 	end

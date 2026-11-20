@@ -173,6 +173,8 @@ local function onRound(m: any, winner: number): (string?, any)
 	if not kind or not x.fid or not x.skin then return nil, "decided none" end
 	if kind == "full" then
 		played[m] = true
+		-- (a scene runs longer than the old cut: the end screen and the play of the match wait for it, Recorder.potmWait)
+		m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[x.fid]) + 0.3
 		return kind, table.pack(play(x, "full", everyone(m), x.fid, x.skin))
 	else
 		local viewers = { kp }
@@ -191,7 +193,10 @@ Matches.onEnd(function(m: any, winner: number?)
 	local kp = x.k.ref :: Player
 	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
 		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "end", classic = m.rules ~= nil })
-	if kind and x.fid and x.skin then play(x, kind, everyone(m), x.fid, x.skin) end
+	if kind and x.fid and x.skin then
+		if kind == "full" then m.finisherUntil = os.clock() + Finishers.length("full", false, Finishers.LIST[x.fid]) + 0.3 end
+		play(x, kind, everyone(m), x.fid, x.skin)
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(p) armed[p] = nil end)
