@@ -527,6 +527,7 @@ function Replay.stop()
 	local s = st
 	if not s then return end
 	st = nil
+	me:SetAttribute("Replaying", nil)
 	pcall(function() RunService:UnbindFromRenderStep("JankReplayCam") end)
 	pcall(function() ContextActionService:UnbindAction("JankReplaySkip") end)
 	if s.conn then s.conn:Disconnect() end
@@ -575,6 +576,9 @@ function Replay.play(msg: any, opts: any?): boolean
 	st = { mode = mode, clip = clip, ghosts = ghosts, focus = msg.focus, t = t0, t0 = t0, t1 = t1, ei = 1, slow = slow, kills = 0,
 		fov = cam.FieldOfView, camPos = nil, camLook = nil, side = 1, lastEye = nil, lastYaw = 0, onEnd = opts and opts.onEnd,
 		menu = mode == "potm", loadoutWas = me:GetAttribute("LoadoutOpen"), killText = nil }
+	-- (a replay is on this screen: the player attribute Replaying = its mode - HUD the live game draws every frame, the
+	-- Shredder's heat bar, stands down while it's there)
+	me:SetAttribute("Replaying", mode)
 	-- the overlay
 	if mode == "killcam" then
 		kicker.Text = "KILLCAM"

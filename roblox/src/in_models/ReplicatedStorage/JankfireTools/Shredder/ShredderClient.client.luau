@@ -39,6 +39,8 @@ gui.Parent = lp:WaitForChild("PlayerGui")
 local function inHand(): boolean
 	local ch = lp.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	-- (not over a replay or a finisher: the bar sat over the killcam - the finishers session, 20 Nov)
+	if lp:GetAttribute("Replaying") or lp:GetAttribute("Finishing") then return false end
 	return ch ~= nil and tool.Parent == ch and hum ~= nil and hum.Health > 0
 end
 tool.Equipped:Connect(function() gui.Enabled = inHand() end)
