@@ -16,6 +16,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 
 local Data = require(script.Parent:WaitForChild("FinisherSceneData")) :: any
+-- (a scene's kit town and its onlookers: client/FinisherTown.luau; missing, the plan's own boxes stand)
+local Town: any = nil
+do
+	local m = script.Parent:FindFirstChild("FinisherTown")
+	if m then
+		local ok, T = pcall(require, m)
+		if ok then Town = T end
+	end
+end
 -- (a scene too big for one module comes in parts, FinisherSceneData_<id> and FinisherSceneData_<id>_set: merged into
 -- Data by scene id the first time it's asked for - High Noon's town alone is 74 KB)
 local merged: { [string]: boolean } = {}
@@ -112,6 +121,11 @@ local EXTRA: { [string]: any } = {
 		-- (the enemy's hand closes on the holster's grip through VICTIM'S HAND and stays there until the draw - the owner,
 		-- 20 Nov: "the enemies hand should be on their holster after the scene of them moving their hand to the position")
 		holdReach = { v = { from = 95, to = 110 } },
+		-- (the town - the owner, 20 Nov: "can you fix the scene scenery too? ... make two versions so I can see side by
+		-- side": the kit town "A" (a timber main street, onlookers in the saloon's windows) or "B" (an adobe border town,
+		-- balcony and porch onlookers) in place of the plan's boxes, FinisherTown; the wheel ruts gone ("long rectangle
+		-- strips ... make those go bye bye") and the footprints faint ("the footsteps can they be more subtyle"))
+		town = "A", noRuts = true, softPrints = true,
 		-- (the grade - the owner, 20 Nov: "can it transistion into that desaturated filter after the shot, but keep it nice
 		-- and glowey without filter ofr the rest of it or a slight orange like in western films?": warm and glowing to the
 		-- shot, easing into the desaturated look over `over` s from the impact frame `at`, held to the end. The scene
@@ -1296,7 +1310,17 @@ function Scene.start(s: any, kind: string): any
 	stage.Parent = folder
 	sc.stage = stage
 	sc.setParts = {}
+	-- (Studio tests: the workspace attribute FinisherTown = "A" | "B" picks a town over the scene's own)
+	local townKey = ex.town
+	local tk = workspace:GetAttribute("FinisherTown")
+	if type(tk) == "string" and game:GetService("RunService"):IsStudio() then townKey = tk end
+	local town = if Town and townKey then Town.pick(s.row.scene, townKey) else nil
 	for _, q in d.stage do
+		-- (the pieces a kit town stands in for, and the ruts, aren't built at all: a false keeps the hide lists' count)
+		if (town and Town.REPLACED[q[10]]) or (ex.noRuts and q[10] == "rut") or (q[10] == "sky" and ex.look and ex.look.plainSky) then
+			table.insert(sc.setParts, false)
+			continue
+		end
 		local okm, mat = pcall(function() return (Enum.Material :: any)[q[9]] end)
 		local shape = if q[1] == "Ball" then Enum.PartType.Ball elseif q[1] == "Cylinder" then Enum.PartType.Cylinder else nil
 		-- (the painted sky ring is plain paint: Neon blows out white in the game's light)
@@ -1306,12 +1330,23 @@ function Scene.start(s: any, kind: string): any
 		-- (a scene under the engine's own sky leaves the painted ring out: built but unseen, so the plan's hide lists
 		-- still count the set's parts the same way)
 		if q[10] == "sky" and ex.look and ex.look.plainSky then p.Transparency = 1 end
+		if q[10] == "print" and ex.softPrints then
+			-- (a faint print: smaller, nearly the street's own colour, half see-through)
+			p.Size = Vector3.new(p.Size.X * 0.75, p.Size.Y, p.Size.Z * 0.75)
+			p.Color = p.Color:Lerp(Color3.fromRGB(196, 158, 112), 0.6)
+			p.Transparency = 0.55
+			p.CastShadow = false
+		end
 		table.insert(sc.setParts, p)
 		if ex.lamps and q[10] == "lamp" then
 			local pl = Instance.new("PointLight")
 			pl.Range = 10; pl.Brightness = 1.6; pl.Shadows = true; pl.Color = Color3.fromRGB(255, 190, 120)
 			pl.Parent = p
 		end
+	end
+	if town then
+		local ok, st = pcall(Town.build, s.row.scene, townKey, stage, ORIGIN)
+		if ok then sc.town = st else warn("[jankfire] finisher town: " .. tostring(st)) end
 	end
 	-- (the scene's own light, as its video: the place's Lighting saved first and put back by Scene.stop)
 	if ex.look then
@@ -1566,6 +1601,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 		end
 		sounds(sc, i)
 		if sc.ex.grade and not sc.gradeAt and i >= sc.ex.grade.at then sc.gradeAt = s.w end
+		if sc.town then pcall(Town.step, sc.town, s.w) end
 		return shot, u, shot == sc.lastShot
 	end
 	-- the bodies
