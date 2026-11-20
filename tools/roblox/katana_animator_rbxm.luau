@@ -7,7 +7,7 @@
 --                 (RightHand -> Katana) and Motor6D "Sheath" (LowerTorso -> Sheath), so the Animation Editor shows a
 --                 Katana track and a Sheath track
 -- and returns the folder serialized (SerializationService) as base64: the caller writes it out as the .rbxm.
-local ASSETS = { Blank = 100140368503106, Tidecrest = 77461839355162 }   -- (the two uploads, 20 Nov)
+local ASSETS = { Blank = 112186566957581, Tidecrest = 70393251319016 }   -- (the two uploads at length x1.4, 20 Nov)
 local COL = { steel = "a7adb5", edge = "e6eaef", spine = "7a8089", brass = "9c8c6a", iron = "3a3d45", core = "d6d1c4",
 	wrap = "2b2e35", lacquer = "2a2c33", horn = "a9a49b", cord = "6f675b", slot = "141519", body = "cfcbc3",
 	blade = "2c2f37", paleedge = "cfd3d9", tciron = "34353b", lac = "2a2526", gold = "c4a056", goldd = "8f7238",
@@ -84,7 +84,7 @@ local function buildPair()
 	local sr = rootPart("Sheath", CFrame.new(0, 0, Z_FACE)); sr.Parent = sm
 	attach(kr, "Grip", Vector3.new(0, 0, 0))
 	attach(kr, "GuardFace", Vector3.new(0, 0, Z_FACE))
-	attach(kr, "BladeTip", Vector3.new(0, 0.181, -2.92))
+	attach(kr, "BladeTip", Vector3.new(0, 0.181, -3.84))   -- (x1.4 length; -2.92 at x1.0)
 	attach(sr, "SheathMouth", Vector3.new(0, 0, 0))
 	attach(sr, "SheathHip", Vector3.new(-0.12, 0, -0.42))
 	local n = 0

@@ -33,8 +33,13 @@ except ImportError:  # (plain Python: the sheet step)
 Z_GUARD_F, Z_GUARD_B = -0.604, -0.524      # the guard (tsuba): blade-side and handle-side faces
 SEPPA = 0.016                              # each washer (seppa)
 Z_FACE = Z_GUARD_F - SEPPA                 # -0.62: the front washer's face = GuardFace = the sheath's mouth face
-BLADE_L = 2.30
-Z_TIP = Z_FACE - BLADE_L                   # -2.92
+# THE LENGTH (owner, 20 Nov 19:20: "Shouldnt the blade and sheathe be longer for the animation?"): the blade and the
+# sheath are the in-game katana's times LENGTH (handle, guard and pommel unchanged). 1.4: the sheathed tip ends behind
+# the calf on the R15 at rest, and the sheath (3.36 studs) is the finishers' prop scabbard's length (3.42). Pass
+# "--length 1.0" for the in-game proportions.
+LENGTH = float(sys.argv[sys.argv.index('--length') + 1]) if '--length' in sys.argv else 1.4
+BLADE_L = round(2.30 * LENGTH, 4)
+Z_TIP = Z_FACE - BLADE_L                   # -2.92 at the in-game length
 SORI = 0.10                                # the curve: the tip rises this far toward the back
 H0, H1, T0, T1 = 0.20, 0.16, 0.05, 0.032   # the blade's height / thickness at the collar and where the point starts
 KISSAKI = 0.88                             # the point starts this far along
@@ -204,7 +209,7 @@ if bpy:
             top, bot, t = blade_section(u)
             h = top - bot
             if tc and u < KISSAKI:   # the temper line waves (five gentle waves, as the live skin's)
-                f = 0.66 + 0.07 * math.sin(2 * math.pi * 5 * u) * min(1.0, u / 0.08 + 0.2)
+                f = 0.66 + 0.07 * math.sin(2 * math.pi * round(5 * LENGTH) * u) * min(1.0, u / 0.08 + 0.2)
             else:
                 f = 0.68
             ridge, bev = top - h * 0.30, top - h * f
@@ -353,10 +358,10 @@ if bpy:
         if tc:
             # two gold bands, and a blossom cluster on the outer face between them
             bm = bmesh.new()
-            for s0 in (0.86, 1.62):
+            for s0 in (0.36 * SAYA_L, 0.67 * SAYA_L):
                 loft([saya_sec(s0, 0.012), saya_sec(s0 + 0.05, 0.012)], bm=bm)
             obj('saya_bands', bm, ['gold'], bevel=0.006, parent=root)
-            s = 1.24
+            s = 0.515 * SAYA_L
             cc = saya_sec(s)
             cy_ = sum(p[1] for p in cc) / len(cc)
             xs = (SW0 + (SW1 - SW0) * s / SAYA_L) / 2
@@ -645,7 +650,7 @@ if bpy:
 
     def main():
         out = sys.argv[sys.argv.index('--') + 1] if '--' in sys.argv else os.path.join(os.getcwd(), 'katana_out')
-        only = sys.argv[sys.argv.index('--') + 2:] if '--' in sys.argv else []
+        only = [a for a in sys.argv[sys.argv.index('--') + 2:] if a in STYLES] if '--' in sys.argv else []
         os.makedirs(os.path.join(out, 'renders'), exist_ok=True)
         marks, info = {}, {}
         for style in (only or STYLES):
@@ -655,7 +660,7 @@ if bpy:
         data = {
             'units': '1 unit = 1 stud. Roblox axes: x right, y up, -z forward. FBX/glTF: Y up, the rig faces +Z.',
             'katana': {'root': 'Katana (origin = Grip)', 'markers': MARKS_K, 'length_studs': round(Z_HANDLE_B + 0.04 - Z_TIP, 3),
-                       'blade_studs': BLADE_L},
+                       'blade_studs': BLADE_L, 'length_factor': LENGTH},
             'sheath': {'root': 'Sheath (origin = SheathMouth)', 'markers': MARKS_S, 'length_studs': SAYA_L,
                        'sheathed': 'Sheath CFrame = Katana CFrame * CFrame.new(0, 0, %.3f)' % Z_FACE},
             'joints': {'Katana': {'Part0': 'RightHand', 'C0': list(GRIP_IN_HAND), 'C1': 'identity'},
