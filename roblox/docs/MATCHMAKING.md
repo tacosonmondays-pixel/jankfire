@@ -780,6 +780,10 @@ weapons-port's `server/Zombies.luau` (docs/ZOMBIES.md). This side is the card, t
   put the player back in the party's lobby room.
 
   ![a solo squad from the queue, in the test map](matchmaking/62_zombies_from_the_queue.jpg)
+- **Next (agreed with main, 19 Nov):** several games per server, with weapons-port's stage 4 on the school map. Each game
+  gets its own copy of the map (the arenas' copies pattern), up to Zombies.MAX_GAMES set by server cost. The queue side
+  doesn't change: busy() then means "no room for another game". Still to test: a squad of several real players, a
+  party of 4, and a second squad starting while one plays.
 
 ## 5. How it is built
 
