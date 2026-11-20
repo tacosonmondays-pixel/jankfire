@@ -1305,7 +1305,9 @@ function Party.init(fight: any, matches: any, rankedData: any, remotes: Instance
 	-- a lobby body stands still on its plinth (anchored) whenever it respawns there
 	Fight.onSpawn(function(f: any)
 		local p = f.ref :: Player
-		if f.kind ~= "player" or not Party.homeOf(p) or Matches.matchOf(p) then return end
+		-- (20 Nov 2026, the owner: "Zombies mode I loaded in but I cant move": a ZOMBIES game isn't a Matches match, so its
+		-- spawn anchored every queued player on the spot. weapons-port's fix)
+		if f.kind ~= "player" or not Party.homeOf(p) or Matches.matchOf(p) or p:GetAttribute("ZmOn") then return end
 		local root = rootOf(p)
 		if root then root.Anchored = true end
 	end)

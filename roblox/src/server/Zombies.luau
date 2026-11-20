@@ -578,7 +578,15 @@ local function respawn(m: Member)
 	if m.p then m.p:SetAttribute("ZmDown", nil); m.p:SetAttribute("ZmOut", nil) end
 	f.alive = false
 	f.forced = kitList(m)
-	task.spawn(function() Fight.spawn(f) end)
+	task.spawn(function()
+		-- (a live server streams: the far map copy reaches the client before the body lands on it)
+		local g, p = G, m.p
+		if g and p and workspace.StreamingEnabled then
+			local at = spawnPoint(g, m)
+			pcall(function() p:RequestStreamAroundAsync(at, 6) end)
+		end
+		Fight.spawn(f)
+	end)
 end
 -- back up where you went down (a revive), with your kit
 local function standUp(m: Member, by: Member?)
@@ -1200,6 +1208,18 @@ local function hook()
 		return amt
 	end
 	Fight.lastStand = goDown
+	-- (20 Nov 2026, the owner: "I loaded in but I cant move") a squad member spawns free to move, whatever else
+	-- anchored the body on the way in (Party's lobby plinths anchor a party's bodies on spawn)
+	Fight.onSpawn(function(f: Fighter)
+		local m = member(f)
+		if not m or not m.p then return end
+		for _ = 1, 3 do
+			task.wait(0.25)
+			if member(f) ~= m or m.down then return end
+			local r = Fight.root(f)
+			if r and r.Anchored then r.Anchored = false end
+		end
+	end)
 	Fight.quiet = function(f: Fighter): boolean return member(f) ~= nil end
 	Fight.zombieHurt = function(t: Fighter, _done: number, by: Fighter?, _wid: string, hs: boolean?)
 		local g = G
