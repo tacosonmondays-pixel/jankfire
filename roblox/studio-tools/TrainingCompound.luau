@@ -547,7 +547,10 @@ local function gatehouse()
 	local x0, x1, z0, z1 = GH.x0, GH.x1, GH.z0, GH.z1
 	local top = GH.top
 	local n0, n1 = GH.nave[1], GH.nave[2]
-	blk("Shell", "GateFloor", x0, x1, 236, GY, z0, z1, W.floor, { tex = "TrConcrete" })
+	-- (21 Nov 2026, the owner: gaps by the mirror, to the tutorial rooms and to the range: each wing's floor stopped at
+	-- this hall's wall line and the hall's floor at its inner face, so every doorway through the 4-stud walls had none)
+	-- the hall's floor runs out under its west, east and north walls; the balcony's floor runs in under the south one
+	blk("Shell", "GateFloor", x0 - 4, x1 + 4, 236, GY, z0 + 4, z1, W.floor, { tex = "TrConcrete" })
 	-- walls: north (the hub gate on the axis), west (the mirror bay, the tutorial door), east (the range door), south
 	-- (the big portal onto the balcony)
 	local gx0, gx1 = GH.xm - 6.6, GH.xm + 6.6
@@ -683,7 +686,7 @@ local function gatehouse()
 	-- MirrorSpot (TrainingDoors.client stands your hologram on it), warm lamps
 	local bx0, bx1 = x0 - 14, x0 - 4
 	local BAY_TOP = GY + 15
-	blk("Shell", "BayFloor", bx0, x0, 236, GY, md.z0, md.z1, W.floor2, { tex = "TrConcrete" })
+	blk("Shell", "BayFloor", bx0, bx1, 236, GY, md.z0, md.z1, W.floor2, { tex = "TrConcrete" }) -- (to the wall's back face: the hall's floor runs out under the wall)
 	blk("Shell", "BayWall", bx0 - 4, bx1, 236, BAY_TOP + 2, md.z0 + 4, md.z0, W.warm, { tex = "TrPlaster" })
 	blk("Shell", "BayWall", bx0 - 4, bx1, 236, BAY_TOP + 2, md.z1, md.z1 - 4, W.warm, { tex = "TrPlaster" })
 	blk("Shell", "BayBack", bx0 - 4, bx0, 236, BAY_TOP + 2, md.z0, md.z1, W.warm, { tex = "TrPlaster" })
@@ -759,7 +762,7 @@ local function walk()
 	local x0, x1, z0, z1 = WALK.x0, WALK.x1, WALK.z0, WALK.z1
 	blk("Shell", "WalkFloor", x0, 14, 236, GY, z0, z1, W.floor, { tex = "TrConcrete" })
 	B.ramp("Shell", "WalkRamp", "x", 14, GY, 22, 242, z0, z1, W.floor, { thick = 4 })
-	blk("Shell", "WalkFloor", 22, x1, 236, 242, z0, z1, W.floor, { tex = "TrConcrete" })
+	blk("Shell", "WalkFloor", 22, x1 + 4, 236, 242, z0, z1, W.floor, { tex = "TrConcrete" }) -- (on under the range's wall to its deck: no gap in the door)
 	blk("Shell", "WalkWall", x0, x1, 236, WALK.top + 2, z0 + 4, z0, W.wall, { tex = "TrPlaster" })
 	blk("Shell", "WalkWall", x0, x1, 236, WALK.top + 2, z1, z1 - 4, W.wall, { tex = "TrPlaster" })
 	blk("Shell", "WalkCeiling", x0, x1, WALK.top, WALK.top + 2, z0, z1, W.ceil, { tex = "TrPlaster" })
@@ -773,7 +776,7 @@ local function field()
 	local x0, x1, z0, z1 = F.x0, F.x1, F.z0, F.z1
 	blk("Shell", "FieldFloor", x0, x1, 236, Y0, z0, z1, W.floor, { tex = "TrConcrete" })
 	local st = F.stage
-	blk("Shell", "Stage", st.x0, x1, Y0 - 1, st.y, st.z0, z1, W.floor2, { tex = "TrConcrete" })
+	blk("Shell", "Stage", st.x0, x1, Y0 - 1, st.y, st.z0, z1 - 4, W.floor2, { tex = "TrConcrete" }) -- (on under the far wall to the lot's bay: no gap under the garage door)
 	nose("StageNose", st.x0, x1, st.y - 0.45, st.z0, "x", 0.9)
 	-- the east wall (in front of the range's west wall), piers on it; the far wall with the garage (TrainingLot builds
 	-- the door, its frame, transom and panel at the opening x -12..12, sill 242, face z -8258), the big target on the

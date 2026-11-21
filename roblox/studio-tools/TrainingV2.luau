@@ -2063,6 +2063,8 @@ function T.headRoom(stage, step): (string, number)
 	local lot = tg:FindFirstChild("Lot")
 	local Z = T.ZONE
 	local spots, found, order = 0, {}, {}
+	local walkOn = {} -- (the parts someone stands on: T.floorGaps reads them)
+	T.walkOn = walkOn
 	-- (a kit model counts whole: a cover wall's cap is part of the wall)
 	local span = {}
 	local function spanOf(p)
@@ -2093,6 +2095,7 @@ function T.headRoom(stage, step): (string, number)
 					body.CFrame = CF(V3(x, f + 2 + H.body.Y / 2, z) + O)
 					if #workspace:GetPartsInPart(body, fit) > 0 then continue end
 					spots += 1
+					walkOn[h.Instance] = true
 					local eye = V3(x, f + H.eye, z) + O
 					ball.CFrame = CF(eye)
 					local hits = workspace:GetPartsInPart(ball, see)
@@ -2154,6 +2157,80 @@ function T.headRoom(stage, step): (string, number)
 	table.insert(out, 1, ("head room: %d spots to stand on (%.1f apart); things at head height within %.1f of your eye %d (within 0.6: %d); guards %d"):format(
 		spots, step, H.near, #order, tooNear, guards))
 	return table.concat(out, "\n"), #order
+end
+
+-- (21 Nov 2026, the owner in v5: "a gap in the floor by it", "another gap leading to the training rooms", "a gap to the
+-- range": every wing's floor stopped at the hall wall's inner face, so each doorway through a 4-stud wall had none)
+-- floor continuity: any two floors someone stands on (T.walkOn, from T.headRoom) that are upright blocks with their tops
+-- level (within 0.05) and face each other across a strip 0.05..6 studs wide are tested in 0.5-stud slices along it:
+-- a slice with nothing solid in it at floor level is a hole you can see or fall into. (wider strips are jumps by design)
+function T.floorGaps(stage): string
+	local O = if stage then T.STAGE else Vector3.zero
+	local walk = T.walkOn
+	if not walk then return "floor gaps: run T.headRoom first" end
+	local floors = {}
+	for p in walk do
+		if p:IsA("Part") and p.Shape == Enum.PartType.Block and math.abs(p.CFrame.UpVector.Y) > 0.999 then
+			local cf, sz = p.CFrame, p.Size
+			local R, L = cf.RightVector, cf.LookVector
+			local hx = (math.abs(R.X) * sz.X + math.abs(L.X) * sz.Z) / 2
+			local hz = (math.abs(R.Z) * sz.X + math.abs(L.Z) * sz.Z) / 2
+			-- (a floor is at least 4 x 4: panel frames, benches and prop boxes are not routes)
+			if hx >= 2 and hz >= 2 then table.insert(floors, { x0 = cf.X - hx, x1 = cf.X + hx, z0 = cf.Z - hz, z1 = cf.Z + hz, top = cf.Y + sz.Y / 2, p = p }) end
+		end
+	end
+	local base = if stage then workspace.Map:FindFirstChild("TrainingStage") else hub
+	local tg = base and base:FindFirstChild("TrainingGround")
+	if not tg then return "floor gaps: no TrainingGround" end
+	local op = OverlapParams.new(); op.RespectCanCollide = true
+	op.FilterType = Enum.RaycastFilterType.Include; op.FilterDescendantsInstances = { tg }
+	local rp = RaycastParams.new(); rp.RespectCanCollide = true
+	rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { tg }
+	local holes, list = 0, {}
+	local function strip(a, b, along, c0, c1, top, fa, fb)
+		-- (a..b across the strip, c0..c1 along it; along = "x" when the strip runs along x)
+		local w = b - a
+		local seen = false
+		local c = c0
+		while c < c1 - 0.01 do
+			local cn = math.min(c + 0.5, c1)
+			local mid = (c + cn) / 2
+			local pos = if along == "x" then Vector3.new(mid, top - 0.15, (a + b) / 2) else Vector3.new((a + b) / 2, top - 0.15, mid)
+			local size = if along == "x" then Vector3.new(math.max(cn - c - 0.04, 0.05), 0.26, math.max(w - 0.02, 0.02)) else Vector3.new(math.max(w - 0.02, 0.02), 0.26, math.max(cn - c - 0.04, 0.05))
+			-- (open at floor level, and a real drop under it: between two benches the floor is 2 below, not a hole)
+			if #workspace:GetPartBoundsInBox(CFrame.new(pos), size, op) == 0
+				and not workspace:Raycast(Vector3.new(pos.X, top + 0.05, pos.Z), Vector3.new(0, -3, 0), rp) then
+				holes += 1
+				if not seen and #list < 20 then
+					seen = true
+					table.insert(list, ("FLOOR GAP %.2f wide at (%.1f, %.1f, %.1f) between %s and %s"):format(w, pos.X - O.X, top - O.Y, pos.Z - O.Z, fa.p.Name, fb.p.Name))
+				end
+			end
+			c = cn
+		end
+	end
+	for i, A in floors do
+		for j = i + 1, #floors do
+			local Bf = floors[j]
+			if math.abs(A.top - Bf.top) <= 0.05 then
+				-- across x (A west of B, or B west of A), along z
+				local z0, z1 = math.max(A.z0, Bf.z0), math.min(A.z1, Bf.z1)
+				if z1 - z0 >= 0.5 then
+					local g1, g2 = Bf.x0 - A.x1, A.x0 - Bf.x1
+					if g1 > 0.05 and g1 <= 6 then strip(A.x1, Bf.x0, "z", z0, z1, A.top, A, Bf) end
+					if g2 > 0.05 and g2 <= 6 then strip(Bf.x1, A.x0, "z", z0, z1, A.top, Bf, A) end
+				end
+				local x0, x1 = math.max(A.x0, Bf.x0), math.min(A.x1, Bf.x1)
+				if x1 - x0 >= 0.5 then
+					local g1, g2 = Bf.z0 - A.z1, A.z0 - Bf.z1
+					if g1 > 0.05 and g1 <= 6 then strip(A.z1, Bf.z0, "x", x0, x1, A.top, A, Bf) end
+					if g2 > 0.05 and g2 <= 6 then strip(Bf.z1, A.z0, "x", x0, x1, A.top, Bf, A) end
+				end
+			end
+		end
+	end
+	table.insert(list, 1, ("floor gaps between level floors you stand on (strips 0.05..6 wide, 0.5 slices): %d open slices, %d floors"):format(holes, #floors))
+	return table.concat(list, "\n")
 end
 
 function T.check(stage): string
@@ -2278,6 +2355,7 @@ function T.check(stage): string
 	for name, t in thin do nThin += 1; if nThin <= 12 then table.insert(out, ("THIN %.2f: %s"):format(t, name)) end end
 	table.insert(out, ("the hall sealed: %d rays from %d points, leaks %d, skins under 2 studs %d"):format(rays, #pts, leaks, nThin))
 	table.insert(out, (T.headRoom(stage)))
+	table.insert(out, (T.floorGaps(stage)))
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	if lotSrc and tg:FindFirstChild("Lot") then
 		for _, l in require(lotSrc:Clone()).check(tg, mk, T, O) do table.insert(out, l) end
