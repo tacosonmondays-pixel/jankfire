@@ -117,6 +117,20 @@ function HC.build(K, parent, name, site, live)
 	-- portal; the other ten sides deep bays, one classic pad in each (the lifts bank west, 1V1 by the spawn round to 4V4 by
 	-- the face; the east twins mirrored), its count board on the bay's back wall, the mode set into each bay's lintel, a warm
 	-- panel over each pad; the pin's boss hanging from the lid lit underneath; cream spokes from the middle's inlay
+	-- (the owner, 21 Nov: "angle the screens") a board's frame on the bay's back wall turned up to 35 degrees toward the hub's
+	-- way in (ex, ez), held off the wall on a short arm so its far edge clears it
+	local function angledBoard(bx, bz, ux, uz, y, ex, ez)
+		local a = Vector3.new(-ux, 0, -uz)
+		local b = Vector3.new(ex - bx, 0, ez - bz).Unit
+		local th = math.clamp(math.atan2(a.Z * b.X - a.X * b.Z, a.X * b.X + a.Z * b.Z), -math.rad(35), math.rad(35))
+		local look = CFrame.Angles(0, th, 0):VectorToWorldSpace(a)
+		local out = 6.6 * math.abs(math.sin(th)) + 0.6
+		local w0 = Vector3.new(bx, y, bz)
+		local arm = box(F0, "Scenery", "BoardArm", -0.45, 0.45, -0.45, 0.45, -0.5, 0.5, "c9c5bc", MAT.Plastic)
+		arm.Size = Vector3.new(0.9, 0.9, out); arm.CFrame = site * CFrame.lookAt(w0 + a * (out / 2), w0 + a * out)
+		local c = w0 + a * out
+		return CFrame.lookAt(c, c + look)
+	end
 	for k = 1, 10 do
 		local a = math.rad(OC_BAYS[k])
 		local ux, uz = math.cos(a), math.sin(a)
@@ -126,7 +140,7 @@ function HC.build(K, parent, name, site, live)
 		local r0 = OC_R + 1.0
 		local back = OC_R + OB_D - 0.5
 		local F = K.facing(ux * r0, OC_Z + uz * r0, ux, uz, OB_FLOOR)
-		local boardAt = K.facing(ux * back, OC_Z + uz * back, -ux, -uz, OB_FLOOR + 6.2 + 2.75)
+		local boardAt = angledBoard(ux * back, OC_Z + uz * back, ux, uz, OB_FLOOR + 6.2 + 2.75, 0, 104) -- (toward the spawn)
 		if K.padClassic then
 			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { boardAt = boardAt })
 		else
@@ -278,6 +292,7 @@ function HC.build(K, parent, name, site, live)
 		if d:IsA("BasePart") and d:GetAttribute("Game") == "golf" then
 			local p = site:PointToObjectSpace(d.Position)
 			d.CFrame = CFrame.new(site * Vector3.new((-95 - 51) / 2, p.Y, (-36 + 44) / 2)) * d.CFrame.Rotation
+			d:SetAttribute("Door", Vector3.new(-23, 0, -7)) -- (hub-minigames: the doorway's floor centre in the marker's space; the prompt stands by it)
 		end
 	end
 	sbox("Floor", -49, -48, -1, 0, 6, 16, FLOORC, MAT.Concrete)
@@ -323,7 +338,7 @@ function HC.walks(K)
 		{ "the breech east of the middle", F0, 8, 20, 57, 97, 0 },
 		{ "the breech south of the middle", F0, -8, 8, 85, 97, 0 },
 		{ "the breech north of the middle", F0, -8, 8, 57, 69, 0 },
-		{ "the passage to the face", F0, -10, 10, 28, 42, 0 },
+		{ "the passage to the face", F0, -8, 8, 28, 42, 0 },
 		{ "the transept", F0, -20, 20, 4, 22, 0 },
 		{ "the gym's portal", F0, -6, 6, 120, 136, 0 },
 		{ "the lounge", CFrame.new(-13, -4, 0), -2.2, 3.0, -20, -8, 0 },

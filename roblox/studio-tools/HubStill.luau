@@ -200,6 +200,20 @@ function HS.build(K, parent, name, site, live)
 	-- room cut into the monolith under a corbelled funnel rising to a disc of sky; five deep bays fanned round its curve,
 	-- one mode each (1V1 west .. 5V5 east), its two pads side by side (lifts left, east right), the boards inside the bay
 	-- facing the well's middle; the mode set into each bay's lintel; a warm panel over each pad
+	-- (the owner, 21 Nov: "angle the screens") a board's frame on the bay's back wall turned up to 35 degrees toward the hub's
+	-- way in (ex, ez), held off the wall on a short arm so its far edge clears it
+	local function angledBoard(bx, bz, ux, uz, y, ex, ez)
+		local a = Vector3.new(-ux, 0, -uz)
+		local b = Vector3.new(ex - bx, 0, ez - bz).Unit
+		local th = math.clamp(math.atan2(a.Z * b.X - a.X * b.Z, a.X * b.X + a.Z * b.Z), -math.rad(35), math.rad(35))
+		local look = CFrame.Angles(0, th, 0):VectorToWorldSpace(a)
+		local out = 6.6 * math.abs(math.sin(th)) + 0.6
+		local w0 = Vector3.new(bx, y, bz)
+		local arm = box(F0, "Scenery", "BoardArm", -0.45, 0.45, -0.45, 0.45, -0.5, 0.5, "c9c5bc", MAT.Plastic)
+		arm.Size = Vector3.new(0.9, 0.9, out); arm.CFrame = site * CFrame.lookAt(w0 + a * (out / 2), w0 + a * out)
+		local c = w0 + a * out
+		return CFrame.lookAt(c, c + look)
+	end
 	for k = 1, 5 do
 		local md = K.MODES[k]
 		local a = math.rad(W_BAYS[k])
@@ -214,7 +228,7 @@ function HS.build(K, parent, name, site, live)
 			if K.padClassic then -- (the classic pad at the bay's mouth, its count board on the bay's back wall behind it)
 				local r0, rb = W_R + 1.0, W_R + WB_D - 0.6
 				local F = K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR)
-				local boardAt = K.facing(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, -ux, -uz, WB_FLOOR + 6.2 + 2.75)
+				local boardAt = angledBoard(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, ux, uz, WB_FLOOR + 6.2 + 2.75, 0, W_FW) -- (toward the throat)
 				K.pad(F, md, bank, id, { boardAt = boardAt })
 			else
 				local r0 = W_R + 2.5
