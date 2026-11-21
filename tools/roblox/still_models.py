@@ -529,21 +529,20 @@ def well():
     coll('WellFace', (0, (BORE_SPRING + BORE_W + W_TOP + 2) / 2, W_FW + 1.0), (2 * BORE_W + 2, W_TOP + 2 - BORE_SPRING - BORE_W, 2.0))
     coll('WellLid', (0, W_TOP + 1.0, W_CZ), (2 * W_OCULUS + 4, 2.0, 2 * W_OCULUS + 4))
 
-HALO_Y, HALO_RO, HALO_RI, HALO_D = 9.0, 6.6, 4.9, 1.8   # the well's stone ring: centre height, outer/inner radius, depth
+HALO_Y, HALO_RO, HALO_RI, HALO_D = 9.4, 7.0, 4.9, 1.2   # (kit 16: a flat stone disc with a hole, not a tyre)   # the well's stone ring: centre height, outer/inner radius, depth
 def halo():
     """the well's centre: a chunky stone ring standing upright across the spawn's axis on a cradle (the pool round it is
     Luau's), its opening framing the middle bay"""
-    ring = new_obj(bm_cyl_z(HALO_RO, W_CZ - HALO_D / 2, W_CZ + HALO_D / 2, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE, 0.45)
+    ring = new_obj(bm_cyl_z(HALO_RO, W_CZ - HALO_D / 2, W_CZ + HALO_D / 2, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE, 0.12)
     cut(ring, [new_obj(bm_cyl_z(HALO_RI, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
-    lip = new_obj(bm_cyl_z(HALO_RI + 0.5, W_CZ - HALO_D / 2 - 0.25, W_CZ + HALO_D / 2 + 0.25, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE2, 0.2)
-    cut(lip, [new_obj(bm_cyl_z(HALO_RI - 0.15, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])  # (proud of the ring's own inner face: they flickered as one)
-    cradle = new_obj(bm_box(-4.2, 4.2, 1.6, HALO_Y - HALO_RO + 1.6, W_CZ - 1.8, W_CZ + 1.8), 'st_cradle', 'plastic', PALE2, 0.4)
+    # (kit 16: no lip: it made a tyre's rim)
+    cradle = new_obj(bm_box(-5.4, 5.4, 1.6, HALO_Y - HALO_RO + 2.6, W_CZ - 1.6, W_CZ + 1.6), 'st_cradle', 'plastic', PALE2, 0.3)
     cut(cradle, [new_obj(bm_cyl_z(HALO_RO - 0.05, W_CZ - 3, W_CZ + 3, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
     for k in range(16):  # (collision: the ring in sixteen pieces)
         a = math.radians(k * 22.5 + 11.25)
         r = (HALO_RO + HALO_RI) / 2
         coll('Halo', (r * math.cos(a), HALO_Y + r * math.sin(a), W_CZ), (2 * r * math.sin(math.radians(11.25)) + 0.3, HALO_RO - HALO_RI, HALO_D), roll=math.degrees(a) - 90)
-    coll('Cradle', (0, (1.6 + HALO_Y - HALO_RO + 1.6) / 2, W_CZ), (8.4, HALO_Y - HALO_RO, 3.6))
+    coll('Cradle', (0, (1.6 + HALO_Y - HALO_RO + 2.6) / 2, W_CZ), (10.8, HALO_Y - HALO_RO + 1.0, 3.2))
 
 def monolith():
     # stacked giant blocks of different heights, each offset and turned a hair, so it never reads as even bands

@@ -13,7 +13,7 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 109710328693728 -- hub_still_kit_15 (the bays sized by mode for the classic pads, recessed rim blocks; kit 14 was 136903909478603)
+HS.KIT = 80061919490804 -- hub_still_kit_16 (the ring a flat stone disc on a wider cradle; kit 15 was 109710328693728)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
@@ -99,6 +99,9 @@ function HS.build(K, parent, name, site, live)
 			if SKIP[m.Name] then continue end
 			local c = m:Clone()
 			c:PivotTo(site)
+			if m.Name == "st_cove" then -- (judge round 12: the cove rings outshone the pads: dimmer, warmer)
+				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Transparency = 0.45; p.Color = Color3.fromHex("d6c4a2") end end
+			end
 			if m.Name == "st_round" or m.Name == "st_roundband" then
 				-- (judge round 5: nothing in the crater's middle; main: "serious and sculptural, not a toy bullet": the round stands
 				-- upright on a stone plinth, a monument, its base on the plinth, 0.62 of its flying size)
@@ -200,20 +203,6 @@ function HS.build(K, parent, name, site, live)
 	-- room cut into the monolith under a corbelled funnel rising to a disc of sky; five deep bays fanned round its curve,
 	-- one mode each (1V1 west .. 5V5 east), its two pads side by side (lifts left, east right), the boards inside the bay
 	-- facing the well's middle; the mode set into each bay's lintel; a warm panel over each pad
-	-- (the owner, 21 Nov: "angle the screens") a board's frame on the bay's back wall turned up to 35 degrees toward the hub's
-	-- way in (ex, ez), held off the wall on a short arm so its far edge clears it
-	local function angledBoard(bx, bz, ux, uz, y, ex, ez)
-		local a = Vector3.new(-ux, 0, -uz)
-		local b = Vector3.new(ex - bx, 0, ez - bz).Unit
-		local th = math.clamp(math.atan2(a.Z * b.X - a.X * b.Z, a.X * b.X + a.Z * b.Z), -math.rad(35), math.rad(35))
-		local look = CFrame.Angles(0, th, 0):VectorToWorldSpace(a)
-		local out = 6.6 * math.abs(math.sin(th)) + 0.6
-		local w0 = Vector3.new(bx, y, bz)
-		local arm = box(F0, "Scenery", "BoardArm", -0.45, 0.45, -0.45, 0.45, -0.5, 0.5, "c9c5bc", MAT.Plastic)
-		arm.Size = Vector3.new(0.9, 0.9, out); arm.CFrame = site * CFrame.lookAt(w0 + a * (out / 2), w0 + a * out)
-		local c = w0 + a * out
-		return CFrame.lookAt(c, c + look)
-	end
 	for k = 1, 5 do
 		local md = K.MODES[k]
 		local a = math.rad(W_BAYS[k])
@@ -228,13 +217,15 @@ function HS.build(K, parent, name, site, live)
 			if K.padClassic then -- (the classic pad at the bay's mouth, its count board on the bay's back wall behind it)
 				local r0, rb = W_R + 1.0, W_R + WB_D - 0.6
 				local F = K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR)
-				local boardAt = angledBoard(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, ux, uz, WB_FLOOR + 6.2 + 2.75, 0, W_FW) -- (toward the throat)
+				local boardAt = K.facing(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, -ux, -uz, WB_FLOOR + 6.2 + 2.75) -- (flat on the back wall: the owner)
 				K.pad(F, md, bank, id, { boardAt = boardAt })
 			else
 				local r0 = W_R + 2.5
 				K.pad(K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR), md, bank, id, { lampY = 13 })
 			end
 			K.panel(Fb, sd * off, WB_IN, -(W_R + 6.5), 5, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
+			local spot = box(Fb, "Scenery", "PadSpot", sd * off - 0.5, sd * off + 0.5, WB_IN - 0.6, WB_IN - 0.5, -(W_R + 6.5) - 0.5, -(W_R + 6.5) + 0.5, P.pale, nil, { ghost = true, tr = 1 })
+			K.light(spot, 18, 1.25, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 100 }) -- (judge round 12: the pads the brightest things)
 		end
 		local sx, sz2 = ux * (W_R - 3.42), W_CZ + uz * (W_R - 3.42)
 		K.sign(K.facing(sx, sz2, -ux, -uz, 17.8), "Scenery", "BaySign", math.min(21, w - 4), 3.0, 0, 0, 0,
@@ -257,7 +248,15 @@ function HS.build(K, parent, name, site, live)
 	K.cyl(F0, "Scenery", "PoolBed", 0, 3.0, 3.1, W_CZ, 15.8, "2f3540", MAT.Slate).MaterialVariant = "TrSlate"
 	local water = K.cyl(F0, "Shell", "PoolWater", 0, 3.1, 3.25, W_CZ, 15.8, "3d4a58", MAT.Glass)
 	water.Transparency = 0.2; water.Reflectance = 0.35
-	K.light(K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 14, 0.45, "ffd9a8")
+	local band = K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true })
+	band.Transparency = 0.35 -- (judge round 12: dimmer than the pads)
+	K.light(band, 14, 0.3, "ffd9a8")
+	-- the well's curved wall by the flat wall's two ends washed warm (judge round 12: it fell to black)
+	for _, sd in { -1, 1 } do
+		local w = box(F0, "Scenery", "WellEndWash", sd * 26 - 0.5, sd * 26 + 0.5, 15, 15.2, -56.5, -55.5, P.pale, nil, { ghost = true, tr = 1 })
+		w.CFrame = site * CFrame.lookAt(Vector3.new(sd * 26, 15, -56), Vector3.new(sd * 47, 8, -52))
+		K.light(w, 28, 0.9, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
+	end
 	-- (kit 15: the wider bays leave only their jambs between them: no lit recesses on the drum)
 	local sky = box(F0, "Scenery", "SkyLight", -0.5, 0.5, W_TOP - 1, W_TOP - 0.8, W_CZ - 0.5, W_CZ + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 	sky.CFrame = site * CFrame.lookAt(Vector3.new(0, W_TOP - 1, W_CZ), Vector3.new(0, 0, W_CZ))
@@ -286,7 +285,7 @@ function HS.build(K, parent, name, site, live)
 	for _, x in { -14, 14 } do
 		local u = box(F0, "Scenery", "OverhangFill", x - 0.5, x + 0.5, 30, 30.2, -24, -23, P.pale, nil, { ghost = true, tr = 1 })
 		u.CFrame = site * CFrame.lookAt(Vector3.new(x, 30, -23.5), Vector3.new(x * 0.6, 48, -14))
-		K.light(u, 30, 0.7, "ffe2c0", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 100 })
+		K.light(u, 40, 1.1, "ffe2c0", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 100 }) -- (judge round 12: still near-black)
 	end
 	-- the bore's mouth framed by one thick chamfered stone ring proud of the crater's face (its crown ~14 deep), the name
 	-- cut in its crown
@@ -311,7 +310,7 @@ function HS.build(K, parent, name, site, live)
 		box(F0, "Shell", "MouthRing", math.min(x0, x1), math.max(x0, x1), 0, 12.2, faceZ(RI, 6) - 1.0, RF, "d9d2c5", MAT.Plastic).MaterialVariant = "TrPlaster"
 		box(F0, "Scenery", "MouthRingLip", math.min(sd * (RI - 0.35), sd * RI), math.max(sd * (RI - 0.35), sd * RI), 0, 12.2, RF - 1.2, RF + 0.35, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
 	end
-	K.sign(K.facing(0, RF + 0.36, 0, 1), "Scenery", "NameSign", 12, 2.4, 0, 34.2, 0, { { "JANKFIRE", "4a4f57", 0.82 } }, { pps = 40, plate = "d9d2c5", bright = 1 })
+	K.sign(K.facing(0, RF + 0.36, 0, 1), "Scenery", "NameSign", 19, 3.4, 0, 34.2, 0, { { "JANKFIRE", "4a4f57", 0.82 } }, { pps = 40, plate = "d9d2c5", bright = 1 }) -- (judge round 12: the name bigger)
 
 	-- ============================================================== THE GYM (east, the quarry hall)
 	local FG = CFrame.new(0, DECK, 0)
@@ -326,7 +325,7 @@ function HS.build(K, parent, name, site, live)
 		if before[d] or not d:IsA("BasePart") then continue end
 		local lp = site:PointToObjectSpace(d.Position)
 		local inGym = lp.X > 53 and lp.X < 123 and math.abs(lp.Z) < 44
-		if d.Name == "GymLid" then d.Color = Color3.fromHex("8f8c86"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster"
+		if d.Name == "GymLid" then d.Color = Color3.fromHex("aaa59c"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster" -- (judge round 12: near-black)
 		elseif inGym and (GONE[d.Name] or (string.find(d.Name, "Mirror") ~= nil)) and not (d.Name == "GymPad" and lp.X > 116) then d:Destroy()
 		elseif d.Name == "RingRope" then d.Size = Vector3.new(d.Size.X, 0.6, 0.6)
 		elseif d.Name == "GymFloor" then d.Color = Color3.fromHex("918b80"); d.Material = MAT.Concrete; d.MaterialVariant = "TrConcrete"
@@ -335,14 +334,31 @@ function HS.build(K, parent, name, site, live)
 		elseif d.Name == "BagChain" then d.Size = Vector3.new(d.Size.X, 0.5, 0.5)
 		elseif inGym and string.find(d.Name, "Post") then d.Color = Color3.fromHex("8a8e93") -- (one muted colour: they read as hydrants)
 		elseif d.Name == "RingApron" or d.Name == "RingBase" or d.Name == "RingStep" then d.Color = Color3.fromHex("a39d92"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster"
-		elseif d.Name == "GymWall" then d.Color = Color3.fromHex("9a958c"); d.Material = MAT.Slate; d.MaterialVariant = "TrSlate" end
+		elseif d.Name == "GymWall" then d.Color = Color3.fromHex("ada79c"); d.Material = MAT.Slate; d.MaterialVariant = "TrSlate" end
+	end
+	do -- (judge round 12: ~20 identical bags in a row: eight, evenly spaced, their chains with them)
+		local bags = {}
+		for _, d in f:GetDescendants() do if d.Name == "HeavyBag" and d:IsA("BasePart") and not before[d] then table.insert(bags, d) end end
+		table.sort(bags, function(a, b) return (a.Position.X + a.Position.Z * 0.001) < (b.Position.X + b.Position.Z * 0.001) end)
+		if #bags > 8 then
+			local keep = {}
+			for i = 0, 7 do keep[bags[1 + math.floor(i * (#bags - 1) / 7 + 0.5)]] = true end
+			for _, b in bags do
+				if not keep[b] then
+					for _, d in f:GetDescendants() do
+						if d.Name == "BagChain" and d:IsA("BasePart") and (Vector3.new(d.Position.X, 0, d.Position.Z) - Vector3.new(b.Position.X, 0, b.Position.Z)).Magnitude < 0.5 then d:Destroy() end
+					end
+					b:Destroy()
+				end
+			end
+		end
 	end
 	for _, x in { 62, 78, 94, 110 } do box(FG, "Scenery", "GymBeam", x - 1.3, x + 1.3, 14.0, 15.98, -42, 42, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster" end -- (regular beams on one plane)
 	for _, x in { 70, 86, 102 } do K.panel(FG, x, 16, 0, 5, 9, { bright = 0.45, range = 30 }) end -- (panels flush in the lid between them)
 	for _, d in f:GetDescendants() do -- (judge round 6: black post caps, near-black back walls)
 		if not before[d] and d:IsA("BasePart") then
 			local c = d.Color
-			if c.R + c.G + c.B < 0.62 and d.Material ~= MAT.Neon then d.Color = Color3.fromHex("6a6e74") end
+			if c.R + c.G + c.B < 0.62 and d.Material ~= MAT.Neon then d.Color = Color3.fromHex("858a90") end -- (judge round 12: lighter)
 		end
 	end
 	for _, x in { 66, 86, 106 } do for _, sd in { -1, 1 } do
