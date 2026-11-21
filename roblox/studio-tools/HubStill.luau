@@ -464,8 +464,8 @@ function HS.build(K, parent, name, site, live)
 	DR.shop(K, f, beforeS, K.at(FL, 19, -15, 90), 13.4)
 	lbox("BarStep", -LW, -13, -0.2, 0.8, -42, -28, PALEC, MAT.Plastic)
 	K.bar(K.at(FL, -19.6, -35, -90, 0.8), 10)
-	K.arcadeSpot(K.at(FL, -21.4, -18, -90))
-	K.tableSpot(K.at(FL, -8, -16, 0), "board"); K.tableSpot(K.at(FL, 8, -14, 0), "arm")
+	K.arcadeSpot(K.at(FL, -20.4, -19.2, -90)) -- (hub-minigames' check: 1 forward off the Wall, 1.2 clear of the Pier)
+	K.tableSpot(K.at(FL, -8, -13.4, 0), "board"); K.tableSpot(K.at(FL, 8, -14, 0), "arm") -- (the board 2.6 off the HearthDais: B's stand spot was in it)
 	K.cluster(K.at(FL, 11.5, -35, 90, -PD), { npcSofa = true, hex = "8a7a6a" })
 	-- the hearth: the room's one centre object, on its axis between the tables: a round stone hearth, a warm glowing bed,
 	-- a heavy round hood hung from the coffers
