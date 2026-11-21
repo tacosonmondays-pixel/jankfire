@@ -2470,6 +2470,106 @@ The owner, from the live game with a friend: "Stepping away from the shooting ra
 - T.check: plate-to-Carl lines 0 of 27 blocked, sealed 0 leaks, head room 0 within 0.6.
 - **Not run:** two real clients. Studio's MCP can only start a solo Play, so the ghost stood in for the second player.
 
+## 63. Training redone from scratch (v5, "the compound"): new footprints, chunky kit, judged against the ring, 20 November 2026 (built live 23:37 UTC, in the owner's publishes v1310 and v1311)
+
+**Why.** The owner, after v4: "oh I though training hub would get enrirelyt redone?", then "by old design I meant lke the chunker structes you know? we just add subtle texture to them now". v4 had only wrapped v3, so its footprints never changed.
+
+**How it was built.** v5 was built with the old 16 Nov workflow:
+- a plan note: vault `Hubs/Training redo plan.md`;
+- a Blender kit (`tools/roblox/training_redo_models.py`, Model 97955674324764) plus subtle textures (`tools/roblox/training_textures.py`, MaterialVariants put on by role);
+- a staging copy at `T.STAGE` (0, 0, 800), photographed under its own look (`HubLook.looks.training_v5`, `TrainingLook = "v5"`);
+- 11 blind judge rounds, with notes in vault `Reviews/Training redo - judge round N`.
+
+**The builder.**
+- `roblox/studio-tools/TrainingCompound.luau` (`PolishBackup.TrainingCompound`), loaded by TrainingV2 with `T.ROOMS = "v5"`.
+- `C.OWN_ARRIVAL` means no muster. It sets `T.DUMMIES`, `T.RAILS`, `T.COURSE`, `T.GOLD1`, `T.TOPD3`, `T.EGG_DOOR`, `T.ZONE`, `T.TESTLINE`, `T.NO_LIVE` and `C.SEAL`.
+- **v4 is one switch away:** set `T.ROOMS = "v4"` and run `T.build("live")`.
+
+**What v5 is:**
+- **The arrival hall** (x -72..-8, z -8064..-8132, floor 244):
+  - a nave with chunky paired piers and aisles;
+  - every aisle bay a lit gun niche over a bench;
+  - a round skylight in the lantern, its plate, drum and ring cut with GeometryService (no texture picture on the cut parts: their triangles show as seams);
+  - the centre: a cream drum on a stepped dais, a lit ring under a square sign box, a column up into the skylight. Each face of the box names the way out beyond it: FIELD, HUB, RANGE, TUTORIAL.
+  - housed RANGE and TUTORIAL headers on the side doors;
+  - floor lines from the gate to the portal, and to both side doors;
+  - the mirror bay.
+- **The balcony and the field** (floor 240):
+  - lane walls with half-round copings;
+  - 10 M plinths, and a 20 M gate on the axis framing the big target on a cream tower with a round emblem;
+  - the gantry; the dummies on stepped plinths (they now stand 1.0 up: Stand1 is at (-14, 241, -8180));
+  - the practice lane, with consoles on the balcony and a board on a solid plinth (shots pass it);
+  - a bodies-only `TargetGuard` (JFRayBlind) in front of the target.
+- **The course:**
+  - colonnaded walls; four round plinths from the start pad up to a ring ledge round the drum, then two steps on the ring to the deck (gold Carl 3);
+  - a bridge to the TOP; a grand stair in three flights with a cream gate and PARKOUR at its head;
+  - the parkour teleporter in a cream frame on the TOP, with the egg door beside it;
+  - the secret bullseye high on the west wall;
+  - the runner on the north band.
+- **The tutorial wing:** a corridor and four rooms 40 × 110, with framed niches holding the real guns (`JankfireWeapons` `w_*`, sized by their visible parts), lit shelves over the wall plinths, cross-portals and coffers. `Tutorial.Room<n>` keeps its contract.
+- **Unchanged:** the range with the v1213 rules, the gun shop and the shopkeeper, and TheLot (its west berms moved 12 south, clear of the course).
+
+**The bar.** Main's rule (the owner: "the old hub shold be the minimum going forward"): ring-or-better, judged by two blind judges averaged, each shown the previous verdict, with no copy flag.
+
+| Round | Training (overall / chunkiness) | Ring | Notes |
+|---|---|---|---|
+| 7 | 6.5 / 7.5 | 6.3 / 5.5 | first time over the ring (one judge) |
+| 8 | 6.4 / 7.0 | 6.3 / 5.5 | one judge |
+| 9 | 6.1 / 7.0 | 6.9 / 6.5 | the new centre hid the exit signs |
+| 10 | 6.4 / 7.1 | 6.8 / 6.25 | pair averaged |
+| **11** | **6.75 / 7.3** | **6.75 / 6.2** | **pair averaged, no copy flag: PASSED** |
+
+**Checks (live, 23:38 UTC):**
+- the hall sealed: 1300 rays, 0 leaks;
+- head room: 0 within 0.6;
+- the gun test line is clear;
+- plate-to-Carl lines: 0 of 27 blocked;
+- the lot closed in: 0 leaks; its doors present;
+- the flicker pass: 934 visible coplanar pairs down to 29.
+- The one thin skin is the hub gate's GateVoid (GateKit's).
+
+**Function test (independent tester, four solo Play turns 23:43–00:43 UTC): 13 of 13 PASS, 0 FAIL.**
+
+| Row | Result |
+|---|---|
+| Hub → training | Square's `SquareToTraining` lands on a TrainSpawn, zone training. |
+| ToHub | Lands 2.8 from the hub's arrive; the shutter and the laser gate are there. |
+| Dummies | On their spots. Three AR hits gave three Dmg events. Armour 300/300. Heal-back 60→100 in 2.8 s. The strafer moves. |
+| Practice lane | The consoles (E) work; still, jump and 300 HP work; the heal pad 70→100; the board DAMAGE/DPS/TTK, with TTK 1.03 s on a kill. |
+| Mirror | A hologram statue 0.1 s after you come near: 47 parts, one statue. |
+| Tutorial rooms | Walk in to claim; pick AR builds its course; the board counts hits; walk out to release. |
+| Parkour teleporter | Lands 3.0 from ParkourArrive. |
+| TOP on foot | Up the grand stair to the TOP with no stall: 24 steps of 1.25, nothing overhead. |
+| Secret route | The garage is shut without the key. All three gold Carls shot for real gave the key. The garage then opens and TheLot is reached. The egg door and EggPortal work with the key; the bullseye goes to the playground. |
+| Range (v1213) | Stepping off ends a run at 0.9 s; LANE IN USE with a second runner; shots pass RangeWall; bodies stop at it. |
+| Shop | 20 stock models on the pegs, the keeper; Shop (F) and Deals (E) open their tabs. |
+| Gun sessions' line | 3/3 hits on Stand1 from (-14, 248.8, -8144). |
+| Head height | Walks of the hall, the balcony and a room: every stall was a full wall. |
+
+**Seen in passing (not v5's own):**
+- one shop peg empty ("no model for shredder");
+- a console warning about asset 203785492 (in nothing in the repo).
+
+**For later:** from the look points in the build data, two gold Carls' lines are blocked:
+- gold 1 from the balcony, by a gantry tower;
+- gold 3 from the course's start, by the gallery beam.
+
+All three can be shot from closer spots, and the hunt works end to end.
+
+**How it went live.** T.ROOMS was set to "v5" and built live in Studio at 23:37 UTC, ahead of the tester. The owner published at 23:57 and 00:01 (v1310 and v1311), so v5 went to players while the tester was still running.
+
+**Lessons:**
+- Judges plateau, and one judge swings about a point. Two judges averaged, each shown the previous verdict, stop the flip-flops.
+- A staging copy can be published by the owner. v1292 shipped one; keep stages up for minutes only.
+- The head-room check meets bodies-only guards only because `T.headRoom` puts JFRayBlind parts in Default and CanQuery on for the check.
+- Kit gun models are in metres: scale them by their visible extents with a high cap.
+- Edit captures:
+  - signs render on a second take;
+  - exposure can drift within a turn;
+  - never take captures in parallel.
+
+**Sheet:** `roblox/docs/training/training_v5_before_after.jpg` (v4 on the left, v5 on the right: arrival, dummy field, course, tutorial room, hub gate).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
