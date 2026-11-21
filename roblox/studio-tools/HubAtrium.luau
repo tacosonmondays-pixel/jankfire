@@ -72,15 +72,31 @@ function HA.build(K, parent, name, site, live)
 	box(F0, "Shell", "FloorUnder", -42, 42, -1.6, -1, -42, 42, P.paving2) -- (under the floor's wedges: their seams are hairlines)
 
 	-- ============================================================== THE PADS (ground ring, W to E)
+	-- (21 Nov: the CLASSIC pads, the owner's pick, as in THE HOTEL) two a side on the five north sides, flush, their backs to
+	-- the wall, sized to the octagon's side (o.dims 10.4 x 10: the side's width at the pads' front edge, 29.4 out); each
+	-- pad's board FLAT on the wall behind it (the owner: "no angeld"), its plaque over it, under level 2; a fin at each of
+	-- the six wall corners round them
 	local ORDER = { 1, 2, 3, 4, 5, 5, 4, 3, 2, 1 }
+	local PW, PD, RB = 10.4, 10, RW - 0.6
 	local k = 0
 	for _, b in { 270, 315, 0, 45, 90 } do
+		local Fk = sideF(b)
 		for _, left in { true, false } do
 			k += 1
 			local md = K.MODES[ORDER[k]]
-			K.platformPad(sideF(b), left, md, if k <= 5 then "lifts" else "east", if k <= 5 then md.id else md.id .. "_e", 24, 38.5, { lampY = Y2 - 1.2, signY = 8.8 })
+			local xc = if left then -6 else 6
+			K.pad(Fk * CFrame.new(xc, 0, -(RB - PD)), md, if k <= 5 then "lifts" else "east", if k <= 5 then md.id else md.id .. "_e",
+				{ dims = { PW, PD }, boardW = 10, boardH = 5, boardAt = Fk * CFrame.new(xc, 6.8, -(RW - 0.05)) * CFrame.Angles(0, math.pi, 0),
+					headerAt = Fk * CFrame.new(xc, 11.7, -(RW - 0.05)) * CFrame.Angles(0, math.pi, 0), headerW = 8.6 })
 		end
 	end
+	for _, bc in { 247.5, 292.5, 337.5, 22.5, 67.5, 112.5 } do
+		local rc = RW / math.cos(math.rad(22.5))
+		box(sideF(bc), "Shell", "CornerFin", -0.7, 0.7, 0, Y2 - 1, -rc - 0.5, -rc + 4.6, P.wallLt)
+		box(sideF(bc), "Scenery", "CornerFinFace", -0.9, 0.9, 0, Y2 - 1.6, -rc + 4.2, -rc + 4.7, P.pier)
+	end
+	-- (the classic boards say nothing at rest: one sign says how the pads work, under the north gallery's fascia, facing the spawn)
+	K.wordSign(sideF(0) * CFrame.new(0, 0, -(RV - 0.15)) * CFrame.Angles(0, math.pi, 0), "Scenery", "WaySign", 14, 1.7, 0, 12.2, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
 
 	-- ============================================================== THE MIDDLE: the island and the screen
 	cyl(F0, "Shell", "Island", 0, 0, 0.5, 0, 17, P.creamHi)
