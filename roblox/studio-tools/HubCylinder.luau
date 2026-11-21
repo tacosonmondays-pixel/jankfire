@@ -279,6 +279,14 @@ function HC.build(K, parent, name, site, live)
 	-- ============================================================== OFF THE TRANSEPT: VIP (east), GOLF (west)
 	K.vip(K.facing(42, 12, 1, 0), { w = 10, d = 22, h = 11, front = 14, frontH = 13 })
 	K.golfRoom(CFrame.new(), { x0 = -95, x1 = -51, z0 = -36, z1 = 44, h = 18, door = { -51, 6, 16 } })
+	-- (hub-minigames, 20 Nov: K.golfRoom centres the course for a 100-long room; this one is 80, so the marker sat 10 off
+	-- and the far row of holes ran through the wall) the golf marker at the room's middle, its look kept
+	for _, d in f:GetDescendants() do
+		if d:IsA("BasePart") and d:GetAttribute("Game") == "golf" then
+			local p = site:PointToObjectSpace(d.Position)
+			d.CFrame = CFrame.new(site * Vector3.new((-95 - 51) / 2, p.Y, (-36 + 44) / 2)) * d.CFrame.Rotation
+		end
+	end
 	sbox("Floor", -49, -48, -1, 0, 6, 16, FLOORC, MAT.Concrete)
 
 	-- ============================================================== THE GYM (behind the frame's front)

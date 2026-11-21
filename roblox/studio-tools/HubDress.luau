@@ -241,7 +241,7 @@ function D.tone(K, f, o)
 		if n == "Bush" or n == "Planter" then d:Destroy() -- (the topiary read as a toy)
 		elseif n == "Plinth" then d.Color = Color3.fromHex("a39d92") -- (judges: the plinths read as toy pucks: quiet floor tones)
 		elseif n == "PlinthFoot" then d.Color = Color3.fromHex("8f8a82")
-		elseif n == "PlinthTop" then d.Color = Color3.fromHex("b9b2a5")
+		elseif n == "PlinthTop" then d.Color = Color3.fromHex("a39d92") -- (one tone with the body: two read as a fried egg)
 		elseif n == "PlinthRing" then d.Color = Color3.fromHex("8f8a82"); d.Material = MAT.SmoothPlastic; d.Transparency = 0
 		elseif n == "PlinthLens" then d.Transparency = 1 -- (the gold dot made them fried eggs)
 		elseif n == "TimerFace" then d.Color = Color3.fromHex("77736c")

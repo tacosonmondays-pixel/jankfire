@@ -241,7 +241,7 @@ def rim_height(a):
     return 29 + 11 * max(0.0, -s)
 
 def rim():
-    n = 40
+    n = 20  # (kit 14: big level blocks, not stacked crates)
     step = 360.0 / n
     for i in range(n):
         a0, a1 = i * step, (i + 1) * step
@@ -252,7 +252,7 @@ def rim():
         if s < -0.55: continue  # (the monolith's own face takes the north sector)
         near = portal_near((RIM_IN + RIM_OUT) / 2 * c, (RIM_IN + RIM_OUT) / 2 * s)
         ri = RIM_IN + random.uniform(0.0, 0.9)
-        h = rim_height(am) + random.uniform(-1.5, 2.5)
+        h = rim_height(am) + random.uniform(-0.4, 0.6)
         gap = 0.25
         pts = []
         for (r, a) in ((ri, a0 + gap / ri * 57.3), (ri + random.uniform(-0.3, 0.3), a1 - gap / ri * 57.3),
@@ -262,7 +262,7 @@ def rim():
         blk = new_obj(bm_prism(pts, -1.0, h), 'st_rim', 'slate', col, 0.2)
         cutters = [passage_cutter(*near)] if near else []
         # every fourth block a lit slot: a narrow recess up its inner face, a warm strip at its back
-        slot = (i % 4 == 2) and not near and h > 14
+        slot = (i % 2 == 1) and not near and h > 14
         if slot:
             am_r = math.radians(am)
             sc = (ri + 0.4) * math.cos(am_r), (ri + 0.4) * math.sin(am_r)
@@ -274,7 +274,7 @@ def rim():
         # a pale band every 8 studs on its inner face, and a cornice on its top (built, not blank)
         g = gap / ri * 57.3
         parts = []
-        for yb in (8.0, 16.0, 24.0):
+        for yb in (13.0,):
             if yb < h - 3.0:
                 parts.append(new_obj(bm_ring_y(ri - 0.55, ri + 0.6, yb - 0.45, yb + 0.45, a0 + g, a1 - g, segs=60), 'st_rimband', 'plastic', PALE2, 0.12))
         parts.append(new_obj(bm_ring_y(ri - 0.8, RIM_OUT + 0.3, h - 0.25, h + 0.9, a0 + g * 0.5, a1 - g * 0.5, segs=60), 'st_rimband', 'plastic', PALE2, 0.25))
@@ -504,6 +504,22 @@ def well():
         coll('WellFace', ((x0 + x1) / 2, (W_TOP + 2) / 2, W_FW + 1.0), (x1 - x0, W_TOP + 2, 2.0))
     coll('WellFace', (0, (BORE_SPRING + BORE_W + W_TOP + 2) / 2, W_FW + 1.0), (2 * BORE_W + 2, W_TOP + 2 - BORE_SPRING - BORE_W, 2.0))
     coll('WellLid', (0, W_TOP + 1.0, W_CZ), (2 * W_OCULUS + 4, 2.0, 2 * W_OCULUS + 4))
+
+HALO_Y, HALO_RO, HALO_RI, HALO_D = 9.0, 6.6, 4.9, 1.8   # the well's stone ring: centre height, outer/inner radius, depth
+def halo():
+    """the well's centre: a chunky stone ring standing upright across the spawn's axis on a cradle (the pool round it is
+    Luau's), its opening framing the middle bay"""
+    ring = new_obj(bm_cyl_z(HALO_RO, W_CZ - HALO_D / 2, W_CZ + HALO_D / 2, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE, 0.45)
+    cut(ring, [new_obj(bm_cyl_z(HALO_RI, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
+    lip = new_obj(bm_cyl_z(HALO_RI + 0.5, W_CZ - HALO_D / 2 - 0.25, W_CZ + HALO_D / 2 + 0.25, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE2, 0.2)
+    cut(lip, [new_obj(bm_cyl_z(HALO_RI - 0.15, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])  # (proud of the ring's own inner face: they flickered as one)
+    cradle = new_obj(bm_box(-4.2, 4.2, 1.6, HALO_Y - HALO_RO + 1.6, W_CZ - 1.8, W_CZ + 1.8), 'st_cradle', 'plastic', PALE2, 0.4)
+    cut(cradle, [new_obj(bm_cyl_z(HALO_RO - 0.05, W_CZ - 3, W_CZ + 3, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
+    for k in range(16):  # (collision: the ring in sixteen pieces)
+        a = math.radians(k * 22.5 + 11.25)
+        r = (HALO_RO + HALO_RI) / 2
+        coll('Halo', (r * math.cos(a), HALO_Y + r * math.sin(a), W_CZ), (2 * r * math.sin(math.radians(11.25)) + 0.3, HALO_RO - HALO_RI, HALO_D), roll=math.degrees(a) - 90)
+    coll('Cradle', (0, (1.6 + HALO_Y - HALO_RO + 1.6) / 2, W_CZ), (8.4, HALO_Y - HALO_RO, 3.6))
 
 def monolith():
     # stacked giant blocks of different heights, each offset and turned a hair, so it never reads as even bands
@@ -956,5 +972,5 @@ def export():
     print('COLLISION BOXES', len(COLL))
 
 reset()
-crater(); rim(); plateau(); monolith(); well(); mouth(); round_(); fragments(); vaults()
+crater(); rim(); plateau(); monolith(); well(); halo(); mouth(); round_(); fragments(); vaults()
 export()

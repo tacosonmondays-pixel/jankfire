@@ -13,7 +13,7 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 117076518626977 -- hub_still_kit_13 (the well: a gallery round the drum, cove lights in the funnel; kit 12 was 85412973161229)
+HS.KIT = 136903909478603 -- hub_still_kit_14 (the crater rim in big level blocks, the well's stone ring; kit 13 was 117076518626977)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
@@ -138,7 +138,7 @@ function HS.build(K, parent, name, site, live)
 		return p
 	end
 	unseen("SkyLid", CFrame.new(0, 66, -10), Vector3.new(130, 4, 150))
-	unseen("WellCap", CFrame.new(0, 22.5, -82), Vector3.new(104, 1, 74)) -- (the well's funnel is mesh only: nothing gets up into it)
+	unseen("WellCap", CFrame.new(0, 20.0, -82), Vector3.new(104, 1, 74)) -- (the well's funnel is mesh only: nothing gets up into it)
 	for i = 0, 35 do
 		local a = math.rad(i * 10 + 5)
 		local s = math.sin(a)
@@ -183,7 +183,7 @@ function HS.build(K, parent, name, site, live)
 		end
 	end
 	-- lamps: warm low posts round the floor's edge where people stop, white panels under the overhang
-	for _, a in { 35, 145, 60, 120 } do
+	for _, a in { 35, 145 } do -- (judge round 10: half the bollards)
 		local c, s = math.cos(math.rad(a)), math.sin(math.rad(a))
 		local x, z = 24.6 * c, 24.6 * s
 		-- a chunky pale stone bollard, a warm lit band let in under its cap
@@ -225,27 +225,16 @@ function HS.build(K, parent, name, site, live)
 		sp.MaterialVariant = "TrPlaster"
 		sp.Size = Vector3.new(1.2, 0.05, (B - A).Magnitude); sp.CFrame = site * CFrame.lookAt((A + B) / 2, B)
 	end
-	-- the well's middle: a broad low two-step dais under the disc of sky, a lit ring let into its top; the sky's own cool
-	-- light thrown down onto it from the oculus, a warm wash round the drum from the cornice
-	K.cyl(F0, "Shell", "WellDais", 0, 0, 0.9, W_CZ, 19, "b9b2a5", MAT.Plastic).MaterialVariant = "TrPlaster"
-	K.cyl(F0, "Shell", "WellDais", 0, 0.9, 1.8, W_CZ, 13, "8f8a82", MAT.Slate).MaterialVariant = "TrSlate"
-	K.cyl(F0, "Scenery", "WellDaisCap", 0, 1.8, 2.1, W_CZ, 9.6, "a39d92", MAT.Plastic).MaterialVariant = "TrPlaster" -- (mid stone: pale it glared under the sky's light)
-	K.light(K.cyl(F0, "Scenery", "WellRing", 0, 1.8, 1.92, W_CZ, 10.4, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 14, 0.5, "ffd9a8") -- (a lit band round the cap's foot)
-	-- (judge round 10: no centre hero) a slender stone column on the dais under the disc of sky, lit slots down it, a
-	-- glowing crown at the gallery's height; slim so it frames, not hides, the far bay from the spawn
-	local function col(nm, a, b, d, hex, mat, o) return K.cyl(F0, "Scenery", nm, 0, a, b, W_CZ, d, hex, mat, o) end
-	col("WellColumn", 2.1, 2.9, 5.4, "b9b2a5", MAT.Plastic).MaterialVariant = "TrPlaster"
-	col("WellColumn", 2.9, 17.0, 3.8, "d9d2c5", MAT.Plastic).MaterialVariant = "TrPlaster"
-	for i = 0, 5 do
-		local q = math.rad(i * 60 + 30)
-		local Fq = CFrame.new(math.cos(q) * 1.92, 0, W_CZ + math.sin(q) * 1.92) * CFrame.Angles(0, -q, 0)
-		box(Fq, "Scenery", "WellSlot", -0.06, 0.06, 4.4, 15.4, -0.35, 0.35, "e8c28a", MAT.Neon, { ghost = true, noshadow = true })
-	end
-	col("WellColumnCornice", 17.0, 17.9, 5.2, "cfc8ba", MAT.Plastic).MaterialVariant = "TrPlaster"
-	local crown = col("WellCrown", 17.9, 19.9, 3.2, "f2e2c4", MAT.Neon, { ghost = true, noshadow = true }); crown.Transparency = 0.15
-	K.light(crown, 30, 0.9, "ffd9a8")
-	col("WellColumnCap", 19.9, 20.7, 4.8, "cfc8ba", MAT.Plastic).MaterialVariant = "TrPlaster"
-	col("WellColumnFinial", 20.7, 21.6, 2.0, "b39257", MAT.Metal)
+	-- the well's middle (judge round 10: no centre hero; a tall column hid the middle bay): a still pool under the disc of
+	-- sky, a broad stone basin a step up, its water dark and glassy; standing in it on a cradle the kit's chunky stone ring
+	-- (st_halo), its opening framing the middle bay from the spawn's axis; a warm band under the basin's lip
+	K.cyl(F0, "Shell", "WellDais", 0, 0, 0.8, W_CZ, 22, "b9b2a5", MAT.Plastic).MaterialVariant = "TrPlaster"
+	K.cyl(F0, "Shell", "PoolWall", 0, 0.8, 3.0, W_CZ, 17.4, "d9d2c5", MAT.Plastic).MaterialVariant = "TrPlaster"
+	K.cyl(F0, "Shell", "PoolLip", 0, 3.0, 3.4, W_CZ, 18.2, "cfc8ba", MAT.Plastic).MaterialVariant = "TrPlaster"
+	K.cyl(F0, "Scenery", "PoolBed", 0, 3.0, 3.1, W_CZ, 15.8, "2f3540", MAT.Slate).MaterialVariant = "TrSlate"
+	local water = K.cyl(F0, "Shell", "PoolWater", 0, 3.1, 3.25, W_CZ, 15.8, "3d4a58", MAT.Glass)
+	water.Transparency = 0.2; water.Reflectance = 0.35
+	K.light(K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 14, 0.45, "ffd9a8")
 	-- a slim lit recess on every bare stretch of the drum: between the bays and either end by the flat wall
 	for _, ad in { 163, 207, 249, 291, 333, 17 } do
 		local q = math.rad(ad)
@@ -469,6 +458,16 @@ function HS.build(K, parent, name, site, live)
 	-- ============================================================== THE FISSURE (zombies, south-east)
 	local zx, zz = math.cos(math.rad(45)), math.sin(math.rad(45))
 	K.zombieRoom(CFrame.lookAt(Vector3.new(34.5 * zx, DECK, 34.5 * zz), Vector3.new(35.5 * zx, DECK, 35.5 * zz)), { x0 = -11, x1 = 11, t = 11.5, d = 18, h = 9.5, door = 9, guideSide = 1 })
+	-- (judges: the askew plywood ZOMBIES board read as a wooden board stuck on at an angle) hung level on the hub's own plate
+	for _, d in f:GetDescendants() do
+		if d.Name == "ZmSign" and d:IsA("BasePart") then
+			local lv = d.CFrame.LookVector
+			local flat = Vector3.new(lv.X, 0, lv.Z)
+			if flat.Magnitude > 0.1 then d.CFrame = CFrame.lookAt(d.Position, d.Position + flat.Unit) end
+			d.Color = Color3.fromHex("4a4f57"); d.Material = MAT.SmoothPlastic; d.MaterialVariant = ""
+			for _, t in d:GetDescendants() do if t:IsA("TextLabel") then t.TextColor3 = Color3.fromHex("f2f0ea") end end
+		end
+	end
 
 	-- ============================================================== THE PLATEAU: three big mesas round the rim
 	for i, m in { { 60, 96, 30, 22, 36, "8a857d" }, { 104, 90, 28, 20, 28, "7c7872" }, { 160, 94, 34, 24, 40, "85817a" } } do
@@ -525,10 +524,10 @@ function HS.walks(K)
 		{ "the crater floor west of the monument", F0, -11.5, -7, -22, 14, 0 },
 		{ "the crater floor east of the monument", F0, 7, 12, -22, 14, 0 },
 		{ "the throat", F0, -8, 8, -46, -26, 0 },
-		{ "the well's south floor", F0, -28, 28, -56, -47, 0 },
-		{ "the well's west floor", F0, -40, -10, -90, -57, 0 },
-		{ "the well's east floor", F0, 10, 40, -90, -57, 0 },
-		{ "the well's north floor", F0, -14, 14, -110, -76, 0 },
+		{ "the well's south floor", F0, -28, 28, -54, -47, 0 },
+		{ "the well's west floor", F0, -40, -12, -90, -57, 0 },
+		{ "the well's east floor", F0, 12, 40, -90, -57, 0 },
+		{ "the well's north floor", F0, -14, 14, -110, -78, 0 },
 		{ "the passage to the gym", F0, 36, 54, -6, 6, DECK },
 		{ "the passage to the armory", F0, -60, -36, -5, 5, DECK },
 		{ "into the lounge", FL, -3, 3, -18, 0, 0 },
