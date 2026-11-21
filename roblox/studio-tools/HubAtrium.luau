@@ -96,7 +96,7 @@ function HA.build(K, parent, name, site, live)
 		box(sideF(bc), "Scenery", "CornerFinFace", -0.9, 0.9, 0, Y2 - 1.6, -rc + 4.2, -rc + 4.7, P.pier)
 	end
 	-- (the classic boards say nothing at rest: one sign says how the pads work, under the north gallery's fascia, facing the spawn)
-	K.wordSign(sideF(0) * CFrame.new(0, 0, -(RV - 0.15)) * CFrame.Angles(0, math.pi, 0), "Scenery", "WaySign", 14, 1.7, 0, 12.2, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
+	K.wordSign(sideF(0) * CFrame.new(0, 0, -(RV - 0.15)) * CFrame.Angles(0, math.pi, 0), "Scenery", "WaySign", 14, 1.7, 0, 10.2, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
 
 	-- ============================================================== THE MIDDLE: the island and the screen
 	cyl(F0, "Shell", "Island", 0, 0, 0.5, 0, 17, P.creamHi)
@@ -185,6 +185,20 @@ function HA.build(K, parent, name, site, live)
 	local DU = { { "stop", 43.6, -14, -90 }, { "via", 43.6, -27.4, -90 }, { "stop", 57, -27.4, 180 }, { "via", 70.4, -27.4, 90 }, { "stop", 70.4, -14, 90 } }
 	K.npc(Fg, "Dune", DU[1][2], 0, DU[1][3], DU[1][4])
 	for i, w in DU do K.npcPoint(Fg, "Dune", i, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil }) end
+	-- (21 Nov, the judges: in the Atrium's bright sandy light the pastel halves bloomed to white and the jump pads' white
+	-- discs outshone them) the plates a step deeper, their glow fainter while open; the jump pads calmer
+	for _, d in f:GetDescendants() do
+		if d:IsA("BasePart") and d.Name:match("^Side%d") and d.Parent and d.Parent.Parent == f.QueuePads then
+			local t = d:GetAttribute("Team")
+			if t and K.TEAM_MUTED[t] then local c = K.c3(K.TEAM_MUTED[t]); d.Color = Color3.new(c.R * 0.68, c.G * 0.68, c.B * 0.68) end
+		elseif d:IsA("BasePart") and d.Name == "Glow" and d.Parent and d.Parent.Parent == f.QueuePads then
+			d:SetAttribute("GlowOpen", 0.85); d:SetAttribute("GlowTaken", 0.4); d.Transparency = 0.85
+		elseif d:IsA("BasePart") and d.Name == "JumpRing" then d.Transparency = 0.82
+		elseif d:IsA("BasePart") and d.Name == "PadGlow" and d.Parent and d.Parent.Name == "JumpPad" then
+			d:SetAttribute("BreatheLo", 0.4); d:SetAttribute("BreatheHi", 0.72); d.Transparency = 0.4
+			local l = d:FindFirstChildOfClass("PointLight"); if l then l.Brightness = 0.4 end
+		end
+	end
 	return f
 end
 
