@@ -14,7 +14,7 @@
 local Players = game:GetService("Players")
 
 local HubTravel = {}
-HubTravel.DEFAULT = "square" -- (20 Nov, all three hubs live: main's call, the owner told; the ring is retired to a spare)
+HubTravel.DEFAULT = "classic" -- (21 Nov, the owner: THE ROTUNDA, pre-v3, is the default "until we fix the other ones"; "square" before)
 HubTravel.REACH = 520 -- (studs from a hub's site that count as being in it)
 HubTravel.COOLDOWN = 3
 
