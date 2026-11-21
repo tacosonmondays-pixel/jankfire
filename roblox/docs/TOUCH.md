@@ -78,7 +78,7 @@ button resizer for mobile players, and they can move buttons where they want".
 ### The layout (`src/client/TouchLayout.luau`)
 
 - Every touch thing is a record: the ten buttons (FIRE, JUMP, SLIDE, AIM, HOOK, STAB, SWAP, RELOAD, the katana's WAVE
-  / the Scythe's FORM, YANK), the top row (SETTINGS, AUTO, EMOTE), the move stick, and the HUD's two boxes: WEAPON
+  / the Scythe's FORM, YANK), the top row (SETTINGS, AUTO, EMOTE, and SCORES in a match: the scoreboard, tap to show and hide), the move stick, and the HUD's two boxes: WEAPON
   (Utility's item plate, FightHud's ammo plate and the three slot chips, stacked) and HEALTH (the speed plate over a
   slimmer health plate). Each has a place (its middle in thousandths of the safe area; none = its default place), a
   size (60-160 %), its own opacity (20-100 % of the TOUCH tab's BUTTON OPACITY), an action, and hidden or not.

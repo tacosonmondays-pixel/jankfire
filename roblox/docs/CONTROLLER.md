@@ -37,11 +37,12 @@ Rebind on the CONTROLLER tab or in the KEYBINDS' CONTROLLER column. Select a but
 | D-Right | D-Right | emote wheel (hold, point with the right stick, let go); in a match after GO it is the AUTO GRAPPLE instead (19 Nov: your grapple onto the opponent nearest your aim, 15 s cooldown), the wheel keeps it everywhere else | move / slider up |
 | left stick | left stick | move | move |
 | right stick | right stick | look | scroll |
-| View | Touchpad | the buttons on screen: a pop-up, else the hub's menus and SETTINGS; in a match, SETTINGS | close SETTINGS |
+| View | Touchpad | the buttons on screen: a pop-up, else the hub's menus and SETTINGS; in a match, SETTINGS (on the release; HELD in a match: the scoreboard) | close SETTINGS |
 | Menu | Options | Roblox's own menu (reserved: games can't take it) | — |
 
 - **Why D-Up is shared.** READY only counts in the loadout window before a round, when you're held at your spawn. The goggles flash only counts in play. All 15 pad buttons are in use, so these two share one. Binds' swap logic still keeps a rebind unique.
-- **Why View and not Start.** Start belongs to Roblox (`Binds.RESERVED`). There is no Tab scoreboard either: Tab is Roblox's own player list, and the match score is always on screen. So View is the menu button. It opens SETTINGS directly when SETTINGS is the only thing on screen (in a match).
+- **Why View and not Start.** Start belongs to Roblox (`Binds.RESERVED`). So View is the menu button. It opens SETTINGS directly when SETTINGS is the only thing on screen (in a match).
+- **The match scoreboard (21 Nov 2026):** a keyboard holds Tab; a pad holds View. In a match PadNav waits for View's release: under 0.3 s it's the menus as before, held longer the board shows (PadNav sets the player attribute `PadViewHold`, Scoreboard.client reads it). MATCHMAKING.md, "The match scoreboard on Tab".
 - **No "previous weapon" default.** With three or four slots, Y cycles round them. The KEYBINDS keep slots 1–4 for players who want direct buttons.
 - **Pad-only hold or toggle.** `pad.aimToggle` (hold), `pad.crouchToggle` (hold) and `pad.sprintToggle` (toggle). Binds reads them when the last press was a pad's (`lastPad`), so a keyboard player's own setting is untouched.
 

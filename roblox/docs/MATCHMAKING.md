@@ -817,6 +817,37 @@ The owner: "can there be a board where you can specate current games?" (commits 
   ![the WATCH panel](matchmaking/64_spectate_panel.jpg)
   ![watching a match](matchmaking/65_spectate_view.jpg)
 
+### The match scoreboard on Tab (21 Nov 2026, place version 1355)
+
+The owner: "when you press tab in match I want it to pull upa coreboard".
+
+- **Hold Tab in any match** (duels, team modes, free-for-alls, the classic modes, ranked) and the scoreboard shows; let
+  go and it hides. Tab is rebindable (Settings > KEYBINDS, SCOREBOARD (HOLD)).
+  - A controller holds View: in a match PadNav waits for View's release, so a tap still opens the menus and a hold of
+    0.3 s shows the board.
+  - A phone taps the SCORES pill on the top row (in a match only): tap to show, tap again to hide. It sits in the
+    layout editor like the other pills.
+- **What it shows:** the mode, the round and the score on top (each side's wins in its colour), then each side's
+  strip in its TeamColors colour with its players: K, D, A (you hurt them in the 10 s before a teammate killed them),
+  DMG (damage dealt to the other sides) and PING (Roblox's measure, red from 180 ms). Your own row is lit. A side's
+  empty seats show EMPTY. A free-for-all (1V1V1, a four-way, a classic mode with everyone on one side) is one list,
+  best first, with a colour chip per player. A classic mode shows its own two columns (RUNG, LIVES, KILLS...) as on its
+  end screen. Ranked shows each player's rank badge.
+- **Roblox's own player list** is off while you're in a match, so Tab is only ours there; the hub keeps it.
+- **Files:** `server/Scoreboard.luau` (the board per asker's match through the remote `JankfireRemotes.Scoreboard`,
+  damage and assists from Fight's hurt and kill hooks), `client/ScoreboardUI.luau` (the whole look in one module, for
+  the coming restyle), `client/Scoreboard.client.luau` (when it shows, once-a-second refresh, the player list).
+  Cross-server matches use the same code on the match server.
+- **Studio hook:** `ServerStorage.JankBoardTest` `("fake", player, rows)` fills a match's empty seats with pretend
+  players for photos; `("board", player)` returns the board.
+- **Tested in Studio** (one solo Play): a 2V2 with stand-ins (Tab held: BLOSSOM and SKY, the board updated, released:
+  hidden), the controller hold (the board after 0.3 s, a tap shows nothing), the SCORES pill (on, off), Roblox's list
+  off in the match and on in the hub, and a 1V1V1 as one list. Not run: a real pad (Studio's pretend View doesn't
+  reach PadNav as a gamepad press, so its hold was driven through `PadViewHold`), a phone, and a classic mode.
+
+  ![the 2V2 board on Tab](matchmaking/66_scoreboard_2v2.jpg)
+  ![a 1V1V1 as one list](matchmaking/67_scoreboard_ffa.jpg)
+
 ## 5. How it is built
 
 | file | what |
