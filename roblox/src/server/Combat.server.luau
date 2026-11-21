@@ -18,6 +18,7 @@ local Verdict = require(script.Parent:WaitForChild("Verdict")) -- (weapons batch
 local Dummies = require(script.Parent:WaitForChild("Dummies"))
 local Katana = require(script.Parent:WaitForChild("Katana")) -- (the katana's crit return, edge meter and slash wave: docs/KATANA.md)
 local Zones = require(script.Parent:WaitForChild("Zones")) -- (training: no guard cooldown)
+local Latency = require(script.Parent:WaitForChild("Latency")) -- (20 Nov 2026: each shooter's own lag window for headshots)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -504,8 +505,10 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		})
 		if hwhy then continue end
 		-- head or body: for a one-bullet gun the server looks for itself (a claimed headshot that never crossed the head
-		-- is paid as a body shot)
-		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t), Hitbox.profile(Fight.model(t)), Weapons.precise(W[wid])) then hh = 0 end
+		-- is paid as a body shot). (20 Nov 2026) it looks back along the target's trail only as far as this shooter's own
+		-- round trip lets them have seen it (Latency.window, 0.15 to 0.6 s): a head the target left longer ago was never in
+		-- their sights. the hit itself (line of sight, aimed) still gets the full Fight.LAG, so no honest hit is lost
+		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t, Latency.window(p)), Hitbox.profile(Fight.model(t)), Weapons.precise(W[wid])) then hh = 0 end
 		n = math.min(n, left); hh = math.min(hh, n); left -= n
 		applyHitscan(f, t, wid, n, hh, from :: Vector3, { mul = mul, qs = x.qs == true, ns = x.ns == true })
 		if not f.alive then break end -- a perfect parry can kill the shooter mid-volley

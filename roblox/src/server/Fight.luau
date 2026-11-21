@@ -160,8 +160,9 @@ function Fight.castMap(o: Vector3, d: Vector3, len: number): RaycastResult?
 	mapParams.FilterDescendantsInstances = { map }
 	return workspace:Raycast(o, d * len, mapParams)
 end
--- where the target's feet are and were: now first, then back along the trail for Fight.LAG seconds
-function Fight.path(t: Fighter): { Vector3 }
+-- where the target's feet are and were: now first, then back along the trail for Fight.LAG seconds (win: fewer, for
+-- one shooter's own latency: Latency.window)
+function Fight.path(t: Fighter, win: number?): { Vector3 }
 	local out = {}
 	local feet = Fight.feet(t)
 	if feet then table.insert(out, feet) end
@@ -169,7 +170,7 @@ function Fight.path(t: Fighter): { Vector3 }
 	if tr then
 		local n = now()
 		for i = #tr, 1, -1 do
-			if n - tr[i].t > Fight.LAG then break end
+			if n - tr[i].t > (win or Fight.LAG) then break end
 			table.insert(out, Hitbox.feet(tr[i].p))
 		end
 	end
