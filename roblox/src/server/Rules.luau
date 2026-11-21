@@ -402,8 +402,33 @@ end
 -- lag) somewhere along its recent trail. the web server takes the shooter's word for head or body; with the Sniper's
 -- headshot always lethal, that word is worth too much to take
 Rules.HEAD_PAD = 1
-function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, prof: Hitbox.Prof?): boolean
+-- (owner, 20 Nov 2026: "you can hit the side of heads") a precision gun's (Weapons.precise) headshot: the bullet has to
+-- touch the real head (Hitbox.headRay) within HEAD_PAD_EXACT studs, at a spot along the target's trail or between two
+-- of its samples (EXACT_STEPS a gap: a runner's head moves ~0.5 studs between the 30 a second samples), so real ping
+-- is still paid and a bullet a quarter of a stud past the head is not
+Rules.HEAD_PAD_EXACT = 0.15
+Rules.EXACT_STEPS = 4
+function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, prof: Hitbox.Prof?, exact: boolean?): boolean
 	-- (prof: this body's own head, Hitbox.profile: the whole visible head, as the shooter's client judged it)
+	if exact and prof and prof.r then
+		local pts: { Vector3 } = {}
+		for i, ft in feet do
+			table.insert(pts, ft)
+			local nx = feet[i + 1]
+			if nx and (nx - ft).Magnitude > 0.05 then
+				for j = 1, Rules.EXACT_STEPS - 1 do table.insert(pts, ft:Lerp(nx, j / Rules.EXACT_STEPS)) end
+			end
+		end
+		for _, e in ends do
+			local v = e - eye
+			if v.Magnitude < 1e-3 then continue end
+			local d = v.Unit
+			for _, ft in pts do
+				if Hitbox.headRay(eye, d, ft, prof, Rules.HEAD_PAD_EXACT) then return true end
+			end
+		end
+		return false
+	end
 	for _, e in ends do
 		local v = e - eye
 		if v.Magnitude < 1e-3 then continue end

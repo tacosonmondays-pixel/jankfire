@@ -834,6 +834,13 @@ function Weapons.falloffMul(w: Weapon, dist: number): number
 	return 1 - (1 - f.min) * (dist - f.from) / (f.to - f.from)
 end
 
+-- (owner, 20 Nov 2026: "you can hit the side of heads") a precision gun: one bullet a click, not automatic (the
+-- Sniper, DMR, Lever-Action, Revolver, Pistol, the Scythe's rifle). its headshots need the bullet to touch the real
+-- head (Hitbox.ray's exact), not the web game's wide head box; automatics and shotguns keep the box
+function Weapons.precise(w: Weapon?): boolean
+	return w ~= nil and w.kind == "hitscan" and w.auto ~= true and (w.pellets or 1) <= 1
+end
+
 -- the Revolver's k-th fanned shot in a row (1 = the first after the tap): its damage and its spread (Combat rolls it)
 function Weapons.fanShot(w: Weapon, k: number): (number, number)
 	local F = w.fan :: any
