@@ -13,7 +13,7 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 80061919490804 -- hub_still_kit_16 (the ring a flat stone disc on a wider cradle; kit 15 was 109710328693728)
+HS.KIT = 78365195649000 -- hub_still_kit_17 (a colonnade round the crater; the rim's recesses gone; kit 16 was 80061919490804)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
@@ -35,7 +35,7 @@ local MAT = Enum.Material
 local KIND = { slate = MAT.Slate, concrete = MAT.Concrete, plastic = MAT.SmoothPlastic, neon = MAT.Neon, glass = MAT.Glass, metal = MAT.Metal }
 local PLASTER = { cfc8ba = true, b9b2a5 = true, a39d92 = true, ada79c = true }
 -- (judge round 4, blind against the ring: the bore one sepia; ribs and frames a warm off-white, walls and bay backs mid grey)
-local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "ece4d4", st_holerim = "e2dccf", st_lining = "9f9a90", st_bayline = "8f8c86", st_bayback = "77746e", st_halo = "e6ddcc", st_cradle = "d6cfc1" } -- (judge round 11: frames, ring a warm off-white)
+local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "ece4d4", st_holerim = "e2dccf", st_lining = "9f9a90", st_bayline = "8f8c86", st_bayback = "a8a296", st_halo = "e6ddcc", st_cradle = "d6cfc1" } -- (judge round 11: frames, ring a warm off-white)
 -- (judge round 4 and main: the floating round through a spiked burst read as a cartoon logo prop; the gym's rock slabs as
 -- lumps. Left in the kit, not built)
 local SKIP = { st_round = true, st_roundband = true, st_band = true, st_perch = true, st_shard = true, st_shock = true, st_tooth = true, st_frag = true, st_gymvault = true, st_gymrib = true }
@@ -99,6 +99,9 @@ function HS.build(K, parent, name, site, live)
 			if SKIP[m.Name] then continue end
 			local c = m:Clone()
 			c:PivotTo(site)
+			if m.Name == "st_rim" or m.Name == "st_mono" then -- (judge round 13: muddy, sinking to black: the rock a step lighter)
+				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Color = p.Color:Lerp(Color3.new(1, 1, 1), 0.16) end end
+			end
 			if m.Name == "st_cove" then -- (judge round 12: the cove rings outshone the pads: dimmer, warmer)
 				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Transparency = 0.45; p.Color = Color3.fromHex("d6c4a2") end end
 			end
@@ -189,7 +192,7 @@ function HS.build(K, parent, name, site, live)
 		end
 	end
 	-- lamps: warm low posts round the floor's edge where people stop, white panels under the overhang
-	for _, a in { 35, 145 } do -- (judge round 10: half the bollards)
+	for _, a in {} do -- (judge round 13: no bollards: the colonnade lines the edge)
 		local c, s = math.cos(math.rad(a)), math.sin(math.rad(a))
 		local x, z = 24.6 * c, 24.6 * s
 		-- a chunky pale stone bollard, a warm lit band let in under its cap
@@ -258,6 +261,9 @@ function HS.build(K, parent, name, site, live)
 		K.light(w, 28, 0.9, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
 	end
 	-- (kit 15: the wider bays leave only their jambs between them: no lit recesses on the drum)
+	-- (judge round 13: no exit names from the well's middle) the rooms' names over the throat, on the flat wall, toward the well
+	K.sign(K.facing(0, W_FW - 0.45, 0, -1), "Scenery", "WellExitSign", 26, 2.6, 0, 34.9, 0,
+		{ { "GYM  ·  ARMORY  ·  LOUNGE  ·  ZOMBIES", "f2f0ea", 0.72 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
 	local sky = box(F0, "Scenery", "SkyLight", -0.5, 0.5, W_TOP - 1, W_TOP - 0.8, W_CZ - 0.5, W_CZ + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 	sky.CFrame = site * CFrame.lookAt(Vector3.new(0, W_TOP - 1, W_CZ), Vector3.new(0, 0, W_CZ))
 	K.light(sky, 48, 0.75, "e6edf5", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })

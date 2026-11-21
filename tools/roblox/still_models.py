@@ -283,7 +283,7 @@ def rim():
         # of the portals: every block a built bay
         half = ri * math.sin(math.radians(step / 2)) - 2.0
         rspan = math.degrees(half / ri)
-        if not slot and h > 10 and all(abs((am - pa + 180) % 360 - 180) > math.degrees((hw + 2.5) / ri) + rspan for (pa, hw, oh) in PORTALS.values()):
+        if False and not slot and h > 10 and all(abs((am - pa + 180) % 360 - 180) > math.degrees((hw + 2.5) / ri) + rspan for (pa, hw, oh) in PORTALS.values()):  # (kit 17: no recesses)
             am_r = math.radians(am)
             rc = ri + 0.35
             cutters.append(new_obj(bm_boxc((rc * math.cos(am_r), (3.4 + h - 2.6) / 2, rc * math.sin(am_r)), (1.6, h - 2.6 - 3.4, 2 * half), rot_site(yaw=-am)), 'cutter', 'plastic', 'ffffff'))
@@ -528,6 +528,28 @@ def well():
         coll('WellFace', ((x0 + x1) / 2, (W_TOP + 2) / 2, W_FW + 1.0), (x1 - x0, W_TOP + 2, 2.0))
     coll('WellFace', (0, (BORE_SPRING + BORE_W + W_TOP + 2) / 2, W_FW + 1.0), (2 * BORE_W + 2, W_TOP + 2 - BORE_SPRING - BORE_W, 2.0))
     coll('WellLid', (0, W_TOP + 1.0, W_CZ), (2 * W_OCULUS + 4, 2.0, 2 * W_OCULUS + 4))
+
+COL_R, COL_TOP, COL_W, COL_STEP = 31.6, 18.6, 3.0, 13.0   # kit 17: the crater's colonnade: pier circle, roof's underside, pier size, pier spacing (deg)
+def colonnade():
+    """judge rounds 11-13 (the crater forecourt read as blockout): a chunky pale colonnade round the crater's edge on the
+    terraces, in front of the raw rim, from the monolith's face on the west round the south to its face on the east; a deep
+    roof ring on the piers (open to the crater, set into the rim behind), a cornice and a lip; open at every portal"""
+    a0, a1 = 213.0 + 2.0, 327.0 - 2.0 - 360.0     # (from the monolith's west face round the south to its east face)
+    # the roof ring and its cornice, cut back at the monolith (it starts and ends against the face)
+    def ring_piece(r0, r1, y0, y1, model, hexc, bev):
+        bm = bm_ring_y(r0, r1, y0, y1, a1, a0, segs=200)
+        return new_obj(bm, model, 'plastic', hexc, bev)
+    ring_piece(COL_R - COL_W / 2 - 0.8, RIM_IN + 1.6, COL_TOP, COL_TOP + 2.4, 'st_colroof', PALE2, 0.3)
+    ring_piece(COL_R - COL_W / 2 - 1.3, COL_R - COL_W / 2 + 0.6, COL_TOP + 2.4, COL_TOP + 3.2, 'st_colcap', PALE, 0.25)
+    ring_piece(COL_R - COL_W / 2 - 1.0, COL_R + COL_W / 2, COL_TOP - 1.2, COL_TOP, 'st_colbeam', PALE, 0.3)
+    # the piers: one flanking each portal (the roof spans the opening as a lintel), a regular rhythm along the spawn's
+    # side, one at each end against the monolith
+    for aa in (216.0, 199.5, 161.0, 108.0, 92.0, 76.0, 59.5, 28.5, 336.0, 325.5):
+        c, sn = math.cos(math.radians(aa)), math.sin(math.radians(aa))
+        x, z = COL_R * c, COL_R * sn
+        new_obj(bm_boxc((x, (COL_TOP - 1.2) / 2, z), (COL_W, COL_TOP - 1.2, COL_W), rot_site(yaw=-aa)), 'st_colpier', 'plastic', PALE, 0.4)
+        new_obj(bm_boxc((x, 0.9, z), (COL_W + 1.0, 1.8, COL_W + 1.0), rot_site(yaw=-aa)), 'st_colbase', 'plastic', PALE2, 0.3)
+        coll('ColPier', (x, (COL_TOP - 1.2) / 2, z), (COL_W, COL_TOP - 1.2, COL_W), yaw=-aa)
 
 HALO_Y, HALO_RO, HALO_RI, HALO_D = 9.4, 7.0, 4.9, 1.2   # (kit 16: a flat stone disc with a hole, not a tyre)   # the well's stone ring: centre height, outer/inner radius, depth
 def halo():
@@ -995,5 +1017,5 @@ def export():
     print('COLLISION BOXES', len(COLL))
 
 reset()
-crater(); rim(); plateau(); monolith(); well(); halo(); mouth(); round_(); fragments(); vaults()
+crater(); rim(); plateau(); monolith(); well(); halo(); colonnade(); mouth(); round_(); fragments(); vaults()
 export()
