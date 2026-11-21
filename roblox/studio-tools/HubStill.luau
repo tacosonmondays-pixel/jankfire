@@ -13,7 +13,7 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 78365195649000 -- hub_still_kit_17 (a colonnade round the crater; the rim's recesses gone; kit 16 was 80061919490804)
+HS.KIT = 134412888424041 -- hub_still_kit_18 (smooth plinth meshes, the ring's gold band; kit 17 was 78365195649000, kit 16 80061919490804)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
@@ -102,8 +102,14 @@ function HS.build(K, parent, name, site, live)
 			if m.Name == "st_rim" or m.Name == "st_mono" then -- (judge round 13: muddy, sinking to black: the rock a step lighter)
 				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Color = p.Color:Lerp(Color3.new(1, 1, 1), 0.16) end end
 			end
-			if m.Name == "st_cove" then -- (judge round 12: the cove rings outshone the pads: dimmer, warmer)
-				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Transparency = 0.45; p.Color = Color3.fromHex("d6c4a2") end end
+			if m.Name == "st_cove" then -- (judge rounds 12, 14: the cove rings outshone the pads: dimmer, warmer)
+				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Transparency = 0.62; p.Color = Color3.fromHex("d6c4a2") end end
+			end
+			if m.Name == "st_corbel" then -- (judge round 14: the funnel's tiers one muddy sepia: a step lighter)
+				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Color = p.Color:Lerp(Color3.new(1, 1, 1), 0.12) end end
+			end
+			if m.Name == "st_poolband" or m.Name == "st_haloband" then
+				for _, p in c:GetDescendants() do if p:IsA("BasePart") then p.Transparency = if m.Name == "st_poolband" then 0.35 else 0.12 end end
 			end
 			if m.Name == "st_round" or m.Name == "st_roundband" then
 				-- (judge round 5: nothing in the crater's middle; main: "serious and sculptural, not a toy bullet": the round stands
@@ -191,6 +197,13 @@ function HS.build(K, parent, name, site, live)
 			end
 		end
 	end
+	-- (judge round 14: the rim's face over the colonnade fell to near-black) warm up-washes from the colonnade's cap
+	for _, a in { 200, 160, 124, 56, 20, -18 } do
+		local c, s = math.cos(math.rad(a)), math.sin(math.rad(a))
+		local u = box(F0, "Scenery", "ColUpWash", -0.5, 0.5, 21.8, 22.0, -0.5, 0.5, P.pale, nil, { ghost = true, tr = 1 })
+		u.CFrame = site * CFrame.lookAt(Vector3.new(31.6 * c, 21.9, 31.6 * s), Vector3.new(44 * c, 40, 44 * s))
+		K.light(u, 32, 0.9, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 90 })
+	end
 	-- lamps: warm low posts round the floor's edge where people stop, white panels under the overhang
 	for _, a in {} do -- (judge round 13: no bollards: the colonnade lines the edge)
 		local c, s = math.cos(math.rad(a)), math.sin(math.rad(a))
@@ -221,15 +234,17 @@ function HS.build(K, parent, name, site, live)
 				local r0, rb = W_R + 1.0, W_R + WB_D - 0.6
 				local F = K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR)
 				local boardAt = K.facing(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, -ux, -uz, WB_FLOOR + 6.2 + 2.75) -- (flat on the back wall: the owner)
-				K.pad(F, md, bank, id, { boardAt = boardAt })
+				K.pad(F, md, bank, id, { boardAt = boardAt, boardTitle = false }) -- (one name per pad: the bay's lintel sign names it)
 			else
 				local r0 = W_R + 2.5
 				K.pad(K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR), md, bank, id, { lampY = 13 })
 			end
 			K.panel(Fb, sd * off, WB_IN, -(W_R + 6.5), 5, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
 			local spot = box(Fb, "Scenery", "PadSpot", sd * off - 0.5, sd * off + 0.5, WB_IN - 0.6, WB_IN - 0.5, -(W_R + 6.5) - 0.5, -(W_R + 6.5) + 0.5, P.pale, nil, { ghost = true, tr = 1 })
-			K.light(spot, 18, 1.25, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 100 }) -- (judge round 12: the pads the brightest things)
+			K.light(spot, 20, 1.8, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 100 }) -- (judge rounds 12, 14: the pads the brightest things)
 		end
+		-- (judge round 14: the pads read as thin strips at the bays' feet) a lit lip along the bay floor's front, under the pads
+		box(Fb, "Scenery", "BayLip", -w / 2 + 0.6, w / 2 - 0.6, 0.32, 0.52, -(W_R - 0.4), -(W_R - 0.48), "f0dcb8", MAT.Neon, { ghost = true, noshadow = true }).Transparency = 0.2
 		local sx, sz2 = ux * (W_R - 3.42), W_CZ + uz * (W_R - 3.42)
 		K.sign(K.facing(sx, sz2, -ux, -uz, 17.8), "Scenery", "BaySign", math.min(21, w - 4), 3.0, 0, 0, 0,
 			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
@@ -254,11 +269,21 @@ function HS.build(K, parent, name, site, live)
 	local band = K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true })
 	band.Transparency = 0.35 -- (judge round 12: dimmer than the pads)
 	K.light(band, 14, 0.3, "ffd9a8")
+	if lib and lib:FindFirstChild("st_dais") then -- (judge round 14: the cylinders' facets showed: the kit's smooth meshes show instead)
+		for _, d in f:GetDescendants() do
+			if d:IsA("BasePart") and (d.Name == "WellDais" or d.Name == "PoolWall" or d.Name == "PoolLip" or d.Name == "PoolBand") then d.Transparency = 1; d.CastShadow = false end
+		end
+	end
+	do -- (judge round 14: the ring had no light of its own: a spot on its face from over the throat)
+		local s = box(F0, "Scenery", "RingSpot", -0.5, 0.5, 23, 23.2, -48.5, -47.5, P.pale, nil, { ghost = true, tr = 1 })
+		s.CFrame = site * CFrame.lookAt(Vector3.new(0, 23, -48), Vector3.new(0, 9.4, W_CZ))
+		K.light(s, 36, 1.1, "fff1df", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 34 })
+	end
 	-- the well's curved wall by the flat wall's two ends washed warm (judge round 12: it fell to black)
 	for _, sd in { -1, 1 } do
 		local w = box(F0, "Scenery", "WellEndWash", sd * 26 - 0.5, sd * 26 + 0.5, 15, 15.2, -56.5, -55.5, P.pale, nil, { ghost = true, tr = 1 })
 		w.CFrame = site * CFrame.lookAt(Vector3.new(sd * 26, 15, -56), Vector3.new(sd * 47, 8, -52))
-		K.light(w, 28, 0.9, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
+		K.light(w, 30, 1.3, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 }) -- (judge round 14: still near-black)
 	end
 	-- (kit 15: the wider bays leave only their jambs between them: no lit recesses on the drum)
 	-- (judge round 13: no exit names from the well's middle) the rooms' names over the throat, on the flat wall, toward the well
@@ -362,7 +387,7 @@ function HS.build(K, parent, name, site, live)
 	for _, x in { 62, 78, 94, 110 } do box(FG, "Scenery", "GymBeam", x - 1.3, x + 1.3, 14.0, 15.98, -42, 42, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster" end -- (regular beams on one plane)
 	for _, x in { 70, 86, 102 } do K.panel(FG, x, 16, 0, 5, 9, { bright = 0.45, range = 30 }) end -- (panels flush in the lid between them)
 	for _, x in { 62, 86, 110 } do for _, z in { -24, 24 } do -- (judge round 12: the lid fell to black: soft warm fills just under it)
-		K.light(box(FG, "Scenery", "GymFill", x - 0.3, x + 0.3, 14.6, 14.8, z - 0.3, z + 0.3, P.pale, nil, { ghost = true, tr = 1 }), 22, 0.45, "fff1df")
+		K.light(box(FG, "Scenery", "GymFill", x - 0.3, x + 0.3, 14.6, 14.8, z - 0.3, z + 0.3, P.pale, nil, { ghost = true, tr = 1 }), 22, 0.7, "fff1df") -- (judge round 14: the lid still near-black)
 	end end
 	for _, d in f:GetDescendants() do -- (judge round 6: black post caps, near-black back walls)
 		if not before[d] and d:IsA("BasePart") then
@@ -456,8 +481,9 @@ function HS.build(K, parent, name, site, live)
 	for i = 1, #BEAMS - 1 do K.panel(FL, 0, LH, (BEAMS[i] + BEAMS[i + 1]) / 2, 8, 4, { bright = 0.55, range = 18 }) end
 	for _, pz in { { -1, -6 }, { -1, -15.5 }, { -1, -24 }, { -1, -42 }, { 1, -6 }, { 1, -24 }, { 1, -33 }, { 1, -42 } } do
 		local sd, z = pz[1], pz[2]
-		lbox("Pier", math.min(sd * (LW - 2.4), sd * LW), math.max(sd * (LW - 2.4), sd * LW), 0, LH - 3, z - 1.6, z + 1.6, "9a958c", MAT.Slate, { scen = true, solid = true }) -- (a paler rock: they fell to black in shadow)
+		lbox("Pier", math.min(sd * (LW - 2.4), sd * LW), math.max(sd * (LW - 2.4), sd * LW), 0, LH - 3, z - 1.6, z + 1.6, "aca69b", MAT.Slate, { scen = true, solid = true }) -- (judge rounds 13-14: they fell to black in shadow: paler)
 	end
+	for _, z in { -10, -28 } do K.light(box(FL, "Scenery", "PierFill", -LW + 4.5, -LW + 5, LH - 5, LH - 4.8, z - 0.25, z + 0.25, P.pale, nil, { ghost = true, tr = 1 }), 16, 0.55, "ffe9cf") end
 	-- the shop on the east wall, the bar on a step on the west, the arcade, the tables, the seats in the pit
 	local beforeS = DR.snap(f)
 	K.shop(K.at(FL, 19, -15, 90), 13.4)
