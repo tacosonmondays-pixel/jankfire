@@ -55,9 +55,9 @@ L.SPOTS = {
 		area = "training: on the course's TOP by the egg door (x -304), facing it, waiting at the gate" },
 	sharon = { at = Vector3.new(-20, 256, -8471), look = Vector3.new(-10, 0, -9), visit = Vector3.new(-6, 0, -6),
 		area = "back lot: the house's first floor, the north-east corner" },
-	-- (19 Nov 2026: the hub's new layout put the old gym's corner outside the walls; the hub session moved him into the big gym)
-	dumpling = { at = Vector3.new(-86, 240, -10005.25), look = Vector3.new(1.1, 0, 1), visit = Vector3.new(5, 0, 3),
-		area = "the Rotunda: the big gym's north-west corner by its door, peeking at the first ring (well off Dune's walk)" },
+	-- (21 Nov 2026: the ring is retired; his home is THE SQUARE's gym now, x -166..-102, z -12632..-12568)
+	dumpling = { at = Vector3.new(-162, 240, -12572), look = Vector3.new(1.1, 0, -1.3), visit = Vector3.new(4, 0, 1),
+		area = "the Square's gym: the south-west corner, peeking at the third ring (well off Dune's walk round the first)" },
 	pallet_jack = { at = Vector3.new(13, 242, -8276), look = Vector3.new(-1, 0, 0), visit = Vector3.new(-7, 0, 0),
 		area = "back lot: in the bay inside the garage, among the drums and tyres" },
 	eotm = { at = Vector3.new(-120, 303, -8684), look = Vector3.new(0, 0, 1), visit = Vector3.new(3, 0, -4),
