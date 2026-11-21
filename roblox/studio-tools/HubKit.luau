@@ -1182,8 +1182,15 @@ function K.padClassic(F, md, bank, name, o)
 	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
 	local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, "28324a", nil, { parent = m })
 	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
-	K.text(scr, Enum.NormalId.Front, { { md.title .. "  " .. md.kind, "f2f0ea", 0.26 }, { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.44 else 0.36 },
-		{ "", "c8d0e0", 0.1, "S" } }, { names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
+	-- (21 Nov, the judges: one name per pad. With a plaque (o.headerAt) the plaque names the mode and the board only
+	-- counts; without one the board's first line names it. o.boardTitle = true / false forces either)
+	local cl = { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.44 else 0.36 }
+	if o.boardTitle == false or (o.boardTitle == nil and o.headerAt ~= nil) then
+		K.text(scr, Enum.NormalId.Front, { cl, { "", "c8d0e0", 0.1, "S" } }, { names = { "Status", "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
+	else
+		K.text(scr, Enum.NormalId.Front, { { md.title .. "  " .. md.kind, "f2f0ea", 0.26 }, cl, { "", "c8d0e0", 0.1, "S" } },
+			{ names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
+	end
 	K.light(scr, 14, 0.45, "dfe8ff")
 	-- the mode's plaque over the board (o.headerAt), in the hub's sign family
 	if o.headerAt then K.wordSign(o.headerAt, "Scenery", "PadHeader", o.headerW or 9, 2.4, 0, 0, 0, md.title, { accent = o.accent or S.accent, bg = "28324a" }) end

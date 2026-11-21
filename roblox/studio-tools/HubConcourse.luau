@@ -51,7 +51,7 @@ function HC.build(K, parent, name, site, live)
 	end
 	-- the roof: beams across every 10, the nave's panels between them
 	for z = -65, 65, 10 do box(F0, "Scenery", "CeilingBeam", -26, 26, T - 2.6, T, z - 0.7, z + 0.7, P.cream, nil, { ghost = true }) end
-	for z = -60, 60, 10 do K.panel(F0, 0, T, z, 12, 8.4, { bright = 0.75, range = 40 }) end
+	for z = -60, 60, 10 do K.panel(F0, 0, T, z, 10, 6, { bright = 0.6, range = 40, hex = "d9d0bf" }) end -- (21 Nov, the judges: a step down, the pads the brightest)
 	for _, s in { -1, 1 } do box(F0, "Scenery", "RoofEdgeBeam", s * 25.3, s * 26.7, T - 2.6, T, -70, 70, P.cream, nil, { ghost = true }) end
 
 	-- ============================================================== THE PAD BAYS (under the mezzanine)
@@ -103,7 +103,7 @@ function HC.build(K, parent, name, site, live)
 	for _, s in { -1, 1 } do for _, x in { 17, 25 } do box(F0, "Scenery", "EndPilaster", s * x - 0.8, s * x + 0.8, 0, T, 69.4, 70, P.pier) end end
 	box(F0, "Scenery", "EndCornice", -26.3, 26.3, 15.4, 16.2, 69.3, 70, P.cream)
 	box(F0, "Scenery", "EndBand", -26.3, 26.3, 24, 24.6, 69.2, 70, P.cream)
-	for _, x in { -8.5, 8.5 } do K.panel(F0 * CFrame.new(0, 0, 0), x, T, 64, 8, 6, { bright = 0.7, range = 36 }) end
+	for _, x in { -8.5, 8.5 } do K.panel(F0 * CFrame.new(0, 0, 0), x, T, 64, 8, 6, { bright = 0.55, range = 36, hex = "d9d0bf" }) end
 
 	-- ============================================================== THE MIDDLE ISLAND and the big screen
 	for _, zc in { 17, -3, -26 } do
@@ -158,6 +158,14 @@ function HC.build(K, parent, name, site, live)
 	local DU = { { "stop", -15, -73.6, 0 }, { "via", -28.6, -73.6, 90 }, { "stop", -28.6, -86, -90 }, { "via", -28.6, -98.6, 0 }, { "stop", -15, -98.6, 180 } }
 	K.npc(F0, "Dune", DU[1][2], 0, DU[1][3], DU[1][4])
 	for k, w in DU do K.npcPoint(F0, "Dune", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil }) end
+	-- (21 Nov, the judges: the jump pads' rings and the loadout plinth's ring outshone the pads from the spawn: calmer)
+	for _, d in f:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == "JumpRing" then d.Transparency = 0.82
+		elseif d:IsA("BasePart") and d.Name == "PadGlow" and d.Parent and d.Parent.Name == "JumpPad" then
+			d:SetAttribute("BreatheLo", 0.4); d:SetAttribute("BreatheHi", 0.72); d.Transparency = 0.4
+			local l = d:FindFirstChildOfClass("PointLight"); if l then l.Brightness = 0.4 end
+		elseif d:IsA("BasePart") and (d.Name == "PlinthRing" or d.Name == "PlinthLens") then d.Transparency = 0.45 end
+	end
 	return f
 end
 
