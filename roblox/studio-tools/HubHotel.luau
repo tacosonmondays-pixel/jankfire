@@ -345,14 +345,11 @@ function HH.build(K, parent, name, site, live)
 		-- the recess's back wall, the plaque under the cove)
 		local dp = (K.CLASSIC_SIZE[md.id] or { 13.6, 11 })[2]
 		local fx = 24.2 - dp
-		-- (the owner, go-live: "angle the screens") the board and its plaque turned 35 degrees toward the hall's doors, so every
-		-- mode reads from the entrance; each held off the recess's back wall on a short arm
-		local A = math.rad(35)
+		-- (the owner, 21 Nov: "changed my mind no angeld") the board and its plaque FLAT on the recess's back wall, as on the
+		-- Rotunda: the board's middle at 9.8, the plaque over it at 14.6
 		for _, s in { -1, 1 } do
-			local nx, nz = -s * math.cos(A), math.sin(A)
 			K.pad(K.facing(s * fx, z, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
-				{ lampY = 16, boardAt = K.facing(s * 24.6, z, nx, nz, 9.8), headerAt = K.facing(s * 24.6, z, nx, nz, 14.8), accent = PAL.accent })
-			for _, y in { 9.8, 14.8 } do box(F0, "Scenery", "BoardArm", s * 25.0, s * 28.5, y - 0.35, y + 0.35, z - 0.35, z + 0.35, PAL.wood) end
+				{ lampY = 16, boardAt = K.facing(s * 28.45, z, -s, 0, 9.8), headerAt = K.facing(s * 28.45, z, -s, 0, 14.6), accent = PAL.accent })
 		end
 		for _, s in { -1, 1 } do
 			box(F0, "Scenery", "Threshold", s * 3.45, s * fx, 0, 0.04, z - 1.5, z + 1.5, WALK)
@@ -452,7 +449,7 @@ function HH.build(K, parent, name, site, live)
 	local mirror = box(F0, "Scenery", "Mirror", 42.2, 49.8, 7.9, 11.7, BZa + 0.4, BZa + 0.5, "7d878c", MAT.Glass) -- (darker: it read as an empty white frame)
 	mirror.Reflectance = 0.35
 	K.tableSpot(K.at(F0, 40, 15, 0), "board"); K.tableSpot(K.at(F0, 52, 23, 0), "arm")
-	K.arcadeSpot(K.at(F0, 36, 29.6, 0)); K.arcadeSpot(K.at(F0, 42, 29.6, 0))
+	K.arcadeSpot(K.at(F0, 36, 28.5, 0)); K.arcadeSpot(K.at(F0, 42, 28.5, 0)) -- (hub-minigames: the 2.8-deep cabinets clear the wall)
 	K.codePanelSpot(K.at(F0, 46, BZb, 0)) -- (on the S wall, looking north into the bar)
 	palm(64, 0.5); palm(59.5, 28.2) -- (the second palm clear of the golf door's new frame)
 	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = -50, z1 = 44, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
@@ -500,6 +497,8 @@ function HH.build(K, parent, name, site, live)
 				u.Text = if d.Name == "SpectatePanel" then "LIVE MATCHES" elseif (d.Position - (HH.SITE).Position).X < 0 then "DUELS" else "PARTIES"
 			end
 		elseif d:IsA("Frame") and d.Parent and d.Parent:IsA("SurfaceGui") and d.Parent.Parent and d.Parent.Parent.Name == "CountBoard" then d.BackgroundColor3 = K.c3(NAVY)
+		elseif d:IsA("BasePart") and d.Name == "MiniGameSpot" and d:GetAttribute("Game") == "golf" then
+			d:SetAttribute("Door", Vector3.new(-28, 0, 30)) -- (hub-minigames: the PLAY prompt just inside the golf room's door; LEAVE puts golfers back there)
 		elseif d:IsA("BasePart") and d.Name == "TableRug" then d.Color = K.c3("8f8a76"); d.Material = MAT.SmoothPlastic -- (the kit's rug is near-black in the lounge's warm light)
 		elseif d:IsA("BasePart") and d.Name:match("^ht_vault%d") then d.Color = K.c3("bdb09b") -- (round 3: the vault a step down: the pads the brightest)
 		elseif d:IsA("BasePart") and d.Name == "StoolStem" then d.Size = Vector3.new(d.Size.X, 1.2, 1.2) -- (thick pedestals)

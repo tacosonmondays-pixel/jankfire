@@ -92,30 +92,35 @@ function HS.build(K, parent, name, site, live)
 	K.travelTerminal(K.at(F0, 9, 25, -20))
 
 	-- ============================================================== N: THE PADS GALLERY
-	-- 40 wide, the gates in its walls (5 a side, 1v1 nearest the square), a coffered ceiling, the trophy wall at its end
-	local NZ0, NZ1, NH = -34, -98, 20
+	-- (21 Nov: the CLASSIC pads, the owner's pick, as in THE HOTEL) 50 wide, five bays a side 17 long between chunky fins,
+	-- 1V1 nearest the square; each pad flush in front of its bay's wall, its board and mode plaque FLAT on the wall (the
+	-- owner: "no angeld"); a coffered ceiling, the trophy wall at its end
+	local BAY = 17
+	local NZ0, NH = -34, 20
+	local NZ1 = NZ0 - 5 * BAY - 6
 	box(F0, "Shell", "Floor", -25, 25, -1, 0, NZ1, NZ0, P.floor2)
 	box(F0, "Scenery", "Runner", -6, 6, 0, 0.05, NZ1 + 5, NZ0, P.runner, MAT.Fabric)
 	box(F0, "Shell", "Roof", -27, 27, NH, NH + 1, NZ1 - 2, NZ0, P.dome)
 	box(F0, "Shell", "Wall", -27, 27, 0, NH, NZ1 - 2, NZ1, P.wallLt)
-	local GZ = { -44, -56, -68, -80, -92 }
 	for _, s in { -1, 1 } do
 		box(F0, "Shell", "Wall", s * 25, s * 27, 0, NH, NZ1, NZ0, P.wallLt)
-		local edges = { NZ0 }
-		for _, zc in GZ do table.insert(edges, zc + 5); table.insert(edges, zc - 5) end
-		table.insert(edges, NZ1)
-		for i = 1, #edges, 2 do
-			box(F0, "Shell", "GateFin", s * 20, s * 25, 0, NH, edges[i + 1], edges[i], P.wallLt2)
-			if edges[i] - edges[i + 1] > 1 then box(F0, "Scenery", "FinPilaster", s * 19.6, s * 20.05, 0, NH - 1.2, edges[i + 1] + 0.2, edges[i] - 0.2, P.pier) end
+		for k = 0, 5 do -- (the fins between the bays, chunky, a pilaster face on each)
+			local z = NZ0 - k * BAY
+			box(F0, "Shell", "GateFin", s * 22.6, s * 25, 0, NH, z - 1.3, z + 1.3, P.wallLt2)
+			box(F0, "Scenery", "FinPilaster", s * 22.2, s * 22.65, 0, NH - 1.2, z - 1.0, z + 1.0, P.pier)
 		end
-		for k, zc in GZ do
-			box(F0, "Shell", "GateWallOver", s * 20, s * 25, 12.2, NH, zc - 5, zc + 5, P.wallLt2)
-			local md = K.MODES[k]
-			K.gatePad(K.facing(s * 20, zc, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e")
+		for i, md in K.MODES do
+			local zc = NZ0 - BAY / 2 - (i - 1) * BAY
+			local dp = (K.CLASSIC_SIZE[md.id] or { 13.6, 11 })[2]
+			K.pad(K.facing(s * (22.4 - dp), zc, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
+				{ boardAt = K.facing(s * 24.95, zc, -s, 0, 9.8), headerAt = K.facing(s * 24.95, zc, -s, 0, 14.6) })
+			box(F0, "Scenery", "PadThreshold", s * 6, s * (22.4 - dp), 0, 0.05, zc - 1.5, zc + 1.5, P.floor, nil)
 		end
 	end
-	for _, zc in { -50, -62, -74, -86 } do box(F0, "Scenery", "CeilingBeam", -20, 20, NH - 1.6, NH, zc - 0.6, zc + 0.6, P.cream, nil, { ghost = true }) end
-	for _, zc in GZ do K.panel(F0, 0, NH, zc, 14, 6, { bright = 0.95, range = 30 }) end
+	for k = 1, 4 do box(F0, "Scenery", "CeilingBeam", -22.6, 22.6, NH - 1.6, NH, NZ0 - k * BAY - 0.6, NZ0 - k * BAY + 0.6, P.cream, nil, { ghost = true }) end
+	for k = 0, 4 do K.panel(F0, 0, NH, NZ0 - BAY / 2 - k * BAY, 14, 6, { bright = 0.95, range = 30 }) end
+	-- (one sign at the gallery's mouth says how the pads work: the boards don't)
+	K.wordSign(K.facing(0, NZ0 - 2, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 16.6, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
 	K.trophyWall(K.at(F0, 0, NZ1 + 0.05, 180)) -- (its look south, into the gallery)
 
 	-- ============================================================== E: THE GYM
@@ -197,7 +202,7 @@ function HS.walks(K)
 	local F0 = CFrame.new()
 	return {
 		{ "the square, spawn round the tower", F0, 11.5, 17, -14, 18 }, { "the square, the tower to the pads", F0, -10, 10, -32, -12 },
-		{ "the pads gallery's aisle", F0, -8, 8, -94, -34 },
+		{ "the pads gallery's aisle", F0, -8, 8, -118, -36 },
 		{ "the square to the gym", F0, 22, 38, -6, 6 }, { "the square to the armory", F0, -40, -24, -5, 5 },
 		{ "the square to the lounge", F0, -3, 3, 26, 88 }, { "the street to the golf room", F0, -32, -20, 43, 49 },
 		{ "into the zombies room", F0, 28.5, 31.5, 26, 39 },
@@ -205,7 +210,7 @@ function HS.walks(K)
 end
 function HS.leaks()
 	local F0 = CFrame.new()
-	return { { F0, 0, 8, 10 }, { F0, 0, 20, 0 }, { F0, 0, 8, -70 }, { F0, 66, 10, 0 }, { F0, -56, 8, 0 }, { F0, 0, 8, 62 }, { F0, -55, 8, 85 }, { F0, 0, 6, 104 }, { F0, 40, 6, 44 } }
+	return { { F0, 0, 8, 10 }, { F0, 0, 20, 0 }, { F0, 0, 8, -70 }, { F0, 0, 8, -112 }, { F0, 66, 10, 0 }, { F0, -56, 8, 0 }, { F0, 0, 8, 62 }, { F0, -55, 8, 85 }, { F0, 0, 6, 104 }, { F0, 40, 6, 44 } }
 end
 HS.SHOTS = {
 	{ "spawn", Vector3.new(0, 5.4, 27), Vector3.new(0, 9.5, -20) },
