@@ -1193,7 +1193,7 @@ function K.padClassic(F, md, bank, name, o)
 	end
 	K.light(scr, 14, 0.45, "dfe8ff")
 	-- the mode's plaque over the board (o.headerAt), in the hub's sign family
-	if o.headerAt then K.wordSign(o.headerAt, "Scenery", "PadHeader", o.headerW or 9, 2.4, 0, 0, 0, md.title, { accent = o.accent or S.accent, bg = "28324a" }) end
+	if o.headerAt then K.wordSign(o.headerAt, "Scenery", "PadHeader", o.headerW or 9, o.headerH or 2.4, 0, 0, 0, md.title, { accent = o.accent or S.accent, bg = "28324a" }) end
 	return m
 end
 function K.pad(F, md, bank, name, o)

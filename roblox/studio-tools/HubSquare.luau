@@ -111,10 +111,10 @@ function HS.build(K, parent, name, site, live)
 	local function sideF(t) return CFrame.lookAt(C, C + dir(t)) end
 	local RV = AP / math.cos(HALF) -- (a corner's distance)
 	-- the floor, the roof (a slab over the whole court; the corners outside its walls closed in)
-	box(F0, "Shell", "Floor", -RV - 2.4, RV + 2.4, -1, 0, CZ - RV - 2.4, VZ1, P.floor2)
+	box(F0, "Shell", "Floor", -RV - 2.4, RV + 2.4, -1, 0, CZ - RV - 2.4, VZ1, "9a9286") -- (go-live: a warm mid grey, not the near-black brown)
 	box(F0, "Shell", "Roof", -RV - 2.4, RV + 2.4, NH, NH + 1, CZ - RV - 2.4, VZ1, P.dome)
 	-- the vestibule: 18 wide, its walls closing the square's 36-wide opening down to it; a lower ceiling
-	box(F0, "Shell", "Floor", -9.1, 9.1, -1, 0, VZ1, VZ0, P.floor2)
+	box(F0, "Shell", "Floor", -9.1, 9.1, -1, 0, VZ1, VZ0, "9a9286")
 	box(F0, "Shell", "Roof", -11.1, 11.1, 14, 15, VZ1, VZ0, P.dome)
 	for _, s in { -1, 1 } do
 		box(F0, "Shell", "Wall", s * 9.1, s * 11.1, 0, 14, VZ1, VZ0, P.wallLt)
@@ -153,23 +153,23 @@ function HS.build(K, parent, name, site, live)
 			local F = C + d * (AP - 0.2 - PD)
 			local B = C + d * (AP - 0.05)
 			K.pad(K.facing(F.X, F.Z, d.X, d.Z), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
-				{ dims = { PW, PD }, boardAt = K.facing(B.X, B.Z, -d.X, -d.Z, 9.8), headerAt = K.facing(B.X, B.Z, -d.X, -d.Z, 14.6) })
+				{ dims = { PW, PD }, boardAt = K.facing(B.X, B.Z, -d.X, -d.Z, 9.8), headerAt = K.facing(B.X, B.Z, -d.X, -d.Z, 15.4), headerW = 10.6, headerH = 3.2 }) -- (go-live, the judges: the plaque bigger)
 		end
 	end
 	-- the lantern: a deep round drum in the ceiling's middle, its lit ring under it
 	cyl(F0, "Scenery", "Lantern", 0, NH - 2.6, NH, CZ, 15, P.cream, nil, { ghost = true })
-	K.light(cyl(F0, "Scenery", "LanternGlow", 0, NH - 2.7, NH - 2.6, CZ, 12.6, P.light, MAT.Neon, { ghost = true, noshadow = true }), 34, 0.7)
+	K.light(cyl(F0, "Scenery", "LanternGlow", 0, NH - 2.7, NH - 2.6, CZ, 12.6, "d8cdb8", MAT.Neon, { ghost = true, noshadow = true, tr = 0.35 }), 34, 0.5) -- (go-live: it blew out in the photos)
 	-- the middle: a big round planted settee on a dais (the walk goes round it)
 	cyl(F0, "Shell", "MidDais", 0, 0, 0.5, CZ, 13, P.pier)
 	cyl(F0, "Scenery", "MidDaisNosing", 0, 0.45, 0.6, CZ, 13.4, P.creamHi)
 	cyl(F0, "Shell", "MidSeat", 0, 0.5, 1.9, CZ, 10.4, P.wood, MAT.Wood)
 	cyl(F0, "Scenery", "MidSeatPad", 0, 1.9, 2.1, CZ, 10, P.carpet2, MAT.Fabric)
-	cyl(F0, "Shell", "MidPlanter", 0, 2.1, 4.2, CZ, 6.2, P.cream)
-	cyl(F0, "Scenery", "MidSoil", 0, 4.2, 4.26, CZ, 5.6, P.soil)
-	K.ball(F0, "Scenery", "Bush", 0, 6.1, CZ, 4.8, P.plant, MAT.Grass)
+	cyl(F0, "Shell", "MidPlanter", 0, 2.1, 2.9, CZ, 6.2, P.cream) -- (go-live: lower, the far 4V4s show over it from the door)
+	cyl(F0, "Scenery", "MidSoil", 0, 2.9, 2.96, CZ, 5.6, P.soil)
+	K.ball(F0, "Scenery", "Bush", 0, 4.3, CZ, 3.6, P.plant, MAT.Grass)
 	for a = 0, 300, 60 do
 		local r = math.rad(a)
-		K.ball(F0, "Scenery", "Bush", math.sin(r) * 1.9, 5.0, CZ + math.cos(r) * 1.9, 2.6, if a % 120 == 0 then P.plant2 else P.plant, MAT.Grass)
+		K.ball(F0, "Scenery", "Bush", math.sin(r) * 1.7, 3.5, CZ + math.cos(r) * 1.7, 1.9, if a % 120 == 0 then P.plant2 else P.plant, MAT.Grass)
 		K.seat(F0, math.sin(r) * 4.5, 2.1, CZ + math.cos(r) * 4.5, a + 180)
 	end
 	do -- (the ranked boards: a lit navy face with its name at rest, under whatever the board shows; no dead black)
