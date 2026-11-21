@@ -480,6 +480,7 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
 - **THE CYLINDER** (`cylinder`, 8 tables with golf): the golf marker was 10 studs off its room's centre, so the course went through a wall. It was centred at version 1312. The room is exactly the course's size, with its door at the side, so the marker carries `Door` (above). The PLAY prompt and LEAVE were Play-tested at the door.
 - **THE HOTEL** (`hotel`, 9 tables, two cabinets): both cabinets sat 1 stud into the lounge wall; they were moved 1.1 out at version 1323. The golf marker carries `Door = (-28, 0, 30)`.
 - **THE STILL** (`still`, 7 tables, no golf): the cabinet sat in the Wall and a Pier, and the board's player B stood up onto the HearthDais. Both were moved at version 1333 and re-checked clear.
+- **THE ROTUNDA** (`classic`, `Map.Hub.Classic`, 4 tables: board, arm, one cabinet, one smaller ring with `Half` 8.7), the default hub from place version 1340: all clean at the first check. The cabinet has 2.1 studs to the wall. The ring's gym walls are 15.5 or more from its middle, out of the follow camera's way.
 - **What a read-only check of a new hub covers:** each marker's `Hub`, the room each table needs, and the floor under it. On top of that:
   - for a ring, nothing inside the ropes;
   - for a cabinet, at least 1.5 studs to the wall behind (the cabinet is 2.8 deep, centred on its marker), and its body, play spot and leave spot clear;
