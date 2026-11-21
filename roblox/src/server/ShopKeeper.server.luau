@@ -61,7 +61,30 @@ local function make(gun: string): Model?
 	if ok and m and m:FindFirstChildWhichIsA("BasePart") then return m end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons") -- (the racks' template, as a last resort)
 	local t = lib and lib:FindFirstChild("w_" .. gun)
-	return if t and t:IsA("Model") then t:Clone() else nil
+	if t and t:IsA("Model") then return t:Clone() end
+	-- (20 Nov 2026) a weapon that is a real Tool (the Shredder: JankfireTools.Shredder, no kit model) shows its own
+	-- visible pieces as a still model, the way Replay copies it into a ghost's hand (206ac2e); settle() quiets it
+	local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+	for _, c in (if tools then tools:GetChildren() else {}) do
+		if c:IsA("Tool") and string.lower(c.Name) == string.lower(gun) then
+			local copy = c:Clone()
+			local m = Instance.new("Model")
+			for _, d in copy:GetChildren() do d.Parent = m end
+			copy:Destroy()
+			-- (no unseen pieces: a clear handle or hitbox would throw the size and the place on the peg)
+			local clear = {}
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") and d.Transparency >= 0.95 then table.insert(clear, d) end
+			end
+			for _, d in clear do
+				for _, k in d:GetChildren() do if k:IsA("BasePart") or k:IsA("Model") then k.Parent = m end end -- (keep what hangs under it)
+				d:Destroy()
+			end
+			if m:FindFirstChildWhichIsA("BasePart", true) then return m end
+			m:Destroy()
+		end
+	end
+	return nil
 end
 
 -- half the box's reach along a direction
