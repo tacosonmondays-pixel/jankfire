@@ -177,6 +177,11 @@ TVR.OnServerEvent:Connect(function(p: Player, op: unknown, look: unknown)
 	-- (21 Nov 2026) either button locks the other for a moment: no pause-then-rewind in one breath
 	local other = if op == "pause" then "tvrewind" else "tvpause"
 	f.gate[other] = math.max(f.gate[other] or -math.huge, n + (w.lock or 0))
+	-- when each button is ready again, in server time, from the server's own gates: the HUD's two circles
+	-- (client/RemoteCooldowns.client.luau) and Arsenal's refused click read these
+	local sn = workspace:GetServerTimeNow()
+	p:SetAttribute("TVPauseT", sn + math.max(0, (f.gate.tvpause or n) - n))
+	p:SetAttribute("TVRewindT", sn + math.max(0, (f.gate.tvrewind or n) - n))
 	Fight.shot(f, "remote")
 	Rules.tagged(t, f, "remote", n) -- (a fall after it is theirs)
 end)

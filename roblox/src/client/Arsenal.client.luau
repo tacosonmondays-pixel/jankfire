@@ -113,6 +113,12 @@ function minigun.trick(name: string, op: string?, cd: number)
 	local lk = workspace.CurrentCamera.CFrame.LookVector
 	if op then r:FireServer(op, lk) else r:FireServer(lk) end
 end
+-- (21 Nov 2026) is this TV Remote button ready (the server's TVPauseT / TVRewindT, server time)? a click before then is
+-- refused there anyway: it gets the dry click instead of the remote's
+function minigun.tvReady(attr: string): boolean
+	local t = me:GetAttribute(attr)
+	return type(t) ~= "number" or workspace:GetServerTimeNow() >= t - 0.02
+end
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -842,9 +848,12 @@ Keys.began(function(io: InputObject, gp: boolean)
 				if ds then Sfx.play(ds) end
 			end
 		elseif W[held] and W[held].kind == "remote" then -- (batch D: the TV Remote's left click pauses whoever you point at)
-			minigun.trick("TVRemote", "pause", 0.3)
-			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
-			Sfx.play(W[held].snd or "click")
+			if not minigun.tvReady("TVPauseT") then Sfx.play("empty") -- (21 Nov 2026: still cooling down, RemoteCooldowns shows it)
+			else
+				minigun.trick("TVRemote", "pause", 0.3)
+				VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
+				Sfx.play(W[held].snd or "click")
+			end
 		elseif W[held] and W[held].kind == "proj" then -- (batch C: the projectiles)
 			local eye, look = eyeAndAim()
 			if minigun.proj.throw(held, eye, look) then VM.kick(W[held].recoilVM, 0.8, false, 1, 1); VM.shot(W[held]); TP.fired(held, false) end
@@ -860,9 +869,12 @@ Keys.began(function(io: InputObject, gp: boolean)
 			if r and r:IsA("RemoteEvent") and not Body.stunned() and os.clock() >= minigun.formUntil then r:FireServer(camera.CFrame.LookVector) end
 		elseif W[held] and W[held].heavy then swing(now, true)
 		elseif W[held] and W[held].kind == "remote" then -- (batch D: the TV Remote's right click rewinds them)
-			minigun.trick("TVRemote", "rewind", 0.3)
-			VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
-			Sfx.play(W[held].snd or "click")
+			if not minigun.tvReady("TVRewindT") then Sfx.play("empty")
+			else
+				minigun.trick("TVRemote", "rewind", 0.3)
+				VM.kick(W[held].recoilVM, 0.6, false, 1, 1)
+				Sfx.play(W[held].snd or "click")
+			end
 		elseif W[held] and W[held].kind == "cards" then minigun.cards.select() -- (batch E: the next card along)
 		elseif W[held] and W[held].kind == "lasso" then minigun.lasso.aimPress() -- (batch E: let go)
 		elseif W[held] and W[held].gavel then -- (batch D: the Scales of Justice's pillar of light)
