@@ -51,7 +51,7 @@ T.VERSION = "v2"
 -- new, "v2" = this module's own yard (with its side hall) and course (with its strip), one switch away
 -- (20 Nov 2026, the owner: "redo training hub entirely"): "v4" = PolishBackup.TrainingRedo (roblox/studio-tools/
 -- TrainingRedo.luau) wraps the v3 rooms: both halls open to the sky, the tutorial wing west of the course hall
-T.ROOMS = "v4" -- ("v3" = the rooms live from place version 917 to the redo; "v2" brings back the old yard and course)
+T.ROOMS = "v5" -- (20 Nov 2026, judged ring-or-better: the compound. "v4" = TrainingRedo, live from place version 1209 to this switch, one switch away; "v3" = the rooms live from place version 917 to the redo; "v2" brings back the old yard and course)
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
 T.P = {

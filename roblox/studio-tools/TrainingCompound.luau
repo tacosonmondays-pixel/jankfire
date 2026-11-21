@@ -789,6 +789,9 @@ local function field()
 	for _, sd in { -1, 1 } do blk("Shell", "TargetTowerCorner", tx + sd * 18 - 1.6, tx + sd * 18 + 1.6, Y0, 296, tf + 1.2, z1, W.pier, { tex = "TrPaint" }) end
 	blk("Shell", "TargetTowerCoping", tx - 19.8, tx + 19.8, 296, 298.6, z1, tf + 1.8, W.trim, { tex = "TrPaint" })
 	nose("TargetTowerLip", tx - 19.8, tx + 19.8, 296.2, tf + 1.8, "x", 2.2)
+	for _, d in { { 15, 1.4, W.pier }, { 9.6, 1.6, W.slate }, { 5.4, 1.8, W.pier2 } } do
+		B.part("Shell", "TowerEmblem", CF(tx, 286, tf + d[2] / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(d[2], d[1], d[1]), d[3], { cyl = true })
+	end
 	z1 = tf -- (the target and its frame stand on the tower's face)
 	B.part("Shell", "TargetRecess", CF(tx, 258, z1 + 0.35) * CFrame.Angles(0, math.pi / 2, 0), V3(0.7, 22, 22), W.slate, { cyl = true })
 	B.part("Scenery", "TargetRim", CF(tx, 258, z1 + 0.75) * CFrame.Angles(0, math.pi / 2, 0), V3(0.12, 22.6, 22.6), W.trim, { cyl = true, ghost = true })
@@ -1116,6 +1119,13 @@ function C.parkourPortal(px, faceZ, top)
 	hum.Playing = true; hum.Parent = fx
 	fx.Parent = B.root.Scenery
 	B.solid("ParkourPortalStep", F2 * CF(0, 0.3, -(ring - 0.9)), V3(10.6, 0.6, 3.2))
+	local hwR, htR = 5.4, 10.8
+	if pm then local _, bs = pm:GetBoundingBox(); hwR = math.max(bs.X, bs.Z) / 2; htR = bs.Y end
+	local zf0, zf1 = faceZ - 1.4, faceZ - 4 -- (from in front of the ring back to the wall)
+	for _, sd in { -1, 1 } do
+		blk("Shell", "ParkourPortalJamb", px + sd * (hwR + 0.2), px + sd * (hwR + 1.8), top, top + htR + 3.4, zf0, zf1, W.pier, { tex = "TrPaint" })
+	end
+	blk("Shell", "ParkourPortalHead", px - hwR - 1.8, px + hwR + 1.8, top + htR + 3.4, top + htR + 5.2, zf0, zf1, W.pier2, { tex = "TrPaint" })
 	B.trigger("ToParkour", px - 3, px + 3, top + 0.6, top + 7, faceZ - (ring - 1.6), faceZ - 3.9, { Land = "ParkourArrive", Say = "PARKOUR" })
 	word("ParkourWord", "PARKOUR", 9, 1.8, F2 * CF(0, 11.2, -3.7) * CFrame.Angles(0, math.pi, 0), W.board)
 end
