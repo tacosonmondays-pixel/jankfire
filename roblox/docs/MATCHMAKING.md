@@ -840,7 +840,7 @@ The owner: "when you press tab in match I want it to pull upa coreboard".
   Cross-server matches use the same code on the match server.
 - **Studio hook:** `ServerStorage.JankBoardTest` `("fake", player, rows)` fills a match's empty seats with pretend
   players for photos; `("board", player)` returns the board.
-- **Tested in Studio** (one solo Play): a 2V2 with stand-ins (Tab held: BLOSSOM and SKY, the board updated, released:
+- **Tested in Studio** (one solo Play): a 2V2 with stand-ins (Tab held: BLOSSOM and SKY with their players, released:
   hidden), the controller hold (the board after 0.3 s, a tap shows nothing), the SCORES pill (on, off), Roblox's list
   off in the match and on in the hub, and a 1V1V1 as one list. Not run: a real pad (Studio's pretend View doesn't
   reach PadNav as a gamepad press, so its hold was driven through `PadViewHold`), a phone, and a classic mode.
