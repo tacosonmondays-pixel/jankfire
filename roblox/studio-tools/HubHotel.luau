@@ -345,9 +345,14 @@ function HH.build(K, parent, name, site, live)
 		-- the recess's back wall, the plaque under the cove)
 		local dp = (K.CLASSIC_SIZE[md.id] or { 13.6, 11 })[2]
 		local fx = 24.2 - dp
+		-- (the owner, go-live: "angle the screens") the board and its plaque turned 35 degrees toward the hall's doors, so every
+		-- mode reads from the entrance; each held off the recess's back wall on a short arm
+		local A = math.rad(35)
 		for _, s in { -1, 1 } do
+			local nx, nz = -s * math.cos(A), math.sin(A)
 			K.pad(K.facing(s * fx, z, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
-				{ lampY = 16, turn = s * 20, rise = (i - 1) * 0.6, boardAt = K.facing(s * 28.45, z, -s, 0, 9.8), headerAt = K.facing(s * 28.45, z, -s, 0, 14.6), accent = PAL.accent })
+				{ lampY = 16, boardAt = K.facing(s * 24.6, z, nx, nz, 9.8), headerAt = K.facing(s * 24.6, z, nx, nz, 14.8), accent = PAL.accent })
+			for _, y in { 9.8, 14.8 } do box(F0, "Scenery", "BoardArm", s * 25.0, s * 28.5, y - 0.35, y + 0.35, z - 0.35, z + 0.35, PAL.wood) end
 		end
 		for _, s in { -1, 1 } do
 			box(F0, "Scenery", "Threshold", s * 3.45, s * fx, 0, 0.04, z - 1.5, z + 1.5, WALK)
