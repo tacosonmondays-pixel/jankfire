@@ -533,7 +533,6 @@ local function buildHolo(ch: Model, spot: BasePart)
 	local realHum = ch:FindFirstChildOfClass("Humanoid")
 	local realRoot = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not realHum or not realRoot then return end
-	local up = (realHum.HipHeight + realRoot.Size.Y / 2) * HOLO_SCALE
 	local was = ch.Archivable
 	ch.Archivable = true
 	local ok, c = pcall(function() return ch:Clone() end)
@@ -573,10 +572,22 @@ local function buildHolo(ch: Model, spot: BasePart)
 		hl.DepthMode = Enum.HighlightDepthMode.Occluded
 		hl.Parent = m
 	end
+	-- (21 Nov 2026, the owner in training v5: "hologram head is in the ceiling"): the statue is HOLO_SCALE times you unless
+	-- that would not fit under the bay's ceiling: the spot carries Clear (studs from it to the ceiling), and you are
+	-- measured feet to the top of your hats, so a tall avatar is scaled down to stand a stud clear of it
+	local scale = HOLO_SCALE
+	local clear = spot:GetAttribute("Clear")
+	if type(clear) == "number" then
+		local okb, bcf, bsz = pcall(function() return m:GetBoundingBox() end)
+		local feet = realRoot.Position.Y - realHum.HipHeight - realRoot.Size.Y / 2
+		local tall = if okb then (bcf.Position.Y + bsz.Y / 2) - feet else 0
+		if tall > 1 then scale = math.clamp((clear - 1.2) / tall, 0.5, HOLO_SCALE) end
+	end
+	local up = (realHum.HipHeight + realRoot.Size.Y / 2) * scale
 	local onSpot = spot.CFrame * CFrame.new(0, up + 0.1, 0)
 	pcall(function() m:PivotTo(onSpot * CFrame.new(0, -HIDE_DOWN, 0)) end) -- (out of sight before it is in the world)
 	m.Parent = workspace
-	pcall(function() m:ScaleTo(HOLO_SCALE) end)
+	pcall(function() m:ScaleTo(scale) end)
 	pcall(function() m:PivotTo(onSpot * CFrame.new(0, -HIDE_DOWN, 0)) end)
 	pending = m
 	-- the pose: Roblox's own idle for a moment, then frozen where it is

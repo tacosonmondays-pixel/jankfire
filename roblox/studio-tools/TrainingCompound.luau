@@ -559,7 +559,7 @@ local function gatehouse()
 	for _, s in { { z0 + 4, md.z0 }, { md.z1, td.z0 }, { td.z1, z1 - 4 } } do
 		blk("Shell", "GateWallW", x0 - 4, x0, 236, top, s[1], s[2], W.wall, { tex = "TrPlaster" })
 	end
-	blk("Shell", "GateWallW", x0 - 4, x0, GY + 10, top, md.z0, md.z1, W.wall, { tex = "TrPlaster" })
+	blk("Shell", "GateWallW", x0 - 4, x0, GY + 14, top, md.z0, md.z1, W.wall, { tex = "TrPlaster" })
 	blk("Shell", "GateWallW", x0 - 4, x0, GY + 12, top, td.z0, td.z1, W.wall, { tex = "TrPlaster" })
 	local rd = GH.DOORS.range
 	blk("Shell", "GateWallE", x1, x1 + 4, 236, top, z0 + 4, rd.z0, W.wall, { tex = "TrPlaster" })
@@ -682,24 +682,34 @@ local function gatehouse()
 	-- the mirror bay (west aisle): a deep bay off the west wall, a step down, a low curved ceiling, the projector and the
 	-- MirrorSpot (TrainingDoors.client stands your hologram on it), warm lamps
 	local bx0, bx1 = x0 - 14, x0 - 4
-	blk("Shell", "BayFloor", bx0, bx1, 236, GY, md.z0, md.z1, W.floor2, { tex = "TrConcrete" })
-	blk("Shell", "BayWall", bx0 - 4, bx1, 236, GY + 12, md.z0 + 4, md.z0, W.warm, { tex = "TrPlaster" })
-	blk("Shell", "BayWall", bx0 - 4, bx1, 236, GY + 12, md.z1, md.z1 - 4, W.warm, { tex = "TrPlaster" })
-	blk("Shell", "BayBack", bx0 - 4, bx0, 236, GY + 12, md.z0, md.z1, W.warm, { tex = "TrPlaster" })
-	blk("Shell", "BayCeiling", bx0 - 4, bx1, GY + 10, GY + 12, md.z0 + 4, md.z1 - 4, W.ceil, { tex = "TrPlaster" })
-	B.put("tr_portal", CF(x0 - 2, GY, (md.z0 + md.z1) / 2) * CFrame.Angles(0, -math.pi / 2, 0), { name = "MirrorFrame", scale = 0.6 })
-	jambs("MirrorJamb", x0 - 2, (md.z0 + md.z1) / 2, "z", 16 * 0.6, md.z0 - md.z1, 10, 4)
-	local pc = V3((bx0 + bx1) / 2 - 1, GY, (md.z0 + md.z1) / 2)
-	B.drum("Shell", "MirrorBase", pc.X, pc.Z, GY, GY + 0.75, 5.8, W.pier2)
-	B.drum("Shell", "MirrorDrum", pc.X, pc.Z, GY + 0.7, GY + 2.0, 4.8, W.slate)
-	B.drum("Scenery", "MirrorGlowBand", pc.X, pc.Z, GY + 1.3, GY + 1.42, 4.86, "8fd8ff", { ghost = true, mat = NEON })
-	B.drum("Shell", "MirrorTrim", pc.X, pc.Z, GY + 1.95, GY + 2.12, 5.0, W.trim)
-	local lensAt = CF(pc.X, GY + 2.12, pc.Z)
+	local BAY_TOP = GY + 15
+	blk("Shell", "BayFloor", bx0, x0, 236, GY, md.z0, md.z1, W.floor2, { tex = "TrConcrete" })
+	blk("Shell", "BayWall", bx0 - 4, bx1, 236, BAY_TOP + 2, md.z0 + 4, md.z0, W.warm, { tex = "TrPlaster" })
+	blk("Shell", "BayWall", bx0 - 4, bx1, 236, BAY_TOP + 2, md.z1, md.z1 - 4, W.warm, { tex = "TrPlaster" })
+	blk("Shell", "BayBack", bx0 - 4, bx0, 236, BAY_TOP + 2, md.z0, md.z1, W.warm, { tex = "TrPlaster" })
+	blk("Shell", "BayCeiling", bx0 - 4, bx1, BAY_TOP, BAY_TOP + 2, md.z0 + 4, md.z1 - 4, W.ceil, { tex = "TrPlaster" })
+	ceilPanel((bx0 + bx1) / 2, BAY_TOP, (md.z0 + md.z1) / 2, 5)
+	-- the mouth's frame: cream reveals in the wall's thickness, a head under the aisle beam, a frame proud of the hall's
+	-- face (the opening 9.6 wide, 12.6 tall)
+	local mz = (md.z0 + md.z1) / 2
+	for _, sd in { -1, 1 } do
+		local e = if sd < 0 then md.z1 else md.z0
+		blk("Shell", "MirrorReveal", x0 - 4, x0, GY, GY + 14, e, e - sd * 1.2, W.pier, { tex = "TrPaint" })
+		blk("Shell", "MirrorFrame", x0, x0 + 1.2, GY, GY + 14, e + sd * 1.4, e - sd * 1.2, W.pier, { tex = "TrPaint" })
+	end
+	blk("Shell", "MirrorHead", x0 - 4, x0 + 1.2, GY + 12.6, GY + 14, md.z0 - 1.2, md.z1 + 1.2, W.pier2, { tex = "TrPaint" })
+	local pc = V3((bx0 + bx1) / 2 - 1, GY, mz)
+	B.drum("Shell", "MirrorBase", pc.X, pc.Z, GY, GY + 0.5, 5.8, W.pier2)
+	B.drum("Shell", "MirrorDrum", pc.X, pc.Z, GY + 0.45, GY + 1.15, 4.8, W.slate)
+	B.drum("Scenery", "MirrorGlowBand", pc.X, pc.Z, GY + 0.7, GY + 0.82, 4.86, "8fd8ff", { ghost = true, mat = NEON })
+	B.drum("Shell", "MirrorTrim", pc.X, pc.Z, GY + 1.1, GY + 1.27, 5.0, W.trim)
+	local lensAt = CF(pc.X, GY + 1.27, pc.Z)
 	B.part("Scenery", "MirrorLens", lensAt * CFrame.Angles(0, 0, math.pi / 2), V3(0.12, 4.2, 4.2), W.deep, { cyl = true, ghost = true })
 	B.part("Scenery", "MirrorLensGlow", lensAt * CF(0, 0.07, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.05, 3.2, 3.2), "8fd8ff", { cyl = true, ghost = true, mat = NEON })
 	local ms = B.marker(B.root.Scenery, "MirrorSpot", lensAt.X, lensAt.Y + 0.06, lensAt.Z, V3(GH.xm, GY, lensAt.Z))
 	ms:SetAttribute("Near", 18)
-	for _, dz in { -3.5, 3.5 } do B.lamp(bx0 + 2, GY + 8, pc.Z + dz, "point", 14, 0.8, W.warmLamp) end
+	ms:SetAttribute("Clear", BAY_TOP - (lensAt.Y + 0.06)) -- (the room over the spot: TrainingDoors.client fits the statue under it)
+	for _, dz in { -3.5, 3.5 } do B.lamp(bx0 + 2, GY + 10, pc.Z + dz, "point", 16, 0.8, W.warmLamp) end
 	-- benches in the east aisle (a place to stop), lamps on the walls
 	for _, d in { { x1, -1, -8072 }, { x1, -1, -8088 }, { x1, -1, -8104 }, { x0, 1, -8072 }, { x0, 1, -8112 } } do
 		niche(d[1], d[2], d[3], GY + 9.6, true) -- (its frame clear of the aisle beams)
