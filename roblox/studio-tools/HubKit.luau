@@ -1119,13 +1119,14 @@ end
 -- a dark gap between the sides, a chunky cream rim with a warm line on its inner edge; no marks (the places are specks);
 -- sizes growing with the mode. Its board is NOT on the pad: a lit navy board on the bay's back wall (o.boardAt: a CFrame
 -- in the hub's frame at the board's middle, its look out at the walkway; without it the pad stands its own cream back
--- panel), the mode's plaque over it (o.headerAt). F = the pad's front middle on the floor, its look into the bay (-Z)
+-- panel), the mode's plaque over it (o.headerAt). F = the pad's front middle on the floor, its look into the bay (-Z).
+-- o.dims = { wide, deep } overrides the mode's size for a bay that can't take it (the Concourse's 14.2-wide bays)
 K.PAD_STYLE = "classic"
 K.CLASSIC_SIZE = { ["1v1"] = { 12.4, 9.6 }, ["1v1v1"] = { 15.6, 9.6 }, ["2v2"] = { 13.6, 11 }, ["3v3"] = { 14.4, 11.2 }, ["4v4"] = { 15.6, 11.2 } }
 function K.padClassic(F, md, bank, name, o)
 	local m = padModel(md, bank, name, "classic")
 	m:SetAttribute("RestSub", "") -- (Matches' resting Sub line: a hub says "step on a side" once, at its pads' entrance)
-	local sz = K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
+	local sz = o.dims or K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
 	local w, dp = sz[1], sz[2]
 	local RIM, CREAM, LINE, BASE = 0.7, o.rim or "efe6d6", "fff1d8", o.base or "3a3631"
 	-- the tray: a dark base, the rim round it (cream, a little proud), its warm inner line

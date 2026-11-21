@@ -128,7 +128,7 @@ function HA.build(K, parent, name, site, live)
 	local function L2(b, x, z, yaw) return at(b, x, z, yaw, Y2) end
 	K.shop(L2(180, 0, -35.2, 180), 14)
 	K.tableSpot(L2(225, 0, -30, 0), "board")
-	K.arcadeSpot(L2(270, -4, -38.6, 180)); K.arcadeSpot(L2(270, 4, -38.6, 180))
+	K.arcadeSpot(L2(270, -4, -38.5, 180)); K.arcadeSpot(L2(270, 4, -38.5, 180)) -- (hub-minigames: a hair off the wall)
 	local FCnw = L2(315, 0, -31, 180)
 	K.cluster(FCnw, { npcSofa = true })
 	K.codePanelSpot(L2(0, 0, -RW, 180))

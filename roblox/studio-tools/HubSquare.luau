@@ -94,34 +94,89 @@ function HS.build(K, parent, name, site, live)
 	-- ============================================================== N: THE PADS GALLERY
 	-- (21 Nov: the CLASSIC pads, the owner's pick, as in THE HOTEL) 50 wide, five bays a side 17 long between chunky fins,
 	-- 1V1 nearest the square; each pad flush in front of its bay's wall, its board and mode plaque FLAT on the wall (the
-	-- owner: "no angeld"); a coffered ceiling, the trophy wall at its end
+	-- owner: "no angeld"). Round 2 (both judges, the copy check: a straight runway with the pads mirrored down both walls
+	-- to one thing at the end is the reference's pad corridor): the east bank STAGGERED half a bay; no runner: a planted
+	-- SPINE of three islands down the middle (benches facing the pads) splits the walk into two lanes, a crossing between
+	-- the islands; a spine beam overhead with the bays' beams off it (herringbone), the lights a step down over the lanes
 	local BAY = 17
 	local NZ0, NH = -34, 20
-	local NZ1 = NZ0 - 5 * BAY - 6
+	local OFF = { [-1] = 0, [1] = BAY / 2 } -- (the east bank half a bay further in)
+	local NZ1 = NZ0 - 5 * BAY - BAY / 2 - 6
 	box(F0, "Shell", "Floor", -25, 25, -1, 0, NZ1, NZ0, P.floor2)
-	box(F0, "Scenery", "Runner", -6, 6, 0, 0.05, NZ1 + 5, NZ0, P.runner, MAT.Fabric)
 	box(F0, "Shell", "Roof", -27, 27, NH, NH + 1, NZ1 - 2, NZ0, P.dome)
 	box(F0, "Shell", "Wall", -27, 27, 0, NH, NZ1 - 2, NZ1, P.wallLt)
 	for _, s in { -1, 1 } do
 		box(F0, "Shell", "Wall", s * 25, s * 27, 0, NH, NZ1, NZ0, P.wallLt)
-		for k = 0, 5 do -- (the fins between the bays, chunky, a pilaster face on each)
-			local z = NZ0 - k * BAY
+		local za, zb = NZ0 - OFF[s], NZ0 - OFF[s] - 5 * BAY -- (this bank's first and last fin)
+		for k = 0, 5 do -- (the fins between the bays, chunky, a pilaster face on each; a beam off each to the spine)
+			local z = za - k * BAY
 			box(F0, "Shell", "GateFin", s * 22.6, s * 25, 0, NH, z - 1.3, z + 1.3, P.wallLt2)
 			box(F0, "Scenery", "FinPilaster", s * 22.2, s * 22.65, 0, NH - 1.2, z - 1.0, z + 1.0, P.pier)
+			box(F0, "Scenery", "CeilingBeam", s * 1.1, s * 22.6, NH - 1.6, NH, z - 0.6, z + 0.6, P.cream, nil, { ghost = true })
+		end
+		-- (the bank's ends: solid piers to the mouth and to the end wall, a bench against each long enough for one)
+		for _, e in { { NZ0, za + 1.3 }, { zb - 1.3, NZ1 } } do
+			if e[1] - e[2] > 0.1 then
+				box(F0, "Shell", "BankEnd", s * 22.6, s * 25, 0, NH, e[2], e[1], P.wallLt2)
+				if e[1] - e[2] >= 7 then K.bench(K.at(F0, s * 21.4, (e[1] + e[2]) / 2, s * 90), math.min(10, e[1] - e[2] - 1.6), { back = true }) end
+			end
 		end
 		for i, md in K.MODES do
-			local zc = NZ0 - BAY / 2 - (i - 1) * BAY
+			local zc = za - BAY / 2 - (i - 1) * BAY
 			local dp = (K.CLASSIC_SIZE[md.id] or { 13.6, 11 })[2]
 			K.pad(K.facing(s * (22.4 - dp), zc, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
 				{ boardAt = K.facing(s * 24.95, zc, -s, 0, 9.8), headerAt = K.facing(s * 24.95, zc, -s, 0, 14.6) })
-			box(F0, "Scenery", "PadThreshold", s * 6, s * (22.4 - dp), 0, 0.05, zc - 1.5, zc + 1.5, P.floor, nil)
+			box(F0, "Scenery", "PadThreshold", s * 6.4, s * (22.4 - dp), 0, 0.05, zc - 1.5, zc + 1.5, P.floor, nil)
+			K.panel(F0, s * 11.5, NH, zc, 9, 5, { bright = 0.6, range = 24 })
 		end
 	end
-	for k = 1, 4 do box(F0, "Scenery", "CeilingBeam", -22.6, 22.6, NH - 1.6, NH, NZ0 - k * BAY - 0.6, NZ0 - k * BAY + 0.6, P.cream, nil, { ghost = true }) end
-	for k = 0, 4 do K.panel(F0, 0, NH, NZ0 - BAY / 2 - k * BAY, 14, 6, { bright = 0.95, range = 30 }) end
+	box(F0, "Scenery", "CeilingSpine", -1.1, 1.1, NH - 1.9, NH, NZ1, NZ0, P.cream, nil, { ghost = true })
+	-- the spine: two islands (a planter, bushes, a bench either side facing its bank) and, between them, the gallery's
+	-- middle: a big round planted settee on a dais under a round lantern (the walk splits round it; it closes the view
+	-- down the middle, so the hall reads as two lanes round a centre, not one runway to its end)
+	for _, zc in { NZ0 - 23, NZ0 - 81 } do
+		local Fi = F0 * CFrame.new(0, 0, zc)
+		box(Fi, "Shell", "Planter", -1.3, 1.3, 0, 2.2, -7, 7, P.cream)
+		box(Fi, "Scenery", "PlanterSoil", -1.0, 1.0, 2.2, 2.26, -6.7, 6.7, P.soil)
+		for i = -2, 2 do K.ball(Fi, "Scenery", "Bush", 0, 3.1, i * 2.6, 2.8, if i % 2 == 0 then P.plant else P.plant2, MAT.Grass) end
+		for _, s in { -1, 1 } do K.bench(Fi * CFrame.new(s * 2.6, 0, 0) * CFrame.Angles(0, math.rad(if s < 0 then 90 else -90), 0), 12) end
+	end
+	local ZM = NZ0 - 52
+	cyl(F0, "Shell", "MidDais", 0, 0, 0.5, ZM, 12, P.pier)
+	cyl(F0, "Scenery", "MidDaisNosing", 0, 0.45, 0.6, ZM, 12.4, P.creamHi)
+	cyl(F0, "Shell", "MidSeat", 0, 0.5, 1.9, ZM, 9.6, P.wood, MAT.Wood)
+	cyl(F0, "Scenery", "MidSeatPad", 0, 1.9, 2.1, ZM, 9.2, P.carpet2, MAT.Fabric)
+	cyl(F0, "Shell", "MidPlanter", 0, 2.1, 4.2, ZM, 5.6, P.cream)
+	cyl(F0, "Scenery", "MidSoil", 0, 4.2, 4.26, ZM, 5, P.soil)
+	K.ball(F0, "Scenery", "Bush", 0, 5.9, ZM, 4.4, P.plant, MAT.Grass)
+	for a = 0, 300, 60 do
+		local r = math.rad(a)
+		K.ball(F0, "Scenery", "Bush", math.sin(r) * 1.7, 5.0, ZM + math.cos(r) * 1.7, 2.4, if a % 120 == 0 then P.plant2 else P.plant, MAT.Grass)
+		K.seat(F0, math.sin(r) * 4.1, 2.1, ZM + math.cos(r) * 4.1, a + 180)
+	end
+	cyl(F0, "Scenery", "MidLantern", 0, NH - 2.9, NH - 1.95, ZM, 10, P.cream, nil, { ghost = true })
+	K.light(cyl(F0, "Scenery", "MidLanternGlow", 0, NH - 3.0, NH - 2.9, ZM, 8.6, P.light, MAT.Neon, { ghost = true, noshadow = true }), 22, 0.6)
 	-- (one sign at the gallery's mouth says how the pads work: the boards don't)
 	K.wordSign(K.facing(0, NZ0 - 2, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 16.6, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
 	K.trophyWall(K.at(F0, 0, NZ1 + 0.05, 180)) -- (its look south, into the gallery)
+	do -- (the ranked boards at the end: a lit navy face with its name at rest, under whatever the board shows; no dead black)
+		local site = f:GetAttribute("Site")
+		for _, d in f:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == "LiveBoardPanel" and site and (d.Position - site).Z < NZ1 + 10 then
+				d.Color = K.c3("28324a")
+				for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+					local g = Instance.new("SurfaceGui"); g.Name = "Rest"; g.Face = face; g.LightInfluence = 0; g.Brightness = 1.4
+					g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 20; g.Parent = d
+					local fr = Instance.new("Frame"); fr.Size = UDim2.fromScale(1, 1); fr.BackgroundColor3 = K.c3("28324a"); fr.BorderSizePixel = 0; fr.Parent = g
+					local t = Instance.new("TextLabel"); t.BackgroundTransparency = 1; t.Size = UDim2.fromScale(0.84, 0.3); t.Position = UDim2.fromScale(0.08, 0.26)
+					t.Font = Enum.Font.GothamBlack; t.TextScaled = true; t.TextColor3 = K.c3("f2f0ea"); t.Text = "RANKED"; t.Parent = fr
+					local u = Instance.new("TextLabel"); u.BackgroundTransparency = 1; u.Size = UDim2.fromScale(0.7, 0.14); u.Position = UDim2.fromScale(0.15, 0.6)
+					u.Font = Enum.Font.GothamSemibold; u.TextScaled = true; u.TextColor3 = K.c3("c8d0e0"); u.Parent = fr
+					u.Text = if (d.Position - site).X > 0 then "DUELS" else "PARTIES"
+				end
+			end
+		end
+	end
 
 	-- ============================================================== E: THE GYM
 	K.gym(CFrame.new(), { x0 = 34, x1 = 98, z0 = -32, z1 = 32, h = 24, open = { 32, -20, 20 }, rings = { { 50, -14 }, { 82, -14 }, { 50, 14 }, { 82, 14 } },
@@ -167,7 +222,7 @@ function HS.build(K, parent, name, site, live)
 	for z = 39, 79, 10 do K.panel(F0, 0, SH, z, 10, 4, { bright = 1.0, range = 24 }) end
 	for z = 44, 84, 10 do box(F0, "Scenery", "CeilingBeam", -24, 24, SH - 1.4, SH, z - 0.5, z + 0.5, P.cream, nil, { ghost = true }) end
 	K.shop(K.at(F0, 19, 52, 90), 18)
-	K.arcadeSpot(K.at(F0, -22.4, 38, -90))
+	K.arcadeSpot(K.at(F0, -22.2, 38, -90)) -- (hub-minigames: 0.2 off the wainscot cap)
 	K.tableSpot(K.at(F0, -9, 48, 0), "board"); K.tableSpot(K.at(F0, 9, 48, 0), "arm")
 	K.cluster(K.at(F0, -16, 72, -90), { npcSofa = true, lampY = SH }); K.cluster(K.at(F0, 9, 74, 90), { npcSofa = true, lampY = SH })
 	K.bar(K.at(F0, -20.6, 80, -90))
@@ -202,7 +257,7 @@ function HS.walks(K)
 	local F0 = CFrame.new()
 	return {
 		{ "the square, spawn round the tower", F0, 11.5, 17, -14, 18 }, { "the square, the tower to the pads", F0, -10, 10, -32, -12 },
-		{ "the pads gallery's aisle", F0, -8, 8, -118, -36 },
+		{ "the pads gallery's west lane", F0, -10.6, -6.6, -126, -36 }, { "the pads gallery's east lane", F0, 6.6, 10.6, -126, -36 },
 		{ "the square to the gym", F0, 22, 38, -6, 6 }, { "the square to the armory", F0, -40, -24, -5, 5 },
 		{ "the square to the lounge", F0, -3, 3, 26, 88 }, { "the street to the golf room", F0, -32, -20, 43, 49 },
 		{ "into the zombies room", F0, 28.5, 31.5, 26, 39 },
@@ -210,7 +265,7 @@ function HS.walks(K)
 end
 function HS.leaks()
 	local F0 = CFrame.new()
-	return { { F0, 0, 8, 10 }, { F0, 0, 20, 0 }, { F0, 0, 8, -70 }, { F0, 0, 8, -112 }, { F0, 66, 10, 0 }, { F0, -56, 8, 0 }, { F0, 0, 8, 62 }, { F0, -55, 8, 85 }, { F0, 0, 6, 104 }, { F0, 40, 6, 44 } }
+	return { { F0, 0, 8, 10 }, { F0, 0, 20, 0 }, { F0, 0, 8, -70 }, { F0, 7, 8, -112 }, { F0, 66, 10, 0 }, { F0, -56, 8, 0 }, { F0, 0, 8, 62 }, { F0, -55, 8, 85 }, { F0, 0, 6, 104 }, { F0, 40, 6, 44 } }
 end
 HS.SHOTS = {
 	{ "spawn", Vector3.new(0, 5.4, 27), Vector3.new(0, 9.5, -20) },

@@ -55,18 +55,26 @@ function HC.build(K, parent, name, site, live)
 	for _, s in { -1, 1 } do box(F0, "Scenery", "RoofEdgeBeam", s * 25.3, s * 26.7, T - 2.6, T, -70, 70, P.cream, nil, { ghost = true }) end
 
 	-- ============================================================== THE PAD BAYS (under the mezzanine)
-	-- five a side: a beam across each bay's mouth carrying its sign, fins between bays, a backdrop with a lit cove
+	-- five a side: a beam across each bay's mouth carrying its mode's plaque, fins between bays, a backdrop with a lit cove
+	-- (21 Nov: the CLASSIC pads, the owner's pick, as in THE HOTEL) each pad flush in its bay, its back to the backdrop,
+	-- sized to the 14.2-wide bay (o.dims); its board FLAT on the backdrop under the cove (the owner: "no angeld"), the
+	-- plaque on the beam's face to the nave
 	for _, s in { -1, 1 } do
 		for k, zc in BZ do
 			local md = K.MODES[k]
 			box(F0, "Scenery", "BayBeam", s * 25.2, s * 26.8, 10.4, 12.6, zc - 7, zc + 7, P.cream)
 			box(F0, "Scenery", "BayBack", s * 37.45, s * 38, 0.8, 11.6, zc - 6.6, zc + 6.6, P.wall2)
 			K.light(box(F0, "Scenery", "BayCove", s * 36.9, s * 37.45, 11.6, 11.8, zc - 6.4, zc + 6.4, P.light, MAT.Neon, { ghost = true, noshadow = true }), 14, 0.45)
-			K.spotsPad(K.facing(s * 27, zc, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
-				{ w = 12.6, d = 10.4, signY = 11.5, signZ = 2.0, lampY = 12.6 })
+			local sz = K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
+			local w, dp = math.min(sz[1], 13.2), math.min(sz[2], 10)
+			K.pad(K.facing(s * (37.2 - dp), zc, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
+				{ dims = { w, dp }, boardAt = K.facing(s * 37.4, zc, -s, 0, 7.6), headerAt = K.facing(s * 25.2, zc, -s, 0, 11.4) })
 		end
 		for _, z in { -45, -30, -15, 0, 15, 30 } do box(F0, "Shell", "BayFin", s * 27, s * 38, 0, MY, z - 0.4, z + 0.4, P.wall2) end
 	end
+	-- (the classic boards say nothing at rest: one sign says how the pads work, hung from the beam at z 35 over the way in)
+	K.wordSign(K.facing(0, 35.8, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 18, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
+	for _, x in { -5, 5 } do cyl(F0, "Scenery", "SignRod", x, 19.25, T - 2.6, 35.6, 0.35, P.steel) end
 
 	-- ============================================================== THE SPAWN END: the lounge
 	cyl(F0, "Scenery", "SpawnRing", 0, -0.02, 0.06, 58, 12.6, P.creamHi)
