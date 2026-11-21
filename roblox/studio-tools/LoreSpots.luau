@@ -38,19 +38,21 @@ L.SPOTS = {
 	smiles = { at = Vector3.new(48.7, 464, -9376), look = Vector3.new(-1, 0, 0), top = true, visit = Vector3.new(7, 0, 0),
 		area = "the playground: on the Hook (the hanging pod), legs over the west edge, looking at the sunset" },
 	-- (training v3, place 917: the v2 course's TOWER2 and watch steps are gone; spots from training-v2)
-	todd = { at = Vector3.new(-61, 262.8, -8206), y = 262.8, look = Vector3.new(1, 0, 0), visit = Vector3.new(2.2, 0, 2.6),
-		area = "training: the dummies hall, on the west gantry tower's cap, high and out of the way" },
+	-- (training v5 "the compound", 21 Nov: spots from training-v2, checked by a probe; the gantry is a deck across the field,
+	-- y 258.6, x -95..8 at z -8210, ending at the east tower's colonnade cap)
+	todd = { at = Vector3.new(4, 258.6, -8210), y = 258.6, look = Vector3.new(0, 0, 1), visit = Vector3.new(-3, 0, 0),
+		area = "training: on the gantry deck's east end over the field, high and out of the way, watching the dummies" },
 	-- the story cast
-	auntie = { at = Vector3.new(-60, 241.9, -8104.2), y = 241.9, look = Vector3.new(-1, 0, 0), visit = Vector3.new(-5, 0, -4),
-		area = "training: the course lobby, on the west bench, writing in her notebook, looking toward the course" },
+	auntie = { at = Vector3.new(-68.2, 246.2, -8072), y = 246.2, look = Vector3.new(1, 0, 0), visit = Vector3.new(5, 0, -2),
+		area = "training: the arrival hall's west aisle, on a bench under a gun niche, writing in her notebook, facing the nave" },
 	lumps = { at = Vector3.new(-124, 304, -9448), look = Vector3.new(-1, 0, 0), visit = Vector3.new(8, 0, 0),
 		area = "the playground: a low west block, facing the sunset" },
 	gordo = { at = Vector3.new(76, 240, -8590), look = Vector3.new(0, 0, 1), visit = Vector3.new(0, 0, -8),
 		area = "back lot: behind the south-east container stack" },
 	-- (the egg corridor went at v894: the gold dummies' locked roll-up door is now on the gallery, at the course's TOP
 	-- frame; its own box x -106..-90, z -8289.9..-8300 stays clear)
-	mina = { at = Vector3.new(-84, 270, -8287), look = Vector3.new(-1, 0, -0.35), visit = Vector3.new(5, 0, 2),
-		area = "training: on the gallery beside the locked roll-up door at the course's TOP frame, waiting at the gate" },
+	mina = { at = Vector3.new(-296, 270, -8246), look = Vector3.new(-1, 0, 0), visit = Vector3.new(5, 0, 2),
+		area = "training: on the course's TOP by the egg door (x -304), facing it, waiting at the gate" },
 	sharon = { at = Vector3.new(-20, 256, -8471), look = Vector3.new(-10, 0, -9), visit = Vector3.new(-6, 0, -6),
 		area = "back lot: the house's first floor, the north-east corner" },
 	-- (19 Nov 2026: the hub's new layout put the old gym's corner outside the walls; the hub session moved him into the big gym)
