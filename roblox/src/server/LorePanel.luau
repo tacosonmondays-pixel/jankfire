@@ -28,8 +28,18 @@ local function plain(p: BasePart, collide: boolean?)
 	p.Massless = true
 end
 
--- every visible part's box under scan, near a point, floors left out
-local function boxesNear(scan: Instance?, at: Vector3, skip: Instance?): { { Vector3 } }
+-- every visible part's box under scan, near a point, floors left out: { lo, hi } round it for a quick first test, and
+-- the part's own turned box { cf, half } for the real one (21 Nov: THE STILL's lounge is built at 45 degrees, and a
+-- diagonal wall's square box covered both side spots and the room in front)
+local function obbDist(b: any, p: Vector3): number
+	local q = (b[3] :: CFrame):PointToObjectSpace(p)
+	local h = b[4] :: Vector3
+	local dx = math.max(math.abs(q.X) - h.X, 0)
+	local dy = math.max(math.abs(q.Y) - h.Y, 0)
+	local dz = math.max(math.abs(q.Z) - h.Z, 0)
+	return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+local function boxesNear(scan: Instance?, at: Vector3, skip: Instance?): { any }
 	local out = {}
 	if not scan then return out end
 	for _, p in scan:GetDescendants() do
@@ -39,20 +49,28 @@ local function boxesNear(scan: Instance?, at: Vector3, skip: Instance?): { { Vec
 				math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
 				math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
 				math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
-			if p.Position.Y + ex.Y > at.Y + 0.2 then table.insert(out, { p.Position - ex, p.Position + ex }) end
+			if p.Position.Y + ex.Y > at.Y + 0.2 then table.insert(out, { p.Position - ex, p.Position + ex, cf, sz }) end
 		end
 	end
 	return out
 end
-local function room(boxes: { { Vector3 } }, w: Vector3, half: number): number
+-- room round a standing spot w: -1 if a part is in its column (half round, 0.2 to 6.6 up: three balls of that size
+-- against each part's own box), else how far the nearest part at that height is
+local function room(boxes: { any }, w: Vector3, half: number): number
 	local lo, hi = w + Vector3.new(-half, 0.2, -half), w + Vector3.new(half, 6.6, half)
 	local near = math.huge
+	local balls = { w + Vector3.new(0, 0.2 + half, 0), w + Vector3.new(0, 3.4, 0), w + Vector3.new(0, 6.6 - half, 0) }
 	for _, b in boxes do
-		if b[1].X < hi.X and b[2].X > lo.X and b[1].Y < hi.Y and b[2].Y > lo.Y and b[1].Z < hi.Z and b[2].Z > lo.Z then return -1 end
-		if b[1].Y < hi.Y and b[2].Y > lo.Y then
-			local dx = math.max(b[1].X - w.X, 0, w.X - b[2].X)
-			local dz = math.max(b[1].Z - w.Z, 0, w.Z - b[2].Z)
-			near = math.min(near, math.sqrt(dx * dx + dz * dz))
+		if b[2].Y <= lo.Y or b[1].Y >= hi.Y then continue end
+		-- (the square box is never further than the part's own: past both the column and the nearest yet, skip it)
+		local ax = math.max(b[1].X - w.X, 0, w.X - b[2].X)
+		local az = math.max(b[1].Z - w.Z, 0, w.Z - b[2].Z)
+		local da = math.sqrt(ax * ax + az * az)
+		if da >= half and da >= near then continue end
+		for _, c in balls do
+			local d = obbDist(b, c)
+			if d < half then return -1 end
+			near = math.min(near, d)
 		end
 	end
 	return near

@@ -821,12 +821,26 @@ local function startCut(id: string, again: boolean?)
 	local face = flat(sp.CFrame.LookVector, Vector3.zAxis) -- (toward where you stand at the panel)
 	local pc = pm:GetPivot().Position
 	local away = flat(finish - pc, -face) -- (the panel's far side: they come from there)
+	-- (the panel stands on a wall and looks into the room: every camera set-up stays in front of that wall, and the way
+	-- in never comes from behind it. 21 Nov: THE STILL's lounge wall has an opening 10 studs along, and the wide shot
+	-- found its "clear" spot in it, looking at the wall's back)
+	local plook = flat(pm:GetPivot().LookVector, face)
 	rayP.FilterDescendantsInstances = { me.Character :: Instance, localFolder, cutFolder }
 	-- the way in: the longest clear, floored run (up to 16 studs) among directions round the panel's far side, never
 	-- from the camera's side
 	-- (body-wide, and against every visible part's box near the panel: imported meshes with queries off, like the
 	-- arcade's piers, are missed by rays. a body-sized box steps out along the way in half studs till it touches one)
-	local boxes: { { Vector3 } } = {}
+	-- (each box: { lo, hi } round it for a quick first test, then the part's own turned box { cf, half } for the real one:
+	-- 21 Nov, THE STILL's lounge is built at 45 degrees and a 46-stud diagonal wall's square box filled the whole room)
+	local boxes: { any } = {}
+	local function obbDist(b: any, p: Vector3): number
+		local q = (b[3] :: CFrame):PointToObjectSpace(p)
+		local h = b[4] :: Vector3
+		local dx = math.max(math.abs(q.X) - h.X, 0)
+		local dy = math.max(math.abs(q.Y) - h.Y, 0)
+		local dz = math.max(math.abs(q.Z) - h.Z, 0)
+		return math.sqrt(dx * dx + dy * dy + dz * dz)
+	end
 	local map = workspace:FindFirstChild("Map")
 	-- (the panel's own hub: Map.Hub.<Square|Concourse|Atrium> for theirs, Map.Hub for the ring's)
 	local hubF = map and map:FindFirstChild("Hub")
@@ -845,14 +859,19 @@ local function startCut(id: string, again: boolean?)
 					math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
 					math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
 					math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
-				if p.Position.Y + ex.Y > finish.Y + 0.3 then table.insert(boxes, { p.Position - ex, p.Position + ex }) end
+				if p.Position.Y + ex.Y > finish.Y + 0.3 then table.insert(boxes, { p.Position - ex, p.Position + ex, cf, sz }) end
 			end
 		end
 	end
+	-- (the body: an upright capsule 1.3 round, 0.3 to 6 up, as three balls against each part's own box)
 	local function bodyHits(at: Vector3): boolean
 		local lo, hi = at + Vector3.new(-1.3, 0.3, -1.3), at + Vector3.new(1.3, 6, 1.3)
 		for _, b in boxes do
-			if b[1].X < hi.X and b[2].X > lo.X and b[1].Y < hi.Y and b[2].Y > lo.Y and b[1].Z < hi.Z and b[2].Z > lo.Z then return true end
+			if b[1].X < hi.X and b[2].X > lo.X and b[1].Y < hi.Y and b[2].Y > lo.Y and b[1].Z < hi.Z and b[2].Z > lo.Z then
+				for _, y in { 1.6, 3.15, 4.7 } do
+					if obbDist(b, at + Vector3.new(0, y, 0)) < 1.3 then return true end
+				end
+			end
 		end
 		return false
 	end
@@ -867,7 +886,7 @@ local function startCut(id: string, again: boolean?)
 	local best, bestDir = 0, away
 	for _, deg in { 0, 30, -30, 60, -60, 90, -90, 120, -120 } do
 		local dir = (CFrame.Angles(0, math.rad(deg), 0) * away)
-		if dir:Dot(face) > 0.55 then continue end
+		if dir:Dot(face) > 0.55 or dir:Dot(plook) < -0.1 then continue end
 		local run = clearRun(dir, 16)
 		-- (floor all the way: step back from the far end till there is)
 		while run > 3 do
@@ -943,12 +962,13 @@ local function startCut(id: string, again: boolean?)
 	local function room(p: Vector3): number
 		local best = math.huge
 		for _, b in boxes do
+			-- (the square box is never further than the part's own: past the best already, skip it)
 			local dx = math.max(b[1].X - p.X, 0, p.X - b[2].X)
 			local dy = math.max(b[1].Y - p.Y, 0, p.Y - b[2].Y)
 			local dz = math.max(b[1].Z - p.Z, 0, p.Z - b[2].Z)
-			best = math.min(best, dx * dx + dy * dy + dz * dz)
+			if dx * dx + dy * dy + dz * dz < best * best then best = math.min(best, obbDist(b, p)) end
 		end
-		return math.sqrt(best)
+		return best
 	end
 	local function lineClear(a: Vector3, b: Vector3): boolean
 		local d = b - a
@@ -957,7 +977,7 @@ local function startCut(id: string, again: boolean?)
 			local p = a + d * (i / n)
 			for _, bx in boxes do
 				if p.X > bx[1].X - 0.3 and p.X < bx[2].X + 0.3 and p.Y > bx[1].Y - 0.3 and p.Y < bx[2].Y + 0.3
-					and p.Z > bx[1].Z - 0.3 and p.Z < bx[2].Z + 0.3 then return false end
+					and p.Z > bx[1].Z - 0.3 and p.Z < bx[2].Z + 0.3 and obbDist(bx, p) < 0.3 then return false end
 			end
 		end
 		return true
@@ -975,6 +995,7 @@ local function startCut(id: string, again: boolean?)
 			for _, deg in { 0, 20, -20, 40, -40, 60, -60, 80, -80, 100, -100, 130, -130 } do
 				local dir = CFrame.Angles(0, math.rad(deg), 0) * fl
 				local p = centre + dir * (dist0 * k) + Vector3.new(0, up, 0)
+				if (p - pc):Dot(plook) < 1.5 then continue end
 				local r = room(p)
 				if r < 0.8 then continue end
 				local clearN = 0
