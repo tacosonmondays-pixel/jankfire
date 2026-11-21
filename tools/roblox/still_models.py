@@ -29,8 +29,20 @@ CUT_BAYS = [] if NO_BAYS else BAYS
 # kit 12: the well (the pads' room) north of the throat; plan angles from +x toward +z (270 = north)
 W_FW, W_CZ, W_R, W_DRUM = -46.0, -66.0, 50.0, 26.0     # its flat south wall (z), its centre (z), radius, the drum wall's top
 W_LINTEL, W_GAL, W_GAL_D = 19.6, 20.2, 3.6              # the bays' lintels' top, the gallery's floor, its depth
-W_BAYS = [186.0, 228.0, 270.0, 312.0, 354.0]             # one bay per mode, 1V1 west .. 5V5 east
-WB_W, WB_D, WB_MOUTH, WB_IN, WB_FLOOR = 27.0, 21.0, 16.0, 18.5, 0.8   # bay width, depth, mouth height, height inside, floor
+# kit 15 (the owner's classic pads, sized by mode, two side by side in each bay): the bays' widths by mode (1V1, 1V1V1,
+# 2V2, 3V3, 4V4), spread round the curve with equal piers between them and at both ends
+WB_WS = [28.0, 34.4, 30.4, 32.2, 34.4]
+WB_W, WB_D, WB_MOUTH, WB_IN, WB_FLOOR = 34.4, 15.0, 16.0, 18.5, 0.8   # (the widest) bay width, depth, mouth height, height inside, floor
+def _bays():
+    t = math.degrees(math.asin(20.0 / 50.0))           # (where the flat wall meets the drum: W_FW - W_CZ over W_R)
+    a0, a1 = 180.0 - t, 360.0 + t
+    halves = [math.degrees(math.asin(w / 2 / 50.0)) for w in WB_WS]
+    pier = (a1 - a0 - 2 * sum(halves)) / (len(WB_WS) + 1)
+    out, a = [], a0 + pier
+    for h in halves:
+        out.append(round(a + h, 3)); a += 2 * h + pier
+    return out, pier
+W_BAYS, W_PIER = _bays()
 W_STEP_DR, W_STEP_DY, W_STEPS, W_OCULUS = 7.2, 3.6, 5, 9.5           # the corbelled funnel: in 7.2 and up 3.6 per course
 def w_levels():
     """[(r, y0, y1)] of the room's volume above the drum: the corbelled courses"""
@@ -267,6 +279,14 @@ def rim():
             am_r = math.radians(am)
             sc = (ri + 0.4) * math.cos(am_r), (ri + 0.4) * math.sin(am_r)
             cutters.append(new_obj(bm_boxc((sc[0], (5.0 + h - 5.0) / 2, sc[1]), (1.4, h - 10.0, 1.8), rot_site(yaw=-am)), 'cutter', 'plastic', 'ffffff'))
+        # (kit 15, judge round 11: plain tan blocks read as blockout) a framed recess cut into each block's crater face, clear
+        # of the portals: every block a built bay
+        half = ri * math.sin(math.radians(step / 2)) - 2.0
+        rspan = math.degrees(half / ri)
+        if not slot and h > 10 and all(abs((am - pa + 180) % 360 - 180) > math.degrees((hw + 2.5) / ri) + rspan for (pa, hw, oh) in PORTALS.values()):
+            am_r = math.radians(am)
+            rc = ri + 0.35
+            cutters.append(new_obj(bm_boxc((rc * math.cos(am_r), (3.4 + h - 2.6) / 2, rc * math.sin(am_r)), (1.6, h - 2.6 - 3.4, 2 * half), rot_site(yaw=-am)), 'cutter', 'plastic', 'ffffff'))
         if cutters: cut(blk, cutters)
         if slot:
             gc = (ri + 1.15) * math.cos(am_r), (ri + 1.15) * math.sin(am_r)
@@ -274,12 +294,16 @@ def rim():
         # a pale band every 8 studs on its inner face, and a cornice on its top (built, not blank)
         g = gap / ri * 57.3
         parts = []
-        for yb in (13.0,):
+        for yb in ():  # (kit 15: no bands, the blocks' recesses carry the rhythm)
             if yb < h - 3.0:
                 parts.append(new_obj(bm_ring_y(ri - 0.55, ri + 0.6, yb - 0.45, yb + 0.45, a0 + g, a1 - g, segs=60), 'st_rimband', 'plastic', PALE2, 0.12))
         parts.append(new_obj(bm_ring_y(ri - 0.8, RIM_OUT + 0.3, h - 0.25, h + 0.9, a0 + g * 0.5, a1 - g * 0.5, segs=60), 'st_rimband', 'plastic', PALE2, 0.25))
         if near:
             for pt in parts: cut(pt, [passage_cutter(*near)])
+        if all(abs((a0 - pa + 180) % 360 - 180) > math.degrees((hw + 5.0) / RIM_IN) for (pa, hw, oh) in PORTALS.values()):
+            pr = RIM_IN - 0.4
+            new_obj(bm_boxc((pr * math.cos(math.radians(a0)), h / 2, pr * math.sin(math.radians(a0))), (2.6, h + 0.6, 2.6), rot_site(yaw=-a0)), 'st_rimpier', 'plastic', PALE, 0.45)
+            coll('RimPier', (pr * math.cos(math.radians(a0)), h / 2, pr * math.sin(math.radians(a0))), (2.6, h + 0.6, 2.6), yaw=-a0)
         chord = 2 * RIM_OUT * math.sin(math.radians(step / 2)) + 0.4
         rm = (ri + RIM_OUT) / 2
         if not near or near[2] > near[1] + 4.0:
@@ -407,9 +431,9 @@ def w_cutters():
     for (r, y0, y1) in w_levels():
         cs.append(new_obj(bm_prism(w_pts(r), y0 - 0.01, y1 + 0.01), 'cutter', 'plastic', 'ffffff'))
     cs.append(new_obj(bm_cyl_y(W_OCULUS, W_TOP - 0.01, 90.0, 0, W_CZ, segs=48), 'cutter', 'plastic', 'ffffff'))
-    for a in W_BAYS:
-        cs.append(w_bay_box(a, W_R - 3.0, W_R + 2.2, -1.5, WB_MOUTH, -WB_W / 2, WB_W / 2, 'cutter', 'plastic', 'ffffff'))
-        cs.append(w_bay_box(a, W_R + 1.8, W_R + WB_D + 0.6, -1.5, WB_IN, -WB_W / 2, WB_W / 2, 'cutter', 'plastic', 'ffffff'))
+    for a, w in zip(W_BAYS, WB_WS):
+        cs.append(w_bay_box(a, W_R - 3.0, W_R + 2.2, -1.5, WB_MOUTH, -w / 2, w / 2, 'cutter', 'plastic', 'ffffff'))
+        cs.append(w_bay_box(a, W_R + 1.8, W_R + WB_D + 0.6, -1.5, WB_IN, -w / 2, w / 2, 'cutter', 'plastic', 'ffffff'))
     return cs
 
 def flatwall_cutter():
@@ -424,7 +448,7 @@ def well():
     bm = bm_ring_y(W_R - 0.35, W_R + 0.1, 0.0, W_DRUM - 0.7, segs=160)
     bmesh.ops.translate(bm, verts=bm.verts, vec=V(0, 0, W_CZ))
     lin = new_obj(bm, 'st_lining', 'plastic', BOREC, 0.0)
-    cut(lin, [flatwall_cutter()] + [w_bay_box(a, W_R - 3.0, W_R + 2.2, -1.5, WB_MOUTH + 0.01, -WB_W / 2 - 0.01, WB_W / 2 + 0.01, 'cutter', 'plastic', 'ffffff') for a in W_BAYS])
+    cut(lin, [flatwall_cutter()] + [w_bay_box(a, W_R - 3.0, W_R + 2.2, -1.5, WB_MOUTH + 0.01, -w / 2 - 0.01, w / 2 + 0.01, 'cutter', 'plastic', 'ffffff') for a, w in zip(W_BAYS, WB_WS)])
     bm = bm_ring_y(W_R - 0.9, W_R + 1.0, W_DRUM - 0.7, W_DRUM + 0.5, segs=160)
     bmesh.ops.translate(bm, verts=bm.verts, vec=V(0, 0, W_CZ))
     corn = new_obj(bm, 'st_rimband', 'plastic', PALE2, 0.15)
@@ -467,35 +491,35 @@ def well():
     fw = new_obj(bm_box(-W_R, W_R, 0.0, W_TOP, W_FW - 0.4, W_FW + 0.02), 'st_lining', 'plastic', BOREC, 0.0)
     cut(fw, bore_cutter(0.3))
     # the bays: chunky pale jambs and a lintel at each mouth, the raised floor and kerb, the insides lined
-    for a in W_BAYS:
+    for a, w in zip(W_BAYS, WB_WS):
         for e in (-1, 1):
-            c0, c1 = sorted((e * (WB_W / 2 - 0.2), e * (WB_W / 2 + 2.6)))
+            c0, c1 = sorted((e * (w / 2 - 0.2), e * (w / 2 + 2.6)))
             w_bay_box(a, W_R - 3.4, W_R + 1.6, 0.0, WB_MOUTH, c0, c1, 'st_bayframe', 'plastic', PALE, 0.4)
-        w_bay_box(a, W_R - 3.4, W_R + 1.2, WB_MOUTH, W_LINTEL, -WB_W / 2 - 2.6, WB_W / 2 + 2.6, 'st_bayframe', 'plastic', PALE, 0.4)
-        w_bay_box(a, W_R - 0.4, W_R + WB_D + 0.2, -1.0, WB_FLOOR, -WB_W / 2, WB_W / 2, 'st_bayfloor', 'concrete', PALE2, 0.15)
-        w_bay_box(a, W_R - 0.4, W_R + 0.6, WB_FLOOR - 0.2, WB_FLOOR + 0.05, -WB_W / 2 + 0.3, WB_W / 2 - 0.3, 'st_kerb', 'plastic', PALE, 0.12)
-        w_bay_box(a, W_R + WB_D - 0.6, W_R + WB_D, WB_FLOOR, WB_IN, -WB_W / 2, WB_W / 2, 'st_bayback', 'plastic', PALE2, 0.2)
+        w_bay_box(a, W_R - 3.4, W_R + 1.2, WB_MOUTH, W_LINTEL, -w / 2 - 2.6, w / 2 + 2.6, 'st_bayframe', 'plastic', PALE, 0.4)
+        w_bay_box(a, W_R - 0.4, W_R + WB_D + 0.2, -1.0, WB_FLOOR, -w / 2, w / 2, 'st_bayfloor', 'concrete', PALE2, 0.15)
+        w_bay_box(a, W_R - 0.4, W_R + 0.6, WB_FLOOR - 0.2, WB_FLOOR + 0.05, -w / 2 + 0.3, w / 2 - 0.3, 'st_kerb', 'plastic', PALE, 0.12)
+        w_bay_box(a, W_R + WB_D - 0.6, W_R + WB_D, WB_FLOOR, WB_IN, -w / 2, w / 2, 'st_bayback', 'plastic', PALE2, 0.2)
         for e in (-1, 1):
-            c0, c1 = sorted((e * (WB_W / 2 - 0.4), e * WB_W / 2))
+            c0, c1 = sorted((e * (w / 2 - 0.4), e * w / 2))
             w_bay_box(a, W_R + 1.6, W_R + WB_D - 0.6, WB_FLOOR, WB_IN, c0, c1, 'st_bayline', 'plastic', BOREC, 0.0)
-        w_bay_box(a, W_R + 1.2, W_R + WB_D, WB_IN - 0.4, WB_IN, -WB_W / 2, WB_W / 2, 'st_bayline', 'plastic', BOREC, 0.0)
+        w_bay_box(a, W_R + 1.2, W_R + WB_D, WB_IN - 0.4, WB_IN, -w / 2, w / 2, 'st_bayline', 'plastic', BOREC, 0.0)
         # collisions: floor, sides, back, lid, the jambs
-        w_bay_coll('BayFloor', a, W_R - 0.4, W_R + WB_D, -1.0, WB_FLOOR, -WB_W / 2, WB_W / 2)
+        w_bay_coll('BayFloor', a, W_R - 0.4, W_R + WB_D, -1.0, WB_FLOOR, -w / 2, w / 2)
         for e in (-1, 1):
-            c0, c1 = sorted((e * WB_W / 2, e * (WB_W / 2 + 1.0)))
+            c0, c1 = sorted((e * w / 2, e * (w / 2 + 1.0)))
             w_bay_coll('BayWall', a, W_R + 1.0, W_R + WB_D + 1.0, 0.0, WB_IN + 1.0, c0, c1)
-            c0, c1 = sorted((e * (WB_W / 2 - 0.2), e * (WB_W / 2 + 2.6)))
+            c0, c1 = sorted((e * (w / 2 - 0.2), e * (w / 2 + 2.6)))
             w_bay_coll('BayPier', a, W_R - 3.4, W_R + 1.6, 0.0, WB_MOUTH + 4.0, c0, c1)
-        w_bay_coll('BayBack', a, W_R + WB_D, W_R + WB_D + 1.0, 0.0, WB_IN + 1.0, -WB_W / 2 - 1, WB_W / 2 + 1)
-        w_bay_coll('BayLid', a, W_R + 1.0, W_R + WB_D, WB_IN, WB_IN + 1.0, -WB_W / 2, WB_W / 2)
-        w_bay_coll('BayLintel', a, W_R - 3.4, W_R + 1.2, WB_MOUTH, W_LINTEL, -WB_W / 2, WB_W / 2)
+        w_bay_coll('BayBack', a, W_R + WB_D, W_R + WB_D + 1.0, 0.0, WB_IN + 1.0, -w / 2 - 1, w / 2 + 1)
+        w_bay_coll('BayLid', a, W_R + 1.0, W_R + WB_D, WB_IN, WB_IN + 1.0, -w / 2, w / 2)
+        w_bay_coll('BayLintel', a, W_R - 3.4, W_R + 1.2, WB_MOUTH, W_LINTEL, -w / 2, w / 2)
     # the well's collisions: its floor, the drum's wall in short pieces between the mouths, the flat wall
     coll('WellFloor', (0, -0.5, (W_FW + W_CZ - W_R) / 2), (2 * W_R + 2, 1.0, W_FW - (W_CZ - W_R)))
-    half_mouth = math.degrees(math.asin((WB_W / 2) / W_R))
+    halves = [math.degrees(math.asin((w / 2) / W_R)) for w in WB_WS]
     t = math.degrees(math.asin((W_FW - W_CZ) / W_R))
     a = 180.0 - t + 1.0
     while a < 360.0 + t - 1.0:
-        if all(abs((a - b + 180) % 360 - 180) > half_mouth for b in W_BAYS):
+        if all(abs((a - b + 180) % 360 - 180) > h for b, h in zip(W_BAYS, halves)):
             ux, uz = w_u(a)
             coll('WellWall', ((W_R + 1.0) * ux, (W_DRUM + 2) / 2, W_CZ + (W_R + 1.0) * uz), (2.0, W_DRUM + 2, 2 * (W_R + 1) * math.sin(math.radians(1.5)) + 0.5), yaw=-a)
         a += 3.0

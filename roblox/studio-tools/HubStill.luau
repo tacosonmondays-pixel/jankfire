@@ -13,15 +13,18 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 136903909478603 -- hub_still_kit_14 (the crater rim in big level blocks, the well's stone ring; kit 13 was 117076518626977)
+HS.KIT = 109710328693728 -- hub_still_kit_15 (the bays sized by mode for the classic pads, recessed rim blocks; kit 14 was 136903909478603)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
 -- the well (kit 12, the same numbers as still_models.py): its flat south wall, centre, radius; the bays' plan angles (270 =
 -- north), width, floor, inside height; the funnel's top and the oculus
 local W_FW, W_CZ, W_R = -46, -66, 50
-local W_BAYS = { 186, 228, 270, 312, 354 }
-local WB_W, WB_FLOOR, WB_IN, WB_MOUTH = 27, 0.8, 18.5, 16
+-- (kit 15, the owner's classic pads sized by mode, two side by side per bay) the bays' widths by mode and their angles,
+-- equal piers between (still_models.py _bays)
+local W_BAYS = { 179.547, 222.793, 267.476, 310.823, 356.593 }
+local WB_WS = { 28, 34.4, 30.4, 32.2, 34.4 }
+local WB_D, WB_FLOOR, WB_IN, WB_MOUTH = 15, 0.8, 18.5, 16
 local W_TOP, W_OCULUS = 44, 9.5 -- (kit 13: the drum 26 high with its gallery, five courses of 3.6 over it)
 local SS = game:GetService("ServerStorage")
 local MAT = Enum.Material
@@ -32,7 +35,7 @@ local MAT = Enum.Material
 local KIND = { slate = MAT.Slate, concrete = MAT.Concrete, plastic = MAT.SmoothPlastic, neon = MAT.Neon, glass = MAT.Glass, metal = MAT.Metal }
 local PLASTER = { cfc8ba = true, b9b2a5 = true, a39d92 = true, ada79c = true }
 -- (judge round 4, blind against the ring: the bore one sepia; ribs and frames a warm off-white, walls and bay backs mid grey)
-local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "e2dccf", st_holerim = "e2dccf", st_lining = "8f8c86", st_bayline = "8f8c86", st_bayback = "77746e" }
+local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "ece4d4", st_holerim = "e2dccf", st_lining = "9f9a90", st_bayline = "8f8c86", st_bayback = "77746e", st_halo = "e6ddcc", st_cradle = "d6cfc1" } -- (judge round 11: frames, ring a warm off-white)
 -- (judge round 4 and main: the floating round through a spiked burst read as a cartoon logo prop; the gym's rock slabs as
 -- lumps. Left in the kit, not built)
 local SKIP = { st_round = true, st_roundband = true, st_band = true, st_perch = true, st_shard = true, st_shock = true, st_tooth = true, st_frag = true, st_gymvault = true, st_gymrib = true }
@@ -200,27 +203,33 @@ function HS.build(K, parent, name, site, live)
 	for k = 1, 5 do
 		local md = K.MODES[k]
 		local a = math.rad(W_BAYS[k])
+		local w = WB_WS[k]
 		local ux, uz = math.cos(a), math.sin(a)
 		local lx, lz = uz, -ux -- (left, looking out into the bay)
-		for _, sd in { -1, 1 } do -- (sd -1: left, the lifts bank)
-			local r0 = W_R + 2.5
-			local px, pz = ux * r0 - sd * lx * 6.75, W_CZ + uz * r0 - sd * lz * 6.75
-			if K.pad then
-				K.pad(K.facing(px, pz, ux, uz, WB_FLOOR), md, if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e", { lampY = 13 })
-			else
-				K.spotsPad(K.facing(px, pz, ux, uz, WB_FLOOR), md, if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e", { w = 12.4, d = 11.6, lampY = 10.4, signY = 12.4, signZ = 1.3, signW = 12, signH = 2.4 })
-			end
-		end
 		local Fb = CFrame.lookAt(Vector3.new(0, 0, W_CZ), Vector3.new(ux, 0, W_CZ + uz)) -- (its -Z out along the bay, +X to the right)
-		for _, sd in { -1, 1 } do K.panel(Fb, sd * 6.75, WB_IN, -(W_R + 8.5), 5, 6, { bright = 0.55, range = 20, lightHex = "fff1df" }) end
-		local sx, sz = ux * (W_R - 3.42), W_CZ + uz * (W_R - 3.42)
-		K.sign(K.facing(sx, sz, -ux, -uz, 17.8), "Scenery", "BaySign", 21, 3.0, 0, 0, 0,
-			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 }) -- (judge round 10: 1.5x)
-		-- the bay's back wall lit from a cove along its top (judge round 10: the bays bare boxes)
-		local cv = box(Fb, "Scenery", "BayCove", -12.5, 12.5, WB_IN - 0.9, WB_IN - 0.5, -(W_R + 20.4), -(W_R + 20.0), "f0dcb8", MAT.Neon, { ghost = true, noshadow = true })
+		local sz = K.CLASSIC_SIZE and K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
+		local off = if K.padClassic then sz[1] / 2 + 0.6 else 6.75
+		for _, sd in { -1, 1 } do -- (sd -1: left, the lifts bank)
+			local bank, id = if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e"
+			if K.padClassic then -- (the classic pad at the bay's mouth, its count board on the bay's back wall behind it)
+				local r0, rb = W_R + 1.0, W_R + WB_D - 0.6
+				local F = K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR)
+				local boardAt = K.facing(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, -ux, -uz, WB_FLOOR + 6.2 + 2.75)
+				K.pad(F, md, bank, id, { boardAt = boardAt })
+			else
+				local r0 = W_R + 2.5
+				K.pad(K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR), md, bank, id, { lampY = 13 })
+			end
+			K.panel(Fb, sd * off, WB_IN, -(W_R + 6.5), 5, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
+		end
+		local sx, sz2 = ux * (W_R - 3.42), W_CZ + uz * (W_R - 3.42)
+		K.sign(K.facing(sx, sz2, -ux, -uz, 17.8), "Scenery", "BaySign", math.min(21, w - 4), 3.0, 0, 0, 0,
+			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
+		-- the bay's back wall lit from a cove along its top
+		local cv = box(Fb, "Scenery", "BayCove", -w / 2 + 1, w / 2 - 1, WB_IN - 0.9, WB_IN - 0.5, -(W_R + WB_D - 0.6), -(W_R + WB_D - 1.0), "f0dcb8", MAT.Neon, { ghost = true, noshadow = true })
 		K.light(cv, 18, 0.8, "ffe4c4", { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
 		-- a cream spoke in the floor from the middle's dais to the bay's mouth
-		local A, B = Vector3.new(ux * 10.2, 0.02, W_CZ + uz * 10.2), Vector3.new(ux * (W_R - 4), 0.02, W_CZ + uz * (W_R - 4))
+		local A, B = Vector3.new(ux * 11.4, 0.02, W_CZ + uz * 11.4), Vector3.new(ux * (W_R - 4), 0.02, W_CZ + uz * (W_R - 4))
 		local sp = box(F0, "Scenery", "WellSpoke", -0.6, 0.6, 0, 0.05, -0.5, 0.5, "e2dccf", MAT.Plastic)
 		sp.MaterialVariant = "TrPlaster"
 		sp.Size = Vector3.new(1.2, 0.05, (B - A).Magnitude); sp.CFrame = site * CFrame.lookAt((A + B) / 2, B)
@@ -235,14 +244,7 @@ function HS.build(K, parent, name, site, live)
 	local water = K.cyl(F0, "Shell", "PoolWater", 0, 3.1, 3.25, W_CZ, 15.8, "3d4a58", MAT.Glass)
 	water.Transparency = 0.2; water.Reflectance = 0.35
 	K.light(K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 14, 0.45, "ffd9a8")
-	-- a slim lit recess on every bare stretch of the drum: between the bays and either end by the flat wall
-	for _, ad in { 163, 207, 249, 291, 333, 17 } do
-		local q = math.rad(ad)
-		local Fp = K.facing(math.cos(q) * (W_R - 0.4), W_CZ + math.sin(q) * (W_R - 0.4), -math.cos(q), -math.sin(q))
-		box(Fp, "Scenery", "PierPanel", -1.7, 1.7, 2.2, 14.2, -0.7, 0.1, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
-		local inset = box(Fp, "Scenery", "PierGlow", -0.8, 0.8, 3.0, 13.4, -0.78, -0.68, "f0dcb8", MAT.Neon, { ghost = true, noshadow = true })
-		K.light(inset, 12, 0.45, "ffe4c4")
-	end
+	-- (kit 15: the wider bays leave only their jambs between them: no lit recesses on the drum)
 	local sky = box(F0, "Scenery", "SkyLight", -0.5, 0.5, W_TOP - 1, W_TOP - 0.8, W_CZ - 0.5, W_CZ + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 	sky.CFrame = site * CFrame.lookAt(Vector3.new(0, W_TOP - 1, W_CZ), Vector3.new(0, 0, W_CZ))
 	K.light(sky, 48, 0.75, "e6edf5", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })

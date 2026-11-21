@@ -24,9 +24,14 @@ BAL_SIDE, BAL_UP = 18.5, 41.0
 # kit 5: the breech (the pads' room): an octagon round (0, OC_Z), inradius OC_R; sides by plan angle (+x toward +z,
 # 270 = north, toward the face); bays 1V1..5V5 then the loadout bay
 OC_Z, OC_R, OC_H, OC_CEIL, OC_T = 77.0, 37.4, 26.0, 28.0, 4.0
-OC_BAYS = [135.0, 180.0, 225.0, 315.0, 0.0, 45.0]
-OB_W, OB_D, OB_MOUTH, OB_IN, OB_FLOOR = 28.0, 18.0, 16.0, 18.5, 0.8
-NP_W = OC_R * math.tan(math.radians(22.5))     # (half a side: the north passage is a whole side wide)
+# kit 6 (the owner's classic pads: one per bay, its board on the bay's back wall): TWELVE sides, ten of them a bay for one
+# pad (the lifts bank west 1V1..4V4 from the spawn round to the face, the east twins mirrored), north the passage, south
+# the gym's portal
+OC_N = 12
+OC_HALF = 180.0 / OC_N
+OC_BAYS = [120.0, 150.0, 180.0, 210.0, 240.0, 60.0, 30.0, 0.0, 330.0, 300.0]
+OB_W, OB_D, OB_MOUTH, OB_IN, OB_FLOOR = 17.0, 15.0, 16.0, 18.5, 0.8
+NP_W = OC_R * math.tan(math.radians(OC_HALF))     # (half a side: the north passage is a whole side wide)
 GP_W, GP_H, GYM_Z = 9.0, 14.0, 132.0              # the gym's portal through the south side, the gym's open side
 PIT = dict(x0=-18.7, x1=-6.3, z0=-50.0, z1=-36.0, step=0.6, deep=1.2, ring=1.0)   # the lounge's sunken seats (site x, z)
 
@@ -279,9 +284,9 @@ def hall():
 
 # ------------------------------------------------------------------------------------------------ 4 the breech
 def oct_pts(r):
-    """the breech's octagon at inradius r (flat sides facing the plan angles 0, 45, ...)"""
-    rc = r / math.cos(math.radians(22.5))
-    return [(rc * math.cos(math.radians(22.5 + 45 * k)), OC_Z + rc * math.sin(math.radians(22.5 + 45 * k))) for k in range(8)]
+    """the breech's polygon at inradius r (flat sides facing the plan angles 0, 360/N, ...)"""
+    rc = r / math.cos(math.radians(OC_HALF))
+    return [(rc * math.cos(math.radians(OC_HALF + 2 * OC_HALF * k)), OC_Z + rc * math.sin(math.radians(OC_HALF + 2 * OC_HALF * k))) for k in range(OC_N)]
 
 def side_box(a, along0, along1, y0, y1, across0, across1, model, kind, hexc, bev=0.0):
     """a box in a side's frame (along = out from the middle along plan angle a, across = to the left looking out)"""
@@ -309,7 +314,7 @@ def breech():
         cs.append(side_box(a, OC_R - 1, OC_R + OC_T + 1, 0.0, OB_MOUTH, -OB_W / 2, OB_W / 2, 'cutter', 'plastic', 'ffffff'))
     cut(shell, cs)
     for a in OC_BAYS:
-        blk = side_box(a, OC_R + 0.5, OC_R + OB_D + 3.0, -1.0, OB_IN + 3.0, -OB_W / 2 - 3.0, OB_W / 2 + 3.0, 'cy_oct', 'plastic', PALE2, 0.6)
+        blk = side_box(a, OC_R + 0.5, OC_R + OB_D + 3.0, -1.0, OB_IN + 3.0, -OB_W / 2 - 2.0, OB_W / 2 + 2.0, 'cy_oct', 'plastic', PALE2, 0.6)
         cut(blk, [side_box(a, OC_R, OC_R + OB_D, 0.0, OB_IN, -OB_W / 2, OB_W / 2, 'cutter', 'plastic', 'ffffff')])
     # the floor, a pale octagonal band let in round the middle
     new_obj(bm_prism(oct_pts(OC_R + 0.2), -1.0, 0.0), 'cy_floor', 'concrete', FLOORC, 0.2)
@@ -329,18 +334,18 @@ def breech():
     new_obj(bm_box(-GP_W, GP_W, -1.0, 0.0, OC_Z + OC_R - 0.5, GYM_Z), 'cy_floor', 'concrete', FLOORC, 0.2)
     coll('Floor', (0, -0.5, (HALL_Z0 + GYM_Z) / 2), (2 * (OC_R + 2), 1.0, GYM_Z - HALL_Z0))
     # the corners' chunky pilasters, floor to lid
-    for k in range(8):
-        a = 22.5 + 45 * k
-        rc = OC_R / math.cos(math.radians(22.5))
-        side_box(a, rc - 2.2, rc + 1.0, 0.0, OC_CEIL, -1.9, 1.9, 'cy_pilaster', 'plastic', PALE, 0.5)
-        side_coll('Pilaster', a, rc - 2.2, rc + 1.0, 0.0, OC_CEIL, -1.9, 1.9)
+    for k in range(OC_N):
+        a = OC_HALF + 2 * OC_HALF * k
+        rc = OC_R / math.cos(math.radians(OC_HALF))
+        side_box(a, rc - 2.2, rc + 1.0, 0.0, OC_CEIL, -1.6, 1.6, 'cy_pilaster', 'plastic', PALE, 0.5)
+        side_coll('Pilaster', a, rc - 2.2, rc + 1.0, 0.0, OC_CEIL, -1.6, 1.6)
     # the walls (collision), by side: over each bay's mouth; either side of the gym's portal and over it; over the north opening
-    for k in range(8):
-        a = 45.0 * k
+    for k in range(OC_N):
+        a = 2 * OC_HALF * k
         L2 = NP_W + 0.5
         if a in OC_BAYS:
             side_coll('Wall', a, OC_R, OC_R + OC_T, OB_MOUTH, top, -L2, L2)
-            side_box(a, OC_R - 1.4, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.8, OB_W / 2 + 0.8, 'cy_baylintel', 'plastic', PALE, 0.45)
+            side_box(a, OC_R - 1.4, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.4, OB_W / 2 + 0.4, 'cy_baylintel', 'plastic', PALE, 0.45)
         elif a == 90.0:
             for e in (-1, 1):
                 c0, c1 = sorted((e * GP_W, e * L2))
@@ -349,10 +354,10 @@ def breech():
         else:
             side_coll('Wall', a, OC_R, OC_R + OC_T, OC_H, top, -L2, L2)
     # the lid's coffers: eight radial beams from the corners to the pin's boss, an octagonal ring beam half way
-    for k in range(8):
-        a = 22.5 + 45 * k
-        rc = OC_R / math.cos(math.radians(22.5))
-        side_box(a, 7.0, rc - 1.0, OC_CEIL - 2.8, OC_CEIL + 0.2, -1.4, 1.4, 'cy_beam', 'plastic', PALE, 0.5)
+    for k in range(OC_N):
+        a = OC_HALF + 2 * OC_HALF * k
+        rc = OC_R / math.cos(math.radians(OC_HALF))
+        side_box(a, 7.0, rc - 1.0, OC_CEIL - 2.8, OC_CEIL + 0.2, -1.3, 1.3, 'cy_beam', 'plastic', PALE, 0.5)
     ring = new_obj(bm_prism(oct_pts(24.0), OC_CEIL - 2.2, OC_CEIL + 0.1), 'cy_beam', 'plastic', PALE2, 0.4)
     cut(ring, [new_obj(bm_prism(oct_pts(21.8), OC_CEIL - 3, OC_CEIL + 1), 'cutter', 'plastic', 'ffffff')])
     # the pin's boss hanging from the lid's middle: a chunky drum, a stepped end
@@ -371,7 +376,7 @@ def breech():
             side_coll('BayWall', a, OC_R, OC_R + OB_D + 1.0, 0.0, OB_IN + 1.0, c0, c1)
         side_coll('BayBack', a, OC_R + OB_D, OC_R + OB_D + 1.0, 0.0, OB_IN + 1.0, -OB_W / 2 - 1, OB_W / 2 + 1)
         side_coll('BayLid', a, OC_R, OC_R + OB_D, OB_IN, OB_IN + 1.0, -OB_W / 2, OB_W / 2)
-        side_coll('BayLintel', a, OC_R - 1.4, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.8, OB_W / 2 + 0.8)
+        side_coll('BayLintel', a, OC_R - 1.4, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.4, OB_W / 2 + 0.4)
 
 reset()
 cylinder(); chambers(); frame(); breech()

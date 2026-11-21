@@ -15,15 +15,17 @@
 local HC = {}
 HC.ID, HC.FOLDER, HC.TITLE, HC.ORDER = "cylinder", "Cylinder", "THE CYLINDER", 6
 HC.SITE = CFrame.new(-1800, 240, -14200)
-HC.KIT = 107558420312777 -- hub_cylinder_kit_5 (judge round 8: no hall of pads: THE BREECH, an octagon of mode bays, opens on the face)
+HC.KIT = 117516859260764 -- hub_cylinder_kit_6 (the classic pads: a TWELVE-sided breech, one pad per bay; kit 5 the octagon was 107558420312777)
 HC.LIB = "HubCylinderKit"
 local SS = game:GetService("ServerStorage")
 local MAT = Enum.Material
 -- the breech (kit 5, the same numbers as cylinder_models.py): the octagon's middle (z), inradius, wall top, lid; its bay
 -- sides by plan angle (+x toward +z, 270 = north): 1V1..5V5, then the loadout bay; a bay's width, floor, inside height
 local OC_Z, OC_R, OC_H, OC_CEIL = 77, 37.4, 26, 28
-local OC_BAYS = { 135, 180, 225, 315, 0, 45 }
-local OB_W, OB_FLOOR, OB_IN, OB_MOUTH = 28, 0.8, 18.5, 16
+-- (kit 6, the owner's classic pads: one pad per bay, its board on the bay's back wall) ten bays: the lifts bank west from the
+-- spawn round to the face (1V1..4V4), the east twins mirrored
+local OC_BAYS = { 120, 150, 180, 210, 240, 60, 30, 0, 330, 300 }
+local OB_W, OB_D, OB_FLOOR, OB_IN, OB_MOUTH = 17, 15, 0.8, 18.5, 16
 local WARM = { cy_pilaster = "dcd6ca", cy_baylintel = "dcd6ca", cy_beam = "d2ccc0" }
 local WALL, WALL2, FLOORC, STEELC = "a7a9ab", "b4b6b8", "8a8c8e", "8d9196" -- (walls a step darker than the piers and beams)
 
@@ -110,46 +112,37 @@ function HC.build(K, parent, name, site, live)
 
 	-- ============================================================== THE HALL (spawn, pads) and THE TRANSEPT
 	sbox("Floor", -48, 48, -1, 0, -0.5, 24, FLOORC, MAT.Concrete)
-	-- (judge round 8: any straight hall of pads reads as the RIVALS pad corridor) THE BREECH: an octagonal steel room between
-	-- the spawn and the face, its north side open on the transept and the cylinder's face; five of its sides deep bays, one
-	-- mode each (1V1 south-west round to 5V5 east), its two pads side by side (lifts left, east right) with their boards
-	-- inside facing the middle; the sixth (south-east) your loadout and the bundles; the mode set into each bay's lintel,
-	-- a warm panel over each pad; the pin's boss hanging from the lid lit underneath; cream spokes from the middle's inlay
-	local LOADOUT = 6
-	for k = 1, 6 do
+	-- (judge round 8: any straight hall of pads reads as the RIVALS pad corridor) THE BREECH: a twelve-sided steel room
+	-- between the spawn and the face, its north side open on the transept and the cylinder's face, its south side the gym's
+	-- portal; the other ten sides deep bays, one classic pad in each (the lifts bank west, 1V1 by the spawn round to 4V4 by
+	-- the face; the east twins mirrored), its count board on the bay's back wall, the mode set into each bay's lintel, a warm
+	-- panel over each pad; the pin's boss hanging from the lid lit underneath; cream spokes from the middle's inlay
+	for k = 1, 10 do
 		local a = math.rad(OC_BAYS[k])
 		local ux, uz = math.cos(a), math.sin(a)
-		local lx, lz = uz, -ux -- (left, looking out into the bay)
 		local Fb = CFrame.lookAt(Vector3.new(0, 0, OC_Z), Vector3.new(ux, 0, OC_Z + uz)) -- (its -Z out along the bay, +X right)
-		local title
-		if k < LOADOUT then
-			local md = K.MODES[k]
-			title = md.title .. "  ·  " .. md.kind
-			for _, sd in { -1, 1 } do -- (sd -1: left, the lifts bank)
-				local r0 = OC_R + 2.0
-				local px, pz = ux * r0 - sd * lx * 6.75, OC_Z + uz * r0 - sd * lz * 6.75
-				if K.pad then
-					K.pad(K.facing(px, pz, ux, uz, OB_FLOOR), md, if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e", { lampY = 13 })
-				else
-					K.spotsPad(K.facing(px, pz, ux, uz, OB_FLOOR), md, if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e", { w = 12.4, d = 11.6, lampY = 10.4, signY = 12.4, signZ = 1.3, signW = 12, signH = 2.4 })
-				end
-				K.panel(Fb, sd * 6.75, OB_IN, -(OC_R + 8.5), 5, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
-			end
+		local md = K.MODES[(k - 1) % 5 + 1]
+		local east = k > 5
+		local r0 = OC_R + 1.0
+		local back = OC_R + OB_D - 0.5
+		local F = K.facing(ux * r0, OC_Z + uz * r0, ux, uz, OB_FLOOR)
+		local boardAt = K.facing(ux * back, OC_Z + uz * back, -ux, -uz, OB_FLOOR + 6.2 + 2.75)
+		if K.padClassic then
+			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { boardAt = boardAt })
 		else
-			title = "LOADOUT  ·  BUNDLES"
-			local c = Vector3.new(ux * (OC_R + 9), 0, OC_Z + uz * (OC_R + 9))
-			local mid = Vector3.new(0, 0, OC_Z)
-			K.holoLoadout(CFrame.lookAt(c + Vector3.new(lx, 0, lz) * 6.5, mid))
-			K.bundles(CFrame.lookAt(c - Vector3.new(lx, 0, lz) * 6.5, mid))
-			K.panel(Fb, 0, OB_IN, -(OC_R + 9), 10, 6, { bright = 0.5, range = 22, lightHex = "fff1df" })
+			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { lampY = 13 })
 		end
+		K.panel(Fb, 0, OB_IN, -(OC_R + 6.5), 6, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
 		local sx, sz = ux * (OC_R - 1.42), OC_Z + uz * (OC_R - 1.42)
-		K.sign(K.facing(sx, sz, -ux, -uz, OB_MOUTH + 1.7), "Scenery", "BaySign", 15, 2.2, 0, 0, 0,
-			{ { title, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
+		K.sign(K.facing(sx, sz, -ux, -uz, OB_MOUTH + 1.7), "Scenery", "BaySign", 13.5, 2.4, 0, 0, 0,
+			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
 		local A, B = Vector3.new(ux * 12.6, 0.02, OC_Z + uz * 12.6), Vector3.new(ux * (OC_R - 1.5), 0.02, OC_Z + uz * (OC_R - 1.5))
 		local sp = box(F0, "Scenery", "FloorLine", -0.6, 0.6, 0, 0.05, -0.5, 0.5, "dcd6ca", MAT.Plastic)
 		sp.MaterialVariant = "TrPaint"; sp.Size = Vector3.new(1.2, 0.05, (B - A).Magnitude); sp.CFrame = site * CFrame.lookAt((A + B) / 2, B)
 	end
+	-- your loadout and the bundles back in the transept either side of the face (no free side in the breech now)
+	K.holoLoadout(K.at(F0, -30, 18, -60))
+	K.bundles(K.at(F0, 30, 18, 60))
 	for _, zz in { { OC_Z + 12.6, OC_Z + OC_R - 1 }, { OC_Z - OC_R - 12, OC_Z - 12.6 } } do -- (the spawn's line in, the line on to the face)
 		box(F0, "Scenery", "FloorLine", -0.6, 0.6, 0, 0.05, zz[1], zz[2], "d6d5d0", MAT.Plastic).MaterialVariant = "TrPaint"
 	end
@@ -159,8 +152,8 @@ function HC.build(K, parent, name, site, live)
 	K.cyl(F0, "Scenery", "BossCover", 0, OC_CEIL - 7.36, OC_CEIL - 7.22, OC_Z, 12.0, "9ea2a7", MAT.Plastic).MaterialVariant = "TrPaint"
 	local dl = box(F0, "Scenery", "BossLight", -0.5, 0.5, OC_CEIL - 7.4, OC_CEIL - 7.3, OC_Z - 0.5, OC_Z + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 	K.light(dl, 34, 0.9, "f2f4f8", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 80 })
-	for i = 0, 7 do
-		local q = math.rad(i * 45)
+	for i = 0, 5 do -- (between the twelve radial beams)
+		local q = math.rad(i * 60)
 		K.panel(CFrame.new(math.cos(q) * 15.5, 0, OC_Z + math.sin(q) * 15.5) * CFrame.Angles(0, -q, 0), 0, OC_CEIL, 0, 4, 6, { bright = 0.22, range = 30, hex = "b7bbc2" })
 	end
 	-- the middle (judge round 9: an empty octagon): a pale round bench under the pin's boss, a squat column in it with a
