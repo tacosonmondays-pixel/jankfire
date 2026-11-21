@@ -1113,8 +1113,84 @@ function K.glowHex(t)
 	if s < 0.2 then return K.TEAM[t] end -- (a pale team stays itself)
 	return Color3.fromHSV(h, math.min(1, s * 1.15), v * 0.78):ToHex()
 end
+-- (20 Nov ~23:30, the owner, via main: "Yes, those": the Rotunda-era pads, v641 / v743) THE CLASSIC PAD, now the default
+-- style (K.PAD_STYLE; o.style = "plinth" brings back round 7): a flush pad you walk onto, no step, set in a shallow tray:
+-- a dark base, a soft plate per team with a neon Glow over it (dim and breathing while open, full while taken; PadGlow),
+-- a dark gap between the sides, a chunky cream rim with a warm line on its inner edge; no marks (the places are specks);
+-- sizes growing with the mode. Its board is NOT on the pad: a lit navy board on the bay's back wall (o.boardAt: a CFrame
+-- in the hub's frame at the board's middle, its look out at the walkway; without it the pad stands its own cream back
+-- panel), the mode's plaque over it (o.headerAt). F = the pad's front middle on the floor, its look into the bay (-Z)
+K.PAD_STYLE = "classic"
+K.CLASSIC_SIZE = { ["1v1"] = { 12.4, 9.6 }, ["1v1v1"] = { 15.6, 9.6 }, ["2v2"] = { 13.6, 11 }, ["3v3"] = { 14.4, 11.2 }, ["4v4"] = { 15.6, 11.2 } }
+function K.padClassic(F, md, bank, name, o)
+	local m = padModel(md, bank, name, "classic")
+	m:SetAttribute("RestSub", "") -- (Matches' resting Sub line: a hub says "step on a side" once, at its pads' entrance)
+	local sz = K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
+	local w, dp = sz[1], sz[2]
+	local RIM, CREAM, LINE, BASE = 0.7, o.rim or "efe6d6", "fff1d8", o.base or "3a3631"
+	-- the tray: a dark base, the rim round it (cream, a little proud), its warm inner line
+	K.box(F, "Scenery", "Base", -w / 2, w / 2, 0, 0.14, -dp, 0, BASE, nil, { parent = m, solid = true })
+	for _, r in { { -w / 2, w / 2, -RIM, 0 }, { -w / 2, w / 2, -dp, -dp + RIM }, { -w / 2, -w / 2 + RIM, -dp + RIM, -RIM }, { w / 2 - RIM, w / 2, -dp + RIM, -RIM } } do
+		K.box(F, "Scenery", "Rim", r[1], r[2], 0, 0.34, r[3], r[4], CREAM, nil, { parent = m, solid = true })
+	end
+	local iw, idp = w / 2 - RIM, dp - RIM
+	for _, r in { { -iw, iw, -RIM - 0.12, -RIM }, { -iw, iw, -idp, -idp + 0.12 }, { -iw, -iw + 0.12, -idp, -RIM }, { iw - 0.12, iw, -idp, -RIM } } do
+		K.box(F, "Scenery", "RimLine", r[1], r[2], 0.3, 0.35, r[3], r[4], LINE, MAT.Neon, { parent = m, ghost = true, noshadow = true, tr = 0.25 })
+	end
+	-- the sides: n plates side by side across the tray, a dark 0.8 gap between them
+	local n = md.teams
+	local gap = 0.8
+	local pw = (2 * iw - 0.4 - (n - 1) * gap) / n
+	local z0, z1 = -RIM - 0.2, -idp + 0.2
+	local zc, d = (z0 + z1) / 2, z0 - z1
+	local cols = if md.size >= 4 then 2 else 1
+	local rows = math.ceil(md.size / cols)
+	for t = 1, n do
+		local cx = -iw + 0.2 + pw / 2 + (t - 1) * (pw + gap)
+		local xa, xb = cx - pw / 2, cx + pw / 2
+		-- the plate: the team's soft colour, flat, its look so that minus it is where a joiner faces
+		local face = if t == 1 then Vector3.xAxis elseif t == n then -Vector3.xAxis else Vector3.zAxis
+		local c = Vector3.new(cx, 0.2, zc)
+		local size = if math.abs(face.X) > 0.5 then Vector3.new(d, 0.12, pw) else Vector3.new(pw, 0.12, d)
+		local sd = K.part("Scenery", "Side" .. t, F * CFrame.lookAt(c, c - face), size, K.TEAM_MUTED[t], MAT.SmoothPlastic, { parent = m, solid = true })
+		sd:SetAttribute("Team", t)
+		-- its Glow: a neon sheet over it in the team's richer colour, its light the same tint (never white)
+		local g = K.box(F, "Scenery", "Glow", xa + 0.15, xb - 0.15, 0.265, 0.29, z1 + 0.15, z0 - 0.15, K.glowHex(t), MAT.Neon, { ghost = true, noshadow = true, parent = m, tr = 0.6 })
+		g:SetAttribute("Team", t)
+		g:SetAttribute("GlowOpen", 0.6); g:SetAttribute("GlowTaken", 0.15)
+		g:SetAttribute("GlowLight", 0.7); g:SetAttribute("GlowRange", 7)
+		local gl = Instance.new("PointLight"); gl.Color = c3(K.glowHex(t)); gl.Range = 7; gl.Brightness = 0.7; gl.Shadows = false; gl.Parent = g
+		-- the places: specks inside the plate that never show (Matches' Slot, Off = 1), as on the Rotunda's pads
+		for sl = 1, md.size do
+			local cc, r = (sl - 1) % cols, math.floor((sl - 1) / cols)
+			local ox = if cols == 1 then 0 else (cc - 0.5) * (pw / 2)
+			local oz = zc + d * (0.5 - (r + 0.5) / rows)
+			local q = K.part("Scenery", "Slot", F * CFrame.new(cx + ox, 0.2, oz), Vector3.new(0.05, 0.05, 0.05), K.TEAM[t], nil, { ghost = true, tr = 1, noshadow = true, parent = m })
+			q:SetAttribute("Team", t); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
+		end
+	end
+	-- the board: on the bay's back wall (o.boardAt), else on a cream back panel the pad stands 0.8 behind itself
+	local BW, BH = o.boardW or 12, o.boardH or 5.5
+	local FB = o.boardAt
+	if not FB then
+		K.box(F, "Scenery", "BackPanel", -6.6, 6.6, 0, 13, -dp - 1.6, -dp - 0.8, CREAM, nil, { parent = m, solid = true })
+		FB = F * CFrame.new(0, 9.6, -dp - 0.8) * CFrame.Angles(0, math.pi, 0) -- (its look back out at the walkway)
+	end
+	K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.5, BW / 2 + 0.5, -BH / 2 - 0.5, BH / 2 + 0.5, -0.05, 0.4, "c9c5bc", nil, { parent = m })
+	local counts = {}
+	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
+	local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, "28324a", nil, { parent = m })
+	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
+	K.text(scr, Enum.NormalId.Front, { { md.title .. "  " .. md.kind, "f2f0ea", 0.26 }, { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.44 else 0.36 },
+		{ "", "c8d0e0", 0.1, "S" } }, { names = { [2] = "Status", [3] = "Sub" }, pps = 40, bright = 2, bg = "28324a", bgt = 0 })
+	K.light(scr, 14, 0.45, "dfe8ff")
+	-- the mode's plaque over the board (o.headerAt), in the hub's sign family
+	if o.headerAt then K.wordSign(o.headerAt, "Scenery", "PadHeader", o.headerW or 9, 2.4, 0, 0, 0, md.title, { accent = o.accent or S.accent, bg = "28324a" }) end
+	return m
+end
 function K.pad(F, md, bank, name, o)
 	o = o or {}
+	if (o.style or K.PAD_STYLE) == "classic" then return K.padClassic(F, md, bank, name, o) end
 	local m = padModel(md, bank, name, "plate")
 	m:SetAttribute("RestSub", "") -- (Matches' resting Sub line, a2121b9: the hint is said once, at a hub's pads' entrance)
 	local TOP = K.PAD.top

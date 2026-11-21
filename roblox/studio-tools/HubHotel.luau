@@ -341,11 +341,17 @@ function HH.build(K, parent, name, site, live)
 	-- own gantry); a pale threshold into each
 	for i, md in K.MODES do
 		local z = BZ0 - BAY / 2 - PADBAY[i] * BAY
-		K.pad(K.facing(-12.4, z, -1, 0), md, "lifts", md.id, { lampY = 16, turn = -20, rise = (i - 1) * 0.6 })
-		K.pad(K.facing(12.4, z, 1, 0), md, "east", md.id .. "_e", { lampY = 16, turn = 20, rise = (i - 1) * 0.6 })
+		-- (the classic pad, the owner's pick: flush in front of its recess, its back edge at 24.2; its board and its plaque on
+		-- the recess's back wall, the plaque under the cove)
+		local dp = (K.CLASSIC_SIZE[md.id] or { 13.6, 11 })[2]
+		local fx = 24.2 - dp
 		for _, s in { -1, 1 } do
-			box(F0, "Scenery", "Threshold", s * 3.45, s * 12.4, 0, 0.04, z - 1.5, z + 1.5, WALK)
-			for _, dz in { -1.5, 1.5 } do box(F0, "Scenery", "ThresholdEdge", s * 3.45, s * 12.4, 0, 0.05, z + dz - 0.22, z + dz + 0.22, EDGE) end
+			K.pad(K.facing(s * fx, z, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
+				{ lampY = 16, turn = s * 20, rise = (i - 1) * 0.6, boardAt = K.facing(s * 28.45, z, -s, 0, 9.8), headerAt = K.facing(s * 28.45, z, -s, 0, 14.6), accent = PAL.accent })
+		end
+		for _, s in { -1, 1 } do
+			box(F0, "Scenery", "Threshold", s * 3.45, s * fx, 0, 0.04, z - 1.5, z + 1.5, WALK)
+			for _, dz in { -1.5, 1.5 } do box(F0, "Scenery", "ThresholdEdge", s * 3.45, s * fx, 0, 0.05, z + dz - 0.22, z + dz + 0.22, EDGE) end
 			K.light(box(F0, "Scenery", "BayWash", s * 19 - 0.3, s * 19 + 0.3, 18.4, 18.6, z - 0.3, z + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 24, 0.6, PAL.warm,
 				{ kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 70 })
 		end
