@@ -476,4 +476,12 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
   - all four level-2 tables seat you (the player's `Hub` reads `atrium`), an arm bout ran there against a stand-in, and a bout ran in `box1_atrium`;
   - the anti-cheat: 0 points;
   - photos: `docs/minigames/atrium_arm_level2.jpg`, `atrium_box_ring.jpg`.
-- **THE RING retires** after the Atrium (the hub session's turn, 20 Nov): `Map.Hub.Rotunda` and its 7 markers go, so the bare ids (`box1`, `arm1`, ...) go with them. Tests use the hub ids (`box1_square`, `golf1_concourse`, ...). Nothing here reads the ring directly: markers are found by tag, the `RingMat` fallback runs only when there is no box marker, and `Map.Hub.MiniGames` stays as an empty folder.
+- **THE RING retires** after the Atrium (the hub session's turn, 20 Nov): `Map.Hub.Rotunda` and its 7 markers go, so the bare ids (`box1`, `arm1`, ...) go with them. Tests use the hub ids (`box1_square`, `golf1_concourse`, ...). Nothing here reads the ring directly: markers are found by tag, the `RingMat` fallback runs only when there is no box marker, and `Map.Hub.MiniGames` stays as an empty folder. It retired at place version 1231.
+- **THE CYLINDER** (`cylinder`, 8 tables with golf): the golf marker was 10 studs off its room's centre, so the course went through a wall. It was centred at version 1312. The room is exactly the course's size, with its door at the side, so the marker carries `Door` (above). The PLAY prompt and LEAVE were Play-tested at the door.
+- **THE HOTEL** (`hotel`, 9 tables, two cabinets): both cabinets sat 1 stud into the lounge wall; they were moved 1.1 out at version 1323. The golf marker carries `Door = (-28, 0, 30)`.
+- **THE STILL** (`still`, 7 tables, no golf): the cabinet sat in the Wall and a Pier, and the board's player B stood up onto the HearthDais. Both were moved at version 1333 and re-checked clear.
+- **What a read-only check of a new hub covers:** each marker's `Hub`, the room each table needs, and the floor under it. On top of that:
+  - for a ring, nothing inside the ropes;
+  - for a cabinet, at least 1.5 studs to the wall behind (the cabinet is 2.8 deep, centred on its marker), and its body, play spot and leave spot clear;
+  - for a board, both stand spots clear, `(-2.8, 0, 3.6)` and `(2.8, 0, -3.6)`, where leavers land;
+  - for golf, nothing inside its 44 x 80 footprint, and a way in near the prompt.
