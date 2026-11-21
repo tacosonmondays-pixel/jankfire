@@ -94,10 +94,20 @@ Fight.trail = {} :: { [Fighter]: { { t: number, p: Vector3 } } }
 -- lag: a shooter sees you where you were a ping and an interpolation step ago, so hit checks (line of sight, "was
 -- it aimed at them") look back this many seconds along your trail instead of only at where you are right now
 Fight.LAG = 0.6
+local ownT = 0
 function Fight.track(n: number)
+	local own = n - ownT >= 0.5
+	if own then ownT = n end
 	for _, f in Fight.all do
 		local r = Fight.root(f)
 		if not r or not f.alive then Fight.trail[f] = nil; continue end
+		-- (20 Nov 2026, hit registration) a dummy's or a zombie's body stays the server's to move. Roblox hands an
+		-- unanchored body back to the nearest player whenever its parts change (a held weapon welded on, a limb off),
+		-- and then that player sees it ahead of this trail: in a test, half the headshots on the moving training
+		-- Dummy were refused or paid as body shots, against 10 of 11 heads once the server owned it again
+		if own and f.kind ~= "player" and not r.Anchored then
+			pcall(function() if r:GetNetworkOwnershipAuto() or r:GetNetworkOwner() ~= nil then r:SetNetworkOwner(nil) end end)
+		end
 		local tr = Fight.trail[f] or {}
 		Fight.trail[f] = tr
 		table.insert(tr, { t = n, p = r.Position })
