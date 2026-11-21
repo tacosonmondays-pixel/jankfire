@@ -103,8 +103,11 @@ local function flatLook(look: unknown): Vector3?
 end
 
 -- ------------------------------------------------------------------ the TV Remote
+-- (21 Nov 2026) whoever was paused can't be paused again till this (server time): two Remotes can't chain one person
+local pauseFree: { [any]: number } = setmetatable({}, { __mode = "k" }) :: any
 local function pauseOne(by: Fighter, t: Fighter, dur: number)
 	local n = now()
+	pauseFree[t] = n + dur + ((W.remote :: any).pause.immune or 0)
 	Rules.stun(t, dur, n) -- (no shots, swings or guard while paused)
 	if t.kind == "player" then
 		local p = t.ref :: Player
@@ -164,12 +167,16 @@ TVR.OnServerEvent:Connect(function(p: Player, op: unknown, look: unknown)
 	local t = pick(f, lk, w.range, w.cone)
 	if not t then return end -- (nobody there: nothing spent)
 	if op == "pause" then
+		if n < (pauseFree[t] or 0) then return end -- (just paused, by anyone: nothing spent)
 		if not Rules.gate(f, "tvpause", n, w.pause.cd / 0.9) then return end
 		pauseOne(f, t, w.pause.dur)
 	else
 		if not Rules.gate(f, "tvrewind", n, w.rewind.cd / 0.9) then return end
 		rewindOne(f, t, w.rewind.back)
 	end
+	-- (21 Nov 2026) either button locks the other for a moment: no pause-then-rewind in one breath
+	local other = if op == "pause" then "tvrewind" else "tvpause"
+	f.gate[other] = math.max(f.gate[other] or -math.huge, n + (w.lock or 0))
 	Fight.shot(f, "remote")
 	Rules.tagged(t, f, "remote", n) -- (a fall after it is theirs)
 end)

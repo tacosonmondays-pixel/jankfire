@@ -63,7 +63,7 @@ export type Weapon = {
 	-- Remote (kind "remote": range, cone; pause dur / cd, rewind back / cd)
 	out: number?, back: number?, homeR: number?, homeCone: number?, homeTurn: number?, outLock: number?,
 	verdict: boolean?, gavel: { range: number, cone: number, delay: number, r: number, h: number, dmg: number, kbUp: number, cd: number }?,
-	pause: { dur: number, cd: number }?, rewind: { back: number, cd: number }?,
+	pause: { dur: number, cd: number, immune: number? }?, rewind: { back: number, cd: number }?, lock: number?,
 	-- the Bow (kind "bow", proj "arrow"): hold drawT s to full; speed .. speedMax studs/s and dmg .. dmgMax by the draw
 	drawT: number?, speedMax: number?, dmgMax: number?,
 	hands: number?, -- (Lefty & Righty: 2 guns, left click the left, right click the right, each its own mag of `mag`)
@@ -379,7 +379,9 @@ local W: { [string]: Weapon } = {
 		id = "sawnoff", name = "Sawed-Off", slot = "secondary", kind = "hitscan", color = rgb(0xe05a3a),
 		desc = "a sawed-off double. two shells, point blank they go flying, shoot the floor for a little hop.",
 		-- (owner, 20 Nov 2026: "buff shotguns") 9 -> 9.5: one stray pellet no longer saves them point blank (11 land = 104)
-		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9.5, head = 1.3, spread = 0.11,
+		-- (owner, 21 Nov 2026: "nerf sawd off a bit dmg is too consisitent at most ranged") a true close-range gun: full to
+		-- 8 studs (114, one shot), x0.4 by 20 (about 45 a shell: both barrels no longer kill there, a reload in between does)
+		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9.5, head = 1.3, spread = 0.11, falloff = { from = 8, to = 20, min = 0.4 },
 		kb = 3.4 * S, kbUp = 9 * S, recoil = 10 * S, kick = 0.09, range = 32 * S,
 		ads = { zoom = 1.12, spread = 0.7 }, tracer = rgb(0xffa060),
 		fx = { big = true, shake = 0.5 }, snd = "gun_sawnoff", draw = "draw_sawnoff",
@@ -574,7 +576,10 @@ local W: { [string]: Weapon } = {
 	remote = {
 		id = "remote", name = "TV Remote", slot = "secondary", kind = "remote", color = rgb(0xff5a8a),
 		desc = "point and click. left click pauses them for a second. right click rewinds them to where they were 2 seconds ago.",
-		range = 45 * S, cone = 0.09, pause = { dur = 1.2, cd = 3.5 }, rewind = { back = 2, cd = 6 }, speedMul = 1.05,
+		-- (owner, 21 Nov 2026: "tv remote needs nerf too you can spam it too often") pause 3.5 -> 7 s, rewind 6 -> 10 s, and
+		-- either one locks the other for `lock` s; whoever was paused can't be paused again (by anyone) for `immune` s after
+		-- it ends (WeaponTricks). at most 2 pauses and 1 rewind in 10 s (was 3 and 2), never two pauses back to back
+		range = 45 * S, cone = 0.09, pause = { dur = 1.2, cd = 7, immune = 3 }, rewind = { back = 2, cd = 10 }, lock = 1.5, speedMul = 1.05,
 		snd = "remote_click",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0, side = 0, punch = 0.004 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
