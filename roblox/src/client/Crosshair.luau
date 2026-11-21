@@ -4,8 +4,8 @@
 -- the page's own preview. one drawing function for both, so the preview is the crosshair.
 -- options (Settings keys xh.*): style cross / dot / circle / t, colour (hex), size (line length), thickness, gap,
 -- outline (0 = none), centre dot (0 = none), opacity, show spread (the gap opens with the gun's spread), hide while
--- aiming, weapon reticles (a shape per kind of weapon from its own numbers: "weapon reticles" below). defaults =
--- the crosshair the game always had, with the weapon reticles on.
+-- aiming, the shotgun spread circle (below). defaults = the crosshair the game always had, with the shotgun circle
+-- on.
 -- a share code: "X1" + style letter + colour hex + seven base-36 digits (size, thickness, gap, outline, dot, opacity
 -- in tenths, flags), 16 letters and numbers, e.g. X1CFFFFFF82510A2. nothing else in it, no links.
 local Settings = require(script.Parent:WaitForChild("Settings")) :: any
@@ -167,92 +167,40 @@ function XH.spreadPx(spread: number, fovDeg: number, screenH: number): number
 	return spread / math.tan(math.rad(fovDeg) / 2) * screenH / 2
 end
 
--- ------------------------------------------------------------------ weapon reticles
--- WEAPON RETICLES (xh.weapon, on by default): each kind of weapon gets a reticle drawn from its own numbers in
--- Weapons.luau, read live; colour, outline, opacity, thickness and dot are still the player's. off: the player's own
--- crosshair on every weapon.
---   shotgun   (more than one pellet): a circle on the pellet cone. Arsenal's spread (base + bloom, x the sights'
---             ads.spread as you aim), at this FOV and zoom: every pellet lands inside the line. it stays up, half
---             faded, down the sights (sights don't show the spread)
---   auto      (automatics, the burst rifle): the player's own crosshair, its gap always opening with spread + bloom
---   precision (pistols, the revolver, the lever rifle): a dot and four short ticks just outside the cone; the
---             revolver's fan opens them shot by shot (Arsenal passes the next fanned shot's spread)
---   scoped    (sniper, marksman, the scythe's rifle): from the hip a dot and a faint ring on the hip spread (the scope
---             takes over down the sights)
---   lob       (launchers, throws, the bow): a dot and short marks under it where the shot has dropped to at 30, 60
---             and 90 studs (speed and gravity from the row, as WeaponProj flies it); none where the drop is too small
---   cone      (the leaf blower, the hot sauce, the taser, the TV remote): a faint ring on the cone they reach
---   point     (melee, the laser, the lasso, the cart): a small dot
+-- ------------------------------------------------------------------ the shotgun spread circle
+-- SHOTGUN SPREAD CIRCLE (xh.weapon, on by default; owner, 21 Nov: "just have the circle for the shotguns not normal
+-- guns"): a shotgun (any gun that fires more than one pellet, read live from its row in Weapons.luau) shows a circle
+-- on its pellet cone instead of the crosshair: Arsenal's spread now (base + bloom, x the sights' ads.spread as you
+-- aim) at this FOV and zoom, so every pellet lands inside the line. it stays up, half faded, down the sights (sights
+-- don't show the spread). the player's colour, outline, opacity, thickness and dot apply. every other weapon, every
+-- weapon with the setting off, and a shotgun holstered in the hub (weapons-free: Arsenal, HubHolster) keep the
+-- player's own crosshair
 local Weapons = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Weapons")) :: any
-local GRAV_S = 3 -- (WeaponProj.server pulls a shot down by grav x S studs/s^2; S = 3 studs to the metre, Weapons.luau)
-local LOB_AT = { 30, 60, 90 } -- studs out, where the drop marks go
+local me = game:GetService("Players").LocalPlayer
 
-function XH.class(wid: string?): string
+function XH.isShotgun(wid: string?): boolean
 	local w = if wid then Weapons.list[wid] else nil
-	if not w then return "own" end
-	local k = w.kind
-	if k == "hitscan" then
-		if (w.pellets or 1) > 1 then return "shotgun" end
-		if w.ads and w.ads.scope then return "scoped" end
-		if w.auto or w.burst then return "auto" end
-		return "precision"
-	elseif k == "proj" or k == "bow" or k == "cards" then return "lob"
-	elseif (k == "hold" or k == "zap" or k == "remote") and type(w.cone) == "number" then return "cone"
-	elseif k == "melee" or k == "hold" or k == "lasso" or k == "cart" then return "point"
-	end
-	return "own"
+	return w ~= nil and w.kind == "hitscan" and (w.pellets or 1) > 1
 end
-
--- the reticle's shape for a class. sp = the spread now in px, k = px per unit of tangent at the middle
-local function shapeOf(cls: string, w: any, o: Opts, sp: number, k: number, screenH: number): Shape
-	local big = screenH * 0.45
-	if cls == "shotgun" then
-		return { bars = {}, dot = o.dot, ring = math.clamp(sp, 6, big), ringT = o.thick, ringK = 1 }
-	elseif cls == "auto" then
-		return XH.own(o, math.min(60, sp))
-	elseif cls == "precision" then
-		local len = math.clamp(math.floor(o.size * 0.6 + 0.5), 3, 6)
-		local t = math.min(o.thick, 2)
-		local a = math.floor(2 + o.gap * 0.4 + math.min(sp, big) + 0.5) + len / 2
-		return { bars = { { 0, -a, t, len }, { 0, a, t, len }, { -a, 0, len, t }, { a, 0, len, t } }, dot = math.max(o.dot, 3) }
-	elseif cls == "scoped" then
-		return { bars = {}, dot = math.max(o.dot, 3), ring = math.clamp(sp, 6, big), ringT = 1, ringK = 0.45 }
-	elseif cls == "lob" then
-		local bars = {}
-		local v = (w.speedMax or w.speed or 0) :: number
-		local g = ((w.grav or 0) :: number) * GRAV_S
-		if v > 0 and g > 0 then
-			local last = 0
-			for i, d in LOB_AT do
-				local y = 0.5 * g * d / (v * v) * k -- (the drop at d studs, d / v seconds out, as a slope, in px)
-				if y >= 5 and y <= screenH * 0.3 and y - last >= 6 then
-					table.insert(bars, { 0, math.floor(y + 0.5), 14 - i * 3, math.min(o.thick, 2) })
-					last = y
-				end
-			end
-		end
-		return { bars = bars, dot = math.max(o.dot, 4) }
-	elseif cls == "cone" then
-		return { bars = {}, dot = math.max(o.dot, 3), ring = math.clamp(math.tan(w.cone) * k, 6, big), ringT = math.max(1, o.thick - 1), ringK = 0.6 }
-	end
-	return { bars = {}, dot = math.max(o.dot, 4) } -- point
+-- (Arsenal's own hub rule: weapons away in the hub unless the owner's dev weapons are out)
+local function holstered(): boolean
+	return me ~= nil and me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true
 end
 
 XH.last = { class = "own", shape = nil :: Shape?, spreadPx = 0 } -- (what was drawn last: Studio tests read it)
--- the crosshair for the weapon in hand (FightHud, every frame): its reticle, or the player's own crosshair (WEAPON
--- RETICLES off, or nothing that has one in hand). spread = Arsenal's spread now
+-- the crosshair for the weapon in hand (FightHud, every frame): the shotgun's circle, or the player's own crosshair
+-- (its gap opening with the spread when DYNAMIC is on). spread = Arsenal's spread now
 function XH.drawFor(holder: Frame, o: Opts, fade: number, wid: string?, spread: number, cam: Camera?)
 	if not cam then XH.draw(holder, o, fade, 0); return end
 	local h = cam.ViewportSize.Y
-	local k = h / 2 / math.tan(math.rad(cam.FieldOfView) / 2)
-	local sp = math.max(0, spread) * k
-	local cls = if Settings.get("xh.weapon") ~= false then XH.class(wid) else "own"
-	local shape: Shape
-	if cls == "own" then
-		shape = XH.own(o, if o.spread then math.min(60, sp) else 0)
+	local sp = XH.spreadPx(math.max(0, spread), cam.FieldOfView, h)
+	local cls, shape = "own", nil :: Shape?
+	if Settings.get("xh.weapon") ~= false and XH.isShotgun(wid) and not holstered() then
+		cls = "shotgun"
+		shape = { bars = {}, dot = o.dot, ring = math.clamp(sp, 6, h * 0.45), ringT = o.thick, ringK = 1 }
+		fade *= 0.5
 	else
-		shape = shapeOf(cls, Weapons.list[wid :: string], o, sp, k, h)
-		if cls == "shotgun" then fade *= 0.5 end
+		shape = XH.own(o, if o.spread then math.min(60, sp) else 0)
 	end
 	XH.last.class = cls; XH.last.shape = shape; XH.last.spreadPx = sp
 	XH.draw(holder, o, fade, shape)

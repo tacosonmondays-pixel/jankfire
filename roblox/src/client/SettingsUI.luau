@@ -564,7 +564,7 @@ tabs = {
 			T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, b)
 			b.MouseButton1Click:Connect(function() XH.apply(p[2]) end)
 		end
-		switch({ key = "xh.weapon", label = "WEAPON RETICLES", sub = "a reticle per weapon type; off: this crosshair everywhere" })
+		switch({ key = "xh.weapon", label = "SHOTGUN SPREAD CIRCLE", sub = "shotguns show their pellet spread as a circle" })
 		choice({ key = "xh.style", label = "STYLE", options = { { "cross", "CROSS" }, { "dot", "DOT" }, { "circle", "CIRCLE" }, { "t", "T" } } })
 		local sw = {}
 		for _, h in XH.SWATCHES do table.insert(sw, { h, Color3.fromHex(h) }) end

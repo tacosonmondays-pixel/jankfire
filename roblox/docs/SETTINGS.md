@@ -39,23 +39,17 @@ player loses a setting).
 - **CROSSHAIR.** A true-size PREVIEW on a dark and a pale ground, four starting points (DEFAULT, DOT, SMALL CROSS,
   CIRCLE), STYLE (cross, dot, circle, T), COLOR (six swatches or any #RRGGBB), SIZE, THICKNESS, GAP, OUTLINE, DOT,
   ALPHA, DYNAMIC (the gap follows the spread), HIDE WHILE AIMING and the CROSSHAIR CODE.
-  - WEAPON RETICLES (`xh.weapon`, default on, since 21 Nov; owner: "special reticles like shotgun can have a circle
-    crosshair depending on the spread of it"): each kind of weapon gets a reticle from its own numbers in Weapons.luau,
-    read live (`Crosshair.luau`, `XH.class` / `XH.drawFor`). The player's colour, outline, opacity, thickness and dot
-    apply to all of them. Off: the player's own crosshair on every weapon.
-    - Shotguns (more than one pellet): a circle on the pellet cone. Every pellet lands inside its line, at any FOV or
-      zoom. It shrinks down the sights (`ads.spread`) and stays up there, half faded.
-    - Automatics: the player's own crosshair, its gap always opening with spread + bloom.
-    - Precision guns (pistols, revolver, lever rifle): a dot and four short ticks just outside the cone. The revolver's
-      fan opens them shot by shot.
-    - Scoped guns from the hip: a dot and a faint ring on the hip spread.
-    - Launchers, throws, the bow: a dot and short marks under it where the shot has dropped at 30, 60 and 90 studs.
-    - The leaf blower, hot sauce, taser and TV remote: a faint ring on the cone they reach.
-    - Melee and the rest: a small dot.
-    - The spread maths: Hitbox.spreadDir puts a shot up to `spread` across the look (a tangent), so the cone's radius is
-      `spread / tan(FOV / 2) x half the screen height` (`XH.spreadPx`).
-    - Sheet: `settings/weapon-reticles-sheet.jpg` (every class drawn by the real code, and the shotgun circle with real
-      pellet holes inside it, from the hip and down the sights).
+  - SHOTGUN SPREAD CIRCLE (`xh.weapon`, default on). A shotgun (more than one pellet, read live from Weapons.luau) shows
+    a circle on its pellet cone instead of the crosshair (`Crosshair.luau`, `XH.isShotgun` / `XH.drawFor`). Every
+    pellet lands inside its line, at any FOV or zoom. It shrinks down the sights (`ads.spread`) and stays up there,
+    half faded. The player's colour, outline, opacity, thickness and dot apply. Off, on every other weapon, and with a
+    shotgun holstered in the hub (weapons-free): the player's own crosshair.
+    - History: v1307 (21 Nov) gave every kind of weapon its own reticle. The owner (~01:00 UTC): "just have the
+      circle for the shotguns not normal guns please", so since v1319 only shotguns keep one.
+    - The spread maths: Hitbox.spreadDir puts a shot up to `spread` across the look (a tangent), so the cone's radius
+      is `spread / tan(FOV / 2) x half the screen height` (`XH.spreadPx`).
+    - Sheets: `settings/weapon-reticles-sheet.jpg` (v1307: the circle with real pellet holes inside it, hip and
+      aimed; its other classes are gone) and `settings/shotgun-circle-only.jpg` (now).
 - **AUDIO.** MASTER, WEAPON, EFFECTS, UI and MUSIC VOLUME (0 to 150 %), HIT SOUND, KILL SOUND and OTHERS' EMOTE MUSIC.
   - MUSIC (`vol.music`, the `Music` group, since 19 Nov, the flair session's) is the dance emotes' licensed tracks, played
     from the dancer (`client/EmoteMusic.client.luau`).
