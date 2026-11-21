@@ -16,7 +16,7 @@ local TeamColors = {}
 
 -- (true until the pads read this module too (the hub session's HubKit) and the owner says go, so pads and matches
 -- change together)
-TeamColors.OLD = true
+TeamColors.OLD = false
 
 type Entry = { name: string, hex: string, muted: string, glow: string? }
 type Set = { list: { Entry }, cb: { [string]: { string } } }
