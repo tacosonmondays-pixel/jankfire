@@ -98,7 +98,7 @@ H.looks.cylinder = with(HUB, {
 -- and the rooms lit by their own panels; nothing black
 H.looks.still = with(HUB, {
 	Lighting = {
-		Ambient = Color3.fromRGB(98, 94, 90), OutdoorAmbient = Color3.fromRGB(116, 112, 108), Brightness = 1.4,
+		Ambient = Color3.fromRGB(104, 100, 96), OutdoorAmbient = Color3.fromRGB(122, 118, 114), Brightness = 1.15, ShadowSoftness = 0.5, -- (judge round 12: hard sun, blotchy shadows)
 		ExposureCompensation = -0.5, EnvironmentDiffuseScale = 0.55, EnvironmentSpecularScale = 0.4,
 		ClockTime = 16.9, GeographicLatitude = 55, ColorShift_Top = Color3.fromRGB(255, 218, 188),
 		FogColor = Color3.fromRGB(204, 186, 170), FogStart = 260, FogEnd = 1400,

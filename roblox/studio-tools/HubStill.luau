@@ -355,6 +355,9 @@ function HS.build(K, parent, name, site, live)
 	end
 	for _, x in { 62, 78, 94, 110 } do box(FG, "Scenery", "GymBeam", x - 1.3, x + 1.3, 14.0, 15.98, -42, 42, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster" end -- (regular beams on one plane)
 	for _, x in { 70, 86, 102 } do K.panel(FG, x, 16, 0, 5, 9, { bright = 0.45, range = 30 }) end -- (panels flush in the lid between them)
+	for _, x in { 62, 86, 110 } do for _, z in { -24, 24 } do -- (judge round 12: the lid fell to black: soft warm fills just under it)
+		K.light(box(FG, "Scenery", "GymFill", x - 0.3, x + 0.3, 14.6, 14.8, z - 0.3, z + 0.3, P.pale, nil, { ghost = true, tr = 1 }), 22, 0.45, "fff1df")
+	end end
 	for _, d in f:GetDescendants() do -- (judge round 6: black post caps, near-black back walls)
 		if not before[d] and d:IsA("BasePart") then
 			local c = d.Color
