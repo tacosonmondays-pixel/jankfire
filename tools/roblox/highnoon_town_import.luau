@@ -4,7 +4,9 @@
 -- vest; its gear comes from the first town imported). The owner picked TOWN A on 20 Nov: only A is in the place.
 -- B is the spare, a switch away: put "B" in TOWNS below and run this, then set FinisherScene's EXTRA.highnoon.town = "B"
 -- (its onlookers' spots are already in FinisherTownData). The uploads:
-local UPLOADS = { HighNoonTownA = 100621445605287, HighNoonTownB = 134839016753792 }
+-- (A: 102998946016322 since 21 Nov 00:00 UTC, the rooms 5.7 studs deep - the onlookers' clips swing 2.3 studs each way;
+-- before that 129998660975275 (3.7 deep, never in the place) and 100621445605287 (1.9 deep))
+local UPLOADS = { HighNoonTownA = 102998946016322, HighNoonTownB = 134839016753792 }
 local TOWNS = { "A" } -- the towns to (re)import
 local IS = game:GetService("InsertService")
 local RS = game:GetService("ReplicatedStorage")

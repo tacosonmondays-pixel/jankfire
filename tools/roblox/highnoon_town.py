@@ -133,6 +133,12 @@ def onlooker(s, z, y, d, kind, floor):
     SPOTS.append({'at': [round(s * (FX + d), 3), round(y, 3), round(z, 3)], 'face': [-s, 0], 'kind': kind, 'floor': floor})
 
 
+RD = 6.4   # a timber building's room: from the front wall's back (0.7) to its dark back wall, studs
+OD = 3.4   # where an onlooker stands in it (its feet), from the front. (20 Nov, the clip check: the clips swing the body
+           # well off its spot - the knockdown's lowest puts the head 2.3 studs forward, the guard leans it 2 back - so
+           # the room holds that swing both ways: ~0.4 clear in front at the duck, ~0.6 behind at the guard)
+
+
 def timber(model, s, zl, zh, two=False, col='wl', ff=3.4, sign='sign', style='store', npc=()):
     """a timber false-front building: hollow behind its front wall (the windows show a dark room; an onlooker can
     stand in it), a porch or a balcony, a pitched roof behind the false front"""
@@ -160,14 +166,16 @@ def timber(model, s, zl, zh, two=False, col='wl', ff=3.4, sign='sign', style='st
             ups.append((c - 1.15, c + 1.15, 10.4, 14.2))
         holes += ups
     wall_with_holes(model, col, s, 0.0, 0.7, 0.7, h, zl, zh, holes)
-    # the room behind: a dark back wall, the floor between, side panels; the body behind that
-    Bw(model, 'dark', s, 2.6, 0.7, zl, 3.0, h, zh, bev=0.0, kind='plastic')
-    Bw(model, 'wd', s, 0.7, 0.7, zl, 2.6, 0.9, zh, bev=0.0)
-    Bw(model, col, s, 0.7, 0.7, zl, 2.6, h, zl + 0.3, bev=0.0)          # (the room's ends: the wall's colour outside)
-    Bw(model, col, s, 0.7, 0.7, zh - 0.3, 2.6, h, zh, bev=0.0)
+    # the room behind: a dark back wall, the floor between, side panels; the body behind that. (RD deep: 1.9 at first,
+    # 20 Nov - an onlooker's hat brim alone is 2 studs across, so their poses passed through the walls; the owner: "the
+    # people are clipped into the buildings")
+    Bw(model, 'dark', s, RD, 0.7, zl, RD + 0.4, h, zh, bev=0.0, kind='plastic')
+    Bw(model, 'wd', s, 0.7, 0.7, zl, RD, 0.9, zh, bev=0.0)
+    Bw(model, col, s, 0.7, 0.7, zl, RD, h, zl + 0.3, bev=0.0)          # (the room's ends: the wall's colour outside)
+    Bw(model, col, s, 0.7, 0.7, zh - 0.3, RD, h, zh, bev=0.0)
     if two:
-        Bw(model, 'wd', s, 0.7, 8.2, zl, 2.6, 8.6, zh, bev=0.0)                            # the upstairs floor
-    Bw(model, col, s, 3.0, 0.7, zl, D, h - 0.3, zh, bev=0.25)                               # the body
+        Bw(model, 'wd', s, 0.7, 8.2, zl, RD, 8.6, zh, bev=0.0)                             # the upstairs floor
+    Bw(model, col, s, RD + 0.4, 0.7, zl, D, h - 0.3, zh, bev=0.25)                          # the body
     # the pitched roof behind the false front (its ridge runs back from the street, at h + rise)
     rise = 2.2
     p = (s * (FX + (D + 0.6) / 2), h + rise)
@@ -197,14 +205,14 @@ def timber(model, s, zl, zh, two=False, col='wl', ff=3.4, sign='sign', style='st
         open_ = ('win%d' % i) in npc
         window(model, s, a, b, c, d, shutters=None if style == 'saloon' else ('wm' if col != 'wm' else 'wd'), muntins=not open_)
         if open_:
-            onlooker(s, (a + b) / 2, 0.9, 1.6, 'window', 0)
+            onlooker(s, (a + b) / 2, 0.9, OD, 'window', 0)
     for i, (a, b, c, d) in enumerate(ups):
         open_ = ('up%d' % i) in npc
         window(model, s, a, b, c, d, muntins=not open_)
         if open_:
-            onlooker(s, (a + b) / 2, 8.6, 1.6, 'window', 1)
+            onlooker(s, (a + b) / 2, 8.6, OD, 'window', 1)
     if 'door' in npc:
-        onlooker(s, zc, 0.9, 1.4, 'door', 0)
+        onlooker(s, zc, 0.9, OD, 'door', 0)
     false_front(model, s, zl, zh, h, ff if not two else 2.6, col, step=(rnd.random() < 0.5) and not two, sign=sign)
     porch(model, s, zl, zh, 8.0 if two else 7.6, balcony=two)
     return h
@@ -389,7 +397,7 @@ def town_A():
     # east row (front faces -x): north block, the open gap z 9 .. -25, south block
     timber('east', 1, 31, 43, col='wm', sign='sign', npc=())                          # the livery's front
     timber('east', 1, 20, 30, two=True, col='wg', sign='cream', npc=())               # boarding house
-    timber('east', 1, 10, 19, col='och', sign='sign', npc=('win1',))                  # the barber
+    timber('east', 1, 10, 19, col='och', sign='sign', npc=())                         # the barber (its window's onlooker gone, 20 Nov: 1.4 studs from the room's end at a 1.5-stud window, no pose fit)
     timber('east', 1, -38, -26, col='red', sign='sign', npc=())                       # the bank
     timber('east', 1, -48, -39, col='wl', sign='cream', npc=())
     # the gap: a low corral, a trough, hay, barrels on the boardwalk ends
@@ -404,10 +412,10 @@ def town_A():
     K.B('hay', C['hay'], 16.0, 0, -22.0, 18.2, 1.3, -20.4, bev=0.3, kind='fabric')
     K.B('hay', C['hay'], 18.0, 0, 4.8, 19.6, 1.3, 6.8, bev=0.3, kind='fabric')
     barrel(-8.9, 14.0, y0=0.62); barrel(-8.3, 13.0, 'wd', y0=0.62); barrel(-8.9, -19.2, y0=0.62); barrel(8.9, 11.0, y0=0.62)
-    # barrels on the west boardwalk by the saloon; a cowboy behind the hotel's barrels, well clear of the winner's line in
-    # the far shot (main, 20 Nov: off the killer's shoulder, so it reads as background)
+    # barrels on the west boardwalk by the saloon. (The cowboy who hid behind the hotel's barrels is gone, 20 Nov: the
+    # boardwalk between the barrels and the wall is 1.3 studs deep and a body 2.2 - no pose of his fit without passing
+    # through one or the other; the clip check)
     barrel(-8.2, -2.4, y0=0.62); barrel(-8.4, -1.0, 'wd', y0=0.62)
-    SPOTS.append({'at': [-9.6, 0.62, 13.6], 'face': [1, 0], 'kind': 'barrel', 'floor': 0})
     crate(-9.4, 33.0); crate(-8.8, 34.0, 1.0, 0.4); crate(9.5, -27.5)
     water_tower(-26.0, -6.0, 15.0)
     # the street's ends: a church across the south, a barn across the north
@@ -485,6 +493,23 @@ for at, h in (((-20, 50), 4.4), ((24, 14), 3.4), ((-30, -40), 3.8), ((30, -34), 
 # the onlookers' spots, for the game (client/FinisherScene: EXTRA.highnoon.town)
 json.dump({'version': VER, 'spots': SPOTS}, open(os.path.join(OUT, 'highnoon_town_%s.json' % VER), 'w'), indent=1)
 print('SPOTS', len(SPOTS))
+
+# --boxes: every piece near the street as its box (Roblox local, min and max), before the merge - the onlookers' clip
+# check builds the town from these as plain blocks (the merged meshes' collision shapes are whole buildings)
+if '--boxes' in K.FLAGS:
+    boxes = []
+    for (model, key), items in K.PIECES.items():
+        if model in ('kitorigin',) or model.startswith('gear'):
+            continue
+        for bm, M in items:
+            vs = [M @ v.co for v in bm.verts]
+            lo = [min(v[i] for v in vs) for i in range(3)]
+            hi = [max(v[i] for v in vs) for i in range(3)]
+            if hi[1] < -5 or max(abs(lo[0]), abs(hi[0])) > 45 or max(abs(lo[2]), abs(hi[2])) > 45:
+                continue
+            boxes.append([model, key.split('_')[0]] + [round(x, 3) for x in lo + hi])
+    json.dump(boxes, open(os.path.join(OUT, 'highnoon_town_%s_boxes.json' % VER), 'w'))
+    print('BOXES', len(boxes))
 
 # previews from the scene's own lenses (Roblox local: position, look-at, vertical fov), stand-ins at the duel marks
 VIEWS = [("wide", (25, 1.1, 1.5), (0, 4.0, -7.0), 26), ("far", (26.7, 2.1, -8.5), (0, 3.0, -8.5), 33),

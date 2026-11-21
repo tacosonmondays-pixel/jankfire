@@ -135,6 +135,12 @@ local EXTRA: { [string]: any } = {
 			-- (the owner, 20 Nov: "after the shot and the person falls then fade toe desaturated": the body lands at
 			-- frames 199-201 and settles by 206 in the plan)
 			cold = { tint = Color3.fromRGB(242, 238, 232), sat = -0.62, con = 0.16, bright = -0.02 }, at = 206, over = 0.7,
+			-- (the per-shot match, Scene.grade; measured from the v1279 strip: the hands, the wide and the draw sat at
+			-- saturation ~0.58, warmth ~+0.12. The killer's close-ups at mid-grey 0.81 / saturation 0.41 -> 0.68 / 0.52;
+			-- the overhead at saturation 0.73 / warmth +0.45 -> 0.64 / +0.36)
+			shots = { OVERHEAD = { sat = -0.15, tint = Color3.new(0.96, 1, 1.05) },
+				["KILLER'S EYES"] = { face = "k", bright = -0.12, sat = 0.25 },
+				["EYES AGAIN"] = { face = "k", bright = -0.12, sat = 0.25 } },
 			bloom = { Intensity = 0.55, Size = 26, Threshold = 1.5 } },
 		-- (high noon - the owner, 20 Nov: "can it be an actual sky with a sun its high noon after all": Roblox's own sky
 		-- and sun in place of the set's painted sunset ring and the place's sky box, the sun up in the top of THE DRAW's
@@ -693,8 +699,33 @@ function Scene.grade(s: any): { tint: Color3, sat: number, con: number, bright: 
 	local k = if sc.gradeAt then math.clamp((s.w - sc.gradeAt) / g.over, 0, 1) else 0
 	k = k * k * (3 - 2 * k)
 	local a, b = g.warm, g.cold
-	return { tint = a.tint:Lerp(b.tint, k), sat = a.sat + (b.sat - a.sat) * k, con = a.con + (b.con - a.con) * k,
+	local out = { tint = a.tint:Lerp(b.tint, k), sat = a.sat + (b.sat - a.sat) * k, con = a.con + (b.con - a.con) * k,
 		bright = a.bright + (b.bright - a.bright) * k }
+	-- (the shot match - main, 20 Nov, the owner: "the color grading is still an issue": the settings were one grade,
+	-- but the shots didn't LOOK alike - the killer's close-ups a pale face lit from the front filling the frame, washed
+	-- out next to the sunlit hands and the wide; the overhead all sand, over-orange. Each listed shot gets its own trim
+	-- toward the hands' and the wide's look, measured from the captures. A `face` trim scales with how pale that body's
+	-- skin is (a darker face gets none: it doesn't wash out). On at the cut, as a colourist's per-shot correction is)
+	local tr = g.shots and sc.shotNow and g.shots[sc.shotNow]
+	if tr then
+		local f = 1
+		if tr.face then
+			sc.paleOf = sc.paleOf or {}
+			f = sc.paleOf[tr.face]
+			if f == nil then
+				local body = if tr.face == "k" then s.kg else s.vg
+				local head = body and body.model and body.model:FindFirstChild("Head")
+				local c = if head and head:IsA("BasePart") then head.Color else Color3.new(0.5, 0.5, 0.5)
+				f = math.clamp((0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B - 0.55) / 0.3, 0, 1)
+				sc.paleOf[tr.face] = f
+			end
+		end
+		out.bright += (tr.bright or 0) * f
+		out.con += (tr.con or 0) * f
+		out.sat += (tr.sat or 0) * f
+		if tr.tint then out.tint = Color3.new(out.tint.R * (1 + (tr.tint.R - 1) * f), out.tint.G * (1 + (tr.tint.G - 1) * f), out.tint.B * (1 + (tr.tint.B - 1) * f)) end
+	end
+	return out
 end
 -- (how long the letterbox bars take to come in, when a scene says: Finisher.luau's overlay asks)
 function Scene.barsIn(s: any): number?
@@ -1087,7 +1118,7 @@ local function drawFx(sc: any, s: any, f: any, T: number)
 			-- upright and turned to the lens; a bright highlight on its upper side and a faint wet line back up the cheek
 			-- to where it formed. It slides down the plan's own path)
 			local c = P3(sc, s, f, an, e[3], e[4], e[5])
-			local H = math.max(0.14, (e[6] or 0.17) * 1.5) -- (its height, studs)
+			local H = math.max(0.12, (e[6] or 0.17) * 1.2) -- (its height, studs: a fifth smaller than the first cut, v1291)
 			local p = fxPart(sc, "sweat" .. idx, 1, function()
 				local kit = ReplicatedStorage:FindFirstChild("JankfireFinisherSets")
 				local src = kit and kit:FindFirstChild("SweatDrop")
@@ -1117,7 +1148,7 @@ local function drawFx(sc: any, s: any, f: any, T: number)
 				q.Transparency = 0.05
 				return q
 			end)
-			hl.Size = Vector3.new(H * 0.13, H * 0.22, H * 0.06)
+			hl.Size = Vector3.new(H * 0.18, H * 0.3, H * 0.08)
 			hl.CFrame = CFrame.lookAt(c + Vector3.yAxis * (H * 0.06) - cam.RightVector * (H * 0.13) + toCam * (H * 0.3), c + toCam * 4)
 			hl.LocalTransparencyModifier = 0
 			-- the wet line: from where it formed (where it was first drawn, this run of frames) down to its top
@@ -1645,6 +1676,7 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 	local same = j ~= i and sc.shotOf[i] == sc.shotOf[j]
 	if not same then a = 0 end
 	local shot = sc.shotOf[i]
+	sc.shotNow = shot
 	local s0 = sc.shotStart[i]
 	local nIn = 0
 	for _, sh in d.shots do if sh[1] == shot then nIn = sh[2] end end

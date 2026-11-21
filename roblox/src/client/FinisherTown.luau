@@ -25,7 +25,7 @@ Town.REPLACED = { porch = true, window = true, bldg = true, prop = true, walk = 
 -- scene's own seconds (High Noon: the reach at 10.22, the draw at 10.88, the shot at 11.3, the far shot from 11.55)
 Town.MOVES = {
 	idle = "id_06_dune_weight_shift", look = "victim_lookaround_t2", duck = "bx_28_knockdown_liver",
-	flinch = "bx_18_block_high_center",
+	flinch = "bx_18_block_high_center", cower = "bx_27_hit_stomach",
 }
 Town.TIMES = { peek0 = 2.4, peek1 = 7.2, duck = 10.2, duckFrom = 0.25, duckTo = 0.95, duckFor = 0.5, shot = 11.3,
 	flinchFor = 0.45, back = 12.5 }
@@ -51,7 +51,7 @@ function Town.pick(sceneId: string, key: string?): any
 	return t
 end
 
-type Npc = { model: Model, root: BasePart, kind: string, tracks: { [string]: AnimationTrack }, phase: number, on: boolean }
+type Npc = { model: Model, root: BasePart, kind: string, react: string?, tracks: { [string]: AnimationTrack }, phase: number, on: boolean }
 
 local function track(n: Npc, key: string): AnimationTrack?
 	local have = n.tracks[key]
@@ -134,7 +134,9 @@ function Town.build(sceneId: string, key: string, parent: Instance, origin: CFra
 			end
 		end
 		n.Parent = parent
-		table.insert(st.npcs, { model = n, root = root, kind = sp[6], tracks = {}, phase = (i * 0.37) % 1, on = true })
+		-- (sp[8], when there: the spot's own reaction - "duck" | "cower" at the draw, "flinch" at the shot - the one that
+		-- fits its opening without passing through the town, as the clip check measured)
+		table.insert(st.npcs, { model = n, root = root, kind = sp[6], react = sp[8], tracks = {}, phase = (i * 0.37) % 1, on = true })
 	end
 	return st
 end
@@ -180,22 +182,32 @@ function Town.step(st: any, T: number)
 		local ph = n.phase
 		local idleT = T * 0.9 + ph * 3
 		local ducker = n.kind == "window" or n.kind == "door" or n.kind == "barrel"
+		local react = n.react or (if ducker then "duck" else "flinch")
+		local early = react ~= "flinch" -- (a duck or a cower comes at the draw; a flinch at the shot)
 		local tDuck = X.duck + ph * 0.25
 		local tShot = X.shot + 0.05 + ph * 0.15
-		if ducker and T >= tDuck and T < X.back + ph * 0.3 then
-			-- down below the sill: the knockdown's fall, held at its lowest
+		local function held(): number
+			local tr = n.tracks[react]
+			local L = if tr and tr.Length > 0 then tr.Length else 1
+			return if react == "duck" then X.duckTo elseif react == "cower" then L * 0.6 else L * 0.55
+		end
+		if early and T >= tDuck and T < X.back + ph * 0.3 then
 			local u = math.clamp((T - tDuck) / X.duckFor, 0, 1)
-			pose(n, "duck", X.duckFrom + (X.duckTo - X.duckFrom) * ease(u), "idle", idleT, 1 - ease(u * 3))
-		elseif not ducker and T >= tShot and T < X.back + ph * 0.3 then
+			if react == "duck" then
+				-- down below the sill: the knockdown's fall, held at its lowest
+				pose(n, "duck", X.duckFrom + (X.duckTo - X.duckFrom) * ease(u), "idle", idleT, 1 - ease(u * 3))
+			else
+				-- doubled over, held (a shallow room: the knockdown would carry them through its walls)
+				pose(n, "cower", held() * ease(u), "idle", idleT, 1 - ease(u * 2.5))
+			end
+		elseif not early and T >= tShot and T < X.back + ph * 0.3 then
 			-- a flinch at the shot: the guard thrown up, held
 			local u = math.clamp((T - tShot) / X.flinchFor, 0, 1)
-			local tr = n.tracks.flinch
-			local L = if tr and tr.Length > 0 then tr.Length else 1
-			pose(n, "flinch", L * 0.55 * ease(u), "idle", idleT, 1 - ease(u * 2.5))
+			pose(n, "flinch", held() * ease(u), "idle", idleT, 1 - ease(u * 2.5))
 		elseif T >= X.back then
 			-- peeking out again after: up into the look-round
 			local u = math.clamp((T - X.back - ph * 0.3) / 0.6, 0, 1)
-			pose(n, "look", (T - X.back) * 0.8, if ducker then "duck" else "flinch", if ducker then X.duckTo else 0.4, 1 - ease(u))
+			pose(n, "look", (T - X.back) * 0.8, react, held(), 1 - ease(u))
 		else
 			-- the build-up: idle, a peek round for some
 			local p0, p1 = X.peek0 + ph * 2, X.peek1 + ph
