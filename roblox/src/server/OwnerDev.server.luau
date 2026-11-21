@@ -299,7 +299,8 @@ local function setInvisible(p: Player, on: boolean)
 		if ch then
 			for _, d in ch:GetDescendants() do showOne(d) end
 			local hum = ch:FindFirstChildOfClass("Humanoid")
-			if hum then hum.DisplayDistanceType = kept[hum] or Enum.HumanoidDisplayDistanceType.Viewer; kept[hum] = nil end
+			-- (21 Nov: no names or health over players' heads anywhere, server/NoHeadLabels: coming back shows none either)
+			if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None; kept[hum] = nil end
 		end
 	end
 end

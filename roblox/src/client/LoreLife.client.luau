@@ -718,7 +718,8 @@ endCut = function()
 	table.clear(hiddenGuis)
 	for b in hiddenBoards do if b.Parent then b.Enabled = true end end
 	table.clear(hiddenBoards)
-	for h, t in hiddenNames do if h.Parent then h.DisplayDistanceType = t end end
+	-- (21 Nov: players never show a name or health over their heads, so the restore only ever puts back None)
+	for h in hiddenNames do if h.Parent then h.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end end
 	table.clear(hiddenNames)
 	if cutUi then cutUi.g.Enabled = false; cutUi.skip.Visible = false end
 	local cam = workspace.CurrentCamera
