@@ -419,6 +419,7 @@ The anti-cheat session forwarded them:
     - standing up freed it again.
   - Photo: the cushions on the lid. Your own body is hidden on your own first-person screen, so it doesn't show sitting there.
   - A test script's `ProximityPrompt:InputHoldBegin()` never fires a prompt, so use the hook.
+  - **A prompt shows only while it is on screen** (21 Nov). After a server teleport the client camera keeps its old heading, so a prompt beside or behind it never shows, and that looks like a bug. To check a prompt, turn the client camera toward it (Scriptable, `CFrame.lookAt`), read the texts in `PlayerGui.ProximityPrompts`, then set the camera back to Custom. Studio's screen capture never draws prompt pop-ups.
 - **Boxing, several rings:**
   - One bout per `box` marker, all at once.
   - Each ring's publish timer is its own.
