@@ -499,6 +499,7 @@ RunService:BindToRenderStep("JankPadNav", Enum.RenderPriority.Last.Value + 110, 
 end)
 
 -- ------------------------------------------------------------------ the buttons
+local viewAt: number? = nil -- (a match's View press, waiting for its release: the scoreboard on a hold)
 local function capturing(): boolean
 	local UI = mod("SettingsUI")
 	return UI ~= nil and UI.capturing == true
@@ -529,6 +530,11 @@ UIS.InputBegan:Connect(function(io: InputObject)
 		if name == "settings" then me:SetAttribute("SettingsOpen", false)
 		elseif name then return
 		elseif bar then endBar()
+		elseif me:GetAttribute("Zone") == "match" and me:GetAttribute("ZmOn") == nil then
+			-- (21 Nov 2026, the match SCOREBOARD: in a match a HELD View shows it (Scoreboard.client, after its HOLD s); a tap
+			-- still opens the bar, on the release)
+			viewAt = os.clock()
+			me:SetAttribute("PadViewHold", viewAt)
 		else startBar() end
 	elseif k == Enum.KeyCode.ButtonA then
 		local h = hint()
@@ -555,6 +561,12 @@ UIS.InputBegan:Connect(function(io: InputObject)
 end)
 UIS.InputEnded:Connect(function(io: InputObject)
 	if io.KeyCode == Enum.KeyCode.DPadLeft or io.KeyCode == Enum.KeyCode.DPadRight then nudgeHeld = nil end
+	if io.KeyCode == Enum.KeyCode.ButtonSelect and viewAt then
+		local held = os.clock() - (viewAt :: number)
+		viewAt = nil
+		me:SetAttribute("PadViewHold", nil)
+		if held < 0.3 and not bar then startBar() end -- (a tap: the menus, as before. held: it was the scoreboard)
+	end
 end)
 
 -- ------------------------------------------------------------------ hints that follow the pad

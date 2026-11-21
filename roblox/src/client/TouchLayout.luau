@@ -64,6 +64,7 @@ TL.ITEMS = {
 	{ id = "settings", kind = "pill", label = "SETTINGS", w = 84, keep = true },
 	{ id = "auto", kind = "pill", label = "AUTO", w = 54 },
 	{ id = "emote", kind = "pill", label = "EMOTE", w = 64 },
+	{ id = "board", kind = "pill", label = "SCORES", w = 64 }, -- (21 Nov 2026: the match scoreboard, in a match only: Scoreboard.client)
 	{ id = "stick", kind = "stick", act = "float", keep = true },
 	{ id = "weapon", kind = "box", label = "WEAPON", w = 236, h = 146, keep = true },
 	{ id = "health", kind = "box", label = "HEALTH", w = 160, h = 134, keep = true },
@@ -196,7 +197,7 @@ function TL.size(r: any, ts: number, sd: number): (number, number)
 	return b.w * sd, b.h * sd
 end
 -- its default middle (before the left-handed mirror). the top row runs right to left: SETTINGS, AUTO, EMOTE
-local PILL_ORDER = { "settings", "auto", "emote" }
+local PILL_ORDER = { "settings", "auto", "emote", "board" }
 function TL.home(r: any, W: number, H: number, ts: number, sd: number, pillTop: number?): (number, number)
 	local b = TL.base(r.id)
 	if r.kind == "btn" then return W - (b.x or 0) * ts, H - (b.y or 0) * ts end
@@ -251,7 +252,7 @@ function TL.avoid(origin: Vector2, fake: boolean): Rect?
 end
 -- the top row's top: under a match's scoreboard (FightHud's Score, ModeHud's line under it) when they'd touch the row
 -- in its default place
-local PILLS_W = 10 + 84 + 54 + 64 + 12
+local PILLS_W = 10 + 84 + 54 + 64 + 64 + 18
 function TL.pillTop(pg: Instance, origin: Vector2, W: number, ts: number): number
 	local top = 8 * ts
 	local left = W - PILLS_W * ts

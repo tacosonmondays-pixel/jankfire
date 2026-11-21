@@ -50,6 +50,7 @@ Binds.ACTIONS = {
 	{ id = "cursor", label = "TOGGLE CURSOR", group = "MENUS", kb = { "LeftAlt" } }, -- (frees the mouse to click the screen: CursorToggle.client)
 	{ id = "ready", label = "READY (LOCK IN LOADOUT)", group = "MENUS", kb = { "Space" }, pad = "DPadUp" }, -- (before a round: MatchLoadout.client. Space since 18 Nov, the owner: you're held at your spawn then, so it can't be a jump; MatchLoadout sinks it while the window is open)
 	{ id = "keys", label = "SHOW KEY HINTS (HOLD)", group = "MENUS", kb = { "H" } },
+	{ id = "scoreboard", label = "SCOREBOARD (HOLD)", group = "MENUS", kb = { "Tab" } }, -- (in a match: Scoreboard.client. a pad holds View: PadNav)
 	{ id = "quickjoin", label = "QUICK JOIN", group = "MENUS", kb = { "F" } }, -- (the hub pad pop-up: QuickJoinUI)
 } :: { Action }
 Binds.FIXED = { -- (shown in the tab, greyed: Roblox's own controls)

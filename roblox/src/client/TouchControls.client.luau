@@ -348,6 +348,8 @@ local function pillPress(id: string)
 		if not S.auto then autoReset() end
 	elseif id == "emote" then
 		Keys.tap(Enum.KeyCode.T) -- (the emote wheel's key: FlairClient opens its touch wheel for a touch press)
+	elseif id == "board" then
+		me:SetAttribute("ScoreboardTouch", me:GetAttribute("ScoreboardTouch") ~= true) -- (the match scoreboard: tap to show, tap to hide)
 	else
 		releaseAll()
 		Keys.tap(Enum.KeyCode.P)
@@ -421,7 +423,7 @@ local function build()
 	-- the top row: SETTINGS, AUTO and EMOTE, each placed on its own (TL.place: right to left along the top, or where
 	-- the player put it)
 	topRow = T.new("Frame", { Name = "Top", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, pad) :: Frame
-	for _, id in { "emote", "auto", "settings" } do
+	for _, id in { "emote", "auto", "settings", "board" } do
 		local f = newFace(topRow, id, TL.base(id).label, false)
 		pills[id] = { face = f, lit = false, rec = nil }
 		f.Activated:Connect(function() pillPress(id) end)
@@ -1035,11 +1037,14 @@ RunService.Heartbeat:Connect(function()
 	end
 	for id, p in pills do
 		local hid = p.rec ~= nil and p.rec.hid
-		local vis = not hid and (id ~= "auto" or fight)
+		local vis = not hid and (id ~= "auto" or fight) and (id ~= "board" or (z == "match" and me:GetAttribute("ZmOn") == nil))
 		if p.face.Visible ~= vis then p.face.Visible = vis end
 	end
 	local autoP = pills.auto
 	if autoP.lit ~= S.auto then autoP.lit = S.auto; style(autoP.face, S.auto, nil, if autoP.rec then autoP.rec.a else 1) end
+	local boardP = pills.board
+	local boardOn = me:GetAttribute("ScoreboardTouch") == true
+	if boardP and boardP.lit ~= boardOn then boardP.lit = boardOn; style(boardP.face, boardOn, nil, if boardP.rec then boardP.rec.a else 1) end
 	stickRing.Visible = not watching
 	local own = if recs.stick then recs.stick.a else 1
 	if not stickRing:GetAttribute("Live") then

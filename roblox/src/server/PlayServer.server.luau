@@ -17,6 +17,7 @@ local Recorder = require(Jankfire:WaitForChild("Recorder"))
 local QuickJoin = require(Jankfire:WaitForChild("QuickJoin"))
 local Trading = require(Jankfire:WaitForChild("Trading"))
 local Spectate = require(Jankfire:WaitForChild("Spectate"))
+local Scoreboard = require(Jankfire:WaitForChild("Scoreboard"))
 
 -- the remotes (in the saved place and default.project.json; made here too if missing)
 local remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -45,6 +46,8 @@ QuickJoin.init(Matches, Party, remotes)
 Trading.init()
 -- the SPECTATE BOARD (Spectate.luau): this server's matches on a board in each hub and in PLAY's WATCH tab
 Spectate.init(Matches, Party, remotes)
+-- the MATCH SCOREBOARD on Tab (Scoreboard.luau, client/Scoreboard.client.luau; 21 Nov 2026)
+Scoreboard.init(Fight, Matches, RankedData)
 -- the hub pads' map vote (Matches.padVote): a vote from a player standing on a full pad, through the Play remote
 Party.ops.padvote = function(p: Player, a: any): any
 	local ok, why = Matches.padVote(p, a)
