@@ -850,18 +850,37 @@ local function startCut(id: string, again: boolean?)
 		while a.Parent and a.Parent ~= hubF do a = a.Parent :: Instance end
 		scanRoot = a
 	end
-	for _, root in { scanRoot, pm } do
-		if not root then continue end
-		for _, p in (root :: Instance):GetDescendants() do
-			if p:IsA("BasePart") and p.Transparency < 1 and (p.Position - finish).Magnitude < 40 then
-				local cf, sz = p.CFrame, p.Size / 2
-				local ex = Vector3.new(
-					math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
-					math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
-					math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
-				if p.Position.Y + ex.Y > finish.Y + 0.3 then table.insert(boxes, { p.Position - ex, p.Position + ex, cf, sz }) end
-			end
+	-- (a part counts when its box comes within 40 studs: a long wall's middle can be further off than its end)
+	-- (an invisible part counts too when something is shown in it: a Holo<...> display volume, where the shop's bundle
+	-- display swaps its hologram guns in and out. not every prompt's box: seats' and tables' boxes took THE STILL's wide
+	-- shot away)
+	local function consider(p: Instance)
+		if not p:IsA("BasePart") then return end
+		if p.Transparency >= 1 and string.sub(p.Name, 1, 4) ~= "Holo" then return end
+		local cf, sz = p.CFrame, p.Size / 2
+		local ex = Vector3.new(
+			math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
+			math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
+			math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
+		local d = Vector3.new(math.max(math.abs(p.Position.X - finish.X) - ex.X, 0), 0, math.max(math.abs(p.Position.Z - finish.Z) - ex.Z, 0))
+		if d.Magnitude >= 40 then return end
+		if p.Position.Y + ex.Y > finish.Y + 0.3 then table.insert(boxes, { p.Position - ex, p.Position + ex, cf, sz }) end
+	end
+	-- (and what the game shows at the top of workspace near the panel: the shop's holograms, Holo_<gun> models and
+	-- HoloRig parts, built on each client. 21 Nov: THE ROTUNDA's wide shot sat inside a bundle hologram. players'
+	-- bodies and the folders (dummies, effects) are left out)
+	local roots: { Instance } = {}
+	if scanRoot then table.insert(roots, scanRoot) end
+	table.insert(roots, pm)
+	for _, top in workspace:GetChildren() do
+		if (top:IsA("Model") or top:IsA("BasePart")) and not Players:GetPlayerFromCharacter(top) then
+			local at = if top:IsA("Model") then top:GetPivot().Position else (top :: BasePart).Position
+			if (at - finish).Magnitude < 60 then table.insert(roots, top) end
 		end
+	end
+	for _, root in roots do
+		consider(root)
+		for _, p in root:GetDescendants() do consider(p) end
 	end
 	-- (the body: an upright capsule 1.3 round, 0.3 to 6 up, as three balls against each part's own box)
 	local function bodyHits(at: Vector3): boolean
