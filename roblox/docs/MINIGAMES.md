@@ -444,6 +444,11 @@ The owner wants all three hub concepts built, with travel between them: THE SQUA
 - **Numbers** count per hub and kind. A ring's own `Ring` wins. Two markers giving the same id: the second is skipped with a warning.
 - **Staging:** anything under an ancestor with `MiniGamesOff = true` is skipped, so a builder's staging copy builds nothing.
 - **Later markers:** a marker that turns up while a server runs is built when it appears, half a second after its tag. Nothing is built twice.
+- **A golf room's door** (20 Nov, for THE CYLINDER): the golf course is 44 x 80, centred on its marker, and its PLAY prompt (reach 12) normally stands at the course's back end. That suits a room with walkways and its door at that end (the Square and the Concourse, 54 x 94).
+  - A room the course fills wall to wall, with its door at the side, gives the marker a `Door` attribute: a Vector3, the doorway's floor centre in the marker's own space.
+  - The prompt then sits 4 studs in from the door, toward the room's middle, at 4.5 up.
+  - LEAVE puts the golfer back in the doorway, facing out. Walking off leaves them where they are.
+  - The Cylinder's is `Vector3.new(-23, 0, -7)`.
 - **The arcade boards** (this server's and the all-time) are written to every folder that has a cabinet, so every hub's cabinets show the same boards.
 - **Tested** in one Play:
   - the ring's 7 tables kept their ids;

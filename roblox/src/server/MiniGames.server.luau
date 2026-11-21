@@ -40,7 +40,7 @@ local GAMES = {
 	golf = require(script.Parent:WaitForChild("MiniGolf")) :: any,
 }
 
-export type Table = { id: string, kind: string, model: Model, cf: CFrame, seats: { [string]: Seat }, who: { [string]: any }, prompts: { [string]: ProximityPrompt }, bots: { [string]: Model }, g: any }
+export type Table = { id: string, kind: string, model: Model, cf: CFrame, seats: { [string]: Seat }, who: { [string]: any }, prompts: { [string]: ProximityPrompt }, bots: { [string]: Model }, g: any, door: Vector3? }
 local tables: { [string]: Table } = {}
 local inGame: { [Player]: { t: Table, side: string } } = {}
 
@@ -516,6 +516,17 @@ function ctx.leave(p: Player, why: string?)
 				root.AssemblyLinearVelocity = Vector3.zero
 				local pos = at + Vector3.new(0, up, 0)
 				ch:PivotTo(CFrame.lookAt(pos, pos + (if away.Magnitude > 0.1 then away.Unit else Vector3.zAxis)))
+			elseif T.door and why == "asked" then
+				-- (a room the course fills wall to wall, its marker's Door: LEAVE puts you in the doorway, facing out,
+				-- rather than across the rails from it. walking off or a game's own end leaves you where you are)
+				local d = T.door :: Vector3
+				local at = (T.cf * CFrame.new(d)).Position
+				local out = T.cf:VectorToWorldSpace(Vector3.new(d.X, 0, d.Z)) * Vector3.new(1, 0, 1)
+				local up = root.Size.Y / 2 + (if hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight else 2) + 0.2
+				p:SetAttribute("TeleportT", os.clock())
+				root.AssemblyLinearVelocity = Vector3.zero
+				local pos = at + Vector3.new(0, up, 0)
+				ch:PivotTo(CFrame.lookAt(pos, pos + (if out.Magnitude > 0.1 then out.Unit else Vector3.zAxis)))
 			end
 		end
 	end
@@ -600,7 +611,7 @@ local built: { [Instance]: boolean } = {}
 local folders: { [Instance]: Folder } = {}
 local mapRef: Instance? = nil
 local counts: { [string]: number } = {}
-type Spot = { kind: string, cf: CFrame, half: number?, ring: number?, hub: string?, holder: Instance }
+type Spot = { kind: string, cf: CFrame, half: number?, ring: number?, hub: string?, door: Vector3?, holder: Instance }
 -- where a marker's tables live: its hub folder (the ancestor right under Map.Hub) when it names a hub, else Map.Hub
 -- itself; a marker outside Map.Hub: its ancestor right under Map
 local function hubOf(s: Instance): Instance
@@ -639,8 +650,10 @@ local function spotOf(s: Instance): Spot?
 	if type(kind) ~= "string" or not MG.L[kind] or switchedOff(s) then return nil end
 	built[s] = true
 	local hub = s:GetAttribute("Hub")
+	local door = s:GetAttribute("Door")
 	return { kind = kind, cf = s.CFrame, half = s:GetAttribute("Half"), ring = s:GetAttribute("Ring"),
-		hub = if type(hub) == "string" and hub ~= "" then hub else nil, holder = hubOf(s) }
+		hub = if type(hub) == "string" and hub ~= "" then hub else nil, door = if typeof(door) == "Vector3" then door else nil,
+		holder = hubOf(s) }
 end
 local function buildSpots(spots: { Spot })
 	table.sort(spots, function(a, b) return a.cf.X + a.cf.Z * 0.001 < b.cf.X + b.cf.Z * 0.001 end)
@@ -654,6 +667,19 @@ local function buildSpots(spots: { Spot })
 		local ok, err = pcall(newTable, s.kind, CFrame.new(s.cf.Position) * s.cf.Rotation, num, folderFor(s.holder), suffix)
 		-- (a ring's size: its marker's Half, the mat's middle to inside its ropes; MiniBox and MiniBoxUI fence to it)
 		if ok and err and type(s.half) == "number" then (err :: any).model:SetAttribute("Half", s.half) end
+		-- (20 Nov, THE CYLINDER: a golf room the course fills wall to wall, its one door at the side. the marker's Door,
+		-- the doorway's floor in the marker's own space: the PLAY prompt moves 4 studs in from it, and LEAVE puts you
+		-- back in it. without one the prompt stays at the course's back end, by the door of a room with walkways)
+		if ok and err and s.door then
+			local T = err :: any
+			T.door = s.door
+			T.model:SetAttribute("Door", s.door)
+			local a = T.model.PrimaryPart:FindFirstChild("PromptAt")
+			local inward = Vector3.new(-s.door.X, 0, -s.door.Z)
+			if a and a:IsA("Attachment") and inward.Magnitude > 0.1 then
+				a.CFrame = CFrame.new(s.door + inward.Unit * 4 + Vector3.new(0, 4.5, 0))
+			end
+		end
 		if not ok then warn("[MiniGames] building " .. s.kind .. ": " .. tostring(err)) end
 	end
 end
