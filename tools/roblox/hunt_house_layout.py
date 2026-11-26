@@ -450,6 +450,9 @@ F('shed', 90.0, -140.0, y=GROUND, turn=0)
 F('flowerbed', -60, -150, y=GROUND, turn=0); F('flowerbed', -20, -150, y=GROUND, turn=0); F('flowerbed', 20, -150, y=GROUND, turn=0)
 F('flowerbed', -82, -120, y=GROUND, turn=1); F('flowerbed', -82, -84, y=GROUND, turn=1)
 F('hose', 58, -46, y=PATIO)
+for hx in (-40, 0, 40, 60):                      # hedges along the back fence, between the flower beds
+    F('hedge', hx, -149.5, y=GROUND)
+F('flowerbed', 40, -128, y=GROUND, turn=0); F('flowerbed', 40, -136, y=GROUND, turn=0)
 # ---------------------------------------------------------------- the front
 F('tree', -44.0, 64.0, y=GROUND); F('hedge', -40, 77.5, y=GROUND); F('hedge', -18, 77.5, y=GROUND)
 F('hedge', 22, 77.5, y=GROUND); F('hedge', 44, 77.5, y=GROUND)

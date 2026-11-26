@@ -180,6 +180,31 @@ def skirting():
                     if r['wall'] == 'tile':
                         xt0, xt1 = (line, line + 0.15) if inward > 0 else (line - 0.15, line)
                         K.B('hh_btile_' + r['lv'], BTILE, xt0, y + 0.8, s0, xt1, y + 5.6, s1, bev=0.02, flat=True, segs=1)
+    # wainscot panelling with a chair rail in the hall, the living room, the dining room and the landing: raised
+    # panels 4 wide between rails, cut at the doorways; the window sills sit over the rail
+    WAIN = {'entry', 'living', 'dining', 'gallery', 'family'}
+    for r in L.ROOMS:
+        if r['id'] not in WAIN: continue
+        x0, z0, x1, z1 = r['r']
+        y = lv_y(r['lv'])
+        for (ax, line, a0, a1, inward) in (('x', z0, x0, x1, +1), ('x', z1, x0, x1, -1), ('z', x0, z0, z1, +1), ('z', x1, z0, z1, -1)):
+            holes = [(h0, h1) for (h0, h1, hy0, hy1, k) in openings_on(ax, line - inward * 0.6, y, 1.4) if hy0 <= y + 0.5]
+            if r['id'] == 'entry' and ax == 'z' and inward < 0: holes.append((17.0, 36.5))       # (the stair's side)
+            if r['id'] == 'gallery': holes.append((17.0, 31.5) if ax == 'z' else (-99, -98))
+            for (s0, s1) in run_minus(a0, a1, holes):
+                def bx(u0, v0, w0, u1, v1, w1, col, bev=0.06):
+                    if ax == 'x': K.B('hh_trim', col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
+                    else: K.B('hh_trim', col, w0, v0, u0, w1, v1, u1, bev=bev, segs=1)
+                w0, w1 = (line, line + 0.12) if inward > 0 else (line - 0.12, line)
+                bx(s0, y + 0.8, w0, s1, y + 3.0, w1, 'e9e4d8', 0.03)
+                r0, r1 = (line, line + 0.32) if inward > 0 else (line - 0.32, line)
+                bx(s0, y + 3.0, r0, s1, y + 3.35, r1, TRIM, 0.1)
+                n = max(1, int((s1 - s0) // 4.0))
+                pw = (s1 - s0) / n
+                p0, p1 = (line + 0.12, line + 0.22) if inward > 0 else (line - 0.22, line - 0.12)
+                for k in range(n):
+                    a = s0 + k * pw
+                    if pw > 1.6: bx(a + 0.45, y + 1.25, p0, a + pw - 0.45, y + 2.6, p1, 'efebe2', 0.06)
     # the kitchen's wall cabinets over the worktops (not over the stove: its hood), and the splashback under them
     for (z0, z1) in ((-38.0, -22.5), (-17.5, -10.0)):
         K.B('hh_trim', 'c8c3b6', 55.6, 8.8, z0, 58.0, 12.0, z1, bev=0.12)
@@ -302,6 +327,76 @@ def windows():
         if axis == 'x': sgn = +1 if c1 >= L.Z1 - 0.05 else -1
         else: sgn = +1 if c1 >= L.X1 - 0.05 else -1
         win_frame(axis, c0, c1, a0, a1, y0, y1, kind, sgn)
+
+def window_dress():
+    """curtains either side of the windows of the living, dining and family rooms and the bedrooms; shutters on the
+    front's windows and planters under the ground floor's"""
+    CUR = {'living': 'b9ad9a', 'dining': 'b9ad9a', 'family': '9ea6a2'}
+    for (axis, c0, c1, a0, a1, y0, y1, kind) in L.WINDOWS:
+        if kind in ('side', 'frost'): continue
+        if axis == 'x': sgn = +1 if c1 >= L.Z1 - 0.05 else -1
+        else: sgn = +1 if c1 >= L.X1 - 0.05 else -1
+        am, cm = (a0 + a1) / 2, (c0 + c1) / 2
+        inner = c0 if sgn > 0 else c1
+        ins = -sgn
+        mid = (am, cm - ins * 3) if axis == 'x' else (cm - ins * 3, am)
+        px, pz = (am, inner + ins * 3) if axis == 'x' else (inner + ins * 3, am)
+        rid = None
+        for r in L.ROOMS:
+            x0r, z0r, x1r, z1r = r['r']
+            if r['lv'] == ('G' if y0 < 12 else 'U') and x0r - 0.1 <= px <= x1r + 0.1 and z0r - 0.1 <= pz <= z1r + 0.1: rid = r['id']
+        def bx(model, col, u0, v0, w0, u1, v1, w1, bev=0.12):
+            if axis == 'x': K.B(model, col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
+            else: K.B(model, col, w0, v0, u0, w1, v1, u1, bev=bev, segs=1)
+        top = lv_y('G' if y0 < 12 else 'U') + 10.6
+        if rid in CUR and a1 - a0 >= 7.5:
+            col = CUR[rid]
+            d0, d1 = sorted((inner + ins * 0.35, inner + ins * 1.25))
+            for (u0, u1) in ((a0 - 2.1, a0 - 0.2), (a1 + 0.2, a1 + 2.1)):
+                bx('hh_trim', col, u0, lv_y('G' if y0 < 12 else 'U') + 0.4, d0, u1, top - 0.2, d1, bev=0.4)
+            r0, r1 = sorted((inner + ins * 0.6, inner + ins * 0.95))
+            bx('hh_trim', '4a4c50', a0 - 2.6, top - 0.15, r0, a1 + 2.6, top + 0.2, r1, bev=0.08)
+        # outside on the front: shutters either side, a planter under the ground floor's
+        if axis == 'x' and sgn > 0:
+            o0, o1 = c1, c1 + 0.3
+            for (u0, u1) in ((a0 - 2.2, a0 - 0.5), (a1 + 0.5, a1 + 2.2)):
+                bx('hh_ext', '56625c', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1, bev=0.08)
+                for k in range(1, 4):
+                    v = y0 + (y1 - y0) * k / 4
+                    bx('hh_ext', '4c5852', u0 + 0.15, v - 0.12, o1 - 0.05, u1 - 0.15, v + 0.12, o1 + 0.12, bev=0.04)
+            if y0 < 12:
+                bx('hh_ext', 'a3907a', a0 - 0.3, y0 - 2.3, c1 + 0.9, a1 + 0.3, y0 - 0.75, c1 + 2.6, bev=0.2)
+                n = max(2, int((a1 - a0) // 2.4))
+                for k in range(n):
+                    u = a0 + (k + 0.5) * (a1 - a0) / n
+                    import bmesh as _bm
+                    bm = _bm.new(); _bm.ops.create_icosphere(bm, subdivisions=2, radius=1.25)
+                    _bm.ops.scale(bm, vec=(1.0, 0.75, 0.9), verts=bm.verts)
+                    K.put('hh_ext', 'plastic', '5f7d4a' if k % 2 else '6f8f55', bm, Tr(u, y0 - 0.5, c1 + 1.75))
+
+def wall_art():
+    """framed panels on the big bare walls: a frame round two or three flat bands of muted colour (no pictures, no
+    text), a mirror over the dining room's sideboard"""
+    ART = [  # (x, y, z, face axis, face sign, w, h, bands)
+        (-21.5, 6.4, 2.0, 'z', +1, 7.0, 4.4, ('8a9a8c', 'c9b79c', '6f7f8f')),       # living, the wall by the family arch
+        (-13.0, 6.6, -32.0, 'x', -1, 6.0, 4.0, ('b7a58a', '7c8a86')),               # family room, the hall wall
+        (-12.0, 6.8, 36.0, 'x', +1, 3.6, 4.6, ('9aa3a6', 'c2b39a', '8a7d6f')),       # hall, over the bench
+        (-12.0, 19.6, 6.0, 'x', +1, 5.0, 3.6, ('a8b0a2', 'c6b8a2')),                 # the landing
+        (-58.0, 23.2, 24.0, 'x', +1, 9.0, 2.2, ('9aa3a6', 'b9ad9a', '8a8f96')),      # over the main bed
+        (13.0, 20.0, 7.0, 'x', +1, 5.0, 3.4, ('8a9a8c', 'b7a58a')),                 # the study, by its door
+    ]
+    for (x, y, z, ax, s, w, h, bands) in ART:
+        def bx(col, u0, v0, d0, u1, v1, d1, bev=0.1):
+            # u along the wall, v up, d out of the wall
+            if ax == 'z': K.B('hh_trim', col, x + u0, v0, z + s * d0 if s > 0 else z - d1, x + u1, v1, z + s * d1 if s > 0 else z - d0, bev=bev, segs=1)
+            else: K.B('hh_trim', col, x + s * d0 if s > 0 else x - d1, v0, z + u0, x + s * d1 if s > 0 else x - d0, v1, z + u1, bev=bev, segs=1)
+        bx(WALNUT, -w / 2 - 0.4, y - h / 2 - 0.4, 0.0, w / 2 + 0.4, y + h / 2 + 0.4, 0.3, 0.12)
+        bh = h / len(bands)
+        for i, c in enumerate(bands):
+            bx(c, -w / 2, y - h / 2 + i * bh, 0.3, w / 2, y - h / 2 + (i + 1) * bh, 0.38, 0.02)
+    # the dining room's mirror over the sideboard (the east wall, facing west)
+    K.B('hh_trim', WALNUT, 57.6, 6.6, 17.0, 58.0, 11.4, 27.0, bev=0.15)
+    K.B('hh_trim', 'c9d2d6', 57.45, 7.0, 17.4, 57.65, 11.0, 26.6, bev=0.04)
 
 def door_frames():
     for (x0, y0, z0, x1, y1, z1, kind) in L.OPENS:
@@ -803,7 +898,7 @@ for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
 if '--layout-only' in K.FLAGS:
     lights(); write()
 else:
-    floors(); ceilings(); skirting(); walls(); exterior_bands(); windows(); door_frames(); stair(); roof(); porch(); garage()
+    floors(); ceilings(); skirting(); walls(); exterior_bands(); windows(); window_dress(); wall_art(); door_frames(); stair(); roof(); porch(); garage()
     grounds(); fences(); lights(); board(); furniture(); templates()
     write()
     extent()

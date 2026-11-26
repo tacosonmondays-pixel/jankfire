@@ -413,6 +413,12 @@ return {
 {10,-1.5,-152,30,0.1,-148,17},
 {-84,-1.5,-130,-80,0.1,-110,17},
 {-84,-1.5,-94,-80,0.1,-74,17},
+{-50,-1.5,-151.5,-30,3.5,-147.5,17},
+{-10,-1.5,-151.5,10,3.5,-147.5,17},
+{30,-1.5,-151.5,50,3.5,-147.5,17},
+{50,-1.5,-151.5,70,3.5,-147.5,17},
+{30,-1.5,-130,50,0.1,-126,17},
+{30,-1.5,-138,50,0.1,-134,17},
 {-46,-1.5,62,-42,12.5,66,17},
 {-50,-1.5,75.5,-30,3.5,79.5,17},
 {-28,-1.5,75.5,-8,3.5,79.5,17},
@@ -523,5 +529,5 @@ return {
 		rooms = { { "entry", "Hall", "G", -12, 4, 12, 40 }, { "living", "Living Room", "G", -58, 2, -13, 40 }, { "family", "Family Room", "G", -58, -40, -13, 1 }, { "passage", "Hall", "G", -3.5, -12, 3.5, 4 }, { "wc", "Cloakroom", "G", -12, -12, -4.5, 3 }, { "coats", "Coat Closet", "G", 4.5, -12, 12, 3 }, { "backhall", "Back Hall", "G", -12, -40, 12, -13 }, { "dining", "Dining Room", "G", 13, 4.5, 58, 40 }, { "kitchen", "Kitchen", "G", 13, -40, 58, 3.5 }, { "garage", "Garage", "G", 60, -10, 102, 40 }, { "gallery", "Landing", "U", -12, -23, 12, 40 }, { "mainbed", "Main Bedroom", "U", -58, 10, -13, 40 }, { "ensuite", "Bathroom", "U", -58, -8, -36, 9 }, { "closet", "Walk-in Closet", "U", -35, -8, -13, 9 }, { "kidsbed", "Kids' Room", "U", -58, -40, -13, -9 }, { "guestbed", "Guest Room", "U", 13, 12, 58, 40 }, { "study", "Study", "U", 13, -8, 58, 11 }, { "playroom", "Playroom", "U", 13, -40, 58, -9 }, { "bath", "Bathroom", "U", -12, -40, 12, -24 } },
 	},
 	-- the kit's surfaces: a SurfaceAppearance picture per piece colour (WebArena; the meshes carry world UVs)
-	surfaces = { ["55585c"] = "rbxassetid://72215822270952", ["6a6e74"] = "rbxassetid://135435899461861", ["6f8a55"] = "rbxassetid://82912196276517", ["7f5446"] = "rbxassetid://128782282184054", ["8c8780"] = "rbxassetid://93910495940944", ["8e9a8a"] = "rbxassetid://95035963336200", ["97948d"] = "rbxassetid://92719214966737", ["a98460"] = "rbxassetid://124778878997898", ["ad9476"] = "rbxassetid://136590475412292", ["b3a897"] = "rbxassetid://90576630175655", ["cfc6b4"] = "rbxassetid://113102432800653", ["cfc6b5"] = "rbxassetid://113102432800653", ["cfcac1"] = "rbxassetid://91515197562193", ["dedad0"] = "rbxassetid://100342179355756", ["e2e3de"] = "rbxassetid://119608007939948", ["e4dfd3"] = "rbxassetid://127661606333401", ["e6e0d4"] = "rbxassetid://93967757955287" },
+	surfaces = { ["7f5446"] = "rbxassetid://128782282184054", ["8c8780"] = "rbxassetid://93910495940944", ["8e9a8a"] = "rbxassetid://95035963336200", ["97948d"] = "rbxassetid://92719214966737", ["a98460"] = "rbxassetid://124778878997898", ["b3a897"] = "rbxassetid://90576630175655", ["cfc6b4"] = "rbxassetid://113102432800653", ["cfc6b5"] = "rbxassetid://113102432800653", ["cfcac1"] = "rbxassetid://91515197562193", ["dedad0"] = "rbxassetid://100342179355756", ["e2e3de"] = "rbxassetid://119608007939948", ["e6e0d4"] = "rbxassetid://93967757955287" },
 }
