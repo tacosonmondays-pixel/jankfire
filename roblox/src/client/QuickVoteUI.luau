@@ -22,6 +22,8 @@ local RunService = game:GetService("RunService")
 local T = require(script.Parent:WaitForChild("Theme"))
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
 local Keys = require(script.Parent:WaitForChild("Keys"))
+local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
+local Pad = require(script.Parent:WaitForChild("Pad")) :: any
 
 local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
@@ -236,17 +238,35 @@ function QuickVoteUI.draw()
 	gui.Enabled = true
 end
 
+-- (21 Nov 2026, a controller on the Play screen: PadNav keeps the selection inside the top screen, the Play panel, so the
+-- vote over it was out of reach. while a Play-queue vote is open it is a screen of its own for PadNav (a "cursor only"
+-- MenuCursor name: you still move), so the stick and A reach its cards. a map room's vote has no menu over it: View
+-- reaches its cards as before, and the stick still walks you to the plates)
+Pad.MENUS.vote = { gui = "JankVote", back = function() end }
+local menuOn = false
+local function voteOpen(): boolean
+	return cur ~= nil and ((cur.vote ~= nil and not cur.pick) or (cur.mvote ~= nil and not cur.map))
+end
+local function menuSync()
+	local want = gui.Enabled and voteOpen() and cur.pad ~= true
+	if want == menuOn then return end
+	menuOn = want
+	MenuCursor.set("vote", want, if want then function() return menuOn end else nil, true)
+end
+
 function QuickVoteUI.sync(found: any)
 	partyCur = if type(found) == "table" and (type(found.vote) == "table" or type(found.mvote) == "table")
 		then { vote = found.vote, pick = found.pick, mvote = found.mvote, map = found.map } else nil
 	cur = partyCur or padCur
 	QuickVoteUI.draw()
+	menuSync()
 end
 function QuickVoteUI.syncPad(msg: any)
 	padCur = if type(msg) == "table" and type(msg.vote) == "table" then { mvote = msg.vote, map = msg.map, pad = true,
 		kind = msg.kind, banned = msg.banned, mbanned = msg.mbanned } else nil
 	cur = partyCur or padCur
 	QuickVoteUI.draw()
+	menuSync()
 end
 function QuickVoteUI.fakeScreen(v: Vector2?)
 	fake = v
@@ -268,6 +288,7 @@ end)
 RunService.Heartbeat:Connect(function()
 	-- (nothing to show: off, every frame. a menu that hid this panel and puts it back when it closes, the loadout screen in
 	-- a map room on 18 Nov, must never bring back an empty one)
+	if menuOn and not (gui.Enabled and voteOpen()) then menuSync() end
 	if not cur then if gui.Enabled then gui.Enabled = false end; return end
 	local open = (cur.vote and not cur.pick) or (cur.mvote and not cur.map)
 	if not open then clock.Text = ""; return end
