@@ -28,9 +28,9 @@ body{font-family:'Builder Sans';font-weight:800;color:var(--ink);font-variant-nu
 .price.no{background:var(--bone2);color:#8f897e;box-shadow:0 4px 0 var(--lip)}
 .w{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 18px rgba(0,0,0,.5)}
 .wd{color:rgba(255,255,255,.8)}
-.shade{position:absolute;inset:0;background:radial-gradient(60% 60% at 0% 100%,rgba(10,10,12,.62),rgba(10,10,12,0) 72%),radial-gradient(60% 55% at 100% 100%,rgba(10,10,12,.5),rgba(10,10,12,0) 70%),radial-gradient(45% 40% at 100% 0%,rgba(10,10,12,.42),rgba(10,10,12,0) 70%),radial-gradient(40% 35% at 0% 0%,rgba(10,10,12,.4),rgba(10,10,12,0) 70%)}
+.shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,10,12,.5),rgba(10,10,12,0) 34%),radial-gradient(60% 60% at 0% 100%,rgba(10,10,12,.62),rgba(10,10,12,0) 72%),radial-gradient(60% 55% at 100% 100%,rgba(10,10,12,.5),rgba(10,10,12,0) 70%),radial-gradient(45% 40% at 100% 0%,rgba(10,10,12,.42),rgba(10,10,12,0) 70%),radial-gradient(40% 35% at 0% 0%,rgba(10,10,12,.4),rgba(10,10,12,0) 70%)}
 .tk{filter:drop-shadow(0 0 1px #5d584f) drop-shadow(0 0 1px #5d584f)}
-.slit{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 53%,transparent 53%,transparent 59%,#000 59%)}
+.slit{display:inline-block;text-shadow:none;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 53%,transparent 53%,transparent 59%,#000 59%)}
 .key{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;font-size:19px;background:var(--bone2);color:var(--ink);box-shadow:inset 0 2px 0 rgba(0,0,0,.12)}
 """
 
@@ -63,10 +63,10 @@ def hub():
 <div class="abs flexc w" style="left:60px;top:52px;gap:18px">{head(0, 60)}<div><div style="font-size:30px">{PLAYER['name']}</div>
  <div class="flexc" style="gap:12px;margin-top:6px"><span style="font-size:20px">LV {PLAYER['level']}</span><div style="width:200px;height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><div style="width:{xp*100:.0f}%;height:100%;border-radius:4px;background:#fff"></div></div><span class="wd" style="font-size:16px">{PLAYER['xp']:,} / {PLAYER['xp_next']:,} XP</span></div></div></div>
 {wallet()}
-<div class="pad" style="left:56px;top:316px;width:500px;height:172px">
- <div class="slit" style="position:absolute;left:38px;top:26px;font-size:96px;line-height:1">PLAY</div>
- <div style="position:absolute;left:41px;bottom:30px;font-size:22px;color:#b9b2a5">{MODE_LABEL} <span class="bm" style="margin-left:10px;font-size:18px">rating {RATING}</span></div>
- <div class="plate" style="right:24px;top:54px;height:60px;padding:0 20px;display:flex;align-items:center;font-size:18px;border-radius:12px;color:var(--ink)">CHANGE MODE</div>
+<div class="flat ink" style="left:24px;top:316px;width:532px;height:172px;background:var(--ink);box-shadow:0 10px 26px rgba(0,0,0,.3)">
+ <div class="slit" style="position:absolute;left:36px;top:26px;font-size:96px;line-height:1">PLAY</div>
+ <div style="position:absolute;left:38px;bottom:30px;font-size:22px;color:#b9b2a5">{MODE_LABEL}<span style="margin-left:14px;color:#8d877c">RATING {RATING}</span></div>
+ <div class="flat" style="right:24px;top:56px;height:58px;padding:0 20px;display:flex;align-items:center;font-size:18px;border-radius:10px;box-shadow:none;color:var(--ink)">CHANGE MODE</div>
 </div>
 <div class="abs" style="left:62px;top:516px">{menu}</div>
 <div class="abs w" style="left:62px;bottom:46px;font-size:22px">{HUB['name']} <span class="wd bm" style="margin-left:10px">{HUB['here']} here</span></div>
@@ -76,17 +76,17 @@ def hub():
 
 def match():
     m = MATCH
-    feed = "".join(f'<div class="flexc" style="width:max-content;margin-left:auto;gap:12px;height:40px;margin-bottom:6px;padding:0 16px;border-radius:3px;background:rgba(20,20,24,.62);color:#fff;font-size:21px;{"box-shadow:inset 0 0 0 2px var(--bone)" if f[0] == PLAYER["name"] else ""}">{feed_line(*f)}</div>' for f in FEED)
+    feed = "".join(f'<div class="flexc" style="width:max-content;margin-left:auto;gap:12px;height:40px;margin-bottom:6px;padding:0 16px;border-radius:3px;background:rgba(20,20,24,.62);color:#fff;font-size:21px;{"background:rgba(72,74,80,.92)" if f[0] == PLAYER["name"] else ""}">{feed_line(*f)}</div>' for f in FEED)
     slots = ""
     for i, (k, g, n) in enumerate(SLOTS + [("G", None, "")]):
         on = i == 0
         inner = slot_icon(g, 66, 30) if g else f'<span style="font-size:30px;line-height:0">{icon("grenade")}</span><span style="font-size:20px;margin-left:4px">×{m["util_n"]}</span>'
-        slots += f'<div class="w" style="text-align:center;width:98px;opacity:{1 if on else .66}"><div class="flexc" style="height:36px;justify-content:center;filter:drop-shadow(0 2px 0 rgba(0,0,0,.4))">{inner}</div><div style="font-size:16px;margin-top:4px">{k}</div><div style="height:6px;margin-top:4px;border-radius:3px;background:{"var(--bone)" if on else "transparent"}"></div></div>'
+        slots += f'<div class="w" style="text-align:center;width:98px;opacity:{1 if on else .7}"><div class="flexc" style="height:46px;justify-content:center;border-radius:6px;background:rgba(20,20,24,.72)">{inner}</div><div style="font-size:16px;margin-top:4px">{k}</div><div style="height:6px;margin-top:4px;border-radius:3px;background:{"var(--bone)" if on else "transparent"}"></div></div>'
     body = f"""<div class="stage"><div class="bg" style="background-image:url(../img/bg/match_crate.jpg)"></div><div class="shade"></div>
 <div class="abs" style="left:50%;transform:translateX(-50%);top:24px;display:flex;flex-direction:column;align-items:center">
  <div class="flexc" style="gap:10px">
-  <div class="flexc" style="height:88px;padding:0 20px 0 26px;gap:16px;border-radius:20px;background:{TEAM['blossom'][0]};box-shadow:inset 0 0 0 6px var(--bone),0 5px 0 var(--lip),0 12px 24px rgba(0,0,0,.3)"><span class="slit" style="font-size:58px;line-height:1">{m['us']}</span>{heads_col('blossom', 28, 4)}</div>
-  <div class="flexc" style="height:88px;padding:0 26px 0 20px;gap:16px;border-radius:20px;background:{TEAM['sky'][0]};box-shadow:inset 0 0 0 6px var(--bone),0 5px 0 var(--lip),0 12px 24px rgba(0,0,0,.3)">{heads_col('sky', 28, 4)}<span class="slit" style="font-size:58px;line-height:1">{m['them']}</span></div>
+  <div class="flexc" style="height:88px;padding:0 20px 0 26px;gap:16px;border-radius:10px;background:{TEAM['blossom'][0]}"><span class="slit" style="font-size:58px;line-height:1">{m['us']}</span>{heads_col('blossom', 28, 4)}</div>
+  <div class="flexc" style="height:88px;padding:0 26px 0 20px;gap:16px;border-radius:10px;background:{TEAM['sky'][0]}">{heads_col('sky', 28, 4)}<span class="slit" style="font-size:58px;line-height:1">{m['them']}</span></div>
  </div>
  <div class="flexc" style="margin-top:10px;height:36px;padding:0 16px;gap:12px;background:rgba(29,31,35,.82);color:var(--bone);border-radius:3px;font-size:24px"><span style="font-size:15px;color:#b9b2a5">ROUND {m['round']}</span>{m['time']}</div>
 </div>
@@ -107,18 +107,18 @@ def match():
 
 def loadout():
     slots = ""
-    pics = {"PRIMARY": slot_icon("ar", 120, 44), "SECONDARY": slot_icon("revolver", 90, 46), "MELEE": slot_icon("katana", 120, 40), "UTILITY": f'<span style="font-size:48px;line-height:0">{icon("grenade")}</span>'}
+    pics = {"PRIMARY": slot_icon("ar", 120, 44), "SECONDARY": slot_icon("revolver", 90, 46), "MELEE": slot_icon("katana", 124, 40), "UTILITY": f'<span style="font-size:46px;line-height:0">{icon("grenade")}</span>', "GRAPPLE": f'<span style="font-size:46px;line-height:0">{icon("hook")}</span>'}
     y = 176
-    for i, (slot, g, name, note) in enumerate(LOADOUT):
+    for i, (slot, g, name, note) in enumerate(LOADOUT5):
         on = i == SEL
-        h = 132 if on else 92
-        sub = {"SECONDARY": "Wish Duck skin", "UTILITY": "×2"}.get(slot, "")
+        h = 124 if on else 84
+        sub = {"SECONDARY": "Wish Duck skin", "UTILITY": "×2", "GRAPPLE": "×2"}.get(slot, "")
         slots += f"""<div class="flat" style="left:64px;top:{y}px;width:480px;height:{h}px;{"background:var(--ink);color:var(--bone)" if on else ""}">
- <span class="key" style="position:absolute;left:22px;top:{h/2-17:.0f}px;{"background:#3a3d44;color:var(--bone);box-shadow:none" if on else ""}">{["1","2","3","G"][i]}</span>
+ <span class="key" style="position:absolute;left:22px;top:{h/2-17:.0f}px;{"background:#3a3d44;color:var(--bone);box-shadow:none" if on else ""}">{KEYS5[i]}</span>
  <div style="position:absolute;left:76px;top:{h/2-(26 if sub else 17):.0f}px;font-size:{32 if on else 28}px">{name.upper()}</div>
  {f'<div class="bm" style="position:absolute;left:76px;top:{h/2+12:.0f}px;font-size:18px;color:{"#b9b2a5" if on else "var(--ink2)"}">{sub}</div>' if sub else ''}
  <div style="position:absolute;right:18px;top:{(h-74)/2:.0f}px;width:150px;height:74px;display:grid;place-items:center">{pics[slot]}</div></div>"""
-        y += h + 14
+        y += h + 12
     stats = "".join(f"""<div style="margin-top:20px"><div class="flexc" style="justify-content:space-between"><span class="lab">{k.upper()}</span><span style="font-size:26px">{v}</span></div>
  <div class="bar" style="margin-top:8px"><b style="width:{f*100:.0f}%"></b><u style="left:{avg*100:.0f}%"></u></div></div>""" for (k, v, f), avg in zip(STATS, STAT_AVG))
     rail = ""
@@ -132,15 +132,15 @@ def loadout():
         elif locked:
             tag = f'<span class="bm flexc" style="font-size:16px;color:var(--ink2);gap:5px">{icon("lock")} Level {st[1]}</span>'
         else:
-            tag = '<span class="bm" style="font-size:17px;color:#b9b2a5">Equipped</span>' if on else ""
+            tag = '<span class="bm" style="font-size:17px;color:#b9b2a5">Equipped</span>' if on else (f'<span class="bm dim" style="font-size:16px">Mastery {GUN_MASTERY[g]}</span>' if g in GUN_MASTERY else "")
         pic = '<img class="ap" src="../img/items/wish_duck_34.png">' if on else gunpic(g, "ap")
-        rail += f"""<div class="flat" style="left:{x}px;bottom:44px;width:{w}px;height:136px;{"background:var(--ink);color:var(--bone);" if on else ""}">
- <div style="position:absolute;left:16px;top:14px;width:{180 if on else 150}px;height:{90 if on else 70}px;display:grid;place-items:center;{"filter:grayscale(1) brightness(.85);opacity:.8" if locked else ""}">{pic}</div>
- <div style="position:absolute;left:{216 if on else 172}px;top:{34 if on else 22}px;font-size:{22 if on else 18}px;width:{w-(230 if on else 184)}px;line-height:1.15">{n.upper()}<div style="margin-top:6px">{tag}</div></div></div>"""
+        rail += f"""<div class="flat" style="left:{x}px;bottom:44px;width:{w}px;height:136px;{"background:var(--ink);color:var(--bone);" if on else ""}{"opacity:.62;filter:grayscale(1)" if locked else ""}">
+ <div style="position:absolute;left:14px;top:18px;width:{180 if on else 136}px;height:{90 if on else 64}px;display:grid;place-items:center">{pic}</div>
+ <div style="position:absolute;left:{216 if on else 160}px;top:{34 if on else 22}px;font-size:{22 if on else 17}px;width:{w-(230 if on else 172)}px;line-height:1.15;white-space:nowrap">{n.upper()}<div style="margin-top:6px">{tag}</div></div></div>"""
         x += w + 12
         if x > 1800:
             break
-    cos = (f"""<div class="flexc" style="gap:14px;margin-top:18px;height:40px"><span class="lab" style="width:48px">SKIN</span><div style="font-size:20px">WISH DUCK</div><span class="bm dim" style="margin-left:auto;font-size:17px">4 owned</span></div>"""
+    cos = (f"""<div class="flexc" style="gap:14px;margin-top:18px;height:40px"><span class="lab" style="width:48px">SKIN</span><div style="font-size:20px">WISH DUCK</div><span class="bm dim" style="margin-left:auto;font-size:17px">4 skins owned</span></div>"""
            f"""<div class="flexc" style="gap:14px;margin-top:8px"><span class="lab" style="width:48px">HAT</span>
  <div style="position:relative;width:90px;height:56px;border-radius:3px;background:var(--bone2)"><img src="../img/items/royal-duck.png" style="position:absolute;left:18px;top:4px;max-width:56px;max-height:48px"></div>
  <div style="font-size:20px">ROYAL DUCK</div></div>""")
@@ -168,23 +168,23 @@ def shop():
     tabs = "".join(f'<div class="w flexc" style="position:relative;height:52px;padding:0 16px;font-size:22px;{"" if i == 0 else "opacity:.62"}">{t}{"<i style=&quot;position:absolute;left:16px;right:16px;bottom:2px;height:5px;border-radius:3px;background:var(--bone)&quot;></i>" if i == 0 else ""}</div>' for i, t in enumerate(SHOP_TABS))
     first = DAILY[0]
     daily = f"""<div class="flat" style="left:500px;top:178px;width:640px;height:330px">
- <img src="../img/items/{first[0]}.png" style="position:absolute;left:270px;top:-30px;max-width:340px;max-height:250px;filter:drop-shadow(0 10px 10px rgba(0,0,0,.25))">
+ <img src="../img/items/{first[0]}.png" style="position:absolute;left:210px;top:-34px;max-width:410px;max-height:290px;filter:drop-shadow(0 10px 10px rgba(0,0,0,.25))">
  <div style="position:absolute;left:28px;top:236px;font-size:30px">{first[1].upper()}</div>
- <div class="bm dim" style="position:absolute;left:28px;top:274px;font-size:18px">{first[5].title()} {first[2].lower()}</div>
+ <div class="bm dim" style="position:absolute;left:28px;top:274px;font-size:18px"><b style="color:{RARITY_DARK[first[5]]}">{first[5].title()}</b> {first[2].lower()}</div>
  <div style="position:absolute;right:24px;bottom:24px;text-align:right">{price(first[3], first[4])}<div class="bm" style="font-size:15px;color:#a35a2a;margin-top:10px">need {int(first[3].replace(",", "")) - WALLET_N:,} more</div></div></div>
 <div class="flat" style="left:500px;top:524px;width:640px;height:504px">"""
     for i, (img, name, kind, p, curr, rar) in enumerate(DAILY[1:]):
         daily += f"""<div class="flexc" style="height:168px;padding:0 24px;gap:22px;border-top:{"none" if i == 0 else "2px solid var(--bone2)"}">
  <div style="width:230px;display:grid;place-items:center"><img src="../img/items/{img}.png" style="max-width:230px;max-height:120px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.22))"></div>
- <div style="flex:1"><div style="font-size:23px">{name.upper()}</div><div class="bm dim" style="font-size:17px">{rar.title()} {kind.lower()}</div></div>
+ <div style="flex:1"><div style="font-size:23px">{name.upper()}</div><div class="bm dim" style="font-size:17px"><b style="color:{RARITY_DARK[rar]}">{rar.title()}</b> {kind.lower()}</div></div>
  <div style="text-align:right">{price(p, curr, 22)}{"" if afford(p) else f'<div class="bm" style="font-size:14px;color:#a35a2a;margin-top:8px">need {int(p.replace(",", "")) - WALLET_N:,} more</div>'}</div></div>"""
     daily += "</div>"
     crates = "".join(f"""<div class="flexc" style="height:112px;padding:0 16px;border-top:{"none" if i == 0 else "2px solid var(--bone2)"};gap:16px">
  <div style="width:110px;display:grid;place-items:center"><img src="../img/items/{img}.png" style="max-width:104px;max-height:76px"></div>
  <div style="flex:1"><div style="font-size:23px">{name.upper()}</div><div class="bm dim" style="font-size:17px">{holds}</div></div>
- <span class="price" style="width:92px;justify-content:center">{cur('ticket', 28)}{tk}</span><span class="bm dim" style="font-size:16px">or</span><span class="price" style="width:104px;justify-content:center">{rbx()}{rp}</span></div>""" for i, (img, name, holds, tk, rp) in enumerate(CONTAINERS))
+ <span style="text-align:center"><span class="price {"" if int(tk) <= TICKETS_N else "no"}" style="width:92px;justify-content:center">{cur('ticket', 28)}{tk}</span>{"" if int(tk) <= TICKETS_N else f'<span class="bm" style="display:block;font-size:13px;color:#a35a2a;margin-top:6px">need {int(tk) - TICKETS_N} more</span>'}</span><span class="bm dim" style="font-size:16px">or</span><span class="price" style="width:104px;justify-content:center">{rbx()}{rp}</span></div>""" for i, (img, name, holds, tk, rp) in enumerate(CONTAINERS))
     packs = "".join(f"""<div class="flexc" style="height:112px;padding:0 16px;border-top:{"none" if i == 0 else "2px solid var(--bone2)"};gap:18px">
- <span style="width:64px;display:flex;justify-content:center">{coin_stack(i + 1, 34)}</span><div style="flex:1"><div style="font-size:28px">{c}</div><div class="bm dim" style="font-size:17px">{("+" + b) if b else ""}</div></div>
+ <div style="flex:1"><div style="font-size:28px">{c} <span class="bm dim" style="font-size:18px">coins</span></div><div class="bm dim" style="font-size:17px">{("+" + b) if b else ""}</div></div>
  <span class="price" style="width:132px;justify-content:center">{rbx()}{r}</span></div>""" for i, (c, r, b) in enumerate(COIN_PACKS))
     body = f"""<div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_rotunda_blur.jpg)"></div><div class="wash"></div>
 <div class="abs w" style="left:64px;top:60px;font-size:50px">SHOP</div>
@@ -196,7 +196,7 @@ def shop():
  <div class="slit" style="position:absolute;left:30px;top:28px;font-size:84px;line-height:1">{HERO['name']}</div>
  <div class="bm" style="position:absolute;left:32px;top:118px;font-size:20px;color:#b9b2a5">{len(HERO['set'])} skins</div>
  <div style="position:absolute;left:30px;top:170px;width:360px;height:560px">{set_column(360)}</div>
- <div style="position:absolute;left:30px;bottom:30px"><span class="price" style="height:70px;font-size:32px;padding:0 30px;border-radius:16px;background:var(--bone);color:var(--ink);box-shadow:0 5px 0 var(--lip)">{rbx()}{HERO['price']}</span></div>
+ <div style="position:absolute;left:30px;bottom:30px"><span class="price" style="height:70px;font-size:32px;padding:0 30px;border-radius:16px;background:#33363c;color:var(--bone);box-shadow:0 5px 0 #000">{rbx()}{HERO['price']}</span></div>
 </div>
 {daily}
 <div class="abs w" style="left:1170px;top:150px;font-size:20px">CRATES</div>
@@ -214,22 +214,25 @@ def phone():
         extra = f'<span style="position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:11px">×{GRAPPLE["charges"]}</span>' if k == "hook" else ""
         extra = f'<span style="position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:11px">×{m["util_n"]}</span>' if k == "grenade" else extra
         lip = "0 3px 0 var(--lip),0 6px 12px rgba(0,0,0,.28)" if k == "jump" else "0 6px 12px rgba(0,0,0,.22)"
+        s = 56 if k in ("jump", "aim") else 46
         keys += f'<div class="plate" style="left:{x - s/2:.0f}px;top:{y - s/2:.0f}px;width:{s}px;height:{s}px;border-radius:50%;box-shadow:{lip};{"" if k == "jump" else "background:rgba(239,233,222,.9);"}display:grid;place-items:center;color:var(--ink)"><span style="margin-top:{-6 if extra else 0}px">{act_icon(k, int(s*0.46))}</span>{extra}</div>'
-    slots = "".join(f'<div class="plate {"ink" if i == 0 else ""}" style="position:relative;width:60px;height:34px;border-radius:10px;display:grid;place-items:center;box-shadow:0 3px 0 {"#000" if i == 0 else "var(--lip)"}">{slot_icon(g, 42, 19)}</div>' for i, (k, g, n) in enumerate(SLOTS))
+    slots = "".join(f'<div class="w" style="position:relative;width:58px;height:36px;display:grid;place-items:center;border-radius:5px;background:rgba(20,20,24,.78);opacity:{1 if i == 0 else .8}">{slot_icon(g, 44, 20)}<i style="position:absolute;left:8px;right:8px;bottom:0;height:4px;border-radius:2px;background:{"var(--bone)" if i == 0 else "transparent"}"></i></div>' for i, (k, g, n) in enumerate(SLOTS))
+    pfeed = "".join(f'<div class="flexc" style="width:max-content;margin-left:auto;gap:6px;height:20px;margin-bottom:3px;padding:0 8px;border-radius:3px;background:{"rgba(72,74,80,.92)" if f[0] == PLAYER["name"] else "rgba(20,20,24,.62)"};color:#fff;font-size:11px">{feed_line(*f, size=11)}</div>' for f in FEED)
     body = f"""<div class="stage"><div class="bg" style="background-image:url(../img/bg/match_crate.jpg)"></div><div class="shade"></div>
 <div class="abs" style="left:50%;transform:translateX(-50%);top:8px;display:flex;flex-direction:column;align-items:center">
- <div class="flexc" style="border-radius:3px;overflow:hidden;box-shadow:0 6px 14px rgba(0,0,0,.3)">
-  <div class="flexc" style="height:40px;padding:0 8px 0 12px;gap:7px;background:{TEAM['blossom'][0]}"><span style="font-size:28px;line-height:1">{m['us']}</span>{heads_col('blossom', 14, 2)}</div>
-  <div class="flexc" style="height:40px;padding:0 12px 0 8px;gap:7px;background:{TEAM['sky'][0]}">{heads_col('sky', 14, 2)}<span style="font-size:28px;line-height:1">{m['them']}</span></div>
+ <div class="flexc" style="gap:5px">
+  <div class="flexc" style="height:40px;padding:0 8px 0 12px;gap:7px;border-radius:7px;box-shadow:0 6px 14px rgba(0,0,0,.28);background:{TEAM['blossom'][0]}"><span class="slit" style="font-size:28px;line-height:1">{m['us']}</span>{heads_col('blossom', 14, 2)}</div>
+  <div class="flexc" style="height:40px;padding:0 12px 0 8px;gap:7px;border-radius:7px;box-shadow:0 6px 14px rgba(0,0,0,.28);background:{TEAM['sky'][0]}">{heads_col('sky', 14, 2)}<span class="slit" style="font-size:28px;line-height:1">{m['them']}</span></div>
  </div>
- <div class="flexc" style="height:20px;padding:0 8px;gap:6px;background:var(--ink);color:var(--bone);font-size:13px"><span style="font-size:9px;color:#b9b2a5">ROUND {m['round']}</span>{m['time']}</div>
+ <div class="flexc" style="margin-top:4px;height:20px;padding:0 8px;gap:6px;border-radius:3px;background:var(--ink);color:var(--bone);font-size:13px"><span style="font-size:9px;color:#b9b2a5">ROUND {m['round']}</span>{m['time']}</div>
  {scores_tab('rgba(229,226,219,.94)', 'var(--ink)', 10, '0 0 5px 5px', 'text-transform:uppercase;letter-spacing:.05em')}
 </div>
+<div class="abs" style="right:12px;top:8px">{pfeed}</div>
 <div class="abs" style="left:58px;top:124px;width:124px;height:124px;border-radius:50%;background:rgba(29,31,35,.32);box-shadow:inset 0 0 0 4px rgba(239,233,222,.8)"></div>
 <div class="plate" style="left:92px;top:158px;width:56px;height:56px;border-radius:50%"></div>
 <div class="abs flexc" style="left:200px;bottom:14px;gap:16px;align-items:flex-end">
- <div class="w"><div style="font-size:40px;line-height:1">{m['hp']}</div><div style="width:100px;height:8px;margin-top:6px;border-radius:4px;background:rgba(255,255,255,.3)"><div style="width:{m['hp']}%;height:100%;border-radius:4px;background:var(--bone)"></div></div></div>
- <div class="w" style="font-size:40px;line-height:1;padding-bottom:14px">{m['ammo']}<span style="font-size:19px;opacity:.8"> /{m['mag']}</span></div>
+ <div class="w"><div class="slit" style="font-size:40px;line-height:1">{m['hp']}</div><div style="width:100px;height:8px;margin-top:6px;border-radius:4px;background:rgba(255,255,255,.3)"><div style="width:{m['hp']}%;height:100%;border-radius:4px;background:var(--bone)"></div></div></div>
+ <div class="w" style="font-size:40px;line-height:1;padding-bottom:14px"><span class="slit">{m['ammo']}</span><span style="font-size:19px;opacity:.8"> /{m['mag']}</span></div>
  <div class="flexc" style="gap:6px;padding-bottom:14px">{slots}</div>
 </div>
 {keys}
@@ -260,9 +263,9 @@ def scoreboard():
     body = f"""<div class="stage"><div class="bg" style="background-image:url(../img/bg/match_forest_blur.jpg)"></div><div class="wash" style="background:rgba(20,19,17,.4)"></div>
 <div class="flat" style="left:500px;top:96px;width:920px;padding:24px 26px 22px 64px">
  <div class="flexc" style="height:96px;gap:22px">
-  <div class="sp" style="width:112px;height:84px;background:{TEAM['blossom'][0]};font-size:60px"><span class="slit">{bd['us']}</span></div>
+  <div class="sp" style="width:112px;height:84px;border-radius:10px;background:{TEAM['blossom'][0]};font-size:60px"><span class="slit">{bd['us']}</span></div>
   <div style="flex:1;text-align:center"><div style="font-size:34px">{bd['map'].upper()}</div><div class="bm dim" style="margin-top:4px;font-size:19px">Round {bd['round']}, <b style="color:var(--ink)">{bd['time']}</b> left</div></div>
-  <div class="sp" style="width:112px;height:84px;background:{TEAM['sky'][0]};font-size:60px"><span class="slit">{bd['them']}</span></div>
+  <div class="sp" style="width:112px;height:84px;border-radius:10px;background:{TEAM['sky'][0]};font-size:60px"><span class="slit">{bd['them']}</span></div>
  </div>
  <div style="height:3px;background:var(--bone2);margin:14px 0 4px;border-radius:2px"></div>
  {head_row}{blocks}

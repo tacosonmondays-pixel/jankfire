@@ -751,3 +751,173 @@ def coin_stack(n, size=26):
     """1 to 4 of our coins, overlapped: a bigger pack is a taller stack."""
     return (f'<span style="position:relative;display:inline-block;width:{size + 6 * (n - 1)}px;height:{size + 5 * (n - 1)}px;flex:none">'
             + "".join(f'<span style="position:absolute;left:{6 * k}px;top:{5 * (n - 1 - k)}px">{cur("coin", size)}</span>' for k in range(n)) + '</span>')
+
+
+
+# ---------------------------------------------------------------- round 9 (26 Nov): one icon family, screens that agree
+# Every icon is a solid silhouette at the guns' weight: no strokes, no inner lines.
+# The grapple is drawn side-on and thrown: a rope ending in a three-tined claw, so it can't read as an anchor.
+ICONS2["hook"] = ("0 0 32 32",
+    '<path d="M2.5 29.5C7 27 9.5 22.5 12.5 19" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="3.2 2.2"/>'
+    '<g transform="rotate(-42 19 13)"><rect x="9" y="11.2" width="14" height="3.8" rx="1"/>'
+    '<path d="M22 13.1L31 13.1L27.5 10.2L28.5 9Z"/>'
+    '<path d="M21.5 11.6C24 8.6 26.5 6.6 30 5.8L29 3.4C25 4.6 22 7.2 19.4 10.6Z"/>'
+    '<path d="M21.5 14.6C24 17.6 26.5 19.6 30 20.4L29 22.8C25 21.6 22 19 19.4 15.6Z"/></g>')
+ICONS2["grenade"] = ("0 0 32 32",
+    '<path d="M15 9.5c5.6 0 9.6 4.8 9.6 10.5S20.6 31 15 31S5.4 25.7 5.4 20S9.4 9.5 15 9.5z"/>'
+    '<rect x="11.4" y="5" width="7.2" height="5.6" rx="1"/><path d="M18 5L26.5 8.4L24.6 18.2L22.6 17.8L24 10L17.2 7.6Z"/>'
+    '<path fill-rule="evenodd" d="M8.6 1.6a3.6 3.6 0 1 1 0 7.2a3.6 3.6 0 1 1 0-7.2zm0 2.2a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 1 0 0-2.8z"/>')
+ICONS2["lock"] = ("0 0 32 32",
+    '<path fill-rule="evenodd" d="M8.5 14V10a7.5 7.5 0 0 1 15 0v4h1.5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V16a2 2 0 0 1 2-2zm4.4 0h6.2v-4a3.1 3.1 0 0 0-6.2 0z"/>')
+ICONS2["robux"] = ("0 0 24 24", '<path fill-rule="evenodd" d="M12 1.4l9.2 5.3v10.6L12 22.6l-9.2-5.3V6.7zM9.4 9.4v5.2h5.2V9.4z"/>')
+
+
+def icon(name, cls="ic"):
+    vb, body = ICONS2.get(name) or ("0 0 24 24", ICONS[name])
+    return f'<svg class="{cls}" viewBox="{vb}" fill="currentColor" style="width:1em;height:1em;flex:none;display:inline-block" aria-hidden="true">{body}</svg>'
+
+
+def slot_icon(g, w=64, h=30):
+    """Every slot, the katana included, is a silhouette of our own model."""
+    if g == "duck":
+        g = "revolver"
+    return f'<i style="display:inline-block;width:{w}px;height:{h}px;background:currentColor;-webkit-mask-image:url(../img/guns/{g}_side.png);-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center"></i>'
+
+
+# Stats share one scale (out of 100 for damage, 10/s for rate, 30 for the magazine) and say what they measure.
+STATS = [("Body damage", "33", 0.33), ("Head damage", "79", 0.79), ("Fire rate", "2.5/s", 0.25), ("Magazine", "6", 0.20)]
+STAT_AVG = [0.27, 0.62, 0.38, 0.30]
+# The game's own rarity colours (LootTable), on the word only: never tinted tiles.
+RARITY = {"rare": "#4aa3e0", "epic": "#a76ae0", "legendary": "#f0b234"}
+RARITY_DARK = {"rare": "#2c74ad", "epic": "#7a45b3", "legendary": "#a8770e"}
+# A 2v2 party is two: no empty slots in a full party.
+PARTY_N = "2/2"
+QUEUES = [("1V1", "1/2"), ("1V1V1", "0/3"), ("2V2", "0/4"), ("3V3", "0/6"), ("4V4", "3/8")]
+TICKETS_N = 3
+
+# The grapple is the game's HOOK (E): a heavy crane hook on its rope, not an anchor.
+ICONS2["hook"] = ("0 0 32 32",
+    '<rect x="14.6" y="0" width="3.2" height="7" rx="1"/><rect x="11.6" y="6.2" width="9.2" height="5.4" rx="1.4"/>'
+    '<path d="M16.2 11V20.5a6.2 6.2 0 0 1-12.4 0V17.5" fill="none" stroke="currentColor" stroke-width="4.6"/>'
+    '<path d="M0.8 19.5L4 11.2L7.2 19.5Z"/>')
+
+# Solid marks, no rings or rules inside: a gold coin with a square hole, a notched crate ticket.
+COIN_SVG = ('<svg viewBox="0 0 24 24" width="{s}" height="{s}" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))">'
+            '<path fill-rule="evenodd" d="M12 1a11 11 0 1 1 0 22a11 11 0 1 1 0-22zM9.2 9.2v5.6h5.6V9.2z" fill="#e2ad2f"/></svg>')
+TICKET_SVG = ('<svg viewBox="0 0 32 22" width="{w}" height="{h}" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))">'
+              '<path d="M3 2h26a1 1 0 0 1 1 1v5.2a2.9 2.9 0 0 0 0 5.6V19a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5.2a2.9 2.9 0 0 0 0-5.6V3a1 1 0 0 1 1-1z" fill="#ead39a"/></svg>')
+
+
+def alive_heads(team, size=30, gap=6):
+    """Each side's players; a dead one is greyed under a red X with a light edge, readable on any tile."""
+    out = []
+    for idx, alive in ALIVE[team]:
+        if alive:
+            out.append(f'<span style="position:relative;display:inline-block">{head(idx, size)}</span>')
+        else:
+            out.append(f'<span style="position:relative;display:inline-block"><span style="display:inline-block;filter:grayscale(1);opacity:.75">{head(idx, size)}</span>{dead_x(size)}</span>')
+    return f'<span style="display:inline-flex;gap:{gap}px">{"".join(out)}</span>'
+
+
+def dead_x(size=44):
+    return (f'<svg width="{size}" height="{size}" viewBox="0 0 40 40" style="position:absolute;left:0;top:0">'
+            f'<path d="M9 9L31 31M31 9L9 31" stroke="#fff" stroke-width="9" stroke-linecap="round"/>'
+            f'<path d="M9 9L31 31M31 9L9 31" stroke="#d93a32" stroke-width="5" stroke-linecap="round"/></svg>')
+
+
+def feed_line(a, ta, g, b, tb, hs=False, size=21, cls=""):
+    """Killer, gun, victim. No headshot glyph: at feed size it read as a lock or a camera."""
+    return (f'<span style="color:{TEAM[ta][0]}">{a}</span>{slot_icon(g, int(size*2.9), int(size*1.3))}'
+            f'<span style="color:{TEAM[tb][0]}">{b}</span>')
+
+
+# The loadout lists the hook too, as the HUD does (E, two charges).
+LOADOUT5 = LOADOUT + [("GRAPPLE", "hook", "Hook", "")]
+KEYS5 = ["1", "2", "3", "G", "E"]
+GUN_MASTERY = {"pistol": 3, "sawnoff": 1}
+
+
+
+# ---------------------------------------------------------------- round 10 (26 Nov): last consistency pass
+# The hook as one filled shape (no stroke): rope, eye, J and barb.
+ICONS2["hook"] = ("0 0 32 32",
+    '<rect x="15.2" y="0" width="2" height="7"/><rect x="12.4" y="5.8" width="7.6" height="5.4" rx="1.4"/>'
+    '<path d="M14 10.6H18.6V20.5A8.6 8.6 0 0 1 1.4 20.5V17H5.8V20.5A4.2 4.2 0 0 0 14.2 20.5Z"/>'
+    '<path d="M0.2 18.2L3.6 10.4L7 18.2Z"/>')
+# A katana at the guns' weight: a curved blade a third of its height, guard and wrapped grip.
+ICONS2["katana"] = ("0 0 64 16",
+    '<path d="M1.5 9.6C15 7.8 29 6.4 41.6 5.6L42.6 11C29.6 11.2 15.4 11.6 2.2 12.2Z"/>'
+    '<rect x="41.6" y="1.6" width="4.4" height="12.8" rx="1.2"/><rect x="45.6" y="4.8" width="17.4" height="6.4" rx="2"/>')
+
+
+def slot_icon(g, w=64, h=30):
+    if g == "katana":
+        return f'<svg width="{w}" height="{h}" viewBox="0 0 64 16" fill="currentColor" preserveAspectRatio="xMidYMid meet" style="display:inline-block;flex:none">{ICONS2["katana"][1]}</svg>'
+    if g == "duck":
+        g = "revolver"
+    return f'<i style="display:inline-block;width:{w}px;height:{h}px;background:currentColor;-webkit-mask-image:url(../img/guns/{g}_side.png);-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center"></i>'
+
+
+_icon9 = icon
+
+
+def icon(name, cls="ic"):
+    """The grenade is our own frag model's silhouette, like the guns."""
+    if name == "grenade":
+        return ('<i class="ic" style="display:inline-block;width:.78em;height:1em;flex:none;background:currentColor;vertical-align:middle;'
+                '-webkit-mask-image:url(../img/items/frag.png);-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center"></i>')
+    return _icon9(name, cls)
+
+
+def act_icon(k, h=24):
+    if k == "stab":
+        return stab_icon(h)
+    return f'<span style="font-size:{h}px;line-height:0;display:inline-flex">{icon(k)}</span>'
+
+
+def dead_x(size=44):
+    """Dead: the face greyed with one dark slash across it (not an X)."""
+    return (f'<svg width="{size}" height="{size}" viewBox="0 0 40 40" style="position:absolute;left:0;top:0">'
+            f'<path d="M7 33L33 7" stroke="rgba(255,255,255,.85)" stroke-width="10" stroke-linecap="square"/>'
+            f'<path d="M7 33L33 7" stroke="#2a2b2f" stroke-width="5.5" stroke-linecap="square"/></svg>')
+
+
+# Our own rarity ladder (proposal; the loot opening would follow): steel, terracotta, brass.
+RARITY = {"rare": "#86aec0", "epic": "#d0906e", "legendary": "#d9b24c"}
+RARITY_DARK = {"rare": "#41687a", "epic": "#9a5534", "legendary": "#86661a"}
+
+
+def set_shot(w=1000, h=380):
+    """The five Seraph skins laid flat at their true relative sizes, each row on one baseline."""
+    s = w / 1000
+    parts = [  # (img, left, bottom, width, native w, native h)
+        ("seraph_sniper", 0, 160, 590, 567, 131), ("seraph_katana", 620, 160, 380, 571, 152),
+        ("seraph_rifle", 20, 360, 450, 568, 218), ("seraph_burst", 500, 360, 340, 564, 193), ("seraph_pistol", 870, 360, 122, 558, 365),
+    ]
+    imgs = "".join(f'<img src="../img/items/{i}.png" style="position:absolute;left:{l*s:.0f}px;top:{(b - wd * nh / nw)*s:.0f}px;width:{wd*s:.0f}px;'
+                   f'filter:drop-shadow(0 {10*s:.0f}px {10*s:.0f}px rgba(0,0,0,.42))">' for i, l, b, wd, nw, nh in parts)
+    return f'<div style="position:relative;width:{w}px;height:{h}px">{imgs}</div>'
+
+
+def sil_area(g, area=2400, maxh=44):
+    """A gun silhouette sized to one visual mass (long guns get longer, not bigger)."""
+    from PIL import Image
+    import os
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "img", "guns", f"{g}_side.png")
+    try:
+        im = Image.open(p)
+        asp = im.width / im.height
+    except Exception:
+        asp = 2.0
+    w = (area * asp) ** 0.5
+    h = w / asp
+    if h > maxh:
+        h, w = maxh, maxh * asp
+    return (f'<i style="display:inline-block;width:{w:.0f}px;height:{h:.0f}px;background:currentColor;'
+            f'-webkit-mask-image:url(../img/guns/{g}_side.png);-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat"></i>')
+
+
+# Reload: a banana magazine with a round showing at its lips (no stripes: they read as a battery).
+ICONS2["reload"] = ("0 0 32 32",
+    '<path d="M9.6 7.4H21.2L21.8 11.6C22.4 17 24 21.6 27 26.4L18.6 30.6C15.6 25.2 13.1 18.8 11.4 11.6Z"/>'
+    '<path d="M12.2 7C12.2 2.2 18.6 2.2 18.6 7Z"/>')

@@ -85,15 +85,13 @@ Common to all directions:
 - The owner's pastels as the only team colours (Blossom #f4a7c8, Sky #a3cbf2, Butter #f5dd8a, Mint #a6e3c4).
 - A quiet base with one accent.
 - Real labels only: weapon names, modes, prices. No jokes and no slogans.
-- **Our own icon family.** Solid shapes in the weight of the gun silhouettes:
-  - a grapple head for Hook;
-  - a magazine for Reload;
-  - a scope for Aim;
-  - a cartridge for Fire;
-  - blocky-body poses for Jump and Slide;
-  - a frag grenade and a square-toothed gear;
-  - Stab and Swap made from our own gun renders.
-- The game's own gold coin and crate-ticket art.
+- **One icon family: solid silhouettes at the guns' weight**, with no strokes and no inner lines:
+  - the guns, the katana and the frag grenade are silhouettes of our own models;
+  - the HOOK (E) is a crane hook on its rope, never an anchor;
+  - Reload is a magazine with a round at its lips;
+  - Jump and Slide are the blocky Roblox body;
+  - the lock and the Robux mark are solid.
+- **Our own coin and crate-ticket marks:** a gold coin with a square hole and a notched ticket, drawn flat. The game's star coin read as simulator clipart, and at HUD size it blurred into a dot.
 - No decorative dots, status lights or "A · B · C" meta lines.
 - **The grapple's charges** show in every match HUD and on the phone's hook key as one readout (the hook and "×2"): it is the game's own mechanic.
 - **The score** carries each side's players inside its own team block, with the dead ones crossed out (they agree with the kill feed). It is not laid out like Valorant's bar (heads either side of the score and the timer).
@@ -108,48 +106,52 @@ Common to all directions:
 - The top-left corner stays clear for Roblox's own buttons.
 
 ### A. PLATE: made of the same parts as the world
-The UI is built from the hub's own kit. One rule: only things you can press are plates. They are
-bone-white, with the queue pads' thick lip. Everything you only read is type straight on the
-world over a soft shade, or a flat panel with no lip.
-- **PLAY** is the one big pad: ink, with the pads' cream rim and a CHANGE MODE plate attached to its side.
-- **Panels are flat and near-square (3 px).** Only pressable things are rounded with a lip, so the radius itself says "press".
-- **The secondaries** are a rail: the chosen gun's card is wider, locked guns show their level, guns you can't afford show what's missing.
-- **The set's own mark** is a stencil slit through the big numbers and PLAY. In Roblox it is a UIGradient transparency band.
-- **The action colour** is ink: PLAY, prices, the selected slot.
-- **The team pastels** show only inside the score pads, the way a pad glows inside its rim.
-- **The match HUD** is unframed numbers. The selected weapon has a bone bar under it.
-- **The loadout** is numbered 1/2/3/G like the HUD. It has a mastery medallion, a mark on each stat bar for the secondary average, and Skin and Hat rows.
+The UI is built from the hub's own kit, light on the game. Panels are flat and near-square (3 px). Only what you buy is a rounded plate with the queue pads' lip.
+- **PLAY** is a flat ink block with the stencil-cut PLAY, the mode and rating under it, and a flat CHANGE MODE plate. Its text sits on the page's 62 px axis.
+- **The set's own mark** is a stencil slit through every hero number (PLAY, HP, ammo, scores, SERAPH). In Roblox it is a UIGradient transparency band.
+- **The score:** one flat rounded tile per team on the HUD, phone and board, with that team's players inside. Round and clock sit on a tab below.
+- **The match HUD:** unframed numbers, the HOOK with its key (E ×2), and slot silhouettes on dark backings.
+- **The loadout:** keyed rows 1/2/3/G/E, a stat panel with the secondary-average tick, and a secondaries rail. In the rail, the equipped card shows its skin, owned guns show their mastery, and locked guns are dimmed whole.
+- **The shop:**
+  - a tall SERAPH card with the set stacked down it;
+  - the daily pick breaking out of its card;
+  - wrap rows with "need X more";
+  - crate prices in tickets or Robux, each its own button;
+  - coin packs as plain rows.
+- **Leaving a screen** is the word plus its key (CLOSE ESC, DONE ESC).
 - **Type has two registers:** ExtraBold caps for names and numbers, Medium sentence case for anything said.
-- **The shop** lets item art break out of the top of its plate. The coin packs use the shop's own renders.
 
 Why it won't read as AI:
-- one rule you can see (plate = press), taken from our own pads;
+- the radius itself means something (rounded with a lip = you can buy it), taken from our own pads;
 - light on the game, a deliberate and unusual choice;
-- PLAY is the one pad, and the rest of the menu is plain type;
-- one action colour; colour only where it means team or rarity;
+- the stencil cut appears only on hero numbers;
+- one action colour (ink), with colour only for team or rarity;
 - numbers that add up across screens.
 
-Risk: the loudest on screen; light plates on the brightest arenas lean on the lip and drop shadow.
+Risk: the loudest on screen; light panels on the brightest arenas need the soft shade behind them.
 
 ### B. BROADCAST: your match as a sports graphic
 Hard square black slabs.
-- **The one motif is a skew.** Everything you can press, and every active state, leans: PLAY, DONE, the prices, the active tab, the active hotbar slot, the round tab.
-- **Surfaces:** two slab tones.
-- **Type:** condensed Oswald caps for names and big numbers; Builder Sans ExtraBold caps for the nav, tabs and section labels; Builder Sans in sentence case for everything small.
-- **Profile and settings** are labelled buttons in the player plate.
-- **The match score is a broadcast bug:** a round tab, the two team blocks with their players inside, then the clock. The grapple is a HOOK ×2 tab on the HP slab.
-- **The hub:** the menu is a lower-third bar beside a Butter PLAY slab, over a live ticker of every queue's count.
-- **Colour:** black and white, plus the team pastels as solid score boxes. Butter marks only the next thing to press (PLAY, DONE, the price).
-- **The shop:** a wide featured strap with the set's skins and hat as renders, then the daily list and the crates as running orders.
+- **Two marks, each with one meaning:** a skew means "press" (PLAY, DONE, a price you can afford, the active tab and slot); a cut corner means "you or selected" (your kill row, your board row, the selected loadout row, the equipped card, your team's score cell).
+- **Type:** condensed Oswald for names and big numbers; Builder Sans ExtraBold caps for the nav, tabs and labels; Builder Sans sentence case for everything small.
+- **The hub:** a name, level and XP strip, PROFILE and SETTINGS beside it, a Butter PLAY slab carrying the mode, your rating and your party, the nav bar, and a live ticker of every queue with CHANGE HUB on the hub's own tab.
+- **The match HUD:**
+  - a broadcast score bug: a round tab, the two team cells with their players inside, then the clock;
+  - HP and ammo as bare numbers on a rule;
+  - the hook as an E slot in the hotbar.
+- **The shop:**
+  - the SERAPH rifle large and angled, with the other four laid out beside it over the hub it belongs to;
+  - the daily list and crates as running orders;
+  - coin packs as base + bonus.
+- **Colour:** black and white, plus the team pastels as solid score cells. Butter marks only what you can press now.
 
 Why it won't read as AI:
-- zero radius and one skew that means "press" or "active": a hard system of its own instead of soft cards;
+- zero radius, with two marks that each mean one thing: a hard system of its own instead of soft cards;
 - big numbers are the focal point, with no labels on things you can already see;
 - the menu and ticker carry live information, not just buttons;
-- one accent with one meaning (press this);
-- no icons in menus: type does the work.
+- one accent with one meaning (press this).
 
-Risk: the most "esports" of the four; condensed caps can feel cold.
+Risk: the most "esports" of the three; critics keep calling it a Valorant/CoD composite.
 
 ### C. OPEN (dropped after critic round 2)
 Type straight on the world with no boxes, one huge word per screen. Dropped after round 2: its
@@ -157,26 +159,49 @@ critic named the no-container "editorial blur" look an AI default of its own, an
 weakest legibility of the four from round 0. Its frames are kept in the vault review notes.
 
 ### D. SIGNAL: the hubs' wayfinding signs
-The hubs are stations, concourses and hotels, so the menus talk like their signs: deep green enamel with a thick cream rim (how real enamel signs are made), sentence case in Titillium Web, and platform badges for keys. Only menus are signs; the match HUD and the phone keys are translucent enamel with no rim.
-- **Mounting:** nothing floats. Every sign hangs from the top edge, stands on the bottom edge, or sticks out of a side wall, and its rim stops where it meets the edge.
-- **The rim means focus:** only the sign in focus (the hub sign, the selected slot, the featured set) has the cream rim; other signs are plain enamel.
-- **Menu rows show live state,** each at its own height: a quest bar, party slots, your current guns, the daily reset.
-- **The hub:** one sign named after the hub, hanging in the top-right corner, with Change hub and Settings by the name and the wallet in its footer. Play is a Butter wayfinding arrow with a mode selector under it.
-- **The match score** is a two-line sign: each team's tile with its players, and the clock beside them.
-- **The match HUD:** two registers. Only the score hangs as a sign; HP, ammo and the slots are bare type with a shadow, and the kill feed is borderless strips.
-- **Buttons:** Butter enamel plates (Play, Buy, Done); no arrows, no mode pills.
-- **The scoreboard:** dead players are greyed with a crossed head; your party has a "your party" chip.
-- **The loadout:** the armory is a departures board.
+The hubs are stations, concourses and hotels, so the menus talk like their signs: deep green enamel, sentence case in Titillium Web, and platform badges for keys. No rims anywhere.
+- **The wayfinding arrow is the one shape.** It marks what's chosen or next:
+  - Play, Buy and Done are Butter arrows;
+  - the selected loadout slot points at the gun;
+  - the chosen shop tab points down at the page;
+  - the featured set's sign ends in an arrow;
+  - a "you are here" arrow marks your team in the score and your row on the board.
+- **Mounting:** nothing floats. Every sign hangs from the top edge, stands on the bottom edge, or sticks out of a side wall.
+- **The hub:** one sign named after the hub (Change hub beside the name), the Play arrow with a mode selector under it, then Quests, Party, Loadout and Shop rows. Each row is one height, a label over its live state: the next quest, who's in your party, your guns, the daily reset and your wallet.
+- **The match HUD:** two registers. Only the score hangs as a sign (two lines, each team's tile with its players); HP, ammo and the slots are bare type with small backings.
+- **The loadout:** five gates (1/2/3/G/E), the armory as a departures board, and one base strip across the foot holding the stats and cosmetics.
+- **The shop:**
+  - the featured set's sign;
+  - a daily list showing each wrap close up on its pattern;
+  - crates and coins as rows on a band along the bottom.
 - **Colour:** Butter only on the next thing to press.
 
 Why it won't read as AI:
-- a real-world sign system with its own rules (edge-mounted, enamel rim, platform badges);
+- a real-world sign system with its own rules (edge-mounted, platform badges, the wayfinding arrow);
 - sentence case: the only direction that isn't all caps;
 - signs for menus and bare type for the fight: the two registers a real game keeps;
-- the departures board gives the loadout a structure of its own;
-- the accent means "next step" and nothing else.
+- the departures board gives the loadout a structure of its own.
 
 Risk: green enamel next to the pastel teams is the boldest colour choice of the three; it needs the hubs' signs to match.
+
+## The critic loop: where it stands
+
+Eleven rounds (0-10) have been logged in `verdicts.json` and the vault (`Reviews/UI mocks - anti-AI critic round N.md`). All three directions climbed to 7 by round 3, and no critic has given 8 since. Round 10 scored A 7, B 7 and D 7. From round 6 on, each fresh critic mostly reverses the last one's asks, so another round would only trade one set of tells for another. The owner picking one direction is the better next step.
+
+**What the critics agree on, every round:**
+- Numbers that reconcile across screens are the strongest human signal. Examples: kills against deaths, round against score, every "need X more", the coin-pack rate, the XP and mastery fills.
+- The stat bars' "secondary average" tick reads as a designer's idea.
+- No decorative lights and no slogans.
+- Every screen should agree with every other one: the same score tile, the same dead marker, the same icon family, and the same party and mode data.
+- Small icons must be solid silhouettes at the guns' weight. Stroked or hairline glyphs read as Lucide or Material.
+
+**Where the critics reverse each other from round to round, so the mocks hold one line on purpose:**
+- **Coin art.** Piles were called "simulator", then wanted back, then called simulator again. The mocks hold: no art, written as base + bonus.
+- **Rarity colour.** "Fortnite's ladder", then "every real shop colours rarity", then "Fortnite's" again. The mocks hold: our own muted ladder (steel, terracotta, brass), on the word and the tile edge only. This is a proposal; the game's loot colours are unchanged.
+- **Row arrows and the phone stick shape.** Each was asked for and then against.
+- **Prices are the real ones** from `roblox/docs/MONEY.md`. Critics flag R$4,500 for breaking the x99 pattern; that is the owner's price.
+
+**Structures every critic still names:** Valorant's top bar and Tab board, Fortnite's yellow PLAY and item shop. These are genre conventions players expect. The mocks take them apart where they can (heads inside the team tiles, the set shown whole, the hub ticker) but don't throw out what players expect.
 
 ## 4. Building one in Roblox later
 

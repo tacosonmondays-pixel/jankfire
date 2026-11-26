@@ -27,11 +27,11 @@ TODAY_SRC = {  # today's UI, from captures already in the repo (crop boxes in so
     "scoreboard": (os.path.join(DOCS, "matchmaking", "66_scoreboard_2v2.jpg"), None),
 }
 BLURB = {  # two lines each on the comparison sheet
-    "A": "Only what you press is a plate, with the pads' lip; the rest is type on the world. PLAY is the one rimmed pad.",
-    "B": "Black slabs with one cut corner, condensed caps over a plain second face, big numbers, a live queue ticker.",
-    "D": "Enamel wayfinding signs mounted to the screen edges, a platform-edge match strip, Butter only on the next step.",
+    "A": "Made of the hub's parts: flat panels, the lip only on what you buy, a stencil cut through every hero number.",
+    "B": "A TV sports graphic: black slabs, a broadcast score bug, a skew for press and a cut corner for you.",
+    "D": "The hubs' enamel wayfinding signs: Butter arrows for Play, Buy and Done, and 'you are here' on your team.",
 }
-ROWS = [("hub", "HUB"), ("match", "MATCH"), ("loadout", "LOADOUT"), ("shop", "SHOP"), ("phone", "PHONE"), ("scoreboard", "TAB BOARD")]
+ROWS = [("hub", "HUB"), ("match", "MATCH"), ("loadout", "LOADOUT"), ("shop", "SHOP"), ("phone", "PHONE"), ("scoreboard", "TAB")]
 
 
 def verdicts():
