@@ -1,0 +1,103 @@
+<!doctype html><html><head><meta charset="utf-8"><title>A loadout</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--bone:#efe9de;--bone2:#e2d9c9;--lip:#c3b8a5;--ink:#1d1f23;--ink2:#5d584f}
+body{font-family:'Builder Sans';font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.plate{position:absolute;background:var(--bone);border-radius:16px;box-shadow:0 5px 0 var(--lip),0 14px 26px rgba(0,0,0,.28)}
+.plate.ink{background:var(--ink);color:var(--bone);box-shadow:0 5px 0 #000,0 14px 26px rgba(0,0,0,.34)}
+.pad{position:absolute;background:var(--ink);color:var(--bone);border-radius:26px;box-shadow:inset 0 0 0 7px var(--bone),inset 0 0 0 9px var(--lip),0 7px 0 var(--lip),0 18px 32px rgba(0,0,0,.35)}
+.flat{position:absolute;background:var(--bone);border-radius:10px;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.sp{border-radius:11px;box-shadow:inset 0 3px 0 rgba(0,0,0,.16);display:grid;place-items:center;color:var(--ink)}
+.bm{font-weight:500;text-transform:none}
+.dim{color:var(--ink2)}
+.flexc{display:flex;align-items:center}
+.bar{height:14px;border-radius:7px;overflow:hidden;background:var(--bone2);position:relative}
+.bar>b{display:block;height:100%;border-radius:7px;background:var(--ink)}
+.bar>u{position:absolute;top:0;bottom:0;width:3px;background:#b0632f}
+.wash{position:absolute;inset:0;background:rgba(28,26,23,.55)}
+.lab{font-size:17px;color:var(--ink2)}
+.price{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:46px;border-radius:12px;background:var(--ink);color:var(--bone);font-size:22px;box-shadow:0 4px 0 #000}
+.w{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 18px rgba(0,0,0,.5)}
+.wd{color:rgba(255,255,255,.8)}
+.shade{position:absolute;inset:0;background:radial-gradient(60% 60% at 0% 100%,rgba(10,10,12,.62),rgba(10,10,12,0) 72%),radial-gradient(60% 55% at 100% 100%,rgba(10,10,12,.5),rgba(10,10,12,0) 70%),radial-gradient(45% 40% at 100% 0%,rgba(10,10,12,.42),rgba(10,10,12,0) 70%),radial-gradient(40% 35% at 0% 0%,rgba(10,10,12,.4),rgba(10,10,12,0) 70%)}
+.tk{filter:drop-shadow(0 0 1px #5d584f) drop-shadow(0 0 1px #5d584f)}
+.key{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;font-size:19px;background:var(--bone2);color:var(--ink);box-shadow:inset 0 2px 0 rgba(0,0,0,.12)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_rotunda_blur.jpg)"></div><div class="wash"></div>
+<style>.gp{max-width:170px;max-height:80px} .ap{max-width:186px;max-height:76px} .ic{width:1em;height:1em}</style>
+<div class="abs w" style="left:64px;top:62px;font-size:52px">LOADOUT</div>
+<div class="plate ink flexc" style="right:64px;top:62px;height:62px;padding:0 28px;font-size:24px">DONE</div>
+<div class="plate " style="left:64px;top:176px;width:480px;height:108px">
+ <span class="key" style="position:absolute;left:22px;top:37px;">1</span>
+ <div style="position:absolute;left:76px;top:36px;font-size:30px">ASSAULT RIFLE</div>
+ 
+ <div style="position:absolute;right:18px;top:12px;width:170px;height:84px;display:grid;place-items:center"><img class="gp" src="../img/guns/ar_side.png" alt=""></div></div><div class="plate ink" style="left:64px;top:300px;width:480px;height:108px">
+ <span class="key" style="position:absolute;left:22px;top:37px;background:#3a3d44;color:var(--bone);box-shadow:none">2</span>
+ <div style="position:absolute;left:76px;top:24px;font-size:30px">REVOLVER</div>
+ <div class="bm" style="position:absolute;left:76px;top:62px;font-size:19px;color:#b9b2a5">Wish Duck skin</div>
+ <div style="position:absolute;right:18px;top:12px;width:170px;height:84px;display:grid;place-items:center"><img class="gp" src="../img/items/wish_duck_34.png"></div></div><div class="plate " style="left:64px;top:424px;width:480px;height:108px">
+ <span class="key" style="position:absolute;left:22px;top:37px;">3</span>
+ <div style="position:absolute;left:76px;top:36px;font-size:30px">KATANA</div>
+ 
+ <div style="position:absolute;right:18px;top:12px;width:170px;height:84px;display:grid;place-items:center"><img class="gp" src="../img/guns/katana_side.png" alt=""></div></div><div class="plate " style="left:64px;top:548px;width:480px;height:108px">
+ <span class="key" style="position:absolute;left:22px;top:37px;">G</span>
+ <div style="position:absolute;left:76px;top:24px;font-size:30px">FRAG GRENADE</div>
+ <div class="bm" style="position:absolute;left:76px;top:62px;font-size:19px;color:var(--ink2)">2 charges</div>
+ <div style="position:absolute;right:18px;top:12px;width:170px;height:84px;display:grid;place-items:center"><img class="gp" src="../img/items/frag.png" style="max-height:84px"></div></div>
+<img class="abs" src="../img/items/wish_duck_34.png" style="left:610px;top:190px;width:690px;filter:drop-shadow(0 28px 30px rgba(0,0,0,.45))">
+<div class="flat" style="left:1360px;top:176px;width:496px;height:676px;padding:28px">
+ <div class="flexc" style="gap:20px"><svg width="92" height="92" viewBox="0 0 92 92" style="flex:none"><circle cx="46" cy="46" r="38" fill="none" stroke="#e2d9c9" stroke-width="10"/>
+ <circle cx="46" cy="46" r="38" fill="none" stroke="#1d1f23" stroke-width="10" stroke-dasharray="148.1 300" transform="rotate(-90 46 46)" stroke-linecap="round"/>
+ <text x="46" y="58" text-anchor="middle" font-family="Builder Sans" font-weight="800" font-size="34" fill="#1d1f23">7</text></svg><div><div style="font-size:38px;line-height:1">REVOLVER</div><div class="bm dim" style="font-size:18px;margin-top:8px">Mastery 7, 1,850 of 3,000 xp</div></div></div>
+ <div style="margin-top:20px"><div class="flexc" style="justify-content:space-between"><span class="lab">DAMAGE</span><span style="font-size:26px">33</span></div>
+ <div class="bar" style="margin-top:8px"><b style="width:55%"></b><u style="left:45%"></u></div></div><div style="margin-top:20px"><div class="flexc" style="justify-content:space-between"><span class="lab">HEADSHOT</span><span style="font-size:26px">79</span></div>
+ <div class="bar" style="margin-top:8px"><b style="width:70%"></b><u style="left:50%"></u></div></div><div style="margin-top:20px"><div class="flexc" style="justify-content:space-between"><span class="lab">FIRE RATE</span><span style="font-size:26px">2.5/s</span></div>
+ <div class="bar" style="margin-top:8px"><b style="width:25%"></b><u style="left:42%"></u></div></div><div style="margin-top:20px"><div class="flexc" style="justify-content:space-between"><span class="lab">MAGAZINE</span><span style="font-size:26px">6</span></div>
+ <div class="bar" style="margin-top:8px"><b style="width:20%"></b><u style="left:50%"></u></div></div>
+ <div class="flexc bm dim" style="font-size:16px;margin-top:10px;gap:8px"><i style="width:3px;height:14px;background:#b0632f"></i>secondary average</div>
+ <div style="height:2px;background:var(--bone2);margin-top:16px"></div>
+ <div class="flexc" style="gap:14px;margin-top:18px"><span class="lab" style="width:48px">SKIN</span>
+ <div class="plate" style="position:relative;width:130px;height:74px;box-shadow:0 4px 0 var(--lip)"><img src="../img/items/wish_duck_34.png" style="position:absolute;left:12px;top:6px;max-width:106px;max-height:62px"></div>
+ <div><div style="font-size:20px">WISH DUCK</div><div class="bm dim" style="font-size:16px">Equipped</div></div></div><div class="flexc" style="gap:14px;margin-top:10px"><span class="lab" style="width:48px">HAT</span>
+ <div class="plate" style="position:relative;width:130px;height:74px;box-shadow:0 4px 0 var(--lip)"><img src="../img/items/royal-duck.png" style="position:absolute;left:12px;top:6px;max-width:106px;max-height:62px"></div>
+ <div><div style="font-size:20px">ROYAL DUCK</div><div class="bm dim" style="font-size:16px">Equipped</div></div></div>
+</div>
+<div class="abs w" style="left:64px;bottom:204px;font-size:24px">SECONDARIES</div>
+<div class="plate ink" style="left:64px;bottom:44px;width:346px;height:142px;">
+ <div style="position:absolute;left:18px;top:14px;width:190px;height:80px;display:grid;place-items:center;"><img class="ap" src="../img/guns/revolver_side.png" alt=""></div>
+ <div style="position:absolute;left:22px;top:100px;font-size:20px">REVOLVER</div>
+ <div style="position:absolute;right:16px;top:24px"></div></div><div class="plate " style="left:426px;bottom:44px;width:346px;height:142px;">
+ <div style="position:absolute;left:18px;top:14px;width:190px;height:80px;display:grid;place-items:center;"><img class="ap" src="../img/guns/pistol_side.png" alt=""></div>
+ <div style="position:absolute;left:22px;top:100px;font-size:20px">PISTOL</div>
+ <div style="position:absolute;right:16px;top:24px"></div></div><div class="plate " style="left:788px;bottom:44px;width:346px;height:142px;">
+ <div style="position:absolute;left:18px;top:14px;width:190px;height:80px;display:grid;place-items:center;"><img class="ap" src="../img/guns/sawnoff_side.png" alt=""></div>
+ <div style="position:absolute;left:22px;top:100px;font-size:20px">SAWED-OFF</div>
+ <div style="position:absolute;right:16px;top:24px"></div></div><div class="plate " style="left:1150px;bottom:44px;width:346px;height:142px;opacity:.86">
+ <div style="position:absolute;left:18px;top:14px;width:190px;height:80px;display:grid;place-items:center;filter:grayscale(1) brightness(.85)"><img class="ap" src="../img/guns/marbles_side.png" alt=""></div>
+ <div style="position:absolute;left:22px;top:100px;font-size:20px">MARBLE SHOTGUN</div>
+ <div style="position:absolute;right:16px;top:24px"><span class="bm flexc" style="font-size:18px;color:var(--ink2);line-height:34px;gap:6px"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7 10V7.5a5 5 0 0 1 10 0V10h.5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2.6 0h4.8V7.5a2.4 2.4 0 0 0-4.8 0z"/></svg> Level 30</span></div></div><div class="plate " style="left:1512px;bottom:44px;width:346px;height:142px;opacity:.86">
+ <div style="position:absolute;left:18px;top:14px;width:190px;height:80px;display:grid;place-items:center;filter:grayscale(1) brightness(.85)"><span style="position:relative;display:inline-block;width:140px;height:64px"><img class="ap" src="../img/guns/pistol_side.png" style="position:absolute;left:0;top:0;width:84px"><img class="ap" src="../img/guns/pistol_side.png" style="position:absolute;right:0;bottom:0;width:84px;transform:scaleX(-1)"></span></div>
+ <div style="position:absolute;left:22px;top:100px;font-size:20px">LEFTY & RIGHTY</div>
+ <div style="position:absolute;right:16px;top:24px"><span class="price" style="height:34px;font-size:17px;padding:0 12px;border-radius:9px;box-shadow:0 3px 0 #000"><img class="cur" src="../img/icons/coin.png" style="width:22px;height:22px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">5,000</span></div></div>
+</div></body></html>

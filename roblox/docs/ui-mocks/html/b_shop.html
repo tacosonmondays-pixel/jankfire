@@ -1,0 +1,91 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B shop</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--k:rgba(10,11,13,.92);--k2:#1c1e22;--w:#f4f3ef;--g:#a2a6ac;--g2:#4a4e54;--y:#f5dd8a;--rule:#2e3136}
+body{font-family:'Oswald';font-weight:700;color:var(--w);text-transform:uppercase;font-variant-numeric:tabular-nums}
+.slab{position:absolute;background:var(--k)}
+.slab.w{background:var(--w);color:#0b0c0e}
+.slab.y{background:var(--y);color:#0b0c0e}
+.cut{clip-path:polygon(var(--c,16px) 0,100% 0,100% 100%,0 100%,0 var(--c,16px))}
+.tab{position:absolute;height:30px;padding:0 12px;display:flex;align-items:center;background:var(--w);color:#0b0c0e;font-size:17px;letter-spacing:.06em}
+.bug{display:inline-flex;align-items:center;height:100%;padding:0 26px 0 22px;background:var(--y);color:#0b0c0e;transform:skewX(-14deg);letter-spacing:.06em}
+.bug>span{transform:skewX(14deg)}
+.bs{font-family:'Builder Sans';font-weight:700;text-transform:none;letter-spacing:0}
+.g{color:var(--g)}
+.flexc{display:flex;align-items:center}
+.hb{position:absolute;left:0;right:0;bottom:0;height:8px;background:var(--rule)}
+.hb>b{display:block;height:100%;background:var(--w)}
+.bar{height:8px;background:var(--rule)}.bar>b{display:block;height:100%;background:var(--w)}
+.scrim{position:absolute;inset:0;background:rgba(8,9,11,.66)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_rotunda_blur.jpg)"></div><div class="scrim"></div>
+<div class="abs" style="left:64px;top:28px;font-size:104px;line-height:1.2">SHOP</div>
+<div class="slab flexc" style="left:330px;top:60px;height:56px"><div class="flexc" style="height:56px;padding:0 22px;font-size:26px;letter-spacing:.04em;background:var(--w);color:#0b0c0e">FEATURED</div><div class="flexc" style="height:56px;padding:0 22px;font-size:26px;letter-spacing:.04em;">DAILY</div><div class="flexc" style="height:56px;padding:0 22px;font-size:26px;letter-spacing:.04em;">SETS</div><div class="flexc" style="height:56px;padding:0 22px;font-size:26px;letter-spacing:.04em;">CRATES</div><div class="flexc" style="height:56px;padding:0 22px;font-size:26px;letter-spacing:.04em;">COINS</div></div>
+<div class="slab flexc" style="right:56px;top:56px;height:64px;padding:0 24px 0 22px;gap:12px;font-size:34px">
+ <img class="cur" src="../img/icons/coin.png" style="width:34px;height:34px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">2,450<span style="width:2px;height:34px;background:var(--rule);margin:0 8px"></span><img class="cur" src="../img/icons/ticket.png" style="width:42px;height:42px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">3</div>
+<div class="slab" style="left:64px;top:170px;width:1792px;height:400px;overflow:hidden">
+ <img src="../img/items/wish_duck_34.png" style="position:absolute;left:-40px;top:-30px;width:640px;filter:drop-shadow(0 20px 22px rgba(0,0,0,.6))">
+ <div style="position:absolute;left:610px;top:30px;font-size:120px;line-height:1">DUCKY</div>
+ <div class="bs g" style="position:absolute;left:614px;top:164px;width:430px;font-size:23px;line-height:1.4">The VIP pass. Wish Duck and two more skins, the Royal Duck hat and the VIP title.</div>
+ <div class="slab y cut flexc" style="left:614px;top:286px;height:76px;padding:0 32px;font-size:44px;--c:14px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg>&nbsp;399</div>
+ <div class="flexc" style="position:absolute;left:1090px;top:110px;gap:18px;align-items:flex-start"><div style="width:220px"><div style="height:92px;display:flex;align-items:flex-end"><img src="../img/items/bubble_bath_side.png" style="max-width:210px;max-height:92px"></div>
+ <div style="font-size:26px;margin-top:8px">Bubble Bath</div><div class="bs g" style="font-size:19px">LMG</div></div><div style="width:220px"><div style="height:92px;display:flex;align-items:flex-end"><img src="../img/items/ribbon_duck_side.png" style="max-width:210px;max-height:92px"></div>
+ <div style="font-size:26px;margin-top:8px">Ribbon Duck</div><div class="bs g" style="font-size:19px">Katana</div></div><div style="width:220px"><div style="height:92px;display:flex;align-items:flex-end"><img src="../img/items/royal-duck.png" style="max-width:210px;max-height:92px"></div>
+ <div style="font-size:26px;margin-top:8px">Royal Duck</div><div class="bs g" style="font-size:19px">Hat</div></div></div>
+</div>
+<div class="abs flexc" style="left:64px;top:598px;gap:14px"><span style="font-size:30px">DAILY</span><span class="bs g" style="font-size:20px">New in 07:12:40</span></div>
+<div class="slab" style="left:64px;top:646px;width:1050px;height:404px"><div class="flexc" style="height:100px;border-top:none;gap:22px;padding:0 22px 0 12px">
+ <div style="width:200px;height:86px;background:#4aa3e038;display:grid;place-items:center"><img src="../img/items/triangulum_side.png" style="max-width:184px;max-height:78px"></div>
+ <div style="flex:1"><div style="font-size:34px;line-height:1.2">Triangulum</div><div class="bs" style="font-size:19px"><span style="color:#4aa3e0">Rare</span> <span class="g">sniper skin</span></div></div>
+ <div class="flexc" style="gap:8px;font-size:34px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg>300</div></div><div class="flexc" style="height:100px;border-top:2px solid var(--rule);gap:22px;padding:0 22px 0 12px">
+ <div style="width:200px;height:86px;background:#f0b23438;display:grid;place-items:center"><img src="../img/items/star-tricorne.png" style="max-width:184px;max-height:78px"></div>
+ <div style="flex:1"><div style="font-size:34px;line-height:1.2">Star Tricorne</div><div class="bs" style="font-size:19px"><span style="color:#f0b234">Legendary</span> <span class="g">hat</span></div></div>
+ <div class="flexc" style="gap:8px;font-size:34px"><img class="cur" src="../img/icons/coin.png" style="width:30px;height:30px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">9,000</div></div><div class="flexc" style="height:100px;border-top:2px solid var(--rule);gap:22px;padding:0 22px 0 12px">
+ <div style="width:200px;height:86px;background:#4aa3e038;display:grid;place-items:center"><img src="../img/items/wrap_seigaiha.png" style="max-width:184px;max-height:78px"></div>
+ <div style="flex:1"><div style="font-size:34px;line-height:1.2">Seigaiha</div><div class="bs" style="font-size:19px"><span style="color:#4aa3e0">Rare</span> <span class="g">wrap</span></div></div>
+ <div class="flexc" style="gap:8px;font-size:34px"><img class="cur" src="../img/icons/coin.png" style="width:30px;height:30px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">1,800</div></div><div class="flexc" style="height:100px;border-top:2px solid var(--rule);gap:22px;padding:0 22px 0 12px">
+ <div style="width:200px;height:86px;background:#a76ae038;display:grid;place-items:center"><img src="../img/items/wrap_sakura_storm.png" style="max-width:184px;max-height:78px"></div>
+ <div style="flex:1"><div style="font-size:34px;line-height:1.2">Sakura Storm</div><div class="bs" style="font-size:19px"><span style="color:#a76ae0">Epic</span> <span class="g">wrap</span></div></div>
+ <div class="flexc" style="gap:8px;font-size:34px"><img class="cur" src="../img/icons/coin.png" style="width:30px;height:30px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">3,600</div></div></div>
+<div class="abs" style="left:1144px;top:598px;font-size:30px">CRATES</div>
+<div class="slab" style="left:1144px;top:646px;width:712px;height:256px"><div class="flexc" style="height:84px;border-top:none;gap:18px;padding:0 20px 0 12px">
+ <div style="width:110px;height:72px;display:grid;place-items:center"><img src="../img/items/crate.png" style="max-width:106px;max-height:68px"></div>
+ <div style="flex:1"><div style="font-size:30px;line-height:1.2">Crate</div><div class="bs g" style="font-size:18px">One random skin</div></div>
+ <span class="flexc" style="gap:6px;font-size:26px"><img class="cur" src="../img/icons/ticket.png" style="width:34px;height:34px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">12</span><span class="bs g" style="font-size:18px;margin:0 12px">or</span><span style="font-size:28px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 120</span></div><div class="flexc" style="height:84px;border-top:2px solid var(--rule);gap:18px;padding:0 20px 0 12px">
+ <div style="width:110px;height:72px;display:grid;place-items:center"><img src="../img/items/duffel.png" style="max-width:106px;max-height:68px"></div>
+ <div style="flex:1"><div style="font-size:30px;line-height:1.2">Duffel Bag</div><div class="bs g" style="font-size:18px">One random hat</div></div>
+ <span class="flexc" style="gap:6px;font-size:26px"><img class="cur" src="../img/icons/ticket.png" style="width:34px;height:34px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">6</span><span class="bs g" style="font-size:18px;margin:0 12px">or</span><span style="font-size:28px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 90</span></div><div class="flexc" style="height:84px;border-top:2px solid var(--rule);gap:18px;padding:0 20px 0 12px">
+ <div style="width:110px;height:72px;display:grid;place-items:center"><img src="../img/items/spray.png" style="max-width:106px;max-height:68px"></div>
+ <div style="flex:1"><div style="font-size:30px;line-height:1.2">Spray Can</div><div class="bs g" style="font-size:18px">One random wrap</div></div>
+ <span class="flexc" style="gap:6px;font-size:26px"><img class="cur" src="../img/icons/ticket.png" style="width:34px;height:34px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">3</span><span class="bs g" style="font-size:18px;margin:0 12px">or</span><span style="font-size:28px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 60</span></div></div>
+<div class="slab flexc" style="left:1144px;top:916px;width:712px;height:134px;align-items:stretch"><div style="flex:1;padding:12px 14px 10px;border-left:none">
+ <div style="font-size:32px;line-height:1.1">1,200</div><div class="bs g" style="font-size:17px;height:22px">coins</div>
+ <div style="font-size:24px;margin-top:6px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 99</div></div><div style="flex:1;padding:12px 14px 10px;border-left:2px solid var(--rule)">
+ <div style="font-size:32px;line-height:1.1">6,500</div><div class="bs g" style="font-size:17px;height:22px">500 bonus</div>
+ <div style="font-size:24px;margin-top:6px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 499</div></div><div style="flex:1;padding:12px 14px 10px;border-left:2px solid var(--rule)">
+ <div style="font-size:32px;line-height:1.1">28,000</div><div class="bs g" style="font-size:17px;height:22px">4,000 bonus</div>
+ <div style="font-size:24px;margin-top:6px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 1,999</div></div><div style="flex:1;padding:12px 14px 10px;border-left:2px solid var(--rule)">
+ <div style="font-size:32px;line-height:1.1">70,000</div><div class="bs g" style="font-size:17px;height:22px">16,000 bonus</div>
+ <div style="font-size:24px;margin-top:6px"><svg class="rbx" viewBox="0 0 24 24" fill="currentColor" style="width:.92em;height:.92em;vertical-align:-.1em;flex:none" aria-hidden="true"><path fill-rule="evenodd" d="M12 1.6l9 5.2v10.4l-9 5.2-9-5.2V6.8zm0 3.4L6 8.5v7L12 19l6-3.5v-7zM9.6 9.6h4.8v4.8H9.6z"/></svg> 4,500</div></div></div>
+</div></body></html>

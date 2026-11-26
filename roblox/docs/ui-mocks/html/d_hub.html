@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D hub</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--s:#1d2b3a;--s2:#24364a;--s3:#36495e;--c:#f1ead9;--m:#9fb0c2;--a:#f5dd8a}
+body{font-family:'Titillium Web';font-weight:700;color:var(--c);font-variant-numeric:tabular-nums}
+.sign{position:absolute;background:var(--s);border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.32)}
+.sign::before{content:"";position:absolute;inset:7px;border:2px solid rgba(241,234,217,.34);border-radius:6px;pointer-events:none}
+.hang{top:0;border-radius:0 0 10px 10px}.hang::before{top:-12px;border-radius:0 0 6px 6px}
+.stand{bottom:0;border-radius:10px 10px 0 0}.stand::before{bottom:-12px;border-radius:6px 6px 0 0}
+.fromL{left:0;border-radius:0 10px 10px 0}.fromL::before{left:-12px;border-radius:0 6px 6px 0}
+.fromR{right:0;border-radius:10px 0 0 10px}.fromR::before{right:-12px;border-radius:6px 0 0 6px}
+.corner{top:0;right:0;border-radius:0 0 0 10px}.corner::before{top:-12px;right:-12px;border-radius:0 0 0 6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--a);color:var(--s);border-radius:8px;box-shadow:inset 0 0 0 3px var(--a),inset 0 0 0 5px rgba(29,43,58,.35)}
+.badge{display:inline-grid;place-items:center;border-radius:6px;background:var(--c);color:var(--s);line-height:1;flex:none;padding:0 8px}
+.tile{display:grid;place-items:center;background:var(--c);color:var(--s);border-radius:8px;flex:none}
+.tile.d{background:var(--s3);color:var(--c)}
+.m{color:var(--m)}
+.reg{font-weight:400}
+.flexc{display:flex;align-items:center}
+.row{display:flex;align-items:center;border-top:2px solid var(--s3)}
+.hbar{height:12px;border-radius:3px;background:var(--s3);overflow:hidden;position:relative}.hbar>b{display:block;height:100%;background:var(--c)}
+.hbar>u{position:absolute;top:0;bottom:0;width:3px;background:var(--a)}
+.scrim{position:absolute;inset:0;background:rgba(12,17,24,.6)}
+.bare{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 16px rgba(0,0,0,.5)}
+.shade{position:absolute;inset:0;background:radial-gradient(60% 55% at 0% 100%,rgba(10,14,20,.55),rgba(10,14,20,0) 70%),radial-gradient(60% 55% at 100% 100%,rgba(10,14,20,.5),rgba(10,14,20,0) 70%)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_spawn.jpg)"></div>
+<div class="sign hang flexc" style="right:536px;height:80px;padding:12px 26px 0 22px;gap:12px;font-size:28px"><img class="cur" src="../img/icons/coin.png" style="width:32px;height:32px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">2,450<span style="width:12px"></span><img class="cur" src="../img/icons/ticket.png" style="width:38px;height:38px;flex:none;object-fit:contain;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45))" alt="">3</div>
+<div class="sign corner" style="width:500px">
+ <div style="padding:44px 34px 14px">
+  <div style="font-size:54px;line-height:1.05">The Rotunda</div>
+  <div class="m reg" style="font-size:22px;margin-top:4px">31 players here</div>
+ </div>
+ <div style="padding:18px 34px 24px;border-top:2px solid var(--s3);background:var(--s2)">
+  <div class="m" style="font-size:22px;margin-bottom:10px">Ranked 1v1</div>
+  <div class="btn" style="width:100%;height:110px;font-size:80px">Play</div>
+ </div>
+ <div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Quests</span><span class="m reg" style="font-size:22px;margin-left:auto">2 of 3 done</span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Party</span><span class="m reg" style="font-size:22px;margin-left:auto">1 of 4</span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Hubs</span><span class="m reg" style="font-size:22px;margin-left:auto"></span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Profile</span><span class="m reg" style="font-size:22px;margin-left:auto"></span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Shop</span><span class="m reg" style="font-size:22px;margin-left:auto"></span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Loadout</span><span class="m reg" style="font-size:22px;margin-left:auto"></span></div><div class="row" style="height:60px;padding:0 34px">
+ <span style="font-size:31px">Settings</span><span class="m reg" style="font-size:22px;margin-left:auto"></span></div>
+ <div class="flexc" style="padding:16px 34px 30px;gap:16px;border-top:2px solid var(--s3)"><svg width="50" height="50" viewBox="0 0 40 40" style="flex:none;display:block"><rect width="40" height="40" rx="7" fill="rgba(255,255,255,.10)"/><rect x="9" y="8" width="22" height="22" rx="5" fill="#f2c84b"/><rect x="15" y="16" width="2.6" height="4" rx="1.3" fill="#1b1b1b"/><rect x="22.4" y="16" width="2.6" height="4" rx="1.3" fill="#1b1b1b"/><path d="M15 23 Q20 27 25 23" stroke="#1b1b1b" stroke-width="1.8" fill="none" stroke-linecap="round"/><rect x="12" y="31" width="16" height="9" fill="#2b2b30" opacity=".9"/><rect x="7" y="5" width="26" height="9" rx="4" fill="#2b2b30"/><rect x="22" y="11" width="14" height="4" rx="2" fill="#2b2b30"/></svg>
+  <div style="flex:1"><div class="flexc" style="justify-content:space-between"><span style="font-size:27px">rookshots</span><span class="m" style="font-size:21px">Level 24</span></div>
+  <div class="hbar" style="height:7px;margin-top:8px"><b style="width:62%"></b></div></div></div>
+</div>
+</div></body></html>
