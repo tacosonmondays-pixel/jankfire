@@ -6,6 +6,9 @@
 --     ("go", p) / ("back", p)          to the house and back
 --     ("at", p, x, y, z [, yaw])       stand at a spot in the house (its local studs)
 --     ("move", p, op, look)            a move as if the client asked ("jab", "push", "super" after "hold"...)
+--     ("round", p, opts) / ("stop")    a round now with p and stand-ins / end it
+--     ("rstate")                       the round's phase, gun, members
+--     ("hurt", p, who, dmg, head)      a round member takes a hit from p (the break-up test)
 --     ("state")                        who is in the house, the props wired
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -80,6 +83,21 @@ if RunService:IsStudio() then
 				gun = o.gun, hide = o.hide, hunt = o.hunt, fightBack = o.fightBack, passives = o.passives }) }
 		end
 		if op == "stop" then return require(script.Parent:WaitForChild("HuntRound")).stop() end
+		-- ("hurt", p, who?, dmg?, head?): the round's member named who (a stand-in's or a player's name; nil = the first
+		-- living hider) takes dmg from p as if shot (head = a headshot). Fight.allow still decides (the hunt phase only)
+		if op == "hurt" then
+			local g = require(script.Parent:WaitForChild("HuntRound")).G
+			if not g then return "no round" end
+			local Fight = require(script.Parent:WaitForChild("Fight")) :: any
+			local by = Fight.byPlayer[p]
+			for _, m in g.members do
+				local nm = if m.p then m.p.Name else m.f.name
+				if nm == args[1] or (args[1] == nil and m.role == "hider" and m.alive) then
+					return { nm, Fight.hurt(m.f, tonumber(args[2]) or 30, by, tostring(g.gun or "test"), args[3] == true, nil) }
+				end
+			end
+			return "no such member"
+		end
 		if op == "rstate" then
 			local g = require(script.Parent:WaitForChild("HuntRound")).G
 			if not g then return "no round" end
