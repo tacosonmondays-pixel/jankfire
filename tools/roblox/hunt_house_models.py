@@ -29,20 +29,21 @@ INFO = dict(name='HuntHouse', title='THE HOUSE', look='hunt_house', mapId='hunth
 
 # ================================================================ colours (the textured ones are unique hexes: WebArena
 # puts a picture on every piece of that colour, by `surfaces`)
-OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'a98460', '8c8780', 'cfcac1', 'dedad0', 'cfc6b4'
-PLASTER, CEIL, TRIM, BTILE, SPLASH = 'e6e0d4', 'efebe3', 'f2efe8', 'e2e3de', '8e9a8a'
+OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'b9b0a2', 'dedad0', 'cfc6b4'
+PLASTER, CEIL, TRIM, BTILE, SPLASH = 'e6e0d4', 'd6d0c5', 'f2efe8', 'e2e3de', '8e9a8a'
+BEAM = '7c6c5e'      # (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
 BRICK, SIDING, SHINGLE, STONE = '7f5446', 'e4dfd3', '6a6e74', 'cfc6b5'
 LAWN, PAVERS, CONC, FENCEB, ASPH = '6f8a55', 'b3a897', '97948d', 'ad9476', '55585c'
 GLASS, FROST, DOOR_FRONT, BLOCK = 'b8d4dc', 'dfe6e8', '4f5f57', 'd3d1cb'
 WALNUT, DARK, STEEL, RIDGECAP, MEMBRANE = '6f5240', '3c3f44', 'a9aeb2', '4d5156', '7a7d80'
 TEXS = {   # colour -> (picture name, studs u, studs v, uploaded image id or None while it isn't up yet)
-    OAKFLOOR: ('woodfloor', 16, 16, 124778878997898), CARPET: ('carpet', 16, 16, 93910495940944),
-    KITFLOOR: ('b_porcelain', 16, 16, 91515197562193), BATHFLOOR: ('a_hextile', 4, 4, 100342179355756),
+    OAKFLOOR: ('oakplank', 16, 16, 123980610531995), CARPET: ('carpet', 16, 16, 93910495940944),
+    KITFLOOR: ('kittile', 16, 16, 124533735136261), BATHFLOOR: ('a_hextile', 4, 4, 100342179355756),
     STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('a_plaster', 8, 8, 93967757955287),
     BTILE: ('rtile_wall', 8, 16, 119608007939948), SPLASH: ('a_tile', 8, 8, 95035963336200),
     BRICK: ('a_brick', 6, 6, 128782282184054), STONE: ('a_stone', 8, 8, 113102432800653),
-    SIDING: ('siding', 8, 8, None), SHINGLE: ('shingles', 8, 8, None), LAWN: ('lawn', 24, 24, None),
-    FENCEB: ('fenceboard', 8, 8, None), ASPH: ('asphalt', 24, 24, None),
+    SIDING: ('siding', 8, 8, 127661606333401), SHINGLE: ('shingles', 8, 8, 135435899461861), LAWN: ('lawn', 24, 24, 82912196276517),
+    FENCEB: ('fenceboard', 8, 8, 136590475412292), ASPH: ('asphalt', 24, 24, 72215822270952),
     PAVERS: ('pavers', 8, 8, 90576630175655), CONC: ('concrete', 24, 24, 92719214966737),
 }
 UPLOADED = {}   # name -> image id once uploaded (set after the upload; the layout's surfaces read it)
@@ -150,10 +151,13 @@ def ceilings():
             K.B('hh_trim', TRIM, a, yb - 0.3, b, c, yb, d, bev=0.08, segs=1)
     # the living room's beamed ceiling: three walnut beams across it
     for bx in (-47.0, -35.5, -24.0):
-        K.B('hh_trim', WALNUT, bx - 0.8, 10.5, 2.0, bx + 0.8, 12.0, 40.0, bev=0.2)
+        K.B('hh_trim', BEAM, bx - 0.9, 10.4, 2.0, bx + 0.9, 12.0, 40.0, bev=0.25)
     # the dining room's coffer: a raised frame round the table's light
     for (a, b, c, d) in ((24, 14, 44, 15.2), (24, 28.8, 44, 30), (24, 14, 25.2, 30), (42.8, 14, 44, 30)):
         K.B('hh_trim', TRIM, a, 11.2, b, c, 12.0, d, bev=0.2)
+    # the kitchen's coffer over the island (judge round 1: a frame for its two pendants)
+    for (a, b, c, d) in ((24.5, -23.5, 43.5, -22.0), (24.5, -14.0, 43.5, -12.5), (24.5, -23.5, 26.0, -12.5), (42.0, -23.5, 43.5, -12.5)):
+        K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
     K.B('hh_trim', TRIM, 3.4, 11.6, 31.0, 12.0, 13.0, 31.6, bev=0.12)
     K.B('hh_trim', TRIM, 3.4, 11.6, 17.8, 4.0, 13.0, 31.6, bev=0.12)
@@ -278,6 +282,9 @@ def exterior_bands():
         else:
             xx0, xx1 = (face, face + 0.5) if sgn > 0 else (face - 0.5, face)
             K.B('hh_ext', STONE, xx0, 12.4, a0, xx1, 13.4, a1, bev=0.2)
+    for (face, sgn) in ((L.Z1, +1), (L.Z0, -1)):                         # the frieze under the eaves (judge round 1)
+        zz0, zz1 = (face, face + 0.45) if sgn > 0 else (face - 0.45, face)
+        K.B('hh_ext', TRIM, L.X0 - 0.4, L.EAVE - 3.3, zz0, L.X1 + 0.4, L.EAVE - 2.2, zz1, bev=0.15)
     for (cx, cz) in ((L.X0, L.Z0), (L.X0, L.Z1), (L.X1, L.Z0), (L.X1, L.Z1)):
         sx, sz = (1 if cx > 0 else -1), (1 if cz > 0 else -1)
         xa = sorted((cx, cx + sx * 0.35)); za = sorted((cz - sz * 1.6, cz + sz * 0.35))
@@ -360,10 +367,10 @@ def window_dress():
         if axis == 'x' and sgn > 0:
             o0, o1 = c1, c1 + 0.3
             for (u0, u1) in ((a0 - 2.2, a0 - 0.5), (a1 + 0.5, a1 + 2.2)):
-                bx('hh_ext', '56625c', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1, bev=0.08)
-                for k in range(1, 4):
-                    v = y0 + (y1 - y0) * k / 4
-                    bx('hh_ext', '4c5852', u0 + 0.15, v - 0.12, o1 - 0.05, u1 - 0.15, v + 0.12, o1 + 0.12, bev=0.04)
+                bx('hh_ext', '5e6a64', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1 + 0.2, bev=0.1)
+                ym = (y0 + y1) / 2
+                for (v0, v1) in ((y0 + 0.25, ym - 0.2), (ym + 0.2, y1 - 0.25)):        # two raised panels
+                    bx('hh_ext', '66726b', u0 + 0.25, v0, o1 + 0.15, u1 - 0.25, v1, o1 + 0.35, bev=0.08)
             if y0 < 12:
                 bx('hh_ext', 'a3907a', a0 - 0.3, y0 - 2.3, c1 + 0.9, a1 + 0.3, y0 - 0.75, c1 + 2.6, bev=0.2)
                 n = max(2, int((a1 - a0) // 2.4))
@@ -406,8 +413,8 @@ def door_frames():
         elif (x1 - x0) <= 2.1: axis = 'z'
         a0, a1 = (x0, x1) if axis == 'x' else (z0, z1)
         c0, c1 = (z0, z1) if axis == 'x' else (x0, x1)
-        w = 0.7 if kind in ('door', 'back', 'balc') else 1.0
-        proud = 0.25 if kind in ('door', 'back', 'balc') else 0.35
+        w = 1.0 if kind in ('door', 'back', 'balc') else 1.3          # (judge round 1: thin casings; was 0.7 / 1.0)
+        proud = 0.35 if kind in ('door', 'back', 'balc') else 0.45
         def bx(model, col, u0, v0, w0, u1, v1, w1, bev=0.1):
             if axis == 'x': K.B(model, col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
             else: K.B(model, col, w0, v0, u0, w1, v1, u1, bev=bev, segs=1)
@@ -421,9 +428,13 @@ def door_frames():
             bx('hh_trim', col, a0 - w, y1, lo, a1 + w, y1 + w, hi)
             bx('hh_trim', col, a0 - w, y0, lo, a0, y1, hi); bx('hh_trim', col, a1, y0, lo, a1 + w, y1, hi)
         # the opening's lining (the reveal), a white board on its head and jambs
-        bx('hh_trim', TRIM, a0, y1 - 0.25, c0, a1, y1, c1, bev=0.05)
-        if kind in ('arch', 'open'):
-            for (u0, u1) in ((a0, a0 + 0.25), (a1 - 0.25, a1)): bx('hh_trim', TRIM, u0, y0, c0, u1, y1, c1, bev=0.05)
+        bx('hh_trim', TRIM, a0, y1 - 0.4, c0, a1, y1, c1, bev=0.05)
+        if kind not in ('rollup', 'front', 'slide'):
+            for (u0, u1) in ((a0, a0 + 0.4), (a1 - 0.4, a1)): bx('hh_trim', TRIM, u0, y0, c0, u1, y1, c1, bev=0.05)
+        if kind == 'arch' and a1 - a0 >= 6.0:                            # a deep header over the wide arches
+            for (face, s) in ((c0, -1), (c1, +1)):
+                lo, hi = (face, face + s * 0.6) if s > 0 else (face + s * 0.6, face)
+                bx('hh_trim', TRIM, a0 - 1.3, y1 - 0.1, lo, a1 + 1.3, min(y1 + 1.5, y0 + 11.9), hi, bev=0.2)
         if kind == 'open':                                                # a walnut header over the wide kitchen opening
             for (face, s) in ((c0, -1), (c1, +1)):
                 lo, hi = (face, face + s * 0.5) if s > 0 else (face + s * 0.5, face)
@@ -528,6 +539,27 @@ def roof():
     K.B('hh_ext', TRIM, -3.6, 27.4, L.Z1 + 0.45, 3.6, 33.2, L.Z1 + 0.95, bev=0.15)
     K.B('hh_ext', '3b4148', -2.9, 28.0, L.Z1 + 0.6, 2.9, 32.6, L.Z1 + 1.05, bev=0.05)
     K.B('hh_ext', TRIM, -0.2, 28.0, L.Z1 + 0.6, 0.2, 32.6, L.Z1 + 1.1, bev=0.05)
+    # the dormers on the back slope (judge round 1: the back roof was one 120-stud slab)
+    for d in L.DORMERS:
+        xc, zf, zb, hw, top, rg = d['x'], d['zf'], d['zb'], d['w'] / 2, d['wall'], d['ridge']
+        K.B('hh_ext', SIDING, xc - hw, 27.6, zf, xc + hw, top, zb, bev=0.08, flat=True)
+        for sx in (-1, 1): K.B('hh_ext', TRIM, xc + sx * hw - 0.4, 27.6, zf - 0.35, xc + sx * hw + 0.4, top, zf + 1.2, bev=0.1)
+        K.B('hh_win', GLASS, xc - 2.3, 29.8, zf - 0.12, xc + 2.3, 33.2, zf + 0.2, bev=0.02, kind='glass')
+        for (a, b, c, e) in ((xc - 2.9, 29.2, xc + 2.9, 29.8), (xc - 2.9, 33.2, xc + 2.9, 33.8), (xc - 2.9, 29.8, xc - 2.3, 33.2),
+                             (xc + 2.3, 29.8, xc + 2.9, 33.2), (xc - 0.2, 29.8, xc + 0.2, 33.2)):
+            K.B('hh_win', TRIM, a, b, zf - 0.35, c, e, zf + 0.1, bev=0.08)
+        K.B('hh_ext', TRIM, xc - 3.3, 28.6, zf - 0.8, xc + 3.3, 29.2, zf + 0.1, bev=0.12)                   # the sill
+        K.plate('hh_ext', SIDING, [(xc - hw, top), (xc + hw, top), (xc, rg - 0.5)], 0.6, Tr(0, 0, zf + 0.6), bev=0.05)
+        K.B('hh_ext', TRIM, xc - hw - 0.3, top - 0.6, zf - 0.6, xc + hw + 0.3, top + 0.2, zf + 0.2, bev=0.12)  # the gable's base
+        for s in (-1, 1):
+            p0 = (xc + s * (hw + 0.6), top - 0.35, 0.0); p1 = (xc, rg, 0.0)
+            Xs = norm((p1[0] - p0[0], p1[1] - p0[1], 0.0)); Zs = (0.0, 0.0, 1.0)
+            Ys = norm(cross(Zs, Xs))
+            if Ys[1] < 0: Ys = tuple(-c for c in Ys)
+            ln = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+            oriented('hh_roof', SHINGLE, p0, Xs, Ys, Zs, 0.0, -0.7, zf - 0.9, ln + 0.25, 0.0, zb, bev=0.1)
+            oriented('hh_roof', TRIM, p0, Xs, Ys, Zs, -0.15, -1.3, zf - 1.1, ln + 0.25, 0.25, zf - 0.5, bev=0.1)
+        K.B('hh_roof', RIDGECAP, xc - 0.6, rg - 0.4, zf - 1.0, xc + 0.6, rg + 0.4, zb, bev=0.25)
     # the chimney: brick, a stone cap, two pots
     K.B('hh_ext', BRICK, -63.0, L.GROUND, 15.0, -58.0, 45.0, 27.0, bev=0.15, flat=True)
     K.B('hh_ext', STONE, -63.6, 45.0, 14.4, -57.4, 46.2, 27.6, bev=0.25)
@@ -577,6 +609,11 @@ def grounds():
         t = i / 8.0
         x, z = 44.0 + (86.0 - 44.0) * t, -68.0 + (-128.0 + 68.0) * t
         K.cyl('hh_yard', STONE, x + (1.2 if i % 2 else -1.2), L.GROUND - 0.3, z, 1.8, 0.42, segs=14, bev=0.12)
+    for i in range(7):                                                  # the patio to the fire pit
+        t = i / 6.0
+        x, z = -24.0 + (-12.0 + 24.0) * t, -68.0 + (-122.0 + 68.0) * t
+        if math.hypot(x + 34.0, z + 104.0) < 15.5: continue             # (round the trampoline)
+        K.cyl('hh_yard', STONE, x + (1.0 if i % 2 else -1.0), L.GROUND - 0.3, z, 2.0, 0.42, segs=14, bev=0.12)
     # the street beyond the lot: kerb, road, the far pavement
     K.B('hh_yard', STONE, -420, -2.0, 98.0, 420, -1.15, 100.0, bev=0.12)
     K.B('hh_yard', ASPH, -420, -2.6, 100.0, 420, -1.9, 146.0, bev=0.05, flat=True)
@@ -616,9 +653,14 @@ def nhouse(cx, cz, w, d, face, body, roofc, two=True):
         for k in range(-2, 3):
             if k == 0 and fy[0] < 5: continue
             x = cx + k * w / 5.5
-            K.B('hh_back', '3b4148', x - 2.6, fy[0], lo, x + 2.6, fy[1], hi, bev=0.08, segs=1)
-            K.B('hh_back', TRIM, x - 3.1, fy[0] - 0.5, lo - 0.05, x + 3.1, fy[0], hi + 0.05, bev=0.08, segs=1)
+            K.B('hh_back', '7d8792', x - 2.6, fy[0], lo, x + 2.6, fy[1], hi, bev=0.08, segs=1)      # (judge round 1: grey glass)
+            fl, fh = (lo - 0.05, hi + 0.35) if face > 0 else (lo - 0.35, hi + 0.05)
+            for (a, b, c, d) in ((x - 3.1, fy[0] - 0.6, x + 3.1, fy[0]), (x - 3.1, fy[1], x + 3.1, fy[1] + 0.5),
+                                 (x - 3.1, fy[0], x - 2.6, fy[1]), (x + 2.6, fy[0], x + 3.1, fy[1]), (x - 0.2, fy[0], x + 0.2, fy[1])):
+                K.B('hh_back', TRIM, a, b, fl, c, d, fh, bev=0.08, segs=1)
     K.B('hh_back', '5a5f63', cx - 2.5, -1.6, lo, cx + 2.5, 8.5, hi, bev=0.1, segs=1)
+    pl, ph = (fz, fz + 3.0) if face > 0 else (fz - 3.0, fz)
+    K.B('hh_back', TRIM, cx - 4.5, 9.0, pl, cx + 4.5, 9.8, ph, bev=0.2, segs=1)          # a porch hood over the door
 
 def neighbours():
     bodies = ['d8d2c4', 'c9cdd0', 'd4c8b6', 'bfc5bd', 'ddd8cc']
@@ -673,9 +715,15 @@ def lights():
             K.light('point', x, 11.2, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, 11.2, z))
             continue
         yc = y + 0.8
-        K.cyl('hh_lamp', 'f4efe6', x, yc - 0.9, z, 1.7, 0.9, segs=20, bev=0.3, r2=1.3)
-        K.cyl('hh_lamp', 'b8a98f', x, yc - 0.15, z, 0.7, 0.15, segs=14, bev=0.05)
-        K.light('point', x, yc - 1.6, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, yc - 1.6, z))
+        if rid == 'kitchen':                                            # a drum pendant on a stem (judge round 1)
+            K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 0.12, yc - 9.6, segs=8, bev=0.02)
+            K.cyl('hh_lamp', 'e8e1d2', x, 7.9, z, 1.6, 1.8, segs=24, bev=0.25)
+            K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
+            K.light('point', x, 7.5, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, 7.5, z))
+            continue
+        K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
+        K.cyl('hh_lamp', 'b8a98f', x, yc - 0.15, z, 0.9, 0.15, segs=16, bev=0.05)
+        K.light('point', x, yc - 2.0, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, yc - 2.0, z))
     # the stairwell's pendant: a drum shade hung from the upper ceiling over the void
     K.cyl('hh_lamp', DARK, 8.0, 18.5, 24.4, 0.08, 6.5, segs=6, bev=0.02)
     K.cyl('hh_lamp', 'e8e1d2', 8.0, 16.6, 24.4, 2.4, 2.2, segs=24, bev=0.25)

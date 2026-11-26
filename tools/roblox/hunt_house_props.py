@@ -18,6 +18,8 @@ SOIL, STONE = '5c4a3c', 'b9b1a3'
 SCREEN = '23262b'
 TABLE_ACCENT = {'vip': 'c2a052', 'coins': '7d9a84', 'cases': '72859c'}   # the store tables' one colour each (muted)
 PAD = '6d8796'                                                             # the trampoline's pad (muted blue-grey)
+KICK, SLATE = '6b6e72', '5a5e64'                                           # kick plates; pedestals, the range (judge round 1: no near-blacks)
+CANVAS = 'cbc3b4'                                                          # the umbrellas (judge round 1: colour stays on the tables' skirts)
 M_ = 'hp_furn'
 
 def B(col, x0, y0, z0, x1, y1, z1, M, bev=0.25, kind='plastic', model=M_):
@@ -116,9 +118,9 @@ def rug(M, w=24, d=16, col='b4a893', edge='8e8170'):
 def rugsmall(M): rug(M, 12, 8, '9aa0a0', '7c8384')
 
 def lamp(M):
-    C(DARK, 0, 0, 0, 1.0, 0.3, M, bev=0.1)
-    C(STEEL, 0, 0.3, 0, 0.15, 6.2, M, segs=10, bev=0.05)
-    C(CREAM, 0, 6.4, 0, 1.4, 2.4, M, r2=1.0, bev=0.1)
+    C(SLATE, 0, 0, 0, 1.3, 0.45, M, bev=0.15)
+    C(STEEL, 0, 0.45, 0, 0.3, 6.0, M, segs=12, bev=0.08)
+    C(CREAM, 0, 6.4, 0, 1.6, 2.6, M, r2=1.15, bev=0.15)
 
 def plant(M):
     C('c9c3b6', 0, 0, 0, 1.2, 2.4, M, r2=1.0, bev=0.2)
@@ -150,7 +152,7 @@ def toychest(M):
 # ---------------------------------------------------------------- kitchen and dining
 def counter(M, w=4.0, top='d9d4ca'):
     hw = w / 2
-    B(DARK, -hw + 0.2, 0, -1.6, hw - 0.2, 0.6, 1.4, M, bev=0.05)
+    B(KICK, -hw, 0, -1.6, hw, 0.6, 1.4, M, bev=0.05)                                    # (full width: the runs read as one)
     B('c8c3b6', -hw, 0.6, -2, hw, 5.0, 1.6, M, bev=0.12)                               # the cabinet
     B('d2cdc1', -hw + 0.2, 0.9, 1.55, hw - 0.2, 4.7, 1.75, M, bev=0.1)                # its door
     B(STEEL, -0.6, 3.9, 1.75, 0.6, 4.1, 1.95, M, bev=0.05)                             # the handle
@@ -158,14 +160,16 @@ def counter(M, w=4.0, top='d9d4ca'):
 
 def island(M):
     B('c8c3b6', -7.6, 0.6, -3.1, 7.6, 5.0, 3.1, M, bev=0.15)
-    B(DARK, -7.2, 0, -2.8, 7.2, 0.6, 2.8, M, bev=0.05)
+    B(KICK, -7.2, 0, -2.8, 7.2, 0.6, 2.8, M, bev=0.05)
     B('d9d4ca', -8, 5.0, -3.5, 8, 5.4, 3.5, M, bev=0.1)
+    for sx in (-1, 1): B('d9d4ca', sx * 8 - (0.45 if sx > 0 else 0), 0, -3.5, sx * 8 + (0 if sx > 0 else 0.45), 5.0, 3.5, M, bev=0.08)   # waterfall ends
     for x in (-5, 0, 5): B('d2cdc1', x - 2.2, 0.9, -3.25, x + 2.2, 4.7, -3.05, M, bev=0.08)
 
 def stool(M):
-    C(WALNUT, 0, 3.5, 0, 1.1, 0.5, M, bev=0.15)
-    for (x, z) in ((-0.7, -0.7), (0.7, -0.7), (-0.7, 0.7), (0.7, 0.7)): B(DARK, x - 0.12, 0, z - 0.12, x + 0.12, 3.5, z + 0.12, M, bev=0.03)
-    B(DARK, -0.8, 1.3, -0.8, 0.8, 1.45, 0.8, M, bev=0.03)
+    C(WALNUT, 0, 3.4, 0, 1.25, 0.6, M, bev=0.2)                                         # a pedestal stool (judge round 1)
+    C(SLATE, 0, 0.3, 0, 0.4, 3.1, M, segs=12, bev=0.08)
+    C(SLATE, 0, 0, 0, 1.1, 0.3, M, segs=18, bev=0.1)
+    C(SLATE, 0, 1.4, 0, 0.85, 0.18, M, segs=16, bev=0.05)
 
 def fridge(M):
     B(APPLIANCE, -3, 0, -2.5, 3, 12, 2.2, M, bev=0.35)
@@ -175,16 +179,38 @@ def fridge(M):
 
 def stove(M):
     counter(M, 5.0, '2f3135')
-    B('2f3135', -2.4, 1.0, 1.7, 2.4, 4.4, 1.9, M, bev=0.08)                            # the oven door
+    B(SLATE, -2.4, 1.0, 1.7, 2.4, 4.4, 1.9, M, bev=0.08)                               # the oven door
     for (x, z) in ((-1.2, -0.9), (1.2, -0.9), (-1.2, 0.9), (1.2, 0.9)): C('1c1d20', x, 5.4, z, 0.8, 0.1, M, segs=16, bev=0.02)
     B(APPLIANCE, -2.5, 8.6, -2.0, 2.5, 10.4, 0.2, M, bev=0.2)                          # the hood
 
 def sinkunit(M):
-    counter(M, 8.0)
+    counter(M, 12.0)                                                                    # (12: the back wall's run has no gaps)
     B('aeb3b6', -2.8, 4.6, -1.3, 2.8, 5.45, 1.3, M, bev=0.15)                          # the basin's rim
     B('6d7276', -2.4, 4.4, -1.0, 2.4, 5.42, 1.0, M, bev=0.1)                           # the basin
     C(CHROME, 0, 5.4, -1.6, 0.25, 2.2, M, segs=10, bev=0.05)                           # the tap
     B(CHROME, -0.2, 7.2, -1.7, 0.2, 7.5, -0.6, M, bev=0.08)
+
+def banquette(M):
+    # the kitchen's breakfast nook (judge round 1): a built-in bench, its back to the wall, a long cushion
+    B(OFFWHITE, -6, 0, -1.5, 6, 2.4, 1.5, M, bev=0.2)
+    B(KICK, -5.8, 0, 1.1, 5.8, 0.5, 1.55, M, bev=0.05)
+    B(OFFWHITE, -6, 0, -1.5, 6, 6.2, -0.6, M, bev=0.25)
+    B(SOFA, -5.8, 2.4, -0.6, 5.8, 3.1, 1.5, M, bev=0.35)
+    for x in (-3, 3): B(CUSHION, x - 2.8, 3.1, -0.6, x + 2.8, 5.8, 0.2, M, bev=0.4)
+    for sx in (-1, 1): B(OFFWHITE, sx * 6 - (0.6 if sx > 0 else 0), 0, -1.5, sx * 6 + (0 if sx > 0 else 0.6), 4.0, 1.6, M, bev=0.2)
+
+def nooktable(M):
+    B(OAK, -5, 4.6, -2.2, 5, 5.3, 2.2, M, bev=0.25)
+    for x in (-3, 3):
+        C(SLATE, x, 0.3, 0, 0.45, 4.3, M, segs=12, bev=0.08)
+        B(SLATE, x - 0.6, 0, -1.8, x + 0.6, 0.4, 1.8, M, bev=0.15)
+
+def pantry(M):
+    B(KICK, -2.5, 0, -1.6, 2.5, 0.6, 1.4, M, bev=0.05)
+    B('c8c3b6', -2.5, 0.6, -2, 2.5, 12.0, 1.6, M, bev=0.15)
+    for (y0, y1) in ((0.9, 6.6), (6.9, 11.7)):
+        for sx in (-1, 1): B('d2cdc1', (0.1 if sx > 0 else -2.3), y0, 1.55, (2.3 if sx > 0 else -0.1), y1, 1.75, M, bev=0.1)
+    for sx in (-1, 1): B(STEEL, sx * 0.5 - 0.1, 5.4, 1.75, sx * 0.5 + 0.1, 8.0, 1.95, M, bev=0.05)
 
 def diningtable(M):
     B(OAK, -9, 4.6, -4, 9, 5.4, 4, M, bev=0.25)
@@ -389,8 +415,10 @@ def storetable(M, tab='vip'):
     acc = TABLE_ACCENT.get(tab, CREAM)
     B(OAK, -5, 4.6, -2.5, 5, 5.2, 2.5, M, bev=0.2)
     for x in (-4.4, 4.4): B(OAK, x - 0.35, 0, -2.0, x + 0.35, 4.6, 2.0, M, bev=0.1)
-    B(acc, -4.9, 1.2, 2.3, 4.9, 4.6, 2.55, M, bev=0.08)                                # the skirt (its colour)
-    B(acc, -4.9, 1.2, -2.55, 4.9, 4.6, -2.3, M, bev=0.08)
+    B(OAK, -4.9, 1.2, 2.2, 4.9, 4.6, 2.45, M, bev=0.08)                                # the skirt
+    B(OAK, -4.9, 1.2, -2.45, 4.9, 4.6, -2.2, M, bev=0.08)
+    B(acc, -4.95, 3.7, 2.35, 4.95, 4.5, 2.6, M, bev=0.08)                              # its one colour: a band (judge round 1)
+    B(acc, -4.95, 3.7, -2.6, 4.95, 4.5, -2.35, M, bev=0.08)
     if tab == 'vip':
         B('7c6a4c', -1.6, 5.2, -1.2, 1.6, 6.0, 1.2, M, bev=0.25)
         C(acc, 0, 6.0, 0, 1.0, 0.5, M, segs=16, bev=0.15)
@@ -406,8 +434,8 @@ def storetable(M, tab='vip'):
         B(acc, -0.4, 6.0, 1.35, 0.4, 7.0, 1.55, M, bev=0.1)
 
 def umbrella(M, tab='vip'):
-    acc = TABLE_ACCENT.get(tab, CREAM)
-    C(WHITE, 0, 0, 0, 0.18, 10.2, M, segs=10, bev=0.05)
+    acc = CANVAS
+    C(WHITE, 0, 0, 0, 0.3, 10.2, M, segs=10, bev=0.08)
     C(STONE, 0, 0, 0, 1.2, 0.5, M, segs=16, bev=0.15)
     K.lathe(M_, acc, [(0.0, 11.2), (1.5, 10.9), (6.0, 9.2), (6.0, 8.9), (0.0, 8.9)], 0, 0, 0) if False else None
     import bmesh
@@ -499,15 +527,62 @@ def shed(M):
         B(W_, x0, 0, z0, x1, 10, z1, M, bev=0.1)
     B(WHITE, -3.6, 0, 7.6, -3.0, 8.4, 8.4, M, bev=0.1); B(WHITE, 3.0, 0, 7.6, 3.6, 8.4, 8.4, M, bev=0.1)
     B(WHITE, -3.6, 8.0, 7.6, 3.6, 8.6, 8.4, M, bev=0.1)
-    for sz in (-1, 1):                                                                  # a gable roof along x
-        Mr = M @ Tr(0, 10, 0) @ K.Rx(sz * math.radians(24))
+    for sz in (-1, 1):                                                                  # a gable roof along x (judge round 1: its ridge was
+        Mr = M @ Tr(0, 10 + 8.0 * math.tan(math.radians(24)), 0) @ K.Rx(sz * math.radians(24))   # under the wall tops, unseen)
         B('6a6e74', -12, -0.3, 0 if sz > 0 else -9.8, 12, 0.3, 9.8 if sz > 0 else 0, Mr, bev=0.1)
+    for sx in (-1, 1):                                                                  # the gable ends
+        K.plate(M_, W_, [(-8.0, 10.0), (8.0, 10.0), (0.0, 13.4)], 1.0, M @ Tr(sx * 11.0 + (1.0 if sx < 0 else 0.0), 0, 0) @ Ry(-math.pi / 2), bev=0.05)
     B(WHITE, -11.2, 10, -8.2, 11.2, 10.6, 8.2, M, bev=0.1)
     B(W_, -10.6, 10.5, -0.4, 10.6, 14.0, 0.4, M, bev=0.1) if False else None
     B('b9d2d8', 4.5, 4.5, 7.95, 8.5, 7.5, 8.15, M, bev=0.05, kind='glass')            # a window by the door
     B(WHITE, 4.3, 4.3, 7.9, 8.7, 4.6, 8.3, M, bev=0.05)
     B('6f5f4e', -9.5, 0, -6.5, -4, 5.4, -4.5, M, bev=0.2)                              # a potting bench inside
     golfbag(M @ Tr(8.5, 0, -6.0))
+
+def firepit(M):
+    # the lawn's middle (judge round 1: big things in the big garden): a stone ring with logs, four chunky benches round it
+    import bmesh
+    segs = 28
+    bm = bmesh.new()
+    vs = []
+    for k in range(segs):
+        a = 2 * math.pi * k / segs
+        ca, sa = math.cos(a), math.sin(a)
+        vs.append([bm.verts.new((rr * ca, yy, rr * sa)) for (rr, yy) in ((2.4, 0.0), (3.6, 0.0), (3.6, 1.5), (2.4, 1.5))])
+    for k in range(segs):
+        a_, b_ = vs[k], vs[(k + 1) % segs]
+        for j in range(4): bm.faces.new((a_[j], a_[(j + 1) % 4], b_[(j + 1) % 4], b_[j]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    K.put(M_, 'plastic', 'a59d90', bm, M)
+    C('4a4744', 0, 0, 0, 2.45, 0.5, M, segs=24, bev=0.05)
+    for k in range(3):
+        Mr = M @ Ry(k * math.pi / 3)
+        B(BARK, -1.8, 0.5, -0.35, 1.8, 1.2, 0.35, Mr, bev=0.3)
+    for k in range(4):
+        Mr = M @ Ry(k * math.pi / 2)
+        B(OAK, -3.8, 1.9, 7.4, 3.8, 2.6, 9.6, Mr, bev=0.3)
+        for x in (-2.8, 2.8): B(STONE, x - 0.8, 0, 7.6, x + 0.8, 1.9, 9.4, Mr, bev=0.25)
+
+def playhouse(M):
+    # a kids' cabin on a deck (judge round 1): a door you can walk through, a window each side, a gable roof
+    WALLC, ROOFC = 'd9d4c6', '6a6e74'
+    B(OAK, -7, 0, -6, 7, 0.8, 7.2, M, bev=0.2)                                          # the deck (its front a porch)
+    for (x0, x1, z0, z1) in ((-6, 6, -5, -4.2), (-6, -5.2, -5, 5), (5.2, 6, -5, 5), (-6, -1.8, 4.2, 5), (1.8, 6, 4.2, 5)):
+        B(WALLC, x0, 0.8, z0, x1, 8.8, z1, M, bev=0.15)
+    B(WALLC, -1.8, 6.8, 4.2, 1.8, 8.8, 5, M, bev=0.15)                                  # over the door
+    for (x0, x1) in ((-2.4, -1.8), (1.8, 2.4)): B(WHITE, x0, 0.8, 4.9, x1, 7.2, 5.3, M, bev=0.1)
+    B(WHITE, -2.4, 6.8, 4.9, 2.4, 7.4, 5.3, M, bev=0.1)
+    for sx in (-1, 1):                                                                  # windows: grey glass on the side walls, white sills
+        xo = sx * 6.0
+        B('7d8792', min(xo, xo + sx * 0.12), 3.6, -2.0, max(xo, xo + sx * 0.12), 6.4, 2.0, M, bev=0.04)
+        B(WHITE, min(xo, xo + sx * 0.4), 3.2, -2.4, max(xo, xo + sx * 0.4), 3.6, 2.4, M, bev=0.1)
+        B(WHITE, min(xo, xo + sx * 0.3), 6.4, -2.4, max(xo, xo + sx * 0.3), 6.8, 2.4, M, bev=0.1)
+    for sz in (-1, 1):                                                                  # a gable roof along x (ridge 11.69: Rx(+a) takes +z down)
+        Mr = M @ Tr(0, 8.8 + 5.0 * math.tan(math.radians(30)), 0) @ K.Rx(sz * math.radians(30))
+        B(ROOFC, -7.2, -0.35, 0 if sz > 0 else -6.6, 7.2, 0.35, 6.6 if sz > 0 else 0, Mr, bev=0.15)
+    for sx in (-1, 1):                                                                  # the gable ends
+        K.plate(M_, WALLC, [(-5.0, 8.8), (5.0, 8.8), (0.0, 11.6)], 0.8, M @ Tr(sx * 5.6 + 0.4, 0, 0) @ Ry(-math.pi / 2), bev=0.05)
+    for x in (-6.4, 6.4): B(WHITE, x - 0.45, 0.8, 6.3, x + 0.45, 8.6, 7.1, M, bev=0.12)   # porch posts
 
 def flowerbed(M):
     B(WALNUT, -10, 0, -2, 10, 1.2, 2, M, bev=0.15)
@@ -553,27 +628,27 @@ def swingset(M):
     # two A-frames (a pair of legs each end, splayed), the top beam, two swings hung on chunky ropes
     for x in (-9.9, 9.9):
         for s in (-1, 1):
-            K.B(M_, 'b7a083', -0.45, 0, -0.45, 0.45, 13.0, 0.45, bev=0.15, M=M @ Tr(x, 0, s * 3.6) @ K.Rx(-s * math.radians(16)))
-        K.B(M_, 'b7a083', x - 0.4, 4.0, -2.6, x + 0.4, 4.7, 2.6, bev=0.12, M=M)
-    K.B(M_, '9e8a70', -11.0, 12.3, -0.6, 11.0, 13.5, 0.6, bev=0.25, M=M)
+            K.B(M_, 'b7a083', -0.65, 0, -0.65, 0.65, 13.0, 0.65, bev=0.2, M=M @ Tr(x, 0, s * 3.6) @ K.Rx(-s * math.radians(16)))
+        K.B(M_, 'b7a083', x - 0.55, 4.0, -2.8, x + 0.55, 5.0, 2.8, bev=0.15, M=M)
+    K.B(M_, '9e8a70', -11.2, 12.0, -0.85, 11.2, 13.7, 0.85, bev=0.3, M=M)
     for sx in (-4.0, 4.0):
         for dz in (-0.9, 0.9): K.B(M_, DARK, sx - 1.1 - 0.1, 2.9, dz - 0.1, sx - 1.1 + 0.1, 12.3, dz + 0.1, bev=0.03, M=M) if False else None
-        for dx in (-1.1, 1.1): K.B(M_, '4a4d52', sx + dx - 0.12, 2.9, -0.12, sx + dx + 0.12, 12.3, 0.12, bev=0.04, M=M)
-        K.B(M_, '5d6f63', sx - 1.5, 2.4, -0.8, sx + 1.5, 2.9, 0.8, bev=0.2, M=M)
+        for dx in (-1.1, 1.1): K.B(M_, '5a5e64', sx + dx - 0.2, 2.9, -0.2, sx + dx + 0.2, 12.0, 0.2, bev=0.06, M=M)
+        K.B(M_, '5d6f63', sx - 1.6, 2.3, -0.9, sx + 1.6, 3.0, 0.9, bev=0.25, M=M)
 
 def pergola(x0, x1, z0, z1, top):
     # (not a FURN kind: hunt_house_models.py draws it from the layout's PERGOLA)
     I = K.I4
     for px in (x0, (x0 + x1) / 2, x1):
         for pz in (z0, z1):
-            K.B('hh_yard', 'e9e4da', px - 0.9, -1.0, pz - 0.9, px + 0.9, top - 1.5, pz + 0.9, bev=0.2)
-            K.B('hh_yard', 'e9e4da', px - 1.3, -1.0, pz - 1.3, px + 1.3, -0.2, pz + 1.3, bev=0.2)
+            K.B('hh_yard', 'e9e4da', px - 1.1, -1.0, pz - 1.1, px + 1.1, top - 1.8, pz + 1.1, bev=0.25)
+            K.B('hh_yard', 'e9e4da', px - 1.5, -1.0, pz - 1.5, px + 1.5, -0.1, pz + 1.5, bev=0.25)
     for pz in (z0, z1):
-        K.B('hh_yard', 'b7a083', x0 - 2.0, top - 1.5, pz - 0.6, x1 + 2.0, top - 0.2, pz + 0.6, bev=0.25)
+        K.B('hh_yard', 'b7a083', x0 - 2.2, top - 1.9, pz - 0.85, x1 + 2.2, top - 0.2, pz + 0.85, bev=0.3)
     x = x0 - 1.0
     while x <= x1 + 1.0:
-        K.B('hh_yard', 'a89274', x - 0.35, top - 0.3, z0 - 2.0, x + 0.35, top + 0.6, z1 + 2.0, bev=0.15)
-        x += 3.6
+        K.B('hh_yard', 'a89274', x - 0.55, top - 0.4, z0 - 2.2, x + 0.55, top + 0.9, z1 + 2.2, bev=0.2)
+        x += 4.0
 
 # ---------------------------------------------------------------- the table of kinds
 DRAW = {
@@ -589,7 +664,8 @@ DRAW = {
     'bikes': bikes, 'golfbag': golfbag, 'grill': grill, 'patiotable': patiotable, 'patiochair': patiochair,
     'lounger': lounger, 'trampoline': trampoline, 'tree': tree, 'treebench': treebench, 'shed': shed,
     'flowerbed': flowerbed, 'hedge': hedge, 'mailbox': mailbox, 'hoop': hoop, 'hose': hose, 'bins': bins,
-    'swingset': swingset,
+    'swingset': swingset, 'banquette': banquette, 'nooktable': nooktable, 'pantry': pantry, 'firepit': firepit,
+    'playhouse': playhouse,
 }
 
 def draw(kind, cx, y, cz, turn, tab=None):

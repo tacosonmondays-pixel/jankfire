@@ -374,8 +374,8 @@ H.byArena.SuburbV2 = "suburb2"
 -- Map.Hub.LookZones.HuntHouseLook (the house is Zone "hub" to the server)
 H.looks.hunt_house = {
 	Lighting = {
-		Ambient = Color3.fromRGB(128, 124, 120), OutdoorAmbient = Color3.fromRGB(150, 148, 146), Brightness = 2.6,
-		ExposureCompensation = 0.05, EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.35,
+		Ambient = Color3.fromRGB(122, 118, 114), OutdoorAmbient = Color3.fromRGB(150, 148, 146), Brightness = 2.6,
+		ExposureCompensation = -0.12, EnvironmentDiffuseScale = 0.42, EnvironmentSpecularScale = 0.35,
 		ClockTime = 15.6, GeographicLatitude = 40, ColorShift_Top = Color3.fromRGB(255, 232, 205),
 		FogColor = Color3.fromRGB(206, 212, 220), FogStart = 500, FogEnd = 2400,
 	},
@@ -515,7 +515,8 @@ H.byArena.JankfieldHighV2A = "school_v2a"
 H.looks.school_v2b = {
 	Lighting = {
 		Ambient = Color3.fromRGB(42, 44, 50), OutdoorAmbient = Color3.fromRGB(30, 34, 46), Brightness = 0.4,
-		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0.18, EnvironmentSpecularScale = 0.2,
+		ExposureCompensation = -0.35, EnvironmentDiffuseScale = 0.18, EnvironmentSpecularScale = 0.2, -- (-0.1 in the first push: in a
+		-- real game the lit halls by the courtyard still read bright; the whole frame a third of a stop down)
 		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
 		FogColor = Color3.fromRGB(20, 23, 32), FogStart = 60, FogEnd = 420,
 	},

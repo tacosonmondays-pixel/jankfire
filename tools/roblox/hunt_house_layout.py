@@ -196,6 +196,10 @@ def plane(x0, x1, za, ya, zb, yb, th, mat):
     TILT.append((cx, cy, cz, 1.0, 0.0, 0.0, 0.0, ny, nz, x1 - x0, th, ln, mat, 'b', ''))
 plane(ROOF['x0'], ROOF['x1'], ROOF['z1'], EAVE - 0.9, 0.0, RIDGE, 1.2, 'roof')     # the front slope
 plane(ROOF['x0'], ROOF['x1'], ROOF['z0'], EAVE - 0.9, 0.0, RIDGE, 1.2, 'roof')     # the back slope
+# two dormers on the back slope (judge round 1): a box out of the roof with a window and its own little gable roof
+DORMERS = [dict(x=-36.0, zf=-34.0, zb=-17.5, w=9.0, wall=34.5, ridge=37.65), dict(x=36.0, zf=-34.0, zb=-17.5, w=9.0, wall=34.5, ridge=37.65)]
+for _d in DORMERS:
+    box(_d['x'] - _d['w'] / 2 - 0.4, 27.6, _d['zf'] - 0.5, _d['x'] + _d['w'] / 2 + 0.4, _d['wall'] + 1.6, _d['zb'], 'siding')
 # the gable walls (x = -60..-58 and 58..60): 2-stud bands up the triangle, each under the roof planes' top
 for (gx0, gx1) in ((X0, X0 + 2), (X1 - 2, X1)):
     y_lo = EAVE
@@ -271,7 +275,15 @@ KINDS = {
     'stool':      ((2.4, 4, 2.4), None),
     'fridge':     ((6, 12, 5), [(-3, 0, -2.5, 3, 12, 2.5)]),
     'stove':      ((5, 5.4, 4), [(-2.5, 0, -2, 2.5, 5.4, 2)]),
-    'sinkunit':   ((8, 5.4, 4), [(-4, 0, -2, 4, 5.4, 2)]),
+    'sinkunit':   ((12, 5.4, 4), [(-6, 0, -2, 6, 5.4, 2)]),
+    'banquette':  ((12, 6.2, 3), [(-6, 0, -1.5, 6, 3.1, 1.5), (-6, 0, -1.5, 6, 6.2, -0.6)]),
+    'nooktable':  ((10, 5.3, 4.4), [(-5, 4.6, -2.2, 5, 5.3, 2.2)]),
+    'pantry':     ((5, 12, 4), [(-2.5, 0, -2, 2.5, 12, 2)]),
+    'firepit':    ((22, 2.6, 22), [(-3.6, 0, -3.6, 3.6, 1.5, 3.6), (-3.8, 0, 7.4, 3.8, 2.6, 9.6), (-3.8, 0, -9.6, 3.8, 2.6, -7.4),
+                                  (7.4, 0, -3.8, 9.6, 2.6, 3.8), (-9.6, 0, -3.8, -7.4, 2.6, 3.8)]),
+    'playhouse':  ((14, 12, 13), [(-7, 0, -6, 7, 0.8, 7.2), (-6, 0, -5, 6, 8.8, -4.2), (-6, 0, -5, -5.2, 8.8, 5), (5.2, 0, -5, 6, 8.8, 5),
+                                  (-6, 0, 4.2, -1.8, 8.8, 5), (1.8, 0, 4.2, 6, 8.8, 5), (-1.8, 6.8, 4.2, 1.8, 8.8, 5),
+                                  (-6.6, 8.8, -5.6, 6.6, 10.6, 5.6)]),
     'tallcab':    ((5, 12, 4), [(-2.5, 0, -2, 2.5, 12, 2)]),
     'diningtable':((18, 5.4, 8), [(-9, 4.6, -4, 9, 5.4, 4), (-8.5, 0, -3.5, -7.7, 4.6, -2.7), (7.7, 0, -3.5, 8.5, 4.6, -2.7),
                                    (-8.5, 0, 2.7, -7.7, 4.6, 3.5), (7.7, 0, 2.7, 8.5, 4.6, 3.5)]),
@@ -386,6 +398,13 @@ F('sinkunit', 28, -38, turn=0)                          # under the back window
 for xc in (16, 20, 36, 40):
     F('counter', xc, -38, turn=0)
 F('island', 34, -18, turn=0)
+# (judge round 1: the front half was bare floor) a breakfast nook on the west wall: a built-in bench, a pedestal table,
+# two chairs, a rug; a tall pantry between the counters and the fridge
+F('rugsmall', 20.0, -7.0, turn=1, solid=False)
+F('banquette', 14.5, -7.0, turn=1)
+F('nooktable', 18.7, -7.0, turn=1)
+F('chair', 23.4, -9.5, turn=3); F('chair', 23.4, -4.5, turn=3)
+F('pantry', 56.0, -5.25, turn=3)
 for dx in (-5, 0, 5): F('stool', 34 + dx, -12.5)
 # ---------------------------------------------------------------- the garage (x 60..102, z -10..40)
 F('car', 74, 18, y=PATIO, turn=0)
@@ -447,6 +466,9 @@ F('tree', 54.0, -118.0, y=GROUND); F('treebench', 54.0, -118.0, y=GROUND)
 F('swingset', 4.0, -108.0, y=GROUND, turn=0)                  # two swings (HubSeat seats on them: HuntBuild)
 SWINGS = [(0.0, GROUND + 2.6, -108.0), (8.0, GROUND + 2.6, -108.0)]
 F('shed', 90.0, -140.0, y=GROUND, turn=0)
+F('firepit', -8.0, -134.0, y=GROUND)                            # (judge round 1: big things in the big garden)
+F('playhouse', -66.0, -132.0, y=GROUND, turn=0)                 # its door toward the house
+F('tree', -76.0, -70.0, y=GROUND); F('tree', 100.0, -96.0, y=GROUND)
 F('flowerbed', -60, -150, y=GROUND, turn=0); F('flowerbed', -20, -150, y=GROUND, turn=0); F('flowerbed', 20, -150, y=GROUND, turn=0)
 F('flowerbed', -82, -120, y=GROUND, turn=1); F('flowerbed', -82, -84, y=GROUND, turn=1)
 F('hose', 58, -46, y=PATIO)
@@ -472,7 +494,7 @@ SWITCHES = []     # (room, x, y, z, face x, face z): a light switch by each room
 def sw(rid, x, z, fx, fz):
     lv = [r for r in ROOMS if r['id'] == rid][0]['lv']
     SWITCHES.append((rid, float(x), LVY[lv] + (4.6 if rid != 'garage' else 3.6), float(z), fx, fz))
-sw('entry', 6.0, 39.9, 0, -1); sw('living', -13.1, 12.5, -1, 0); sw('family', -13.1, -15.5, -1, 0); sw('wc', -4.6, -1.5, -1, 0)
+sw('entry', 6.0, 39.9, 0, -1); sw('living', -13.1, 11.0, -1, 0); sw('family', -13.1, -15.5, -1, 0); sw('wc', -4.6, -1.5, -1, 0)
 sw('coats', 4.6, -1.5, 1, 0); sw('backhall', -5.5, -39.9, 0, 1); sw('dining', 13.1, 17, 1, 0); sw('kitchen', 13.1, -17.5, 1, 0)
 sw('garage', 60.1, 0.5, 1, 0)
 sw('gallery', -11.9, 15, 1, 0); sw('mainbed', -13.1, 27.5, -1, 0); sw('ensuite', -45.5, 8.9, 0, -1); sw('closet', -19.5, 8.9, 0, -1)
@@ -501,6 +523,7 @@ for r in ROOMS:
         else [(x0 + (x1 - x0) * 0.28, (z0 + z1) / 2), (x0 + (x1 - x0) * 0.72, (z0 + z1) / 2)])
     if r['id'] == 'gallery': spots = [(-4.0, 0.0), (-4.0, 34.0)]
     if r['id'] == 'entry': spots = [(-4.0, 22.0)]
+    if r['id'] == 'kitchen': spots = [(30.0, -18.0), (38.0, -18.0), (18.7, -7.0)]       # pendants (judge round 1)
     for (x, z) in spots:
         LIGHTS.append((r['id'], x, y, z, 0.9, 26.0 if r['id'] != 'garage' else 32.0, 'ffe6c8' if r['id'] != 'garage' else 'f2f0ea'))
 LIGHTS.append(('porch', 0.0, 11.2, 47.0, 0.8, 18.0, 'ffd9a8'))

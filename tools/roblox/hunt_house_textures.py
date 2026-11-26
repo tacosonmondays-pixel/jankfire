@@ -9,8 +9,13 @@
 # run: C:/Users/soup2/AppData/Local/Programs/Python/Python313/python.exe tools/roblox/hunt_house_textures.py <out_dir>
 import sys, os, math
 
-TEX = {'siding': (8.0, 8.0), 'shingles': (8.0, 8.0), 'lawn': (24.0, 24.0), 'fenceboard': (8.0, 8.0), 'asphalt': (24.0, 24.0)}
-PIXELS = {'siding': (512, 512), 'shingles': (512, 512), 'lawn': (1024, 1024), 'fenceboard': (512, 512), 'asphalt': (1024, 1024)}
+#   oakplank   512x512   16 x 16  (judge round 1) the ground floor's oak: 12 planks in 16 studs, staggered joints, calm
+#                                 grey-brown (not the orange the school's floor read as under warm light)
+#   kittile    512x512   16 x 16  (judge round 1) the kitchen: 4 x 4-stud porcelain tiles, mid beige-grey, soft grout
+TEX = {'siding': (8.0, 8.0), 'shingles': (8.0, 8.0), 'lawn': (24.0, 24.0), 'fenceboard': (8.0, 8.0), 'asphalt': (24.0, 24.0),
+       'oakplank': (16.0, 16.0), 'kittile': (16.0, 16.0)}
+PIXELS = {'siding': (512, 512), 'shingles': (512, 512), 'lawn': (1024, 1024), 'fenceboard': (512, 512), 'asphalt': (1024, 1024),
+          'oakplank': (512, 512), 'kittile': (512, 512)}
 
 if __name__ == '__main__':
     import numpy as np
@@ -97,3 +102,33 @@ if __name__ == '__main__':
     stones = (rng.random((h, w)) > 0.996).astype(np.float64)
     shade = 1.0 + 0.10 * a + 0.04 * b + 0.25 * stones
     save('asphalt', tint(hexrgb('55585c'), shade))
+
+    # ---------------------------------------------------------------- oak planks: 12 boards in 16 studs, staggered ends
+    h, w = PIXELS['oakplank'][1], PIXELS['oakplank'][0]
+    yy, xx = np.mgrid[0:h, 0:w]
+    sy_, sx_ = yy / h * 16.0, xx / w * 16.0
+    bw = 16.0 / 12.0
+    board = np.floor(sy_ / bw).astype(int)
+    rng = np.random.default_rng(31)
+    offs = rng.uniform(0, 16.0, size=12)
+    lens = rng.choice([4.0, 8.0, 16.0], size=12)
+    along = (sx_ + offs[board % 12]) % lens[board % 12]
+    seg = np.floor((sx_ + offs[board % 12]) / lens[board % 12]).astype(int)
+    tone = rng.uniform(-0.045, 0.045, size=(12, 8))
+    t = tone[board % 12, seg % 8]
+    v = (sy_ / bw) % 1.0
+    edge = 0.10 * np.clip(1 - np.minimum(v, 1 - v) / 0.035, 0, 1)
+    endj = 0.08 * np.clip(1 - np.minimum(along, lens[board % 12] - along) / 0.05, 0, 1)
+    shade = 1.0 + t - edge - endj + 0.03 * pnoise(h, w, 1.5, (0.12, 5.0), 32) + 0.015 * pnoise(h, w, 30.0, (1, 1), 33)
+    save('oakplank', tint(hexrgb('b39a7c'), shade))
+
+    # ---------------------------------------------------------------- kitchen tile: 4 x 4-stud tiles, soft grout
+    h, w = PIXELS['kittile'][1], PIXELS['kittile'][0]
+    yy, xx = np.mgrid[0:h, 0:w]
+    u, v = (xx / w * 4.0) % 1.0, (yy / h * 4.0) % 1.0
+    ti = (np.floor(xx / w * 4.0) + 4 * np.floor(yy / h * 4.0)).astype(int)
+    rng = np.random.default_rng(41)
+    tone = rng.uniform(-0.03, 0.03, size=16)
+    grout = np.clip(1 - np.minimum(np.minimum(u, 1 - u), np.minimum(v, 1 - v)) / 0.012, 0, 1)
+    shade = 1.0 + tone[ti % 16] - 0.22 * grout + 0.02 * pnoise(h, w, 6.0, (1, 1), 42) + 0.012 * pnoise(h, w, 1.0, (1, 1), 43)
+    save('kittile', tint(hexrgb('b9b0a2'), shade))
