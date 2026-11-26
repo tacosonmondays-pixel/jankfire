@@ -47,6 +47,16 @@ local function dataOf(sid: string?): any
 	return if type(d) == "table" and d.f and d.stage then d else nil
 end
 local Sfx = require(script.Parent:WaitForChild("Sfx")) :: any
+-- (a scene a professional animator made, played from his own take: client/FinisherPro.luau, with its data in
+-- FinisherProData_<id>. Every call below hands such a scene there)
+local Pro: any = nil
+do
+	local m = script.Parent:FindFirstChild("FinisherPro")
+	if m then
+		local ok, P = pcall(require, m)
+		if ok then Pro = P end
+	end
+end
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Finishers = require(Shared:WaitForChild("Finishers")) :: any
 
@@ -183,7 +193,20 @@ local function between(p: BasePart, a: Vector3, b: Vector3, w: number, h: number
 	p.CFrame = CFrame.fromMatrix((a + b) / 2, x, y, z)
 end
 
+-- (Studio: the workspace attribute FinisherSceneTest = a scene id plays that scene though its switch is off -
+-- Finishers.SCENE_ON - so a remade scene is tested before it goes live)
+local function sidOf(row: any): string?
+	if not row then return nil end
+	if type(row.scene) == "string" then return row.scene end
+	local t = workspace:GetAttribute("FinisherSceneTest")
+	if type(t) == "string" and t == row.sceneOff and game:GetService("RunService"):IsStudio() then return t end
+	return nil
+end
+Scene.sidOf = sidOf
+
 function Scene.can(row: any, kind: string, kg: any, vg: any): boolean
+	local sid = sidOf(row)
+	if Pro and sid and Pro.has(sid) then return Pro.can(sid, kind, kg, vg) end
 	if not row or type(row.scene) ~= "string" or not dataOf(row.scene) then return false end
 	if kind ~= "full" and kind ~= "short" then return false end
 	for _, g in { kg, vg } do
@@ -693,6 +716,7 @@ local function realAnchor(sc: any, s: any, key: string): (CFrame?, number)
 end
 -- (the scene's own colour grade this frame, when it has one: Finisher.luau's grade asks; nil = the finisher's own)
 function Scene.grade(s: any): { tint: Color3, sat: number, con: number, bright: number }?
+	if s.scene and s.scene.pro then return Pro.grade(s) end
 	local sc = s.scene
 	local g = sc and sc.ex and sc.ex.grade
 	if not g then return nil end
@@ -729,6 +753,7 @@ function Scene.grade(s: any): { tint: Color3, sat: number, con: number, bright: 
 end
 -- (how long the letterbox bars take to come in, when a scene says: Finisher.luau's overlay asks)
 function Scene.barsIn(s: any): number?
+	if s.scene and s.scene.pro then return Pro.barsIn(s) end
 	local sc = s.scene
 	return sc and sc.ex and sc.ex.barsIn or nil
 end
@@ -1414,6 +1439,7 @@ local warm: { [string]: any } = {}
 local playing: string? = nil -- (the scene on screen now: no second set of it is built meanwhile)
 
 function Scene.unwarm(sid: string?)
+	if Pro then Pro.unwarm(sid) end
 	for id, w in warm do
 		if sid == nil or id == sid then
 			w.dead = true
@@ -1425,6 +1451,7 @@ end
 
 -- Scene.warm(sceneId) -> boolean   builds that scene's set ahead (true: built, on its way, or already there)
 function Scene.warm(sid: string): boolean
+	if Pro and Pro.has(sid) then return Pro.warm(sid) end
 	local d = dataOf(sid)
 	if not d or playing == sid then return false end
 	local ex = EXTRA[sid] or {}
@@ -1479,6 +1506,8 @@ end
 
 -- ------------------------------------------------------------------ the scene
 function Scene.start(s: any, kind: string): any
+	local psid = sidOf(s.row)
+	if Pro and psid and Pro.has(psid) then return Pro.start(s, kind, psid) end
 	local d = dataOf(s.row.scene)
 	local ex = EXTRA[s.row.scene] or {}
 	local sc: any = { d = d, ex = ex, kind = kind, i0 = 1, i1 = #d.f, speed = 1, tracks = {}, cur = {}, hip = {}, pools = {}, cued = {}, orig = {},
@@ -1668,6 +1697,7 @@ local function fxBetween(fa: any, fb: any, a: number): any
 end
 
 function Scene.step(s: any, w: number): (string, number, boolean)
+	if s.scene and s.scene.pro then return Pro.step(s, w) end
 	local sc = s.scene
 	local d = sc.d
 	local i, a = frameAt(sc, w)
@@ -1884,12 +1914,14 @@ function Scene.step(s: any, w: number): (string, number, boolean)
 end
 
 function Scene.hitNow(s: any): boolean
+	if s.scene and s.scene.pro then return Pro.hitNow(s) end
 	return s.scene ~= nil and s.scene.hitOn == true
 end
 
 function Scene.stop(s: any)
 	local sc = s.scene
 	if not sc then return end
+	if sc.pro then Pro.stop(s); return end
 	s.scene = nil
 	playing = nil
 	for _, set in sc.tracks do for _, tr in set do pcall(function() tr:Stop(0) end) end end

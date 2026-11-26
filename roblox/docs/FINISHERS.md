@@ -225,6 +225,33 @@ The shop shows it (the shop session, place v603):
 | `ReplicatedStorage.JankfireFinisherKit` | the uploaded wing MeshParts (`place/ReplicatedStorage/JankfireFinisherKit.rbxm`) |
 | `ReplayClient.client.luau` (one line) | no killcam while a finisher is that death's camera (the player attribute `Finishing`) |
 
+### A scene made by a professional animator (Tidecrest, 26 Nov 2026)
+
+The owner had Tidecrest's cutscene remade by a pro animator: two R15 KeyframeSequences (the katana and the sheath on
+their own tracks), a per-frame camera, a blade-stretch curve, as one `.rbxm`. The original stays in the vault
+(`Exports\Tidecrest cutscene (pro animator)`), never in git. `FinisherScene` hands any scene that has a
+`FinisherProData_<id>` module to `client/FinisherPro.luau` (the same calls: can, warm, start, step, hitNow, grade,
+barsIn, stop).
+
+| file | what |
+|---|---|
+| `src/client/FinisherPro.luau` | plays the take on the two real avatars: his clips (uploads 131612410895094 killer, 130332889571388 victim), the roots held still and grounded on each body's own feet (his floor is 2.78 under his origin), the shown katana and sheath riding invisible proxy joints the take moves (`Katana` off the right hand, `Sheath` off the hips), a sheathed blade held to the real sheath, the long blade aimed at the real face at THE TIP, the lens held to the real bodies' points per shot, the time ramps, the shake and kicks, the sounds; `TUNE` holds our own per scene |
+| `src/client/FinisherProFx.luau` | the ink and petals on his frames (glints, action lines, the blade's trail, speed lines, dust, the sweat bead, ink afterimages, the two-tone frames, the ink stroke and splats, the body coming apart into petals) |
+| `src/client/FinisherProData_inkfall.luau` | GENERATED: the lens, shots, ramps, anchors, blade stretch, the stock rig's body points |
+| `tools/roblox/rbxm_read.py` | reads a binary `.rbxm` as plain Python (nothing in it runs) |
+| `tools/roblox/kfs_to_rbxmx.py` | one KeyframeSequence out as `.rbxmx` (then Rojo to `.rbxm`) to upload as an Animation |
+| `tools/roblox/tide_pro_scan.py` | his take on the katana package's own rig by forward kinematics: body points, feet, sheathed frames |
+| `tools/roblox/tide_lens.py` | our lens over his camera, the cuts, the speed ramps (15.0 s with them; 10.6 s as delivered) |
+| `tools/roblox/tide_pro_data.py` | writes the data module from the take, the scan and the lens |
+| `tools/roblox/tide_fk_render.py` | renders his take offline in Blender (his camera or ours, a plain stage or our set) |
+| `tools/roblox/tide_waterfall.py` | the night waterfall set (chunky kit + `tide_waterfall.json` for the falls, mist, foam, lanterns, moon, water) |
+| `tools/roblox/tide_water_tex.py` | the falls' streak textures and the ripple ring (our own, drawn from noise) |
+| `tools/roblox/tide_set_import.luau`, `tide_kit_import.luau` | (Edit) build `JankfireFinisherSets.TideWaterfall` and `.TidecrestKit` |
+
+Rebuild after a change: `tide_pro_scan.py` -> `tide_lens.py` -> `tide_pro_data.py`; then push the data module.
+`Finishers.SCENE_ON.inkfall` stays false until the scene is judged ready; in Studio the workspace attribute
+`FinisherSceneTest = "inkfall"` plays it anyway (`preview:inkfall:full:<userId>`).
+
 **To add a finisher:**
 1. Add a row to `Finishers.LIST`.
 2. Add a theme to `FinisherFx.THEMES`: its slug look, flash and smoke colours, orbit, sounds, and `impact` / `resolve`
