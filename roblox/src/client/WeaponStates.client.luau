@@ -34,7 +34,7 @@ me:GetAttributeChangedSignal("SoakUntil"):Connect(function()
 end)
 me:GetAttributeChangedSignal("DashUntil"):Connect(function()
 	local v, u = me:GetAttribute("DashV"), me:GetAttribute("DashUntil")
-	if typeof(v) == "Vector3" and type(u) == "number" then Body.dash = { v = v, untilT = u } end
+	if typeof(v) == "Vector3" and type(u) == "number" then Body.dash = { v = v, untilT = u, add = true } end -- (add: on top of your own speed, Move)
 end)
 me:GetAttributeChangedSignal("StunUntil"):Connect(function()
 	local v = me:GetAttribute("StunUntil")

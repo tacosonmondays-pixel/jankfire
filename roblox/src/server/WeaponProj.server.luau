@@ -83,6 +83,18 @@ local function callout(f: Fighter, text: string, dur: number)
 	if f.kind == "player" then CalloutR:FireClient(f.ref :: Player, text, dur) end
 end
 local function centre(t: Fighter): Vector3? local ft = Fight.feet(t); return ft and ft + Vector3.new(0, 0.9 * S, 0) end
+-- (26 Nov 2026, the owner: projectiles "arent fun or fair when people fly around so much") a projectile that hits someone
+-- hanging on a grapple rope cuts it: the rope everyone sees goes now (Main.server's Beam "Rope_<id>"), and their client
+-- lets go (Grapple "cut", "shot": Move.client; client/RopeCut tells the grapple server and plays the snap)
+local GrappleR = Remotes:FindFirstChild("Grapple") :: RemoteEvent?
+local function cutRope(t: Fighter)
+	if t.kind ~= "player" then return end
+	local p = t.ref :: Player
+	local b = workspace.Terrain:FindFirstChild("Rope_" .. p.UserId)
+	if not b then return end
+	b:Destroy()
+	if GrappleR then GrappleR:FireClient(p, "cut", "shot") end
+end
 local function slip(t: Fighter, wid: string)
 	if now() - t.slipT < Weapons.MSLIP.immune then return end -- (19 Nov 2026, the fling fix: one slip at a time)
 	t.slipT = now()
@@ -209,6 +221,7 @@ local function hitBody(pr: Proj, t: Fighter, at: Vector3, head: boolean): boolea
 	local w = W[pr.wid] :: any
 	local d = if pr.v.Magnitude > 1e-3 then pr.v.Unit else Vector3.zAxis
 	local own = t == pr.owner
+	if not own and Fight.allow(pr.owner, t) then cutRope(t) end
 	if pr.k == "rocket" or pr.k == "rigmissile" then blast(pr, at); return true
 	elseif pr.k == "peel" then
 		fx("projx", { id = pr.id, p = at, b = true })
@@ -600,12 +613,33 @@ local function stepOne(pr: Proj, dt: number): boolean -- (false: it's gone)
 	local move = pr.v * dt
 	local hit = sphere(pr.p, w.r, move)
 	local to = if hit then pr.p + move.Unit * hit.Distance else pr.p + move
-	-- bodies first (a body in front of a wall is hit first)
-	local t, tt, head = sweep(pr, pr.p, to, w.r)
+	-- bodies first (a body in front of a wall is hit first). (26 Nov 2026) hitR: a projectile's sphere for bodies, bigger
+	-- than its wall one on the ones fired at flying people
+	local from = pr.p
+	local t, tt, head = sweep(pr, pr.p, to, w.hitR or w.r)
 	if t and tt then
 		local at = pr.p + move.Unit * tt
 		pr.p = at
 		if hitBody(pr, t, at, head) then return false end
+	end
+	-- (26 Nov 2026) an explosive's proximity fuse (prox): passing within it of an enemy's middle, it goes off there. no
+	-- homing: it only ever goes off on its own line
+	if w.prox and age > 0.06 then
+		local ab = to - from
+		local L2 = ab:Dot(ab)
+		for _, v in Fight.all do
+			if not v.alive or v == pr.owner or not Fight.allow(pr.owner, v) then continue end
+			if v.onlyFor ~= nil and v.onlyFor ~= pr.owner.ref then continue end
+			local c = centre(v)
+			if not c then continue end
+			local u = if L2 > 1e-6 then math.clamp((c - from):Dot(ab) / L2, 0, 1) else 0
+			local q = from + ab * u
+			if (c - q).Magnitude <= w.prox then
+				pr.p = q
+				blast(pr, q)
+				return false
+			end
+		end
 	end
 	if hit then
 		local nrm = hit.Normal

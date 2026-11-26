@@ -1417,6 +1417,30 @@ end
 
 function Utility.init(fight: any)
 	Fight = fight
+	-- (26 Nov 2026, the owner's friends: "their gadgets dont reset once round ends"; the owner: "perhaps you get one charge
+	-- back at the start if it has multiple?") every round going live: a gadget that keeps its charges across lives (carry)
+	-- gets some back, all of a one-charge gadget, one of a several-charge one (never over its max). the others come back
+	-- full with every life already, and every round respawns everyone
+	task.spawn(function()
+		local okM, M = pcall(function() return require(script.Parent:WaitForChild("Matches")) end)
+		if not okM or not M or not (M :: any).onLive then return end
+		(M :: any).onLive(function(_m: any, ps: { Player })
+			for _, pl in ps do
+				local f = Fight.byPlayer[pl]
+				if not f then continue end
+				local s = stateOf(f)
+				local it = L[s.item]
+				if not it or not it.carry then continue end
+				local c = charges(s)
+				if it.charges <= 1 then Items.refill(c)
+				else
+					c.n = math.min(it.charges, c.n + 1)
+					if c.n >= it.charges then c.next = 0 end
+				end
+				publish(f)
+			end
+		end)
+	end)
 	Fight.blocks = blocked
 	Fight.smokeBlocks = Utility.smokeBlocks
 	Fight.reflects = reflects

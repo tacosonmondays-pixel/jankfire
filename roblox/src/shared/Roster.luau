@@ -149,8 +149,12 @@ add({ id = "water", slot = "secondary", name = "Water Pistol", color = "3fb8ff",
 add({ id = "taser", slot = "secondary", name = "Taser", color = "e8ff3a", live = true, gimmick = "two darts on wires: a second of stun. it jumps through everyone soaked nearby. don't fire it soaked.",
 	desc = "Two darts on wires. Whoever they hit is stunned for a second. Wet people conduct: it jumps through everyone soaked nearby. Don't fire it wet.",
 	stats = { { label = "DAMAGE", text = "18", bar = 0.15 }, { label = "FIRE RATE", text = "0.8/s", bar = 0.04 }, { label = "RANGE", text = "9 m", bar = 0.13 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = true, gimmick = "left click pauses them for a second, right click rewinds them 2 seconds.",
-	desc = "Point and click. Left click PAUSES them for a second. Right click REWINDS them to where they were 2 seconds ago.",
+-- (26 Nov 2026) the Water Pistol and the Taser as one secondary (Weapons.soakshock: the owner wanted them together)
+add({ id = "soakshock", slot = "secondary", name = "Soak & Shock", color = "3fb8ff", live = true, gimmick = "the water pistol and the taser together: soak them with the left, zap them with the right.",
+	desc = "The Water Pistol in your left hand, the Taser in your right. Left click soaks them; right click zaps. Soaked, they're stunned longer and the zap jumps through everyone wet.",
+	stats = { { label = "DAMAGE", text = "1 / 18", bar = 0.15 }, { label = "FIRE RATE", text = "9/s · 0.8/s", bar = 0.41 }, { label = "RANGE", text = "26 m / 9 m", bar = 0.23 }, { label = "MAG", text = "40", bar = 0.67 } } })
+add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", live = true, gimmick = "left click pauses them for a moment, right click rewinds them 2 seconds.",
+	desc = "Point and click. Left click PAUSES them for a moment. Right click REWINDS them to where they were 2 seconds ago.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "45 m", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
 add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "catch someone and swing them round on the rope, then let them fly.",
 	desc = "Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.",
@@ -194,8 +198,8 @@ add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live =
 add({ id = "nvg", slot = "utility", name = "Night Vision Goggles", color = "3dff8a", live = true, gimmick = "G flips them on: green view, outlines on everyone you can see. N flashes everyone looking your way blind.",
 	desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "28 s each", 0.67, "FLASH", "34 m", 0.7, "BLIND", "up to 3.2 s", 0.5) })
-add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = true, gimmick = "hold G to clock whoever you point at. over 100 km/h: 3 s to slow down or the cage. over 200: the cage at once.",
-	desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot.",
+add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = true, gimmick = "hold G to clock whoever you point at. over 100 km/h: 3 s to slow down or the cage. over 140: the cage at once.",
+	desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 140: jail on the spot.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "LIMIT", "100 km/h", 0.5, "JAIL", "3.5 s", 0.35) })
 add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = true, gimmick = "open it at someone: five pop-up ads cover their screen for 7 s. they close them one key at a time.",
 	desc = "Open it at someone. Five pop-up ads cover their screen for 7 s. They close them one key at a time.",

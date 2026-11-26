@@ -119,6 +119,18 @@ function minigun.tvReady(attr: string): boolean
 	local t = me:GetAttribute(attr)
 	return type(t) ~= "number" or workspace:GetServerTimeNow() >= t - 0.02
 end
+-- (26 Nov 2026) a duo (Soak & Shock): run fn as its `part` half ("left" or "right"), that weapon in `held` for the
+-- moment, so the half fires, reloads and kicks with its own numbers; the duo is back in your hands after
+function minigun.duoRun(part: string, fn: () -> ())
+	local w = W[held]
+	local id = w and w.duo and (w.duo :: any)[part]
+	if not id or not W[id] then return end
+	local was = held
+	held = id
+	local ok, e = pcall(fn)
+	held = was
+	if not ok then warn("[jankfire] duo: " .. tostring(e)) end
+end
 function minigun.send(on: boolean)
 	local r = Remotes:FindFirstChild("Spin")
 	if r and r:IsA("RemoteEvent") then r:FireServer(on) end
@@ -170,6 +182,13 @@ local function resetAmmo()
 		if alt then
 			if alt.mag then ammo[alt.id] = { mag = alt.mag, reloadUntil = 0 } end
 			nextShot[alt.id] = 0
+		end
+		if w.duo then -- (26 Nov 2026: a duo's two halves, Soak & Shock: each its own mag and clock, Rules.arm)
+			for _, pid in { w.duo.left, w.duo.right } do
+				local pw = W[pid]
+				if pw and pw.mag then ammo[pid] = { mag = pw.mag, reloadUntil = 0 } end
+				nextShot[pid] = 0
+			end
 		end
 	end
 	minigun.formUntil = 0
@@ -825,6 +844,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if not root then return end
 		if Body.stunned() then return end -- (tased: no firing or swinging till it wears off)
 		if W[held] and W[held].kind == "melee" then swing(now)
+		elseif W[held] and W[held].duo then -- (a duo: its left half streams in the frame loop while the trigger's down)
 		elseif W[held] and W[held].kind == "zap" then minigun.zap(now) -- (weapons batch B: the Taser)
 		elseif W[held] and W[held].kind == "hold" then minigun.hold.press(held) -- (batch B: blower, sauce, laser)
 		elseif W[held] and W[held].kind == "lasso" then minigun.lasso.press() -- (batch E: spin, or let go of whoever's on it)
@@ -865,7 +885,9 @@ Keys.began(function(io: InputObject, gp: boolean)
 		end
 	elseif Binds.is("aim", io) then
 		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
-		if W[held] and W[held].hands == 2 then minigun.trigger2 = true -- (Lefty & Righty: right click is the right gun)
+		if W[held] and W[held].duo then -- (a duo: right click is the right half, the Taser's zap)
+			if not Body.stunned() then minigun.duoRun("right", function() minigun.zap(now) end) end
+		elseif W[held] and W[held].hands == 2 then minigun.trigger2 = true -- (Lefty & Righty: right click is the right gun)
 		elseif W[held] and W[held].dash then -- (the Scythe: right click dashes; the server runs it, ScytheDash.server)
 			local r = Remotes:FindFirstChild("Dash")
 			if r and r:IsA("RemoteEvent") and not Body.stunned() and os.clock() >= minigun.formUntil then r:FireServer(camera.CFrame.LookVector) end
@@ -887,7 +909,8 @@ Keys.began(function(io: InputObject, gp: boolean)
 			end
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then
-		if W[held] and W[held].hands == 2 then minigun.reloadBoth()
+		if W[held] and W[held].duo then minigun.duoRun("left", function() reload() end) -- (a duo: its left half's mag)
+		elseif W[held] and W[held].hands == 2 then minigun.reloadBoth()
 		elseif W[held] and W[held].kind == "cards" then minigun.cards.redraw() -- (batch E: a new hand)
 		else reload() end
 	end
@@ -1188,7 +1211,17 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 		a.mag = if type(res) == "number" then math.min(w.mag :: number, a.mag + res) else w.mag :: number
 		a.reloadUntil = 0
 	end
-	local a2 = if w and w.hands == 2 then ammo[held .. "@2"] else nil -- (Lefty & Righty's right gun)
+	local a2 = if w and w.hands == 2 and not w.duo then ammo[held .. "@2"] else nil -- (Lefty & Righty's right gun)
+	-- (26 Nov 2026) a duo: its left half's reload finishes on its own clock, and with the trigger down it streams
+	local dl = w and w.duo and ammo[w.duo.left]
+	if dl and dl.reloadUntil > 0 and now >= dl.reloadUntil then dl.mag = W[w.duo.left].mag :: number; dl.reloadUntil = 0 end
+	if dl and hum and trigger and not Body.stunned() and not toolOut() and not menuOpen() and me:GetAttribute("MenuCursor") ~= true then
+		minigun.duoRun("left", function()
+			local n = 0
+			while now >= (nextShot[held] or 0) and n < 4 and dl.mag > 0 and dl.reloadUntil == 0 do fireGun(now); n += 1 end
+			if dl.mag <= 0 and dl.reloadUntil == 0 then reload() end
+		end)
+	end
 	minigun.cards.show(held == "cards" and hum ~= nil and not toolOut() and not menuOpen()) -- (batch E: the hand's tiles)
 	if a2 and a2.reloadUntil > 0 and now >= a2.reloadUntil then a2.mag = w.mag :: number; a2.reloadUntil = 0 end
 	local reloading = a ~= nil and a.reloadUntil > 0
@@ -1357,6 +1390,8 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 		H.weapon(held, a and a.mag, reloading, kat(), "HOLSTERED")
 	elseif a2 then -- (Lefty & Righty: both mags, left | right)
 		H.weapon(held, a and a.mag, reloading or a2.reloadUntil > 0, kat(), nil, a2.mag)
+	elseif dl then -- (a duo: its left half's mag)
+		H.weapon(held, dl.mag, dl.reloadUntil > 0, kat())
 	else
 		H.weapon(held, a and a.mag, reloading, kat())
 	end

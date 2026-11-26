@@ -58,14 +58,20 @@ export type Weapon = {
 	proj: string?, speed: number?, grav: number?, life: number?, radius: number?, selfKb: number?, bounce: number?,
 	bounces: number?, bonus: number?, minBounce: number?, freezeAt: number?, freeze: number?, frostDecay: number?,
 	cost: number?, thin: { cd: number, dmg: number, heal: number }?, fuse: number?, burst: number?, blastR: number?, blastDmg: number?,
+	-- (26 Nov 2026, projectiles vs flying players) hitR: the sphere that hits bodies (r stays the one that hits walls);
+	-- prox: an explosive's proximity fuse, it goes off passing within this of an enemy's middle (studs)
+	hitR: number?, prox: number?,
 	-- weapons batch D: the slipper's way out (out s, outLock s while locked on) and back (back studs/s), its homing (homeR
 	-- studs, homeCone degrees off its heading, homeTurn rad/s); the Scales' verdict and right-click pillar (gavel); the TV
 	-- Remote (kind "remote": range, cone; pause dur / cd, rewind back / cd)
 	out: number?, back: number?, homeR: number?, homeCone: number?, homeTurn: number?, outLock: number?,
 	verdict: boolean?, gavel: { range: number, cone: number, delay: number, r: number, h: number, dmg: number, kbUp: number, cd: number }?,
-	pause: { dur: number, cd: number, immune: number? }?, rewind: { back: number, cd: number }?, lock: number?,
+	pause: { dur: number, cd: number, immune: number? }?, rewind: { back: number, cd: number }?, lock: number?, startLock: number?,
 	-- the Bow (kind "bow", proj "arrow"): hold drawT s to full; speed .. speedMax studs/s and dmg .. dmgMax by the draw
 	drawT: number?, speedMax: number?, dmgMax: number?,
+	-- (26 Nov 2026) a duo: two weapons in one slot, the `left` one on left click and the `right` one on right click, each
+	-- with its own numbers, magazine and clock (Rules.holds); its model is `model`'s, the left hand holds `twin`'s
+	duo: { left: string, right: string }?, twin: string?, model: string?,
 	hands: number?, -- (Lefty & Righty: 2 guns, left click the left, right click the right, each its own mag of `mag`)
 	-- batch E, the Card Deck (kind "cards", CardDeck.server): a card's dmg + perRank x rank; a spade's fan (fanN over
 	-- fanSpread rad), a picture spade's (ultN over ultSpread), the flick every other card throws
@@ -381,7 +387,9 @@ local W: { [string]: Weapon } = {
 		-- (owner, 20 Nov 2026: "buff shotguns") 9 -> 9.5: one stray pellet no longer saves them point blank (11 land = 104)
 		-- (owner, 21 Nov 2026: "nerf sawd off a bit dmg is too consisitent at most ranged") a true close-range gun: full to
 		-- 8 studs (114, one shot), x0.4 by 20 (about 45 a shell: both barrels no longer kill there, a reload in between does)
-		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 9.5, head = 1.3, spread = 0.11, falloff = { from = 8, to = 20, min = 0.4 },
+		-- (owner, 25 Nov 2026: "can we rebuff double shotty a bit again") 9.5 -> 10.5 a pellet: 126 point blank (one shot with
+		-- two pellets off), 113 at 10 studs (one shot when 11 land), about 50 a shell at 20 (still a reload to kill there)
+		auto = false, rate = 1 / 0.3, mag = 2, reload = 2.3, pellets = 12, dmg = 10.5, head = 1.3, spread = 0.11, falloff = { from = 8, to = 20, min = 0.4 },
 		kb = 3.4 * S, kbUp = 9 * S, recoil = 10 * S, kick = 0.09, range = 32 * S,
 		ads = { zoom = 1.12, spread = 0.7 }, tracer = rgb(0xffa060),
 		fx = { big = true, shake = 0.5 }, snd = "gun_sawnoff", draw = "draw_sawnoff",
@@ -421,7 +429,9 @@ local W: { [string]: Weapon } = {
 	chicken = {
 		id = "chicken", name = "Chicken Rocket", slot = "primary", kind = "proj", proj = "rocket", color = rgb(0xffe14d),
 		desc = "rubber chickens that explode. every shot kicks you the other way: aim down to fly. shoot your own feet to rocket jump.",
-		cd = 0.85, speed = 36 * S, grav = 6, r = 0.35 * S, radius = 7.5 * S, dmg = 55, kb = 34 * S, selfKb = 1.0, range = 200 * S,
+		-- (owner, 25 Nov 2026: projectiles "arent fun or fair when people fly around so much", no homing) 36 -> 55 m/s, a
+		-- 0.7 m body sphere (was its 0.35 m wall one) and a proximity fuse: it goes off passing within 1.5 m of an enemy
+		cd = 0.85, speed = 55 * S, grav = 6, r = 0.35 * S, hitR = 0.7 * S, prox = 1.5 * S, radius = 7.5 * S, dmg = 55, kb = 34 * S, selfKb = 1.0, range = 200 * S,
 		-- (owner, 18 Nov 2026: "if you press left click with the rocket launcher it does like s thrust explosion so you can
 		-- use it propel yourself through the air!") every shot's back-blast shoves you the other way to your aim, 18 m/s,
 		-- on the ground or in the air, no damage (WeaponProj.server). against 26 m/s² and 0.85 s a shot, a chain aimed down
@@ -440,7 +450,8 @@ local W: { [string]: Weapon } = {
 	banana = {
 		id = "banana", name = "Peel Shooter", slot = "primary", kind = "proj", proj = "peel", color = rgb(0xffe135),
 		desc = "hard bananas that bonk and make them slip. misses stay on the floor as peels for 12 s.",
-		auto = true, cd = 0.3, speed = 42 * S, grav = 18, r = 0.25 * S, dmg = 14, kb = 9 * S, bounce = 0.35, range = 200 * S,
+		-- (26 Nov 2026, flying players) 42 -> 55 m/s, a 0.45 m body sphere
+		auto = true, cd = 0.3, speed = 55 * S, grav = 18, r = 0.25 * S, hitR = 0.45 * S, dmg = 14, kb = 9 * S, bounce = 0.35, range = 200 * S,
 		snd = "banana_fire",
 		recoilVM = { back = 0.6, up = 2, roll = 0.8, side = 0.15, punch = 0.008 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.4) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
@@ -449,7 +460,8 @@ local W: { [string]: Weapon } = {
 	tennis = {
 		id = "tennis", name = "Tennis Ball Launcher", slot = "primary", kind = "proj", proj = "ball", color = rgb(0xd4ff3a),
 		desc = "fuzzy balls that bounce up to 5 times and hit harder every bounce. bank it round a corner.",
-		cd = 0.5, speed = 40 * S, grav = 14, r = 0.1 * S, bounce = 0.8, dmg = 20, kb = 7 * S, kbUp = 2.5 * S, life = 4.5,
+		-- (26 Nov 2026, flying players) 40 -> 55 m/s, a 0.3 m body sphere (the wall one stays the ball's own 0.1 m)
+		cd = 0.5, speed = 55 * S, grav = 14, r = 0.1 * S, hitR = 0.3 * S, bounce = 0.8, dmg = 20, kb = 7 * S, kbUp = 2.5 * S, life = 4.5,
 		bounces = 5, bonus = 0.3, minBounce = 3, range = 200 * S,
 		snd = "tennis_fire",
 		recoilVM = { back = 0.9, up = 3, roll = 0.8, side = 0.15, punch = 0.012 },
@@ -463,7 +475,7 @@ local W: { [string]: Weapon } = {
 		-- (owner, 20 Nov 2026: "buff snowball") 9 -> 11 a hit (+22%: 44 before the freeze, was 36) and a faster, flatter
 		-- throw (46 -> 54 m/s, gravity 10 -> 7: at 20 m it lands 0.06 s sooner and drops half as much). still 4 to freeze
 		-- and one to shatter
-		cd = 0.3, speed = 54 * S, grav = 7, r = 0.13 * S, dmg = 11, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
+		cd = 0.3, speed = 54 * S, grav = 7, r = 0.13 * S, hitR = 0.25 * S, dmg = 11, kb = 3 * S, kbUp = 1.5 * S, life = 3, range = 140 * S,
 		freezeAt = 4, freeze = 2.4, frostDecay = 3, snd = "snow_throw",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0.5, side = 0.1, punch = 0.004 },
 		vm = { p = Vector3.new(0.18, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
@@ -487,7 +499,9 @@ local W: { [string]: Weapon } = {
 	bowling = {
 		id = "bowling", name = "Bowling Ball Launcher", slot = "primary", kind = "proj", proj = "bowl", color = rgb(0x6b7bff),
 		desc = "rolls a bowling ball along the floor. it knocks over everyone in its way and keeps rolling.",
-		cd = 1.3, speed = 30 * S, grav = 30, r = 0.45 * S, bounce = 0.25, dmg = 45, kb = 40 * S, kbUp = 10 * S, life = 6, range = 200 * S,
+		-- (26 Nov 2026, flying players) 30 -> 42 m/s, a flatter throw (gravity 30 -> 20) and a 0.8 m body sphere: it bowls
+		-- through people a little off the floor too
+		cd = 1.3, speed = 42 * S, grav = 20, r = 0.45 * S, hitR = 0.8 * S, bounce = 0.25, dmg = 45, kb = 40 * S, kbUp = 10 * S, life = 6, range = 200 * S,
 		snd = "gun_bowling", hitSnd = "bowl_hit",
 		recoilVM = { back = 2.2, up = 7, roll = 1, side = 0.2, punch = 0.04 },
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.65 },
@@ -531,7 +545,8 @@ local W: { [string]: Weapon } = {
 	cart = {
 		id = "cart", name = "Shopping Cart Cannon", slot = "primary", kind = "cart", color = rgb(0x9b5cff),
 		desc = "fires a shopping cart that runs people over. it stays as cover, or hop in (f) and ride it.",
-		cd = 1.6, speed = 22 * S, up = 3.5 * S, speedMul = 0.93, range = 100 * S,
+		-- (26 Nov 2026, flying players) 22 -> 32 m/s; its body box is a little bigger too (CartServer CART.pad 0.35 m)
+		cd = 1.6, speed = 32 * S, up = 3.5 * S, speedMul = 0.93, range = 100 * S,
 		snd = "gun_cart",
 		recoilVM = { back = 2.6, up = 6, roll = 1, side = 0.2, punch = 0.04 },
 		vm = { p = Vector3.new(0.22, -0.24, -0.42) * S, r = Vector3.new(0, 0.03, 0), s = 0.6 },
@@ -575,11 +590,13 @@ local W: { [string]: Weapon } = {
 	-- point and click: left click pauses them, right click rewinds them 2 s (WeaponTricks.server)
 	remote = {
 		id = "remote", name = "TV Remote", slot = "secondary", kind = "remote", color = rgb(0xff5a8a),
-		desc = "point and click. left click pauses them for a second. right click rewinds them to where they were 2 seconds ago.",
+		desc = "point and click. left click pauses them for a moment. right click rewinds them to where they were 2 seconds ago.",
 		-- (owner, 21 Nov 2026: "tv remote needs nerf too you can spam it too often") pause 3.5 -> 7 s, rewind 6 -> 10 s, and
 		-- either one locks the other for `lock` s; whoever was paused can't be paused again (by anyone) for `immune` s after
 		-- it ends (WeaponTricks). at most 2 pauses and 1 rewind in 10 s (was 3 and 2), never two pauses back to back
-		range = 45 * S, cone = 0.09, pause = { dur = 1.2, cd = 7, immune = 3 }, rewind = { back = 2, cd = 10 }, lock = 1.5, speedMul = 1.05,
+		-- (owner, 25 Nov 2026: "tv remote is still too strong btw") the pause 1.2 -> 0.8 s, once every 8 s (was 7); unusable
+		-- for `startLock` s after every round goes live (the owner: "unasable first 3 secondes of match", WeaponTricks)
+		range = 45 * S, cone = 0.09, pause = { dur = 0.8, cd = 8, immune = 3 }, rewind = { back = 2, cd = 10 }, lock = 1.5, startLock = 3, speedMul = 1.05,
 		snd = "remote_click",
 		recoilVM = { back = 0.3, up = 1.5, roll = 0, side = 0, punch = 0.004 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.36) * S, r = Vector3.new(0, 0, 0), s = 1 },
@@ -642,6 +659,18 @@ local W: { [string]: Weapon } = {
 			muzzle = Vector3.new(0, 0.012, -0.172), sight = Vector3.new(0, 0.066, 0.093), grip = Vector3.new(0, -0.068, 0.06),
 		},
 	},
+	-- (owner, 25 Nov 2026: "if you run water gun and taser together they pair to create a duo set like the duel pistols?
+	-- rn theyre meant to work together but cant because theyre the same categories") the Water Pistol in the left hand,
+	-- the Taser in the right: left click soaks, right click zaps. a soaked target is stunned x1.5 and the zap jumps
+	-- through everyone wet (the Taser's own rules). every number is theirs; this row only pairs them
+	soakshock = {
+		id = "soakshock", name = "Soak & Shock", slot = "secondary", kind = "duo", hands = 2, color = rgb(0x3fb8ff),
+		desc = "the water pistol in your left hand, the taser in your right. left click soaks them, right click zaps: soaked, they're stunned longer and the zap jumps through everyone wet.",
+		duo = { left = "water", right = "taser" }, model = "taser", twin = "water", speedMul = 1.05,
+		snd = "taser_fire",
+		recoilVM = { back = 0.8, up = 2.5, roll = 1, side = 0.2, punch = 0.01 },
+		vm = { p = Vector3.new(0.165, -0.14, -0.31) * S, r = Vector3.new(0.03, 0.12, -0.1), s = 0.95 },
+	},
 	katana = {
 		id = "katana", name = "Katana", slot = "melee", kind = "melee", color = rgb(0xe8e8f0),
 		desc = "grows longer with every kill. hold right click to parry every bullet from the front; a timed swing sends them back twice as hard; parry enough and the blade sends a slash wave.",
@@ -680,7 +709,9 @@ local W: { [string]: Weapon } = {
 		dash = { dist = 12 * S, time = 0.28, cd = 6, charges = 2, recover = 0.35, dmg = 25, kb = 18 * S, kbUp = 4 * S, width = 1.4 * S },
 		-- (the owner, 18 Nov 2026: "when you scythe it should latch on and send you back! and send them back a bit too")
 		latch = { t = 0.15, back = 8.5 * S, backUp = 5 * S, push = 6 * S, pushUp = 3 * S, finisher = 1.5, chain = 4, dummy = 3 },
-		form = { to = "scythe_rifle", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
+		-- (owner, 25 Nov 2026: "can you make the scythe switch a little faster?") 0.45 -> 0.3 s each way, the first shot after
+		-- 0.1 s more (was 0.15)
+		form = { to = "scythe_rifle", time = 0.3, fireDelay = 0.1, swingLock = 0.6, shotLock = 0.35 },
 		draw = "draw_scythe", hitSnd = "scythe_hit", swingSnd = "scythe_swing",
 		recoilVM = { back = 0.6, up = 2, roll = 1.2, side = 0.3, punch = 0.012 },
 		vm = { p = Vector3.new(0.22, -0.25, -0.44) * S, r = Vector3.new(0.3, 0.15, -0.2), s = 0.6 },
@@ -700,7 +731,7 @@ local W: { [string]: Weapon } = {
 		kb = 30 * S, kbUp = 8 * S, recoil = 10 * S, kick = 0.06, range = 400 * S,
 		ads = { zoom = 3, spread = 0, scope = true }, tracer = rgb(0x3ee6c8), thick = 0.07 * S,
 		fx = { big = true, shake = 0.4 }, snd = "gun_scythe",
-		form = { to = "scythe", time = 0.45, fireDelay = 0.15, swingLock = 0.6, shotLock = 0.35 },
+		form = { to = "scythe", time = 0.3, fireDelay = 0.1, swingLock = 0.6, shotLock = 0.35 },
 		draw = "form_scythe",
 		recoilVM = { back = 2.5, up = 9, roll = 1.6, side = 0.2, punch = 0.06 },
 		vm = { p = Vector3.new(0.2, -0.22, -0.4) * S, r = Vector3.new(0, 0.03, 0), s = 0.5 },

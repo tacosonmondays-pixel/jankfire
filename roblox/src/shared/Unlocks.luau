@@ -45,7 +45,7 @@ Unlocks.LEVEL = {
 	tennis = 13,
 	bread = 14, nvg = 14, scythe = 14, -- (the Scythe: the owner asked for it, 18 Nov, and main for a mid-high level)
 	banana = 15, taser = 15,
-	water = 16, radar = 16,
+	water = 16, radar = 16, soakshock = 16, -- (Soak & Shock: with the Water Pistol, the later of its two)
 	cig = 17,
 	nailgun = 18, laptop = 18,
 	blower = 19,

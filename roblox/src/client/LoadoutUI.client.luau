@@ -697,7 +697,7 @@ local function statsFor(id: string): { Roster.Stat }
 	local e = Roster.byId[id]
 	local w = Weapons.list[id]
 	if not e then return {} end
-	if not w or w.slot == "none" or not e.live then return e.stats or {} end
+	if not w or w.slot == "none" or not e.live or w.duo then return e.stats or {} end -- (a duo: Roster's, both halves' numbers)
 	-- (a weapon may have no damage, range or rate of its own: the Shopping Cart Cannon runs people over with its cart,
 	-- the TV Remote pauses them. every number is read with tonumber and printed with News.fmt: "n/a" and an empty bar,
 	-- never a throw. 18 Nov: a nil damage here kept the owner's loadout from opening at all)

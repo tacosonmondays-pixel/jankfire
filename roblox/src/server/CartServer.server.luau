@@ -31,7 +31,8 @@ type Fighter = Rules.Fighter
 local CART = {
 	L = 0.95 * S, W = 0.6 * S, H = 1.0 * S, grav = 26 * S, fric = 6 * S, wallBounce = 0.35, restSp = 0.5 * S, restT = 0.25,
 	dropBoost = 0.35, dropMin = 6 * S, step = 0.6 * S, life = 25, perPlayer = 3, perServer = 6,
-	minSp = 4 * S, maxDmg = 80, dmgPerSp = 3, kbPerSp = 1.3, kbUp = 7 * S, pad = 0.12 * S, hitCd = 0.7, slow = 0.75,
+	-- (26 Nov 2026, flying players) pad 0.12 -> 0.35 m: a cart grazing someone in the air still runs them over
+	minSp = 4 * S, maxDmg = 80, dmgPerSp = 3, kbPerSp = 1.3, kbUp = 7 * S, pad = 0.35 * S, hitCd = 0.7, slow = 0.75,
 	ownerSafe = 0.4, ownerSafeFly = 0.8, reach = 1.7 * S, upTol = 1.3 * S, maxRideIn = 14 * S, maxSp = 26 * S, leave = 3.5 * S,
 }
 
@@ -226,7 +227,16 @@ local function plough(c: Cart)
 		local dmg = math.min(CART.maxDmg, CART.dmgPerSp * sp / S)
 		-- (your own cart on you, or one whose shooter has left: only the shove)
 		if t == by or not table.find(Fight.all, by) or not Fight.allow(by, t) then Fight.knock(t, kb, "cart")
-		else Fight.hurt(t, dmg, by, "cart", false, kb, ft + Vector3.new(0, 1 * S, 0)) end
+		else
+			Fight.hurt(t, dmg, by, "cart", false, kb, ft + Vector3.new(0, 1 * S, 0))
+			-- (26 Nov 2026) run over while hanging on a grapple rope: the rope goes (as WeaponProj's direct hits)
+			if t.kind == "player" then
+				local rp = t.ref :: Player
+				local rope = workspace.Terrain:FindFirstChild("Rope_" .. rp.UserId)
+				local gr = Remotes:FindFirstChild("Grapple")
+				if rope then rope:Destroy(); if gr and gr:IsA("RemoteEvent") then gr:FireClient(rp, "cut", "shot") end end
+			end
+		end
 		FxR:FireAllClients({ k = "carthit", id = c.id, p = ft + Vector3.new(0, 1 * S, 0) })
 		if not c.rider then c.v = Vector3.new(c.v.X * CART.slow, c.v.Y, c.v.Z * CART.slow) end
 	end

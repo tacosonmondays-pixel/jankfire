@@ -186,6 +186,23 @@ TVR.OnServerEvent:Connect(function(p: Player, op: unknown, look: unknown)
 	Rules.tagged(t, f, "remote", n) -- (a fall after it is theirs)
 end)
 
+-- (owner, 21 Nov 2026: "make the remote unasable first 3 secondes of match") every round going live: both buttons wait
+-- startLock s (the round respawns everyone, so every round). the HUD's circles fill over the wait (TVPauseT / TVRewindT)
+local Matches = require(script.Parent:WaitForChild("Matches")) :: any
+Matches.onLive(function(_m: any, ps: { Player })
+	local lock = (W.remote :: any).startLock or 0
+	if lock <= 0 then return end
+	local n = now()
+	local sn = workspace:GetServerTimeNow()
+	for _, pl in ps do
+		local f = Fight.byPlayer[pl]
+		if not f then continue end
+		for _, k in { "tvpause", "tvrewind" } do f.gate[k] = math.max(f.gate[k] or -math.huge, n + lock) end
+		pl:SetAttribute("TVPauseT", sn + math.max(0, f.gate.tvpause - n))
+		pl:SetAttribute("TVRewindT", sn + math.max(0, f.gate.tvrewind - n))
+	end
+end)
+
 -- ------------------------------------------------------------------ the Scales of Justice's pillar
 local mapParams = RaycastParams.new()
 mapParams.FilterType = Enum.RaycastFilterType.Include

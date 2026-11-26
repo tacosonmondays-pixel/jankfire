@@ -175,7 +175,7 @@ e("nailgun", "TRACK", { { "PIN", "6 IN A ROW IN 1.2 S" } }, { kills = 3 })
 e("water", "TRACK", { { "SOAK", "SLOWER AND SLIPPERY" } }, { hits = 6 })
 e("taser", "TRACK", { { "STUN", "1 S" }, { "CHAIN", "THROUGH THE SOAKED" } }, { hits = 3 })
 e("snowball", "TRACK", { { "FREEZE", "4 HITS" }, { "SHATTER", "ONE MORE" } }, { kills = 2 })
-e("remote", "TRACK", { { "PAUSE", "@fire, 1.2 S" }, { "REWIND", "@aim, BACK 2 S" } }, { hits = 4 })
+e("remote", "TRACK", { { "PAUSE", "@fire, 0.8 S" }, { "REWIND", "@aim, BACK 2 S" } }, { hits = 4 })
 -- CLOSE
 e("shotgun", "LAUNCH", { { "10 PELLETS", "@fire" }, { "FLOOR LAUNCH", "SHOOT THE FLOOR" } }, { kills = 3, reach = true })
 e("autoshot", "CLOSE", { { "HOLD TO FIRE", "@fire" } }, { kills = 4 })

@@ -1504,7 +1504,7 @@ end
 -- ---------------------------------------------------------------- the speed trap (web public/js/secondaries.js)
 -- hold G: the radar gun comes up in your hand and reads whoever is under your crosshair every 0.15 s (the server
 -- measures their speed from its own record of where they've been). the numbers float over their heads; over 100
--- km/h they get 3 s to slow down, over 200 the cage drops on them
+-- km/h they get 3 s to slow down, over Items.SPEED.jail (140) the cage drops on them
 local radarOn = false
 local radarNext = 0
 local lastReading = ""

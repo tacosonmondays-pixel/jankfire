@@ -99,8 +99,11 @@ local SERVER_TAG = if game.JobId ~= "" then string.sub(game.JobId, 1, 8) else ("
 
 -- other modules follow the matches (Stats.luau): one starting (its teams of players), a round won, the end. each hook
 -- runs in its own thread, so a slip in one can't stop a match
-local hooks: { [string]: { (...any) -> () } } = { start = {}, round = {}, finish = {} }
+local hooks: { [string]: { (...any) -> () } } = { start = {}, round = {}, finish = {}, live = {} }
 function Matches.onStart(fn: (Match) -> ()) table.insert(hooks.start, fn) end
+-- (26 Nov 2026, weapons-port) every round going live, its players: the TV Remote's start lock (WeaponTricks), a round's
+-- gadget charges (Utility)
+function Matches.onLive(fn: (Match, { Player }) -> ()) table.insert(hooks.live, fn) end
 function Matches.onRound(fn: (Match, number) -> ()) table.insert(hooks.round, fn) end -- (the match, the team that took it)
 function Matches.onEnd(fn: (Match, number?) -> ()) table.insert(hooks.finish, fn) end -- (the match, the winning team)
 local function fire(list: { (...any) -> () }, ...: any) for _, fn in list do task.spawn(fn, ...) end end
@@ -748,6 +751,9 @@ goLive = function(m: Match, tok: number)
 	-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
 	m.roundEnds = os.clock() + ((script:GetAttribute("TestRoundTime") :: number?) or Matches.ROUND_TIME)
 	setHud(m)
+	local live: { Player } = {}
+	each(m, function(p) table.insert(live, p) end)
+	fire(hooks.live, m, live)
 	pushReady(m)
 	each(m, function(p) RoundR:FireClient(p, { start = true }) end)
 end

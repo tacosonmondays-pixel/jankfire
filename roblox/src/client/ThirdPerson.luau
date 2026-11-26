@@ -186,7 +186,7 @@ local KAT = {
 }
 TP.KAT, TP.KAT_REST = KAT, KAT_REST
 
-local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true, akimbo = true, bloodcross = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso, Lefty & Righty, the Blood Cross's finger-gun hand: 18 Nov)
+local ONE_HAND = { pistol = true, revolver = true, sawnoff = true, taser = true, cig = true, remote = true, slipper = true, cards = true, lasso = true, akimbo = true, bloodcross = true, soakshock = true } -- (Taser, Hot Sauce, TV Remote, Slipper, Card Deck, Lasso, Lefty & Righty, the Blood Cross's finger-gun hand: 18 Nov)
 -- a weapon held in another class's stance (its moves still its own class's: the Scythe swings as a melee weapon, held low
 -- with both hands like the LMG: 18 Nov 2026)
 local STANCE: { [string]: string } = { scythe = "heavy", akimbo = "akimbo" }
@@ -701,7 +701,7 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	-- (the hold session, 18 Nov 2026) Lefty & Righty: a second gun for the left hand, posed as the first one's mirror
 	-- across the chest's middle (stepRig); inside the first, so it hides and goes with it
 	if w and w.hands == 2 then
-		local m2 = WeaponModels.build(wid, r.k, if type(skin) == "string" then skin else nil)
+		local m2 = WeaponModels.build(w.twin or wid, r.k, if type(skin) == "string" and not w.twin then skin else nil) -- (26 Nov 2026: a duo's twin, Soak & Shock's Water Pistol)
 		if m2 and m2.PrimaryPart then
 			m2.Name = "TPGun2"
 			local root2 = m2.PrimaryPart

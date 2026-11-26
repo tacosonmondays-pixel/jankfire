@@ -738,6 +738,7 @@ local function ruleFor(id: string): Rule?
 	if w.kind == "bow" then return { mode = "draw", range = 70 * SM } end
 	if w.kind == "beam" then return { mode = "hold", range = w.range or 100 * SM, grace = 0.25 } end
 	if w.kind == "zap" then return { mode = "tap", range = (w.range or 9 * SM) * 0.95 } end
+	if w.kind == "duo" then return { mode = "hold", range = 26 * SM, grace = 0.17 } end -- (26 Nov 2026, Soak & Shock: the Water Pistol's stream; ZAP is the aim button)
 	return nil
 end
 local mapParams = RaycastParams.new()

@@ -67,7 +67,7 @@ Items.list = {
 	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = true,
 		desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see." },
 	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = true,
-		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
+		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 140: jail on the spot." },
 	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = true,
 		desc = "Open it at someone. Five pop-up ads cover their screen for 7 s. They close them one key at a time." },
 	-- (the Overdrive Rig, 19 Nov: G suits you up; server/Rig.luau runs it, weapons-port's. carry: dying doesn't refill it)
@@ -134,7 +134,9 @@ Items.NVG = { range = 34 * S, cone = 0.62, close = 2 * S, dur = { 0.6, 3.2 }, nv
 -- through the positions the server saw over the last window s. over limit km/h: a ticket (a charge): warn s to get
 -- back under it or jail; over jail km/h: jail at once. jailT s in a cage, then safe s before the next ticket (warnSafe
 -- after a warning). km/h are of metres: studs/s x 1.2. one ticket per shooter every gap s
-Items.SPEED = { range = 70 * S, cone = 0.1, scan = 0.15, window = 0.5, limit = 100, jail = 200, warn = 3, grace = 0.5, jailT = 3.5,
+-- (owner, 25 Nov 2026: "speedometer needs to jail you sooner than the current max, its actually hard to catch people
+-- going at the current max") jail 200 -> 140 km/h: a grapple reel tops out at 198, so 200 almost never fired
+Items.SPEED = { range = 70 * S, cone = 0.1, scan = 0.15, window = 0.5, limit = 100, jail = 140, warn = 3, grace = 0.5, jailT = 3.5,
 	safe = 12, warnSafe = 4, gap = 0.9, kmh = 3.6 / S, drop = 40 * S }
 -- the instant camera (web PHOTO :480, server/gear.js): the snap is free (a floor within drop under you, flat enough);
 -- printing costs the charge: a frame stands at in front of you (pulled to wall off a wall) on the floor, facing you, for

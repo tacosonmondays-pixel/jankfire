@@ -73,6 +73,7 @@ return {
 		cart = { Right = { pose = "grip", at = V(0, -0.145, 0.038), rot = V(-0.29671, 0, 0), size = 0.9 }, Left = { pose = "grip", at = V(0, -0.16, -0.29), rot = V(-0.13963, 0, 0), size = 0.9 }, shift = V(-0.06, 0.07, 0), scale = 1 },
 		lasso = { Right = { pose = "fist", at = V(0, 0.004, 0), rot = V(0, 0, 1.5708), size = 0.9 }, Left = { pose = "grip", at = V(-0.06, -0.3, 0.1), rot = V(-1.5708, 0, 0), size = 0.9, away = true }, shift = V(0.04, 0.14, 0), scale = 0.8, tilt = V(0.17453, 0.43633, 0) },
 		akimbo = { Right = { pose = "grip", at = V(0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, Left = { pose = "grip", at = V(-0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(-0.3, -0.42, 0.15) }, shift = V(-0.01, 0.06, 0), scale = 0.9, tilt = V(0, 0.06981, 0) },
+		soakshock = { Right = { pose = "grip", at = V(0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, Left = { pose = "grip", at = V(-0.002, -0.07, 0.034), rot = V(-0.29671, 0, 0), size = 0.95, elbow = V(-0.3, -0.42, 0.15) }, shift = V(-0.01, 0.06, 0), scale = 0.9, tilt = V(0, 0.06981, 0) },
 	},
 	katana = {
 		fixes = {

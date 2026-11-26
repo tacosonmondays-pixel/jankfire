@@ -526,7 +526,18 @@ RunService.PreSimulation:Connect(function(dt: number)
 	local dsh = Body.dash
 	local BodyA: any = Body -- (dashWas: the dash ran last frame)
 	if dsh and Body.dashing() then
-		st.vx, st.vz = dsh.v.X, dsh.v.Z
+		if dsh.add then
+			-- (26 Nov 2026, the owner: the "syctghe dash break[s] your momentum") on top of the run you had when it began, no
+			-- faster in all than the quicker of the two: from a standstill it's the dash as before, flying it bends your path
+			if BodyA.dashFor ~= dsh then BodyA.dashFor, BodyA.dashPre = dsh, Vector3.new(st.vx, 0, st.vz) end
+			local pre: Vector3 = BodyA.dashPre
+			local hv = pre + Vector3.new(dsh.v.X, 0, dsh.v.Z)
+			local capH = math.max(pre.Magnitude, Vector3.new(dsh.v.X, 0, dsh.v.Z).Magnitude)
+			if hv.Magnitude > capH then hv = hv.Unit * capH end
+			st.vx, st.vz = hv.X, hv.Z
+		else
+			st.vx, st.vz = dsh.v.X, dsh.v.Z
+		end
 		-- (19 Nov 2026: the dash follows your look, up or down too) its own climb or drop while it runs; a level one keeps you off the floor as before
 		st.vy = if math.abs(dsh.v.Y) > 1 then dsh.v.Y else math.max(st.vy, 0)
 		Body.kick()
@@ -536,7 +547,17 @@ RunService.PreSimulation:Connect(function(dt: number)
 		-- 12 studs/s at most, its run a sprint's at most (in the air nothing else would slow it)
 		local was: Vector3 = BodyA.dashWas
 		BodyA.dashWas = nil
-		if math.abs(was.Y) > 1 then
+		local pre: Vector3? = if BodyA.dashFor and BodyA.dashFor.add then BodyA.dashPre else nil
+		BodyA.dashFor, BodyA.dashPre = nil, nil
+		if pre then
+			-- (26 Nov 2026) the momentum you came in with is yours again: a level dash carries on as it went (no faster than the
+			-- quicker of your run and its burst), one that went up or down hands back just your own run
+			local hv = if math.abs(was.Y) > 1 then pre else pre + Vector3.new(was.X, 0, was.Z)
+			local capH = if math.abs(was.Y) > 1 then pre.Magnitude else math.max(pre.Magnitude, Vector3.new(was.X, 0, was.Z).Magnitude)
+			if hv.Magnitude > capH and hv.Magnitude > 1e-3 then hv = hv.Unit * capH end
+			st.vx, st.vz = hv.X, hv.Z
+			if math.abs(was.Y) > 1 and st.vy > 12 then st.vy = 12 end
+		elseif math.abs(was.Y) > 1 then
 			if st.vy > 12 then st.vy = 12 end
 			local cap = Config.gSpeed * Config.sprintMul
 			local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)

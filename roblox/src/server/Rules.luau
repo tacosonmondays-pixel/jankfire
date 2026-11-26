@@ -87,6 +87,14 @@ function Rules.arm(f: Fighter, now: number)
 		f.gate[id] = -math.huge
 		-- (Lefty & Righty: the right gun's own mag and rate, "<id>@2")
 		if w and w.hands == 2 and w.mag then f.ammo[id .. "@2"] = { mag = w.mag, reloadUntil = 0 }; f.gate[id .. "@2"] = -math.huge end
+		-- (26 Nov 2026: a duo's two halves, Soak & Shock: each its own mag and clock)
+		if w and w.duo then
+			for _, pid in { w.duo.left, w.duo.right } do
+				local pw = W[pid]
+				if pw and pw.mag then f.ammo[pid] = { mag = pw.mag, reloadUntil = 0 } end
+				f.gate[pid] = -math.huge
+			end
+		end
 		-- (a weapon's second form, the Scythe's rifle: its own full mag, kept through switches this life)
 		local alt = w and w.form and W[w.form.to]
 		if alt then
@@ -116,7 +124,19 @@ local function inLoadout(f: Fighter, w: any): boolean
 	local lo = Rules.loadoutOf(f)
 	if table.find(lo, w) ~= nil then return true end
 	local row = W[w]
-	return row ~= nil and row.formOf ~= nil and table.find(lo, row.formOf) ~= nil
+	if row ~= nil and row.formOf ~= nil and table.find(lo, row.formOf) ~= nil then return true end
+	-- (26 Nov 2026) one half of a duo you carry (Soak & Shock: the Water Pistol, the Taser)
+	for _, id in lo do
+		local d = W[id] and W[id].duo
+		if d and (d.left == w or d.right == w) then return true end
+	end
+	return false
+end
+-- (26 Nov 2026) is wid in your hands: the weapon you hold, or one half of the duo you hold
+function Rules.holds(f: Fighter, wid: any): boolean
+	if f.held == wid then return true end
+	local d = W[f.held] and W[f.held].duo
+	return d ~= nil and (d.left == wid or d.right == wid)
 end
 -- mid-switch between a weapon's two forms (Rules.equip): extra = the gun's first-shot delay on top
 local function transforming(f: Fighter, now: number, extra: number?): boolean
@@ -195,7 +215,7 @@ end
 function Rules.zap(f: Fighter, wid: any, now: number): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "zap" then return "not a taser" end
 	if not f.alive then return "dead" end
-	if f.held ~= wid then return "not held" end
+	if not Rules.holds(f, wid) then return "not held" end
 	if now < f.staggerUntil then return "staggered" end
 	if not Rules.gate(f, wid, now, W[wid].cd or 1) then return "too fast" end
 	return nil
@@ -224,7 +244,7 @@ function Rules.reload(f: Fighter, wid: any, now: number, hand: any?): string?
 	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	if not f.alive then return "dead" end
 	if f.noReload then return "no reloads" end -- (one in the chamber: kills are the only bullets)
-	if f.held ~= wid then return "not held" end
+	if not Rules.holds(f, wid) then return "not held" end
 	if transforming(f, now) then return "switching" end
 	local a = ammoOf(f, handKey(W[wid], wid, hand), now)
 	if not a then return "no ammo" end
@@ -244,7 +264,7 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if rigged(f, now) then return "rigged", 1 end
 	local w = W[wid]
 	if not f.alive then return "dead", 1 end
-	if f.held ~= wid then return "not held", 1 end
+	if not Rules.holds(f, wid) then return "not held", 1 end
 	if now < f.staggerUntil then return "staggered", 1 end
 	if transforming(f, now, if w.form then w.form.fireDelay else 0) then return "switching", 1 end
 	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head", 1 end

@@ -44,7 +44,9 @@ end
 -- (weapons batch B) stunned by a Taser until this server time: no moving, jumping, firing or swinging (WeaponStates)
 Body.stunUntil = 0
 -- (the Scythe) the server's dash: this velocity, flat, until this server time (WeaponStates sets it from DashV / DashUntil)
-Body.dash = nil :: { v: Vector3, untilT: number }?
+-- add (26 Nov 2026, the owner: the "syctghe dash break[s] your momentum"): it rides on top of the speed you had, and you
+-- keep that speed when it ends (Move). the boxing ring's step doesn't (MiniBoxUI)
+Body.dash = nil :: { v: Vector3, untilT: number, add: boolean? }?
 -- (batch E) riding a Shopping Cart: the cart's velocity, flat (CartRide.client drives it; Move runs you along it)
 Body.ride = nil :: { v: Vector3 }?
 -- (batch E) on someone's Lasso: the velocity that takes you where the server says (LassoClient), nothing of your own

@@ -365,6 +365,14 @@ end
 -- build a weapon. k = studs per web metre (viewmodel: 3 x its VM scale, third person: 3 x 1.5). skin = a weapon skin's
 -- id (GunSkins: its model in ReplicatedStorage.JankfireSkins, same frame and moving pieces as the gun): drawn instead
 function WeaponModels.build(id: string, k: number, skin: string?): Model?
+	-- (26 Nov 2026) a duo wears another weapon's model (Soak & Shock: the Taser's in the right hand; the left hand's is
+	-- its `twin`, Viewmodel / ThirdPerson)
+	local alias = ((Weapons.list :: any)[id] or {}).model
+	if alias and alias ~= id then
+		local am = WeaponModels.build(alias, k, skin)
+		if am then am.Name = id end
+		return am
+	end
 	-- (the knife's spoon look in a classic mode: its own model, w_spoon / BUILD.spoon, not a catalog skin)
 	local look = if id == "knife" and skin == "spoon" then "spoon" else id
 	if look == "spoon" then skin = nil end

@@ -906,7 +906,7 @@ function VM.set(wid: string, kat: number)
 	if wid == "bow" then bow = bowSetup(m, root) end
 	if wid == "lasso" then lasso = lassoSetup(m) end
 	if w.hands == 2 then -- (Lefty & Righty: the left gun, a second copy with its own moving pieces and your wrap)
-		local m2 = WeaponModels.build(wid, k, VM.skin)
+		local m2 = WeaponModels.build(w.twin or wid, k, if w.twin then nil else VM.skin) -- (26 Nov 2026: a duo's left hand holds its twin, Soak & Shock's Water Pistol)
 		if m2 and m2.PrimaryPart then
 			local r2 = m2.PrimaryPart
 			r2.Anchored = true
