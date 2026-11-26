@@ -72,9 +72,7 @@ function HC.build(K, parent, name, site, live)
 		end
 		for _, z in { -45, -30, -15, 0, 15, 30 } do box(F0, "Shell", "BayFin", s * 27, s * 38, 0, MY, z - 0.4, z + 0.4, P.wall2) end
 	end
-	-- (the classic boards say nothing at rest: one sign says how the pads work, hung from the beam at z 35 over the way in)
-	K.wordSign(K.facing(0, 35.8, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 18, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
-	for _, x in { -5, 5 } do cyl(F0, "Scenery", "SignRod", x, 19.25, T - 2.6, 35.6, 0.35, P.steel) end
+	-- (26 Nov, the owner: no one-line signs. the STEP ON A SIDE sign and its rods are gone)
 
 	-- ============================================================== THE SPAWN END: the lounge
 	cyl(F0, "Scenery", "SpawnRing", 0, -0.02, 0.06, 58, 12.6, P.creamHi)

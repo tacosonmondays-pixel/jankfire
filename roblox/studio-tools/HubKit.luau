@@ -330,7 +330,8 @@ function K.wordSign(F, folder, name, w, h, x, y, z, title, o)
 	end
 	local p = K.box(F, folder, name, x - w / 2, x + w / 2, y - h / 2, y + h / 2, z - 0.25, z, K.R.screen, nil, { solid = false })
 	K.text(p, Enum.NormalId.Front, { { title, o.textHex or "f2f0ea", o.share or 0.6 } }, { pps = o.pps or 46, bright = 2.2, bg = o.bg, bgt = if o.bg then 0 else nil }) -- (o.bg: a lit face, never black)
-	K.box(F, folder, name .. "Bar", x - w / 2 + 0.5, x + w / 2 - 0.5, y - h / 2 + 0.16, y - h / 2 + 0.34, z - 0.3, z - 0.24, o.accent or S.accent, MAT.Neon, { ghost = true, noshadow = true })
+	-- (26 Nov, the owner: no decorative indicator lights. the accent bar under every sign is gone; o.bar = true brings it back)
+	if o.bar then K.box(F, folder, name .. "Bar", x - w / 2 + 0.5, x + w / 2 - 0.5, y - h / 2 + 0.16, y - h / 2 + 0.34, z - 0.3, z - 0.24, o.accent or S.accent, MAT.Neon, { ghost = true, noshadow = true }) end
 	return p
 end
 -- (rivals) a deep framed opening, in place of K.thinFrame (the same F, xa, xb, h, z: z the wall's face, the room on +z): a
@@ -591,7 +592,6 @@ function K.bar(F, len)
 	len = len or 12
 	K.box(F, "Shell", "BarCounter", -len / 2, len / 2, 0, 3.8, -0.9, 0.9, K.P.pier)
 	K.box(F, "Scenery", "BarTop", -len / 2 - 0.4, len / 2 + 0.4, 3.8, 4.15, -1.25, 1.1, K.P.creamHi)
-	K.box(F, "Scenery", "BarLine", -len / 2 + 0.4, len / 2 - 0.4, 3.5, 3.62, -0.98, -0.9, K.P.amber, MAT.Neon, { ghost = true })
 	for i = -2, 2 do
 		local x = i * len / 5.5
 		K.cyl(F, "Scenery", "StoolFoot", x, 0, 0.3, -2.6, 1.2, K.P.steel)
@@ -854,7 +854,7 @@ function K.travelTerminal(F)
 	K.box(F, "Shell", "TravelPillar", -0.9, 0.9, 0, 5.6, -0.7, 0.7, K.P.pier2)
 	local sc = K.box(F, "Scenery", "TravelScreen", -0.75, 0.75, 3.2, 5.2, -0.78, -0.7, K.P.screen)
 	K.text(sc, Enum.NormalId.Front, { { "HUBS", K.P.amber, 0.4 }, { "TRAVEL", K.P.pale, 0.28 } })
-	K.light(K.box(F, "Scenery", "TravelLight", -0.9, 0.9, 5.6, 5.8, -0.7, 0.7, K.P.amber, MAT.Neon, { ghost = true }), 8, 0.5, K.P.amber)
+	K.box(F, "Scenery", "TravelCap", -1.0, 1.0, 5.6, 5.9, -0.8, 0.8, K.P.cream) -- (26 Nov: a plain cap, not a lit indicator)
 	local spot = K.marker(F, "TravelSpot", "TravelSpot", 0, 0, -1.4, 0, nil, nil, { size = Vector3.new(1, 0.2, 1) })
 	local pr = Instance.new("ProximityPrompt")
 	pr.Name = "TravelPrompt"; pr.ActionText = "Travel"; pr.ObjectText = "Hubs"; pr.HoldDuration = 0; pr.MaxActivationDistance = 10
@@ -1445,6 +1445,66 @@ function K.gun(F, src, wname, len, x, y, z, yaw, name, k)
 	return m
 end
 
+-- (26 Nov, the owner: "make sure props dont clip into walls") push a placed model straight out of a face so nothing of
+-- it is behind it: Fw's local z = face is the face (Fw looks out of it, -Z), the model's box ends at least 0.05 in front;
+-- o.floorY: lift it so its bottom is at least there (world, in Fw's up)
+function K.offFace(m, Fw, face, o)
+	if not m then return 0 end
+	o = o or {}
+	local W = S.site * Fw
+	local cf, sz = m:GetBoundingBox()
+	local function half(axis) return math.abs(cf.RightVector:Dot(axis)) * sz.X / 2 + math.abs(cf.UpVector:Dot(axis)) * sz.Y / 2 + math.abs(cf.LookVector:Dot(axis)) * sz.Z / 2 end
+	local lp = W:PointToObjectSpace(cf.Position)
+	local back = lp.Z + half(W.LookVector)
+	local moved = 0
+	if back > face - 0.05 then moved = back - (face - 0.05); m:PivotTo(m:GetPivot() + W.LookVector * moved) end
+	if o.floorY then
+		local bottom = lp.Y - half(W.UpVector)
+		if bottom < o.floorY then m:PivotTo(m:GetPivot() + W.UpVector * (o.floorY - bottom)); moved += o.floorY - bottom end
+	end
+	return moved
+end
+
+-- (26 Nov) HubSeat markers on a kit seat model (a sofa, an armchair): n seats spread along its long side, each on its
+-- cushion (a ray down onto the model), facing front (a world direction, the way a sitter looks)
+function K.seatsOn(m, front, n)
+	if not m then return 0 end
+	local cf, sz = m:GetBoundingBox()
+	local function half(axis) return math.abs(cf.RightVector:Dot(axis)) * sz.X / 2 + math.abs(cf.UpVector:Dot(axis)) * sz.Y / 2 + math.abs(cf.LookVector:Dot(axis)) * sz.Z / 2 end
+	local hy = half(Vector3.yAxis)
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { m }
+	local cq = {}
+	for _, d in m:GetDescendants() do if d:IsA("BasePart") then cq[d] = d.CanQuery; d.CanQuery = true end end
+	-- the cushions seen from a front: n points along the long side, a little toward the front; nil if any misses
+	local function try(fr)
+		fr = Vector3.new(fr.X, 0, fr.Z); if fr.Magnitude < 0.1 then return nil end; fr = fr.Unit
+		local side = Vector3.yAxis:Cross(fr).Unit
+		local hl, hd = half(side), half(fr)
+		local hits = {}
+		for i = 1, n do
+			local o = cf.Position + side * (-hl + (2 * hl) * (i - 0.5) / n) + fr * (hd * 0.3) + Vector3.yAxis * (hy + 1)
+			local r = workspace:Raycast(o, Vector3.new(0, -(2 * hy + 2), 0), rp)
+			if not r or r.Position.Y > cf.Position.Y + hy * 0.4 or r.Position.Y < cf.Position.Y - hy + 0.6 then return nil end
+			table.insert(hits, r.Position)
+		end
+		return hits, fr
+	end
+	local pv = m:GetPivot()
+	local hits, fr
+	for _, c in (if front then { front } else { -pv.LookVector, pv.LookVector, -pv.RightVector, pv.RightVector }) do
+		hits, fr = try(c)
+		if hits then break end
+	end
+	for d, v in cq do d.CanQuery = v end
+	if not hits then return 0 end
+	local yaw = math.deg(math.atan2(-fr.X, -fr.Z))
+	for _, at in hits do
+		local mk = K.marker(CFrame.new(), "Scenery", "HubSeat", 0, 0, 0, 0, nil, { "HubSeat" }, { size = Vector3.new(1.8, 0.2, 1.8) })
+		mk.CFrame = CFrame.new(at + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, math.rad(yaw), 0)
+	end
+	return #hits
+end
+
 -- ------------------------------------------------------------------------------------------------ holograms
 -- a hologram drum (HubHolo draws it on each client): kind "loadout" (your loadout) or "bundle" (the shop's bundle
 -- Slot, or the VIP pack's with Offer "vip"); its middle at (x, y, z) in F, r across, h high, Base = studs from its
@@ -1519,7 +1579,6 @@ end
 function K.shop(F, len)
 	K.box(F, "Shell", "Counter", -len / 2, len / 2, 0, 3.4, -1.0, 1.0, K.P.wood, MAT.Wood)
 	K.box(F, "Scenery", "CounterTop", -len / 2 - 0.2, len / 2 + 0.2, 3.4, 3.7, -1.25, 1.1, K.P.creamHi)
-	K.box(F, "Scenery", "CounterLine", -len / 2 + 0.3, len / 2 - 0.3, 3.1, 3.2, -1.06, -1.0, K.P.amber, MAT.Neon, { ghost = true })
 	K.box(F, "Shell", "ShopShelves", -len / 2, len / 2, 0, 9, 3.8, 4.8, K.P.wall2)
 	for _, y in { 2.4, 4.6, 6.8 } do
 		K.box(F, "Scenery", "Shelf", -len / 2 + 0.3, len / 2 - 0.3, y, y + 0.2, 3.0, 3.8, K.P.cream)
@@ -1882,7 +1941,7 @@ function K.armory(F, o)
 			if id then
 				local y = 3.9 + (r - 1) * 2.6
 				K.box(Fl, "Scenery", "Bracket", dc - 0.15, dc + 0.15, y - 0.6, y - 0.35, -1.0, -0.45, P.steel)
-				K.gun(Fl, "JankfireWeapons", "w_" .. id, 5, dc, y, -0.9, 0, "Rack_w_" .. id, nil)
+				K.offFace(K.gun(Fl, "JankfireWeapons", "w_" .. id, 5, dc, y, -0.9, 0, "Rack_w_" .. id, nil), Fl, -0.45) -- (its back clear of the board)
 			end
 		end
 	end
@@ -1890,7 +1949,7 @@ function K.armory(F, o)
 	for j, id in items do
 		local b = math.floor((j - 1) / 3)
 		local dc = -(d0 + 1 + (b + 0.5) * 9.2) + ((j - 1) % 3 - 1) * 2.4
-		if b < bays then K.gun(Fl, "JankfireItems", "x_" .. id, 1.25, dc, 2.9, -0.9, 0, "Rack_x_" .. id, nil) end
+		if b < bays then K.offFace(K.gun(Fl, "JankfireItems", "x_" .. id, 1.25, dc, 2.9, -0.9, 0, "Rack_x_" .. id, nil), Fl, -0.45, { floorY = 2.32 }) end -- (on the sill, off the board)
 	end
 	-- premium weapons turning in cases down the right wall
 	local Fr = F * CFrame.new(w - 0.3, 0, 0) * CFrame.Angles(0, math.pi / 2, 0) -- (the right wall's face, looking in; x runs along +d)
@@ -1924,6 +1983,7 @@ function K.armory(F, o)
 	local GK = require((game:GetService("ServerStorage"):WaitForChild("PolishBackup"):WaitForChild("GateKit") :: ModuleScript):Clone())
 	local gf = Instance.new("Folder"); gf.Name = "TrainingGate"; gf.Parent = K.folder("Scenery")
 	GK.build(S.site * Fg, gf, { door = "TrainingShutter", lasers = "TrainingLaserGate" })
+	for _, d in gf:GetDescendants() do if d.Name == "GateLightBar" then d:Destroy() end end -- (26 Nov: no decorative indicator light over the door)
 	K.kit(Fg, "hb_portal", "TrainingPortal", 0, 0, 0.6, 180, { scale = GK.FRAME.scale, color = GK.FRAME.color })
 	K.light(K.box(Fg, "Scenery", "GateLamp", -0.5, 0.5, GK.LAMP.up, GK.LAMP.up + 0.2, GK.LAMP.out - 0.5, GK.LAMP.out + 0.5, P.pier, nil, { ghost = true, tr = 1 }), GK.LAMP.range, GK.LAMP.bright, GK.LAMP.hex)
 	K.sign(F * CFrame.new(0, 0, -d1 + 0.3) * CFrame.Angles(0, math.pi, 0), "Scenery", "GateSign", 10, 1.6, 0, 12.4, 0, { { "TRAINING", P.pale, 0.75 } }, { pps = 46 }) -- (facing the hall)

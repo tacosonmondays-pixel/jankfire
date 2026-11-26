@@ -95,8 +95,7 @@ function HA.build(K, parent, name, site, live)
 		box(sideF(bc), "Shell", "CornerFin", -0.7, 0.7, 0, Y2 - 1, -rc - 0.5, -rc + 4.6, P.wallLt)
 		box(sideF(bc), "Scenery", "CornerFinFace", -0.9, 0.9, 0, Y2 - 1.6, -rc + 4.2, -rc + 4.7, P.pier)
 	end
-	-- (the classic boards say nothing at rest: one sign says how the pads work, under the north gallery's fascia, facing the spawn)
-	K.wordSign(sideF(0) * CFrame.new(0, 0, -(RV - 0.15)) * CFrame.Angles(0, math.pi, 0), "Scenery", "WaySign", 14, 1.7, 0, 10.2, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
+	-- (26 Nov, the owner: no one-line signs. the STEP ON A SIDE sign is gone)
 
 	-- ============================================================== THE MIDDLE: the island and the screen
 	cyl(F0, "Shell", "Island", 0, 0, 0.5, 0, 17, P.creamHi)
@@ -123,7 +122,7 @@ function HA.build(K, parent, name, site, live)
 	end
 	for _, b in { 225, 135 } do -- (the middle of the SW and SE sides: clear of the columns)
 		local a = math.rad(b)
-		K.jumpPad(K.facing(math.sin(a) * 21, -math.cos(a) * 21, math.sin(a), -math.cos(a), Y2), Vector3.new(0, 60, 4.7))
+		K.jumpPad(K.facing(math.sin(a) * 22.6, -math.cos(a) * 22.6, math.sin(a), -math.cos(a), Y2), Vector3.new(0, 60, 4.7)) -- (26 Nov: 22.6 out, its floor ring clear of the rail glass)
 	end
 
 	-- ============================================================== THE GROUND RING: the spawn (S), the trophies

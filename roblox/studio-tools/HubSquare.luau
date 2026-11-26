@@ -125,7 +125,7 @@ function HS.build(K, parent, name, site, live)
 	end
 	box(F0, "Shell", "Wall", -9.1, 9.1, 14, NH, VZ1 - 1, VZ1 + 1, P.wallLt) -- (over the court's open side, to its roof)
 	box(F0, "Scenery", "VestLintel", -9.1, 9.1, 13.2, 14, VZ1 - 0.2, VZ1 + 1.2, P.cream)
-	K.wordSign(K.facing(0, VZ0 - 2.4, 0, 1), "Scenery", "WaySign", 14, 1.7, 0, 9.4, 0, "STEP ON A SIDE TO QUEUE", { bg = "28324a" })
+	-- (26 Nov, the owner: no one-line signs. the STEP ON A SIDE sign is gone: the plaques and boards say what each pad is)
 	-- the court's walls, fins and pads
 	for k = 0, NS - 1 do
 		local t = math.pi + k * 2 * HALF -- (k = 0: the way in, south)
