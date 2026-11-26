@@ -67,6 +67,19 @@ function C.apply(t, k)
 	T.ZONE = { -336, 86, 220, 312, -7996, -8308 }
 	T.STAGE = V3(0, 0, 800) -- (a staging copy north of the hall: nothing stands there)
 	T.TESTLINE = V3(-14, 249, -8144) -- (the gun sessions' spot: on the balcony, over Stand1)
+	-- the doorways a body must get through (PolishBackup.Clip's third pass, from T.clip; the moving doors add their own)
+	T.DOORWAYS = {
+		{ name = "FIELD portal", at = V3(GH.xm, GY, GH.z1 - 2), dir = V3(0, 0, -1), len = 8 },
+		{ name = "RANGE door", at = V3(GH.x1 + 2, GY, -8122), dir = V3(1, 0, 0), len = 8 },
+		{ name = "TUTORIAL door", at = V3(GH.x0 - 2, GY, -8126), dir = V3(1, 0, 0), len = 8 },
+		{ name = "mirror bay", at = V3(GH.x0 - 2, GY, -8098), dir = V3(1, 0, 0), len = 6 },
+		{ name = "range walk's end", at = V3(WALK.x1 + 2, 242, -8122), dir = V3(1, 0, 0), len = 6 },
+		{ name = "grand stair's head", at = V3(CO.STAIR.x0 - 2, 270, -8245), dir = V3(1, 0, 0), len = 4 },
+		{ name = "parkour portal", at = V3(-276, 270, CO.z1 + 6), dir = V3(0, 0, -1), len = 3 },
+	}
+	for i = 1, 4 do
+		table.insert(T.DOORWAYS, { name = "Room" .. i .. " mouth", at = V3(TU.ROOMS[i].xm, GY, TU.cz0 + 2), dir = V3(0, 0, 1), len = 6 })
+	end
 	T.NO_LIVE = true
 	-- the dummies: the field's main lane (10 m pair, 20 m strafer under the gantry, armoured and heal-back on the stage at
 	-- 30 m), the practice lane (rails at 10 m, on the gantry at 20 m, on the deck at 30 m), the course's runner
@@ -86,12 +99,19 @@ function C.apply(t, k)
 	T.GOLD1 = { "practice deck", V3(-96, F.DECK.top, -8254), V3(-90, GY + 4, -8144) }
 	T.COURSE = { tower = V3(CO.TOWER.x, 270, CO.TOWER.z), look = V3(-112, GY + 4, -8144) }
 	-- the gold dummies' door: the TOP's back wall (the course's south wall), its room through the wall
+	-- (26 Nov, the owner: the door "isnt properly attatched and the door goes over the the frrame ... it should be pushed
+	-- up to the wall": it stood 6 studs out on a collar and its dark sheet rose out of the top. now it is set in the
+	-- wall's face (flush = the wall's thickness: topRoom builds no collar, the wall is its frame), the slats roll up
+	-- inside the wall, and the room runs on through the wall and 5.5 behind it, boxed in; the room is as deep as before)
 	local WF = CO.z1
-	T.TOPD3 = { x = -304, y = CO.TOP.top, w = 12, h = 10.5, frame = WF + 4.2, face = WF + 5.8, back = WF - 3.7, cut = 1.95, jamb = 1.8, wall = WF, backTo = WF - 4 }
+	T.TOPD3 = { x = -304, y = CO.TOP.top, w = 12, h = 10.5, face = WF, back = WF - 9.5, cut = 1.95, jamb = 1.8, wall = WF, backTo = WF - 11, flush = 4 }
 	local td = T.TOPD3
 	T.EGG_DOOR = { cf = CFrame.lookAt(V3(td.x, td.y, td.face), V3(td.x, td.y, td.face - 1)), w = 8.4, h = 8.6,
 		cw = td.w, ch = td.h, wall = P.recess, room = td.face - td.back, door = 2.4, plate = false, green = true }
 	T.LOT_PANEL = { x = td.x + 14, y = td.y + 1.6, face = WF, labels = { "DUMMIES", "RANGE", "COURSE" } }
+	-- the garage yard's side walls at the far wall (the target tower's east corner, the field's east wall): TrainingLot
+	-- fits the KEEP CLEAR panel and the beacons between them and the garage frame (the clip check, 26 Nov)
+	T.LOT_YARD = { x0 = GH.xm + 18 + 1.6, x1 = F.x1 }
 	T.TUTORIAL = TU
 	-- the seal test's points (T.check adds the range's and the basement's)
 	C.SEAL = {

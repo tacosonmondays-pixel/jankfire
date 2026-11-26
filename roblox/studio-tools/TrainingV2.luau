@@ -1056,9 +1056,13 @@ local function range(B)
 	local bw = B.blk("Collision", "RangeWall", RX0, RX1, Y0, RTOP + 10, DECK_Z - 0.4, DECK_Z - 4.4, P.wall, { tr = 1, nq = true, noShadow = true })
 	bw.CastShadow = false
 	pcall(function() bw.CollisionGroup = T.RANGE_WALL_GROUP end)
-	B.part("Scenery", "RangeRail", CF((RX0 + RX1) / 2, DECK + 1.1, DECK_Z + 0.4) * CFrame.Angles(0, 0, 0), V3(RX1 - RX0 - 0.4, 0.5, 0.5), P.trim, { cyl = true, ghost = true })
-	for x = RX0 + 0.8, RX1 - 0.8, 6.8 do
-		B.blk("Scenery", "RangeRailPost", x - 0.25, x + 0.25, DECK, DECK + 1.1, DECK_Z + 0.15, DECK_Z + 0.65, P.pier2, { ghost = true })
+	-- (26 Nov, the clip check: the rail and its posts ran through the firing line's counter, x 36..72 below; the counter is
+	-- the line there, so the rail is two short runs that end on the counter's sides)
+	for _, run in { { RX0 + 0.2, 36 }, { 72, RX1 - 0.2 } } do
+		B.part("Scenery", "RangeRail", CF((run[1] + run[2]) / 2, DECK + 1.1, DECK_Z + 0.4), V3(run[2] - run[1], 0.5, 0.5), P.trim, { cyl = true, ghost = true })
+		for _, x in { run[1] + 0.6, run[2] - 0.6 } do
+			B.blk("Scenery", "RangeRailPost", x - 0.25, x + 0.25, DECK, DECK + 1.1, DECK_Z + 0.15, DECK_Z + 0.65, P.pier2, { ghost = true })
+		end
 	end
 	B.trigger("RangeBack", RX0, RX1, Y0, Y0 + 14, DECK_Z - 4.6, DECK_Z - 12, { Land = "RangeDeck" })
 	local rd = Instance.new("Folder"); rd.Name = "RangeDeck"; rd:SetAttribute("Built", "TrainingV2"); rd.Parent = B.doors
@@ -1510,16 +1514,30 @@ local function topRoom(B, D)
 	local TOPD = D or TOPD
 	local x0, x1, y0, y1 = TOPD.x - TOPD.w / 2, TOPD.x + TOPD.w / 2, TOPD.y, TOPD.y + TOPD.h
 	local oy1 = y1 + TOPD.jamb
-	local front, fb = TOPD.frame + 1.8, TOPD.frame - 1.78 -- (the frame's front; its back, 0.02 inside it)
-	-- the collar: the frame's section carried back to the wall (the wall's colour: from the gallery, the wall steps out
-	-- to meet the frame)
-	B.blk("Shell", "TopCollar", x0 - TOPD.jamb, x0, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
-	B.blk("Shell", "TopCollar", x1, x1 + TOPD.jamb, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
-	B.blk("Shell", "TopCollar", x0, x1, y1, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
-	-- the frame itself stops nobody: its jambs and head, unseen and solid, from its front to the collar
-	B.solid("TopFrameSolid", CF(x0 - TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
-	B.solid("TopFrameSolid", CF(x1 + TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
-	B.solid("TopFrameSolid", CF(TOPD.x, (y1 + oy1) / 2, (front + fb) / 2), V3(TOPD.w, oy1 - y1, front - fb))
+	local fb
+	if TOPD.flush then
+		-- (v5, 26 Nov: the door set in the wall's face, TOPD.flush = the wall's thickness. no collar and no frame: the wall
+		-- is the frame. the room starts behind the door's depth (TrainingLot's eggDoor: 2.4) and runs on through the wall
+		-- and behind it, where it is boxed in to TOPD.backTo: sides, a lid and a base, in the wall's colour)
+		fb = TOPD.face - 2.4
+		local wb, bt = TOPD.wall - TOPD.flush, TOPD.backTo
+		B.blk("Shell", "TopRoomShell", x0 - 2, x0, 236, y1 + 2, wb, bt, P.courseWall)
+		B.blk("Shell", "TopRoomShell", x1, x1 + 2, 236, y1 + 2, wb, bt, P.courseWall)
+		B.blk("Shell", "TopRoomShell", x0, x1, y1, y1 + 2, wb, bt, P.courseWall)
+		B.blk("Shell", "TopRoomShell", x0, x1, 236, y0, wb, bt, P.courseWall)
+	else
+		local front
+		front, fb = TOPD.frame + 1.8, TOPD.frame - 1.78 -- (the frame's front; its back, 0.02 inside it)
+		-- the collar: the frame's section carried back to the wall (the wall's colour: from the gallery, the wall steps out
+		-- to meet the frame)
+		B.blk("Shell", "TopCollar", x0 - TOPD.jamb, x0, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
+		B.blk("Shell", "TopCollar", x1, x1 + TOPD.jamb, y0, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
+		B.blk("Shell", "TopCollar", x0, x1, y1, oy1, fb, (TOPD.wall or CZ1), P.courseWall)
+		-- the frame itself stops nobody: its jambs and head, unseen and solid, from its front to the collar
+		B.solid("TopFrameSolid", CF(x0 - TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
+		B.solid("TopFrameSolid", CF(x1 + TOPD.jamb / 2, (y0 + oy1) / 2, (front + fb) / 2), V3(TOPD.jamb, oy1 - y0, front - fb))
+		B.solid("TopFrameSolid", CF(TOPD.x, (y1 + oy1) / 2, (front + fb) / 2), V3(TOPD.w, oy1 - y1, front - fb))
+	end
 	-- inside: warm lining, a dark skirting, the frame's cut corners carried on, a ceiling, a floor and the back
 	for _, sx in { -1, 1 } do
 		local wx = TOPD.x + sx * TOPD.w / 2
@@ -2233,6 +2251,20 @@ function T.floorGaps(stage): string
 	return table.concat(list, "\n")
 end
 
+-- (26 Nov 2026, the owner: props clipping into walls and props, a door sliding up through its frame, props in the way)
+-- the clipping check (PolishBackup.Clip, roblox/docs/CLIP-CHECK.md) on this build, with its doorways (T.DOORWAYS)
+function T.clip(stage): string
+	local src = SS.PolishBackup:FindFirstChild("Clip")
+	if not src then return "clip check: no PolishBackup.Clip" end
+	local base = if stage then workspace.Map:FindFirstChild("TrainingStage") else hub
+	local tg = base and base:FindFirstChild("TrainingGround")
+	if not tg then return "clip check: no TrainingGround" end
+	local O = if stage then T.STAGE else Vector3.zero
+	local ways = {}
+	for _, w in T.DOORWAYS or {} do table.insert(ways, { name = w.name, at = w.at + O, dir = w.dir, len = w.len }) end
+	return require(src:Clone()).run(tg, { doorways = ways })
+end
+
 function T.check(stage): string
 	local out, bad = {}, 0
 	local O = if stage then T.STAGE else Vector3.zero
@@ -2356,6 +2388,7 @@ function T.check(stage): string
 	table.insert(out, ("the hall sealed: %d rays from %d points, leaks %d, skins under 2 studs %d"):format(rays, #pts, leaks, nThin))
 	table.insert(out, (T.headRoom(stage)))
 	table.insert(out, (T.floorGaps(stage)))
+	table.insert(out, (T.clip(stage)))
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	if lotSrc and tg:FindFirstChild("Lot") then
 		for _, l in require(lotSrc:Clone()).check(tg, mk, T, O) do table.insert(out, l) end

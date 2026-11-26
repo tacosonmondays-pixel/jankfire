@@ -21,7 +21,16 @@ K.W, K.H = 8.4, 9.96 -- (the opening: across, up)
 K.DEPTH = 1.45 -- (the opening's face to the back of the dark plate)
 K.FRAME = { scale = 0.6, color = { ff4fd8 = "f0a53a", ["2e3140"] = "3f4753", a4aab8 = "747c88" } } -- (hb_portal: amber trim on slate)
 K.LAMP = { up = 8, out = 1.5, range = 10, bright = 0.5, hex = "ffc27a" } -- (a warm point light this far up and out in front)
-K.COL = { slat = "6b7079", back = "2b2d33", laser = "ff2a3a", bar = "f0a53a" }
+K.COL = { slat = "6b7079", back = "2b2d33", laser = "ff2a3a", bar = "f0a53a", housing = "3f4753" }
+-- the door's path (26 Nov, the owner: "the door goes over the the frrame, like clips through it"; the clip check,
+-- PolishBackup.Clip, found every gate's slats rising up to 0.95 over the opening into whatever wall stood there). the
+-- slats run x -4.2..4.2 at d 0.6..1.0 (in from the opening's face, F's -Z) and rise K.LIFT; a slat is hidden once its
+-- bottom passes the opening's head (Top = H), so over the head a slat shows at most its own height, 0.95. they roll up
+-- into K.HOUSING over the head: a slate roller box x -4.5..4.5, H..H+1.3 up, d 0.45..1.45 (to the dark plate's back).
+-- a builder's wall over the opening must leave that box clear (a slot) or stand wholly in front of or behind it; the
+-- laser fence (d 0..0.44) and the light bar (d -0.3..0) stay in front of it
+K.LIFT = 10.3
+K.HOUSING = { x = 4.5, up = 1.3, d0 = 0.45, d1 = 1.45 }
 
 function K.build(F: CFrame, parent: Instance, o: { door: string?, lasers: string? }?)
 	local opts = o or {}
@@ -51,7 +60,7 @@ function K.build(F: CFrame, parent: Instance, o: { door: string?, lasers: string
 	end
 	local b0 = bottom :: BasePart
 	door:SetAttribute("Shutter", true)
-	door:SetAttribute("Lift", 10.3)
+	door:SetAttribute("Lift", K.LIFT)
 	door:SetAttribute("Top", b0.Position.Y - 0.475 + 9.76)
 	door:SetAttribute("Center", Vector3.new(b0.Position.X, b0.Position.Y - 0.675, b0.Position.Z))
 	door:SetAttribute("Near", 13)
@@ -72,6 +81,9 @@ function K.build(F: CFrame, parent: Instance, o: { door: string?, lasers: string
 	CollectionService:AddTag(lasers, "LaserGate")
 	-- the dark plate behind: what an open gate shows (black in the hub's light)
 	box("GateBack", -hw, hw, 0, H, 1.15, K.DEPTH, K.COL.back).Parent = parent
+	-- the roller box over the head the slats roll up into (K.HOUSING)
+	local HS = K.HOUSING
+	box("ShutterHousing", -HS.x, HS.x, H, H + HS.up, HS.d0, HS.d1, K.COL.housing).Parent = parent
 	-- the amber light bar along the head, in front
 	box("GateLightBar", -hw + 0.2, hw - 0.2, H - 0.01, H + 0.39, -0.3, 0, K.COL.bar, true).Parent = parent
 	return door, lasers

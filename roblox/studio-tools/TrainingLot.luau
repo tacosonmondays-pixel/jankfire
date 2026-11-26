@@ -274,7 +274,7 @@ local function garage()
 	dw.Size = V3(24, D.y1 - D.y0, 9); dw.CFrame = B.cf(0, (D.y0 + D.y1) / 2, D.z)
 	dw.Parent = LOT
 	-- the roller box across the frame's head (yard side), and a lit transom in the lunette over it
-	B.put("tl_roller", CF(0, D.y1 + 0.1, yardFace + 3.0), { name = "RollerYard", scale = 0.8, color = { ["7d8088"] = C.housing } }).Parent = B.root.LotScenery
+	B.put("tl_roller", CF(0, D.y1 + 0.1, yardFace + 3.3), { name = "RollerYard", scale = 0.8, color = { ["7d8088"] = C.housing } }).Parent = B.root.LotScenery -- (0.3 off the frame's face since the clip check, 26 Nov)
 	local function vaultAt(x) return 258 - 23.8 + math.sqrt(33.8 * 33.8 - x * x) end
 	for k = -2, 2 do
 		local x = k * 5
@@ -293,12 +293,23 @@ local function garage()
 	-- the teleporter": with TV.LOT_PANEL the gold dummies' panel stands by the TOP door, the garage keeps KEEP CLEAR and its
 	-- own sounds in DoorSounds; without it, both panels are the garage's as before)
 	local PL = TV.LOT_PANEL
-	local function housingAt(x, y0, face)
-		blk("GaragePanel", x - 3.9, x + 3.9, y0, y0 + 12.4, face, face + 1.5, C.housing)
-		blk("GaragePanelInset", x - 3.3, x + 3.3, y0 + 0.6, y0 + 11.8, face + 1.5, face + 1.62, C.inset)
+	local function housingAt(x, y0, face, hw)
+		hw = hw or 3.9
+		blk("GaragePanel", x - hw, x + hw, y0, y0 + 12.4, face, face + 1.5, C.housing)
+		blk("GaragePanelInset", x - hw + 0.6, x + hw - 0.6, y0 + 0.6, y0 + 11.8, face + 1.5, face + 1.62, C.inset)
 		B.lamp(x, y0 + 13.9, face + 5, "spot", 16, 2.5, "ffdeb0", { look = V3(x, y0 + 5.9, face + 1.6), angle = 60 })
 	end
-	housingAt(-19.5, 243.6, yardFace) -- (KEEP CLEAR's)
+	-- (26 Nov, the clip check: in v5 the yard is walled close to the frame, x TV.LOT_YARD.x0..x1, and the KEEP CLEAR
+	-- panel and the beacons ran into the target tower's corner and the field's east wall. with LOT_YARD they fit the
+	-- space between the frame's edge, x 15.6 either side, and the yard's walls)
+	local YD = TV.LOT_YARD
+	local kx, khw, bx = -19.5, 3.9, 19.5
+	if YD then
+		kx = (YD.x0 - 15.6) / 2
+		khw = math.min(3.9, (-15.6 - YD.x0) / 2 - 0.2)
+		bx = (YD.x1 + 15.6) / 2
+	end
+	housingAt(kx, 243.6, yardFace, khw) -- (KEEP CLEAR's)
 	local px, py, pface = 19.5, 243.6, yardFace
 	if PL then px, py, pface = PL.x, PL.y, PL.face end
 	housingAt(px, py, pface)
@@ -343,9 +354,11 @@ local function garage()
 		end
 	end
 	sign("PanelHint", { { 'ask the <font color="#f2b84b">gold</font> ones.', P.grey, "S", 1 } }, 6, 1.35, px, py + 1.4, front, V3(px, 0, -8000), { clear = true, rich = true }).Parent = panel
-	sign("KeepClear", { { "KEEP", P.amber, "B", 1 }, { "CLEAR", P.amber, "B", 1 } }, 5.4, 3.6, -19.5, 250.6, yardFace + 1.66, V3(-19.5, 0, -8000), { clear = true }) -- (the garage's own face: the panel's may be by the TOP door)
-	for k = 0, 5 do -- the door's hazard band across the panel's foot, so the panel belongs to the door
-		local x0 = -22.8 + 1.1 * k
+	local kw = math.min(5.4, 2 * khw - 0.4)
+	sign("KeepClear", { { "KEEP", P.amber, "B", 1 }, { "CLEAR", P.amber, "B", 1 } }, kw, 3.6 * kw / 5.4, kx, 250.6, yardFace + 1.66, V3(kx, 0, -8000), { clear = true }) -- (the garage's own face: the panel's may be by the TOP door)
+	local nh = math.floor((2 * khw - 1.2) / 1.1 + 0.01)
+	for k = 0, nh - 1 do -- the door's hazard band across the panel's foot, so the panel belongs to the door
+		local x0 = kx - nh * 1.1 / 2 + 1.1 * k
 		blk("PanelHazard", x0, x0 + 1.1, 244.5, 245.7, yardFace + 1.56, yardFace + 1.71, if k % 2 == 0 then P.amber else P.slate)
 	end
 	-- the beacons (the yard's two over the panels; two more on the lot's canopy). turned so one lens faces you
@@ -366,10 +379,10 @@ local function garage()
 		l.Color = Color3.fromRGB(255, 170, 60); l.Range = 16; l.Brightness = 1.4; l.Enabled = false
 		l.Parent = lens
 	end
-	beacon(19.5, 256.6, yardFace + 1.4, 90)
-	beacon(-19.5, 256.6, yardFace + 1.4, 90)
-	-- the bay's side: the roller box over the opening
-	B.put("tl_roller", CF(0, D.y1 + 0.3, D.z - 2 - 1.2 - 2.3), { name = "Roller" }).Parent = B.root.LotScenery
+	beacon(bx, 256.6, yardFace + 1.4, 90)
+	beacon(kx, 256.6, yardFace + 1.4, 90)
+	-- the bay's side: the roller box over the opening (0.3 off the frame's back since the clip check, 26 Nov)
+	B.put("tl_roller", CF(0, D.y1 + 0.3, D.z - 2 - 1.2 - 2.6), { name = "Roller" }).Parent = B.root.LotScenery
 	return beacon
 end
 
@@ -547,12 +560,14 @@ local function basement(BS)
 	B.drum("LotShell", "Tank", R.x1 - 16, R.z1 - 4.5, FL, FL + 4.6, 4.2, C.warmC)
 	B.drum("LotShell", "TankCap", R.x1 - 16, R.z1 - 4.5, FL + 4.6, FL + 5, 4.4, P.trim)
 	-- shelves of crates along the north wall
+	-- (26 Nov, the clip check: the posts and the top board's crates ran up into the pipes and their brackets; the posts
+	-- stop at the top board now, which stays clear under the pipes, and stand 0.06 proud of the boards' front: no shared face)
 	local sx0, sx1, sz0, sz1 = R.x0 + 2, R.x0 + 16, R.z1 - 2.6, R.z1
-	for _, x in { sx0, (sx0 + sx1) / 2 - 0.2, sx1 - 0.4 } do blk("ShelfPost", x, x + 0.4, FL, FL + 7.4, sz0, sz1, P.slate) end
+	for _, x in { sx0, (sx0 + sx1) / 2 - 0.2, sx1 - 0.4 } do blk("ShelfPost", x, x + 0.4, FL, FL + 6.4, sz0 - 0.06, sz1, P.slate) end
 	local boards = { FL + 1.2, FL + 3.8, FL + 6.4 }
 	for _, y in boards do blk("ShelfBoard", sx0, sx1, y - 0.3, y, sz0, sz1, P.pier2) end
 	for _, c in { { 0.6, 3.6, 1, 2.2, C.warmC }, { 4.2, 6.4, 1, 1.8, C.sand }, { 7.6, 10.8, 1, 2.2, C.slateC }, { 11.4, 13.4, 1, 1.6, C.warmC },
-		{ 1, 4, 2, 2, C.sand }, { 8.2, 12.6, 2, 2.1, C.warmC }, { 0.8, 2.8, 3, 1.4, C.slateC }, { 9, 12, 3, 1.6, C.sand } } do
+		{ 1, 4, 2, 2, C.sand }, { 8.2, 12.6, 2, 2.1, C.warmC } } do
 		local y = boards[c[3]]
 		blk("ShelfCrate", sx0 + c[1], sx0 + c[2], y, y + c[4], sz0 + 0.3, sz1 - 0.1, c[5])
 	end
@@ -755,7 +770,7 @@ local function bay(beacon)
 		end
 	end
 	for _, z in { -8274, -8288 } do blk("BayBeam", -BX, BX, TOP - 2.2, TOP, z - 1.2, z + 1.2, P.pier) end
-	for _, z in { -8268, -8281, -8294 } do
+	for _, z in { -8269.5, -8281, -8294 } do -- (the first 1.5 back from the roller box since the clip check, 26 Nov)
 		local m = B.put("tv_lightbar", CF(0, TOP, z) * CFrame.Angles(0, math.pi / 2, 0), { name = "BayLight" })
 		if m then m.Parent = B.root.LotScenery end
 		B.lamp(0, TOP - 2, z, "spot", 30, 0.9, P.lampWhite, { angle = 110 })
