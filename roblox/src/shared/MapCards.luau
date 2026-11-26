@@ -45,6 +45,31 @@ function MapCards.result(options: { string }, votes: { [any]: string }): string?
 	end
 	return if #best > 0 then best[math.random(#best)] else nil
 end
+-- RANDOM (21 Nov 2026, the owner: "for pads and casual andthing but ranked basically let us pick maps"): every vote but
+-- ranked offers its maps and RANDOM, a card of its own. RANDOM is any map of the rotation for the match (MapCards.draw)
+MapCards.RANDOM = "random"
+function MapCards.randomCard(): any return { id = MapCards.RANDOM, title = "RANDOM", thumb = "", random = true } end
+-- the winner of a vote with RANDOM on it: most votes among the maps and RANDOM, a tie drawn among the top, no votes at
+-- all = RANDOM. the caller turns RANDOM into a map (MapCards.draw)
+function MapCards.resultOrRandom(options: { string }, votes: { [any]: string }): string
+	local counts = MapCards.counts(votes)
+	local all = table.clone(options)
+	table.insert(all, MapCards.RANDOM)
+	local best, top = {}, 0
+	for _, id in all do
+		local c = counts[id] or 0
+		if c > top then best, top = { id }, c elseif c == top and c > 0 then table.insert(best, id) end
+	end
+	if top == 0 then return MapCards.RANDOM end
+	return best[math.random(#best)]
+end
+-- RANDOM's map: any one of pool, never last while there's another (nil: an empty pool)
+function MapCards.draw(pool: { string }, last: string?): string?
+	local left = {}
+	for _, id in pool do if id ~= last then table.insert(left, id) end end
+	if #left == 0 then left = table.clone(pool) end
+	return if #left > 0 then left[math.random(#left)] else nil
+end
 function MapCards.counts(votes: { [any]: string }): { [string]: number }
 	local counts = {}
 	for _, id in votes do counts[id] = (counts[id] or 0) + 1 end

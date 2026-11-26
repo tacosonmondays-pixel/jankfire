@@ -174,10 +174,14 @@ end
 -- ------------------------------------------------------------------ the map (17 Nov, the owner: "also add map selector before hand")
 -- the maps are the rotation's (Arena.pool: workspace.Map's ArenaPool, the hub session's), named as the first banner
 -- names them (Arena.title) with their card pictures (shared/MapCards.luau).
---   a PARTY card pick: the leader picks one, or RANDOM (the rotation, as before)
---   QUICKPLAY and casual duels: a map vote of 3 from the rotation, in the same PlayConfig.VOTE s as the mode vote;
---   most votes wins, a tie is drawn, no votes = a draw of the three; never the last map that vote picked
---   RANKED (duels and PARTY RANKED): the rotation, a fair random one, no vote
+--   (21 Nov 2026, the owner: "for pads and casual andthing but ranked basically let us pick maps")
+--   every match that forms with other players (QUICKPLAY, casual duels, the MODES tab's party modes topped up from
+--   quickplay): a map vote of 3 from the rotation and RANDOM, in PlayConfig.VOTE s (6); most votes wins, a tie is
+--   drawn among the top, no votes = RANDOM (any map of the rotation for the size); never the last map that vote picked.
+--   a party mode's leader's own pick is one of the three
+--   a party alone (a private duel, or a party mode without FILL FROM QUICKPLAY): the leader's pick, no vote (the DUELS
+--   tab's or the PARTY card's MAP row; RANDOM = the rotation's)
+--   RANKED (duels and PARTY RANKED): the rotation, a fair random one, no vote (ranked duels across servers: the draft)
 local function mapCard(id: string): any
 	return { id = id, title = Arena.title(id), thumb = MapCards.thumb(id) }
 end
@@ -199,19 +203,16 @@ local function mapOffer(kind: string, teamSize: number?): { string }
 	return out
 end
 local function mapResult(v: any): string?
-	local counts = voteCounts(v)
-	local best, top = {}, 0
-	for _, id in v.options do
-		local c = counts[id] or 0
-		if c > top then best, top = { id }, c elseif c == top then table.insert(best, id) end
-	end
-	return if #best > 0 then best[math.random(#best)] else nil
+	local want = MapCards.resultOrRandom(v.options, v.votes)
+	if want == MapCards.RANDOM then return MapCards.draw(Arena.pool(v.size), lastMap[v.kind]) end
+	return want
 end
 local function mapVoteView(f: Found, forP: Player): any
 	local v = f.mvote
 	if not v then return nil end
 	local opts = {}
 	for _, id in v.options do table.insert(opts, mapCard(id)) end
+	table.insert(opts, MapCards.randomCard())
 	return { options = opts, ends = serverNow() + math.max(0, v.ends - now()), counts = voteCounts(v), mine = v.votes[forP.UserId] }
 end
 -- a map vote's clock ran out (or the match is starting): its pick
@@ -783,25 +784,32 @@ onFormed = function(key: string, teams: { { Queue.Entry } })
 		f.vote = { options = voteOffer(es), votes = {}, ends = now() + PlayConfig.VOTE }
 		f.at = now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW
 	end
-	-- the map: ranked = the rotation's; a party's own pick = its leader's (the party that waited longest); quickplay and
-	-- casual duels vote, in the same clock as the mode vote. (quickplay's maps take half its head-count a side: Crate
-	-- holds 3 a side, so it sits out an 8-player match)
-	if not f.ranked then
-		if cfg and cfg.ladder == "party" and not cfg.quick then
-			local oldest: Queue.Entry? = nil
-			for _, e in es do
-				local o = e.owner :: any
-				if o and o.leader and (oldest == nil or e.since < (oldest :: Queue.Entry).since) then oldest = e end
-			end
-			local o = oldest and (oldest.owner :: any)
-			if o and type(o.map) == "string" and table.find(Arena.pool(), o.map) then f.map = o.map end
-		elseif mode == PlayConfig.QUICKPLAY or (cfg and cfg.pad and cfg.ladder ~= "party") then
-			local n = 0
-			for _, e in es do n += e.size end
-			local size = if mode == PlayConfig.QUICKPLAY then (if n >= 4 then math.ceil(n / 2) else nil) else cfg.size
-			local kind = if mode == PlayConfig.QUICKPLAY then "quick" else "duel"
-			f.mvote = { options = mapOffer(kind, size), votes = {}, ends = now() + PlayConfig.VOTE, kind = kind }
-			f.at = now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW
+	-- the map (21 Nov 2026, the owner: "for pads and casual andthing but ranked basically let us pick maps"): ranked = the
+	-- rotation's; a party alone (a private duel, a party mode without fill) = its leader's pick (RANDOM: the rotation's);
+	-- anything else with other players votes (3 maps and RANDOM) in the same clock as the mode vote, with a party mode's
+	-- leader's pick (the party that waited longest) on the ballot. (quickplay's and the party modes' maps take half their
+	-- head-count a side: Crate holds 3 a side, so it sits out an 8-player match.) ZOMBIES picks its own school
+	if not f.ranked and not (cfg and cfg.coop) then
+		local oldest: Queue.Entry? = nil
+		for _, e in es do
+			local o = e.owner :: any
+			if o and o.leader and (oldest == nil or e.since < (oldest :: Queue.Entry).since) then oldest = e end
+		end
+		local o = oldest and (oldest.owner :: any)
+		local want: string? = if o and type(o.map) == "string" and table.find(Arena.pool(), o.map) then o.map else nil
+		local n = 0
+		for _, e in es do n += e.size end
+		local partyMode = cfg ~= nil and cfg.ladder == "party"
+		local alone = #es == 1 and ((partyMode and not cfg.quick) or PlayConfig.private(cfg, n))
+		if alone then
+			f.map = want
+		elseif cfg then
+			local size = if partyMode then (if n >= 4 then math.ceil(n / 2) else nil) else cfg.size
+			local kind = if mode == PlayConfig.QUICKPLAY then "quick" elseif partyMode then "modes" else "duel"
+			local options = mapOffer(kind, size)
+			if want and partyMode and not table.find(options, want) and table.find(Arena.pool(size), want) then options[1] = want end
+			f.mvote = { options = options, votes = {}, ends = now() + PlayConfig.VOTE, kind = kind, size = size }
+			f.at = math.max(f.at, now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW)
 		end
 	end
 	table.insert(founds, f)
@@ -830,7 +838,7 @@ end
 local function castMapVote(f: Found?, id: number, map: any): (boolean, string?)
 	local v = f and f.mvote
 	if not f or not v or f.map or now() >= v.ends then return false, "no map vote running" end
-	if type(map) ~= "string" or not table.find(v.options, map) then return false, "not one of the three" end
+	if type(map) ~= "string" or not (table.find(v.options, map) or map == MapCards.RANDOM) then return false, "not one of the maps" end
 	v.votes[id] = map
 	pushFound(f)
 	return true, nil

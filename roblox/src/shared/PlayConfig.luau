@@ -57,7 +57,7 @@ end
 -- both are rated on the PARTY RANKED ladder like any classic mode, except a match of one party alone (it would let
 -- friends farm each other)
 PlayConfig.QUICKPLAY = "quickplay"
-PlayConfig.VOTE = 8 -- s the vote runs once a quickplay match forms
+PlayConfig.VOTE = 6 -- s the mode and map votes run once a match forms (21 Nov 2026: 8 -> 6, "short", main for the owner)
 PlayConfig.VOTE_SHOW = 2 -- s the picked mode shows before the match starts
 -- the head-count a classic mode takes in a quickplay or party match: 2-8 unless listed here (a mode's own addMode entry
 -- may say qmin / qmax instead). team modes need two a side; infection one to turn and three to chase

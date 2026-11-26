@@ -503,6 +503,11 @@ local function modeList()
 		end)
 		y += L.cardH + 8
 	end
+	-- a private duel's map (21 Nov 2026, "the challenger picks the map"): the leader's pick, the MODES tab's MAP row, no vote
+	local pm: any = pt and PlayConfig.byId[pt.mode]
+	if pt and not ranked and pm and PlayConfig.private(pm, n) and type(pt.maps) == "table" and #pt.maps > 0 then
+		y += ModesTab.mapRow(left, 12, y, W - 24, c, pt, lead, ask, 3) + 8
+	end
 	local foot = text(left, "Foot", "", if c then 10 else 12, T.MUTED, T.FONT); foot.ZIndex = 3
 	foot.Position = UDim2.fromOffset(14, y + 2); foot.Size = UDim2.fromOffset(W - 28, 34); foot.TextWrapped = true
 	foot.TextYAlignment = Enum.TextYAlignment.Top

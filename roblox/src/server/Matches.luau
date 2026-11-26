@@ -33,7 +33,7 @@ local Matches = {}
 Matches.WIN = 5 -- round wins that take the match
 Matches.ROUND_TIME = 120 -- s; time up = the most damage dealt takes it (then HP left, then a coin flip)
 Matches.COUNTDOWN = 3 -- s on a full pad before you go
-Matches.PAD_VOTE = 8 -- s a pad's group votes on its map in a map room (18 Nov, the owner; MapRooms.luau, the stages below)
+Matches.PAD_VOTE = 6 -- s a pad's group votes on its map in a map room (18 Nov, the owner; MapRooms.luau, the stages below. 8 -> 6 on 21 Nov)
 Matches.READY = 3 -- s from spawning in to the round going live (no damage till then): the shortest count after a break
 Matches.READY_FIRST = 20 -- (round 1: the loadout window before the first round. 17 Nov, the owner; 20 s since 18 Nov)
 Matches.WINDOW = 15 -- s the loadout window runs between rounds: the break, then the count held at your spawn (18 Nov)
@@ -876,6 +876,9 @@ end
 --   for the pad's size, never the pad's last arena). a vote is the card on your screen (client/QuickVoteUI.luau: keys
 --   1-3 or a tap; PlayPush { t = "padvote" }, the Play remote's "padvote" through Party.ops) or standing on a display's
 --   plate. most votes wins; a tie, or no votes at all, is drawn.
+--   (21 Nov 2026, the owner: "for pads and casual andthing but ranked basically let us pick maps") a fourth card, RANDOM,
+--   on the screen (no plate): any map of the rotation for the size. no votes at all is RANDOM; a tie is drawn among the
+--   top. when RANDOM lands on a map that isn't on a display, the middle display shows it as the pick
 --   the pick: the winner's site takes the held one's place (if it can't be had right now, the held map is played, and
 --   the displays show that), shown PICK_SHOW s, then the match starts the usual way: everyone respawns at that arena's
 --   spawns.
@@ -889,7 +892,7 @@ local Hitbox = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("
 local PICK_SHOW = 1.5
 -- (a pad's stage holds its pad and site; a match server's (Matches.voteRoom, CrossServer.luau) has neither: go(map)
 -- starts its match and cancel(note) runs when a whole side has left)
-type Stage = { pad: Model?, sides: { { Player } }, site: Site?, arena: string, room: any, options: { string },
+type Stage = { pad: Model?, sides: { { Player } }, site: Site?, arena: string, room: any, options: { string }, size: number?,
 	votes: { [number]: string }, ends: number, map: string?, at: number?, test: boolean, shown: { [Player]: boolean }, dirty: boolean,
 	go: ((string, any?) -> ())?, cancel: ((string) -> ())?,
 	draft: any? } -- (a ranked draft's own state: Matches.draftRoom below)
@@ -909,6 +912,18 @@ local function padCard(id: string): any return { id = id, title = Arena.title(id
 local function stageCards(st: Stage): { any }
 	local out = {}
 	for _, id in st.options do table.insert(out, padCard(id)) end
+	return out
+end
+-- the cards on the players' screens: the three maps and RANDOM (not a ranked draft's: it bans, it has no RANDOM)
+local function voteCards(st: Stage): { any }
+	local out = stageCards(st)
+	if not st.draft then table.insert(out, MapCards.randomCard()) end
+	return out
+end
+-- the room's three displays: RANDOM's pick that isn't one of them takes the middle one
+local function roomCards(st: Stage): { any }
+	local out = stageCards(st)
+	if st.map and not table.find(st.options, st.map) and #out >= 2 then out[2] = padCard(st.map) end
 	return out
 end
 local function each2(st: Stage, fn: (Player) -> ())
@@ -935,7 +950,7 @@ end
 local function stageSync(st: Stage, gone: boolean?)
 	local now: { [Player]: boolean } = {}
 	if not gone then
-		local view = { options = stageCards(st), ends = workspace:GetServerTimeNow() + math.max(0, st.ends - os.clock()), counts = MapCards.counts(st.votes) }
+		local view = { options = voteCards(st), ends = workspace:GetServerTimeNow() + math.max(0, st.ends - os.clock()), counts = MapCards.counts(st.votes) }
 		local map = if st.map then padCard(st.map) else nil
 		each2(st, function(p)
 			now[p] = true
@@ -971,7 +986,10 @@ end
 -- the vote's clock ran out: its pick, and that arena's site in place of the held one if it can be had
 local function stageSettle(st: Stage)
 	if st.map then return end
-	local want = MapCards.result(st.options, st.votes) or st.arena
+	local want = MapCards.resultOrRandom(st.options, st.votes)
+	if want == MapCards.RANDOM then
+		want = MapCards.draw(Arena.pool(st.size), if st.pad then lastArena[st.pad :: Model] else nil) or st.arena
+	end
 	if not st.site then
 		st.arena = want -- (a match server's room: no site held, its go() starts the match on the pick)
 	elseif want ~= st.arena then
@@ -1020,7 +1038,7 @@ local function stageStart(pad: Model, sides: { { Player } }, site: Site, arena: 
 	local options = { arena }
 	for _, id in MapCards.offer(rest, lastArena[pad], 2) do table.insert(options, id) end
 	for i = #options, 2, -1 do local j = math.random(i); options[i], options[j] = options[j], options[i] end -- (the held one anywhere)
-	local st: Stage = { pad = pad, sides = {}, site = site, arena = arena, room = room, options = options, votes = {},
+	local st: Stage = { pad = pad, sides = {}, site = site, arena = arena, room = room, options = options, votes = {}, size = if type(sz) == "number" then sz else nil,
 		ends = os.clock() + ((script:GetAttribute("TestPadVote") :: number?) or Matches.PAD_VOTE), test = test, shown = {}, dirty = true }
 	stageIn(st, sides)
 	return nil
@@ -1035,7 +1053,7 @@ function Matches.voteRoom(sides: { { Player } }, teamSize: number?, go: (string)
 	if #options == 0 then return false end
 	local room = MapRooms.claim()
 	if not room then return false end
-	local st: Stage = { sides = {}, arena = options[1], room = room, options = options, votes = {},
+	local st: Stage = { sides = {}, arena = options[1], room = room, options = options, votes = {}, size = teamSize,
 		ends = os.clock() + ((script:GetAttribute("TestPadVote") :: number?) or Matches.PAD_VOTE), test = test == true, shown = {}, dirty = true,
 		go = go, cancel = cancel }
 	stageIn(st, sides)
@@ -1182,7 +1200,7 @@ local function stageStep()
 			stageGo(st)
 			continue
 		end
-		if st.dirty then MapRooms.show(st.room, stageCards(st), MapCards.counts(st.votes), st.map) end
+		if st.dirty then MapRooms.show(st.room, roomCards(st), MapCards.counts(st.votes), st.map) end
 		stageSync(st)
 		st.dirty = false
 	end
@@ -1193,7 +1211,7 @@ function Matches.padVote(p: Player, id: any): (boolean, string?)
 	if not st then return false, "no map vote for you right now" end
 	if st.draft then return (Matches :: any).draftVote(st, p, id) end
 	if st.map or os.clock() >= st.ends then return false, "the map is picked" end
-	if type(id) ~= "string" or not table.find(st.options, id) then return false, "not one of the three" end
+	if type(id) ~= "string" or not (table.find(st.options, id) or id == MapCards.RANDOM) then return false, "not one of the maps" end
 	st.votes[p.UserId] = id
 	st.dirty = true
 	return true, nil

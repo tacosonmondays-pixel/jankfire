@@ -16,6 +16,51 @@ local new, text = T.new, T.text
 local ModesTab = {}
 local lastPick: string? = nil -- (the leader's last party pick, so the PARTY card goes back to it from quickplay)
 
+-- the MAP row (the leader picks: a picture, the name, < > through RANDOM and the rotation's maps; the others see it):
+-- the PARTY card's here, and a private duel's on the DUELS tab (21 Nov 2026: "the challenger picks the map"). returns
+-- its height
+function ModesTab.mapRow(parent: Instance, x: number, y: number, iw: number, c: boolean, pt: any, lead: boolean, ask: any, zIn: number?): number
+	local z = zIn or 3
+	local mapH = if c then 40 else 46
+	local maps = pt.maps :: { any }
+	local list: { any } = { { id = "random", title = "RANDOM", thumb = "" } }
+	for _, m in maps do table.insert(list, m) end
+	local idx = 1
+	for i, m in list do if m.id == pt.map then idx = i end end
+	local cur = list[idx]
+	local row = new("Frame", { Name = "Map", BorderSizePixel = 0, BackgroundColor3 = T.BG, BackgroundTransparency = 0.35,
+		Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(iw, mapH), ZIndex = z }, parent)
+	T.corner(row, 4)
+	local th = mapH - 8
+	local pic = new("ImageLabel", { Name = "Thumb", BorderSizePixel = 0, BackgroundColor3 = T.CARD, BackgroundTransparency = 0, ZIndex = z + 1,
+		Image = cur.thumb or "", ScaleType = Enum.ScaleType.Crop, Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(math.floor(th * 16 / 9), th) }, row)
+	T.corner(pic, 3)
+	local tx = 4 + math.floor(th * 16 / 9) + 10
+	local aw = if lead then (if c then 40 else 34) else 0
+	local lab = text(row, "Label", "MAP", if c then 8 else 9, T.MUTED, T.FONT_BOLD); lab.ZIndex = z + 1
+	lab.Position = UDim2.fromOffset(tx, if c then 5 else 7); lab.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, 12)
+	local nm = text(row, "Title", cur.title or cur.id, if c then 11 else 13, T.TEXT, T.FONT_HEAVY); nm.ZIndex = z + 1
+	nm.Position = UDim2.fromOffset(tx, if c then 17 else 21); nm.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, if c then 16 else 18)
+	nm.TextScaled = true
+	new("UITextSizeConstraint", { MaxTextSize = if c then 11 else 13, MinTextSize = 7 }, nm)
+	if lead then
+		local function arrow(name: string, label: string, x: number, step: number)
+			local b = new("TextButton", { Name = name, AutoButtonColor = false, BorderSizePixel = 0, ZIndex = z + 1, Text = label,
+				BackgroundColor3 = T.CARD, BackgroundTransparency = 0.1, AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, x, 0.5, 0), Size = UDim2.fromOffset(aw, mapH - 8), FontFace = T.FONT_HEAVY,
+				TextSize = if c then 14 else 13, TextColor3 = T.TEXT }, row)
+			T.corner(b, 4)
+			b.MouseButton1Click:Connect(function()
+				local nx = list[(idx - 1 + step) % #list + 1]
+				task.spawn(ask, "map", nx.id)
+			end)
+		end
+		arrow("Prev", "<", iw - aw * 2 - 8, -1)
+		arrow("Next", ">", iw - aw - 4, 1)
+	end
+	return mapH
+end
+
 -- ctx: left, y, W, c (compact), cardH, pt (party view), n (party size), lead, pon (party ranked on), ask, notice, leaderName
 function ModesTab.draw(ctx: any): number
 	local left, W, c, pt, lead = ctx.left, ctx.W, ctx.c, ctx.pt, ctx.lead
@@ -125,43 +170,7 @@ function ModesTab.draw(ctx: any): number
 	ly += listH + 8
 	-- MAP: a picture of it, its name, < > through RANDOM and the rotation's maps (the leader's; the others see it)
 	if mapOn then
-		local maps = pt.maps :: { any }
-		local list: { any } = { { id = "random", title = "RANDOM", thumb = "" } }
-		for _, m in maps do table.insert(list, m) end
-		local idx = 1
-		for i, m in list do if m.id == pt.map then idx = i end end
-		local cur = list[idx]
-		local row = new("Frame", { Name = "Map", BorderSizePixel = 0, BackgroundColor3 = T.BG, BackgroundTransparency = 0.35, ZIndex = 3,
-			Position = UDim2.fromOffset(14, ly), Size = UDim2.fromOffset(iw, mapH) }, p)
-		T.corner(row, 4)
-		local th = mapH - 8
-		local pic = new("ImageLabel", { Name = "Thumb", BorderSizePixel = 0, BackgroundColor3 = T.CARD, BackgroundTransparency = 0, ZIndex = 4,
-			Image = cur.thumb or "", ScaleType = Enum.ScaleType.Crop, Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(math.floor(th * 16 / 9), th) }, row)
-		T.corner(pic, 3)
-		local tx = 4 + math.floor(th * 16 / 9) + 10
-		local aw = if lead then (if c then 40 else 34) else 0
-		local lab = text(row, "Label", "MAP", if c then 8 else 9, T.MUTED, T.FONT_BOLD); lab.ZIndex = 4
-		lab.Position = UDim2.fromOffset(tx, if c then 5 else 7); lab.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, 12)
-		local nm = text(row, "Title", cur.title or cur.id, if c then 11 else 13, T.TEXT, T.FONT_HEAVY); nm.ZIndex = 4
-		nm.Position = UDim2.fromOffset(tx, if c then 17 else 21); nm.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, if c then 16 else 18)
-		nm.TextScaled = true
-		new("UITextSizeConstraint", { MaxTextSize = if c then 11 else 13, MinTextSize = 7 }, nm)
-		if lead then
-			local function arrow(name: string, label: string, x: number, step: number)
-				local b = new("TextButton", { Name = name, AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 4, Text = label,
-					BackgroundColor3 = T.CARD, BackgroundTransparency = 0.1, AnchorPoint = Vector2.new(0, 0.5),
-					Position = UDim2.new(0, x, 0.5, 0), Size = UDim2.fromOffset(aw, mapH - 8), FontFace = T.FONT_HEAVY,
-					TextSize = if c then 14 else 13, TextColor3 = T.TEXT }, row)
-				T.corner(b, 4)
-				b.MouseButton1Click:Connect(function()
-					local nx = list[(idx - 1 + step) % #list + 1]
-					task.spawn(ctx.ask, "map", nx.id)
-				end)
-			end
-			arrow("Prev", "<", iw - aw * 2 - 8, -1)
-			arrow("Next", ">", iw - aw - 4, 1)
-		end
-		ly += mapH + 8
+		ly += ModesTab.mapRow(p, 14, ly, iw, c, pt, lead, ctx.ask, 3) + 8
 	end
 	-- FILL FROM QUICKPLAY
 	local fillOn = pt ~= nil and pt.fill == true

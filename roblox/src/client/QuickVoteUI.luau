@@ -2,8 +2,9 @@
 -- the votes when a match forms (server/Party.luau), over the Play screen's big button:
 --   the MODE (QUICKPLAY): 3 modes its head-count fits, tap one (or press 1, 2 or 3)
 --   the MAP (QUICKPLAY and casual duels, 17 Nov 2026, the owner: "also add map selector before hand"): 3 maps from the
---   rotation as cards with their pictures (shared/MapCards.luau) and names, tap one (4, 5, 6 under a mode vote; 1, 2,
---   3 alone)
+--   rotation as cards with their pictures (shared/MapCards.luau) and names, and RANDOM (21 Nov 2026, the owner: "for
+--   pads and casual andthing but ranked basically let us pick maps": any map of the rotation; no votes is RANDOM too),
+--   tap one (4-7 under a mode vote; 1-4 alone). RANDOM's card shows the map it landed on once it's picked
 -- both run on the same PlayConfig.VOTE s clock. most votes wins, a tie is drawn; the picks show until the match starts.
 -- everything comes from the party view (found.vote / pick, found.mvote / map), so a reopened screen or a respawn
 -- shows it again:
@@ -189,26 +190,34 @@ function QuickVoteUI.draw()
 		end
 		local counts = cur.mvote.counts or {}
 		local top = my + headH - (if c then 8 else 12)
+		-- (RANDOM won: the picked map isn't one of the cards, so RANDOM's card shows it)
+		local wonOnCard = false
+		for _, o in maps do if o.id == won then wonOnCard = true end end
 		for i, o in maps do
 			mapIds[i] = o.id
 			local mine = cur.mvote.mine == o.id
-			local isWon = won == o.id
+			local isWon = won == o.id or (o.random == true and won ~= nil and not wonOnCard)
+			local shown = if o.random == true and isWon then cur.map else o
 			local b = new("TextButton", { Name = "Map" .. i, AutoButtonColor = false, BorderSizePixel = 0, Text = "", ClipsDescendants = true,
 				BackgroundColor3 = if isWon then T.ACCENT elseif mine then T.CARD_HI else T.CARD,
 				BackgroundTransparency = if won and not isWon then 0.55 else 0.05,
 				Position = UDim2.fromOffset(pad + (i - 1) * (cw + gap), top), Size = UDim2.fromOffset(cw, mapH) }, panel)
 			T.corner(b, 5)
 			if (mine and not isWon) or isWon then T.edge(b, T.ACCENT, if isWon then 0 else 0.3, if isWon then 2 else 1) end
-			local pic = new("ImageLabel", { Name = "Thumb", BorderSizePixel = 0, BackgroundColor3 = T.BG, Image = o.thumb or "",
+			local pic = new("ImageLabel", { Name = "Thumb", BorderSizePixel = 0, BackgroundColor3 = T.BG, Image = shown.thumb or "",
 				ScaleType = Enum.ScaleType.Crop, ImageTransparency = if won and not isWon then 0.6 else 0,
 				Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, thumbH) }, b)
 			T.corner(pic, 5)
+			if o.random == true and not isWon then
+				local any = text(pic, "Any", "ANY MAP", if c then 10 else 12, if won then T.DIM else T.MUTED, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+				any.Size = UDim2.fromScale(1, 1)
+			end
 			local ink = if isWon then T.INK elseif won then T.DIM else T.TEXT
-			local nm = text(b, "Name", o.title or o.id, if c then 11 else 13, ink, T.FONT_HEAVY)
+			local nm = text(b, "Name", shown.title or shown.id, if c then 11 else 13, ink, T.FONT_HEAVY)
 			nm.Position = UDim2.fromOffset(8, thumbH + (if c then 4 else 5)); nm.Size = UDim2.new(1, -64, 0, if c then 14 else 16); nm.TextScaled = true
 			new("UITextSizeConstraint", { MaxTextSize = if c then 11 else 13, MinTextSize = 7 }, nm)
 			local isBanned = table.find(mbanned, o.id) ~= nil
-			local vc = text(b, "Votes", if isBanned then "BANNED" else votesText(counts[o.id] or 0), if c then 9 else 10, if isWon then T.INK elseif isBanned then T.DANGER else T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+			local vc = text(b, "Votes", if isBanned then "BANNED" elseif o.random == true and isWon then "RANDOM" else votesText(counts[o.id] or 0), if c then 9 else 10, if isWon then T.INK elseif isBanned then T.DANGER else T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 			vc.AnchorPoint = Vector2.new(1, 0)
 			vc.Position = UDim2.new(1, -8, 0, thumbH + (if c then 5 else 6)); vc.Size = UDim2.fromOffset(54, 14)
 			if not won then T.key(b, tostring(keyAt + i - 1), UDim2.new(1, -30, 0, 8)) end
@@ -245,7 +254,7 @@ function QuickVoteUI.fakeScreen(v: Vector2?)
 end
 
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4,
-	[Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 }
+	[Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6, [Enum.KeyCode.Seven] = 7 }
 Keys.began(function(io: any, gp: boolean)
 	if gp or not cur or cur.kind == "wban" then return end -- (the weapon ban: tiles only, too many for keys)
 	local i = KEYS[io.KeyCode]
@@ -253,7 +262,7 @@ Keys.began(function(io: any, gp: boolean)
 	local hasModes = cur.vote ~= nil
 	if hasModes and i <= 3 then vote(i)
 	elseif hasModes then voteMap(i - 3)
-	elseif i <= 3 then voteMap(i) end
+	else voteMap(i) end -- (voteMap ignores a key past the cards)
 end)
 
 RunService.Heartbeat:Connect(function()
