@@ -19,6 +19,7 @@ local Dummies = require(script.Parent:WaitForChild("Dummies"))
 local Katana = require(script.Parent:WaitForChild("Katana")) -- (the katana's crit return, edge meter and slash wave: docs/KATANA.md)
 local Zones = require(script.Parent:WaitForChild("Zones")) -- (training: no guard cooldown)
 local Latency = require(script.Parent:WaitForChild("Latency")) -- (20 Nov 2026: each shooter's own lag window for headshots)
+local Melee = require(Shared:WaitForChild("Melee")) -- (26 Nov 2026: the forgiving swing, the first swing after a reel)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -535,6 +536,12 @@ SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown, heavy: unknown, y
 	if not f or type(wid) ~= "string" then return end
 	-- (heavy: the knife's right-click stab; yaw: where you looked, the front of a katana swing's crit return)
 	if Rules.swing(f, wid, now(), heavy == true, yaw) then return end
+	-- (26 Nov 2026) the first swing after a reel onto someone: Melee.REEL_HIT (Main.server's "reeled" opened the window)
+	local fa: any = f
+	if type(fa.reelHit) == "number" then
+		if heavy ~= true and now() <= fa.reelHit and f.swing then (f.swing :: any).bonus = true end
+		fa.reelHit = nil
+	end
 	Fight.shot(f, wid)
 	-- (the Scythe: the server's own count of its swing chain, ScytheLatch; everyone else's copy plays that link)
 	local link = if heavy == true then nil else require(script.Parent:WaitForChild("ScytheLatch")).swing(f, wid, now())
@@ -561,10 +568,29 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 		local tr = t and Fight.root(t)
 		if not t or not tr then continue end
 		local tp = tr.Position -- feet + 1 m
-		local to = tp - eye
+		-- (26 Nov 2026, the forgiving swing: shared/Melee.luau) the nearest point of their body's column to your look, where
+		-- they are or back along their trail as far as this swing and your own latency go: the one most in front of you
+		local sw0: any = f.swing
+		local to = Melee.bodyPoint(eye, lk.Unit, Hitbox.feet(tp)) - eye
+		local function score(v: Vector3): number
+			return math.acos(math.clamp(lk.Unit:Dot(v.Unit), -1, 1)) + v.Magnitude / 30
+		end
+		local back = math.clamp(Latency.window(p) + ((w.hitT or 0.2) :: number) + Melee.HIT.early, 0.25, Fight.LAG)
+		if to.Magnitude > 1e-3 then
+			local best = score(to)
+			for _, ft in Fight.path(t, back) do
+				local c = Melee.bodyPoint(eye, lk.Unit, ft) - eye
+				if c.Magnitude > 1e-3 then
+					local sc = score(c)
+					if sc < best then best, to = sc, c end
+				end
+			end
+		end
+		local bonus = sw0 ~= nil and sw0.bonus == true
 		local why = Rules.meleeHit(f, t, wid, now(), {
-			dist = to.Magnitude, look = lk.Unit, to = to, los = Fight.castMap(eye, to.Unit, to.Magnitude) == nil,
-			speedF = Fight.speed(f), speedT = Fight.speed(t),
+			dist = to.Magnitude, look = lk.Unit, to = to,
+			los = to.Magnitude < 0.5 or Fight.castMap(eye, to.Unit, to.Magnitude) == nil or Fight.sees(eye, t),
+			speedF = Fight.speed(f), speedT = Fight.speed(t), extra = if bonus then Melee.REEL_HIT.reach else nil,
 		})
 		if why then continue end
 		local pr = Rules.parryAt(t, fr.Position - tr.Position, Fight.facing(t), now())
@@ -584,6 +610,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 		local sw = f.swing
 		local hv = if sw and sw.heavy then w.heavy else nil
 		local dmg = if hv then hv.dmg else w.dmg
+		if sw and (sw :: any).bonus and not hv then dmg *= Melee.REEL_HIT.dmg end -- (26 Nov 2026: reeled in, the first swing)
 		if w.verdict then dmg *= Verdict.mult(f, t) end -- (the Scales of Justice: as hard as they deserve, Verdict.luau)
 		local hs = false
 		if w.backstab then

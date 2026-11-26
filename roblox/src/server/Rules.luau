@@ -561,7 +561,7 @@ function Rules.swing(f: Fighter, wid: any, now: number, heavy: boolean?, yaw: an
 	return nil
 end
 
-export type MeleeCtx = { dist: number, look: Vector3, to: Vector3, los: boolean, speedF: number, speedT: number }
+export type MeleeCtx = { dist: number, look: Vector3, to: Vector3, los: boolean, speedF: number, speedT: number, extra: number? } -- (extra: more reach, the first swing after a reel: Melee.REEL_HIT)
 
 -- a melee hit: needs a swing just before, the target in reach (incl. the katana's growth), in the cone and in sight
 function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeCtx): string?
@@ -574,7 +574,7 @@ function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeC
 	if now < f.staggerUntil then return "staggered" end
 	local w = W[wid]
 	local hv = if sw.heavy then w.heavy else nil
-	local reach = if hv then hv.range else Weapons.reach(w, f.kat)
+	local reach = (if hv then hv.range else Weapons.reach(w, f.kat)) + (c.extra or 0)
 	if c.dist > reach + Rules.SLACK + 0.3 * (c.speedF + c.speedT) then return "out of reach" end
 	if c.dist > 1.5 * S and c.to.Magnitude > 1e-3 and c.look.Magnitude > 1e-3 then
 		local cosA = math.clamp(c.look.Unit:Dot(c.to.Unit), -1, 1)

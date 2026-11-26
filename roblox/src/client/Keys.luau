@@ -5,6 +5,8 @@
 -- exactly what its key does, in the same code. A touch press arrives as a plain table with the InputObject fields the
 -- handlers read (KeyCode, UserInputType, UserInputState, Position, Delta, plus Touch = true) and gameProcessed false.
 --   Keys.press(code, down)  a button goes down / up. code: an Enum.KeyCode, or Enum.UserInputType.MouseButton1/2/3
+--   Keys.press(code, down, act)  the same, for that one action only (Binds matches it to act alone: the phone's REEL
+--                           and YANK both press F, 26 Nov 2026)
 --   Keys.tap(code)          down and up at once
 --   Keys.isDown(code)       the real key, or a touch button holding it (the crouch pose reads C this way)
 --   Keys.fromTouch(io)      true for a touch button's pretend press. USE THIS, never io.Touch: a real InputObject
@@ -46,17 +48,22 @@ function Keys.ended(fn: Handler)
 	table.insert(endedFns, fn)
 end
 
-local function fake(code: any, down: boolean): any
+local function fake(code: any, down: boolean, act: string?): any
 	local isMouse = typeof(code) == "EnumItem" and code.EnumType == Enum.UserInputType
 	return {
 		KeyCode = if isMouse then Enum.KeyCode.Unknown else code,
 		UserInputType = if isMouse then code else Enum.UserInputType.Keyboard,
 		UserInputState = if down then Enum.UserInputState.Begin else Enum.UserInputState.End,
-		Position = Vector3.zero, Delta = Vector3.zero, Touch = true,
+		Position = Vector3.zero, Delta = Vector3.zero, Touch = true, Act = act,
 	}
 end
 
-function Keys.press(code: any, down: boolean)
+function Keys.press(code: any, down: boolean, act: string?)
+	if act then -- (one action's own press: no key of its own, so nothing that listens for the key itself hears it)
+		local io = fake(Enum.KeyCode.Unknown, down, act)
+		for _, fn in (if down then beganFns else endedFns) do task.spawn(fn, io, false) end
+		return
+	end
 	local n = held[code] or 0
 	if down then
 		held[code] = n + 1

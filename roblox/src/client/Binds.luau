@@ -33,11 +33,13 @@ Binds.ACTIONS = {
 	{ id = "flash", label = "UTILITY ALT", group = "WEAPONS", kb = { "N", "MouseButton3" }, pad = "DPadUp" }, -- (a pad's D-Up is READY only before a round, held at your spawn: the two share it. CONTROLLER.md)
 	{ id = "wave", label = "KATANA SLASH WAVE", group = "WEAPONS", kb = { "Q" }, pad = "DPadLeft" }, -- (with the katana's edge meter full: Katana.client)
 	{ id = "form", label = "SCYTHE: SWITCH FORM", group = "WEAPONS", kb = { "Q" }, pad = "DPadLeft" }, -- (scythe <-> its rifle: Arsenal minigun.form. the same keys as the wave: you never carry both, they're melee)
+	{ id = "lunge", label = "MELEE LUNGE", group = "WEAPONS", kb = { "Z" }, pad = "ButtonR3" }, -- (26 Nov 2026: a dash at whoever's under your crosshair with a melee weapon out, MeleeLunge; right click too on one with no right-click move. a pad's RS picks your melee weapon, and lunges once it's out)
 	{ id = "sprint", label = "SPRINT", group = "MOVEMENT", kb = { "LeftShift", "RightShift" }, pad = "ButtonL3", toggle = "sprint.toggle", padToggle = "pad.sprintToggle" },
 	{ id = "crouch", label = "CROUCH", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle", padToggle = "pad.crouchToggle" },
 	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonR1" },
 	{ id = "ride", label = "RIDE A CART", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (on top of a Shopping Cart: hop in and out. CartRide.client)
-	{ id = "yank", label = "GRAPPLE YANK", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (with your rope on a person: pull them to you. never in the hub, so F is QUICK JOIN's there; B is crouch's, nothing mid-rope: Move.client)
+	{ id = "yank", label = "GRAPPLE YANK (TAP)", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (with your rope on a person: pull them to you. never in the hub, so F is QUICK JOIN's there; B is crouch's, nothing mid-rope: Move.client)
+	{ id = "reelin", label = "GRAPPLE REEL IN (HOLD)", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (26 Nov 2026: held with your rope on anything, you're pulled along it. the yank's keys by default: a tap yanks, a hold reels; bound apart, each is its own. Move.client)
 	{ id = "reel", label = "AUTO GRAPPLE", group = "MOVEMENT", kb = { "X" }, pad = "DPadRight" }, -- (19 Nov 2026: your grapple onto the opponent nearest your aim, HookCharges.LOCK; the id is the old reel's, so rebinds keep. a pad's D-Right is it in a match after GO, the emote wheel's everywhere else: Move.client, FlairClient)
 	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "DPadDown" },
 	{ id = "emote", label = "EMOTE WHEEL", group = "MENUS", kb = { "T" }, pad = "DPadRight" },
@@ -108,7 +110,10 @@ local function isRaw(id: string, io: any): boolean
 	local touch = typeof(io) == "table" and io.Touch == true
 	local b = if touch then defaults[id] else binds[id]
 	if not b then return false end
-	local yes = hits(b[1], io) or hits(b[2], io) or hits(b[3], io)
+	-- (a touch button that names its action, Keys.press's act: that action only, not the others on the same key. the
+	-- phone's REEL and YANK both press F)
+	local act = if touch then io.Act else nil
+	local yes = if type(act) == "string" then act == id else (hits(b[1], io) or hits(b[2], io) or hits(b[3], io))
 	if yes then
 		lastTouch = touch
 		lastPad = not touch and typeof(io.UserInputType) == "EnumItem" and string.sub(io.UserInputType.Name, 1, 7) == "Gamepad"

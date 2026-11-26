@@ -22,6 +22,7 @@ local AnimeFx = require(script.Parent:WaitForChild("AnimeFx")) :: any -- (26 Nov
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Body = require(script.Parent:WaitForChild("Body"))
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them, hold or toggle aim: Settings)
+local MeleeX = require(script.Parent:WaitForChild("MeleeLunge")) :: any -- (26 Nov 2026: the melee lunge, the run with a melee weapon out, the forgiving swing)
 local Settings = require(script.Parent:WaitForChild("Settings")) :: any
 -- every body handling its weapon in third person (ThirdPerson.luau). if it ever fails to load, the weapons still work
 local TP: any = nil
@@ -729,7 +730,12 @@ local function swing(now: number, heavy: boolean?)
 	end
 	local lk = camera.CFrame.LookVector
 	SwingR:FireServer(held, if hv then true else nil, math.atan2(-lk.X, -lk.Z)) -- (where you look: a katana swing's front for the crit return)
-	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil }
+	-- (26 Nov 2026) the first swing after a reel brought you onto someone reaches further (Melee.REEL_HIT; Move.client sets
+	-- ReelHit, the server pays its own copy). t0: the press, where the forgiving swing's look back starts
+	local rh = me:GetAttribute("ReelHit")
+	local bonus = not hv and type(rh) == "number" and workspace:GetServerTimeNow() <= rh
+	if type(rh) == "number" then me:SetAttribute("ReelHit", nil) end
+	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil, t0 = now, bonus = bonus }
 end
 
 local function resolveSwing()
@@ -743,16 +749,21 @@ local function resolveSwing()
 	if not w then return end
 	local hv = if pd and pd.heavy then w.heavy else nil
 	local reach = if hv then hv.range else Weapons.reach(w, kat())
+	if pd and pd.bonus then reach += MeleeX.REEL_HIT.reach end
 	local cone = (if hv then hv.cone else w.cone) :: number
 	local map = workspace:FindFirstChild("Map")
 	mapParams.FilterDescendantsInstances = { map :: Instance }
 	local hitList: { Model } = {}
 	local firstAt: Vector3? = nil
 	for _, t in targets() do
-		local pt = t.feet + Vector3.new(0, Hitbox.ROOT_UP, 0)
-		if Hitbox.inCone(eye, look, pt, reach, cone) then
+		-- (26 Nov 2026, the forgiving swing: the body's whole column from feet to head, and where it was back along the
+		-- swing since the press: MeleeLunge.hits, shared/Melee.luau)
+		local ok, bp = MeleeX.hits(t.m, t.feet, eye, look, reach, cone, pd and pd.t0)
+		if ok then
+			local pt = t.feet + Vector3.new(0, Hitbox.ROOT_UP, 0)
 			local v = pt - eye
-			if v.Magnitude < 0.5 or not workspace:Raycast(eye, v, mapParams) then
+			local bv = if bp then bp - eye else v
+			if v.Magnitude < 0.5 or not workspace:Raycast(eye, v, mapParams) or not workspace:Raycast(eye, bv, mapParams) then
 				table.insert(hitList, t.m)
 				firstAt = firstAt or pt
 				if #hitList >= 6 then break end
@@ -825,6 +836,8 @@ local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Thr
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 Keys.began(function(io: InputObject, gp: boolean)
 	if gp or menuOpen() or inHub() then return end
+	-- (26 Nov 2026) the melee LUNGE key with a swung weapon out (a pad's RS picks the melee weapon, and lunges once it's out)
+	if not toolOut() and me:GetAttribute("MenuCursor") ~= true and MeleeX.press(io, held) then return end
 	local slot = Binds.slot(io)
 	-- (a key that's closing a pop-up ad or answering a pop quiz right now isn't a weapon key: Utility.client.luau)
 	local busy = me:GetAttribute("BusyKeys")
@@ -930,6 +943,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 				local raise = (VM :: any).raise -- (the hold session's pose: the scales up and out, tipped up)
 				if raise then raise(0.6) end
 			end
+		elseif W[held] and MeleeX.rightLunge(W[held]) then MeleeX.try(held) -- (26 Nov 2026: right click lunges with a melee weapon that has no right-click move of its own: Bread, Hand Slapper, Claw)
 		elseif aimHeld then tryParry(now) else guardEnd(now) end -- (the knife stabs; the katana guards while it's held: toggle aim lets go on the next press)
 	elseif Binds.is("reload", io) then
 		if W[held] and W[held].duo then minigun.duoRun("left", function() reload() end) -- (a duo: its left half's mag)
@@ -1274,7 +1288,7 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 	-- how fast you run with it out (the SMG is light, the Belt Sander isn't), slower down the sights (web: x0.75)
 	-- (a classic mode's run speed on top: spoons & grapples x1.6, Modes.luau's ModeSpeed)
 	local ms = tonumber(me:GetAttribute("ModeSpeed")) or 1
-	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim) * (if inHub() then 1 else ms) * minigun.hold.speed()
+	Body.speedMul = (if w and not inHub() then (w.speedMul or 1) * MeleeX.speed(w) else 1) * (1 - 0.25 * aim) -- (MeleeX.speed: a melee weapon out runs Melee.SPEED faster) * (if inHub() then 1 else ms) * minigun.hold.speed()
 	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
 	local fovAttr = me:GetAttribute("BaseFov")
 	local baseFov = if type(fovAttr) == "number" then fovAttr else 70

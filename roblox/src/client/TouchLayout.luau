@@ -23,7 +23,8 @@ local K = Enum.KeyCode
 -- what a button can do. look: a thumb on it steers the view too; fight: only where weapons work; q: the katana's wave or
 -- the Scythe's form (shown with one of them out); body: the grapple's yank (shown while your rope is on a person);
 -- rope: shown while your rope is on anything; lock: the AUTO GRAPPLE (shown in a match after GO; the id stays "reel":
--- it was the reel till 19 Nov 2026, so saved layouts keep their place)
+-- it was the reel till 19 Nov 2026, so saved layouts keep their place); melee: shown with a swung melee weapon out.
+-- act: the button presses that one action only (Keys.press's act; 26 Nov 2026: REEL and YANK both press F)
 TL.ACTIONS = {
 	fire = { key = MB1, label = "FIRE", look = true, fight = true },
 	aim = { key = MB2, label = "AIM", look = true, fight = true },
@@ -40,12 +41,14 @@ TL.ACTIONS = {
 	camera = { key = K.V, label = "CAMERA" }, -- (third person: Move.client)
 	emote = { key = K.T, label = "EMOTE" },
 	wave = { key = K.Q, label = "WAVE", fight = true, q = true },
-	yank = { key = K.F, label = "YANK", fight = true, body = true },
+	yank = { key = K.F, label = "YANK", fight = true, body = true, act = "yank" },
 	reel = { key = K.X, label = "LOCK", lock = true },
+	reelin = { key = K.F, label = "REEL", rope = true, act = "reelin" }, -- (26 Nov 2026: hold to be pulled along your rope, Move.client)
+	lunge = { key = K.Z, label = "LUNGE", fight = true, melee = true, act = "lunge" }, -- (26 Nov 2026: the melee lunge, MeleeLunge)
 } :: { [string]: any }
 -- the editor's ACTION list, in this order (only actions whose listeners hear Keys: the goggles' flash listens to the
 -- keyboard alone, so it isn't here)
-TL.PICK = { "fire", "aim", "jump", "crouch", "sprint", "hook", "reload", "swap", "slot1", "slot2", "melee", "item", "camera", "emote" }
+TL.PICK = { "fire", "aim", "jump", "crouch", "sprint", "hook", "reload", "swap", "slot1", "slot2", "melee", "item", "camera", "emote", "reelin", "lunge" }
 
 -- the default layout: the web game's places (touch.css: points from the bottom corner on the fire side, x the button size)
 -- keep: can't be hidden; fixed: its action can't be changed (it only shows when it can be used)
@@ -61,6 +64,8 @@ TL.ITEMS = {
 	{ id = "wave", kind = "btn", act = "wave", x = 112, y = 240, d = 52, fixed = true },
 	{ id = "yank", kind = "btn", act = "yank", x = 56, y = 244, d = 50, fixed = true },
 	{ id = "reel", kind = "btn", act = "reel", x = 56, y = 304, d = 50, fixed = true },
+	{ id = "reelin", kind = "btn", act = "reelin", x = 172, y = 214, d = 50, fixed = true }, -- (26 Nov 2026: by the HOOK, over STAB)
+	{ id = "lunge", kind = "btn", act = "lunge", x = 238, y = 150, d = 50, fixed = true }, -- (26 Nov 2026: left of STAB, with a melee weapon out)
 	{ id = "settings", kind = "pill", label = "SETTINGS", w = 84, keep = true },
 	{ id = "auto", kind = "pill", label = "AUTO", w = 54 },
 	{ id = "emote", kind = "pill", label = "EMOTE", w = 64 },

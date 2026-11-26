@@ -18,6 +18,7 @@ local Hud = require(script.Parent:WaitForChild("Hud"))
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as bound, hold or toggle sprint and crouch: Settings)
 local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
 local HookChargesUI = require(script.Parent:WaitForChild("HookChargesUI")) -- (ranked: 2 grapple charges)
+local MeleeX = require(script.Parent:WaitForChild("MeleeLunge")) :: any -- (26 Nov 2026: the melee lunge; a melee weapon out holds the lock-on longer)
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any -- (a LoadoutOpen nothing holds: V clears it)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -85,11 +86,23 @@ local function dropRope()
 	if ropeAnchor then ropeAnchor:Destroy(); ropeAnchor = nil end
 end
 
--- (the reel, below tryYank: pulled along the rope until untilT)
+-- (the reel, below tryYank: pulled along the rope while its key is held, until untilT. pullPress: a press of a key
+-- that's both the yank's and the reel's, waiting to see if it's a tap (the yank) or a hold (the reel). hookLock: the
+-- lock-on's time on a person, Config.hook.lockGun / lockMelee; melee: a melee weapon was out, so it ties on)
 local reel: { untilT: number }? = nil
-local reelAsked = 0
+local reelAsked, reelReady = 0, 0
+local pullPress: { t: number }? = nil
+local hookLock: { untilT: number, melee: boolean }? = nil
+local function lockShow(endT: number?, dur: number?, tether: boolean?)
+	-- (MeleeHud.client draws the ring from these: the server time it ends, how long it was, tied on)
+	player:SetAttribute("HookLockEnd", endT)
+	player:SetAttribute("HookLockDur", dur)
+	player:SetAttribute("HookTether", tether)
+end
 local function releaseHook(tellServer: boolean)
 	reel = nil
+	pullPress = nil
+	if hookLock then hookLock = nil; lockShow(nil, nil, nil) end
 	if st.hook then st.hook = nil; st.lift = 1 end
 	if hookBody then hookBody = nil; player:SetAttribute("HookBody", nil) end -- (HookBody: the phone's YANK button shows)
 	dropRope()
@@ -102,27 +115,35 @@ end
 -- crack (GrappleYank.client). where weapons work only (not the hub: F is QUICK JOIN's there), and one every
 -- Config.hook.yankCool (YankT, the server's, on you)
 local YANK_ZONES = { match = true, training = true, playground = true }
-local function tryYank(): boolean
+local function yankReady(): boolean
 	if not (st.hook and hookBody) or not YANK_ZONES[player:GetAttribute("Zone") :: any] then return false end
 	if player:GetAttribute("RoundLock") then return false end -- (not before GO: RoundLock, Matches)
 	local ready = player:GetAttribute("YankT")
-	if type(ready) == "number" and workspace:GetServerTimeNow() < ready then return false end
+	return not (type(ready) == "number" and workspace:GetServerTimeNow() < ready)
+end
+local function tryYank(): boolean
+	if not yankReady() then return false end
 	GrappleRemote:FireServer("yank")
 	releaseHook(false) -- (the server drops its rope with the yank)
 	return true
 end
 
 -- the reel (19 Nov 2026, the owner: "the same way how you press F to push people in, I want a button that reels you
--- in"): with your rope on anything, the REEL key (Binds "reel": X, a pad's D-Right on a rope, the phone's REEL) asks the
--- server; it tells the anti-cheat (ACGrace) and answers "reel", and then you're pulled along the rope to its point at
--- Config.hook.reelSpeed till you get there, let go, or reelMax runs out. one every reelCool (ReelT, the server's)
+-- in"; a HOLD since 26 Nov 2026: "an actual reel in with f"): with your rope on anything, HOLD the REEL key (Binds
+-- "reelin": F with the yank, a pad's B, the phone's REEL) and you're pulled along the rope at a steady
+-- Config.hook.reelSpeed to where its end is now (a person's chest as they zip about) till you get there, let go, or
+-- reelMax runs out. it starts at once; the server tells the anti-cheat (ACGrace) or says "reelno" (too soon) and it
+-- stops. one every reelCool (ReelT, the server's; reelReady, this screen's guess)
 local function tryReel(): boolean
-	if not Config.hook.REEL then return false end -- (off since 19 Nov 2026: X is the AUTO GRAPPLE, tryLock below)
+	if not Config.hook.REEL then return false end
 	if not st.hook or reel or player:GetAttribute("RoundLock") then return false end
+	local sn = workspace:GetServerTimeNow()
 	local ready = player:GetAttribute("ReelT")
-	if type(ready) == "number" and workspace:GetServerTimeNow() < ready then return false end
+	if (type(ready) == "number" and sn < ready) or sn < reelReady then return false end
 	if os.clock() - reelAsked < 0.3 then return false end
 	reelAsked = os.clock()
+	reelReady = sn + Config.hook.reelCool
+	reel = { untilT = os.clock() + Config.hook.reelMax }
 	GrappleRemote:FireServer("reel")
 	return true
 end
@@ -141,7 +162,7 @@ local function passiveAuto(): boolean
 	local A = HC.AUTO
 	return A ~= nil and A.on == true and (player:GetAttribute("QuickMatch") == true or lockTest()) and cooled()
 end
-local function autoTarget(head: Vector3, ch: Model, cone: number): (Model?, BasePart?)
+local function autoTarget(head: Vector3, ch: Model, cone: number, dummies: boolean?): (Model?, BasePart?)
 	local test = lockTest()
 	local myArena, myTeam = player:GetAttribute("Arena"), player:GetAttribute("Team")
 	local cam = camera.CFrame
@@ -155,7 +176,11 @@ local function autoTarget(head: Vector3, ch: Model, cone: number): (Model?, Base
 		if myTeam ~= nil and qt == myTeam then continue end -- (a teammate: never)
 		if q.Character then table.insert(cands, q.Character) end
 	end
-	if test then for _, d in workspace:GetDescendants() do if d:IsA("Model") and d:GetAttribute("Dummy") then table.insert(cands, d) end end end
+	if test then for _, d in workspace:GetDescendants() do if d:IsA("Model") and d:GetAttribute("Dummy") then table.insert(cands, d) end end
+	elseif dummies then -- (the lock-on's snap: the training dummies too, workspace.Dummies only: no scan of the world)
+		local dd = workspace:FindFirstChild("Dummies")
+		if dd then for _, d in dd:GetChildren() do if d:IsA("Model") then table.insert(cands, d) end end end
+	end
 	for _, qc in cands do
 		local tr = bodyRoot(qc)
 		if not tr then continue end
@@ -202,6 +227,16 @@ local function tryHook(locked: Model?, lockedRoot: BasePart?)
 	-- (the AUTO GRAPPLE's target; or QUICKPLAY's passive auto-lock, off: no one under the crosshair, but an opponent near it)
 	local auto: Model?, autoRoot: BasePart? = locked, lockedRoot
 	if not auto and not (hit and bodyOf(hit.Instance)) and passiveAuto() then auto, autoRoot = autoTarget(head, ch, HC.AUTO.cone) end
+	-- the lock-on's snap (26 Nov 2026, Config.hook.snapGun / snapMelee): nobody under the crosshair, but a person within
+	-- that many degrees of it, in range and in sight, and not further off than what you aimed at: the hook goes on them
+	local snapped = false
+	if not auto and not (hit and bodyOf(hit.Instance)) then
+		local cone = if MeleeX.meleeOut() then Config.hook.snapMelee else Config.hook.snapGun
+		local sm, sr = autoTarget(head, ch, cone, true)
+		if sm and sr and (not hit or (sr.Position - head).Magnitude <= ((hit :: RaycastResult).Position - head).Magnitude + 6) then
+			auto, autoRoot, snapped = sm, sr, true
+		end
+	end
 	if not hit and not auto then
 		Hud.callout("TOO FAR", 0.5)
 		return
@@ -210,17 +245,22 @@ local function tryHook(locked: Model?, lockedRoot: BasePart?)
 	local p = if auto and autoRoot then autoRoot.Position else (hit :: RaycastResult).Position
 	local body = if auto then auto else bodyOf((hit :: RaycastResult).Instance)
 	local troot = if body then bodyRoot(body) else nil
-	if auto then HookChargesUI.autoUsed(if locked then HC.LOCK.cd else HC.AUTO.cd) end
+	if auto and not snapped then HookChargesUI.autoUsed(if locked then HC.LOCK.cd else HC.AUTO.cd) end
 	if body and troot then -- (a person: the rope ties onto them)
 		p = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0)
 		hookBody, hookBlind, hookLookT = body, 0, os.clock()
 		player:SetAttribute("HookBody", true)
+		-- the lock-on's clock (Config.hook.lockGun, or lockMelee with a melee weapon out): the ring round the crosshair
+		local mel = MeleeX.meleeOut() == true
+		local dur = if mel then Config.hook.lockMelee else Config.hook.lockGun
+		hookLock = { untilT = os.clock() + dur, melee = mel }
+		lockShow(workspace:GetServerTimeNow() + dur, dur, nil)
 	else
 		body = nil
 	end
 	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil, tie = body ~= nil and Config.hook.TIE == true } -- (TIE off: a person pulls you in too)
 	-- (the 4th: "lock" = the AUTO GRAPPLE, true = the passive auto-lock: the server checks each one's own rule)
-	GrappleRemote:FireServer("hook", p, body, if locked then "lock" elseif auto then true else nil)
+	GrappleRemote:FireServer("hook", p, body, if locked then "lock" elseif auto and not snapped then true else nil) -- (a snap is a plain hook on them)
 	-- our own rope right away (the server draws it for everyone else)
 	local a0 = (ch:FindFirstChild("RightHand") or ch:FindFirstChild("Right Arm") or root):FindFirstChildWhichIsA("Attachment") or root:FindFirstChildWhichIsA("Attachment")
 	local a1 = Instance.new("Attachment")
@@ -262,8 +302,10 @@ end
 GrappleRemote.OnClientEvent:Connect(function(what: string, arg: any)
 	if what == "cut" then -- the server said no (out of range, no line to it, too many hooks)
 		releaseHook(false)
-	elseif what == "reel" and st.hook then -- the reel's go (above): pulled along for at most arg s
-		reel = { untilT = os.clock() + math.clamp(tonumber(arg) or Config.hook.reelMax, 0.1, Config.hook.reelMax + 0.5) }
+	elseif what == "reelno" then -- the reel refused (too soon): it stops, the rope stays
+		reel = nil
+		local ready = player:GetAttribute("ReelT")
+		reelReady = if type(ready) == "number" then ready else 0
 	end
 end)
 
@@ -275,12 +317,18 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if not (Binds.is("camera", io) and MenuCursor.unstick()) then return end
 	end
 	local k = io.KeyCode
-	if Binds.is("yank", io) then tryYank() end -- (on its own: its keys are shared, F with QUICK JOIN, a pad's B with crouch)
-	-- (on its own too. X: the AUTO GRAPPLE; the reel's when Config.hook.REEL is on. a pad's D-Right is the emote wheel's
-	-- outside a live match round: FlairClient)
-	if Binds.is("reel", io) then if Config.hook.REEL then tryReel() else tryLock() end end
+	-- the yank and the reel (26 Nov 2026), on their own: their keys are shared (F with QUICK JOIN and the cart, a pad's B
+	-- with crouch), and by default with each other. a press of a key that's both, with the rope on a person and the yank
+	-- ready, waits Config.hook.reelTap: let go sooner, the yank; held, the reel. on a wall (or the yank not ready) the reel
+	-- starts at once; a key that's only the yank's yanks at once, as before
+	local isYank, isReel = Binds.is("yank", io), Binds.is("reelin", io)
+	if isReel and st.hook then
+		if isYank and yankReady() then pullPress = { t = os.clock() } else tryReel() end
+	elseif isYank then tryYank() end
+	-- (X: the AUTO GRAPPLE. a pad's D-Right is the emote wheel's outside a live match round: FlairClient)
+	if Binds.is("reel", io) then tryLock() end
 	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", true)
-	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", true)
+	elseif Binds.is("crouch", io) and not (st.hook and (isYank or isReel)) then keys.crouch = Binds.press("crouch", true) -- (on a rope a pad's B is the yank's and the reel's)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true; pressT = os.clock()
 	elseif Binds.is("grapple", io) then keys.hook = true; tryHook()
 	elseif Binds.is("camera", io) then thirdPerson = not thirdPerson; setCamera()
@@ -288,6 +336,11 @@ Keys.began(function(io: InputObject, gp: boolean)
 end)
 Keys.ended(function(io: InputObject)
 	local k = io.KeyCode
+	local isReel = Binds.is("reelin", io)
+	if isReel or Binds.is("yank", io) then
+		if pullPress then pullPress = nil; tryYank() -- (let go inside reelTap: a tap, the yank)
+		elseif reel and isReel then reel = nil end -- (let go: the rope stays, and so does your speed)
+	end
 	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", false)
 	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", false)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = false
@@ -474,6 +527,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil
+	if pullPress and os.clock() - pullPress.t >= Config.hook.reelTap then pullPress = nil; tryReel() end -- (held: the reel)
 	-- a person on the rope (above): the end follows their chest; gone, reeled in, or out of sight too long, it lets go
 	-- (a tie, Config.hook.TIE, holds however close: only a reel lets go there, below)
 	if st.hook and hookBody then
@@ -485,8 +539,19 @@ RunService.PreSimulation:Connect(function(dt: number)
 			local h = st.hook :: any
 			h.ax, h.ay, h.az = c.X, c.Y, c.Z
 			local nowL = os.clock()
-			if not h.tie and (c - chest).Magnitude < Config.hook.bodyLet then
-				releaseHook(true)
+			local lk = hookLock
+			local dist = (c - chest).Magnitude
+			if lk and nowL >= lk.untilT then
+				releaseHook(true) -- (the lock-on's time is up)
+			elseif not h.tie and not reel and dist < Config.hook.bodyLet then
+				-- there: a gun lets go (your momentum carries you into them); a melee weapon ties on for the rest of the lock
+				-- (Movement.ropeStep's tie: no pull, you walk, they can't get further than the rope)
+				if lk and lk.melee then
+					h.tie, h.len = true, math.max(dist, Config.hook.tieMin)
+					lockShow(player:GetAttribute("HookLockEnd") :: any, player:GetAttribute("HookLockDur") :: any, true)
+				else
+					releaseHook(true)
+				end
 			elseif nowL - hookLookT >= 0.1 then
 				local eye = root.Position + Vector3.new(0, 1.5, 0)
 				bodyParams.FilterDescendantsInstances = { ch, hookBody :: Model }
@@ -575,23 +640,42 @@ RunService.PreSimulation:Connect(function(dt: number)
 		st.vx, st.vy, st.vz = v.X, v.Y, v.Z
 		Body.kick() -- (Move's fling guard: our own pull)
 	end
-	-- the reel (tryReel): along the rope to its point (a person's chest moves with them), till there or out of time.
-	-- arrived, timed out or let go: the rope goes and reelKeep of the speed carries on
+	-- the reel (tryReel, held): along the rope to its end as it is now (a person's chest moves with them), at a steady
+	-- reelSpeed (reached in a few frames). there: reelKeep of the speed carries on; off a wall point the rope goes, off
+	-- a person a gun lets go and a melee weapon ties on (the lock-on, above), and the first swing gets Melee.REEL_HIT
+	-- (the server's say: "reeled"). out of time or let go: the rope stays, and your speed with it
 	if reel then
 		local h = st.hook :: any
 		local to = if h then Vector3.new(h.ax, h.ay, h.az) else nil
 		local d = if to then to - chest else Vector3.zero
-		local arrive = if hookBody then Config.hook.bodyLet else Config.hook.reelArrive
-		if not to or d.Magnitude <= arrive or os.clock() > (reel :: any).untilT then
+		local arrive = if hookBody then Config.hook.reelBody else Config.hook.reelArrive
+		if not to then
+			reel = nil
+		elseif d.Magnitude <= arrive then
 			reel = nil
 			st.vx, st.vy, st.vz = st.vx * Config.hook.reelKeep, st.vy * Config.hook.reelKeep, st.vz * Config.hook.reelKeep
-			if st.hook then releaseHook(true) end
+			local lk = hookLock
+			if hookBody then
+				GrappleRemote:FireServer("reeled")
+				player:SetAttribute("ReelHit", workspace:GetServerTimeNow() + MeleeX.REEL_HIT.window) -- (Arsenal's swing reads it)
+			end
+			if hookBody and lk and lk.melee then
+				h.tie, h.len = true, math.max(d.Magnitude, Config.hook.tieMin)
+				lockShow(player:GetAttribute("HookLockEnd") :: any, player:GetAttribute("HookLockDur") :: any, true)
+			else
+				releaseHook(true)
+			end
+		elseif os.clock() > (reel :: any).untilT then
+			reel = nil
 		else
 			local v = d.Unit * Config.hook.reelSpeed
-			st.vx, st.vy, st.vz = v.X, v.Y, v.Z
+			local k = math.min(1, dt * 25)
+			st.vx += (v.X - st.vx) * k; st.vy += (v.Y - st.vy) * k; st.vz += (v.Z - st.vz) * k
 			Body.kick() -- (Move's fling guard: our own pull)
 		end
 	end
+	-- (26 Nov 2026) the melee lunge: straight at the one you lunged at (MeleeLunge; its server say-so told the anti-cheat)
+	MeleeX.step(st, chest, dt, grounded)
 	if event == "grappleJump" then
 		dropRope(); GrappleRemote:FireServer("release")
 		Hud.callout("GRAPPLE JUMP", 0.6)

@@ -33,13 +33,22 @@ pcall(function() PhysicsService:CollisionGroupSetCollidable("JFRayBlind", "Defau
 
 type Info = { hookTimes: { number }, rope: Beam?, anchor: Attachment?, last: Vector3?, lastT: number, tp: number?,
 	body: Model?, bodyBlind: number, bodyNext: number, -- (body: the person the rope is tied to)
-	bornT: number } -- (when the body loaded: the spawn grace below)
+	bornT: number, -- (when the body loaded: the spawn grace below)
+	lockT: number?, lockMelee: boolean?, reelT: number? } -- (26 Nov 2026: the lock-on's start on a person, a melee weapon out then; the last reel's start)
 local info: { [Player]: Info } = {}
 
 local function dropRope(i: Info)
 	if i.rope then i.rope:Destroy(); i.rope = nil end
 	if i.anchor then i.anchor:Destroy(); i.anchor = nil end
 	i.body = nil
+	i.lockT, i.lockMelee = nil, nil
+end
+-- (26 Nov 2026) a swung weapon in their hands right now, the server's word (the lock-on's longer time: Config.hook)
+local Melee = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Melee"))
+local WL = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Weapons")).list :: any
+local function meleeOut(p: Player): boolean
+	local f = Fight.byPlayer[p]
+	return f ~= nil and Melee.swung(WL[f.held])
 end
 
 Players.PlayerAdded:Connect(function(p: Player)
@@ -158,10 +167,10 @@ local function yank(p: Player, i: Info)
 end
 
 -- the reel (19 Nov 2026, the owner: "the same way how you press F to push people in, I want a button that reels you
--- in"; Move.client's tryReel): with your rope on anything, you're pulled along it to its point, the yank's mirror. here:
--- the say-so (a rope of yours, in range, after GO, not held, one every reelCool: ReelT on you, server time), the
--- anti-cheat told (ACGrace for the pull's time), and "reel" back with that time; the client does the moving and lets go
--- when it gets there. on an enemy it's the Scythe combo's second step, like a yank (ScytheCombo)
+-- in"; Move.client's tryReel, a HOLD since 26 Nov 2026): with your rope on anything, you're pulled along it to its end,
+-- the yank's mirror. the client starts at once; here: the say-so (a rope of yours, in range, after GO, not held, one
+-- every reelCool: ReelT on you, server time), the anti-cheat told (ACGrace for the longest pull), and "reel" back. too
+-- soon: "reelno" (the client stops, the rope stays). on an enemy it's the Scythe combo's second step, like a yank
 local function reel(p: Player, i: Info)
 	local function stop(why: string)
 		dropRope(i)
@@ -171,16 +180,17 @@ local function reel(p: Player, i: Info)
 	local hum, root = alive(p)
 	if not hum or not root or not i.rope or not i.anchor or not i.anchor.Parent then return stop("no rope") end
 	local ready = p:GetAttribute("ReelT")
-	if type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.15 then return end -- (too soon: the rope stays)
+	if type(ready) == "number" and workspace:GetServerTimeNow() < ready - 0.15 then GrappleRemote:FireClient(p, "reelno"); return end -- (too soon: the rope stays)
 	if Matches.roundLocked(p) or p:GetAttribute("LoadoutWindow") ~= nil then return stop("not yet") end
 	if p:GetAttribute("Trap") or p:GetAttribute("Jail") or p:GetAttribute("Quiz") then return stop("held") end
 	local to = (i.anchor :: Attachment).WorldPosition
 	local dist = (to - root.Position).Magnitude
 	if dist > Config.hook.range + Config.check.hookSlack + 20 then return stop("out of range") end
 	local H = Config.hook
-	local dur = math.min(H.reelMax, dist / H.reelSpeed + 0.2)
+	local dur = H.reelMax -- (a hold: as long as the longest, the client lets go sooner)
 	p:SetAttribute("ACGrace", os.clock() + dur + 0.8) -- (the anti-cheat: this pull is the server's say)
 	p:SetAttribute("ReelT", workspace:GetServerTimeNow() + H.reelCool)
+	i.reelT = os.clock()
 	local tm = i.body
 	if tm then
 		local mf, tf = Fight.byPlayer[p], Fight.of(Players:GetPlayerFromCharacter(tm) or tm)
@@ -189,6 +199,20 @@ local function reel(p: Player, i: Info)
 		end
 	end
 	GrappleRemote:FireClient(p, "reel", dur)
+end
+
+-- a reel that brought you onto someone (Move.client's "reeled", 26 Nov 2026): the next swing within Melee.REEL_HIT's
+-- window reaches further and hits harder (Combat). the say-so: a reel started a moment ago, and your rope still on a
+-- person who's close on the server's copy too
+local function reeled(p: Player, i: Info)
+	local _, root = alive(p)
+	local tm = i.body
+	if not root or not tm or not i.reelT or os.clock() - i.reelT > Config.hook.reelMax + 0.6 then return end
+	local troot = tm:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not troot or (troot.Position - root.Position).Magnitude > Config.hook.reelBody + 12 then return end
+	local mf = Fight.byPlayer[p]
+	if mf then (mf :: any).reelHit = os.clock() + Melee.REEL_HIT.window + 0.35 end
+	i.reelT = nil
 end
 
 -- a hook the client fired at an opponent it wasn't aimed straight at. kind "lock": the AUTO GRAPPLE on X
@@ -215,6 +239,7 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	if what == "release" then dropRope(i); return end
 	if what == "yank" then yank(p, i); return end
 	if what == "reel" then reel(p, i); return end
+	if what == "reeled" then reeled(p, i); return end
 	if what ~= "hook" then return end
 	local function cut(why: string)
 		dropRope(i)
@@ -260,6 +285,7 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 		a1.Parent = troot
 		tieRope(i, p, a1)
 		i.body, i.bodyBlind, i.bodyNext = tm, 0, os.clock() + 0.2
+		i.lockT, i.lockMelee = os.clock(), meleeOut(p) -- (the lock-on's clock: the heartbeat lets go when it runs out)
 		-- (the Scythe's combo finisher, ScytheCombo: a rope on them is its first step)
 		if mf and mf ~= tf then pcall(function() require(script.Parent:WaitForChild("ScytheCombo")).step(mf :: any, tf, "grapple") end) end
 		return
@@ -368,9 +394,15 @@ RunService.Heartbeat:Connect(function()
 				local d = troot.Position + Vector3.new(0, Config.hook.bodyUp, 0) - eye
 				local blocked = d.Magnitude > 0.1 and Fight.castMap(eye, d.Unit, d.Magnitude) ~= nil
 				i.bodyBlind = if blocked then i.bodyBlind + 0.2 else 0
+				-- the lock-on's time (Config.hook.lockGun / lockMelee; a melee weapon out at the hook or now counts as melee,
+				-- and 0.4 s on top for the clocks: the client lets go first)
+				local lockFor = if i.lockMelee or meleeOut(p) then Config.hook.lockMelee else Config.hook.lockGun
 				if i.bodyBlind > Config.hook.bodyBlind + 0.4 then
 					dropRope(i)
 					GrappleRemote:FireClient(p, "cut", "out of sight")
+				elseif i.lockT and now - i.lockT > lockFor + 0.4 then
+					dropRope(i)
+					GrappleRemote:FireClient(p, "cut", "time")
 				end
 			end
 		end

@@ -517,7 +517,9 @@ tabs = {
 		for _, a in Binds.ACTIONS do
 			if a.group ~= group then
 				group = a.group
-				section(group)
+				-- (26 Nov 2026, the owner: "can we allow keybiinds to side mouse buttons". Roblox reads a mouse's left, right and
+				-- middle buttons only, so a side button has to send a key: the mouse's own app sets that up)
+				section(group, if group == "MOVEMENT" then "side mouse buttons: Roblox can't read them. give one a key in your mouse's app, then bind that key" else nil)
 				if group == "MOVEMENT" then for _, f in Binds.FIXED do fixedRow(f) end end
 			end
 			keyRow(a)

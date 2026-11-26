@@ -56,10 +56,24 @@ local Config = {
 		-- in"): with your rope on anything (a wall or a person), the REEL key pulls YOU along it to the hook point at
 		-- reelSpeed, the yank's mirror. it ends when you get there (reelArrive off a wall point, bodyLet off a person),
 		-- when you let go, or after reelMax s; reelKeep of the speed carries on. one every reelCool s (the server's say-so).
-		-- REEL = false since 19 Nov 2026 (the owner: a grapple on someone "already automatically reels in"): X is the AUTO
-		-- GRAPPLE now (shared/HookCharges.LOCK). the reel's code stays, off
-		REEL = false,
-		reelSpeed = 55 * S, reelArrive = 1.5 * S, reelMax = 2, reelKeep = 0.45, reelCool = 3,
+		-- REEL = false from 19 Nov 2026 (the owner: a grapple on someone "already automatically reels in"): X is the AUTO
+		-- GRAPPLE (shared/HookCharges.LOCK), and the reel's key is its own now (Binds "reelin").
+		-- REEL = true again since 26 Nov 2026, as a HOLD (the owner: "with have a bring in with f, but its inconsistent when
+		-- theyre zipping around, perhaps an actual reel in with f"): hold the REEL key (Binds "reelin": F, shared with the
+		-- yank, so a tap still yanks and a hold reels; a pad's B; the phone's REEL) and you're pulled along the rope at a
+		-- steady reelSpeed to where its end is NOW (a person's chest as they move), till you let go, reelMax runs out or
+		-- you get there (reelArrive off a wall point: the rope goes; reelBody off a person: a gun lets go, a melee weapon
+		-- ties on, below). reelKeep of the speed carries on at the end. reelTap: a press of a key that's both the yank's
+		-- and the reel's shorter than this is the yank. one reel every reelCool s (ReelT, the server's)
+		REEL = true,
+		reelSpeed = 40 * S, reelArrive = 1.5 * S, reelBody = 2 * S, reelMax = 2.5, reelKeep = 0.45, reelCool = 2, reelTap = 0.18,
+		-- the LOCK-ON (26 Nov 2026, the owner: "perhaps we can have like on a timer like a lock on to player attatchment
+		-- system?"): a grapple aimed near a person (snapGun degrees of the crosshair, snapMelee with a melee weapon out, and
+		-- not past what you aimed at) ties onto them; a rope on a person holds lockGun s (a gun out) or lockMelee s (a melee
+		-- weapon out: the gap-closer is melee's), a ring round the crosshair counting it down (MeleeHud.client), then lets
+		-- go. with a gun it still lets go as you reach them (bodyLet); with a melee weapon it ties on there instead (the tie
+		-- below: you walk, they can't get further than the rope) till the time is up
+		lockGun = 1.5, lockMelee = 3, snapGun = 4, snapMelee = 7,
 		-- the tie (19 Nov 2026): a rope on a PERSON doesn't pull you in; it ties and holds: no pull, no lift, its length the
 		-- one it was tied at (never under tieMin), and when they get further than that you're dragged after them, tieK x
 		-- the slack a second, at most tieDrag. TIE = false: OFF, a rope on a person pulls you in as it always did (the
