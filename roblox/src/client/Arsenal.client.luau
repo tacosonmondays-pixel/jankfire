@@ -18,6 +18,7 @@ local Hud = require(script.Parent:WaitForChild("Hud"))
 local H = require(script.Parent:WaitForChild("FightHud"))
 local VM = require(script.Parent:WaitForChild("Viewmodel"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
+local AnimeFx = require(script.Parent:WaitForChild("AnimeFx")) :: any -- (26 Nov 2026: the anime melee slashes and hits)
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Body = require(script.Parent:WaitForChild("Body"))
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them, hold or toggle aim: Settings)
@@ -325,6 +326,8 @@ end)
 -- left the streak hanging in the air behind the blade)
 local SMEAR_LIFE = 0.12
 local smearPts: { { t: number, a: Vector3, b: Vector3 } } = {}
+-- (the anime slash, AnimeFx.ownSlash: this swing's tip samples in camera space, fired once after the 4th)
+local animeSw: { clip: string?, ct: number, pts: { Vector3 }, fired: boolean } = { clip = nil, ct = -1, pts = {}, fired = false }
 local smearPool: { WedgePart } = {}
 local smearFolder: Folder? = nil
 local function wedge(i: number): WedgePart
@@ -373,12 +376,21 @@ local function smearStep(now: number, hidden: boolean)
 		if mid and tip then
 			local cf = camera.CFrame
 			table.insert(smearPts, { t = now, a = cf:PointToObjectSpace(mid.WorldPosition), b = cf:PointToObjectSpace(tip.WorldPosition) })
+			if AnimeFx.ON then
+				if c ~= animeSw.clip or ct < animeSw.ct - 0.01 then animeSw.clip = c; animeSw.pts = {}; animeSw.fired = false end
+				animeSw.ct = ct
+				table.insert(animeSw.pts, cf:PointToObjectSpace(tip.WorldPosition))
+				if not animeSw.fired and #animeSw.pts >= 4 then
+					animeSw.fired = true
+					AnimeFx.ownSlash(animeSw.pts, AnimeFx.tintFor(held, Fx.bladeGlow(VM.model)), AnimeFx.fpSize(held))
+				end
+			end
 			Fx.bladeFlames(VM.model, mid.WorldPosition, tip.WorldPosition) -- (an angel katana: flame tongues off the blade)
 		end
 	end
 	while #smearPts > 0 and (now - smearPts[1].t > SMEAR_LIFE or #smearPts > 24) do table.remove(smearPts, 1) end
 	local used = 0
-	if not hidden and #smearPts > 1 then
+	if not hidden and #smearPts > 1 and not AnimeFx.ON then
 		local cf = camera.CFrame
 		for i = 1, #smearPts - 1 do
 			local p, q = smearPts[i], smearPts[i + 1]
@@ -707,6 +719,14 @@ local function swing(now: number, heavy: boolean?)
 	end
 	VM.play(clip)
 	TP.swing(if hv then false else swingAlt, clip) -- (third person: the same link of the chain, or the stab: ThirdPerson.luau)
+	if AnimeFx.ON and thirdPerson() then
+		local an = Anims[clip]
+		local wid, alt = held, swingAlt
+		task.delay(if an and an.trail then an.trail[1] else 0.08, function()
+			local _, _, rt = myChar()
+			if rt then AnimeFx.bodySlash(rt, camera.CFrame.LookVector, alt, AnimeFx.reach(wid), AnimeFx.tintFor(wid)) end
+		end)
+	end
 	local lk = camera.CFrame.LookVector
 	SwingR:FireServer(held, if hv then true else nil, math.atan2(-lk.X, -lk.Z)) -- (where you look: a katana swing's front for the crit return)
 	pending = { t = now + ((if hv then hv.hitT else w.hitT) :: number), w = held, heavy = hv ~= nil }
@@ -755,7 +775,10 @@ local function resolveSwing()
 	MeleeR:FireServer(wid, look, hitList)
 	-- the hit, felt right away: hit-stop, the flash, a bonk (a spoon tings; a stab crunches), a punch
 	VM.hitStop = if hv then 0.11 elseif w.latch then w.latch.t else 0.06 -- (the Scythe: its blade holds for the latch's beat)
-	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
+	if firstAt then
+		if AnimeFx.ON then AnimeFx.hit(firstAt, eye, AnimeFx.tintFor(wid, Fx.bladeGlow(VM.model)), hv ~= nil, true, Settings.get("gfx.shake") ~= false)
+		else Fx.blast(firstAt, if hv then 1.1 else 0.6) end
+	end
 	if firstAt then Fx.skinHit(VM.model, firstAt) end -- (a high-tier katana's own burst: Sakura's petals, Ribbon Duck's sparkles)
 	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else (w.hitSnd or "bonk")) -- (the Bread thuds, the Slapper slaps)
 	Sfx.skinHit(wid)
@@ -1047,6 +1070,15 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 			local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if r then Sfx.play("swing", r.Position) end
 			if Settings.get("gfx.othersSkin") ~= false then Fx.swingFlames(m) end -- (their angel katana's flame arc; Settings: OTHERS' SKIN EFFECTS)
+			if AnimeFx.ON and r then
+				local clip = if type(f.clip) == "string" then f.clip else "swing_" .. tostring(f.w)
+				local an = Anims[clip]
+				local wid = if type(f.w) == "string" then f.w else nil
+				local alt = string.match(clip, "[24]$") ~= nil
+				task.delay(if an and an.trail then an.trail[1] else 0.08, function()
+					if r.Parent then AnimeFx.bodySlash(r, r.CFrame.LookVector, alt, AnimeFx.reach(wid), AnimeFx.tintFor(wid)) end
+				end)
+			end
 		end
 	elseif f.k == "parry" then
 		local from = if typeof(f.from) == "Vector3" then f.from else nil

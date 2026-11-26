@@ -65,7 +65,10 @@ go into `TEX` at the top of `Fx.luau`.
 
 Roblox limits that shaped the effects: flipbooks are 2x2 / 4x4 / 8x8 (plus a beta Custom grid), at most 1024 px; a
 one-shot flipbook plays at its `FlipbookFramerate` (default 1 a second, at most 30), NOT over the particle's life, so
-every one-shot emitter sets it to frames / lifetime (`oneshot()` in Fx.luau) and short-lived ones use 16-frame sheets; `FlipbookBlendFrames`
+every one-shot emitter sets it to frames / lifetime (`oneshot()` in Fx.luau) and short-lived ones use 16-frame sheets
+(**26 Nov 2026, measured again in place v1372: a OneShot flipbook now plays over the particle's LIFETIME and
+FlipbookFramerate is ignored** (the same sheet at life 0.533 showed the same frame at 30 fps and at 15 fps; at life 0.267 it
+was twice as far). `oneshot()` still works, since it sets both; new effects just set Lifetime); `FlipbookBlendFrames`
 cross-fades frames (on for smoke and fire, off for flashes); a particle's `Size` is half its width; a particle's Size
 and Color belong to its emitter (pools cycle through several emitters so a new shot does not recolour the last one).
 
@@ -870,3 +873,78 @@ match-winning kill only (routing: the finishers session, v1242; `FINISHERS.md`).
 - **Two values must not share a key.** `pour(r, key, ...)` keeps its running count in `r.s[key]`. A pour key equal to
   a part's name (`s.cone`) added a number to a Part and stopped the finisher mid-way (round 5's Hellgate).
 - **A flipbook flame fills only part of its frame.** To get a flame a given height, size the particle about 2.5x that.
+
+## Anime weapon effects (26 Nov 2026; installed in place v1372 with AnimeFx.ON = false until a real swing is tested)
+
+The owner (25 Nov): "learning from the given references can you try to make better vfx? I heard you can do it in
+blender?.. Don use too many meshes you usally end up making things looking to gemoertical otherwise use the roblox
+plugins to make vfx ... watch tutortials for making anime style vfx, especially applioed to weapons!" The study of his
+references is in main's notes folder (`vfx-refs-study.md`, `vfx-refs-study-web.md`).
+
+**The method.** Shapes are Blender-rendered FLIPBOOKS played on camera-facing particles (no meshes in the game: a mesh
+ribbon like the old katana WedgePart smear is what "geometric" means). Sparks, the twinkle and the impact frame are
+code. Every effect is planned as a timeline in which each frame has a job, rendered offline, composited the way Roblox
+will draw it, and scored by a fresh critic agent until it reaches 8; only then does it go to Studio.
+
+- **Tools** (`tools/roblox/vfx/anime/`):
+  - `slash_bl.py`: the slash. Ribbons on a plane under an orthographic camera; ALL the animation is in their shaders,
+    set frame by frame from Python (head, tail, band width, core, teeth, strands, ink). A spec picks the take: arc,
+    width, tilt, mirror, spiral, teeth depth, where the blade-light line is thickest.
+  - `burst_bl.py`: the hit burst. Flat geometry rebuilt every frame (star, crescents, shards, needles).
+  - `sheet.py`: `pack` (16 frames into a 4x4 sheet of 256 px cells, 2x renders box-downsampled premultiplied, every
+    cell alpha-bled) and `preview` (the frames composited as Roblox draws them, tinted, on mid-grey and near-black).
+  - `repack.py`: any flipbook into a Roblox grid, game-vfx's steps without ffmpeg: keep the live frames, skip a
+    burst's first white frames (`--from`), pick frames on an eased clock (`--ease`), one crop round everything the
+    effect touches, black to alpha (`--black`), soft cell edges, 4x4 of 256 px or 8x8 of 128 px.
+  - `mad.py`: the error number (after AnyVFX): mean absolute difference per channel, 0-255, between a reference frame
+    and our capture, aligned on their bounding boxes, at full size and after an 8x downsample.
+- **Layers.** Every flipbook renders three layers from the same timing, played together from one part (AnimeFx
+  `flipbook`):
+  - body: greyscale 0.55-0.7, tinted per weapon. It is drawn twice: painted underneath (LightEmission 0, so the colour
+    survives on bright floors) and added on top (warm tints at 0.45, because red clips first).
+  - core: white-hot, added, untinted.
+  - ink: black accents, painted over (the two-tone anime look).
+- **The slash** (6 sheets x 3 layers): takes A (165° arc, flat), B (135°, tilted 55°, teeth 16 %), C (200°, a tighter
+  spiral 0.65), each with a MIRRORED copy (a particle can't flip its texture; the mirror makes a right-to-left swing
+  bulge the right way). 16 frames: f0 a fat lead-in with a pointed head; f1 the flash (mostly white); f2-4 the hold
+  (the white pulls back along one diagonal to the rim; code pushes it from 92 % to full size); f5-7 the tail wipes to
+  the head while the band thins and the back teeth deepen; f8-12 one tapered blade-light line that overshoots the head;
+  f13-15 empty. Critic: 4 → 7 → 8 (A), 8 (B, C) over four rounds.
+- **The hit burst** (1 sheet x 3 layers, drawn at 80 % of its cell for margins): f0 a four-point star of concave needle
+  arms (its long axis level: the game can turn it along the slash), held on f1 at 65 %; f1-2 three tapered shockwave
+  crescents (uneven angles, lengths and radii: never a ring, never a logo); f1-3 three long black needles; f2-6 blade
+  slivers (one straight dark side, one curved coloured side, white on the leading tip behind a slanted edge) fly out;
+  f7-11 they keep flying, thin, and go; f12-15 empty. Critic: 6 → 7 → 7 → 7.5 → 8 over five rounds.
+- **In the game** (`client/AnimeFx.luau`, switch `AnimeFx.ON`):
+  - your own swing in first person: the blade tip's path in camera space (Arsenal's smear window) gives the swing's
+    direction on screen and which way it curves; after the 4th sample one slash rides with the camera
+    (`AnimeFx.ownSlash`); the old WedgePart smear stands down;
+  - anyone's swing seen from outside, and yours in third person: `AnimeFx.bodySlash` in front of the body at the clip's
+    smear time, the chain's link picking the direction;
+  - your own hit: `AnimeFx.hit` = the burst, sparks (velocity-stretched streaks, white into the tint, gravity), and on
+    a heavy hit the twinkle and a 0.07 s black-and-white impact frame (off with SCREEN SHAKE).
+  - weapon tints and sizes: `TINT`, `FP_SIZE`, `REACH` in AnimeFx.
+- **The VFX LAB** (`client/VfxLab.client.luau`): Studio or the place's creator, F6 or "/vfx": every effect with PLAY and
+  LOOP, speed 1x / 0.5x / 0.25x / 0.1x / FREEZE, the melee tints, a still dummy, and first-person swings both ways.
+  The workspace attribute `AnimeFxTimeScale` freezes the game's own copy for photos.
+- **game-vfx's library** (Patch's skill, MIT code, CC0 art; the clone is in the vault, never in git): its 12 flipbooks
+  repack to Roblox 4x4 sheets with `repack.py --from 3 --ease 0.6`; they are realistic fire, smoke, lightning and magic,
+  for the gun and ability effects, not the anime slashes.
+
+### Lessons (the critic loop)
+- **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
+  flat strand end, a straight base on a shard), rectangular steps, perfect rings, evenly spaced parts (a trefoil reads
+  as a logo), lens or leaf shapes. The fixes: spirals, asymmetric profiles, comet tapers, raked teeth, pointed ends,
+  slanted seams, uneven angles and lengths.
+- **Grain in Cycles comes from two places:** coplanar transparent ribbons (z-fighting: lift each off the plane), and
+  half-transparent fades (Cycles resolves the mix stochastically). Shapes leave by wipes and shrinks, not fades.
+- **Render at 2x and box-downsample premultiplied;** nothing thinner than ~3-4 px at 256 should live past two frames.
+- **Keep every pixel 6+ px inside its cell** (a 4x4 sheet bleeds neighbours under filtering): fit the camera
+  orthographically to the effect's bounds, and check the alpha at the cell edges after every render.
+- **A white additive blob vanishes on a bright sky:** keep a tinted rim outside the white.
+- **The peak needs mass:** the critic measured shard widths by erosion; thin is right only for the exit.
+
+- **Muzzle flash and smoke (gun side, in progress):** `mflash_bl.py` (2x2 drawings: FRONT a lobed core and 4-6 flame
+  petals, SIDE a pinched jet; no black, a deeper tint band on every rim; critic: front 8, side 7 after two rounds) and
+  `puff_bl.py` (a cel-shaded metaball puff; critic 5 in round 1: it read as clay and pearls, a union of circles with sharp
+  cusps and two flat tones is next). Round sheets: `docs/vfx/anime/`.
