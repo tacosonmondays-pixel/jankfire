@@ -339,8 +339,8 @@ private duels: the challenger picks; ranked keeps its draft.
     map): the PARTY card's, and now one under the duel cards on the DUELS tab for a private duel (`ModesTab.mapRow`).
   - Ranked (duels and PARTY RANKED): unchanged (the rotation at home, the draft across servers). ZOMBIES picks its own
     school.
-- **Input:** keys 1-4 (a map vote alone) or 4-7 (under a mode vote), a tap on a phone, and a controller's View to
-  the cards then A (PadNav takes every button in the vote panel).
+- **Input:** keys 1-4 (a map vote alone) or 4-7 (under a mode vote), a tap on a phone. A controller's View goes to
+  the vote panel's cards when no menu is open (the map room); on the Play screen it isn't checked with a pad yet.
 - **Tested in Studio** (one solo Play, stand-ins):
   - Casual 1V1 from the Play queue: ROOFTOP, PLATFORM, SPOOKY FOREST and RANDOM on offer; key 4 voted RANDOM, and the
     match opened on ROOFTOP: SKYLINE (not one of the three).
