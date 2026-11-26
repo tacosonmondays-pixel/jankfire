@@ -1,0 +1,63 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B hub</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--k:rgba(10,11,13,.92);--k2:#1c1e22;--w:#f4f3ef;--g:#a2a6ac;--g2:#4a4e54;--y:#f5dd8a;--rule:#2e3136}
+body{font-family:'Oswald';font-weight:700;color:var(--w);text-transform:uppercase;font-variant-numeric:tabular-nums}
+.slab{position:absolute;background:var(--k)}
+.slab.w{background:var(--w);color:#0b0c0e}
+.slab.y{background:var(--y);color:#0b0c0e}
+.cut{clip-path:polygon(var(--c,16px) 0,100% 0,100% 100%,0 100%,0 var(--c,16px))}
+.you{clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%)}
+.sk{transform:skewX(-12deg)}.sk>.un{transform:skewX(12deg)}
+.k2{background:rgba(30,33,38,.94)}
+.lbl{font-family:'Builder Sans';font-weight:800;letter-spacing:.02em}
+.tab{position:absolute;height:30px;padding:0 12px;display:flex;align-items:center;background:var(--w);color:#0b0c0e;font-size:17px;letter-spacing:.06em}
+.bug{display:inline-flex;align-items:center;height:100%;padding:0 26px 0 22px;background:var(--y);color:#0b0c0e;transform:skewX(-14deg);letter-spacing:.06em}
+.bug>span{transform:skewX(14deg)}
+.bs{font-family:'Builder Sans';font-weight:700;text-transform:none;letter-spacing:0}
+.g{color:var(--g)}
+.flexc{display:flex;align-items:center}
+.hb{position:absolute;left:0;right:0;bottom:0;height:8px;background:var(--rule)}
+.hb>b{display:block;height:100%;background:var(--w)}
+.bar{height:8px;background:var(--rule)}.bar>b{display:block;height:100%;background:var(--w)}
+.scrim{position:absolute;inset:0;background:rgba(8,9,11,.66)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_spawn.jpg)"></div>
+<div class="slab flexc" style="left:64px;top:56px;width:640px;height:64px;padding:0 10px 0 22px;gap:16px"><div style="flex:1"><div class="flexc" style="gap:14px"><span class="bs" style="font-size:28px">rookshots</span><span style="font-size:22px">LV 24</span><span class="bs g" style="font-size:16px;margin-left:auto">1,240 / 2,000 XP</span></div></div>
+ <div class="flexc lbl" style="gap:6px;font-size:16px;align-self:center"><div class="flexc" style="height:42px;padding:0 14px;background:var(--k2)">PROFILE</div><div class="flexc" style="height:42px;padding:0 14px;background:var(--k2)">SETTINGS</div></div>
+ <div class="hb" style="height:5px"><b style="width:62%"></b></div>
+</div>
+<div class="slab flexc" style="right:64px;top:56px;height:64px;padding:0 24px 0 22px;gap:12px;font-size:34px">
+ <svg viewBox="0 0 24 24" width="34" height="34" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))"><circle cx="12" cy="12" r="11" fill="#e2ad2f"/><circle cx="12" cy="12" r="10" fill="none" stroke="#9c6b16" stroke-width="2"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#b9851f" stroke-width="1.4"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx=".6" fill="#6e4a10"/></svg>2,450<span style="width:2px;height:34px;background:var(--rule);margin:0 8px"></span><svg viewBox="0 0 32 22" width="44" height="30" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))"><path d="M3 2h26a1 1 0 0 1 1 1v5.2a2.9 2.9 0 0 0 0 5.6V19a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5.2a2.9 2.9 0 0 0 0-5.6V3a1 1 0 0 1 1-1z" fill="#efdcaa" stroke="#6d5a2c" stroke-width="1.6"/><path d="M11 4.5v13" stroke="#6d5a2c" stroke-width="1.4" stroke-dasharray="2 1.8"/><rect x="15" y="7.5" width="10" height="2.4" rx="1" fill="#6d5a2c"/><rect x="15" y="12" width="7" height="2.4" rx="1" fill="#6d5a2c"/></svg>3</div>
+<div class="slab y sk" style="left:74px;bottom:76px;width:320px;height:168px">
+ <div class="un" style="position:absolute;left:30px;top:-2px;font-size:104px;line-height:1.2;letter-spacing:.01em">PLAY</div>
+ <div class="un" style="position:absolute;left:24px;bottom:14px;font-size:24px;font-weight:400;letter-spacing:.06em">2V2 RANKED <span class="bs" style="font-size:17px;margin-left:6px">rating 1,482</span></div>
+</div>
+<div class="slab k2 flexc" style="left:394px;bottom:76px;height:72px;padding-left:34px;clip-path:polygon(15px 0,100% 0,100% 100%,0 100%)"><div class="flexc lbl" style="height:72px;padding:0 28px;gap:10px;border-left:none"><span style="font-size:24px">QUESTS</span><span class="bs g" style="font-size:21px">2/3</span></div><div class="flexc lbl" style="height:72px;padding:0 28px;gap:10px;border-left:2px solid var(--rule)"><span style="font-size:24px">PARTY</span><span class="bs g" style="font-size:21px">2/4</span></div><div class="flexc lbl" style="height:72px;padding:0 28px;gap:10px;border-left:2px solid var(--rule)"><span style="font-size:24px">CHANGE HUB</span><span class="bs g" style="font-size:21px"></span></div><div class="flexc lbl" style="height:72px;padding:0 28px;gap:10px;border-left:2px solid var(--rule)"><span style="font-size:24px">SHOP</span><span class="bs g" style="font-size:21px"></span></div><div class="flexc lbl" style="height:72px;padding:0 28px;gap:10px;border-left:2px solid var(--rule)"><span style="font-size:24px">LOADOUT</span><span class="bs g" style="font-size:21px"></span></div></div>
+<div class="slab flexc" style="left:0;right:0;bottom:0;height:52px;font-size:22px;letter-spacing:.04em">
+ <div class="flexc" style="height:52px;padding:0 22px 0 64px;margin-right:30px;background:var(--w);color:#0b0c0e">THE ROTUNDA</div>
+ <span style="margin-right:34px">1V1 <span class="bs g" style="font-size:20px">1/2</span></span><span style="margin-right:34px">1V1V1 <span class="bs g" style="font-size:20px">0/3</span></span><span style="margin-right:34px">2V2 <span class="bs g" style="font-size:20px">2/4</span></span><span style="margin-right:34px">3V3 <span class="bs g" style="font-size:20px">0/6</span></span><span style="margin-right:34px">4V4 <span class="bs g" style="font-size:20px">3/8</span></span>
+ <span style="margin-left:auto;margin-right:64px">31 <span class="lbl g" style="font-size:17px">PLAYERS</span></span>
+</div>
+</div></body></html>

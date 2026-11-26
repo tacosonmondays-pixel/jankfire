@@ -1,0 +1,97 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D loadout</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--s:#173a33;--s2:#1f4a41;--s3:#2f6155;--c:#f1ead9;--m:#a9c2b8;--a:#f5dd8a}
+body{font-family:'Titillium Web';font-weight:700;color:var(--c);font-variant-numeric:tabular-nums}
+.sign{position:absolute;background:rgba(23,58,51,.93);border:none;border-radius:14px;box-shadow:0 12px 28px rgba(0,0,0,.3)}
+.hang{top:0;border-top:none;border-radius:0 0 14px 14px}
+.stand{bottom:0;border-bottom:none;border-radius:14px 14px 0 0}
+.fromL{left:0;border-left:none;border-radius:0 14px 14px 0}
+.fromR{right:0;border-right:none;border-radius:14px 0 0 14px}
+.corner{top:0;right:0;border-top:none;border-right:none;border-radius:0 0 0 14px}
+.sign.plain{border:none;background:rgba(23,58,51,.9);box-shadow:0 10px 24px rgba(0,0,0,.26)}
+.arrow{clip-path:polygon(0 0,calc(100% - 46px) 0,100% 50%,calc(100% - 46px) 100%,0 100%)}
+.arrow.s{clip-path:polygon(0 0,calc(100% - 26px) 0,100% 50%,calc(100% - 26px) 100%,0 100%)}
+.notch{clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),calc(50% + 10px) calc(100% - 9px),50% 100%,calc(50% - 10px) calc(100% - 9px),0 calc(100% - 9px))}
+.way{display:inline-block;color:var(--a);line-height:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--a);color:var(--s);border-radius:8px;box-shadow:inset 0 0 0 3px var(--a),inset 0 0 0 5px rgba(29,43,58,.35)}
+.badge{display:inline-grid;place-items:center;border-radius:6px;background:var(--c);color:var(--s);line-height:1;flex:none;padding:0 8px}
+.tile{display:grid;place-items:center;background:var(--c);color:var(--s);border-radius:8px;flex:none}
+.tile.d{background:var(--s3);color:var(--c)}
+.m{color:var(--m)}
+.reg{font-weight:400}
+.flexc{display:flex;align-items:center}
+.row{display:flex;align-items:center;border-top:2px solid var(--s3)}
+.hbar{height:12px;border-radius:3px;background:var(--s3);overflow:hidden;position:relative}.hbar>b{display:block;height:100%;background:var(--c)}
+.hbar>u{position:absolute;top:0;bottom:0;width:3px;background:var(--a)}
+.scrim{position:absolute;inset:0;background:rgba(10,18,16,.58)}
+.bare{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.45),0 0 16px rgba(0,0,0,.5)}
+.shade{position:absolute;inset:0;background:radial-gradient(60% 55% at 0% 100%,rgba(10,14,20,.55),rgba(10,14,20,0) 70%),radial-gradient(60% 55% at 100% 100%,rgba(10,14,20,.5),rgba(10,14,20,0) 70%)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_rotunda_blur.jpg)"></div><div class="scrim"></div>
+<style>.gimg{max-width:150px;max-height:72px} .sil{width:84px;height:30px} .ic{width:.9em;height:.9em}</style>
+<div class="abs" style="left:56px;top:40px;font-size:64px;line-height:1.2">Loadout</div>
+<div class="sign fromL " style="top:150px;width:580px;height:102px;">
+ <div class="badge" style="position:absolute;left:52px;top:23px;width:56px;height:56px;font-size:32px;">1</div>
+ <div style="position:absolute;left:130px;top:28px;font-size:36px;line-height:1.2;">Assault Rifle</div>
+ 
+ <div style="position:absolute;right:24px;top:13px;width:150px;height:76px;display:grid;place-items:center"><img class="gimg" src="../img/guns/ar_side.png" alt=""></div></div><div class="sign fromL arrow" style="top:264px;width:640px;height:102px;background:#2a5c50;border-radius:0">
+ <div class="badge" style="position:absolute;left:52px;top:23px;width:56px;height:56px;font-size:32px;background:var(--a)">2</div>
+ <div style="position:absolute;left:130px;top:28px;font-size:36px;line-height:1.2;color:var(--a)">Revolver</div>
+ 
+ <div style="position:absolute;right:64px;top:13px;width:150px;height:76px;display:grid;place-items:center"><img class="gimg" src="../img/items/wish_duck_34.png"></div></div><div class="sign fromL " style="top:378px;width:580px;height:102px;">
+ <div class="badge" style="position:absolute;left:52px;top:23px;width:56px;height:56px;font-size:32px;">3</div>
+ <div style="position:absolute;left:130px;top:28px;font-size:36px;line-height:1.2;">Katana</div>
+ 
+ <div style="position:absolute;right:24px;top:13px;width:150px;height:76px;display:grid;place-items:center"><img class="gimg" src="../img/guns/katana_side.png" alt=""></div></div><div class="sign fromL " style="top:492px;width:580px;height:102px;">
+ <div class="badge" style="position:absolute;left:52px;top:23px;width:56px;height:56px;font-size:32px;">G</div>
+ <div style="position:absolute;left:130px;top:16px;font-size:36px;line-height:1.2;">Frag Grenade</div>
+ <div class="m reg" style="position:absolute;left:131px;top:60px;font-size:20px">×2</div>
+ <div style="position:absolute;right:24px;top:13px;width:150px;height:76px;display:grid;place-items:center"><img class="gimg" src="../img/items/frag.png" style="max-height:76px"></div></div>
+<div class="abs " style="left:720px;top:150px;width:560px"><img src="../img/items/wish_duck_34.png" style="width:560px;display:block;filter:drop-shadow(0 26px 28px rgba(0,0,0,.45))"><img src="../img/items/royal-duck.png" style="position:absolute;left:168px;top:-73px;width:95px;transform:rotate(-8deg)"></div>
+<div class="sign stand flexc" style="left:0;right:0;height:236px;border-radius:0;align-items:stretch">
+ <div style="width:1180px;padding:26px 40px 0 56px;border-right:2px solid var(--s3)">
+  <div class="flexc" style="gap:14px"><span style="font-size:38px">Revolver</span><span class="m reg" style="font-size:20px">Wish Duck skin</span>
+   <span class="m" style="margin-left:auto;font-size:20px">Mastery 7</span><div class="hbar" style="width:220px;height:8px"><b style="width:75%"></b></div><span class="m reg" style="font-size:17px">2,250 / 3,000 XP</span></div>
+  <div style="display:flex;gap:34px;padding-top:18px"><div style="flex:1"><div class="m" style="font-size:19px">Damage</div><div style="font-size:38px;line-height:1.2">33</div><div class="hbar" style="height:9px;margin-top:6px"><b style="width:55%"></b><u style="left:45%"></u></div></div><div style="flex:1"><div class="m" style="font-size:19px">Headshot dmg</div><div style="font-size:38px;line-height:1.2">79</div><div class="hbar" style="height:9px;margin-top:6px"><b style="width:70%"></b><u style="left:50%"></u></div></div><div style="flex:1"><div class="m" style="font-size:19px">Fire rate</div><div style="font-size:38px;line-height:1.2">2.5/s</div><div class="hbar" style="height:9px;margin-top:6px"><b style="width:25%"></b><u style="left:42%"></u></div></div><div style="flex:1"><div class="m" style="font-size:19px">Magazine</div><div style="font-size:38px;line-height:1.2">6</div><div class="hbar" style="height:9px;margin-top:6px"><b style="width:20%"></b><u style="left:50%"></u></div></div></div>
+  <div class="flexc m reg" style="font-size:16px;gap:8px;padding-top:10px"><i style="width:3px;height:14px;background:var(--a)"></i>secondary average</div>
+ </div>
+ <div style="flex:1;padding:26px 56px 0 40px;display:flex;flex-direction:column;gap:16px"><div class="flexc" style="gap:16px"><div class="tile d" style="width:110px;height:72px;border-radius:8px"><img src="../img/items/wish_duck_34.png" style="max-width:96px;max-height:60px"></div><div><div class="m" style="font-size:18px">Skin</div><div style="font-size:25px;line-height:1.15">Wish Duck</div></div><span style="margin-left:auto;opacity:.55;font-size:20px;line-height:0"><svg class="ic" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M2 12.5h15.5V4L30 16 17.5 28v-8.5H2z"/></svg></span></div><div class="flexc" style="gap:16px"><div class="tile d" style="width:110px;height:72px;border-radius:8px"><img src="../img/items/royal-duck.png" style="max-width:96px;max-height:60px"></div><div><div class="m" style="font-size:18px">Hat</div><div style="font-size:25px;line-height:1.15">Royal Duck</div></div><span style="margin-left:auto;opacity:.55;font-size:20px;line-height:0"><svg class="ic" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M2 12.5h15.5V4L30 16 17.5 28v-8.5H2z"/></svg></span></div></div>
+</div>
+<div class="sign corner plain" style="width:500px">
+ <div style="padding:46px 30px 16px;font-size:36px">Secondaries</div>
+ <div class="row" style="height:72px;padding:0 30px;gap:18px;background:var(--s2)">
+ <div style="width:100px;display:grid;place-items:center;"><i style="display:inline-block;width:44px;height:30px;margin-top:0px;background:currentColor;-webkit-mask-image:url(../img/guns/revolver_side.png);-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat"></i></div>
+ <span style="font-size:27px;white-space:nowrap;">Revolver</span><span style="margin-left:auto;font-size:21px"><span style="color:var(--a)">Equipped</span></span></div><div class="row" style="height:72px;padding:0 30px;gap:18px;">
+ <div style="width:100px;display:grid;place-items:center;"><i style="display:inline-block;width:47px;height:30px;margin-top:0px;background:currentColor;-webkit-mask-image:url(../img/guns/pistol_side.png);-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat"></i></div>
+ <span style="font-size:27px;white-space:nowrap;">Pistol</span><span style="margin-left:auto;font-size:21px"></span></div><div class="row" style="height:72px;padding:0 30px;gap:18px;">
+ <div style="width:100px;display:grid;place-items:center;"><i style="display:inline-block;width:70px;height:30px;margin-top:0px;background:currentColor;-webkit-mask-image:url(../img/guns/sawnoff_side.png);-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat"></i></div>
+ <span style="font-size:27px;white-space:nowrap;">Sawed-Off</span><span style="margin-left:auto;font-size:21px"></span></div><div class="row" style="height:72px;padding:0 30px;gap:18px;">
+ <div style="width:100px;display:grid;place-items:center;color:var(--m)"><i style="display:inline-block;width:49px;height:30px;margin-top:0px;background:currentColor;-webkit-mask-image:url(../img/guns/marbles_side.png);-webkit-mask-size:100% 100%;-webkit-mask-repeat:no-repeat"></i></div>
+ <span style="font-size:27px;white-space:nowrap;color:var(--m)">Marble Shotgun</span><span style="margin-left:auto;font-size:21px"><span class="m reg flexc" style="gap:6px"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7 10V7.5a5 5 0 0 1 10 0V10h.5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2.6 0h4.8V7.5a2.4 2.4 0 0 0-4.8 0z"/></svg>Level 30</span></span></div><div class="row" style="height:72px;padding:0 30px;gap:18px;">
+ <div style="width:100px;display:grid;place-items:center;color:var(--m)"><span style="position:relative;display:inline-block;width:76px;height:30px"><i class="sil" style="position:absolute;left:0;top:0;width:44px;height:22px;-webkit-mask-image:url(../img/guns/pistol_side.png)"></i><i class="sil" style="position:absolute;right:0;bottom:0;width:44px;height:22px;transform:scaleX(-1);-webkit-mask-image:url(../img/guns/pistol_side.png)"></i></span></div>
+ <span style="font-size:27px;white-space:nowrap;color:var(--m)">Lefty & Righty</span><span style="margin-left:auto;font-size:21px"><span style="display:block;text-align:right;line-height:1.15"><span class="flexc m" style="gap:6px;justify-content:flex-end"><svg viewBox="0 0 24 24" width="22" height="22" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))"><circle cx="12" cy="12" r="11" fill="#e2ad2f"/><circle cx="12" cy="12" r="10" fill="none" stroke="#9c6b16" stroke-width="2"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#b9851f" stroke-width="1.4"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx=".6" fill="#6e4a10"/></svg>5,000</span><span class="reg" style="font-size:16px;color:#e8b07a">need 2,550 more</span></span></span></div>
+ <div style="padding:20px 30px 26px;border-top:2px solid var(--s3)"><div class="btn arrow s" style="width:100%;height:68px;font-size:32px;border-radius:0;box-shadow:none;justify-content:flex-start;padding-left:30px">Done</div></div>
+</div>
+</div></body></html>

@@ -1,0 +1,61 @@
+<!doctype html><html><head><meta charset="utf-8"><title>A hub</title>
+<style>
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Medium.otf');font-weight:500;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Sans';src:url('../fonts/BuilderSans-ExtraBold.otf');font-weight:800;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-SemiBold.otf');font-weight:600;font-style:normal}
+@font-face{font-family:'Builder Extended';src:url('../fonts/BuilderExtended-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Regular.otf');font-weight:400;font-style:normal}
+@font-face{font-family:'Builder Mono';src:url('../fonts/BuilderMono-Bold.otf');font-weight:700;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Oswald';src:url('../fonts/Oswald-Bold.ttf');font-weight:700;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Regular.ttf');font-weight:400;font-style:normal}
+@font-face{font-family:'Titillium Web';src:url('../fonts/TitilliumWeb-Bold.ttf');font-weight:700;font-style:normal}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#111;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1920px;height:1080px;overflow:hidden}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.ic{display:inline-block;width:1em;height:1em;flex:none}
+.sil{display:inline-block;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;background:currentColor}
+.abs{position:absolute}
+.rbx{font-family:'Builder Sans';font-weight:800;font-size:.8em;letter-spacing:-.02em;opacity:.85}
+
+:root{--bone:#e5e2db;--bone2:#d4d0c7;--lip:#aaa498;--ink:#1d1f23;--ink2:#56534d}
+body{font-family:'Builder Sans';font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.plate{position:absolute;background:var(--bone);border-radius:16px;box-shadow:0 5px 0 var(--lip),0 14px 26px rgba(0,0,0,.28)}
+.plate.ink{background:var(--ink);color:var(--bone);box-shadow:0 5px 0 #000,0 14px 26px rgba(0,0,0,.34)}
+.pad{position:absolute;background:var(--ink);color:var(--bone);border-radius:26px;box-shadow:inset 0 0 0 7px var(--bone),inset 0 0 0 9px var(--lip),0 7px 0 var(--lip),0 18px 32px rgba(0,0,0,.35)}
+.flat{position:absolute;background:var(--bone);border-radius:3px;box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.flat.ink{background:#22252a;color:var(--bone)}
+.sp{border-radius:4px;display:grid;place-items:center;color:var(--ink)}
+.bm{font-weight:500;text-transform:none}
+.dim{color:var(--ink2)}
+.flexc{display:flex;align-items:center}
+.bar{height:14px;border-radius:7px;overflow:hidden;background:var(--bone2);position:relative}
+.bar>b{display:block;height:100%;border-radius:7px;background:var(--ink)}
+.bar>u{position:absolute;top:0;bottom:0;width:3px;background:#b0632f}
+.wash{position:absolute;inset:0;background:rgba(28,26,23,.55)}
+.lab{font-size:17px;color:var(--ink2)}
+.price{display:inline-flex;align-items:center;gap:8px;padding:0 16px;height:46px;border-radius:12px;background:var(--ink);color:var(--bone);font-size:22px;box-shadow:0 4px 0 #000}
+.price.no{background:var(--bone2);color:#8f897e;box-shadow:0 4px 0 var(--lip)}
+.w{color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.4),0 0 18px rgba(0,0,0,.5)}
+.wd{color:rgba(255,255,255,.8)}
+.shade{position:absolute;inset:0;background:radial-gradient(60% 60% at 0% 100%,rgba(10,10,12,.62),rgba(10,10,12,0) 72%),radial-gradient(60% 55% at 100% 100%,rgba(10,10,12,.5),rgba(10,10,12,0) 70%),radial-gradient(45% 40% at 100% 0%,rgba(10,10,12,.42),rgba(10,10,12,0) 70%),radial-gradient(40% 35% at 0% 0%,rgba(10,10,12,.4),rgba(10,10,12,0) 70%)}
+.tk{filter:drop-shadow(0 0 1px #5d584f) drop-shadow(0 0 1px #5d584f)}
+.slit{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 53%,transparent 53%,transparent 59%,#000 59%)}
+.key{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;font-size:19px;background:var(--bone2);color:var(--ink);box-shadow:inset 0 2px 0 rgba(0,0,0,.12)}
+
+</style></head><body><div class="stage"><div class="bg" style="background-image:url(../img/bg/hub_spawn.jpg)"></div><div class="shade"></div>
+<div class="abs flexc w" style="left:60px;top:52px;gap:18px"><svg width="60" height="60" viewBox="0 0 40 40" style="flex:none;display:block"><rect width="40" height="40" rx="7" fill="rgba(255,255,255,.10)"/><rect x="9" y="8" width="22" height="22" rx="5" fill="#f2c84b"/><rect x="15" y="16" width="2.6" height="4" rx="1.3" fill="#1b1b1b"/><rect x="22.4" y="16" width="2.6" height="4" rx="1.3" fill="#1b1b1b"/><path d="M15 23 Q20 27 25 23" stroke="#1b1b1b" stroke-width="1.8" fill="none" stroke-linecap="round"/><rect x="12" y="31" width="16" height="9" fill="#2b2b30" opacity=".9"/><rect x="7" y="5" width="26" height="9" rx="4" fill="#2b2b30"/><rect x="22" y="11" width="14" height="4" rx="2" fill="#2b2b30"/></svg><div><div style="font-size:30px">rookshots</div>
+ <div class="flexc" style="gap:12px;margin-top:6px"><span style="font-size:20px">LV 24</span><div style="width:200px;height:8px;border-radius:4px;background:rgba(255,255,255,.3)"><div style="width:62%;height:100%;border-radius:4px;background:#fff"></div></div><span class="wd" style="font-size:16px">1,240 / 2,000 XP</span></div></div></div>
+<div class="abs flexc w" style="right:64px;top:56px;gap:12px;font-size:30px"><svg viewBox="0 0 24 24" width="36" height="36" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))"><circle cx="12" cy="12" r="11" fill="#e2ad2f"/><circle cx="12" cy="12" r="10" fill="none" stroke="#9c6b16" stroke-width="2"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#b9851f" stroke-width="1.4"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx=".6" fill="#6e4a10"/></svg>2,450<span style="width:18px"></span><svg viewBox="0 0 32 22" width="46" height="32" style="flex:none;display:inline-block;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4))"><path d="M3 2h26a1 1 0 0 1 1 1v5.2a2.9 2.9 0 0 0 0 5.6V19a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-5.2a2.9 2.9 0 0 0 0-5.6V3a1 1 0 0 1 1-1z" fill="#efdcaa" stroke="#6d5a2c" stroke-width="1.6"/><path d="M11 4.5v13" stroke="#6d5a2c" stroke-width="1.4" stroke-dasharray="2 1.8"/><rect x="15" y="7.5" width="10" height="2.4" rx="1" fill="#6d5a2c"/><rect x="15" y="12" width="7" height="2.4" rx="1" fill="#6d5a2c"/></svg>3</div>
+<div class="pad" style="left:56px;top:316px;width:500px;height:172px">
+ <div class="slit" style="position:absolute;left:38px;top:26px;font-size:96px;line-height:1">PLAY</div>
+ <div style="position:absolute;left:41px;bottom:30px;font-size:22px;color:#b9b2a5">2V2 RANKED <span class="bm" style="margin-left:10px;font-size:18px">rating 1,482</span></div>
+ <div class="plate" style="right:24px;top:54px;height:60px;padding:0 20px;display:flex;align-items:center;font-size:18px;border-radius:12px;color:var(--ink)">CHANGE MODE</div>
+</div>
+<div class="abs" style="left:62px;top:516px"><div class="flexc w" style="height:54px;font-size:30px;gap:14px;">QUESTS<span class="wd" style="font-size:22px">2/3</span></div><div class="flexc w" style="height:54px;font-size:30px;gap:14px;">PARTY<span class="wd" style="font-size:22px">2/4</span></div><div class="flexc w" style="height:54px;font-size:30px;gap:14px;">LOADOUT<span class="wd" style="font-size:22px"></span></div><div class="flexc w" style="height:54px;font-size:30px;gap:14px;">SHOP<span class="wd" style="font-size:22px"></span></div><div class="flexc w" style="height:42px;font-size:21px;gap:14px;margin-top:14px">CHANGE HUB<span class="wd" style="font-size:22px"></span></div><div class="flexc w" style="height:42px;font-size:21px;gap:14px;">PROFILE<span class="wd" style="font-size:22px"></span></div><div class="flexc w" style="height:42px;font-size:21px;gap:14px;">SETTINGS<span class="wd" style="font-size:22px"></span></div></div>
+<div class="abs w" style="left:62px;bottom:46px;font-size:22px">THE ROTUNDA <span class="wd bm" style="margin-left:10px">31 here</span></div>
+</div></body></html>
