@@ -168,6 +168,11 @@ if not KEEP_DRIFT and len(poses) > 1:
     mx = sum(o.x for _, o in lined) / n
     mz = sum(o.z for _, o in lined) / n
     poses = [(r, Vector((o.x - mx, o.y, o.z - mz))) for r, o in lined]
+    # (26 Nov 2026, HOLDOUT's lie down: --no-rise holds the hips at their first frame's height: the game lowers the
+    # whole body itself (Body.sink, so its collision fits under a bed), and the clip keeps only the turns)
+    if '--no-rise' in argv:
+        y0 = poses[0][1].y
+        poses = [(r, Vector((o.x, y0, o.z))) for r, o in poses]
     # (20 Nov, the emotes: --max-sway S scales the hips' sideways and forward travel down to S studs at most, so a dance
     # that crosses a stage stays on the spot; up and down untouched)
     if '--max-sway' in argv:

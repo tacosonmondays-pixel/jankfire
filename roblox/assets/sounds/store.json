@@ -3205,6 +3205,124 @@
     "region": null,
     "L": -17
    }
+  ],
+  "hunt_door_open": [
+   {
+    "id": 75676413243392,
+    "title": "\"Door Open Close\" by amholma (344360), the opening",
+    "source": "Freesound, CC0",
+    "region": [
+     0.75,
+     2.3
+    ],
+    "L": -33
+   }
+  ],
+  "hunt_door_shut": [
+   {
+    "id": 75676413243392,
+    "title": "\"Door Open Close\" by amholma (344360), the closing",
+    "source": "Freesound, CC0",
+    "region": [
+     4.35,
+     5.5
+    ],
+    "L": -14
+   },
+   {
+    "id": 137576334443201,
+    "title": "\"door_close\" by wjtaylor (266682)",
+    "source": "Freesound, CC0",
+    "region": [
+     0.25,
+     0.71
+    ],
+    "L": -6
+   }
+  ],
+  "hunt_switch": [
+   {
+    "id": 123796104635630,
+    "title": "\"Light Switch Turn Off Sound\" by ChrisTutorials (440499)",
+    "source": "Freesound, CC0",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -23
+   }
+  ],
+  "hunt_tap": [
+   {
+    "id": 139861520283494,
+    "title": "\"Water Out of Faucet Into Sink\" by vmgraw (235618)",
+    "source": "Freesound, CC0",
+    "region": [
+     0.4,
+     4.5
+    ],
+    "L": -33
+   }
+  ],
+  "hunt_bounce": [
+   {
+    "id": 105646371686054,
+    "title": "\"trampoline bounce.wav\" by zepurple (540276)",
+    "source": "Freesound, CC0",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -19
+   }
+  ],
+  "hunt_punch_hit": [
+   {
+    "id": 133264076660655,
+    "title": "\"body_hit.wav\" by insanity54 (276600)",
+    "source": "Freesound, CC0",
+    "region": [
+     0.15,
+     0.6
+    ],
+    "L": -14
+   }
+  ],
+  "hunt_shove": [
+   {
+    "id": 81612895656573,
+    "title": "\"Jacket/Cloth Rustle 9\" by brandondelehoy (494797)",
+    "source": "Freesound, CC0",
+    "region": [
+     0,
+     0.34
+    ],
+    "L": -34
+   }
+  ],
+  "hunt_fridge": [
+   {
+    "id": 107397061633315,
+    "title": "\"refrigerator door open\" by Yoyodaman234 (183531)",
+    "source": "Freesound, CC0",
+    "region": [
+     0,
+     1.4
+    ],
+    "L": -8
+   }
+  ],
+  "hunt_flush": [
+   {
+    "id": 9120104604,
+    "title": "Toilet Blast Water Flush Drips Drain Glug 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     4.5
+    ],
+    "L": -20
+   }
   ]
  },
  "vol": {
@@ -3390,7 +3508,16 @@
   "rig_missile_boom": -21,
   "rig_denied": -28,
   "zm_door": -24,
-  "zm_flicker": -32
+  "zm_flicker": -32,
+  "hunt_door_open": -28,
+  "hunt_door_shut": -27,
+  "hunt_switch": -31,
+  "hunt_tap": -32,
+  "hunt_bounce": -27,
+  "hunt_punch_hit": -23,
+  "hunt_shove": -27,
+  "hunt_fridge": -29,
+  "hunt_flush": -29
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
