@@ -55,9 +55,10 @@ local SWIG = { cap = Vector3.new(0.01, -0.06, -0.14), tip = -2.8, more = 0.4, le
 -- second gun, your left hand); hand 2 = Righty (right click: the main model, your right hand). a reload is a dip of
 -- that one gun down and back up, not a clip (the off hand has a gun of its own to hold)
 type Spring = { p: Vector3, pv: Vector3, r: Vector3, rv: Vector3 }
-type Twin = { model: Model, root: BasePart, parts: any, rec: Spring, kick: number, kickUp: number, dip: { t0: number, dur: number } }
+type Dip = { t0: number, dur: number, clip: string? } -- (clip: the reload its gun's pieces run, dipClip)
+type Twin = { model: Model, root: BasePart, parts: any, rec: Spring, kick: number, kickUp: number, dip: Dip, row: any, k: number? }
 local twin: Twin? = nil
-local dipR = { t0 = -10, dur = 0 } -- (Righty's reload dip: the main gun)
+local dipR: Dip = { t0 = -10, dur = 0 } -- (Righty's reload dip: the main gun)
 local DIP = { p = Vector3.new(0.03, -0.2, 0.08), tip = -0.7 } -- (how far a reloading gun drops: metres, camera space; its tip, radians)
 local function dipOf(d: { t0: number, dur: number }): number
 	local t = os.clock() - d.t0
@@ -68,11 +69,13 @@ end
 -- (19 Nov 2026; the owner, through weapons-port and gun-models' reload audit: "make sure guns have accurate ways to
 -- reload and parts that a normal gun would have") the gun that dips also runs weapons-port's reload_akimbo on its own
 -- moving pieces (GunParts: the mag out and a new one in, the cocker pulled), on the dip's clock stretched to its length
-local function dipClip(d: { t0: number, dur: number }): (string?, number)
-	local a = Anims.reload_akimbo
+-- (26 Nov 2026) a duo's half reloads with its own clip (Soak & Shock's Water Pistol: reload_water, its pump)
+local function dipClip(d: Dip): (string?, number)
+	local name = d.clip or "reload_akimbo"
+	local a = Anims[name]
 	local t = os.clock() - d.t0
 	if not a or d.dur <= 0 or t < 0 or t >= d.dur then return nil, 0 end
-	return "reload_akimbo", t * a.dur / d.dur
+	return name, t * a.dur / d.dur
 end
 -- a frame seen in a mirror across the camera's middle (x -> -x): the left gun's pose from the right one's
 local function mirrorX(cf: CFrame): CFrame
@@ -132,7 +135,17 @@ function VM.reload(wid: string, secs: number, empty: boolean?, hand: number?)
 	local wr = Weapons.list[wid]
 	if wr and wr.hands == 2 then -- (Lefty & Righty: that one gun dips for the reload)
 		local d = if hand == 1 and twin then (twin :: Twin).dip else dipR
+		d.t0 = os.clock(); d.dur = secs; d.clip = nil
+		return
+	end
+	-- (26 Nov 2026) a duo's half (Soak & Shock: Arsenal reloads it as "water", its left gun): that gun dips, its own clip
+	-- on its own pieces; the other gun stays where it is
+	local cur = Weapons.list[VM.wid]
+	local duo = cur and (cur :: any).duo
+	if duo and (wid == duo.left or wid == duo.right) then
+		local d = if wid == duo.left and twin then (twin :: Twin).dip else dipR
 		d.t0 = os.clock(); d.dur = secs
+		d.clip = if Anims["reload_" .. wid] then "reload_" .. wid else nil
 		return
 	end
 	local name = if Anims["reload_" .. wid] then "reload_" .. wid else "reload_ar"
@@ -898,7 +911,8 @@ function VM.set(wid: string, kat: number)
 	local wrId, wrMode = WeaponModels.wrapFor(game:GetService("Players").LocalPlayer, wid)
 	if wrId then WeaponModels.wrap(m, wrId, wrMode) end
 	-- the moving pieces go onto their own welds before the hands exist (the hands never ride a twirl)
-	VM.parts = GunParts.attach(m, root, k, w.mdl and w.mdl.parts)
+	local pw = (w.model and Weapons.list[w.model]) or w -- (a duo wears its right gun's model: that gun's pieces)
+	VM.parts = GunParts.attach(m, root, k, pw.mdl and pw.mdl.parts)
 	fillOn(m, root)
 	-- your hat on it, riding the piece under it (after the moving pieces are on their welds; never painted by a wrap)
 	GunHats.attach(m, wid, GunHats.hatFor(game:GetService("Players").LocalPlayer, wid), k)
@@ -906,7 +920,11 @@ function VM.set(wid: string, kat: number)
 	if wid == "bow" then bow = bowSetup(m, root) end
 	if wid == "lasso" then lasso = lassoSetup(m) end
 	if w.hands == 2 then -- (Lefty & Righty: the left gun, a second copy with its own moving pieces and your wrap)
-		local m2 = WeaponModels.build(w.twin or wid, k, if w.twin then nil else VM.skin) -- (26 Nov 2026: a duo's left hand holds its twin, Soak & Shock's Water Pistol)
+		-- (26 Nov 2026) a duo's left gun at its own size against the right one's (each gun's own vm.s: the Water Pistol's
+		-- model is far bigger than the Taser's, and at the Taser's scale it filled half the screen)
+		local tw0, pw0 = (w.twin and Weapons.list[w.twin]) or w, (w.model and Weapons.list[w.model]) or w
+		local k2 = if w.twin and tw0.vm and pw0.vm then k * tw0.vm.s / pw0.vm.s else k
+		local m2 = WeaponModels.build(w.twin or wid, k2, if w.twin then nil else VM.skin) -- (26 Nov 2026: a duo's left hand holds its twin, Soak & Shock's Water Pistol)
 		if m2 and m2.PrimaryPart then
 			local r2 = m2.PrimaryPart
 			r2.Anchored = true
@@ -914,11 +932,12 @@ function VM.set(wid: string, kat: number)
 				if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false end
 			end
 			if wrId then WeaponModels.wrap(m2, wrId, wrMode) end
-			local st2 = GunParts.attach(m2, r2, k, w.mdl and w.mdl.parts)
+			local tw = (w.twin and Weapons.list[w.twin]) or w -- (a duo's left gun: its own pieces, the Water Pistol's tank and pump)
+			local st2 = GunParts.attach(m2, r2, k2, tw.mdl and tw.mdl.parts)
 			m2.Name = "Lefty"
 			m2.Parent = m
 			twin = { model = m2, root = r2, parts = st2, rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero },
-				kick = 0, kickUp = 0, dip = { t0 = -10, dur = 0 } }
+				kick = 0, kickUp = 0, dip = { t0 = -10, dur = 0 }, row = tw, k = k2 }
 		end
 	end
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
@@ -1255,17 +1274,19 @@ function VM.update(dt: number, c: Ctx)
 	if VM.parts then
 		local cn, ct = if clip then clip.name else nil, if clip then clip.t else 0
 		if twin then cn, ct = dipClip(dipR) end -- (Lefty & Righty: Righty's reload on its own dip)
+		local pw = (w.model and Weapons.list[w.model]) or w -- (a duo: its right gun's row)
 		GunParts.step(VM.parts, dt, {
 			clip = cn, t = ct, anims = Anims,
-			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
-		}, w)
+			ammo = c.ammo or (pw.mag or 0), mag = pw.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
+		}, pw)
 	end
 	if twin and (twin :: Twin).parts then -- (Lefty's slide and pieces, and its reload on its own dip)
 		local cn2, ct2 = dipClip((twin :: Twin).dip)
+		local tw = (twin :: Twin).row or w -- (a duo's left gun: its own row)
 		GunParts.step((twin :: Twin).parts, dt, {
 			clip = cn2, t = ct2, anims = Anims,
-			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = cn2 ~= nil, now = c.now, firedT = c.firedT,
-		}, w)
+			ammo = (if tw == w then c.ammo else nil) or (tw.mag or 0), mag = tw.mag or 0, reloading = cn2 ~= nil, now = c.now, firedT = c.firedT,
+		}, tw)
 	end
 	-- your arms, last: they read where the magazine, the pump and the props are this frame
 	if armsOn then
@@ -1292,7 +1313,7 @@ function VM.update(dt: number, c: Ctx)
 			AvatarArms.override(m, "Right", nil, 0)
 		end
 		if twin then -- (Lefty & Righty: your left hand on the left gun's grip)
-			local rel = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
+			local rel = AvatarArms.holdFrame(VM.wid, "Left", (twin :: Twin).k or k, nil, VM.skin) -- (its own size: a duo's twin)
 			if rel then to, mix, under = (twin :: Twin).root.CFrame * rel, 1, false end
 		end
 		placeLoader(m.PrimaryPart, to, mix, c.hidden)
