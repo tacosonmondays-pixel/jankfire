@@ -345,7 +345,14 @@ def breech():
         L2 = NP_W + 0.5
         if a in OC_BAYS:
             side_coll('Wall', a, OC_R, OC_R + OC_T, OB_MOUTH, top, -L2, L2)
-            side_box(a, OC_R - 1.4, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.4, OB_W / 2 + 0.4, 'cy_baylintel', 'plastic', PALE, 0.45)
+            side_box(a, OC_R - 1.6, OC_R + 0.6, OB_MOUTH, OB_MOUTH + 3.4, -OB_W / 2 - 0.9, OB_W / 2 + 0.9, 'cy_baylintel', 'plastic', PALE, 0.45)
+            for e in (-1, 1):  # (kit 7: chamfered jambs, the bay a framed portal)
+                c0, c1 = sorted((e * (OB_W / 2 - 0.3), e * (OB_W / 2 + 0.9)))
+                side_box(a, OC_R - 1.6, OC_R + 0.6, 0.0, OB_MOUTH, c0, c1, 'cy_bayframe', 'plastic', PALE, 0.45)
+                side_coll('BayJamb', a, OC_R - 1.6, OC_R + 0.6, 0.0, OB_MOUTH, c0, c1)
+            # (kit 7: the bare wall over the bay a framed panel)
+            for (c0, c1, y0, y1) in ((-7.6, 7.6, 24.6, 25.2), (-7.6, 7.6, 20.4, 21.0), (-7.6, -7.0, 21.0, 24.6), (7.0, 7.6, 21.0, 24.6)):
+                side_box(a, OC_R - 0.6, OC_R + 0.1, y0, y1, c0, c1, 'cy_wallpanel', 'plastic', PALE, 0.15)
         elif a == 90.0:
             for e in (-1, 1):
                 c0, c1 = sorted((e * GP_W, e * L2))
@@ -362,7 +369,14 @@ def breech():
     cut(ring, [new_obj(bm_prism(oct_pts(21.8), OC_CEIL - 3, OC_CEIL + 1), 'cutter', 'plastic', 'ffffff')])
     # the pin's boss hanging from the lid's middle: a chunky drum, a stepped end
     new_obj(bm_cyl_y(9.0, OC_CEIL - 6.0, OC_CEIL + 0.2, 0, OC_Z, segs=64), 'cy_pin', 'plastic', PALE2, 0.7)
-    new_obj(bm_cyl_y(6.4, OC_CEIL - 7.2, OC_CEIL - 5.9, 0, OC_Z, segs=48), 'cy_pin', 'plastic', STEEL3, 0.4)
+    # (kit 7, the fair judges: the squat column hid the bays: the centre is the pin itself, brought down as a stepped steel
+    # drum to 14 up, over a smooth round dais; seen from everywhere, open at eye height)
+    new_obj(bm_cyl_y(7.8, 17.0, OC_CEIL - 5.9, 0, OC_Z, segs=96), 'cy_pin', 'plastic', STEEL3, 0.6)
+    new_obj(bm_cyl_y(8.3, 19.0, 19.9, 0, OC_Z, segs=96), 'cy_pinband', 'plastic', PALE, 0.3)
+    new_obj(bm_cyl_y(6.4, 14.6, 17.1, 0, OC_Z, segs=96), 'cy_pin', 'plastic', PALE2, 0.5)
+    new_obj(bm_cyl_y(6.9, 14.2, 14.8, 0, OC_Z, segs=96), 'cy_pinband', 'plastic', PALE, 0.25)
+    new_obj(bm_cyl_y(10.0, 0.0, 0.7, 0, OC_Z, segs=128), 'cy_middais', 'plastic', PALE2, 0.25)
+    new_obj(bm_cyl_y(7.2, 0.7, 1.4, 0, OC_Z, segs=128), 'cy_middais', 'plastic', PALE, 0.25)
     coll('Lid', (0, OC_CEIL + 0.5, OC_Z), (2 * (OC_R + 4), 1.0, 2 * (OC_R + 4)))
     # the bays: raised floor and kerb, the insides lined, collisions
     for a in OC_BAYS:
@@ -370,6 +384,13 @@ def breech():
         side_box(a, OC_R - 0.4, OC_R + 0.6, OB_FLOOR - 0.2, OB_FLOOR + 0.05, -OB_W / 2 + 0.3, OB_W / 2 - 0.3, 'cy_kerb', 'plastic', PALE, 0.12)
         side_box(a, OC_R + OB_D - 0.5, OC_R + OB_D, OB_FLOOR, OB_IN, -OB_W / 2, OB_W / 2, 'cy_bayback', 'plastic', STEEL3, 0.2)
         side_box(a, OC_R + 0.6, OC_R + OB_D, OB_IN - 0.35, OB_IN, -OB_W / 2, OB_W / 2, 'cy_bayline', 'plastic', PALE2, 0.0)
+        bk = OC_R + OB_D - 0.5   # (kit 7: the back wall's face) flat pilasters at its corners, a recessed surround round the board
+        for e in (-1, 1):
+            c0, c1 = sorted((e * (OB_W / 2 - 0.95), e * OB_W / 2))   # (kit 9: clear of the wider surround)
+            side_box(a, bk - 0.9, bk + 0.1, OB_FLOOR, OB_IN, c0, c1, 'cy_bayframe', 'plastic', PALE, 0.3)
+        by = OB_FLOOR + 6.2 + 2.75   # (the board's middle; it is 12 x 5.5)
+        for (c0, c1, y0, y1) in ((-7.35, 7.35, by + 3.35, by + 4.1), (-7.35, 7.35, by - 4.1, by - 3.35), (-7.35, -6.6, by - 3.35, by + 3.35), (6.6, 7.35, by - 3.35, by + 3.35)):  # (kit 9: the board's frame is 13 x 6.5)
+            side_box(a, bk - 0.7, bk + 0.1, y0, y1, c0, c1, 'cy_bayframe', 'plastic', PALE, 0.15)
         side_coll('BayFloor', a, OC_R - 0.4, OC_R + OB_D, -1.0, OB_FLOOR, -OB_W / 2, OB_W / 2)
         for e in (-1, 1):
             c0, c1 = sorted((e * OB_W / 2, e * (OB_W / 2 + 1.0)))

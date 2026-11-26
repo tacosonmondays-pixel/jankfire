@@ -203,7 +203,7 @@ function D.shop(K, f, before, F, len)
 			end
 			c:ScaleTo(c:GetScale() * 0.42)
 			c.Name = "ShopCrate"
-			c:PivotTo(K.S.site * F * CFrame.new(s * (len / 2 - 1.7), 5.2, 3.35) * CFrame.Angles(0, math.rad(180 + s * 12), 0))
+			c:PivotTo(K.S.site * F * CFrame.new(s * (len / 2 - 1.7), 5.2, 3.1) * CFrame.Angles(0, math.rad(180 + s * 12), 0)) -- (the owner, 26 Nov: no props in props: at 3.35 they sat 0.26 into the shelves)
 			sitOn(c, (K.S.site * F * CFrame.new(0, 4.6, 0)).Position.Y)
 			c.Parent = K.folder("Scenery")
 		end

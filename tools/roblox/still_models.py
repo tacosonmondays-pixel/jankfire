@@ -551,42 +551,43 @@ def colonnade():
         new_obj(bm_boxc((x, 0.9, z), (COL_W + 1.0, 1.8, COL_W + 1.0), rot_site(yaw=-aa)), 'st_colbase', 'plastic', PALE2, 0.3)
         coll('ColPier', (x, (COL_TOP - 1.2) / 2, z), (COL_W, COL_TOP - 1.2, COL_W), yaw=-aa)
 
-HALO_Y, HALO_RO, HALO_RI, HALO_D = 9.4, 7.0, 4.9, 1.2   # (kit 16: a flat stone disc with a hole, not a tyre)   # the well's stone ring: centre height, outer/inner radius, depth
+HALO_Y, HALO_RO, HALO_RI, HALO_D = 11.0, 9.0, 6.4, 2.0   # (kit 19, the owner's pass and the fair judges: a bigger, deeper ring whose opening frames both 2V2 boards; kit 16-18 were 9.4/7.0/4.9/1.2)
+COLLAR_A0, COLLAR_A1, COLLAR_T, COLLAR_D = 210.0, 330.0, 1.1, 3.6   # the stone clasp round the ring's lower third: arc (deg, 270 = down), thickness, depth
 def halo():
-    """the well's centre: a chunky stone ring standing upright across the spawn's axis on a cradle (the pool round it is
-    Luau's), its opening framing the middle bay"""
-    ring = new_obj(bm_cyl_z(HALO_RO, W_CZ - HALO_D / 2, W_CZ + HALO_D / 2, 0, HALO_Y, segs=72), 'st_halo', 'plastic', PALE, 0.12)
-    cut(ring, [new_obj(bm_cyl_z(HALO_RI, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
-    # (kit 16: no lip: it made a tyre's rim)
-    cradle = new_obj(bm_box(-5.4, 5.4, 1.6, HALO_Y - HALO_RO + 2.6, W_CZ - 1.6, W_CZ + 1.6), 'st_cradle', 'plastic', PALE2, 0.3)
-    cut(cradle, [new_obj(bm_cyl_z(HALO_RO - 0.05, W_CZ - 3, W_CZ + 3, 0, HALO_Y, segs=72), 'cutter', 'plastic', 'ffffff')])
-    # (judge round 14: the ring has no light of its own) a gold band round its opening's inner face, the plinth band's colour
+    """the well's centre: a chunky stone ring standing upright across the spawn's axis, gripped round its lower third by a
+    curved stone clasp rising out of the pool (kit 19: no lit bands, no box cradle: judges read it as a stray wedge)"""
+    ring = new_obj(bm_cyl_z(HALO_RO, W_CZ - HALO_D / 2, W_CZ + HALO_D / 2, 0, HALO_Y, segs=128), 'st_halo', 'plastic', PALE, 0.35)
+    cut(ring, [new_obj(bm_cyl_z(HALO_RI, W_CZ - HALO_D, W_CZ + HALO_D, 0, HALO_Y, segs=128), 'cutter', 'plastic', 'ffffff')])
+    # the clasp: an arc of the ring's own section, thicker and deeper, hugging its outside from 210 to 330 degrees
     bm = bmesh.new()
-    segs, z0, z1 = 128, W_CZ - 0.22, W_CZ + 0.22
-    for (ra, rb) in ((HALO_RI - 0.14, HALO_RI + 0.02),):
-        rows = []
-        for i in range(segs):
-            c, s = math.cos(2 * math.pi * i / segs), math.sin(2 * math.pi * i / segs)
-            rows.append([bm.verts.new(V(r * c, HALO_Y + r * s, z)) for (r, z) in ((ra, z0), (rb, z0), (rb, z1), (ra, z1))])
-        for i in range(segs):
-            A, B = rows[i], rows[(i + 1) % segs]
-            for k in range(4): bm.faces.new((A[k], B[k], B[(k + 1) % 4], A[(k + 1) % 4]))
+    n = 48
+    ra, rb = HALO_RO - 0.15, HALO_RO + COLLAR_T
+    z0, z1 = W_CZ - COLLAR_D / 2, W_CZ + COLLAR_D / 2
+    rows = []
+    for i in range(n + 1):
+        t = math.radians(COLLAR_A0 + (COLLAR_A1 - COLLAR_A0) * i / n)
+        c, sn = math.cos(t), math.sin(t)
+        rows.append([bm.verts.new(V(r * c, HALO_Y + r * sn, z)) for (r, z) in ((ra, z0), (rb, z0), (rb, z1), (ra, z1))])
+    for i in range(n):
+        A, B = rows[i], rows[i + 1]
+        for k in range(4): bm.faces.new((A[k], B[k], B[(k + 1) % 4], A[(k + 1) % 4]))
+    bm.faces.new(rows[0][::-1]); bm.faces.new(rows[-1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    new_obj(bm, 'st_haloband', 'neon', 'e8c28a', 0.0)
-    # (judge round 14: the round plinth's Roblox cylinders show their facets) the dais, the pool's wall, its lip and its
-    # band as smooth kit meshes; Luau keeps its cylinders for collision, unseen
+    new_obj(bm, 'st_cradle', 'plastic', PALE2, 0.35)
+    # (judge round 14: the round plinth's Roblox cylinders show their facets) the dais, the pool's wall and its lip as smooth
+    # kit meshes; Luau keeps its cylinders for collision, unseen (kit 19: no lit pool band)
     for (r, y0, y1, model, kind, hexc, bev) in ((11.0, 0.0, 0.8, 'st_dais', 'plastic', 'b9b2a5', 0.15),
                                                  (8.7, 0.8, 3.0, 'st_poolwall', 'plastic', 'd9d2c5', 0.1),
                                                  (9.1, 3.0, 3.4, 'st_poollip', 'plastic', 'cfc8ba', 0.12)):
         new_obj(bm_cyl_y(r, y0, y1, 0, W_CZ, segs=128), model, kind, hexc, bev)
-    bm = bm_ring_y(8.66, 8.8, 2.7, 2.85, segs=128)
-    bmesh.ops.translate(bm, verts=bm.verts, vec=V(0, 0, W_CZ))
-    new_obj(bm, 'st_poolband', 'neon', 'e8c28a', 0.0)
-    for k in range(16):  # (collision: the ring in sixteen pieces)
-        a = math.radians(k * 22.5 + 11.25)
+    for k in range(24):  # (collision: the ring in twenty-four pieces)
+        a = math.radians(k * 15 + 7.5)
         r = (HALO_RO + HALO_RI) / 2
-        coll('Halo', (r * math.cos(a), HALO_Y + r * math.sin(a), W_CZ), (2 * r * math.sin(math.radians(11.25)) + 0.3, HALO_RO - HALO_RI, HALO_D), roll=math.degrees(a) - 90)
-    coll('Cradle', (0, (1.6 + HALO_Y - HALO_RO + 2.6) / 2, W_CZ), (10.8, HALO_Y - HALO_RO + 1.0, 3.2))
+        coll('Halo', (r * math.cos(a), HALO_Y + r * math.sin(a), W_CZ), (2 * r * math.sin(math.radians(7.5)) + 0.3, HALO_RO - HALO_RI, HALO_D), roll=math.degrees(a) - 90)
+    for k in range(6):  # (the clasp in six)
+        a = math.radians(COLLAR_A0 + (k + 0.5) * (COLLAR_A1 - COLLAR_A0) / 6)
+        r = HALO_RO + COLLAR_T / 2
+        coll('Cradle', (r * math.cos(a), HALO_Y + r * math.sin(a), W_CZ), (2 * r * math.sin(math.radians(10)) + 0.3, COLLAR_T + 0.2, COLLAR_D), roll=math.degrees(a) - 90)
 
 def monolith():
     # stacked giant blocks of different heights, each offset and turned a hair, so it never reads as even bands

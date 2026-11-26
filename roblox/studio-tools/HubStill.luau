@@ -13,7 +13,7 @@
 local HS = {}
 HS.ID, HS.FOLDER, HS.TITLE, HS.ORDER = "still", "Still", "THE STILL", 5
 HS.SITE = CFrame.new(-1800, 240, -12600)
-HS.KIT = 134412888424041 -- hub_still_kit_18 (smooth plinth meshes, the ring's gold band; kit 17 was 78365195649000, kit 16 80061919490804)
+HS.KIT = 139154938435184 -- hub_still_kit_19 (the owner's 26 Nov pass: a bigger, deeper ring held by a stone clasp, no lit bands; kit 18 was 134412888424041, kit 17 78365195649000)
 HS.LIB = "HubStillKit"
 local DECK = 2.4 -- (the rooms' floor: the top terrace)
 local MON = Vector3.new(0, 5.6, -2) -- (the monument's plinth top: the lantern stands on it)
@@ -35,10 +35,11 @@ local MAT = Enum.Material
 local KIND = { slate = MAT.Slate, concrete = MAT.Concrete, plastic = MAT.SmoothPlastic, neon = MAT.Neon, glass = MAT.Glass, metal = MAT.Metal }
 local PLASTER = { cfc8ba = true, b9b2a5 = true, a39d92 = true, ada79c = true }
 -- (judge round 4, blind against the ring: the bore one sepia; ribs and frames a warm off-white, walls and bay backs mid grey)
-local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "ece4d4", st_holerim = "e2dccf", st_lining = "9f9a90", st_bayline = "8f8c86", st_bayback = "a8a296", st_halo = "e6ddcc", st_cradle = "d6cfc1" } -- (judge round 11: frames, ring a warm off-white)
+local RECOLOUR = { st_rifling = "e2dccf", st_bayframe = "ece4d4", st_holerim = "e2dccf", st_lining = "928d84", st_bayline = "8f8c86", st_bayback = "9a948a", st_halo = "e6ddcc", st_cradle = "d6cfc1" } -- (judge round 11: frames, ring a warm off-white)
 -- (judge round 4 and main: the floating round through a spiked burst read as a cartoon logo prop; the gym's rock slabs as
 -- lumps. Left in the kit, not built)
-local SKIP = { st_round = true, st_roundband = true, st_band = true, st_perch = true, st_shard = true, st_shock = true, st_tooth = true, st_frag = true, st_gymvault = true, st_gymrib = true }
+local SKIP = { st_round = true, st_roundband = true, st_band = true, st_perch = true, st_shard = true, st_shock = true, st_tooth = true, st_frag = true, st_gymvault = true, st_gymrib = true,
+	st_lit = true, st_cove = true } -- (the owner, 26 Nov: no useless indicator lights: the amber lines under the room lintels and the funnel's glowing cove rings lit nothing)
 function HS.import(id: number?): string
 	local kit = id or HS.KIT
 	local ok, c = pcall(function() return game:GetService("InsertService"):LoadAsset(kit) end)
@@ -169,12 +170,8 @@ function HS.build(K, parent, name, site, live)
 	K.travelTerminal(K.at(F0, 9, 23, 60))
 	K.holoLoadout(K.at(F0, 17, 6, 70))
 	K.bundles(K.at(F0, -19, 7, -70))
-	-- the crater's middle: a low two-step stone dais with a lit ring under its cap, kept under eye height (judge round 9:
-	-- the lantern column blocked the throat it framed; the well's sky disc is the hub's big object now)
-	K.cyl(F0, "Shell", "MonPlinth", MON.X, 0, 1.3, MON.Z, 13, "b9b2a5", MAT.Plastic).MaterialVariant = "TrPlaster"
-	K.cyl(F0, "Shell", "MonPlinth", MON.X, 1.3, 2.4, MON.Z, 9.4, "8f8a82", MAT.Slate).MaterialVariant = "TrSlate"
-	K.cyl(F0, "Scenery", "MonCap", MON.X, 2.4, 2.9, MON.Z, 7.4, "cfc8ba", MAT.Plastic).MaterialVariant = "TrPlaster"
-	K.light(K.cyl(F0, "Scenery", "MonRing", MON.X, 2.25, 2.45, MON.Z, 8.2, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 12, 0.6, "ffd9a8")
+	-- (the owner, 26 Nov, and the fair judges: the crater's empty two-step dais sat on the walking line from the spawn and
+	-- read as a missing statue; gone: the crater's floor lines run straight to the throat)
 	-- the ranked boards on the monolith's face either side of the throat, the spectate board on the south rim
 	local function faceIn(a, r, y) local c, s = math.cos(math.rad(a)), math.sin(math.rad(a)); return K.facing(r * c, r * s, -c, -s, y) end
 	K.boardSpot(faceIn(214, 34.2, 8.4), "duels", 9, 6)
@@ -243,14 +240,41 @@ function HS.build(K, parent, name, site, live)
 			local spot = box(Fb, "Scenery", "PadSpot", sd * off - 0.5, sd * off + 0.5, WB_IN - 0.6, WB_IN - 0.5, -(W_R + 6.5) - 0.5, -(W_R + 6.5) + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 			K.light(spot, 20, 1.8, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 100 }) -- (judge rounds 12, 14: the pads the brightest things)
 		end
-		-- (judge round 14: the pads read as thin strips at the bays' feet) a lit lip along the bay floor's front, under the pads
-		box(Fb, "Scenery", "BayLip", -w / 2 + 0.6, w / 2 - 0.6, 0.32, 0.52, -(W_R - 0.4), -(W_R - 0.48), "f0dcb8", MAT.Neon, { ghost = true, noshadow = true }).Transparency = 0.2
+		-- (the owner, 26 Nov: no useless indicator lights: round 15's lit lip under the pads is gone; the pad spots light them)
 		local sx, sz2 = ux * (W_R - 3.42), W_CZ + uz * (W_R - 3.42)
 		K.sign(K.facing(sx, sz2, -ux, -uz, 17.8), "Scenery", "BaySign", math.min(21, w - 4), 3.0, 0, 0, 0,
 			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
-		-- the bay's back wall lit from a cove along its top
-		local cv = box(Fb, "Scenery", "BayCove", -w / 2 + 1, w / 2 - 1, WB_IN - 0.9, WB_IN - 0.5, -(W_R + WB_D - 0.6), -(W_R + WB_D - 1.0), "f0dcb8", MAT.Neon, { ghost = true, noshadow = true })
-		K.light(cv, 18, 0.8, "ffe4c4", { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
+		-- (the owner's pass, the fair judges: the bay a flat box, its boards stuck on) the back wall: a chunky pale housing along
+		-- its top with the light in its underside, flat pilasters at its corners, each board set in a recessed surround
+		local rb = W_R + WB_D - 0.6
+		local hz0, hz1 = -rb, -(rb - 1.6)
+		box(Fb, "Scenery", "BayLightHousing", -w / 2 + 1, w / 2 - 1, WB_IN - 1.6, WB_IN, hz0, hz1, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
+		local cv = box(Fb, "Scenery", "BayLightPanel", -w / 2 + 1.5, w / 2 - 1.5, WB_IN - 1.7, WB_IN - 1.6, hz0 + 0.3, hz1 - 0.3, "f4efe6", MAT.Neon, { ghost = true, noshadow = true })
+		K.light(cv, 20, 0.9, "ffe4c4", { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
+		local boff = if K.padClassic then (K.CLASSIC_SIZE and K.CLASSIC_SIZE[md.id] or { 13.6 })[1] / 2 + 0.6 else 6.75
+		if w / 2 - 1.0 > boff + 7.4 then -- (only where they clear the boards' surrounds: not in the narrow 1V1 / 2V2 bays)
+			for _, e in { -1, 1 } do
+				box(Fb, "Scenery", "BayPilaster", math.min(e * (w / 2 - 1.0), e * w / 2), math.max(e * (w / 2 - 1.0), e * w / 2), WB_FLOOR, WB_IN - 1.6, -(rb + 0.1), -(rb - 0.9), "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
+			end
+		end
+		do -- (the board's frame is 13 x 6.5: the surround clears it; where the two boards stand close, one surround round both with a slim middle bar)
+			local by, gap = WB_FLOOR + 6.2 + 2.75, 2 * boff - 13.0
+			local rects = {}
+			if gap < 1.6 then
+				local o = boff + 7.35
+				table.insert(rects, { -o, o, by + 3.35, by + 4.1 }); table.insert(rects, { -o, o, by - 4.1, by - 3.35 })
+				table.insert(rects, { -o, -(boff + 6.6), by - 3.35, by + 3.35 }); table.insert(rects, { boff + 6.6, o, by - 3.35, by + 3.35 })
+				if gap > 0.3 then table.insert(rects, { -(gap / 2 - 0.05), gap / 2 - 0.05, by - 3.35, by + 3.35 }) end
+			else
+				for _, sd in { -1, 1 } do
+					local bx = sd * boff
+					for _, r in { { -7.35, 7.35, by + 3.35, by + 4.1 }, { -7.35, 7.35, by - 4.1, by - 3.35 }, { -7.35, -6.6, by - 3.35, by + 3.35 }, { 6.6, 7.35, by - 3.35, by + 3.35 } } do
+						table.insert(rects, { bx + r[1], bx + r[2], r[3], r[4] })
+					end
+				end
+			end
+			for _, r in rects do box(Fb, "Scenery", "BoardSurround", r[1], r[2], r[3], r[4], -(rb + 0.1), -(rb - 0.7), "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster" end
+		end
 		-- a cream spoke in the floor from the middle's dais to the bay's mouth
 		local A, B = Vector3.new(ux * 11.4, 0.02, W_CZ + uz * 11.4), Vector3.new(ux * (W_R - 4), 0.02, W_CZ + uz * (W_R - 4))
 		local sp = box(F0, "Scenery", "WellSpoke", -0.6, 0.6, 0, 0.05, -0.5, 0.5, "e2dccf", MAT.Plastic)
@@ -266,17 +290,15 @@ function HS.build(K, parent, name, site, live)
 	K.cyl(F0, "Scenery", "PoolBed", 0, 3.0, 3.1, W_CZ, 15.8, "2f3540", MAT.Slate).MaterialVariant = "TrSlate"
 	local water = K.cyl(F0, "Shell", "PoolWater", 0, 3.1, 3.25, W_CZ, 15.8, "3d4a58", MAT.Glass)
 	water.Transparency = 0.2; water.Reflectance = 0.35
-	local band = K.cyl(F0, "Scenery", "PoolBand", 0, 2.7, 2.85, W_CZ, 17.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true })
-	band.Transparency = 0.35 -- (judge round 12: dimmer than the pads)
-	K.light(band, 14, 0.3, "ffd9a8")
+	-- (the owner, 26 Nov: no lit pool band)
 	if lib and lib:FindFirstChild("st_dais") then -- (judge round 14: the cylinders' facets showed: the kit's smooth meshes show instead)
 		for _, d in f:GetDescendants() do
-			if d:IsA("BasePart") and (d.Name == "WellDais" or d.Name == "PoolWall" or d.Name == "PoolLip" or d.Name == "PoolBand") then d.Transparency = 1; d.CastShadow = false end
+			if d:IsA("BasePart") and (d.Name == "WellDais" or d.Name == "PoolWall" or d.Name == "PoolLip") then d.Transparency = 1; d.CastShadow = false end
 		end
 	end
 	do -- (judge round 14: the ring had no light of its own: a spot on its face from over the throat)
 		local s = box(F0, "Scenery", "RingSpot", -0.5, 0.5, 23, 23.2, -48.5, -47.5, P.pale, nil, { ghost = true, tr = 1 })
-		s.CFrame = site * CFrame.lookAt(Vector3.new(0, 23, -48), Vector3.new(0, 9.4, W_CZ))
+		s.CFrame = site * CFrame.lookAt(Vector3.new(0, 25, -48), Vector3.new(0, 11, W_CZ)) -- (kit 19: the ring's middle at 11)
 		K.light(s, 36, 1.1, "fff1df", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 34 })
 	end
 	-- the well's curved wall by the flat wall's two ends washed warm (judge round 12: it fell to black)
@@ -291,7 +313,14 @@ function HS.build(K, parent, name, site, live)
 		{ { "GYM  ·  ARMORY  ·  LOUNGE  ·  ZOMBIES", "f2f0ea", 0.72 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
 	local sky = box(F0, "Scenery", "SkyLight", -0.5, 0.5, W_TOP - 1, W_TOP - 0.8, W_CZ - 0.5, W_CZ + 0.5, P.pale, nil, { ghost = true, tr = 1 })
 	sky.CFrame = site * CFrame.lookAt(Vector3.new(0, W_TOP - 1, W_CZ), Vector3.new(0, 0, W_CZ))
-	K.light(sky, 48, 0.75, "e6edf5", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
+	K.light(sky, 48, 1.0, "e6edf5", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
+	for i = 0, 7 do -- (26 Nov: the funnel's tiers lit from the gallery, the light on the stone, no glowing rings)
+		local q = math.rad(i * 45 + 22.5)
+		local x, z = math.cos(q) * 43, W_CZ + math.sin(q) * 43
+		local u = box(F0, "Scenery", "FunnelWash", x - 0.5, x + 0.5, 23.4, 23.6, z - 0.5, z + 0.5, P.pale, nil, { ghost = true, tr = 1 })
+		u.CFrame = site * CFrame.lookAt(Vector3.new(x, 23.5, z), Vector3.new(math.cos(q) * 22, 40, W_CZ + math.sin(q) * 22))
+		K.light(u, 34, 0.9, "ffe4c4", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 70 })
+	end
 	for i = 0, 7 do
 		local q = math.rad(202.5 + i * 22.5)
 		if math.sin(q) > 0.3 then continue end
@@ -405,6 +434,10 @@ function HS.build(K, parent, name, site, live)
 		local g = box(FG, "Scenery", "RingLampGlow", x - 1.8, x + 1.8, 14.85, 15.0, z - 1.8, z + 1.8, P.light, MAT.Neon, { ghost = true, noshadow = true })
 		K.light(g, 26, 1.3, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 110 })
 	end end
+	for _, x in { 62, 78, 94, 110 } do for _, sd in { -1, 1 } do -- (26 Nov, the fair judges: bare long walls: a pale pilaster under each beam, the locker door kept clear)
+		if sd > 0 and x > 100 and x < 114 then continue end
+		box(FG, "Scenery", "GymPilaster", x - 1.3, x + 1.3, 0, 14.0, math.min(sd * 42, sd * 40.9), math.max(sd * 42, sd * 40.9), "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
+	end end
 	local FE = FG * CFrame.Angles(0, -math.pi / 2, 0) -- (its x runs south, its z runs west)
 	K.wall(FE, "GymWall", -44, 44, 0, 17, -54, -52, "85817a", { { -10, 10, 13.6 } }, MAT.Slate)
 	-- the short cut passage from the rim's frame (r 46) to the gym's wall (x 52)
@@ -430,7 +463,7 @@ function HS.build(K, parent, name, site, live)
 		elseif d.Name == "RackBoard" then d.Color = Color3.fromHex("a39d92"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster"
 		elseif d.Name == "CaseFoot" or d.Name == "CaseLid" or d.Name == "CaseBase" or d.Name == "CaseTop" then d.Color = Color3.fromHex("7a7e84"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPaint" end
 	end
-	DR.armory(K, f, beforeA, FA, { w = 16, d0 = 46, d1 = 84, h = 17, pitch = 11.5, gunLen = 8.5, island = { 62, 76 }, backHex = "8f897e", frameHex = "cfc8ba", baseHex = "a39d92" })
+	DR.armory(K, f, beforeA, FA, { w = 16, d0 = 46, d1 = 84, h = 17, pitch = 11.5, gunLen = 7.6, backHex = "8f897e", frameHex = "cfc8ba", baseHex = "a39d92" }) -- (26 Nov: no island on the gate's line, the gadgets in a niche; guns clear of their piers)
 	for _, d in f:GetDescendants() do -- (the bundle's plinth and plate a step off the niches)
 		if beforeA[d] or not d:IsA("BasePart") then continue end
 		local nm = d.Name
@@ -486,8 +519,8 @@ function HS.build(K, parent, name, site, live)
 	for _, z in { -10, -28 } do K.light(box(FL, "Scenery", "PierFill", -LW + 4.5, -LW + 5, LH - 5, LH - 4.8, z - 0.25, z + 0.25, P.pale, nil, { ghost = true, tr = 1 }), 16, 0.55, "ffe9cf") end
 	-- the shop on the east wall, the bar on a step on the west, the arcade, the tables, the seats in the pit
 	local beforeS = DR.snap(f)
-	K.shop(K.at(FL, 19, -15, 90), 13.4)
-	DR.shop(K, f, beforeS, K.at(FL, 19, -15, 90), 13.4)
+	K.shop(K.at(FL, 17.2, -15, 90), 13.4) -- (the owner, 26 Nov: no props in walls: at 19 its shelves and crates sat 1.0 into the wall)
+	DR.shop(K, f, beforeS, K.at(FL, 17.2, -15, 90), 13.4)
 	lbox("BarStep", -LW, -13, -0.2, 0.8, -42, -28, PALEC, MAT.Plastic)
 	K.bar(K.at(FL, -19.6, -35, -90, 0.8), 10)
 	K.arcadeSpot(K.at(FL, -20.4, -19.2, -90)) -- (hub-minigames' check: 1 forward off the Wall, 1.2 clear of the Pier)
@@ -496,8 +529,7 @@ function HS.build(K, parent, name, site, live)
 	-- the hearth: the room's one centre object, on its axis between the tables: a round stone hearth, a warm glowing bed,
 	-- a heavy round hood hung from the coffers
 	K.cyl(FL, "Shell", "HearthDais", 0, 0, 0.4, -24, 12.5, "b9b2a5", MAT.Plastic).MaterialVariant = "TrPlaster" -- (a raised round dais in the middle)
-	lbox("EntryInlay", -6, 6, 0, 0.04, -15, -4, "b9b2a5", MAT.Plastic, { scen = true }) -- (a stone inlay across the near floor)
-	lbox("EntryInlayEdge", -6.6, 6.6, -0.02, 0.03, -15.6, -3.4, "cfc8ba", MAT.Plastic, { scen = true })
+	-- (26 Nov, the fair judges: the stone inlay across the near floor read as a bare rug: gone)
 	K.cyl(FL, "Shell", "Hearth", 0, 0.4, 1.4, -24, 6.6, "a39d92", MAT.Plastic).MaterialVariant = "TrPlaster"
 	K.cyl(FL, "Scenery", "HearthStone", 0, 1.4, 1.7, -24, 7.2, PALEC, MAT.Plastic).MaterialVariant = "TrPlaster"
 	local hg = K.cyl(FL, "Scenery", "HearthGlow", 0, 0.9, 1.0, -24, 4.4, "8a4a26", MAT.Neon, { ghost = true, noshadow = true }); hg.Transparency = 0.15
@@ -511,7 +543,7 @@ function HS.build(K, parent, name, site, live)
 		K.cyl(FL, "Scenery", "DrumLamp", x, LH - 4.6, LH - 3, z, 3.4, "b9b2a5", MAT.Plastic, { ghost = true }).MaterialVariant = "TrPlaster"
 		K.light(K.cyl(FL, "Scenery", "DrumGlow", x, LH - 4.75, LH - 4.6, z, 2.8, P.warm, MAT.Neon, { ghost = true, noshadow = true }), 18, 0.9, P.warm)
 	end
-	K.codePanelSpot(K.at(FL, -17, -0.05, 0))
+	K.codePanelSpot(K.at(FL, -17, -1.5, 0)) -- (Clip v2 in Play: at -0.05 the built panel sat 1.38 into the entry wall)
 	local beforeV = {}
 	for _, d in f:GetDescendants() do beforeV[d] = true end
 	K.vip(FL * CFrame.new(0, 0, -LD), { w = 14, d = 20, h = 10, front = LW + 2, frontH = LH })
@@ -548,16 +580,16 @@ function HS.build(K, parent, name, site, live)
 
 	-- ============================================================== THE REGULARS
 	-- Looticus: the lounge's sofa, behind the shop counter, behind the bar (he puffs between them)
-	local LOOT = { { "sit", 14.9, 1.45 - 1.2, -36.6, 90 }, { "sit", 14.9, 1.45 - 1.2, -33.4, 90 }, { "stand", 21.0, 0, -15, 90 }, { "stand", -21.4, 0.8, -35, -90 } }
+	local LOOT = { { "sit", 14.9, 1.45 - 1.2, -36.6, 90 }, { "sit", 14.9, 1.45 - 1.2, -33.4, 90 }, { "stand", 14.7, 0, -15, 90 } } -- (26 Nov, Clip v2 in Play: behind the bar and the shop counter he stood in their shelves: both gaps are too narrow; at the shop's front)
 	K.npc(FL, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(FL, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	-- Frisk1636: along the crater's top terrace on the south, looking in
 	local FR = {}
-	for i, a in { 62, 76, 90, 104, 118 } do
-		table.insert(FR, { if i % 2 == 1 then "stop" else "via", 33.2 * math.cos(math.rad(a)), 33.2 * math.sin(math.rad(a)), 90 - a })
+	for i, a in { 204, 214, 224 } do -- (26 Nov, Clip v2 in Play: along the top terrace he walked through the colonnade's piers and the spectate board: now on the crater floor before the ranked board)
+		table.insert(FR, { if i % 2 == 1 then "stop" else "via", 24 * math.cos(math.rad(a)), 24 * math.sin(math.rad(a)), 90 - a })
 	end
-	K.npc(F0, "Frisk1636", FR[1][2], DECK, FR[1][3], FR[1][4])
-	for k, w in FR do K.npcPoint(F0, "Frisk1636", k, w[1], "stand", w[2], DECK, w[3], w[4], { pause = if w[1] == "stop" then { 8, 16 } else nil }) end
+	K.npc(F0, "Frisk1636", FR[1][2], 0, FR[1][3], FR[1][4])
+	for k, w in FR do K.npcPoint(F0, "Frisk1636", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 8, 16 } else nil }) end
 	-- Dune: round three sides of the gym's first ring
 	local DU = { { "stop", 56.5, -14, -90 }, { "via", 56.5, -27.4, 180 }, { "stop", 70, -27.4, 180 }, { "via", 85, -27.4, 180 }, { "stop", 85, -14, 90 } }
 	K.npc(F0, "Dune", DU[1][2], DECK, DU[1][3], DU[1][4])

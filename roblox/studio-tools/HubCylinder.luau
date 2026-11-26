@@ -15,7 +15,8 @@
 local HC = {}
 HC.ID, HC.FOLDER, HC.TITLE, HC.ORDER = "cylinder", "Cylinder", "THE CYLINDER", 6
 HC.SITE = CFrame.new(-1800, 240, -14200)
-HC.KIT = 117516859260764 -- hub_cylinder_kit_6 (the classic pads: a TWELVE-sided breech, one pad per bay; kit 5 the octagon was 107558420312777)
+HC.KIT = 105308309547631 -- hub_cylinder_kit_9 (board surrounds clear of the 13 x 6.5 board frames; kit 8 was 113574524501076)
+-- (kit 8: (the owner's 26 Nov pass: the pin brought down over a round dais, framed bays and board surrounds clear of the boards, panels on the upper walls; kit 7 was 85328731311453, kit 6 117516859260764)
 HC.LIB = "HubCylinderKit"
 local SS = game:GetService("ServerStorage")
 local MAT = Enum.Material
@@ -26,7 +27,7 @@ local OC_Z, OC_R, OC_H, OC_CEIL = 77, 37.4, 26, 28
 -- spawn round to the face (1V1..4V4), the east twins mirrored
 local OC_BAYS = { 120, 150, 180, 210, 240, 60, 30, 0, 330, 300 }
 local OB_W, OB_D, OB_FLOOR, OB_IN, OB_MOUTH = 17, 15, 0.8, 18.5, 16
-local WARM = { cy_pilaster = "dcd6ca", cy_baylintel = "dcd6ca", cy_beam = "d2ccc0" }
+local WARM = { cy_pilaster = "dcd6ca", cy_baylintel = "dcd6ca", cy_beam = "d2ccc0", cy_bayframe = "dcd6ca", cy_wallpanel = "dcd6ca", cy_pinband = "dcd6ca", cy_middais = "d2ccc0" }
 local WALL, WALL2, FLOORC, STEELC = "a7a9ab", "b4b6b8", "8a8c8e", "8d9196" -- (walls a step darker than the piers and beams)
 
 -- ------------------------------------------------------------------------------------------------ the kit
@@ -128,11 +129,16 @@ function HC.build(K, parent, name, site, live)
 		local F = K.facing(ux * r0, OC_Z + uz * r0, ux, uz, OB_FLOOR)
 		local boardAt = K.facing(ux * back, OC_Z + uz * back, -ux, -uz, OB_FLOOR + 6.2 + 2.75) -- (flat on the back wall: the owner, "changed my mind no angeld")
 		if K.padClassic then
-			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { boardAt = boardAt })
+			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { boardAt = boardAt, boardTitle = false }) -- (one name per pad: the bay's lintel sign names it)
 		else
 			K.pad(F, md, if east then "east" else "lifts", if east then md.id .. "_e" else md.id, { lampY = 13 })
 		end
 		K.panel(Fb, 0, OB_IN, -(OC_R + 6.5), 6, 6, { bright = 0.55, range = 20, lightHex = "fff1df" })
+		local spot = box(Fb, "Scenery", "PadSpot", -0.5, 0.5, OB_IN - 0.6, OB_IN - 0.5, -(OC_R + 6.5) - 0.5, -(OC_R + 6.5) + 0.5, P.pale, nil, { ghost = true, tr = 1 })
+		K.light(spot, 20, 1.8, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 100 }) -- (26 Nov, the fair judges: the pads the brightest things)
+		local wash = box(F0, "Scenery", "WallWash", -0.5, 0.5, 25.9, 26.1, -0.5, 0.5, P.pale, nil, { ghost = true, tr = 1 }) -- (the framed panel over the bay washed)
+		wash.CFrame = site * CFrame.lookAt(Vector3.new(ux * 22, 26, OC_Z + uz * 22), Vector3.new(ux * 37, 22.8, OC_Z + uz * 37))
+		K.light(wash, 24, 0.7, "fff1df", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 50 })
 		local sx, sz = ux * (OC_R - 1.42), OC_Z + uz * (OC_R - 1.42)
 		K.sign(K.facing(sx, sz, -ux, -uz, OB_MOUTH + 1.7), "Scenery", "BaySign", 13.5, 2.4, 0, 0, 0,
 			{ { md.title .. "  ·  " .. md.kind, "f2f0ea", 0.8 } }, { pps = 40, plate = "4a4f57", thick = 0.15, bright = 1.2 })
@@ -148,21 +154,21 @@ function HC.build(K, parent, name, site, live)
 	end
 	-- the boss: a lit ring under its stepped end, a downlight; panels in the lid's coffers round it, a warm wash on the walls
 	-- (a thin lit ring round the pin's end, not a glowing disc: a steel cover over its middle)
-	K.light(K.cyl(F0, "Scenery", "BossRing", 0, OC_CEIL - 7.28, OC_CEIL - 7.2, OC_Z, 13.6, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 18, 0.5, "ffd9a8")
-	K.cyl(F0, "Scenery", "BossCover", 0, OC_CEIL - 7.36, OC_CEIL - 7.22, OC_Z, 12.0, "9ea2a7", MAT.Plastic).MaterialVariant = "TrPaint"
-	local dl = box(F0, "Scenery", "BossLight", -0.5, 0.5, OC_CEIL - 7.4, OC_CEIL - 7.3, OC_Z - 0.5, OC_Z + 0.5, P.pale, nil, { ghost = true, tr = 1 })
-	K.light(dl, 34, 0.9, "f2f4f8", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 80 })
+	-- (kit 7, the owner's 26 Nov pass: no lit ring; the pin comes down to 14 up, a recessed downlight in its end)
+	local dl = K.cyl(F0, "Scenery", "PinLight", 0, 14.08, 14.2, OC_Z, 4.4, "a9adb4", MAT.Neon, { ghost = true, noshadow = true }) -- (a dull lens: it blew out white from below)
+	K.light(dl, 30, 1.0, "f2f4f8", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 90 })
 	for i = 0, 5 do -- (between the twelve radial beams)
 		local q = math.rad(i * 60)
 		K.panel(CFrame.new(math.cos(q) * 15.5, 0, OC_Z + math.sin(q) * 15.5) * CFrame.Angles(0, -q, 0), 0, OC_CEIL, 0, 4, 6, { bright = 0.22, range = 30, hex = "b7bbc2" })
 	end
 	-- the middle (judge round 9: an empty octagon): a pale round bench under the pin's boss, a squat column in it with a
 	-- thin lit band below its cap, all in the structure's warm off-white (kept under the sightline to the face's boss)
-	K.cyl(F0, "Shell", "MidBench", 0, 0, 1.7, OC_Z, 13, "dcd6ca", MAT.Plastic).MaterialVariant = "TrPaint"
-	K.cyl(F0, "Scenery", "MidBenchLip", 0, 1.7, 1.95, OC_Z, 13.6, "c9c3b6", MAT.Plastic).MaterialVariant = "TrPaint"
-	K.cyl(F0, "Shell", "MidColumn", 0, 1.95, 8.2, OC_Z, 5.6, "dcd6ca", MAT.Plastic).MaterialVariant = "TrPaint"
-	K.light(K.cyl(F0, "Scenery", "MidBand", 0, 7.0, 7.35, OC_Z, 5.8, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 16, 0.45, "ffd9a8")
-	K.cyl(F0, "Scenery", "MidCap", 0, 8.2, 8.9, OC_Z, 6.6, "c9c3b6", MAT.Plastic).MaterialVariant = "TrPaint"
+	-- (kit 7, the fair judges: the squat column hid the bays and its band lit nothing) the kit's smooth two-step dais under
+	-- the lowered pin; unseen cylinders give it its collision
+	for _, st in { { 0, 0.7, 20 }, { 0.7, 1.4, 14.4 } } do
+		local c = K.cyl(F0, "Shell", "MidDais", 0, st[1], st[2], OC_Z, st[3], "d2ccc0", MAT.Plastic)
+		c.Transparency = 1; c.CastShadow = false
+	end
 	-- the gym's portal through the south side, its name over it toward the middle
 	K.sign(K.facing(0, OC_Z + OC_R - 0.05, 0, -1), "Scenery", "WaySign", 8, 2, 0, 16.4, 0, { { "GYM", P.pale, 0.72 } }, { pps = 46 })
 	-- the transept's light: panels under the strap, three lamps on the face
@@ -229,6 +235,9 @@ function HC.build(K, parent, name, site, live)
 		end
 	end
 	DR.armory(K, f, before, FA, { w = 8.5, d0 = 7, d1 = 74, h = 11, pitch = 11.5, gunLen = 7, backHex = "5b6068" })
+	for _, z in { -15, -32, -49, -66 } do -- (26 Nov, the fair judges: the vault near-black: warm fills along it)
+		K.light(box(FA, "Scenery", "VaultFill", -0.3, 0.3, 9.6, 9.8, z - 0.3, z + 0.3, P.pale, nil, { ghost = true, tr = 1 }), 18, 0.8, "fff1df")
+	end
 	for _, z in { -20, -44, -66 } do -- (the three tubes in chunky housings, at ~60%)
 		box(FA, "Scenery", "VaultGlowHousing", -1.2, 1.2, 16.75, 17.8, z - 4.6, z + 4.6, "9ea2a7", MAT.Plastic, { ghost = true }).MaterialVariant = "TrPaint"
 		K.light(box(FA, "Scenery", "VaultGlow", -0.7, 0.7, 16.6, 16.75, z - 4, z + 4, "f2f4f8", MAT.Neon, { ghost = true, noshadow = true }), 22, 0.42, "f2f4f8")
@@ -262,7 +271,9 @@ function HC.build(K, parent, name, site, live)
 	local Fe = CFrame.new(-12.5, 46.65, -5) * CFrame.Angles(math.pi / 2, 0, 0) -- (its y = toward the hall)
 	K.cyl(Fe, "Scenery", "EmblemDisc", 0, -1.5, 0, 0, 17, "d6d5d0", MAT.Plastic).MaterialVariant = "TrPaint"
 	K.cyl(Fe, "Scenery", "EmblemBoss", 0, 0, 0.5, 0, 9, "c4c5c2", MAT.Plastic).MaterialVariant = "TrPaint"
-	K.light(K.cyl(Fe, "Scenery", "EmblemHalo", 0, -1.9, -1.6, 0, 19.4, "e8c28a", MAT.Neon, { ghost = true, noshadow = true }), 18, 0.8, "ffd9a8")
+	-- (the owner, 26 Nov: no useless indicator lights: the halo a pale stone ring, a warm lamp behind the disc washing it)
+	K.cyl(Fe, "Scenery", "EmblemHalo", 0, -1.9, -1.6, 0, 19.4, "c4c5c2", MAT.Plastic, { ghost = true }).MaterialVariant = "TrPaint"
+	K.light(K.box(Fe, "Scenery", "EmblemLamp", -0.5, 0.5, -2.4, -2.2, -0.5, 0.5, P.pale, nil, { ghost = true, tr = 1 }), 18, 0.8, "ffd9a8")
 	for _, x in { 6, 20 } do -- (work lights on its front, seen from the transept)
 		local g = box(F0, "Scenery", "ZmWorkLight", x - 0.5, x + 0.5, 50, 50.2, -1.5, -1.3, P.pale, nil, { ghost = true, tr = 1 })
 		g.CFrame = site * CFrame.lookAt(Vector3.new(x, 50, -1.4), Vector3.new(13, 44, -7))
@@ -285,11 +296,74 @@ function HC.build(K, parent, name, site, live)
 
 	-- ============================================================== THE GYM (behind the frame's front)
 	local FG = CFrame.Angles(0, -math.pi / 2, 0) -- (its x runs south, its z runs west)
+	local beforeG = DR.snap(f)
 	K.gym(FG, { x0 = 132, x1 = 196, z0 = -32, z1 = 32, h = 16, open = { 132, -9, 9 }, rings = { { 148, -14 }, { 180, -14 }, { 148, 14 }, { 180, 14 } },
 		locker = { x0 = 160, x1 = 196, z0 = 34, z1 = 58, door = { 182, 188 } } })
+	do -- (26 Nov, the owner's pass + the Still's judge rounds 6-14: the thin lamp rods and stems gone, the near-blacks lifted,
+		-- eight bags not twenty, beams across the lid with housed panels between them, warm fills under it)
+		local FGw = site * FG
+		local GONE = { Girder = true, PanelHousing = true, LightPanel = true, LampBeam = true, LampShade = true, Lamp = true, RodToBeam = true,
+			SpeedBag = true, SpeedBagBoard = true, SpeedBagBracket = true, SpeedBagSwivel = true, Kettlebell = true, KbShelf = true, KbLeg = true,
+			MedBall = true, BallShelf = true, BallLeg = true, GymPad = true, GymPadCap = true, Mirror = true, MirrorFrame = true, TimerRim = true, TimerFace = true }
+		for _, d in f:GetDescendants() do
+			if beforeG[d] or not d:IsA("BasePart") or d.Parent == nil then continue end
+			local lp = FGw:PointToObjectSpace(d.Position)
+			local inGym = lp.X > 131 and lp.X < 199 and math.abs(lp.Z) < 34
+			if d.Name == "GymLid" then d.Color = Color3.fromHex("aaa59c"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster"
+			elseif inGym and (GONE[d.Name] or (string.find(d.Name, "Mirror") ~= nil)) then d:Destroy()
+			elseif d.Name == "RingRope" then d.Size = Vector3.new(d.Size.X, 0.6, 0.6)
+			elseif d.Name == "GymFloor" then d.Color = Color3.fromHex("918b80"); d.Material = MAT.Concrete; d.MaterialVariant = "TrConcrete"
+			elseif d.Name == "RingMat" then d.Color = Color3.fromHex("8c8e90"); d.Material = MAT.Plastic; d.Reflectance = 0
+			elseif d.Name == "BagRail" then d.Size = Vector3.new(d.Size.X, 1.2, 1.2); d.Color = Color3.fromHex("8a8e93")
+			elseif d.Name == "BagChain" then d.Size = Vector3.new(d.Size.X, 0.5, 0.5)
+			elseif inGym and string.find(d.Name, "Post") then d.Color = Color3.fromHex("8a8e93") -- (one muted colour: no candy stripes)
+			elseif d.Name == "RingApron" or d.Name == "RingBase" or d.Name == "RingStep" then d.Color = Color3.fromHex("a39d92"); d.Material = MAT.Plastic; d.MaterialVariant = "TrPlaster"
+			elseif d.Name == "GymWall" then d.Color = Color3.fromHex("ada79c"); d.Material = MAT.Slate; d.MaterialVariant = "TrSlate" end
+		end
+		local bags = {}
+		for _, d in f:GetDescendants() do if d.Name == "HeavyBag" and d:IsA("BasePart") and not beforeG[d] then table.insert(bags, d) end end
+		table.sort(bags, function(a, b) return (a.Position.X + a.Position.Z * 0.001) < (b.Position.X + b.Position.Z * 0.001) end)
+		if #bags > 8 then
+			local keep = {}
+			for i = 0, 7 do keep[bags[1 + math.floor(i * (#bags - 1) / 7 + 0.5)]] = true end
+			for _, b in bags do
+				if not keep[b] then
+					for _, d in f:GetDescendants() do
+						if d.Name == "BagChain" and d:IsA("BasePart") and (Vector3.new(d.Position.X, 0, d.Position.Z) - Vector3.new(b.Position.X, 0, b.Position.Z)).Magnitude < 0.5 then d:Destroy() end
+					end
+					b:Destroy()
+				end
+			end
+		end
+		for _, x in { 140, 156, 172, 188 } do box(FG, "Scenery", "GymBeam", x - 1.3, x + 1.3, 14.0, 15.98, -32, 32, "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster" end
+		for _, x in { 148, 164, 180 } do K.panel(FG, x, 16, 0, 5, 9, { bright = 0.45, range = 30 }) end
+		for _, x in { 140, 164, 188 } do for _, z in { -18, 18 } do
+			K.light(box(FG, "Scenery", "GymFill", x - 0.3, x + 0.3, 14.6, 14.8, z - 0.3, z + 0.3, P.pale, nil, { ghost = true, tr = 1 }), 22, 0.7, "fff1df")
+		end end
+		for _, d in f:GetDescendants() do
+			if not beforeG[d] and d:IsA("BasePart") and d.Parent ~= nil then
+				local c = d.Color
+				if c.R + c.G + c.B < 0.62 and d.Material ~= MAT.Neon and d.Transparency < 0.95 then d.Color = Color3.fromHex("858a90") end
+			end
+		end
+		for _, x in { 144, 164, 184 } do for _, sd in { -1, 1 } do
+			local w = box(FG, "Scenery", "GymWash", x - 0.3, x + 0.3, 13.6, 13.8, sd * 20 - 0.3, sd * 20 + 0.3, P.pale, nil, { ghost = true, tr = 1 })
+			w.CFrame = site * FG * CFrame.lookAt(Vector3.new(x, 13.7, sd * 20), Vector3.new(x, 6, sd * 32))
+			K.light(w, 18, 0.7, "fff1df", { kind = "SpotLight", face = Enum.NormalId.Front, angle = 80 })
+		end end
+		for _, x in { 140, 156, 172, 188 } do for _, sd in { -1, 1 } do -- (bare long walls: a pale pilaster under each beam, the locker door kept clear)
+			if sd > 0 and x > 178 and x < 192 then continue end
+			box(FG, "Scenery", "GymPilaster", x - 1.3, x + 1.3, 0, 14.0, math.min(sd * 32, sd * 30.9), math.max(sd * 32, sd * 30.9), "e2dccf", MAT.Plastic).MaterialVariant = "TrPlaster"
+		end end
+		for _, x in { 148, 180 } do for _, z in { -14, 14 } do -- (a chunky lamp under the lid over each ring)
+			box(FG, "Scenery", "RingLampHousing", x - 2.2, x + 2.2, 15.0, 15.98, z - 2.2, z + 2.2, "b9b2a5", MAT.Plastic, { ghost = true })
+			local g = box(FG, "Scenery", "RingLampGlow", x - 1.8, x + 1.8, 14.85, 15.0, z - 1.8, z + 1.8, P.light, MAT.Neon, { ghost = true, noshadow = true })
+			K.light(g, 26, 1.3, "fff4e6", { kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 110 })
+		end end
+	end
 
 	-- ============================================================== THE REGULARS
-	local LOOT = { { "sit", -1.1, 0.25, -46.4, 180 }, { "sit", 2.1, 0.25, -46.4, 180 }, { "stand", -6.0, 0, -15, -90 }, { "stand", 0, 0, -73, 180 } }
+	local LOOT = { { "sit", -1.1, 0.25, -46.4, 180 }, { "sit", 2.1, 0.25, -46.4, 180 } } -- (26 Nov, Clip v2 in Play: he stood 0.4 in the shop's ledge, and behind the bar in its shelves)
 	K.npc(FL, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(FL, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	local FR2 = { { "stop", -30 }, { "via", -26 }, { "stop", -22 } }
@@ -320,10 +394,10 @@ function HC.walks(K)
 	local F0 = CFrame.new()
 	return {
 		{ "the spawn's floor", F0, -10, 10, 98, 112, 0 },
-		{ "the breech west of the middle", F0, -20, -8, 57, 97, 0 },
-		{ "the breech east of the middle", F0, 8, 20, 57, 97, 0 },
-		{ "the breech south of the middle", F0, -8, 8, 85, 97, 0 },
-		{ "the breech north of the middle", F0, -8, 8, 57, 69, 0 },
+		{ "the breech west of the middle", F0, -22, -11, 57, 97, 0 }, -- (kit 7: the dais is 20 across)
+		{ "the breech east of the middle", F0, 11, 22, 57, 97, 0 },
+		{ "the breech south of the middle", F0, -8, 8, 88, 97, 0 },
+		{ "the breech north of the middle", F0, -8, 8, 57, 66, 0 },
 		{ "the passage to the face", F0, -8, 8, 28, 42, 0 },
 		{ "the transept", F0, -20, 20, 4, 22, 0 },
 		{ "the gym's portal", F0, -6, 6, 120, 136, 0 },
