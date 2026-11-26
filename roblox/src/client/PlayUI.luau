@@ -523,6 +523,8 @@ local function modeList()
 			Ranked.PLACEMENTS, HC.CHARGES, HC.CD)
 		foot.TextColor3 = T.SOFT -- (brighter over the fire)
 		foot.Size = UDim2.fromOffset(W - 28, if c then 54 else 66)
+	elseif pt and pm and PlayConfig.private(pm, n) then
+		foot.Text = "your party only. the leader picks the map"
 	else
 		foot.Text = "the same duels as the pads. your party plays on one team. the match votes on its map"
 	end
