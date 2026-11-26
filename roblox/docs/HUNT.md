@@ -183,7 +183,7 @@ Hooks into shared code, each chained (the previous function is kept and called),
 | punch | click (RT / PUNCH) | tap = a jab; hold = the wind-up, let go = the haymaker | jab 6 dmg; haymaker after a 0.5 s hold, 18 dmg + a 35 shove; reach 6, cone 50°; 0.45 s between |
 | push | E (RB / PUSH) | a two-handed shove along your look | 45 shove sideways + 12 up; reach 7; 1.2 s cooldown |
 | super push | hold E 0.8 s | a big shove | 105 + 40 up; 8 s cooldown |
-| lie down | Z (D-Down / LIE) | on your back; slow scoot; fits under beds | 2.4 studs tall, 6 studs/s |
+| lie down | X, the auto grapple's key (D-Right; no phone button yet) | on your back; slow scoot; fits under beds | 2.4 studs tall, 6 studs/s |
 | launch | push while lying | the push goes along your whole look, up included | x1.4, the up part uncapped |
 | crouch, slide, sprint | the main game's | unchanged | Config |
 
@@ -361,8 +361,9 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
   toilet.
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
-  - architecture, `--only=hh_`: asset 106317993251883;
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: asset 72988869579901.
+  - architecture, `--only=hh_`: asset 73849514931340 (`HuntBuild.B.ARCH`);
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: asset 100087196866288 (`B.FURN`, kit 3:
+    the sofa base sits inside its arms).
 
   HuntBuild `B.importExtra(FURN)` adds the second half without clearing the first.
 - New textures: siding 127661606333401, shingles 135435899461861, lawn 82912196276517, fence boards 136590475412292,
@@ -371,7 +372,14 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
   1. `W.import("HuntHouse", B.ARCH)`
   2. `B.importExtra()`
   3. `W.build("HuntHouse")`
-  4. `B.build()`
+  4. `B.build()`, then `B.check()`
+- **Live in Studio since place v1382 (26 Nov, 23:00 UTC):** 27 kit models, 417 hit boxes, 16 spawns, 31 lights; 20
+  doors, the roll-up with 2 buttons, 18 switches, 3 TVs, 6 taps, the fridge, 3 toilets, the ball, 3 store tables, 46
+  seats, 5 bouncy parts (the trampoline). The look is `HubLook.looks.hunt_house`, given by the LookZone
+  `Map.Hub.LookZones.HuntHouseLook`.
+- The one-line hooks in shared files are in (commit 2df0027): `Unarmed` in Fight.holstered, Arsenal's inHub and
+  HubHolster; `NoGrapple` in Move.client (tryHook, tryYank, tryLock) and Main.server's hook handler; `Body.sink` taken
+  off HipHeight in Move.client; the HOLDOUT card in ModesTab; the look in HubLook.
 
 ### Animations (mocap, the vault's Mixamo clips)
 - Uploaded for R15 and R6 (ids in `HuntConfig.ANIMS`): idle, run, the haymaker (a rear hook that holds at its
@@ -397,4 +405,5 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
   The last two have spots picked by `tools/roblox/hunt_spots.py` from their own layouts.
 - Studio test hooks on `ServerStorage.JankHuntTest`:
   - `round {role, standins, gun, hide, hunt}` starts a round with stand-in bodies;
-  - `rstate` reads its state, `stop` ends it.
+  - `rstate` reads its state, `stop` ends it;
+  - `hurt who dmg head` gives a round member a hit from the tester (the break-up test).
