@@ -29,6 +29,90 @@ version for Roblox (batched at the end).
   separate fix, flagged to the coordinator. (Part of the steppiness in these stills is the cloud's software
   renderer, which runs at a few frames a second.)
 
+## Hit registration on Roblox: the real body (25-26 Nov 2026)
+
+The owner, 25 Nov 2026: *"Hitboxes need to improve at least on the dummies, I can shoot way above their head and to
+their side with the smg, I do see bullet trails curving ... sniper is super consistent but nothing else! Use dummies
+and practice shooting around their head to make sure it doesnt hit!"* (he also shared a short on Roblox hitbox
+desync: the server's copy of a body lags the one you see, so hits have to be judged where the shooter saw it).
+
+**Why the SMG (and every gun but the snipers) hit air.** Measured on the training Stand (R15: head 1.16 wide, top 5.27
+studs over the feet; torso 2 wide, arms hanging out to 2.0 a side):
+- **The boxes.** Only the precision guns (`Weapons.precise`: one bullet a click, not automatic) had the real head
+  since 20 Nov. Every other gun still used the web game's two fixed boxes: a head box 2.28 studs wide reaching 6.9
+  studs over the feet (0.56 beside and 1.63 over the real head), a body box 3.1 x 3.1 square, not turned with the body.
+- **Far targets grew.** `Hitbox.distScale` grew both boxes past 75 studs (x1.33 at 150, x1.8 from 255): at 150 studs
+  the SMG's "head" reached 3.9 studs over the real head.
+- **The server let it through.** It re-checked a claim against the same boxes padded by 2 studs (`AIM_PAD`) and, for
+  automatics, a head padded by 1 (`HEAD_PAD`).
+- **The trail.** The bullet leaves the eye (the camera), the tracer the muzzle; a straight muzzle-to-end line runs up to
+  a stud off the bullet's real path near the target, and a hit ended it on the old box's face, in mid-air over the
+  head. Two skins (Pumpkin Patch `wisp`, the Halloween set `hex`) also bend their whole trail on purpose.
+- **Not the cause:** spread is rolled once, on the shooter's client, and the server takes those end points (it never
+  re-rolls, except the Revolver's fan, which it fires itself); the slack `2.5 + 0.25 x speed` is the bubble wand's float
+  limit, not a gun check.
+
+**What changed** (`shared/Hitbox.luau` "the real body", `server/Rules.luau` `bodyCheck`, `client/Fx.luau` `joinAt`):
+- **Every gun hits the body you see.** The shooter's client tests each of the rig's own parts as a box, the head as a
+  round column its own size, as they are drawn this frame (`Hitbox.rayModel`: the walk, the weapon stance, the crouch).
+  Accessories, held weapons and a dummy's rings and plates are not the body. Nothing grows with distance. A body with
+  no rig parts (Cardboard Carl's cutout) keeps its own head line on boxes that don't grow. Arsenal, the third-person
+  crosshair (`TP.crosshair`) and the phone auto-fire (`TouchControls` under-crosshair) all use it.
+- **The server checks the same parts at rest**, placed where the root was along the trail (`Fight.pathCF`, root frames
+  with in-between steps: the shooter's lag, `Fight.LAG` for the hit, `Latency.window` for the head), with a small
+  allowance for the poses it never sees: `BODY_PAD` 0.3 on the torso and legs, `ARM_PAD` 0.75 on the arms (held out
+  with the gun), `HEAD_PAD_EXACT` 0.15 on the head, `MOVE_PAD` 0.04 a stud/s of the target's speed (max 0.8), and on a
+  player `HEAD_POSE` 1.35 more on the head (their neck and waist follow their aim), `ARM_POSE` 0.75 more on the arms,
+  plus `POSE.crouch` / `POSE.slide` (their `Pose` attribute). The pads are measured (below). Every one-bullet gun now needs the real head (`Rules.headHit`); shotguns keep their cone
+  check. The Revolver's server-fired fan and the held beam (`HoldWeapons`) use the rest parts too.
+- **The trail tells the truth.** From the muzzle it joins the bullet's own line 30 % of the way out (6 to 18 studs,
+  `Fx.joinAt`) and from there runs exactly along it to where the bullet stopped: a body part, a wall, or its range.
+  In first person the lead carries the trail on screen (its far end as wide on screen as before) and the bullet's line
+  is seen end-on at the aim point. The skins' curves stay on the lead only. Observers get the shooter's eye in the
+  `Shot` relay (`eye`) and draw the same.
+- **Not changed:** projectiles (`WeaponProj`: another session was tuning their hit size for flying targets the same
+  day), melee, the bots' and zombies' own shots at players, weapon stats.
+
+**Tested in Play, 26 Nov 2026** (place v1367): a training Stand (R15, holding its katana as every client poses it)
+moved onto an open stage in the back lot's airspace, anchored, 100k HP; the shooter's eye at its own height 15, 45 and
+150 studs in front. For all 19 hitscan guns, 34 aim points each: the head and torso centres, 0.1 inside the head's top
+and side, and 0.1 / 0.25 / 0.5 / 1 / 1.5 / 2 studs over the head, beside it, and beside the body (the arm's outer edge
+at chest height). "Old" is the old code's maths on the same live dummy; "new" is the pushed code; live shots went
+through the real `Fire` remote and the server's `Dmg` answer.
+
+| Guns | Range | Old: counted over the head | Old: beside the head | Old: beside the body | New |
+|---|---|---|---|---|---|
+| Redline, AR, SMG, Hat Trick, LMG, Minigun, Nail Gun, Water Pistol, Lefty & Righty; per pellet: Shotgun, Auto Shotgun, Sawed-Off, Marbles | 15 / 45 | up to 1.5 as HEAD | up to 0.5 as HEAD | up to 0.25 / 0.1 | nothing from 0.1 out |
+| same | 150 | up to 2 (the grid's edge; the box reached 3.9) as HEAD | up to 0.5 as HEAD | up to 0.5 | nothing from 0.1 out |
+| Sniper, DMR, Lever-Action, Revolver, Pistol, Scythe rifle | 15 / 45 / 150 | none | none | up to 0.25 / 0.1 / 0.5 (the old body box) | nothing from 0.1 out |
+
+- **Every shot right with the new test:** 1926 of 1938; the other 12 are the Water Pistol, Marbles and Sawed-Off
+  aimed at 150 studs, past their range (78 / 90 / 96). The old test got 523 wrong. On-target shots (centres, 0.1
+  inside the edges) were HEAD or BODY as they should be before and after.
+- **Live, still (45 studs):** honest shots 0.5 over, 0.5 beside the head, 0.5 beside the body and 1 over were misses
+  on the shooter's own screen and never sent; head centres were paid HEAD (SMG 11, Pistol 44, Redline 18, Revolver 79,
+  AR 22, Lefty & Righty 10, Sniper 999). A forced head claim 0.5 over the head was refused by every gun; forced head
+  claims 0.25 beside the head were paid as BODY (the arm allowance), never HEAD.
+- **Live, every gun but the Minigun and the Sniper's second run** (second Play, still Stand at 45 studs, through the
+  real `Fire` remote): for all 17, honest shots 0.5 over, 0.5 beside the head, 0.5 beside the body and 1 over were
+  misses and never sent; body and head centres were paid BODY / HEAD (e.g. LMG 10 / 16, Hat Trick 15 / 30, DMR 52 /
+  104, Lever 30 / 69, Shotgun 75 / 113, Sawed-Off 50 / 66, Marbles 22 / 28, Water Pistol 1 / 2).
+- **What a cheat's forced claim gets now** (the server's own check, still dummy): a head claim counts as HEAD only within
+  0.15 of the head (old: up to 2 studs over it on automatics); over the head it's refused from 0.25 (old: paid as HEAD
+  or BODY up to 2); beside the head or the body it can still be paid as BODY up to about 1.5 (arms allowance, measured
+  1.0 then; 0.75 since v1381). **Pellet guns** (Shotgun, Auto Shotgun, Sawed-Off, Marbles): the server has never
+  re-checked their head claims (`pellets <= 1` in Combat's FireR), so a forced head claim near the head is still paid
+  as HEAD. Honest clients never send one; closing it is a follow-up (needs the pellet ends checked per pellet).
+- **Sizing the server's allowance** (pose sweep: rays from 8 sides and 4 from above at 30 studs onto every drawn part of
+  a posed body; the smallest pad that still pays every honest hit): the training dummies (katana or Redline stance)
+  need 0.75 on the arms and 0.15 on the head (their heads never move); a player body (TPRig, smg) needs at most 1.5 on
+  the arms (support hand on the handguard, aiming 45 deg down) and on the head 0.15 level, 1.0 at +-45 deg pitch, 1.25
+  at +70 and 1.5 at -70; crouch and slide pass with `POSE`. Place v1381 has those numbers. A tighter player head
+  allowance from their replicated pitch (the `TP` attribute) is a possible follow-up.
+- **Frames:** `docs/hitreg/hitreg_frames_26nov.jpg`: what counted before and after (SMG at 45 and 150 studs, red head,
+  yellow body), and the new trail from the side.
+
+
 ## Balance pass, 18 Nov 2026 (Roblox only)
 
 The owner, 18 Nov 2026, about 02:45 UTC: *"revolver needs to either do less damage or be less accurate the longer you

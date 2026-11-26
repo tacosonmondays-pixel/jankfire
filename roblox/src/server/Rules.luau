@@ -397,9 +397,9 @@ end
 -- be (drop). measured in Play 26 Nov 2026 (docs/WEAPONS.md, hit registration): a claim 0.5 studs past a still dummy is
 -- never paid
 Rules.BODY_PAD = 0.3
-Rules.ARM_PAD = 1.0
-Rules.HEAD_POSE = 1.0 -- (measured: aiming 45 deg up or down moves a player's head ~1 stud)
-Rules.ARM_POSE = 1.5 -- (a player's arms more: the support hand reaches out to the handguard, ~3.6 studs off rest)
+Rules.ARM_PAD = 0.75 -- (measured 26 Nov: the dummies' weapon stance needs 0.75 on the hands)
+Rules.HEAD_POSE = 1.35 -- (measured 26 Nov: a player aiming 45 deg up or down needs 1.0 on the head, 70 deg down 1.5)
+Rules.ARM_POSE = 0.75 -- (a player's arms more: the support hand on the handguard needs 1.5 in all)
 Rules.MOVE_PAD = 0.04
 Rules.MOVE_MAX = 0.8
 Rules.POSE = {
