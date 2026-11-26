@@ -111,6 +111,25 @@ through the real `Fire` remote and the server's `Dmg` answer.
   allowance from their replicated pitch (the `TP` attribute) is a possible follow-up.
 - **Frames:** `docs/hitreg/hitreg_frames_26nov.jpg`: what counted before and after (SMG at 45 and 150 studs, red head,
   yellow body), and the new trail from the side.
+- **Real trigger pulls through Arsenal** (third Play, Pistol at 45 studs, the camera turned onto the aim point, a real
+  mouse click): 0.5 over the head the shot fired (ammo 12 -> 11) and did nothing; on the head centre it was paid HEAD 44.
+  No script errors in the output.
+- **The moving training Dummy** (strafes at ~22 studs/s, ~66 studs from the balcony), SMG and Pistol, 3 rounds each:
+
+| | Lag off (shooter's window 250 ms) | Simulated lag 0.15 s (window 484-516 ms) |
+|---|---|---|
+| Honest head centre | 6 of 6 HEAD | 6 of 6 HEAD |
+| Honest, 0.1 inside the head's edge | 5 of 6 HEAD, 1 paid BODY (SMG) | 6 of 6 HEAD |
+| Honest 0.5 over / 0.5 beside the head | 12 of 12 misses, never sent | 12 of 12 misses, never sent |
+| Honest body centre | 6 of 6 BODY | 6 of 6 BODY |
+| Forced head claim 0.5 over the head | 5 refused, 1 paid BODY | 6 of 6 refused |
+| Forced head claim 0.5 beside the head | 6 of 6 paid BODY | 6 of 6 paid HEAD |
+
+  The last cell is the lag window, as on 20 Nov: with the shooter's round trip at half a second, a head moving along
+  that side really was within half a stud of the claim inside the window, so it can't be told from a real hit. The
+  one honest edge shot paid as body with no lag is the 0.25 s window floor; a small speed-scaled head allowance would
+  cover it (not done: untested). Minigun and Sniper on the still Stand: misses never sent, BODY 6 / 55, HEAD 9 / 999,
+  forced head 0.5 over refused.
 
 
 ## Balance pass, 18 Nov 2026 (Roblox only)
