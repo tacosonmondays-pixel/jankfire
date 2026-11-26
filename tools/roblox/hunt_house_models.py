@@ -29,17 +29,18 @@ INFO = dict(name='HuntHouse', title='THE HOUSE', look='hunt_house', mapId='hunth
 
 # ================================================================ colours (the textured ones are unique hexes: WebArena
 # puts a picture on every piece of that colour, by `surfaces`)
-OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'b9b0a2', 'dedad0', 'cfc6b4'
-PLASTER, CEIL, TRIM, BTILE, SPLASH = 'e6e0d4', 'd6d0c5', 'f2efe8', 'e2e3de', '8e9a8a'
+OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'a29a8c', 'dedad0', 'cfc6b4'
+PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'cfc8bc', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
 BEAM = '7c6c5e'      # (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
 BRICK, SIDING, SHINGLE, STONE = '7f5446', 'e4dfd3', '6a6e74', 'cfc6b5'
 LAWN, PAVERS, CONC, FENCEB, ASPH = '6f8a55', 'b3a897', '97948d', 'ad9476', '55585c'
 GLASS, FROST, DOOR_FRONT, BLOCK = 'b8d4dc', 'dfe6e8', '4f5f57', 'd3d1cb'
 WALNUT, DARK, STEEL, RIDGECAP, MEMBRANE = '6f5240', '3c3f44', 'a9aeb2', '4d5156', '7a7d80'
+KITTILE2_ID, PLASTER2_ID = 101846364880605, 87623840105825    # (judge round 2 pictures)
 TEXS = {   # colour -> (picture name, studs u, studs v, uploaded image id or None while it isn't up yet)
     OAKFLOOR: ('oakplank', 16, 16, 123980610531995), CARPET: ('carpet', 16, 16, 93910495940944),
-    KITFLOOR: ('kittile', 16, 16, 124533735136261), BATHFLOOR: ('a_hextile', 4, 4, 100342179355756),
-    STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('a_plaster', 8, 8, 93967757955287),
+    KITFLOOR: ('kittile2', 16, 16, KITTILE2_ID), BATHFLOOR: ('a_hextile', 4, 4, 100342179355756),
+    STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('plaster2', 8, 8, PLASTER2_ID),
     BTILE: ('rtile_wall', 8, 16, 119608007939948), SPLASH: ('a_tile', 8, 8, 95035963336200),
     BRICK: ('a_brick', 6, 6, 128782282184054), STONE: ('a_stone', 8, 8, 113102432800653),
     SIDING: ('siding', 8, 8, 127661606333401), SHINGLE: ('shingles', 8, 8, 135435899461861), LAWN: ('lawn', 24, 24, 82912196276517),
@@ -211,13 +212,13 @@ def skirting():
                     if pw > 1.6: bx(a + 0.45, y + 1.25, p0, a + pw - 0.45, y + 2.6, p1, 'efebe2', 0.06)
     # the kitchen's wall cabinets over the worktops (not over the stove: its hood), and the splashback under them
     for (z0, z1) in ((-38.0, -22.5), (-17.5, -10.0)):
-        K.B('hh_trim', 'c8c3b6', 55.6, 8.8, z0, 58.0, 12.0, z1, bev=0.12)
+        K.B('hh_trim', 'e4dfd4', 55.6, 8.8, z0, 58.0, 12.0, z1, bev=0.12)
         k = z0
         while k < z1 - 0.5:
-            K.B('hh_trim', 'd2cdc1', 55.45, 9.0, k + 0.15, 55.65, 11.8, min(z1, k + 4.0) - 0.15, bev=0.08, segs=1)
+            K.B('hh_trim', 'ede9e0', 55.45, 9.0, k + 0.15, 55.65, 11.8, min(z1, k + 4.0) - 0.15, bev=0.08, segs=1)
             k += 4.0
     for (a, b) in ((13.0, 22.0), (34.0, 42.0)):
-        K.B('hh_trim', 'c8c3b6', a, 8.8, -40.0, b, 12.0, -37.6, bev=0.12)
+        K.B('hh_trim', 'e4dfd4', a, 8.8, -40.0, b, 12.0, -37.6, bev=0.12)
     # the kitchen's tiled splashback over the worktops
     K.B('hh_trim', SPLASH, 57.85, 5.4, -38.0, 58.0, 8.8, -10.0, bev=0.02, flat=True)
     for (a, b) in ((13.0, 22.0), (34.0, 42.0)):
@@ -306,10 +307,10 @@ def win_frame(axis, c0, c1, a0, a1, y0, y1, kind, outside_sgn):
         bx('hh_win', TRIM, u0, v0, cm - 0.35, u1, v1, cm + 0.35, bev=0.1)
     if a1 - a0 >= 7.5 and kind != 'side':
         am = (a0 + a1) / 2
-        bx('hh_win', TRIM, am - 0.25, y0, cm - 0.3, am + 0.25, y1, cm + 0.3, bev=0.08)
+        bx('hh_win', TRIM, am - 0.35, y0, cm - 0.35, am + 0.35, y1, cm + 0.35, bev=0.1)
     if y1 - y0 >= 5.5 and kind != 'side':
         ym = y0 + (y1 - y0) * 0.68
-        bx('hh_win', TRIM, a0, ym - 0.2, cm - 0.28, a1, ym + 0.2, cm + 0.28, bev=0.08)
+        bx('hh_win', TRIM, a0, ym - 0.3, cm - 0.33, a1, ym + 0.3, cm + 0.33, bev=0.1)
     out0 = c1 if outside_sgn > 0 else c0
     so = outside_sgn
     # outside: a stone sill and lintel on the brick floor, white trim boards on the siding floor
@@ -505,7 +506,7 @@ def roof():
         ln = math.sqrt((p1[1] - p0[1]) ** 2 + (p1[2] - p0[2]) ** 2)
         oriented('hh_roof', SHINGLE, p0, X, Y, Z, R['x0'], -0.9, 0.0, R['x1'], 0.0, ln + 0.4, bev=0.12)
         # the fascia along the eave and the soffit back to the wall
-        K.B('hh_roof', TRIM, R['x0'] - 0.1, L.EAVE - 2.3, min(ze, ze + sgn * 0.5), R['x1'] + 0.1, L.EAVE - 0.8, max(ze, ze + sgn * 0.5), bev=0.15)
+        K.B('hh_roof', TRIM, R['x0'] - 0.1, L.EAVE - 2.7, min(ze, ze + sgn * 1.0), R['x1'] + 0.1, L.EAVE - 0.7, max(ze, ze + sgn * 1.0), bev=0.25)
         K.B('hh_roof', TRIM, R['x0'], L.EAVE - 1.5, min(ze, sgn * (L.Z1 if sgn > 0 else -L.Z0) * 1.0), R['x1'], L.EAVE - 1.1,
             max(ze, sgn * (L.Z1 if sgn > 0 else -L.Z0)), bev=0.05)
         # the barge boards up the rakes
@@ -609,11 +610,10 @@ def grounds():
         t = i / 8.0
         x, z = 44.0 + (86.0 - 44.0) * t, -68.0 + (-128.0 + 68.0) * t
         K.cyl('hh_yard', STONE, x + (1.2 if i % 2 else -1.2), L.GROUND - 0.3, z, 1.8, 0.42, segs=14, bev=0.12)
-    for i in range(7):                                                  # the patio to the fire pit
-        t = i / 6.0
-        x, z = -24.0 + (-12.0 + 24.0) * t, -68.0 + (-122.0 + 68.0) * t
-        if math.hypot(x + 34.0, z + 104.0) < 15.5: continue             # (round the trampoline)
-        K.cyl('hh_yard', STONE, x + (1.0 if i % 2 else -1.0), L.GROUND - 0.3, z, 2.0, 0.42, segs=14, bev=0.12)
+    z = -64.2                                                           # the patio to the deck: 4-stud pavers on the axis
+    while z > -118.5:
+        K.B('hh_yard', PAVERS, -10.0, L.GROUND - 0.3, z - 3.6, -6.0, L.GROUND + 0.12, z, bev=0.15, flat=True, segs=1)
+        z -= 4.0
     # the street beyond the lot: kerb, road, the far pavement
     K.B('hh_yard', STONE, -420, -2.0, 98.0, 420, -1.15, 100.0, bev=0.12)
     K.B('hh_yard', ASPH, -420, -2.6, 100.0, 420, -1.9, 146.0, bev=0.05, flat=True)
@@ -659,11 +659,19 @@ def nhouse(cx, cz, w, d, face, body, roofc, two=True):
                                  (x - 3.1, fy[0], x - 2.6, fy[1]), (x + 2.6, fy[0], x + 3.1, fy[1]), (x - 0.2, fy[0], x + 0.2, fy[1])):
                 K.B('hh_back', TRIM, a, b, fl, c, d, fh, bev=0.08, segs=1)
     K.B('hh_back', '5a5f63', cx - 2.5, -1.6, lo, cx + 2.5, 8.5, hi, bev=0.1, segs=1)
+    K.B('hh_back', 'a39a8e', cx - w / 2 - 0.3, -1.6, cz - d / 2 - 0.3, cx + w / 2 + 0.3, 1.2, cz + d / 2 + 0.3, bev=0.2, segs=1)   # a plinth
+    for sx in (-1, 1):                                                    # (judge round 2: windows on the side walls too)
+        xo = cx + sx * w / 2
+        for fy in ((3.5, 9.5), (16.5, 22.5)) if two else ((3.5, 9.5),):
+            for zz in (cz - d / 4, cz + d / 4):
+                K.B('hh_back', '7d8792', min(xo, xo + sx * 0.3), fy[0], zz - 2.4, max(xo, xo + sx * 0.3), fy[1], zz + 2.4, bev=0.08, segs=1)
+                K.B('hh_back', TRIM, min(xo, xo + sx * 0.5), fy[0] - 0.6, zz - 2.9, max(xo, xo + sx * 0.5), fy[0], zz + 2.9, bev=0.08, segs=1)
+                K.B('hh_back', TRIM, min(xo, xo + sx * 0.45), fy[1], zz - 2.9, max(xo, xo + sx * 0.45), fy[1] + 0.5, zz + 2.9, bev=0.08, segs=1)
     pl, ph = (fz, fz + 3.0) if face > 0 else (fz - 3.0, fz)
     K.B('hh_back', TRIM, cx - 4.5, 9.0, pl, cx + 4.5, 9.8, ph, bev=0.2, segs=1)          # a porch hood over the door
 
 def neighbours():
-    bodies = ['d8d2c4', 'c9cdd0', 'd4c8b6', 'bfc5bd', 'ddd8cc']
+    bodies = ['c9c4b8', 'bcc0c2', 'c5bcac', 'b5bab3', 'cbc6bb']       # (judge round 2: a step greyer than the house)
     roofs = ['6a6e74', '5f5650', '707479']
     k = 0
     for x in (-300, -160, 0, 160, 300):              # across the street
@@ -716,14 +724,17 @@ def lights():
             continue
         yc = y + 0.8
         if rid == 'kitchen':                                            # a drum pendant on a stem (judge round 1)
-            K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 0.12, yc - 9.6, segs=8, bev=0.02)
+            K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 0.3, yc - 9.6, segs=10, bev=0.06)
             K.cyl('hh_lamp', 'e8e1d2', x, 7.9, z, 1.6, 1.8, segs=24, bev=0.25)
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
-            K.light('point', x, 7.5, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, 7.5, z))
+            K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
+            K.light('spot', x, 7.6, z, (0, -1, 0), 1.6, 18, 110, col); LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
         K.cyl('hh_lamp', 'b8a98f', x, yc - 0.15, z, 0.9, 0.15, segs=16, bev=0.05)
-        K.light('point', x, yc - 2.0, z, (0, -1, 0), b, rng, 0, col); LIGHTROOMS.append((rid, x, yc - 2.0, z))
+        K.cyl('hh_lamp', 'fff1dc', x, yc - 1.08, z, 1.45, 0.1, segs=24, bev=0.03, kind='neon')       # (judge round 2: it glows)
+        K.light('spot', x, yc - 1.3, z, (0, -1, 0), 1.3, rng, 130, col); LIGHTROOMS.append((rid, x, yc - 1.3, z))
+    K.light('point', -54.6, 1.4, 21.0, (0, -1, 0), 0.9, 10.0, 0, 'ff9a52'); LIGHTROOMS.append(('living', -54.6, 1.4, 21.0))   # embers
     # the stairwell's pendant: a drum shade hung from the upper ceiling over the void
     K.cyl('hh_lamp', DARK, 8.0, 18.5, 24.4, 0.08, 6.5, segs=6, bev=0.02)
     K.cyl('hh_lamp', 'e8e1d2', 8.0, 16.6, 24.4, 2.4, 2.2, segs=24, bev=0.25)

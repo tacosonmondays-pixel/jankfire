@@ -279,8 +279,11 @@ KINDS = {
     'banquette':  ((12, 6.2, 3), [(-6, 0, -1.5, 6, 3.1, 1.5), (-6, 0, -1.5, 6, 6.2, -0.6)]),
     'nooktable':  ((10, 5.3, 4.4), [(-5, 4.6, -2.2, 5, 5.3, 2.2)]),
     'pantry':     ((5, 12, 4), [(-2.5, 0, -2, 2.5, 12, 2)]),
-    'firepit':    ((22, 2.6, 22), [(-3.6, 0, -3.6, 3.6, 1.5, 3.6), (-3.8, 0, 7.4, 3.8, 2.6, 9.6), (-3.8, 0, -9.6, 3.8, 2.6, -7.4),
-                                  (7.4, 0, -3.8, 9.6, 2.6, 3.8), (-9.6, 0, -3.8, -7.4, 2.6, 3.8)]),
+    'firepit':    ((20, 2.4, 20), [(-3.6, 0, -3.6, 3.6, 1.5, 3.6), (-9.6, 0, -9.6, -2.6, 2.4, -7.8), (2.6, 0, -9.6, 9.6, 2.4, -7.8),
+                                  (-9.6, 0, 7.8, -2.6, 2.4, 9.6), (2.6, 0, 7.8, 9.6, 2.4, 9.6), (-9.6, 0, -7.8, -7.8, 2.4, 7.8),
+                                  (7.8, 0, -7.8, 9.6, 2.4, 7.8)]),
+    'deck':       ((24, 1.5, 27), [(-12, 0, -12, 12, 1.5, 12), (-3, 0, 12, 3, 1.0, 13.5), (-3, 0, 13.5, 3, 0.5, 15.0)]),
+    'lamppost':   ((2, 8.6, 2), [(-0.5, 0, -0.5, 0.5, 8.6, 0.5)]),
     'playhouse':  ((14, 12, 13), [(-7, 0, -6, 7, 0.8, 7.2), (-6, 0, -5, 6, 8.8, -4.2), (-6, 0, -5, -5.2, 8.8, 5), (5.2, 0, -5, 6, 8.8, 5),
                                   (-6, 0, 4.2, -1.8, 8.8, 5), (1.8, 0, 4.2, 6, 8.8, 5), (-1.8, 6.8, 4.2, 1.8, 8.8, 5),
                                   (-6.6, 8.8, -5.6, 6.6, 10.6, 5.6)]),
@@ -463,10 +466,11 @@ F('lounger', 40, -50, y=PATIO, turn=0)
 TRAMP = dict(x=-34.0, z=-104.0, r=13.0, top=2.6, y=GROUND)      # the trampoline: its mat's centre, radius, top (HuntBuild's
 F('trampoline', TRAMP['x'], TRAMP['z'], y=GROUND)              #  round mat and padded ring are the hit shapes)
 F('tree', 54.0, -118.0, y=GROUND); F('treebench', 54.0, -118.0, y=GROUND)
-F('swingset', 4.0, -108.0, y=GROUND, turn=0)                  # two swings (HubSeat seats on them: HuntBuild)
+F('swingset', 12.0, -106.0, y=GROUND, turn=0)   # (moved 26 Nov: the deck's paver path runs at x -10..-6)                  # two swings (HubSeat seats on them: HuntBuild)
 SWINGS = [(0.0, GROUND + 2.6, -108.0), (8.0, GROUND + 2.6, -108.0)]
 F('shed', 90.0, -140.0, y=GROUND, turn=0)
-F('firepit', -8.0, -134.0, y=GROUND)                            # (judge round 1: big things in the big garden)
+F('deck', -8.0, -134.0, y=GROUND)                               # (judge round 2: a centre with height) its steps face the house
+F('firepit', -8.0, -134.0, y=GROUND + 1.5)                      # (judge round 1: big things in the big garden)
 F('playhouse', -66.0, -132.0, y=GROUND, turn=0)                 # its door toward the house
 F('tree', -76.0, -70.0, y=GROUND); F('tree', 100.0, -96.0, y=GROUND)
 F('flowerbed', -60, -150, y=GROUND, turn=0); F('flowerbed', -20, -150, y=GROUND, turn=0); F('flowerbed', 20, -150, y=GROUND, turn=0)
@@ -477,6 +481,8 @@ for hx in (-40, 0, 40, 60):                      # hedges along the back fence, 
 F('flowerbed', 40, -128, y=GROUND, turn=0); F('flowerbed', 40, -136, y=GROUND, turn=0)
 # ---------------------------------------------------------------- the front
 F('tree', -44.0, 64.0, y=GROUND); F('hedge', -40, 77.5, y=GROUND); F('hedge', -18, 77.5, y=GROUND)
+F('tree', 46.0, 62.0, y=GROUND)                                 # (judge round 2: a second front tree to balance the first)
+for (lx, lz) in ((-5.5, 60.0), (5.5, 60.0), (-5.5, 74.0), (5.5, 74.0)): F('lamppost', lx, lz, y=GROUND)   # the walk's lamps
 F('hedge', 22, 77.5, y=GROUND); F('hedge', 44, 77.5, y=GROUND)
 F('mailbox', -6.5, 78.5, y=GROUND)
 F('hoop', 82, 42.4, y=0.0, turn=0)
