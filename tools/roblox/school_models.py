@@ -1122,12 +1122,20 @@ def v2_plan():
                 #  every fitting glowing and no pools: now each fitting has its light, and about 1 in 5 is dead)
                 if not gym and (bi + ri) % max(2, int(round(24.0 / Sx))) != 0: continue
                 if r['id'] == 'lobby' and 54.5 < z < 61.5: continue      # (the girder over the lobby's posts)
-                dead = (not gym) and h < 0.2 and (r['look'] in HALLS or r['look'] in SERVICE)
+                # (26 Nov 2026, the owner on zombies: "not all ceiling likes should work so the ones that do give a better
+                #  vibe": in v2B about 4 in 10 fittings are dead in every room but the gym, and a room never ends up with
+                #  none lit (below). v2A keeps its 1 in 5 in the halls)
+                dead = (not gym) and ((h < DEAD_SHARE) if VARIANT == 'v2B' else (h < 0.2 and (r['look'] in HALLS or r['look'] in SERVICE)))
                 f = dict(x=x, y=y, z=z, lv=lv, room=k, lit=not dead, dead=dead, group=0, axis='x' if along_x else 'z', gym=gym)
                 if not dead and not gym and flick_here < 2 and h > 0.86:
                     f['group'] = grp; flick_here += 1
                 FIXTURES.append(f)
+        mine = [f for f in FIXTURES if f['room'] == k]
+        if mine and not any(f['lit'] for f in mine):
+            keep = min(mine, key=lambda f: _hash(f['x'], f['z'], 7.0))      # (one lit fitting at least, picked the same each build)
+            keep['lit'], keep['dead'] = True, False
     print('FIXTURES %d: %d lit, %d flicker, %d dead' % (len(FIXTURES), sum(f['lit'] for f in FIXTURES), sum(1 for f in FIXTURES if f['group']), sum(f['dead'] for f in FIXTURES)))
+DEAD_SHARE = 0.42
 
 def v2_lights():
     col, b, rng = ST2['light'], ST2['lightB'], ST2['lightR']
@@ -1167,13 +1175,15 @@ def v2_lights():
     for r in L.ROOMS:
         if r['lv'] == 'R' or r['tower'] or not r['floor'] or r['look'] in ('court', 'courtair', 'gymair', 'balcony'): continue
         x0, z0, x1, z1 = r['r']
-        K.light('point', (x0 + x1) / 2, LV[r['lv']] + 9.0, (z0 + z1) / 2, (0, -1, 0), 0.3, min(36.0, 0.55 * max(x1 - x0, z1 - z0) + 8.0), 0, tint)
+        K.light('point', (x0 + x1) / 2, LV[r['lv']] + 9.0, (z0 + z1) / 2, (0, -1, 0), 0.15 if VARIANT == 'v2B' else 0.3,   # (26 Nov: v2B darker between its lamps)
+                min(36.0, 0.55 * max(x1 - x0, z1 - z0) + 8.0), 0, tint)
         LIGHT_GROUPS.append(0)
     # a lamp over every shutter, on both faces (round 3: black shutter bays)
     for d in L.DOORS:
         if d['lv'] == 'R': continue
         mn, mx = d['box']['min'], d['box']['max']
-        K.light('point', (mn[0] + mx[0]) / 2, mx[1] + 1.0, (mn[2] + mx[2]) / 2, (0, -1, 0), 0.45, 13, 0, tint); LIGHT_GROUPS.append(0)
+        K.light('point', (mn[0] + mx[0]) / 2, mx[1] + 1.0, (mn[2] + mx[2]) / 2, (0, -1, 0),
+                0.85 if VARIANT == 'v2B' else 0.45, 16 if VARIANT == 'v2B' else 13, 0, tint); LIGHT_GROUPS.append(0)   # (26 Nov: v2B's darker halls: a door you can buy still reads)
     # the gym: a sconce on every brick pier at 8 studs, spots under the high bays (round 3: black lower walls)
     for (px, pz) in GYM_SCONCES:
         K.light('point', px, 8.0, pz, (0, -1, 0), 0.55, 16, 0, 'ffcf9a' if VARIANT == 'v2A' else 'e2eaff'); LIGHT_GROUPS.append(0)

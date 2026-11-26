@@ -155,3 +155,81 @@ Stages (each with a report and a Play sheet or video):
 2. The crate, power, colas, Voider, Cheat Machine, drops, boards.
 3. Specials, crawlers, bosses.
 4. On the school.
+
+---------------------------------------------------------------------------------------------------------------------
+
+## 3. THE 26 NOV FIX PASS (the owner: "Zombies is super buggy")
+
+The owner, 25 Nov: "regular zombies are ookay but the pourple and red ones have too much hp! the bots follow you
+instead of actually playing, let them shoot open doors buy guns etc.. doors dont have animations the ones you buy, the
+ambiance isnt there yet, it should be darker, with fog, not all ceiling likes should work so the ones that do give a
+better vibe, make sure props dont blick entrances unless entended, make sure propls dont clip into walls or other
+objkects and props".
+
+### HP (purple = the Chonk, red = the Floor Manager; the Mascot is the other boss)
+- Chonk: 3.5 -> 2 times the round's zombie HP.
+- Bosses: Floor Manager 16 -> 6, Mascot 20 -> 7 times the round's zombie HP. A boss used to count every squad member as a
+  player (+50% each), so a solo player with 3 bots fought a 4-player boss. Now real players add 50% each and a bot 15%
+  (`ZM.BOSS.perBot`, `ZM.bossHp`). No single hit still takes more than 6% of a boss.
+- Regular zombies (and the red-orange sprinters, which have a regular zombie's HP) are unchanged.
+
+| round | zombie | Chonk before (x3.5) | Chonk after (x2) | revolver hits before -> after | AR hits before -> after |
+|---|---|---|---|---|---|
+| 5 | 128 | 448 | 256 | 12 -> 7 | 41 -> 24 |
+| 8 | 194 | 679 | 388 | 17 -> 10 | 62 -> 36 |
+| 10 | 235 | 823 | 470 | 21 -> 12 | 75 -> 43 |
+| 15 | 362 | 1267 | 724 | 32 -> 19 | 116 -> 66 |
+| 20 | 557 | 1950 | 1114 | 49 -> 28 | 178 -> 102 |
+
+| boss, round | squad | HP before | HP after | revolver hits before -> after |
+|---|---|---|---|---|
+| Floor Manager r5 | you + 3 bots | 5120 | 1114 | 128 -> 28 |
+| Floor Manager r5 | 4 players | 5120 | 1920 | 128 -> 48 |
+| Floor Manager r15 | you + 3 bots | 14480 | 3149 | 362 -> 79 |
+| Mascot r10 | you + 3 bots | 11750 | 2385 | 294 -> 60 |
+| Mascot r10 | 4 players | 11750 | 4113 | 294 -> 103 |
+| Mascot r20 | you + 3 bots | 27850 | 5654 | 697 -> 142 |
+
+(revolver: the zombies' 40 a body hit; AR 11. By round 10 a squad has wall guns and Voided ones: x1.6 to x3.4.)
+
+### The bots (server/ZombieBots.luau, new)
+Each bot steps through, in order: REVIVE a downed friend (people first); FIGHT the nearest zombie it can see, zombies at
+windows too (bursts from an automatic, every pellet of a shotgun rolled, a person's reaction and aim); SHOP when no
+zombie is within 30 studs (throws the power, buys a better wall gun, opens the cheapest door out of the open areas, one
+a round each from round 2, the Warranty Voider on its gun, Jank Cola then Get Up Juice: your prices and checks, its own
+credits); HOLD A POST: each bot takes a different window of the open areas within 80 studs of you on foot, stands
+5.5 studs inside it facing it and nails the planks back between fights (no window near: a spot round you). Their rays
+use the game's own map copy (Fight.castMap only knows workspace.Map, so before this a bot could "see" through a shut
+door). Studio: `JankZombies "bots"` lists what each is doing.
+
+### Doors
+A bought shutter rolls up into its housing slat by slat in 2.6 s (`ZM.R.doorRoll`), drawn by each client
+(`ZombiesClient.rollUp`), with a recorded rattle `zm_door` (Freesound CC0 383828). The server hides the real shutter
+when the roll is done. Before, it slid up 9.5 studs and faded out in 0.9 s, which read as vanishing.
+`JankZombies "door" n` opens one door (to watch the roll).
+
+### Wall buys
+They were bare markers: nothing on the wall until you stood close enough for the prompt. Each now has a chalk outline,
+its gun hung inside it and a small lamp over it (`ZombiesClient.buildBuys`, client-side, once per game).
+
+### Ambience (v2B, the live school)
+- The look `HubLook.looks.school_v2b`: ambient about 40% lower, a thick cold haze (the Atmosphere is the fog: with one
+  in Lighting, FogStart/FogEnd do nothing), less saturation, a readier bloom. The old values are in a comment there.
+- The kit: about 4 in 10 ceiling fittings dead in every room but the gym (never all of a room's), the even room fill
+  halved (`school_models.py` v2_plan / v2_lights, `DEAD_SHARE`). Shutter lamps and wall-buy lamps keep doors and buys
+  readable.
+- `SchoolLife.client`: four flicker groups dead for good, a recorded tube buzz `zm_flicker` (Freesound CC0 484157) as a
+  group flickers, and a faint mist over the floor round you (one emitter box at your feet, moved twice a second, its
+  puffs lit by the lamps they drift under).
+
+### Props (school_layout.py + tools/roblox/school_clip.py, new)
+`python tools/roblox/school_clip.py` checks every prop's box against walls, fences and landings, other props, the clear
+space of every shutter and doorway (4 studs either side, floor to 7 up), every zombie window's way in and every stair
+ramp. Before: 239 hits (12 entrances blocked, 6 window lanes, the rest props sunk into walls). After: 0.
+- `F()` slides a prop out of any wall it was placed into (v2's piers are the wall's hit face, so a locker sunk 0.5 had
+  the piers running through it). Pieces made to sit in or on a wall keep their place (`NO_NUDGE`).
+- Moved: restroom sinks off the doorway wall's opening (3 restrooms x 2 floors + the basement one onto its west wall),
+  the stalls in the west restrooms off the window landing, the basement storage shelves and the workshop bench beside
+  their south doorways, the gym's ball rack off the weight room door, the lab skeleton off the hall door, the lab fume
+  cupboard off a window, the locker rooms' lockers from under their windows, the upstairs lockers off the stair door,
+  the courtyard bench off the lobby door.

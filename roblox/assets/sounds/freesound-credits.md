@@ -33,3 +33,5 @@
 - 349698.ogg: "light slow swoosh.mp3" by Mikes-MultiMedia, https://freesound.org/people/Mikes-MultiMedia/sounds/349698/ (CC0)
 - 739487.ogg: "Fire Trap" by qubodup, https://freesound.org/people/qubodup/sounds/739487/ (CC0)
 - fountain_trickle.ogg: freesound 676173 "Ambiance_Fountain_Small_Loop_Stereo.wav" by Nox_Sound, https://freesound.org/people/Nox_Sound/sounds/676173/ (CC0), the hub lobby fountain's looped trickle (18 Nov 2026)
+- 383828: "Opening Old Garage Door" by deleted_user_7146007, https://freesound.org/people/deleted_user_7146007/sounds/383828/ (CC0): zm_door (1.1-4.9 s), zombies shutter roll, 26 Nov 2026
+- 484157: "fluorescent light flickering 1.wav" by TemperMode, https://freesound.org/people/TemperMode/sounds/484157/ (CC0): zm_flicker (2.86-4.30 s, 0.62-1.40 s), the school's flickering lamps, 26 Nov 2026

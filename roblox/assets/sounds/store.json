@@ -3180,6 +3180,31 @@
     ],
     "L": -34
    }
+  ],
+  "zm_door": [
+   {
+    "id": 115101696115437,
+    "title": "\"Opening Old Garage Door\" by deleted_user_7146007 (383828), 1.1-4.9 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -15
+   }
+  ],
+  "zm_flicker": [
+   {
+    "id": 107687250463666,
+    "title": "\"fluorescent light flickering 1.wav\" by TemperMode (484157), 2.86-4.30 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -22
+   },
+   {
+    "id": 133294831401437,
+    "title": "\"fluorescent light flickering 1.wav\" by TemperMode (484157), 0.62-1.40 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -17
+   }
   ]
  },
  "vol": {
@@ -3221,7 +3246,9 @@
   "skin_smoke_censer_cloud": 3.7,
   "skin_duck_origami_land": 4.6,
   "remote_click": 6,
-  "rope_creak": 5.5
+  "rope_creak": 5.5,
+  "zm_door": 0.9,
+  "zm_flicker": 0.5
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -3361,7 +3388,9 @@
   "rig_punch_hit": -19,
   "rig_missile": -23,
   "rig_missile_boom": -21,
-  "rig_denied": -28
+  "rig_denied": -28,
+  "zm_door": -24,
+  "zm_flicker": -32
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -3452,7 +3481,8 @@
   "rig_punch_hit": 0.03,
   "rig_missile": 0.03,
   "rig_missile_boom": 0.03,
-  "rig_break": 0.02
+  "rig_break": 0.02,
+  "zm_flicker": 0.06
  },
  "loop": {
   "minigun_spin": true,
@@ -3522,6 +3552,14 @@
   "rig_charge": [
    6,
    120
+  ],
+  "zm_door": [
+   14,
+   170
+  ],
+  "zm_flicker": [
+   5,
+   60
   ]
  }
 }

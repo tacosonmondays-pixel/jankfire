@@ -586,9 +586,31 @@ for z in (-26.0, -14.0, 42.0, 50.0): step(74.0, 0.0, z - 1.0, 76.0, 15.0, z + 1.
 
 # ================================================================ furniture (hit boxes the kit dresses; FURN for the kit)
 FURN = []         # (kind, cx, y, cz, sx, sy, sz, turn, extra)
+# (26 Nov 2026, the owner: "make sure propls dont clip into walls or other objkects and props") a prop set against a
+# wall stops at the wall's hit face: v2's piers ARE that face (the panels sit 0.35 behind it), so a locker sunk half a
+# stud in had the piers running through it. F() slides a prop out of any wall it was placed into, along the shorter
+# way out. pieces made to sit in or on a wall keep their place (NO_NUDGE). the props check: school_clip.py
+NO_NUDGE = {'stallwall', 'showerwall', 'stalls', 'showers', 'frontdoors', 'hoop', 'pipes', 'greenhouse', 'shed', 'board',
+            'mirror', 'scoreboard', 'watertank', 'towerleg', 'flag', 'skylight', 'solar', 'dish', 'hvac', 'tree'}
+def _off_walls(kind, cx, base, cz, sx, sy, sz):
+    if kind in NO_NUDGE: return cx, cz
+    for _ in range(4):
+        moved = False
+        for w in WALLS:
+            b = w['box']
+            ox = min(cx + sx / 2, b[3]) - max(cx - sx / 2, b[0])
+            oy = min(base + sy, b[4]) - max(base, b[1])
+            oz = min(cz + sz / 2, b[5]) - max(cz - sz / 2, b[2])
+            if ox > 0.02 and oy > 0.02 and oz > 0.02:
+                if ox < oz: cx += (ox + 0.02) * (1 if cx > (b[0] + b[3]) / 2 else -1)
+                else: cz += (oz + 0.02) * (1 if cz > (b[2] + b[5]) / 2 else -1)
+                moved = True
+        if not moved: break
+    return round(cx, 3), round(cz, 3)
 def F(kind, cx, cz, lv, sx, sy, sz, turn=0, flags='', y=None, solid=True, **kw):
     base = LV[lv] if y is None else y
     if turn % 2: sx, sz = sz, sx
+    cx, cz = _off_walls(kind, float(cx), base, float(cz), float(sx), float(sy), float(sz))
     FURN.append((kind, float(cx), base, float(cz), float(sx), float(sy), float(sz), turn, kw))
     if not solid: return
     if flags: rot(cx, base + sy / 2, cz, sx, sy, sz, 0.0, 'furn', flags)
@@ -607,21 +629,29 @@ def classroom(x0, z0, x1, z1, lv):
 for (x0, x1) in ((-56, -24), (-24, 8), (8, 40)):
     classroom(x0, -88, x1, -48, 'G'); classroom(x0, -88, x1, -48, 'U')
 
-def restroom(x0, z0, x1, z1, lv, stalls_on='north'):
-    """stalls along one long wall (partitions, doors open), sinks on the other"""
-    n = int((x1 - x0 - 8) // 5)
+def restroom(x0, z0, x1, z1, lv, stalls_on='north', sinks=None, stall_from=4):
+    """stalls along one long wall (partitions, doors open), sinks on the other. sinks = (x from, x to) along that wall
+    (26 Nov 2026: clear of the doorway, which is in that wall: the run used to cross it), or 'west' (on the west wall);
+    stall_from = studs from the west wall to the first partition (clear of a zombie window landing there)"""
+    n = int((x1 - x0 - stall_from - 4) // 5)
     zs = z0 if stalls_on == 'north' else z1 - 6.5
     for k in range(n + 1):
-        F('stallwall', x0 + 4 + 5 * k, zs + 3.25, lv, 0.4, 7.0, 6.5)
-    F('stalls', (x0 + x1) / 2, zs + 3.25, lv, x1 - x0 - 8, 7.0, 6.5, solid=False, n=n, face='s' if stalls_on == 'north' else 'n')
+        F('stallwall', x0 + stall_from + 5 * k, zs + 3.25, lv, 0.4, 7.0, 6.5)
+    F('stalls', x0 + stall_from + 2.5 * n, zs + 3.25, lv, 5.0 * n, 7.0, 6.5, solid=False, n=n, face='s' if stalls_on == 'north' else 'n')
     zk = z1 - 1.4 if stalls_on == 'north' else z0 + 1.4
-    F('sinks', x0 + 4 + (x1 - x0 - 8) * 0.25, zk, lv, (x1 - x0 - 8) * 0.5, 3.0, 2.6)
-    F('mirror', x0 + 4 + (x1 - x0 - 8) * 0.25, zk + (0.9 if stalls_on == 'north' else -0.9), lv, (x1 - x0 - 8) * 0.5, 4.0, 0.2, y=LV[lv] + 4.5, solid=False)
+    if sinks == 'west':
+        zm = z0 + 2.8 if stalls_on == 'south' else z1 - 2.8
+        F('sinks', x0 + 1.4, zm, lv, 4.4, 3.0, 2.6, turn=1, face='e')
+        F('mirror', x0 + 0.6, zm, lv, 0.2, 4.0, 4.4, y=LV[lv] + 4.5, solid=False, face='e')
+        return
+    sa, sb = sinks if sinks else (x0 + 4, x0 + 4 + (x1 - x0 - 8) * 0.5)
+    F('sinks', (sa + sb) / 2, zk, lv, sb - sa, 3.0, 2.6)
+    F('mirror', (sa + sb) / 2, zk + (0.8 if stalls_on == 'north' else -0.8), lv, sb - sa, 4.0, 0.2, y=LV[lv] + 4.5, solid=False)   # (flat on the wall's face)
 
 for lv in ('G', 'U'):
-    restroom(-100, -34, -56, 0, lv, 'north')
-    restroom(-120, 12, -56, 28, lv, 'south')
-restroom(-88, 12, -72, 24, 'B', 'south')
+    restroom(-100, -34, -56, 0, lv, 'north', sinks=(-96, -84))           # (the doorway: x -83 .. -73 in the south wall)
+    restroom(-120, 12, -56, 28, lv, 'south', sinks=(-115, -97), stall_from=8)   # (doorway x -93 .. -83; a window lands at x -116)
+restroom(-88, 12, -72, 24, 'B', 'south', sinks='west')                    # (the doorway is most of the north wall)
 
 # ---- the lobby: the reception desk, the trophy case, pillars, benches, the front doors (chained: look only)
 F('reception', 0, 76, 'G', 18.0, 3.4, 4.0, face='n')
@@ -655,16 +685,16 @@ for cx in (-104, -88, -72):
     for cz in (-76, -61, -46):
         F('labbench', cx, cz, 'G', 9.0, 2.8, 4.2, face='n')
 F('fume', -62, -86.4, 'G', 8.0, 6.6, 3.0)
-F('fume', -118.4, -40, 'G', 3.0, 6.6, 8.0)
+F('fume', -118.4, -38.5, 'G', 3.0, 6.6, 8.0)      # (26 Nov: clear of the window the zombies climb in at z -46)
 F('cabinet', -57.6, -62, 'G', 1.6, 6.0, 8.0)
-F('skeleton', -60, -37, 'G', 2.0, 5.4, 2.0)
+F('skeleton', -63, -36.4, 'G', 2.0, 5.4, 2.0)      # (26 Nov: out of the hall door's way, into the corner)
 # ---- lockers along the halls (between doors)
 def lockers(x0, z0, x1, z1, lv, face):
     F('lockers', (x0 + x1) / 2, (z0 + z1) / 2, lv, x1 - x0, 6.5, z1 - z0, face=face)
 lockers(62.4, -32, 64, -24, 'G', 'w')          # the locker hall: its east wall beside the stairs' foot and top
 lockers(-56, -30, -54.4, -22, 'G', 'e'); lockers(-56, -16, -54.4, -2, 'G', 'e'); lockers(-56, 14, -54.4, 26, 'G', 'e')
 lockers(-56, -30, -54.4, -2, 'U', 'e'); lockers(-56, 14, -54.4, 26, 'U', 'e')
-lockers(62.4, -32, 64, -22, 'U', 'w')
+lockers(62.4, -32, 64, -24.8, 'U', 'w')        # (26 Nov: clear of the upstairs door at z -20)
 for (x0, x1) in ((-26, -14), (-2, 18), (32, 38)):     # (between the classroom doors)
     lockers(x0, -48, x1, -46.4, 'G', 's'); lockers(x0, -48, x1, -46.4, 'U', 's')
 F('bench', 44, -12, 'G', 2.2, 1.6, 9.0)
@@ -677,7 +707,7 @@ for (x, z) in ((-24, 26), (24, -26)):
 for (x, z) in ((-14, 14), (14, -14), (-14, -14), (14, 14)):
     F('picnic', x, z, 'G', 7.0, 2.4, 6.0)
 for (x, z, t) in ((-34, 6, 1), (34, -6, 1), (0, -27, 0), (0, 27, 0)):
-    F('bench', x, z, 'G', 9.0, 1.6, 2.2, turn=t)
+    F('bench', x, z + (-0.6 if z == 27 else 0), 'G', 9.0, 1.6, 2.2, turn=t)     # (26 Nov: the north one clear of the lobby door)
 F('flagpole', -34, 27, 'G', 0.8, 30.0, 0.8)
 F('bikerack', 34, 8, 'G', 2.0, 2.4, 9.0)
 for (x0, z0, x1, z1) in SHEDS:
@@ -687,13 +717,14 @@ F('vault', 136, -20, 'G', 5.0, 3.2, 2.6)
 F('mat', 126, 46, 'G', 9.0, 0.6, 6.0, flags='q')
 F('mat', 142, 46, 'G', 9.0, 0.6, 6.0, flags='q')
 F('ballrack', 156.6, -26, 'G', 2.4, 3.2, 5.0)
-F('ballrack', 118, 54.4, 'G', 5.0, 3.2, 2.4)
+F('ballrack', 110, 54.4, 'G', 5.0, 3.2, 2.4)      # (26 Nov: clear of the weight room door, x 118 .. 130)
 F('hoop', 134, -31.2, 'G', 6.0, 4.0, 1.6, y=8.0, solid=False, face='s')
 F('hoop', 134, 55.2, 'G', 6.0, 4.0, 1.6, y=8.0, solid=False, face='n')
 F('scoreboard', 159.4, 12, 'G', 0.6, 6.0, 14.0, y=20.0, solid=False, face='w')
 # ---- the gym's locker rooms
 for (x0, x1) in ((64, 102), (102, 140)):
-    lockers(x0 + 2, -88, x1 - 2, -86.4, 'G', 's')
+    wx = 83 if x0 == 64 else 121              # (26 Nov: the zombies' window in the north wall: no lockers under it)
+    lockers(x0 + 2, -88, wx - 4, -86.4, 'G', 's'); lockers(wx + 4, -88, x1 - 2, -86.4, 'G', 's')
     F('bench', (x0 + x1) / 2, -74, 'G', 16.0, 1.6, 2.2)
     F('bench', (x0 + x1) / 2, -64, 'G', 16.0, 1.6, 2.2)
     F('showers', x1 - 5, -57, 'G', 8.0, 7.5, 12.0, solid=False)
@@ -707,9 +738,9 @@ F('mirror', 64.6, 76, 'G', 0.2, 7.0, 24.0, y=1.5, solid=False)
 for (x, z) in ((-40, -72), (-16, -52), (-30, -60), (6, -66), (14, -52), (-6, -72)):
     F('crate', x, z, 'B', 3.6, 3.6, 3.6)
 F('crate', -40, -72, 'B', 3.6, 3.6, 3.6, y=-12.4)
-for x in (-26, 4):
-    F('shelf', x, -74.6, 'B', 14.0, 8.0, 2.4)
-F('workbench', 36, -73.8, 'B', 14.0, 3.2, 3.4); F('workbench', 50.6, -62, 'B', 2.8, 3.2, 12.0)
+for x in (-17.5, 14.5):                   # (26 Nov: beside the south doorways, x -33 .. -23 and -1 .. 9, not across them)
+    F('shelf', x, -74.6, 'B', 9.0, 8.0, 2.4)
+F('workbench', 25.5, -73.8, 'B', 9.0, 3.2, 3.4)    # (and beside the workshop's, x 31 .. 41); F('workbench', 50.6, -62, 'B', 2.8, 3.2, 12.0)
 F('pipes', 10, -42, 'B', 108.0, 2.0, 2.0, y=-4.5, solid=False)
 F('pipes', -50, -40, 'B', 2.0, 2.0, 80.0, y=-4.5, solid=False)
 # ---- the boiler room: two boilers, the water heater, the generator; the power switch on the east wall

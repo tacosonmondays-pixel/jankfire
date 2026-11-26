@@ -192,8 +192,9 @@ local function spawned(g: any, z: any)
 		z.m:SetAttribute("ZmType", ty)
 	end
 	if def and def.boss then
-		local members = #g.members
-		local max = math.floor(ZM.hp(g.n) * def.bossHp * (1 + ZM.BOSS.perPlayer * (math.max(1, members) - 1)) + 0.5)
+		local people, bots = 0, 0
+		for _, m in g.members do if m.bot then bots += 1 else people += 1 end end
+		local max = ZM.bossHp(ty, g.n, people, bots) -- (the bots count a little, not as whole players: ZM.BOSS)
 		f.maxHp = max
 		f.hp = if bd and bd.hp > 0 then math.min(max, bd.hp) else max
 		gs.bossDue = nil

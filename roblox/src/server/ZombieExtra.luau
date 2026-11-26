@@ -697,6 +697,44 @@ function ZombieExtra.install(zombies: any)
 		end
 		return nil
 	end
+	-- (26 Nov 2026) the squad's bots use the machines too (ZombieBots.luau): where they are, and the same buys as yours
+	-- (the same prices, power and limits: powerOn / voidIt / buyCola with the bot as the member)
+	ext.botSpots = function(g: any): { any }
+		local gs = GSt[g]
+		if not gs then return {} end
+		local out = {}
+		local map = g.map
+		if map.power and not gs.power then table.insert(out, { kind = "power", cf = (map.power :: BasePart).CFrame }) end
+		if gs.power then
+			if map.voider then table.insert(out, { kind = "void", cf = (map.voider :: BasePart).CFrame }) end
+			for _, c in map.colas do
+				local id = tostring(c:GetAttribute("Cola") or "")
+				local def = ZM.COLAS[id]
+				if def then table.insert(out, { kind = "cola", id = id, cf = c.CFrame, price = def.price }) end
+			end
+		end
+		return out
+	end
+	ext.botUse = function(g: any, m: any, kind: string, id: string?)
+		local gs = GSt[g]
+		if not gs or not m.f.alive or not X.inOpenArea(m) then return end
+		if kind == "power" then powerOn(g, gs, m)
+		elseif kind == "void" then voidIt(g, gs, m)
+		elseif kind == "cola" and id then buyCola(g, gs, m, id) end
+	end
+	ext.botHas = function(_g: any, m: any, kind: string, id: string): any
+		if kind == "cola" then return hasCola(m, id) end
+		local u = ms(m).up[id]
+		return if u then u.t else 0 -- (the Voider's tier on that gun)
+	end
+	ext.planks = function(g: any, wi: number): number?
+		local gs = GSt[g]
+		return gs and gs.planks[wi]
+	end
+	ext.botBoard = function(g: any, m: any, wi: number)
+		local gs = GSt[g]
+		if gs and m.f.alive and gs.planks[wi] and gs.planks[wi] < R.planks then nail(g, gs, m, wi) end
+	end
 	-- (a drop for certain: a boss going down, ZombieSpecial)
 	ext.dropAt = function(g: any, kind: string?, at: Vector3)
 		local gs = GSt[g]

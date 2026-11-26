@@ -489,16 +489,22 @@ H.looks.school_v2a = {
 } :: Look
 H.plainSky.school_v2a = true
 H.byArena.JankfieldHighV2A = "school_v2a"
+-- (26 Nov 2026, the owner on zombies: "the ambiance isnt there yet, it should be darker, with fog, not all ceiling likes
+-- should work"). v2B, the live school, goes darker and foggy: the ambient about 40% lower, a thick cold haze (the
+-- Atmosphere is the fog here: with one in Lighting the old Fog* values do nothing), less saturation, a readier bloom for
+-- the lamps that still work; SchoolLife adds the floor mist and the dead and buzzing tubes. the look before:
+-- Ambient 70,71,73; OutdoorAmbient 48,52,64; Brightness 0.55; Atmosphere 0.36 / 0.04 / 1.6, 50,56,78 / 24,28,40;
+-- Bloom 0.4 / 24 / 1.6; ColorCorrection 0 / 0.14 / -0.12, 246,248,252
 H.looks.school_v2b = {
 	Lighting = {
-		Ambient = Color3.fromRGB(70, 71, 73), OutdoorAmbient = Color3.fromRGB(48, 52, 64), Brightness = 0.55,
-		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.25,
+		Ambient = Color3.fromRGB(42, 44, 50), OutdoorAmbient = Color3.fromRGB(30, 34, 46), Brightness = 0.4,
+		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0.18, EnvironmentSpecularScale = 0.2,
 		ClockTime = 0.3, GeographicLatitude = 41, ColorShift_Top = Color3.fromRGB(150, 168, 222),
-		FogColor = Color3.fromRGB(24, 28, 40), FogStart = 120, FogEnd = 700,
+		FogColor = Color3.fromRGB(20, 23, 32), FogStart = 60, FogEnd = 420,
 	},
-	Atmosphere = { Density = 0.36, Offset = 0.04, Haze = 1.6, Glare = 0, Color = Color3.fromRGB(50, 56, 78), Decay = Color3.fromRGB(24, 28, 40) },
-	Bloom = { Intensity = 0.4, Size = 24, Threshold = 1.6 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.12, TintColor = Color3.fromRGB(246, 248, 252) },
+	Atmosphere = { Density = 0.52, Offset = 0, Haze = 2.6, Glare = 0, Color = Color3.fromRGB(38, 44, 60), Decay = Color3.fromRGB(16, 20, 30) },
+	Bloom = { Intensity = 0.55, Size = 26, Threshold = 1.4 },
+	ColorCorrection = { Brightness = -0.02, Contrast = 0.2, Saturation = -0.2, TintColor = Color3.fromRGB(232, 240, 252) },
 	SunRays = { Intensity = 0 },
 } :: Look
 H.plainSky.school_v2b = true

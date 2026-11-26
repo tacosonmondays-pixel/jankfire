@@ -22,6 +22,7 @@ ZM.R = {
 	revolverDmg = 40, -- (the revolver's damage the zombies' HP is tuned to: one tap kills in round 1. it stays this in here
 	-- after the 20 Nov PvP nerf to 33: Zombies.luau scales revolver hits on zombies by revolverDmg / its dmg)
 	planks = 6, tear = 1.3, tearRun = 0.85, board = 0.6, boardPay = 10, boardCap = 20,
+	doorRoll = 2.6, -- s a bought shutter takes to roll up into its housing (the recorded rattle, zm_door, lasts as long)
 	climb = 1.35, climbRun = 0.85,
 	maxAlive = nil :: number?, -- (a test knob: overrides the cap)
 }
@@ -154,8 +155,11 @@ end
 ZM.LIMB = { limbHp = 0.3, limbMin = 20, limbPay = 10, crawl = 1.4 * S, hop = 0.55, crawlUp = 0.9 * S, noArms = 0.5,
 	oneArmCd = 1.4, noArmTear = 2.5, oneArmTear = 1.3, bornArmless = 0.18, random = 0.35 }
 -- the specials (from = first round, w = weight, cap = at once; hp / claw multiply the round's, speed replaces the gait)
+-- (26 Nov 2026, the owner: "the pourple and red ones have too much hp!": the Chonk 3.5 -> 2 times a zombie's HP; the
+-- Floor Manager 16 -> 6 and the Mascot 20 -> 7 times, and the squad's bots count 0.15 each there instead of a whole
+-- extra player. tables: roblox/docs/ZOMBIES.md "HP")
 ZM.TYPES = {
-	chonk = { name = "CHONK", from = 5, w = 2, cap = 1, scale = 1.4, hp = 3.5, speed = 2.3 * S, run = 0, claw = 1.6, color = Color3.fromHex("b07dff"),
+	chonk = { name = "CHONK", from = 5, w = 2, cap = 1, scale = 1.4, hp = 2, speed = 2.3 * S, run = 0, claw = 1.6, color = Color3.fromHex("b07dff"),
 		pay = 100, blast = 5 * S, blastZ = 180, blastP = 18 },
 	biter = { name = "ANKLE BITER", from = 3, w = 3, cap = 6, scale = 0.6, hp = 0.4, speed = 8.2 * S, run = 2, claw = 0.5, cd = 0.7, pack = 3,
 		color = Color3.fromHex("ffe14d") },
@@ -163,17 +167,22 @@ ZM.TYPES = {
 	screamer = { name = "SCREAMER", from = 6, w = 1.5, cap = 1, scale = 1.08, hp = 0.7, color = Color3.fromHex("ff4fd8"), pay = 40,
 		every = 9, yell = 1.3, reach = 14 * S, hype = 6, boost = 1.45, see = 20 * S },
 	-- the mini bosses: one every ZM.BOSS.every rounds, never from the random roll
-	manager = { name = "THE FLOOR MANAGER", boss = true, scale = 1.75, hp = 1, bossHp = 16, speed = 3.6 * S, run = 0, claw = 2,
+	manager = { name = "THE FLOOR MANAGER", boss = true, scale = 1.75, hp = 1, bossHp = 6, speed = 3.6 * S, run = 0, claw = 2,
 		color = Color3.fromHex("ff3030"), reward = 1000,
 		meeting = { every = 14, yell = 1.5, n = 3, reach = 22 * S, hype = 7 },
 		charge = { every = 9, min = 4 * S, max = 20 * S, windup = 0.9, secs = 1.3, speed = 13 * S, reach = 1.9 * S, dmg = 34, kb = 14 * S } },
-	mascot = { name = "THE MASCOT", boss = true, scale = 1.9, hp = 1, bossHp = 20, speed = 3.1 * S, run = 0, claw = 2.2,
+	mascot = { name = "THE MASCOT", boss = true, scale = 1.9, hp = 1, bossHp = 7, speed = 3.1 * S, run = 0, claw = 2.2,
 		color = Color3.fromHex("4fd8ff"), reward = 1250,
 		jump = { every = 6.5, min = 3 * S, max = 22 * S, up = 70, r = 6.5 * S, dmg = 28 } },
 } :: { [string]: any }
 ZM.TYPE_ORDER = { "chonk", "biter", "hardhat", "screamer" }
 ZM.BOSSES = { "manager", "mascot" }
-ZM.BOSS = { every = 5, delay = 5, perPlayer = 0.5, hitCap = 0.06 }
+ZM.BOSS = { every = 5, delay = 5, perPlayer = 0.5, perBot = 0.15, hitCap = 0.06 }
+-- a boss's HP for a squad of `people` real players and `bots` bots in round r
+function ZM.bossHp(ty: string, r: number, people: number, bots: number): number
+	local def = ZM.TYPES[ty]
+	return math.floor(ZM.hp(r) * def.bossHp * (1 + ZM.BOSS.perPlayer * (math.max(1, people) - 1) + ZM.BOSS.perBot * math.max(0, bots)) + 0.5)
+end
 function ZM.typeChance(r: number): number return math.min(0.4, math.max(0, 0.07 * (r - 2))) end
 function ZM.pickType(r: number, alive: { [string]: number }, rnd: (() -> number)?): string
 	local rr = rnd or math.random

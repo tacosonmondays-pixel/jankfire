@@ -17,9 +17,65 @@ local T = require(script.Parent:WaitForChild("Theme")) :: any
 local Body = require(script.Parent:WaitForChild("Body")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
+local okSfx, Sfx = pcall(require, script.Parent:WaitForChild("Sfx"))
 local me = Players.LocalPlayer
 local W = Weapons.list
 local GREEN = Color3.fromHex("8fd14f")
+
+-- a bought shutter rolls up into its housing (26 Nov 2026, the owner: "doors dont have animations the ones you buy"):
+-- the shutter is hidden here and drawn as slats that rise together, each one gone as it passes into the housing (or
+-- the wall over the door), with the recorded rattle (zm_door) from the door. local parts only, a few writes a frame for
+-- ZM.R.doorRoll s. the server hides the real shutter itself once the roll is over
+local rolled: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local function rollUp(sh: BasePart)
+	if rolled[sh] or not sh.Parent then return end
+	rolled[sh] = true
+	local cf, size = sh.CFrame, sh.Size
+	local thinX = size.X <= size.Z
+	local wide, thick, H = if thinX then size.Z else size.X, math.min(size.X, size.Z), size.Y
+	local N = math.max(4, math.floor(H / 1.15 + 0.5))
+	local h = H / N
+	local holder = Instance.new("Folder")
+	holder.Name = "ZmRoll"
+	local slats: { BasePart } = {}
+	local dark = sh.Color:Lerp(Color3.new(0, 0, 0), 0.18)
+	for k = 1, N do
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+		p.Material = sh.Material
+		p.Color = if k == 1 then sh.Color:Lerp(Color3.new(0, 0, 0), 0.45) elseif k % 2 == 0 then sh.Color else dark -- (the bottom rail darker)
+		p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+		local t = if k == 1 then thick * 1.05 else thick * 0.82
+		p.Size = if thinX then Vector3.new(t, h - 0.08, wide) else Vector3.new(wide, h - 0.08, t)
+		p.CFrame = cf * CFrame.new(0, -H / 2 + (k - 0.5) * h, 0)
+		p.Parent = holder
+		slats[k] = p
+	end
+	holder.Parent = workspace
+	sh.Transparency = 1 -- (here only: the server's copy follows when the roll is done)
+	if okSfx and Sfx then pcall((Sfx :: any).play, "zm_door", cf.Position + Vector3.new(0, H * 0.3, 0)) end
+	local dur = ZM.R.doorRoll
+	local t0 = os.clock()
+	local conn: RBXScriptConnection? = nil
+	conn = RunService.RenderStepped:Connect(function()
+		local a = math.clamp((os.clock() - t0) / dur, 0, 1)
+		-- a motor's roll: a slow start, steady, eased into the top
+		local e = if a < 0.15 then (a / 0.15) ^ 2 * 0.075 elseif a > 0.85 then 1 - ((1 - a) / 0.15) ^ 2 * 0.075 else 0.075 + (a - 0.15) / 0.7 * 0.85
+		local rise = H * e
+		for k, p in slats do
+			local y = -H / 2 + (k - 0.5) * h + rise
+			if y - h / 2 >= H / 2 - 0.05 then
+				if p.Parent then p.Parent = nil end -- (wound into the housing)
+			else
+				p.CFrame = cf * CFrame.new(0, y, 0)
+			end
+		end
+		if a >= 1 then
+			if conn then conn:Disconnect() end
+			holder:Destroy()
+		end
+	end)
+end
 
 local gui = T.new("ScreenGui", { Name = "JankZombies", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, Enabled = false }, me:WaitForChild("PlayerGui"))
 local root = T.scaled(gui)
@@ -146,6 +202,7 @@ zr.OnClientEvent:Connect(function(x: any)
 		if x.st == "start" then show("ROUND " .. tostring(x.n), nil, 3) else show("ROUND " .. tostring(x.n) .. " CLEARED", nil, 3) end
 	elseif x.k == "door" then
 		say(if x.by then tostring(x.by) .. " opened " .. tostring(x.label) else tostring(x.label) .. " open", true)
+		if typeof(x.sh) == "Instance" and x.sh:IsA("BasePart") then rollUp(x.sh) end
 	elseif x.k == "down" then
 		if x.st == "down" then say(tostring(x.who) .. " is down", false)
 		elseif x.st == "up" then say(tostring(x.who) .. " is back up", true)
@@ -221,6 +278,66 @@ local function crateTick(a: Instance?)
 	end
 end
 
+-- the wall guns (26 Nov 2026: a map's WallBuys were bare markers, only a prompt up close): each gets a chalk outline on
+-- the wall, its gun hung inside it, and a small lamp over it so a buy reads from across a dark room. built here, once per
+-- game, from the arena copy's ZM/WallBuys (the markers: 4 x 2 on the wall, LookVector out of it)
+local buyArt: Folder? = nil
+local buyFor: Instance? = nil
+local CHALK = Color3.fromRGB(222, 226, 232)
+local function buildBuys(a: Instance?)
+	if buyFor == a then return end
+	buyFor = a
+	if buyArt then buyArt:Destroy(); buyArt = nil end
+	local zf = a and a:FindFirstChild("ZM")
+	local wb = zf and zf:FindFirstChild("WallBuys")
+	if not wb then return end
+	local f = Instance.new("Folder")
+	f.Name = "ZmBuyArt"
+	local function bar(cf: CFrame, size: Vector3)
+		local p = Instance.new("Part")
+		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = CHALK
+		p.Transparency = 0.12
+		p.Size = size
+		p.CFrame = cf
+		p.Parent = f
+	end
+	for _, m in wb:GetChildren() do
+		if not m:IsA("BasePart") then continue end
+		local wid = tostring(m:GetAttribute("Weapon") or "")
+		local cf = m.CFrame -- (LookVector out of the wall)
+		local face = cf * CFrame.new(0, 0, -0.07)
+		local w, h, t = 5.2, 2.6, 0.12
+		bar(face * CFrame.new(0, h / 2, 0), Vector3.new(w + t, t, 0.05))
+		bar(face * CFrame.new(0, -h / 2, 0), Vector3.new(w + t, t, 0.05))
+		bar(face * CFrame.new(-w / 2, 0, 0), Vector3.new(t, h + t, 0.05))
+		bar(face * CFrame.new(w / 2, 0, 0), Vector3.new(t, h + t, 0.05))
+		local ok, g = pcall(WeaponModels.build, wid, 3)
+		if ok and g then
+			for _, d in (g :: Model):GetDescendants() do
+				if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+			end
+			local at = cf.Position + cf.LookVector * 0.45
+			;(g :: Model):PivotTo(CFrame.lookAt(at, at + cf.RightVector)) -- (lying along the wall, side on)
+			local _, size = (g :: Model):GetBoundingBox()
+			if size.Magnitude > 7 then (g :: Model):ScaleTo(math.max(0.3, 6.5 / size.Magnitude)) end -- (a long gun fits the outline)
+			;(g :: Model).Parent = f
+		end
+		local lampPart = Instance.new("Part")
+		lampPart.Anchored, lampPart.CanCollide, lampPart.CanQuery, lampPart.CanTouch = true, false, false, false
+		lampPart.Transparency = 1
+		lampPart.Size = Vector3.new(0.2, 0.2, 0.2)
+		lampPart.CFrame = cf * CFrame.new(0, 2.6, -1.6)
+		local l = Instance.new("PointLight")
+		l.Brightness, l.Range, l.Color, l.Shadows = 0.9, 9, Color3.fromRGB(226, 234, 255), false
+		l.Parent = lampPart
+		lampPart.Parent = f
+	end
+	f.Parent = workspace
+	buyArt = f
+end
+
 RunService.RenderStepped:Connect(function()
 	local on = me:GetAttribute("ZmOn") == true
 	local spd = me:GetAttribute("ZmSpeed")
@@ -229,9 +346,14 @@ RunService.RenderStepped:Connect(function()
 		gui.Enabled = on
 		if not on then over.Visible = false; banner.Text = ""; toast.Text = "" end
 	end
-	if not on then if spinModel then spinModel.Parent = nil; spinModel = nil end; return end
+	if not on then
+		if spinModel then spinModel.Parent = nil; spinModel = nil end
+		if buyFor then buildBuys(nil) end
+		return
+	end
 	local a = arena()
 	crateTick(a)
+	if a ~= buyFor then buildBuys(a) end
 	-- the chips: no power yet, the modifiers running (time left), your colas
 	local rows = {}
 	if a and a:GetAttribute("Power") == false then table.insert(rows, { text = "NO POWER", color = T.DIM }) end
