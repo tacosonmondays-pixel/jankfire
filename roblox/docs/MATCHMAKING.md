@@ -319,6 +319,44 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
   the 1v1 opened on DESERT: CANYON. At v719, pressing 1 for ROOFTOP had ended on CRATE; most likely that key press
   didn't register, and with no votes one of the three is drawn.
 
+### Map choice in every match but ranked (21 Nov 2026, place version 1362)
+
+The owner: "for pads and casual andthing but ranked basically let us pick maps". Main's spec: a short vote of about
+6 s on 3 maps that suit the mode and head-count plus RANDOM; most votes wins, a tie is drawn, no votes is RANDOM;
+private duels: the challenger picks; ranked keeps its draft.
+
+- **Every vote gets a RANDOM card** (`MapCards.RANDOM`): any map of the rotation for the size, not only the three on
+  offer. It shows ANY MAP; once picked, the vote line reads MAP and the RANDOM card shows the map it landed on. No votes
+  at all is RANDOM (it used to be a draw of the three). A tie is drawn among the top cards, RANDOM included.
+- **6 s** instead of 8: `PlayConfig.VOTE` (the Play queue's mode and map votes) and `Matches.PAD_VOTE` (the map rooms).
+- **Where:**
+  - Hub pads (QUICK JOIN too) and cross-server match servers: the map room as before, its three displays and plates, and
+    RANDOM as a fourth card on the screen (no plate). When RANDOM lands on a map that isn't on a display, the middle
+    display shows it as the pick.
+  - The Play queue: casual duels, QUICKPLAY (keys 1-3 for the mode, 4-7 for the map) and now the MODES tab's party
+    modes topped up from quickplay (FILL). A party mode's leader's own pick is one of the three.
+  - A party alone (a private duel, or a party mode without FILL): no vote. The leader picks on a MAP row (RANDOM or a
+    map): the PARTY card's, and now one under the duel cards on the DUELS tab for a private duel (`ModesTab.mapRow`).
+  - Ranked (duels and PARTY RANKED): unchanged (the rotation at home, the draft across servers). ZOMBIES picks its own
+    school.
+- **Input:** keys 1-4 (a map vote alone) or 4-7 (under a mode vote), a tap on a phone, and a controller's View to
+  the cards then A (PadNav takes every button in the vote panel).
+- **Tested in Studio** (one solo Play, stand-ins):
+  - Casual 1V1 from the Play queue: ROOFTOP, PLATFORM, SPOOKY FOREST and RANDOM on offer; key 4 voted RANDOM, and the
+    match opened on ROOFTOP: SKYLINE (not one of the three).
+  - Private 1V1 (a party of two): the MAP row on the DUELS tab, THE GUT picked; START PRIVATE showed no vote and the
+    match opened on THE GUT.
+  - The Classic hub's 1v1 pad (test fill): the map room with THE GUT, SPOOKY FOREST and ROOFTOP: SKYLINE on the
+    displays and RANDOM on the cards; no votes went to RANDOM, and the match opened on BACKROOMS.
+  - QUICKPLAY with three stand-ins: the mode and map votes together; keys 1 and 7 voted ONE IN THE CHAMBER and RANDOM,
+    and the match was One in the Chamber on SUBURB: CUL-DE-SAC.
+  - Not caught on camera: the RANDOM card showing its landed map in the 2 s before the match (it comes and goes
+    between screenshots). Not run: a party mode with FILL against other parties, cross-server, a real pad or phone.
+
+  ![a casual duel's vote with RANDOM](matchmaking/68_map_vote_random.jpg)
+  ![a private duel: the leader's MAP row on the DUELS tab](matchmaking/69_private_duel_map_row.jpg)
+  ![a pad's map room with the RANDOM card](matchmaking/70_map_room_random_card.jpg)
+
 ### Changing your loadout before and between rounds (17 Nov 2026)
 
 The owner: "allow us to change weapons before first round and between rounds".
