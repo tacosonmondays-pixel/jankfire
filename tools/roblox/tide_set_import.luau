@@ -6,23 +6,18 @@
 -- our own streak textures scrolling down), the spray and mist at their feet, foam rings, the lanterns' light, the moon
 -- (a disc with its darker seas and a halo), the water, the moon's glitter road on the pool, and SceneLook - the Sky,
 -- Atmosphere, Bloom and grade FinisherPro puts on for the scene (the place's own parked meanwhile).
-local SET = 88285832941384 -- (the kit upload: tide_waterfall.glb v2, 26 Nov 2026 - layered pine pads, the cloud banks; v1 99855924480330)
+local SET = 136826456466581 -- (the kit upload: tide_waterfall.glb v3, 26 Nov 2026 - the causeway through the pool, wide curtains, darker values; v2 88285832941384, v1 99855924480330)
 local TEX = { streaks = "rbxassetid://86884977470079", streaks2 = "rbxassetid://74489285829676", ripple = "rbxassetid://111226912715998" }
 local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local SPARK = "rbxasset://textures/particles/sparkles_main.dds"
 local FX = {
 	falls = {
-		{ top = { -52.5, 7.3, 170.8 }, bottom = { -52.5, -1.3, 167.5 }, width = 6.5, face = { 0, 0, -1 } },
-		{ top = { -40, 7.3, 170.8 }, bottom = { -40, -1.3, 167.5 }, width = 5.5, face = { 0, 0, -1 } },
-		{ top = { -28, 7.3, 170.8 }, bottom = { -28, -1.3, 167.5 }, width = 5.5, face = { 0, 0, -1 } },
-		{ top = { -14.5, 7.3, 170.8 }, bottom = { -14.5, -1.3, 167.5 }, width = 6.5, face = { 0, 0, -1 } },
-		{ top = { -1, 7.3, 170.8 }, bottom = { -1, -1.3, 167.5 }, width = 5.5, face = { 0, 0, -1 } },
-		{ top = { 12, 7.3, 170.8 }, bottom = { 12, -1.3, 167.5 }, width = 5.5, face = { 0, 0, -1 } },
-		{ top = { -118.5, 34.4, -25 }, bottom = { -116, -1.3, -25 }, width = 5, face = { 1, 0, 0 } },
-		{ top = { -118.5, 34.4, -17 }, bottom = { -116, -1.3, -17 }, width = 3.2, face = { 1, 0, 0 } },
-		{ top = { -118.5, 34.4, -9 }, bottom = { -116, -1.3, -9 }, width = 4.4, face = { 1, 0, 0 } },
-		{ top = { -139.5, 73.5, -21 }, bottom = { -136.5, 34.5, -21 }, width = 6, face = { 1, 0, 0 } },
-		{ top = { -139.5, 73.5, -11 }, bottom = { -136.5, 34.5, -11 }, width = 3, face = { 1, 0, 0 } },
+		{ top = { -48.5, 7.2, 170.4 }, bottom = { -48.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
+		{ top = { -23.5, 7.2, 170.4 }, bottom = { -23.5, -1.3, 167 }, width = 20, face = { 0, 0, -1 } },
+		{ top = { 5.5, 7.2, 170.4 }, bottom = { 5.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
+		{ top = { -117, 34.4, -22 }, bottom = { -113.5, -1.3, -22 }, width = 10, face = { 1, 0, 0 } },
+		{ top = { -117, 34.4, -11 }, bottom = { -113.5, -1.3, -11 }, width = 7, face = { 1, 0, 0 } },
+		{ top = { -138.5, 73.8, -17.5 }, bottom = { -135.5, 34.6, -17.5 }, width = 9, face = { 1, 0, 0 } },
 	},
 	mist = {
 		{ at = { -20, -0.3, 166 }, size = { 80, 8 } },
@@ -31,11 +26,11 @@ local FX = {
 	},
 	foam = {
 		{ at = { -20, -1.3, 165 }, r = 40, line = true },
-		{ at = { -111, -1.3, -16 }, r = 12, line = false },
+		{ at = { -110, -1.3, -16 }, r = 14, line = false },
 	},
-	lanterns = { { -7.5, 4.15, -66 }, { 26, 4.15, 12 }, { -7.5, 4.15, 14 } },
+	lanterns = { { -9, 5.225, -8 }, { 11, 5.225, -30 }, { -9, 5.225, -60 }, { 11, 5.225, 12 } },
 	moon = { dir = { -0.068, 0.208, 0.976 }, dist = 1700, deg = 16 },
-	water = { y = -1.3, boxes = { { -150, 20, -9.5, -120 }, { -150, 172, 80, 18 } }, upper = { y = 7.5, box = { -150, 420, 80, 174 } } },
+	water = { y = -1.3, boxes = { { -150, 20, -5.7, -120 }, { 7.7, 20, 36, -120 }, { -150, 172, 80, 18 } }, upper = { y = 7.5, box = { -150, 420, 80, 174 } } },
 	glitter = { from = { -27.971, 400 }, to = { -1.678, 24 }, width = 9 },
 }
 local IS = game:GetService("InsertService")
@@ -44,7 +39,7 @@ local sets = RS:FindFirstChild("JankfireFinisherSets")
 if not sets then sets = Instance.new("Folder"); sets.Name = "JankfireFinisherSets"; sets.Parent = RS end
 local function mat(n) local ok, m = pcall(function() return (Enum.Material :: any)[n] end); return if ok and m then m else Enum.Material.SmoothPlastic end
 local KIND = { rock = mat("Slate"), stone = mat("Granite"), leaf = mat("Grass"), wood = mat("Wood"), neon = mat("Neon"), plastic = mat("SmoothPlastic"),
-	glass = mat("Glass"), cloud = mat("SmoothPlastic") }
+	glass = mat("Glass"), cloud = mat("SmoothPlastic"), mist = mat("SmoothPlastic") }
 local root = IS:LoadAsset(SET)
 local src = root:FindFirstChildWhichIsA("Model") or root
 local set = Instance.new("Model")
@@ -56,7 +51,8 @@ for _, p in src:GetDescendants() do
 		local kind, hex = string.match(p.Name, "__(%a+)_(%x%x%x%x%x%x)$")
 		if kind then p.Color = Color3.fromHex(hex); p.Material = KIND[kind] or Enum.Material.SmoothPlastic end
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
-		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds"))
+		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds") or string.match(p.Name, "^mistmounds"))
+		if kind == "mist" then p.Transparency = 0.62 end -- (the soft mounds of mist where the falls land)
 		if string.sub(p.Name, 1, 9) == "kitorigin" then origin = p else n += 1 end
 	end
 end

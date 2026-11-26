@@ -26,11 +26,13 @@ for ob in list(bpy.data.objects):
 rnd = random.Random(2611)
 
 # ---------------------------------------------------------------- the palette: the painting's night blues, mid values
-C = dict(slab='6d7890', slab2='65708a', slab3='747f96', grout='4c556b', rock='56617e', rock2='4d5874', rock3='5f6a88',
-         cliff='4f5b7a', cliff2='59658a', moss='3f5a5e', bed='2b3550', pine='35525a', pine2='3d5c63', pine3='2f4a54',
-         bark='7a6168', bark2='6a545c', mtn1='5d6c98', mtn2='6e7ea8', mtn3='8090b8', lant='8d929c', lant2='767b86',
+C = dict(slab='6d7890', slab2='65708a', slab3='747f96', grout='4c556b', rock='3b4560', rock2='343d56', rock3='414c68',
+         cliff='323b55', cliff2='39435f', moss='2b3d42', bed='141c30', pine='1e2c33', pine2='22323a', pine3='1a262c',
+         bark='5a464c', bark2='4c3c42', mtn1='2c3552', mtn2='384263', mtn3='475276', lant='9da2ac', lant2='858a95',
+         rope='c4ad84', shide='ece9e0', mist='c8d4ec',
          glow='ffd9a0', sakura='e3c0cc', sakura2='d6aebd', ledge='4a5573', cloud='8f9cc4', cloud2='7f8db8')
 WATER_Y = -1.3       # the pool's surface (the terrace floor is 0)
+CW0, CW1 = -4.5, 6.5  # the causeway's sides (x): the duel's floor; water both sides
 _az, _el = math.radians(-176), math.radians(12)   # the moon (yaw as the lenses: 0 = down the lane to -z, -180 = up it to +z)
 FX = {'falls': [], 'mist': [], 'lanterns': [], 'spray': [], 'foam': []}
 
@@ -137,78 +139,85 @@ def sakura(x, y, z, h, seed=7):
         rock(r.choice(['sakura', 'sakura2']), x + dx * h / 9, y + h * dy, z + dz * h / 9, s, s * 0.7, s * 0.9, sub=2, jit=0.07, model='sakura', kind='leaf')
 
 
-def lantern(x, z, yaw=0.0):
-    """a stone toro: footing, post, the fire box (a warm panel inside), the roof cap and its knob"""
+def lantern(x, z, yaw=0.0, s=1.5, y0=0.0):
+    """a stone toro (s: its scale - the judge, round 1: too small to register): footing, post, the fire box (a warm
+    panel inside), the roof cap and its knob"""
     m = 'lantern'
-    K.Bc(m, C['lant2'], x, 0.3, z, 2.2, 0.6, 2.2, bev=0.12, kind='stone', yaw=yaw)
-    K.cyl(m, C['lant'], x, 0.6, z, 0.42, 2.6, segs=12, bev=0.1, kind='stone')
-    K.Bc(m, C['lant2'], x, 3.35, z, 1.7, 0.4, 1.7, bev=0.1, kind='stone', yaw=yaw)
-    K.Bc(m, C['lant'], x, 4.15, z, 1.25, 1.2, 1.25, bev=0.1, kind='stone', yaw=yaw)
-    K.Bc('lanternfire', C['glow'], x, 4.15, z, 1.32, 0.72, 0.7, bev=0.04, kind='neon', yaw=yaw)
-    K.Bc('lanternfire', C['glow'], x, 4.15, z, 0.7, 0.72, 1.32, bev=0.04, kind='neon', yaw=yaw)
-    K.lathe(m, C['lant2'], [(0, 4.75), (1.75, 4.75), (1.6, 5.05), (0.5, 5.6), (0, 5.75)], x, 0, z, segs=8, kind='stone')
-    K.lathe(m, C['lant'], [(0, 5.6), (0.32, 5.65), (0.36, 5.95), (0.15, 6.3), (0, 6.35)], x, 0, z, segs=10, kind='stone')
-    FX['lanterns'].append([x, 4.15, z])
+    K.Bc(m, C['lant2'], x, y0 + 0.3 * s, z, 2.2 * s, 0.6 * s, 2.2 * s, bev=0.12 * s, kind='stone', yaw=yaw)
+    K.cyl(m, C['lant'], x, y0 + 0.6 * s, z, 0.42 * s, 2.6 * s, segs=12, bev=0.1 * s, kind='stone')
+    K.Bc(m, C['lant2'], x, y0 + 3.35 * s, z, 1.7 * s, 0.4 * s, 1.7 * s, bev=0.1 * s, kind='stone', yaw=yaw)
+    K.Bc(m, C['lant'], x, y0 + 4.15 * s, z, 1.25 * s, 1.2 * s, 1.25 * s, bev=0.1 * s, kind='stone', yaw=yaw)
+    K.Bc('lanternfire', C['glow'], x, y0 + 4.15 * s, z, 1.32 * s, 0.72 * s, 0.7 * s, bev=0.04, kind='neon', yaw=yaw)
+    K.Bc('lanternfire', C['glow'], x, y0 + 4.15 * s, z, 0.7 * s, 0.72 * s, 1.32 * s, bev=0.04, kind='neon', yaw=yaw)
+    K.lathe(m, C['lant2'], [(0, 4.75 * s), (1.75 * s, 4.75 * s), (1.6 * s, 5.05 * s), (0.5 * s, 5.6 * s), (0, 5.75 * s)], x, y0, z, segs=8, kind='stone')
+    K.lathe(m, C['lant'], [(0, 5.6 * s), (0.32 * s, 5.65 * s), (0.36 * s, 5.95 * s), (0.15 * s, 6.3 * s), (0, 6.35 * s)], x, y0, z, segs=10, kind='stone')
+    FX['lanterns'].append([x, y0 + 4.15 * s, z])
 
 
 # ---------------------------------------------------------------- the terrace: worn granite slabs, the duel's floor
 def terrace():
-    # (slabs in rows across the lane, a little uneven in size and tone; the joints read in the overhead pass)
+    # (slabs in rows across the causeway, a little uneven in size and tone; the joints read in the overhead pass)
     z = 18.0
     while z > -74:
-        d = rnd.choice([5.2, 6.0, 6.8])
-        x = -9.5
-        while x < 30:
-            w = min(rnd.choice([5.0, 6.4, 7.6, 8.8]), 30 - x)
-            if w > 1.2:
-                K.B('terrace', C[rnd.choice(['slab', 'slab2', 'slab3'])], x + 0.08, -1.2, z - d + 0.08, x + w - 0.08, -0.02 + rnd.uniform(-0.015, 0.0), z - 0.08,
-                    bev=0.12, kind='stone', segs=1)
+        d = rnd.choice([4.6, 5.4, 6.2])
+        x = CW0
+        while x < CW1 - 0.5:
+            w = min(rnd.choice([3.4, 4.2, 5.6]), CW1 - x)
+            if w > 1.0:
+                K.B('terrace', C[rnd.choice(['slab', 'slab2', 'slab3'])], x + 0.08, -1.6, z - d + 0.08, x + w - 0.08, -0.02 + rnd.uniform(-0.015, 0.0), z - 0.08,
+                    bev=0.14, kind='stone', segs=1)
             x += w
         z -= d
-    K.B('terrace', C['grout'], -9.5, -1.5, -74, 30, -0.16, 18, bev=0.0, kind='stone')
-    # the west and north rims down into the pool: big rounded stones, gaps between
-    for zz in range(16, -76, -5):
-        rock(rnd.choice(['rock', 'rock2']), -10.5 + rnd.uniform(-0.6, 0.5), -0.9, zz + rnd.uniform(-1, 1), rnd.uniform(3.2, 4.8), rnd.uniform(2.0, 3.2), rnd.uniform(3.8, 5.4), yaw=rnd.uniform(0, 3))
-    for xx in range(-8, 30, 5):
-        rock(rnd.choice(['rock', 'rock2', 'rock3']), xx + rnd.uniform(-1, 1), -0.9, 19.5 + rnd.uniform(-0.5, 0.6), rnd.uniform(3.6, 5.2), rnd.uniform(2.0, 3.0), rnd.uniform(3.0, 4.2), yaw=rnd.uniform(0, 3))
+    K.B('terrace', C['grout'], CW0, -1.9, -74, CW1, -0.16, 18, bev=0.0, kind='stone')
+    # its kerbs: long rounded edge stones down both sides into the water
+    for side, x in ((-1, CW0 - 0.6), (1, CW1 + 0.6)):
+        z = 18.0
+        while z > -74:
+            L = rnd.uniform(5, 8)
+            rock(rnd.choice(['rock', 'rock3']), x + side * rnd.uniform(0, 0.3), -0.75, z - L / 2, 1.9, 1.5, L, sub=2, jit=0.03, yaw=rnd.uniform(-0.05, 0.05))
+            z -= L * 0.92
+    # stepping stones off it into the pool, both sides (round, flat, a little apart)
+    for (x, z, s) in ((-8.5, 6, 3.2), (-12.5, 9, 2.8), (-9.5, -20, 3.0), (-14, -24, 2.6), (10.5, -6, 3.0), (14.5, -9, 2.6),
+                      (10, -44, 3.2), (14.5, -48, 2.8), (-9, -52, 2.8), (19, -12, 2.4)):
+        K.cyl('terrace', C[rnd.choice(['slab2', 'slab3'])], x, WATER_Y - 1.2, z, s, 1.5, segs=14, bev=0.3, kind='stone')
+    # the north end: rounded stones where the causeway meets the pool
+    for xx in range(-4, 8, 3):
+        rock(rnd.choice(['rock', 'rock2', 'rock3']), xx + rnd.uniform(-0.5, 0.5), -0.9, 19.5 + rnd.uniform(-0.5, 0.6), rnd.uniform(3.0, 4.0), rnd.uniform(2.0, 2.8), rnd.uniform(3.0, 4.0), yaw=rnd.uniform(0, 3))
 
 
 # ---------------------------------------------------------------- crags: the painting's stratified cliffs, chunky
 def crag(x, z, w, d, h, tiers=4, yaw=0.0, col=None, model='cliffs', seed=0, lean=0.0):
-    """a cliff mass as a cluster of tall rounded columns (the painting's vertical strata), tallest in the middle, their
-    tops uneven and a little tilted, a ledge band on some; x, z the foot's middle, w across (x), d deep (z), h tall.
+    """a cliff mass as a few big rounded columns stepped in two or three broad heights (the painting's stratified
+    cliffs, kept to big shapes), tallest at the back; x, z the foot's middle, w across (x), d deep (z), h tall.
     Returns the columns' tops [(x, top, z)] (trees stand on them)"""
     r = random.Random(seed or int(x * 7 + z * 3))
-    n, m = max(2, int(w / 10)), max(1, int(d / 13))
+    n, m = max(2, int(w / 17)), max(1, int(d / 22))
+    steps = [1.0, 0.78, 0.58]
     cols = []
     for i in range(n):
         for j in range(m):
-            cx = x - w / 2 + (i + 0.5) * w / n + r.uniform(-0.18, 0.18) * w / n
-            cz = z - d / 2 + (j + 0.5) * d / m + r.uniform(-0.18, 0.18) * d / m
-            ex, ez = abs((i + 0.5) / n - 0.5) * 2, abs((j + 0.5) / m - 0.5) * 2
-            hh = h * (1 - 0.4 * max(ex, ez) ** 1.6) * r.uniform(0.72, 1.08)
-            cw, cd = w / n * r.uniform(1.1, 1.45), d / m * r.uniform(1.1, 1.45)
+            cx = x - w / 2 + (i + 0.5) * w / n + r.uniform(-0.12, 0.12) * w / n
+            cz = z - d / 2 + (j + 0.5) * d / m + r.uniform(-0.12, 0.12) * d / m
+            ex = abs((i + 0.5) / n - 0.5) * 2
+            k = steps[min(2, int(ex * 2.2 + r.uniform(0, 0.6)))]
+            hh = h * k
+            cw, cd = w / n * r.uniform(1.25, 1.5), d / m * r.uniform(1.2, 1.45)
             H = hh + 8
             bm = bmesh.new()
             bmesh.ops.create_cube(bm, size=1.0)
             bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges if abs(e.verts[0].co.y - e.verts[1].co.y) > 0.5], cuts=2)
-            tilt = r.uniform(-0.14, 0.14)
+            tilt = r.uniform(-0.1, 0.1)
             for v in bm.verts:
-                k = v.co.y + 0.5                       # 0 at the foot, 1 at the top
-                taper = 1 - 0.2 * k
+                kk = v.co.y + 0.5
+                taper = 1 - 0.26 * kk
                 v.co.x *= taper; v.co.z *= taper
-                if k > 0.99: v.co.y += tilt * v.co.x * cw / H
+                if kk > 0.99: v.co.y += tilt * v.co.x * cw / H
             bmesh.ops.scale(bm, vec=(cw, H, cd), verts=bm.verts)
-            K.bevel(bm, min(2.6, cw * 0.22, cd * 0.22), 2)
-            jitter(bm, 0.45, int(cx * 13 + cz * 7))
+            K.bevel(bm, min(4.0, cw * 0.24, cd * 0.24), 2)
+            jitter(bm, 0.5, int(cx * 13 + cz * 7))
             c = col or r.choice(['cliff', 'cliff2', 'rock'])
-            K.put(model, 'rock', C[c], bm, K.Tr(cx, -8 + H / 2, cz) @ K.Ry(yaw + r.uniform(-0.3, 0.3)))
-            # (a ledge band partway up on some: the strata's step)
-            if r.random() < 0.45 and hh > 14:
-                yb = -8 + H * r.uniform(0.35, 0.7)
-                K.Bc(model, C['ledge'], cx + r.uniform(-1, 1), yb, cz + r.uniform(-1, 1), cw * 1.12, r.uniform(1.6, 2.6), cd * 1.12,
-                     bev=0.8, kind='rock', yaw=yaw + r.uniform(-0.3, 0.3))
-            cols.append((cx, -8 + H - 1.0, cz))
+            K.put(model, 'rock', C[c], bm, K.Tr(cx, -8 + H / 2, cz) @ K.Ry(yaw + r.uniform(-0.2, 0.2)))
+            cols.append((cx, -8 + H - 1.2, cz))
     return cols
 
 
@@ -217,18 +226,20 @@ def top_of(cols):
 
 
 def trees_on(cols, k, h0=22, h1=34):
-    for c in random.Random(int(cols[0][0] * 3 + cols[0][2])).sample(cols, min(k, len(cols))):
+    # (half as many firs as round 1 - "the cone firs read Alpine or Christmas, not Japanese")
+    for c in random.Random(int(cols[0][0] * 3 + cols[0][2])).sample(cols, min(max(1, k // 2), len(cols))):
         conifer(c[0] + rnd.uniform(-2, 2), c[1], c[2] + rnd.uniform(-2, 2), rnd.uniform(h0, h1))
 
 
 # ---------------------------------------------------------------- the pool, the lake beyond, their beds and stones
 def pool():
-    K.B('poolbed', C['bed'], -150, -9, 20, -9.5, -7.5, -120, bev=0.0, kind='rock')
+    K.B('poolbed', C['bed'], -150, -9, 20, CW0 - 1.2, -7.5, -120, bev=0.0, kind='rock')
+    K.B('poolbed', C['bed'], CW1 + 1.2, -9, 20, 36, -7.5, -120, bev=0.0, kind='rock')
     K.B('poolbed', C['bed'], -150, -9, 172, 80, -7.5, 18, bev=0.0, kind='rock')
     K.B('poolbed', C['bed'], -150, 2, 420, 80, 3.5, 172, bev=0.0, kind='rock')
     # stones out of the water (the red picture's dark rounded rocks round the falls and along the shore)
-    for (x, z, s) in ((-46, 60, 7), (-58, 96, 9), (8, 70, 6), (22, 110, 8), (-34, 128, 6), (-70, 30, 6), (-62, -50, 7),
-                      (-40, -8, 4.5), (-86, -76, 8), (-30, 40, 3.8), (36, 52, 7), (-80, 140, 9), (14, 150, 7), (-52, 152, 6)):
+    for (x, z, s) in ((-46, 60, 7), (-58, 96, 9), (8, 70, 6), (22, 110, 8), (-70, 30, 6), (-62, -50, 7),
+                      (-40, -8, 4.5), (-86, -76, 8), (-30, 40, 3.8), (36, 52, 7), (-80, 140, 9), (24, -30, 5), (28, -70, 6)):
         rock(rnd.choice(['rock', 'rock2', 'rock3']), x, WATER_Y + s * 0.12, z, s * rnd.uniform(1.1, 1.5), s * rnd.uniform(0.7, 1.0), s * rnd.uniform(1.0, 1.3), yaw=rnd.uniform(0, 3), jit=0.08)
 
 
@@ -237,26 +248,47 @@ def pool():
 CASCADE_Z = 172.0
 UPPER_Y = 7.5
 def north():
-    # the cascade's sill: a step of big stones across the lake, the water pouring over between them
-    for (x, w) in ((-60, 10), (-46, 7), (-35, 8), (-22, 9), (-8, 8), (5, 9), (18, 10)):
-        rock(rnd.choice(['rock', 'rock2']), x, UPPER_Y - 2.4, CASCADE_Z + 1, w, 9.5, 9, yaw=rnd.uniform(0, 3), jit=0.05)
-    K.B('cliffs', C['rock2'], -66, -2, CASCADE_Z - 1, 24, UPPER_Y - 0.4, CASCADE_Z + 6, bev=1.0, kind='rock')
-    for (x0, x1) in ((-55, -50), (-42, -38), (-30, -26), (-17, -12), (-3, 1), (10, 14)):
-        FX['falls'].append({'top': [(x0 + x1) / 2, UPPER_Y - 0.2, CASCADE_Z - 1.2], 'bottom': [(x0 + x1) / 2, WATER_Y, CASCADE_Z - 4.5],
-                            'width': (x1 - x0) + 1.5, 'face': [0, 0, -1]})
+    # the cascade: three wide curtains pouring off one overhanging lip, broken by two big boulders (was seven slots
+    # between egg-shaped stones: "a picket fence")
+    lip_y = UPPER_Y - 0.3
+    K.B('cliffs', C['rock2'], -66, -2, CASCADE_Z + 0.5, 26, lip_y, CASCADE_Z + 7, bev=1.2, kind='rock')
+    K.B('cliffs', C['rock'], -66, lip_y - 1.6, CASCADE_Z - 1.4, 26, lip_y + 0.2, CASCADE_Z + 1.5, bev=0.7, kind='rock')  # (the lip's overhang)
+    for (x, w, h) in ((-36, 9, 13), (-11, 8, 12), (-62, 9, 15), (22, 10, 14)):
+        rock(rnd.choice(['rock', 'rock2']), x, UPPER_Y - 1.5, CASCADE_Z + 0.5, w, h, 9, yaw=rnd.uniform(0, 3), jit=0.06)
+    for (x, w) in ((-48.5, 15), (-23.5, 20), (5.5, 15)):
+        FX['falls'].append({'top': [x, lip_y, CASCADE_Z - 1.6], 'bottom': [x, WATER_Y, CASCADE_Z - 5.0], 'width': w, 'face': [0, 0, -1]})
+        # the plunge: a soft mound of mist where it lands
+        rock('mist', x, WATER_Y + 0.6, CASCADE_Z - 6.5, w * 1.2, 3.2, 6.5, sub=2, jit=0.05, model='mistmounds', kind='mist')
     FX['mist'].append({'at': [-20, WATER_Y + 1, CASCADE_Z - 6], 'size': [80, 8]})
     FX['foam'].append({'at': [-20, WATER_Y, CASCADE_Z - 7], 'r': 40, 'line': True})
+    # the shimenawa: a thick straw rope round the big boulder at the cascade's foot, white paper streamers hanging
+    shimenawa(-36, CASCADE_Z - 9, 6.5, WATER_Y)
     # the V: crags left and right of the moon's line, falling away toward the gap
     for (x, z, w, d, h) in ((-112, 150, 60, 70, 58), (-96, 230, 60, 80, 48), (-84, 320, 60, 80, 36), (-150, 60, 50, 80, 62)):
         trees_on(crag(x, z, w, d, h), 4, 24, 34)
     for (x, z, w, d, h) in ((66, 140, 60, 70, 52), (60, 230, 56, 80, 42), (52, 320, 56, 80, 30), (100, 70, 50, 70, 40)):
         trees_on(crag(x, z, w, d, h), 4, 24, 34)
-    # the hero pines framing the moon from the gap's two sides (the red picture's two big pines)
-    matsu(-84, top_of(crag(-84, 120, 34, 36, 30, seed=21)) - 1, 118, 30, 12, math.radians(-15), pads=7, seed=11)
-    matsu(42, top_of(crag(44, 118, 30, 34, 26, seed=22)) - 1, 116, 26, 10, math.radians(195), pads=6, seed=12)
+    # the hero pines framing the moon from the gap's two sides, leaning in (the red picture's two big pines)
+    matsu(-80, top_of(crag(-84, 120, 36, 36, 30, seed=21)) - 1, 118, 40, 16, math.radians(-12), pads=7, seed=11)
+    matsu(40, top_of(crag(44, 118, 32, 34, 26, seed=22)) - 1, 116, 36, 14, math.radians(192), pads=7, seed=12)
     # the upper lake's far shore: low rounded banks
     for x in range(-90, 70, 14):
         rock('rock2', x + rnd.uniform(-3, 3), UPPER_Y - 1, 410 + rnd.uniform(-6, 6), 18, 6, 12, yaw=rnd.uniform(0, 3))
+
+
+def shimenawa(cx, cz, r, base_y):
+    """the big boulder with its sacred straw rope and four zigzag paper streamers"""
+    rock('rock', cx, base_y + r * 0.55, cz, r * 2.2, r * 1.7, r * 1.9, sub=3, jit=0.03)
+    yb = base_y + r * 1.15
+    pts = [(cx + math.cos(a) * r * 1.06, yb + math.sin(a * 2) * 0.15, cz + math.sin(a) * r * 0.92) for a in [k * 2 * math.pi / 24 for k in range(25)]]
+    tube('rope', 'rope', pts, [0.42] * len(pts), segs=10, kind='wood')
+    for a in (math.radians(-110), math.radians(-80), math.radians(-50), math.radians(-140)):
+        px, pz = cx + math.cos(a) * r * 1.1, cz + math.sin(a) * r * 0.98
+        # a zigzag of four flat white steps hanging from the rope, facing out
+        for k in range(4):
+            off = 0.32 if k % 2 else -0.32
+            K.Bc('shide', C['shide'], px + math.cos(a) * 0.05 + math.sin(a) * off * 0.6, yb - 0.6 - k * 0.55, pz + math.sin(a) * 0.05 - math.cos(a) * off * 0.6,
+                 0.7, 0.5, 0.06, bev=0.02, kind='plastic', yaw=-a + math.pi / 2)
 
 
 # ---------------------------------------------------------------- west: the tall two-tier falls (the blue painting's) across the pool
@@ -266,87 +298,73 @@ def west():
     upper = 74.0
     crag(-138, zf, 40, 64, lower + 1, col='cliff', seed=31)
     crag(-160, zf + 2, 36, 58, upper + 1, col='cliff2', seed=32)
-    # the ledge between the tiers: where the upper falls land and pool before the lower ones
+    # the ledge between the tiers and the two lips, overhanging (the falls pour off a clear ledge, the painting's)
     K.B('cliffs', C['ledge'], -150, lower - 3, zf - 22, -120, lower + 0.6, zf + 22, bev=1.2, kind='rock')
-    for (z, w) in ((zf - 9, 5.0), (zf - 1, 3.2), (zf + 7, 4.4)):
-        FX['falls'].append({'top': [-118.5, lower + 0.4, z], 'bottom': [-116.0, WATER_Y, z], 'width': w, 'face': [1, 0, 0]})
-    for (z, w) in ((zf - 5, 6.0), (zf + 5, 3.0)):
-        FX['falls'].append({'top': [-139.5, upper - 0.5, z], 'bottom': [-136.5, lower + 0.5, z], 'width': w, 'face': [1, 0, 0]})
-    for (z0, z1, y, x) in ((zf - 12, zf - 6, lower, -118.5), (zf - 3, zf + 1, lower, -118.5), (zf + 4, zf + 10, lower, -118.5),
-                           (zf - 9, zf - 1, upper, -139.5), (zf + 3, zf + 7, upper, -139.5)):
-        K.B('cliffs', C['rock2'], x - 3, y - 1.2, z0, x + 1.5, y + 0.3, z1, bev=0.4, kind='rock')
+    K.B('cliffs', C['rock'], -121.5, lower - 1.4, zf - 12, -116.5, lower + 0.6, zf + 10, bev=0.6, kind='rock')
+    K.B('cliffs', C['rock'], -143, upper - 1.4, zf - 9, -138, upper + 0.4, zf + 6, bev=0.6, kind='rock')
+    for (z, w) in ((zf - 6, 10.0), (zf + 5, 7.0)):
+        FX['falls'].append({'top': [-117.0, lower + 0.4, z], 'bottom': [-113.5, WATER_Y, z], 'width': w, 'face': [1, 0, 0]})
+        rock('mist', -111.5, WATER_Y + 0.6, z, 6.5, 3.0, w * 1.2, sub=2, jit=0.05, model='mistmounds', kind='mist')
+    FX['falls'].append({'top': [-138.5, upper - 0.2, zf - 1.5], 'bottom': [-135.5, lower + 0.6, zf - 1.5], 'width': 9.0, 'face': [1, 0, 0]})
     FX['mist'].append({'at': [-112, WATER_Y + 1, zf], 'size': [24, 9]})
     FX['mist'].append({'at': [-132, lower + 1, zf], 'size': [16, 6]})
-    FX['foam'].append({'at': [-111, WATER_Y, zf], 'r': 12})
-    # the rest of the west wall, stepping down to the north and south, pines on top
+    FX['foam'].append({'at': [-110, WATER_Y, zf], 'r': 14})
+    # the rest of the west wall, stepping down to the north and south, a few pines on top
     for (z, w, d, h) in ((60, 50, 60, 44), (110, 40, 50, 52), (-70, 44, 60, 40), (-118, 44, 56, 34)):
         trees_on(crag(-140, z, d, w, h), 4, 22, 32)
-    for k in range(4):
+    for k in range(2):
         conifer(-162 + rnd.uniform(-8, 8), upper - 1, zf + rnd.uniform(-18, 18), rnd.uniform(24, 34))
-    matsu(-124, lower - 0.5, zf + 20, 16, 7, math.radians(10), pads=6, seed=5)
-    matsu(-126, lower - 0.5, zf - 22, 13, 6, math.radians(-10), pads=5, seed=6)
+    # the hero pine leaning out over the west falls (seen across the pool from the lane)
+    matsu(-122, lower - 0.5, zf + 19, 26, 12, math.radians(8), pads=7, seed=5)
+    matsu(-124, lower - 0.5, zf - 24, 18, 8, math.radians(-12), pads=5, seed=6)
 
 
 # ---------------------------------------------------------------- the east bank: rising rock and forest (kept off the lenses)
 def east_bank():
-    for (x, z, w, h, d) in ((44, 10, 26, 10, 40), (52, -30, 30, 14, 44), (48, -70, 30, 12, 40), (58, 50, 30, 18, 40), (74, 0, 34, 26, 60), (80, -60, 40, 22, 50),
-                            (40, 40, 20, 8, 26), (36, -100, 40, 14, 40)):
+    for (x, z, w, h, d) in ((48, 10, 26, 10, 40), (54, -30, 30, 14, 44), (50, -70, 30, 12, 40), (58, 50, 30, 18, 40), (74, 0, 34, 26, 60), (80, -60, 40, 22, 50),
+                            (44, 40, 20, 8, 26), (40, -100, 40, 14, 40)):
         rock(rnd.choice(['rock', 'rock2', 'cliff']), x, h / 2 - 3, z, w, h + 6, d, sub=3, jit=0.04, model='bank', kind='rock')
-    for i in range(22):
-        x = rnd.uniform(46, 100); z = rnd.uniform(-110, 70)
+    for i in range(11):
+        x = rnd.uniform(48, 100); z = rnd.uniform(-110, 70)
         conifer(x, 6 + (x - 40) * 0.25, z, rnd.uniform(22, 34))
-    sakura(34, 4.5, -58, 13)
-    matsu(33, 0, 16, 12, 5, math.radians(200), pads=5, seed=8)
-    # the terrace's east edge: a low step of stones up to the bank
-    for z in range(16, -76, -6):
-        rock(rnd.choice(['rock', 'rock3']), 31.5 + rnd.uniform(-0.5, 0.8), 0.2, z + rnd.uniform(-1, 1), rnd.uniform(3, 4.6), rnd.uniform(1.6, 2.6), rnd.uniform(4, 5.4), yaw=rnd.uniform(0, 3))
+    sakura(38, 4.5, -58, 13)
+    matsu(37, 0, 16, 16, 7, math.radians(200), pads=6, seed=8)
+    # the pool's east shore: rounded stones at the waterline
+    for z in range(16, -80, -7):
+        rock(rnd.choice(['rock', 'rock3']), 35 + rnd.uniform(-0.5, 0.8), WATER_Y + 0.6, z + rnd.uniform(-1, 1), rnd.uniform(4, 6), rnd.uniform(2.4, 3.4), rnd.uniform(5, 7), yaw=rnd.uniform(0, 3))
 
 
 # ---------------------------------------------------------------- the south end, past the victim
 def south_end():
     for (x, z, w, h, d) in ((-4, -96, 60, 12, 30), (30, -104, 40, 18, 30), (-40, -100, 40, 16, 34), (8, -124, 80, 30, 30)):
         rock(rnd.choice(['rock', 'rock2', 'cliff']), x, h / 2 - 3, z, w, h + 6, d, sub=3, jit=0.04, model='bank', kind='rock')
-    for i in range(14):
+    for i in range(7):
         conifer(rnd.uniform(-60, 50), 8 + rnd.uniform(0, 10), rnd.uniform(-112, -135), rnd.uniform(22, 32))
-    for x, z in ((-7.5, -66), (26, 12), (-7.5, 14)):
-        lantern(x, z)
-    matsu(-6, 0, -80, 11, 4, math.radians(80), pads=5, seed=9)
+    # the lanterns flank the causeway on stones in the water (their warm light on the pool), and one at each end
+    for (x, z) in ((-9.0, -8), (11.0, -30), (-9.0, -60), (11.0, 12)):
+        K.cyl('lantern', C['slab3'], x, WATER_Y - 1.0, z, 2.6, 1.3, segs=14, bev=0.3, kind='stone')
+        lantern(x, z, s=1.5, y0=WATER_Y + 0.3)
+    matsu(-6, 0, -80, 14, 5, math.radians(80), pads=6, seed=9)
 
 
 # ---------------------------------------------------------------- the far mountains: layered ridges, paler with distance
 def mountains():
-    rows = ((300, 'mtn1', 110, 190), (450, 'mtn2', 160, 270), (620, 'mtn3', 210, 340))
+    """the far ridges: two rounded layers, darker than the sky, low in the moon's gap (was faceted pyramids)"""
+    rows = ((330, 'mtn1', 110, 170), (520, 'mtn2', 170, 260))
     for dist, col, h0, h1 in rows:
-        for k in range(16):
-            a = 2 * math.pi * k / 16 + rnd.uniform(-0.12, 0.12)
+        for k in range(18):
+            a = 2 * math.pi * k / 18 + rnd.uniform(-0.1, 0.1)
             x, z = math.sin(a) * dist, math.cos(a) * dist
             h = rnd.uniform(h0, h1)
-            w = dist * 0.42 * rnd.uniform(0.8, 1.2)
+            w = dist * 0.45 * rnd.uniform(0.85, 1.2)
             if abs(x) + w > 980 or abs(z) + w > 980: continue
-            # (in the moon's gap the peaks stay low, the near ring not at all: the moon rises over them, the lake runs on)
             yaw = math.degrees(math.atan2(x, -z))
             off = abs(((yaw - math.degrees(_az)) + 180) % 360 - 180)
             if off < 32:
                 if dist < 400: continue
                 h = min(h, 40 + dist * math.tan(math.radians(3 + 0.3 * off)))
-            # (a peak: a lathed cone with a rounded shoulder, squashed along the ring so neighbours overlap)
-            bm = bmesh.new()
-            segs = 9
-            prof = [(1.0, 0), (0.92, 0.25), (0.62, 0.6), (0.28, 0.88), (0.1, 0.98), (0, 1.0)]
-            rings = []
-            for r, y in prof:
-                if r == 0: rings.append([bm.verts.new((0, y, 0))])
-                else: rings.append([bm.verts.new((r * math.cos(2 * math.pi * i / segs), y, r * math.sin(2 * math.pi * i / segs))) for i in range(segs)])
-            for A, Bv in zip(rings, rings[1:]):
-                for i in range(segs):
-                    j = (i + 1) % segs
-                    if len(Bv) > 1: bm.faces.new((A[i], A[j], Bv[j], Bv[i]))
-                    else: bm.faces.new((A[i], A[j], Bv[0]))
-            bm.faces.new(rings[0][::-1])
-            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-            jitter(bm, 0.05, k * 7 + dist)
-            bmesh.ops.scale(bm, vec=(w, h, w * 0.7), verts=bm.verts)
-            K.put('mountains', 'rock', C[col], bm, K.Tr(x, -40, z) @ K.Ry(-a))
+            # (a smooth rounded ridge: a squashed sphere, its lower half under the floor)
+            rock(col, x, -30, z, w, h * 2.0, w * 0.6, sub=3, jit=0.02, yaw=-a, model='mountains', kind='rock')
 
 
 def cloud(cx, cy, cz, length, puffs, seed, yaw):
@@ -380,7 +398,7 @@ K.B('kitorigin', 'ff00ff', -0.25, -60.25, -0.25, 0.25, -59.75, 0.25, bev=0.0, ki
 # the moon: low over the north falls, straight up the lane a little west (the game builds it, far out of the kit)
 moon_dir = Vector((math.sin(_az) * math.cos(_el), math.sin(_el), -math.cos(_az) * math.cos(_el))).normalized()
 FX['moon'] = {'dir': [round(c, 4) for c in moon_dir], 'dist': 1700, 'deg': 16}
-FX['water'] = {'y': WATER_Y, 'boxes': [[-150, 20, -9.5, -120], [-150, CASCADE_Z, 80, 18]], 'upper': {'y': UPPER_Y, 'box': [-150, 420, 80, CASCADE_Z + 2]}}
+FX['water'] = {'y': WATER_Y, 'boxes': [[-150, 20, CW0 - 1.2, -120], [CW1 + 1.2, 20, 36, -120], [-150, CASCADE_Z, 80, 18]], 'upper': {'y': UPPER_Y, 'box': [-150, 420, 80, CASCADE_Z + 2]}}
 FX['glitter'] = {'from': [moon_dir.x / moon_dir.z * 400, 400], 'to': [moon_dir.x / moon_dir.z * 24, 24], 'width': 9}
 json.dump(FX, open(os.path.join(OUT, 'tide_waterfall.json'), 'w'), indent=1)
 print('FX falls %d mist %d lanterns %d' % (len(FX['falls']), len(FX['mist']), len(FX['lanterns'])))

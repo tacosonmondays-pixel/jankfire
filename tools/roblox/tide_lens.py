@@ -67,7 +67,7 @@ def main(take_p, scan_p, out_p):
     # ---------------------------------------------------------------- the shots: (first frame, name, anchor, weight)
     SHOTS = [(0, 'THE GRIP', 'kLT', 1.0), (16, 'THE DRAW', 'kUT', 0.8), (56, 'THE LENGTH', 'kH', 0.3), (82, 'THE TIP', 'vH', 1.0),
              (94, 'THE CHARGE', 'kUT', 0.6), (116, 'CLOSING', 'kUT', 0.5), (130, 'THE PASS', 'kLT', 0.6), (139, 'CUT FRAME', 'vUT', 0.5),
-             (145, 'PAST HIM', 'kLT', 0.4), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7), (198, 'HOME', 'mouth', 1.0),
+             (145, 'PAST HIM', 'kLT', 0.4), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7),
              (207, 'THE CUT LANDS', 'vUT', 0.8), (221, 'THE END', 'kH', 0.5)]
     starts = [s[0] for s in SHOTS] + [N]
 
@@ -137,18 +137,18 @@ def main(take_p, scan_p, out_p):
         c = cam[f]
         fwd = norm([-c[5], -c[8], -c[11]])
         L[f] = nudge(c, add(mulv(fwd, 0.35 * u), [0.2 * u, 0, 0]))
-    # 11 THE SHEATHE: his medium, to the frame before the slide home
-    # 12 HOME (new cut): close on the sheath's mouth from in front of him, the victim far behind; the blade slides home
-    a, b = span(11)
+    # 11 THE SHEATHE: his medium (the slide home reads in it; a close-up on the mouth only saw the big R15 hands over it),
+    # pushing in toward the sheath through the slow slide to the click
+    a, b = span(10)
     mouth_end = P['mouth'][204]
     for f in range(a, b + 1):
-        u = ease((f - a) / (b - a))
-        at = add(mouth_end, [0.15, 0.15, 0])
-        pos = add(at, [0.55 - 0.15 * u, 0.25, -2.9 + 0.45 * u])
-        L[f] = look(pos, at, roll_deg=-3, fov=34)
+        u = ease((f - 194) / 12.0)
+        c = cam[f]
+        toward = norm(sub(mouth_end, c[:3]))
+        L[f] = nudge(c, mulv(toward, 1.3 * u))
     # 13 THE CUT LANDS: his
     # 14 THE END: a crane - from the winner close on the right, rising and pulling back to the moon over the falls
-    a, b = span(13)
+    a, b = span(12)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
         pos = lerpv([4.6, -0.6, -39.6], [7.5, 5.8, -47.0], u)
@@ -163,8 +163,8 @@ def main(take_p, scan_p, out_p):
             (94, 1.0, 'cut'), (129, 1.0),
             (130, 1.0, 'cut'), (133, 0.18), (138, 0.18),
             (139, 0.45, 'cut'), (144, 0.45),
-            (145, 1.0, 'cut'), (197, 1.0),
-            (198, 0.32, 'cut'), (203, 0.32), (204, 1.0),
+            (145, 1.0, 'cut'), (196, 1.0),
+            (199, 0.32), (203, 0.32), (204.5, 1.0),
             (207, 0.5, 'cut'), (212, 1.0),
             (221, 0.75, 'cut'), (254, 0.75)]
 

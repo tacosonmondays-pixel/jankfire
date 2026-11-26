@@ -64,11 +64,15 @@ local TUNE: { [string]: any } = {
 		-- (the falls under it all: Pro Sound Effects' distant waterfall, a steady stream, from Roblox's licensed library;
 		-- under the EFFECTS slider)
 		bed = { id = "9120552671", vol = 0.42 },
+		-- (a cool light on each fighter from the moon's side: dark avatars against the dark cliffs read by their edges -
+		-- the set's judge, round 1: "the charcoal attacker merges into the cliffs because there is no rim light")
+		rim = { dir = Vector3.new(-0.068, 0.208, 0.976), dist = 4.5, color = Color3.fromRGB(176, 196, 255), bright = 0.6, range = 8 },
 		-- the night (the set's SceneLook adds its Sky, Atmosphere, Bloom and grade): a cool moonlit key, blue fill, the
 		-- moon's own light low behind the falls
-		look = { lighting = { ClockTime = 0.3, GeographicLatitude = 23, Brightness = 2.6, Ambient = Color3.fromRGB(82, 92, 132),
-			OutdoorAmbient = Color3.fromRGB(108, 122, 172), ColorShift_Top = Color3.fromRGB(150, 170, 232), ColorShift_Bottom = Color3.fromRGB(24, 28, 46),
-			EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.8, ShadowSoftness = 0.3, ExposureCompensation = 1.3, GlobalShadows = true } },
+		-- (v1393: exposure 1.3 blew white outfits and pale masks out in every close-up; 0.55 with less fill still glowed)
+		look = { lighting = { ClockTime = 0.3, GeographicLatitude = 23, Brightness = 2.0, Ambient = Color3.fromRGB(52, 58, 88),
+			OutdoorAmbient = Color3.fromRGB(70, 80, 118), ColorShift_Top = Color3.fromRGB(150, 170, 232), ColorShift_Bottom = Color3.fromRGB(24, 28, 46),
+			EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.7, ShadowSoftness = 0.3, ExposureCompensation = 0.15, GlobalShadows = true } },
 	},
 }
 
@@ -392,10 +396,14 @@ function Pro.start(s: any, kind: string, sid: string): any
 	-- the two of them, the take on each, the props' tracks
 	takeBody(s.kg)
 	takeBody(s.vg)
+	-- (each root's height over its own feet, as Finisher.luau read it off the copy before anything moved it; the
+	-- Humanoid's HipHeight is only a fallback - a scaled avatar's can be far off)
 	for who, g in { k = s.kg, v = s.vg } do
 		local hum = g.hum :: Humanoid
 		sc.hip[who] = hum.HipHeight + (g.root :: BasePart).Size.Y / 2
 	end
+	if type(s.kFloor) == "number" and typeof(s.K0) == "Vector3" then sc.hip.k = math.clamp(s.K0.Y - s.kFloor, 1.5, 5) end
+	if type(s.hipV) == "number" then sc.hip.v = math.clamp(s.hipV, 1.5, 5) end
 	local kgm = s.kg.model
 	local hand = kgm:FindFirstChild("RightHand") :: BasePart
 	local lt = kgm:FindFirstChild("LowerTorso") :: BasePart
@@ -426,6 +434,22 @@ function Pro.start(s: any, kind: string, sid: string): any
 	sc.take = ORIGIN * CFrame.new(0, d.floor or STOCK_HIP, 0) -- (the take's space: its origin, the killer's root at frame 0)
 	sc.floorY = ORIGIN.Y
 	sc.cued = {}
+	if d.rim then
+		sc.rims = {}
+		for _, g in { s.kg, s.vg } do
+			local ut = g.model:FindFirstChild("UpperTorso")
+			if ut and ut:IsA("BasePart") then
+				local a = Instance.new("Attachment")
+				a.Name = "JankProRim"
+				a.Parent = ut
+				local l = Instance.new("PointLight")
+				l.Color = d.rim.color; l.Brightness = d.rim.bright; l.Range = d.rim.range; l.Shadows = false
+				l.Parent = a
+				table.insert(sc.made, a)
+				table.insert(sc.rims, a)
+			end
+		end
+	end
 	if d.bed then
 		local snd = Instance.new("Sound")
 		snd.Name = "FinisherSound"
@@ -520,8 +544,11 @@ local function ground(sc: any, who: string, g: any, fi: number, dt: number)
 	local tr = sc.tracks[who]
 	if not tr or tr.Length <= 0 then place(); return end
 	local all = who == "v" and fi >= FALL_FROM
+	-- (measured only once the body stands at the scene: Finisher.luau posed it at its own spot after the start)
+	local here = g.root.Position - sc.rootCF[who].Position
+	if Vector2.new(here.X, here.Z).Magnitude > 2 then place(); return end
 	local low = lowest(g, all) - ORIGIN.Y -- (the floor is ORIGIN's height)
-	if low > 12 or low < -12 then place(); return end
+	if low > 40 or low < -40 then place(); return end
 	local natural = low - (gs.off - (gs.base or 0)) -- (where it would stand on the base offset)
 	if not gs.base then
 		-- (calibrating: the take's first frames, the body at rest)
@@ -587,6 +614,10 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 	end
 	ground(sc, "k", s.kg, fi, dt)
 	ground(sc, "v", s.vg, fi, dt)
+	for _, a in sc.rims or {} do
+		local ut = a.Parent :: BasePart
+		a.WorldPosition = ut.Position + d.rim.dir.Unit * d.rim.dist + Vector3.new(0, 1.5, 0)
+	end
 	-- the props: off their proxies; a blade home in its sheath stays home on any body
 	local j = math.min(pi_ + 1, d.frames - 1)
 	local L = d.blade[pi_ + 1] + (d.blade[j + 1] - d.blade[pi_ + 1]) * pa
@@ -644,6 +675,19 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 				pcall(Sfx.play, q[2], nil, q[3])
 			end
 		end
+	end
+	if RunService:IsStudio() then
+		local function rel(p: BasePart?): string
+			if not p then return "-" end
+			local q = sc.take:PointToObjectSpace(p.Position)
+			return ("%.1f,%.1f,%.1f"):format(q.X, q.Y, q.Z)
+		end
+		local kl, vl = s.kg.model:FindFirstChild("LowerTorso") :: BasePart?, s.vg.model:FindFirstChild("LowerTorso") :: BasePart?
+		local cq = sc.take:PointToObjectSpace(cw.Position)
+		local skl = stockPt(d, "kLT", pi_, pa)
+		workspace:SetAttribute("ProDebug", ("f%.1f %s | kRoot %s %s kLT %s (stock %s) | vRoot %s %s vLT %s | cam %.1f,%.1f,%.1f off %.1f,%.1f,%.1f | gnd %.2f %.2f"):format(
+			fi, tostring(sc.shotNow), s.kg.root.Name, rel(s.kg.root), rel(kl), if skl then ("%.1f,%.1f,%.1f"):format(skl.X, skl.Y, skl.Z) else "-",
+			s.vg.root.Name, rel(s.vg.root), rel(vl), cq.X, cq.Y, cq.Z, sc.anOff.X, sc.anOff.Y, sc.anOff.Z, sc.gnd.k.off, sc.gnd.v.off))
 	end
 	-- (the shot's name and how far through it, for Finisher.luau's overlay: the last shot carries the name card)
 	local s0, s1 = pi_, pi_
