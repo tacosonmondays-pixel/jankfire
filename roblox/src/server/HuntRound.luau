@@ -30,7 +30,7 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("H
 local RD = HC.ROUND
 
 type Fighter = any
-type Member = { p: Player?, f: Fighter, role: string, spawn: CFrame, alive: boolean, standin: Model? }
+type Member = { p: Player?, f: Fighter, role: string, spawn: CFrame, alive: boolean, standin: Model?, grace: number? }
 local HuntRound = {}
 HuntRound.G = nil :: any
 HuntRound.lastGunman = nil :: Player?
@@ -161,7 +161,7 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	local function add(p: Player?, f: Fighter, role: string, sm: Model?)
 		local spawn: CFrame
 		if role == "gunman" then spawn = penAt else hi += 1; spawn = spawnCF(def, order[((hi - 1) % #order) + 1], origin) end
-		local m: Member = { p = p, f = f, role = role, spawn = spawn, alive = true, standin = sm }
+		local m: Member = { p = p, f = f, role = role, spawn = spawn, alive = true, standin = sm, grace = now() + 6 }
 		table.insert(g.members, m)
 		g.byF[f] = m
 		if role == "gunman" then g.gunman = m end
@@ -206,7 +206,7 @@ end
 
 -- ------------------------------------------------------------------ the end
 local function alive(m: Member): boolean
-	return m.alive and m.f.alive
+	return m.alive and (m.f.alive or now() <= (m.grace or 0)) -- (being re-made with the round's kit counts as up)
 end
 local function finish(winner: string, why: string)
 	local g = G
@@ -281,7 +281,9 @@ function HuntRound.tick()
 	-- leavers
 	for _, m in g.members do
 		if m.p and not m.p.Parent then m.alive = false end
-		if not m.f.alive then m.alive = false end
+		-- (a body that isn't up: dead, unless it is still being re-made with its round kit: Fight.spawn takes a moment.
+		-- the Studio test of 26 Nov 23:48 ended every round at once: the gunman's respawn read as a death)
+		if not m.f.alive and now() > (m.grace or 0) then m.alive = false end
 	end
 	if g.phase == "hide" and t >= g.hideEnd then
 		g.phase = "hunt"
