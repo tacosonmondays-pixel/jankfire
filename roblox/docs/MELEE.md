@@ -108,6 +108,15 @@ dummy by a RenderStep binding, every frame logged (distance, speed, rope/body/ti
 | KEYBINDS tab | MELEE LUNGE Z / RS, GRAPPLE REEL IN (HOLD) F / B, the side-button line under MOVEMENT |
 | phone (TouchForce) | LUNGE shows with the katana out |
 
+**Re-test with the shipped `keep` 0.15 (place version 1374, 26 Nov 23:27-23:30 UTC, same rig):**
+
+| test | result |
+| --- | --- |
+| lunge at a still Stand, 18 studs | 18 -> 3.4 studs in 0.11 s at 95 studs/s; the carry left 24 studs/s (41 with 0.4) and it came to rest against the Stand's plinth at 1.3-1.7 studs, as before |
+| lunge at the strafing Dummy, 18.7 studs | followed it as it walked: 18.7 -> 3.4 studs in 0.2 s, ended at 12 studs/s, no overshoot; server log "lunge 21.6" |
+| lock-on with the SMG out, 45 studs, aimed 2 degrees off | snapped on, lock 1.5 s (`HookLockDur`), pulled in, let go on reaching them at 0.8 s, no tie (a gun's); the 1.5 s cut-off itself didn't come up (they were reached first) |
+| anti-cheat (`StudioOn`) | 0 catches, 0 points |
+
 Not tested: two real players (the Studio MCP runs solo Play only; the strafing dummy stood in for a moving target), a
 real phone or controller, the gun-out lock-on's 1.5 s and its let-go on arrival (same code path as melee's, only the
 number differs), a real side mouse button (no way to press one here).
