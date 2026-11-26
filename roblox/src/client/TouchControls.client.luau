@@ -758,8 +758,8 @@ local function underCrosshair(maxT: number): (Model?, number?)
 		local feet = Hitbox.feet(root.Position)
 		local dx, dz = feet.X - o.X, feet.Z - o.Z
 		if dx * dx + dz * dz > (maxT + 9) * (maxT + 9) then return end
-		local k = Hitbox.distScale((feet - o).Magnitude)
-		local t = Hitbox.ray(o, d, feet, k, PAD)
+		-- (25 Nov 2026) the body as it's drawn, part by part, padded (Hitbox.rayModel): the shot's own test (Arsenal)
+		local t = Hitbox.rayModel(o, d, m, PAD)
 		if t and t <= maxT and (not bestT or t < bestT) then best, bestT = m, t end
 	end
 	for _, p in Players:GetPlayers() do

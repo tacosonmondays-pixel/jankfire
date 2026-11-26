@@ -567,8 +567,10 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 			best = if mh then (mh.Position - from).Magnitude else left
 			who, head = nil, false
 			for _, t in tg do
-				local k = Hitbox.distScale((t.feet - from).Magnitude)
-				local tt, hd = Hitbox.ray(from, d, t.feet, k, nil, Hitbox.profile(t.m), Weapons.precise(w)) -- (the whole head, as the server: Hitbox.profile; a precision gun: the real head)
+				-- (25 Nov 2026, the owner: "I can shoot way above their head and to their side with the smg") every gun hits
+				-- the body as it's drawn on your screen, part by part, the head a column its own size (Hitbox.rayModel); the
+				-- web game's boxes counted shots that visibly missed (a head box 1.6 studs over the head, grown far away)
+				local tt, hd = Hitbox.rayModel(from, d, t.m)
 				if tt and tt < best then best, who, head = tt, t.m, hd end
 			end
 			if who or not mh or bounces <= 0 or left - best <= 1 then break end
@@ -637,7 +639,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 	local fx = w.fx or {}
 	-- the flash (not through the scope: it hides the gun, flash and all) and the tracers, bent at a bounce, by the web's
 	-- rules for this gun (Fx.gunShot: size, flash time, tracer width and life)
-	Fx.gunShot(w, CFrame.lookAt(mz, mz + look), if F then {} else ends, path, fpv, scoped and fpv) -- (fanned: the flash only)
+	Fx.gunShot(w, CFrame.lookAt(mz, mz + look), if F then {} else ends, path, fpv, scoped and fpv, eye) -- (fanned: the flash only; eye: where the bullets really left from, the tracer joins their line)
 	if fx.spray then
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
 	elseif fx.brass and not scoped then
@@ -984,7 +986,7 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 		if type(s.path) == "table" then for i, b in s.path do if typeof(b) == "Vector3" and i <= 2 then table.insert(bp, b) end end end
 		local fpv = not thirdPerson()
 		local fm = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eyeAndAim())
-		if ((bp[1] or fe) - fm).Magnitude > 0.1 then Fx.gunShot(fw, CFrame.lookAt(fm, bp[1] or fe), { fe }, if #bp > 0 then bp else nil, fpv, true) end
+		if ((bp[1] or fe) - fm).Magnitude > 0.1 then Fx.gunShot(fw, CFrame.lookAt(fm, bp[1] or fe), { fe }, if #bp > 0 then bp else nil, fpv, true, if typeof(s.eye) == "Vector3" then s.eye else nil) end
 		local prev = fm
 		for _, b in bp do Fx.shotEnds(prev, { b }, true); Sfx.play("ricochet", b, 0.6); prev = b end
 		Fx.shotEnds(prev, { fe }, false)
@@ -1006,7 +1008,7 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 		-- their flash and tracers (a Revolver bullet bends at each bounce) by the web's rules; an unknown gun gets the
 		-- plain look (Fx.gunShot)
 		Fx.gunShot(sw or { fx = sfx, tracer = TRACER }, CFrame.lookAt(from, first), if sfx.spray then {} else ends,
-			if type(s.path) == "table" then s.path else nil, false)
+			if type(s.path) == "table" then s.path else nil, false, nil, if typeof(s.eye) == "Vector3" then s.eye else nil) -- (eye: where their bullets left from)
 	end
 	if sfx.spray then Fx.marbles(from, ends, 8) end
 	if sw then Sfx.gun(sw, 0, from) end

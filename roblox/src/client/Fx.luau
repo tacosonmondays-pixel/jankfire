@@ -875,7 +875,7 @@ local TRP = {
 }
 for _, e in TRP.puff.list do oneshot(e.pe, 16) end
 type TrailO = { col: Color3, wide: number, life: number, fpv: boolean, taper: number?, first: boolean, last: boolean, spec: any,
-	cheap: boolean?, impact: boolean? }
+	cheap: boolean?, impact: boolean?, nobits: boolean?, exact: boolean? } -- (nobits: no particles on this leg; exact: the bullet's own line, never bent)
 -- (the sets' own pools: their colours are set on every use, so they never recolour the ones above)
 local SETP = {
 	bubble = emitters(6, { Texture = TEX.bubble, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
@@ -929,6 +929,7 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 	local keep = 6
 	local u0 = if o.fpv then 0.25 else 0.08
 	local function count(n: number): number
+		if o.nobits then return 0 end -- (25 Nov 2026: the particles ride one leg of a joined tracer, Fx.gunShot)
 		if o.cheap then return if o.first then 1 else 0 end -- (one of a shotgun's pellets: the line, at most a bit)
 		return if o.fpv then math.max(1, math.floor(n / 2)) else n
 	end
@@ -960,9 +961,9 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 		local B = beam(TRP.wisp, a, b, col, tw * 0.9 * (o.taper or 1), tw * 1.1, o.life * 1.2, true)
 		local side = dir:Cross(Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5))
 		side = if side.Magnitude > 1e-3 then side.Unit else dir:Cross(Vector3.yAxis).Unit
-		local x = (dir + side * 0.12).Unit
+		local x = if o.exact then dir else (dir + side * 0.12).Unit -- (the bullet's own line is never bent: Fx.gunShot)
 		B.a0.WorldCFrame = axisCF(a, x); B.a1.WorldCFrame = axisCF(b, x)
-		B.b.CurveSize0 = len * 0.33; B.b.CurveSize1 = len * 0.33
+		B.b.CurveSize0 = if o.exact then 0 else len * 0.33; B.b.CurveSize1 = if o.exact then 0 else len * 0.33
 		B.b.Color = cs(Color3.fromRGB(255, 206, 120), col, Color3.fromRGB(255, 104, 36))
 		if o.first and not o.fpv then
 			local n = (TRP.n[bs] or 0) + 1
@@ -1044,9 +1045,9 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 		local B = beam(TRP.wisp, a, b, col, tw * 0.8 * (o.taper or 1), tw, o.life * 1.3, true)
 		local side = dir:Cross(Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5))
 		side = if side.Magnitude > 1e-3 then side.Unit else dir:Cross(Vector3.yAxis).Unit
-		local x = (dir + side * 0.1).Unit
+		local x = if o.exact then dir else (dir + side * 0.1).Unit -- (the bullet's own line is never bent: Fx.gunShot)
 		B.a0.WorldCFrame = axisCF(a, x); B.a1.WorldCFrame = axisCF(b, x)
-		B.b.CurveSize0 = len * 0.28; B.b.CurveSize1 = len * 0.28 -- (both along the tilted axis: an S, as the wisp)
+		B.b.CurveSize0 = if o.exact then 0 else len * 0.28; B.b.CurveSize1 = if o.exact then 0 else len * 0.28 -- (both along the tilted axis: an S, as the wisp)
 		B.b.Color = cs(Color3.fromRGB(236, 255, 240), col, Color3.fromRGB(150, 132, 220))
 		if not o.cheap then
 			local sa = if o.fpv then a + dir * math.min(len * 0.5, 4) else a
@@ -1224,7 +1225,21 @@ end
 -- one gun shot as everyone sees it (weapons.js fire feedback): the flash (not through a scope) and a tracer from the
 -- muzzle to each end, bent at each bounce (the Revolver). w = the weapon's row in Weapons. the web's numbers: tracer
 -- 0.045 m thick for 0.2 s, 0.03 m for 0.07 s on guns over 8 shots a second, the row's own `thick` (sniper, dmr) else
-function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: boolean, noFlash: boolean?)
+-- (25 Nov 2026, the owner: "I do see bullet trails curving") where a tracer joins the bullet's own line. the bullet
+-- leaves the eye (your camera; for others, their head), the tracer the muzzle, so a straight muzzle-to-end line ran up
+-- to a stud off the bullet's real path by the time it passed a head: it seemed to bend into heads it missed. now the
+-- tracer runs from the muzzle to a point JOIN studs down the bullet's own line (a share of the way, clamped), and from
+-- there exactly along it to where the bullet really stopped (a body part, a wall, or its range). (a field, not a new local:
+-- a chunk this big must stay under Luau's 200 locals)
+function Fx.joinAt(eye: Vector3, e: Vector3): Vector3?
+	local v = e - eye
+	local L = v.Magnitude
+	local MIN, MAX, K = 6, 18, 0.3
+	if L <= MIN + 1 then return nil end
+	return eye + v / L * math.clamp(L * K, MIN, MAX)
+end
+-- eye: where the bullets really left from (nil: an old caller, the plain muzzle-to-end line)
+function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: boolean, noFlash: boolean?, eye: Vector3?)
 	local fx = w.fx or {}
 	local fast = (w.rate or 0) > 8
 	local big = w.id == "shotgun" or w.id == "sniper" or w.id == "autoshot" or w.id == "dmr"
@@ -1252,8 +1267,9 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	local wide = (w.thick or (if fast then 0.03 else 0.045) * S) * (if sk and sk.glow and #sk.flames > 0 then 1.6 else 1)
 	local life = if fast then 0.07 else 0.2
 	local a = at.Position
+	local j1 = if eye and not path and #ends > 0 then Fx.joinAt(eye, ends[1]) else nil
 	-- your own tracer starts 3 studs out, so it never reads as a line out of your eye (first person only)
-	if fpv and #ends > 0 and (ends[1] - a).Magnitude > 9 then a += (ends[1] - a).Unit * 3.5 end
+	if fpv and #ends > 0 and ((j1 or ends[1]) - a).Magnitude > 9 then a += ((j1 or ends[1]) - a).Unit * 3.5 end
 	local taper = if fpv then 0.15 else nil
 	-- (a high-tier skin's own bullet trail, SkinSets.FX[id].bullet: Fx.bulletTrail; its muzzle bits on the first leg only,
 	-- its flourish where the last one ends)
@@ -1261,7 +1277,12 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	local imp = if sk and sk.spec.impact then sk.spec.impact.kind else nil
 	local cheapN = 0 -- (a shotgun's pellets past the second: the line and at most one bit)
 	local impN = 0
-	local function line(p: Vector3, q: Vector3, tp: number?, first: boolean, last: boolean)
+	-- k: the far end's width share (first person: the lead's end at the join is as wide on screen as the old line's at
+	-- the end point); nobits: no particles on this leg; exact: the bullet's own line
+	local function line(p: Vector3, q: Vector3, tp: number?, first: boolean, last: boolean, k: number?, nobits: boolean?, exact: boolean?)
+		local kk = k or 1
+		local wd = wide * kk
+		local tq = if kk < 1 then (tp or 1) / kk else tp
 		local cheap = #ends > 2 and cheapN >= 2
 		-- (the set's impact where this line met the map, a shotgun's first two pellets only; a line that ends on someone
 		-- or in the sky keeps its kind's own small flourish)
@@ -1274,10 +1295,10 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 			end
 		end
 		if bs then
-			Fx.bulletTrail(bs, p, q, { col = col, wide = wide, life = life, fpv = fpv, taper = tp, first = first, last = last, spec = bs,
-				cheap = cheap, impact = hit ~= nil })
+			Fx.bulletTrail(bs, p, q, { col = col, wide = wd, life = life, fpv = fpv, taper = tq, first = first, last = last, spec = bs,
+				cheap = cheap, impact = hit ~= nil, nobits = nobits, exact = exact })
 		else
-			Fx.tracer(p, q, col, wide, life, tp)
+			Fx.tracer(p, q, col, wd, life, tq)
 		end
 		if last then cheapN += 1 end
 		if hit then
@@ -1292,7 +1313,18 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 		end
 		line(a, ends[1], taper, first, true)
 	else
-		for _, e in ends do line(a, e, taper, true, true) end
+		for _, e in ends do
+			local j = if eye then Fx.joinAt(eye, e) else nil
+			if j and eye and (j - a):Dot(e - j) > 0 then
+				-- the lead (muzzle -> the join; in first person it carries the trail's bits along your screen) and the
+				-- bullet's own line (the join -> where it stopped; first person sees it end-on, at your aim point)
+				local k = if fpv then math.clamp((j - eye).Magnitude / math.max(1e-3, (e - eye).Magnitude), 0.05, 1) else 1
+				line(a, j, taper, true, false, k, not fpv)
+				line(j, e, nil, false, true, 1, fpv, true)
+			else
+				line(a, e, taper, true, true)
+			end
+		end
 	end
 end
 

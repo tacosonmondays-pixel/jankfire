@@ -366,15 +366,77 @@ end
 -- feet = where the target is and has just been (Fight.path: now first, then back along its trail), so a shooter with
 -- lag is checked against the target they saw. one bullet must pass through a padded box at one of those spots; a
 -- spray (pellets > 1, where only a sample of the pellets is sent) needs the target inside its cone
-function Rules.aimed(w: Weapons.Weapon, eye: Vector3, ends: { Vector3 }, feet: { Vector3 }): boolean
+-- (25 Nov 2026, the real body: the owner, "I can shoot way above their head and to their side with the smg") a
+-- one-bullet claim is re-checked against the target's own body parts at rest (Hitbox.rayRest), placed where its root
+-- was along its trail (Fight.pathCF: the shooter's lag), not the web game's boxes padded by 2 studs. the server never
+-- sees the poses everyone's screen draws (the walk, the weapon stance, the crouch: Animate, ThirdPerson and
+-- CrouchPoses run on each client), so it allows BODY_PAD on the torso and legs, ARM_PAD on the arms (held out in front
+-- with the gun), HEAD_PAD_EXACT on the head (+ HEAD_POSE on a player, whose neck and waist follow their aim), plus
+-- MOVE_PAD a stud/s of the target's own speed (up to MOVE_MAX: a run swings the limbs). a crouching or sliding player
+-- (their "Pose", PoseRelay) gets POSE[pose] on top: body / arms / head, and how far under its rest spot the head may
+-- be (drop). measured in Play 26 Nov 2026 (docs/WEAPONS.md, hit registration): a claim 0.5 studs past a still dummy is
+-- never paid
+Rules.BODY_PAD = 0.3
+Rules.ARM_PAD = 1.0
+Rules.HEAD_POSE = 1.0 -- (measured: aiming 45 deg up or down moves a player's head ~1 stud)
+Rules.ARM_POSE = 1.5 -- (a player's arms more: the support hand reaches out to the handguard, ~3.6 studs off rest)
+Rules.MOVE_PAD = 0.04
+Rules.MOVE_MAX = 0.8
+Rules.POSE = {
+	crouch = { body = 0.6, arm = 0.4, head = 0.5, drop = 1.5 },
+	slide = { body = 1.5, arm = 1.0, head = 1.2, drop = 2.5 },
+} :: { [string]: { body: number, arm: number, head: number, drop: number } }
+export type BodyCheck = { m: Instance, cfs: { CFrame }, pad: number, arm: number, head: number, drop: number }
+-- one target's allowance: m its model, cfs its root's frames to try (Fight.pathCF), speed what the server saw it move,
+-- player = a player's body (posed by their own aim), pose their Pose attribute
+function Rules.bodyCheck(m: Instance, cfs: { CFrame }, speed: number, player: boolean, pose: any): BodyCheck
+	local mv = math.min(Rules.MOVE_MAX, Rules.MOVE_PAD * math.max(0, speed))
+	local P = if player and type(pose) == "string" then Rules.POSE[pose] else nil
+	return {
+		m = m, cfs = cfs, pad = Rules.BODY_PAD + mv + (if P then P.body else 0), arm = Rules.ARM_PAD + mv + (if player then Rules.ARM_POSE else 0) + (if P then P.arm else 0),
+		head = Rules.HEAD_PAD_EXACT + (if player then Rules.HEAD_POSE else 0) + (if P then P.head else 0),
+		drop = if P then P.drop else 0,
+	}
+end
+-- does one of these bullets pass through the body (within the allowance) at one of its spots
+function Rules.bodyHit(eye: Vector3, ends: { Vector3 }, b: BodyCheck): boolean
+	for _, e in ends do
+		local v = e - eye
+		if v.Magnitude < 1e-3 then continue end
+		local d = v.Unit
+		for _, cf in b.cfs do
+			if Hitbox.rayRest(eye, d, b.m, cf, b.pad, b.arm, b.head, b.drop) then return true end
+		end
+	end
+	return false
+end
+-- does one of these bullets touch the head (within the head's allowance) at one of its spots
+function Rules.headHit(eye: Vector3, ends: { Vector3 }, b: BodyCheck): boolean
+	local list = Hitbox.restPieces(b.m)
+	if not list then return false end
+	local heads: { Hitbox.Piece } = {}
+	for _, pc in list do if pc.head then table.insert(heads, pc) end end
+	if #heads == 0 then return false end
+	for _, e in ends do
+		local v = e - eye
+		if v.Magnitude < 1e-3 then continue end
+		local d = v.Unit
+		for _, cf in b.cfs do
+			if Hitbox.rayPieces(eye, d, heads, cf, 0, 0, b.head, b.drop) then return true end
+		end
+	end
+	return false
+end
+function Rules.aimed(w: Weapons.Weapon, eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, body: BodyCheck?): boolean
 	if #ends == 0 or #feet == 0 then return false end
 	if (w.pellets or 1) <= 1 then
-		for _, e in ends do
+		if body and Hitbox.restPieces(body.m) then return Rules.bodyHit(eye, ends, body) end
+		for _, e in ends do -- (a body with no rig parts: its own boxes, never grown with distance)
 			local v = e - eye
 			if v.Magnitude < 1e-3 then continue end
 			local d = v.Unit
 			for _, ft in feet do
-				if Hitbox.ray(eye, d, ft, Hitbox.distScale((ft - eye).Magnitude), Rules.AIM_PAD) then return true end
+				if Hitbox.ray(eye, d, ft, 1, Rules.BODY_PAD, nil, false) then return true end
 			end
 		end
 		return false
@@ -408,7 +470,9 @@ Rules.HEAD_PAD = 1
 -- is still paid and a bullet a quarter of a stud past the head is not
 Rules.HEAD_PAD_EXACT = 0.15
 Rules.EXACT_STEPS = 4
-function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, prof: Hitbox.Prof?, exact: boolean?): boolean
+function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }, prof: Hitbox.Prof?, exact: boolean?, body: BodyCheck?): boolean
+	-- (25 Nov 2026) every one-bullet gun: the real head (its rig's Head part at rest along the trail, Rules.headHit)
+	if body and Hitbox.restPieces(body.m) then return Rules.headHit(eye, ends, body) end
 	-- (prof: this body's own head, Hitbox.profile: the whole visible head, as the shooter's client judged it)
 	if exact and prof and prof.r then
 		local pts: { Vector3 } = {}

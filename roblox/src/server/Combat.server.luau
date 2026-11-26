@@ -367,19 +367,20 @@ end)
 -- where the shooter saw them (a round trip and an interpolation step back along the server's trail, +-0.1 s), bouncing
 -- off walls the way Arsenal's bullets do, then tells everyone where it went (the shooter's own tracer comes from it)
 local fanRng = Random.new()
-local function seenAt(t: Fighter, lag: number): { Vector3 }
+-- (25 Nov 2026) the root's frames, so the shot meets the body's real parts facing the way it faced (Hitbox.rayRest)
+local function seenAt(t: Fighter, lag: number): { CFrame }
 	local out = {}
 	local n = now()
 	local tr = Fight.trail[t]
 	if lag <= 0.1 or not tr then
-		local ft = Fight.feet(t)
-		if ft then table.insert(out, ft) end
+		local r = Fight.root(t)
+		if r then table.insert(out, r.CFrame) end
 	end
 	if tr then
 		for i = #tr, 1, -1 do
 			local age = n - tr[i].t
 			if age > lag + 0.1 then break end
-			if age >= lag - 0.1 then table.insert(out, Hitbox.feet(tr[i].p)) end
+			if age >= lag - 0.1 then table.insert(out, tr[i].cf or CFrame.new(tr[i].p)) end
 		end
 	end
 	return out
@@ -388,7 +389,7 @@ local function serverShot(p: Player, f: Fighter, wid: string, eye: Vector3, d: V
 	local w = W[wid]
 	local ok, ping = pcall(function() return p:GetNetworkPing() end)
 	local lag = math.clamp((if ok and type(ping) == "number" then ping else 0.1) + 0.08, 0.05, Fight.LAG)
-	local cands: { { t: Fighter, spots: { Vector3 } } } = {}
+	local cands: { { t: Fighter, spots: { CFrame } } } = {}
 	for _, t in Fight.all do
 		if t == f or not t.alive then continue end
 		if t.onlyFor ~= nil and t.onlyFor ~= p then continue end -- (somebody else's range Carl isn't in this shooter's world)
@@ -403,8 +404,11 @@ local function serverShot(p: Player, f: Fighter, wid: string, eye: Vector3, d: V
 		best = if mh then (mh.Position - from).Magnitude else left
 		who, head = nil, false
 		for _, c in cands do
-			for _, ft in c.spots do
-				local tt, hd = Hitbox.ray(from, d, ft, Hitbox.distScale((ft - from).Magnitude), nil, Hitbox.profile(Fight.model(c.t)), Weapons.precise(w)) -- (the whole head: Hitbox.profile; the Revolver's fan: its real head)
+			local cm = Fight.model(c.t)
+			for _, cf in c.spots do
+				-- (25 Nov 2026) the body's own parts, head and all, where the shooter saw it (Hitbox.rayRest)
+				local tt, hd
+				if cm then tt, hd = Hitbox.rayRest(from, d, cm, cf) end
 				if tt and tt < best then best, who, head = tt, c.t, hd end
 			end
 		end
@@ -421,7 +425,7 @@ local function serverShot(p: Player, f: Fighter, wid: string, eye: Vector3, d: V
 	end
 	local e = from + d * best
 	for _, o in Players:GetPlayers() do
-		ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = { e }, path = path, fan = if o == p then true else nil })
+		ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = { e }, path = path, fan = if o == p then true else nil, eye = eye }) -- (eye: the tracer joins the bullet's real line, Fx.gunShot)
 	end
 	Fight.shotFx(f, wid, { e }) -- (the match recorder keeps it for killcams and replays)
 	local t = who
@@ -484,7 +488,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	end
 	-- everyone else's tracers (the shooter drew its own already)
 	for _, o in Players:GetPlayers() do
-		if o ~= p then ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = ends, path = path, hand = if x.hand == 1 or x.hand == 2 then x.hand else nil }) end -- (hand: Lefty & Righty's gun that fired, 1 left 2 right)
+		if o ~= p then ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = ends, path = path, hand = if x.hand == 1 or x.hand == 2 then x.hand else nil, eye = e }) end -- (hand: Lefty & Righty's gun that fired, 1 left 2 right; eye: where the bullets left from, Fx.gunShot)
 	end
 	Fight.shotFx(f, wid, ends :: any) -- (the match recorder keeps it for killcams and replays)
 	local seen: { [Fighter]: boolean } = {}
@@ -499,16 +503,25 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		if not tf then continue end
 		-- line of sight and "was it aimed at them" both look back along the target's trail (Fight.LAG): the shooter
 		-- fired at where they saw the target, which is where it was a ping ago
+		-- (25 Nov 2026, the real body) the claim is checked against the target's own parts at rest where its root was
+		-- along its trail, with the server's small pose allowance (Rules.bodyCheck), not the web game's padded boxes
+		local tm = Fight.model(t)
+		local spT = Fight.speed(t)
+		local isP = t.kind == "player"
+		local pose = if tm then tm:GetAttribute("Pose") else nil
 		local hwhy, n, hh = Rules.hit(f, t, wid, h.n, h.h, now(), {
-			dist = (tf - ff).Magnitude, speedF = Fight.speed(f), speedT = Fight.speed(t), los = Fight.sees(from :: Vector3, t),
-			aimed = Rules.aimed(W[wid], from :: Vector3, ends :: { Vector3 }, Fight.path(t)),
+			dist = (tf - ff).Magnitude, speedF = Fight.speed(f), speedT = spT, los = Fight.sees(from :: Vector3, t),
+			aimed = Rules.aimed(W[wid], from :: Vector3, ends :: { Vector3 }, Fight.path(t),
+				if tm then Rules.bodyCheck(tm, Fight.pathCF(t, nil, Rules.EXACT_STEPS), spT, isP, pose) else nil),
 		})
 		if hwhy then continue end
 		-- head or body: for a one-bullet gun the server looks for itself (a claimed headshot that never crossed the head
 		-- is paid as a body shot). (20 Nov 2026) it looks back along the target's trail only as far as this shooter's own
 		-- round trip lets them have seen it (Latency.window, 0.15 to 0.6 s): a head the target left longer ago was never in
-		-- their sights. the hit itself (line of sight, aimed) still gets the full Fight.LAG, so no honest hit is lost
-		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t, Latency.window(p)), Hitbox.profile(Fight.model(t)), Weapons.precise(W[wid])) then hh = 0 end
+		-- their sights. the hit itself (line of sight, aimed) still gets the full Fight.LAG, so no honest hit is lost.
+		-- (25 Nov 2026) every one-bullet gun needs the real head now (Rules.headHit), not only the precision ones
+		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t, Latency.window(p)), Hitbox.profile(tm), true,
+			if tm then Rules.bodyCheck(tm, Fight.pathCF(t, Latency.window(p), Rules.EXACT_STEPS), spT, isP, pose) else nil) then hh = 0 end
 		n = math.min(n, left); hh = math.min(hh, n); left -= n
 		applyHitscan(f, t, wid, n, hh, from :: Vector3, { mul = mul, qs = x.qs == true, ns = x.ns == true })
 		if not f.alive then break end -- a perfect parry can kill the shooter mid-volley

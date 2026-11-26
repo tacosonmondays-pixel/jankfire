@@ -1134,8 +1134,8 @@ function TP.crosshair(eye: Vector3): Vector3
 		local hum = m:FindFirstChildOfClass("Humanoid")
 		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not hum or not root or hum.Health <= 0 then return end
-		local feet = Hitbox.feet(root.Position)
-		local t = Hitbox.ray(o, look, feet, Hitbox.distScale((feet - eye).Magnitude))
+		-- (25 Nov 2026) the body as it's drawn, part by part (Hitbox.rayModel), the same test the shot makes (Arsenal)
+		local t = Hitbox.rayModel(o, look, m)
 		if t and t < best then best = t end
 	end
 	for _, p in Players:GetPlayers() do

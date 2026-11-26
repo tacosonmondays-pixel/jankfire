@@ -90,7 +90,7 @@ function Fight.feet(f: Fighter): Vector3?
 	return r and Hitbox.feet(r.Position)
 end
 -- the server's own record of where everyone's been (the last 0.75 s, sampled 30 times a second by Combat)
-Fight.trail = {} :: { [Fighter]: { { t: number, p: Vector3 } } }
+Fight.trail = {} :: { [Fighter]: { { t: number, p: Vector3, cf: CFrame? } } }
 -- lag: a shooter sees you where you were a ping and an interpolation step ago, so hit checks (line of sight, "was
 -- it aimed at them") look back this many seconds along your trail instead of only at where you are right now
 Fight.LAG = 0.6
@@ -110,7 +110,7 @@ function Fight.track(n: number)
 		end
 		local tr = Fight.trail[f] or {}
 		Fight.trail[f] = tr
-		table.insert(tr, { t = n, p = r.Position })
+		table.insert(tr, { t = n, p = r.Position, cf = r.CFrame }) -- (cf: the body faces somewhere: Hitbox.rayRest)
 		while #tr > 0 and tr[1].t < n - 0.75 do table.remove(tr, 1) end
 	end
 	for k in Fight.trail do if not table.find(Fight.all, k) then Fight.trail[k] = nil end end
@@ -172,6 +172,30 @@ function Fight.path(t: Fighter, win: number?): { Vector3 }
 		for i = #tr, 1, -1 do
 			if n - tr[i].t > (win or Fight.LAG) then break end
 			table.insert(out, Hitbox.feet(tr[i].p))
+		end
+	end
+	return out
+end
+-- (25 Nov 2026, the real body) the root's frames: now first, then back along the trail for win seconds (nil: Fight.LAG),
+-- with steps-1 frames between two samples that are apart (a runner's head moves ~0.7 studs between the 30 a second
+-- samples), so a shot is checked against the body where the shooter could have seen it, not just where it was sampled
+function Fight.pathCF(t: Fighter, win: number?, steps: number?): { CFrame }
+	local out: { CFrame } = {}
+	local r = Fight.root(t)
+	if r then table.insert(out, r.CFrame) end
+	local tr = Fight.trail[t]
+	if tr then
+		local n = now()
+		local k = math.max(1, steps or 1)
+		local prev: CFrame? = out[1]
+		for i = #tr, 1, -1 do
+			if n - tr[i].t > (win or Fight.LAG) then break end
+			local cf = tr[i].cf or CFrame.new(tr[i].p)
+			if prev and k > 1 and (prev.Position - cf.Position).Magnitude > 0.05 then
+				for j = 1, k - 1 do table.insert(out, prev:Lerp(cf, j / k)) end
+			end
+			table.insert(out, cf)
+			prev = cf
 		end
 	end
 	return out

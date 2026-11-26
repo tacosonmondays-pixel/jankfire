@@ -205,8 +205,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 					if t.onlyFor ~= nil and t.onlyFor ~= f.ref then continue end
 					local ft = Fight.feet(t)
 					if not ft then continue end
-					-- (the beam goes through people: every box it touches, grown by its radius, is hit)
-					local tt = Hitbox.ray(eye, s.look, ft, Hitbox.distScale((ft - eye).Magnitude), r)
+					-- (the beam goes through people: every body it touches, grown by its radius, is hit. 25 Nov 2026: the body's own
+					-- parts, Hitbox.rayRest, not the web game's boxes grown with distance, so a beam over a head misses it)
+					local tm, tr = Fight.model(t), Fight.root(t)
+					local tt = if tm and tr then Hitbox.rayRest(eye, s.look, tm, tr.CFrame, r, r, r) else Hitbox.ray(eye, s.look, ft, 1, r)
 					if tt and tt <= len then
 						Fight.hurt(t, dmg, f, s.wid, false, s.look * kb + Vector3.new(0, w.kbUp, 0), eye + s.look * tt)
 					end
