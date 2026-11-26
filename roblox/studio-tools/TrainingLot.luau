@@ -381,8 +381,9 @@ local function garage()
 	end
 	beacon(bx, 256.6, yardFace + 1.4, 90)
 	beacon(kx, 256.6, yardFace + 1.4, 90)
-	-- the bay's side: the roller box over the opening (0.3 off the frame's back since the clip check, 26 Nov)
-	B.put("tl_roller", CF(0, D.y1 + 0.3, D.z - 2 - 1.2 - 2.6), { name = "Roller" }).Parent = B.root.LotScenery
+	-- the bay's side: the roller box over the opening (since the clip check, 26 Nov: 0.3 off the frame's back, and 0.5
+	-- lower, clear under the bay's first light bar)
+	B.put("tl_roller", CF(0, D.y1 - 0.2, D.z - 2 - 1.2 - 2.6), { name = "Roller" }).Parent = B.root.LotScenery
 	return beacon
 end
 
@@ -770,7 +771,7 @@ local function bay(beacon)
 		end
 	end
 	for _, z in { -8274, -8288 } do blk("BayBeam", -BX, BX, TOP - 2.2, TOP, z - 1.2, z + 1.2, P.pier) end
-	for _, z in { -8269.5, -8281, -8294 } do -- (the first 1.5 back from the roller box since the clip check, 26 Nov)
+	for _, z in { -8268, -8281, -8294 } do
 		local m = B.put("tv_lightbar", CF(0, TOP, z) * CFrame.Angles(0, math.pi / 2, 0), { name = "BayLight" })
 		if m then m.Parent = B.root.LotScenery end
 		B.lamp(0, TOP - 2, z, "spot", 30, 0.9, P.lampWhite, { angle = 110 })

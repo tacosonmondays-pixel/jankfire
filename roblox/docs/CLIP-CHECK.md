@@ -123,9 +123,18 @@ A prop sunk into the *side* of a raised floor or platform is still reported.
 
 | | v1 of the check | v2, before the fixes | v2, after the fixes |
 |---|---|---|---|
-| Props sunk | 33 (most false: drums, shelves, trees in berms, mesh boxes) | 13 | (after the rebuild) |
-| Doors clipping | 6 | 1 (the egg door's sheet, 8.1 over its frame) | |
-| Doorways blocked | 1 (`GateVoid`, a portal void) | 0 | |
+| Props sunk | 33 (most false: drums, shelves, trees in berms, mesh boxes) | 13 | 0 |
+| Doors clipping | 6 | 1 (the egg door's sheet, 8.1 over its frame) | 0 |
+| Doorways blocked | 1 (`GateVoid`, a portal void) | 0 | 0 |
+
+After the fixes (place version 1400): `T.check` reports the hall sealed with 0 leaks and nothing within 0.6 of an eye.
+
+**Play test.** With the key from `LotTest` "setkey", the egg door rolled up all the way (9.0 of 9.0) as the player came
+near, and every slat and the sheet were hidden. The ring at the end of the room took the player to the playground. The
+key was put back afterwards.
+
+**Photos.** The before/after sheet `training_clip_fixes_v1400.jpg` is in the shared notes folder. It shows the egg door,
+the hub gate at 0, 42 and 100% open, the shelf and the rail.
 
 v2's 13 props before the fixes:
 
@@ -148,8 +157,14 @@ Fixed in the builders:
 - **The range rail** (`TrainingV2` `range`). It ran through the firing line's counter.
 - **The yard's KEEP CLEAR panel and its beacons** (`TrainingLot`, with `T.LOT_YARD` from `TrainingCompound`). They now
   fit between the garage frame and the v5 yard walls.
-- **The garage's roller boxes and the first bay light** (`TrainingLot`). Each moved 0.3 to 1.5 studs clear.
+- **The garage's roller boxes** (`TrainingLot`). Each moved 0.3 off the garage frame; the bay-side box also sits 0.5
+  lower, clear under the bay's first light bar.
 - **Every gate's roll-up door** (`GateKit`, used by training and every hub). Over the head there is now a
   `ShutterHousing` roller box (`GateKit.HOUSING`: x ±4.5, from H to H+1.3, d 0.45 to 1.45), and the slats roll up into
   it. A slat shows at most 0.95 over the head before it hides. The hub builders leave a slot for the box: HubKit's
   armory wall does since push 180.
+  - Where a gate stands free with only the hb_portal kit frame round it (training's HubGate, the Classic Rotunda's),
+    the frame head's back reaches 0.2-0.28 into the box's lower edge. The box sits seated in the head and nothing
+    shows (photo from below on the sheet), so it stays.
+  - `run` does not report this, because neither side counts as a prop. It was found by testing a stand-in box with
+    `C.overlap` at every gate tagged `Shutter`.
