@@ -154,7 +154,7 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 		nextPulse = 0, nextTracks = 0, standins = {} }
 	g.hideEnd = now() + (opts.hide or RD.hide)
 	g.huntEnd = g.hideEnd + (opts.hunt or RD.hunt)
-	g.fightAt = g.hideEnd + RD.fightBack
+	g.fightAt = g.hideEnd + (opts.fightBack or RD.fightBack)
 	G = g; HuntRound.G = g
 	local order = shuffled(#def.hiders)
 	local hi = 0

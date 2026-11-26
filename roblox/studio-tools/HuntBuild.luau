@@ -90,12 +90,14 @@ local function doors(H: any, O: Vector3, tf: Folder, into: Folder): number
 	for _, d in H.doors do
 		local w = d.a1 - d.a0
 		local h = d.y1 - d.y0
-		local hingeA = if d.hinge == "a0" then d.a0 else d.a1
+		-- (the sliding glass door's moving half is always the a0 half: the kit's fixed glass fills the a1 half)
+		local fromA0 = d.hinge == "a0" or d.kind == "slide"
+		local hingeA = if fromA0 then d.a0 else d.a1
 		local pos = if d.axis == "x" then V3(hingeA, d.y0, d.line) else V3(d.line, d.y0, hingeA)
 		-- the leaf runs from its hinge along local +x: toward a1 from a0's hinge, or back toward a0 from a1's
 		local yaw: number
-		if d.axis == "x" then yaw = if d.hinge == "a0" then 0 else math.pi
-		else yaw = if d.hinge == "a0" then -math.pi / 2 else math.pi / 2 end
+		if d.axis == "x" then yaw = if fromA0 then 0 else math.pi
+		else yaw = if fromA0 then -math.pi / 2 else math.pi / 2 end
 		local at = CF(O + pos) * CFrame.Angles(0, yaw, 0)
 		local m = Instance.new("Model")
 		m.Name = "Door_" .. d.id

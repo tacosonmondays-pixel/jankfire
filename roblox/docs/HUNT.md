@@ -350,3 +350,51 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 - Rated? No. HOLDOUT is unranked.
 - Players per round: 2 to 12. The pick is 1 gunman for up to 8 players, and 2 gunmen from 9 (stage 2 builds 1; 2 is
   a switch, `HuntConfig.TWO_AT`).
+
+---------------------------------------------------------------------------------------------------------------------
+
+## Built so far (26 Nov 2026, hunt-mode session)
+
+### The house's kit and layout (stage 1)
+- `tools/roblox/hunt_house_layout.py` holds the single layout. Run it and it checks spawns, door swings and that every
+  room is reached. It currently passes, with one false flag at the WC door, whose leaf stops 0.1 stud short of the
+  toilet.
+- `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
+  so the kit goes up in two halves:
+  - architecture, `--only=hh_`: asset 106317993251883;
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: asset 72988869579901.
+
+  HuntBuild `B.importExtra(FURN)` adds the second half without clearing the first.
+- New textures: siding 127661606333401, shingles 135435899461861, lawn 82912196276517, fence boards 136590475412292,
+  asphalt 72215822270952. The rest are the school's pictures.
+- In Studio, in this order:
+  1. `W.import("HuntHouse", B.ARCH)`
+  2. `B.importExtra()`
+  3. `W.build("HuntHouse")`
+  4. `B.build()`
+
+### Animations (mocap, the vault's Mixamo clips)
+- Uploaded for R15 and R6 (ids in `HuntConfig.ANIMS`): idle, run, the haymaker (a rear hook that holds at its
+  wind-up), the jab, lying down (the fall onto the back, hips flat via `mixamo_r15.py --no-rise`), lying, and the shove
+  (a hands-forward push sped up to 0.22 s).
+- Waiting on the owner's Mixamo sign-in (signed out on 26 Nov): walk, crouch idle, crouch walk, and a real shove. Until
+  then the avatar's own walk and CrouchPoses' crouch stay.
+
+### Sounds (recordings only)
+- `hunt_*` in store.json: door open and shut, light switch, tap, trampoline, punch hit, shove, fridge (all Freesound
+  CC0) and the toilet flush (a licensed library take). The garage door reuses `zm_door`.
+- The traps reuse library sounds: `taser_fire`, `taser_arc`, `gas_hiss`, `marble`, `ropesnap`, `step_hard`,
+  `skin_smoke_censer_cloud`.
+
+### Stages 2-4 in code
+- `HuntRound` runs the round, `HuntItems` the traps, points and FIGHT BACK weapons.
+- The fight-back weapons are held props swung with the punch, judged by the server.
+- `HuntConfig.MAPS` has three maps:
+  - Jankfield High v2A: a copy, with the zombies' ZM markers stripped out;
+  - the Backrooms;
+  - Suburb v2.
+
+  The last two have spots picked by `tools/roblox/hunt_spots.py` from their own layouts.
+- Studio test hooks on `ServerStorage.JankHuntTest`:
+  - `round {role, standins, gun, hide, hunt}` starts a round with stand-in bodies;
+  - `rstate` reads its state, `stop` ends it.
