@@ -43,7 +43,7 @@ H.ANIMS = {
 	},
 	R6 = {
 		idle = 131309729157109, run = 94895902829568, haymaker = 109065100096930, jab = 106574595043554,
-		liedown = 84272735523225, lying = 112468296499220, shove = 126115043504756,
+		liedown = 108959127320577, lying = 72487779516021, shove = 126115043504756, -- (R6: lying with the hips dropped: an R6 body keeps its leg height)
 	},
 	-- the haymaker's wind-up ends here (s): the clip waits at this pose while the punch is held, the rest plays on release
 	windAt = 0.53,

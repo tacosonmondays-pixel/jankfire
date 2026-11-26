@@ -43,7 +43,7 @@ def sofa(M, w, col=SOFA):
     hw = w / 2
     for sx in (-1, 1):
         for sz in (-1, 1): B(WALNUT, sx * (hw - 1.0) - 0.35, 0, sz * 2.7 - 0.35, sx * (hw - 1.0) + 0.35, 0.8, sz * 2.7 + 0.35, M, bev=0.12)
-    B(col, -hw, 0.6, -3.5, hw, 2.2, 3.4, M, bev=0.5)                                 # the base
+    B(col, -hw + 0.5, 0.6, -3.4, hw - 0.5, 2.2, 3.3, M, bev=0.5)                     # the base (inside the arms: no seam)
     for i in range(int(round(w / 6))):                                               # seat cushions
         n = int(round(w / 6)); cw = (w - 2.4) / n
         x0 = -hw + 1.2 + i * cw
