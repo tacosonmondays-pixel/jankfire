@@ -424,6 +424,8 @@ local function slipperStep(pr: Proj, w: any, dt: number, age: number): boolean
 end
 
 -- ------------------------------------------------------------------ the click
+-- (26 Nov 2026) how far past your own speed a Chicken Rocket's back-blast may take you once you're over its cap (studs/s)
+local THRUST_OVER = 2 * S
 local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC: unknown)
 	local f = Fight.byPlayer[p]
 	local w = W[wid] :: any
@@ -486,12 +488,19 @@ local function fire(p: Player, wid: string, eye: Vector3, look: Vector3, claimC:
 		local vy = rv.Y
 		if push.Y > 0 then push = Vector3.new(push.X, math.clamp(w.thrustCapUp - vy, 0, push.Y), push.Z) end
 		local vh, ph = Vector3.new(rv.X, 0, rv.Z), Vector3.new(push.X, 0, push.Z)
-		local after = vh + ph
 		local capS = w.thrustCapSide or math.huge
-		if after.Magnitude > capS and after.Magnitude > 1e-3 then
-			-- (never past the cap, nor past your speed now if you're already over it)
-			local keep = after.Unit * math.max(capS, vh.Magnitude)
-			ph = keep - vh
+		-- (never past the cap, nor more than THRUST_OVER past your speed now if you're already over it.) (26 Nov 2026, the
+		-- owner: the Chicken Rocket "break[s] your momentum") the shove is ADDED to your run and only cut short: it used to
+		-- turn your whole velocity onto the capped line, so flying faster than the cap a shot to the side took speed off
+		-- straight ahead and a shot behind you added nothing. now your run is never touched; over the cap the shove still
+		-- steers you (a little of it, THRUST_OVER's worth) without stacking into a fling
+		local limit = math.max(capS, vh.Magnitude + (if vh.Magnitude > capS then THRUST_OVER else 0))
+		if (vh + ph).Magnitude > limit and ph.Magnitude > 1e-3 then
+			-- the largest k in [0, 1] with |vh + k ph| <= limit
+			local a, b, c = ph:Dot(ph), 2 * vh:Dot(ph), vh:Dot(vh) - limit * limit
+			local disc = b * b - 4 * a * c
+			local k = if disc >= 0 then math.clamp((-b + math.sqrt(disc)) / (2 * a), 0, 1) else 0
+			ph *= k
 			push = Vector3.new(ph.X, push.Y, ph.Z)
 		end
 		Fight.knock(f, push, wid)
