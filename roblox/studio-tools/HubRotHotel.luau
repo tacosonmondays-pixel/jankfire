@@ -172,6 +172,9 @@ function HRH.build(which, parent, opts)
 		K.padClassic(F, md, bank, nm, { boardAt = boardAt, boardW = bw })
 		made += 1
 	end
+	-- (the ring's way out to training: its door data kept for HRH.install, which hands it to Map.Hub.Doors as every hub's)
+	local dr = g and g:FindFirstChild("Doors")
+	if dr then dr.Parent = root end
 	if g then g:Destroy() end
 	table.insert(out, ("pads: %d classic pads at their own size%s"):format(made, if #bad > 0 then "; missed " .. table.concat(bad, ",") else ""))
 
@@ -234,36 +237,92 @@ end
 -- centre, side room, gym, exit; walk1..3
 function HRH.views(root)
 	local site = root:GetAttribute("Site")
-	local k = root:GetAttribute("K")
+	local k = root:GetAttribute("K") or 1 -- (none: the live Rotunda, Map.Hub.Classic, for the same spots at its own size)
 	local lob = root:FindFirstChild("Lobby")
-	local lobSite = lob and lob:GetAttribute("Site") or site
 	local up = Vector3.yAxis
 	local v = {}
 	local spawnC = Vector3.zero; local n = 0
-	for _, s in lob.HubSpawns:GetChildren() do spawnC += s.Position; n += 1 end
+	local sf = (lob and lob:FindFirstChild("HubSpawns")) or root:FindFirstChild("HubSpawns")
+	for _, s in sf:GetChildren() do spawnC += s.Position; n += 1 end
 	spawnC /= math.max(n, 1)
+	local lobSite = lob and lob:GetAttribute("Site") or Vector3.new(spawnC.X, site.Y, spawnC.Z)
 	v.spawn = { spawnC + up * 5.6, spawnC + up * 7 + Vector3.new(0, 0, -30) }
 	v.pads = { site + Vector3.new(0, 9, 24 * k), site + Vector3.new(0, 4, -20 * k) }
 	local pm = root.QueuePads:FindFirstChild("2v2") or root.QueuePads:GetChildren()[1]
 	local s1 = pm.Side1.Position
 	local d = Vector3.new(site.X - s1.X, 0, site.Z - s1.Z).Unit
 	v.closeup = { s1 + d * 15 + up * 6.5, s1 + up * 3.5 - d * 2 }
-	v.centre = { site + Vector3.new(16 * k, 13, 16 * k), site + up * 5 }
+	-- (the centre shot: as high over the balcony's ring band as the live Rotunda's is, 1 over it, at every size)
+	local rpv = RaycastParams.new(); rpv.FilterType = Enum.RaycastFilterType.Include; rpv.FilterDescendantsInstances = { root }
+	local uh = workspace:Raycast(site + Vector3.new(16 * k, 2, 16 * k), Vector3.new(0, 60, 0), rpv)
+	local cy = if uh and uh.Position.Y - site.Y < 20 then uh.Position.Y - site.Y + 1 else 13
+	v.centre = { site + Vector3.new(16 * k, cy, 16 * k), site + up * 5 }
 	v.side = { lobSite + Vector3.new(-6, 6.2, 6), lobSite + Vector3.new(24, 4, -16) }
 	local box
 	for _, x in root:GetDescendants() do if x:IsA("BasePart") and x.Name == "MiniGameSpot" and x:GetAttribute("Game") == "box" then box = x end end
 	local bc = box and box.Position or site
 	local db = Vector3.new(site.X - bc.X, 0, site.Z - bc.Z).Unit
-	v.gym = { bc + db * 22 + up * 7, bc + up * 2.5 }
+	v.gym = { bc + db * 22 * k + up * 7, bc + up * 2.5 }
 	local gate
 	for _, x in root:GetDescendants() do if x:IsA("BasePart") and x.Name == "TrainingShutter" or (x:IsA("BasePart") and x.Name == "GateBack") then gate = x end end
 	local gc = gate and gate.Position or site
 	local dg = Vector3.new(site.X - gc.X, 0, site.Z - gc.Z).Unit
-	v.exit = { Vector3.new(gc.X, site.Y, gc.Z) + dg * 18 + up * 5.6, Vector3.new(gc.X, site.Y + 4, gc.Z) }
+	v.exit = { Vector3.new(gc.X, site.Y, gc.Z) + dg * 18 * k + up * 5.6, Vector3.new(gc.X, site.Y + 4, gc.Z) }
 	v.walk1 = { lobSite + Vector3.new(0, 5.6, 0), lobSite + Vector3.new(0, 6, -40) }
 	v.walk2 = { lobSite + Vector3.new(0, 5.6, -26), site + Vector3.new(0, 5, 0) }
 	v.walk3 = { site + Vector3.new(0, 5.6, 28 * k - 2), site + Vector3.new(0, 4, -10) }
 	return v
+end
+
+-- (the Play function test now; going live once the owner picks) a built version wired as a hub: Map.Hub.<its folder> with
+-- Hub / Title / Order / Site, its pads, spawns and arrivals direct children (the lobby's spawns and arrivals: you arrive
+-- in the lobby), every marker's Hub its id, its way to training in Map.Hub.Doors with the same door data as the Hotel's
+-- (as HubClassic does). Edit mode; HRH.uninstall(id) takes all of it away again (a test copy is never saved)
+function HRH.install(root, id, title, order)
+	assert(game:GetService("RunService"):IsEdit(), "Edit mode only")
+	local hub = workspace.Map.Hub
+	assert(not hub:FindFirstChild(root.Name), "Map.Hub." .. root.Name .. " is already there")
+	local lob = root:FindFirstChild("Lobby")
+	if lob then
+		for _, n in { "HubSpawns", "HubArrive" } do
+			local f = lob:FindFirstChild(n)
+			if f then for _, c in f:GetChildren() do c.Parent = root[n] end; f:Destroy() end
+		end
+		local q = lob:FindFirstChild("QueuePads"); if q and #q:GetChildren() == 0 then q:Destroy() end
+		for _, a in { "Hub", "Title", "Order", "Accent", "MiniGamesOff" } do lob:SetAttribute(a, nil) end -- (not a hub of its own; its Site stays for HRH.views)
+	end
+	root:SetAttribute("Hub", id); root:SetAttribute("Title", title); root:SetAttribute("Order", order or 9); root:SetAttribute("MiniGamesOff", nil)
+	local NAMES = { HubSpawn = true, Arrive = true, NPCPoint = true, HubNPC = true, MiniGameSpot = true, HubSeat = true, VipPrompt = true, VipRoom = true, JumpPadTop = true }
+	for _, d in root:GetDescendants() do
+		if d:GetAttribute("Hub") ~= nil or #CS:GetTags(d) > 0 or NAMES[d.Name] then d:SetAttribute("Hub", id) end
+		if d:GetAttribute("Built") == "Rotunda" then d:SetAttribute("Built", nil) end
+	end
+	for _, p in root.QueuePads:GetChildren() do p:SetAttribute("Hub", id); p:SetAttribute("ForShow", nil) end
+	local doors = {}
+	local dr = root:FindFirstChild("Doors")
+	if dr then
+		local ht = hub.Doors:FindFirstChild("HotelToTraining")
+		for _, door in dr:GetChildren() do
+			door:SetAttribute("Hub", id); door:SetAttribute("Built", nil); door:SetAttribute("ForShow", nil)
+			if door.Name:match("ToTraining$") then
+				door.Name = root.Name .. "ToTraining"
+				if ht then for a, v in ht:GetAttributes() do if door:GetAttribute(a) == nil and a ~= "Hub" then door:SetAttribute(a, v) end end end
+			end
+			door.Parent = hub.Doors
+			table.insert(doors, door.Name)
+		end
+		dr:Destroy()
+	end
+	root.Parent = hub
+	return ("Map.Hub.%s as hub %q (%s): %d pads, %d spawns, %d arrivals, doors %s"):format(root.Name, id, title, #root.QueuePads:GetChildren(),
+		#root.HubSpawns:GetChildren(), #root.HubArrive:GetChildren(), if #doors > 0 then table.concat(doors, ", ") else "NONE")
+end
+function HRH.uninstall(id)
+	local hub = workspace.Map.Hub
+	local n = 0
+	for _, c in hub:GetChildren() do if c:GetAttribute("Hub") == id and c.Name:match("^RotHotel_") then c:Destroy(); n += 1 end end
+	for _, d in hub.Doors:GetChildren() do if d:GetAttribute("Hub") == id then d:Destroy(); n += 1 end end
+	return n
 end
 
 return HRH

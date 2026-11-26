@@ -1917,9 +1917,20 @@ function K.armory(F, o)
 	K.box(F, "Shell", "ArmoryLid", -w - 2, w + 2, h, h + 1, -d1 - 2, -d0, P.dome)
 	K.box(F, "Shell", "ArmoryWall", -w - 2, -w, 0, h, -d1 - 2, -d0, P.wall)
 	K.box(F, "Shell", "ArmoryWall", w, w + 2, 0, h, -d1 - 2, -d0, P.wall)
-	-- the far wall: a solid back layer, a front layer with the gate's opening (8.4 x 10)
+	-- the far wall: a solid back layer; a front skin with the gate's opening (GateKit's W x H); between them a layer with a
+	-- slot for GateKit's roller box over the head (GK.HOUSING, d in from the opening's face): the box sits in the slot, hidden
+	-- behind the skin, and the slats rise on into this layer's solid wall above it (26 Nov, training-v2's shutter fix)
+	local GK = require((game:GetService("ServerStorage"):WaitForChild("PolishBackup"):WaitForChild("GateKit") :: ModuleScript):Clone())
+	local GW, GH = (GK.W or 8.4) / 2, GK.H or 9.96
+	local HS = GK.HOUSING or { x = 4.5, up = 1.3, d0 = 0.45, d1 = 1.45 }
 	K.box(F, "Shell", "ArmoryWall", -w, w, 0, h, -d1 - 2, -d1 - 1.5, P.wall)
-	K.wall(F, "ArmoryWall", -w, w, 0, h, -d1 - 1.5, -d1, P.wall, { { -4.2, 4.2, 9.96 } })
+	K.wall(F, "ArmoryWall", -w, w, 0, h, -d1 - HS.d0, -d1, P.wall, { { -GW, GW, GH } })
+	local zb, zf = -d1 - 1.5, -d1 - HS.d0
+	K.box(F, "Shell", "ArmoryWall", -w, -HS.x, 0, h, zb, zf, P.wall)
+	K.box(F, "Shell", "ArmoryWall", HS.x, w, 0, h, zb, zf, P.wall)
+	K.box(F, "Shell", "ArmoryWall", -HS.x, -GW, 0, GH, zb, zf, P.wall) -- (the opening's jambs on through this layer)
+	K.box(F, "Shell", "ArmoryWall", GW, HS.x, 0, GH, zb, zf, P.wall)
+	K.box(F, "Shell", "ArmoryWall", -HS.x, HS.x, GH + HS.up, h, zb, zf, P.wall) -- (over the box: where the slats go)
 	-- coffers: beams across, panels between
 	for d = d0 + 6, d1 - 4, 8 do K.box(F, "Scenery", "CeilingBeam", -w, w, h - 1.3, h, -d - 0.45, -d + 0.45, P.cream, nil, { ghost = true }) end
 	for d = d0 + 10, d1 - 6, 8 do K.panel(F, 0, h, -d, 10, 3, { bright = 0.45 }) end
@@ -1980,7 +1991,6 @@ function K.armory(F, o)
 	-- the training gate: GateKit's lasers, roll-up door and black back in the far wall's opening; the kit frame round it;
 	-- the door box (in Map.Hub.Doors when live) that takes you to the training ground
 	local Fg = F * CFrame.new(0, 0, -d1)
-	local GK = require((game:GetService("ServerStorage"):WaitForChild("PolishBackup"):WaitForChild("GateKit") :: ModuleScript):Clone())
 	local gf = Instance.new("Folder"); gf.Name = "TrainingGate"; gf.Parent = K.folder("Scenery")
 	GK.build(S.site * Fg, gf, { door = "TrainingShutter", lasers = "TrainingLaserGate" })
 	for _, d in gf:GetDescendants() do if d.Name == "GateLightBar" then d:Destroy() end end -- (26 Nov: no decorative indicator light over the door)
