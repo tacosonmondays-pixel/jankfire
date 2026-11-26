@@ -14,6 +14,7 @@ end
 
 local function watch(p: Player)
 	p:GetAttributeChangedSignal("Zone"):Connect(function() refresh(p) end)
+	p:GetAttributeChangedSignal("Unarmed"):Connect(function() refresh(p) end) -- (a HOLDOUT hider in a round, HuntRound)
 end
 for _, p in Players:GetPlayers() do watch(p) end
 Players.PlayerAdded:Connect(watch)
@@ -24,7 +25,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if acc < 0.25 then return end
 	acc = 0
 	for _, p in Players:GetPlayers() do
-		if p:GetAttribute("Zone") ~= "hub" or p:GetAttribute("DevArms") == true then continue end -- (DevArms: the owner's dev weapons, OwnerDev.server)
+		if (p:GetAttribute("Zone") ~= "hub" and p:GetAttribute("Unarmed") ~= true) or p:GetAttribute("DevArms") == true then continue end -- (DevArms: the owner's dev weapons, OwnerDev.server)
 		local ch = p.Character
 		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 		if hum and ch:FindFirstChildOfClass("Tool") then hum:UnequipTools() end

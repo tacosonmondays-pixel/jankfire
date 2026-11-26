@@ -212,6 +212,7 @@ end
 -- the hub is weapons-free (owner, 2026-11-14): no viewmodel, no firing; the training room and matches arm you
 -- (the server agrees: Fight.holstered, Combat, HubHolster)
 local function inHub(): boolean
+	if me:GetAttribute("Unarmed") == true then return true end -- (26 Nov 2026: a HOLDOUT hider in a round carries nothing, the server's HuntRound)
 	return me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true -- (DevArms: the owner's dev weapons, OwnerDev)
 end
 -- the muzzle of the gun a character holds (third person: yours, or someone else's)

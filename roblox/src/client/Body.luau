@@ -32,6 +32,9 @@ Body.speedMul = 1
 Body.mini = 1
 -- (20 Nov 2026) a zombies game's: Leg Day, Zoomies (ZombiesClient sets it from the server's ZmSpeed; 1 outside)
 Body.zm = 1
+-- (26 Nov 2026) HOLDOUT's lie-down: the body sinks this many studs (HuntMoves.client eases it in and out; Move.client
+-- takes it off HipHeight; 0 everywhere else)
+Body.sink = 0
 -- (weapons batch A, 18 Nov 2026; WeaponStates.client sets these from the server's attributes on you) soaked by a Water
 -- Pistol: run speed x wet, ground friction x grip (slidey). pinned by a Nail Gun: pulled to `at` (where your feet go)
 -- until `untilT` (workspace:GetServerTimeNow()), no jumping

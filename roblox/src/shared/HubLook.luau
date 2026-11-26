@@ -369,6 +369,23 @@ H.looks.suburb2 = {
 } :: Look
 H.plainSky.suburb2 = true
 H.byArena.SuburbV2 = "suburb2"
+-- THE HOUSE (HOLDOUT's lobby, tools/roblox/hunt_house_models.py; studio-tools/HuntBuild): a calm late afternoon, warm
+-- sun through the windows and the rooms' own ceiling lights on; the suburb's plain sky. HubLife gives it to anyone in
+-- Map.Hub.LookZones.HuntHouseLook (the house is Zone "hub" to the server)
+H.looks.hunt_house = {
+	Lighting = {
+		Ambient = Color3.fromRGB(128, 124, 120), OutdoorAmbient = Color3.fromRGB(150, 148, 146), Brightness = 2.6,
+		ExposureCompensation = 0.05, EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.35,
+		ClockTime = 15.6, GeographicLatitude = 40, ColorShift_Top = Color3.fromRGB(255, 232, 205),
+		FogColor = Color3.fromRGB(206, 212, 220), FogStart = 500, FogEnd = 2400,
+	},
+	Atmosphere = { Density = 0.26, Offset = 0.06, Haze = 1.1, Glare = 0.08, Color = Color3.fromRGB(214, 218, 226), Decay = Color3.fromRGB(160, 168, 186) },
+	Bloom = { Intensity = 0.2, Size = 22, Threshold = 2.3 },
+	ColorCorrection = { Brightness = 0.01, Contrast = 0.1, Saturation = -0.06, TintColor = Color3.fromRGB(255, 249, 242) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.hunt_house = true
+H.byArena.HuntHouse = "hunt_house"
 -- SPOOKY FOREST (WebArena; tools/roblox/forest_models.py, the web's Scary Forest): a pine wood at night by a lake. A
 -- moonlit blue-grey, a low cold haze the trunks fade into, warm lamps (the cabin's windows, the camp lantern, the car's
 -- hazards, the mast's red lights) doing the rest; dark but readable: a player shows at 150 studs

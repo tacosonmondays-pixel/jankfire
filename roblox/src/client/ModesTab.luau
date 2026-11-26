@@ -232,6 +232,29 @@ function ModesTab.draw(ctx: any): number
 		end)
 		y += zH + 8
 	end
+	-- HOLDOUT (26 Nov 2026, roblox/docs/HUNT.md: one gunman, everyone else hides): its own lobby, THE HOUSE. the card
+	-- takes you there (server/HuntTravel; once HOLDOUT is its own place in this experience, a teleport). the count is
+	-- how many are in the house now (ReplicatedStorage's HuntPlayers). a party plays it from the house, one by one
+	if not ctx.pon then
+		local hH = if c then 50 else 66
+		local hb = new("TextButton", { Name = "Holdout", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
+			BackgroundColor3 = T.CARD, BackgroundTransparency = 0.2, Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, hH) }, left)
+		frame(hb, false)
+		local hn = text(hb, "Name", "HOLDOUT", if c then 16 else 21, T.TEXT, T.FONT_TITLE); hn.ZIndex = 3
+		hn.Position = UDim2.fromOffset(14, if c then 5 else 9); hn.Size = UDim2.new(1, -110, 0, if c then 20 else 26)
+		local hc = text(hb, "Count", ("%d IN THE HOUSE"):format(tonumber(ReplicatedStorage:GetAttribute("HuntPlayers")) or 0), if c then 9 else 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); hc.ZIndex = 3
+		hc.AnchorPoint = Vector2.new(1, 0); hc.Position = UDim2.new(1, -12, 0, if c then 9 else 15); hc.Size = UDim2.fromOffset(100, 14)
+		local hs = text(hb, "Sub", "one gunman · everyone else hides · its own lobby", if c then 10 else 12, T.MUTED, T.FONT); hs.ZIndex = 3
+		hs.Position = UDim2.fromOffset(14, if c then 25 else 36); hs.Size = UDim2.new(1, -24, 0, 16); hs.TextTruncate = Enum.TextTruncate.AtEnd
+		hb.MouseButton1Click:Connect(function()
+			local rf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+			local r = rf and rf:FindFirstChild("Hunt")
+			if not r then ctx.notice("HOLDOUT isn't open yet"); return end
+			if ctx.n > 1 then ctx.notice("HOLDOUT: go to the house one by one, then play together there"); return end
+			(r :: RemoteEvent):FireServer("go")
+		end)
+		y += hH + 8
+	end
 	-- (PARTY RANKED's one rule of its own: the grapple's charges, shared/HookCharges.luau)
 	if ctx.pon then
 		local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any

@@ -122,6 +122,7 @@ local function yankReady(): boolean
 	return not (type(ready) == "number" and workspace:GetServerTimeNow() < ready)
 end
 local function tryYank(): boolean
+	if player:GetAttribute("NoGrapple") then return false end -- (HOLDOUT, 26 Nov 2026: no grapple in the house or a round)
 	if not yankReady() then return false end
 	GrappleRemote:FireServer("yank")
 	releaseHook(false) -- (the server drops its rope with the yank)
@@ -211,6 +212,7 @@ end
 local function tryHook(locked: Model?, lockedRoot: BasePart?)
 	local ch, hum, root = character()
 	if not ch or not hum or not root or st.hook then return end
+	if player:GetAttribute("NoGrapple") then return end -- (HOLDOUT, 26 Nov 2026: no grapple there; E is its push)
 	-- (not before GO: the countdown, the loadout window, between rounds, a map room. nothing is thrown or spent)
 	if player:GetAttribute("RoundLock") then Hud.note("GRAPPLE AT GO", 0.7); return end
 	local params = RaycastParams.new()
@@ -291,6 +293,7 @@ local function tryLock()
 	local ch, hum, root = character()
 	if not ch or not hum or not root or st.hook then return end
 	if player:GetAttribute("Zone") ~= "match" and not lockTest() then return end
+	if player:GetAttribute("NoGrapple") then return end -- (HOLDOUT)
 	if player:GetAttribute("ZmOn") then return end -- (a ZOMBIES game reads as Zone "match": no opponents to lock onto there)
 	if player:GetAttribute("RoundLock") then Hud.note("GRAPPLE AT GO", 0.7); return end
 	if HookChargesUI.lockWait() > 0 then HookChargesUI.lockNotReady(); return end
@@ -782,7 +785,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 	-- the camera drops for a crouch / slide, the body sinks a bit into a slide (jank)
 	eye += (Movement.eyeTarget(st) - eye) * math.min(1, dt * 14)
 	hum.CameraOffset = Vector3.new(0, eye - Config.standEye, 0)
-	hum.HipHeight = hipBase - (if st.sliding then 0.9 else 0)
+	hum.HipHeight = hipBase - (if st.sliding then 0.9 else 0) - Body.sink -- (Body.sink: HOLDOUT's lie-down)
 	Hud.speed(math.sqrt(st.vx * st.vx + st.vz * st.vz) / Config.S, st.sliding, st.hook ~= nil)
 	if rope and not st.hook then dropRope() end
 end)

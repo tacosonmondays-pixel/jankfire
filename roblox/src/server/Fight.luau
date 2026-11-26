@@ -220,6 +220,8 @@ local HAND_K = 3 * 1.5
 -- room and matches arm you as usual. HubHolster re-runs this whenever your Zone changes
 function Fight.holstered(f: Fighter): boolean
 	-- (DevArms: the owner's dev weapons in the hub, OwnerDev.server; only the server sets it, only on the owner)
+	-- (Unarmed, 26 Nov 2026: a HOLDOUT hider in a round, set by the server's HuntRound: holds nothing, as in the hub)
+	if f.kind == "player" and (f.ref :: Player):GetAttribute("Unarmed") == true then return true end
 	return f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub" and (f.ref :: Player):GetAttribute("DevArms") ~= true
 end
 function Fight.showWeapon(f: Fighter)

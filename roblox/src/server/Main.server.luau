@@ -249,6 +249,7 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	-- the countdown, the loadout window, between rounds, a map room. refused before a charge is spent)
 	if Matches.roundLocked(p) then return cut("not yet") end
 	if p:GetAttribute("Rig") ~= nil then return cut("rigged") end -- (the Overdrive Rig gadget: no rope while suited up)
+	if p:GetAttribute("NoGrapple") == true then return cut("no grapple") end -- (HOLDOUT, 26 Nov 2026: the house and its rounds)
 	if not HookCheck.rate(i.hookTimes, os.clock()) then return cut("too many") end
 	local hum, root = alive(p)
 	if not hum or not root then return cut("dead") end
