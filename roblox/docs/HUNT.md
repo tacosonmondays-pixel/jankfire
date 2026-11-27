@@ -392,8 +392,14 @@ source one part with its light:
 - No mask (the owner, 27 Nov: "No mask for the killer!"): the gunman is his own avatar, in the intro and in play.
 - The screens show nothing readable: glow, colour and noise only. No text, chat or pages.
 - Plain props only: nothing on the walls that reads as a real-world symbol, poster or message.
-- Motion is mocap only (no hand-posing). Sounds are recordings with no voices: a low drone, a buzz with the
-  flicker, a heartbeat building, a hard hit on the snap, outside air on the cut. No breathing, no screams.
+- Motion is mocap only (no hand-posing). Sounds are recordings with no voices (the owner's order, 27 Nov): the
+  room's hum (PC fans, a fridge; B adds its TV's static) and a heartbeat that gets louder and faster up to the
+  snap (one looped APM beat, PlaybackSpeed 0.85 to 1.85 with a PitchShift holding its pitch, the hum ducking under
+  it), the hit on the snap, then peace: birds outside, carrying on past the hand-back and fading out. The ids and
+  levels are in `HuntConfig.INTRO.sounds` (levels from Studio's AudioAnalyzer, place v1460). No breathing, no screams.
+- The owner's liminal grade (27 Nov): a washed-out grey (`HuntConfig.INTRO.grade`: a ColorCorrection and a soft blur
+  on the camera) over the whole film, lifting into the game's own colour with the bars. Clips: side-session-notes
+  `holdout/intro_A_v5_grey` / `intro_B_v5_grey` (`_small` copies), sheet `intro_AB_sheet_v1460_grey.jpg`.
 
 **Where the gunman comes in:** each map gets an `outside` spot (x, y, z, facing) just outside it, facing in. The
 gunman is released there, not inside.
