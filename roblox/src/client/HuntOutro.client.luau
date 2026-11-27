@@ -428,8 +428,9 @@ local function play(a: any)
 		pullEnd = CFrame.lookAt(c.Position + c.LookVector * -3.4 + Vector3.new(0, 5.0, 0), scrP + Vector3.new(0, -0.6, 0))
 		reveal = function(u)
 			local e = Cine.ease(u)
-			local from = scrP + scrN * Cine.lerp(1.0, 1.6, e) + c.RightVector * Cine.lerp(3.4, 3.0, e) + Vector3.new(0, -0.2, 0)
-			return CFrame.lookAt(from, c.Position + Vector3.new(-0.6, 2.4, 0))
+			-- (v3: with their hips fitted onto the seats the old lens framed only laps: higher, further back, on faces)
+			local from = scrP + scrN * Cine.lerp(2.2, 2.8, e) + c.RightVector * Cine.lerp(3.2, 2.8, e) + Vector3.new(0, 0.9, 0)
+			return CFrame.lookAt(from, c.Position + Vector3.new(-0.6, 4.4, 0))
 		end
 	end
 	local smoother = function(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
@@ -451,7 +452,7 @@ local function play(a: any)
 				local from = CFrame.lookAt(scrP + scrN * fillDist(), scrP)
 				return from:Lerp(pullEnd, e)
 			end },
-		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 58 else 46, shake = 0.4, cam = reveal },
+		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 64 else 46, shake = 0.4, cam = reveal },
 	}
 
 	-- ---------------------------------------------------------------- the look, the grade, the bars, the sound
