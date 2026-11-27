@@ -83,6 +83,18 @@ The shop's bundles were refilled too:
 - The armory's Assault: Digital Camo.
 - The armory's Explosives: Molten leads, with Barcode.
 
+**Pass 3** (the repeats-and-circles audit, same day): 21 more retired, 35 in all. 12 Exotics are left, so every set has
+two:
+- Vaporwave and Market Crash moved to Office.
+- 65 wraps can roll: Cosmic 10, Japan 7, Luxe 10, Wild 13, Diner 15, Office 10.
+
+Bundles refilled:
+- Night Shift: Circuit Board leads (was Neon Hex).
+- Tea House: Washi Paper, Mint and Tiger.
+- Machine Shop: Duct Tape.
+- The armory's Assault: Arctic Camo.
+- The armory's Explosives: Cherry Pop and Tangerine.
+
 - The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
   card `ShopUI.boxCard`.
 

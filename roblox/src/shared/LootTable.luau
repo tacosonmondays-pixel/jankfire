@@ -126,14 +126,16 @@ L.CONTAINERS = {
 -- Hot Magenta, Gold: flat twins of other wraps), and Liquid Chrome stays a plain Legendary. 15 Exotics are left for six
 -- sets: Japan, Diner and Office keep three, Cosmic, Luxe and Wild two (Holo Foil back to Luxe). Tiger went to Japan and
 -- Amethyst Geode to Luxe, each set's thin rarity)
+-- (27 Nov, pass 3, the repeats-and-circles audit: 21 more retired, 35 in all. 12 Exotics are left: two a set again,
+-- Vaporwave to Office beside Circuit Board; Market Crash to Office, its one Legendary. 65 wraps can roll)
 L.SPRAY_SETS = { "spraycosmic", "sprayjapan", "sprayluxe", "spraywild", "spraydiner", "sprayoffice" }
 local SPRAY: { [string]: any } = {
 	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "matte", "ice", "ghost", "neon", "fade", "rainbow", "nebula", "blackhole" } },
-	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "tiger", "koi", "sakura", "bigwave" } },
-	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "jade", "carbon", "titanium", "geode", "stonks", "lchrome", "holo", "stained" } },
-	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "burl", "digital", "denim", "plaid", "leopard", "zebra", "organ", "meat", "aurora", "molten" } },
-	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "ketchup", "creamsicle", "bubblegum", "sprinkles", "watermelon", "candycorn", "cheese", "china", "bowling", "memphis", "pizza", "arcade", "dice", "racing", "glitch", "lavalamp", "vapor", "tokyo" } },
-	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "barcode", "bubblewrap", "sheet", "memo", "numsoup", "sweater", "corp", "missing", "crt", "circuit", "hex" } },
+	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "teal", "washi", "crackle", "tiger", "koi", "sakura" } },
+	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "jade", "carbon", "titanium", "geode", "lchrome", "holo", "stained" } },
+	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "digital", "denim", "plaid", "zebra", "meat", "aurora", "molten" } },
+	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "creamsicle", "sprinkles", "watermelon", "cheese", "china", "bowling", "memphis", "arcade", "dice", "glitch", "lavalamp", "tokyo" } },
+	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "barcode", "numsoup", "sweater", "stonks", "circuit", "vapor" } },
 }
 L.SPRAY_LOOSE = L.SPRAY_SETS[#L.SPRAY_SETS]
 L.SPRAY_OF = {} :: { [string]: string } -- (a wrap id -> its set's container id)
