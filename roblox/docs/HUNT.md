@@ -374,7 +374,7 @@ The intro lasts exactly the hide time, so both are one number, `HuntConfig.ROUND
    wide, a slow push, a profile. The only light is the screen's.
 2. **The build** (5.5 to 10.4 s): they start to lose it. Twitches, the head jerking, shoulders heaving; the screen's
    flicker and the camera shake grow, the cuts get shorter.
-3. **The snap** (10.4 to 11.4 s): a hard hit cut to straight above as the head snaps up into the lens, the mask on.
+3. **The snap** (10.4 to 11.4 s): a hard hit cut to straight above as the head snaps up into the lens.
 4. **Outside** (11.4 to 13.4 s): a cut to the gunman standing outside the round's map, looking up at it.
 5. **The turn** (13.4 to 16 s): they look down; the camera swings round behind them, the bars lift, and control is
    theirs. The last camera frame is the gameplay camera's first, so nothing pops.
@@ -389,7 +389,7 @@ source one part with its light:
 
 **Guardrails** (a fictional horror villain, never a real-world attack's build-up):
 - No gun anywhere in the intro: no loading, cocking or weapon close-ups.
-- The gunman wears a plain chunky horror mask (our own design, no logos) while in the role. It goes on at the snap.
+- No mask (the owner, 27 Nov: "No mask for the killer!"): the gunman is his own avatar, in the intro and in play.
 - The screens show nothing readable: glow, colour and noise only. No text, chat or pages.
 - Plain props only: nothing on the walls that reads as a real-world symbol, poster or message.
 - Motion is mocap only (no hand-posing). Sounds are recordings with no voices: a low drone, a buzz with the

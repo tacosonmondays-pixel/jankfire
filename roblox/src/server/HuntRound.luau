@@ -26,7 +26,6 @@ local Weapons = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild(
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local Rules = require(script.Parent:WaitForChild("Rules")) :: any
 local HuntItems = require(script.Parent:WaitForChild("HuntItems")) :: any
-local HuntMask = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntMask")) :: any
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Hunt") :: RemoteEvent
 local RD = HC.ROUND
 
@@ -449,10 +448,6 @@ Fight.onSpawn(function(f: Fighter)
 	if not m then return end
 	local hum = Fight.hum(f)
 	if hum then hum.BreakJointsOnDeath = false end -- (the client breaks the body into cubes: no limbs fall off)
-	if m.role == "gunman" then -- (27 Nov: the gunman wears the plain horror mask while he has the role)
-		local model = Fight.model(f)
-		if model then task.defer(function() pcall(HuntMask.wear, model) end) end
-	end
 end)
 Players.PlayerRemoving:Connect(function(p)
 	HuntRound.returning[p] = nil

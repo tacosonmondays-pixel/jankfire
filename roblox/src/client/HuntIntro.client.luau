@@ -1,13 +1,13 @@
 --!strict
 -- HOUSE HUNT: the gunman's intro (the owner, 27 Nov 2026; roblox/docs/HUNT.md section 11). On the gunman's screen only,
 -- for exactly the hide time: a person in a dark room lit only by a screen, slow cinematic angles; they start to lose
--- it; "boom!", an angle from straight above as their head snaps up into the lens, the mask on; a cut outside the map,
+-- it; "boom!", an angle from straight above as their head snaps up into the lens; a cut outside the map,
 -- they look up; they look down as the camera swings round behind them, the bars lift and the game is theirs.
 -- Two rooms on the same beats (the owner: "we can try both"): A their bedroom (a PC screen), B an attic (an old TV's
 -- static). The server (HuntRound) sends Remote "intro" { set, len, t0, outside, lead } and holds the real body still:
 -- in its sealed pen, then at the outside spot for the last two beats. Everything here is on this client.
 -- Guardrails (main): no gun anywhere in it, nothing readable on a screen, plain props, mocap only, no voices.
--- The room, the screen and the desk mask come from HuntIntroData (tools/roblox/hunt_intro_models.py); the camera,
+-- The room and the screen come from HuntIntroData (tools/roblox/hunt_intro_models.py); the camera,
 -- the bars and the shake from CineKit; the light is HubLook's (the "Finishing" attribute keeps the zone look off it).
 -- Test: the Studio hook's round { role = "gunman", introSet = "A" | "B" } plays it.
 local Players = game:GetService("Players")
@@ -19,7 +19,6 @@ local J = ReplicatedStorage:WaitForChild("Jankfire")
 local HC = require(J:WaitForChild("HuntConfig")) :: any
 local Data = require(J:WaitForChild("HuntIntroData")) :: any
 local HubLook = require(J:WaitForChild("HubLook")) :: any
-local HuntMask = require(J:WaitForChild("HuntMask")) :: any
 local Cine = require(script.Parent:WaitForChild("CineKit")) :: any
 local Sfx: any = nil
 pcall(function() Sfx = require(script.Parent:WaitForChild("Sfx", 5) :: ModuleScript) end)
@@ -142,23 +141,6 @@ local function play(a: any)
 			pcall(function() game:GetService("ContentProvider"):PreloadAsync(list) end)
 		end)
 	end
-	-- the mask on the desk (no strap: it would sink into the desk)
-	local deskMask: Model? = nil
-	local srcMask = kit:FindFirstChild("hi_mask")
-	if srcMask then
-		local dm = srcMask:Clone() :: Model
-		local mo: Vector3 = Data.origin.mask
-		local spot = Data.deskMask[set]
-		local at = SET_AT * CFrame.new(spot.at.X, spot.at.Y - 0.64, spot.at.Z) * CFrame.Angles(0, math.rad(spot.turn), 0)
-			* CFrame.Angles(math.rad(spot.tilt), 0, 0)
-		for _, p in dm:GetDescendants() do
-			if p:IsA("BasePart") then
-				if p.Color == Color3.fromHex("2c2e33") then p:Destroy() else p.CFrame = at * (CFrame.new(-mo) * p.CFrame) end
-			end
-		end
-		dm.Parent = folder
-		deskMask = dm
-	end
 	-- him: a copy of his own body, standing in the middle of the room, facing the screen
 	local was = ch.Archivable
 	ch.Archivable = true
@@ -168,7 +150,6 @@ local function play(a: any)
 	for _, d in body:GetDescendants() do
 		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("BillboardGui") then d:Destroy() end
 	end
-	HuntMask.off(body)
 	for _, d in body:GetDescendants() do
 		if d.Name == "Viewmodel" or d:GetAttribute("Gun") then d:Destroy() end -- (no gun anywhere in the intro)
 	end
@@ -314,8 +295,6 @@ local function play(a: any)
 		if once("snap", 10.4 * k) then
 			if A.snap then A.snap:Play(0.04, 1, 1.3) end
 			if r.cine then r.cine.kick(9) end
-			if deskMask then deskMask:Destroy(); deskMask = nil end
-			HuntMask.wear(body)
 			sfx(HC.INTRO.sounds.hit, 1)
 		end
 		-- outside: the round's light, the air, the real body looks up and then down
