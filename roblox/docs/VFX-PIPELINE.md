@@ -1072,7 +1072,9 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   a piece in, measured per LENGTH (the widest per fifth of the visible length, steeper than the crescent's own
   profile). The lower-only smoothing runs only within two pieces of a clamped piece. Swings with no clamped piece draw
   as in round 6. `studio_sweep_r8_fp.jpg`, `studio_sweep_r8_shoulder.jpg`, `studio_sweep_r8_shoulder2.jpg` (the
-  combo's second and third swings).
+  combo's second and third swings). **Critic: first person 8, shoulder edges 8 (crescent read 7), side 8, whole 8:
+  shipped.** Left out on purpose: a 4-5 % bow on near-straight third-person swings (an edge-on horizontal swing reads
+  as a wedge), because it would bend the ribbon off the blade's plane.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
