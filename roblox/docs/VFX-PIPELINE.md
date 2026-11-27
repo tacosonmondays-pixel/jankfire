@@ -1044,6 +1044,11 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   outside, the width turns towards the viewer the more edge-on the swing's plane is (the blade's own plane when open to
   the camera); never under 7 px across where fullest; the white core at Brightness 1.25. Captures
   `studio_sweep_fp_v1454.jpg`, `studio_sweep_tp_v1454.jpg`, `studio_sweep_side_v1454.jpg`.
+- **Round 3 (place version 1459), after 7/10 for first person and the side** ("both edges kink ... a joined
+  polyline", seams fanning at a tight curl; the shoulder view already 8): the path is resampled so no piece turns more
+  than about 8 degrees (a segment gets up to 8 Catmull-Rom points, as many as the sharper of the turns at its ends
+  needs); the first-person bow comes after. Captures `studio_sweep_fp_v1459.jpg`, `studio_sweep_side_v1459.jpg`,
+  `studio_sweep_tp_v1459.jpg`.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a

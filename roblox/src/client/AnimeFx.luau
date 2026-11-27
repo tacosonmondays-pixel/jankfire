@@ -578,14 +578,19 @@ local function stepSweep(s: Sweep, dt: number): boolean
 		local u2, u3 = u * u, u * u * u
 		return 0.5 * ((2 * p1) + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (3 * p1 - p0 - 3 * p2 + p3) * u3)
 	end
+	-- (round 3, the critic on v1454: "both edges kink ... a joined polyline", seams fanning at a tight curl: now no piece
+	-- turns more than about 8 degrees. A segment gets as many points as the sharper of the turns at its two ends needs)
+	local function turnAt(i: number): number
+		if i <= 1 or i >= ns then return 0 end
+		local e0, e1 = Pt[i] - Pt[i - 1], Pt[i + 1] - Pt[i]
+		if e0.Magnitude < 1e-4 or e1.Magnitude < 1e-4 then return 0 end
+		return math.deg(math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1)))
+	end
 	for i = 1, ns do
 		table.insert(Dm, Pm[i]); table.insert(Dt, Pt[i]); table.insert(Da, Pa[i])
-		if i < ns and #Dt < 56 then
+		if i < ns and #Dt < 96 then
 			local a0, a3 = math.max(i - 1, 1), math.min(i + 2, ns)
-			local e1 = Pt[i + 1] - Pt[i]
-			local e0 = Pt[i] - Pt[a0]
-			local turn = if e0.Magnitude > 1e-4 and e1.Magnitude > 1e-4 then math.deg(math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1))) else 0
-			local sub = if turn > 30 then 3 elseif turn > 12 then 2 else 0
+			local sub = math.clamp(math.ceil(math.max(turnAt(i), turnAt(i + 1)) / 8) - 1, 0, 8)
 			for k = 1, sub do
 				local u = k / (sub + 1)
 				table.insert(Dt, cr(Pt[a0], Pt[i], Pt[i + 1], Pt[a3], u))
