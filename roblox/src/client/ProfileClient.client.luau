@@ -82,8 +82,8 @@ local face = T.new("TextButton", {
 T.corner(face); T.edge(face)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, face)
 T.key(face, "K", UDim2.fromOffset(-34, 7))
-face.MouseEnter:Connect(function() face.BackgroundTransparency = 0.1 end)
-face.MouseLeave:Connect(function() face.BackgroundTransparency = T.BG_A end)
+-- (27 Nov 2026: the look is HubStack.style's: the hub menu in A PLATE, the owner's pick from the ui-mocks sheet)
+require(script.Parent:WaitForChild("HubStack")).style(face, "Profile")
 face.MouseButton1Click:Connect(function() ProfileUI.open() end)
 
 -- "VIEW PROFILE · NAME" under the crosshair while it is on someone in the hub (not on a touch screen: a tap just works)

@@ -19,7 +19,9 @@ local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
-local T = require(script.Parent:WaitForChild("Theme"))
+-- (27 Nov 2026, the owner's pick from the ui-mocks sheet: the shop is A PLATE, light on the game: bone panels and cards,
+-- ink words, ink for the one button that does something, near-square corners. this T is Theme with A's colours)
+local T = require(script.Parent:WaitForChild("UiKit")).themeA()
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 
@@ -401,7 +403,7 @@ function V.container(id: string): Model
 		return new("Part", { Shape = shape, Anchored = true, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth, CastShadow = false }, m)
 	end
 	local B, Cy = Enum.PartType.Block, Enum.PartType.Cylinder
-	local slate, dark, steel, amber = Color3.fromRGB(70, 75, 86), Color3.fromRGB(38, 41, 49), Color3.fromRGB(150, 156, 166), T.ACCENT
+	local slate, dark, steel, amber = Color3.fromRGB(70, 75, 86), Color3.fromRGB(38, 41, 49), Color3.fromRGB(150, 156, 166), Color3.fromRGB(255, 196, 61) -- (a literal amber: LootTable.tint repaints it to the set colour; T.ACCENT is ink in A)
 	if id == "crate" then
 		m.PrimaryPart = p(B, Vector3.new(3.4, 1.7, 2.2), slate, CFrame.identity)
 		p(B, Vector3.new(3.46, 0.08, 2.26), dark, CFrame.new(0, 0.2, 0)) -- the lid's seam
@@ -1006,6 +1008,8 @@ function ShopUI.fillFeatured()
 		local so = Shop.offer(id)
 		if so then singleCard(UI.dailyGrid, so, i) end
 	end
+	local Xs = ShopUI.ext()
+	if Xs and Xs.sideFill then Xs.sideFill() end
 end
 
 -- ------------------------------------------------------------------------ BUNDLES: the skin sets' banners, then every bundle in a grid
@@ -3032,13 +3036,18 @@ function ShopUI.layout()
 	local wider = S.bw ~= bw or S.compact ~= S.wasCompact
 	S.bw, S.bh, S.wasCompact = bw, bh, compact
 	-- featured: hero on the left, the daily grid on the right
-	local heroW = math.floor(bw * (if compact then 0.46 else 0.48))
+	-- (27 Nov, A PLATE: off a phone the page is three columns, the hero narrow and tall, the daily two by three, CRATES
+	-- and COINS on the right: ShopBundles' side column)
+	local heroW = math.floor(bw * (if compact then 0.46 else 0.25))
 	local gap = if compact then 10 else 14
+	local sideW = if compact then 0 else math.floor(bw * 0.37)
 	UI.hero.Size = UDim2.new(0, heroW, 1, 0)
 	UI.daily.Position = UDim2.fromOffset(heroW + gap, 0)
-	UI.daily.Size = UDim2.new(1, -(heroW + gap), 1, 0)
+	UI.daily.Size = UDim2.new(1, -(heroW + gap + (if sideW > 0 then sideW + gap else 0)), 1, 0)
 	UI.dailyLayout.CellPadding = UDim2.fromOffset(gap, gap)
-	UI.dailyLayout.CellSize = UDim2.new(1 / 3, -math.ceil(gap * 2 / 3), 0.5, -math.ceil(gap / 2))
+	UI.dailyLayout.CellSize = if compact then UDim2.new(1 / 3, -math.ceil(gap * 2 / 3), 0.5, -math.ceil(gap / 2)) else UDim2.new(0.5, -math.ceil(gap / 2), 1 / 3, -math.ceil(gap * 2 / 3))
+	local Xs = ShopUI.ext()
+	if Xs and Xs.sidePlace then Xs.sidePlace(sideW, gap) end
 	UI.dailyGrid.Position = UDim2.fromOffset(0, if compact then 26 else 30)
 	UI.dailyGrid.Size = UDim2.new(1, 0, 1, -(if compact then 26 else 30))
 	UI.heroEyebrow.Position = UDim2.fromOffset(if compact then 14 else 20, if compact then 12 else 18)
@@ -3052,8 +3061,9 @@ function ShopUI.layout()
 	local hy = if compact then 58 else 100
 	UI.heroView.Position = UDim2.fromOffset(0, hy)
 	UI.heroView.Size = UDim2.new(1, 0, 1, -(hy + strip))
-	UI.heroBtn.face.Size = UDim2.fromOffset(if compact then 128 else 180, if compact then 44 else 46)
-	UI.heroBtn.face.Position = UDim2.new(1, -(if compact then 138 else 196), 0.5, -(if compact then 22 else 23))
+	UI.heroBtn.face.Size = if compact then UDim2.fromOffset(128, 44) else UDim2.new(1, -32, 0, 46)
+	UI.heroBtn.face.Position = if compact then UDim2.new(1, -138, 0.5, -22) else UDim2.new(0, 16, 0.5, -23)
+	UI.heroChips.Visible = compact
 	UI.heroBtn.face.TextSize = if compact then 14 else 15
 	UI.heroChips.Position = UDim2.fromOffset(if compact then 10 else 16, 0)
 	UI.heroChips.Size = UDim2.new(1, -(if compact then 150 else 220), 1, 0)

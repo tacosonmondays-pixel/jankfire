@@ -72,6 +72,8 @@ local face = T.new("TextButton", {
 T.corner(face); T.edge(face)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, face)
 T.key(face, "U", UDim2.fromOffset(-34, 7))
+-- (27 Nov 2026: the look is HubStack.style's: the hub menu in A PLATE, the owner's pick from the ui-mocks sheet)
+require(script.Parent:WaitForChild("HubStack")).style(face, "Quests")
 -- something new (QuestNews): a small amber dot on the button's top right corner
 local dot = T.new("Frame", { Name = "News", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.new(1, -2, 0, 2), Size = UDim2.fromOffset(8, 8), Visible = false }, face)
@@ -80,9 +82,8 @@ T.corner(dot, 99)
 local count = T.text(face, "Done", "0/3", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
 count.Position = UDim2.fromOffset(0, 0)
 count.Size = UDim2.new(1, -12, 1, 0)
-face.MouseEnter:Connect(function() face.BackgroundTransparency = 0.1 end)
-face.MouseLeave:Connect(function() face.BackgroundTransparency = T.BG_A end)
 face.MouseButton1Click:Connect(function() QuestUI.open() end)
+count.TextColor3 = Color3.new(1, 1, 1); count.TextTransparency = 0.3; count.TextStrokeTransparency = 0.8; count.FontFace = T.FONT_HEAVY; count.TextSize = 15
 
 -- ------------------------------------------------------------------ the wallet, top right
 -- (its own ScreenGui: on a phone TouchControls moves JankQuestsButton.Scaled's one child, the button, into its right-
@@ -113,7 +114,7 @@ local function refresh()
 	if t[1] then t[1].Text = QuestUI.comma(tonumber(me:GetAttribute("Brass")) or 0) end
 	if t[2] then t[2].Text = QuestUI.comma(tonumber(me:GetAttribute("CrateTickets")) or 0) end
 	count.Text = ("%d/3"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
-	count.TextColor3 = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then T.ACCENT else T.MUTED
+	count.TextTransparency = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then 0 else 0.3 -- (A: all three done = full white)
 	dot.Visible = me:GetAttribute("QuestNews") == true
 end
 for _, a in { "Brass", "CrateTickets", "QuestsDone", "QuestNews" } do me:GetAttributeChangedSignal(a):Connect(refresh) end

@@ -15,7 +15,7 @@ local UIS = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local T = require(script.Parent:WaitForChild("Theme"))
+local T = require(script.Parent:WaitForChild("UiKit")).themeA() -- (27 Nov 2026: the hub's menus in A PLATE, the owner's pick from the ui-mocks sheet: Theme in bone and ink, UiKit.luau)
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Ranks = require(Shared:WaitForChild("Ranks"))

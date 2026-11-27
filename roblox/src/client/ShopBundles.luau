@@ -603,6 +603,135 @@ return function(C: any): any
 		s.CanvasSize = UDim2.fromOffset(0, y)
 	end
 
+	-- ==================================================================== FEATURED's right column (27 Nov 2026)
+	-- the owner's pick from the ui-mocks sheet: the shop home is A PLATE's. the featured set as a tall card, the daily
+	-- offers beside it, and on the right CRATES (the Crate, the Duffel Bag, the spray cans) and COINS (the packs) as plain
+	-- rows on a bone panel. a crate's prices are its own buttons: tickets, then coins, each greyed with "need N more"
+	-- while you're short; a press asks to buy (ShopUI.ask: the odds first). a coin pack's button is its Robux price
+	-- (ShopUI.prompt once Robux is on). ShopUI.layout places the column (sidePlace); fillFeatured fills it (sideFill)
+	local INK, BONE, LIP = Color3.fromRGB(29, 31, 35), Color3.fromRGB(229, 226, 219), Color3.fromRGB(170, 164, 152)
+	function X.sidePlace(w: number, gap: number)
+		local page = UI.pages.featured
+		local f = page:FindFirstChild("Side") :: Frame?
+		if not f then
+			f = new("Frame", { Name = "Side", BackgroundTransparency = 1 }, page)
+		end
+		local side = f :: Frame
+		side.Visible = w > 0
+		side.AnchorPoint = Vector2.new(1, 0)
+		side.Position = UDim2.fromScale(1, 0)
+		side.Size = UDim2.new(0, w, 1, 0)
+		X.sideGap = gap
+	end
+	-- a price you press: ink with bone words and the pads' lip under it; short of it: greyed, "need N more" under it
+	local function priceBtn(parent: Instance, icon: string?, words: string, ok: boolean, need: string?, x: UDim, w: number): TextButton
+		local b = new("TextButton", { Name = "Price", AutoButtonColor = false, BackgroundColor3 = if ok then INK else T.TRACK, BorderSizePixel = 0,
+			AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(x.Scale, x.Offset, 0.5, if need then -7 else -2), Size = UDim2.fromOffset(w, 32),
+			Text = "", ZIndex = 4 }, parent)
+		new("UICorner", { CornerRadius = UDim.new(0, 8) }, b)
+		local lip = new("Frame", { Name = "Lip", BackgroundColor3 = if ok then Color3.new(0, 0, 0) else LIP, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 3), Size = UDim2.fromScale(1, 1), ZIndex = 3 }, b)
+		new("UICorner", { CornerRadius = UDim.new(0, 8) }, lip)
+		local row = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0, 1),
+			AutomaticSize = Enum.AutomaticSize.X, ZIndex = 5 }, b)
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5), VerticalAlignment = Enum.VerticalAlignment.Center,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder }, row)
+		if icon then
+			local ic = new("CanvasGroup", { BackgroundTransparency = 1, Size = UDim2.fromOffset(16, 16), LayoutOrder = 1, ZIndex = 5,
+				GroupTransparency = if ok then 0 else 0.4 }, row)
+			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
+		end
+		local l = txt(row, words, 15, if ok then BONE else T.DIM, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
+		if need then
+			local n = txt(parent, need, 11, Color3.fromRGB(150, 84, 40), T.FONT_BOLD, Enum.TextXAlignment.Center)
+			n.AnchorPoint = Vector2.new(1, 0); n.Position = UDim2.new(x.Scale, x.Offset, 0.5, 13); n.Size = UDim2.fromOffset(w, 14); n.ZIndex = 4
+		end
+		return b
+	end
+	function X.sideFill()
+		local page = UI.pages.featured
+		local side = page:FindFirstChild("Side") :: Frame?
+		if not side or not side.Visible then return end
+		for _, c in side:GetChildren() do c:Destroy() end
+		local gap = X.sideGap or 14
+		-- the crates: the Crate, the Duffel Bag, then one row for the spray cans (their sets are on CONTAINERS)
+		local boxes, sprays = {}, {}
+		for _, o in Shop.containers do
+			if not o.legacy then table.insert(if o.spray then sprays else boxes, o) end
+		end
+		local rows = table.clone(boxes)
+		if #sprays > 0 then table.insert(rows, sprays[1]) end
+		local function head(text: string, y: UDim)
+			local l = txt(side, text, 15, Color3.new(1, 1, 1), T.FONT_HEAVY)
+			l.Position = UDim2.new(0, 0, y.Scale, y.Offset); l.Size = UDim2.new(1, 0, 0, 22)
+			l.TextStrokeTransparency = 0.8
+		end
+		local split = 0.47
+		head("CRATES", UDim.new(0, 0))
+		local crates = new("Frame", { Name = "Crates", BackgroundColor3 = T.CARD, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 28),
+			Size = UDim2.new(1, 0, split, -28 - gap / 2) }, side)
+		T.corner(crates)
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, crates)
+		local tix, coins = Purse.of("tix"), Purse.of("brass")
+		for i, o in rows do
+			local isSpray = o.spray == true
+			local function go() if isSpray then ShopUI.tab("containers") else ShopUI.ask(o.id) end end
+			local r = new("TextButton", { Name = "Row" .. i, AutoButtonColor = false, BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 1, BorderSizePixel = 0,
+				Text = "", Size = UDim2.new(1, 0, 1 / #rows, 0), LayoutOrder = i }, crates)
+			if i > 1 then new("Frame", { Name = "Rule", BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1) }, r) end
+			local view = new("Frame", { Name = "View", BackgroundTransparency = 1, Position = UDim2.fromOffset(4, 4), Size = UDim2.new(0, 96, 1, -8) }, r)
+			pcall(V.put, view, o, nil, "none", 1.05)
+			local name = txt(r, string.upper(if isSpray then "Spray can" else o.name), 18, T.TEXT, T.FONT_HEAVY)
+			name.Position = UDim2.new(0, 108, 0.5, -20); name.Size = UDim2.new(0.5, -60, 0, 22)
+			local what = ({ crate = "One random skin", bag = "One random hat" } :: any)[o.id] or (if isSpray then ("One random wrap · %d sets"):format(#sprays) else "")
+			local sub = txt(r, what, 13, T.MUTED, T.FONT_BOLD)
+			sub.Position = UDim2.new(0, 108, 0.5, 2); sub.Size = UDim2.new(0.5, -60, 0, 16)
+			local p = Purse.price(o.id)
+			local x = UDim.new(1, -12)
+			if p and p.brass then
+				local okB = coins >= p.brass
+				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil else "need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
+				x = UDim.new(1, -12 - 86 - 26)
+				if p.tix then
+					local orL = txt(r, "or", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
+					orL.AnchorPoint = Vector2.new(1, 0.5); orL.Position = UDim2.new(1, -12 - 86 - 2, 0.5, -2); orL.Size = UDim2.fromOffset(22, 14)
+				end
+			end
+			if p and p.tix then
+				local okT = tix >= p.tix
+				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil else "need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
+			end
+			if not p then
+				priceBtn(r, nil, if Shop.free() then "CLAIM" else ROBUX .. " " .. commas(o.robux or 0), true, nil, x, 96).MouseButton1Click:Connect(go)
+			end
+			r.MouseButton1Click:Connect(go)
+			r.MouseEnter:Connect(function() r.BackgroundTransparency = 0 end)
+			r.MouseLeave:Connect(function() r.BackgroundTransparency = 1 end)
+		end
+		-- the coin packs: the amount, the bonus under it, the Robux price
+		head("COINS", UDim.new(split, gap / 2))
+		local packs = Shop.coinPacks()
+		local panel = new("Frame", { Name = "Coins", BackgroundColor3 = T.CARD, BorderSizePixel = 0, Position = UDim2.new(0, 0, split, gap / 2 + 28),
+			Size = UDim2.new(1, 0, 1 - split, -28 - gap / 2) }, side)
+		T.corner(panel)
+		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, panel)
+		local sell = Shop.ROBUX == true and not Shop.free()
+		for i, o in packs do
+			local r = new("Frame", { Name = "Pack" .. i, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1 / #packs, 0), LayoutOrder = i }, panel)
+			if i > 1 then new("Frame", { Name = "Rule", BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1) }, r) end
+			local bonus = tonumber(o.bonus) or 0
+			local amt = txt(r, ('%s <font size="13" color="#56534d">coins</font>'):format(commas(o.amount - bonus)), 24, T.TEXT, T.FONT_HEAVY)
+			amt.RichText = true
+			amt.Position = UDim2.new(0, 16, 0.5, if bonus > 0 then -20 else -13); amt.Size = UDim2.new(0.6, 0, 0, 28)
+			if bonus > 0 then
+				local bo = txt(r, "+" .. commas(bonus) .. " bonus", 13, T.MUTED, T.FONT_BOLD)
+				bo.Position = UDim2.new(0, 16, 0.5, 8); bo.Size = UDim2.new(0.6, 0, 0, 16)
+			end
+			local b = priceBtn(r, nil, ROBUX .. " " .. commas(o.robux), sell and Shop.productFor(o) ~= nil, nil, UDim.new(1, -16), 104)
+			b.MouseButton1Click:Connect(function() if sell then ShopUI.prompt(o) else ShopUI.tab("coins") end end)
+		end
+	end
+
 	-- ==================================================================== owned, display only
 	-- an owned skin with no single offer (a set's piece, a VIP skin: neither is sold alone) opens the inspect panel all
 	-- the same, as "view:skin:<id>": OWNED, no BUY and no GIFT, its finisher's PREVIEW where it has one. this offer is

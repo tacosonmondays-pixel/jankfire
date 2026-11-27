@@ -19,7 +19,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local T = require(script.Parent:WaitForChild("Theme"))
+local T = require(script.Parent:WaitForChild("UiKit")).themeA() -- (27 Nov 2026: the hub's menus in A PLATE, the owner's pick from the ui-mocks sheet: Theme in bone and ink, UiKit.luau)
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
 local Keys = require(script.Parent:WaitForChild("Keys"))
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any

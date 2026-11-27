@@ -320,16 +320,22 @@ end
 
 -- ---------------------------------------------------------------- building it
 -- own: this button's own see-through from the layout (x the TOUCH tab's BUTTON OPACITY)
+-- (27 Nov 2026, the owner's pick from the ui-mocks sheet: the phone is A PLATE: bone discs with ink words, FIRE an ink
+-- disc with a bone rim, a pressed or switched-on button turns ink; the stick a bone ring and knob)
+local BONE, INK = Color3.fromRGB(229, 226, 219), Color3.fromRGB(29, 31, 35)
+local HUNT_WORDS = { fire = "PUNCH", hook = "PUSH", reel = "LIE" } -- (HOLDOUT's words: placeAll)
 local function style(face: TextButton, lit: boolean, accentEdge: boolean?, own: number?)
 	local a = math.clamp(S.alpha * (own or 1), 0.1, 1)
-	face.BackgroundColor3 = if lit then T.ACCENT else T.BG
-	face.BackgroundTransparency = if lit then 1 - a else 1 - a * 0.72
-	face.TextColor3 = if lit then T.INK else T.TEXT
+	local dark = lit ~= (accentEdge == true) -- (FIRE is ink at rest and bone while held; the rest the other way round)
+	face.BackgroundColor3 = if dark then INK else BONE
+	face.BackgroundTransparency = 1 - a * 0.9
+	face.TextColor3 = if dark then BONE else INK
 	face.TextTransparency = (1 - a) * 0.55
 	local st = face:FindFirstChildOfClass("UIStroke")
 	if st then
-		st.Color = if accentEdge and not lit then T.ACCENT else T.EDGE
-		st.Transparency = if accentEdge and not lit then 1 - a * 0.9 else 1 - (1 - T.EDGE_A) * a * 1.2
+		st.Color = BONE
+		st.Thickness = if accentEdge then 3 else 1
+		st.Transparency = if accentEdge then 1 - a * 0.95 else 1
 	end
 end
 
@@ -361,7 +367,7 @@ local function newFace(parent: Instance, name: string, label: string, round: boo
 		Name = name, AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = T.BG,
 		BorderSizePixel = 0, Text = label, FontFace = T.FONT_HEAVY, TextSize = 12, TextColor3 = T.TEXT, Selectable = false,
 	}, parent) :: TextButton
-	if round then T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, f) else T.corner(f, 8) end
+	if round then T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, f) else T.corner(f, 3) end
 	T.edge(f)
 	return f
 end
@@ -412,12 +418,12 @@ local function build()
 	full = T.new("Frame", { Name = "Full", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, fullGui) :: Frame
 
 	-- the stick: a thin ring and a knob. resting (faint) where the layout puts it; live where the thumb lands
-	stickRing = T.new("Frame", { Name = "Stick", AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = T.BG,
-		BackgroundTransparency = 0.8, Size = UDim2.fromOffset(104, 104) }, pad) :: Frame
+	stickRing = T.new("Frame", { Name = "Stick", AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = INK,
+		BackgroundTransparency = 0.86, Size = UDim2.fromOffset(104, 104) }, pad) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickRing)
-	T.edge(stickRing, T.EDGE, 0.55, 2)
+	T.edge(stickRing, BONE, 0.25, 3)
 	stickKnob = T.new("Frame", { Name = "Knob", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		BackgroundColor3 = T.TEXT, BackgroundTransparency = 0.5, Size = UDim2.fromOffset(46, 46) }, stickRing) :: Frame
+		BackgroundColor3 = BONE, BackgroundTransparency = 0.1, Size = UDim2.fromOffset(46, 46) }, stickRing) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickKnob)
 
 	-- the top row: SETTINGS, AUTO and EMOTE, each placed on its own (TL.place: right to left along the top, or where
@@ -1026,10 +1032,18 @@ RunService.Heartbeat:Connect(function()
 	-- (the AUTO GRAPPLE, LOCK: in a match after GO. shown while it cools down too: a tap then says how long, Move.client)
 	local lockOn = (me:GetAttribute("Zone") == "match" or (RunService:IsStudio() and me:GetAttribute("AutoLockTest") == true)) and me:GetAttribute("RoundLock") ~= true
 		and not me:GetAttribute("ZmOn") -- (a ZOMBIES game reads as Zone "match": no AUTO GRAPPLE there)
+	-- (HOLDOUT, the player attribute Hunt: FIRE punches, HOOK pushes, the lock key lies down, no YANK. the presses are
+	-- HuntMoves' through Keys; only the words change here. 27 Nov, hunt-mode's ask)
+	local hunt = me:GetAttribute("Hunt") ~= nil
 	for _, b in BTNS do
 		local A = b.A
-		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope) and (not A.lock or lockOn) and (not A.melee or swung)
+		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope) and (not A.lock or lockOn or hunt) and (not A.melee or swung)
+			and not (hunt and b.act == "yank")
 		if b.face.Visible ~= vis then b.face.Visible = vis end
+		if not A.q then
+			local word = if hunt and HUNT_WORDS[b.act] then HUNT_WORDS[b.act] else TL.label(b.rec)
+			if b.face.Text ~= word then b.face.Text = word end
+		end
 		if A.q then -- (the katana's WAVE, or the Scythe's FORM in its place)
 			local word = if scy then "FORM" else "WAVE"
 			if b.face.Text ~= word then b.face.Text = word end
@@ -1052,10 +1066,10 @@ RunService.Heartbeat:Connect(function()
 	if not stickRing:GetAttribute("Live") then
 		stickRing.Position = UDim2.fromOffset(stickHome.X, stickHome.Y)
 		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha * own * 0.55
-		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha * own * 0.55
+		stickKnob.BackgroundTransparency = 1 - 0.85 * S.alpha * own * 0.55
 	else
 		stickRing.BackgroundTransparency = 1 - 0.2 * S.alpha * own
-		stickKnob.BackgroundTransparency = 1 - 0.5 * S.alpha * own
+		stickKnob.BackgroundTransparency = 1 - 0.85 * S.alpha * own
 	end
 	-- the weapon chips sit in the HUD's own frame, so they line up with the plates over them; names from your
 	-- loadout, the one in your hands marked

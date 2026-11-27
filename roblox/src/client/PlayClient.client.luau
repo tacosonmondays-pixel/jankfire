@@ -121,8 +121,8 @@ T.corner(face)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, face)
 local key = T.key(face, "M", UDim2.fromOffset(-34, 10))
 key.BackgroundColor3 = T.INK
-face.MouseEnter:Connect(function() face.BackgroundColor3 = T.ACCENT:Lerp(Color3.new(1, 1, 1), 0.18) end)
-face.MouseLeave:Connect(function() face.BackgroundColor3 = T.ACCENT end)
+-- (27 Nov 2026: the look is HubStack.style's: the hub menu in A PLATE, the owner's pick from the ui-mocks sheet)
+require(script.Parent:WaitForChild("HubStack")).style(face, "Play")
 face.MouseButton1Click:Connect(function() task.spawn(play) end)
 -- PARTY, under QUESTS: everyone in the server, invites, cards (PartyUI). it counts your party when you have one
 local partyB = T.new("TextButton", {
@@ -133,8 +133,7 @@ local partyB = T.new("TextButton", {
 T.corner(partyB); T.edge(partyB)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, partyB)
 T.key(partyB, "J", UDim2.fromOffset(-34, 7))
-partyB.MouseEnter:Connect(function() partyB.BackgroundTransparency = 0.1 end)
-partyB.MouseLeave:Connect(function() partyB.BackgroundTransparency = T.BG_A end)
+require(script.Parent:WaitForChild("HubStack")).style(partyB, "Party")
 partyB.MouseButton1Click:Connect(function() PartyUI.toggle() end)
 PlayUI.openParty = function() PartyUI.open() end
 (PlayUI :: any).openBoard = function() LeaderboardUI.open() end
@@ -170,7 +169,7 @@ RunService.Heartbeat:Connect(function()
 	if face.Visible ~= show then face.Visible = show end
 	if partyB.Visible ~= show then partyB.Visible = show end
 	local pt = PlayUI.S.party
-	local label = if pt then ('PARTY  <font color="%s">%d/%d</font>'):format(T.hex(T.MUTED), #pt.members, pt.max or 4) else "PARTY"
+	local label = if pt then ('PARTY  <font transparency="0.3">%d/%d</font>'):format(#pt.members, pt.max or 4) else "PARTY"
 	if partyB.Text ~= label then partyB.Text = label end
 end)
 

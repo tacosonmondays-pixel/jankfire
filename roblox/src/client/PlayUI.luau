@@ -10,7 +10,7 @@ local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local T = require(script.Parent:WaitForChild("Theme"))
+local T = require(script.Parent:WaitForChild("UiKit")).themeA() -- (27 Nov 2026: the hub's menus in A PLATE, the owner's pick from the ui-mocks sheet: Theme in bone and ink, UiKit.luau)
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
@@ -673,13 +673,13 @@ local function bottomBar()
 	if not pt then return end
 	local W = if c then 300 else 480
 	local bw, bh = if c then 220 else 320, if c then 44 else 56
-	-- the pick, over the button: RANKED · 2V2 and your rank in it
+	-- the pick, over the button: RANKED · 2V2 and your rank in it (27 Nov: its colour toward the ink, so silver and gold read on bone)
 	local pick = text(bottom, "Pick", "", if c then 13 else 16, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
 	pick.Position = UDim2.fromOffset(0, 0); pick.Size = UDim2.fromOffset(W, 22); pick.RichText = true
 	local priv = PlayConfig.private(PlayConfig.byId[pt.mode], #pt.members) -- (a duel the party fills by itself: never ranked)
 	local mine = if pt.ranked and not priv then S.ranked[PlayConfig.ratingKey(pt.mode)] else nil
 	pick.Text = (if priv then "PRIVATE" elseif pt.ranked then (if partyPick() then "PARTY RANKED" else "RANKED") else "CASUAL") .. "  ·  " .. modeName(pt.mode)
-		.. (if mine then ('  <font color="%s">%s</font>'):format(T.hex(RankedStyle.color(mine)), RankedStyle.label(mine)) else "")
+		.. (if mine then ('  <font color="%s">%s</font>'):format(T.hex(RankedStyle.color(mine):Lerp(T.TEXT, 0.45)), RankedStyle.label(mine)) else "")
 	local y = if c then 30 else 36
 	local main: GuiObject
 	if pt.found then

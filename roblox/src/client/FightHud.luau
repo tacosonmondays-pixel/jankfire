@@ -14,6 +14,11 @@ local Items = require(Shared:WaitForChild("Items")) -- (the utility slot: a frag
 local T = require(script.Parent:WaitForChild("Theme"))
 local Settings = require(script.Parent:WaitForChild("Settings")) :: any -- (Settings > CROSSHAIR / HUD: what's shown and how)
 local XH = require(script.Parent:WaitForChild("Crosshair")) :: any
+-- (27 Nov 2026, the owner's pick from the ui-mocks sheet: the match HUD is direction A PLATE (UiKit.luau): health and
+-- ammo bare on the world with the stencil slit through the numbers, the score as pastel tiles with the players inside,
+-- ink tabs, bone bars)
+local K = require(script.Parent:WaitForChild("UiKit")) :: any
+local TeamColors = require(Shared:WaitForChild("TeamColors")) :: any
 local WHITE, BLACK = Color3.new(1, 1, 1), Color3.new(0, 0, 0)
 local me = Players.LocalPlayer
 
@@ -135,29 +140,34 @@ function H.flash(op: number, dur: number, color: Color3?)
 end
 
 -- ---------------------------------------------------------------- HP, ammo, weapon
--- health, bottom left: the number, and a thin bar that goes white > amber > red as it empties
-local hpPlate = T.plate(hud, "Hp", UDim2.new(0, 24, 1, -88), UDim2.fromOffset(212, 64))
-local hpEdge = hpPlate:FindFirstChildOfClass("UIStroke") :: UIStroke
-local hpText = T.text(hpPlate, "Value", "100", 34, T.TEXT, T.FONT_HEAVY)
-at(hpText, UDim2.fromOffset(16, 7), UDim2.new(1, -32, 0, 34))
-hpText.RichText = true -- (the number, then a small grey HP right beside it)
+-- health, bottom left: the number big and bare on the world (A: the slit through it), a bone bar under it that goes
+-- red when you're nearly dead. ("Hp" keeps its name: TouchControls places it on a phone)
+local hpPlate = T.new("Frame", { Name = "Hp", BackgroundTransparency = 1, Position = UDim2.new(0, 40, 1, -112), Size = UDim2.fromOffset(220, 84) }, hud)
+local hpEdge = T.new("UIStroke", { Transparency = 1, Enabled = false }, hpPlate)
+local hpBox, hpText, hpSet = K.hero(hpPlate, "Value", 62, T.FONT_HEAVY, K.A.WORLD)
+hpBox.Position = UDim2.fromOffset(-2, 0)
 local hpShown = -1
-local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 16, 1, -19), Size = UDim2.new(1, -32, 0, 6) }, hpPlate)
-T.corner(hpTrack, 3)
-local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(1, 1) }, hpTrack)
-T.corner(hpBar, 3)
--- weapon and ammo, bottom right: a chip in the weapon's colour, its name, what it's doing; the count on the right
-local ammoPlate = T.plate(hud, "Ammo", UDim2.new(1, -256, 1, -88), UDim2.fromOffset(232, 64))
-local wChip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, Position = UDim2.fromOffset(16, 14), Size = UDim2.fromOffset(3, 36) }, ammoPlate)
-T.corner(wChip, 2)
-local wName = T.text(ammoPlate, "Weapon", "", 16, T.TEXT, T.FONT_BOLD)
-at(wName, UDim2.fromOffset(28, 13), UDim2.fromOffset(110, 20))
-wName.TextTruncate = Enum.TextTruncate.AtEnd
-local wSub = T.text(ammoPlate, "State", "", 13, T.MUTED, T.FONT_BOLD)
-at(wSub, UDim2.fromOffset(28, 35), UDim2.fromOffset(190, 16))
-local ammoText = T.text(ammoPlate, "Count", "", 34, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
-at(ammoText, UDim2.new(1, -122, 0, 6), UDim2.fromOffset(106, 38))
-ammoText.RichText = true
+local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.72, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
+T.corner(hpTrack, 5)
+local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = K.A.BONE, Size = UDim2.fromScale(1, 1) }, hpTrack)
+T.corner(hpBar, 5)
+-- weapon and ammo, bottom right, bare on the world: its name and what it's doing small on top, the count big (A: the
+-- slit through it) with the magazine after it. ("Ammo" keeps its name: TouchControls, Katana and SaucePour use it)
+local ammoPlate = T.new("Frame", { Name = "Ammo", BackgroundTransparency = 1, Position = UDim2.new(1, -340, 1, -122), Size = UDim2.fromOffset(300, 96) }, hud)
+local wChip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, ammoPlate)
+local wName = T.text(ammoPlate, "Weapon", "", 15, K.A.WORLD, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+at(wName, UDim2.fromOffset(0, 0), UDim2.fromOffset(300, 18))
+wName.TextTruncate = Enum.TextTruncate.AtEnd; wName.TextStrokeTransparency = 0.8
+local wSub = T.text(ammoPlate, "State", "", 13, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
+at(wSub, UDim2.fromOffset(0, 18), UDim2.fromOffset(300, 16))
+wSub.TextStrokeTransparency = 0.8
+local ammoRow = T.new("Frame", { Name = "CountRow", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 34), Size = UDim2.fromOffset(300, 62) }, ammoPlate)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, ammoRow)
+local ammoBox, ammoText, ammoSet = K.hero(ammoRow, "Count", 62, T.FONT_HEAVY, K.A.WORLD)
+ammoBox.LayoutOrder = 1
+local ammoMag = T.text(ammoRow, "Mag", "", 27, K.A.WORLD, T.FONT_HEAVY)
+ammoMag.AutomaticSize = Enum.AutomaticSize.X; ammoMag.Size = UDim2.fromOffset(0, 40); ammoMag.LayoutOrder = 2
+ammoMag.TextTransparency = 0.28; ammoMag.TextStrokeTransparency = 0.85
 -- the hub is weapons-free, so it shows no weapon card and no health (owner, 18 Nov: "holstered weapon and hp and m/s
 -- should not be visible"); both are back in training, the playground, a map room and a match (Hud.luau: m/s the same)
 local function hubBare()
@@ -168,18 +178,15 @@ end
 me:GetAttributeChangedSignal("Zone"):Connect(hubBare); me:GetAttributeChangedSignal("DevArms"):Connect(hubBare); hubBare()
 function H.hp(hp: number)
 	local v = math.max(0, math.ceil(hp))
+	local low = hp <= 25 -- (nearly dead: the number and the bar turn red, and the screen's rim glows faintly)
 	if v ~= hpShown then
 		hpShown = v
-		hpText.Text = ('%d<font size="14" color="%s">  HP</font>'):format(v, T.hex(T.MUTED))
+		hpSet(tostring(v))
 	end
-	local low = hp <= 25 -- (nearly dead: the whole plate turns, not just the number, and the screen's rim glows faintly)
 	lowA = if low and hp > 0 then 0.3 else 0
-	hpText.TextColor3 = if low then T.DANGER else T.TEXT
-	hpPlate.BackgroundColor3 = if low then Color3.fromRGB(42, 18, 21) else T.BG
-	hpEdge.Color = if low then T.DANGER else T.EDGE
-	hpEdge.Transparency = if low then 0.35 else T.EDGE_A
+	hpText.TextColor3 = if low then T.DANGER else K.A.WORLD
 	hpBar.Size = UDim2.fromScale(math.clamp(hp / (tonumber(game:GetService("Players").LocalPlayer:GetAttribute("HpMax")) or 100), 0, 1), 1) -- (HpMax: infection's 200 HP zombies)
-	hpBar.BackgroundColor3 = if hp > 50 then T.TEXT elseif hp > 25 then T.ACCENT else T.DANGER
+	hpBar.BackgroundColor3 = if low then T.DANGER else K.A.BONE
 end
 -- (the Scythe) the key that switches its form, as bound (Settings > KEYBINDS)
 local function formKey(): string
@@ -207,8 +214,8 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 			elseif w.kind == "cart" then "F on a cart: ride it"
 			elseif w.kind == "lasso" then "hold to spin · let go to throw" else ""
 	else
-		count = if mag2 then ('%d<font size="15" color="%s">  |  </font>%d'):format(mag or 0, T.hex(T.MUTED), mag2) -- (Lefty & Righty: left | right)
-			else ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), magMax or 0)
+		count = if mag2 then ("%d | %d"):format(mag or 0, mag2) -- (Lefty & Righty: left | right)
+			else tostring(mag or 0)
 		if reloading then sub = "RELOADING"; subColor = T.ACCENT; countColor = T.DIM
 		elseif (mag or 0) <= 0 then countColor = T.DANGER end
 		if not reloading and w.formOf then sub = formKey() .. " " .. string.lower((Weapons.list :: any)[w.formOf].name) end -- (the Scythe's rifle: the key back)
@@ -218,8 +225,9 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	local shown = if wid == "knife" and game:GetService("Players").LocalPlayer:GetAttribute("SpoonLook") then "Spoon" else w.name
 	if wName.Text ~= shown then wName.Text = shown end
 	wChip.BackgroundColor3 = w.color
-	if ammoText.Text ~= count then ammoText.Text = count end
-	ammoText.TextColor3 = countColor
+	ammoSet(count, if countColor == T.TEXT then K.A.WORLD else countColor)
+	local magT = if count ~= "" and not mag2 then "/" .. tostring(magMax or 0) else ""
+	if ammoMag.Text ~= magT then ammoMag.Text = magT end
 	if wSub.Text ~= sub then wSub.Text = sub end
 	wSub.TextColor3 = subColor
 end
@@ -273,6 +281,103 @@ local function scoreCell(order: number, name: string, size: number, color: Color
 	end
 	return l
 end
+score.Name = "ScoreText" -- (27 Nov: kept for a line the tiles can't read, a classic mode's own)
+-- A's score (the owner's pick): one flat pastel tile per side, the side's wins big with the slit and its players' heads
+-- beside it (struck through while they're down), the round and the clock on an ink tab under the tiles. "Score" is
+-- this frame's name: TouchLayout keeps the phone's pills clear of it
+local tiles = T.new("Frame", {
+	Name = "Score", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 16), Size = UDim2.fromOffset(0, 0),
+	AutomaticSize = Enum.AutomaticSize.XY, BackgroundTransparency = 1, Visible = false,
+}, hud)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tiles)
+local tileRow = T.new("Frame", { Name = "Tiles", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = 1 }, tiles)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tileRow)
+local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = K.A.INK, BackgroundTransparency = 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 24), LayoutOrder = 2 }, tiles)
+T.corner(tab, 2)
+T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, tab)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, tab)
+local tabRound = T.text(tab, "Round", "", 11, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY)
+tabRound.AutomaticSize = Enum.AutomaticSize.X; tabRound.Size = UDim2.fromOffset(0, 24); tabRound.LayoutOrder = 1
+local tabClock = T.text(tab, "Clock", "", 17, K.A.BONE, T.FONT_HEAVY)
+tabClock.AutomaticSize = Enum.AutomaticSize.X; tabClock.Size = UDim2.fromOffset(0, 24); tabClock.LayoutOrder = 2
+type Tile = { f: Frame, set: (string, Color3?) -> (), heads: Frame, shown: string }
+local tileList: { Tile } = {}
+local function tileFor(i: number): Tile
+	local t = tileList[i]
+	if t then return t end
+	local f = T.new("Frame", { Name = "Side" .. i, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 59), LayoutOrder = i }, tileRow)
+	T.corner(f, 7)
+	T.new("UIPadding", { PaddingLeft = UDim.new(0, if i % 2 == 1 then 17 else 13), PaddingRight = UDim.new(0, if i % 2 == 1 then 13 else 17) }, f)
+	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 11) }, f)
+	local box, _, set = K.hero(f, "Wins", 40, T.FONT_HEAVY, K.A.INK, false)
+	-- (the first side reads number then heads, the second heads then number: the two face each other)
+	box.LayoutOrder = if i % 2 == 1 then 1 else 2
+	local heads = T.new("Frame", { Name = "Heads", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = if i % 2 == 1 then 2 else 1 }, f)
+	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3) }, heads)
+	t = { f = f, set = set, heads = heads, shown = "" }
+	tileList[i] = t
+	return t
+end
+-- the players of side i in my match (same Arena), each up or down
+local function sidePlayers(i: number): { { uid: number, down: boolean } }
+	local out = {}
+	local arena = me:GetAttribute("Arena")
+	for _, p in game:GetService("Players"):GetPlayers() do
+		if p:GetAttribute("Team") == i and p:GetAttribute("Arena") == arena then
+			local h = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+			table.insert(out, { uid = p.UserId, down = h ~= nil and h.Health <= 0 }) -- (no body yet: unknown, shown as up)
+		end
+	end
+	table.sort(out, function(a, b) return a.uid < b.uid end)
+	return out
+end
+local function drawHeads(t: Tile, i: number)
+	local list = sidePlayers(i)
+	local key = ""
+	for _, x in list do key ..= x.uid .. (if x.down then "d" else "u") .. "," end
+	if key == t.shown then return end
+	t.shown = key
+	for _, c in t.heads:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+	t.heads.Visible = #list > 0
+	-- (more than four: they get smaller so the tile keeps its height)
+	local s = if #list <= 2 then 19 elseif #list <= 3 then 15 else 11
+	for n, x in list do
+		local hb = T.new("Frame", { Name = "Head", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.82, BorderSizePixel = 0, Size = UDim2.fromOffset(s, s), LayoutOrder = n }, t.heads)
+		T.corner(hb, 3)
+		T.new("ImageLabel", { BackgroundTransparency = 1, Image = K.head(x.uid), Size = UDim2.fromScale(1, 1), ImageTransparency = if x.down then 0.6 else 0 }, hb)
+		if x.down then
+			local sl = T.new("Frame", { Name = "Down", BackgroundColor3 = K.A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(math.floor(s * 1.35), 2), Rotation = -45, ZIndex = 3 }, hb)
+			T.new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 1, Transparency = 0.3 }, sl)
+		end
+	end
+end
+-- the line's score part ('<font color="#hex">2</font> – <font color="#hex">1</font>') into each side's colour and wins
+local function sides(rich: string): { any }
+	local out = {}
+	for hex, n in string.gmatch(rich, '<font color="#(%x%x%x%x%x%x)">(%d+)</font>') do
+		local ok, c = pcall(Color3.fromHex, hex)
+		table.insert(out, { c = if ok then c else Color3.new(1, 1, 1), n = n })
+	end
+	return out
+end
+local function showTiles(parts: { string }): boolean
+	local list = sides(parts[3] or "")
+	if #list < 2 then return false end
+	for i, x in list do
+		local t = tileFor(i)
+		t.f.Visible = true
+		t.f.BackgroundColor3 = x.c
+		t.set(x.n)
+		drawHeads(t, i)
+	end
+	for i = #list + 1, #tileList do tileList[i].f.Visible = false end
+	local rd = parts[2] or ""
+	tabRound.Text = string.upper(rd)
+	tabClock.Text = parts[4] or ""
+	tabClock.Visible = tabClock.Text ~= ""
+	tiles.Visible = true
+	return true
+end
 local scoreMode = scoreCell(1, "Mode", 14, T.MUTED, T.FONT_BOLD, 156)
 local scoreNum = scoreCell(3, "Wins", 28, T.TEXT, T.FONT_HEAVY, 0)
 scoreNum.RichText = true; scoreNum.AutomaticSize = Enum.AutomaticSize.X
@@ -292,10 +397,13 @@ function H.top(text: string)
 		scoreMode.Text = parts[1] .. "    " .. parts[2]
 		scoreNum.Text = parts[3]; lastScore = parts[3]
 		scoreClock.Text = parts[4] or ""
-		score.Visible = true; top.Visible = false; topTok += 1
+		local okT, tiled = pcall(showTiles, parts)
+		score.Visible = not (okT and tiled); top.Visible = false; topTok += 1
+		if not (okT and tiled) then tiles.Visible = false end
 		return
 	end
 	score.Visible = false
+	tiles.Visible = false
 	local cut = string.find(text, " · ", 1, true)
 	if cut and not parts then
 		top.Text = ('%s<font color="%s">    %s</font>'):format(string.sub(text, 1, cut - 1), T.hex(T.MUTED), string.sub(text, cut + #" · "))
@@ -311,8 +419,8 @@ end
 
 -- ---------------------------------------------------------------- kill feed (top right, 6 lines, 7 s)
 local feed = Instance.new("Frame")
-feed.Name = "Feed"; feed.BackgroundTransparency = 1; feed.AnchorPoint = Vector2.new(1, 0); feed.Position = UDim2.new(1, -24, 0, 64)
-feed.Size = UDim2.fromOffset(520, 6 * 34); feed.Parent = hud
+feed.Name = "Feed"; feed.BackgroundTransparency = 1; feed.AnchorPoint = Vector2.new(1, 0); feed.Position = UDim2.new(1, -40, 0, 26)
+feed.Size = UDim2.fromOffset(520, 6 * 31); feed.Parent = hud
 local fl = Instance.new("UIListLayout"); fl.HorizontalAlignment = Enum.HorizontalAlignment.Right; fl.Padding = UDim.new(0, 4)
 fl.SortOrder = Enum.SortOrder.LayoutOrder; fl.Parent = feed
 local feedN = 0
@@ -322,29 +430,43 @@ function H.feed(killer: string?, wid: string, victim: string, suffix: string?)
 	feedN += 1
 	local it = Items.list[wid]
 	local w: any = Weapons.list[wid] or (if it then { name = it.name, color = it.feed or it.color } else nil)
+	local function mine(name: string): boolean return name == me.DisplayName or name == me.Name end
+	-- (A: a dark backing, a lighter one on a line with you in it; names in their side's colour in a match)
+	local you = (killer ~= nil and mine(killer)) or mine(victim)
 	local row = T.new("Frame", {
-		Name = "Line", LayoutOrder = feedN, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 30),
+		Name = "Line", LayoutOrder = feedN, BackgroundColor3 = if you then Color3.fromRGB(72, 74, 80) else Color3.fromRGB(20, 20, 24),
+		BackgroundTransparency = if you then 0.08 else 0.38, BorderSizePixel = 0,
+		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 27),
 	})
-	T.corner(row, 4)
-	T.new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, row)
+	T.corner(row, 2)
+	T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, row)
 	T.new("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 	}, row)
-	local function cell(order: number, text: string, color: Color3, font: Font)
-		local l = T.text(row, "Cell", text, 15, color, font)
-		l.LayoutOrder = order; l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 30)
+	local function cell(order: number, text: string, color: Color3, font: Font, size: number?)
+		local l = T.text(row, "Cell", text, size or 14, color, font)
+		l.LayoutOrder = order; l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 27)
 	end
-	local function mine(name: string): boolean return name == me.DisplayName or name == me.Name end
-	if killer then cell(1, killer, if mine(killer) then T.ACCENT else T.TEXT, T.FONT_BOLD) end
-	if w then
-		local chip = T.new("Frame", { Name = "Chip", LayoutOrder = 2, BorderSizePixel = 0, BackgroundColor3 = w.color, Size = UDim2.fromOffset(3, 15) }, row)
-		T.corner(chip, 2)
-		cell(3, w.name, T.SOFT, T.FONT)
+	-- a name's colour: its side's in a match (the Team attribute of the player by that name), else white
+	local function sideColor(name: string): Color3
+		if me:GetAttribute("Zone") ~= "match" then return K.A.WORLD end
+		for _, p in game:GetService("Players"):GetPlayers() do
+			if p.DisplayName == name or p.Name == name then
+				local t = p:GetAttribute("Team")
+				if type(t) == "number" then
+					local ok, c = pcall(TeamColors.color, t)
+					if ok and typeof(c) == "Color3" then return c end
+				end
+				return K.A.WORLD
+			end
+		end
+		return K.A.WORLD
 	end
-	cell(4, victim, if mine(victim) then T.ACCENT else T.TEXT, T.FONT_BOLD)
-	if suffix then cell(5, suffix, T.SOFT, T.FONT) end
+	if killer then cell(1, killer, sideColor(killer), T.FONT_HEAVY) end
+	if w then cell(3, w.name, Color3.fromRGB(214, 214, 214), T.FONT_BOLD, 12) end
+	cell(4, victim, sideColor(victim), T.FONT_HEAVY)
+	if suffix then cell(5, suffix, Color3.fromRGB(214, 214, 214), T.FONT_BOLD, 12) end
 	row.Parent = feed
 	local lines = {}
 	for _, c in feed:GetChildren() do if c:IsA("Frame") then table.insert(lines, c) end end

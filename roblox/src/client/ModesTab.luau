@@ -8,7 +8,7 @@
 --              FILL FROM QUICKPLAY tops the party up from the quickplay queue. without it the party plays alone
 --              (never rated), so a mode that needs more players than the party says so
 -- PlayUI's modeList calls ModesTab.draw with its panel and helpers; it returns the panel's next free y
-local T = require(script.Parent:WaitForChild("Theme"))
+local T = require(script.Parent:WaitForChild("UiKit")).themeA() -- (27 Nov 2026: the hub's menus in A PLATE, the owner's pick from the ui-mocks sheet: Theme in bone and ink, UiKit.luau)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlayConfig = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("PlayConfig"))
 
@@ -240,7 +240,9 @@ function ModesTab.draw(ctx: any): number
 		local hb = new("TextButton", { Name = "Holdout", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
 			BackgroundColor3 = T.CARD, BackgroundTransparency = 0.2, Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, hH) }, left)
 		frame(hb, false)
-		local hn = text(hb, "Name", "HOLDOUT", if c then 16 else 21, T.TEXT, T.FONT_TITLE); hn.ZIndex = 3
+		-- (the mode's name is HuntConfig.TITLE: one constant the owner may rename. 27 Nov, hunt-mode's ask)
+		local title = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntConfig")).TITLE
+		local hn = text(hb, "Name", title, if c then 16 else 21, T.TEXT, T.FONT_TITLE); hn.ZIndex = 3
 		hn.Position = UDim2.fromOffset(14, if c then 5 else 9); hn.Size = UDim2.new(1, -110, 0, if c then 20 else 26)
 		local hc = text(hb, "Count", ("%d IN THE HOUSE"):format(tonumber(ReplicatedStorage:GetAttribute("HuntPlayers")) or 0), if c then 9 else 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); hc.ZIndex = 3
 		hc.AnchorPoint = Vector2.new(1, 0); hc.Position = UDim2.new(1, -12, 0, if c then 9 else 15); hc.Size = UDim2.fromOffset(100, 14)
@@ -249,8 +251,8 @@ function ModesTab.draw(ctx: any): number
 		hb.MouseButton1Click:Connect(function()
 			local rf = ReplicatedStorage:FindFirstChild("JankfireRemotes")
 			local r = rf and rf:FindFirstChild("Hunt")
-			if not r then ctx.notice("HOLDOUT isn't open yet"); return end
-			if ctx.n > 1 then ctx.notice("HOLDOUT: go to the house one by one, then play together there"); return end
+			if not r then ctx.notice(title .. " isn't open yet"); return end
+			if ctx.n > 1 then ctx.notice(title .. ": go to the house one by one, then play together there"); return end
 			(r :: RemoteEvent):FireServer("go")
 		end)
 		y += hH + 8

@@ -25,10 +25,17 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("L
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
 local me = Players.LocalPlayer
-local T = require(script.Parent:WaitForChild("Theme"))
-local ACCENT, TEXT, GREY, DIM, RED = T.ACCENT, T.TEXT, T.MUTED, T.DIM, T.DANGER
-local PANEL, CARD, INK, WHITE = T.BG, T.CARD, T.INK, Color3.new(1, 1, 1)
-local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, T.FONT_TITLE
+-- (27 Nov 2026, the owner's pick from the ui-mocks sheet: A PLATE's layout in B BROADCAST's colours (UiKit.luau): black
+-- slabs, square corners, white for what's selected or yours (with a cut corner), Butter only on what you press, Oswald
+-- for names and big numbers. Theme's corners come out square here: this T is Theme with a square corner)
+local T = setmetatable({
+	corner = function(o: Instance, _r: number?): UICorner
+		local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 0); c.Parent = o; return c
+	end,
+}, { __index = require(script.Parent:WaitForChild("Theme")) }) :: any
+local ACCENT, TEXT, GREY, DIM, RED = Color3.fromRGB(245, 221, 138), Color3.fromRGB(240, 240, 236), Color3.fromRGB(150, 152, 156), Color3.fromRGB(92, 94, 99), Color3.fromRGB(235, 96, 86)
+local PANEL, CARD, INK, WHITE = Color3.fromRGB(13, 14, 16), Color3.fromRGB(24, 26, 30), Color3.fromRGB(16, 17, 19), Color3.new(1, 1, 1)
+local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, Font.new("rbxasset://fonts/families/Oswald.json", Enum.FontWeight.Bold)
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.G] = 4 }
 -- (plain words only: the owner's no-flavour-text rule. 18 Nov: the jokey subtitles under LOADOUT went, and these names)
 local MODE_NAMES = { normal = "NORMAL", reverse = "REVERSE", full = "FULL" } -- (the owner's words for them, as in Rivals)
@@ -57,9 +64,8 @@ end
 -- a panel: a dark plate with a hairline edge. returns its holder and its body
 local function panel(parent: Instance, pos: UDim2, size: UDim2): (Frame, Frame)
 	local holder = new("Frame", { BackgroundTransparency = 1, Position = pos, Size = size }, parent)
-	local body = new("Frame", { Name = "Body", BackgroundColor3 = PANEL, BackgroundTransparency = 0.12, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
+	local body = new("Frame", { Name = "Body", BackgroundColor3 = PANEL, BackgroundTransparency = 0.06, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
 	T.corner(body, 8)
-	T.edge(body)
 	return holder, body
 end
 
@@ -75,7 +81,6 @@ local function button(parent: Instance, text: string, kind: string, pos: UDim2, 
 		TextColor3 = if kind == "main" then INK else TEXT, ZIndex = 2,
 	}, holder)
 	T.corner(face)
-	if kind ~= "main" then T.edge(face) end
 	-- (b.mark: a short amber line under the words, shown on the one of a row that's picked. amber FILL is kept for the
 	-- one button that does something: equip)
 	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -3), Size = UDim2.new(0.5, 0, 0, 2), Visible = false, ZIndex = 3 }, face)
@@ -110,6 +115,38 @@ end
 -- weapon mastery (18 Nov, docs/MASTERY.md): the camos per gun (Shared.Mastery: the WRAPS strip's last four, MASTERY as
 -- their source) and the level bars on the weapon card and the armory cards (MasteryUI). in News: no locals to spare
 News.MW = require(Shared:WaitForChild("Mastery")) :: any
+News.K = require(script.Parent:WaitForChild("UiKit")) :: any
+News.B = News.K.B
+-- the press shape: a button's face gets a triangle each side in its own colour (they follow the face's hover shade)
+function News.skewIt(b: any, lean: number?)
+	local k = lean or 12
+	local face = b.face
+	local h = b.holder.Size.Y.Offset
+	local l = News.K.tri(b.holder, UDim2.fromOffset(-k, 0), k, h, face.BackgroundColor3, "br", nil, face.ZIndex)
+	local r = News.K.tri(b.holder, UDim2.new(1, 0, 0, 0), k, h, face.BackgroundColor3, "tl", nil, face.ZIndex)
+	l.Size = UDim2.new(0, k, 1, 0); r.Size = UDim2.new(0, k, 1, 0)
+	face:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() l.BackgroundColor3 = face.BackgroundColor3; r.BackgroundColor3 = face.BackgroundColor3 end)
+	face:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function() l.BackgroundTransparency = face.BackgroundTransparency; r.BackgroundTransparency = face.BackgroundTransparency end)
+end
+-- a weapon model as a flat silhouette (the slot rows: white on a slab, black on the white selected row)
+function News.flat(m: Instance)
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Color = Color3.new(1, 1, 1); d.Material = Enum.Material.SmoothPlastic; d.Reflectance = 0
+			if d:IsA("MeshPart") then d.TextureID = "" end
+		elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") then
+			d:Destroy()
+		elseif d:IsA("SpecialMesh") then
+			d.TextureId = ""; d.VertexColor = Vector3.new(1, 1, 1)
+		end
+	end
+end
+-- a stat label in sentence case ("FIRE RATE" -> "Fire rate")
+function News.sentence(t: string): string
+	return string.upper(string.sub(t, 1, 1)) .. string.lower(string.sub(t, 2))
+end
+-- the plural of a slot, for the rail's first tab
+News.PLURAL = { primary = "PRIMARIES", secondary = "SECONDARIES", melee = "MELEE", utility = "GADGETS" }
 News.MUI = require(script.Parent:WaitForChild("MasteryUI")) :: any
 News.mbar = function(_e: any) end
 -- (18 Nov: the owner's loadout wouldn't open, a nil damage on the Shopping Cart Cannon threw while the screen was
@@ -266,15 +303,16 @@ local function fit()
 end
 
 -- title
-local titleBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, 34), Size = UDim2.fromOffset(560, 110) }, stage)
-local title = label(titleBox, "LOADOUT", 46, UDim2.fromOffset(0, 0), UDim2.fromOffset(560, 54), TEXT)
+local titleBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(64, 28), Size = UDim2.fromOffset(560, 110) }, stage)
+local title = label(titleBox, "LOADOUT", 72, UDim2.fromOffset(0, 0), UDim2.fromOffset(560, 84), TEXT)
 title.FontFace = FONT_TITLE
-new("Frame", { Name = "Rule", BackgroundColor3 = ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 62), Size = UDim2.fromOffset(44, 3) }, titleBox)
-local subtitle = label(titleBox, "", 18, UDim2.fromOffset(2, 76), UDim2.fromOffset(560, 24), GREY) -- (only training's TRY line)
+local subtitle = label(titleBox, "", 18, UDim2.fromOffset(2, 86), UDim2.fromOffset(560, 24), GREY) -- (only training's TRY line)
 
 -- done + the save status
-local done = button(stage, "DONE  [L]", "white", UDim2.fromOffset(1700, 40), UDim2.fromOffset(160, 50))
-local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffset(500, 22), GREY, Enum.TextXAlignment.Right)
+local done = button(stage, "DONE", "main", UDim2.fromOffset(1704, 44), UDim2.fromOffset(140, 56))
+done.face.FontFace = FONT_TITLE; done.face.TextSize = 30
+News.skewIt(done, 14)
+local saveLbl = label(stage, "", 15, UDim2.fromOffset(1344, 108), UDim2.fromOffset(500, 22), GREY, Enum.TextXAlignment.Right)
 
 -- ---------------------------------------------------------------- slot cards (left)
 type Card = { slot: string, holder: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
@@ -284,53 +322,59 @@ local refresh: () -> () = function() end
 local hatsRefresh: (any) -> () = function() end -- (the HATS tab: set below)
 local skinsRefresh: (any) -> () = function() end -- (the SKINS tab: set below)
 
--- (four cards since the utility slot: 102 tall on a 110 step, so the armory below keeps its place)
+-- (27 Nov: rows as in the mock: the key, the weapon's name in Oswald, what it wears, its silhouette. 96 tall on a 108
+-- step; the fifth row under them opens the kill effect and emotes screen)
 for i, slot in Roster.SLOTS do
-	local y = 156 + (i - 1) * 110
-	local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, y), Size = UDim2.fromOffset(520, 102) }, stage)
-	local body = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PANEL, BackgroundTransparency = 0.12, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
+	local y = 156 + (i - 1) * 108
+	local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(64, y), Size = UDim2.fromOffset(480, 96) }, stage)
+	local body = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PANEL, BackgroundTransparency = 0.06, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
 	T.corner(body, 8)
-	local st = T.edge(body)
-	T.key(body, keyOf(slot), UDim2.fromOffset(22, 14)).Size = UDim2.fromOffset(28, 28)
-	label(body, Roster.SLOT_NAMES[slot], 16, UDim2.fromOffset(66, 11), UDim2.fromOffset(220, 20), GREY).FontFace = FONT_BOLD
-	local name = label(body, "", 28, UDim2.fromOffset(66, 32), UDim2.fromOffset(234, 36), TEXT)
-	name.FontFace = FONT_BOLD; name.TextScaled = true
-	new("UITextSizeConstraint", { MaxTextSize = 28 }, name)
-	local wrap = label(body, "", 16, UDim2.fromOffset(66, 70), UDim2.fromOffset(240, 22), GREY)
-	-- (the weapon's own colour: a short bar down the card's left edge)
-	local bar = new("Frame", { BorderSizePixel = 0, Position = UDim2.fromOffset(0, 14), Size = UDim2.fromOffset(3, 74), ZIndex = 3 }, body)
-	T.corner(bar, 2)
-	-- (its picture: on a lighter backing and close up, so a dark gun reads on the dark card)
+	local st = T.edge(body, nil, 1)
+	local keyL = label(body, keyOf(slot), 34, UDim2.fromOffset(0, 0), UDim2.fromOffset(58, 96), DIM, Enum.TextXAlignment.Center)
+	keyL.FontFace = News.K.COND_REG; keyL.ZIndex = 3
+	local name = label(body, "", 40, UDim2.fromOffset(58, 12), UDim2.fromOffset(250, 48), TEXT)
+	name.FontFace = FONT_TITLE; name.TextScaled = true; name.TextWrapped = false; name.ZIndex = 3
+	new("UITextSizeConstraint", { MaxTextSize = 40 }, name)
+	local wrap = label(body, "", 16, UDim2.fromOffset(60, 60), UDim2.fromOffset(250, 22), GREY)
+	wrap.ZIndex = 3
+	-- (no colour bar: the owner's quieter look. kept for the code that sets it)
+	local bar = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, body)
+	-- (its silhouette: flat white on the slab, black on the white row: News.flat)
 	local vp, cam = viewport(body, {
-		Position = UDim2.fromOffset(300, 10), Size = UDim2.fromOffset(206, 82), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.35,
-		Ambient = Color3.fromRGB(205, 208, 216),
+		Position = UDim2.fromOffset(312, 8), Size = UDim2.fromOffset(156, 80), BackgroundTransparency = 1,
+		Ambient = Color3.new(1, 1, 1), LightColor = Color3.new(0, 0, 0), ZIndex = 3,
 	})
-	T.corner(vp)
 	cam.FieldOfView = 40
+	local cut = News.K.cut(body, 14, PANEL)
+	cut.Visible = false
 	local c: Card = { slot = slot, holder = holder, body = body, st = st, name = name, wrap = wrap, bar = bar, vp = vp, cam = cam }
+	;(c :: any).cut = cut; (c :: any).keyL = keyL
 	body.MouseButton1Click:Connect(function()
 		state.slot = slot
 		state.focus = pick()[slot]
 		play("click")
+		if News.showArmory then News.showArmory() end
 		refresh()
 	end)
-	body.MouseEnter:Connect(function() body.BackgroundColor3 = CARD end)
-	body.MouseLeave:Connect(function() body.BackgroundColor3 = PANEL end)
+	body.MouseEnter:Connect(function() if state.slot ~= slot then body.BackgroundColor3 = CARD end end)
+	body.MouseLeave:Connect(function() if state.slot ~= slot then body.BackgroundColor3 = PANEL end end)
 	table.insert(cards, c)
 end
 
 -- ---------------------------------------------------------------- the armory: every weapon for the chosen slot (left, below)
-local _, armBody = panel(stage, UDim2.fromOffset(60, 598), UDim2.fromOffset(520, 442))
-local armTitle = label(armBody, "THE ARMORY", 18, UDim2.fromOffset(20, 14), UDim2.fromOffset(300, 26), TEXT)
-armTitle.FontFace = FONT_TITLE
-local armCount = label(armBody, "", 16, UDim2.fromOffset(200, 16), UDim2.fromOffset(300, 22), GREY, Enum.TextXAlignment.Right)
+-- (27 Nov: the armory is the bottom rail's first tab, named after the slot (PRIMARIES ...), its weapons in a row of
+-- cards with their pictures, as the mock's SECONDARIES)
+local _, armBody = panel(stage, UDim2.fromOffset(64, 852), UDim2.fromOffset(1792, 188))
+local armTitle = label(armBody, "", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(300, 26), TEXT)
+armTitle.FontFace = FONT_TITLE; armTitle.Visible = false
+local armCount = label(armBody, "", 15, UDim2.new(1, -320, 0, 14), UDim2.fromOffset(300, 20), GREY, Enum.TextXAlignment.Right)
 local armList = new("ScrollingFrame", {
-	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 52), Size = UDim2.fromOffset(496, 378),
-	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
-	ScrollBarThickness = 6, ScrollBarImageColor3 = DIM, ZIndex = 3,
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 140),
+	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
+	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, armBody)
-new("UIGridLayout", { CellSize = UDim2.fromOffset(232, 82), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, armList)
-new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 8) }, armList)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, armList)
+new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 12) }, armList)
 type ArmCard = { id: string, btn: TextButton, st: UIStroke, tag: TextLabel, chip: Frame, color: Color3, new: Frame }
 local armCards: { ArmCard } = {}
 local armSlot = ""
@@ -344,9 +388,9 @@ local function buildArmory()
 	for i, e in Roster.list do
 		if e.slot ~= state.slot then continue end
 		if e.live then live += 1 else soon += 1 end
-		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 4 }, armList)
+		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 4, Size = UDim2.fromOffset(232, 128) }, armList)
 		T.corner(btn)
-		local st = T.edge(btn)
+		local st = T.edge(btn, nil, 1)
 		local chip = new("Frame", { BackgroundColor3 = e.color, BackgroundTransparency = if e.live then 0 else 0.6, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(3, 54), ZIndex = 5 }, btn)
 		T.corner(chip, 2)
 		local nm = label(btn, e.name, 19, UDim2.fromOffset(26, 8), UDim2.fromOffset(196, 40), TEXT)
@@ -363,15 +407,36 @@ local function buildArmory()
 		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = CARD end)
 		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color, new = News.dot(btn, 6, 8) })
 		News.guard("armory level " .. tostring(e.id), News.MUI.card, btn, e) -- (its weapon level: LV n and a hairline bar)
+		-- (27 Nov: its picture on top; the words drop under it)
+		News.guard("armory picture " .. tostring(e.id), News.armPic, btn, e)
 	end
 	-- (just the count, the owner, 18 Nov: "get rid of where it says live ready free for now etc"; coming soon only when there are some)
+	if News.railTab then News.railTab() end
 	local word = if state.slot == "utility" then "gadget" else "weapon"
 	armCount.Text = News.fmt("%d %s%s", live, word, if live == 1 then "" else "s") .. (if soon > 0 then News.fmt(" · %d coming soon", soon) else "")
 	armList.CanvasPosition = Vector2.zero
 end
+-- an armory card's picture: the weapon (its skin, hat and wrap as worn) in the top 52 px; the card's words move under it
+function News.armPic(btn: GuiObject, e: any)
+	for _, d in btn:GetChildren() do
+		if d:IsA("GuiObject") and d.Name ~= "New" then d.Position = d.Position + UDim2.fromOffset(0, 46) end
+	end
+	local pv, pc = viewport(btn, { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(220, 56), BackgroundTransparency = 1, ZIndex = 5, Ambient = Color3.fromRGB(190, 192, 198) })
+	pc.FieldOfView = 30
+	local m, rel = previewModel(e.id, hatOf(e.id), skinOf(e.id))
+	if not m then return end
+	local wid, md = wrapOf(e.id)
+	pcall(WeaponModels.wrap, m, wid, md)
+	m:PivotTo(CFrame.Angles(0, math.pi / 2, 0) * rel:Inverse())
+	m.Parent = pv
+	local _, sz = m:GetBoundingBox()
+	local r = math.max(sz.X, sz.Z, sz.Y * 3.4) / 2
+	pc.CFrame = CFrame.lookAt(Vector3.new(0, 0, r * 4.1), Vector3.zero)
+	if not e.live then pv.ImageTransparency = 0.55 end
+end
 
 -- ---------------------------------------------------------------- the preview: a showcase table with the weapon spinning over it (centre)
-local previewBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(610, 104), Size = UDim2.fromOffset(800, 736) }, stage)
+local previewBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(564, 96), Size = UDim2.fromOffset(796, 712) }, stage)
 local vp, vcam = viewport(previewBox, { Size = UDim2.fromScale(1, 1), Active = true })
 require(script.Parent:WaitForChild("ExplodedView")).attach(previewBox) -- (BREAKDOWN: gun-models' exploded view)
 vcam.FieldOfView = 30
@@ -383,18 +448,18 @@ do -- a low round podium under the weapon: a dark base, a dark top and a thin am
 	local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
 	p(Vector3.new(0.25, 5.0, 5.0), Color3.fromRGB(34, 37, 44), CFrame.new(0, -3.78, 0) * up)
 	p(Vector3.new(0.5, 4.4, 4.4), Color3.fromRGB(52, 56, 66), CFrame.new(0, -3.4, 0) * up)
-	-- the rim sits just under the top, so only its outer edge shows: the one amber line on the stage
-	p(Vector3.new(0.05, 4.48, 4.48), ACCENT, CFrame.new(0, -3.19, 0) * up)
+	-- (27 Nov: no amber rim: Butter is only for what you press)
 end
 local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 60) }, previewBox)
 local bigName = label(nameBox, "", 44, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1), TEXT, Enum.TextXAlignment.Center)
 bigName.FontFace = FONT_TITLE; bigName.TextScaled = true; bigName.TextWrapped = false
+bigName.Visible = false -- (27 Nov: the name is on the card at the right and on its row: A's layout has none over the preview)
 new("UITextSizeConstraint", { MaxTextSize = 44 }, bigName)
 -- a weapon that isn't on roblox yet: a quiet badge over its crate
 local soonStamp = label(previewBox, "COMING SOON", 15, UDim2.fromScale(0.5, 0.5), UDim2.fromOffset(180, 38), GREY, Enum.TextXAlignment.Center)
 soonStamp.FontFace = FONT_BOLD; soonStamp.AnchorPoint = Vector2.new(0.5, 0.5); soonStamp.BackgroundColor3 = PANEL; soonStamp.BackgroundTransparency = 0.1
 T.corner(soonStamp); T.edge(soonStamp)
-local hint = label(previewBox, "drag to spin it  ·  1 2 3 G pick a slot", 16, UDim2.new(0, 0, 1, -16), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
+local hint = label(previewBox, "Drag to turn it  ·  1 2 3 G pick a slot", 15, UDim2.new(0, 0, 1, -20), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
 local toast = label(previewBox, "", 20, UDim2.new(0.5, 0, 0, 84), UDim2.fromOffset(700, 30), ACCENT, Enum.TextXAlignment.Center)
 toast.FontFace = FONT_BOLD; toast.AnchorPoint = Vector2.new(0.5, 0); toast.TextTransparency = 1
 local toastN = 0
@@ -433,14 +498,13 @@ UIS.InputEnded:Connect(function(io)
 end)
 
 -- ---------------------------------------------------------------- the info panel (right)
-local _, info = panel(stage, UDim2.fromOffset(1440, 136), UDim2.fromOffset(420, 698))
--- (the weapon's own colour: a short bar beside its name)
-local infoChip = new("Frame", { BackgroundColor3 = GREY, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 24), Size = UDim2.fromOffset(3, 32) }, info)
-T.corner(infoChip, 2)
-local infoName = label(info, "", 32, UDim2.fromOffset(36, 18), UDim2.fromOffset(362, 44), TEXT)
-infoName.FontFace = FONT_BOLD; infoName.TextScaled = true
-new("UITextSizeConstraint", { MaxTextSize = 32 }, infoName)
-local chipRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 72), Size = UDim2.fromOffset(380, 24) }, info)
+local _, info = panel(stage, UDim2.fromOffset(1380, 140), UDim2.fromOffset(476, 690))
+-- (no colour chip by the name: kept for the code that sets it)
+local infoChip = new("Frame", { BackgroundColor3 = GREY, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, info)
+local infoName = label(info, "", 40, UDim2.fromOffset(22, 14), UDim2.fromOffset(432, 50), TEXT)
+infoName.FontFace = FONT_TITLE; infoName.TextScaled = true; infoName.TextWrapped = false
+new("UITextSizeConstraint", { MaxTextSize = 40 }, infoName)
+local chipRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 72), Size = UDim2.fromOffset(436, 24) }, info)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, chipRow)
 local function tagChip(order: number): (Frame, TextLabel)
 	local f = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = order }, chipRow)
@@ -455,40 +519,45 @@ local _, liveChipL = tagChip(2)
 liveChipL.RichText = true
 -- what it is, then its gimmick in a box, then its four numbers: each as tall as it needs, one under the other, so the
 -- spare room is all in one place (above the equip button) and not in the middle of the panel
-local words = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 114), Size = UDim2.fromOffset(376, 490) }, info)
+local words = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 114), Size = UDim2.fromOffset(432, 470) }, info)
 new("UIListLayout", { Padding = UDim.new(0, 18), SortOrder = Enum.SortOrder.LayoutOrder }, words)
 local infoDesc = label(words, "", 17, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
 infoDesc.AutomaticSize = Enum.AutomaticSize.Y; infoDesc.TextYAlignment = Enum.TextYAlignment.Top; infoDesc.LayoutOrder = 1
+infoDesc.Visible = false -- (27 Nov: the description paragraph is flavour text; the gimmick line says what it does)
 local gimBox = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2 }, words)
 T.corner(gimBox); T.edge(gimBox)
 new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 11), PaddingBottom = UDim.new(0, 13) }, gimBox)
 new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, gimBox)
-local gimTitle = label(gimBox, "THE GIMMICK", 14, UDim2.new(), UDim2.new(1, 0, 0, 16), ACCENT)
+local gimTitle = label(gimBox, "HOW IT WORKS", 13, UDim2.new(), UDim2.new(1, 0, 0, 16), GREY)
 gimTitle.FontFace = FONT_BOLD; gimTitle.LayoutOrder = 1
 local gimText = label(gimBox, "", 16, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
 gimText.AutomaticSize = Enum.AutomaticSize.Y; gimText.TextYAlignment = Enum.TextYAlignment.Top; gimText.LayoutOrder = 2
 type StatRow = { name: TextLabel, val: TextLabel, fill: Frame }
 local statRows: { StatRow } = {}
 for i = 1, 4 do
-	local row = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 50), LayoutOrder = 2 + i }, words)
-	local name = label(row, "", 16, UDim2.fromOffset(0, 3), UDim2.fromOffset(200, 22), GREY)
-	name.FontFace = FONT_BOLD
-	local val = label(row, "", 20, UDim2.new(1, -228, 0, 0), UDim2.fromOffset(228, 26), TEXT, Enum.TextXAlignment.Right)
-	val.FontFace = FONT_BOLD
-	local bg = new("Frame", { BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 0, 10) }, row)
-	T.corner(bg, 5)
+	local row = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 52), LayoutOrder = 2 + i }, words)
+	local name = label(row, "", 17, UDim2.fromOffset(0, 8), UDim2.fromOffset(220, 22), GREY)
+	local val = label(row, "", 34, UDim2.new(1, -228, 0, -4), UDim2.fromOffset(228, 38), TEXT, Enum.TextXAlignment.Right)
+	val.FontFace = FONT_TITLE
+	local bg = new("Frame", { BackgroundColor3 = Color3.fromRGB(44, 46, 52), BorderSizePixel = 0, Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 0, 5) }, row)
 	local fill = new("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
-	T.corner(fill, 5)
-	table.insert(statRows, { name = name, val = val, fill = fill })
+	-- (the slot's average for this number: a short Butter tick on the track, News.avg)
+	local tick = new("Frame", { Name = "Avg", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromOffset(2, 13), Visible = false, ZIndex = 3 }, bg)
+	table.insert(statRows, { name = name, val = val, fill = fill, tick = tick } :: any)
 end
-local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 614), UDim2.fromOffset(376, 60))
+-- (the slot's average, under the bars: "| Primary average")
+News.avgNote = label(words, "", 14, UDim2.new(), UDim2.new(1, 0, 0, 18), GREY)
+News.avgNote.LayoutOrder = 7; News.avgNote.RichText = true
+local equipBtn = button(info, "EQUIP", "main", UDim2.fromOffset(34, 610), UDim2.fromOffset(408, 58))
+equipBtn.face.FontFace = FONT_TITLE; equipBtn.face.TextSize = 26
+News.skewIt(equipBtn, 12)
 News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: LV, XP, the next camo)
 -- buying a Robux weapon (Unlocks.ROBUX) here once they aren't free for everyone (Unlocks.robuxFree): the equip button
 -- halves, Robux on the left (the shop's prompt, ShopBuy "weapon:<id>"), Coins on the right (the server takes them,
 -- JankfireRemotes.Purchases "brass", after a second press to be sure; not enough: the shop's COINS tab). prices:
 -- Shop.MONEY.weapons. 18 Nov
 News.Shop = require(Shared:WaitForChild("Shop")) :: any
-News.brassBtn = button(info, "", "white", UDim2.fromOffset(214, 614), UDim2.fromOffset(184, 60))
+News.brassBtn = button(info, "", "white", UDim2.fromOffset(250, 610), UDim2.fromOffset(204, 58))
 News.brassBtn.holder.Visible = false
 News.armT = 0
 function News.weaponOffer(wid: string): any
@@ -504,7 +573,7 @@ function News.digits(n: number): string
 	end
 end
 function News.split(on: boolean)
-	equipBtn.holder.Size = UDim2.fromOffset(if on then 184 else 376, 60)
+	equipBtn.holder.Size = UDim2.fromOffset(if on then 196 else 408, 58)
 	News.brassBtn.holder.Visible = on
 end
 -- (19 Nov, the owner: "make sure only skins cost robux!": a Robux weapon is bought with coins here, one button)
@@ -618,9 +687,8 @@ function News.bundleTiles(slot: string)
 	local S = News.Shop
 	if slot ~= "primary" or not (S and type(S.weaponBundlesOn) == "function" and S.weaponBundlesOn()) then return end
 	local head = new("TextButton", { Name = "BundlesRow", Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BackgroundTransparency = 0.4,
-		BorderSizePixel = 0, LayoutOrder = 100000, ZIndex = 4 }, armList)
+		BorderSizePixel = 0, LayoutOrder = 100000, ZIndex = 4, Size = UDim2.fromOffset(232, 128) }, armList)
 	T.corner(head)
-	T.edge(head)
 	local hl = label(head, "", 16, UDim2.fromOffset(16, 0), UDim2.new(1, -32, 1, 0), GREY)
 	hl.FontFace = FONT_BOLD; hl.ZIndex = 5
 	News.bHead = head
@@ -632,14 +700,13 @@ function News.bundleTiles(slot: string)
 	head.MouseButton1Click:Connect(function()
 		News.bOpen = not News.bOpen
 		play("click"); draw()
-		if News.bOpen then task.defer(function() armList.CanvasPosition = Vector2.new(0, math.max(0, armList.AbsoluteCanvasSize.Y - armList.AbsoluteWindowSize.Y)) end) end
+		if News.bOpen then task.defer(function() armList.CanvasPosition = Vector2.new(math.max(0, armList.AbsoluteCanvasSize.X - armList.AbsoluteWindowSize.X), 0) end) end
 	end)
 	head.MouseEnter:Connect(function() head.BackgroundColor3 = T.CARD_HI end)
 	head.MouseLeave:Connect(function() head.BackgroundColor3 = CARD end)
 	for i, o in S.weaponBundles do
-		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = 100000 + i, ZIndex = 4, Visible = false }, armList)
+		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = 100000 + i, ZIndex = 4, Visible = false, Size = UDim2.fromOffset(232, 128) }, armList)
 		T.corner(btn)
-		T.edge(btn, ACCENT, 0.45)
 		local nm = label(btn, string.upper(o.name) .. " BUNDLE", 19, UDim2.fromOffset(16, 8), UDim2.fromOffset(206, 40), TEXT)
 		nm.FontFace = FONT_BOLD; nm.ZIndex = 5; nm.TextScaled = true
 		new("UITextSizeConstraint", { MaxTextSize = 19 }, nm)
@@ -692,6 +759,38 @@ function News.buyBundle(t: any)
 	for _, x in News.bTiles do task.spawn(News.quoteBundle, x) end
 end
 
+-- the slot's average of each stat bar: a tick on the track (the mock's "Secondary average"). live weapons only
+News.avgFor = {} :: { [string]: { number } }
+function News.avg(e: any, rows: { any })
+	local av = News.avgFor[e.slot]
+	if not av then
+		local sum, n = { 0, 0, 0, 0 }, { 0, 0, 0, 0 }
+		for _, x in Roster.list do
+			if x.slot == e.slot and x.live then
+				local ok, st = pcall(statsFor, x.id)
+				if ok and type(st) == "table" then
+					for i = 1, 4 do
+						local b = st[i] and tonumber(st[i].bar)
+						if b and b == b and st[i].text ~= "n/a" then sum[i] += b; n[i] += 1 end
+					end
+				end
+			end
+		end
+		av = {}
+		for i = 1, 4 do av[i] = if n[i] > 1 then sum[i] / n[i] else -1 end
+		News.avgFor[e.slot] = av
+	end
+	for i, row in rows do
+		local t = row.tick
+		if t then
+			t.Visible = e.live and av[i] ~= nil and av[i] > 0 and row.val.Text ~= "n/a" and row.val.Text ~= ""
+			t.Position = UDim2.fromScale(math.clamp(av[i] or 0, 0.03, 1), 0.5)
+		end
+	end
+	local word = ({ primary = "Primary", secondary = "Secondary", melee = "Melee", utility = "Gadget" })[e.slot] or "Slot"
+	News.avgNote.Text = ('<font color="#f5dd8a">|</font>  %s average'):format(word)
+	News.avgNote.Visible = e.live
+end
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
 local function statsFor(id: string): { Roster.Stat }
 	local e = Roster.byId[id]
@@ -722,7 +821,7 @@ local function statsFor(id: string): { Roster.Stat }
 end
 
 -- ---------------------------------------------------------------- the wraps (bottom)
-local _, wbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
+local _, wbar = panel(stage, UDim2.fromOffset(64, 852), UDim2.fromOffset(1792, 188))
 local wTitle = label(wbar, "WRAPS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
 wTitle.FontFace = FONT_TITLE
 local wName = label(wbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(420, 26), TEXT)
@@ -734,7 +833,7 @@ local modeBtns: { [string]: Btn } = {}
 -- small two-block gun (stock end left, muzzle right) with the pattern's blocks lit, and hovering a chip tries it on
 local MODE_HALVES = { normal = { true, false }, reverse = { false, true }, full = { true, true } }
 for i, md in Roster.MODES do
-	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.fromOffset(1250 - 20 - (4 - i) * 154, 10), UDim2.fromOffset(146, 30))
+	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.new(1, -20 - (4 - i) * 154, 0, 10), UDim2.fromOffset(146, 30))
 	new("UIPadding", { PaddingLeft = UDim.new(0, 16) }, b.face)
 	for k, lit in MODE_HALVES[md] do
 		local blk = new("Frame", {
@@ -758,9 +857,9 @@ for i, f in filters do
 	}, wbar)
 	filterBtns[f] = t
 end
-label(wbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 46), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+label(wbar, "Hover to try it on · click to wear it", 15, UDim2.new(1, -550, 0, 46), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
 local swatchRow = new("ScrollingFrame", {
-	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 114),
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.new(1, -24, 0, 114),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, wbar)
@@ -768,7 +867,7 @@ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = U
 new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingTop = UDim.new(0, 14), PaddingRight = UDim.new(0, 12) }, swatchRow)
 -- (its ‹ › arrows: added below, once arrows() exists)
 local noPaint = new("TextLabel", {
-	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 108),
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.new(1, -24, 0, 108),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "not on roblox yet.", ZIndex = 10, Visible = false, Active = true,
 }, wbar)
 
@@ -1009,9 +1108,12 @@ local function cardModel(c: Card, id: string)
 	local m, rel = previewModel(id, hatOf(id), skinOf(id))
 	if not m then return end
 	WeaponModels.wrap(m, wid, md)
-	m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
+	m:PivotTo(CFrame.Angles(0, math.pi / 2, 0) * rel:Inverse())
+	News.flat(m)
 	m.Parent = c.vp
-	c.cam.CFrame = CFrame.lookAt(Vector3.new(0, 0.8, 5.6), Vector3.new(0, 0, 0))
+	local _, sz = m:GetBoundingBox()
+	local r = math.max(sz.X, sz.Z, sz.Y * 2) / 2
+	c.cam.CFrame = CFrame.lookAt(Vector3.new(0, 0, r * 4.3), Vector3.new(0, 0, 0))
 end
 
 local function showPreview(id: string)
@@ -1050,11 +1152,18 @@ refresh = function()
 			local wid, md = wrapOf(id)
 			local wr = Roster.wrapById[wid]
 			local item = if c.slot == "utility" then Items.list[id] else nil
+			local sk = skinOf(id)
 			c.wrap.Text = if item then News.fmt("%d %s · %g s each", item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
-				elseif wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
-			c.st.Color = if on then ACCENT else WHITE
-			c.st.Transparency = if on then 0 else T.EDGE_A
-			c.st.Thickness = if on then 2 else 1
+				elseif sk ~= "default" then News.fmt("%s skin", (skinInfo(sk)))
+				elseif wid == "default" then "Factory paint" else ("%s wrap · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
+			c.st.Transparency = 1
+			c.body.BackgroundColor3 = if on then News.B.WHITE else PANEL
+			c.body.BackgroundTransparency = if on then 0 else 0.06
+			c.name.TextColor3 = if on then INK else TEXT
+			c.wrap.TextColor3 = if on then Color3.fromRGB(96, 96, 96) else GREY
+			;(c :: any).keyL.TextColor3 = if on then Color3.fromRGB(120, 120, 120) else DIM
+			;(c :: any).cut.Visible = on
+			c.vp.ImageColor3 = if on then INK else WHITE
 			cardModel(c, id)
 		end)
 	end
@@ -1064,11 +1173,15 @@ refresh = function()
 			local e = Roster.byId[a.id]
 			local equipped = p[state.slot] == a.id
 			local focused = state.focus == a.id
-			a.st.Color = if focused then ACCENT else WHITE
-			a.st.Transparency = if focused then 0 elseif equipped then 0.4 else T.EDGE_A
-			a.st.Thickness = if focused then 2 else 1
-			-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
-			a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
+			-- (27 Nov: the one you're looking at is white with a cut corner; the one you carry says its key)
+			a.st.Transparency = 1
+			a.chip.Visible = false
+			a.btn.BackgroundColor3 = if focused then News.B.WHITE else CARD
+			local cutA = a.btn:FindFirstChild("Cut") or News.K.cut(a.btn, 12, PANEL)
+			cutA.Visible = focused
+			for _, d in a.btn:GetChildren() do
+				if d:IsA("TextLabel") and d ~= a.tag then d.TextColor3 = if focused then INK else TEXT end
+			end
 			-- (weapons open by level, a few are Robux and free for now: Unlocks, docs/PROGRESSION.md. training: anything)
 			local U = require(Shared:WaitForChild("Unlocks")) :: any
 			local okU, whyU = U.forPlayer(me, a.id)
@@ -1082,7 +1195,7 @@ refresh = function()
 				elseif o then (if News.coinsOnly() then News.digits(o.coins) .. " COINS" else News.digits(o.robux) .. " ROBUX")
 				elseif ep then "LV " .. string.sub(whyU :: string, 7) .. " · or " .. News.digits(ep) .. " COINS"
 				elseif not okU then whyU or "LOCKED" else ""
-			a.tag.TextColor3 = if equipped then ACCENT elseif o then TEXT elseif not e.live or not okU then DIM else GREY
+			a.tag.TextColor3 = if focused then Color3.fromRGB(96, 96, 96) elseif equipped then TEXT elseif o then TEXT elseif not e.live or not okU then DIM else GREY
 			a.btn.BackgroundTransparency = if e.live and not okU then 0.45 else 0
 		end)
 	end
@@ -1098,8 +1211,9 @@ refresh = function()
 	News.guard("mastery bar", News.mbar, e)
 	News.guard("info", function()
 		slotChipL.Text = Roster.SLOT_NAMES[e.slot]
-		liveChipL.Text = if e.live then '<font color="#6fd08a">●</font>  LIVE ON ROBLOX' else "COMING SOON"
-		liveChipL.TextColor3 = if e.live then TEXT else DIM
+		liveChipL.Text = if e.live then "" else "COMING SOON" -- (27 Nov: no status light: a live weapon needs no tag)
+		liveChipL.TextColor3 = DIM
+		liveChipL.Parent.Visible = not e.live
 		infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
 		gimText.Text = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
 	end)
@@ -1113,13 +1227,14 @@ refresh = function()
 		for i, row in statRows do
 			News.guard("stat row " .. i, function()
 				local s = st[i]
-				row.name.Text = if s then tostring(s.label or "") else ""
+				row.name.Text = if s then News.sentence(tostring(s.label or "")) else ""
 				row.val.Text = if s then tostring(s.text or "") else ""
 				local b = if s then tonumber(s.bar) else nil
 				local full = if b and b == b and s.text ~= "n/a" then math.clamp(b, 0.03, 1) else 0 -- (nothing to measure: an empty track)
 				tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
 			end)
 		end
+		News.guard("averages", News.avg, e, statRows)
 	end)
 	News.guard("equip button", function()
 		local okE, whyE = (require(Shared:WaitForChild("Unlocks")) :: any).forPlayer(me, e.id)
@@ -1137,8 +1252,8 @@ refresh = function()
 			local armed = News.arm == e.id and os.clock() - News.armT < 4
 			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-		elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
-		else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
+		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED · " .. (if e.slot == "utility" then "G" else "KEY " .. keyOf(e.slot)), false, CARD); equipBtn.face.TextColor3 = GREY
+		else equipBtn:set(if e.slot == "utility" then "EQUIP · G" else "EQUIP · KEY " .. keyOf(e.slot), true) end
 	end)
 	News.guard("preview", showPreview, e.id)
 	-- wraps for the focused weapon
@@ -1165,8 +1280,8 @@ refresh = function()
 			-- (a mastery camo's lock says the weapon level that unlocks it)
 			local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
 			if mg then mg.Text = News.fmt("LV %d", News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2) end
-			s.st.Color = if on then ACCENT else WHITE
-			s.st.Transparency = if on then 0 else 0.8
+			s.st.Color = WHITE
+			s.st.Transparency = if on then 0 else 0.86
 			s.st.Thickness = if on then 2 else 1
 		end)
 	end
@@ -1268,21 +1383,24 @@ end
 -- a small hat that sits on the weapon (GunHats.luau): one per weapon, hover to try it on, click to put it on. it shares
 -- the wraps' place at the bottom: two tabs over the bar switch between them. the cards show each hat turning slowly
 -- with its moving bits going (GunHatsClient)
-local tab = "wraps"
+local tab = "armory"
 local tabBtns: { [string]: Btn } = {}
-for i, t in { "wraps", "hats", "skins" } do
-	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(610 + (i - 1) * 112, 808), UDim2.fromOffset(104, 34))
+for i, t in { "armory", "skins", "wraps", "hats" } do
+	local x = if i == 1 then 76 else 76 + 196 + (i - 2) * 130
+	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(x, 806), UDim2.fromOffset(if i == 1 then 184 else 118, 38))
+	tabBtns[t].face.FontFace = FONT_TITLE; tabBtns[t].face.TextSize = 20
+	News.skewIt(tabBtns[t], 10)
 end
 for t, b in tabBtns do News.tabDots[t] = News.dot(b.face, 4, 6) end -- (a dot on a tab with something NEW for this weapon)
-local hHolder, hbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
+local hHolder, hbar = panel(stage, UDim2.fromOffset(64, 852), UDim2.fromOffset(1792, 188))
 hHolder.Visible = false
 local hTitle = label(hbar, "HATS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
 hTitle.FontFace = FONT_TITLE
 local hName = label(hbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
 hName.FontFace = FONT_BOLD; hName.RichText = true; hName.TextWrapped = false
-label(hbar, "hover to try it on · click to put it on", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+label(hbar, "Hover to try it on · click to put it on", 15, UDim2.new(1, -550, 0, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
 local hatRow = new("ScrollingFrame", {
-	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -24, 0, 136),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, hbar)
@@ -1290,7 +1408,7 @@ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = U
 new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, hatRow)
 arrows(hatRow, hbar)
 local noHats = new("TextLabel", {
-	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -24, 0, 132),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "not on roblox yet.", ZIndex = 10, Visible = false, Active = true,
 }, hbar)
 -- (each hat on a card: its own little stage, seen from the front left; the googly eyes and the halo, which lean
@@ -1342,14 +1460,14 @@ end
 -- ---------------------------------------------------------------- the skins (a third tab): another body per weapon
 -- the focused weapon's skins that are in the place (GunSkins.forWeapon), one card each plus DEFAULT; hover to try it
 -- on in the big preview, click to wear it. a skin you don't own says so (the server checks: Loot.owns)
-local sHolder, sbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
+local sHolder, sbar = panel(stage, UDim2.fromOffset(64, 852), UDim2.fromOffset(1792, 188))
 sHolder.Visible = false
 local sTitle = label(sbar, "SKINS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
 sTitle.FontFace = FONT_TITLE
 local sName = label(sbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
 sName.FontFace = FONT_BOLD; sName.RichText = true; sName.TextWrapped = false
 -- (where the shown skin comes from, then how to use the row: News.source. 18 Nov)
-News.src = label(sbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+News.src = label(sbar, "Hover to try it on · click to wear it", 15, UDim2.new(1, -550, 0, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
 -- (20 Nov, the owner: "you can't preview the finishers in game": a skin that owns a finisher gets a FINISHER pill on its
 -- card here - press it for the full cut on your own avatar against a dummy (Finisher.preview, as the shop's); it takes
 -- the camera and every screen and gives them back. on the card itself, so it is always that skin's finisher (one
@@ -1373,7 +1491,7 @@ News.finPlay = function(sid: string)
 	task.spawn(pcall, (Fc :: any).preview, fid, { skin = sid })
 end
 local skinRow = new("ScrollingFrame", {
-	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 136),
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -24, 0, 136),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, sbar)
@@ -1381,7 +1499,7 @@ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = U
 new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 12) }, skinRow)
 arrows(skinRow, sbar)
 local noSkins = new("TextLabel", {
-	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.new(1, -24, 0, 132),
 	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "", ZIndex = 10, Visible = false, Active = true,
 }, sbar)
 type SkinCard = { id: string, st: UIStroke, tick: TextLabel, lock: Frame?, holder: Frame, new: Frame, concept: boolean }
@@ -1527,8 +1645,8 @@ skinsRefresh = function(e: any)
 				c.lock.Visible = ownedKnown and not (set ~= nil and set[c.id] == true) and select(2, skinInfo(c.id)) ~= "free"
 				lockLook(c.lock)
 			end
-			c.st.Color = if on then ACCENT else WHITE
-			c.st.Transparency = if on then 0 else 0.8
+			c.st.Color = WHITE
+			c.st.Transparency = if on then 0 else 0.86
 			c.st.Thickness = if on then 2 else 1
 		end)
 	end
@@ -1561,16 +1679,21 @@ local function setTab(t: string)
 	wbar.Parent.Visible = t == "wraps"
 	hHolder.Visible = t == "hats"
 	sHolder.Visible = t == "skins"
+	armBody.Parent.Visible = t == "armory"
 	state.hover, state.hatHover, state.modeHover, state.skinHover = nil, nil, nil, nil
 	for name, b in tabBtns do
-		b:set(string.upper(name), true, if name == t then T.CARD_HI else nil)
-		b.mark.Visible = name == t
+		local words = if name == "armory" then (News.PLURAL[state.slot] or "WEAPONS") else string.upper(name)
+		b:set(words, true, if name == t then News.B.WHITE else PANEL)
+		b.face.TextColor3 = if name == t then INK else TEXT
+		b.mark.Visible = false
 	end
 end
+News.railTab = function() setTab(tab) end
+News.showArmory = function() if tab ~= "armory" then setTab("armory") end end
 for name, b in tabBtns do
 	b.face.MouseButton1Click:Connect(function() if tab ~= name then play("click"); setTab(name); if state.open then refresh() end end end)
 end
-setTab("wraps")
+setTab("armory")
 hatsRefresh = function(e: any)
 	local cur = hatOf(e.id)
 	local shownId = if state.hatHover and e.live then state.hatHover else cur
@@ -1590,8 +1713,8 @@ hatsRefresh = function(e: any)
 			c.tick.Visible = on
 			local lk = hatLocks[c.id]
 			if lk then lk.Visible = not owns("hat", c.id); lockLook(lk) end
-			c.st.Color = if on then ACCENT else WHITE
-			c.st.Transparency = if on then 0 else 0.8
+			c.st.Color = WHITE
+			c.st.Transparency = if on then 0 else 0.86
 			c.st.Thickness = if on then 2 else 1
 		end)
 	end
@@ -1905,7 +2028,16 @@ done.face.MouseButton1Click:Connect(function() setOpen(false) end)
 News.close = function() setOpen(false) end -- (the loadout's way out, for code above setOpen: the coins buy, 18 Nov)
 -- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
 -- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
-local flairBtn = button(stage, "KILL EFFECT  ·  EMOTES", "white", UDim2.fromOffset(1360, 40), UDim2.fromOffset(320, 50))
+local flairBtn = button(stage, "", "white", UDim2.fromOffset(64, 156 + 4 * 108), UDim2.fromOffset(480, 96))
+do -- (27 Nov: a row like the slots': its name, what's in it)
+	flairBtn.base = PANEL; flairBtn.face.BackgroundColor3 = PANEL; flairBtn.face.BackgroundTransparency = 0.06
+	local n = label(flairBtn.face, "KILL EFFECT", 40, UDim2.fromOffset(58, 12), UDim2.fromOffset(400, 48), TEXT)
+	n.FontFace = FONT_TITLE; n.ZIndex = 3; n.TextWrapped = false
+	local s2 = label(flairBtn.face, "Emotes · grapple · pets", 16, UDim2.fromOffset(60, 60), UDim2.fromOffset(400, 22), GREY)
+	s2.ZIndex = 3
+	local k = label(flairBtn.face, "›", 40, UDim2.new(1, -56, 0, 0), UDim2.fromOffset(40, 96), DIM, Enum.TextXAlignment.Center)
+	k.FontFace = FONT_TITLE; k.ZIndex = 3
+end
 flairBtn.face.MouseButton1Click:Connect(function()
 	local m = script.Parent:FindFirstChild("FlairUI")
 	if not m then return end
@@ -1928,6 +2060,7 @@ UIS.InputBegan:Connect(function(io, gp)
 		state.slot = Roster.SLOTS[i]
 		state.focus = pick()[state.slot]
 		play("click")
+		if News.showArmory then News.showArmory() end
 		refresh()
 	end
 end)
@@ -1940,9 +2073,9 @@ if RunService:IsStudio() then
 		if type(v) ~= "string" then return end
 		me:SetAttribute("LoadoutTest", nil)
 		if v == "open" then setOpen(true) elseif v == "close" then setOpen(false)
-		elseif string.sub(v, 1, 5) == "slot:" then state.slot = string.sub(v, 6); state.focus = pick()[state.slot]; refresh()
+		elseif string.sub(v, 1, 5) == "slot:" then state.slot = string.sub(v, 6); state.focus = pick()[state.slot]; if News.showArmory then News.showArmory() end; refresh()
 		elseif v == "bundles" and News.bToggle then News.bToggle()
-		elseif v == "scroll:end" then armList.CanvasPosition = Vector2.new(0, math.max(0, armList.AbsoluteCanvasSize.Y - armList.AbsoluteWindowSize.Y)) end
+		elseif v == "scroll:end" then armList.CanvasPosition = Vector2.new(math.max(0, armList.AbsoluteCanvasSize.X - armList.AbsoluteWindowSize.X), 0) end
 	end)
 end
 -- a controller's B backs out (PadNav.client asks through the player attribute MenuBack)
@@ -2006,6 +2139,8 @@ hubBtn.base = T.BG; hubBtn.face.BackgroundColor3 = T.BG; hubBtn.face.BackgroundT
 hubBtn.face.TextSize = 13; hubBtn.face.TextXAlignment = Enum.TextXAlignment.Left
 new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, hubBtn.face)
 T.key(hubBtn.face, "L", UDim2.fromOffset(-34, 7))
+-- (27 Nov 2026: the look is HubStack.style's: the hub menu in A PLATE, the owner's pick from the ui-mocks sheet)
+require(script.Parent:WaitForChild("HubStack")).style(hubBtn.face, "Loadout", hubBtn.holder)
 hubBtn.face.MouseButton1Click:Connect(function() setOpen(true) end)
 RunService.Heartbeat:Connect(function()
 	local show = not state.open and me:GetAttribute("Zone") ~= "match"
@@ -2083,29 +2218,33 @@ local function phoneLayout()
 			b.mark.Visible = name == page
 			b.face.BackgroundColor3 = if name == page then T.CARD_HI else b.base
 		end
-		put(flairBtn.holder, 768, 12, 1, true)
-		set(flairBtn.holder, "Size", UDim2.fromOffset(320, 60))
-		set(flairBtn.face, "TextSize", 19)
-		put(done.holder, 1100, 12, 1, true)
-		set(done.holder, "Size", UDim2.fromOffset(180, 60))
-		set(done.face, "TextSize", 22)
-		set(done.face, "Text", "DONE")
+		put(flairBtn.holder, 652, 88, 0.62, gear)
+		put(done.holder, 1110, 12, 1, true)
+		set(done.holder, "Size", UDim2.fromOffset(170, 60))
+		set(done.face, "TextSize", 30)
+		-- (27 Nov: WEAPONS = the rows two by two and the kill effect row, the armory rail under them, the weapon's card at
+		-- the right; LOOKS = the preview, the rows small, the skins / wraps / hats rail full width)
 		for i, c in cards do
-			if gear then put(c.holder, 20, 88 + (i - 1) * 99, 0.89, true) -- (463 x 91: a column down the left)
-			else put(c.holder, 372 + ((i - 1) % 2) * 328, 152 + (i - 1) // 2 * 72, 0.6, true) end -- (two by two, beside the preview)
+			if gear then put(c.holder, 20 + ((i - 1) % 2) * 316, 88 + (i - 1) // 2 * 70, 0.62, true)
+			else put(c.holder, 372 + ((i - 1) % 2) * 316, 152 + (i - 1) // 2 * 70, 0.62, true) end
 		end
-		put(armHolder, 499, 88, 0.89, gear)
-		put(infoHolder, 978, 88, 0.72, gear)
-		set(equipBtn.holder, "Position", UDim2.fromOffset(22, 596))
-		set(equipBtn.holder, "Size", UDim2.fromOffset(376, 88))
-		set(equipBtn.face, "TextSize", 28)
+		put(armHolder, 20, 236, 1, gear)
+		set(armHolder, "Size", UDim2.fromOffset(930, 188))
+		put(infoHolder, 968, 88, 0.68, gear)
+		set(equipBtn.holder, "Position", UDim2.fromOffset(34, 590))
+		set(equipBtn.holder, "Size", UDim2.fromOffset(408, 84))
+		set(equipBtn.face, "TextSize", 30)
 		put(previewBox, 20, 88, 0.42, not gear)
-		for i, t in { "wraps", "hats", "skins" } do
-			put(tabBtns[t].holder, 372 + (i - 1) * 172, 88, 1, not gear)
+		put(tabBtns.armory.holder, 20, 444, 1, false)
+		for i, t in { "skins", "wraps", "hats" } do
+			put(tabBtns[t].holder, 384 + (i - 1) * 172, 88, 1, not gear)
 			set(tabBtns[t].holder, "Size", UDim2.fromOffset(160, 52))
 			set(tabBtns[t].face, "TextSize", 24)
 			put(bars[t], 20, 404, 1, not gear and tab == t)
+			set(bars[t], "Size", UDim2.fromOffset(1260, 188))
 		end
+		-- (the phone's pages pick the rail: WEAPONS shows the armory, LOOKS the last look tab)
+		if gear and tab ~= "armory" then setTab("armory") elseif not gear and tab == "armory" then setTab("skins") end
 		-- (no slide-in on a phone: the pieces open where they are)
 		for _, x in panelsIn do keep(x, "from"); keep(x, "to"); x.from = x.o.Position; x.to = x.o.Position end
 		uiScale.Scale = math.min(screen().X / PW, screen().Y / PH)
