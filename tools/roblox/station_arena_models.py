@@ -167,9 +167,9 @@ def train():
                             cyl(m, IRON, sx * 3.0, -2.1, zc, 0.38, 0.55, segs=12, bev=0.05)
                         B(m, UNDER2, -3.0, -2.6, zc - 0.7, 3.0, -1.65, zc + 0.7, bev=0.2)
                         for zz in (zc - 1.7, zc + 1.7):
-                            for xr in (-2.4, 2.4):
+                            for xr in (-2.15, 2.15):                 # (on the rails, as before: Clip, round 1 had them off)
                                 cylx(m, '2c2d30', xr - 0.25, xr + 0.25, -2.9, zz, 1.05, segs=16, bev=0.05)
-                            cylx(m, '5c5f63', -2.15, 2.15, -2.9, zz, 0.22, segs=8, bev=0.0)
+                            cylx(m, '5c5f63', -1.9, 1.9, -2.9, zz, 0.22, segs=8, bev=0.0)
                         continue
                     B(m, UNDER2, -3.6, -3.6, zc - 3.0, 3.6, -1.6, zc + 3.0, bev=0.3)
                     for zz in (zc - 1.7, zc + 1.7):

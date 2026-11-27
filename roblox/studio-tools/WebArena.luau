@@ -34,10 +34,14 @@ W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 1119400
 -- patch kits (W.swap) that W.import lays over the whole kit, in order, so a re-import keeps them (27 Nov 2026, the
 -- vehicles pass: the web game's own vehicles, tools/roblox/vehicle_port.py; each map's builder makes them as it is)
 W.PATCHES = {
-	Forest = { 84423293100435 }, -- fo_road, fo_glow: the broken-down car (the web sedan, bonnet up, a door open)
+	Forest = { 78529694275600 }, -- fo_road, fo_glow: the broken-down car (the web sedan, aged off-white, bonnet up, a door open; r1 84423293100435)
 	Platform = { 100377921529718 }, -- pf_quarters, pf_boats: the lifeboats (the web lifeboat) on chunky davits (r1 71711339249899)
-	DesertV2 = { 118677748712819 }, -- ds_wagon: the broken wagons (the web open wagon, a wheel off)
-	BazaarV2 = { 90333922226970 }, -- bz_wagon: the courtyard wagons (the web open wagon, loaded)
+	DesertV2 = { 120441289375542 }, -- ds_wagon: the broken wagons (the web open wagon, a wheel off; r1 118677748712819)
+	BazaarV2 = { 107827818631540 }, -- bz_wagon: the courtyard wagons (the web open wagon, loaded; r1 90333922226970)
+	Crate = { 122985079878951 }, -- cr_furn: the room's furniture with the web toy train on its track (r1 114276068000614)
+	ArcticCabin = { 88418877574665 }, -- ac_out, ac_boat: the upturned rowboat (lofted: no web rowboat; r1 75530530832835)
+	Station = { 101181470203283 }, -- sa_train: the carriages' dress (cambered roofs, open bogies, underfloor boxes, ends)
+	Gut = { 131020959394545 }, -- gu_trn: the train boss's wagons' dress (cambered roofs, double doors, sills, open bogies)
 } :: { [string]: { number } }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
