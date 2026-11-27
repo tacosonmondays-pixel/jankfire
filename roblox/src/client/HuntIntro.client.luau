@@ -618,8 +618,14 @@ local function play(a: any)
 			local near = math.abs(t - beat("snap")) < 0.12 or math.abs(t - beat("outside")) < 0.12
 			if near then
 				local cf = workspace.CurrentCamera.CFrame
-				table.insert(lines, ("%.3f %s %s pos=%.0f,%.0f,%.0f look=%.2f,%.2f,%.2f room=%s"):format(t, tostring(r.cine and r.cine.shot),
-					workspace.CurrentCamera.CameraType.Name, cf.X, cf.Y, cf.Z, cf.LookVector.X, cf.LookVector.Y, cf.LookVector.Z, tostring(folder.Parent ~= nil)))
+				local c9 = me.Character
+				local rr9 = c9 and c9:FindFirstChild("HumanoidRootPart") :: BasePart?
+				local hd9 = c9 and c9:FindFirstChild("Head") :: BasePart?
+				local rel9 = if rr9 and hd9 then rr9.CFrame:PointToObjectSpace(hd9.Position) else nil
+				table.insert(lines, ("%.3f %s %s pos=%.0f,%.0f,%.0f look=%.2f,%.2f,%.2f room=%s fo=%s fr=%s up=%s dO=%s head=%s"):format(t, tostring(r.cine and r.cine.shot),
+					workspace.CurrentCamera.CameraType.Name, cf.X, cf.Y, cf.Z, cf.LookVector.X, cf.LookVector.Y, cf.LookVector.Z, tostring(folder.Parent ~= nil),
+					tostring(r.faceOff ~= nil), tostring(r.faceOffReal ~= nil), tostring(r.upAt),
+					if rr9 then ("%.1f"):format((rr9.Position - O.Position).Magnitude) else "-", if rel9 then ("%.2f,%.2f,%.2f"):format(rel9.X, rel9.Y, rel9.Z) else "-"))
 				me:SetAttribute("HuntCutLog", table.concat(lines, "\n"))
 			end
 		end)
