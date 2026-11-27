@@ -355,6 +355,278 @@ do
 	end)
 end
 
+-- VFX.LAB TRIAL (27 Nov 2026, main's trial of VFX.LAB, a browser effect editor kept in the vault): two bodies side by
+-- side swing the same weapon at once. The LEFT one plays our live effects (the blade sweep and the hit), the RIGHT one
+-- plays flipbooks baked in VFX.LAB (uploaded images). Lab only: no live effect changes.
+-- The right body's flipbook lies in the blade's plane: each swing samples the blade tip, fits its plane and circle (in
+-- the body's own space) and the next swing places the sheet's arc on it (the first swing of a weapon only measures)
+label("VFX.LAB TRIAL: OURS left, VFX.LAB right")
+do
+	local SHEETS: { [string]: { tex: string, h: number, life: number } } = {
+		-- (the baked cell: a top view of an arc of mean radius 2 around the pivot, which sits 0.6 below the cell's centre;
+		-- the cell is 2 h wide, h = the bake camera's distance * tan 19 degrees)
+		katana = { tex = "rbxassetid://75647748106209", h = 8.4 * math.tan(math.rad(19)), life = 0.26 },
+		scythe = { tex = "rbxassetid://102968309029301", h = 8.8 * math.tan(math.rad(19)), life = 0.26 },
+	}
+	local HIT_TEX, HIT_LIFE = "rbxassetid://103114439178777", 0.3
+	local BAKE_R, BAKE_OFF = 2, 0.6
+	local trialW = "katana"
+	local pair: { Model } = {}
+	local swingN = 0
+	local looping = false
+	local cal: { [string]: { c: Vector3, nrm: Vector3, mid: Vector3, r: number } } = {}
+	local function fxFolder(): Instance return workspace:FindFirstChild("JankAnimeFx") or workspace end
+	local function body(at: Vector3, f: Vector3, name: string): Model?
+		local ch = me.Character
+		if not ch then return nil end
+		ch.Archivable = true
+		local m = ch:Clone()
+		ch.Archivable = false
+		for _, d in m:GetDescendants() do
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") then d:Destroy()
+			elseif d:IsA("BasePart") then d.Anchored = d.Name == "HumanoidRootPart"; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+		end
+		for _, n in { "TPGun", "TPGun2" } do local g = m:FindFirstChild(n); if g then g:Destroy() end end
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+		m:PivotTo(CFrame.lookAt(at, at + f))
+		m.Name = name
+		m:SetAttribute("TPWeapon", trialW)
+		CollectionService:AddTag(m, "TPRig")
+		m.Parent = workspace
+		return m
+	end
+	local function removePair()
+		looping = false
+		for _, m in pair do m:Destroy() end
+		table.clear(pair)
+	end
+	local function makePair()
+		removePair()
+		local ch = me.Character
+		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local cam = workspace.CurrentCamera
+		if not (root and cam) then return end
+		local f = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+		f = if f.Magnitude > 1e-3 then f.Unit else Vector3.new(0, 0, -1)
+		local right = f:Cross(Vector3.yAxis)
+		local c0 = root.Position + f * 12
+		-- (side-on, both facing the camera's right: you see each swing's plane; workspace TrialFace = "front" turns them
+		-- to face you)
+		local face = if workspace:GetAttribute("TrialFace") == "front" then -f else right
+		local a = body(c0 - right * 5, face, "VfxLabOurs")
+		local b = body(c0 + right * 5, face, "VfxLabTrial")
+		if a and b then pair[1] = a; pair[2] = b end
+	end
+	-- one flat or camera-facing flipbook particle, painted (LightEmission 0, unlit), on the effect clock
+	local function emit(cf: CFrame, tex: string, size: number, life: number, flat: boolean, rot: number)
+		local p = Instance.new("Part")
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+		p.Transparency = 1
+		p.Size = Vector3.new(0.2, 0.2, 0.2)
+		p.CFrame = cf
+		p.Name = "VfxLabTrialFx"
+		local at = Instance.new("Attachment")
+		at.Parent = p
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = tex
+		e.Enabled = false
+		pcall(function() (e :: any).FlipbookBlendFrames = false end)
+		e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+		e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		e.FlipbookFramerate = NumberRange.new(16 / life)
+		e.FlipbookStartRandom = false
+		e.Lifetime = NumberRange.new(life)
+		e.Rotation = NumberRange.new(rot)
+		e.RotSpeed = NumberRange.new(0)
+		e.Size = NumberSequence.new(size)
+		e.LightEmission = 0
+		e.LightInfluence = 0
+		e.Brightness = 1
+		e.LockedToPart = true
+		e.TimeScale = AnimeFx.timeScale()
+		if flat then
+			-- (a flat sheet: perpendicular to its velocity, a crawl along the attachment's look)
+			e.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+			e.EmissionDirection = Enum.NormalId.Front
+			e.Speed = NumberRange.new(0.01)
+			e.SpreadAngle = Vector2.zero
+		else
+			e.Orientation = Enum.ParticleOrientation.FacingCamera
+			e.Speed = NumberRange.new(0)
+			e.ZOffset = AnimeFx.nearZ(cf.Position)
+		end
+		e.Parent = at
+		p.Parent = fxFolder()
+		e:Emit(1)
+		task.delay(life / math.max(AnimeFx.timeScale(), 0.01) + 0.3, function()
+			while p.Parent and AnimeFx.timeScale() < 0.01 do task.wait(0.2) end
+			p:Destroy()
+		end)
+	end
+	-- the blade's plane and circle from tip samples, in the body's root space. The normal follows the right-hand rule
+	-- of the swing (it turns anticlockwise seen from +nrm); the circle is a least-squares (Kasa) fit in that plane
+	local function fit(pts: { Vector3 }): { c: Vector3, nrm: Vector3, mid: Vector3, r: number }?
+		local n = #pts
+		if n < 4 then return nil end
+		local area = Vector3.zero
+		for i = 2, n - 1 do area += (pts[i] - pts[1]):Cross(pts[i + 1] - pts[1]) end
+		if area.Magnitude < 1e-4 then return nil end
+		local nrm = area.Unit
+		local mean = Vector3.zero
+		for _, q in pts do mean += q end
+		mean /= n
+		local e1 = (pts[n] - pts[1]) - nrm * (pts[n] - pts[1]):Dot(nrm)
+		e1 = if e1.Magnitude > 1e-4 then e1.Unit else nrm:Cross(Vector3.yAxis).Unit
+		local e2 = nrm:Cross(e1)
+		-- x^2 + y^2 + D x + E y + F = 0, least squares: the 3x3 normal equations by Cramer's rule
+		local sxx, sxy, sx, syy, sy, sxz, syz, sz = 0, 0, 0, 0, 0, 0, 0, 0
+		for _, q in pts do
+			local x, y = (q - mean):Dot(e1), (q - mean):Dot(e2)
+			local z = -(x * x + y * y)
+			sxx += x * x; sxy += x * y; sx += x; syy += y * y; sy += y; sxz += x * z; syz += y * z; sz += z
+		end
+		local function det(a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number): number
+			return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+		end
+		local D0 = det(sxx, sxy, sx, sxy, syy, sy, sx, sy, n)
+		if math.abs(D0) < 1e-6 then return nil end
+		local D = det(sxz, sxy, sx, syz, syy, sy, sz, sy, n) / D0
+		local E = det(sxx, sxz, sx, sxy, syz, sy, sx, sz, n) / D0
+		local F = det(sxx, sxy, sxz, sxy, syy, syz, sx, sy, sz) / D0
+		local cx, cy = -D / 2, -E / 2
+		local r2 = cx * cx + cy * cy - F
+		if r2 <= 0 then return nil end
+		local c = mean + e1 * cx + e2 * cy
+		local midP = pts[math.ceil(n / 2)]
+		local mid = (midP - c) - nrm * (midP - c):Dot(nrm)
+		if mid.Magnitude < 1e-4 then return nil end
+		return { c = c, nrm = nrm, mid = mid.Unit, r = math.sqrt(r2) }
+	end
+	-- the blade tip of a body's held weapon, world space
+	local function tipOf(m: Model): Vector3?
+		local g = m:FindFirstChild("TPGun")
+		local mz = g and g:FindFirstChild("Muzzle", true)
+		return if mz and mz:IsA("Attachment") then mz.WorldPosition else nil
+	end
+	-- the sheet's arc on the measured circle. The bake looks down on an arc that runs clockwise on screen, so it is
+	-- seen from -nrm; the particle crawls along the attachment's look (VelocityPerpendicular) and its texture's up is
+	-- set by the attachment's up (workspace TrialVel = +-1 and TrialRot (deg) correct either if the probe says so)
+	local function trialSweep(m: Model, wid: string)
+		local k = cal[wid]
+		local s = SHEETS[wid] or SHEETS.katana
+		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not (k and root) then return end
+		local rc = root.CFrame
+		local c, nrm, mid = rc:PointToWorldSpace(k.c), rc:VectorToWorldSpace(k.nrm), rc:VectorToWorldSpace(k.mid)
+		local sc = k.r / BAKE_R
+		local vel = (tonumber(workspace:GetAttribute("TrialVel")) or 1) * -nrm
+		local centre = c + mid * (BAKE_OFF * sc)
+		local cf = CFrame.lookAt(centre, centre + vel, mid)
+		emit(cf, s.tex, s.h * sc, s.life, true, tonumber(workspace:GetAttribute("TrialRot")) or 0)
+	end
+	local function swingPair()
+		if #pair < 2 or not pair[1].Parent or not pair[2].Parent then makePair(); task.wait(0.5) end
+		if #pair < 2 then return end
+		local A, B = pair[1], pair[2]
+		for _, m in pair do
+			if m:GetAttribute("TPWeapon") ~= trialW then m:SetAttribute("TPWeapon", trialW); task.wait(0.4) end
+		end
+		swingN += 1
+		A:SetAttribute("TPSwing", swingN)
+		B:SetAttribute("TPSwing", swingN)
+		local wid = trialW
+		local an = Anims["swing_" .. wid]
+		local t1 = if an and an.trail then an.trail[1] else 0.08
+		local dur = if an and an.trail then math.max(0.12, (an.trail[2] - an.trail[1]) * 1.3) else 0.18
+		local tint = AnimeFx.tintFor(wid)
+		task.delay(t1, function()
+			if A.Parent then AnimeFx.bodySweep(A, tint, dur) end
+			if B.Parent and cal[wid] then trialSweep(B, wid) end
+			-- B's tip, sampled over the cut, measures the plane for the next swing (on the effect clock)
+			local pts: { Vector3 } = {}
+			local rb = B:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local t = 0
+			while t < dur and B.Parent do
+				local p = tipOf(B)
+				if p and rb then table.insert(pts, rb.CFrame:PointToObjectSpace(p)) end
+				t += task.wait() * math.max(AnimeFx.timeScale(), 0.02)
+			end
+			local k = fit(pts)
+			if k then
+				cal[wid] = k
+				-- (tests: the fitted circle and how far the tip swept round it, degrees)
+				local u0, u1 = pts[1] - k.c, pts[#pts] - k.c
+				u0 -= k.nrm * u0:Dot(k.nrm); u1 -= k.nrm * u1:Dot(k.nrm)
+				local sw = if u0.Magnitude > 1e-4 and u1.Magnitude > 1e-4 then math.deg(math.acos(math.clamp(u0.Unit:Dot(u1.Unit), -1, 1))) else 0
+				workspace:SetAttribute("TrialCal_" .. wid, string.format("r=%.2f sweep=%.0f n=%d", k.r, sw, #pts))
+			end
+		end)
+		-- the hit, halfway through the cut, at each body's blade tip
+		task.delay(t1 + dur * 0.5, function()
+			local pa = if A.Parent then tipOf(A) else nil
+			local pb = if B.Parent then tipOf(B) else nil
+			local ra, rb = A:FindFirstChild("HumanoidRootPart") :: BasePart?, B:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if pa and ra then AnimeFx.hit(pa, ra.Position, tint, false, false, false) end
+			if pb and rb then
+				local cam = workspace.CurrentCamera
+				local at = pb
+				if cam then
+					local toCam = cam.CFrame.Position - at
+					if toCam.Magnitude > 2.5 then at += toCam.Unit * 1.4 end -- (as ours: drawn on the side facing you)
+				end
+				emit(CFrame.new(at), HIT_TEX, 2.4, HIT_LIFE, false, math.random(0, 359))
+			end
+		end)
+	end
+	local r = row()
+	local wb: { [string]: TextButton } = {}
+	for _, w in { "katana", "scythe" } do
+		wb[w] = button(r, string.upper(w), 70, function(b)
+			trialW = w
+			for _, o in wb do o.BackgroundColor3 = Color3.fromRGB(44, 46, 54) end
+			b.BackgroundColor3 = Color3.fromRGB(70, 110, 170)
+			for _, m in pair do m:SetAttribute("TPWeapon", w) end
+		end)
+	end
+	wb.katana.BackgroundColor3 = Color3.fromRGB(70, 110, 170)
+	button(r, "PAIR", 54, function() makePair() end)
+	local r2 = row()
+	button(r2, "SWING", 70, function() task.spawn(swingPair) end)
+	button(r2, "LOOP", 60, function(b)
+		looping = not looping
+		b.BackgroundColor3 = if looping then Color3.fromRGB(70, 110, 170) else Color3.fromRGB(44, 46, 54)
+		if looping then
+			task.spawn(function()
+				while looping and gui.Parent do
+					swingPair()
+					local t = 0
+					while t < 1.6 and looping do t += task.wait() * math.max(AnimeFx.timeScale(), 0.02) end -- (1.6 s apart: always the first cut, never the backhand)
+				end
+			end)
+		end
+	end)
+	button(r2, "REMOVE", 76, removePair)
+	-- (tests: workspace TrialMake = n makes the pair (TrialWeapon picks katana / scythe); TrialSwing = n swings it once)
+	workspace:GetAttributeChangedSignal("TrialSwing"):Connect(function() task.spawn(swingPair) end)
+	workspace:GetAttributeChangedSignal("TrialMake"):Connect(function()
+		local w = workspace:GetAttribute("TrialWeapon")
+		if type(w) == "string" and SHEETS[w] then trialW = w end
+		makePair()
+	end)
+	-- the probe (tests): one flat trial sheet 10 studs ahead, look = TrialProbeLook, up = TrialProbeUp, held for 8 s
+	workspace:GetAttributeChangedSignal("TrialProbe"):Connect(function()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local look = workspace:GetAttribute("TrialProbeLook")
+		local up = workspace:GetAttribute("TrialProbeUp")
+		local at = cam.CFrame.Position + cam.CFrame.LookVector * 10
+		local lv = if typeof(look) == "Vector3" then look else -cam.CFrame.LookVector
+		local uv = if typeof(up) == "Vector3" then up else Vector3.yAxis
+		emit(CFrame.lookAt(at, at + lv, uv), SHEETS.katana.tex, 3, 8, true, tonumber(workspace:GetAttribute("TrialRot")) or 0)
+	end)
+end
+
 local function toggle()
 	gui.Enabled = not gui.Enabled
 	AnimeFx.LAB = gui.Enabled
