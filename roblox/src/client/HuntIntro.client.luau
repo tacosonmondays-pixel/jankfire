@@ -27,7 +27,7 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("H
 local me = Players.LocalPlayer
 
 local SET_AT = CFrame.new(0, 4000, 84000) -- (the room's spot: far off every map; client-only parts)
-local BEAT = 16 -- (the beats below are written for a 16 s hide and scale to the real one)
+local BEAT = 18 -- (HC.INTRO.beats are written for an 18 s hide and scale to the real one)
 
 -- the room's light: near black, the screen does the rest (a client-side look, only while the room is up)
 HubLook.looks.hunt_intro_dark = {
@@ -345,50 +345,67 @@ local function play(a: any)
 	local flat = Vector3.new(O.LookVector.X, 0, O.LookVector.Z)
 	if flat.Magnitude < 1e-3 then flat = Vector3.new(0, 0, -1) end
 	flat = flat.Unit
+	local function beat(name: string): number return HC.INTRO.beats[name] * k end
+	local rt = flat:Cross(Vector3.yAxis)
+	-- behind him, the house ahead: where the swing ends and the hold pushes in from
+	local function behindCF(hp: Vector3, rad: number, up: number): CFrame
+		return CFrame.lookAt(hp - flat * rad + Vector3.new(0, up, 0), hp + flat * 4)
+	end
+	local function smoother(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
 	local shots = {
-		-- 1. the room: a low wide, a slow push, a profile
-		{ name = "wide", t0 = 0, t1 = 2.2 * k, fov = function(u) return Cine.lerp(56, 52, u) end,
+		-- 1. the room: a low wide, a slow push, a profile (27 Nov: trimmed, to give the end outside its room)
+		{ name = "wide", t0 = 0, t1 = beat("push"), fov = function(u) return Cine.lerp(56, 52, u) end,
 			cam = function(u) return look(lerpV(P(5.2, 1.1, 6.2), P(4.7, 1.25, 5.6), u), P(0, hy - 0.8, -1.2)) end },
-		{ name = "push", t0 = 2.2 * k, t1 = 3.9 * k, fov = function(u) return Cine.lerp(42, 36, u) end,
+		{ name = "push", t0 = beat("push"), t1 = beat("profile"), fov = function(u) return Cine.lerp(42, 36, u) end,
 			cam = function(u) return look(lerpV(P(0.2, hy + 0.3, 7.2), P(0.1, hy + 0.15, 4.3), u), P(0, hy - 0.35, 0)) end },
-		{ name = "profile", t0 = 3.9 * k, t1 = 5.5 * k, fov = 30, shake = 0.5,
+		{ name = "profile", t0 = beat("profile"), t1 = beat("build"), fov = 30, shake = 0.5,
 			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headLive()) end },
 		-- 2. the build: shorter shots, the shake growing
-		{ name = "shoulder", t0 = 5.5 * k, t1 = 6.6 * k, fov = 34, shake = 1.2,
+		{ name = "shoulder", t0 = beat("build"), t1 = beat("behind"), fov = 34, shake = 1.2,
 			cam = function(u) return look(lerpV(P(1.7, hy - 0.9, 1.9), P(1.45, hy - 0.8, 1.6), u), handsLive()) end }, -- (his shaking hands)
-		{ name = "behind", t0 = 6.6 * k, t1 = 7.7 * k, fov = 46, shake = 1.8,
+		{ name = "behind", t0 = beat("behind"), t1 = beat("dutch"), fov = 46, shake = 1.8,
 			cam = function(u) return look(lerpV(P(0.8, hy + 0.55, 3.0), P(0.55, hy + 0.45, 2.4), u), P(sd.at.X, sd.at.Y, sd.at.Z)) end },
-		{ name = "dutch", t0 = 7.7 * k, t1 = 8.8 * k, fov = 40, shake = 2.6,
+		{ name = "dutch", t0 = beat("dutch"), t1 = beat("face"), fov = 40, shake = 2.6,
 			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headLive(), 14) end },
-		{ name = "face", t0 = 8.8 * k, t1 = 9.7 * k, fov = 30, shake = 3.6,
+		{ name = "face", t0 = beat("face"), t1 = beat("rush"), fov = 30, shake = 3.6,
 			cam = function(u) return look(lerpV(P(0.5, hy, -2.5), P(0.3, hy, -2.05), u), headLive()) end },
-		{ name = "rush", t0 = 9.7 * k, t1 = 10.4 * k, fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 4.5 + 2.0 * u end,
+		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 4.5 + 2.0 * u end,
 			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headLive()) end },
 		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
-		{ name = "above", t0 = 10.4 * k, t1 = 11.4 * k, fov = 50, shake = function(u) return 8 * (1 - u) ^ 2 end,
+		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 8 * (1 - u) ^ 2 end,
 			cam = function(u) local e = Cine.ease(u); return CFrame.lookAt(P(0, hy + 3.6 - 0.4 * e, -1.6 + 0.2 * e), headLive()) end },
 		-- 4. outside: low in front of him (between him and the map), looking up at him
-		{ name = "outside", t0 = 11.4 * k, t1 = 13.4 * k, fov = 44, shake = 0.5,
+		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, shake = 0.5,
 			cam = function(u)
-				local f = flat
-				local rt = f:Cross(Vector3.yAxis)
-				local from = O.Position + f * Cine.lerp(5.4, 4.9, u) + rt * 2.4 + Vector3.new(0, 1.1, 0)
+				local from = O.Position + flat * Cine.lerp(5.4, 5.0, u) + rt * 2.4 + Vector3.new(0, 1.1, 0)
 				return look(from, realHead() + Vector3.new(0, 0.4, 0))
 			end },
-		-- 5. the turn: round to behind him as he looks down, then into his eyes, the bars up
-		{ name = "turn", t0 = 13.4 * k, t1 = len, fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(44, gf, Cine.ease(math.clamp((u - 0.55) / 0.45, 0, 1))) end,
+		-- 5. the look round (owner, 27 Nov): a slow drift out to a three-quarter as his head and shoulders turn left and
+		-- right and his hands come down
+		{ name = "around", t0 = beat("around"), t1 = beat("swing"), fov = function(u) return Cine.lerp(44, 38, u) end, shake = 0.35,
 			cam = function(u)
-				local f = flat
+				local e = Cine.ease(u)
+				local from = O.Position + flat * Cine.lerp(5.0, 6.2, e) + rt * Cine.lerp(2.4, 3.6, e) + Vector3.new(0, Cine.lerp(1.1, 1.9, e), 0)
+				return look(from, realHead() - Vector3.new(0, 0.7 * e, 0))
+			end },
+		-- 6. the swing: round to behind him as he looks down
+		{ name = "swing", t0 = beat("swing"), t1 = beat("hold"), fov = 40,
+			cam = function(u)
 				local hp = realHead()
-				local a = Cine.ease(math.clamp(u / 0.7, 0, 1))                    -- round him: front-side to behind
-				local ang = math.rad(Cine.lerp(25, 180, a))
-				local dir = (CFrame.fromAxisAngle(Vector3.yAxis, ang) * f)
-				local rad = Cine.lerp(5.0, 3.2, a)
-				local orbit = CFrame.lookAt(hp + dir * rad + Vector3.new(0, Cine.lerp(-0.6, 0.6, a), 0), hp + f * 4)
-				local w = Cine.ease(math.clamp((u - 0.7) / 0.3, 0, 1))             -- then onto the game's own camera
-				local g = Cine.gameplay(flat)
-				return orbit:Lerp(g, w)
+				local a = Cine.ease(u)
+				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -180, a))) * flat
+				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 3.8, a) + Vector3.new(0, Cine.lerp(0.2, 0.7, a), 0), hp + flat * 4)
+			end },
+		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
+		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
+			cam = function(u) return behindCF(realHead(), Cine.lerp(3.8, 3.3, u), Cine.lerp(0.7, 0.6, u)) end },
+		-- 8. into his eyes: the push eases on into first person (smootherstep: no pop) while the bars lift
+		{ name = "enter", t0 = beat("enter"), t1 = len,
+			fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(40, gf, smoother(u)) end,
+			cam = function(u)
+				local from = behindCF(realHead(), Cine.lerp(3.3, 2.8, math.min(1, u * 2)), 0.6)
+				return from:Lerp(Cine.gameplay(flat), smoother(u))
 			end },
 	}
 	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.6 })
@@ -412,19 +429,22 @@ local function play(a: any)
 		if head and head.Parent then follow("head", head.Position, dt) end
 		if lHand and rHand then follow("hands", (lHand.Position + rHand.Position) / 2, dt) end
 		local shot = r.cine and r.cine.shot
-		if t < 11.4 * k then
+		if t < beat("outside") then
 			clearLens(body, if shot == "shoulder" then handsLive() elseif shot == "behind" then P(sd.at.X, sd.at.Y, sd.at.Z) else facePoint(), dt)
-		elseif t < 13.4 * k then
-			clearLens(me.Character, realHead() + Vector3.new(0, 0.3, 0), dt)
-		elseif not r.lensBack then -- (the turn into his eyes: everything he wears back as it was)
-			r.lensBack = true
-			for h in touched do if h.Parent then h.LocalTransparencyModifier = 0 end end
+		else -- (out front: his face; behind him: the house past him; as the lens goes into his head his hair fades)
+			local front = shot == "outside" or shot == "around"
+			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt)
+		end
+		-- the look round's clip, timed to fill its beat once its length is known
+		if r.lookTrack and not r.lookSped and r.lookTrack.Length > 0 then
+			r.lookSped = true
+			r.lookTrack:AdjustSpeed(r.lookTrack.Length / math.max(0.5, beat("swing") - beat("around") - 0.3))
 		end
 		-- the hit-stop on the snap (main, 27 Nov: the Tidecrest impact language): his body holds for a beat while the
 		-- lens kicks and the hit lands
 		local HS = HC.INTRO.hitstop
 		if HS then
-			local a0 = 10.4 * k + HS.at
+			local a0 = beat("snap") + HS.at
 			if r.frozen == nil and t >= a0 and t < a0 + HS.len then
 				r.frozen = {}
 				for _, tr in A do if tr.IsPlaying then r.frozen[tr] = tr.Speed; tr:AdjustSpeed(0) end end
@@ -444,13 +464,13 @@ local function play(a: any)
 			end
 		end
 		-- the screen: a steady glow, then a flicker that grows with the build; a white flash on the snap
-		local build = math.clamp((t - 5.5 * k) / (4.9 * k), 0, 1)
+		local build = math.clamp((t - beat("build")) / (beat("snap") - beat("build")), 0, 1)
 		local f = 0.92 + 0.08 * math.noise(t * 6, 2.2)
 		if build > 0 then
 			f -= build * 0.55 * math.max(0, math.noise(t * (9 + 14 * build), 5.7))
 			if math.noise(t * 3.1, 9.9) > 0.55 - 0.35 * build then f *= 0.25 end -- (a dropout)
 		end
-		if t >= 10.4 * k and t < 10.55 * k then f = 1.8 end
+		if t >= beat("snap") and t < beat("snap") + 0.15 * k then f = 1.8 end
 		light.Brightness = baseB * math.max(0.05, f)
 		screen.Color = baseCol:Lerp(Color3.new(0, 0, 0), math.clamp(1 - f, 0, 0.9))
 		if noise and os.clock() >= nextFrame then
@@ -460,21 +480,21 @@ local function play(a: any)
 		end
 		-- the heartbeat: louder and faster up to the snap, the hum ducking under it
 		local HB = HC.INTRO.heart
-		if heart and HB and t < 10.4 * k then
-			local u = math.clamp((t - HB.from * k) / ((10.4 - HB.from) * k), 0, 1)
+		if heart and HB and t < beat("snap") then
+			local u = math.clamp((t - HB.from * k) / (beat("snap") - HB.from * k), 0, 1)
 			local rate = Cine.lerp(HB.rate[1], HB.rate[2], u ^ 1.4)
 			heart.PlaybackSpeed = rate
 			if shift then shift.Octave = math.clamp(1 / rate, 0.5, 2) end
 			heart.Volume = if t < HB.from * k then 0 else S.heart.vol * Cine.lerp(HB.gain[1], HB.gain[2], u ^ 1.6)
 			if hum then hum.Volume = humVol * Cine.lerp(1, HB.duck, u) end
 		end
-		if build > 0 and t < 10.4 * k and os.clock() >= nextBeat then -- (the screen's buzz with its flicker)
+		if build > 0 and t < beat("snap") and os.clock() >= nextBeat then -- (the screen's buzz with its flicker)
 			nextBeat = os.clock() + Cine.lerp(0.95, 0.38, build)
 			if math.random() < 0.35 * build then sfx(S.buzz, 0.4 + 0.4 * build) end
 		end
 		-- the grade lifts with the bars, into the game's own colour
 		if r.grade and G then
-			local w = 1 - math.clamp((t - 14.6 * k) / 0.9, 0, 1)
+			local w = 1 - math.clamp((t - beat("bars")) / math.max(0.3, len - 0.2 - beat("bars")), 0, 1) -- (with the push in)
 			r.grade.Saturation = G.saturation * w
 			r.grade.Contrast = G.contrast * w
 			r.grade.Brightness = G.brightness * w
@@ -482,18 +502,18 @@ local function play(a: any)
 			if r.blur then r.blur.Size = (G.blur or 0) * w end
 		end
 		-- his clips
-		if once("crazy", 5.5 * k) and A.crazy then A.crazy:Play(0.2, 1, 1) end
-		if once("nod", 6.6 * k) and A.nod then A.nod:Play(0.1, 1, 1.4) end
-		if once("shake", 7.7 * k) and A.shake then A.shake:Play(0.1, 1, 1.6) end
-		if once("crazy2", 8.8 * k) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
-		if once("snap", 10.4 * k) then
+		if once("crazy", beat("build")) and A.crazy then A.crazy:Play(0.2, 1, 1) end
+		if once("nod", beat("behind")) and A.nod then A.nod:Play(0.1, 1, 1.4) end
+		if once("shake", beat("dutch")) and A.shake then A.shake:Play(0.1, 1, 1.6) end
+		if once("crazy2", beat("face")) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
+		if once("snap", beat("snap")) then
 			if A.snap then A.snap:Play(0.04, 1, 1.3) end
 			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end -- (the room's sound ends on the hit: then peace)
 		end
 		-- outside: the round's light, the birds, the real body looks up and then down
-		if once("outside", 11.4 * k) then
+		if once("outside", beat("outside")) then
 			HubLook.set(roundLook(), 0)
 			local birds = bed(S.birds, 0)
 			if birds then -- (peace: the birds come up, and carry on past the hand-back: stop fades them)
@@ -510,12 +530,21 @@ local function play(a: any)
 				r.realAnimator = ra
 			end
 		end
-		if once("down", 13.4 * k) and r.realAnimator then
-			for _, tr in r.realTracks do tr:Stop(0.35) end
-			local dn = track(r.realAnimator, ids.look, Enum.AnimationPriority.Action3)
-			if dn then dn:Play(0.3, 1, 1.1); table.insert(r.realTracks, dn) end
+		-- the look round (owner, 27 Nov): his hands come down slowly into a relaxed stand as he looks left and right
+		if once("around", beat("around")) and r.realAnimator then
+			for _, tr in r.realTracks do tr:Stop(2.4) end
+			local rest = track(r.realAnimator, HC.ANIMS[rig] and HC.ANIMS[rig].idle, Enum.AnimationPriority.Action)
+			if rest then rest.Looped = true; rest:Play(1.6); table.insert(r.realTracks, rest) end
+			local la = HC.INTRO.lookAround and HC.INTRO.lookAround[rig]
+			local lk = track(r.realAnimator, la, Enum.AnimationPriority.Action2)
+			if lk then lk:Play(0.8); table.insert(r.realTracks, lk); r.lookTrack = lk end
 		end
-		if once("bars", 14.6 * k) then Cine.bars(false, 0.8) end
+		if once("down", beat("swing")) and r.realAnimator then
+			if r.lookTrack then r.lookTrack:Stop(0.6) end
+			local dn = track(r.realAnimator, ids.look, Enum.AnimationPriority.Action3)
+			if dn then dn:Play(0.5, 1, 0.9); table.insert(r.realTracks, dn) end
+		end
+		if once("bars", beat("bars")) then Cine.bars(false, math.max(0.8, len - 0.2 - beat("bars"))) end
 		if t >= len then stop() end
 	end)
 end

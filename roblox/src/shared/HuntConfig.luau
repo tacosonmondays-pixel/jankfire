@@ -73,7 +73,7 @@ H.TABLES = {
 
 -- ------------------------------------------------------------------ the round (stage 2)
 H.ROUND = {
-	minPlayers = 2, lobby = 20, hide = 16, hunt = 240, fightBack = 120, results = 6, -- (hide = the gunman's intro, 27 Nov)
+	minPlayers = 2, lobby = 20, hide = 18, hunt = 240, fightBack = 120, results = 6, -- (hide = the gunman's intro: 18 s since the owner's look-round and slow push in, 27 Nov)
 	gunmanHp = 250, hiderHp = 100,
 	-- where a round's copy of its map goes: SITE + (GAP * k, 0, 0) for game k = 0, 1, 2
 	site = Vector3.new(0, 300, -96000), gap = 7000,
@@ -180,7 +180,7 @@ H.INTRO = {
 	on = true,
 	set = "both",
 	kit = "JankfireHuntIntro", -- (ReplicatedStorage: hiA_room, hiA_props, hiB_room, hiB_props; HuntBuild.importIntro)
-	outsideLead = 4.6, -- (s before the hunt: he stands at the map's outside spot for the last two beats, held still)
+	outsideLead = 8.8, -- (s before the hunt: he stands at the map's outside spot from the cut outside (beats.outside), held still)
 	-- mocap (the vault's Mixamo clips, mixamo_r15.py; R15 and R6). calm = ANIMS idle
 	anims = {
 		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 84828717533144, look = 108845709130342 },
@@ -199,10 +199,17 @@ H.INTRO = {
 	},
 	-- the heartbeat's build: from `from` (s on the 16 s beats) to the snap it goes from rate[1] to rate[2] times its
 	-- 96 BPM and from gain[1] to gain[2] of its level, while the hum ducks to `duck` of its own
-	heart = { from = 3.6, rate = { 0.85, 1.85 }, gain = { 0.12, 1.0 }, duck = 0.35 },
-	-- the owner's liminal grade (27 Nov: "greyish until the zoom into first person and the bars disappear"): a washed-out
-	-- grey over the whole film that lifts with the bars
-	grade = { saturation = -0.82, contrast = -0.12, brightness = 0.03, tint = Color3.fromRGB(232, 234, 238), blur = 1.5 },
+	heart = { from = 2.6, rate = { 0.85, 1.85 }, gain = { 0.12, 1.0 }, duck = 0.35 },
+	-- the owner's grade (27 Nov): muted colour ("not that grey!! I just wanted muted colors"; v1460's -0.82 was near
+	-- grey) over the whole film, lifting with the bars as the lens goes into first person
+	grade = { saturation = -0.45, contrast = -0.05, brightness = 0.01, tint = Color3.fromRGB(240, 243, 247), blur = 0.75 },
+	-- the film's beats, s on an 18 s hide (k scales them to the real one). 27 Nov (owner): the room's opening trimmed,
+	-- a look round outside as his hands come down, a hold behind him and a slow push into first person
+	beats = { push = 1.6, profile = 2.8, build = 4.0, behind = 5.0, dutch = 5.9, face = 6.8, rush = 7.6, snap = 8.3,
+		outside = 9.3, around = 10.5, swing = 13.4, hold = 15.4, enter = 16.2, bars = 16.4 },
+	-- the look round's clip (upper body; R15 only for now: victory-scene's Frisk Look Around upload, the vault's
+	-- Mixamo; an R6 body just settles), and the relaxed stand is ANIMS idle
+	lookAround = { R15 = 72083974683735 },
 	-- (main, 27 Nov: a dressed-up avatar's close-ups were a white jumble of frills) whatever he wears between the lens
 	-- and the face (or hands) fades to `fade`, and anything within `near` studs of the lens
 	lens = { fade = 0.92, near = 1.2 },
