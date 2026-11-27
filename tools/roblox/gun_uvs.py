@@ -175,8 +175,8 @@ def unwrap(objs, scale=1.0, layer='UVMap'):
             got[si] = [tuple(l[uvl].uv) for l in f.loops]
         bm.free()
         bpy.data.objects.remove(tmp); bpy.data.meshes.remove(tmp_me)
+        while len(me.uv_layers): me.uv_layers.remove(me.uv_layers[0])   # (first: a mesh that had UVs keeps none of them)
         bm2 = bmesh.new(); bm2.from_mesh(me); bm2.faces.ensure_lookup_table(); bm2.normal_update()
-        while len(me.uv_layers): me.uv_layers.remove(me.uv_layers[0])
         uv = bm2.loops.layers.uv.new(layer)
         for f in bm2.faces:
             g = got.get(f.index)
