@@ -106,6 +106,14 @@ local function easeOf(name: string?, u: number): number
 end
 
 export type Run = { stop: (boolean?) -> (), kick: (number) -> (), shot: string?, done: boolean }
+-- the game's camera follows your current body (27 Nov: a round re-made the body while the scene played, and the camera
+-- went on following the old one for half a second after the hand-back, until ShoulderCam's watchdog put it right)
+local function subject(cam: Camera)
+	local ch = me.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if hum and cam.CameraSubject ~= hum then cam.CameraSubject = hum end
+end
+
 local n = 0
 function K.play(shots: { any }, opts: any?): Run
 	opts = opts or {}
@@ -163,7 +171,9 @@ function K.play(shots: { any }, opts: any?): Run
 		local t = clock()
 		local cf, fov = frame(t)
 		-- (the 27 Nov test: Custom straight after Scriptable showed a stale frame of where you'd been for half a second)
-		cam.CameraType = if opts.warm and t >= endT - opts.warm then Enum.CameraType.Custom else Enum.CameraType.Scriptable
+		local warm = opts.warm and t >= endT - opts.warm
+		if warm then subject(cam) end
+		cam.CameraType = if warm then Enum.CameraType.Custom else Enum.CameraType.Scriptable
 		cam.CFrame = cf
 		if fov then cam.FieldOfView = fov end
 	end)
@@ -174,6 +184,7 @@ function K.play(shots: { any }, opts: any?): Run
 		local g, gf = K.gameplay(cam.CFrame.LookVector)
 		cam.FieldOfViewMode = was.mode
 		cam.FieldOfView = if handBack then gf else was.fov
+		subject(cam)
 		cam.CameraType = Enum.CameraType.Custom
 		if handBack then cam.CFrame = g end
 		me:SetAttribute("LoadoutOpen", was.open)
