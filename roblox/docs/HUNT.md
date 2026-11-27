@@ -415,6 +415,22 @@ game's own camera with no pop (CineKit's `warm` lets the game's camera take the 
 shot still places it, and points it at the current body: the round re-makes the gunman's body). The owner's sheet:
 side-session-notes `holdout/intro_AB_sheet_v1435.jpg` and the clips `intro_A_v3` / `intro_B_v3` (`_small` copies).
 
+**The cuts (owner on v15, 27 Nov: "a frame where it renders the next area"):** every cut changes camera and subject in
+the same frame, checked with ffmpeg at 30 fps round each cut on the owner's big-hat avatar and on a plain one
+(`CanLoadCharacterAppearance = false` + `LoadCharacter` in Play).
+- A hidden twin of her body measures the snap's last pose (`r.faceOff`), so both top-down shots open on their final
+  framing.
+- The room stands 600 studs over her outside spot: a 180,000-stud jump drew one frame of bare sky.
+- No pre-focus: setting `Camera.Focus` far off put the room's lights out for 4 frames.
+- Her real body takes the face-up pose 0.3 s before the cut, out of shot.
+- Her head and hat go when the lens is within a stud of anything she wears.
+- (v18, the plain avatar) outside, the camera is built from her real root, and two of ThirdPerson's own-body steps
+  fought it: its "face where you aim" turned her root to the camera's flat look every frame (looking straight down,
+  the two chased each other), and its aim pose bent her waist and neck off the clip. `HuntIntroHold` (Camera+5) keeps
+  her root on the outside spot's heading, and ThirdPerson's `stepRig` leaves your own body alone while the
+  `HuntIntro` attribute is set.
+- In Studio the player attribute `HuntCutLog` logs the camera every frame round both cuts.
+
 ## 12. The win films (owner, 27 Nov)
 
 The owner: "If you win as killer start the walk with destroyed place and then zoom out with static to imply it was you
@@ -514,8 +530,9 @@ short enough where you can chain all three".
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
   - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 8, 27 Nov: hunt_arch10 = 133158939004700);
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 8: hunt_furn11 =
-    98904903893193).
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (27 Nov: hunt_furn13 =
+    122591663387126, the garage car swapped for the web game's hatchback in flat colours from the vehicles session's
+    `vehicle_port.hunt_car`, on the old footprint and hit boxes; the block car is `car_blocks`).
   - the gunman's intro rooms, `tools/roblox/hunt_intro_models.py`: `B.INTRO` (hunt_intro2 = 106007849260783),
     imported by `B.importIntro()` into `ReplicatedStorage.JankfireHuntIntro`.
   - Each judge round rebuilds both halves (`--name=hunt_archN` / `hunt_furnN`) and re-uploads them; the ids above
