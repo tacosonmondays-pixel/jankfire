@@ -1353,8 +1353,8 @@ refresh = function()
 			s.tick.Visible = on
 			local lk = swatchLocks[s.wr.id]
 			if lk then lk.Visible = not owns("wrap", s.wr.id); lockLook(lk) end
-			-- (a retired wrap, Roster.RETIRED: only its owners see it)
-			if (s.wr :: any).retired then s.holder.Visible = owns("wrap", s.wr.id) end
+			-- (a retired wrap, Roster.RETIRED, or one earned in a mode, Roster.EARNED: only its owners see it)
+			if (s.wr :: any).retired or (s.wr :: any).earned then s.holder.Visible = owns("wrap", s.wr.id) end
 			-- (a mastery camo's lock says the weapon level that unlocks it)
 			local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
 			if mg then mg.Text = News.fmt("LV %d", News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2)

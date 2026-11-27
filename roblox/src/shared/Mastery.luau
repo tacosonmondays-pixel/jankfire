@@ -130,6 +130,8 @@ function M.wrapList(): { any }
 	for _, w in (Roster.masteryWraps or {}) :: { any } do table.insert(out, w) end
 	-- (the retired wraps last: LoadoutUI shows one only to its owners. Roster.RETIRED, 27 Nov)
 	for _, w in ((Roster :: any).retiredWraps or {}) :: { any } do table.insert(out, w) end
+	-- (then the wraps earned in a mode, Roster.EARNED: the ZOMBIES extraction's; also shown only to their owners)
+	for _, w in ((Roster :: any).earnedWraps or {}) :: { any } do table.insert(out, w) end
 	return out
 end
 

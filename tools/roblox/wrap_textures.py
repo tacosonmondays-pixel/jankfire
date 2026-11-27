@@ -2285,6 +2285,87 @@ def ducky(t: Tex):
 
 
 
+# ------------------------------------------------------------------------------------------- ZOMBIES extraction wraps
+# (27 Nov 2026, the owner: the ZOMBIES extraction's rewards are "custom to mode like skins or wraps"). Earned only by
+# extracting from a zombies game, never in a spray set, crate, the shop or a bundle (Roster.EARNED). Each picked from
+# four takes by two blind critics, then fixed from their notes and confirmed KEEP by both. The deepest reward, Ooze, is
+# a living camo (tools/roblox/wrap_living.py, kind 'ooze'). docs/WRAP-TEXTURES.md "Zombies extraction wraps"
+def _zcol(a, b, t):
+    a, b = hexrgb(a), hexrgb(b)
+    return a + (b - a) * np.asarray(t, np.float32)[..., None]
+
+
+def _znail(t: Tex, x, y, rust='8e4a26', head='2f2a26'):
+    """a rusty nail head, a rust ring round it and a short rust run below"""
+    X, Y, idx = t.box(x - 13, y - 13, x + 13, y + 52)
+    d = np.hypot(X - x, Y - y)
+    t.paint(idx, cover(d - 11.0, 2.0) * 0.55, rust)
+    t.paint(idx, cover(sd_ellipse(x, y + 24, 3.6, 24)(X, Y), 2.5) * 0.42, rust)
+    a = cover(d - 6.5, 1.0)
+    t.paint(idx, a, head, height=a * 1.6)
+    t.paint(idx, cover(np.hypot(X - x + 2, Y - y + 2) - 2.2, 1.0) * 0.45, '6d655d')
+
+
+@design('zboards')
+def zboards(t: Tex):
+    """BOARDED UP (the early reward): weathered grey planks along the gun in rows, staggered butt joints, rusty nails by
+       the joints (one in four missing); the grain is noise streaks stretched along the board (a sine read as
+       corrugation); rust is the one accent"""
+    n = t.n; r = np.random.default_rng(111)
+    rows = 10
+    e = np.linspace(0, n, rows + 1)
+    k = np.clip(np.searchsorted(e, t.Y, side='right') - 1, 0, rows - 1)
+    per = r.uniform(0, 1, rows + 1)
+    base = _zcol('4f4d49', '6a6761', per[k])
+    st = FBM([2, 5, 13], 113, 0.55)(t.U, t.V * 14)
+    lines = cover(np.abs(st) * 70 - 1.4, 1.5) * (0.5 + 0.5 * smoothstep(-0.3, 0.4, FBM([3, 7], 115, 0.5)(t.U * 2, t.V * 2)))
+    t.rgb[:] = base * (1.0 + 0.12 * st[..., None] - 0.38 * lines[..., None])
+    weather = smoothstep(-0.4, 0.7, FBM([3, 6], 114, 0.5)(t.U, t.V))
+    t.rgb[:] = t.rgb * (1 - 0.14 * weather[..., None])
+    lo = e[k]; hi = e[k + 1]
+    d = np.minimum(t.Y - lo, hi - t.Y)
+    g = cover(2.5 - d, 1.2)                          # 1 on the board, 0 in the gap
+    t.fill(1 - g, '161412')
+    t.height[:] = g * 2.0
+    for j in range(rows):
+        y0, y1 = e[j], e[j + 1]
+        jx = r.uniform(0, n)
+        for x in (jx, (jx + n / 2 + r.uniform(-80, 80)) % n):
+            X, Y, idx = t.box(x - 4, y0, x + 4, y1)
+            t.paint(idx, cover(np.abs(X - x) - 1.6, 1.0), '161412')
+            for sx in (-16, 16):
+                if r.uniform() < 0.25: continue
+                _znail(t, x + sx + r.uniform(-4, 4), (y0 + y1) / 2 + r.uniform(-22, 10))
+    t.rough[:] = 0.88
+    return {'emissive': 1.0, 'tint': 'ffffff', 'accent': '8e4a26'}
+
+
+@design('zpeel')
+def zpeel(t: Tex):
+    """LOCKER ROT (the middle reward, night-school decay): muted institutional green paint flaking off in crisp chips
+       to dull grey plaster (a pale primer read as snow or cow print), evenly spread so no part of a gun goes plain, a
+       little crisp rust in a few chips; rust is the one accent"""
+    n = t.n
+    t.rgb[:] = hexrgb('56695a')
+    t.fill(smoothstep(-0.5, 0.6, FBM([3, 7], 201, 0.5)(t.U, t.V)) * 0.25, '627665')
+    f = FBM([12, 24, 48, 96], 206, 0.6)(t.U, t.V)
+    th = 0.13
+    peel = cover((th - f) * 160.0, 0.8)              # where f > th
+    rim = cover(np.abs(f - th) * 160.0 - 1.0, 0.8) * (f < th)
+    shade = cover(np.abs(f - th - 0.012) * 160.0 - 0.8, 0.8) * (f >= th)
+    prim = _zcol('8f8b80', '9e998d', 0.5 + 0.5 * FBM([8, 16], 203, 0.5)(t.U, t.V))
+    t.rgb[:] = t.rgb * (1 - peel[..., None]) + prim * peel[..., None]
+    t.fill(rim * 0.6, '9fae9d')
+    t.fill(shade * 0.5, '35342e')
+    fr = FBM([10, 20, 40], 204, 0.55)(t.U, t.V)
+    t.fill(peel * cover((0.28 - fr) * 140.0, 0.8) * 0.85, '8e4a26')
+    t.height[:] = (1 - peel) * 1.6
+    grime = smoothstep(0.0, 0.8, FBM([2, 4], 205, 0.5)(t.U, t.V * 0.5))
+    t.rgb[:] = t.rgb * (1 - 0.16 * grime[..., None])
+    t.rough[:] = 0.8
+    return {'emissive': 1.0, 'tint': 'ffffff', 'accent': '8e4a26'}
+
+
 # ---------------------------------------------------------------------------------------------------------- TRIANGULUM
 # Triangulum (VIP daily reward only, 17 Nov 2026; the skin concepts session's brief triangulum-vip-brief.md and its
 # draft tri_wrap.py, folded in here): a star chart of the night sky, and the Triangulum mark (the real constellation,

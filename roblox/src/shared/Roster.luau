@@ -337,6 +337,13 @@ wrap("triangulum", "Triangulum", "legendary", { "2a355f", "bf9c55", "ffe7a6" }, 
 -- every gun. a different gold from Mastery Gold (one polished colour, earned by weapon level): antique gold with bright
 -- gold pieces. never in a container, the rotation or a bundle (LootTable.exclusive, Shop.PACK_GOLD)
 wrap("packgold", "Bullion", "legendary", { "8c6a1e", "f2c94c" }, "speck", "Metal", 0.4)
+-- ZOMBIES extraction rewards (27 Nov 2026, the owner: the extraction's rewards are "custom to mode like skins or
+-- wraps"): earned only by extracting from a zombies game, deeper rounds the rarer one. Roster.EARNED (below) keeps them
+-- out of every spray set, crate, the shop's rotation and the bundles. Pictures: tools/roblox/wrap_textures.py (zboards,
+-- zpeel) and wrap_living.py (ooze, a living camo, so Exotic); docs/WRAP-TEXTURES.md "Zombies extraction wraps"
+wrap("zboards", "Boarded Up", "epic", { "5a5751", "8e4a26" }, "speck")
+wrap("zpeel", "Locker Rot", "legendary", { "56695a", "8e4a26" }, "speck")
+wrap("zooze", "Ooze", "legendary", { "14160f", "9ef23a" }, "speck", nil, nil, nil, { 2 })
 -- WEAPON MASTERY (18 Nov 2026, the owner: "level up weapons to unlock gold, damascus, diamond and galaxy camo for their
 -- respective guns"): earned per gun by levelling it (the weapon-mastery session's unlocks), never sold, never in a
 -- container or a bundle (mastery = true). A prestige ladder: polished gold, pattern-welded steel, faceted diamond, then
@@ -356,8 +363,8 @@ for i = #Roster.wraps, 1, -1 do if Roster.wraps[i].mastery then table.insert(Ros
 -- routes (the VIP daily reward, weapon level) and only read Exotic. a wrap that starts moving: add its id here
 Roster.EXOTIC = { "galaxy", "nebula", "blackhole", "koi", "sakura", "bigwave", "kintsugi", "holo", "stained", "lava", "aurora", "opal",
 	"lavalamp", "vapor", "tokyo", "crt", "circuit", "hex", "triangulum", "mastery_gold", "mastery_diamond", "mastery_galaxy",
-	-- (27 Nov, the wraps session: the living camos)
-	"molten" }
+	-- (27 Nov, the wraps session: the living camos; Ooze is the ZOMBIES extraction's deepest reward)
+	"molten", "zooze" }
 for _, id in Roster.EXOTIC do
 	local w = Roster.wrapById[id]
 	if w then w.rarity = "exotic" end
@@ -409,6 +416,27 @@ do
 		if gone[w.id] then
 			(w :: any).retired = true
 			table.insert(Roster.retiredWraps, 1, table.remove(Roster.wraps, i) :: Wrap)
+		end
+	end
+end
+
+-- EARNED IN A MODE (27 Nov 2026): wraps you only get by playing for them, here the ZOMBIES extraction's rewards. Out
+-- of Roster.wraps (so out of every spray set, crate, duffel, the shop's rotation and the bundles: they all walk that
+-- list), into Roster.earnedWraps with w.earned = the mode; still in wrapById, so granting (Loot), owning, wearing and
+-- WeaponModels.wrap work as for any wrap. Mastery.wrapList lists them after the retired ones and LoadoutUI shows one
+-- only to its owners. The mode grants them (the ZOMBIES session's extraction); nothing else does
+Roster.EARNED = {
+	zombies = { "zboards", "zpeel", "zooze" }, -- early, middle and deepest extraction rewards
+} :: { [string]: { string } }
+Roster.earnedWraps = {} :: { Wrap }
+do
+	local mode: { [string]: string } = {}
+	for m, ids in Roster.EARNED do for _, id in ids do mode[id] = m end end
+	for i = #Roster.wraps, 1, -1 do
+		local w = Roster.wraps[i]
+		if mode[w.id] then
+			(w :: any).earned = mode[w.id]
+			table.insert(Roster.earnedWraps, 1, table.remove(Roster.wraps, i) :: Wrap)
 		end
 	end
 end

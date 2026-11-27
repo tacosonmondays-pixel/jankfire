@@ -614,6 +614,41 @@ a picture over the gun. These change shape, so each one is a flipbook of whole w
   - A camo seen for the first time shows the gun's factory paint for a second or two while its new pictures load. Every
     newly uploaded wrap does that, not only these.
 
+## Zombies extraction wraps (27 Nov 2026)
+
+The owner: the ZOMBIES extraction's rewards are "custom to mode like skins or wraps". Three wraps you only get by
+extracting from a zombies game; the deeper the round, the rarer one. Main's bar: muted base, one accent, the 0.6 m tile,
+no motif sliced at a seam, no text, signs or gore; the top one a living camo.
+
+- **The three** (`Roster.EARNED.zombies`, place v1532; Ooze's flipbook v1535):
+  - `zboards` **Boarded Up**, Epic, the early reward: weathered grey planks along the gun in rows, staggered butt
+    joints, rusty nails by the joints (one in four missing). Grain is noise streaks stretched along the board.
+  - `zpeel` **Locker Rot**, Legendary, the middle reward: school-green paint flaking in crisp chips to dull grey
+    plaster, a little crisp rust in a few chips.
+  - `zooze` **Ooze**, Exotic (`Roster.EXOTIC`), the deepest reward: a living camo (`wrap_living.py` kind `ooze`, 32
+    frames at 8 a second, a green PointLight pulse, roughness 0.7): glowing toxic veins churn through black-green tar.
+- **How they were picked:** four takes each (boards across / along / with dark gaps / with crossbars; peeling paint,
+  stained ceiling tiles, quarantine sheeting, a school floor; ooze in cracks, drips, swirled veins, pools), rendered
+  on the rifle, sniper and pistol, judged by two blind critics. Both picked the same boards and the same ooze; the
+  middle split (ceiling tiles vs peeling paint, 5.5 each) and went to the paint (a clearer "abandoned school", and
+  brown stains on white tiles invited toilet jokes). Fixed from their notes, then confirmed KEEP by both (6, 6, 7).
+- **Their notes, and the cures:** a sine wood grain reads as corrugation (noise streaks instead); a pale primer under
+  peeling paint reads as snow or cow print (dull grey plaster); a vein field drawn as `|f|` pools into soft blobs where
+  it lies flat (the true distance `|f| / |grad f|` gives one width, and the vein fades where the slope is small, so a
+  ring being born never shows); small closed rings read as eyes (the seeds were searched so none forms at any point of
+  the loop: a numpy flood-fill count of small enclosed regions over 6 frames).
+- **The marker:** `Roster.EARNED = { zombies = {...} }` moves them out of `Roster.wraps` into `Roster.earnedWraps`
+  with `w.earned = "zombies"`, so every spray set, crate, duffel, the shop's rotation and the bundles skip them (they
+  all walk `Roster.wraps`); still in `wrapById`. `Mastery.wrapList` adds them after the retired ones and LoadoutUI shows
+  one only to its owners. Granting is the ZOMBIES session's (a mastery-style grant form; `Loot.grant` takes only
+  catalog offers). Checked in Edit: `Roster.wraps` still 87, earned 3, none in a spray set.
+- **Traps:** in Edit, `require` caches a module for the Studio session, so after pushing Roster a booth must require
+  WeaponModels from a fresh clone of the `Jankfire` folder (a clone of WeaponModels alone fails: it waits for its
+  siblings). Board colours drawn mid-grey come out near white on the guns (`hall_comp` brightens for the halls): draw
+  wood darker than it should look. A dark living camo at roughness 0.3 (Lava Lamp's) mirrors the room on its flat
+  faces and reads light tan: tar takes Molten's 0.7.
+- Sheet of all three on 3 guns: notes folder `ZOMBIES_wraps_27nov.jpg`.
+
 ## The AI and duplicates audit (27 Nov 2026)
 
 The owner: "go through and remove camos that people will look at and think ai right away, also an redundant camos".

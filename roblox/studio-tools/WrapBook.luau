@@ -88,7 +88,9 @@ local BOOK = {
 	washi = { color = 76195074153031, rough = 128687831759397, emissive = 1, tint = "ffffff", finish = "", second = "3b3b3b", dark = "534342", accent = "d9bcbe" },
 	watermelon = { color = 138855854662547, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "4d111f", accent = "d95476" },
 	wood = { color = 97668667743723, normal = 112880914687735, rough = 102053691254954, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "635751", accent = "d99a7a" },
+	zboards = { color = 88177248904251, normal = 110104513618876, rough = 128687831759397, emissive = 1.0, tint = "ffffff", finish = "", second = "737373", dark = "645655", accent = "8e4a26" },
 	zebra = { color = 86424414964672, rough = 77905344163558, emissive = 1, tint = "ffffff", finish = "", second = "5b5b5b", dark = "2a2938", accent = "e1dfef" },
+	zpeel = { color = 96220192371850, normal = 130795738128560, rough = 129833091360678, emissive = 1.0, tint = "ffffff", finish = "", second = "707070", dark = "172b28", accent = "8e4a26" },
 }
 
 local RS = game:GetService("ReplicatedStorage")

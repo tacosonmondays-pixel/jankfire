@@ -210,7 +210,40 @@ def chrome(t, n):
     return np.clip(rgb, 0, 1), emit
 
 
-KINDS = {'lavalamp': lavalamp, 'molten': molten, 'chrome': chrome}
+# ---------------------------------------------------------------------------------------------------- ooze
+_OOZE_HI = np.array([0.62, 0.95, 0.22])      # the glowing core
+_OOZE_LO = np.array([0.16, 0.40, 0.07])      # the body of it
+
+
+def ooze(t, n, seeds=(400, 1400, 2400, 3400)):
+    """OOZE (27 Nov 2026, the ZOMBIES extraction's deepest reward, Roster.EARNED): black-green tar swirled with
+    glowing veins of toxic ooze that churn as the field turns once a loop, a pulse running along them. Broad, low wave
+    numbers (finer fields read as candy stripes); the seeds were searched so no small closed ring (it reads as an eye)
+    forms at any point of the loop. Picked from four takes by two blind critics"""
+    v, u = _grid(n)
+    q1 = _pnoise(u, v, 1, TAU * t, seeds[0]); q2 = _pnoise(u, v, 1, TAU * t + 1.7, seeds[1])
+    wu = u + 0.16 * q1; wv = v + 0.16 * q2
+    f = _pnoise(wu, wv, 2, 0, seeds[2]) + 0.22 * _pnoise(2 * wu, 2 * wv, 2, 0, seeds[3])
+    # the true distance to the vein (|f| over its slope), so every vein has one width and no flat spot pools into a
+    # soft blob; where the field flattens near zero (a ring being born) the vein fades out (the critics: "airbrushed
+    # pools", "a ring reads as an eye")
+    gu = (np.roll(f, -1, 1) - np.roll(f, 1, 1)) * 0.5 * n
+    gv = (np.roll(f, -1, 0) - np.roll(f, 1, 0)) * 0.5 * n
+    gr = np.hypot(gu, gv)
+    r = np.abs(f) / np.maximum(gr, 0.4)
+    steep = _smooth(1.5, 4.0, gr)
+    vein = (1 - _smooth(0.0, 0.007, r)) * steep
+    body = (1 - _smooth(0.004, 0.02, r)) * steep
+    pulse = 0.5 + 0.5 * np.sin(TAU * (2 * u + v - t) + 1.5 * _pnoise(u, v, 2, TAU * t, seeds[0] + 9))
+    g = 0.5 + 0.5 * _pnoise(u, v, 6, 0, 325)
+    tar = np.array([0.075, 0.08, 0.07]) * (0.8 + 0.4 * g[..., None]) + np.array([0.02, 0.06, 0.02]) * (0.5 + 0.5 * f[..., None])
+    hot = _OOZE_HI * (0.75 + 0.25 * pulse[..., None])
+    goo = _OOZE_LO * (1 - vein[..., None]) + hot * vein[..., None]
+    rgb = tar * (1 - body[..., None]) + goo * body[..., None]
+    return np.clip(rgb, 0, 1), np.clip(body * 0.15 + vein * (0.55 + 0.3 * pulse), 0, 1)
+
+
+KINDS = {'lavalamp': lavalamp, 'molten': molten, 'chrome': chrome, 'ooze': ooze}
 
 
 def main():
@@ -246,6 +279,9 @@ LIVING = {
     'lavalamp': {'kind': 'lavalamp', 'fps': 8, 'rough': 'const_rough_030.png', 'metal': None, 'emit': 'own', 'glow': 1.8},
     'molten': {'kind': 'molten', 'fps': 8, 'rough': 'const_rough_070.png', 'metal': None, 'emit': 'own', 'glow': 4.5,
                'light': {'color': 'ff6a1a', 'lo': 0.35, 'hi': 1.35, 'period': 1.8, 'range': 1.0}},
+    # (the ZOMBIES extraction's deepest reward, 27 Nov 2026: Roster.EARNED; a slower pulse than Molten's, a green light)
+    'zooze': {'kind': 'ooze', 'fps': 8, 'rough': 'const_rough_070.png', 'metal': None, 'emit': 'own', 'glow': 3.5,
+              'light': {'color': '9ef23a', 'lo': 0.3, 'hi': 1.1, 'period': 2.6, 'range': 1.0}},
     # (Liquid Chrome as a living camo failed the blind critics twice on 27 Nov: "smoke", then "melted plastic, glints
     # from no light"; it stays the plain Metal wrap. the chrome kind is kept here for a later try:
     # 'lchrome': {'kind': 'chrome', 'fps': 8, 'rough': 'const_rough_020.png', 'metal': 'const_metal_035.png', ...})

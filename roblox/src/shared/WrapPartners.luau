@@ -91,5 +91,8 @@ local P: { [string]: Partner } = {
 	watermelon = { k = "deep", c = Color3.fromHex("4d111f"), t = Color3.fromHex("704559") }, -- L* 51
 	wood = { k = "metal", c = Color3.fromHex("635751") }, -- L* 33
 	zebra = { k = "deep", c = Color3.fromHex("2a2938"), t = Color3.fromHex("515062") }, -- L* 57
+	zboards = { k = "metal", c = Color3.fromHex("645655") }, -- L* 38
+	zooze = { k = "metal", c = Color3.fromHex("3a4928") }, -- L* 13
+	zpeel = { k = "deep", c = Color3.fromHex("172b28"), t = Color3.fromHex("456760") }, -- L* 49
 }
 return P

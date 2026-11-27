@@ -822,6 +822,18 @@
    "emit": 0.0
   }
  },
+ "zboards": {
+  "maps": {
+   "color": "zboards_color.png",
+   "normal": "zboards_normal.png",
+   "rough": 0.88,
+   "metal": 0.0,
+   "emit": 0.0
+  },
+  "emissive": 1.0,
+  "tint": "ffffff",
+  "accent": "8e4a26"
+ },
  "zebra": {
   "maps": {
    "color": "zebra_color.png",
@@ -830,5 +842,17 @@
    "metal": 0.0,
    "emit": 0.0
   }
+ },
+ "zpeel": {
+  "maps": {
+   "color": "zpeel_color.png",
+   "normal": "zpeel_normal.png",
+   "rough": 0.8,
+   "metal": 0.0,
+   "emit": 0.0
+  },
+  "emissive": 1.0,
+  "tint": "ffffff",
+  "accent": "8e4a26"
  }
 }

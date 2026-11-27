@@ -121,4 +121,57 @@ do -- molten (molten, 32 frames at 8 a second)
 	end
 	n += 1
 end
+do -- zooze (ooze, 32 frames at 8 a second)
+	local old = live:FindFirstChild("zooze"); if old then old:Destroy() end
+	local f = Instance.new("Folder"); f.Name = "zooze"
+	f:SetAttribute("Fps", 8)
+	f:SetAttribute("Light", true); f:SetAttribute("LightColor", Color3.fromHex("9ef23a"))
+	f:SetAttribute("LightLo", 0.3); f:SetAttribute("LightHi", 1.1); f:SetAttribute("LightPeriod", 2.6); f:SetAttribute("LightRange", 1.0)
+	local F = {
+		{ 75259303861336, 125583668095864 },
+		{ 101194739135148, 122423276175074 },
+		{ 87097879749784, 128758216369911 },
+		{ 130557435673061, 128425809947030 },
+		{ 90173121225266, 78996524077399 },
+		{ 83277916091875, 139497174003819 },
+		{ 131734461732096, 114271874903933 },
+		{ 107668212795274, 138409460489828 },
+		{ 134056694696200, 92734913736301 },
+		{ 86623562168721, 74414998383413 },
+		{ 84500647616117, 137338840582831 },
+		{ 120083051184633, 86733792907897 },
+		{ 80593184149273, 110856098074711 },
+		{ 83746431781766, 104664777651033 },
+		{ 138531253478461, 92629268320104 },
+		{ 128859193721103, 121742908279409 },
+		{ 98967952268650, 140641735838419 },
+		{ 119974221238920, 87477371016918 },
+		{ 91459590741713, 125745467933319 },
+		{ 109777790912471, 111410731984262 },
+		{ 136619052612825, 131881954202145 },
+		{ 87188128845902, 102027704574672 },
+		{ 81838951652431, 134088713157478 },
+		{ 135172536458528, 103079642512341 },
+		{ 117820055993764, 106042576584352 },
+		{ 127009543844263, 117300809166263 },
+		{ 95797259243312, 74954959423005 },
+		{ 116086455236932, 80819509786139 },
+		{ 74317306798828, 109780750605124 },
+		{ 76396998881349, 89078748584753 },
+		{ 121781451078872, 76745344798385 },
+		{ 126816819665529, 79687188898428 },
+	}
+	for i, x in F do sa(string.format("f%02d", i - 1), x[1], x[2], 122441279549464, nil, 3.5).Parent = f end
+	f.Parent = live
+	if lib then
+		local still = lib:FindFirstChild("zooze"); if still then still:Destroy() end
+		local s = sa("zooze", F[1][1], F[1][2], 122441279549464, nil, 3.5)
+		s:SetAttribute("Swatch", "rbxassetid://" .. F[1][1])
+		s:SetAttribute("Dark", Color3.fromHex("3a4928"))
+		s:SetAttribute("Accent", Color3.fromHex("88d931"))
+		s:SetAttribute("Living", true)
+		s.Parent = lib
+	end
+	n += 1
+end
 return n .. " living camos built"
