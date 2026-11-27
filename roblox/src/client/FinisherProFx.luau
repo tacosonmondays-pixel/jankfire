@@ -122,7 +122,7 @@ local function trail(sc: any, katCF: CFrame, L: number, on: boolean, life: numbe
 	local tr = sc.trail
 	tr.c.CFrame = katCF
 	tr.a0.Position = Vector3.new(0, 0, GZ - 0.2)
-	tr.a1.Position = Vector3.new(0, 0.181 * L, GZ + (-3.84 - GZ) * L)
+	tr.a1.Position = Vector3.new(0, 0.181 * (1 + 1.6 * math.clamp((L - 1.5) / 8.5, 0, 1)), GZ + (-3.84 - GZ) * L)
 	tr.t.Lifetime = life
 	tr.t.Color = ColorSequence.new(col)
 	tr.t.Enabled = on
@@ -218,11 +218,13 @@ local function twoTone(sc: any, s: any, on: boolean, inv: boolean)
 		end
 	end
 	if not sc.backdrop then
-		sc.backdrop = part(sc, Vector3.new(4000, 4000, 1), PAPER, Enum.Material.Neon)
+		sc.backdrop = part(sc, Vector3.new(2048, 2048, 1), PAPER, Enum.Material.Neon)
 	end
 	local cam = (workspace.CurrentCamera :: Camera).CFrame
 	sc.backdrop.Color = BG
-	sc.backdrop.CFrame = if on then cam * CFrame.new(0, 0, -900) else CFrame.new(0, -1e4, 0)
+	-- (27 Nov: a part stops at 2048 studs - 900 out, the coil's 80-degree lens saw the sky past its sides; 250 out it
+	-- fills any of our lenses and is still well behind both of them)
+	sc.backdrop.CFrame = if on then cam * CFrame.new(0, 0, -250) else CFrame.new(0, -1e4, 0)
 	local L = game:GetService("Lighting")
 	for _, e in L:GetChildren() do
 		if e:IsA("Atmosphere") and e.Name == "SceneAtmo" then
@@ -373,13 +375,13 @@ function Fx.coilAndDash(sc: any, s: any, fi: number, w: number, tip: Vector3, gu
 		for i = 1, #ps do
 			local fs = LAUNCH_F + (i - 1) * (10 / #ps)
 			local age = (fi - fs) / 24
-			if age < 0 or age > 1.1 then continue end
+			if age < 0 or age > 1.7 then continue end -- (27 Nov: on into THE PATH, the wide shot of the run)
 			local base = sc.runH[math.floor(fs)] or lt.Position
 			local ph = rnd:NextNumber(0, 6.283)
 			local jit = Vector3.new(rnd:NextNumber(-0.7, 0.7), rnd:NextNumber(-0.6, 1.0), rnd:NextNumber(-0.4, 0.4))
 			local p = base + jit + Vector3.new(math.sin(ph + age * 7) * 0.4, 0.5 * age + math.sin(ph * 2 + age * 5) * 0.15, 1.6 * age)
 			if not near(p, 1.5) then
-				show(sc, ps[i], CFrame.new(p) * CFrame.Angles(ph + age * 9, age * 6, ph * 0.5), 0.05 + 0.95 * smooth((age - 0.55) / 0.55))
+				show(sc, ps[i], CFrame.new(p) * CFrame.Angles(ph + age * 9, age * 6, ph * 0.5), 0.05 + 0.95 * smooth((age - 1.15) / 0.55))
 			end
 		end
 	end
@@ -389,7 +391,7 @@ end
 function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFrame, L: number)
 	sc.fxUsed = {}
 	sc.floorY = sc.floorY or 600 -- (FinisherPro sets the floor's height)
-	local tip = katCF * Vector3.new(0, 0.181 * L, GZ + (-3.84 - GZ) * L)
+	local tip = katCF * Vector3.new(0, 0.181 * (1 + 1.6 * math.clamp((L - 1.5) / 8.5, 0, 1)), GZ + (-3.84 - GZ) * L)
 	local guard = katCF * Vector3.new(0, 0, GZ)
 	local vH = s.vg.model:FindFirstChild("Head") :: BasePart?
 	local vU = s.vg.model:FindFirstChild("UpperTorso") :: BasePart?
@@ -458,7 +460,17 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 		end
 	end
 	if fi >= 207 and fi < 209 then hit = true end
+	-- (27 Nov, the owner: "when her angle is like the bottom of her foot before she starts running, impact frame
+	-- there!!" - the held breath of THE COIL, the sole at the lens: one take frame of ink on paper, then its inverse, the
+	-- ink lines bursting out of her, the camera's kick and the hit's sound with it)
+	if fi >= 119 and fi < 120 then
+		hit = true
+		inv = fi >= 119.5
+		local lt = s.kg.model:FindFirstChild("LowerTorso") :: BasePart?
+		if lt then burstLines(sc, "coilhit", lt.Position + Vector3.new(0, 0.6, 0), fi - 119, 22, 3.4, if inv then PAPER else INK) end
+	end
 	twoTone(sc, s, hit, inv)
+	Fx.petalGhosts(sc, s, fi)
 	-- 9 PAST HIM: a few petals drifting through; 10 STILLNESS: one petal crossing his face
 	if fi >= 145 and fi < 181 and vH then
 		local t = (fi - 145) / 24
@@ -478,7 +490,9 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 		local u = math.clamp((fi - 208) / 4, 0, 1)
 		local fade = math.clamp((fi - 215) / 6, 0, 1)
 		local belly = vL.Position:Lerp(vU.Position, 0.45)
-		local right = vL.CFrame.RightVector
+		-- (27 Nov, the owner: "stay consistent with the slash direction" - the cut at the pass swept the blade along the
+		-- take's +x, from his left to his right as he ran: the ink lands the same way, whichever way the victim faces now)
+		local right = sc.take.RightVector
 		local front = -vL.CFrame.LookVector
 		local cam = (workspace.CurrentCamera :: Camera).CFrame
 		stroke(sc, belly - right * 1.6 + front * 0.62 + Vector3.new(0, 0.25, 0), belly + right * 1.6 + front * 0.62 - Vector3.new(0, 0.2, 0), 0.25, 0.42,
@@ -503,6 +517,67 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 	for _, list in sc.fxp or {} do
 		for _, p in list do
 			if not sc.fxUsed[p] and p.Transparency < 1 then p.Transparency = 1 end
+		end
+	end
+end
+
+-- the dash's petal afterimages (27 Nov, the owner: "Do a wide shot to show pedal after images"): copies of the killer
+-- frozen at points along the dash, pink and half there, each showing as he passes it, hanging through the pass, then
+-- coming apart into petals in THE PATH's wide shot; out of sight on the ink frames
+local GHOST_AT = { 122, 124, 126, 128 }
+local GHOST_GO, GHOST_GONE = 149, 160
+function Fx.petalGhosts(sc: any, s: any, fi: number)
+	if fi < 100 or fi >= GHOST_GONE + 1 then
+		for _, gh in sc.pghosts or {} do gh.model.Parent = nil end
+		return
+	end
+	sc.pghosts = sc.pghosts or {}
+	-- (made one a step through the slow coil: no hitch at the launch)
+	if #sc.pghosts < #GHOST_AT and not sc.pghostFail then
+		local was = s.kg.model.Archivable
+		s.kg.model.Archivable = true
+		local ok, m = pcall(function() return s.kg.model:Clone() end)
+		s.kg.model.Archivable = was
+		if not ok or not m then sc.pghostFail = true; return end
+		local at = GHOST_AT[#sc.pghosts + 1]
+		m.Name = "JankProPetalGhost" .. at
+		for _, d in m:GetDescendants() do
+			if d:IsA("BaseScript") or d:IsA("Highlight") then d:Destroy()
+			elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end
+		end
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local an = hum and hum:FindFirstChildOfClass("Animator")
+		if not (hum and root and an) then m:Destroy(); sc.pghostFail = true; return end
+		root.Anchored = true
+		for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end
+		local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://" .. sc.d.anims.k
+		local tr = an:LoadAnimation(a); tr.Looped = false; tr.Priority = Enum.AnimationPriority.Action4; tr:Play(0, 1, 0)
+		local hl = Instance.new("Highlight")
+		hl.FillColor = Color3.fromRGB(240, 120, 172); hl.OutlineColor = Color3.fromRGB(255, 214, 232)
+		hl.FillTransparency = 0.25; hl.OutlineTransparency = 0.55; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
+		local parts = {}
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then table.insert(parts, d) end end
+		table.insert(sc.pghosts, { model = m, tr = tr, root = root, at = at, parts = parts, hl = hl })
+	end
+	for _, gh in sc.pghosts do
+		local show_ = fi >= gh.at and not sc.hitOn
+		gh.model.Parent = if show_ then sc.folder else nil
+		if show_ then
+			gh.root.CFrame = s.kg.root.CFrame
+			gh.tr.TimePosition = gh.at / 24
+			local u = math.clamp((fi - GHOST_GO) / (GHOST_GONE - GHOST_GO), 0, 1)
+			local base = 0.5 + 0.5 * smooth(u)
+			for _, d in gh.parts do (d :: any).LocalTransparencyModifier = base end
+			gh.hl.FillTransparency = 0.25 + 0.75 * smooth(u)
+			gh.hl.OutlineTransparency = 0.55 + 0.45 * smooth(u)
+			if u > 0 then
+				local lt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
+				if lt then
+					driftPetals(sc, "pghost" .. gh.at, lt.Position + Vector3.new(0, 0.4, 0), 9, 1.1, (fi - GHOST_GO) / 24,
+						Vector3.new(0.3, 1.1, 0.6), gh.at, 0.05 + 0.95 * smooth((u - 0.55) / 0.45))
+				end
+			end
 		end
 	end
 end

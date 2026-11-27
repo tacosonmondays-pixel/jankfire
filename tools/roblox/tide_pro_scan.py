@@ -94,7 +94,7 @@ def main(take_p, pkg_p, out_p):
     ROOT_V = mul([[1, 0, 0, 0], [0, 1, 0, 0.22], [0, 0, 1, -36], [0, 0, 0, 1]], [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     r2 = lambda x: round(x, 2)
     S = {'pts': {k: [] for k in ('kH', 'kUT', 'kLT', 'kRH', 'kLH', 'kLF', 'kRF', 'vH', 'vUT', 'vLT', 'tip', 'guard', 'mouth')},
-         'kFoot': [], 'vFoot': [], 'vLow': [], 'inSheath': [], 'relS': [], 'dm': [], 'al': []}
+         'kFoot': [], 'vFoot': [], 'vLow': [], 'inSheath': [], 'relS': [], 'dm': [], 'al': [], 'relKS': []}
     floor = -3.0
 
     def lowest(W, names):
@@ -135,6 +135,10 @@ def main(take_p, pkg_p, out_p):
         al = sum(bl[i] * ax[i] for i in range(3)) / la
         home = max(0.0, min(1.0, (0.6 - dm) / 0.35)) * max(0.0, min(1.0, (al - 0.8) / 0.15))
         S['dm'].append(r2(dm)); S['al'].append(r2(al)); S['inSheath'].append(r2(home))
+        # (the sheath's place against the katana, every frame: the game holds the sheath to the blade while it slides
+        # out of or into the mouth, so the draw reads on any body - 27 Nov)
+        rks = mul(inv(kat), sh)
+        S['relKS'].append([round(rks[0][3], 4), round(rks[1][3], 4), round(rks[2][3], 4)] + [round(rks[i][j], 4) for i in range(3) for j in range(3)])
         if home > 0:
             rel = mul(inv(sh), kat)
             S['relS'].append([round(rel[0][3], 4), round(rel[1][3], 4), round(rel[2][3], 4)] + [round(rel[i][j], 4) for i in range(3) for j in range(3)])

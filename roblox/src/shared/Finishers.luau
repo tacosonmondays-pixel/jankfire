@@ -74,8 +74,9 @@ Finishers.LIST = {
 		-- a round win plays the cut landing and the end)
 		name = "Inkfall", set = "set_tidecrest", skins = { "katana_sakura" }, theme = "ink", order = 5, built = true,
 		-- (26 Nov: the pro animator's take with our lens and ramps, client/FinisherPro.luau; 27 Nov: his run replaced by
-		-- a slow coil and a dash, 17.2 s; a round win plays its last two shots, 2.95 s)
-		scene = "inkfall", sceneLen = { full = 17.2, short = 2.95 },
+		-- a slow coil and a dash, then the owner's notes: impact frames, a wide of the petal afterimages, 16.8 s; a round
+		-- win plays its last two shots, 2.95 s)
+		scene = "inkfall", sceneLen = { full = 16.8, short = 2.95 },
 		colour = Color3.fromRGB(236, 186, 200), accent = Color3.fromRGB(217, 187, 114),
 		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.5, con = 0.16, bright = 0 }, anim = "bowdown",
 	},

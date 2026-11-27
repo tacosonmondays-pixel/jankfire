@@ -68,7 +68,7 @@ def main(take_p, scan_p, out_p):
     # ---------------------------------------------------------------- the shots: (first frame, name, anchor, weight)
     SHOTS = [(0, 'THE GRIP', 'kLT', 1.0), (16, 'THE DRAW', 'kUT', 0.8), (56, 'THE LENGTH', 'kH', 0.3), (82, 'THE TIP', 'vH', 1.0),
              (94, 'THE COIL', 'kLT', 1.0), (120, 'THE LAUNCH', 'kLT', 0.9), (130, 'THE PASS', 'kLT', 0.6), (139, 'CUT FRAME', 'vUT', 0.5),
-             (145, 'PAST HIM', 'kLT', 0.4), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7),
+             (145, 'THE PATH', 'kLT', 0.0), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7),
              (207, 'THE CUT LANDS', 'vUT', 0.8), (221, 'THE END', 'kH', 0.5)]
     starts = [s[0] for s in SHOTS] + [N]
 
@@ -129,19 +129,15 @@ def main(take_p, scan_p, out_p):
         pos = [F[0] - r * math.sin(th), FLOOR + CO_H, F[2] + r * math.cos(th)]
         at = add(lerpv(P['kLF'][f], P['kH'][f], CO_MIX), [CO_DX, 0.0, -0.8])
         L[f] = look(pos, at, roll_deg=-10 + 5 * u, fov=CO_FOV - 4 * u)
-    # 6 THE LAUNCH: the speed snaps, the lens whips after him as he leaves the plant (a hard pan and punch in from
-    # where the coil ended), then chases him low on his left down the lane, falling behind as he pulls away
+    # 6 THE LAUNCH: (27 Nov, the owner: "impact frame there!! Then cut to her speed blitzing") a hard cut after the coil's
+    # impact frame to a low lens down the lane on his left: he blitzes at it, past it, the lens whipping round after him
     a, b = span(5)
-    c_end = L[a - 1]
-    p0 = c_end[:3]
+    pos = add(P['kLT'][a], [-2.5, 0.0, -9.0])
+    pos[1] = FLOOR + 0.7
     for f in range(a, b + 1):
-        k = f - a
-        hips = P['kLT'][f]
-        chase = add(hips, [-2.9, -0.35 + 0.1 * k / (b - a), 2.0 + 0.35 * k])
-        pos = lerpv(p0, chase, ease_out(k / 4.0, 2.4))
-        at = add(hips, [0.0, 0.45, -3.0])
-        whip = 1 - ease_out(k / 2.0)
-        L[f] = look(pos, at, roll_deg=-9 * whip + 2 * (1 - whip), fov=60 + 16 * whip - 4 * ease(k / (b - a)))
+        k = (f - a) / (b - a)
+        at = add(P['kLT'][f], [0.0, 0.35, 0.0])
+        L[f] = look(pos, at, roll_deg=-7 + 3 * k, fov=68 - 6 * k)
     # 7 THE PASS: rebuilt - low and wide beside the lane, circling the swing in slow motion, a whip out at the end
     a, b = span(6)
     for f in range(a, b + 1):
@@ -158,11 +154,15 @@ def main(take_p, scan_p, out_p):
     a, b = span(7)
     for f in range(a, b + 1):
         L[f] = nudge(cam[f], [2.6, 0.3, -1.8], fov=58)
-    # 9 PAST HIM: his, trucking slowly along the lane for parallax
+    # 9 THE PATH (27 Nov, the owner: "Do a wide shot to show pedal after images"): wide from the side of the lane, the
+    # whole run in frame - where he coiled, the petal afterimages hanging along his path, the two of them past each
+    # other - with a slow push (in place of his close past the victim's cloak)
     a, b = span(8)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
-        L[f] = nudge(cam[f], [0, 0.1 * u, 1.4 * u])
+        pos = lerpv([19.0, FLOOR + 4.6, -16.0], [17.8, FLOOR + 4.2, -16.4], u)
+        at = lerpv([-0.5, -0.8, -18.0], [-0.5, -0.9, -18.6], u)
+        L[f] = look(pos, at, roll_deg=0.0, fov=58 - 5 * u)
     # 10 STILLNESS: his close-up on the face, pushed in for real with a slight arc
     a, b = span(9)
     for f in range(a, b + 1):
@@ -196,9 +196,9 @@ def main(take_p, scan_p, out_p):
             (82, 0.5, 'cut'), (93, 0.55),
             (94, 0.55, 'cut'), (100, 0.55), (103, 0.42), (116, 0.42), (118.5, 0.27), (120, 0.27),
             (120, 1.3, 'cut'), (126, 1.15), (129, 1.0),
-            (130, 1.0, 'cut'), (133, 0.18), (138, 0.18),
+            (130, 1.0, 'cut'), (133, 0.45), (138, 0.45),
             (139, 0.45, 'cut'), (144, 0.45),
-            (145, 1.0, 'cut'), (196, 1.0),
+            (145, 0.55, 'cut'), (160, 0.55), (161, 1.0, 'cut'), (196, 1.0),
             (199, 0.32), (203, 0.32), (204.5, 1.0),
             (207, 0.5, 'cut'), (212, 1.0),
             (221, 0.62, 'cut'), (254, 0.62)]

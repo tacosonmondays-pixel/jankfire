@@ -14,7 +14,7 @@
 # as .rbxm through Rojo, which every other Tidecrest tool reads in place of his file. Nothing in either file is run.
 #   py -I tools/roblox/tide_run_splice.py <take.rbxm> <pack R15 .rbxm> <package .rbxm> <out take .rbxm> [--json <debug.json>]
 # The pack and the output stay in the vault (the licence forbids sharing its raw motion; his take is the owner's).
-import sys, os, json, math, subprocess
+import sys, os, re, json, math, subprocess
 from xml.sax.saxutils import escape
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -23,17 +23,25 @@ import katana_pack as KP
 
 FLOOR = -2.78
 IDENT = KP.IDENT
-# (take frames, 24 fps) his frames blend out over W_IN and back in over W_OUT
-W_IN, W_OUT = (96, 102), (127, 130)
-COIL = (102, 118)       # DashHeavy t 0.13 -> 0: the sink
+# (take frames, 24 fps) his frames blend into the mocap over W_IN; the mocap hands back to his on the cut at CUT_BACK
+# (27 Nov, the owner on v1419: "the pivot in the turn shot starts fine but then the torso, sword it all gets really
+# janky" - a 6-frame blend-in from his stand turned the body 40 degrees a frame and flipped the blade 170 degrees in
+# one; now 12 frames from the moment his long blade is back to its length, smoothed, the blade swung round below)
+W_IN = (98, 112)
+CUT_BACK = 130          # (his PASS starts on a cut here: the hand-back to his frames is hidden by it)
+COIL = (98, 118)        # DashHeavy t 0.2 -> 0: the sink
 HOLD = (118, 120)       # coiled
 LAUNCH = (120, 122)     # the plant and push-off
 DASH = (122, 130)       # the hips run C -> his frame-130 place
+SMOOTH = (99, 128)      # a 5-tap smoothing of the joints' turns over the spliced frames
+BLADE_SWING = 18        # (frames the blade takes to come round to the iai line)
+FLY = 0.28              # (the flash-step skims: the hips this much over the coil's height through the dash)
+DECLIP = (56, 179)      # frames where a blade through the body is turned out of it (outside the sheathed / sliding ones)
 CLIP_COIL = 'BasicAttackTypes DashHeavy_KeyframeSequence'
 # the drawn blade's line while coiled and dashing: the crouch's hands are at the front of his left hip, where an iai
 # grip holds a sheathed hilt - so the blade lies back along his left side, the line the reference's sheathed sword
 # makes (the pack's crouch holds its own sword straight up) - x his right, y up, z behind him (he faces -z)
-BLADE_BACK = (-0.5, -0.1, 0.86)
+BLADE_BACK = (-0.62, -0.16, 0.77)   # (round 2: further out - (-0.5, -0.1, 0.86) ran through his left forearm)
 SHEATH_HANG = 0.6   # (how much of the hips' forward pitch the sheath is spared: it hangs nearer his own angle)
 
 
@@ -196,27 +204,21 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
     def pack(clip, t):
         return KP.pose_at(inst, pseqs[clip], t)
 
+    CROUCH = pack(CLIP_COIL, 0.0)
+
     def target(f):
-        """the mocap pose for take frame f (before blending into his): DashHeavy whole - its opening is the coil (the
-        torso pitched over the front knee, the back leg stretched out behind), its next 0.12 s the push-off"""
-        if f <= COIL[0]:
-            return pack(CLIP_COIL, 0.2)
-        if f <= COIL[1]:
-            u = ease_out((f - COIL[0]) / (COIL[1] - COIL[0]), 1.7)
-            return pack(CLIP_COIL, 0.2 * (1 - u))                    # sinking into the crouch
-        if f <= HOLD[1]:
-            return pack(CLIP_COIL, 0.0)                              # coiled
-        u = min(1.0, (f - LAUNCH[0]) / (DASH[1] - 3 - LAUNCH[0]))
-        return pack(CLIP_COIL, 0.12 * ease_out(u, 1.5))              # the push-off, flung down the lane (past 0.12 s
-                                                                     # the clip stands him up into a run)
+        """the mocap pose for take frame f (before blending into his): DashHeavy's deepest frame, its opening crouch
+        (the torso pitched over the front knee, the back knee low, the back foot raised behind). (27 Nov: the clip spins
+        its hips 180 degrees between 0.2 s and 0 - played backwards for the sink it turned him round, the owner's
+        "torso, sword it all gets really janky"; its push-off starts another 90-degree turn. So the sink is the blend
+        from his stand into the crouch, and the dash a flash-step: the coiled pose flung down the lane)"""
+        return CROUCH
 
     def weight(f):
-        if f <= W_IN[0] or f >= W_OUT[1]:
+        if f <= W_IN[0] or f >= CUT_BACK:
             return 0.0
         if f < W_IN[1]:
             return ease((f - W_IN[0]) / (W_IN[1] - W_IN[0]))
-        if f > W_OUT[0]:
-            return 1 - ease((f - W_OUT[0]) / (W_OUT[1] - W_OUT[0]))
         return 1.0
 
     # ---------------------------------------------------------------- the hips' path: coiled at C, then flung to E
@@ -249,10 +251,37 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
     dbg = {'C': C, 'E': E, 'D': round(D, 2), 'yaw_deg': round(math.degrees(yaw), 2), 'v_end': round(v_end, 3),
            'vel': [round(x, 3) for x in vel], 'frames': {}}
     Y = roty(yaw)
-    for f in range(W_IN[0], W_OUT[1] + 1):
+    def vslerp(a, b, u):
+        d = max(-1.0, min(1.0, dot3(a, b)))
+        th = math.acos(d)
+        if th < 1e-5:
+            return a
+        s = math.sin(th)
+        return unit(add3(mul3(a, math.sin((1 - u) * th) / s), mul3(b, math.sin(u * th) / s)))
+
+    def blade_dir(W):
+        return unit(rot_apply(W['Katana'], [0, 0, -1]))
+
+    _, C0k, C1k = joints['Katana']
+    u_k = rot_apply(KP.cf_inv(C1k), [0, 0, -1])
+    bb = unit(rot_apply(Y, BLADE_BACK))
+    # (the blade's way round: out in front past the hands, then out at his left side - straight across his front it
+    # ran through the body)
+    way1 = unit(rot_apply(Y, (0.1, -0.35, -1.0)))
+    way2 = unit(rot_apply(Y, (-1.0, -0.3, -0.1)))
+
+    def aim_katana(tr, Th, want):
+        """the katana turned in the hand (about the grip) so its blade runs along `want`, his roll kept"""
+        Wb = fk({**tr, 'Katana': Th})
+        v_ = rot_apply(KP.cf_inv(C0k), rot_apply(KP.cf_inv(Wb['RightHand']), want))
+        T = KP.cf_mul(rot_between(rot_apply(Th, u_k), unit(v_)), with_pos(Th, (0, 0, 0)))
+        return with_pos(T, Th[:3])
+
+    # pass 1: the raw blended body (no blade, no feet yet)
+    span = list(range(W_IN[0] + 1, CUT_BACK))
+    raw = {}
+    for f in span:
         w = weight(f)
-        if w <= 0:
-            continue
         H = his[f]
         P = target(f)
         new = {}
@@ -260,14 +289,51 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
             if j in ('HumanoidRootPart', 'Sheath', 'Katana', 'LowerTorso'):
                 continue
             new[j] = KP.lerp_cf(hcf, P.get(j, hcf), w)
-        # the hips: the pack's turn and offset, turned down the dash, on the path
         plt = P.get('LowerTorso', IDENT)
         rot = KP.cf_mul(Y, with_pos(plt, (0, 0, 0)))
         off = rot_apply(Y, plt[:3])
         pp = path(f)
-        nlt = with_pos(rot, (pp[0] + off[0], plt[1], pp[1] + off[2]))
-        new['LowerTorso'] = KP.lerp_cf(H['LowerTorso'], nlt, w)
+        new['LowerTorso'] = KP.lerp_cf(H['LowerTorso'], with_pos(rot, (pp[0] + off[0], plt[1], pp[1] + off[2])), w)
         new['HumanoidRootPart'] = H['HumanoidRootPart']
+        raw[f] = new
+
+    # pass 2: the joints' turns smoothed (5 taps, 1-4-6-4-1), never across the cut back to his frames
+    def at(f):
+        f = min(f, CUT_BACK - 1)
+        return raw.get(f) or his[f]
+    KW = (1, 4, 6, 4, 1)
+    smooth = {}
+    for f in span:
+        if not (SMOOTH[0] <= f <= SMOOTH[1]):
+            smooth[f] = raw[f]
+            continue
+        s = dict(raw[f])
+        for j, c in raw[f].items():
+            if j == 'HumanoidRootPart':
+                continue
+            q0 = KP.quat(c[3:])
+            acc = [0.0, 0.0, 0.0, 0.0]
+            for k, wk in zip(range(-2, 3), KW):
+                q = KP.quat(at(f + k).get(j, c)[3:])
+                if sum(q[i] * q0[i] for i in range(4)) < 0:
+                    q = tuple(-x for x in q)
+                for i in range(4):
+                    acc[i] += wk * q[i]
+            nq = math.sqrt(sum(x * x for x in acc)) or 1.0
+            s[j] = (c[0], c[1], c[2], *KP.mat(tuple(x / nq for x in acc)))
+        smooth[f] = s
+
+    # pass 3: the blade, the sheath, the feet
+    d0 = blade_dir(fk(his[W_IN[0]]))
+
+    def bez(u):
+        a1, a2, a3 = vslerp(d0, way1, u), vslerp(way1, way2, u), vslerp(way2, bb, u)
+        b1, b2 = vslerp(a1, a2, u), vslerp(a2, a3, u)
+        return vslerp(b1, b2, u)
+    for f in span:
+        w = weight(f)
+        H = his[f]
+        new = dict(smooth[f])
         new['Sheath'] = H['Sheath']
         # (the sheath rides the hips; pitched 42 degrees with them it stuck out behind like a tail)
         Wn, Wh = fk(new), fk(H)
@@ -275,22 +341,23 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
         _, C0s, C1s = joints['Sheath']
         Ts = KP.cf_mul(KP.cf_mul(with_pos(KP.cf_inv(KP.cf_mul(Wn['LowerTorso'], C0s)), (0, 0, 0)), want), with_pos(C1s, (0, 0, 0)))
         new['Sheath'] = with_pos(Ts, H['Sheath'][:3])
-        # the katana: turned in the hand so its blade (its -z) runs low and back past the hip, his grip and roll kept
-        Wb = fk({**H, **new, 'Katana': H['Katana']})
-        p0, C0k, C1k = joints['Katana']
-        u_ = rot_apply(KP.cf_inv(C1k), [0, 0, -1])
-        bw = rot_apply(Y, BLADE_BACK)
-        bl = math.sqrt(sum(c * c for c in bw)); bw = [c / bl for c in bw]
-        v_ = rot_apply(KP.cf_inv(C0k), rot_apply(KP.cf_inv(Wb['RightHand']), bw))
-        Th = H['Katana']
-        cur = rot_apply(Th, u_)
-        T = KP.cf_mul(rot_between(cur, v_), with_pos(Th, (0, 0, 0)))
-        new['Katana'] = KP.lerp_cf(Th, with_pos(T, Th[:3]), w)
-        # the feet on his floor (scaled by the weight, so his own frames at both ends keep theirs)
+        # the katana: his blade's way swung round to the iai line low along the left side - by way of below him, never
+        # through a flip (the blend's own turn); his grip and roll kept
+        ub = ease((f - W_IN[0]) / BLADE_SWING)
+        if ub < 1:
+            # (one curve, no corner: a cubic on the sphere from where his blade points as the blend starts, out in front,
+            # out at his left side, to the iai line - over its own longer time than the body's blend)
+            want_d = bez(ub)
+        else:
+            want_d = bb
+        new['Katana'] = aim_katana(new, H['Katana'], want_d)
+        # the feet on his floor (scaled by the weight, so his own frames at the blend's start keep theirs); through the
+        # dash the body skims a little over it, no foot touching (the flash-step)
         W = fk(new)
         dy = FLOOR - lowest(W)
+        fly = FLY * ease((f - LAUNCH[0]) / 2) if f > LAUNCH[0] else 0.0
         lt = new['LowerTorso']
-        new['LowerTorso'] = (lt[0], lt[1] + w * dy, lt[2], *lt[3:])
+        new['LowerTorso'] = (lt[0], lt[1] + w * dy + fly, lt[2], *lt[3:])
         # (the pack's crouch is a deep kneeling lunge: on our rig's longer legs the back knee meets the floor first and
         # the front foot hangs 0.6 over it - so the front foot is planted by a two-bone solve, hip and knee bending in
         # the leg's own plane; the raised back foot, its sole to the lens, stays as captured)
@@ -301,6 +368,76 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
         dbg['frames'][f] = {'w': round(w, 3), 'lt': [round(x, 2) for x in new['LowerTorso'][:3]], 'low': round(lowest(W2) - FLOOR, 3),
                             'hips_y': round(W2['LowerTorso'][1] - FLOOR, 2), 'rfoot': round(part_low(W2, 'RightFoot') - FLOOR, 2),
                             'lfoot': round(part_low(W2, 'LeftFoot') - FLOOR, 2)}
+
+    # pass 4: the blade never through the body (27 Nov, the owner: "Make sure the sword doesn't clip her body!!") - on
+    # any frame of the take where it would, it turns about the grip by the least that clears it, the turn eased in and
+    # out over the frames either side; the sheathed and sliding frames (its blade inside the sheath) are left alone
+    src_ = {i.name: i.props.get('Source', '') for i in take if i.cls == 'ModuleScript'}
+    stretch = {int(m.group(1)): float(m.group(2)) for m in re.finditer(r'\[(\d+)\]\s*=\s*(-?[\d.]+)', src_['BladeStretch'])}
+    BODY = [n for n in size if n not in ('HumanoidRootPart', 'Katana', 'Sheath', 'RightHand', 'LeftHand', 'RightLowerArm')]
+    GZ = -0.62
+
+    def hits(tr, L):
+        W = fk(tr)
+        kat = W['Katana']
+        n = 0
+        for i in range(1, 13):
+            u = i / 12
+            p = pt(kat, [0, 0.181 * L * u, GZ + (-3.84 - GZ) * L * u])
+            for nm in BODY:
+                q = pt(KP.cf_inv(W[nm]), p)
+                sx, sy, sz = size[nm]
+                if abs(q[0]) < sx / 2 - 0.04 and abs(q[1]) < sy / 2 - 0.04 and abs(q[2]) < sz / 2 - 0.04:
+                    n += 1
+        return n
+
+    AXES = [unit(a) for a in ([1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0])]
+
+    def axis_rot(ax, deg):
+        a = math.radians(deg)
+        c, s, v = math.cos(a), math.sin(a), 1 - math.cos(a)
+        x, y, z = ax
+        return (0, 0, 0, c + x * x * v, x * y * v - z * s, x * z * v + y * s, y * x * v + z * s, c + y * y * v, y * z * v - x * s,
+                z * x * v - y * s, z * y * v + x * s, c + z * z * v)
+
+    fixes = {}
+    for f in range(DECLIP[0], DECLIP[1] + 1):
+        L = stretch.get(f, 1.0)
+        if hits(out[f], L) == 0:
+            continue
+        best = None
+        for deg in range(4, 64, 4):
+            for ax in AXES:
+                tr = dict(out[f]); tr['Katana'] = KP.cf_mul(out[f]['Katana'], axis_rot(ax, deg))
+                if hits(tr, L) == 0:
+                    best = (ax, deg); break
+            if best:
+                break
+        if best:
+            fixes[f] = best
+    eased = {}
+    for f, (ax, deg) in fixes.items():
+        for k, share in ((-2, 0.35), (-1, 0.7), (0, 1.0), (1, 0.7), (2, 0.35)):
+            g = f + k
+            if DECLIP[0] <= g <= DECLIP[1] and (g not in eased or eased[g][1] < deg * share):
+                eased[g] = (ax, deg * share)
+    for g, (ax, deg) in eased.items():
+        out[g] = dict(out[g]); out[g]['Katana'] = KP.cf_mul(out[g]['Katana'], axis_rot(ax, deg))
+    # (a neighbour's eased turn can push its own blade into the body: those get their own least turn, no easing)
+    for f in range(DECLIP[0], DECLIP[1] + 1):
+        L = stretch.get(f, 1.0)
+        if hits(out[f], L) == 0:
+            continue
+        done = False
+        for deg in range(4, 64, 4):
+            for ax in AXES:
+                tr = dict(out[f]); tr['Katana'] = KP.cf_mul(out[f]['Katana'], axis_rot(ax, deg))
+                if hits(tr, L) == 0:
+                    out[f] = tr; fixes[f] = (ax, deg); done = True; break
+            if done:
+                break
+    dbg['declip'] = {str(f): [round(x, 2) for x in ax] + [deg] for f, (ax, deg) in fixes.items()}
+    dbg['still_clipping'] = [f for f in range(DECLIP[0], DECLIP[1] + 1) if hits(out[f], stretch.get(f, 1.0)) > 0]
 
     # ---------------------------------------------------------------- the new take: his file with the killer's frames swapped
     ref = [0]
@@ -345,7 +482,7 @@ def main(take_p, pack_p, pkg_p, out_p, dbg_p=None):
     if dbg_p:
         json.dump(dbg, open(dbg_p, 'w'), indent=1)
     print('spliced frames %d-%d into %s (%d keyframes); dash %.1f studs, %.2f -> %.2f studs/frame, yaw %.1f deg'
-          % (W_IN[0], W_OUT[1], out_p, N, D, vel[1], vel[-1], math.degrees(yaw)))
+          % (W_IN[0], CUT_BACK - 1, out_p, N, D, vel[1], vel[-1], math.degrees(yaw)))
 
 
 if __name__ == '__main__':

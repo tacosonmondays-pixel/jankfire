@@ -49,8 +49,9 @@ local STOCK_LT = Vector3.new(2, 0.4, 1) -- (the stock LowerTorso the sheath's jo
 -- props kit (ReplicatedStorage.JankfireFinisherSets), the time ramps, the lens moves, the look
 local TUNE: { [string]: any } = {
 	inkfall = {
-		anims = { k = "107553046720755", v = "130332889571388" },
-		-- (27 Nov: k is his take with the run replaced by a coil and a dash - tools/roblox/tide_run_splice.py; his own
+		anims = { k = "79972501972288", v = "130332889571388" },
+		-- (27 Nov: k is his take with the run replaced by a coil and a dash, then smoothed - tools/roblox/tide_run_splice.py;
+		-- the first splice was 107553046720755; his own
 		-- killer, untouched, was 131612410895094)
 		set = "TideWaterfall", kit = "TidecrestKit",
 		short = 207, -- (a round win's short version: from THE CUT LANDS)
@@ -60,7 +61,7 @@ local TUNE: { [string]: any } = {
 		-- coming free, the whirl, the tip's stop at his nose, the rush of the charge, the whoosh into the cut, the hit, the
 		-- click home and the bowl ringing over it, the cut landing, the body on the ground
 		cues = { { 7, "loot_pop", 0.3 }, { 17, "swing", 0.55 }, { 55, "loot_pop", 0.6 }, { 57, "swing", 1 },
-			{ 57, "skin_katana_sakura_swing", 0.7 }, { 86, "whoops", 0.5 }, { 120, "zone_playground", 0.8 }, { 120, "swing", 0.9 },
+			{ 57, "skin_katana_sakura_swing", 0.7 }, { 86, "whoops", 0.5 }, { 119, "skin_katana_sakura_hit", 0.6 }, { 120, "zone_playground", 0.8 }, { 120, "swing", 0.9 },
 			{ 130, "swing", 1 },
 			{ 131, "skin_katana_sakura_swing", 0.85 }, { 139, "round_end", 0.9 }, { 204, "loot_pop", 0.9 }, { 205, "zone_vip", 0.8 },
 			{ 207, "skin_katana_sakura_hit", 0.85 }, { 219, "death", 0.55 } },
@@ -575,6 +576,7 @@ end
 -- the long blade's tip laid on the victim's face: his take holds it a stud over the head at THE TIP; the stretch's
 -- payoff is the tip a hair from the nose, on any face
 local AIM_A, AIM_B, AIM_END = 70, 77, 94
+local propsAt: (sc: any, d: any, fi: number, katP: CFrame, shP: CFrame) -> (CFrame, CFrame)
 local function aimed(sc: any, s: any, katCF: CFrame, L: number, fi: number): CFrame
 	if fi < AIM_A or fi >= AIM_END then return katCF end
 	local wgt = math.clamp((fi - AIM_A) / (AIM_B - AIM_A), 0, 1)
@@ -584,7 +586,10 @@ local function aimed(sc: any, s: any, katCF: CFrame, L: number, fi: number): CFr
 	local face = if ffa and ffa:IsA("Attachment") then ffa.WorldPosition else (head.CFrame * Vector3.new(0, 0, -head.Size.Z / 2))
 	face += head.CFrame.LookVector * 0.12
 	local grip = katCF.Position
-	local tip = katCF * Vector3.new(0, 0.181 * L, GZ + (-3.84 - GZ) * L)
+	-- (27 Nov: the stretched blade keeps its curve's height - its mesh broadens up to 2.6x but only stretches along its
+	-- length - so its tip is 0.181 x that breadth over the line, not 0.181 x the length: the old point put the real tip
+	-- 1.3 studs under the face and THE TIP's tight lens never saw the blade)
+	local tip = katCF * Vector3.new(0, 0.181 * (1 + 1.6 * math.clamp((L - 1.5) / 8.5, 0, 1)), GZ + (-3.84 - GZ) * L)
 	local v1, v2 = (tip - grip), (face - grip)
 	if v1.Magnitude < 1e-3 or v2.Magnitude < 1e-3 then return katCF end
 	v1, v2 = v1.Unit, v2.Unit
@@ -595,10 +600,69 @@ local function aimed(sc: any, s: any, katCF: CFrame, L: number, fi: number): CFr
 	return CFrame.fromAxisAngle(axis.Unit, ang * wgt) * (katCF - grip) + grip
 end
 
--- the camera's life: a handheld shake on the dash, a kick on the hits and on the launch's plant (frames; decays in
--- ~0.15 s; the coil itself held dead still)
+-- the camera's life: a handheld shake on the dash, a kick on the hits, the coil's impact frame and the launch's plant
+-- (frames; decays in ~0.15 s; the coil itself held dead still)
 local SHAKE = { ["THE LAUNCH"] = 1.6 }
-local BUMPS = { { 11, 0.7 }, { 57, 1 }, { 120, 1.2 }, { 139, 1.3 }, { 204, 0.6 }, { 207, 1 } }
+local BUMPS = { { 11, 0.7 }, { 57, 1 }, { 119, 1.4 }, { 120, 1.2 }, { 139, 1.3 }, { 204, 0.6 }, { 207, 1 } }
+
+-- the katana and its sheath on any body. 27 Nov, the owner: "it also just suddenly appears on her hip.. instead of
+-- grabbing the katana it like snaps in front her legs then back in her hands ... she doesn't really unsheathe it". The
+-- props ride proxies his take moves (the katana off the right hand, the sheath off the hips); on a body built unlike
+-- his rig the hand and the hip don't keep his spacing, so a blade pinned to the sheath and a blade in the hand were two
+-- places, and the switch between them was a jump. Now:
+--   * sheathed: the blade in the sheath, the sheath on the hip (as before);
+--   * drawing and sheathing (the data's slides): the sheath rides the BLADE as his take has it - the blade leaves the
+--     mouth, or goes back in, on any body - and the blade the hand; the difference between where the sheathed blade
+--     was and where the hand holds it eases out over the first frames, so nothing jumps;
+--   * the draw ends on a cut (the sheath back on the hip there, out of sight); after the sheathe the sheath settles
+--     back from where the blade went in onto the hip over a few frames, the blade home in it.
+local function rowCF(r: any): CFrame
+	return CFrame.new(r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12])
+end
+local function relAt(rows: any, fi: number): CFrame?
+	if not rows then return nil end
+	local f = math.floor(fi)
+	local a, b = rows[f], rows[f + 1]
+	if type(a) ~= "table" then return nil end
+	if type(b) ~= "table" then return rowCF(a) end
+	return rowCF(a):Lerp(rowCF(b), fi - f)
+end
+local function smooth01(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+local SETTLE = 8 -- (frames the sheath takes back onto the hip after the sheathe)
+function propsAt(sc: any, d: any, fi: number, katP: CFrame, shP: CFrame): (CFrame, CFrame)
+	local f = math.floor(fi)
+	local home = d.inSheath and d.inSheath[f + 1] or 0
+	local relRow = d.relS and d.relS[f + 1]
+	local relS = if type(relRow) == "table" then rowCF(relRow) else nil
+	for _, w in d.slides or {} do
+		local a, b, kind, easeN = w[1], w[2], w[3], w[4]
+		if fi >= a and fi < b then
+			local rk = relAt(d.relKS, fi)
+			if not rk then break end
+			local u = smooth01((fi - a) / easeN)
+			if kind == "draw" then
+				if not sc.drawC then
+					local ra = d.relS and d.relS[a + 1]
+					sc.drawC = katP:Inverse() * (shP * (if type(ra) == "table" then rowCF(ra) else CFrame.identity))
+				end
+				local kat = katP * sc.drawC:Lerp(CFrame.identity, u)
+				return kat, kat * rk
+			else
+				local shK = katP * rk
+				if not sc.sheC then sc.sheC = shK:Inverse() * shP end
+				local sh = shK * sc.sheC:Lerp(CFrame.identity, u)
+				sc.sheLast, sc.sheEnd = sh, b
+				return katP, sh
+			end
+		end
+	end
+	if sc.sheLast and sc.sheEnd and fi >= sc.sheEnd and fi < sc.sheEnd + SETTLE then
+		local sh = sc.sheLast:Lerp(shP, smooth01((fi - sc.sheEnd) / SETTLE))
+		return (if relS then sh * relS else katP), sh
+	end
+	if home > 0 and relS then return katP:Lerp(shP * relS, home), shP end
+	return katP, shP
+end
 
 function Pro.step(s: any, w: number): (string, number, boolean)
 	local sc = s.scene
@@ -631,14 +695,25 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 	local j = math.min(pi_ + 1, d.frames - 1)
 	local L = d.blade[pi_ + 1] + (d.blade[j + 1] - d.blade[pi_ + 1]) * pa
 	if d.shot[j + 1] ~= shotN then L = d.blade[pi_ + 1] end
-	local katCF, shCF = sc.pk.CFrame, sc.ps.CFrame
-	local home = d.inSheath and d.inSheath[pi_ + 1] or 0
-	local rel = d.relS and d.relS[pi_ + 1]
-	if home > 0 and type(rel) == "table" then
-		local hc = shCF * CFrame.new(rel[1], rel[2], rel[3], rel[4], rel[5], rel[6], rel[7], rel[8], rel[9], rel[10], rel[11], rel[12])
-		katCF = katCF:Lerp(hc, home)
-	end
+	local katCF, shCF = propsAt(sc, d, fi, sc.pk.CFrame, sc.ps.CFrame)
 	katCF = aimed(sc, s, katCF, L, fi)
+	-- (27 Nov, the owner: "Katana blade is missing in the shot where it's pointed at enemy face" - the long blade lay
+	-- with its flat up, edge-on to THE TIP's eye-level lens: a hairline in the dark. For that shot it turns on its own
+	-- length so its flat faces the lens; the hand holding it is far out of the shot)
+	if sc.shotNow == "THE TIP" then
+		local cam = (workspace.CurrentCamera :: Camera).CFrame.Position
+		local grip = katCF.Position
+		local axis = katCF.LookVector
+		local mid = grip + axis * (1.6 * L)
+		local to = cam - mid
+		to -= axis * to:Dot(axis)
+		if to.Magnitude > 1e-3 then
+			local r = katCF.RightVector
+			local want = if r:Dot(to) >= 0 then to.Unit else -to.Unit
+			local ang = math.atan2(r:Cross(want):Dot(axis), r:Dot(want))
+			katCF = CFrame.fromAxisAngle(axis, ang) * (katCF - grip) + grip
+		end
+	end
 	placeProps(sc, katCF, shCF, L)
 	if sc.mouthA then sc.mouthW = (shCF * sc.mouthA).Position end
 	-- the lens: ours over his, held to the real bodies' points (the stock rig's in the data), with the run's shake and

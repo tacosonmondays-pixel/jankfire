@@ -50,7 +50,22 @@ def stock_lua(path, keep=None):
     for r in S['relS']:
         L.append('		%s,' % ('{ %s }' % ', '.join(g(c, 4) for c in r) if r else '0'))
     L.append('	},')
+    # (27 Nov, the owner: "she doesn't really unsheathe it" - while the blade slides out of the mouth, and back in, the game
+    # holds the sheath to the blade as his take has it, so it reads on any body. The windows: the draw from the last
+    # sheathed frame to the cut after the blade is clear (the sheath goes back to the hip on that cut); the sheathe from
+    # the left hand lifting the sheath to the blade home - the sheath eases onto the blade's line over the first frames)
+    L.append('	-- the draw and the sheathe: { first frame, end frame, kind, frames the hand-over eases over }')
+    L.append('	slides = { { %d, %d, "draw", 12 }, { %d, %d, "sheathe", 10 } },' % (SLIDES[0][0], SLIDES[0][1], SLIDES[1][0], SLIDES[1][1]))
+    L.append('	-- the sheath against the katana in those windows (x, y, z, the turn), by frame')
+    L.append('	relKS = {')
+    for a_, b_ in SLIDES:
+        for f in range(a_, b_ + 1):
+            L.append('		[%d] = { %s },' % (f, ', '.join(g(c, 4) for c in S['relKS'][f])))
+    L.append('	},')
     return chr(10).join(L)
+
+
+SLIDES = ((16, 56), (186, 206))
 
 
 def main(src_path, out, scan=None, lens=None):
