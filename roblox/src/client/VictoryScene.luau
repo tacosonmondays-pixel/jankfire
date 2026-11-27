@@ -665,7 +665,9 @@ local function arriveCam(s: any, t: number): (CFrame, number)
 	local near = A.near0 + (A.near1 - A.near0) * u
 	-- (on their off hand's side, a little above the knee - Studio v1476, Platform: on the weapon side the walk's arm swing
 	-- blacked out the glass and the raised weapon arm stood between the lens and the face)
-	local at = base + F * near - R * k * (1.5 - 0.6 * u) + U * k * (1.3 + 0.55 * u)
+	-- (it ends square in front and a little higher: with both arms up, a lens off to either side puts an arm over the
+	-- face - Studio v1476/R, Platform)
+	local at = base + F * near - R * k * (1.5 - 1.35 * u) + U * k * (1.3 + 0.9 * u)
 	-- the settle once the pose is held: a slow ease back and round
 	local sd = 1 - math.exp(-math.max(0, t - A.land) * 2.2)
 	at += (F * 0.3 - R * 0.2 + U * 0.1) * k * sd
