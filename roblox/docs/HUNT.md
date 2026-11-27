@@ -404,8 +404,10 @@ move onto it with their next scenes. `client/HuntIntro.client.luau` plays the in
 by the intro script) holds the rooms' screens. The mocap: `HuntConfig.INTRO.anims` (vault clips; the Mixamo list for
 better takes is with main). While it plays every HUD is off (the hide shade covered the first recordings, v1415).
 
-**Played in Studio (v1415):** both rooms, the hand-back to first person at the head with the flags put back. The clean
-re-recordings for the owner's sheet come with the next turn.
+**Played in Studio (v1415 to v1442):** both rooms on their beats, no HUD while it plays, the hand-back onto the
+game's own camera with no pop (CineKit's `warm` lets the game's camera take the type back for the last 0.6 s while the
+shot still places it, and points it at the current body: the round re-makes the gunman's body). The owner's sheet:
+side-session-notes `holdout/intro_AB_sheet_v1435.jpg` and the clips `intro_A_v3` / `intro_B_v3` (`_small` copies).
 
 ## Built so far (26 Nov 2026, hunt-mode session)
 
@@ -416,9 +418,9 @@ re-recordings for the owner's sheet come with the next turn.
   whose leaf stops 0.1 stud short of the toilet.
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
-  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 5, 27 Nov: hunt_arch7 = 95903954275327);
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 5: hunt_furn8 =
-    129533495160640).
+  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 7, 27 Nov: hunt_arch9 = 95696978300779);
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 7: hunt_furn10 =
+    85875007992700).
   - the gunman's intro rooms, `tools/roblox/hunt_intro_models.py`: `B.INTRO` (hunt_intro2 = 106007849260783),
     imported by `B.importIntro()` into `ReplicatedStorage.JankfireHuntIntro`.
   - Each judge round rebuilds both halves (`--name=hunt_archN` / `hunt_furnN`) and re-uploads them; the ids above
