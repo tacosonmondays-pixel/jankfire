@@ -134,6 +134,9 @@ local function play(a: any)
 	local len = tonumber(a.len) or BEAT
 	local t0 = tonumber(a.t0) or workspace:GetServerTimeNow()
 	local O: CFrame = if typeof(a.outside) == "CFrame" then a.outside else CFrame.new()
+	-- (owner on v15: "a frame where it renders the next area": the cut outside jumped the lens 180,000 studs and the
+	-- engine drew one frame of bare sky) the room stands 600 studs over her outside spot instead, so the cut is short
+	local SET_AT = if typeof(a.outside) == "CFrame" then CFrame.new(O.Position + Vector3.new(0, 600, 0)) else SET_AT
 	local k = len / BEAT
 	local function T(): number return workspace:GetServerTimeNow() - t0 end
 	local kit = ReplicatedStorage:WaitForChild(HC.INTRO.kit, 3)
@@ -418,6 +421,23 @@ local function play(a: any)
 		return math.min(best, 6)
 	end
 	local fz = (P(0, 0, -1) - P(0, 0, 0)).Unit -- (the room's front of her face)
+	-- (v16: the hat's leaves met the lens) is the lens within `d` studs of anything she wears
+	local function nearWorn(m: Model?, at: Vector3, d: number): boolean
+		if not m then return false end
+		for _, acc in m:GetChildren() do
+			if acc:IsA("Accessory") then
+				for _, x in acc:GetDescendants() do
+					if x:IsA("BasePart") then
+						local o = x.CFrame:PointToObjectSpace(at)
+						local h = x.Size / 2
+						local c = Vector3.new(math.clamp(o.X, -h.X, h.X), math.clamp(o.Y, -h.Y, h.Y), math.clamp(o.Z, -h.Z, h.Z))
+						if (o - c).Magnitude < d then return true end
+					end
+				end
+			end
+		end
+		return false
+	end
 	local roomFront: number? = nil
 	local function nearFront(want: number): number -- (a close-up's distance from her head, past what she wears in front)
 		if roomFront == nil then roomFront = reach(body, headP(), fz) end
@@ -612,7 +632,8 @@ local function play(a: any)
 			-- now, and the game's own camera can't either: HuntIntroSolid holds her at 0 until the cut into first person)
 			local hd0 = me.Character and me.Character:FindFirstChild("Head") :: BasePart?
 			-- (v15: the lens brushed the hat's leaves: her head and what she wears go as the lens reaches what she wears)
-			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < math.max(1.0, math.min(3.2, behindExt().reach + 0.25))
+			local atHead = hd0 ~= nil and shot == "enter" and ((workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < 1.0
+				or nearWorn(me.Character, workspace.CurrentCamera.CFrame.Position, 1.1))
 			if not r.fp and (atHead or t >= len - 0.12) then
 				r.fp = true
 				local ch = me.Character -- (first person: her head and what she wears off this screen, as the game does)
@@ -628,11 +649,6 @@ local function play(a: any)
 			end
 		end
 		if r.dropRoomAt and t >= r.dropRoomAt then r.dropRoomAt = nil; if folder.Parent then folder.Parent = nil end end
-		if t >= beat("outside") - 0.6 and t < beat("outside") + 0.2 then -- (the engine's eye on the outside spot before the cut)
-			local c4 = me.Character
-			local rr4 = c4 and c4:FindFirstChild("HumanoidRootPart") :: BasePart?
-			workspace.CurrentCamera.Focus = if rr4 then rr4.CFrame else O
-		end
 		-- the snap holds on its last frame: her face straight up until the cut outside
 		if A.snap and not r.snapHeld and A.snap.IsPlaying and A.snap.Length > 0 and A.snap.TimePosition >= A.snap.Length - 0.05 then
 			r.snapHeld = true
@@ -733,6 +749,9 @@ local function play(a: any)
 				TweenService:Create(birds, TweenInfo.new(1.6, Enum.EasingStyle.Sine), { Volume = S.birds.vol }):Play()
 			end
 			r.dropRoomAt = t + 0.1 -- (the room goes a few frames after the cut, never in its frame)
+		end
+		-- (v16: her pose landed a frame after the cut) her real body takes the face-up 0.3 s before it, out of shot
+		if once("upPose", beat("outside") - 0.3) then
 			local rc = me.Character
 			local rh = rc and rc:FindFirstChildOfClass("Humanoid")
 			local ra = rh and rh:FindFirstChildOfClass("Animator")
