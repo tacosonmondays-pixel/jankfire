@@ -308,7 +308,7 @@ ZM.X = {
 	-- like breaking news", "Then it cuts to shot of the school"): s into the film. the live feed (banner, LIVE, the one
 	-- headline, an aerial camera; the zoom to the boarded window), the hit and the static, signal lost, our own shot of
 	-- the school, the squad, your view
-	news = { banner = 0.25, line = 0.8, zoom = { 3.0, 4.0 }, hit = 4.6, static = { 4.65, 5.45 }, school = { 5.6, 7.7 }, squad = { 7.7, 9.3 } },
+	news = { banner = 0.25, line = 0.8, zoom = { 3.0, 4.0 }, hit = 4.6, static = { 4.65, 5.2 }, school = { 5.2, 7.7 }, squad = { 7.7, 9.3 } },
 	outro = 9.0, -- the extraction film, then the stats card
 	-- (27 Nov, the owner: "first person, helicopter door opens and there's a guy, he reaches out his hand, you take a
 	-- step forward then shot its an away shot of the helicopter flying off then boom displays your round"). s into the

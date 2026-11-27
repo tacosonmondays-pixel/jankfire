@@ -454,36 +454,39 @@ outside the game can't load one: his arms stayed down); his helmet and visor are
 head each frame (welded inside his model, the dome never drew in a game though it drew in Edit). Sheets: roblox/docs/zombies/10-heli-old-A-B-27nov.jpg
 (the old helicopter against A and B, boarding and lift-off) and 11-extraction-film-first-person-27nov.jpg.
 
-### 4.9 The intro as a news broadcast (27 Nov; the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news", "Then it cuts to shot of the school")
-It replaces the fly-over intro (ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it). The
-server starts it 1.4 s after the game (ZombieExtract's LEAD): each client shows black and runs CineKit.prewarm on the
-shots, the school, the cast and the sounds under it, the news sting coming in 0.4 s before the feed (roblox/docs/
-PERFORMANCE.md, "Films: nothing pops in"). The extraction film's prewarm runs from the call, 90 s ahead; the helicopter
-kits are RenderFidelity Precise and their glow pieces' emissive masks point at the glow atlas. Test op "xland" puts the
-hold-out at the helicopter down on the pad, so "xend" a few seconds later plays the film as it would in a game.
-1. 0-4.65 s, **the live feed:** a news helicopter's camera over the school's front at night: grain, scan lines and
-   zoom brackets (live UI), focus breathing, a colder flatter grade (a ColorCorrection on this screen only), the
-   helicopter's searchlight sweeping the grounds, a strong moon fill so the school reads. LIVE top left (a blinking
-   dot), BREAKING NEWS slams in as a lower third (A PLATE ink and bone) with one headline under it: OUTBREAK ·
-   JANKFIELD HIGH. Nothing else is written: no ticker, no flavour lines. The news sting (APM's licensed "Breaking News",
-   86819169949071) and the rotor wash (zm_heli) under it.
-2. 3.0-4.6 s, **the zoom** onto a boarded lobby window as a zombie walks out of the dark and slams the planks
-   (zm_board, zm_planks, a kick). The window is the lobby's the feed can see: a clear line from both camera spots and
-   open sky over it score first, then the school's front (the first test's front-most window sat under the entrance
-   canopy behind a lamp post: black at the zoom). The camera works 46-58 studs out (from 75-92 the school's haze left
-   the feed black), the haze is thinned to 30% for the feed only, and the searchlight rides beside the camera, sweeping
-   the grounds, then held on the window for the zoom.
-3. 4.65-5.6 s, **static** (grey blocks new each frame, tear bars, PSE's "Television Static"), then black: the signal's
-   gone. The sting and the rotor wash cut.
-4. 5.6-7.7 s, **the school,** our own lens: outside at night in the fog, the bars, a slow push, the wind (zm_wind).
+### 4.9 The intro as a news broadcast (27 Nov; the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news", "Then it cuts to shot of the school", then "Can you do proper static for the transition from news .. also zombie is running into hedges can you do a shot of the school gate and multiple zombies piling up?")
+ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it.
+- **Loading.** From the moment this client's party picks ZOMBIES (PlayUI.S.party.mode) or a game starts (ZmArena), an
+  early CineKit.prewarm loads the school's, the films', the crowd's clips and the helicopters' assets in the background
+  (keep = false: ZoneCull keeps the school put aside in the hub). The server starts the film 1.4 s after the game
+  (ZombieExtract's LEAD): each client shows black and runs the intro's own prewarm under it (the shots' pieces kept, all
+  of it preloaded); the news sting comes in 0.4 s before the feed. If that prewarm isn't in when the lead ends, the black
+  holds up to 2 s more (the film's own clock waits at 0, the sting carrying it); round 1 allows for it (+1 s).
+  (roblox/docs/PERFORMANCE.md, "Films: nothing pops in".)
+1. 0-4.65 s, **the live feed:** the news helicopter's camera inside the grounds, up over the drive, at night: grain,
+   scan lines and zoom brackets (live UI), focus breathing, a colder flatter grade, its searchlight from beside the
+   lens, the moon fill held each frame. LIVE top left (a blinking dot), BREAKING NEWS slams in as a lower third (A PLATE
+   ink and bone) with one headline: OUTBREAK · JANKFIELD HIGH. Nothing else is written. The news sting (APM's licensed
+   "Breaking News", 86819169949071), the rotor wash (zm_heli).
+2. **The gate.** The school had a chain-link fence along the front of its grounds and no gate; studio-tools/ZmGate.luau
+   added ZmFrontGate to Map.JankfieldHighV2B (so every game's copy has it): two chunky stone pillars and iron bar
+   leaves in the fence line at the end of the drive (local x 28, z 171, between the street trees), a pavement and road
+   outside, one sodium lamp; set dressing only (no collisions or queries, outside the play space). A crowd of 14
+   (the mode's own shambler, cloned on this client) piles up against it: five pressing at the bars (Roblox's own zombie
+   idle cycles, arms through the bars), six pushing behind (its walk cycle, slow), two going up on the others' backs
+   (its climb cycle, leaning in), one walking up out of the street; every one with its own speed, phase, sway and lean,
+   leaning in harder as it builds. The leaves rattle and heave in on their hinges, then buckle at 4.6 s (a lurch, a
+   kick). The lens zooms onto it from 3.0 to 4.0 s. Sounds, licensed recordings (PSE, no upload): the rattle bed
+   zm_gaterattle ("Chain-Link Fence Impacts 16"), fists on the bars zm_gatebang ("Metal Shake Clunking Bursts Light
+   Banging 3"), the heave zm_gateshake ("Metal Rattle Thick Shake 4"), the buckle zm_gateslam ("Metal Gate Slam 1"). No
+   voices.
+3. 4.65-5.2 s, **static:** full screen, HOUSE HUNT's approved noise frames (HuntConfig.INTRO.static, a new one every
+   rendered frame, flipped at random, preloaded with the prewarm), one quick roll of the picture then a judder, tear
+   bands, a brightness flutter and dark dropouts; the static burst (PSE "Television Static", zm_static, the same
+   recording as HuntIntro's burst). The sting, the rotor wash and the rattle cut. Then a hard cut:
+4. 5.2-7.7 s, **the school,** our own lens: outside at night in the fog, the bars, a slow push, the wind (zm_wind).
 5. 7.7-9.3 s, **the squad** in the lobby; the bars lift; the camera lands in your view at 9.9 s.
-All words are live TextLabels; no voices; the library sounds need no upload (zm_news, zm_static, zm_clasp,
-zm_doorslide are JankfireSounds entries pointing at licensed or approved ids). The moon is held each frame up to the
-squad, and the film sets the player's Finishing attribute (CineKit's flag "zmintro") so HubLife leaves the light alone:
-in the tests its zone switch into the match ran the map room's black haze over the feed's first half second, and the
-school's own look landing a beat after the start took the moon back (the whole feed read black). The school's zombie
-windows all sit over a planter (the mode's outside spot is 7 studs out, in front of it), and its props are CanQuery
-false, so no ray or box query sees one: the film's zombie walks up, climbs onto the planter (ZombieCine's PERCH, top 3.2
-studs up, 1.1 out from the wall) and slams the boards at chest height. Sheets:
-roblox/docs/zombies/12-news-intro-27nov.jpg, 13-film-and-intro-fixes-27nov.jpg (the climb; the film's arm, helmet and
-seated squad).
+The moon is held each frame up to the squad, and the film sets the player's Finishing attribute (CineKit's flag
+"zmintro") so HubLife leaves the light alone (its zone switch ran the map room's black haze over the feed; the school's
+own look took the moon back). Sheets: roblox/docs/zombies/12-news-intro-27nov.jpg (the window version),
+13-film-and-intro-fixes-27nov.jpg.

@@ -28,7 +28,9 @@
 --       3. returns when it's all in, or at the timeout.
 --     opts: key = string (the keep's name), points = { Vector3 }, names = { piece names }, sets = { Instance } (the
 --           film's cast, props, kit, sound library; Sound and Animation objects too), anims = { ids }, sounds = { ids },
---           timeout = s, keepFor = s (the keep's safety net, default 120)
+--           timeout = s, keepFor = s (the keep's safety net, default 120),
+--           keep = false (assets only: the pieces are looked up, hidden or not, and preloaded, but nothing is brought
+--           back or kept drawn; for loading well ahead, e.g. when a party picks the mode)
 --     warm: { ok (all in before the timeout), waited (s), assets (n instances preloaded), pieces ({ Instance }),
 --             release() (the keep ends) }
 --     Hand it to play as opts.pre and play releases it at stop.
@@ -184,8 +186,10 @@ function K.prewarm(shots: { any }?, opts: any?): any
 	for _, s in shots or {} do for _, u in { 0, 0.5, 1 } do spots(s, u, pts) end end
 	local warm: any = { ok = false, waited = 0, assets = 0, pieces = {}, key = key }
 	if CullKeep then
-		(CullKeep :: any).keep(key, { names = opts.names, points = pts, seconds = opts.keepFor or 120 })
-		RunService.PreRender:Wait(); RunService.PreRender:Wait() -- (ZoneCull steps in PreRender: the pieces are back)
+		if opts.keep ~= false then
+			(CullKeep :: any).keep(key, { names = opts.names, points = pts, seconds = opts.keepFor or 120 })
+			RunService.PreRender:Wait(); RunService.PreRender:Wait() -- (ZoneCull steps in PreRender: the pieces are back)
+		end
 		warm.pieces = (CullKeep :: any).pieces(pts, opts.names)
 	end
 	local roots: { Instance } = table.clone(warm.pieces)

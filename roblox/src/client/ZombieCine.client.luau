@@ -2,16 +2,14 @@
 -- ZOMBIES' films (27 Nov 2026; roblox/docs/ZOMBIES.md 4.3; the owner: "cinematic for zombies mode please!!"). Both on
 -- this client, timed by the server's clock from attributes on the arena model (server/ZombieExtract.luau), the camera,
 -- bars, shake and kicks from CineKit.
---   the intro (IntroT0, IntroLen 7.5 s, skippable: Space, Enter, A, or SKIP on a phone): high over the school at night
---     in the fog with the title card; low by a boarded lobby window as a zombie lurches out of the fog into the boards
---     (a hit: a short hit-stop, a kick, zm_board and zm_planks); the squad in the lobby, low and wide, the bars lift and
---     the camera lands on your own view. Round 1 waits for it (the server).
---   the extraction out (XSt "out", XLift): wide from a roof corner as the squad runs into the helicopter's open side
---     and zombies spill onto the roof; low under the tail as it lifts and pulls away; high and far as it goes into the
---     fog, a fade; then the reward screen (ZombieExtract.client).
--- Rules (main, 27 Nov): animation cycles and mocap only (the zombie's own walk cycle, everyone's own run), recordings
--- only (zm_wind, zm_board, zm_planks; the helicopter's zm_heli plays on it in ZombieExtract.client; the boom), no
--- voices, the school's own muted night look, no text in the world: only the title card.
+--   the intro (IntroT0, IntroLen 9.9 s, skippable: Space, Enter, A, or SKIP on a phone): a BREAKING NEWS broadcast, the
+--     news helicopter's feed onto the school's front gate as a crowd of zombies piles up against it, static, our own
+--     shot of the school, the squad; the camera lands on your own view. Round 1 waits for it (the server). Below.
+--   the extraction out (XSt "out", XLift): first person at the helicopter's door, the crew member reaching out, your
+--     hand, the step; a hard cut to the long lens as it lifts and flies off; then the stats card (ZombieExtract.client).
+-- Both are prewarmed (CineKit.prewarm; roblox/docs/PERFORMANCE.md): nothing pops in.
+-- Rules (main, 27 Nov): animation cycles and mocap only, recordings only (licensed library sounds), no voices or crowd
+-- sounds, the school's own night look with a moon fill, words only where asked (the broadcast's three).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -28,6 +26,11 @@ local zr = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Zm") 
 local me = Players.LocalPlayer
 local XC = ZM.X
 local ZOMBIE_WALK = "rbxassetid://616168032" -- (Roblox's own zombie walk cycle, as the mode's zombies use)
+-- (the rest of Roblox's own Zombie animation package, cycles all: its two idles, arms out, for the crowd pressing on
+-- the gate, and its climb for the ones going up on the others' backs)
+local ZOMBIE_IDLE = { "rbxassetid://616158929", "rbxassetid://616160636" }
+local ZOMBIE_CLIMB = "rbxassetid://616156119"
+local GATE_SOUNDS = { "zm_gaterattle", "zm_gateshake", "zm_gatebang", "zm_gateslam" }
 local function srv(): number return workspace:GetServerTimeNow() end
 local function flat(v: Vector3): Vector3 return Vector3.new(v.X, 0, v.Z) end
 local function arena(): Model?
@@ -58,6 +61,14 @@ local function fade(s: Sound?, k: number, dur: number)
 	TweenService:Create(s, TweenInfo.new(dur, Enum.EasingStyle.Sine), { Volume = full * k }):Play()
 end
 local okLook, HubLook = pcall(require, Shared:WaitForChild("HubLook"))
+-- HOUSE HUNT's approved static (its old TV's noise: HuntConfig.INTRO.static), reused for the news feed's cut
+local okHC, HuntConfig = pcall(require, Shared:WaitForChild("HuntConfig"))
+local STATIC: { number } = if okHC and HuntConfig and HuntConfig.INTRO and HuntConfig.INTRO.static then HuntConfig.INTRO.static else {}
+local function staticImages(): { Instance }
+	local list = {}
+	for _, id in STATIC do local l = Instance.new("ImageLabel"); l.Image = "rbxassetid://" .. tostring(id); table.insert(list, l) end
+	return list
+end
 -- a film's key light: a soft cold light that rides with the camera (27 Nov test: at night in the school's look the
 -- helicopter and the squad were black shapes on black). on this client only
 local function keyLight(r: any, range: number, bright: number): BasePart
@@ -185,10 +196,13 @@ end
 -- (27 Nov, the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news" and "Then it
 -- cuts to shot of the school"). All its words are live UI here, never in a picture: BREAKING NEWS, LIVE and the one
 -- headline, nothing else (no ticker, no flavour lines, zombie words only). No voices. The times: ZM.X.news.
---   the feed: a news helicopter's camera over the school's front at night (grain, scan lines, zoom brackets, focus
---     breathing, its searchlight sweeping the grounds, the moon so the school reads), the news sting and the rotor
---     wash; it zooms onto a boarded lobby window as a zombie slams the planks
---   the hit: the feed breaks into static, then black (signal lost)
+--   the feed: a news helicopter's camera over the school's grounds at night (grain, scan lines, zoom brackets, focus
+--     breathing, its searchlight sweeping, the moon so it reads), the news sting and the rotor wash; it zooms onto the
+--     front gate (ZmFrontGate, studio-tools/ZmGate.luau) where a crowd of zombies piles up against it: pressing, the
+--     ones behind pushing, two going up on the others' backs, arms through the bars; the gate rattles, heaves and
+--     buckles (27 Nov, the owner: "can you do a shot of the school gate and multiple zombies piling up?")
+--   the hit: the feed breaks into full-screen static (HOUSE HUNT's noise frames, a new one every frame, a roll, tears,
+--     a brightness flutter; 27 Nov, the owner: "proper static"), then a hard cut to the school
 --   the school: our own lens, outside at night in the fog, a slow push, the wind
 --   the squad in the lobby, the bars lift, your own view
 local NEWS_INK, NEWS_BONE = Color3.fromRGB(29, 31, 35), Color3.fromRGB(229, 226, 219) -- (A PLATE's ink and bone)
@@ -233,16 +247,22 @@ local function newsOverlay(r: any): any
 	o.line = T.new("Frame", { BackgroundColor3 = NEWS_BONE, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 60), Size = UDim2.fromOffset(0, 40), ClipsDescendants = true }, o.third)
 	T.new("UICorner", { CornerRadius = UDim.new(0, 3) }, o.line)
 	local ht = T.text(o.line, "H", "OUTBREAK  ·  JANKFIELD HIGH", 22, NEWS_INK, T.FONT_HEAVY); ht.Position = UDim2.fromOffset(16, 0); ht.Size = UDim2.fromOffset(600, 40)
-	-- the static: a black screen of grey blocks, new each frame, and a few tear bars
-	o.static = T.new("Frame", { Name = "Static", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
+	-- the static: full screen, HOUSE HUNT's noise frames (two stacked for the roll), a white flutter, a dark dropout,
+	-- tear bands; all of it new every rendered frame while it runs
+	o.static = T.new("Frame", { Name = "Static", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+		Visible = false, ClipsDescendants = true }, gui)
 	table.insert(r.trash, o.static)
-	o.snow = {}
-	for k = 1, 240 do
-		local f = T.new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Size = UDim2.fromOffset(4, 3) }, o.static)
-		table.insert(o.snow, f)
+	o.stIm = {}
+	for k = 1, 2 do
+		local im = T.new("ImageLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromScale(1.08, 1.02),
+			Position = UDim2.fromScale(0.5, if k == 1 then 0.5 else -0.5), ScaleType = Enum.ScaleType.Crop,
+			Image = if #STATIC > 0 then "rbxassetid://" .. tostring(STATIC[1]) else "" }, o.static)
+		table.insert(o.stIm, im)
 	end
+	o.stFlash = T.new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, o.static)
+	o.stDark = T.new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, o.static)
 	o.tears = {}
-	for k = 1, 5 do
+	for k = 1, 4 do
 		local f = T.new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.6, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 6) }, o.static)
 		table.insert(o.tears, f)
 	end
@@ -292,31 +312,79 @@ local function intro(a: Model)
 	w = w or map.windows[1]
 	local outward = if w then flat(w.out - w.inn).Unit else site.LookVector * -1
 	local side = outward:Cross(Vector3.new(0, 1, 0))
-	local zroot: BasePart? = nil
-	local src = ReplicatedStorage:FindFirstChild("JankfireZmCine")
-	local zt = src and src:FindFirstChild("Zombie")
-	if w and zt and zt:IsA("Model") then
-		local m = zt:Clone()
-		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end end
-		zroot = m:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if zroot then zroot.Anchored = true end
-		m.Parent = workspace
-		table.insert(r.trash, m)
-		local hum = m:FindFirstChildOfClass("Humanoid")
-		if hum then
-			local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-			local anim = Instance.new("Animation"); anim.AnimationId = ZOMBIE_WALK
-			local ok, tr = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
-			if ok and tr then tr.Looped = true; tr:Play(0); r.walk = tr end
+	local winAt = if w then w.at.Position else L(0, 6, 96)
+	-- the front gate: its frame (out = to the road), its two leaves (each part's place from its hinge)
+	local gm = a:FindFirstChild("ZmFrontGate")
+	local gbase = gm and gm:FindFirstChild("GateBase") :: BasePart?
+	local GF = if gbase then gbase.CFrame else CFrame.lookAt(L(28, 0, 171), L(28, 0, 181))
+	local G, GO, GR = GF.Position, GF.LookVector, GF.RightVector
+	local UP = Vector3.new(0, 1, 0)
+	local leaves = {}
+	for _, nm in { "LeafL", "LeafR" } do
+		local lf = gm and gm:FindFirstChild(nm)
+		local hinge = lf and lf:GetAttribute("Hinge")
+		if lf and typeof(hinge) == "Vector3" then
+			local hcf = GF * CFrame.new(hinge)
+			local parts, c, n = {}, Vector3.zero, 0
+			for _, d in lf:GetDescendants() do
+				if d:IsA("BasePart") then table.insert(parts, { p = d, rel = hcf:ToObjectSpace(d.CFrame), was = d.CFrame }); c += d.Position; n += 1 end
+			end
+			-- which way of turning about the hinge swings the leaf in (toward the school)
+			local mid = (if n > 0 then c / n else hcf.Position) - hcf.Position
+			local sgn = if (CFrame.Angles(0, 0.1, 0):VectorToWorldSpace(hcf:VectorToObjectSpace(mid)) - hcf:VectorToObjectSpace(mid)):Dot(hcf:VectorToObjectSpace(-GO)) > 0 then 1 else -1
+			table.insert(leaves, { hcf = hcf, parts = parts, sgn = sgn, seed = #leaves * 7.3 + 1.1 })
 		end
 	end
-	local winAt = if w then w.at.Position else L(0, 6, 96)
-	-- (27 Nov tests: the school's zombie windows sit over a planter, and the mode's outside spot is 7 studs out in front
-	-- of it: the zombie slammed the planter. Now it walks up, climbs onto the planter (PERCH: its top, studs over the
-	-- outside spot, and how far out from the wall it stands) and slams the boards at chest height)
-	local PERCH = { y = 3.2, out = 1.1 }
-	local zFrom = if w then w.out + outward * 9 else Vector3.zero
-	local zTo = if w then Vector3.new(winAt.X, w.out.Y, winAt.Z) + outward * PERCH.out else Vector3.zero
+	-- the crowd: the mode's own shambler, many times; each with its own clip (a cycle), speed, phase and sway
+	-- (x across the gate, z out from it, y up; the front row's arms go through the bars)
+	local CROWD = {
+		{ -5.2, 1.25, 0, "idle" }, { -2.6, 1.3, 0, "idle" }, { 0.1, 1.2, 0, "idle" }, { 2.7, 1.3, 0, "idle" }, { 5.3, 1.25, 0, "idle" },
+		{ -3.9, 2.7, 0, "walk" }, { -1.3, 2.75, 0, "walk" }, { 1.4, 2.7, 0, "walk" }, { 3.9, 2.8, 0, "walk" },
+		{ -2.4, 4.1, 0, "walk" }, { 2.2, 4.2, 0, "walk" },
+		{ -3.1, 2.0, 2.9, "climb" }, { 1.2, 2.0, 3.1, "climb" },
+		{ 0.6, 15.0, 0, "arrive" },
+	}
+	-- (the grounds' chain-link runs across the gate's opening as one frosted panel, with a post in the middle of it: the
+	-- panel and the posts (one mesh each) hidden on this screen while the feed plays, so the crowd reads; 27 Nov tests)
+	local mesh = {}
+	for _, d in a:GetDescendants() do
+		if d:IsA("BasePart") and (string.match(d.Name, "^sc_ground%d+__glass") or string.match(d.Name, "^sc_ground%d+__plastic_6a7076")) then
+			table.insert(mesh, d)
+		end
+	end
+	local crowd = {}
+	local src = ReplicatedStorage:FindFirstChild("JankfireZmCine")
+	local zt = src and src:FindFirstChild("Zombie")
+	local crng = Random.new(20261127)
+	if gbase and zt and zt:IsA("Model") then
+		for i, c in CROWD do
+			local m = zt:Clone()
+			m.Name = "ZmGateCrowd"
+			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end end
+			local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if not root then m:Destroy(); continue end
+			root.Anchored = true
+			local hum = m:FindFirstChildOfClass("Humanoid")
+			if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+			m.Parent = workspace -- (in the world before its clip loads)
+			table.insert(r.trash, m)
+			local tr: AnimationTrack? = nil
+			if hum then
+				local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+				local id = if c[4] == "idle" then ZOMBIE_IDLE[(i % 2) + 1] elseif c[4] == "climb" then ZOMBIE_CLIMB else ZOMBIE_WALK
+				local anim = Instance.new("Animation"); anim.AnimationId = id
+				local ok, t2 = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
+				if ok and t2 then
+					t2.Looped = true; t2.Priority = Enum.AnimationPriority.Action
+					local sp = if c[4] == "walk" then crng:NextNumber(0.5, 0.8) elseif c[4] == "climb" then crng:NextNumber(0.8, 1.1) else crng:NextNumber(0.8, 1.25)
+					t2:Play(0, 1, sp)
+					tr = t2
+				end
+			end
+			table.insert(crowd, { m = m, root = root, tr = tr, x = c[1] + crng:NextNumber(-0.25, 0.25), z = c[2] + crng:NextNumber(-0.15, 0.15),
+				y = c[3], kind = c[4], ph = crng:NextNumber(0, 6.28), w = crng:NextNumber(4.5, 7.5), yaw = crng:NextNumber(-10, 10), phased = false })
+		end
+	end
 	-- the squad: their spawns' middle, the camera in front of them
 	local c, face = Vector3.zero, Vector3.new(0, 0, -1)
 	if #map.spawns > 0 then
@@ -326,9 +394,11 @@ local function intro(a: Model)
 		if face.Magnitude < 0.1 then face = Vector3.new(0, 0, -1) end
 		face = face.Unit
 	end
-	-- the news helicopter's camera: out front and up, drifting in; then the zoom onto the window
-	local hp0, hp1 = feedFrom(winAt, outward)
-	local front = winAt - outward * 22 + Vector3.new(0, 4, 0) -- (the wide: the building behind the window, its roof line)
+	-- the news helicopter's camera: inside the grounds, up over the drive, drifting in; then the zoom onto the gate
+	local hp0 = G - GO * 52 + UP * 26 - GR * 28
+	local hp1 = G - GO * 40 + UP * 19 - GR * 12
+	local front = G + UP * 2 + GO * 2 - GR * 6 -- (the wide: the drive, the gate, the street beyond)
+	local gateLook = G + UP * 3.4 + GO * 1.2
 	local deep = winAt - outward * 36 + Vector3.new(0, 10, 0) -- (the school shot looks into the building past the window)
 	local function feedCam(t: number): (CFrame, number)
 		local u = math.clamp(t / N.hit, 0, 1)
@@ -336,19 +406,17 @@ local function intro(a: Model)
 		local z0, z1 = N.zoom[1], N.zoom[2]
 		local zu = math.clamp((t - z0) / (z1 - z0), 0, 1)
 		zu = zu * zu * (3 - 2 * zu)
-		-- (the zoom frames the boards and the zombie at them: 27 Nov test, on the window's middle the planter's hedge hid
-		-- him below the frame)
-		local look = front:Lerp(winAt + outward * 1.0 - Vector3.new(0, 0.8, 0), zu)
-		local dist = (winAt - at).Magnitude
-		local fovWin = math.deg(2 * math.atan(10.5 / dist))
-		local fov = (34 + 1.2 * math.sin(t * 1.7)) * (1 - zu) + (fovWin + 0.4 * math.sin(t * 2.3)) * zu -- (the lens breathing)
+		local look = front:Lerp(gateLook, zu)
+		local dist = (gateLook - at).Magnitude
+		local fovWin = math.deg(2 * math.atan(8.5 / dist))
+		local fov = (36 + 1.2 * math.sin(t * 1.7)) * (1 - zu) + (fovWin + 0.4 * math.sin(t * 2.3)) * zu -- (the lens breathing)
 		return CFrame.lookAt(at, look), fov
 	end
 	local shots = {
 		{ name = "feed", t0 = 0, t1 = N.static[2], shake = 0.32,
 			cam = function(u: number): CFrame local cf = feedCam(u * N.static[2]); return cf end,
 			fov = function(u: number): number local _, f = feedCam(u * N.static[2]); return f end },
-		{ name = "school", t0 = N.school[1] - 0.15, t1 = N.school[2], ease = "linear", shake = 0.12,
+		{ name = "school", t0 = N.school[1], t1 = N.school[2], ease = "linear", shake = 0.12,
 			from = { at = winAt + outward * 58 + Vector3.new(0, 5, 0) + side * 30, look = deep, fov = 46 },
 			to = { at = winAt + outward * 47 + Vector3.new(0, 6.5, 0) + side * 24, look = deep - Vector3.new(0, 1, 0), fov = 44 } },
 		{ name = "squad", t0 = N.squad[1], t1 = N.squad[2], ease = "out", shake = 0.15,
@@ -357,7 +425,13 @@ local function intro(a: Model)
 		{ name = "land", t0 = N.squad[2], t1 = len, ease = "inout",
 			from = { at = c + face * 17 + Vector3.new(0, 3.8, 0), look = c + Vector3.new(0, 3.0, 0), fov = 52 }, to = "gameplay" },
 	}
-	local function clk(): number return srv() - (t0 :: number) end
+	-- (27 Nov, main: if the prewarm isn't in when the lead ends, the black holds up to 2 s more, the sting carrying it:
+	-- the film's own clock waits at 0 until it's in; the server's round 1 allows for it)
+	local function clk(): number
+		local raw = srv() - (t0 :: number)
+		if raw >= 0 and not r.warmReady and raw < 2 then r.shift = raw end
+		return raw - (r.shift or 0)
+	end
 	-- (flag: HubLife leaves the light alone while it plays; 27 Nov test, its zone switch into the match ran the map room's
 	-- black haze over the feed's first half second)
 	r.cine = Cine.play(shots, { clock = clk, warm = 0.3, flag = "zmintro" })
@@ -368,16 +442,17 @@ local function intro(a: Model)
 	-- second
 	task.spawn(function()
 		local lib0 = ReplicatedStorage:FindFirstChild("JankfireSounds")
-		local sets: { Instance } = { a }
+		local sets: { Instance } = staticImages()
+		table.insert(sets, a)
 		local cineF = ReplicatedStorage:FindFirstChild("JankfireZmCine")
 		if cineF then table.insert(sets, cineF) end
-		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", "zm_board", "zm_planks" } do
+		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", table.unpack(GATE_SOUNDS) } do
 			local snd = lib0 and lib0:FindFirstChild(nm)
 			if snd then table.insert(sets, snd) end
 		end
-		local w = Cine.prewarm(shots, { key = "zmintro", sets = sets, anims = { ZOMBIE_WALK }, timeout = 3 })
+		local w = Cine.prewarm(shots, { key = "zmintro", sets = sets, anims = { ZOMBIE_WALK, ZOMBIE_IDLE[1], ZOMBIE_IDLE[2], ZOMBIE_CLIMB }, timeout = 3 })
 		if RunService:IsStudio() then print(("[ZombieCine] intro prewarm: ok %s, %.2f s, %d assets, %d pieces, %.2f s before the feed"):format(tostring(w.ok), w.waited, w.assets, #w.pieces, (t0 :: number) - srv())) end
-		if film == r then r.warm = w else w.release() end
+		if film == r then r.warm = w; r.warmReady = true else w.release() end
 	end)
 	moon(r, 1, true, 0.01)
 	-- (the feed only: the haze thinner still, a long lens through 50 studs of it; the school shot puts the moon's back)
@@ -393,10 +468,13 @@ local function intro(a: Model)
 	local stingTried = false -- (the sting starts 0.4 s before the feed, under the lead's black)
 	local wash = bed("zm_heli")
 	if wash then table.insert(r.beds, wash); fade(wash, 0.3, 0.4) end
+	local rattle = bed("zm_gaterattle") -- (the crowd on the gate: up with the zoom, cut by the static)
+	if rattle then table.insert(r.beds, rattle) end
+	local nextBang, nextShake = 1.0, N.zoom[1] - 0.2
 	local beam = Instance.new("Part")
 	beam.Anchored, beam.CanCollide, beam.CanQuery, beam.CanTouch = true, false, false, false
 	beam.Transparency = 1; beam.Size = Vector3.new(0.2, 0.2, 0.2); beam.Parent = workspace
-	local sl = Instance.new("SpotLight"); sl.Face = Enum.NormalId.Front; sl.Range = 60; sl.Angle = 24; sl.Brightness = 9
+	local sl = Instance.new("SpotLight"); sl.Face = Enum.NormalId.Front; sl.Range = 60; sl.Angle = 30; sl.Brightness = 3.5 -- (9 burnt the crowd white)
 	sl.Color = Color3.fromRGB(236, 240, 232); sl.Shadows = true; sl.Parent = beam
 	table.insert(r.trash, beam)
 	local wind = nil
@@ -410,7 +488,10 @@ local function intro(a: Model)
 		local t = clk()
 		hold(r)
 		r.showMe = false
-		if r.leadBlack and t >= 0 then r.leadBlack = false; TweenService:Create(black, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play() end
+		if r.leadBlack and t >= 0 and (r.warmReady or srv() - (t0 :: number) >= 2) then
+			r.leadBlack = false
+			TweenService:Create(black, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
+		end
 		if not stingTried and t >= -0.4 then
 			stingTried = true
 			if lib and lib:FindFirstChild("zm_news") then
@@ -421,7 +502,7 @@ local function intro(a: Model)
 		local vs = workspace.CurrentCamera.ViewportSize
 		-- the feed's overlay
 		local feedOn = t < N.static[1]
-		o.root.Visible = feedOn and t >= 0
+		o.root.Visible = feedOn and t >= 0 and not r.leadBlack -- (nothing of the feed over a held black)
 		if feedOn then
 			for k, f in o.scan do f.Position = UDim2.fromScale(0, ((k / #o.scan) + t * 0.05) % 1) end
 			for _, f in o.grain do f.Position = UDim2.fromOffset(rng:NextInteger(0, math.max(1, vs.X)), rng:NextInteger(0, math.max(1, vs.Y))) end
@@ -437,12 +518,15 @@ local function intro(a: Model)
 				line = true
 				TweenService:Create(o.line, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(560, 40) }):Play()
 			end
-			-- the news helicopter's searchlight, from beside its camera: sweeping the grounds in front of the school, then
-			-- held on the window for the zoom (27 Nov test: from high over the school the entrance canopy shaded it black)
-			local sweep = winAt + outward * (9 + 6 * math.sin(t * 0.8)) + side * (16 * math.sin(t * 0.55)) - Vector3.new(0, 4, 0)
-			sweep = sweep:Lerp(winAt + outward * 1.5 - Vector3.new(0, 1.2, 0), zu * zu * (3 - 2 * zu))
-			local from = hp0:Lerp(hp1, math.clamp(t / N.hit, 0, 1)) + side * 3 - Vector3.new(0, 3, 0)
+			-- the news helicopter's searchlight, from beside its camera: sweeping the crowd at the gate, then held on it
+			local sweep = G + GO * (3 + 2 * math.sin(t * 0.8)) + GR * (7 * math.sin(t * 0.55)) + UP * 1.5
+			sweep = sweep:Lerp(G + GO * 1.5 + UP * 2.5, zu * zu * (3 - 2 * zu))
+			local from = hp0:Lerp(hp1, math.clamp(t / N.hit, 0, 1)) + GR * 3 - UP * 3
 			beam.CFrame = CFrame.lookAt(from, sweep)
+			-- the crowd's sounds: the rattle up with the zoom, fists on the bars, the leaves heaving
+			if rattle then rattle.Volume = (tonumber(rattle:GetAttribute("Full")) or 0.5) * (0.35 + 0.65 * zu) end
+			if t >= nextBang and t < HIT then nextBang = t + rng:NextNumber(0.3, 0.65); sfx("zm_gatebang", nil, 0.35 + 0.45 * zu) end
+			if t >= nextShake and t < HIT then nextShake = t + rng:NextNumber(1.0, 1.4); sfx("zm_gateshake", nil, 0.5 + 0.4 * zu) end
 		else
 			sl.Enabled = false
 		end
@@ -458,23 +542,44 @@ local function intro(a: Model)
 			local dn = if mw.dens then mw.dens * (if feedOn then 0.3 else 0.55) else nil
 			if atm and dn and atm.Density ~= dn then atm.Density = dn end
 		end
-		-- the zombie: out of the dark to the boards, the slam, a step back
-		if zroot then
-			local zstart = N.zoom[1] - 0.4
-			local u = math.clamp((t - zstart) / (HIT - 0.05 - zstart), 0, 1)
-			local e = 1 - (1 - u) ^ 1.6
-			local p = zFrom:Lerp(zTo, e)
-			local up = math.clamp((e - 0.72) / 0.22, 0, 1) -- (the climb onto the planter, over the walk's last part)
-			p += Vector3.new(0, PERCH.y * up * up * (3 - 2 * up), 0)
-			if t >= HIT and t < HIT + 0.12 then p = zTo - outward * 0.5 + Vector3.new(0, PERCH.y, 0)
-			elseif t >= HIT + 0.12 then p = zTo + outward * math.clamp((t - HIT - 0.12) * 0.8, 0, 0.5) + Vector3.new(0, PERCH.y, 0) end
-			zroot.CFrame = CFrame.lookAt(p + Vector3.new(0, 3, 0), p + Vector3.new(0, 3, 0) - outward)
+		-- the crowd at the gate: pressing, pushing, climbing; a lurch when it buckles. gone with the static
+		local push = math.clamp((t - 0.5) / (HIT - 0.5), 0, 1) -- (the press builds to the buckle)
+		local buck = if t >= HIT then math.min(1, (t - HIT) / 0.12) else 0
+		if t < N.static[1] then
+			for _, d in mesh do if d.LocalTransparencyModifier ~= 1 then d.LocalTransparencyModifier = 1 end end
+			for _, z in crowd do
+				if z.tr and not z.phased and z.tr.Length > 0 then z.phased = true; z.tr.TimePosition = crng:NextNumber(0, z.tr.Length) end
+				local sway = math.sin(t * z.w + z.ph)
+				local zz, yy = z.z, z.y
+				if z.kind == "arrive" then
+					zz = 15 - 11.5 * math.clamp(t / 3.2, 0, 1) -- (walks up out of the street to the back of the crowd)
+				end
+				zz -= 0.18 * (0.5 + 0.5 * sway) * (0.4 + 0.6 * push) + 0.55 * buck -- (leaning in, harder as it builds; the lurch)
+				if z.kind == "climb" then yy += 0.25 * math.sin(t * 3.1 + z.ph) + 0.4 * buck end
+				local pos = G + GR * (z.x + 0.08 * math.sin(t * 1.9 + z.ph)) + GO * zz + UP * (3 + yy)
+				local cf = CFrame.lookAt(pos, pos - GO) * CFrame.Angles(0, math.rad(z.yaw + 4 * math.sin(t * 1.3 + z.ph)), 0)
+				if z.kind == "climb" then cf *= CFrame.Angles(math.rad(-22), 0, 0) end -- (leaning into the bars, over the backs)
+				z.root.CFrame = cf
+			end
+			-- the leaves: rattling, heaving in as the press builds, a buckle at the hit
+			for _, lf in leaves do
+				local n1 = math.noise(t * 11, lf.seed) * 1.4 * (0.4 + push)
+				local ang = (0.6 + 3.2 * push + 6.5 * buck + n1) * lf.sgn
+				local lift = 0.04 * math.noise(t * 17, lf.seed + 3)
+				local hc = lf.hcf * CFrame.new(0, lift, 0) * CFrame.Angles(0, math.rad(ang), 0)
+				for _, q in lf.parts do q.p.CFrame = hc * q.rel end
+			end
+		elseif not r.crowdGone then
+			r.crowdGone = true
+			for _, z in crowd do z.m.Parent = nil end
+			for _, lf in leaves do for _, q in lf.parts do q.p.CFrame = q.was end end -- (the gate as the map has it)
+			for _, d in mesh do d.LocalTransparencyModifier = 0 end
 		end
 		if not hit and t >= HIT then
 			hit = true
 			if r.cine then r.cine.kick(1.6) end
-			sfx("zm_board", winAt, 1.0)
-			task.delay(0.05, function() sfx("zm_planks", winAt, 0.8) end)
+			sfx("zm_gateslam", nil, 1.0) -- (the gate buckles)
+			task.delay(0.04, function() sfx("zm_gateshake", nil, 0.9) end)
 		end
 		-- the static, then black: the signal's gone
 		local inStatic = t >= N.static[1] and t < N.school[1]
@@ -484,21 +589,29 @@ local function intro(a: Model)
 				staticOn = true
 				if sting then TweenService:Create(sting, TweenInfo.new(0.15), { Volume = 0 }):Play() end
 				if wash then fade(wash, 0, 0.2) end
+				if rattle then rattle.Volume = 0 end
 				if cc.Parent then cc:Destroy() end
 				sfx("zm_static", nil, 0.9)
 			end
-			local snowing = t < N.static[2]
-			for _, f in o.snow do
-				f.Visible = snowing
-				if snowing then
-					local g = rng:NextNumber(0.25, 1)
-					f.BackgroundColor3 = Color3.new(g, g, g)
-					f.Position = UDim2.fromOffset(rng:NextInteger(0, math.max(1, vs.X)), rng:NextInteger(0, math.max(1, vs.Y)))
-				end
+			local u = math.clamp((t - N.static[1]) / math.max(0.05, N.school[1] - N.static[1]), 0, 1)
+			for _, im in o.stIm do
+				if #STATIC > 0 then im.Image = "rbxassetid://" .. tostring(STATIC[rng:NextInteger(1, #STATIC)]) end
+				im.Rotation = if rng:NextNumber() < 0.5 then 0 else 180
+				im.ImageTransparency = rng:NextNumber(0, 0.18)
 			end
+			-- the roll: one quick turn of the picture, then it judders
+			local roll = if u < 0.35 then (u / 0.35) * 0.85 else 0.85 + rng:NextNumber(-0.03, 0.03)
+			local jx = rng:NextNumber(-0.02, 0.02)
+			o.stIm[1].Position = UDim2.fromScale(0.5 + jx, 0.5 + roll)
+			o.stIm[2].Position = UDim2.fromScale(0.5 + jx, -0.5 + roll)
+			-- the brightness flutter, a dark dropout now and then, the tears
+			o.stFlash.BackgroundTransparency = rng:NextNumber(0.7, 0.97)
+			o.stDark.BackgroundTransparency = if rng:NextNumber() < 0.14 then 0.35 else 1
 			for _, f in o.tears do
-				f.Visible = snowing
+				f.Visible = rng:NextNumber() < 0.7
+				f.Size = UDim2.new(1, 0, 0, rng:NextInteger(3, 16))
 				f.Position = UDim2.fromScale(0, rng:NextNumber())
+				f.BackgroundTransparency = rng:NextNumber(0.25, 0.7)
 			end
 		end
 		-- the school: our own lens, the bars, the wind; then the squad, the bars lift, your view
@@ -903,3 +1016,37 @@ local function watch()
 end
 me:GetAttributeChangedSignal("ZmArena"):Connect(function() task.spawn(watch) end)
 task.spawn(watch)
+
+-- the early prewarm (27 Nov, main: start it as soon as this client is headed for ZOMBIES). From the moment its party
+-- picks ZOMBIES (or a game starts) the school's, the films' and the helicopters' assets load in the background, assets
+-- only (ZoneCull keeps the school put aside in the hub); the intro's own prewarm then finds them in
+local okPU, PlayUI = pcall(function() return require(script.Parent:WaitForChild("PlayUI", 10) :: ModuleScript) :: any end)
+local earlyT = -math.huge
+local function early()
+	if os.clock() - earlyT < 120 then return end
+	earlyT = os.clock()
+	task.spawn(function()
+		local names = {}
+		for nm in XC.zones do table.insert(names, nm) end
+		local sets: { Instance } = staticImages()
+		for _, nm in { "JankfireZmKit", "JankfireZmCine" } do
+			local f = ReplicatedStorage:FindFirstChild(nm)
+			if f then table.insert(sets, f) end
+		end
+		local lib0 = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", "zm_doorslide", "zm_clasp", table.unpack(GATE_SOUNDS) } do
+			local snd = lib0 and lib0:FindFirstChild(nm)
+			if snd then table.insert(sets, snd) end
+		end
+		local w = Cine.prewarm(nil, { key = "zmearly", keep = false, names = names, sets = sets,
+			anims = { ZOMBIE_WALK, ZOMBIE_IDLE[1], ZOMBIE_IDLE[2], ZOMBIE_CLIMB, XC.reach, SIT }, timeout = 90 })
+		if RunService:IsStudio() then print(("[ZombieCine] early prewarm: ok %s, %.2f s, %d assets, %d pieces"):format(tostring(w.ok), w.waited, w.assets, #w.pieces)) end
+	end)
+end
+task.spawn(function()
+	while true do
+		task.wait(1)
+		local pt = if okPU and type(PlayUI) == "table" and PlayUI.S then PlayUI.S.party else nil
+		if (pt and pt.mode == "zombies") or me:GetAttribute("ZmArena") then early() end
+	end
+end)

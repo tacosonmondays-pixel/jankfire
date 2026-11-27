@@ -111,6 +111,8 @@ the shot plays.
      use: meshes, textures, SurfaceAppearances, decals, clothes, sounds, animations, particles, beams, images (one
      instance per asset id), plus `opts.anims` and `opts.sounds` ids;
   3. returns `warm = { ok, waited, assets, pieces, release() }`.
+  `opts.keep = false` loads the assets only (the pieces are looked up, hidden or not, but nothing is brought back or
+  kept drawn): for loading well ahead, as ZOMBIES does from the moment a party picks the mode.
   Hand it to `CineKit.play(shots, { pre = warm })` and play releases it at stop, or call `warm.release()` yourself.
 - **Mesh detail.** A game script can't change `RenderFidelity` ("Cannot change SolidModel RenderFidelity during
   Run-Time"). Set a film's hero meshes to Precise in Edit, on the kit. The zombies helicopters are Precise.

@@ -103,7 +103,7 @@ function ZombieExtract.install(Z: any)
 		-- (the film starts LEAD s from now: each client prewarms under black first, ZombieCine; 27 Nov, the owner:
 		-- "Things pop in because it renders as the clip plays")
 		local LEAD = 1.4
-		g.untilT = now() + LEAD + XC.intro + 1.1
+		g.untilT = now() + LEAD + XC.intro + 2.1 -- (+1 s: a client still loading holds its black lead up to 2 s)
 		attrs(g, { IntroT0 = srv() + LEAD, IntroLen = XC.intro, IntroWin = win })
 		return nil
 	end)
