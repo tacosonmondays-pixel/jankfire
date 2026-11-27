@@ -118,15 +118,18 @@ L.CONTAINERS = {
 -- such wrap is in exactly one set, and every set has three of the moving ones (Exotic: Roster.EXOTIC), so each set's
 -- Exotic chance is the same. a wrap added to Roster and in no set here goes in the newest set (L.SPRAY_LOOSE; Studio's
 -- output says so): give it one. the ids start with "spray" (LootFloor sizes them by that) and are letters only (the
--- LootStock attribute is read with %a). each list: commons, rares, epics, legendaries, then its three Exotics
+-- LootStock attribute is read with %a). each list: commons, rares, epics, legendaries, then its three Exotics.
+-- (27 Nov: the wraps audit retired Opal, Galaxy, Damascus, Receipt and QR Code (Roster.RETIRED: their owners keep them,
+-- no can rolls them); Liquid Chrome and the new Molten move, so Exotic. Holo Foil went to Cosmic, Molten into Wild,
+-- Market Crash to Luxe: three Exotics a set again, a Legendary in all but Japan)
 L.SPRAY_SETS = { "spraycosmic", "sprayjapan", "sprayluxe", "spraywild", "spraydiner", "sprayoffice" }
 local SPRAY: { [string]: any } = {
-	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "magenta", "matte", "ice", "ghost", "neon", "geode", "fade", "rainbow", "galaxy", "nebula", "blackhole" } },
-	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "cream", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "urushi", "damascus", "koi", "sakura", "bigwave" } },
-	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "marble", "jade", "copper", "carbon", "gold", "titanium", "lchrome", "kintsugi", "holo", "stained" } },
-	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "moss", "burl", "digital", "denim", "plaid", "tiger", "leopard", "zebra", "organ", "meat", "lava", "aurora", "opal" } },
+	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "magenta", "matte", "ice", "ghost", "neon", "geode", "fade", "rainbow", "nebula", "blackhole", "holo" } },
+	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "cream", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "urushi", "koi", "sakura", "bigwave" } },
+	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "marble", "jade", "copper", "carbon", "gold", "titanium", "stonks", "lchrome", "kintsugi", "stained" } },
+	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "moss", "burl", "digital", "denim", "plaid", "tiger", "leopard", "zebra", "organ", "meat", "lava", "aurora", "molten" } },
 	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "ketchup", "creamsicle", "bubblegum", "sprinkles", "watermelon", "candycorn", "cheese", "china", "bowling", "memphis", "pizza", "arcade", "dice", "racing", "glitch", "lavalamp", "vapor", "tokyo" } },
-	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "receipt", "barcode", "bubblewrap", "sheet", "memo", "qr", "numsoup", "sweater", "corp", "stonks", "missing", "crt", "circuit", "hex" } },
+	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "barcode", "bubblewrap", "sheet", "memo", "numsoup", "sweater", "corp", "missing", "crt", "circuit", "hex" } },
 }
 L.SPRAY_LOOSE = L.SPRAY_SETS[#L.SPRAY_SETS]
 L.SPRAY_OF = {} :: { [string]: string } -- (a wrap id -> its set's container id)

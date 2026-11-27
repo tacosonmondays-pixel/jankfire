@@ -57,6 +57,14 @@ Legendary sting, a stronger glow and shake, a bigger burst and a rising rose-to-
 Priced as a Legendary for now (`Shop.MONEY.singles[kind].exotic`), so no single or bundle price moved. Words like
 GLOWS / SHINY / METAL on wrap chips are gone (the loadout's `finishWord`, removed): a wrap shows its name and rarity.
 
+**The wraps audit** (27 Nov, the wraps session: the owner's "remove camos that people will look at and think ai right
+away, also an redundant camos"). `Roster.RETIRED` takes Opal, Galaxy, Damascus, Receipt and QR Code out of
+`Roster.wraps`: no can, crate or bundle has them, and the odds shown come from the smaller pools. Whoever owns one keeps it.
+Liquid Chrome and the new Molten became Exotic. The spray lists were rebalanced to three Exotics a set again:
+- Holo Foil moved to Cosmic, Molten into Wild and Market Crash to Luxe (its Legendary).
+- Cosmic, Japan, Luxe and Diner hold 13, 13, 13 and 21 wraps; Wild 19 and Office 16.
+- Every set except Japan has a Legendary.
+
 - The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
   card `ShopUI.boxCard`.
 
