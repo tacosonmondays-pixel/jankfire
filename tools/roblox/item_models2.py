@@ -748,9 +748,13 @@ UV_SCALE = 1.4  # (gadgets are small and near the eye: a finer pattern, like the
 # round bodies the flat unfold breaks into patches: wrapped round the upright axis instead (u = the angle round, at
 # the body's mean radius; v = height), one seam at the front (-z), away from the player holding it
 ROUND_UV = {'frag': ['body'], 'popper': ['body'], 'bubble': ['body', 'grip']}
+# (27 Nov, the 0.6 m wrap tiles: the smoke canister's body and band are round sides with flat caps; the flat unfold blew
+# the band's picture up several times; the duck's body pinched stripes into a swirl on its front. Only their SIDE faces
+# are wrapped round, the caps keep the unfold)
+ROUND_SIDES = {'smoke': ['body', 'band'], 'duck': ['body']}
 
 
-def round_uv(objs, keys, nodes, scale=UV_SCALE):
+def round_uv(objs, keys, nodes, scale=UV_SCALE, sides=True):
     import gun_uvs
     D = scale / gun_uvs.TILE_M
     for o, (node, slot) in zip(objs, keys):
@@ -760,6 +764,7 @@ def round_uv(objs, keys, nodes, scale=UV_SCALE):
         R = sum(math.hypot(x, z) for x, y, z in pts) / max(1, len(pts))
         uv = me.uv_layers.active.data
         for poly in me.polygons:
+            if sides and abs(poly.normal.z) > 0.7: continue   # (a cap or a pole keeps its unfold: wrapped, it smears)
             angs = [math.atan2(pts[me.loops[li].vertex_index][0], pts[me.loops[li].vertex_index][2]) for li in poly.loop_indices]
             # (a face across the seam: lift its negative angles by a full turn, so it does not span the whole tile)
             if max(angs) - min(angs) > math.pi: angs = [a + 2 * math.pi if a < 0 else a for a in angs]
@@ -785,6 +790,7 @@ def export_all(out_dir, ids, name='items_v2.glb'):
         import gun_uvs
         gun_uvs.unwrap(made, UV_SCALE)
         round_uv(made, list(g.pieces.keys()), ROUND_UV.get(iid.split('@')[0], []))
+        round_uv(made, list(g.pieces.keys()), ROUND_SIDES.get(iid, []), sides=True)
         for o, (node, slot) in zip(made, list(g.pieces.keys())):
             o.name = '%s_%s__%s' % (iid, node, old.look(g.slots[slot]))
         objs += made

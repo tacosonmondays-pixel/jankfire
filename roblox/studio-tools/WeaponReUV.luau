@@ -7,9 +7,11 @@
 -- and reported.
 -- The gadgets too (tools/roblox/reuv_items.py): ReplicatedStorage.JankfireItems x_<item> and the gadget skins in
 -- JankfireSkins (Item = true), keys "x_<item>" and "<item>_<skin>" in the pack.
--- THE OLD UVs ARE A SWITCH: R.backup() parks the current sets once in ServerStorage.PolishBackup.UV1 (the kit set,
--- the live templates, the skins, the Shredder tools, the gadgets); R.switch("uv1") puts them back, R.switch("uv2") the
--- new ones (parked by R.park2() after the roll-out).
+-- THE OLD UVs ARE A SWITCH, kept lean (main, 27 Nov: whole-set copies weigh on saves): every WrapUV part that got a
+-- new mesh carries its old and new mesh ids as attributes UV1Mesh / UV2Mesh (set by applyKey; R.recordIds() fills them
+-- from a parked PolishBackup.UV1 copy, R.dropCopies() then removes that copy). R.switch("uv1") / R.switch("uv2") loads
+-- the mesh by id (AssetService:CreateMeshPartAsync) and ApplyMesh's it onto each part, so nothing else on the part,
+-- and no model imported later, is touched.
 -- usage (Edit, execute_luau):
 --   local R = require(game.ServerStorage.PolishBackup.WeaponReUV:Clone())
 --   R.backup()
@@ -17,6 +19,7 @@
 local R = {}
 local RS = game:GetService("ReplicatedStorage")
 local IS = game:GetService("InsertService")
+local AS = game:GetService("AssetService")
 
 local function pb() return game.ServerStorage.PolishBackup end
 
@@ -115,8 +118,10 @@ local function applyKey(key: string, src: { [string]: any }, dry: boolean?, tot)
 			if not fits then sk += 1; continue end
 			if not dry then
 				local size, cf = p.Size, p.CFrame
+				if not p:GetAttribute("UV1Mesh") then p:SetAttribute("UV1Mesh", p.MeshContent.Uri) end
 				p:ApplyMesh(s)
 				p.Size = size; p.CFrame = cf
+				p:SetAttribute("UV2Mesh", p.MeshContent.Uri)
 			end
 			a += 1
 		end
@@ -173,38 +178,84 @@ function R.applyPack(id: number, dry: boolean?)
 	return summary(dry, tot, lines)
 end
 
--- park the current (new) sets as UV2, so the switch can go both ways
-function R.park2()
-	local b = pb():FindFirstChild("UV2")
-	if b then b:Destroy() end
-	b = Instance.new("Folder"); b.Name = "UV2"
+-- the parked whole-set copy (PolishBackup.UV1, from R.backup) -> UV1Mesh / UV2Mesh on every live WrapUV part whose
+-- mesh changed (matched by its path inside its model)
+function R.recordIds()
+	local uv1 = pb():FindFirstChild("UV1")
+	if not uv1 then return "no UV1 copy" end
+	local n, models = 0, 0
 	for _, s in SETS do
-		local f = s[2]()
-		if f then local c = f:Clone(); c.Name = s[1]; c.Parent = b end
+		local live, old = s[2](), uv1:FindFirstChild(s[1])
+		if not (live and old) then continue end
+		for _, m in live:GetChildren() do
+			local om = old:FindFirstChild(m.Name)
+			if not om then continue end
+			local by = {}
+			for _, p in om:GetDescendants() do
+				if p:IsA("MeshPart") then by[string.sub(p:GetFullName(), #om:GetFullName() + 2)] = p end
+			end
+			local any = false
+			for _, p in m:GetDescendants() do
+				if p:IsA("MeshPart") and p:GetAttribute("WrapUV") then
+					local o = by[string.sub(p:GetFullName(), #m:GetFullName() + 2)]
+					if o and o.MeshContent.Uri ~= p.MeshContent.Uri then
+						if not p:GetAttribute("UV1Mesh") then p:SetAttribute("UV1Mesh", o.MeshContent.Uri) end
+						p:SetAttribute("UV2Mesh", p.MeshContent.Uri)
+						n += 1; any = true
+					end
+				end
+			end
+			if any then models += 1 end
+		end
+		task.wait()
 	end
-	b.Parent = pb()
-	return "UV2 parked"
+	return ("ids recorded on %d parts in %d models"):format(n, models)
 end
 
--- put a parked set back: "uv1" (the old UVs) or "uv2" (the new). Whole sets are replaced.
-function R.switch(which: string)
-	local b = pb():FindFirstChild(string.upper(which))
-	if not b then return "no " .. string.upper(which) .. " in PolishBackup" end
-	local out = {}
-	for _, s in SETS do
-		local saved = b:FindFirstChild(s[1])
-		local live = s[2]()
-		if not (saved and live) then continue end
-		local parent, name = live.Parent, live.Name
-		local attrs = live:GetAttributes()
-		live:Destroy()
-		local c = saved:Clone(); c.Name = name
-		for k, v in attrs do c:SetAttribute(k, v) end
-		c.Parent = parent
-		table.insert(out, name)
+-- remove the whole-set copies once the ids are on the parts
+function R.dropCopies()
+	for _, nm in { "UV1", "UV2" } do
+		local f = pb():FindFirstChild(nm)
+		if f then f:Destroy() end
 	end
-	RS.JankfireWeapons:SetAttribute("UVs", which)
-	return "switched to " .. which .. ": " .. table.concat(out, ", ")
+	return "UV1/UV2 copies removed (the switch now runs on the parts' UV1Mesh / UV2Mesh ids)"
+end
+
+local cache = {}
+local function meshFrom(uri: string)
+	if cache[uri] ~= nil then return cache[uri] end
+	local ok, mp = pcall(function() return AS:CreateMeshPartAsync(Content.fromUri(uri)) end)
+	if not ok then ok, mp = pcall(function() return AS:CreateMeshPartAsync(uri) end) end
+	cache[uri] = if ok then mp else false
+	return cache[uri]
+end
+
+-- put the old ("uv1") or the new ("uv2") meshes on every part that carries the ids
+function R.switch(which: string, dry: boolean?)
+	local attr = if which == "uv1" then "UV1Mesh" elseif which == "uv2" then "UV2Mesh" else nil
+	if not attr then return "switch: uv1 or uv2" end
+	local n, same, fail = 0, 0, 0
+	for _, s in SETS do
+		local live = s[2]()
+		if not live then continue end
+		for _, p in live:GetDescendants() do
+			if not p:IsA("MeshPart") then continue end
+			local uri = p:GetAttribute(attr)
+			if not uri then continue end
+			if p.MeshContent.Uri == uri then same += 1; continue end
+			local src = meshFrom(uri)
+			if not src then fail += 1; continue end
+			if not dry then
+				local size, cf = p.Size, p.CFrame
+				p:ApplyMesh(src)
+				p.Size = size; p.CFrame = cf
+			end
+			n += 1
+		end
+		task.wait()
+	end
+	if not dry then RS.JankfireWeapons:SetAttribute("UVs", which) end
+	return ("%sswitched to %s: %d parts, %d already, %d failed to load"):format(if dry then "(dry) " else "", which, n, same, fail)
 end
 
 return R

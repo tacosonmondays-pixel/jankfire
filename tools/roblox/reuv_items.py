@@ -31,6 +31,10 @@ UV_SCALE = 1.4    # item_models2.UV_SCALE (gadgets are small and near the eye)
 # the round bodies (item_models2.ROUND_UV for the gadgets, item_skins.ROUND for the skins), by item key
 ROUND = {'frag': ['body'], 'popper': ['body'], 'bubble': ['body', 'grip'],
          'frag@keg': ['body'], 'frag@lantern': ['body'], 'smoke@coffeepot': ['body'], 'smoke@censer': ['body']}
+# (27 Nov: the smoke canister's body and band, round sides with flat caps: the general unfold blew the band's picture up
+# several times; the duck's body pinched stripes into a swirl on its front. Only their SIDE faces are wrapped round, the
+# caps keep the unfold. item_models2.ROUND_SIDES)
+ROUND_SIDES = {'smoke': ['body', 'band'], 'duck': ['body']}
 
 
 def wrappable(name):
@@ -42,14 +46,17 @@ def wrappable(name):
     return True
 
 
-def round_uv(o, scale):
-    """item_models2.round_uv for one piece whose mesh is in the item's frame (u = the angle round at the mean radius)"""
+def round_uv(o, scale, sides=True):
+    """item_models2.round_uv for one piece whose mesh is in the item's frame (u = the angle round at the mean radius);
+       sides: only the faces that look sideways (a cap or a pole keeps its unfold; 27 Nov: wrapping the caps too smeared
+       the grenade's bottom and the canisters' lids)"""
     D = scale / gun_uvs.TILE_M
     me = o.data
     pts = [(v.co.x, v.co.z, -v.co.y) for v in me.vertices]
     R = sum(math.hypot(x, z) for x, y, z in pts) / max(1, len(pts))
     uv = me.uv_layers.active.data
     for poly in me.polygons:
+        if sides and abs(poly.normal.z) > 0.7: continue
         angs = [math.atan2(pts[me.loops[li].vertex_index][0], pts[me.loops[li].vertex_index][2]) for li in poly.loop_indices]
         if max(angs) - min(angs) > math.pi: angs = [a + 2 * math.pi if a < 0 else a for a in angs]
         for li, a in zip(poly.loop_indices, angs):
@@ -92,6 +99,7 @@ for src in argv:
         model = ('x_' + key) if '@' not in key else key.replace('@', '_')
         for o in os_:
             if o['wrap'] and o['node'] in ROUND.get(key, []): round_uv(o, UV_SCALE / unit)
+            if o['wrap'] and o['node'] in ROUND_SIDES.get(key, []): round_uv(o, UV_SCALE / unit, sides=True)
             o['reuv'] = o['wrap']
             # (the look code stays: a node can have two pieces of two looks, e.g. the calc's keys; Studio names both by
             # the node, so WeaponReUV picks between them by mesh size)
