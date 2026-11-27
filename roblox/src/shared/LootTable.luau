@@ -122,12 +122,16 @@ L.CONTAINERS = {
 -- (27 Nov: the wraps audit retired Opal, Galaxy, Damascus, Receipt and QR Code (Roster.RETIRED: their owners keep them,
 -- no can rolls them); Liquid Chrome and the new Molten move, so Exotic. Holo Foil went to Cosmic, Molten into Wild,
 -- Market Crash to Luxe: three Exotics a set again, a Legendary in all but Japan)
+-- (27 Nov, pass 2: nine more retired (Lava, Kintsugi, Urushi Maki-e, Verdigris, Marble, Moss: they read AI; Cream,
+-- Hot Magenta, Gold: flat twins of other wraps), and Liquid Chrome stays a plain Legendary. 15 Exotics are left for six
+-- sets: Japan, Diner and Office keep three, Cosmic, Luxe and Wild two (Holo Foil back to Luxe). Tiger went to Japan and
+-- Amethyst Geode to Luxe, each set's thin rarity)
 L.SPRAY_SETS = { "spraycosmic", "sprayjapan", "sprayluxe", "spraywild", "spraydiner", "sprayoffice" }
 local SPRAY: { [string]: any } = {
-	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "magenta", "matte", "ice", "ghost", "neon", "geode", "fade", "rainbow", "nebula", "blackhole", "holo" } },
-	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "cream", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "urushi", "koi", "sakura", "bigwave" } },
-	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "marble", "jade", "copper", "carbon", "gold", "titanium", "stonks", "lchrome", "kintsugi", "stained" } },
-	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "moss", "burl", "digital", "denim", "plaid", "tiger", "leopard", "zebra", "organ", "meat", "lava", "aurora", "molten" } },
+	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "matte", "ice", "ghost", "neon", "fade", "rainbow", "nebula", "blackhole" } },
+	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "sushi", "tiger", "koi", "sakura", "bigwave" } },
+	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "jade", "carbon", "titanium", "geode", "stonks", "lchrome", "holo", "stained" } },
+	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "burl", "digital", "denim", "plaid", "leopard", "zebra", "organ", "meat", "aurora", "molten" } },
 	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "ketchup", "creamsicle", "bubblegum", "sprinkles", "watermelon", "candycorn", "cheese", "china", "bowling", "memphis", "pizza", "arcade", "dice", "racing", "glitch", "lavalamp", "vapor", "tokyo" } },
 	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "barcode", "bubblewrap", "sheet", "memo", "numsoup", "sweater", "corp", "missing", "crt", "circuit", "hex" } },
 }

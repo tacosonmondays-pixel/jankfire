@@ -65,6 +65,24 @@ Liquid Chrome and the new Molten became Exotic. The spray lists were rebalanced 
 - Cosmic, Japan, Luxe and Diner hold 13, 13, 13 and 21 wraps; Wild 19 and Office 16.
 - Every set except Japan has a Legendary.
 
+**Pass 2** (same day, final): nine more retired, fourteen in all:
+- six that read AI: Lava, Kintsugi, Urushi Maki-e, Verdigris, Marble, Moss;
+- three flat twins of other wraps: Cream, Hot Magenta, Gold.
+
+Liquid Chrome stays a plain Legendary. That leaves 15 Exotics for six sets:
+- Japan, Diner and Office keep three Exotics; Cosmic, Luxe and Wild have two (Holo Foil is back in Luxe), so an Exotic
+  there is about 0.5% a can instead of 0.33%.
+- Tiger moved to Japan and Amethyst Geode to Luxe.
+- 86 wraps can roll, each in one set.
+
+The shop's bundles were refilled too:
+- Tea House: Koi Pond on the katana.
+- Deep Space: Holo Foil.
+- Machine Shop: Anodized Ti leads, with Hazard Stripes and Chrome.
+- Quarry: Amethyst Geode leads, with Crackle Glaze and Ice.
+- The armory's Assault: Digital Camo.
+- The armory's Explosives: Molten leads, with Barcode.
+
 - The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
   card `ShopUI.boxCard`.
 

@@ -542,17 +542,17 @@ Shop.bundles = {
 		items = { W("digital", "sniper"), H("cowboy", "sniper"), W("urban", "ar"), W("desert", "shotgun"), W("arctic", "dmr") },
 		hero = { weapon = "sniper", wrap = "digital", hat = "cowboy" } },
 	{ id = "bundle_teahouse", type = "bundle", name = "Tea House", rarity = "legendary",
-		items = { W("kintsugi", "katana"), H("chef", "katana"), W("seigaiha", "smg"), W("asanoha", "revolver"), W("shibori", "lever"), W("sakura", "burst") },
-		hero = { weapon = "katana", wrap = "kintsugi", hat = "chef" } },
+		items = { W("koi", "katana"), H("chef", "katana"), W("seigaiha", "smg"), W("asanoha", "revolver"), W("shibori", "lever"), W("sakura", "burst") },
+		hero = { weapon = "katana", wrap = "koi", hat = "chef" } },
 	{ id = "bundle_deepspace", type = "bundle", name = "Deep Space", rarity = "legendary",
-		items = { W("nebula", "smg"), H("halo", "smg"), W("galaxy", "lmg"), W("aurora", "sniper"), W("blackhole", "redline") },
+		items = { W("nebula", "smg"), H("halo", "smg"), W("holo", "lmg"), W("aurora", "sniper"), W("blackhole", "redline") },
 		hero = { weapon = "smg", wrap = "nebula", hat = "halo" } },
 	{ id = "bundle_machineshop", type = "bundle", name = "Machine Shop", rarity = "epic",
-		items = { W("damascus", "shotgun"), H("propeller", "shotgun"), W("brushed", "lmg"), W("copper", "sawnoff"), W("titanium", "autoshot") },
-		hero = { weapon = "shotgun", wrap = "damascus", hat = "propeller" } },
+		items = { W("titanium", "shotgun"), H("propeller", "shotgun"), W("brushed", "lmg"), W("hazard", "sawnoff"), W("chrome", "autoshot") },
+		hero = { weapon = "shotgun", wrap = "titanium", hat = "propeller" } },
 	{ id = "bundle_quarry", type = "bundle", name = "Quarry", rarity = "legendary",
-		items = { W("marble", "redline"), H("crown", "redline"), W("jade", "marbles"), W("granite", "sawnoff"), W("geode", "pistol"), W("opal", "revolver") },
-		hero = { weapon = "redline", wrap = "marble", hat = "crown" } },
+		items = { W("geode", "redline"), H("crown", "redline"), W("jade", "marbles"), W("granite", "sawnoff"), W("crackle", "pistol"), W("ice", "revolver") },
+		hero = { weapon = "redline", wrap = "geode", hat = "crown" } },
 } :: any
 
 -- the player card's set (the player-cards session's pick: a quiet, serious one). no hero: it dresses your card, not a
@@ -676,16 +676,18 @@ function Shop.weaponBundlesOn(): boolean
 	return RunService:IsStudio() and ReplicatedStorage:GetAttribute("WeaponBundlesTest") == true
 end
 local function G(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon } end -- (that gun's only)
+-- (the Explosives bundle's fire wrap: Molten, the living lava, once it is in Roster; Tangerine until then. 27 Nov)
+local FIRE = if Roster.wrapById.molten then "molten" else "tangerine"
 Shop.weaponBundles = {
 	{ id = "wbundle_assault", type = "bundle", name = "Assault", rarity = "legendary", robux = 799, weapons = { "minigun" },
-		items = { G("tiger", "minigun"), G("camo", "ar"), G("tape", "smg"), G("ghost", "burst"), G("moss", "lmg"), G("burl", "dmr"),
+		items = { G("tiger", "minigun"), G("camo", "ar"), G("tape", "smg"), G("ghost", "burst"), G("digital", "lmg"), G("burl", "dmr"),
 			{ kind = "title", id = "zero_recoil" }, { kind = "banner", id = "camo" } },
 		hero = { weapon = "minigun", wrap = "tiger" },
 		blurb = "The Minigun for good, a wrap for six guns, a title and a background." },
 	{ id = "wbundle_explosives", type = "bundle", name = "Explosives", rarity = "legendary", robux = 799, weapons = { "chicken" },
-		items = { G("lava", "chicken"), H("eyes", "chicken"), G("bowling", "bowling"), G("ketchup", "cig"), G("hazard", "frag"),
-			G("sprinkles", "popper"), G("memphis", "banana"), G("receipt", "cart"), { kind = "banner", id = "flames" } },
-		hero = { weapon = "chicken", wrap = "lava", hat = "eyes" },
+		items = { G(FIRE, "chicken"), H("eyes", "chicken"), G("bowling", "bowling"), G("ketchup", "cig"), G("hazard", "frag"),
+			G("sprinkles", "popper"), G("memphis", "banana"), G("barcode", "cart"), { kind = "banner", id = "flames" } },
+		hero = { weapon = "chicken", wrap = FIRE, hat = "eyes" },
 		blurb = "The Chicken Rocket for good, a wrap for seven weapons, a hat and a background." },
 } :: any
 for _, b in Shop.weaponBundles do b.productId = nil; Shop.byId[b.id] = b end
