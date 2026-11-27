@@ -297,8 +297,8 @@ end
 -- the architecture through W.import("HuntHouse", ARCH) as any arena, then the furniture and the moving pieces with
 -- this, which paints them the same way (a piece's name: <model><n>__<kind>_<hex>) and adds them to the same kit
 -- WITHOUT clearing it (W.import clears the kit first)
-B.ARCH = 133158939004700
-B.FURN = 98904903893193
+B.ARCH = 102908341558828
+B.FURN = 124923882312765
 local MAT = { plastic = Enum.Material.SmoothPlastic, neon = Enum.Material.Neon, glass = Enum.Material.Glass, water = Enum.Material.SmoothPlastic }
 local SEE = { glass = 0.35, water = 0.25 }
 function B.importExtra(id: number?): string
