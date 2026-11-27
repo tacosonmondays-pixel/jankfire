@@ -186,9 +186,9 @@ def island(M):
 
 def stool(M):
     C(WALNUT, 0, 3.4, 0, 1.25, 0.6, M, bev=0.2)                                         # a pedestal stool (judge round 1)
-    C(SLATE, 0, 0.3, 0, 0.4, 3.1, M, segs=12, bev=0.08)
-    C(SLATE, 0, 0, 0, 1.1, 0.3, M, segs=18, bev=0.1)
-    C(SLATE, 0, 1.4, 0, 0.85, 0.18, M, segs=16, bev=0.05)
+    C('6e747c', 0, 0.3, 0, 0.4, 3.1, M, segs=12, bev=0.08)
+    C('6e747c', 0, 0, 0, 1.1, 0.3, M, segs=18, bev=0.1)
+    C('6e747c', 0, 1.4, 0, 0.85, 0.18, M, segs=16, bev=0.05)
 
 def fridge(M):
     B(APPLIANCE, -3, 0, -2.5, 3, 12, 2.2, M, bev=0.35)
@@ -475,21 +475,21 @@ def umbrella(M, tab='vip'):
     K.put(M_, 'plastic', acc, bm, M)
 
 def grill(M):
-    B(DARK, -3, 2.6, -1.75, 3, 4.6, 1.75, M, bev=0.4)
-    B('2c2e31', -3, 4.6, -1.75, 3, 5.8, 1.75, M, bev=0.7)
+    B('46484c', -3, 2.6, -1.75, 3, 4.6, 1.75, M, bev=0.4)
+    B('3e4044', -3, 4.6, -1.75, 3, 5.8, 1.75, M, bev=0.7)
     for x in (-2.6, 2.6): B(STEEL, x - 0.2, 0, -1.4, x + 0.2, 2.6, 1.4, M, bev=0.05)
     B(STEEL, -2.6, 0.8, -1.4, 2.6, 1.0, 1.4, M, bev=0.03)
     B(OAK, 3, 3.8, -1.5, 5, 4.1, 1.5, M, bev=0.1)
 
 def patiotable(M):
-    C(WHITE, 0, 3.8, 0, 3.0, 0.5, M, segs=24, bev=0.15)
-    C(WHITE, 0, 0, 0, 0.35, 3.8, M, segs=10, bev=0.05)
-    C(WHITE, 0, 0, 0, 1.4, 0.3, M, segs=16, bev=0.1)
+    C('e6dccb', 0, 3.6, 0, 3.0, 0.7, M, segs=24, bev=0.3)                              # (round 6: chunky)
+    C('e6dccb', 0, 0, 0, 0.8, 3.6, M, segs=14, bev=0.15)
+    C('d8cebd', 0, 0, 0, 1.8, 0.5, M, segs=18, bev=0.2)
 
 def patiochair(M):
-    B(WHITE, -1.4, 2.2, -1.4, 1.4, 2.6, 1.4, M, bev=0.2)
-    for (x, z) in ((-1.1, -1.1), (1.1, -1.1), (-1.1, 1.1), (1.1, 1.1)): B(WHITE, x - 0.15, 0, z - 0.15, x + 0.15, 2.2, z + 0.15, M, bev=0.05)
-    B(WHITE, -1.4, 2.6, -1.4, 1.4, 5.0, -1.1, M, bev=0.2)
+    B('e6dccb', -1.5, 0, -1.5, 1.5, 2.6, 1.5, M, bev=0.5)                               # (round 6: a tub chair, not a bistro chair)
+    B('e6dccb', -1.5, 2.6, -1.5, 1.5, 4.6, -0.7, M, bev=0.4)
+    B(CUSHION, -1.2, 2.6, -0.8, 1.2, 3.0, 1.3, M, bev=0.2)
 
 def lounger(M):
     B(WHITE, -2, 1.4, -5, 2, 1.8, 3, M, bev=0.2)
@@ -518,12 +518,9 @@ def trampoline(M):
         K.put(M_, 'plastic', col, bm, M)
     ring_(STEEL, r - 0.3, r + 0.3, 1.9, 2.5)
     ring_(PAD, r - 3.2, r + 0.5, 2.5, 3.2)                                              # the pad over the springs
-    C('4a4f55', 0, 2.2, 0, r - 3.0, 0.4, M, segs=48, bev=0.1)                           # the mat (judge round 2: not near-black)
-    for k in range(6):
-        a = k * 2 * math.pi / 6
-        x, z = math.cos(a) * r, math.sin(a) * r
-        B(STEEL, x - 0.42, 0, z - 0.42, x + 0.42, 2.2, z + 0.42, M, bev=0.12)
-        B(STEEL, x - 0.6, 0, z - 0.6, x + 0.6, 0.3, z + 0.6, M, bev=0.1)
+    C('5a6068', 0, 2.2, 0, r - 3.0, 0.4, M, segs=48, bev=0.1)                           # the mat (round 6: slate)
+    ring_('dad5cb', r - 0.4, r + 0.3, 0.0, 1.9)                                         # (round 6: a solid skirt, no thin legs)
+
 
 def tree(M):
     C(BARK, 0, 0, 0, 2.2, 15, M, segs=12, r2=1.5, bev=0.3)

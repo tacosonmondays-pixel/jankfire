@@ -129,7 +129,7 @@ local function switches(root: Instance, sf: Instance)
 end
 
 local SCREEN_ON = Color3.fromRGB(118, 146, 168)
-local SCREEN_OFF = Color3.fromRGB(102, 112, 124)   -- (judges rounds 3-5: slate glass, not a dead black slab)
+local SCREEN_OFF = Color3.fromRGB(62, 68, 78)   -- (judges rounds 3-6: off = a dim slate glow (Neon), not a black hole)
 local function props(pf: Instance, zone: BasePart?)
 	for _, p in pf:GetChildren() do
 		local kind = p:GetAttribute("Kind")
@@ -141,7 +141,7 @@ local function props(pf: Instance, zone: BasePart?)
 			prompt(tv, "TV", 12).Triggered:Connect(function()
 				on = not on
 				tv.Color = if on then SCREEN_ON else SCREEN_OFF
-				tv.Material = if on then Enum.Material.SmoothPlastic else Enum.Material.SmoothPlastic
+				tv.Material = if on then Enum.Material.SmoothPlastic else Enum.Material.Neon
 				glow.Enabled = on
 				sfx("hunt_switch", tv, 0.5)
 			end)

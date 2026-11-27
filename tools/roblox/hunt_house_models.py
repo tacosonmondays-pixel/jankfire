@@ -165,7 +165,7 @@ def ceilings():
     for (a, b, c, d) in ((14.0, -12.5, 24.5, -11.0), (14.0, -3.0, 24.5, -1.5), (23.0, -12.5, 24.5, -1.5)):   # (judge round 3: the nook's)
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     for (a, b, c, d) in ((26.0, -22.0, 42.0, -14.0), (25.2, 15.2, 42.8, 28.8), (14.0, -11.0, 23.0, -3.0)):   # (judge round 4: lit coves)
-        for (u0, v0, u1, v1) in ((a, b, c, b + 0.7), (a, d - 0.7, c, d), (a, b, a + 0.7, d), (c - 0.7, b, c, d)):
+        for (u0, v0, u1, v1) in ((a, b, c, b + 1.2), (a, d - 1.2, c, d), (a, b, a + 1.2, d), (c - 1.2, b, c, d)):
             K.B('hh_lamp', 'fff1dc', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
     for bx in (33.0, 46.0):                                           # (judge round 5: the kitchen's front half)
         K.B('hh_trim', TRIM, bx - 1.0, 10.6, -11.0, bx + 1.0, 12.0, 3.5, bev=0.3)
@@ -373,7 +373,7 @@ def window_dress():
             for (u0, u1) in ((a0 - 2.1, a0 - 0.2), (a1 + 0.2, a1 + 2.1)):
                 bx('hh_trim', col, u0, lv_y('G' if y0 < 12 else 'U') + 0.4, d0, u1, top - 0.2, d1, bev=0.4)
             r0, r1 = sorted((inner + ins * 0.6, inner + ins * 0.95))
-            bx('hh_trim', '4a4c50', a0 - 2.6, top - 0.15, r0, a1 + 2.6, top + 0.2, r1, bev=0.08)
+            bx('hh_trim', 'ddd3c2', a0 - 2.6, top - 0.3, r0, a1 + 2.6, top + 0.4, r1, bev=0.25)
         # outside on the front: shutters either side, a planter under the ground floor's
         if axis == 'x' and sgn > 0:
             o0, o1 = c1, c1 + 0.3
@@ -493,7 +493,7 @@ def stair():
     # the balcony's parapet and posts; the porch's columns
     for (a, b, c, d) in ((14, -56, 50, -55.4), (14, -56, 14.6, -42), (49.4, -56, 50, -42)):
         K.B('hh_ext', TRIM, a, 13.0, b, c, 16.4, d, bev=0.1)
-        K.B('hh_ext', WALNUT, a - 0.35, 16.4, b - 0.35, c + 0.35, 17.2, d + 0.35, bev=0.25)
+        K.B('hh_ext', TRIM, a - 0.35, 16.4, b - 0.35, c + 0.35, 17.4, d + 0.35, bev=0.45)
     K.B('hh_ext', OAKFLOOR, 14, 12.6, -56, 50, 13.0, -42, bev=0.05, flat=True)
     K.B('hh_ext', TRIM, 13.8, 11.8, -56.2, 50.2, 12.8, -42, bev=0.15)
     for px in (15.5, 48.5):
@@ -557,7 +557,7 @@ def roof():
         K.B('hh_ext', SIDING, xc - hw, 27.6, zf, xc + hw, top, zb, bev=0.08, flat=True)
         for sx in (-1, 1): K.B('hh_ext', TRIM, xc + sx * hw - 0.4, 27.6, zf - 0.35, xc + sx * hw + 0.4, top, zf + 1.2, bev=0.1)
         K.B('hh_win', GLASS, xc - 2.3, 29.8, zf - 0.12, xc + 2.3, 33.2, zf + 0.2, bev=0.02, kind='glass')
-        K.B('hh_ext', '6e604e', xc - 2.6, 29.5, zf - 1.8, xc + 2.6, 33.5, zf - 1.5, bev=0.05, kind='neon')   # (round 5: a lit attic behind)
+        K.B('hh_ext', '4e4a44', xc - 2.6, 29.5, zf - 1.8, xc + 2.6, 33.5, zf - 1.5, bev=0.05, kind='neon')   # (round 6: dim warm, not orange)
         for (a, b, c, e) in ((xc - 2.9, 29.2, xc + 2.9, 29.8), (xc - 2.9, 33.2, xc + 2.9, 33.8), (xc - 2.9, 29.8, xc - 2.3, 33.2),
                              (xc + 2.3, 29.8, xc + 2.9, 33.2), (xc - 0.2, 29.8, xc + 0.2, 33.2)):
             K.B('hh_win', TRIM, a, b, zf - 0.35, c, e, zf + 0.1, bev=0.08)
@@ -742,12 +742,12 @@ def lights():
             continue
         yc = y + 0.8
         if rid == 'kitchen':                                            # a drum pendant on a stem (judge round 1)
-            K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 0.3, yc - 9.6, segs=10, bev=0.06)
+            K.cyl('hh_lamp', '6e747c', x, 9.6, z, 0.3, yc - 9.6, segs=10, bev=0.06)
             K.cyl('hh_lamp', 'e8e1d2', x, 7.9, z, 1.6, 1.8, segs=24, bev=0.25)
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
             K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
             nook = abs(x - 18.7) < 0.1                                  # (judge round 3: the nook's blew its rug out)
-            K.light('spot', x, 7.6, z, (0, -1, 0), 1.1 if nook else 2.8, 14 if nook else 16, 100 if nook else 70, 'ffd9b0')
+            K.light('spot', x, 7.6, z, (0, -1, 0), 1.3 if nook else 3.4, 13 if nook else 14, 90 if nook else 60, 'ffd6a8')
             LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
