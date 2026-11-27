@@ -163,3 +163,13 @@ if has('w_burst__bu_dial_t'):
     go('w_burst__bu_dial_t', [lambda im: fill(im, (0, 0, 11, 11), mode(im, (0, 0, 11, 11)))])
 if has('w_lmg__lmg_label_t'):
     go('w_lmg__lmg_label_t', [lambda im: fill(im, (0, 0, 72, 11), mode(im, (0, 0, 72, 11)))])
+if has('w_shredder__sd_dial_t'):
+    def dial(im):
+        """the gauge's word: every dark pixel inside the dial on the word's rows goes to the dial's cream (the place's
+        copy, 107586183076349 -> 133449931456306, is a brighter recolour of this atlas: cleaned the same way, 176 pixels)"""
+        cream = mode(im, (20, 20, 44, 40), skip=dark)
+        for y in range(40, 58):
+            inside = [x for x in range(64) if not dark(im.getpixel((x, y)))]
+            for x in range(inside[0] + 1, inside[-1]):
+                if dark(im.getpixel((x, y))): im.putpixel((x, y), cream)
+    go('w_shredder__sd_dial_t', [dial])
