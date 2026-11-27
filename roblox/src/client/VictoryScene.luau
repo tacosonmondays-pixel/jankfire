@@ -236,6 +236,9 @@ local function prebuild(uids: { number })
 		-- it behind the live camera put it in the scene lens's view on the cut frame: the 27 Nov frame check, left open)
 		m:PivotTo(CFrame.new(STAGE_AT + Vector3.new(i * 8, -400, 0)))
 		m.Parent = readyFolder
+		-- (its weapon too, now: a mesh is only built for drawing once it's in the workspace, and one cloned on the scene's
+		-- first frame came in 2-6 frames late - finishers' lesson, 27 Nov)
+		pcall(arm, m, uid)
 		prebuilt[uid] = m
 	end
 end
@@ -279,7 +282,7 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, 
 	-- (a victory pose holds the weapon up to show it; a dance emote doesn't - a gun along a dancing forearm reads wrong)
 	if not id then
 		id = (V.POSES[pose] or V.POSES.victory).anim
-		pcall(arm, m, entry.uid)
+		if not m:FindFirstChild("VictorWeapon") then pcall(arm, m, entry.uid) end -- (a ready body has it already)
 	end
 	if animator and not still then
 		local a = Instance.new("Animation")
@@ -986,7 +989,7 @@ function Scene.start(msg: any, opts: any?): boolean
 		setLook(win)
 		frame = frameFor()
 		set:PivotTo(frame)
-		set.Parent = folder
+		if not set:IsDescendantOf(workspace) then set.Parent = folder end -- (parked at the warm: drawn already)
 		-- the accent: the winning side's colour on the stage's lip
 		local wt = tonumber(msg.winner) or 1
 		local accent = TeamColors.color(((wt - 1) % 4) + 1)
@@ -1128,6 +1131,17 @@ function Scene.warm(spot: any?, uids: { number }?): any?
 	local sets = {}
 	local k = kitOf()
 	if k then table.insert(sets, k) end -- (THE RISER, the stings, the walk's sounds)
+	-- (no spot of its own: THE RISER, put in the workspace now, out of every view - preloaded isn't drawn)
+	if not (type(spot) == "table" and typeof(spot.hero) == "CFrame") and not st then
+		local set = buildSet()
+		if set and not set:IsDescendantOf(workspace) then
+			local park = workspace:FindFirstChild("JankVictorySet") or Instance.new("Folder")
+			park.Name = "JankVictorySet"
+			park.Parent = workspace
+			set:PivotTo(frameFor())
+			set.Parent = park
+		end
+	end
 	-- (the bodies' looks: clothes and faces never drawn before came in grey on the first frames - the 27 Nov frame check)
 	for _, uid in uids or {} do
 		local t = Replay.templates and Replay.templates[uid]
@@ -1171,7 +1185,8 @@ function Scene.stop(why: string?)
 	st = nil
 	pcall(function() RunService:UnbindFromRenderStep("JankVictoryCam") end)
 	for _, b in s.bodies do if b.track then pcall(function() (b.track :: AnimationTrack):Stop(0) end) end end
-	if setModel then setModel.Parent = nil end -- (kept for the next match)
+	-- (THE RISER stays parked in the workspace, 48,000 studs out, so it's drawn the next time without a pop)
+	if setModel and setModel:IsDescendantOf(s.folder) then setModel.Parent = nil end
 	s.folder:Destroy()
 	s.cc:Destroy(); s.bloom:Destroy()
 	if s.sting and s.sting.Parent then s.sting:Destroy() end
