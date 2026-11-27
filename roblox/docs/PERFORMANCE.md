@@ -116,6 +116,15 @@ the shot plays.
   Hand it to `CineKit.play(shots, { pre = warm })` and play releases it at stop, or call `warm.release()` yourself.
 - **Mesh detail.** A game script can't change `RenderFidelity` ("Cannot change SolidModel RenderFidelity during
   Run-Time"). Set a film's hero meshes to Precise in Edit, on the kit. The zombies helicopters are Precise.
+- **Fetched is not drawn (finishers, 27 Nov).** A mesh is only built for drawing once it is in the workspace.
+  Preloading fetches the asset, but a clone made on a film's first frame still pops in.
+  - The case: Tidecrest's katana and sheath were placed, and fetched (`GetAssetFetchStatus` Success), from frame 1. They
+    were cloned into the workspace on that frame and showed up 5-7 frames into the first shot, with the preload and
+    without it. The set, built ahead and parked, never had the problem.
+  - The rule: during the prewarm, before the first frame, park every film object in the workspace (out of view: the
+    warm stage, under the set's floor), and let the film take those copies (`FinisherPro` `parkKit`).
+  - A second run in the same session hides the problem, because the meshes are built by then. Check the first film of a
+    fresh Play.
 - **Broken surfaces show up as pop-in too.** "Failed to upload TexturePack ... Referenced Asset 9 is NOT found" means a
   SurfaceAppearance names a glTF texture index that was never uploaded (the zombies helicopters' glow pieces, fixed by
   pointing their emissive mask at the glow atlas). Studio's output lists every one at load.
