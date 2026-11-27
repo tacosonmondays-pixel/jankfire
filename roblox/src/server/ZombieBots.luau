@@ -6,7 +6,7 @@
 --   2. FIGHT the nearest zombie it can see (one at a window too), with a person's aim and trigger finger: bursts from
 --      an automatic, one pellet roll per pellet from a shotgun; it backs off from the ones in its face.
 --   3. SHOP when nothing's close: throws the power, buys a better wall gun, opens the cheapest door out of the open
---      areas (one door a round, from round 2), voids its gun at the Warranty Voider, buys Jank Cola then Get Up Juice.
+--      areas (one door a round for the bots together, from round 2), voids its gun at the Warranty Voider, buys Jank Cola then Get Up Juice.
 --      Same prices and the same checks as yours (Zombies.X / ZombieExtra's ext.bot*): it pays with its own credits.
 --   4. HOLD A POST: each bot takes a different window of the open areas near the players, stands a few studs inside it
 --      facing it, and nails the planks back between fights; with no window near, a spot round the players. So the
@@ -44,6 +44,7 @@ type St = {
 	shopT: number, doorRound: number, nailT: number, burst: number, doing: string, failT: { [string]: number },
 }
 local ST: { [any]: St } = setmetatable({}, { __mode = "k" }) :: any
+local SQUAD_DOOR: { [any]: number } = setmetatable({}, { __mode = "k" }) :: any -- (game -> the round the bots last opened a door)
 local function st(m: any): St
 	local s = ST[m]
 	if not s then
@@ -93,13 +94,21 @@ local function areaOpen(g: any, p: Vector3): boolean
 end
 
 -- ------------------------------------------------------------------ guns: how good one is for a bot
--- (damage a second to a zombie, roughly: hitscan guns only, the ones botShoot can fire)
+-- (damage a second to a zombie IN A BOT'S HANDS, held up over a whole magazine and its reload: the bot's own trigger
+-- timing from shoot() below; hitscan guns only, the ones it can fire. 26 Nov play test: scored on the gun's raw rate,
+-- the starting revolver (2.5 a second) outranked every wall gun near the start and no bot bought one; held fire, its
+-- six rounds and their reload put it where it belongs)
+local START = { revolver = true, pistol = true } -- (the bots' starting guns: anything off a wall beats them)
 local function score(wid: string): number
 	local w = W[wid]
 	if not w or w.kind ~= "hitscan" or not w.mag then return 0 end
-	local rate = math.min(Weapons.fireRate(w, 100), 14)
-	local d = (w.dmg :: number) * ((w.pellets :: number?) or 1) * (if wid == "revolver" or Weapons.base(wid) == "revolver" then R.revolverDmg / math.max(1, w.dmg :: number) else 1)
-	return d * rate * (if (w.pellets or 1) > 1 then 0.55 else 1) -- (a shotgun's pellets don't all land)
+	local rate = math.max(0.5, Weapons.fireRate(w, 100))
+	local gap = if w.auto then 1.15 / rate + 0.4 / 6.5 else 1 / rate + 0.27
+	local mag = w.mag :: number
+	local cycle = mag * gap + ((w.reload :: number?) or 1.5)
+	local d = (w.dmg :: number) * ((w.pellets :: number?) or 1) * (if Weapons.base(wid) == "revolver" then R.revolverDmg / math.max(1, w.dmg :: number) else 1)
+	local s = d * mag / cycle * (if (w.pellets or 1) > 1 then 0.55 else 1) -- (a shotgun's pellets don't all land)
+	return s * (if START[wid] then 0.8 else 1)
 end
 local function setGun(g: any, m: any, wid: string)
 	local b = m.bot
@@ -264,7 +273,7 @@ local function decide(g: any, m: any, s: St, pos: Vector3): Goal?
 	local n = now()
 	local c = m.c
 	-- how far everything is on foot from here (one field, redone at most every 4 s)
-	local own = fieldTo(g, s.own, pos, 4)
+	local own = fieldTo(g, s.own, pos, 6)
 	local function far(at: Vector3): number return Nav.dist(g.nav, g.open, own, at) end
 	local function ok(key: string): boolean return n >= (s.failT[key] or 0) end
 	local ext = Z.ext
@@ -301,7 +310,7 @@ local function decide(g: any, m: any, s: St, pos: Vector3): Goal?
 		end }
 	end
 	-- 3. a door (one a round each, from round 2: the squad's spending isn't all on doors)
-	if g.n >= 2 and s.doorRound ~= g.n then
+	if g.n >= 2 and s.doorRound ~= g.n and SQUAD_DOOR[g] ~= g.n then -- (26 Nov play test: a door a bot a round opened 7 by round 8; now one a round for the bots together)
 		local bestI, bestK = nil, INF
 		for _, i in frontier(g) do
 			local d = g.map.doors[i]
@@ -318,7 +327,8 @@ local function decide(g: any, m: any, s: St, pos: Vector3): Goal?
 			local d = g.map.doors[i]
 			return { kind = "door", id = tostring(i), at = doorSide(g, i) :: Vector3, why = "open " .. d.label, t0 = n, act = function()
 				if g.open[i] or m.c < d.price or not X.inOpenArea(m) then return end
-				if X.pay(m, d.price) then X.openDoor(g, i, m); s.doorRound = g.n end
+				if SQUAD_DOOR[g] == g.n then return end
+				if X.pay(m, d.price) then X.openDoor(g, i, m); s.doorRound = g.n; SQUAD_DOOR[g] = g.n end
 			end }
 		end
 	end
@@ -399,7 +409,7 @@ local function step(g: any, m: any, dt: number)
 	if th and not th.f.alive then th = nil; b.th = nil end
 	local o = b.task
 	local function walkTo(at: Vector3, fld: Field): Vector3
-		local p = Nav.downhill(g.nav, g.open, fieldTo(g, fld, at, 3), pos)
+		local p = Nav.downhill(g.nav, g.open, fieldTo(g, fld, at, 4 + (m.bot.i % 3) * 0.5), pos) -- (staggered ages: three bots never refresh in one tick)
 		return if p then flat(p - pos) else flat(at - pos)
 	end
 	if o and o.down then

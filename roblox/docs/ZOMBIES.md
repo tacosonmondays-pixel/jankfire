@@ -233,3 +233,36 @@ ramp. Before: 239 hits (12 entrances blocked, 6 window lanes, the rest props sun
   their south doorways, the gym's ball rack off the weight room door, the lab skeleton off the hall door, the lab fume
   cupboard off a window, the locker rooms' lockers from under their windows, the upstairs lockers off the stair door,
   the courtyard bench off the lobby door.
+
+### The play test (26 Nov, place versions 1370 / 1389; one solo game with 3 bots, Studio)
+- Rounds 1-3 natural. The bots took windows 1 and 2 of the lobby and a spot of their own, out-killed the player (34 /
+  23 / 18 kills to 0 by round 10) and opened doors by themselves from round 2: Cafeteria (Bot 3, before the player
+  could), West Hall, Courtyard, Gym, Weight Room, Science Lab. By round 8 (credits set to 9000 to test shopping, the
+  power thrown) Bots 2 and 3 walked to the gym wing and bought LMGs; all three dropped what they were doing to revive
+  the player when they went down, twice, and they were back up each time. At round 10 all four were up.
+- HP seen in the game: Chonk 388 at round 8 (2 x 194; was 679); THE FLOOR MANAGER 1688 at round 8 (was 7760); THE
+  MASCOT 2385 at round 10 (was 11750). Server cost with 3 thinking bots: 2.2 ms a tick on average, 20 ms at worst.
+- Found and fixed after it (push 4): no bot bought the lobby SMG. Scored on raw fire rate the starting revolver (2.5
+  shots a second) outranked it; a gun is now scored on what it does in a bot's hands over a magazine and its reload, and
+  the starting guns count 0.8 (revolver 32, SMG 42, AR 47, LMG 50, burst 71). Doors: one a round per bot opened 7 by
+  round 8; now one a round for the bots together. A test round jump left the boss bar up (cleared now). In a real game
+  the lit halls by the courtyard still read bright: the look's exposure -0.1 -> -0.35.
+- The door prompt works on F; a test has to stand within 9 studs (my first "it doesn't fire" was a test standing too
+  far off).
+- Clip (training-v2's PolishBackup.Clip v2) on the school: each kit layer (sc_furn_G, sc_wall_G...) is one merged mesh,
+  so its PROPS pass reads layer against layer (v2B 166, v2A 119 "sunk": walls in walls, not props) and can't count props
+  here; school_clip.py on the layout's own boxes is the props count (239 -> 0). Its DOORWAYS pass (15 ground-floor
+  doors): 2 flagged both before (v2A, the old layout) and after: the courtyard bench and a cafeteria table 4 studs off
+  the door lines, with Clip's player box reaching 5. Not in the opening; left as they are.
+- Frames: roblox/docs/zombies/7-fix-pass-before-after.jpg.
+
+### Push 4 checked (27 Nov, place version 1521; one short solo game with 3 bots)
+- Wall guns: with credits (botc 1500 in round 1) all three bots walked to the lobby SMG and bought it within 2 s, then
+  went back to their windows (1, 2, 3).
+- Doors: one for the squad a round. Round 2: Bot 3 opened the Cafeteria (Bot 2 had picked the Locker Hall and stood
+  down). Round 5: the Locker Hall.
+- Revives: when the player went down all three turned to them; once one was on it the other two went back to their
+  windows within 2 s. Kills by round 5: 13 / 13 / 15 (the player stood still for the photos). Server cost 1.0 ms a
+  tick on average, 8.7 ms at worst.
+- The lobby in a real game now reads as night (exposure -0.35), the wall buys still lit. Frames:
+  roblox/docs/zombies/8-bots-run-27nov.jpg.

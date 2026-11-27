@@ -1277,6 +1277,7 @@ function Zombies.round(n: number)
 	local g = G
 	if not g then return end
 	for _, z in table.clone(g.mobs) do removeMob(g, z) end
+	for _, k in { "BossName", "BossHp", "BossMax" } do g.model:SetAttribute(k, nil) end -- (a boss swept off with the rest: no stale bar)
 	g.n = math.max(0, n - 1)
 	g.st = "break"
 	g.untilT = now()
