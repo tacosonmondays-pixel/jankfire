@@ -371,13 +371,11 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	"damascus", -- both: the same steel as Mastery Damascus
 	"receipt", -- both: the same office paper as Corporate Memo
 	"qr", -- both: the same black and white alternation as Barcode
-	-- the second pass (27 Nov): a third blind critic broke the split AI calls (each of these: 2 of 3 critics "AI")
-	"lava", -- smeared glows inside the cells
-	"kintsugi", -- blurry gold dabs, ghost hairlines
+	-- the second pass (27 Nov): a third blind critic broke the split AI calls (each of these: 2 of 3 critics "AI").
+	-- Lava, Kintsugi, Marble and Moss came back the same day: the owner picked them from the gallery of the retired
+	-- (Lava and Kintsugi Exotic again, Roster.EXOTIC); Urushi is the owner's to decide (new-UV photos sent)
 	"urushi", -- lopsided wreaths, scribbly linework
 	"copper", -- (Verdigris) blurry blobs, cloudy insides
-	"marble", -- wormy veins, puffy airbrushed shading
-	"moss", -- fuzzy noise clouds, no shapes
 	-- and the plain colours checked in game: a flat colour only a shade off another one in its family goes
 	"cream", -- between Fridge White (cleaner white) and Washi (the same cream, with paper flecks)
 	"magenta", -- Hot Magenta: Pink, louder (Pink is the free one)
@@ -387,9 +385,10 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	-- pistol) at the new 0.6 m wrap tile (tools/roblox/gun_uvs.py); both said RETIRE, or 3 reworks failed. The 12 stamped
 	-- grids that pass retired (Asanoha, Seigaiha, Shibori, Hazard, Checkered Flag, Missing Texture, Spreadsheet, Neon
 	-- Hex, CRT, Bubble Wrap, Candy Corn, CORP) came back the same day: the owner meant big motifs breaking across the
-	-- gun ("Stamped ones are okay if it's a pattern"), not even repeats
+	-- gun ("Stamped ones are okay if it's a pattern"), not even repeats. Of those, the owner then crossed out Spreadsheet
+	-- on the gallery: it stays retired. Wood Burl came back, picked from the gallery; Bubblegum is the owner's to decide
+	"sheet", -- a spreadsheet cell grid (the owner's cross on the gallery)
 	"bubblegum", -- (3 reworks) round bubbles squashed and cut on every gun
-	"burl", -- (3 reworks)
 	"ketchup", -- (3 reworks)
 	"sushi", -- (3 reworks)
 	"pizza", -- (3 reworks) round pepperoni cut at the edges
