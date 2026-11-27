@@ -524,7 +524,8 @@ function F.play(msg: any): boolean
 	print(("[jankfire] FinisherStart: %s %s%s, %.2f s"):format(tostring(msg.id), tostring(msg.kind), if s.scene then " scene" else "", s.total))
 	-- (a safety net: whatever ends it, the flag that holds back killcams never outlives it)
 	task.delay(s.total + 3, function()
-		if not st and me:GetAttribute("Finishing") then me:SetAttribute("Finishing", nil) end
+		-- (only its own true: the victory scene sets "victory" there, 27 Nov)
+		if not st and me:GetAttribute("Finishing") == true then me:SetAttribute("Finishing", nil) end
 	end)
 	local ph = os.clock()
 	controls(false)

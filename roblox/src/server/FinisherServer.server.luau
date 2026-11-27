@@ -41,6 +41,9 @@ local Weapons = require(Shared:WaitForChild("Weapons")) :: any
 local Fight = require(Jankfire:WaitForChild("Fight")) :: any
 local Matches = require(Jankfire:WaitForChild("Matches")) :: any
 local Recorder = require(Jankfire:WaitForChild("Recorder")) :: any
+-- (27 Nov: the cutscene as the match's victory scene - its best winner's finisher against the enemy best, asked for by
+-- the victory scene; filled in below)
+local FV = require(Jankfire:WaitForChild("FinisherVictory")) :: any
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local remote = Remotes:FindFirstChild("Finisher") :: RemoteEvent?
@@ -54,6 +57,8 @@ local R = remote :: RemoteEvent
 
 type Kill = { k: any, v: any, w: string, t: number, skin: string?, fid: string? }
 local lastKill: { [any]: Kill } = {} -- each live match's last kill by a player
+-- each match's kills per player per weapon (which equipped finisher a player brings to the victory scene)
+local killsBy: { [any]: { [Player]: { [string]: number } } } = setmetatable({}, { __mode = "k" }) :: any
 local played: { [any]: boolean } = {} -- matches whose last round already played the full cut
 -- the viewers of a match's full cut who haven't reported their scene done yet (Matches.endMatch holds the end screen
 -- on m.finisherUntil: the scene's length + HOLD_SLACK s at most, brought in when this set empties)
@@ -216,6 +221,11 @@ Fight.onKill(function(info: any)
 	if not m then return end
 	local fid, skin = ownedFor(k, w)
 	lastKill[m] = { k = k, v = v, w = info.w, t = t, fid = fid, skin = skin }
+	local byP = killsBy[m] or {}
+	killsBy[m] = byP
+	local c = byP[kp] or {}
+	byP[kp] = c
+	c[w] = (c[w] or 0) + 1
 end)
 
 local function onRound(m: any, winner: number): (string?, any)
@@ -226,6 +236,8 @@ local function onRound(m: any, winner: number): (string?, any)
 		victimPlayer = x.v.kind == "player" or x.testVictim == true, sameTeam = teamOf(m, kp) == winner, event = "round",
 		wins = m.wins[winner], need = Matches.WIN, classic = m.rules ~= nil })
 	if not kind or not x.fid or not x.skin then return nil, "decided none" end
+	-- (the victory scene live: the match-winning round's cut is its now - the best winner against the enemy best)
+	if kind == "full" and FV.ON then return nil, "the victory scene's" end
 	if kind == "full" then
 		played[m] = true
 		-- (a scene runs longer than the old cut: the end screen, the trip home and the play of the match wait for it)
@@ -266,6 +278,45 @@ local function warm(m: any)
 	for _, p in everyone(m) do R:FireClient(p, { t = "finisher", kind = "warm", scenes = list }) end
 end
 
+-- ------------------------------------------------------------------ the victory scene's (server/FinisherVictory.luau)
+function FV.finisherOf(p: Player, m: any): any?
+	local s = p:GetAttribute("Skins")
+	if type(s) ~= "string" then return nil end
+	local counts = (m and killsBy[m] and killsBy[m][p]) or {}
+	local best, bestN = nil, -1
+	for wid in string.gmatch(s, "([%w_]+)=[%w_]+") do
+		local skin = GunSkins.skinFor(p, wid)
+		local fid, row = Finishers.forSkin(skin)
+		local sid = row and (row :: any).scene
+		if fid and skin and type(sid) == "string" then
+			local n = counts[wid] or 0
+			if n > bestN then
+				best, bestN = { fid = fid, skin = skin, w = wid, scene = sid, len = Finishers.length("full", isMelee(wid), row) }, n
+			end
+		end
+	end
+	return best
+end
+function FV.play(m: any, kp: Player, vp: Player): (boolean, string, number?)
+	if type(m) ~= "table" or typeof(kp) ~= "Instance" or typeof(vp) ~= "Instance" or not kp.Parent or not vp.Parent then
+		return false, "a player left", nil
+	end
+	local c = FV.finisherOf(kp, m)
+	if not c then return false, "no scene finisher equipped", nil end
+	local k, v = Fight.of(kp), Fight.of(vp)
+	if not k or not v then return false, "not fighters", nil end
+	local all = everyone(m)
+	holdFor(m, c.fid, all)
+	local ok, why = play({ k = k, v = v, w = c.w, t = os.clock() }, "full", all, c.fid, c.skin)
+	if not ok then
+		watching[m] = nil
+		m.finisherUntil = nil
+		return false, why, nil
+	end
+	played[m] = true
+	return true, why, c.len
+end
+
 Matches.onRound(function(m: any, winner: number)
 	onRound(m, winner)
 	local top = 0
@@ -281,7 +332,7 @@ Matches.onEnd(function(m: any, winner: number?)
 	local done = played[m]
 	lastKill[m] = nil
 	played[m] = nil
-	if done or not x or not winner then return end
+	if done or not x or not winner or FV.ON then return end
 	local kp = x.k.ref :: Player
 	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
 		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "end", classic = m.rules ~= nil })
@@ -379,6 +430,29 @@ if RunService:IsStudio() then
 				end)
 			end
 			return { kind = kind, sent = res, viewers = #everyone(m), match = m.id, hold = if m.finisherUntil then m.finisherUntil - os.clock() else nil }
+		elseif op == "victory" and typeof(a) == "Instance" and a:IsA("Player") then
+			-- ("victory", player, n|name, skin?): the victory scene's call with one tester - the player against a live
+			-- training dummy (a player in a real match), to the player only; skin: wear-free (the arm test's way)
+			local list = {}
+			for _, x in Fight.all do if x.kind == "dummy" and x.alive then table.insert(list, x) end end
+			local t = list[tonumber(b) or 1]
+			if type(b) == "string" and not tonumber(b) then
+				t = nil
+				for _, x in list do if x.name == b then t = x; break end end
+			end
+			local f = Fight.byPlayer[a]
+			if not f or not t then return "no fighter or no live dummy (" .. #list .. " live)" end
+			local cand = FV.finisherOf(a, Matches.raw(a))
+			if type(c) == "string" then
+				local fid, row = Finishers.forSkin(c)
+				local wid = nil
+				for w in Weapons.list do
+					if string.sub(c, 1, #w + 1) == w .. "_" and (not wid or #w > #wid) then wid = w end
+				end
+				cand = if fid and row and (row :: any).scene and wid then { fid = fid, skin = c, w = wid, scene = (row :: any).scene } else nil
+			end
+			if not cand then return "no scene finisher for " .. a.Name .. " (" .. tostring(c) .. ")" end
+			return table.pack(play({ k = f, v = t, w = cand.w, t = os.clock() }, "full", { a }, cand.fid, cand.skin))
 		elseif op == "state" then
 			local out = { armed = {}, matches = {} }
 			for p, x in armed do out.armed[p.Name] = x end
