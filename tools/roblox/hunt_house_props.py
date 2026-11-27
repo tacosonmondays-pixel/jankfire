@@ -77,7 +77,7 @@ def media(M):
     B(DARK, -7.6, 0, -1.5, 7.6, 0.4, 1.5, M, bev=0.05)
 
 def tvwall(M):
-    B('3a3f46', -6, 0, -0.3, 6, 7, 0.55, M, bev=0.2)                                   # (judge round 2: a bezel)
+    B('3a3f46', -6.5, -0.1, -0.3, 6.5, 7.1, 0.55, M, bev=0.3)                           # (judge rounds 2 and 8: a real bezel)
     B('5c6670', -5.4, 0.6, 0.35, 5.4, 6.4, 0.5, M, bev=0.03)                         # (round 5: slate glass)
 
 def bookcase(M, w=8.0, h=12.0):
@@ -124,8 +124,8 @@ def hearth(M):
     B('e07a3a', -2.4, 0.6, -1.7, 2.4, 1.05, -0.4, M, bev=0.15, kind='neon')            # embers (judge round 4: a real glow)
     for sx in (-1, 1): B(OFFWHITE, sx * 3.6 - 0.4, 0, -0.2, sx * 3.6 + 0.4, 4.4, 0.7, M, bev=0.2)   # the surround's chamfered jambs
     for z in (-1.3, -0.5): B(BARK, -2.2, 0.6, z - 0.35, 2.2, 1.3, z + 0.35, M, bev=0.3)   # two logs
-    for (x, h) in ((-0.9, 1.6), (0.2, 2.2), (1.1, 1.4)):                                  # (round 5) three flame tongues
-        K.plate(M_, 'ff9446', [(x - 0.55, 0.0), (x + 0.55, 0.0), (x + 0.1, h)], 0.2, M @ Tr(0, 1.2, -1.0), bev=0.04, kind='neon')
+    for (x, h) in ((-1.25, 2.2), (0.1, 3.0), (1.35, 2.0)):                                # (rounds 5 and 8) three flame tongues
+        K.plate(M_, 'ff9446', [(x - 0.75, 0.0), (x + 0.75, 0.0), (x + 0.1, h)], 0.3, M @ Tr(0, 1.2, -1.0), bev=0.06, kind='neon')
 
 def rug(M, w=24, d=16, col='b4a893', edge='8e8170'):
     B(edge, -w / 2, 0, -d / 2, w / 2, 0.08, d / 2, M, bev=0.03)

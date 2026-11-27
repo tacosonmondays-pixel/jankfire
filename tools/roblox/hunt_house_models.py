@@ -325,14 +325,18 @@ def win_frame(axis, c0, c1, a0, a1, y0, y1, kind, outside_sgn):
     so = outside_sgn
     # outside: a stone sill and lintel on the brick floor, white trim boards on the siding floor
     brick_floor = y0 < 12
+    jw = 0.0 if kind == 'side' else 1.0                  # (judges round 8: flush windows, thin trim) a deep surround
     if brick_floor:
-        bx('hh_ext', STONE, a0 - 0.8, y0 - 0.55, min(out0, out0 + so * 0.9), a1 + 0.8, y0, max(out0, out0 + so * 0.9), bev=0.15)
-        bx('hh_ext', STONE, a0 - 0.9, y1, min(out0, out0 + so * 0.3), a1 + 0.9, y1 + 0.9, max(out0, out0 + so * 0.3), bev=0.12)
+        bx('hh_ext', STONE, a0 - 0.6 - jw, y0 - 0.7, min(out0, out0 + so * 1.2), a1 + 0.6 + jw, y0, max(out0, out0 + so * 1.2), bev=0.2)
+        bx('hh_ext', STONE, a0 - 0.4 - jw, y1, min(out0, out0 + so * 0.6), a1 + 0.4 + jw, y1 + 1.2, max(out0, out0 + so * 0.6), bev=0.18)
+        if jw:
+            for (u0, u1) in ((a0 - jw, a0), (a1, a1 + jw)):
+                bx('hh_ext', STONE, u0, y0, min(out0, out0 + so * 0.5), u1, y1, max(out0, out0 + so * 0.5), bev=0.12)
     else:
-        bx('hh_ext', TRIM, a0 - 0.8, y0 - 0.5, min(out0, out0 + so * 0.7), a1 + 0.8, y0, max(out0, out0 + so * 0.7), bev=0.12)
-        bx('hh_ext', TRIM, a0 - 0.8, y1, min(out0, out0 + so * 0.35), a1 + 0.8, y1 + 0.8, max(out0, out0 + so * 0.35), bev=0.1)
-        for (u0, u1) in ((a0 - 0.8, a0), (a1, a1 + 0.8)):
-            bx('hh_ext', TRIM, u0, y0, min(out0, out0 + so * 0.35), u1, y1, max(out0, out0 + so * 0.35), bev=0.1)
+        bx('hh_ext', TRIM, a0 - 0.6 - jw, y0 - 0.7, min(out0, out0 + so * 1.0), a1 + 0.6 + jw, y0, max(out0, out0 + so * 1.0), bev=0.2)
+        bx('hh_ext', TRIM, a0 - 0.4 - jw, y1, min(out0, out0 + so * 0.8), a1 + 0.4 + jw, y1 + 0.8, max(out0, out0 + so * 0.8), bev=0.15)
+        for (u0, u1) in ((a0 - max(jw, 0.8), a0), (a1, a1 + max(jw, 0.8))):
+            bx('hh_ext', TRIM, u0, y0, min(out0, out0 + so * 0.7), u1, y1, max(out0, out0 + so * 0.7), bev=0.12)
     # inside: architrave round it and a board sill
     in0 = c0 if outside_sgn > 0 else c1
     si = -outside_sgn
@@ -376,12 +380,12 @@ def window_dress():
             bx('hh_trim', 'ddd3c2', a0 - 2.6, top - 0.3, r0, a1 + 2.6, top + 0.4, r1, bev=0.25)
         # outside on the front: shutters either side, a planter under the ground floor's
         if axis == 'x' and sgn > 0:
-            o0, o1 = c1, c1 + 0.3
-            for (u0, u1) in ((a0 - 2.2, a0 - 0.5), (a1 + 0.5, a1 + 2.2)):
-                bx('hh_ext', '5c656d', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1 + 0.2, bev=0.1)
+            o0, o1 = c1, c1 + 0.6                                         # (judges round 8: thin shutters) 0.8 thick
+            for (u0, u1) in ((a0 - 3.0, a0 - 1.2), (a1 + 1.2, a1 + 3.0)):
+                bx('hh_ext', '5e6670', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1 + 0.2, bev=0.2)
                 ym = (y0 + y1) / 2
-                for (v0, v1) in ((y0 + 0.25, ym - 0.2), (ym + 0.2, y1 - 0.25)):        # two raised panels
-                    bx('hh_ext', '646d75', u0 + 0.25, v0, o1 + 0.15, u1 - 0.25, v1, o1 + 0.35, bev=0.08)
+                for (v0, v1) in ((y0 + 0.3, ym - 0.2), (ym + 0.2, y1 - 0.3)):        # two raised panels
+                    bx('hh_ext', '687079', u0 + 0.3, v0, o1 + 0.1, u1 - 0.3, v1, o1 + 0.35, bev=0.1)
             if y0 < 12:
                 bx('hh_ext', 'a3907a', a0 - 0.3, y0 - 2.3, c1 + 0.9, a1 + 0.3, y0 - 0.75, c1 + 2.6, bev=0.2)
                 n = max(2, int((a1 - a0) // 2.4))
@@ -424,8 +428,8 @@ def door_frames():
         elif (x1 - x0) <= 2.1: axis = 'z'
         a0, a1 = (x0, x1) if axis == 'x' else (z0, z1)
         c0, c1 = (z0, z1) if axis == 'x' else (x0, x1)
-        w = 1.0 if kind in ('door', 'back', 'balc') else 1.3          # (judge round 1: thin casings; was 0.7 / 1.0)
-        proud = 0.35 if kind in ('door', 'back', 'balc') else 0.45
+        w = 1.0 if kind in ('door', 'back', 'balc') else 1.6          # (judge rounds 1 and 8: thin casings; was 0.7 / 1.0, 1.3)
+        proud = 0.5 if kind in ('door', 'back', 'balc') else 0.7
         if kind == 'arch' and max(x1 - x0, z1 - z0) >= 12.0: w, proud = 2.0, 0.6     # (judge round 3: portals)
         def bx(model, col, u0, v0, w0, u1, v1, w1, bev=0.1):
             if axis == 'x': K.B(model, col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
@@ -500,9 +504,9 @@ def stair():
         column(px, -55.0, L.DECK, 11.8)
 
 def column(x, z, y0, y1):
-    K.B('hh_ext', TRIM, x - 1.0, y0 + 0.8, z - 1.0, x + 1.0, y1 - 0.8, z + 1.0, bev=0.2)
-    K.B('hh_ext', TRIM, x - 1.4, y0, z - 1.4, x + 1.4, y0 + 0.8, z + 1.4, bev=0.18)
-    K.B('hh_ext', TRIM, x - 1.4, y1 - 0.8, z - 1.4, x + 1.4, y1, z + 1.4, bev=0.18)
+    K.B('hh_ext', TRIM, x - 1.25, y0 + 1.0, z - 1.25, x + 1.25, y1 - 0.9, z + 1.25, bev=0.3)     # (judges round 8: thin columns)
+    K.B('hh_ext', TRIM, x - 1.65, y0, z - 1.65, x + 1.65, y0 + 1.0, z + 1.65, bev=0.25)
+    K.B('hh_ext', TRIM, x - 1.65, y1 - 0.9, z - 1.65, x + 1.65, y1, z + 1.65, bev=0.25)
 
 # ================================================================ the roof, the porch, the garage
 def roof():
@@ -517,7 +521,7 @@ def roof():
         ln = math.sqrt((p1[1] - p0[1]) ** 2 + (p1[2] - p0[2]) ** 2)
         oriented('hh_roof', SHINGLE, p0, X, Y, Z, R['x0'], -0.9, 0.0, R['x1'], 0.0, ln + 0.4, bev=0.12)
         # the fascia along the eave and the soffit back to the wall
-        K.B('hh_roof', TRIM, R['x0'] - 0.1, L.EAVE - 2.7, min(ze, ze + sgn * 1.0), R['x1'] + 0.1, L.EAVE - 0.7, max(ze, ze + sgn * 1.0), bev=0.25)
+        K.B('hh_roof', TRIM, R['x0'] - 0.1, L.EAVE - 2.9, min(ze, ze + sgn * 1.4), R['x1'] + 0.1, L.EAVE - 0.6, max(ze, ze + sgn * 1.4), bev=0.4)
         K.B('hh_roof', TRIM, R['x0'], L.EAVE - 1.5, min(ze, sgn * (L.Z1 if sgn > 0 else -L.Z0) * 1.0), R['x1'], L.EAVE - 1.1,
             max(ze, sgn * (L.Z1 if sgn > 0 else -L.Z0)), bev=0.05)
         # the barge boards up the rakes
@@ -549,7 +553,7 @@ def roof():
     K.plate('hh_ext', SIDING, tri, 0.6, Tr(0, 0, L.Z1), bev=0.05)
     K.B('hh_ext', TRIM, CG['x0'] - 0.3, L.EAVE - 0.8, L.Z1, CG['x1'] + 0.3, L.EAVE + 0.3, L.Z1 + 0.9, bev=0.2)
     K.B('hh_ext', TRIM, -3.6, 27.4, L.Z1 + 0.45, 3.6, 33.2, L.Z1 + 0.95, bev=0.15)
-    K.B('hh_ext', '3b4148', -2.9, 28.0, L.Z1 + 0.6, 2.9, 32.6, L.Z1 + 1.05, bev=0.05)
+    K.B('hh_ext', '8f9ca8', -2.9, 28.0, L.Z1 + 0.6, 2.9, 32.6, L.Z1 + 1.05, bev=0.05)       # (round 8: not a black hole)
     K.B('hh_ext', TRIM, -0.2, 28.0, L.Z1 + 0.6, 0.2, 32.6, L.Z1 + 1.1, bev=0.05)
     # the dormers on the back slope (judge round 1: the back roof was one 120-stud slab)
     for d in L.DORMERS:
@@ -557,7 +561,7 @@ def roof():
         K.B('hh_ext', SIDING, xc - hw, 27.6, zf, xc + hw, top, zb, bev=0.08, flat=True)
         for sx in (-1, 1): K.B('hh_ext', TRIM, xc + sx * hw - 0.4, 27.6, zf - 0.35, xc + sx * hw + 0.4, top, zf + 1.2, bev=0.1)
         K.B('hh_win', GLASS, xc - 2.3, 29.8, zf - 0.12, xc + 2.3, 33.2, zf + 0.2, bev=0.02, kind='glass')
-        K.B('hh_ext', '4e4a44', xc - 2.6, 29.5, zf - 1.8, xc + 2.6, 33.5, zf - 1.5, bev=0.05, kind='neon')   # (round 6: dim warm, not orange)
+        K.B('hh_ext', '9aa7b2', xc - 2.6, 29.5, zf - 1.8, xc + 2.6, 33.5, zf - 1.5, bev=0.05)   # (round 8: pale blue-grey, not a brown hole)
         for (a, b, c, e) in ((xc - 2.9, 29.2, xc + 2.9, 29.8), (xc - 2.9, 33.2, xc + 2.9, 33.8), (xc - 2.9, 29.8, xc - 2.3, 33.2),
                              (xc + 2.3, 29.8, xc + 2.9, 33.2), (xc - 0.2, 29.8, xc + 0.2, 33.2)):
             K.B('hh_win', TRIM, a, b, zf - 0.35, c, e, zf + 0.1, bev=0.08)
@@ -585,7 +589,7 @@ def porch():
     K.B('hh_porch', TRIM, -16.2, 11.6, 41.5, 16.2, 13.6, 55.2, bev=0.3)
     K.B('hh_porch', TRIM, -15.8, 13.6, 41.5, 15.8, 14.1, 54.8, bev=0.2)
     K.B('hh_porch', CEIL, -15.6, 11.3, 42.0, 15.6, 11.6, 54.6, bev=0.05)
-    for px in (-13.5, 13.5): column(px, 51.0, 0.0, 11.6)
+    for px in (-13.5, 13.5): column(px, 50.3, 0.0, 11.6)                 # (round 8: back from the slab's edge, the base wider)
     # the porch lantern by the door
     K.B('hh_porch', DARK, 8.6, 6.8, 42.0, 10.2, 9.4, 43.2, bev=0.2)
     K.B('hh_porch', 'f3e9d6', 8.8, 7.2, 42.3, 10.0, 9.0, 43.3, bev=0.15)
@@ -679,12 +683,22 @@ def nhouse(cx, cz, w, d, face, body, roofc, two=True):
     for sx in (-1, 1):                                                    # (judge round 2: windows on the side walls too)
         xo = cx + sx * w / 2
         for fy in ((3.5, 9.5), (16.5, 22.5)) if two else ((3.5, 9.5),):
-            for zz in (cz - d / 4, cz + d / 4):
+            for zz in ((cz - d * 0.375, cz - d * 0.125, cz + d * 0.125, cz + d * 0.375) if d >= 90 else (cz - d / 4, cz + d / 4)):
                 K.B('hh_back', '7d8792', min(xo, xo + sx * 0.3), fy[0], zz - 2.4, max(xo, xo + sx * 0.3), fy[1], zz + 2.4, bev=0.08, segs=1)
                 K.B('hh_back', TRIM, min(xo, xo + sx * 0.5), fy[0] - 0.6, zz - 2.9, max(xo, xo + sx * 0.5), fy[0], zz + 2.9, bev=0.08, segs=1)
                 K.B('hh_back', TRIM, min(xo, xo + sx * 0.45), fy[1], zz - 2.9, max(xo, xo + sx * 0.45), fy[1] + 0.5, zz + 2.9, bev=0.08, segs=1)
     pl, ph = (fz, fz + 3.0) if face > 0 else (fz - 3.0, fz)
     K.B('hh_back', TRIM, cx - 4.5, 9.0, pl, cx + 4.5, 9.8, ph, bev=0.2, segs=1)          # a porch hood over the door
+    if two:                                                               # (judges round 8: blank gable walls)
+        for sx in (-1, 1):
+            xo = cx + sx * w / 2
+            K.B('hh_back', TRIM, min(xo, xo + sx * 0.5), 12.65, cz - d / 2 - 0.3, max(xo, xo + sx * 0.5), 13.35, cz + d / 2 + 0.3, bev=0.12, segs=1)
+            K.B('hh_back', '7d8792', min(xo, xo + sx * 0.3), h + 2.0, cz - 3.0, max(xo, xo + sx * 0.3), h + 8.0, cz + 3.0, bev=0.08, segs=1)
+            for (v0, v1) in ((h + 1.4, h + 2.0), (h + 8.0, h + 8.6)):
+                K.B('hh_back', TRIM, min(xo, xo + sx * 0.5), v0, cz - 3.6, max(xo, xo + sx * 0.5), v1, cz + 3.6, bev=0.08, segs=1)
+        for sz in (-1, 1):
+            zo = cz + sz * d / 2
+            K.B('hh_back', TRIM, cx - w / 2 - 0.3, 12.6, min(zo, zo + sz * 0.5), cx + w / 2 + 0.3, 13.4, max(zo, zo + sz * 0.5), bev=0.12, segs=1)
 
 def neighbours():
     bodies = ['c9c4b8', 'bcc0c2', 'c5bcac', 'b5bab3', 'cbc6bb']       # (judge round 2: a step greyer than the house)

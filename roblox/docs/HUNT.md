@@ -418,9 +418,9 @@ side-session-notes `holdout/intro_AB_sheet_v1435.jpg` and the clips `intro_A_v3`
   whose leaf stops 0.1 stud short of the toilet.
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
-  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 7, 27 Nov: hunt_arch9 = 95696978300779);
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 7: hunt_furn10 =
-    85875007992700).
+  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 8, 27 Nov: hunt_arch10 = 133158939004700);
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 8: hunt_furn11 =
+    98904903893193).
   - the gunman's intro rooms, `tools/roblox/hunt_intro_models.py`: `B.INTRO` (hunt_intro2 = 106007849260783),
     imported by `B.importIntro()` into `ReplicatedStorage.JankfireHuntIntro`.
   - Each judge round rebuilds both halves (`--name=hunt_archN` / `hunt_furnN`) and re-uploads them; the ids above
@@ -436,9 +436,10 @@ side-session-notes `holdout/intro_AB_sheet_v1435.jpg` and the clips `intro_A_v3`
   2. `B.importExtra()`
   3. `W.build("HuntHouse")`
   4. `B.build()`, then `B.check()`
-- **Live in Studio since place v1382 (26 Nov, 23:00 UTC):** 27 kit models, 417 hit boxes, 16 spawns, 31 lights; 20
-  doors, the roll-up with 2 buttons, 18 switches, 3 TVs, 6 taps, the fridge, 3 toilets, the ball, 3 store tables, 46
-  seats, 5 bouncy parts (the trampoline). The look is `HubLook.looks.hunt_house`, given by the LookZone
+- **Live in Studio since place v1382 (26 Nov); round 8 rebuilt at v1452 (27 Nov, 04:06 UTC):** 27 kit models, 474
+  hit boxes, 16 spawns, 33 lights; 19 doors, the roll-up with 2 buttons, 18 switches, 3 TVs, 6 taps, the fridge, 3
+  toilets, the ball, 3 store tables, 48 seats, 5 bouncy parts (the trampoline). The back terrace is level with the
+  house's floor (`DECK`), with broad steps down to the garden path. The look is `HubLook.looks.hunt_house`, given by the LookZone
   `Map.Hub.LookZones.HuntHouseLook`.
 - The one-line hooks in shared files are in (commit 2df0027): `Unarmed` in Fight.holstered, Arsenal's inHub and
   HubHolster; `NoGrapple` in Move.client (tryHook, tryYank, tryLock) and Main.server's hook handler; `Body.sink` taken

@@ -222,11 +222,11 @@ box(-63.0, GROUND, 15.0, -58.0, 47.0, 27.0, 'chimney')
 slab(-14, 42, 14, 52, -1.5, 0.0, 'porch')
 box(-10, -1.5, 52, 10, -0.75, 54, 'porchstep')
 slab(-16, 42, 16, 55, 12.0, 13.0, 'porchroof')
-for px in (-13.5, 13.5): box(px - 1, 0, 50, px + 1, 12, 52, 'post')
+for px in (-13.5, 13.5): box(px - 1.25, 0, 49.05, px + 1.25, 12, 51.55, 'post')   # (round 8: chunkier columns)
 # the balcony over the patio (the playroom's door), on two posts; a solid parapet
 slab(14, -56, 50, -42, 12.0, 13.0, 'balcony')
 box(14, 13, -56, 50, 16.4, -55.4, 'rail'); box(14, 13, -56, 14.6, 16.4, -42, 'rail'); box(49.4, 13, -56, 50, 16.4, -42, 'rail')
-for px in (15.5, 48.5): box(px - 1, DECK, -56, px + 1, 12, -54, 'post')
+for px in (15.5, 48.5): box(px - 1.25, DECK, -56.25, px + 1.25, 12, -53.75, 'post')
 # the garage roof's parapet (you can get up there from the trampoline)
 box(60, 14, GZ0, 104, 15.5, GZ0 + 1, 'parapet'); box(103, 14, GZ0, 104, 15.5, Z1, 'parapet'); box(60, 14, Z1 - 1, 104, 15.5, Z1, 'parapet')
 
@@ -532,7 +532,7 @@ def sw(rid, x, z, fx, fz):
     lv = [r for r in ROOMS if r['id'] == rid][0]['lv']
     SWITCHES.append((rid, float(x), LVY[lv] + (4.6 if rid != 'garage' else 3.6), float(z), fx, fz))
 sw('entry', 6.0, 39.9, 0, -1); sw('living', -13.1, 11.0, -1, 0); sw('family', -13.1, -15.5, -1, 0); sw('wc', -4.6, -1.5, -1, 0)
-sw('coats', 4.6, -1.5, 1, 0); sw('backhall', -5.5, -39.9, 0, 1); sw('dining', 13.1, 17, 1, 0); sw('kitchen', 13.1, -15.4, 1, 0)
+sw('coats', 4.6, -1.5, 1, 0); sw('backhall', -5.5, -39.9, 0, 1); sw('dining', 13.1, 17.8, 1, 0); sw('kitchen', 13.1, -15.4, 1, 0)
 sw('garage', 60.1, 0.5, 1, 0)
 sw('gallery', -11.9, 15, 1, 0); sw('mainbed', -13.1, 27.5, -1, 0); sw('ensuite', -45.5, 8.9, 0, -1); sw('closet', -19.5, 8.9, 0, -1)
 sw('kidsbed', -13.1, -14, -1, 0); sw('guestbed', 13.1, 31.5, 1, 0); sw('study', 13.1, 3.5, 1, 0); sw('playroom', 13.1, -14.5, 1, 0)
