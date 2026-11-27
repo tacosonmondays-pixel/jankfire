@@ -584,14 +584,18 @@ local function play(a: any)
 							if q then table.insert(pts, q.Position) end
 						end
 					end
-					local function brushes(at: Vector3): boolean
-						for _, q in pts do if (at - q).Magnitude < 2.6 then return true end end
+					-- (v14: only what's ahead of the lens can fill the frame; room A's pull starts right in front of her face)
+					local function brushes(cf: CFrame): boolean
+						for _, q in pts do
+							local d = q - cf.Position
+							if d.Magnitude < 2.6 and d:Dot(cf.LookVector) > -0.4 then return true end
+						end
 						return false
 					end
 					local e0, e1 = nil, nil
 					for i = 0, 200 do
 						local x = i / 200
-						local hit = brushes(from:Lerp(pullEnd, x).Position)
+						local hit = brushes(from:Lerp(pullEnd, x))
 						if hit and not e0 then e0 = x end
 						if e0 and not hit then e1 = x; break end
 					end
@@ -662,6 +666,9 @@ local function play(a: any)
 	task.spawn(function()
 		local sets: { Instance } = {}
 		for _, f in r.folders do table.insert(sets, f) end
+		for _, id in HC.INTRO.static or {} do -- (v14: the static's pictures, its first frames were plain grey)
+			local l = Instance.new("ImageLabel"); l.Image = "rbxassetid://" .. tostring(id); table.insert(sets, l)
+		end
 		local animIds: { string } = {}
 		for _, rigIds in OUT.anims or {} do
 			if type(rigIds) == "table" then
@@ -815,8 +822,10 @@ local function play(a: any)
 		end
 		-- (main, 27 Nov: a light change on a film's first frame mis-lights it) the room's look comes in under the static
 		if once("roomLook", beat("pull") - 0.1) then HubLook.set("hunt_intro_dark", 0) end
+		-- (v14: the pull's first frames were black, then the screen's glow before its picture drew) the static stays up
+		-- a moment into the pull
+		if once("staticOff", beat("pull") + 0.18) then st.Enabled = false end
 		if once("room", beat("pull")) then
-			st.Enabled = false
 			house:Destroy()
 			for _, m in who do hide(m, false) end
 			local F = OUT.fill
