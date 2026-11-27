@@ -176,6 +176,53 @@ scenarios.show = function(me: Player)
 	task.wait(0.25)
 	check(isDown(C), "a super push downs (2 s)")
 end
+-- (main: "a short showcase from a close third-person or fixed cinematic camera") on the driveway behind the player: a push
+-- (down 1 s, up at 0.7), a super push (a fling), a punch (2.5 s on the ground), then a bot shoves the player (GET UP on
+-- Space). The client's camera is set by the test (a fixed lens on the lane, then on the player)
+scenarios.showcase = function(me: Player)
+	local S = survivors()
+	if #S < 4 then say("need 4 survivor bots"); return end
+	local A, B, C, D = S[1], S[2], S[3], S[4]
+	local mr = root(me)
+	if not mr then return end
+	local fwd = Vector3.new(mr.CFrame.LookVector.X, 0, mr.CFrame.LookVector.Z).Unit
+	local right = fwd:Cross(Vector3.yAxis)
+	local L = mr.Position - fwd * 10
+	local function put(b: any, at: Vector3, look: Vector3)
+		local r = root(b)
+		if r then r.AssemblyLinearVelocity = Vector3.zero; r.CFrame = CFrame.lookAt(at, Vector3.new(look.X, at.Y, look.Z)) end
+	end
+	put(A, L - right * 5, L + right * 5); put(B, L - right * 1.5, L - right * 9)
+	put(C, L + right * 3, L + right * 9); put(D, L + right * 6.5, L - right * 9)
+	task.wait(1.2)
+	act(A, "push", B)
+	task.wait(0.25)
+	check(isDown(B), "showcase: a push downs a survivor")
+	task.wait(0.5)
+	HuntRagdoll.ask(B)
+	check(not isDown(B), "showcase: up after 0.7 s (GET UP)")
+	task.wait(1.6)
+	act(C, "super", D)
+	task.wait(0.25)
+	check(isDown(D), "showcase: a super push flings one")
+	task.wait(2.4)
+	put(A, L - right * 5, L - right * 1)
+	act(A, "jab", B)
+	task.wait(0.25)
+	check(isDown(B), "showcase: a punch downs and stuns")
+	task.wait(1.0)
+	HuntRagdoll.ask(B)
+	check(isDown(B), "showcase: still stunned at 1 s")
+	task.wait(1.6)
+	HuntRagdoll.ask(B)
+	check(not isDown(B), "showcase: up after the 2.5 s stun")
+	task.wait(0.6)
+	put(D, mr.Position - fwd * 3.2, mr.Position)
+	task.wait(0.4)
+	act(D, "push", me)
+	task.wait(0.25)
+	check(isDown(me), "showcase: a bot downs the player (GET UP key on screen)")
+end
 -- the survivors kill the hunter: picks, taser, bear trap, the bat, a shove on him
 scenarios.kill = function(me: Player)
 	local S = survivors()
