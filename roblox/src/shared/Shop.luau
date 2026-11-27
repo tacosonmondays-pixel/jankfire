@@ -902,7 +902,11 @@ end
 -- ---------------------------------------------------------------- the featured rotation
 -- one hero bundle and Shop.DAILY singles a day, the same for everyone (seeded by the UTC day number), so the server can
 -- check a single is on sale today without keeping any state
-function Shop.day(t: number?): number return math.floor((t or os.time()) / Shop.ROTATE) end
+function Shop.day(t: number?): number
+	-- (Studio tests, 27 Nov: ReplicatedStorage's attribute ShopDayTest = n shows the day n days on, server and clients alike)
+	local shift = if RunService:IsStudio() then tonumber(ReplicatedStorage:GetAttribute("ShopDayTest")) or 0 else 0
+	return math.floor((t or os.time()) / Shop.ROTATE) + math.floor(shift)
+end
 function Shop.secondsLeft(t: number?): number
 	local now = t or os.time()
 	return (Shop.day(now) + 1) * Shop.ROTATE - now

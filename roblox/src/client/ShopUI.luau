@@ -537,8 +537,8 @@ function V.flair(parent: GuiObject, kind: string, id: string, anim: boolean?)
 	clearPreview(parent)
 	local holder = new("Frame", { Name = "Preview", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = parent.ZIndex + 1 }, parent)
 	local f = new("Frame", { Name = "Tile", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.92, 0.92), ZIndex = parent.ZIndex + 2 }, holder)
-	new("UIAspectRatioConstraint", { AspectRatio = 1 }, f)
+		Size = if anim then UDim2.new(1, -12, 1, -4) else UDim2.fromScale(0.92, 0.92), ZIndex = parent.ZIndex + 2 }, holder)
+	if not anim then new("UIAspectRatioConstraint", { AspectRatio = 1 }, f) end -- (a tile: the whole picture, 27 Nov)
 	if F and type(F.picture) == "function" then pcall(F.picture, kind, id, f) end
 	if anim then
 		local m = script.Parent:FindFirstChild("FlairAnim")
@@ -644,6 +644,8 @@ end
 -- show any offer or item in a frame: a card look as a 2D tile, a card set as a whole card, everything else in 3D
 function V.put(parent: GuiObject, o: any?, item: any?, spin: string, zoom: number?, boost: number?)
 	local it = item or (if o and o.type == "single" then { kind = o.kind, id = o.item, weapon = o.weapon } else nil)
+	local X = if it and it.kind == "title" then ShopUI.ext() else nil
+	if X and X.titleCard then X.titleCard(parent, it.id); return end -- (on your card: ShopBundles, 27 Nov)
 	if it and Shop.isCard(it.kind) then V.card(parent, it.kind, it.id); return end
 	if it and Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id, true); return end
 	if o and o.type == "bundle" and not o.hero then V.cardSet(parent, o.items); return end
@@ -911,7 +913,8 @@ local function singleCard(parent: Instance, o: any, order: number): TextButton
 	local rl = rarityLine(c, o.rarity, Shop.KIND_NAMES[o.kind] or o.kind, if S.compact then 12 else 11, S.compact)
 	rl.Position = UDim2.new(0, 12, 1, -32); rl.Size = UDim2.new(1, -96, 0, 15)
 	local owned = Till.owns(o.kind, o.item, o.weapon)
-	local pr = txt(c, if owned then "OWNED" else (if Shop.free() then "FREE" else Purse.cost(o)), 14, if owned then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	local cn = Purse.coins(o) -- (a tile's price is in coins: one currency along a row, 27 Nov)
+	local pr = txt(c, if owned then "OWNED" else (if Shop.free() then "FREE" elseif cn then Purse.words("brass", cn) else Purse.cost(o)), 14, if owned then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 	pr.RichText = true
 	local wide = Purse.coins(o) ~= nil -- (a coin price is longer: "1,200 COINS")
 	pr.Position = UDim2.new(1, if wide then -122 else -92, 1, -33); pr.Size = UDim2.new(0, if wide then 110 else 80, 0, 16)

@@ -760,8 +760,8 @@ return function(C: any): any
 		new("UICorner", { CornerRadius = UDim.new(0.12, 0) }, img)
 		local function line(text: string, y: number, h: number, col: Color3, font: Font, max: number): TextLabel
 			local l = new("TextLabel", { BackgroundTransparency = 1, Text = text, TextColor3 = col, FontFace = font, TextScaled = true,
-				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Position = UDim2.fromScale(0.35, y),
-				Size = UDim2.fromScale(0.6, h), ZIndex = zz }, f)
+				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Position = UDim2.fromScale(0.4, y),
+				Size = UDim2.fromScale(0.56, h), ZIndex = zz }, f)
 			new("UITextSizeConstraint", { MaxTextSize = max }, l)
 			return l
 		end
