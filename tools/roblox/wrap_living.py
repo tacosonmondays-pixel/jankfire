@@ -51,10 +51,13 @@ def _pnoise(u, v, k, phase, seed):
 
 
 # ---------------------------------------------------------------------------------------------------- lava lamp
+# (27 Nov, the 0.6 m tiles: six big round blobs were squashed and cut on every gun ("bokeh discs"); twelve smaller
+# ones now, each with a lobed outline that turns as it goes, so none of them is a circle)
+_lr = np.random.default_rng(77)
 LAMP_BLOBS = [  # u0, v0, radius, rise cycles per loop (+ up, - sinking: they pass through each other), sway, colour
-    (0.15, 0.10, 0.105, 1, 0.05, 0), (0.45, 0.55, 0.085, -1, 0.04, 1), (0.75, 0.30, 0.115, 1, 0.06, 2),
-    (0.88, 0.80, 0.072, -1, 0.03, 0), (0.30, 0.80, 0.090, 1, 0.05, 1), (0.60, 0.05, 0.068, -1, 0.04, 2),
-]
+    (float(_lr.uniform(0, 1)), float(_lr.uniform(0, 1)), float(_lr.uniform(0.034, 0.058)), 1 if k % 2 == 0 else -1,
+     float(_lr.uniform(0.02, 0.04)), k % 3) for k in range(12)]
+LAMP_LOBES = [(float(_lr.uniform(0, 6.283)), float(_lr.uniform(0, 6.283)), 1 if _lr.uniform() < 0.5 else -1) for _ in range(12)]
 LAMP_COL = [np.array([1.00, 0.52, 0.18]), np.array([0.96, 0.34, 0.46]), np.array([1.00, 0.78, 0.30])]
 LAMP_BASE_TOP, LAMP_BASE_BOT = np.array([0.16, 0.06, 0.20]), np.array([0.28, 0.08, 0.22])
 
@@ -68,7 +71,11 @@ def lavalamp(t, n):
         cv = (v0 - cyc * t) % 1.0                                     # rising = v falling (v runs down)
         cu = (u0 + sway * math.sin(TAU * (t + i * 0.17))) % 1.0
         rr = r * (1 + 0.18 * math.sin(TAU * (t * 2 + i * 0.31)))       # each blob breathes as it goes
-        d2 = _wd(u - cu) ** 2 + (_wd(v - cv) * 0.8) ** 2               # (a little taller than wide)
+        du, dv = _wd(u - cu), _wd(v - cv) * 0.8                        # (a little taller than wide)
+        ph1, ph2, turn = LAMP_LOBES[i]
+        ang = np.arctan2(dv, du)
+        lob = 1 + 0.16 * np.sin(3 * ang + ph1 + TAU * t * turn) + 0.12 * np.sin(2 * ang + ph2 - TAU * t * turn)
+        d2 = (du * du + dv * dv) / (lob * lob)
         f = rr * rr / (d2 + 1e-5)
         field += f
         w = f ** 2

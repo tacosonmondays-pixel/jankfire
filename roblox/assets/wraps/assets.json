@@ -2074,5 +2074,337 @@
  "dcdec334113fae1bde5a7f48c8db1b3c9f0bfec4": {
   "file": "molten_f31_emit.png",
   "id": 130339446072509
+ },
+ "b5cf19ef00cada4832532298cb5b3efdf3ffca65": {
+  "file": "arcade_color.png",
+  "id": 88142596675193
+ },
+ "195dd7773eaed59725aa66b9bf908312cc80304a": {
+  "file": "arcade_emit.png",
+  "id": 116041433574424
+ },
+ "d3282ac99a147903e8fff11487bb4b0f3702e3ba": {
+  "file": "aurora_color.png",
+  "id": 77539102090697
+ },
+ "ecb9e6746123334933e7eef16d7b6001fd4addd0": {
+  "file": "aurora_emit.png",
+  "id": 111442079015812
+ },
+ "197974324b59d991e13a86d25cba79527ac5f006": {
+  "file": "china_color.png",
+  "id": 85766798588014
+ },
+ "e6575da10b012ef1d7f13843a08cf14dfa2b72ed": {
+  "file": "dice_color.png",
+  "id": 106514638515103
+ },
+ "967d63a81cd859c6d05e151f034e11ea07404bb9": {
+  "file": "dice_normal.png",
+  "id": 75903650893626
+ },
+ "65e115bd0dd40a6f534d7b7754f51a5419ae1626": {
+  "file": "dice_rough.png",
+  "id": 84213126350862
+ },
+ "de932d99aba8cfe1cffab6f02e3d0473539310bc": {
+  "file": "geode_color.png",
+  "id": 102191753294778
+ },
+ "09a88716245dd2f46c57bb311b3cbb98c38ec164": {
+  "file": "geode_normal.png",
+  "id": 115296718035659
+ },
+ "6d5173e6977367f8344a646256d52576a75c9f38": {
+  "file": "geode_emit.png",
+  "id": 85522022586513
+ },
+ "45973b66c063835f519b3e5b8bb07bdf474c132d": {
+  "file": "koi_color.png",
+  "id": 77326928466073
+ },
+ "034be12f4365bdf39b8f8ef0734ba0380039c6e3": {
+  "file": "memphis_color.png",
+  "id": 106203207305974
+ },
+ "e9bd0e1fd45a2ee48fd5403d9e2828019a65b7a8": {
+  "file": "numsoup_color.png",
+  "id": 92920443970661
+ },
+ "464b237d7a05f4e63912ace5cb0cca227c216ff0": {
+  "file": "numsoup_normal.png",
+  "id": 117249218536854
+ },
+ "facae8ab4f2f8438177e1772662dbe294fcbd568": {
+  "file": "stonks_color.png",
+  "id": 138356238713430
+ },
+ "26caa542bd88011fe3cc1610015b638017d441ec": {
+  "file": "stonks_emit.png",
+  "id": 123668433641916
+ },
+ "e0f1bfdb8e1109507259532b75d85b28ddd754df": {
+  "file": "vapor_color.png",
+  "id": 77284927052900
+ },
+ "1ec3631d273e9f17c0b60456fa7d98acdca723f1": {
+  "file": "vapor_emit.png",
+  "id": 133061191710820
+ },
+ "5407e542130085252de68667a6a5212aa997513d": {
+  "file": "lavalamp_f00_color.png",
+  "id": 80686945727111
+ },
+ "2a671a6346948d3698e1ba5d8642477e7c37f4e5": {
+  "file": "lavalamp_f00_emit.png",
+  "id": 95862234768451
+ },
+ "8ff86831960f3c55574826d1f668bd06ae2e9d1c": {
+  "file": "lavalamp_f01_color.png",
+  "id": 133324713131504
+ },
+ "28e1ba07a59d7354eaf7551697ede82322a5c7ac": {
+  "file": "lavalamp_f01_emit.png",
+  "id": 140097929334330
+ },
+ "9eade3ae58f2d9dd9a32220af850327098cb299a": {
+  "file": "lavalamp_f02_color.png",
+  "id": 100500402746011
+ },
+ "e8495faa95a9ace70e9ad232b74e40b8cd89c4c0": {
+  "file": "lavalamp_f02_emit.png",
+  "id": 104148934332769
+ },
+ "523a7ab425c6aabeb733dae79d049467ef25ed8b": {
+  "file": "lavalamp_f03_color.png",
+  "id": 109876016200770
+ },
+ "72a7fc92f0fba167d587a3e9d38a0ef938047198": {
+  "file": "lavalamp_f03_emit.png",
+  "id": 74319418616646
+ },
+ "7c00f76bbd00cc253c26b47ff7fb4c471c33ff68": {
+  "file": "lavalamp_f04_color.png",
+  "id": 140429349657477
+ },
+ "5a630582aadd5f13add1734c83609a53fd576662": {
+  "file": "lavalamp_f04_emit.png",
+  "id": 94986379101630
+ },
+ "7d547f7ed90d59573b3c1bdfebf1145778556f1d": {
+  "file": "lavalamp_f05_color.png",
+  "id": 83077652804580
+ },
+ "ada3bf978383fd370804b689c7cb87040151c777": {
+  "file": "lavalamp_f05_emit.png",
+  "id": 99625266430681
+ },
+ "c4e6f19b1c280ef75a3d84a24e477ea6d986ecb6": {
+  "file": "lavalamp_f06_color.png",
+  "id": 87984635711958
+ },
+ "ec41b5c7ddfd42c4e6d8a42334516efdad71cf34": {
+  "file": "lavalamp_f06_emit.png",
+  "id": 109319427840115
+ },
+ "cdd7513ba2e1c94edde4c316ae4e725551fbc6e6": {
+  "file": "lavalamp_f07_color.png",
+  "id": 81250624856013
+ },
+ "164f6b59ac492c8b5443808c7e31c649ac03baf3": {
+  "file": "lavalamp_f07_emit.png",
+  "id": 119151981457670
+ },
+ "cf6bc6861506c282376b7284a9d49842b0eacfbb": {
+  "file": "lavalamp_f08_color.png",
+  "id": 100967675610581
+ },
+ "c52907a9b71243f026be9662ede03f7e5be1634b": {
+  "file": "lavalamp_f08_emit.png",
+  "id": 73186192691529
+ },
+ "2dac00cccfe846ae9bc5316c663038d847a02254": {
+  "file": "lavalamp_f09_color.png",
+  "id": 109514815964339
+ },
+ "7bd5679bae48525bbedf787facce1f1bf05d5ec4": {
+  "file": "lavalamp_f09_emit.png",
+  "id": 88540825971302
+ },
+ "cae569ae3b434a2034c07ac50e0f789ffdb205d5": {
+  "file": "lavalamp_f10_color.png",
+  "id": 70870997471354
+ },
+ "d83e3907ee6d1aae45d967205a966eb28ec28488": {
+  "file": "lavalamp_f10_emit.png",
+  "id": 122844083798638
+ },
+ "a4bc6492cf9dc201464719affeaf571ce8c82149": {
+  "file": "lavalamp_f11_color.png",
+  "id": 116086189301299
+ },
+ "37cea39c93e2d7529398d441668833c7a7081d1e": {
+  "file": "lavalamp_f11_emit.png",
+  "id": 121267485260422
+ },
+ "9b670e9db72b26373ae49e2637b7ebda7d241f7a": {
+  "file": "lavalamp_f12_color.png",
+  "id": 140643535830790
+ },
+ "3ad89d3313bbfd2fb9213b4a73a9119cc1c04a7d": {
+  "file": "lavalamp_f12_emit.png",
+  "id": 71741567343191
+ },
+ "2dc725be7ec50e2014cec872cc7a48e2efb7c3ff": {
+  "file": "lavalamp_f13_color.png",
+  "id": 110855128284975
+ },
+ "962144bcdd3ee62ad989383e72857466ad8ded6c": {
+  "file": "lavalamp_f13_emit.png",
+  "id": 140557807594538
+ },
+ "f913d545ff6048fcf924db30304796cf6e297084": {
+  "file": "lavalamp_f14_color.png",
+  "id": 128041406731573
+ },
+ "ecb95226eef588780c4d5b8965c51ece68b6b4ce": {
+  "file": "lavalamp_f14_emit.png",
+  "id": 72375355187000
+ },
+ "fddb3a6b497004c349b682bf4112d31a2c6bb433": {
+  "file": "lavalamp_f15_color.png",
+  "id": 76358069054881
+ },
+ "0e95c787c0f609f1ba800f618bd9fddb38c5d576": {
+  "file": "lavalamp_f15_emit.png",
+  "id": 73096735204647
+ },
+ "b5f3cd461d435aad9482cb1c989c5a3576515d36": {
+  "file": "lavalamp_f16_color.png",
+  "id": 128028583419945
+ },
+ "71ca123aa85de427529483d88a30955124e72999": {
+  "file": "lavalamp_f16_emit.png",
+  "id": 87189675535225
+ },
+ "f6dbed3d65200577b7d389950dd43970242c1f53": {
+  "file": "lavalamp_f17_color.png",
+  "id": 135106789624397
+ },
+ "6249f8e0149e6a8cd292007c168bba5cf0a476fd": {
+  "file": "lavalamp_f17_emit.png",
+  "id": 101315593160549
+ },
+ "716bef7f66042ee016ccac762300eb9ca8631e77": {
+  "file": "lavalamp_f18_color.png",
+  "id": 76822570628649
+ },
+ "449b572b47fa873c43e7cb5e8bff30133e0d8c46": {
+  "file": "lavalamp_f18_emit.png",
+  "id": 95175106564708
+ },
+ "fd2c9f0dedf57f3ef5c387ad9d2f16678c348076": {
+  "file": "lavalamp_f19_color.png",
+  "id": 114985335674188
+ },
+ "4ab230b7b0b50219db649c493fc8046bd58917a1": {
+  "file": "lavalamp_f19_emit.png",
+  "id": 118541634819435
+ },
+ "e2018d9d327c7685df9dc2ba2c4cd221c1d7d2bc": {
+  "file": "lavalamp_f20_color.png",
+  "id": 76735799223852
+ },
+ "c7ae23ae730af5446de3afe7c3056e48f5dd197a": {
+  "file": "lavalamp_f20_emit.png",
+  "id": 134416071393767
+ },
+ "cabaa11febaccfa3f8635ba053b2e21aab2e24cc": {
+  "file": "lavalamp_f21_color.png",
+  "id": 118053918279868
+ },
+ "de94b26bfbb6973b5bddeea7a6006c10cec194a3": {
+  "file": "lavalamp_f21_emit.png",
+  "id": 78640410909475
+ },
+ "4621b897431bc9fbc561c17f48bc614e8becbece": {
+  "file": "lavalamp_f22_color.png",
+  "id": 95496410914084
+ },
+ "cdaa1e36ba580260fcef35abd244247e6c57d8d6": {
+  "file": "lavalamp_f22_emit.png",
+  "id": 110821450199635
+ },
+ "370c8d49ae3feae94b8fd3d7a4462f84f21db794": {
+  "file": "lavalamp_f23_color.png",
+  "id": 70536282741905
+ },
+ "6624f9853e7761934752579293ebe06a7332ef80": {
+  "file": "lavalamp_f23_emit.png",
+  "id": 122271925852798
+ },
+ "029b7a9f0781f9c6bc8830827ea767764c280d4f": {
+  "file": "lavalamp_f24_color.png",
+  "id": 76822330627768
+ },
+ "36d1e0636c07d3e46d74b48c8d4c11a8a74e1ab3": {
+  "file": "lavalamp_f24_emit.png",
+  "id": 83296276513044
+ },
+ "f8b18e25940be81540357883c6902b86258fe0f1": {
+  "file": "lavalamp_f25_color.png",
+  "id": 112829706830076
+ },
+ "6c53973c4dc23b962c19db1923510c5876900f35": {
+  "file": "lavalamp_f25_emit.png",
+  "id": 118454580006555
+ },
+ "7b06de0f7b8357c3ebb3872324704a0d7b7c0737": {
+  "file": "lavalamp_f26_color.png",
+  "id": 118496395164705
+ },
+ "39637d32d3d379c3e1e28fa484a31a8c53ccab5f": {
+  "file": "lavalamp_f26_emit.png",
+  "id": 89665787054855
+ },
+ "3977e9f574d8122d17e29643ed9cd23d7e4f0ab9": {
+  "file": "lavalamp_f27_color.png",
+  "id": 118766205776910
+ },
+ "1da6edfde67af4bd15280fb8fdd44d51ca6f4c5b": {
+  "file": "lavalamp_f27_emit.png",
+  "id": 136614679298026
+ },
+ "7807d8cf346f7cdf11cad140557f0d0bb6a219ed": {
+  "file": "lavalamp_f28_color.png",
+  "id": 94365971783402
+ },
+ "6567eb94c4b5b77a6bd3af562eaee55c329cfa1a": {
+  "file": "lavalamp_f28_emit.png",
+  "id": 90740519755217
+ },
+ "7700a0162820c9f1234461d6957c032b8e2e4815": {
+  "file": "lavalamp_f29_color.png",
+  "id": 118900457747651
+ },
+ "68e4b11d9a6db273190f854e07c88733eb91ecea": {
+  "file": "lavalamp_f29_emit.png",
+  "id": 81510220750712
+ },
+ "c46903db7c946d0897b5acae6c4f167f2ff865aa": {
+  "file": "lavalamp_f30_color.png",
+  "id": 132866430290118
+ },
+ "19fde51da2446bcd8abfe28f61ba5fa079273d05": {
+  "file": "lavalamp_f30_emit.png",
+  "id": 98773420218447
+ },
+ "8ffa9e9d63e3087ced9686280b4153830758d56b": {
+  "file": "lavalamp_f31_color.png",
+  "id": 87412050536236
+ },
+ "34d828ff8b292860cfae63b9880d0413546725c5": {
+  "file": "lavalamp_f31_emit.png",
+  "id": 74473791060273
  }
 }

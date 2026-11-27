@@ -402,7 +402,7 @@
   "maps": {
    "color": "koi_color.png",
    "normal": null,
-   "rough": "koi_rough.png",
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }

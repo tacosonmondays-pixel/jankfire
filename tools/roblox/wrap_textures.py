@@ -615,9 +615,10 @@ def koi(t: Tex):
     t.fill(smoothstep(0.95, 1.0, rip) * 0.08, '7fd6e0')
     t.rough[:] = 0.2
     r = t.rng
-    pads = scatter(r, n, 2, 450)
+    # (27 Nov, 0.6 m tiles: big pads were sliced on the mag and stock edges; smaller pads, the koi carry it)
+    pads = []   # (round 2: no lily pads at all; the koi carry it)
     for x, y in pads:
-        R = r.uniform(95, 120); a = r.uniform(0, TAU)
+        R = r.uniform(46, 62); a = r.uniform(0, TAU)
         X, Y, idx = t.box(x - R - 8, y - R - 8, x + R + 8, y + R + 8)
         d = np.hypot(X - x, Y - y)
         ang = (np.arctan2(Y - y, X - x) - a) % TAU
@@ -637,8 +638,12 @@ def koi(t: Tex):
                 t.shape(bbox_of(poly), sd_polygon(poly), color=mix('f07aa8', 'ffd9e8', (k % 2) * 0.6))
             t.shape((fx - 10, fy - 10, fx + 10, fy + 10), sd_circle(fx, fy, R * 0.09), color='ffd24a')
     C = [('f1ece2', 'e2541a', '151515'), ('e8631f', 'f3eee4', None), ('f1ece2', 'cf2a1e', None), ('e8631f', '151515', None)]
-    for i, (x, y) in enumerate(scatter(r, n, 3, 380, taken=[(x, y, 220) for x, y in pads])):
-        L = r.uniform(230, 290); a = r.uniform(0, TAU); body, patch, ink = C[i % 4]
+    for x, y in scatter(r, n, 6, 200):
+        a = r.uniform(0, TAU)
+        poly = transform(petal_outline(30, 11, 0.0), x, y, a)
+        t.shape(bbox_of(poly), sd_polygon(poly), color='3e8a3a')
+    for i, (x, y) in enumerate(scatter(r, n, 2, 480)):
+        L = (320, 250)[i]; a = r.uniform(0, TAU); body, patch, ink = C[(i * 2) % 4]
         def P(px, py): return (x + math.cos(a) * px - math.sin(a) * py, y + math.sin(a) * px + math.cos(a) * py)
         outline = [P(L * 0.5 * math.cos(q / 20 * TAU), L * 0.13 * math.sin(q / 20 * TAU) * (1.0 if math.cos(q / 20 * TAU) > 0 else 0.75)) for q in range(20)]
         tail = [P(-L * 0.42, 0), P(-L * 0.62, L * 0.14), P(-L * 0.56, 0), P(-L * 0.62, -L * 0.14)]
@@ -1109,8 +1114,31 @@ def china(t: Tex):
                 ex, ey = cx + math.cos(a + b) * 96, cy + math.sin(a + b) * 96
                 t.paint(idx, cover(np.hypot(X - ex, Y - ey) - 8), co)
         t.paint(idx, cover(np.hypot(X - cx, Y - cy) - 16), co)
-    for cx, cy in ((n * 0.25, n * 0.25), (n * 0.75, n * 0.75)): medal(cx, cy, 1.75)
-    for cx, cy in ((n * 0.75, n * 0.25), (n * 0.25, n * 0.75)): sprig(cx, cy)
+    # (27 Nov, 0.6 m tiles: the round medallions were cut into arcs on every edge; loose floral sprays scattered at
+    # every angle and size instead, with stray petals between them)
+    r = t.rng
+    def spray(cx, cy, a0, k):
+        X, Y, idx = t.box(cx - 150 * k, cy - 150 * k, cx + 150 * k, cy + 150 * k)
+        stem = [(cx + math.cos(a0) * q * 26 * k + math.sin(a0) * 18 * k * math.sin(q * 0.9),
+                 cy + math.sin(a0) * q * 26 * k - math.cos(a0) * 18 * k * math.sin(q * 0.9)) for q in range(-4, 5)]
+        t.paint(idx, cover(sd_polyline(stem, 3.2 * k)(X, Y)), co)
+        for j, (sx, sy) in enumerate(stem[1:-1:2]):
+            side = 1 if j % 2 else -1
+            la = a0 + side * 1.0
+            poly = transform(petal_outline(46 * k, 15 * k, 0.1), sx + math.cos(la) * 22 * k, sy + math.sin(la) * 22 * k, la)
+            t.paint(idx, cover(sd_polygon(poly)(X, Y)), lt if j % 2 else co)
+        fx, fy = stem[-1]
+        for i in range(5):
+            a = a0 + i / 5 * TAU
+            poly = transform(petal_outline(38 * k, 17 * k, 0.12), fx + math.cos(a) * 9 * k, fy + math.sin(a) * 9 * k, a)
+            sd = sd_polygon(poly)(X, Y)
+            t.paint(idx, cover(sd), co); t.paint(idx, cover(sd + 4 * k), lt)
+        t.paint(idx, cover(np.hypot(X - fx, Y - fy) - 7 * k), co)
+    for cx, cy in scatter(r, n, 7, 280):
+        spray(cx, cy, r.uniform(0, TAU), r.uniform(0.75, 1.15))
+    for cx, cy in scatter(r, n, 10, 120, taken=[]):
+        a = r.uniform(0, TAU)
+        t.shape((cx - 40, cy - 40, cx + 40, cy + 40), sd_polygon(transform(petal_outline(26, 9, 0.1), cx, cy, a)), color=lt)
     return {}
 
 
@@ -1429,21 +1457,18 @@ def memphis(t: Tex):
     t.rgb[:] = hexrgb('f2ece0')
     t.rough[:] = 0.5
     cols = ['e64aa8', 'f0c832', '3ab8d8', '18181a', '58c048']
-    for k, (x, y) in enumerate(scatter(r, n, 30, 150)):
-        c = cols[r.integers(0, 5)]; a = r.uniform(0, TAU); kind = k % 4
+    # (27 Nov, 0.6 m tiles: no rings or dot grids (they broke on edges and read as a stamp); bigger zigzags,
+    # triangles and bars, every size)
+    for k, (x, y) in enumerate(scatter(r, n, 24, 165)):
+        c = cols[r.integers(0, 5)]; a = r.uniform(0, TAU); kind = k % 3; sc = r.uniform(0.9, 1.6)
         if kind == 0:
-            pts = [(x + (q - 3) * 18 * math.cos(a) - (14 if q % 2 else -14) * math.sin(a), y + (q - 3) * 18 * math.sin(a) + (14 if q % 2 else -14) * math.cos(a)) for q in range(7)]
-            t.shape(bbox_of(pts, 10), sd_polyline(pts, 5.5), color=c)
+            pts = [(x + (q - 3) * 22 * sc * math.cos(a) - (17 if q % 2 else -17) * sc * math.sin(a), y + (q - 3) * 22 * sc * math.sin(a) + (17 if q % 2 else -17) * sc * math.cos(a)) for q in range(7)]
+            t.shape(bbox_of(pts, 12), sd_polyline(pts, 6.5 * sc), color=c)
         elif kind == 1:
-            poly = transform([(0, -38), (34, 24), (-34, 24)], x, y, a)
+            poly = transform([(0, -46 * sc), (41 * sc, 29 * sc), (-41 * sc, 29 * sc)], x, y, a)
             t.shape(bbox_of(poly), sd_polygon(poly), color=c)
-        elif kind == 2:
-            t.shape((x - 40, y - 40, x + 40, y + 40), lambda X, Y, x=x, y=y: np.abs(np.hypot(X - x, Y - y) - 27) - 6, color=c)
         else:
-            for qi in range(4):
-                for qj in range(4):
-                    px, py = x + (qi - 1.5) * 18, y + (qj - 1.5) * 18
-                    t.shape((px - 6, py - 6, px + 6, py + 6), sd_circle(px, py, 4.2), color=c)
+            t.shape((x - 70 * sc, y - 70 * sc, x + 70 * sc, y + 70 * sc), sd_round_rect(x, y, 52 * sc, 11 * sc, 3, a), color=c)
     return {}
 
 
@@ -1830,30 +1855,23 @@ def barcode(t: Tex):
 def geode(t: Tex):
     """amethyst geode: agate bands of lilac and violet circling crystal pockets lined with faceted points"""
     n = t.n; r = t.rng
-    pk = [(r.uniform(0, n), r.uniform(0, n)) for _ in range(5)]
-    d1, _, ids = voronoi(n, pk)
-    w = FBM([3, 6, 12], 521, 0.55)(t.U, t.V)
-    band = d1 * 0.03 + 1.8 * w
+    # (27 Nov, 0.6 m tiles: the round crystal pockets read as pinwheel discs, sliced on every gun; now only the agate
+    # bands, wider and drawn out along the gun, their pale edges glowing softly)
+    w = FBM([2, 4, 8], 521, 0.55)(t.U, t.V)
+    flow = FBM([(1, 2), (2, 3)], 522, 0.5)(t.U, t.V)               # (no centres: bands follow a slow field, long along u)
+    band = flow * 7.0 + 1.2 * w
     pal = np.array([hexrgb(h) for h in ('ece2f8', 'b48ae6', '7a4ac8', '4a1c88', 'd8c4f2', '9a6ad8')])
     k = np.floor(band).astype(int) % 6
     fr = band - np.floor(band)
     col = pal[k] + (pal[(k + 1) % 6] - pal[k]) * smoothstep(0.85, 1.0, fr)[..., None]
     t.rgb[:] = col
-    pocket = 1 - smoothstep(70, 80, d1)
-    ang = np.arctan2(t.Y - np.array([p[1] for p in pk])[ids], t.X - np.array([p[0] for p in pk])[ids])
-    facet = (np.floor((ang + math.pi) / TAU * 18) % 2)
-    fc = mix('caa8f4', '8a5ad8', facet * 0.8 + smoothstep(70, 0, d1) * 0.2)
-    t.rgb[:] = t.rgb * (1 - pocket[..., None]) + fc * pocket[..., None]
-    t.height[:] = pocket * facet * 1.5
+    t.height[:] = smoothstep(0.85, 1.0, fr) * 0.8
     t.rough[:] = 0.12
     # GLOW (18 Nov 2026, the owner: "can you add a glow to certain textures"): the crystal pockets light up from inside,
     # a soft core (under every Bloom threshold) and thin bright ridges where the facets meet (they bloom), fading out
     # toward the pocket's rim; the agate bands stay dark
-    s = (ang + math.pi) / TAU * 18
-    ridge_px = np.abs(s - np.round(s)) * (TAU / 18) * d1
-    ridge = smoothstep(2.4, 0.7, ridge_px) * (0.35 + 0.65 * smoothstep(74, 14, d1))
-    core = (0.6 * smoothstep(76, 46, d1) + 0.4 * smoothstep(46, 0, d1)) * (0.75 + 0.25 * (1 - facet))   # (pale facets brighter)
-    t.emit[:] = np.clip(np.maximum(core * 0.42, ridge * 0.9) * pocket, 0, 1)
+    pale = ((k == 0) | (k == 4)).astype(np.float32)
+    t.emit[:] = np.clip(pale * 0.35 + smoothstep(0.9, 1.0, fr) * 0.5, 0, 1)
     return {'emissive': 4.5, 'tint': 'ffffff'}
 
 
@@ -1863,8 +1881,9 @@ def arcade(t: Tex):
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('120c2c')
     cols = ['ff4fc4', '4fd0ff', 'ffd84a', '6aff6a', 'ff8a3a']
-    for k, (x, y) in enumerate(scatter(r, n, 34, 130)):
-        c = cols[k % 5]; kind = k % 5; a = r.uniform(0, TAU)
+    # (27 Nov, 0.6 m tiles: no rings or planets (they were cut on the pistol); squiggles, stars and triangles)
+    for k, (x, y) in enumerate(scatter(r, n, 30, 140)):
+        c = cols[k % 5]; kind = (0, 1, 4)[k % 3]; a = r.uniform(0, TAU)
         if kind == 0:
             pts = [(x + (q - 4) * 14 * math.cos(a) + 12 * math.sin(q * 1.2) * -math.sin(a), y + (q - 4) * 14 * math.sin(a) + 12 * math.sin(q * 1.2) * math.cos(a)) for q in range(9)]
             t.shape(bbox_of(pts, 8), sd_polyline(pts, 5), color=c, emit=1.0)
@@ -1934,17 +1953,18 @@ def dice(t: Tex):
     t.rough[:] = 0.9
     PIPS = {1: [(0, 0)], 2: [(-1, -1), (1, 1)], 3: [(-1, -1), (0, 0), (1, 1)], 4: [(-1, -1), (1, -1), (-1, 1), (1, 1)],
             5: [(-1, -1), (1, -1), (0, 0), (-1, 1), (1, 1)], 6: [(-1, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (1, 1)]}
-    for k, (x, y) in enumerate(scatter(r, n, 6, 330)):
-        a = r.uniform(0, TAU); S = 100; face = [6, 1, 5, 3, 4, 2][k % 6]
+    # (27 Nov, 0.6 m tiles: big dice broke into white shards at the edges; fewer, smaller dice)
+    for k, (x, y) in enumerate(scatter(r, n, 4, 420)):
+        a = r.uniform(0, TAU); S = r.uniform(60, 74); face = [6, 1, 5, 3, 4, 2][k % 6]
         X, Y, idx = t.box(x - S * 1.6, y - S * 1.6, x + S * 1.6, y + S * 1.6)
-        t.paint(idx, cover(sd_round_rect(x + 14, y + 18, S, S, 24, a)(X, Y), 10) * 0.45, '3a0608')
-        sd = sd_round_rect(x, y, S, S, 24, a)(X, Y)
+        t.paint(idx, cover(sd_round_rect(x + 9, y + 12, S, S, S * 0.24, a)(X, Y), 8) * 0.45, '3a0608')
+        sd = sd_round_rect(x, y, S, S, S * 0.24, a)(X, Y)
         t.paint(idx, cover(sd), mix('dcdad2', 'f6f4ee', smoothstep(S, -S, (X - x) + (Y - y))), rough=0.15)
         t.paint(idx, cover(sd), height=np.clip(-sd / 20, 0, 1) * 3, hmode='max')
         for px, py in PIPS[face]:
             cx = x + (px * math.cos(a) - py * math.sin(a)) * S * 0.5
             cy = y + (px * math.sin(a) + py * math.cos(a)) * S * 0.5
-            t.paint(idx, cover(np.hypot(X - cx, Y - cy) - (24 if face == 1 else 15)), 'c4182e' if face == 1 else '141416')
+            t.paint(idx, cover(np.hypot(X - cx, Y - cy) - S * (0.24 if face == 1 else 0.15)), 'c4182e' if face == 1 else '141416')
     return {}
 
 
@@ -1956,20 +1976,16 @@ def numsoup(t: Tex):
     t.rgb[:] = mix('c8862a', 'dca040', smoothstep(-0.5, 0.5, FBM([3, 6], 541)(t.U, t.V)))
     t.fill(field_cover(FBM([6, 12], 542)(t.U, t.V), 0.3) * 0.3, 'f0c870')
     t.rough[:] = 0.15
-    for x, y in scatter(r, n, 6, 200):
-        t.shape((x - 40, y - 40, x + 40, y + 40), sd_circle(x, y, 30), color='e2661e')
-        t.shape((x - 40, y - 40, x + 40, y + 40), lambda X, Y, x=x, y=y: np.abs(np.hypot(X - x, Y - y) - 18) - 2, color='f0943e')
-    for k, (x, y) in enumerate(scatter(r, n, 22, 140)):
-        a = r.uniform(0, TAU)
-        X, Y, idx = t.box(x - 60, y - 60, x + 60, y + 60)
-        if k % 3 == 0:
-            sd = np.abs(np.hypot(X - x, Y - y) - 30) - 11
-        elif k % 3 == 1:
-            sd = sd_star(x, y, 46, 22, 5, a, 6)(X, Y)
+    # (27 Nov, 0.6 m tiles: no ring pasta or carrot coins (cut on grips); bigger stars and bow ties, every size)
+    for k, (x, y) in enumerate(scatter(r, n, 11, 230)):
+        a = r.uniform(0, TAU); sc = r.uniform(1.1, 2.1)
+        X, Y, idx = t.box(x - 80 * sc, y - 80 * sc, x + 80 * sc, y + 80 * sc)
+        if k % 2 == 0:
+            sd = sd_star(x, y, 46 * sc, 22 * sc, 5, a, 6)(X, Y)
         else:
             c, s_ = math.cos(a), math.sin(a)
             px, py = (X - x) * c + (Y - y) * s_, -(X - x) * s_ + (Y - y) * c
-            sd = np.maximum(np.abs(px) - 44, np.abs(py) - (8 + 0.45 * np.abs(px)))
+            sd = np.maximum(np.abs(px) - 44 * sc, np.abs(py) - (8 + 0.45 * np.abs(px)) * sc)
         t.paint(idx, cover(sd - 5, 4) * 0.45, '7a4a14')
         t.paint(idx, cover(sd), 'f4e2a8')
         t.paint(idx, cover(sd), height=np.clip(-sd / 8, 0, 1) * 3, hmode='max')
@@ -2018,22 +2034,23 @@ def lavalamp(t: Tex):
 def vapor(t: Tex):
     """vaporwave: a striped sun setting over a pink grid floor, under a purple sky"""
     n = t.n
-    t.rgb[:] = mix('1a0636', '5a1478', smoothstep(0, 0.6, t.V))
-    sx, sy, R = n / 2, n * 0.42, 230
-    d = np.hypot(t.X - sx, t.Y - sy)
-    sun = cover(d - R) * cover(t.Y - n * 0.66)
-    cut = np.zeros_like(sun)
-    for i in range(6):
-        y0 = sy + 20 + i * 32
-        cut = np.maximum(cut, cover(np.abs(t.Y - y0) - (2 + i * 2.2)))
-    sun = sun * (1 - cut)
-    t.fill(sun, mix('ffd84a', 'ff3a8a', smoothstep(sy - R, sy + R, t.Y)), emit=1.0)
-    floor = cover(n * 0.66 - t.Y)
+    # (27 Nov, 0.6 m tiles: the sun only ever showed as slivers; now a sunset sky in bands of purple, pink and orange,
+    # a few neon streaks, and the grid floor as one band of wide cells)
+    # (round 2: the grid covered the receivers; the sunset now sits on the rows near the tile's edge (the body), the
+    # grid floor is one wide band away from them)
+    e = np.minimum(t.V, 1 - t.V)                                   # 0 at the tile's edge rows, 0.5 in the middle
+    t.rgb[:] = mix('ff9a4a', 'c8327e', smoothstep(0.0, 0.12, e))
+    t.fill(smoothstep(0.1, 0.22, e), '5a1478')
+    t.fill(smoothstep(0.2, 0.3, e), '1a0636')
+    t.emit[:] = (1 - smoothstep(0.0, 0.08, e)) * 0.5
+    sx = n / 2
+    for y0, x0, L in ((n * 0.16, 80, 360), (n * 0.84, 520, 300)):
+        t.shape((x0 - 4, y0 - 8, x0 + L + 4, y0 + 8), sd_round_rect(x0 + L / 2, y0, L / 2, 3, 3), color='4fd8ff', emit=1.0)
+    floor = cover(n * 0.38 - t.Y) * cover(t.Y - n * 0.62)
     t.fill(floor, '1a0430')
-    gx = cover(np.minimum((t.X - sx) % 128, 128 - (t.X - sx) % 128) - 2)
-    gy = cover(np.minimum((t.Y - n * 0.66) % 64, 64 - (t.Y - n * 0.66) % 64) - 2)
+    gx = cover(np.minimum((t.X - sx) % 256, 256 - (t.X - sx) % 256) - 2.5)
+    gy = cover(np.minimum((t.Y - n * 0.38) % 120, 120 - (t.Y - n * 0.38) % 120) - 2.5)
     t.fill(np.maximum(gx, gy) * floor, 'ff4fc4', emit=1.0)
-    t.fill(cover(np.abs(t.Y - n * 0.66) - 3), '4fd8ff', emit=1.0)
     t.rough[:] = 0.25
     return {'emissive': 2.2, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 1.1)
 
@@ -2046,10 +2063,12 @@ def aurora(t: Tex):
     t.rgb[:] = mix('071526', '0c1d36', smoothstep(-0.6, 0.6, FBM([2, 3], 562)(U, V)))
     w = FBM([(2, 1), (4, 2)], 561)(U, V)
     light = np.zeros_like(U); hue = np.zeros_like(U)
-    for k, (v0, amp, ph) in enumerate(((0.62, 0.10, 0.0), (0.12, 0.08, 0.37))):
-        hem = v0 + amp * np.sin((U + ph + 0.25 * w) * TAU * 2)       # the curtain's lower edge, waving along the gun
+    # (27 Nov, 0.6 m tiles: the hem's regular scallop repeated in a row along the sniper; the hem now follows a slow
+    # noise (no period inside the tile), and the rays are wider)
+    for k, (v0, amp, ph) in enumerate(((0.62, 0.9, 0.0), (0.12, 0.7, 0.37))):
+        hem = v0 + amp * FBM([(1, 1), (2, 1)], 563 + k)(U + ph, V * 0)   # the curtain's lower edge, wandering along the gun
         up = (hem - V) % 1.0                                          # how far above the hem (periodic)
-        rays = 0.55 + 0.45 * np.sin((U * 12 + 2.5 * w + k * 0.3) * TAU) ** 2
+        rays = 0.7 + 0.3 * np.sin((U * 4 + 1.6 * w + k * 0.3) * TAU) ** 2
         c = smoothstep(0.0, 0.025, up) * np.exp(-up / 0.2) * rays
         hue = np.where(c >= light, smoothstep(0.02, 0.32, up), hue)
         light = np.maximum(light, c)
@@ -2403,11 +2422,14 @@ def stonks(t: Tex):
     t.rgb[:] = hexrgb('05080a')
     t.fill(cover(np.minimum(t.X % 128, 128 - t.X % 128) - 1) * 0.8, '102016')
     t.fill(cover(np.minimum(t.Y % 128, 128 - t.Y % 128) - 1) * 0.8, '102016')
-    pts = []; y = 260.0
+    # (27 Nov, 0.6 m tiles: the chart landed as stray dashes; ONE bold line now runs through the rows near the tile's
+    # edge, where the gun's body sits, diving and recovering along the gun)
+    pts = []; y = 70.0
     for x in np.arange(0, n + 1, 32.0):
-        pts.append((x, y)); y = min(880, max(220, y + r.uniform(-30, 64)))
-    pts[-1] = (pts[-1][0], 260.0)
-    for i in range(2, len(pts) - 2, 2):
+        pts.append((x, y)); y = min(190, max(-90, y + r.uniform(-40, 46)))
+    pts[-1] = (pts[-1][0], 70.0)
+    pts = [(x, y if y >= 0 else y) for x, y in pts]
+    for i in range(5, len(pts) - 2, 7):
         x, yy = pts[i]; up = r.uniform() < 0.35
         c = '3aff5a' if up else 'ff3a3a'
         t.shape((x - 14, yy - 70, x + 14, yy + 70), sd_round_rect(x, yy, 8, 34, 2), color=c, emit=0.8)
@@ -2415,9 +2437,10 @@ def stonks(t: Tex):
     half = len(pts) // 2   # (two halves, each its own box: one box can't be wider than the tile)
     for seg in (pts[:half + 1], pts[half:]):
         X, Y, idx = t.box(*bbox_of(seg, 12))
-        t.paint(idx, cover(sd_polyline(seg, 5)(X, Y)), 'ff3a3a', emit=1.0)
-    for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
-        t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
+        t.paint(idx, cover(sd_polyline(seg, 13)(X, Y)), 'ff3a3a', emit=1.0)
+        segw = [(x, y + n) for x, y in seg]
+        X, Y, idx = t.box(*bbox_of(segw, 16))
+        t.paint(idx, cover(sd_polyline(segw, 13)(X, Y)), 'ff3a3a', emit=1.0)
     t.rough[:] = 0.2
     return {'emissive': 5.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 4)
 
