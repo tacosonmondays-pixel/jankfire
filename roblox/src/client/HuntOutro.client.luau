@@ -567,6 +567,31 @@ local function play(a: any)
 			cam = function(u)
 				local e = smoother(u)
 				local from = CFrame.lookAt(scrP + scrN * fillDist(), scrP)
+				-- (v12, main: "no frame ever shows the shell's inside") the stretch where the lens would brush a body, the
+				-- chair or the couch is cut over: found once, on the pull's first frame
+				if not r.pullSkip then
+					local near: { BasePart } = {}
+					for _, d in room:GetDescendants() do
+						if d:IsA("BasePart") and d ~= screen and math.max(d.Size.X, d.Size.Y, d.Size.Z) <= 12 then table.insert(near, d) end
+					end
+					local function brushes(at: Vector3): boolean
+						for _, d in near do
+							local o = d.CFrame:PointToObjectSpace(at)
+							local h = d.Size / 2
+							local c = Vector3.new(math.clamp(o.X, -h.X, h.X), math.clamp(o.Y, -h.Y, h.Y), math.clamp(o.Z, -h.Z, h.Z))
+							if (o - c).Magnitude < 0.8 then return true end
+						end
+						return false
+					end
+					local e0, e1 = nil, nil
+					for i = 0, 200 do
+						local x = i / 200
+						if brushes(from:Lerp(pullEnd, x).Position) then e0 = e0 or x; e1 = x end
+					end
+					r.pullSkip = if e0 and e1 and e1 < 0.98 then { a = e0, b = math.min(1, e1 + 0.01) } else false
+				end
+				local k = r.pullSkip
+				if k and e >= k.a then e = k.b + (e - k.a) * (1 - k.b) / math.max(1e-3, 1 - k.a) end
 				return from:Lerp(pullEnd, e)
 			end },
 		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 64 else 52, shake = 0.4, cam = reveal },
