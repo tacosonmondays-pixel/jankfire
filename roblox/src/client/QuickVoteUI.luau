@@ -242,6 +242,10 @@ end
 -- vote over it was out of reach. while a Play-queue vote is open it is a screen of its own for PadNav (a "cursor only"
 -- MenuCursor name: you still move), so the stick and A reach its cards. a map room's vote has no menu over it: View
 -- reaches its cards as before, and the stick still walks you to the plates)
+-- (27 Nov 2026: PadNav, a LocalScript of its own, puts Pad.MENUS there when it runs, which can be after PlayClient has
+-- required this module: the missing table stopped PlayClient loading, no PLAY or PARTY button. start the table if it is
+-- not there yet; PadNav keeps what it finds in it)
+Pad.MENUS = Pad.MENUS or {}
 Pad.MENUS.vote = { gui = "JankVote", back = function() end }
 local menuOn = false
 local function voteOpen(): boolean

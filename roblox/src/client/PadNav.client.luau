@@ -171,6 +171,11 @@ local MENUS: { [string]: Spec } = {
 	report = { gui = "ReportDialog", back = function() local m = mod("ReportUI"); if m then m.close() end end },
 	anticheat = { gui = "AntiCheatPanel", back = function() local g = pg:FindFirstChild("AntiCheatPanel"); if g and g:IsA("ScreenGui") then g.Enabled = false end end },
 }
+-- (27 Nov 2026: a screen another script added before this ran, QuickVoteUI's vote or MiniGames' minigame, is kept: the
+-- order LocalScripts start in is not fixed)
+if type(Pad.MENUS) == "table" then
+	for k, v in Pad.MENUS do if MENUS[k] == nil then MENUS[k] = v end end
+end
 Pad.MENUS = MENUS -- (other scripts may add their own screen: Pad.MENUS.<MenuCursor name> = { gui = ..., back = fn })
 
 -- the order menus came up in: the newest is the one B talks to
