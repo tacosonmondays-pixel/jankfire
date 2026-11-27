@@ -254,6 +254,226 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, 
 	return b
 end
 
+-- ------------------------------------------------------------------ THE WALK (a map's walk spot)
+-- (27 Nov, the owner, for the Spooky Forest: "make them walk in the forest scared as the screen distorts".) the winners
+-- walk the spot's path: the one in front leads with the gun up, teammates huddle behind (V.WALK.mates). the lens:
+--   TRACK   0 - 3.0 s        a slow backward track in front of them
+--   LOW     3.0 - 4.7 s      low at their side, looking up through the trees
+--   BEHIND  4.7 s - stop     behind the last of them, over the shoulder, into the dark ahead
+--   STARTLE stop - end       the stinger: everyone flinches, the lens whips in on the one in front; then held for the card
+-- the screen builds unease over the walk: colour draining toward a cold green, a breathing FOV, a heartbeat-timed
+-- vignette and blur, double-vision flickers, a rising shake; the startle flashes and kicks
+local WALK_TRACK, WALK_LOW = 3.0, 4.7
+local function pathOf(cfs: { CFrame }): any
+	local pts, acc = {}, { 0 }
+	for i, c in cfs do pts[i] = c.Position end
+	for i = 2, #pts do acc[i] = acc[i - 1] + (pts[i] - pts[i - 1]).Magnitude end
+	return { pts = pts, acc = acc, total = acc[#acc] }
+end
+local function flat(v: Vector3): Vector3
+	local f = Vector3.new(v.X, 0, v.Z)
+	return if f.Magnitude > 1e-3 then f.Unit else Vector3.new(0, 0, -1)
+end
+-- where the path is at distance d along it, and which way it runs there (past either end it carries straight on)
+local function along(P: any, d: number): (Vector3, Vector3)
+	local pts, acc = P.pts, P.acc
+	local n = #pts
+	if d <= 0 then local f = flat(pts[2] - pts[1]); return pts[1] + f * d, f end
+	for i = 2, n do
+		if d <= acc[i] then
+			local u = (d - acc[i - 1]) / math.max(1e-3, acc[i] - acc[i - 1])
+			return pts[i - 1]:Lerp(pts[i], u), flat(pts[i] - pts[i - 1])
+		end
+	end
+	local f = flat(pts[n] - pts[n - 1])
+	return pts[n] + f * (d - acc[n]), f
+end
+
+-- the screen's unease: a vignette (four edges, dark at the rim) and a flash, under the card (DisplayOrder 46)
+local function fearGui(): any
+	local g = Instance.new("ScreenGui")
+	g.Name = "JankVictoryFear"; g.ResetOnSpawn = false; g.IgnoreGuiInset = true; g.DisplayOrder = 46
+	local edges = {}
+	for _, e in { { "Top", UDim2.new(1, 0, 0.32, 0), UDim2.fromScale(0, 0), 90 }, { "Bottom", UDim2.new(1, 0, 0.32, 0), UDim2.fromScale(0, 0.68), -90 },
+		{ "Left", UDim2.new(0.26, 0, 1, 0), UDim2.fromScale(0, 0), 0 }, { "Right", UDim2.new(0.26, 0, 1, 0), UDim2.fromScale(0.74, 0), 180 } } do
+		local f = Instance.new("Frame")
+		f.Name = e[1]; f.BackgroundColor3 = Color3.new(0, 0, 0); f.BorderSizePixel = 0; f.Size = e[2]; f.Position = e[3]
+		local gr = Instance.new("UIGradient")
+		gr.Rotation = e[4]
+		gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) })
+		gr.Parent = f
+		f.Parent = g
+		table.insert(edges, f)
+	end
+	local flash = Instance.new("Frame")
+	flash.Name = "Flash"; flash.BackgroundColor3 = Color3.fromRGB(235, 242, 238); flash.BorderSizePixel = 0; flash.Size = UDim2.fromScale(1, 1)
+	flash.BackgroundTransparency = 1; flash.Parent = g
+	g.Parent = me:WaitForChild("PlayerGui")
+	return { gui = g, edges = edges, flash = flash }
+end
+
+local function walkSound(name: string, looped: boolean, vol: number?): Sound?
+	local k = kitOf()
+	local src = k and k:FindFirstChild(name)
+	if not (src and src:IsA("Sound")) then return nil end
+	local s = src:Clone()
+	s.Looped = looped
+	if vol then s.Volume = vol end
+	local master = SoundService:FindFirstChild("JankMaster")
+	local g = master and master:FindFirstChild("Music") -- (the bed, the heartbeat and the stinger are APM music: the MUSIC slider)
+	if g and g:IsA("SoundGroup") then s.SoundGroup = g end
+	s.Parent = SoundService
+	s:Play()
+	if not looped then s.Ended:Once(function() s:Destroy() end) end
+	return s
+end
+
+-- the bodies on the path: each with its offset (right, back), its walk and its upper-body layer
+local function walkBodies(s: any, stage: { any }, folder: Instance)
+	local P = s.walk.P
+	for i, e in stage do
+		if i > 1 + #V.WALK.mates then break end
+		local off = if i == 1 then Vector2.zero else V.WALK.mates[i - 1]
+		local pos, f = along(P, -off.Y)
+		local right = f:Cross(Vector3.yAxis)
+		local at = pos + right * off.X
+		local cf = CFrame.lookAt(at, at + f)
+		local he = table.clone(e)
+		he.emote = nil -- (everyone walks: no dances on the path)
+		local b = makeBody(he, cf, "victory", folder)
+		if not b then continue end
+		-- the walk under, the upper body over it (the victory pose makeBody started goes)
+		if b.track then b.track:Stop(0) end
+		local hum = b.model:FindFirstChildOfClass("Humanoid")
+		local animator = hum and hum:FindFirstChildOfClass("Animator")
+		local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
+		local function load(id: string, prio: Enum.AnimationPriority, looped: boolean): AnimationTrack?
+			if not animator then return nil end
+			local a = Instance.new("Animation")
+			a.AnimationId = id
+			local ok, tr = pcall(function() return (animator :: Animator):LoadAnimation(a) end)
+			if not ok or not tr then return nil end
+			tr.Priority = prio; tr.Looped = looped
+			return tr
+		end
+		local walk = load(if r6 then V.WALK.walk6 else V.WALK.walk, Enum.AnimationPriority.Movement, true)
+		local upper = load(if i == 1 then V.WALK.guard else V.WALK.look, Enum.AnimationPriority.Action, true)
+		if walk then walk:Play(0.2); walk:AdjustSpeed(V.WALK.animSpeed) end
+		if upper then
+			upper:Play(0.2)
+			upper.TimePosition = (i - 1) * 2.7 -- (each teammate glances back at its own moment)
+		end
+		local root = b.root
+		local hum2 = hum
+		local up = if hum2 and hum2.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum2 and hum2.HipHeight or 2) + root.Size.Y / 2)
+		table.insert(s.walk.bodies, { b = b, off = off, walk = walk, upper = upper, up = up, rootToPivot = root.CFrame:ToObjectSpace(b.model:GetPivot()),
+			startle = load(V.WALK.startle, Enum.AnimationPriority.Action4, false) })
+		table.insert(s.bodies, b)
+	end
+end
+
+-- the group's lead distance at time t (they stop for the startle)
+local function walkDist(s: any, t: number): number
+	return math.min(t, s.walk.tStop) * V.WALK.speed
+end
+
+local function walkMove(s: any, t: number)
+	local d = walkDist(s, t)
+	for _, w in s.walk.bodies do
+		local pos, f = along(s.walk.P, d - w.off.Y)
+		local right = f:Cross(Vector3.yAxis)
+		local at = pos + right * w.off.X + Vector3.new(0, w.up, 0)
+		local rootCF = CFrame.lookAt(at, at + f)
+		w.b.model:PivotTo(rootCF * w.rootToPivot)
+	end
+	if t >= s.walk.tStop and not s.walk.startled then
+		s.walk.startled = true
+		for i, w in s.walk.bodies do
+			if w.walk then w.walk:Stop(0.12) end
+			if w.upper then w.upper:Stop(0.08) end
+			if w.startle then
+				local tr = w.startle :: AnimationTrack
+				tr:Play(0.05)
+				tr:AdjustSpeed(1.15 + 0.07 * i)
+				-- (held at the end of the flinch: the card comes over this frame)
+				task.delay(math.max(0.2, tr.Length / 1.2 - 0.12), function() if tr.IsPlaying then tr:AdjustSpeed(0) end end)
+			end
+		end
+		if s.walk.heart then TweenService:Create(s.walk.heart, TweenInfo.new(0.4), { Volume = 0 }):Play() end
+		walkSound("Stinger", false)
+		s.walk.kickAt = t
+	end
+end
+
+-- the lens for the walk at time t
+local function walkCam(s: any, t: number): (Vector3, Vector3, number)
+	local W = s.walk
+	local len = s.len
+	local tt = if s.hold then math.max(t, len) else t
+	local d = walkDist(s, tt)
+	local L, f = along(W.P, d)
+	local right = f:Cross(Vector3.yAxis)
+	local up = Vector3.yAxis
+	if tt < WALK_TRACK then
+		return L + f * 7.5 + up * 4.4 + right * 0.7, L + up * 3.7 + f * 0.6, 46
+	elseif tt < WALK_LOW then
+		local u = (tt - WALK_TRACK) / (WALK_LOW - WALK_TRACK)
+		return L + right * (6.6 - u * 0.8) + f * 3.0 + up * 1.1, L + up * 3.3 - right * 0.6, 40
+	elseif tt < W.tStop then
+		local back = W.bodies[#W.bodies] and W.bodies[#W.bodies].off.Y or 2.5
+		local u = (tt - WALK_LOW) / math.max(0.1, W.tStop - WALK_LOW)
+		local behind = L - f * (back + 3.6 - u * 0.8)
+		return behind + up * 5.0 + right * 0.9, L + f * 14 + up * 3.4, 50
+	end
+	-- the startle: a whip in on the one in front's face, then held (a slow drift while the card is up)
+	local close = L + f * 3.4 + up * 4.8 + right * 0.35
+	local look = L + up * 4.55
+	local behind = L - f * 3.8 + up * 5.0 + right * 0.9
+	local w = math.clamp((tt - W.tStop) / 0.16, 0, 1)
+	w = 1 - (1 - w) ^ 3
+	local at = behind:Lerp(close, w)
+	if tt > len then
+		local k = (tt - len) * 0.3
+		at += right * math.sin(k) * 0.25 + up * math.sin(k * 0.7) * 0.08
+	end
+	return at, look, 38
+end
+
+-- the screen's unease, each frame
+local function walkFear(s: any, t: number, cf: CFrame, fov: number): (CFrame, number)
+	local W = s.walk
+	local len = s.len
+	local u = math.clamp(t / W.tStop, 0, 1)
+	if s.hold or t > len then u = 1 end
+	-- the heartbeat: 70 beats a minute rising to 150 (a sharp pulse on each)
+	local bps = (70 + 80 * u) / 60
+	W.beat = (W.beat or 0) + bps * (W.dt or 0)
+	local ph = W.beat % 1
+	local pulse = math.max(0, 1 - ph * 5) ^ 2 + 0.5 * math.max(0, 1 - math.abs(ph - 0.28) * 6) ^ 2
+	if W.heart then W.heart.PlaybackSpeed = 0.85 + 0.75 * u end
+	-- colour draining toward a cold green
+	local cc = s.cc
+	cc.Saturation = (if s.win then -0.12 else -0.45) - 0.55 * u
+	cc.Contrast = 0.06 + 0.16 * u
+	cc.Brightness = -0.02 - 0.05 * u - 0.05 * pulse * u
+	cc.TintColor = Color3.fromRGB(238, 244, 240):Lerp(if s.win then Color3.fromRGB(192, 214, 204) else Color3.fromRGB(182, 200, 214), u)
+	-- blur on the beats, and double-vision flickers that come more often as it builds
+	local flick = 0
+	if t < W.tStop and math.random() < (0.25 + 1.8 * u) * (W.dt or 0) then W.flickUntil = t + 0.06 + 0.05 * math.random() end
+	if W.flickUntil and t < W.flickUntil then flick = 7 + 5 * u end
+	local kick = if W.kickAt then math.max(0, 1 - (t - W.kickAt) / 0.45) else 0
+	W.blur.Size = 0.8 * u + 3.2 * pulse * u + flick + 14 * kick ^ 2
+	-- the vignette darkens with it, beating
+	for _, e in W.fear.edges do e.BackgroundTransparency = math.clamp(0.6 - 0.38 * u - 0.18 * pulse * u, 0, 1) end
+	W.fear.flash.BackgroundTransparency = if W.kickAt and t - W.kickAt < 0.07 then 0.15 else 1
+	-- the lens breathes and shakes, more and more; the startle kicks it
+	local amp = 0.02 + 0.13 * u ^ 1.5 + 0.5 * kick
+	local n1, n2, n3 = math.noise(t * 5.3, 1.7), math.noise(t * 4.7, 8.1), math.noise(t * 3.9, 3.3)
+	local shaken = cf * CFrame.new(n1 * amp, n2 * amp, 0) * CFrame.Angles(math.rad(n2 * (0.3 + 1.6 * u + 6 * kick)), math.rad(n1 * (0.3 + 1.4 * u)), math.rad(n3 * (0.4 + 1.2 * u + 4 * kick)))
+	local breathe = 2.6 * u * math.sin(t * 2.2) - 4 * kick + (if flick > 0 then 1.5 else 0)
+	return shaken, fov + breathe
+end
+
 -- ------------------------------------------------------------------ the look (Lighting, saved and put back)
 local LIGHT_PROPS = { "ClockTime", "Brightness", "Ambient", "OutdoorAmbient", "ExposureCompensation", "EnvironmentDiffuseScale",
 	"EnvironmentSpecularScale", "GlobalShadows", "ShadowSoftness", "GeographicLatitude", "FogEnd", "FogStart" }
@@ -333,7 +553,7 @@ end
 type State = {
 	msg: any, win: boolean, len: number, t0: number, hold: boolean, held: number?, frame: CFrame, folder: Folder,
 	bodies: { Body }, look: any, cc: ColorCorrectionEffect, bloom: BloomEffect, fov: number, shots: { any }, sting: Sound?,
-	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number,
+	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?,
 }
 local st: State? = nil
 
@@ -347,6 +567,10 @@ local function lerpShot(a: any, b: any, u: number): (Vector3, Vector3, number)
 end
 
 local function camAt(s: State, t: number): (CFrame, number)
+	if s.walk then
+		local wa, wl, wf = walkCam(s, t)
+		return CFrame.lookAt(wa, wl), wf
+	end
 	local at, look, fov
 	if s.hold or t >= s.len then
 		local h = if s.spot then s.holdK else holdOf(s.win)
@@ -365,7 +589,7 @@ local function camAt(s: State, t: number): (CFrame, number)
 	return CFrame.lookAt(wa, wl), fov
 end
 
-local function step()
+local function step(dt: number?)
 	local s = st
 	if not s then return end
 	if Replay.mode and Replay.mode() == "potm" then Scene.stop("replay"); return end -- (the play of the match has the screen)
@@ -373,7 +597,13 @@ local function step()
 	local fz = workspace:GetAttribute("VictoryFreeze") -- (Studio photos: the lens held at that moment)
 	if type(fz) == "number" then t = fz; s.held = if s.hold then fz - 0.001 else s.held end
 	local cam = workspace.CurrentCamera :: Camera
+	if s.walk and s.hold then t = math.max(t, s.len) end -- (skipped: the walk's end, held)
 	local cf, fov = camAt(s, t)
+	if s.walk then
+		s.walk.dt = dt or (1 / 60)
+		walkMove(s, t)
+		cf, fov = walkFear(s, t, cf, fov)
+	end
 	if s.spot then
 		Replay.hideLive(true) -- (in the map itself: the live bodies would stand among ours)
 		-- (a whole-workspace look is costly on these maps: once at the start, once 1.5 s in for late arrivals)
@@ -490,7 +720,9 @@ function Scene.start(msg: any, opts: any?): boolean
 	local stage = if type(msg.stage) == "table" then msg.stage else {}
 	local used: { [string]: boolean } = {}
 	local mates = {}
+	local walking = spot ~= nil and spot.kind == "walk" and type(spot.path) == "table" and #spot.path >= 2
 	for i, e in stage do
+		if walking then break end
 		if i == 1 then
 			local pose = V.pick(V.HERO_POSES, e.uid)
 			-- (the one in front faces the held lens a little; every body faces the camera side, +Z; a map's spot says)
@@ -506,7 +738,7 @@ function Scene.start(msg: any, opts: any?): boolean
 		end
 	end
 	local places = MATES[math.min(#mates, 3)] or {}
-	for i, e in mates do
+	for i, e in (if walking then {} else mates) do
 		local cf: CFrame
 		local pose = V.pick(V.MATE_POSES, e.uid, used)
 		local seatY: number? = nil
@@ -550,7 +782,18 @@ function Scene.start(msg: any, opts: any?): boolean
 	}
 	if s.hold then s.held = 0 end
 	st = s
-	if not (opts and opts.quiet) then s.sting = sting(win) end
+	if walking then
+		local blur = Instance.new("BlurEffect")
+		blur.Name = "JankVictoryFearBlur"; blur.Size = 0; blur.Parent = cam
+		s.walk = { P = pathOf(spot.path), bodies = {}, tStop = math.max(1, len - V.WALK.startleAt), fear = fearGui(), blur = blur }
+		walkBodies(s, stage, folder)
+		if not (opts and opts.quiet) then
+			s.walk.amb = walkSound("WalkAmb", true)
+			s.walk.heart = walkSound("Heartbeat", true)
+		end
+	elseif not (opts and opts.quiet) then
+		s.sting = sting(win)
+	end
 	RunService:BindToRenderStep("JankVictoryCam", Enum.RenderPriority.Last.Value + 80, step)
 	step()
 	return true
@@ -577,6 +820,15 @@ function Scene.stop(why: string?)
 	for _, l in s.lit do if l.Parent then l.Enabled = false end end
 	for e in s.blurs do if e.Parent then (e :: any).Enabled = true end end
 	if s.spot then Replay.hideLive(false); showNear() end
+	if s.walk then
+		local W = s.walk
+		if W.fear and W.fear.gui then W.fear.gui:Destroy() end
+		if W.blur then W.blur:Destroy() end
+		for _, snd in { W.amb, W.heart } do if snd and snd.Parent then snd:Destroy() end end
+		for _, w in W.bodies do
+			for _, tr in { w.walk, w.upper, w.startle } do if tr then pcall(function() tr:Stop(0) end) end end
+		end
+	end
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Custom
 	cam.FieldOfView = s.fov

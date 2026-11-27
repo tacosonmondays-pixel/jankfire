@@ -42,6 +42,24 @@ V.HERO_POSES = { "fight", "armsup" } -- the one in front, when they have no emot
 V.MATE_POSES = { "cheer", "aim", "crouch", "lean" } -- teammates: each a different one where it can be
 V.SIT_POSE = "sitledge" -- (THE RISER only: a teammate on its front edge)
 
+-- THE WALK (a map's walk spot: the Spooky Forest, 27 Nov - "make them walk in the forest scared as the screen
+-- distorts"). Until the owner's Mixamo clips come (Sneak Walk, Scared, Look Over Shoulder, Startled: main's list), real
+-- mocap we have: Roblox's own walk, slowed, under upper-body layers (vault 18nov 17 Fight Stance --upper for the one in
+-- front, the gun up nervously; 17nov 07 Frisk Look Around --upper for teammates glancing back), and 18nov 24 Hit Head Big
+-- as the startle. Swap the ids when the clips arrive
+V.WALK = {
+	walk = "rbxassetid://507777826", -- (Roblox's default R15 walk)
+	walk6 = "rbxassetid://180426354", -- (Roblox's default R6 walk)
+	speed = 4.2, -- studs/s along the path
+	animSpeed = 0.62, -- the walk clip slowed to the pace
+	guard = "rbxassetid://123801588707582", -- upper body: the boxing guard, gun up by the face
+	look = "rbxassetid://72083974683735", -- upper body: the look-around, glancing back
+	startle = "rbxassetid://132490521184612", -- the flinch at the stinger
+	startleAt = 1.0, -- s before the walk's end
+	-- teammates huddle close behind the one in front: (right, back) in the path's frame
+	mates = { Vector2.new(1.7, 2.5), Vector2.new(-1.8, 2.7), Vector2.new(0.3, 4.5) },
+}
+
 -- the emote wheel's own defaults (shared/Flair F.DEFAULT.emotes): a wheel slot holding one of these isn't a pick
 local DEFAULTS = { wave = true, hello = true, salute = true, point = true, shrug = true, cheer = true, laugh = true, dance = true }
 V.DEFAULTS = DEFAULTS

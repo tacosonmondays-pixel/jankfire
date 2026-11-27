@@ -38,6 +38,7 @@ local Card = require(script.Parent:WaitForChild("VictoryCard")) :: any
 local Replay = require(script.Parent:WaitForChild("Replay")) :: any
 
 local R = Remotes:WaitForChild("Victory", 60) :: RemoteEvent?
+local PlayR = Remotes:FindFirstChild("Play") :: RemoteFunction? -- (PLAY AGAIN / LEAVE: play-party-ranked's queue side)
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
 
 -- ------------------------------------------------------------------ what the match began with
@@ -234,12 +235,38 @@ local function unbindSkip()
 	Card.skip(false)
 end
 
+-- PLAY AGAIN / LEAVE: the queue's view of this player's picks (nil when the server has no such op yet)
+local function againCall(...: any): any?
+	local pr = PlayR or Remotes:FindFirstChild("Play") :: RemoteFunction?
+	if not (pr and pr:IsA("RemoteFunction")) then return nil end
+	local ok, res = pcall(function(...) return (pr :: RemoteFunction):InvokeServer(...) end, ...)
+	if ok and type(res) == "table" and type(res.view) == "table" then return res.view end
+	return nil
+end
+local function bindPicks(on: boolean)
+	pcall(function() ContextActionService:UnbindAction("JankVictoryPick") end)
+	if not on then return end
+	ContextActionService:BindActionAtPriority("JankVictoryPick", function(_, state, input)
+		if state ~= Enum.UserInputState.Begin or not Card.onPick then return Enum.ContextActionResult.Pass end
+		local again = input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.ButtonA
+		;(Card.onPick :: (boolean) -> ())(again)
+		return Enum.ContextActionResult.Sink
+	end, false, 3500, Enum.KeyCode.Return, Enum.KeyCode.Backspace, Enum.KeyCode.ButtonA, Enum.KeyCode.ButtonB)
+end
 local function showCard(r: Run)
 	if r.cardShown then return end
 	r.cardShown = true
 	local d = cardOf(r.msg)
 	r.card = d
 	Card.show(d)
+	-- the picks: asked once, then followed on PlayPush
+	local myTok = r.tok
+	task.spawn(function()
+		local view = againCall("againview")
+		if not run or run.tok ~= myTok then return end
+		Card.again(view)
+		bindPicks(view ~= nil)
+	end)
 	-- the rewards settle a moment after the match ends (Stats, Quests, MasteryXp write in their own end hooks)
 	local my = r.tok
 	task.spawn(function()
@@ -260,6 +287,7 @@ local function finish(why: string)
 	run = nil
 	tok += 1
 	unbindSkip()
+	bindPicks(false)
 	Scene.stop(why)
 	Card.hide()
 	showScreens()
@@ -291,6 +319,23 @@ local function bindSkip(r: Run)
 	end)
 end
 Card.onSkip = skip
+Card.onPick = function(again: boolean)
+	local r = run
+	if not r or not r.cardShown then return end
+	task.spawn(function()
+		local view = againCall("again", again)
+		if view and run == r then Card.again(view) end
+	end)
+	report(r) -- (a pick ends this viewer's part of the scene's hold)
+end
+do
+	local pp = Remotes:FindFirstChild("PlayPush")
+	if pp and pp:IsA("RemoteEvent") then
+		pp.OnClientEvent:Connect(function(m: any)
+			if type(m) == "table" and m.t == "again" and run and run.cardShown then Card.again(m.view) end
+		end)
+	end
+end
 
 local function begin(msg: any, test: boolean?)
 	finish("new")
@@ -314,9 +359,10 @@ local function begin(msg: any, test: boolean?)
 			return
 		end
 		bindSkip(r)
-		-- the card slides in as the lens settles
+		-- the card slides in as the lens settles (a walk: after its startle)
 		local my = r.tok
-		task.delay(math.max(0, (tonumber(msg.len) or V.LEN) - 0.8), function()
+		local walkSpot = type(msg.spot) == "table" and msg.spot.kind == "walk"
+		task.delay(if walkSpot then (tonumber(msg.len) or 7) + 0.1 else math.max(0, (tonumber(msg.len) or V.LEN) - 0.8), function()
 			if not run or run.tok ~= my then return end
 			showCard(r)
 			unbindSkip()

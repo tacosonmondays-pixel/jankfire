@@ -138,6 +138,19 @@ local function spotIn(site: Instance?): any?
 		if not (p and p:IsA("BasePart")) then return nil end
 		return p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)
 	end
+	-- (a WALK spot - the Kind attribute "walk": the winners walk a path through the map, Parts Path1..PathN on the
+	-- floor in order; the owner, 27 Nov, for the Spooky Forest: "make them walk in the forest scared as the screen
+	-- distorts". its own length: the Len attribute, s)
+	if v:GetAttribute("Kind") == "walk" then
+		local path = {}
+		for i = 1, 32 do
+			local c = floor("Path" .. i)
+			if not c then break end
+			table.insert(path, c)
+		end
+		if #path < 2 then return nil end
+		return { kind = "walk", path = path, hero = path[1], mates = {}, len = tonumber(v:GetAttribute("Len")) or 7, lights = v:FindFirstChild("Lights") }
+	end
 	local hero = floor("Hero")
 	local s: any = { hero = hero, mates = {}, rise = { lens(v, "RiseA"), lens(v, "RiseB") }, wide = { lens(v, "WideA"), lens(v, "WideB") },
 		hold = lens(v, "Hold"), lose = { lens(v, "LoseA"), lens(v, "LoseB") }, lights = v:FindFirstChild("Lights") }
@@ -162,8 +175,10 @@ local function onEnd(m: any, winner: number?)
 	-- the hold goes on NOW (Matches.endMatch starts waiting on it right after its hooks): the default scene's length,
 	-- unless a finisher's hold is already on (FinisherServer's old cut, before Matches.victoryLive reached it)
 	local held = false
+	local spot = spotIn(m.site and m.site.model) -- (a walk spot runs longer: its own Len)
+	local len = if spot and spot.len then spot.len else V.LEN
 	if winner and not (type(m.finisherUntil) == "number" and m.finisherUntil > t0) then
-		m.finisherUntil = t0 + V.LEN + V.SLACK
+		m.finisherUntil = t0 + len + V.SLACK
 		m.victoryHold = true
 		held = true
 	end
@@ -224,11 +239,10 @@ local function onEnd(m: any, winner: number?)
 			m.victoryHold = nil
 			m.finisherUntil = math.min(m.finisherUntil or 0, os.clock() + 0.1) -- (a draw or nobody to show: the card at once)
 		end
-		local spot = spotIn(m.site and m.site.model)
 		local wins = {}
 		for t, n in m.wins or {} do wins[t] = n end
 		local msg = {
-			t = "scene", id = m.id, scene = scene, cine = cine, len = V.LEN, winner = winner, mode = tostring(m.mode or ""),
+			t = "scene", id = m.id, scene = scene, cine = cine, len = len, winner = winner, mode = tostring(m.mode or ""),
 			classic = m.rules ~= nil, ranked = m.ranked == true, arena = tostring(m.arena or ""), wins = wins, board = board,
 			stage = stage, front = if stage[1] then stage[1].uid else nil, spot = spot, finisher = finisher,
 			ffa = m.ffa == true or (board and board.ffa) or nil,

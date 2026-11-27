@@ -75,6 +75,43 @@ skipWord.Position = UDim2.fromOffset(10, 0); skipWord.Size = UDim2.new(0, 40, 1,
 local skipKey = K.text(skipB, "Key", "SPACE", 11, A.BONE, K.SANS_BOLD, Enum.TextXAlignment.Right)
 skipKey.Position = UDim2.new(1, -60, 0, 0); skipKey.Size = UDim2.new(0, 52, 1, 0); skipKey.TextTransparency = 0.35
 skipB.Activated:Connect(function() if Card.onSkip then (Card.onSkip :: () -> ())() end end)
+
+-- PLAY AGAIN and LEAVE (27 Nov; the queue side is play-party-ranked's: Play "again" / "againview", PlayPush "again").
+-- PLAY AGAIN is ink with the queue pads' lip under it (A PLATE: only what you press gets the lip); LEAVE is a bone key.
+-- under them: what PLAY AGAIN queues, and the leader's pick or how many have picked
+Card.onPick = nil :: ((boolean) -> ())?
+local picks = K.new("Frame", { Name = "Picks", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, PAD, 1, -40),
+	Size = UDim2.new(1, -2 * PAD - RIGHT, 0, 58), Visible = false }, plate)
+local function keyCap(parent: Instance, text: string, color: Color3)
+	local k = K.text(parent, "Key", text, 10, color, K.SANS_BOLD, Enum.TextXAlignment.Right)
+	k.AnchorPoint = Vector2.new(1, 0); k.Position = UDim2.new(1, -10, 0, 0); k.Size = UDim2.new(0, 80, 1, 0); k.TextTransparency = 0.4
+	return k
+end
+local againB = K.new("TextButton", { Name = "Again", AutoButtonColor = false, BackgroundColor3 = A.INK, BorderSizePixel = 0, Text = "",
+	Size = UDim2.new(0.6, -4, 0, 34) }, picks)
+K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, againB)
+K.new("Frame", { Name = "Lip", BackgroundColor3 = A.LIP, BorderSizePixel = 0, Position = UDim2.new(0, 2, 1, 0), Size = UDim2.new(1, -4, 0, 3) }, againB)
+local againWord = K.text(againB, "Word", "PLAY AGAIN", 14, A.BONE, K.SANS_HEAVY)
+againWord.Position = UDim2.fromOffset(12, 0); againWord.Size = UDim2.new(1, -90, 1, 0)
+local againKey = keyCap(againB, "ENTER", A.BONE)
+local leaveB = K.new("TextButton", { Name = "Leave", AutoButtonColor = false, BackgroundColor3 = A.BONE2, BorderSizePixel = 0, Text = "",
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), Size = UDim2.new(0.4, -4, 0, 34) }, picks)
+K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, leaveB)
+local leaveWord = K.text(leaveB, "Word", "LEAVE", 13, A.INK, K.SANS_HEAVY)
+leaveWord.Position = UDim2.fromOffset(12, 0); leaveWord.Size = UDim2.new(1, -60, 1, 0)
+local leaveKey = keyCap(leaveB, "BKSP", A.INK)
+local queueT = K.text(picks, "Queue", "", 11, A.INK2, K.SANS_BOLD)
+queueT.Position = UDim2.fromOffset(2, 42); queueT.Size = UDim2.new(0.6, -4, 0, 14)
+local statusT = K.text(picks, "Status", "", 11, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
+statusT.AnchorPoint = Vector2.new(1, 0); statusT.Position = UDim2.new(1, 0, 0, 42); statusT.Size = UDim2.new(0.6, 0, 0, 14)
+againB.Activated:Connect(function() if Card.onPick and againB.Visible then (Card.onPick :: (boolean) -> ())(true) end end)
+leaveB.Activated:Connect(function() if Card.onPick then (Card.onPick :: (boolean) -> ())(false) end end)
+local function pickKeys()
+	local pad = UserInputService.GamepadEnabled and (UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad")
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	againKey.Text = if pad then "A" elseif touch then "" else "ENTER"
+	leaveKey.Text = if pad then "B" elseif touch then "" else "BKSP"
+end
 local function keyWord()
 	local pad = UserInputService.GamepadEnabled and (UserInputService:GetLastInputType().Name:sub(1, 7) == "Gamepad")
 	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -277,7 +314,7 @@ end
 local shown: any = nil
 local function size()
 	local h = list.AbsoluteContentSize.Y / scale.Scale
-	plate.Size = UDim2.fromOffset(W, math.floor(h + PAD + 4 + 34))
+	plate.Size = UDim2.fromOffset(W, math.floor(h + PAD + 4 + 34 + (if picks.Visible then 62 else 0)))
 	shade.Size = UDim2.fromOffset(W + 4, plate.Size.Y.Offset + 4)
 end
 list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(size)
@@ -353,8 +390,33 @@ function Card.hide()
 	shown = nil
 	gui.Enabled = false
 	skipB.Visible = false
+	picks.Visible = false
 	waitT.Text = ""; waitN.Text = ""; track.Visible = false
 end
+-- the picks from the queue's view: { can, why, role, queue, pick, lead, picked, of } (nil: no picks offered)
+function Card.again(view: any?)
+	if type(view) ~= "table" then picks.Visible = false; task.defer(size); return end
+	pickKeys()
+	picks.Visible = true
+	local can = view.can == true
+	againB.Visible = can
+	leaveB.Size = if can then UDim2.new(0.4, -4, 0, 34) else UDim2.new(1, 0, 0, 34)
+	local member = view.role == "member"
+	againWord.Text = if view.pick == "again" then (if member then "YOU'RE IN" else "QUEUED") else "PLAY AGAIN"
+	leaveWord.Text = if view.pick == "leave" then "LEAVING" else "LEAVE"
+	againB.BackgroundTransparency = if view.pick == "leave" then 0.6 else 0
+	leaveB.BackgroundTransparency = if view.pick == "again" then 0.6 else 0
+	queueT.Text = if can then string.upper(tostring(view.queue or "")) else string.upper(tostring(view.why or ""))
+	local status = ""
+	if member then
+		status = if view.lead == "again" then "LEADER: PLAY AGAIN" elseif view.lead == "leave" then "LEADER: LEAVE" else "WAITING FOR THE LEADER"
+	elseif type(view.picked) == "number" and type(view.of) == "number" and view.of > 1 then
+		status = ("%d OF %d PICKED"):format(view.picked, view.of)
+	end
+	statusT.Text = status
+	task.defer(size)
+end
+function Card.picksOn(): boolean return picks.Visible end
 function Card.visible(): boolean return gui.Enabled end
 function Card.gui(): ScreenGui return gui end
 
