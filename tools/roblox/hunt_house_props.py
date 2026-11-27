@@ -387,6 +387,12 @@ def washer(M):
 
 # ---------------------------------------------------------------- the garage
 def car(M):
+    # (27 Nov, the vehicles pass: the web game's hatchback in flat colours with blank plates, fitted to this footprint;
+    # the hit boxes are unchanged. The old rounded-block car is car_blocks, one line away)
+    import vehicle_port as VP
+    VP.hunt_car(M_, M)
+
+def car_blocks(M):
     BODY = '7c8790'
     B(BODY, -4.5, 0.9, -10, 4.5, 4.2, 10, M, bev=1.1)                                 # the body
     B(BODY, -4.0, 4.0, -5.0, 4.0, 7.0, 4.0, M, bev=1.2)                               # the cabin

@@ -298,7 +298,7 @@ end
 -- this, which paints them the same way (a piece's name: <model><n>__<kind>_<hex>) and adds them to the same kit
 -- WITHOUT clearing it (W.import clears the kit first)
 B.ARCH = 113950542566812
-B.FURN = 124923882312765
+B.FURN = 122591663387126 -- (hunt_furn13, 27 Nov: the garage car is the web hatchback, vehicle_port.hunt_car)
 local MAT = { plastic = Enum.Material.SmoothPlastic, neon = Enum.Material.Neon, glass = Enum.Material.Glass, water = Enum.Material.SmoothPlastic }
 local SEE = { glass = 0.35, water = 0.25 }
 function B.importExtra(id: number?): string
