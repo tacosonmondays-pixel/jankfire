@@ -45,9 +45,9 @@ V.POSES.sitledge = { anim = "rbxassetid://126271088986263", len = 2.1, sit = tru
 -- true; hold = s into the clip to hold at, if not its end), picked from the stick-figure sheet: the charge's arm thrust (the weapon comes at the lens), the victory's arms
 -- flung up, the rally's arm straight up, the fist pump's rise to its peak
 V.POSES.chargein = { anim = "rbxassetid://117066882633761", len = 1.067, once = true } -- 127 Charge, frames 8-40
-V.POSES.victoryup = { anim = "rbxassetid://79243821608278", len = 0.833, once = true, hold = 0.53 } -- 110 Victory, frames
--- 35-60, held at frame 51 (both arms up, the weapon straight up, the face clear: by frame 60 the arm folds over the head -
--- Studio v1466 clip)
+V.POSES.victoryup = { anim = "rbxassetid://79243821608278", len = 0.833, once = true, hold = 0.3 } -- 110 Victory, frames
+-- 35-60, held at frame 44: the arms flung up, the weapon rising, the face to the lens (Studio v1483, Platform: from
+-- ~0.35 s the head drops beside the raised weapon; by frame 60 an arm folds over the head)
 V.POSES.rallyup = { anim = "rbxassetid://139755019138832", len = 1.2, once = true } -- 102 Rallying, frames 90-126
 V.POSES.pumpup = { anim = "rbxassetid://100266320103476", len = 0.6, once = true } -- 105 Fist Pump, frames 12-30
 V.HERO_POSES = { "chargein", "victoryup" } -- the one in front
