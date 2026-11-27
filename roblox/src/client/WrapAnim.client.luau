@@ -254,7 +254,11 @@ end
 local function gunOf(p: Instance): Instance?
 	local m = p.Parent
 	if not (m and m:IsA("Model")) then return m end
-	while m.Parent and m.Parent:IsA("Model") and not m.Parent:FindFirstChildOfClass("Humanoid") do m = m.Parent end
+	-- (Workspace and a ViewportFrame's WorldModel are Models too: stop below them, or every gun lying in the world is
+	-- one "gun" and the per-gun caps don't hold. 27 Nov)
+	while m.Parent and m.Parent:IsA("Model") and not m.Parent:IsA("WorldRoot") and not m.Parent:FindFirstChildOfClass("Humanoid") do
+		m = m.Parent
+	end
 	return m
 end
 type GunFx = { ems: { ParticleEmitter }, parts: { BasePart }, fp: boolean, on: boolean }
@@ -805,12 +809,18 @@ end)
 -- clock so every copy runs in step. The anchor's glow (breathing, the pickers' gain) is copied onto each frame.
 -- A wrap whose book has the attribute Light also lights the gun: a PointLight in its biggest pattern piece, its
 -- brightness swelling and fading with one looping tween (Molten: "lava that courses through and glows").
--- Cost: only on a frame change (Fps a second): two Parent writes and two glow writes per piece. Only guns in view run:
--- the held gun always, world guns within LIVE_NEAR studs (the LIVE_MAX nearest), the pickers' guns; a gun in someone
+-- Cost: only on a frame change (Fps a second): two Parent writes and two glow writes per piece, each gun at its own
+-- moment within the frame. Only guns in view run: the held gun always, world guns within LIVE_NEAR studs (the LIVE_MAX
+-- nearest), the pickers' guns; a gun in someone
 -- else's hands stops when GRAPHICS > OTHER PLAYERS' SKIN EFFECTS is off. Stopped pieces rest on their own frame.
 -- Attributes: LiveGuns (guns running), LiveUs (the slowest frame change of the last second, microseconds).
 local LIVE_NEAR = 70
-local LIVE_MAX = 6
+-- (a phone runs fewer: 3 world guns; measured 27 Nov, ~0.02 ms of Lua per piece per frame change)
+local LIVE_MAX = if game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+	then 3 else 6
+-- each gun changes frame a little off the others (under one frame's time, so they still run in step to the eye): the
+-- swaps spread over several rendered frames instead of all landing in one
+local liveOff: { [Instance]: number } = setmetatable({}, { __mode = "k" }) :: any
 type Live = { anchor: SurfaceAppearance, part: BasePart, gun: Instance, frames: { SurfaceAppearance }, cur: number,
 	fps: number, on: boolean, vp: boolean, book: string }
 -- (a frame worn before its pictures are loaded shows the gun's factory paint for a moment: the 27 Nov test flashed teal
@@ -968,7 +978,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 		if not L.on or liveReady[L.book] ~= true then continue end
 		local n = #L.frames
 		if n == 0 then continue end
-		local i = math.floor(t * L.fps) % n + 1
+		local off = liveOff[L.gun]
+		if not off then off = math.random(); liveOff[L.gun] = off end
+		local i = math.floor(t * L.fps + off) % n + 1
 		if i == L.cur then continue end
 		local prev, nxt = L.frames[L.cur], L.frames[i]
 		nxt.EmissiveStrength = L.anchor.EmissiveStrength -- (the anchor's breathing and the pickers' gain carry over)

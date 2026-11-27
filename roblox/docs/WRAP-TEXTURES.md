@@ -588,6 +588,19 @@ a picture over the gun. These change shape, so each one is a flipbook of whole w
 - **Not used:** EditableImage, which fails in published games unless the owner turns on "Allow Mesh / Image APIs".
   Swapping whole SurfaceAppearances was ruled out for WRAP FLOW because of a texture load per swap. Preloading the
   frames once removes that cost.
+- **Cost** (solo Play, place version 1455; the AR held, plus 10 world guns 12 studs away):
+  - Render CPU: 7.13 ms with all 11 wearing Molten, 7.47 ms with all wearing the static Koi. No measurable render
+    cost.
+  - Lua: the worst frame change is 0.84 ms. Each gun changes frame at its own moment within the frame, and only the 6
+    nearest world guns run (3 on a phone).
+  - **Trap:** the first measurement (3.0 ms) found that `gunOf` climbed into Workspace, which is a Model too. So every
+    gun lying in the world was one "gun", and the per-gun cap didn't hold. It now stops below any WorldRoot.
+- **In game** (solo Play, v1450; clips in the VFX session's notes, `living-camos/`):
+  - In hand: Molten's rivers glow and change shape, with the light swelling and fading; Lava Lamp's blobs move.
+  - The loadout preview runs too (13 pieces in its viewport).
+  - 0 wrap errors.
+  - A camo seen for the first time shows the gun's factory paint for a second or two while its new pictures load. Every
+    newly uploaded wrap does that, not only these.
 
 ## The AI and duplicates audit (27 Nov 2026)
 
