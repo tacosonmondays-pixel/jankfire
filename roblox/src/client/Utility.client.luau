@@ -240,7 +240,7 @@ local function hudStep()
 		local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
 		local kc = plate:FindFirstChild("Key", true) :: GuiObject? -- (in the Group row since round 6)
 		if kc then kc.Visible = not touch end
-		nameL.TextSize = if touch then 18 else 15 -- (round 6: bigger on a phone, where the HUD is drawn smaller)
+		nameL.TextSize = if touch then 20 else 15 -- (round 6: bigger on a phone, where the HUD is drawn smaller)
 	end
 	local cnt = plate:FindFirstChild("Count") :: TextLabel?
 	if not cnt then

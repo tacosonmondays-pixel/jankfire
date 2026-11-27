@@ -346,7 +346,7 @@ local function applyLook()
 	if not built then return end
 	for _, b in BTNS do style(b.face, b.lit, b.act == "fire", b.rec.a) end
 	for _, p in pills do style(p.face, p.lit, nil, if p.rec then p.rec.a else 1) end
-	if pills.auto then pills.auto.face.Text = if S.auto then "AUTO ON" else "AUTO OFF" end -- (27 Nov: its state in words)
+	if pills.auto then pills.auto.face.Text = if S.auto then "AUTO FIRE ON" else "AUTO FIRE OFF" end -- (27 Nov: its state in words)
 end
 
 -- the top row's buttons
@@ -452,9 +452,11 @@ local function build()
 		f.TextSize = 12
 		f.FontFace = T.FONT_BOLD
 		f.TextTruncate = Enum.TextTruncate.AtEnd
-		f.TextScaled = true; f.TextWrapped = false -- (round 6: shrinks to fit, 8 to 12, rather than cut short)
+		-- (round 6: shrinks to fit, 8 to 12, rather than cut short. round 7: TextWrapped stays on, since setting it false
+		-- turns TextScaled back off; the top and bottom padding leaves room for one line only, so the words shrink)
+		f.TextScaled = true
 		T.new("UITextSizeConstraint", { MinTextSize = 8, MaxTextSize = 12 }, f)
-		T.new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, f)
+		T.new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5), PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7) }, f)
 		f.Activated:Connect(function() if active and not settingsOpen() then Keys.tap(SLOT_KEYS[i]) end end)
 	end
 	rebuildButtons()
@@ -1129,7 +1131,7 @@ RunService.Heartbeat:Connect(function()
 		local tl = c - s / 2
 		local o1, o2 = toHud("JankfireHud", tl), toHud("JankfireFight", tl)
 		if o1 then placePlate("JankfireHud", "Speed", o1) end
-		if o2 then placePlate("JankfireFight", "Hp", o2 + UDim2.fromOffset(0, 70), UDim2.fromOffset(160, 64)) end
+		if o2 then placePlate("JankfireFight", "Hp", o2 + UDim2.fromOffset(0, 60), UDim2.fromOffset(160, 64)) end -- (round 7: off the screen's bottom edge)
 	end
 	placeHub(if hub then "hub" elseif fight then "away" else nil)
 end)

@@ -169,9 +169,12 @@ local function sideTable(p: Frame, b: any, cols: { { any } }, title: string?, co
 	if title then
 		local tn = K.text(p, "Team", string.upper(title), 24, col or B.TEXT, K.COND)
 		tn.Position = UDim2.fromOffset(0, y)
-		tn.Size = UDim2.fromOffset(300, LOOK.TEAM_H)
-		tn.TextStrokeTransparency = 0.75
-		y += LOOK.TEAM_H + 2
+		tn.Size = UDim2.fromOffset(0, LOOK.TEAM_H); tn.AutomaticSize = Enum.AutomaticSize.X
+		tn.TextStrokeTransparency = 1
+		-- (round 7: on a dark tab joined to the table)
+		tn.BackgroundColor3 = B.SLAB; tn.BackgroundTransparency = B.SLAB_A
+		K.new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14) }, tn)
+		y += LOOK.TEAM_H
 	end
 	local h = LOOK.HEAD_H + #rows * rowH
 	local slab = K.new("Frame", { Name = "Table", BackgroundColor3 = B.SLAB, BackgroundTransparency = B.SLAB_A, BorderSizePixel = 0, Position = UDim2.fromOffset(0, y), Size = UDim2.fromOffset(LOOK.W, h) }, p)
@@ -204,6 +207,9 @@ local function sideTable(p: Frame, b: any, cols: { { any } }, title: string?, co
 			local img = K.head(r.uid)
 			if img ~= "" then
 				K.new("ImageLabel", { Name = "Img", BackgroundTransparency = 1, Image = img, Size = UDim2.fromScale(1, 1), ZIndex = 4, ImageTransparency = if down then 0.65 else 0 }, hb)
+			else -- (round 7: no picture: the name's first letter, not an empty square)
+				local ini = K.text(hb, "Initial", string.upper(string.sub(tostring(r.name or "?"), 1, 1)), 15, if mine then B.INK else B.MUTED, K.SANS_BOLD)
+				ini.Size = UDim2.fromScale(1, 1); ini.TextXAlignment = Enum.TextXAlignment.Center; ini.ZIndex = 4
 			end
 			if down then
 				hb.BackgroundTransparency = 0.5

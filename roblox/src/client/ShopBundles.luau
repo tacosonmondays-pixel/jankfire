@@ -641,8 +641,9 @@ return function(C: any): any
 				GroupTransparency = if ok then 0 else 0.4 }, row)
 			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
 		end
-		local l = txt(row, words, 15, if ok then T.INK else T.MUTED, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		local l = txt(row, words, 15, if ok then T.INK else T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
+		if not ok then l.TextTransparency = 0.35 end -- (round 7: dark words greyed, not light on light: they were unreadable)
 		if need then
 			local n = txt(parent, need, 11, Color3.fromRGB(150, 84, 40), T.FONT_BOLD, Enum.TextXAlignment.Center)
 			n.AnchorPoint = Vector2.new(1, 0); n.Position = UDim2.new(x.Scale, x.Offset, 0.5, 13); n.Size = UDim2.fromOffset(w, 14); n.ZIndex = 4
@@ -691,7 +692,7 @@ return function(C: any): any
 			local x = UDim.new(1, -12)
 			if p and p.brass then
 				local okB = coins >= p.brass
-				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil elseif coins <= 0 then "you have none" else "need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
+				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil elseif coins <= 0 then "You have none" else "Need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
 				x = UDim.new(1, -12 - 86 - 26)
 				if p.tix then
 					local orL = txt(r, "or", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
@@ -700,7 +701,7 @@ return function(C: any): any
 			end
 			if p and p.tix then
 				local okT = tix >= p.tix
-				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil elseif tix <= 0 then "you have none" else "need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
+				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil elseif tix <= 0 then "You have none" else "Need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
 			end
 			if not p then
 				priceBtn(r, nil, if Shop.free() then "CLAIM" else ROBUX .. " " .. commas(o.robux or 0), true, nil, x, 96).MouseButton1Click:Connect(go)
@@ -732,6 +733,43 @@ return function(C: any): any
 			local b = priceBtn(r, nil, ROBUX .. " " .. commas(o.robux), sell and Shop.productFor(o) ~= nil, nil, UDim.new(1, -16), 104)
 			b.MouseButton1Click:Connect(function() if sell then ShopUI.prompt(o) else ShopUI.tab("coins") end end)
 		end
+	end
+
+	-- ==================================================================== a title, as it shows on your player card
+	-- (27 Nov 2026, the UI critic: the title's picture "reads as a placeholder": a dark slab with a word on it). a title's
+	-- picture on a shop tile or its page is the head of YOUR player card wearing it, as the profile draws it: your
+	-- headshot, your name, @name, then the title in its own colour (CardStyles.styleTitle: the OWNER title's shimmer
+	-- too), on the card's own background and border. a chip in a list keeps the plain sample (V.card)
+	function X.titleCard(parent: GuiObject, id: string)
+		local CS = Shop.CardStyles :: any
+		local old = parent:FindFirstChild("Preview")
+		if old then old:Destroy() end
+		local z = parent.ZIndex
+		local holder = new("Frame", { Name = "Preview", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = z + 1 }, parent)
+		local f = new("Frame", { Name = "Card", BackgroundColor3 = Color3.fromRGB(30, 33, 40), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.94, 0.86), ZIndex = z + 2 }, holder)
+		new("UIAspectRatioConstraint", { AspectRatio = 2.3 }, f)
+		if CS then pcall(CS.paintBanner, f, "slate", 6); pcall(CS.paintBorder, f, "hairline", 6) end
+		local zz = z + 6
+		local av = new("Frame", { Name = "Head", BackgroundColor3 = Color3.fromRGB(44, 48, 56), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.fromScale(0.05, 0.5), Size = UDim2.fromScale(0.3, 0.7), ZIndex = zz }, f)
+		new("UIAspectRatioConstraint", { AspectRatio = 1 }, av)
+		new("UICorner", { CornerRadius = UDim.new(0.12, 0) }, av)
+		local img = new("ImageLabel", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = zz + 1,
+			Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(math.max(1, me.UserId)) }, av)
+		new("UICorner", { CornerRadius = UDim.new(0.12, 0) }, img)
+		local function line(text: string, y: number, h: number, col: Color3, font: Font, max: number): TextLabel
+			local l = new("TextLabel", { BackgroundTransparency = 1, Text = text, TextColor3 = col, FontFace = font, TextScaled = true,
+				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Position = UDim2.fromScale(0.35, y),
+				Size = UDim2.fromScale(0.6, h), ZIndex = zz }, f)
+			new("UITextSizeConstraint", { MaxTextSize = max }, l)
+			return l
+		end
+		line(string.upper(me.DisplayName), 0.2, 0.24, Color3.fromRGB(244, 245, 247), T.FONT_TITLE, 30)
+		line("@" .. me.Name, 0.46, 0.14, Color3.fromRGB(150, 156, 166), T.FONT_BOLD, 14)
+		local words = if CS then CS.titleText(id) else ""
+		local tl = line(if words == "" then "-" else words, 0.63, 0.18, if CS then CS.titleColor(id) else T.TEXT, T.FONT_HEAVY, 20)
+		if CS then pcall(CS.styleTitle, tl, id) end
 	end
 
 	-- ==================================================================== owned, display only

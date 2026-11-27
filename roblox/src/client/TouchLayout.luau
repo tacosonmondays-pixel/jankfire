@@ -59,7 +59,7 @@ TL.ITEMS = {
 	{ id = "aim", kind = "btn", act = "aim", x = 44, y = 184, d = 50 },
 	{ id = "hook", kind = "btn", act = "hook", x = 114, y = 184, d = 56 },
 	{ id = "melee", kind = "btn", act = "melee", x = 176, y = 152, d = 44 },
-	{ id = "swap", kind = "btn", act = "swap", x = 188, y = 98, d = 44 },
+	{ id = "swap", kind = "btn", act = "swap", x = 198, y = 98, d = 44 },
 	{ id = "reload", kind = "btn", act = "reload", x = 176, y = 44, d = 46 },
 	{ id = "wave", kind = "btn", act = "wave", x = 114, y = 248, d = 52, fixed = true },
 	{ id = "yank", kind = "btn", act = "yank", x = 56, y = 244, d = 50, fixed = true },
@@ -67,7 +67,7 @@ TL.ITEMS = {
 	{ id = "reelin", kind = "btn", act = "reelin", x = 172, y = 214, d = 50, fixed = true }, -- (26 Nov 2026: by the HOOK, over STAB)
 	{ id = "lunge", kind = "btn", act = "lunge", x = 238, y = 150, d = 50, fixed = true }, -- (26 Nov 2026: left of STAB, with a melee weapon out)
 	{ id = "settings", kind = "pill", label = "SETTINGS", w = 84, keep = true },
-	{ id = "auto", kind = "pill", label = "AUTO", w = 54 },
+	{ id = "auto", kind = "pill", label = "AUTO FIRE", w = 96 }, -- (27 Nov, ui-mocks round 7: says what it switches)
 	{ id = "emote", kind = "pill", label = "EMOTE", w = 64 },
 	{ id = "board", kind = "pill", label = "SCORES", w = 64 }, -- (21 Nov 2026: the match scoreboard, in a match only: Scoreboard.client)
 	{ id = "stick", kind = "stick", act = "float", keep = true },

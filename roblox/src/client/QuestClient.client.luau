@@ -131,7 +131,8 @@ local function refresh()
 		end)
 		count.Position = UDim2.new(0, if ok and v then math.ceil(v.X) + 12 else 110, 0.5, 0)
 	end)
-	count.BackgroundColor3 = Color3.fromRGB(229, 226, 219); count.BackgroundTransparency = if news then 0 else 1
+	count.BackgroundColor3 = Color3.fromRGB(245, 221, 138); count.BackgroundTransparency = if news then 0 else 1 -- (round 7: Butter, the one accent; bone read as a debug label)
+	do local st = count:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end end
 	count.TextColor3 = if news then Color3.fromRGB(29, 31, 35) else Color3.new(1, 1, 1)
 	count.TextStrokeTransparency = if news then 1 else 0.8
 	count.TextTransparency = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then 0 else 0.3 -- (A: all three done = full white)

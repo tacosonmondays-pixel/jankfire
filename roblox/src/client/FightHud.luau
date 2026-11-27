@@ -158,8 +158,8 @@ for side = 0, 1 do
 	local sh = T.new("CanvasGroup", { Name = if side == 0 then "ShadeL" else "ShadeR", BackgroundTransparency = 1, BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(side, 1), Position = UDim2.new(side, 0, 1, 0), Size = UDim2.fromScale(0.3, 0.34), ZIndex = 0 }, hud)
 	T.new("UIGradient", { Rotation = if side == 0 then 0 else 180,
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.55, 0.4), NumberSequenceKeypoint.new(1, 1) }) }, sh)
-	local fill = T.new("Frame", { Name = "Fill", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, sh)
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.3), NumberSequenceKeypoint.new(1, 1) }) }, sh)
+	local fill = T.new("Frame", { Name = "Fill", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.28, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, sh)
 	T.new("UIGradient", { Rotation = -90,
 		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.5), NumberSequenceKeypoint.new(1, 1) }) }, fill)
 	local function follow() sh.Visible = hpPlate.Visible end

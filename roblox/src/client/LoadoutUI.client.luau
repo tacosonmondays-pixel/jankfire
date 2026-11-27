@@ -419,10 +419,10 @@ end
 -- an armory card's picture: the weapon (its skin, hat and wrap as worn) in the top 52 px; the card's words move under it
 function News.armPic(btn: GuiObject, e: any)
 	for _, d in btn:GetChildren() do
-		if d:IsA("GuiObject") and d.Name ~= "New" then d.Position = d.Position + UDim2.fromOffset(0, 46) end
+		if d:IsA("GuiObject") and d.Name ~= "New" then d.Position = d.Position + UDim2.fromOffset(0, 50) end
 	end
 	-- (round 2: a flat silhouette like the slot rows', white; black on the white card you're looking at)
-	local pv, pc = viewport(btn, { Name = "Pic", Position = UDim2.fromOffset(14, 10), Size = UDim2.fromOffset(204, 44), BackgroundTransparency = 1, ZIndex = 5,
+	local pv, pc = viewport(btn, { Name = "Pic", Position = UDim2.fromOffset(14, 16), Size = UDim2.fromOffset(204, 40), BackgroundTransparency = 1, ZIndex = 5, -- (round 7: off the top edge)
 		Ambient = Color3.new(1, 1, 1), LightColor = Color3.new(0, 0, 0) })
 	pc.FieldOfView = 30
 	local m, rel = previewModel(e.id, hatOf(e.id), skinOf(e.id))
@@ -449,7 +449,8 @@ do -- (round 3: one button set here: Butter skews press, flat slabs are the rest
 	local b = News.xv and (News.xv :: any).btn
 	if b then
 		b.BackgroundColor3 = PANEL; b.BackgroundTransparency = 0.06; b.AutoButtonColor = false
-		b.FontFace = FONT_TITLE; b.TextSize = 18; b.TextColor3 = TEXT
+		b.FontFace = FONT_TITLE; b.TextSize = 20; b.TextColor3 = TEXT
+		b.AnchorPoint = Vector2.new(1, 1); b.Position = UDim2.new(1, -12, 1, 0); b.Size = UDim2.fromOffset(212, 58) -- (round 7: level with EQUIP, as tall)
 		for _, c in b:GetChildren() do
 			if c:IsA("UICorner") then c.CornerRadius = UDim.new(0, 0) elseif c:IsA("UIStroke") then c.Enabled = false end
 		end
@@ -559,6 +560,7 @@ for i = 1, 4 do
 	local fill = new("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
 	-- (the slot's average for this number: a short Butter tick on the track, News.avg)
 	local tick = new("Frame", { Name = "Avg", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromOffset(2, 13), Visible = false, ZIndex = 3 }, bg)
+	new("UIStroke", { Color = Color3.fromRGB(16, 17, 19), Thickness = 1 }, tick) -- (round 7: Butter on the white fill too)
 	table.insert(statRows, { name = name, val = val, fill = fill, tick = tick } :: any)
 end
 -- (the slot's average, under the bars: "| Primary average")
@@ -1068,6 +1070,13 @@ local function arrows(row: ScrollingFrame, parent: GuiObject)
 		return b
 	end
 	local l, r = btn("‹", false), btn("›", true)
+	-- (round 7: a fade under each arrow: the cut card at the edge fades out instead of sitting under it)
+	local function fade(right: boolean): Frame
+		local fd = new("Frame", { Name = "Fade", BackgroundColor3 = PANEL, BorderSizePixel = 0, AnchorPoint = Vector2.new(if right then 1 else 0, 0.5), ZIndex = 19, Visible = false }, parent)
+		new("UIGradient", { Rotation = if right then 0 else 180, Transparency = NumberSequence.new(1, 0.06) }, fd)
+		return fd
+	end
+	local lf, rf = fade(false), fade(true)
 	local function place()
 		local pos, size = row.Position, row.Size
 		l.Position = UDim2.new(pos.X.Scale, pos.X.Offset + 2, pos.Y.Scale, pos.Y.Offset + size.Y.Offset / 2)
@@ -1075,6 +1084,10 @@ local function arrows(row: ScrollingFrame, parent: GuiObject)
 		local _, _, maxX = span(row)
 		l.Visible = row.Visible and maxX > 1 and row.CanvasPosition.X > 1
 		r.Visible = row.Visible and maxX > 1 and row.CanvasPosition.X < maxX - 1
+		lf.Position = UDim2.new(pos.X.Scale, pos.X.Offset, pos.Y.Scale, pos.Y.Offset + size.Y.Offset / 2 - 4)
+		rf.Position = UDim2.new(pos.X.Scale + size.X.Scale, pos.X.Offset + size.X.Offset, pos.Y.Scale, pos.Y.Offset + size.Y.Offset / 2 - 4)
+		lf.Size = UDim2.fromOffset(120, math.max(0, size.Y.Offset - 8)); rf.Size = lf.Size
+		lf.Visible = l.Visible; rf.Visible = r.Visible
 	end
 	for _, prop in { "CanvasPosition", "AbsoluteCanvasSize", "AbsoluteWindowSize", "Position", "Size", "Visible" } do
 		row:GetPropertyChangedSignal(prop):Connect(place)
@@ -1439,7 +1452,7 @@ local tabBtns: { [string]: Btn } = {}
 for i, t in { "armory", "skins", "wraps", "hats" } do
 	local x = if i == 1 then 76 else 76 + 196 + (i - 2) * 130
 	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(x, 806), UDim2.fromOffset(if i == 1 then 184 else 118, 38))
-	tabBtns[t].face.FontFace = FONT_TITLE; tabBtns[t].face.TextSize = 20
+	tabBtns[t].face.FontFace = FONT_TITLE; tabBtns[t].face.TextSize = 24 -- (round 7: the words were small in their shapes)
 	News.skewIt(tabBtns[t], 10)
 end
 for t, b in tabBtns do News.tabDots[t] = News.dot(b.face, 4, 6) end -- (a dot on a tab with something NEW for this weapon)
