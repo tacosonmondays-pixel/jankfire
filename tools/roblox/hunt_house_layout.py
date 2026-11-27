@@ -112,8 +112,7 @@ door('garage', 'int', 'z', 59, -9, -3, 'G', 'a1', 1, rooms=('kitchen', 'garage')
 # ---------------------------------------------------------------- ground floor, inside (1 thick)
 W_('z', -13, -12, -40, 40, 'G', 12, [D(14, 32, 'arch', 10.0), D(-24, -18)], 'plaster')       # centre | west wing
 door('family', 'int', 'z', -12.5, -24, -18, 'G', 'a0', -1, rooms=('backhall', 'family'))
-W_('z', 12, 13, -40, 40, 'G', 12, [D(6, 15, 'arch', 10.0), D(-26, -20)], 'plaster')          # centre | east wing
-door('kitchen', 'int', 'z', 12.5, -26, -20, 'G', 'a1', 1, rooms=('backhall', 'kitchen'))
+W_('z', 12, 13, -40, 40, 'G', 12, [D(6, 15, 'arch', 10.0), D(-27, -19, 'arch', 10.0)], 'plaster')   # (judge round 5: framed view)          # centre | east wing
 W_('x', 1, 2, -58, -13, 'G', 12, [D(-48, -28, 'arch', 10.0)], 'plaster')                     # living | family
 W_('x', 3.5, 4.5, 13, 58, 'G', 12, [D(18, 46, 'open', 10.5)], 'plaster')                      # dining | kitchen
 # the middle: the cloakroom WC (west), the coat closet (east), the hallway between them
@@ -491,10 +490,12 @@ SWINGS = [(0.0, GROUND + 2.6, -108.0), (8.0, GROUND + 2.6, -108.0)]
 F('shed', 90.0, -140.0, y=GROUND, turn=0)
 F('deck', -8.0, -134.0, y=GROUND)                               # (judge round 2: a centre with height) its steps face the house
 F('firepit', -8.0, -134.0, y=GROUND + 1.5)                      # (judge round 1: big things in the big garden)
-PLAYBAY = dict(x0=-66.0, z0=-121.0, x1=24.0, z1=-85.0)   # (judge round 4: the fort, trampoline and swing on one bark bed)
-KERBS = [(-66.0, -121.0, -10.4, -120.0), (-5.6, -121.0, 24.0, -120.0), (-66.0, -86.0, -10.4, -85.0), (-5.6, -86.0, 24.0, -85.0),
-         (-66.0, -120.0, -65.0, -86.0), (23.0, -120.0, 24.0, -86.0)]
-for (x0, z0, x1, z1) in KERBS: box(x0, GROUND, z0, x1, GROUND + 0.7, z1, 'slab')
+PLAYBAY = dict(x0=-66.0, z0=-121.0, x1=24.0, z1=-85.0)   # (judge round 4: the fort, trampoline and swing on bark)
+PADS = [(-65.0, -119.0, -10.6, -88.0), (-1.0, -114.0, 25.0, -98.0)]   # (judge round 5: two pads, the lawn between)
+def _kerb(x0, z0, x1, z1, w=1.2):
+    return [(x0 - w, z0 - w, x1 + w, z0), (x0 - w, z1, x1 + w, z1 + w), (x0 - w, z0, x0, z1), (x1, z0, x1 + w, z1)]
+KERBS = _kerb(*PADS[0]) + _kerb(*PADS[1])
+for (x0, z0, x1, z1) in KERBS: box(x0, GROUND, z0, x1, GROUND + 0.9, z1, 'slab')
 F('playfort', -56.0, -100.0, y=GROUND, turn=0)                  # (judge round 3: height; was the playhouse) its stair
 plane_x(-51.0, GROUND + 5.8, -43.0, GROUND + 0.6, -99.5, -96.5, 0.35, 'furn_playfort')   #  toward the house, the slide east
 F('tree', -76.0, -70.0, y=GROUND); F('tree', 100.0, -96.0, y=GROUND)
@@ -506,7 +507,7 @@ for hx in (-40, 0, 40, 60):                      # hedges along the back fence, 
     F('hedge', hx, -149.5, y=GROUND)
 F('flowerbed', 40, -128, y=GROUND, turn=0); F('flowerbed', 40, -136, y=GROUND, turn=0)
 # ---------------------------------------------------------------- the front
-F('tree', -44.0, 64.0, y=GROUND); F('hedge42', -29, 77.5, y=GROUND)   # (judge round 4: one piece, no seam)
+F('tree', -72.0, 20.0, y=GROUND); F('tree', -44.0, 64.0, y=GROUND); F('hedge42', -29, 77.5, y=GROUND)   # (judge round 4: one piece, no seam)
 F('tree', 46.0, 62.0, y=GROUND)                                 # (judge round 2: a second front tree to balance the first)
 for (lx, lz) in ((-5.5, 60.0), (5.5, 60.0)): F('lamppost', lx, lz, y=GROUND)   # the walk's lamps (round 4: two, by the steps)
 F('hedge42', 33, 77.5, y=GROUND)
@@ -527,7 +528,7 @@ def sw(rid, x, z, fx, fz):
     lv = [r for r in ROOMS if r['id'] == rid][0]['lv']
     SWITCHES.append((rid, float(x), LVY[lv] + (4.6 if rid != 'garage' else 3.6), float(z), fx, fz))
 sw('entry', 6.0, 39.9, 0, -1); sw('living', -13.1, 11.0, -1, 0); sw('family', -13.1, -15.5, -1, 0); sw('wc', -4.6, -1.5, -1, 0)
-sw('coats', 4.6, -1.5, 1, 0); sw('backhall', -5.5, -39.9, 0, 1); sw('dining', 13.1, 17, 1, 0); sw('kitchen', 13.1, -17.5, 1, 0)
+sw('coats', 4.6, -1.5, 1, 0); sw('backhall', -5.5, -39.9, 0, 1); sw('dining', 13.1, 17, 1, 0); sw('kitchen', 13.1, -15.4, 1, 0)
 sw('garage', 60.1, 0.5, 1, 0)
 sw('gallery', -11.9, 15, 1, 0); sw('mainbed', -13.1, 27.5, -1, 0); sw('ensuite', -45.5, 8.9, 0, -1); sw('closet', -19.5, 8.9, 0, -1)
 sw('kidsbed', -13.1, -14, -1, 0); sw('guestbed', 13.1, 31.5, 1, 0); sw('study', 13.1, 3.5, 1, 0); sw('playroom', 13.1, -14.5, 1, 0)

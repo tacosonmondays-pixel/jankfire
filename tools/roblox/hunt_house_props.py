@@ -17,7 +17,7 @@ GREEN, GREEN2, BARK = '5f7d4a', '6f8f55', '6e5a46'
 SOIL, STONE = '5c4a3c', 'b9b1a3'
 SCREEN = '23262b'
 TABLE_ACCENT = {'vip': 'c2a052', 'coins': '7d9a84', 'cases': '72859c'}   # the store tables' one colour each (muted)
-PAD = '6d8796'                                                             # the trampoline's pad (muted blue-grey)
+PAD = 'dad5cb'                                                             # the trampoline's pad (round 5: trim off-white)
 KICK, SLATE = '6b6e72', '5a5e64'                                           # kick plates; pedestals, the range (judge round 1: no near-blacks)
 CANVAS = 'cbc3b4'
 CAB, CABDOOR = 'e4dfd4', 'ede9e0'                                          # (judge round 2: the cabinets paler than the walls)                                                          # the umbrellas (judge round 1: colour stays on the tables' skirts)
@@ -78,7 +78,7 @@ def media(M):
 
 def tvwall(M):
     B('3a3f46', -6, 0, -0.3, 6, 7, 0.55, M, bev=0.2)                                   # (judge round 2: a bezel)
-    B('3c4046', -5.4, 0.6, 0.35, 5.4, 6.4, 0.5, M, bev=0.03)
+    B('5c6670', -5.4, 0.6, 0.35, 5.4, 6.4, 0.5, M, bev=0.03)                         # (round 5: slate glass)
 
 def bookcase(M, w=8.0, h=12.0):
     hw = w / 2
@@ -124,6 +124,8 @@ def hearth(M):
     B('e07a3a', -2.4, 0.6, -1.7, 2.4, 1.05, -0.4, M, bev=0.15, kind='neon')            # embers (judge round 4: a real glow)
     for sx in (-1, 1): B(OFFWHITE, sx * 3.6 - 0.4, 0, -0.2, sx * 3.6 + 0.4, 4.4, 0.7, M, bev=0.2)   # the surround's chamfered jambs
     for z in (-1.3, -0.5): B(BARK, -2.2, 0.6, z - 0.35, 2.2, 1.3, z + 0.35, M, bev=0.3)   # two logs
+    for (x, h) in ((-0.9, 1.6), (0.2, 2.2), (1.1, 1.4)):                                  # (round 5) three flame tongues
+        K.plate(M_, 'ff9446', [(x - 0.55, 0.0), (x + 0.55, 0.0), (x + 0.1, h)], 0.2, M @ Tr(0, 1.2, -1.0), bev=0.04, kind='neon')
 
 def rug(M, w=24, d=16, col='b4a893', edge='8e8170'):
     B(edge, -w / 2, 0, -d / 2, w / 2, 0.08, d / 2, M, bev=0.03)
@@ -712,7 +714,7 @@ def swingset(M):
     K.B(M_, '9e8a70', -11.2, 12.0, -0.85, 11.2, 13.7, 0.85, bev=0.3, M=M)
     for sx in (-4.0, 4.0):
         for dz in (-0.9, 0.9): K.B(M_, DARK, sx - 1.1 - 0.1, 2.9, dz - 0.1, sx - 1.1 + 0.1, 12.3, dz + 0.1, bev=0.03, M=M) if False else None
-        for dx in (-1.1, 1.1): K.B(M_, '5a5e64', sx + dx - 0.35, 2.9, -0.35, sx + dx + 0.35, 12.0, 0.35, bev=0.1, M=M)
+        for dx in (-1.1, 1.1): K.B(M_, '9e8a70', sx + dx - 0.35, 2.9, -0.35, sx + dx + 0.35, 12.0, 0.35, bev=0.1, M=M)
         K.B(M_, '5d6f63', sx - 1.6, 2.3, -0.9, sx + 1.6, 3.0, 0.9, bev=0.25, M=M)
 
 def pergola(x0, x1, z0, z1, top):

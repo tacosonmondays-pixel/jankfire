@@ -129,7 +129,7 @@ local function switches(root: Instance, sf: Instance)
 end
 
 local SCREEN_ON = Color3.fromRGB(118, 146, 168)
-local SCREEN_OFF = Color3.fromRGB(82, 92, 104)   -- (judges rounds 3-4: slate, not a dead black slab)
+local SCREEN_OFF = Color3.fromRGB(102, 112, 124)   -- (judges rounds 3-5: slate glass, not a dead black slab)
 local function props(pf: Instance, zone: BasePart?)
 	for _, p in pf:GetChildren() do
 		local kind = p:GetAttribute("Kind")

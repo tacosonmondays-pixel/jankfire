@@ -30,8 +30,8 @@ INFO = dict(name='HuntHouse', title='THE HOUSE', look='hunt_house', mapId='hunth
 # ================================================================ colours (the textured ones are unique hexes: WebArena
 # puts a picture on every piece of that colour, by `surfaces`)
 OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'a29a8c', 'dedad0', 'cfc6b4'
-PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'e8e2d7', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
-BEAM = 'c2ae92'      # (judge round 4: pale oak, paler than the walls; round 3's mid oak '8c6e52' read loud)
+PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'efe5d4', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
+BEAM = 'ddd3c2'      # (judge round 5: warm trim white; round 4's pale oak still read olive)
 # (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
 BRICK, SIDING, SHINGLE, STONE = '7f5446', 'e4dfd3', '6a6e74', 'cfc6b5'
 LAWN, PAVERS, CONC, FENCEB, ASPH = '6f8a55', 'b3a897', '97948d', 'ad9476', '55585c'
@@ -41,7 +41,7 @@ KITTILE2_ID, PLASTER2_ID = 101846364880605, 87623840105825    # (judge round 2 p
 TEXS = {   # colour -> (picture name, studs u, studs v, uploaded image id or None while it isn't up yet)
     OAKFLOOR: ('oakplank', 16, 16, 123980610531995), CARPET: ('carpet', 16, 16, 93910495940944),
     KITFLOOR: ('kittile2', 16, 16, KITTILE2_ID), BATHFLOOR: ('a_hextile', 4, 4, 100342179355756),
-    STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('plaster2', 8, 8, PLASTER2_ID),
+    STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('plaster3', 8, 8, 70827133416344),
     BTILE: ('rtile_wall', 8, 16, 119608007939948), SPLASH: ('a_tile', 8, 8, 95035963336200),
     BRICK: ('a_brick', 6, 6, 128782282184054), STONE: ('a_stone', 8, 8, 113102432800653),
     SIDING: ('siding', 8, 8, 127661606333401), SHINGLE: ('shingles', 8, 8, 135435899461861), LAWN: ('lawn2', 24, 24, 118128219477802),
@@ -152,8 +152,10 @@ def ceilings():
             if r['id'] == 'entry' and a < 12 and c > 4 and b < 31 and d > 17.8: continue
             K.B('hh_trim', TRIM, a, yb - 0.45, b, c, yb, d, bev=0.12, segs=1)
     # the living room's beamed ceiling: three walnut beams across it
-    for bx in (-47.0, -35.5, -24.0):
-        K.B('hh_trim', BEAM, bx - 0.75, 10.8, 2.0, bx + 0.75, 12.0, 40.0, bev=0.22)
+    for bx in (-52.0, -35.5, -19.0):                                   # (round 5: the two lights centred in coffers)
+        K.B('hh_trim', BEAM, bx - 0.9, 10.6, 2.0, bx + 0.9, 12.0, 40.0, bev=0.25)
+    for bz in (11.0, 31.0):                                     # (judge round 5: a coffer grid, not a lid)
+        K.B('hh_trim', BEAM, -58.0, 10.8, bz - 0.8, -13.0, 12.0, bz + 0.8, bev=0.25)
     # the dining room's coffer: a raised frame round the table's light
     for (a, b, c, d) in ((24, 14, 44, 15.2), (24, 28.8, 44, 30), (24, 14, 25.2, 30), (42.8, 14, 44, 30)):
         K.B('hh_trim', TRIM, a, 11.2, b, c, 12.0, d, bev=0.2)
@@ -165,6 +167,8 @@ def ceilings():
     for (a, b, c, d) in ((26.0, -22.0, 42.0, -14.0), (25.2, 15.2, 42.8, 28.8), (14.0, -11.0, 23.0, -3.0)):   # (judge round 4: lit coves)
         for (u0, v0, u1, v1) in ((a, b, c, b + 0.7), (a, d - 0.7, c, d), (a, b, a + 0.7, d), (c - 0.7, b, c, d)):
             K.B('hh_lamp', 'fff1dc', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
+    for bx in (33.0, 46.0):                                           # (judge round 5: the kitchen's front half)
+        K.B('hh_trim', TRIM, bx - 1.0, 10.6, -11.0, bx + 1.0, 12.0, 3.5, bev=0.3)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
     K.B('hh_trim', TRIM, 3.4, 11.6, 31.0, 12.0, 13.0, 31.6, bev=0.12)
     K.B('hh_trim', TRIM, 3.4, 11.6, 17.8, 4.0, 13.0, 31.6, bev=0.12)
@@ -374,10 +378,10 @@ def window_dress():
         if axis == 'x' and sgn > 0:
             o0, o1 = c1, c1 + 0.3
             for (u0, u1) in ((a0 - 2.2, a0 - 0.5), (a1 + 0.5, a1 + 2.2)):
-                bx('hh_ext', '5e6a64', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1 + 0.2, bev=0.1)
+                bx('hh_ext', '5c656d', u0, y0 - 0.2, o0, u1, y1 + 0.2, o1 + 0.2, bev=0.1)
                 ym = (y0 + y1) / 2
                 for (v0, v1) in ((y0 + 0.25, ym - 0.2), (ym + 0.2, y1 - 0.25)):        # two raised panels
-                    bx('hh_ext', '66726b', u0 + 0.25, v0, o1 + 0.15, u1 - 0.25, v1, o1 + 0.35, bev=0.08)
+                    bx('hh_ext', '646d75', u0 + 0.25, v0, o1 + 0.15, u1 - 0.25, v1, o1 + 0.35, bev=0.08)
             if y0 < 12:
                 bx('hh_ext', 'a3907a', a0 - 0.3, y0 - 2.3, c1 + 0.9, a1 + 0.3, y0 - 0.75, c1 + 2.6, bev=0.2)
                 n = max(2, int((a1 - a0) // 2.4))
@@ -553,6 +557,7 @@ def roof():
         K.B('hh_ext', SIDING, xc - hw, 27.6, zf, xc + hw, top, zb, bev=0.08, flat=True)
         for sx in (-1, 1): K.B('hh_ext', TRIM, xc + sx * hw - 0.4, 27.6, zf - 0.35, xc + sx * hw + 0.4, top, zf + 1.2, bev=0.1)
         K.B('hh_win', GLASS, xc - 2.3, 29.8, zf - 0.12, xc + 2.3, 33.2, zf + 0.2, bev=0.02, kind='glass')
+        K.B('hh_ext', '6e604e', xc - 2.6, 29.5, zf - 1.8, xc + 2.6, 33.5, zf - 1.5, bev=0.05, kind='neon')   # (round 5: a lit attic behind)
         for (a, b, c, e) in ((xc - 2.9, 29.2, xc + 2.9, 29.8), (xc - 2.9, 33.2, xc + 2.9, 33.8), (xc - 2.9, 29.8, xc - 2.3, 33.2),
                              (xc + 2.3, 29.8, xc + 2.9, 33.2), (xc - 0.2, 29.8, xc + 0.2, 33.2)):
             K.B('hh_win', TRIM, a, b, zf - 0.35, c, e, zf + 0.1, bev=0.08)
@@ -614,10 +619,10 @@ def grounds():
     # the pergola over the store tables; stepping stones across the lawn from the patio to the shed
     PR.pergola(L.PERGOLA['x0'], L.PERGOLA['x1'], L.PERGOLA['z0'], L.PERGOLA['z1'], L.PERGOLA['top'])
     bx0, bz0, bx1, bz1 = L.PLAYBAY['x0'], L.PLAYBAY['z0'], L.PLAYBAY['x1'], L.PLAYBAY['z1']     # (judge round 4: the play bay)
-    for (x0, x1) in ((bx0, -10.4), (-5.6, bx1)):
-        K.B('hh_yard', '6f6252', x0, L.GROUND - 0.3, bz0, x1, L.GROUND + 0.1, bz1, bev=0.0, flat=True)
+    for (x0, z0, x1, z1) in L.PADS:                                    # (judge round 5: two pads, paler, a trim kerb)
+        K.B('hh_yard', 'a69a88', x0, L.GROUND - 0.3, z0, x1, L.GROUND + 0.1, z1, bev=0.0, flat=True)
     for (x0, z0, x1, z1) in L.KERBS:
-        K.B('hh_yard', WALNUT, x0, L.GROUND - 0.2, z0, x1, L.GROUND + 0.7, z1, bev=0.2)
+        K.B('hh_yard', 'dad5cb', x0, L.GROUND - 0.2, z0, x1, L.GROUND + 0.9, z1, bev=0.45)
     z = -64.2                                                           # the patio to the deck: 4-stud pavers on the axis
     while z > -118.5:
         K.B('hh_yard', PAVERS, -10.0, L.GROUND - 0.3, z - 3.6, -6.0, L.GROUND + 0.12, z, bev=0.15, flat=True, segs=1)
@@ -742,7 +747,7 @@ def lights():
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
             K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
             nook = abs(x - 18.7) < 0.1                                  # (judge round 3: the nook's blew its rug out)
-            K.light('spot', x, 7.6, z, (0, -1, 0), 1.1 if nook else 2.4, 14 if nook else 18, 100 if nook else 110, 'ffd9b0')
+            K.light('spot', x, 7.6, z, (0, -1, 0), 1.1 if nook else 2.8, 14 if nook else 16, 100 if nook else 70, 'ffd9b0')
             LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
