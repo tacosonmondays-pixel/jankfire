@@ -663,11 +663,13 @@ local function arriveCam(s: any, t: number): (CFrame, number)
 	local base = h.fin.Position
 	local u = smooth(t / A.land) -- (the push runs the whole walk and lands with the pose)
 	local near = A.near0 + (A.near1 - A.near0) * u
-	local at = base + F * near + R * k * (1.5 - 0.75 * u) + U * k * (1.25 + 0.2 * u)
+	-- (on their off hand's side, a little above the knee - Studio v1476, Platform: on the weapon side the walk's arm swing
+	-- blacked out the glass and the raised weapon arm stood between the lens and the face)
+	local at = base + F * near - R * k * (1.5 - 0.6 * u) + U * k * (1.3 + 0.55 * u)
 	-- the settle once the pose is held: a slow ease back and round
 	local sd = 1 - math.exp(-math.max(0, t - A.land) * 2.2)
-	at += (F * 0.3 - R * 0.25 + U * 0.1) * k * sd
-	local look = (arriveAt(h, t) + U * k * 3.35):Lerp(base + U * k * 4.05 + R * k * 0.1, u)
+	at += (F * 0.3 - R * 0.2 + U * 0.1) * k * sd
+	local look = (arriveAt(h, t) + U * k * 3.35):Lerp(base + U * k * 4.1 + R * k * 0.25, u)
 	local fov = 60 + 10 * u
 	-- the kick as the pose lands
 	local kt = t - (A.land - 0.08)

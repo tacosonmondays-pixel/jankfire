@@ -63,7 +63,8 @@ in the same folder.
   - **Weapons.** Every body holds its own weapon: the one in hand at the end, else the loadout's first. It carries its
     skin, wrap and hat, gripped as Fight.showWeapon grips a held gun.
 - **The lens (winners).** CLOSE from 0 until 0.6 s after the one in front lands: low (knee height), close and wide (FOV
-  60 to 70), a little to their weapon side, pushing from 5.6 to 3.3 studs as they walk at it. A small kick as the pose
+  60 to 70), a little to their off hand's side (on the weapon side the walk's arm swing blacked out the glass and the
+  raised arm hid the face), pushing from 5.6 to 3.6 studs as they walk at it. A small kick as the pose
   lands, then a settle. A wall in front pulls the lens in. Then a cut to the spot's WIDE (THE RISER: its stage shot).
 - **Losers.** The same winners' scene, seen from a long, low lens with a colder, greyer grade, then DEFEAT on their card.
 - **Stings.** From Roblox's licensed APM library, played under the MUSIC volume:
@@ -92,7 +93,7 @@ in the same folder.
   - the one in front stands at the middle of a team's spawns, facing the arena's middle;
   - rays find the floors and test the lens lines, looking past invisible walls;
   - the wide lenses frame about 13 studs at any distance.
-- **Seen in Play:** RooftopV2, RooftopV3, Crate, DesertV2, The Gut, Arctic Cabin. The others are placed but not yet
+- **Seen in Play:** RooftopV2, RooftopV3, Crate, DesertV2, The Gut, Arctic Cabin, Platform. The others are placed but not yet
   photographed; move a weak one by hand by editing its Parts.
 
 ## THE WALK (a walk spot: the Spooky Forest)
@@ -108,6 +109,7 @@ in the same folder.
   blur, double-vision flickers, a rising shake. At the stinger: a flash, a kick, and everyone snaps into a guard.
 - **Sounds** (kit `WalkAmb`, `Heartbeat`, `Stinger`, all APM under MUSIC): "Haunted Forest a 30" (1841594571),
   "Heartbeat" (1840104783), "Horror Hits 9" (1840927250).
+- **Live on the Forest since Studio v1476** (two earlier tries parked: lenses crowding the bodies, a knockdown startle).
 - **Mocap.** Roblox's walk slowed, under upper-body layers from the vault, until the owner's Mixamo clips arrive
   (side-session-notes `MIXAMO-CLIPS-NEEDED.md` items 10-14).
 
