@@ -40,8 +40,8 @@ W.PATCHES = {
 	BazaarV2 = { 107827818631540 }, -- bz_wagon: the courtyard wagons (the web open wagon, loaded; r1 90333922226970)
 	Crate = { 122985079878951 }, -- cr_furn: the room's furniture with the web toy train on its track (r1 114276068000614)
 	ArcticCabin = { 88418877574665 }, -- ac_out, ac_boat: the upturned rowboat (lofted: no web rowboat; r1 75530530832835)
-	Station = { 101181470203283 }, -- sa_train: the carriages' dress (cambered roofs, open bogies, underfloor boxes, ends)
-	Gut = { 131020959394545 }, -- gu_trn: the train boss's wagons' dress (cambered roofs, double doors, sills, open bogies)
+	Station = { 90604406833606 }, -- sa_train: the carriages' dress (cambered roofs, open bogies, underfloor boxes, ends; r1 101181470203283)
+	Gut = { 78312071769744 }, -- gu_trn: the train boss's wagons' dress (cambered roofs, double doors, open bogies; r1 131020959394545)
 } :: { [string]: { number } }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
