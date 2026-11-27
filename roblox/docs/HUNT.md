@@ -1,4 +1,4 @@
-# HOLDOUT: one gunman, everyone else hides (the hunt mode)
+# HOUSE HUNT: one gunman, everyone else hides (the hunt mode)
 
 Started 26 Nov 2026 by the hunt-mode session (`local_df23b97f`, the session in this file's commits). This is the plan.
 Each stage adds its "as built" notes below the plan.
@@ -37,11 +37,9 @@ kill; fight-back weapons after about 2 minutes; deaths as blocky cubes in the av
 pink cubes (the owner, 27 Nov: "can the blood actually be pink instead?"); the house judged against the ring hub by two blind judges; chunky, structured, quiet colours, no
 flavour text, recordings only, anti-AI critic on the UI; not named or styled after any existing game.
 
-**The name.** HOLDOUT (the mode), THE HOUSE (its lobby). Plain words, no other game's name or look. Code files are
+**The name.** HOUSE HUNT (the mode), THE HOUSE (its lobby). Plain words, no other game's name or look. Code files are
 `Hunt*` so they sort together. The on-screen name is one constant, `HuntConfig.TITLE` (the lobby's is `HOUSE_TITLE`),
-so a rename is a one-line change. 27 Nov: the owner asked for "RUN HIDE FIGHT"; main is putting the risk to the owner
-first (it is the official active-shooter response slogan and a 2020 school-shooting film's title). HOLDOUT stays on
-screen until main says otherwise.
+so a rename is a one-line change. The mode was called HOLDOUT until 27 Nov, when the owner picked HOUSE HUNT.
 
 ## 1. Where it lives (now, and as its own place later)
 
@@ -60,7 +58,7 @@ screen until main says otherwise.
   about ±600.
 
 **Getting there and back.**
-- From the hub: a HOLDOUT card on the PLAY screen's MODES tab (play-party's `ModesTab`; one card, one remote op), and
+- From the hub: a HOUSE HUNT card on the PLAY screen's MODES tab (play-party's `ModesTab`; one card, one remote op), and
   any part tagged `HuntPortal` gets a GO TO THE HOUSE prompt. Hub builders can drop a portal frame into their hubs
   later, and the card works from day one.
 - Back: the house's front door (BACK TO HUB). PLAY from the house works as it does anywhere in the hub.
@@ -130,7 +128,7 @@ trampoline's pad. No floor marks in the round maps (`no-floor-marks-in-matches`)
   (never in the PvP pool), its own Look (`HubLook.looks.hunt_house`, a soft afternoon) and ZonePiece (ZoneCull culls it).
 - `studio-tools/HuntBuild.luau` then adds what WebArena doesn't know: the `Hunt` folder of markers, the doors, the
   interactables and the zone box `HuntZone`.
-- Plan note in the vault `Hubs\The House (HOLDOUT lobby) plan.md`. Judge rounds go in vault `Reviews\`.
+- Plan note in the vault `Hubs\The House (HOUSE HUNT lobby) plan.md`. Judge rounds go in vault `Reviews\`.
 
 **What you can do in the house:**
 - Run, slide and crouch as in the main game. No grapple anywhere in the mode, no weapons in the house.
@@ -177,7 +175,7 @@ Hooks into shared code, each chained (the previous function is kept and called),
     handler refuse. Set on everyone in the house and in a round.
   - CrouchPoses stands down for a body whose `HuntAnim` attribute is set (the hider set has its own crouch and
     lie-down).
-  - ModesTab: the HOLDOUT card.
+  - ModesTab: the HOUSE HUNT card.
 
 ## 4. Moves (hiders always; everyone in the house)
 
@@ -358,7 +356,7 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 - Stage 2 runs on THE HOUSE, the Backrooms and Suburb v2 until the manor is built (no schools: section 5).
 - In-round points are per round, not saved. The only saved things are the usual XP, coins and quests (a round counts
   as a match for them: a win, a kill).
-- Rated? No. HOLDOUT is unranked.
+- Rated? No. HOUSE HUNT is unranked.
 - Players per round: 2 to 12. The pick is 1 gunman for up to 8 players, and 2 gunmen from 9 (stage 2 builds 1; 2 is
   a switch, `HuntConfig.TWO_AT`).
 
@@ -395,7 +393,7 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
   `Map.Hub.LookZones.HuntHouseLook`.
 - The one-line hooks in shared files are in (commit 2df0027): `Unarmed` in Fight.holstered, Arsenal's inHub and
   HubHolster; `NoGrapple` in Move.client (tryHook, tryYank, tryLock) and Main.server's hook handler; `Body.sink` taken
-  off HipHeight in Move.client; the HOLDOUT card in ModesTab; the look in HubLook.
+  off HipHeight in Move.client; the HOUSE HUNT card in ModesTab; the look in HubLook.
 - 27 Nov (commit 092e0cb): FlairServer's onKill returns early when the killer has `Hunt` set, so a gunman's worn kill
   effect never plays on a hider (round re-test v1407: a shell of limb shapes showed with the cubes, against section 6).
 - Round test verified in Play (v1407): the gunman's spawn grace (HuntRound `grace`, 6 s) keeps the round going, a

@@ -12,7 +12,7 @@ local H = {}
 H.PLACE_ID = nil :: number?
 H.HUB_PLACE_ID = 96891323589901 -- (the start place, for the way back once it's split)
 H.HOUSE = "HuntHouse" -- (workspace.Map.<HOUSE>: the lobby, built by studio-tools/HuntBuild)
-H.TITLE = "HOLDOUT"
+H.TITLE = "HOUSE HUNT" -- (the owner's pick, 27 Nov: the mode's on-screen name, one constant; internal ids stay "hunt")
 H.HOUSE_TITLE = "THE HOUSE"
 
 -- ------------------------------------------------------------------ the moves (studs, seconds, studs/s)
