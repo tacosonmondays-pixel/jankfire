@@ -97,6 +97,10 @@ local function stop()
 	if r.conn then r.conn:Disconnect() end
 	if r.solid then pcall(function() RunService:UnbindFromRenderStep("HuntIntroSolid") end) end
 	if r.hold then pcall(function() RunService:UnbindFromRenderStep("HuntIntroHold") end) end
+	if r.autoRot then
+		local hm = r.autoRot; r.autoRot = nil
+		if hm.Parent and hm:GetAttribute("TPTurned") == nil then hm.AutoRotate = true end
+	end
 	if r.cutlog then pcall(function() RunService:UnbindFromRenderStep("HuntIntroCutLog") end) end
 	if r.lead then r.lead:Destroy(); r.lead = nil end
 	if r.warm then r.warm.release(); r.warm = nil end
@@ -637,6 +641,11 @@ local function play(a: any)
 		local ch = me.Character
 		local rt = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not rt or (rt.Position - O.Position).Magnitude > 12 then return end
+		-- (v21 probe: past this step her body was turned back to the camera's flat look by the humanoid's own
+		-- camera-relative turn, so the frame drawn wasn't the one the camera was built for) that turn is off until the
+		-- hand-back
+		local hm = ch:FindFirstChildOfClass("Humanoid")
+		if hm and hm.AutoRotate then hm.AutoRotate = false; r.autoRot = hm end
 		local lv = rt.CFrame.LookVector
 		if Vector3.new(lv.X, 0, lv.Z).Unit:Dot(flat) < 0.99995 or math.abs(lv.Y) > 1e-3 then
 			rt.CFrame = CFrame.lookAt(rt.Position, rt.Position + flat)
