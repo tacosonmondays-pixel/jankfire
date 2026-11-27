@@ -166,7 +166,7 @@ def ceilings():
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     for (a, b, c, d) in ((26.0, -22.0, 42.0, -14.0), (25.2, 15.2, 42.8, 28.8), (14.0, -11.0, 23.0, -3.0)):   # (judge round 4: lit coves)
         for (u0, v0, u1, v1) in ((a, b, c, b + 1.2), (a, d - 1.2, c, d), (a, b, a + 1.2, d), (c - 1.2, b, c, d)):
-            K.B('hh_lamp', 'd9c7ab', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
+            K.B('hh_lamp', 'b9ab94', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)   # (round 9: clipped white)
     for bx in (33.0, 46.0):                                           # (judge round 5: the kitchen's front half)
         K.B('hh_trim', TRIM, bx - 1.0, 10.6, -11.0, bx + 1.0, 12.0, 3.5, bev=0.3)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
@@ -315,12 +315,7 @@ def win_frame(axis, c0, c1, a0, a1, y0, y1, kind, outside_sgn):
     # the frame in the opening (the sash): a box round the pane, 0.6 wide, across the wall's middle
     for (u0, v0, u1, v1) in ((a0, y0, a1, y0 + 0.55), (a0, y1 - 0.55, a1, y1), (a0, y0, a0 + 0.55, y1), (a1 - 0.55, y0, a1, y1)):
         bx('hh_win', TRIM, u0, v0, cm - 0.35, u1, v1, cm + 0.35, bev=0.1)
-    if a1 - a0 >= 7.5 and kind != 'side':
-        am = (a0 + a1) / 2
-        bx('hh_win', TRIM, am - 0.35, y0, cm - 0.35, am + 0.35, y1, cm + 0.35, bev=0.1)
-    if y1 - y0 >= 5.5 and kind != 'side':
-        ym = y0 + (y1 - y0) * 0.68
-        bx('hh_win', TRIM, a0, ym - 0.3, cm - 0.33, a1, ym + 0.3, cm + 0.33, bev=0.1)
+    # (judges round 9: muntin grids read as fiddly from the street) clear glass in a deep frame, no bars
     out0 = c1 if outside_sgn > 0 else c0
     so = outside_sgn
     # outside: a stone sill and lintel on the brick floor, white trim boards on the siding floor
@@ -386,15 +381,7 @@ def window_dress():
                 ym = (y0 + y1) / 2
                 for (v0, v1) in ((y0 + 0.3, ym - 0.2), (ym + 0.2, y1 - 0.3)):        # two raised panels
                     bx('hh_ext', '687079', u0 + 0.3, v0, o1 + 0.1, u1 - 0.3, v1, o1 + 0.35, bev=0.1)
-            if y0 < 12:
-                bx('hh_ext', 'a3907a', a0 - 0.3, y0 - 2.3, c1 + 0.9, a1 + 0.3, y0 - 0.75, c1 + 2.6, bev=0.2)
-                n = max(2, int((a1 - a0) // 2.4))
-                for k in range(n):
-                    u = a0 + (k + 0.5) * (a1 - a0) / n
-                    import bmesh as _bm
-                    bm = _bm.new(); _bm.ops.create_icosphere(bm, subdivisions=2, radius=1.25)
-                    _bm.ops.scale(bm, vec=(1.0, 0.75, 0.9), verts=bm.verts)
-                    K.put('hh_ext', 'plastic', '5f7d4a' if k % 2 else '6f8f55', bm, Tr(u, y0 - 0.5, c1 + 1.75))
+            # (judges round 9: the window boxes made the front fiddly; taken off)
 
 def wall_art():
     """framed panels on the big bare walls: a frame round two or three flat bands of muted colour (no pictures, no
