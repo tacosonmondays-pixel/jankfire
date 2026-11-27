@@ -202,13 +202,15 @@ end)
 -- ------------------------------------------------------------------ stage 3: points, the two trap slots, the trap menu
 -- bottom right: your points and the two traps you carry (keys of the PRIMARY / SECONDARY slots use them). UTILITY (G)
 -- opens the trap menu: six tiles, each with its key (1-6 buys while the menu is up), its price and one plain line
-local TRAPS = HC.TRAPS
+local TRAPS = {} -- (the trap menu: what's for sale; the tables' own items aren't, shop = false)
+for _, tr in HC.TRAPS do if tr.shop ~= false then table.insert(TRAPS, tr) end end
+local CollectionService = game:GetService("CollectionService")
 local inv = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 1),
 	Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(250, 96), Visible = false }, rg)
 new("UICorner", { CornerRadius = UDim.new(0, T.RADIUS) }, inv)
 local ptsL = label(inv, "", 24, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Right)
 ptsL.Position = UDim2.new(0, 12, 0, 6); ptsL.Size = UDim2.new(1, -24, 0, 28)
-local ptsCap = label(inv, "POINTS", 11, T.MUTED, T.FONT_BOLD)
+local ptsCap = label(inv, "CASH", 11, T.MUTED, T.FONT_BOLD) -- (the owner: the round's points are money)
 ptsCap.Position = UDim2.fromOffset(12, 12); ptsCap.Size = UDim2.fromOffset(80, 16)
 local slotL = {}
 for i = 1, 2 do
@@ -237,21 +239,36 @@ for i, tr in TRAPS do
 	tiles[i] = { tile = tile, cost = tr.cost }
 end
 local trapName: { [string]: string } = {}
-for _, tr in TRAPS do trapName[tr.id] = tr.name end
+for _, tr in HC.TRAPS do trapName[tr.id] = tr.name end
 local found = label(rg, "", 18, T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
 found.AnchorPoint = Vector2.new(0.5, 0.5); found.Position = UDim2.fromScale(0.5, 0.66); found.Size = UDim2.fromOffset(500, 26); found.Visible = false
 local foundUntil = 0
-local function hiderInRound(): boolean
-	return me:GetAttribute("Hunt") == "round" and me:GetAttribute("HuntRole") == "hider" and ReplicatedStorage:GetAttribute("HuntRoundPhase") == "hunt"
+local function hiderInRound(): boolean -- (the hide too: the item you took from the tables is in your slots)
+	local ph = ReplicatedStorage:GetAttribute("HuntRoundPhase")
+	return me:GetAttribute("Hunt") == "round" and me:GetAttribute("HuntRole") == "hider" and (ph == "hunt" or ph == "hide")
 end
+local function inHunt(): boolean return ReplicatedStorage:GetAttribute("HuntRoundPhase") == "hunt" end
+local nextPickSync = 0
 RunService.RenderStepped:Connect(function()
 	local on = hiderInRound()
 	inv.Visible = on
 	if not on then menu.Visible = false end
 	found.Visible = os.clock() < foundUntil
+	-- the tables' prompts: live in the hide, gone for you once you've taken one
+	if os.clock() >= nextPickSync then
+		nextPickSync = os.clock() + 0.25
+		local can = me:GetAttribute("HuntRole") == "hider" and me:GetAttribute("HuntPicked") == nil
+		for _, pr in CollectionService:GetTagged("HuntPick") do
+			if pr:IsA("ProximityPrompt") then
+				local want = can and pr:GetAttribute("Live") == true
+				if pr.Enabled ~= want then pr.Enabled = want end
+			end
+		end
+	end
 	if not on then return end
+	if not inHunt() then menu.Visible = false end
 	local pts = tonumber(me:GetAttribute("HuntPoints")) or 0
-	ptsL.Text = tostring(pts)
+	ptsL.Text = "$" .. tostring(pts)
 	local items = {}
 	local raw = me:GetAttribute("HuntItems")
 	if type(raw) == "string" then
@@ -263,12 +280,12 @@ RunService.RenderStepped:Connect(function()
 		slotL[i].n.TextColor3 = if it then T.TEXT else T.DIM
 	end
 	local wpn = me:GetAttribute("HuntWeapon")
-	ptsCap.Text = if type(wpn) == "string" and HC.WEAPONS[wpn] then HC.WEAPONS[wpn].name else "POINTS"
+	ptsCap.Text = if type(wpn) == "string" and HC.WEAPONS[wpn] then HC.WEAPONS[wpn].name else "CASH"
 	for _, tl in tiles do tl.tile.BackgroundColor3 = if pts >= tl.cost and #items < HC.POINTS.carry then T.CARD_HI else T.CARD end
 end)
 UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or not hiderInRound() then return end
-	if Binds.is("item", io) then menu.Visible = not menu.Visible; return end
+	if Binds.is("item", io) then menu.Visible = inHunt() and not menu.Visible; return end -- (the trap menu: the hunt only)
 	if menu.Visible then
 		local k = io.KeyCode.Value - Enum.KeyCode.One.Value + 1
 		if io.UserInputType == Enum.UserInputType.Keyboard and k >= 1 and k <= #TRAPS then Remote:FireServer("buy", TRAPS[k].id) end

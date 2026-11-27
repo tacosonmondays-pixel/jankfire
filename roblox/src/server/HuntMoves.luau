@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
+local HuntRagdoll = require(script.Parent:WaitForChild("HuntRagdoll")) :: any
 local MV = HC.MOVES
 
 local HuntMoves = {}
@@ -28,8 +29,11 @@ HuntMoves.extra = function(_p: Player): { any } return {} end
 -- the weapon in your hand (a FIGHT BACK find: HuntItems), and what happens when a hit lands on a fighter (points)
 HuntMoves.weaponOf = function(_p: Player): any return nil end
 HuntMoves.landed = function(_p: Player, _f: any, _kind: string) end
+-- (HuntItems: a prop gun's disguise breaks when its wearer attacks, or is downed)
+HuntMoves.onAct = function(_p: Player) end
+HuntMoves.onDowned = function(_f: any) end
 
-type St = { cd: { [string]: number }, windT: number?, holdT: number?, lie: boolean }
+type St = { cd: { [string]: number }, windT: number?, holdT: number?, lie: boolean, lock: number? }
 local st: { [Player]: St } = {}
 local function stOf(p: Player): St
 	local s = st[p]
@@ -119,7 +123,20 @@ local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string
 			if q then v *= HuntMoves.knockScale(q) end
 			-- (damage where it's allowed: Fight.hurt asks Fight.allow, and the house says no to everyone; then it's just
 			-- the shove)
-			if dmg > 0 and by and Fight.allow(by, f) then
+			local rag = if wid == "push" then MV.push elseif wid == "superpush" then MV.super elseif wid == "punch" then MV.punch else nil
+			if rag then
+				-- (FIRM STANCE: the hunter is down half as long)
+				local sc = if q then HuntMoves.knockScale(q) else 1
+				if dmg > 0 and by and Fight.allow(by, f) then Fight.hurt(f, dmg, by, wid, false, nil) end
+				if f.alive then
+					if HuntRagdoll.down(f, v, rag.rag * sc, rag.min * sc) then
+						HuntMoves.onDowned(f)
+					else
+						Fight.knock(f, v * 0.3, wid) -- (just up, or already down: a nudge, never a chain)
+					end
+				end
+				if by and Fight.allow(by, f) then HuntMoves.landed(p, f, wid) end
+			elseif dmg > 0 and by and Fight.allow(by, f) then
 				Fight.hurt(f, dmg, by, wid, false, v)
 				HuntMoves.landed(p, f, wid)
 			else
@@ -144,10 +161,17 @@ end
 
 function HuntMoves.handle(p: Player, op: string, a: any, b: any)
 	if p:GetAttribute("Hunt") == nil then return end
+	if op == "getup" then HuntRagdoll.ask(p); return end -- (the get-up button: the hunter too)
 	if p:GetAttribute("HuntRole") == "gunman" then return end -- (stage 2: the gunman has his gun, not these)
+	if HuntRagdoll.isDown(Fight.byPlayer[p]) then return end -- (down: no moves)
 	local root, hum = body(p)
 	if not root or not hum then return end
 	local s = stOf(p)
+	local attack = op == "jab" or op == "hay" or op == "push" or op == "super"
+	if attack then
+		if os.clock() < (s.lock or 0) then return end -- (one move, then a breath: no chaining all three)
+		HuntMoves.onAct(p)
+	end
 	local look = if typeof(a) == "Vector3" and a.Magnitude > 0.1 and a.Magnitude < 2 then a.Unit else root.CFrame.LookVector
 	if op == "lie" then
 		s.lie = a == true
@@ -157,26 +181,36 @@ function HuntMoves.handle(p: Player, op: string, a: any, b: any)
 	if op == "wind" then s.windT = os.clock(); return end
 	if op == "hold" then s.holdT = os.clock(); return end
 	local wpn = HuntMoves.weaponOf(p) -- (a FIGHT BACK weapon swings instead of the fist)
+	local function landedCd(key: string, cd: number) -- (a punch that lands costs its full cooldown: the client reads it)
+		s.cd[key] = os.clock() + cd * 0.9
+		p:SetAttribute("HuntCd_" .. key, workspace:GetServerTimeNow() + cd)
+	end
 	if op == "jab" then
 		local m = wpn or MV.jab
-		if not ready(s, "punch", m.cd) then return end
-		hit(p, root, look, m, if wpn then "melee" else "punch", m.dmg, true, false)
+		if not ready(s, "punch", if wpn then m.cd else MV.punch.whiff) then return end
+		s.lock = os.clock() + MV.lock * 0.9
+		local n = hit(p, root, look, m, if wpn then "melee" else "punch", m.dmg, true, false)
+		if n > 0 and not wpn then landedCd("punch", MV.punch.cd) end
 	elseif op == "hay" then
 		local held = if s.windT then os.clock() - s.windT else 0
 		s.windT = nil
 		if held < MV.hay.wind * 0.75 then return end -- (not wound up: the client sends a jab for a tap)
 		local m = wpn or MV.hay
-		if not ready(s, "punch", m.cd) then return end
-		hit(p, root, look, m, if wpn then "melee" else "punch", if wpn then math.floor(m.dmg * 1.3) else m.dmg, true, false)
+		if not ready(s, "punch", if wpn then m.cd else MV.punch.whiff) then return end
+		s.lock = os.clock() + MV.lock * 0.9
+		local n = hit(p, root, look, m, if wpn then "melee" else "punch", if wpn then math.floor(m.dmg * 1.3) else m.dmg, true, false)
+		if n > 0 and not wpn then landedCd("punch", MV.punch.cd) end
 	elseif op == "push" then
 		s.holdT = nil
 		if not ready(s, "push", MV.push.cd) then return end
+		s.lock = os.clock() + MV.lock * 0.9
 		hit(p, root, look, MV.push, "push", 0, false, s.lie)
 	elseif op == "super" then
 		local held = if s.holdT then os.clock() - s.holdT else 0
 		s.holdT = nil
 		if held < MV.super.hold * 0.75 then return end
 		if not ready(s, "super", MV.super.cd) then return end
+		s.lock = os.clock() + MV.lock * 0.9
 		s.cd.push = os.clock() + MV.push.cd * 0.9
 		hit(p, root, look, MV.super, "superpush", 0, false, s.lie)
 	end

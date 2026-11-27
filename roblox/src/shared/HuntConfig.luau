@@ -18,11 +18,18 @@ H.HOUSE_TITLE = "THE HOUSE"
 -- ------------------------------------------------------------------ the moves (studs, seconds, studs/s)
 -- the server judges reach and cone from its own copy of the bodies; a knock goes through Fight.knock. damage only lands
 -- on the gunman, in a round (the house hurts nobody)
+-- (owner, 27 Nov: "Push is a light push that ragdolls the enemy or other survivors, super push is the same but like the
+-- handslapper and punch ragdolls and stuns you can't untagdoll for a few seconds ... Cooldown shouldn't be crazy long but
+-- also not short enough where you can chain all three") each landed move ragdolls its target for `rag` s (HuntRagdoll);
+-- the get-up button works after `min` s. A punch (jab or haymaker) that lands costs `cd`, a miss `whiff`. After any
+-- move every move waits `lock` s; someone just up can't be downed again for RAGDOLL.immune s
 H.MOVES = {
 	jab = { dmg = 6, reach = 6.5, cone = 50, cd = 0.45, kb = 14, up = 6 },
 	hay = { dmg = 18, wind = 0.5, maxWind = 2.5, reach = 7.0, cone = 50, cd = 0.9, kb = 35, up = 14 },
-	push = { reach = 7.0, cone = 55, cd = 1.2, kb = 45, up = 12 },
-	super = { hold = 0.8, reach = 8.0, cone = 55, cd = 8.0, kb = 105, up = 40 },
+	punch = { cd = 6.0, whiff = 1.2, rag = 3.0, min = 2.5 },
+	push = { reach = 7.0, cone = 55, cd = 3.0, kb = 45, up = 12, rag = 1.0, min = 0.5 },
+	super = { hold = 0.8, reach = 8.0, cone = 55, cd = 10.0, kb = 105, up = 40, rag = 2.0, min = 1.0 },
+	lock = 1.0,
 	-- lying on your back: the body sinks this far (Body.sink), moves at this share of a run; a push from it goes along
 	-- your whole look (the up part uncapped) and x launch
 	lie = { sink = 1.7, speed = 0.2, launch = 1.4, getUp = 0.5 },
@@ -31,6 +38,10 @@ H.MOVES = {
 	-- a knock on the ball (the driveway's basketball): x this
 	ball = 0.9,
 }
+
+-- the ragdoll (HuntRagdoll): immune s after getting up; the get-up (the vault's Mixamo Getting Up, mixamo_r15.py) plays
+-- at riseSpeed and takes riseTime s, no moving till it's done
+H.RAGDOLL = { immune = 2.0, riseTime = 1.5, riseSpeed = 1.8, getUp = { R15 = 139465552509277, R6 = 139224766499388 } }
 
 -- ------------------------------------------------------------------ the hider's animations (mocap: the owner's Mixamo
 -- clips in the vault, retargeted by tools/blender/mixamo_r15.py [--r6]; uploaded 26 Nov 2026). HuntAnims plays them.
@@ -107,6 +118,7 @@ H.MAPS = {
 		outroWalk = { path = { { -4, 5.6, 37 }, { -5, 5.6, 29 }, { -10, 5.6, 24 }, { -18, 5.6, 25 } },  -- (owner: "walk forward more")
 			looks = { { -30, 4.5, 33 }, { -36, 4.0, 13 }, { -46, 4.2, 32 }, { -52, 4.0, 16 } } },        -- (and slower looks round)
 		outroGroup = { -2, 0, 14, 180 },
+		tables = { 82, -1, 56, 180 }, -- (the item tables: on the driveway in front of the garage, facing the street)
 		outroGroupWalk = { from = { -2, 0, 35 }, to = { -2, 0, 16 } }, -- (owner: the survivors walk through the house too: down the hall)
 		-- the wreck along his walk (main, 27 Nov: "start the walk with destroyed place"): { piece, x, y, z, yaw, pitch, roll }
 		-- in degrees (yaw first, then the tip). No blood, no bodies: things knocked over, a frame askew, a door off its hinge
@@ -168,14 +180,33 @@ H.MAPS = {
 -- ------------------------------------------------------------------ stage 3: the hiders' points, traps and weapons
 -- points: a hider starts with `start`, earns `alive` every `every` s alive in the hunt, `punch` / `push` for each one that
 -- lands on the gunman, `trap` when one of their traps gets him. two traps carried at once
-H.POINTS = { start = 10, every = 3, alive = 1, punch = 5, push = 8, trap = 20, carry = 2 }
+H.POINTS = { start = 40, every = 3, alive = 1, punch = 5, push = 8, trap = 20, carry = 2 } -- (on screen: CASH, $)
 H.TRAPS = {
 	{ id = "beartrap", name = "BEAR TRAP", cost = 30, say = "set on the floor: holds him 3 s, 20 damage", hold = 3, dmg = 20, arm = 1.0, reach = 2.8 },
 	{ id = "spray", name = "PEPPER SPRAY", cost = 25, say = "3 puffs: his view goes white for 3 s", uses = 3, range = 12, cone = 35, blind = 3 },
-	{ id = "taser", name = "TASER", cost = 40, say = "one shot: he can't move or shoot for 2 s", range = 18, cone = 12, stun = 2 },
+	{ id = "taser", name = "TASER", cost = 40, say = "one shot: he can't move or shoot for 2 s", range = 18, cone = 12, stun = 2, shop = false }, -- (the tables only)
 	{ id = "smoke", name = "SMOKE BOMB", cost = 20, say = "a cloud that hides everyone in it for 8 s", radius = 14, time = 8 },
 	{ id = "marbles", name = "MARBLES", cost = 15, say = "a spill he slips on, 10 s", radius = 7, time = 10 },
 	{ id = "decoy", name = "DECOY", cost = 20, say = "footsteps that walk away from it, 10 s", time = 10 },
+	-- the tables' own (not in the trap menu): shop = false
+	{ id = "bandage", name = "BANDAGES", cost = 0, say = "+25 health a use", uses = 3, heal = 25, shop = false },
+	{ id = "medkit", name = "MEDKIT", cost = 40, say = "back to full health over 2.5 s", heal = 100, time = 2.5, shop = false },
+	{ id = "propgun", name = "PROP GUN", cost = 40, say = "aim at furniture: become it; moving fast, attacking or a hit breaks it", range = 30, breakSpeed = 9, shop = false },
+}
+-- the item tables (owner, 27 Nov): outside by the garage (a map's `tables` = { x, y, z, yaw }; else its first hider spot),
+-- every survivor starts in front of them and takes ONE before the hunter is let out (the hide). Paid ones cost the
+-- round's cash (POINTS.start buys exactly one); never coins, never Robux (THE ROBUX RULE). `weapon` = held in the hand
+H.PICKS = {
+	on = true,
+	items = {
+		{ id = "bandage", name = "BANDAGES", price = 0 },
+		{ id = "bat", name = "BASEBALL BAT", price = 0, weapon = "bat" },
+		{ id = "spray", name = "PEPPER SPRAY", price = 0 },
+		{ id = "beartrap", name = "BEAR TRAP", price = 0 },
+		{ id = "medkit", name = "MEDKIT", price = 40 },
+		{ id = "taser", name = "TASER", price = 40 },
+		{ id = "propgun", name = "PROP GUN", price = 40 },
+	},
 }
 -- the FIGHT BACK weapons (a search spot's find): held in your right hand, swung with the punch (the server judges it)
 H.WEAPONS = {

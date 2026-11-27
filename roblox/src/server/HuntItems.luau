@@ -15,6 +15,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local CollectionService = game:GetService("CollectionService")
 
 local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
@@ -27,7 +28,8 @@ local HuntItems = {}
 local TRAP: { [string]: any } = {}
 for _, t in HC.TRAPS do TRAP[t.id] = t end
 
-type St = { points: number, items: { { id: string, uses: number } }, weapon: string?, nextAlive: number, prop: Model? }
+type St = { points: number, items: { { id: string, uses: number } }, weapon: string?, nextAlive: number, prop: Model?,
+	picked: string?, healing: { untilT: number, rate: number }?, disguise: { part: BasePart, saved: { [Instance]: number }, dist: any }?, nextUse: number? }
 local st: { [Player]: St } = {}
 local world: { any } = {} -- (the live traps in the map: bear traps, spills, decoys, clouds)
 local spots: { BasePart } = {}
@@ -56,7 +58,7 @@ end
 local function publish(p: Player)
 	local s = st[p]
 	if not s then
-		for _, a in { "HuntPoints", "HuntItems", "HuntWeapon" } do p:SetAttribute(a, nil) end
+		for _, a in { "HuntPoints", "HuntItems", "HuntWeapon", "HuntPicked", "HuntProp" } do p:SetAttribute(a, nil) end
 		return
 	end
 	p:SetAttribute("HuntPoints", s.points)
@@ -64,6 +66,8 @@ local function publish(p: Player)
 	for _, it in s.items do table.insert(parts, it.id .. ":" .. it.uses) end
 	p:SetAttribute("HuntItems", table.concat(parts, ","))
 	p:SetAttribute("HuntWeapon", s.weapon)
+	p:SetAttribute("HuntPicked", s.picked)
+	p:SetAttribute("HuntProp", if s.disguise then true else nil)
 end
 function HuntItems.score(p: Player, n: number)
 	local s = st[p]
@@ -197,6 +201,101 @@ USE.decoy = function(p, root, look, T)
 	return true
 end
 
+local function fighterOf(p: Player): any return Fight.byPlayer[p] end
+local function heal(p: Player, amt: number)
+	local f = fighterOf(p)
+	if not f or not f.alive then return end
+	local cap = f.maxHp or HC.ROUND.hiderHp
+	f.hp = math.max(f.hp, math.min(cap, f.hp + amt))
+	Fight.syncHp(f)
+end
+USE.bandage = function(p, root, _look, T)
+	local s = st[p]
+	if s and s.nextUse and os.clock() < s.nextUse then return false end
+	if s then s.nextUse = os.clock() + 0.8 end
+	heal(p, T.heal)
+	sfx("hunt_cloth", root, 0.8)
+	return true
+end
+USE.medkit = function(p, root, _look, T)
+	local s = st[p]
+	if not s then return false end
+	local f = fighterOf(p)
+	local cap = (f and f.maxHp) or HC.ROUND.hiderHp
+	s.healing = { untilT = os.clock() + T.time, rate = cap / T.time }
+	sfx("hunt_cloth", root, 1)
+	return true
+end
+-- the prop gun (owner: "a special prop gun"): aim at a piece of furniture and become a copy of it, your body hidden;
+-- moving fast, attacking, being hit or downed breaks it (HuntItems.unprop)
+function HuntItems.unprop(p: Player)
+	local s = st[p]
+	local d = s and s.disguise
+	if not d then return end
+	s.disguise = nil
+	for inst, v in d.saved do if inst.Parent then (inst :: any).Transparency = v end end
+	local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+	if hum and d.dist then hum.DisplayDistanceType = d.dist end
+	if d.part.Parent then d.part:Destroy() end
+	local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then Remote:FireAllClients("fx", "unprop", root.Position) end
+	publish(p)
+end
+USE.propgun = function(p, root, look, T)
+	local ch = p.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if not ch or not hum or not G then return false end
+	local eye = root.Position + Vector3.new(0, 1.6, 0)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore: { Instance } = { ch }
+	for _, m in G.members do local mm = Fight.model(m.f); if mm then table.insert(ignore, mm) end end
+	params.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(eye, look.Unit * T.range, params)
+	local piece = hit and hit.Instance
+	if not (piece and piece:IsA("BasePart") and piece:IsDescendantOf(G.map)) then return false end
+	local sz = piece.Size
+	local big = math.max(sz.X, sz.Y, sz.Z)
+	if big > 14 or big < 0.8 or (sz.Y < 1.2 and sz.X * sz.Z > 60) then return false end -- (furniture: not a wall, a floor or a crumb)
+	HuntItems.unprop(p)
+	-- its height above its own floor, kept: it stands on your floor as it stood on its own
+	local fp = RaycastParams.new(); fp.FilterType = Enum.RaycastFilterType.Exclude; fp.FilterDescendantsInstances = { piece, ch }
+	local below = workspace:Raycast(piece.Position, Vector3.new(0, -12, 0), fp)
+	local lift = if below then piece.Position.Y - below.Position.Y else sz.Y / 2
+	local feet = root.Position.Y - (hum.HipHeight + root.Size.Y / 2)
+	local c = piece:Clone()
+	for _, k in c:GetChildren() do
+		if not (k:IsA("SurfaceAppearance") or k:IsA("Decal") or k:IsA("Texture") or k:IsA("SpecialMesh")) then k:Destroy() end
+	end
+	c.Name = "HuntDisguise"; c.Anchored = false; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.Massless = true
+	c.CFrame = (piece.CFrame - piece.Position) + Vector3.new(root.Position.X, feet + lift, root.Position.Z)
+	local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = c; w.Parent = c
+	c.Parent = ch
+	local saved: { [Instance]: number } = {}
+	for _, d in ch:GetDescendants() do
+		if d ~= c and (d:IsA("BasePart") or d:IsA("Decal")) and not d:IsDescendantOf(c) then
+			saved[d] = (d :: any).Transparency; (d :: any).Transparency = 1
+		end
+	end
+	local s = st[p]
+	if s then s.disguise = { part = c, saved = saved, dist = hum.DisplayDistanceType } end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	Remote:FireAllClients("fx", "prop", root.Position)
+	sfx("hunt_pop", root, 1)
+	return true
+end
+-- a hit on someone in disguise or healing breaks it
+Fight.onHurt(function(v: any)
+	if v and v.kind == "player" then
+		local p = v.ref :: Player
+		local s = st[p]
+		if s then
+			s.healing = nil
+			if s.disguise then HuntItems.unprop(p) end
+		end
+	end
+end)
+
 -- ------------------------------------------------------------------ search spots and the weapons
 local function weld(prop: Model, hand: BasePart)
 	for _, d in prop:GetDescendants() do
@@ -289,6 +388,139 @@ local function makeSpots(g: any)
 	end
 end
 
+-- ------------------------------------------------------------------ the item tables (owner, 27 Nov)
+function HuntItems.tableCF(def: any, origin: CFrame): CFrame
+	local T = def.tables
+	if not T and def.hiders and def.hiders[1] then local h = def.hiders[1]; T = { h[1], h[2], h[3], 0 } end
+	T = T or { 0, 0, 0, 0 }
+	return origin * CFrame.new(T[1], T[2], T[3]) * CFrame.Angles(0, math.rad(T[4] or 0), 0)
+end
+local PICK: { [string]: any } = {}
+for _, it in (HC.PICKS and HC.PICKS.items or {}) do PICK[it.id] = it end
+local pickPrompts: { ProximityPrompt } = {}
+-- the items laid on the tables: plain chunky shapes in the house's quiet colours, no text
+local function itemModel(id: string): Model
+	local m = Instance.new("Model"); m.Name = "Pick_" .. id
+	local function b(size: Vector3, cf: CFrame, col: Color3, shape: Enum.PartType?): Part
+		local p = part({ Size = size, Color = col, CFrame = cf, CanCollide = false }, m)
+		if shape then p.Shape = shape end
+		return p
+	end
+	local cyl = Enum.PartType.Cylinder
+	if id == "bandage" then
+		for k = -1, 1 do b(Vector3.new(0.7, 0.9, 0.9), CFrame.new(k * 0.85, 0.45, 0) * CFrame.Angles(0, 0, 0), Color3.fromRGB(232, 226, 210), cyl) end
+	elseif id == "bat" then
+		b(Vector3.new(3.6, 0.42, 0.42), CFrame.new(0.2, 0.21, 0) * CFrame.Angles(0, math.rad(20), 0), Color3.fromRGB(176, 136, 92), cyl)
+		b(Vector3.new(1.2, 0.26, 0.26), CFrame.new(-1.9, 0.14, -0.55) * CFrame.Angles(0, math.rad(20), 0), Color3.fromRGB(70, 60, 54), cyl)
+	elseif id == "spray" then
+		b(Vector3.new(1.5, 0.6, 0.6), CFrame.new(0, 0.75, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(196, 92, 58), cyl)
+		b(Vector3.new(0.35, 0.4, 0.4), CFrame.new(0, 1.65, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(46, 44, 42), cyl)
+	elseif id == "beartrap" then
+		b(Vector3.new(0.25, 2.2, 2.2), CFrame.new(0, 0.12, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(70, 72, 76), cyl)
+		for sgn = -1, 1, 2 do b(Vector3.new(2.0, 0.22, 0.7), CFrame.new(0, 0.3, sgn * 0.65) * CFrame.Angles(sgn * math.rad(55), 0, 0), Color3.fromRGB(96, 98, 102)) end
+	elseif id == "medkit" then
+		b(Vector3.new(1.8, 1.0, 1.3), CFrame.new(0, 0.5, 0), Color3.fromRGB(226, 228, 222))
+		b(Vector3.new(1.84, 0.3, 1.34), CFrame.new(0, 0.5, 0), Color3.fromRGB(92, 148, 112))
+		b(Vector3.new(0.8, 0.18, 0.2), CFrame.new(0, 1.1, 0), Color3.fromRGB(46, 44, 42))
+	elseif id == "taser" then
+		b(Vector3.new(1.1, 0.5, 0.36), CFrame.new(0, 0.55, 0), Color3.fromRGB(214, 186, 70))
+		b(Vector3.new(0.3, 0.5, 0.38), CFrame.new(0.68, 0.55, 0), Color3.fromRGB(46, 44, 42))
+		b(Vector3.new(0.34, 0.6, 0.3), CFrame.new(-0.3, 0.15, 0), Color3.fromRGB(46, 44, 42))
+	else -- (the prop gun: a chunky toy-like blaster)
+		b(Vector3.new(1.5, 0.55, 0.45), CFrame.new(0, 0.6, 0), Color3.fromRGB(86, 164, 166))
+		b(Vector3.new(0.9, 0.3, 0.3), CFrame.new(1.1, 0.65, 0) * CFrame.Angles(0, 0, 0), Color3.fromRGB(60, 120, 124), cyl)
+		b(Vector3.new(0.5, 0.5, 0.5), CFrame.new(-0.2, 1.0, 0), Color3.fromRGB(150, 120, 196), Enum.PartType.Ball)
+		b(Vector3.new(0.34, 0.6, 0.3), CFrame.new(-0.45, 0.15, 0), Color3.fromRGB(46, 44, 42))
+	end
+	m.PrimaryPart = m:FindFirstChildWhichIsA("BasePart")
+	return m
+end
+local function makeTables(g: any)
+	pickPrompts = {}
+	if not (HC.PICKS and HC.PICKS.on) then return end
+	local T = HuntItems.tableCF(g.def, g.origin)
+	local folder = Instance.new("Folder"); folder.Name = "HuntPicks"; folder.Parent = g.map
+	-- two of the patio's store tables, copied from the map (else plain chunky tables)
+	local src: Instance? = nil
+	for _, d in g.map:GetDescendants() do
+		if (d:IsA("BasePart") or d:IsA("Model")) and string.find(string.lower(d.Name), "storetable") then src = d; break end
+	end
+	local top = 4.2
+	for k, dx in { -5.2, 5.2 } do
+		local at = T * CFrame.new(dx, 0, 0)
+		if src then
+			local c = src:Clone()
+			if c:IsA("Model") then
+				local cf, sz = c:GetBoundingBox()
+				c:PivotTo(at * CFrame.new(0, sz.Y / 2, 0) * (c:GetPivot():ToObjectSpace(cf)):Inverse())
+				top = sz.Y
+			else
+				local bp = c :: BasePart
+				bp.CFrame = at * CFrame.new(0, bp.Size.Y / 2, 0)
+				top = bp.Size.Y
+			end
+			for _, d in c:GetDescendants() do if d:IsA("ProximityPrompt") or d:IsA("Script") then d:Destroy() end end
+			c.Name = "PickTable" .. k
+			c.Parent = folder
+		else
+			part({ Size = Vector3.new(10, 0.6, 4.6), CFrame = at * CFrame.new(0, 3.9, 0), Color = Color3.fromRGB(150, 128, 104), CanCollide = true }, folder).Name = "PickTable" .. k
+			for _, lx in { -4.4, 4.4 } do for _, lz in { -1.9, 1.9 } do
+				part({ Size = Vector3.new(0.5, 3.6, 0.5), CFrame = at * CFrame.new(lx, 1.8, lz), Color = Color3.fromRGB(96, 90, 84), CanCollide = true }, folder)
+			end end
+		end
+	end
+	local items = HC.PICKS.items
+	for i, it in items do
+		local x = -9.0 + (i - 1) * 3.0
+		local at = T * CFrame.new(x, top + 0.05, 0.4)
+		local m = itemModel(it.id)
+		m:PivotTo(at)
+		m.Parent = folder
+		local pt = part({ Size = Vector3.new(2, 2, 2), Transparency = 1, CFrame = at * CFrame.new(0, 1, 0) }, folder)
+		pt.Name = "Pick_" .. it.id
+		local pr = Instance.new("ProximityPrompt")
+		pr.ActionText = if it.price > 0 then ("TAKE  $%d"):format(it.price) else "TAKE"
+		pr.ObjectText = it.name; pr.HoldDuration = 0.25
+		pr.KeyboardKeyCode = Enum.KeyCode.F; pr.GamepadKeyCode = Enum.KeyCode.ButtonX
+		pr.MaxActivationDistance = 7; pr.RequiresLineOfSight = false
+		pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton
+		pr:SetAttribute("HuntPick", it.id); pr:SetAttribute("Live", true)
+		CollectionService:AddTag(pr, "HuntPick") -- (HuntClient hides it once you have taken one)
+		pr.Parent = pt
+		pr.Triggered:Connect(function(who: Player) HuntItems.pick(who, it.id) end)
+		table.insert(pickPrompts, pr)
+	end
+end
+-- take one (the hide only; once a round; the paid ones from the round's cash)
+function HuntItems.pick(p: Player, id: string): string
+	local g = G
+	local s = st[p]
+	local it = PICK[id]
+	if not g or not s or not it then return "no" end
+	if g.phase ~= "hide" then return "closed" end
+	local m = g.byF[Fight.byPlayer[p]]
+	if not m or m.role ~= "hider" or not m.alive then return "no" end
+	if s.picked then return "taken" end
+	if s.points < (it.price or 0) then return "cash" end
+	s.points -= (it.price or 0)
+	s.picked = id
+	if it.weapon then
+		equip(p, it.weapon)
+	else
+		local T = TRAP[id]
+		table.insert(s.items, 1, { id = id, uses = (T and T.uses) or 1 })
+		while #s.items > PTS.carry do table.remove(s.items) end
+	end
+	publish(p)
+	local ch = p.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then sfx("hunt_pop", root, 0.6) end
+	return "ok"
+end
+function HuntItems.onHunt(_g: any)
+	for _, pr in pickPrompts do pr:SetAttribute("Live", false); pr.Enabled = false end
+end
+
 -- ------------------------------------------------------------------ the round's calls (HuntRound)
 function HuntItems.onStart(g: any)
 	G = g
@@ -300,6 +532,7 @@ function HuntItems.onStart(g: any)
 		end
 	end
 	makeSpots(g)
+	makeTables(g)
 end
 function HuntItems.onFightBack(_g: any)
 	for _, pt in spots do
@@ -309,10 +542,12 @@ function HuntItems.onFightBack(_g: any)
 end
 function HuntItems.onEnd(_g: any)
 	for p, s in st do
+		if s.disguise then HuntItems.unprop(p) end
 		if s.prop then s.prop:Destroy() end
 		st[p] = nil
 		publish(p)
 	end
+	pickPrompts = {}
 	world = {}; spots = {}; G = nil
 end
 function HuntItems.tick(g: any, dt: number)
@@ -325,6 +560,18 @@ function HuntItems.tick(g: any, dt: number)
 				if s.nextAlive > 0 then s.points += PTS.alive; publish(m.p) end
 				s.nextAlive = t + PTS.every
 			end
+		end
+	end
+	for p, s in st do
+		if s.healing then
+			if t >= s.healing.untilT then s.healing = nil
+			else heal(p, s.healing.rate * dt) end
+		end
+		if s.disguise then
+			local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local v = root and root.AssemblyLinearVelocity
+			local T = TRAP.propgun
+			if not root or not s.disguise.part.Parent or (v and Vector3.new(v.X, 0, v.Z).Magnitude > T.breakSpeed) then HuntItems.unprop(p) end
 		end
 	end
 	local g0 = gunRoot()
@@ -367,12 +614,12 @@ function HuntItems.handle(p: Player, op: string, a: any, b: any): boolean
 	if op ~= "buy" and op ~= "use" then return false end
 	local g = G
 	local s = st[p]
-	if not g or not s or g.phase ~= "hunt" then return true end
+	if not g or not s or (g.phase ~= "hunt" and not (op == "use" and g.phase == "hide")) then return true end
 	local m = g.byF[Fight.byPlayer[p]]
 	if not m or not m.alive or m.role ~= "hider" then return true end
 	if op == "buy" then
 		local T = TRAP[a]
-		if not T or s.points < T.cost or #s.items >= PTS.carry then return true end
+		if not T or T.shop == false or s.points < T.cost or #s.items >= PTS.carry then return true end
 		s.points -= T.cost
 		table.insert(s.items, { id = T.id, uses = T.uses or 1 })
 		publish(p)
@@ -385,6 +632,7 @@ function HuntItems.handle(p: Player, op: string, a: any, b: any): boolean
 		if not root then return true end
 		local look = if typeof(b) == "Vector3" and b.Magnitude > 0.1 and b.Magnitude < 2 then b.Unit else root.CFrame.LookVector
 		local fn = USE[it.id]
+		if it.id ~= "propgun" then HuntItems.unprop(p) end -- (using anything else breaks a disguise)
 		if fn and fn(p, root, look, TRAP[it.id]) then
 			it.uses -= 1
 			if it.uses <= 0 then table.remove(s.items, slot) end

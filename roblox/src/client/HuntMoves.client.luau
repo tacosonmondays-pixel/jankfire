@@ -24,6 +24,7 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("H
 local me = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local MV, BO = HC.MOVES, HC.BOUNCE
+local function serverNow(): number return workspace:GetServerTimeNow() end
 
 local function body(): (Model?, Humanoid?, BasePart?)
 	local ch = me.Character
@@ -101,22 +102,98 @@ local function lieDown()
 		end)
 	end
 end
-UIS.JumpRequest:Connect(function() if lying then standUp() end end)
+-- ------------------------------------------------------------------ the ragdoll (owner, 27 Nov: "we need ragdoll mechanic
+-- and a button to unragdoll"): the server stands the joints down (HuntRagdoll); this client runs the body's physics
+local ragOn = false
+local collide: { [BasePart]: boolean } = {}
+local rising: AnimationTrack? = nil
+local function goLimp(v: Vector3)
+	local ch, hum, root = body()
+	if not (ch and hum and root) then return end
+	ragOn = true
+	if lying then lying = false; Body.mini = 1; setSink(0, 0.01) end
+	hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+	hum:ChangeState(Enum.HumanoidStateType.Physics)
+	for _, d in ch:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "HuntDisguise" then
+			if collide[d] == nil then collide[d] = d.CanCollide end
+			d.CanCollide = d ~= root and d.Parent == ch
+			d.AssemblyLinearVelocity = v
+		end
+	end
+end
+local function getUp()
+	local ch, hum = body()
+	ragOn = false
+	for d, c in collide do if d.Parent then d.CanCollide = c end end
+	collide = {}
+	if not (ch and hum) then return end
+	hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+	local RG = HC.RAGDOLL
+	local rig = if hum.RigType == Enum.HumanoidRigType.R6 then "R6" else "R15"
+	local id = RG and RG.getUp and RG.getUp[rig]
+	local an = hum:FindFirstChildOfClass("Animator")
+	if id and an then -- (the vault's Getting Up mocap)
+		if not (rising and rising.Parent) then
+			local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://" .. tostring(id)
+			local ok, t = pcall(function() return (an :: Animator):LoadAnimation(a) end)
+			rising = if ok then t else nil
+			if rising then rising.Priority = Enum.AnimationPriority.Action4; rising.Looped = false end
+		end
+		if rising then rising:Play(0.05, 1, RG.riseSpeed or 1.8) end
+	end
+end
+Remote.OnClientEvent:Connect(function(op: string, a: any)
+	if op ~= "rag" then return end
+	if typeof(a) == "Vector3" then goLimp(a) else getUp() end
+end)
+local function canGetUp(): boolean
+	local m = tonumber(me:GetAttribute("HuntRagMin"))
+	return ragOn and m ~= nil and serverNow() >= m
+end
+UIS.JumpRequest:Connect(function()
+	if ragOn then
+		if canGetUp() then Remote:FireServer("getup") end
+		return
+	end
+	if lying then standUp() end
+end)
+-- the GET UP key: bottom middle while you're down (dim till it works)
+local upGui = Instance.new("ScreenGui")
+upGui.Name = "HuntGetUp"; upGui.ResetOnSpawn = false; upGui.DisplayOrder = 30; upGui.Enabled = false
+local upBox = Instance.new("Frame")
+upBox.AnchorPoint = Vector2.new(0.5, 1); upBox.Position = UDim2.new(0.5, 0, 1, -150); upBox.Size = UDim2.fromOffset(170, 40)
+upBox.BackgroundColor3 = Color3.fromRGB(229, 226, 219); upBox.BorderSizePixel = 0; upBox.Parent = upGui
+Instance.new("UICorner", upBox).CornerRadius = UDim.new(0, 3)
+local upKey = Instance.new("TextLabel")
+upKey.BackgroundColor3 = Color3.fromRGB(29, 31, 35); upKey.BorderSizePixel = 0; upKey.Position = UDim2.fromOffset(6, 6)
+upKey.Size = UDim2.fromOffset(58, 28); upKey.Font = Enum.Font.GothamBold; upKey.TextSize = 12
+upKey.TextColor3 = Color3.fromRGB(229, 226, 219); upKey.Text = "SPACE"; upKey.Parent = upBox
+Instance.new("UICorner", upKey).CornerRadius = UDim.new(0, 3)
+local upTxt = Instance.new("TextLabel")
+upTxt.BackgroundTransparency = 1; upTxt.Position = UDim2.fromOffset(72, 0); upTxt.Size = UDim2.new(1, -78, 1, 0)
+upTxt.Font = Enum.Font.GothamBlack; upTxt.TextSize = 16; upTxt.TextColor3 = Color3.fromRGB(29, 31, 35)
+upTxt.TextXAlignment = Enum.TextXAlignment.Left; upTxt.Text = "GET UP"; upTxt.Parent = upBox
+upGui.Parent = me:WaitForChild("PlayerGui")
 
 -- ------------------------------------------------------------------ punch and push
 local punchDown, punchT = false, 0
 local pushDown, pushT = false, 0
-local nextPunch, nextPush, nextSuper = 0, 0, 0
+local nextPunch, nextPush, nextSuper, nextAny = 0, 0, 0, 0
+local function punchReady(): boolean
+	local cd = tonumber(me:GetAttribute("HuntCd_punch")) or 0
+	return os.clock() >= nextPunch and serverNow() >= cd
+end
 local function windPose(hum: Humanoid)
 	local t = HuntAnims.track(hum, "haymaker")
 	if t then t:Play(0.08, 1, 1) end
 end
 Keys.began(function(io: any, gp: boolean)
-	if gp or not inMode() or menuUp() then return end
+	if gp or not inMode() or menuUp() or ragOn then return end
 	local _, hum = body()
 	if not hum then return end
 	if Binds.is("fire", io) then
-		if os.clock() < nextPunch or punchDown then return end
+		if not punchReady() or os.clock() < nextAny or punchDown then return end
 		punchDown, punchT = true, os.clock()
 		Remote:FireServer("wind")
 		if not lying then windPose(hum) end
@@ -139,12 +216,14 @@ Keys.ended(function(io: any)
 			if hay and hay.IsPlaying then hay:Stop(0.08) end
 			if not lying then local j = HuntAnims.track(hum, "jab"); if j then j:Play(0.05, 1, 1.2) end end
 			Remote:FireServer("jab", look())
-			nextPunch = os.clock() + MV.jab.cd
+			nextPunch = os.clock() + (if me:GetAttribute("HuntWeapon") then MV.jab.cd else MV.punch.whiff)
+			nextAny = os.clock() + MV.lock
 			Sfx.play("swing", nil, 0.5)
 		else
 			if hay then hay:AdjustSpeed(1.25) end
 			Remote:FireServer("hay", look())
-			nextPunch = os.clock() + MV.hay.cd
+			nextPunch = os.clock() + (if me:GetAttribute("HuntWeapon") then MV.hay.cd else MV.punch.whiff)
+			nextAny = os.clock() + MV.lock
 			Sfx.play("swing", nil, 0.8)
 		end
 	elseif Binds.is("grapple", io) and pushDown then
@@ -152,10 +231,12 @@ Keys.ended(function(io: any)
 		if not hum or not inMode() then return end
 		local held = os.clock() - pushT
 		local super = held >= MV.super.hold and os.clock() >= nextSuper
+		if os.clock() < nextAny or ragOn then return end
 		if not super and os.clock() < nextPush then return end
 		if not lying then local s = HuntAnims.track(hum, "shove"); if s then s:Play(0.05, 1, if super then 0.85 else 1.1) end end
 		Remote:FireServer(if super then "super" else "push", look())
 		nextPush = os.clock() + MV.push.cd
+		nextAny = os.clock() + MV.lock
 		if super then nextSuper = os.clock() + MV.super.cd end
 		Sfx.play("hunt_shove", nil, if super then 1 else 0.6)
 	end
@@ -176,6 +257,18 @@ RunService.Heartbeat:Connect(function()
 		return
 	end
 	if lying and not inMode() then standUp() end
+	if ragOn then
+		if hum:GetState() ~= Enum.HumanoidStateType.Physics then hum:ChangeState(Enum.HumanoidStateType.Physics) end
+		if me:GetAttribute("HuntRag") == nil then getUp() end -- (the server let you up and its word got lost)
+	end
+	upGui.Enabled = ragOn
+	if ragOn then
+		local ok = canGetUp()
+		upBox.BackgroundTransparency = if ok then 0 else 0.45
+		upTxt.TextTransparency = if ok then 0 else 0.45
+		local pad = UIS:GetLastInputType().Name:find("Gamepad") ~= nil
+		upKey.Text = if UIS.TouchEnabled and not UIS.KeyboardEnabled then "JUMP" elseif pad then "A" else "SPACE"
+	end
 	-- the haymaker waits at the end of its wind-up while the button is held
 	if punchDown then
 		local hay = HuntAnims.track(hum, "haymaker")

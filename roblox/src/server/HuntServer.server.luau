@@ -83,6 +83,20 @@ if RunService:IsStudio() then
 				gun = o.gun, hide = o.hide, hunt = o.hunt, fightBack = o.fightBack, passives = o.passives, map = o.map, introSet = o.introSet }) }
 		end
 		if op == "stop" then return require(script.Parent:WaitForChild("HuntRound")).stop() end
+		-- (27 Nov, the item tables and the ragdoll) ("pick", p, id) take from the tables; ("use", p, slot, look) use a slot;
+		-- ("rag", p, who, dur, min) down the round member named who (nil = p) as a shove would; ("getup", p)
+		if op == "pick" then return HuntItems.pick(p, args[1]) end
+		if op == "use" then HuntItems.handle(p, "use", args[1], args[2]); return p:GetAttribute("HuntItems") end
+		if op == "cash" then HuntItems.score(p, tonumber(args[1]) or 0); return p:GetAttribute("HuntPoints") end
+		if op == "getup" then require(script.Parent:WaitForChild("HuntRagdoll")).ask(p); return "asked" end
+		if op == "rag" then
+			local Fight = require(script.Parent:WaitForChild("Fight")) :: any
+			local HR = require(script.Parent:WaitForChild("HuntRagdoll")) :: any
+			local g = require(script.Parent:WaitForChild("HuntRound")).G
+			local f = Fight.byPlayer[p]
+			if args[1] and g then for _, m in g.members do if (m.p and m.p.Name or m.f.name) == args[1] then f = m.f end end end
+			return HR.down(f, Vector3.new(0, 20, 25), tonumber(args[2]) or 2, tonumber(args[3]) or 1)
+		end
 		if op == "win" then require(script.Parent:WaitForChild("HuntRound")).forceWin(args[1] or "gunman"); return "won " .. tostring(args[1]) end -- (the win films)
 		-- ("hurt", p, who?, dmg?, head?): the round's member named who (a stand-in's or a player's name; nil = the first
 		-- living hider) takes dmg from p as if shot (head = a headshot). Fight.allow still decides (the hunt phase only)

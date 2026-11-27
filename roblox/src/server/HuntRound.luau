@@ -115,6 +115,13 @@ local function standin(name: string, at: CFrame, into: Instance): (Model?, Fight
 end
 
 -- ------------------------------------------------------------------ start
+-- (owner, 27 Nov: the item tables) with the tables on, every survivor starts in a row in front of them, facing them
+local function tableSpawn(def: any, k: number, origin: CFrame): CFrame
+	local T = HuntItems.tableCF(def, origin)
+	local col, row = (k - 1) % 6, math.floor((k - 1) / 6)
+	local at = (T * CFrame.new(-10 + col * 4, 0.1, -(7 + row * 3.5))).Position
+	return CFrame.lookAt(at, Vector3.new(T.Position.X, at.Y, T.Position.Z))
+end
 local function spawnCF(def: any, i: number, origin: CFrame): CFrame
 	local s = def.hiders[((i - 1) % #def.hiders) + 1]
 	local at = origin * CFrame.new(s[1], s[2] + 0.1, s[3])
@@ -169,7 +176,11 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	local hi = 0
 	local function add(p: Player?, f: Fighter, role: string, sm: Model?)
 		local spawn: CFrame
-		if role == "gunman" then spawn = penAt else hi += 1; spawn = spawnCF(def, order[((hi - 1) % #order) + 1], origin) end
+		if role == "gunman" then spawn = penAt
+		else
+			hi += 1
+			spawn = if HC.PICKS and HC.PICKS.on then tableSpawn(def, hi, origin) else spawnCF(def, order[((hi - 1) % #order) + 1], origin)
+		end
 		local m: Member = { p = p, f = f, role = role, spawn = spawn, alive = true, standin = sm, grace = now() + 6 }
 		table.insert(g.members, m)
 		g.byF[f] = m
@@ -196,7 +207,9 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	-- (Studio) stand-ins: hiders at hider spots, or the gunman at his release point
 	for i = 1, (opts.standins or 0) do
 		local role = if opts.standinRole == "gunman" and i == 1 then "gunman" else "hider"
-		local at = if role == "gunman" then gunmanSpawn else spawnCF(def, order[((hi) % #order) + 1], origin)
+		local at = if role == "gunman" then gunmanSpawn
+			elseif HC.PICKS and HC.PICKS.on then tableSpawn(def, hi + i, origin)
+			else spawnCF(def, order[((hi) % #order) + 1], origin)
 		local sm, sf = standin("Standin" .. i, at, copy)
 		if sm and sf then
 			if role == "gunman" then sf.maxHp = RD.gunmanHp; sf.hp = RD.gunmanHp end
@@ -362,6 +375,7 @@ function HuntRound.tick()
 	if g.phase == "hide" and t >= g.hideEnd then
 		g.phase = "hunt"
 		letOut(g)
+		pcall(HuntItems.onHunt, g) -- (the tables close)
 		if g.intro and g.gunman and g.gunman.p then
 			g.gunman.p:SetAttribute("Unarmed", nil)
 			local ch = g.gunman.p.Character
@@ -466,7 +480,7 @@ end
 -- may a shove from a reach b: both in the house, or both in the round's hunt
 function HuntRound.canShove(a: Player, b: Player): boolean
 	local ma, mb = HuntRound.memberOf(a), HuntRound.memberOf(b)
-	if ma or mb then return ma ~= nil and mb ~= nil and G ~= nil and G.phase == "hunt" end
+	if ma or mb then return ma ~= nil and mb ~= nil and G ~= nil and (G.phase == "hunt" or G.phase == "hide") end -- (the hide too: survivors shove each other at the tables)
 	return a:GetAttribute("Hunt") == "lobby" and b:GetAttribute("Hunt") == "lobby"
 end
 

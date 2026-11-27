@@ -99,6 +99,8 @@ HuntMoves.canShove = HuntRound.canShove
 HuntMoves.knockScale = HuntRound.knockScale
 local HuntItems = require(script.Parent:WaitForChild("HuntItems")) :: any
 HuntMoves.weaponOf = HuntItems.weaponOf
+HuntMoves.onAct = HuntItems.unprop -- (a prop gun's disguise breaks when its wearer attacks or is downed)
+HuntMoves.onDowned = function(f: any) if f.kind == "player" then HuntItems.unprop(f.ref) end end
 HuntMoves.landed = function(p: Player, f: any, kind: string)
 	local m = HuntRound.member(f)
 	if m and m.role == "gunman" then
