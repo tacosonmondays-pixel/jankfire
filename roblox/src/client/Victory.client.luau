@@ -406,7 +406,10 @@ end
 
 if R then
 	R.OnClientEvent:Connect(function(msg: any)
-		if type(msg) ~= "table" or msg.t ~= "scene" or not V.ON then return end
+		if type(msg) ~= "table" or not V.ON then return end
+		-- (the match is won: what the scene will show, kept and loaded now - Scene.warm yields, so on its own thread)
+		if msg.t == "warm" then task.spawn(Scene.warm, msg.spot, msg.uids); return end
+		if msg.t ~= "scene" then return end
 		begin(msg)
 	end)
 end

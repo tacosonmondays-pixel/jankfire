@@ -31,6 +31,7 @@ local Replay = require(script.Parent:WaitForChild("Replay")) :: any
 local WeaponModels = require(Shared:WaitForChild("WeaponModels")) :: any
 local GunSkins = require(Shared:WaitForChild("GunSkins")) :: any
 local GunHats = require(Shared:WaitForChild("GunHats")) :: any
+local CineKit = require(script.Parent:WaitForChild("CineKit")) :: any
 
 local Scene = {}
 
@@ -137,7 +138,7 @@ task.spawn(function()
 		table.insert(list, a)
 	end
 	local k = kitOf()
-	if k then for _, s in k:GetChildren() do if s:IsA("Sound") then table.insert(list, s) end end end
+	if k then for _, s in k:GetChildren() do if s:IsA("Sound") or s:IsA("Model") then table.insert(list, s) end end end -- (the stings, THE RISER)
 	pcall(function() ContentProvider:PreloadAsync(list) end)
 end)
 
@@ -207,10 +208,50 @@ local function standAt(m: Model, hum: Humanoid?, root: BasePart, cf: CFrame)
 	local up = if hum and hum.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum and hum.HipHeight or 2) + root.Size.Y / 2)
 	m:PivotTo(cf * CFrame.new(0, up, 0) * (root.CFrame:ToObjectSpace(m:GetPivot())))
 end
+-- THE BODIES, READY (27 Nov frame check: a body put in the world for the first time draws grey for a few frames while
+-- its clothes go on it - preloading doesn't help - so the winners' bodies are built when the match is won, parked far
+-- below THE RISER out of every lens, and the scene takes those instead of building its own)
+local prebuilt: { [number]: Model } = {}
+-- (built straight into the scene's own folder, which the scene then takes: moved to another parent, an R15 body with
+-- clothes redid them and went invisible for 2-3 frames - the 27 Nov frame check)
+local readyFolder: Folder? = nil
+local function prebuild(uids: { number })
+	for _, m in prebuilt do m:Destroy() end
+	table.clear(prebuilt)
+	if not (readyFolder and readyFolder.Parent) then
+		local f = Instance.new("Folder")
+		f.Name = "JankVictory"
+		f.Parent = workspace
+		readyFolder = f
+		-- (no scene came for it: gone after a while)
+		task.delay(40, function() if readyFolder == f then readyFolder = nil; f:Destroy() end end)
+	end
+	for i, uid in uids do
+		if prebuilt[uid] then continue end
+		local src = sourceOf(uid)
+		if not src then continue end
+		local m = Replay.clean(src) :: Model
+		m.Name = "Ready_" .. tostring(uid)
+		m:PivotTo(CFrame.new(STAGE_AT + Vector3.new(i * 8, -400, 0)))
+		m.Parent = readyFolder
+		prebuilt[uid] = m
+	end
+end
+local function dropPrebuilt()
+	for _, m in prebuilt do m:Destroy() end
+	table.clear(prebuilt)
+end
 local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, still: boolean?): Body?
-	local src = sourceOf(entry.uid)
-	if not src then return nil end
-	local m = Replay.clean(src) :: Model
+	local m: Model
+	local pre = prebuilt[entry.uid]
+	if pre and pre.Parent then
+		prebuilt[entry.uid] = nil
+		m = pre
+	else
+		local src = sourceOf(entry.uid)
+		if not src then return nil end
+		m = Replay.clean(src) :: Model
+	end
 	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then m:Destroy(); return nil end
 	m.Name = "Victor_" .. tostring(entry.uid)
@@ -750,6 +791,19 @@ local function hidePets()
 		end
 	end
 end
+-- (the first-person viewmodel - its arms and gun, in workspace.CurrentCamera - stood in front of the lens for the
+-- scene's first frames until its own script noticed: the 27 Nov frame check, a white hand at the bottom. kept hidden
+-- every frame, put back with the rest)
+local function hideCam()
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	for _, x in cam:GetDescendants() do
+		if x:IsA("BasePart") or x:IsA("Decal") then
+			if hiddenNear[x] == nil then hiddenNear[x] = (x :: any).LocalTransparencyModifier end
+			if (x :: any).LocalTransparencyModifier ~= 1 then (x :: any).LocalTransparencyModifier = 1 end
+		end
+	end
+end
 local function showNear()
 	for x, v in hiddenNear do
 		if x.Parent then
@@ -766,6 +820,7 @@ type State = {
 	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?, arrive: any?,
 }
 local st: State? = nil
+local warmNow: any = nil -- (the prewarm's handle: Scene.warm)
 
 local function ease(u: number, kind: string): number
 	u = math.clamp(u, 0, 1)
@@ -825,6 +880,7 @@ local function step(dt: number?)
 		end
 		hidePets() -- (cheap: a pet moves its parts every frame, so its hide is kept every frame)
 	end
+	hideCam()
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = cf
 	cam.FieldOfView = fov
@@ -893,7 +949,9 @@ function Scene.start(msg: any, opts: any?): boolean
 	local win = msg.youWon == true
 	local len = tonumber(msg.len) or V.LEN
 	local spot = if type(msg.spot) == "table" and typeof(msg.spot.hero) == "CFrame" then msg.spot else nil
-	local folder = Instance.new("Folder")
+	-- (the folder the bodies were built in when the match was won, else a new one)
+	local folder: Folder = if readyFolder and readyFolder.Parent then readyFolder else Instance.new("Folder")
+	readyFolder = nil
 	folder.Name = "JankVictory"
 	local look, frame, shots, holdK = nil, CFrame.identity, nil, nil
 	local lit: { Light } = {}
@@ -1002,9 +1060,89 @@ function Scene.start(msg: any, opts: any?): boolean
 		end
 		if not (opts and opts.quiet) then s.sting = sting(win) end
 	end
+	-- (no step() here: called from the remote's handler it ran before the viewmodel's and the pet's own render steps, which
+	-- put them back on the scene's first frame - the 27 Nov frame check. the bound step, after theirs, draws that frame)
 	RunService:BindToRenderStep("JankVictoryCam", Enum.RenderPriority.Last.Value + 80, step)
-	step()
+	if not warmNow then -- (no warm before it: a classic mode's end)
+		local uids = {}
+		for _, e in stage do if type(e.uid) == "number" then table.insert(uids, e.uid) end end
+		task.spawn(Scene.warm, spot, uids)
+	end
 	return true
+end
+
+-- THE PREWARM (27 Nov, the owner: "Things pop in because it renders as the clip plays"; roblox/docs/PERFORMANCE.md,
+-- "Films: nothing pops in"). VictoryServer sends the map's spot the moment the match is won (1.2 s before its end):
+-- CineKit.prewarm keeps every map piece the scene's lenses will see (ZoneCull) and preloads what they, THE RISER's kit,
+-- the stings and every pose and walk use, before the first frame. YIELDS (at most 4 s): call it on its own thread.
+-- released when the scene stops (or after 30 s if no scene comes)
+function Scene.warm(spot: any?, uids: { number }?): any?
+	Scene.unwarm()
+	prebuild(uids or {})
+	local shots, points = {}, {}
+	if type(spot) == "table" and typeof(spot.hero) == "CFrame" then
+		if spot.kind == "walk" and type(spot.path) == "table" then
+			-- (the walk's lenses ride the path: in front, at the sides, behind)
+			for _, c in spot.path do
+				if typeof(c) ~= "CFrame" then continue end
+				local p, rv, fv = c.Position, c.RightVector, c.LookVector
+				for _, o in { Vector3.new(0, 4, 0), rv * 12 + Vector3.new(0, 2, 0), -rv * 12 + Vector3.new(0, 2, 0), fv * 10 + Vector3.new(0, 4, 0), -fv * 10 + Vector3.new(0, 6, 0) } do
+					table.insert(points, p + o)
+				end
+			end
+		else
+			local hero = spot.hero :: CFrame
+			local F = flat(hero.LookVector)
+			local R = F:Cross(Vector3.yAxis)
+			local U = Vector3.yAxis
+			local base = hero.Position
+			-- the close lens (arriveCam), from the walk-in to the landing
+			table.insert(shots, { from = { at = base + F * 5.6 - R * 1.5 + U * 1.3, look = base - F * 8 + U * 3.35 },
+				to = { at = base + F * 3.6 + U * 2.2, look = base + U * 4.1 } })
+			local wide = spot.wide
+			if type(wide) == "table" and wide[1] and wide[2] then
+				table.insert(shots, { from = { at = wide[1].at, look = wide[1].look }, to = { at = wide[2].at, look = wide[2].look } })
+				local la, lb = if type(spot.lose) == "table" then spot.lose[1] else nil, if type(spot.lose) == "table" then spot.lose[2] else nil
+				if not (la and lb) then la, lb = loseOf(spot) end
+				table.insert(shots, { from = { at = la.at, look = la.look }, to = { at = lb.at, look = lb.look } })
+			end
+			if type(spot.hold) == "table" and typeof(spot.hold.at) == "Vector3" then table.insert(points, spot.hold.at) end
+			table.insert(points, base - F * 8 + U * 3) -- (where the one in front starts walking)
+			for _, m in spot.mates or {} do
+				if typeof(m) == "CFrame" then table.insert(points, m.Position + U * 3); table.insert(points, m.Position - flat(m.LookVector) * 5.5 + U * 3) end
+			end
+		end
+	end
+	local sets = {}
+	local k = kitOf()
+	if k then table.insert(sets, k) end -- (THE RISER, the stings, the walk's sounds)
+	-- (the bodies' looks: clothes and faces never drawn before came in grey on the first frames - the 27 Nov frame check)
+	for _, uid in uids or {} do
+		local t = Replay.templates and Replay.templates[uid]
+		if t then table.insert(sets, t) end
+	end
+	local looks = ReplicatedStorage:FindFirstChild("JankVictoryLooks") -- (Studio tests' stand-ins)
+	if looks then table.insert(sets, looks) end
+	local anims = {}
+	for _, p in V.POSES do table.insert(anims, p.anim) end
+	for _, t in { V.WALK, V.ARRIVE } do
+		for _, v in t do if type(v) == "string" and string.sub(v, 1, 13) == "rbxassetid://" then table.insert(anims, v) end end
+	end
+	local ok, w = pcall(CineKit.prewarm, shots, { key = "JankVictoryWarm", points = points, sets = sets, anims = anims, timeout = 4, keepFor = 30 })
+	if not ok then
+		if RunService:IsStudio() then warn("[jankfire] victory prewarm: " .. tostring(w)) end
+		return nil
+	end
+	warmNow = w
+	if RunService:IsStudio() then
+		print(("[jankfire] victory prewarm: ok %s, %.2f s, %d assets, %d pieces, %d shots, %d points"):format(tostring(w.ok), w.waited, w.assets, #w.pieces, #shots, #points))
+	end
+	return w
+end
+function Scene.unwarm()
+	local w = warmNow
+	warmNow = nil
+	if w and w.release then pcall(w.release) end
 end
 
 function Scene.hold()
@@ -1027,12 +1165,15 @@ function Scene.stop(why: string?)
 	putLook(s.look)
 	for _, l in s.lit do if l.Parent then l.Enabled = false end end
 	for e in s.blurs do if e.Parent then (e :: any).Enabled = true end end
-	if s.spot then Replay.hideLive(false); showNear() end
+	if s.spot then Replay.hideLive(false) end
+	showNear() -- (the map's stand-ins, the pet, the viewmodel)
 	if s.arrive then
 		for _, a in s.arrive.bodies do
 			for _, tr in { a.idle, a.walk } do if tr then pcall(function() tr:Stop(0) end) end end
 		end
 	end
+	Scene.unwarm()
+	dropPrebuilt() -- (the ones no lens used)
 	if s.walk then
 		local W = s.walk
 		if W.fear and W.fear.gui then W.fear.gui:Destroy() end

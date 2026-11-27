@@ -266,6 +266,22 @@ local function onEnd(m: any, winner: number?)
 end
 Matches.onEnd(onEnd)
 
+-- THE PREWARM (27 Nov, the owner: "Things pop in because it renders as the clip plays"; roblox/docs/PERFORMANCE.md,
+-- "Films: nothing pops in"). the round that takes the match comes 1.2 s before endMatch: everyone in it gets the map's
+-- spot then, so the client keeps (ZoneCull) and preloads what the scene's lenses will see before its first frame
+-- (client/VictoryScene: Scene.warm). classic modes end another way: their scene starts its prewarm itself
+Matches.onRound(function(m: any, winner: number)
+	if not V.ON or type(winner) ~= "number" or type(m.wins) ~= "table" then return end
+	if (m.wins[winner] or 0) < (tonumber(Matches.WIN) or math.huge) then return end
+	local spot = spotIn(m.site and m.site.model)
+	-- (the winners' looks too: a body whose clothes were never drawn comes in grey - the 27 Nov frame check)
+	local uids = {}
+	for _, p in m.teams[winner] or {} do if p.Parent then table.insert(uids, p.UserId) end end
+	for _, p in everyone(m) do
+		R:FireClient(p, { t = "warm", id = m.id, spot = spot, uids = uids, youWon = teamOf(m, p) == winner })
+	end
+end)
+
 R.OnServerEvent:Connect(function(p: Player, msg: any)
 	if type(msg) ~= "table" or msg.t ~= "done" then return end
 	for m, set in watching do
@@ -323,6 +339,16 @@ if RunService:IsStudio() then
 		elseif op == "clear" and typeof(a) == "Instance" then
 			fakes[a :: Player] = nil
 			return "cleared"
+		elseif op == "warm" and typeof(a) == "Instance" and a:IsA("Player") then
+			-- (the warm the deciding round sends, now: a ghost match ends on its clock, never through a round - call it
+			-- ~1.2 s before the ghost's end to test the prewarm as a real match runs it)
+			local m = Matches.raw(a)
+			if not m then return "no match" end
+			local spot = spotIn(m.site and m.site.model)
+			local uids = { a.UserId }
+			for _, x in fakes[a] or {} do table.insert(uids, x.look) end
+			R:FireClient(a, { t = "warm", id = m.id, spot = spot, uids = uids, youWon = true })
+			return "warm sent, spot " .. tostring(spot ~= nil)
 		elseif op == "pick" and typeof(a) == "Instance" and a:IsA("Player") then
 			-- (the finisher this player would bring at a match end: FinisherServer's own answer)
 			local EF = Matches.endFinisher

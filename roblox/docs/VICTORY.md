@@ -104,6 +104,20 @@ in the same folder.
   - Skatepark's spot has no Mate3 (no floor there): a 4v4 shows three of the four.
   - The pet (workspace.ClientPets) is hidden every frame: its follower rewrites its parts' transparency, and its pink
     Highlight outline draws even with the parts hidden.
+- **Nothing pops in** (27 Nov, the owner: "Things pop in because it renders as the clip plays"; PERFORMANCE.md, "Films:
+  nothing pops in"). The round that takes the match (Matches.onRound, 1.2 s before endMatch) sends everyone the spot
+  and the winners' ids (`t = "warm"`). The client (`Scene.warm`) then:
+  - builds the winners' bodies at once, into the scene's own folder, parked far below THE RISER. A body put in the
+    world for the first time drew grey for a few frames while its clothes went on; one moved to another folder went
+    invisible for 2-3 frames while an R15 body redid its clothes. The scene takes these bodies where they are.
+  - runs `CineKit.prewarm` on every lens the scene will use (the walk-in close lens, the wide, the losers', the hold,
+    the walk-in starts, the Forest path), THE RISER's kit, the stings, every pose and walk clip and the bodies' looks:
+    ZoneCull keeps those map pieces and their assets load. 0.2-2.8 s per map in Studio, all "ok".
+  - Classic modes end another way: their scene starts the same warm itself. THE RISER's meshes are Precise (Edit).
+  - The first-person viewmodel (workspace.CurrentCamera) and the pet are hidden every frame from the scene's first
+    frame. Scene.start doesn't step itself: the bound step runs after the viewmodel's and the pet's own.
+  - Test it: `JankVictoryTest("warm", player)` sends the warm (a ghost match ends on its clock, never through a round);
+    call it ~1.2 s before the ghost's end. Frame check: record, `tools/roblox/vid_all.py`, `popscan.py`.
 - **Phone:** the card follows TouchTest's `fake:WxH` box (player attribute `FakeScreen`); on a short screen it pins near
   the top and shrinks to fit (a 4v4 card with the PLAY AGAIN row fits 844x390 with room).
 
