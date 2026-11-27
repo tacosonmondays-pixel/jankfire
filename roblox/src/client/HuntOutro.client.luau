@@ -300,7 +300,7 @@ local function play(a: any)
 	screen.Color = Color3.fromRGB(20, 22, 26); screen.Material = Enum.Material.SmoothPlastic
 	screen.Parent = room
 	local light = Instance.new("SurfaceLight")
-	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * 0.9
+	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * 1.5 -- (v2: the room read near black; the picture lights it)
 	light.Color = Color3.fromHex(sd.light.col)
 	light.Parent = screen
 	local sg = Instance.new("SurfaceGui")
@@ -503,7 +503,7 @@ local function play(a: any)
 			for _, root in src do
 				if root then
 					for _, d in (root :: Instance):GetDescendants() do
-						if d:IsA("BasePart") and d.Transparency < 0.95 and (d.Position - near).Magnitude < 140 then
+						if d:IsA("BasePart") and d.Transparency < 0.95 and (d.Position - near).Magnitude - d.Size.Magnitude / 2 < 140 then
 							local ok, c = pcall(function() return d:Clone() end)
 							if ok and c then for _, ch in c:GetChildren() do if not (ch:IsA("SpecialMesh") or ch:IsA("SurfaceAppearance") or ch:IsA("Decal") or ch:IsA("Texture")) then ch:Destroy() end end; c.Parent = vp end
 						end

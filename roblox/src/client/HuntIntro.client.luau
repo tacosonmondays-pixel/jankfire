@@ -456,7 +456,26 @@ local function play(a: any)
 			clearLens(body, if shot == "shoulder" then handsLive() elseif shot == "behind" then P(sd.at.X, sd.at.Y, sd.at.Z) else facePoint(), dt)
 		else -- (out front: his face; behind him: the house past him; as the lens goes into his head his hair fades)
 			local front = shot == "outside" or shot == "around"
-			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt, if front then nil else 2.8)
+			-- (v8: a 2.8-stud fade behind him left a bald head and ghost frills; the hold keeps his hair, the push in
+			-- fades his head and all he wears as the lens arrives, so there is no pale blob before first person)
+			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt, if shot == "hold" then 1.6 else nil)
+			local ch = me.Character
+			local hd = ch and ch:FindFirstChild("Head") :: BasePart?
+			if shot == "enter" and hd then
+				local a = math.clamp((3.2 - (workspace.CurrentCamera.CFrame.Position - hd.Position).Magnitude) / 1.6, 0, 1)
+				local parts: { Instance } = { hd }
+				for _, acc in (ch :: Model):GetChildren() do
+					if acc:IsA("Accessory") then for _, d in acc:GetDescendants() do if d:IsA("BasePart") then table.insert(parts, d) end end end
+				end
+				for _, p in parts do
+					local bp = p :: BasePart
+					if bp.LocalTransparencyModifier < a then
+						bp.LocalTransparencyModifier = a
+						for _, dc in bp:GetChildren() do if dc:IsA("Decal") then dc.LocalTransparencyModifier = a end end
+						touched[bp] = true
+					end
+				end
+			end
 		end
 		-- the look round's clip, timed to fill its beat once its length is known
 		if r.lookTrack and not r.lookSped and r.lookTrack.Length > 0 then
