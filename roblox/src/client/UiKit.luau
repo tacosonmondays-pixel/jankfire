@@ -238,6 +238,19 @@ function K.themeB(): any
 	return themeB
 end
 
+-- a padlock drawn flat (a shackle and a body), one colour: the emoji one read as another icon family
+function K.lock(parent: Instance, s: number, color: Color3, z: number?): Frame
+	local f = K.new("Frame", { Name = "Padlock", BackgroundTransparency = 1, Size = UDim2.fromOffset(s, s), ZIndex = z or 1 }, parent)
+	local sh = K.new("Frame", { Name = "Shackle", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.04),
+		Size = UDim2.fromScale(0.56, 0.6), ZIndex = z or 1 }, f)
+	K.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, sh)
+	K.new("UIStroke", { Color = color, Thickness = math.max(1.5, s / 9) }, sh)
+	local body = K.new("Frame", { Name = "Body", BackgroundColor3 = color, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.fromScale(0.82, 0.56), ZIndex = (z or 1) + 1 }, f)
+	K.new("UICorner", { CornerRadius = UDim.new(0, math.max(1, math.floor(s / 8))) }, body)
+	return f
+end
+
 function K.head(uid: number?): string
 	if type(uid) == "number" and uid > 0 then return ("rbxthumb://type=AvatarHeadShot&id=%d&w=48&h=48"):format(uid) end
 	return ""

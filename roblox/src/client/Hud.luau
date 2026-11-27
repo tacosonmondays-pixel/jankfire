@@ -254,6 +254,9 @@ end
 
 function Hud.speed(ms: number, sliding: boolean, hooked: boolean)
 	speedNum.Text = tostring(math.floor(ms + 0.5))
+	local still = ms < 1 -- (27 Nov: no speed line while you stand still: a 0 read as a debug readout)
+	speedNum.TextTransparency = if still then 1 else 0; speedNum.TextStrokeTransparency = if still then 1 else 0.75
+	speedSub.TextTransparency = if still then 1 else 0; speedSub.TextStrokeTransparency = if still then 1 else 0.75
 	speedNum.TextColor3 = T.TEXT
 	local tag = if sliding then "SLIDE" elseif hooked then "ROPE" else nil
 	local line = if tag then "m/s  " .. tag else "m/s"

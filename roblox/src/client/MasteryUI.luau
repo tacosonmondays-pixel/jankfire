@@ -84,8 +84,15 @@ function MUI.panel(info: Frame, words: Frame?): (any) -> ()
 	local shade = new("Frame", { Name = "Shade", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.45, BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = 3 }, chip)
 	T.corner(shade, 3)
-	local lock = text(shade, "Lock", "\u{1F512}", 11, Color3.new(1, 1, 1), T.FONT_BOLD, Enum.TextXAlignment.Center)
+	local lock = text(shade, "Lock", "", 11, Color3.new(1, 1, 1), T.FONT_BOLD, Enum.TextXAlignment.Center)
 	lock.Size = UDim2.fromScale(1, 1); lock.ZIndex = 4
+	do -- (27 Nov, ui-mocks: a flat drawn padlock, not the emoji)
+		local okK, K = pcall(require, script.Parent:WaitForChild("UiKit"))
+		if okK and type(K) == "table" then
+			local pl = (K :: any).lock(shade, 11, Color3.new(1, 1, 1), 4)
+			pl.AnchorPoint = Vector2.new(0.5, 0.5); pl.Position = UDim2.fromScale(0.5, 0.5)
+		end
+	end
 	local track = new("Frame", { Name = "Track", BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 4) }, box)
 	T.corner(track, 2)
 	local fill = new("Frame", { Name = "Fill", BackgroundColor3 = T.TEXT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, track)

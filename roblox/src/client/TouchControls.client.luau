@@ -346,6 +346,7 @@ local function applyLook()
 	if not built then return end
 	for _, b in BTNS do style(b.face, b.lit, b.act == "fire", b.rec.a) end
 	for _, p in pills do style(p.face, p.lit, nil, if p.rec then p.rec.a else 1) end
+	if pills.auto then pills.auto.face.Text = if S.auto then "AUTO ON" else "AUTO OFF" end -- (27 Nov: its state in words)
 end
 
 -- the top row's buttons
@@ -376,7 +377,7 @@ local function newFace(parent: Instance, name: string, label: string, round: boo
 end
 -- the words' size on a round button d points across (a long word a size down)
 local function textFor(label: string, d: number): number
-	return math.floor(math.clamp(d * (if #label >= 6 then 0.2 else 0.24), 9, 17) + 0.5)
+	return math.floor(math.clamp(d * 0.19, 9, 14) + 0.5) -- (27 Nov: one size whatever the word's length)
 end
 
 -- the buttons, made again from the layout each time it changes (the editor saved, another layout picked)

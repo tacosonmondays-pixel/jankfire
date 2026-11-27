@@ -48,7 +48,7 @@ UI.comma = comma
 
 -- ------------------------------------------------------------------ the icons
 -- Brass: a spent casing seen end-on (the rim, the head, the primer). a Crate Ticket: a stub with a torn line
-UI.PICTURES = { brass = "rbxassetid://140006087004657", tix = "rbxassetid://93857045911579" } -- (the coin, the ticket; 18 Nov, the shop session)
+UI.PICTURES = {} :: { [string]: string } -- (27 Nov, ui-mocks: the flat drawn coin and ticket below; the uploaded pictures, coin 140006087004657 and ticket 93857045911579, were shaded and read as another icon family)
 function UI.icon(kind: string, parent: Instance?, size: number?): Frame
 	local s = size or 16
 	local f = new("Frame", { Name = if kind == "tix" then "TicketIcon" else "BrassIcon", BackgroundTransparency = 1, Size = UDim2.fromOffset(s, s) })

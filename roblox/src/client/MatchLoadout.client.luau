@@ -267,8 +267,19 @@ local function drawTiles()
 		local wid = cur[i]
 		local e = wid and Roster.byId[wid]
 		tl.name.Text = if e then string.upper(e.name) else "-"
-		if wid and e then task.defer(GunPreview.put, tl.vp, tl.cam, wid) end
 		local on = S.tray == tl.slot
+		if wid and e then
+			task.defer(function()
+				pcall(GunPreview.put, tl.vp, tl.cam, wid)
+				-- (27 Nov: a flat silhouette, the loadout's icon family: white parts lit only by a white ambient)
+				tl.vp.Ambient = Color3.new(1, 1, 1); tl.vp.LightColor = Color3.new(0, 0, 0); tl.vp.BackgroundTransparency = 1
+				for _, d in tl.vp:GetDescendants() do
+					if d:IsA("BasePart") then d.Color = Color3.new(1, 1, 1); d.Material = Enum.Material.SmoothPlastic; if d:IsA("MeshPart") then d.TextureID = "" end
+					elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") then d:Destroy() end
+				end
+			end)
+		end
+		tl.vp.ImageColor3 = if on then K.B.INK else Color3.new(1, 1, 1)
 		tl.st.Transparency = 1
 		tl.btn.BackgroundColor3 = if on then K.B.WHITE else T.BG
 		tl.lab.TextColor3 = if on then Color3.fromRGB(96, 96, 96) else T.MUTED

@@ -151,6 +151,16 @@ local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, Background
 T.corner(hpTrack, 5)
 local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = K.A.BONE, Size = UDim2.fromScale(1, 1) }, hpTrack)
 T.corner(hpBar, 5)
+-- (round 5: a soft dark fade in the two bottom corners behind the bare numbers, so they read on snow and sky; it shows
+-- with the health and ammo)
+for side = 0, 1 do
+	local sh = T.new("Frame", { Name = if side == 0 then "ShadeL" else "ShadeR", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(side, 1), Position = UDim2.new(side, 0, 1, 0), Size = UDim2.fromOffset(460, 200), ZIndex = 0 }, hud)
+	T.new("UIGradient", { Rotation = if side == 0 then -35 else -145,
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.5, 0.85), NumberSequenceKeypoint.new(1, 1) }) }, sh)
+	local function follow() sh.Visible = hpPlate.Visible end
+	hpPlate:GetPropertyChangedSignal("Visible"):Connect(follow); follow()
+end
 -- weapon and ammo, bottom right, bare on the world: its name and what it's doing small on top, the count big (A: the
 -- slit through it) with the magazine after it. ("Ammo" keeps its name: TouchControls, Katana and SaucePour use it)
 local ammoPlate = T.new("Frame", { Name = "Ammo", BackgroundTransparency = 1, Position = UDim2.new(1, -340, 1, -122), Size = UDim2.fromOffset(300, 96) }, hud)
@@ -162,7 +172,7 @@ local wSub = T.text(ammoPlate, "State", "", 13, T.MUTED, T.FONT_BOLD, Enum.TextX
 at(wSub, UDim2.fromOffset(0, 18), UDim2.fromOffset(300, 16))
 wSub.TextStrokeTransparency = 0.8
 local ammoRow = T.new("Frame", { Name = "CountRow", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 34), Size = UDim2.fromOffset(300, 62) }, ammoPlate)
-T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, ammoRow)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, ammoRow)
 local ammoBox, ammoText, ammoSet = K.hero(ammoRow, "Count", 62, if K.alt() then K.COND else T.FONT_HEAVY, K.A.WORLD, true, false)
 ammoBox.LayoutOrder = 1
 local ammoMag = T.text(ammoRow, "Mag", "", 27, K.A.WORLD, T.FONT_HEAVY)
@@ -692,6 +702,7 @@ function H.step(dt: number, aim: number, scopeHide: boolean, wid: string?, sprea
 		-- (the weapon in hand's reticle, Settings > CROSSHAIR > WEAPON RETICLES, from its own numbers; else the player's own
 		-- crosshair, its gap opening with the spread when DYNAMIC is on. Crosshair.luau)
 		XH.drawFor(cross, o, fade, wid, spread or 0, workspace.CurrentCamera)
+		cross.Visible = me:GetAttribute("BoardOpen") ~= true -- (27 Nov: not over the Tab board)
 	end
 	local d = if kind == "dot" and shown then math.clamp((aim - 0.6) / 0.3, 0, 1) else 0
 	redDot.Visible = d > 0

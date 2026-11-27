@@ -774,7 +774,7 @@ UI.tint = new("ColorCorrectionEffect", { Name = "JankShopTint", Enabled = false 
 -- the top: the title and its line, the tabs, the wallet, the close button
 UI.top = new("Frame", { Name = "Top", BackgroundTransparency = 1 }, UI.stage)
 UI.title = txt(UI.top, "SHOP", 34, WHITE, T.FONT_TITLE)
-UI.rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromOffset(40, 3) }, UI.top)
+UI.rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromOffset(40, 3), BackgroundTransparency = 1 }, UI.top)
 UI.sub = txt(UI.top, LINE, 14, DIMW)
 UI.tabRow = new("Frame", { BackgroundTransparency = 1 }, UI.top)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center }, UI.tabRow)
@@ -1001,7 +1001,7 @@ function ShopUI.fillFeatured()
 		local miss = Till.missing(o)
 		UI.heroEyebrow.Text = if o.set then "FEATURED SKIN SET" else "FEATURED BUNDLE"
 		local pr = bundlePrice(o, miss)
-		UI.heroBtn.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(pr) else Purse.cost(o), miss ~= 0)
+		UI.heroBtn.set(if miss == 0 then "OWNED" elseif Shop.free() then "CLAIM  " .. priceText(pr) else "BUY  " .. Purse.cost(o), miss ~= 0)
 	end
 	for _, c in UI.dailyGrid:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
 	for i, id in rot.daily do

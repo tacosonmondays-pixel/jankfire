@@ -572,8 +572,14 @@ do -- (27 Nov round 4: as wide as the stat bars under it, and its words wide eno
 	local mb = info:FindFirstChild("Mastery") :: Frame?
 	if mb then
 		mb.Size = UDim2.fromOffset(432, mb.Size.Y.Offset)
-		local lvL = mb:FindFirstChildWhichIsA("TextLabel")
-		if lvL then lvL.Size = UDim2.fromOffset(110, lvL.Size.Y.Offset) end
+		local lvL = mb:FindFirstChild("Level") :: TextLabel?
+		if lvL then lvL.Size = UDim2.fromOffset(100, lvL.Size.Y.Offset) end
+		local xpL = mb:FindFirstChild("Xp") :: TextLabel?
+		if xpL then xpL.Position = UDim2.fromOffset(104, 0) end -- (clear of MASTERY n)
+		local nx = mb:FindFirstChild("Next") :: TextLabel?
+		if nx then nx.Position = UDim2.fromOffset(232, 0) end
+		local cm = mb:FindFirstChild("Camo") :: Frame?
+		if cm then cm.Position = UDim2.fromOffset(398, 0) end
 	end
 end
 -- buying a Robux weapon (Unlocks.ROBUX) here once they aren't free for everyone (Unlocks.robuxFree): the equip button
@@ -1017,8 +1023,11 @@ local function lockOver(parent: GuiObject, z: number): Frame
 	local f = new("Frame", { Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.5, BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = z, Visible = false }, parent)
 	T.corner(f, 4)
-	local l = label(f, "\u{1F512}", 13, UDim2.new(1, -33, 0, 2), UDim2.fromOffset(31, 17), WHITE, Enum.TextXAlignment.Center)
+	local l = label(f, "", 13, UDim2.new(1, -33, 0, 2), UDim2.fromOffset(31, 17), WHITE, Enum.TextXAlignment.Center)
 	l.Name = "Glyph"; l.ZIndex = z + 1
+	-- (27 Nov: a flat drawn padlock in the corner, not the emoji; the Glyph words (TRY, LV n) show instead when they're set)
+	local pad = News.K.lock(f, 12, WHITE, z + 1)
+	pad.AnchorPoint = Vector2.new(1, 0); pad.Position = UDim2.new(1, -8, 0, 5)
 	return f
 end
 -- TRY IN TRAINING (Loadout.luau, the owner's ask): in the training hall and its playground you can wear anything, owned or
@@ -1031,7 +1040,9 @@ end
 local function lockLook(lk: Frame)
 	local g = lk:FindFirstChild("Glyph") :: TextLabel?
 	local t = trying()
-	if g then g.Text = if t then "TRY" else "🔒"; g.TextColor3 = if t then ACCENT else WHITE; g.FontFace = FONT_BOLD end
+	if g then g.Text = if t then "TRY" else ""; g.TextColor3 = if t then ACCENT else WHITE; g.FontFace = FONT_BOLD end
+	local pl = lk:FindFirstChild("Padlock") :: GuiObject?
+	if pl then pl.Visible = not t and (g == nil or g.Text == "") end
 	lk.BackgroundTransparency = if t then 0.82 else 0.5
 end
 -- a strip that can outgrow its panel (the owner, 17 Nov: "The weapons run off and you can [not] scroll through!!"):
@@ -1317,7 +1328,8 @@ refresh = function()
 			if (s.wr :: any).retired then s.holder.Visible = owns("wrap", s.wr.id) end
 			-- (a mastery camo's lock says the weapon level that unlocks it)
 			local mg = if s.wr.mastery and lk and not trying() then lk:FindFirstChild("Glyph") :: TextLabel? else nil
-			if mg then mg.Text = News.fmt("LV %d", News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2) end
+			if mg then mg.Text = News.fmt("LV %d", News.MW.byId[s.wr.id] and News.MW.byId[s.wr.id].level or 0); mg.FontFace = FONT_BOLD; mg.Size = UDim2.fromOffset(44, 17); mg.Position = UDim2.new(1, -46, 0, 2)
+				local pl = lk and lk:FindFirstChild("Padlock") :: GuiObject?; if pl then pl.Visible = false end end
 			s.st.Color = WHITE
 			s.st.Transparency = if on then 0 else 0.86
 			s.st.Thickness = if on then 2 else 1
@@ -2066,10 +2078,10 @@ done.face.MouseButton1Click:Connect(function() setOpen(false) end)
 News.close = function() setOpen(false) end -- (the loadout's way out, for code above setOpen: the coins buy, 18 Nov)
 -- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
 -- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
-local flairBtn = button(stage, "KILL EFFECTS AND EMOTES", "white", UDim2.fromOffset(1380, 50), UDim2.fromOffset(290, 44))
+local flairBtn = button(stage, "KILL EFFECTS AND EMOTES", "white", UDim2.fromOffset(1372, 44), UDim2.fromOffset(306, 56))
 do -- (round 2: another screen, so a plain link beside DONE, not a row in the slot list)
 	flairBtn.base = PANEL; flairBtn.face.BackgroundColor3 = PANEL; flairBtn.face.BackgroundTransparency = 0.06
-	flairBtn.face.FontFace = FONT_TITLE; flairBtn.face.TextSize = 20; flairBtn.face.TextXAlignment = Enum.TextXAlignment.Center
+	flairBtn.face.FontFace = FONT_TITLE; flairBtn.face.TextSize = 24; flairBtn.face.TextXAlignment = Enum.TextXAlignment.Center
 	flairBtn.face.TextColor3 = TEXT
 end
 flairBtn.face.MouseButton1Click:Connect(function()
