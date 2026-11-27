@@ -119,7 +119,7 @@ local function refresh()
 	local t = texts()
 	if t[1] then t[1].Text = QuestUI.comma(tonumber(me:GetAttribute("Brass")) or 0) end
 	if t[2] then t[2].Text = QuestUI.comma(tonumber(me:GetAttribute("CrateTickets")) or 0) end
-	count.Text = (if me:GetAttribute("QuestNews") == true then "NEW  " else "") .. ("%d/3"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
+	count.Text = if me:GetAttribute("QuestNews") == true then "NEW QUESTS" else ("%d/3 DONE"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
 	count.TextTransparency = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then 0 else 0.3 -- (A: all three done = full white)
 	dot.Visible = false -- (27 Nov: NEW in the count says it)
 end

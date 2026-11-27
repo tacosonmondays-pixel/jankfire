@@ -443,9 +443,19 @@ end
 -- ---------------------------------------------------------------- the preview: a showcase table with the weapon spinning over it (centre)
 local previewBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(564, 96), Size = UDim2.fromOffset(796, 712) }, stage)
 local vp, vcam = viewport(previewBox, { Size = UDim2.fromScale(1, 1), Active = true })
-require(script.Parent:WaitForChild("ExplodedView")).attach(previewBox) -- (BREAKDOWN: gun-models' exploded view)
+News.xv = require(script.Parent:WaitForChild("ExplodedView")).attach(previewBox) -- (BREAKDOWN: gun-models' exploded view)
+do -- (round 3: one button set here: Butter skews press, flat slabs are the rest)
+	local b = News.xv and (News.xv :: any).btn
+	if b then
+		b.BackgroundColor3 = PANEL; b.BackgroundTransparency = 0.06; b.AutoButtonColor = false
+		b.FontFace = FONT_TITLE; b.TextSize = 18; b.TextColor3 = TEXT
+		for _, c in b:GetChildren() do
+			if c:IsA("UICorner") then c.CornerRadius = UDim.new(0, 0) elseif c:IsA("UIStroke") then c.Enabled = false end
+		end
+	end
+end
 vcam.FieldOfView = 30
-vcam.CFrame = CFrame.lookAt(Vector3.new(0, 3.4, 15.5), Vector3.new(0, -1.1, 0))
+vcam.CFrame = CFrame.lookAt(Vector3.new(0, 1.6, 13.2), Vector3.new(0, 0, 0)) -- (round 3: centred, a little closer)
 do -- a low round podium under the weapon: a dark base, a dark top and a thin amber rim. small, so the weapon leads
 	local function p(size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?)
 		new("Part", { Anchored = true, Shape = Enum.PartType.Cylinder, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, vp)
@@ -1190,7 +1200,13 @@ refresh = function()
 			if pic then pic.ImageColor3 = if focused then INK else WHITE end
 			for _, d in a.btn:GetChildren() do
 				if d:IsA("TextLabel") and d ~= a.tag then d.TextColor3 = if focused then INK else TEXT end
+				if d:IsA("TextLabel") and d.Name ~= "MasteryLevel" and d ~= a.tag and d.FontFace ~= FONT_TITLE then d.FontFace = FONT_TITLE; d.TextSize = 22 end
 			end
+			-- (round 3: LV 1 with an empty bar on every card said nothing; it shows once the weapon has XP)
+			local mt, ml = a.btn:FindFirstChild("MasteryTrack"), a.btn:FindFirstChild("MasteryLevel") :: TextLabel?
+			local fresh = ml ~= nil and ml.Text == "LV 1" and mt ~= nil and (mt:FindFirstChild("Fill") :: Frame?) ~= nil and (mt:FindFirstChild("Fill") :: Frame).Size.X.Scale <= 0.001
+			if mt then (mt :: GuiObject).Visible = not fresh end
+			if ml then ml.Visible = not fresh end
 			-- (weapons open by level, a few are Robux and free for now: Unlocks, docs/PROGRESSION.md. training: anything)
 			local U = require(Shared:WaitForChild("Unlocks")) :: any
 			local okU, whyU = U.forPlayer(me, a.id)
@@ -1225,7 +1241,8 @@ refresh = function()
 		liveChipL.Parent.Visible = not e.live
 		infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
 		local g = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
-		gimText.Text = string.upper(string.sub(g, 1, 1)) .. string.sub(g, 2) -- (a sentence starts with a capital)
+		g = string.upper(string.sub(g, 1, 1)) .. string.sub(g, 2) -- (a sentence starts with a capital)
+		gimText.Text = (string.gsub(g, "([%.!?]%s+)(%l)", function(a: string, c: string) return a .. string.upper(c) end))
 	end)
 	News.guard("stats", function()
 		local okS, st = pcall(statsFor, e.id)
@@ -1262,8 +1279,8 @@ refresh = function()
 			local armed = News.arm == e.id and os.clock() - News.armT < 4
 			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-		elseif p[e.slot] == e.id then equipBtn:set("ON KEY " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = GREY
-		else equipBtn:set("EQUIP ON " .. keyOf(e.slot), true) end
+		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED ON " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = TEXT; equipBtn.face.BackgroundTransparency = 1
+		else equipBtn:set("EQUIP ON " .. keyOf(e.slot), true); equipBtn.face.BackgroundTransparency = 0 end
 	end)
 	News.guard("preview", showPreview, e.id)
 	-- wraps for the focused weapon
@@ -2040,12 +2057,11 @@ done.face.MouseButton1Click:Connect(function() setOpen(false) end)
 News.close = function() setOpen(false) end -- (the loadout's way out, for code above setOpen: the coins buy, 18 Nov)
 -- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
 -- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
-local flairBtn = button(stage, "KILL EFFECTS AND EMOTES", "white", UDim2.fromOffset(1384, 50), UDim2.fromOffset(300, 44))
+local flairBtn = button(stage, "KILL EFFECTS AND EMOTES", "white", UDim2.fromOffset(1380, 50), UDim2.fromOffset(290, 44))
 do -- (round 2: another screen, so a plain link beside DONE, not a row in the slot list)
-	flairBtn.base = PANEL; flairBtn.face.BackgroundTransparency = 1
-	flairBtn.face.FontFace = FONT_TITLE; flairBtn.face.TextSize = 22; flairBtn.face.TextXAlignment = Enum.TextXAlignment.Right
+	flairBtn.base = PANEL; flairBtn.face.BackgroundColor3 = PANEL; flairBtn.face.BackgroundTransparency = 0.06
+	flairBtn.face.FontFace = FONT_TITLE; flairBtn.face.TextSize = 20; flairBtn.face.TextXAlignment = Enum.TextXAlignment.Center
 	flairBtn.face.TextColor3 = TEXT
-	flairBtn.face:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() flairBtn.face.BackgroundTransparency = 1 end)
 end
 flairBtn.face.MouseButton1Click:Connect(function()
 	local m = script.Parent:FindFirstChild("FlairUI")

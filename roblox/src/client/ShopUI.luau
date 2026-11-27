@@ -248,12 +248,12 @@ end
 -- the small "rarity · kind" line: a dot in the rarity's colour, the words in grey
 local function rarityLine(parent: Instance, r: string, kind: string, size: number, kindOnly: boolean?): Frame
 	local f = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, size + 4) }, parent)
-	local dot = new("Frame", { BackgroundColor3 = rarityColor(r), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(size * 0.5, size * 0.5) }, f)
+	local dot = new("Frame", { BackgroundColor3 = rarityColor(r), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(size * 0.5, size * 0.5), Visible = false }, f) -- (the edge says the rarity)
 	T.corner(dot, 99)
 	-- (kindOnly: a narrow card on a phone keeps the dot and the kind; the rarity is the colour of the dot and the bar)
 	local words = if kindOnly and kind ~= "" then string.upper(kind) else rarityName(r) .. (if kind ~= "" then "  ·  " .. string.upper(kind) else "")
 	local l = txt(f, words, size, T.MUTED, T.FONT_BOLD)
-	l.Position = UDim2.fromOffset(size * 0.5 + 6, 0); l.Size = UDim2.new(1, -(size * 0.5 + 6), 1, 0)
+	l.Position = UDim2.fromOffset(0, 0); l.Size = UDim2.new(1, 0, 1, 0)
 	return f
 end
 -- how many of a container to claim and open at once: x1 / x5 / x10 (the loot server opens a batch with no

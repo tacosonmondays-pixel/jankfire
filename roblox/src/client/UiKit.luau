@@ -134,19 +134,19 @@ end
 
 -- A's hero number straight on the world: the number with a soft drop shadow, both cut by the slit. sized to its text
 -- (AutomaticSize X); `shadow` false for a number on a tile. returns the holder, the label and a setter
-function K.hero(parent: Instance, name: string, size: number, font: Font, color: Color3, shadow: boolean?): (Frame, TextLabel, (string, Color3?) -> ())
+function K.hero(parent: Instance, name: string, size: number, font: Font, color: Color3, shadow: boolean?, slit: boolean?): (Frame, TextLabel, (string, Color3?) -> ())
 	local h = K.new("Frame", { Name = name, BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, size) }, parent)
 	local sh: TextLabel? = nil
 	if shadow ~= false then
 		local s = K.text(h, "Shadow", "", size, Color3.new(0, 0, 0), font)
 		s.AutomaticSize = Enum.AutomaticSize.X; s.Size = UDim2.fromOffset(0, size)
 		s.Position = UDim2.fromOffset(0, math.max(1, math.floor(size / 28 + 0.5))); s.TextTransparency = 0.6
-		K.slit(s)
+		if slit ~= false then K.slit(s) end
 		sh = s
 	end
 	local l = K.text(h, "Value", "", size, color, font)
 	l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, size)
-	K.slit(l)
+	if slit ~= false then K.slit(l) end
 	local function set(t: string, c: Color3?)
 		if l.Text ~= t then l.Text = t; if sh then sh.Text = t end end
 		if c and l.TextColor3 ~= c then l.TextColor3 = c end

@@ -1114,7 +1114,7 @@ RunService.Heartbeat:Connect(function()
 			placeHudBox("Ammo", o + UDim2.fromOffset(2, 48), function() end, function(f: any)
 				if not (f and f.swiped) then Keys.tap(Enum.KeyCode.R) end -- (a tap reloads; a swipe changed weapon instead)
 			end)
-			local cp = o + UDim2.fromOffset(0, 118)
+			local cp = o + UDim2.fromOffset(0, 150) -- (27 Nov: under the A ammo, 48 + 96 + 6)
 			if chips.Position ~= cp then chips.Position = cp end
 		end
 	end

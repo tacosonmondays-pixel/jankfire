@@ -173,7 +173,7 @@ local fight = me:WaitForChild("PlayerGui"):WaitForChild("JankfireFight")
 local hud = fight:WaitForChild("Scaled")
 local plate = T.plate(hud, "Utility", UDim2.new(1, -272, 1, -178), UDim2.fromOffset(232, 42))
 do -- (27 Nov 2026, A PLATE: a dark backing like the slots', no hairline, a bone key cap; it sits above the ammo now)
-	plate.BackgroundColor3 = Color3.fromRGB(20, 20, 24); plate.BackgroundTransparency = 0.3
+	plate.BackgroundTransparency = 1 -- (round 3: bare like the ammo under it)
 	local st = plate:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end
 	local k = T.key(plate, "G", UDim2.fromOffset(12, 10))
 	k.BackgroundColor3 = Color3.fromRGB(229, 226, 219)
@@ -217,9 +217,20 @@ local function hudStep()
 	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles")
 		elseif it.id == "camera" and me:GetAttribute("Photo") then (if charges() > 0 then "Camera · print" else ("Camera · %ds"):format(math.max(1, math.ceil((tonumber(me:GetAttribute("ItemAt")) or 0) - workspace:GetServerTimeNow())))) else it.name
 	if nameL.Text ~= label then nameL.Text = label end
-	chip.BackgroundColor3 = it.color
+	chip.Visible = false -- (round 3: no colour chip; the count says it in words)
+	nameL.TextStrokeTransparency = 0.8
 	setPips(it.charges)
 	local n, at = charges()
+	pipsBox.Visible = false
+	local cnt = plate:FindFirstChild("Count") :: TextLabel?
+	if not cnt then
+		cnt = T.text(plate, "Count", "", 15, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+		local c2 = cnt :: TextLabel
+		c2.AnchorPoint = Vector2.new(1, 0.5); c2.Position = UDim2.new(1, -12, 0.5, 0); c2.Size = UDim2.fromOffset(60, 20); c2.TextStrokeTransparency = 0.8
+	end
+	local cl = cnt :: TextLabel
+	cl.Text = "×" .. n
+	cl.TextTransparency = if n > 0 then 0 else 0.5
 	local left = if at > 0 then at - workspace:GetServerTimeNow() else 0
 	local k = if at > 0 then math.clamp(1 - left / it.recharge, 0, 1) else 0
 	for i, p in pips do

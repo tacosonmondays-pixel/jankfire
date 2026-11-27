@@ -625,7 +625,7 @@ return function(C: any): any
 	end
 	-- a price you press: ink with bone words and the pads' lip under it; short of it: greyed, "need N more" under it
 	local function priceBtn(parent: Instance, icon: string?, words: string, ok: boolean, need: string?, x: UDim, w: number): TextButton
-		local b = new("TextButton", { Name = "Price", AutoButtonColor = false, BackgroundColor3 = if ok then INK else T.TRACK, BorderSizePixel = 0,
+		local b = new("TextButton", { Name = "Price", AutoButtonColor = false, BackgroundColor3 = if ok then INK else Color3.fromRGB(205, 200, 190), BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(x.Scale, x.Offset, 0.5, if need then -7 else -2), Size = UDim2.fromOffset(w, 32),
 			Text = "", ZIndex = 4 }, parent)
 		new("UICorner", { CornerRadius = UDim.new(0, 8) }, b)
@@ -640,7 +640,7 @@ return function(C: any): any
 				GroupTransparency = if ok then 0 else 0.4 }, row)
 			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
 		end
-		local l = txt(row, words, 15, if ok then BONE else T.DIM, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		local l = txt(row, words, 15, if ok then BONE else Color3.fromRGB(86, 83, 77), T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
 		if need then
 			local n = txt(parent, need, 11, Color3.fromRGB(150, 84, 40), T.FONT_BOLD, Enum.TextXAlignment.Center)
@@ -667,7 +667,7 @@ return function(C: any): any
 			l.TextStrokeTransparency = 0.8
 		end
 		local split = 0.47
-		head("CRATES", UDim.new(0, 0))
+		head("CONTAINERS", UDim.new(0, 0)) -- (the tab's own word)
 		local crates = new("Frame", { Name = "Crates", BackgroundColor3 = T.CARD, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 28),
 			Size = UDim2.new(1, 0, split, -28 - gap / 2) }, side)
 		T.corner(crates)
@@ -725,7 +725,7 @@ return function(C: any): any
 			amt.RichText = true
 			amt.Position = UDim2.new(0, 16, 0.5, if bonus > 0 then -20 else -13); amt.Size = UDim2.new(0.6, 0, 0, 28)
 			if bonus > 0 then
-				local bo = txt(r, commas(bonus) .. " of them bonus", 13, T.MUTED, T.FONT_BOLD)
+				local bo = txt(r, "includes " .. commas(bonus) .. " bonus", 13, T.MUTED, T.FONT_BOLD)
 				bo.Position = UDim2.new(0, 16, 0.5, 8); bo.Size = UDim2.new(0.6, 0, 0, 16)
 			end
 			local b = priceBtn(r, nil, ROBUX .. " " .. commas(o.robux), sell and Shop.productFor(o) ~= nil, nil, UDim.new(1, -16), 104)

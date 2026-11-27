@@ -20,7 +20,7 @@ local hud = T.scaled(gui)
 
 -- speed: a small plate beside the health plate (FightHud's: 24 px in from the left, 212 wide, the same height)
 -- (27 Nov 2026, the owner's pick, A PLATE: bare words a little under the crosshair, "24 m/s", no box)
-local speed = T.new("Frame", { Name = "Speed", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.5, 34), Size = UDim2.fromOffset(160, 20) }, hud)
+local speed = T.new("Frame", { Name = "Speed", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -30), Size = UDim2.fromOffset(160, 20) }, hud)
 local speedNum = T.text(speed, "Value", "0", 15, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 speedNum.Position = UDim2.fromOffset(0, 0); speedNum.Size = UDim2.new(0.5, -3, 1, 0); speedNum.TextStrokeTransparency = 0.75
 local speedSub = T.text(speed, "Unit", "m/s", 12, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Left)
@@ -31,9 +31,12 @@ do
 	local me = Players.LocalPlayer
 	local function hubBare()
 		local bare = me:GetAttribute("Zone") == "hub" and me:GetAttribute("DevArms") ~= true
+		local UIS = game:GetService("UserInputService")
+		bare = bare or (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true -- (a phone: no room)
 		if speed.Visible == bare then speed.Visible = not bare end
 	end
 	me:GetAttributeChangedSignal("Zone"):Connect(hubBare); me:GetAttributeChangedSignal("DevArms"):Connect(hubBare); hubBare()
+	me:GetAttributeChangedSignal("TouchForce"):Connect(hubBare)
 end
 
 -- the announcer line: wide white capitals over a short amber rule, upper middle of the screen. behind it a soft dark

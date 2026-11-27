@@ -72,7 +72,7 @@ local function word(text: string, order: number, size: number?): TextLabel
 	return l
 end
 local hookCap = cap(1)
-local hookWord = word("HOOK", 2)
+local hookWord = word("GRAPPLE", 2)
 local row = new("Frame", { Name = "Pips", BackgroundTransparency = 1, Size = UDim2.fromOffset(HC.CHARGES * 9 + (HC.CHARGES - 1) * 4, 9), LayoutOrder = 3 }, readout)
 local pips: { { back: Frame, fill: Frame } } = {}
 for i = 1, HC.CHARGES do
@@ -84,13 +84,14 @@ for i = 1, HC.CHARGES do
 	T.corner(f, 2)
 	pips[i] = { back = bk, fill = f }
 end
-local lockF = word("AT GO", 4, 12)
+local lockF = word("OFF UNTIL GO", 4, 12)
 lockF.TextTransparency = 0.25
 local gap = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(8, 1), LayoutOrder = 5 }, readout)
 local autoCap = cap(6)
-local autoWord = word("AUTO", 7)
+local autoWord = word("AUTO GRAPPLE", 7)
+local autoState = word("READY", 9, 12) -- (READY, or the seconds left: words, not a bar)
 local autoB = new("Frame", { Name = "AutoLock", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45,
-	Size = UDim2.fromOffset(28, 5), LayoutOrder = 8 }, readout)
+	Size = UDim2.fromOffset(28, 5), LayoutOrder = 8, Visible = false }, readout)
 T.corner(autoB, 2)
 local autoFill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = BONE, Size = UDim2.fromScale(1, 1) }, autoB)
 T.corner(autoFill, 2)
@@ -141,11 +142,14 @@ RunService.RenderStepped:Connect(function()
 	-- the hook part: its key, HOOK, the pips while charges count, AT GO before the round
 	local hk = Binds.label("grapple")
 	if hookCap.Text ~= hk then hookCap.Text = hk end
-	hookCap.Visible = show or lockedNow; hookWord.Visible = show or lockedNow
+	local UIS = game:GetService("UserInputService")
+	local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
+		or game:GetService("StarterPlayer"):GetAttribute("TouchForce") == true
+	hookCap.Visible = (show or lockedNow) and not touch; hookWord.Visible = show or lockedNow
 	row.Visible = show
 	lockF.Visible = lockedNow
 	gap.Visible = (show or lockedNow) and auto == true
-	autoCap.Visible = auto == true; autoWord.Visible = auto == true; autoB.Visible = auto == true
+	autoCap.Visible = auto == true and not touch; autoWord.Visible = auto == true; autoState.Visible = auto == true; autoB.Visible = false
 	if auto then
 		local ak = Binds.label("reel")
 		if autoCap.Text ~= ak then autoCap.Text = ak end
@@ -157,7 +161,9 @@ RunService.RenderStepped:Connect(function()
 		autoFill.Size = UDim2.fromScale(k, 1)
 		local f = math.clamp((os.clock() - flashT) / 0.35, 0, 1)
 		autoWord.TextTransparency = if k >= 1 then 0 else 0.45
-		autoWord.TextSize = math.floor(14 + 3 * (1 - f) + 0.5)
+		autoState.Text = if k >= 1 then "READY" else ("%d S"):format(math.max(1, math.ceil(untilT - now())))
+		autoState.TextTransparency = if k >= 1 then 0 else 0.3
+		autoState.TextSize = math.floor(12 + 3 * (1 - f) + 0.5)
 	end
 	for _, p in pips do p.back.BackgroundTransparency = if lockedNow then 0.75 else 0.45 end
 	if not show then lastN = s.n; return end

@@ -226,7 +226,7 @@ local function sideTable(p: Frame, b: any, cols: { { any } }, title: string?, co
 			name.LayoutOrder = 1
 			if down then name.TextTransparency = 0.55 end
 			local lvl = pl and pl:GetAttribute("Level")
-			if type(lvl) == "number" then
+			if type(lvl) == "number" and b.allLevels then
 				local lv = K.text(nr, "Level", "LV " .. lvl, 11, if mine then Color3.fromRGB(110, 108, 104) else B.MUTED, K.SANS_HEAVY)
 				lv.AutomaticSize = Enum.AutomaticSize.X
 				lv.Size = UDim2.fromOffset(0, rowH)
@@ -278,6 +278,16 @@ function UI.render(b: any?)
 		return
 	end
 	local cols = columns(b)
+	-- (every player row has a level, or none shows: a stand-in has none)
+	b.allLevels = true
+	for _, tm in b.teams do
+		for _, r in tm.rows do
+			if not r.empty then
+				local pl = playerOf(r.uid)
+				if not (pl and type(pl:GetAttribute("Level")) == "number") then b.allLevels = false end
+			end
+		end
+	end
 	bug(p, b)
 	-- the rows have to fit under the bug: shrink them when there are many
 	local n, sides = 0, 0

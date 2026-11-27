@@ -79,6 +79,14 @@ function HubStack.style(face: TextButton, id: string, sized: GuiObject?)
 		end
 		face.MouseEnter:Connect(function() face.BackgroundColor3 = K.A.INK:Lerp(Color3.new(1, 1, 1), 0.08) end)
 		face.MouseLeave:Connect(function() face.BackgroundColor3 = K.A.INK end)
+		-- (round 3: a soft dark fade up the left side, behind the whole menu, shown with PLAY)
+		local holder = face.Parent
+		if holder and not holder:FindFirstChild("MenuShade") then
+			local shade = K.new("Frame", { Name = "MenuShade", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.new(0, 460, 1, 0), ZIndex = 0 }, holder)
+			K.new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(0.55, 0.75), NumberSequenceKeypoint.new(1, 1) }) }, shade)
+			shade.Visible = face.Visible
+			face:GetPropertyChangedSignal("Visible"):Connect(function() shade.Visible = face.Visible end)
+		end
 		return
 	end
 	-- the rest: white words on the world, a bone line under the one the pointer is on
