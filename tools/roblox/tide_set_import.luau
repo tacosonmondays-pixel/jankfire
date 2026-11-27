@@ -6,16 +6,17 @@
 -- our own streak textures scrolling down), the spray and mist at their feet, foam rings, the lanterns' light, the moon
 -- (a disc with its darker seas and a halo), the water, the moon's glitter road on the pool, and SceneLook - the Sky,
 -- Atmosphere, Bloom and grade FinisherPro puts on for the scene (the place's own parked meanwhile).
-local SET = 136826456466581 -- (the kit upload: tide_waterfall.glb v3, 26 Nov 2026 - the causeway through the pool, wide curtains, darker values; v2 88285832941384, v1 99855924480330)
-local TEX = { streaks = "rbxassetid://86884977470079", streaks2 = "rbxassetid://74489285829676", ripple = "rbxassetid://111226912715998" }
+local SET = 73667421382506 -- (the kit upload: tide_waterfall.glb v4, 27 Nov 2026 - the falls' lips as rows of rounded boulders, stones drowned at the cascade's foot; v3 136826456466581, v2 88285832941384, v1 99855924480330)
+local TEX = { streaks = "rbxassetid://86884977470079", streaks2 = "rbxassetid://74489285829676", ripple = "rbxassetid://111226912715998",
+	surface = "rbxassetid://115223317147825" } -- (surface: tide_water_tex.py --surface, the pool's ripple crests, round 4)
 local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
 local SPARK = "rbxasset://textures/particles/sparkles_main.dds"
 local FX = {
 	falls = {
-		{ top = { -48.5, 7.2, 170.4 }, bottom = { -48.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
-		{ top = { -23.5, 7.2, 170.4 }, bottom = { -23.5, -1.3, 167 }, width = 20, face = { 0, 0, -1 } },
-		{ top = { 5.5, 7.2, 170.4 }, bottom = { 5.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
-		{ top = { -117, 34.4, -16 }, bottom = { -113.5, -1.3, -16 }, width = 24, face = { 1, 0, 0 } },
+		{ top = { -48.5, 7.2, 170.4 }, bottom = { -48.5, -1.9, 167 }, width = 15, face = { 0, 0, -1 } },
+		{ top = { -23.5, 7.2, 170.4 }, bottom = { -23.5, -1.9, 167 }, width = 20, face = { 0, 0, -1 } },
+		{ top = { 5.5, 7.2, 170.4 }, bottom = { 5.5, -1.9, 167 }, width = 15, face = { 0, 0, -1 } },
+		{ top = { -117, 34.4, -16 }, bottom = { -113.5, -1.9, -16 }, width = 24, face = { 1, 0, 0 } },
 		{ top = { -138.5, 73.8, -17.5 }, bottom = { -135.5, 34.6, -17.5 }, width = 18, face = { 1, 0, 0 } },
 	},
 	mist = {
@@ -29,7 +30,7 @@ local FX = {
 	},
 	lanterns = { { -9, 5.225, -8 }, { 11, 5.225, -30 }, { -9, 5.225, -60 }, { 11, 5.225, 12 } },
 	moon = { dir = { -0.068, 0.208, 0.976 }, dist = 1700, deg = 16 },
-	water = { y = -1.3, boxes = { { -150, 20, -5.7, -120 }, { 7.7, 20, 36, -120 }, { -150, 172, 80, 18 } }, upper = { y = 7.5, box = { -150, 420, 80, 174 } } },
+	water = { y = -1.3, boxes = { { -150, 20, -5.7, -120 }, { 7.7, 20, 36, -120 }, { -150, 172, 80, 20 } }, upper = { y = 7.5, box = { -150, 420, 80, 174 } } },
 	glitter = { from = { -27.971, 400 }, to = { -1.678, 24 }, width = 14 },
 }
 local IS = game:GetService("InsertService")
@@ -53,6 +54,7 @@ for _, p in src:GetDescendants() do
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds") or string.match(p.Name, "^mistmounds"))
 		if kind == "mist" then p.Transparency = 0.62 end -- (the soft mounds of mist where the falls land)
+		if string.sub(p.Name, 1, 7) == "poolbed" then p.Color = Color3.fromRGB(14, 20, 32) end -- (round 4: dark under the pool)
 		-- (round 2: "the lantern panels bloom to pure white" - amber, the scene's one warm accent)
 		if string.sub(p.Name, 1, 11) == "lanternfire" then p.Color = Color3.fromRGB(196, 112, 52) end -- (round 3: "lemon-yellow windows read as monster eyes" - a dimmer amber)
 		if string.sub(p.Name, 1, 9) == "kitorigin" then origin = p else n += 1 end
@@ -77,9 +79,12 @@ local WATER_C = Color3.fromRGB(214, 230, 248)
 -- the falls
 for i, f in FX.falls do
 	local top, bot = Vector3.new(table.unpack(f.top)), Vector3.new(table.unpack(f.bottom))
+	local footY = if bot.Y < FX.water.y then FX.water.y else bot.Y -- (where it lands: the pool's surface, or the ledge)
 	local p = anchor("Fall" .. i, at(top.X, top.Y, top.Z))
 	local a0 = Instance.new("Attachment"); a0.Parent = p
-	local a1 = Instance.new("Attachment"); a1.WorldPosition = (O * CFrame.new(bot)).Position; a1.Parent = p
+	-- (round 4: parented BEFORE its world position is set - set first, it kept the bottom as an offset from the top, so
+	-- each curtain ran from its lip out to "top + bottom", nearly flat, and read as a dim smear)
+	local a1 = Instance.new("Attachment"); a1.Parent = p; a1.WorldPosition = (O * CFrame.new(bot)).Position
 	for layer = 1, 2 do
 		local b = Instance.new("Beam")
 		b.Name = "Sheet" .. layer
@@ -102,14 +107,11 @@ for i, f in FX.falls do
 	end
 	-- the spray where it lands
 	do
-		-- the lip: a bright band where the water turns over the edge
-		local alongZ = math.abs(f.face[1]) > 0.5
-		local lip = Instance.new("Part"); lip.Name = "FallLip"; lip.Anchored = true; lip.CanCollide = false; lip.CanQuery = false; lip.CanTouch = false
-		lip.CastShadow = false; lip.Material = Enum.Material.Neon; lip.Color = Color3.fromRGB(196, 214, 240); lip.Transparency = 0.25
-		lip.Size = if alongZ then Vector3.new(0.6, 0.5, f.width * 1.02) else Vector3.new(f.width * 1.02, 0.5, 0.6)
-		lip.CFrame = at(top.X, top.Y + 0.1, top.Z); lip.Parent = fx
-		-- the foam where it lands: soft rings spreading on the pool
-		local fp = anchor("FallFoam" .. i, at(bot.X, bot.Y + 0.08, bot.Z), Vector3.new(f.width * 1.1, 0.1, f.width * 1.1))
+		-- (round 4, main on the film: "the edges where the rocks meet the water and cliff read as hard, flat lips or
+		-- seams" - the neon bar along each falls' top is gone; the kit's lip is a row of rounded boulders the water
+		-- pours over, and the curtains run on under the pool's surface)
+		-- the foam where it lands: soft rings spreading on the pool, at its surface (the curtain ends under it)
+		local fp = anchor("FallFoam" .. i, at(bot.X, footY + 0.08, bot.Z), Vector3.new(f.width * 1.1, 0.1, f.width * 1.1))
 		local fe = Instance.new("ParticleEmitter")
 		fe.Texture = TEX.ripple; fe.Color = ColorSequence.new(Color3.fromRGB(232, 240, 252))
 		fe.Orientation = Enum.ParticleOrientation.VelocityPerpendicular; fe.EmissionDirection = Enum.NormalId.Top; fe.Speed = NumberRange.new(0.02)
@@ -118,7 +120,7 @@ for i, f in FX.falls do
 		fe.Shape = Enum.ParticleEmitterShape.Box; fe.LightInfluence = 0.5; fe.LightEmission = 0.35; fe.Rotation = NumberRange.new(0, 360)
 		fe.Parent = fp
 	end
-	local sp = anchor("Spray" .. i, at(bot.X, bot.Y + 0.5, bot.Z), Vector3.new(f.width, 0.2, f.width * 0.6))
+	local sp = anchor("Spray" .. i, at(bot.X, footY + 0.5, bot.Z), Vector3.new(f.width, 0.2, f.width * 0.6))
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = SMOKE; e.Color = ColorSequence.new(Color3.fromRGB(222, 234, 248))
 	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, f.width * 0.5), NumberSequenceKeypoint.new(1, f.width * 1.4) })
@@ -185,13 +187,33 @@ disc("Halo2", D * 2.3, -6, Color3.fromRGB(100, 120, 184), 0.955)
 local W = Instance.new("Model"); W.Name = "Water"; W.Parent = set
 local function water(x0, z0, x1, z1, y)
 	local p = Instance.new("Part"); p.Name = "Water"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
-	p.CastShadow = false; p.Material = Enum.Material.Glass; p.Color = Color3.fromRGB(34, 60, 98); p.Transparency = 0.12; p.Reflectance = 0.45
+	-- (round 4, main: "the plunge pool ... should read as water from every lens in the film (surface, foam at the
+	-- falls' foot, no floor showing through, no flicker)" - opaque now, so no lens sees the bed through it; the glass
+	-- and the sky's reflection keep the surface, the same muted night blue)
+	p.CastShadow = false; p.Material = Enum.Material.Glass; p.Color = Color3.fromRGB(30, 54, 90); p.Transparency = 0; p.Reflectance = 0.4
 	p.Size = Vector3.new(math.abs(x1 - x0), 0.6, math.abs(z1 - z0))
 	p.CFrame = at((x0 + x1) / 2, y - 0.3, (z0 + z1) / 2); p.Parent = W
+	-- (the surface itself: faint crests of light on small waves, wider than deep; FinisherProFx drifts them)
+	local tx = Instance.new("Texture"); tx.Name = "PoolSurface"; tx.Texture = TEX.surface; tx.Face = Enum.NormalId.Top
+	tx.StudsPerTileU = 26; tx.StudsPerTileV = 13; tx.Color3 = Color3.fromRGB(150, 172, 214); tx.Transparency = 0.72; tx.Parent = p
 end
 for _, b in FX.water.boxes do water(b[1], b[2], b[3], b[4], FX.water.y) end
 local ub = FX.water.upper.box
 water(ub[1], ub[2], ub[3], ub[4], FX.water.upper.y)
+-- (round 4, ZFight: two glints overlapping at one height flickered against each other - each has its own see-through
+-- and its own flicker beat. A glint that would overlap one already laid goes up a level, 0.03 studs apart)
+local laid = {}
+local function glintLevel(cx: number, cz: number, sx: number, sz: number): number
+	local ex, ez = sx / 2 * 0.99 + sz / 2 * 0.14 + 0.05, sz / 2 * 0.99 + sx / 2 * 0.14 + 0.05 -- (turned up to 8 degrees)
+	for lv = 0, 7 do
+		local free = true
+		for _, r in laid[lv] or {} do
+			if math.abs(r[1] - cx) < r[3] + ex and math.abs(r[2] - cz) < r[4] + ez then free = false; break end
+		end
+		if free or lv == 7 then laid[lv] = laid[lv] or {}; table.insert(laid[lv], { cx, cz, ex, ez }); return lv end
+	end
+	return 7
+end
 do
 	local g = FX.glitter
 	local a, b = Vector3.new(g.from[1], 0, g.from[2]), Vector3.new(g.to[1], 0, g.to[2])
@@ -218,11 +240,13 @@ do
 			local s = Instance.new("Part"); s.Name = "MoonStreak"; s.Anchored = true; s.CanCollide = false; s.CanQuery = false; s.CanTouch = false
 			s.CastShadow = false; s.Material = Enum.Material.Neon; s.Color = Color3.fromRGB(214, 224, 246); s.Transparency = rr:NextNumber(0.3, 0.8)
 			s.Size = Vector3.new(rr:NextNumber(0.1, 0.5) * wide * (0.6 + 0.4 * u), 0.04, rr:NextNumber(0.06, 0.2))
-			s.CFrame = O * CFrame.new(c.X + across * wide, y + 0.07, c.Z) * CFrame.Angles(0, math.rad(rr:NextNumber(-8, 8)), 0); s.Parent = W
+			-- (round 4: lifted clear of the sheen below - they shared one slab of height and flickered)
+			local lv = glintLevel(c.X + across * wide, c.Z, s.Size.X, s.Size.Z)
+			s.CFrame = O * CFrame.new(c.X + across * wide, y + 0.16 + lv * 0.03, c.Z) * CFrame.Angles(0, math.rad(rr:NextNumber(-8, 8)), 0); s.Parent = W
 		end
 		local sheen = Instance.new("Part"); sheen.Name = "MoonSheen"; sheen.Anchored = true; sheen.CanCollide = false; sheen.CanQuery = false
 		sheen.CanTouch = false; sheen.CastShadow = false; sheen.Material = Enum.Material.Neon; sheen.Color = Color3.fromRGB(120, 132, 168)
-		sheen.Transparency = 0.86; sheen.Size = Vector3.new(g.width * 0.8, 0.05, len); sheen.CFrame = road.CFrame * CFrame.new(0, 0.02, 0); sheen.Parent = W
+		sheen.Transparency = 0.86; sheen.Size = Vector3.new(g.width * 0.8, 0.04, len); sheen.CFrame = road.CFrame * CFrame.new(0, 0.02, 0); sheen.Parent = W
 	end
 end
 -- the scene's own look: FinisherPro clones these into Lighting for the scene (the place's own parked meanwhile)

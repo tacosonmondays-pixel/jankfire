@@ -507,6 +507,15 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 			if d:IsA("BasePart") and d.Name == "MoonStreak" then table.insert(sc.streaks, { p = d, ph = (#sc.streaks * 1.7) % 6.28, sp = 2.5 + (#sc.streaks % 5) * 0.9, base = d.Transparency }) end
 		end
 	end
+	-- (round 4: the pool's ripple crests drift slowly toward the lane, so the water reads as water in the low lenses)
+	if sc.set and not sc.ripples then
+		sc.ripples = {}
+		for _, d in sc.set:GetDescendants() do if d:IsA("Texture") and d.Name == "PoolSurface" then table.insert(sc.ripples, d) end end
+	end
+	for i, tx in sc.ripples or {} do
+		tx.OffsetStudsV = (w * 0.5 + i * 3.1) % tx.StudsPerTileV
+		tx.OffsetStudsU = (w * 0.15) % tx.StudsPerTileU
+	end
 	if not sc.hitOn then
 		for _, e in sc.streaks or {} do
 			e.p.Transparency = math.clamp(e.base + 0.35 * math.sin(w * e.sp + e.ph), 0, 1)
@@ -525,8 +534,50 @@ end
 -- the dash's petal afterimages (27 Nov, the owner: "Do a wide shot to show pedal after images"): copies of the killer
 -- frozen at points along the dash, pink and half there, each showing as he passes it, hanging through the pass, then
 -- coming apart into petals in THE PATH's wide shot; out of sight on the ink frames
-local GHOST_AT = { 123, 127, 131, 135 }
+-- (round 4, main on the film: "the dash afterimages sit on top of her own body in some frames and read as a blur on
+-- her" - the flash-step slows from 2.4 studs a frame to 0.7 by its end, so the copy frozen at 135 stood inside her to
+-- the slice. They are frozen earlier and further apart now (6.5, 4.9 and 3.7 studs), and each shows only once she has
+-- run clear of it, fading in over the next stride)
+local GHOST_AT = { 122, 125, 128, 131 }
 local GHOST_GO, GHOST_GONE = 149, 160
+local CLEAR0, CLEAR1 = 2.6, 4.0 -- (studs between her and a copy: hidden under the first, whole from the second)
+-- (her LowerTorso along the take, in the killer root's space - the copies stand on that same root)
+local function bodyAt(d: any, f: number): Vector3?
+	local arr = d and d.stock and d.stock.kLT
+	if not arr then return nil end
+	local n = d.frames or (#arr // 3)
+	f = math.clamp(f, 0, n - 1)
+	local i = math.floor(f)
+	local j = math.min(i + 1, n - 1)
+	local p0 = Vector3.new(arr[i * 3 + 1], arr[i * 3 + 2], arr[i * 3 + 3])
+	local p1 = Vector3.new(arr[j * 3 + 1], arr[j * 3 + 2], arr[j * 3 + 3])
+	return p0:Lerp(p1, f - i)
+end
+-- (how much a copy posed at take frame fCopy covers her on screen: 1 when it stands between the lens and her body
+-- and overlaps it - the round-3 film's chasing lens trailed her, so every copy left behind her stood in front of her -
+-- 0 when it is beside her, beyond her, or off her on screen. Both measured on the take's own path, not the parts)
+local function coverOf(sc: any, s: any, fNow: number, fCopy: number): number
+	local a, b = bodyAt(sc.d, fNow), bodyAt(sc.d, fCopy)
+	local cam = workspace.CurrentCamera
+	if not (a and b and cam and s.kg and s.kg.root) then return 0 end
+	local up = Vector3.new(0, 0.8, 0) -- (the body's middle, not its hips)
+	local h = cam.CFrame:PointToObjectSpace(s.kg.root.CFrame * (a + up))
+	local g = cam.CFrame:PointToObjectSpace(s.kg.root.CFrame * (b + up))
+	if -g.Z <= 0.3 or -h.Z <= 0.3 then return 0 end
+	local f = 1 / math.tan(math.rad(cam.FieldOfView) / 2)
+	local hx, hy, gx, gy = h.X / -h.Z * f, h.Y / -h.Z * f, g.X / -g.Z * f, g.Y / -g.Z * f
+	local r = (1.2 / -h.Z + 1.4 / -g.Z) * f -- (her half-width and the copy's, on screen)
+	local dist = math.sqrt((gx - hx) ^ 2 + ((gy - hy) * 0.5) ^ 2) -- (bodies are tall: up and down counts for less)
+	-- (hidden while its outline overlaps hers on screen, in front of her or behind - the first cut faded only those in
+	-- front, and only near her middle, so one half over her still read as a smear; whole once a little clear of her)
+	return 1 - smooth((dist - r) / (0.35 * r))
+end
+-- (0 while she still stands in the copy posed at take frame fCopy, 1 once she is clear of it)
+local function clearOf(d: any, fNow: number, fCopy: number): number
+	local a, b = bodyAt(d, fNow), bodyAt(d, fCopy)
+	if not (a and b) then return 1 end
+	return smooth(((a - b).Magnitude - CLEAR0) / (CLEAR1 - CLEAR0))
+end
 function Fx.petalGhosts(sc: any, s: any, fi: number)
 	if fi < 100 or fi >= GHOST_GONE + 1 then
 		for _, gh in sc.pghosts or {} do gh.model.Parent = nil end
@@ -564,16 +615,17 @@ function Fx.petalGhosts(sc: any, s: any, fi: number)
 	for _, gh in sc.pghosts do
 		local glt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
 		local camP = (workspace.CurrentCamera :: Camera).CFrame.Position
-		local show_ = fi >= gh.at and not sc.hitOn and not (glt and (glt.Position - camP).Magnitude < 4.5)
+		local clear = if fi >= gh.at then clearOf(sc.d, fi, gh.at) * (1 - coverOf(sc, s, fi, gh.at)) else 0
+		local show_ = clear > 0.01 and not sc.hitOn and not (glt and (glt.Position - camP).Magnitude < 4.5)
 		gh.model.Parent = if show_ then sc.folder else nil
 		if show_ then
 			gh.root.CFrame = s.kg.root.CFrame
 			gh.tr.TimePosition = gh.at / 24
 			local u = math.clamp((fi - GHOST_GO) / (GHOST_GONE - GHOST_GO), 0, 1)
 			local base = 0.5 + 0.5 * smooth(u)
-			for _, d in gh.parts do (d :: any).LocalTransparencyModifier = base end
-			gh.hl.FillTransparency = 0.25 + 0.75 * smooth(u)
-			gh.hl.OutlineTransparency = 0.55 + 0.45 * smooth(u)
+			for _, d in gh.parts do (d :: any).LocalTransparencyModifier = 1 - (1 - base) * clear end
+			gh.hl.FillTransparency = 1 - (0.75 - 0.75 * smooth(u)) * clear
+			gh.hl.OutlineTransparency = 1 - (0.45 - 0.45 * smooth(u)) * clear
 			if u > 0 then
 				local lt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
 				if lt then
@@ -610,8 +662,9 @@ function Fx.afterimages(sc: any, s: any, fi: number)
 					-- (round 2: "pale grey-green ghosts ... motion blur, not ink" - solid ink, the further one fainter)
 					local hl = Instance.new("Highlight"); hl.FillColor = Color3.fromRGB(20, 20, 30); hl.OutlineColor = Color3.fromRGB(20, 20, 30)
 					hl.FillTransparency = 0.25; hl.OutlineTransparency = 1; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
-					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).LocalTransparencyModifier = 0.4 + 0.25 * k end end -- (round 3: "a flat ragged black cut-out that looks like a missing-texture bug": see-through)
-					table.insert(sc.ghosts, { model = m, tr = tr, root = root, lag = 1.6 * k })
+					local parts = {}
+					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then table.insert(parts, d); (d :: any).LocalTransparencyModifier = 0.4 + 0.25 * k end end -- (round 3: "a flat ragged black cut-out that looks like a missing-texture bug": see-through)
+					table.insert(sc.ghosts, { model = m, tr = tr, root = root, lag = 1.6 * k, k = k, parts = parts, hl = hl, base = 0.4 + 0.25 * k })
 				else
 					m:Destroy()
 				end
@@ -620,14 +673,28 @@ function Fx.afterimages(sc: any, s: any, fi: number)
 		s.kg.model.Archivable = was
 	end
 	local camPos = (workspace.CurrentCamera :: Camera).CFrame.Position
+	local here = bodyAt(sc.d, fi)
 	for _, gh in sc.ghosts do
+		-- (round 4: "they sit on top of her own body" - a fixed 1.6 frames back was under a body's width once the dash
+		-- slowed; each copy now stands a set distance back along her path, 3.5 and 7 studs, and fades in as she clears it)
+		local lag = gh.lag
+		if here then
+			lag = 10
+			for L = 0.5, 10, 0.25 do
+				local p = bodyAt(sc.d, fi - L)
+				if p and (p - here).Magnitude >= 3.5 * gh.k then lag = L; break end
+			end
+		end
+		local clear = clearOf(sc.d, fi, fi - lag) * (1 - coverOf(sc, s, fi, fi - lag))
 		gh.root.CFrame = s.kg.root.CFrame
 		local L = gh.tr.Length
-		local T = math.max(0, fi - gh.lag) / 24
+		local T = math.max(0, fi - lag) / 24
 		gh.tr.TimePosition = if L > 0 then math.clamp(T, 0, L - 1 / 60) else T
+		for _, d in gh.parts do (d :: any).LocalTransparencyModifier = 1 - (1 - gh.base) * clear end
+		gh.hl.FillTransparency = 1 - 0.75 * clear
 		-- (round 3: one a beat behind her sat on the chasing lens and filled the frame with grey: none that close)
 		local lt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
-		gh.model.Parent = if lt and (lt.Position - camPos).Magnitude < 4.5 then nil else sc.folder
+		gh.model.Parent = if clear < 0.01 or (lt and (lt.Position - camPos).Magnitude < 4.5) then nil else sc.folder
 	end
 end
 

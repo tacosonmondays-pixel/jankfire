@@ -52,6 +52,25 @@ def rock(col, x, y, z, sx, sy, sz, sub=2, jit=0.06, yaw=0.0, model='rocks', kind
     K.put(model, kind, C.get(col, col), bm, K.Tr(x, y, z) @ K.Ry(yaw))
 
 
+def lip_row(x0, x1, z, y, depth, height, seed, along='x'):
+    """(27 Nov, round 4, main on the film: "the edges where the rocks meet the water and cliff read as hard, flat lips
+    or seams") a falls' lip as a row of overlapping rounded boulders, the water pouring over them - in place of the
+    flat bevelled slab that read as a hard line; along x (the cascade) or z (the west falls)"""
+    r = random.Random(seed)
+    n = max(2, int(abs(x1 - x0) / 4.5))
+    for k in range(n + 1):
+        u = k / n
+        c = x0 + (x1 - x0) * u + r.uniform(-0.8, 0.8)
+        w = r.uniform(5.0, 7.0)
+        h = height * r.uniform(0.85, 1.15)
+        d = depth * r.uniform(0.9, 1.2)
+        yy = y + r.uniform(-0.25, 0.15)
+        if along == 'x':
+            rock(r.choice(['rock', 'rock2']), c, yy, z + r.uniform(-0.3, 0.3), w, h, d, sub=2, jit=0.07, yaw=r.uniform(-0.3, 0.3), model='cliffs')
+        else:
+            rock(r.choice(['rock', 'rock2']), z + r.uniform(-0.3, 0.3), yy, c, d, h, w, sub=2, jit=0.07, yaw=r.uniform(-0.3, 0.3), model='cliffs')
+
+
 def tube(model, col, pts, radii, segs=10, kind='wood'):
     """a smooth tube through points (a trunk or a branch): rings along the line, capped"""
     bm = bmesh.new()
@@ -235,7 +254,7 @@ def trees_on(cols, k, h0=22, h1=34):
 def pool():
     K.B('poolbed', C['bed'], -150, -9, 20, CW0 - 1.2, -7.5, -120, bev=0.0, kind='rock')
     K.B('poolbed', C['bed'], CW1 + 1.2, -9, 20, 36, -7.5, -120, bev=0.0, kind='rock')
-    K.B('poolbed', C['bed'], -150, -9, 172, 80, -7.5, 18, bev=0.0, kind='rock')
+    K.B('poolbed', C['bed'], -150, -9, 172, 80, -7.5, 20, bev=0.0, kind='rock')   # (round 4: met the other two at 20, no overlap)
     K.B('poolbed', C['bed'], -150, 2, 420, 80, 3.5, 172, bev=0.0, kind='rock')
     # stones out of the water (the red picture's dark rounded rocks round the falls and along the shore)
     for (x, z, s) in ((-46, 60, 7), (-58, 96, 9), (8, 70, 6), (22, 110, 8), (-70, 30, 6), (-62, -50, 7),
@@ -252,11 +271,17 @@ def north():
     # between egg-shaped stones: "a picket fence")
     lip_y = UPPER_Y - 0.3
     K.B('cliffs', C['rock2'], -66, -2, CASCADE_Z + 0.5, 26, lip_y, CASCADE_Z + 7, bev=1.2, kind='rock')
-    K.B('cliffs', C['rock'], -66, lip_y - 1.6, CASCADE_Z - 1.4, 26, lip_y + 0.2, CASCADE_Z + 1.5, bev=0.7, kind='rock')  # (the lip's overhang)
+    lip_row(-66, 26, CASCADE_Z + 0.1, lip_y - 0.8, 3.4, 2.4, 41)   # (the lip: rounded boulders, the curtains pour over them)
+    # (round 4: the big boulders' round bottoms stopped short of the pool - a dark seam of wall under each; they sink
+    # into the water now, and half-drowned stones sit round their feet. Own random stream, so the rest stays put)
+    wr = random.Random(43)
+    for x in (-65, -59, -39, -33, -14, -8, 17, 23):
+        rock(wr.choice(['rock', 'rock2']), x + wr.uniform(-1.2, 1.2), WATER_Y + 0.3, CASCADE_Z - 2.8 + wr.uniform(-0.6, 0.6),
+             wr.uniform(4.5, 6.5), wr.uniform(2.6, 3.4), wr.uniform(3.5, 5), yaw=wr.uniform(0, 3), jit=0.07)
     for (x, w, h) in ((-36, 9, 13), (-11, 8, 12), (-62, 9, 15), (22, 10, 14)):
-        rock(rnd.choice(['rock', 'rock2']), x, UPPER_Y - 1.5, CASCADE_Z + 0.5, w, h, 9, yaw=rnd.uniform(0, 3), jit=0.06)
+        rock(rnd.choice(['rock', 'rock2']), x, UPPER_Y - 2.4, CASCADE_Z + 0.5, w, h, 9, yaw=rnd.uniform(0, 3), jit=0.06)
     for (x, w) in ((-48.5, 15), (-23.5, 20), (5.5, 15)):
-        FX['falls'].append({'top': [x, lip_y, CASCADE_Z - 1.6], 'bottom': [x, WATER_Y, CASCADE_Z - 5.0], 'width': w, 'face': [0, 0, -1]})
+        FX['falls'].append({'top': [x, lip_y, CASCADE_Z - 1.6], 'bottom': [x, WATER_Y - 0.6, CASCADE_Z - 5.0], 'width': w, 'face': [0, 0, -1]})
         # the plunge: a soft mound of mist where it lands
         rock('mist', x, WATER_Y + 0.6, CASCADE_Z - 6.5, w * 1.2, 3.2, 6.5, sub=2, jit=0.05, model='mistmounds', kind='mist')
     FX['mist'].append({'at': [-20, WATER_Y + 1, CASCADE_Z - 6], 'size': [80, 8]})
@@ -299,11 +324,12 @@ def west():
     crag(-138, zf, 40, 64, lower + 1, col='cliff', seed=31)
     crag(-160, zf + 2, 36, 58, upper + 1, col='cliff2', seed=32)
     # the ledge between the tiers and the two lips, overhanging (the falls pour off a clear ledge, the painting's)
-    K.B('cliffs', C['ledge'], -150, lower - 3, zf - 22, -120, lower + 0.6, zf + 22, bev=1.2, kind='rock')
-    K.B('cliffs', C['rock'], -121.5, lower - 1.4, zf - 12, -116.5, lower + 0.6, zf + 10, bev=0.6, kind='rock')
-    K.B('cliffs', C['rock'], -143, upper - 1.4, zf - 9, -138, upper + 0.4, zf + 6, bev=0.6, kind='rock')
+    K.B('cliffs', C['ledge'], -150, lower - 3, zf - 22, -121, lower + 0.6, zf + 22, bev=1.5, kind='rock')
+    # (round 4: the two lips as rows of rounded boulders, not flat slabs; the ledge's long front edge broken by them)
+    lip_row(zf - 20, zf + 20, -118.8, lower - 0.4, 4.2, 2.6, 51, along='z')
+    lip_row(zf - 12, zf + 9, -140.3, upper - 0.75, 4.0, 2.4, 52, along='z')   # (as wide as the game's 18-stud upper curtain)
     for (z, w) in ((zf - 6, 10.0), (zf + 5, 7.0)):
-        FX['falls'].append({'top': [-117.0, lower + 0.4, z], 'bottom': [-113.5, WATER_Y, z], 'width': w, 'face': [1, 0, 0]})
+        FX['falls'].append({'top': [-117.0, lower + 0.4, z], 'bottom': [-113.5, WATER_Y - 0.6, z], 'width': w, 'face': [1, 0, 0]})
         rock('mist', -111.5, WATER_Y + 0.6, z, 6.5, 3.0, w * 1.2, sub=2, jit=0.05, model='mistmounds', kind='mist')
     FX['falls'].append({'top': [-138.5, upper - 0.2, zf - 1.5], 'bottom': [-135.5, lower + 0.6, zf - 1.5], 'width': 9.0, 'face': [1, 0, 0]})
     FX['mist'].append({'at': [-112, WATER_Y + 1, zf], 'size': [24, 9]})
@@ -398,7 +424,8 @@ K.B('kitorigin', 'ff00ff', -0.25, -60.25, -0.25, 0.25, -59.75, 0.25, bev=0.0, ki
 # the moon: low over the north falls, straight up the lane a little west (the game builds it, far out of the kit)
 moon_dir = Vector((math.sin(_az) * math.cos(_el), math.sin(_el), -math.cos(_az) * math.cos(_el))).normalized()
 FX['moon'] = {'dir': [round(c, 4) for c in moon_dir], 'dist': 1700, 'deg': 16}
-FX['water'] = {'y': WATER_Y, 'boxes': [[-150, 20, CW0 - 1.2, -120], [CW1 + 1.2, 20, 36, -120], [-150, CASCADE_Z, 80, 18]], 'upper': {'y': UPPER_Y, 'box': [-150, 420, 80, CASCADE_Z + 2]}}
+# (round 4: the third box started at z 18 and the first two ended at 20 - two studs of water on water, flickering)
+FX['water'] = {'y': WATER_Y, 'boxes': [[-150, 20, CW0 - 1.2, -120], [CW1 + 1.2, 20, 36, -120], [-150, CASCADE_Z, 80, 20]], 'upper': {'y': UPPER_Y, 'box': [-150, 420, 80, CASCADE_Z + 2]}}
 FX['glitter'] = {'from': [moon_dir.x / moon_dir.z * 400, 400], 'to': [moon_dir.x / moon_dir.z * 24, 24], 'width': 9}
 json.dump(FX, open(os.path.join(OUT, 'tide_waterfall.json'), 'w'), indent=1)
 print('FX falls %d mist %d lanterns %d' % (len(FX['falls']), len(FX['mist']), len(FX['lanterns'])))

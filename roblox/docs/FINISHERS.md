@@ -281,6 +281,27 @@ rotating angles strong leg perspective" and "instead of lightning, theyre petals
   - The slice into the slicing impact frame is quicker.
   - THE PATH is a wide shot with pink petal afterimages (`Fx.petalGhosts`).
   - The ink stroke runs in the slash's own direction. The scene is 16.8 s.
+- **The owner's notes, round 3 (27 Nov, commit 84297a2, saved v1486):** the left hand carries the sheath through the
+  draw and the sheathe (data `sheathHand`/`relLS`); THE PASS is cut and the flash-step runs from f120 to the slice;
+  hit-stops are data `holds` (f119.3, 139.3, 207.3) with a real-time shake; `fadeOccluders` hides accessories between
+  the lens and the shot's point. The scene is 15.64 s.
+- **Round 4 (27 Nov, main on the round-3 film):**
+  - The falls' lips are rows of rounded boulders (`lip_row` in `tide_waterfall.py`) instead of flat bevelled slabs,
+    and the game's neon lip bars are gone. The big cascade boulders sink into the pool, with half-drowned stones round
+    their feet. The curtains end 0.6 studs under the water, so no flat end shows; foam and spray sit on the surface.
+  - The pool is opaque (it showed its bed through the glass) with a `PoolSurface` ripple texture
+    (`tide_water_tex.py --surface`) that `FinisherProFx` drifts. The overlapping water and bed boxes (z 18-20) and the
+    moon road's glints and sheen (one shared height) no longer share space. Glints that overlap each other sit on
+    levels 0.03 studs apart (`glintLevel`). `PolishBackup.ZFight` on the set: 0 hits. Set kit v4 73667421382506.
+  - The falls' bottom attachment is parented before its world position is set. Set first, it kept the bottom as an
+    offset from the top, so every curtain ran from its lip out to "top + bottom", nearly flat, and read as a dim
+    smear or a bright band. This bug was in the builder from the start.
+  - The petal afterimages are frozen at f122/125/128/131 (the dash slows from 2.4 to 0.7 studs a frame, so the f135
+    copy stood inside her to the slice). Each copy, petal or ink, shows only once she is 2.6-4 studs clear of it
+    (`clearOf` on the take's own path). It is also hidden while its outline overlaps hers on screen, in front of her
+    or behind (`coverOf`). The ink copies stand 3.5 and 7 studs back along her path instead of a fixed 1.6 frames.
+  - In Studio v1548. Film: notes `video/tidecrest_katana_finisher_round4(_small).mp4`. Sheet:
+    `finisher-boards/tidecrest_round4_before_after.jpg`.
 - **The effects (FinisherProFx `coilAndDash`):**
   - petals gathering into a slow swirl round him as he sinks, on take time so the slow motion slows them;
   - a gold glint along the blade at the held breath;

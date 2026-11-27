@@ -58,6 +58,39 @@ def ring(size=256):
     return out
 
 
+def surface(size=512):
+    """(27 Nov, round 4, main: the pool "should read as water from every lens") the pool's surface: thin broken crests of
+    light on small waves, seamless both ways (whole-period sines only), white on transparent - laid on the water's top
+    face as a Texture, wider than deep, and drifted slowly by FinisherProFx"""
+    img = Image.new('L', (size, size), 0)
+    px = img.load()
+    T = 2 * math.pi
+    for y in range(size):
+        v = y / size
+        for x in range(size):
+            u = x / size
+            ph = 9 * v + 0.22 * math.sin(T * (2 * u) + 0.3) + 0.12 * math.sin(T * (3 * u - 2 * v) + 1.3) + 0.06 * math.sin(T * (7 * u + 5 * v) + 0.4)
+            crest = (0.5 + 0.5 * math.cos(T * ph)) ** 14
+            m = min(1.0, max(0.0, 0.45 + 0.7 * math.sin(T * (3 * u + v) + 0.7) * math.sin(T * (2 * u - 3 * v) + 2.1)))
+            ph2 = 14 * v + 0.3 * math.sin(T * (3 * u) + 2.0) + 0.1 * math.sin(T * (5 * u + 2 * v) + 0.9)
+            crest2 = (0.5 + 0.5 * math.cos(T * ph2)) ** 22
+            m2 = min(1.0, max(0.0, 0.4 + 0.7 * math.sin(T * (4 * u - v) + 1.1) * math.sin(T * (u + 4 * v) + 0.2)))
+            px[x, y] = int(255 * min(1.0, 0.85 * crest * m + 0.5 * crest2 * m2))
+    # a seamless soft blur: tile 3x3, blur, crop the middle
+    big = Image.new('L', (size * 3, size * 3))
+    for i in range(3):
+        for j in range(3): big.paste(img, (i * size, j * size))
+    big = big.filter(ImageFilter.GaussianBlur(1.4))
+    img = big.crop((size, size, 2 * size, 2 * size))
+    out = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+    out.putalpha(img)
+    return out
+
+
+if '--surface' in sys.argv:
+    surface().save(os.path.join(OUT, 'tide_surface.png'))
+    print('wrote surface', OUT)
+    sys.exit(0)
 streaks(seed=1).save(os.path.join(OUT, 'tide_fall_streaks.png'))
 streaks(n=40, seed=2).save(os.path.join(OUT, 'tide_fall_streaks2.png'))
 ring().save(os.path.join(OUT, 'tide_ripple.png'))
