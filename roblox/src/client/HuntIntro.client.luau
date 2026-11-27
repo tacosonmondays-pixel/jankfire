@@ -72,6 +72,7 @@ local function stop()
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	for _, tr in r.realTracks do pcall(function() tr:Stop(0.3) end) end
 	if r.folder then r.folder:Destroy() end
+	for g, was in r.guis do if g.Parent then g.Enabled = was end end -- (the HUD back)
 	Cine.bars(false, 0.2)
 	HubLook.set(roundLook(), 0)
 	if r.cine then r.cine.stop(true) end -- (lands on the gameplay camera; LoadoutOpen and Finishing put back)
@@ -92,7 +93,7 @@ local function play(a: any)
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not kit or not ch or not hum then return end
 	local rig = if hum.RigType == Enum.HumanoidRigType.R6 then "R6" else "R15"
-	local r: any = { alive = true, sounds = {}, realTracks = {} }
+	local r: any = { alive = true, sounds = {}, realTracks = {}, guis = {} }
 	running = r
 	me:SetAttribute("HuntIntro", set)
 
@@ -264,9 +265,20 @@ local function play(a: any)
 	local baseCol = screen.Color
 	local baseB = light.Brightness
 	local nextBeat, nextFrame, frame = 0, 0, 1
+	local pg = me:FindFirstChildOfClass("PlayerGui")
 	r.conn = RunService.RenderStepped:Connect(function()
 		if not r.alive then return end
 		local t = T()
+		-- the screen is the film's: every HUD off while it plays (held each frame: some HUDs set themselves every
+		-- frame), each put back as it was at the end
+		if pg then
+			for _, g in pg:GetChildren() do
+				if g:IsA("ScreenGui") and g.Name ~= "CineBars" then
+					if r.guis[g] == nil then r.guis[g] = g.Enabled end
+					if g.Enabled then g.Enabled = false end
+				end
+			end
+		end
 		-- the screen: a steady glow, then a flicker that grows with the build; a white flash on the snap
 		local build = math.clamp((t - 5.5 * k) / (4.9 * k), 0, 1)
 		local f = 0.92 + 0.08 * math.noise(t * 6, 2.2)

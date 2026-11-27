@@ -184,7 +184,8 @@ local cardUntil = 0
 RunService.RenderStepped:Connect(function()
 	local inRound = me:GetAttribute("Hunt") == "round"
 	local ph = ReplicatedStorage:GetAttribute("HuntRoundPhase")
-	rg.Enabled = inRound and ph ~= nil or os.clock() < cardUntil
+	-- (the gunman's intro owns the screen while it plays: no board, no hide shade; HuntIntro)
+	rg.Enabled = me:GetAttribute("HuntIntro") == nil and (inRound and ph ~= nil or os.clock() < cardUntil)
 	card.Visible = os.clock() < cardUntil
 	if not (inRound and ph) then shade.Visible = false; top.Visible = false; return end
 	top.Visible = ph ~= "end"
