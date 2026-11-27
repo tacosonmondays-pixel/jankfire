@@ -211,7 +211,7 @@ H.INTRO = {
 		hum = { id = 9125446564, vol = 0.5 },                          -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
 		heart = { id = 9043365842, vol = 0.6 },                        -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
 		birds = { id = 9116969466, vol = 10 },                         -- (PSE: Morning Birds 2, active chirping: a quiet recording)
-		burst = { id = 9126097362, vol = 1.0, region = { 0.0, 0.7 } }, -- (Television Static: a burst on the cut outside)
+		burst = { id = 9126097362, vol = 0.7, region = { 0.0, 0.7 } }, -- (Television Static: a burst on the cut outside; v11 -3 dB peak)
 		hiss = { id = 9126097362, vol = 0.35, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
 		buzz = "zm_flicker", hit = "boom",
 	},
@@ -260,9 +260,28 @@ H.OUTRO = {
 		hum = { id = 9125446564, vol = 0.5 },                          -- (room A: the PC's fans; the intro's hum)
 		hiss = { id = 9126097362, vol = 0.4, region = { 3.0, 8.0 } },  -- (room B: the TV's static; v3: -44 dB)
 		keys = { id = 9113142993, vol = 1.0 },                         -- (Apple Keyboard 28: keys)
-		pad = { id = 9119719128, vol = 1.0 },                          -- (Switches: buttons on a video controller)
-		creak = { id = 9116257140, vol = 0.9 },                        -- (Leather Sofa 4: body movement)
-		claps = { { id = 9114763105, vol = 0.5 }, { id = 9114762817, vol = 0.5 }, { id = 9114763106, vol = 0.5 }, { id = 9114762823, vol = 0.5 } },
+		-- (v4 recording: the pads and claps together peaked -0.1 dB, all halved)
+		pad = { id = 9119719128, vol = 0.5 },                          -- (Switches: buttons on a video controller)
+		creak = { id = 9116257140, vol = 0.6 },                        -- (Leather Sofa 4: body movement)
+		claps = { { id = 9114763105, vol = 0.25 }, { id = 9114762817, vol = 0.25 }, { id = 9114763106, vol = 0.25 }, { id = 9114762823, vol = 0.25 } },
+	},
+}
+
+-- the hiders' intro (owner, 27 Nov: "if you get survivor you get a small cinematic of your character walking scared in
+-- the map?.. and then it says survive!! You can skip it!! It'll be short regardless"; HuntHiderIntro.client): len s on
+-- each hider's own screen as the round starts, added to the hide (HuntRound) so it costs no hiding time. Their own body
+-- walks scared up to their spot (Roblox's walk slowed + the intro's look round), then SURVIVE in A's hero type with a
+-- hit, and the lens glides back to the game's camera. Skip: Space, B, a tap
+H.HIDER_INTRO = {
+	on = true,
+	len = 5,
+	title = 1.6, -- (s of SURVIVE at the end; the last `home` s of it glide back to the game's camera)
+	home = 0.5,
+	walkFrom = 7, walkSpeed = 0.45, -- (studs behind their spot they start; the walk's speed)
+	-- recordings only: the intro's heartbeat a little quicker and under its level, the game's own impact on the word
+	sounds = {
+		heart = { id = 9043365842, vol = 0.45, speed = 1.15 },
+		hit = "boom",
 	},
 }
 

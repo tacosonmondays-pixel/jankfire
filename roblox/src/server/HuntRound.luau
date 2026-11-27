@@ -157,7 +157,11 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	local g = { def = def, map = copy, origin = origin, penAt = penAt, gunmanSpawn = gunmanSpawn, members = {}, byF = {},
 		phase = "hide", t0 = now(), gun = gun, passives = passives, gunman = nil :: Member?, kills = 0,
 		nextPulse = 0, nextTracks = 0, standins = {} }
-	g.hideEnd = now() + (opts.hide or RD.hide)
+	-- the hiders' intro (HC.HIDER_INTRO) plays first on their screens: the hide grows by its length so it costs them no
+	-- hiding time, and the gunman's intro starts that much later so it still ends as the hunt starts
+	local HI = HC.HIDER_INTRO
+	local hLead = if HI and HI.on and opts.hiderIntro ~= false then (HI.len or 5) else 0
+	g.hideEnd = now() + (opts.hide or RD.hide) + hLead
 	g.huntEnd = g.hideEnd + (opts.hunt or RD.hunt)
 	g.fightAt = g.hideEnd + (opts.fightBack or RD.fightBack)
 	G = g; HuntRound.G = g
@@ -204,8 +208,16 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	HuntItems.onStart(g)
 	pub("HuntPhase", "round")
 	pub("HuntGun", gun); pub("HuntPassives", table.concat(passives, ",")); pub("HuntMap", def.title)
-	phase("hide", serverNow() + (opts.hide or RD.hide))
+	phase("hide", serverNow() + (opts.hide or RD.hide) + hLead)
 	Remote:FireAllClients("round", { map = def.title, gun = gun, passives = passives })
+	if hLead > 0 then -- (each hider's own screen: their body walking scared to their spot, then SURVIVE)
+		local ht0 = serverNow()
+		for _, m in g.members do
+			if m.role == "hider" and m.p and m.p.Parent then
+				Remote:FireClient(m.p, "hintro", { len = hLead, t0 = ht0, at = m.spawn.Position })
+			end
+		end
+	end
 	-- the gunman's intro (owner, 27 Nov): a cinematic on his screen only, the length of the hide. room A or B ("both":
 	-- each round the other); he is held still through it and stands at the outside spot for its last two beats
 	local IN = HC.INTRO
@@ -214,8 +226,13 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 		if set == "both" then HuntRound.introFlip = not HuntRound.introFlip; set = if HuntRound.introFlip then "A" else "B" end
 		g.intro = { set = set, out = false }
 		gunman:SetAttribute("Unarmed", true) -- (no gun anywhere in the intro: holstered until the hunt)
-		Remote:FireClient(gunman, "intro", { set = set, len = opts.hide or RD.hide, t0 = serverNow(), outside = gunmanSpawn,
-			lead = IN.outsideLead })
+		local gp = gunman :: Player
+		local function go()
+			if G ~= g or g.phase ~= "hide" or not gp.Parent then return end
+			Remote:FireClient(gp, "intro", { set = set, len = opts.hide or RD.hide, t0 = serverNow(), outside = gunmanSpawn,
+				lead = IN.outsideLead })
+		end
+		if hLead > 0 then task.delay(hLead, go) else go() end -- (the hide shade covers him while the hiders' intro plays)
 	end
 	return true, nil
 end
