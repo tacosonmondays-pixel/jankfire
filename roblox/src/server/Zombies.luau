@@ -938,6 +938,8 @@ local function gameOver(g: Game)
 	table.sort(rows, function(a, b) return a[2] > b[2] end)
 	sayAll({ k = "over", n = g.n, rows = rows })
 	saveBest(g)
+	local okO, errO = pcall(call, "over", g) -- (ZombieExtract: the game over's XP)
+	if not okO then warn("[jankfire] zombies over: " .. tostring(errO)) end
 	publish()
 end
 local function nextRound(g: Game)
@@ -957,6 +959,8 @@ local function cleared(g: Game)
 	g.st = "break"
 	g.untilT = now() + R.rest
 	sayAll({ k = "round", st = "clear", n = g.n })
+	local okC, errC = pcall(call, "cleared", g) -- (ZombieExtract: the extraction's offer, a longer break)
+	if not okC then warn("[jankfire] zombies cleared: " .. tostring(errC)) end
 	publish()
 end
 local function tick(g: Game, dt: number)
@@ -973,6 +977,7 @@ local function tick(g: Game, dt: number)
 	squadTick(g, dt)
 	local okX, errX = pcall(call, "tick", g, dt)
 	if not okX then warn("[jankfire] zombies extra tick: " .. tostring(errX)) end
+	if g.st == "over" or G ~= g then return end -- (27 Nov: an extraction ends the game in there; a stale break would start the next round)
 	-- over when nobody's up: everyone down or out (someone on their way back in, a respawn loading, still counts as up)
 	local anyUp = false
 	for _, m in g.members do
@@ -1000,10 +1005,13 @@ local function tick(g: Game, dt: number)
 	end
 	local alive = 0
 	for _, z in g.mobs do if z.f.alive then alive += 1 end end
-	if g.toSpawn > 0 and alive < ZM.maxAlive(#g.members) and now() >= g.spawnAt then
+	local cap, gap = ZM.maxAlive(#g.members), ZM.gap(g.n, #g.members)
+	local hv = call("heavy", g) -- (ZombieExtract's hold-out: more at once, faster)
+	if type(hv) == "table" then cap = math.min(hv.cap or cap, math.floor(cap * (hv.alive or 1) + 0.5)); gap *= (hv.gap or 1) end
+	if g.toSpawn > 0 and alive < cap and now() >= g.spawnAt then
 		local live = {}
 		for _, m in g.members do if m.f.alive then table.insert(live, m) end end
-		g.spawnAt = now() + (if spawnOne(g, live) then ZM.gap(g.n, #g.members) else 0.5)
+		g.spawnAt = now() + (if spawnOne(g, live) then gap else 0.5)
 	end
 	if g.toSpawn <= 0 and alive == 0 then cleared(g) end
 	if g.tick % 5 == 0 then publish() end
@@ -1301,6 +1309,7 @@ Zombies.X = {
 	kitList = kitList, prompt = prompt, buyerOf = buyerOf, maxTotal = maxTotal,
 	openDoor = openDoor, botWalk = function(m: Member): AnimationTrack? return botWalk[m] end, -- (ZombieBots)
 	fight = function(): any return Fight end,
+	saveBest = function(g: Game) saveBest(g) end, gameOver = function(g: Game) gameOver(g) end, site = SITE, -- (ZombieExtract)
 }
 
 function Zombies.init(fight: any, matches: any?)

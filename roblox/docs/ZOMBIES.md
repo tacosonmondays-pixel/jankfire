@@ -266,3 +266,120 @@ ramp. Before: 239 hits (12 entrances blocked, 6 window lanes, the rest props sun
   tick on average, 8.7 ms at worst.
 - The lobby in a real game now reads as night (exposure -0.35), the wall buys still lit. Frames:
   roblox/docs/zombies/8-bots-run-27nov.jpg.
+
+## 4. EXTRACTION, REWARDS AND THE CINEMATICS (27 Nov; the owner: "cinematic for zombies mode please!!", "allow a way to extract!! If you extract at higher floors you can leave and gain rewards", "rewards CAN be bags sprays and crates but rarely chances increase significantly if you get to way higher rounds")
+
+Main read "higher floors" as higher rounds. The plan, built in this order (numbers live in shared/ZM.luau: ZM.X for the
+extraction, ZM.XR for the rewards).
+
+### 4.1 Extraction (server/ZombieExtract.luau, new; installed by ZombiesServer after ZombieBots)
+- **The offer.** The break after round 10, then after every 5th round (15, 20, 25...), offers an extraction. That break
+  lasts 20 s instead of 10. Any player calls it: **Y**, or the EXTRACT button on a phone. The humans vote: more than half
+  of them (solo: one press). Bots follow the humans. Nobody calls and the next round starts as usual.
+- **The hold-out.** Calling it starts the next round at once, heavier: 50% more zombies at once (cap 36), spawning twice
+  as fast, no end to the round. 90 s from the call to lift-off.
+- **The way out.** The zone is the **roof**, the helipad between the HVAC units and the water tower (school local
+  (10, 32, -70), 14 studs round): the lobby is at the front on the ground floor, so it's a run up two floors and across
+  the school. The doors on the cheapest way from the open areas to the roof roll up for free when it's called.
+- **The helicopter.** Chunky, unmarked, dark (tools/roblox/zm_heli_models.py, Blender; ReplicatedStorage.JankfireZmKit).
+  Drawn on each client from the server's times (no server-side physics): in from the north-west at 55 s, over the pad
+  at 62 s, settled at 66 s, rotor turning, a white searchlight, a red beacon. Its hover is a recorded loop on its body
+  (zm_heli), so the approach and the leaving are distance.
+- **The end.** At 90 s everyone standing in the zone (alive, not down, on the roof, within 14 studs of the pad's
+  centre) extracts. If one human got out the squad's game ends with the extraction film; the ones left behind get the
+  normal game over (XP only). A wipe during the hold-out is a normal game over.
+- **The bots** run for the pad with the humans once it's called (ext.botGoal), fighting on the way.
+- **HUD:** EXTRACTION · ROOF with the time to the helicopter, then to lift-off; an arrow and the distance to the pad at
+  the screen's edge; the odds for this round's band on the offer.
+
+### 4.2 Rewards (server/ZombieRewards.luau, new; server-only, once a player a match)
+On the server's extraction event, for each extracted human who passes the checks: Brass through Quests.grant (its
+300-a-day cap stands), XP through Stats.gift, containers through Loot.grant. Receipt ids are `zmx:<game guid>:<user
+id>:<what>`, so a retry never pays twice. Each roll is its own; the band is the extraction round's.
+
+| extraction round | Brass | XP | Spray Can | Duffel Bag | Crate | zombies wrap |
+| --- | --- | --- | --- | --- | --- | --- |
+| 10-14 | 25 | 300 | 2% | 1% | 0.5% | 3% |
+| 15-19 | 35 | 450 | 4% | 2% | 1% | 6% |
+| 20-24 | 50 | 650 | 8% | 4% | 2% | 10% |
+| 25-29 | 65 | 850 | 13% | 7% | 4% | 17% |
+| 30+ | 80 | 1100 | 20% | 10% | 6% | 25% |
+
+- **Game over** (anyone who didn't make it, and every game that ends without one): 10 XP a round reached, 250 at most,
+  through the same checks. Zombies gave no XP before.
+- **Zombies-only wraps** (the wraps session's, 27 Nov; `Roster.EARNED.zombies`, each row `earned = "zombies"`, in no
+  can, crate, bag, shop or bundle): Boarded Up `zboards` (Epic, from round 10, weight 5), Locker Rot `zpeel`
+  (Legendary, from 20, weight 3), Ooze `zooze` (Exotic, living, from 30, weight 2). A wrap roll picks by weight among
+  the ones open at that round that the player doesn't have yet, so at round 30+ the 25% splits 12.5 / 7.5 / 5%, and
+  the screens show each wrap's own share. It goes on every gun, kept for guns added later (as a shop bundle's wrap:
+  data.every.wrap). Loot.grant takes `zmwrap:<wrap>` only for a wrap marked earned = "zombies". A zombies-only skin
+  later: a row with `kind = "skin"` in ZM.XR.wraps.
+- **The odds are on screen:** on the offer and on the reward screen, for that band.
+- **Anti-farming:** nothing (not even XP) unless the player is a human, did at least 15% of the squad's damage to
+  zombies or 15% of its kills, was up (not down or out) for at least half the game, and was active (moving or hitting)
+  for at least half of it. Bots get nothing. A Studio test switches the checks off with the hook's `xelig` op.
+
+### 4.3 The cinematics (client/ZombieCine.client.luau, new; CineKit's bars, cuts, shake and kicks)
+- **Intro, 7.5 s, skippable** (Space, Enter, or SKIP on a phone; the round waits: round 1 starts 1.5 s after it, or
+  2.5 s after everyone skipped):
+  1. 0-2.9 s: high over the school at night, in the fog, drifting from the back towards the front; a title card,
+     JANKFIELD HIGH.
+  2. 2.9-5.0 s: low by a boarded lobby window; a zombie lurches out of the fog into the boards; a hit (a short
+     hit-stop and a kick, zm_board) and a plank falls (zm_planks).
+  3. 5.0-7.5 s: the squad in the lobby, low and wide, a slow push in; the bars lift; the camera lands on your own view.
+  The wind bed (zm_wind) under it all, the boom on the title.
+- **Extraction out, ~8 s, then the reward screen:**
+  1. 0-3.4 s: wide from a corner of the roof: the helicopter on the pad, the squad running into its open side, zombies
+     spilling onto the roof behind them.
+  2. 3.4-6.6 s: low under the tail: it lifts, tips its nose and pulls away over the school; zombies reach the empty pad.
+  3. 6.6-8.2 s: high and far, the helicopter going into the fog; a fade; the reward screen (EXTRACTED · ROUND n, Brass,
+     XP, each roll with its odds and what dropped).
+- **Rules:** animation cycles and mocap only (the squad's own run cycles, the zombies' walk); recordings only (zm_wind,
+  zm_board, zm_planks, zm_heli from Freesound CC0; the existing boom), no voices or crowds; the school's own muted night
+  look; no text in the world, only the title cards.
+
+### 4.4 The console line `rbxassetid://203785492 failed`
+To pin down (likely Roblox's default Animate on the bot or zombie rigs); fixed only if it's ours.
+- **Answer (27 Nov):** asset 203785492 is an audio upload, "Pop Close Sound" by Zyleak (not ours, not the owner's). It's
+  in no script source, no saved instance on the server side, and nowhere in the repo. It fails 5-6 times as each game
+  starts, on the client, loaded as the wrong asset type. Not ours, so not fixed (a client-side scan of StarterGui is
+  still to do).
+
+### 4.5 Built and checked (27 Nov, place version 1537, Studio; one Play, four short games)
+- **Files:** shared/ZM.luau (ZM.X, ZM.XR, ZM.heliAt, ZM.padOf, ZM.xBand), server/ZombieExtract.luau and
+  server/ZombieRewards.luau (new), Zombies.luau (hooks cleared / over / heavy, X.gameOver / saveBest / site, and the
+  guard below), ZombieBots.luau (ext.botGoal), ZombiesServer (installs it), Loot.luau (the `zmwrap:` grant),
+  client/ZombieExtract.client.luau and client/ZombieCine.client.luau (new), ZombiesClient (the HUD waits for a film:
+  `ZmFilm`), studio-tools/ZmKit.luau (importHeli), tools/roblox/zm_heli_models.py (the helicopter), four Freesound CC0
+  sounds (store.json, freesound-credits.md).
+- **The helicopter:** asset 126355876947344 (11 pieces, 1538 faces; ReplicatedStorage.JankfireZmKit.Heli, pivot at the
+  skids' feet under the rotor hub, nose -Z). LoadAsset centres an uploaded model, and with a PrimaryPart the model's
+  pivot is that part's PivotOffset (WorldPivot alone does nothing): ZmKit sets both from the rotor and the searchlight.
+- **Seen in the test:**
+  - The intro plays and round 1 waits for it: live 9.0 s after the start. With Space at 1.5-2.5 s, live at 5.3 s.
+  - The offer at round 10 shows the band's odds (SPRAY CAN 2%, DUFFEL BAG 1%, CRATE 0.5%, +25 BRASS, +300 XP; the wrap
+    rows came after this test, with the wraps session's ids). Y called it through the real vote path.
+  - The hold-out HUD: EXTRACTION · ROOFTOP, HELICOPTER 0:57, the pad marker on the screen's edge with its distance.
+  - All three bots switched to "extract" and two were on the roof by 44 s, one holding the pad.
+  - The helicopter came in over the pad at 59-62 s, searchlight on the roof.
+  - Extraction (the player in the zone): the film plays, then EXTRACTED · ROUND 10 with Brass, XP and each roll with
+    its odds, "STUDIO TEST · NOTHING WAS GRANTED" (Studio rolls and shows, grants nothing). The game ends 22 s after.
+  - A loss (nobody human in the zone, or the solo player down at the end): the normal game over.
+  - The anti-farming numbers did their job: the idle test player had 0 damage and act 0-19 of 99-114 s, so without the
+    test switch (xelig) they'd have got nothing.
+- **Found and fixed in the test:**
+  - An extraction or a loss inside the extension's tick left a "break" past its time, and Zombies' tick started the
+    next round on a finished game. Zombies' tick now returns after the extension's tick if the game is over.
+  - The zombies HUD stayed on over the films: ZombiesClient re-enables its GUI every frame, and the newest handler runs
+    first. Fix: the films set `ZmFilm` and ZombiesClient keeps its HUD off while it's set (a game-over panel isn't
+    cleared).
+  - The intro's first frame showed the hub's daylight; the film now sets the school's look itself.
+  - The window shot put the lens inside the front desk; it now picks a lobby window with clear floor inside it
+    (raycasts).
+  - The hand-back went through your own head; your body only shows in the squad shot now.
+  - The helicopter read as black on the night sky: lighter muted paint, a warm light in its open side, and a soft key
+    light that rides with the film's camera.
+- **Still open:**
+  - zm_wind was still in Roblox's moderation during the test ("not approved"), so the first intro clip has no wind.
+  - Testing a downed player teleported to the roof left the bots trying to revive at the old spot (a test artifact
+    or a real nav gap: to check).

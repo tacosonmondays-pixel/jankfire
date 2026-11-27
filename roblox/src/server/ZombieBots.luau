@@ -430,16 +430,23 @@ local function step(g: any, m: any, dt: number)
 	else
 		if o and o.reviver == m then o.reviver = nil end
 		b.task = nil
+		-- 2. the extraction (27 Nov, ZombieExtract): once it's called, run for the helicopter's pad, fighting on the way
+		local xf = Z.ext.botGoal
+		local xg = if xf then xf(g, m) else nil
+		if typeof(xg) == "Vector3" then s.goal = nil end
 		-- 3. shop when it's quiet
 		local calm = quiet(g, r.Position)
 		local goal = s.goal
 		if goal and (n - goal.t0 > 30) then s.failT[goal.kind .. (goal.id or "")] = n + 45; goal = nil; s.goal = nil end -- (couldn't get there)
-		if not goal and calm and n >= s.shopT then
+		if not goal and not xg and calm and n >= s.shopT then
 			s.shopT = n + 2.5 + math.random()
 			goal = decide(g, m, s, pos)
 			s.goal = goal
 		end
-		if goal then
+		if typeof(xg) == "Vector3" then
+			s.doing = "extract"
+			if flat(xg - pos).Magnitude > 2.5 or math.abs(xg.Y - pos.Y) > 4.5 then wish = walkTo(xg, s.goalField) end
+		elseif goal then
 			s.doing = goal.why
 			local d = flat(goal.at - pos).Magnitude
 			if d > 3.6 or math.abs(goal.at.Y - pos.Y) > 4.5 then

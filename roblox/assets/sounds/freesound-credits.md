@@ -35,3 +35,7 @@
 - fountain_trickle.ogg: freesound 676173 "Ambiance_Fountain_Small_Loop_Stereo.wav" by Nox_Sound, https://freesound.org/people/Nox_Sound/sounds/676173/ (CC0), the hub lobby fountain's looped trickle (18 Nov 2026)
 - 383828: "Opening Old Garage Door" by deleted_user_7146007, https://freesound.org/people/deleted_user_7146007/sounds/383828/ (CC0): zm_door (1.1-4.9 s), zombies shutter roll, 26 Nov 2026
 - 484157: "fluorescent light flickering 1.wav" by TemperMode, https://freesound.org/people/TemperMode/sounds/484157/ (CC0): zm_flicker (2.86-4.30 s, 0.62-1.40 s), the school's flickering lamps, 26 Nov 2026
+- 548340: "helicopter hovering (close)" by thegreatbelow, https://freesound.org/people/thegreatbelow/sounds/548340/ (CC0): zm_heli (2.0-58.0 s, looped), the zombies extraction helicopter, 27 Nov 2026
+- 117136: "Wind__Artic__Cold.wav" by cobratronik, https://freesound.org/people/cobratronik/sounds/117136/ (CC0): zm_wind (2.0-56.0 s, looped), the zombies films' night wind, 27 Nov 2026
+- 325274: "Wood impact 2.wav" by deleted_user_2104797, https://freesound.org/people/deleted_user_2104797/sounds/325274/ (CC0): zm_board (0.46-1.55 s), a zombie hitting a boarded window in the intro, 27 Nov 2026
+- 478238: "Planks Clattering" by Fission9, https://freesound.org/people/Fission9/sounds/478238/ (CC0): zm_planks (0.06-1.70 s), a plank falling in the intro, 27 Nov 2026

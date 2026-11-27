@@ -291,4 +291,117 @@ function ZM.openAreas(map: Map, open: { boolean }): { [string]: boolean }
 	return out
 end
 
+-- ------------------------------------------------------------------ extraction (27 Nov 2026, roblox/docs/ZOMBIES.md 4)
+-- (the owner: "allow a way to extract!! If you extract at higher floors you can leave and gain rewards"; main read the
+-- floors as rounds.) The break after round 10, then every 5th round, offers it; the squad votes; the next round is a
+-- heavier hold-out while a helicopter comes to the zone; whoever stands in the zone when it lifts off is out.
+-- times in s from the call (the server sends the call's server time; every client draws the helicopter from it)
+ZM.X = {
+	first = 10, every = 5, -- offered at the break after round 10, 15, 20...
+	voteS = 20, -- that break lasts this long (a plain break is R.rest)
+	hold = 90, -- the call to the lift-off: who's in the zone then is out
+	arrive = 55, over = 62, land = 66, -- the helicopter: in sight, over the pad, down
+	board = 3.2, -- s after the lift-off time the bodies are in (the film's first shot) and it rises
+	heavy = { alive = 1.5, cap = 36, gap = 0.5 }, -- the hold-out: 50% more at once (36 at most), spawning twice as fast
+	intro = 7.5, -- the intro film (ZombieCine): round 1 starts 1.5 s after it, or 2.5 s after everyone skipped
+	outro = 8.2, -- the extraction film, then the reward screen
+	-- the zone per map (map-local studs, the arena's origin; area = the map area it stands in, opened on the call).
+	-- yaw: the way the helicopter's nose points on the pad (degrees about up; 0 = -z, the school's back). from: where it
+	-- comes from, leave: where it goes (map-local, relative to the pad)
+	zones = {
+		JankfieldHighV2B = { at = Vector3.new(10, 32, -70), r = 14, area = "roof", yaw = 0,
+			from = Vector3.new(-330, 150, -260), leave = Vector3.new(60, 160, -520) },
+	} :: { [string]: any },
+}
+function ZM.xOffered(n: number): boolean
+	return n >= ZM.X.first and (n - ZM.X.first) % ZM.X.every == 0
+end
+-- where the helicopter is t s after the call (lift = the lift-off's t, from ZM.X.hold + board), as a CFrame for the
+-- model's pivot (the skids' feet, nose along LookVector). pad = the pad's world CFrame (its yaw in it). nil = not in
+-- the sky yet. bob: a hover's small breathing
+local function smooth(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+function ZM.heliAt(pad: CFrame, z: any, t: number, lift: number?): CFrame?
+	local X = ZM.X
+	if t < X.arrive then return nil end
+	local P = pad.Position
+	local from = pad:PointToWorldSpace(z.from)
+	local over = P + Vector3.new(0, 30, 0)
+	local look = pad.LookVector
+	local bob = math.sin(t * 1.7) * 0.18
+	if lift and t >= lift then
+		local u = t - lift
+		local up = P + Vector3.new(0, 14 * smooth(u / 2.4), 0)
+		if u < 2.4 then
+			return CFrame.lookAt(up, up + look) * CFrame.Angles(math.rad(-6 * smooth(u / 2.4)), 0, 0)
+		end
+		local away = pad:PointToWorldSpace(z.leave)
+		local k = math.clamp((u - 2.4) / 9, 0, 1)
+		local e = k * k * (1.6 - 0.6 * k) -- (gathering speed)
+		local p = (P + Vector3.new(0, 14, 0)):Lerp(away, e)
+		local dir = (away - (P + Vector3.new(0, 14, 0)))
+		local flatDir = Vector3.new(dir.X, 0, dir.Z).Unit
+		local f = look:Lerp(flatDir, smooth(k * 3)).Unit
+		return CFrame.lookAt(p, p + f) * CFrame.Angles(math.rad(-14 * smooth(k * 4)), 0, 0)
+	end
+	if t < X.over then
+		local u = (t - X.arrive) / (X.over - X.arrive)
+		local e = 1 - (1 - u) ^ 3 -- (slowing into the hover)
+		local p = from:Lerp(over, e)
+		local dir = Vector3.new(over.X - from.X, 0, over.Z - from.Z).Unit
+		local f = dir:Lerp(look, smooth((u - 0.55) / 0.45)).Unit
+		return CFrame.lookAt(p, p + f) * CFrame.Angles(math.rad(-10 * (1 - smooth(u / 0.9))), 0, math.rad(6 * math.sin(u * math.pi)))
+	end
+	if t < X.land then
+		local u = smooth((t - X.over) / (X.land - X.over))
+		local p = over:Lerp(P + Vector3.new(0, 0.6, 0), u)
+		return CFrame.lookAt(p, p + look) + Vector3.new(0, bob * (1 - u), 0)
+	end
+	local p = P + Vector3.new(0, 0.6 + math.max(0, bob) * 0.4, 0)
+	return CFrame.lookAt(p, p + look)
+end
+-- the pad's world CFrame for a zone on a map copy pivoted at `site` (Zombies' SITE)
+function ZM.padOf(site: CFrame, z: any): CFrame
+	return site * CFrame.new(z.at) * CFrame.Angles(0, math.rad(z.yaw or 0), 0)
+end
+
+-- ------------------------------------------------------------------ the extraction's rewards (ZombieRewards.luau)
+-- (the owner: "rewards CAN be bags sprays and crates but rarely chances increase significantly if you get to way higher
+-- rounds"). The band is the extraction round's (the highest `from` at or under it). Each roll on its own. Brass goes
+-- through Quests.grant (its 300-a-day cap stands), XP through Stats.gift, the rest through Loot.grant. The odds are on
+-- the offer and the reward screen (ZombieExtract.client)
+ZM.XR = {
+	bands = {
+		{ from = 10, brass = 25, xp = 300, spray = 0.02, bag = 0.01, crate = 0.005, wrap = 0.03 },
+		{ from = 15, brass = 35, xp = 450, spray = 0.04, bag = 0.02, crate = 0.01, wrap = 0.06 },
+		{ from = 20, brass = 50, xp = 650, spray = 0.08, bag = 0.04, crate = 0.02, wrap = 0.10 },
+		{ from = 25, brass = 65, xp = 850, spray = 0.13, bag = 0.07, crate = 0.04, wrap = 0.17 },
+		{ from = 30, brass = 80, xp = 1100, spray = 0.20, bag = 0.10, crate = 0.06, wrap = 0.25 },
+	},
+	-- the rolls, in the screen's order: what Loot.grant gets (a container id; "wrap": the zombies-only wraps below)
+	rolls = { "spray", "bag", "crate", "wrap" },
+	names = { spray = "SPRAY CAN", bag = "DUFFEL BAG", crate = "CRATE", wrap = "ZOMBIES WRAP" },
+	-- the zombies-only wraps (the wraps session's three, 27 Nov; Roster.EARNED.zombies, w.earned = "zombies"): { id =
+	-- <Roster wrap id>, from = <round>, w = <weight> }. A wrap roll picks among the ones open at the extraction round by
+	-- weight, leaving out ones the player has; it goes on every gun (Loot's "zmwrap:<wrap>"). Empty: no wrap roll.
+	-- (later: { kind = "skin", id = ..., from = ..., w = ... } for a zombies-only skin)
+	wraps = {
+		{ id = "zboards", from = 10, w = 5 }, -- Boarded Up (Epic): the early one
+		{ id = "zpeel", from = 20, w = 3 }, -- Locker Rot (Legendary): the middle one
+		{ id = "zooze", from = 30, w = 2 }, -- Ooze (Exotic, living): the deepest
+	} :: { { id: string, from: number, w: number, kind: string? } },
+	overXp = 10, overXpMax = 250, -- a game over (or left behind): 10 XP a round reached, 250 at most
+	gate = { share = 0.15, up = 0.5, active = 0.5 }, -- 15% of the squad's damage or kills, up half the game, active half
+}
+function ZM.xBand(n: number): any?
+	local best = nil
+	for _, b in ZM.XR.bands do if n >= b.from then best = b end end
+	return best
+end
+-- the wrap rows open at round n (and whether there's any: no row, no wrap roll)
+function ZM.xWraps(n: number): { any }
+	local out = {}
+	for _, w in ZM.XR.wraps do if n >= (w.from or 0) then table.insert(out, w) end end
+	return out
+end
+
 return ZM

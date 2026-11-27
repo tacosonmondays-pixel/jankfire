@@ -643,6 +643,18 @@ function Loot.grant(p: Player, offerId: string, purchaseId: any, n: number?): bo
 			return false
 		end
 		o = { id = offerId, type = "mastery", items = { { kind = "wrap", id = mid, weapon = mw } } }
+	elseif string.match(tostring(offerId), "^zmwrap:") then
+		-- (27 Nov 2026, ZOMBIES: an extraction's zombies-only wrap, "zmwrap:<wrap>": only ZombieRewards asks, on the
+		-- server's extraction. never in the catalog: only a wrap the Roster marks earned = "zombies" (Roster.EARNED). on
+		-- every gun, kept for guns added later, as a shop bundle's wrap (data.every.wrap; the wraps session's call)
+		local zid = string.match(tostring(offerId), "^zmwrap:([%w_]+)$")
+		local Roster = require(Shared:WaitForChild("Roster")) :: any
+		local row = zid and Roster.wrapById and Roster.wrapById[zid]
+		if not zid or not row or row.earned ~= "zombies" then
+			warn(("[jankfire] loot: grant of %s: no such zombies wrap"):format(tostring(offerId)))
+			return false
+		end
+		o = { id = offerId, type = "mastery", items = { { kind = "wrap", id = zid, every = true } } } -- (granted the mastery way: no catalog)
 	else
 		o = if c and type(c.offer) == "function" and type(offerId) == "string" then c.offer(offerId) else nil
 		if not o and type(offerId) == "string" and LootTable.CONTAINERS[offerId] then o = { id = offerId, type = "container" } end

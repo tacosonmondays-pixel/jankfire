@@ -3323,6 +3323,42 @@
     ],
     "L": -20
    }
+  ],
+  "zm_heli": [
+   {
+    "id": 104866422830095,
+    "title": "\"helicopter hovering (close)\" by thegreatbelow (548340), 2.0-58.0 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": null
+   }
+  ],
+  "zm_wind": [
+   {
+    "id": 92733128069476,
+    "title": "\"Wind__Artic__Cold.wav\" by cobratronik (117136), 2.0-56.0 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": null
+   }
+  ],
+  "zm_board": [
+   {
+    "id": 91871213409913,
+    "title": "\"Wood impact 2.wav\" by deleted_user_2104797 (325274), 0.46-1.55 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": null
+   }
+  ],
+  "zm_planks": [
+   {
+    "id": 71149051809226,
+    "title": "\"Planks Clattering\" by Fission9 (478238), 0.06-1.70 s",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": null
+   }
   ]
  },
  "vol": {
@@ -3366,7 +3402,11 @@
   "remote_click": 6,
   "rope_creak": 5.5,
   "zm_door": 0.9,
-  "zm_flicker": 0.5
+  "zm_flicker": 0.5,
+  "zm_heli": 0.9,
+  "zm_wind": 0.32,
+  "zm_board": 1,
+  "zm_planks": 0.7
  },
  "targets": {
   "skin_ar_seraph_fire": -28,
@@ -3517,7 +3557,11 @@
   "hunt_punch_hit": -23,
   "hunt_shove": -27,
   "hunt_fridge": -29,
-  "hunt_flush": -29
+  "hunt_flush": -29,
+  "zm_heli": -24,
+  "zm_wind": -34,
+  "zm_board": -24,
+  "zm_planks": -26
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -3621,7 +3665,9 @@
   "cart_roll": true,
   "lasso_spin": true,
   "rope_creak": true,
-  "rig_charge": true
+  "rig_charge": true,
+  "zm_heli": true,
+  "zm_wind": true
  },
  "roll": {
   "gun_water": [
@@ -3687,6 +3733,18 @@
   "zm_flicker": [
    5,
    60
+  ],
+  "zm_heli": [
+   30,
+   900
+  ],
+  "zm_board": [
+   10,
+   140
+  ],
+  "zm_planks": [
+   10,
+   120
   ]
  }
 }
