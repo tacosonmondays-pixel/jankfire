@@ -271,6 +271,16 @@ rotating angles strong leg perspective" and "instead of lightning, theyre petals
     The sole is huge low on the right, his body leans away on the left, the victim is small down the lane. It swings
     24 degrees round the foot as he sinks, at 0.42-0.27 speed.
   - **THE LAUNCH** snaps to 1.3 speed. The lens whips after him off the plant, then chases him low on his left.
+- **The owner's notes, round 2 (27 Nov, commit 49a1eb7; first saved in place v1472):**
+  - The draw and the sheathe slide the blade through the sheath mouth on any body. `FinisherPro.propsAt` and the
+    data's `slides`/`relKS` do it: in those windows the sheath rides the blade.
+  - THE TIP's long blade shows (the tip point uses the stretched blade's real curve height) and turns flat to the lens.
+  - The coil no longer plays the pack clip's 180-degree hip spin. The joints are smoothed, the blade swings round
+    outside the body, and a declip pass turns the blade out of the body on any frame.
+  - The dash is a flash-step, with an impact frame on the sole-to-lens beat and a hard cut to the blitz.
+  - The slice into the slicing impact frame is quicker.
+  - THE PATH is a wide shot with pink petal afterimages (`Fx.petalGhosts`).
+  - The ink stroke runs in the slash's own direction. The scene is 16.8 s.
 - **The effects (FinisherProFx `coilAndDash`):**
   - petals gathering into a slow swirl round him as he sinks, on take time so the slow motion slows them;
   - a gold glint along the blade at the held breath;
