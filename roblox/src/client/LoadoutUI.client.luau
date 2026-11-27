@@ -369,7 +369,7 @@ local armTitle = label(armBody, "", 18, UDim2.fromOffset(20, 12), UDim2.fromOffs
 armTitle.FontFace = FONT_TITLE; armTitle.Visible = false
 local armCount = label(armBody, "", 15, UDim2.new(1, -320, 0, 14), UDim2.fromOffset(300, 20), GREY, Enum.TextXAlignment.Right)
 local armList = new("ScrollingFrame", {
-	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 44), Size = UDim2.new(1, -24, 0, 140),
+	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 42), Size = UDim2.new(1, -24, 0, 144),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, armBody)
@@ -388,7 +388,7 @@ local function buildArmory()
 	for i, e in Roster.list do
 		if e.slot ~= state.slot then continue end
 		if e.live then live += 1 else soon += 1 end
-		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 4, Size = UDim2.fromOffset(232, 128) }, armList)
+		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 4, Size = UDim2.fromOffset(232, 132) }, armList)
 		T.corner(btn)
 		local st = T.edge(btn, nil, 1)
 		local chip = new("Frame", { BackgroundColor3 = e.color, BackgroundTransparency = if e.live then 0 else 0.6, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(3, 54), ZIndex = 5 }, btn)
@@ -421,17 +421,22 @@ function News.armPic(btn: GuiObject, e: any)
 	for _, d in btn:GetChildren() do
 		if d:IsA("GuiObject") and d.Name ~= "New" then d.Position = d.Position + UDim2.fromOffset(0, 46) end
 	end
-	local pv, pc = viewport(btn, { Position = UDim2.fromOffset(6, 4), Size = UDim2.fromOffset(220, 56), BackgroundTransparency = 1, ZIndex = 5, Ambient = Color3.fromRGB(190, 192, 198) })
+	-- (round 2: a flat silhouette like the slot rows', white; black on the white card you're looking at)
+	local pv, pc = viewport(btn, { Name = "Pic", Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(212, 50), BackgroundTransparency = 1, ZIndex = 5,
+		Ambient = Color3.new(1, 1, 1), LightColor = Color3.new(0, 0, 0) })
 	pc.FieldOfView = 30
 	local m, rel = previewModel(e.id, hatOf(e.id), skinOf(e.id))
 	if not m then return end
 	local wid, md = wrapOf(e.id)
 	pcall(WeaponModels.wrap, m, wid, md)
 	m:PivotTo(CFrame.Angles(0, math.pi / 2, 0) * rel:Inverse())
+	News.flat(m)
 	m.Parent = pv
-	local _, sz = m:GetBoundingBox()
-	local r = math.max(sz.X, sz.Z, sz.Y * 3.4) / 2
-	pc.CFrame = CFrame.lookAt(Vector3.new(0, 0, r * 4.1), Vector3.zero)
+	local cf, sz = m:GetBoundingBox()
+	-- (fit its width to the card: a viewport 30 degrees tall and 212 x 50, the long side across)
+	local half = math.max(sz.X, sz.Z) / 2 / (212 / 50)
+	local r = math.max(half, sz.Y / 2) * 1.08
+	pc.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, r / math.tan(math.rad(15))), cf.Position)
 	if not e.live then pv.ImageTransparency = 0.55 end
 end
 
@@ -445,9 +450,7 @@ do -- a low round podium under the weapon: a dark base, a dark top and a thin am
 	local function p(size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?)
 		new("Part", { Anchored = true, Shape = Enum.PartType.Cylinder, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, vp)
 	end
-	local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
-	p(Vector3.new(0.25, 5.0, 5.0), Color3.fromRGB(34, 37, 44), CFrame.new(0, -3.78, 0) * up)
-	p(Vector3.new(0.5, 4.4, 4.4), Color3.fromRGB(52, 56, 66), CFrame.new(0, -3.4, 0) * up)
+	local _ = p -- (27 Nov round 2: no podium. a puck under a floating weapon read as a placeholder)
 	-- (27 Nov: no amber rim: Butter is only for what you press)
 end
 local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 60) }, previewBox)
@@ -459,7 +462,8 @@ new("UITextSizeConstraint", { MaxTextSize = 44 }, bigName)
 local soonStamp = label(previewBox, "COMING SOON", 15, UDim2.fromScale(0.5, 0.5), UDim2.fromOffset(180, 38), GREY, Enum.TextXAlignment.Center)
 soonStamp.FontFace = FONT_BOLD; soonStamp.AnchorPoint = Vector2.new(0.5, 0.5); soonStamp.BackgroundColor3 = PANEL; soonStamp.BackgroundTransparency = 0.1
 T.corner(soonStamp); T.edge(soonStamp)
-local hint = label(previewBox, "Drag to turn it  ·  1 2 3 G pick a slot", 15, UDim2.new(0, 0, 1, -20), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
+local hint = label(previewBox, "", 15, UDim2.new(0, 0, 1, -20), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
+hint.Visible = false -- (round 2: the keys are on the rows, dragging is found by doing)
 local toast = label(previewBox, "", 20, UDim2.new(0.5, 0, 0, 84), UDim2.fromOffset(700, 30), ACCENT, Enum.TextXAlignment.Center)
 toast.FontFace = FONT_BOLD; toast.AnchorPoint = Vector2.new(0.5, 0); toast.TextTransparency = 1
 local toastN = 0
@@ -528,7 +532,8 @@ local gimBox = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size
 T.corner(gimBox); T.edge(gimBox)
 new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 11), PaddingBottom = UDim.new(0, 13) }, gimBox)
 new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, gimBox)
-local gimTitle = label(gimBox, "HOW IT WORKS", 13, UDim2.new(), UDim2.new(1, 0, 0, 16), GREY)
+local gimTitle = label(gimBox, "", 13, UDim2.new(), UDim2.new(1, 0, 0, 16), GREY)
+gimTitle.Visible = false
 gimTitle.FontFace = FONT_BOLD; gimTitle.LayoutOrder = 1
 local gimText = label(gimBox, "", 16, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
 gimText.AutomaticSize = Enum.AutomaticSize.Y; gimText.TextYAlignment = Enum.TextYAlignment.Top; gimText.LayoutOrder = 2
@@ -767,7 +772,7 @@ function News.avg(e: any, rows: { any })
 		local sum, n = { 0, 0, 0, 0 }, { 0, 0, 0, 0 }
 		for _, x in Roster.list do
 			if x.slot == e.slot and x.live then
-				local ok, st = pcall(statsFor, x.id)
+				local ok, st = pcall(News.statsFor, x.id)
 				if ok and type(st) == "table" then
 					for i = 1, 4 do
 						local b = st[i] and tonumber(st[i].bar)
@@ -820,6 +825,7 @@ local function statsFor(id: string): { Roster.Stat }
 	return out
 end
 
+News.statsFor = statsFor -- (News.avg, above, reads it from here)
 -- ---------------------------------------------------------------- the wraps (bottom)
 local _, wbar = panel(stage, UDim2.fromOffset(64, 852), UDim2.fromOffset(1792, 188))
 local wTitle = label(wbar, "WRAPS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
@@ -1111,9 +1117,10 @@ local function cardModel(c: Card, id: string)
 	m:PivotTo(CFrame.Angles(0, math.pi / 2, 0) * rel:Inverse())
 	News.flat(m)
 	m.Parent = c.vp
-	local _, sz = m:GetBoundingBox()
-	local r = math.max(sz.X, sz.Z, sz.Y * 2) / 2
-	c.cam.CFrame = CFrame.lookAt(Vector3.new(0, 0, r * 4.3), Vector3.new(0, 0, 0))
+	local cf, sz = m:GetBoundingBox()
+	local half = math.max(sz.X, sz.Z) / 2 / (156 / 80)
+	local r = math.max(half, sz.Y / 2) * 1.1
+	c.cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, r / math.tan(math.rad(20))), cf.Position)
 end
 
 local function showPreview(id: string)
@@ -1153,7 +1160,7 @@ refresh = function()
 			local wr = Roster.wrapById[wid]
 			local item = if c.slot == "utility" then Items.list[id] else nil
 			local sk = skinOf(id)
-			c.wrap.Text = if item then News.fmt("%d %s · %g s each", item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
+			c.wrap.Text = if item then News.fmt("%d %s, %g s each", item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
 				elseif sk ~= "default" then News.fmt("%s skin", (skinInfo(sk)))
 				elseif wid == "default" then "Factory paint" else ("%s wrap · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
 			c.st.Transparency = 1
@@ -1179,6 +1186,8 @@ refresh = function()
 			a.btn.BackgroundColor3 = if focused then News.B.WHITE else CARD
 			local cutA = a.btn:FindFirstChild("Cut") or News.K.cut(a.btn, 12, PANEL)
 			cutA.Visible = focused
+			local pic = a.btn:FindFirstChild("Pic") :: ViewportFrame?
+			if pic then pic.ImageColor3 = if focused then INK else WHITE end
 			for _, d in a.btn:GetChildren() do
 				if d:IsA("TextLabel") and d ~= a.tag then d.TextColor3 = if focused then INK else TEXT end
 			end
@@ -1215,7 +1224,8 @@ refresh = function()
 		liveChipL.TextColor3 = DIM
 		liveChipL.Parent.Visible = not e.live
 		infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
-		gimText.Text = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
+		local g = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
+		gimText.Text = string.upper(string.sub(g, 1, 1)) .. string.sub(g, 2) -- (a sentence starts with a capital)
 	end)
 	News.guard("stats", function()
 		local okS, st = pcall(statsFor, e.id)
@@ -1252,8 +1262,8 @@ refresh = function()
 			local armed = News.arm == e.id and os.clock() - News.armT < 4
 			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED · " .. (if e.slot == "utility" then "G" else "KEY " .. keyOf(e.slot)), false, CARD); equipBtn.face.TextColor3 = GREY
-		else equipBtn:set(if e.slot == "utility" then "EQUIP · G" else "EQUIP · KEY " .. keyOf(e.slot), true) end
+		elseif p[e.slot] == e.id then equipBtn:set("ON KEY " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = GREY
+		else equipBtn:set("EQUIP ON " .. keyOf(e.slot), true) end
 	end)
 	News.guard("preview", showPreview, e.id)
 	-- wraps for the focused weapon
@@ -1300,7 +1310,7 @@ refresh = function()
 	News.guard("new marks", News.refresh, e)
 	News.guard("save line", function()
 		local save = me:GetAttribute("LoadoutSave")
-		saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
+		saveLbl.Text = if save == "off" then "NOT SAVING: Studio has API access off" elseif save == "cloud" then "" else "Loading your loadout"
 		saveLbl.TextColor3 = if save == "off" then RED else GREY
 	end)
 end
@@ -2030,15 +2040,12 @@ done.face.MouseButton1Click:Connect(function() setOpen(false) end)
 News.close = function() setOpen(false) end -- (the loadout's way out, for code above setOpen: the coins buy, 18 Nov)
 -- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
 -- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
-local flairBtn = button(stage, "", "white", UDim2.fromOffset(64, 156 + 4 * 108), UDim2.fromOffset(480, 96))
-do -- (27 Nov: a row like the slots': its name, what's in it)
-	flairBtn.base = PANEL; flairBtn.face.BackgroundColor3 = PANEL; flairBtn.face.BackgroundTransparency = 0.06
-	local n = label(flairBtn.face, "KILL EFFECT", 40, UDim2.fromOffset(58, 12), UDim2.fromOffset(400, 48), TEXT)
-	n.FontFace = FONT_TITLE; n.ZIndex = 3; n.TextWrapped = false
-	local s2 = label(flairBtn.face, "Emotes · grapple · pets", 16, UDim2.fromOffset(60, 60), UDim2.fromOffset(400, 22), GREY)
-	s2.ZIndex = 3
-	local k = label(flairBtn.face, "›", 40, UDim2.new(1, -56, 0, 0), UDim2.fromOffset(40, 96), DIM, Enum.TextXAlignment.Center)
-	k.FontFace = FONT_TITLE; k.ZIndex = 3
+local flairBtn = button(stage, "KILL EFFECTS AND EMOTES", "white", UDim2.fromOffset(1384, 50), UDim2.fromOffset(300, 44))
+do -- (round 2: another screen, so a plain link beside DONE, not a row in the slot list)
+	flairBtn.base = PANEL; flairBtn.face.BackgroundTransparency = 1
+	flairBtn.face.FontFace = FONT_TITLE; flairBtn.face.TextSize = 22; flairBtn.face.TextXAlignment = Enum.TextXAlignment.Right
+	flairBtn.face.TextColor3 = TEXT
+	flairBtn.face:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() flairBtn.face.BackgroundTransparency = 1 end)
 end
 flairBtn.face.MouseButton1Click:Connect(function()
 	local m = script.Parent:FindFirstChild("FlairUI")
@@ -2220,7 +2227,7 @@ local function phoneLayout()
 			b.mark.Visible = name == page
 			b.face.BackgroundColor3 = if name == page then T.CARD_HI else b.base
 		end
-		put(flairBtn.holder, 652, 88, 0.62, gear)
+		put(flairBtn.holder, 760, 12, 1, true)
 		put(done.holder, 1110, 12, 1, true)
 		set(done.holder, "Size", UDim2.fromOffset(170, 60))
 		set(done.face, "TextSize", 30)

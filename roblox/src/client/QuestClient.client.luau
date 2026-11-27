@@ -97,6 +97,12 @@ T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 1
 local line = QuestUI.row(wallet, 0, 4, 24, { { icon = "brass", s = 16 }, { text = "0", size = 14, font = T.FONT_HEAVY }, { gap = 10 },
 	{ icon = "tix", s = 16 }, { text = "0", size = 14, font = T.FONT_HEAVY } })
 line.Position = UDim2.fromOffset(0, 4)
+-- (27 Nov 2026, A PLATE: the wallet bare on the world, its numbers white)
+wallet.BackgroundTransparency = 1
+do local st = wallet:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end end
+for _, c in line:GetChildren() do
+	if c:IsA("TextLabel") then c.TextColor3 = Color3.new(1, 1, 1); c.TextStrokeTransparency = 0.75; c.TextSize = 16 end
+end
 -- (a click on the wallet opens the shop's COINS tab: the owner, 18 Nov; the shop session)
 local walletOpen = T.new("TextButton", { Name = "Open", BackgroundTransparency = 1, Text = "", Size = UDim2.fromScale(1, 1), ZIndex = 5 }, wallet)
 walletOpen.MouseButton1Click:Connect(function()
@@ -113,9 +119,9 @@ local function refresh()
 	local t = texts()
 	if t[1] then t[1].Text = QuestUI.comma(tonumber(me:GetAttribute("Brass")) or 0) end
 	if t[2] then t[2].Text = QuestUI.comma(tonumber(me:GetAttribute("CrateTickets")) or 0) end
-	count.Text = ("%d/3"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
+	count.Text = (if me:GetAttribute("QuestNews") == true then "NEW  " else "") .. ("%d/3"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
 	count.TextTransparency = if (tonumber(me:GetAttribute("QuestsDone")) or 0) >= 3 then 0 else 0.3 -- (A: all three done = full white)
-	dot.Visible = me:GetAttribute("QuestNews") == true
+	dot.Visible = false -- (27 Nov: NEW in the count says it)
 end
 for _, a in { "Brass", "CrateTickets", "QuestsDone", "QuestNews" } do me:GetAttributeChangedSignal(a):Connect(refresh) end
 refresh()

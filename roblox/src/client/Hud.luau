@@ -19,11 +19,13 @@ gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 local hud = T.scaled(gui)
 
 -- speed: a small plate beside the health plate (FightHud's: 24 px in from the left, 212 wide, the same height)
-local speed = T.plate(hud, "Speed", UDim2.new(0, 244, 1, -88), UDim2.fromOffset(84, 64))
-local speedNum = T.text(speed, "Value", "0", 24, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
-speedNum.Position = UDim2.fromOffset(0, 11); speedNum.Size = UDim2.new(1, 0, 0, 26)
-local speedSub = T.text(speed, "Unit", "m/s", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
-speedSub.Position = UDim2.fromOffset(0, 40); speedSub.Size = UDim2.new(1, 0, 0, 14); speedSub.RichText = true
+-- (27 Nov 2026, the owner's pick, A PLATE: bare words a little under the crosshair, "24 m/s", no box)
+local speed = T.new("Frame", { Name = "Speed", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.5, 34), Size = UDim2.fromOffset(160, 20) }, hud)
+local speedNum = T.text(speed, "Value", "0", 15, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+speedNum.Position = UDim2.fromOffset(0, 0); speedNum.Size = UDim2.new(0.5, -3, 1, 0); speedNum.TextStrokeTransparency = 0.75
+local speedSub = T.text(speed, "Unit", "m/s", 12, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Left)
+speedSub.Position = UDim2.new(0.5, 3, 0, 1); speedSub.Size = UDim2.new(0.5, -3, 1, 0); speedSub.RichText = true
+speedSub.TextTransparency = 0.25; speedSub.TextStrokeTransparency = 0.8
 -- (not in the hub, like FightHud's health and weapon card: owner, 18 Nov)
 do
 	local me = Players.LocalPlayer
@@ -249,9 +251,9 @@ end
 
 function Hud.speed(ms: number, sliding: boolean, hooked: boolean)
 	speedNum.Text = tostring(math.floor(ms + 0.5))
-	speedNum.TextColor3 = if ms > 20 then T.ACCENT else T.TEXT
+	speedNum.TextColor3 = T.TEXT
 	local tag = if sliding then "SLIDE" elseif hooked then "ROPE" else nil
-	local line = if tag then ('m/s  <font color="%s">%s</font>'):format(T.hex(T.ACCENT), tag) else "m/s"
+	local line = if tag then "m/s  " .. tag else "m/s"
 	if speedSub.Text ~= line then speedSub.Text = line end
 end
 

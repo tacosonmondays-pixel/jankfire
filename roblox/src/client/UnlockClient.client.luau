@@ -20,20 +20,24 @@ local gui = T.new("ScreenGui", { Name = "JankLevel", ResetOnSpawn = false, Ignor
 local sc = T.scaled(gui)
 
 -- the chip
-local chip = T.plate(sc, "Level", UDim2.fromOffset(16, 62), UDim2.fromOffset(148, 26))
-local lvText = T.text(chip, "Lv", "LV 1", 13, T.TEXT, T.FONT_HEAVY)
-lvText.Position = UDim2.fromOffset(10, 0); lvText.Size = UDim2.new(0, 52, 1, 0)
-local track = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK or T.CARD_HI,
-	Position = UDim2.fromOffset(62, 11), Size = UDim2.fromOffset(76, 4) }, chip)
-T.corner(track, 2)
-local fill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(0, 1) }, track)
-T.corner(fill, 2)
+-- (27 Nov 2026, the owner's pick, A PLATE: bare on the world, no plate: LV n, a bone bar, the XP to the next level)
+local chip = T.new("Frame", { Name = "Level", BackgroundTransparency = 1, Position = UDim2.fromOffset(28, 54), Size = UDim2.fromOffset(260, 30) }, sc)
+local lvText = T.text(chip, "Lv", "LV 1", 15, T.TEXT, T.FONT_HEAVY)
+lvText.Position = UDim2.fromOffset(0, 0); lvText.Size = UDim2.new(0, 50, 0, 18); lvText.TextStrokeTransparency = 0.75
+local track = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45,
+	Position = UDim2.fromOffset(50, 6), Size = UDim2.fromOffset(120, 6) }, chip)
+T.corner(track, 3)
+local fill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(229, 226, 219), Size = UDim2.fromScale(0, 1) }, track)
+T.corner(fill, 3)
+local xpText = T.text(chip, "Xp", "", 11, T.TEXT, T.FONT_BOLD)
+xpText.Position = UDim2.fromOffset(178, 0); xpText.Size = UDim2.new(0, 90, 0, 18); xpText.TextTransparency = 0.2; xpText.TextStrokeTransparency = 0.8
 local function drawChip()
 	local r = Ranks.of(me:GetAttribute("Xp"))
 	local lv = me:GetAttribute("Level")
 	lvText.Text = "LV " .. (if type(lv) == "number" then lv else r.level)
 	fill.Size = UDim2.fromScale(r.progress, 1)
-	chip.Visible = me:GetAttribute("LoadoutOpen") ~= true
+	xpText.Text = ("%d / %d XP"):format(r.into, r.need)
+	chip.Visible = me:GetAttribute("LoadoutOpen") ~= true and me:GetAttribute("Zone") ~= "match" -- (not mid-match)
 end
 
 -- the toast
@@ -77,6 +81,7 @@ local function onLevel()
 end
 for _, a in { "Level", "Xp", "StatsSave" } do me:GetAttributeChangedSignal(a):Connect(onLevel) end
 me:GetAttributeChangedSignal("LoadoutOpen"):Connect(drawChip)
+me:GetAttributeChangedSignal("Zone"):Connect(drawChip) -- (hidden mid-match)
 onLevel()
 
 me:GetAttributeChangedSignal("LevelTest"):Connect(function()

@@ -720,11 +720,12 @@ return function(C: any): any
 			local r = new("Frame", { Name = "Pack" .. i, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1 / #packs, 0), LayoutOrder = i }, panel)
 			if i > 1 then new("Frame", { Name = "Rule", BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1) }, r) end
 			local bonus = tonumber(o.bonus) or 0
-			local amt = txt(r, ('%s <font size="13" color="#56534d">coins</font>'):format(commas(o.amount - bonus)), 24, T.TEXT, T.FONT_HEAVY)
+			-- (round 2: the total you get, the bonus said as inside it: "6,500 coins", "500 of them bonus")
+			local amt = txt(r, ('%s <font size="13" color="#56534d">coins</font>'):format(commas(o.amount)), 24, T.TEXT, T.FONT_HEAVY)
 			amt.RichText = true
 			amt.Position = UDim2.new(0, 16, 0.5, if bonus > 0 then -20 else -13); amt.Size = UDim2.new(0.6, 0, 0, 28)
 			if bonus > 0 then
-				local bo = txt(r, "+" .. commas(bonus) .. " bonus", 13, T.MUTED, T.FONT_BOLD)
+				local bo = txt(r, commas(bonus) .. " of them bonus", 13, T.MUTED, T.FONT_BOLD)
 				bo.Position = UDim2.new(0, 16, 0.5, 8); bo.Size = UDim2.new(0.6, 0, 0, 16)
 			end
 			local b = priceBtn(r, nil, ROBUX .. " " .. commas(o.robux), sell and Shop.productFor(o) ~= nil, nil, UDim.new(1, -16), 104)

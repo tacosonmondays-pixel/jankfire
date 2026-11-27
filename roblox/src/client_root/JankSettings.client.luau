@@ -22,9 +22,17 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = lp:WaitForChild("PlayerGui")
 
 -- the reminder, top right
-local hint = T.plate(T.scaled(gui), "Hint", UDim2.new(1, -136, 0, 14), UDim2.fromOffset(112, 30))
+-- (27 Nov 2026, the owner's pick, A PLATE: bare on the world like the hub menu, SETTINGS and a bone key cap)
+local hint = T.new("Frame", { Name = "Hint", BackgroundTransparency = 1, Position = UDim2.new(1, -136, 0, 14), Size = UDim2.fromOffset(112, 30) }, T.scaled(gui))
 local cap = T.key(hint, "P", UDim2.fromOffset(5, 4))
-local hintText = T.text(hint, "Text", "settings", 13, T.MUTED, T.FONT_BOLD)
+cap.BackgroundColor3 = Color3.fromRGB(229, 226, 219)
+do
+	local st = cap:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end
+	local l = cap:FindFirstChild("Letter") :: TextLabel?; if l then l.TextColor3 = Color3.fromRGB(29, 31, 35) end
+end
+local hintText = T.text(hint, "Text", "SETTINGS", 13, T.TEXT, T.FONT_HEAVY)
+hintText.TextStrokeTransparency = 0.78
+lp:GetAttributeChangedSignal("Zone"):Connect(function() hint.Visible = lp:GetAttribute("Zone") ~= "match" end)
 hintText.Position = UDim2.fromOffset(36, 0)
 hintText.Size = UDim2.new(1, -40, 1, 0)
 local function hintKey()

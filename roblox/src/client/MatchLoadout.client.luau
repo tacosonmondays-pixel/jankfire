@@ -32,7 +32,10 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Roster = require(Shared:WaitForChild("Roster")) :: any
-local T = require(script.Parent:WaitForChild("Theme")) :: any
+-- (27 Nov 2026, the owner's pick: the picker belongs with the loadout, so B BROADCAST's colours: black slabs, square
+-- corners, white for the chosen slot (with a cut corner), Butter only on READY. UiKit.themeB is Theme in those colours)
+local K = require(script.Parent:WaitForChild("UiKit")) :: any
+local T = K.themeB()
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any
 local Keys = require(script.Parent:WaitForChild("Keys")) :: any
 local MenuCursor = require(script.Parent:WaitForChild("MenuCursor")) :: any
@@ -98,20 +101,27 @@ local root = new("Frame", { Name = "Root", BackgroundTransparency = 1, AnchorPoi
 -- the strip: a header (LOADOUT, the key, the seconds and a bar) over the four slots
 local strip = new("Frame", { Name = "Strip", BackgroundTransparency = 1 }, root)
 local head = T.plate(strip, "Head", UDim2.fromOffset(0, 0), UDim2.fromOffset(100, 34))
-local title = text(head, "Title", "LOADOUT", 13, T.TEXT, T.FONT_HEAVY)
+local title = text(head, "Title", "LOADOUT", 16, T.TEXT, K.COND)
 local cap = T.key(head, "L", UDim2.fromOffset(0, 6))
-local secs = text(head, "Secs", "", 22, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+local secs = text(head, "Secs", "", 22, T.TEXT, K.COND, Enum.TextXAlignment.Right)
 local sub = text(head, "Sub", "", 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
 -- READY, and the ticks: who has locked in, by team
-local readyB = new("TextButton", { Name = "Ready", AutoButtonColor = false, BorderSizePixel = 0, Text = "READY", BackgroundColor3 = T.CARD_HI,
-	FontFace = T.FONT_HEAVY, TextSize = 12, TextColor3 = T.TEXT, AnchorPoint = Vector2.new(1, 0.5) }, head)
-T.corner(readyB, 4)
-local readySt = T.edge(readyB, T.ACCENT, 0.35, 1)
+local readyB = new("TextButton", { Name = "Ready", AutoButtonColor = false, BorderSizePixel = 0, Text = "READY", BackgroundColor3 = K.B.BUTTER,
+	FontFace = K.COND, TextSize = 15, TextColor3 = K.B.INK, AnchorPoint = Vector2.new(1, 0.5), TextXAlignment = Enum.TextXAlignment.Left }, head)
+local readySt = T.edge(readyB, T.ACCENT, 1, 1)
+-- (the press shape: a triangle each side in the button's colour) and its key, the player's own (Binds "ready"), in a cap
+local readyL = K.tri(readyB, UDim2.new(0, -6, 0, 0), 6, 24, K.B.BUTTER, "br"); readyL.Size = UDim2.new(0, 6, 1, 0)
+local readyR = K.tri(readyB, UDim2.new(1, 0, 0, 0), 6, 24, K.B.BUTTER, "tl"); readyR.Size = UDim2.new(0, 6, 1, 0)
+readyB:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() readyL.BackgroundColor3 = readyB.BackgroundColor3; readyR.BackgroundColor3 = readyB.BackgroundColor3 end)
+new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, readyB)
+local readyKey = new("TextLabel", { Name = "Key", BackgroundColor3 = K.B.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0),
+	Size = UDim2.fromOffset(0, 16), AutomaticSize = Enum.AutomaticSize.X, FontFace = K.SANS_HEAVY, TextSize = 10, TextColor3 = K.B.BUTTER, Text = "" }, readyB)
+new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, readyKey)
 local ticks = new("Frame", { Name = "Ticks", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5) }, head)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 10),
 	SortOrder = Enum.SortOrder.LayoutOrder }, ticks)
 local track = new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK or T.CARD_HI, AnchorPoint = Vector2.new(0, 1) }, head)
-local fill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Size = UDim2.fromScale(1, 1) }, track)
+local fill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(1, 1) }, track)
 
 type Tile = { slot: string, btn: TextButton, st: UIStroke, lab: TextLabel, name: TextLabel, vp: ViewportFrame, cam: Camera }
 local tiles: { Tile } = {}
@@ -175,7 +185,7 @@ local function layout()
 	cap.Visible = not t
 	cap.Position = UDim2.fromOffset(10, math.floor((G.hh - 22) / 2) - 1)
 	title.Position = UDim2.fromOffset(if t then 12 else 40, 0); title.Size = UDim2.new(0, 120, 1, -3)
-	secs.AnchorPoint = Vector2.new(1, 0); secs.Position = UDim2.new(1, -12, 0, 0); secs.Size = UDim2.new(0, 44, 1, -3)
+	secs.AnchorPoint = Vector2.new(1, 0); secs.Position = UDim2.new(1, -12, 0, 0); secs.Size = UDim2.new(0, 52, 1, -3)
 	secs.TextSize = if sm then 18 else 22
 	sub.AnchorPoint = Vector2.new(1, 0); sub.Position = UDim2.new(1, -60, 0, 0); sub.Size = UDim2.new(0, 220, 1, -3)
 	track.Position = UDim2.new(0, 10, 1, -4); track.Size = UDim2.new(1, -20, 0, 2)
@@ -211,8 +221,17 @@ end
 -- the ticks: ReadyTeams = per team, "1" a player locked in, "0" one not ("1,0|0")
 local function drawTicks()
 	for _, c in ticks:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
+	for _, c in ticks:GetChildren() do if c:IsA("TextLabel") then c:Destroy() end end
 	local board = me:GetAttribute("ReadyTeams")
 	if type(board) ~= "string" then return end
+	-- (27 Nov: words, not ticks: the critic read the ticks as unlabelled lights)
+	local inN, allN = 0, 0
+	for _, part in string.split(board, "|") do
+		for _, mark in string.split(part, ",") do if mark ~= "" then allN += 1; if mark == "1" then inN += 1 end end end
+	end
+	local words = text(ticks, "Count", ("%d of %d ready"):format(inN, allN), if S.small then 11 else 13, T.MUTED, K.SANS_BOLD)
+	words.AutomaticSize = Enum.AutomaticSize.X; words.Size = UDim2.fromOffset(0, 14)
+	if true then return end
 	local sz = if S.small then 8 else 9
 	for t, part in string.split(board, "|") do
 		if part == "" then continue end
@@ -232,10 +251,12 @@ local function drawTicks()
 end
 local function drawReady()
 	local r = isReady()
-	readyB.Text = if r then "LOCKED IN" elseif touch() then "READY" else "READY  [" .. Binds.label("ready") .. "]"
-	readyB.BackgroundColor3 = if r then T.CARD else T.CARD_HI
-	readyB.TextColor3 = if r then T.MUTED else T.TEXT
-	readySt.Transparency = if r then 0.9 else 0.35
+	readyB.Text = if r then "LOCKED IN" else "READY"
+	readyKey.Text = Binds.label("ready")
+	readyKey.Visible = not r and not touch() and readyKey.Text ~= ""
+	readyB.BackgroundColor3 = if r then T.CARD else K.B.BUTTER
+	readyB.TextColor3 = if r then T.MUTED else K.B.INK
+	readySt.Transparency = 1
 	readyB.BackgroundTransparency = if S.readying then 0.4 else 0
 	for _, tl in tiles do tl.btn.BackgroundTransparency = if r then 0.4 else T.BG_A end
 end
@@ -248,9 +269,12 @@ local function drawTiles()
 		tl.name.Text = if e then string.upper(e.name) else "-"
 		if wid and e then task.defer(GunPreview.put, tl.vp, tl.cam, wid) end
 		local on = S.tray == tl.slot
-		tl.st.Color = if on then T.ACCENT else Color3.new(1, 1, 1)
-		tl.st.Transparency = if on then 0.25 else 0.88
-		tl.btn.BackgroundColor3 = if on then T.CARD else T.BG
+		tl.st.Transparency = 1
+		tl.btn.BackgroundColor3 = if on then K.B.WHITE else T.BG
+		tl.lab.TextColor3 = if on then Color3.fromRGB(96, 96, 96) else T.MUTED
+		tl.name.TextColor3 = if on then K.B.INK else T.TEXT
+		local cut = tl.btn:FindFirstChild("Cut") or K.cut(tl.btn, 10, T.BG)
+		cut.Visible = on
 	end
 end
 
@@ -303,10 +327,10 @@ local function drawTray()
 	end
 	foot.Position = UDim2.fromOffset(pad + 2, pad + gh + 8); foot.Size = UDim2.fromOffset(w - pad * 2 - 96, fh)
 	foot.TextYAlignment = Enum.TextYAlignment.Center
-	foot.Text = S.note or (if alive() then "picks go in your hands now" else "you spawn with your picks next round")
-	foot.TextColor3 = if S.note then T.ACCENT else T.MUTED
+	foot.Text = S.note or (if alive() then "Picks go in your hands now" else "You spawn with your picks next round")
+	foot.TextColor3 = if S.note then K.B.BUTTER else T.MUTED
 	done.AnchorPoint = Vector2.new(1, 0); done.Position = UDim2.fromOffset(w - pad, pad + gh + 8); done.Size = UDim2.fromOffset(84, fh)
-	done.Text = if touch() then "DONE" else "DONE  [L]"
+	done.Text = "DONE"
 	local cur = current(slot)
 	for _, c in cards do
 		local on = c.id == cur
@@ -475,7 +499,7 @@ RunService.RenderStepped:Connect(function()
 	local left = windowLeft()
 	if not S.shown or not left then return end
 	if left > S.total then S.total = left end
-	local s = tostring(math.ceil(left))
+	local s = tostring(math.ceil(left)) .. " s" -- (with its unit: a bare number read as an unlabelled one)
 	if secs.Text ~= s then secs.Text = s end
 	fill.Size = UDim2.fromScale(math.clamp(left / S.total, 0, 1), 1)
 	local subT = "" -- (the READY button sits there now)

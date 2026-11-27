@@ -46,41 +46,61 @@ function HookChargesUI.try(): boolean
 	return false
 end
 
--- the pips: under the crosshair, one per charge, a used one filling from the bottom as it comes back
+-- (27 Nov 2026, the owner's pick A PLATE, play-party's go: nothing under the crosshair (the critic read the pips, the
+-- padlock and the AUTO square there as unlabelled lights). the same three things as words over your health, bottom
+-- left (inside FightHud's "Hp", so a phone's layout moves them with it): [E] HOOK with a pip per charge, AT GO while
+-- the round hasn't started, then [X] AUTO with its cooldown filling. the old ScreenGui JankHookCharges stays and is
+-- never enabled: RemoteCooldowns and ScytheDash read its .Enabled to move their rows under the crosshair)
 local gui = new("ScreenGui", { Name = "JankHookCharges", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 4, Enabled = false },
 	me:WaitForChild("PlayerGui"))
-local row = new("Frame", { Name = "Pips", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.5, 26),
-	Size = UDim2.fromOffset(HC.CHARGES * 10 + (HC.CHARGES - 1) * 6, 10) }, gui)
+local Binds = require(script.Parent:WaitForChild("Binds")) :: any
+local BONE, INK, WORLD = Color3.fromRGB(229, 226, 219), Color3.fromRGB(29, 31, 35), Color3.new(1, 1, 1)
+local readout = new("Frame", { Name = "HookReadout", BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, -30), Size = UDim2.fromOffset(340, 22), Visible = false })
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder,
+	Padding = UDim.new(0, 6) }, readout)
+local function cap(order: number): TextLabel
+	local f = new("TextLabel", { Name = "Key", BackgroundColor3 = BONE, BorderSizePixel = 0, Size = UDim2.fromOffset(18, 18), AutomaticSize = Enum.AutomaticSize.X,
+		FontFace = T.FONT_HEAVY, TextSize = 11, TextColor3 = INK, Text = "", LayoutOrder = order }, readout)
+	new("UICorner", { CornerRadius = UDim.new(0, 4) }, f)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, f)
+	return f
+end
+local function word(text: string, order: number, size: number?): TextLabel
+	local l = new("TextLabel", { BackgroundTransparency = 1, FontFace = T.FONT_HEAVY, TextSize = size or 14, TextColor3 = WORLD, Text = text,
+		TextStrokeColor3 = Color3.new(0, 0, 0), TextStrokeTransparency = 0.78, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 22),
+		LayoutOrder = order }, readout)
+	return l
+end
+local hookCap = cap(1)
+local hookWord = word("HOOK", 2)
+local row = new("Frame", { Name = "Pips", BackgroundTransparency = 1, Size = UDim2.fromOffset(HC.CHARGES * 9 + (HC.CHARGES - 1) * 4, 9), LayoutOrder = 3 }, readout)
 local pips: { { back: Frame, fill: Frame } } = {}
 for i = 1, HC.CHARGES do
-	local b = new("Frame", { Name = "Pip" .. i, BorderSizePixel = 0, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45,
-		ClipsDescendants = true, Position = UDim2.fromOffset((i - 1) * 16, 0), Size = UDim2.fromOffset(10, 10) }, row)
-	T.corner(b, 5)
-	T.edge(b, T.TEXT, 0.35, 1)
-	local f = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 1) }, b)
-	T.corner(f, 5)
-	pips[i] = { back = b, fill = f }
+	local bk = new("Frame", { Name = "Pip" .. i, BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45,
+		ClipsDescendants = true, Position = UDim2.fromOffset((i - 1) * 13, 0), Size = UDim2.fromOffset(9, 9) }, row)
+	T.corner(bk, 2)
+	local f = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = BONE, AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 1) }, bk)
+	T.corner(f, 2)
+	pips[i] = { back = bk, fill = f }
 end
-
--- (19 Nov 2026) before GO (RoundLock, Matches: the countdown, the loadout window, between rounds, a map room) a small
--- padlock sits under the crosshair, the pips dimmed: the grapple waits for the round. and QUICKPLAY's auto-lock
--- (HC.AUTO, QuickMatch on you): a LOCK pip right of the crosshair, filling over its cooldown (HookAutoT, the server's)
-local lockF = new("Frame", { Name = "Lock", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.5, 40),
-	Size = UDim2.fromOffset(12, 14), Visible = false }, gui)
-local shackle = new("Frame", { Name = "Shackle", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0),
-	Size = UDim2.fromOffset(8, 9) }, lockF)
-T.corner(shackle, 4)
-T.edge(shackle, T.MUTED, 0.2, 1.5)
-new("Frame", { Name = "Body", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0),
-	Size = UDim2.fromOffset(12, 8) }, lockF)
-local autoB = new("Frame", { Name = "AutoLock", BorderSizePixel = 0, BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45,
-	ClipsDescendants = true, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0.5, 30, 0.5, 31), Size = UDim2.fromOffset(10, 10), Visible = false }, gui)
+local lockF = word("AT GO", 4, 12)
+lockF.TextTransparency = 0.25
+local gap = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(8, 1), LayoutOrder = 5 }, readout)
+local autoCap = cap(6)
+local autoWord = word("AUTO", 7)
+local autoB = new("Frame", { Name = "AutoLock", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45,
+	Size = UDim2.fromOffset(28, 5), LayoutOrder = 8 }, readout)
 T.corner(autoB, 2)
-T.edge(autoB, T.ACCENT, 0.35, 1)
-local autoFill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 1) }, autoB)
+local autoFill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = BONE, Size = UDim2.fromScale(1, 1) }, autoB)
 T.corner(autoFill, 2)
+-- (it lives in FightHud's health frame, once that's there)
+task.spawn(function()
+	local fight = me:WaitForChild("PlayerGui"):WaitForChild("JankfireFight", 30)
+	local sc = fight and fight:WaitForChild("Scaled", 10)
+	local hp = sc and sc:WaitForChild("Hp", 10)
+	readout.Parent = hp or gui
+end)
 -- (19 Nov 2026: the AUTO GRAPPLE on X, HC.LOCK, uses the same pip: shown in any match, filling over LOCK.cd, a flash
 -- when it's ready again; pressed too soon, the not-ready sound and the seconds left on the quiet line)
 local autoUntil = 0 -- (this screen's guess till HookAutoT comes back)
@@ -115,23 +135,31 @@ RunService.RenderStepped:Connect(function()
 	local auto = alive and ((HC.LOCK and HC.LOCK.on and (me:GetAttribute("Zone") == "match" or test) and not me:GetAttribute("ZmOn"))
 		or (HC.AUTO and HC.AUTO.on and me:GetAttribute("QuickMatch") == true))
 	local show = HookChargesUI.limited() and alive
-	if gui.Enabled ~= (show or lockedNow or auto) then gui.Enabled = show or lockedNow or auto end
-	if lockF.Visible ~= lockedNow then lockF.Visible = lockedNow end
+	local any = show or lockedNow or auto == true
+	if readout.Visible ~= any then readout.Visible = any end
+	if not any then lastN = s.n; return end
+	-- the hook part: its key, HOOK, the pips while charges count, AT GO before the round
+	local hk = Binds.label("grapple")
+	if hookCap.Text ~= hk then hookCap.Text = hk end
+	hookCap.Visible = show or lockedNow; hookWord.Visible = show or lockedNow
 	row.Visible = show
-	for _, p in pips do p.back.BackgroundTransparency = if lockedNow then 0.75 else 0.45 end
-	if autoB.Visible ~= (auto == true) then autoB.Visible = auto == true end
+	lockF.Visible = lockedNow
+	gap.Visible = (show or lockedNow) and auto == true
+	autoCap.Visible = auto == true; autoWord.Visible = auto == true; autoB.Visible = auto == true
 	if auto then
+		local ak = Binds.label("reel")
+		if autoCap.Text ~= ak then autoCap.Text = ak end
 		local srv = me:GetAttribute("HookAutoT")
 		local untilT = math.max(autoUntil, if type(srv) == "number" then srv else 0)
 		if type(srv) == "number" and srv < autoUntil - 1 then autoUntil = srv end -- (the server let it go sooner: a cut)
 		local k = math.clamp(1 - (untilT - now()) / autoCd, 0, 1)
-		if k >= 1 and autoFill.Size.Y.Scale < 1 then flashT = os.clock() end -- (ready again: a flash)
-		autoFill.Size = UDim2.fromScale(1, k)
-		autoFill.BackgroundColor3 = if k >= 1 then T.ACCENT else T.MUTED
+		if k >= 1 and autoFill.Size.X.Scale < 1 then flashT = os.clock() end -- (ready again: a flash)
+		autoFill.Size = UDim2.fromScale(k, 1)
 		local f = math.clamp((os.clock() - flashT) / 0.35, 0, 1)
-		local px = math.floor(10 + 8 * (1 - f) + 0.5)
-		if autoB.Size.X.Offset ~= px then autoB.Size = UDim2.fromOffset(px, px) end
+		autoWord.TextTransparency = if k >= 1 then 0 else 0.45
+		autoWord.TextSize = math.floor(14 + 3 * (1 - f) + 0.5)
 	end
+	for _, p in pips do p.back.BackgroundTransparency = if lockedNow then 0.75 else 0.45 end
 	if not show then lastN = s.n; return end
 	local _, frac = HC.nextIn(s, now())
 	if s.n > lastN then pcall(Sfx.play, "hook_ready") end
@@ -139,7 +167,7 @@ RunService.RenderStepped:Connect(function()
 	for i, p in pips do
 		local k = if i <= s.n then 1 elseif i == s.n + 1 then frac else 0
 		p.fill.Size = UDim2.fromScale(1, k)
-		p.fill.BackgroundColor3 = if i <= s.n then T.TEXT else T.MUTED
+		p.fill.BackgroundTransparency = if i <= s.n then 0 else 0.5
 	end
 end)
 

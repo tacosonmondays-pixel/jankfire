@@ -171,8 +171,15 @@ end
 -- ---------------------------------------------------------------- the HUD: your item, above the ammo plate
 local fight = me:WaitForChild("PlayerGui"):WaitForChild("JankfireFight")
 local hud = fight:WaitForChild("Scaled")
-local plate = T.plate(hud, "Utility", UDim2.new(1, -256, 1, -138), UDim2.fromOffset(232, 42))
-T.key(plate, "G", UDim2.fromOffset(12, 10))
+local plate = T.plate(hud, "Utility", UDim2.new(1, -272, 1, -178), UDim2.fromOffset(232, 42))
+do -- (27 Nov 2026, A PLATE: a dark backing like the slots', no hairline, a bone key cap; it sits above the ammo now)
+	plate.BackgroundColor3 = Color3.fromRGB(20, 20, 24); plate.BackgroundTransparency = 0.3
+	local st = plate:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end
+	local k = T.key(plate, "G", UDim2.fromOffset(12, 10))
+	k.BackgroundColor3 = Color3.fromRGB(229, 226, 219)
+	local ks = k:FindFirstChildOfClass("UIStroke"); if ks then ks.Enabled = false end
+	local l = k:FindFirstChild("Letter") :: TextLabel?; if l then l.TextColor3 = Color3.fromRGB(29, 31, 35) end
+end
 local chip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, Position = UDim2.fromOffset(44, 11), Size = UDim2.fromOffset(3, 20) }, plate)
 T.corner(chip, 2)
 local nameL = T.text(plate, "Name", "", 15, T.TEXT, T.FONT_BOLD)

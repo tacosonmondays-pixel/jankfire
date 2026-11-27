@@ -147,7 +147,7 @@ local hpEdge = T.new("UIStroke", { Transparency = 1, Enabled = false }, hpPlate)
 local hpBox, hpText, hpSet = K.hero(hpPlate, "Value", 62, T.FONT_HEAVY, K.A.WORLD)
 hpBox.Position = UDim2.fromOffset(-2, 0)
 local hpShown = -1
-local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.72, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
+local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
 T.corner(hpTrack, 5)
 local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = K.A.BONE, Size = UDim2.fromScale(1, 1) }, hpTrack)
 T.corner(hpBar, 5)
@@ -375,7 +375,7 @@ local function showTiles(parts: { string }): boolean
 	tabRound.Text = string.upper(rd)
 	tabClock.Text = parts[4] or ""
 	tabClock.Visible = tabClock.Text ~= ""
-	tiles.Visible = true
+	tiles.Visible = me:GetAttribute("BoardOpen") ~= true -- (the Tab board has its own score: no second one behind it)
 	return true
 end
 local scoreMode = scoreCell(1, "Mode", 14, T.MUTED, T.FONT_BOLD, 156)

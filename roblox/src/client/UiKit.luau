@@ -166,6 +166,8 @@ function K.themeA(): any
 		BG = c(212, 208, 199), BG_A = 0.02, CARD = c(229, 226, 219), CARD_HI = c(240, 238, 233), TRACK = c(196, 191, 181),
 		EDGE = c(0, 0, 0), EDGE_A = 0.9, TEXT = c(29, 31, 35), MUTED = c(86, 83, 77), SOFT = c(64, 62, 58), DIM = c(140, 136, 128),
 		ACCENT = c(29, 31, 35), INK = c(229, 226, 219), DANGER = c(196, 64, 56), RADIUS = 3,
+		-- (one family in A: Builder Sans. Theme's wide Builder Extended titles read as a third face next to it)
+		FONT_TITLE = Theme.FONT_HEAVY, FONT_SHOUT = Theme.FONT_HEAVY,
 	}
 	P.corner = function(o: Instance, r: number?): UICorner return Theme.corner(o, if r and r >= 20 then r else 3) end
 	P.edge = function(o: Instance, color: Color3?, alpha: number?, thick: number?): UIStroke
@@ -191,6 +193,35 @@ function K.themeA(): any
 	end
 	themeA = setmetatable(P, { __index = Theme })
 	return themeA
+end
+
+-- Theme in B's colours, for a dark menu that belongs with the loadout (the between-rounds picker): black slabs, square
+-- corners, no hairlines, white for what's chosen (ACCENT is white here), Oswald titles. Butter, B's "press this", is
+-- the caller's own (K.B.BUTTER) on the one button that does something
+local themeB: any = nil
+function K.themeB(): any
+	if themeB then return themeB end
+	local Theme = require(script.Parent:WaitForChild("Theme")) :: any
+	local c = Color3.fromRGB
+	local P: any = {
+		BG = K.B.SLAB, BG_A = K.B.SLAB_A, CARD = c(24, 26, 30), CARD_HI = c(40, 42, 48), TRACK = c(44, 46, 52),
+		EDGE = c(255, 255, 255), EDGE_A = 1, TEXT = K.B.TEXT, MUTED = K.B.MUTED, SOFT = c(200, 200, 196), DIM = K.B.DIM,
+		ACCENT = K.B.WHITE, INK = K.B.INK, DANGER = K.B.DANGER, RADIUS = 0, FONT_TITLE = K.COND, FONT_SHOUT = K.COND,
+	}
+	P.corner = function(o: Instance, r: number?): UICorner return Theme.corner(o, if r and r >= 20 then r else 0) end
+	P.edge = function(o: Instance, color: Color3?, alpha: number?, thick: number?): UIStroke
+		return Theme.edge(o, color or P.EDGE, alpha or P.EDGE_A, thick)
+	end
+	P.text = function(parent: Instance, name: string, text: string, size: number, color: Color3?, font: Font?, align: Enum.TextXAlignment?, shadow: boolean?): TextLabel
+		return Theme.text(parent, name, text, size, color or P.TEXT, font, align, shadow)
+	end
+	P.plate = function(parent: Instance, name: string, pos: UDim2, size: UDim2): Frame
+		local f = Theme.new("Frame", { Name = name, BackgroundColor3 = P.BG, BackgroundTransparency = P.BG_A, BorderSizePixel = 0, Position = pos, Size = size }, parent)
+		Theme.edge(f, P.EDGE, 1) -- (kept, invisible: code that finds a plate's stroke still finds one)
+		return f
+	end
+	themeB = setmetatable(P, { __index = Theme })
+	return themeB
 end
 
 function K.head(uid: number?): string

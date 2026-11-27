@@ -29,6 +29,7 @@ local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
 local new = T.new
 local WHITE = Color3.new(1, 1, 1)
+local DIMW = Color3.fromRGB(176, 176, 172) -- (the top row's words are on the dark world, not on bone: white, a tab not picked dim)
 local ROBUX = utf8.char(0xE002) -- the Robux mark (Roblox's fonts draw it)
 
 local ShopUI = {}
@@ -190,19 +191,19 @@ local function button(parent: Instance, text: string, kind: string, size: UDim2,
 	local face = new("TextButton", {
 		AutoButtonColor = false, BackgroundColor3 = base, BackgroundTransparency = if kind == "tab" then 1 else 0,
 		BorderSizePixel = 0, Size = size, Position = pos or UDim2.new(), FontFace = T.FONT_BOLD, RichText = true,
-		TextSize = 15, Text = text, TextColor3 = if kind == "main" then T.INK elseif kind == "tab" then T.MUTED else T.TEXT,
+		TextSize = 15, Text = text, TextColor3 = if kind == "main" then T.INK elseif kind == "tab" then DIMW else T.TEXT,
 	}, parent)
 	if kind ~= "tab" then T.corner(face) end
 	if kind == "dark" then T.edge(face) end
-	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.6, 0, 0, 3), Visible = false }, face)
+	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = if kind == "tab" then T.INK else T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.6, 0, 0, 3), Visible = false }, face)
 	local b = { face = face, mark = mark, kind = kind, enabled = true, base = base }
 	local function lit(c: Color3): Color3 return c:Lerp(WHITE, 0.14) end
 	face.MouseEnter:Connect(function()
 		if not b.enabled then return end
-		if kind == "tab" then if not mark.Visible then face.TextColor3 = T.TEXT end else face.BackgroundColor3 = lit(b.base) end
+		if kind == "tab" then if not mark.Visible then face.TextColor3 = WHITE end else face.BackgroundColor3 = lit(b.base) end
 	end)
 	face.MouseLeave:Connect(function()
-		if kind == "tab" then if not mark.Visible then face.TextColor3 = T.MUTED end else face.BackgroundColor3 = b.base end
+		if kind == "tab" then if not mark.Visible then face.TextColor3 = DIMW end else face.BackgroundColor3 = b.base end
 	end)
 	function b.set(t: string, enabled: boolean?)
 		face.Text = t
@@ -217,7 +218,7 @@ local function button(parent: Instance, text: string, kind: string, size: UDim2,
 	end
 	function b.pick(on: boolean)
 		mark.Visible = on
-		face.TextColor3 = if on then T.TEXT else T.MUTED
+		face.TextColor3 = if kind == "tab" then (if on then WHITE else DIMW) else (if on then T.TEXT else T.MUTED)
 	end
 	return b
 end
@@ -233,8 +234,7 @@ local function card(parent: Instance, r: string?): (TextButton, Frame?)
 	c.MouseButton1Down:Connect(function() T.tween(sc, 0.07, { Scale = 0.985 }) end)
 	c.MouseButton1Up:Connect(function() T.tween(sc, 0.12, { Scale = 1.025 }) end)
 	local bar = nil
-	if r and r ~= "free" then
-		-- (a soft wash of its rarity's colour up from the bottom, behind everything on it)
+	if r and r ~= "free" and false then -- (round 2: no wash. the rarity is the word and the edge)
 		local glow = new("Frame", { Name = "Glow", BackgroundColor3 = rarityColor(r), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 0 }, c)
 		T.corner(glow)
 		new("UIGradient", { Rotation = -90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8),
@@ -773,9 +773,9 @@ UI.tint = new("ColorCorrectionEffect", { Name = "JankShopTint", Enabled = false 
 
 -- the top: the title and its line, the tabs, the wallet, the close button
 UI.top = new("Frame", { Name = "Top", BackgroundTransparency = 1 }, UI.stage)
-UI.title = txt(UI.top, "SHOP", 34, T.TEXT, T.FONT_TITLE)
+UI.title = txt(UI.top, "SHOP", 34, WHITE, T.FONT_TITLE)
 UI.rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromOffset(40, 3) }, UI.top)
-UI.sub = txt(UI.top, LINE, 14, T.MUTED)
+UI.sub = txt(UI.top, LINE, 14, DIMW)
 UI.tabRow = new("Frame", { BackgroundTransparency = 1 }, UI.top)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center }, UI.tabRow)
 UI.tabs = {}
@@ -863,7 +863,7 @@ function Purse.draw()
 			local ic = new("Frame", { Name = cur, BackgroundTransparency = 1, Size = UDim2.fromOffset(18, 18), LayoutOrder = i * 3 - 2 }, UI.purse)
 			local drawn = Purse.icon(cur, ic, 18)
 			ic.Visible = drawn
-			local l = txt(UI.purse, "", 14, T.TEXT, T.FONT_BOLD)
+			local l = txt(UI.purse, "", 14, WHITE, T.FONT_HEAVY)
 			l.TextTruncate = Enum.TextTruncate.None; l.AutomaticSize = Enum.AutomaticSize.X
 			l.Size = UDim2.fromOffset(0, 22); l.LayoutOrder = i * 3 - 1
 			UI.purseBits[cur] = { label = l, drawn = drawn }
@@ -887,9 +887,9 @@ for _, t in TABS do UI.pages[t] = new("Frame", { Name = t, BackgroundTransparenc
 UI.pages.weapons = new("Frame", { Name = "weapons", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, UI.body) -- (built, never opened)
 
 local function header(parent: Instance, text: string, right: string?): (TextLabel, TextLabel)
-	local l = txt(parent, text, 15, T.MUTED, T.FONT_BOLD)
+	local l = txt(parent, text, 15, WHITE, T.FONT_HEAVY)
 	l.Size = UDim2.new(1, 0, 0, 22)
-	local r = txt(parent, right or "", 14, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	local r = txt(parent, right or "", 14, DIMW, T.FONT_BOLD, Enum.TextXAlignment.Right)
 	r.Size = UDim2.new(1, 0, 0, 22)
 	return l, r
 end
@@ -3269,9 +3269,9 @@ task.spawn(function()
 		task.wait(1)
 		if S.open then
 			local left = clock(Shop.secondsLeft())
-			UI.heroTimer.Text = "NEW IN " .. left
-			UI.dailyTimer.Text = "NEW IN " .. left
-			if UI.dealsTimer then UI.dealsTimer.Text = "NEW IN " .. left end
+			UI.heroTimer.Text = ""
+			UI.dailyTimer.Text = "Refreshes in " .. left
+			if UI.dealsTimer then UI.dealsTimer.Text = "Refreshes in " .. left end
 			if Shop.secondsLeft() <= 1 then task.delay(2, function() if S.open then ShopUI.refill() end end) end
 		end
 	end

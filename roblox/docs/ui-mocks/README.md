@@ -242,7 +242,38 @@ Placeholders, all mock values:
 Container, coin pack and VIP prices come from `docs/MONEY.md`. Pictures are our own renders and
 Studio captures (HUD hidden, 21 Nov), keyed by `prep_images.py`.
 
-## 5. Rebuild
+## 5. The owner's picks, built in the game (27 Nov 2026)
+
+The owner marked the directions sheet (side-session-notes `ui_mocks_OWNER_PICKS_27nov.webp`, kept outside git):
+
+| screen | built as | where the code is |
+|---|---|---|
+| hub menu | A PLATE: PLAY an ink block with the slit through the word; QUESTS, PARTY, LOADOUT, SHOP as white words on the world; HUBS, PROFILE smaller; bone key caps | `client/HubStack.luau` (`HubStack.style`, the order and sizes); one `style` call in each button's script |
+| match HUD | A PLATE: health and ammo bare on the world with the slit; the score as a pastel tile per side with its players' heads, the round and clock on an ink tab; the kill feed on dark backings, names in their side's colour | `client/FightHud.luau` |
+| loadout | A's layout in B's colours (the owner's arrow, "with this color"): slot rows down the left, the chosen one white with a cut corner; the preview in the middle; the weapon's card on the right with the slot-average ticks; the armory and the looks along the bottom on tabs; DONE and EQUIP as Butter skews | `client/LoadoutUI.client.luau` |
+| Tab scoreboard | B BROADCAST: the score bug (round on a skew tab, each side's score on its colour, the clock), the map, then each side as a black table; your row white with a cut corner, your party in a Butter bracket, a player who is down greyed and struck through | `client/ScoreboardUI.luau` |
+| shop | A PLATE's colours: bone panels and cards, ink words and buttons, 3 px corners | `client/ShopUI.luau` (its `T` is `UiKit.themeA()`) |
+| phone | A PLATE: bone discs with ink words, FIRE an ink disc with a bone rim, the stick a bone ring and knob | `client/TouchControls.client.luau` (`style`) |
+
+The parts both looks are built from are in `client/UiKit.luau`: the palettes (`K.A`, `K.B`), the triangle (a hard
+UIGradient step, so no images and no rotation), the cut corner, the skew, A's slit (a transparency band), the hero number
+(a number with a soft shadow, slit) and `K.themeA()` (Theme in A's colours for a light menu).
+
+The hub's other menus (the Play screen, the map vote, party, quests, the leaderboard, the modes tab, the profile) take
+`UiKit.themeA()` too, one line each. Settings stays as it was for now: its side rail is drawn dark in its own code.
+
+**How it went in:** one guarded push per Studio turn (scratchpad tools, not in git): every edit is an exact old/new pair
+that must match once in Studio's current source, and every script is compiled inside a function wrapper before it is
+written; a script that fails either check is left alone. The patcher travels as a Model uploaded through Open Cloud.
+
+**The critic, in the game** (vault `Reviews/UI build - anti-AI critic in-game round N.md`, a fresh critic each round,
+judging Play captures only):
+
+| round | score | what it said |
+|---|---|---|
+| 1 (v1413) | 5 | the structure reads real (menu hierarchy, loadout layout, the Tab table); overlaps, unlabelled marks, three icon styles in the loadout, the shop's top row unreadable, numbers that don't add up |
+
+## 6. Rebuild the mocks
 
 ```
 python prep_images.py <folder with hub_spawn.jpg, hub_rotunda.jpg, match_crate.jpg, match_forest.jpg>

@@ -53,6 +53,7 @@ local dim: Frame? = nil
 
 function UI.mount(gui: ScreenGui)
 	-- the world dims behind the board, no blur (you're still in the fight)
+	gui.DisplayOrder = math.max(gui.DisplayOrder, 40) -- (over the between-rounds weapon picker)
 	dim = K.new("Frame", { Name = "Dim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = LOOK.DIM_A, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
 	local holder = T.scaled(gui)
 	board = K.new("Frame", { Name = "Board", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0, LOOK.W, 1, 0), Visible = false }, holder)
@@ -305,6 +306,8 @@ function UI.show(on: boolean)
 	if p and not on then p.Visible = false end
 	if p and on and #p:GetChildren() > 0 then p.Visible = true end
 	if dim then dim.Visible = p ~= nil and p.Visible end
+	local open = p ~= nil and p.Visible
+	if Players.LocalPlayer:GetAttribute("BoardOpen") ~= (if open then true else nil) then Players.LocalPlayer:SetAttribute("BoardOpen", if open then true else nil) end
 end
 
 return UI
