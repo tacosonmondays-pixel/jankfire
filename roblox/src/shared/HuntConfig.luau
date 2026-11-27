@@ -203,6 +203,11 @@ H.INTRO = {
 	-- the owner's liminal grade (27 Nov: "greyish until the zoom into first person and the bars disappear"): a washed-out
 	-- grey over the whole film that lifts with the bars
 	grade = { saturation = -0.82, contrast = -0.12, brightness = 0.03, tint = Color3.fromRGB(232, 234, 238), blur = 1.5 },
+	-- (main, 27 Nov: a dressed-up avatar's close-ups were a white jumble of frills) whatever he wears between the lens
+	-- and the face (or hands) fades to `fade`, and anything within `near` studs of the lens
+	lens = { fade = 0.92, near = 1.2 },
+	-- the hit-stop on the snap: `at` s after it starts, his body holds for `len` s while the lens kicks
+	hitstop = { at = 0.1, len = 0.2 },
 }
 
 return H

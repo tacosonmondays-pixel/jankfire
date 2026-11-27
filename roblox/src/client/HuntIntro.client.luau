@@ -104,6 +104,7 @@ local function stop()
 	end
 	if r.grade then r.grade:Destroy() end
 	if r.blur then r.blur:Destroy() end
+	for h in r.touched or {} do if h.Parent then h.LocalTransparencyModifier = 0 end end -- (his own accessories back)
 	for _, tr in r.realTracks do pcall(function() tr:Stop(0.3) end) end
 	if r.folder then r.folder:Destroy() end
 	for g, was in r.guis do if g.Parent then g.Enabled = was end end -- (the HUD back)
@@ -257,6 +258,78 @@ local function play(a: any)
 
 	-- the shots (16 s; k scales them to the real hide). set space: his feet at the origin, the screen at -z
 	local headP = function(): Vector3 return P(0, hy, 0) end
+	-- (main, 27 Nov: on a heavily layered avatar the close-ups were a white jumble of frills) each close-up is about
+	-- his face or his hands, read live off the body and eased so a jerky clip never jerks the lens
+	local function limb(m: Model?, a: string, b: string): BasePart?
+		local x = m and (m:FindFirstChild(a) or m:FindFirstChild(b))
+		return if x and x:IsA("BasePart") then x else nil
+	end
+	local lHand, rHand = limb(body, "LeftHand", "Left Arm"), limb(body, "RightHand", "Right Arm")
+	local eased: { [string]: Vector3 } = {}
+	local function follow(key: string, p: Vector3, dt: number)
+		local e = eased[key]
+		eased[key] = if e then e:Lerp(p, math.min(1, dt * 8)) else p
+	end
+	local headLive = function(): Vector3 return eased.head or headP() end
+	local handsLive = function(): Vector3 return eased.hands or P(0.2, hy - 1.0, 0) end
+	local function facePoint(): Vector3 -- (the front of his face: what the lens must see past)
+		if not head then return headLive() end
+		return headLive() + head.CFrame.LookVector * head.Size.Z * 0.5
+	end
+	-- anything he wears that stands between the lens and what the shot is about, or right at the lens, fades out
+	-- (LocalTransparencyModifier: this screen only); everything else stays as he dressed it
+	local L = HC.INTRO.lens or { fade = 0.92, near = 1.2 }
+	local handleSets: { [Model]: { BasePart } } = {}
+	local touched: { [BasePart]: boolean } = {}
+	r.touched = touched
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	local function handlesOf(m: Model): { BasePart }
+		local l = handleSets[m]
+		if l then return l end
+		l = {}
+		for _, acc in m:GetChildren() do
+			if acc:IsA("Accessory") then
+				for _, d in acc:GetDescendants() do if d:IsA("BasePart") then table.insert(l, d) end end
+			end
+		end
+		handleSets[m] = l
+		return l
+	end
+	for _, h in handlesOf(body) do h.CanQuery = true end -- (the copy only: the lens rays must find its frills)
+	local function clearLens(m: Model?, subj: Vector3, dt: number)
+		if not m or not m.Parent then return end
+		local hs = handlesOf(m)
+		if #hs == 0 then return end
+		local camP = workspace.CurrentCamera.CFrame.Position
+		local dir = subj - camP
+		local block: { [BasePart]: boolean } = {}
+		if dir.Magnitude > 0.6 then
+			local list = table.clone(hs)
+			dir = dir.Unit * (dir.Magnitude - 0.3)
+			for _ = 1, 8 do
+				rp.FilterDescendantsInstances = list
+				local hit = workspace:Raycast(camP, dir, rp)
+				if not hit then break end
+				local i = table.find(list, hit.Instance)
+				if not i then break end
+				block[list[i]] = true
+				table.remove(list, i)
+				if #list == 0 then break end
+			end
+		end
+		for _, h in hs do
+			local o = h.CFrame:PointToObjectSpace(camP)
+			local hz = h.Size / 2
+			local near = (o - Vector3.new(math.clamp(o.X, -hz.X, hz.X), math.clamp(o.Y, -hz.Y, hz.Y), math.clamp(o.Z, -hz.Z, hz.Z))).Magnitude < L.near
+			local goal = if block[h] or near then L.fade else 0
+			local cur = h.LocalTransparencyModifier
+			if math.abs(goal - cur) > 0.003 then
+				h.LocalTransparencyModifier = cur + (goal - cur) * math.min(1, dt * 14)
+				touched[h] = true
+			end
+		end
+	end
 	local function look(from: Vector3, at: Vector3, roll: number?): CFrame
 		local cf = CFrame.lookAt(from, at)
 		return if roll then cf * CFrame.Angles(0, 0, math.rad(roll)) else cf
@@ -279,21 +352,22 @@ local function play(a: any)
 		{ name = "push", t0 = 2.2 * k, t1 = 3.9 * k, fov = function(u) return Cine.lerp(42, 36, u) end,
 			cam = function(u) return look(lerpV(P(0.2, hy + 0.3, 7.2), P(0.1, hy + 0.15, 4.3), u), P(0, hy - 0.35, 0)) end },
 		{ name = "profile", t0 = 3.9 * k, t1 = 5.5 * k, fov = 30, shake = 0.5,
-			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headP()) end },
+			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headLive()) end },
 		-- 2. the build: shorter shots, the shake growing
 		{ name = "shoulder", t0 = 5.5 * k, t1 = 6.6 * k, fov = 34, shake = 1.2,
-			cam = function(u) return look(lerpV(P(1.7, hy - 0.9, 1.9), P(1.45, hy - 0.8, 1.6), u), P(0.2, hy - 1.0, 0)) end },
+			cam = function(u) return look(lerpV(P(1.7, hy - 0.9, 1.9), P(1.45, hy - 0.8, 1.6), u), handsLive()) end }, -- (his shaking hands)
 		{ name = "behind", t0 = 6.6 * k, t1 = 7.7 * k, fov = 46, shake = 1.8,
 			cam = function(u) return look(lerpV(P(0.8, hy + 0.55, 3.0), P(0.55, hy + 0.45, 2.4), u), P(sd.at.X, sd.at.Y, sd.at.Z)) end },
 		{ name = "dutch", t0 = 7.7 * k, t1 = 8.8 * k, fov = 40, shake = 2.6,
-			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headP(), 14) end },
+			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headLive(), 14) end },
 		{ name = "face", t0 = 8.8 * k, t1 = 9.7 * k, fov = 30, shake = 3.6,
-			cam = function(u) return look(lerpV(P(0.5, hy, -2.5), P(0.3, hy, -2.05), u), headP()) end },
+			cam = function(u) return look(lerpV(P(0.5, hy, -2.5), P(0.3, hy, -2.05), u), headLive()) end },
 		{ name = "rush", t0 = 9.7 * k, t1 = 10.4 * k, fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 4.5 + 2.0 * u end,
-			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headP()) end },
-		-- 3. the snap: straight above, the head up into the lens
-		{ name = "above", t0 = 10.4 * k, t1 = 11.4 * k, fov = 52, shake = function(u) return 8 * (1 - u) ^ 2 end,
-			cam = function(u) local top = P(0, hy + 5.2 - 0.6 * Cine.ease(u), 0.02); return CFrame.lookAt(top, headP(), Vector3.zAxis) end },
+			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headLive()) end },
+		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
+		-- hats on a dressed-up avatar; from the front the face reads on any body)
+		{ name = "above", t0 = 10.4 * k, t1 = 11.4 * k, fov = 50, shake = function(u) return 8 * (1 - u) ^ 2 end,
+			cam = function(u) local e = Cine.ease(u); return CFrame.lookAt(P(0, hy + 3.6 - 0.4 * e, -1.6 + 0.2 * e), headLive()) end },
 		-- 4. outside: low in front of him (between him and the map), looking up at him
 		{ name = "outside", t0 = 11.4 * k, t1 = 13.4 * k, fov = 44, shake = 0.5,
 			cam = function(u)
@@ -331,9 +405,34 @@ local function play(a: any)
 	local baseB = light.Brightness
 	local nextBeat, nextFrame, frame = 0, 0, 1
 	local pg = me:FindFirstChildOfClass("PlayerGui")
-	r.conn = RunService.RenderStepped:Connect(function()
+	r.conn = RunService.RenderStepped:Connect(function(dt: number)
 		if not r.alive then return end
 		local t = T()
+		-- what the lens is on: his live head and hands, eased; his frills cleared out of the way
+		if head and head.Parent then follow("head", head.Position, dt) end
+		if lHand and rHand then follow("hands", (lHand.Position + rHand.Position) / 2, dt) end
+		local shot = r.cine and r.cine.shot
+		if t < 11.4 * k then
+			clearLens(body, if shot == "shoulder" then handsLive() elseif shot == "behind" then P(sd.at.X, sd.at.Y, sd.at.Z) else facePoint(), dt)
+		elseif t < 13.4 * k then
+			clearLens(me.Character, realHead() + Vector3.new(0, 0.3, 0), dt)
+		elseif not r.lensBack then -- (the turn into his eyes: everything he wears back as it was)
+			r.lensBack = true
+			for h in touched do if h.Parent then h.LocalTransparencyModifier = 0 end end
+		end
+		-- the hit-stop on the snap (main, 27 Nov: the Tidecrest impact language): his body holds for a beat while the
+		-- lens kicks and the hit lands
+		local HS = HC.INTRO.hitstop
+		if HS then
+			local a0 = 10.4 * k + HS.at
+			if r.frozen == nil and t >= a0 and t < a0 + HS.len then
+				r.frozen = {}
+				for _, tr in A do if tr.IsPlaying then r.frozen[tr] = tr.Speed; tr:AdjustSpeed(0) end end
+			elseif r.frozen and t >= a0 + HS.len then
+				for tr, sp in r.frozen do tr:AdjustSpeed(sp) end
+				r.frozen = false
+			end
+		end
 		-- the screen is the film's: every HUD off while it plays (held each frame: some HUDs set themselves every
 		-- frame), each put back as it was at the end
 		if pg then
@@ -389,7 +488,7 @@ local function play(a: any)
 		if once("crazy2", 8.8 * k) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
 		if once("snap", 10.4 * k) then
 			if A.snap then A.snap:Play(0.04, 1, 1.3) end
-			if r.cine then r.cine.kick(9) end
+			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end -- (the room's sound ends on the hit: then peace)
 		end
