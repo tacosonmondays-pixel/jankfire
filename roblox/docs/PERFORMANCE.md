@@ -94,6 +94,39 @@ removed by ZoneCull (below). No lamp budget is needed. Keep shadow-casting light
 | back lot | 6.3 ms | 3.9 ms |
 | hub | 6.8 ms | 4.2 ms |
 
+## Films: nothing pops in (CullKeep, CineKit.prewarm)
+
+The owner, 27 Nov: "Things pop in because it renders as the clip plays". A film's lens cuts to places your body isn't,
+so the map piece it shows could still be put aside by ZoneCull, and meshes and pictures nobody has drawn yet load while
+the shot plays.
+
+- **The keep hook.** `client/CullKeep.luau` holds asks: `CullKeep.keep(key, { names = {...}, points = {...}, seconds = n })`,
+  `CullKeep.release(key)`. ZoneCull keeps a piece an ask names, or one within its margin of an ask's point (exactly
+  like the camera rule), and brings it back the frame the ask arrives. `CullKeep.pieces(points, names)` gives the pieces
+  those keep (ZoneCull fills in the lookup).
+- **`CineKit.prewarm(shots, opts) -> warm`** yields at most `opts.timeout` (default 4 s). Run it before the film: under
+  a black lead, an open, a sting, a countdown, a loading moment; never as a frozen screen mid-film. It
+  1. turns every shot's camera spot and look point (u = 0, 0.5 and 1) plus `opts.points` into a keep;
+  2. waits two frames for ZoneCull, then runs `ContentProvider:PreloadAsync` on everything those pieces and `opts.sets`
+     use: meshes, textures, SurfaceAppearances, decals, clothes, sounds, animations, particles, beams, images (one
+     instance per asset id), plus `opts.anims` and `opts.sounds` ids;
+  3. returns `warm = { ok, waited, assets, pieces, release() }`.
+  Hand it to `CineKit.play(shots, { pre = warm })` and play releases it at stop, or call `warm.release()` yourself.
+- **Mesh detail.** A game script can't change `RenderFidelity` ("Cannot change SolidModel RenderFidelity during
+  Run-Time"). Set a film's hero meshes to Precise in Edit, on the kit. The zombies helicopters are Precise.
+- **Broken surfaces show up as pop-in too.** "Failed to upload TexturePack ... Referenced Asset 9 is NOT found" means a
+  SurfaceAppearance names a glTF texture index that was never uploaded (the zombies helicopters' glow pieces, fixed by
+  pointing their emissive mask at the glow atlas). Studio's output lists every one at load.
+- **Checked, 27 Nov (zombies, Studio, frames at 30 fps):**
+  - the keep: from the hub, with the school's original put aside, a prewarm on it brought it back (385 assets, 0.98 s)
+    and it went away again 1 s after the release;
+  - the news intro: 1.4 s black lead, 1,566 assets, 5 pieces, every cut clean;
+  - the extraction film: the prewarm runs at the call (509 assets, 0.32 s, 90 s ahead) and the helicopter is sharp
+    from the film's first frame. Before, it was drawn as the shot started and its texture came in blurry over 6 frames.
+  - Before/after clip: `roblox/docs/perf/popin-before-after-27nov.mp4`.
+  The frame check: `tools/roblox/popscan.py` lists the frames where one part of the picture jumps (a cut, a flash, a
+  pop-in); look at the ones that aren't cuts.
+
 ## Before and after
 
 | | fps | frame | render CPU |

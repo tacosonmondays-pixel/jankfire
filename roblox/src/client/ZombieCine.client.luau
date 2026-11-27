@@ -120,6 +120,7 @@ end
 -- while a film runs: every other HUD off (held each frame: some set themselves), the first-person gun hidden, your
 -- own body shown; all put back after
 local film: any = nil
+local xWarm: any = nil -- (the extraction film's prewarm: xwarm, below)
 -- who got out with the helicopter (the server's xout, by name): the extraction film seats the others in the cabin
 local lastOut: any = nil
 zr.OnClientEvent:Connect(function(x: any)
@@ -174,6 +175,8 @@ local function finish(handBack: boolean)
 			for _, x in real:GetDescendants() do if x:IsA("BasePart") or x:IsA("Decal") then (x :: any).LocalTransparencyModifier = 0 end end
 		end
 	end
+	if r.warm then pcall(r.warm.release) end
+	if r.leadBlack then r.leadBlack = false; black.BackgroundTransparency = 1 end
 	me:SetAttribute("ZmFilm", nil) -- (the zombies HUD back: ZombiesClient)
 	if r.onEnd then pcall(r.onEnd) end
 end
@@ -358,6 +361,24 @@ local function intro(a: Model)
 	-- (flag: HubLife leaves the light alone while it plays; 27 Nov test, its zone switch into the match ran the map room's
 	-- black haze over the feed's first half second)
 	r.cine = Cine.play(shots, { clock = clk, warm = 0.3, flag = "zmintro" })
+	-- the lead (the server starts the film 1.4 s after the game): black, the prewarm under it, then the feed
+	if (t0 :: number) - srv() > 0.05 then black.BackgroundTransparency = 0; r.leadBlack = true end
+	-- the prewarm (27 Nov, the owner: "Things pop in because it renders as the clip plays"): every map piece the shots
+	-- see kept drawn, everything the school, the cast and the sounds use preloaded under the lead and the feed's first
+	-- second
+	task.spawn(function()
+		local lib0 = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		local sets: { Instance } = { a }
+		local cineF = ReplicatedStorage:FindFirstChild("JankfireZmCine")
+		if cineF then table.insert(sets, cineF) end
+		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", "zm_board", "zm_planks" } do
+			local snd = lib0 and lib0:FindFirstChild(nm)
+			if snd then table.insert(sets, snd) end
+		end
+		local w = Cine.prewarm(shots, { key = "zmintro", sets = sets, anims = { ZOMBIE_WALK }, timeout = 3 })
+		if RunService:IsStudio() then print(("[ZombieCine] intro prewarm: ok %s, %.2f s, %d assets, %d pieces, %.2f s before the feed"):format(tostring(w.ok), w.waited, w.assets, #w.pieces, (t0 :: number) - srv())) end
+		if film == r then r.warm = w else w.release() end
+	end)
 	moon(r, 1, true, 0.01)
 	-- (the feed only: the haze thinner still, a long lens through 50 studs of it; the school shot puts the moon's back)
 	local fatm = Lighting:FindFirstChildOfClass("Atmosphere")
@@ -368,8 +389,8 @@ local function intro(a: Model)
 	table.insert(r.trash, cc)
 	local o = newsOverlay(r)
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
-	local sting = nil
-	if lib and lib:FindFirstChild("zm_news") then sting = (lib.zm_news :: Sound):Clone(); sting.Parent = SoundService; sting:Play(); table.insert(r.trash, sting) end
+	local sting: Sound? = nil
+	local stingTried = false -- (the sting starts 0.4 s before the feed, under the lead's black)
 	local wash = bed("zm_heli")
 	if wash then table.insert(r.beds, wash); fade(wash, 0.3, 0.4) end
 	local beam = Instance.new("Part")
@@ -389,10 +410,18 @@ local function intro(a: Model)
 		local t = clk()
 		hold(r)
 		r.showMe = false
+		if r.leadBlack and t >= 0 then r.leadBlack = false; TweenService:Create(black, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play() end
+		if not stingTried and t >= -0.4 then
+			stingTried = true
+			if lib and lib:FindFirstChild("zm_news") then
+				local sg = (lib.zm_news :: Sound):Clone(); sg.Parent = SoundService; sg:Play(); table.insert(r.trash, sg)
+				sting = sg
+			end
+		end
 		local vs = workspace.CurrentCamera.ViewportSize
 		-- the feed's overlay
 		local feedOn = t < N.static[1]
-		o.root.Visible = feedOn
+		o.root.Visible = feedOn and t >= 0
 		if feedOn then
 			for k, f in o.scan do f.Position = UDim2.fromScale(0, ((k / #o.scan) + t * 0.05) % 1) end
 			for _, f in o.grain do f.Position = UDim2.fromOffset(rng:NextInteger(0, math.max(1, vs.X)), rng:NextInteger(0, math.max(1, vs.Y))) end
@@ -673,6 +702,11 @@ local function outro(a: Model)
 	end
 	Cine.bars(true, 0.3)
 	r.cine = Cine.play(shots, { clock = clk })
+	-- (the prewarm started at the call, 90 s before: the film owns it now)
+	if type(xWarm) == "table" then
+		r.warm = xWarm
+		xWarm = nil
+	end
 	local wind = bed("zm_wind")
 	if wind then table.insert(r.beds, wind); fade(wind, 0.7, 0.8) end
 	-- the crew member, and your own hand
@@ -694,6 +728,18 @@ local function outro(a: Model)
 		end
 		-- (nothing of you until your hand comes up: 27 Nov test, the arm stood in the frame's corner from the start)
 		r.showOnly = {}
+		-- the others getting on (in the zone now): hidden on this screen from the first frame (27 Nov test: a bot walked
+		-- across the doorway for half a second before the server's list put its copy on the bench)
+		local function onPad(m: Model?)
+			local rt = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
+			return rt ~= nil and (Vector3.new(rt.Position.X - pad.Position.X, 0, rt.Position.Z - pad.Position.Z)).Magnitude <= z.r + 4
+		end
+		for _, pl in Players:GetPlayers() do
+			if pl ~= me and pl.Character and onPad(pl.Character) then table.insert(r.hideReal, pl.Character) end
+		end
+		for _, d in a:GetDescendants() do
+			if d:IsA("Model") and string.match(d.Name, "^Bot %d+$") and d:FindFirstChildOfClass("Humanoid") and onPad(d) then table.insert(r.hideReal, d) end
+		end
 	end
 	local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true }
 	local mates: any = nil
@@ -806,11 +852,38 @@ end
 
 -- ------------------------------------------------------------------ watching the arena
 local watched: Model? = nil
+-- the extraction film's prewarm, from the call (the hold-out's 90 s): the roof, the helicopter's way out, the kit, the
+-- crew member, the sounds and clips; the film takes it over (outro), or it's let go with the arena
+local function xwarm(m: Model)
+	if xWarm or m:GetAttribute("XSt") ~= "hold" then return end
+	local z = XC.zones[m.Name]
+	if not z then return end
+	xWarm = true -- (claimed while it loads)
+	task.spawn(function()
+		local pad = ZM.padOf(m:GetPivot(), z)
+		local pts = { pad.Position + Vector3.new(0, 6, 0), pad:PointToWorldSpace(Vector3.new(2, 16, 38)), pad:PointToWorldSpace(z.leave) }
+		local sets: { Instance } = { m }
+		for _, nm in { "JankfireZmKit", "JankfireZmCine" } do
+			local f = ReplicatedStorage:FindFirstChild(nm)
+			if f then table.insert(sets, f) end
+		end
+		local lib0 = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		for _, nm in { "zm_doorslide", "zm_clasp", "zm_wind", "zm_heli" } do
+			local snd = lib0 and lib0:FindFirstChild(nm)
+			if snd then table.insert(sets, snd) end
+		end
+		local w = Cine.prewarm(nil, { key = "zmextract", points = pts, sets = sets, anims = { XC.reach, SIT }, timeout = 30, keepFor = 300 })
+		if RunService:IsStudio() then print(("[ZombieCine] extraction prewarm: ok %s, %.2f s, %d assets"):format(tostring(w.ok), w.waited, w.assets)) end
+		if watched == m and xWarm == true then xWarm = w else w.release() end
+	end)
+end
 local conns: { RBXScriptConnection } = {}
 local function watch()
 	for _, c in conns do c:Disconnect() end
 	table.clear(conns)
 	if film then finish(true) end
+	if type(xWarm) == "table" then xWarm.release() end
+	xWarm = nil
 	black.BackgroundTransparency = 1
 	local a = nil
 	for _ = 1, 40 do a = arena(); if a or not me:GetAttribute("ZmArena") then break end; task.wait(0.1) end
@@ -819,6 +892,7 @@ local function watch()
 	local m = a :: Model
 	local function check()
 		if watched ~= m then return end
+		if m:GetAttribute("XSt") == "hold" then xwarm(m) end
 		if m:GetAttribute("XSt") == "out" then outro(m)
 		elseif m:GetAttribute("IntroT0") and not film then intro(m) end
 	end

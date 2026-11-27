@@ -100,8 +100,11 @@ function ZombieExtract.install(Z: any)
 			if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
 			if f.Parent then m.Parent = f end
 		end)
-		g.untilT = now() + XC.intro + 1.5
-		attrs(g, { IntroT0 = srv() + 0.4, IntroLen = XC.intro, IntroWin = win })
+		-- (the film starts LEAD s from now: each client prewarms under black first, ZombieCine; 27 Nov, the owner:
+		-- "Things pop in because it renders as the clip plays")
+		local LEAD = 1.4
+		g.untilT = now() + LEAD + XC.intro + 1.1
+		attrs(g, { IntroT0 = srv() + LEAD, IntroLen = XC.intro, IntroWin = win })
 		return nil
 	end)
 
@@ -365,6 +368,10 @@ function ZombieExtract.install(Z: any)
 			end
 			if op == "xcall" and x.st == "offer" then callIt(g, "test") end
 			return x.st
+		elseif op == "xland" then
+			-- (a test: the hold-out moved on to the helicopter down on the pad, as at 67 s; xend later plays the film)
+			if x.st == "hold" then x.t0 = now() - (XC.land + 1); x.s0 = srv() - (XC.land + 1); attrs(g, { XT0 = x.s0 }) end
+			return "landed"
 		elseif op == "xend" then
 			if x.st == "hold" then x.t0 = now() - XC.hold; x.s0 = srv() - XC.hold; attrs(g, { XT0 = x.s0 }) end
 			return x.st

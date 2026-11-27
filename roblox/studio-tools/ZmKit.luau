@@ -51,6 +51,17 @@ function K.importHeli(id: number, name: string?): string
 		p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
 		-- (27 Nov test: the Glass material at 0.4 read as dark panels at night; clearer, so the cabin and its light read)
 		if piece == "zh_glass" or piece == "zh_doorglass" then p.Material = Enum.Material.SmoothPlastic; p.Transparency = 0.62; p.Reflectance = 0.18 end
+		-- (27 Nov: films draw it close, and a game script can't change this at run time)
+		p.RenderFidelity = Enum.RenderFidelity.Precise
+		-- (the glTF's emissive texture comes in as its own index, rbxassetid://9 or 16, never uploaded: "Failed to upload
+		-- TexturePack", the glow pieces drawn without their pictures. The glow atlas is its own emissive mask)
+		for _, sa in p:GetChildren() do
+			if sa:IsA("SurfaceAppearance") then
+				local ok, c = pcall(function() return (sa :: any).EmissiveMaskContent end)
+				local id = ok and c and c.SourceType == Enum.ContentSourceType.Uri and tonumber(string.match(c.Uri or "", "^rbxassetid://(%d+)$") or "")
+				if id and id < 100000 then (sa :: any).EmissiveMaskContent = Content.fromUri(sa.ColorMap) end
+			end
+		end
 		p.Parent = heli
 		n += 1
 	end

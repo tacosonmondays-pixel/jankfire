@@ -17,6 +17,23 @@
 --           places it every frame (it then carries on from the last frame, no stale pop, and hides your own body itself)
 --     run.kick(amp)   a hit kick from now (0.3 s)        run.shot   the current shot's name
 --     run.stop(handBack?)  ends it; with handBack the camera lands on the gameplay camera, CameraType Custom
+--   CineKit.prewarm(shots, opts?) -> warm   YIELDS (at most opts.timeout, default 4 s). Run it BEFORE the film: under an
+--     open, a sting, a countdown, a loading moment; never as a frozen screen mid-film (the owner, 27 Nov: "Things pop
+--     in because it renders as the clip plays"). It
+--       1. asks ZoneCull (through CullKeep) to keep every map piece the shots see: each shot's camera spot and the point
+--          it looks at, at u = 0, 0.5 and 1 (cam(u), or from/to; "gameplay" = where your body is), plus opts.points;
+--       2. waits two frames for ZoneCull to bring them back, then preloads (ContentProvider:PreloadAsync) everything
+--          those pieces and opts.sets use: meshes, textures, SurfaceAppearances, decals, clothes, sounds, animations,
+--          particles, beams, images (one instance per asset id);
+--       3. returns when it's all in, or at the timeout.
+--     opts: key = string (the keep's name), points = { Vector3 }, names = { piece names }, sets = { Instance } (the
+--           film's cast, props, kit, sound library; Sound and Animation objects too), anims = { ids }, sounds = { ids },
+--           timeout = s, keepFor = s (the keep's safety net, default 120)
+--     warm: { ok (all in before the timeout), waited (s), assets (n instances preloaded), pieces ({ Instance }),
+--             release() (the keep ends) }
+--     Hand it to play as opts.pre and play releases it at stop.
+--     Mesh detail: a game script can't change a MeshPart's RenderFidelity ("Cannot change SolidModel RenderFidelity
+--     during Run-Time"), so a film's hero meshes are set Precise in Edit, on the kit (the zombies helicopters are).
 --   CineKit.gameplay(look?) -> (CFrame, fov)   where the game's camera will sit: first person at the head; third person
 --     (ThirdPerson) at ShoulderCam's hip offset (right 2.5, up 0.6, back 8)
 --   CineKit.handheld(cf, k, w), CineKit.kickCF(cf, amp, age), CineKit.ease(u), CineKit.lerp(a, b, u)
@@ -24,6 +41,9 @@
 -- and its watchdog let go of the camera, the hands and guns hold still, no menu opens); all put back after.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ContentProvider = game:GetService("ContentProvider")
+local okKeep, CullKeep = pcall(function() return require(script.Parent:WaitForChild("CullKeep", 5) :: ModuleScript) end)
+if not okKeep then CullKeep = nil end
 
 local me = Players.LocalPlayer
 local K = {}
@@ -103,6 +123,90 @@ end
 local function easeOf(name: string?, u: number): number
 	if name == "out" then return easeOut(u) elseif name == "linear" then return math.clamp(u, 0, 1) end
 	return K.ease(u)
+end
+
+-- ------------------------------------------------------------------ prewarm
+-- the properties that name content, per class (read in a pcall: some can't be read by a script; such an instance goes
+-- on the list whole)
+local CONTENT: { [string]: { string } } = {
+	MeshPart = { "MeshId", "TextureID" }, SpecialMesh = { "MeshId", "TextureId" }, FileMesh = { "MeshId", "TextureId" },
+	SurfaceAppearance = { "ColorMap", "NormalMap", "RoughnessMap", "MetalnessMap" },
+	Decal = { "Texture" }, Texture = { "Texture" }, Sound = { "SoundId" }, Animation = { "AnimationId" },
+	ParticleEmitter = { "Texture" }, Beam = { "Texture" }, Trail = { "Texture" },
+	ImageLabel = { "Image" }, ImageButton = { "Image" },
+	Shirt = { "ShirtTemplate" }, Pants = { "PantsTemplate" }, ShirtGraphic = { "Graphic" },
+}
+local function gather(roots: { Instance }): { Instance }
+	local seen: { [string]: boolean } = {}
+	local list: { Instance } = {}
+	local function one(d: Instance)
+		local props = CONTENT[d.ClassName]
+		if not props then return end
+		local fresh, unread = false, false
+		for _, pn in props do
+			local ok, v = pcall(function() return (d :: any)[pn] end)
+			if not ok then unread = true
+			elseif type(v) == "string" and v ~= "" and not seen[v] then seen[v] = true; fresh = true end
+		end
+		if fresh or unread then table.insert(list, d) end
+	end
+	for _, r in roots do
+		one(r)
+		for _, d in r:GetDescendants() do one(d) end
+	end
+	return list
+end
+-- where a shot's camera is and what it looks at, at u
+local function spots(s: any, u: number, out: { Vector3 })
+	local ok, cf = pcall(function(): CFrame?
+		if s.cam then return s.cam(u) end
+		local a, b = s.from, s.to
+		if not a then return nil end
+		local fa, la = val(a.at), val(a.look)
+		if b == "gameplay" then
+			local g = K.gameplay()
+			return CFrame.lookAt(fa:Lerp(g.Position, u), la:Lerp(g.Position + g.LookVector * 10, u))
+		end
+		return CFrame.lookAt(fa:Lerp(val(b.at), u), la:Lerp(val(b.look), u))
+	end)
+	if ok and typeof(cf) == "CFrame" then
+		table.insert(out, cf.Position)
+		table.insert(out, cf.Position + cf.LookVector * 80) -- (a long lens sees past the margin round the lens itself)
+	end
+end
+local warmN = 0
+function K.prewarm(shots: { any }?, opts: any?): any
+	opts = opts or {}
+	warmN += 1
+	local key = opts.key or ("CineKitWarm" .. warmN)
+	local t0 = os.clock()
+	local pts: { Vector3 } = table.clone(opts.points or {})
+	for _, s in shots or {} do for _, u in { 0, 0.5, 1 } do spots(s, u, pts) end end
+	local warm: any = { ok = false, waited = 0, assets = 0, pieces = {}, key = key }
+	if CullKeep then
+		(CullKeep :: any).keep(key, { names = opts.names, points = pts, seconds = opts.keepFor or 120 })
+		RunService.PreRender:Wait(); RunService.PreRender:Wait() -- (ZoneCull steps in PreRender: the pieces are back)
+		warm.pieces = (CullKeep :: any).pieces(pts, opts.names)
+	end
+	local roots: { Instance } = table.clone(warm.pieces)
+	for _, x in opts.sets or {} do table.insert(roots, x) end
+	for _, id in opts.anims or {} do local a = Instance.new("Animation"); a.AnimationId = id; table.insert(roots, a) end
+	for _, id in opts.sounds or {} do local a = Instance.new("Sound"); a.SoundId = id; table.insert(roots, a) end
+	local list = gather(roots)
+	warm.assets = #list
+	local done = false
+	task.spawn(function()
+		pcall(function() ContentProvider:PreloadAsync(list) end)
+		done = true
+	end)
+	local timeout = opts.timeout or 4
+	while not done and os.clock() - t0 < timeout do RunService.Heartbeat:Wait() end
+	warm.ok = done
+	warm.waited = os.clock() - t0
+	warm.release = function()
+		if CullKeep then (CullKeep :: any).release(key) end
+	end
+	return warm
 end
 
 export type Run = { stop: (boolean?) -> (), kick: (number) -> (), shot: string?, done: boolean }
@@ -189,6 +293,7 @@ function K.play(shots: { any }, opts: any?): Run
 		if handBack then cam.CFrame = g end
 		me:SetAttribute("LoadoutOpen", was.open)
 		if opts.flag and me:GetAttribute("Finishing") == opts.flag then me:SetAttribute("Finishing", was.flag) end
+		if opts.pre and opts.pre.release then opts.pre.release() end
 	end
 	return run
 end

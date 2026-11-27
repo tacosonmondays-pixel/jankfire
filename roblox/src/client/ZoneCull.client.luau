@@ -13,6 +13,10 @@
 -- "Near": inside the piece's box grown by MARGIN studs. A piece comes back at once (checked before physics every
 -- frame, so a teleport lands on a floor), and goes only after you have been out past MARGIN + SLACK for HIDE_AFTER s.
 -- A player in a match also keeps the arena named by their "Arena" attribute.
+-- Films: a scripted camera cuts to places your body isn't. CullKeep (client/CullKeep.luau) holds asks: piece names, and
+-- points that count as near like the camera does; a piece an ask keeps stays (or comes back) like one you stand by.
+-- CineKit.prewarm asks for every shot's camera spot before a film starts (27 Nov: pieces coming back on the cut frame
+-- popped in while the shot played). CullKeep.lookup, filled in here, gives a film the pieces its points keep.
 -- Switch: workspace attribute ZoneCull = false shows everything again (Studio tests, or if something goes wrong).
 -- Readout: this script's attribute Hidden lists what is put aside now.
 -- Scripts that look things up by path see a put-aside piece as missing (TrainingDoors' trainingGround() is nil and it
@@ -22,6 +26,8 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local me = Players.LocalPlayer
+local okKeep, CullKeep = pcall(function() return require(script.Parent:WaitForChild("CullKeep", 10) :: ModuleScript) end)
+if not okKeep then CullKeep = nil end
 local MIN_PARTS = 200
 local MARGIN = 250
 local SLACK = 60
@@ -53,6 +59,11 @@ local function near(pc: Piece, at: Vector3?, grow: number): boolean
 	local g = Vector3.new(grow, grow, grow)
 	local lo, hi = pc.lo - g, pc.hi + g
 	return at.X >= lo.X and at.Y >= lo.Y and at.Z >= lo.Z and at.X <= hi.X and at.Y <= hi.Y and at.Z <= hi.Z
+end
+
+local function nearAny(pc: Piece, pts: { Vector3 }, grow: number): boolean
+	for _, p in pts do if near(pc, p, grow) then return true end end
+	return false
 end
 
 local function show(pc: Piece)
@@ -99,6 +110,17 @@ local function showAll()
 	for _, pc in pieces do show(pc) end
 end
 
+if CullKeep then
+	(CullKeep :: any).lookup = function(points: { Vector3 }, names: { [string]: boolean }): { Instance }
+		local m = (script:GetAttribute("Margin") :: number?) or MARGIN
+		local out = {}
+		for i, pc in pieces do
+			if names[i.Name] or nearAny(pc, points, m) then table.insert(out, i) end
+		end
+		return out
+	end
+end
+
 local lastScan, lastList = -math.huge, ""
 local function step()
 	local now = os.clock()
@@ -114,6 +136,8 @@ local function step()
 	local cam = workspace.CurrentCamera
 	local eye = cam and cam.CFrame.Position
 	local arena = me:GetAttribute("Arena")
+	local kNames, kPoints = {}, {}
+	if CullKeep then kNames, kPoints = (CullKeep :: any).all() end
 	local list = {}
 	for i, pc in pieces do
 		if not pc.out and now - pc.boxT > REBOX then
@@ -123,11 +147,12 @@ local function step()
 		end
 		local m = (script:GetAttribute("Margin") :: number?) or MARGIN -- (Settings > GRAPHICS: VIEW DISTANCE)
 		local keep = near(pc, at, m) or near(pc, eye, m) or (type(arena) == "string" and i.Name == arena)
+			or kNames[i.Name] == true or nearAny(pc, kPoints, m)
 		if keep then
 			pc.away = 0
 			show(pc)
 		elseif not pc.out then
-			if near(pc, at, m + SLACK) or near(pc, eye, m + SLACK) then
+			if near(pc, at, m + SLACK) or near(pc, eye, m + SLACK) or nearAny(pc, kPoints, m + SLACK) then
 				pc.away = 0
 			else
 				if pc.away == 0 then pc.away = now end

@@ -455,7 +455,12 @@ head each frame (welded inside his model, the dome never drew in a game though i
 (the old helicopter against A and B, boarding and lift-off) and 11-extraction-film-first-person-27nov.jpg.
 
 ### 4.9 The intro as a news broadcast (27 Nov; the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news", "Then it cuts to shot of the school")
-It replaces the fly-over intro (ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it):
+It replaces the fly-over intro (ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it). The
+server starts it 1.4 s after the game (ZombieExtract's LEAD): each client shows black and runs CineKit.prewarm on the
+shots, the school, the cast and the sounds under it, the news sting coming in 0.4 s before the feed (roblox/docs/
+PERFORMANCE.md, "Films: nothing pops in"). The extraction film's prewarm runs from the call, 90 s ahead; the helicopter
+kits are RenderFidelity Precise and their glow pieces' emissive masks point at the glow atlas. Test op "xland" puts the
+hold-out at the helicopter down on the pad, so "xend" a few seconds later plays the film as it would in a game.
 1. 0-4.65 s, **the live feed:** a news helicopter's camera over the school's front at night: grain, scan lines and
    zoom brackets (live UI), focus breathing, a colder flatter grade (a ColorCorrection on this screen only), the
    helicopter's searchlight sweeping the grounds, a strong moon fill so the school reads. LIVE top left (a blinking
