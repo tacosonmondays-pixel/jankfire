@@ -448,15 +448,14 @@ local function build()
 		local f = newFace(chips, "Slot" .. i, "", false)
 		f.AnchorPoint = Vector2.zero
 		f.LayoutOrder = i
-		f.Size = UDim2.fromOffset(76, 28)
-		f.TextSize = 12
+		-- (round 8: each chip as wide as its word, 58 to 112: "ASSAULT RIFLE" didn't fit a third of the row even at 8 px)
+		f.Size = UDim2.fromOffset(0, 28); f.AutomaticSize = Enum.AutomaticSize.X
+		f.TextSize = 11
 		f.FontFace = T.FONT_BOLD
+		f.TextWrapped = false
 		f.TextTruncate = Enum.TextTruncate.AtEnd
-		-- (round 6: shrinks to fit, 8 to 12, rather than cut short. round 7: TextWrapped stays on, since setting it false
-		-- turns TextScaled back off; the top and bottom padding leaves room for one line only, so the words shrink)
-		f.TextScaled = true
-		T.new("UITextSizeConstraint", { MinTextSize = 8, MaxTextSize = 12 }, f)
-		T.new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5), PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7) }, f)
+		T.new("UISizeConstraint", { MinSize = Vector2.new(58, 28), MaxSize = Vector2.new(112, 28) }, f)
+		T.new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, f)
 		f.Activated:Connect(function() if active and not settingsOpen() then Keys.tap(SLOT_KEYS[i]) end end)
 	end
 	rebuildButtons()

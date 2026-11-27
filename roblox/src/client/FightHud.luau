@@ -307,14 +307,14 @@ local tiles = T.new("Frame", {
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tiles)
 local tileRow = T.new("Frame", { Name = "Tiles", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = 1 }, tiles)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tileRow)
-local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = if K.alt() then K.B.SLAB else K.A.INK, BackgroundTransparency = if K.alt() then 0.06 else 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 24), LayoutOrder = 2 }, tiles)
+local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = if K.alt() then K.B.SLAB else K.A.INK, BackgroundTransparency = if K.alt() then 0.06 else 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 28), LayoutOrder = 2 }, tiles)
 T.corner(tab, if K.alt() then 0 else 2)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, tab)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, tab)
 local tabRound = T.text(tab, "Round", "", 11, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY)
-tabRound.AutomaticSize = Enum.AutomaticSize.X; tabRound.Size = UDim2.fromOffset(0, 24); tabRound.LayoutOrder = 1
-local tabClock = T.text(tab, "Clock", "", 17, K.A.BONE, T.FONT_HEAVY)
-tabClock.AutomaticSize = Enum.AutomaticSize.X; tabClock.Size = UDim2.fromOffset(0, 24); tabClock.LayoutOrder = 2
+tabRound.AutomaticSize = Enum.AutomaticSize.X; tabRound.Size = UDim2.fromOffset(0, 28); tabRound.LayoutOrder = 1
+local tabClock = T.text(tab, "Clock", "", 22, K.A.BONE, T.FONT_HEAVY) -- (round 8: the clock a size up: it's the number you check)
+tabClock.AutomaticSize = Enum.AutomaticSize.X; tabClock.Size = UDim2.fromOffset(0, 28); tabClock.LayoutOrder = 2
 type Tile = { f: Frame, set: (string, Color3?) -> (), heads: Frame, shown: string }
 local tileList: { Tile } = {}
 local function tileFor(i: number): Tile

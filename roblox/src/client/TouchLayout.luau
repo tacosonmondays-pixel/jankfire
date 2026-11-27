@@ -66,10 +66,10 @@ TL.ITEMS = {
 	{ id = "reel", kind = "btn", act = "reel", x = 56, y = 304, d = 50, fixed = true },
 	{ id = "reelin", kind = "btn", act = "reelin", x = 172, y = 214, d = 50, fixed = true }, -- (26 Nov 2026: by the HOOK, over STAB)
 	{ id = "lunge", kind = "btn", act = "lunge", x = 238, y = 150, d = 50, fixed = true }, -- (26 Nov 2026: left of STAB, with a melee weapon out)
-	{ id = "settings", kind = "pill", label = "SETTINGS", w = 84, keep = true },
+	{ id = "settings", kind = "pill", label = "SETTINGS", w = 76, keep = true }, -- (27 Nov, ui-mocks round 8: the pills narrower, clear of the score)
 	{ id = "auto", kind = "pill", label = "AUTO FIRE", w = 96 }, -- (27 Nov, ui-mocks round 7: says what it switches)
-	{ id = "emote", kind = "pill", label = "EMOTE", w = 64 },
-	{ id = "board", kind = "pill", label = "SCORES", w = 64 }, -- (21 Nov 2026: the match scoreboard, in a match only: Scoreboard.client)
+	{ id = "emote", kind = "pill", label = "EMOTE", w = 58 },
+	{ id = "board", kind = "pill", label = "SCORES", w = 60 }, -- (21 Nov 2026: the match scoreboard, in a match only: Scoreboard.client)
 	{ id = "stick", kind = "stick", act = "float", keep = true },
 	{ id = "weapon", kind = "box", label = "WEAPON", w = 236, h = 146, keep = true },
 	{ id = "health", kind = "box", label = "HEALTH", w = 160, h = 134, keep = true },

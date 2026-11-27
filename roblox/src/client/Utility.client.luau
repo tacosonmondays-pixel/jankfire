@@ -241,6 +241,10 @@ local function hudStep()
 		local kc = plate:FindFirstChild("Key", true) :: GuiObject? -- (in the Group row since round 6)
 		if kc then kc.Visible = not touch end
 		nameL.TextSize = if touch then 20 else 15 -- (round 6: bigger on a phone, where the HUD is drawn smaller)
+		-- (round 8: on a phone both plates sit at the weapon box's left, so the item plate takes the ammo plate's width:
+		-- one right edge for the item line and the ammo, as on a PC)
+		local want = UDim2.fromOffset(if touch then 300 else 232, 42)
+		if plate.Size ~= want then plate.Size = want end
 	end
 	local cnt = plate:FindFirstChild("Count") :: TextLabel?
 	if not cnt then

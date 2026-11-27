@@ -103,6 +103,11 @@ local strip = new("Frame", { Name = "Strip", BackgroundTransparency = 1 }, root)
 local head = T.plate(strip, "Head", UDim2.fromOffset(0, 0), UDim2.fromOffset(100, 34))
 local title = text(head, "Title", "LOADOUT", 16, T.TEXT, K.COND)
 local cap = T.key(head, "L", UDim2.fromOffset(0, 6))
+do -- (27 Nov, ui-mocks round 8: the one key cap family: bone, an ink capital, no outline)
+	cap.BackgroundColor3 = K.A.BONE
+	local st = cap:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end
+	local l = cap:FindFirstChild("Letter") :: TextLabel?; if l then l.TextColor3 = K.A.INK end
+end
 local secs = text(head, "Secs", "", 22, T.TEXT, K.COND, Enum.TextXAlignment.Right)
 local sub = text(head, "Sub", "", 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
 -- READY, and the ticks: who has locked in, by team
@@ -114,8 +119,8 @@ local readyL = K.tri(readyB, UDim2.new(0, -6, 0, 0), 6, 24, K.B.BUTTER, "br"); r
 local readyR = K.tri(readyB, UDim2.new(1, 0, 0, 0), 6, 24, K.B.BUTTER, "tl"); readyR.Size = UDim2.new(0, 6, 1, 0)
 readyB:GetPropertyChangedSignal("BackgroundColor3"):Connect(function() readyL.BackgroundColor3 = readyB.BackgroundColor3; readyR.BackgroundColor3 = readyB.BackgroundColor3 end)
 new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, readyB)
-local readyKey = new("TextLabel", { Name = "Key", BackgroundColor3 = K.B.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0),
-	Size = UDim2.fromOffset(0, 16), AutomaticSize = Enum.AutomaticSize.X, FontFace = K.SANS_HEAVY, TextSize = 10, TextColor3 = K.B.BUTTER, Text = "" }, readyB)
+local readyKey = new("TextLabel", { Name = "Key", BackgroundColor3 = K.A.BONE, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -6, 0.5, 0),
+	Size = UDim2.fromOffset(0, 16), AutomaticSize = Enum.AutomaticSize.X, FontFace = K.SANS_HEAVY, TextSize = 10, TextColor3 = K.A.INK, Text = "" }, readyB) -- (round 8: the one cap family)
 new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, readyKey)
 local ticks = new("Frame", { Name = "Ticks", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 0.5) }, head)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 10),
@@ -252,7 +257,7 @@ end
 local function drawReady()
 	local r = isReady()
 	readyB.Text = if r then "LOCKED IN" else "READY"
-	readyKey.Text = Binds.label("ready")
+	readyKey.Text = string.upper(Binds.label("ready")) -- (round 8: capitals, like every other cap)
 	readyKey.Visible = not r and not touch() and readyKey.Text ~= ""
 	readyB.BackgroundColor3 = if r then T.CARD else K.B.BUTTER
 	readyB.TextColor3 = if r then T.MUTED else K.B.INK

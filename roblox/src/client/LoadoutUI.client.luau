@@ -450,7 +450,13 @@ do -- (round 3: one button set here: Butter skews press, flat slabs are the rest
 	if b then
 		b.BackgroundColor3 = PANEL; b.BackgroundTransparency = 0.06; b.AutoButtonColor = false
 		b.FontFace = FONT_TITLE; b.TextSize = 20; b.TextColor3 = TEXT
-		b.AnchorPoint = Vector2.new(1, 1); b.Position = UDim2.new(1, -12, 1, 0); b.Size = UDim2.fromOffset(212, 58) -- (round 7: level with EQUIP, as tall)
+		b.AnchorPoint = Vector2.new(1, 1); b.Position = UDim2.new(1, -12, 1, 16); b.Size = UDim2.fromOffset(212, 58) -- (round 7: level with EQUIP, as tall; round 8: the panel moved down 16)
+		local xc = (News.xv :: any).cap :: Frame? -- (round 8: its X in the one cap family)
+		if xc then
+			xc.BackgroundColor3 = News.K.A.BONE
+			local st = xc:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end
+			local l = xc:FindFirstChild("Letter") :: TextLabel?; if l then l.TextColor3 = News.K.A.INK end
+		end
 		for _, c in b:GetChildren() do
 			if c:IsA("UICorner") then c.CornerRadius = UDim.new(0, 0) elseif c:IsA("UIStroke") then c.Enabled = false end
 		end
@@ -514,7 +520,7 @@ UIS.InputEnded:Connect(function(io)
 end)
 
 -- ---------------------------------------------------------------- the info panel (right)
-local _, info = panel(stage, UDim2.fromOffset(1380, 140), UDim2.fromOffset(476, 690))
+local _, info = panel(stage, UDim2.fromOffset(1380, 156), UDim2.fromOffset(476, 674)) -- (round 8: its top on the slot list's)
 -- (no colour chip by the name: kept for the code that sets it)
 local infoChip = new("Frame", { BackgroundColor3 = GREY, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, info)
 local infoName = label(info, "", 40, UDim2.fromOffset(22, 14), UDim2.fromOffset(432, 50), TEXT)
@@ -1313,8 +1319,8 @@ refresh = function()
 			local armed = News.arm == e.id and os.clock() - News.armT < 4
 			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED ON " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = GREY; equipBtn.face.BackgroundTransparency = 0
-		else equipBtn:set("EQUIP ON " .. keyOf(e.slot), true); equipBtn.face.BackgroundTransparency = 0 end
+		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED " .. onKey(e.slot), false, CARD); equipBtn.face.TextColor3 = GREY; equipBtn.face.BackgroundTransparency = 0
+		else equipBtn:set("EQUIP " .. onKey(e.slot), true); equipBtn.face.BackgroundTransparency = 0 end
 	end)
 	News.guard("preview", showPreview, e.id)
 	-- wraps for the focused weapon

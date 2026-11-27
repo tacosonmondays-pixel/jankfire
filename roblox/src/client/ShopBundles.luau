@@ -641,7 +641,8 @@ return function(C: any): any
 				GroupTransparency = if ok then 0 else 0.4 }, row)
 			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
 		end
-		local l = txt(row, words, 15, if ok then T.INK else T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		-- (round 8: greyed = ink words on the light plate's grey (this theme's TEXT is light); B's slabs keep MUTED)
+		local l = txt(row, words, 15, if ok then T.INK elseif T.RADIUS == 0 then T.MUTED else Color3.fromRGB(29, 31, 35), T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
 		if not ok then l.TextTransparency = 0.35 end -- (round 7: dark words greyed, not light on light: they were unreadable)
 		if need then
@@ -675,6 +676,10 @@ return function(C: any): any
 		T.corner(crates)
 		new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, crates)
 		local tix, coins = Purse.of("tix"), Purse.of("brass")
+		do -- (round 8: what you hold, once, at the header's right; the rows say only how many more they need)
+			local have = txt(side, ("You have %d %s"):format(tix, if tix == 1 then "ticket" else "tickets"), 13, Color3.new(1, 1, 1), T.FONT_BOLD, Enum.TextXAlignment.Right)
+			have.Position = UDim2.fromOffset(0, 0); have.Size = UDim2.new(1, 0, 0, 22); have.TextStrokeTransparency = 0.8; have.TextTransparency = 0.15
+		end
 		for i, o in rows do
 			local isSpray = o.spray == true
 			local function go() if isSpray then ShopUI.tab("containers") else ShopUI.ask(o.id) end end
@@ -692,7 +697,7 @@ return function(C: any): any
 			local x = UDim.new(1, -12)
 			if p and p.brass then
 				local okB = coins >= p.brass
-				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil elseif coins <= 0 then "You have none" else "Need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
+				priceBtn(r, "brass", commas(p.brass), okB, if okB or coins <= 0 then nil else "Need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
 				x = UDim.new(1, -12 - 86 - 26)
 				if p.tix then
 					local orL = txt(r, "or", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
@@ -701,7 +706,7 @@ return function(C: any): any
 			end
 			if p and p.tix then
 				local okT = tix >= p.tix
-				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil elseif tix <= 0 then "You have none" else "Need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
+				priceBtn(r, "tix", tostring(p.tix), okT, if okT or tix <= 0 then nil else "Need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
 			end
 			if not p then
 				priceBtn(r, nil, if Shop.free() then "CLAIM" else ROBUX .. " " .. commas(o.robux or 0), true, nil, x, 96).MouseButton1Click:Connect(go)

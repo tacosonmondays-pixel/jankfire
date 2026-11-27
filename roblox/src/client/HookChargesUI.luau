@@ -170,8 +170,8 @@ RunService.RenderStepped:Connect(function()
 		autoFill.Size = UDim2.fromScale(k, 1)
 		local f = math.clamp((os.clock() - flashT) / 0.35, 0, 1)
 		autoWord.TextTransparency = if k >= 1 then 0 else 0.45
-		autoState.Text = if k >= 1 then "READY" else ("%d S"):format(math.max(1, math.ceil(untilT - now())))
-		autoState.TextTransparency = if k >= 1 then 0 else 0.3
+		autoState.Text = if lockedNow then "LOCKED" elseif k >= 1 then "READY" else ("%d S"):format(math.max(1, math.ceil(untilT - now())))
+		autoState.TextTransparency = if lockedNow then 0.25 elseif k >= 1 then 0 else 0.3 -- (round 8: locked before GO, like the grapple)
 		autoState.TextSize = math.floor(12 + 3 * (1 - f) + 0.5)
 	end
 	for _, p in pips do p.back.BackgroundTransparency = if lockedNow then 0.75 else 0.45 end
