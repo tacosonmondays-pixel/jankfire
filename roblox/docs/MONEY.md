@@ -380,10 +380,10 @@ table.
 | What | Robux | Coins |
 |---|---|---|
 | VIP (game pass) | 399 | |
-| Crate / Duffel Bag / Spray Can | 120 / 90 / 60 | redeem: `QuestData.PRICES` (Bag 2,500, Spray 1,000; tickets 12 / 6 / 3) |
+| Crate / Duffel Bag / Spray Can (every spray set) | 120 / 49 / 39 | redeem: `QuestData.PRICES` (Bag 2,500, Spray 1,000; tickets 12 / 6 / 3) |
 | A wrap, by rarity common / rare / epic / legendary | 75 / 150 / 300 / 600 | |
 | A hat | 100 / 200 / 400 / 750 | |
-| A weapon skin | 150 / 300 / 600 / 1,200 | |
+| A weapon skin (Exotic as Legendary) | 19 / 59 / 159 / 399 | |
 | A card border or background | 50 / 100 / 200 / 400 | |
 | A card title | 40 / 80 / 160 / 320 | |
 | A kill effect or emote | 100 / 200 / 400 / 800 | |
@@ -401,9 +401,17 @@ table.
 
 Why these numbers:
 - **Coin packs.** The base rate is 12 coins a Robux. The bigger packs add a bonus of 8%, 17% and 30%.
-  - Even the best rate (about 15.6 a Robux) keeps coin-bought things dearer than their own Robux price: a Spray Can's
-    1,000 coins is about 64 Robux against its 60, and a 4,000-coin weapon about 257 against 199.
-  - So the packs never undercut the shop.
+  - Since 27 Nov (the owner: "Skin prices are okay but crates should stay at 120, bags and cans new prices are fine")
+    a weapon skin, a Duffel Bag and a Spray Can cost in Robux what their coins cost at the smallest pack's rate, 12 a
+    Robux, rounded down to end in 9. A legendary skin's 5,000 coins is about 417 Robux of coins, so 399 direct; a Spray
+    Can's 500 coins about 42, so 39; a Duffel Bag's 600 coins 50, so 49.
+  - So buying direct always beats the smallest pack. The bigger packs' bonus can make coins cheaper by up to that bonus
+    (at the best rate, about 15.6 a Robux, a legendary skin's coins are about 320 Robux).
+  - The Crate is the one exception, by the owner's choice: 120 direct against 900 coins (about 75 Robux of coins).
+  - A skin set is still its skins' whole worth (Seraph: 399 + 159 + 159 + 159 + 59 = 935).
+- **Deals in Robux.** They are not prompted while singles are coins-only (`SINGLES_COINS_ONLY`). Their products are priced as
+  `Shop.dealPrice`, which rounds to end in 9 by tens. At the new skin prices that is coarse: a common's 20% deal is 19
+  (its full price) and its 25% deal 9. Look at `Shop.dealPrice` before deals ever go on sale for Robux.
 - **Weapons for coins.** An active player earns roughly 1,000-1,500 coins a week from quests and the weekly track, so a
   weapon is 3-5 weeks of play.
 - **No pay-to-win beyond what was already planned.** The four weapons were already the Robux exclusives
@@ -622,57 +630,60 @@ coins buy, and two servers.
 
 ## Every product
 
+Prices as of 27 Nov 2026 (the owner's direct prices; every product re-priced through Open Cloud, checked
+against `GetProductInfo`: 113 of the 115 match the code; the two weapon bundles show no price).
+
 | Key | Name | Robux | Product id |
 |---|---|---|---|
 | `crate` | Crate | 120 | 3733200177 |
-| `bag` | Duffel Bag | 90 | 3733200704 |
-| `spray` | Spray Can (the first, mixed one: not prompted since 20 Nov, kept for late receipts) | 60 | 3733200725 |
+| `bag` | Duffel Bag | 49 | 3733200704 |
+| `spray` | Spray Can (the first, mixed one: not prompted since 20 Nov, kept for late receipts) | 39 | 3733200725 |
 | `crate:5` / `crate:10` | 5 / 10 Crates | 600 / 1,200 | 3733759267 / 3733759286 |
-| `bag:5` / `bag:10` | 5 / 10 Duffel Bags | 450 / 900 | 3733759307 / 3733759328 |
-| `spray:5` / `spray:10` | 5 / 10 Spray Cans | 300 / 600 | 3733759347 / 3733759369 |
-| `spraycosmic` (`:5` / `:10`) | Cosmic Spray Can (5 / 10) | 60 / 300 / 600 | 3734017670 / 3734017731 / 3734017737 |
-| `sprayjapan` (`:5` / `:10`) | Japan Spray Can (5 / 10) | 60 / 300 / 600 | 3734017743 / 3734017756 / 3734017761 |
-| `sprayluxe` (`:5` / `:10`) | Luxe Spray Can (5 / 10) | 60 / 300 / 600 | 3734017820 / 3734017829 / 3734017837 |
-| `spraywild` (`:5` / `:10`) | Wild Spray Can (5 / 10) | 60 / 300 / 600 | 3734017844 / 3734017857 / 3734017866 |
-| `spraydiner` (`:5` / `:10`) | Diner Spray Can (5 / 10) | 60 / 300 / 600 | 3734017939 / 3734017949 / 3734017956 |
-| `sprayoffice` (`:5` / `:10`) | Office Spray Can (5 / 10) | 60 / 300 / 600 | 3734017965 / 3734017974 / 3734017983 |
+| `bag:5` / `bag:10` | 5 / 10 Duffel Bags | 245 / 490 | 3733759307 / 3733759328 |
+| `spray:5` / `spray:10` | 5 / 10 Spray Cans | 195 / 390 | 3733759347 / 3733759369 |
+| `spraycosmic` (`:5` / `:10`) | Cosmic Spray Can (5 / 10) | 39 / 195 / 390 | 3734017670 / 3734017731 / 3734017737 |
+| `sprayjapan` (`:5` / `:10`) | Japan Spray Can (5 / 10) | 39 / 195 / 390 | 3734017743 / 3734017756 / 3734017761 |
+| `sprayluxe` (`:5` / `:10`) | Luxe Spray Can (5 / 10) | 39 / 195 / 390 | 3734017820 / 3734017829 / 3734017837 |
+| `spraywild` (`:5` / `:10`) | Wild Spray Can (5 / 10) | 39 / 195 / 390 | 3734017844 / 3734017857 / 3734017866 |
+| `spraydiner` (`:5` / `:10`) | Diner Spray Can (5 / 10) | 39 / 195 / 390 | 3734017939 / 3734017949 / 3734017956 |
+| `sprayoffice` (`:5` / `:10`) | Office Spray Can (5 / 10) | 39 / 195 / 390 | 3734017965 / 3734017974 / 3734017983 |
 | `bundle_nightshift` | Night Shift | 1,099 | 3733200745 |
 | `bundle_fieldissue` | Field Issue | 289 | 3733200855 |
-| `bundle_teahouse` | Tea House | 869 | 3733200884 |
-| `bundle_deepspace` | Deep Space | 1,499 | 3733200908 |
-| `bundle_machineshop` | Machine Shop | 619 | 3733201016 |
-| `bundle_quarry` | Quarry | 1,219 | 3733201039 |
+| `bundle_teahouse` | Tea House | 1,049 | 3733200884 |
+| `bundle_deepspace` | Deep Space | 1,679 | 3733200908 |
+| `bundle_machineshop` | Machine Shop | 439 | 3733201016 |
+| `bundle_quarry` | Quarry | 949 | 3733201039 |
 | `bundle_cards` | Head Office | 169 | 3733201064 |
-| `set_seraph` | Seraph Set | 3,300 | 3733201174 |
-| `set_seraph:1` | Seraph Set, last 1 | 660 | 3733201190 |
-| `set_seraph:2` | Seraph Set, last 2 | 1,320 | 3733201209 |
-| `set_seraph:3` | Seraph Set, last 3 | 1,980 | 3733201426 |
-| `set_seraph:4` | Seraph Set, last 4 | 2,640 | 3733201313 |
-| `set_infernal` | Infernal Set | 3,300 | 3733201329 |
-| `set_infernal:1` | Infernal Set, last 1 | 660 | 3733201448 |
-| `set_infernal:2` | Infernal Set, last 2 | 1,320 | 3733201459 |
-| `set_infernal:3` | Infernal Set, last 3 | 1,980 | 3733201580 |
-| `set_infernal:4` | Infernal Set, last 4 | 2,640 | 3733201598 |
-| `set_halloween` | Witching Hour Set | 3,300 | 3733201617 |
-| `set_halloween:1` | Witching Hour Set, last 1 | 660 | 3733201706 |
-| `set_halloween:2` | Witching Hour Set, last 2 | 1,320 | 3733201726 |
-| `set_halloween:3` | Witching Hour Set, last 3 | 1,980 | 3733201741 |
-| `set_halloween:4` | Witching Hour Set, last 4 | 2,640 | 3733201837 |
-| `set_tidecrest` | Tidecrest Set | 3,000 | 3733201862 |
-| `set_tidecrest:1` | Tidecrest Set, last 1 | 600 | 3733201889 |
-| `set_tidecrest:2` | Tidecrest Set, last 2 | 1,200 | 3733201991 |
-| `set_tidecrest:3` | Tidecrest Set, last 3 | 1,800 | 3733202011 |
-| `set_tidecrest:4` | Tidecrest Set, last 4 | 2,400 | 3733202029 |
-| `set_dust` | Dust Drover Set | 3,900 | 3733202122 |
-| `set_dust:1` | Dust Drover Set, last 1 | 780 | 3733202140 |
-| `set_dust:2` | Dust Drover Set, last 2 | 1,560 | 3733202160 |
-| `set_dust:3` | Dust Drover Set, last 3 | 2,340 | 3733202240 |
-| `set_dust:4` | Dust Drover Set, last 4 | 3,120 | 3733202257 |
-| `set_star` | Star Drover Set | 3,900 | 3733202273 |
-| `set_star:1` | Star Drover Set, last 1 | 780 | 3733202349 |
-| `set_star:2` | Star Drover Set, last 2 | 1,560 | 3733202363 |
-| `set_star:3` | Star Drover Set, last 3 | 2,340 | 3733202382 |
-| `set_star:4` | Star Drover Set, last 4 | 3,120 | 3733202477 |
+| `set_seraph` | Seraph Set | 935 | 3733201174 |
+| `set_seraph:1` | Seraph Set, last 1 | 187 | 3733201190 |
+| `set_seraph:2` | Seraph Set, last 2 | 374 | 3733201209 |
+| `set_seraph:3` | Seraph Set, last 3 | 561 | 3733201426 |
+| `set_seraph:4` | Seraph Set, last 4 | 748 | 3733201313 |
+| `set_infernal` | Infernal Set | 935 | 3733201329 |
+| `set_infernal:1` | Infernal Set, last 1 | 187 | 3733201448 |
+| `set_infernal:2` | Infernal Set, last 2 | 374 | 3733201459 |
+| `set_infernal:3` | Infernal Set, last 3 | 561 | 3733201580 |
+| `set_infernal:4` | Infernal Set, last 4 | 748 | 3733201598 |
+| `set_halloween` | Witching Hour Set | 935 | 3733201617 |
+| `set_halloween:1` | Witching Hour Set, last 1 | 187 | 3733201706 |
+| `set_halloween:2` | Witching Hour Set, last 2 | 374 | 3733201726 |
+| `set_halloween:3` | Witching Hour Set, last 3 | 561 | 3733201741 |
+| `set_halloween:4` | Witching Hour Set, last 4 | 748 | 3733201837 |
+| `set_tidecrest` | Tidecrest Set | 835 | 3733201862 |
+| `set_tidecrest:1` | Tidecrest Set, last 1 | 167 | 3733201889 |
+| `set_tidecrest:2` | Tidecrest Set, last 2 | 334 | 3733201991 |
+| `set_tidecrest:3` | Tidecrest Set, last 3 | 501 | 3733202011 |
+| `set_tidecrest:4` | Tidecrest Set, last 4 | 668 | 3733202029 |
+| `set_dust` | Dust Drover Set | 1,175 | 3733202122 |
+| `set_dust:1` | Dust Drover Set, last 1 | 235 | 3733202140 |
+| `set_dust:2` | Dust Drover Set, last 2 | 470 | 3733202160 |
+| `set_dust:3` | Dust Drover Set, last 3 | 705 | 3733202240 |
+| `set_dust:4` | Dust Drover Set, last 4 | 940 | 3733202257 |
+| `set_star` | Star Drover Set | 1,175 | 3733202273 |
+| `set_star:1` | Star Drover Set, last 1 | 235 | 3733202349 |
+| `set_star:2` | Star Drover Set, last 2 | 470 | 3733202363 |
+| `set_star:3` | Star Drover Set, last 3 | 705 | 3733202382 |
+| `set_star:4` | Star Drover Set, last 4 | 940 | 3733202477 |
 | `banner:common` | Common Card Background | 50 | 3733202493 |
 | `banner:rare` | Rare Card Background | 100 | 3733202511 |
 | `banner:epic` | Epic Card Background | 200 | 3733202602 |
@@ -693,10 +704,10 @@ coins buy, and two servers.
 | `kill:rare` | Rare Kill Effect | 200 | 3733203280 |
 | `kill:epic` | Epic Kill Effect | 400 | 3733203293 |
 | `kill:legendary` | Legendary Kill Effect | 800 | 3733203306 |
-| `skin:common` | Common Weapon Skin | 150 | 3733203365 |
-| `skin:rare` | Rare Weapon Skin | 300 | 3733203381 |
-| `skin:epic` | Epic Weapon Skin | 600 | 3733203397 |
-| `skin:legendary` | Legendary Weapon Skin | 1,200 | 3733203496 |
+| `skin:common` | Common Weapon Skin | 19 | 3733203365 |
+| `skin:rare` | Rare Weapon Skin | 59 | 3733203381 |
+| `skin:epic` | Epic Weapon Skin | 159 | 3733203397 |
+| `skin:legendary` | Legendary Weapon Skin | 399 | 3733203496 |
 | `title:common` | Common Card Title | 40 | 3733203514 |
 | `title:rare` | Rare Card Title | 80 | 3733203535 |
 | `title:epic` | Epic Card Title | 160 | 3733203612 |
@@ -705,14 +716,14 @@ coins buy, and two servers.
 | `wrap:rare` | Rare Wrap | 150 | 3733203745 |
 | `wrap:epic` | Epic Wrap | 300 | 3733203760 |
 | `wrap:legendary` | Legendary Wrap | 600 | 3733203775 |
-| `deal:common:20` | Deal: Common Skin, 20% Off | 119 | 3733203865 |
-| `deal:common:25` | Deal: Common Skin, 25% Off | 109 | 3733203886 |
-| `deal:rare:25` | Deal: Rare Skin, 25% Off | 229 | 3733203909 |
-| `deal:rare:30` | Deal: Rare Skin, 30% Off | 209 | 3733204023 |
-| `deal:epic:30` | Deal: Epic Skin, 30% Off | 419 | 3733204043 |
-| `deal:epic:35` | Deal: Epic Skin, 35% Off | 389 | 3733204068 |
-| `deal:legendary:35` | Deal: Legendary Skin, 35% Off | 779 | 3733204169 |
-| `deal:legendary:40` | Deal: Legendary Skin, 40% Off | 719 | 3733204190 |
+| `deal:common:20` | Deal: Common Skin, 20% Off | 19 | 3733203865 |
+| `deal:common:25` | Deal: Common Skin, 25% Off | 9 | 3733203886 |
+| `deal:rare:25` | Deal: Rare Skin, 25% Off | 39 | 3733203909 |
+| `deal:rare:30` | Deal: Rare Skin, 30% Off | 39 | 3733204023 |
+| `deal:epic:30` | Deal: Epic Skin, 30% Off | 109 | 3733204043 |
+| `deal:epic:35` | Deal: Epic Skin, 35% Off | 99 | 3733204068 |
+| `deal:legendary:35` | Deal: Legendary Skin, 35% Off | 259 | 3733204169 |
+| `deal:legendary:40` | Deal: Legendary Skin, 40% Off | 239 | 3733204190 |
 | `weapon:minigun` | Minigun | 249 | 3733204206 |
 | `weapon:laser` | Big Laser Pointer | 199 | 3733204303 |
 | `weapon:chicken` | Chicken Rocket | 199 | 3733204322 |

@@ -142,12 +142,15 @@ Shop.VIP_COLOR = Color3.fromRGB(255, 208, 72)
 -- QuestData.PRICES (the quests session's). the list of products and ids: docs/MONEY.md
 Shop.MONEY = {
 	vip = 399, -- the VIP game pass (Shop.VIP_PASS)
-	containers = { crate = 120, bag = 90, spray = 60 },
+	-- (27 Nov, the owner: "Skin prices are okay but crates should stay at 120, bags and cans new prices are fine": a
+	-- direct Robux price is what its coins cost in the smallest pack, 12 a Robux, rounded down to end in 9. the Crate is
+	-- the one exception, by the owner's choice: 900 coins, about 75 Robux of coins, against 120 direct)
+	containers = { crate = 120, bag = 49, spray = 39 },
 	-- one item, by kind and rarity (singles share one product per kind and rarity: "wrap:epic")
 	singles = {
 		wrap = { free = 0, common = 75, rare = 150, epic = 300, legendary = 600 },
 		hat = { free = 0, common = 100, rare = 200, epic = 400, legendary = 750 },
-		skin = { free = 0, common = 150, rare = 300, epic = 600, legendary = 1200 },
+		skin = { free = 0, common = 19, rare = 59, epic = 159, legendary = 399 }, -- (27 Nov: the coins' worth, see containers)
 		border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 		banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 		title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
@@ -165,8 +168,10 @@ Shop.MONEY = {
 		akimbo = { robux = 249, coins = 5000 }, -- (Lefty & Righty)
 	},
 	-- coin packs (the owner's prices, 18 Nov: 99 / 499 / 1999 / 4500 Robux). 12 coins a Robux, and the bigger packs a
-	-- bonus on top (8%, 17%, 30%), never so much that coins bought with Robux redeem a container or buy a weapon for less
-	-- than its own Robux price (the best rate, about 15.6 a Robux: a Spray Can's 1,000 coins is 64 Robux against its 60).
+	-- bonus on top (8%, 17%, 30%). since 27 Nov the direct Robux prices of skins, Duffel Bags and Spray Cans are their
+	-- coin prices at the smallest pack's rate (12 a Robux), rounded down to end in 9 (a legendary skin: 5,000 coins, 417
+	-- Robux of coins, 399 direct), so buying coins never beats buying direct by more than the bigger packs' bonus; the
+	-- Crate is the one exception (120 direct against 900 coins, the owner's choice). the weapons keep their own pairs
 	-- image = the pack's picture (guns-remodel's renders, uploaded as images)
 	coins = {
 		{ id = "coins_1200", coins = 1200, bonus = 0, robux = 99, image = "rbxassetid://76861915103827" },
