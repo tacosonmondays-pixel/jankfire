@@ -745,3 +745,23 @@ segments and a faint emission; boxes pre-filled with :Emit so nothing fades up).
   attribute and WebArena.swap re-applies it after a kit swap; A is one call away.
 - Place versions 1644 (zombies) and 1645 (hedges B). Sheet: side notes 22-zombies-ragdoll-dismember-27nov.jpg; clip
   zombies-ragdoll-dismember-27nov.mp4.
+
+### 4.17 The opening in the owner's order (27 Nov; the owner: "News static shot of the map computer terminal style menu when everyone ready shot of terminal closing and going into first person")
+- **The order now:** the news feed (sirens, the gate crowd) -> static -> the school -> a push into the lobby terminal's
+  screen until it fills the view -> the BRIEFING takes over (the same screen, full) -> when everyone's READY (or the
+  timer ends) the picture hands back to the terminal, the CRT powers down in the world (a flash, the picture folds to
+  a bright line, then a dot, then dark; the library's click and the hum pitched down as the whine) while the camera
+  pulls back -> a push into your own first-person view at the desk, a footstep (step_hard) as you turn -> round 1.
+  No squad shot. Times: ZM.X.news push 7.7-8.9 (ZM.BRIEF.at = 8.9), close 8.9-10.3, land 10.3-11.3; ZM.X.intro 11.3.
+- **The terminal:** studio-tools/ZmGate.luau `terminal(map)`: an old beige CRT and keyboard on a dark security desk at
+  the school's (0, 0, 55), in front of the spawns and facing them (built into workspace.Map.JankfieldHighV2B; every
+  game's copy has it). Solid, CanQuery off (the nav grid doesn't see it). Its picture is each client's own
+  (ZombieCine: a SurfaceGui on "Screen": the briefing's layout in small, its words fading as the push ends so the
+  briefing comes in from plain green; the power-down on it at the close). How close fills the view comes from the
+  window's own aspect.
+- **The briefing's screen** (ZombieBrief.client) no longer switches itself on and off: it fades in over the
+  terminal's picture and back to it (Veil); the film does the power-down in the world. A skip in the news still lands
+  in the briefing.
+- Checked in Play (place version 1647): the whole order recorded and read frame by frame. Left as polish: a short
+  dark beat at the handoff into the briefing, and the very closest frame still shows the bezel at the sides in Studio's
+  wide view. Sheet: side notes 23-zombies-intro-terminal-27nov.jpg; clip zombies-intro-terminal-27nov.mp4.

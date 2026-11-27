@@ -172,6 +172,11 @@ local shutBot = T.new("Frame", { Name = "ShutBot", BackgroundColor3 = Color3.new
 	Position = UDim2.fromScale(0, 1), Size = UDim2.fromScale(1, 0.5), ZIndex = 8 }, screen)
 local line = T.new("Frame", { Name = "Line", BackgroundColor3 = Color3.fromRGB(210, 255, 220), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0, 0, 0, 3), ZIndex = 9 }, screen)
+-- (27 Nov 2026, the owner's order: the briefing is the lobby terminal's own screen. the film pushes into it till it fills
+-- the view (ZombieCine), this fades in over that picture, and at the close fades back to it: the film powers it down
+-- in the world. the shutters and the line stay shut away)
+local veil = T.new("Frame", { Name = "Veil", BackgroundColor3 = Color3.fromRGB(12, 44, 22), BorderSizePixel = 0, BackgroundTransparency = 1,
+	Size = UDim2.fromScale(1, 1), ZIndex = 9 }, screen)
 
 -- ------------------------------------------------------------------ the hologram (built when it opens, parked)
 local GRID_Y = -1.25
@@ -461,11 +466,10 @@ local function show(a: Model)
 	col, idx = 1, { table.find(B.sidearms, mySide) or 1, if myPas then table.find(B.order, myPas) or 1 else 1, 1 }
 	MenuCursor.set("zmbrief", true, function() return open end)
 	for _, id in B.sidearms do holoOf(id) end -- (all four now, parked: nothing builds on a click)
-	-- the switch-on: shutters shut, the line
-	shutTop.Size = UDim2.fromScale(1, 0.5); shutBot.Size = UDim2.fromScale(1, 0.5)
-	line.Size = UDim2.new(0, 0, 0, 3); line.BackgroundTransparency = 0
-	sfx("zm_term_on", 0.9)
-	sfx("zm_term_hum", 1) -- (the tube warming up)
+	-- in from the terminal's own picture (the film is already in it: on, no switch)
+	shutTop.Size = UDim2.fromScale(1, 0); shutBot.Size = UDim2.fromScale(1, 0)
+	line.BackgroundTransparency = 1
+	veil.BackgroundTransparency = 0
 	-- the words, typed in order
 	readyT.Text = "READY"
 	prompt.Text = ""
@@ -530,26 +534,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if want and not open and a then show(a) elseif not want and open then hide() end
 	if not open or not a then return end
 	local t = os.clock()
-	-- the switch: on (the line opens across, the shutters part), off (they close, the line shrinks to a dot)
-	local u = (t - openT) / ON_T
+	-- in from the terminal's picture, and back to it at the close (the film powers it down in the world)
+	local u = (t - openT) / 0.25
 	local off = if type(b1) == "number" then math.clamp(1 - (b1 - srv()) / OFF_T, 0, 1) else 0
-	if off > 0 and not closing then closing = true; sfx("zm_term_off", 0.9); MenuCursor.set("zmbrief", false) end
-	if off > 0 then
-		local s = math.clamp(off / 0.6, 0, 1)
-		shutTop.Size = UDim2.fromScale(1, 0.5 * s); shutBot.Size = UDim2.fromScale(1, 0.5 * s)
-		local lx = if off < 0.6 then 1 else 1 - (off - 0.6) / 0.4
-		line.Size = UDim2.new(math.max(0, lx), 0, 0, 3)
-		line.BackgroundTransparency = if off < 0.5 then 1 - off * 2 else 0
-	elseif u < 1 then
-		local lx = math.clamp(u / 0.35, 0, 1)
-		local sh = math.clamp((u - 0.3) / 0.7, 0, 1)
-		line.Size = UDim2.new(lx, 0, 0, 3)
-		line.BackgroundTransparency = math.clamp((u - 0.5) / 0.5, 0, 1)
-		shutTop.Size = UDim2.fromScale(1, 0.5 * (1 - sh) ^ 2); shutBot.Size = UDim2.fromScale(1, 0.5 * (1 - sh) ^ 2)
-	else
-		shutTop.Size = UDim2.fromScale(1, 0); shutBot.Size = UDim2.fromScale(1, 0)
-		line.BackgroundTransparency = 1
-	end
+	if off > 0 and not closing then closing = true; MenuCursor.set("zmbrief", false) end
+	veil.BackgroundTransparency = if off > 0 then 1 - off else math.clamp(u, 0, 1)
 	-- the tube: a flicker, the rolling bar
 	flick.BackgroundTransparency = 0.955 + math.random() * 0.045
 	roll.Position = UDim2.fromScale(0, ((t * 0.14) % 1.3) - 0.16)

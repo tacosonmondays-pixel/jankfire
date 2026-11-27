@@ -158,4 +158,50 @@ function G.hedges(map: Model, which: string): string
 	return "hedges " .. which .. " shown"
 end
 
+-- ---------------------------------------------------------------- the lobby terminal (27 Nov 2026; the owner: "News static
+-- shot of the map computer terminal style menu when everyone ready shot of terminal closing and going into first
+-- person"). An old CRT on a security desk in the lobby, in front of the squad's spawns and facing them: the intro
+-- pushes into its screen for the BRIEFING, pulls back as it powers down, then into your own view (ZombieCine). Chunky
+-- flat pieces, muted. Map-local (the school's frame): the desk at (0, 0, 55), the screen's front toward +z (the spawns,
+-- z 62-68, face -z). The screen is a dark part named "Screen"; the client draws on it (a SurfaceGui, ZombieCine).
+-- Solid for players and zombies alike, CanQuery off (the zombies' nav grid doesn't see it: it's built from rays)
+--   require(game.ServerStorage.PolishBackup.ZmGate:Clone()).terminal(workspace.Map.JankfieldHighV2B)
+function G.terminal(map: Model): string
+	local old = map:FindFirstChild("ZmTerminal")
+	if old then old:Destroy() end
+	local piv = map:GetPivot()
+	local m = Instance.new("Model")
+	m.Name = "ZmTerminal"
+	local function box(name: string, size: Vector3, at: Vector3, col: Color3, solid: boolean?): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = solid == true
+		p.CanQuery, p.CanTouch = false, false
+		p.Material = Enum.Material.SmoothPlastic
+		p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+		p.Color = col
+		p.Size = size
+		p.CFrame = piv * CFrame.new(at)
+		p.Parent = m
+		return p
+	end
+	local DESK, TOP, BEIGE, DARK, KEYS = Color3.fromRGB(74, 70, 66), Color3.fromRGB(96, 90, 82), Color3.fromRGB(170, 164, 150),
+		Color3.fromRGB(46, 46, 50), Color3.fromRGB(60, 60, 64)
+	local z = 55
+	box("Desk", Vector3.new(5, 2.3, 2.4), Vector3.new(0, 1.15, z), DESK, true)
+	box("DeskTop", Vector3.new(5.6, 0.35, 2.9), Vector3.new(0, 2.475, z + 0.1), TOP, true)
+	local top = 2.65
+	-- the monitor: a deep beige body, a narrower back, the screen set in its front (toward +z)
+	box("Body", Vector3.new(2.5, 2.2, 2.0), Vector3.new(0, top + 1.1, z - 0.2), BEIGE)
+	box("Back", Vector3.new(1.8, 1.6, 1.0), Vector3.new(0, top + 1.0, z - 1.6), BEIGE)
+	box("Foot", Vector3.new(1.6, 0.2, 1.4), Vector3.new(0, top + 0.1, z - 0.2), DARK)
+	local screen = box("Screen", Vector3.new(2.0, 1.55, 0.06), Vector3.new(0, top + 1.18, z + 0.81), Color3.fromRGB(10, 18, 13))
+	screen.Material = Enum.Material.Glass
+	screen.Reflectance = 0.08
+	box("Keyboard", Vector3.new(2.3, 0.14, 0.8), Vector3.new(0, top + 0.07, z + 1.15), KEYS)
+	m.Parent = map
+	return string.format("ZmTerminal: desk at map (0, 0, %d), screen %s", z, tostring(piv:PointToObjectSpace(screen.Position)))
+end
+
 return G

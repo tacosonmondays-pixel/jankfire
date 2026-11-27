@@ -286,7 +286,7 @@ local function intro(a: Model)
 	if type(t0) ~= "number" or film then return end
 	do -- (too late to start? with the briefing up the film waits in it; once it closed the film ends its tail after)
 		local b0, b1 = a:GetAttribute("BriefT0"), a:GetAttribute("BriefT1")
-		local endT = if type(b1) == "number" then b1 + len - XC.news.static[2] elseif type(b0) == "number" then math.huge else t0 + len
+		local endT = if type(b1) == "number" then b1 + len - XC.news.push[2] elseif type(b0) == "number" then math.huge else t0 + len
 		if srv() > endT - 1.2 then return end
 	end
 	local okM, map = pcall(ZM.read, a)
@@ -448,14 +448,60 @@ local function intro(a: Model)
 				y = c[3], kind = c[4], ph = crng:NextNumber(0, 6.28), w = crng:NextNumber(4.5, 7.5), yaw = crng:NextNumber(-10, 10), phased = false })
 		end
 	end
-	-- the squad: their spawns' middle, the camera in front of them
-	local c, face = Vector3.zero, Vector3.new(0, 0, -1)
-	if #map.spawns > 0 then
-		for _, s in map.spawns do c += s.Position end
-		c /= #map.spawns
-		face = flat(map.spawns[1].LookVector)
-		if face.Magnitude < 0.1 then face = Vector3.new(0, 0, -1) end
-		face = face.Unit
+	-- the lobby terminal (studio-tools/ZmGate terminal): its screen, which way it faces, and how close fills the view.
+	-- its picture is this client's (a SurfaceGui): the terminal's green while the film is in it, the power-down after
+	local term = a:FindFirstChild("ZmTerminal")
+	local screen = term and term:FindFirstChild("Screen") :: BasePart?
+	local scr = if screen then screen.Position else L(0, 3.83, 55.8)
+	local sf = if screen then screen.CFrame.ZVector else (site.ZVector)
+	local sx = sf:Cross(Vector3.new(0, 1, 0)).Unit
+	-- (studs out from the glass where its width fills the view at 32 degrees: from this screen's own shape, a wide window
+	-- comes in closer. 27 Nov test: a fixed 16:9 distance left the bezel and the room in a 2.4:1 Studio view)
+	local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(16, 9)
+	local aspect = math.max(1.2, vs.X / math.max(1, vs.Y))
+	local FILL = math.min(1.85, 0.94 / (math.tan(math.rad(16)) * aspect))
+	local pic = nil :: any
+	if screen then
+		local sg = Instance.new("SurfaceGui")
+		sg.Name = "ZmTermPic"
+		sg.Face = Enum.NormalId.Back -- (+z: toward the squad)
+		sg.LightInfluence = 0
+		sg.Brightness = 1.6
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 120
+		sg.Adornee = screen
+		local bg = Instance.new("Frame")
+		bg.BorderSizePixel = 0; bg.BackgroundColor3 = Color3.fromRGB(3, 6, 4); bg.Size = UDim2.fromScale(1, 1); bg.Parent = sg
+		local lit = Instance.new("Frame") -- (the picture: it collapses to a line, a dot, then nothing)
+		lit.Name = "Lit"; lit.BorderSizePixel = 0; lit.BackgroundColor3 = Color3.fromRGB(8, 30, 15) -- (the briefing's veil: ZombieBrief)
+		lit.AnchorPoint = Vector2.new(0.5, 0.5); lit.Position = UDim2.fromScale(0.5, 0.5); lit.Size = UDim2.fromScale(1, 1)
+		lit.ClipsDescendants = true; lit.Parent = bg
+		local mono = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold)
+		-- (the briefing's own layout, small: what you'll see when it takes over; functional words only)
+		local rows = { { "> LOADOUT", 0.05, 0.05, 0.08, true }, { "SIDEARM", 0.05, 0.17, 0.05 }, { "PASSIVE", 0.70, 0.17, 0.05 },
+			{ "1  REVOLVER", 0.06, 0.25, 0.045 }, { "2  PISTOL", 0.06, 0.32, 0.045 }, { "3  SAWED-OFF", 0.06, 0.39, 0.045 },
+			{ "4  LEFTY & RIGHTY", 0.06, 0.46, 0.045 }, { "BONUS PAY", 0.71, 0.25, 0.045 }, { "HEAD MONEY", 0.71, 0.32, 0.045 },
+			{ "HOLD ON", 0.71, 0.39, 0.045 }, { "MENDER", 0.71, 0.46, 0.045 }, { "BOARD UP", 0.71, 0.53, 0.045 },
+			{ "SCROUNGER", 0.71, 0.60, 0.045 }, { "> PICK A SIDEARM AND A PASSIVE_", 0.05, 0.86, 0.05, true }, { "READY", 0.72, 0.86, 0.06, true } }
+		for _, rw in rows do
+			local l = Instance.new("TextLabel")
+			l.BackgroundTransparency = 1; l.Text = rw[1]; l.FontFace = mono; l.TextScaled = true
+			l.TextColor3 = if rw[5] then Color3.fromRGB(110, 255, 150) else Color3.fromRGB(70, 200, 110)
+			l.TextXAlignment = Enum.TextXAlignment.Left
+			l.Position = UDim2.fromScale(rw[2], rw[3]); l.Size = UDim2.fromScale(0.6, rw[4])
+			l.Parent = lit
+		end
+		for i = 0, 59 do -- (the scanlines)
+			local f = Instance.new("Frame")
+			f.BorderSizePixel = 0; f.BackgroundColor3 = Color3.new(0, 0, 0); f.BackgroundTransparency = 0.7
+			f.Position = UDim2.fromScale(0, i / 60); f.Size = UDim2.fromScale(1, 1 / 180); f.Parent = lit
+		end
+		local glow = Instance.new("Frame")
+		glow.Name = "Glow"; glow.BorderSizePixel = 0; glow.BackgroundColor3 = Color3.fromRGB(200, 255, 215); glow.BackgroundTransparency = 1
+		glow.Size = UDim2.fromScale(1, 1); glow.Parent = lit
+		sg.Parent = screen
+		table.insert(r.trash, sg)
+		pic = { lit = lit, glow = glow, bg = bg }
 	end
 	-- the news helicopter's camera: inside the grounds, up over the drive, drifting in; then the zoom onto the gate
 	local hp0 = G - GO * 52 + UP * 26 - GR * 28
@@ -482,18 +528,23 @@ local function intro(a: Model)
 		{ name = "school", t0 = N.school[1], t1 = N.school[2], ease = "linear", shake = 0.12,
 			from = { at = winAt + outward * 58 + Vector3.new(0, 5, 0) + side * 30, look = deep, fov = 46 },
 			to = { at = winAt + outward * 47 + Vector3.new(0, 6.5, 0) + side * 24, look = deep - Vector3.new(0, 1, 0), fov = 44 } },
-		{ name = "squad", t0 = N.squad[1], t1 = N.squad[2], ease = "out", shake = 0.15,
-			from = { at = c + face * 22 + Vector3.new(0, 4.2, 0), look = c + Vector3.new(0, 2.8, 0), fov = 54 },
-			to = { at = c + face * 17 + Vector3.new(0, 3.8, 0), look = c + Vector3.new(0, 3.0, 0), fov = 52 } },
-		{ name = "land", t0 = N.squad[2], t1 = len, ease = "inout",
-			from = { at = c + face * 17 + Vector3.new(0, 3.8, 0), look = c + Vector3.new(0, 3.0, 0), fov = 52 }, to = "gameplay" },
+		-- (27 Nov 2026, the owner's order) into the lobby terminal's screen till it fills the view: the BRIEFING holds
+		-- there; then back out as it powers down, and into your own view
+		{ name = "push", t0 = N.push[1], t1 = N.push[2], ease = "inout", shake = 0.05,
+			from = { at = scr + sf * 11 + Vector3.new(0, 1.4, 0) - sx * 2.2, look = scr - Vector3.new(0, 0.2, 0), fov = 46 },
+			to = { at = scr + sf * FILL, look = scr, fov = 32 } },
+		{ name = "close", t0 = N.close[1], t1 = N.close[2], ease = "inout",
+			from = { at = scr + sf * FILL, look = scr, fov = 32 },
+			to = { at = scr + sf * 7 + Vector3.new(0, 0.9, 0) + sx * 1.4, look = scr - Vector3.new(0, 0.5, 0), fov = 44 } },
+		{ name = "land", t0 = N.land[1], t1 = len, ease = "inout",
+			from = { at = scr + sf * 7 + Vector3.new(0, 0.9, 0) + sx * 1.4, look = scr - Vector3.new(0, 0.5, 0), fov = 44 }, to = "gameplay" },
 	}
 	-- (27 Nov, main: if the prewarm isn't in when the lead ends, the black holds up to 2 s more, the sting carrying it:
 	-- the film's own clock waits at 0 until it's in; the server's round 1 allows for it)
 	-- (27 Nov 2026: the briefing (ZombieBrief) sits between the static and the school. while it's up the film holds in
 	-- the static's last moment under it (r.inBrief); from BriefT1 the school plays on. a skip during the news jumps to
 	-- it (r.toBrief))
-	local AT = N.static[2]
+	local AT = N.push[2]
 	local function clk(): number
 		local raw = srv() - (t0 :: number)
 		if raw >= 0 and not r.warmReady and raw < 2 then r.shift = raw end
@@ -643,7 +694,7 @@ local function intro(a: Model)
 		-- the moon, held each frame up to the squad (27 Nov test: the school's own zone look lands a beat after the film
 		-- starts and took the moon back, the feed read black); the haze thinner still while the feed runs
 		local mw = r.moonWas
-		if mw and t < N.squad[1] then
+		if mw and t < N.push[1] then
 			local amb, outd, ex = Color3.fromRGB(118, 130, 160), Color3.fromRGB(138, 156, 196), mw.exp + 0.95
 			if Lighting.Ambient ~= amb then Lighting.Ambient = amb end
 			if Lighting.OutdoorAmbient ~= outd then Lighting.OutdoorAmbient = outd end
@@ -738,9 +789,38 @@ local function intro(a: Model)
 				TweenService:Create(siren, TweenInfo.new(math.max(0.3, N.school[2] - N.school[1] - 0.4), Enum.EasingStyle.Sine), { Volume = 0 }):Play()
 			end
 		end
-		r.showMe = t >= N.squad[1] and t < N.squad[2] - 0.1 -- (not into the hand-back: the lens goes into your own head)
-		if t >= N.squad[1] and r.moonHigh ~= false then r.moonHigh = false; moon(r, 1, false, 0.25) end
-		if not lifted and t >= N.squad[2] - 0.4 then lifted = true; Cine.bars(false, 0.6); if wind then fade(wind, 0, 0.8) end end
+		-- inside now: the lobby's own light (black frames over the change: a one-frame cut never shows a half-lit frame)
+		if t >= N.push[1] and r.moonHigh ~= false then
+			r.moonHigh = false
+			moon(r, 1, false, 0.01)
+			black.BackgroundTransparency = 0
+			task.delay(0.06, function() if film == r and not r.leadBlack then black.BackgroundTransparency = 1 end end)
+		end
+		-- the terminal's picture: on through the push and the briefing; at the close it powers down (the picture folds to
+		-- a bright line, the line to a dot, the dot out), with the CRT's own whine and click
+		-- (the picture's own words fade as the push ends: the briefing takes over from plain green, its own layout coming in)
+		if pic then
+			local tx = math.clamp((t - (N.push[2] - 0.4)) / 0.3, 0, 1)
+			if pic.tx ~= tx then
+				pic.tx = tx
+				for _, l in pic.lit:GetChildren() do if l:IsA("TextLabel") then l.TextTransparency = tx end end
+			end
+		end
+		if pic and t >= N.close[1] then
+			local u = t - N.close[1]
+			if not r.offSaid and u >= 0.3 then
+				r.offSaid = true
+				sfx("zm_term_off", scr, 1)
+				if okSfx and Sfx then pcall((Sfx :: any).play, "zm_term_hum", scr, 0.9, 0.62) end -- (the tube winding down)
+			end
+			local yS = if u < 0.3 then 1 elseif u < 0.55 then math.max(0.012, 1 - (u - 0.3) / 0.25) else 0.012
+			local xS = if u < 0.55 then 1 elseif u < 0.75 then math.max(0.02, 1 - (u - 0.55) / 0.2) else 0.02
+			pic.lit.Size = UDim2.fromScale(xS, yS)
+			pic.glow.BackgroundTransparency = if u < 0.3 then 1 elseif u < 1.05 then 0.05 else 1
+			pic.lit.Visible = u < 1.05
+		end
+		if not r.stepSaid and t >= N.land[1] then r.stepSaid = true; sfx("step_hard", nil, 0.55) end -- (you turn from the desk)
+		if not lifted and t >= N.land[1] then lifted = true; Cine.bars(false, 0.6); if wind then fade(wind, 0, 0.8) end end
 		if t >= len then finish(true) end
 	end)
 end

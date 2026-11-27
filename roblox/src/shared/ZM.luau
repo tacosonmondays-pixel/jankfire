@@ -310,12 +310,16 @@ ZM.X = {
 	arrive = 55, over = 62, land = 66, -- the helicopter: in sight, over the pad, down
 	board = 4.2, -- s from the end of the hold-out to the lift-off (the film's first-person boarding plays in it)
 	heavy = { alive = 1.5, cap = 36, gap = 0.5 }, -- the hold-out: 50% more at once (36 at most), spawning twice as fast
-	intro = 9.9, -- the intro film (ZombieCine): round 1 starts 1.5 s after it, or 2.5 s after everyone skipped
+	intro = 11.3, -- the intro film (ZombieCine; its briefing's hold comes on top): round 1 starts 1.5 s after it
 	-- the intro as a news broadcast (27 Nov, the owner: "have a news broadcast actually for the intro a zombies, it'll be
 	-- like breaking news", "Then it cuts to shot of the school"): s into the film. the live feed (banner, LIVE, the one
 	-- headline, an aerial camera; the zoom to the boarded window), the hit and the static, signal lost, our own shot of
-	-- the school, the squad, your view
-	news = { banner = 0.25, line = 0.8, zoom = { 3.0, 4.0 }, hit = 4.6, static = { 4.65, 5.2 }, school = { 5.2, 7.7 }, squad = { 7.7, 9.3 } },
+	-- the school, your view. (27 Nov 2026, the owner's order: "News static shot of the map computer terminal style menu
+	-- when everyone ready shot of terminal closing and going into first person": after the school, a push into the
+	-- lobby terminal's screen (studio-tools/ZmGate terminal) where the BRIEFING opens (push[2] = ZM.BRIEF.at); then the
+	-- pull back as the CRT powers down (close), and the push into your own view (land). no squad shot)
+	news = { banner = 0.25, line = 0.8, zoom = { 3.0, 4.0 }, hit = 4.6, static = { 4.65, 5.2 }, school = { 5.2, 7.7 },
+		push = { 7.7, 8.9 }, close = { 8.9, 10.3 }, land = { 10.3, 11.3 } },
 	outro = 9.0, -- the extraction film, then the stats card
 	-- (27 Nov, the owner: "first person, helicopter door opens and there's a guy, he reaches out his hand, you take a
 	-- step forward then shot its an away shot of the helicopter flying off then boom displays your round"). s into the
@@ -431,7 +435,7 @@ end
 -- server/ZombieBrief.luau checks and applies them; client/ZombieBrief.client.luau draws the terminal
 ZM.BRIEF = {
 	secs = 18, -- the shared timer from the moment it opens; everyone READY closes it sooner
-	at = ZM.X.news.static[2], -- s into the film it opens (the static's end; the school shot plays from its close)
+	at = ZM.X.news.push[2], -- s into the film it opens (the push into the lobby terminal's screen; its power-down plays from the close)
 	sidearms = { "revolver", "pistol", "sawnoff", "akimbo" }, -- the revolver's tier: what you start with (and get back)
 	-- one for the whole game (going down doesn't lose it, unlike a cola). our own names, plain words
 	passives = {
