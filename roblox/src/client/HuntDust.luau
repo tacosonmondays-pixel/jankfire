@@ -57,17 +57,21 @@ function D.shaft(parent: Instance, a: Vector3, b: Vector3, width: number, col: C
 	p.Transparency = 1; p.Size = Vector3.new(0.2, 0.2, 0.2); p.CFrame = CFrame.new(a)
 	local a0 = Instance.new("Attachment"); a0.Position = Vector3.zero; a0.Parent = p
 	local a1 = Instance.new("Attachment"); a1.Position = b - a; a1.Parent = p
-	local bm = Instance.new("Beam")
-	bm.Attachment0 = a0; bm.Attachment1 = a1
-	bm.FaceCamera = true
-	bm.Texture = D.DOT; bm.TextureMode = Enum.TextureMode.Stretch; bm.TextureLength = 1; bm.TextureSpeed = 0
-	bm.Width0 = width; bm.Width1 = width * (o.spread or 1.25)
-	bm.LightEmission = o.emission or 1; bm.LightInfluence = 0; bm.Brightness = o.brightness or 2
-	bm.Color = ColorSequence.new(col)
-	local see = o.see or 0.8
-	bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.18, see), kp(0.7, see), kp(1, 1) })
-	bm.Segments = 1
-	bm.Parent = p
+	-- (27 Nov, in Play: a beam's transparency is sampled per segment, so one segment drew it fully clear; and the soft
+	-- glow stretched along a beam leaves almost no alpha) two plain bands, the inner half as wide: soft-ish sides
+	local see = o.see or 0.9
+	for i, k in { 1, 0.55 } do
+		local bm = Instance.new("Beam")
+		bm.Name = if i == 1 then "Shaft" else "ShaftCore"
+		bm.Attachment0 = a0; bm.Attachment1 = a1
+		bm.FaceCamera = true
+		bm.Width0 = width * k; bm.Width1 = width * k * (o.spread or 1.25)
+		bm.LightEmission = o.emission or 0.3; bm.LightInfluence = 0; bm.Brightness = o.brightness or 1
+		bm.Color = ColorSequence.new(col)
+		bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.22, see), kp(0.62, see), kp(1, 1) })
+		bm.Segments = 12
+		bm.Parent = p
+	end
 	p.Parent = parent
 	return p
 end
@@ -83,7 +87,7 @@ function D.screen(parent: Instance, screen: BasePart, col: Color3, opts: any?): 
 		{ name = "ScreenMotes", density = o.density or 0.06, max = 5, emission = 0.4 })
 	if o.shaft then
 		D.shaft(parent, f.Position + f.LookVector * 0.4, f.Position + f.LookVector * (o.shaftLen or 7) + Vector3.new(0, -1.2, 0),
-			w * 0.9, col, { name = "ScreenShaft", see = o.see or 0.86 })
+			w * 0.9, col, { name = "ScreenShaft", see = o.see or 0.9 })
 	end
 end
 

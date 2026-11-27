@@ -376,18 +376,21 @@ local function shaft(parent: Instance, a: Vector3, b2: Vector3, width: number, c
 	p.Transparency = 1; p.Size = Vector3.new(0.2, 0.2, 0.2); p.CFrame = CFrame.new(a)
 	local a0 = Instance.new("Attachment"); a0.Parent = p
 	local a1 = Instance.new("Attachment"); a1.Position = b2 - a; a1.Parent = p
-	local bm = Instance.new("Beam")
-	bm.Attachment0 = a0; bm.Attachment1 = a1; bm.FaceCamera = true
-	bm.Texture = DOT; bm.TextureMode = Enum.TextureMode.Stretch; bm.TextureLength = 1; bm.TextureSpeed = 0
-	bm.Width0 = width; bm.Width1 = width * 1.25; bm.LightEmission = 1; bm.LightInfluence = 0; bm.Brightness = 2
-	bm.Color = ColorSequence.new(col)
-	bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.18, see), kp(0.7, see), kp(1, 1) })
-	bm.Segments = 1; bm.Parent = p
+	-- (27 Nov, in Play: one segment sampled only the clear ends; the stretched glow had no alpha) two plain bands
+	for i, k in { 1, 0.55 } do
+		local bm = Instance.new("Beam")
+		bm.Name = if i == 1 then "Shaft" else "ShaftCore"
+		bm.Attachment0 = a0; bm.Attachment1 = a1; bm.FaceCamera = true
+		bm.Width0 = width * k; bm.Width1 = width * k * 1.25; bm.LightEmission = 0.3; bm.LightInfluence = 0; bm.Brightness = 1
+		bm.Color = ColorSequence.new(col)
+		bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.22, see), kp(0.62, see), kp(1, 1) })
+		bm.Segments = 12; bm.Parent = p
+	end
 	p.Parent = parent
 end
 B.DUST = {
 	sun = Color3.fromRGB(255, 238, 212), lamp = Color3.fromRGB(255, 222, 184),
-	shafts = 3, shaftSee = 0.8, -- (faint: hiding stays readable; the soft glow texture's own alpha thins it further)
+	shafts = 3, shaftSee = 0.9, -- (faint: two bands at this, the core reads ~19%, the sides ~10%; hiding stays readable)
 	lamps = { { -25.6, 10.7, 21 }, { 30, 7.6, -18 }, { -25.6, 10.7, -19.5 } }, -- (living room, the kitchen's pendant, the family room)
 }
 function B.ambience(): string
@@ -437,7 +440,7 @@ function B.ambience(): string
 		nm += 1; rate += r
 		if strong and nsh < B.DUST.shafts and w.w >= 5 then
 			nsh += 1
-			shaft(f, w.start, w.floor, w.w * 0.55, B.DUST.sun, B.DUST.shaftSee, "SunShaft")
+			shaft(f, w.start, w.floor, w.w * 0.7, B.DUST.sun, B.DUST.shaftSee, "SunShaft")
 		end
 	end
 	for _, l in B.DUST.lamps do
