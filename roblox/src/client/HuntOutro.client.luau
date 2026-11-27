@@ -227,14 +227,23 @@ local function play(a: any)
 			local f = if hd then Vector3.new(hd.CFrame.LookVector.X, 0, hd.CFrame.LookVector.Z).Unit else origin.LookVector
 			table.insert(walk, CFrame.new(p0 - f * 2)); table.insert(walk, CFrame.new(p0 + f * 6))
 		end
-		-- the wreck: cushions knocked to the floor and the last pink cubes, fading, along the way
+		-- the wreck (main, 27 Nov: "start the walk with destroyed place"): the map's own list of things knocked over,
+		-- else cushions along the way; and the last pink cubes, fading
+		local wreck = mapDef and mapDef.outroWreck
+		if wreck then
+			for _, w in wreck do
+				local at = origin * CFrame.new(w[2], w[3], w[4]) * CFrame.Angles(0, math.rad(w[5] or 0), 0)
+					* CFrame.Angles(math.rad(w[6] or 0), 0, math.rad(w[7] or 0))
+				piece(kit, w[1], at, house)
+			end
+		end
 		local cubes: { BasePart } = {}
 		for i = 1, #walk do
 			local p = walk[i].Position
 			local rng = Random.new(i * 17)
 			local down = workspace:Raycast(p, Vector3.new(0, -12, 0))
 			local floorY = if down then down.Position.Y else p.Y - 5.5
-			if i < #walk then
+			if i < #walk and not wreck then
 				local at = CFrame.new(p.X + rng:NextNumber(-3, 3), floorY, p.Z + rng:NextNumber(-3, 3)) * CFrame.Angles(0, rng:NextNumber(0, 6.28), math.rad(rng:NextNumber(-8, 8)))
 				piece(kit, "hiW_cushion", at, house)
 			end

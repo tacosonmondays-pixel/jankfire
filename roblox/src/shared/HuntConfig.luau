@@ -106,6 +106,15 @@ H.MAPS = {
 		-- on to the fireplace (eye height 5.6); the survivors' regroup in the hall (x, y, z, facing yaw degrees)
 		outroWalk = { path = { { -4, 5.6, 36 }, { -4, 5.6, 28 }, { -8, 5.6, 21 } }, looks = { { -30, 4.5, 30 }, { 26, 4.5, 10 }, { -50, 4.2, 21 } } }, -- (v1: off the stairs)
 		outroGroup = { -2, 0, 14, 180 },
+		-- the wreck along his walk (main, 27 Nov: "start the walk with destroyed place"): { piece, x, y, z, yaw, pitch, roll }
+		-- in degrees (yaw first, then the tip). No blood, no bodies: things knocked over, a frame askew, a door off its hinge
+		outroWreck = {
+			{ "hiW_chair", -7, 1.15, 31, 30, 0, 90 }, { "hiW_lamp", -18, 1.2, 27, 70, 90, 0 }, { "hiW_armchair", -26, 1.6, 22, 200, -90, 0 },
+			{ "hiW_cushion", -16, 0, 20, 30, 0, 0 }, { "hiW_cushion", -22, 0, 30, 110, 0, 8 }, { "hiW_cushion", -6, 0, 23, 200, 0, 0 },
+			{ "hiW_paper", -9, 0.02, 27, 10, 0, 0 }, { "hiW_paper", -10.5, 0.02, 25, 55, 0, 0 }, { "hiW_paper", -6.5, 0.02, 29, 120, 0, 0 },
+			{ "hiW_paper", -14, 0.02, 23, 80, 0, 0 }, { "hiW_paper", -19, 0.02, 25, 15, 0, 0 }, { "hiW_paper", -11, 0.02, 30, 160, 0, 0 },
+			{ "hiW_frame", -36, 6.5, 39.8, 180, 0, 14 }, { "hiW_door", -10.6, 0, 35.5, 90, -10, 0 },
+		},
 		gunman = { 3, 0, -21, 0, -1 },
 		hiders = {
 			{ 93, -1.5, -145 }, { -43, -1.5, 69 }, { -77, -1.5, -149 }, { 55, 13, -19 }, { -55, 13, -37 }, { 99, -1, 37 },

@@ -157,6 +157,37 @@ def win_pieces():
         K.cyl(g, '8d9297', sx * 0.28, 0.12, -0.08, 0.08, 0.05, segs=10, bev=0.02)
     # a sofa cushion knocked to the floor (the gunman's win walk through the wrecked house)
     K.B('hiW_cushion', '8b8073', -1.2, 0.0, -1.0, 1.2, 0.6, 1.0, bev=0.28)
+    # the wreck pass (main, 27 Nov: "start the walk with destroyed place"): each piece upright at its own origin, its
+    # feet on y 0; HuntConfig.MAPS[].outroWreck tips and places them. Plain, chunky, the house's quiet colours; no text
+    WAL, CREAM, SLATE = '6b5443', 'd8cebd', '5e6670'
+    c = 'hiW_chair'                                                     # a dining chair
+    for (x, z) in ((-0.95, -0.95), (0.95, -0.95), (-0.95, 0.95), (0.95, 0.95)):
+        K.B(c, WAL, x - 0.18, 0.0, z - 0.18, x + 0.18, 2.0, z + 0.18, bev=0.06)
+    K.B(c, WAL, -1.15, 2.0, -1.15, 1.15, 2.35, 1.15, bev=0.12)
+    K.B(c, CREAM, -1.0, 2.35, -1.0, 1.0, 2.6, 1.0, bev=0.12)
+    K.B(c, WAL, -1.15, 2.35, 0.85, 1.15, 5.0, 1.15, bev=0.14)
+    L = 'hiW_lamp'                                                      # a floor lamp
+    K.cyl(L, SLATE, 0.0, 0.0, 0.0, 0.8, 0.25, segs=16, bev=0.08)
+    K.cyl(L, SLATE, 0.0, 0.25, 0.0, 0.12, 6.0, segs=8, bev=0.03)
+    K.cyl(L, CREAM, 0.0, 5.6, 0.0, 1.2, 1.4, segs=20, bev=0.12, r2=0.9)
+    a2 = 'hiW_armchair'                                                 # a chunky armchair
+    K.B(a2, '5f6b73', -1.8, 0.3, -1.6, 1.8, 1.6, 1.6, bev=0.35)
+    K.B(a2, '6e7a82', -1.4, 1.6, -1.5, 1.4, 2.1, 1.1, bev=0.25)
+    K.B(a2, '5f6b73', -1.8, 1.6, 1.0, 1.8, 3.9, 1.6, bev=0.35)
+    for sx in (-1, 1):
+        K.B(a2, '5f6b73', sx * 1.8 - (0.55 if sx > 0 else 0), 0.3, -1.6, sx * 1.8 + (0.0 if sx > 0 else 0.55), 2.6, 1.6, bev=0.3)
+    for (x, z) in ((-1.4, -1.2), (1.4, -1.2), (-1.4, 1.2), (1.4, 1.2)):
+        K.B(a2, WAL, x - 0.18, 0.0, z - 0.18, x + 0.18, 0.3, z + 0.18, bev=0.05)
+    K.B('hiW_paper', 'e8e4dc', -0.42, 0.0, -0.58, 0.42, 0.03, 0.58, bev=0.0, segs=1)   # a blank sheet
+    f = 'hiW_frame'                                                     # a picture frame: bands of muted colour only
+    K.B(f, WAL, -1.9, -1.4, -0.12, 1.9, 1.4, 0.12, bev=0.1)
+    for i, col in enumerate(('8a9a8c', 'c9b79c', '6f7f8f')):
+        K.B(f, col, -1.55, -1.1 + i * 0.74, 0.1, 1.55, -1.1 + (i + 1) * 0.74, 0.16, bev=0.02, segs=1)
+    d = 'hiW_door'                                                      # a door leaf, off its hinge
+    K.B(d, '8a7a68', -1.7, 0.0, -0.18, 1.7, 7.6, 0.18, bev=0.1)
+    for (y0, y1) in ((0.6, 3.4), (4.0, 7.0)):
+        K.B(d, '7c6c5b', -1.3, y0, 0.12, 1.3, y1, 0.24, bev=0.06)
+    K.cyl(d, '8d9297', 1.25, 3.6, 0.3, 0.16, 0.2, segs=10, bev=0.03)
 
 # ---------------------------------------------------------------- the data the client reads
 SCREENS = {
@@ -170,7 +201,8 @@ ACTOR = (0.0, 0.0, 0.0)
 ORIGIN = {'hiA': (0.0, 0.0, 0.0), 'hiB': (40.0, 0.0, 0.0)}
 # the pieces that stand at their own origin (the client places them from the spots below; the kit keeps each at its
 # room's origin: hiA_chair at A's, hiB_couch and hiB_pad at B's, hiW_cushion at none)
-PIECES = {'hiA_chair': 'hiA', 'hiB_couch': 'hiB', 'hiB_pad': 'hiB', 'hiW_cushion': None}
+PIECES = {'hiA_chair': 'hiA', 'hiB_couch': 'hiB', 'hiB_pad': 'hiB', 'hiW_cushion': None, 'hiW_chair': None, 'hiW_lamp': None,
+          'hiW_armchair': None, 'hiW_paper': None, 'hiW_frame': None, 'hiW_door': None}
 # spots in the rooms' own space: (x, y, z, yaw degrees); a seat is where the sitter's hips go
 SPOTS = {
     'chairIntro': (2.8, 0.0, -2.6, -28.0),      # A: the chair pushed back and turned (the intro)
