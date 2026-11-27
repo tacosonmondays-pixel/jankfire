@@ -93,7 +93,8 @@ local function rewardsNow(): any
 			return math.clamp((x - a) / math.max(1, b - a), 0, 1)
 		end
 		local before = if Ranks.levelOf(s.xp) < lv then 1.01 else frac(s.xp, lv) -- (> to: a level gained, the bar starts over)
-		out.level = { lv = lv, from = if before > 1 then 1 else before, to = frac(xpNow, lv), gain = math.max(0, xpNow - s.xp) }
+		out.level = { lv = lv, from = if before > 1 then 1 else before, to = frac(xpNow, lv), gain = math.max(0, xpNow - s.xp),
+			into = math.max(0, xpNow - Ranks.xpForLevel(lv)), need = Ranks.xpForLevel(lv + 1) - Ranks.xpForLevel(lv) }
 		if before > 1 then out.level.from = 1; out.level.to = frac(xpNow, lv) end
 		out.coins = (tonumber(me:GetAttribute("Brass")) or 0) - s.brass
 	else
@@ -140,14 +141,14 @@ local function cardOf(msg: any): any
 	local d: any = {}
 	local board = if type(msg.board) == "table" then msg.board else nil
 	d.result = if msg.winner == nil then (if msg.classic then "NO WINNER" else "DRAW") elseif msg.youWon then "VICTORY" else "DEFEAT"
-	local modeName = string.upper(tostring(msg.mode or ""))
+	local modeName = string.lower(tostring(msg.mode or "")) -- ("2v2", as players write it)
 	local def = msg.classic and ModeConfig.byId and ModeConfig.byId[msg.mode]
 	if def and type(def.name) == "string" then modeName = string.upper(def.name) end
 	local parts = { modeName }
 	local okT, title = pcall(Arena.title, if msg.arena ~= "" then msg.arena else nil)
 	if okT and type(title) == "string" and title ~= "" then table.insert(parts, string.upper(title)) end
 	if msg.ranked then table.insert(parts, "RANKED") end
-	d.sub = table.concat(parts, "  ·  ")
+	d.sub = table.concat(parts, "   ")
 	-- the columns and my numbers (the Tab board's own counts)
 	local cols = if board and type(board.cols) == "table" then board.cols else { "K", "D", "A", "DMG" }
 	d.cols, d.boardCols, d.mine = {}, cols, {}
@@ -191,6 +192,7 @@ local function cardOf(msg: any): any
 	end
 	local rw = rewardsNow()
 	d.level, d.mastery, d.coins = rw.level, rw.mastery, rw.coins
+	d.wallet = tonumber(me:GetAttribute("Brass"))
 	d.quests = {}
 	return d
 end
@@ -399,16 +401,18 @@ if RunService:IsStudio() then
 	local function fake(win: boolean, mates: number, how: string): any
 		local stage = { { uid = me.UserId, name = me.DisplayName, front = true, emote = V.emoteOf(me:GetAttribute("Emotes")) } }
 		for i = 1, mates do table.insert(stage, { uid = me.UserId, name = "" }) end
-		-- (sample rows for the preview: each side's kills are the other side's deaths)
+		-- (sample rows for the preview, a 5-3 match: each side's kills are the other side's deaths, and a side that took
+		-- n rounds killed at least n x its size)
 		local SAMPLE = {
-			[0] = { us = { { 7, 2, 0, 1050 } }, them = { { 2, 7, 0, 480 } } },
-			[1] = { us = { { 7, 2, 3, 1050 }, { 3, 3, 4, 450 } }, them = { { 3, 5, 1, 610 }, { 2, 5, 2, 520 } } },
-			[2] = { us = { { 7, 2, 3, 1050 }, { 4, 3, 2, 690 }, { 2, 3, 5, 480 } }, them = { { 3, 5, 1, 700 }, { 3, 4, 2, 560 }, { 2, 4, 1, 430 } } },
-			[3] = { us = { { 7, 2, 3, 1050 }, { 4, 3, 2, 690 }, { 3, 4, 4, 520 }, { 2, 3, 5, 410 } },
-				them = { { 4, 4, 2, 760 }, { 3, 4, 1, 600 }, { 3, 5, 3, 540 }, { 2, 3, 1, 380 } } },
+			[0] = { win = { { 5, 3, 0, 920 } }, lose = { { 3, 5, 0, 710 } } },
+			[1] = { win = { { 6, 2, 3, 1180 }, { 5, 4, 2, 940 } }, lose = { { 4, 6, 1, 820 }, { 2, 5, 3, 610 } } },
+			[2] = { win = { { 7, 3, 4, 1420 }, { 6, 3, 3, 1180 }, { 3, 4, 6, 890 } }, lose = { { 5, 6, 2, 1050 }, { 3, 5, 3, 800 }, { 2, 5, 4, 640 } } },
+			[3] = { win = { { 8, 3, 5, 1610 }, { 6, 4, 4, 1260 }, { 5, 4, 6, 1030 }, { 3, 3, 7, 760 } },
+				lose = { { 5, 6, 3, 1190 }, { 4, 6, 4, 960 }, { 3, 5, 2, 720 }, { 2, 5, 5, 590 } } },
 		}
 		local NAMES = { "kopi_kat", "slapdash09", "Wickerfield", "ducktape_dan", "mossbyte", "frostlane", "pelican_pete" }
-		local sm = SAMPLE[math.clamp(mates, 0, 3)]
+		local sm0 = SAMPLE[math.clamp(mates, 0, 3)]
+		local sm = { us = if win then sm0.win else sm0.lose, them = if win then sm0.lose else sm0.win }
 		local us, them = {}, {}
 		for i, v in sm.us do table.insert(us, { name = if i == 1 then me.DisplayName else NAMES[i - 1], uid = if i == 1 then me.UserId else -i, v = v }) end
 		for i, v in sm.them do table.insert(them, { name = NAMES[3 + i], uid = -10 - i, v = v }) end
@@ -426,9 +430,10 @@ if RunService:IsStudio() then
 		me:SetAttribute("VictoryTest", nil)
 		local kind, n = string.match(v, "^(%a+):?(%d*)$")
 		-- (the preview's rewards: a sample of what a real match gives - 340 XP, 60 coins, a weapon's mastery)
-		snap = { xp = (tonumber(me:GetAttribute("Xp")) or 0) - 340, brass = (tonumber(me:GetAttribute("Brass")) or 0) - 60, quests = nil, at = os.clock() }
+		local lost = string.sub(v, 1, 4) == "lose"
+		snap = { xp = (tonumber(me:GetAttribute("Xp")) or 0) - (if lost then 140 else 340), brass = (tonumber(me:GetAttribute("Brass")) or 0) - (if lost then 20 else 60), quests = nil, at = os.clock() }
 		local w1 = (Mastery.weapons and Mastery.weapons() or {})[1]
-		if w1 then masteryMsg = { gains = { [w1] = 250 }, xp = { [w1] = 2250 } } end
+		if w1 then masteryMsg = { gains = { [w1] = if lost then 100 else 250 }, xp = { [w1] = 2250 } } end
 		local mates = tonumber(n) or 0
 		if kind == "stop" then finish("test"); return end
 		if kind == "skip" then if run then run.skipOk = true end; skip(); return end
