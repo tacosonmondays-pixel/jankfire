@@ -1153,6 +1153,7 @@ def v2_openings():
 
 # ---------------------------------------------------------------- the light fittings, planned once (v2_lights, v2_ceilings)
 FIXTURES = []        # dict(x, y, z, lv, room, lit, dead, group, axis, gym)
+DARK_AREAS = ('tunnels', 'boiler', 'lockers', 'gymwing')   # (ZOMBIES' dark areas before the power: shared/ZM.luau ZM.DARK)
 LIGHT_GROUPS = []    # per K.LIGHTS entry: its flicker group (0: steady)
 def _hash(*v):
     h = 2166136261
@@ -1328,6 +1329,11 @@ def v2_ceilings():
     for f in FIXTURES:
         x, y, z, lv = f['x'], f['y'], f['z'], f['lv']
         model = ('sc_flk%dx' % f['group']) if f['group'] else M_('sc_fix', lv)     # (WebArena's import strips trailing digits)
+        # (27 Nov 2026, ZOMBIES: the dark areas' lit lenses in their own model, sc_darklit, so they go dark with their lamps
+        #  till the power is on: server/ZombieLight.luau. DARK_AREAS mirrors shared/ZM.luau's ZM.DARK)
+        lens_model = model
+        if V2 and not f['dead'] and not f['group'] and L.ROOMS[f['room']].get('area') in DARK_AREAS:
+            lens_model = 'sc_darklit'
         core = '3e3d3a' if f['dead'] else ST2['core']
         ck = 'plastic' if f['dead'] else 'neon'
         top = 37.0 if f['gym'] else LV[lv] + 15.0
@@ -1337,13 +1343,13 @@ def v2_ceilings():
             K.cyl(mf, ST2['frame'], x, y + 1.6, z, 0.25, top - 0.3 - (y + 1.6), segs=6, bev=0)
             K.cyl(mf, '5e6368', x, y + 0.4, z, 1.6, 1.3, segs=12, r2=0.7, bev=0.1)
             K.cyl(model, ST2['shade'], x, y, z, 1.4, 0.45, segs=12, kind='glass', bev=0)
-            K.cyl(model, core, x, y + 0.2, z, 0.5, 0.3, segs=8, kind=ck, bev=0)
+            K.cyl(lens_model, core, x, y + 0.2, z, 0.5, 0.3, segs=8, kind=ck, bev=0)
         elif ST2['fixture'] == 'globe':
             K.cyl(mf, ST2['frame'], x, top - 0.55, z, 0.65, 0.25, segs=10, bev=0)
             K.cyl(mf, ST2['frame'], x, y + 0.9, z, 0.2, top - 0.55 - (y + 0.9), segs=6, bev=0)
             K.cyl(mf, ST2['frame'], x, y + 0.75, z, 0.5, 0.3, segs=10, bev=0)
             K.sphere(model, ST2['shade'], x, y, z, 0.95, segs=12, rings_=8, kind='glass')
-            K.sphere(model, core, x, y, z, 0.32, segs=6, rings_=4, kind=ck)
+            K.sphere(lens_model, core, x, y, z, 0.32, segs=6, rings_=4, kind=ck)
         else:
             al = f['axis'] == 'x'
             L2, W2 = 2.8, 0.7
@@ -1351,7 +1357,7 @@ def v2_ceilings():
             bx(mf, '585e64', (x - hx - 0.15, y - 0.2, z - hz - 0.15, x + hx + 0.15, top - 0.3, z + hz + 0.15), bev=0.1)
             bx(model, ST2['shade'], (x - hx, y - 0.42, z - hz, x + hx, y - 0.2, z + hz), 'glass')
             cc = core if f['dead'] else 'a9b8c6'      # (round 3: a brighter lens, nearly the whole diffuser)
-            bx(model, cc, (x - hx + 0.2, y - 0.46, z - hz + 0.15, x + hx - 0.2, y - 0.4, z + hz - 0.15), ck)
+            bx(lens_model, cc, (x - hx + 0.2, y - 0.46, z - hz + 0.15, x + hx - 0.2, y - 0.4, z + hz - 0.15), ck)
     # the green lamps over every third shutter (no sign, no text) and the basement's red lamps
     for i, d in enumerate(L.DOORS):
         if i % 3 or d['lv'] == 'R': continue

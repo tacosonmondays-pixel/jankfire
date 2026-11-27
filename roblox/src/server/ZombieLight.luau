@@ -8,7 +8,8 @@
 --     Zm remote: F, D-pad up, the phone's LIGHT); a squad bot's is its body's ZmLight, on while it stands in a dark area
 --     before the power. Every client draws every beam (ForestLife's pattern)
 --   * the dark areas (ZM.DARK): the lamps in them wait for the power (tagged PowerLight: ZombieExtra turns those on
---     with it); each client dims its own light while its camera is in one
+--     with it) and so do their lenses (the kit's Shell.sc_darklit); each client dims its own light while its camera
+--     is in one, and SchoolLife holds their flickering tubes off
 -- Installed after ZombieExtract (ZombiesServer); its hooks chain on.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -83,6 +84,22 @@ function ZombieLight.install(Z: any)
 			end
 		end
 		g.model:SetAttribute("ZmDarkLamps", n)
+		-- their lit lenses too (the kit's own model for them, Shell.sc_darklit): plain and dim till the power, Neon after
+		local function lenses(lit: boolean)
+			local sh = g.model:FindFirstChild("Shell")
+			local dl = sh and sh:FindFirstChild("sc_darklit")
+			if not dl then return end
+			for _, p in dl:GetDescendants() do
+				if p:IsA("BasePart") then
+					local hex = string.match(p.Name, "__neon_(%x%x%x%x%x%x)")
+					local col = if hex then Color3.fromHex(hex) else p.Color
+					p.Material = if lit then Enum.Material.Neon else Enum.Material.SmoothPlastic
+					p.Color = if lit then col else col:Lerp(Color3.new(0, 0, 0), 0.55)
+				end
+			end
+		end
+		lenses(g.model:GetAttribute("Power") == true)
+		g.model:GetAttributeChangedSignal("Power"):Connect(function() lenses(g.model:GetAttribute("Power") == true) end)
 		for _, m in g.members do if m.p then m.p:SetAttribute("ZmLight", false) end end
 		return nil
 	end)

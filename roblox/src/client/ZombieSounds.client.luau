@@ -14,7 +14,11 @@
 --   * the economy and the world: credits (a soft coin, capped), a buy (the coin in the slot; a gun's ammo the magazine
 --     too), a refusal (a dry click), the power's breaker and the tubes' buzz, a power-up's bell, a boss on the way
 --   * the extraction: a gong as it's called, a clock's tick through the last ten seconds to lift-off
+--   (27 Nov, the gaps filled: a heartbeat under 30% HP, slower and quieter as you heal; the zombies' feet dragging,
+--   positional and capped, quieter than their groans; a cloth rustle as you start a revive; the mystery crate's creak
+--   as it opens, from the crate)
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -94,8 +98,18 @@ zr.OnClientEvent:Connect(function(x: any)
 	end
 end)
 
+-- the feet's own cap
+local steps: { number } = {}
+local function stepOk(t: number): boolean
+	for i = #steps, 1, -1 do if t - steps[i] > 1 then table.remove(steps, i) end end
+	if #steps >= 4 then return false end
+	table.insert(steps, t)
+	return true
+end
+
 -- ------------------------------------------------------------ the zombies' voices
-type Z = { m: Model, head: BasePart?, hum: Humanoid?, nextG: number, near: boolean, boss: boolean, dead: boolean }
+type Z = { m: Model, head: BasePart?, hum: Humanoid?, nextG: number, near: boolean, boss: boolean, dead: boolean,
+	lastAt: Vector3?, nextStep: number }
 local zs: { [Model]: Z } = {}
 local function headOf(m: Model): BasePart?
 	local h = m:FindFirstChild("Head")
@@ -147,7 +161,7 @@ task.spawn(function()
 			if not z then
 				local hum = c:FindFirstChildOfClass("Humanoid")
 				local nz: Z = { m = c, head = headOf(c), hum = hum, nextG = t + rng:NextNumber(1.5, 7), near = false,
-					boss = type(ty) == "string" and BOSS[ty] == true, dead = false }
+					boss = type(ty) == "string" and BOSS[ty] == true, dead = false, lastAt = nil, nextStep = 0 }
 				zs[c] = nz
 				if hum then hum.Died:Connect(function() died(nz) end) end
 				z = nz
@@ -159,6 +173,16 @@ task.spawn(function()
 			zz.head = h
 			if not h then continue end
 			local d = (h.Position - ear).Magnitude
+			-- its feet dragging while it moves (near, at most about four steps a second all told)
+			local was = zz.lastAt
+			zz.lastAt = h.Position
+			if was and d < 32 and t >= zz.nextStep then
+				local v = (Vector3.new(h.Position.X - was.X, 0, h.Position.Z - was.Z)).Magnitude / 0.2
+				if v > 1.5 and stepOk(t) then
+					play("zm_step", h.Position - Vector3.new(0, 2.5, 0), if zz.boss then 1.4 else nil)
+					zz.nextStep = t + math.clamp(5.5 / v, 0.32, 0.95) * rng:NextNumber(0.9, 1.15)
+				end
+			end
 			-- a snarl as it closes on you (once, till it's backed off)
 			if root then
 				local dr = (h.Position - root.Position).Magnitude
@@ -257,3 +281,49 @@ RunService.Heartbeat:Connect(function()
 		if s ~= lastTick then lastTick = s; play("zm_tick") end
 	end
 end)
+
+-- ------------------------------------------------------------ your heart under 30% HP (slower and quieter as you heal)
+task.spawn(function()
+	while true do
+		local hp = tonumber(me:GetAttribute("Hp"))
+		local max = tonumber(me:GetAttribute("HpMax")) or 100
+		local k = if hp and max > 0 then hp / max else 1
+		if inGame() and hp and hp > 0 and k < 0.3 then
+			local u = math.clamp(k / 0.3, 0, 1) -- (0 nearly dead, 1 at the line)
+			play("zm_heart", nil, 1 - 0.55 * u)
+			task.wait(0.55 + 0.55 * u)
+		else
+			task.wait(0.25)
+		end
+	end
+end)
+
+-- ------------------------------------------------------------ starting a revive: a cloth rustle, a pat
+ProximityPromptService.PromptButtonHoldBegan:Connect(function(pr: ProximityPrompt)
+	if pr.Name ~= "ZmRevive" or not inGame() then return end
+	play("zm_revive")
+	task.delay(0.22, function() play("zm_revpat") end)
+end)
+
+-- ------------------------------------------------------------ the mystery crate opening (its Spin attribute), from the crate
+local crates: { [Instance]: boolean } = {}
+task.spawn(function()
+	while true do
+		task.wait(1)
+		local a = if inGame() then arena() else nil
+		local ex = a and a:FindFirstChild("ZMExtra")
+		if ex then
+			for _, m in ex:GetDescendants() do
+				if m:IsA("Model") and m.Name == "Crate" and not crates[m] then -- (ZombieExtra's crate: its Spin is set as it opens)
+					crates[m] = true
+					local mm = m :: Model
+					mm:GetAttributeChangedSignal("Spin"):Connect(function()
+						if type(mm:GetAttribute("Spin")) == "number" then play("zm_crate", mm:GetPivot().Position) end
+					end)
+					mm.Destroying:Connect(function() crates[mm] = nil end)
+				end
+			end
+		end
+	end
+end)
+

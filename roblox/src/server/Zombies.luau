@@ -246,6 +246,32 @@ local function setupGroup()
 	pcall(function() PhysicsService:CollisionGroupSetCollidable(GROUP, "JFPlayers", false) end)
 	pcall(function() PhysicsService:CollisionGroupSetCollidable(GROUP, "JFShredded", false) end)
 end
+-- every body dressed as it spawns (27 Nov 2026, main: under the flashlight the gait colours read loud and flat next to
+-- the intro's crowd; the owner's less-colourful rule): a muted skin with a hint of its gait's colour (a runner still
+-- reads), a worn shirt in a dull colour, dark trousers, now and then a torn sleeve. The eyes stay (ZombieLight);
+-- specials and bosses recolour themselves after, as before (ZombieSpecial's spawned hook)
+local DRESS_SKIN = { Color3.fromRGB(104, 116, 92), Color3.fromRGB(122, 120, 102), Color3.fromRGB(92, 102, 96), Color3.fromRGB(116, 108, 92),
+	Color3.fromRGB(98, 110, 104), Color3.fromRGB(112, 122, 104) }
+local DRESS_SHIRT = { Color3.fromRGB(86, 80, 72), Color3.fromRGB(70, 78, 88), Color3.fromRGB(96, 70, 64), Color3.fromRGB(78, 84, 66),
+	Color3.fromRGB(110, 104, 92), Color3.fromRGB(60, 66, 74), Color3.fromRGB(92, 88, 104) }
+local DRESS_PANTS = { Color3.fromRGB(44, 46, 52), Color3.fromRGB(52, 48, 44), Color3.fromRGB(38, 42, 40), Color3.fromRGB(58, 56, 60) }
+local SKIN_PART = { Head = true, LeftHand = true, RightHand = true, LeftLowerArm = true, RightLowerArm = true }
+local SHIRT_PART = { UpperTorso = true, LeftUpperArm = true, RightUpperArm = true }
+local PANTS_PART = { LowerTorso = true, LeftUpperLeg = true, RightUpperLeg = true, LeftLowerLeg = true, RightLowerLeg = true }
+local function dress(m: Model, kind: number)
+	local gait = ZM.GAIT_COLOR[kind] or Color3.new(0.5, 0.5, 0.5)
+	local skin = DRESS_SKIN[math.random(#DRESS_SKIN)]:Lerp(gait, 0.12)
+	local shirt, pants = DRESS_SHIRT[math.random(#DRESS_SHIRT)], DRESS_PANTS[math.random(#DRESS_PANTS)]
+	local torn = if math.random() < 0.45 then (if math.random() < 0.5 then "LeftUpperArm" else "RightUpperArm") else ""
+	for _, p in m:GetChildren() do
+		if p:IsA("BasePart") then
+			if SKIN_PART[p.Name] or p.Name == torn then p.Color = skin
+			elseif SHIRT_PART[p.Name] then p.Color = shirt
+			elseif PANTS_PART[p.Name] then p.Color = pants
+			elseif p.Name == "LeftFoot" or p.Name == "RightFoot" then p.Color = Color3.fromRGB(34, 32, 30) end
+		end
+	end
+end
 -- one body per gait (the owner: coloured dummies): head, torso and arms in its colour, the legs darker. no face
 local function template(kind: number): Model
 	local col = ZM.GAIT_COLOR[kind]
@@ -329,6 +355,7 @@ local function spawnOne(g: Game, live: { Member }): boolean
 	local tpl = g.templates[kind]
 	if not tpl then return false end
 	local m = tpl:Clone()
+	dress(m, kind)
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not hum or not root then m:Destroy(); return false end

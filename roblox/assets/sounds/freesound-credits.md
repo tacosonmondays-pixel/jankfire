@@ -40,3 +40,5 @@
 - 521820: "Polar Wind" by Fission9, https://freesound.org/people/Fission9/sounds/521820/ (CC0): zm_wind (41.5-57.0 s, a loop), the zombies films' night wind, 27 Nov 2026
 - 325274: "Wood impact 2.wav" by deleted_user_2104797, https://freesound.org/people/deleted_user_2104797/sounds/325274/ (CC0): zm_board (0.46-1.55 s), a zombie hitting a boarded window in the intro, 27 Nov 2026
 - 478238: "Planks Clattering" by Fission9, https://freesound.org/people/Fission9/sounds/478238/ (CC0): zm_planks (0.06-1.70 s), a plank falling in the intro, 27 Nov 2026
+- 213181: "Human Heartbeat (60 BPM)" by FenrirFangs, https://freesound.org/people/FenrirFangs/sounds/213181/ (CC0): zm_heart (one beat, 1.00-1.85 s; uploaded 105380785242792), ZOMBIES' heartbeat under 30% HP, 27 Nov 2026
+- 221650: "Footstep Drag Indoors .wav" by abbahoot, https://freesound.org/people/abbahoot/sounds/221650/ (CC0): zm_step (0.6-8.6 s, four drags as regions; uploaded 82254078949851), ZOMBIES' zombie shuffle, 27 Nov 2026

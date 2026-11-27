@@ -41,7 +41,7 @@ W.PATCHES = {
 	Crate = { 122985079878951 }, -- cr_furn: the room's furniture with the web toy train on its track (r1 114276068000614)
 	ArcticCabin = { 88418877574665 }, -- ac_out, ac_boat: the upturned rowboat (lofted: no web rowboat; r1 75530530832835)
 	Station = { 90604406833606 }, -- sa_train: the carriages' dress (cambered roofs, open bogies, underfloor boxes, ends; r1 101181470203283)
-	JankfieldHighV2B = { 81635365205124 }, -- sc_ground, sc_hedgeA: the stone-and-iron fence round the grounds and the hedges as soft bushes in planters (27 Nov, the owner's "Finish the fence" and "better shrubs"; leaf-card hedges B: studio-tools/ZmGate.luau; r6 103886465355889)
+	JankfieldHighV2B = { 81635365205124, 87003238481034 }, -- (the second: sc_fix_B/G/U, sc_darklit, the dark areas' lenses on their own, 27 Nov) sc_ground, sc_hedgeA: the stone-and-iron fence round the grounds and the hedges as soft bushes in planters (27 Nov, the owner's "Finish the fence" and "better shrubs"; leaf-card hedges B: studio-tools/ZmGate.luau; r6 103886465355889)
 } :: { [string]: { number } }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
@@ -173,6 +173,20 @@ function W.swap(name: string, id: number): string
 		table.insert(groups[model], d)
 	end
 	local names = {}
+	-- (27 Nov 2026: a kit's overflow splits are named <model>b, <model>c...; a patch's own model holds what they held, so
+	-- a split the patch doesn't bring goes, in the library and the arena: else its pieces showed twice, z-fighting)
+	local function staleSplit(n: string): boolean
+		local base = string.match(n, "^(.-)%l$")
+		return base ~= nil and groups[base] ~= nil and groups[n] == nil
+	end
+	for _, old in lib():GetChildren() do
+		if old:GetAttribute("Kit") == L.kit and staleSplit(old.Name) then old:Destroy() end
+	end
+	if shell then
+		for _, old in shell:GetChildren() do
+			if staleSplit(old.Name) then table.insert(names, old.Name .. " (a split the patch replaces, removed)"); old:Destroy() end
+		end
+	end
 	for mname, parts in groups do
 		for _, old in lib():GetChildren() do
 			if old.Name == mname and old:GetAttribute("Kit") == L.kit then old:Destroy() end

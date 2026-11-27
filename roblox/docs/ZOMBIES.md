@@ -567,6 +567,14 @@ server/ZombieLight.luau (installed after ZombieExtract) and client/ZombieLight.c
   in one this client's light eases down to near-black over 0.6 s (Ambient 16,18,24, exposure -0.7: a faint fill, you
   can still move; you need the light to see them coming), and back as you leave or the power comes on. Films own the
   light (ZmFilm). The squad bots' flashlights come on in a dark area before the power (their body's ZmLight).
+- **The lamps' panels go dark with them** (27 Nov, main: the glowing panels gave the unpowered areas away). The kit
+  (tools/roblox/school_models.py, DARK_AREAS) puts the lenses of the fixtures in those four areas in a model of their
+  own, sc_darklit (the rest stay in sc_fix_*; asset 87003238481034, in W.PATCHES.JankfieldHighV2B). ZombieLight's
+  start hook turns it SmoothPlastic at its colour 55% to black until the arena's Power is on, then Neon again; the
+  client's tube flicker (SchoolLife) holds those groups off and unlit until the power, then lights them.
+  W.swap now removes a kit's overflow split (`<model>b`, `<model>c`...) when the patch brings the model but not the
+  split (the old sc_fix_Ub drew the same lamps twice). Checked in Play (place version 1635): the tunnel lamp unlit
+  before the power, glowing after.
 - **Measured** (Studio, the boiler room, dark): four beams (yours with shadows + three bots') cost +0.07 ms render CPU
   (3.50 -> 3.57) and +0.23 ms GPU (3.40 -> 3.63).
 - **Test traps.** `JankZombies open` opens every door AND turns the power on (no dark areas then): put the test player
@@ -602,12 +610,30 @@ game's motif.
 | A power-up | zm_roundbell x 0.45 | | |
 | The extraction called | zm_gong x 0.8 | | |
 | Lift-off's last 10 s | zm_tick each second | Mantle Clock 2 (9116466272) | 0.23 |
+| Your HP under 30% | zm_heart, every 0.55 s near 0 to 1.1 s at the line, quieter as you heal | Freesound CC0 "Human Heartbeat (60 BPM)" by FenrirFangs (213181), one beat; upload 105380785242792 | 0.41 x (1 to 0.45) |
+| A zombie walking near you | zm_step (4 drags), under 32 studs, while it moves faster than 1.5 studs/s, at most 4 a second in all | Freesound CC0 "Footstep Drag Indoors .wav" by abbahoot (221650), four drags as regions; upload 82254078949851 | 0.21, jitter 6%, roll-off 6-50 studs |
+| You start a revive (holding the prompt) | zm_revive + zm_revpat | Freesound CC0 "Jacket/Cloth Rustle 9" by brandondelehoy (494797, 81612895656573); PSE Body Pats Cloth Hits 4 (9113532998) | 1.84, 0.92 |
+| The mystery crate opens | zm_crate at the crate (its Spin attribute, so only the crate) | PSE Wood Groan Creak Opening Wood Chest Coffin 6 (9120881116) | 1.64 |
 - **The voices' cap:** at most three zombie voices in any 1.6 s on a client, each zombie's next groan 5-12 s on (longer
   the more are near, longer still for a boss), a snarl once per approach (within 11 studs, reset past 18), a death
   gurgle 70% of the time, all positional (Sfx's roll-off) with pitch jitter.
 - **Levels:** store.json targets (zm_round -20, roundboss -22, gong -24, groan -27, snarl / shriek -24, claw -29, swipe
   -30...). A recorded boss round clipped with everything at once (peak 1.0): the gong and the roar now follow the
   boom, and the recording peaks at 0.67 (place version 1634).
-- **Not found in the library / not done:** a heartbeat at low HP, a zombie shuffle, a revive-start sound; zm_crate (a
-  chest creak) is in the library for the mystery crate but not wired (the crate's buy message can't be told apart).
+- **The gaps filled (27 Nov, place version 1635):** the heartbeat, the shuffle, the revive's start and the crate's creak
+  (rows above). The two Freesound clips were uploaded once each. Logged in
+  Play: at Hp 20 the heart beat every ~0.9 s, three walking zombies made ~2 steps a second, one crate buy one creak.
+  The revive start isn't Play-tested yet (it needs a downed squadmate).
+
+### 4.13 Dressed zombies and the phone check (27 Nov; main's small fixes)
+- **The zombies dress like the gate crowd.** server/Zombies.luau `dress(m, kind)` on every plain zombie as it
+  spawns: skin from DRESS_SKIN (muted grey-greens) leaned 12% to ZM.GAIT_COLOR, a worn dull shirt (DRESS_SHIRT), dark
+  trousers (DRESS_PANTS), a torn sleeve 45% of the time (one arm skin), dark feet; the eyes stay. The specials and the
+  bosses keep their own looks.
+- **The phone check** (Studio, TouchForce on the player and TouchTest "fake:844x390"): the LIGHT button is in the
+  touch cluster (by RELOAD); the buy and revive prompts are Roblox's own, which turn into tap buttons on a phone. Two
+  overlaps found: the move stick sat over the round card and the spare rounds ran under the grapple and aim buttons.
+  The fix moves them while TouchOn is set (ZombiesClient; in Studio with the next push): the round beside the credits
+  (one line high), the spare rounds and the chips top right under the menu buttons. The dark areas' dimming is the
+  same on any screen.
 

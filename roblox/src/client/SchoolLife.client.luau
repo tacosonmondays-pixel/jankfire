@@ -19,7 +19,7 @@ local NAMES = { JankfieldHighV2A = true, JankfieldHighV2B = true }
 local NGROUPS = 24
 local DEAD_GROUPS = { [3] = true, [9] = true, [15] = true, [20] = true } -- (gone for good: a dark fitting among the lit)
 
-type Group = { parts: { BasePart }, cols: { Color3 }, mats: { Enum.Material }, lights: { Light }, at: Vector3? }
+type Group = { parts: { BasePart }, cols: { Color3 }, mats: { Enum.Material }, lights: { Light }, at: Vector3?, held: boolean? }
 local current: Model? = nil
 local groups: { [number]: Group } = {}
 
@@ -91,6 +91,22 @@ local function buzz(x: Group)
 	pcall((Sfx :: any).play, "zm_flicker", at)
 end
 
+-- (27 Nov 2026, ZOMBIES: a dark area's tubes stay off till the power is on, like its lamps: a zombies game's copy has
+-- Power = false till then; ZM.DARK names the areas)
+local okZM, ZM = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("ZM")) :: any end)
+local darkFor: Model?, darkMap: any = nil, nil
+local function unpowered(x: Group): boolean
+	local m = current
+	if not m or m:GetAttribute("Power") ~= false or not x.at or not okZM or type(ZM.DARK) ~= "table" then return false end
+	if darkFor ~= m then
+		darkFor = m
+		local ok, r = pcall(ZM.read, m)
+		darkMap = if ok then r else nil
+	end
+	if not darkMap then return false end
+	local id = ZM.areaAt(darkMap, x.at :: Vector3)
+	return id ~= nil and ZM.DARK[id] == true
+end
 local function setOn(x: Group, on: boolean)
 	for i, p in x.parts do
 		local mat = x.mats[i]
@@ -111,6 +127,9 @@ task.spawn(function()
 			current = m
 			groups = if m then collect(m) else {}
 			for n, x in groups do if DEAD_GROUPS[n] then setOn(x, false) end end
+		end
+		for n, x in groups do -- (a dark area's tubes off at once when its game starts)
+			if not DEAD_GROUPS[n] and not x.held and unpowered(x) then x.held = true; setOn(x, false) end
 		end
 		task.wait(2)
 	end
@@ -166,6 +185,12 @@ for n = 1, NGROUPS do
 			task.wait(2 + math.random() * 6)
 			local x = groups[n]
 			if not x or current == nil or DEAD_GROUPS[n] then continue end
+			if unpowered(x) then
+				if not x.held then x.held = true; setOn(x, false) end
+				continue
+			elseif x.held then
+				x.held = false; setOn(x, true)
+			end
 			buzz(x)
 			if math.random() < 0.15 then
 				-- a dying tube: a rapid stutter, a dark spell, back on
