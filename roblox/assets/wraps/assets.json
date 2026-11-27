@@ -2406,5 +2406,17 @@
  "34d828ff8b292860cfae63b9880d0413546725c5": {
   "file": "lavalamp_f31_emit.png",
   "id": 74473791060273
+ },
+ "86f2f253f12a3fbadfc9552be4950347fa1a0840": {
+  "file": "shibori_color.png",
+  "id": 70732785653054
+ },
+ "9579691743d3c0403bef35009a1f77778b403b8f": {
+  "file": "corp_color.png",
+  "id": 77640056388434
+ },
+ "1074f16865b10ed92d379b4234f78066d7b94fad": {
+  "file": "corp_emit.png",
+  "id": 96326814777945
  }
 }

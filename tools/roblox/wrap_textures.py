@@ -1177,14 +1177,16 @@ def shibori(t: Tex):
         d = np.hypot(X - cx, Y - cy)
         v = np.zeros(X.shape, np.float32)
         for rr in (0.22, 0.52, 0.82):
-            v = np.maximum(v, cover(np.abs(d - R * rr) - 5, 2.0))
+            v = np.maximum(v, cover(np.abs(d - R * rr) - 3.5, 2.0))
         ang = np.arctan2(Y - cy, X - cx)
-        spokes = cover((np.abs(np.sin(ang * 6)) * d) - 2.5, 2.0) * cover(d - R * 0.9) * (d > R * 0.12)
+        spokes = cover((np.abs(np.sin(ang * 6)) * d) - 2.0, 2.0) * cover(d - R * 0.9) * (d > R * 0.12)
         v = np.maximum(v, spokes * 0.8)
         m[idx] = np.maximum(m[idx], v)
-    for j in range(3):
-        for i in range(3):
-            kumo((i + 0.5 * (j % 2)) * n / 3 + n / 6, (j + 0.5) * n / 3, n / 7.5)
+    # (27 Nov, 0.6 m tiles: 3 x 3 circles 16 cm across showed as big targets sliced at every edge of the gun; now
+    # 6 x 6 smaller ones, about 7.5 cm across, so they read as an even dyed pattern; six rows keep the stagger seamless)
+    for j in range(6):
+        for i in range(6):
+            kumo((i + 0.5 * (j % 2)) * n / 6 + n / 12, (j + 0.5) * n / 6, n / 16)
     m = blur_wrap(m, 2)
     t.rgb[:] = mix('1b2656', '25336e', smoothstep(-0.5, 0.5, FBM([3, 6], 371)(t.U, t.V)))
     t.fill(np.clip(m * 1.15, 0, 1), 'c9d4ee')
@@ -1778,9 +1780,14 @@ def corp(t: Tex):
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('121214')
     t.fill(cover(np.abs(((t.X - t.Y) % 64) - 32) - 10) * 0.5, '1c1c20')
-    for x, y, R in ((n * 0.25, n * 0.25, 150), (n * 0.75, n * 0.75, 150), (n * 0.78, n * 0.22, 70), (n * 0.2, n * 0.8, 70)):
-        t.shape((x - R - 30, y - R - 30, x + R + 30, y + R + 30), lambda X, Y, x=x, y=y, R=R: np.abs(np.hypot(X - x, Y - y) - R - 16) - 6, color='e04aa8', emit=0.6)
-        smiley(t, x, y, R, 'ecc834', '121214')
+    # (27 Nov, 0.6 m tiles: two faces 18 cm across only ever showed as slivers of yellow cut by every edge; now a
+    # staggered 4 x 4 of smaller faces, big and small by column, so the gun shows whole faces in an even pattern)
+    for j in range(4):
+        for i in range(4):
+            x, y, R = (i + 0.5 * (j % 2)) * n / 4 + n / 8, (j + 0.5) * n / 4, (50 if i % 2 == 0 else 32)
+            ring = max(3.0, R * 0.07)
+            t.shape((x - R * 1.3 - 8, y - R * 1.3 - 8, x + R * 1.3 + 8, y + R * 1.3 + 8), lambda X, Y, x=x, y=y, R=R, ring=ring: np.abs(np.hypot(X - x, Y - y) - R * 1.17) - ring, color='e04aa8', emit=0.6)
+            smiley(t, x, y, R, 'ecc834', '121214')
     t.rough[:] = 0.3
     return {'emissive': 5.0, 'tint': 'ffffff'}   # GLOW 18 Nov (the owner: "a brighter glow ... I can't see it"; was 0.9)
 

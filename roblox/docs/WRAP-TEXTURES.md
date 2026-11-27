@@ -718,6 +718,18 @@ a wrap still failing after three reworks retires. Owners keep everything retired
   was, the owner's call.
 - Exotics: Big Wave, CRT and Neon Hex leave the containers (retired); Koi, Aurora, Vaporwave and Lava Lamp stay.
 
+**The 12 grids came back the same day (place v1516, Roster c68a332).** The owner: "some of the retired ones looked
+great", then "Stamped ones are okay if it's a pattern": what they disliked was a BIG motif broken across the gun, not an
+even repeat. So the 12 stamped grids are out of `Roster.RETIRED` again (23 stay retired: the 14 of the AI and duplicates
+audit and the 9 failed reworks); the shop-gui session put them back in their spray sets, bundles and Exotic places (CRT
+and Neon Hex, v1517). Each was checked on the new UVs: ten tile evenly and stay as uploaded; two had big motifs sliced
+at the gun's edges and were redrawn smaller (v1518): **Shibori** (3 x 3 rings 16 cm across, now 6 x 6 about 7.5 cm)
+and **☺ CORP** (two faces 18 cm across that only showed as yellow slivers, now a staggered 4 x 4 of faces 6 and 4 cm,
+big and small by column). Only those two `JankfireWraps` rows were updated (maps and swatch; the palette moved only where
+nobody had re-tuned it). The numbered gallery of all 35 (each on the AR in Studio light, the 12 marked RESTORED) is in
+the notes folder, `GALLERY_retired_camos_27nov.jpg`, so the owner can pick more: un-retiring one is deleting its id
+from `Roster.RETIRED` (a guarded push of Roster), then the shop-gui session's sets and odds.
+
 **Gadgets (the owner: "Check gadget wraps too").**
 - Every kept picture wrap (51, the living ones by their first frame) was rendered on five gadgets (grenade, medkit,
   smoke canister, duck, camera; front and back) with the new UVs, three retired grid wraps as controls, and judged by
