@@ -424,12 +424,33 @@ the same frame, checked with ffmpeg at 30 fps round each cut on the owner's big-
 - No pre-focus: setting `Camera.Focus` far off put the room's lights out for 4 frames.
 - Her real body takes the face-up pose 0.3 s before the cut, out of shot.
 - Her head and hat go when the lens is within a stud of anything she wears.
-- (v18, the plain avatar) outside, the camera is built from her real root, and two of ThirdPerson's own-body steps
-  fought it: its "face where you aim" turned her root to the camera's flat look every frame (looking straight down,
-  the two chased each other), and its aim pose bent her waist and neck off the clip. `HuntIntroHold` (Camera+5) keeps
-  her root on the outside spot's heading, and ThirdPerson's `stepRig` leaves your own body alone while the
-  `HuntIntro` attribute is set.
-- In Studio the player attribute `HuntCutLog` logs the camera every frame round both cuts.
+- (v18 to v21, a plain avatar: every spawn plain via `StarterPlayer.LoadCharacterAppearance = false`, put back after)
+  Outside, the camera is built from her real root.
+  - The humanoid's own camera-relative turn kept turning her body to the camera's flat look. A per-frame probe saw
+    it at the frame's start and by Heartbeat.
+  - `HuntIntroHold` (Camera+5) put the outside spot's heading back for the RenderStep only, so the camera was framed
+    for a body turned ~170 deg from the one drawn: her legs filled the frame.
+  - Fix: `Humanoid.AutoRotate` is off from just before the cut until the hand-back, and the hold stays.
+  - ThirdPerson's `stepRig` also leaves your own body alone while `HuntIntro` is set. That wasn't the cause, but its
+    aim pose has no business on a filmed body.
+  - The server places the gunman 1.3 s before the cut (`INTRO.outsideEarly`, from the beats), and the outside shot
+    frames her real body's measured pose (`r.faceOffReal`).
+  - A test trap: `CanLoadCharacterAppearance = false` + `LoadCharacter`, or `ApplyDescription`, changes only the body
+    the intro copies; the round re-makes the body with the account's real look, so the room and the outside differ.
+- In Studio the player attribute `HuntCutLog` logs, every frame round both cuts: the camera, which pose measure is in
+  use, the root's distance from the outside spot and the head's offset.
+
+**Pop-in (main, 27 Nov: "Films: nothing pops in", PERFORMANCE.md):**
+- The intro runs `CineKit.prewarm` (the room, the outside spot's map pieces, the clips, the sounds) under a black lead
+  (`HuntIntroLead`, exempt from the film's own HUD hide). The lead holds until the prewarm is in and at least 0.5 s
+  (`INTRO.leadMin`), at most 1 s (`leadMax`): the freshly built room lit its walls a few frames after its first.
+- The win films prewarm in the background from their first frame (the room is first seen at the pull-out).
+- The intro kit imports with Precise meshes (`HuntBuild.importIntro`).
+- The pop scan (`tools/roblox/popscan.py`) on v17 also found camera faults:
+  - the push started at z 7.2, inside room A's back wall (now 6.2);
+  - in the hunter's win film, the reveal sat 1.2 s behind a dark slab. Its clear-view check never saw the room (kit
+    parts are CanQuery off); the room is made queryable for the check.
+- Before/after: side-session-notes `holdout/popin_before_after_27nov.jpg`.
 
 ## 12. The win films (owner, 27 Nov)
 
