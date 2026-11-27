@@ -494,6 +494,15 @@ short enough where you can chain all three".
 - **CASH:** the round's points are shown as $.
 - **Test (Studio):** JankHuntTest ("pick", p, id), ("use", p, slot, look), ("cash", p, n), ("rag", p, who, dur, min),
   ("getup", p).
+- **The harness (server/HuntBots, Studio only):** a round's stand-ins act as bots through the same server calls a
+  player's remote reaches. JankHuntTest ("bots", p, "show" | "kill" | "hunter" | "time") runs a scripted round and
+  ("botlog") reads its PASS/FAIL log: ragdoll times, GET UP minimums, the lockout, immunity, every pick, the taser,
+  bear trap, spray, bandages, medkit, prop gun and bat, each way's win, back to the house. All four passed at v1556
+  (log: the notes' holdout/harness_v1556.md). It can't prove a real client's input, camera or replication with other
+  players: that's the owner's Test > Clients and Servers (3 players).
+- **Rules the harness taught:** a punch that downs nobody (an immune target too) costs only the miss's cooldown; a swing
+  that can hurt goes to someone it can hurt before a nearer teammate. The prop gun in THE HOUSE (merged furniture
+  meshes over invisible hit boxes, Solid) aims through to the hit box and becomes the house kit's piece nearest its size.
 
 ## Built so far (26 Nov 2026, hunt-mode session)
 
