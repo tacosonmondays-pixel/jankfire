@@ -533,7 +533,8 @@ addSample = function(s: Sweep, m: Vector3, t: Vector3, dt: number?)
 			s.samples, s.runL, s.run, s.brk = {}, 0, 0, false
 		elseif n >= 2 then
 			-- (round 4, the critic on v1459: from the shoulder a swing's head "folds back on itself ... a U-turn arrow".)
-			-- The tip turning: over 60 degrees in one step, or over 100 within three. Heading BACK against the run so far
+			-- The tip turning: over 60 degrees in one step, or over 100 within three (45/75 chopped a third-person swing's
+			-- own curve into restarts: a shard was left). Heading BACK against the run so far
 			-- after a real cut, it is the return stroke (the ribbon ends here); any other turn starts a new stroke afresh
 			-- (a wind-up turning into the cut: third person's blade comes down, then sweeps round)
 			local v0 = last.t - s.samples[n - 1].t
@@ -638,7 +639,9 @@ local function stepSweep(s: Sweep, dt: number): boolean
 		local u = if L > 1e-4 then acc[i] / L else 1
 		-- a crescent along the swing: nothing at the tail, fullest at 70 %, closing to the point past the tip; it thins
 		-- a little more with age
-		local prof = if u < 0.7 then (u / 0.7) ^ 1.1 else math.max(0, 1 - (u - 0.7) / 0.3) ^ 0.8
+		-- (round 5: the oldest 12 % shows nothing, so a bent lead-in into the cut can't stand in the tail as an angular
+		-- bar, "a 7 or an ice axe")
+		local prof = if u < 0.12 then 0 elseif u < 0.7 then ((u - 0.12) / 0.58) ^ 1.25 else math.max(0, 1 - (u - 0.7) / 0.3) ^ 0.8
 		local f = s.band * prof * (1 - 0.35 * k)
 		local span = Dm[i] - Dt[i]
 		local sl = span.Magnitude
