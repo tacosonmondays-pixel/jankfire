@@ -149,8 +149,8 @@ function HRH.build(which, parent, opts)
 		local fOld = Vector3.new(c.X, floorY, c.Z) - out3 * sz[2] / 2
 		if (Vector3.new(c.X, 0, c.Z) - Vector3.new(wallAt.X, 0, wallAt.Z)).Magnitude > sz[2] / 2 + 0.8 then fpos = fOld end
 		local F = CFrame.lookAt(fpos, fpos + out3)
-		-- (0.45 off the wall: K.padClassic's frame reaches 0.4 behind boardAt, so its back ends 0.05 off the wall)
-		local boardAt = CFrame.lookAt(Vector3.new(wallAt.X, floorY + by, wallAt.Z) - out3 * 0.45, Vector3.new(wallAt.X, floorY + by, wallAt.Z) - out3)
+		-- (0.05 off the wall: K.padClassic's board stands wholly in front of boardAt since 27 Nov)
+		local boardAt = CFrame.lookAt(Vector3.new(wallAt.X, floorY + by, wallAt.Z) - out3 * 0.05, Vector3.new(wallAt.X, floorY + by, wallAt.Z) - out3)
 		-- the old pad, its bezel and its board's frame away
 		local oc = m:GetPivot().Position
 		for _, d in ring:GetDescendants() do

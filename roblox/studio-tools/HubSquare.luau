@@ -238,7 +238,7 @@ function HS.build(K, parent, name, site, live)
 	K.arcadeSpot(K.at(F0, -22.2, 38, -90)) -- (hub-minigames: 0.2 off the wainscot cap)
 	K.tableSpot(K.at(F0, -9, 48, 0), "board"); K.tableSpot(K.at(F0, 9, 48, 0), "arm")
 	K.cluster(K.at(F0, -16, 72, -90), { npcSofa = true, lampY = SH }); K.cluster(K.at(F0, 9, 74, 90), { npcSofa = true, lampY = SH })
-	K.bar(K.at(F0, -20.6, 80, -90))
+	K.bar(K.at(F0, -20.6, 82.4, -90), 8) -- (27 Nov, Clip v2: 12 long at z 80 it ran through the sofa group and its planter: 8 long, between them and the tall planter)
 	K.codePanelSpot(K.at(F0, -24, 60, -90, 0))
 	K.vip(CFrame.new(0, 0, SZ1) * CFrame.Angles(0, math.pi, 0), { w = 16, d = 24, h = 14, front = 26, frontH = SH })
 

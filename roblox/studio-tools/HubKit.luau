@@ -1130,7 +1130,8 @@ function K.padClassic(F, md, bank, name, o)
 	local w, dp = sz[1], sz[2]
 	local RIM, CREAM, LINE, BASE = 0.7, o.rim or "efe6d6", "fff1d8", o.base or "3a3631"
 	-- the tray: a dark base, the rim round it (cream, a little proud), its warm inner line
-	K.box(F, "Scenery", "Base", -w / 2, w / 2, 0, 0.14, -dp, 0, BASE, nil, { parent = m, solid = true })
+	-- (27 Nov, ZFight: the base's sides and bottom lay in the rim's and flickered: it stops 0.05 inside them, 0.03 up)
+	K.box(F, "Scenery", "Base", -w / 2 + 0.05, w / 2 - 0.05, 0.03, 0.14, -dp + 0.05, -0.05, BASE, nil, { parent = m, solid = true })
 	for _, r in { { -w / 2, w / 2, -RIM, 0 }, { -w / 2, w / 2, -dp, -dp + RIM }, { -w / 2, -w / 2 + RIM, -dp + RIM, -RIM }, { w / 2 - RIM, w / 2, -dp + RIM, -RIM } } do
 		K.box(F, "Scenery", "Rim", r[1], r[2], 0, 0.34, r[3], r[4], CREAM, nil, { parent = m, solid = true })
 	end
@@ -1184,17 +1185,18 @@ function K.padClassic(F, md, bank, name, o)
 		-- place of a flat plate on a bare wall: a deep slate housing standing proud of the wall with a sill under it, a dark
 		-- screen with the mode, its kind and the team-coloured counts. No lit dots or bars on it)
 		local HOUSE, SCREEN = "39404b", "222833"
-		K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.6, BH / 2 + 0.6, -0.05, 0.4, HOUSE, nil, { parent = m })
-		K.box(FB, "Scenery", "BoardSill", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.95, -BH / 2 - 0.6, -0.4, 0.4, "4a5260", nil, { parent = m })
-		local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, SCREEN, nil, { parent = m })
+		K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.6, BH / 2 + 0.6, -0.45, 0, HOUSE, nil, { parent = m })
+		K.box(FB, "Scenery", "BoardSill", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.95, -BH / 2 - 0.6, -0.8, 0, "4a5260", nil, { parent = m })
+		local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.55, -0.45, SCREEN, nil, { parent = m })
 		local cs = { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.36 else 0.3 }
 		K.text(scr, Enum.NormalId.Front, { { md.title, "f2f0ea", 0.28 }, { md.kind, "9aa4b6", 0.11 }, cs, { "", "c8d0e0", 0.1, "S" } },
 			{ names = { [3] = "Status", [4] = "Sub" }, pps = 40, bright = 2, bg = SCREEN, bgt = 0 })
 		K.light(scr, 14, 0.45, "dfe8ff")
 		return m
 	end
-	K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.5, BW / 2 + 0.5, -BH / 2 - 0.5, BH / 2 + 0.5, -0.05, 0.4, "c9c5bc", nil, { parent = m })
-	local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, "28324a", nil, { parent = m })
+	-- (27 Nov, Clip v2: the frame reached 0.4 behind boardAt, into the wall it hangs on: every piece now stands in front of it)
+	K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.5, BW / 2 + 0.5, -BH / 2 - 0.5, BH / 2 + 0.5, -0.45, 0, "c9c5bc", nil, { parent = m })
+	local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.55, -0.45, "28324a", nil, { parent = m })
 	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
 	-- (21 Nov, the judges: one name per pad. With a plaque (o.headerAt) the plaque names the mode and the board only
 	-- counts; without one the board's first line names it. o.boardTitle = true / false forces either)
