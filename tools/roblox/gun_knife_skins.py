@@ -7,16 +7,21 @@
 #   knife_bowie       a big clip-point Bowie with a false-edge swedge, a brass S-guard with ball ends, a stag handle
 #   knife_cleaver     a tall square cleaver blade with its hanging hole, a steel bolster, a riveted wood handle
 #   knife_switch      a slim spear-point stiletto, steel bolsters at both ends, pearl inlays, a gold push button
-#   knife_karambit    a hawkbill blade curving down (the edge inside the curve), a curved grip, the finger ring
-#   knife_butterfly   a balisong: two windowed channel handles with a lit core glowing through, gold pivots, the latch
+#   knife_karambit    (v6, 27 Nov) the vault design's side silhouette traced (karambit_trace.py) and extruded region by
+#                     region (star bolster, pillow-edged frame round a recessed grip, a chunky ring, the claw with its
+#                     honed edge as a creased bevel band), in the plain base finish: bare steel blade and ring, matte
+#                     black handle and bolster; claw grip
+#   knife_butterfly   (v2, 27 Nov) a WORKING balisong in parts: the blade and tang, two channel handles turning on
+#                     their own pins (bite and safe), the latch; client/GunParts.luau flips it
 #   knife_spoon       the Spoons mode's serving spoon (gun_melee.spoon) dressed royal: bright silver, a gold bowl, a gem
 #                     set in the pierced finial
 #   knife_ladle       a deep soup ladle on a flat strap handle with the hanging hook curled at its end
 #   knife_pizza       a big pizza wheel in a two-armed fork, a thumb guard, a tomato-red handle
 #   knife_keycard     an oversized access card as the blade (a plain stripe, a plain gold chip, no text or code), its
 #                     lower edge lit, held by a badge reel and clip
-#   knife_fish        a frozen fish held by the tail: ONE moulded skin (sdf_kit.mesh_paint: back, belly, fins, eye and
-#                     the ice crust with icicles, fused, never stuck on)
+#   knife_fish        (v2, 27 Nov) a frozen TUNA held by the tail: ONE moulded skin (sdf_kit.mesh_paint): navy back,
+#                     silver belly, yellow sickle fins and finlets, lunate tail; no ice on it (owner, 27 Nov): the
+#                     cold is its effects (an icy mist, frost glints: roblox/src/shared/SkinFx.luau)
 #   JF_EXTRA is not needed: gun_set.py loads this file. blender -b --factory-startup -P tools/roblox/gun_set.py -- <out> knife@knife_bowie ...
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -191,77 +196,172 @@ def switch():
 
 # ------------------------------------------------------------------------------------------------------ Karambit
 def karambit():
+    """KARAMBIT v6 (27 Nov 2026). THE SHAPE: the vault design's side silhouette traced and extruded (main: "keep the
+       silhouette exactly the vault design's"; the owner, on it: "I think you got the shape of it now!!"), made the way a
+       game artist models one (80.lv's game-ready karambit; a Blender karambit exercise): trace the side outline off an
+       orthographic reference (tools/roblox/karambit_trace.py: the vault's karambit_grid.png, knife 4, split into the
+       design's own regions: the four-point star bolster, the blade, the frame and ring, the frame's recessed panel),
+       extrude each region to its own thickness, mirror-symmetric, round the handle's edges into a pillow, crease the
+       blade's bevel, booleans for the cut-outs, keep only what changes the silhouette.
+       THE LOOK (the owner: "Now make it look like the base rivals ones!!"): the plain two-tone base finish of a shooter's
+       default karambit: bare steel where the metal is (the blade, its honed bevel a brighter steel; the ring polished),
+       one matte black for everything the hand holds (the frame and the bolster), the recessed grip a softer black; no
+       glow, no gem, no inlay, no screws. The parts:
+         the frame    the handle's traced outline, 18 mm thick, every edge rounded 3.2 mm in four steps (the pillow),
+                      the grip panel recessed 1.6 mm into each face (its lip softened)
+         the ring     its own solid: the design's band (fitted to the art: not concentric) swept round as a rounded
+                      section 15 mm thick, polished steel
+         the bolster  the design's four-point star, 21 mm (it stands proud of the frame like a flared guard)
+         the blade    lofted between the traced spine and edge (the chords paired along their lengths): a flat face,
+                      then the honed edge as an angled bevel band (the inner 34 %, creased off the face), a small
+                      chamfer on the spine; 6.2 mm thick at the bolster thinning to the claw point; its root runs on
+                      under the bolster (hidden in its thickness)
+       (an earlier take sculpted the handle as one smooth field skin (sdf_kit): it came out lumpy, like melted clay;
+       a knife wants hard-surface edges.) The frame is turned for the claw grip as v5 was: the ring at the front (-z),
+       the claw behind (+z) curling to -y."""
+    import json
     g = Melee('w_knife@knife_karambit')
-    palette(g, black='2b2e33', edge='eef1f5', g10='4c6a5e', steel='c3cad3', lit=('5fd6c4', 'n'))
-    # a straight blade, then bent down round a centre below it (a hawkbill: the edge inside the curve)
-    L = 0.112
-    UT = L / MM
-    H = 13.0
-    sp = [(-4, H), (20, H)] + catmull([(50, H - 0.5), (80, 9.0), (100, 4.5), (UT, -1.0)], 10)
-    ed = [(-4, -H), (20, -H)] + catmull([(50, -H + 1.0), (80, -9.4), (100, -5.0), (UT, -1.0)], 10)
-    o, yg = blade(sp, ed, L, T0=0.0056)
-    R = 0.075
-    def bend(obj):
-        from artist_kit import finish
-        me = finish(obj)
-        for v in me.vertices:
-            w = Vector((v.co.x, v.co.z, -v.co.y))      # Blender -> weapon
-            u = ZG0 - w.z
-            if u > 0:
-                th = u / R
-                y = -R + (R + w.y) * math.cos(th)
-                z = ZG0 - (R + w.y) * math.sin(th)
-                v.co = P(w.x, y, z)
-        me.update()
-        return obj
-    steel, edge = split(o, lambda c, n: c.y < yg(c.z) - 0.0002 and c.z < ZG0 + 0.001)
-    g.put('blade_wzB__black', bend(steel)); g.put('blade_wzB__edge', bend(edge))
-    # a curved grip (G10 slabs on a black tang) falling toward the ring, and the finger ring at its end (axis x)
-    top = lambda z: 0.0125 - 0.10 * max(0.0, z - 0.02) ** 1.6 * 4
-    bot = lambda z: -0.0135 - 0.10 * max(0.0, z - 0.02) ** 1.6 * 4
-    ring = tube(0.021, 0.0125, (-0.00225, -0.004, 0.096), (0.00225, -0.004, 0.096), sides=24)
-    tang(g, 'tang_wzA__black', top, bot, ZG0 + 0.0035, 0.08, T=0.0045, pommel=ring)   # (from just inside the blade's tail: no flats on flats)
-    scales(g, 'scale_wzA__g10', top, bot, ZG1, 0.074, w=0.0066, ribs=(0.004, 0.012, 0.044, 0.052))
-    # (a lit line set into each scale: the epic's one glow, the spray-glow contract's __lit)
-    for sx in (-1, 1):
-        zs = [0.016 + 0.024 * i / 6 for i in range(7)]
-        g.put('line_wzN__lit', soft(prism([(z, top(z) - 0.0048) for z in zs] + [(z, top(z) - 0.0068) for z in zs[::-1]], 0.0022,
-                                          x=sx * (0.00225 + 0.0066 + 0.0007)), 0.0003, seg=1))   # (1.8 mm proud: a rib, never a sheet over the scale)
-    tipz = ZG0 - (R + (-1.0 * MM)) * math.sin(L / R)
-    tipy = -R + (R + (-1.0 * MM)) * math.cos(L / R)
-    spots(g, (0.0, tipy, tipz))
+    palette(g, black='24272c', grip='2f3338', steel='bcc4cf', edge='e2e7ed')
+    TR = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'karambit_trace.json')))
+    HX, ROUND = 0.0090, 0.0032         # the frame's half thickness and its pillow round
+    DEPTH = 0.0016                     # the panel's recess
+    GX = 0.0105                        # the bolster's half thickness
+    (cz, cy), ro, ri = TR['ring']['centre'], TR['ring']['ro'], TR['ring']['ri']   # (the hole's centre and radius)
+    oz, oy = TR['ring'].get('outer_centre', (cz, cy))                         # (the outer edge's own centre)
+    # ---- the frame: its traced outline stepped evenly every 4 mm (so the round reaches its full width: on the trace's
+    # short edges the bevel clamps to nothing), extruded 18 mm, every edge rounded 3.2 mm in four steps (the pillow),
+    # the grip panel recessed 1.6 mm into each face, its lip softened; the recess's floor a softer black
+    def even(poly, step):
+        c = np.array(list(poly) + [poly[0]], float); d = np.r_[0, np.cumsum(np.hypot(*np.diff(c, axis=0).T))]
+        t = np.linspace(0, d[-1], max(8, int(d[-1] / step)), endpoint=False)
+        return [(float(np.interp(v, d, c[:, 0])), float(np.interp(v, d, c[:, 1]))) for v in t]
+    fr = soft(prism(even(TR['frame'], 0.004), 2 * HX), ROUND, seg=4, profile=0.5)
+    cut(fr, *[prism(TR['panel'], 0.006, x=sx * (HX - DEPTH + 0.003)) for sx in (-1, 1)])
+    soft(fr, 0.0005, seg=1, angle=40)
+    frame_p, floor_p = split(fr, lambda c, n: abs(c.x) < HX - DEPTH + 0.0002 and abs(n.x) > 0.9)
+    g.put('frame_wzA__black', frame_p); g.put('panel_wzA__grip', floor_p)
+    # ---- the ring: its own solid, a rounded section (the band from the design's hole to its outer edge, 15 mm thick,
+    # 3 mm corners) swept round the hole (the outer edge fitted on its own centre: the design's band is not concentric)
+    RXr, RC = 0.0075, 0.0030
+    bm = bmesh.new(); SW = 28; rings_ = []
+    for j in range(SW):
+        ph = 2 * math.pi * j / SW; ux, uy = math.cos(ph), math.sin(ph)     # (u along z, y)
+        wz, wy = cz - oz, cy - oy; bq = wz * ux + wy * uy
+        r_out = -bq + math.sqrt(max(bq * bq - (wz * wz + wy * wy - ro * ro), 0.0))   # (from the hole's centre to the outer edge)
+        sec = []
+        for r0, x0, a0 in ((r_out - RC, RXr - RC, 0), (ri + RC, RXr - RC, 90), (ri + RC, -RXr + RC, 180), (r_out - RC, -RXr + RC, 270)):
+            for k in range(4):
+                a_ = math.radians(a0 + 30 * k)
+                sec.append((r0 + RC * math.cos(a_), x0 + RC * math.sin(a_)))
+        rings_.append([bm.verts.new(P(x, cy + r * uy, cz + r * ux)) for r, x in sec])
+    for j in range(SW):
+        A_, B_ = rings_[j], rings_[(j + 1) % SW]
+        for i in range(16):
+            i2 = (i + 1) % 16
+            bm.faces.new([A_[i], A_[i2], B_[i2], B_[i]])
+    g.put('ring_wzA__steel', _obj(bm))
+    # ---- the star bolster: plain, the handle's black
+    g.put('guard_wzN__black', soft(prism(TR['guard'], 2 * GX), 0.0018, seg=3, profile=0.5))
+    # ---- the blade: stations from the root to the tip, the spine and edge chords paired along their lengths
+    def resample(ch, n):
+        c = np.array(ch, float); d = np.r_[0, np.cumsum(np.hypot(*np.diff(c, axis=0).T))]
+        t = np.linspace(0, d[-1], n)
+        return np.stack([np.interp(t, d, c[:, 0]), np.interp(t, d, c[:, 1])], -1)
+    N = 42
+    SP, ED = resample(TR['spine'], N)[::-1], resample(TR['edge'], N)[::-1]   # (root first; the last is the tip)
+    T0, e = 0.0062, 0.0011
+    st, frames = [], []
+    for k in range(N - 1):
+        t = k / (N - 1)
+        T = T0 * (1 - 0.62 * t ** 1.3)
+        (sz, sy), (ez, ey) = SP[k], ED[k]
+        gz, gy = ez + 0.34 * (sz - ez), ey + 0.34 * (sy - ey)             # the bevel's crease
+        cz2, cy2 = sz + 0.07 * (ez - sz), sy + 0.07 * (ey - sy)           # the spine's chamfer
+        st.append([(e / 2, ey, ez), (T / 2, gy, gz), (T / 2, cy2, cz2), (0.62 * T / 2, sy, sz),
+                   (-0.62 * T / 2, sy, sz), (-T / 2, cy2, cz2), (-T / 2, gy, gz), (-e / 2, ey, ez)])
+        frames.append((np.array([ez, ey]), np.array([sz - ez, sy - ey])))
+    tz, ty = SP[-1]
+    o = loft(st, tip=(0.0, ty, tz))
+    def on_band(c, nrm_):
+        q = np.array([c.z, c.y])
+        k = min(range(len(frames)), key=lambda i: float(((q - frames[i][0] - 0.5 * frames[i][1]) ** 2).sum()))
+        a, v = frames[k]
+        return float((q - a) @ v) / float(v @ v) < 0.34 * 0.97
+    steel, edge_p = split(o, on_band)
+    g.put('blade_wzB__steel', steel); g.put('blade_wzB__edge', edge_p)
+    spots(g, (0.0, round(float(ty), 5), round(float(tz), 5)))
     return g.done()
 
 
 # ------------------------------------------------------------------------------------------------------ Butterfly
+# the balisong's numbers (weapon frame, metres), shared with the game's flip (client/GunParts.luau BALISONG: keep in step)
+BAL_ZP = -0.0275                    # both pivot pins' z (on the tang, just behind the blade's root)
+BAL_HB = 0.0115                     # the blade's half height at its root (spine +, edge -)
+BAL_T = 0.0028                      # a handle's channel back
+BAL_B = BAL_HB + BAL_T + 0.002      # a handle's band: bite y -B..0, safe 0..B (open); each pin in its band's middle
+BAL_LH = 0.123                      # a handle's length from its pin to its butt
+BAL_X0, BAL_X1 = 0.0031, 0.0066     # a channel wall's inner / outer x (the blade's 5 mm between them)
+
+
 def butterfly():
+    """BUTTERFLY v2, A WORKING BALISONG (27 Nov 2026; the owner: "Add the mechanics to the balisong so it can flip
+       properly!! Like any joints it needs it"). Built OPEN, in parts that turn (client/GunParts.luau drives them):
+         blade   the blade and its tang, and the two gold pivot pins through it (spine-side pin: the SAFE handle's,
+                 edge-side pin: the BITE handle's)
+         safe    a channel handle on the spine side (y 0..B), turning about its pin; the hand holds this one
+         bite    a channel handle on the edge side (y -B..0), turning about its pin; it closes over the edge
+         latch   the gold latch on the bite handle's butt, across both butts when locked, trailing when free
+       Each handle is a U channel: open, its back lies against the other handle's and its slot faces out; turned half
+       way round its pin it lies in front with the slot facing in, and the two slots close round the blade exactly
+       (the band is the same: the backs end up outside the blade's 23 mm, the walls either side of its 5 mm). The backs
+       stop 22 mm behind the pins, so the tang (which reaches 21 mm from a pin) turns freely between the walls. The lit
+       strip of the old skin rides inside each channel and glows through two windows in each wall."""
     g = Melee('w_knife@knife_butterfly')
     palette(g, steel='d2d8e0', edge='f2f4f7', ti='3b404b', gold='c9a54e', lit=('9a8cff', 'n'))
-    L = 0.118
+    ZP, HB, T, B, LH, X0, X1 = BAL_ZP, BAL_HB, BAL_T, BAL_B, BAL_LH, BAL_X0, BAL_X1
+    L = 0.112
     UT = L / MM
-    H = 12.0
-    # a tanto-like clip, its tang running into the handles
-    sp = [(-4, H), (60, H)] + catmull([(78, H), (92, 9.0), (106, 4.8), (UT, 1.0)], 10)
-    ed = [(-4, -H), (60, -H)] + catmull([(84, -H), (100, -10.5), (110, -6.0), (UT, 1.0)], 10)
+    H = HB / MM
+    sp = [(-4, H), (60, H)] + catmull([(78, H), (92, 8.6), (106, 4.4), (UT, 0.8)], 10)
+    ed = [(-4, -H), (60, -H)] + catmull([(84, -H), (100, -9.8), (110, -5.4), (UT, 0.8)], 10)
     o, yg = blade(sp, ed, L, T0=0.0050)
     edged(g, 'blade_wzB__steel', 'blade_wzB__edge', o, yg)
-    # the two channel handles either side of the blade's tang, each with three long windows; between them a lit core
-    # that glows through the windows (no face of it lies on a handle's)
-    hz0, hz1 = ZG0 + 0.002, 0.098
-    for sx in (-1, 1):
-        prof = outline([(hz0, 0.0118, 0.004), (hz1 - 0.004, 0.0118, 0.006), (hz1, 0.0, 0.005), (hz1 - 0.004, -0.0128, 0.006),
-                        (hz0, -0.0128, 0.004)])
-        h = prism(prof, 0.0062, x=sx * (0.0013 + 0.0031))
-        wins = [prism(outline(rrect(z0, z1, -0.0058, 0.0048, 0.0042)), 0.02, x=sx * 0.004) for z0, z1 in ((0.0, 0.026), (0.032, 0.058), (0.064, 0.088))]
-        g.put('grip_wzA__ti', soft(cut(h, *wins), 0.0013, seg=2))
-    zs = (hz0 + 0.004, hz1 - 0.006)
-    g.put('core_wzN__lit', prism(outline(rrect(zs[0], zs[1], -0.0105, 0.0095, 0.004)), 0.0016))
-    # gold pivot pins through both handles at the front, and the latch at the back
-    for y in (0.0055, -0.0065):
-        g.put('pin_wzN__gold', capsule(0.0028, (-0.0088, y, hz0 + 0.0055), (0.0088, y, hz0 + 0.0055), seg=12, rings=6))
-    latch = prism(outline([(hz1 - 0.012, 0.0136, 0.002), (hz1 + 0.006, 0.0136, 0.003), (hz1 + 0.008, 0.006, 0.002), (hz1 - 0.012, 0.0102, 0.002)]), 0.0042)
-    g.put('latch_wzN__gold', soft(latch, 0.0007, seg=1))
-    spots(g, (0.0, 1.0 * MM, ZG0 - L))
+    # the tang: a plate behind the blade's root through both pins, its back rounded (it turns inside the channels)
+    tz1 = ZP + 0.007
+    g.put('blade_wzB__steel', soft(prism(outline([(ZG0 - 0.001, HB, 0.0), (tz1, HB, 0.006), (tz1, -HB, 0.006), (ZG0 - 0.001, -HB, 0.0)]),
+                                         0.0050), 0.0006, seg=1))
+    for y in (B / 2, -B / 2):
+        g.put('blade_wzN__gold', cyl(0.0024, (-(X1 + 0.0007), y, ZP), (X1 + 0.0007, y, ZP), sides=16))
+    # the two handles (each: a full-width solid of its side profile, the channel cut out of it)
+    for node, sg in (('safe', 1), ('bite', -1)):
+        yc = sg * B / 2                                          # its pin
+        y_in, y_out = sg * 0.0002, sg * (B - 0.0002)             # (0.4 mm between the handles, open and closed)
+        lo_, hi_ = min(y_in, y_out), max(y_in, y_out)
+        rr = B / 2 - 0.0002
+        arc = [(ZP - rr * math.sin(a), yc + rr * math.cos(a) * sg) for a in [math.pi * i / 12 for i in range(13)]]
+        # (the pivot end rounded round the pin: from the outer edge round the front to the inner edge)
+        prof = [(ZP, y_out)] + arc[1:-1] + [(ZP, y_in), (ZP + LH, y_in), (ZP + LH, y_out)]
+        prof = [(z, max(lo_, min(hi_, y))) for z, y in prof]
+        solid = prism(prof, 2 * X1)
+        slot = prism(outline(rrect(ZP - B, ZP + LH + 0.01, *sorted((sg * T, sg * (B + 0.01))), 0.0)), 2 * X0)
+        relief = prism(outline(rrect(ZP - B, ZP + 0.022, *sorted((sg * 0.0003 - sg * 0.01, sg * (B + 0.01))), 0.0)), 2 * X0)
+        wins = [prism(outline(rrect(z0, z1, *sorted((sg * (T + 0.0022), sg * (B - 0.0034))), 0.0018)), 2 * X1 + 0.01)
+                for z0, z1 in ((ZP + 0.032, ZP + 0.062), (ZP + 0.070, ZP + 0.100))]
+        zs0, zs1 = ZP + 0.026, ZP + LH - 0.012                  # (the lit strip's run)
+        gy0, gy1 = sorted((sg * (T - 0.0012), sg * (T + 0.001)))
+        groove = prism([(zs0, gy0), (zs1, gy0), (zs1, gy1), (zs0, gy1)], 2 * X0 - 0.0016)
+        g.put('%s_wzA__ti' % node, soft(cut(solid, slot, relief, groove, *wins), 0.0011, seg=2))
+        # the lit strip set flush into a groove in the channel's back (open: it faces out through the slot and the
+        # windows; closed: beside the blade, never on it; flush, so gun_zfix has no near-plane pair to push apart)
+        sy0, sy1 = sorted((sg * (T - 0.0012), sg * T))
+        g.put('%s_wzN__lit' % node, prism([(zs0, sy0), (zs1, sy0), (zs1, sy1), (zs0, sy1)], 2 * X0 - 0.0016))
+    # the latch: a gold bar across both butts, pivoting at the bite handle's outer corner (axis x)
+    zl = ZP + LH
+    latch = prism(outline([(zl + 0.0004, -B, 0.0012), (zl + 0.0036, -B, 0.0012), (zl + 0.0036, B - 0.001, 0.0012), (zl + 0.0004, B - 0.001, 0.0012)]),
+                  2 * X1 - 0.0008)
+    g.put('latch_wzN__gold', soft(latch, 0.0006, seg=1))
+    g.put('latch_wzN__gold', cyl(0.0021, (-(X1 + 0.0004), -B + 0.0018, zl + 0.0020), (X1 + 0.0004, -B + 0.0018, zl + 0.0020), sides=12))
+    spots(g, (0.0, 0.8 * MM, ZG0 - L))
     return g.done()
 
 
@@ -379,46 +479,85 @@ def keycard():
 
 # ---------------------------------------------------------------------------------------------------- Frozen Fish
 def fish_field():
-    """the frozen fish (weapon frame): head forward (-z), held by the tail stalk at the grip, the tail fan behind the
-       fist; a crust of ice lumps over its back and icicles under its belly. returns (labels, parts, field, tips)"""
+    """THE FROZEN TUNA (27 Nov 2026; the owner: "the fish should look for like a tuna"). Weapon frame: head forward
+       (-z), held by the thin tail stalk at the grip, the sickle tail behind the fist. A torpedo body (deep in the middle,
+       a pointed conical head), a dark navy back over a silver belly (painted by height), the
+       tall yellow sickle second dorsal and anal fins, the row of small yellow finlets along the back and belly to the
+       tail, a short dark first dorsal, long dark pectorals, the lunate tail on a keeled stalk, a big eye (silver ring,
+       black pupil), the gill line painted in. No ice on the model (the owner, 27 Nov: "no ice on the fish you can
+       have like an icey fog and particles"): the cold is its effects. returns (labels, cls, field, tips)"""
     import sdf_kit as S
-    rx = lambda a: np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
-    body = S.union(S.ellipsoid((0, 0.004, -0.15), (0.018, 0.033, 0.112)),
-                   S.ellipsoid((0, 0.0, -0.245), (0.0165, 0.026, 0.032)), k=0.012)
-    stalk = S.capsule((0, 0.0, -0.05), (0, 0.0, 0.066), 0.0145, 0.0115)
-    fish = S.union(body, stalk, k=0.018)
-    tail = S.slab([(0.06, 0.0), (0.098, 0.036), (0.104, 0.026), (0.092, 0.0), (0.104, -0.026), (0.098, -0.036)], 0.0022, 0.0014, grow=0.002)
-    dorsal = S.slab([(-0.19, 0.03), (-0.15, 0.052), (-0.12, 0.05), (-0.10, 0.03)], 0.0022, 0.0014, grow=0.002)
-    pect = S.union(S.ellipsoid((0.017, -0.01, -0.215), (0.004, 0.009, 0.016), rx(0.4)),
-                   S.ellipsoid((-0.017, -0.01, -0.215), (0.004, 0.009, 0.016), rx(0.4)))
-    fins = S.union(tail, dorsal, pect)
-    eye = S.union(S.ellipsoid((0.0135, 0.006, -0.252), (0.0055, 0.0055, 0.0055)), S.ellipsoid((-0.0135, 0.006, -0.252), (0.0055, 0.0055, 0.0055)))
-    lumps = [((0.008, 0.028, -0.17), 0.011), ((-0.009, 0.026, -0.12), 0.010), ((0.0, 0.03, -0.205), 0.008),
-             ((0.012, 0.012, -0.075), 0.009), ((-0.012, 0.018, -0.155), 0.009), ((0.011, -0.004, -0.13), 0.008)]
-    ice = S.union(*[S.ellipsoid(c, (r, r * 0.8, r * 1.3)) for c, r in lumps], k=0.004)
-    icicles = S.union(*[S.capsule((x, -0.022, z), (x * 1.1, -0.046 - 0.004 * i, z + 0.004), 0.0045, 0.0012)
-                        for i, (x, z) in enumerate(((0.004, -0.17), (-0.004, -0.13), (0.002, -0.095)))], k=0.003)
-    ice = S.union(ice, icicles, k=0.004)
-    whole = S.union(S.union(fish, fins, k=0.004), eye, k=0.002)
-    whole = S.union(whole, ice, k=0.005)
-    belly = lambda p: np.maximum(fish(p), p[:, 1] - (-0.008))           # the fish's lower half
-    back = lambda p: np.maximum(fish(p), -(p[:, 1] - (-0.008)))
-    labels = ['back', 'belly', 'fin', 'eye', 'ice']
-    parts = [back, belly, fins, eye, ice]
-    tips = [(0.0, -0.046, -0.17), (0.0, -0.05, -0.13), (0.0, -0.054, -0.095), (0.0, 0.036, 0.098), (0.0, -0.036, 0.098)]
-    return labels, parts, whole, tips
+    def rx(a): return np.array([[1, 0, 0], [0, math.cos(a), -math.sin(a)], [0, math.sin(a), math.cos(a)]])
+    body = S.union(S.ellipsoid((0, 0.003, -0.150), (0.027, 0.041, 0.105)),
+                   S.ellipsoid((0, 0.0, -0.243), (0.0215, 0.031, 0.05)),
+                   S.capsule((0, -0.002, -0.268), (0, -0.0045, -0.296), 0.012, 0.0035),
+                   S.ellipsoid((0, 0.002, -0.06), (0.021, 0.032, 0.072)),
+                   S.capsule((0, 0.0, -0.012), (0, 0.0, 0.062), 0.0125, 0.0102),
+                   S.ellipsoid((0, 0.0, 0.042), (0.0168, 0.0048, 0.022)), k=0.014)
+    def surf(z, up):   # the body's top or bottom at x = 0 (to seat the finlets on it)
+        lo_, hi_ = 0.0, 0.08
+        for _ in range(30):
+            m = 0.5 * (lo_ + hi_)
+            d = body(np.array([[0.0, m if up else -m, z]]))[0]
+            if d < 0: lo_ = m
+            else: hi_ = m
+        return lo_ if up else -lo_
+    def sl(poly, hx=0.0024, r=0.0014, grow=0.0014): return S.slab(poly, hx, r, grow=grow)
+    dorsal2 = sl([(-0.123, 0.033), (-0.113, 0.060), (-0.101, 0.081), (-0.092, 0.090), (-0.095, 0.074), (-0.097, 0.050), (-0.089, 0.031)])
+    anal = sl([(-0.119, -0.027), (-0.109, -0.054), (-0.097, -0.075), (-0.088, -0.083), (-0.091, -0.068), (-0.092, -0.045), (-0.085, -0.025)])
+    finlets, ftips = [], []
+    for i in range(7):
+        z = -0.080 + 0.0112 * i
+        s = 1.0 - 0.035 * i
+        for up in (True, False):
+            if not up and i > 5: continue
+            y0 = surf(z, up)
+            sg = 1 if up else -1
+            tz, ty = z + 0.009 * s, y0 + sg * 0.0105 * s
+            finlets.append(sl([(z - 0.0035 * s, y0 - sg * 0.003), (tz, ty), (z + 0.0065 * s, y0 - sg * 0.003)],
+                              hx=0.0017, r=0.0009, grow=0.0007))
+            ftips.append((0.0, ty, tz))
+    yellow = S.union(dorsal2, anal, *finlets)
+    dorsal1 = sl([(-0.186, 0.035), (-0.176, 0.058), (-0.166, 0.062), (-0.152, 0.050), (-0.140, 0.040), (-0.136, 0.035)], hx=0.0021)
+    tail = sl([(0.054, 0.0), (0.066, 0.014), (0.088, 0.040), (0.108, 0.060), (0.119, 0.067), (0.113, 0.052), (0.097, 0.026),
+               (0.090, 0.0), (0.097, -0.026), (0.113, -0.052), (0.119, -0.067), (0.108, -0.060), (0.088, -0.040), (0.066, -0.014)],
+              hx=0.0028, r=0.0018, grow=0.0015)
+    pect = S.union(S.ellipsoid((0.0285, -0.006, -0.19), (0.0034, 0.0085, 0.040), rx(0.35)),
+                   S.ellipsoid((-0.0285, -0.006, -0.19), (0.0034, 0.0085, 0.040), rx(0.35)))
+    dark = S.union(dorsal1, tail, pect)
+    ringf = S.union(S.ellipsoid((0.0165, 0.006, -0.257), (0.006, 0.0088, 0.0088)), S.ellipsoid((-0.0165, 0.006, -0.257), (0.006, 0.0088, 0.0088)))
+    pupil = S.union(S.ellipsoid((0.0196, 0.006, -0.257), (0.004, 0.0058, 0.0058)), S.ellipsoid((-0.0196, 0.006, -0.257), (0.004, 0.0058, 0.0058)))
+    whole = S.union(body, yellow, dark, k=0.003)
+    whole = S.union(whole, ringf, pupil, k=0.0015)
+    # a painted line: the gill cover's arc behind the eye (dark)
+    gill = S.slab([(-0.231, 0.027), (-0.222, 0.0), (-0.229, -0.025), (-0.2265, -0.025), (-0.2195, 0.0), (-0.2285, 0.027)], 0.06, 0.0)
+    labels = ['back', 'band', 'belly', 'yellow', 'fin', 'ring', 'pupil']   # ('band' unused: kept so the indices stay)
+    def cls(p):
+        comp = np.argmin(np.stack([body(p), yellow(p), dark(p), ringf(p), pupil(p)], 0), 0)
+        out = np.zeros(len(p), int)
+        y = p[:, 1]
+        isb = comp == 0
+        out[isb & (y > -0.004)] = 0     # (the navy back to just under the middle, the silver belly below: two
+        out[isb & (y <= -0.004)] = 2    # colours, one seam; a third band cost 1,200 triangles of held seam)
+        for c_, lab in ((1, 3), (2, 4), (3, 5), (4, 6)):
+            out[comp == c_] = lab
+        out[isb & (gill(p) < 0)] = 4
+        return out
+    tips = [(0.0, -0.0045, -0.299), (0.0, 0.067, 0.119), (0.0, -0.067, 0.119), (0.0, 0.090, -0.092), (0.0, -0.083, -0.088),
+            (0.0, 0.062, -0.166), (0.03, -0.019, -0.152), (-0.03, -0.019, -0.152)] + ftips
+    return labels, cls, whole, tips
 
 
 def fish():
     import sdf_kit as S
     g = Melee('w_knife@knife_fish')
-    palette(g, back='5b7a8c', belly='d4e1e9', fin='46606f', eye='1c2026', ice='cdebf4')
-    labels, parts, field, tips = fish_field()
-    zone = {'back': 'wzA', 'belly': 'wzA', 'fin': 'wzN', 'eye': 'wzN', 'ice': 'wzB'}
-    for lab, bm in S.mesh_paint(field, S.nearest(*parts), labels, (-0.04, -0.07, -0.29), (0.04, 0.07, 0.12),
-                                h=0.0014, tris=2600, name='fish', hold=tips, seam_k=0.7).items():
+    palette(g, back='1f2b44', band='5d7590', belly='d3dbe3', yellow='e0b53c', fin='26324a', ring='b9c4cf', pupil='121418')
+    labels, cls, field, tips = fish_field()
+    zone = {'back': 'wzA', 'band': 'wzA', 'belly': 'wzA', 'yellow': 'wzN', 'fin': 'wzN', 'ring': 'wzN', 'pupil': 'wzN'}
+    for lab, bm in S.mesh_paint(field, cls, labels, (-0.045, -0.1, -0.31), (0.045, 0.1, 0.13),
+                                h=0.0015, tris=2400, name='fish', hold=tips, seam_k=0.3).items():
         g.pieces[('fish_%s' % zone[lab], lab)] = bm
-    spots(g, (0.0, -0.004, -0.277))
+    spots(g, (0.0, -0.0045, -0.299))
     return g.done()
 
 

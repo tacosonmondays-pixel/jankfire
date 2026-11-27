@@ -64,10 +64,6 @@ out.append('\tholds = {')
 for wid, h in H.items():
     if wid.startswith('_'): continue
     sides = hand_rows(wid, h)
-    if h.get('skins'):  # a skin's own hands: its fields over the weapon's, written out whole
-        sides.append('skins = { %s }' % ', '.join('%s = { %s }' % (sid, ', '.join(hand_rows(wid, {
-            side: dict(h.get(side, {}), **row.get(side, {})) for side in ('R', 'L') if side in h or side in row})))
-            for sid, row in h['skins'].items()))
     def pose(p):
         bits = []
         if p.get('shift'): bits.append('shift = %s' % V(p['shift']))
@@ -75,6 +71,11 @@ for wid, h in H.items():
         if p.get('tilt'): bits.append('tilt = %s' % V([math.radians(a) for a in p['tilt']]))
         if p.get('aimZ'): bits.append('aimZ = %s' % f(p['aimZ']))
         return bits
+    if h.get('skins'):  # a skin's own hands (its fields over the weapon's, written out whole), and its own shift /
+        # scale / tilt when it has them (Viewmodel.look lays them over the weapon's: the claw-grip Karambit)
+        sides.append('skins = { %s }' % ', '.join('%s = { %s }' % (sid, ', '.join(hand_rows(wid, {
+            side: dict(h.get(side, {}), **row.get(side, {})) for side in ('R', 'L') if side in h or side in row}) + pose(row)))
+            for sid, row in h['skins'].items()))
     if h.get('looks'):
         sides += pose(h['looks'][h['use']])  # (the used look, flat, for any reader that doesn't know looks)
         sides.append('use = "%s"' % h['use'])

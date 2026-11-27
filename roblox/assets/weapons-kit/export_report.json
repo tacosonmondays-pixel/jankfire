@@ -88553,11 +88553,11 @@
  "w_knife@knife_karambit": {
   "pieces": [
    {
-    "name": "blade_wzB__black",
-    "upload": "blade_wzB__black__p2b2e33",
-    "tris": 255,
+    "name": "blade_wzB__steel",
+    "upload": "blade_wzB__steel__pbcc4cf",
+    "tris": 419,
     "look": {
-     "color": "2b2e33",
+     "color": "bcc4cf",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -88565,23 +88565,23 @@
      "tex": false
     },
     "lo": [
-     -0.0028,
-     -0.013,
-     -0.148
+     -0.0031,
+     -0.096,
+     0.0749
     ],
     "hi": [
-     0.0028,
-     0.013,
-     -0.032
+     0.0031,
+     0.0168,
+     0.1766
     ],
-    "paint": "p2b2e33"
+    "paint": "pbcc4cf"
    },
    {
     "name": "blade_wzB__edge",
-    "upload": "blade_wzB__edge__peef1f5",
-    "tris": 383,
+    "upload": "blade_wzB__edge__pe2e7ed",
+    "tris": 235,
     "look": {
-     "color": "eef1f5",
+     "color": "e2e7ed",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -88589,48 +88589,23 @@
      "tex": false
     },
     "lo": [
-     -0.0028,
-     -0.013,
-     -0.148
+     -0.0031,
+     -0.096,
+     0.0749
     ],
     "hi": [
-     0.0028,
-     0.0002,
-     -0.0362
+     0.0031,
+     -0.0091,
+     0.1671
     ],
-    "paint": "peef1f5"
+    "paint": "pe2e7ed"
    },
    {
-    "name": "line_wzN__lit",
-    "upload": "line_wzN__lit__n73ffea",
-    "tris": 248,
+    "name": "frame_wzA__black",
+    "upload": "frame_wzA__black__p24272c",
+    "tris": 1978,
     "look": {
-     "color": "5fd6c4",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 1.345,
-     "alpha": 1.0,
-     "tex": false,
-     "glowColor": "73ffea"
-    },
-    "lo": [
-     -0.0106,
-     0.005,
-     0.016
-    ],
-    "hi": [
-     0.0106,
-     0.0077,
-     0.04
-    ],
-    "paint": "n73ffea"
-   },
-   {
-    "name": "scale_wzA__g10",
-    "upload": "scale_wzA__g10__p4c6a5e",
-    "tris": 732,
-    "look": {
-     "color": "4c6a5e",
+     "color": "24272c",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -88638,23 +88613,23 @@
      "tex": false
     },
     "lo": [
-     -0.0088,
-     -0.0158,
-     -0.026
+     -0.009,
+     -0.0146,
+     -0.022
     ],
     "hi": [
-     0.0088,
-     0.0113,
-     0.074
+     0.009,
+     0.0348,
+     0.0803
     ],
-    "paint": "p4c6a5e"
+    "paint": "p24272c"
    },
    {
-    "name": "tang_wzA__black",
-    "upload": "tang_wzA__black__p2b2e33",
-    "tris": 566,
+    "name": "guard_wzN__black",
+    "upload": "guard_wzN__black__p24272c",
+    "tris": 536,
     "look": {
-     "color": "2b2e33",
+     "color": "24272c",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -88662,44 +88637,92 @@
      "tex": false
     },
     "lo": [
-     -0.0022,
-     -0.025,
-     -0.0325
+     -0.0105,
+     -0.029,
+     0.0671
     ],
     "hi": [
-     0.0022,
-     0.017,
-     0.117
+     0.0105,
+     0.0317,
+     0.1074
     ],
-    "paint": "p2b2e33"
+    "paint": "p24272c"
+   },
+   {
+    "name": "panel_wzA__grip",
+    "upload": "panel_wzA__grip__p2f3338",
+    "tris": 66,
+    "look": {
+     "color": "2f3338",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0074,
+     -0.0131,
+     -0.0003
+    ],
+    "hi": [
+     0.0074,
+     0.0254,
+     0.0723
+    ],
+    "paint": "p2f3338"
+   },
+   {
+    "name": "ring_wzA__steel",
+    "upload": "ring_wzA__steel__pbcc4cf",
+    "tris": 896,
+    "look": {
+     "color": "bcc4cf",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0075,
+     -0.0218,
+     -0.0468
+    ],
+    "hi": [
+     0.0075,
+     0.0246,
+     -0.0005
+    ],
+    "paint": "pbcc4cf"
    }
   ],
-  "tris": 2184,
+  "tris": 4130,
   "lo": [
-   -0.0106,
-   -0.025,
-   -0.148
+   -0.0105,
+   -0.096,
+   -0.0468
   ],
   "hi": [
-   0.0106,
-   0.017,
-   0.117
+   0.0105,
+   0.0348,
+   0.1766
   ],
-  "bytes": 135816,
+  "bytes": 197704,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "knife@knife_karambit",
    "set": "kit",
    "lo": [
-    -0.0106,
-    -0.025,
-    -0.148
+    -0.0105,
+    -0.096,
+    -0.0468
    ],
    "hi": [
-    0.0106,
-    0.017,
-    0.117
+    0.0105,
+    0.0348,
+    0.1766
    ],
    "spots": {
     "grip": [
@@ -88709,13 +88732,13 @@
     ],
     "muzzle": [
      0.0,
-     -0.06927,
-     -0.10978
+     -0.09597,
+     0.1654
     ],
     "mid": [
      0.0,
-     -0.03117,
-     -0.0329
+     -0.04319,
+     0.09093
     ]
    }
   },
@@ -88728,7 +88751,7 @@
     ],
     "turned": false
    },
-   "line_wzN": {
+   "frame_wzA": {
     "at": [
      0.0,
      0.0,
@@ -88736,7 +88759,7 @@
     ],
     "turned": false
    },
-   "scale_wzA": {
+   "guard_wzN": {
     "at": [
      0.0,
      0.0,
@@ -88744,7 +88767,15 @@
     ],
     "turned": false
    },
-   "tang_wzA": {
+   "panel_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "ring_wzA": {
     "at": [
      0.0,
      0.0,

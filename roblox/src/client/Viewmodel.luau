@@ -239,11 +239,26 @@ local SIZE: number = Holds.size or 1
 -- a Play test can show one look on every weapon at once through the player's HoldLook attribute
 local LookPlayer = game:GetService("Players").LocalPlayer
 local IS_STUDIO = game:GetService("RunService"):IsStudio()
+local skinLooks = {} :: { [string]: any }
 local function look(wid: string): any
 	local row = Holds.holds[wid]
 	if not row then return nil end
 	local want = LookPlayer:GetAttribute("HoldLook")
-	return (row.looks and ((type(want) == "string" and row.looks[want]) or row.looks[row.use])) or row
+	local base = (row.looks and ((type(want) == "string" and row.looks[want]) or row.looks[row.use])) or row
+	-- a held skin's own place in the hand (holds.json <weapon>.skins.<id> shift / tilt / scale; 27 Nov: the claw-grip
+	-- Karambit, its talon below the fist, sits higher and bigger than the knife)
+	local sk = wid == VM.wid and VM.skin and row.skins and row.skins[VM.skin]
+	if sk and (sk.shift or sk.tilt or sk.scale) then
+		local key = wid .. "@" .. (VM.skin :: string)
+		local m = skinLooks[key]
+		if not m or m._base ~= base then
+			m = setmetatable({ _base = base, shift = sk.shift or base.shift, tilt = sk.tilt or base.tilt, scale = sk.scale or base.scale },
+				{ __index = base })
+			skinLooks[key] = m
+		end
+		return m
+	end
+	return base
 end
 VM.look = look
 local function sizeOf(wid: string): number
@@ -826,8 +841,8 @@ function VM.set(wid: string, kat: number)
 	adsTuck = {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
+	VM.skin = GunSkins.skinFor(game:GetService("Players").LocalPlayer, wid) -- (before the size: a skin may have its own)
 	k = S * w.vm.s * sizeOf(wid)
-	VM.skin = GunSkins.skinFor(game:GetService("Players").LocalPlayer, wid)
 	local m = WeaponModels.build(wid, k, VM.skin)
 	if not m or not m.PrimaryPart then return end
 	-- what the HUD draws while you aim this one (FightHud: sights take the crosshair's place, a dot sight shows a dot)
