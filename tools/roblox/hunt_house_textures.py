@@ -12,9 +12,9 @@ import sys, os, math
 #   oakplank   512x512   16 x 16  (judge round 1) the ground floor's oak: 12 planks in 16 studs, staggered joints, calm
 #                                 grey-brown (not the orange the school's floor read as under warm light)
 #   kittile    512x512   16 x 16  (judge round 1) the kitchen: 4 x 4-stud porcelain tiles, mid beige-grey, soft grout
-TEX = {'siding': (8.0, 8.0), 'shingles': (8.0, 8.0), 'lawn': (24.0, 24.0), 'fenceboard': (8.0, 8.0), 'asphalt': (24.0, 24.0),
+TEX = {'siding': (8.0, 8.0), 'shingles': (8.0, 8.0), 'lawn': (24.0, 24.0), 'lawn2': (24.0, 24.0), 'fenceboard': (8.0, 8.0), 'asphalt': (24.0, 24.0),
        'oakplank': (16.0, 16.0), 'kittile': (16.0, 16.0), 'plaster2': (8.0, 8.0), 'kittile2': (16.0, 16.0)}
-PIXELS = {'siding': (512, 512), 'shingles': (512, 512), 'lawn': (1024, 1024), 'fenceboard': (512, 512), 'asphalt': (1024, 1024),
+PIXELS = {'siding': (512, 512), 'shingles': (512, 512), 'lawn': (1024, 1024), 'lawn2': (1024, 1024), 'fenceboard': (512, 512), 'asphalt': (1024, 1024),
           'oakplank': (512, 512), 'kittile': (512, 512), 'plaster2': (512, 512), 'kittile2': (512, 512)}
 #   plaster2   512x512   8 x 8    (judge round 2) the walls a step darker than the ceiling, the trim paler: soft greige
 #   kittile2   512x512   16 x 16  (judge round 2) the kitchen floor a step darker again
@@ -84,6 +84,11 @@ if __name__ == '__main__':
     img = c1[None, None, :] * (1 - mix) + c2[None, None, :] * mix
     img = img * (1.0 + 0.09 * a + stripe)[:, :, None]
     save('lawn', img)
+    # (judge round 3) lawn2: calmer, two near greens 3% apart, the mowing stripes a touch clearer
+    c1, c2 = hexrgb('667b52'), hexrgb('6d8257')
+    img = c1[None, None, :] * (1 - mix) + c2[None, None, :] * mix
+    img = img * (1.0 + 0.07 * a + 1.3 * stripe)[:, :, None]
+    save('lawn2', img)
 
     # ---------------------------------------------------------------- fence boards: 6 boards in 8 studs, gaps, grain
     h, w = PIXELS['fenceboard'][1], PIXELS['fenceboard'][0]

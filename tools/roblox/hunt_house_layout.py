@@ -194,6 +194,14 @@ def plane(x0, x1, za, ya, zb, yb, th, mat):
     if ny < 0: nz, ny = -nz, -ny
     cx, cy, cz = (x0 + x1) / 2, (ya + yb) / 2 - ny * th / 2, (za + zb) / 2 - nz * th / 2
     TILT.append((cx, cy, cz, 1.0, 0.0, 0.0, 0.0, ny, nz, x1 - x0, th, ln, mat, 'b', ''))
+def plane_x(xa, ya, xb, yb, z0, z1, th, mat):
+    """a slab sloping along x from (x a, y a) to (x b, y b) across z0..z1, th thick under its top face (the fort's slide)"""
+    dx, dy = xb - xa, yb - ya
+    ln = math.hypot(dx, dy)
+    ux, uy = dx / ln, dy / ln
+    nx, ny = (-uy, ux) if ux > 0 else (uy, -ux)
+    cx, cy, cz = (xa + xb) / 2 - nx * th / 2, (ya + yb) / 2 - ny * th / 2, (z0 + z1) / 2
+    TILT.append((cx, cy, cz, ux, uy, 0.0, nx, ny, 0.0, ln, th, z1 - z0, mat, 'b', ''))
 plane(ROOF['x0'], ROOF['x1'], ROOF['z1'], EAVE - 0.9, 0.0, RIDGE, 1.2, 'roof')     # the front slope
 plane(ROOF['x0'], ROOF['x1'], ROOF['z0'], EAVE - 0.9, 0.0, RIDGE, 1.2, 'roof')     # the back slope
 # two dormers on the back slope (judge round 1): a box out of the roof with a window and its own little gable roof
@@ -337,6 +345,16 @@ KINDS = {
                                   (-12, 10, -9, 12, 11.5, 9)]),
     'flowerbed':  ((20, 1.6, 4), [(-10, 0, -2, 10, 1.6, 2)]),
     'hedge':      ((20, 5, 4), [(-10, 0, -2, 10, 5, 2)]),
+    'hedgetall':  ((20, 8.2, 4.4), [(-10, 0, -2.2, 10, 8.2, 2.2)]),        # (judge round 3: the side fences' screen)
+    'playfort':   ((28, 16, 20), [(-5.05, 0, -5.05, -3.55, 12.4, -3.55), (3.55, 0, -5.05, 5.05, 12.4, -3.55),
+                                  (-5.05, 0, 3.55, -3.55, 12.4, 5.05), (3.55, 0, 3.55, 5.05, 12.4, 5.05),
+                                  (-5.4, 4.3, -5.4, 5.4, 5.8, 5.4),
+                                  (-5.0, 5.8, -5.0, 5.0, 9.0, -4.3), (-5.0, 5.8, -5.0, -4.3, 9.0, 5.0),
+                                  (4.3, 5.8, -5.0, 5.0, 9.0, 0.4), (4.3, 5.8, 3.6, 5.0, 9.0, 5.0),
+                                  (-5.0, 5.8, 4.3, -1.9, 9.0, 5.0), (1.9, 5.8, 4.3, 5.0, 9.0, 5.0),
+                                  (-1.8, 0, 11.4, 1.8, 0.97, 12.9), (-1.8, 0, 9.9, 1.8, 1.93, 11.4), (-1.8, 0, 8.4, 1.8, 2.9, 9.9),
+                                  (-1.8, 0, 6.9, 1.8, 3.87, 8.4), (-1.8, 0, 5.4, 1.8, 4.83, 6.9),
+                                  (-6.4, 12.4, -6.2, 6.4, 14.6, 6.2), (12.2, 0, 0.6, 13.6, 0.6, 3.4)]),
     'mailbox':    ((1.5, 5, 2), [(-0.4, 0, -0.4, 0.4, 5, 0.4)]),
     'hoop':       ((6, 18, 3), None),              # on the garage's front, over the door
     'hose':       ((3, 3, 2), None),
@@ -402,12 +420,13 @@ for xc in (16, 20, 36, 40):
     F('counter', xc, -38, turn=0)
 F('island', 34, -18, turn=0)
 # (judge round 1: the front half was bare floor) a breakfast nook on the west wall: a built-in bench, a pedestal table,
-# two chairs, a rug; a tall pantry between the counters and the fridge
+# two chairs, a rug; a tall pantry on the west wall between the back counters and the hall door (Clip, 27 Nov: at
+# 56/-5.25 it stood in the garage doorway, z -9..-3)
 F('rugsmall', 20.0, -7.0, turn=1, solid=False)
 F('banquette', 14.5, -7.0, turn=1)
 F('nooktable', 18.7, -7.0, turn=1)
 F('chair', 23.4, -9.5, turn=3); F('chair', 23.4, -4.5, turn=3)
-F('pantry', 56.0, -5.25, turn=3)
+F('pantry', 15.0, -31.0, turn=1)
 for dx in (-5, 0, 5): F('stool', 34 + dx, -12.5)
 # ---------------------------------------------------------------- the garage (x 60..102, z -10..40)
 F('car', 74, 18, y=PATIO, turn=0)
@@ -433,7 +452,7 @@ F('toychest', -47, -38.4, y=U0, turn=0)
 F('bookcase', -15.4, -32, y=U0, turn=3)
 F('rugsmall', -38, -22, y=U0); F('beanbag', -28, -14, y=U0)
 # the landing (x -12..12, z -23..40 round the stairwell)
-F('bookcase', -10.7, 34, y=U0, turn=1); F('armchair', -6, 36, y=U0, turn=2); F('plant', 10, 38, y=U0)
+F('bookcase', -10.7, 34, y=U0, turn=1); F('armchair', -6, 36, y=U0, turn=2); F('plant', 9.5, 31.0, y=U0)   # (27 Nov: out of the guest room door's way)
 # the guest room (x 13..58, z 12..40)
 F('beddouble', 49.5, 26, y=U0, turn=3)                  # its head on the east wall
 F('nightstand', 56.4, 18.5, y=U0, turn=3); F('nightstand', 56.4, 33.5, y=U0, turn=3)
@@ -446,7 +465,7 @@ F('filing', 15.5, 8, y=U0, turn=1); F('sofa2', 26, -4.4, y=U0, turn=0)
 F('pooltable', 44, -26, y=U0, turn=0)
 F('media', 15.8, -32, y=U0, turn=1); F('tvwall', 13.4, -32, y=U0 + 4.5, turn=1)
 F('console', 18.8, -32, y=U0, turn=1, solid=False)
-F('sofa2', 24.5, -32, y=U0, turn=3)
+F('sofa2', 24.5, -30.0, y=U0, turn=3)   # (27 Nov: 2 back from the balcony door's way through)
 F('toychest', 55.5, -36, y=U0, turn=3); F('beanbag', 28, -14, y=U0); F('shelfwide', 50, -10.3, y=U0, turn=2)
 # the family bathroom (x -12..12, z -40..-24)
 F('bathtub', 4.5, -36.5, y=U0, turn=1); F('vanity', -10, -30, y=U0, turn=1); F('toilet', -9.5, -38, y=U0, turn=1)
@@ -463,7 +482,7 @@ for px in (PERGOLA['x0'], (PERGOLA['x0'] + PERGOLA['x1']) / 2, PERGOLA['x1']):
 F('grill', 34, -61, y=PATIO, turn=0)
 F('patiotable', 26, -50, y=PATIO); F('patiochair', 22, -50, y=PATIO, turn=1); F('patiochair', 30, -50, y=PATIO, turn=3)
 F('lounger', 40, -50, y=PATIO, turn=0)
-TRAMP = dict(x=-34.0, z=-104.0, r=13.0, top=2.6, y=GROUND)      # the trampoline: its mat's centre, radius, top (HuntBuild's
+TRAMP = dict(x=-24.0, z=-104.0, r=13.0, top=2.6, y=GROUND)      # the trampoline: its mat's centre, radius, top (HuntBuild's
 F('trampoline', TRAMP['x'], TRAMP['z'], y=GROUND)              #  round mat and padded ring are the hit shapes)
 F('tree', 54.0, -118.0, y=GROUND); F('treebench', 54.0, -118.0, y=GROUND)
 F('swingset', 12.0, -106.0, y=GROUND, turn=0)   # (moved 26 Nov: the deck's paver path runs at x -10..-6)                  # two swings (HubSeat seats on them: HuntBuild)
@@ -471,10 +490,12 @@ SWINGS = [(0.0, GROUND + 2.6, -108.0), (8.0, GROUND + 2.6, -108.0)]
 F('shed', 90.0, -140.0, y=GROUND, turn=0)
 F('deck', -8.0, -134.0, y=GROUND)                               # (judge round 2: a centre with height) its steps face the house
 F('firepit', -8.0, -134.0, y=GROUND + 1.5)                      # (judge round 1: big things in the big garden)
-F('playhouse', -66.0, -132.0, y=GROUND, turn=0)                 # its door toward the house
+F('playfort', -56.0, -100.0, y=GROUND, turn=0)                  # (judge round 3: height; was the playhouse) its stair
+plane_x(-51.0, GROUND + 5.8, -43.0, GROUND + 0.6, -99.5, -96.5, 0.35, 'furn_playfort')   #  toward the house, the slide east
 F('tree', -76.0, -70.0, y=GROUND); F('tree', 100.0, -96.0, y=GROUND)
 F('flowerbed', -60, -150, y=GROUND, turn=0); F('flowerbed', -20, -150, y=GROUND, turn=0); F('flowerbed', 20, -150, y=GROUND, turn=0)
-F('flowerbed', -82, -120, y=GROUND, turn=1); F('flowerbed', -82, -84, y=GROUND, turn=1)
+for hz in (-80, -100, -120, -140): F('hedgetall', -81.5, hz, y=GROUND, turn=1)   # (judge round 3: tall hedges on the side
+for hz in (-40, -60, -80, -100, -120, -140): F('hedgetall', 105.5, hz, y=GROUND, turn=1)   #  fences, the neighbours screened)
 F('hose', 58, -46, y=PATIO)
 for hx in (-40, 0, 40, 60):                      # hedges along the back fence, between the flower beds
     F('hedge', hx, -149.5, y=GROUND)
@@ -568,6 +589,24 @@ def door_clear():
                 bad.append((d['id'], round(x, 1), round(z, 1), b[6])); break
     return bad
 
+def door_approach():
+    """(27 Nov: the pantry stood in the garage doorway and door_clear missed it, the door swinging the other way) the
+    way through every door: its middle third, 1 to 3 studs out on both sides, clear of anything solid, floor to 7 up"""
+    bad = []
+    for d in DOORS:
+        mid, ln = (d['a0'] + d['a1']) / 2, d['a1'] - d['a0']
+        for side in (-1, 1):
+            for out in (1.0, 2.0, 3.0):
+                for du in (-ln / 6, 0.0, ln / 6):
+                    u, v = mid + du, d['line'] + side * out
+                    x, z = (u, v) if d['axis'] == 'x' else (v, u)
+                    b = blocked_pt(x, d['y0'], z, 0.5, 0.6, 7.0)
+                    if b and b[6] not in ('grass', 'pavers', 'slab'):
+                        bad.append((d['id'], round(x, 1), round(z, 1), b[6])); break
+                else: continue
+                break
+    return bad
+
 def spawn_check():
     bad = []
     for (x, y, z, *_r) in SPAWNS:
@@ -614,6 +653,7 @@ if __name__ == '__main__':
         len(SOLID), len(ROT), len(TILT), len(DOORS), len(WINDOWS), len(FURN), len(SPAWNS), len(LIGHTS)))
     print('SPAWN PROBLEMS', spawn_check())
     print('DOOR SWINGS BLOCKED', door_clear())
+    print('DOORWAYS BLOCKED', door_approach())
     m, info = walk_check()
     print('\n'.join(info))
     print('ROOMS NOT REACHED %d %s' % (len(m), m))

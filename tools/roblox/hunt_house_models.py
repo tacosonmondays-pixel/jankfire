@@ -30,8 +30,9 @@ INFO = dict(name='HuntHouse', title='THE HOUSE', look='hunt_house', mapId='hunth
 # ================================================================ colours (the textured ones are unique hexes: WebArena
 # puts a picture on every piece of that colour, by `surfaces`)
 OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'a29a8c', 'dedad0', 'cfc6b4'
-PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'cfc8bc', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
-BEAM = '7c6c5e'      # (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
+PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'd8d0c2', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
+BEAM = '8c6e52'      # (judge round 3: mid oak; Roblox's light crushed '7c6c5e' to black)
+# (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
 BRICK, SIDING, SHINGLE, STONE = '7f5446', 'e4dfd3', '6a6e74', 'cfc6b5'
 LAWN, PAVERS, CONC, FENCEB, ASPH = '6f8a55', 'b3a897', '97948d', 'ad9476', '55585c'
 GLASS, FROST, DOOR_FRONT, BLOCK = 'b8d4dc', 'dfe6e8', '4f5f57', 'd3d1cb'
@@ -43,7 +44,7 @@ TEXS = {   # colour -> (picture name, studs u, studs v, uploaded image id or Non
     STONEFLOOR: ('a_stone', 8, 8, 113102432800653), PLASTER: ('plaster2', 8, 8, PLASTER2_ID),
     BTILE: ('rtile_wall', 8, 16, 119608007939948), SPLASH: ('a_tile', 8, 8, 95035963336200),
     BRICK: ('a_brick', 6, 6, 128782282184054), STONE: ('a_stone', 8, 8, 113102432800653),
-    SIDING: ('siding', 8, 8, 127661606333401), SHINGLE: ('shingles', 8, 8, 135435899461861), LAWN: ('lawn', 24, 24, 82912196276517),
+    SIDING: ('siding', 8, 8, 127661606333401), SHINGLE: ('shingles', 8, 8, 135435899461861), LAWN: ('lawn2', 24, 24, 118128219477802),
     FENCEB: ('fenceboard', 8, 8, 136590475412292), ASPH: ('asphalt', 24, 24, 72215822270952),
     PAVERS: ('pavers', 8, 8, 90576630175655), CONC: ('concrete', 24, 24, 92719214966737),
 }
@@ -141,15 +142,15 @@ def ceilings():
             yb = 13.0
         rects = [(x0, z0, x1, z1)]
         if r['id'] in ('entry',): rects = subtract(rects, L.VOID)
-        slab_rects(rects, yb, yb + 0.45, 'hh_ceil', CEIL if r['id'] != 'garage' else 'e9e7e2')
+        slab_rects(rects, yb, yb + 0.45, 'hh_ceil', CEIL if r['id'] != 'garage' else 'e9e7e2', bev=0.0)
         if r['id'] == 'garage': continue
         # the cornice: a two-step moulding where the ceiling meets the walls (it runs over the openings: they stop at 10.5)
-        for (a, b, c, d) in ((x0, z0, x1, z0 + 0.7), (x0, z1 - 0.7, x1, z1), (x0, z0, x0 + 0.7, z1), (x1 - 0.7, z0, x1, z1)):
+        for (a, b, c, d) in ((x0, z0, x1, z0 + 1.0), (x0, z1 - 1.0, x1, z1), (x0, z0, x0 + 1.0, z1), (x1 - 1.0, z0, x1, z1)):
             if r['id'] == 'entry' and a < 12 and c > 4 and b < 31 and d > 17.8: continue
-            K.B('hh_trim', TRIM, a, yb - 0.75, b, c, yb, d, bev=0.15, segs=1)
-        for (a, b, c, d) in ((x0, z0, x1, z0 + 1.2), (x0, z1 - 1.2, x1, z1), (x0, z0, x0 + 1.2, z1), (x1 - 1.2, z0, x1, z1)):
+            K.B('hh_trim', TRIM, a, yb - 1.0, b, c, yb, d, bev=0.2, segs=1)
+        for (a, b, c, d) in ((x0, z0, x1, z0 + 1.7), (x0, z1 - 1.7, x1, z1), (x0, z0, x0 + 1.7, z1), (x1 - 1.7, z0, x1, z1)):
             if r['id'] == 'entry' and a < 12 and c > 4 and b < 31 and d > 17.8: continue
-            K.B('hh_trim', TRIM, a, yb - 0.3, b, c, yb, d, bev=0.08, segs=1)
+            K.B('hh_trim', TRIM, a, yb - 0.45, b, c, yb, d, bev=0.12, segs=1)
     # the living room's beamed ceiling: three walnut beams across it
     for bx in (-47.0, -35.5, -24.0):
         K.B('hh_trim', BEAM, bx - 0.9, 10.4, 2.0, bx + 0.9, 12.0, 40.0, bev=0.25)
@@ -158,6 +159,8 @@ def ceilings():
         K.B('hh_trim', TRIM, a, 11.2, b, c, 12.0, d, bev=0.2)
     # the kitchen's coffer over the island (judge round 1: a frame for its two pendants)
     for (a, b, c, d) in ((24.5, -23.5, 43.5, -22.0), (24.5, -14.0, 43.5, -12.5), (24.5, -23.5, 26.0, -12.5), (42.0, -23.5, 43.5, -12.5)):
+        K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
+    for (a, b, c, d) in ((14.0, -12.5, 24.5, -11.0), (14.0, -3.0, 24.5, -1.5), (23.0, -12.5, 24.5, -1.5)):   # (judge round 3: the nook's)
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
     K.B('hh_trim', TRIM, 3.4, 11.6, 31.0, 12.0, 13.0, 31.6, bev=0.12)
@@ -253,15 +256,15 @@ def walls():
         if not o or o[0] == 'in':
             # inside walls: plaster both sides (the stair's side panel too: drawn by stair())
             if m == 'plaster' and x0 >= 3.49 and x1 <= 4.01 and z0 >= 17 and z1 <= 34: continue
-            K.B('hh_wall', PLASTER, x0, y0, z0, x1, y1, z1, bev=0.08, segs=1)
+            K.B('hh_wall', PLASTER, x0, y0, z0, x1, y1, z1, bev=0.0, segs=1)
             continue
         ax, face, sgn, skin, inner = o
         if ax == 'x':
-            if sgn > 0: K.B('hh_ext', skin, x1 - 0.6, y0, z0, x1, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0, x1 - 0.6, y1, z1, bev=0.06, segs=1)
-            else: K.B('hh_ext', skin, x0, y0, z0, x0 + 0.6, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0 + 0.6, y0, z0, x1, y1, z1, bev=0.06, segs=1)
+            if sgn > 0: K.B('hh_ext', skin, x1 - 0.6, y0, z0, x1, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0, x1 - 0.6, y1, z1, bev=0.0, segs=1)
+            else: K.B('hh_ext', skin, x0, y0, z0, x0 + 0.6, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0 + 0.6, y0, z0, x1, y1, z1, bev=0.0, segs=1)
         else:
-            if sgn > 0: K.B('hh_ext', skin, x0, y0, z1 - 0.6, x1, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0, x1, y1, z1 - 0.6, bev=0.06, segs=1)
-            else: K.B('hh_ext', skin, x0, y0, z0, x1, y1, z0 + 0.6, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0 + 0.6, x1, y1, z1, bev=0.06, segs=1)
+            if sgn > 0: K.B('hh_ext', skin, x0, y0, z1 - 0.6, x1, y1, z1, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0, x1, y1, z1 - 0.6, bev=0.0, segs=1)
+            else: K.B('hh_ext', skin, x0, y0, z0, x1, y1, z0 + 0.6, bev=0.06, flat=True, segs=1); K.B('hh_wall', inner, x0, y0, z0 + 0.6, x1, y1, z1, bev=0.0, segs=1)
 
 def exterior_bands():
     """the plinth at the foot of the brick, the stone string course between the storeys, the corner boards of the siding"""
@@ -416,6 +419,7 @@ def door_frames():
         c0, c1 = (z0, z1) if axis == 'x' else (x0, x1)
         w = 1.0 if kind in ('door', 'back', 'balc') else 1.3          # (judge round 1: thin casings; was 0.7 / 1.0)
         proud = 0.35 if kind in ('door', 'back', 'balc') else 0.45
+        if kind == 'arch' and max(x1 - x0, z1 - z0) >= 12.0: w, proud = 2.0, 0.6     # (judge round 3: portals)
         def bx(model, col, u0, v0, w0, u1, v1, w1, bev=0.1):
             if axis == 'x': K.B(model, col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
             else: K.B(model, col, w0, v0, u0, w1, v1, u1, bev=bev, segs=1)
@@ -435,7 +439,7 @@ def door_frames():
         if kind == 'arch' and a1 - a0 >= 6.0:                            # a deep header over the wide arches
             for (face, s) in ((c0, -1), (c1, +1)):
                 lo, hi = (face, face + s * 0.6) if s > 0 else (face + s * 0.6, face)
-                bx('hh_trim', TRIM, a0 - 1.3, y1 - 0.1, lo, a1 + 1.3, min(y1 + 1.5, y0 + 11.9), hi, bev=0.2)
+                bx('hh_trim', TRIM, a0 - w, y1 - 0.1, lo, a1 + w, min(y1 + 1.5, y0 + 11.9), hi, bev=0.2)
         if kind == 'open':                                                # a walnut header over the wide kitchen opening
             for (face, s) in ((c0, -1), (c1, +1)):
                 lo, hi = (face, face + s * 0.5) if s > 0 else (face + s * 0.5, face)
@@ -681,6 +685,11 @@ def neighbours():
         nhouse(float(x), -236.0, 96, 60, 1, bodies[k % 5], roofs[k % 3]); k += 1
     nhouse(-196.0, 0.0, 70, 110, 1, bodies[2], roofs[1])    # the side neighbours
     nhouse(224.0, 10.0, 70, 110, 1, bodies[4], roofs[2])
+    # (judge round 3: the neighbours read as placeholder boxes) a row of the chunky trees just outside the side and back
+    # fences, so the garden's and the front's frames end in green
+    for (x, z, sc) in ((-100, -70, 1.15), (-100, -108, 1.1), (-100, -146, 1.15), (-98, 8, 1.2), (124, -40, 1.1), (124, -80, 1.15),
+                       (124, -120, 1.1), (122, -156, 1.0), (-70, -168, 1.0), (-25, -170, 1.1), (25, -168, 1.0), (70, -170, 1.1)):
+        tree_at(float(x), float(z), sc)
     for (x, z, s) in ((-130, -120, 1.0), (-120, 70, 0.9), (150, -100, 1.1), (160, 70, 0.9), (-60, -190, 1.0), (40, -200, 1.2),
                       (-200, -180, 1.0), (190, -190, 0.9), (-380, 60, 1.3), (380, 40, 1.2), (-360, -260, 1.1), (360, -280, 1.2),
                       (-520, 300, 1.4), (520, 320, 1.4), (-560, -380, 1.5), (560, -400, 1.5), (0, 420, 1.4), (-240, 420, 1.2),
@@ -728,7 +737,9 @@ def lights():
             K.cyl('hh_lamp', 'e8e1d2', x, 7.9, z, 1.6, 1.8, segs=24, bev=0.25)
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
             K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
-            K.light('spot', x, 7.6, z, (0, -1, 0), 1.6, 18, 110, col); LIGHTROOMS.append((rid, x, 7.6, z))
+            nook = abs(x - 18.7) < 0.1                                  # (judge round 3: the nook's blew its rug out)
+            K.light('spot', x, 7.6, z, (0, -1, 0), 0.9 if nook else 1.6, 14 if nook else 18, 100 if nook else 110, col)
+            LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
         K.cyl('hh_lamp', 'b8a98f', x, yc - 0.15, z, 0.9, 0.15, segs=16, bev=0.05)

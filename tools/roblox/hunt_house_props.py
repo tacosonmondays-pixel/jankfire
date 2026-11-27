@@ -9,7 +9,7 @@ from arenakit import Tr, Ry
 # ---------------------------------------------------------------- the palette
 OAK, WALNUT, PINE, BIRCH = 'a07752', '6f5240', 'b89a76', 'c9b08e'
 WHITE, OFFWHITE, CREAM = 'efece5', 'e2ddd2', 'd8cfbd'
-SOFA, SOFA2, CUSHION = '9a948a', '6f7a80', 'c4baa8'
+SOFA, SOFA2, CUSHION = '9a948a', '7b7e7f', 'c4baa8'   # (judge round 3: SOFA2 read blue)
 DARK, STEEL, CHROME = '3c3f44', 'a9aeb2', 'c7cacc'
 APPLIANCE = 'e7e5df'
 DUVET, BLANKET, PILLOW = 'e6e2d8', 'a89377', 'f0ece4'
@@ -177,7 +177,10 @@ def island(M):
     B(KICK, -7.2, 0, -2.8, 7.2, 0.6, 2.8, M, bev=0.05)
     B('d9d4ca', -8, 5.0, -3.5, 8, 5.4, 3.5, M, bev=0.1)
     for sx in (-1, 1): B('d9d4ca', sx * 8 - (0.45 if sx > 0 else 0), 0, -3.5, sx * 8 + (0 if sx > 0 else 0.45), 5.0, 3.5, M, bev=0.08)   # waterfall ends
-    for x in (-5, 0, 5): B(CABDOOR, x - 2.2, 0.9, -3.25, x + 2.2, 4.7, -3.05, M, bev=0.08)
+    for x in (-5, 0, 5):
+        B(CABDOOR, x - 2.2, 0.9, -3.25, x + 2.2, 4.7, -3.05, M, bev=0.08)
+        B(CABDOOR, x - 2.2, 0.9, 3.05, x + 2.2, 4.7, 3.3, M, bev=0.08)                    # (judge round 3: the stool side too)
+    B('d9d4ca', -7.6, 4.2, 3.0, 7.6, 5.0, 3.35, M, bev=0.08)                             # a drawer rail under the top
 
 def stool(M):
     C(WALNUT, 0, 3.4, 0, 1.25, 0.6, M, bev=0.2)                                         # a pedestal stool (judge round 1)
@@ -231,11 +234,12 @@ def diningtable(M):
     for (x, z) in ((-8.1, -3.1), (8.1, -3.1), (-8.1, 3.1), (8.1, 3.1)): B(OAK, x - 0.4, 0, z - 0.4, x + 0.4, 4.6, z + 0.4, M, bev=0.12)
     B(OAK, -7.8, 3.9, -0.3, 7.8, 4.5, 0.3, M, bev=0.08)
 
+CHAIRWOOD = '957f68'   # (judge round 3: oak chairs read mustard under the pendants)
 def chair(M):
-    B(OAK, -1.4, 2.4, -1.4, 1.4, 2.9, 1.4, M, bev=0.15)
+    B(CHAIRWOOD, -1.4, 2.4, -1.4, 1.4, 2.9, 1.4, M, bev=0.15)
     B('b9ae9c', -1.25, 2.9, -1.2, 1.25, 3.2, 1.25, M, bev=0.12)                        # the seat pad
-    for (x, z) in ((-1.1, -1.1), (1.1, -1.1), (-1.1, 1.1), (1.1, 1.1)): B(OAK, x - 0.2, 0, z - 0.2, x + 0.2, 2.4, z + 0.2, M, bev=0.06)
-    B(OAK, -1.4, 2.9, -1.4, 1.4, 6.0, -1.0, M, bev=0.18)                               # the back
+    for (x, z) in ((-1.1, -1.1), (1.1, -1.1), (-1.1, 1.1), (1.1, 1.1)): B(CHAIRWOOD, x - 0.25, 0, z - 0.25, x + 0.25, 2.4, z + 0.25, M, bev=0.08)
+    B(CHAIRWOOD, -1.4, 2.9, -1.4, 1.4, 6.0, -1.0, M, bev=0.18)                               # the back
 
 def sideboard(M):
     B(WALNUT, -7, 0.6, -1.5, 7, 5, 1.5, M, bev=0.2)
@@ -627,6 +631,45 @@ def hedge(M):
     B('5a7444', -10, 0, -2, 10, 4.4, 2, M, bev=0.9)
     B('5e7948', -9.7, 3.6, -1.7, 9.7, 4.9, 1.7, M, bev=0.6)
 
+def hedgetall(M):
+    # (judge round 3) the side fences' screen: a tall rounded box hedge, the front hedges' family
+    B('56703f', -10, 0, -2.2, 10, 7.4, 2.2, M, bev=1.1)
+    B('5c7745', -9.6, 6.2, -1.8, 9.6, 8.2, 1.8, M, bev=0.8)
+
+def playfort(M):
+    # (judge round 3: height in the garden) a raised fort: a deck 5.8 up on four posts, half walls, a gable roof, a
+    # stair down its front (+z, toward the house) and a slide off its east side (+x)
+    POST, DECKC, WALLC, ROOFC, SLIDEC = 'b7a083', 'a08870', 'd9d4c6', '6a6e74', '8a949c'
+    for (x, z) in ((-4.3, -4.3), (4.3, -4.3), (-4.3, 4.3), (4.3, 4.3)):
+        B(POST, x - 0.75, 0, z - 0.75, x + 0.75, 12.4, z + 0.75, M, bev=0.25)
+    B(DECKC, -5.4, 5.0, -5.4, 5.4, 5.8, 5.4, M, bev=0.2)                                # the deck
+    B(POST, -5.0, 4.3, -5.0, 5.0, 5.0, 5.0, M, bev=0.15)                                # its joists' band
+    B(WALLC, -5.0, 5.8, -5.0, 5.0, 8.6, -4.3, M, bev=0.2)                               # the half walls (back, sides)
+    B(WALLC, -5.0, 5.8, -5.0, -4.3, 8.6, 5.0, M, bev=0.2)
+    B(WALLC, 4.3, 5.8, -5.0, 5.0, 8.6, 0.4, M, bev=0.2)                                 # (east: the slide's gap at z 0.4..3.6)
+    B(WALLC, 4.3, 5.8, 3.6, 5.0, 8.6, 5.0, M, bev=0.2)
+    for (x0, x1) in ((-5.0, -1.9), (1.9, 5.0)): B(WALLC, x0, 5.8, 4.3, x1, 8.6, 5.0, M, bev=0.2)   # front, the stair's gap
+    for (x0, z0, x1, z1) in ((-5.2, -5.2, 5.2, -4.1), (-5.2, -5.2, -4.1, 5.2), (4.1, -5.2, 5.2, 0.4), (4.1, 3.6, 5.2, 5.2),
+                             (-5.2, 4.1, -1.9, 5.2), (1.9, 4.1, 5.2, 5.2)):
+        B('f2efe8', x0, 8.6, z0, x1, 9.0, z1, M, bev=0.15)                               # the walls' white caps
+    for k in range(5):                                                                  # the stair: five chunky steps
+        y = 5.8 * (k + 1) / 6.0
+        z = 5.4 + (4 - k) * 1.5
+        B(DECKC, -1.8, 0, z, 1.8, y, z + 1.5, M, bev=0.15)
+    for sz in (-1, 1):                                                                  # the gable roof along x (Rx(+a): +z down)
+        Mr = M @ Tr(0, 12.4 + 6.2 * math.tan(math.radians(28)), 0) @ K.Rx(sz * math.radians(28))
+        B(ROOFC, -6.4, -0.4, 0 if sz > 0 else -7.0, 6.4, 0.4, 7.0 if sz > 0 else 0, Mr, bev=0.2)
+    for sx in (-1, 1):                                                                  # the gable ends
+        K.plate(M_, WALLC, [(-5.0, 12.4), (5.0, 12.4), (0.0, 12.4 + 5.0 * math.tan(math.radians(28)))], 0.6,
+                M @ Tr(sx * 4.6 + 0.3, 0, 0) @ Ry(-math.pi / 2), bev=0.05)
+    # the slide: a tilted chute from the deck's east gap down to the lawn, with rails
+    ang = math.atan2(5.8 - 0.6, 8.0)
+    Ms = M @ Tr(5.0, 5.8, 2.0) @ K.Rz(-ang)
+    ln = math.hypot(8.0, 5.2)
+    B(SLIDEC, 0, -0.35, -1.5, ln, 0.0, 1.5, Ms, bev=0.15)
+    for sz in (-1, 1): B(SLIDEC, 0, -0.35, sz * 1.5 - (0.35 if sz > 0 else 0), ln, 1.1, sz * 1.5 + (0 if sz > 0 else 0.35), Ms, bev=0.15)
+    B(POST, 12.2, 0, 0.6, 13.6, 0.6, 3.4, M, bev=0.15)                                  # its foot
+
 def mailbox(M):
     B(WHITE, -0.4, 0, -0.4, 0.4, 3.6, 0.4, M, bev=0.1)
     B('4f5d55', -0.8, 3.6, -1.2, 0.8, 5.0, 1.2, M, bev=0.5)
@@ -664,7 +707,7 @@ def swingset(M):
     K.B(M_, '9e8a70', -11.2, 12.0, -0.85, 11.2, 13.7, 0.85, bev=0.3, M=M)
     for sx in (-4.0, 4.0):
         for dz in (-0.9, 0.9): K.B(M_, DARK, sx - 1.1 - 0.1, 2.9, dz - 0.1, sx - 1.1 + 0.1, 12.3, dz + 0.1, bev=0.03, M=M) if False else None
-        for dx in (-1.1, 1.1): K.B(M_, '5a5e64', sx + dx - 0.25, 2.9, -0.25, sx + dx + 0.25, 12.0, 0.25, bev=0.08, M=M)
+        for dx in (-1.1, 1.1): K.B(M_, '5a5e64', sx + dx - 0.35, 2.9, -0.35, sx + dx + 0.35, 12.0, 0.35, bev=0.1, M=M)
         K.B(M_, '5d6f63', sx - 1.6, 2.3, -0.9, sx + 1.6, 3.0, 0.9, bev=0.25, M=M)
 
 def pergola(x0, x1, z0, z1, top):
@@ -678,7 +721,7 @@ def pergola(x0, x1, z0, z1, top):
         K.B('hh_yard', 'b7a083', x0 - 2.2, top - 1.9, pz - 0.85, x1 + 2.2, top - 0.2, pz + 0.85, bev=0.3)
     x = x0 - 1.0
     while x <= x1 + 1.0:
-        K.B('hh_yard', 'a89274', x - 0.6, top - 0.5, z0 - 2.2, x + 0.6, top + 1.1, z1 + 2.2, bev=0.25)
+        K.B('hh_yard', 'a89274', x - 0.8, top - 0.6, z0 - 2.2, x + 0.8, top + 1.4, z1 + 2.2, bev=0.3)
         x += 6.4                                                                        # (judge round 2: fewer, deeper)
 
 # ---------------------------------------------------------------- the table of kinds
@@ -696,7 +739,7 @@ DRAW = {
     'lounger': lounger, 'trampoline': trampoline, 'tree': tree, 'treebench': treebench, 'shed': shed,
     'flowerbed': flowerbed, 'hedge': hedge, 'mailbox': mailbox, 'hoop': hoop, 'hose': hose, 'bins': bins,
     'swingset': swingset, 'banquette': banquette, 'nooktable': nooktable, 'pantry': pantry, 'firepit': firepit,
-    'playhouse': playhouse, 'deck': deck, 'lamppost': lamppost,
+    'playhouse': playhouse, 'deck': deck, 'lamppost': lamppost, 'hedgetall': hedgetall, 'playfort': playfort,
 }
 
 def draw(kind, cx, y, cz, turn, tab=None):
