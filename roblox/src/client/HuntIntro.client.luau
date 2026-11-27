@@ -179,7 +179,7 @@ local function play(a: any)
 	screen.Parent = folder
 	local light = Instance.new("SurfaceLight")
 	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness
-	light.Color = Color3.fromHex(sd.light.col); light.Shadows = true
+	light.Color = Color3.fromHex(sd.light.col); light.Shadows = false -- (owner, 27 Nov: its hard shadows striped a frilly outfit)
 	light.Parent = screen
 	local noise: ImageLabel? = nil
 	if set == "B" then
@@ -302,6 +302,7 @@ local function play(a: any)
 	local L = HC.INTRO.lens or { fade = 0.92, near = 1.2 }
 	local handleSets: { [Model]: { BasePart } } = {}
 	local touched: { [BasePart]: boolean } = {}
+	local holdFade: { [BasePart]: number } = {}
 	r.touched = touched
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Include
@@ -343,10 +344,11 @@ local function play(a: any)
 			local o = h.CFrame:PointToObjectSpace(camP)
 			local hz = h.Size / 2
 			local near = (o - Vector3.new(math.clamp(o.X, -hz.X, hz.X), math.clamp(o.Y, -hz.Y, hz.Y), math.clamp(o.Z, -hz.Z, hz.Z))).Magnitude < (nearAt or L.near)
-			local goal = if block[h] or near then L.fade else 0
+			if block[h] or near then holdFade[h] = os.clock() + 0.6 end -- (sticky: a frill flicking in and out read as shaking)
+			local goal = if (holdFade[h] or 0) > os.clock() then L.fade else 0
 			local cur = h.LocalTransparencyModifier
 			if math.abs(goal - cur) > 0.003 then
-				h.LocalTransparencyModifier = cur + (goal - cur) * math.min(1, dt * 14)
+				h.LocalTransparencyModifier = cur + (goal - cur) * math.min(1, dt * 7)
 				touched[h] = true
 			end
 		end
@@ -362,6 +364,13 @@ local function play(a: any)
 		local hd = c2 and c2:FindFirstChild("Head") :: BasePart?
 		if hd and (hd.Position - O.Position).Magnitude < 12 then return hd.Position end
 		return O.Position + Vector3.new(0, hy, 0)
+	end
+	-- a steady point on him (his root, not his head: a head in a mocap clip never holds still)
+	local realBody = function(): Vector3
+		local c2 = me.Character
+		local rr = c2 and c2:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if rr and (rr.Position - O.Position).Magnitude < 12 then return rr.Position + Vector3.new(0, 1.9, 0) end
+		return O.Position + Vector3.new(0, hy - 0.4, 0)
 	end
 	local flat = Vector3.new(O.LookVector.X, 0, O.LookVector.Z)
 	if flat.Magnitude < 1e-3 then flat = Vector3.new(0, 0, -1) end
@@ -405,11 +414,11 @@ local function play(a: any)
 			end },
 		-- 5. the look round (owner, 27 Nov): a slow drift out to a three-quarter as his head and shoulders turn left and
 		-- right and his hands come down
-		{ name = "around", t0 = beat("around"), t1 = beat("swing"), fov = function(u) return Cine.lerp(44, 38, u) end, shake = 0.35,
-			cam = function(u)
+		{ name = "around", t0 = beat("around"), t1 = beat("swing"), fov = function(u) return Cine.lerp(44, 38, u) end,
+			cam = function(u) -- (owner: "why is she shaking?": the lens followed her moving head, with a handheld on top)
 				local e = Cine.ease(u)
 				local from = O.Position + flat * Cine.lerp(5.0, 6.2, e) + rt * Cine.lerp(2.4, 3.6, e) + Vector3.new(0, Cine.lerp(1.1, 1.9, e), 0)
-				return look(from, realHead() - Vector3.new(0, 0.7 * e, 0))
+				return look(from, realBody() - Vector3.new(0, 0.7 * e, 0))
 			end },
 		-- 6. the swing: round to behind him as he looks down
 		{ name = "swing", t0 = beat("swing"), t1 = beat("hold"), fov = 40,

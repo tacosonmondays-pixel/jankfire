@@ -207,7 +207,7 @@ local function play(a: any)
 	house.Name = "HuntOutroHouse"
 	house.Parent = workspace
 	table.insert(r.folders, house)
-	local bodies: { { m: Model, rig: string, src: Model } } = {}
+	local bodies: { any } = {}
 	local walk: { CFrame } = {}
 	local groupAt: Vector3? = nil
 	local mapDef = nil
@@ -265,20 +265,36 @@ local function play(a: any)
 		local first = who[1] and who[1]:FindFirstChild("HumanoidRootPart") :: BasePart?
 		groupAt = if G then L(G) elseif first then first.Position - Vector3.new(0, 3, 0) else origin.Position
 		local face = if G and G[4] then (origin * CFrame.Angles(0, math.rad(G[4]), 0)).LookVector else Vector3.new(0, 0, 1)
-		local n = #who
+		-- (owner, 27 Nov: "make them walk also"): through the house together, a loose wedge, looking round as they go
+		local GW = mapDef and mapDef.outroGroupWalk
+		local gFrom: Vector3 = if GW then L(GW.from) else groupAt :: Vector3
+		local gTo: Vector3 = if GW then L(GW.to) else groupAt :: Vector3
+		local gd = gTo - gFrom
+		local gDir = if gd.Magnitude > 0.1 then Vector3.new(gd.X, 0, gd.Z).Unit else face
+		r.gFrom, r.gTo, r.gDir = gFrom, gTo, gDir
 		for i, src in who do
 			local c, rig = copyBody(src)
 			if c then
-				local ang = (i - (n + 1) / 2) * 0.9
-				local at = (groupAt :: Vector3) + CFrame.fromAxisAngle(Vector3.yAxis, ang) * (face * -3.2)
-				local h = rootHeight(c, rig)
-				c:PivotTo(CFrame.lookAt(at + Vector3.new(0, h, 0), (groupAt :: Vector3) + face * 6 + Vector3.new(0, h, 0)))
+				local row = math.ceil((i - 1) / 2)
+				local side = (if i % 2 == 0 then 1 else -1) * row * 2.6
 				c.Parent = house
-				local idle = track(c, HC.ANIMS[rig] and HC.ANIMS[rig].idle, Enum.AnimationPriority.Action)
-				if idle then idle.Looped = true; idle:Play(0); idle:AdjustSpeed(1.15) end
-				table.insert(bodies, { m = c, rig = rig, src = src })
+				local base = track(c, if GW then (OUT.walk and OUT.walk[rig]) else (HC.ANIMS[rig] and HC.ANIMS[rig].idle), Enum.AnimationPriority.Action)
+				if base then base.Looped = true; base:Play(0); base:AdjustSpeed(if GW then (OUT.walkSpeed or 0.55) else 1.15) end
+				local la = HC.INTRO.lookAround and HC.INTRO.lookAround[rig]
+				local lk = if GW then track(c, la, Enum.AnimationPriority.Action2) else nil
+				if lk then lk.Looped = true; lk:Play(0.6); lk.TimePosition = i * 1.7; lk:AdjustSpeed(0.7) end
+				table.insert(bodies, { m = c, rig = rig, src = src, side = side, back = row * 2.2, h = rootHeight(c, rig) })
 			end
 		end
+		r.placeGroup = function(u: number)
+			local center = gFrom:Lerp(gTo, u)
+			local right = gDir:Cross(Vector3.yAxis)
+			for _, b in bodies do
+				local at = center + right * b.side - gDir * b.back + Vector3.new(0, b.h, 0)
+				b.m:PivotTo(CFrame.lookAt(at, at + gDir))
+			end
+		end
+		r.placeGroup(0)
 	end
 
 	-- ---------------------------------------------------------------- 2. the room (built now, shown after the glitch)
@@ -310,7 +326,7 @@ local function play(a: any)
 	screen.Parent = room
 	local light = Instance.new("SurfaceLight")
 	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * 1.5 -- (v2: the room read near black; the picture lights it)
-	light.Color = Color3.fromHex(sd.light.col)
+	light.Color = Color3.fromHex(sd.light.col); light.Shadows = false -- (owner, 27 Nov: hard screen shadows striped the outfits)
 	light.Parent = screen
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Front; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sg.PixelsPerStud = 180
@@ -329,7 +345,7 @@ local function play(a: any)
 	snow.ImageTransparency = if set == "B" then 0.55 else 0.85
 	snow.Parent = sg
 	-- the players: the gunman at his desk, or the survivors on the couch, the armchair and behind them
-	local roomBodies: { { m: Model, rig: string, kind: string } } = {}
+	local roomBodies: { any } = {}
 	local function seat(src: Model, at: CFrame, kind: string)
 		local c, rig = copyBody(src)
 		if not c then return end
@@ -342,7 +358,7 @@ local function play(a: any)
 			c:PivotTo(at * CFrame.new(0, rootHeight(c, rig), 0))
 		end
 		c.Parent = room
-		table.insert(roomBodies, { m = c, rig = rig, kind = kind })
+		table.insert(roomBodies, { m = c, rig = rig, kind = kind, seatY = at.Position.Y })
 	end
 	if set == "A" then
 		if who[1] then seat(who[1], spot("deskSeat"), "seat") end
@@ -379,6 +395,11 @@ local function play(a: any)
 			p += Vector3.new(0, math.sin(u * 14) * 0.06, 0) -- (a walk's bob)
 			return CFrame.lookAt(p, at)
 		else
+			if r.gFrom then -- (walking backwards ahead of them as they come down the hall)
+				local center = (r.gFrom :: Vector3):Lerp(r.gTo, math.clamp(u, 0, 1))
+				local right = (r.gDir :: Vector3):Cross(Vector3.yAxis)
+				return CFrame.lookAt(center + r.gDir * Cine.lerp(8.0, 7.0, u) + right * 1.4 + Vector3.new(0, 4.4, 0), center - r.gDir * 1.0 + Vector3.new(0, 3.2, 0))
+			end
 			-- a slow arc in front of them at eye height (they face it)
 			local c = (groupAt or origin.Position) + Vector3.new(0, 3.4, 0)
 			local face = if mapDef and mapDef.outroGroup and mapDef.outroGroup[4] then (origin * CFrame.Angles(0, math.rad(mapDef.outroGroup[4]), 0)).LookVector else Vector3.new(0, 0, 1)
@@ -465,11 +486,35 @@ local function play(a: any)
 	end
 	local nextFrame, frame = 0, 1
 	local nextClap = 0
+	local holdFade: { [BasePart]: number } = {}
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Include
 	r.conn = RunService.RenderStepped:Connect(function(dt: number)
 		if not r.alive then return end
 		local t = T()
+		-- the survivors walk until the hit-stop holds them
+		if r.placeGroup then
+			local run = math.max(0.1, beat("glitch") - (OUT.hitstop or 0.2))
+			if t <= run then r.placeGroup(math.clamp(t / run, 0, 1)) end
+		end
+		-- each sitter's hips onto its seat once the seated clip has them down, whatever the avatar's size (owner, 27 Nov:
+		-- "make sure they're actually sitting and not clipped")
+		for _, b in roomBodies do
+			if b.kind == "seat" and not b.fitted and b.sit and b.sit.IsPlaying and b.sit.TimePosition > 0.12 then
+				b.fitted = true
+				local lowest = math.huge
+				for _, nm in { "LowerTorso", "LeftUpperLeg", "RightUpperLeg", "Torso", "Left Leg", "Right Leg" } do
+					local pt = b.m:FindFirstChild(nm)
+					if pt and pt:IsA("BasePart") then
+						local cf, sz = pt.CFrame, pt.Size
+						local hh = 0.5 * (math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z)
+						-- (an R6 leg is one piece, thigh and shin: its middle is what lies on the seat)
+						lowest = math.min(lowest, if nm == "Left Leg" or nm == "Right Leg" then pt.Position.Y - 0.5 else pt.Position.Y - hh)
+					end
+				end
+				if lowest < math.huge then b.m:PivotTo(b.m:GetPivot() + Vector3.new(0, b.seatY + 0.05 - lowest, 0)) end
+			end
+		end
 		-- the film owns the screen: every HUD off but the bars and the static
 		if pg then
 			for _, g in pg:GetChildren() do
@@ -542,7 +587,7 @@ local function play(a: any)
 				local id = (OUT.anims[b.rig] or {})
 				if b.kind == "seat" then
 					local s = track(b.m, id.sit, Enum.AnimationPriority.Action)
-					if s then s.Looped = true; s:Play(0) end
+					if s then s.Looped = true; s:Play(0); b.sit = s end
 				else
 					local s = track(b.m, HC.ANIMS[b.rig] and HC.ANIMS[b.rig].idle, Enum.AnimationPriority.Action)
 					if s then s.Looped = true; s:Play(0); s.TimePosition = i * 0.4 end
@@ -570,7 +615,7 @@ local function play(a: any)
 				local id = (OUT.anims[b.rig] or {})
 				if set == "A" then
 					local s = track(b.m, id.stretch, Enum.AnimationPriority.Action2)
-					if s then s:Play(0.3, 1, 1.6); s.TimePosition = 0.8 end
+					if s then s:Play(0.8, 1, OUT.stretchSpeed or 0.75) end -- (owner: "too snappy": slower, eased in)
 					sound(S.creak, 0.8, false, b.m:GetPivot().Position, room)
 				else
 					local pick = if i % 3 == 1 then id.cheer elseif i % 3 == 2 then id.clap else id.pump
@@ -609,7 +654,8 @@ local function play(a: any)
 			end
 		end
 		for _, h in list do
-			local goal = if block[h] then 0.92 else 0
+			if block[h] then holdFade[h] = os.clock() + 0.6 end
+			local goal = if (holdFade[h] or 0) > os.clock() then 0.92 else 0
 			local cur = h.LocalTransparencyModifier
 			if math.abs(goal - cur) > 0.003 then h.LocalTransparencyModifier = cur + (goal - cur) * math.min(1, dt * 14) end
 		end

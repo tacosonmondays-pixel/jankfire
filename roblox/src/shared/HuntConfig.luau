@@ -104,8 +104,10 @@ H.MAPS = {
 		outside = { 0, -1.5, 70, 0, -1 }, -- (the gunman's intro ends here: the front walk, facing the front door)
 		-- the win films (27 Nov): his walk in from the front door, looking into the living room, toward the dining room, then
 		-- on to the fireplace (eye height 5.6); the survivors' regroup in the hall (x, y, z, facing yaw degrees)
-		outroWalk = { path = { { -4, 5.6, 36 }, { -4, 5.6, 28 }, { -8, 5.6, 21 } }, looks = { { -30, 4.5, 32 }, { -34, 4.0, 12 }, { -50, 4.2, 21 } } }, -- (v1: off the stairs; v3: never toward them)
+		outroWalk = { path = { { -4, 5.6, 37 }, { -5, 5.6, 29 }, { -10, 5.6, 24 }, { -18, 5.6, 25 } },  -- (owner: "walk forward more")
+			looks = { { -30, 4.5, 33 }, { -36, 4.0, 13 }, { -46, 4.2, 32 }, { -52, 4.0, 16 } } },        -- (and slower looks round)
 		outroGroup = { -2, 0, 14, 180 },
+		outroGroupWalk = { from = { -2, 0, 35 }, to = { -2, 0, 16 } }, -- (owner: the survivors walk through the house too: down the hall)
 		-- the wreck along his walk (main, 27 Nov: "start the walk with destroyed place"): { piece, x, y, z, yaw, pitch, roll }
 		-- in degrees (yaw first, then the tip). No blood, no bodies: things knocked over, a frame askew, a door off its hinge
 		outroWreck = {
@@ -237,10 +239,12 @@ H.INTRO = {
 -- clapping / cheering / fist pump (mixamo_r15.py --upper). sitDrop: how far the seated clip drops the hips below the root
 H.OUTRO = {
 	on = true,
-	len = 11,
-	beats = { glitch = 4.2, pull = 4.7, reveal = 8.2 },
+	len = 13, -- (owner, 27 Nov: a longer walk, slower looks)
+	beats = { glitch = 5.8, pull = 6.3, reveal = 9.8 },
 	hitstop = 0.2,
-	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2,
+	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2, -- (then each sitter's hips are fitted onto the seat: HuntOutro)
+	walk = { R15 = 507777826, R6 = 180426354 }, walkSpeed = 0.55, -- (Roblox's own walks, slowed: the survivors' walk)
+	stretchSpeed = 0.75, -- (owner: "make them stand up slower it's too snappy")
 	anims = {
 		R15 = { sit = 123982609501233, stretch = 124144468077269, clap = 119842197482812, cheer = 99464849720944, pump = 82176434072280 },
 		R6 = { sit = 91069648707561, stretch = 86402846376882, clap = 72835829513855, cheer = 134314727808662, pump = 114524043495459 },
