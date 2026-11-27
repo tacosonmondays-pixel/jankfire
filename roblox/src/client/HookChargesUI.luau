@@ -147,6 +147,12 @@ RunService.RenderStepped:Connect(function()
 	local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
 		or game:GetService("StarterPlayer"):GetAttribute("TouchForce") == true
 	hookCap.Visible = (show or lockedNow or inMatch) and not touch; hookWord.Visible = show or lockedNow or inMatch
+	do -- (round 6: a third bigger on a phone, where the HUD is drawn at about 0.7)
+		local us = readout:FindFirstChild("TouchScale") :: UIScale?
+		if not us then us = new("UIScale", { Name = "TouchScale" }, readout) :: any end
+		local want = if touch then 1.3 else 1
+		if (us :: UIScale).Scale ~= want then (us :: UIScale).Scale = want; readout.Position = UDim2.new(0, 0, 0, if touch then -36 else -30) end
+	end
 	row.Visible = show
 	lockF.Visible = lockedNow or (inMatch and not show)
 	lockF.Text = if lockedNow then "LOCKED TILL GO" else "READY"

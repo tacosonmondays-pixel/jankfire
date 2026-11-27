@@ -540,7 +540,7 @@ local infoDesc = label(words, "", 17, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
 infoDesc.AutomaticSize = Enum.AutomaticSize.Y; infoDesc.TextYAlignment = Enum.TextYAlignment.Top; infoDesc.LayoutOrder = 1
 infoDesc.Visible = false -- (27 Nov: the description paragraph is flavour text; the gimmick line says what it does)
 local gimBox = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2 }, words)
-T.corner(gimBox); T.edge(gimBox)
+T.corner(gimBox) -- (round 6: no outline; an outlined box read as a text field)
 new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 11), PaddingBottom = UDim.new(0, 13) }, gimBox)
 new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, gimBox)
 local gimTitle = label(gimBox, "", 13, UDim2.new(), UDim2.new(1, 0, 0, 16), GREY)
@@ -1090,6 +1090,7 @@ local function into(row: ScrollingFrame, child: GuiObject)
 end
 local swatchLocks: { [string]: Frame } = {}
 arrows(swatchRow, wbar)
+arrows(armList, armBody) -- (round 6: the armory's cards ran off the edge with nothing saying there's more)
 local hatLocks: { [string]: Frame } = {}
 type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame, st: UIStroke, tick: TextLabel, new: Frame }
 local swatches: { Swatch } = {}
@@ -1299,7 +1300,7 @@ refresh = function()
 			local armed = News.arm == e.id and os.clock() - News.armT < 4
 			equipBtn:set(if armed then "SURE? " .. News.digits(ep) .. " COINS" else "UNLOCK NOW · " .. News.digits(ep) .. " COINS", true)
 		elseif not okE and not trying() and p[e.slot] ~= e.id then equipBtn:set(if whyE == "ROBUX" then "ROBUX" else (whyE or "LOCKED") .. " UNLOCKS IT", false)
-		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED ON " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = TEXT; equipBtn.face.BackgroundTransparency = 1
+		elseif p[e.slot] == e.id then equipBtn:set("EQUIPPED ON " .. keyOf(e.slot), false, CARD); equipBtn.face.TextColor3 = GREY; equipBtn.face.BackgroundTransparency = 0
 		else equipBtn:set("EQUIP ON " .. keyOf(e.slot), true); equipBtn.face.BackgroundTransparency = 0 end
 	end)
 	News.guard("preview", showPreview, e.id)

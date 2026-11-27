@@ -183,7 +183,15 @@ end
 local chip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, Position = UDim2.fromOffset(44, 11), Size = UDim2.fromOffset(3, 20) }, plate)
 T.corner(chip, 2)
 local nameL = T.text(plate, "Name", "", 15, T.TEXT, T.FONT_BOLD)
-nameL.Position = UDim2.fromOffset(54, 11); nameL.Size = UDim2.fromOffset(110, 20); nameL.TextTruncate = Enum.TextTruncate.AtEnd
+nameL.Size = UDim2.fromOffset(0, 20); nameL.AutomaticSize = Enum.AutomaticSize.X; nameL.TextWrapped = false; nameL.TextXAlignment = Enum.TextXAlignment.Right; nameL.RichText = true
+do -- (round 6: the key cap, the name and its count one right-aligned group; the count stood far off at the plate's edge)
+	local grp = T.new("Frame", { Name = "Group", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 10), Size = UDim2.fromOffset(232, 22) }, plate)
+	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Center,
+		SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, grp)
+	local kc = plate:FindFirstChild("Key") :: GuiObject?
+	if kc then kc.LayoutOrder = 1; kc.Parent = grp end
+	nameL.LayoutOrder = 2; nameL.Parent = grp
+end
 local pipsBox = T.new("Frame", { Name = "Charges", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.fromOffset(60, 14) }, plate)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, pipsBox)
 type Pip = { box: Frame, fill: Frame }
@@ -217,6 +225,10 @@ local function hudStep()
 	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles")
 		elseif it.id == "camera" and me:GetAttribute("Photo") then (if charges() > 0 then "Camera · print" else ("Camera · %ds"):format(math.max(1, math.ceil((tonumber(me:GetAttribute("ItemAt")) or 0) - workspace:GetServerTimeNow())))) else it.name
 	label = string.upper(label) -- (round 4: capitals, like the HUD's other words)
+	do -- (round 6: the count right after the name, one group: "FRAG GRENADE ×2")
+		local n0 = charges()
+		label ..= '  <font transparency="' .. (if n0 > 0 then "0" else "0.5") .. '">×' .. n0 .. "</font>"
+	end
 	if nameL.Text ~= label then nameL.Text = label end
 	chip.Visible = false -- (round 3: no colour chip; the count says it in words)
 	nameL.TextStrokeTransparency = 0.8
@@ -226,8 +238,9 @@ local function hudStep()
 	do -- (no key cap on a touch screen, checked each frame: a test can force touch after the cap was made)
 		local UIS = game:GetService("UserInputService")
 		local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
-		local kc = plate:FindFirstChild("Key") :: GuiObject?
+		local kc = plate:FindFirstChild("Key", true) :: GuiObject? -- (in the Group row since round 6)
 		if kc then kc.Visible = not touch end
+		nameL.TextSize = if touch then 18 else 15 -- (round 6: bigger on a phone, where the HUD is drawn smaller)
 	end
 	local cnt = plate:FindFirstChild("Count") :: TextLabel?
 	if not cnt then
@@ -238,6 +251,7 @@ local function hudStep()
 	local cl = cnt :: TextLabel
 	cl.Text = "×" .. n
 	cl.TextTransparency = if n > 0 then 0 else 0.5
+	cl.Visible = false -- (round 6: the count is in the name's line now)
 	local left = if at > 0 then at - workspace:GetServerTimeNow() else 0
 	local k = if at > 0 then math.clamp(1 - left / it.recharge, 0, 1) else 0
 	for i, p in pips do

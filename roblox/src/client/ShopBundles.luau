@@ -691,7 +691,7 @@ return function(C: any): any
 			local x = UDim.new(1, -12)
 			if p and p.brass then
 				local okB = coins >= p.brass
-				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil else "need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
+				priceBtn(r, "brass", commas(p.brass), okB, if okB then nil elseif coins <= 0 then "you have none" else "need " .. commas(p.brass - coins) .. " more", x, 86).MouseButton1Click:Connect(go)
 				x = UDim.new(1, -12 - 86 - 26)
 				if p.tix then
 					local orL = txt(r, "or", 12, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
@@ -700,7 +700,7 @@ return function(C: any): any
 			end
 			if p and p.tix then
 				local okT = tix >= p.tix
-				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil else "need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
+				priceBtn(r, "tix", tostring(p.tix), okT, if okT then nil elseif tix <= 0 then "you have none" else "need " .. (p.tix - tix) .. " more", x, 70).MouseButton1Click:Connect(go)
 			end
 			if not p then
 				priceBtn(r, nil, if Shop.free() then "CLAIM" else ROBUX .. " " .. commas(o.robux or 0), true, nil, x, 96).MouseButton1Click:Connect(go)

@@ -122,7 +122,15 @@ local function refresh()
 	local news = me:GetAttribute("QuestNews") == true
 	count.Text = if news then " NEW " else ("%d/3 DONE"):format(tonumber(me:GetAttribute("QuestsDone")) or 0)
 	count.AutomaticSize = Enum.AutomaticSize.X
-	count.AnchorPoint = Vector2.new(1, 0.5); count.Position = UDim2.new(1, -12, 0.5, 0); count.Size = UDim2.fromOffset(0, 18)
+	count.AnchorPoint = Vector2.new(0, 0.5); count.Size = UDim2.fromOffset(0, 18)
+	task.spawn(function() -- (round 6: just after the word QUESTS; the word's width from TextService, free of the HUD's scale)
+		local ok, v = pcall(function()
+			local p = Instance.new("GetTextBoundsParams")
+			p.Text = face.Text; p.Font = face.FontFace; p.Size = face.TextSize; p.Width = 1000
+			return game:GetService("TextService"):GetTextBoundsAsync(p)
+		end)
+		count.Position = UDim2.new(0, if ok and v then math.ceil(v.X) + 12 else 110, 0.5, 0)
+	end)
 	count.BackgroundColor3 = Color3.fromRGB(229, 226, 219); count.BackgroundTransparency = if news then 0 else 1
 	count.TextColor3 = if news then Color3.fromRGB(29, 31, 35) else Color3.new(1, 1, 1)
 	count.TextStrokeTransparency = if news then 1 else 0.8
@@ -130,6 +138,7 @@ local function refresh()
 	dot.Visible = false -- (27 Nov: NEW in the count says it)
 end
 for _, a in { "Brass", "CrateTickets", "QuestsDone", "QuestNews" } do me:GetAttributeChangedSignal(a):Connect(refresh) end
+for _, prop in { "Text", "FontFace", "TextSize" } do face:GetPropertyChangedSignal(prop):Connect(refresh) end -- (HubStack styles the word later)
 refresh()
 
 RunService.Heartbeat:Connect(function()

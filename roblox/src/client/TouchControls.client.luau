@@ -452,6 +452,8 @@ local function build()
 		f.TextSize = 12
 		f.FontFace = T.FONT_BOLD
 		f.TextTruncate = Enum.TextTruncate.AtEnd
+		f.TextScaled = true; f.TextWrapped = false -- (round 6: shrinks to fit, 8 to 12, rather than cut short)
+		T.new("UITextSizeConstraint", { MinTextSize = 8, MaxTextSize = 12 }, f)
 		T.new("UIPadding", { PaddingLeft = UDim.new(0, 5), PaddingRight = UDim.new(0, 5) }, f)
 		f.Activated:Connect(function() if active and not settingsOpen() then Keys.tap(SLOT_KEYS[i]) end end)
 	end

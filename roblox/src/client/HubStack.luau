@@ -105,7 +105,8 @@ function HubStack.style(face: TextButton, id: string, sized: GuiObject?)
 		local holder = if sg then (sg:FindFirstChild("Scaled") or T.scaled(sg)) else nil
 		if holder and not holder:FindFirstChild("MenuShade") then
 			local shade = K.new("Frame", { Name = "MenuShade", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.new(0, 460, 1, 0), ZIndex = 0 }, holder)
-			K.new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(0.55, 0.75), NumberSequenceKeypoint.new(1, 1) }) }, shade)
+			shade.Size = UDim2.new(0, 520, 1, 0) -- (round 6: wider and darker: the words sat bare on a light floor)
+			K.new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.28), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 1) }) }, shade)
 			shade.Visible = face.Visible
 			face:GetPropertyChangedSignal("Visible"):Connect(function() shade.Visible = face.Visible end)
 		end

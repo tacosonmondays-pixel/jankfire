@@ -57,18 +57,18 @@ function UI.icon(kind: string, parent: Instance?, size: number?): Frame
 		new("ImageLabel", { Name = "Picture", BackgroundTransparency = 1, Image = pic, ScaleType = Enum.ScaleType.Fit, Size = UDim2.fromScale(1, 1) }, f)
 	elseif kind == "tix" then
 		local body = new("Frame", { Name = "Stub", BorderSizePixel = 0, BackgroundColor3 = TICKET, AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(1, 0, 0.66, 0) }, f)
-		T.corner(body, math.max(2, math.floor(s * 0.14)))
+			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.new(0.94, 0, 0.6, 0), Rotation = -14 }, f)
+		T.corner(body, math.max(2, math.floor(s * 0.12)))
 		-- the torn line: three dots down the stub, a third of the way in
 		for i = 0, 2 do
 			local d = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = TICKET_INK, AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(0.32, 0, 0.22 + i * 0.28, 0), Size = UDim2.fromOffset(math.max(1, math.floor(s * 0.09)), math.max(1, math.floor(s * 0.09))) }, body)
+				Position = UDim2.new(0.32, 0, 0.22 + i * 0.28, 0), Size = UDim2.fromOffset(math.max(2, math.floor(s * 0.12)), math.max(2, math.floor(s * 0.12))) }, body)
 			T.corner(d, 99)
 		end
 		-- the notch on each end
 		for _, x in { 0, 1 } do
 			local n = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = TICKET_INK, AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(x, 0.5), Size = UDim2.fromOffset(math.max(2, math.floor(s * 0.2)), math.max(2, math.floor(s * 0.2))), BackgroundTransparency = 0.25 }, body)
+				Position = UDim2.fromScale(x, 0.5), Size = UDim2.fromOffset(math.max(4, math.floor(s * 0.3)), math.max(4, math.floor(s * 0.3))), BackgroundTransparency = 0 }, body)
 			T.corner(n, 99)
 		end
 	else

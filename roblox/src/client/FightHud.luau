@@ -154,10 +154,14 @@ T.corner(hpBar, 5)
 -- (round 5: a soft dark fade in the two bottom corners behind the bare numbers, so they read on snow and sky; it shows
 -- with the health and ammo)
 for side = 0, 1 do
-	local sh = T.new("Frame", { Name = if side == 0 then "ShadeL" else "ShadeR", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(side, 1), Position = UDim2.new(side, 0, 1, 0), Size = UDim2.fromOffset(460, 200), ZIndex = 0 }, hud)
-	T.new("UIGradient", { Rotation = if side == 0 then -35 else -145,
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.5, 0.85), NumberSequenceKeypoint.new(1, 1) }) }, sh)
+	-- (a true corner fade: a CanvasGroup fading across, a frame in it fading up; the two multiply, so no edge shows)
+	local sh = T.new("CanvasGroup", { Name = if side == 0 then "ShadeL" else "ShadeR", BackgroundTransparency = 1, BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(side, 1), Position = UDim2.new(side, 0, 1, 0), Size = UDim2.fromScale(0.3, 0.34), ZIndex = 0 }, hud)
+	T.new("UIGradient", { Rotation = if side == 0 then 0 else 180,
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.55, 0.4), NumberSequenceKeypoint.new(1, 1) }) }, sh)
+	local fill = T.new("Frame", { Name = "Fill", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, sh)
+	T.new("UIGradient", { Rotation = -90,
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.6, 0.5), NumberSequenceKeypoint.new(1, 1) }) }, fill)
 	local function follow() sh.Visible = hpPlate.Visible end
 	hpPlate:GetPropertyChangedSignal("Visible"):Connect(follow); follow()
 end
@@ -381,6 +385,10 @@ local function showTiles(parts: { string }): boolean
 		drawHeads(t, i)
 	end
 	for i = #list + 1, #tileList do tileList[i].f.Visible = false end
+	-- (round 6: heads on every side or on none: bots and stand-ins have no head, and one side's heads alone read lopsided)
+	local every = true
+	for i = 1, #list do if #tileFor(i).heads:GetChildren() <= 1 then every = false end end
+	for i = 1, #list do tileFor(i).heads.Visible = every end
 	local rd = parts[2] or ""
 	tabRound.Text = string.upper(rd)
 	tabClock.Text = parts[4] or ""

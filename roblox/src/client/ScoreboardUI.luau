@@ -69,9 +69,9 @@ local function columns(b: any): { { any } }
 	for _, c in b.cols do
 		local s = tostring(c)
 		local w = if #b.cols <= 2 and #s > 2 then LOOK.WIDE_W elseif #s > 1 then LOOK.DMG_W else LOOK.NUM_W
-		table.insert(out, { K.sentence(s), w })
+		table.insert(out, { string.upper(s), w }) -- (round 6: capitals, like every other label in the game)
 	end
-	table.insert(out, { "Ping", LOOK.PING_W })
+	table.insert(out, { "PING", LOOK.PING_W })
 	return out
 end
 
@@ -176,7 +176,7 @@ local function sideTable(p: Frame, b: any, cols: { { any } }, title: string?, co
 	local h = LOOK.HEAD_H + #rows * rowH
 	local slab = K.new("Frame", { Name = "Table", BackgroundColor3 = B.SLAB, BackgroundTransparency = B.SLAB_A, BorderSizePixel = 0, Position = UDim2.fromOffset(0, y), Size = UDim2.fromOffset(LOOK.W, h) }, p)
 	numbers(slab, cols, nil, nil, LOOK.HEAD_H, B.MUTED, K.SANS_BOLD, 13, true, 2)
-	local ph = K.text(slab, "PlayerHead", "Player", 13, B.MUTED, K.SANS_BOLD)
+	local ph = K.text(slab, "PlayerHead", "PLAYER", 13, B.MUTED, K.SANS_BOLD)
 	ph.Position = UDim2.fromOffset(50, 0)
 	ph.Size = UDim2.fromOffset(120, LOOK.HEAD_H)
 	local yy = LOOK.HEAD_H

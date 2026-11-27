@@ -53,15 +53,15 @@ TL.PICK = { "fire", "aim", "jump", "crouch", "sprint", "hook", "reload", "swap",
 -- the default layout: the web game's places (touch.css: points from the bottom corner on the fire side, x the button size)
 -- keep: can't be hidden; fixed: its action can't be changed (it only shows when it can be used)
 TL.ITEMS = {
-	{ id = "fire", kind = "btn", act = "fire", x = 100, y = 92, d = 84 },
+	{ id = "fire", kind = "btn", act = "fire", x = 106, y = 98, d = 84 }, -- (27 Nov, ui-mocks round 6: the cluster spaced so no rim touches)
 	{ id = "jump", kind = "btn", act = "jump", x = 36, y = 50, d = 58 },
-	{ id = "crouch", kind = "btn", act = "crouch", x = 34, y = 120, d = 50 },
+	{ id = "crouch", kind = "btn", act = "crouch", x = 30, y = 128, d = 50 },
 	{ id = "aim", kind = "btn", act = "aim", x = 44, y = 184, d = 50 },
-	{ id = "hook", kind = "btn", act = "hook", x = 112, y = 176, d = 56 },
+	{ id = "hook", kind = "btn", act = "hook", x = 114, y = 184, d = 56 },
 	{ id = "melee", kind = "btn", act = "melee", x = 176, y = 152, d = 44 },
-	{ id = "swap", kind = "btn", act = "swap", x = 180, y = 98, d = 44 },
+	{ id = "swap", kind = "btn", act = "swap", x = 188, y = 98, d = 44 },
 	{ id = "reload", kind = "btn", act = "reload", x = 176, y = 44, d = 46 },
-	{ id = "wave", kind = "btn", act = "wave", x = 112, y = 240, d = 52, fixed = true },
+	{ id = "wave", kind = "btn", act = "wave", x = 114, y = 248, d = 52, fixed = true },
 	{ id = "yank", kind = "btn", act = "yank", x = 56, y = 244, d = 50, fixed = true },
 	{ id = "reel", kind = "btn", act = "reel", x = 56, y = 304, d = 50, fixed = true },
 	{ id = "reelin", kind = "btn", act = "reelin", x = 172, y = 214, d = 50, fixed = true }, -- (26 Nov 2026: by the HOOK, over STAB)
