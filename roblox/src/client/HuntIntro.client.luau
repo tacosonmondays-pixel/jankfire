@@ -69,17 +69,13 @@ local function stop()
 	if not r then return end
 	running = nil
 	r.alive = false
-	if r.cine then r.cine.stop() end
 	if r.conn then r.conn:Disconnect() end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	for _, tr in r.realTracks do pcall(function() tr:Stop(0.3) end) end
 	if r.folder then r.folder:Destroy() end
-	Cine.bars(false, 0.3)
-	local cam = workspace.CurrentCamera
-	cam.CameraType = Enum.CameraType.Custom
-	cam.FieldOfView = 70
+	Cine.bars(false, 0.2)
 	HubLook.set(roundLook(), 0)
-	me:SetAttribute("Finishing", nil)
+	if r.cine then r.cine.stop(true) end -- (lands on the gameplay camera; LoadoutOpen and Finishing put back)
 	me:SetAttribute("HuntIntro", nil)
 end
 
@@ -207,10 +203,8 @@ local function play(a: any)
 	}
 	if A.calm then A.calm.Looped = true; A.calm:Play(0) end
 
-	-- the light, the bars, the drone
-	me:SetAttribute("Finishing", true)
-	HubLook.set("hunt_intro_dark", 0)
-	Cine.bars(true, 0.35)
+	-- the bars and the drone (the light goes dark once the camera is ours: below)
+	Cine.bars(true, 0.4)
 	local d = loop(HC.INTRO.sounds.drone, 0.9); if d then table.insert(r.sounds, d) end
 	if set == "B" then local h = loop(HC.INTRO.sounds.hiss, 0.5); if h then table.insert(r.sounds, h) end end
 
@@ -228,55 +222,56 @@ local function play(a: any)
 		if hd and (hd.Position - O.Position).Magnitude < 12 then return hd.Position end
 		return O.Position + Vector3.new(0, hy, 0)
 	end
-	local function eye(): CFrame
-		local hp = realHead()
-		return CFrame.lookAt(hp, hp + Vector3.new(O.LookVector.X, 0, O.LookVector.Z))
-	end
+	local flat = Vector3.new(O.LookVector.X, 0, O.LookVector.Z)
+	if flat.Magnitude < 1e-3 then flat = Vector3.new(0, 0, -1) end
+	flat = flat.Unit
 	local shots = {
 		-- 1. the room: a low wide, a slow push, a profile
 		{ name = "wide", t0 = 0, t1 = 2.2 * k, fov = function(u) return Cine.lerp(56, 52, u) end,
 			cam = function(u) return look(lerpV(P(5.2, 1.1, 6.2), P(4.7, 1.25, 5.6), u), P(0, hy - 0.8, -1.2)) end },
 		{ name = "push", t0 = 2.2 * k, t1 = 3.9 * k, fov = function(u) return Cine.lerp(42, 36, u) end,
 			cam = function(u) return look(lerpV(P(0.2, hy + 0.3, 7.2), P(0.1, hy + 0.15, 4.3), u), P(0, hy - 0.35, 0)) end },
-		{ name = "profile", t0 = 3.9 * k, t1 = 5.5 * k, fov = 30, shake = 0.02,
+		{ name = "profile", t0 = 3.9 * k, t1 = 5.5 * k, fov = 30, shake = 0.5,
 			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headP()) end },
 		-- 2. the build: shorter shots, the shake growing
-		{ name = "shoulder", t0 = 5.5 * k, t1 = 6.6 * k, fov = 34, shake = 0.05,
+		{ name = "shoulder", t0 = 5.5 * k, t1 = 6.6 * k, fov = 34, shake = 1.2,
 			cam = function(u) return look(lerpV(P(1.7, hy - 0.9, 1.9), P(1.45, hy - 0.8, 1.6), u), P(0.2, hy - 1.0, 0)) end },
-		{ name = "behind", t0 = 6.6 * k, t1 = 7.7 * k, fov = 46, shake = 0.08,
+		{ name = "behind", t0 = 6.6 * k, t1 = 7.7 * k, fov = 46, shake = 1.8,
 			cam = function(u) return look(lerpV(P(0.8, hy + 0.55, 3.0), P(0.55, hy + 0.45, 2.4), u), P(sd.at.X, sd.at.Y, sd.at.Z)) end },
-		{ name = "dutch", t0 = 7.7 * k, t1 = 8.8 * k, fov = 40, shake = 0.12,
+		{ name = "dutch", t0 = 7.7 * k, t1 = 8.8 * k, fov = 40, shake = 2.6,
 			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headP(), 14) end },
-		{ name = "face", t0 = 8.8 * k, t1 = 9.7 * k, fov = 30, shake = 0.18,
+		{ name = "face", t0 = 8.8 * k, t1 = 9.7 * k, fov = 30, shake = 3.6,
 			cam = function(u) return look(lerpV(P(0.5, hy, -2.5), P(0.3, hy, -2.05), u), headP()) end },
-		{ name = "rush", t0 = 9.7 * k, t1 = 10.4 * k, fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 0.2 + 0.15 * u end,
+		{ name = "rush", t0 = 9.7 * k, t1 = 10.4 * k, fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 4.5 + 2.0 * u end,
 			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headP()) end },
 		-- 3. the snap: straight above, the head up into the lens
-		{ name = "above", t0 = 10.4 * k, t1 = 11.4 * k, fov = 52, shake = function(u) return 0.45 * (1 - u) ^ 2 end,
+		{ name = "above", t0 = 10.4 * k, t1 = 11.4 * k, fov = 52, shake = function(u) return 8 * (1 - u) ^ 2 end,
 			cam = function(u) local top = P(0, hy + 5.2 - 0.6 * Cine.ease(u), 0.02); return CFrame.lookAt(top, headP(), Vector3.zAxis) end },
 		-- 4. outside: low in front of him (between him and the map), looking up at him
-		{ name = "outside", t0 = 11.4 * k, t1 = 13.4 * k, fov = 44, shake = 0.015,
+		{ name = "outside", t0 = 11.4 * k, t1 = 13.4 * k, fov = 44, shake = 0.5,
 			cam = function(u)
-				local f = Vector3.new(O.LookVector.X, 0, O.LookVector.Z).Unit
+				local f = flat
 				local rt = f:Cross(Vector3.yAxis)
 				local from = O.Position + f * Cine.lerp(5.4, 4.9, u) + rt * 2.4 + Vector3.new(0, 1.1, 0)
 				return look(from, realHead() + Vector3.new(0, 0.4, 0))
 			end },
 		-- 5. the turn: round to behind him as he looks down, then into his eyes, the bars up
-		{ name = "turn", t0 = 13.4 * k, t1 = len, fov = function(u) return Cine.lerp(44, 70, Cine.ease(math.clamp((u - 0.55) / 0.45, 0, 1))) end,
+		{ name = "turn", t0 = 13.4 * k, t1 = len, fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(44, gf, Cine.ease(math.clamp((u - 0.55) / 0.45, 0, 1))) end,
 			cam = function(u)
-				local f = Vector3.new(O.LookVector.X, 0, O.LookVector.Z).Unit
+				local f = flat
 				local hp = realHead()
 				local a = Cine.ease(math.clamp(u / 0.7, 0, 1))                    -- round him: front-side to behind
 				local ang = math.rad(Cine.lerp(25, 180, a))
 				local dir = (CFrame.fromAxisAngle(Vector3.yAxis, ang) * f)
 				local rad = Cine.lerp(5.0, 3.2, a)
 				local orbit = CFrame.lookAt(hp + dir * rad + Vector3.new(0, Cine.lerp(-0.6, 0.6, a), 0), hp + f * 4)
-				local w = Cine.ease(math.clamp((u - 0.7) / 0.3, 0, 1))             -- then into his eyes
-				return orbit:Lerp(eye(), w)
+				local w = Cine.ease(math.clamp((u - 0.7) / 0.3, 0, 1))             -- then onto the game's own camera
+				local g = Cine.gameplay(flat)
+				return orbit:Lerp(g, w)
 			end },
 	}
-	r.cine = Cine.play(shots, T)
+	r.cine = Cine.play(shots, { clock = T, flag = "huntintro" })
+	HubLook.set("hunt_intro_dark", 0) -- (Finishing is set now: HubLife leaves the light to us)
 
 	-- the cues: the clips, the flicker, the heartbeat, the hit, outside
 	local fired: { [string]: boolean } = {}
@@ -318,6 +313,7 @@ local function play(a: any)
 		if once("crazy2", 8.8 * k) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
 		if once("snap", 10.4 * k) then
 			if A.snap then A.snap:Play(0.04, 1, 1.3) end
+			if r.cine then r.cine.kick(9) end
 			if deskMask then deskMask:Destroy(); deskMask = nil end
 			HuntMask.wear(body)
 			sfx(HC.INTRO.sounds.hit, 1)
@@ -342,12 +338,8 @@ local function play(a: any)
 			local dn = track(r.realAnimator, ids.look, Enum.AnimationPriority.Action3)
 			if dn then dn:Play(0.3, 1, 1.1); table.insert(r.realTracks, dn) end
 		end
-		if once("bars", 14.6 * k) then Cine.bars(false, 1.0) end
-		if t >= len then
-			local final = eye()
-			stop()
-			workspace.CurrentCamera.CFrame = final
-		end
+		if once("bars", 14.6 * k) then Cine.bars(false, 0.8) end
+		if t >= len then stop() end
 	end)
 end
 
