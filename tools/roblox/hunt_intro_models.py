@@ -136,8 +136,8 @@ def room_b():
 # ---------------------------------------------------------------- the data the client reads
 SCREENS = {
     # where the light comes from: one Part (centre, size, facing +z = toward the actor), its colour and its light
-    'A': dict(at=(0.0, 5.45, -5.83), size=(3.9, 2.25, 0.06), col='9fc4ff', light=('surface', 2.6, 18, 'b8d4ff')),
-    'B': dict(at=(0.0, 4.0, -4.53), size=(3.2, 2.3, 0.06), col='c8ccd2', light=('surface', 2.2, 16, 'e4e8f0')),
+    'A': dict(at=(0.0, 5.45, -5.83), size=(3.9, 2.25, 0.06), col='9fc4ff', light=('surface', 1.1, 16, 'b8d4ff')),   # (27 Nov test: 2.6 blew out)
+    'B': dict(at=(0.0, 4.0, -4.53), size=(3.2, 2.3, 0.06), col='c8ccd2', light=('surface', 1.0, 15, 'e4e8f0')),
 }
 ACTOR = (0.0, 0.0, 0.0)
 # where each piece sits in the kit (apart, so the previews and Studio's import don't overlap): the client moves a room

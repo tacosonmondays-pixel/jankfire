@@ -31,13 +31,13 @@ local BEAT = 16 -- (the beats below are written for a 16 s hide and scale to the
 -- the room's light: near black, the screen does the rest (a client-side look, only while the room is up)
 HubLook.looks.hunt_intro_dark = {
 	Lighting = {
-		Ambient = Color3.fromRGB(6, 7, 9), OutdoorAmbient = Color3.fromRGB(5, 6, 8), Brightness = 0,
-		ExposureCompensation = 0.35, EnvironmentDiffuseScale = 0, EnvironmentSpecularScale = 0.15, ClockTime = 0,
+		Ambient = Color3.fromRGB(22, 24, 30), OutdoorAmbient = Color3.fromRGB(16, 18, 24), Brightness = 0, -- (27 Nov test:
+		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0, EnvironmentSpecularScale = 0.15, ClockTime = 0, -- blown)
 		FogColor = Color3.fromRGB(0, 0, 0), FogStart = 0, FogEnd = 100000,
 	},
 	Atmosphere = { Density = 0, Haze = 0, Glare = 0 },
-	Bloom = { Intensity = 0.7, Size = 26, Threshold = 1.1 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.18, Saturation = -0.25, TintColor = Color3.fromRGB(226, 234, 255) },
+	Bloom = { Intensity = 0.35, Size = 24, Threshold = 1.8 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.08, Saturation = -0.2, TintColor = Color3.fromRGB(226, 234, 255) },
 	SunRays = { Intensity = 0 },
 }
 
@@ -252,7 +252,7 @@ local function play(a: any)
 				return orbit:Lerp(g, w)
 			end },
 	}
-	r.cine = Cine.play(shots, { clock = T, flag = "huntintro" })
+	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.6 })
 	HubLook.set("hunt_intro_dark", 0) -- (Finishing is set now: HubLife leaves the light to us)
 
 	-- the cues: the clips, the flicker, the heartbeat, the hit, outside
@@ -286,7 +286,7 @@ local function play(a: any)
 			f -= build * 0.55 * math.max(0, math.noise(t * (9 + 14 * build), 5.7))
 			if math.noise(t * 3.1, 9.9) > 0.55 - 0.35 * build then f *= 0.25 end -- (a dropout)
 		end
-		if t >= 10.4 * k and t < 10.55 * k then f = 3.2 end
+		if t >= 10.4 * k and t < 10.55 * k then f = 1.8 end
 		light.Brightness = baseB * math.max(0.05, f)
 		screen.Color = baseCol:Lerp(Color3.new(0, 0, 0), math.clamp(1 - f, 0, 0.9))
 		if noise and os.clock() >= nextFrame then

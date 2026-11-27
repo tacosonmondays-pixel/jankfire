@@ -12,7 +12,9 @@
 --       camera will be, so the hand-back doesn't pop)
 --     opts: clock = () -> s (default: os.clock since play; a server clock keeps a phone or a slow load on time),
 --           flag = string for the player's Finishing attribute while it plays (HubLife keeps its zone look off;
---           DeathCam, PadLook, MenuCursor and ReplayClient stand back); hold = studs/s drift back after the last shot
+--           DeathCam, PadLook, MenuCursor and ReplayClient stand back); hold = studs/s drift back after the last shot;
+--           warm = s before the last shot's end when the game's own camera takes the camera type back while this still
+--           places it every frame (it then carries on from the last frame, no stale pop, and hides your own body itself)
 --     run.kick(amp)   a hit kick from now (0.3 s)        run.shot   the current shot's name
 --     run.stop(handBack?)  ends it; with handBack the camera lands on the gameplay camera, CameraType Custom
 --   CineKit.gameplay(look?) -> (CFrame, fov)   where the game's camera will sit: first person at the head; third person
@@ -155,10 +157,13 @@ function K.play(shots: { any }, opts: any?): Run
 		if past > 0 and opts.hold then cf = cf * CFrame.new(0, 0, past * opts.hold) end
 		return K.kickCF(cf, kickAmp, t - kickAt), fov
 	end
+	local endT = shots[#shots].t1
 	RunService:BindToRenderStep(key, Enum.RenderPriority.Last.Value + 80, function()
 		if run.done then return end
-		local cf, fov = frame(clock())
-		cam.CameraType = Enum.CameraType.Scriptable
+		local t = clock()
+		local cf, fov = frame(t)
+		-- (the 27 Nov test: Custom straight after Scriptable showed a stale frame of where you'd been for half a second)
+		cam.CameraType = if opts.warm and t >= endT - opts.warm then Enum.CameraType.Custom else Enum.CameraType.Scriptable
 		cam.CFrame = cf
 		if fov then cam.FieldOfView = fov end
 	end)

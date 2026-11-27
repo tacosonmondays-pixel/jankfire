@@ -6,7 +6,7 @@ return {
 	room = { w = 16, d = 14, h = 10 },
 	origin = { A = Vector3.new(0, 0, 0), B = Vector3.new(40, 0, 0) },
 	screens = {
-		A = { at = Vector3.new(0, 5.45, -5.83), size = Vector3.new(3.9, 2.25, 0.06), col = "9fc4ff", light = { kind = "surface", brightness = 2.6, range = 18, col = "b8d4ff" } },
-		B = { at = Vector3.new(0, 4, -4.53), size = Vector3.new(3.2, 2.3, 0.06), col = "c8ccd2", light = { kind = "surface", brightness = 2.2, range = 16, col = "e4e8f0" } },
+		A = { at = Vector3.new(0, 5.45, -5.83), size = Vector3.new(3.9, 2.25, 0.06), col = "9fc4ff", light = { kind = "surface", brightness = 1.1, range = 16, col = "b8d4ff" } },
+		B = { at = Vector3.new(0, 4, -4.53), size = Vector3.new(3.2, 2.3, 0.06), col = "c8ccd2", light = { kind = "surface", brightness = 1, range = 15, col = "e4e8f0" } },
 	},
 }
