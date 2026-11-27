@@ -96,6 +96,7 @@ local function stop()
 	r.alive = false
 	if r.conn then r.conn:Disconnect() end
 	if r.solid then pcall(function() RunService:UnbindFromRenderStep("HuntIntroSolid") end) end
+	if r.hold then pcall(function() RunService:UnbindFromRenderStep("HuntIntroHold") end) end
 	if r.cutlog then pcall(function() RunService:UnbindFromRenderStep("HuntIntroCutLog") end) end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	if r.tail then -- (the birds: peace carries on past the hand-back and fades out)
@@ -590,6 +591,20 @@ local function play(a: any)
 		end
 	end)
 	r.solid = true
+	-- (v17 on a plain avatar: the shot outside shook and framed her legs) ThirdPerson's facing (Camera+4) turns her root to
+	-- the camera's flat look every frame, and the camera outside is built from her root: looking almost straight down,
+	-- the two chased each other. Her root keeps the outside spot's heading, after ThirdPerson, until first person
+	RunService:BindToRenderStep("HuntIntroHold", Enum.RenderPriority.Camera.Value + 5, function()
+		if not r.alive or r.fp or T() < beat("outside") - 0.4 then return end
+		local ch = me.Character
+		local rt = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not rt or (rt.Position - O.Position).Magnitude > 12 then return end
+		local lv = rt.CFrame.LookVector
+		if Vector3.new(lv.X, 0, lv.Z).Unit:Dot(flat) < 0.99995 or math.abs(lv.Y) > 1e-3 then
+			rt.CFrame = CFrame.lookAt(rt.Position, rt.Position + flat)
+		end
+	end)
+	r.hold = true
 	if game:GetService("RunService"):IsStudio() then
 		local lines: { string } = {}
 		RunService:BindToRenderStep("HuntIntroCutLog", Enum.RenderPriority.Last.Value + 95, function()
