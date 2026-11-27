@@ -95,26 +95,26 @@ H.PASSIVES = {
 -- the maps a round plays on: a map already in the place (workspace.Map.<source>), copied for the round, plus where
 -- people stand in it (local to the map's pivot). strip = folders taken out of the copy (the zombies' shutters)
 H.MAPS = {
+	-- (27 Nov, main: no schools, churches, malls or offices of desks, nothing that reads as a real-world attack site: homes,
+	-- mansions, backrooms, parks, warehouses. Jankfield High is out of this list for good.) the maps below: spots picked by
+	-- tools/roblox/hunt_spots.py from each map's own layout (the house: --y=-2,13.5, its floors only); the house's
+	-- weapons placed by hand where they belong (the kitchen's knives and pan, the garage's club, the toy chest's bat)
 	{
-		id = "school", source = "JankfieldHighV2A", title = "JANKFIELD HIGH", strip = { "ZM" },
-		gunman = { 0, 0, 72, 0, -1 }, -- (the main entrance, facing in)
+		id = "house", source = "HuntHouse", title = "THE HOUSE", strip = { "Hunt" }, -- (the copy: no doors, exit, tables)
+		gunman = { 3, 0, -21, 0, -1 },
 		hiders = {
-			{ -82, -16, 6 }, { 10, -16, -42 }, { 10, -16, -82 }, { 58, -16, -62 }, { -28, -16, -66 }, { 4, -16, -62 },
-			{ 36, -16, -62 }, { 102, -16, -62 }, { -88, 0, -65 }, { -88, 0, 16 }, { -76, 0, 72 }, { -48, 0, -72 },
-			{ -16, 0, -72 }, { 16, 0, -72 }, { 48, 0, 72 }, { 52, 0, -68 }, { 83, 0, -68 }, { 121, 0, -68 },
-			{ 112, 0, 12 }, { 112, 0, 76 }, { -88, 16, -61 }, { -76, 16, 72 }, { -48, 16, -72 }, { -16, 16, -72 },
-			{ 16, 16, -72 }, { 0, 16, 86 }, { 48, 16, 72 }, { 52, 16, -68 }, { 102, 16, -68 }, { 112, 16, 76 },
+			{ 93, -1.5, -145 }, { -43, -1.5, 69 }, { -77, -1.5, -149 }, { 55, 13, -19 }, { -55, 13, -37 }, { 99, -1, 37 },
+			{ -7, 0, 1 }, { 41, 0, 35 }, { 105, -1.5, -21 }, { -77, -1.5, -75 }, { -77, -1.5, 27 }, { -23, 13, 37 },
+			{ -19, -1, -49 }, { 17, 13, -53 }, { -51, 0, -7 }, { 21, 13, 9 }, { 27, 0, -29 }, { 67, -1, 9 },
+			{ -29, 13, -1 }, { -1, 0, 35 }, { -3, 13, -27 }, { 51, 13, 17 }, { 47, 13, -49 }, { -53, 13, 35 },
 		},
-		-- the search spots for FIGHT BACK: x, y (the piece's top-ish), z, what's in it ("" = nothing)
 		search = {
-			{ -118, 3.6, 38, "knife" }, { -118, 3.6, 66, "" }, { -118, 3.6, 89, "pan" }, { -96.5, 3.2, 63, "" },
-			{ 62.2, 19.4, 64, "knife" }, { 66, 22, 82, "" }, { 158.4, 6.5, 64, "club" }, { 146, 6.5, 94.4, "bat" },
-			{ 72.5, 6.5, -87.2, "" }, { 110.5, 6.5, -87.2, "club" }, { 25.5, -12.8, -73.8, "bat" }, { -17.5, -8, -74.3, "" },
-			{ -40, -12.4, -72, "" }, { 6, -12.4, -66, "pan" }, { -49.5, 2.6, -66, "" }, { 14.5, 18.6, -66, "" },
-			{ -54.7, 6.5, 20, "" }, { 62.7, 6.5, -28, "" }, { 8, 22.5, -46.7, "" }, { -108, 23, 59, "" },
-			{ 29.8, 20.5, 58, "" }, { -30.2, 20.5, 74, "knife" }, { 33.4, 6, 88, "" }, { -57.6, 6, -62, "" },
+			{ 55.5, 5.6, -32, "knife" }, { 55.5, 5.6, -20, "pan" }, { 80.5, 2.0, -8.2, "club" }, { 55.5, 16.2, -36, "bat" },
+			{ 34, 5.6, -18, "knife" }, { 100, 2.4, 0, "bat" }, { 73, 1.5, -147, "" }, { 101, 1.5, -127, "" },
+			{ -19, 16, 19, "" }, { -51, 3, 11, "" }, { -19, 16, -15, "" }, { 7, 16, 19, "" },
+			{ -21, 16, -33, "" }, { 47, 16, -33, "" }, { 53, 16, 1, "" }, { 31, 16, -49, "" },
 		},
-	},	-- (stage 4: maps we already have, the spots picked from their own layouts by tools/roblox/hunt_spots.py)
+	},
 	{
 		id = "backrooms", source = "Backrooms", title = "THE BACKROOMS",
 		gunman = { 1, -0.2, 1, 0, -1 },

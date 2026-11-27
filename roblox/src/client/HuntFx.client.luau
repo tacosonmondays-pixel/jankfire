@@ -16,7 +16,7 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("H
 
 local me = Players.LocalPlayer
 local rng = Random.new()
-local BLOOD = Color3.fromRGB(96, 20, 24)
+local BLOOD = Color3.fromRGB(255, 176, 204) -- (owner 27 Nov: pink, a soft sakura pink; a clearly unreal colour, HUNT.md section 6)
 
 local function fxFolder(): Folder
 	local f = workspace:FindFirstChild("HuntFx") :: Folder?
@@ -70,7 +70,7 @@ local function shatter(model: Instance?)
 			made += 1
 		end end end
 	end
-	-- a few small dark-red cubes (cartoon, never a spray or a pool)
+	-- a dozen small pink cubes (cartoon, never a spray or a pool)
 	for _ = 1, 12 do
 		local e = rng:NextNumber(0.22, 0.4)
 		local dir = Vector3.new(rng:NextNumber(-1, 1), rng:NextNumber(0.2, 1), rng:NextNumber(-1, 1)).Unit

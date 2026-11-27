@@ -34,11 +34,14 @@ the main game's movement with no grapple; the house lobby with a real trampoline
 show only the existing store items (VIP, coin packs, cases; THE ROBUX RULE, no new products); mocap animations on R15
 and R6; a random gunman with a random main-game gun plus passives; traps bought with in-round points; headshots always
 kill; fight-back weapons after about 2 minutes; deaths as blocky cubes in the avatar's own colours with a few
-dark-red cubes; the house judged against the ring hub by two blind judges; chunky, structured, quiet colours, no
+pink cubes (the owner, 27 Nov: "can the blood actually be pink instead?"); the house judged against the ring hub by two blind judges; chunky, structured, quiet colours, no
 flavour text, recordings only, anti-AI critic on the UI; not named or styled after any existing game.
 
 **The name.** HOLDOUT (the mode), THE HOUSE (its lobby). Plain words, no other game's name or look. Code files are
-`Hunt*` so they sort together.
+`Hunt*` so they sort together. The on-screen name is one constant, `HuntConfig.TITLE` (the lobby's is `HOUSE_TITLE`),
+so a rename is a one-line change. 27 Nov: the owner asked for "RUN HIDE FIGHT"; main is putting the risk to the owner
+first (it is the official active-shooter response slogan and a 2020 school-shooting film's title). HOLDOUT stays on
+screen until main says otherwise.
 
 ## 1. Where it lives (now, and as its own place later)
 
@@ -250,11 +253,17 @@ Hooks into shared code, each chained (the previous function is kept and called),
   for the bat).
 
 **Maps.** A map must hold a 2-minute hide: several floors, many rooms, loops and hiding spots.
-- Stage 2 plays on **Jankfield High** (the spare v2A school, copied): 4 levels, 20+ rooms and loops between floors.
-  The copy opens every zombies shutter.
+- **No schools (main, 27 Nov, not negotiable).** A lone gunman hunting unarmed people through a school is a
+  school-shooting scenario: against Roblox's rules on real-world violent events, and a reason to moderate the whole
+  experience. So no schools, churches, malls or offices full of desks, nothing that reads as a real-world attack site,
+  for any map, now or later. Homes, mansions, backrooms, parks, warehouses and the like are fine. Jankfield High was in
+  the first map list and is out for good.
+- The round loop runs on **THE HOUSE** (a copy of the lobby, its doors, exit and tables stripped), **the Backrooms**
+  and **Suburb v2**, then the manor once it is built.
 - Stage 4 adds a purpose-built **manor**: three floors and a basement, a garden and a pool house.
-- Stage 4 also converts maps we already have where they work for hiding: the Backrooms, the Arctic Cabin, Suburb v2
-  and the Station, each with a marker set only.
+- Stage 4 also converts maps we already have where they work for hiding: the Backrooms, the Arctic Cabin and Suburb
+  v2, each with a marker set only. (The Station is off this list since 27 Nov: a station reads as a real-world attack
+  site, by the no-schools rule above.)
 - **The marker contract:** `ServerStorage.HuntMaps.<Name>` (a Model placed in the map's own space):
   - `HiderSpawns`;
   - `GunmanPen` (the sealed room and its door);
@@ -269,7 +278,8 @@ When a hider dies, every client hides the body and puts small cubes where it was
 - Each body part is split into a few cubes in that part's own colour, from the avatar's own BodyColors and the
   clothing's average.
 - The cubes fly with the hit, bounce and fade out over 4 s.
-- About a dozen smaller dark-red cubes come with them, fading out in 1.5 s.
+- About a dozen smaller pink cubes come with them, fading out in 1.5 s: a soft sakura pink (255, 176, 204), never
+  red (the owner, 27 Nov).
 - Plain Parts made on the client: nothing is uploaded, no textures, no body parts and no realistic blood. The gunman
   breaks up the same way if the hiders kill him.
 
@@ -278,7 +288,8 @@ When a hider dies, every client hides the body and puts small cubes where it was
   mild, and lists "characters falling apart before respawning" among its unrealistic examples. Cubes in the avatar's
   colours, with no limbs or body parts coming off, are not "dismemberment", which Roblox puts under Restricted only
   when it looks realistic. Frequency "repeated" (a shooter), which is already the case.
-- **Blood:** the answer changes from "no" to "yes, unrealistic" ("a different color or shape": cubes). Whether it is
+- **Blood:** the answer changes from "no" to "yes, unrealistic" ("a different color or shape": pink cubes). Blood in
+  a clearly unreal colour is the questionnaire's "unrealistic blood" answer. Whether it is
   "infrequent and/or fleeting" decides the level:
   - yes (a second or two, now and then) → light unrealistic blood → Minimal;
   - no → heavy unrealistic blood → Mild.
@@ -333,7 +344,7 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 | stage | what | done when |
 |---|---|---|
 | 1 | THE HOUSE, both yards, movement (no grapple), the moves, the animations, the interactables, the shop tables, the way in and out | two blind judges, averaged, put it at or above the ring hub overall and on chunkiness, with no copy flag; a function test with Studio test players: walk every room, punch, push, super push, the launch, the trampoline, each prop, each table, the hub ↔ house moves, R15 and R6 |
-| 2 | the round loop on Jankfield High (copy) | a round with Studio test players: roles, the gun, headshots, the break-up, timers, win and lose both ways, back to the house |
+| 2 | the round loop on THE HOUSE, the Backrooms and Suburb v2 (copies) | a round with Studio test players: roles, the gun, headshots, the break-up, timers, win and lose both ways, back to the house |
 | 3 | the traps and the fight-back weapons | each trap and each weapon used on the gunman in a test |
 | 4 | the manor and the converted maps | each map: a 2-minute hide checked with test players, the marker check, ZFight |
 
@@ -344,7 +355,7 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 ## 10. Decided, so not asked
 
 - The lobby is Zone "hub" (holstered, no damage), a round is "match". So there are no zone-name changes in other code.
-- Stage 2 uses the school before the manor is built, to get a playable loop early on a map big enough.
+- Stage 2 runs on THE HOUSE, the Backrooms and Suburb v2 until the manor is built (no schools: section 5).
 - In-round points are per round, not saved. The only saved things are the usual XP, coins and quests (a round counts
   as a match for them: a win, a kill).
 - Rated? No. HOLDOUT is unranked.
@@ -407,12 +418,13 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 ### Stages 2-4 in code
 - `HuntRound` runs the round, `HuntItems` the traps, points and FIGHT BACK weapons.
 - The fight-back weapons are held props swung with the punch, judged by the server.
-- `HuntConfig.MAPS` has three maps:
-  - Jankfield High v2A: a copy, with the zombies' ZM markers stripped out;
+- `HuntConfig.MAPS` has three maps (27 Nov: Jankfield High taken out, no schools):
+  - THE HOUSE: a copy of the lobby with its `Hunt` folder stripped (doors, the exit, the tables); spots from
+    `hunt_spots.py hunt_house_layout house HuntHouse "THE HOUSE" 24 --y=-2,13.5`, the weapons placed by hand;
   - the Backrooms;
   - Suburb v2.
 
-  The last two have spots picked by `tools/roblox/hunt_spots.py` from their own layouts.
+  Each has spots picked by `tools/roblox/hunt_spots.py` from its own layout.
 - Studio test hooks on `ServerStorage.JankHuntTest`:
   - `round {role, standins, gun, hide, hunt}` starts a round with stand-in bodies;
   - `rstate` reads its state, `stop` ends it;
