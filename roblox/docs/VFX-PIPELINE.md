@@ -1067,7 +1067,7 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   to the next (both ways, only ever lowering the neighbour, never raising a clamped piece, which would fold again), then
   a 3-point smoothing that also only lowers; the centre line is rebuilt from the smoothed width.
   `studio_sweep_r7_shoulder.jpg` (+ `_crop.png`), `studio_sweep_r7_fp.jpg`.
-- **Round 8 (after round 7's shoulder 8 but first person 6):** a cap per PIECE starved short paths: first person's
+- **Round 8 (place version 1507, saved with hunt-mode's turn; after round 7's shoulder 8 but first person 6):** a cap per PIECE starved short paths: first person's
   ~10 pieces peaked at about a third of the width (12 px against 35). The cap now applies only when the curl clamp held
   a piece in, measured per LENGTH (the widest per fifth of the visible length, steeper than the crescent's own
   profile). The lower-only smoothing runs only within two pieces of a clamped piece. Swings with no clamped piece draw
