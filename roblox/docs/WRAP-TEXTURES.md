@@ -687,10 +687,13 @@ gun-models session (remodelled to the new standard). New builds get the standard
 and a sweep (`R.sweep(workspace.Map)`: every placed copy whose mesh is an old one gets the new one by id) moved the
 hub displays and racks too (no hub rebuild needed). Checked in a solo Play: first person 21/21 and third person 42/42
 parts on new meshes, loadout previews (plain, the Cue skin, the Duckling skin) all new, Lava Lamp changing frames,
-0 wrap or mesh errors. Left on old UVs, small: the 4 added wing pieces on each of the Seraph Pistol and Sniper and 4
-on the Shredder's Chipper (they came after those uploads), 1 Bento Box piece (mesh size changed since its upload), 3
-parts of one hub display case (the chicken) whose new mesh would not load by id, and the skins with no model in the
-place (their packs found 0 models). The artist-kit skins (Ducklings, Triangulum, Royal Duck) name pieces by node and
+0 wrap or mesh errors. **Place v1513: nothing left on the old UVs.** The last pieces: the Seraph wings (rebuilt
+from the vault, `REUV_ONLY` packs only them), the Seraph Pistol's wing read live out of Studio and re-UV'd
+(`tools/roblox/reuv_dump.py`: its upload file was never kept), the Shredder's `sh_hub` / `sh_bell2` (the import
+renames them: `ALIAS` in WeaponReUV), two hub chicken cases (ApplyMesh straight from the live template part when an id
+won't load), and the new knives, Origami Duck, Incense Burner and Decoy Duck, built on the new standard and tagged.
+The one WrapUV piece without new-standard UVs is the Bento Box's `lidcloth`, by design: it keeps its own band-and-bow
+UVs (`item_skins` `own_uv`) for the furoshiki print. The artist-kit skins (Ducklings, Triangulum, Royal Duck) name pieces by node and
 keep the slot in the material: `reuv_pack.py` puts the slot back.
 
 **The pictures didn't need redrawing:** a design is drawn per tile, so on the new UVs every wrap simply shows 2.4 times
@@ -734,7 +737,10 @@ a wrap still failing after three reworks retires. Owners keep everything retired
   both called it MADE. Owners keep it with the new look (`skins_origami2`). Both called the **Decoy Duck** AI too, but
   that render lost its baked wing paint; judged again from in-game photos by two fresh critics it split (one AI, one
   MADE), so it stays; both said its dark wing paint looks smudgy, a note for the gun-models session. The
-  **Incense Burner** split two and two over the two rounds; both rounds pointed at its handles draped over the rim.
+  **Incense Burner** split two and two over the two rounds; both rounds pointed at its handles draped over the rim. Main:
+  rework both. The Burner now has upright square handles of straight bars (a ding's), and the Decoy's dark wing paint
+  follows the carved relief inside its outline (crisp regions, more seam triangles kept); two fresh critics called both
+  MADE (`skins_fix27`, asset 107524892004879, imported at place v1513; owners keep them).
 
 **Traps.**
 - Pack pieces must carry the key on the MESH name: the first ten packs arrived as `trim__...001` with no key.

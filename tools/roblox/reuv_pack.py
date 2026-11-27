@@ -26,6 +26,12 @@ for f in files:
                 nm = nm.split('.')[0] + '__' + o.material_slots[0].material.name.split('.')[0]
             o.name = key + '~' + nm
             n += 1
+# (REUV_ONLY=<regex>: keep only the pieces whose packed name matches, e.g. the wing pieces a later build added)
+only = os.environ.get('REUV_ONLY')
+if only:
+    import re
+    for o in [o for o in bpy.context.scene.objects if o.type == 'MESH' and not re.search(only, o.name)]:
+        bpy.data.objects.remove(o)
 objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
 for o in objs:
     if o.data.users > 1: o.data = o.data.copy()

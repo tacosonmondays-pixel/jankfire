@@ -106,6 +106,9 @@ local function pick(c, p: MeshPart)
 	return list[1], false
 end
 
+-- the Shredder's import renames two pieces the Tool's scripts look for (studio-tools/WeaponImport.luau SHRED_NAMES)
+local ALIAS = { sh_hub = "hub_wzN__dark", sh_bell2 = "chute_wzB__frame" }
+
 local function applyKey(key: string, src: { [string]: any }, dry: boolean?, tot)
 	local tg = targets(key)
 	local a, sk, nm = 0, 0, 0
@@ -113,7 +116,7 @@ local function applyKey(key: string, src: { [string]: any }, dry: boolean?, tot)
 		tot.models += 1
 		for _, p in m:GetDescendants() do
 			if not (p:IsA("MeshPart") and p:GetAttribute("WrapUV")) then continue end
-			local s, fits = pick(src[p.Name] or src[strip(p.Name)], p)
+			local s, fits = pick(src[p.Name] or src[strip(p.Name)] or (ALIAS[p.Name] and src[ALIAS[p.Name]]), p)
 			if not s then nm += 1; continue end
 			if not fits then sk += 1; continue end
 			if not dry then
@@ -155,7 +158,7 @@ function R.apply(rows: { [string]: number }, dry: boolean?)
 end
 
 -- one upload per family batch (tools/roblox/reuv_pack.py): every piece named "<book key>~<piece>"
-function R.applyPack(id: number, dry: boolean?)
+function R.applyPack(id: number, dry: boolean?, only: { string }?)
 	local ok, pk = pcall(function() return IS:LoadAsset(id) end)
 	if not ok then return "LOAD FAILED " .. tostring(pk) end
 	local by: { [string]: { [string]: MeshPart } } = {}
@@ -173,7 +176,10 @@ function R.applyPack(id: number, dry: boolean?)
 		end
 	end
 	local lines, tot = {}, { applied = 0, skipped = 0, nomatch = 0, models = 0 }
-	for key, src in by do table.insert(lines, applyKey(key, src, dry, tot)) end
+	for key, src in by do
+		if only and not table.find(only, key) then continue end
+		table.insert(lines, applyKey(key, src, dry, tot))
+	end
 	pk:Destroy()
 	return summary(dry, tot, lines)
 end

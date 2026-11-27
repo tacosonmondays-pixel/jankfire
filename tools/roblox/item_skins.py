@@ -539,7 +539,8 @@ def smoke_censer():
     g = Gun('x_smoke_censer')
     g.slot('bronze', BRONZE); g.slot('patina', PATINA); g.slot('steel', STEEL); g.slot('lamp', EMBER, 'n')
     # a bronze incense burner: a wide squat bowl on three curled feet with a patina lip standing out round it, two
-    # loop ears on the lip, a stepped lid (a low dome, a shoulder, a small upper dome) pierced with two rings of holes
+    # upright square handles on the lip (27 Nov: the first loop ears read as noodles draped over the rim to two critic
+    # rounds; now straight bars, like a ding's), a stepped lid (a low dome, a shoulder, a small upper dome) pierced with two rings of holes
     # the ember glows through (the holes are the lamp: they blink while the fuse runs), a patina finial on top, the
     # pull ring hanging on a pin through the finial
     bowl = [(0.028, -0.084), (0.06, -0.08), (0.084, -0.062), (0.092, -0.036), (0.088, -0.014), (0.08, -0.004)]
@@ -551,7 +552,10 @@ def smoke_censer():
         g.cyl('feet__patina', 0.013, (c * 0.05, -0.078, s_ * 0.05), (c * 0.07, -0.112, s_ * 0.07), sides=14, bev=0.003, r2=0.009)
         blob(g, 'feet__patina', 0.013, 0.008, 0.013, (c * 0.074, -0.114, s_ * 0.074), sub=2)
     for sx in (-1, 1):
-        torus(g, 'ears__bronze', 0.019, 0.0065, (sx * 0.08, 0.006, 0), (0, 0, 1), seg=20, rseg=8, arc=(0.0, math.pi), e1=(1, 0, 0))
+        xs = tuple(sorted((sx * 0.079, sx * 0.091)))
+        for z0, z1 in ((-0.026, -0.015), (0.015, 0.026)):
+            g.box('ears__bronze', xs, (0.0, 0.05), (z0, z1), bev=0.002)
+        g.box('ears__bronze', xs, (0.04, 0.051), (-0.026, 0.026), bev=0.002)
     lathe(g, 'lid__bronze', [(0.07, 0.004), (0.07, 0.012), (0.066, 0.028), (0.054, 0.042), (0.038, 0.048), (0.035, 0.052),
                              (0.034, 0.062), (0.029, 0.074), (0.018, 0.083), (0.0, 0.086)], sides=48, cap1=False)
     for ring_y, ring_r, n, up in ((0.026, 0.0668, 12, 0.45), (0.066, 0.0325, 7, 0.55)):
@@ -645,11 +649,18 @@ def decoy_carve(g):
         lab = np.where(neckish & (p[:, 1] >= 0.097), 5, lab)
         lab = np.where(neckish & (p[:, 1] <= 0.072), np.where(body(p) < breast(p), 0, 1), lab)
         lab = np.where(band, 4, lab)
+        # (27 Nov: two critics found the wing paint smudgy and ragged, its edge where the nearest field happened to
+        # change. The dark wing is now the carved relief inside its outline: inside the coverts or primaries outline
+        # AND on the raised relief (not the bare back between the wings); anything else the nearest field called wing
+        # goes back to the body)
+        zy = np.minimum(coverts(p[:, 2], p[:, 1]), primaries(p[:, 2], p[:, 1]))
+        wing = (zy < 0.0) & (wings(p) <= base(p) + 0.0015) & np.isin(lab, [0, 1, 2, 3])
+        lab = np.where(wing, 3, np.where(lab == 3, 0, lab))
         return lab
     keys = {'body': ('body', 'body'), 'breast': ('breast', 'breast'), 'tail': ('tail', 'tail'), 'wings': ('wings', 'tail'),
             'neck': ('neck', 'neck'), 'head': ('head', 'head'), 'bill': ('bill', 'bill'), 'eye': ('eye', 'eye')}
     out = SDF.mesh_paint(f, cls, labels, (-0.205, -0.15, -0.335), (0.205, 0.26, 0.36), h=0.0017, tris=3600, name='decoy',
-                         seam_k=0.8)
+                         seam_k=1.6)   # (27 Nov: more of the colour seams kept, so the wing edge stays crisp)
     for lab, key in keys.items():
         old = g.pieces.pop(key, None)
         if old is not None: old.free()

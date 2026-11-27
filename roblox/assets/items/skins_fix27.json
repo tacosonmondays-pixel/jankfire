@@ -1,0 +1,101 @@
+{
+ "unit": 10.0,
+ "items": {
+  "smoke@censer": {
+   "lo": [
+    -0.0958,
+    -0.122,
+    -0.0958
+   ],
+   "hi": [
+    0.0958,
+    0.126,
+    0.0958
+   ],
+   "tris": 8386,
+   "pieces": [
+    "body__bronze",
+    "band__patina",
+    "feet__patina",
+    "ears__bronze",
+    "lid__bronze",
+    "lamp__lamp",
+    "finial__patina",
+    "pin__steel",
+    "ring__steel"
+   ],
+   "grip": [
+    0,
+    -0.01,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ],
+   "wrap": {
+    "a": [
+     "body",
+     "lid"
+    ],
+    "b": [
+     "band",
+     "feet"
+    ]
+   },
+   "name": "Incense Burner",
+   "rarity": "legendary",
+   "skin": "smoke_censer",
+   "item": "smoke"
+  },
+  "duck@decoy": {
+   "lo": [
+    -0.1918,
+    -0.1349,
+    -0.318
+   ],
+   "hi": [
+    0.1918,
+    0.2448,
+    0.3424
+   ],
+   "tris": 17392,
+   "pieces": [
+    "body__body",
+    "breast__breast",
+    "tail__tail",
+    "wings__tail",
+    "neck__neck",
+    "head__head",
+    "bill__bill",
+    "eye__eye"
+   ],
+   "grip": [
+    0,
+    0,
+    0.02
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ],
+   "wrap": {
+    "a": [
+     "body"
+    ],
+    "b": [
+     "breast",
+     "tail",
+     "wings"
+    ]
+   },
+   "name": "Decoy Duck",
+   "rarity": "rare",
+   "skin": "duck_decoy",
+   "item": "duck"
+  }
+ },
+ "asset": 107524892004879
+}
