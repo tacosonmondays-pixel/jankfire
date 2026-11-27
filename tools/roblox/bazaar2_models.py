@@ -338,12 +338,15 @@ WEB_WAGONS = '--box-wagons' not in K.FLAGS
 WAGON_BOXES = []
 def web_wagons():
     """each wagon box (8 x 4.5 x 10) dressed as the web game's open wagon (public/models/p_wagon_open.glb, every face one
-    flat colour sampled from its atlas, in the town's woods with teal wheels, the town's one accent: vehicle_port),
-    loaded with a roped canvas bundle out to the box's sides, its tongue down on the paving ahead of it"""
+    flat colour sampled from its atlas, in the town's woods: vehicle_port), loaded with a roped canvas bundle out to the
+    box's sides"""
     import vehicle_port as VP
     from mathutils import Matrix
-    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=TEAL2, iron='5a4a40', wood=WOOD2, cargo=CLOTH, dark='4a3a30'))
+    # (round 2, the critics: teal wheels were loud against the quiet town, and the tongue's crossbar lying on the paving
+    # read as crossed sticks: wood wheels, the tongue unhitched and gone)
+    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=WOOD, iron='6a5a4e', wood=WOOD2, cargo=CLOTH, dark='4a3a30'))
     body, tongue = VP.wagon_parts(raw)
+    tongue = []
     n = 0
     for (x0, y0, z0, x1, y1, z1) in WAGON_BOXES:
         cz = (z0 + z1) / 2

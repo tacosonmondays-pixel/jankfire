@@ -144,6 +144,7 @@ def track():
 
 
 # ================================================================ the train
+NEW_TRAIN = '--box-train' not in K.FLAGS          # (27 Nov 2026, the vehicles pass: the dress below; --box-train: the old)
 def train():
     m = 'sa_train'
     mi = 'sa_carin'
@@ -156,15 +157,46 @@ def train():
                 B(m, UNDER, bx0 + 0.3, -1.6, bz0 + 0.4, bx1 - 0.3, 0.3, bz1 - 0.4, bev=0.25)
                 B(mi, FLOORW, bx0 + 0.6, 0.3, bz0 + 0.6, bx1 - 0.6, by1, bz1 - 0.6, bev=0.0)
                 for zc in (bz0 + 6.5, bz1 - 6.5):                   # bogies: a frame and four wheels on the rails
+                    if NEW_TRAIN:
+                        # (27 Nov 2026, the vehicles pass: an open bogie you can read, not a black box: two side frames,
+                        # a bolster across, an axle box over each wheel, a coil spring each side, the axles)
+                        for sx in (-1, 1):
+                            B(m, UNDER2, sx * 3.0 - 0.3, -3.05, zc - 3.0, sx * 3.0 + 0.3, -2.1, zc + 3.0, bev=0.25)
+                            for zz in (zc - 1.7, zc + 1.7):
+                                B(m, UNDER, sx * 3.45 - 0.25, -3.3, zz - 0.45, sx * 3.45 + 0.25, -2.45, zz + 0.45, bev=0.12)
+                            cyl(m, IRON, sx * 3.0, -2.1, zc, 0.38, 0.55, segs=12, bev=0.05)
+                        B(m, UNDER2, -3.0, -2.6, zc - 0.7, 3.0, -1.65, zc + 0.7, bev=0.2)
+                        for zz in (zc - 1.7, zc + 1.7):
+                            for xr in (-2.4, 2.4):
+                                cylx(m, '2c2d30', xr - 0.25, xr + 0.25, -2.9, zz, 1.05, segs=16, bev=0.05)
+                            cylx(m, '5c5f63', -2.15, 2.15, -2.9, zz, 0.22, segs=8, bev=0.0)
+                        continue
                     B(m, UNDER2, -3.6, -3.6, zc - 3.0, 3.6, -1.6, zc + 3.0, bev=0.3)
                     for zz in (zc - 1.7, zc + 1.7):
                         for xr in (-2.15, 2.15):
                             cylx(m, '2c2d30', xr - 0.25, xr + 0.25, -2.9, zz, 1.05, segs=14, bev=0.05)
                     for xr in (-3.7, 3.7):
                         B(m, UNDER, xr - 0.2, -3.2, zc - 2.6, xr + 0.2, -2.0, zc + 2.6, bev=0.08)
+                if NEW_TRAIN:
+                    # the equipment hung under the floor between the bogies: boxes of three lengths
+                    z, k = bz0 + 10.5, 0
+                    while z < bz1 - 12.5:
+                        ln = (3.6, 2.4, 4.2)[k % 3]
+                        B(m, (UNDER2, IRON, UNDER)[k % 3], -2.4, -2.85, z, 2.4, -1.6, min(z + ln, bz1 - 10.5), bev=0.2)
+                        z += ln + 1.4; k += 1
             elif mt == 'train' and by0 >= y1 - 1.41:                # the roof (you can stand on it)
                 mark(b)
-                B(m, ROOFT, bx0 - 0.08, by0, bz0 - 0.05, bx1 + 0.08, by1, bz1 + 0.05, bev=0.9, segs=2)
+                if NEW_TRAIN:
+                    # a cambered roof (its walkable middle at the box's top, the eaves half a stud lower), a rain
+                    # gutter along each eave
+                    xa, xb = bx0 - 0.08, bx1 + 0.08
+                    w, xc = (xb - xa) / 2, (xa + xb) / 2
+                    arc_ = [(xc + w * u, by1 - 0.5 * u * u) for u in [i / 10 - 1 for i in range(21)]]
+                    plate(m, ROOFT, [(xa, by0)] + arc_ + [(xb, by0)], (bz1 + 0.05) - (bz0 - 0.05), Tr(0, 0, bz0 - 0.05), bev=0.2)
+                    for sx in (-1, 1):
+                        B(m, UNDER, xc + sx * (w + 0.02) - 0.14, by1 - 0.72, bz0 + 0.2, xc + sx * (w + 0.02) + 0.14, by1 - 0.5, bz1 - 0.2, bev=0.06)
+                else:
+                    B(m, ROOFT, bx0 - 0.08, by0, bz0 - 0.05, bx1 + 0.08, by1, bz1 + 0.05, bev=0.9, segs=2)
                 B(mi, INNER, bx0 + 0.6, by0 - 0.4, bz0 + T, bx1 - 0.6, by0, bz1 - T, bev=0.0)
                 B('sa_glow', LAMP, -0.45, by0 - 0.5, bz0 + 3.0, 0.45, by0 - 0.4, bz1 - 3.0, bev=0.0, kind='neon')
             elif mt == 'train':                                     # walls: green out, cream in, the band
@@ -188,6 +220,14 @@ def train():
                     for xr in (-3.2, 3.2):
                         cylz(m, UNDER2, min(zo, zo + s * 0.7), max(zo, zo + s * 0.7), xr, 0.0, 0.32, segs=10, bev=0.03)
                         cylz(m, RAIL, min(zo + s * 0.7, zo + s * 0.85), max(zo + s * 0.7, zo + s * 0.85), xr, 0.0, 0.55, segs=12, bev=0.03)
+                    if NEW_TRAIN:
+                        # the gangway's rubber frame round the end door, two lamps by the buffers, the coupler
+                        g0, g1 = (zo + s * 0.02, zo + s * 0.4)
+                        for (ax0, ax1, ay0, ay1) in ((-2.2, -1.6, 0.6, 8.6), (1.6, 2.2, 0.6, 8.6), (-2.2, 2.2, 8.0, 8.6)):
+                            B(m, UNDER2, ax0, ay0, min(g0, g1), ax1, ay1, max(g0, g1), bev=0.15)
+                        for xr in (-3.3, 3.3):
+                            cylz(m, 'c8c2b0', min(zo, zo + s * 0.18), max(zo, zo + s * 0.18), xr, 1.9, 0.36, segs=14, bev=0.04)
+                        B(m, UNDER2, -0.45, -0.35, min(zo, zo + s * 0.9), 0.45, 0.35, max(zo, zo + s * 0.9), bev=0.12)
             elif mt == 'seat':
                 mark(b)
                 out = 1 if bx0 > 0 else -1
@@ -203,6 +243,9 @@ def train():
             if kind == 'window':
                 for (a0, b0, a1, b1) in ((oz0 - 0.3, oy1, oz1 + 0.3, oy1 + 0.3), (oz0 - 0.3, oy0 - 0.3, oz1 + 0.3, oy0), (oz0 - 0.3, oy0, oz0, oy1), (oz1, oy0, oz1 + 0.3, oy1)):
                     B(m, DARK, f0, b0, a0, f1, b1, a1, bev=0.0)
+                if NEW_TRAIN:                                       # a sill under the window, standing a little proud
+                    s0, s1 = (xo - 0.02, xo + 0.24) if out > 0 else (xo - 0.24, xo + 0.02)
+                    B(m, CREAM, s0, oy0 - 0.55, oz0 - 0.45, s1, oy0 - 0.3, oz1 + 0.45, bev=0.06)
             else:
                 for (a0, b0, a1, b1) in ((oz0 - 0.35, oy1, oz1 + 0.35, oy1 + 0.35), (oz0 - 0.35, oy0, oz0, oy1), (oz1, oy0, oz1 + 0.35, oy1)):
                     B(m, DARK, f0, b0, a0, f1, b1, a1, bev=0.0)
@@ -788,6 +831,9 @@ VIEWS = [
     ('gallery', (-40, 17.6, -77), (20, 8, -40), 20),
     ('yard', (-80, 8, 60), (-20, 6, 90), 22),
     ('canopy_top', (-28, 18, 50), (-14, 12, -40), 20),
+    ('train_side', (-26, 7, 30), (0, 5, -10), 26),
+    ('train_end', (-14, 9, 70), (0, 4, 50), 30),
+    ('train_low', (-18, 2, -8), (0, 2, -40), 26),
 ]
 _pick = [f.split('=', 1)[1].split(',') for f in K.FLAGS if f.startswith('--views=')]
 if _pick: VIEWS = [v for v in VIEWS if v[0] in _pick[0]]

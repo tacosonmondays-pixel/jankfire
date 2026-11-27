@@ -413,6 +413,74 @@ def porches():
                 B('ac_trim', TRIMD, min(xw, xb), y0 - 2.2, zz - 0.2, max(xw, xb), y0, zz + 0.2, bev=0.05)
             light('point', (x0 + x1) / 2, y0 - 1.0, (z0 + z1) / 2, (0, -1, 0), 0.6, 14, 0, 'ffd9a8')
 
+def rowboat(x0, z0, x1, z1, y1):
+    """the yard's rowboat, laid upturned on the snow for the winter (27 Nov 2026, the vehicles pass: "Can the vehicles on
+    all maps be made a bit better?"; there is no web rowboat, so it is lofted here, in the kit's way): a clinker hull in
+    the muted barn red, its stern a flat transom at -x, its bow lifting off the snow at +x, a dark gunwale rail along the
+    snow line, a keel and stem along the top. Everything inside the boat's cover box but the oars, flat on the floor."""
+    m = 'ac_boat'
+    L_, W_ = x1 - x0, (z1 - z0) / 2 - 0.1
+    zc = (z0 + z1) / 2
+    top = y1 - 0.3                                       # (the keel, under its snow)
+    NS, NU = 24, 12                                      # sections along, points round
+    def half_w(t):                                       # stern (t 0) a transom 0.72 wide, fullest at 0.42, the bow a point
+        return W_ * (0.72 + 0.28 * math.sin(math.pi / 2 * t / 0.42) if t < 0.42 else max(0.0, math.cos(math.pi / 2 * (t - 0.42) / 0.58)) ** 0.75)
+    def gun(t): return 0.18 + 0.85 * t ** 3                         # the gunwale on the snow, the bow's sheer lifting it
+    def keel(t): return top - 0.25 * (2 * t - 1) ** 2 + 0.25 * t ** 4 # a little rocker, the stem rising
+    # round the section: a thin rail band at each gunwale, then the planks up to the keel (the angles, 0 .. pi)
+    PHI = [0.0, 0.09] + [0.09 + (math.pi - 0.18) * j / (NU - 2) for j in range(1, NU - 2)] + [math.pi - 0.09, math.pi]
+    NU = len(PHI) - 1
+    def pt(i, k):
+        t = i / NS
+        w, g, h = max(half_w(t), 0.02), gun(t), keel(t)
+        phi = PHI[k]
+        s, c = max(0.0, math.sin(phi)), math.cos(phi)
+        # (the sides flare out to the gunwale and the bottom, up here, is narrower and flatter: a boat, not a pill)
+        return Vector((x0 + 0.15 + (L_ - 0.3) * t, g + (h - g) * s ** 0.8, zc + w * c * (1.0 - 0.22 * s)))
+    # the strakes: planks a side in two reds (clinker), the lowest one a dark rail at the snow line
+    def look(k):
+        b = min(k, NU - 1 - k)
+        return TRIMD if b == 0 else (ACCENT if b % 2 else '6f3d37')
+    by = {}
+    for i in range(NS):
+        for k in range(NU):
+            by.setdefault(look(k), []).append((pt(i, k), pt(i + 1, k), pt(i + 1, k + 1), pt(i, k + 1)))
+    for col, quads in by.items():
+        bm = bmesh.new()
+        for q in quads:
+            vs = [bm.verts.new(v) for v in q]
+            try: bm.faces.new(vs)
+            except ValueError: pass
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)    # (the winding already faces out: no recalc on an open hull)
+        put(m, 'plastic', col, bm)
+    # the transom: the stern's section closed by a board
+    bm = bmesh.new()
+    vs = [bm.verts.new(pt(0, k) - Vector((0.02, 0, 0))) for k in range(NU + 1)]
+    bm.faces.new(vs)                                     # (faces -x, out of the stern)
+    put(m, 'plastic', TRIMD, bm)
+    # the keel along the top to the stem: one swept bar (its sides and top), capped at both ends
+    mid = NU // 2
+    kh, kw = 0.3, 0.17
+    bm = bmesh.new()
+    ring_ = []
+    for i in range(NS + 1):
+        c = pt(i, mid)
+        ring_.append([bm.verts.new(c + Vector((0, -0.05, -kw))), bm.verts.new(c + Vector((0, kh, -kw))),
+                      bm.verts.new(c + Vector((0, kh, kw))), bm.verts.new(c + Vector((0, -0.05, kw)))])
+    for i in range(NS):
+        a, b = ring_[i], ring_[i + 1]
+        for j in range(3):
+            bm.faces.new((a[j], a[j + 1], b[j + 1], b[j]))
+    bm.faces.new(ring_[0]); bm.faces.new(ring_[-1][::-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    put(m, 'plastic', TRIMD, bm)
+    # (no snow on it: it lies in the boathouse, under a roof. Round 1 had a strip of snow along the top; both critics read
+    # it as a decal)
+    # the oars, laid on the snow by its side
+    for dz in (-0.35, 0.35):
+        Bc(m, PLANK3, (x0 + x1) / 2 + 0.5, 0.12, z0 - 0.9 + dz, L_ * 0.62, 0.16, 0.18, bev=0.05, segs=1)
+        Bc(m, PLANK3, (x0 + x1) / 2 + 0.5 + L_ * 0.31, 0.1, z0 - 0.9 + dz, 1.3, 0.12, 0.5, bev=0.05, segs=1)
+
 def furniture():
     for (x0, y0, z0, x1, y1, z1, kind) in L.FURNITURE:
         m = 'ac_in'
@@ -443,6 +511,8 @@ def furniture():
             B('ac_out', ROCK2, x0 + 0.2, y1 - 0.6, z0 + 0.2, x1 - 0.2, y1, z1 - 0.2, bev=0.25)
             cyl('ac_out', IRON, (x0 + x1) / 2, y1, (z0 + z1) / 2 + 0.6, 0.35, 10.5, segs=10, bev=0.0)
             light('point', (x0 + x1) / 2 - 2.0 * (1 if x0 < 0 else -1), 5.0, (z0 + z1) / 2, (0, -1, 0), 0.6, 12, 0, 'ffbf86')
+        elif kind == 'boat' and '--box-boat' not in K.FLAGS:
+            rowboat(x0, z0, x1, z1, y1)
         elif kind == 'boat':
             hemi('ac_out', ACCENT, (x0 + x1) / 2, (z0 + z1) / 2, (x1 - x0) / 2, (z1 - z0) / 2, y1, us=20, vs=8)
             B('ac_out', TRIMD, x0 + 0.3, 0.0, (z0 + z1) / 2 - 0.2, x1 - 0.3, y1 + 0.15, (z0 + z1) / 2 + 0.2, bev=0.1)
@@ -788,6 +858,8 @@ VIEWS = [
     ('ridge', (-124, 20.5, -84), (10, 18, -82), 20),
     ('roof', (-31, 32.5, -40), (20, 26, -20), 18),
     ('woods', (-60, 6, 104), (40, 6, 70), 20),
+    ('boat', (-80, 7, 50), (-94, 1.2, 39), 36),
+    ('boat2', (-106, 5, 30), (-94, 1.2, 39), 36),
 ]
 if os.environ.get('ARCTIC_VIEWS'):
     VIEWS = [v for v in VIEWS if v[0] in os.environ['ARCTIC_VIEWS'].split(',')]

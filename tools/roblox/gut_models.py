@@ -653,6 +653,44 @@ def train():
         G.tube(m, CABLE, G.bez(pb[0], pb[1], pb[2], 10), 0.45, segs=8)
     # the wagons: commuter cars, cream with a rose band and dark windows (no one at them)
     x = xf - 7.0
+    if '--box-wagons' not in K.FLAGS:
+        # (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?": a cambered roof, a dark
+        # skirt, sills under the windows, double doors with their own windows, open bogies, lamps at the ends)
+        for w in range(3):
+            x1, x0 = x, x - 34.0
+            B(m, WAG, x0, -30.6, zc - 4.5, x1, -22.6, zc + 4.5, bev=0.7)
+            B(m, BOGIE, x0 + 0.6, -31.5, zc - 4.25, x1 - 0.6, -30.4, zc + 4.25, bev=0.3)        # the skirt
+            arc_ = [(4.7 * u, -21.0 - 0.75 * u * u) for u in [i / 10 - 1 for i in range(21)]]
+            plate(m, RIMC, [(-4.7, -22.9)] + arc_ + [(4.7, -22.9)], x1 - x0 - 0.4, Tr(x0 + 0.2, 0, zc) @ Ry(math.pi / 2), bev=0.25)
+            B(m, WAGB, x0 + 0.4, -27.6, zc - 4.62, x1 - 0.4, -26.6, zc + 4.62, bev=0.2)
+            for i in range(6):
+                wx = x0 + 3.5 + i * 5.4
+                for sg in (-1, 1):
+                    zs = zc + sg * 4.5
+                    if i == 2:                                                            # the double doors
+                        B(m, BOGIE, wx - 2.0, -30.4, zs - 0.12, wx + 2.0, -22.8, zs + 0.12, bev=0.15)
+                        for dx in (-0.95, 0.95):
+                            B(m, 'ddd0c3', wx + dx - 0.85, -30.2, zs - 0.18, wx + dx + 0.85, -23.0, zs + 0.18, bev=0.2)
+                            B(m, WIN, wx + dx - 0.5, -26.2, zs - 0.24, wx + dx + 0.5, -23.6, zs + 0.24, bev=0.2)
+                        continue
+                    B(m, WIN, wx - 1.8, -26.0, zs - 0.15, wx + 1.8, -23.0, zs + 0.15, bev=0.35)
+                    B(m, TRIM, wx - 2.0, -26.35, zs - 0.28, wx + 2.0, -26.0, zs + 0.28, bev=0.08)  # the sill
+            for bx in (x0 + 6.0, x1 - 6.0):                                              # open bogies
+                for sg in (-1, 1):
+                    B(m, BOGIE, bx - 3.2, -32.7, zc + sg * 3.0 - 0.3, bx + 3.2, -31.7, zc + sg * 3.0 + 0.3, bev=0.25)
+                    for wx in (bx - 1.8, bx + 1.8):
+                        B(m, RIMC, wx - 0.45, -32.9, zc + sg * 3.45 - 0.22, wx + 0.45, -32.1, zc + sg * 3.45 + 0.22, bev=0.12)
+                    cyl(m, CABLE, bx, -31.75, zc + sg * 3.0, 0.38, 0.4, segs=12, bev=0.05)
+                for wx in (bx - 1.8, bx + 1.8):
+                    for sg in (-1, 1):
+                        cylz(m, CABLE, zc + sg * 2.4 - 0.3, zc + sg * 2.4 + 0.3, wx, -32.15, 0.9, segs=16, bev=0.05)
+                    cylz(m, BOGIE, zc - 2.1, zc + 2.1, wx, -32.15, 0.2, segs=8, bev=0.0)
+            B(m, BOGIE, x0 - 2.0, -28.5, zc - 1.6, x0, -24.5, zc + 1.6, bev=0.3)          # the gangway to the next car
+            for xe in (x0, x1):                                                          # lamps at both ends
+                for sg in (-1, 1):
+                    cylx(m, ENAMEL2, xe - 0.15, xe + 0.15, -29.6, zc + sg * 3.3, 0.38, segs=14, bev=0.04)
+            x = x0 - 2.0
+        return
     for w in range(3):
         x1, x0 = x, x - 34.0
         B(m, WAG, x0, -31.4, zc - 4.5, x1, -21.6, zc + 4.5, bev=1.4)
@@ -723,6 +761,8 @@ VIEWS = [
     ('station', (-96, -25, 22), (40, -22, 52), 18),
     ('skyline', (-104, 6, 0), (0, 120, 0), 24),
     ('train', (-440, -26, 52), (-470, -24, 58), 22),
+    ('wagons', (-482, -23, 46.5), (-525, -27, 58), 30),
+    ('wagons2', (-560, -25, 49), (-520, -28, 58), 30),
 ]
 if PREVIEW and '--no-preview' not in K.FLAGS:
     _orig = K.render_previews

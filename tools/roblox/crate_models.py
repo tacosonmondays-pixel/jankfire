@@ -353,7 +353,30 @@ def furniture():
     # the block pile (web -260..-200 x -220..-160 m, one on another)
     giant_block('cr_pile', -690, F, -570, 180.0, 180.0, 0.0, CREAM2, MUSTARD, ('tri', 'circle', 'square', 'star'))
     giant_block('cr_pile', -690, F + 180, -570, 120.0, 120.0, 0.35, CREAM, BLUE, ('star', 'square', 'circle', 'tri'))
-    # the toy train on its track (web x 60..260, z -330..-240 m)
+    # the toy train on its track (web x 60..260, z -330..-240 m). Since 27 Nov 2026 (the vehicles pass: "Can the
+    # vehicles on all maps be made a bit better?") it is the web game's own toy train (public/models/p_toytrain.glb,
+    # 600 x 270 studs, exactly this track's footprint: every face one flat colour sampled from its atlas, in the room's
+    # muted toy colours: vehicle_port); --box-train brings back the boxes below
+    if '--box-train' not in K.FLAGS:
+        import vehicle_port as VP
+        rules = {'*': [('ff60df', 'plastic', '7d8389'), ('ff60bf', 'plastic', '7d8389'),                # the rails
+                       ('ff2040', 'plastic', CLAY), ('df2040', 'plastic', CLAY), ('df4040', 'plastic', CLAY),
+                       ('bf9f60', 'plastic', WOOD2), ('df9f60', 'plastic', WOOD2), ('df9f80', 'plastic', WOOD2),
+                       ('df9f40', 'plastic', WOOD2), ('dfbf80', 'plastic', WOOD2),                    # the sleepers
+                       ('202020', 'plastic', DARK), ('dfbf20', 'plastic', MUSTARD), ('ffbf20', 'plastic', MUSTARD),
+                       ('dfbf40', 'plastic', MUSTARD)]}
+        # (round 2, a critic: the boiler's bands and the dome came out speckled, faces of the atlas's yellow-with-grain
+        # snapping to the sleepers' wood: above the sleepers, anything wood is the bands' mustard)
+        pal = rules['*']
+        def above(t):
+            if VP.centre(t).y > 14.0:
+                e = VP.snap(t['tex'] or (0.5, 0.5, 0.5), pal)
+                if e[2] == WOOD2: return ('plastic', MUSTARD)
+            return None
+        rules = {'*': [above, pal]}
+        train = VP.port('p_toytrain', rules)
+        VP.place(m, train, Tr(480, F, -655))
+        return
     for zz in (-790, -550):
         B(m, '7d8389', 180, F, zz, 780, F + 12, zz + 30, bev=3.0)
     for x in range(198, 780, 42):
@@ -395,6 +418,8 @@ VIEWS = [
     ('mid', (-14, 5.4, 22), (16, 4, -14), 18),
     ('lid', (-8, 15.6, -8), (30, 3, 30), 18),
     ('room', (30, 6, 40), (-500, -150, -900), 16),
+    ('train', (30, 8, -40), (480, -230, -655), 22),
+    ('train_close', (230, -110, -330), (480, -220, -655), 30),
 ]
 
 import bpy

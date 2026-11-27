@@ -237,7 +237,8 @@ def web_wagons():
     flat beside it, the bed dropped a little onto that side. The box (10 x 4.5 x 6) stays the cover."""
     import vehicle_port as VP
     from mathutils import Matrix
-    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=WOOD2, iron=IRON, wood=CRATE, cargo=CANVAS, dark='4a3f36'))
+    # (round 2, the critics: the near wheels read black on the sand: a lighter wood, the iron a step lighter too)
+    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=WOOD, iron='6e6359', wood=CRATE, cargo=CANVAS, dark='4a3f36'))
     body, tongue = VP.wagon_parts(raw)
     lo, hi = VP.bounds(body)
     zc = (lo[2] + hi[2]) / 2
