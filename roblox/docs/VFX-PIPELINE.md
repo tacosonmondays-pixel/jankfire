@@ -1062,6 +1062,11 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   lead-in's last sharp bend (the last sample where the tip turned over 45 degrees within three steps, in the first 60 %
   of the path) and the crescent grows in from there; nothing restarts. `studio_sweep_tp_v1487.jpg`,
   `studio_sweep_fp_v1487.jpg`.
+- **Round 7 (place version 1497), after the shoulder view's 7** ("a sawtooth notch in the inner ink edge, mid-arc, where
+  the curl clamp kicks in"): after the clamp, the width changes by at most a tenth of the widest piece from one piece
+  to the next (both ways, only ever lowering the neighbour, never raising a clamped piece, which would fold again), then
+  a 3-point smoothing that also only lowers; the centre line is rebuilt from the smoothed width.
+  `studio_sweep_r7_shoulder.jpg` (+ `_crop.png`), `studio_sweep_r7_fp.jpg`.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
