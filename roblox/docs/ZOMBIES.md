@@ -380,6 +380,11 @@ To pin down (likely Roblox's default Animate on the bot or zombie rigs); fixed o
   - The helicopter read as black on the night sky: lighter muted paint, a warm light in its open side, and a soft key
     light that rides with the film's camera.
 - **Still open:**
-  - zm_wind was still in Roblox's moderation during the test ("not approved"), so the first intro clip has no wind.
+  - zm_wind: the first upload (Freesound 117136) was REJECTED by Roblox moderation ("violations of Roblox Terms of Use";
+    no warning on the account, the owner checked). The licensed library has no natural wind (synth drones only). The
+    one retry: a 15.5 s loop of Freesound 521820 "Polar Wind" (asset 75933475633293). If that's rejected too, the films
+    go without a wind bed (no third upload). The clips so far have no wind.
+  - v1546: the outro's lift and away cameras are in (the lift from west of the tail, the water tower behind; the away
+    shot a long lens from over the courtyard's edge).
   - Testing a downed player teleported to the roof left the bots trying to revive at the old spot (a test artifact
     or a real nav gap: to check).
