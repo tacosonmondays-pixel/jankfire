@@ -26,6 +26,7 @@ local Weapons = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild(
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local Rules = require(script.Parent:WaitForChild("Rules")) :: any
 local HuntItems = require(script.Parent:WaitForChild("HuntItems")) :: any
+local HuntMask = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntMask")) :: any
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Hunt") :: RemoteEvent
 local RD = HC.ROUND
 
@@ -138,6 +139,11 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	local penAt = pen(origin.Position + RD.pen, copy)
 	local gm = origin * CFrame.new(def.gunman[1], def.gunman[2] + 0.1, def.gunman[3])
 	local gunmanSpawn = CFrame.lookAt(gm.Position, gm.Position + Vector3.new(def.gunman[4], 0, def.gunman[5]))
+	if def.outside then -- (the intro's end, HUNT.md section 11: he comes in from just outside the map, facing it)
+		local o = def.outside
+		local oc = origin * CFrame.new(o[1], o[2] + 0.1, o[3])
+		gunmanSpawn = CFrame.lookAt(oc.Position, oc.Position + Vector3.new(o[4], 0, o[5]))
+	end
 	-- the gunman: anyone but last round's (unless they're alone), or the one a test names
 	local pool = {}
 	for _, p in players do if p ~= HuntRound.lastGunman then table.insert(pool, p) end end
@@ -201,6 +207,17 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	pub("HuntGun", gun); pub("HuntPassives", table.concat(passives, ",")); pub("HuntMap", def.title)
 	phase("hide", serverNow() + (opts.hide or RD.hide))
 	Remote:FireAllClients("round", { map = def.title, gun = gun, passives = passives })
+	-- the gunman's intro (owner, 27 Nov): a cinematic on his screen only, the length of the hide. room A or B ("both":
+	-- each round the other); he is held still through it and stands at the outside spot for its last two beats
+	local IN = HC.INTRO
+	if IN and IN.on and gunman and gunman.Parent then
+		local set = opts.introSet or IN.set
+		if set == "both" then HuntRound.introFlip = not HuntRound.introFlip; set = if HuntRound.introFlip then "A" else "B" end
+		g.intro = { set = set, out = false }
+		gunman:SetAttribute("Unarmed", true) -- (no gun anywhere in the intro: holstered until the hunt)
+		Remote:FireClient(gunman, "intro", { set = set, len = opts.hide or RD.hide, t0 = serverNow(), outside = gunmanSpawn,
+			lead = IN.outsideLead })
+	end
 	return true, nil
 end
 
@@ -285,9 +302,31 @@ function HuntRound.tick()
 		-- the Studio test of 26 Nov 23:48 ended every round at once: the gunman's respawn read as a death)
 		if not m.f.alive and now() > (m.grace or 0) then m.alive = false end
 	end
+	-- (the intro: the gunman held still; for its last two beats, at the outside spot)
+	if g.phase == "hide" and g.intro and g.gunman and g.gunman.p then
+		local gp = g.gunman.p :: Player
+		local ch = gp.Character
+		local r = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if ch and r then
+			if not g.intro.out and t >= g.hideEnd - (HC.INTRO.outsideLead or 4.6) then
+				g.intro.out = true
+				gp:SetAttribute("TeleportT", os.clock())
+				r.Anchored = true
+				ch:PivotTo(g.gunmanSpawn + Vector3.new(0, 3, 0))
+			elseif not r.Anchored then
+				r.Anchored = true
+			end
+		end
+	end
 	if g.phase == "hide" and t >= g.hideEnd then
 		g.phase = "hunt"
 		letOut(g)
+		if g.intro and g.gunman and g.gunman.p then
+			g.gunman.p:SetAttribute("Unarmed", nil)
+			local ch = g.gunman.p.Character
+			local r = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if r then r.Anchored = false end
+		end
 		phase("hunt", serverNow() + (g.huntEnd - t))
 		Remote:FireAllClients("phase", "hunt")
 	end
@@ -410,6 +449,10 @@ Fight.onSpawn(function(f: Fighter)
 	if not m then return end
 	local hum = Fight.hum(f)
 	if hum then hum.BreakJointsOnDeath = false end -- (the client breaks the body into cubes: no limbs fall off)
+	if m.role == "gunman" then -- (27 Nov: the gunman wears the plain horror mask while he has the role)
+		local model = Fight.model(f)
+		if model then task.defer(function() pcall(HuntMask.wear, model) end) end
+	end
 end)
 Players.PlayerRemoving:Connect(function(p)
 	HuntRound.returning[p] = nil

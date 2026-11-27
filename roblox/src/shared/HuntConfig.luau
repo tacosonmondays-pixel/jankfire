@@ -73,7 +73,7 @@ H.TABLES = {
 
 -- ------------------------------------------------------------------ the round (stage 2)
 H.ROUND = {
-	minPlayers = 2, lobby = 20, hide = 20, hunt = 240, fightBack = 120, results = 6,
+	minPlayers = 2, lobby = 20, hide = 16, hunt = 240, fightBack = 120, results = 6, -- (hide = the gunman's intro, 27 Nov)
 	gunmanHp = 250, hiderHp = 100,
 	-- where a round's copy of its map goes: SITE + (GAP * k, 0, 0) for game k = 0, 1, 2
 	site = Vector3.new(0, 300, -96000), gap = 7000,
@@ -101,6 +101,7 @@ H.MAPS = {
 	-- weapons placed by hand where they belong (the kitchen's knives and pan, the garage's club, the toy chest's bat)
 	{
 		id = "house", source = "HuntHouse", title = "THE HOUSE", strip = { "Hunt" }, -- (the copy: no doors, exit, tables)
+		outside = { 0, -1.5, 70, 0, -1 }, -- (the gunman's intro ends here: the front walk, facing the front door)
 		gunman = { 3, 0, -21, 0, -1 },
 		hiders = {
 			{ 93, -1.5, -145 }, { -43, -1.5, 69 }, { -77, -1.5, -149 }, { 55, 13, -19 }, { -55, 13, -37 }, { 99, -1, 37 },
@@ -168,6 +169,26 @@ H.WEAPONS = {
 	club = { name = "GOLF CLUB", dmg = 45, reach = 8.5, cone = 45, cd = 0.8, kb = 25, up = 10 },
 	bat = { name = "BASEBALL BAT", dmg = 50, reach = 7.5, cone = 50, cd = 0.9, kb = 30, up = 10 },
 	search = 1.5, -- (s held to search a spot)
+}
+
+-- ------------------------------------------------------------------ the gunman's intro (owner, 27 Nov; HUNT.md section 11)
+-- a cinematic on the gunman's screen only, as long as the hide (ROUND.hide): his room, the build, the snap, outside, the
+-- turn. Two rooms on the same beats (the owner: "we can try both"): A their bedroom (a PC screen's light), B an attic
+-- (an old TV's static). set = "A", "B" or "both" (each round the other one). Each map's `outside` = where he comes in
+-- (x, y, z, facing x, z; local to the map); a map without one lets him out at its `gunman` spot as before
+H.INTRO = {
+	on = true,
+	set = "both",
+	kit = "JankfireHuntIntro", -- (ReplicatedStorage: hiA_room, hiA_props, hiB_room, hiB_props, hi_mask; HuntBuild.importIntro)
+	outsideLead = 4.6, -- (s before the hunt: he stands at the map's outside spot for the last two beats, held still)
+	-- mocap (the vault's Mixamo clips, mixamo_r15.py; R15 and R6). calm = ANIMS idle
+	anims = {
+		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 84828717533144, look = 108845709130342 },
+		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 130441780593124, look = 95541089023402 },
+	},
+	static = { 72310839769760, 86008837872701, 122572333792473, 98994588240705 }, -- (B's screen: soft grey noise, nothing readable)
+	-- recordings only, no voices (Sfx names; a missing one stays silent)
+	sounds = { drone = "intro_drone", buzz = "zm_flicker", heart = "intro_heart", hit = "boom", air = "intro_air", hiss = "intro_hiss" },
 }
 
 return H

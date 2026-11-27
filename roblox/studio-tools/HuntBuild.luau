@@ -340,6 +340,49 @@ function B.importExtra(id: number?): string
 	return ("extra kit %d: %d models%s: %s"):format(aid, #names, if bad > 0 then ", " .. bad .. " unnamed" else "", table.concat(names, ", "))
 end
 
+-- the gunman's intro kit (tools/roblox/hunt_intro_models.py; HUNT.md section 11): its rooms and the mask go to
+-- ReplicatedStorage[HuntConfig.INTRO.kit] for the clients (HuntIntro) and the server (HuntMask), each model at its file
+-- frame (room A round the origin, B at +40 x, the mask round a head at -40 x: HuntIntroData.origin)
+B.INTRO = 110451521704837
+function B.importIntro(id: number?): string
+	local aid = id or B.INTRO
+	local HC = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any
+	local ok, container = pcall(function() return game:GetService("InsertService"):LoadAsset(aid) end)
+	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
+	local RS = game:GetService("ReplicatedStorage")
+	local old = RS:FindFirstChild(HC.INTRO.kit)
+	if old then old:Destroy() end
+	local kit = Instance.new("Folder")
+	kit.Name = HC.INTRO.kit
+	local groups, bad = {}, 0
+	for _, d in container:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		local model, kind, h = string.match(d.Name, "^(.-)%d+__(%a+)_(%x%x%x%x%x%x)")
+		if not model or not MAT[kind] then bad += 1; continue end
+		d.Material = MAT[kind]; d.Color = hex(h); d.TextureID = ""
+		d.Transparency = SEE[kind] or 0
+		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+		d.CastShadow = kind == "plastic"; d.DoubleSided = false
+		groups[model] = groups[model] or {}
+		table.insert(groups[model], d)
+	end
+	local names = {}
+	for mname, parts in groups do
+		local m = Instance.new("Model")
+		m.Name = mname
+		for _, p in parts do p.Parent = m end
+		m.WorldPivot = CFrame.identity
+		m:SetAttribute("AssetId", aid)
+		m.Parent = kit
+		table.insert(names, ("%s %d"):format(mname, #parts))
+	end
+	container:Destroy()
+	kit:SetAttribute("AssetId", aid)
+	kit.Parent = RS
+	table.sort(names)
+	return ("intro kit %d: %d models%s: %s"):format(aid, #names, if bad > 0 then ", " .. bad .. " unnamed" else "", table.concat(names, ", "))
+end
+
 function B.build(): string
 	local L = layout()
 	local H = L.hunt
