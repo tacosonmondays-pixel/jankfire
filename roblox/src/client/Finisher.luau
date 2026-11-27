@@ -325,16 +325,65 @@ end
 local fadeTok = 0
 function F.isPlaying(): boolean return st ~= nil end
 
+-- (27 Nov, the frame check: on a game's first scene the two bodies showed pale and see-through for their first 2
+-- frames, and High Noon's victim was missing on its first. Their looks - clothes, faces, accessories - were built for
+-- drawing only as the film cloned them in: a mesh or a clothing picture is built once it is in the workspace, not when
+-- it is fetched (PERFORMANCE.md, "Films: nothing pops in"). The warning that a scene may come parks a copy of every
+-- player's look far off, under the scenes' stage, so the film's own copies draw whole from frame 1. Off-screen, never
+-- tagged, anchored, no scripts)
+local BODY_PARK = CFrame.new(0, 560, -24000) -- (40 under the scenes' stage, FinisherPro/FinisherScene ORIGIN)
+local parked: Folder? = nil
+local function parkBodies(extra: { Model }?)
+	if parked then parked:Destroy(); parked = nil end
+	local list: { Model } = {}
+	for _, p in Players:GetPlayers() do
+		local t = Replay.templates[p.UserId]
+		if t then
+			table.insert(list, t)
+		elseif p.Character then
+			table.insert(list, p.Character)
+		end
+	end
+	for _, m in extra or {} do table.insert(list, m) end
+	local f = Instance.new("Folder")
+	f.Name = "JankFinisherBodies"
+	for i, src in list do
+		local ok, c = pcall(function(): Model?
+			local was = src.Archivable
+			src.Archivable = true
+			local x = src:Clone()
+			src.Archivable = was
+			return x
+		end)
+		if ok and c then
+			for _, d in c:GetDescendants() do
+				if d:IsA("BaseScript") or d:IsA("Sound") then d:Destroy()
+				elseif d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+			end
+			local hum = c:FindFirstChildOfClass("Humanoid")
+			if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+			c.Name = "Parked" .. i
+			c:PivotTo(BODY_PARK * CFrame.new((i - 1) * 6, 0, 0))
+			c.Parent = f
+		end
+	end
+	f.Parent = workspace
+	parked = f
+end
+
 -- (the server's word that a scene may come soon - FinisherServer, the gap before a round that can end the match: its
 -- set built ahead, parked, so the scene's first frame has nothing left to build. FinisherScene's Scene.warm)
 function F.warm(scenes: { string })
 	if type(Scene.warm) ~= "function" then return end
+	local any = false
 	for _, sid in scenes do
-		if type(sid) == "string" then pcall(Scene.warm, sid) end
+		if type(sid) == "string" then any = pcall(Scene.warm, sid) or any end
 	end
+	if any then pcall(parkBodies) end
 end
 function F.unwarm()
 	if type(Scene.unwarm) == "function" then pcall(Scene.unwarm) end
+	if parked then parked:Destroy(); parked = nil end
 end
 
 function F.stop(quiet: boolean?, why: string?)
@@ -601,7 +650,11 @@ local function stepScene(s: any)
 		s.cc.Brightness = g.bright * gk
 	end
 	local endK = smooth((s.w - (s.total - 0.18)) / 0.18)
-	fadeF.BackgroundTransparency = 1 - endK
+	-- (27 Nov, the frame check: a scene's first frame came out mis-lit - the bodies pale and see-through, the sheath black -
+	-- the night's light is put on that frame and the renderer catches up a frame later; it also showed the pose before
+	-- the take's first. A black lead of the first 3 frames (50 ms, as a cut from the game reads), then the film)
+	s.sceneN = (s.sceneN or 0) + 1
+	fadeF.BackgroundTransparency = if s.sceneN <= 3 then 0 else 1 - endK
 	hideScreens()
 	postEffects(true)
 	Replay.hideLive(true)
@@ -879,6 +932,16 @@ function F.preview(fid: string, opts: any?): boolean
 		ch.Archivable = true
 		previewLook = Replay.clean(ch:Clone())
 		ch.Archivable = was
+	end
+	-- (a preview's stand-in is fetched just now, not with the warning: its look parked with the players' 0.4 s before
+	-- the film - 4 frames were too few for a look nobody had drawn - never as a frozen frame in it)
+	local extra: { Model } = {}
+	if victimInfo.template then table.insert(extra, victimInfo.template)
+	elseif victimInfo.modelName and F.dummyLooks[victimInfo.modelName] then table.insert(extra, F.dummyLooks[victimInfo.modelName]) end
+	if previewLook then table.insert(extra, previewLook) end
+	if row.scene then
+		pcall(parkBodies, extra)
+		task.wait(0.4)
 	end
 	return F.play({ t = "finisher", id = fid, kind = (opts and opts.kind) or "full", clip = clip, focus = 1, victim = 2, w = wid, skin = skin,
 		melee = W[wid] and W[wid].kind == "melee", by = me.DisplayName, role = "killer", preview = true, previewLook = previewLook })

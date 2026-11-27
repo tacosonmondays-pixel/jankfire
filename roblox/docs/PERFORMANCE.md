@@ -128,6 +128,15 @@ the shot plays.
   - The zombies extraction film does it too (`ZombieCine` `parkCast`): at the call, 90 s before, the crew member with his
     helmet and a seated copy of each other squad member are built and parked at (-4000, 3000, -40000); the film takes
     those copies, a fresh one only if none is parked. The intro's gate crowd is placed at the gate from the black lead.
+  - Bodies too (finishers): a copy of each player's look is parked at the scenes' warning, off-map under the stage
+    (`Finisher` `parkBodies`), so the film's own copies of them draw whole from frame 1.
+- **A film's first frame after a light change is mis-lit.** A film that puts on its own Lighting (night, exposure,
+  atmosphere) on its first frame shows that frame wrong: bodies pale and see-through, props black. The renderer catches
+  up a frame later. Hold the first frames black (the finishers' scenes: 3 frames, 50 ms) as a cut from the game reads.
+- **Strip the game's own systems off a film's body copies at once.** The replay ghosts carry the `TPRig` tag, so
+  ThirdPerson draws a gun on them. Untagged 0.05 s late, it drew the gun again for 2 frames: from High Noon's overhead
+  lens a brown shape stood where the victim was. The scenes now delete `TPGun` / `TPItem` / `TPRigArms` / `HeldWeapon`
+  and untag the copy the moment they take it.
 - **Broken surfaces show up as pop-in too.** "Failed to upload TexturePack ... Referenced Asset 9 is NOT found" means a
   SurfaceAppearance names a glTF texture index that was never uploaded (the zombies helicopters' glow pieces, fixed by
   pointing their emissive mask at the glow atlas). Studio's output lists every one at load.

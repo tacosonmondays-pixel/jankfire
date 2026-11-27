@@ -217,8 +217,14 @@ clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as 
     1, but cloned into the workspace on that frame, and a mesh is only built for drawing once it is in the workspace.
     `Pro.warm` now parks the kit's two models in the warm-up stage under the set's floor (`parkKit`), and `propKit`
     takes those, so they are there from frame 1 (Studio v1603). The set itself never had the problem: it was parked.
-  - **Open:** on the first scene of a game, the bodies show pale and see-through for the first 2 frames before going
-    solid. This was there before the prewarm. High Noon's victim is missing on its first frame only.
+  - **The first frames (27 Nov, Studio v1616):**
+    - The bodies were pale for 2 frames on a game's first scene, because their looks were not drawn yet. The scenes'
+      warning now parks a copy of every player's look under the stage (`parkBodies`). A preview parks its stand-in
+      0.4 s before the film.
+    - The last mis-lit frame came from the night light being put on in that frame. Scenes now open on 3 black frames.
+    - High Noon's victim was hidden under a third-person gun drawn on the copy. A scene now deletes those pieces and
+      untags the copy as it takes it.
+    - Sheet: notes `finisher-boards/finisher_first_frames_before_after.jpg`.
   - **Checked (Studio, 30 fps, fresh Plays, `vid_all.py` + `popscan.py`):** no pop-in inside any shot of Tidecrest or
     High Noon. The scan's local jumps are the films' own blade streaks and flashes, the same with and without the
     prewarm. The eight world finishers on a standing dummy, the first ones of the game: 2 local jumps in 27 s, both

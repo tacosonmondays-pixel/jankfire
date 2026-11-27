@@ -228,10 +228,16 @@ end
 -- ------------------------------------------------------------------ the bodies
 local function takeBody(g: any)
 	g.model:SetAttribute("TPWeapon", nil)
+	-- (the frame check, 27 Nov: the gun ThirdPerson drew on the replay copy stayed 2 frames into the film, and it drew
+	-- one again while the tag stayed on - from above it hid High Noon's victim on its first frames. The scene brings its
+	-- own props: ThirdPerson's pieces and the copied server gun go now, and so does the tag, at once; ThirdPerson's next
+	-- pass releases the rig)
+	for _, c in g.model:GetChildren() do
+		if c.Name == "TPGun" or c.Name == "TPItem" or c.Name == "TPRigArms" or c.Name == "HeldWeapon" then c:Destroy() end
+	end
+	CollectionService:RemoveTag(g.model, "TPRig")
 	if g.run then pcall(function() g.run:Stop(0) end) end
 	if g.idle then pcall(function() g.idle:Stop(0) end) end
-	-- (a beat later, as the victim's hand-off does: ThirdPerson drops the gun it drew when TPWeapon goes, then lets go)
-	task.delay(0.05, function() if g.model.Parent then CollectionService:RemoveTag(g.model, "TPRig") end end)
 	local an = (g.hum :: Humanoid):FindFirstChildOfClass("Animator") :: Animator
 	for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end
 	g.root.Anchored = true
