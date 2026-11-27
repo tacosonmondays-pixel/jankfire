@@ -1182,6 +1182,7 @@ remote("Round").OnClientEvent:Connect(function(r: any)
 		Hud.callout("ROUND START", 1.4)
 		Sfx.play("round_start")
 	elseif r.over then
+		if me:GetAttribute("VictoryOn") then return end -- (the victory card has the end screen: client/Victory.client.luau, 27 Nov)
 		Sfx.play("round_end")
 		H.endScreen(if type(r.winner) == "string" then r.winner else nil, r.winnerId == me.UserId or r.youWon == true, if type(r.board) == "table" then r.board else {},
 			if type(r.next) == "number" then r.next else 12, if type(r.nextLabel) == "string" then r.nextLabel else nil)

@@ -183,7 +183,9 @@ if push then
 		elseif msg.k == "camo" and type(msg.w) == "string" and type(msg.c) == "string" then
 			enqueue({ kind = "camo", w = msg.w, c = msg.c })
 		elseif msg.k == "match" and type(msg.gains) == "table" then
-			showMatch(msg.gains, if type(msg.xp) == "table" then msg.xp else {})
+			-- (the victory card shows a match's weapon XP itself; its message lands a moment after this one: 27 Nov)
+			local gains, xp = msg.gains, if type(msg.xp) == "table" then msg.xp else {}
+			task.delay(0.6, function() if me:GetAttribute("VictoryOn") == nil then showMatch(gains, xp) end end)
 		end
 	end)
 end
