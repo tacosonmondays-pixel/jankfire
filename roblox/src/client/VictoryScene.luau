@@ -2,13 +2,14 @@
 -- THE VICTORY SCENE on screen (27 Nov 2026; shared/VictoryData.luau has the why, client/Victory.client.luau runs it).
 -- THE RISER: a set of our own, built on this client far off the map (STAGE_AT): a round stage, a curved riser behind it
 -- for teammates, a curved backdrop with a cove and white light panels; one accent, the stage's lip, in the winning
--- team's colour (ReplicatedStorage.JankfireVictory.Stage, from tools/roblox/victory_stage.py). The winning side stands on
--- it as clean copies of their bodies (Replay.templates: the look each player spawned with), each playing their emote or a
--- mocap victory pose. The camera is ours:
---   RISE   0 - 2.1 s  a low lens at the side of the one in front cranes up from the boots to the face
---   STAGE  2.1 - LEN  a cut to a wide front shot that pushes in and orbits a little to the held framing
---   HOLD   after      the held framing (the team on the left two-thirds, the card on the right), a slow drift
--- losers see the winners from the floor: one long low lens drifting across them, a colder, greyer grade.
+-- team's colour (ReplicatedStorage.JankfireVictory.Stage, from tools/roblox/victory_stage.py). The winning side walks up
+-- onto it (or onto a map's own spot) as clean copies of their bodies (Replay.templates: the look each player spawned
+-- with), each landing a mocap pose with their weapon (THE WALK-UP, below). The camera is ours:
+--   CLOSE  0 - ~3.2 s  a wide lens low in front of the one in front, pushing in as they walk at it and land their pose
+--   WIDE   then - LEN  a cut to a wide front shot that pushes in and orbits a little to the held framing
+--   HOLD   after       the held framing (the team on the left two-thirds, the card on the right), a slow drift
+-- losers see the winners from the floor: one long low lens drifting across them, a colder, greyer grade. (A map's walk
+-- spot - the Spooky Forest - is its own scene: THE WALK, below.)
 --   Scene.start(msg, opts)   opts.hold = straight to the held shot (a cinematic played, a skip, the card alone)
 --   Scene.hold()             jump to the held shot
 --   Scene.stop()             everything back as it was
@@ -125,9 +126,14 @@ end
 -- the poses and stings, loaded early (a clip's first play waits on the asset: memory roblox-flair)
 task.spawn(function()
 	local list = {}
-	for _, p in V.POSES do
+	local ids = {}
+	for _, p in V.POSES do table.insert(ids, p.anim) end
+	for _, t in { V.WALK, V.ARRIVE } do
+		for _, v in t do if type(v) == "string" and string.sub(v, 1, 13) == "rbxassetid://" then table.insert(ids, v) end end
+	end
+	for _, id in ids do
 		local a = Instance.new("Animation")
-		a.AnimationId = p.anim
+		a.AnimationId = id
 		table.insert(list, a)
 	end
 	local k = kitOf()
@@ -201,7 +207,7 @@ local function standAt(m: Model, hum: Humanoid?, root: BasePart, cf: CFrame)
 	local up = if hum and hum.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum and hum.HipHeight or 2) + root.Size.Y / 2)
 	m:PivotTo(cf * CFrame.new(0, up, 0) * (root.CFrame:ToObjectSpace(m:GetPivot())))
 end
-local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, seatY: number?): Body?
+local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, still: boolean?): Body?
 	local src = sourceOf(entry.uid)
 	if not src then return nil end
 	local m = Replay.clean(src) :: Model
@@ -231,7 +237,7 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, 
 		id = (V.POSES[pose] or V.POSES.victory).anim
 		pcall(arm, m, entry.uid)
 	end
-	if animator then
+	if animator and not still then
 		local a = Instance.new("Animation")
 		a.AnimationId = id
 		local ok, tr = pcall(function() return (animator :: Animator):LoadAnimation(a) end)
@@ -241,15 +247,6 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, 
 			tr:Play(0.15)
 			b.track = tr
 		end
-	end
-	-- (a sitting pose: once the clip has the body down, its seat goes onto the ledge's top)
-	if seatY then
-		task.delay(0.3, function()
-			local lt = m:FindFirstChild("LowerTorso") :: BasePart? or m:FindFirstChild("Torso") :: BasePart?
-			if not lt or not m.Parent then return end
-			local bottom = lt.Position.Y - lt.Size.Y / 2
-			m:PivotTo(m:GetPivot() + Vector3.new(0, (seatY :: number) + 0.05 - bottom, 0))
-		end)
 	end
 	return b
 end
@@ -340,10 +337,9 @@ local function walkBodies(s: any, stage: { any }, folder: Instance)
 		local cf = CFrame.lookAt(at, at + f)
 		local he = table.clone(e)
 		he.emote = nil -- (everyone walks: no dances on the path)
-		local b = makeBody(he, cf, "victory", folder)
+		local b = makeBody(he, cf, "victory", folder, true)
 		if not b then continue end
-		-- the walk under, the upper body over it (the victory pose makeBody started goes)
-		if b.track then b.track:Stop(0) end
+		-- the walk under, the upper body over it
 		local hum = b.model:FindFirstChildOfClass("Humanoid")
 		local animator = hum and hum:FindFirstChildOfClass("Animator")
 		local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
@@ -367,7 +363,7 @@ local function walkBodies(s: any, stage: { any }, folder: Instance)
 		local hum2 = hum
 		local up = if hum2 and hum2.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum2 and hum2.HipHeight or 2) + root.Size.Y / 2)
 		table.insert(s.walk.bodies, { b = b, off = off, walk = walk, upper = upper, up = up, rootToPivot = root.CFrame:ToObjectSpace(b.model:GetPivot()),
-			startle = load(V.WALK.startle, Enum.AnimationPriority.Action4, false) })
+			startle = load(V.WALK.startle, Enum.AnimationPriority.Action4, true) })
 		table.insert(s.bodies, b)
 	end
 end
@@ -392,11 +388,9 @@ local function walkMove(s: any, t: number)
 			if w.walk then w.walk:Stop(0.12) end
 			if w.upper then w.upper:Stop(0.08) end
 			if w.startle then
+				-- (they snap into a guard, the weapon up by the face, each a beat apart)
 				local tr = w.startle :: AnimationTrack
-				tr:Play(0.05)
-				tr:AdjustSpeed(1.15 + 0.07 * i)
-				-- (held at the end of the flinch: the card comes over this frame)
-				task.delay(math.max(0.2, tr.Length / 1.2 - 0.12), function() if tr.IsPlaying then tr:AdjustSpeed(0) end end)
+				task.delay(0.04 * (i - 1), function() tr:Play(0.06) end)
 			end
 		end
 		if s.walk.heart then TweenService:Create(s.walk.heart, TweenInfo.new(0.4), { Volume = 0 }):Play() end
@@ -413,22 +407,25 @@ local function walkCam(s: any, t: number): (Vector3, Vector3, number)
 	local d = walkDist(s, tt)
 	local L, f = along(W.P, d)
 	local right = f:Cross(Vector3.yAxis)
-	local up = Vector3.yAxis
+	local k = if W.bodies[1] then W.bodies[1].up / 3 else 1
+	local up = Vector3.yAxis * k
+	right *= k
+	local fk = f * k
 	if tt < WALK_TRACK then
-		return L + f * 7.5 + up * 4.4 + right * 0.7, L + up * 3.7 + f * 0.6, 46
+		return L + fk * 9.5 + up * 4.2 + right * 0.9, L + up * 3.3 + fk * 0.6, 46
 	elseif tt < WALK_LOW then
 		local u = (tt - WALK_TRACK) / (WALK_LOW - WALK_TRACK)
-		return L + right * (6.6 - u * 0.8) + f * 3.0 + up * 1.1, L + up * 3.3 - right * 0.6, 40
+		return L + right * (10.5 - u * 1.2) + fk * 2.0 + up * 1.3, L + up * 3.0 - fk * 1.0, 44
 	elseif tt < W.tStop then
 		local back = W.bodies[#W.bodies] and W.bodies[#W.bodies].off.Y or 2.5
 		local u = (tt - WALK_LOW) / math.max(0.1, W.tStop - WALK_LOW)
-		local behind = L - f * (back + 3.6 - u * 0.8)
-		return behind + up * 5.0 + right * 0.9, L + f * 14 + up * 3.4, 50
+		local behind = L - fk * (back + 7.5 - u * 1.2)
+		return behind + up * 5.6 + right * 1.4, L + fk * 12 + up * 3.2, 48
 	end
 	-- the startle: a whip in on the one in front's face, then held (a slow drift while the card is up)
-	local close = L + f * 3.4 + up * 4.8 + right * 0.35
-	local look = L + up * 4.55
-	local behind = L - f * 3.8 + up * 5.0 + right * 0.9
+	local close = L + fk * 5.0 + up * 4.4 + right * 0.5
+	local look = L + up * 4.1
+	local behind = L - fk * 6.3 + up * 5.6 + right * 1.4
 	local w = math.clamp((tt - W.tStop) / 0.16, 0, 1)
 	w = 1 - (1 - w) ^ 3
 	local at = behind:Lerp(close, w)
@@ -436,7 +433,7 @@ local function walkCam(s: any, t: number): (Vector3, Vector3, number)
 		local k = (tt - len) * 0.3
 		at += right * math.sin(k) * 0.25 + up * math.sin(k * 0.7) * 0.08
 	end
-	return at, look, 38
+	return at, look, 42
 end
 
 -- the screen's unease, each frame
@@ -472,6 +469,207 @@ local function walkFear(s: any, t: number, cf: CFrame, fov: number): (CFrame, nu
 	local shaken = cf * CFrame.new(n1 * amp, n2 * amp, 0) * CFrame.Angles(math.rad(n2 * (0.3 + 1.6 * u + 6 * kick)), math.rad(n1 * (0.3 + 1.4 * u)), math.rad(n3 * (0.4 + 1.2 * u + 4 * kick)))
 	local breathe = 2.6 * u * math.sin(t * 2.2) - 4 * kick + (if flick > 0 then 1.5 else 0)
 	return shaken, fov + breathe
+end
+
+
+-- ------------------------------------------------------------------ THE WALK-UP (every pose spot and THE RISER)
+-- (27 Nov, the owner: "Instead of an emote on the example victory you should be can it be a walk up into a dynamic pose
+-- with a perspective shot?") each body starts a few studs behind its mark, walks up toward the lens, slows onto the mark
+-- and lands a mocap pose (V.POSES; a once pose is held on its last frame). the one in front first and furthest,
+-- teammates behind, each landing V.ARRIVE.stagger later. the winners' lens:
+--   CLOSE  0 - landed+0.6 s  a wide lens low in front of the one in front, pushing in as they walk at it: they grow huge
+--                            and the weapon arm comes at the glass; a kick as the pose lands, then a settle
+--   WIDE   then - LEN        a cut to the spot's wide (THE RISER: its stage shot): the whole team in their poses
+-- losers keep their long low lens across the winners. every body and every track is set from t each frame (the tracks
+-- paused and scrubbed), so a frozen photo (VictoryFreeze) is exactly that moment
+local function smooth(u: number): number
+	u = math.clamp(u, 0, 1)
+	return u * u * (3 - 2 * u)
+end
+
+-- a ray that passes what a walk passes: a body, an invisible non-colliding part, a small non-colliding prop (a tuft of
+-- grass). anything seen, or anything solid, stops it; a floor ray stops at anything
+local function blockHit(rp: RaycastParams, from: Vector3, dir: Vector3, floor: boolean): RaycastResult?
+	for _ = 1, 10 do
+		local h = workspace:Raycast(from, dir, rp)
+		if not h or floor then return h end
+		local x = h.Instance
+		local m = x:FindFirstAncestorOfClass("Model")
+		local small = x.Size.X < 2 and x.Size.Y < 2 and x.Size.Z < 2
+		if (m and m:FindFirstChildOfClass("Humanoid")) or (not x.CanCollide and (x.Transparency >= 0.95 or small)) then
+			rp:AddToFilter(x)
+		else
+			return h
+		end
+	end
+	return nil
+end
+local function rayParams(skip: { Instance }): RaycastParams
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	rp.FilterDescendantsInstances = skip
+	return rp
+end
+-- how far back from a floor point a body can start (at most want): a clear walk at knee, chest and head height, and
+-- floor at the same height all the way
+local function roomBehind(at: Vector3, back: Vector3, want: number, skip: { Instance }): number
+	local rp = rayParams(skip)
+	local d = want
+	for _, hgt in { 1.0, 2.8, 4.6 } do
+		local o = at + Vector3.new(0, hgt, 0)
+		local h = blockHit(rp, o, back * (want + 1.2), false)
+		if h then d = math.min(d, (h.Position - o).Magnitude - 1.2) end
+	end
+	local k = 1.5
+	while k <= d do
+		local f = blockHit(rp, at + back * k + Vector3.new(0, 3, 0), Vector3.new(0, -6, 0), true)
+		if not f or math.abs(f.Position.Y - at.Y) > 0.8 then d = k - 1.5; break end
+		k += 1.5
+	end
+	return if d < 1.2 then 0 else d
+end
+
+-- each body: where it ends (fin), which way it walks (dir), how far (dist), when (t0, tw; the pose from tPose)
+local function arriveBodies(s: any, ends: { any }, folder: Instance, riser: boolean)
+	local A: any = { bodies = {}, hero = nil, land = 2.6, cut = 3.2, near0 = 5.6, near1 = 3.3 }
+	s.arrive = A
+	local skip: { Instance } = { folder }
+	for _, p in Players:GetPlayers() do if p.Character then table.insert(skip, p.Character) end end
+	local pets = workspace:FindFirstChild("ClientPets")
+	if pets then table.insert(skip, pets) end
+	local AR = V.ARRIVE
+	local tHero = AR.minArrive
+	for i, en in ends do
+		local fin: CFrame = en.cf
+		local dir = flat(fin.LookVector)
+		local want = if i == 1 then (if riser then AR.riserHero else AR.hero) else (if riser then AR.riserMate else AR.mate)
+		local dist = want
+		if riser then
+			-- (THE RISER's own set isn't queryable: its depths are known. a teammate stays on the riser's top)
+			if i > 1 then
+				local loc = s.frame:PointToObjectSpace(fin.Position)
+				local ld = s.frame:VectorToObjectSpace(dir)
+				while dist > 0 and Vector3.new(loc.X - ld.X * dist, 0, loc.Z - ld.Z * dist).Magnitude > 10.9 do dist -= 0.2 end
+				dist = math.max(0, dist)
+			end
+		else
+			dist = roomBehind(fin.Position, -dir, want, skip)
+		end
+		local he = table.clone(en.e)
+		he.emote = nil -- (no emotes: everyone walks in and lands a pose)
+		local b = makeBody(he, fin, en.pose, folder, true)
+		if not b then continue end
+		-- when: the one in front lands first (never sooner than minArrive: a short walk starts late, from an idle);
+		-- each teammate stagger s later, walking a little slower (a walk too long for the time is cut short)
+		local speed = if i == 1 then AR.speed else AR.mateSpeed
+		local T = if i == 1 then math.max(AR.minArrive, 1.3 * dist / speed) else tHero + AR.stagger * (i - 1)
+		if i == 1 then tHero = T end
+		local tw = 1.3 * dist / speed
+		if tw > T then dist = T * speed / 1.3; tw = T end
+		local hum = b.model:FindFirstChildOfClass("Humanoid")
+		local animator = hum and hum:FindFirstChildOfClass("Animator")
+		local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
+		local function load(id: string): AnimationTrack?
+			if not animator then return nil end
+			local an = Instance.new("Animation")
+			an.AnimationId = id
+			local ok, tr = pcall(function() return (animator :: Animator):LoadAnimation(an) end)
+			if not ok or not tr then return nil end
+			tr.Priority = Enum.AnimationPriority.Action; tr.Looped = true -- (one priority: the weights below share it out)
+			return tr
+		end
+		local pd = V.POSES[en.pose] or V.POSES.victory
+		local up = if r6 then 3 else ((hum and hum.HipHeight or 2) + b.root.Size.Y / 2)
+		local a = {
+			b = b, fin = fin, dir = dir, dist = dist, t0 = T - tw, tw = math.max(tw, 1e-3), tPose = T - 0.12,
+			once = pd.once == true, poseLen = pd.len, up = up, rootToPivot = b.root.CFrame:ToObjectSpace(b.model:GetPivot()),
+			idle = load(if r6 then AR.idle6 else AR.idle),
+			walk = if dist > 0 then load(if r6 then V.WALK.walk6 else V.WALK.walk) else nil,
+			pose = load(pd.anim),
+		}
+		b.track = a.pose
+		table.insert(A.bodies, a)
+		table.insert(s.bodies, b)
+		if i == 1 then A.hero = a end
+	end
+	local h = A.hero
+	if not h then return end
+	A.land = h.tPose + (if h.once then h.poseLen else 0.9)
+	A.cut = math.clamp(A.land + 0.6, 2.4, math.max(2.4, s.len - 1.3))
+	-- the close lens's room in front of the one in front (a map's spot: a wall there pulls it in)
+	local k = h.up / 3
+	A.near0, A.near1 = 5.6 * k, 3.3 * k
+	if not riser then
+		local o = h.fin.Position + Vector3.new(0, 1.5 * k, 0)
+		local hit = blockHit(rayParams(skip), o, h.dir * (6.4 * k), false)
+		if hit then
+			local df = (hit.Position - o).Magnitude - 0.7
+			A.near1 = math.max(2.0, math.min(A.near1, df))
+			A.near0 = math.max(A.near1, math.min(A.near0, df))
+		end
+	end
+end
+
+-- a body's floor point at t: a steady walk easing onto its mark
+local function arriveAt(a: any, t: number): Vector3
+	if a.dist <= 0 then return a.fin.Position end
+	local tau = math.clamp((t - a.t0) / a.tw, 0, 1)
+	local g = 1 - (1 - tau) ^ 1.3
+	return a.fin.Position - a.dir * (a.dist * (1 - g))
+end
+
+-- a paused track at a moment and a weight
+local function scrub(tr: AnimationTrack?, w: number, at: number, loop: boolean)
+	if not tr then return end
+	local L = tr.Length
+	if L <= 0 then return end -- (still loading: preloaded at the top, so rare)
+	if not tr.IsPlaying then tr:Play(0, 0.001, 0) end
+	tr:AdjustSpeed(0)
+	tr.TimePosition = if loop then at % L else math.clamp(at, 0, L - 0.02)
+	tr:AdjustWeight(math.max(w, 0.001), 0)
+end
+
+local function arriveMove(s: any, t: number)
+	local te = if s.hold then 1e3 else t -- (skipped or held: everyone on their mark, in their pose)
+	for _, a in s.arrive.bodies do
+		local p = arriveAt(a, te)
+		a.b.model:PivotTo(CFrame.lookAt(p, p + a.dir) * CFrame.new(0, a.up, 0) * a.rootToPivot)
+		-- idle (before a late start) -> walk -> pose; the walk's clip follows the distance walked (feet on the floor)
+		local wP = math.clamp((te - a.tPose) / V.ARRIVE.blend, 0, 1)
+		local wI, wW
+		if a.walk then
+			wI = 1 - math.clamp((te - a.t0) / 0.2, 0, 1)
+			wW = (1 - wI) * (1 - wP)
+		else
+			wI, wW = 1 - wP, 0
+		end
+		local walked = a.dist - (a.fin.Position - p).Magnitude
+		scrub(a.idle, wI, te, true)
+		scrub(a.walk, wW, walked / V.ARRIVE.stride, true)
+		scrub(a.pose, wP, te - a.tPose, not a.once)
+	end
+end
+
+-- the winners' close lens at t (before the cut)
+local function arriveCam(s: any, t: number): (CFrame, number)
+	local A = s.arrive
+	local h = A.hero
+	local k = h.up / 3
+	local F, U = h.dir, Vector3.yAxis
+	local R = F:Cross(U) -- (their right: the weapon hand's side)
+	local base = h.fin.Position
+	local u = smooth(t / A.land) -- (the push runs the whole walk and lands with the pose)
+	local near = A.near0 + (A.near1 - A.near0) * u
+	local at = base + F * near + R * k * (1.5 - 0.75 * u) + U * k * (1.25 + 0.2 * u)
+	-- the settle once the pose is held: a slow ease back and round
+	local sd = 1 - math.exp(-math.max(0, t - A.land) * 2.2)
+	at += (F * 0.3 - R * 0.25 + U * 0.1) * k * sd
+	local look = (arriveAt(h, t) + U * k * 3.35):Lerp(base + U * k * 4.05 + R * k * 0.1, u)
+	local fov = 60 + 10 * u
+	-- the kick as the pose lands
+	local kt = t - (A.land - 0.08)
+	if kt > 0 then fov -= 3.5 * math.exp(-kt * 7) end
+	return CFrame.lookAt(at, look), fov
 end
 
 -- ------------------------------------------------------------------ the look (Lighting, saved and put back)
@@ -553,7 +751,7 @@ end
 type State = {
 	msg: any, win: boolean, len: number, t0: number, hold: boolean, held: number?, frame: CFrame, folder: Folder,
 	bodies: { Body }, look: any, cc: ColorCorrectionEffect, bloom: BloomEffect, fov: number, shots: { any }, sting: Sound?,
-	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?,
+	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?, arrive: any?,
 }
 local st: State? = nil
 
@@ -571,6 +769,7 @@ local function camAt(s: State, t: number): (CFrame, number)
 		local wa, wl, wf = walkCam(s, t)
 		return CFrame.lookAt(wa, wl), wf
 	end
+	if s.arrive and s.arrive.hero and s.win and not s.hold and t < s.arrive.cut then return arriveCam(s, t) end
 	local at, look, fov
 	if s.hold or t >= s.len then
 		local h = if s.spot then s.holdK else holdOf(s.win)
@@ -604,6 +803,7 @@ local function step(dt: number?)
 		walkMove(s, t)
 		cf, fov = walkFear(s, t, cf, fov)
 	end
+	if s.arrive then arriveMove(s, t) end
 	if s.spot then
 		Replay.hideLive(true) -- (in the map itself: the live bodies would stand among ours)
 		-- (a whole-workspace look is costly on these maps: once at the start, once 1.5 s in for late arrivals)
@@ -698,7 +898,8 @@ function Scene.start(msg: any, opts: any?): boolean
 				if l:IsA("Light") and not l.Enabled then l.Enabled = true; table.insert(lit, l) end
 			end
 		end
-		shots, holdK = spotShots(spot, win, len)
+		-- (a walk spot has a path, no lenses of its own: its lens is walkCam's)
+		if spot.kind == "walk" then shots, holdK = {}, nil else shots, holdK = spotShots(spot, win, len) end
 	else
 		local set = buildSet()
 		if not set then warn("[jankfire] victory: no stage kit (ReplicatedStorage.JankfireVictory.Stage)"); return false end
@@ -715,52 +916,39 @@ function Scene.start(msg: any, opts: any?): boolean
 		shots = shotsFor(win, len)
 	end
 	folder.Parent = workspace
-	-- the bodies: the one in front, then the riser
+	-- the bodies (built once the state is up): where each ends and its pose - the one in front, then teammates
 	local bodies = {}
 	local stage = if type(msg.stage) == "table" then msg.stage else {}
-	local used: { [string]: boolean } = {}
-	local mates = {}
 	local walking = spot ~= nil and spot.kind == "walk" and type(spot.path) == "table" and #spot.path >= 2
-	for i, e in stage do
-		if walking then break end
-		if i == 1 then
-			local pose = V.pick(V.HERO_POSES, e.uid)
-			-- (the one in front faces the held lens a little; every body faces the camera side, +Z; a map's spot says)
-			local cf = if spot then spot.hero else frame * CFrame.lookAt(FRONT, Vector3.new(2.4, FRONT.Y, 20))
-			-- (the one in front always takes a victory pose with the weapon up - main, 27 Nov: "a proper victory pose
-			-- from mocap ... with the weapon raised to show its skin"; teammates keep their own emotes)
-			local he = table.clone(e)
-			he.emote = nil
-			local b = makeBody(he, cf, pose, folder)
-			if b then table.insert(bodies, b) end
-		else
-			table.insert(mates, e)
-		end
-	end
-	local places = MATES[math.min(#mates, 3)] or {}
-	for i, e in (if walking then {} else mates) do
-		local cf: CFrame
-		local pose = V.pick(V.MATE_POSES, e.uid, used)
-		local seatY: number? = nil
-		if spot then
-			if not spot.mates[i] then break end
-			cf = spot.mates[i]
-		else
-			local at = places[i]
-			if not at then break end
-			if i == 2 and not e.emote then
-				-- (THE RISER's second teammate sits on its front edge, legs over it)
-				pose = V.SIT_POSE
-				local flat = Vector3.new(at.X, 0, at.Z).Unit * 7.6
-				at = Vector3.new(flat.X, RISER_TOP, flat.Z)
-				seatY = frame:PointToWorldSpace(Vector3.new(0, RISER_TOP, 0)).Y
+	local ends = {}
+	if not walking then
+		local used: { [string]: boolean } = {}
+		local mates = {}
+		for i, e in stage do
+			if i == 1 then
+				-- (the one in front faces the held lens a little; every body faces the camera side, +Z; a map's spot says)
+				local cf = if spot then spot.hero else frame * CFrame.lookAt(FRONT, Vector3.new(2.4, FRONT.Y, 20))
+				table.insert(ends, { e = e, cf = cf, pose = V.pick(V.HERO_POSES, e.uid) })
+			else
+				table.insert(mates, e)
 			end
-			-- (a teammate turns a little toward the middle of the front)
-			cf = frame * CFrame.lookAt(at, Vector3.new(at.X * 0.35, at.Y, 18))
 		end
-		used[pose] = true
-		local b = makeBody(e, cf, pose, folder, seatY)
-		if b then table.insert(bodies, b) end
+		local places = MATES[math.min(#mates, 3)] or {}
+		for i, e in mates do
+			local cf: CFrame
+			if spot then
+				if not spot.mates[i] then break end
+				cf = spot.mates[i]
+			else
+				local at = places[i]
+				if not at then break end
+				-- (a teammate turns a little toward the middle of the front)
+				cf = frame * CFrame.lookAt(at, Vector3.new(at.X * 0.35, at.Y, 18))
+			end
+			local pose = V.pick(V.MATE_POSES, e.uid, used)
+			used[pose] = true
+			table.insert(ends, { e = e, cf = cf, pose = pose })
+		end
 	end
 	-- the grade (ours alone while it runs: the arena's post effects are off)
 	local cam = workspace.CurrentCamera :: Camera
@@ -791,8 +979,16 @@ function Scene.start(msg: any, opts: any?): boolean
 			s.walk.amb = walkSound("WalkAmb", true)
 			s.walk.heart = walkSound("Heartbeat", true)
 		end
-	elseif not (opts and opts.quiet) then
-		s.sting = sting(win)
+	else
+		arriveBodies(s, ends, folder, spot == nil)
+		-- (the winners: the close lens, then the wide from the cut - the old crane lens goes)
+		local A = s.arrive
+		if win and A and A.hero and #s.shots > 0 then
+			local wide = table.clone(s.shots[#s.shots])
+			wide.t0 = A.cut
+			s.shots = { wide }
+		end
+		if not (opts and opts.quiet) then s.sting = sting(win) end
 	end
 	RunService:BindToRenderStep("JankVictoryCam", Enum.RenderPriority.Last.Value + 80, step)
 	step()
@@ -820,6 +1016,11 @@ function Scene.stop(why: string?)
 	for _, l in s.lit do if l.Parent then l.Enabled = false end end
 	for e in s.blurs do if e.Parent then (e :: any).Enabled = true end end
 	if s.spot then Replay.hideLive(false); showNear() end
+	if s.arrive then
+		for _, a in s.arrive.bodies do
+			for _, tr in { a.idle, a.walk } do if tr then pcall(function() tr:Stop(0) end) end end
+		end
+	end
 	if s.walk then
 		local W = s.walk
 		if W.fear and W.fear.gui then W.fear.gui:Destroy() end

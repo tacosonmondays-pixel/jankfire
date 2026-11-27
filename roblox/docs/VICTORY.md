@@ -13,7 +13,7 @@ in the same folder.
 
 ## What happens at a match's end
 1. **The winning round** (Matches.checkRound) calls "X WINS THE MATCH". 1.2 s later endMatch runs the end hooks.
-2. **VictoryServer** (an onEnd hook) holds the end screen on `m.finisherUntil` for `V.LEN` (5.0 s) + `V.SLACK`.
+2. **VictoryServer** (an onEnd hook) holds the end screen on `m.finisherUntil` for `V.LEN` (5.6 s; a walk spot: its own `Len`) + `V.SLACK`.
    - Once every other end hook has run (task.defer), it ranks everyone still in the server.
    - It asks FinisherServer for the cinematic: `Matches.endFinisher.pick` / `play`, the best winner with a scene
      finisher against the enemy's best.
@@ -25,8 +25,10 @@ in the same folder.
      - At the map's spot (the arena's `Victory` model), with the map's own light. Live bodies, NPCs and pets near it
        are hidden on screen while it plays.
      - Without a spot: on THE RISER, our set built far off the map.
-     - The lens runs RISE, a close-up on the one in front, then WIDE, a push-in to the held group shot.
-     - The card (VictoryCard) slides in at LEN - 0.8 s.
+     - THE WALK-UP: everyone walks up toward the lens and lands a pose. The lens runs CLOSE, a wide low lens in front
+       of the one in front that pushes in as they walk at it, then cuts to WIDE, a push-in to the held group shot.
+     - A walk spot (the Spooky Forest) is its own scene instead: THE WALK, below.
+     - The card (VictoryCard) slides in at LEN - 0.8 s (a walk spot: just after its startle).
      - After `V.SKIP_AFTER` (2 s), Space, B or the SKIP chip jump to the held shot and the card.
    - **A finisher cinematic** played. Nothing happens until the end screen. Then the held shot of the winners comes up
      with no intro and no sting, plus the card.
@@ -45,16 +47,24 @@ in the same folder.
   here. If that play fails, the next-best enemy gets one try, then the default scene plays.
 - **Teammates.** Up to 3 behind, placed by the held lens's angles so nobody stands behind the one in front: on the riser,
   or on the spot's Mate1-3.
-- **The action.** All of it is Mixamo mocap, converted for R15 + R6 in one upload each (`V.POSES`). The poses were picked
-  from stick-figure sheets with the gun drawn along the forearm.
-  - **The one in front** always takes a victory pose with the weapon up: a fighter's guard with the gun by the face, or
-    both arms up (`V.HERO_POSES`).
-  - **Teammates** play their own emote (the first wheel slot that isn't one of the 8 defaults, `V.emoteOf`). Otherwise
-    each gets a different pose (`V.MATE_POSES`): a cheer, an aim, a low crouch, a lean.
-  - On THE RISER, the second teammate sits on the front edge (`V.SIT_POSE`). Its seat is measured off the body's own
-    torso.
-  - **Weapons.** Every body in a pose holds its own weapon: the one in hand at the end, else the loadout's first. It
-    carries its skin, wrap and hat, gripped as Fight.showWeapon grips a held gun. A dancing body holds none.
+- **The action: THE WALK-UP** (the owner, 27 Nov: "a walk up into a dynamic pose with a perspective shot"). No emotes.
+  All of it is Mixamo mocap, converted for R15 + R6 in one upload each (`V.POSES`), picked from stick-figure sheets
+  with the gun drawn along the forearm.
+  - **The walk.** Each body starts behind its mark (`V.ARRIVE`: 8 studs for the one in front, 5.5 for teammates; on
+    THE RISER 5.5 and 1.8). Rays cut a walk short where a wall, a drop or a step is behind. They walk Roblox's own walk,
+    its clip following the distance walked, and slow onto the mark.
+  - **The landing.** On the mark, a "move into a pose" stretch plays once and holds its last frame. The one in front
+    gets the charge's arm thrust (the weapon comes at the lens) or the victory's arms flung up (`V.HERO_POSES`).
+    Teammates each get a different one (`V.MATE_POSES`): the rally's arm straight up, the fist pump, an aim, a cheer.
+  - **The timing.** The one in front lands first, never sooner than 1.3 s (a short walk starts late, from an idle).
+    Each teammate lands 0.2 s after the last.
+  - **Everything is set from the scene's clock each frame**, the tracks paused and scrubbed, so a frozen photo is exactly
+    that moment and a skip puts everyone on their mark in their pose.
+  - **Weapons.** Every body holds its own weapon: the one in hand at the end, else the loadout's first. It carries its
+    skin, wrap and hat, gripped as Fight.showWeapon grips a held gun.
+- **The lens (winners).** CLOSE from 0 until 0.6 s after the one in front lands: low (knee height), close and wide (FOV
+  60 to 70), a little to their weapon side, pushing from 5.6 to 3.3 studs as they walk at it. A small kick as the pose
+  lands, then a settle. A wall in front pulls the lens in. Then a cut to the spot's WIDE (THE RISER: its stage shot).
 - **Losers.** The same winners' scene, seen from a long, low lens with a colder, greyer grade, then DEFEAT on their card.
 - **Stings.** From Roblox's licensed APM library, played under the MUSIC volume:
   - win: "Rise Of Champions" (9041815642);
@@ -85,6 +95,22 @@ in the same folder.
 - **Seen in Play:** RooftopV2, RooftopV3, Crate, DesertV2, The Gut, Arctic Cabin. The others are placed but not yet
   photographed; move a weak one by hand by editing its Parts.
 
+## THE WALK (a walk spot: the Spooky Forest)
+- The owner, 27 Nov: "For scary map can you try make them walk in the forest scared as the screen distorts?"
+- **The spot.** A `Victory` model with the attribute `Kind` = "walk", `Len` (seconds, 7 on the Forest) and Parts
+  `Path1`..`PathN` on the floor in order. `studio-tools/VictoryWalkPath.luau` makes one from the arena's pose spot, which
+  it keeps as `VictoryPose` (rename them back to switch).
+- **The walk.** The winners walk the path. The one in front leads with the weapon up in a guard; teammates huddle behind
+  (`V.WALK.mates`), each glancing back at its own moment.
+- **The lens.** TRACK, a slow backward track in front of them; LOW, at their side looking up through the trees; BEHIND,
+  over the last one's shoulder into the dark; then the STARTLE, a whip in on the one in front.
+- **The screen.** Over the walk: colour draining toward a cold green, a breathing FOV, a heartbeat-timed vignette and
+  blur, double-vision flickers, a rising shake. At the stinger: a flash, a kick, and everyone snaps into a guard.
+- **Sounds** (kit `WalkAmb`, `Heartbeat`, `Stinger`, all APM under MUSIC): "Haunted Forest a 30" (1841594571),
+  "Heartbeat" (1840104783), "Horror Hits 9" (1840927250).
+- **Mocap.** Roblox's walk slowed, under upper-body layers from the vault, until the owner's Mixamo clips arrive
+  (side-session-notes `MIXAMO-CLIPS-NEEDED.md` items 10-14).
+
 ## Files
 - `shared/VictoryData.luau`: the switch `V.ON`, the timings, the poses and the ranking.
 - `server/VictoryServer.server.luau`: the ranking, the cinematic call, the spot, the message, the hold, the done
@@ -95,7 +121,7 @@ in the same folder.
 - `client/VictoryCard.luau`: the card, in A PLATE from `client/UiKit.luau`.
 - `tools/roblox/victory_stage.py`: THE RISER as a Blender kit (upload 76083103868358). Its import paints it in Studio:
   `ReplicatedStorage.JankfireVictory.Stage`, plus the Sounds `Win` and `Lose`.
-- `studio-tools/VictorySpots.luau`: the spot generator.
+- `studio-tools/VictorySpots.luau`: the spot generator. `studio-tools/VictoryWalkPath.luau`: a walk spot's path.
 - Hunks in others' files:
   - Arsenal's Round handler skips FightHud's end screen while `VictoryOn`;
   - MasteryClient delays its own match card 0.6 s and skips it while `VictoryOn`.
