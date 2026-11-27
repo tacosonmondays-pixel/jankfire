@@ -165,7 +165,8 @@ local function cardOf(msg: any): any
 				table.insert(allRows, { v1 = tonumber((r.v or {})[1]) or 0, mine = mine })
 			end
 			local t = tonumber(side.t) or 1
-			table.insert(d.board, { color = TeamColors.color(((t - 1) % 4) + 1), rows = rows, t = t })
+			table.insert(d.board, { color = TeamColors.color(((t - 1) % 4) + 1), rows = rows, t = t,
+				name = if type(side.name) == "string" then side.name else TeamColors.name(((t - 1) % 4) + 1) })
 		end
 	end
 	-- the score: one tile per side, yours first (a free-for-all: your place instead)
@@ -182,8 +183,11 @@ local function cardOf(msg: any): any
 				for _, r in side.rows do n += tonumber((r.v or {})[1]) or 0 end
 			end
 			local tile = { n = n or 0, color = side.color, mine = side.t == mineT }
+			side.score = n or 0
 			if tile.mine then table.insert(d.tiles, 1, tile) else table.insert(d.tiles, tile) end
 		end
+		-- (your side first on the board too)
+		table.sort(d.board, function(a, b) return (a.t == mineT and 1 or 0) > (b.t == mineT and 1 or 0) end)
 	end
 	local rw = rewardsNow()
 	d.level, d.mastery, d.coins = rw.level, rw.mastery, rw.coins
@@ -394,12 +398,20 @@ if RunService:IsStudio() then
 	end
 	local function fake(win: boolean, mates: number, how: string): any
 		local stage = { { uid = me.UserId, name = me.DisplayName, front = true, emote = V.emoteOf(me:GetAttribute("Emotes")) } }
-		for i = 1, mates do table.insert(stage, { uid = me.UserId, name = "Mate " .. i }) end
-		local mine = { name = me.DisplayName, uid = me.UserId, v = { 7, 2, 3, 1050 } }
-		local us = { mine }
-		for i = 1, mates do table.insert(us, { name = "Mate " .. i, uid = -i, v = { 4 - i, 3, 2 + i, 610 - 80 * i } }) end
-		local them = {}
-		for i = 1, mates + 1 do table.insert(them, { name = "Rival " .. i, uid = -10 - i, v = { 3, 5, 1, 520 - 60 * i } }) end
+		for i = 1, mates do table.insert(stage, { uid = me.UserId, name = "" }) end
+		-- (sample rows for the preview: each side's kills are the other side's deaths)
+		local SAMPLE = {
+			[0] = { us = { { 7, 2, 0, 1050 } }, them = { { 2, 7, 0, 480 } } },
+			[1] = { us = { { 7, 2, 3, 1050 }, { 3, 3, 4, 450 } }, them = { { 3, 5, 1, 610 }, { 2, 5, 2, 520 } } },
+			[2] = { us = { { 7, 2, 3, 1050 }, { 4, 3, 2, 690 }, { 2, 3, 5, 480 } }, them = { { 3, 5, 1, 700 }, { 3, 4, 2, 560 }, { 2, 4, 1, 430 } } },
+			[3] = { us = { { 7, 2, 3, 1050 }, { 4, 3, 2, 690 }, { 3, 4, 4, 520 }, { 2, 3, 5, 410 } },
+				them = { { 4, 4, 2, 760 }, { 3, 4, 1, 600 }, { 3, 5, 3, 540 }, { 2, 3, 1, 380 } } },
+		}
+		local NAMES = { "kopi_kat", "slapdash09", "Wickerfield", "ducktape_dan", "mossbyte", "frostlane", "pelican_pete" }
+		local sm = SAMPLE[math.clamp(mates, 0, 3)]
+		local us, them = {}, {}
+		for i, v in sm.us do table.insert(us, { name = if i == 1 then me.DisplayName else NAMES[i - 1], uid = if i == 1 then me.UserId else -i, v = v }) end
+		for i, v in sm.them do table.insert(them, { name = NAMES[3 + i], uid = -10 - i, v = v }) end
 		return {
 			t = "scene", id = 0, scene = how == "scene", cine = how == "cine", len = V.LEN, winner = if how == "draw" then nil elseif win then 1 else 2,
 			youWon = win and how ~= "draw", team = 1, mode = ("%dv%d"):format(mates + 1, mates + 1), classic = false, ranked = false,
@@ -413,6 +425,10 @@ if RunService:IsStudio() then
 		if type(v) ~= "string" or v == "" then return end
 		me:SetAttribute("VictoryTest", nil)
 		local kind, n = string.match(v, "^(%a+):?(%d*)$")
+		-- (the preview's rewards: a sample of what a real match gives - 340 XP, 60 coins, a weapon's mastery)
+		snap = { xp = (tonumber(me:GetAttribute("Xp")) or 0) - 340, brass = (tonumber(me:GetAttribute("Brass")) or 0) - 60, quests = nil, at = os.clock() }
+		local w1 = (Mastery.weapons and Mastery.weapons() or {})[1]
+		if w1 then masteryMsg = { gains = { [w1] = 250 }, xp = { [w1] = 2250 } } end
 		local mates = tonumber(n) or 0
 		if kind == "stop" then finish("test"); return end
 		if kind == "skip" then if run then run.skipOk = true end; skip(); return end

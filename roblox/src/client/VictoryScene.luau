@@ -27,6 +27,9 @@ local V = require(Shared:WaitForChild("VictoryData")) :: any
 local Flair = require(Shared:WaitForChild("Flair")) :: any
 local TeamColors = require(Shared:WaitForChild("TeamColors")) :: any
 local Replay = require(script.Parent:WaitForChild("Replay")) :: any
+local WeaponModels = require(Shared:WaitForChild("WeaponModels")) :: any
+local GunSkins = require(Shared:WaitForChild("GunSkins")) :: any
+local GunHats = require(Shared:WaitForChild("GunHats")) :: any
 
 local Scene = {}
 
@@ -36,10 +39,12 @@ local STAGE_TOP = 1.2
 local RISER_TOP = 2.6
 -- where the bodies stand (stage space: +Z toward the camera, +X to the camera's right)
 local FRONT = Vector3.new(0, STAGE_TOP, 1.0)
+-- (placed by the held lens's angles - 27 Nov, Play: a lone teammate at the left stood exactly behind the one in front.
+-- from the held lens the one in front sits ~26% across; teammates at ~52%, ~13% and ~39%, clear of them and of the card)
 local MATES = {
-	[1] = { Vector3.new(-4.3, RISER_TOP, -8.2) },
-	[2] = { Vector3.new(-5.4, RISER_TOP, -7.6), Vector3.new(5.4, RISER_TOP, -7.6) },
-	[3] = { Vector3.new(-5.9, RISER_TOP, -7.2), Vector3.new(5.9, RISER_TOP, -7.2), Vector3.new(0, RISER_TOP, -9.3) },
+	[1] = { Vector3.new(4.6, RISER_TOP, -7.6) },
+	[2] = { Vector3.new(4.6, RISER_TOP, -7.6), Vector3.new(-6.4, RISER_TOP, -6.8) },
+	[3] = { Vector3.new(4.6, RISER_TOP, -7.6), Vector3.new(-6.4, RISER_TOP, -6.8), Vector3.new(0.6, RISER_TOP, -9.6) },
 }
 
 -- the shots, stage space: { t0, t1, from = { at, look, fov }, to = { ... }, ease }
@@ -149,6 +154,48 @@ local function sourceOf(uid: number): Model?
 	return nil
 end
 
+-- EVERY BODY HOLDS ITS OWN WEAPON (main's notes from the reference, 27 Nov: "every player holding their own equipped
+-- weapon in the pose, so skins get shown off"): the one in its hand at the end, else its loadout's first; its skin, wrap
+-- and hat, built and gripped as Fight.showWeapon grips a held gun ("in the fist, pointing where the forearm points"),
+-- so the pose's arm carries it. a test body (no player) holds the local player's
+local HAND_K = 3 * 1.5 -- (Fight's own)
+local function weaponOf(uid: number): (string?, Player?)
+	local p = Players:GetPlayerByUserId(uid) or me -- (a test body: no player of its own)
+	if not p then return nil, nil end
+	local ch = p.Character
+	local hw = ch and ch:FindFirstChild("HeldWeapon")
+	local wid = hw and hw:GetAttribute("Weapon")
+	if type(wid) ~= "string" then
+		local lo = p:GetAttribute("Loadout")
+		wid = if type(lo) == "string" then string.split(lo, ",")[1] else nil
+	end
+	if type(wid) ~= "string" or wid == "" or wid == "shredder" then return nil, p end -- (the Shredder is a Tool: not built here)
+	return wid, p
+end
+local function arm(body: Model, uid: number)
+	local wid, p = weaponOf(uid)
+	if not wid or not p then return end
+	local hand = body:FindFirstChild("RightHand") :: BasePart? or body:FindFirstChild("Right Arm") :: BasePart?
+	if not hand then return end
+	local ok, w = pcall(WeaponModels.build, wid, HAND_K, GunSkins.skinFor(p, wid))
+	if not ok or not w or not w.PrimaryPart then return end
+	w.Name = "VictorWeapon"
+	pcall(function()
+		local wrId, md = WeaponModels.wrapFor(p, wid)
+		if wrId then WeaponModels.wrap(w, wrId, md) end
+		GunHats.attach(w, wid, GunHats.hatFor(p, wid), HAND_K, nil, GunHats.THIRD)
+	end)
+	for _, d in w:GetDescendants() do
+		if d:IsA("BasePart") then d.Anchored = false; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.Massless = true; d.CastShadow = true end
+	end
+	local grip = w.PrimaryPart:FindFirstChild("Grip") :: Attachment?
+	local off = if grip then grip.Position else Vector3.zero
+	w:PivotTo(hand.CFrame * CFrame.new(0, -hand.Size.Y * 0.35, 0) * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.new(-off))
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hand; weld.Part1 = w.PrimaryPart; weld.Parent = w.PrimaryPart
+	w.Parent = body
+end
+
 type Body = { model: Model, track: AnimationTrack?, root: BasePart }
 local function standAt(m: Model, hum: Humanoid?, root: BasePart, cf: CFrame)
 	local up = if hum and hum.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum and hum.HipHeight or 2) + root.Size.Y / 2)
@@ -173,6 +220,7 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance):
 	m:SetAttribute("TPPlayer", nil)
 	m.Parent = parent
 	standAt(m, hum, root, cf)
+	pcall(arm, m, entry.uid)
 	local b: Body = { model = m, root = root, track = nil }
 	-- the action: their emote, else a victory pose (mocap)
 	local animator = hum and hum:FindFirstChildOfClass("Animator")
@@ -227,11 +275,42 @@ local function putLook(s: any)
 	end
 end
 
+-- ------------------------------------------------------------------ what else stands at a map's spot
+-- (Studio v1421: a figure with an overhead padlock stood behind the bodies at RooftopV3's spot; Replay.hideLive covers
+-- players and workspace.Dummies only.) every other body near the spot - an NPC, a stand-in, a dummy - is hidden on this
+-- screen while the scene runs, with its overhead tags; looked for at the start and 1.5 s in, put back at the end
+local hiddenNear: { [Instance]: number } = {} -- (a part or decal -> its LocalTransparencyModifier before; a gui -> 1)
+local function hideNear(center: Vector3, keep: Instance)
+	for _, d in workspace:GetDescendants() do
+		if d:IsA("Humanoid") then
+			local m = d.Parent
+			if not m or m:IsDescendantOf(keep) then continue end
+			local root = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChild("Head")
+			if not (root and root:IsA("BasePart")) or (root.Position - center).Magnitude > 140 then continue end
+			for _, x in m:GetDescendants() do
+				if (x:IsA("BasePart") or x:IsA("Decal")) and hiddenNear[x] == nil then
+					hiddenNear[x] = (x :: any).LocalTransparencyModifier; (x :: any).LocalTransparencyModifier = 1
+				elseif (x:IsA("BillboardGui") or x:IsA("SurfaceGui")) and x.Enabled and hiddenNear[x] == nil then
+					hiddenNear[x] = 1; x.Enabled = false
+				end
+			end
+		end
+	end
+end
+local function showNear()
+	for x, v in hiddenNear do
+		if x.Parent then
+			if x:IsA("LayerCollector") then (x :: any).Enabled = true else (x :: any).LocalTransparencyModifier = v end
+		end
+	end
+	table.clear(hiddenNear)
+end
+
 -- ------------------------------------------------------------------ the run
 type State = {
 	msg: any, win: boolean, len: number, t0: number, hold: boolean, held: number?, frame: CFrame, folder: Folder,
 	bodies: { Body }, look: any, cc: ColorCorrectionEffect, bloom: BloomEffect, fov: number, shots: { any }, sting: Sound?,
-	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean },
+	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number,
 }
 local st: State? = nil
 
@@ -272,7 +351,14 @@ local function step()
 	if type(fz) == "number" then t = fz; s.held = if s.hold then fz - 0.001 else s.held end
 	local cam = workspace.CurrentCamera :: Camera
 	local cf, fov = camAt(s, t)
-	if s.spot then Replay.hideLive(true) end -- (in the map itself: the live bodies would stand among ours)
+	if s.spot then
+		Replay.hideLive(true) -- (in the map itself: the live bodies would stand among ours)
+		-- (a whole-workspace look is costly on these maps: once at the start, once 1.5 s in for late arrivals)
+		if s.sweptAt == 0 or (s.sweptAt > 0 and os.clock() - s.t0 > 1.5) then
+			s.sweptAt = if s.sweptAt == 0 then 1 else -1
+			hideNear(s.spot.hero.Position, s.folder)
+		end
+	end
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = cf
 	cam.FieldOfView = fov
@@ -424,7 +510,7 @@ function Scene.start(msg: any, opts: any?): boolean
 	local s: State = {
 		msg = msg, win = win, len = len, t0 = os.clock(), hold = opts ~= nil and opts.hold == true, held = nil, frame = frame,
 		folder = folder, bodies = bodies, look = look, cc = cc, bloom = bloom, fov = cam.FieldOfView, shots = shots,
-		sting = nil, holdK = holdK, spot = spot, lit = lit, blurs = blurs,
+		sting = nil, holdK = holdK, spot = spot, lit = lit, blurs = blurs, sweptAt = 0,
 	}
 	if s.hold then s.held = 0 end
 	st = s
@@ -454,7 +540,7 @@ function Scene.stop(why: string?)
 	putLook(s.look)
 	for _, l in s.lit do if l.Parent then l.Enabled = false end end
 	for e in s.blurs do if e.Parent then (e :: any).Enabled = true end end
-	if s.spot then Replay.hideLive(false) end
+	if s.spot then Replay.hideLive(false); showNear() end
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Custom
 	cam.FieldOfView = s.fov

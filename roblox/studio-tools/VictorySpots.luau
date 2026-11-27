@@ -12,7 +12,9 @@
 -- The model is invisible and out of play: Transparency 1, nothing collides, queries or touches.
 local M = {}
 
-M.MATES = { Vector3.new(-3.8, 0, -2.7), Vector3.new(3.8, 0, -2.7), Vector3.new(-1.4, 0, -5.4) }
+-- (by the held lens's angles, 27 Nov: the first teammate (a 2v2's only one) to the right, then the left, then back
+-- centre-right, so nobody stands on the line from WideB to the one in front)
+M.MATES = { Vector3.new(3.8, 0, -2.7), Vector3.new(-4.8, 0, -2.2), Vector3.new(1.6, 0, -5.8) }
 -- lens keys in the one-in-front's frame (+Z toward the lens, +X the lens's right; y above their floor)
 M.LENS = {
 	RiseA = { Vector3.new(2.6, 0.8, 3.9), Vector3.new(0, 1.9, 0), 50 },
@@ -74,10 +76,26 @@ function M.propose(arena: Model, side: string, scale: number, at: Vector3?, face
 		local s = if string.sub(name, 1, 4) == "Wide" then scale else 1
 		local lensAt = F:PointToWorldSpace(Vector3.new(off.X * s, off.Y, off.Z * s))
 		local look = F:PointToWorldSpace(k[2])
+		-- (an invisible wall - a walled arena's "Solid" box - blocks a ray but not the view: look past it)
+		local skip = {}
 		local hit = workspace:Raycast(head, lensAt - head, rp)
+		while hit and hit.Instance.Transparency >= 0.95 and #skip < 8 do
+			table.insert(skip, hit.Instance)
+			local rp2 = RaycastParams.new()
+			rp2.FilterType = Enum.RaycastFilterType.Exclude
+			local ex = table.clone(skip)
+			for _, c in workspace:GetChildren() do if c ~= arena and c.Name ~= "Map" then table.insert(ex, c) end end
+			for _, c in (arena.Parent :: Instance):GetChildren() do if c ~= arena then table.insert(ex, c) end end
+			rp2.FilterDescendantsInstances = ex
+			hit = workspace:Raycast(head, lensAt - head, rp2)
+		end
 		if hit then return nil, ("%s x%.2f: %s blocked by %s"):format(side, s, name, hit.Instance.Name) end
 		out[name] = CFrame.lookAt(lensAt, look)
-		out[name .. "Fov"] = k[3]
+		-- (the wide lenses frame ~13 studs of height at the one in front at any distance: a lens that had to come in
+		-- widens instead of framing tight - 27 Nov, RooftopV2's at 75%)
+		out[name .. "Fov"] = if s ~= 1 or string.sub(name, 1, 4) == "Wide"
+			then math.clamp(math.deg(2 * math.atan(6.5 / (lensAt - (hero.Position + Vector3.new(0, 3, 0))).Magnitude)), 30, 62)
+			else k[3]
 	end
 	return out, nil
 end

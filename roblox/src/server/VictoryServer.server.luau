@@ -25,6 +25,7 @@
 --       player's next match end: ranked with everyone, on the stage when their side wins, on the card's board. their
 --       bodies are built from `look` (Players:CreateHumanoidModelFromUserId) into ReplicatedStorage.JankVictoryLooks
 --   ("clear", player)   ("state")   the last message's summary and the live holds   ("spot", arenaName) the spot read
+--   ("pick", player)   the finisher FinisherServer says this player would bring (Matches.endFinisher.pick)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -307,6 +308,12 @@ if RunService:IsStudio() then
 		elseif op == "clear" and typeof(a) == "Instance" then
 			fakes[a :: Player] = nil
 			return "cleared"
+		elseif op == "pick" and typeof(a) == "Instance" and a:IsA("Player") then
+			-- (the finisher this player would bring at a match end: FinisherServer's own answer)
+			local EF = Matches.endFinisher
+			if type(EF) ~= "table" then return "no Matches.endFinisher" end
+			local ok, fid, skin, w = pcall(EF.pick, a, Matches.raw(a))
+			return { ok = ok, fid = fid, skin = skin, w = w }
 		elseif op == "spot" then
 			local map = workspace:FindFirstChild("Map")
 			local s = spotIn(map and map:FindFirstChild(tostring(a)))
@@ -320,7 +327,7 @@ if RunService:IsStudio() then
 			end
 			return { last = last, holds = holds, on = V.ON, victoryLive = Matches.victoryLive, endFinisher = type(Matches.endFinisher) == "table" }
 		end
-		return "ops: fake, clear, spot, state"
+		return "ops: fake, clear, pick, spot, state"
 	end
 	fn.Parent = ServerStorage
 end

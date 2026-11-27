@@ -45,7 +45,10 @@ do
 	if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
 end
 
--- the plate
+-- the plate, and a soft shadow under it (critic round 1: the bone plate all but vanished on the bright set)
+local shade = K.new("Frame", { Name = "Shade", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.72, BorderSizePixel = 0,
+	AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -44, 0.5, 6), Size = UDim2.fromOffset(W + 4, 404) }, holder)
+K.new("UICorner", { CornerRadius = UDim.new(0, 5) }, shade)
 local plate = K.new("Frame", { Name = "Plate", BackgroundColor3 = A.BONE, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0.5),
 	Position = UDim2.new(1, -48, 0.5, 0), Size = UDim2.fromOffset(W, 400) }, holder)
 K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, plate)
@@ -55,15 +58,17 @@ local list = K.new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Pad
 local foot = K.new("Frame", { Name = "Foot", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, PAD, 1, -16),
 	Size = UDim2.new(1, -2 * PAD, 0, 30) }, plate)
 local waitT = K.text(foot, "Wait", "", 13, A.INK2, K.SANS)
-waitT.Size = UDim2.new(1, -110, 0, 16)
+waitT.Size = UDim2.new(1, -150, 0, 16)
+local waitN = K.text(foot, "Secs", "", 14, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Right) -- (the seconds left, on the right)
+waitN.AnchorPoint = Vector2.new(1, 0); waitN.Position = UDim2.new(1, 0, 0, 0); waitN.Size = UDim2.new(0, 40, 0, 16)
 local track = K.new("Frame", { Name = "Track", BackgroundColor3 = A.BONE2, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 4) }, foot)
 local fill = K.new("Frame", { Name = "Fill", BackgroundColor3 = A.INK, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, track)
 local skipB = K.new("TextButton", { Name = "Skip", AutoButtonColor = false, BackgroundColor3 = A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, 0, 0, -4), Size = UDim2.fromOffset(96, 22), Text = "", Visible = false }, foot)
+	Position = UDim2.new(1, 0, 0, -4), Size = UDim2.fromOffset(100, 22), Text = "", Visible = false, ZIndex = 3 }, foot)
 K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, skipB)
 local skipWord = K.text(skipB, "Word", "SKIP", 12, A.BONE, K.SANS_HEAVY)
 skipWord.Position = UDim2.fromOffset(10, 0); skipWord.Size = UDim2.new(0, 40, 1, 0)
-local skipKey = K.text(skipB, "Key", "SPACE", 10, A.BONE, K.SANS_BOLD, Enum.TextXAlignment.Right)
+local skipKey = K.text(skipB, "Key", "SPACE", 11, A.BONE, K.SANS_BOLD, Enum.TextXAlignment.Right)
 skipKey.Position = UDim2.new(1, -60, 0, 0); skipKey.Size = UDim2.new(0, 52, 1, 0); skipKey.TextTransparency = 0.35
 skipB.Activated:Connect(function() if Card.onSkip then (Card.onSkip :: () -> ())() end end)
 local function keyWord()
@@ -120,47 +125,67 @@ local function head(d: any)
 	local h = K.new("Frame", { Name = "Head", BackgroundTransparency = 1, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, 74) }, body)
 	local word = K.text(h, "Result", d.result or "", 52, A.INK, K.SANS_HEAVY)
 	word.Size = UDim2.new(1, -120, 0, 54)
-	K.slit(word, 0.56, 0.07)
+	K.slit(word, 0.56, 0.07) -- (the stencil slit: the hero word only)
 	local sub = K.text(h, "Sub", string.upper(d.sub or ""), 12, A.INK2, K.SANS_BOLD)
 	sub.Position = UDim2.fromOffset(2, 54); sub.Size = UDim2.new(1, -120, 0, 16); sub.TextTruncate = Enum.TextTruncate.AtEnd
-	-- the score: one flat tile per side in its colour, yours first (the HUD's own tiles)
+	-- the score: one flat tile per side in its colour, yours first and full, the others dimmed (the HUD's own tiles)
 	local tiles = d.tiles or {}
 	local x = 0
 	for i = #tiles, 1, -1 do
 		local t = tiles[i]
-		local tw = 44
-		local tile = K.new("Frame", { Name = "Tile" .. i, BackgroundColor3 = t.color, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, -x, 0, 6), Size = UDim2.fromOffset(tw, 44) }, h)
+		local tw = 46
+		local tile = K.new("Frame", { Name = "Tile" .. i, BackgroundColor3 = t.color, BackgroundTransparency = if t.mine then 0 else 0.5,
+			BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -x, 0, 6), Size = UDim2.fromOffset(tw, 46) }, h)
 		K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, tile)
 		local n = K.text(tile, "N", tostring(t.n), 30, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Center)
 		n.Size = UDim2.fromScale(1, 1)
-		K.slit(n, 0.56, 0.08)
-		if t.mine then
-			K.new("Frame", { Name = "Mine", BackgroundColor3 = A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.new(0.5, 0, 1, 4), Size = UDim2.fromOffset(16, 3) }, tile)
-		end
+		if not t.mine then n.TextTransparency = 0.35 end
 		x += tw + 6
 		if #tiles > 2 and x > 140 then break end
 	end
 	if d.place then
-		local pl = K.text(h, "Place", d.place, 12, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
+		local pl = K.text(h, "Place", d.place, 13, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Right)
 		pl.AnchorPoint = Vector2.new(1, 0); pl.Position = UDim2.new(1, 0, 0, 54); pl.Size = UDim2.fromOffset(120, 16)
 	end
 end
 
-local function mine(d: any)
-	label("Your match")
-	gap(2)
-	local row = K.new("Frame", { Name = "Mine", BackgroundTransparency = 1, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, 50) }, body)
-	local cols = d.cols or {}
-	local n = math.max(1, #cols)
-	for i, c in cols do
-		local cell = K.new("Frame", { Name = "C" .. i, BackgroundTransparency = 1, Position = UDim2.new((i - 1) / n, 0, 0, 0), Size = UDim2.new(1 / n, -6, 1, 0) }, row)
-		local num = K.text(cell, "N", "0", 30, A.INK, K.SANS_HEAVY)
-		num.Size = UDim2.new(1, 0, 0, 32)
-		countUp(num, tonumber((d.mine or {})[i]) or 0, nil, 0.25 + 0.06 * i)
-		local cap = K.text(cell, "L", string.upper(c), 10, A.INK2, K.SANS_BOLD)
-		cap.Position = UDim2.fromOffset(1, 33); cap.Size = UDim2.new(1, 0, 0, 14)
+-- the board: each side under its own name and score; your row in ink. its numbers are the Tab board's own
+local COLW = 46
+local function board(d: any)
+	local sides = d.board or {}
+	if #sides == 0 then return end
+	local cols = d.boardCols or {}
+	local rowsN = 0
+	for _, s in sides do rowsN += #(s.rows or {}) end
+	local rh = if d.compact or rowsN > 6 then 20 else 23
+	local ts = if d.compact or rowsN > 6 then 12 else 13
+	for si, s in sides do
+		-- the side's line: its colour, its name, its score; the columns' names on the first one
+		local hd = K.new("Frame", { Name = "Side" .. si, BackgroundTransparency = 1, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, 20) }, body)
+		local chip = K.new("Frame", { Name = "Team", BackgroundColor3 = s.color, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 5), Size = UDim2.fromOffset(10, 10) }, hd)
+		K.new("UICorner", { CornerRadius = UDim.new(0, 2) }, chip)
+		local nm = K.text(hd, "Name", string.upper(tostring(s.name or "")) .. (if s.score then ("  " .. tostring(s.score)) else ""), 12, A.INK, K.SANS_HEAVY)
+		nm.Position = UDim2.fromOffset(16, 0); nm.Size = UDim2.new(1, -16 - COLW * #cols, 1, 0)
+		if si == 1 then
+			for ci, c in cols do
+				local hc = K.text(hd, "H" .. ci, string.upper(c), 11, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
+				hc.AnchorPoint = Vector2.new(1, 0); hc.Position = UDim2.new(1, -8 - COLW * (#cols - ci), 0, 0); hc.Size = UDim2.new(0, COLW - 4, 1, 0)
+			end
+		end
+		for ri, r in s.rows or {} do
+			local row = K.new("Frame", { Name = ("S%dR%d"):format(si, ri), BackgroundColor3 = A.INK, BackgroundTransparency = if r.mine then 0 else 1,
+				BorderSizePixel = 0, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, rh) }, body)
+			if r.mine then K.new("UICorner", { CornerRadius = UDim.new(0, 2) }, row) end
+			local tc = if r.mine then A.BONE else A.INK
+			local rn = K.text(row, "Name", tostring(r.name or ""), ts, tc, K.SANS_HEAVY)
+			rn.Position = UDim2.fromOffset(16, 0); rn.Size = UDim2.new(1, -16 - COLW * #cols, 1, 0); rn.TextTruncate = Enum.TextTruncate.AtEnd
+			for ci = 1, #cols do
+				local val = tonumber((r.v or {})[ci]) or 0
+				local v = K.text(row, "V" .. ci, fmt(val), ts, tc, if r.mine then K.SANS_HEAVY else K.SANS_BOLD, Enum.TextXAlignment.Right)
+				v.AnchorPoint = Vector2.new(1, 0); v.Position = UDim2.new(1, -8 - COLW * (#cols - ci), 0, 0); v.Size = UDim2.new(0, COLW - 4, 1, 0)
+			end
+		end
+		if si < #sides then gap(12) end
 	end
 end
 
@@ -180,16 +205,15 @@ local function rewardRow(parent: Instance, i: number, name: string, tag: string?
 	if from and to then bar(r, UDim2.fromOffset(0, 21), UDim2.new(1, 0, 0, 4), from, to, 0.4 + 0.08 * i) end
 	return r
 end
--- the rewards: their own box (label and rows), so a later redraw keeps its spot
+-- what the match gave you, one row each (no row for what it didn't): the level and its XP, each weapon's mastery, coins,
+-- the quests that moved. their own box, so a later redraw keeps its spot
 local function fillRewards(box: Frame, d: any)
 	for _, c in box:GetChildren() do if not c:IsA("UIListLayout") then c:Destroy() end end
-	local l = K.text(box, "Label", "EARNED", 11, A.INK2, K.SANS_BOLD)
-	l.LayoutOrder = 0; l.Size = UDim2.new(1, 0, 0, 20)
 	local i = 0
 	local lv = d.level
-	if lv then
+	if lv and (lv.gain or 0) > 0 then
 		i += 1
-		rewardRow(box, i, "LEVEL " .. tostring(lv.lv), nil, if (lv.gain or 0) > 0 then "+" .. fmt(lv.gain) .. " XP" else "+0 XP", lv.from, lv.to)
+		rewardRow(box, i, "LEVEL " .. tostring(lv.lv), nil, "+" .. fmt(lv.gain) .. " XP", lv.from, lv.to)
 	end
 	for _, m in d.mastery or {} do
 		if i >= (if d.compact then 3 else 5) then break end
@@ -208,7 +232,7 @@ local function fillRewards(box: Frame, d: any)
 		if nm then nm.FontFace = K.SANS; nm.Size = UDim2.new(0.75, 0, 0, 18); nm.TextSize = 13 end
 	end
 	if i == 0 then
-		local none = K.text(box, "None", "Nothing this match: practice and private matches count for nothing.", 12, A.INK2, K.SANS)
+		local none = K.text(box, "None", if lv then ("Level " .. tostring(lv.lv) .. ". Practice and private matches give no XP.") else "No XP this match.", 13, A.INK2, K.SANS)
 		none.LayoutOrder = 1; none.Size = UDim2.new(1, 0, 0, 18); none.TextWrapped = true
 	end
 end
@@ -220,49 +244,12 @@ local function rewards(d: any)
 	fillRewards(f, d)
 end
 
-local function board(d: any)
-	local sides = d.board or {}
-	if d.compact or #sides == 0 then return end
-	label("Match")
-	gap(2)
-	local cols = d.boardCols or {}
-	local rowsN = 0
-	for _, s in sides do rowsN += #(s.rows or {}) end
-	local rh = if rowsN > 6 then 19 else 21
-	for si, s in sides do
-		for ri, r in s.rows or {} do
-			local row = K.new("Frame", { Name = ("S%dR%d"):format(si, ri), BackgroundColor3 = A.INK, BackgroundTransparency = if r.mine then 0 else 1,
-				BorderSizePixel = 0, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, rh) }, body)
-			if r.mine then K.new("UICorner", { CornerRadius = UDim.new(0, 2) }, row) end
-			local tc = if r.mine then A.BONE else A.INK
-			local chip = K.new("Frame", { Name = "Team", BackgroundColor3 = s.color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, math.floor(rh / 2) - 5),
-				Size = UDim2.fromOffset(4, 10) }, row)
-			K.new("UICorner", { CornerRadius = UDim.new(0, 1) }, chip)
-			local nm = K.text(row, "Name", tostring(r.name or ""), 12, tc, K.SANS_HEAVY)
-			nm.Position = UDim2.fromOffset(14, 0); nm.Size = UDim2.new(1, -14 - 48 * #cols, 1, 0); nm.TextTruncate = Enum.TextTruncate.AtEnd
-			for ci = 1, #cols do
-				local v = K.text(row, "V" .. ci, tostring((r.v or {})[ci] or 0), 12, tc, K.SANS_BOLD, Enum.TextXAlignment.Right)
-				v.AnchorPoint = Vector2.new(1, 0); v.Position = UDim2.new(1, -6 - 48 * (#cols - ci), 0, 0); v.Size = UDim2.new(0, 44, 1, 0)
-			end
-		end
-		if si < #sides then gap(4) end
-	end
-	-- the columns' names over the numbers, on the label's line
-	local lab = body:FindFirstChild("Label", false)
-	for _, c in body:GetChildren() do if c:IsA("TextLabel") and c.Text == "MATCH" then lab = c end end
-	if lab then
-		for ci, c in cols do
-			local h = K.text(lab, "H" .. ci, string.upper(c), 10, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
-			h.AnchorPoint = Vector2.new(1, 0); h.Position = UDim2.new(1, -6 - 48 * (#cols - ci), 0, 0); h.Size = UDim2.new(0, 44, 1, 0)
-		end
-	end
-end
-
 -- ------------------------------------------------------------------ show / hide
 local shown: any = nil
 local function size()
 	local h = list.AbsoluteContentSize.Y / scale.Scale
 	plate.Size = UDim2.fromOffset(W, math.floor(h + PAD + 4 + 54))
+	shade.Size = UDim2.fromOffset(W + 4, plate.Size.Y.Offset + 4)
 end
 list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(size)
 
@@ -273,20 +260,20 @@ function Card.show(d: any)
 	order = 0
 	for _, c in body:GetChildren() do if not c:IsA("UIListLayout") then c:Destroy() end end
 	head(d)
-	gap(10)
-	mine(d)
-	gap(12)
-	rewards(d)
-	gap(12)
+	gap(16)
 	board(d)
-	gap(6)
+	gap(16)
+	rewards(d)
+	gap(8)
 	keyWord()
 	gui.Enabled = true
 	-- in from the right, quick
 	plate.Position = UDim2.new(1, -12, 0.5, 0)
 	plate.BackgroundTransparency = 0.2
+	shade.Position = UDim2.new(1, -8, 0.5, 6)
 	TweenService:Create(plate, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
 		{ Position = UDim2.new(1, -48, 0.5, 0), BackgroundTransparency = 0 }):Play()
+	TweenService:Create(shade, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.new(1, -44, 0.5, 6) }):Play()
 	task.defer(size)
 end
 
@@ -303,13 +290,15 @@ function Card.wait(n: number, lab: string?)
 	local my = waitTok
 	fill.Size = UDim2.fromScale(1, 1)
 	TweenService:Create(fill, TweenInfo.new(math.max(0.1, n), Enum.EasingStyle.Linear), { Size = UDim2.fromScale(0, 1) }):Play()
-	local fmtS = lab or "Back to the hub in %d"
-	-- (the server's words are lower case after the first: "back to the hub in %d")
-	fmtS = string.upper(string.sub(fmtS, 1, 1)) .. string.sub(fmtS, 2)
+	-- (the server's words, "back to the hub in %d" / "play of the match in %d": the words on the left, the seconds on the
+	-- right, each with its unit)
+	local words = string.gsub(lab or "back to the hub in %d", "%s*in %%d%s*$", "")
+	words = string.gsub(words, "%%d", "")
+	waitT.Text = string.upper(string.sub(words, 1, 1)) .. string.sub(words, 2)
 	task.spawn(function()
 		local t0 = os.clock()
 		while my == waitTok and os.clock() - t0 < n do
-			waitT.Text = fmtS:format(math.max(0, math.ceil(n - (os.clock() - t0))))
+			waitN.Text = tostring(math.max(0, math.ceil(n - (os.clock() - t0)))) .. " s"
 			task.wait(0.2)
 		end
 	end)
@@ -323,7 +312,7 @@ function Card.hide()
 	shown = nil
 	gui.Enabled = false
 	skipB.Visible = false
-	waitT.Text = ""
+	waitT.Text = ""; waitN.Text = ""
 end
 function Card.visible(): boolean return gui.Enabled end
 function Card.gui(): ScreenGui return gui end
