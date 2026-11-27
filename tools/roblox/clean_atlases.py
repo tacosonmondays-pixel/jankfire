@@ -2,6 +2,7 @@
 # barcodes (a container code with 420690 among them: roblox-upload-content-rules). This blanks them; the atlases come out of
 # public/models/<prop>.glb with a Blender export of its images. Uploaded as Decals; the image ids swapped into every
 # TextureID in the place (old -> new ids: side-session-notes vehicles-27nov.md).
+# The wider sweep (27 Nov, later) adds the parked web guns' atlases (w_*.glb) and the web lobby's sign atlases (x_lobby_*.glb).
 # blank every word, number and barcode on the web props' atlases (content rules: no text in uploads). Each fix is either
 # a copy of a text-free strip of the same surface over the text, or a fill with the panel's own most common colour.
 #   py clean_atlases.py <in dir> <out dir>
@@ -40,6 +41,7 @@ def bright(p): return sum(p[:3]) > 600
 def dark(p): return sum(p[:3]) < 200
 
 def go(name, fixes):
+    if not os.path.exists(os.path.join(src, name + '.png')): return      # (each run cleans the atlases its folder has)
     im = Image.open(os.path.join(src, name + '.png'))
     for f in fixes: f(im)
     im.save(os.path.join(dst, name + '.png'))
@@ -117,3 +119,47 @@ go('p_pallet_load__pll_film_t', [film])
 def wood(im):
     copy(im, (34, 100, 63, 124), (66, 100))
 go('p_pallet_load__pll_wood_t', [wood])
+
+# ---------------------------------------------------------------- the wider sweep (27 Nov): the parked web guns and the
+# web lobby's props (atlases straight from public/models/w_*.glb and x_lobby_*.glb)
+def has(name): return os.path.exists(os.path.join(src, name + '.png'))
+
+def panels(boxes):
+    """each sign panel's inside to its own most common colour (the words go, the panel and its border stay)"""
+    def f(im):
+        for b in boxes: fill(im, b, mode(im, b))
+    return f
+
+if has('x_lobby_whprops__wp_signglow_t'):
+    go('x_lobby_whprops__wp_signglow_t', [panels([(4, 4, 252, 123), (4, 133, 252, 251), (4, 262, 252, 379), (4, 389, 252, 506), (6, 518, 250, 636)])])
+if has('x_lobby_breakroom__br_signs_glow_t'):
+    def br(im):
+        panels([(4, 5, 252, 121), (4, 193, 250, 253)])(im)
+        fill(im, (48, 330, 80, 343), mode(im, (40, 300, 90, 330)))      # the clock face's little word
+    go('x_lobby_breakroom__br_signs_glow_t', [br])
+if has('x_lobby_range__rg_signs_t'):
+    go('x_lobby_range__rg_signs_t', [panels([(4, 5, 252, 121), (4, 135, 252, 246), (4, 262, 252, 376)])])
+if has('x_lobby_hangarprops__hp_glow_t'):
+    go('x_lobby_hangarprops__hp_glow_t', [panels([(0, 0, 256, 21), (0, 136, 256, 246), (0, 258, 256, 317), (0, 322, 256, 384)])])
+if has('w_redline__rl_tach_t'):
+    def tach(im):
+        black = mode(im, (20, 20, 44, 44))
+        for b in ((22, 15, 29, 23), (34, 15, 42, 23), (14, 25, 21, 34), (43, 26, 50, 34), (17, 37, 24, 45), (23, 43, 42, 52)):
+            fill(im, b, black)
+    go('w_redline__rl_tach_t', [tach])
+if has('w_sawnoff__so_headstamp_t'):
+    def stamp(im):
+        brass = mode(im, (8, 12, 24, 15))
+        fill(im, (10, 2, 22, 11), brass); fill(im, (9, 21, 23, 30), brass)
+    go('w_sawnoff__so_headstamp_t', [stamp])
+if has('w_pistol__pb_medal_t'):
+    def medal(im):
+        gold = mode(im, (0, 0, 9, 9), skip=lambda p: sum(p[:3]) < 300)
+        for y in range(9):
+            for x in range(9):
+                if sum(im.getpixel((x, y))[:3]) < 300: im.putpixel((x, y), gold)
+    go('w_pistol__pb_medal_t', [medal])
+if has('w_burst__bu_dial_t'):
+    go('w_burst__bu_dial_t', [lambda im: fill(im, (0, 0, 11, 11), mode(im, (0, 0, 11, 11)))])
+if has('w_lmg__lmg_label_t'):
+    go('w_lmg__lmg_label_t', [lambda im: fill(im, (0, 0, 72, 11), mode(im, (0, 0, 72, 11)))])
