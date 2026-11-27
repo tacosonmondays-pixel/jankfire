@@ -396,7 +396,14 @@ local function play(a: any)
 	local smoother = function(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
 	local shots = {
 		{ name = "house", t0 = 0, t1 = beat("glitch"), fov = 58, shake = function(u) return if win == "gunman" then 1.2 else 0.8 end,
-			cam = function(u) local cf = houseCam(u); lastHouseCF = cf; return cf end },
+			cam = function(u)
+				-- (the hit-stop: the last hitstop s before the glitch the house holds on one frame, the lens kicking)
+				local hs = OUT.hitstop or 0.2
+				local run = math.max(0.1, beat("glitch") - hs)
+				local tt = u * beat("glitch")
+				if tt >= run then return lastHouseCF end
+				local cf = houseCam(tt / run); lastHouseCF = cf; return cf
+			end },
 		{ name = "glitch", t0 = beat("glitch"), t1 = beat("pull"), fov = 58, shake = 2.5,
 			cam = function(_u) return lastHouseCF end },
 		{ name = "pull", t0 = beat("pull"), t1 = beat("reveal"), fov = fovPull,
@@ -503,12 +510,12 @@ local function play(a: any)
 				end
 			end
 			for _, s in r.sounds do pcall(function() s:Stop() end) end
+			room.Parent = workspace -- (under the static: the pull's first frame is never an empty sky)
 		end
 		if once("room", beat("pull")) then
 			st.Enabled = false
 			house:Destroy()
 			for _, m in who do hide(m, false) end
-			room.Parent = workspace
 			HubLook.set("hunt_intro_dark", 0)
 			keep(sound(if set == "A" then S.hum else S.hiss, 1, true))
 			-- the players at the screen: seated (and a stretch for him), pads in hand and cheering for them
