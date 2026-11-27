@@ -655,13 +655,15 @@ def train():
     x = xf - 7.0
     if '--box-wagons' not in K.FLAGS:
         # (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?": a cambered roof, a dark
-        # skirt, sills under the windows, double doors with their own windows, open bogies, lamps at the ends)
+        # skirt, double doors with their own windows, open bogies, lamps at the ends)
         for w in range(3):
             x1, x0 = x, x - 34.0
             B(m, WAG, x0, -30.6, zc - 4.5, x1, -22.6, zc + 4.5, bev=0.7)
             B(m, BOGIE, x0 + 0.6, -31.5, zc - 4.25, x1 - 0.6, -30.4, zc + 4.25, bev=0.3)        # the skirt
-            arc_ = [(4.7 * u, -21.0 - 0.75 * u * u) for u in [i / 10 - 1 for i in range(21)]]
-            plate(m, RIMC, [(-4.7, -22.9)] + arc_ + [(4.7, -22.9)], x1 - x0 - 0.4, Tr(x0 + 0.2, 0, zc) @ Ry(math.pi / 2), bev=0.25)
+            # (round 2, the critics: a rough seam where a wider roof met the body: the roof now carries the body's own
+            # sides up and over, from the body's top line)
+            arc_ = [(4.52 * u, -21.25 - 0.55 * u * u) for u in [i / 10 - 1 for i in range(21)]]
+            plate(m, RIMC, [(-4.52, -22.62)] + arc_ + [(4.52, -22.62)], x1 - x0 - 0.4, Tr(x0 + 0.2, 0, zc) @ Ry(math.pi / 2), bev=0.12)
             B(m, WAGB, x0 + 0.4, -27.6, zc - 4.62, x1 - 0.4, -26.6, zc + 4.62, bev=0.2)
             for i in range(6):
                 wx = x0 + 3.5 + i * 5.4
@@ -673,8 +675,7 @@ def train():
                             B(m, 'ddd0c3', wx + dx - 0.85, -30.2, zs - 0.18, wx + dx + 0.85, -23.0, zs + 0.18, bev=0.2)
                             B(m, WIN, wx + dx - 0.5, -26.2, zs - 0.24, wx + dx + 0.5, -23.6, zs + 0.24, bev=0.2)
                         continue
-                    B(m, WIN, wx - 1.8, -26.0, zs - 0.15, wx + 1.8, -23.0, zs + 0.15, bev=0.35)
-                    B(m, TRIM, wx - 2.0, -26.35, zs - 0.28, wx + 2.0, -26.0, zs + 0.28, bev=0.08)  # the sill
+                    B(m, WIN, wx - 1.8, -26.0, zs - 0.15, wx + 1.8, -23.0, zs + 0.15, bev=0.35)   # (no sills: round 2)
             for bx in (x0 + 6.0, x1 - 6.0):                                              # open bogies
                 for sg in (-1, 1):
                     B(m, BOGIE, bx - 3.2, -32.7, zc + sg * 3.0 - 0.3, bx + 3.2, -31.7, zc + sg * 3.0 + 0.3, bev=0.25)
