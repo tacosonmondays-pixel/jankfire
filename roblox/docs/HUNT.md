@@ -442,6 +442,22 @@ card; HuntRound.finish sends Remote `outro` { win, who, map, mapId, origin, len,
 - **Test:** a round, then `JankHuntTest("win", p, "gunman" | "hiders")` (a round with `role = "hider",
   standinRole = "gunman"` for the hiders' film).
 
+## 13. The hiders' intro (owner, 27 Nov)
+
+The owner: "if you get survivor you get a small cinematic of your character walking scared in the map?.. and then it
+says survive!! You can skip it!! It'll be short regardless". `HuntHiderIntro.client`, `HuntConfig.HIDER_INTRO`.
+
+- **What it is:** 5 s on each hider's own screen as the round starts. A copy of their own avatar walks scared up to
+  their spot from a few studs behind it (Roblox's walk slowed, the gunman intro's upper-body look round), the lens in
+  front of them and low; then SURVIVE in A's hero type hits in with the game's own impact, and the lens glides onto
+  the game's camera as the word fades. Bars and the gunman intro's muted grade; a heartbeat under it.
+- **Skip:** Space, B on a pad, or a tap: straight back to the game.
+- **No hiding time lost:** HuntRound adds `HIDER_INTRO.len` to the hide and sends Remote `hintro` { len, t0, at } to
+  each hider; the gunman's intro starts that much later (his hide shade covers him until then), so it still ends as
+  the hunt starts. A test round can pass `hiderIntro = false`.
+- **While it plays:** the real body is anchored and hidden locally (after the game's camera each frame), every other
+  HUD is off and put back after, and `HuntIntro = "hider"` is set so HuntClient stands back.
+
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)
