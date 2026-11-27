@@ -585,6 +585,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 	local tg = targets()
 	local hits: { [Model]: { n: number, h: number } } = {}
 	local ends: { Vector3 } = {}
+	local hends: { Vector3 } = {} -- (26 Nov 2026: a pellet gun's head pellets' own end points: the server checks each, Combat)
 	local allEnds: { Vector3 } = {}
 	local impacts: { RaycastResult } = {}
 	local splashes: { Vector3 } = {}
@@ -626,7 +627,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 		if wx and #splashes < 4 then table.insert(splashes, wx) end
 		if who then
 			local g = hits[who] or { n = 0, h = 0 }
-			g.n += 1; if head then g.h += 1 end
+			g.n += 1; if head then g.h += 1; if #hends < 12 then table.insert(hends, e) end end
 			hits[who] = g
 		elseif mh and not wx and #impacts < 6 then table.insert(impacts, mh) end
 	end
@@ -645,6 +646,7 @@ local function fireGun(now: number, fan: boolean?, hand: number?)
 		ends = { eye + look * w.range }
 	end
 	if hand then opt = opt or {}; (opt :: any).hand = hand end -- (Lefty & Righty: which gun)
+	if (w.pellets or 1) > 1 and #hends > 0 then opt = opt or {}; (opt :: any).hends = hends end -- (the head pellets: Combat checks each)
 	FireR:FireServer(held, eye, ends, list, opt)
 	-- your own feel: shove, climb, bloom, the gun kicks, flash, brass, tracer / marbles, sound
 	local km = if F then F.kick else 1

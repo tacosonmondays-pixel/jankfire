@@ -523,6 +523,21 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		-- (25 Nov 2026) every one-bullet gun needs the real head now (Rules.headHit), not only the precision ones
 		if hh > 0 and (W[wid].pellets or 1) <= 1 and not Rules.headAimed(from :: Vector3, ends :: { Vector3 }, Fight.path(t, Latency.window(p)), Hitbox.profile(tm), true,
 			if tm then Rules.bodyCheck(tm, Fight.pathCF(t, Latency.window(p), Rules.EXACT_STEPS), spT, isP, pose) else nil) then hh = 0 end
+		-- (26 Nov 2026, main: "a cheat can't buy pellet headshots") a pellet gun's head pellets: each one has to be a ray
+		-- that touches the real head, with the same parts and allowance as one bullet (Rules.headAimed / headHit). the
+		-- rays: `hends`, the head pellets' own end points (the shooter's client sends them: Marbles has 100 pellets and only
+		-- 12 ends), else the ends. a full sample of 12 good head rays lets the rest of the claim through
+		if hh > 0 and (W[wid].pellets or 1) > 1 then
+			local hx = x.hends
+			local rays = if array(hx, 12, finiteV) and #(hx :: { Vector3 }) > 0 then hx :: { Vector3 } else ends :: { Vector3 }
+			local win = Fight.path(t, Latency.window(p))
+			local hb = if tm then Rules.bodyCheck(tm, Fight.pathCF(t, Latency.window(p), Rules.EXACT_STEPS), spT, isP, pose) else nil
+			local good = 0
+			for _, e2 in rays do
+				if Rules.headAimed(from :: Vector3, { e2 }, win, Hitbox.profile(tm), true, hb) then good += 1 end
+			end
+			if good < 12 then hh = math.min(hh, good) end
+		end
 		n = math.min(n, left); hh = math.min(hh, n); left -= n
 		applyHitscan(f, t, wid, n, hh, from :: Vector3, { mul = mul, qs = x.qs == true, ns = x.ns == true })
 		if not f.alive then break end -- a perfect parry can kill the shooter mid-volley

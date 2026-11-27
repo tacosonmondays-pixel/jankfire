@@ -101,8 +101,8 @@ through the real `Fire` remote and the server's `Dmg` answer.
   0.15 of the head (old: up to 2 studs over it on automatics); over the head it's refused from 0.25 (old: paid as HEAD
   or BODY up to 2); beside the head or the body it can still be paid as BODY up to about 1.5 (arms allowance, measured
   1.0 then; 0.75 since v1381). **Pellet guns** (Shotgun, Auto Shotgun, Sawed-Off, Marbles): the server has never
-  re-checked their head claims (`pellets <= 1` in Combat's FireR), so a forced head claim near the head is still paid
-  as HEAD. Honest clients never send one; closing it is a follow-up (needs the pellet ends checked per pellet).
+  re-checked their head claims (`pellets <= 1` in Combat's FireR), so a forced head claim near the head was still paid
+  as HEAD. Honest clients never send one. Closed 27 Nov (v1412): each head pellet is checked now (below).
 - **Sizing the server's allowance** (pose sweep: rays from 8 sides and 4 from above at 30 studs onto every drawn part of
   a posed body; the smallest pad that still pays every honest hit): the training dummies (katana or Redline stance)
   need 0.75 on the arms and 0.15 on the head (their heads never move); a player body (TPRig, smg) needs at most 1.5 on
@@ -128,8 +128,43 @@ through the real `Fire` remote and the server's `Dmg` answer.
   The last cell is the lag window, as on 20 Nov: with the shooter's round trip at half a second, a head moving along
   that side really was within half a stud of the claim inside the window, so it can't be told from a real hit. The
   one honest edge shot paid as body with no lag is the 0.25 s window floor; a small speed-scaled head allowance would
-  cover it (not done: untested). Minigun and Sniper on the still Stand: misses never sent, BODY 6 / 55, HEAD 9 / 999,
+  cover it (added 27 Nov, below: it did not measurably change this). Minigun and Sniper on the still Stand: misses never sent, BODY 6 / 55, HEAD 9 / 999,
   forced head 0.5 over refused.
+
+### Fourth turn (27 Nov 2026, place v1412): pellet heads checked, a moving head's allowance
+
+- **Pellet guns' head claims** (main: "a cheat can't buy pellet headshots"): Combat's FireR checks every claimed head
+  pellet as its own ray against the real head, with the same parts and allowance as one bullet (`Rules.headAimed`).
+  The shooter's client sends the head pellets' own end points (`hends`, at most 12: Marbles fires 100 pellets and
+  sends only 12 ends); an old client without them is checked on its ends. The paid head pellets are as many as those
+  rays touch the head; a full 12 lets a bigger claim through.
+- **A moving head's allowance:** `Rules.HEAD_MOVE` 0.015 a stud/s of the target's own speed (`Fight.speed`), at most
+  `HEAD_MOVE_MAX` 0.3. A still target keeps 0.15, so 0.5 over a head is refused at any speed (0.15 + 0.3 < 0.5).
+- **Pellet guns, forced claims of every pellet as a head** (still Stand at 45 studs, through the real `Fire` remote):
+
+| Where the pellets went | Shotgun (10) | Sawed-Off (12) | Auto Shotgun (8) | Marbles (100) |
+|---|---|---|---|---|
+| All on the head centre (honest) | HEAD 113 | HEAD 66 | HEAD 52 | HEAD 28 |
+| All on the body centre | BODY 75 | BODY 50 | BODY 35 | BODY 22 |
+| All 0.5 over the head | BODY 75 | BODY 50 | BODY 35 | BODY 22 |
+| All 0.25 beside the head | BODY 75 | BODY 50 | BODY 35 | BODY 22 |
+| Half on the head, half on the body | 94 (5 heads paid) | 58 (6) | 43 (4) | - |
+| 12 ends on the body, `hends` 0.5 over the head | - | - | - | BODY 22 |
+
+  Before this turn every one of the forced rows was paid as HEAD near the head. Still open: a pellet gun's BODY claim
+  is the old cone check (the spray's aim has to hold the target), so a forced claim of pellets 0.5 over the head is
+  paid as full BODY. Honest clients never send it (each pellet is tested on the drawn parts).
+- **Still Stand, the 35 aim points again, a forced HEAD claim at every one** (SMG and Pistol): HEAD only on the head
+  and within 0.1 of it (the 0.15 allowance); every point 0.25 or more over or beside the head refused or paid BODY,
+  never HEAD. Same as v1381: the moving allowance doesn't widen a still head. Beside the head, BODY is still paid as
+  far as 2 studs out (the 0.75 arm allowance round the shoulder); honest clients call all of those misses and never
+  send them.
+- **The moving Dummy, no lag, 6 rounds per gun:** honest head shots paid HEAD 14 of 18 on the SMG (2 head centres and
+  2 edges paid BODY) and 16 of 17 on the Pistol (1 edge paid BODY; 1 more refused because the test re-armed for 2 s
+  between aiming and firing). Forced head claims 0.5 over: 12 of 12 not HEAD (11 refused, 1 paid BODY). So the new
+  allowance never pays 0.5 over a moving head, but it didn't measurably lift honest moving heads (third turn: 11 of
+  12). Head centres missing too means it isn't the head's edge; most likely it's where the server places the moving
+  body in time (it turns every 1.6 s). Not measured yet: a follow-up would log the server's miss distance per shot.
 
 
 ## Balance pass, 18 Nov 2026 (Roblox only)

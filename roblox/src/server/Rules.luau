@@ -402,6 +402,11 @@ Rules.HEAD_POSE = 1.35 -- (measured 26 Nov: a player aiming 45 deg up or down ne
 Rules.ARM_POSE = 0.75 -- (a player's arms more: the support hand on the handguard needs 1.5 in all)
 Rules.MOVE_PAD = 0.04
 Rules.MOVE_MAX = 0.8
+-- (26 Nov 2026) a fast mover's head: HEAD_MOVE a stud/s of its own speed, at most HEAD_MOVE_MAX (0.3 from 20 studs/s).
+-- an honest shot 0.1 inside the edge of a strafing Dummy's head (22 studs/s) was paid as body 1 in 6 with no lag; a
+-- still or slow target keeps 0.15, so a claim 0.5 over a head is refused at any speed (0.15 + 0.3 < 0.5)
+Rules.HEAD_MOVE = 0.015
+Rules.HEAD_MOVE_MAX = 0.3
 Rules.POSE = {
 	crouch = { body = 0.6, arm = 0.4, head = 0.5, drop = 1.5 },
 	slide = { body = 1.5, arm = 1.0, head = 1.2, drop = 2.5 },
@@ -414,7 +419,7 @@ function Rules.bodyCheck(m: Instance, cfs: { CFrame }, speed: number, player: bo
 	local P = if player and type(pose) == "string" then Rules.POSE[pose] else nil
 	return {
 		m = m, cfs = cfs, pad = Rules.BODY_PAD + mv + (if P then P.body else 0), arm = Rules.ARM_PAD + mv + (if player then Rules.ARM_POSE else 0) + (if P then P.arm else 0),
-		head = Rules.HEAD_PAD_EXACT + (if player then Rules.HEAD_POSE else 0) + (if P then P.head else 0),
+		head = Rules.HEAD_PAD_EXACT + math.min(Rules.HEAD_MOVE_MAX, Rules.HEAD_MOVE * math.max(0, speed)) + (if player then Rules.HEAD_POSE else 0) + (if P then P.head else 0),
 		drop = if P then P.drop else 0,
 	}
 end
