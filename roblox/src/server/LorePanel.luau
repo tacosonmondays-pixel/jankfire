@@ -5,7 +5,8 @@
 -- LoreLife.client). Every panel is a Model named CodePanel tagged CodePanel (CollectionService): the screen, the
 -- server's nearness check and the cutscene use the one nearest the player.
 --   LorePanel.make(base, parent, show?, scan?) -> (Model, string)
---     base   the floor point under its front middle; its LookVector is the way the screen faces (where you stand)
+--     base   the floor point under its middle (its plinth's back is 1.5 behind); its LookVector is the way the screen
+--            faces (where you stand)
 --     show   where the NPC stops, in the panel's frame (x right, -z out toward you); nil = picked here: the clearer of
 --            its two sides (5.6 studs out; 0.8, else 1.8, else 2.6 in front, for a panel flush on a wall), else the
 --            clearest 3 x 3 near where you stand, from the boxes of every
@@ -43,13 +44,21 @@ local function boxesNear(scan: Instance?, at: Vector3, skip: Instance?): { any }
 	local out = {}
 	if not scan then return out end
 	for _, p in scan:GetDescendants() do
-		if p:IsA("BasePart") and p.Transparency < 1 and (p.Position - at).Magnitude < 30 and not (skip and p:IsDescendantOf(skip)) then
+		-- (near by the box for plain blocks, whose box is the part: the Concourse's 95-long wall has its middle 40 away;
+		-- meshes keep the middle, as their boxes are loose: THE STILL's landscape boxes hold the whole lounge)
+		if p:IsA("BasePart") and p.Transparency < 1 and (p.Position - at).Magnitude < 30 + p.Size.Magnitude / 2
+			and not (skip and p:IsDescendantOf(skip)) then
 			local cf, sz = p.CFrame, p.Size / 2
 			local ex = Vector3.new(
 				math.abs(cf.RightVector.X) * sz.X + math.abs(cf.UpVector.X) * sz.Y + math.abs(cf.LookVector.X) * sz.Z,
 				math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z,
 				math.abs(cf.RightVector.Z) * sz.X + math.abs(cf.UpVector.Z) * sz.Y + math.abs(cf.LookVector.Z) * sz.Z)
-			if p.Position.Y + ex.Y > at.Y + 0.2 then table.insert(out, { p.Position - ex, p.Position + ex, cf, sz }) end
+			local lo, hi = p.Position - ex, p.Position + ex
+			local block = p.ClassName == "Part" and (p :: Part).Shape == Enum.PartType.Block
+			if p.Position.Y + ex.Y > at.Y + 0.2
+				and (if block then (at:Max(lo):Min(hi) - at).Magnitude else (p.Position - at).Magnitude) < 30 then
+				table.insert(out, { lo, hi, cf, sz })
+			end
 		end
 	end
 	return out
@@ -152,7 +161,27 @@ function LorePanel.make(base: CFrame, parent: Instance, show: Vector3?, scan: In
 		tostring(spAt), tostring(sc), if sh then "" else " (NO FLOOR there)")
 end
 
--- the hubs' markers: a panel beside each that hasn't one
+-- how far behind a marker the wall is (its face, at knee and chest height, up to 4 studs back), from the same turned
+-- boxes as the Show spot; nil = no wall there
+local PANEL_BACK = 1.55 -- (the panel's back is 1.5 behind its base: its plinth; a hair more, so it never touches)
+local function wallBehind(boxes: { any }, at: Vector3, look: Vector3): number?
+	-- (fine steps, and a point within 0.01 of a box counts: a face right on the marker read as 0.1 behind, and the
+	-- Square's plinth went 0.05 in)
+	for t = 0, 4, 0.02 do
+		for _, h in { 1.5, 3.5 } do
+			local q = at + Vector3.new(0, h, 0) - look * t
+			for _, b in boxes do
+				if q.X >= b[1].X - 0.01 and q.X <= b[2].X + 0.01 and q.Y >= b[1].Y - 0.01 and q.Y <= b[2].Y + 0.01
+					and q.Z >= b[1].Z - 0.01 and q.Z <= b[2].Z + 0.01 and obbDist(b, q) <= 0.01 then return t end
+			end
+		end
+	end
+	return nil
+end
+
+-- the hubs' markers: a panel beside each that hasn't one. its back stands just off the wall behind the marker (26 Nov:
+-- a marker on the wall's face had the panel's plinth 1.5 studs into the wall; THE STILL's Clip check found it), so a
+-- marker anywhere from the wall's face to 4 studs out gives the same panel
 function LorePanel.fromSpots(): string
 	local map = workspace:FindFirstChild("Map")
 	local hub = map and map:FindFirstChild("Hub")
@@ -173,10 +202,13 @@ function LorePanel.fromSpots(): string
 		-- (the hub's own folder: what the Show spot keeps clear of)
 		local scan: Instance = spot
 		while scan.Parent and scan.Parent ~= hub do scan = scan.Parent :: Instance end
+		local tw = wallBehind(boxesNear(scan, at, spot), at, look)
+		if tw then at += look * (PANEL_BACK - tw) end
 		local m, report = LorePanel.make(CFrame.lookAt(at, at + look), parent, nil, scan)
 		m:SetAttribute("Spot", spot:GetFullName())
 		m:SetAttribute("Hub", spot:GetAttribute("Hub"))
-		table.insert(out, tostring(spot:GetAttribute("Hub")) .. ": " .. report)
+		table.insert(out, tostring(spot:GetAttribute("Hub")) .. ": " .. report
+			.. (if tw then (" (wall %.1f behind the marker: %.2f out)"):format(tw, PANEL_BACK - tw) else " (no wall behind)"))
 	end
 	return if #out > 0 then table.concat(out, " | ") else "no new panels"
 end
