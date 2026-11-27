@@ -125,7 +125,7 @@ function HC.build(K, parent, name, site, live)
 		local md = K.MODES[(k - 1) % 5 + 1]
 		local east = k > 5
 		local r0 = OC_R + 1.0
-		local back = OC_R + OB_D - 0.5
+		local back = OC_R + OB_D - 0.55 -- (the board 0.05 off the back wall's face, OC_R + OB_D - 0.5: HubKit push 182 builds the whole frame in front of boardAt)
 		local F = K.facing(ux * r0, OC_Z + uz * r0, ux, uz, OB_FLOOR)
 		local boardAt = K.facing(ux * back, OC_Z + uz * back, -ux, -uz, OB_FLOOR + 6.2 + 2.75) -- (flat on the back wall: the owner, "changed my mind no angeld")
 		if K.padClassic then

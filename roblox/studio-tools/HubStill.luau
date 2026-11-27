@@ -228,7 +228,7 @@ function HS.build(K, parent, name, site, live)
 		for _, sd in { -1, 1 } do -- (sd -1: left, the lifts bank)
 			local bank, id = if sd < 0 then "lifts" else "east", if sd < 0 then md.id else md.id .. "_e"
 			if K.padClassic then -- (the classic pad at the bay's mouth, its count board on the bay's back wall behind it)
-				local r0, rb = W_R + 1.0, W_R + WB_D - 0.6
+				local r0, rb = W_R + 1.0, W_R + WB_D - 0.65 -- (the board 0.05 off the back wall's face: HubKit push 182 builds the whole frame in front of boardAt)
 				local F = K.facing(ux * r0 - sd * lx * off, W_CZ + uz * r0 - sd * lz * off, ux, uz, WB_FLOOR)
 				local boardAt = K.facing(ux * rb - sd * lx * off, W_CZ + uz * rb - sd * lz * off, -ux, -uz, WB_FLOOR + 6.2 + 2.75) -- (flat on the back wall: the owner)
 				K.pad(F, md, bank, id, { boardAt = boardAt, boardTitle = false }) -- (one name per pad: the bay's lintel sign names it)
