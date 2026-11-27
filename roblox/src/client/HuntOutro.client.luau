@@ -569,26 +569,28 @@ local function play(a: any)
 				local from = CFrame.lookAt(scrP + scrN * fillDist(), scrP)
 				-- (v12, main: "no frame ever shows the shell's inside") the stretch where the lens would brush a body, the
 				-- chair or the couch is cut over: found once, on the pull's first frame
-				if not r.pullSkip then
-					local near: { BasePart } = {}
-					for _, d in room:GetDescendants() do
-						if d:IsA("BasePart") and d ~= screen and math.max(d.Size.X, d.Size.Y, d.Size.Z) <= 12 then table.insert(near, d) end
+				if r.pullSkip == nil then
+					-- (v13: from the sitters' head and root centres; accessory boxes are too loose to judge by)
+					local pts: { Vector3 } = {}
+					for _, bd in roomBodies do
+						for _, nm in { "Head", "HumanoidRootPart", "UpperTorso", "Torso" } do
+							local q = bd.m:FindFirstChild(nm) :: BasePart?
+							if q then table.insert(pts, q.Position) end
+						end
 					end
 					local function brushes(at: Vector3): boolean
-						for _, d in near do
-							local o = d.CFrame:PointToObjectSpace(at)
-							local h = d.Size / 2
-							local c = Vector3.new(math.clamp(o.X, -h.X, h.X), math.clamp(o.Y, -h.Y, h.Y), math.clamp(o.Z, -h.Z, h.Z))
-							if (o - c).Magnitude < 0.8 then return true end
-						end
+						for _, q in pts do if (at - q).Magnitude < 2.6 then return true end end
 						return false
 					end
 					local e0, e1 = nil, nil
 					for i = 0, 200 do
 						local x = i / 200
-						if brushes(from:Lerp(pullEnd, x).Position) then e0 = e0 or x; e1 = x end
+						local hit = brushes(from:Lerp(pullEnd, x).Position)
+						if hit and not e0 then e0 = x end
+						if e0 and not hit then e1 = x; break end
 					end
-					r.pullSkip = if e0 and e1 and e1 < 0.98 then { a = e0, b = math.min(1, e1 + 0.01) } else false
+					r.pullSkip = if e0 and e0 > 0.02 then { a = e0, b = e1 or 1 } else false
+					if RunService:IsStudio() then print(("[HuntOutro] pull cut: %s"):format(if r.pullSkip then ("%.2f -> %.2f"):format(e0, e1 or 1) else "none")) end
 				end
 				local k = r.pullSkip
 				if k and e >= k.a then e = k.b + (e - k.a) * (1 - k.b) / math.max(1e-3, 1 - k.a) end
