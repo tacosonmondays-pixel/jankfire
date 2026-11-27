@@ -12,7 +12,7 @@ ZM.R = {
 	start = 500, hit = 10, kill = 60, bonus = 100, -- credits: start with 500, +10 a hit, +60 a kill, +100 for a headshot or melee kill
 	hitCap = 10, hitGap = 0.18, -- a zombie pays for its first 10 hits only, one per 0.18 s per player
 	first = 6, rest = 10, -- s before round 1 / between rounds
-	hold = 0.3, power = 1, revive = 3, bleed = 30, -- hold E to buy / to throw the power switch / to revive; a downed friend lasts
+	hold = 0.3, power = 1, revive = 3, bleed = 30, -- hold Q to buy / to throw the power switch / to revive; a downed friend lasts
 	regenAfter = 4, regen = 25, -- 4 s without a hit and you heal 25 HP a second
 	swipe = 15, swipeRamp = 1, swipeMax = 34, swipeCd = 1.1, windup = 0.35, iframe = 0.45, -- the claws
 	reach = 1.5 * S, reachHit = 2.2 * S, reachUp = 2.6 * S, -- (reachUp: you can't hide on a crate)

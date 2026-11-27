@@ -574,3 +574,40 @@ server/ZombieLight.luau (installed after ZombieExtract) and client/ZombieLight.c
   reset as V would") after a moment: hold it with a RenderStepped connection for photos.
 - Sheet: roblox/docs/zombies/18-zombies-lights-27nov.jpg (dark without and with the light, the power on, the gate
   crowd's eyes). Place version 1631.
+
+### 4.12 The sounds of a game (27 Nov; the owner: "Can we also have zombie sounds start of round sound effects that's like imposing like what cod has, find what needs sound effects in gameplay and add it no generated stuff")
+client/ZombieSounds.client.luau (new); the picks and levels in roblox/assets/sounds/store.json (zm_*, written to Studio
+by `node tools/roblox/store_sounds.mjs only=zm_`). All recordings: Pro Sound Effects from Roblox's licensed library (no
+upload) and the CC0 takes already in JankfireSounds. The zombies' voices are the owner's exception to the no-voice rule,
+ZOMBIES only: creature groans, snarls, shrieks, gurgles, roars; never words, never a crowd. Our own round sting: no
+game's motif.
+| Event | Sound | Source | Volume |
+|---|---|---|---|
+| Round starts | zm_round + zm_roundbell | PSE Boom Impact Deep Distant Thumping Hits (9125404320, 9125402735, 9125403433) + Church Bell Single Hits Double At Head 2 (9113804175) | 0.46, 0.58 |
+| A boss round starts | zm_round + zm_roundboss, zm_gong 0.5 s on | Metal Tank Impact Deep Metallic Boom 1 (9116892160, from 0.65 s), Gong Chinese Style Single Hits (9125585534) | 0.33, 0.23 |
+| A boss on the way | zm_bossroar, 1.6 s after the sting | Monster Vocals (9116967076, 9116967078, trimmed) | 0.46 x 0.85 |
+| A round cleared | zm_roundend | Gong Hit Resonant Trail 1 (9114630316) | 0.26 |
+| Zombies near you | zm_groan (6 takes) | Monster Vocals (9116966503, 9116968241, 9116966525, 9116966789, 9116967966, 9116967624) | 0.40, 10-90 studs, jitter 8% |
+| One closes on you | zm_snarl (4) | Monster Vocals (9116965959, 9116966011, 9116965140, 9116965289) | 0.37 |
+| Its attack | zm_shriek (3) | Monster Vocals (9116965782, 9116968466, 9116965514) | 0.65 |
+| One dies | zm_zdie (2) | Monster Vocals (9116968247, 9116966797, trimmed) | 0.29 |
+| A claw on you | zm_swipe + zm_claw (with the game's own hurt) | Whoosh Heavy Punches 1, 2 (9120728815, 9120728883); Punch Kit Beefy Hit 3, 4, 7 (9117969717, 9117969878, 9117970193) | 0.35, 0.06 |
+| Someone goes down | zm_downed | Body Fall Heavy 3, Body Fall Thud 2 (9113470178, 9113480915) | 0.44 (x0.55 not you) |
+| Someone's revived | heal (the game's) | | |
+| A board torn off / nailed back | zm_planks / zm_board (CC0 takes already in the library, now wired) | Freesound CC0 (71149051809226, 91871213409913) | 0.7, 1.0 |
+| Credits | zm_credit (at most ~8 a second) | Coin Throws 3 (9113849651, first 0.5 s) | 0.05 |
+| A buy / a gun's ammo | zm_buy (+ zm_gunbuy) | Candy Machine Coin Drops Insert Vending 7 (9113704271), Ammo Magazine 1 (9113104176) | 1.3, 0.41 |
+| A buy refused | empty (the game's dry click) | | |
+| The power on | zm_power, then zm_flicker (the tubes' buzz) | Circuit Breaker 1 (9113808115) | 0.92 |
+| A power-up | zm_roundbell x 0.45 | | |
+| The extraction called | zm_gong x 0.8 | | |
+| Lift-off's last 10 s | zm_tick each second | Mantle Clock 2 (9116466272) | 0.23 |
+- **The voices' cap:** at most three zombie voices in any 1.6 s on a client, each zombie's next groan 5-12 s on (longer
+  the more are near, longer still for a boss), a snarl once per approach (within 11 studs, reset past 18), a death
+  gurgle 70% of the time, all positional (Sfx's roll-off) with pitch jitter.
+- **Levels:** store.json targets (zm_round -20, roundboss -22, gong -24, groan -27, snarl / shriek -24, claw -29, swipe
+  -30...). A recorded boss round clipped with everything at once (peak 1.0): the gong and the roar now follow the
+  boom, and the recording peaks at 0.67 (place version 1634).
+- **Not found in the library / not done:** a heartbeat at low HP, a zombie shuffle, a revive-start sound; zm_crate (a
+  chest creak) is in the library for the mystery crate but not wired (the crate's buy message can't be told apart).
+

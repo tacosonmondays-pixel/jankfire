@@ -3359,6 +3359,324 @@
     "region": null,
     "L": null
    }
+  ],
+  "zm_round": [
+   {
+    "id": 9125404320,
+    "title": "Boom Impact Deep Distant Thumping Hits Booming 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -14
+   },
+   {
+    "id": 9125402735,
+    "title": "Boom Impact Deep Distant Thumping Hits Booming 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -14
+   },
+   {
+    "id": 9125403433,
+    "title": "Boom Impact Deep Distant Thumping Hits Booming 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -14
+   }
+  ],
+  "zm_roundbell": [
+   {
+    "id": 9113804175,
+    "title": "Church Bell Single Hits Double At Head 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -19
+   }
+  ],
+  "zm_roundboss": [
+   {
+    "id": 9116892160,
+    "title": "Metal Tank Impact Deep Metallic Boom 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.65,
+     7.1
+    ],
+    "L": -13
+   }
+  ],
+  "zm_gong": [
+   {
+    "id": 9125585534,
+    "title": "Gong Chinese Style Single Hits Various Versions (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -12
+   }
+  ],
+  "zm_roundend": [
+   {
+    "id": 9114630316,
+    "title": "Gong Hit Resonant Trail 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -17
+   }
+  ],
+  "zm_groan": [
+   {
+    "id": 9116966503,
+    "title": "Monster Vocals 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 9116968241,
+    "title": "Monster Vocals 10 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -19
+   },
+   {
+    "id": 9116966525,
+    "title": "Monster Vocals 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 9116966789,
+    "title": "Monster Vocals 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -20
+   },
+   {
+    "id": 9116967966,
+    "title": "Monster Vocals 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -18
+   },
+   {
+    "id": 9116967624,
+    "title": "Monster Vocals 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -20
+   }
+  ],
+  "zm_snarl": [
+   {
+    "id": 9116965959,
+    "title": "Monster Vocals 14 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -16
+   },
+   {
+    "id": 9116966011,
+    "title": "Monster Vocals 15 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -16
+   },
+   {
+    "id": 9116965140,
+    "title": "Monster Vocals 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -17
+   },
+   {
+    "id": 9116965289,
+    "title": "Monster Vocals 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -15
+   }
+  ],
+  "zm_shriek": [
+   {
+    "id": 9116965782,
+    "title": "Monster Vocals 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 9116968466,
+    "title": "Monster Vocals 13 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 9116965514,
+    "title": "Monster Vocals 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "zm_zdie": [
+   {
+    "id": 9116968247,
+    "title": "Monster Vocals 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.4,
+     2.6
+    ],
+    "L": -16
+   },
+   {
+    "id": 9116966797,
+    "title": "Monster Vocals 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.65,
+     4.1
+    ],
+    "L": -16
+   }
+  ],
+  "zm_bossroar": [
+   {
+    "id": 9116967076,
+    "title": "Monster Vocals 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.7,
+     4.7
+    ],
+    "L": -12
+   },
+   {
+    "id": 9116967078,
+    "title": "Monster Vocals 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.7,
+     6.0
+    ],
+    "L": -14
+   }
+  ],
+  "zm_claw": [
+   {
+    "id": 9117969717,
+    "title": "Punch Kit Beefy Hit 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -8
+   },
+   {
+    "id": 9117969878,
+    "title": "Punch Kit Beefy Hit 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -5
+   },
+   {
+    "id": 9117970193,
+    "title": "Punch Kit Beefy Hit 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -4
+   }
+  ],
+  "zm_swipe": [
+   {
+    "id": 9120728815,
+    "title": "Whoosh Heavy Punches 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -22
+   },
+   {
+    "id": 9120728883,
+    "title": "Whoosh Heavy Punches 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "zm_downed": [
+   {
+    "id": 9113470178,
+    "title": "Body Fall Heavy 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -15
+   },
+   {
+    "id": 9113480915,
+    "title": "Body Fall Thud 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -18
+   }
+  ],
+  "zm_buy": [
+   {
+    "id": 9113704271,
+    "title": "Candy Machine Coin Drops Insert Vending 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -29
+   }
+  ],
+  "zm_credit": [
+   {
+    "id": 9113849651,
+    "title": "Coin Throws 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -12
+   }
+  ],
+  "zm_gunbuy": [
+   {
+    "id": 9113104176,
+    "title": "Ammo Magazine 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -18
+   }
+  ],
+  "zm_power": [
+   {
+    "id": 9113808115,
+    "title": "Circuit Breaker 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "zm_tick": [
+   {
+    "id": 9116466272,
+    "title": "Mantle Clock 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -17
+   }
+  ],
+  "zm_crate": [
+   {
+    "id": 9120881116,
+    "title": "Wood Groan Creak Opening Wood Chest Coffin 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.9,
+     3.7
+    ],
+    "L": -31
+   }
   ]
  },
  "vol": {
@@ -3561,7 +3879,26 @@
   "zm_heli": -24,
   "zm_wind": -34,
   "zm_board": -24,
-  "zm_planks": -26
+  "zm_planks": -26,
+  "zm_round": -20,
+  "zm_roundbell": -23,
+  "zm_roundboss": -22,
+  "zm_gong": -24,
+  "zm_roundend": -28,
+  "zm_groan": -27,
+  "zm_snarl": -24,
+  "zm_shriek": -24,
+  "zm_zdie": -26,
+  "zm_bossroar": -19,
+  "zm_claw": -29,
+  "zm_swipe": -30,
+  "zm_downed": -23,
+  "zm_buy": -26,
+  "zm_credit": -38,
+  "zm_gunbuy": -25,
+  "zm_power": -21,
+  "zm_tick": -29,
+  "zm_crate": -26
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -3653,7 +3990,14 @@
   "rig_missile": 0.03,
   "rig_missile_boom": 0.03,
   "rig_break": 0.02,
-  "zm_flicker": 0.06
+  "zm_flicker": 0.06,
+  "zm_groan": 0.08,
+  "zm_snarl": 0.06,
+  "zm_shriek": 0.05,
+  "zm_zdie": 0.06,
+  "zm_claw": 0.05,
+  "zm_swipe": 0.06,
+  "zm_credit": 0.04
  },
  "loop": {
   "minigun_spin": true,
@@ -3745,6 +4089,26 @@
   "zm_planks": [
    10,
    120
+  ],
+  "zm_groan": [
+   10,
+   90
+  ],
+  "zm_snarl": [
+   10,
+   100
+  ],
+  "zm_shriek": [
+   8,
+   90
+  ],
+  "zm_zdie": [
+   8,
+   90
+  ],
+  "zm_bossroar": [
+   20,
+   260
   ]
  }
 }
