@@ -314,6 +314,10 @@ wrap("numsoup", "Number Soup", "epic", { "ffc83a", "f4f4f4" }, "speck", nil, 0.1
 wrap("sweater", "Ugly Sweater", "epic", { "d02a34", "2a7a3a", "f4f4f4" }, "cycle", "Fabric")
 wrap("opal", "Opal", "legendary", { "c8f0ff", "ffc8f0", "c8ffd8" }, "fade", "Foil", 0.2)
 wrap("lavalamp", "Lava Lamp", "legendary", { "ff7a2a", "ff2a6a" }, "fade", nil, nil, nil, { 2 })
+-- LIVING CAMOS (27 Nov 2026, the owner: "lava that courses through and glows"): Molten's picture is a flipbook of dark
+-- basalt with lava coursing through it, and it lights the gun (client/WrapAnim LIVING CAMOS; Lava Lamp became living
+-- too). the palette is only for a piece without UVs
+wrap("molten", "Molten", "legendary", { "1a1412", "ff6a1a" }, "speck", nil, nil, nil, { 2 })
 wrap("vapor", "Vaporwave", "legendary", { "ff4fd8", "4fd8ff" }, "fade", nil, nil, nil, { 1 })
 wrap("nebula", "Nebula", "legendary", { "2a1a5a", "8a5aff", "ff4fd8" }, "speck", nil, nil, nil, { 2, 3 })
 wrap("aurora", "Aurora", "legendary", { "39ff9a", "4fd8ff", "b36bff" }, "fade", nil, nil, nil, { 1 })
@@ -349,7 +353,9 @@ for i = #Roster.wraps, 1, -1 do if Roster.wraps[i].mastery then table.insert(Ros
 -- Legendary. in the spray sets, three a set (LootTable.SPRAY_SETS); Triangulum and the mastery camos keep their own
 -- routes (the VIP daily reward, weapon level) and only read Exotic. a wrap that starts moving: add its id here
 Roster.EXOTIC = { "galaxy", "nebula", "blackhole", "koi", "sakura", "bigwave", "kintsugi", "holo", "stained", "lava", "aurora", "opal",
-	"lavalamp", "vapor", "tokyo", "crt", "circuit", "hex", "triangulum", "mastery_gold", "mastery_diamond", "mastery_galaxy" }
+	"lavalamp", "vapor", "tokyo", "crt", "circuit", "hex", "triangulum", "mastery_gold", "mastery_diamond", "mastery_galaxy",
+	-- (27 Nov, the wraps session: the living camos)
+	"molten" }
 for _, id in Roster.EXOTIC do
 	local w = Roster.wrapById[id]
 	if w then w.rarity = "exotic" end

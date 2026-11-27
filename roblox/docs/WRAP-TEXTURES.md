@@ -548,6 +548,47 @@ session). No descriptor words (GLOWS, SHINY) on wraps any more.
   3.91 ms with them taken out (108 Textures in the world). The glint's sweep was not caught in a still; check it moving.
 - Before and after in the Edit photo booth: `wrap-textures/normal-reverse/booth-before-after.jpg`.
 
+## Living camos (27 Nov 2026)
+
+The owner: "are you able to make some camos like warp around like a lavalamp one, can it have properities like
+that? ... maybe one of them has lighting effects, lava that courses through and glows". WRAP FLOW (above) only slides
+a picture over the gun. These change shape, so each one is a flipbook of whole wrap pictures.
+
+- **The two:**
+  - **Lava Lamp** (its old static picture replaced): warm blobs rise and sink through a plum ground, meeting and
+    splitting.
+  - **Molten** (new): lava rivers course through dark basalt, bright pulses running down them; a PointLight in the
+    gun's biggest pattern piece swells and fades with them.
+  - Both are Exotic (`Roster.EXOTIC`: the owner's rule that a moving wrap is Exotic).
+- **Liquid Chrome failed.** Its first take read as "smoke". A full redesign (a mirrored studio sky, horizon and softbox
+  windows) read as "melted plastic, glints from no light". That is 3 AI calls out of 4 critics, so it stays the plain
+  Metal wrap. Its generator (`chrome` in `wrap_living.py`) is kept for a later try.
+- **Drawing:** `tools/roblox/wrap_living.py <out dir> [kinds]` draws 32 frames a kind at 512 px (colour, plus a glow
+  mask per frame). Each frame is seamless across the tile, and the loop is seamless in time: every wave turns a whole
+  number of times per loop.
+  - Check after drawing: the step between frames, last to first, and the edge seams. Molten: step 22, seams 3.5 / 2.9,
+    neighbour 3.5.
+  - Look at every frame before uploading (contact sheets; the upload rules): 128 images, all approved.
+- **The book:** `py -3.12 tools/roblox/wrap_living.py book <out dir>` writes `studio-tools/WrapLivingBook.luau` from
+  the upload manifest. Run it in Edit, and again after any `WrapBook.luau` run: that one's delete loop removes
+  JankfireWraps entries it doesn't know. It builds:
+  - `ReplicatedStorage.JankfireWrapLiving.<id>`: one SurfaceAppearance per frame, with the attributes Fps, and Light /
+    LightColor / LightLo / LightHi / LightPeriod / LightRange;
+  - `JankfireWraps.<id>`: frame 1 as the still picture, which is what WeaponModels lays and every picker shows.
+- **Running it** (`client/WrapAnim`, LIVING CAMOS):
+  - The worn WrapSA (the anchor) is tucked into a folder `WrapLiving` on its piece. It stays in the place, so tag
+    signals and the pickers' halo still find it.
+  - Untagged clones (`WrapFrame`) take turns on the piece at Fps, off the server clock, so every copy runs in step.
+  - The anchor's glow (breathing, the pickers' gain) is copied onto each frame.
+  - Each book's frames are preloaded once before its first swap. Without that, the first loop flashed the gun's
+    factory paint.
+  - Runs on: the held gun, the pickers, and the 6 nearest world guns within 70 studs. Another player's gun stops when
+    GRAPHICS > OTHER PLAYERS' SKIN EFFECTS is off.
+  - `WeaponModels.restore` clears `WrapLiving` / `WrapFrame`.
+- **Not used:** EditableImage, which fails in published games unless the owner turns on "Allow Mesh / Image APIs".
+  Swapping whole SurfaceAppearances was ruled out for WRAP FLOW because of a texture load per swap. Preloading the
+  frames once removes that cost.
+
 ## The AI and duplicates audit (27 Nov 2026)
 
 The owner: "go through and remove camos that people will look at and think ai right away, also an redundant camos".

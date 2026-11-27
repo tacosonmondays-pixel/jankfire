@@ -429,6 +429,7 @@ RunService.RenderStepped:Connect(function()
 			if sa.Parent and sa:IsDescendantOf(vp) then
 				if not model then
 					local m = sa.Parent :: Instance
+					if m.Name == "WrapLiving" and m.Parent then m = m.Parent end -- (a living wrap keeps its picture in a folder: LIVING CAMOS)
 					while m.Parent and m.Parent ~= vp and m.Parent:IsA("Model") do m = m.Parent end
 					model = m
 				end
@@ -597,9 +598,7 @@ local FLOW: { [string]: { Layer } } = {
 	sakura = { { tex = "petals", u = 0.45, v = 0.45, speed = 0.04, rise = -0.02, glow = 0.5, tint = Color3.fromHex("ffd6e4"), a = 0.9 } },
 	-- (Vaporwave: the neon grid scrolls toward you, like the grid floor under a horizon)
 	vapor = { { tex = "grid", u = 0.16, v = 0.16, speed = 0.06, glow = 2.2, tint = Color3.fromHex("ff74dc"), a = 0.42 } },
-	-- (Lava Lamp: soft blobs rising)
-	lavalamp = { { tex = "blobs", u = 0.4, v = 0.4, speed = 0, rise = 0.022, glow = 1.8, tint = Color3.fromHex("ff9a5a"), a = 0.5,
-		sides = { "left", "right" } } },
+	-- (Lava Lamp: its own picture moves since 27 Nov: LIVING CAMOS below)
 	-- (a slow light through the panes; the opal's fire catching)
 	stained = { { tex = "glint", u = 3.6, v = 0.8, speed = 0.5, glow = 1.6, tint = Color3.fromHex("fff0d6"), a = 0.55 } },
 	opal = { { tex = "glint", u = 3.4, v = 0.7, speed = 0.55, glow = 2.0, tint = Color3.fromHex("f6eaff"), a = 0.7 } },
@@ -793,6 +792,197 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 	end
 	if changed then flowCount() end
+end)
+
+-- LIVING CAMOS (27 Nov 2026; the owner: "are you able to make some camos like warp around like a lavalamp one, can it
+-- have properities like that? ... maybe one of them has lighting effects, lava that courses through and glows";
+-- docs/WRAP-TEXTURES.md "Living camos"). WRAP FLOW only slides a picture; these change SHAPE: blobs that meet and
+-- split (Lava Lamp), lava rivers coursing through dark rock (Molten). Each is a FLIPBOOK of whole wrap pictures
+-- (tools/roblox/wrap_living.py draws the seamless loop; ReplicatedStorage.JankfireWrapLiving.<id> holds one
+-- SurfaceAppearance per frame, built in Edit by studio-tools/WrapLivingBook.luau): on every pattern piece the worn
+-- picture (the "anchor", WeaponModels.wrap's tagged WrapSA, which is frame 1) is tucked into a folder WrapLiving (still
+-- in the place, so nothing else sees it leave) and untagged frame clones take turns on the piece, off the server's
+-- clock so every copy runs in step. The anchor's glow (breathing, the pickers' gain) is copied onto each frame.
+-- A wrap whose book has the attribute Light also lights the gun: a PointLight in its biggest pattern piece, its
+-- brightness swelling and fading with one looping tween (Molten: "lava that courses through and glows").
+-- Cost: only on a frame change (Fps a second): two Parent writes and two glow writes per piece. Only guns in view run:
+-- the held gun always, world guns within LIVE_NEAR studs (the LIVE_MAX nearest), the pickers' guns; a gun in someone
+-- else's hands stops when GRAPHICS > OTHER PLAYERS' SKIN EFFECTS is off. Stopped pieces rest on their own frame.
+-- Attributes: LiveGuns (guns running), LiveUs (the slowest frame change of the last second, microseconds).
+local LIVE_NEAR = 70
+local LIVE_MAX = 6
+type Live = { anchor: SurfaceAppearance, part: BasePart, gun: Instance, frames: { SurfaceAppearance }, cur: number,
+	fps: number, on: boolean, vp: boolean, book: string }
+-- (a frame worn before its pictures are loaded shows the gun's factory paint for a moment: the 27 Nov test flashed teal
+-- through the whole first loop. so each living wrap's frames are preloaded once, the first time a gun wears it, and its
+-- pieces hold frame 1, the anchor's own picture, until that is done)
+local liveReady: { [string]: boolean | "loading" } = {}
+local ContentProvider = game:GetService("ContentProvider")
+local function livePreload(id: string, frames: { SurfaceAppearance })
+	if liveReady[id] then return end
+	liveReady[id] = "loading"
+	task.spawn(function()
+		pcall(function() ContentProvider:PreloadAsync(frames) end) -- (it may report Failure for working ids; it still loads)
+		task.wait(0.5)
+		liveReady[id] = true
+	end)
+end
+local lives: { [SurfaceAppearance]: Live } = {}
+local liveLights: { [Instance]: { light: PointLight, tween: Tween?, part: BasePart } } = {}
+local liveDirty: { [Instance]: boolean } = {}
+local function liveBook(id: string): Folder?
+	local f = ReplicatedStorage:FindFirstChild("JankfireWrapLiving")
+	local b = f and f:FindFirstChild(id)
+	return if b and b:IsA("Folder") then b else nil
+end
+local function liveFrames(book: Folder): { SurfaceAppearance }
+	local fr = {}
+	for _, c in book:GetChildren() do if c:IsA("SurfaceAppearance") then table.insert(fr, c) end end
+	table.sort(fr, function(a, b) return a.Name < b.Name end)
+	return fr
+end
+-- one light per gun, in its biggest living piece, for a book that asks for it
+local function liveLight(gun: Instance)
+	liveDirty[gun] = nil
+	local best: Live?, bestA = nil, 0
+	for _, L in lives do
+		if L.gun ~= gun or not L.part.Parent then continue end
+		local id = L.anchor:GetAttribute("Wrap")
+		local book = if type(id) == "string" then liveBook(id) else nil
+		if not (book and book:GetAttribute("Light")) then continue end
+		local z = L.part.Size
+		local a = z.X * z.Y + z.Y * z.Z + z.X * z.Z
+		if a > bestA then best, bestA = L, a end
+	end
+	local old = liveLights[gun]
+	if old and (not best or old.part ~= best.part) then
+		if old.tween then old.tween:Cancel() end
+		old.light:Destroy()
+		liveLights[gun] = nil
+		old = nil
+	end
+	if not best or old then return end
+	local id = best.anchor:GetAttribute("Wrap") :: string
+	local book = liveBook(id) :: Folder
+	local col = book:GetAttribute("LightColor")
+	local kk = gun:GetAttribute("K")
+	local k = if type(kk) == "number" and kk > 0 then kk else 4.5
+	local lt = Instance.new("PointLight")
+	lt.Name = "WrapLight"
+	lt.Color = if typeof(col) == "Color3" then col else Color3.fromHex("ff7a2a")
+	lt.Range = (book:GetAttribute("LightRange") or 1.1) * k -- (metres of light round the gun, x its studs a metre)
+	lt.Shadows = false
+	local lo, hi = book:GetAttribute("LightLo") or 0.35, book:GetAttribute("LightHi") or 1.1
+	lt.Brightness = lo
+	lt.Parent = best.part
+	local tw = TweenService:Create(lt, TweenInfo.new(book:GetAttribute("LightPeriod") or 1.7, Enum.EasingStyle.Sine,
+		Enum.EasingDirection.InOut, -1, true), { Brightness = hi })
+	tw:Play()
+	liveLights[gun] = { light = lt, tween = tw, part = best.part }
+end
+local function liveDrop(L: Live)
+	for _, f in L.frames do f:Destroy() end
+	table.clear(L.frames)
+	local fold = L.part:FindFirstChild("WrapLiving")
+	if fold and fold.Parent and #fold:GetChildren() == 0 then fold:Destroy() end
+	if not liveDirty[L.gun] then liveDirty[L.gun] = true; task.defer(liveLight, L.gun) end
+end
+local function addLive(inst: Instance)
+	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) or lives[inst] then return end
+	if inst.Name ~= "WrapSA" or inst:GetAttribute("Partner") then return end
+	local id = inst:GetAttribute("Wrap")
+	local book = if type(id) == "string" then liveBook(id) else nil
+	local part = inst.Parent
+	if not (book and part and part:IsA("BasePart")) then return end
+	local gun = gunOf(part)
+	if not gun then return end
+	local src = liveFrames(book)
+	if #src < 2 then return end
+	-- the anchor moves into a folder on the same piece: it stays in the place (no tag signal, the pickers keep it),
+	-- but no longer paints the piece; untagged clones of the frames take turns instead
+	local fold = part:FindFirstChild("WrapLiving") or Instance.new("Folder")
+	fold.Name = "WrapLiving"
+	fold.Parent = part
+	inst.Parent = fold
+	local frames = {}
+	for _, f in src do
+		local c = f:Clone()
+		c.Name = "WrapFrame"
+		c.EmissiveStrength = inst.EmissiveStrength
+		c.EmissiveTint = inst.EmissiveTint
+		table.insert(frames, c)
+	end
+	frames[1].Parent = part
+	livePreload(id :: string, frames)
+	lives[inst] = { anchor = inst, part = part, gun = gun, frames = frames, cur = 1, fps = book:GetAttribute("Fps") or 8,
+		on = true, vp = inst:FindFirstAncestorOfClass("ViewportFrame") ~= nil, book = id :: string }
+	if not liveDirty[gun] then liveDirty[gun] = true; task.defer(liveLight, gun) end
+end
+for _, sa in CS:GetTagged("WrapSA") do task.defer(addLive, sa) end
+CS:GetInstanceAddedSignal("WrapSA"):Connect(function(inst) task.defer(addLive, inst) end) -- (after the wrap is laid)
+CS:GetInstanceRemovedSignal("WrapSA"):Connect(function(inst)
+	local L = lives[inst :: any]
+	if L then lives[inst :: any] = nil; liveDrop(L) end
+end)
+local liveAcc, liveNear, liveWorst, liveWorstAcc = 0, 0, 0, 0
+RunService.RenderStepped:Connect(function(dt: number)
+	if next(lives) == nil then return end
+	liveNear += dt; liveWorstAcc += dt
+	local cam = workspace.CurrentCamera
+	if liveNear >= 0.5 and cam then
+		-- who runs: the held gun, the pickers, and the LIVE_MAX nearest world guns in view within LIVE_NEAR
+		liveNear = 0
+		local at = cam.CFrame.Position
+		local far: { { L: Live, d: number } } = {}
+		local guns = 0
+		local seen: { [Instance]: boolean } = {}
+		for sa, L in lives do
+			if not (sa.Parent and L.part.Parent) then lives[sa] = nil; liveDrop(L); continue end
+			local hidden = L.part.LocalTransparencyModifier >= 0.5 or L.part.Transparency >= 0.99
+			local fp = L.gun:IsDescendantOf(cam)
+			local on = not hidden and not (othersOff and isOthers(L.gun))
+			if on and not (fp or L.vp) then
+				local d = (L.part.Position - at).Magnitude
+				if d > LIVE_NEAR then on = false else table.insert(far, { L = L, d = d }) end
+			end
+			L.on = on
+			if on and not seen[L.gun] then seen[L.gun] = true; guns += 1 end
+			local lt = liveLights[L.gun]
+			if lt and lt.part == L.part then lt.light.Enabled = not hidden end
+		end
+		-- (too many world guns: the farthest rest)
+		table.sort(far, function(a, b) return a.d < b.d end)
+		local keep: { [Instance]: boolean } = {}
+		local n = 0
+		for _, x in far do
+			if not keep[x.L.gun] then
+				n += 1
+				if n > LIVE_MAX then x.L.on = false else keep[x.L.gun] = true end
+			end
+		end
+		script:SetAttribute("LiveGuns", guns)
+	end
+	local t = workspace:GetServerTimeNow()
+	local t0 = os.clock()
+	for _, L in lives do
+		if not L.on or liveReady[L.book] ~= true then continue end
+		local n = #L.frames
+		if n == 0 then continue end
+		local i = math.floor(t * L.fps) % n + 1
+		if i == L.cur then continue end
+		local prev, nxt = L.frames[L.cur], L.frames[i]
+		nxt.EmissiveStrength = L.anchor.EmissiveStrength -- (the anchor's breathing and the pickers' gain carry over)
+		nxt.EmissiveTint = L.anchor.EmissiveTint
+		nxt.Parent = L.part
+		if prev then prev.Parent = nil end
+		L.cur = i
+	end
+	local us = (os.clock() - t0) * 1e6
+	if us > liveWorst then liveWorst = us end
+	if liveWorstAcc >= 1 then
+		script:SetAttribute("LiveUs", math.floor(liveWorst + 0.5))
+		liveWorst, liveWorstAcc = 0, 0
+	end
 end)
 
 local acc, nearAcc, worst, worstAcc = 0, 0, 0, 0

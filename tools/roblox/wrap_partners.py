@@ -106,13 +106,24 @@ def partner_of(path, wid=None):
 
 def main():
     dirs = sys.argv[1:]
+    merge = '--merge' in dirs          # (keep the file's other rows: replace or add only the wraps found in the dirs)
+    dirs = [d for d in dirs if d != '--merge']
     found = {}
     for d in dirs:
         for f in sorted(os.listdir(d)):
             if f.endswith('_color.png') and not f.startswith('flow_'):
                 found.setdefault(f[:-len('_color.png')], os.path.join(d, f))
     rows = []
-    for wid in sorted(found):
+    old = {}
+    if merge and os.path.exists(OUT):
+        import re
+        for line in open(OUT, encoding='utf-8'):
+            m = re.match(r'\t([a-z0-9_]+) = \{ k = ', line)
+            if m and m.group(1) not in found:
+                old[m.group(1)] = line.rstrip('\n')
+    for wid in sorted(set(found) | set(old)):
+        if wid in old:
+            rows.append(old[wid]); continue
         p = partner_of(found[wid], wid)
         t = (', t = Color3.fromHex("%s")' % p['t']) if p['t'] else ''
         rows.append('\t%s = { k = "%s", c = Color3.fromHex("%s")%s }, -- L* %.0f' % (wid, p['k'], p['c'], t, p['L']))

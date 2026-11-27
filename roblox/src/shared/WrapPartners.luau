@@ -48,7 +48,7 @@ local P: { [string]: Partner } = {
 	kintsugi = { k = "metal", c = Color3.fromHex("65563d") }, -- L* 21
 	koi = { k = "metal", c = Color3.fromHex("695550") }, -- L* 40
 	lava = { k = "metal", c = Color3.fromHex("74523b") }, -- L* 27
-	lavalamp = { k = "metal", c = Color3.fromHex("76513d") }, -- L* 41
+	lavalamp = { k = "metal", c = Color3.fromHex("72533a") }, -- L* 31
 	leopard = { k = "deep", c = Color3.fromHex("452900"), t = Color3.fromHex("655500") }, -- L* 59
 	marble = { k = "deep", c = Color3.fromHex("4a4452"), t = Color3.fromHex("65606b") }, -- L* 76
 	mastery_damascus = { k = "deep", c = Color3.fromHex("2f252a"), t = Color3.fromHex("6b5761") }, -- L* 51
@@ -59,6 +59,7 @@ local P: { [string]: Partner } = {
 	memo = { k = "deep", c = Color3.fromHex("53424c"), t = Color3.fromHex("655258") }, -- L* 84
 	memphis = { k = "deep", c = Color3.fromHex("54433d"), t = Color3.fromHex("604d43") }, -- L* 90
 	missing = { k = "metal", c = Color3.fromHex("704f6c") }, -- L* 30
+	molten = { k = "metal", c = Color3.fromHex("61432b") }, -- L* 15
 	moss = { k = "metal", c = Color3.fromHex("545d46") }, -- L* 38
 	nebula = { k = "metal", c = Color3.fromHex("514566") }, -- L* 16
 	numsoup = { k = "deep", c = Color3.fromHex("573b13"), t = Color3.fromHex("6e674c") }, -- L* 67

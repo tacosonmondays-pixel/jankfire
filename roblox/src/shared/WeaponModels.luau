@@ -646,9 +646,10 @@ local function restore(p: BasePart)
 	if p:IsA("MeshPart") and type(tex) == "string" then p.TextureID = tex end
 	local worn = p:FindFirstChild("WrapSA")
 	if worn then worn:Destroy() end
-	for _, n in { "WrapHole", "WrapHoleGlow" } do
+	-- (a living camo's anchor sits in the folder WrapLiving and its current frame is a WrapFrame: client/WrapAnim)
+	for _, n in { "WrapHole", "WrapHoleGlow", "WrapLiving", "WrapFrame" } do
 		local g = p:FindFirstChild(n)
-		if g then g:Destroy() end
+		while g do g:Destroy(); g = p:FindFirstChild(n) end
 	end
 	local sa = stash[p]
 	if sa then sa.Parent = p; stash[p] = nil end
