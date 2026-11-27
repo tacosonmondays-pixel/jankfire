@@ -116,6 +116,13 @@ in the same folder.
   - Classic modes end another way: their scene starts the same warm itself. THE RISER's meshes are Precise (Edit).
   - The first-person viewmodel (workspace.CurrentCamera) and the pet are hidden every frame from the scene's first
     frame. Scene.start doesn't step itself: the bound step runs after the viewmodel's and the pet's own.
+  - Each ready body gets its weapon at the warm too, and with no map spot the warm puts THE RISER in the workspace
+    (48,000 studs out, kept there between matches): preloaded isn't drawn, a mesh cloned on the first frame lags.
+  - Every body copy is stripped of TPGun / TPItem / TPRigArms / HeldWeapon and every tag the moment it's made
+    (ThirdPerson draws on a TPRig-tagged copy).
+  - The scene opens black for at least 3 frames and 0.1 s: the scene's light comes in on its first frame and the
+    renderer catches up a frame later, and an R6 body's clothes could lag 3 frames (v1618: Station and THE RISER
+    clean from the first visible frame, fresh Play).
   - Test it: `JankVictoryTest("warm", player)` sends the warm (a ghost match ends on its clock, never through a round);
     call it ~1.2 s before the ghost's end. Frame check: record, `tools/roblox/vid_all.py`, `popscan.py`.
 - **Phone:** the card follows TouchTest's `fake:WxH` box (player attribute `FakeScreen`); on a short screen it pins near

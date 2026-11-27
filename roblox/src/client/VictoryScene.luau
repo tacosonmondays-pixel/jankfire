@@ -211,6 +211,18 @@ end
 -- THE BODIES, READY (27 Nov frame check: a body put in the world for the first time draws grey for a few frames while
 -- its clothes go on it - preloading doesn't help - so the winners' bodies are built when the match is won, parked far
 -- below THE RISER out of every lens, and the scene takes those instead of building its own)
+-- (strip a body copy of the game's own systems at once - finishers' lesson, 27 Nov, PERFORMANCE.md: a copy kept the TPRig
+-- tag and ThirdPerson drew its gun on it for a couple of frames. our own weapon, VictorWeapon, is added after)
+local CollectionService = game:GetService("CollectionService")
+local function stripCopy(m: Model)
+	for _, d in m:GetDescendants() do
+		if d.Name == "TPGun" or d.Name == "TPItem" or d.Name == "TPRigArms" or d.Name == "HeldWeapon" then d:Destroy() end
+	end
+	for _, x in { m :: Instance, table.unpack(m:GetDescendants()) } do
+		for _, tag in CollectionService:GetTags(x) do CollectionService:RemoveTag(x, tag) end
+	end
+	m:SetAttribute("TPPlayer", nil); m:SetAttribute("TPWeapon", nil)
+end
 local prebuilt: { [number]: Model } = {}
 -- (built straight into the scene's own folder, which the scene then takes: moved to another parent, an R15 body with
 -- clothes redid them and went invisible for 2-3 frames - the 27 Nov frame check)
@@ -231,6 +243,7 @@ local function prebuild(uids: { number })
 		local src = sourceOf(uid)
 		if not src then continue end
 		local m = Replay.clean(src) :: Model
+		stripCopy(m)
 		m.Name = "Ready_" .. tostring(uid)
 		-- (parked far below THE RISER. a body far from the camera may still come in grey for 1-2 frames on some maps; parking
 		-- it behind the live camera put it in the scene lens's view on the cut frame: the 27 Nov frame check, left open)
@@ -257,6 +270,7 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, 
 		local src = sourceOf(entry.uid)
 		if not src then return nil end
 		m = Replay.clean(src) :: Model
+		stripCopy(m)
 	end
 	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not root then m:Destroy(); return nil end
@@ -828,7 +842,7 @@ end
 type State = {
 	msg: any, win: boolean, len: number, t0: number, hold: boolean, held: number?, frame: CFrame, folder: Folder,
 	bodies: { Body }, look: any, cc: ColorCorrectionEffect, bloom: BloomEffect, fov: number, shots: { any }, sting: Sound?,
-	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?, arrive: any?,
+	holdK: any, spot: any?, lit: { Light }, blurs: { [Instance]: boolean }, sweptAt: number, walk: any?, arrive: any?, lead: any?,
 }
 local st: State? = nil
 local warmNow: any = nil -- (the prewarm's handle: Scene.warm)
@@ -870,6 +884,10 @@ end
 local function step(dt: number?)
 	local s = st
 	if not s then return end
+	if s.lead then
+		s.lead.frames += 1
+		if s.lead.frames > 3 and os.clock() - s.lead.t0 >= 0.1 then s.lead.gui:Destroy(); s.lead = nil end
+	end
 	if Replay.mode and Replay.mode() == "potm" then Scene.stop("replay"); return end -- (the play of the match has the screen)
 	local t = os.clock() - s.t0
 	local fz = workspace:GetAttribute("VictoryFreeze") -- (Studio photos: the lens held at that moment)
@@ -1072,6 +1090,17 @@ function Scene.start(msg: any, opts: any?): boolean
 		end
 		if not (opts and opts.quiet) then s.sting = sting(win) end
 	end
+	-- the black lead (finishers' lesson, 27 Nov): the scene's light (THE RISER's look, a spot's lamps) comes in on its first
+	-- frame and the renderer catches up a frame later; a body or a mesh new to the screen can lag a few frames too. the
+	-- first frames are held black, at least 3 and 0.1 s, as a cut from the game reads
+	do
+		local g = Instance.new("ScreenGui")
+		g.Name = "JankVictoryLead"; g.ResetOnSpawn = false; g.IgnoreGuiInset = true; g.DisplayOrder = 60
+		local f = Instance.new("Frame")
+		f.BackgroundColor3 = Color3.new(0, 0, 0); f.BorderSizePixel = 0; f.Size = UDim2.fromScale(1, 1); f.Parent = g
+		g.Parent = me:WaitForChild("PlayerGui")
+		s.lead = { gui = g, frames = 0, t0 = os.clock() }
+	end
 	-- (no step() here: called from the remote's handler it ran before the viewmodel's and the pet's own render steps, which
 	-- put them back on the scene's first frame - the 27 Nov frame check. the bound step, after theirs, draws that frame)
 	RunService:BindToRenderStep("JankVictoryCam", Enum.RenderPriority.Last.Value + 80, step)
@@ -1202,6 +1231,7 @@ function Scene.stop(why: string?)
 	end
 	Scene.unwarm()
 	dropPrebuilt() -- (the ones no lens used)
+	if s.lead then s.lead.gui:Destroy(); s.lead = nil end
 	if s.walk then
 		local W = s.walk
 		if W.fear and W.fear.gui then W.fear.gui:Destroy() end
