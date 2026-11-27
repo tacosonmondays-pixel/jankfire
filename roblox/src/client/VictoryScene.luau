@@ -232,12 +232,15 @@ local function prebuild(uids: { number })
 		if not src then continue end
 		local m = Replay.clean(src) :: Model
 		m.Name = "Ready_" .. tostring(uid)
+		-- (parked far below THE RISER. a body far from the camera may still come in grey for 1-2 frames on some maps; parking
+		-- it behind the live camera put it in the scene lens's view on the cut frame: the 27 Nov frame check, left open)
 		m:PivotTo(CFrame.new(STAGE_AT + Vector3.new(i * 8, -400, 0)))
 		m.Parent = readyFolder
 		prebuilt[uid] = m
 	end
 end
 local function dropPrebuilt()
+	pcall(function() RunService:UnbindFromRenderStep("JankVictoryReady") end)
 	for _, m in prebuilt do m:Destroy() end
 	table.clear(prebuilt)
 end
@@ -779,13 +782,16 @@ end
 -- it has no Humanoid, so the look above misses it: v1449, The Gut's spot. written every frame: the pet's follower
 -- rewrites its parts' LocalTransparencyModifier now and then so nothing can leave it hidden - the spot check, 27 Nov,
 -- found it standing by the team on four maps)
+-- (by Transparency, which the follower never writes: its LocalTransparencyModifier write could land after this step and
+-- show the pet for a frame - the 27 Nov frame check)
+local petT: { [Instance]: number } = {}
 local function hidePets()
 	local f = workspace:FindFirstChild("ClientPets")
 	if not f then return end
 	for _, x in f:GetDescendants() do
 		if x:IsA("BasePart") or x:IsA("Decal") then
-			if hiddenNear[x] == nil then hiddenNear[x] = (x :: any).LocalTransparencyModifier end
-			if (x :: any).LocalTransparencyModifier ~= 1 then (x :: any).LocalTransparencyModifier = 1 end
+			if petT[x] == nil then petT[x] = (x :: any).Transparency end
+			if (x :: any).Transparency ~= 1 then (x :: any).Transparency = 1 end
 		elseif x:IsA("Highlight") and x.Enabled then -- (its pink outline draws even with the parts hidden)
 			hiddenNear[x] = 1; x.Enabled = false
 		end
@@ -805,6 +811,8 @@ local function hideCam()
 	end
 end
 local function showNear()
+	for x, v in petT do if x.Parent then (x :: any).Transparency = v end end
+	table.clear(petT)
 	for x, v in hiddenNear do
 		if x.Parent then
 			if x:IsA("LayerCollector") or x:IsA("Highlight") then (x :: any).Enabled = true else (x :: any).LocalTransparencyModifier = v end
@@ -821,6 +829,7 @@ type State = {
 }
 local st: State? = nil
 local warmNow: any = nil -- (the prewarm's handle: Scene.warm)
+local warming = false -- (a prewarm under way)
 
 local function ease(u: number, kind: string): number
 	u = math.clamp(u, 0, 1)
@@ -1063,7 +1072,7 @@ function Scene.start(msg: any, opts: any?): boolean
 	-- (no step() here: called from the remote's handler it ran before the viewmodel's and the pet's own render steps, which
 	-- put them back on the scene's first frame - the 27 Nov frame check. the bound step, after theirs, draws that frame)
 	RunService:BindToRenderStep("JankVictoryCam", Enum.RenderPriority.Last.Value + 80, step)
-	if not warmNow then -- (no warm before it: a classic mode's end)
+	if not warmNow and not warming then -- (no warm before it: a classic mode's end)
 		local uids = {}
 		for _, e in stage do if type(e.uid) == "number" then table.insert(uids, e.uid) end end
 		task.spawn(Scene.warm, spot, uids)
@@ -1078,7 +1087,10 @@ end
 -- released when the scene stops (or after 30 s if no scene comes)
 function Scene.warm(spot: any?, uids: { number }?): any?
 	Scene.unwarm()
-	prebuild(uids or {})
+	-- (marked at once: a prewarm runs past the 1.2 s lead on a heavy map, and the scene mustn't start a second one - nor
+	-- build a second set of bodies once it is on: the 27 Nov frame check, a stray body at the lens on DesertV2)
+	warming = true
+	if not st then prebuild(uids or {}) end
 	local shots, points = {}, {}
 	if type(spot) == "table" and typeof(spot.hero) == "CFrame" then
 		if spot.kind == "walk" and type(spot.path) == "table" then
@@ -1129,6 +1141,7 @@ function Scene.warm(spot: any?, uids: { number }?): any?
 		for _, v in t do if type(v) == "string" and string.sub(v, 1, 13) == "rbxassetid://" then table.insert(anims, v) end end
 	end
 	local ok, w = pcall(CineKit.prewarm, shots, { key = "JankVictoryWarm", points = points, sets = sets, anims = anims, timeout = 4, keepFor = 30 })
+	warming = false
 	if not ok then
 		if RunService:IsStudio() then warn("[jankfire] victory prewarm: " .. tostring(w)) end
 		return nil
