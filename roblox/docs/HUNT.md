@@ -362,6 +362,45 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 
 ---------------------------------------------------------------------------------------------------------------------
 
+## 11. The gunman's intro (owner, 27 Nov)
+
+The owner: when you're the gunman, a cinematic fills the hiders' head start. A person in a dark room, cinematic angles,
+they start to go crazy, then "boom!": an angle from above as they look up, a cut outside, they look down, the angle
+swings round behind them, the bars lift, and you're looking at the outside of the map.
+
+**The beats** (the gunman's client only; the hiders get the head start as now, at most a short sound cue at its end).
+The intro lasts exactly the hide time, so both are one number, `HuntConfig.ROUND.hide` (16 s to start):
+1. **The room** (0 to 5.5 s): the gunman stands in the middle of a dark room, letterbox on. Three slow shots: a low
+   wide, a slow push, a profile. The only light is the screen's.
+2. **The build** (5.5 to 10.4 s): they start to lose it. Twitches, the head jerking, shoulders heaving; the screen's
+   flicker and the camera shake grow, the cuts get shorter.
+3. **The snap** (10.4 to 11.4 s): a hard hit cut to straight above as the head snaps up into the lens, the mask on.
+4. **Outside** (11.4 to 13.4 s): a cut to the gunman standing outside the round's map, looking up at it.
+5. **The turn** (13.4 to 16 s): they look down; the camera swings round behind them, the bars lift, and control is
+   theirs. The last camera frame is the gameplay camera's first, so nothing pops.
+
+The gunman can't move during it. It ends on the hiders' clock even on a phone or a slow load (each beat is skipped
+to, never waited for).
+
+**Two rooms, the same beats** (the owner: "we can try both"), as swappable sets: the props in one model, the light
+source one part with its light:
+- **A, their bedroom:** the only light is a PC screen, a cool flickering blue-white on the face and the walls.
+- **B, an attic:** the only light is an old TV showing static.
+
+**Guardrails** (a fictional horror villain, never a real-world attack's build-up):
+- No gun anywhere in the intro: no loading, cocking or weapon close-ups.
+- The gunman wears a plain chunky horror mask (our own design, no logos) while in the role. It goes on at the snap.
+- The screens show nothing readable: glow, colour and noise only. No text, chat or pages.
+- Plain props only: nothing on the walls that reads as a real-world symbol, poster or message.
+- Motion is mocap only (no hand-posing). Sounds are recordings with no voices: a low drone, a buzz with the
+  flicker, a heartbeat building, a hard hit on the snap, outside air on the cut. No breathing, no screams.
+
+**Where the gunman comes in:** each map gets an `outside` spot (x, y, z, facing) just outside it, facing in. The
+gunman is released there, not inside.
+
+**Tech:** one shared cinematic piece (letterbox and a shot list stepped against a clock), shared with the finishers
+and the victory scene rather than a third system.
+
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)
