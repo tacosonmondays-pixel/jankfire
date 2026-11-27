@@ -80,7 +80,7 @@ if RunService:IsStudio() then
 			local o = args[1] or {}
 			local gm: any = if o.role == "gunman" then p elseif o.role == "hider" then false else nil
 			return { HuntRound.start({ p }, { gunman = gm, standins = o.standins or 0, standinRole = if o.role == "hider" then "gunman" else "hider",
-				gun = o.gun, hide = o.hide, hunt = o.hunt, fightBack = o.fightBack, passives = o.passives }) }
+				gun = o.gun, hide = o.hide, hunt = o.hunt, fightBack = o.fightBack, passives = o.passives, map = o.map }) }
 		end
 		if op == "stop" then return require(script.Parent:WaitForChild("HuntRound")).stop() end
 		-- ("hurt", p, who?, dmg?, head?): the round's member named who (a stand-in's or a player's name; nil = the first

@@ -58,10 +58,10 @@ local function phase(ph: string?, endsAt: number?)
 end
 
 -- ------------------------------------------------------------------ the map's copy and the gunman's room
-local function pickMap(): any
+local function pickMap(want: string?): any
 	local ok = {}
 	local map = workspace:FindFirstChild("Map")
-	for _, m in HC.MAPS do if map and map:FindFirstChild(m.source) then table.insert(ok, m) end end
+	for _, m in HC.MAPS do if map and map:FindFirstChild(m.source) and (want == nil or m.id == want) then table.insert(ok, m) end end
 	return if #ok > 0 then ok[math.random(#ok)] else nil
 end
 local function copyMap(def: any, k: number): Model?
@@ -130,7 +130,7 @@ end
 function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	if G then return false, "busy" end
 	opts = opts or {}
-	local def = pickMap()
+	local def = pickMap(opts.map) -- (opts.map: one map's id, for tests)
 	if not def then return false, "no map" end
 	local copy = copyMap(def, 0)
 	if not copy then return false, "no copy" end
