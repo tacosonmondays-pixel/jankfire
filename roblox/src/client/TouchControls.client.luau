@@ -41,6 +41,7 @@ local HttpService = game:GetService("HttpService")
 local Keys = require(script.Parent:WaitForChild("Keys"))
 local T = require(script.Parent:WaitForChild("Theme"))
 local TL = require(script.Parent:WaitForChild("TouchLayout"))
+local Glyphs = require(script.Parent:WaitForChild("TouchGlyphs")) -- (27 Nov 2026, ui-mocks: one glyph per button, its word under it)
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
@@ -340,13 +341,14 @@ local function style(face: TextButton, lit: boolean, accentEdge: boolean?, own: 
 		st.Thickness = if accentEdge then 3 else 1
 		st.Transparency = if accentEdge then 1 - a * 0.95 else 1
 	end
+	Glyphs.tint(face) -- (the glyph in the words' colour)
 end
 
 local function applyLook()
 	if not built then return end
 	for _, b in BTNS do style(b.face, b.lit, b.act == "fire", b.rec.a) end
 	for _, p in pills do style(p.face, p.lit, nil, if p.rec then p.rec.a else 1) end
-	if pills.auto then pills.auto.face.Text = if S.auto then "AUTO FIRE ON" else "AUTO FIRE OFF" end -- (27 Nov: its state in words)
+	if pills.auto then pills.auto.face.Text = if S.auto then "AUTO ON" else "AUTO OFF" end -- (27 Nov: its state in words; the glyph says it's fire)
 end
 
 -- the top row's buttons
@@ -377,7 +379,7 @@ local function newFace(parent: Instance, name: string, label: string, round: boo
 end
 -- the words' size on a round button d points across (a long word a size down)
 local function textFor(label: string, d: number): number
-	return math.floor(math.clamp(d * 0.19, 9, 14) + 0.5) -- (27 Nov: one size whatever the word's length)
+	return math.floor(math.clamp(d * 0.17, 9, 12) + 0.5) -- (27 Nov: one size whatever the word's length; a size down, it's under a glyph now)
 end
 
 -- the buttons, made again from the layout each time it changes (the editor saved, another layout picked)
@@ -394,6 +396,7 @@ local function rebuildButtons()
 			local b: any = { id = r.id, act = r.act, A = A, rec = r, down = false, lit = false }
 			local face = newFace(pad, r.id, TL.label(r), true)
 			b.face, b.scale = face, T.new("UIScale", {}, face)
+			b.gk = r.act; Glyphs.put(face, r.act) -- (its glyph above its word)
 			b.stroke = face:FindFirstChildOfClass("UIStroke")
 			face.InputBegan:Connect(function(io: InputObject)
 				if io.UserInputType ~= Enum.UserInputType.Touch and io.UserInputType ~= MB1 then return end
@@ -435,6 +438,7 @@ local function build()
 	topRow = T.new("Frame", { Name = "Top", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, pad) :: Frame
 	for _, id in { "emote", "auto", "settings", "board" } do
 		local f = newFace(topRow, id, TL.base(id).label, false)
+		Glyphs.put(f, id, if id == "settings" then "only" else "pill") -- (SETTINGS a gear alone; the rest a glyph and a word)
 		pills[id] = { face = f, lit = false, rec = nil }
 		f.Activated:Connect(function() pillPress(id) end)
 	end
@@ -1047,6 +1051,10 @@ RunService.Heartbeat:Connect(function()
 		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope) and (not A.lock or lockOn or hunt) and (not A.melee or swung)
 			and not (hunt and b.act == "yank")
 		if b.face.Visible ~= vis then b.face.Visible = vis end
+		do -- (HOLDOUT's words have no glyph: PUNCH, PUSH, LIE stay words alone)
+			local gk = if hunt and HUNT_WORDS[b.act] then nil else b.act
+			if b.gk ~= gk then b.gk = gk; Glyphs.put(b.face, gk) end
+		end
 		if not A.q then
 			local word = if hunt and HUNT_WORDS[b.act] then HUNT_WORDS[b.act] else TL.label(b.rec)
 			if b.face.Text ~= word then b.face.Text = word end
