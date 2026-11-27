@@ -28,12 +28,14 @@ IDENT = KP.IDENT
 # janky" - a 6-frame blend-in from his stand turned the body 40 degrees a frame and flipped the blade 170 degrees in
 # one; now 12 frames from the moment his long blade is back to its length, smoothed, the blade swung round below)
 W_IN = (98, 112)
-CUT_BACK = 130          # (his PASS starts on a cut here: the hand-back to his frames is hidden by it)
+CUT_BACK = 139          # (the slicing impact frame's cut: the hand-back to his frames - his swing - is hidden by it)
+# (27 Nov, round 3, the owner: "this scene of her running either get rid of it or make it faster? It's supposed to look
+# like she's speed blitzing" - his PASS ran, visibly jogging; the flash-step now carries on through it to the cut)
 COIL = (98, 118)        # DashHeavy t 0.2 -> 0: the sink
 HOLD = (118, 120)       # coiled
 LAUNCH = (120, 122)     # the plant and push-off
-DASH = (122, 130)       # the hips run C -> his frame-130 place
-SMOOTH = (99, 128)      # a 5-tap smoothing of the joints' turns over the spliced frames
+DASH = (122, 139)       # the hips run C -> his frame-139 place
+SMOOTH = (99, 137)      # a 5-tap smoothing of the joints' turns over the spliced frames
 BLADE_SWING = 18        # (frames the blade takes to come round to the iai line)
 FLY = 0.28              # (the flash-step skims: the hips this much over the coil's height through the dash)
 DECLIP = (56, 179)      # frames where a blade through the body is turned out of it (outside the sheathed / sliding ones)

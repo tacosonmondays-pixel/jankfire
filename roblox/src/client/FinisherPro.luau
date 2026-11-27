@@ -49,9 +49,9 @@ local STOCK_LT = Vector3.new(2, 0.4, 1) -- (the stock LowerTorso the sheath's jo
 -- props kit (ReplicatedStorage.JankfireFinisherSets), the time ramps, the lens moves, the look
 local TUNE: { [string]: any } = {
 	inkfall = {
-		anims = { k = "79972501972288", v = "130332889571388" },
+		anims = { k = "98911007857406", v = "130332889571388" },
 		-- (27 Nov: k is his take with the run replaced by a coil and a dash, then smoothed - tools/roblox/tide_run_splice.py;
-		-- the first splice was 107553046720755; his own
+		-- round 3 (the blitz on to the slice) 98911007857406, before it 79972501972288 and 107553046720755; his own
 		-- killer, untouched, was 131612410895094)
 		set = "TideWaterfall", kit = "TidecrestKit",
 		short = 207, -- (a round win's short version: from THE CUT LANDS)
@@ -147,10 +147,37 @@ local function buildClock(sc: any)
 	end
 	cum[d.frames] = t
 	sc.cum = cum
+	-- the hit-stops (27 Nov, round 3, the owner: "big impact moments pause them for a sec to add more impact!!"): each
+	-- holds its take frame for its seconds; the time they take is added on
+	sc.holds = {}
+	for _, h in d.holds or {} do
+		local at = h[1]
+		if at >= sc.f0 and at < d.frames - 1 then
+			local fl = math.floor(at)
+			local t0 = cum[fl] + (at - fl) * (cum[fl + 1] - cum[fl])
+			table.insert(sc.holds, { at = at, dur = h[2], t0 = t0 })
+			t += h[2]
+		end
+	end
+	table.sort(sc.holds, function(x, y) return x.at < y.at end)
 	sc.total = t
 end
 -- (real seconds into the scene -> the take's frame and how far through it)
 local function frameAt(sc: any, w: number): (number, number)
+	-- (through a hit-stop the frame stands still; after it the clock runs on that much later)
+	sc.holdT = nil
+	local shift = 0
+	for _, h in sc.holds or {} do
+		local t0 = h.t0 + shift
+		if w < t0 then break end
+		if w < t0 + h.dur then
+			sc.holdT = w - t0
+			local fl = math.floor(h.at)
+			return fl, h.at - fl
+		end
+		shift += h.dur
+	end
+	w -= shift
 	local lo, hi = sc.f0, sc.d.frames - 1
 	if w <= 0 then return lo, 0 end
 	while lo < hi do
@@ -576,7 +603,8 @@ end
 -- the long blade's tip laid on the victim's face: his take holds it a stud over the head at THE TIP; the stretch's
 -- payoff is the tip a hair from the nose, on any face
 local AIM_A, AIM_B, AIM_END = 70, 77, 94
-local propsAt: (sc: any, d: any, fi: number, katP: CFrame, shP: CFrame) -> (CFrame, CFrame)
+local propsAt: (sc: any, s: any, d: any, fi: number, katP: CFrame, shP: CFrame) -> (CFrame, CFrame)
+local fadeOccluders: (sc: any, s: any, cam: CFrame, focus: Vector3?) -> ()
 local function aimed(sc: any, s: any, katCF: CFrame, L: number, fi: number): CFrame
 	if fi < AIM_A or fi >= AIM_END then return katCF end
 	local wgt = math.clamp((fi - AIM_A) / (AIM_B - AIM_A), 0, 1)
@@ -629,36 +657,78 @@ local function relAt(rows: any, fi: number): CFrame?
 end
 local function smooth01(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 local SETTLE = 8 -- (frames the sheath takes back onto the hip after the sheathe)
-function propsAt(sc: any, d: any, fi: number, katP: CFrame, shP: CFrame): (CFrame, CFrame)
+
+-- accessory pieces (hats, frills, layered clothing) between the lens and the point it is on, or right at the lens: a
+-- segment-against-box test in each piece's own space (the scene's copies take no raycasts)
+local function segHitsBox(a: Vector3, b: Vector3, cf: CFrame, hs: Vector3): boolean
+	local p, q = cf:PointToObjectSpace(a), cf:PointToObjectSpace(b)
+	local d = q - p
+	local t0, t1 = 0, 1
+	for _, ax in { "X", "Y", "Z" } do
+		local pa, da, h = (p :: any)[ax], (d :: any)[ax], (hs :: any)[ax]
+		if math.abs(da) < 1e-6 then
+			if math.abs(pa) > h then return false end
+		else
+			local u0, u1 = (-h - pa) / da, (h - pa) / da
+			if u0 > u1 then u0, u1 = u1, u0 end
+			t0, t1 = math.max(t0, u0), math.min(t1, u1)
+			if t0 > t1 then return false end
+		end
+	end
+	return true
+end
+function fadeOccluders(sc: any, s: any, cam: CFrame, focus: Vector3?)
+	if not sc.accs then
+		sc.accs = {}
+		for _, g in { s.kg, s.vg } do
+			for _, x in g.model:GetDescendants() do
+				if x:IsA("BasePart") and x:FindFirstAncestorOfClass("Accessory") then table.insert(sc.accs, x) end
+			end
+		end
+	end
+	local cpos = cam.Position
+	for _, part in sc.accs do
+		local hs = part.Size / 2
+		local near = segHitsBox(cpos, cpos, part.CFrame, hs + Vector3.new(1.4, 1.4, 1.4))
+		-- (never a piece the shot's own point sits in: that is the subject's clothing, not something in front of it - the
+		-- draw's line to the torso ran through her dress and faded it)
+		local holds = focus ~= nil and segHitsBox(focus :: Vector3, focus :: Vector3, part.CFrame, hs + Vector3.new(0.3, 0.3, 0.3))
+		local hide = near or (focus ~= nil and not holds and segHitsBox(cpos, (focus :: Vector3) - (focus :: Vector3 - cpos).Unit * 0.35, part.CFrame, hs))
+		local want = if hide then 1 else 0
+		if part.LocalTransparencyModifier ~= want then part.LocalTransparencyModifier = want end
+	end
+end
+
+function propsAt(sc: any, s: any, d: any, fi: number, katP: CFrame, shP: CFrame): (CFrame, CFrame)
 	local f = math.floor(fi)
 	local home = d.inSheath and d.inSheath[f + 1] or 0
 	local relRow = d.relS and d.relS[f + 1]
 	local relS = if type(relRow) == "table" then rowCF(relRow) else nil
-	for _, w in d.slides or {} do
-		local a, b, kind, easeN = w[1], w[2], w[3], w[4]
-		if fi >= a and fi < b then
-			local rk = relAt(d.relKS, fi)
-			if not rk then break end
-			local u = smooth01((fi - a) / easeN)
-			if kind == "draw" then
-				if not sc.drawC then
-					local ra = d.relS and d.relS[a + 1]
-					sc.drawC = katP:Inverse() * (shP * (if type(ra) == "table" then rowCF(ra) else CFrame.identity))
-				end
-				local kat = katP * sc.drawC:Lerp(CFrame.identity, u)
-				return kat, kat * rk
-			else
-				local shK = katP * rk
-				if not sc.sheC then sc.sheC = shK:Inverse() * shP end
-				local sh = shK * sc.sheC:Lerp(CFrame.identity, u)
-				sc.sheLast, sc.sheEnd = sh, b
-				return katP, sh
+	-- (round 3: the left hand carries the sheath where his take has it do so - from the first frame through the draw,
+	-- and through the sheathe - so it never floats off; the blade lies along the sheath's own line, slid to where the
+	-- real right hand meets that line, never deeper than his take has it; both windows end on a cut, where the sheath
+	-- goes back to the hip and the blade to the hand)
+	local lh = s.kg.model:FindFirstChild("LeftHand") :: BasePart?
+	for _, w in d.sheathHand or {} do
+		local a, b, kind = w[1], w[2], w[3]
+		if lh and fi >= a and fi < b then
+			local rl, rk = relAt(d.relLS, fi), relAt(d.relKS, fi)
+			if not (rl and rk) then break end
+			local sh = lh.CFrame * rl
+			local kHis = sh * rk:Inverse()
+			local axis = kHis.LookVector
+			local along = math.min(0, (katP.Position - kHis.Position):Dot(axis))
+			if home > 0.5 then along = 0 end
+			local kat = kHis + axis * along
+			if kind == "sheathe" then
+				-- (the blade comes onto the sheath's line from the hand as its tip nears the mouth)
+				local guard = kHis * Vector3.new(0, 0, GZ)
+				local mouthW = (sh * (sc.mouthA or CFrame.identity)).Position
+				local out = (guard - mouthW):Dot(-axis)
+				kat = katP:Lerp(kat, smooth01((4.4 - out) / 0.8))
 			end
+			return kat, sh
 		end
-	end
-	if sc.sheLast and sc.sheEnd and fi >= sc.sheEnd and fi < sc.sheEnd + SETTLE then
-		local sh = sc.sheLast:Lerp(shP, smooth01((fi - sc.sheEnd) / SETTLE))
-		return (if relS then sh * relS else katP), sh
 	end
 	if home > 0 and relS then return katP:Lerp(shP * relS, home), shP end
 	return katP, shP
@@ -695,7 +765,7 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 	local j = math.min(pi_ + 1, d.frames - 1)
 	local L = d.blade[pi_ + 1] + (d.blade[j + 1] - d.blade[pi_ + 1]) * pa
 	if d.shot[j + 1] ~= shotN then L = d.blade[pi_ + 1] end
-	local katCF, shCF = propsAt(sc, d, fi, sc.pk.CFrame, sc.ps.CFrame)
+	local katCF, shCF = propsAt(sc, s, d, fi, sc.pk.CFrame, sc.ps.CFrame)
 	katCF = aimed(sc, s, katCF, L, fi)
 	-- (27 Nov, the owner: "Katana blade is missing in the shot where it's pointed at enemy face" - the long blade lay
 	-- with its flat up, edge-on to THE TIP's eye-level lens: a hairline in the dark. For that shot it turns on its own
@@ -742,6 +812,18 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 			local k = b[2] * math.exp(-age * 16) * math.sin(age * 55)
 			cw *= CFrame.new(0, 0.05 * k, 0) * CFrame.Angles(0, 0, math.rad(1.1 * k))
 		end
+	end
+	if sc.holdT then
+		local k = 2.4 * math.exp(-sc.holdT * 6)
+		local q = w * 38
+		cw *= CFrame.new(math.noise(q, 1.7) * 0.09 * k, math.noise(q, 3.1) * 0.09 * k, 0)
+			* CFrame.Angles(math.rad(math.noise(q, 4.4) * 0.9 * k), math.rad(math.noise(q, 6.2) * 0.9 * k), math.rad(math.noise(q, 5.3) * 1.8 * k))
+	end
+	-- (round 3, the owner on the grip: "WHATT he heck" - a frilled cuff or a hat brim between the lens and the shot's
+	-- subject, or right at the lens, filled the close-ups: on any avatar those accessory pieces fade for the frame)
+	if fi < 226 then
+		local an2 = d.anchor and d.anchor[shotN]
+		fadeOccluders(sc, s, cw, if an2 then realPt(sc, s, an2[1]) else nil)
 	end
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Scriptable

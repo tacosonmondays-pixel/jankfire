@@ -373,7 +373,7 @@ function Fx.coilAndDash(sc: any, s: any, fi: number, w: number, tip: Vector3, gu
 		local ps = petals(sc, "trail", 34, 0.5)
 		local rnd = Random.new(93)
 		for i = 1, #ps do
-			local fs = LAUNCH_F + (i - 1) * (10 / #ps)
+			local fs = LAUNCH_F + (i - 1) * (18 / #ps)
 			local age = (fi - fs) / 24
 			if age < 0 or age > 1.7 then continue end -- (27 Nov: on into THE PATH, the wide shot of the run)
 			local base = sc.runH[math.floor(fs)] or lt.Position
@@ -398,7 +398,7 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 	local vL = s.vg.model:FindFirstChild("LowerTorso") :: BasePart?
 	-- 1 THE GRIP: a glint in the gap as the guard eases out, then the ring of action lines and the kick
 	if fi >= 8.5 and fi < 10.8 and sc.mouthW then glint(sc, "grip", sc.mouthW + Vector3.new(0, 0.15, 0), 0.9 * env(fi, 8.5, 10.8) + 0.05) end
-	if fi >= 10.5 and fi < 14 and sc.mouthW then burstLines(sc, "ring", sc.mouthW, (fi - 10.5) / 3.5, 18, 1.6, INK) end
+	if fi >= 10.5 and fi < 14 and sc.mouthW then burstLines(sc, "ring", sc.mouthW, (fi - 10.5) / 3.5, 14, 0.9, INK) end
 	-- 2 THE DRAW: a glint running down the blade at the full stretch, a spark as the tip comes free
 	if fi >= 40 and fi < 54 then
 		local u = (fi - 40) / 14
@@ -409,7 +409,7 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 	-- 7 THE PASS: the smear following the blade (the skin's pink), ink afterimages below
 	local trOn, life, col = false, 0.2, WHITE
 	if fi >= 56 and fi < 66 then trOn, life, col = true, 0.28, Color3.fromRGB(236, 240, 255) end
-	if fi >= 130 and fi < 139 then trOn, life, col = true, 0.5, SAKURA end
+	if fi >= 122 and fi < 140 then trOn, life, col = true, 0.5, SAKURA end
 	trail(sc, katCF, L, trOn, life, col)
 	-- 4 THE TIP: a glint where the tip stops at his nose; the sweat bead (High Noon's teardrop) at his temple
 	if fi >= 85 and fi < 89 then glint(sc, "tip", tip, 0.7 * env(fi, 85, 89) + 0.05) end
@@ -435,14 +435,13 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 	-- off the plant, a stream of petals left hanging down his path, speed lines across the frame
 	Fx.coilAndDash(sc, s, fi, w, tip, guard)
 	local slk = 0
-	if fi >= 120 and fi < 130 then slk = 0.95 * smooth((fi - 120) / 1.2) end
-	if fi >= 130 and fi < 139 then slk = 0.5 end
+	if fi >= 120 and fi < 139 then slk = 0.95 * smooth((fi - 120) / 1.2) end
 	if sc.lines2d or slk > 0 then speedLines(sc, slk, 1, w) end
 	if sc.lines2d then sc.lines2d.g.Enabled = slk > 0 end
 	dust(sc, s.kg, w, (fi >= 68 and fi < 74) or (fi >= 94 and fi < 139))
 	dust(sc, s.vg, w, fi >= 100 and fi < 139)
 	-- 7 THE PASS: two ink afterimages of the killer, a moment behind
-	if fi >= 131 and fi < 139 then
+	if fi >= 131 and fi < 139 then -- (the blitz's last strides: ink copies a beat behind her)
 		Fx.afterimages(sc, s, fi)
 	elseif sc.ghosts then
 		for _, gh in sc.ghosts do gh.model.Parent = nil end
@@ -493,8 +492,10 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 		-- (27 Nov, the owner: "stay consistent with the slash direction" - the cut at the pass swept the blade along the
 		-- take's +x, from his left to his right as he ran: the ink lands the same way, whichever way the victim faces now)
 		local right = sc.take.RightVector
-		local front = -vL.CFrame.LookVector
 		local cam = (workspace.CurrentCamera :: Camera).CFrame
+		-- (round 3: drawn on his front it was out of sight from the shot's side - it lands on the side the lens sees)
+		local toCam = Vector3.new(cam.Position.X - belly.X, 0, cam.Position.Z - belly.Z)
+		local front = if toCam.Magnitude > 1e-3 then toCam.Unit else -vL.CFrame.LookVector
 		stroke(sc, belly - right * 1.6 + front * 0.62 + Vector3.new(0, 0.25, 0), belly + right * 1.6 + front * 0.62 - Vector3.new(0, 0.2, 0), 0.25, 0.42,
 			-cam.LookVector, u, fade)
 		if fi >= 209.5 then splats(sc, belly + front * 0.6, (fi - 209.5) / 8, fade) end
@@ -524,7 +525,7 @@ end
 -- the dash's petal afterimages (27 Nov, the owner: "Do a wide shot to show pedal after images"): copies of the killer
 -- frozen at points along the dash, pink and half there, each showing as he passes it, hanging through the pass, then
 -- coming apart into petals in THE PATH's wide shot; out of sight on the ink frames
-local GHOST_AT = { 122, 124, 126, 128 }
+local GHOST_AT = { 123, 127, 131, 135 }
 local GHOST_GO, GHOST_GONE = 149, 160
 function Fx.petalGhosts(sc: any, s: any, fi: number)
 	if fi < 100 or fi >= GHOST_GONE + 1 then
@@ -561,7 +562,9 @@ function Fx.petalGhosts(sc: any, s: any, fi: number)
 		table.insert(sc.pghosts, { model = m, tr = tr, root = root, at = at, parts = parts, hl = hl })
 	end
 	for _, gh in sc.pghosts do
-		local show_ = fi >= gh.at and not sc.hitOn
+		local glt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
+		local camP = (workspace.CurrentCamera :: Camera).CFrame.Position
+		local show_ = fi >= gh.at and not sc.hitOn and not (glt and (glt.Position - camP).Magnitude < 4.5)
 		gh.model.Parent = if show_ then sc.folder else nil
 		if show_ then
 			gh.root.CFrame = s.kg.root.CFrame
@@ -616,12 +619,15 @@ function Fx.afterimages(sc: any, s: any, fi: number)
 		end
 		s.kg.model.Archivable = was
 	end
+	local camPos = (workspace.CurrentCamera :: Camera).CFrame.Position
 	for _, gh in sc.ghosts do
-		gh.model.Parent = sc.folder
 		gh.root.CFrame = s.kg.root.CFrame
 		local L = gh.tr.Length
 		local T = math.max(0, fi - gh.lag) / 24
 		gh.tr.TimePosition = if L > 0 then math.clamp(T, 0, L - 1 / 60) else T
+		-- (round 3: one a beat behind her sat on the chasing lens and filled the frame with grey: none that close)
+		local lt = gh.model:FindFirstChild("LowerTorso") :: BasePart?
+		gh.model.Parent = if lt and (lt.Position - camPos).Magnitude < 4.5 then nil else sc.folder
 	end
 end
 

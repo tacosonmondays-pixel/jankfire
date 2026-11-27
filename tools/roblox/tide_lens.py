@@ -66,8 +66,9 @@ def main(take_p, scan_p, out_p):
     N = len(cam)
     L = {}
     # ---------------------------------------------------------------- the shots: (first frame, name, anchor, weight)
-    SHOTS = [(0, 'THE GRIP', 'kLT', 1.0), (16, 'THE DRAW', 'kUT', 0.8), (56, 'THE LENGTH', 'kH', 0.3), (82, 'THE TIP', 'vH', 1.0),
-             (94, 'THE COIL', 'kLT', 1.0), (120, 'THE LAUNCH', 'kLT', 0.9), (130, 'THE PASS', 'kLT', 0.6), (139, 'CUT FRAME', 'vUT', 0.5),
+    # (27 Nov, round 3: THE PASS - his run, visibly jogging - is gone; the flash-step runs on to the slice)
+    SHOTS = [(0, 'THE GRIP', 'mouth', 1.0), (16, 'THE DRAW', 'kUT', 0.8), (56, 'THE LENGTH', 'kH', 0.3), (82, 'THE TIP', 'vH', 1.0),
+             (94, 'THE COIL', 'kLT', 1.0), (120, 'THE LAUNCH', 'kLT', 0.9), (139, 'CUT FRAME', 'vUT', 0.5),
              (145, 'THE PATH', 'kLT', 0.0), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7),
              (207, 'THE CUT LANDS', 'vUT', 0.8), (221, 'THE END', 'kH', 0.5)]
     starts = [s[0] for s in SHOTS] + [N]
@@ -77,13 +78,15 @@ def main(take_p, scan_p, out_p):
     for f in range(N):
         L[f] = list(cam[f])
 
-    # 1 THE GRIP: his close-up, a slow push in and a roll settling out
+    # 1 THE GRIP (27 Nov, round 3, the owner: "WHATT he heck" - on a frilled avatar his extreme close-up was a jumble
+    # of cuffs and fists): side-on from his left at hand height on the sheath's mouth - the left hand at the mouth, the
+    # guard, the hilt running across to the right hand - with a slow push in; the game fades any accessory between
     a, b = span(0)
     for f in range(a, b + 1):
-        u = (f - a) / (b - a)
-        c = cam[f]
-        fwd = norm([-c[5], -c[8], -c[11]])
-        L[f] = nudge(c, mulv(fwd, 0.55 * ease(u)))
+        u = ease((f - a) / (b - a))
+        m = P['mouth'][f]
+        pos = add(m, [-2.4 + 0.4 * u, 0.12, -0.3])
+        L[f] = look(pos, add(m, [0.15, 0.05, -0.25]), roll_deg=0.0, fov=40 - 4 * u)
     # 2 THE DRAW: low under him, a wide lens looking up past the blade hand to the moon behind; arcs round to his right
     a, b = span(1)
     for f in range(a, b + 1):
@@ -131,40 +134,33 @@ def main(take_p, scan_p, out_p):
         L[f] = look(pos, at, roll_deg=-10 + 5 * u, fov=CO_FOV - 4 * u)
     # 6 THE LAUNCH: (27 Nov, the owner: "impact frame there!! Then cut to her speed blitzing") a hard cut after the coil's
     # impact frame to a low lens down the lane on his left: he blitzes at it, past it, the lens whipping round after him
+    # (round 3: "make it a flash-step ... the camera barely keeping up" - the lens holds by the lane as he rushes past,
+    # then is flung after him down the lane, falling further behind; through to the slice)
     a, b = span(5)
-    pos = add(P['kLT'][a], [-2.5, 0.0, -9.0])
-    pos[1] = FLOOR + 0.7
+    pos0 = add(P['kLT'][a], [-2.5, 0.0, -9.0])
+    pos0[1] = FLOOR + 0.7
     for f in range(a, b + 1):
-        k = (f - a) / (b - a)
-        at = add(P['kLT'][f], [0.0, 0.35, 0.0])
-        L[f] = look(pos, at, roll_deg=-7 + 3 * k, fov=68 - 6 * k)
-    # 7 THE PASS: rebuilt - low and wide beside the lane, circling the swing in slow motion, a whip out at the end
-    a, b = span(6)
-    for f in range(a, b + 1):
-        u = (f - a) / (b - a)
-        C = lerpv(P['kLT'][f], P['vLT'][f], 0.5)       # (the moving middle between the two of them)
-        th = math.radians(55 + 80 * ease(u))
-        r = 8.2 - 1.6 * ease(u)
-        pos = [C[0] + r * math.sin(th), FLOOR + 1.3, C[2] + r * math.cos(th)]
-        at = add(C, [0, 0.45, 0])
-        if f == b:   # (the whip: the lens flung on toward the victim)
-            at = add(at, [-2.5, 0.2, -4.0])
-        L[f] = look(pos, at, roll_deg=10 - 6 * ease(u), fov=70 - 6 * ease(u))
+        k = f - a
+        hips = P['kLT'][f]
+        cu = ease((k - 5) / 7.0)
+        pos = [pos0[0] + (hips[0] - 2.2 - pos0[0]) * cu, pos0[1] + 0.4 * cu, min(pos0[2], hips[2] + 4.0 + 0.35 * k)]
+        at = add(hips, [0.0, 0.35, -1.2 * cu])
+        L[f] = look(pos, at, roll_deg=-7 + 9 * cu, fov=68 - 8 * cu)
     # 8 CUT FRAME: his, moved off the victim's cloak (round 2: 'the cloak fills a third of the frame and the rest is black')
-    a, b = span(7)
+    a, b = span(6)
     for f in range(a, b + 1):
         L[f] = nudge(cam[f], [2.6, 0.3, -1.8], fov=58)
     # 9 THE PATH (27 Nov, the owner: "Do a wide shot to show pedal after images"): wide from the side of the lane, the
     # whole run in frame - where he coiled, the petal afterimages hanging along his path, the two of them past each
     # other - with a slow push (in place of his close past the victim's cloak)
-    a, b = span(8)
+    a, b = span(7)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
         pos = lerpv([19.0, FLOOR + 4.6, -16.0], [17.8, FLOOR + 4.2, -16.4], u)
         at = lerpv([-0.5, -0.8, -18.0], [-0.5, -0.9, -18.6], u)
         L[f] = look(pos, at, roll_deg=0.0, fov=58 - 5 * u)
     # 10 STILLNESS: his close-up on the face, pushed in for real with a slight arc
-    a, b = span(9)
+    a, b = span(8)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
         c = cam[f]
@@ -172,7 +168,7 @@ def main(take_p, scan_p, out_p):
         L[f] = nudge(c, add(mulv(fwd, 0.35 * u), [0.2 * u, 0, 0]))
     # 11 THE SHEATHE: his medium (the slide home reads in it; a close-up on the mouth only saw the big R15 hands over it),
     # pushing in toward the sheath through the slow slide to the click
-    a, b = span(10)
+    a, b = span(9)
     mouth_end = P['mouth'][204]
     for f in range(a, b + 1):
         u = ease((f - 194) / 12.0)
@@ -181,7 +177,7 @@ def main(take_p, scan_p, out_p):
         L[f] = nudge(c, add(mulv(toward, 1.3 * u), [0, -0.45 * u, 0]))
     # 13 THE CUT LANDS: his
     # 14 THE END: a crane - from the winner close on the right, rising and pulling back to the moon over the falls
-    a, b = span(12)
+    a, b = span(11)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
         # (round 2: 'the killer is cropped to the top of his head' at the end - a gentler rise and pull-back)
@@ -191,17 +187,20 @@ def main(take_p, scan_p, out_p):
 
     # ---------------------------------------------------------------- the speed ramps: (frame, speed[, 'cut'])
     RAMP = [(0, 1.0), (9, 1.0), (10.5, 0.35), (13, 0.35), (15, 1.0),
-            (16, 1.0, 'cut'), (22, 0.6), (50, 0.6), (55, 0.95),
+            (16, 1.0, 'cut'), (22, 0.7), (50, 0.7), (55, 0.95),
             (56, 0.55, 'cut'), (63, 0.75), (81, 0.75),
             (82, 0.5, 'cut'), (93, 0.55),
-            (94, 0.55, 'cut'), (100, 0.55), (103, 0.42), (116, 0.42), (118.5, 0.27), (120, 0.27),
-            (120, 1.3, 'cut'), (126, 1.15), (129, 1.0),
-            (130, 1.0, 'cut'), (133, 0.45), (138, 0.45),
+            (94, 0.55, 'cut'), (100, 0.55), (103, 0.5), (116, 0.5), (118.5, 0.32), (120, 0.32),
+            (120, 1.9, 'cut'), (138, 1.9),
             (139, 0.45, 'cut'), (144, 0.45),
-            (145, 0.55, 'cut'), (160, 0.55), (161, 1.0, 'cut'), (196, 1.0),
+            (145, 0.6, 'cut'), (160, 0.6), (161, 1.0, 'cut'), (196, 1.0),
             (199, 0.32), (203, 0.32), (204.5, 1.0),
             (207, 0.5, 'cut'), (212, 1.0),
-            (221, 0.62, 'cut'), (254, 0.62)]
+            (221, 0.75, 'cut'), (254, 0.75)]
+    # the hit-stops (27 Nov, round 3, the owner: "big impact moments pause them for a sec to add more impact!!"): the
+    # take frame held this many seconds - the coil's impact frame, the slicing impact frame, the cut landing; the game
+    # shakes the lens through each
+    HOLDS = [(119.3, 0.22), (139.3, 0.25), (207.3, 0.2)]
 
     def speed(fr):
         r = RAMP
@@ -213,7 +212,7 @@ def main(take_p, scan_p, out_p):
                 t = (fr - A[0]) / max(1e-3, B[0] - A[0])
                 return A[1] + (B[1] - A[1]) * ease(t)
         return r[-1][1]
-    total = sum((1 / 24) / speed(f + 0.5) for f in range(N))
+    total = sum((1 / 24) / speed(f + 0.5) for f in range(N)) + sum(h[1] for h in HOLDS)
     shot_of = []
     for f in range(N):
         i = max(k for k in range(len(SHOTS)) if SHOTS[k][0] <= f)
@@ -222,10 +221,14 @@ def main(take_p, scan_p, out_p):
     timeline, fi, tt = [], 0.0, 0.0
     while fi < N - 1:
         timeline.append(round(fi, 4))
-        fi += speed(fi)   # (one output frame = 1/24 s = speed take-frames)
+        nxt = fi + speed(fi)   # (one output frame = 1/24 s = speed take-frames)
+        for h, dur in HOLDS:
+            if fi < h <= nxt:
+                timeline.extend([round(h, 4)] * int(round(dur * 24)))
+        fi = nxt
     out = {'lens': [[round(x, 4) for x in L[f][:12]] + [round(L[f][12], 2)] for f in range(N)], 'timeline': timeline,
            'shot': shot_of, 'names': [s[1] for s in SHOTS], 'anchor': [[s[2], s[3]] for s in SHOTS],
-           'ramp': [list(r) for r in RAMP], 'total': round(total, 3)}
+           'ramp': [list(r) for r in RAMP], 'holds': [list(h) for h in HOLDS], 'total': round(total, 3)}
     json.dump(out, open(out_p, 'w'))
     print('lens', N, 'frames, %d shots, %.2f s with the ramps (as delivered %.2f s)' % (len(SHOTS), total, N / 24))
     # (per shot: its real length)

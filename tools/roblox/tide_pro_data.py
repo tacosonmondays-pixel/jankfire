@@ -54,18 +54,22 @@ def stock_lua(path, keep=None):
     # holds the sheath to the blade as his take has it, so it reads on any body. The windows: the draw from the last
     # sheathed frame to the cut after the blade is clear (the sheath goes back to the hip on that cut); the sheathe from
     # the left hand lifting the sheath to the blade home - the sheath eases onto the blade's line over the first frames)
-    L.append('	-- the draw and the sheathe: { first frame, end frame, kind, frames the hand-over eases over }')
-    L.append('	slides = { { %d, %d, "draw", 12 }, { %d, %d, "sheathe", 10 } },' % (SLIDES[0][0], SLIDES[0][1], SLIDES[1][0], SLIDES[1][1]))
-    L.append('	-- the sheath against the katana in those windows (x, y, z, the turn), by frame')
-    L.append('	relKS = {')
-    for a_, b_ in SLIDES:
-        for f in range(a_, b_ + 1):
-            L.append('		[%d] = { %s },' % (f, ', '.join(g(c, 4) for c in S['relKS'][f])))
-    L.append('	},')
+    # (round 3, the owner on the draw: "the sheath floats off on its own" - riding the blade, it went on past the tip once
+    # the blade was out. Now his left hand carries it, as his take has it from the first frame through the draw, and
+    # again for the sheathe; the blade slides along its line; both switch back on a cut)
+    L.append('	-- the left hand carries the sheath: { first frame, end frame (a cut), kind }')
+    L.append('	sheathHand = { { %d, %d, "draw" }, { %d, %d, "sheathe" } },' % (HAND[0][0], HAND[0][1], HAND[1][0], HAND[1][1]))
+    for key in ('relLS', 'relKS'):
+        L.append('	-- the sheath against the %s in those windows (x, y, z, the turn), by frame' % ('left hand' if key == 'relLS' else 'katana'))
+        L.append('	%s = {' % key)
+        for a_, b_ in HAND:
+            for f in range(a_, b_ + 1):
+                L.append('		[%d] = { %s },' % (f, ', '.join(g(c, 4) for c in S[key][f])))
+        L.append('	},')
     return chr(10).join(L)
 
 
-SLIDES = ((16, 56), (186, 206))
+HAND = ((0, 56), (184, 207))
 
 
 def main(src_path, out, scan=None, lens=None):
@@ -95,6 +99,8 @@ def main(src_path, out, scan=None, lens=None):
         L.append('\tanchor = { %s },' % ', '.join('{ "%s", %s }' % (a, g(w, 2)) for a, w in LN['anchor']))
         L.append('\t-- the speed ramps: { frame, speed[, "cut"] } (1 = as he timed it; a "cut" switches at that frame)')
         L.append('\tramp = { %s },' % ', '.join('{ %s }' % ', '.join(([g(r[0], 2), g(r[1], 3)] + (['"cut"'] if len(r) > 2 else []))) for r in LN['ramp']))
+        L.append('\t-- the hit-stops: { take frame, seconds held } (the game shakes the lens through each)')
+        L.append('\tholds = { %s },' % ', '.join('{ %s, %s }' % (g(h[0], 2), g(h[1], 3)) for h in LN.get('holds', [])))
     L.append('\t-- the blade\'s length per frame (1 = the package blade, 3.22 studs from the guard face)')
     L.append('\tblade = { %s },' % ', '.join(g(bl[f], 3) for f in range(n)))
     L.append('\tframes = %d, fps = 24, floor = 2.78, -- (his floor: 2.78 under the killer\'s root at frame 0)' % n)
