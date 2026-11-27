@@ -287,8 +287,8 @@ Remote.OnClientEvent:Connect(function(op: string, a: any)
 	if me:GetAttribute("Hunt") ~= "round" then return end
 	cardBig.Text = if a.winner == "gunman" then "GUNMAN WINS" elseif a.winner == "hiders" then "HIDERS WIN" else "ROUND OVER"
 	local n = if type(a.survivors) == "table" then #a.survivors else 0
-	cardA.Text = if a.winner == "hiders" and a.why == "the gunman is down" then "the gunman is down"
-		elseif n > 0 then ("%d made it: %s"):format(n, table.concat(a.survivors, ", ")) else "nobody made it"
-	cardB.Text = ("gunman %s · %d down"):format(tostring(a.gunman or "-"), tonumber(a.kills) or 0)
+	cardA.Text = if a.winner == "hiders" and a.why == "the gunman is down" then "GUNMAN DOWN" -- (27 Nov: plain facts, no lowercase whisper)
+		elseif n > 0 then ("%d SURVIVED: %s"):format(n, table.concat(a.survivors, ", ")) else "NO SURVIVORS"
+	cardB.Text = ("GUNMAN %s · %d KILLS"):format(tostring(a.gunman or "-"), tonumber(a.kills) or 0)
 	cardUntil = os.clock() + HC.ROUND.results
 end)
