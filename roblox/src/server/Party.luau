@@ -756,6 +756,50 @@ local function cancel(p: Player): (boolean, string?)
 	return true, nil
 end
 
+-- ------------------------------------------------------------------ PLAY AGAIN (PlayAgain.luau, 27 Nov 2026)
+-- this player's party as the victory card's buttons need it, or nil: its id, leader, size (stand-ins too), the queue it
+-- searched (mode, ranked) and its real members
+function Party.infoOf(p: Player): any?
+	local pt = byPlayer[p]
+	if not pt then return nil end
+	local list = {}
+	for _, m in pt.members do if m.player then table.insert(list, m.player) end end
+	return { id = pt.id, leader = pt.leader.player, size = #pt.members, mode = pt.mode, ranked = pt.ranked, members = list }
+end
+-- the leader's PLAY AGAIN once the party is back in its room: those who picked LEAVE out of the party first, then the
+-- search the party had (its mode, ranked, FILL and map: all still set), as if the leader had pressed FIND
+function Party.requeue(p: Player, drop: { Player }?): (boolean, string?)
+	local pt = byPlayer[p]
+	if not pt then return false, "no party" end
+	if pt.leader.player ~= p then return false, "only the leader starts the search" end
+	for _, q in drop or {} do
+		local m = if q ~= p and byPlayer[q] == pt then memberOf(pt, q.UserId) else nil
+		if m then removeMember(pt, m, true) end
+	end
+	local ok, why = find(p)
+	pushParty(pt)
+	return ok, why
+end
+-- PLAY AGAIN after a match on another server: those who played it as one party, here together again, back in one
+-- party in the leader's room, on the queue it played, searching. the leader's own party here is kept when they lead
+-- it; anyone joining leaves theirs (join)
+function Party.form(leader: Player, members: { Player }, mode: string, ranked: boolean): (boolean, string?)
+	if not PlayConfig.byId[mode] then return false, "no such mode" end
+	local pt = byPlayer[leader]
+	if pt and pt.leader.player ~= leader then Party.leave(leader); pt = nil end
+	local party: PartyT = pt or newParty(leader)
+	for _, q in members do
+		if q ~= leader and q.Parent and byPlayer[q] ~= party then join(q, party) end
+	end
+	if party.entry or party.found then dropEntry(party) end
+	party.mode, party.ranked = mode, ranked == true
+	local ok, why = Party.enter(leader)
+	if not ok then pushParty(party); return false, why end
+	ok, why = find(leader)
+	pushParty(party)
+	return ok, why
+end
+
 -- the members of an entry (a party's, or a test rival group's)
 local function entryMembers(e: Queue.Entry): { Member }
 	local o = e.owner :: any
@@ -1038,7 +1082,8 @@ local function crossTick()
 		if o.ticket and (not e or e.state ~= "search" or e.key ~= o.ticketKey) then withdrawTicket(pt); continue end
 		if not e or e.state ~= "search" or now() - e.since < CrossServer.HANDOFF or not CrossServer.crossable(e.mode) then continue end
 		local ms = {}
-		for _, m in pt.members do local r, rd = ratingFor(m, e.mode); table.insert(ms, { id = m.id, r = r, rd = rd }) end
+		-- (lead: PLAY AGAIN on the match server knows the party's leader, PlayAgain.luau)
+		for _, m in pt.members do local r, rd = ratingFor(m, e.mode); table.insert(ms, { id = m.id, r = r, rd = rd, lead = if m == pt.leader then true else nil }) end
 		if not o.ticket then
 			local id = CrossServer.offer(e, ms) -- (yields; nil if the memory store failed: it searches here anyway)
 			if id and pt.entry == e and e.state == "search" then

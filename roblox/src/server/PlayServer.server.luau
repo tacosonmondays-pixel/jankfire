@@ -18,6 +18,7 @@ local QuickJoin = require(Jankfire:WaitForChild("QuickJoin"))
 local Trading = require(Jankfire:WaitForChild("Trading"))
 local Spectate = require(Jankfire:WaitForChild("Spectate"))
 local Scoreboard = require(Jankfire:WaitForChild("Scoreboard"))
+local PlayAgain = require(Jankfire:WaitForChild("PlayAgain"))
 
 -- the remotes (in the saved place and default.project.json; made here too if missing)
 local remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -48,6 +49,8 @@ Trading.init()
 Spectate.init(Matches, Party, remotes)
 -- the MATCH SCOREBOARD on Tab (Scoreboard.luau, client/Scoreboard.client.luau; 21 Nov 2026)
 Scoreboard.init(Fight, Matches, RankedData)
+-- PLAY AGAIN and LEAVE on the victory card (PlayAgain.luau; 27 Nov 2026): the same queue again, a party together
+PlayAgain.init(Matches, Party, CrossServer, QuickJoin, remotes)
 -- the hub pads' map vote (Matches.padVote): a vote from a player standing on a full pad, through the Play remote
 Party.ops.padvote = function(p: Player, a: any): any
 	local ok, why = Matches.padVote(p, a)
@@ -66,6 +69,7 @@ end
 --     store even for players here);  T:Invoke("fixes", userId) the fixes waiting for them;  T:Invoke("pull", player)
 --     take and apply them (what a join does);  T:Invoke("log", player) their season's ranked log
 --   T:Invoke("play", player) / ("leave", player)   what the PLAY and LEAVE buttons do
+--   T:Invoke("again", player, yes) / ("againview", player)   the victory card's PLAY AGAIN (yes) / LEAVE (PlayAgain.luau)
 --   T:Invoke("qjstand", pad, side, name) / ("qjoff", pad) / ("qjgap", secs) / ("qjstate", player)   QUICK JOIN (QuickJoin.luau)
 if RunService:IsStudio() then
 	local old = ServerStorage:FindFirstChild("JankPlayTest")
@@ -77,6 +81,7 @@ if RunService:IsStudio() then
 		if string.sub(op, 1, 2) == "qj" then return QuickJoin.test(op, a, b, c) end
 		if op == "cross" then return CrossServer.test(a, b, c, d) end -- ("cross", "on" | "handoff" | "ticket" | "mm" ...: CrossServer.test)
 		if op == "play" then return Party.enter(a) end
+		if op == "again" or op == "againview" then return PlayAgain.test(op, a, b) end -- ("again", player, yes) / ("againview", player)
 		if op == "leave" then Party.leave(a); return true end
 		return Party.test(op, a, b, c, d)
 	end

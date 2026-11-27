@@ -193,7 +193,8 @@ local function matchmake(reserve: () -> string?): { any }
 				rated.teams[t] = {}
 				for _, e in list do
 					n += 1
-					for _, m in (e :: any).owner.v.members do table.insert(rated.teams[t], m) end
+					-- (g: which ticket, so which party, each player came in: PLAY AGAIN on the match server, PlayAgain.luau)
+					for _, m in (e :: any).owner.v.members do m.g = n; table.insert(rated.teams[t], m) end
 				end
 			end
 			-- (one party alone is never rated: friends could farm each other)
@@ -227,8 +228,9 @@ function CrossServer.send(players: { Player }, res: any, party: any): (boolean, 
 	return ok, if ok then nil else tostring(err)
 end
 
--- back to a public server (after a match, or when one can't be played), a few tries
-local function sendHome(list: { Player }, note: string?)
+-- back to a public server (after a match, or when one can't be played), a few tries. again: a PLAY AGAIN token
+-- (PlayAgain.luau): the home server forms the party again and searches
+local function sendHome(list: { Player }, note: string?, again: string?)
 	local all = {}
 	for _, p in list do if p.Parent then table.insert(all, p) end end
 	if #all == 0 then return end
@@ -240,7 +242,7 @@ local function sendHome(list: { Player }, note: string?)
 			for _, p in all do if p.Parent then table.insert(left, p) end end
 			if #left == 0 then return end
 			local opts = Instance.new("TeleportOptions")
-			opts:SetTeleportData({ back = true })
+			opts:SetTeleportData({ back = true, again = again })
 			local ok = pcall(function() TeleportService:TeleportAsync(game.PlaceId, left, opts) end)
 			task.wait(if ok then 15 else 3 * try)
 		end
@@ -252,6 +254,7 @@ end
 -- tests do)
 type Arrival = { data: any, players: { [number]: { Player } }, t0: number, started: boolean, ghost: number? }
 local arrivals: { [string]: Arrival } = {}
+local kept: { [string]: any } = {} -- (match id -> the matchmaker's record, for the match's whole length: PlayAgain)
 local function arrived(p: Player, data: any)
 	if type(data) ~= "table" or type(data.match) ~= "string" then return end
 	-- (teleport data passes through the player's client: only the match id is taken from it. the mode, the sides and
@@ -306,6 +309,7 @@ local function begin(id: string, a: Arrival, sides: { { Player } }, arena: strin
 	end)
 	local m, why = nil, nil
 	if okS then m, why = r1, r2 else why = tostring(r1) end
+	if m then kept[id] = a.data end
 	if not m then sendHome(everyone(a), "the match couldn't start: back to a public server") end
 	return m, why
 end
@@ -374,9 +378,39 @@ local function backHome(m: any)
 		task.wait(0.5)
 		local all = {}
 		for _, list in m.teams do for _, p in list do table.insert(all, p) end end
-		if STUDIO then table.insert(homeLog, { match = m.queue, players = #all, mode = m.mode, ranked = m.ranked == true, at = os.clock() }) end
-		sendHome(all, nil)
+		-- (27 Nov 2026, PLAY AGAIN: PlayAgain.luau) a party whose leader picked it goes back together with a token; the
+		-- queue, the leader and who they are stay in the memory store under it (teleport data passes through clients).
+		-- everyone else goes home as before
+		local again: { [Player]: boolean } = {}
+		local okG, groups = pcall(function() return if hooks.homeGroups then hooks.homeGroups(m, all) else nil end)
+		if okG and type(groups) == "table" then
+			for _, g in groups do
+				local tok = HttpService:GenerateGUID(false)
+				local okS = pcall(function() results():SetAsync("a:" .. tok, g.rec, 300) end)
+				if not okS then continue end
+				for _, p in g.players do again[p] = true end
+				if STUDIO then table.insert(homeLog, { match = m.queue, players = #g.players, mode = m.mode, ranked = m.ranked == true, at = os.clock(), again = tok, rec = g.rec }) end
+				sendHome(g.players, nil, tok)
+			end
+		elseif not okG then
+			warn("[jankfire] play again groups: " .. tostring(groups))
+		end
+		local rest = {}
+		for _, p in all do if not again[p] then table.insert(rest, p) end end
+		if STUDIO then table.insert(homeLog, { match = m.queue, players = #rest, mode = m.mode, ranked = m.ranked == true, at = os.clock() }) end
+		if #rest > 0 then sendHome(rest, nil) end
+		kept[string.sub(m.queue, 7)] = nil
 	end)
+end
+-- (PlayAgain.luau) the matchmaker's record of a match played on this match server, or nil
+function CrossServer.recordOf(m: any): any?
+	if type(m) ~= "table" or type(m.queue) ~= "string" or string.sub(m.queue, 1, 6) ~= "cross:" then return nil end
+	return kept[string.sub(m.queue, 7)]
+end
+-- (PlayAgain.luau, at home) a PLAY AGAIN token's record { mode, ranked, lead, ids }, or nil (yields)
+function CrossServer.againRecord(tok: string): any?
+	local ok, v = pcall(function() return results():GetAsync("a:" .. tok) end)
+	return if ok then v else nil
 end
 
 -- ------------------------------------------------------------------ invites across servers
@@ -385,7 +419,9 @@ function CrossServer.invite(toUserId: number, fromName: string)
 	pcall(function() MessagingService:PublishAsync("jf_invite", { to = toUserId, fromName = fromName, job = JOB }) end)
 end
 
--- hooks = { onInvite?, onArrive?, onTeleportFailed? (Player) -> (), notify? (Player, text) -> () }
+-- hooks = { onInvite?, onArrive?, onTeleportFailed? (Player) -> (), notify? (Player, text) -> (), homeGroups? (m, all) ->
+-- { { players, rec } }, onAgain? (Player, token) -> () }; CrossServer.hook adds one later (PlayAgain.luau)
+function CrossServer.hook(name: string, fn: any) hooks[name] = fn end
 function CrossServer.init(matches: any, h: any)
 	Matches = matches
 	hooks = h or {}
@@ -393,7 +429,12 @@ function CrossServer.init(matches: any, h: any)
 	if not CrossServer.enabled() or STUDIO then return end
 	local function joined(p: Player)
 		local jd = p:GetJoinData()
-		if jd and jd.TeleportData then arrived(p, jd.TeleportData) end
+		if jd and jd.TeleportData then
+			arrived(p, jd.TeleportData)
+			-- (back from a match with PLAY AGAIN: PlayAgain forms the party again and searches)
+			local td = jd.TeleportData
+			if type(td) == "table" and td.back == true and type(td.again) == "string" and hooks.onAgain then pcall(hooks.onAgain, p, td.again) end
+		end
 	end
 	Players.PlayerAdded:Connect(joined)
 	for _, p in Players:GetPlayers() do task.spawn(joined, p) end
@@ -433,6 +474,8 @@ end
 --                                 ARRIVE taken as passed; ("start", "ghost", secs) the same, a side that never arrived
 --                                 played as a ghost side, the match held secs (then side 1 takes it)
 --   ("home")                      the matches backHome has sent home so far (Studio: no teleport, just the list)
+--   ("mine", player, key)         a ticket in queue key for that player alone, as its party's leader (PLAY AGAIN tests)
+--   ("againarrive", player, token) that player arrives home with a PLAY AGAIN token, as from sendHome's teleport
 function CrossServer.test(op: string, a: any, b: any, c: any): any
 	if not STUDIO then return nil end
 	if op == "on" then studioOn = true; return CrossServer.active()
@@ -469,6 +512,16 @@ function CrossServer.test(op: string, a: any, b: any, c: any): any
 		return startArrived()
 	elseif op == "home" then
 		return homeLog
+	elseif op == "mine" and typeof(a) == "Instance" and a:IsA("Player") then
+		local id = "mine-" .. HttpService:GenerateGUID(false)
+		local ok, err = pcall(function()
+			map(tostring(b)):SetAsync(id, { job = JOB, size = 1, rating = 1500, since = os.time(),
+				members = { { id = a.UserId, r = 1500, rd = 90, lead = true } } }, CrossServer.TICKET_TTL, 1500)
+		end)
+		return { ok = ok, id = id, err = if ok then nil else tostring(err) }
+	elseif op == "againarrive" and typeof(a) == "Instance" and a:IsA("Player") then
+		if hooks.onAgain then hooks.onAgain(a, b) end
+		return hooks.onAgain ~= nil
 	end
 	return nil
 end

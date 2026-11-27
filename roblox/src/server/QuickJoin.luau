@@ -223,6 +223,19 @@ function QuickJoin.join(p: Player, id: any): any
 	return { ok = true, side = t, moved = #group, look = if facing then { facing.X, facing.Z } else nil }
 end
 
+-- (PlayAgain.luau, 27 Nov 2026) PLAY AGAIN after a pad match: back onto that pad, on your own side when it has room,
+-- else the other side with room. the pad's own queue takes over, as if you had walked on
+function QuickJoin.onto(p: Player, pad: Model, want: number): (boolean, string?)
+	if not pad or not pad.Parent then return false, "that pad is gone" end
+	local v = viewOf(pad, Matches.padView()[pad])
+	if v.on[whoFor(p)] then return true, nil end
+	local t = if v.counts[want] ~= nil and v.counts[want] < v.size then want else sideFor(v, 1)
+	if not t then return false, "that pad is full" end
+	if not standOn(p, pad, t, v.counts[t] + 1) then return false, "no body yet" end
+	drop(p)
+	return true, nil
+end
+
 function QuickJoin.init(matches: any, party: any, remotes: Instance)
 	Matches, Party = matches, party
 	pushR = remotes:WaitForChild("PlayPush") :: RemoteEvent

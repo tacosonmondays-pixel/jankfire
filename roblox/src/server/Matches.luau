@@ -566,6 +566,7 @@ local function holdSpawns(m: Match, round: number)
 end
 
 local function backToHub(m: Match)
+	if m.on == false then return end -- (once: PLAY AGAIN's early trip, Matches.homeNow, may have run it)
 	if m.rules then m.rules.home(m) end -- (a classic mode: its marks come off first)
 	each(m, function(p)
 		RankedDraft.stop(p)
@@ -599,7 +600,15 @@ local function endScreen(m: Match, winner: number?)
 			nextLabel = if after then after.label elseif home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true,
 			cols = cols, mode = if m.rules then m.mode else nil })
 	end)
+	;(m :: any).endAt, (m :: any).replay = os.clock(), after ~= nil
 	task.delay(if after then after.total else Matches.AFTER, backToHub, m)
+end
+-- (PlayAgain.luau, 27 Nov 2026) everyone has picked PLAY AGAIN or LEAVE on the end screen: home now, not after its
+-- count. not before the end screen, not while a play of the match is due (it has the screen next), never twice
+function Matches.homeNow(m: Match): boolean
+	if m.on == false or m.phase ~= "over" or not (m :: any).endAt or (m :: any).replay then return false end
+	backToHub(m)
+	return true
 end
 local function endMatch(m: Match, winner: number?)
 	if m.phase == "over" then return end
