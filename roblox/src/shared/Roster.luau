@@ -365,6 +365,17 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	"damascus", -- both: the same steel as Mastery Damascus
 	"receipt", -- both: the same office paper as Corporate Memo
 	"qr", -- both: the same black and white alternation as Barcode
+	-- the second pass (27 Nov): a third blind critic broke the split AI calls (each of these: 2 of 3 critics "AI")
+	"lava", -- smeared glows inside the cells
+	"kintsugi", -- blurry gold dabs, ghost hairlines
+	"urushi", -- lopsided wreaths, scribbly linework
+	"copper", -- (Verdigris) blurry blobs, cloudy insides
+	"marble", -- wormy veins, puffy airbrushed shading
+	"moss", -- fuzzy noise clouds, no shapes
+	-- and the plain colours checked in game: a flat colour only a shade off another one in its family goes
+	"cream", -- between Fridge White (cleaner white) and Washi (the same cream, with paper flecks)
+	"magenta", -- Hot Magenta: Pink, louder (Pink is the free one)
+	"gold", -- the same flat gold metal as Mastery Gold; Bullion's two-tone finish stays
 } :: { string }
 Roster.retiredWraps = {} :: { Wrap }
 do

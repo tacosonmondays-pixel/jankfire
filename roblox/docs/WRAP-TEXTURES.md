@@ -577,6 +577,26 @@ owns it keeps it and wears it: `Mastery.wrapList` adds the retired wraps after t
 retired wrap only to its owners. Live in place version 1425 (checked in Edit: 100 wraps left in `Roster.wraps`, none of
 the five in any spray pool; a solo Play with no errors).
 
+**The second pass (27 Nov, place version 1438).** Main asked for the split calls to be settled and the plain colours to
+be checked in game. Sheet: `wrap-textures/audit/audit-27nov-pass2.jpg`.
+- A third fresh blind critic saw the six split wraps among six agreed-MADE controls (it called every control MADE). It
+  called all six AI, so each now has 2 of 3: Lava, Kintsugi, Urushi Maki-e, Verdigris, Marble, Moss (retired). Marble
+  had also been called AI by both living-camo critics, where it sat as a control.
+- The plain colours were photographed on the AR in the saved (Rooftop) light, family by family, as `WeaponModels.wrap`
+  lays them (material, reflectance, see-through). A wrap went only when it was just a shade off another one in its
+  family. Retired: Cream (a flat warm white between Fridge White and Washi; Washi has pink paper flecks up close), Hot
+  Magenta (Pink, louder; Pink is the free one), Gold (the same flat gold metal as Mastery Gold; Bullion's two-tone
+  finish is its own, and it is the coin packs' bonus).
+- Kept, each with a real difference in game: Ghost (forcefield), Ice (see-through), Neon (glows), Hi-Vis (two-tone
+  fabric), Carbon Fiber (a weave you can see), Ducky (speck pattern, VIP set), Lemon Drop, Tangerine, Lime, Matte Black,
+  and the four cyans (Mint, Pool Tile, Sky, Ice: four hues that don't read alike).
+- Galaxy stays retired as Nebula's twin (pass 1), though the owner tuned it on 16 Nov. If the owner wants it back,
+  delete `"galaxy"` from `Roster.RETIRED`.
+
+After both passes, 14 are retired and `Roster.wraps` holds 91. Checked in Edit at version 1438: no retired id in any
+spray pool (the Cosmic, Wild, Japan, Office and Luxe pools hold 12, 16, 11, 16 and 9 wraps). The shop session refills
+its own explicit lists (the spray sets, and the shop collections whose hero was Kintsugi, Marble or Lava).
+
 ## Redrawing or adding a wrap
 
 ```bash
