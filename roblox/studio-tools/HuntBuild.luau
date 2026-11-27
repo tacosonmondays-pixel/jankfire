@@ -184,8 +184,8 @@ local function props(H: any, O: Vector3, tf: Folder, into: Folder): string
 	local nt, nw, nf, nl = 0, 0, 0, 0
 	for _, t in H.tvs do -- the screen: a thin panel just proud of the TV's dark screen (HuntProps lights it)
 		local at = turnCF(t[1], t[2], t[3], t[4], O)
-		local s = part(into, "TV", at * CF(0, 3.5, 0.42), V3(11.0, 6.0, 0.08))
-		s.Transparency = 0; s.Material = Enum.Material.Neon; s.Color = hex("3e444e"); s.CanQuery = false -- (round 6: a dim slate glow, not a black hole)
+		local s = part(into, "TV", at * CF(0, 3.5, 0.62), V3(11.0, 6.0, 0.08)) -- (0.62: clear of the TV mesh's own screen, round 7)
+		s.Transparency = 0; s.Material = Enum.Material.Neon; s.Color = Color3.fromRGB(70, 77, 88); s.CanQuery = false -- (round 6: a dim slate glow, not a black hole)
 		s:SetAttribute("Kind", "tv")
 		nt += 1
 	end
