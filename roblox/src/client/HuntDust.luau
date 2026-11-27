@@ -26,10 +26,11 @@ function D.motes(parent: Instance, cf: CFrame, size: Vector3, col: Color3, opts:
 	e.Texture = D.DOT
 	e.Color = ColorSequence.new(col)
 	e.LightInfluence = 1
-	e.LightEmission = o.emission or 0.15
-	e.Brightness = o.brightness or 1
-	e.Size = NumberSequence.new({ kp(0, 0.06, 0.02), kp(1, 0.07, 0.02) })
-	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, o.see or 0.35), kp(0.8, o.see or 0.35), kp(1, 1) })
+	e.LightEmission = o.emission or 0.35
+	e.Brightness = o.brightness or 1.6
+	-- (27 Nov, in Play: 0.06 studs at 35% read as nothing; this size and opacity read as fine dust in the light)
+	e.Size = NumberSequence.new({ kp(0, 0.11, 0.03), kp(1, 0.13, 0.03) })
+	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, o.see or 0.12), kp(0.8, o.see or 0.12), kp(1, 1) })
 	e.Lifetime = NumberRange.new(8, 12)
 	local vol = size.X * size.Y * size.Z
 	e.Rate = o.rate or math.clamp(vol * (o.density or 0.01), 0.6, o.max or 5)
@@ -61,9 +62,9 @@ function D.shaft(parent: Instance, a: Vector3, b: Vector3, width: number, col: C
 	bm.FaceCamera = true
 	bm.Texture = D.DOT; bm.TextureMode = Enum.TextureMode.Stretch; bm.TextureLength = 1; bm.TextureSpeed = 0
 	bm.Width0 = width; bm.Width1 = width * (o.spread or 1.25)
-	bm.LightEmission = o.emission or 0.6; bm.LightInfluence = 0; bm.Brightness = o.brightness or 1
+	bm.LightEmission = o.emission or 1; bm.LightInfluence = 0; bm.Brightness = o.brightness or 2
 	bm.Color = ColorSequence.new(col)
-	local see = o.see or 0.93
+	local see = o.see or 0.8
 	bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.18, see), kp(0.7, see), kp(1, 1) })
 	bm.Segments = 1
 	bm.Parent = p
@@ -79,10 +80,10 @@ function D.screen(parent: Instance, screen: BasePart, col: Color3, opts: any?): 
 	local w, h = screen.Size.X, screen.Size.Y
 	local depth = o.depth or 4.5
 	D.motes(parent, f * CFrame.new(0, 0, -(0.6 + depth / 2)), Vector3.new(w + 2.4, h + 2.2, depth), col,
-		{ name = "ScreenMotes", density = o.density or 0.05, max = 4, emission = 0.25 })
+		{ name = "ScreenMotes", density = o.density or 0.06, max = 5, emission = 0.4 })
 	if o.shaft then
 		D.shaft(parent, f.Position + f.LookVector * 0.4, f.Position + f.LookVector * (o.shaftLen or 7) + Vector3.new(0, -1.2, 0),
-			w * 0.9, col, { name = "ScreenShaft", see = o.see or 0.94, emission = 0.5 })
+			w * 0.9, col, { name = "ScreenShaft", see = o.see or 0.86 })
 	end
 end
 

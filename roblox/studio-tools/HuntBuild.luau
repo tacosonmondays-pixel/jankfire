@@ -357,9 +357,10 @@ local function motes(parent: Instance, cf: CFrame, size: Vector3, col: Color3, d
 	p.Transparency = 1; p.Size = size; p.CFrame = cf
 	local e = Instance.new("ParticleEmitter")
 	e.Name = "Motes"; e.Texture = DOT; e.Color = ColorSequence.new(col)
-	e.LightInfluence = 1; e.LightEmission = 0.15
-	e.Size = NumberSequence.new({ kp(0, 0.06, 0.02), kp(1, 0.07, 0.02) })
-	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, 0.35), kp(0.8, 0.35), kp(1, 1) })
+	e.LightInfluence = 1; e.LightEmission = 0.35; e.Brightness = 1.6
+	-- (27 Nov, in Play: 0.06 studs at 35% read as nothing; these read as fine dust in the light)
+	e.Size = NumberSequence.new({ kp(0, 0.11, 0.03), kp(1, 0.13, 0.03) })
+	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, 0.12), kp(0.8, 0.12), kp(1, 1) })
 	e.Lifetime = NumberRange.new(8, 12)
 	e.Rate = math.clamp(size.X * size.Y * size.Z * density, 0.6, max)
 	e.Speed = NumberRange.new(0.03, 0.12); e.SpreadAngle = Vector2.new(180, 180)
@@ -378,7 +379,7 @@ local function shaft(parent: Instance, a: Vector3, b2: Vector3, width: number, c
 	local bm = Instance.new("Beam")
 	bm.Attachment0 = a0; bm.Attachment1 = a1; bm.FaceCamera = true
 	bm.Texture = DOT; bm.TextureMode = Enum.TextureMode.Stretch; bm.TextureLength = 1; bm.TextureSpeed = 0
-	bm.Width0 = width; bm.Width1 = width * 1.25; bm.LightEmission = 0.6; bm.LightInfluence = 0
+	bm.Width0 = width; bm.Width1 = width * 1.25; bm.LightEmission = 1; bm.LightInfluence = 0; bm.Brightness = 2
 	bm.Color = ColorSequence.new(col)
 	bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.18, see), kp(0.7, see), kp(1, 1) })
 	bm.Segments = 1; bm.Parent = p
@@ -386,7 +387,7 @@ local function shaft(parent: Instance, a: Vector3, b2: Vector3, width: number, c
 end
 B.DUST = {
 	sun = Color3.fromRGB(255, 238, 212), lamp = Color3.fromRGB(255, 222, 184),
-	shafts = 3, shaftSee = 0.94, -- (faint: hiding stays readable)
+	shafts = 3, shaftSee = 0.8, -- (faint: hiding stays readable; the soft glow texture's own alpha thins it further)
 	lamps = { { -25.6, 10.7, 21 }, { 30, 7.6, -18 }, { -25.6, 10.7, -19.5 } }, -- (living room, the kitchen's pendant, the family room)
 }
 function B.ambience(): string
@@ -432,7 +433,7 @@ function B.ambience(): string
 		local dir = -sun
 		local mid = w.start + dir * (w.len / 2)
 		local _, r = motes(f, CFrame.lookAt(mid, mid + dir), Vector3.new(w.w * 0.8, w.h * 0.8, w.len), B.DUST.sun,
-			if strong then 0.012 else 0.006, if strong then 5 else 2, "SunMotes")
+			if strong then 0.018 else 0.009, if strong then 7 else 3, "SunMotes")
 		nm += 1; rate += r
 		if strong and nsh < B.DUST.shafts and w.w >= 5 then
 			nsh += 1
@@ -442,7 +443,7 @@ function B.ambience(): string
 	for _, l in B.DUST.lamps do
 		local top = O:PointToWorldSpace(Vector3.new(l[1], l[2] - 0.8, l[3]))
 		local hgt = math.max(3, l[2] - 1.6)
-		local _, r = motes(f, CFrame.new(top - Vector3.new(0, hgt / 2, 0)), Vector3.new(4.5, hgt, 4.5), B.DUST.lamp, 0.008, 1.4, "LampMotes")
+		local _, r = motes(f, CFrame.new(top - Vector3.new(0, hgt / 2, 0)), Vector3.new(4.5, hgt, 4.5), B.DUST.lamp, 0.012, 2, "LampMotes")
 		nm += 1; rate += r
 	end
 	return ("ambience: sun %s; %d sunny windows; %d mote boxes (%.1f motes/s, about %d alive), %d shafts"):format(
