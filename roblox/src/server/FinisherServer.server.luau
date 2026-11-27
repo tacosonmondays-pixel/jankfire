@@ -237,7 +237,7 @@ local function onRound(m: any, winner: number): (string?, any)
 		wins = m.wins[winner], need = Matches.WIN, classic = m.rules ~= nil })
 	if not kind or not x.fid or not x.skin then return nil, "decided none" end
 	-- (the victory scene live: the match-winning round's cut is its now - the best winner against the enemy best)
-	if kind == "full" and FV.ON then return nil, "the victory scene's" end
+	if kind == "full" and (FV.ON or Matches.victoryLive == true) then return nil, "the victory scene's" end
 	if kind == "full" then
 		played[m] = true
 		-- (a scene runs longer than the old cut: the end screen, the trip home and the play of the match wait for it)
@@ -306,16 +306,31 @@ function FV.play(m: any, kp: Player, vp: Player): (boolean, string, number?)
 	local k, v = Fight.of(kp), Fight.of(vp)
 	if not k or not v then return false, "not fighters", nil end
 	local all = everyone(m)
+	-- (the victory scene sets a provisional hold for its own default scene first: a failed play leaves it as it was)
+	local untilWas, fromWas = m.finisherUntil, m.finisherFrom
 	holdFor(m, c.fid, all)
 	local ok, why = play({ k = k, v = v, w = c.w, t = os.clock() }, "full", all, c.fid, c.skin)
 	if not ok then
 		watching[m] = nil
-		m.finisherUntil = nil
+		m.finisherUntil, m.finisherFrom = untilWas, fromWas
 		return false, why, nil
 	end
 	played[m] = true
 	return true, why, c.len
 end
+-- (the victory scene's own shape, on Matches: it ranks, then asks pick for each winner best first, then play; it sets
+-- Matches.victoryLive = true at its load, which turns FinisherServer's own match-winning-kill cut off)
+Matches.endFinisher = {
+	pick = function(p: Player, m: any?): (string?, string?, string?)
+		local c = FV.finisherOf(p, m or Matches.raw(p))
+		if not c then return nil, nil, nil end
+		return c.fid, c.skin, c.w
+	end,
+	play = function(m: any, kp: Player, vp: Player, _pick: any?): (boolean, string)
+		local ok, why = FV.play(m, kp, vp)
+		return ok, why
+	end,
+}
 
 Matches.onRound(function(m: any, winner: number)
 	onRound(m, winner)
@@ -332,7 +347,7 @@ Matches.onEnd(function(m: any, winner: number?)
 	local done = played[m]
 	lastKill[m] = nil
 	played[m] = nil
-	if done or not x or not winner or FV.ON then return end
+	if done or not x or not winner or FV.ON or Matches.victoryLive == true then return end
 	local kp = x.k.ref :: Player
 	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
 		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "end", classic = m.rules ~= nil })

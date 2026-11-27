@@ -10,8 +10,11 @@
 --   FV.play(m, killer, victim) -> (ok, why, len?)
 --       sends that scene to everyone in the match, `killer` (the best winner) against `victim` (the enemy best), and
 --       holds the end screen on m.finisherUntil as the old match-winning cut did. false: play the default scene.
---   FV.ON: FinisherServer's own match-winning-kill cut stays on while this is false (the default, until the victory
---       scene calls FV.play live) - so no match ends with neither.
+--   FV.ON: FinisherServer's own match-winning-kill cut stays on while this (and Matches.victoryLive) is false - so no
+--       match ends with neither.
+-- The victory scene's own shape is on Matches too (FinisherServer sets it): Matches.endFinisher.pick(player, m?) ->
+-- fid, skin, weapon (or nil) and Matches.endFinisher.play(m, killer, victim) -> ok, why; it sets Matches.victoryLive
+-- = true at its load. A failed play leaves m.finisherUntil as the caller had it (its default scene's hold).
 local FV = {}
 
 FV.ON = false
