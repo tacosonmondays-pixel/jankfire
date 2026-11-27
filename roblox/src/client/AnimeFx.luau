@@ -648,6 +648,7 @@ local function stepSweep(s: Sweep, dt: number): boolean
 	-- (a stud's size in pixels at 1 stud away: the ribbon is never under 7 px across where the crescent is fullest)
 	local pxK = 2 * math.tan(math.rad(cam.FieldOfView) / 2) / math.max(cam.ViewportSize.Y, 1)
 	local C: { Vector3 }, Wd: { number }, U: { Vector3 }, Tr: { number }, TB: { Vector3 } = {}, {}, {}, {}, {}
+	local cl: { boolean } = {} -- (pieces the curl clamp held in)
 	for i = 1, n do
 		local k = math.clamp(Da[i] / SWEEP_LIFE, 0, 1)
 		local u = if L - a0 > 1e-4 then (acc[i] - a0) / (L - a0) else 1
@@ -690,7 +691,10 @@ local function stepSweep(s: Sweep, dt: number): boolean
 				local turn = math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1))
 				if turn > 1e-3 and kv:Dot(span) > 0 then
 					local r = (e0.Magnitude + e1.Magnitude) / 2 / turn
-					w = math.min(w, 0.8 * r)
+					if 0.8 * r < w then
+						w = 0.8 * r
+						cl[i] = true
+					end
 				end
 			end
 		end
@@ -700,20 +704,28 @@ local function stepSweep(s: Sweep, dt: number): boolean
 		Tr[i] = math.clamp((k - 0.45) / 0.55, 0, 1) ^ 1.3
 	end
 	-- (round 7, the critic on v1487: where the curl clamp held the band in, its width jumped and bit "a sawtooth notch"
-	-- out of the inner edge. The width now changes by at most a tenth of the widest per piece, both ways, only ever
-	-- lowering a neighbour (never raising a clamped piece, which would fold again), then a 3-point smoothing that also
-	-- only lowers)
-	local wmax = 0
-	for i = 1, n do wmax = math.max(wmax, Wd[i]) end
-	local step = 0.1 * wmax
-	for i = 2, n do Wd[i] = math.min(Wd[i], Wd[i - 1] + step) end
-	for i = n - 1, 1, -1 do Wd[i] = math.min(Wd[i], Wd[i + 1] + step) end
-	local sm = table.clone(Wd)
-	for i = 2, n - 1 do sm[i] = math.min(Wd[i], (Wd[i - 1] + Wd[i] + Wd[i + 1]) / 3) end
-	for i = 1, n do
-		Wd[i] = sm[i]
-		C[i] = TB[i] + U[i] * (sm[i] / 2)
+	-- out of the inner edge. Round 8, the critic on v1497: a cap per PIECE starved short paths (first person's ~10
+	-- pieces peaked at a third of the width). Only when the clamp held a piece in: the width changes by at most the
+	-- widest per fifth of the visible length (steeper than the crescent's own profile, so only the clamp's jump is
+	-- eased), both ways, only ever lowering a neighbour (never raising a clamped piece, which would fold again); then
+	-- a lower-only 3-point smoothing within two pieces of a clamped one)
+	if next(cl) then
+		local wmax = 0
+		for i = 1, n do wmax = math.max(wmax, Wd[i]) end
+		local perL = 5 * wmax / math.max(L - a0, 1e-4)
+		for i = 2, n do Wd[i] = math.min(Wd[i], Wd[i - 1] + perL * (acc[i] - acc[i - 1])) end
+		for i = n - 1, 1, -1 do Wd[i] = math.min(Wd[i], Wd[i + 1] + perL * (acc[i + 1] - acc[i])) end
+		local sm = table.clone(Wd)
+		for i = 2, n - 1 do
+			local near = false
+			for j = math.max(1, i - 2), math.min(n, i + 2) do
+				if cl[j] then near = true end
+			end
+			if near then sm[i] = math.min(Wd[i], (Wd[i - 1] + Wd[i] + Wd[i + 1]) / 3) end
+		end
+		Wd = sm
 	end
+	for i = 1, n do C[i] = TB[i] + U[i] * (Wd[i] / 2) end
 	if ns >= 2 then
 		local a, b = Pt[ns - 1], Pt[ns]
 		if (b - a).Magnitude > 1e-3 then swingDir = (b - a).Unit; swingDirT = os.clock() end
