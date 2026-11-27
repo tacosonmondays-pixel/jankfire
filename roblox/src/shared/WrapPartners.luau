@@ -32,7 +32,7 @@ local P: { [string]: Partner } = {
 	desert = { k = "deep", c = Color3.fromHex("48341b"), t = Color3.fromHex("6d5e41") }, -- L* 64
 	dice = { k = "deep", c = Color3.fromHex("4d121b"), t = Color3.fromHex("785056") }, -- L* 47
 	digital = { k = "deep", c = Color3.fromHex("232a18"), t = Color3.fromHex("616a51") }, -- L* 46
-	ducky = { k = "deep", c = Color3.fromHex("514616"), t = Color3.fromHex("646349") }, -- L* 76
+	ducky = { k = "metal", c = Color3.fromHex("64583c") }, -- L* 41
 	fade = { k = "deep", c = Color3.fromHex("382954"), t = Color3.fromHex("6d576a") }, -- L* 60
 	galaxy = { k = "metal", c = Color3.fromHex("464059") }, -- L* 12
 	geode = { k = "deep", c = Color3.fromHex("382954"), t = Color3.fromHex("5e5961") }, -- L* 60

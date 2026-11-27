@@ -2243,27 +2243,45 @@ def soap_bubble(t: Tex, x, y, R):
     t.paint(idx, hl * 0.9, 'ffffff', emit=hl * 0.45)
 
 
+def duck_small(t: Tex, x, y, s, f, body, shade, bill, eye, lift=1.6):
+    """a small rubber duck in profile (f = -1 faces left), for a pattern of many: round body, tail tipped up, round
+       head, bill, eye; the wing is a solid shade on the body (a thin line vanishes at this size)"""
+    bd = sd_ellipse(x, y + 10 * s, 52 * s, 32 * s)
+    tl = sd_ellipse(x - f * 47 * s, y - 3 * s, 20 * s, 10 * s, rot=f * 0.6)
+    hd = sd_circle(x + f * 29 * s, y - 27 * s, 23 * s)
+    bl = sd_ellipse(x + f * 55 * s, y - 21 * s, 15 * s, 7 * s, rot=-f * 0.12)
+    X, Y, idx = t.box(x - 82 * s - 12, y - 62 * s - 12, x + 82 * s + 12, y + 50 * s + 12)
+    a = cover(np.minimum(np.minimum(bd(X, Y), tl(X, Y)), hd(X, Y)), 1.0)
+    t.paint(idx, a, body, height=a * lift, hmode='max')
+    t.paint(idx, cover(sd_ellipse(x - f * 6 * s, y + 12 * s, 26 * s, 15 * s, rot=f * 0.15)(X, Y), 1.0) * a, shade)
+    t.paint(idx, cover(bl(X, Y), 1.0), bill, height=lift * 0.8, hmode='max')
+    t.paint(idx, cover(sd_circle(x + f * 33 * s, y - 32 * s, max(4.0 * s, 2.2))(X, Y), 0.8), eye)
+
+
 @design('ducky')
 def ducky(t: Tex):
-    """Ducky (VIP, 16 Nov 2026): the Ducky skin set's palette as a calm wrap. Rubber-duck yellow (leaning lemon, as the
-       set's, so the halls' warm lamps don't push it to orange), a quiet staggered pattern of little ducks moulded in
-       the same yellow a shade lighter with orange bills, and soap bubbles in the gaps, their rims glowing softly. A
-       satin bath-toy sheen. No text, no logos"""
+    """Ducky (VIP; redrawn 27 Nov 2026 for the 0.6 m tile, the owner's yes): deep bath water, a dark muted teal with
+       soft wave lines running along the gun, and small yellow rubber ducks (about 3.5 cm long) bobbing on every other
+       wave in a half-drop, rows facing alternately; the yellow is the one accent, the bills a touch of orange. Picked
+       from four takes; two blind critics both ranked it first. (The 16 Nov Ducky, a yellow gun with big tone-on-tone
+       ducks, showed as a plain yellow gun with cut-off ghost ducks on the new UVs.) No text, no logos"""
     n = t.n; r = t.rng
-    t.rgb[:] = hexrgb('d6bc48')
-    t.fill(smoothstep(-0.4, 0.6, FBM([2, 4], 631, 0.5)(t.U, t.V)) * 0.18, 'e2cb5c')   # a moulded toy's soft tonal shift
-    cols, rows = 3, 4
-    centres = []
+    t.rgb[:] = hexrgb('35505a')
+    t.fill(smoothstep(-0.5, 0.6, FBM([2, 4], 714, 0.5)(t.U, t.V)) * 0.25, '3f5c66')
+    rows = 8
+    k = TAU * 5 / n                      # (5 swells a tile, so the ducks, 8 a row, ride them at different heights)
+    for j in range(rows * 2):            # wave lines, every other one under a row of ducks (stronger than the take,
+        y0 = (j + 0.5) * n / (rows * 2) + 22     # a critic: "the waves fade to nothing at range")
+        f = y0 + 7 * np.sin(k * t.X + j * 1.3)
+        d = np.abs(((t.Y - f) + n / 2) % n - n / 2) / np.sqrt(1 + (7 * k * np.cos(k * t.X + j * 1.3)) ** 2)
+        t.fill(np.clip(0.5 + (2.1 - d), 0, 1) * (0.7 if j % 2 == 0 else 0.4), '62838c')
     for j in range(rows):
-        for i in range(cols):
-            x = (i + 0.5 + 0.5 * (j % 2)) * n / cols + r.uniform(-10, 10)
-            y = (j + 0.5) * n / rows + r.uniform(-8, 8)
-            duck(t, x, y, s=0.95, f=-1)
-            centres.append((x, y, 120))
-    for x, y in scatter(r, n, 16, 70, taken=centres):
-        soap_bubble(t, x, y, r.uniform(9, 24))
-    t.rough[:] = 0.36
-    return {'emissive': 1.2, 'tint': 'ffffff', 'accent': 'e0883a'}   # (the gun's glow pieces take the bills' orange)
+        for i in range(8):
+            x = (i + 0.5 + 0.5 * (j % 2)) * n / 8
+            y = (j + 0.5) * n / rows + 7 * math.sin(k * x + j * 2.6)   # riding its wave: a gentle bob (less rigid rows)
+            duck_small(t, x, y, 0.42, -1 if j % 2 == 0 else 1, 'e1c24a', 'c9a73a', 'd07a2e', '22262c')
+    t.rough[:] = 0.38
+    return {'emissive': 1.0, 'tint': 'ffffff', 'accent': 'e1c24a'}
 
 
 

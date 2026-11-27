@@ -325,8 +325,10 @@ wrap("blackhole", "Black Hole", "legendary", { "050508", "ff8a1a" }, "speck", ni
 wrap("stonks", "Market Crash", "legendary", { "111111", "ff3030", "39ff14" }, "speck", nil, nil, nil, { 2, 3 })
 wrap("hex", "Neon Hex", "legendary", { "0a1a2a", "4fd8ff" }, "speck", nil, nil, nil, { 2 })
 -- VIP only (16 Nov 2026, the shop's VIP pack): never in a Spray Can, the shop's rotation or a bundle (LootTable.vipOnly
--- and the shop read vip); it comes with VIP, on every gun at once. The Ducky skin set's palette (yellow, bill orange)
-wrap("ducky", "Ducky", "legendary", { "d6bc48", "c06a2e" }, "speck", nil, 0.06)
+-- and the shop read vip); it comes with VIP, on every gun at once. Redrawn 27 Nov 2026 (the owner's yes): deep bath
+-- water with small yellow rubber ducks, so its palette is the water's teal and the ducks' yellow (was the Ducky skin
+-- set's yellow and bill orange)
+wrap("ducky", "Ducky", "legendary", { "35505a", "e1c24a" }, "speck", nil, 0.06)
 Roster.wrapById.ducky.vip = true
 -- the VIP daily reward only (17 Nov 2026, the Triangulum trio): VipDailyData.EXCLUSIVE is its daily-only mark, so the
 -- containers, the shop and the VIP pack skip it. Never vip = true here (the VIP pack would give it to every VIP)

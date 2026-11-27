@@ -271,6 +271,18 @@ since the bills are too small a share of the tile to be picked automatically. In
 its yellow read brighter than drawn, a toy-bright lemon; if it should be calmer, take the base a step darker and less
 saturated in `ducky()` (and the ducks with it).
 
+**Redrawn 27 Nov 2026 (place v1523; the owner's yes).** On the 0.6 m tile the 16 Nov Ducky showed as a plain yellow
+gun with a few cut-off ghost ducks. The new one is deep bath water: a dark muted teal (`35505a`) with soft wave lines
+along the gun and small yellow rubber ducks (`duck_small`, about 3.5 cm long, solid wing shade) riding every other wave
+in a half-drop, 8 a row, rows facing alternately; the waves have 5 swells a tile so the ducks bob at different heights.
+The yellow is the one accent (`e1c24a`), the bills a touch of orange; no glow (the bubbles are gone). Picked from four
+takes (slate water with ripples, butter yellow with cream ducks, bath tiles, deep water) rendered on the rifle, sniper
+and pistol; two blind critics both ranked deep water first (8/10 and 7/10, KEEP) and the old Ducky last (2/10). Same
+id, name, VIP slot and owners: only the picture changed (`JankfireWraps.ducky`), with its Roster palette
+(`{ "35505a", "e1c24a" }`) and its partner (`WrapPartners.ducky`: satin metal `64583c`). Only that partner line was
+changed: a full `wrap_partners.py` run today would also move 14 reworked wraps' partners and drop Molten (its frames
+live elsewhere), so that is left for a deliberate pass. Before/now sheet: notes folder `DUCKY_before_now_27nov.jpg`.
+
 ## Brighter, moving, raised (16 Nov 2026, evening)
 
 The owner: "Can certain wraps have a brighter glow, some are animated right? I want cool effects and maybe even

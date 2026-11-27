@@ -31,7 +31,7 @@ local BOOK = {
 	desert = { color = 117134212940150, rough = 129833091360678, emissive = 1, tint = "ffffff", finish = "", second = "555555", dark = "48341b", accent = "d9b892" },
 	dice = { color = 106514638515103, normal = 75903650893626, rough = 84213126350862, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "794e4f", accent = "d93650" },
 	digital = { color = 139264590789652, rough = 122441279549464, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "232a18", accent = "d9c7ac" },
-	ducky = { color = 120690864359569, normal = 75348588764562, rough = 86227588438345, emit = 132516774576453, emissive = 1.2, tint = "ffffff", finish = "GLOWS", second = "464646", dark = "514616", accent = "e0883a" },
+	ducky = { color = 110489707749216, normal = 74392556439352, rough = 86227588438345, emissive = 1.0, tint = "ffffff", finish = "", second = "737373", dark = "64583c", accent = "e1c24a" },
 	fade = { color = 88146409955012, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "5e5e5e", dark = "382954", accent = "43a8e6" },
 	galaxy = { color = 81606959511190, rough = 86227588438345, emit = 137597014105061, emissive = 6.5, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "464059", accent = "7f6bd9" },
 	geode = { color = 102191753294778, normal = 115296718035659, rough = 86227588438345, emit = 85522022586513, emissive = 4.5, tint = "ffffff", finish = "GLOWS", second = "525252", dark = "463562", accent = "7f55d9" },
