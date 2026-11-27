@@ -128,6 +128,9 @@ the shot plays.
   - The zombies extraction film does it too (`ZombieCine` `parkCast`): at the call, 90 s before, the crew member with his
     helmet and a seated copy of each other squad member are built and parked at (-4000, 3000, -40000); the film takes
     those copies, a fresh one only if none is parked. The intro's gate crowd is placed at the gate from the black lead.
+- **See-through parts behind Glass aren't drawn.** A part with Transparency > 0 behind a Glass-material surface (a
+  window) doesn't show: the zombies crew member's Glass visor came on only as the helicopter door slid open, with a
+  white glint (27 Nov). A film prop seen through a window: opaque (the visor is SmoothPlastic + Reflectance now).
   - Bodies too (finishers): a copy of each player's look is parked at the scenes' warning, off-map under the stage
     (`Finisher` `parkBodies`), so the film's own copies of them draw whole from frame 1.
 - **A film's first frame after a light change is mis-lit.** A film that puts on its own Lighting (night, exposure,

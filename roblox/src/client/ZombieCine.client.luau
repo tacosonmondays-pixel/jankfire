@@ -697,7 +697,9 @@ local function crewOf(r: any): (Model?, BasePart?, AnimationTrack?)
 		helm.Parent = workspace
 		table.insert(r.trash, helm)
 		local visor = Instance.new("Part")
-		visor.Name = "Visor"; visor.Color = Color3.fromRGB(16, 20, 26); visor.Material = Enum.Material.Glass; visor.Transparency = 0.15
+		-- (opaque: a see-through Glass visor isn't drawn behind the door's window, so it came on only as the door slid open,
+		-- with a white glint; 27 Nov frame check)
+		visor.Name = "Visor"; visor.Color = Color3.fromRGB(16, 20, 26); visor.Material = Enum.Material.SmoothPlastic; visor.Reflectance = 0.12
 		visor.Size = Vector3.new(hs.X * 1.02, hs.Y * 0.36, 0.12); visor.CanCollide = false; visor.CanQuery = false; visor.CanTouch = false; visor.Anchored = true
 		local v0 = CFrame.new(0, hs.Y * 0.12, -hs.Z * 0.62)
 		visor.CFrame = head.CFrame * v0
@@ -723,7 +725,11 @@ end
 -- sit clip); their real bodies are hidden on this screen while the film runs (the bots walk to the door: the server
 -- hides them at the cut)
 local SIT = "rbxassetid://2506281703"
--- one seated copy of a body (a player's or a squad bot's), in the world, its sit clip playing
+-- one seated copy of a body (a player's or a squad bot's), in the world, its sit clip playing. The game's own systems come
+-- off at once (27 Nov, the finishers' frame check: a copy keeps the TPRig tag, and ThirdPerson draws its gun on it):
+-- the tag, and ThirdPerson's and the server's gun pieces
+local CollectionService = game:GetService("CollectionService")
+local GUN_BITS = { TPGun = true, TPItem = true, TPRigArms = true, HeldWeapon = true }
 local function seatCopy(s0: Model, at: CFrame?): (Model?, BasePart?)
 	local was = s0.Archivable
 	s0.Archivable = true
@@ -731,8 +737,10 @@ local function seatCopy(s0: Model, at: CFrame?): (Model?, BasePart?)
 	s0.Archivable = was
 	if not ok or not c then return nil, nil end
 	local m = c :: Model
+	CollectionService:RemoveTag(m, "TPRig")
 	for _, d in m:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("Sound") then d:Destroy()
+		if GUN_BITS[d.Name] and d.Parent then d:Destroy()
+		elseif d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("Sound") then d:Destroy()
 		elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
 		elseif d:IsA("Decal") then d.LocalTransparencyModifier = 0 end
 	end
@@ -870,6 +878,10 @@ local function outro(a: Model)
 	me:SetAttribute("ZmFilm", true)
 	local key = keyLight(r, 40, 1.4)
 	moon(r, 0.8)
+	-- (the first frames black: the film's own light comes in on its first frame and the renderer catches up a frame later;
+	-- 27 Nov, the finishers' rule, docs/PERFORMANCE.md)
+	black.BackgroundTransparency = 0
+	local openFrames = 0
 	local function clk(): number return srv() - start end
 	local function doorW(): Vector3 return heliCF():PointToWorldSpace(doorAt) end
 	-- the first-person camera: outside the door, eye level, facing in; a settle, then still, then the step with a bob
@@ -960,6 +972,10 @@ local function outro(a: Model)
 	r.conn = RunService.RenderStepped:Connect(function()
 		local t = clk()
 		hold(r)
+		if openFrames >= 0 then
+			openFrames += 1
+			if openFrames > 3 then openFrames = -1; black.BackgroundTransparency = 1 end
+		end
 		local cam = workspace.CurrentCamera
 		key.CFrame = cam.CFrame * CFrame.new(1.5, 1.4, 1.5)
 		if aboard and not cut then

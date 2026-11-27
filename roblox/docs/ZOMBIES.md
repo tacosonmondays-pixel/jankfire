@@ -530,3 +530,9 @@ own look took the moon back). Sheets: roblox/docs/zombies/12-news-intro-27nov.jp
   checked). The intro re-filmed with each (popscan: only the cuts, the banner and the zoom).
 - Sheets: roblox/docs/zombies/16-fence-and-hedges-before-after-27nov.jpg, 17-hedges-A-vs-B-27nov.jpg (the three views at
   night and the intro's own school shot, the render ms).
+- **The extraction film's first frames** (place version 1620, recorded in a fresh Play, popscan): the crew member and the
+  seated copies are parked at the call (parkCast) and are in place from the film's first frame; the seated copies lose
+  the TPRig tag and ThirdPerson's / the server's gun pieces at once; the film opens on 3 black frames (its key light and
+  moon come in on its first frame). The visor is opaque now: a see-through Glass visor wasn't drawn behind the door's
+  window, so it came on only as the door slid open, with a white glint. Test trap: at round 20 the zombies down the
+  test player within ~9 s of xland (use round 2 and a ForceField).
