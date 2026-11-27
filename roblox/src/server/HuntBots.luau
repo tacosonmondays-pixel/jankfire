@@ -112,12 +112,13 @@ local function hunterRun(me: Player?, dmg: number, every: number, untilT: number
 				if d < bd then best, bd = x, d end
 			end
 		end
-		if not best then break end
+		if not best then say("the hunter: nobody left in reach"); break end
 		if hum and not isDown(h) then hum:MoveTo((root(best) :: BasePart).Position) end
 		local stun = tonumber(h.Character:GetAttribute("StunUntil")) or 0
-		if os.clock() >= nextShot and bd < 60 and workspace:GetServerTimeNow() >= stun then
+		if os.clock() >= nextShot and workspace:GetServerTimeNow() >= stun then
 			nextShot = os.clock() + every
-			Fight.hurt(fOf(best), dmg, h.f, tostring(HuntRound.G and HuntRound.G.gun or "ar"), false, nil)
+			local done = Fight.hurt(fOf(best), dmg, h.f, tostring(HuntRound.G and HuntRound.G.gun or "ar"), false, nil)
+			say(("the hunter shoots %s at %.0f studs: %s"):format(if typeof(best) == "Instance" then best.Name else best.Name, bd, tostring(done)))
 		end
 		task.wait(0.15)
 	end
@@ -162,9 +163,10 @@ scenarios.show = function(me: Player)
 	task.wait(1.0)
 	HuntRagdoll.ask(B)
 	check(isDown(B), "a punch's stun: GET UP refused at 1 s")
-	act(C, "super", A)
+	closeIn(A, C, 4)
+	act(C, "push", A)
 	task.wait(0.2)
-	check(not isDown(A), "the 1 s lockout after a move (and the punch's cooldown) holds the next one")
+	check(not isDown(A), "the 1 s lockout: a push inside a second of the punch does nothing")
 	task.wait(1.8)
 	HuntRagdoll.ask(B)
 	check(not isDown(B), "GET UP works after the 2.5 s stun")
@@ -202,11 +204,13 @@ scenarios.kill = function(me: Player)
 	while hp(H) >= hpBefore and os.clock() - w < 6 do task.wait(0.1) end
 	check(hp(H) < hpBefore, ("the bear trap springs on the hunter (hp %d -> %d)"):format(hpBefore, hp(H)))
 	task.wait(3.2) -- (the trap's hold ends)
+	closeIn(C, H, 16); closeIn(A, H, 18) -- (out of the taser's line)
 	closeIn(B, H, 8)
 	HuntItems.handle(B, "use", 1, aimAt(B, H))
 	task.wait(0.2)
 	check((tonumber(H.Character:GetAttribute("StunUntil")) or 0) > workspace:GetServerTimeNow(), "the taser stuns the hunter")
 	task.wait(2.2)
+	closeIn(B, H, 16); closeIn(C, H, 18)
 	closeIn(A, H, 4)
 	say("the bat reaches: " .. table.concat(HuntMoves.debugTargets(A, faceTo(A, H), 7.5, 50), ", "))
 	local hits = 0
@@ -237,7 +241,9 @@ scenarios.hunter = function(me: Player)
 	local best, bd = nil, math.huge
 	if g and cr then
 		for _, d in g.map:GetDescendants() do
-			if d:IsA("BasePart") and d.CanQuery and d.Transparency < 0.5 and not d:FindFirstAncestor("HuntPicks") then
+			local mdl = d:FindFirstAncestorOfClass("Model")
+			local isBody = mdl ~= nil and mdl:FindFirstChildOfClass("Humanoid") ~= nil
+			if d:IsA("BasePart") and d.CanQuery and d.Transparency < 0.5 and not isBody and not d:FindFirstAncestor("HuntPicks") then
 				local sz = d.Size
 				local big = math.max(sz.X, sz.Y, sz.Z)
 				if big <= 12 and big >= 1.5 and sz.Y >= 1.2 then

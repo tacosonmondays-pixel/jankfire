@@ -112,6 +112,18 @@ end
 local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string, dmg: number, onlyFirst: boolean, lying: boolean): (number, number)
 	local list = targets(p, root, look, m.reach, m.cone, lying)
 	local n, downs = 0, 0
+	local by0 = fOf(p)
+	if dmg > 0 and by0 then -- (a swing that can hurt goes to someone it can hurt first: a teammate nearer doesn't soak it; the harness caught it)
+		local function can(t: any): boolean
+			local f = if typeof(t.what) == "Instance" and t.what:IsA("Player") then Fight.byPlayer[t.what] elseif type(t.what) == "table" then t.what else nil
+			return f ~= nil and Fight.allow(by0, f)
+		end
+		table.sort(list, function(a, b)
+			local ca, cb = can(a), can(b)
+			if ca ~= cb then return ca end
+			return a.d < b.d
+		end)
+	end
 	local by = fOf(p)
 	for _, t in list do
 		local v = knockOf(look, m.kb, m.up, lying)
