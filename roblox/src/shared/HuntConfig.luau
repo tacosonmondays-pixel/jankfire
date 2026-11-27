@@ -248,7 +248,14 @@ H.INTRO = {
 H.OUTRO = {
 	on = true,
 	len = 13, -- (owner, 27 Nov: a longer walk, slower looks)
-	beats = { glitch = 5.8, pull = 6.3, reveal = 9.8 },
+	beats = { glitch = 5.8, pull = 6.3, reveal = 8.9 }, -- (main on v8: the pull out ran long in the dark: 2.6 s now)
+	-- (main on v8: the pull out read near black on a phone) a soft fill rides with the lens from the pull, down to `reveal`
+	fill = { brightness = 0.7, range = 14, reveal = 0.2 },
+	-- the survivors' walk through her eyes (owner, 27 Nov: "Hiders winning can it be first person like how the hunters
+	-- is?"): { s, yaw (deg, + = left), pitch (deg) } keys on her view: nervous glances, a pause, one look back over her
+	-- shoulder at the friends trailing (about 1 s), then forward again
+	hiderLooks = { { 0, 0, -4 }, { 0.9, 0, -4 }, { 1.6, 28, -3 }, { 2.0, 28, -3 }, { 2.6, -22, -5 }, { 2.85, -22, -5 },
+		{ 3.5, -150, -9 }, { 4.45, -150, -9 }, { 5.1, 0, -4 }, { 5.6, 6, -3 } },
 	hitstop = 0.2,
 	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2, -- (then each sitter's hips are fitted onto the seat: HuntOutro)
 	walk = { R15 = 507777826, R6 = 180426354 }, walkSpeed = 0.55, -- (Roblox's own walks, slowed: the survivors' walk)
@@ -274,6 +281,7 @@ H.OUTRO = {
 	sounds = {
 		house = { id = 9116969466, vol = 6 },                          -- (Morning Birds 2: outside, through the walls; v5: -48 dB, silent)
 		houseTone = { id = 9125446564, vol = 0.3 },                    -- (the house's own quiet room tone under it)
+		heart = { id = 9043365842, vol = 0.45 },                       -- (the survivors' walk: the intro's heartbeat, under it)
 		burst = { id = 9126097362, vol = 1.1, region = { 0.0, 0.7 } },  -- (Television Static: the switch-on burst; v5 peaked -17)
 		hum = { id = 9125446564, vol = 0.5 },                          -- (room A: the PC's fans; the intro's hum)
 		hiss = { id = 9126097362, vol = 0.4, region = { 3.0, 8.0 } },  -- (room B: the TV's static; v3: -44 dB)

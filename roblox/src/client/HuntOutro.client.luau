@@ -274,6 +274,8 @@ local function play(a: any)
 		r.gFrom, r.gTo, r.gDir = gFrom, gTo, gDir
 		local GR = OUT.group or {}
 		local SC = OUT.scared or {}
+		local mine = table.find(who, me.Character) -- (through your own eyes when you're one of them)
+		if mine and mine > 1 then who[1], who[mine] = who[mine], who[1] end
 		for i, src in who do
 			local c, rig = copyBody(src)
 			if c then
@@ -294,6 +296,11 @@ local function play(a: any)
 				end
 				table.insert(bodies, { m = c, rig = rig, src = src, g = g, walk = base, h = rootHeight(c, rig) })
 			end
+		end
+		if GW and bodies[1] then -- (first person: her own body is the lens, not in the shot)
+			r.fp = true
+			r.fpEyeH = bodies[1].h + 1.55
+			bodies[1].m.Parent = nil
 		end
 		-- each one's place along the hall at t s (the lead's pace uneven; the rest behind her, never in step)
 		r.placeGroup = function(t: number)
@@ -423,6 +430,26 @@ local function play(a: any)
 			p += Vector3.new(0, math.sin(u * 14) * 0.06, 0) -- (a walk's bob)
 			return CFrame.lookAt(p, at)
 		else
+			if r.gFrom and r.fp then -- (owner: "can it be first person like how the hunters is?": her eyes, scared, calm)
+				local tt = u * math.max(0.1, beat("glitch") - (OUT.hitstop or 0.2))
+				local lead = (r.leadAt or r.gFrom) :: Vector3
+				r.eyeAt = if r.eyeAt then (r.eyeAt :: Vector3):Lerp(lead, 0.25) else lead
+				local eye = (r.eyeAt :: Vector3) + Vector3.new(0, (r.fpEyeH or 4.5) + 0.03 * math.sin(tt * 2.4), 0) -- (a breath, no bob)
+				local K = OUT.hiderLooks or { { 0, 0, -4 } }
+				local yaw, pitch = K[1][2], K[1][3]
+				for i = 1, #K - 1 do
+					local a0, a1 = K[i], K[i + 1]
+					if tt >= a1[1] then yaw, pitch = a1[2], a1[3]
+					elseif tt >= a0[1] then
+						local k = Cine.ease((tt - a0[1]) / (a1[1] - a0[1]))
+						yaw, pitch = a0[2] + (a1[2] - a0[2]) * k, a0[3] + (a1[3] - a0[3]) * k
+						break
+					end
+				end
+				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(yaw)) * (r.gDir :: Vector3)
+				dir = CFrame.fromAxisAngle(dir:Cross(Vector3.yAxis), math.rad(pitch)) * dir
+				return CFrame.lookAt(eye, eye + dir)
+			end
 			if r.gFrom then -- (a slow dolly back in front of her as she leads them down the hall; no handheld)
 				local lead = (r.leadAt or r.gFrom) :: Vector3
 				r.lensAt = if r.lensAt then (r.lensAt :: Vector3):Lerp(lead, 0.08) else lead
@@ -491,7 +518,7 @@ local function play(a: any)
 	end
 	local smoother = function(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
 	local shots = {
-		{ name = "house", t0 = 0, t1 = beat("glitch"), fov = 58, shake = function(u) return if win == "gunman" then 1.2 else 0.8 end,
+		{ name = "house", t0 = 0, t1 = beat("glitch"), fov = 58, shake = function(u) return if win == "gunman" then 1.2 else 0 end,
 			cam = function(u)
 				-- (the hit-stop: the last hitstop s before the glitch the house holds on one frame, the lens kicking)
 				local hs = OUT.hitstop or 0.2
@@ -525,6 +552,7 @@ local function play(a: any)
 	r.cine = Cine.play(shots, { clock = T, flag = "huntoutro" })
 	keep(sound(S.house, 1, true))
 	keep(sound(S.houseTone, 1, true))
+	if win ~= "gunman" then keep(sound(S.heart, 1, true)) end -- (her heartbeat under the walk)
 
 	-- the full-screen static of the glitch (the intro's static pictures: soft grey noise, nothing readable)
 	local pg = me:FindFirstChildOfClass("PlayerGui")
@@ -598,6 +626,7 @@ local function play(a: any)
 			local f = math.clamp(t / math.max(0.5, beat("glitch")), 0, 1)
 			for _, c in r.cubes do c.Transparency = f * 0.85 end
 		end
+		if r.fill then r.fill.Position = workspace.CurrentCamera.CFrame.Position end
 		-- the hit-stop before the glitch: the house holds for a beat, the lens kicks, then static
 		if once("stop", beat("glitch") - (OUT.hitstop or 0.2)) then
 			if r.cine then r.cine.kick(10) end
@@ -642,6 +671,18 @@ local function play(a: any)
 			house:Destroy()
 			for _, m in who do hide(m, false) end
 			HubLook.set("hunt_intro_dark", 0)
+			local F = OUT.fill
+			if F then -- (main on v8: the pull out read near black on a phone: a soft fill rides with the lens)
+				local fp = Instance.new("Part")
+				fp.Name = "HuntOutroFill"; fp.Anchored = true; fp.CanCollide = false; fp.CanQuery = false; fp.CanTouch = false
+				fp.Transparency = 1; fp.Size = Vector3.new(0.2, 0.2, 0.2); fp.CastShadow = false
+				fp.Position = workspace.CurrentCamera.CFrame.Position
+				local fl = Instance.new("PointLight")
+				fl.Brightness = F.brightness; fl.Range = F.range; fl.Shadows = false; fl.Color = Color3.fromRGB(214, 222, 236)
+				fl.Parent = fp
+				fp.Parent = room
+				r.fill = fp; r.fillLight = fl
+			end
 			keep(sound(if set == "A" then S.hum else S.hiss, 1, true))
 			-- the players at the screen: seated (and a stretch for him), pads in hand and cheering for them
 			for i, b in roomBodies do
@@ -672,6 +713,7 @@ local function play(a: any)
 		end
 		-- the reveal: he leans back and stretches; they cheer, clap, click their pads
 		if once("reveal", beat("reveal")) then
+			if r.fillLight then TweenService:Create(r.fillLight, TweenInfo.new(0.8), { Brightness = (OUT.fill and OUT.fill.reveal) or 0.2 }):Play() end
 			for i, b in roomBodies do
 				local id = (OUT.anims[b.rig] or {})
 				if set == "A" then
