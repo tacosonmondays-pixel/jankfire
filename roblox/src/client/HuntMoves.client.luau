@@ -15,6 +15,7 @@ local UIS = game:GetService("UserInputService")
 
 local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any
+local Keys = require(script.Parent:WaitForChild("Keys")) :: any -- (27 Nov: the one input path, so the phone's buttons reach the moves)
 local Body = require(script.Parent:WaitForChild("Body")) :: any
 local Sfx = require(script.Parent:WaitForChild("Sfx")) :: any
 local HuntAnims = require(script.Parent:WaitForChild("HuntAnims")) :: any
@@ -110,7 +111,7 @@ local function windPose(hum: Humanoid)
 	local t = HuntAnims.track(hum, "haymaker")
 	if t then t:Play(0.08, 1, 1) end
 end
-UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
+Keys.began(function(io: any, gp: boolean)
 	if gp or not inMode() or menuUp() then return end
 	local _, hum = body()
 	if not hum then return end
@@ -127,7 +128,7 @@ UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		if lying then standUp() else lieDown() end
 	end
 end)
-UIS.InputEnded:Connect(function(io: InputObject)
+Keys.ended(function(io: any)
 	local _, hum = body()
 	if Binds.is("fire", io) and punchDown then
 		punchDown = false
