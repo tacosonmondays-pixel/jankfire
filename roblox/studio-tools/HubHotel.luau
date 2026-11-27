@@ -59,7 +59,7 @@ function HH.build(K, parent, name, site, live, opts)
 	K.wall(FE, "Wall", -32, 32, 0, H + 1, -30, -28, PAL.wall, if LOBBY and not BAR then {} else { { 10, 18, 10 } }, PLASTER) -- (east: its x runs south)
 	K.wall(FS, "Wall", -30, 30, 0, MZ, -34, -32, PAL.wall, if LOBBY then { { -26, -22, 8.5 } } else { { 16.5, 27.5, 11 }, { -26, -22, 8.5 } }, PLASTER) -- (south: its x runs west)
 	for _, s in { -1, 1 } do box(F0, "Shell", "Wall", s * 20, s * 30, MZ, H + 1, 32, 34, PAL.wall, PLASTER) end -- (VIP's front fills x -20..20)
-	box(F0, "Shell", "Roof", -30, 30, H, H + 1, -34, 34, PAL.soffit, PLASTER)
+	box(F0, "Shell", "Roof", -29.95, 29.95, H, H + 0.95, -33.95, 33.95, PAL.soffit, PLASTER) -- (27 Nov, ZFight: inside the walls, under their tops)
 	-- the ceiling (round 2): 4 x 4 deep coffers, 14 x 16, each with a recessed lamp; two ring lights at the beams'
 	-- crossings on the axis (round 3: flush, 1.8 deep, above the galleries' sight lines to the signs)
 	-- (round 4, judge round 3: fewer, bigger coffers) 2 x 2 cells at twice the kit's size, a ring light in each
@@ -104,7 +104,7 @@ function HH.build(K, parent, name, site, live, opts)
 		K.part("Scenery", "StairCap", F0 * CFrame.new(mid) * CFrame.Angles(-rake, 0, 0), Vector3.new(1.6, 0.5, math.sqrt(20 * 20 + MZ * MZ) + 0.6), PAL.stone, nil, {})
 		put("ht_newel", at(s * 4.6, 0, 3.0), { solid = true })
 	end
-	box(F0, "Scenery", "StairRunner", -2.4, 2.4, 0, 0.04, 2.0, 4.0, PAL.runner, CARPET)
+	box(F0, "Scenery", "StairRunner", -2.4, 2.4, -0.05, 0.07, 2.0, 4.0, PAL.runner, CARPET)
 	for _, sx in { -1, 1 } do K.light(box(F0, "Scenery", "StairFootLight", sx * 6.5 - 0.2, sx * 6.5 + 0.2, 4.4, 4.6, 4.8, 5.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 14, 0.8, PAL.warm) end
 	K.light(box(F0, "Scenery", "StairFrontLight", -0.2, 0.2, 3.0, 3.2, 1.2, 1.6, PAL.lamp, nil, { ghost = true, tr = 1 }), 11, 0.9, PAL.warm) -- (the bottom risers face the spawn: lit from in front)
 	for _, p in { { 10, 8 }, { 15, 18 }, { 22, 26 } } do -- (round 4: the stair lit, not a black slope)
@@ -112,16 +112,18 @@ function HH.build(K, parent, name, site, live, opts)
 	end
 
 	-- the floor's way: a green runner from the spawn, split round the fountain, to the ballroom's doors and on
-	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, -32, -29.2, PAL.runner, CARPET)
-	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, -10.8, -7.8, PAL.runner, CARPET)
+	-- (27 Nov, ZFight: K.box makes the 0..0.02 joints -0.015..0.035, so every strip steps 0.035 clear of them, top and
+	-- foot: the runners, thresholds and rugs -0.05..0.07, their pale edges -0.085..0.105)
+	box(F0, "Scenery", "Runner", -3, 3, -0.05, 0.07, -32, -29.2, PAL.runner, CARPET)
+	box(F0, "Scenery", "Runner", -3, 3, -0.05, 0.07, -10.8, -7.8, PAL.runner, CARPET)
 	for _, s in { -1, 1 } do
-		box(F0, "Scenery", "Runner", s * 9.4, s * 12.4, 0, 0.04, -29.2, -10.8, PAL.runner, CARPET)
-		box(F0, "Scenery", "Runner", s * 3, s * 9.4, 0, 0.04, -29.2, -26.2, PAL.runner, CARPET)
-		box(F0, "Scenery", "Runner", s * 3, s * 9.4, 0, 0.04, -13.8, -10.8, PAL.runner, CARPET)
+		box(F0, "Scenery", "Runner", s * 9.4, s * 12.4, -0.05, 0.07, -29.2, -10.8, PAL.runner, CARPET)
+		box(F0, "Scenery", "Runner", s * 3, s * 9.4, -0.05, 0.07, -29.2, -26.2, PAL.runner, CARPET)
+		box(F0, "Scenery", "Runner", s * 3, s * 9.4, -0.05, 0.07, -13.8, -10.8, PAL.runner, CARPET)
 	end
 	-- (round 3) the ways from the spawn, inlaid in the same green (judge round 2): across the spawn to the gym's door, to
 	-- the lounge's door, to the armory's mouth (TRAINING), and from the fountain's ring to reception
-	local function way(x0, x1, z0, z1) box(F0, "Scenery", "RunnerBranch", x0, x1, 0, 0.04, z0, z1, PAL.runner, CARPET) end
+	local function way(x0, x1, z0, z1) box(F0, "Scenery", "RunnerBranch", x0, x1, -0.05, 0.07, z0, z1, PAL.runner, CARPET) end
 	way(if LOBBY then 3.9 else -27.5, 14.75, -3.95, -2.45)
 	if not LOBBY or BAR then way(13.25, 14.75, -2.45, 14.75); way(14.75, 27.5, 13.25, 14.75) end
 	if not LOBBY then
@@ -129,8 +131,9 @@ function HH.build(K, parent, name, site, live, opts)
 	end
 	way(11.7, 21.5, -16.75, -15.25)
 	-- the spawn: a round medallion in the marble, eight places facing north, the arrival point
-	cyl(F0, "Scenery", "SpawnRing", 0, -0.02, 0.07, -3.2, 9.2, PAL.stone2, MARBLE)
-	cyl(F0, "Scenery", "SpawnPlate", 0, 0.07, 0.1, -3.2, 7.6, PAL.runner, CARPET)
+	-- (27 Nov, ZFight: the ring 0.035 over the runner that crosses the spawn, the plate on it)
+	cyl(F0, "Scenery", "SpawnRing", 0, -0.02, 0.105, -3.2, 9.2, PAL.stone2, MARBLE)
+	cyl(F0, "Scenery", "SpawnPlate", 0, 0.105, 0.14, -3.2, 7.6, PAL.runner, CARPET)
 	for i = 0, 7 do K.marker(F0, "HubSpawns", "Spawn", -3.6 + (i % 4) * 2.4, 0.1, -4.4 + math.floor(i / 4) * 2.4, 0) end
 	K.marker(F0, "HubArrive", "Arrive", 0, 0.1, -6.6, 0)
 
@@ -191,8 +194,18 @@ function HH.build(K, parent, name, site, live, opts)
 	dadoRun(FE, -28, -32, 32, { { 8, 22 }, { -24, -8 } })
 	dadoRun(FS, -32, -28, 28, { { 14.5, 29.5 }, { -28, -20 }, { -18, -6 }, { 4, 17 } })
 	for _, z in { -24, -8, 8, 24 } do -- (the rooms along the galleries)
-		K.put(FW, "ht_doors", at(-z, MZ, -28, 0))
-		K.put(FE, "ht_doors", at(z, MZ, -28, 0))
+		-- (27 Nov, Clip v2: the doors' heads were 0.4 into the coffers' rim, which hangs to 22 over the galleries: 0.8 of
+		-- the kit's size, on the floor, so they stand clear under it)
+		for _, w in { { FW, -z }, { FE, z } } do
+			local dm = K.put(w[1], "ht_doors", at(w[2], MZ, -28, 0))
+			if dm and dm:IsA("Model") then
+				local cf0, sz0 = dm:GetBoundingBox()
+				local foot = cf0.Position.Y - sz0.Y / 2
+				dm:ScaleTo(dm:GetScale() * 0.8)
+				local cf, sz = dm:GetBoundingBox()
+				dm:PivotTo(dm:GetPivot() + Vector3.new(0, foot - (cf.Position.Y - sz.Y / 2), 0))
+			end
+		end
 	end
 	for _, z in { -16, 0, 16 } do -- (round 5: a sconce over each bench)
 		for _, w in { { FW, -z }, { FE, z } } do
@@ -225,7 +238,7 @@ function HH.build(K, parent, name, site, live, opts)
 	local function palm(x, z) put("ht_palm", at(x, 0, z)); cyl(F0, "Shell", "PalmPot", x, 0, 2.3, z, 3.2, PAL.stone, nil, { tr = 1, noshadow = true }) end
 	for _, s in { -1, 1 } do
 		local zc = if s < 0 then 16 else 0
-		box(F0, "Scenery", "Rug", s * 21.5, s * 27.6, 0, 0.04, zc - 5, zc + 5, PAL.carpet2, CARPET)
+		box(F0, "Scenery", "Rug", s * 21.5, s * 27.6, -0.05, 0.07, zc - 5, zc + 5, PAL.carpet2, CARPET)
 		put("ht_sofa", at(s * 25.8, 0, zc, if s < 0 then 90 else -90), { solid = true }) -- (26 Nov: 0.4 off the dado)
 		put("ht_table", at(s * 23.2, 0, zc, 90), { solid = true })
 		for _, dz in { -3.4, 3.4 } do put("ht_armchair", at(s * 21.2, 0, zc + dz, if s < 0 then -90 else 90), { solid = true }) end
@@ -304,7 +317,7 @@ function HH.build(K, parent, name, site, live, opts)
 		local za, zb = bz(XB) - 1.8, bz(XB + 1) + 1.8
 		box(F0, "Shell", "Wall", s * 38, s * 40, 0, 18.6, zb - 2, za + 2, PAL.wall2, PLASTER)
 		for _, zz in { za, zb } do box(F0, "Shell", "Wall", s * 28.5, s * 38, 0, 18.6, if zz == za then za else zz - 2, if zz == za then za + 2 else zz, PAL.wall2, PLASTER) end
-		box(F0, "Shell", "AlcoveLid", s * 26, s * 40, 17.4, 18.6, zb - 2, za + 2, PAL.soffit, PLASTER)
+		box(F0, "Shell", "AlcoveLid", s * 28.5, s * 38, 17.4, 18.6, zb, za, PAL.soffit, PLASTER) -- (27 Nov, ZFight: between its walls, not into them)
 		for _, zz in { za - 3.4, zb + 3.4 } do K.panel(F0, s * 33, 17.4, zz, 3, 4, { bright = 1.1, range = 20, lightHex = PAL.warm }) end
 	end
 	-- W: the spectate board (play-party draws the games on it); E: the hall's counts (IN QUEUE, HubConsole writes it)
@@ -322,10 +335,10 @@ function HH.build(K, parent, name, site, live, opts)
 	box(F0, "Shell", "Wall", -30.5, 30.5, 0, 28, BZ1 - 2, BZ1, PAL.wall2, PLASTER)
 	for k = 0, 6 do put("ht_vault", at(0, 0, BZ0 - BAY / 2 - k * BAY), { solid = true }) end
 	for k = 0, 7 do put("ht_vaultrib", at(0, 0, bz(k))) end
-	box(F0, "Shell", "VaultLid", -30.5, 30.5, 27.4, 28.4, BZ1 - 2, BZ0, PAL.ceil, PLASTER) -- (closes the space over the shell)
+	box(F0, "Shell", "VaultLid", -30.45, 30.45, 27.4, 28.4, BZ1 - 1.95, BZ0, PAL.ceil, PLASTER) -- (closes the space over the shell) (27 Nov, ZFight: inside the end wall)
 	for _, s in { -1, 1 } do
-		box(F0, "Scenery", "CoveLedge", s * 24.9, s * 26.05, 17.4, 17.9, BZ1, BZ0, PAL.ceil, PLASTER, { ghost = true })
-		local cv = box(F0, "Scenery", "Cove", s * 24.9, s * 25.4, 17.9, 18.0, BZ1 + 0.5, BZ0 - 0.5, PAL.warm, MAT.Neon, { ghost = true, noshadow = true, tr = 0.5 })
+		box(F0, "Scenery", "CoveLedge", s * 24.9, s * 26, 17.43, 17.9, BZ1, BZ0, PAL.ceil, PLASTER, { ghost = true }) -- (27 Nov, ZFight: off the undersides of the lintel and the capitals)
+		local cv = box(F0, "Scenery", "Cove", s * 24.9, s * 25.4, 17.9, 17.96, BZ1 + 0.5, BZ0 - 0.5, PAL.warm, MAT.Neon, { ghost = true, noshadow = true, tr = 0.5 }) -- (27 Nov, ZFight: under the tops of the pilasters)
 		K.light(cv, 22, 0.5, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Top, angle = 150 })
 	end
 	for k = 1, 6 do
@@ -345,20 +358,20 @@ function HH.build(K, parent, name, site, live, opts)
 	-- the crossing's middle: a round settee (a hotel's borne) on a low stone dais; the walk splits round it
 	cyl(F0, "Shell", "CrossDais", 0, 0, 0.5, zx, 13, PAL.stone, MARBLE)
 	cyl(F0, "Scenery", "CrossDaisNosing", 0, 0.45, 0.6, zx, 13.4, PAL.stone2)
-	cyl(F0, "Shell", "BorneSeat", 0, 0.5, 2.1, zx, 8.4, "b8ab97", CARPET)
+	cyl(F0, "Shell", "BorneSeat", 0, 0.55, 2.1, zx, 8.4, "b8ab97", CARPET) -- (27 Nov, ZFight: its foot inside the base)
 	cyl(F0, "Scenery", "BorneBase", 0, 0.5, 0.9, zx, 8.8, PAL.wood)
 	cyl(F0, "Shell", "BorneBack", 0, 2.1, 3.8, zx, 3.2, "b8ab97", CARPET)
 	cyl(F0, "Scenery", "BorneCap", 0, 3.8, 4.2, zx, 3.6, PAL.wood)
 	-- the floor: a stone walk down the middle (split round the dais), a pale threshold from it into each pad
 	local WALK, EDGE = "9c907d", "d2c7b4" -- (round 5: the walk a step darker than the field, its edges pale)
-	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, bz(XB) - 0.6, BZ0, WALK)
-	box(F0, "Scenery", "Runner", -3, 3, 0, 0.04, BZ1 + 15.5, bz(XB + 1) + 0.6, WALK)
+	box(F0, "Scenery", "Runner", -3, 3, -0.05, 0.07, bz(XB) - 0.6, BZ0, WALK)
+	box(F0, "Scenery", "Runner", -3, 3, -0.05, 0.07, BZ1 + 15.5, bz(XB + 1) + 0.6, WALK)
 	for _, sx in { -1, 1 } do
-		box(F0, "Scenery", "RunnerEdge", sx * 3, sx * 3.45, 0, 0.05, bz(XB) - 0.6, BZ0, EDGE)
-		box(F0, "Scenery", "RunnerEdge", sx * 3, sx * 3.45, 0, 0.05, BZ1 + 15.5, bz(XB + 1) + 0.6, EDGE)
-		box(F0, "Scenery", "Runner", sx * 7.2, sx * 10.2, 0, 0.04, bz(XB + 1) + 0.6, bz(XB) - 0.6, WALK)
+		box(F0, "Scenery", "RunnerEdge", sx * 3, sx * 3.45, -0.085, 0.105, bz(XB) - 0.6, BZ0, EDGE)
+		box(F0, "Scenery", "RunnerEdge", sx * 3, sx * 3.45, -0.085, 0.105, BZ1 + 15.5, bz(XB + 1) + 0.6, EDGE)
+		box(F0, "Scenery", "Runner", sx * 7.2, sx * 10.2, -0.05, 0.07, bz(XB + 1) + 0.6, bz(XB) - 0.6, WALK)
 	end
-	for _, zz in { bz(XB) - 0.6, bz(XB + 1) + 0.6 } do box(F0, "Scenery", "Runner", -10.2, 10.2, 0, 0.04, zz - 1.5, zz + 1.5, WALK) end
+	for _, zz in { bz(XB) - 0.6, bz(XB + 1) + 0.6 } do box(F0, "Scenery", "Runner", -10.2, 10.2, -0.05, 0.07, zz - 1.5, zz + 1.5, WALK) end
 	-- one sign at the hall's entrance says how the pads work (round 4 of the pads: not on every board)
 	-- (26 Nov, the owner: no one-line signs. the STEP ON A SIDE sign and its rods over the fountain are gone)
 	-- the pads: five a side in K.MODES order (1V1 nearest the doors), each in its bay facing the walk (its blade on its
@@ -373,11 +386,11 @@ function HH.build(K, parent, name, site, live, opts)
 		-- Rotunda: the board's middle at 9.8, the plaque over it at 14.6
 		for _, s in { -1, 1 } do
 			K.pad(K.facing(s * fx, z, s, 0), md, if s < 0 then "lifts" else "east", if s < 0 then md.id else md.id .. "_e",
-				{ lampY = 16, boardAt = K.facing(s * 28.45, z, -s, 0, 9.8), headerAt = K.facing(s * 28.45, z, -s, 0, 14.6), accent = PAL.accent })
+				{ lampY = 16, boardAt = K.facing(s * 28.45, z, -s, 0, 9.8), headerAt = K.facing(s * 28.45, z, -s, 0, 15.3), accent = PAL.accent }) -- (27 Nov, ZFight: the plaque's lip clear of the board's frame)
 		end
 		for _, s in { -1, 1 } do
-			box(F0, "Scenery", "Threshold", s * 3.45, s * fx, 0, 0.04, z - 1.5, z + 1.5, WALK)
-			for _, dz in { -1.5, 1.5 } do box(F0, "Scenery", "ThresholdEdge", s * 3.45, s * fx, 0, 0.05, z + dz - 0.22, z + dz + 0.22, EDGE) end
+			box(F0, "Scenery", "Threshold", s * 3.45, s * fx, -0.05, 0.07, z - 1.5, z + 1.5, WALK)
+			for _, dz in { -1.5, 1.5 } do box(F0, "Scenery", "ThresholdEdge", s * 3.45, s * fx, -0.085, 0.105, z + dz - 0.22, z + dz + 0.22, EDGE) end
 			K.light(box(F0, "Scenery", "BayWash", s * 19 - 0.3, s * 19 + 0.3, 18.4, 18.6, z - 0.3, z + 0.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 24, 0.6, PAL.warm,
 				{ kind = "SpotLight", face = Enum.NormalId.Bottom, angle = 70 })
 		end
@@ -452,7 +465,7 @@ function HH.build(K, parent, name, site, live, opts)
 		local sh = box(F0, "Scenery", "BackBarShelfLight", 64.85, 64.95, y, y + 0.15, 6.0, 18.6, PAL.warm, MAT.Neon, { ghost = true, noshadow = true, tr = 0.4 })
 		K.light(sh, 8, 0.5, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Left, angle = 120 })
 	end
-	for _, zz in { { 19.2, 20.0 }, { 28.0, 28.8 } } do box(F0, "Scenery", "GolfDoorJamb", 64.6, 66, 0, 10.8, zz[1], zz[2], PAL.wood) end
+	for _, zz in { { 19.2, 20.0 }, { 28.0, 28.8 } } do box(F0, "Scenery", "GolfDoorJamb", 64.5, 66, 0, 10.8, zz[1], zz[2], PAL.wood) end -- (27 Nov, ZFight: 0.1 proud of the bar's shelf wall, not flush)
 	box(F0, "Scenery", "GolfDoorHead", 64.6, 66, 10.0, 10.8, 19.2, 28.8, PAL.wood)
 	for _, x in { 36.2, 55.8 } do
 		put("ht_sofa", at(x, 0.8, 0.2, 0), { solid = true })

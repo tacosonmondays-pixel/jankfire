@@ -309,6 +309,13 @@ function HRH.fixes(root, ring, R, K, site, k, o)
 	table.insert(out, ("gate: light bar %d away, %d lasers softer, TRAINING over it: %s"):format(bars, lasers, tostring(gate ~= nil)))
 	-- (27 Nov, main: no COMING SOON placeholders: the ring builders' bundle plates start blank, HubHolo writes the name)
 	for _, d in root:GetDescendants() do if d:IsA("TextLabel") and d.Text == "COMING SOON" then d.Text = "" end end
+	-- (27 Nov, ZFight: the ring's gallery edge sat 0.01 over the ring floor's underside, both facing down, seen from under
+	-- the gallery: its foot 0.03 up)
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") and d.Name == "GalleryBase" and d.CFrame.UpVector.Y > 0.99 and not d:GetAttribute("FootUp") then
+			d.Size -= Vector3.new(0, 0.03, 0); d.CFrame += d.CFrame.UpVector * 0.015; d:SetAttribute("FootUp", true)
+		end
+	end
 	-- the passage's light, warm at the lobby's end, cooler at the ring's
 	local function lamp(nm, z, hex, br)
 		local p = Instance.new("Part"); p.Name = nm; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
