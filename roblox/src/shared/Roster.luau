@@ -382,6 +382,31 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	"cream", -- between Fridge White (cleaner white) and Washi (the same cream, with paper flecks)
 	"magenta", -- Hot Magenta: Pink, louder (Pink is the free one)
 	"gold", -- the same flat gold metal as Mastery Gold; Bullion's two-tone finish stays
+	-- the REPEATS AND CIRCLES audit (27 Nov, the owner: "Camos with just repeating patterns don't look too good! Also
+	-- things like that are circular it doesn't wrap properly!!"): two blind critics on real guns (rifle, sniper,
+	-- pistol) at the new 0.6 m wrap tile (tools/roblox/gun_uvs.py); both said RETIRE, or 3 reworks failed
+	"asanoha", -- a star-lattice tile, a grid everywhere
+	"seigaiha", -- scallop arcs tiled and sliced at every face
+	"shibori", -- target rings in a grid, half rings on every edge
+	"hazard", -- even stripes, a barcode on the sniper
+	"racing", -- a checkerboard grid
+	"missing", -- a small checkerboard grid
+	"sheet", -- a spreadsheet cell grid
+	"hex", -- the hex grid is the first read on every gun
+	"crt", -- a dense pixel-line grid
+	"bubblewrap", -- a dense bubble grid
+	"candycorn", -- candy corn in rows, the stamp is the look
+	"corp", -- the smileys (circles) sliced on rails, grips and the pistol
+	"bubblegum", -- (3 reworks) round bubbles squashed and cut on every gun
+	"burl", -- (3 reworks)
+	"ketchup", -- (3 reworks)
+	"sushi", -- (3 reworks)
+	"pizza", -- (3 reworks) round pepperoni cut at the edges
+	"memo", -- (3 reworks)
+	"organ", -- (3 reworks)
+	"bigwave", -- (3 reworks) on a gun the wave turns into plain two-tone blue and white
+	"leopard", -- (3 reworks) the rosettes read as even polka dots
+	-- (Ducky also failed 3 reworks, but it is the VIP pack's wrap: it stays, the owner's call)
 } :: { string }
 Roster.retiredWraps = {} :: { Wrap }
 do
