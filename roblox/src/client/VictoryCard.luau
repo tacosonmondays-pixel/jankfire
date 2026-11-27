@@ -47,7 +47,7 @@ end
 
 -- the plate, and a soft shadow under it (critic round 1: the bone plate all but vanished on the bright set)
 local TOP = 92 -- (the plate's top, pinned: critic round 3 - it sat at a different height on every screen)
-local shade = K.new("Frame", { Name = "Shade", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.72, BorderSizePixel = 0,
+local shade = K.new("Frame", { Name = "Shade", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.6, BorderSizePixel = 0,
 	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -44, 0, TOP + 6), Size = UDim2.fromOffset(W + 4, 404) }, holder)
 K.new("UICorner", { CornerRadius = UDim.new(0, 5) }, shade)
 local plate = K.new("Frame", { Name = "Plate", BackgroundColor3 = A.BONE, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
@@ -58,14 +58,14 @@ local body = K.new("Frame", { Name = "Body", BackgroundTransparency = 1, Positio
 local list = K.new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 0) }, body)
 -- the foot: the wait and the skip chip live under the plate's body, always at its bottom
 local RIGHT = 10 -- (every number on the card ends on this right edge, and the ink row's text sits this far in from both)
-local foot = K.new("Frame", { Name = "Foot", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, PAD, 1, -14),
+local foot = K.new("Frame", { Name = "Foot", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, PAD, 1, -16),
 	Size = UDim2.new(1, -2 * PAD, 0, 18) }, plate)
 local waitT = K.text(foot, "Wait", "", 12, A.INK2, K.SANS_BOLD)
 waitT.Size = UDim2.new(1, -150, 1, 0)
 local waitN = K.text(foot, "Secs", "", 12, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Right) -- (the seconds left, on the right)
 waitN.AnchorPoint = Vector2.new(1, 0); waitN.Position = UDim2.new(1, -RIGHT, 0, 0); waitN.Size = UDim2.new(0, 40, 1, 0)
-local track = K.new("Frame", { Name = "Track", BackgroundTransparency = 1, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.new(0, 3, 1, 0), Size = UDim2.new(1, -6, 0, 2), Visible = false }, plate)
+local track = K.new("Frame", { Name = "Track", BackgroundColor3 = A.BONE2, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1),
+	Position = UDim2.new(0, PAD, 1, -8), Size = UDim2.new(1, -2 * PAD - RIGHT, 0, 2), Visible = false }, plate)
 local fill = K.new("Frame", { Name = "Fill", BackgroundColor3 = A.INK, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, track)
 local skipB = K.new("TextButton", { Name = "Skip", AutoButtonColor = false, BackgroundColor3 = A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(1, 0),
 	Position = UDim2.new(1, -RIGHT, 0, -3), Size = UDim2.fromOffset(100, 22), Text = "", Visible = false, ZIndex = 3 }, foot)
@@ -140,15 +140,15 @@ local function head(d: any)
 	local x = RIGHT
 	for i = #tiles, 1, -1 do
 		local t = tiles[i]
-		local tw = 46
+		local tw = 50
 		local tile = K.new("Frame", { Name = "Tile" .. i, BackgroundColor3 = if t.won then t.color else A.BONE, BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -x, 0, 4), Size = UDim2.fromOffset(tw, tw) }, h)
 		K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, tile)
-		if not t.won then K.new("UIStroke", { Color = t.color, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile) end
-		local n = K.text(tile, "N", tostring(t.n), 30, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Center)
+		if not t.won then K.new("UIStroke", { Color = t.color:Lerp(A.INK, 0.35), Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile) end
+		local n = K.text(tile, "N", tostring(t.n), 32, A.INK, K.SANS_HEAVY, Enum.TextXAlignment.Center)
 		n.Size = UDim2.fromScale(1, 1)
-		local nm = K.text(h, "TileName" .. i, string.upper(tostring(t.name or "")), 10, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Center)
-		nm.AnchorPoint = Vector2.new(1, 0); nm.Position = UDim2.new(1, -x + 6, 0, 53); nm.Size = UDim2.fromOffset(tw + 12, 12)
+		local nm = K.text(h, "TileName" .. i, string.upper(tostring(t.name or "")), 11, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Center)
+		nm.AnchorPoint = Vector2.new(1, 0); nm.Position = UDim2.new(1, -x + 6, 0, 57); nm.Size = UDim2.fromOffset(tw + 12, 12)
 		x += tw + 8
 		if #tiles > 2 and x > 150 then break end
 	end
@@ -168,18 +168,31 @@ local function board(d: any)
 	for _, s in sides do rowsN += #(s.rows or {}) end
 	local rh = if d.compact or rowsN > 6 then 21 else 24
 	local ts = if d.compact or rowsN > 6 then 13 else 14
+	local shownSides = {}
+	for _, s in sides do
+		if #(s.rows or {}) > 0 then
+			local rows = table.clone(s.rows)
+			table.sort(rows, function(a, b)
+				local ka, kb = tonumber((a.v or {})[1]) or 0, tonumber((b.v or {})[1]) or 0
+				if ka ~= kb then return ka > kb end
+				return (tonumber((a.v or {})[#cols]) or 0) > (tonumber((b.v or {})[#cols]) or 0)
+			end)
+			table.insert(shownSides, { name = s.name, color = s.color, rows = rows })
+		end
+	end
+	sides = shownSides
 	for si, s in sides do
 		-- the side's line: its colour, its name, its score; the columns' names on the first one
 		local hd = K.new("Frame", { Name = "Side" .. si, BackgroundTransparency = 1, LayoutOrder = nextOrder(), Size = UDim2.new(1, 0, 0, 20) }, body)
 		if s.name ~= "" then
-			local chip = K.new("Frame", { Name = "Team", BackgroundColor3 = s.color, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 5), Size = UDim2.fromOffset(10, 10) }, hd)
-			K.new("UICorner", { CornerRadius = UDim.new(0, 2) }, chip)
+			local chip = K.new("Frame", { Name = "Team", BackgroundColor3 = s.color, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 5), Size = UDim2.fromOffset(5, 10) }, hd)
+			K.new("UICorner", { CornerRadius = UDim.new(0, 1) }, chip)
 			local nm = K.text(hd, "Name", string.upper(tostring(s.name or "")), 13, A.INK, K.SANS_HEAVY)
-			nm.Position = UDim2.fromOffset(16, 0); nm.Size = UDim2.new(1, -16 - COLW * #cols, 1, 0)
+			nm.Position = UDim2.fromOffset(RIGHT, 0); nm.Size = UDim2.new(1, -RIGHT - COLW * #cols, 1, 0)
 		end
 		if si == 1 then
 			for ci, c in cols do
-				local hc = K.text(hd, "H" .. ci, string.upper(c), 11, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
+				local hc = K.text(hd, "H" .. ci, string.upper(c), 12, A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right)
 				hc.AnchorPoint = Vector2.new(1, 0); hc.Position = UDim2.new(1, -RIGHT - COLW * (#cols - ci), 0, 0); hc.Size = UDim2.new(0, COLW - 4, 1, 0)
 			end
 		end
@@ -228,7 +241,7 @@ local function fillRewards(box: Frame, d: any)
 	if lv and (lv.gain or 0) > 0 then
 		i += 1
 		-- (the tag is where you are in the level, the same numbers the bar draws)
-		local tag = if lv.into and lv.need then (fmt(lv.into) .. " / " .. fmt(lv.need)) else nil
+		local tag = if lv.up then "LEVEL UP" elseif lv.into and lv.need then (fmt(lv.into) .. " / " .. fmt(lv.need) .. " XP") else nil
 		rewardRow(box, i, "LEVEL " .. tostring(lv.lv), tag, "+" .. fmt(lv.gain) .. " XP", lv.from, lv.to)
 	end
 	for _, m in d.mastery or {} do
@@ -248,7 +261,7 @@ local function fillRewards(box: Frame, d: any)
 		rewardRow(box, i, "COINS", if d.wallet then fmt(d.wallet) else nil, (if d.coins > 0 then "+" else "") .. fmt(d.coins))
 	end
 	if i == 0 then
-		local none = K.text(box, "None", if lv then ("Level " .. tostring(lv.lv) .. ". Practice and private matches give no XP.") else "No XP this match.", 13, A.INK2, K.SANS)
+		local none = K.text(box, "None", "NO XP FROM THIS MATCH", 12, A.INK2, K.SANS_BOLD)
 		none.LayoutOrder = 1; none.Size = UDim2.new(1, 0, 0, 18); none.TextWrapped = true
 	end
 end

@@ -309,6 +309,17 @@ local function hideNear(center: Vector3, keep: Instance)
 		end
 	end
 end
+-- (the owner's pet, the knee-high Mini Mannequin, follows them on every screen: client/Pets, workspace.ClientPets.
+-- it has no Humanoid, so the look above misses it: v1449, The Gut's spot)
+local function hidePets()
+	local f = workspace:FindFirstChild("ClientPets")
+	if not f then return end
+	for _, x in f:GetDescendants() do
+		if (x:IsA("BasePart") or x:IsA("Decal")) and hiddenNear[x] == nil then
+			hiddenNear[x] = (x :: any).LocalTransparencyModifier; (x :: any).LocalTransparencyModifier = 1
+		end
+	end
+end
 local function showNear()
 	for x, v in hiddenNear do
 		if x.Parent then
@@ -370,6 +381,7 @@ local function step()
 			s.sweptAt = if s.sweptAt == 0 then 1 else -1
 			hideNear(s.spot.hero.Position, s.folder)
 		end
+		hidePets() -- (cheap: a pet moves its parts every frame, so its hide is kept every frame)
 	end
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = cf
@@ -483,7 +495,11 @@ function Scene.start(msg: any, opts: any?): boolean
 			local pose = V.pick(V.HERO_POSES, e.uid)
 			-- (the one in front faces the held lens a little; every body faces the camera side, +Z; a map's spot says)
 			local cf = if spot then spot.hero else frame * CFrame.lookAt(FRONT, Vector3.new(2.4, FRONT.Y, 20))
-			local b = makeBody(e, cf, pose, folder)
+			-- (the one in front always takes a victory pose with the weapon up - main, 27 Nov: "a proper victory pose
+			-- from mocap ... with the weapon raised to show its skin"; teammates keep their own emotes)
+			local he = table.clone(e)
+			he.emote = nil
+			local b = makeBody(he, cf, pose, folder)
 			if b then table.insert(bodies, b) end
 		else
 			table.insert(mates, e)

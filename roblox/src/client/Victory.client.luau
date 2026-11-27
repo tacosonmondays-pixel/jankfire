@@ -93,7 +93,7 @@ local function rewardsNow(): any
 			return math.clamp((x - a) / math.max(1, b - a), 0, 1)
 		end
 		local before = if Ranks.levelOf(s.xp) < lv then 1.01 else frac(s.xp, lv) -- (> to: a level gained, the bar starts over)
-		out.level = { lv = lv, from = if before > 1 then 1 else before, to = frac(xpNow, lv), gain = math.max(0, xpNow - s.xp),
+		out.level = { lv = lv, from = if before > 1 then 1 else before, to = frac(xpNow, lv), gain = math.max(0, xpNow - s.xp), up = before > 1,
 			into = math.max(0, xpNow - Ranks.xpForLevel(lv)), need = Ranks.xpForLevel(lv + 1) - Ranks.xpForLevel(lv) }
 		if before > 1 then out.level.from = 1; out.level.to = frac(xpNow, lv) end
 		out.coins = (tonumber(me:GetAttribute("Brass")) or 0) - s.brass
@@ -435,7 +435,9 @@ if RunService:IsStudio() then
 		local kind, n = string.match(v, "^(%a+):?(%d*)$")
 		-- (the preview's rewards: a sample of what a real match gives - 340 XP, 60 coins, a weapon's mastery)
 		local lost = string.sub(v, 1, 4) == "lose"
-		snap = { xp = (tonumber(me:GetAttribute("Xp")) or 0) - (if lost then 140 else 340), brass = (tonumber(me:GetAttribute("Brass")) or 0) - (if lost then 20 else 60), quests = nil, at = os.clock() }
+		local xpNow = tonumber(me:GetAttribute("Xp")) or 0
+		local into = xpNow - Ranks.xpForLevel(Ranks.levelOf(xpNow))
+		snap = { xp = xpNow - math.min(if lost then 140 else 340, math.max(0, into - 1)), brass = (tonumber(me:GetAttribute("Brass")) or 0) - (if lost then 20 else 60), quests = nil, at = os.clock() }
 		local w1 = (Mastery.weapons and Mastery.weapons() or {})[1]
 		if w1 then masteryMsg = { gains = { [w1] = if lost then 100 else 250 }, xp = { [w1] = 2250 } } end
 		local mates = tonumber(n) or 0
