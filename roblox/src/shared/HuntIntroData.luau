@@ -9,7 +9,7 @@ return {
 		A = { at = Vector3.new(0, 5.45, -5.83), size = Vector3.new(3.9, 2.25, 0.06), col = "9fc4ff", light = { kind = "surface", brightness = 1.1, range = 16, col = "b8d4ff" } },
 		B = { at = Vector3.new(0, 4, -4.53), size = Vector3.new(3.2, 2.3, 0.06), col = "c8ccd2", light = { kind = "surface", brightness = 1, range = 15, col = "e4e8f0" } },
 	},
-	pieces = { hiA_chair = "A", hiB_couch = "B", hiB_pad = "B", hiW_cushion = false, hiW_chair = false, hiW_lamp = false, hiW_armchair = false, hiW_paper = false, hiW_frame = false, hiW_door = false },
+	pieces = { hiA_chair = "A", hiB_couch = "B", hiB_pad = "B", hiW_cushion = false, hiW_chair = false, hiW_lamp = false, hiW_armchair = false, hiW_paper = false, hiW_frame = false, hiW_door = false, hiT_table = false, hiT_bandage = false, hiT_medkit = false, hiT_spray = false, hiT_beartrap = false, hiT_bat = false, hiT_taser = false, hiT_propgun = false },
 	spots = {
 		chairIntro = { 2.8, 0, -2.6, -28 },
 		chairDesk = { 0, 0, -2.9, 0 },

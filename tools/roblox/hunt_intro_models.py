@@ -189,6 +189,51 @@ def win_pieces():
         K.B(d, '7c6c5b', -1.3, y0, 0.12, 1.3, y1, 0.24, bev=0.06)
     K.cyl(d, '8d9297', 1.25, 3.6, 0.3, 0.16, 0.2, segs=10, bev=0.03)
 
+def pick_pieces():
+    # the item tables (owner, 27 Nov: "Outside by the garage I want tables with a medkit, bandages, beat mace, taser , bear
+    # trap, and a special prop gun"): a chunky folding table and the seven things laid on it, each at its own origin,
+    # its feet on y 0 (HuntItems places them). The house's quiet colours, no text, no symbols
+    t = 'hiT_table'                                                     # 10 long, top at 3.6
+    TOP, LEG = '8a7258', '5e4b3c'
+    K.B(t, TOP, -5.0, 3.2, -2.2, 5.0, 3.6, 2.2, bev=0.14)               # the top
+    K.B(t, LEG, -4.6, 2.75, -1.9, 4.6, 3.2, 1.9, bev=0.08)              # the apron
+    for x in (-4.3, 4.3):
+        for z in (-1.6, 1.6):
+            K.B(t, LEG, x - 0.28, 0.0, z - 0.28, x + 0.28, 2.75, z + 0.28, bev=0.08)
+    K.B(t, LEG, -4.3, 0.7, -1.4, 4.3, 0.95, 1.4, bev=0.06)              # a low shelf
+    b = 'hiT_bandage'                                                   # three rolls standing, one fallen open
+    for i, x in enumerate((-0.75, 0.0, 0.75)):
+        K.cyl(b, 'e6ddcb', x, 0.0, 0.0, 0.34, 0.6 if i != 1 else 0.7, segs=14, bev=0.05)
+    K.B(b, 'ddd2be', 0.2, 0.0, 0.42, 1.3, 0.04, 0.72, bev=0.0, segs=1)
+    m = 'hiT_medkit'                                                    # a case, a green band, a handle
+    K.B(m, 'e2e3de', -0.9, 0.0, -0.6, 0.9, 1.0, 0.6, bev=0.12)
+    K.B(m, '5c9470', -0.92, 0.4, -0.62, 0.92, 0.62, 0.62, bev=0.04)
+    K.B(m, '2e2c2a', -0.4, 1.0, -0.08, 0.4, 1.22, 0.08, bev=0.05)
+    sp = 'hiT_spray'                                                    # a can and its cap
+    K.cyl(sp, 'c45c3a', 0.0, 0.0, 0.0, 0.3, 1.35, segs=16, bev=0.05)
+    K.cyl(sp, '2e2c2a', 0.0, 1.35, 0.0, 0.18, 0.3, segs=12, bev=0.04)
+    bt = 'hiT_beartrap'                                                 # a plate and two jaws, open
+    K.cyl(bt, '5e6670', 0.0, 0.0, 0.0, 1.05, 0.22, segs=20, bev=0.05)
+    for sz in (-1, 1):
+        K.B(bt, '7a8088', -0.95, 0.22, sz * 0.62 - 0.07, 0.95, 0.62, sz * 0.62 + 0.07, bev=0.03)   # a jaw, open
+        for i in range(6):                                              # its teeth
+            x = -0.8 + i * 0.32
+            K.B(bt, '9aa0a8', x - 0.07, 0.62, sz * 0.62 - 0.05, x + 0.07, 0.82, sz * 0.62 + 0.05, bev=0.02, segs=1)
+    K.cyl(bt, '7a8088', 0.0, 0.22, 0.0, 0.32, 0.1, segs=12, bev=0.03)   # the pan in the middle
+    bat = 'hiT_bat'                                                     # lying along x: grip, then the barrel
+    K.B(bat, '4a3f38', -1.9, 0.0, -0.13, -0.8, 0.26, 0.13, bev=0.05)
+    K.B(bat, 'b0885c', -0.8, 0.0, -0.2, 0.6, 0.4, 0.2, bev=0.1)
+    K.B(bat, 'b0885c', 0.6, 0.0, -0.27, 1.9, 0.54, 0.27, bev=0.14)
+    tz = 'hiT_taser'                                                    # a chunky body, a dark nose and grip
+    K.B(tz, 'd6ba46', -0.55, 0.3, -0.18, 0.45, 0.8, 0.18, bev=0.08)
+    K.B(tz, '2e2c2a', 0.45, 0.32, -0.2, 0.75, 0.78, 0.2, bev=0.05)
+    K.B(tz, '2e2c2a', -0.45, 0.0, -0.15, -0.15, 0.35, 0.15, bev=0.05)
+    pg = 'hiT_propgun'                                                  # a toy-like blaster: body, barrel, an orb
+    K.B(pg, '56a4a6', -0.75, 0.35, -0.22, 0.75, 0.9, 0.22, bev=0.12)
+    K.B(pg, '3f7c7e', 0.75, 0.5, -0.14, 1.45, 0.78, 0.14, bev=0.06)
+    K.cyl(pg, '9678c4', -0.2, 0.9, 0.0, 0.26, 0.32, segs=14, bev=0.08)
+    K.B(pg, '2e2c2a', -0.55, 0.0, -0.15, -0.25, 0.4, 0.15, bev=0.05)
+
 # ---------------------------------------------------------------- the data the client reads
 SCREENS = {
     # where the light comes from: one Part (centre, size, facing +z = toward the actor), its colour and its light
@@ -202,7 +247,9 @@ ORIGIN = {'hiA': (0.0, 0.0, 0.0), 'hiB': (40.0, 0.0, 0.0)}
 # the pieces that stand at their own origin (the client places them from the spots below; the kit keeps each at its
 # room's origin: hiA_chair at A's, hiB_couch and hiB_pad at B's, hiW_cushion at none)
 PIECES = {'hiA_chair': 'hiA', 'hiB_couch': 'hiB', 'hiB_pad': 'hiB', 'hiW_cushion': None, 'hiW_chair': None, 'hiW_lamp': None,
-          'hiW_armchair': None, 'hiW_paper': None, 'hiW_frame': None, 'hiW_door': None}
+          'hiW_armchair': None, 'hiW_paper': None, 'hiW_frame': None, 'hiW_door': None,
+          'hiT_table': None, 'hiT_bandage': None, 'hiT_medkit': None, 'hiT_spray': None, 'hiT_beartrap': None, 'hiT_bat': None,
+          'hiT_taser': None, 'hiT_propgun': None}
 # spots in the rooms' own space: (x, y, z, yaw degrees); a seat is where the sitter's hips go
 SPOTS = {
     'chairIntro': (2.8, 0.0, -2.6, -28.0),      # A: the chair pushed back and turned (the intro)
@@ -236,7 +283,7 @@ def write_data():
     print('WROTE', DATA)
 
 for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
-room_a(); room_b(); win_pieces()
+room_a(); room_b(); win_pieces(); pick_pieces()
 # move each piece to its own spot in the kit
 for (model, key), items in list(K.PIECES.items()):
     o = next((v for k, v in ORIGIN.items() if model.startswith(k + '_') or model == k), (0.0, 0.0, 0.0))

@@ -254,6 +254,7 @@ USE.propgun = function(p, root, look, T)
 	local hit = workspace:Raycast(eye, look.Unit * T.range, params)
 	local piece = hit and hit.Instance
 	if not (piece and piece:IsA("BasePart") and piece:IsDescendantOf(G.map)) then return false end
+	if piece:FindFirstAncestor("HuntPicks") or piece:FindFirstAncestor("HuntSearch") then return false end -- (not the tables)
 	local sz = piece.Size
 	local big = math.max(sz.X, sz.Y, sz.Z)
 	if big > 14 or big < 0.8 or (sz.Y < 1.2 and sz.X * sz.Z > 60) then return false end -- (furniture: not a wall, a floor or a crumb)
@@ -440,28 +441,23 @@ local function makeTables(g: any)
 	if not (HC.PICKS and HC.PICKS.on) then return end
 	local T = HuntItems.tableCF(g.def, g.origin)
 	local folder = Instance.new("Folder"); folder.Name = "HuntPicks"; folder.Parent = g.map
-	-- two of the patio's store tables, copied from the map (else plain chunky tables)
-	local src: Instance? = nil
-	for _, d in g.map:GetDescendants() do
-		if (d:IsA("BasePart") or d:IsA("Model")) and string.find(string.lower(d.Name), "storetable") then src = d; break end
+	-- (the house kit's chunky table and items: hunt_intro_models.py's hiT_ pieces in the intro kit; else plain parts)
+	local kit = ReplicatedStorage:FindFirstChild(HC.INTRO and HC.INTRO.kit or "")
+	local function kitPiece(name: string, at: CFrame): Model?
+		local src = kit and kit:FindFirstChild(name)
+		if not src then return nil end
+		local m = src:Clone() :: Model
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CFrame = at * d.CFrame; d.Anchored = true end end
+		m.Parent = folder
+		return m
 	end
 	local top = 4.2
 	for k, dx in { -5.2, 5.2 } do
 		local at = T * CFrame.new(dx, 0, 0)
-		if src then
-			local c = src:Clone()
-			if c:IsA("Model") then
-				local cf, sz = c:GetBoundingBox()
-				c:PivotTo(at * CFrame.new(0, sz.Y / 2, 0) * (c:GetPivot():ToObjectSpace(cf)):Inverse())
-				top = sz.Y
-			else
-				local bp = c :: BasePart
-				bp.CFrame = at * CFrame.new(0, bp.Size.Y / 2, 0)
-				top = bp.Size.Y
-			end
-			for _, d in c:GetDescendants() do if d:IsA("ProximityPrompt") or d:IsA("Script") then d:Destroy() end end
-			c.Name = "PickTable" .. k
-			c.Parent = folder
+		local km = kitPiece("hiT_table", at)
+		if km then
+			km.Name = "PickTable" .. k
+			top = 3.6
 		else
 			part({ Size = Vector3.new(10, 0.6, 4.6), CFrame = at * CFrame.new(0, 3.9, 0), Color = Color3.fromRGB(150, 128, 104), CanCollide = true }, folder).Name = "PickTable" .. k
 			for _, lx in { -4.4, 4.4 } do for _, lz in { -1.9, 1.9 } do
@@ -473,9 +469,11 @@ local function makeTables(g: any)
 	for i, it in items do
 		local x = -9.0 + (i - 1) * 3.0
 		local at = T * CFrame.new(x, top + 0.05, 0.4)
-		local m = itemModel(it.id)
-		m:PivotTo(at)
-		m.Parent = folder
+		if not kitPiece("hiT_" .. it.id, at) then
+			local m = itemModel(it.id)
+			m:PivotTo(at)
+			m.Parent = folder
+		end
 		local pt = part({ Size = Vector3.new(2, 2, 2), Transparency = 1, CFrame = at * CFrame.new(0, 1, 0) }, folder)
 		pt.Name = "Pick_" .. it.id
 		local pr = Instance.new("ProximityPrompt")
