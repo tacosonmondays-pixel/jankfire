@@ -251,7 +251,7 @@ function HS.build(K, parent, name, site, live)
 	-- ============================================================== THE REGULARS
 	-- Looticus (the shop's man): on the street's sofas, behind the shop counter, behind the bar; he puffs between them
 	local LOOT = { { "sit", -19.5, 1.45, 70.4, -90 }, { "sit", -19.5, 1.45, 73.6, -90 }, { "sit", 12.5, 1.45, 72.4, 90 }, { "sit", 12.5, 1.45, 75.6, 90 },
-		{ "stand", 21.4, 0, 52, 90 }, { "stand", -22.4, 0, 80, -90 } }
+		{ "stand", 16.4, 0, 52, 90 } } -- (26 Nov: before the shop counter, not behind it: no room there; none behind the bar)
 	K.npc(F0, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(F0, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	-- Frisk1636 (ranked): along the north gallery's rail, looking down at the square

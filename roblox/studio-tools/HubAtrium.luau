@@ -174,8 +174,7 @@ function HA.build(K, parent, name, site, live)
 	K.npc(FCnw, "Looticus", -1.6, 1.45, 3.5, 0)
 	K.npcPoint(FCnw, "Looticus", 1, "spot", "sit", -1.6, 1.45, 3.5, 0)
 	K.npcPoint(FCnw, "Looticus", 2, "spot", "sit", 1.6, 1.45, 3.5, 0)
-	K.npcPoint(sideF(180), "Looticus", 3, "spot", "stand", 0, Y2, -37.6, 180)
-	K.npcPoint(sideF(45), "Looticus", 4, "spot", "stand", 0, Y2, -38.25, 180)
+	K.npcPoint(sideF(180), "Looticus", 3, "spot", "stand", 0, Y2, -32.6, 180) -- (26 Nov: before the shop counter, not behind it; none behind the bar)
 	-- Frisk1636: along level 3 between the two boards
 	local FR = { { 315, 0, -34, "stop" }, { 337.5, 0, -32.5, "via" }, { 0, 0, -30, "stop" }, { 22.5, 0, -32.5, "via" }, { 45, 0, -34, "stop" } }
 	K.npc(sideF(315), "Frisk1636", 0, Y3, -34, 0)

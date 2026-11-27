@@ -1171,15 +1171,29 @@ function K.padClassic(F, md, bank, name, o)
 		end
 	end
 	-- the board: on the bay's back wall (o.boardAt), else on a cream back panel the pad stands 0.8 behind itself
-	local BW, BH = o.boardW or 12, o.boardH or 5.5
+	local BW, BH = o.boardW or 12, o.boardH or (if o.screen then 6.6 else 5.5)
 	local FB = o.boardAt
 	if not FB then
 		K.box(F, "Scenery", "BackPanel", -6.6, 6.6, 0, 13, -dp - 1.6, -dp - 0.8, CREAM, nil, { parent = m, solid = true })
 		FB = F * CFrame.new(0, 9.6, -dp - 0.8) * CFrame.Angles(0, math.pi, 0) -- (its look back out at the walkway)
 	end
-	K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.5, BW / 2 + 0.5, -BH / 2 - 0.5, BH / 2 + 0.5, -0.05, 0.4, "c9c5bc", nil, { parent = m })
 	local counts = {}
 	for t = 1, n do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
+	if o.screen then
+		-- (26 Nov, the owner's pick of the larger Rotunda with the judges' fixes: the Rotunda's own kind of count screen in
+		-- place of a flat plate on a bare wall: a deep slate housing standing proud of the wall with a sill under it, a dark
+		-- screen with the mode, its kind and the team-coloured counts. No lit dots or bars on it)
+		local HOUSE, SCREEN = "39404b", "222833"
+		K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.6, BH / 2 + 0.6, -0.05, 0.4, HOUSE, nil, { parent = m })
+		K.box(FB, "Scenery", "BoardSill", -BW / 2 - 0.6, BW / 2 + 0.6, -BH / 2 - 0.95, -BH / 2 - 0.6, -0.4, 0.4, "4a5260", nil, { parent = m })
+		local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, SCREEN, nil, { parent = m })
+		local cs = { table.concat(counts, if n == 2 then ' <font color="#8a93a6">vs</font> ' else "  "), "ffffff", if n == 2 then 0.36 else 0.3 }
+		K.text(scr, Enum.NormalId.Front, { { md.title, "f2f0ea", 0.28 }, { md.kind, "9aa4b6", 0.11 }, cs, { "", "c8d0e0", 0.1, "S" } },
+			{ names = { [3] = "Status", [4] = "Sub" }, pps = 40, bright = 2, bg = SCREEN, bgt = 0 })
+		K.light(scr, 14, 0.45, "dfe8ff")
+		return m
+	end
+	K.box(FB, "Scenery", "BoardFrame", -BW / 2 - 0.5, BW / 2 + 0.5, -BH / 2 - 0.5, BH / 2 + 0.5, -0.05, 0.4, "c9c5bc", nil, { parent = m })
 	local scr = K.box(FB, "Scenery", "Screen", -BW / 2, BW / 2, -BH / 2, BH / 2, -0.15, -0.05, "28324a", nil, { parent = m })
 	-- (the counts' line is only as tall as one line of them can be wide, so the scaled text never breaks onto two lines)
 	-- (21 Nov, the judges: one name per pad. With a plaque (o.headerAt) the plaque names the mode and the board only
@@ -1856,14 +1870,15 @@ function K.vip(F, o)
 	K.cyl(F, "Scenery", "VipRug", 0, 0, 0.06, mid, 12, "4b4048", MAT.Fabric)
 	K.box(F, "Shell", "VipTable", -1.6, 1.6, 0, 1.2, mid - 1.4, mid + 1.4, P.woodDark, MAT.Wood)
 	for _, s in { -1, 1 } do
-		local Fs = F * CFrame.new(s * (w - 2.2), 0, mid) * CFrame.Angles(0, math.rad(s * 90), 0) -- (its back to the side wall, facing in)
+		-- (1.3 clear of the side wall: a seated regular leans back past the sofa's back; hub-originals' Clip v2, 26 Nov)
+		local Fs = F * CFrame.new(s * (w - 3.5), 0, mid) * CFrame.Angles(0, math.rad(s * 90), 0) -- (its back to the side wall, facing in)
 		K.box(Fs, "Shell", "VipSofa", -3.6, 3.6, 0, 1.45, -1.0, 1.2, P.plum, MAT.Fabric)
 		K.box(Fs, "Scenery", "VipSofaBack", -3.6, 3.6, 1.45, 3.4, 1.2, 1.9, P.plum, MAT.Fabric)
 		for _, a in { -1, 1 } do K.box(Fs, "Scenery", "VipSofaArm", a * 3.6, a * 4.3, 0, 2.3, -1.0, 1.9, P.plum, MAT.Fabric) end
 	end
 	K.light(K.box(F, "Scenery", "LampSpot", -0.5, 0.5, h - 1.2, h - 1, mid - 0.5, mid + 0.5, P.pier, nil, { ghost = true, tr = 1 }), 16, 0.6, "ffd9a0")
 	-- Trisangle: her place on the left sofa's door end, her four seats (both ends of both sofas), the way between them
-	local sx = w - 2.2
+	local sx = w - 3.5
 	local function seatAt(s, dz) return Vector3.new(s * (sx + 0.1), 0, mid + dz) end
 	K.npc(F, "Trisangle", seatAt(-1, 1.6).X, 1.45, seatAt(-1, 1.6).Z, -90, { door = Vector3.new(0, 0, -4.5) })
 	local k = 0

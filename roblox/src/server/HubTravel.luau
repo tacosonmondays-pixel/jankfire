@@ -14,7 +14,7 @@
 local Players = game:GetService("Players")
 
 local HubTravel = {}
-HubTravel.DEFAULT = "classic" -- (21 Nov, the owner: THE ROTUNDA, pre-v3, is the default "until we fix the other ones"; "square" before)
+HubTravel.DEFAULT = "grand" -- (26 Nov, the owner picked B: THE GRAND ROTUNDA, the Rotunda larger with the Hotel's spawn; "classic" before, still a HUBS option)
 HubTravel.REACH = 520 -- (studs from a hub's site that count as being in it)
 HubTravel.COOLDOWN = 3
 

@@ -47,13 +47,17 @@ function HRH.build(which, parent, opts)
 	local V = HRH.V[which]; assert(V, "no version " .. tostring(which))
 	local site = opts.site or V.site
 	local k = V.k
-	local name = "RotHotel_" .. which
+	-- (26 Nov, the owner picked B: "B (1.6x, flat join)", the new default hub) opts.live: built to go into Map.Hub
+	-- (HRH.install), the lobby's light zone made; opts.fixes: the judges' five fixes (HRH.fixes); opts.name / lobbyName
+	local LIVE, FIX = opts.live == true, opts.fixes == true
+	local name = opts.name or ("RotHotel_" .. which)
 	local old = parent:FindFirstChild(name); if old then old:Destroy() end
 	local near = workspace:GetPartBoundsInBox(CFrame.new(site + Vector3.new(0, 30, 40)), Vector3.new(320, 120, 360), OverlapParams.new())
 	if #near > 0 then return "the site is not empty: " .. near[1]:GetFullName() end
 	local out = {}
 	local root = Instance.new("Folder"); root.Name = name; root.Parent = parent
 	root:SetAttribute("MiniGamesOff", true); root:SetAttribute("Version", which); root:SetAttribute("K", k); root:SetAttribute("Site", site)
+	root:SetAttribute("LobbyName", opts.lobbyName or "Lobby")
 
 	-- 1. the ring
 	local R = rotunda(k)
@@ -134,7 +138,7 @@ function HRH.build(which, parent, opts)
 		local floorY = base.Position.Y - base.Size.Y / 2
 		local sz = K.CLASSIC_SIZE[md.id] or { 13.6, 11 }
 		local upper = m:GetAttribute("Bank") == "upper"
-		local by = if upper then 5.4 else 7.2
+		local by = if upper then (if FIX then 5.0 else 5.4) else 7.2 -- (the screen style's upper boards a step lower: the wall's band over them)
 		-- the bay's back wall behind it: a ray out from the pad at the board's height
 		local hit = workspace:Raycast(Vector3.new(c.X, floorY + by, c.Z), out3 * 40, rp)
 		local wallAt = if hit then hit.Position else (c + out3 * (sz[2] / 2 + 1))
@@ -156,6 +160,9 @@ function HRH.build(which, parent, opts)
 			end
 		end
 		local nm, bank = m.Name, m:GetAttribute("Bank")
+		-- (the UPSTAIRS board's rows are copies of an upper pad's count kept inside that pad (Mirror): they go to the new one)
+		local mirrors = {}
+		for _, c in m:GetChildren() do if c:GetAttribute("Mirror") then c.Parent = root; table.insert(mirrors, c) end end
 		m:Destroy()
 		-- (an upper bay's guide rails stand either side of its old, narrower board: the new board fits between them)
 		local bw
@@ -169,7 +176,17 @@ function HRH.build(which, parent, opts)
 			end
 			if lim < 6.6 then bw = math.max(6, 2 * (lim - 0.6)) end -- (the frame is 0.5 wider each side; 0.1 to spare)
 		end
-		K.padClassic(F, md, bank, nm, { boardAt = boardAt, boardW = bw })
+		local np = K.padClassic(F, md, bank, nm, { boardAt = boardAt, boardW = bw, screen = FIX, boardH = if FIX and upper then 6.0 else nil })
+		for _, c in mirrors do
+			c.Parent = np
+			for _, l in c:GetDescendants() do
+				if l:IsA("TextLabel") and l.Name == "Status" then -- (its counts in the classic pads' team colours)
+					local counts = {}
+					for t = 1, md.teams do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(K.TEAM[t], md.size)) end
+					l.Text = table.concat(counts, "   vs   ")
+				end
+			end
+		end
 		made += 1
 	end
 	-- (the ring's way out to training: its door data kept for HRH.install, which hands it to Map.Hub.Doors as every hub's)
@@ -202,8 +219,9 @@ function HRH.build(which, parent, opts)
 	local half = math.min(wo * k - 1.4, clear - 0.1)
 	local lobbyZ = (A + T) * k + 34
 	local lift = V.lift
-	local ok2, lob = pcall(HH.build, K, root, "Lobby", CFrame.new(site + Vector3.new(0, lift, lobbyZ)), false,
-		{ lobbyOnly = true, northOpen = { -half, half, math.min(headY - lift, 16) } })
+	local ok2, lob = pcall(HH.build, K, root, opts.lobbyName or "Lobby", CFrame.new(site + Vector3.new(0, lift, lobbyZ)), LIVE,
+		{ lobbyOnly = true, northOpen = { -half, half, math.min(headY - lift, 16) }, withBar = FIX, northPortal = FIX, lookZ0 = -33,
+			golfZ = { -21, 73 } }) -- (the golf room 29 further from the ring: its gym reaches 61 out toward the lobby)
 	if not ok2 then return table.concat(out, "\n") .. "\nLOBBY BUILD ERROR: " .. tostring(lob) end
 	table.insert(out, ("lobby: %d instances, at z +%.1f, %.1f up; its opening %.1f wide, %.1f high"):format(#lob:GetDescendants(), lobbyZ, lift, 2 * half, math.min(headY - lift, 16)))
 	-- the opening's passage: a floor and a lid through the ring's wall and the lobby's, the same width
@@ -213,7 +231,14 @@ function HRH.build(which, parent, opts)
 	local function wbox(name, x0, x1, y0, y1, z0, z1, hex, mat, o)
 		return K.part("Shell", name, CFrame.new(site + Vector3.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)), Vector3.new(x1 - x0, y1 - y0, z1 - z0), hex, mat, o)
 	end
-	wbox("PassageFloor", -half, half, lift - 1, lift - 0.03, zIn, (A + T) * k, "a3947f") -- (through the ring's wall only, a hair under the floors either side)
+	local zMid = (zIn + (A + T) * k) / 2
+	if FIX then -- (the judges: the warm hotel meets the cool ring at a threshold: the lobby's stone, a cream sill, the ring's floor)
+		wbox("PassageFloor", -half, half, lift - 1, lift - 0.03, zMid + 0.45, (A + T) * k, "a39784")
+		wbox("Threshold", -half, half, lift - 1, lift + 0.03, zMid - 0.45, zMid + 0.45, "d9cdb5") -- (0.03 proud: it shows over the ring's floor, no flicker)
+		wbox("PassageFloor", -half, half, lift - 1, lift - 0.03, zIn, zMid - 0.45, "4a515c")
+	else
+		wbox("PassageFloor", -half, half, lift - 1, lift - 0.03, zIn, (A + T) * k, "a3947f") -- (through the ring's wall only, a hair under the floors either side)
+	end
 	-- 6. C: the landing just inside the ring at the lobby's height, wide steps down to the ring's floor
 	if lift > 0 then
 		local land = 5
@@ -228,9 +253,84 @@ function HRH.build(which, parent, opts)
 		for _, s in { -1, 1 } do wbox("StepCheek", s * half, s * (half + 1), -1, lift + 0.6, zIn - land - n * run, math.min(zIn, pierZ - 0.05), P.cream) end
 		table.insert(out, ("C: a landing %.1f up, %d steps"):format(lift, n))
 	end
-	-- 7. the arrival and the spawns are the lobby's (K.begin made them under Lobby); the ring's way out to training stays
+	-- 7. the judges' fixes in the ring (HRH.fixes): the teal glow quieted, the training gate, the passage's light, a spectate board
+	if FIX then table.insert(out, HRH.fixes(root, ring, R, K, site, k, { zIn = zIn, zOut = (A + T) * k, half = half, lift = lift, headY = headY })) end
+	-- 8. the arrival and the spawns are the lobby's (K.begin made them under Lobby); the ring's way out to training stays
 	table.insert(out, ("spawns %d (lobby), pads %d, parts %d"):format(#lob.HubSpawns:GetChildren(), #qp:GetChildren(), #root:GetDescendants()))
 	return table.concat(out, "\n"), root
+end
+
+-- the judges' fixes for the ring part (26 Nov, the owner picked B; the twelve judges' common notes):
+--   * the teal glow quieted so the pads are the brightest things: every teal/cyan neon in the ring (the dais rings, the
+--     jump discs, the outlines round the balcony openings, the sill lines, the dome's ring) becomes a plain muted teal;
+--     the bays' white ceiling panels and the thin white pier tubes a step down
+--   * the training gate reads as a way in: its amber light bar over the head gone, the red lasers softer (TrainingDoors
+--     keeps whatever see-through they start with), TRAINING named over the gate
+--   * the passage: a warm light at its lobby end, a cooler one at the ring's (the light steps down between them)
+--   * a spectate board on the ring's side-8 wall (the lounge that had one is gone)
+local TEAL_MUTED, PANEL_DIM, TUBE_DIM = "6c8b89", "d6cebf", "c9c1b2"
+function HRH.fixes(root, ring, R, K, site, k, o)
+	local out = {}
+	local quiet, dimmed = 0, 0
+	for _, d in ring:GetDescendants() do
+		if d:IsA("BasePart") and d.Material == Enum.Material.Neon then
+			local h, sat, v = d.Color:ToHSV()
+			if h > 0.42 and h < 0.58 and sat > 0.3 then
+				d.Material = Enum.Material.SmoothPlastic; d.Color = Color3.fromHex(TEAL_MUTED); quiet += 1
+				for _, l in d:GetChildren() do if l:IsA("Light") then l.Brightness *= 0.35 end end
+			elseif sat < 0.2 and v > 0.85 then
+				if d.Name == "PadCoffer" or d.Name == "BayGlow" then d.Color = Color3.fromHex(PANEL_DIM); dimmed += 1
+				elseif d.Name:match("FinLight$") or d.Name == "PierBackLight" then d.Color = Color3.fromHex(TUBE_DIM); dimmed += 1 end
+			end
+		end
+	end
+	-- (ZFight: the balcony decks' lip strip, glowing no more, lay 0.02 over the deck and flickered: the decks keep their edge)
+	local lips = 0
+	for _, d in ring:GetDescendants() do if d:IsA("BasePart") and d.Name == "UpperNosing" then d:Destroy(); lips += 1 end end
+	table.insert(out, ("glow: %d teal neons quieted, %d white panels and tubes a step down, %d deck lip strips away"):format(quiet, dimmed, lips))
+	-- the gate
+	local gate, lasers, bars = nil, 0, 0
+	for _, d in ring:GetDescendants() do
+		if d.Name == "GateLightBar" then d:Destroy(); bars += 1
+		elseif d:IsA("BasePart") and d.Name == "LaserBar" then d.Transparency = math.max(d.Transparency, 0.35); lasers += 1
+		elseif d:IsA("BasePart") and d.Name == "LaserField" then d.Transparency = math.max(d.Transparency, 0.94)
+		elseif d:IsA("Model") and d.Name == "TrainingShutter" then gate = d end
+	end
+	local S = K.S
+	S.root = root; S.site = CFrame.new()
+	if gate then
+		local c, top = gate:GetAttribute("Center"), gate:GetAttribute("Top")
+		if typeof(c) == "Vector3" and type(top) == "number" then
+			local dg = Vector3.new(site.X - c.X, 0, site.Z - c.Z).Unit
+			local at = Vector3.new(c.X, top + 1.8, c.Z) + dg * 2.0 -- (on the face of the portal kit's head, which stands 1.86 out)
+			K.wordSign(CFrame.lookAt(at, at + dg), "Scenery", "GateSign", 7.4, 1.5, 0, 0, 0, "TRAINING", { accent = S.accent or "5fbcbf", bg = "28324a" })
+		end
+	end
+	table.insert(out, ("gate: light bar %d away, %d lasers softer, TRAINING over it: %s"):format(bars, lasers, tostring(gate ~= nil)))
+	-- the passage's light, warm at the lobby's end, cooler at the ring's
+	local function lamp(nm, z, hex, br)
+		local p = Instance.new("Part"); p.Name = nm; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+		p.Transparency = 1; p.Size = Vector3.new(0.4, 0.4, 0.4); p.CFrame = CFrame.new(site + Vector3.new(0, o.lift + math.min(o.headY - o.lift, 16) - 1.2, z))
+		local l = Instance.new("PointLight"); l.Color = Color3.fromHex(hex); l.Range = 14; l.Brightness = br; l.Shadows = false; l.Parent = p
+		p.Parent = root:FindFirstChild("Scenery") or root
+	end
+	lamp("PassageLampWarm", o.zOut + 1.0, "ffe2b8", 0.9)
+	lamp("PassageLampCool", o.zIn - 0.5, "dfe8ff", 0.6)
+	-- a spectate board on side 8's wall, under the balcony
+	local Fs = R.frame(site, 8 * 360 / R.N, 0)
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { ring }
+	local hit = workspace:Raycast(site + Vector3.new(0, 5, 0), Fs.LookVector * 140, rp)
+	if hit then
+		local dir = Fs.LookVector
+		local up = workspace:Raycast(hit.Position - dir * 1.2, Vector3.new(0, 40, 0), rp)
+		local yb = if up then up.Position.Y - site.Y else 12
+		local face = Vector3.new(hit.Position.X, site.Y + yb - 0.85 - 2.7, hit.Position.Z) - dir * 0.05
+		K.spectateSpot(CFrame.lookAt(face, face - dir), 9.6, 5.4)
+		table.insert(out, ("spectate: on %s at %.1f out, its middle %.1f up"):format(hit.Instance.Name, (Vector3.new(hit.Position.X, 0, hit.Position.Z) - Vector3.new(site.X, 0, site.Z)).Magnitude, yb - 3.55))
+	else
+		table.insert(out, "spectate: NO wall found on side 8")
+	end
+	return table.concat(out, " | ")
 end
 
 -- the seven fair-judge views and the spawn-to-ring walk for a built version (world frames): spawn, pad area, pad close-up,
@@ -238,7 +338,7 @@ end
 function HRH.views(root)
 	local site = root:GetAttribute("Site")
 	local k = root:GetAttribute("K") or 1 -- (none: the live Rotunda, Map.Hub.Classic, for the same spots at its own size)
-	local lob = root:FindFirstChild("Lobby")
+	local lob = root:FindFirstChild(root:GetAttribute("LobbyName") or "Lobby")
 	local up = Vector3.yAxis
 	local v = {}
 	local spawnC = Vector3.zero; local n = 0
@@ -282,7 +382,7 @@ function HRH.install(root, id, title, order)
 	assert(game:GetService("RunService"):IsEdit(), "Edit mode only")
 	local hub = workspace.Map.Hub
 	assert(not hub:FindFirstChild(root.Name), "Map.Hub." .. root.Name .. " is already there")
-	local lob = root:FindFirstChild("Lobby")
+	local lob = root:FindFirstChild(root:GetAttribute("LobbyName") or "Lobby")
 	if lob then
 		for _, n in { "HubSpawns", "HubArrive" } do
 			local f = lob:FindFirstChild(n)
@@ -313,6 +413,17 @@ function HRH.install(root, id, title, order)
 		end
 		dr:Destroy()
 	end
+	-- (a live build's light zone: K.lookZone made it beside the lobby, under this root; HubLife reads Map.Hub.LookZones)
+	local lz = root:FindFirstChild("LookZones")
+	if lz then
+		local zf = hub:FindFirstChild("LookZones")
+		if not zf then zf = Instance.new("Folder"); zf.Name = "LookZones"; zf.Parent = hub end
+		for _, z in lz:GetChildren() do
+			local old = zf:FindFirstChild(z.Name); if old then old:Destroy() end
+			z:SetAttribute("Hub", id); z.Parent = zf
+		end
+		lz:Destroy()
+	end
 	root.Parent = hub
 	return ("Map.Hub.%s as hub %q (%s): %d pads, %d spawns, %d arrivals, doors %s"):format(root.Name, id, title, #root.QueuePads:GetChildren(),
 		#root.HubSpawns:GetChildren(), #root.HubArrive:GetChildren(), if #doors > 0 then table.concat(doors, ", ") else "NONE")
@@ -320,8 +431,10 @@ end
 function HRH.uninstall(id)
 	local hub = workspace.Map.Hub
 	local n = 0
-	for _, c in hub:GetChildren() do if c:GetAttribute("Hub") == id and c.Name:match("^RotHotel_") then c:Destroy(); n += 1 end end
+	for _, c in hub:GetChildren() do if c:GetAttribute("Hub") == id and c:GetAttribute("Version") ~= nil then c:Destroy(); n += 1 end end
 	for _, d in hub.Doors:GetChildren() do if d:GetAttribute("Hub") == id then d:Destroy(); n += 1 end end
+	local zf = hub:FindFirstChild("LookZones")
+	if zf then for _, z in zf:GetChildren() do if z:GetAttribute("Hub") == id then z:Destroy(); n += 1 end end end
 	return n
 end
 

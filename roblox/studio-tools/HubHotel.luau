@@ -28,9 +28,12 @@ function HH.build(K, parent, name, site, live, opts)
 	local F0 = CFrame.new()
 	-- (26 Nov, the owner: "the hotel spawn area" joined to THE ROTUNDA, larger) opts.lobbyOnly: the lobby alone (its VIP, lifts,
 	-- reception, zombies room; the gym, bar and armory doors closed); opts.northOpen = { x0, x1, h }: one wide opening in
-	-- the N wall in place of the PLAY portal
+	-- the N wall in place of the PLAY portal. (26 Nov, the owner picked B: it goes live) opts.withBar: the lounge bar wing
+	-- and the golf room behind it too (their tables, arcade, code panel and golf: the mini-games); opts.northPortal: the
+	-- deep framed portal and its PLAY sign round the opening; opts.lookZ0: where the hotel's light stops toward the N
 	opts = opts or {}
-	local LOBBY, NO = opts.lobbyOnly, opts.northOpen
+	local LOBBY, NO, BAR = opts.lobbyOnly, opts.northOpen, opts.withBar
+	local GZ0, GZ1 = table.unpack(opts.golfZ or { -50, 44 }) -- (the golf room's z span; THE GRAND ROTUNDA moves it clear of its ring's gym)
 	local f = K.begin(parent, name or HH.FOLDER, site or HH.SITE, HH.ID, { Title = HH.TITLE, Order = HH.ORDER, Accent = PAL.accent }, live)
 	local box, cyl = K.box, K.cyl
 	local H, MZ = 26, 14 -- (the lobby's ceiling; the mezzanine's floor)
@@ -39,7 +42,7 @@ function HH.build(K, parent, name, site, live, opts)
 	local function put(t, cf, o) return K.put(F0, t, cf, o) end
 	-- (yaw for a kit piece: its front, +Z, toward: south 0, east 90, north 180, west -90)
 	local NAVY = "28324a" -- (judge round 1: no screen shows near-black, even before it has anything on it)
-	K.lookZone("hotel", -100, 130, -20, 60, -150, 140) -- (its own light: HubLook.looks.hotel, a step lower than the hub's)
+	K.lookZone("hotel", -100, 130, -20, 60, opts.lookZ0 or -150, 140) -- (its own light: HubLook.looks.hotel, a step lower than the hub's)
 
 	-- ============================================================== THE LOBBY (x -28..28, z -32..32)
 	box(F0, "Shell", "Floor", -22, 22, -1, 0, -26, 26, PAL.floor)
@@ -53,7 +56,7 @@ function HH.build(K, parent, name, site, live, opts)
 	-- the walls (plaster): the ballroom's doors N; the gym's W; the bar's E; S: the armory's mouth and the service door
 	K.wall(FN, "Wall", -30, 30, 0, 28.4, -34, -32, PAL.wall, { NO or { -8, 8, 14 } }, PLASTER) -- (up to the ballroom's lid: it closes the vault's S end)
 	K.wall(FW, "Wall", -32, 32, 0, H + 1, -30, -28, PAL.wall, if LOBBY then {} else { { -4, 4, 10 } }, PLASTER) -- (west: its x runs north)
-	K.wall(FE, "Wall", -32, 32, 0, H + 1, -30, -28, PAL.wall, if LOBBY then {} else { { 10, 18, 10 } }, PLASTER) -- (east: its x runs south)
+	K.wall(FE, "Wall", -32, 32, 0, H + 1, -30, -28, PAL.wall, if LOBBY and not BAR then {} else { { 10, 18, 10 } }, PLASTER) -- (east: its x runs south)
 	K.wall(FS, "Wall", -30, 30, 0, MZ, -34, -32, PAL.wall, if LOBBY then { { -26, -22, 8.5 } } else { { 16.5, 27.5, 11 }, { -26, -22, 8.5 } }, PLASTER) -- (south: its x runs west)
 	for _, s in { -1, 1 } do box(F0, "Shell", "Wall", s * 20, s * 30, MZ, H + 1, 32, 34, PAL.wall, PLASTER) end -- (VIP's front fills x -20..20)
 	box(F0, "Shell", "Roof", -30, 30, H, H + 1, -34, 34, PAL.soffit, PLASTER)
@@ -120,8 +123,8 @@ function HH.build(K, parent, name, site, live, opts)
 	-- the lounge's door, to the armory's mouth (TRAINING), and from the fountain's ring to reception
 	local function way(x0, x1, z0, z1) box(F0, "Scenery", "RunnerBranch", x0, x1, 0, 0.04, z0, z1, PAL.runner, CARPET) end
 	way(if LOBBY then 3.9 else -27.5, 14.75, -3.95, -2.45)
+	if not LOBBY or BAR then way(13.25, 14.75, -2.45, 14.75); way(14.75, 27.5, 13.25, 14.75) end
 	if not LOBBY then
-		way(13.25, 14.75, -2.45, 14.75); way(14.75, 27.5, 13.25, 14.75)
 		way(-14.75, -13.25, -2.45, 30); way(-24, -14.75, 28.5, 30)
 	end
 	way(11.7, 21.5, -16.75, -15.25)
@@ -144,14 +147,16 @@ function HH.build(K, parent, name, site, live, opts)
 	-- the N wall: the ballroom's doors in a deep surround, giant pilasters either side, the name over the doors
 	if not NO then put("ht_doorL", at(0, 0, -32, 0)) end -- (look only: its hull would fill the doorway)
 	-- (round 5, judge round 4: the way to PLAY a deep framed portal) a sleeve 3.4 deep proud of the surround
-	if not NO then
-		for _, sx in { -1, 1 } do box(F0, "Shell", "Portal", sx * 7.9, sx * 9.9, 0, 14, -32, -28.6, PAL.wall, PLASTER) end
-		box(F0, "Shell", "Portal", -9.9, 9.9, 14, 16.4, -32, -28.6, PAL.wall, PLASTER)
+	local PORTAL = not NO or opts.northPortal
+	local PX, PH = if NO then NO[2] else 7.9, if NO then NO[3] else 14 -- (the sleeve's inner edge, the head's underside)
+	if PORTAL then
+		for _, sx in { -1, 1 } do box(F0, "Shell", "Portal", sx * PX, sx * (PX + 2), 0, PH, -32, -28.6, PAL.wall, PLASTER) end
+		box(F0, "Shell", "Portal", -PX - 2, PX + 2, PH, PH + 2.4, -32, -28.6, PAL.wall, PLASTER)
 	end
 	for _, s in { -1, 1 } do if not NO or NO[2] < 12 then put("ht_pilaster", at(s * 13.6, 0, -32, 0), { solid = true }) end end
 	-- (judge round 1: the door says what it is for, the name is its own big board over it)
 	local Fn = CFrame.new(0, 0, -31.45) * CFrame.Angles(0, math.pi, 0)
-	if not NO then K.wordSign(Fn, "Scenery", "WaySign", 12, 2.2, 0, 15.2, -2.9, "PLAY", { accent = PAL.accent, bg = NAVY }) end
+	if PORTAL then K.wordSign(Fn, "Scenery", "WaySign", 12, 2.2, 0, PH + 1.2, -2.9, "PLAY", { accent = PAL.accent, bg = NAVY }) end
 	K.wordSign(Fn, "Scenery", "NameSign", 16, 3.2, 0, 19.9, 0, "JANKFIRE", { accent = PAL.accent, bg = NAVY })
 	-- raised panels in the bare plaster over the galleries (N and S walls' ends)
 	for _, sx in { -1, 1 } do
@@ -171,7 +176,7 @@ function HH.build(K, parent, name, site, live, opts)
 			if clear then K.put(F, "ht_dado", at(x, 0, zf, 0)) end
 		end
 	end
-	dadoRun(FN, -32, -28, 28, if NO then { { NO[1] - 1, NO[2] + 1 } } else { { -10, 10 }, { -15.5, -11.7 }, { 11.7, 15.5 } })
+	dadoRun(FN, -32, -28, 28, if NO then { { NO[1] - (if PORTAL then 2.2 else 1), NO[2] + (if PORTAL then 2.2 else 1) } } else { { -10, 10 }, { -15.5, -11.7 }, { 11.7, 15.5 } })
 	dadoRun(FW, -28, -32, 32, { { -6, 6 }, { -22, -10 } })
 	dadoRun(FE, -28, -32, 32, { { 8, 22 }, { -24, -8 } })
 	dadoRun(FS, -32, -28, 28, { { 14.5, 29.5 }, { -28, -20 }, { -18, -6 }, { 4, 17 } })
@@ -190,7 +195,8 @@ function HH.build(K, parent, name, site, live, opts)
 	end
 	-- the ways out named on the gallery fascias, big enough to read from the middle (judge round 1)
 	local function fascia(x, z, dx, dz, w, title) K.wordSign(K.facing(x, z, dx, dz), "Scenery", "WaySign", w, 2.0, 0, 12.2, 0, title, { accent = PAL.accent, bg = NAVY }) end
-	if not LOBBY then fascia(-19.7, 0, 1, 0, 8, "GYM"); fascia(19.7, 15.2, -1, 0, 10, "LOUNGE") end
+	if not LOBBY then fascia(-19.7, 0, 1, 0, 8, "GYM") end
+	if not LOBBY or BAR then fascia(19.7, 15.2, -1, 0, 10, "LOUNGE") end
 	fascia(19.7, -16, -1, 0, 8, "SHOP")
 	if not LOBBY then fascia(-13, 23.9, 0, -1, 12, "ARMORY  ·  TRAINING") end
 	-- (round 5: ZOMBIES over its own door, not stacked over the lifts; TRAINING again over the armory's mouth)
@@ -403,6 +409,8 @@ function HH.build(K, parent, name, site, live, opts)
 	put("ht_doorS", at(-28, 0, 0, 90))
 	put("ht_doorS", at(-30, 0, 0, -90)) -- (the gym's side of the same door)
 
+	end -- (not LOBBY: the ballroom and the gym)
+	if not LOBBY or BAR then
 	-- ============================================================== THE LOUNGE BAR (east: x 30..66, z -2..30, low)
 	local BX0, BX1, BZa, BZb, BH = 30, 66, -2, 30, 14
 	box(F0, "Shell", "Floor", BX0, BX1 + 2, -1, 0, BZa - 2, BZb + 2, "7a6450", MAT.WoodPlanks)
@@ -414,7 +422,9 @@ function HH.build(K, parent, name, site, live, opts)
 	put("ht_doorS", at(28, 0, 14, -90))
 	-- (round 3, judge round 2: the lounge fell to near-black and was a plain box) a cream coffered ceiling, lamps in the
 	-- coffers, three ring lights; a raised seating step along the N wall
-	for x = BX0 + 6, BX1 - 6, 6 do box(F0, "Scenery", "Beam", x - 0.8, x + 0.8, BH - 1.4, BH + 0.1, BZa, BZb, PAL.ceil, PLASTER, { ghost = true }) end
+	-- (27 Nov, Clip v2: the chandeliers, 5.9 across, hung into the beams across the room 6 apart: those beams are gone, the
+	-- three along it stay, so the ceiling is long bays the chandeliers hang down the middle of)
+	box(F0, "Scenery", "Beam", BX1 - 6 - 0.8, BX1 - 6 + 0.8, BH - 1.4, BH + 0.1, BZa, BZb, PAL.ceil, PLASTER, { ghost = true })
 	for _, z in { 6, 14, 22 } do box(F0, "Scenery", "Beam", BX0, BX1, BH - 1.4, BH + 0.1, z - 0.8, z + 0.8, PAL.ceil, PLASTER, { ghost = true }) end
 	for _, p in { { 39, 2 }, { 51, 2 }, { 57, 18 }, { 39, 26 }, { 57, 26 } } do K.panel(F0, p[1], BH, p[2], 3, 3, { bright = 1.0, range = 22, lightHex = PAL.warm }) end
 	for _, p in { { 39, 10 }, { 51, 10 }, { 45, 18 } } do
@@ -459,15 +469,15 @@ function HH.build(K, parent, name, site, live, opts)
 	K.tableSpot(K.at(F0, 40, 15, 0), "board"); K.tableSpot(K.at(F0, 52, 23, 0), "arm")
 	K.arcadeSpot(K.at(F0, 36, 28.5, 0)); K.arcadeSpot(K.at(F0, 42, 28.5, 0)) -- (hub-minigames: the 2.8-deep cabinets clear the wall)
 	K.codePanelSpot(K.at(F0, 46, BZb, 0)) -- (on the S wall, looking north into the bar)
-	palm(62, 0.5); palm(59.5, 28.2) -- (26 Nov: the first palm 2 in, its fronds were in the wall) -- (the second palm clear of the golf door's new frame)
-	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = -50, z1 = 44, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
+	palm(62, 0.5); palm(59.5, 27.0) -- (27 Nov, Clip v2: its fronds were 1 into the S wall) -- (26 Nov: the first palm 2 in, its fronds were in the wall) -- (the second palm clear of the golf door's new frame)
+	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = GZ0, z1 = GZ1, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
 	for _, x in { 78, 94, 110 } do -- (round 5: no black void through the golf room's door)
 		K.light(box(F0, "Scenery", "GolfLight", x - 0.3, x + 0.3, 15.8, 16, 23.7, 24.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 28, 0.9, PAL.lamp)
 	end
 	K.wordSign(K.facing(65.95, 24, -1, 0), "Scenery", "WaySign", 8, 1.6, 0, 11.9, 0, "SLAP GOLF", { accent = PAL.accent, bg = NAVY })
 	K.light(box(F0, "Scenery", "DoorLight", 70.6, 71, 9, 9.2, 23.8, 24.2, PAL.lamp, nil, { ghost = true, tr = 1 }), 22, 0.8, PAL.warm) -- (no black void through the door)
 
-	end -- (not LOBBY: the ballroom, the gym, the bar and the golf room)
+	end -- (not LOBBY, or BAR: the bar and the golf room)
 	-- ============================================================== THE ARMORY (south-west) and THE SERVICE CORRIDOR (south-east)
 	if not LOBBY then K.armory(CFrame.new(-22, 0, 0) * CFrame.Angles(0, math.pi, 0), { d0 = 34, d1 = 80, w = 5.5, h = 12, door = "HotelToTraining" }) end
 	-- (the service corridor runs west behind the lobby's S wall: x 4..26, so its open front is all on that wall)
@@ -478,8 +488,7 @@ function HH.build(K, parent, name, site, live, opts)
 
 	-- ============================================================== THE REGULARS
 	-- Looticus: behind reception, on the W sofa, behind the bar
-	local LOOT = { { "stand", 26.8, 0, -16, 90 }, { "sit", -25.6, 1.3, 14.4, 90 }, { "sit", -25.6, 1.3, 17.6, 90 }, { "stand", 64.4, 0, 14, -90 } }
-	if LOBBY then table.remove(LOOT, 4) end -- (the bar is not there)
+	local LOOT = { { "stand", 26.8, 0, -16, 90 }, { "sit", -25.6, 1.3, 14.4, 90 }, { "sit", -25.6, 1.3, 17.6, 90 } } -- (26 Nov: none behind the bar: 1.1 between counter and shelves)
 	K.npc(F0, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(F0, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	if not LOBBY then
@@ -510,7 +519,7 @@ function HH.build(K, parent, name, site, live, opts)
 			end
 		elseif d:IsA("Frame") and d.Parent and d.Parent:IsA("SurfaceGui") and d.Parent.Parent and d.Parent.Parent.Name == "CountBoard" then d.BackgroundColor3 = K.c3(NAVY)
 		elseif d:IsA("BasePart") and d.Name == "MiniGameSpot" and d:GetAttribute("Game") == "golf" then
-			d:SetAttribute("Door", Vector3.new(-28, 0, 30)) -- (hub-minigames: the PLAY prompt just inside the golf room's door; LEAVE puts golfers back there)
+			d:SetAttribute("Door", Vector3.new(-28, 0, 24 - (GZ1 - 50))) -- (from the course's middle (z1 - 50) to the door's, z 24) -- (hub-minigames: the PLAY prompt just inside the golf room's door; LEAVE puts golfers back there)
 		elseif d:IsA("BasePart") and d.Name == "TableRug" then d.Color = K.c3("8f8a76"); d.Material = MAT.SmoothPlastic -- (the kit's rug is near-black in the lounge's warm light)
 		elseif d:IsA("BasePart") and d.Name:match("^ht_vault%d") then d.Color = K.c3("bdb09b") -- (round 3: the vault a step down: the pads the brightest)
 		elseif d:IsA("BasePart") and d.Name == "StoolStem" then d.Size = Vector3.new(d.Size.X, 1.2, 1.2) -- (thick pedestals)

@@ -145,7 +145,7 @@ function HC.build(K, parent, name, site, live)
 	-- ============================================================== THE REGULARS
 	-- Looticus: the lounge's sofas, behind the shop counter, behind the bar
 	local LOOT = { { "sit", -22.5, 1.45, 61.4, -90 }, { "sit", -22.5, 1.45, 64.6, -90 }, { "sit", 22.5, 1.45, 61.4, 90 }, { "sit", 22.5, 1.45, 64.6, 90 },
-		{ "stand", 35.4, 0, 44, 90 }, { "stand", -34.8, 0, 64, -90 } }
+		{ "stand", 30.4, 0, 44, 90 } } -- (26 Nov: before the shop counter, not behind it: no room there; none behind the bar)
 	K.npc(F0, "Looticus", LOOT[1][2], LOOT[1][3], LOOT[1][4], LOOT[1][5])
 	for k, w in LOOT do K.npcPoint(F0, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5]) end
 	-- Frisk1636: up and down before the hall of fame
