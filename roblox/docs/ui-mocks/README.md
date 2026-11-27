@@ -281,12 +281,20 @@ judging Play captures only):
 | 7 (v1464) | 7 | data adds up; the Tab board "the best screen" |
 | 8 (v1477) | 7 | "every number I checked adds up"; alignment and contrast slips |
 | 9 (v1488, 4a2715e) | 7 | "the PC loadout, shop and Tab board would pass as shipped work"; the phone buttons, the picker's mixed type, the score-bar seam |
+| final (v1501, bac7013) | 7 | with the phone glyphs; found the phone hub stack off the bottom of a 390-point phone and over the crosshair (fixed in v1510, 8e9a5f9) |
 
-**Where it stands:** four rounds at 7. Two kinds of point remain:
-- **Reversals of each other:** "need 12" wanted, then called a repeat; a your-side bar asked for, then called an unlabelled mark.
-- **The phone's round buttons:** text in translucent circles, no icons. Every critic since round 5 put this first. It needs an icon set (glyphs drawn, uploaded and wired into `TouchControls`' `newFace` and `style`), which is the next piece of work.
+**The loop stopped at a steady 7** (main's call): the last critics reversed each other ("need 12" wanted, then called a
+repeat; a your-side bar asked for, then called an unlabelled mark). What they still name goes against the owner's picks
+(the PLAY slab's face, the hub menu bare on the world, the HUD score and the Tab header as two designs), or is the
+shop's own content.
 
-The rest goes against the owner's picks: the PLAY slab's face, the hub menu bare on the world, two shape styles.
+**The phone's glyphs** (v1501/v1510): `tools/roblox/touch_glyphs.py` draws one family of 20 flat white glyphs on one
+sprite sheet (no text or digits: the upload rules), uploaded once as an Image (v2: 79409184361495); `client/TouchGlyphs.luau`
+puts each on its button, tinted like the button's words, the word under it (a pill: the word after it; SETTINGS a gear
+alone). On a phone the hub stack drops 30 (not 76) and PLAY is 210 wide, checked in 844x390 and 780x360 boxes.
+
+**Final screens:** side-session-notes `ui_build_final.jpg` (PC hub, loadout, shop, picker, live HUD, Tab board; the
+phone in a match, and the phone hub at 390 and 360 points tall).
 
 ## 6. Rebuild the mocks
 
