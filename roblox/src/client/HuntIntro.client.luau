@@ -504,7 +504,7 @@ local function play(a: any)
 		{ name = "wide", t0 = 0, t1 = beat("push"), fov = function(u) return Cine.lerp(56, 52, u) end,
 			cam = function(u) return look(lerpV(P(5.2, 1.1, 6.2), P(4.7, 1.25, 5.6), u), P(0, hy - 0.8, -1.2)) end },
 		{ name = "push", t0 = beat("push"), t1 = beat("profile"), fov = function(u) return Cine.lerp(42, 36, u) end,
-			cam = function(u) return look(lerpV(P(0.2, hy + 0.3, 7.2), P(0.1, hy + 0.15, 4.3), u), P(0, hy - 0.35, 0)) end },
+			cam = function(u) return look(lerpV(P(0.2, hy + 0.3, 6.2), P(0.1, hy + 0.15, 4.3), u), P(0, hy - 0.35, 0)) end }, -- (v22: from 7.2, inside the back wall)
 		{ name = "profile", t0 = beat("profile"), t1 = beat("build"), fov = 30, shake = 0.5,
 			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headLive()) end },
 		-- 2. the build: shorter shots, the shake growing
@@ -689,7 +689,7 @@ local function play(a: any)
 	r.conn = RunService.RenderStepped:Connect(function(dt: number)
 		if not r.alive then return end
 		local t = T()
-		if r.lead and (r.warmReady or t >= (HC.INTRO.leadMax or 1.0)) then
+		if r.lead and ((r.warmReady and t >= (HC.INTRO.leadMin or 0.5)) or t >= (HC.INTRO.leadMax or 1.0)) then
 			local g = r.lead; r.lead = nil
 			local f = g:FindFirstChildOfClass("Frame")
 			if f then TweenService:Create(f, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play() end
@@ -745,7 +745,7 @@ local function play(a: any)
 		-- frame), each put back as it was at the end
 		if pg then
 			for _, g in pg:GetChildren() do
-				if g:IsA("ScreenGui") and g.Name ~= "CineBars" then
+				if g:IsA("ScreenGui") and g.Name ~= "CineBars" and g.Name ~= "HuntIntroLead" then
 					if r.guis[g] == nil then r.guis[g] = g.Enabled end
 					if g.Enabled then g.Enabled = false end
 				end
