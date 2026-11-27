@@ -407,10 +407,26 @@ local function start(g: any)
 		gs.planks[i] = R.planks
 		local list = {}
 		local cf = w.at -- (the opening; LookVector into the room)
+		-- (27 Nov, main: stacked planks tilting each way in turn read as a big "W". now nailed up the way a person does it:
+		-- two long boards crossed corner to corner first (the last to be torn off), then cross boards at uneven heights,
+		-- tilts and lengths, each a shade of its own. a seed per window, so every game's boards are the same)
+		local rng = Random.new(i * 7919 + 13)
+		local slots = { -2.15, -0.75, 0.85, 2.2 }
 		for k = 1, R.planks do
-			local y = -2.6 + (k - 1) * (5.2 / (R.planks - 1))
-			local tilt = math.rad((if k % 2 == 0 then 1 else -1) * (4 + math.random() * 6))
-			local p = part(gs.folder, "Plank", Vector3.new(6.9, 0.75, 0.35), cf * CFrame.new(0, y, 0.25) * CFrame.Angles(0, 0, tilt), WOOD, Enum.Material.WoodPlanks)
+			local size, at, tilt
+			if k <= 2 then
+				local s = if k == 1 then 1 else -1
+				size = Vector3.new(7.7 + rng:NextNumber() * 0.4, 0.8, 0.35)
+				at = CFrame.new(rng:NextNumber(-0.25, 0.25), rng:NextNumber(-0.3, 0.3), 0.22 + (k - 1) * 0.12)
+				tilt = math.rad(s * (34 + rng:NextNumber() * 7))
+			else
+				local slot = slots[((k - 3 + (i % 4)) % #slots) + 1]
+				size = Vector3.new(6.0 + rng:NextNumber() * 1.3, 0.7 + rng:NextNumber() * 0.15, 0.35)
+				at = CFrame.new(rng:NextNumber(-0.55, 0.55), slot + rng:NextNumber(-0.35, 0.35), 0.48 + (k - 3) * 0.02)
+				tilt = math.rad(rng:NextNumber(-11, 11))
+			end
+			local shade = WOOD:Lerp(Color3.new(0, 0, 0), rng:NextNumber() * 0.22)
+			local p = part(gs.folder, "Plank", size, cf * at * CFrame.Angles(0, 0, tilt), shade, Enum.Material.WoodPlanks)
 			p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 			table.insert(list, p)
 		end

@@ -342,7 +342,8 @@ RunService.RenderStepped:Connect(function()
 	local on = me:GetAttribute("ZmOn") == true
 	local spd = me:GetAttribute("ZmSpeed")
 	Body.zm = if on and type(spd) == "number" then spd else 1
-	local show = on and me:GetAttribute("ZmFilm") ~= true -- (27 Nov: ZombieCine's films have the screen; the HUD waits)
+	-- (27 Nov: ZombieCine's films have the screen, the HUD waits; out with the helicopter, it stays off: ZombieExtract)
+	local show = on and me:GetAttribute("ZmFilm") ~= true and me:GetAttribute("ZmHudOff") ~= true
 	if gui.Enabled ~= show then
 		gui.Enabled = show
 		if not on then over.Visible = false; banner.Text = ""; toast.Text = "" end

@@ -173,42 +173,138 @@ local function drop()
 	rate, spin, spinT = 0, 0, 0
 end
 
--- ------------------------------------------------------------------ the reward screen
-local rew = T.plate(root, "Reward", UDim2.new(0.5, -250, 0.5, -170), UDim2.fromOffset(500, 340))
-rew.Visible = false
-local rTitle = T.text(rew, "Title", "", 26, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center)
-rTitle.Position = UDim2.fromOffset(0, 16); rTitle.Size = UDim2.new(1, 0, 0, 32)
-local rRows = T.new("Frame", { Name = "Rows", BackgroundTransparency = 1, Position = UDim2.fromOffset(28, 64), Size = UDim2.new(1, -56, 1, -100) }, rew)
-T.new("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, rRows)
-local rFoot = T.text(rew, "Foot", "", 12, T.DIM, T.FONT_BOLD, Enum.TextXAlignment.Center)
-rFoot.Position = UDim2.new(0, 0, 1, -30); rFoot.Size = UDim2.new(1, 0, 0, 18)
-local function rline(order: number, a: string, b: string, c: string, col: Color3?)
-	local f = T.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 24), LayoutOrder = order }, rRows)
-	local l1 = T.text(f, "A", a, 16, T.TEXT, T.FONT_BOLD); l1.Size = UDim2.new(0.5, 0, 1, 0)
-	local l2 = T.text(f, "B", b, 15, T.MUTED, T.FONT, Enum.TextXAlignment.Right); l2.Position = UDim2.fromScale(0.5, 0); l2.Size = UDim2.new(0.2, 0, 1, 0)
-	local l3 = T.text(f, "C", c, 16, col or T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right); l3.Position = UDim2.fromScale(0.7, 0); l3.Size = UDim2.new(0.3, 0, 1, 0)
+-- ------------------------------------------------------------------ the reward card (A PLATE)
+-- (27 Nov, main: "a proper centred A PLATE card at a readable size on a phone, with the dropped item called out big (its
+-- icon or wrap swatch), and the odds smaller underneath". UiKit's A: bone, ink, near-square, ExtraBold caps for names
+-- and numbers, Medium sentence case for anything said, the stencil slit only on the hero numbers, colour only for rarity)
+local K = require(script.Parent:WaitForChild("UiKit")) :: any
+local okLT, LootTable = pcall(require, Shared:WaitForChild("LootTable"))
+local A = K.A
+-- (27 Nov test: a ZIndex on the card hid its own children under it; none here, the dim first and the card after it)
+local dim = T.new("Frame", { Name = "RewardDim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, BorderSizePixel = 0,
+	AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(4, 4), Visible = false }, root)
+local card = K.new("Frame", { Name = "Reward", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundColor3 = A.BONE,
+	BorderSizePixel = 0, Size = UDim2.fromOffset(600, 0), AutomaticSize = Enum.AutomaticSize.Y, Visible = false }, root)
+K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, card)
+K.new("UIPadding", { PaddingLeft = UDim.new(0, 30), PaddingRight = UDim.new(0, 30), PaddingTop = UDim.new(0, 26), PaddingBottom = UDim.new(0, 24) }, card)
+K.new("UIListLayout", { Padding = UDim.new(0, 16), SortOrder = Enum.SortOrder.LayoutOrder }, card)
+local function rarityColor(r: string?): Color3
+	local row = okLT and LootTable and LootTable.RARITY and r and LootTable.RARITY[r]
+	return if row and row.color then row.color else A.INK2
 end
-local WHY = { share = "NOT ENOUGH OF THE SQUAD'S FIGHT", up = "DOWN FOR TOO LONG", active = "NOT ACTIVE ENOUGH", round = "TOO EARLY", error = "SOMETHING BROKE" }
-local function showReward(res: any)
-	for _, c in rRows:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
-	rTitle.Text = "EXTRACTED  ·  ROUND " .. tostring(res.n)
-	local o = 0
-	if res.ok then
-		o += 1; rline(o, "BRASS", "", "+" .. tostring(res.brass), T.ACCENT)
-		o += 1; rline(o, "XP", "", "+" .. tostring(res.xp), T.ACCENT)
-	else
-		o += 1; rline(o, "NO REWARDS", "", "", T.DANGER)
-		o += 1; rline(o, WHY[res.why] or tostring(res.why or ""), "", "", T.MUTED)
+-- a flat glyph for a container (no picture to load): the crate's slatted box, the bag's body and handle, the can and cap
+local function glyph(parent: Instance, kind: string)
+	local function box(pos: UDim2, size: UDim2, col: Color3, rad: number?): Frame
+		local f = K.new("Frame", { BackgroundColor3 = col, BorderSizePixel = 0, Position = pos, Size = size, AnchorPoint = Vector2.new(0.5, 0.5) }, parent)
+		if rad then K.new("UICorner", { CornerRadius = UDim.new(0, rad) }, f) end
+		return f
 	end
+	if kind == "crate" then
+		box(UDim2.fromScale(0.5, 0.56), UDim2.fromOffset(96, 66), A.INK, 3)
+		box(UDim2.fromScale(0.5, 0.42), UDim2.fromOffset(100, 8), A.BONE2)
+		for _, x in { 0.36, 0.64 } do box(UDim2.fromScale(x, 0.6), UDim2.fromOffset(6, 44), A.BONE2) end
+	elseif kind == "bag" then
+		local h = box(UDim2.fromScale(0.5, 0.36), UDim2.fromOffset(46, 30), Color3.new(1, 1, 1), 15)
+		h.BackgroundTransparency = 1
+		K.new("UIStroke", { Color = A.INK, Thickness = 6 }, h)
+		box(UDim2.fromScale(0.5, 0.62), UDim2.fromOffset(106, 58), A.INK, 14)
+		box(UDim2.fromScale(0.5, 0.6), UDim2.fromOffset(106, 6), A.BONE2)
+	else -- the spray can
+		box(UDim2.fromScale(0.5, 0.3), UDim2.fromOffset(22, 16), A.INK2, 3)
+		box(UDim2.fromScale(0.5, 0.6), UDim2.fromOffset(46, 84), A.INK, 8)
+		box(UDim2.fromScale(0.5, 0.52), UDim2.fromOffset(46, 7), A.BONE2)
+	end
+end
+-- a wrap's swatch: its palette as hard bands on the diagonal, the way the wrap reads on a gun
+local function swatch(parent: Instance, id: string)
+	local row = okR and Roster and Roster.wrapById and Roster.wrapById[id]
+	local pal: { Color3 } = if row and row.pal and #row.pal > 0 then row.pal else { A.INK }
+	local f = K.new("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(112, 112) }, parent)
+	K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, f)
+	local keys = {}
+	local n = math.max(2, #pal * 3)
+	for b = 0, n - 1 do
+		local c = pal[(b % #pal) + 1]
+		local a0, a1 = b / n, (b + 1) / n
+		table.insert(keys, ColorSequenceKeypoint.new(a0, c))
+		table.insert(keys, ColorSequenceKeypoint.new(if b == n - 1 then 1 else a1 - 0.001, c))
+	end
+	K.new("UIGradient", { Rotation = 45, Color = ColorSequence.new(keys) }, f)
+end
+local WHY = { share = "Not enough of the squad's fight", up = "Down for too long", active = "Not active enough", round = "Too early", error = "Something broke" }
+local function line(parent: Instance, order: number, a: string, b: string, c: string, cCol: Color3?)
+	local f = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 22), LayoutOrder = order }, parent)
+	local l1 = K.text(f, "A", a, 15, A.INK, K.SANS_BOLD); l1.Size = UDim2.new(0.5, 0, 1, 0)
+	local l2 = K.text(f, "B", b, 15, A.INK2, K.SANS, Enum.TextXAlignment.Right); l2.Position = UDim2.fromScale(0.5, 0); l2.Size = UDim2.new(0.18, 0, 1, 0)
+	local l3 = K.text(f, "C", c, 15, cCol or A.INK2, K.SANS_BOLD, Enum.TextXAlignment.Right); l3.Position = UDim2.fromScale(0.68, 0); l3.Size = UDim2.new(0.32, 0, 1, 0)
+end
+local rewardUp = false
+local function showReward(res: any)
+	for _, c in card:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
+	-- 1. the title
+	local head = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = 1 }, card)
+	local t1 = K.text(head, "Title", "EXTRACTED", 34, A.INK, K.SANS_HEAVY); t1.Size = UDim2.new(0.6, 0, 1, 0)
+	local t2 = K.text(head, "Round", "ROUND " .. tostring(res.n), 18, A.INK2, K.SANS_HEAVY, Enum.TextXAlignment.Right)
+	t2.Position = UDim2.fromScale(0.6, 0); t2.Size = UDim2.new(0.4, 0, 1, 0)
+	-- 2. what dropped, big (the last hit in the list: the wrap before the crate before the bag before the can)
+	local best = nil
+	for _, r in (res.rolls or {}) :: { any } do if r.hit then best = r end end
+	local drop = K.new("Frame", { BackgroundColor3 = A.BONE2, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 150), LayoutOrder = 2 }, card)
+	K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, drop)
+	if best then
+		local art = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 150) }, drop)
+		local name, sub, rar = XR.names[best.k] or string.upper(best.k), "", nil
+		if best.k == "wrap" and best.wrap then
+			swatch(art, best.wrap)
+			local row = okR and Roster and Roster.wrapById and Roster.wrapById[best.wrap]
+			name = wrapName(best.wrap)
+			rar = row and row.rarity
+			sub = (if rar then (string.upper(string.sub(rar, 1, 1)) .. string.sub(rar, 2) .. " zombies wrap") else "Zombies wrap") .. ", on every gun"
+		else
+			glyph(art, best.k)
+			sub = if best.k == "spray" then "A spray can from one of the sets" elseif best.k == "bag" then "A duffel bag, set 1" else "A crate, case 1"
+		end
+		local n1 = K.text(drop, "Name", name, 30, A.INK, K.SANS_HEAVY); n1.Position = UDim2.fromOffset(160, 34); n1.Size = UDim2.new(1, -176, 0, 36)
+		n1.TextTruncate = Enum.TextTruncate.AtEnd
+		local n2 = K.text(drop, "Sub", sub, 16, A.INK2, K.SANS); n2.Position = UDim2.fromOffset(160, 74); n2.Size = UDim2.new(1, -176, 0, 22)
+		local n3 = K.text(drop, "Odds", "DROPPED  ·  " .. pct(best.p or 0), 14, A.INK, K.SANS_HEAVY); n3.Position = UDim2.fromOffset(160, 102); n3.Size = UDim2.new(1, -176, 0, 20)
+		if rar then
+			K.new("Frame", { Name = "Lip", BackgroundColor3 = rarityColor(rar), BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, -6), Size = UDim2.new(1, 0, 0, 6) }, drop)
+		end
+	else
+		drop.Size = UDim2.new(1, 0, 0, 58)
+		local said = if res.ok then "Nothing dropped this time" else ("No rewards: " .. string.lower(WHY[res.why] or tostring(res.why or "")))
+		local n = K.text(drop, "None", said, 18, A.INK2, K.SANS, Enum.TextXAlignment.Center)
+		n.Size = UDim2.fromScale(1, 1)
+	end
+	-- 3. Brass and XP, hero numbers
+	if res.ok then
+		local heroes = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 74), LayoutOrder = 3 }, card)
+		for i, it in { { "+" .. tostring(res.brass), "BRASS" }, { "+" .. tostring(res.xp), "XP" } } do
+			local col = K.new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromScale((i - 1) * 0.5, 0), Size = UDim2.new(0.5, 0, 1, 0) }, heroes)
+			local _, _, set = K.hero(col, "N", 52, K.SANS_HEAVY, A.INK, false, true)
+			set(it[1])
+			local l = K.text(col, "L", it[2], 14, A.INK2, K.SANS_HEAVY); l.Position = UDim2.fromOffset(2, 54); l.Size = UDim2.new(1, 0, 0, 18)
+		end
+	end
+	-- 4. the odds, small
+	local odds = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 4 }, card)
+	K.new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, odds)
+	local o = 0
 	for _, r in (res.rolls or {}) :: { any } do
 		o += 1
 		local hit = r.hit == true
 		local said = if hit and r.wrap then wrapName(r.wrap) elseif hit then "DROPPED" elseif r.owned then "ALL OWNED" else "—"
-		rline(o, XR.names[r.k] or r.k, pct(r.p or 0), said, if hit then T.ACCENT else T.DIM)
+		line(odds, o, XR.names[r.k] or string.upper(r.k), pct(r.p or 0), said, if hit then A.INK else A.INK2)
 	end
-	rFoot.Text = if res.dry then "STUDIO TEST  ·  NOTHING WAS GRANTED" else ""
-	rew.Visible = true
-	task.delay(16, function() rew.Visible = false end)
+	-- 5. what's said
+	local foot = if res.dry then "A Studio test: nothing was granted" elseif res.ok then ("The odds for rounds " .. tostring(res.band or res.n) .. " and up") else ""
+	if foot ~= "" then
+		local f = K.text(card, "Foot", foot, 14, A.INK2, K.SANS); f.Size = UDim2.new(1, 0, 0, 18); f.LayoutOrder = 5
+	end
+	dim.Visible, card.Visible, rewardUp = true, true, true
+	task.delay(16, function() dim.Visible, card.Visible, rewardUp = false, false, false end)
 end
 local xpToast = T.text(root, "XpToast", "", 18, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Center, true)
 xpToast.AnchorPoint = Vector2.new(0.5, 0); xpToast.Position = UDim2.new(0.5, 0, 0.5, 168); xpToast.Size = UDim2.fromOffset(500, 24)
@@ -221,6 +317,9 @@ zr.OnClientEvent:Connect(function(x: any)
 		oVotes.Text = string.format("VOTES %d/%d", tonumber(x.yes) or 0, tonumber(x.need) or 1)
 	elseif x.k == "xcall" then
 		offer.Visible = false
+	elseif x.k == "xout" then
+		-- out with the helicopter: the round's HUD (the round, the boss bar, the credits) stays off from the film on
+		for _, nm in (x.who or {}) :: { any } do if nm == me.DisplayName then me:SetAttribute("ZmHudOff", true) end end
 	elseif x.k == "xreward" then
 		local a = arena()
 		local lift = a and a:GetAttribute("XLift")
@@ -230,7 +329,7 @@ zr.OnClientEvent:Connect(function(x: any)
 		local res = x.res
 		if type(res) ~= "table" then return end
 		xpToast.Text = if res.ok and (res.xp or 0) > 0 then ("+" .. tostring(res.xp) .. " XP" .. (if res.dry then "  (STUDIO TEST)" else ""))
-			elseif not res.ok and res.why and WHY[res.why] then ("NO XP  ·  " .. WHY[res.why]) else ""
+			elseif not res.ok and res.why and WHY[res.why] then ("No XP: " .. string.lower(WHY[res.why])) else ""
 		task.delay(10, function() xpToast.Text = "" end)
 	end
 end)
@@ -335,5 +434,33 @@ me:GetAttributeChangedSignal("ZmArena"):Connect(function()
 	if not me:GetAttribute("ZmArena") then
 		offer.Visible = false; hold.Visible = false; mark.Visible = false
 		drop()
+		me:SetAttribute("ZmHudOff", nil)
+	end
+end)
+-- while the reward card is up the card has the screen: every other HUD off and the first-person gun hidden (held each
+-- frame: some HUDs set themselves), each put back as it was
+local heldGuis: { [ScreenGui]: boolean } = {}
+local heldVm: { [BasePart]: number } = {}
+RunService.RenderStepped:Connect(function()
+	if rewardUp then
+		local pg = me:FindFirstChild("PlayerGui")
+		if pg then
+			for _, g in pg:GetChildren() do
+				if g:IsA("ScreenGui") and g ~= gui and g.Name ~= "CineBars" and g.Name ~= "JankZmCine" then
+					if heldGuis[g] == nil then heldGuis[g] = g.Enabled end
+					if g.Enabled then g.Enabled = false end
+				end
+			end
+		end
+		for _, d in workspace.CurrentCamera:GetDescendants() do
+			if d:IsA("BasePart") and d.LocalTransparencyModifier < 1 then
+				if heldVm[d] == nil then heldVm[d] = d.LocalTransparencyModifier end
+				d.LocalTransparencyModifier = 1
+			end
+		end
+	elseif next(heldGuis) or next(heldVm) then
+		for g, was in heldGuis do if g.Parent then g.Enabled = was end end
+		for d, was in heldVm do if d.Parent then d.LocalTransparencyModifier = was end end
+		table.clear(heldGuis); table.clear(heldVm)
 	end
 end)

@@ -73,6 +73,32 @@ local function keyLight(r: any, range: number, bright: number): BasePart
 	table.insert(r.trash, p)
 	return p
 end
+-- the moon (27 Nov, main: "the intro reads almost black on a phone"): while a film plays, a cool fill on the night (the
+-- school's ambient lifted, a touch more exposure, the haze a little thinner) so the school's shape and the squad read;
+-- the look's own values back when it ends. still night: no sun, the same cold tint
+local Lighting = game:GetService("Lighting")
+-- (high: the fly-over's own, stronger: from 60-70 studs up the school was still a black shape in the haze on a phone)
+local function moon(r: any, k: number, high: boolean?, dur: number?)
+	local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+	r.moonWas = r.moonWas or { amb = Lighting.Ambient, out = Lighting.OutdoorAmbient, exp = Lighting.ExposureCompensation,
+		dens = if atm then atm.Density else nil }
+	local w = r.moonWas
+	local ti = TweenInfo.new(dur or 0.35, Enum.EasingStyle.Sine)
+	local amb = if high then Color3.fromRGB(118, 130, 160) else Color3.fromRGB(92, 104, 132)
+	local out = if high then Color3.fromRGB(138, 156, 196) else Color3.fromRGB(104, 120, 158)
+	TweenService:Create(Lighting, ti, { Ambient = w.amb:Lerp(amb, k), OutdoorAmbient = w.out:Lerp(out, k),
+		ExposureCompensation = w.exp + (if high then 0.95 else 0.55) * k }):Play()
+	if atm and w.dens then TweenService:Create(atm, ti, { Density = w.dens * (1 - (if high then 0.45 else 0.3) * k) }):Play() end
+end
+local function moonBack(r: any)
+	local w = r.moonWas
+	if not w then return end
+	r.moonWas = nil
+	local ti = TweenInfo.new(0.5, Enum.EasingStyle.Sine)
+	TweenService:Create(Lighting, ti, { Ambient = w.amb, OutdoorAmbient = w.out, ExposureCompensation = w.exp }):Play()
+	local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+	if atm and w.dens then TweenService:Create(atm, ti, { Density = w.dens }):Play() end
+end
 
 -- the title card, the skip line, the fade
 local gui = T.new("ScreenGui", { Name = "JankZmCine", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 47, Enabled = true }, me:WaitForChild("PlayerGui"))
@@ -133,6 +159,7 @@ local function finish(handBack: boolean)
 	card("", false, 0.2)
 	skipL.Text = ""; skipB.Visible = false
 	if r.cine then r.cine.stop(handBack) end
+	moonBack(r)
 	me:SetAttribute("ZmFilm", nil) -- (the zombies HUD back: ZombiesClient)
 	if r.onEnd then pcall(r.onEnd) end
 end
@@ -213,12 +240,14 @@ local function intro(a: Model)
 		if hrp then c = hrp.Position - Vector3.new(0, 3, 0); face = flat(hrp.CFrame.LookVector).Unit end
 	end
 	local shots = {
+		-- (closer than the first cut: in the haze the far school was a black shape)
 		{ name = "fly", t0 = 0, t1 = 2.9, ease = "linear", shake = 0.12,
-			from = { at = L(-110, 92, -150), look = L(-10, 26, -30), fov = 46 },
-			to = { at = L(-46, 74, -8), look = L(12, 8, 96), fov = 44 } },
+			from = { at = L(-78, 70, -112), look = L(-4, 24, -20), fov = 50 },
+			to = { at = L(-34, 58, -2), look = L(12, 8, 92), fov = 48 } },
 		{ name = "window", t0 = 2.9, t1 = 5.0, ease = "out", shake = 0.22,
-			from = { at = (if w then w.inn - outward * 7 + side * 1.0 + Vector3.new(0, 3.2, 0) else c), look = (if w then w.at.Position - Vector3.new(0, 0.6, 0) else c), fov = 56 },
-			to = { at = (if w then w.inn - outward * 5.4 + side * 0.6 + Vector3.new(0, 3.0, 0) else c), look = (if w then w.at.Position - Vector3.new(0, 0.4, 0) else c), fov = 52 } },
+			-- (27 Nov test: from 7 studs in, the first frames were inside a prop the clear-line ray can't see (CanQuery off))
+			from = { at = (if w then w.inn - outward * 5.6 + side * 0.8 + Vector3.new(0, 3.2, 0) else c), look = (if w then w.at.Position - Vector3.new(0, 0.6, 0) else c), fov = 56 },
+			to = { at = (if w then w.inn - outward * 4.6 + side * 0.5 + Vector3.new(0, 3.0, 0) else c), look = (if w then w.at.Position - Vector3.new(0, 0.4, 0) else c), fov = 52 } },
 		{ name = "squad", t0 = 5.0, t1 = 6.9, ease = "out", shake = 0.15,
 			from = { at = c + face * 22 + Vector3.new(0, 4.2, 0), look = c + Vector3.new(0, 2.8, 0), fov = 54 },
 			to = { at = c + face * 17 + Vector3.new(0, 3.8, 0), look = c + Vector3.new(0, 3.0, 0), fov = 52 } },
@@ -228,7 +257,9 @@ local function intro(a: Model)
 	local function clk(): number return srv() - (t0 :: number) end
 	Cine.bars(true, 0.01)
 	r.cine = Cine.play(shots, { clock = clk, warm = 0.3 })
-	local key = keyLight(r, 26, 1.1)
+	local key = keyLight(r, 40, 1.6)
+	moon(r, 1, true, 0.01)
+	local eased = false
 	local wind = bed("zm_wind")
 	if wind then table.insert(r.beds, wind); fade(wind, 1, 0.6) end
 	local label = string.upper(map.label)
@@ -242,7 +273,9 @@ local function intro(a: Model)
 		r.showMe = t >= 5.0 and t < 6.8 -- (not into the hand-back: the lens goes into your own head)
 		local cam = workspace.CurrentCamera
 		key.CFrame = cam.CFrame * CFrame.new(1.5, 1.2, 1)
-		key:FindFirstChildOfClass("PointLight").Enabled = t >= 2.9 -- (the window and the squad: the fly-over keeps the night)
+		key:FindFirstChildOfClass("PointLight").Enabled = t >= 2.9 -- (the window and the squad: the fly-over has the moon)
+		if not eased and t >= 2.9 then eased = true; moon(r, 1, false, 0.25) end -- (inside: the softer fill)
+		if t >= 6.9 and r.moonWas then moonBack(r) end -- (eased back as the camera lands in your view)
 		if not titled and t >= 0.6 then titled = true; card(label, true, 0.4); sfx("boom", nil, 0.6) end
 		if not carded and t >= 2.55 then carded = true; card(label, false, 0.35) end
 		-- the zombie: out of the fog to the boards, the hit, a step back
@@ -294,6 +327,7 @@ local function outro(a: Model)
 	film = r
 	me:SetAttribute("ZmFilm", true)
 	local key = keyLight(r, 75, 1.7)
+	moon(r, 0.8)
 	local function P(x: number, y: number, zz: number): Vector3 return pad:PointToWorldSpace(Vector3.new(x, y, zz)) end
 	local shots = {
 		{ name = "board", t0 = 0, t1 = 3.4, ease = "linear", shake = 0.2,

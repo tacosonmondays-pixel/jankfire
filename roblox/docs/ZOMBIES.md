@@ -388,3 +388,18 @@ To pin down (likely Roblox's default Animate on the bot or zombie rigs); fixed o
     shot a long lens from over the courtyard's edge).
   - Testing a downed player teleported to the roof left the bots trying to revive at the old spot (a test artifact
     or a real nav gap: to check).
+
+### 4.6 Polish after main's look at the sheet (27 Nov)
+- **The round HUD after the extraction:** out with the helicopter, the zombies HUD (the round, the boss bar, the credits)
+  stays off from the film on (`ZmHudOff`, ZombieExtract.client; ZombiesClient reads it). While the reward card is up,
+  every other HUD and the first-person gun are off too, each put back after.
+- **The intro on a phone:** a cool moon fill while a film plays: the school's ambient lifted towards a cold blue, +0.55
+  exposure, the haze 30% thinner, all eased back as the camera lands in your view (ZombieCine `moon`). The fly-over
+  comes in closer (it was a black shape in the haze), and the squad shot's key light is stronger (40 studs, 1.6).
+- **The boards:** six planks that tilted each way in turn read as a big "W". Now two long boards are crossed corner to
+  corner (nailed first, torn off last), then four cross boards at uneven heights, tilts (up to 11°) and lengths, each
+  a shade of its own. A seed per window, so every game's boards are the same (ZombieExtra).
+- **The reward card (A PLATE, UiKit):** a centred bone card on a dimmed screen. EXTRACTED and the round. What dropped
+  is called out big: a wrap's swatch in its own palette, or a flat glyph for the crate, bag or can, with its name, what
+  it is and DROPPED with its odds, on the rarity's lip. Brass and XP as slit hero numbers, then every roll's odds
+  small. The footer says whether it was a Studio test.
