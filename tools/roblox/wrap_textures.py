@@ -20,8 +20,9 @@
 # (about 1.5 MB each): this script makes them again, the same every time (each wrap's dice are seeded by its id).
 #
 # THE SCALE. One tile (1024 px) covers TILE_M metres of gun (the UVs, tools/roblox/gun_uvs.py, use the same number):
-# 1 cm = 41 px. First person shows a rifle at roughly 1,500 screen pixels a metre, so a tile is drawn about 2.7 times
-# finer than the screen needs (crisp, and the mipmaps keep it calm further away).
+# since 27 Nov 2026 0.6 m (was 0.25 m), 1 cm = 17 px. First person shows a rifle at roughly 1,500 screen pixels a
+# metre, so a tile is still a little finer than the screen needs. A design is laid out across the gun: no grids,
+# scattered motifs of varied size, areas of rest, and few round motifs (they fold over edges: keep them small).
 #
 # THE LOOK (owner, 16 Nov 2026; vault Principles/Design principles.md): serious and polished, in the class of RIVALS,
 # never noisy. Wraps are cosmetics, so colour is allowed, but each must be deliberate: clean shapes, a few flat colours
@@ -36,7 +37,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from wraplib import *
 
-TILE_M = 0.25   # metres of gun per tile (must match gun_uvs.TILE_M)
+TILE_M = 0.6    # metres of gun per tile (must match gun_uvs.TILE_M; 0.25 before 27 Nov 2026)
 N = 1024
 PX_CM = N / (TILE_M * 100)  # pixels per centimetre
 
