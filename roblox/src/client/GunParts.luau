@@ -21,6 +21,8 @@ export type State = {
 	-- is parented after attach)
 	form: { [string]: { cf: CFrame, at: Vector3 } }?, formTime: number?, ownerSeen: boolean?,
 	shotT: number?, -- (weapons batch C) when it last fired: the round in the muzzle is gone till it's refilled
+	-- (the balisong skin) the flip playing, its clock, whether this draw has started its flip, the idle time
+	balSeq: { { number } }?, balT: number?, balDraw: boolean?, balIdle: number?,
 }
 -- your own last form switch (os.clock: Arsenal sets it); anyone else's is their FormT attribute (server time, Combat)
 GunParts.myFormT = -math.huge
@@ -33,8 +35,26 @@ local function nodeOf(name: string): string
 	return (string.gsub(base, "_wz%a+$", ""))
 end
 
+-- (27 Nov 2026) A SKIN'S OWN MOVING PIECES, for a weapon whose row has none: the Butterfly is a working balisong
+-- (owner: "Add the mechanics to the balisong so it can flip properly!! Like any joints it needs it"). Its model
+-- (tools/roblox/gun_knife_skins.py butterfly, built OPEN) is in parts: `blade` (blade, tang, both pins), `safe` and `bite`
+-- (the two channel handles, each turning on its own pin) and `latch` (on the bite handle's butt). File metres; keep in
+-- step with the builder's BAL_* numbers. The hand holds the SAFE handle: the blade turns about the safe pin, the bite
+-- handle about the bite pin as the blade carries it, the latch about its pivot as the bite handle carries it.
+local BAL_ZP, BAL_B, BAL_LH = -0.0275, 0.0163, 0.123
+GunParts.SKIN_PARTS = {
+	knife_butterfly = { balisong = {
+		safe = Vector3.new(0, BAL_B / 2, BAL_ZP), bite = Vector3.new(0, -BAL_B / 2, BAL_ZP),
+		latch = Vector3.new(0, -BAL_B + 0.0018, BAL_ZP + BAL_LH + 0.002),
+	} },
+} :: { [string]: { [string]: any } }
+
 -- every piece of the gun onto a Weld (call it before the hands go on: they stay glued to the root and never twirl)
 function GunParts.attach(m: Model, root: BasePart, k: number, parts: { [string]: any }?): State?
+	if not parts then -- (a skin's own moving pieces: the balisong)
+		local skin = m:GetAttribute("Skin")
+		parts = if type(skin) == "string" then GunParts.SKIN_PARTS[skin] else nil
+	end
 	if not parts then return nil end
 	local st: State = {
 		root = root, k = k, parts = parts, all = {}, nodes = {},
@@ -109,6 +129,36 @@ local function about(pivot: Vector3, rot: CFrame): CFrame
 end
 local function rx(a: number): CFrame return CFrame.Angles(a, 0, 0) end
 local function rz(a: number): CFrame return CFrame.Angles(0, 0, a) end
+
+-- the balisong's flips (see GunParts.step): [t s, safe, bite, latch]
+local PI, BAL_FREE = math.pi, math.pi / 2
+local BAL_IDLE = 7 -- (seconds holding it without a swing before it shows off)
+-- (a flipper's timing, main 27 Nov: fast whips with tiny holds: each turn ~0.13-0.16 s, a 40-50 ms catch between)
+local BAL_OPEN = { -- the opening flip: blade and closed bite handle whip out of the safe handle, a catch, the bite
+	-- handle whips round into the hand, a catch, the latch snaps across
+	{ 0, PI, PI, BAL_FREE }, { 0.16, 0, PI, BAL_FREE }, { 0.21, 0, PI, BAL_FREE }, { 0.34, 0, 0, BAL_FREE },
+	{ 0.38, 0, 0, BAL_FREE }, { 0.43, 0, 0, 0 },
+}
+local BAL_INSPECT = { -- unlatch, bite over the edge, fold in, fan out and in twice, open, latch (the same poses as
+	-- before, the same straight paths between them: bal_pose.py's no-overlap check holds)
+	{ 0, 0, 0, 0 }, { 0.08, 0, 0, BAL_FREE }, { 0.11, 0, 0, BAL_FREE }, { 0.25, 0, PI, BAL_FREE }, { 0.29, 0, PI, BAL_FREE },
+	{ 0.45, PI, PI, BAL_FREE }, { 0.49, PI, PI, BAL_FREE }, { 0.65, 0, PI, BAL_FREE }, { 0.69, 0, PI, BAL_FREE },
+	{ 0.85, PI, PI, BAL_FREE }, { 0.89, PI, PI, BAL_FREE }, { 1.05, 0, PI, BAL_FREE }, { 1.09, 0, PI, BAL_FREE },
+	{ 1.23, 0, 0, BAL_FREE }, { 1.27, 0, 0, BAL_FREE }, { 1.32, 0, 0, 0 },
+}
+local function balAt(keys: { { number } }, t: number): (number, number, number)
+	if t <= keys[1][1] then return keys[1][2], keys[1][3], keys[1][4] end
+	for i = 1, #keys - 1 do
+		local a, b = keys[i], keys[i + 1]
+		if t <= b[1] then
+			local u = math.clamp((t - a[1]) / math.max(1e-6, b[1] - a[1]), 0, 1)
+			u = u * u * (3 - 2 * u)
+			return a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u, a[4] + (b[4] - a[4]) * u
+		end
+	end
+	local z = keys[#keys]
+	return z[2], z[3], z[4]
+end
 
 -- the Belt Sander's barrel: dark -> red -> orange -> white-hot (public/js/rifles.js heatColor)
 local C_DARK, C_RED, C_OR, C_HOT = Color3.fromRGB(42, 42, 44), Color3.fromRGB(154, 26, 6), Color3.fromRGB(255, 106, 16), Color3.fromRGB(255, 240, 176)
@@ -315,6 +365,37 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 				move[node] = CFrame.new(o.at:Lerp(o.cf * o.at, s)) * CFrame.identity:Lerp(o.cf.Rotation, s) * CFrame.new(-o.at)
 			end
 		end
+	end
+	-- (27 Nov 2026) the balisong: the opening flip on the draw, open and locked for every swing and stab, a few chained
+	-- flips and fans after a while doing nothing (there is no inspect key). Keyed angles [t, safe, bite, latch]: safe =
+	-- the blade's turn about the safe pin (0 open, pi folded into the safe handle), bite = the bite handle's turn
+	-- against the blade (0 open, pi closed over the edge), latch 0 locked across the butts, BAL_FREE trailing. Every
+	-- pose is clear of every other piece (scratch bal_pose.py checked both sequences every 10 ms: no overlaps)
+	if P.balisong then
+		local Bp = P.balisong
+		local clip = c.clip
+		if clip == "draw_knife" then
+			-- (held folded for the draw's first 0.18 s, while the knife comes up into view: the first Play test showed the
+			-- flip spent rising from below the screen)
+			if not st.balDraw then st.balDraw = true; st.balSeq, st.balT = BAL_OPEN, -0.18 end
+		else
+			st.balDraw = false
+			if clip then st.balSeq = nil; st.balIdle = 0 end -- (a swing or a stab: open and locked at once)
+		end
+		if not clip then st.balIdle = (st.balIdle or 0) + dt end
+		if not st.balSeq and (st.balIdle or 0) > BAL_IDLE then
+			st.balSeq, st.balT, st.balIdle = BAL_INSPECT, 0, -3 * math.random()
+		end
+		local s, b, l = 0, 0, 0
+		local seq = st.balSeq
+		if seq then
+			st.balT = (st.balT or 0) + dt
+			s, b, l = balAt(seq, st.balT :: number)
+			if (st.balT :: number) >= seq[#seq][1] then st.balSeq = nil end
+		end
+		local mb = about(Bp.safe * k, rx(s))
+		local mi = mb * about(Bp.bite * k, rx(b))
+		move.blade, move.bite, move.latch = mb, mi, mi * about(Bp.latch * k, rx(l))
 	end
 	-- the whole gun round the hand (the lever's spin-cock, the Revolver's twirl): every piece, never the hands
 	local tw = sample(c, "twirl")

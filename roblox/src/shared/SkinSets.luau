@@ -479,6 +479,19 @@ SkinSets.FX = {
 		flash = Color3.fromRGB(255, 236, 196), tracer = Color3.fromRGB(255, 231, 166),
 		bullet = { kind = "stars" }, -- (a thin gold-white line with small stars twinkling along it; a fading star where it lands)
 	},
+	-- the Frozen Fish, a frozen tuna (27 Nov, the owner: "no ice on the fish you can have like an icey fog and particles"):
+	-- no ice on the model; its cold is a thin icy mist curling off the body and sinking (the painted smoke flipbook in
+	-- normal blend, the haze kind: never a washed-out glow), which stays where it left the fish, so a swing leaves a
+	-- trail of it; and a few frost glints falling off its back. Points in the knife's frame (the head toward -z)
+	knife_fish = {
+		idle = {
+			{ kind = "haze", colour = Color3.fromRGB(214, 236, 250), rate = 12, life = 1.6, size = 0.05, drift = "fall", -- (rate: the whole row's, shared by its points)
+				at = { { 0, -0.034, -0.215 }, { 0, -0.040, -0.150 }, { 0, -0.034, -0.085 }, { 0.022, -0.012, -0.185 }, { 0.020, -0.008, -0.115 } },
+				both = true, fp = 0.65 }, -- (round 1 at 6 a second and 2.6 cm barely showed; round 2 at 0.8 in first person a touch heavy)
+			{ kind = "sparkle", colour = Color3.fromRGB(226, 246, 255), rate = 3, life = 0.7, size = 0.02, drift = "fall",
+				at = { { 0.012, 0.038, -0.20 }, { 0.014, 0.036, -0.13 }, { 0.012, 0.026, -0.06 } }, both = true, fp = 0.5 },
+		},
+	},
 } :: { [string]: any }
 
 -- the set a skin belongs to (nil for a lone skin)

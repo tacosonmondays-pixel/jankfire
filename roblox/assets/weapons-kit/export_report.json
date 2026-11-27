@@ -88790,6 +88790,79 @@
  "w_knife@knife_butterfly": {
   "pieces": [
    {
+    "name": "bite_wzA__ti",
+    "upload": "bite_wzA__ti__p3b404b",
+    "tris": 1844,
+    "look": {
+     "color": "3b404b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0066,
+     -0.0161,
+     -0.0355
+    ],
+    "hi": [
+     0.0066,
+     -0.0002,
+     0.0955
+    ],
+    "paint": "p3b404b"
+   },
+   {
+    "name": "bite_wzN__lit",
+    "upload": "bite_wzN__lit__n9a8cff",
+    "tris": 12,
+    "look": {
+     "color": "9a8cff",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 2.0,
+     "alpha": 1.0,
+     "tex": false,
+     "glowColor": "9a8cff"
+    },
+    "lo": [
+     -0.0023,
+     -0.0041,
+     -0.0015
+    ],
+    "hi": [
+     0.0023,
+     -0.0016,
+     0.0835
+    ],
+    "paint": "n9a8cff"
+   },
+   {
+    "name": "blade_wzB__steel",
+    "upload": "blade_wzB__steel__pd2d8e0",
+    "tris": 371,
+    "look": {
+     "color": "d2d8e0",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0025,
+     -0.0115,
+     -0.148
+    ],
+    "hi": [
+     0.0025,
+     0.0115,
+     -0.0205
+    ],
+    "paint": "pd2d8e0"
+   },
+   {
     "name": "blade_wzB__edge",
     "upload": "blade_wzB__edge__pf2f4f7",
     "tris": 383,
@@ -88803,22 +88876,22 @@
     },
     "lo": [
      -0.0025,
-     -0.012,
-     -0.154
+     -0.0115,
+     -0.148
     ],
     "hi": [
      0.0025,
-     0.001,
-     -0.0365
+     0.0008,
+     -0.0362
     ],
     "paint": "pf2f4f7"
    },
    {
-    "name": "blade_wzB__steel",
-    "upload": "blade_wzB__steel__pd2d8e0",
-    "tris": 255,
+    "name": "blade_wzN__gold",
+    "upload": "blade_wzN__gold__pc9a54e",
+    "tris": 120,
     "look": {
-     "color": "d2d8e0",
+     "color": "c9a54e",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -88826,21 +88899,69 @@
      "tex": false
     },
     "lo": [
-     -0.0025,
-     -0.012,
-     -0.154
+     -0.0091,
+     -0.0105,
+     -0.0299
     ],
     "hi": [
-     0.0025,
-     0.012,
-     -0.032
+     0.0091,
+     0.0105,
+     -0.0251
     ],
-    "paint": "pd2d8e0"
+    "paint": "pc9a54e"
    },
    {
-    "name": "core_wzN__lit",
-    "upload": "core_wzN__lit__n9a8cff",
-    "tris": 92,
+    "name": "latch_wzN__gold",
+    "upload": "latch_wzN__gold__pc9a54e",
+    "tris": 232,
+    "look": {
+     "color": "c9a54e",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.007,
+     -0.0166,
+     0.0954
+    ],
+    "hi": [
+     0.007,
+     0.0153,
+     0.0996
+    ],
+    "paint": "pc9a54e"
+   },
+   {
+    "name": "safe_wzA__ti",
+    "upload": "safe_wzA__ti__p3b404b",
+    "tris": 1838,
+    "look": {
+     "color": "3b404b",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0066,
+     0.0002,
+     -0.0355
+    ],
+    "hi": [
+     0.0066,
+     0.0161,
+     0.0955
+    ],
+    "paint": "p3b404b"
+   },
+   {
+    "name": "safe_wzN__lit",
+    "upload": "safe_wzN__lit__n9a8cff",
+    "tris": 12,
     "look": {
      "color": "9a8cff",
      "metal": 0.0,
@@ -88851,116 +88972,44 @@
      "glowColor": "9a8cff"
     },
     "lo": [
-     -0.0008,
-     -0.0105,
-     -0.03
+     -0.0023,
+     0.0016,
+     -0.0015
     ],
     "hi": [
-     0.0008,
-     0.0095,
-     0.092
+     0.0023,
+     0.0041,
+     0.0835
     ],
     "paint": "n9a8cff"
-   },
-   {
-    "name": "grip_wzA__ti",
-    "upload": "grip_wzA__ti__p3b404b",
-    "tris": 2380,
-    "look": {
-     "color": "3b404b",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0075,
-     -0.0128,
-     -0.034
-    ],
-    "hi": [
-     0.0075,
-     0.0118,
-     0.0977
-    ],
-    "paint": "p3b404b"
-   },
-   {
-    "name": "latch_wzN__gold",
-    "upload": "latch_wzN__gold__pc9a54e",
-    "tris": 180,
-    "look": {
-     "color": "c9a54e",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0021,
-     0.0066,
-     0.086
-    ],
-    "hi": [
-     0.0021,
-     0.0136,
-     0.1052
-    ],
-    "paint": "pc9a54e"
-   },
-   {
-    "name": "pin_wzN__gold",
-    "upload": "pin_wzN__gold__pc9a54e",
-    "tris": 240,
-    "look": {
-     "color": "c9a54e",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0088,
-     -0.0093,
-     -0.0313
-    ],
-    "hi": [
-     0.0088,
-     0.0083,
-     -0.0257
-    ],
-    "paint": "pc9a54e"
    }
   ],
-  "tris": 3530,
+  "tris": 4812,
   "lo": [
-   -0.0088,
-   -0.0128,
-   -0.154
+   -0.0091,
+   -0.0166,
+   -0.148
   ],
   "hi": [
-   0.0088,
-   0.0136,
-   0.1052
+   0.0091,
+   0.0161,
+   0.0996
   ],
-  "bytes": 189000,
+  "bytes": 308992,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "knife@knife_butterfly",
    "set": "kit",
    "lo": [
-    -0.0088,
-    -0.0128,
-    -0.154
+    -0.0091,
+    -0.0166,
+    -0.148
    ],
    "hi": [
-    0.0088,
-    0.0136,
-    0.1052
+    0.0091,
+    0.0161,
+    0.0996
    ],
    "spots": {
     "grip": [
@@ -88970,17 +89019,33 @@
     ],
     "muzzle": [
      0.0,
-     0.001,
-     -0.154
+     0.0008,
+     -0.148
     ],
     "mid": [
      0.0,
-     0.00045,
-     -0.0528
+     0.00036,
+     -0.0501
     ]
    }
   },
   "nodes": {
+   "bite_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "bite_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
    "blade_wzB": {
     "at": [
      0.0,
@@ -88989,15 +89054,7 @@
     ],
     "turned": false
    },
-   "core_wzN": {
-    "at": [
-     0.0,
-     0.0,
-     0.0
-    ],
-    "turned": false
-   },
-   "grip_wzA": {
+   "blade_wzN": {
     "at": [
      0.0,
      0.0,
@@ -89013,7 +89070,15 @@
     ],
     "turned": false
    },
-   "pin_wzN": {
+   "safe_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "safe_wzN": {
     "at": [
      0.0,
      0.0,
@@ -89905,35 +89970,11 @@
  "w_knife@knife_fish": {
   "pieces": [
    {
-    "name": "fish_wzA__back",
-    "upload": "fish_wzA__back__p5b7a8c",
-    "tris": 2178,
-    "look": {
-     "color": "5b7a8c",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0188,
-     -0.0095,
-     -0.277
-    ],
-    "hi": [
-     0.0189,
-     0.0379,
-     0.078
-    ],
-    "paint": "p5b7a8c"
-   },
-   {
     "name": "fish_wzA__belly",
-    "upload": "fish_wzA__belly__pd4e1e9",
-    "tris": 1228,
+    "upload": "fish_wzA__belly__pd3dbe3",
+    "tris": 1134,
     "look": {
-     "color": "d4e1e9",
+     "color": "d3dbe3",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -89941,23 +89982,23 @@
      "tex": false
     },
     "lo": [
-     -0.0168,
-     -0.0299,
-     -0.2755
+     -0.0267,
+     -0.037,
+     -0.3004
     ],
     "hi": [
-     0.0175,
-     -0.0077,
-     0.0746
+     0.0267,
+     -0.0033,
+     0.0731
     ],
-    "paint": "pd4e1e9"
+    "paint": "pd3dbe3"
    },
    {
-    "name": "fish_wzB__ice",
-    "upload": "fish_wzB__ice__pcdebf4",
-    "tris": 552,
+    "name": "fish_wzA__back",
+    "upload": "fish_wzA__back__p1f2b44",
+    "tris": 1422,
     "look": {
-     "color": "cdebf4",
+     "color": "1f2b44",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -89965,47 +90006,23 @@
      "tex": false
     },
     "lo": [
-     -0.0205,
-     -0.055,
-     -0.2165
+     -0.0269,
+     -0.0048,
+     -0.3004
     ],
     "hi": [
-     0.0194,
-     0.038,
-     -0.0625
+     0.0267,
+     0.045,
+     0.0738
     ],
-    "paint": "pcdebf4"
-   },
-   {
-    "name": "fish_wzN__eye",
-    "upload": "fish_wzN__eye__p1c2026",
-    "tris": 64,
-    "look": {
-     "color": "1c2026",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0189,
-     0.0012,
-     -0.2573
-    ],
-    "hi": [
-     0.0189,
-     0.0115,
-     -0.2474
-    ],
-    "paint": "p1c2026"
+    "paint": "p1f2b44"
    },
    {
     "name": "fish_wzN__fin",
-    "upload": "fish_wzN__fin__p46606f",
-    "tris": 586,
+    "upload": "fish_wzN__fin__p26324a",
+    "tris": 794,
     "look": {
-     "color": "46606f",
+     "color": "26324a",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -90013,44 +90030,116 @@
      "tex": false
     },
     "lo": [
-     -0.0209,
-     -0.038,
-     -0.231
+     -0.031,
+     -0.0685,
+     -0.2303
     ],
     "hi": [
-     0.0208,
-     0.0488,
-     0.1026
+     0.0303,
+     0.0685,
+     0.1202
     ],
-    "paint": "p46606f"
+    "paint": "p26324a"
+   },
+   {
+    "name": "fish_wzN__pupil",
+    "upload": "fish_wzN__pupil__p121418",
+    "tris": 64,
+    "look": {
+     "color": "121418",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0236,
+     -0.0004,
+     -0.2625
+    ],
+    "hi": [
+     0.0236,
+     0.0114,
+     -0.2508
+    ],
+    "paint": "p121418"
+   },
+   {
+    "name": "fish_wzN__yellow",
+    "upload": "fish_wzN__yellow__pe0b53c",
+    "tris": 948,
+    "look": {
+     "color": "e0b53c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0033,
+     -0.0844,
+     -0.1214
+    ],
+    "hi": [
+     0.0033,
+     0.0914,
+     -0.0051
+    ],
+    "paint": "pe0b53c"
+   },
+   {
+    "name": "fish_wzN__ring",
+    "upload": "fish_wzN__ring__pb9c4cf",
+    "tris": 136,
+    "look": {
+     "color": "b9c4cf",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0221,
+     -0.0004,
+     -0.2651
+    ],
+    "hi": [
+     0.0221,
+     0.0145,
+     -0.2508
+    ],
+    "paint": "pb9c4cf"
    }
   ],
-  "tris": 4608,
+  "tris": 4498,
   "lo": [
-   -0.0209,
-   -0.055,
-   -0.277
+   -0.031,
+   -0.0844,
+   -0.3004
   ],
   "hi": [
-   0.0208,
-   0.0488,
-   0.1026
+   0.0303,
+   0.0914,
+   0.1202
   ],
-  "bytes": 252680,
+  "bytes": 301660,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "knife@knife_fish",
    "set": "kit",
    "lo": [
-    -0.0209,
-    -0.055,
-    -0.277
+    -0.031,
+    -0.0844,
+    -0.3004
    ],
    "hi": [
-    0.0208,
-    0.0488,
-    0.1026
+    0.0303,
+    0.0914,
+    0.1202
    ],
    "spots": {
     "grip": [
@@ -90060,26 +90149,18 @@
     ],
     "muzzle": [
      0.0,
-     -0.004,
-     -0.277
+     -0.0045,
+     -0.299
     ],
     "mid": [
      0.0,
-     -0.0018,
-     -0.10815
+     -0.00202,
+     -0.11805
     ]
    }
   },
   "nodes": {
    "fish_wzA": {
-    "at": [
-     0.0,
-     0.0,
-     0.0
-    ],
-    "turned": false
-   },
-   "fish_wzB": {
     "at": [
      0.0,
      0.0,
