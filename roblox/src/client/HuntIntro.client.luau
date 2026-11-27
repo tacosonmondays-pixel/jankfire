@@ -374,6 +374,42 @@ local function play(a: any)
 	end
 	local function smoother(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
 	local function steadyHead(): Vector3 return realBody() - Vector3.new(0, 0.4, 0) end -- (her root's, still: no bob)
+	-- (v12: nothing of hers fades now, so on a big-hat avatar the close rush and the push from behind ended inside the
+	-- hat) how far what she wears reaches from her head along a direction; the close lenses keep that much off, plus room
+	local function reach(m: Model?, from: Vector3, axis: Vector3): number
+		local best = 0
+		if not m then return 0 end
+		for _, acc in m:GetChildren() do
+			if acc:IsA("Accessory") then
+				for _, d in acc:GetDescendants() do
+					if d:IsA("BasePart") then
+						local cf, h = d.CFrame, d.Size / 2
+						for _, sx in { -1, 1 } do for _, sy in { -1, 1 } do for _, sz in { -1, 1 } do
+							best = math.max(best, ((cf * Vector3.new(sx * h.X, sy * h.Y, sz * h.Z)) - from):Dot(axis))
+						end end end
+					end
+				end
+			end
+		end
+		return math.min(best, 6)
+	end
+	local fz = (P(0, 0, -1) - P(0, 0, 0)).Unit -- (the room's front of her face)
+	local roomFront: number? = nil
+	local function nearFront(want: number): number -- (a close-up's distance from her head, past what she wears in front)
+		if roomFront == nil then roomFront = reach(body, headP(), fz) end
+		return math.max(want, (roomFront :: number) + 1.0)
+	end
+	local ext: { side: number, rad: number, close: number }? = nil
+	local function behindExt(): { side: number, rad: number, close: number }
+		if ext then return ext end
+		local ch = me.Character
+		local hd = ch and ch:FindFirstChild("Head") :: BasePart?
+		if not ch or not hd then return { side = 2.0, rad = 3.7, close = 2.3 } end
+		local back = reach(ch, hd.Position, -flat)
+		local right = reach(ch, hd.Position, rt)
+		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2) }
+		return ext :: any
+	end
 	local shots = {
 		-- 1. the room: a low wide, a slow push, a profile (27 Nov: trimmed, to give the end outside its room)
 		{ name = "wide", t0 = 0, t1 = beat("push"), fov = function(u) return Cine.lerp(56, 52, u) end,
@@ -390,9 +426,9 @@ local function play(a: any)
 		{ name = "dutch", t0 = beat("dutch"), t1 = beat("face"), fov = 40, shake = 2.6,
 			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headLive(), 14) end },
 		{ name = "face", t0 = beat("face"), t1 = beat("rush"), fov = 30, shake = 3.6,
-			cam = function(u) return look(lerpV(P(0.5, hy, -2.5), P(0.3, hy, -2.05), u), headLive()) end },
-		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) end, shake = function(u) return 4.5 + 2.0 * u end,
-			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headLive()) end },
+			cam = function(u) local z = nearFront(2.05); return look(lerpV(P(0.5, hy, -(z + 0.45)), P(0.3, hy, -z), u), headLive()) end },
+		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) * 1.7 / nearFront(1.7) end, shake = function(u) return 4.5 + 2.0 * u end,
+			cam = function(u) local z = nearFront(1.7); return look(lerpV(P(0, hy + 0.1, -(z + 1.7)), P(0, hy + 0.05, -z), u), headLive()) end },
 		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
 		-- (owner on v11: "I wanted to be staring straight up": the lens straight above her, a touch in front so her face,
@@ -421,17 +457,20 @@ local function play(a: any)
 			cam = function(u)
 				local hp = steadyHead()
 				local a = Cine.ease(u)
-				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -151.6, a))) * flat -- (ends exactly on the hold's over-the-shoulder spot: 28.4 deg, 4.21 out)
-				local at = hp:Lerp(hp + flat * 6 + rt * 0.8, Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
-				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 4.206, a) + Vector3.new(0, Cine.lerp(0.2, 0.9, a), 0), at)
+				local X = behindExt() -- (ends exactly on the hold's first spot, clear of what she wears)
+				local e = -flat * X.rad + rt * X.side
+				local endDeg = math.deg(math.atan2(flat:Cross(e.Unit).Y, flat:Dot(e.Unit)))
+				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, endDeg, a))) * flat
+				local at = hp:Lerp(hp + flat * 6 + rt * (X.side * 0.4), Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
+				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, e.Magnitude, a) + Vector3.new(0, Cine.lerp(0.2, 0.9, a), 0), at)
 			end },
 		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
 		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
-			cam = function(u) return behindCF(steadyHead(), Cine.lerp(3.7, 3.2, u), 0.9) end },
+			cam = function(u) local X = behindExt(); return behindCF(steadyHead(), Cine.lerp(X.rad, X.rad - 0.5, u), 0.9, X.side) end },
 		-- 8. (owner on v11: her head went see-through as the lens pushed into it) the push stops behind her, solid, and
 		-- cuts straight into first person as the bars lift
 		{ name = "enter", t0 = beat("enter"), t1 = beat("cut"), fov = function(u) return Cine.lerp(40, 36, smoother(u)) end,
-			cam = function(u) return behindCF(steadyHead(), Cine.lerp(3.2, 2.3, smoother(u)), 0.9) end },
+			cam = function(u) local X = behindExt(); return behindCF(steadyHead(), Cine.lerp(X.rad - 0.5, math.min(X.rad - 0.5, X.close), smoother(u)), 0.9, X.side) end },
 		{ name = "fp", t0 = beat("cut"), t1 = len, fov = function() local _, gf = Cine.gameplay(flat); return gf end,
 			cam = function() return (Cine.gameplay(flat)) end },
 	}

@@ -442,7 +442,15 @@ card; HuntRound.finish sends Remote `outro` { win, who, map, mapId, origin, len,
 - **Test:** a round, then `JankHuntTest("win", p, "gunman" | "hiders")` (a round with `role = "hider",
   standinRole = "gunman"` for the hiders' film).
 
-## 13. The hiders' intro (owner, 27 Nov)
+## 13. The survivors' role card (owner, 27 Nov), and the hiders' intro (parked)
+
+The owner, after the hiders' intro was built: "Actuall scratch that no cinematic for survivor!! When you load in, it'll
+tell you survivor!! Hunter you get the cinematic?". So `HuntConfig.ROLE_CARD`: as a survivor lands in the round,
+SURVIVOR in A's hero type hits in with the game's impact, holds 1.7 s and fades; it never stops them moving. On screen
+the roles are HUNTER and SURVIVOR everywhere (role line, hide shade, results card, modes card, passives); internal
+ids stay `gunman` / `hider`. The hiders' intro below is parked behind `HIDER_INTRO.on = false`.
+
+### The hiders' intro (parked)
 
 The owner: "if you get survivor you get a small cinematic of your character walking scared in the map?.. and then it
 says survive!! You can skip it!! It'll be short regardless". `HuntHiderIntro.client`, `HuntConfig.HIDER_INTRO`.
