@@ -473,6 +473,10 @@ local function play(a: any)
 		local p = realHead()
 		local c3 = me.Character
 		local rr3 = c3 and c3:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not r.faceOffReal and r.upAt and T() >= r.upAt + 0.12 and rr3 and (rr3.Position - O.Position).Magnitude < 12 then
+			local rh3 = c3 and c3:FindFirstChild("Head") :: BasePart?
+			if rh3 then r.faceOffReal = rr3.CFrame:ToObjectSpace(rh3.CFrame) end
+		end
 		local off = r.faceOffReal or r.faceOff
 		if off and rr3 and (rr3.Position - O.Position).Magnitude < 12 then
 			local fcf = rr3.CFrame * (off :: CFrame)

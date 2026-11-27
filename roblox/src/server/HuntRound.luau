@@ -237,7 +237,7 @@ function HuntRound.start(players: { Player }, opts: any?): (boolean, string?)
 	if IN and IN.on and gunman and gunman.Parent then
 		local set = opts.introSet or IN.set
 		if set == "both" then HuntRound.introFlip = not HuntRound.introFlip; set = if HuntRound.introFlip then "A" else "B" end
-		g.intro = { set = set, out = false }
+		g.intro = { set = set, out = false, len = opts.hide or RD.hide }
 		gunman:SetAttribute("Unarmed", true) -- (no gun anywhere in the intro: holstered until the hunt)
 		local gp = gunman :: Player
 		local function go()
@@ -362,7 +362,12 @@ function HuntRound.tick()
 		local ch = gp.Character
 		local r = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if ch and r then
-			if not g.intro.out and t >= g.hideEnd - (HC.INTRO.outsideLead or 4.6) then
+			-- (v20: 0.5 s ahead of the cut outside was too close: the client saw the move up to 0.5 s late) he is
+			-- placed `outsideEarly` s before the film's cut outside, from its beats on this hide's length
+			local IN = HC.INTRO
+			local L = g.intro.len or 18
+			local lead = math.max(IN.outsideLead or 4.6, L * (1 - ((IN.beats and IN.beats.outside) or 9.7) / 18) + (IN.outsideEarly or 1.3))
+			if not g.intro.out and t >= g.hideEnd - lead then
 				g.intro.out = true
 				gp:SetAttribute("TeleportT", os.clock())
 				r.Anchored = true

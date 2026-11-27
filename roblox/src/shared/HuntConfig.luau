@@ -231,6 +231,7 @@ H.INTRO = {
 	set = "A", -- (owner, 27 Nov: the gunman's intro is room A, the bedroom; B the attic is the hiders' win film's)
 	kit = "JankfireHuntIntro", -- (ReplicatedStorage: hiA_room, hiA_props, hiB_room, hiB_props; HuntBuild.importIntro)
 	outsideLead = 8.8, -- (s before the hunt: he stands at the map's outside spot from the cut outside (beats.outside), held still)
+	outsideEarly = 1.3, -- (v20: the server places him this long before the cut outside: the client must see him there first)
 	-- mocap (the vault's Mixamo clips, mixamo_r15.py; R15 and R6). calm = ANIMS idle
 	anims = {
 		-- (snap, owner 27 Nov: "I wanted to be staring straight up": the vault's Victory Idle 3, frames 15-29, the face
