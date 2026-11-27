@@ -1001,6 +1001,9 @@ will draw it, and scored by a fresh critic agent until it reaches 8; only then d
   Measured with the client forced to 14.7 fps (a busy-wait in RenderStepped): 5 of 5 swings fired (2 of 5 before).
 - **Testing at a low frame rate:** Studio's client throttles to 15 fps when unfocused; to force it, burn ~58 ms in a
   RenderStepped handler from the client command bar, and disconnect it after.
+- **Turn 5 (place v1431, 03:11 UTC):** the critic's last two (burst 7, sparks 7): the burst's two shock arcs read as
+  strays (a "blue headband" over the target's eyes) and are cut (`burst2d.py` ARCS = []; only the body sheet changed);
+  sparks 1.5x. Hit photo `studio_hit_shards_v1424.jpg`; a 13.7 s first-person clip went to main's notes folder.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
