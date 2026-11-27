@@ -1076,6 +1076,29 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   shipped.** Left out on purpose: a 4-5 % bow on near-straight third-person swings (an edge-on horizontal swing reads
   as a wedge), because it would bend the ribbon off the blade's plane.
 
+### The VFX.LAB trial (27 Nov 2026, place version 1552): skipped for weapon effects
+VFX.LAB is a browser editor for stylised effects; it lives in the vault, never in git. Three effects were made in it,
+all in its Cel shade look with navy ink and one accent: a katana slash, a katana hit and a scythe sweep. Each is a 4x4
+1024 sheet, alpha taken from brightness (it only renders on black). They play in the F6 lab's VFX.LAB TRIAL section,
+on a body beside one playing ours. The trial body measures its blade's plane and circle each swing and lays the
+flipbook flat on it (a VelocityPerpendicular particle; the texture's up follows the attachment's up).
+
+- **Critic in game:**
+
+  | Effect | Ours | VFX.LAB |
+  |---|---|---|
+  | Katana slash | 6 | 3 |
+  | Katana hit | 8 | 4 |
+  | Scythe sweep | 4 | 5 |
+
+- **Why it lost:** a baked arc cannot follow the blade. It is off the tip, overshoots (baked at 220° against a real 139°)
+  and has stair-stepped edges from a 256 px cell on a 10-stud quad. The Cel look's navy outline and perfect rings read as
+  a compass or a halo.
+- **MAD on the hits:** ours 30.7, VFX.LAB 27.1. That is the design's fidelity in game, not its quality.
+- **Possible uses:** timing sketches, and non-directional one-offs (charge-ups, ground marks).
+- **What it found in OUR effects:** the scythe's third-person sweep draws no ribbon seen from above, and the katana's
+  third-person ribbon reads for only about 2 frames from above.
+
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
   flat strand end, a straight base on a shard), rectangular steps, perfect rings, evenly spaced parts (a trefoil reads
