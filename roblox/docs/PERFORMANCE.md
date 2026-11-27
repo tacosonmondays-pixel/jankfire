@@ -125,6 +125,9 @@ the shot plays.
     warm stage, under the set's floor), and let the film take those copies (`FinisherPro` `parkKit`).
   - A second run in the same session hides the problem, because the meshes are built by then. Check the first film of a
     fresh Play.
+  - The zombies extraction film does it too (`ZombieCine` `parkCast`): at the call, 90 s before, the crew member with his
+    helmet and a seated copy of each other squad member are built and parked at (-4000, 3000, -40000); the film takes
+    those copies, a fresh one only if none is parked. The intro's gate crowd is placed at the gate from the black lead.
 - **Broken surfaces show up as pop-in too.** "Failed to upload TexturePack ... Referenced Asset 9 is NOT found" means a
   SurfaceAppearance names a glTF texture index that was never uploaded (the zombies helicopters' glow pieces, fixed by
   pointing their emissive mask at the glow atlas). Studio's output lists every one at load.

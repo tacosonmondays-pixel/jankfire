@@ -589,12 +589,50 @@ def fences():
         for yy in (top - 0.15, y0 + 1.6):
             bx(m, METAL if yy < top - 1 else DARK, (x0, yy - 0.12, cz - 0.12, x1, yy + 0.12, cz + 0.12) if along_x else (cx - 0.12, yy - 0.12, z0, cx + 0.12, yy + 0.12, z1))
 
+# (27 Nov 2026, the owner: "can we make the shrubs better looking?": the hedges round the ground floor's window bays
+#  read as flat green boxes with a row of flat blobs on top.) v2: each hedge sits in a low stone planter with dark soil,
+#  and is a stack of big soft lumps (three rows, staggered, each lump its own size, lean and one of three muted greens;
+#  each hedge its own set of greens). The hit box (the cover) is the layout's, unchanged. The lumps are their own model,
+#  sc_hedgeA (the leaf-card version, tools/roblox/school_hedgeB.py, is sc_hedgeB: the owner picks; ZmGate.hedges switches)
+# (lifted a notch after the first night look: the darkest read black under the school's lamps)
+HEDGE_GREENS = (('55703f', '61794a', '718a57'), ('587345', '64804c', '748f5b'), ('5c763f', '688248', '7a945c'), ('52693f', '5e7549', '6e8758'))
+_hrnd = None
+def hedge_v2(x0, y0, z0, x1, y1, z1):
+    import random
+    global _hrnd
+    if _hrnd is None: _hrnd = random.Random(271127)
+    rnd = _hrnd
+    along_x = (x1 - x0) >= (z1 - z0)
+    a0, a1 = (x0, x1) if along_x else (z0, z1)
+    c = (z0 + z1) / 2 if along_x else (x0 + x1) / 2
+    def at(u, w):
+        return (u, c + w) if along_x else (c + w, u)
+    # the planter: a stone kerb 1.1 tall round the footprint, dark soil on it
+    pa0, pa1 = a0 - 0.6, a1 + 0.6
+    if along_x:
+        bx('sc_ground', PLINTH, (pa0, y0, c - 1.0, pa1, y0 + 1.1, c + 1.0), bev=0.12)
+        bx('sc_ground', '3f362c', (pa0 + 0.2, y0 + 1.1, c - 0.8, pa1 - 0.2, y0 + 1.16, c + 0.8))
+    else:
+        bx('sc_ground', PLINTH, (c - 1.0, y0, pa0, c + 1.0, y0 + 1.1, pa1), bev=0.12)
+        bx('sc_ground', '3f362c', (c - 0.8, y0 + 1.1, pa0 + 0.2, c + 0.8, y0 + 1.16, pa1 - 0.2))
+    greens = rnd.choice(HEDGE_GREENS)
+    # the body: one soft mass (hedgekit: a metaball union of three staggered rows of ellipsoids, decimated), the
+    # hedge's darkest green; then a few lighter rounded lumps pushing out of it, top and faces
+    import hedgekit as HK
+    elems, (ax_, _a0, _a1, _c) = HK.plan(x0, y0, z0, x1, y1, z1, rnd)
+    K.put('sc_hedgeA', 'plastic', greens[0], HK.body(elems, ax_, tris=int(70 * (a1 - a0) + 250)), K.I4)  # (the body: the hedge's darkest)
+    for (pt, nrm) in HK.surface_points(elems, ax_, max(3, int((a1 - a0) / 1.6)), rnd):
+        rr = rnd.uniform(0.85, 1.35)
+        K.sphere('sc_hedgeA', greens[rnd.choice((1, 2, 2))], pt[0] - nrm[0] * rr * 0.45, pt[1] - nrm[1] * rr * 0.45, pt[2] - nrm[2] * rr * 0.45, rr, segs=12, rings_=8)
+
 def niches_dress():
     """the hedged bays under the ground-floor windows, the fire escapes' grated decks and ladders, the roof gates'
     decks, the basement's drain pits"""
     for b in L.SOLID:
         x0, y0, z0, x1, y1, z1, mat = b
-        if mat == 'hedge':
+        if mat == 'hedge' and V2:
+            hedge_v2(x0, y0, z0, x1, y1, z1)
+        elif mat == 'hedge':
             bx('sc_ground', HEDGE, (x0 - 0.3, y0, z0 - 0.3, x1 + 0.3, y1 - 0.6, z1 + 0.3), bev=0.25)
             n = max(1, int(round(max(x1 - x0, z1 - z0) / 3.0)))
             for i in range(n):
@@ -631,6 +669,45 @@ def niches_dress():
                           (x0 - 0.3, y, z0, x0, y + 12.0, z1), (x1, y, z0, x1 + 0.3, y + 12.0, z1)):
                     bx('sc_wall_B', T['concrete'], b)
 
+# (27 Nov 2026, the owner: "Finish the fence it's just the gate!!") v2: the grounds' fence in the front gate's style
+#  (studio-tools/ZmGate.luau: stone pillars, iron bars): a pillar every 10 studs, a low stone plinth between them and an
+#  iron section on it (three rails, round bars). v2B leaves the gate's span open (the front, x 18..38: ZmFrontGate). The
+#  boundary is the layout's hit boxes, unchanged
+F_STONE, F_CAP, F_IRON = 'b0aaa0', '928d84', '282b30'
+def railing_fence(m):
+    X0_, Z0_, X1_, Z1_ = L.YARD
+    gap = (18.0, 38.0) if VARIANT == 'v2B' else None
+    pillars = set()
+    for (along_x, line, a0, a1) in ((True, Z1_, X0_, X1_), (True, Z0_, X0_, X1_), (False, X0_, Z0_, Z1_), (False, X1_, Z0_, Z1_)):
+        n = int(round((a1 - a0) / 10.0))
+        posts = [a0 + (a1 - a0) * k / n for k in range(n + 1)]
+        front = along_x and line == Z1_
+        def box(u0, u1, y0, y1, w, col, bev=0.0):
+            if along_x: bx(m, col, (u0, y0, line - w, u1, y1, line + w), bev=bev)
+            else: bx(m, col, (line - w, y0, u0, line + w, y1, u1), bev=bev)
+        for i in range(n):
+            spans = [(posts[i] + 0.9, posts[i + 1] - 0.9)]
+            if gap and front:
+                spans = [(max(s0, x), min(s1, y)) for (s0, s1) in spans for (x, y) in ((-1e9, gap[0]), (gap[1], 1e9)) if min(s1, y) - max(s0, x) > 0.5]
+            for (s0, s1) in spans:
+                box(s0, s1, 0.0, 1.0, 0.6, F_STONE, bev=0.08)          # the plinth
+                for y in (1.6, 4.7, 7.8):
+                    box(s0, s1, y - 0.16, y + 0.16, 0.16, F_IRON)        # the rails
+                k = 0
+                while s0 + 0.5 + k * 0.95 < s1 - 0.3:
+                    u = s0 + 0.5 + k * 0.95
+                    if along_x: K.cyl(m, F_IRON, u, 1.0, line, 0.13, 7.4, segs=6, bev=0.0)
+                    else: K.cyl(m, F_IRON, line, 1.0, u, 0.13, 7.4, segs=6, bev=0.0)
+                    k += 1
+        for u in posts:
+            if gap and front and gap[0] - 1.0 < u < gap[1] + 1.0: continue
+            key = (round(u, 2), round(line, 2), along_x)
+            pt = (u, line) if along_x else (line, u)
+            if (round(pt[0], 2), round(pt[1], 2)) in pillars: continue
+            pillars.add((round(pt[0], 2), round(pt[1], 2)))
+            bx(m, F_STONE, (pt[0] - 0.9, 0.0, pt[1] - 0.9, pt[0] + 0.9, 9.0, pt[1] + 0.9), bev=0.12)
+            bx(m, F_CAP, (pt[0] - 1.15, 9.0, pt[1] - 1.15, pt[0] + 1.15, 9.6, pt[1] + 1.15), bev=0.12)
+
 def grounds():
     """the school's grounds: a walk round the building, the front drive and car park, lawns, trees, a fence, the
     field to the east, a canopy over the front doors, the courtyard's lamp posts"""
@@ -657,9 +734,11 @@ def grounds():
         K.cyl(m, '6e5c4a', x, -0.2, z, 0.9, h * 0.55, segs=10)
         for j in range(3):
             K.blob(m, rnd.choice(('4f6a3e', '56724a', '4a6239')), x + rnd.uniform(-2.5, 2.5), h * 0.55 + 3 + j * 2.4, z + rnd.uniform(-2.5, 2.5), rnd.uniform(4.2, 6.0), sy=0.8, sub=2)
-    # a chain-link fence round the grounds
-    for (a, b_, c, d_) in ((L.YARD[0], L.YARD[1], L.YARD[2], L.YARD[1]), (L.YARD[0], L.YARD[3], L.YARD[2], L.YARD[3]),
-                          (L.YARD[0], L.YARD[1], L.YARD[0], L.YARD[3]), (L.YARD[2], L.YARD[1], L.YARD[2], L.YARD[3])):
+    if V2:
+        railing_fence(m)
+    # a chain-link fence round the grounds (v1)
+    for (a, b_, c, d_) in (() if V2 else ((L.YARD[0], L.YARD[1], L.YARD[2], L.YARD[1]), (L.YARD[0], L.YARD[3], L.YARD[2], L.YARD[3]),
+                          (L.YARD[0], L.YARD[1], L.YARD[0], L.YARD[3]), (L.YARD[2], L.YARD[1], L.YARD[2], L.YARD[3]))):
         if a == c:
             bx(m, POST, (a - 0.2, 0.0, b_, a + 0.2, 8.0, d_)) if False else None
             zz = b_
@@ -1591,6 +1670,8 @@ VIEWS = [
     ('tunnel', (-40, -10, -42), (60, -12, -42), 18),
     ('restroom', (-62, 6, -2), (-96, 4, -30), 18),
     ('front', (0, 10, 150), (0, 12, 90), 22),
+    ('fence', (-20, 16, 120), (28, 4, 170), 24),
+    ('hedges', (30, 8, 135), (0, 4, 100), 22),
     ('cafe', (-40, 7, 92), (-90, 4, 50), 18),
     ('zf1', (-26, 7, -8), (-40, 7, -8), 30),
     ('zf2', (-26, 7, 5), (-40, 7, 5), 30),

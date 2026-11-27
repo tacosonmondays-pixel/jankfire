@@ -240,13 +240,14 @@ local function newsOverlay(r: any): any
 	T.new("UICorner", { CornerRadius = UDim.new(1, 0) }, o.dot)
 	local lt = T.text(live, "L", "LIVE", 18, NEWS_BONE, T.FONT_HEAVY); lt.Position = UDim2.fromOffset(32, 0); lt.Size = UDim2.new(1, -36, 1, 0)
 	-- the lower third: BREAKING NEWS slams in, the headline under it
-	o.third = T.new("Frame", { Name = "Third", BackgroundTransparency = 1, Position = UDim2.new(0, -720, 1, -190), Size = UDim2.fromOffset(640, 104) }, root)
-	local bn = T.new("Frame", { BackgroundColor3 = NEWS_INK, BorderSizePixel = 0, Size = UDim2.fromOffset(420, 56) }, o.third)
+	-- (a fifth bigger than the first cut: main, 27 Nov, for phones)
+	o.third = T.new("Frame", { Name = "Third", BackgroundTransparency = 1, Position = UDim2.new(0, -820, 1, -222), Size = UDim2.fromOffset(770, 124) }, root)
+	local bn = T.new("Frame", { BackgroundColor3 = NEWS_INK, BorderSizePixel = 0, Size = UDim2.fromOffset(505, 67) }, o.third)
 	T.new("UICorner", { CornerRadius = UDim.new(0, 3) }, bn)
-	local bt = T.text(bn, "B", "BREAKING NEWS", 34, NEWS_BONE, T.FONT_HEAVY); bt.Position = UDim2.fromOffset(18, 0); bt.Size = UDim2.new(1, -24, 1, 0)
-	o.line = T.new("Frame", { BackgroundColor3 = NEWS_BONE, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 60), Size = UDim2.fromOffset(0, 40), ClipsDescendants = true }, o.third)
+	local bt = T.text(bn, "B", "BREAKING NEWS", 41, NEWS_BONE, T.FONT_HEAVY); bt.Position = UDim2.fromOffset(22, 0); bt.Size = UDim2.new(1, -28, 1, 0)
+	o.line = T.new("Frame", { BackgroundColor3 = NEWS_BONE, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 72), Size = UDim2.fromOffset(0, 48), ClipsDescendants = true }, o.third)
 	T.new("UICorner", { CornerRadius = UDim.new(0, 3) }, o.line)
-	local ht = T.text(o.line, "H", "OUTBREAK  ·  JANKFIELD HIGH", 22, NEWS_INK, T.FONT_HEAVY); ht.Position = UDim2.fromOffset(16, 0); ht.Size = UDim2.fromOffset(600, 40)
+	local ht = T.text(o.line, "H", "OUTBREAK  ·  JANKFIELD HIGH", 26, NEWS_INK, T.FONT_HEAVY); ht.Position = UDim2.fromOffset(19, 0); ht.Size = UDim2.fromOffset(720, 48)
 	-- the static: full screen, HOUSE HUNT's noise frames (two stacked for the roll), a white flutter, a dark dropout,
 	-- tear bands; all of it new every rendered frame while it runs
 	o.static = T.new("Frame", { Name = "Static", BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
@@ -343,13 +344,34 @@ local function intro(a: Model)
 		{ -2.4, 4.1, 0, "walk" }, { 2.2, 4.2, 0, "walk" },
 		{ -3.1, 2.0, 2.9, "climb" }, { 1.2, 2.0, 3.1, "climb" },
 		{ 0.6, 15.0, 0, "arrive" },
+		-- (spilling along the fence either side of the gate: the owner's "Finish the fence", 27 Nov)
+		{ -12.6, 1.2, 0, "idle" }, { -15.8, 1.45, 0, "walk" }, { 12.9, 1.2, 0, "idle" }, { 16.1, 1.5, 0, "walk" },
 	}
-	-- (the grounds' chain-link runs across the gate's opening as one frosted panel, with a post in the middle of it: the
-	-- panel and the posts (one mesh each) hidden on this screen while the feed plays, so the crowd reads; 27 Nov tests)
-	local mesh = {}
-	for _, d in a:GetDescendants() do
-		if d:IsA("BasePart") and (string.match(d.Name, "^sc_ground%d+__glass") or string.match(d.Name, "^sc_ground%d+__plastic_6a7076")) then
-			table.insert(mesh, d)
+	-- (27 Nov, main: they read as one bright flat green mass. Each one dressed now: muted skins, worn shirts in dull
+	-- colours, dark trousers, now and then a torn sleeve; a cool rim light from the street behind them, below)
+	local SKIN = { Color3.fromRGB(104, 116, 92), Color3.fromRGB(122, 120, 102), Color3.fromRGB(92, 102, 96), Color3.fromRGB(116, 108, 92),
+		Color3.fromRGB(98, 110, 104), Color3.fromRGB(112, 122, 104) }
+	local SHIRT = { Color3.fromRGB(86, 80, 72), Color3.fromRGB(70, 78, 88), Color3.fromRGB(96, 70, 64), Color3.fromRGB(78, 84, 66),
+		Color3.fromRGB(110, 104, 92), Color3.fromRGB(60, 66, 74), Color3.fromRGB(92, 88, 104) }
+	local PANTS = { Color3.fromRGB(44, 46, 52), Color3.fromRGB(52, 48, 44), Color3.fromRGB(38, 42, 40), Color3.fromRGB(58, 56, 60) }
+	local SKINPART = { Head = true, LeftHand = true, RightHand = true, LeftLowerArm = true, RightLowerArm = true }
+	local SHIRTPART = { UpperTorso = true, LeftUpperArm = true, RightUpperArm = true }
+	local PANTSPART = { LowerTorso = true, LeftUpperLeg = true, RightUpperLeg = true, LeftLowerLeg = true, RightLowerLeg = true }
+	local FEET = { LeftFoot = true, RightFoot = true }
+	local function dress(m: Model, rng2: Random)
+		for _, d in m:GetDescendants() do
+			if d:IsA("BodyColors") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then d:Destroy() end
+		end
+		local skin, shirt, pants = SKIN[rng2:NextInteger(1, #SKIN)], SHIRT[rng2:NextInteger(1, #SHIRT)], PANTS[rng2:NextInteger(1, #PANTS)]
+		local torn = if rng2:NextNumber() < 0.45 then (if rng2:NextNumber() < 0.5 then "LeftUpperArm" else "RightUpperArm") else ""
+		for _, p in m:GetChildren() do
+			if p:IsA("BasePart") then
+				if SKINPART[p.Name] or p.Name == torn then p.Color = skin
+				elseif SHIRTPART[p.Name] then p.Color = shirt
+				elseif PANTSPART[p.Name] then p.Color = pants
+				elseif FEET[p.Name] then p.Color = Color3.fromRGB(34, 32, 30) end
+				if p.Name ~= "HumanoidRootPart" then p.Material = Enum.Material.SmoothPlastic end
+			end
 		end
 	end
 	local crowd = {}
@@ -360,6 +382,7 @@ local function intro(a: Model)
 		for i, c in CROWD do
 			local m = zt:Clone()
 			m.Name = "ZmGateCrowd"
+			dress(m, crng)
 			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end end
 			local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if not root then m:Destroy(); continue end
@@ -477,6 +500,15 @@ local function intro(a: Model)
 	local sl = Instance.new("SpotLight"); sl.Face = Enum.NormalId.Front; sl.Range = 60; sl.Angle = 30; sl.Brightness = 3.5 -- (9 burnt the crowd white)
 	sl.Color = Color3.fromRGB(236, 240, 232); sl.Shadows = true; sl.Parent = beam
 	table.insert(r.trash, beam)
+	-- the cool rim: from the street behind the crowd, up high, back toward the gate: their outlines against the dark
+	local rim = Instance.new("Part")
+	rim.Anchored, rim.CanCollide, rim.CanQuery, rim.CanTouch = true, false, false, false
+	rim.Transparency = 1; rim.Size = Vector3.new(0.2, 0.2, 0.2)
+	rim.CFrame = CFrame.lookAt(G + GO * 10 + UP * 9, G + UP * 3)
+	rim.Parent = workspace
+	local rl = Instance.new("SpotLight"); rl.Face = Enum.NormalId.Front; rl.Range = 22; rl.Angle = 75; rl.Brightness = 5
+	rl.Color = Color3.fromRGB(150, 178, 232); rl.Shadows = false; rl.Parent = rim
+	table.insert(r.trash, rim)
 	local wind = nil
 	local HIT = N.hit
 	local hit, staticOn, schoolOn, lifted, banner, line = false, false, false, false, false, false
@@ -511,24 +543,26 @@ local function intro(a: Model)
 			o.dot.BackgroundTransparency = if (t % 1) < 0.55 then 0 else 0.7
 			if not banner and t >= N.banner then
 				banner = true
-				TweenService:Create(o.third, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0, 48, 1, -190) }):Play()
+				TweenService:Create(o.third, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0, 48, 1, -222) }):Play()
 				if r.cine then r.cine.kick(0.5) end
 			end
 			if not line and t >= N.line then
 				line = true
-				TweenService:Create(o.line, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(560, 40) }):Play()
+				TweenService:Create(o.line, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(672, 48) }):Play()
 			end
 			-- the news helicopter's searchlight, from beside its camera: sweeping the crowd at the gate, then held on it
 			local sweep = G + GO * (3 + 2 * math.sin(t * 0.8)) + GR * (7 * math.sin(t * 0.55)) + UP * 1.5
 			sweep = sweep:Lerp(G + GO * 1.5 + UP * 2.5, zu * zu * (3 - 2 * zu))
 			local from = hp0:Lerp(hp1, math.clamp(t / N.hit, 0, 1)) + GR * 3 - UP * 3
 			beam.CFrame = CFrame.lookAt(from, sweep)
+			sl.Brightness = 3.5 - 1.6 * zu -- (softer once it sits on the crowd)
 			-- the crowd's sounds: the rattle up with the zoom, fists on the bars, the leaves heaving
 			if rattle then rattle.Volume = (tonumber(rattle:GetAttribute("Full")) or 0.5) * (0.35 + 0.65 * zu) end
 			if t >= nextBang and t < HIT then nextBang = t + rng:NextNumber(0.3, 0.65); sfx("zm_gatebang", nil, 0.35 + 0.45 * zu) end
 			if t >= nextShake and t < HIT then nextShake = t + rng:NextNumber(1.0, 1.4); sfx("zm_gateshake", nil, 0.5 + 0.4 * zu) end
 		else
 			sl.Enabled = false
+			rl.Enabled = false
 		end
 		-- the moon, held each frame up to the squad (27 Nov test: the school's own zone look lands a beat after the film
 		-- starts and took the moon back, the feed read black); the haze thinner still while the feed runs
@@ -546,7 +580,6 @@ local function intro(a: Model)
 		local push = math.clamp((t - 0.5) / (HIT - 0.5), 0, 1) -- (the press builds to the buckle)
 		local buck = if t >= HIT then math.min(1, (t - HIT) / 0.12) else 0
 		if t < N.static[1] then
-			for _, d in mesh do if d.LocalTransparencyModifier ~= 1 then d.LocalTransparencyModifier = 1 end end
 			for _, z in crowd do
 				if z.tr and not z.phased and z.tr.Length > 0 then z.phased = true; z.tr.TimePosition = crng:NextNumber(0, z.tr.Length) end
 				local sway = math.sin(t * z.w + z.ph)
@@ -573,7 +606,6 @@ local function intro(a: Model)
 			r.crowdGone = true
 			for _, z in crowd do z.m.Parent = nil end
 			for _, lf in leaves do for _, q in lf.parts do q.p.CFrame = q.was end end -- (the gate as the map has it)
-			for _, d in mesh do d.LocalTransparencyModifier = 0 end
 		end
 		if not hit and t >= HIT then
 			hit = true
@@ -691,9 +723,39 @@ end
 -- sit clip); their real bodies are hidden on this screen while the film runs (the bots walk to the door: the server
 -- hides them at the cut)
 local SIT = "rbxassetid://2506281703"
+-- one seated copy of a body (a player's or a squad bot's), in the world, its sit clip playing
+local function seatCopy(s0: Model, at: CFrame?): (Model?, BasePart?)
+	local was = s0.Archivable
+	s0.Archivable = true
+	local ok, c = pcall(function() return s0:Clone() end)
+	s0.Archivable = was
+	if not ok or not c then return nil, nil end
+	local m = c :: Model
+	for _, d in m:GetDescendants() do
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("Sound") then d:Destroy()
+		elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
+		elseif d:IsA("Decal") then d.LocalTransparencyModifier = 0 end
+	end
+	pcall(function() m:ScaleTo(0.85) end)
+	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then m:Destroy(); return nil, nil end
+	root.Anchored = true
+	if at then root.CFrame = at end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+	m.Parent = workspace
+	if hum then
+		local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+		local anim = Instance.new("Animation"); anim.AnimationId = SIT
+		local ok2, tr = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
+		if ok2 and tr then tr.Looped = true; tr.Priority = Enum.AnimationPriority.Action; tr:Play(0) end
+	end
+	return m, root
+end
 local function matesOf(r: any, a: Model): { { m: Model, root: BasePart } }
 	local seated = {}
 	if not lastOut or srv() - lastOut.t > 20 then return seated end
+	local cast = r.cast
 	for _, nm in lastOut.who do
 		if nm == me.DisplayName or #seated >= 3 then continue end
 		local src: Model? = nil
@@ -705,36 +767,63 @@ local function matesOf(r: any, a: Model): { { m: Model, root: BasePart } }
 			if b and b:IsA("Model") and b:FindFirstChildOfClass("Humanoid") then src = b end
 		end
 		if not src then continue end
-		local s0 = src :: Model
-		local was = s0.Archivable
-		s0.Archivable = true
-		local ok, c = pcall(function() return s0:Clone() end)
-		s0.Archivable = was
-		if not ok or not c then continue end
-		local m = c :: Model
-		table.insert(r.hideReal, s0)
-		for _, d in m:GetDescendants() do
-			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("Sound") then d:Destroy()
-			elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
-			elseif d:IsA("Decal") then d.LocalTransparencyModifier = 0 end
+		table.insert(r.hideReal, src)
+		-- (the copy parked at the call, built and drawn by now: parkCast, below; a fresh one only if there's none)
+		local pk = cast and cast.mates[nm]
+		local m, root = nil, nil
+		if pk and pk.m.Parent and pk.root.Parent then
+			m, root = pk.m, pk.root
+			cast.mates[nm] = nil
+		else
+			m, root = seatCopy(src :: Model)
 		end
-		pcall(function() m:ScaleTo(0.85) end)
-		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if not root then m:Destroy(); continue end
-		root.Anchored = true
-		local hum = m:FindFirstChildOfClass("Humanoid")
-		if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
-		m.Parent = workspace
+		if not m or not root then continue end
 		table.insert(r.trash, m)
-		if hum then
-			local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-			local anim = Instance.new("Animation"); anim.AnimationId = SIT
-			local ok2, tr = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
-			if ok2 and tr then tr.Looped = true; tr.Priority = Enum.AnimationPriority.Action; tr:Play(0) end
-		end
 		table.insert(seated, { m = m, root = root })
 	end
 	return seated
+end
+-- the extraction film's cast, parked in the world out of sight from the call (27 Nov, the finishers' frame check: a mesh
+-- is only built for drawing once it is in the workspace, so a copy made on the film's first frame comes in 2-6 frames
+-- late, a body pale for its first frames, even with every asset fetched): the crew member with his helmet, and a seated
+-- copy of each of the others in the game (players by display name, squad bots by name). The film takes them as they
+-- stand (the crew member: outro; the seated: matesOf); what it doesn't take goes with the prewarm's release
+local CAST_AT = CFrame.new(-4000, 3000, -40000) -- (far from every map, map room, copy row and stage)
+local function parkCast(a: Model): any
+	local cast: any = { trash = {}, mates = {} }
+	local crew, croot, ctr = crewOf(cast)
+	if crew and croot then
+		croot.CFrame = CAST_AT
+		local g = cast.gear
+		if g and g.head and g.head.Parent then
+			for _, x in ipairs(g) do x.p.CFrame = g.head.CFrame * x.c0 end
+		end
+		cast.crew = { m = crew, root = croot, track = ctr }
+	end
+	local k = 0
+	local function add(key: string, src: Model)
+		if cast.mates[key] or k >= 6 then return end
+		k += 1
+		local m, root = seatCopy(src, CAST_AT * CFrame.new(k * 6, 0, 0))
+		if m and root then cast.mates[key] = { m = m, root = root } end
+	end
+	local zA = me:GetAttribute("ZmArena")
+	for _, pl in Players:GetPlayers() do
+		if pl ~= me and pl.Character and pl:GetAttribute("ZmArena") == zA then add(pl.DisplayName, pl.Character) end
+	end
+	for _, d in a:GetDescendants() do
+		if d:IsA("Model") and string.match(d.Name, "^Bot %d+$") and d:FindFirstChildOfClass("Humanoid") then add(d.Name, d) end
+	end
+	cast.drop = function()
+		for _, x in cast.trash do pcall(function() x:Destroy() end) end
+		table.clear(cast.trash)
+		for _, mt in cast.mates do pcall(function() mt.m:Destroy() end) end
+		table.clear(cast.mates)
+		local pc = cast.crew
+		if pc then pcall(function() pc.m:Destroy() end) end
+		cast.crew = nil
+	end
+	return cast
 end
 -- hold a one-shot clip on its last frame
 local function holdEnd(tr: AnimationTrack?)
@@ -818,6 +907,7 @@ local function outro(a: Model)
 	-- (the prewarm started at the call, 90 s before: the film owns it now)
 	if type(xWarm) == "table" then
 		r.warm = xWarm
+		r.cast = xWarm.cast
 		xWarm = nil
 	end
 	local wind = bed("zm_wind")
@@ -827,7 +917,16 @@ local function outro(a: Model)
 	local mytr: AnimationTrack? = nil
 	local headDy = 1.5
 	if aboard then
-		crew, croot, ctr = crewOf(r)
+		local pc = r.cast and r.cast.crew
+		if pc and pc.m.Parent and pc.root.Parent then
+			crew, croot, ctr = pc.m, pc.root, pc.track
+			r.gear = r.cast.gear
+			for _, x in r.cast.trash do table.insert(r.trash, x) end
+			table.clear(r.cast.trash)
+			r.cast.crew = nil
+		else
+			crew, croot, ctr = crewOf(r)
+		end
 		if hrp and hum then
 			hrp.Anchored = true
 			local head = ch and ch:FindFirstChild("Head") :: BasePart?
@@ -987,7 +1086,15 @@ local function xwarm(m: Model)
 		end
 		local w = Cine.prewarm(nil, { key = "zmextract", points = pts, sets = sets, anims = { XC.reach, SIT }, timeout = 30, keepFor = 300 })
 		if RunService:IsStudio() then print(("[ZombieCine] extraction prewarm: ok %s, %.2f s, %d assets"):format(tostring(w.ok), w.waited, w.assets)) end
-		if watched == m and xWarm == true then xWarm = w else w.release() end
+		if watched == m and xWarm == true then
+			local cast = parkCast(m)
+			local rel = w.release
+			w.cast = cast
+			w.release = function() pcall(rel); cast.drop() end
+			xWarm = w
+		else
+			w.release()
+		end
 	end)
 end
 local conns: { RBXScriptConnection } = {}

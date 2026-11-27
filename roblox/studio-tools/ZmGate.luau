@@ -86,4 +86,69 @@ function G.build(map: Model): string
 	return string.format("ZmFrontGate: %d parts at %s, out %s", n, tostring(base.Position), tostring(base.CFrame.LookVector))
 end
 
+-- ---------------------------------------------------------------- the hedges, A or B (27 Nov 2026; the owner: "can we
+-- make the shrubs better looking?" and "I heard if you take a leaf texture you can place it in different planes to create
+-- a shrub?"). A (sc_hedgeA, in the school's kit: tools/roblox/school_models.py hedge_v2) is soft lumpy bodies in muted
+-- greens; B (sc_hedgeB, tools/roblox/school_hedgeB.py) is the same bodies as a dark core wrapped in leaf cards (the leaf
+-- atlas, tools/roblox/leaf_atlas.py). The planters are the kit's (sc_ground). Hit boxes: the layout's, either way.
+--   require(game.ServerStorage.PolishBackup.ZmGate:Clone()).importHedgesB(workspace.Map.JankfieldHighV2B, <asset id>, <leaf image id>)
+--   require(game.ServerStorage.PolishBackup.ZmGate:Clone()).hedges(workspace.Map.JankfieldHighV2B, "A" | "B")  -- the switch
+-- (the one not shown waits in ServerStorage.ZmHedges; every game's copy of the school has the shown one). The leaves'
+-- picture goes on as a SurfaceAppearance (AlphaMode Transparency) from the atlas uploaded as an Image: the copy a .glb
+-- upload makes of its picture lost the alpha (27 Nov test: black squares round the leaves)
+local function store(): Folder
+	local f = game:GetService("ServerStorage"):FindFirstChild("ZmHedges")
+	if not f then f = Instance.new("Folder"); f.Name = "ZmHedges"; f.Parent = game:GetService("ServerStorage") end
+	return f :: Folder
+end
+function G.importHedgesB(map: Model, id: number, leafImage: number): string
+	local shell = map:FindFirstChild("Shell")
+	local ground = shell and shell:FindFirstChild("sc_ground")
+	if not ground then return "no Shell.sc_ground to line up with" end
+	local box = game:GetService("InsertService"):LoadAsset(id)
+	local m = Instance.new("Model")
+	m.Name = "sc_hedgeB"
+	local nc, nl = 0, 0
+	for _, d in box:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		local hx = string.match(d.Name, "^zb_core%d+__(%x%x%x%x%x%x)")
+		if hx then
+			d.Color = Color3.fromHex(hx); d.Material = Enum.Material.SmoothPlastic; d.TextureID = ""
+			nc += 1
+		elseif string.match(d.Name, "^zb_leaf") then
+			d.Color = Color3.new(1, 1, 1); d.Material = Enum.Material.SmoothPlastic; d.TextureID = ""
+			d.DoubleSided = true; d.CastShadow = false
+			local sa = Instance.new("SurfaceAppearance")
+			sa.ColorMap = "rbxassetid://" .. tostring(leafImage)
+			sa.AlphaMode = Enum.AlphaMode.Transparency
+			sa.Parent = d
+			nl += 1
+		else
+			continue
+		end
+		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+		d.Parent = m
+	end
+	box:Destroy()
+	m.WorldPivot = CFrame.identity -- (the file's own frame: the kit's, as WebArena.swap places it)
+	m:PivotTo(ground:GetPivot())
+	local old = store():FindFirstChild("sc_hedgeB") or shell:FindFirstChild("sc_hedgeB")
+	if old then old:Destroy() end
+	m:SetAttribute("AssetId", id)
+	m.Parent = store()
+	return string.format("sc_hedgeB: %d core pieces, %d leaf pieces (waiting in ServerStorage.ZmHedges)", nc, nl)
+end
+function G.hedges(map: Model, which: string): string
+	local shell = map:FindFirstChild("Shell")
+	if not shell then return "no Shell" end
+	local st = store()
+	local want, other = "sc_hedge" .. which, (if which == "A" then "sc_hedgeB" else "sc_hedgeA")
+	local w = shell:FindFirstChild(want) or st:FindFirstChild(want)
+	if not w then return "no " .. want end
+	local o = shell:FindFirstChild(other)
+	if o then o.Parent = st end
+	w.Parent = shell
+	return "hedges " .. which .. " shown"
+end
+
 return G

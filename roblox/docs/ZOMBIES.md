@@ -468,14 +468,18 @@ ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it.
    lens, the moon fill held each frame. LIVE top left (a blinking dot), BREAKING NEWS slams in as a lower third (A PLATE
    ink and bone) with one headline: OUTBREAK · JANKFIELD HIGH. Nothing else is written. The news sting (APM's licensed
    "Breaking News", 86819169949071), the rotor wash (zm_heli).
-2. **The gate.** The school had a chain-link fence along the front of its grounds and no gate; studio-tools/ZmGate.luau
+2. **The gate.** The school had a chain-link fence along the front of its grounds and no gate (the fence is the gate's
+   stone and iron all round now: 4.10); studio-tools/ZmGate.luau
    added ZmFrontGate to Map.JankfieldHighV2B (so every game's copy has it): two chunky stone pillars and iron bar
    leaves in the fence line at the end of the drive (local x 28, z 171, between the street trees), a pavement and road
-   outside, one sodium lamp; set dressing only (no collisions or queries, outside the play space). A crowd of 14
+   outside, one sodium lamp; set dressing only (no collisions or queries, outside the play space). A crowd of 18
    (the mode's own shambler, cloned on this client) piles up against it: five pressing at the bars (Roblox's own zombie
    idle cycles, arms through the bars), six pushing behind (its walk cycle, slow), two going up on the others' backs
-   (its climb cycle, leaning in), one walking up out of the street; every one with its own speed, phase, sway and lean,
-   leaning in harder as it builds. The leaves rattle and heave in on their hinges, then buckle at 4.6 s (a lurch, a
+   (its climb cycle, leaning in), one walking up out of the street, four more along the fence either side; every one
+   with its own speed, phase, sway and lean, leaning in harder as it builds. Each one dressed (main's readability note:
+   they read as one bright flat green mass): muted skins, worn shirts in dull colours, dark trousers, now and then a
+   torn sleeve; the searchlight eases to 1.9 once it sits on them, and a cool rim light from the street behind them
+   outlines their heads and arms against the dark. The BREAKING NEWS lower third is a fifth bigger (phones). The leaves rattle and heave in on their hinges, then buckle at 4.6 s (a lurch, a
    kick). The lens zooms onto it from 3.0 to 4.0 s. Sounds, licensed recordings (PSE, no upload): the rattle bed
    zm_gaterattle ("Chain-Link Fence Impacts 16"), fists on the bars zm_gatebang ("Metal Shake Clunking Bursts Light
    Banging 3"), the heave zm_gateshake ("Metal Rattle Thick Shake 4"), the buckle zm_gateslam ("Metal Gate Slam 1"). No
@@ -490,3 +494,39 @@ The moon is held each frame up to the squad, and the film sets the player's Fini
 "zmintro") so HubLife leaves the light alone (its zone switch ran the map room's black haze over the feed; the school's
 own look took the moon back). Sheets: roblox/docs/zombies/12-news-intro-27nov.jpg (the window version),
 13-film-and-intro-fixes-27nov.jpg.
+
+### 4.10 The fence and the hedges (27 Nov; the owner: "Finish the fence it's just the gate!! Also can we make the shrubs better looking?", then "I heard if you take a leaf texture you can place it in different planes to create a shrub?")
+- **The fence.** The chain-link round the grounds is gone (v2 schools: tools/roblox/school_models.py `railing_fence`):
+  the gate's style all the way round, a stone pillar (1.8 wide, 9 tall, a wider cap) every 10 studs, a low stone plinth
+  between them and an iron section on it (three rails, round bars every 0.95). v2B leaves the gate's span open (front,
+  local x 18..38: ZmFrontGate stands there). Look only: the boundary is the layout's hit boxes, unchanged.
+- **The hedges, two versions (the owner picks; the other is one call away).** The hedge hit boxes (school_layout's
+  'hedge' cover) are unchanged; both sit in a low stone planter with dark soil (sc_ground) and share one body per hedge
+  (tools/roblox/hedgekit.py: a metaball union of ellipsoids in three staggered rows, meshed and decimated: one rounded
+  mass with lumps, not a row of balls).
+  - **A, chunky** (`sc_hedgeA`, in the school's patch kit 81635365205124, W.PATCHES.JankfieldHighV2B, so a re-import
+    keeps it): the body in one of four muted green sets plus a few lighter soft lumps on its skin. Flat colours.
+    **Shown now** (place version 1613).
+  - **B, leaf cards** (`sc_hedgeB`, tools/roblox/school_hedgeB.py, asset 127985213344563): the same body as a core in
+    A's green ('506b3c': a gap between cards reads as foliage in shade, not a hole; r2's darker core rendered black at
+    night) wrapped in 8,100 leaf cards (9 per stud of hedge + 16), quads tilted up to 55 degrees off the skin and spun,
+    1-1.7 studs, each showing one cell of a 2 x 2 leaf atlas drawn in code (tools/roblox/leaf_atlas.py: clusters of
+    pointed leaves on a clear ground, no text; Image 112495419517618). DoubleSided, no shadows. The atlas goes on as a
+    SurfaceAppearance with AlphaMode Transparency: a .glb's own picture loses its alpha in the upload (black squares
+    round the leaves). Waits in ServerStorage.ZmHedges.
+  - **The switch** (Edit, then save):
+    `require(game.ServerStorage.PolishBackup.ZmGate:Clone()).hedges(workspace.Map.JankfieldHighV2B, "A" | "B")`; the
+    one not shown waits in ServerStorage.ZmHedges, and every game's copy of the school has the one shown. A whole
+    W.import of the school lays the patch (A) back over it: run the switch again after one if B is picked.
+  - **Measured** (Studio Edit, night look, this PC, 60 fps cap; two runs each, alternating), render CPU / GPU ms with
+    A, B, and no hedges: establishing 4.64 / 4.61 / 4.64 and 3.57 / 3.48 / 3.31; the hedge line 4.20 / 4.27 / 4.29
+    and 2.78 / 2.77 / 2.84; window close-up 4.40 / 4.42 / 4.39 and 2.85 / 2.91 / 2.86. Within noise of each other:
+    neither costs anything measurable here. Sizes: A 103k triangles in 12 meshes; B 63k (core, 5 meshes) +
+    16k (cards, 2 meshes). B's cards are see-through, so a phone's GPU pays for the layers it draws over each other
+    (not measured on a phone).
+- **Checks** (place version 1613). PolishBackup.ZFight on the school: nothing from the fence, planters, hedges or gate
+  (223 hits in all, the old walls against door shutters; two sc_ground undersides at ground level, unseen). Clip: no
+  hit on them (39 props sunk deeper than 0.15 elsewhere in the school, as before; no moving doors or doorways
+  checked). The intro re-filmed with each (popscan: only the cuts, the banner and the zoom).
+- Sheets: roblox/docs/zombies/16-fence-and-hedges-before-after-27nov.jpg, 17-hedges-A-vs-B-27nov.jpg (the three views at
+  night and the intro's own school shot, the render ms).

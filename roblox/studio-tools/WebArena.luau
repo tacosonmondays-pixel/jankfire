@@ -41,6 +41,7 @@ W.PATCHES = {
 	Crate = { 122985079878951 }, -- cr_furn: the room's furniture with the web toy train on its track (r1 114276068000614)
 	ArcticCabin = { 88418877574665 }, -- ac_out, ac_boat: the upturned rowboat (lofted: no web rowboat; r1 75530530832835)
 	Station = { 90604406833606 }, -- sa_train: the carriages' dress (cambered roofs, open bogies, underfloor boxes, ends; r1 101181470203283)
+	JankfieldHighV2B = { 81635365205124 }, -- sc_ground, sc_hedgeA: the stone-and-iron fence round the grounds and the hedges as soft bushes in planters (27 Nov, the owner's "Finish the fence" and "better shrubs"; leaf-card hedges B: studio-tools/ZmGate.luau; r6 103886465355889)
 } :: { [string]: { number } }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
