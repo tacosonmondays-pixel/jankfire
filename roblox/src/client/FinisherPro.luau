@@ -73,8 +73,9 @@ local TUNE: { [string]: any } = {
 		-- the night (the set's SceneLook adds its Sky, Atmosphere, Bloom and grade): a cool moonlit key, blue fill, the
 		-- moon's own light low behind the falls
 		-- (v1393: exposure 1.3 blew white outfits and pale masks out in every close-up; 0.55 with less fill still glowed)
-		look = { lighting = { ClockTime = 0.3, GeographicLatitude = 23, Brightness = 2.0, Ambient = Color3.fromRGB(52, 58, 88),
-			OutdoorAmbient = Color3.fromRGB(70, 80, 118), ColorShift_Top = Color3.fromRGB(150, 170, 232), ColorShift_Bottom = Color3.fromRGB(24, 28, 46),
+		-- (round 2, the judge: "lift the world off black" - more fill; the white outfits are held by the per-shot trims)
+		look = { lighting = { ClockTime = 0.3, GeographicLatitude = 23, Brightness = 2.0, Ambient = Color3.fromRGB(46, 52, 80),
+			OutdoorAmbient = Color3.fromRGB(86, 98, 140), ColorShift_Top = Color3.fromRGB(150, 170, 232), ColorShift_Bottom = Color3.fromRGB(24, 28, 46),
 			EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.7, ShadowSoftness = 0.3, ExposureCompensation = 0.15, GlobalShadows = true } },
 	},
 }

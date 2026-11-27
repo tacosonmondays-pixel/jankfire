@@ -77,11 +77,21 @@ local function burstLines(sc: any, key: string, at: Vector3, u: number, n: numbe
 end
 
 -- petals: a pool of small pink chips
-local function petals(sc: any, key: string, n: number): { Part }
+-- (round 2, the judge: the end's petals read as "small orange squares ... embers" - now round, pink, lit from inside so
+-- the lanterns' warm light can't turn them orange, and two and a half times as big)
+local PETAL = Color3.fromRGB(255, 176, 200)
+local PETAL2 = Color3.fromRGB(255, 208, 222)
+local function petals(sc: any, key: string, n: number, size: number?): { Part }
 	return pool(sc, "petal" .. key, n, function()
-		local p = part(sc, Vector3.new(0.34, 0.03, 0.24), if math.random() < 0.3 then SAKURA2 else SAKURA, Enum.Material.SmoothPlastic)
+		local s = size or 0.75
+		local p = part(sc, Vector3.new(0.04, s, s * 0.78), if math.random() < 0.35 then PETAL2 else PETAL, Enum.Material.Neon, Enum.PartType.Cylinder)
+		p.Transparency = 1
 		return p
 	end)
+end
+-- (no petal right at the lens: one 2 studs off it fills the frame as a pale slab)
+local function nearLens(p: Vector3): boolean
+	return ((workspace.CurrentCamera :: Camera).CFrame.Position - p).Magnitude < 4
 end
 local function driftPetals(sc: any, key: string, center: Vector3, n: number, spread: number, t: number, vel: Vector3, seed: number, fade: number?)
 	local ps = petals(sc, key, n)
@@ -90,7 +100,7 @@ local function driftPetals(sc: any, key: string, center: Vector3, n: number, spr
 		local base = center + Vector3.new(rnd:NextNumber(-1, 1), rnd:NextNumber(-0.5, 1), rnd:NextNumber(-1, 1)) * spread
 		local ph = rnd:NextNumber(0, 6.28)
 		local p = base + vel * t * rnd:NextNumber(0.7, 1.2) + Vector3.new(math.sin(ph + t * 2.6) * 0.35, math.sin(ph * 2 + t * 1.9) * 0.15, math.cos(ph + t * 2.1) * 0.25)
-		show(sc, ps[i], CFrame.new(p) * CFrame.Angles(ph + t * 2.2, ph * 0.7 + t * 1.5, t * 0.9), fade)
+		if not nearLens(p) then show(sc, ps[i], CFrame.new(p) * CFrame.Angles(ph + t * 1.6, ph * 0.7 + t * 1.1, t * 0.7), fade) end
 	end
 end
 
@@ -273,17 +283,17 @@ local function comeApart(sc: any, s: any, u: number, w: number)
 	local per = 4
 	local ps = petals(sc, "apart", #sc.apartFrom * per)
 	local rnd = Random.new(41)
-	local wind = Vector3.new(1.6, 1.4, 0.9)
+	local wind = Vector3.new(0.9, 0.8, 0.5)
 	for i, at in sc.apartFrom do
 		for k = 1, per do
 			local idx = (i - 1) * per + k
 			local start = rnd:NextNumber(0, 0.45)
-			local t = math.max(0, u - start) * 2.8
+			local t = math.max(0, u - start) * 1.8
 			local ph = rnd:NextNumber(0, 6.28)
 			local p = at + Vector3.new(rnd:NextNumber(-0.4, 0.4), rnd:NextNumber(-0.3, 0.3), rnd:NextNumber(-0.4, 0.4))
 				+ wind * t * rnd:NextNumber(0.6, 1.3) + Vector3.new(math.sin(ph + t * 3) * 0.4, 0, math.cos(ph + t * 2.4) * 0.3)
-			if u > start then
-				show(sc, ps[idx], CFrame.new(p) * CFrame.Angles(ph + t * 3, ph + t * 2, t), math.clamp((u - 0.75) * 4, 0, 1))
+			if u > start and not nearLens(p) then
+				show(sc, ps[idx], CFrame.new(p) * CFrame.Angles(ph + t * 2, ph + t * 1.4, t * 0.7), math.clamp((u - 0.75) * 4, 0, 1))
 			end
 		end
 	end
@@ -368,9 +378,9 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 	end
 	if fi >= 163 and fi < 181 and vH then
 		local u = (fi - 163) / 18
-		local ps = petals(sc, "face", 1)
+		local ps = petals(sc, "face", 1, 0.32)
 		local cam = (workspace.CurrentCamera :: Camera).CFrame
-		local c = vH.Position + cam.RightVector * (1.3 - 2.6 * u) + Vector3.new(0, 0.35 - 0.5 * u + 0.08 * math.sin(u * 9), 0) - cam.LookVector * 0.7
+		local c = vH.Position + cam.RightVector * (1.3 - 2.6 * u) + Vector3.new(0, 0.35 - 0.5 * u + 0.08 * math.sin(u * 9), 0) - cam.LookVector * 0.25
 		show(sc, ps[1], CFrame.new(c) * CFrame.Angles(u * 5, u * 3.5, u * 2))
 	end
 	-- 11 HOME: a glint on the click
@@ -386,6 +396,18 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 		stroke(sc, belly - right * 1.6 + front * 0.62 + Vector3.new(0, 0.25, 0), belly + right * 1.6 + front * 0.62 - Vector3.new(0, 0.2, 0), 0.25, 0.42,
 			-cam.LookVector, u, fade)
 		if fi >= 209.5 then splats(sc, belly + front * 0.6, (fi - 209.5) / 8, fade) end
+	end
+	-- the moon's road on the water: the set's thin glint streaks, each flickering on its own beat
+	if sc.set and not sc.streaks then
+		sc.streaks = {}
+		for _, d in sc.set:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == "MoonStreak" then table.insert(sc.streaks, { p = d, ph = (#sc.streaks * 1.7) % 6.28, sp = 2.5 + (#sc.streaks % 5) * 0.9, base = d.Transparency }) end
+		end
+	end
+	if not sc.hitOn then
+		for _, e in sc.streaks or {} do
+			e.p.Transparency = math.clamp(e.base + 0.35 * math.sin(w * e.sp + e.ph), 0, 1)
+		end
 	end
 	-- 13 THE END: he comes apart into petals that drift away
 	if fi >= 226 then comeApart(sc, s, math.clamp((fi - 226) / 24, 0, 1), w) end
@@ -419,9 +441,10 @@ function Fx.afterimages(sc: any, s: any, fi: number)
 					for _, tr in an:GetPlayingAnimationTracks() do tr:Stop(0) end
 					local a = Instance.new("Animation"); a.AnimationId = "rbxassetid://" .. sc.d.anims.k
 					local tr = an:LoadAnimation(a); tr.Looped = false; tr.Priority = Enum.AnimationPriority.Action4; tr:Play(0, 1, 0)
-					local hl = Instance.new("Highlight"); hl.FillColor = INK; hl.OutlineColor = SAKURA; hl.FillTransparency = 0.35 + 0.25 * k
-					hl.OutlineTransparency = 0.5 + 0.2 * k; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
-					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).LocalTransparencyModifier = 0.35 + 0.25 * k end end
+					-- (round 2: "pale grey-green ghosts ... motion blur, not ink" - solid ink, the further one fainter)
+					local hl = Instance.new("Highlight"); hl.FillColor = Color3.fromRGB(20, 20, 30); hl.OutlineColor = Color3.fromRGB(20, 20, 30)
+					hl.FillTransparency = 0; hl.OutlineTransparency = 1; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
+					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).LocalTransparencyModifier = 0.15 + 0.3 * k end end
 					table.insert(sc.ghosts, { model = m, tr = tr, root = root, lag = 1.6 * k })
 				else
 					m:Destroy()

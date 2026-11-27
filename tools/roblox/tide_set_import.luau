@@ -15,9 +15,8 @@ local FX = {
 		{ top = { -48.5, 7.2, 170.4 }, bottom = { -48.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
 		{ top = { -23.5, 7.2, 170.4 }, bottom = { -23.5, -1.3, 167 }, width = 20, face = { 0, 0, -1 } },
 		{ top = { 5.5, 7.2, 170.4 }, bottom = { 5.5, -1.3, 167 }, width = 15, face = { 0, 0, -1 } },
-		{ top = { -117, 34.4, -22 }, bottom = { -113.5, -1.3, -22 }, width = 10, face = { 1, 0, 0 } },
-		{ top = { -117, 34.4, -11 }, bottom = { -113.5, -1.3, -11 }, width = 7, face = { 1, 0, 0 } },
-		{ top = { -138.5, 73.8, -17.5 }, bottom = { -135.5, 34.6, -17.5 }, width = 9, face = { 1, 0, 0 } },
+		{ top = { -117, 34.4, -16 }, bottom = { -113.5, -1.3, -16 }, width = 24, face = { 1, 0, 0 } },
+		{ top = { -138.5, 73.8, -17.5 }, bottom = { -135.5, 34.6, -17.5 }, width = 18, face = { 1, 0, 0 } },
 	},
 	mist = {
 		{ at = { -20, -0.3, 166 }, size = { 80, 8 } },
@@ -53,6 +52,8 @@ for _, p in src:GetDescendants() do
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds") or string.match(p.Name, "^mistmounds"))
 		if kind == "mist" then p.Transparency = 0.62 end -- (the soft mounds of mist where the falls land)
+		-- (round 2: "the lantern panels bloom to pure white" - amber, the scene's one warm accent)
+		if string.sub(p.Name, 1, 11) == "lanternfire" then p.Color = Color3.fromRGB(255, 170, 90) end
 		if string.sub(p.Name, 1, 9) == "kitorigin" then origin = p else n += 1 end
 	end
 end
@@ -99,6 +100,23 @@ for i, f in FX.falls do
 		b.Parent = p
 	end
 	-- the spray where it lands
+	do
+		-- the lip: a bright band where the water turns over the edge
+		local alongZ = math.abs(f.face[1]) > 0.5
+		local lip = Instance.new("Part"); lip.Name = "FallLip"; lip.Anchored = true; lip.CanCollide = false; lip.CanQuery = false; lip.CanTouch = false
+		lip.CastShadow = false; lip.Material = Enum.Material.Neon; lip.Color = Color3.fromRGB(196, 214, 240); lip.Transparency = 0.25
+		lip.Size = if alongZ then Vector3.new(0.6, 0.5, f.width * 1.02) else Vector3.new(f.width * 1.02, 0.5, 0.6)
+		lip.CFrame = at(top.X, top.Y + 0.1, top.Z); lip.Parent = fx
+		-- the foam where it lands: soft rings spreading on the pool
+		local fp = anchor("FallFoam" .. i, at(bot.X, bot.Y + 0.08, bot.Z), Vector3.new(f.width * 1.1, 0.1, f.width * 1.1))
+		local fe = Instance.new("ParticleEmitter")
+		fe.Texture = TEX.ripple; fe.Color = ColorSequence.new(Color3.fromRGB(232, 240, 252))
+		fe.Orientation = Enum.ParticleOrientation.VelocityPerpendicular; fe.EmissionDirection = Enum.NormalId.Top; fe.Speed = NumberRange.new(0.02)
+		fe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, f.width * 0.2), NumberSequenceKeypoint.new(1, f.width * 0.75) })
+		fe.Transparency = num(0.3, 1); fe.Lifetime = NumberRange.new(1.2, 2.2); fe.Rate = 6 + f.width * 0.8
+		fe.Shape = Enum.ParticleEmitterShape.Box; fe.LightInfluence = 0.5; fe.LightEmission = 0.35; fe.Rotation = NumberRange.new(0, 360)
+		fe.Parent = fp
+	end
 	local sp = anchor("Spray" .. i, at(bot.X, bot.Y + 0.5, bot.Z), Vector3.new(f.width, 0.2, f.width * 0.6))
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = SMOKE; e.Color = ColorSequence.new(Color3.fromRGB(222, 234, 248))
@@ -114,9 +132,9 @@ for i, m in FX.mist do
 	local p = anchor("Mist" .. i, at(m.at[1], m.at[2] + m.size[2] * 0.25, m.at[3]), Vector3.new(m.size[1], m.size[2] * 0.5, m.size[1] * 0.35))
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = SMOKE; e.Color = ColorSequence.new(Color3.fromRGB(188, 204, 232))
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 10), NumberSequenceKeypoint.new(1, 22) })
-	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.8), NumberSequenceKeypoint.new(1, 1) })
-	e.Lifetime = NumberRange.new(6, 10); e.Rate = math.max(3, m.size[1] / 8); e.Speed = NumberRange.new(0.3, 1.1)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 16), NumberSequenceKeypoint.new(1, 28) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.76), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(6, 10); e.Rate = math.max(5, m.size[1] / 5); e.Speed = NumberRange.new(1, 2); e.LightEmission = 0.3
 	e.SpreadAngle = Vector2.new(70, 70); e.Shape = Enum.ParticleEmitterShape.Box; e.LightInfluence = 1; e.RotSpeed = NumberRange.new(-6, 6)
 	e.Rotation = NumberRange.new(0, 360); e.Parent = p
 end
@@ -135,7 +153,7 @@ end
 -- the lanterns' warm light (the scene's one accent)
 for i, l in FX.lanterns do
 	local p = anchor("Lantern" .. i, at(l[1], l[2], l[3]))
-	local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 194, 128); pl.Brightness = 2.2; pl.Range = 18; pl.Shadows = true; pl.Parent = p
+	local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 160, 80); pl.Brightness = 1.6; pl.Range = 14; pl.Shadows = true; pl.Parent = p
 end
 -- the moon: a big pale disc low over the cascade, its seas a little darker, a faint halo round it
 local md = Vector3.new(table.unpack(FX.moon.dir)).Unit
@@ -164,7 +182,7 @@ disc("Halo2", D * 2.3, -6, Color3.fromRGB(90, 110, 170), 0.99)
 local W = Instance.new("Model"); W.Name = "Water"; W.Parent = set
 local function water(x0, z0, x1, z1, y)
 	local p = Instance.new("Part"); p.Name = "Water"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
-	p.CastShadow = false; p.Material = Enum.Material.Glass; p.Color = Color3.fromRGB(34, 58, 96); p.Transparency = 0.18; p.Reflectance = 0.35
+	p.CastShadow = false; p.Material = Enum.Material.Glass; p.Color = Color3.fromRGB(34, 60, 98); p.Transparency = 0.12; p.Reflectance = 0.45
 	p.Size = Vector3.new(math.abs(x1 - x0), 0.6, math.abs(z1 - z0))
 	p.CFrame = at((x0 + x1) / 2, y - 0.3, (z0 + z1) / 2); p.Parent = W
 end
@@ -184,18 +202,32 @@ do
 		e.Texture = SPARK; e.Color = ColorSequence.new(Color3.fromRGB(255, 244, 220))
 		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 1.1), NumberSequenceKeypoint.new(1, 0) })
 		e.Transparency = num(0.1, 0.6); e.Lifetime = NumberRange.new(0.25, 0.7); e.Rate = len * 1.6; e.Speed = NumberRange.new(0)
-		e.Shape = Enum.ParticleEmitterShape.Box; e.LightEmission = 1; e.LightInfluence = 0; e.ZOffset = 0.3; e.Parent = road
+		e.Shape = Enum.ParticleEmitterShape.Box; e.LightEmission = 1; e.LightInfluence = 0; e.ZOffset = 0.3; e.Rate = len * 0.25; e.Parent = road
+		-- (round 2: "a hard-edged triangle of star sprites" - thin glint streaks across the water, narrowing toward the
+		-- falls; FinisherProFx flickers each on its own beat)
+		local rr = Random.new(math.floor(len))
+		for k = 1, math.floor(len / 7) do
+			local u = rr:NextNumber(0, 1)
+			local c = p0:Lerp(p1, u)
+			local wide = g.width * (0.35 + 0.65 * u)
+			local s = Instance.new("Part"); s.Name = "MoonStreak"; s.Anchored = true; s.CanCollide = false; s.CanQuery = false; s.CanTouch = false
+			s.CastShadow = false; s.Material = Enum.Material.Neon; s.Color = Color3.fromRGB(200, 216, 246); s.Transparency = rr:NextNumber(0.35, 0.6)
+			s.Size = Vector3.new(rr:NextNumber(0.3, 1) * wide, 0.04, rr:NextNumber(0.1, 0.22))
+			s.CFrame = O * CFrame.new(c.X + rr:NextNumber(-0.3, 0.3) * wide, y + 0.07, c.Z); s.Parent = W
+		end
 		local sheen = Instance.new("Part"); sheen.Name = "MoonSheen"; sheen.Anchored = true; sheen.CanCollide = false; sheen.CanQuery = false
 		sheen.CanTouch = false; sheen.CastShadow = false; sheen.Material = Enum.Material.Neon; sheen.Color = Color3.fromRGB(120, 132, 168)
-		sheen.Transparency = 0.8; sheen.Size = Vector3.new(g.width * 0.8, 0.05, len); sheen.CFrame = road.CFrame * CFrame.new(0, 0.02, 0); sheen.Parent = W
+		sheen.Transparency = 0.86; sheen.Size = Vector3.new(g.width * 0.8, 0.05, len); sheen.CFrame = road.CFrame * CFrame.new(0, 0.02, 0); sheen.Parent = W
 	end
 end
 -- the scene's own look: FinisherPro clones these into Lighting for the scene (the place's own parked meanwhile)
 local look = Instance.new("Folder"); look.Name = "SceneLook"; look.Parent = set
 local sky = Instance.new("Sky"); sky.Name = "SceneSky"; sky.StarCount = 3000; sky.CelestialBodiesShown = false; sky.Parent = look
-local atmo = Instance.new("Atmosphere"); atmo.Name = "SceneAtmo"; atmo.Density = 0.3; atmo.Offset = 0.12
-atmo.Color = Color3.fromRGB(96, 114, 164); atmo.Decay = Color3.fromRGB(52, 62, 104); atmo.Glare = 0; atmo.Haze = 1.4; atmo.Parent = look
-local bloom = Instance.new("BloomEffect"); bloom.Name = "SceneBloom"; bloom.Intensity = 0.9; bloom.Size = 30; bloom.Threshold = 0.9; bloom.Parent = look
+-- (round 2: "lift the world off black" - a lit band of haze on the horizon, so the pines and the rocks read against it;
+-- the bloom held back so neither the lanterns nor a white outfit flares)
+local atmo = Instance.new("Atmosphere"); atmo.Name = "SceneAtmo"; atmo.Density = 0.3; atmo.Offset = 0.25
+atmo.Color = Color3.fromRGB(118, 138, 188); atmo.Decay = Color3.fromRGB(66, 80, 124); atmo.Glare = 0.15; atmo.Haze = 2.2; atmo.Parent = look
+local bloom = Instance.new("BloomEffect"); bloom.Name = "SceneBloom"; bloom.Intensity = 0.5; bloom.Size = 26; bloom.Threshold = 1.5; bloom.Parent = look
 local cc = Instance.new("ColorCorrectionEffect"); cc.Name = "SceneGrade"; cc.TintColor = Color3.fromRGB(230, 238, 255); cc.Contrast = 0.1
 cc.Saturation = -0.04; cc.Brightness = 0.02; cc.Parent = look
 -- (the set sits with its floor origin at the world's origin: FinisherPro pivots it onto the scene's spot)

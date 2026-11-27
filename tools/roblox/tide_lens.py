@@ -108,7 +108,9 @@ def main(take_p, scan_p, out_p):
         u = ease((f - a) / (b - a))
         d = 2.5 + 4.2 * u
         fov = math.degrees(2 * math.atan(math.tan(math.radians(54) / 2) * 2.5 / d))
-        dirv = norm([0.62, -0.06, 0.78])                 # from the face toward the lens: front-right, a touch below
+        # (round 2, the judge: 'the blade tip isn't in frame' - a three-quarter profile from his right, the blade coming in
+        # from the frame's left edge at eye height to the tip at his nose)
+        dirv = norm([0.93, -0.03, 0.36])                 # from the face toward the lens: his right side, a little in front
         pos = add(face, mulv(dirv, d))
         L[f] = look(pos, add(face, [0.05, 0.08, 0]), roll_deg=4 - 3 * u, fov=fov)
     # 5 THE CHARGE, 6 CLOSING: his lenses (the game adds the run's handheld shake)
@@ -124,7 +126,10 @@ def main(take_p, scan_p, out_p):
         if f == b:   # (the whip: the lens flung on toward the victim)
             at = add(at, [-2.5, 0.2, -4.0])
         L[f] = look(pos, at, roll_deg=10 - 6 * ease(u), fov=70 - 6 * ease(u))
-    # 8 CUT FRAME: his
+    # 8 CUT FRAME: his, moved off the victim's cloak (round 2: 'the cloak fills a third of the frame and the rest is black')
+    a, b = span(7)
+    for f in range(a, b + 1):
+        L[f] = nudge(cam[f], [2.6, 0.3, -1.8], fov=58)
     # 9 PAST HIM: his, trucking slowly along the lane for parallax
     a, b = span(8)
     for f in range(a, b + 1):
@@ -145,20 +150,21 @@ def main(take_p, scan_p, out_p):
         u = ease((f - 194) / 12.0)
         c = cam[f]
         toward = norm(sub(mouth_end, c[:3]))
-        L[f] = nudge(c, mulv(toward, 1.3 * u))
+        L[f] = nudge(c, add(mulv(toward, 1.3 * u), [0, -0.45 * u, 0]))
     # 13 THE CUT LANDS: his
     # 14 THE END: a crane - from the winner close on the right, rising and pulling back to the moon over the falls
     a, b = span(12)
     for f in range(a, b + 1):
         u = ease((f - a) / (b - a))
-        pos = lerpv([4.6, -0.6, -39.6], [7.5, 5.8, -47.0], u)
-        at = lerpv([0.6, 0.8, -28.0], [-1.0, 7.5, 0.0], u)
-        L[f] = look(pos, at, roll_deg=-2 + 2 * u, fov=46 - 8 * u)
+        # (round 2: 'the killer is cropped to the top of his head' at the end - a gentler rise and pull-back)
+        pos = lerpv([4.6, -0.6, -39.6], [6.4, 1.6, -44.0], u)
+        at = lerpv([0.6, 0.8, -28.0], [-2.0, 3.6, 0.0], u)
+        L[f] = look(pos, at, roll_deg=-2 + 2 * u, fov=46 - 4 * u)
 
     # ---------------------------------------------------------------- the speed ramps: (frame, speed[, 'cut'])
     RAMP = [(0, 1.0), (9, 1.0), (10.5, 0.35), (13, 0.35), (15, 1.0),
             (16, 1.0, 'cut'), (22, 0.6), (50, 0.6), (55, 0.95),
-            (56, 0.6, 'cut'), (63, 1.0),
+            (56, 0.55, 'cut'), (63, 0.75), (81, 0.75),
             (82, 0.5, 'cut'), (93, 0.55),
             (94, 1.0, 'cut'), (129, 1.0),
             (130, 1.0, 'cut'), (133, 0.18), (138, 0.18),
@@ -166,7 +172,7 @@ def main(take_p, scan_p, out_p):
             (145, 1.0, 'cut'), (196, 1.0),
             (199, 0.32), (203, 0.32), (204.5, 1.0),
             (207, 0.5, 'cut'), (212, 1.0),
-            (221, 0.75, 'cut'), (254, 0.75)]
+            (221, 0.62, 'cut'), (254, 0.62)]
 
     def speed(fr):
         r = RAMP
