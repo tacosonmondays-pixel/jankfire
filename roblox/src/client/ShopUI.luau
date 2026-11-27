@@ -644,12 +644,14 @@ end
 -- show any offer or item in a frame: a card look as a 2D tile, a card set as a whole card, everything else in 3D
 function V.put(parent: GuiObject, o: any?, item: any?, spin: string, zoom: number?, boost: number?)
 	local it = item or (if o and o.type == "single" then { kind = o.kind, id = o.item, weapon = o.weapon } else nil)
-	local X = if it and it.kind == "title" then ShopUI.ext() else nil
-	if X and X.titleCard then X.titleCard(parent, it.id); return end -- (on your card: ShopBundles, 27 Nov)
+	local X = if it and Shop.isCard(it.kind) then ShopUI.ext() else nil
+	if X and X.titleCard then X.titleCard(parent, it.id, it.kind); return end -- (on your card: ShopBundles, 27 Nov)
 	if it and Shop.isCard(it.kind) then V.card(parent, it.kind, it.id); return end
 	if it and Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id, true); return end
 	if o and o.type == "bundle" and not o.hero then V.cardSet(parent, o.items); return end
-	V.show(parent, if o then V.offerModel(o, item, boost) else V.item(it, boost), spin, zoom)
+	local m = if o then V.offerModel(o, item, boost) else V.item(it, boost)
+	if m and it then m:SetAttribute("ShopFit", "box") end -- (one framing for every single: its box fills the picture)
+	V.show(parent, m, spin, zoom)
 end
 -- the camera backed off just enough for the model to fill its frame. a long thing (a gun) is fitted to the frame's
 -- width, so a wide frame shows it big; anything else to its round bounds. zoom > 1 = a little more room round it
@@ -660,7 +662,8 @@ local function fitCam(s: any)
 	local v = math.rad(s.cam.FieldOfView) / 2
 	local h = math.atan(math.tan(v) * aspect)
 	local dv, dh = s.r / math.sin(v), s.r / math.sin(h)
-	local d = (if s.long then math.max(dh, dv * 0.5) else math.max(dh, dv)) * s.zoom
+	local b = s.box -- (a single item: fitted by its box, turned three-quarters, not its round bounds. 27 Nov)
+	local d = (if b then math.max(b.X / math.tan(h), b.Y / math.tan(v)) + b.Z elseif s.long then math.max(dh, dv * 0.5) else math.max(dh, dv)) * s.zoom
 	s.cam.CFrame = CFrame.lookAt(Vector3.new(0, s.r * 0.22, d), Vector3.zero)
 end
 -- a viewport showing a model, turned three-quarters. spin = how it moves: "slow" (sways round the three-quarter view,
@@ -687,7 +690,9 @@ function V.show(parent: GuiObject, m: Model?, spin: string, zoom: number?): any
 	local long = math.max(size.X, size.Z) > 2.2 * size.Y
 	local rest = m:GetAttribute("ShopRest")
 	rest = if type(rest) == "number" then rest else REST
+	local across = math.sqrt(size.X * size.X + size.Z * size.Z)
 	local s = { vp = vp, cam = cam, r = r, long = long, zoom = zoom or 1.05, model = m, rel = rel, spin = spin, yaw = rest,
+		box = if m:GetAttribute("ShopFit") == "box" then Vector3.new(0.46 * across, 0.5 * size.Y + 0.06 * across, 0.3 * across) else nil,
 		rest = rest, vel = 0, hot = false, drag = false, dragT = -10, t0 = math.random() * 6, still = false, size = nil :: Vector2?,
 		page = nil :: Instance? }
 	-- (the shop page it's on: nothing is moved for a page that isn't up)

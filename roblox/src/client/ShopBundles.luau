@@ -744,8 +744,10 @@ return function(C: any): any
 	-- (27 Nov 2026, the UI critic: the title's picture "reads as a placeholder": a dark slab with a word on it). a title's
 	-- picture on a shop tile or its page is the head of YOUR player card wearing it, as the profile draws it: your
 	-- headshot, your name, @name, then the title in its own colour (CardStyles.styleTitle: the OWNER title's shimmer
-	-- too), on the card's own background and border. a chip in a list keeps the plain sample (V.card)
-	function X.titleCard(parent: GuiObject, id: string)
+	-- too), on the card's own background and border. a border or a background is shown the same way, on your card (kind:
+	-- "title" (the default), "border", "banner"). a chip in a list keeps the plain sample (V.card)
+	function X.titleCard(parent: GuiObject, id: string, kind: string?)
+		local k = kind or "title"
 		local CS = Shop.CardStyles :: any
 		local old = parent:FindFirstChild("Preview")
 		if old then old:Destroy() end
@@ -754,7 +756,7 @@ return function(C: any): any
 		local f = new("Frame", { Name = "Card", BackgroundColor3 = Color3.fromRGB(30, 33, 40), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.94, 0.86), ZIndex = z + 2 }, holder)
 		new("UIAspectRatioConstraint", { AspectRatio = 2.3 }, f)
-		if CS then pcall(CS.paintBanner, f, "slate", 6); pcall(CS.paintBorder, f, "hairline", 6) end
+		if CS then pcall(CS.paintBanner, f, if k == "banner" then id else "slate", 6); pcall(CS.paintBorder, f, if k == "border" then id else "hairline", 6) end
 		local zz = z + 6
 		local av = new("Frame", { Name = "Head", BackgroundColor3 = Color3.fromRGB(44, 48, 56), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0.05, 0.5), Size = UDim2.fromScale(0.3, 0.7), ZIndex = zz }, f)
@@ -765,13 +767,16 @@ return function(C: any): any
 		new("UICorner", { CornerRadius = UDim.new(0.12, 0) }, img)
 		local function line(text: string, y: number, h: number, col: Color3, font: Font, max: number): TextLabel
 			local l = new("TextLabel", { BackgroundTransparency = 1, Text = text, TextColor3 = col, FontFace = font, TextScaled = true,
+				TextStrokeColor3 = Color3.fromRGB(16, 18, 22), TextStrokeTransparency = 0.55, -- (legible on a bright background too)
 				TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Position = UDim2.fromScale(0.4, y),
 				Size = UDim2.fromScale(0.56, h), ZIndex = zz }, f)
 			new("UITextSizeConstraint", { MaxTextSize = max }, l)
 			return l
 		end
-		line(string.upper(me.DisplayName), 0.2, 0.24, Color3.fromRGB(244, 245, 247), T.FONT_TITLE, 30)
-		line("@" .. me.Name, 0.46, 0.14, Color3.fromRGB(150, 156, 166), T.FONT_BOLD, 14)
+		local top = if k == "title" then 0 else 0.1 -- (no title line: the name sits lower, in the middle)
+		line(string.upper(me.DisplayName), 0.2 + top, 0.24, Color3.fromRGB(244, 245, 247), T.FONT_TITLE, 30)
+		line("@" .. me.Name, 0.46 + top, 0.14, Color3.fromRGB(150, 156, 166), T.FONT_BOLD, 14)
+		if k ~= "title" then return end
 		local words = if CS then CS.titleText(id) else ""
 		local tl = line(if words == "" then "-" else words, 0.63, 0.18, if CS then CS.titleColor(id) else T.TEXT, T.FONT_HEAVY, 20)
 		if CS then pcall(CS.styleTitle, tl, id) end
