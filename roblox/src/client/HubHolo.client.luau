@@ -455,7 +455,10 @@ local function applyBundle(h: Holo)
 	local plate = h.anchor.Parent and h.anchor.Parent:FindFirstChild("ShowName" .. slot)
 	local gui = plate and plate:FindFirstChild("Gui")
 	local line = gui and gui:FindFirstChild("Line2")
-	if line then line.Text = if b then b.name else "COMING SOON" end
+	if line then line.Text = if b then b.name else "" end
+	-- (27 Nov, main: no COMING SOON placeholders: with nothing on the plinth its plate shows nothing at all)
+	if plate and plate:IsA("BasePart") then plate.LocalTransparencyModifier = if b then 0 else 1 end
+	if gui and gui:IsA("SurfaceGui") then gui.Enabled = b ~= nil end
 	-- (the shop's ShopClient opens whatever a triggered prompt's ShopOpen names: a stand-in set names nothing)
 	local pr = h.anchor:FindFirstChildWhichIsA("ProximityPrompt", true)
 	if pr then

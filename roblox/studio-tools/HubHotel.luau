@@ -145,7 +145,17 @@ function HH.build(K, parent, name, site, live, opts)
 	cyl(F0, "Shell", "FountainCore", 0, 0, 5.0, -20, 4.4, PAL.stone, nil, { tr = 1, noshadow = true })
 
 	-- the N wall: the ballroom's doors in a deep surround, giant pilasters either side, the name over the doors
-	if not NO then put("ht_doorL", at(0, 0, -32, 0)) end -- (look only: its hull would fill the doorway)
+	if not NO then -- (look only: its hull would fill the doorway)
+		-- (27 Nov, Clip v2: the kit door is 19.6 x 16.2, the portal's opening 15.8 x 14: it went 1.1 into the sleeve. Scaled
+		-- to fit inside it, standing on the floor)
+		local dm = put("ht_doorL", at(0, 0, -32, 0))
+		if dm and dm:IsA("Model") then
+			local _, sz0 = dm:GetBoundingBox()
+			dm:ScaleTo(dm:GetScale() * math.min(1, 15.4 / sz0.X, 13.6 / sz0.Y))
+			local cf, sz = dm:GetBoundingBox()
+			dm:PivotTo(dm:GetPivot() + Vector3.new(0, (K.S.site.Position.Y) - (cf.Position.Y - sz.Y / 2), 0))
+		end
+	end
 	-- (round 5, judge round 4: the way to PLAY a deep framed portal) a sleeve 3.4 deep proud of the surround
 	local PORTAL = not NO or opts.northPortal
 	local PX, PH = if NO then NO[2] else 7.9, if NO then NO[3] else 14 -- (the sleeve's inner edge, the head's underside)
@@ -219,7 +229,7 @@ function HH.build(K, parent, name, site, live, opts)
 		put("ht_sofa", at(s * 25.8, 0, zc, if s < 0 then 90 else -90), { solid = true }) -- (26 Nov: 0.4 off the dado)
 		put("ht_table", at(s * 23.2, 0, zc, 90), { solid = true })
 		for _, dz in { -3.4, 3.4 } do put("ht_armchair", at(s * 21.2, 0, zc + dz, if s < 0 then -90 else 90), { solid = true }) end
-		palm(s * 17.5, -28.4)
+		palm(s * 16.3, -27.4) -- (27 Nov, Clip v2: the fronds were 1 into the N wall, then 0.8 into the bar side's pier)
 	end
 	K.holoLoadout(K.at(F0, -25, -29, 90))
 	K.bundles(K.at(F0, -23.6, -14.5, 90)) -- (26 Nov: a stud off the dado)
@@ -388,7 +398,7 @@ function HH.build(K, parent, name, site, live, opts)
 	K.light(nh, 22, 0.6, PAL.warm, { kind = "SurfaceLight", face = Enum.NormalId.Bottom, angle = 120 })
 	cyl(F0, "Shell", "TrophyPlinth", 0, 1.2, 3.6, BZ1 + 8, 10, PAL.stone, MARBLE)
 	cyl(F0, "Scenery", "TrophyPlinthLip", 0, 3.1, 3.35, BZ1 + 8, 10.3, PAL.wood)
-	local cup = put("ht_trophy", at(0, 3.6, BZ1 + 8), { solid = true })
+	local cup = put("ht_trophy", at(0, 3.6, BZ1 + 9.8), { solid = true }) -- (27 Nov, Clip v2: 1.2 into the niche's head: out of it)
 	if cup then
 		cup:ScaleTo(1.3)
 		for _, d in cup:GetDescendants() do if d:IsA("BasePart") then d.Color = if d.Color.R > 0.75 then K.c3("a89466") else K.c3("8f7a52") end end
@@ -469,7 +479,7 @@ function HH.build(K, parent, name, site, live, opts)
 	K.tableSpot(K.at(F0, 40, 15, 0), "board"); K.tableSpot(K.at(F0, 52, 23, 0), "arm")
 	K.arcadeSpot(K.at(F0, 36, 28.5, 0)); K.arcadeSpot(K.at(F0, 42, 28.5, 0)) -- (hub-minigames: the 2.8-deep cabinets clear the wall)
 	K.codePanelSpot(K.at(F0, 46, BZb, 0)) -- (on the S wall, looking north into the bar)
-	palm(62, 0.5); palm(59.5, 27.0) -- (27 Nov, Clip v2: its fronds were 1 into the S wall) -- (26 Nov: the first palm 2 in, its fronds were in the wall) -- (the second palm clear of the golf door's new frame)
+	palm(62, 1.5); palm(59.5, 26.4) -- (27 Nov, Clip v2: its fronds were 1 into the S wall) -- (26 Nov: the first palm 2 in, its fronds were in the wall) -- (the second palm clear of the golf door's new frame)
 	K.golfRoom(F0, { x0 = 70, x1 = 124, z0 = GZ0, z1 = GZ1, h = 18, door = { 68, 20, 28 }, doorSide = "w", doorEnd = "s" })
 	for _, x in { 78, 94, 110 } do -- (round 5: no black void through the golf room's door)
 		K.light(box(F0, "Scenery", "GolfLight", x - 0.3, x + 0.3, 15.8, 16, 23.7, 24.3, PAL.lamp, nil, { ghost = true, tr = 1 }), 28, 0.9, PAL.lamp)

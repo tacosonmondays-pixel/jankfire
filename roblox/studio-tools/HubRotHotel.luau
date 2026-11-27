@@ -307,6 +307,8 @@ function HRH.fixes(root, ring, R, K, site, k, o)
 		end
 	end
 	table.insert(out, ("gate: light bar %d away, %d lasers softer, TRAINING over it: %s"):format(bars, lasers, tostring(gate ~= nil)))
+	-- (27 Nov, main: no COMING SOON placeholders: the ring builders' bundle plates start blank, HubHolo writes the name)
+	for _, d in root:GetDescendants() do if d:IsA("TextLabel") and d.Text == "COMING SOON" then d.Text = "" end end
 	-- the passage's light, warm at the lobby's end, cooler at the ring's
 	local function lamp(nm, z, hex, br)
 		local p = Instance.new("Part"); p.Name = nm; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false

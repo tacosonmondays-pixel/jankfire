@@ -143,9 +143,80 @@ function HCL.build(opts)
 	for _, d in root:GetDescendants() do
 		if d:IsA("BasePart") and d.Name == "MiniGameSpot" and d:GetAttribute("Game") == "box" then d:SetAttribute("Ring", 1); d:SetAttribute("Half", 8.7); d:SetAttribute("Hub", HCL.ID) end
 	end
+	table.insert(out, HCL.tidy(root))
 	local np = 0; for _, d in root:GetDescendants() do if d:IsA("BasePart") then np += 1 end end
 	table.insert(out, ("Map.Hub.%s: %d parts, %d pads, %d spawns, %d arrivals; kit markers %d"):format(HCL.FOLDER, np, #root.QueuePads:GetChildren(), #root.HubSpawns:GetChildren(), #root.HubArrive:GetChildren(), S.count))
 	return table.concat(out, "\n")
+end
+
+-- (27 Nov, the hubs' clipping and indicator-light pass) on the built folder:
+--   * the pads rest with no "step on a side" line (RestSub "", as every other hub's classic pads)
+--   * the small lit marks on the screens' bezels and the gate's light bar away; no COMING SOON on the bundle plates
+--   * the armory's rack rows fit their bays: a row longer than the room between its two pilasters is drawn in about the
+--     bay's middle, the guns' places and scale together; a row that fits but sits off is slid in (Clip v2: ten guns 0.4-0.7
+--     into the pilasters, the roster outgrew the 18 Nov bays)
+function HCL.tidy(root)
+	local subs = 0
+	for _, p in root.QueuePads:GetChildren() do
+		p:SetAttribute("RestSub", "")
+		for _, l in p:GetDescendants() do if l:IsA("TextLabel") and l.Name == "Sub" and l.Text ~= "" then l.Text = ""; subs += 1 end end
+	end
+	local lit = 0
+	for _, d in root:GetDescendants() do
+		-- (the bezel kit's small pink bar hb_screen2 and lit dot hb_screen1 under each screen)
+		if d:IsA("BasePart") and (d.Name == "GateLightBar" or (d:FindFirstAncestor("Bezel") and (d.Name:match("^hb_screen1") or d.Name:match("^hb_screen2")))) then d:Destroy(); lit += 1 end
+	end
+	local soon = 0
+	for _, d in root:GetDescendants() do if d:IsA("TextLabel") and d.Text == "COMING SOON" then d.Text = ""; soon += 1 end end
+	-- the racks, in the walls' frame (the pilasters' own: X across the wall, Z along it)
+	local pil = {}
+	for _, d in root:GetDescendants() do if d:IsA("BasePart") and d.Name == "Pilaster" then table.insert(pil, d) end end
+	local moved, scaled = 0, 0
+	if #pil > 0 then
+		local W = pil[1].CFrame.Rotation
+		local function inW(v) return W:PointToObjectSpace(v) end
+		local rows = {}
+		for _, g in root:GetDescendants() do
+			if g:IsA("Model") and g.Name:match("^Rack_w_") then
+				local cf, sz = g:GetBoundingBox()
+				local c = inW(cf.Position)
+				local along = W.LookVector
+				local e = math.abs(cf.RightVector:Dot(along)) * sz.X / 2 + math.abs(cf.UpVector:Dot(along)) * sz.Y / 2 + math.abs(cf.LookVector:Dot(along)) * sz.Z / 2
+				-- its bay: the nearest pilasters on the same wall either side of it along Z
+				local lo, hi = -math.huge, math.huge
+				for _, p in pil do
+					local q = inW(p.Position)
+					if math.abs(q.X - c.X) < 4 then
+						local hz = p.Size.Z / 2
+						if q.Z < c.Z and q.Z + hz > lo then lo = q.Z + hz end
+						if q.Z > c.Z and q.Z - hz < hi then hi = q.Z - hz end
+					end
+				end
+				if lo > -math.huge and hi < math.huge then
+					local key = ("%d:%d:%d"):format(math.floor(c.X + 0.5), math.floor(lo * 10 + 0.5), math.floor(c.Y * 2 + 0.5))
+					rows[key] = rows[key] or { lo = lo, hi = hi, guns = {} }
+					table.insert(rows[key].guns, { g = g, c = c, e = e })
+				end
+			end
+		end
+		for _, r in rows do
+			local a, b = math.huge, -math.huge
+			for _, it in r.guns do a = math.min(a, it.c.Z - it.e); b = math.max(b, it.c.Z + it.e) end
+			local room = (r.hi - r.lo) - 0.3
+			if a >= r.lo + 0.1 and b <= r.hi - 0.1 then continue end
+			local f = math.min(1, room / (b - a))
+			local rowC, bayC = (a + b) / 2, (r.lo + r.hi) / 2
+			for _, it in r.guns do
+				local g = it.g
+				if f < 1 then g:ScaleTo(g:GetScale() * f); scaled += 1 end
+				local want = Vector3.new(it.c.X, it.c.Y, bayC + (it.c.Z - rowC) * f)
+				local now = inW((g:GetBoundingBox()).Position)
+				g:PivotTo(g:GetPivot() + W:VectorToWorldSpace(want - now))
+				moved += 1
+			end
+		end
+	end
+	return ("tidy: %d resting lines cleared, %d small lit marks away, %d COMING SOON blanked, rack guns %d placed (%d scaled down)"):format(subs, lit, soon, moved, scaled)
 end
 
 return HCL

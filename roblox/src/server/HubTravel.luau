@@ -16,6 +16,10 @@ local Players = game:GetService("Players")
 local HubTravel = {}
 HubTravel.DEFAULT = "grand" -- (26 Nov, the owner picked B: THE GRAND ROTUNDA, the Rotunda larger with the Hotel's spawn; "classic" before, still a HUBS option)
 HubTravel.REACH = 520 -- (studs from a hub's site that count as being in it)
+-- hubs taken off the HUBS list (the model stays in the place; nobody can travel there, a saved LastHub of one falls back
+-- to DEFAULT). 27 Nov, main: the Concourse off, two judges failed it on the copy check (a corridor of pad bays to a lit
+-- end); delete its line to bring it back
+HubTravel.OFF = { concourse = true }
 HubTravel.COOLDOWN = 3
 
 local function hubRoot(): Instance? return workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") end
@@ -29,7 +33,7 @@ function HubTravel.list(): { HubInfo }
 	if not hub then return out end
 	for _, c in hub:GetChildren() do
 		local id = c:GetAttribute("Hub")
-		if type(id) == "string" and c:IsA("Folder") and c:FindFirstChild("HubSpawns") then
+		if type(id) == "string" and c:IsA("Folder") and c:FindFirstChild("HubSpawns") and not HubTravel.OFF[id] then
 			local site = c:GetAttribute("Site")
 			table.insert(out, { id = id, title = tostring(c:GetAttribute("Title") or string.upper(id)), order = tonumber(c:GetAttribute("Order")) or 9,
 				folder = c, site = if typeof(site) == "Vector3" then site else Vector3.zero })

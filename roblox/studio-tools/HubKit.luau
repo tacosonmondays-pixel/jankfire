@@ -1567,7 +1567,7 @@ function K.bundles(F, slots)
 		plinth(Fp, 0, 0, 3.8, 1.4)
 		K.holo(Fp, "bundle", 0, 1.4 + 2.2, 0, 1.8, 3.6, { base = 2.2, slot = slot, prompt = "View bundle" })
 		local plate = K.box(Fp, "Scenery", "ShowName" .. slot, -1.6, 1.6, 0.5, 1.3, -2.5, -2.35, K.P.screen, nil, { solid = false })
-		K.text(plate, Enum.NormalId.Front, { { "BUNDLE", K.P.holo, 0.38, "S" }, { "COMING SOON", K.P.pale, 0.5 } }, { guiName = "Gui", flat = true, pps = 60 })
+		K.text(plate, Enum.NormalId.Front, { { "BUNDLE", K.P.holo, 0.38, "S" }, { "", K.P.pale, 0.5 } }, { guiName = "Gui", flat = true, pps = 60 }) -- (HubHolo writes the bundle's name; no COMING SOON)
 		K.box(Fp, "Scenery", "ShowNameStand", -0.2, 0.2, 0, 0.5, -2.45, -2.25, K.P.steel)
 	end
 end
@@ -2004,7 +2004,7 @@ function K.armory(F, o)
 	plinth(F, -w + 5, -d1 + 5, 3.8, 1.4)
 	K.holo(F, "bundle", -w + 5, 1.4 + 2.2, -d1 + 5, 1.8, 3.6, { base = 2.2, slot = 5, prompt = "View bundle" })
 	local plate = K.box(F, "Scenery", "ShowName5", -w + 3.4, -w + 6.6, 0.5, 1.3, -d1 + 7.6, -d1 + 7.45, P.screen, nil, { solid = false })
-	K.text(plate, Enum.NormalId.Back, { { "BUNDLE", P.holo, 0.38, "S" }, { "COMING SOON", P.pale, 0.5 } }, { guiName = "Gui", flat = true, pps = 60 })
+	K.text(plate, Enum.NormalId.Back, { { "BUNDLE", P.holo, 0.38, "S" }, { "", P.pale, 0.5 } }, { guiName = "Gui", flat = true, pps = 60 }) -- (HubHolo writes the bundle's name; no COMING SOON)
 	-- the training gate: GateKit's lasers, roll-up door and black back in the far wall's opening; the kit frame round it;
 	-- the door box (in Map.Hub.Doors when live) that takes you to the training ground
 	local Fg = F * CFrame.new(0, 0, -d1)
