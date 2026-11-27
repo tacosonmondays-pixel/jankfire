@@ -41,7 +41,7 @@ local G_HOLO = Color3.fromRGB(70, 230, 120)
 local BG = Color3.fromRGB(2, 10, 5)
 local MONO = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Regular)
 local MONO_B = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold)
-local ON_T, OFF_T = 0.36, 0.35 -- (the switch-on; the switch-off, the server's SWITCH_OFF)
+local ON_T, OFF_T = 0.12, 0.35 -- (the words start typing; the switch-off, the server's SWITCH_OFF)
 
 local function srv(): number return workspace:GetServerTimeNow() end
 local function sfx(name: string, vol: number?)
@@ -466,10 +466,13 @@ local function show(a: Model)
 	col, idx = 1, { table.find(B.sidearms, mySide) or 1, if myPas then table.find(B.order, myPas) or 1 else 1, 1 }
 	MenuCursor.set("zmbrief", true, function() return open end)
 	for _, id in B.sidearms do holoOf(id) end -- (all four now, parked: nothing builds on a click)
-	-- in from the terminal's own picture (the film is already in it: on, no switch)
+	-- in from the terminal's own picture (the film is already in it: on, no switch). its dark comes up under its words
+	-- over a third of a second while they type, the terminal's own words fading under it (27 Nov, main: the opaque veil, then
+	-- an empty screen before the typing, read as a dark beat)
 	shutTop.Size = UDim2.fromScale(1, 0); shutBot.Size = UDim2.fromScale(1, 0)
 	line.BackgroundTransparency = 1
-	veil.BackgroundTransparency = 0
+	veil.BackgroundTransparency = 1
+	screen.BackgroundTransparency = 1
 	-- the words, typed in order
 	readyT.Text = "READY"
 	prompt.Text = ""
@@ -535,10 +538,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if not open or not a then return end
 	local t = os.clock()
 	-- in from the terminal's picture, and back to it at the close (the film powers it down in the world)
-	local u = (t - openT) / 0.25
+	local u = (t - openT) / 0.35
 	local off = if type(b1) == "number" then math.clamp(1 - (b1 - srv()) / OFF_T, 0, 1) else 0
 	if off > 0 and not closing then closing = true; MenuCursor.set("zmbrief", false) end
-	veil.BackgroundTransparency = if off > 0 then 1 - off else math.clamp(u, 0, 1)
+	veil.BackgroundTransparency = if off > 0 then 1 - off else 1
+	screen.BackgroundTransparency = if off > 0 then 0 else 1 - math.clamp(u, 0, 1)
 	-- the tube: a flicker, the rolling bar
 	flick.BackgroundTransparency = 0.955 + math.random() * 0.045
 	roll.Position = UDim2.fromScale(0, ((t * 0.14) % 1.3) - 0.16)

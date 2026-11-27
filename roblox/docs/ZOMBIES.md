@@ -803,3 +803,16 @@ segments and a faint emission; boxes pre-filled with :Emit so nothing fades up).
 - **Trap, the recorder:** Studio's video_capture all but drops positional sound (a 2D spark records at -31 dB, the same
   spark 3 studs away in 3D at -78 dB). For a clip with sound, the test harness mirrored each zm_ sound flat at its
   Atten (Sfx sets it on every copy) and the hums at their distance gain. Not shipped.
+
+### 4.19 The opening's polish (27 Nov; main: "the READY flash fills the whole screen bright white ... tone it down to a quick soft flash")
+- **READY power-down** (ZombieCine): no white fill. The picture keeps its words and lifts to a soft green (glow 0.78
+  transparent), then folds; the glow brightens with the cube of the fold, so only the thin line is bright. Whole-frame
+  brightness through it peaks at the room's own level (64 of 255 in the test; the old flash was near white).
+- **No dark beat into the briefing:** the terminal's words no longer fade before the handoff; the briefing's dark comes
+  up under its own words over 0.35 s while they type (from 0.12 s), the terminal's words fading under it
+  (ZombieBrief: no opaque veil at the open; the veil is only the close's).
+- **The screen fills any window:** the push's end is worked out every frame (`fillAt`) from the live viewport and the
+  glass's own size (2 x 1.55), 5% inside its edges; a 2.4:1 view crops the screen top and bottom instead of showing the
+  bezel and the room at the sides.
+- Checked in Play (place version 1651), two takes read frame by frame. Sheet: side notes
+  25-zombies-intro-polish-27nov.jpg; clip zombies-intro-polish-27nov.mp4.

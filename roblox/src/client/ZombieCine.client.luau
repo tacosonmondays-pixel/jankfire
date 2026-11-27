@@ -455,11 +455,17 @@ local function intro(a: Model)
 	local scr = if screen then screen.Position else L(0, 3.83, 55.8)
 	local sf = if screen then screen.CFrame.ZVector else (site.ZVector)
 	local sx = sf:Cross(Vector3.new(0, 1, 0)).Unit
-	-- (studs out from the glass where its width fills the view at 32 degrees: from this screen's own shape, a wide window
-	-- comes in closer. 27 Nov test: a fixed 16:9 distance left the bezel and the room in a 2.4:1 Studio view)
-	local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(16, 9)
-	local aspect = math.max(1.2, vs.X / math.max(1, vs.Y))
-	local FILL = math.min(1.85, 0.94 / (math.tan(math.rad(16)) * aspect))
+	-- (where the glass fills the view at 32 degrees, a touch inside its edges both ways: worked out every frame from the
+	-- live window and the glass's own size (2 x 1.55). 27 Nov, main: a distance fixed at the start, from a guessed width,
+	-- still left the bezel and the room at the sides of Studio's 2.4:1 view)
+	local half = if screen then Vector2.new(screen.Size.X / 2, screen.Size.Y / 2) else Vector2.new(1, 0.775)
+	local T16 = math.tan(math.rad(16))
+	local function fillAt(): Vector3
+		local cam = workspace.CurrentCamera
+		local vs = if cam then cam.ViewportSize else Vector2.new(16, 9)
+		local aspect = math.max(1, vs.X / math.max(1, vs.Y))
+		return scr + sf * (0.95 * math.min(half.X / (T16 * aspect), half.Y / T16))
+	end
 	local pic = nil :: any
 	if screen then
 		local sg = Instance.new("SurfaceGui")
@@ -497,7 +503,7 @@ local function intro(a: Model)
 			f.Position = UDim2.fromScale(0, i / 60); f.Size = UDim2.fromScale(1, 1 / 180); f.Parent = lit
 		end
 		local glow = Instance.new("Frame")
-		glow.Name = "Glow"; glow.BorderSizePixel = 0; glow.BackgroundColor3 = Color3.fromRGB(200, 255, 215); glow.BackgroundTransparency = 1
+		glow.Name = "Glow"; glow.BorderSizePixel = 0; glow.BackgroundColor3 = Color3.fromRGB(180, 245, 200); glow.BackgroundTransparency = 1
 		glow.Size = UDim2.fromScale(1, 1); glow.Parent = lit
 		sg.Parent = screen
 		table.insert(r.trash, sg)
@@ -532,9 +538,9 @@ local function intro(a: Model)
 		-- there; then back out as it powers down, and into your own view
 		{ name = "push", t0 = N.push[1], t1 = N.push[2], ease = "inout", shake = 0.05,
 			from = { at = scr + sf * 11 + Vector3.new(0, 1.4, 0) - sx * 2.2, look = scr - Vector3.new(0, 0.2, 0), fov = 46 },
-			to = { at = scr + sf * FILL, look = scr, fov = 32 } },
+			to = { at = fillAt, look = scr, fov = 32 } },
 		{ name = "close", t0 = N.close[1], t1 = N.close[2], ease = "inout",
-			from = { at = scr + sf * FILL, look = scr, fov = 32 },
+			from = { at = fillAt, look = scr, fov = 32 },
 			to = { at = scr + sf * 7 + Vector3.new(0, 0.9, 0) + sx * 1.4, look = scr - Vector3.new(0, 0.5, 0), fov = 44 } },
 		{ name = "land", t0 = N.land[1], t1 = len, ease = "inout",
 			from = { at = scr + sf * 7 + Vector3.new(0, 0.9, 0) + sx * 1.4, look = scr - Vector3.new(0, 0.5, 0), fov = 44 }, to = "gameplay" },
@@ -798,14 +804,8 @@ local function intro(a: Model)
 		end
 		-- the terminal's picture: on through the push and the briefing; at the close it powers down (the picture folds to
 		-- a bright line, the line to a dot, the dot out), with the CRT's own whine and click
-		-- (the picture's own words fade as the push ends: the briefing takes over from plain green, its own layout coming in)
-		if pic then
-			local tx = math.clamp((t - (N.push[2] - 0.4)) / 0.3, 0, 1)
-			if pic.tx ~= tx then
-				pic.tx = tx
-				for _, l in pic.lit:GetChildren() do if l:IsA("TextLabel") then l.TextTransparency = tx end end
-			end
-		end
+		-- (the picture keeps its words: the briefing fades in over them and types its own. 27 Nov, main: when they faded
+		-- first, the push landed on a dark screen, a dark beat before the briefing)
 		if pic and t >= N.close[1] then
 			local u = t - N.close[1]
 			if not r.offSaid and u >= 0.3 then
@@ -816,7 +816,10 @@ local function intro(a: Model)
 			local yS = if u < 0.3 then 1 elseif u < 0.55 then math.max(0.012, 1 - (u - 0.3) / 0.25) else 0.012
 			local xS = if u < 0.55 then 1 elseif u < 0.75 then math.max(0.02, 1 - (u - 0.55) / 0.2) else 0.02
 			pic.lit.Size = UDim2.fromScale(xS, yS)
-			pic.glow.BackgroundTransparency = if u < 0.3 then 1 elseif u < 1.05 then 0.05 else 1
+			-- (27 Nov, main: the flash filled the view white. now a soft lift as it goes, brightening only as the picture
+			-- thins to the line: the bright part is never bigger than the line)
+			local fold = math.clamp((u - 0.3) / 0.25, 0, 1)
+			pic.glow.BackgroundTransparency = if u < 0.3 or u >= 1.05 then 1 else 0.78 - 0.63 * fold * fold * fold
 			pic.lit.Visible = u < 1.05
 		end
 		if not r.stepSaid and t >= N.land[1] then r.stepSaid = true; sfx("step_hard", nil, 0.55) end -- (you turn from the desk)
