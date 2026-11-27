@@ -44,10 +44,11 @@ local function hintKey()
 	hint.Size = UDim2.fromOffset(cap.Size.X.Offset + 90, 30)
 	hint.Position = UDim2.new(1, -(cap.Size.X.Offset + 114), 0, 14)
 	-- (27 Nov, ui-mocks round 8: the words end on the wallet's right edge (24 in): the box is cut to cap + gap + words)
-	hintText.TextXAlignment = Enum.TextXAlignment.Right
-	hintText.Size = UDim2.new(1, -(cap.Size.X.Offset + 14), 1, 0)
+	-- (round 9: the words as wide as they are, 10 after the cap; the box grows leftward from the wallet's edge)
+	hintText.TextXAlignment = Enum.TextXAlignment.Left; hintText.AutomaticSize = Enum.AutomaticSize.X
+	hintText.Position = UDim2.fromOffset(cap.Size.X.Offset + 10, 0); hintText.Size = UDim2.fromOffset(0, 30)
 	hint.AnchorPoint = Vector2.new(1, 0); hint.Position = UDim2.new(1, -24, 0, 14)
-	hint.Size = UDim2.fromOffset(cap.Size.X.Offset + 14 + 64, 30)
+	hint.AutomaticSize = Enum.AutomaticSize.X; hint.Size = UDim2.fromOffset(0, 30)
 end
 hintKey()
 require(J:WaitForChild("Settings")).changed("bind.settings", function() task.defer(hintKey) end)

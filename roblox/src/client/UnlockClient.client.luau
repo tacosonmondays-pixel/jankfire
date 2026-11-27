@@ -29,7 +29,7 @@ local track = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundCo
 T.corner(track, 3)
 local fill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(229, 226, 219), Size = UDim2.fromScale(0, 1) }, track)
 T.corner(fill, 3)
-local xpText = T.text(chip, "Xp", "", 12, T.TEXT, T.FONT_HEAVY)
+local xpText = T.text(chip, "Xp", "", 13, T.TEXT, T.FONT_HEAVY)
 xpText.Position = UDim2.fromOffset(184, 0); xpText.Size = UDim2.new(0, 100, 0, 18); xpText.TextTransparency = 0; xpText.TextStrokeTransparency = 0.5 -- (round 8: readable on a light wall)
 local function drawChip()
 	local r = Ranks.of(me:GetAttribute("Xp"))

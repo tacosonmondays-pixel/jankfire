@@ -84,7 +84,7 @@ for i = 1, HC.CHARGES do
 	T.corner(f, 2)
 	pips[i] = { back = bk, fill = f }
 end
-local lockF = word("LOCKED TILL GO", 4, 12)
+local lockF = word("LOCKED", 4, 12) -- (round 9: one word for it, as AUTO GRAPPLE says)
 lockF.TextTransparency = 0.25
 local gap = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(8, 1), LayoutOrder = 5 }, readout)
 local autoCap = cap(6)
@@ -155,7 +155,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	row.Visible = show
 	lockF.Visible = lockedNow or (inMatch and not show)
-	lockF.Text = if lockedNow then "LOCKED TILL GO" else "READY"
+	lockF.Text = if lockedNow then "LOCKED" else "READY"
 	lockF.TextTransparency = if lockedNow then 0.25 else 0
 	gap.Visible = (show or lockedNow or inMatch) and auto == true
 	autoCap.Visible = auto == true and not touch; autoWord.Visible = auto == true; autoState.Visible = auto == true; autoB.Visible = false

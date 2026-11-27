@@ -117,7 +117,7 @@ function HubStack.style(face: TextButton, id: string, sized: GuiObject?)
 	face.BackgroundTransparency = 1
 	face.TextColor3 = K.A.WORLD
 	face.FontFace = if alt then K.COND else T.FONT_HEAVY
-	face.TextSize = if small then (if alt then 16 else 15) else (if alt then 24 else 19)
+	face.TextSize = if small then 16 else (if alt then 24 else 19) -- (round 9: the small rows a size up)
 	face.TextStrokeColor3 = Color3.new(0, 0, 0)
 	face.TextStrokeTransparency = 0.55 -- (round 7: firmer on the light floor)
 	face.TextXAlignment = Enum.TextXAlignment.Left

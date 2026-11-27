@@ -642,7 +642,8 @@ return function(C: any): any
 			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
 		end
 		-- (round 8: greyed = ink words on the light plate's grey (this theme's TEXT is light); B's slabs keep MUTED)
-		local l = txt(row, words, 15, if ok then T.INK elseif T.RADIUS == 0 then T.MUTED else Color3.fromRGB(29, 31, 35), T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		local lightPanel = (T.CARD.R + T.CARD.G + T.CARD.B) > 1.5 -- (round 9: by the panel's own brightness)
+		local l = txt(row, words, 15, if ok then T.INK elseif lightPanel then Color3.fromRGB(29, 31, 35) else T.MUTED, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
 		if not ok then l.TextTransparency = 0.35 end -- (round 7: dark words greyed, not light on light: they were unreadable)
 		if need then

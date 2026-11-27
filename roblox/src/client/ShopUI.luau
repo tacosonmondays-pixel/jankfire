@@ -796,6 +796,7 @@ UI.wallet = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.1
 T.corner(UI.wallet); T.edge(UI.wallet)
 UI.walletTxt = txt(UI.wallet, "", 15, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center)
 UI.walletTxt.RichText = true; UI.walletTxt.Size = UDim2.fromScale(1, 1)
+do UI.wallet.BackgroundTransparency = 1; UI.walletTxt.TextColor3 = WHITE; local st = UI.wallet:FindFirstChildOfClass("UIStroke"); if st then st.Enabled = false end end -- (ui-mocks round 9: a label, not a grey plate)
 UI.close = button(UI.top, "CLOSE", "dark", UDim2.fromOffset(110, 40))
 UI.closeKey = T.key(UI.close.face, "B", UDim2.new(1, -30, 0.5, -11))
 UI.close.face.TextXAlignment = Enum.TextXAlignment.Left

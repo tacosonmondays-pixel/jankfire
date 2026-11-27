@@ -389,6 +389,17 @@ local function showTiles(parts: { string }): boolean
 	local every = true
 	for i = 1, #list do if #tileFor(i).heads:GetChildren() <= 1 then every = false end end
 	for i = 1, #list do tileFor(i).heads.Visible = every end
+	do -- (round 9: your side marked: a short bone bar under its tile)
+		local mine = me:GetAttribute("Team")
+		for i = 1, #list do
+			local f = tileFor(i).f
+			local bar = f:FindFirstChild("Mine") :: Frame?
+			if not bar then
+				bar = T.new("Frame", { Name = "Mine", BackgroundColor3 = K.A.BONE, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 4), Size = UDim2.new(0.5, 0, 0, 3) }, f) :: any
+			end
+			(bar :: Frame).Visible = mine == i
+		end
+	end
 	local rd = parts[2] or ""
 	tabRound.Text = string.upper(rd)
 	tabClock.Text = parts[4] or ""

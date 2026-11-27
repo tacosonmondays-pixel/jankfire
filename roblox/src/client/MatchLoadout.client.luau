@@ -282,6 +282,18 @@ local function drawTiles()
 					if d:IsA("BasePart") then d.Color = Color3.new(1, 1, 1); d.Material = Enum.Material.SmoothPlastic; if d:IsA("MeshPart") then d.TextureID = "" end
 					elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") then d:Destroy() end
 				end
+				-- (round 9: one scale for every slot, the loadout's: the room a long rifle needs, a gadget closer; a pistol filled
+				-- its tile like the rifle did)
+				local m = tl.vp:FindFirstChildWhichIsA("Model")
+				local a = tl.vp.AbsoluteSize
+				if m and a.Y > 0 then
+					local cf, sz = m:GetBoundingBox()
+					local asp = a.X / a.Y
+					local floorW = if tl.slot == "utility" then 2.0 else 3.4
+					local r = math.max(math.max(sz.X, sz.Z) / 2 / asp, sz.Y / 2, floorW / asp) * 1.1
+					local dist = r / math.tan(math.rad(tl.cam.FieldOfView / 2))
+					tl.cam.CFrame = CFrame.lookAt(cf.Position - tl.cam.CFrame.LookVector * dist, cf.Position)
+				end
 			end)
 		end
 		tl.vp.ImageColor3 = if on then K.B.INK else Color3.new(1, 1, 1)

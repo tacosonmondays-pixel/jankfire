@@ -441,8 +441,8 @@ local function build()
 
 	-- the weapon chips (slots 1-3): the bottom row of the weapon box (TL "weapon": the item plate, the ammo plate, these),
 	-- inside the HUD's own scaled frame so they line up with the plates
-	chips = T.new("Frame", { Name = "Chips", Size = UDim2.fromOffset(236, 28), BackgroundTransparency = 1 }, pad) :: Frame
-	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
+	chips = T.new("Frame", { Name = "Chips", Size = UDim2.fromOffset(300, 28), BackgroundTransparency = 1 }, pad) :: Frame -- (round 9: the ammo plate's width)
+	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, -- (round 9: on the ammo's right edge)
 		Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, chips)
 	for i = 1, 3 do
 		local f = newFace(chips, "Slot" .. i, "", false)
@@ -450,11 +450,11 @@ local function build()
 		f.LayoutOrder = i
 		-- (round 8: each chip as wide as its word, 58 to 112: "ASSAULT RIFLE" didn't fit a third of the row even at 8 px)
 		f.Size = UDim2.fromOffset(0, 28); f.AutomaticSize = Enum.AutomaticSize.X
-		f.TextSize = 11
+		f.TextSize = 13 -- (round 9: a size up; drawn at about 0.7 on a phone)
 		f.FontFace = T.FONT_BOLD
 		f.TextWrapped = false
 		f.TextTruncate = Enum.TextTruncate.AtEnd
-		T.new("UISizeConstraint", { MinSize = Vector2.new(58, 28), MaxSize = Vector2.new(112, 28) }, f)
+		T.new("UISizeConstraint", { MinSize = Vector2.new(62, 28), MaxSize = Vector2.new(140, 28) }, f)
 		T.new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, f)
 		f.Activated:Connect(function() if active and not settingsOpen() then Keys.tap(SLOT_KEYS[i]) end end)
 	end
@@ -1121,7 +1121,7 @@ RunService.Heartbeat:Connect(function()
 			placeHudBox("Ammo", o + UDim2.fromOffset(2, 48), function() end, function(f: any)
 				if not (f and f.swiped) then Keys.tap(Enum.KeyCode.R) end -- (a tap reloads; a swipe changed weapon instead)
 			end)
-			local cp = o + UDim2.fromOffset(0, -34) -- (27 Nov: over the gadget card: under the taller A ammo they fell off a phone's screen)
+			local cp = o + UDim2.fromOffset(2, -34) -- (27 Nov: over the gadget card: under the taller A ammo they fell off a phone's screen)
 			if chips.Position ~= cp then chips.Position = cp end
 		end
 	end

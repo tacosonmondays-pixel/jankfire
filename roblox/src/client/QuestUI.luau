@@ -75,10 +75,11 @@ function UI.icon(kind: string, parent: Instance?, size: number?): Frame
 		local rim = new("Frame", { Name = "Rim", BorderSizePixel = 0, BackgroundColor3 = BRASS, Size = UDim2.fromScale(1, 1) }, f)
 		T.corner(rim, 999)
 		local head = new("Frame", { Name = "Head", BorderSizePixel = 0, BackgroundColor3 = BRASS_DARK, AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.72, 0.72) }, rim)
+			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.62, 0.62), BackgroundTransparency = 1 }, rim)
 		T.corner(head, 999)
+		new("UIStroke", { Color = BRASS_DARK, Thickness = math.max(1, s / 12) }, head) -- (round 9: flat, one ring, like the ticket's family)
 		local face = new("Frame", { Name = "Face", BorderSizePixel = 0, BackgroundColor3 = BRASS, AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.86, 0.86) }, head)
+			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.86, 0.86), Visible = false }, head)
 		T.corner(face, 999)
 		local primer = new("Frame", { Name = "Primer", BorderSizePixel = 0, BackgroundColor3 = BRASS_HI, AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.38, 0.38) }, face)
