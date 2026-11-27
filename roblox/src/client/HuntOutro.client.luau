@@ -99,6 +99,7 @@ local function stop()
 	if r.grade then r.grade:Destroy() end
 	if r.blur then r.blur:Destroy() end
 	if r.static then r.static:Destroy() end
+	if r.warmG then r.warmG:Destroy() end
 	if r.lensBound then pcall(function() RunService:UnbindFromRenderStep("HuntOutroLens") end) end
 	for d, v in r.hidden do if d.Parent then (d :: any).LocalTransparencyModifier = v end end -- (the real bodies back)
 	for _, f in r.folders do if f.Parent then f:Destroy() end end
@@ -705,6 +706,17 @@ local function play(a: any)
 	img.ScaleType = Enum.ScaleType.Crop; img.Parent = st
 	st.Parent = pg
 	r.static = st
+	-- (v15: preloaded isn't drawn: the static's pictures were plain grey for 0.3 s the first time) each drawn once now,
+	-- 2 px and almost clear, so the glitch shows them from its first frame
+	local warmG = Instance.new("ScreenGui")
+	warmG.Name = "HuntOutroWarm"; warmG.IgnoreGuiInset = true; warmG.DisplayOrder = 1; warmG.ResetOnSpawn = false
+	for i, id in HC.INTRO.static or {} do
+		local l = Instance.new("ImageLabel")
+		l.Size = UDim2.fromOffset(2, 2); l.Position = UDim2.fromOffset(i * 3, 0); l.BackgroundTransparency = 1
+		l.ImageTransparency = 0.97; l.Image = "rbxassetid://" .. tostring(id); l.Parent = warmG
+	end
+	warmG.Parent = pg
+	r.warmG = warmG
 
 	local fired: { [string]: boolean } = {}
 	local function once(key: string, at: number): boolean
@@ -761,7 +773,7 @@ local function play(a: any)
 		-- the film owns the screen: every HUD off but the bars and the static
 		if pg then
 			for _, g in pg:GetChildren() do
-				if g:IsA("ScreenGui") and g.Name ~= "CineBars" and g ~= st then
+				if g:IsA("ScreenGui") and g.Name ~= "CineBars" and g ~= st and g.Name ~= "HuntOutroWarm" then
 					if r.guis[g] == nil then r.guis[g] = g.Enabled end
 					if g.Enabled then g.Enabled = false end
 				end
