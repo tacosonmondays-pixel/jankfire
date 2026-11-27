@@ -37,6 +37,7 @@ local PARTS = {
 	head = { "Head" },
 }
 local ARMS, LEGS = 3, 12
+local BLAST = { frag = true } -- (blasts that aren't a Weapons row: Utility's frag)
 local function crawl(lim: number): boolean return bit32.band(lim, LEGS) == LEGS end
 local function hop(lim: number): boolean return bit32.band(lim, LEGS) ~= 0 and not crawl(lim) end
 
@@ -100,7 +101,15 @@ local function ring(at: Vector3, r: number, col: Color3, parent: Instance)
 	TweenService:Create(p, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(0.3, r * 2, r * 2), Transparency = 1 }):Play()
 	Debris:AddItem(p, 0.7)
 end
--- a bit comes off: a plain copy flies, the one on the body goes invisible (nothing hits it)
+-- a bit comes off: a plain copy flies, the one on the body goes invisible (nothing hits it). (27 Nov 2026, the owner:
+-- "make sure they can be dismembered and body parts aren't floating": cartoon pieces, no blood. The copy keeps the
+-- zombie's own colours (its ends are closed, nothing inside shows); a head takes its glowing eyes with it (before, they
+-- stayed on the hidden head); the server simulates it (no ownership handed about mid-fall); every client puffs a little
+-- grey dust and a dull thump where it comes off (ZmLimb) and fades it with the corpses (ZmFade: ZombieBodies.client).
+-- At most LOOSE pieces lie about: the oldest goes first)
+local LOOSE, LOOSE_LIFE, LOOSE_FADE = 24, 3.2, 0.6
+local loose: { BasePart } = {}
+local function srv(): number return workspace:GetServerTimeNow() end
 local function cut(g: any, z: any, limb: string, by: any?, dead: boolean)
 	local s = ZSt[z]
 	if not s then return end
@@ -115,20 +124,49 @@ local function cut(g: any, z: any, limb: string, by: any?, dead: boolean)
 			if d.Magnitude > 1e-3 then away = (d.Unit + Vector3.new(0, 0.6, 0)).Unit end
 		end
 	end
+	local first: BasePart? = nil -- (a limb comes off whole: its pieces welded together, one puff and one thump for it)
 	for _, name in PARTS[limb] do
 		local p = z.m:FindFirstChild(name)
 		if not p or not p:IsA("BasePart") then continue end
 		local c = p:Clone()
-		for _, d in c:GetChildren() do if not d:IsA("SpecialMesh") then d:Destroy() end end
+		for _, d in c:GetChildren() do
+			if d:IsA("SpecialMesh") or (d:IsA("BasePart") and string.match(d.Name, "^ZmEye")) then continue end -- (the eyes go with the head)
+			d:Destroy()
+		end
 		c.Anchored = false; c.CanCollide = true; c.CanQuery = false; c.CanTouch = false; c.Massless = false
 		c.CollisionGroup = GROUP
+		c:SetAttribute("ZmFade", srv() + LOOSE_LIFE)
+		if first then
+			local wc = Instance.new("WeldConstraint")
+			wc.Part0, wc.Part1 = first, c
+			wc.Parent = c
+		else
+			first = c
+			c:SetAttribute("ZmLimb", true)
+		end
 		c.Parent = g.model
-		c.AssemblyLinearVelocity = away * (28 + math.random() * 14)
-		c.AssemblyAngularVelocity = Vector3.new(math.random() * 16 - 8, math.random() * 16 - 8, math.random() * 16 - 8)
-		Debris:AddItem(c, 4)
+		Debris:AddItem(c, LOOSE_LIFE + LOOSE_FADE + 0.1)
+		table.insert(loose, c)
+		while #loose > LOOSE do
+			local old = table.remove(loose, 1)
+			if old and old.Parent then old:Destroy() end
+		end
+		task.delay(LOOSE_LIFE + LOOSE_FADE + 0.2, function()
+			local i = table.find(loose, c)
+			if i then table.remove(loose, i) end
+		end)
 		p.Transparency = 1
 		p.CanQuery = false
-		for _, d in p:GetChildren() do if d:IsA("Decal") then d.Transparency = 1 end end
+		for _, d in p:GetChildren() do
+			if d:IsA("Decal") then d.Transparency = 1
+			elseif d:IsA("BasePart") and string.match(d.Name, "^ZmEye") then d.Transparency = 1 end -- (the body's own: hidden)
+		end
+	end
+	if first then -- (the whole limb flies as one, owned by the server)
+		local f0 = first :: BasePart
+		pcall(function() f0:SetNetworkOwner(nil) end)
+		f0.AssemblyLinearVelocity = away * (22 + math.random() * 12)
+		f0.AssemblyAngularVelocity = Vector3.new(math.random() * 16 - 8, math.random() * 16 - 8, math.random() * 16 - 8)
 	end
 	if limb == "head" then for _, h in s.hatParts do h.Transparency = 1 end end
 	if not dead then
@@ -243,6 +281,26 @@ local function hit(g: any, z: any, amt: number, m: any, wid: string): number
 	end
 	local left = {}
 	for _, l in LIMBS do if bit32.band(s.lim, BIT[l]) == 0 then table.insert(left, l) end end
+	-- (27 Nov 2026: where the hit landed picks the limb when the server knows it: a shotgun at the legs takes the legs.
+	-- the nearest limb piece within 0.9 studs of the point, else the body; no point (a bot, a blast): the old dice)
+	local at = Fight.hitAt
+	local w0 = W[wid]
+	local blasty = BLAST[wid] == true or (w0 ~= nil and w0.kind ~= "hitscan" and w0.kind ~= "melee")
+	if not zone and at and not blasty then
+		local best, bd = nil :: string?, 0.9
+		for _, l in left do
+			for _, name in PARTS[l] do
+				local pt = z.m:FindFirstChild(name)
+				if pt and pt:IsA("BasePart") then
+					local o = pt.CFrame:PointToObjectSpace(at)
+					local h = pt.Size / 2
+					local q = Vector3.new(math.max(math.abs(o.X) - h.X, 0), math.max(math.abs(o.Y) - h.Y, 0), math.max(math.abs(o.Z) - h.Z, 0))
+					if q.Magnitude < bd then best, bd = l, q.Magnitude end
+				end
+			end
+		end
+		zone = best or "torso"
+	end
 	if not zone then zone = if #left > 0 and math.random() < L.random then left[math.random(1, #left)] else "torso" end
 	local lethal = amt >= z.f.hp
 	local zn = zone :: string
@@ -252,8 +310,7 @@ local function hit(g: any, z: any, amt: number, m: any, wid: string): number
 	elseif zn == "head" and lethal then
 		cut(g, z, "head", nil, true)
 	end
-	local w = W[wid]
-	if lethal and w and w.kind ~= "hitscan" and w.kind ~= "melee" then -- (blown up, bowled over: more bits)
+	if lethal and blasty then -- (blown up, bowled over: more bits; a frag counts, 27 Nov 2026: it isn't a Weapons row)
 		for _, l in LIMBS do if math.random() < 0.5 then cut(g, z, l, nil, true) end end
 	end
 	return amt

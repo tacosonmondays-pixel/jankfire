@@ -3824,6 +3824,18 @@
     ],
     "L": -36
    }
+  ],
+  "zm_limb": [
+   {
+    "id": 9113535217,
+    "title": "Body Slam Low End Thump 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.35
+    ],
+    "L": -23
+   }
   ]
  },
  "vol": {
@@ -4055,7 +4067,8 @@
   "zm_term_key": -37,
   "zm_term_sel": -31,
   "zm_term_ready": -27,
-  "zm_term_off": -28
+  "zm_term_off": -28,
+  "zm_limb": -28
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -4159,7 +4172,8 @@
   "zm_revive": 0.04,
   "zm_revpat": 0.04,
   "zm_term_key": 0.08,
-  "zm_term_sel": 0.03
+  "zm_term_sel": 0.03,
+  "zm_limb": 0.1
  },
  "loop": {
   "minigun_spin": true,

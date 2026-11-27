@@ -176,40 +176,43 @@ function ZombieNav.cellOf(nav: Nav, p: Vector3): number
 end
 
 -- a flow field: how far every cell is from `at` on foot (Dijkstra; seeded on the cells round them they can see: they
--- might be up on a table). out is reused (a table of N)
-function ZombieNav.flow(nav: Nav, open: { boolean }, at: Vector3, out: { [number]: number })
-	table.clear(out)
+-- might be up on a table). (27 Nov 2026, the owner: "Make sure the zombies aren't laggy": a whole field over the
+-- opened school is 5-20 ms in one go, the zombies' spikes. it's a job now: flowBegin seeds it, flowStep runs it a few
+-- ms at a time (one tick's share) until it's done; flow() still runs one to the end at once, into out)
+export type FlowJob = { nav: Nav, open: { boolean }, d: { [number]: number }, hc: { number }, hd: { number }, done: boolean }
+local function hpush(hc: { number }, hd: { number }, c: number, d: number)
+	local i = #hc + 1
+	hc[i], hd[i] = c, d
+	while i > 1 do
+		local p = i // 2
+		if hd[p] <= d then break end
+		hc[i], hd[i] = hc[p], hd[p]
+		i = p
+	end
+	hc[i], hd[i] = c, d
+end
+local function hpop(hc: { number }, hd: { number }): (number, number)
+	local c, d = hc[1], hd[1]
+	local lc, ld = hc[#hc], hd[#hd]
+	hc[#hc], hd[#hd] = nil, nil
+	local n = #hc
+	if n > 0 then
+		local i = 1
+		while true do
+			local k = 2 * i
+			if k > n then break end
+			if k + 1 <= n and hd[k + 1] < hd[k] then k += 1 end
+			if hd[k] >= ld then break end
+			hc[i], hd[i] = hc[k], hd[k]
+			i = k
+		end
+		hc[i], hd[i] = lc, ld
+	end
+	return c, d
+end
+function ZombieNav.flowBegin(nav: Nav, open: { boolean }, at: Vector3): FlowJob
+	local out: { [number]: number } = {}
 	local hc, hd = {}, {}
-	local function push(c: number, d: number)
-		local i = #hc + 1
-		hc[i], hd[i] = c, d
-		while i > 1 do
-			local p = i // 2
-			if hd[p] <= d then break end
-			hc[i], hd[i] = hc[p], hd[p]
-			i = p
-		end
-		hc[i], hd[i] = c, d
-	end
-	local function pop(): (number, number)
-		local c, d = hc[1], hd[1]
-		local lc, ld = hc[#hc], hd[#hd]
-		hc[#hc], hd[#hd] = nil, nil
-		local n = #hc
-		if n > 0 then
-			local i = 1
-			while true do
-				local k = 2 * i
-				if k > n then break end
-				if k + 1 <= n and hd[k + 1] < hd[k] then k += 1 end
-				if hd[k] >= ld then break end
-				hc[i], hd[i] = hc[k], hd[k]
-				i = k
-			end
-			hc[i], hd[i] = lc, ld
-		end
-		return c, d
-	end
 	local ci, cj = math.floor((at.X - nav.x0) / CELL), math.floor((at.Z - nav.z0) / CELL)
 	for dj = -2, 2 do
 		for di = -2, 2 do
@@ -225,21 +228,41 @@ function ZombieNav.flow(nav: Nav, open: { boolean }, at: Vector3, out: { [number
 				local d = math.sqrt(dx * dx + dz * dz)
 				if d > 6.6 then continue end
 				if d > 0.9 and workspace:Raycast(Vector3.new(at.X, at.Y + 1.5, at.Z), Vector3.new(dx, 0, dz), nav.params) then continue end
-				if d < (out[c] or INF) then out[c] = d; push(c, d) end
+				if d < (out[c] or INF) then out[c] = d; hpush(hc, hd, c, d) end
 			end
 		end
 	end
+	return { nav = nav, open = open, d = out, hc = hc, hd = hd, done = false }
+end
+-- run a job until it's done or budgetMs is spent (checked every 256 cells): true when done
+function ZombieNav.flowStep(job: FlowJob, budgetMs: number): boolean
+	if job.done then return true end
+	local nav, open, out, hc, hd = job.nav, job.open, job.d, job.hc, job.hd
+	local t0 = os.clock()
+	local k = 0
 	while #hc > 0 do
-		local c, d = pop()
-		if d > (out[c] or INF) + 1e-3 then continue end
-		local row = nav.links[c]
-		if not row then continue end
-		for k, nb in row do
-			if nb < 0 or not walkable(nav, open, nb) then continue end
-			local nd = d + D8[k][3] * CELL
-			if nd < (out[nb] or INF) then out[nb] = nd; push(nb, nd) end
+		local c, d = hpop(hc, hd)
+		if d <= (out[c] or INF) + 1e-3 then
+			local row = nav.links[c]
+			if row then
+				for j, nb in row do
+					if nb < 0 or not walkable(nav, open, nb) then continue end
+					local nd = d + D8[j][3] * CELL
+					if nd < (out[nb] or INF) then out[nb] = nd; hpush(hc, hd, nb, nd) end
+				end
+			end
 		end
+		k += 1
+		if k % 256 == 0 and (os.clock() - t0) * 1000 >= budgetMs then return false end
 	end
+	job.done = true
+	return true
+end
+function ZombieNav.flow(nav: Nav, open: { boolean }, at: Vector3, out: { [number]: number })
+	local job = ZombieNav.flowBegin(nav, open, at)
+	ZombieNav.flowStep(job, math.huge)
+	table.clear(out)
+	for c, d in job.d do out[c] = d end
 end
 
 -- walk downhill on a field: up to 4 cells ahead, as far as there's a straight line to it. nil at the bottom

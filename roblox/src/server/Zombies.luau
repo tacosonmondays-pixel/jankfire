@@ -69,7 +69,7 @@ type Game = {
 	members: { Member }, byF: { [Fighter]: Member }, mobs: { Mob }, byMob: { [Fighter]: Mob },
 	fieldT: number, tick: number, lastT: number, templates: { [number]: Model }, prompts: { Instance }, mobId: number,
 	overT: number?, conn: RBXScriptConnection?, id: string, players: { Player },
-	cost: { n: number, sum: number, max: number }, -- (ms a tick: the server cost)
+	cost: { n: number, sum: number, max: number, sec: { [string]: number }? }, -- (ms a tick: the server cost; sec: per part)
 }
 local G: Game? = nil
 Zombies.game = function(): Game? return G end
@@ -294,10 +294,16 @@ local function template(kind: number): Model
 	if hum then
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-		hum.BreakJointsOnDeath = true
+		-- (27 Nov 2026, the owner: "body parts aren't floating after they die": a death is a ragdoll now, Zombies' ragdoll(),
+		-- not joints broken into loose bits; and the states a zombie never needs are off: less for the server's humanoid
+		-- to weigh each step, and no tripping or flinging about)
+		hum.BreakJointsOnDeath = false
 		hum.AutoJumpEnabled = false
-		hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-		hum:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+		for _, st in { Enum.HumanoidStateType.Climbing, Enum.HumanoidStateType.Swimming, Enum.HumanoidStateType.FallingDown,
+			Enum.HumanoidStateType.Ragdoll, Enum.HumanoidStateType.GettingUp, Enum.HumanoidStateType.Seated,
+			Enum.HumanoidStateType.Flying, Enum.HumanoidStateType.PlatformStanding, Enum.HumanoidStateType.StrafingNoPhysics } do
+			hum:SetStateEnabled(st, false)
+		end
 	end
 	local hs = body:FindFirstChild("Health")
 	if hs then hs:Destroy() end
@@ -389,7 +395,70 @@ local function spawnOne(g: Game, live: { Member }): boolean
 	if not okS then warn("[jankfire] zombies spawned: " .. tostring(errS)) end
 	return true
 end
-local function removeMob(g: Game, z: Mob, keep: boolean?)
+-- a dead zombie (27 Nov 2026, the owner: "make sure ... body parts aren't floating after they die!!"): one ragdoll, not
+-- loose bits. Every joint becomes a limited ball socket (it folds, it doesn't flail), the root part goes (it was
+-- anchored while it climbed in: the body comes free of it), a piece already shot off (hidden) goes, every piece left
+-- collides with the map (not with zombies or players: the groups), the server simulates them all (no handing pieces
+-- between players mid-fall), the hit's shove goes to the whole body at once. It lies CORPSE_LIFE s, fades on every
+-- client (ZmFade: ZombieBodies.client) and goes. At most CORPSES at once: the oldest goes first.
+local CORPSES, CORPSE_LIFE, FADE = 10, 3.2, 0.6
+local corpses: { Model } = {}
+local function srvNow(): number return workspace:GetServerTimeNow() end
+local function ragdoll(z: Mob, vel: Vector3?)
+	local m = z.m
+	pcall(function()
+		local an = z.hum:FindFirstChildOfClass("Animator")
+		if an then for _, tr in (an :: Animator):GetPlayingAnimationTracks() do tr:Stop(0) end end
+	end)
+	for _, d in m:GetDescendants() do
+		if not d:IsA("Motor6D") then continue end
+		local p0, p1 = d.Part0, d.Part1
+		if p0 and p1 and p0.Name ~= "HumanoidRootPart" and p1.Name ~= "HumanoidRootPart" then
+			local a0, a1 = p0:FindFirstChild(d.Name .. "RigAttachment"), p1:FindFirstChild(d.Name .. "RigAttachment")
+			if a0 and a1 and a0:IsA("Attachment") and a1:IsA("Attachment") then
+				local bs = Instance.new("BallSocketConstraint")
+				bs.Attachment0, bs.Attachment1 = a0, a1
+				bs.LimitsEnabled = true
+				bs.UpperAngle = if d.Name == "Neck" then 35 else 70
+				bs.TwistLimitsEnabled = true
+				bs.TwistLowerAngle, bs.TwistUpperAngle = -30, 30
+				bs.Parent = p1
+			end
+		end
+		d:Destroy()
+	end
+	z.root:Destroy()
+	local shove = if vel then vel * 0.35 + Vector3.new(0, 4, 0) else Vector3.zero
+	if shove.Magnitude > 30 then shove = shove.Unit * 30 end
+	for _, p in m:GetDescendants() do
+		if not p:IsA("BasePart") then continue end
+		if p.Transparency >= 0.99 and not string.match(p.Name, "^ZmEye") then p:Destroy(); continue end -- (shot off already)
+		p.Anchored = false
+		p.CanQuery, p.CanTouch = false, false
+		if not string.match(p.Name, "^ZmEye") then p.CanCollide = true; p.Massless = false end
+	end
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			pcall(function() p:SetNetworkOwner(nil) end)
+			p.AssemblyLinearVelocity = shove
+		end
+	end
+	table.insert(corpses, m)
+	while #corpses > CORPSES do
+		local old = table.remove(corpses, 1)
+		if old and old.Parent then old:Destroy() end
+	end
+	task.delay(CORPSE_LIFE, function()
+		if not m.Parent then return end
+		m:SetAttribute("ZmFade", srvNow())
+		task.delay(FADE + 0.1, function()
+			local i = table.find(corpses, m)
+			if i then table.remove(corpses, i) end
+			if m.Parent then m:Destroy() end
+		end)
+	end)
+end
+local function removeMob(g: Game, z: Mob, keep: boolean?, vel: Vector3?)
 	local i = table.find(g.mobs, z)
 	if i then table.remove(g.mobs, i) end
 	g.byMob[z.f] = nil
@@ -398,7 +467,11 @@ local function removeMob(g: Game, z: Mob, keep: boolean?)
 	Fight.byModel[z.m] = nil
 	z.f.alive = false
 	if keep then
-		task.delay(2.5, function() if z.m.Parent then z.m:Destroy() end end) -- (the pieces lie there a moment)
+		local ok, err = pcall(ragdoll, z, vel)
+		if not ok then
+			warn("[jankfire] zombie ragdoll: " .. tostring(err))
+			task.delay(CORPSE_LIFE, function() if z.m.Parent then z.m:Destroy() end end)
+		end
 	else
 		z.m:Destroy()
 	end
@@ -551,7 +624,9 @@ local function step(g: Game, z: Mob, dt: number)
 	end
 	local sp = tx.Magnitude
 	if sp > 0.05 then
-		z.hum.WalkSpeed = math.min(sp, cap * 1.3)
+		-- (WalkSpeed and the walk's speed replicate to every client: written only when they change enough to see)
+		local ws = math.min(sp, cap * 1.3)
+		if math.abs(z.hum.WalkSpeed - ws) > 0.4 then z.hum.WalkSpeed = ws end
 		z.hum:Move(tx / sp, false)
 	else
 		z.hum:Move(Vector3.zero, false)
@@ -568,7 +643,8 @@ local function step(g: Game, z: Mob, dt: number)
 		local v = flat(z.root.AssemblyLinearVelocity).Magnitude
 		if v > 1 then
 			if not wk.IsPlaying then wk:Play(0.2) end
-			wk:AdjustSpeed(math.clamp(v / 9, 0.6, 2.2))
+			local sp2 = math.clamp(v / 9, 0.6, 2.2)
+			if math.abs(wk.Speed - sp2) > 0.12 then wk:AdjustSpeed(sp2) end
 		elseif wk.IsPlaying then
 			wk:Stop(0.3)
 		end
@@ -618,6 +694,11 @@ local function respawn(m: Member)
 			pcall(function() p:RequestStreamAroundAsync(at, 6) end)
 		end
 		Fight.spawn(f)
+		-- (27 Nov 2026: after a down, a fresh game could leave the player's Hp attribute at the down's 0 when this spawn
+		-- met one already under way; the HUD and the heartbeat read it: written once the body's alive)
+		local t0 = now()
+		while not f.alive and now() - t0 < 6 do task.wait(0.1) end
+		if f.alive and m.p and m.p.Parent then Fight.syncHp(f) end
 	end)
 end
 -- back up where you went down (a revive), with your kit
@@ -902,8 +983,22 @@ local function removeBot(g: Game, m: Member)
 end
 
 -- ------------------------------------------------------------------ the round loop
+-- (27 Nov 2026, the owner: "Make sure the zombies aren't laggy": a field over the opened school is 5-20 ms; four in
+-- one tick were the spikes. one field at a time now, the stalest that needs it first, built FIELD_MS a tick
+-- (ZombieNav.flowBegin / flowStep) while the zombies keep walking the old one; it lands when it's done)
+local FIELD_MS = 2.5
 local function fields(g: Game)
 	local n = now()
+	local job = (g :: any).flowJob
+	if job then
+		if Nav.flowStep(job.j, FIELD_MS) then
+			local fd = job.m.field
+			if fd then fd.d, fd.t, fd.at = job.j.d, job.t, job.at end
+			(g :: any).flowJob = nil
+		end
+		return
+	end
+	local pick, pickT, pickAt = nil :: Member?, math.huge, Vector3.zero
 	for _, m in g.members do
 		if not m.f.alive then continue end
 		local r = Fight.root(m.f)
@@ -913,9 +1008,17 @@ local function fields(g: Game)
 		if not fl then fl = { d = {}, t = -math.huge, at = Vector3.new(1e9, 0, 0) }; m.field = fl end
 		local fd = fl :: { d: { [number]: number }, t: number, at: Vector3 }
 		local moved = flat(at - fd.at).Magnitude + (if g.nav.L > 1 then math.abs(at.Y - fd.at.Y) else 0)
-		if fd.t > g.fieldT and n - fd.t < 1.5 and (n - fd.t < 0.3 or moved < 2.25) then continue end
-		Nav.flow(g.nav, g.open, at, fd.d)
-		fd.t, fd.at = n, at
+		if fd.t > g.fieldT and n - fd.t < 1.5 and (n - fd.t < 0.4 or moved < 2.5) then continue end
+		if fd.t < pickT then pick, pickT, pickAt = m, fd.t, at end
+	end
+	if pick then
+		local j = Nav.flowBegin(g.nav, g.open, pickAt)
+		if Nav.flowStep(j, FIELD_MS) then
+			local fd = pick.field :: { d: { [number]: number }, t: number, at: Vector3 }
+			fd.d, fd.t, fd.at = j.d, n, pickAt
+		else
+			(g :: any).flowJob = { m = pick, j = j, t = n, at = pickAt }
+		end
 	end
 end
 local function squadTick(g: Game, dt: number)
@@ -995,8 +1098,16 @@ local function cleared(g: Game)
 	if not okC then warn("[jankfire] zombies cleared: " .. tostring(errC)) end
 	publish()
 end
+-- (27 Nov 2026, the owner: "Make sure the zombies aren't laggy": where a tick's time goes, per part, for the "cost" op)
+local function lap(g: Game, k: string, t0: number): number
+	local t = os.clock()
+	local sec = (g.cost :: any).sec
+	if sec then sec[k] = (sec[k] or 0) + (t - t0) * 1000 end
+	return t
+end
 local function tick(g: Game, dt: number)
 	g.tick += 1
+	local t0 = os.clock()
 	for _, z in table.clone(g.mobs) do
 		if z.ph == "hunt" and z.f.alive and (now() - z.seen > 25 or z.stuck > 8) then call("lost", g, z); removeMob(g, z); g.toSpawn += 1 end -- lost or wedged: again from a window
 	end
@@ -1006,9 +1117,11 @@ local function tick(g: Game, dt: number)
 		return
 	end
 	fields(g)
+	t0 = lap(g, "fields", t0)
 	squadTick(g, dt)
 	local okX, errX = pcall(call, "tick", g, dt)
 	if not okX then warn("[jankfire] zombies extra tick: " .. tostring(errX)) end
+	t0 = lap(g, "ext", t0)
 	if g.st == "over" or G ~= g then return end -- (27 Nov: an extraction ends the game in there; a stale break would start the next round)
 	-- over when nobody's up: everyone down or out (someone on their way back in, a respawn loading, still counts as up)
 	local anyUp = false
@@ -1021,6 +1134,7 @@ local function tick(g: Game, dt: number)
 		return
 	end
 	for _, z in g.mobs do step(g, z, dt) end
+	t0 = lap(g, "zombies", t0)
 	local bs = Zombies.ext.botStep -- (the bots' brains: ZombieBots.luau)
 	if bs then
 		for _, m in g.members do
@@ -1030,6 +1144,7 @@ local function tick(g: Game, dt: number)
 			end
 		end
 	end
+	t0 = lap(g, "bots", t0)
 	if g.st ~= "live" then
 		if now() >= g.untilT then nextRound(g) end
 		if g.tick % 5 == 0 then publish() end
@@ -1126,7 +1241,7 @@ local function hook()
 			give(m, R.hit, "hit")
 		end
 	end
-	Fight.zombieDied = function(info: any)
+	Fight.zombieDied = function(info: any, vel: Vector3?)
 		local g = G
 		local z = g and g.byMob[info.v]
 		if not g or not z then return end
@@ -1140,7 +1255,7 @@ local function hook()
 			if head then k.heads += 1 end
 		end
 		call("killed", g, z, k)
-		removeMob(g, z, true)
+		removeMob(g, z, true, vel)
 	end
 	Rules.onArm = function(f: any)
 		local m = member(f)
@@ -1200,7 +1315,7 @@ startGame = function(players: { Player }, mapName: string): (string?, string?)
 		map = map, model = model, nav = nav, open = {}, areas = {}, n = 0, st = "pre", untilT = now() + R.first,
 		toSpawn = 0, spawnAt = 0, win = {}, members = {}, byF = {}, mobs = {}, byMob = {}, fieldT = now(), tick = 0, lastT = now(),
 		templates = {}, prompts = {}, mobId = 0, overT = nil, conn = nil, id = "", players = {},
-		cost = { n = 0, sum = 0, max = 0 },
+		cost = { n = 0, sum = 0, max = 0, sec = {} },
 	}
 	gameN += 1
 	g.id = "zm:" .. gameN
@@ -1310,7 +1425,12 @@ function Zombies.state(): { [string]: any }
 	end
 	return { on = true, n = g.n, st = g.st, toSpawn = g.toSpawn, mobs = mobs, members = ms, open = g.open, cells = g.nav.cells, built = g.nav.built,
 		refusal = Zombies.lastRefusal, areas = g.areas,
-		tickMs = if g.cost.n > 0 then string.format("avg %.2f max %.2f over %d ticks", g.cost.sum / g.cost.n, g.cost.max, g.cost.n) else "",
+		tickMs = if g.cost.n > 0 then string.format("avg %.2f max %.2f over %d ticks", g.cost.sum / g.cost.n, g.cost.max, g.cost.n) .. (function()
+			local out = {}
+			for k, v in (g.cost :: any).sec or {} do table.insert(out, string.format("%s %.2f", k, v / g.cost.n)) end
+			table.sort(out)
+			return " (per tick: " .. table.concat(out, ", ") .. ")"
+		end)() else "",
 		layers = g.nav.L, windows = #g.map.windows, doors = #g.map.doors }
 end
 function Zombies.round(n: number)
@@ -1369,8 +1489,36 @@ function Zombies.init(fight: any, matches: any?)
 			elseif op == "open" then Zombies.openAll(); return true
 			elseif op == "door" then local g = G; if g and g.map.doors[tonumber(a) or 0] then openDoor(g, tonumber(a) :: number, nil) end; return true -- (one door: its roll)
 			elseif op == "max" then R.maxAlive = tonumber(a); return true
-			elseif op == "cost" then local g = G; if g then g.cost = { n = 0, sum = 0, max = 0 } end; return true
+			elseif op == "cost" then local g = G; if g then g.cost = { n = 0, sum = 0, max = 0, sec = {} } end; return true
 			elseif op == "maps" then return Zombies.maps()
+			elseif op == "zhurt" then
+				-- (27 Nov 2026) hurt live zombies through the real path (limbs, deaths, ragdolls): a = "legs" (sawed-off hits
+				-- at the knees), "head" (a revolver headshot kill), "blast" (a frag kill), "body" (a chest kill); b = how many.
+				-- The first player's fighter is the one who did it
+				local g = G
+				if not g then return "no game" end
+				local pl = Players:GetPlayers()[1]
+				local by = pl and Fight.byPlayer[pl]
+				local n, done = tonumber(b) or 1, 0
+				for _, z in table.clone(g.mobs) do
+					if done >= n then break end
+					if not z.f.alive or z.ph ~= "hunt" then continue end
+					local r = z.root
+					local foot = feetOf(r)
+					if a == "legs" then
+						for _ = 1, 3 do
+							if z.f.alive then Fight.hurt(z.f, (z.f.maxHp or 100) * 0.4, by, "sawnoff", false, nil, foot + r.CFrame.RightVector * 0.5 + Vector3.new(0, 1.1, 0)) end
+						end
+					elseif a == "head" then
+						Fight.hurt(z.f, z.f.hp + 1, by, "revolver", true, nil, r.Position + Vector3.new(0, 2.2, 0))
+					elseif a == "blast" then
+						Fight.hurt(z.f, z.f.hp + 1, by, "frag", false, Vector3.new(0, 34, 0), r.Position)
+					else
+						Fight.hurt(z.f, z.f.hp + 1, by, "revolver", false, nil, r.Position + Vector3.new(0, 0.9, 0))
+					end
+					done += 1
+				end
+				return done
 			end
 			local tx = Zombies.ext.test -- (stage 2's own: ZombieExtra)
 			if tx then local r = tx(op, a, b); if r ~= nil then return r end end

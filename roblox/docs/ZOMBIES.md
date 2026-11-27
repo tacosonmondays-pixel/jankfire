@@ -712,3 +712,36 @@ segments and a faint emission; boxes pre-filled with :Emit so nothing fades up).
   3.48 -> 3.50 ms, GPU 3.22 -> 3.29 ms (two runs, 3 s each). Place version 1640.
 - Sheet: side notes 21-zombies-dust-27nov.jpg (before / after / the tunnel's beam / the rejected first shaft); clip
   zombies-dust-27nov.mp4.
+
+### 4.16 No lag, no floating parts, cartoon dismemberment (27 Nov; the owner: "Make sure the zombies aren't laggy either make sure they can be dismembered and body parts aren't floating after they die!!")
+- **Measured first** (Studio, round 21, 36 alive, solo + 3 bots, 10 s; the "cost" op now splits a tick by part):
+  | | before | after |
+  |---|---|---|
+  | zombie AI tick (server, every 0.1 s) | avg 8.4 ms, max 16.8 | avg 2.8 ms, max 11.4 |
+  | of it, the flow fields | ~3-4.4 ms a tick | 1.9 ms |
+  | server heartbeat / worst frame | 2.2 ms / 49 ms | 1.2 ms / 20 ms |
+  | server send | 35 kB/s | 37 kB/s (with ragdolls) |
+  | client | 60 fps, render 3.9 ms | 60 fps, render 4.0 ms (worst frame varies 29-50 ms run to run) |
+- **The fixes:** a flow field over the opened school costs 5-20 ms; several were rebuilt in the same tick (the spikes).
+  Now one at a time, the stalest first, built 2.5 ms a tick (ZombieNav.flowBegin / flowStep) while the zombies walk
+  the old one. A zombie's WalkSpeed and walk speed (both replicate) are written only when they change enough to see.
+  The humanoid states a zombie never uses are off. Zombies were already server-owned (one owner, no flapping:
+  Fight.track); corpses and loose pieces are server-owned too now.
+- **No floating parts:** before, a death broke every joint (BreakJointsOnDeath) and flung the pieces apart one by
+  one, gone at 2.5 s; a head shot off took no eyes and left the glowing eyes on the hidden head. Now a death is one
+  ragdoll (Zombies.luau ragdoll: limited ball sockets, the root part gone so a zombie killed while climbing in falls
+  too, hidden pieces gone, every piece collides with the map but not with zombies or players), it lies 3.2 s, fades on
+  every client (ZmFade, client/ZombieBodies.client.luau) and goes; at most 10 corpses, the oldest first. A
+  frame-by-frame floater check (a piece still and more than a stud above the floor) found nothing at the kill spot;
+  4 flags elsewhere were likely bodies on desks and benches (the props can't be hit by rays); not checked by eye.
+- **Dismemberment (cartoon, no blood):** ZombieSpecial's limbs, now picked by where the hit landed (Fight.hitAt: a
+  shotgun at the legs takes the legs; no point known = the old dice), a limb comes off whole (its pieces welded), a
+  frag counts as a blast (it isn't a Weapons row: before, grenades never took limbs), a head takes its eyes. The
+  pieces keep the zombie's own colours, their ends are closed (nothing inside shows), a small grey dust puff and a dull
+  thump where one comes off (zm_limb: PSE Body Slam Low End Thump 2, 9113535217). No legs: it crawls; one: it hops (as
+  before). At most 24 loose pieces, faded with the corpses. Test op: JankZombies "zhurt" legs | head | blast | body, n.
+- **Also:** the player's Hp attribute is written once the body's alive after a spawn (a fresh game after a down left
+  it at 0). The school's hedges are B by the owner's pick ("B!!! A looks gross"): ZmGate.hedges sets the map's Hedges
+  attribute and WebArena.swap re-applies it after a kit swap; A is one call away.
+- Place versions 1644 (zombies) and 1645 (hedges B). Sheet: side notes 22-zombies-ragdoll-dismember-27nov.jpg; clip
+  zombies-ragdoll-dismember-27nov.mp4.

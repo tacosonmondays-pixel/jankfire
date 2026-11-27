@@ -208,6 +208,17 @@ function W.swap(name: string, id: number): string
 		end
 		table.insert(names, ("%s %d pieces (%d old in the arena replaced)"):format(mname, #parts, was))
 	end
+	-- (27 Nov 2026: a map can keep a look of its own over the kit's: the zombies school's hedges are B, the leaf cards in
+	-- ServerStorage.ZmHedges, by the owner's pick ("B!!! A looks gross"). The map's Hedges attribute names the one shown;
+	-- a swap that brings the kit's sc_hedgeA back puts the chosen one back: studio-tools/ZmGate.luau hedges)
+	local mapM = shell and shell.Parent
+	local which = mapM and mapM:GetAttribute("Hedges")
+	local pb = game:GetService("ServerStorage"):FindFirstChild("PolishBackup")
+	local zg = pb and pb:FindFirstChild("ZmGate")
+	if type(which) == "string" and zg and mapM then
+		local ok, r = pcall(function() return require(zg:Clone()).hedges(mapM, which) end)
+		table.insert(names, "hedges: " .. (if ok then tostring(r) else "switch failed: " .. tostring(r)))
+	end
 	container:Destroy()
 	table.sort(names)
 	return ("swapped into %s (asset %d)%s:\n  %s"):format(name, id, if bad > 0 then ", " .. bad .. " pieces with no name rule" else "", table.concat(names, "\n  "))

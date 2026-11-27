@@ -93,6 +93,8 @@ end
 -- atlas, tools/roblox/leaf_atlas.py). The planters are the kit's (sc_ground). Hit boxes: the layout's, either way.
 --   require(game.ServerStorage.PolishBackup.ZmGate:Clone()).importHedgesB(workspace.Map.JankfieldHighV2B, <asset id>, <leaf image id>)
 --   require(game.ServerStorage.PolishBackup.ZmGate:Clone()).hedges(workspace.Map.JankfieldHighV2B, "A" | "B")  -- the switch
+-- (27 Nov 2026, the owner: "B!!! A looks gross": B is the school's default. The switch also sets the map's Hedges
+-- attribute, and WebArena.swap re-applies it after a kit swap; A stays one call away)
 -- (the one not shown waits in ServerStorage.ZmHedges; every game's copy of the school has the shown one). The leaves'
 -- picture goes on as a SurfaceAppearance (AlphaMode Transparency) from the atlas uploaded as an Image: the copy a .glb
 -- upload makes of its picture lost the alpha (27 Nov test: black squares round the leaves)
@@ -146,8 +148,13 @@ function G.hedges(map: Model, which: string): string
 	local w = shell:FindFirstChild(want) or st:FindFirstChild(want)
 	if not w then return "no " .. want end
 	local o = shell:FindFirstChild(other)
-	if o then o.Parent = st end
+	if o then
+		local parked = st:FindFirstChild(other)
+		if parked then parked:Destroy() end -- (a kit swap brought a fresh copy: keep that one)
+		o.Parent = st
+	end
 	w.Parent = shell
+	map:SetAttribute("Hedges", which) -- (the default from now on: WebArena.swap puts it back after a kit swap)
 	return "hedges " .. which .. " shown"
 end
 

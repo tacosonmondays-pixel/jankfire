@@ -61,9 +61,10 @@ Fight.noItems = function(_f: Fighter): boolean return false end
 -- quests, no kill effects or finishers, no anti-cheat aim stats. quiet: shots that don't count toward accuracy
 Fight.lastStand = nil :: ((Fighter, number, Fighter?, string) -> boolean)?
 Fight.zombieHurt = nil :: ((Fighter, number, Fighter?, string, boolean?) -> ())?
-Fight.zombieDied = nil :: ((Rules.KillInfo) -> ())?
+Fight.zombieDied = nil :: ((Rules.KillInfo, Vector3?) -> ())? -- (the hit's shove too: a zombie's ragdoll takes it whole, Zombies.luau)
 Fight.quiet = nil :: ((Fighter) -> boolean)?
 Fight.hitHs = false -- (the hit being judged right now was a headshot: set by Fight.hurt before modDamage)
+Fight.hitAt = nil :: Vector3? -- (and where it landed, when the caller knows: a zombie's limb by the hit point, ZombieSpecial)
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -337,7 +338,8 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 		if hw then hw:Destroy() end
 		if hum and m:FindFirstChildOfClass("Tool") then pcall(function() hum:UnequipTools() end) end
 	end
-	if m and vel then
+	-- (a zombie: not flung apart piece by piece; Zombies.luau ragdolls it whole and gives it the shove, 27 Nov 2026)
+	if m and vel and v.kind ~= "zombie" then
 		task.defer(function()
 			for _, p in m:GetDescendants() do
 				if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
@@ -347,9 +349,9 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 			end
 		end)
 	end
-	-- (a zombie: its limbs fly off like anyone's, and the zombies game takes it from here: Zombies.luau)
+	-- (a zombie: the zombies game takes it from here: its ragdoll, its limbs, Zombies.luau / ZombieSpecial.luau)
 	if v.kind == "zombie" then
-		if Fight.zombieDied then Fight.zombieDied(info) end
+		if Fight.zombieDied then Fight.zombieDied(info, vel) end
 		return
 	end
 	-- a kill outside a match by the owner's dev powers (a dev weapon in the hub, a fall after a fling: OwnerDev.server
@@ -408,6 +410,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
 	Fight.hitHs = hs -- (this hit's headshot, for modDamage: a zombies Hard Hat, Zombies.luau)
+	Fight.hitAt = at
 	if Fight.modDamage and amt > 0 then amt = Fight.modDamage(t, amt, by, wid) end
 	if Fight.rigSoak and amt > 0 then amt = Fight.rigSoak(t, amt, by, wid) end -- (the Overdrive Rig's armour first)
 	-- (a zombies game: a hit that would kill puts you down instead, Zombies.luau)
