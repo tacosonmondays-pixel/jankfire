@@ -451,6 +451,15 @@ the same frame, checked with ffmpeg at 30 fps round each cut on the owner's big-
   - in the hunter's win film, the reveal sat 1.2 s behind a dark slab. Its clear-view check never saw the room (kit
     parts are CanQuery off); the room is made queryable for the check.
 - Before/after: side-session-notes `holdout/popin_before_after_27nov.jpg`.
+- **The win films' pull-out (v11-v15, main: "no frame ever shows the shell's inside"):**
+  - Whatever the lens is inside is hidden for that frame (`HuntOutroLens`, Last+85).
+  - The pull cuts once over the stretch where the lens would come within 2.6 studs of a sitter ahead of it (head and
+    body centres; accessory boxes are too loose). The Studio log prints `pull cut: a -> b`.
+  - The room's look comes in 0.1 s before the pull, under the static. The static stays up 0.18 s into the pull.
+  - The static's pictures are drawn once from the film's first frame (`HuntOutroWarm`): preloaded, they showed grey
+    for 0.3 s on a cold start.
+  - Body copies lose ThirdPerson's pieces (TPGun, TPItem, TPRigArms, HeldWeapon) and every tag.
+  - Clips: `holdout/win_hiders_v15_sound`, `win_gunman_v15_sound` (place v1623).
 
 ## 12. The win films (owner, 27 Nov)
 
