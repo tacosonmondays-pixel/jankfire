@@ -415,6 +415,33 @@ game's own camera with no pop (CineKit's `warm` lets the game's camera take the 
 shot still places it, and points it at the current body: the round re-makes the gunman's body). The owner's sheet:
 side-session-notes `holdout/intro_AB_sheet_v1435.jpg` and the clips `intro_A_v3` / `intro_B_v3` (`_small` copies).
 
+## 12. The win films (owner, 27 Nov)
+
+The owner: "If you win as killer start the walk with destroyed place and then zoom out with static to imply it was you
+still at your desk and it was just a game you were playing?? Same with survivors? But instead it's the attick me a group
+of friend (survivors)". Everyone in the round sees the winners' film (`HuntConfig.OUTRO.len`, 11 s), then the results
+card; HuntRound.finish sends Remote `outro` { win, who, map, mapId, origin, len, t0 } and holds the card. `HuntOutro.client`.
+
+- **The gunman wins:** a slow walk through the house (`MAPS[].outroWalk`: a path and where to look; else from where he
+  stands, forward), cushions knocked to the floor and the last pink cubes fading. No blood, no bodies. A hit-stop (the
+  house holds its last frame while the lens kicks), full-screen static, then the lens pulls back out of the monitor in
+  room A, which shows the house as the lens last saw it (a ViewportFrame of the map's pieces near it). His own avatar sits
+  at the desk, lit by the screen; on the reveal he leans back and stretches.
+- **The hiders win:** the survivors together in the house (`MAPS[].outroGroup`), out of breath, then the same static
+  and the pull back out of the attic TV in room B. The same avatars as friends: two on the couch, one in the sheeted
+  armchair, the rest standing behind, each with a pad in hand, cheering, clapping and fist-pumping.
+- **Rules:** both rooms are canon (A the gunman's bedroom, B the friends' attic). Screens show only the game's own view,
+  glow and static; nothing readable. Mocap only: the vault stand-ins (seated breathing, seated arm stretch, upper-body
+  clapping, cheering and fist pump; ids in `HuntConfig.OUTRO.anims`) until the Mixamo list (Sitting, Typing, Sitting
+  Clap, High Five) lands. The intro's muted grade, CineKit's bars and kick, frills fading between the lens and a face.
+- **Sound** (recordings, no voices): birds through the walls in the house, a static burst, then the PC's hum (A) or
+  the TV's hiss (B), keys, pad clicks, a sofa creak and single hand claps, each at one friend (never a crowd).
+- **Kit:** the intro's kit (`hunt_intro_models.py`, hunt_intro3 = 123000465026529): the office chair is its own piece
+  (`hiA_chair`: pushed back in the intro, at the desk in the film), `hiB_couch`, `hiB_pad`, `hiW_cushion`; the spots
+  are in `HuntIntroData.spots`.
+- **Test:** a round, then `JankHuntTest("win", p, "gunman" | "hiders")` (a round with `role = "hider",
+  standinRole = "gunman"` for the hiders' film).
+
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)
