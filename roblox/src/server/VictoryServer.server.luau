@@ -26,6 +26,7 @@
 --       bodies are built from `look` (Players:CreateHumanoidModelFromUserId) into ReplicatedStorage.JankVictoryLooks
 --   ("clear", player)   ("state")   the last message's summary and the live holds   ("spot", arenaName) the spot read
 --   ("pick", player)   the finisher FinisherServer says this player would bring (Matches.endFinisher.pick)
+--   ("cinehold", player, secs)   mark a finisher cinematic on the player's match (m.finisherFrom/Until, as holdFor does)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -314,6 +315,14 @@ if RunService:IsStudio() then
 			if type(EF) ~= "table" then return "no Matches.endFinisher" end
 			local ok, fid, skin, w = pcall(EF.pick, a, Matches.raw(a))
 			return { ok = ok, fid = fid, skin = skin, w = w }
+		elseif op == "cinehold" and typeof(a) == "Instance" and a:IsA("Player") then
+			-- (a finisher's cinematic playing on this player's match, as FinisherServer's holdFor marks one: with
+			-- JankFinisherTest "victory" this tests the match end after a cinematic - no default scene, the card after it)
+			local m = Matches.raw(a)
+			if not m then return "not in a match" end
+			m.finisherFrom = os.clock()
+			m.finisherUntil = os.clock() + (tonumber(b) or 15)
+			return "held " .. tostring(tonumber(b) or 15)
 		elseif op == "spot" then
 			local map = workspace:FindFirstChild("Map")
 			local s = spotIn(map and map:FindFirstChild(tostring(a)))
@@ -327,7 +336,7 @@ if RunService:IsStudio() then
 			end
 			return { last = last, holds = holds, on = V.ON, victoryLive = Matches.victoryLive, endFinisher = type(Matches.endFinisher) == "table" }
 		end
-		return "ops: fake, clear, pick, spot, state"
+		return "ops: fake, clear, pick, cinehold, spot, state"
 	end
 	fn.Parent = ServerStorage
 end

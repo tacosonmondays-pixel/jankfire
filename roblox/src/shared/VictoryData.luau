@@ -28,8 +28,19 @@ V.POSES = {
 	idle2 = { anim = "rbxassetid://137233841835376", len = 1.67 }, -- 113 Victory Idle
 	idle3 = { anim = "rbxassetid://89818155764325", len = 1.8 }, -- 114 Victory Idle
 }
-V.HERO_POSES = { "victory", "pump" } -- the one in front, when they have no emote of their own
-V.MATE_POSES = { "idle1", "idle2", "idle3", "cheer" } -- teammates: each a different one where it can be
+-- (27 Nov, main from the v1436 sheet: "the heroes stand flat, holding the gun loosely at the hip ... read as idle, not a
+-- win". Picked from a stick-figure sheet of 21 vault clips with the gun drawn along the forearm, as it is gripped:
+-- scratchpad victory/poses) the one in front: a fighter's guard with the gun up by the face, or both arms up;
+-- teammates: a cheer with the gun up, an aim, a low crouch, a lean; one sits on THE RISER's edge
+V.POSES.fight = { anim = "rbxassetid://77302336464454", len = 3.3 } -- 18nov boxing 17 Idle Fight Stance
+V.POSES.armsup = { anim = "rbxassetid://83482891664740", len = 2.03 } -- 20nov 111 Victory (boxing win), frames 31-91
+V.POSES.aim = { anim = "rbxassetid://130770662917652", len = 2.33 } -- 19nov 09 Pistol Aim, frames 1-70
+V.POSES.crouch = { anim = "rbxassetid://82585229078770", len = 0.13 } -- 19nov 04 Crouched To Sprint, frames 1-4 (held)
+V.POSES.lean = { anim = "rbxassetid://76710822124387", len = 0.07 } -- 20nov 92 Pose Leaning Right (held)
+V.POSES.sitledge = { anim = "rbxassetid://126271088986263", len = 2.1, sit = true } -- 17nov 01 Sit Swing Legs (a ledge)
+V.HERO_POSES = { "fight", "armsup" } -- the one in front, when they have no emote of their own
+V.MATE_POSES = { "cheer", "aim", "crouch", "lean" } -- teammates: each a different one where it can be
+V.SIT_POSE = "sitledge" -- (THE RISER only: a teammate on its front edge)
 
 -- the emote wheel's own defaults (shared/Flair F.DEFAULT.emotes): a wheel slot holding one of these isn't a pick
 local DEFAULTS = { wave = true, hello = true, salute = true, point = true, shrug = true, cheer = true, laugh = true, dance = true }

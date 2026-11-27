@@ -201,7 +201,7 @@ local function standAt(m: Model, hum: Humanoid?, root: BasePart, cf: CFrame)
 	local up = if hum and hum.RigType == Enum.HumanoidRigType.R6 then 3 else ((hum and hum.HipHeight or 2) + root.Size.Y / 2)
 	m:PivotTo(cf * CFrame.new(0, up, 0) * (root.CFrame:ToObjectSpace(m:GetPivot())))
 end
-local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance): Body?
+local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance, seatY: number?): Body?
 	local src = sourceOf(entry.uid)
 	if not src then return nil end
 	local m = Replay.clean(src) :: Model
@@ -220,14 +220,17 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance):
 	m:SetAttribute("TPPlayer", nil)
 	m.Parent = parent
 	standAt(m, hum, root, cf)
-	pcall(arm, m, entry.uid)
 	local b: Body = { model = m, root = root, track = nil }
 	-- the action: their emote, else a victory pose (mocap)
 	local animator = hum and hum:FindFirstChildOfClass("Animator")
 	if hum and not animator then animator = Instance.new("Animator"); animator.Parent = hum end
 	local r6 = hum ~= nil and hum.RigType == Enum.HumanoidRigType.R6
 	local id = if type(entry.emote) == "string" then Flair.emoteAnim(entry.emote, r6) else nil
-	if not id then id = (V.POSES[pose] or V.POSES.victory).anim end
+	-- (a victory pose holds the weapon up to show it; a dance emote doesn't - a gun along a dancing forearm reads wrong)
+	if not id then
+		id = (V.POSES[pose] or V.POSES.victory).anim
+		pcall(arm, m, entry.uid)
+	end
 	if animator then
 		local a = Instance.new("Animation")
 		a.AnimationId = id
@@ -238,6 +241,15 @@ local function makeBody(entry: any, cf: CFrame, pose: string, parent: Instance):
 			tr:Play(0.15)
 			b.track = tr
 		end
+	end
+	-- (a sitting pose: once the clip has the body down, its seat goes onto the ledge's top)
+	if seatY then
+		task.delay(0.3, function()
+			local lt = m:FindFirstChild("LowerTorso") :: BasePart? or m:FindFirstChild("Torso") :: BasePart?
+			if not lt or not m.Parent then return end
+			local bottom = lt.Position.Y - lt.Size.Y / 2
+			m:PivotTo(m:GetPivot() + Vector3.new(0, (seatY :: number) + 0.05 - bottom, 0))
+		end)
 	end
 	return b
 end
@@ -286,7 +298,7 @@ local function hideNear(center: Vector3, keep: Instance)
 			local m = d.Parent
 			if not m or m:IsDescendantOf(keep) then continue end
 			local root = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChild("Head")
-			if not (root and root:IsA("BasePart")) or (root.Position - center).Magnitude > 140 then continue end
+			if not (root and root:IsA("BasePart")) or (root.Position - center).Magnitude > 450 then continue end -- (a far spawn shows too: v1436)
 			for _, x in m:GetDescendants() do
 				if (x:IsA("BasePart") or x:IsA("Decal")) and hiddenNear[x] == nil then
 					hiddenNear[x] = (x :: any).LocalTransparencyModifier; (x :: any).LocalTransparencyModifier = 1
@@ -480,18 +492,26 @@ function Scene.start(msg: any, opts: any?): boolean
 	local places = MATES[math.min(#mates, 3)] or {}
 	for i, e in mates do
 		local cf: CFrame
+		local pose = V.pick(V.MATE_POSES, e.uid, used)
+		local seatY: number? = nil
 		if spot then
 			if not spot.mates[i] then break end
 			cf = spot.mates[i]
 		else
 			local at = places[i]
 			if not at then break end
+			if i == 2 and not e.emote then
+				-- (THE RISER's second teammate sits on its front edge, legs over it)
+				pose = V.SIT_POSE
+				local flat = Vector3.new(at.X, 0, at.Z).Unit * 7.6
+				at = Vector3.new(flat.X, RISER_TOP, flat.Z)
+				seatY = frame:PointToWorldSpace(Vector3.new(0, RISER_TOP, 0)).Y
+			end
 			-- (a teammate turns a little toward the middle of the front)
 			cf = frame * CFrame.lookAt(at, Vector3.new(at.X * 0.35, at.Y, 18))
 		end
-		local pose = V.pick(V.MATE_POSES, e.uid, used)
 		used[pose] = true
-		local b = makeBody(e, cf, pose, folder)
+		local b = makeBody(e, cf, pose, folder, seatY)
 		if b then table.insert(bodies, b) end
 	end
 	-- the grade (ours alone while it runs: the arena's post effects are off)

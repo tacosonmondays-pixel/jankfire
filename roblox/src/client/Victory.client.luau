@@ -175,6 +175,10 @@ local function cardOf(msg: any): any
 	if msg.ffa or (board and board.ffa) then
 		table.sort(allRows, function(a, b) return a.v1 > b.v1 end)
 		for i, r in allRows do if r.mine then d.place = ordinal(i) .. " OF " .. #allRows end end
+		local one = { color = TeamColors.color(1), rows = {}, t = 0, name = "" }
+		for _, side in d.board do for _, r in side.rows do table.insert(one.rows, r) end end
+		table.sort(one.rows, function(a, b) return (tonumber((a.v or {})[1]) or 0) > (tonumber((b.v or {})[1]) or 0) end)
+		d.board = { one }
 	else
 		local mineT = tonumber(msg.team)
 		for _, side in d.board do
@@ -183,7 +187,7 @@ local function cardOf(msg: any): any
 				n = 0
 				for _, r in side.rows do n += tonumber((r.v or {})[1]) or 0 end
 			end
-			local tile = { n = n or 0, color = side.color, mine = side.t == mineT }
+			local tile = { n = n or 0, color = side.color, mine = side.t == mineT, won = msg.winner ~= nil and side.t == msg.winner, name = side.name }
 			side.score = n or 0
 			if tile.mine then table.insert(d.tiles, 1, tile) else table.insert(d.tiles, tile) end
 		end
@@ -404,11 +408,11 @@ if RunService:IsStudio() then
 		-- (sample rows for the preview, a 5-3 match: each side's kills are the other side's deaths, and a side that took
 		-- n rounds killed at least n x its size)
 		local SAMPLE = {
-			[0] = { win = { { 5, 3, 0, 920 } }, lose = { { 3, 5, 0, 710 } } },
-			[1] = { win = { { 6, 2, 3, 1180 }, { 5, 4, 2, 940 } }, lose = { { 4, 6, 1, 820 }, { 2, 5, 3, 610 } } },
-			[2] = { win = { { 7, 3, 4, 1420 }, { 6, 3, 3, 1180 }, { 3, 4, 6, 890 } }, lose = { { 5, 6, 2, 1050 }, { 3, 5, 3, 800 }, { 2, 5, 4, 640 } } },
-			[3] = { win = { { 8, 3, 5, 1610 }, { 6, 4, 4, 1260 }, { 5, 4, 6, 1030 }, { 3, 3, 7, 760 } },
-				lose = { { 5, 6, 3, 1190 }, { 4, 6, 4, 960 }, { 3, 5, 2, 720 }, { 2, 5, 5, 590 } } },
+			[0] = { win = { { 5, 3, 0, 917 } }, lose = { { 3, 5, 0, 704 } } },
+			[1] = { win = { { 6, 2, 1, 1183 }, { 5, 4, 3, 946 } }, lose = { { 4, 6, 0, 823 }, { 2, 5, 2, 612 } } },
+			[2] = { win = { { 7, 3, 2, 1437 }, { 6, 3, 5, 1176 }, { 3, 4, 7, 893 } }, lose = { { 5, 6, 1, 1052 }, { 3, 5, 4, 806 }, { 2, 5, 2, 641 } } },
+			[3] = { win = { { 8, 3, 2, 1618 }, { 6, 4, 7, 1259 }, { 5, 4, 3, 1031 }, { 3, 3, 9, 764 } },
+				lose = { { 5, 6, 1, 1193 }, { 4, 6, 6, 958 }, { 3, 5, 2, 726 }, { 2, 5, 3, 587 } } },
 		}
 		local NAMES = { "kopi_kat", "slapdash09", "Wickerfield", "ducktape_dan", "mossbyte", "frostlane", "pelican_pete" }
 		local sm0 = SAMPLE[math.clamp(mates, 0, 3)]
