@@ -99,6 +99,7 @@ local function stop()
 	if r.grade then r.grade:Destroy() end
 	if r.blur then r.blur:Destroy() end
 	if r.static then r.static:Destroy() end
+	if r.lensBound then pcall(function() RunService:UnbindFromRenderStep("HuntOutroLens") end) end
 	for d, v in r.hidden do if d.Parent then (d :: any).LocalTransparencyModifier = v end end -- (the real bodies back)
 	for _, f in r.folders do if f.Parent then f:Destroy() end end
 	for g, was in r.guis do if g.Parent then g.Enabled = was end end
@@ -570,6 +571,45 @@ local function play(a: any)
 			end },
 		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 64 else 52, shake = 0.4, cam = reveal },
 	}
+	-- (v11, main: the pull back passed through the sitter and drew her inside as blank planes for ~0.1 s) what the lens
+	-- is in is hidden for that frame (after CineKit's lens, Last+80; before the frame draws)
+	local lensHidden: { [Instance]: number } = {}
+	local function lensShow(d: Instance)
+		local v = lensHidden[d]
+		if v ~= nil then
+			lensHidden[d] = nil
+			if d.Parent then (d :: any).LocalTransparencyModifier = v end
+		end
+	end
+	local function lensHide(d: Instance)
+		if lensHidden[d] == nil then lensHidden[d] = (d :: any).LocalTransparencyModifier end
+		(d :: any).LocalTransparencyModifier = 1
+	end
+	RunService:BindToRenderStep("HuntOutroLens", Enum.RenderPriority.Last.Value + 85, function()
+		if not r.alive then return end
+		local t = T()
+		if t >= beat("pull") - 0.05 and t < beat("reveal") + 0.3 then
+			local cp = workspace.CurrentCamera.CFrame.Position
+			for _, d in room:GetDescendants() do
+				-- (bodies, what they wear, the chair, the couch: never the room's shell, whose merged walls span the room)
+				if d:IsA("BasePart") and d ~= screen and math.max(d.Size.X, d.Size.Y, d.Size.Z) <= 12 then
+					local o = d.CFrame:PointToObjectSpace(cp)
+					local h = d.Size / 2 + Vector3.new(0.4, 0.4, 0.4)
+					local inside = math.abs(o.X) < h.X and math.abs(o.Y) < h.Y and math.abs(o.Z) < h.Z
+					if inside then
+						lensHide(d)
+						for _, x in d:GetChildren() do if x:IsA("Decal") then lensHide(x) end end
+					elseif lensHidden[d] ~= nil then
+						lensShow(d)
+						for _, x in d:GetChildren() do if x:IsA("Decal") then lensShow(x) end end
+					end
+				end
+			end
+		elseif next(lensHidden) then
+			for d in lensHidden do lensShow(d) end
+		end
+	end)
+	r.lensBound = true
 
 	-- ---------------------------------------------------------------- the look, the grade, the bars, the sound
 	local cam = workspace.CurrentCamera
