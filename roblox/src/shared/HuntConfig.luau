@@ -207,9 +207,9 @@ H.INTRO = {
 	-- a look round outside as his hands come down, a hold behind him and a slow push into first person
 	beats = { push = 1.6, profile = 2.8, build = 4.0, behind = 5.0, dutch = 5.9, face = 6.8, rush = 7.6, snap = 8.3,
 		outside = 9.3, around = 10.5, swing = 13.4, hold = 15.4, enter = 16.2, bars = 16.4 },
-	-- the look round's clip (upper body; R15 only for now: victory-scene's Frisk Look Around upload, the vault's
-	-- Mixamo; an R6 body just settles), and the relaxed stand is ANIMS idle
-	lookAround = { R15 = 72083974683735 },
+	-- the look round's clip (upper body, R15 and R6: the vault's Mixamo Frisk Look Around, mixamo_r15.py --upper); the
+	-- relaxed stand his hands come down into is ANIMS idle
+	lookAround = { R15 = 91308623233691, R6 = 125996784721119 },
 	-- (main, 27 Nov: a dressed-up avatar's close-ups were a white jumble of frills) whatever he wears between the lens
 	-- and the face (or hands) fades to `fade`, and anything within `near` studs of the lens
 	lens = { fade = 0.92, near = 1.2 },

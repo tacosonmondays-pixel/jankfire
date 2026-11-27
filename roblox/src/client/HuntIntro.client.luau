@@ -104,7 +104,18 @@ local function stop()
 	end
 	if r.grade then r.grade:Destroy() end
 	if r.blur then r.blur:Destroy() end
-	for h in r.touched or {} do if h.Parent then h.LocalTransparencyModifier = 0 end end -- (his own accessories back)
+	local function giveBack()
+		local ch = me.Character
+		local ref = ch and (ch:FindFirstChild("UpperTorso") or ch:FindFirstChild("Torso")) :: BasePart?
+		local v = if ref then ref.LocalTransparencyModifier else 0
+		for h in r.touched or {} do
+			if h.Parent then
+				h.LocalTransparencyModifier = v
+				for _, d in h:GetChildren() do if d:IsA("Decal") then d.LocalTransparencyModifier = v end end
+			end
+		end
+	end
+	giveBack(); task.delay(0.25, giveBack) -- (his own things back as the game's first-person view keeps them)
 	for _, tr in r.realTracks do pcall(function() tr:Stop(0.3) end) end
 	if r.folder then r.folder:Destroy() end
 	for g, was in r.guis do if g.Parent then g.Enabled = was end end -- (the HUD back)
@@ -348,8 +359,9 @@ local function play(a: any)
 	local function beat(name: string): number return HC.INTRO.beats[name] * k end
 	local rt = flat:Cross(Vector3.yAxis)
 	-- behind him, the house ahead: where the swing ends and the hold pushes in from
-	local function behindCF(hp: Vector3, rad: number, up: number): CFrame
-		return CFrame.lookAt(hp - flat * rad + Vector3.new(0, up, 0), hp + flat * 4)
+	local function behindCF(hp: Vector3, rad: number, up: number, side: number?): CFrame
+		local s = side or 1.4 -- (over his right shoulder: straight behind, his head filled the frame's middle; v6 test)
+		return CFrame.lookAt(hp - flat * rad + rt * s + Vector3.new(0, up, 0), hp + flat * 6 + rt * (s * 0.4))
 	end
 	local function smoother(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
 	local shots = {
@@ -373,8 +385,8 @@ local function play(a: any)
 			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headLive()) end },
 		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
-		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 8 * (1 - u) ^ 2 end,
-			cam = function(u) local e = Cine.ease(u); return CFrame.lookAt(P(0, hy + 3.6 - 0.4 * e, -1.6 + 0.2 * e), headLive()) end },
+		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 54, shake = function(u) return 8 * (1 - u) ^ 2 end,
+			cam = function(u) local e = Cine.ease(u); return CFrame.lookAt(P(0, hy + 4.6 - 0.5 * e, -2.5 + 0.3 * e), headLive() - Vector3.new(0, 0.6, 0)) end }, -- (v6: a step wider)
 		-- 4. outside: low in front of him (between him and the map), looking up at him
 		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, shake = 0.5,
 			cam = function(u)
@@ -394,17 +406,18 @@ local function play(a: any)
 			cam = function(u)
 				local hp = realHead()
 				local a = Cine.ease(u)
-				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -180, a))) * flat
-				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 3.8, a) + Vector3.new(0, Cine.lerp(0.2, 0.7, a), 0), hp + flat * 4)
+				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -159.3, a))) * flat -- (ends exactly on the hold's over-the-shoulder spot: 20.7 deg, 3.96 out)
+				local at = hp:Lerp(hp + flat * 6 + rt * 0.56, Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
+				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 3.956, a) + Vector3.new(0, Cine.lerp(0.2, 0.9, a), 0), at)
 			end },
 		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
 		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
-			cam = function(u) return behindCF(realHead(), Cine.lerp(3.8, 3.3, u), Cine.lerp(0.7, 0.6, u)) end },
+			cam = function(u) return behindCF(realHead(), Cine.lerp(3.7, 3.2, u), 0.9) end },
 		-- 8. into his eyes: the push eases on into first person (smootherstep: no pop) while the bars lift
 		{ name = "enter", t0 = beat("enter"), t1 = len,
 			fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(40, gf, smoother(u)) end,
 			cam = function(u)
-				local from = behindCF(realHead(), Cine.lerp(3.3, 2.8, math.min(1, u * 2)), 0.6)
+				local from = behindCF(realHead(), Cine.lerp(3.2, 2.6, math.min(1, u * 2)), 0.9)
 				return from:Lerp(Cine.gameplay(flat), smoother(u))
 			end },
 	}
