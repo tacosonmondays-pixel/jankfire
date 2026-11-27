@@ -1049,6 +1049,12 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   than about 8 degrees (a segment gets up to 8 Catmull-Rom points, as many as the sharper of the turns at its ends
   needs); the first-person bow comes after. Captures `studio_sweep_fp_v1459.jpg`, `studio_sweep_side_v1459.jpg`,
   `studio_sweep_tp_v1459.jpg`.
+- **Round 4 (place version 1468), first person and the side at 8, the shoulder view of one swing 6** (its head "folds
+  back on itself ... a U-turn arrow"): a turn (over 60 degrees in a step, or 100 within three) that heads BACK against
+  the run so far ends the ribbon after a real cut (the return stroke is never drawn); any other turn starts a new
+  stroke (third person's blade comes down, then sweeps round: ending there instead dropped the cut). Where the path
+  curls tighter than the band, towards the band's side, the band's inner offset is held to 0.8 of the local radius.
+  Captures `studio_sweep_tp_v1468.jpg`, `studio_sweep_side_v1468.jpg`.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a

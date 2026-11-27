@@ -429,7 +429,7 @@ end)
 type Sample = { m: Vector3, t: Vector3, age: number }
 type Sweep = { mid: Attachment, tip: Attachment, cam: boolean, tint: Color3, left: number, dur: number, el: number,
 	samples: { Sample }, part: Part, atts: { Attachment }, body: { Beam }, core: { Beam }, glint: BillboardGui?,
-	gImg: ImageLabel?, gAt: Attachment?, band: number, brk: boolean, runL: number, run: number, stopEl: number? }
+	gImg: ImageLabel?, gAt: Attachment?, band: number, brk: boolean, runL: number, run: number, stopEl: number?, turns: { number } }
 local sweeps: { Sweep } = {}
 local swingDir: Vector3? = nil -- the latest sweep's swing direction in the world (its tip's motion) and when
 local swingDirT = -99
@@ -462,7 +462,7 @@ function AnimeFx.sweep(mid: Attachment, tip: Attachment, tint: Color3, dur: numb
 	-- (it samples until the cut ends, up to half a second: the clip's window only says when to start looking)
 	local s: Sweep = { mid = mid, tip = tip, cam = cam, tint = tint, left = math.max(dur, 0.5), dur = math.max(dur, 0.03),
 		el = 0, samples = {}, part = p, atts = {}, body = {}, core = {}, glint = nil, gImg = nil, gAt = nil,
-		band = if cam then 0.55 else 1, brk = false, runL = 0, run = 0, stopEl = nil } -- (first person: 55 % of Mid-to-tip, facing you)
+		band = if cam then 0.55 else 1, brk = false, runL = 0, run = 0, stopEl = nil, turns = {} } -- (first person: 55 % of Mid-to-tip, facing you)
 	if o and o.pre then addSample(s, o.pre.m, o.pre.t) end
 	if not (o and o.glint == false) then
 		local at = Instance.new("Attachment")
@@ -532,9 +532,24 @@ addSample = function(s: Sweep, m: Vector3, t: Vector3, dt: number?)
 		if s.brk then
 			s.samples, s.runL, s.run, s.brk = {}, 0, 0, false
 		elseif n >= 2 then
+			-- (round 4, the critic on v1459: from the shoulder a swing's head "folds back on itself ... a U-turn arrow".)
+			-- The tip turning: over 60 degrees in one step, or over 100 within three. Heading BACK against the run so far
+			-- after a real cut, it is the return stroke (the ribbon ends here); any other turn starts a new stroke afresh
+			-- (a wind-up turning into the cut: third person's blade comes down, then sweeps round)
 			local v0 = last.t - s.samples[n - 1].t
-			if v0.Magnitude > 1e-3 and v1:Dot(v0) < 0.5 * v1.Magnitude * v0.Magnitude then -- (60 degrees: a third-person swing's wind-up turned 70 into the cut, a corner)
-				s.samples, s.runL, s.run = { last }, 0, 0
+			local ang = if v0.Magnitude > 1e-3 then math.deg(math.acos(math.clamp(v1.Unit:Dot(v0.Unit), -1, 1))) else 0
+			table.insert(s.turns, ang)
+			if #s.turns > 3 then table.remove(s.turns, 1) end
+			local sum = 0
+			for _, a in s.turns do sum += a end
+			if ang > 60 or sum > 100 then
+				local chord = last.t - s.samples[1].t
+				local back = chord.Magnitude > 1e-3 and v1.Unit:Dot(chord.Unit) < -0.3
+				if back and s.runL > 1.5 * span then
+					s.left = 0
+					return
+				end
+				s.samples, s.runL, s.run, s.turns = { last }, 0, 0, {}
 			end
 		end
 		if #s.samples >= 1 then s.runL += (t - s.samples[#s.samples].t).Magnitude end
@@ -651,6 +666,19 @@ local function stepSweep(s: Sweep, dt: number): boolean
 			t -= span.Unit * (0.07 * L * math.sin(math.pi * u))
 		end
 		local w = math.max(sl * f, 7 * pxK * toEye.Magnitude * prof)
+		-- (round 4: where the path curls tighter than the band is wide, towards the band's side, the band would cross
+		-- itself: its inner offset is held to 0.8 of the local radius)
+		if i > 1 and i < n then
+			local e0, e1 = Dt[i] - Dt[i - 1], Dt[i + 1] - Dt[i]
+			if e0.Magnitude > 1e-5 and e1.Magnitude > 1e-5 then
+				local kv = e1.Unit - e0.Unit
+				local turn = math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1))
+				if turn > 1e-3 and kv:Dot(span) > 0 then
+					local r = (e0.Magnitude + e1.Magnitude) / 2 / turn
+					w = math.min(w, 0.8 * r)
+				end
+			end
+		end
 		C[i] = t + span.Unit * (w / 2)
 		Wd[i] = w
 		U[i] = if sl > 1e-4 then span.Unit else Vector3.yAxis
