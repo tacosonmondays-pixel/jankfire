@@ -520,6 +520,12 @@ local function play(a: any)
 				local mine: { Instance } = {}
 				for _, b in roomBodies do table.insert(mine, b.m) end
 				ex.FilterDescendantsInstances = mine
+				-- (v10, the pop scan: 1.2 s behind a dark slab) the room's kit parts are CanQuery off, so the check never saw
+				-- the room: they're queryable while it looks
+				local flipped: { BasePart } = {}
+				for _, d in room:GetDescendants() do
+					if d:IsA("BasePart") and not d.CanQuery then d.CanQuery = true; table.insert(flipped, d) end
+				end
 				for _, c in { { 3.0, 2.6 }, { 2.2, 3.4 }, { 1.2, 3.8 }, { 3.0, -2.6 }, { 2.2, -3.4 }, { 0.4, 4.0 }, { 0.4, -4.0 }, { -1.2, 3.6 } } do
 					local p = s.Position + s.LookVector * c[1] * 1.6 + s.RightVector * c[2] * 1.6 -- (v8, v9: wider; her head was cut)
 					p = Vector3.new(p.X, hd.Y + 0.3, p.Z)
@@ -527,6 +533,7 @@ local function play(a: any)
 					p = Vector3.new(hd.X, p.Y, hd.Z) + (p - Vector3.new(hd.X, p.Y, hd.Z)) / 1.6 -- (blocked further out: try the old distance)
 					if not workspace:Raycast(hd, p - hd, ex) then revealFrom = p; break end
 				end
+				for _, d in flipped do d.CanQuery = false end
 				if not revealFrom then revealFrom = hd + s.RightVector * 2.6 + Vector3.new(0, 0.4, 0) end
 			end
 			local p0 = revealFrom :: Vector3
