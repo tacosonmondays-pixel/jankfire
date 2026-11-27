@@ -465,9 +465,15 @@ ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it.
   (roblox/docs/PERFORMANCE.md, "Films: nothing pops in".)
 1. 0-4.65 s, **the live feed:** the news helicopter's camera inside the grounds, up over the drive, at night: grain,
    scan lines and zoom brackets (live UI), focus breathing, a colder flatter grade, its searchlight from beside the
-   lens, the moon fill held each frame. LIVE top left (a blinking dot), BREAKING NEWS slams in as a lower third (A PLATE
-   ink and bone) with one headline: OUTBREAK · JANKFIELD HIGH. Nothing else is written. The news sting (APM's licensed
-   "Breaking News", 86819169949071), the rotor wash (zm_heli).
+   lens, the moon fill held each frame. LIVE top left (a blinking dot), BREAKING NEWS slams in as a lower third (a
+   warning-red box, A PLATE bone under it) with one headline: OUTBREAK · JANKFIELD HIGH. Nothing else is written.
+   **Warning sirens, not a news sting** (the owner, 27 Nov: "Instead of like cheerful news could it be like warning
+   sirens?"): an outdoor siren wailing over the town, zm_siren (PSE "Acme Whistle Wind Hurricane Siren 14",
+   9113041454, library, no upload: a hand-cranked siren's wind-up, long wail and wind-down; Volume 2.0), far off and
+   echoing (ZombieCine `farOff`: EqualizerSoundEffect highs -14 dB, ReverbSoundEffect 3.4 s), from under the lead's
+   black (t -1.3); a low drone under it, zm_drone (PSE "Evil Drone Eerie 1", 9114353535, only its low end: highs -40,
+   mids -14; Volume 0.9); the rotor wash (zm_heli). An outdoor siren only: no alert tones or broadcast-alert format.
+   (The APM "Breaking News" sting, zm_news 86819169949071, stays in the library, unused.)
 2. **The gate.** The school had a chain-link fence along the front of its grounds and no gate (the fence is the gate's
    stone and iron all round now: 4.10); studio-tools/ZmGate.luau
    added ZmFrontGate to Map.JankfieldHighV2B (so every game's copy has it): two chunky stone pillars and iron bar
@@ -487,8 +493,10 @@ ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it.
 3. 4.65-5.2 s, **static:** full screen, HOUSE HUNT's approved noise frames (HuntConfig.INTRO.static, a new one every
    rendered frame, flipped at random, preloaded with the prewarm), one quick roll of the picture then a judder, tear
    bands, a brightness flutter and dark dropouts; the static burst (PSE "Television Static", zm_static, the same
-   recording as HuntIntro's burst). The sting, the rotor wash and the rattle cut. Then a hard cut:
-4. 5.2-7.7 s, **the school,** our own lens: outside at night in the fog, the bars, a slow push, the wind (zm_wind).
+   recording as HuntIntro's burst). The siren drops to a tenth under the burst; the drone, the rotor wash and the
+   rattle cut. Then a hard cut:
+4. 5.2-7.7 s, **the school,** our own lens: outside at night in the fog, the bars, a slow push, the wind (zm_wind); the
+   siren fainter and further off (0.3, its highs -26 dB), winding down, faded out before the squad.
 5. 7.7-9.3 s, **the squad** in the lobby; the bars lift; the camera lands in your view at 9.9 s.
 The moon is held each frame up to the squad, and the film sets the player's Finishing attribute (CineKit's flag
 "zmintro") so HubLife leaves the light alone (its zone switch ran the map room's black haze over the feed; the school's

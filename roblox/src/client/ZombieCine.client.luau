@@ -55,6 +55,14 @@ local function bed(name: string): Sound?
 	s:Play()
 	return s
 end
+-- far off: the recording's highs (and mids) cut, and a long reverb if wet is given (dB): a siren over the town at night
+local function farOff(s: Sound, hi: number, mid: number, wet: number?)
+	local eq = Instance.new("EqualizerSoundEffect"); eq.LowGain = 0; eq.MidGain = mid; eq.HighGain = hi; eq.Parent = s
+	if wet then
+		local rv = Instance.new("ReverbSoundEffect"); rv.DecayTime = 3.4; rv.Density = 1; rv.Diffusion = 1; rv.DryLevel = -3; rv.WetLevel = wet
+		rv.Parent = s
+	end
+end
 local function fade(s: Sound?, k: number, dur: number)
 	if not s then return end
 	local full = tonumber(s:GetAttribute("Full")) or 0.5
@@ -206,6 +214,7 @@ end
 --   the school: our own lens, outside at night in the fog, a slow push, the wind
 --   the squad in the lobby, the bars lift, your own view
 local NEWS_INK, NEWS_BONE = Color3.fromRGB(29, 31, 35), Color3.fromRGB(229, 226, 219) -- (A PLATE's ink and bone)
+local NEWS_WARN = Color3.fromRGB(166, 32, 28) -- (the BREAKING NEWS box: a warning red, with the sirens; 27 Nov)
 local function newsOverlay(r: any): any
 	local o: any = {}
 	local root = T.new("Frame", { Name = "Feed", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
@@ -242,7 +251,7 @@ local function newsOverlay(r: any): any
 	-- the lower third: BREAKING NEWS slams in, the headline under it
 	-- (a fifth bigger than the first cut: main, 27 Nov, for phones)
 	o.third = T.new("Frame", { Name = "Third", BackgroundTransparency = 1, Position = UDim2.new(0, -820, 1, -222), Size = UDim2.fromOffset(770, 124) }, root)
-	local bn = T.new("Frame", { BackgroundColor3 = NEWS_INK, BorderSizePixel = 0, Size = UDim2.fromOffset(505, 67) }, o.third)
+	local bn = T.new("Frame", { BackgroundColor3 = NEWS_WARN, BorderSizePixel = 0, Size = UDim2.fromOffset(505, 67) }, o.third)
 	T.new("UICorner", { CornerRadius = UDim.new(0, 3) }, bn)
 	local bt = T.text(bn, "B", "BREAKING NEWS", 41, NEWS_BONE, T.FONT_HEAVY); bt.Position = UDim2.fromOffset(22, 0); bt.Size = UDim2.new(1, -28, 1, 0)
 	o.line = T.new("Frame", { BackgroundColor3 = NEWS_BONE, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 72), Size = UDim2.fromOffset(0, 48), ClipsDescendants = true }, o.third)
@@ -469,7 +478,7 @@ local function intro(a: Model)
 		table.insert(sets, a)
 		local cineF = ReplicatedStorage:FindFirstChild("JankfireZmCine")
 		if cineF then table.insert(sets, cineF) end
-		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", table.unpack(GATE_SOUNDS) } do
+		for _, nm in { "zm_siren", "zm_drone", "zm_heli", "zm_static", "zm_wind", table.unpack(GATE_SOUNDS) } do
 			local snd = lib0 and lib0:FindFirstChild(nm)
 			if snd then table.insert(sets, snd) end
 		end
@@ -487,8 +496,13 @@ local function intro(a: Model)
 	table.insert(r.trash, cc)
 	local o = newsOverlay(r)
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
-	local sting: Sound? = nil
-	local stingTried = false -- (the sting starts 0.4 s before the feed, under the lead's black)
+	-- the sound under the feed (27 Nov, the owner: "Instead of like cheerful news could it be like warning sirens?"): an
+	-- outdoor warning siren wailing over the town (PSE "Acme Whistle Wind Hurricane Siren 14": a hand-cranked siren's wind-up,
+	-- long wail and wind-down; library, no upload), far off and echoing (farOff), from under the lead's black; a low drone
+	-- under it (PSE "Evil Drone Eerie 1", only its low end). The siren drops under the static's burst and is cut with it;
+	-- its wind-down carries faint into the school shot and is gone before the squad. An outdoor siren only: no alert tones
+	local siren: Sound?, drone: Sound? = nil, nil
+	local sirenTried = false
 	local wash = bed("zm_heli")
 	if wash then table.insert(r.beds, wash); fade(wash, 0.3, 0.4) end
 	local rattle = bed("zm_gaterattle") -- (the crowd on the gate: up with the zoom, cut by the static)
@@ -524,11 +538,20 @@ local function intro(a: Model)
 			r.leadBlack = false
 			TweenService:Create(black, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
 		end
-		if not stingTried and t >= -0.4 then
-			stingTried = true
-			if lib and lib:FindFirstChild("zm_news") then
-				local sg = (lib.zm_news :: Sound):Clone(); sg.Parent = SoundService; sg:Play(); table.insert(r.trash, sg)
-				sting = sg
+		if not sirenTried and t >= -1.3 then
+			sirenTried = true
+			if lib and lib:FindFirstChild("zm_siren") then
+				local sg = (lib.zm_siren :: Sound):Clone()
+				sg.Looped = false
+				sg:SetAttribute("Full", sg.Volume)
+				farOff(sg, -14, -2, -2)
+				sg.Parent = SoundService; sg:Play(); table.insert(r.trash, sg)
+				siren = sg
+			end
+			drone = bed("zm_drone")
+			if drone then
+				farOff(drone, -40, -14)
+				table.insert(r.beds, drone); fade(drone, 1, 1.2)
 			end
 		end
 		local vs = workspace.CurrentCamera.ViewportSize
@@ -619,7 +642,8 @@ local function intro(a: Model)
 		if inStatic then
 			if not staticOn then
 				staticOn = true
-				if sting then TweenService:Create(sting, TweenInfo.new(0.15), { Volume = 0 }):Play() end
+				if siren then siren.Volume = (tonumber(siren:GetAttribute("Full")) or 1) * 0.1 end -- (under the burst)
+				if drone then drone.Volume = 0 end
 				if wash then fade(wash, 0, 0.2) end
 				if rattle then rattle.Volume = 0 end
 				if cc.Parent then cc:Destroy() end
@@ -653,6 +677,13 @@ local function intro(a: Model)
 			moon(r, 1, true, 0.01)
 			wind = bed("zm_wind")
 			if wind then table.insert(r.beds, wind); fade(wind, 1, 0.5) end
+			-- the siren, fainter and further off now, winding down, gone before the squad
+			if siren then
+				local eq = siren:FindFirstChildOfClass("EqualizerSoundEffect")
+				if eq then eq.HighGain = -26; eq.MidGain = -6 end
+				siren.Volume = (tonumber(siren:GetAttribute("Full")) or 1) * 0.3
+				TweenService:Create(siren, TweenInfo.new(math.max(0.3, N.school[2] - N.school[1] - 0.4), Enum.EasingStyle.Sine), { Volume = 0 }):Play()
+			end
 		end
 		r.showMe = t >= N.squad[1] and t < N.squad[2] - 0.1 -- (not into the hand-back: the lens goes into your own head)
 		if t >= N.squad[1] and r.moonHigh ~= false then r.moonHigh = false; moon(r, 1, false, 0.25) end
@@ -1157,7 +1188,7 @@ local function early()
 			if f then table.insert(sets, f) end
 		end
 		local lib0 = ReplicatedStorage:FindFirstChild("JankfireSounds")
-		for _, nm in { "zm_news", "zm_heli", "zm_static", "zm_wind", "zm_doorslide", "zm_clasp", table.unpack(GATE_SOUNDS) } do
+		for _, nm in { "zm_siren", "zm_drone", "zm_heli", "zm_static", "zm_wind", "zm_doorslide", "zm_clasp", table.unpack(GATE_SOUNDS) } do
 			local snd = lib0 and lib0:FindFirstChild(nm)
 			if snd then table.insert(sets, snd) end
 		end
