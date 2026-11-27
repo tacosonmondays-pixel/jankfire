@@ -424,7 +424,7 @@ local function play(a: any)
 		{ name = "behind", t0 = beat("behind"), t1 = beat("dutch"), fov = 46, shake = 1.8,
 			cam = function(u) return look(lerpV(P(0.8, hy + 0.55, 3.0), P(0.55, hy + 0.45, 2.4), u), P(sd.at.X, sd.at.Y, sd.at.Z)) end },
 		{ name = "dutch", t0 = beat("dutch"), t1 = beat("face"), fov = 40, shake = 2.6,
-			cam = function(u) return look(lerpV(P(-2.5, 1.4, -2.6), P(-2.25, 1.6, -2.3), u), headLive(), 14) end },
+			cam = function(u) return look(lerpV(P(-2.5, hy - 0.1, -2.6), P(-2.25, hy, -2.3), u), headLive(), 10) end }, -- (owner on v12: no lens from below)
 		{ name = "face", t0 = beat("face"), t1 = beat("rush"), fov = 30, shake = 3.6,
 			cam = function(u) local z = nearFront(2.05); return look(lerpV(P(0.5, hy, -(z + 0.45)), P(0.3, hy, -z), u), headLive()) end },
 		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) * 1.7 / nearFront(1.7) end, shake = function(u) return 4.5 + 2.0 * u end,
@@ -433,24 +433,25 @@ local function play(a: any)
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
 		-- (owner on v11: "I wanted to be staring straight up": the lens straight above her, a touch in front so her face,
 		-- tipped 74 deg up by the clip, looks right into it; her body still below; a slow sink and turn)
-		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 5 * (1 - u) ^ 2 end,
+		-- (owner on v12: "I want the camera to be above her head look down at her!!") high above her head looking down the
+		-- line straight out of her upturned face: her face centred, a third of the frame, chin to the frame's foot (the lens
+		-- rolled to her crown), a touch forward of her face so a brim can't cover it, lit by a soft key; a slow pull up.
+		-- before her face lands the line is the clip's (74 deg up); once it lands (the hit-stop), her real face's
+		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 3 * (1 - u) ^ 2 end,
 			cam = function(u)
-				local e = Cine.ease(u)
-				local base = P(0, hy + Cine.lerp(5.4, 4.7, e), Cine.lerp(-1.3, -1.1, e))
-				local aim = headLive() + P(0, 0, 0.25) - P(0, 0, 0)
-				-- (main on v12: "the face reads clearly from above, not mostly hat") once her face has landed (the hit-stop
-				-- holds it), the lens eases onto the line straight out of her face, so her face is the subject whatever she wears
+				local d = Cine.lerp(3.6, 5.4, smoother(u))
+				local a = math.rad(74)
+				local n = (fz * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
+				local crown = (Vector3.yAxis * math.cos(a) - fz * math.sin(a)).Unit
+				local face = headLive()
 				local hd = body:FindFirstChild("Head") :: BasePart?
 				if hd and T() >= beat("snap") + 0.32 then
-					if not r.faceAt then
-						local n = hd.CFrame.LookVector
-						r.faceAt = { from = hd.Position + n * 4.6, at = hd.Position + n * 0.3, t = T() }
-					end
+					if not r.faceAt then r.faceAt = { n = hd.CFrame.LookVector, c = hd.CFrame.UpVector, p = hd.Position, t = T() } end
 					local f = r.faceAt
 					local k = smoother(math.clamp((T() - f.t) / 0.45, 0, 1))
-					return look(base:Lerp(f.from, k), aim:Lerp(f.at, k), Cine.lerp(0, 6, e))
+					n = n:Lerp(f.n, k).Unit; crown = crown:Lerp(f.c, k).Unit; face = face:Lerp(f.p, k)
 				end
-				return look(base, aim, Cine.lerp(0, 6, e))
+				return CFrame.lookAt(face + n * d + fz * 0.4, face + n * 0.25, crown)
 			end },
 		-- 4. outside: low in front of him (between him and the map), looking up at him
 		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, -- (owner: "a calm motion": no handheld,
@@ -608,7 +609,17 @@ local function play(a: any)
 		if once("nod", beat("behind")) and A.nod then A.nod:Play(0.1, 1, 1.4) end
 		if once("shake", beat("dutch")) and A.shake then A.shake:Play(0.1, 1, 1.6) end
 		if once("crazy2", beat("face")) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
+		if r.key then r.key.Position = workspace.CurrentCamera.CFrame.Position end
 		if once("snap", beat("snap")) then
+			local kp = Instance.new("Part")
+			kp.Name = "HuntIntroKey"; kp.Anchored = true; kp.CanCollide = false; kp.CanQuery = false; kp.CanTouch = false
+			kp.Transparency = 1; kp.Size = Vector3.new(0.2, 0.2, 0.2); kp.CastShadow = false
+			kp.Position = workspace.CurrentCamera.CFrame.Position
+			local kl = Instance.new("PointLight")
+			kl.Brightness = 0.9; kl.Range = 8; kl.Shadows = false; kl.Color = Color3.fromRGB(236, 240, 248) -- (owner: a face that reads on a phone)
+			kl.Parent = kp
+			kp.Parent = folder
+			r.key = kp
 			if A.snap then A.snap.Looped = false; A.snap:Play(0.06, 1, 1) end
 			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)

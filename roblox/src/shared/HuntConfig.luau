@@ -226,10 +226,10 @@ H.INTRO = {
 	-- the film's beats, s on an 18 s hide (k scales them to the real one). 27 Nov (owner): the room's opening trimmed,
 	-- a look round outside as his hands come down, a hold behind him and a slow push into first person
 	beats = { push = 1.6, profile = 2.8, build = 4.0, behind = 5.0, dutch = 5.9, face = 6.8, rush = 7.6, snap = 8.3,
-		outside = 9.3, around = 10.5, swing = 13.4, hold = 15.4, enter = 16.2, cut = 17.0, bars = 17.0 },
+		outside = 9.7, around = 10.8, swing = 13.4, hold = 15.4, enter = 16.2, cut = 17.0, bars = 17.0 }, -- (the top-down snap held 1.4 s)
 	-- (owner on v11: "why is she still shakey or bouncy?": the breathing idle swayed her hips 19 cm and the 11 s look round
 	-- was squeezed into 2.6 s, 4x its speed) the look round now plays a 3.7 s slice at `look` x, over the idle at `idle` x
-	calm = { idle = 0.3, look = 1.2 },
+	calm = { idle = 0.3, look = 1.35 },
 	-- the look round's clip (upper body, R15 and R6: the vault's Mixamo Frisk Look Around, mixamo_r15.py --upper); the
 	-- relaxed stand his hands come down into is ANIMS idle
 	lookAround = { R15 = 104585605452755, R6 = 116576022390941 }, -- (07_frisk_look_around frames 21-131: right, then left)
