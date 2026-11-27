@@ -548,6 +548,35 @@ session). No descriptor words (GLOWS, SHINY) on wraps any more.
   3.91 ms with them taken out (108 Textures in the world). The glint's sweep was not caught in a still; check it moving.
 - Before and after in the Edit photo booth: `wrap-textures/normal-reverse/booth-before-after.jpg`.
 
+## The AI and duplicates audit (27 Nov 2026)
+
+The owner: "go through and remove camos that people will look at and think ai right away, also an redundant camos".
+
+**How.** Every wrap (108: all of Roster's but Default and the new Molten, the mastery camos included) was rendered on
+the AR the same way (headless Blender, `wrap_preview.py --left`, FULL; a colour or material wrap as a flat stand-in of
+its palette), plus its flat tile for the picture wraps (`wrap_textures.py` redraws them byte for byte). Two fresh critic
+agents, each an AI-sceptical player, saw only the numbered pictures (no names, no notes) and marked every one "reads
+AI" or "reads made" with its tell, then grouped near-duplicates and picked the best of each group. Rules: a wrap goes
+only if BOTH call it AI, or both put it in the same duplicate group and neither keeps it. Sheet:
+`wrap-textures/audit/audit-27nov.jpg` (every wrap, KEEP / REMOVED and why).
+
+**Retired (5 of 108):** Opal (both: AI, "airbrushed mush"; also a copy of Holo Foil), Galaxy (the same starfield as
+Nebula), Damascus (as Mastery Damascus), Receipt (as Corporate Memo), QR Code (as Barcode).
+
+**Kept on purpose:**
+- Split AI verdicts (one critic only): Lava, Kintsugi, Urushi Maki-e, Verdigris, Marble, Moss.
+- Duplicate calls on a render that couldn't show the wrap: Ice (translucent Ice), Ghost (ForceField), Chrome (pale
+  silver metal), Liquid Chrome (reflective; it is becoming a living camo).
+- The gold group: the critics kept different ones (Gold, Bullion), so both stay; Mastery Gold is earned.
+- One-critic groups: Pink / Hot Magenta, Fade / Rainbow, Camo / Moss, CRT / Datamosh, the office papers.
+
+**How a wrap is retired:** `Roster.RETIRED` (end of Roster.luau) moves it out of `Roster.wraps` into
+`Roster.retiredWraps` and sets `retired`. Everything that walks `Roster.wraps` drops it: every case, duffel and spray
+set (LootTable's pools, so the odds shown match), the shop's rotation and bundles. It stays in `wrapById`, so whoever
+owns it keeps it and wears it: `Mastery.wrapList` adds the retired wraps after the mastery camos, and LoadoutUI shows a
+retired wrap only to its owners. Live in place version 1425 (checked in Edit: 100 wraps left in `Roster.wraps`, none of
+the five in any spray pool; a solo Play with no errors).
+
 ## Redrawing or adding a wrap
 
 ```bash

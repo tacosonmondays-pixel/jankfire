@@ -354,5 +354,29 @@ for _, id in Roster.EXOTIC do
 	local w = Roster.wrapById[id]
 	if w then w.rarity = "exotic" end
 end
+-- RETIRED (27 Nov 2026, the owner: "go through and remove camos that people will look at and think ai right away, also
+-- an redundant camos"; docs/WRAP-TEXTURES.md "The AI and duplicates audit"). Two blind critics judged every wrap; a wrap
+-- both called AI, or a weaker copy of another, is retired: out of Roster.wraps (so out of every case, duffel and spray
+-- set, the shop's rotation and the bundles: they all walk that list), still in wrapById (whoever owns it keeps it, wears
+-- it and sees it in the loadout: Mastery.wrapList adds Roster.retiredWraps, LoadoutUI hides the ones you don't own)
+Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURES.md; both agreed on each)
+	"opal", -- both: reads AI ("airbrushed mush"); also a copy of Holo Foil
+	"galaxy", -- both: the same purple starfield as Nebula, which they kept
+	"damascus", -- both: the same steel as Mastery Damascus
+	"receipt", -- both: the same office paper as Corporate Memo
+	"qr", -- both: the same black and white alternation as Barcode
+} :: { string }
+Roster.retiredWraps = {} :: { Wrap }
+do
+	local gone: { [string]: boolean } = {}
+	for _, id in Roster.RETIRED do gone[id] = true end
+	for i = #Roster.wraps, 1, -1 do
+		local w = Roster.wraps[i]
+		if gone[w.id] then
+			(w :: any).retired = true
+			table.insert(Roster.retiredWraps, 1, table.remove(Roster.wraps, i) :: Wrap)
+		end
+	end
+end
 
 return Roster

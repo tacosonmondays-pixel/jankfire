@@ -128,6 +128,8 @@ end
 function M.wrapList(): { any }
 	local out = table.clone(Roster.wraps)
 	for _, w in (Roster.masteryWraps or {}) :: { any } do table.insert(out, w) end
+	-- (the retired wraps last: LoadoutUI shows one only to its owners. Roster.RETIRED, 27 Nov)
+	for _, w in ((Roster :: any).retiredWraps or {}) :: { any } do table.insert(out, w) end
 	return out
 end
 
