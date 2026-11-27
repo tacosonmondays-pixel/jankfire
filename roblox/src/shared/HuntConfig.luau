@@ -198,8 +198,10 @@ H.INTRO = {
 	outsideLead = 8.8, -- (s before the hunt: he stands at the map's outside spot from the cut outside (beats.outside), held still)
 	-- mocap (the vault's Mixamo clips, mixamo_r15.py; R15 and R6). calm = ANIMS idle
 	anims = {
-		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 84828717533144, look = 108845709130342 },
-		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 130441780593124, look = 95541089023402 },
+		-- (snap, owner 27 Nov: "I wanted to be staring straight up": the vault's Victory Idle 3, frames 15-29, the face
+		-- 74 deg up and square to the hips; the old snap, a boxing head hit, peaked twisted 133 deg off them)
+		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 99336910488698, look = 108845709130342 },
+		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 110975607602455, look = 95541089023402 },
 	},
 	static = { 72310839769760, 86008837872701, 122572333792473, 98994588240705 }, -- (B's screen: soft grey noise, nothing readable)
 	-- recordings only, no voices. the owner's order (27 Nov): the room's hum (PC fans, a fridge), a heartbeat getting
@@ -224,15 +226,18 @@ H.INTRO = {
 	-- the film's beats, s on an 18 s hide (k scales them to the real one). 27 Nov (owner): the room's opening trimmed,
 	-- a look round outside as his hands come down, a hold behind him and a slow push into first person
 	beats = { push = 1.6, profile = 2.8, build = 4.0, behind = 5.0, dutch = 5.9, face = 6.8, rush = 7.6, snap = 8.3,
-		outside = 9.3, around = 10.5, swing = 13.4, hold = 15.4, enter = 16.2, bars = 16.4 },
+		outside = 9.3, around = 10.5, swing = 13.4, hold = 15.4, enter = 16.2, cut = 17.0, bars = 17.0 },
+	-- (owner on v11: "why is she still shakey or bouncy?": the breathing idle swayed her hips 19 cm and the 11 s look round
+	-- was squeezed into 2.6 s, 4x its speed) the look round now plays a 3.7 s slice at `look` x, over the idle at `idle` x
+	calm = { idle = 0.3, look = 1.2 },
 	-- the look round's clip (upper body, R15 and R6: the vault's Mixamo Frisk Look Around, mixamo_r15.py --upper); the
 	-- relaxed stand his hands come down into is ANIMS idle
-	lookAround = { R15 = 91308623233691, R6 = 125996784721119 },
+	lookAround = { R15 = 104585605452755, R6 = 116576022390941 }, -- (07_frisk_look_around frames 21-131: right, then left)
 	-- (main, 27 Nov: a dressed-up avatar's close-ups were a white jumble of frills) whatever he wears between the lens
 	-- and the face (or hands) fades to `fade`, and anything within `near` studs of the lens
-	lens = { fade = 0.92, near = 1.2 },
+	lens = { fade = 0.92, near = 0.35 }, -- (owner on v11: "her hair is like invisible or clear?": only what the lens is inside fades)
 	-- the hit-stop on the snap: `at` s after it starts, his body holds for `len` s while the lens kicks
-	hitstop = { at = 0.1, len = 0.2 },
+	hitstop = { at = 0.3, len = 0.3 }, -- (as the face lands straight up: a held beat)
 }
 
 -- the round's win films (the owner, 27 Nov: "it was just a game you were playing"; HuntOutro.client): everyone in the
@@ -275,13 +280,13 @@ H.OUTRO = {
 H.HIDER_INTRO = {
 	on = true,
 	len = 5,
-	title = 1.6, -- (s of SURVIVE at the end; the last `home` s of it glide back to the game's camera)
-	home = 0.5,
+	title = 1.6, -- (s of SURVIVE at the end; it fades over the last `home` s, then a cut to the game's camera)
+	home = 0.35,
 	walkFrom = 7, walkSpeed = 0.45, -- (studs behind their spot they start; the walk's speed)
 	-- recordings only: the intro's heartbeat a little quicker and under its level, the game's own impact on the word
 	sounds = {
 		heart = { id = 9043365842, vol = 0.45, speed = 1.15 },
-		hit = "boom",
+		hit = "boom", hitVol = 0.5, -- (v1: the boom peaked -1.7 dB)
 	},
 }
 

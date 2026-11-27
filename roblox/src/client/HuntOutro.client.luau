@@ -325,7 +325,7 @@ local function play(a: any)
 	screen.Color = Color3.fromRGB(20, 22, 26); screen.Material = Enum.Material.SmoothPlastic
 	screen.Parent = room
 	local light = Instance.new("SurfaceLight")
-	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * 1.5 -- (v2: the room read near black; the picture lights it)
+	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * (if set == "A" then 0.9 else 1.5) -- (v2: B near black; v6: A's sitter blew out white)
 	light.Color = Color3.fromHex(sd.light.col); light.Shadows = false -- (owner, 27 Nov: hard screen shadows striped the outfits)
 	light.Parent = screen
 	local sg = Instance.new("SurfaceGui")
@@ -418,10 +418,20 @@ local function play(a: any)
 		local s = spot("deskSeat")
 		local over = s.Position + s.RightVector * 2.2 + Vector3.new(0, 2.2, 0) + s.LookVector * -3.6
 		pullEnd = CFrame.lookAt(over, scrP + Vector3.new(0, -0.4, 0))
-		reveal = function(u)
+		local headAt: Vector3? = nil
+		local function seatedHead(): Vector3 -- (where the sitter's head is as the reveal starts: held, so the lens stays calm)
+			if headAt then return headAt end
+			for _, b in roomBodies do
+				local h = b.m:FindFirstChild("Head") :: BasePart?
+				if h then headAt = h.Position; return h.Position end
+			end
+			return s.Position + Vector3.new(0, 3.6, 0)
+		end
+		reveal = function(u) -- (v6: the lens on the seat's height framed her chest, head out of shot: now on her face)
 			local e = Cine.ease(u)
-			local from = s.Position + s.LookVector * 3.4 + s.RightVector * Cine.lerp(2.6, 2.2, e) + Vector3.new(0, Cine.lerp(1.6, 1.4, e), 0)
-			return CFrame.lookAt(from, s.Position + Vector3.new(0, 1.3, 0))
+			local hd = seatedHead()
+			local from = s.Position + s.LookVector * Cine.lerp(4.4, 4.0, e) + s.RightVector * Cine.lerp(2.6, 2.2, e) + Vector3.new(0, hd.Y - s.Position.Y + 0.2, 0)
+			return CFrame.lookAt(from, hd - Vector3.new(0, 0.5, 0))
 		end
 	else
 		local c = spot("couch")

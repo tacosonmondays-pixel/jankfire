@@ -95,6 +95,7 @@ local function stop()
 	running = nil
 	r.alive = false
 	if r.conn then r.conn:Disconnect() end
+	if r.solid then pcall(function() RunService:UnbindFromRenderStep("HuntIntroSolid") end) end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	if r.tail then -- (the birds: peace carries on past the hand-back and fades out)
 		local b = r.tail
@@ -325,21 +326,10 @@ local function play(a: any)
 		if #hs == 0 then return end
 		local camP = workspace.CurrentCamera.CFrame.Position
 		local dir = subj - camP
+		-- (owner on v11, 27 Nov: "her hair is like invisible or clear?": nothing of hers fades for standing between the
+		-- lens and her face any more; only what the lens is right inside, which would show its inside faces)
 		local block: { [BasePart]: boolean } = {}
-		if dir.Magnitude > 0.6 then
-			local list = table.clone(hs)
-			dir = dir.Unit * (dir.Magnitude - 0.3)
-			for _ = 1, 8 do
-				rp.FilterDescendantsInstances = list
-				local hit = workspace:Raycast(camP, dir, rp)
-				if not hit then break end
-				local i = table.find(list, hit.Instance)
-				if not i then break end
-				block[list[i]] = true
-				table.remove(list, i)
-				if #list == 0 then break end
-			end
-		end
+		local _ = dir
 		for _, h in hs do
 			local o = h.CFrame:PointToObjectSpace(camP)
 			local hz = h.Size / 2
@@ -383,6 +373,7 @@ local function play(a: any)
 		return CFrame.lookAt(hp - flat * rad + rt * s + Vector3.new(0, up, 0), hp + flat * 6 + rt * (s * 0.4))
 	end
 	local function smoother(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
+	local function steadyHead(): Vector3 return realBody() - Vector3.new(0, 0.4, 0) end -- (her root's, still: no bob)
 	local shots = {
 		-- 1. the room: a low wide, a slow push, a profile (27 Nov: trimmed, to give the end outside its room)
 		{ name = "wide", t0 = 0, t1 = beat("push"), fov = function(u) return Cine.lerp(56, 52, u) end,
@@ -404,13 +395,18 @@ local function play(a: any)
 			cam = function(u) return look(lerpV(P(0, hy + 0.1, -3.4), P(0, hy + 0.05, -1.7), u), headLive()) end },
 		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
-		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 54, shake = function(u) return 8 * (1 - u) ^ 2 end,
-			cam = function(u) local e = Cine.ease(u); return CFrame.lookAt(P(0, hy + 4.6 - 0.5 * e, -2.5 + 0.3 * e), headLive() - Vector3.new(0, 0.6, 0)) end }, -- (v6: a step wider)
-		-- 4. outside: low in front of him (between him and the map), looking up at him
-		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, shake = 0.5,
+		-- (owner on v11: "I wanted to be staring straight up": the lens straight above her, a touch in front so her face,
+		-- tipped 74 deg up by the clip, looks right into it; her body still below; a slow sink and turn)
+		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 5 * (1 - u) ^ 2 end,
 			cam = function(u)
-				local from = O.Position + flat * Cine.lerp(5.4, 5.0, u) + rt * 2.4 + Vector3.new(0, 1.1, 0)
-				return look(from, realHead() + Vector3.new(0, 0.4, 0))
+				local e = Cine.ease(u)
+				return look(P(0, hy + Cine.lerp(5.4, 4.7, e), Cine.lerp(-1.3, -1.1, e)), headLive() + P(0, 0, 0.25) - P(0, 0, 0), Cine.lerp(0, 6, e))
+			end },
+		-- 4. outside: low in front of him (between him and the map), looking up at him
+		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, -- (owner: "a calm motion": no handheld,
+			cam = function(u)                                                   -- the lens on her body, not her moving head)
+				local from = O.Position + flat * Cine.lerp(5.4, 5.0, Cine.ease(u)) + rt * 2.4 + Vector3.new(0, 1.1, 0)
+				return look(from, realBody() + Vector3.new(0, 0.1, 0))
 			end },
 		-- 5. the look round (owner, 27 Nov): a slow drift out to a three-quarter as his head and shoulders turn left and
 		-- right and his hands come down
@@ -423,7 +419,7 @@ local function play(a: any)
 		-- 6. the swing: round to behind him as he looks down
 		{ name = "swing", t0 = beat("swing"), t1 = beat("hold"), fov = 40,
 			cam = function(u)
-				local hp = realHead()
+				local hp = steadyHead()
 				local a = Cine.ease(u)
 				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -151.6, a))) * flat -- (ends exactly on the hold's over-the-shoulder spot: 28.4 deg, 4.21 out)
 				local at = hp:Lerp(hp + flat * 6 + rt * 0.8, Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
@@ -431,16 +427,24 @@ local function play(a: any)
 			end },
 		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
 		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
-			cam = function(u) return behindCF(realHead(), Cine.lerp(3.7, 3.2, u), 0.9) end },
-		-- 8. into his eyes: the push eases on into first person (smootherstep: no pop) while the bars lift
-		{ name = "enter", t0 = beat("enter"), t1 = len,
-			fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(40, gf, smoother(u)) end,
-			cam = function(u)
-				local from = behindCF(realHead(), Cine.lerp(3.2, 2.6, math.min(1, u * 2)), 0.9)
-				return from:Lerp(Cine.gameplay(flat), smoother(u))
-			end },
+			cam = function(u) return behindCF(steadyHead(), Cine.lerp(3.7, 3.2, u), 0.9) end },
+		-- 8. (owner on v11: her head went see-through as the lens pushed into it) the push stops behind her, solid, and
+		-- cuts straight into first person as the bars lift
+		{ name = "enter", t0 = beat("enter"), t1 = beat("cut"), fov = function(u) return Cine.lerp(40, 36, smoother(u)) end,
+			cam = function(u) return behindCF(steadyHead(), Cine.lerp(3.2, 2.3, smoother(u)), 0.9) end },
+		{ name = "fp", t0 = beat("cut"), t1 = len, fov = function() local _, gf = Cine.gameplay(flat); return gf end,
+			cam = function() return (Cine.gameplay(flat)) end },
 	}
-	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.6 })
+	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.4 })
+	RunService:BindToRenderStep("HuntIntroSolid", Enum.RenderPriority.Last.Value + 90, function()
+		if not r.alive or r.fp or T() < beat("outside") then return end
+		local ch = me.Character
+		if not ch then return end
+		for _, d in ch:GetDescendants() do
+			if (d:IsA("BasePart") or d:IsA("Decal")) and (d :: any).LocalTransparencyModifier ~= 0 then (d :: any).LocalTransparencyModifier = 0 end
+		end
+	end)
+	r.solid = true
 	HubLook.set("hunt_intro_dark", 0) -- (Finishing is set now: HubLife leaves the light to us)
 
 	-- the cues: the clips, the flicker, the heartbeat, the hit, outside
@@ -464,32 +468,26 @@ local function play(a: any)
 		if t < beat("outside") then
 			clearLens(body, if shot == "shoulder" then handsLive() elseif shot == "behind" then P(sd.at.X, sd.at.Y, sd.at.Z) else facePoint(), dt)
 		else -- (out front: his face; behind him: the house past him; as the lens goes into his head his hair fades)
-			local front = shot == "outside" or shot == "around"
-			-- (v8: a 2.8-stud fade behind him left a bald head and ghost frills; the hold keeps his hair, the push in
-			-- fades his head and all he wears as the lens arrives, so there is no pale blob before first person)
-			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt, if shot == "hold" then 1.6 else nil)
-			local ch = me.Character
-			local hd = ch and ch:FindFirstChild("Head") :: BasePart?
-			if shot == "enter" and hd then
-				local a = math.clamp((3.2 - (workspace.CurrentCamera.CFrame.Position - hd.Position).Magnitude) / 1.6, 0, 1)
-				local parts: { Instance } = { hd }
-				for _, acc in (ch :: Model):GetChildren() do
-					if acc:IsA("Accessory") then for _, d in acc:GetDescendants() do if d:IsA("BasePart") then table.insert(parts, d) end end end
-				end
-				for _, p in parts do
-					local bp = p :: BasePart
-					if bp.LocalTransparencyModifier < a then
-						bp.LocalTransparencyModifier = a
-						for _, dc in bp:GetChildren() do if dc:IsA("Decal") then dc.LocalTransparencyModifier = a end end
-						touched[bp] = true
+			-- (owner on v11: her hair and then her whole head went see-through out here: the lens fades nothing of hers
+			-- now, and the game's own camera can't either: HuntIntroSolid holds her at 0 until the cut into first person)
+			if once("cut", beat("cut")) then
+				r.fp = true
+				local ch = me.Character -- (first person: her head and what she wears off this screen, as the game does)
+				if ch then
+					for _, d in ch:GetDescendants() do
+						local bp = if d:IsA("BasePart") then d elseif d:IsA("Decal") and d.Parent and d.Parent:IsA("BasePart") then d.Parent else nil
+						if bp and (bp.Name == "Head" or (bp.Parent and bp.Parent:IsA("Accessory"))) then
+							(d :: any).LocalTransparencyModifier = 1
+							if d:IsA("BasePart") then touched[d] = true end
+						end
 					end
 				end
 			end
 		end
-		-- the look round's clip, timed to fill its beat once its length is known
-		if r.lookTrack and not r.lookSped and r.lookTrack.Length > 0 then
-			r.lookSped = true
-			r.lookTrack:AdjustSpeed(r.lookTrack.Length / math.max(0.5, beat("swing") - beat("around") - 0.3))
+		-- the snap holds on its last frame: her face straight up until the cut outside
+		if A.snap and not r.snapHeld and A.snap.IsPlaying and A.snap.Length > 0 and A.snap.TimePosition >= A.snap.Length - 0.05 then
+			r.snapHeld = true
+			A.snap:AdjustSpeed(0)
 		end
 		-- the hit-stop on the snap (main, 27 Nov: the Tidecrest impact language): his body holds for a beat while the
 		-- lens kicks and the hit lands
@@ -558,7 +556,7 @@ local function play(a: any)
 		if once("shake", beat("dutch")) and A.shake then A.shake:Play(0.1, 1, 1.6) end
 		if once("crazy2", beat("face")) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
 		if once("snap", beat("snap")) then
-			if A.snap then A.snap:Play(0.04, 1, 1.3) end
+			if A.snap then A.snap.Looped = false; A.snap:Play(0.06, 1, 1) end
 			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end -- (the room's sound ends on the hit: then peace)
@@ -579,18 +577,19 @@ local function play(a: any)
 			local ra = rh and rh:FindFirstChildOfClass("Animator")
 			if ra then
 				local up = track(ra, ids.snap, Enum.AnimationPriority.Action3)
-				if up then up:Play(0.15, 1, 1); up.TimePosition = math.max(0, up.Length - 0.25); up:AdjustSpeed(0); table.insert(r.realTracks, up) end
+				if up then up:Play(0.15, 1, 1); up.TimePosition = math.max(0, up.Length - 0.05); up:AdjustSpeed(0); table.insert(r.realTracks, up) end
 				r.realAnimator = ra
 			end
 		end
 		-- the look round (owner, 27 Nov): his hands come down slowly into a relaxed stand as he looks left and right
 		if once("around", beat("around")) and r.realAnimator then
 			for _, tr in r.realTracks do tr:Stop(2.4) end
+			local CA = HC.INTRO.calm or { idle = 0.3, look = 1.2 }
 			local rest = track(r.realAnimator, HC.ANIMS[rig] and HC.ANIMS[rig].idle, Enum.AnimationPriority.Action)
-			if rest then rest.Looped = true; rest:Play(1.6); table.insert(r.realTracks, rest) end
+			if rest then rest.Looped = true; rest:Play(1.6, 1, CA.idle); table.insert(r.realTracks, rest) end
 			local la = HC.INTRO.lookAround and HC.INTRO.lookAround[rig]
 			local lk = track(r.realAnimator, la, Enum.AnimationPriority.Action2)
-			if lk then lk:Play(0.8); table.insert(r.realTracks, lk); r.lookTrack = lk end
+			if lk then lk.Looped = false; lk:Play(1.0, 1, CA.look); table.insert(r.realTracks, lk); r.lookTrack = lk end
 		end
 		if once("down", beat("swing")) and r.realAnimator then
 			if r.lookTrack then r.lookTrack:Stop(0.6) end

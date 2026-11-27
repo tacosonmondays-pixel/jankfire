@@ -33,9 +33,9 @@ local function effectsGroup(): SoundGroup?
 	return if g and g:IsA("SoundGroup") then g else nil
 end
 -- a table is a Roblox library recording { id, vol, speed? }; a string is the game's own library by name (Sfx)
-local function sound(e: any, looped: boolean): Sound?
+local function sound(e: any, looped: boolean, vol: number?): Sound?
 	if type(e) == "string" then
-		if Sfx then pcall(Sfx.play, e, nil, 1) end
+		if Sfx then pcall(Sfx.play, e, nil, vol or 1) end
 		return nil
 	end
 	if type(e) ~= "table" or not e.id then return nil end
@@ -70,7 +70,12 @@ local function stop(skipped: boolean?)
 	if r.copy then r.copy:Destroy() end
 	if r.unbind then pcall(function() RunService:UnbindFromRenderStep("HuntHiderHide") end) end
 	for d, v in r.hidden do if d.Parent then (d :: any).LocalTransparencyModifier = v end end
-	if r.root and r.root.Parent then r.root.Anchored = r.wasAnchored end
+	if r.root and r.root.Parent then
+		if r.face then -- (she stands where her copy stopped, facing the way it walked)
+			r.root.CFrame = CFrame.lookAt(r.root.Position, r.root.Position + r.face)
+		end
+		r.root.Anchored = r.wasAnchored
+	end
 	for g, was in r.guis do if g.Parent then g.Enabled = was end end
 	Cine.bars(false, if skipped then 0.2 else 0.4)
 	if r.cine then r.cine.stop(true) end -- (onto the game's own camera on their current body)
@@ -172,10 +177,36 @@ local function play(a: any)
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Exclude
 	rp.FilterDescendantsInstances = { ch :: Model, copy }
-	local back = HI.walkFrom or 7
-	local hit = workspace:Raycast(spot.Position, -flat * back, rp)
-	if hit then back = math.max(1.5, (hit.Position - spot.Position).Magnitude - 1.8) end
+	-- (v1, 27 Nov: a spot against a sofa left no room to walk and put the lens on top of her) she walks in from the side
+	-- with the most room (her own facing preferred), and the lens stands still where it has the most room in front of her
+	local function free(at: Vector3, dir: Vector3, far: number): number
+		local h = workspace:Raycast(at, dir * far, rp)
+		return if h then (h.Position - at).Magnitude else far
+	end
+	local base = spot.Position
+	local walkD, best, room = flat, -1e9, 0
+	for i = 0, 15 do
+		local a = i * math.pi / 8
+		local d = Vector3.new(math.sin(a), 0, math.cos(a)) -- (the way she walks: she comes in from -d)
+		local f = math.min(free(base, -d, 10), free(base + Vector3.new(0, 1.5, 0), -d, 10))
+		local score = math.min(f, 8) + 1.5 * d:Dot(flat)
+		if score > best then walkD, best, room = d, score, f end
+	end
+	spot = CFrame.lookAt(base, base + walkD)
+	r.face = walkD
+	local back = math.clamp(room - 1.8, 1.5, HI.walkFrom or 7)
 	local from = spot * CFrame.new(0, 0, back)
+	local eyeAt = base + Vector3.new(0, 1.2, 0)
+	local camD, camBest, camRoom = walkD, -1e9, 0
+	for i = -6, 6 do
+		local d = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(i * 15)) * walkD
+		local f = free(eyeAt, d, 9)
+		local score = math.min(f, 7) - math.abs(i) * 0.12
+		if score > camBest then camD, camBest, camRoom = d, score, f end
+	end
+	local camDist = math.clamp(camRoom - 0.8, 2.4, 6.5)
+	local camAt = eyeAt + camD * camDist + Vector3.new(0, 0.25, 0)
+	local camFov = if camDist < 4 then 62 else 50
 	copy:PivotTo(from)
 	copy.Parent = workspace
 	local walk = track(copy, HC.OUTRO and HC.OUTRO.walk and HC.OUTRO.walk[rig], Enum.AnimationPriority.Action)
@@ -183,34 +214,20 @@ local function play(a: any)
 	local look = track(copy, HC.INTRO.lookAround and HC.INTRO.lookAround[rig], Enum.AnimationPriority.Action2)
 	if look then look.Looped = true; look:Play(0.3); look.TimePosition = 1.2; look:AdjustSpeed(0.9) end
 	local titleAt = math.max(1.5, len - (HI.title or 1.6))
-	local homeAt = len - (HI.home or 0.5)
+	local homeAt = len - (HI.home or 0.35)
 
-	-- the lens: in front of them, a little to one side and low, backing off as they come; never through a wall
+	-- the lens: still, in front of her where there's room, turning to keep her as she comes; a slow push on the word.
+	-- it ends on a cut to the game's camera (v1's glide back swung through her head)
 	local function body(): CFrame return copy:GetPivot() end
-	local function clear(eye: Vector3, want: Vector3): Vector3
-		local d = want - eye
-		local h2 = workspace:Raycast(eye, d, rp)
-		if h2 then return h2.Position - d.Unit * 0.6 end
-		return want
-	end
-	local function lensAt(u: number, title: boolean): CFrame
-		local b = body()
-		local eye = b.Position + Vector3.new(0, 1.2, 0)
-		local fwd = Vector3.new(b.LookVector.X, 0, b.LookVector.Z).Unit
-		local right = fwd:Cross(Vector3.yAxis)
-		local want = if title
-			then b.Position + fwd * Cine.lerp(5.2, 4.6, u) + right * 1.6 + Vector3.new(0, 0.5, 0)
-			else b.Position + fwd * Cine.lerp(6.0, 5.2, u) + right * Cine.lerp(2.4, 1.8, u) + Vector3.new(0, 0.1, 0)
-		return CFrame.lookAt(clear(eye, want), eye + Vector3.new(0, if title then 0.1 else -0.1, 0))
-	end
 	local function smooth(u: number): number return u * u * (3 - 2 * u) end
+	local function aim(): Vector3 return body().Position + Vector3.new(0, 0.9, 0) end
 	local shots = {
-		{ name = "walk", t0 = 0, t1 = titleAt, fov = 50, shake = 0.45, cam = function(u) return lensAt(u, false) end },
-		{ name = "title", t0 = titleAt, t1 = homeAt, fov = function(u) return Cine.lerp(48, 44, u) end,
-			cam = function(u) return lensAt(u, true) end },
-		{ name = "home", t0 = homeAt, t1 = len, -- (a glide onto the game's own camera, so the hand-back doesn't pop)
-			cam = function(u) local g = Cine.gameplay(flat); return lensAt(1, true):Lerp(g, smooth(u)) end,
-			fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(44, gf, smooth(u)) end },
+		{ name = "walk", t0 = 0, t1 = titleAt, fov = camFov, cam = function() return CFrame.lookAt(camAt, aim()) end },
+		{ name = "title", t0 = titleAt, t1 = len, fov = function(u) return camFov - 4 * smooth(u) end,
+			cam = function(u)
+				local a = aim()
+				return CFrame.lookAt(camAt + (a - camAt).Unit * math.max(0, math.min(0.7, camDist - 2.2)) * smooth(u), a)
+			end },
 	}
 	-- the grade (the gunman intro's muted colour), the bars, the heartbeat
 	local cam = workspace.CurrentCamera
@@ -223,7 +240,7 @@ local function play(a: any)
 		r.grade = cc
 	end
 	Cine.bars(true, 0.3)
-	r.cine = Cine.play(shots, { clock = T, flag = "hunthider", warm = 0.3 })
+	r.cine = Cine.play(shots, { clock = T, flag = "hunthider" })
 	local bed = sound(HI.sounds and HI.sounds.heart, true)
 	if bed then table.insert(r.sounds, bed) end
 
@@ -234,10 +251,10 @@ local function play(a: any)
 	gui.Parent = pg
 	r.gui = gui
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	local size = math.floor(math.clamp(vp.Y * 0.15, 56, 140))
+	local size = math.floor(math.clamp(vp.Y * 0.2, 64, 170)) -- (v1's 0.15 read small)
 	local holder = Instance.new("Frame")
 	holder.Name = "Word"; holder.BackgroundTransparency = 1; holder.AnchorPoint = Vector2.new(0.5, 0.5)
-	holder.Position = UDim2.fromScale(0.5, 0.5); holder.Size = UDim2.new(1, 0, 0, size); holder.Visible = false
+	holder.Position = UDim2.fromScale(0.5, 0.7); holder.Size = UDim2.new(1, 0, 0, size); holder.Visible = false -- (under her face)
 	holder.Parent = gui
 	local scale = Instance.new("UIScale"); scale.Parent = holder
 	local labels: { TextLabel } = {}
@@ -287,12 +304,11 @@ local function play(a: any)
 			TweenService:Create(scale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 			for _, l in labels do TweenService:Create(l, TweenInfo.new(0.1), { TextTransparency = rest[l] }):Play() end
 			if r.cine then r.cine.kick(5) end
-			sound(HI.sounds and HI.sounds.hit, false)
+			sound(HI.sounds and HI.sounds.hit, false, HI.sounds and HI.sounds.hitVol)
 		end
 		if shown and not faded and t >= homeAt then
 			faded = true
 			for _, l in labels do TweenService:Create(l, TweenInfo.new(len - homeAt), { TextTransparency = 1 }):Play() end
-			Cine.bars(false, len - homeAt)
 		end
 		if t >= len then stop() end
 	end)
