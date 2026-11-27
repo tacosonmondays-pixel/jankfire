@@ -1490,6 +1490,9 @@ local function stepRig(r: Rig, dt: number, now: number)
 	if not r.gun and not r.tool then return end
 	if src.Name == "HeldWeapon" then hideServerGun(r, src) end
 	r.isMe = r.ch == me.Character
+	-- (HOUSE HUNT's intro films your own body from above, posed by its clip: this pose's look pitch bent her chest and
+	-- head off it, so the cut outside framed her legs. Your body is left to its animation while the intro plays)
+	if r.isMe and me:GetAttribute("HuntIntro") ~= nil then r.on = 0; return end
 	-- how far off: far bodies are posed every 3rd frame
 	r.frame += 1
 	local dist = (camera.CFrame.Position - r.root.Position).Magnitude
