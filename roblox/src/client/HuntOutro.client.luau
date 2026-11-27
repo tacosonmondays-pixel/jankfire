@@ -105,6 +105,7 @@ local function stop()
 	Cine.bars(false, 0.3)
 	HubLook.set(roundLook(), 0)
 	if r.cine then r.cine.stop(true) end
+	if r.warm then r.warm.release(); r.warm = nil end
 	me:SetAttribute("HuntOutro", nil)
 end
 
@@ -575,6 +576,35 @@ local function play(a: any)
 	end
 	Cine.bars(true, 0.4)
 	r.cine = Cine.play(shots, { clock = T, flag = "huntoutro" })
+	-- (main, 27 Nov, "nothing pops in") the room, its props, the copies, the clips and the sounds load in the background
+	-- from the first frame: the room isn't seen until the pull-out (beats.pull), the house copy's kit is the lobby's.
+	-- No shots handed over: two of their lenses keep eased state a call ahead of the film would seed
+	task.spawn(function()
+		local sets: { Instance } = {}
+		for _, f in r.folders do table.insert(sets, f) end
+		local animIds: { string } = {}
+		for _, rigIds in OUT.anims or {} do
+			if type(rigIds) == "table" then
+				for _, id in rigIds do if type(id) == "number" then table.insert(animIds, "rbxassetid://" .. id) end end
+			end
+		end
+		local soundIds: { string } = {}
+		for _, s in S do
+			if type(s) == "table" and type(s.id) == "number" then table.insert(soundIds, "rbxassetid://" .. s.id)
+			elseif type(s) == "table" then
+				for _, x in s do if type(x) == "table" and type(x.id) == "number" then table.insert(soundIds, "rbxassetid://" .. x.id) end end
+			end
+		end
+		local pts: { Vector3 } = {}
+		for _, f in r.folders do
+			local ok, cf = pcall(function() return (f :: any):GetPivot() end)
+			if ok and typeof(cf) == "CFrame" then table.insert(pts, cf.Position) end
+		end
+		local w = Cine.prewarm(nil, { key = "huntoutro", sets = sets, points = pts, anims = animIds, sounds = soundIds,
+			timeout = math.max(1, beat("pull") - 1), keepFor = len + 5 })
+		if RunService:IsStudio() then print(("[HuntOutro] prewarm: ok %s, %.2f s, %d assets, %d pieces"):format(tostring(w.ok), w.waited, w.assets, #w.pieces)) end
+		if r.alive then r.warm = w else w.release() end
+	end)
 	keep(sound(S.house, 1, true))
 	keep(sound(S.houseTone, 1, true))
 	if win ~= "gunman" then keep(sound(S.heart, 1, true)) end -- (her heartbeat under the walk)

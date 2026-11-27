@@ -363,6 +363,8 @@ function B.importIntro(id: number?): string
 		d.Transparency = SEE[kind] or 0
 		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
 		d.CastShadow = kind == "plastic"; d.DoubleSided = false
+		-- (main, 27 Nov, "nothing pops in": the films' close-ups saw LOD swaps; a game script can't set this at run time)
+		pcall(function() d.RenderFidelity = Enum.RenderFidelity.Precise end)
 		groups[model] = groups[model] or {}
 		table.insert(groups[model], d)
 	end

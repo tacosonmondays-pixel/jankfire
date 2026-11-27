@@ -98,6 +98,8 @@ local function stop()
 	if r.solid then pcall(function() RunService:UnbindFromRenderStep("HuntIntroSolid") end) end
 	if r.hold then pcall(function() RunService:UnbindFromRenderStep("HuntIntroHold") end) end
 	if r.cutlog then pcall(function() RunService:UnbindFromRenderStep("HuntIntroCutLog") end) end
+	if r.lead then r.lead:Destroy(); r.lead = nil end
+	if r.warm then r.warm.release(); r.warm = nil end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	if r.tail then -- (the birds: peace carries on past the hand-back and fades out)
 		local b = r.tail
@@ -586,6 +588,37 @@ local function play(a: any)
 				return CFrame.lookAt(pos, at):Lerp(g, smoother(math.clamp((u - 0.8) / 0.2, 0, 1)))
 			end },
 	}
+	-- (main, 27 Nov, "nothing pops in") a black lead while CineKit.prewarm loads what the film shows: the room's kit, the
+	-- outside spot's map pieces (kept drawn by ZoneCull), the clips and the sounds. The film's clock is the hide's, so the
+	-- lead covers at most INTRO.leadMax s of the opening wide (the hum already under it) and then fades
+	local pgL = me:FindFirstChildOfClass("PlayerGui")
+	if pgL then
+		local lead = Instance.new("ScreenGui")
+		lead.Name = "HuntIntroLead"; lead.IgnoreGuiInset = true; lead.DisplayOrder = 46; lead.ResetOnSpawn = false
+		local blk = Instance.new("Frame")
+		blk.Size = UDim2.fromScale(1, 1); blk.BackgroundColor3 = Color3.new(0, 0, 0); blk.BorderSizePixel = 0; blk.Parent = lead
+		lead.Parent = pgL
+		r.lead = lead
+	end
+	task.spawn(function()
+		local animIds: { string } = {}
+		local function addAnim(id: any) if type(id) == "number" then table.insert(animIds, "rbxassetid://" .. id) end end
+		for _, id in ids do addAnim(id) end
+		addAnim(HC.ANIMS[rig] and HC.ANIMS[rig].idle)
+		addAnim(HC.INTRO.lookAround and HC.INTRO.lookAround[rig])
+		local soundIds: { string } = {}
+		local sets: { Instance } = { folder }
+		local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		for _, s in HC.INTRO.sounds do
+			if type(s) == "table" and type(s.id) == "number" then table.insert(soundIds, "rbxassetid://" .. s.id)
+			elseif type(s) == "string" and lib and lib:FindFirstChild(s) then table.insert(sets, lib:FindFirstChild(s) :: Instance) end
+		end
+		local w = Cine.prewarm(shots, { key = "huntintro", sets = sets, points = { O.Position, O.Position + flat * 30 },
+			anims = animIds, sounds = soundIds, timeout = 3, keepFor = 40 })
+		if RunService:IsStudio() then print(("[HuntIntro] prewarm: ok %s, %.2f s, %d assets, %d pieces"):format(tostring(w.ok), w.waited, w.assets, #w.pieces)) end
+		if r.alive then r.warm = w else w.release() end
+		r.warmReady = true
+	end)
 	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.4 })
 	RunService:BindToRenderStep("HuntIntroSolid", Enum.RenderPriority.Last.Value + 90, function()
 		if not r.alive or r.fp or T() < beat("outside") then return end
@@ -647,6 +680,12 @@ local function play(a: any)
 	r.conn = RunService.RenderStepped:Connect(function(dt: number)
 		if not r.alive then return end
 		local t = T()
+		if r.lead and (r.warmReady or t >= (HC.INTRO.leadMax or 1.0)) then
+			local g = r.lead; r.lead = nil
+			local f = g:FindFirstChildOfClass("Frame")
+			if f then TweenService:Create(f, TweenInfo.new(0.25), { BackgroundTransparency = 1 }):Play() end
+			task.delay(0.3, function() g:Destroy() end)
+		end
 		-- what the lens is on: his live head and hands, eased; his frills cleared out of the way
 		if head and head.Parent then follow("head", head.Position, dt) end
 		if lHand and rHand then follow("hands", (lHand.Position + rHand.Position) / 2, dt) end
