@@ -344,6 +344,111 @@ end
 -- ReplicatedStorage[HuntConfig.INTRO.kit] for the clients (HuntIntro) and the server (HuntMask), each model at its file
 -- frame (room A round the origin, B at +40 x, the mask round a head at -40 x: HuntIntroData.origin)
 B.INTRO = 132268489251156 -- (hunt_intro6, 27 Nov: + the item tables' hiT_ pieces, a red medkit; hunt_intro4 = 70825613805108)
+-- ------------------------------------------------------------------------------- the dust in the light (owner, 27 Nov)
+-- "Can you add ambiance stuff like dust particles under light?": motes in the sun's columns through the sunny windows
+-- (found from the glass hit boxes and the house's own look's sun), faint shafts in the three biggest, and motes under
+-- three ceiling lamps. All in Map.HuntHouse.Ambience (the round copies the house, so it goes along), rebuilt each call.
+-- The numbers match client/HuntDust (the films' rooms). Run after B.build.
+local DOT = "rbxassetid://107753175681578" -- (the VFX library's soft round glow, vfx_glow)
+local function kp(t: number, v: number, e: number?): NumberSequenceKeypoint return NumberSequenceKeypoint.new(t, v, e or 0) end
+local function motes(parent: Instance, cf: CFrame, size: Vector3, col: Color3, density: number, max: number, name: string): (BasePart, number)
+	local p = Instance.new("Part")
+	p.Name = name; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+	p.Transparency = 1; p.Size = size; p.CFrame = cf
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "Motes"; e.Texture = DOT; e.Color = ColorSequence.new(col)
+	e.LightInfluence = 1; e.LightEmission = 0.15
+	e.Size = NumberSequence.new({ kp(0, 0.06, 0.02), kp(1, 0.07, 0.02) })
+	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.2, 0.35), kp(0.8, 0.35), kp(1, 1) })
+	e.Lifetime = NumberRange.new(8, 12)
+	e.Rate = math.clamp(size.X * size.Y * size.Z * density, 0.6, max)
+	e.Speed = NumberRange.new(0.03, 0.12); e.SpreadAngle = Vector2.new(180, 180)
+	e.Acceleration = Vector3.new(0, -0.006, 0); e.Drag = 0.4; e.RotSpeed = NumberRange.new(0, 0)
+	e.Shape = Enum.ParticleEmitterShape.Box; e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	e.Orientation = Enum.ParticleOrientation.FacingCamera
+	e.Parent = p; p.Parent = parent
+	return p, e.Rate
+end
+local function shaft(parent: Instance, a: Vector3, b2: Vector3, width: number, col: Color3, see: number, name: string)
+	local p = Instance.new("Part")
+	p.Name = name; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+	p.Transparency = 1; p.Size = Vector3.new(0.2, 0.2, 0.2); p.CFrame = CFrame.new(a)
+	local a0 = Instance.new("Attachment"); a0.Parent = p
+	local a1 = Instance.new("Attachment"); a1.Position = b2 - a; a1.Parent = p
+	local bm = Instance.new("Beam")
+	bm.Attachment0 = a0; bm.Attachment1 = a1; bm.FaceCamera = true
+	bm.Texture = DOT; bm.TextureMode = Enum.TextureMode.Stretch; bm.TextureLength = 1; bm.TextureSpeed = 0
+	bm.Width0 = width; bm.Width1 = width * 1.25; bm.LightEmission = 0.6; bm.LightInfluence = 0
+	bm.Color = ColorSequence.new(col)
+	bm.Transparency = NumberSequence.new({ kp(0, 1), kp(0.18, see), kp(0.7, see), kp(1, 1) })
+	bm.Segments = 1; bm.Parent = p
+	p.Parent = parent
+end
+B.DUST = {
+	sun = Color3.fromRGB(255, 238, 212), lamp = Color3.fromRGB(255, 222, 184),
+	shafts = 3, shaftSee = 0.94, -- (faint: hiding stays readable)
+	lamps = { { -25.6, 10.7, 21 }, { 30, 7.6, -18 }, { -25.6, 10.7, -19.5 } }, -- (living room, the kitchen's pendant, the family room)
+}
+function B.ambience(): string
+	local H = workspace.Map:FindFirstChild("HuntHouse") :: Model?
+	if not H then return "no HuntHouse" end
+	local old = H:FindFirstChild("Ambience"); if old then old:Destroy() end
+	local f = Instance.new("Folder"); f.Name = "Ambience"; f.Parent = H
+	local O = H:GetPivot()
+	local solid = H:FindFirstChild("Solid")
+	if not solid then return "no Solid" end
+	-- the sun as THE HOUSE's look has it
+	local HL = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("HubLook"):Clone()) :: any
+	HL.preview("hunt_house")
+	local sun = game:GetService("Lighting"):GetSunDirection()
+	HL.preview(false)
+	local centre = O.Position + Vector3.new(0, 6, 0)
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { solid }
+	local wins = {}
+	for _, d in solid:GetDescendants() do
+		if d:IsA("BasePart") and d.Material == Enum.Material.Glass and math.min(d.Size.X, d.Size.Z) <= 0.6 then
+			local ax = if d.Size.X < d.Size.Z then Vector3.xAxis else Vector3.zAxis
+			local nout = if (d.Position - centre):Dot(ax) >= 0 then ax else -ax
+			local c = sun:Dot(nout)
+			local w = math.max(d.Size.X, d.Size.Z)
+			if c > 0.15 and sun.Y > 0 and w >= 3 then
+				local start = d.Position - nout * 0.6
+				-- (the glass itself is in Solid: start past it)
+				local hit = workspace:Raycast(start, -sun * 30, rp)
+				local len = if hit then math.clamp((hit.Position - start).Magnitude, 3, 14) else 11
+				table.insert(wins, { d = d, c = c, w = w, h = d.Size.Y, start = start, len = len, floor = start - sun * len })
+			end
+		end
+	end
+	-- the strongest: the west windows (the sun's side); two of the front's grazing ones on the ground floor
+	table.sort(wins, function(a, b) return a.c * a.w * a.h > b.c * b.w * b.h end)
+	local nm, rate, nsh, front = 0, 0, 0, 0
+	for _, w in wins do
+		local strong = w.c > 0.6
+		if not strong then
+			if front >= 2 or O:PointToObjectSpace(w.d.Position).Y > 12 then continue end
+			front += 1
+		end
+		local dir = -sun
+		local mid = w.start + dir * (w.len / 2)
+		local _, r = motes(f, CFrame.lookAt(mid, mid + dir), Vector3.new(w.w * 0.8, w.h * 0.8, w.len), B.DUST.sun,
+			if strong then 0.012 else 0.006, if strong then 5 else 2, "SunMotes")
+		nm += 1; rate += r
+		if strong and nsh < B.DUST.shafts and w.w >= 5 then
+			nsh += 1
+			shaft(f, w.start, w.floor, w.w * 0.55, B.DUST.sun, B.DUST.shaftSee, "SunShaft")
+		end
+	end
+	for _, l in B.DUST.lamps do
+		local top = O:PointToWorldSpace(Vector3.new(l[1], l[2] - 0.8, l[3]))
+		local hgt = math.max(3, l[2] - 1.6)
+		local _, r = motes(f, CFrame.new(top - Vector3.new(0, hgt / 2, 0)), Vector3.new(4.5, hgt, 4.5), B.DUST.lamp, 0.008, 1.4, "LampMotes")
+		nm += 1; rate += r
+	end
+	return ("ambience: sun %s; %d sunny windows; %d mote boxes (%.1f motes/s, about %d alive), %d shafts"):format(
+		tostring(sun), #wins, nm, rate, math.floor(rate * 10), nsh)
+end
+
 function B.importIntro(id: number?): string
 	local aid = id or B.INTRO
 	local HC = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any

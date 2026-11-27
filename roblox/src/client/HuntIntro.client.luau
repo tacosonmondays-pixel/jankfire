@@ -21,6 +21,7 @@ local HC = require(J:WaitForChild("HuntConfig")) :: any
 local Data = require(J:WaitForChild("HuntIntroData")) :: any
 local HubLook = require(J:WaitForChild("HubLook")) :: any
 local Cine = require(script.Parent:WaitForChild("CineKit")) :: any
+local HuntDust = require(script.Parent:WaitForChild("HuntDust")) :: any -- (the owner: dust in the light)
 local Sfx: any = nil
 pcall(function() Sfx = require(script.Parent:WaitForChild("Sfx", 5) :: ModuleScript) end)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Hunt") :: RemoteEvent
@@ -193,6 +194,8 @@ local function play(a: any)
 	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness
 	light.Color = Color3.fromHex(sd.light.col); light.Shadows = false -- (owner, 27 Nov: its hard shadows striped a frilly outfit)
 	light.Parent = screen
+	-- (the owner, 27 Nov: "dust particles under light") motes in the screen's glow; the attic's TV also casts a faint shaft
+	pcall(HuntDust.screen, folder, screen, Color3.fromHex(sd.light.col), { shaft = set == "B" })
 	local noise: ImageLabel? = nil
 	if set == "B" then
 		local sg = Instance.new("SurfaceGui")

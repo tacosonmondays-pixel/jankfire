@@ -22,6 +22,7 @@ local HC = require(J:WaitForChild("HuntConfig")) :: any
 local Data = require(J:WaitForChild("HuntIntroData")) :: any
 local HubLook = require(J:WaitForChild("HubLook")) :: any
 local Cine = require(script.Parent:WaitForChild("CineKit")) :: any
+local HuntDust = require(script.Parent:WaitForChild("HuntDust")) :: any -- (the owner: dust in the light)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Hunt") :: RemoteEvent
 local me = Players.LocalPlayer
 
@@ -396,6 +397,8 @@ local function play(a: any)
 	light.Face = Enum.NormalId.Front; light.Angle = 150; light.Range = sd.light.range; light.Brightness = sd.light.brightness * (if set == "A" then 0.9 else 1.5) -- (v2: B near black; v6: A's sitter blew out white)
 	light.Color = Color3.fromHex(sd.light.col); light.Shadows = false -- (owner, 27 Nov: hard screen shadows striped the outfits)
 	light.Parent = screen
+	-- (the owner, 27 Nov: "dust particles under light") motes in the screen's glow; the attic's TV also casts a faint shaft
+	pcall(HuntDust.screen, room, screen, Color3.fromHex(sd.light.col), { shaft = set == "B" })
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Front; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sg.PixelsPerStud = 180
 	sg.LightInfluence = 0; sg.Brightness = 1.6
@@ -532,7 +535,7 @@ local function play(a: any)
 				-- the room: they're queryable while it looks
 				local flipped: { BasePart } = {}
 				for _, d in room:GetDescendants() do
-					if d:IsA("BasePart") and not d.CanQuery then d.CanQuery = true; table.insert(flipped, d) end
+					if d:IsA("BasePart") and not d.CanQuery and d.Transparency < 1 then d.CanQuery = true; table.insert(flipped, d) end -- (not the dust's boxes)
 				end
 				for _, c in { { 3.0, 2.6 }, { 2.2, 3.4 }, { 1.2, 3.8 }, { 3.0, -2.6 }, { 2.2, -3.4 }, { 0.4, 4.0 }, { 0.4, -4.0 }, { -1.2, 3.6 } } do
 					local p = s.Position + s.LookVector * c[1] * 1.6 + s.RightVector * c[2] * 1.6 -- (v8, v9: wider; her head was cut)
