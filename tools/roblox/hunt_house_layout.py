@@ -345,6 +345,7 @@ KINDS = {
                                   (-12, 10, -9, 12, 11.5, 9)]),
     'flowerbed':  ((20, 1.6, 4), [(-10, 0, -2, 10, 1.6, 2)]),
     'hedge':      ((20, 5, 4), [(-10, 0, -2, 10, 5, 2)]),
+    'hedge42':    ((42, 5, 4), [(-21, 0, -2, 21, 5, 2)]),
     'hedgetall':  ((20, 8.2, 4.4), [(-10, 0, -2.2, 10, 8.2, 2.2)]),        # (judge round 3: the side fences' screen)
     'playfort':   ((28, 16, 20), [(-5.05, 0, -5.05, -3.55, 12.4, -3.55), (3.55, 0, -5.05, 5.05, 12.4, -3.55),
                                   (-5.05, 0, 3.55, -3.55, 12.4, 5.05), (3.55, 0, 3.55, 5.05, 12.4, 5.05),
@@ -490,6 +491,10 @@ SWINGS = [(0.0, GROUND + 2.6, -108.0), (8.0, GROUND + 2.6, -108.0)]
 F('shed', 90.0, -140.0, y=GROUND, turn=0)
 F('deck', -8.0, -134.0, y=GROUND)                               # (judge round 2: a centre with height) its steps face the house
 F('firepit', -8.0, -134.0, y=GROUND + 1.5)                      # (judge round 1: big things in the big garden)
+PLAYBAY = dict(x0=-66.0, z0=-121.0, x1=24.0, z1=-85.0)   # (judge round 4: the fort, trampoline and swing on one bark bed)
+KERBS = [(-66.0, -121.0, -10.4, -120.0), (-5.6, -121.0, 24.0, -120.0), (-66.0, -86.0, -10.4, -85.0), (-5.6, -86.0, 24.0, -85.0),
+         (-66.0, -120.0, -65.0, -86.0), (23.0, -120.0, 24.0, -86.0)]
+for (x0, z0, x1, z1) in KERBS: box(x0, GROUND, z0, x1, GROUND + 0.7, z1, 'slab')
 F('playfort', -56.0, -100.0, y=GROUND, turn=0)                  # (judge round 3: height; was the playhouse) its stair
 plane_x(-51.0, GROUND + 5.8, -43.0, GROUND + 0.6, -99.5, -96.5, 0.35, 'furn_playfort')   #  toward the house, the slide east
 F('tree', -76.0, -70.0, y=GROUND); F('tree', 100.0, -96.0, y=GROUND)
@@ -501,10 +506,10 @@ for hx in (-40, 0, 40, 60):                      # hedges along the back fence, 
     F('hedge', hx, -149.5, y=GROUND)
 F('flowerbed', 40, -128, y=GROUND, turn=0); F('flowerbed', 40, -136, y=GROUND, turn=0)
 # ---------------------------------------------------------------- the front
-F('tree', -44.0, 64.0, y=GROUND); F('hedge', -40, 77.5, y=GROUND); F('hedge', -18, 77.5, y=GROUND)
+F('tree', -44.0, 64.0, y=GROUND); F('hedge42', -29, 77.5, y=GROUND)   # (judge round 4: one piece, no seam)
 F('tree', 46.0, 62.0, y=GROUND)                                 # (judge round 2: a second front tree to balance the first)
-for (lx, lz) in ((-5.5, 60.0), (5.5, 60.0), (-5.5, 74.0), (5.5, 74.0)): F('lamppost', lx, lz, y=GROUND)   # the walk's lamps
-F('hedge', 22, 77.5, y=GROUND); F('hedge', 44, 77.5, y=GROUND)
+for (lx, lz) in ((-5.5, 60.0), (5.5, 60.0)): F('lamppost', lx, lz, y=GROUND)   # the walk's lamps (round 4: two, by the steps)
+F('hedge42', 33, 77.5, y=GROUND)
 F('mailbox', -6.5, 78.5, y=GROUND)
 F('hoop', 82, 42.4, y=0.0, turn=0)
 F('bins', 106, 46, y=GROUND, turn=3)

@@ -30,8 +30,8 @@ INFO = dict(name='HuntHouse', title='THE HOUSE', look='hunt_house', mapId='hunth
 # ================================================================ colours (the textured ones are unique hexes: WebArena
 # puts a picture on every piece of that colour, by `surfaces`)
 OAKFLOOR, CARPET, KITFLOOR, BATHFLOOR, STONEFLOOR = 'b39a7c', '8c8780', 'a29a8c', 'dedad0', 'cfc6b4'
-PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'd8d0c2', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
-BEAM = '8c6e52'      # (judge round 3: mid oak; Roblox's light crushed '7c6c5e' to black)
+PLASTER, CEIL, TRIM, BTILE, SPLASH = 'c4baa6', 'e8e2d7', 'f2efe8', 'e2e3de', '8e9a8a'   # (judge round 2: value steps)
+BEAM = 'c2ae92'      # (judge round 4: pale oak, paler than the walls; round 3's mid oak '8c6e52' read loud)
 # (judge round 1: the beams and the oak read orange; the ceiling one step darker than the walls)
 BRICK, SIDING, SHINGLE, STONE = '7f5446', 'e4dfd3', '6a6e74', 'cfc6b5'
 LAWN, PAVERS, CONC, FENCEB, ASPH = '6f8a55', 'b3a897', '97948d', 'ad9476', '55585c'
@@ -153,7 +153,7 @@ def ceilings():
             K.B('hh_trim', TRIM, a, yb - 0.45, b, c, yb, d, bev=0.12, segs=1)
     # the living room's beamed ceiling: three walnut beams across it
     for bx in (-47.0, -35.5, -24.0):
-        K.B('hh_trim', BEAM, bx - 0.9, 10.4, 2.0, bx + 0.9, 12.0, 40.0, bev=0.25)
+        K.B('hh_trim', BEAM, bx - 0.75, 10.8, 2.0, bx + 0.75, 12.0, 40.0, bev=0.22)
     # the dining room's coffer: a raised frame round the table's light
     for (a, b, c, d) in ((24, 14, 44, 15.2), (24, 28.8, 44, 30), (24, 14, 25.2, 30), (42.8, 14, 44, 30)):
         K.B('hh_trim', TRIM, a, 11.2, b, c, 12.0, d, bev=0.2)
@@ -162,6 +162,9 @@ def ceilings():
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     for (a, b, c, d) in ((14.0, -12.5, 24.5, -11.0), (14.0, -3.0, 24.5, -1.5), (23.0, -12.5, 24.5, -1.5)):   # (judge round 3: the nook's)
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
+    for (a, b, c, d) in ((26.0, -22.0, 42.0, -14.0), (25.2, 15.2, 42.8, 28.8), (14.0, -11.0, 23.0, -3.0)):   # (judge round 4: lit coves)
+        for (u0, v0, u1, v1) in ((a, b, c, b + 0.7), (a, d - 0.7, c, d), (a, b, a + 0.7, d), (c - 0.7, b, c, d)):
+            K.B('hh_lamp', 'fff1dc', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
     K.B('hh_trim', TRIM, 3.4, 11.6, 31.0, 12.0, 13.0, 31.6, bev=0.12)
     K.B('hh_trim', TRIM, 3.4, 11.6, 17.8, 4.0, 13.0, 31.6, bev=0.12)
@@ -486,7 +489,7 @@ def stair():
     # the balcony's parapet and posts; the porch's columns
     for (a, b, c, d) in ((14, -56, 50, -55.4), (14, -56, 14.6, -42), (49.4, -56, 50, -42)):
         K.B('hh_ext', TRIM, a, 13.0, b, c, 16.4, d, bev=0.1)
-        K.B('hh_ext', WALNUT, a - 0.15, 16.4, b - 0.15, c + 0.15, 16.9, d + 0.15, bev=0.15)
+        K.B('hh_ext', WALNUT, a - 0.35, 16.4, b - 0.35, c + 0.35, 17.2, d + 0.35, bev=0.25)
     K.B('hh_ext', OAKFLOOR, 14, 12.6, -56, 50, 13.0, -42, bev=0.05, flat=True)
     K.B('hh_ext', TRIM, 13.8, 11.8, -56.2, 50.2, 12.8, -42, bev=0.15)
     for px in (15.5, 48.5):
@@ -610,10 +613,11 @@ def grounds():
     K.B('hh_yard', STONE, 51.6, -1.55, -64.4, 52.4, -0.95, -42, bev=0.12)
     # the pergola over the store tables; stepping stones across the lawn from the patio to the shed
     PR.pergola(L.PERGOLA['x0'], L.PERGOLA['x1'], L.PERGOLA['z0'], L.PERGOLA['z1'], L.PERGOLA['top'])
-    for i in range(9):
-        t = i / 8.0
-        x, z = 44.0 + (86.0 - 44.0) * t, -68.0 + (-128.0 + 68.0) * t
-        K.cyl('hh_yard', STONE, x + (1.2 if i % 2 else -1.2), L.GROUND - 0.3, z, 1.8, 0.42, segs=14, bev=0.12)
+    bx0, bz0, bx1, bz1 = L.PLAYBAY['x0'], L.PLAYBAY['z0'], L.PLAYBAY['x1'], L.PLAYBAY['z1']     # (judge round 4: the play bay)
+    for (x0, x1) in ((bx0, -10.4), (-5.6, bx1)):
+        K.B('hh_yard', '6f6252', x0, L.GROUND - 0.3, bz0, x1, L.GROUND + 0.1, bz1, bev=0.0, flat=True)
+    for (x0, z0, x1, z1) in L.KERBS:
+        K.B('hh_yard', WALNUT, x0, L.GROUND - 0.2, z0, x1, L.GROUND + 0.7, z1, bev=0.2)
     z = -64.2                                                           # the patio to the deck: 4-stud pavers on the axis
     while z > -118.5:
         K.B('hh_yard', PAVERS, -10.0, L.GROUND - 0.3, z - 3.6, -6.0, L.GROUND + 0.12, z, bev=0.15, flat=True, segs=1)
@@ -738,14 +742,14 @@ def lights():
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
             K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
             nook = abs(x - 18.7) < 0.1                                  # (judge round 3: the nook's blew its rug out)
-            K.light('spot', x, 7.6, z, (0, -1, 0), 0.9 if nook else 1.6, 14 if nook else 18, 100 if nook else 110, col)
+            K.light('spot', x, 7.6, z, (0, -1, 0), 1.1 if nook else 2.4, 14 if nook else 18, 100 if nook else 110, 'ffd9b0')
             LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
         K.cyl('hh_lamp', 'b8a98f', x, yc - 0.15, z, 0.9, 0.15, segs=16, bev=0.05)
         K.cyl('hh_lamp', 'fff1dc', x, yc - 1.08, z, 1.45, 0.1, segs=24, bev=0.03, kind='neon')       # (judge round 2: it glows)
-        K.light('spot', x, yc - 1.3, z, (0, -1, 0), 1.3, rng, 130, col); LIGHTROOMS.append((rid, x, yc - 1.3, z))
-    K.light('point', -54.6, 1.4, 21.0, (0, -1, 0), 0.9, 10.0, 0, 'ff9a52'); LIGHTROOMS.append(('living', -54.6, 1.4, 21.0))   # embers
+        K.light('spot', x, yc - 1.3, z, (0, -1, 0), 2.0, rng, 130, 'ffdcb8'); LIGHTROOMS.append((rid, x, yc - 1.3, z))
+    K.light('point', -54.6, 1.4, 21.0, (0, -1, 0), 1.8, 16.0, 0, 'ff9a52'); LIGHTROOMS.append(('living', -54.6, 1.4, 21.0))   # embers
     # the stairwell's pendant: a drum shade hung from the upper ceiling over the void
     K.cyl('hh_lamp', DARK, 8.0, 18.5, 24.4, 0.08, 6.5, segs=6, bev=0.02)
     K.cyl('hh_lamp', 'e8e1d2', 8.0, 16.6, 24.4, 2.4, 2.2, segs=24, bev=0.25)

@@ -120,8 +120,8 @@ def hearth(M):
     B(OFFWHITE, -5.5, 0, -2.0, -3.2, 6.2, 0.4, M, bev=0.2); B(OFFWHITE, 3.2, 0, -2.0, 5.5, 6.2, 0.4, M, bev=0.2)
     B(OFFWHITE, -5.5, 4.4, -2.0, 5.5, 6.2, 0.4, M, bev=0.2)
     B(WALNUT, -6.2, 6.2, -2.0, 6.2, 6.8, 0.9, M, bev=0.15)                            # the mantel
-    B('3d3734', -3.2, 0.6, -2.0, 3.2, 4.4, -0.2, M, bev=0.05)                         # the firebox
-    B('c8642a', -2.0, 0.6, -1.5, 2.0, 0.8, -0.6, M, bev=0.1, kind='neon')             # embers (judge round 2)
+    B('5a534d', -3.2, 0.6, -2.0, 3.2, 4.4, -0.2, M, bev=0.05)                         # the firebox (round 4: mid grey)
+    B('e07a3a', -2.4, 0.6, -1.7, 2.4, 1.05, -0.4, M, bev=0.15, kind='neon')            # embers (judge round 4: a real glow)
     for sx in (-1, 1): B(OFFWHITE, sx * 3.6 - 0.4, 0, -0.2, sx * 3.6 + 0.4, 4.4, 0.7, M, bev=0.2)   # the surround's chamfered jambs
     for z in (-1.3, -0.5): B(BARK, -2.2, 0.6, z - 0.35, 2.2, 1.3, z + 0.35, M, bev=0.3)   # two logs
 
@@ -129,7 +129,7 @@ def rug(M, w=24, d=16, col='b4a893', edge='8e8170'):
     B(edge, -w / 2, 0, -d / 2, w / 2, 0.08, d / 2, M, bev=0.03)
     B(col, -w / 2 + 0.8, 0.02, -d / 2 + 0.8, w / 2 - 0.8, 0.1, d / 2 - 0.8, M, bev=0.03)
 
-def rugsmall(M): rug(M, 12, 8, '9aa0a0', '7c8384')
+def rugsmall(M): rug(M, 12, 8, '6f7373', '5d6162')
 
 def lamp(M):
     C(SLATE, 0, 0, 0, 1.3, 0.45, M, bev=0.15)
@@ -520,7 +520,7 @@ def trampoline(M):
     for k in range(6):
         a = k * 2 * math.pi / 6
         x, z = math.cos(a) * r, math.sin(a) * r
-        B(STEEL, x - 0.25, 0, z - 0.25, x + 0.25, 2.2, z + 0.25, M, bev=0.08)
+        B(STEEL, x - 0.42, 0, z - 0.42, x + 0.42, 2.2, z + 0.42, M, bev=0.12)
         B(STEEL, x - 0.6, 0, z - 0.6, x + 0.6, 0.3, z + 0.6, M, bev=0.1)
 
 def tree(M):
@@ -579,24 +579,24 @@ def firepit(M):
     for (x0, z0, x1, z1) in ((-9.6, -9.6, -2.6, -7.8), (2.6, -9.6, 9.6, -7.8), (-9.6, 7.8, -2.6, 9.6), (2.6, 7.8, 9.6, 9.6),
                              (-9.6, -7.8, -7.8, 7.8), (7.8, -7.8, 9.6, 7.8)):             # seat walls, ways in front and back
         B(STONE, x0, 0, z0, x1, 1.8, z1, M, bev=0.3)
-        B(OAK, x0 - 0.15, 1.8, z0 - 0.15, x1 + 0.15, 2.4, z1 + 0.15, M, bev=0.25)
+        B('8d7c6b', x0 - 0.15, 1.8, z0 - 0.15, x1 + 0.15, 2.4, z1 + 0.15, M, bev=0.25)
 
 def deck(M):
     # the raised deck the fire court stands on (judge round 2: the garden had no centre and no height), two steps
     # toward the house on +z
-    B(OAK, -12, 0, -12, 12, 1.5, 12, M, bev=0.2)
-    B(WHITE, -12.2, 0, -12.2, 12.2, 1.0, 12.2, M, bev=0.15)
+    B('9c8a78', -12, 0, -12, 12, 1.5, 12, M, bev=0.2)                                 # (judge round 4: not orange)
+    B(STONE, -12.2, 0, -12.2, 12.2, 1.0, 12.2, M, bev=0.15)
     for x in (-12, 12): B(WHITE, x - 0.6, 0, -12.6, x + 0.6, 1.7, 12.6, M, bev=0.2) if False else None
-    B(OAK, -3, 0, 12, 3, 1.0, 13.5, M, bev=0.15)
-    B(OAK, -3, 0, 13.5, 3, 0.5, 15.0, M, bev=0.15)
+    B('9c8a78', -3, 0, 12, 3, 1.0, 13.5, M, bev=0.15)
+    B('9c8a78', -3, 0, 13.5, 3, 0.5, 15.0, M, bev=0.15)
 
 def lamppost(M):
     # the front walk's lamp posts (judge round 2)
-    B(WHITE, -0.5, 0, -0.5, 0.5, 6.4, 0.5, M, bev=0.15)
-    B(STONE, -0.9, 0, -0.9, 0.9, 0.8, 0.9, M, bev=0.2)
-    B(DARK, -0.85, 6.4, -0.85, 0.85, 6.7, 0.85, M, bev=0.1)
-    B('f3e9d6', -0.7, 6.7, -0.7, 0.7, 8.1, 0.7, M, bev=0.15)
-    B(DARK, -0.95, 8.1, -0.95, 0.95, 8.6, 0.95, M, bev=0.2)
+    B(WHITE, -0.75, 0, -0.75, 0.75, 6.2, 0.75, M, bev=0.2)                                # (judge round 4: 1.5-stud posts)
+    B(STONE, -1.25, 0, -1.25, 1.25, 1.0, 1.25, M, bev=0.25)
+    B(DARK, -1.15, 6.2, -1.15, 1.15, 6.6, 1.15, M, bev=0.12)
+    B('f3e9d6', -0.95, 6.6, -0.95, 0.95, 8.4, 0.95, M, bev=0.2, kind='neon')
+    B(DARK, -1.3, 8.4, -1.3, 1.3, 9.0, 1.3, M, bev=0.25)
 
 def playhouse(M):
     # a kids' cabin on a deck (judge round 1): a door you can walk through, a window each side, a gable roof
@@ -670,6 +670,11 @@ def playfort(M):
     for sz in (-1, 1): B(SLIDEC, 0, -0.35, sz * 1.5 - (0.35 if sz > 0 else 0), ln, 1.1, sz * 1.5 + (0 if sz > 0 else 0.35), Ms, bev=0.15)
     B(POST, 12.2, 0, 0.6, 13.6, 0.6, 3.4, M, bev=0.15)                                  # its foot
 
+def hedge42(M):
+    # (judge round 4) one piece each side of the front walk: no seam
+    B('5a7444', -21, 0, -2, 21, 4.4, 2, M, bev=0.9)
+    B('5e7948', -20.7, 3.6, -1.7, 20.7, 4.9, 1.7, M, bev=0.6)
+
 def mailbox(M):
     B(WHITE, -0.4, 0, -0.4, 0.4, 3.6, 0.4, M, bev=0.1)
     B('4f5d55', -0.8, 3.6, -1.2, 0.8, 5.0, 1.2, M, bev=0.5)
@@ -739,7 +744,7 @@ DRAW = {
     'lounger': lounger, 'trampoline': trampoline, 'tree': tree, 'treebench': treebench, 'shed': shed,
     'flowerbed': flowerbed, 'hedge': hedge, 'mailbox': mailbox, 'hoop': hoop, 'hose': hose, 'bins': bins,
     'swingset': swingset, 'banquette': banquette, 'nooktable': nooktable, 'pantry': pantry, 'firepit': firepit,
-    'playhouse': playhouse, 'deck': deck, 'lamppost': lamppost, 'hedgetall': hedgetall, 'playfort': playfort,
+    'playhouse': playhouse, 'deck': deck, 'lamppost': lamppost, 'hedgetall': hedgetall, 'playfort': playfort, 'hedge42': hedge42,
 }
 
 def draw(kind, cx, y, cz, turn, tab=None):

@@ -374,7 +374,7 @@ H.byArena.SuburbV2 = "suburb2"
 -- Map.Hub.LookZones.HuntHouseLook (the house is Zone "hub" to the server)
 H.looks.hunt_house = { -- (judge round 3, 27 Nov: the rooms read washed out and cool; a lower, warmer fill, less sky)
 	Lighting = {
-		Ambient = Color3.fromRGB(104, 96, 86), OutdoorAmbient = Color3.fromRGB(142, 136, 128), Brightness = 2.6,
+		Ambient = Color3.fromRGB(92, 85, 76), OutdoorAmbient = Color3.fromRGB(142, 136, 128), Brightness = 2.6,
 		ExposureCompensation = -0.16, EnvironmentDiffuseScale = 0.24, EnvironmentSpecularScale = 0.35,
 		ClockTime = 15.6, GeographicLatitude = 40, ColorShift_Top = Color3.fromRGB(255, 232, 205),
 		FogColor = Color3.fromRGB(206, 212, 220), FogStart = 500, FogEnd = 2400,
