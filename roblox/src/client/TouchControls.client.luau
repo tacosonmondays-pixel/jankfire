@@ -909,14 +909,23 @@ local function placeHub(mode: string?) -- "hub": the right side; "away": off the
 			elseif mode == "hub" then
 				if not moved[o] then moved[o] = o.Position end
 				local orig = moved[o]
-				-- right edge 160 points in from the right (JUMP, SLIDE and HOOK keep the corner), 76 lower than on the left
+				if h[2] == "Play" then -- (27 Nov 2026, ui-mocks: PLAY 210 wide on a phone; at 300 it reached past the middle, over the crosshair)
+					if not resized[o] then resized[o] = o.Size end
+					local ws = UDim2.fromOffset(210, resized[o].Y.Offset)
+					if o.Size ~= ws then o.Size = ws end
+				end
+				-- right edge 160 points in from the right (JUMP, SLIDE and HOOK keep the corner), 30 lower than on the left.
+				-- (27 Nov 2026, ui-mocks: it was 76, from when the PC stack ended higher; with HubStack's foot at -40 the last two
+				-- rows, HUBS and PROFILE, fell off the bottom of a 390-point phone. 30 leaves the last row 10 inside the safe
+				-- area; the stack's top stays clear of the top row on a 360-point phone)
 				local ts = S.size
 				local ri, bi = insets()
-				local want = UDim2.new(1, -(ri + 160 * ts) / T.scaleNow() - o.Size.X.Offset, orig.Y.Scale, orig.Y.Offset + 76 - bi / T.scaleNow())
+				local want = UDim2.new(1, -(ri + 160 * ts) / T.scaleNow() - o.Size.X.Offset, orig.Y.Scale, orig.Y.Offset + 30 - bi / T.scaleNow())
 				if o.Position ~= want then o.Position = want end
 			elseif moved[o] then
 				o.Position = moved[o]
 				moved[o] = nil
+				if resized[o] then o.Size = resized[o]; resized[o] = nil end
 			end
 		end
 	end

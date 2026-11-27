@@ -67,12 +67,13 @@ def g_jump(d):  # up, off a ground line
     line(d, [(0.5, 0.36), (0.5, 0.7)])
     line(d, [(0.22, 0.86), (0.78, 0.86)])
 
-def g_crouch(d):  # a slide: a low bold arrow along the floor, speed lines behind
-    line(d, [(0.34, 0.56), (0.66, 0.56)], int(W * 1.1))
-    arrowhead(d, (0.9, 0.56), (0.62, 0.56), 0.17)
-    line(d, [(0.08, 0.44), (0.22, 0.44)], int(W * 0.75))
-    line(d, [(0.08, 0.66), (0.2, 0.66)], int(W * 0.75))
-    line(d, [(0.1, 0.86), (0.9, 0.86)])
+def g_crouch(d):  # a slide: a figure leaning back, feet first, low over the floor (not an arrow: SWAP has arrows)
+    disc(d, 0.24, 0.3, 0.1)                               # head, back
+    line(d, [(0.3, 0.42), (0.56, 0.66)])                  # body, leaning back
+    line(d, [(0.56, 0.66), (0.9, 0.7)])                   # front leg, out along the floor
+    line(d, [(0.56, 0.66), (0.62, 0.8)], int(W * 0.9))    # back leg, tucked
+    line(d, [(0.36, 0.48), (0.14, 0.62)], int(W * 0.9))   # trailing arm
+    line(d, [(0.08, 0.9), (0.94, 0.9)])                   # the floor
 
 def g_sprint(d):  # run: two chevrons forward
     chevron(d, 0.38, 0.5, 0.24, "right")
@@ -155,10 +156,11 @@ def g_settings(d):  # a gear: eight square teeth round a disc, a hole
     disc(d, 0.5, 0.5, 0.31)
     disc(d, 0.5, 0.5, 0.12, fill=0)
 
-def g_auto(d):  # auto fire: three cartridges side by side
-    for x in (0.24, 0.5, 0.76):
-        poly(d, [(x, 0.2), (x + 0.09, 0.34), (x + 0.09, 0.44), (x - 0.09, 0.44), (x - 0.09, 0.34)])
-        rrect(d, x - 0.09, 0.48, x + 0.09, 0.8, 0.015)
+def g_auto(d):  # auto fire: one cartridge inside a looping arrow (again and again)
+    arc(d, 0.5, 0.5, 0.38, 320, 220 + 360, int(W * 0.85))
+    arrowhead(d, (0.2, 0.2), (0.24, 0.38), 0.11)
+    poly(d, [(0.5, 0.26), (0.6, 0.38), (0.6, 0.46), (0.4, 0.46), (0.4, 0.38)])
+    rrect(d, 0.4, 0.49, 0.6, 0.72, 0.015)
 
 DRAW = {n: globals()["g_" + n] for n in ORDER}
 

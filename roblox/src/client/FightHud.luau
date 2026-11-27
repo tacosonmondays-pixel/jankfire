@@ -239,6 +239,11 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	local shown = if wid == "knife" and game:GetService("Players").LocalPlayer:GetAttribute("SpoonLook") then "Spoon" else w.name
 	shown = string.upper(shown) -- (round 4: capitals, like the words on the left)
 	if wName.Text ~= shown then wName.Text = shown end
+	do -- (the final push: on a phone the picked weapon chip says it; the name over the ammo said it twice)
+		local uis = game:GetService("UserInputService")
+		wName.Visible = not ((uis.TouchEnabled and not uis.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
+			or game:GetService("StarterPlayer"):GetAttribute("TouchForce") == true)
+	end
 	wChip.BackgroundColor3 = w.color
 	ammoSet(count, if countColor == T.TEXT then K.A.WORLD else countColor)
 	local magT = if count ~= "" and not mag2 then "/" .. tostring(magMax or 0) else ""
@@ -311,7 +316,7 @@ local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = if K.alt() then K.
 T.corner(tab, if K.alt() then 0 else 6) -- (round 10: rounded like the tiles above it)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, tab)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, tab)
-local tabRound = T.text(tab, "Round", "", 11, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY)
+local tabRound = T.text(tab, "Round", "", 13, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY) -- (the final push: a size up, it was about 6 pt on a phone)
 tabRound.AutomaticSize = Enum.AutomaticSize.X; tabRound.Size = UDim2.fromOffset(0, 28); tabRound.LayoutOrder = 1
 local tabClock = T.text(tab, "Clock", "", 22, K.A.BONE, T.FONT_HEAVY) -- (round 8: the clock a size up: it's the number you check)
 tabClock.AutomaticSize = Enum.AutomaticSize.X; tabClock.Size = UDim2.fromOffset(0, 28); tabClock.LayoutOrder = 2
@@ -395,8 +400,7 @@ local function showTiles(parts: { string }): boolean
 			local f = tileFor(i).f
 			local bar = f:FindFirstChild("Mine") :: Frame?
 			if not bar then
-				bar = T.new("Frame", { Name = "Mine", BackgroundColor3 = K.A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 4), Size = UDim2.new(0.5, 0, 0, 4) }, f) :: any -- (round 10: ink, bone vanished on a pale map)
-				T.new("UIStroke", { Color = K.A.BONE, Thickness = 1, Transparency = 0.3 }, bar :: any)
+				bar = T.new("Frame", { Name = "Mine", BackgroundColor3 = K.A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -6), Size = UDim2.new(0.34, 0, 0, 3) }, f) :: any -- (round 10: ink; the final push: inside the tile under the number, clear of the round pill)
 			end
 			(bar :: Frame).Visible = mine == i
 		end

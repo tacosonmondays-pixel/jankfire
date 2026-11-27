@@ -8,7 +8,7 @@
 --   tint(face)            the glyph takes the words' colour and see-through (TouchControls' style calls it)
 local G = {}
 
-G.SHEET = "rbxassetid://106966348842200"
+G.SHEET = "rbxassetid://79409184361495" -- (v2, the final push: SLIDE a sliding figure, AUTO FIRE a cartridge in a loop; v1 was 106966348842200)
 G.CELL = 128
 G.COLS = 5
 G.CELLS = {
