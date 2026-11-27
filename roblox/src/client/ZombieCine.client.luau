@@ -120,6 +120,11 @@ end
 -- while a film runs: every other HUD off (held each frame: some set themselves), the first-person gun hidden, your
 -- own body shown; all put back after
 local film: any = nil
+-- who got out with the helicopter (the server's xout, by name): the extraction film seats the others in the cabin
+local lastOut: any = nil
+zr.OnClientEvent:Connect(function(x: any)
+	if type(x) == "table" and x.k == "xout" and type(x.who) == "table" then lastOut = { who = x.who, t = srv() } end
+end)
 local function hold(r: any)
 	local pg = me:FindFirstChild("PlayerGui")
 	if pg then
@@ -163,6 +168,12 @@ local function finish(handBack: boolean)
 	skipL.Text = ""; skipB.Visible = false
 	if r.cine then r.cine.stop(handBack) end
 	moonBack(r)
+	-- (the bodies the extraction film hid on this screen: drawn again)
+	for _, real in (r.hideReal or {}) :: any do
+		if real.Parent then
+			for _, x in real:GetDescendants() do if x:IsA("BasePart") or x:IsA("Decal") then (x :: any).LocalTransparencyModifier = 0 end end
+		end
+	end
 	me:SetAttribute("ZmFilm", nil) -- (the zombies HUD back: ZombiesClient)
 	if r.onEnd then pcall(r.onEnd) end
 end
@@ -297,8 +308,12 @@ local function intro(a: Model)
 		end
 	end
 	local winAt = if w then w.at.Position else L(0, 6, 96)
+	-- (27 Nov tests: the school's zombie windows sit over a planter, and the mode's outside spot is 7 studs out in front
+	-- of it: the zombie slammed the planter. Now it walks up, climbs onto the planter (PERCH: its top, studs over the
+	-- outside spot, and how far out from the wall it stands) and slams the boards at chest height)
+	local PERCH = { y = 3.2, out = 1.1 }
 	local zFrom = if w then w.out + outward * 9 else Vector3.zero
-	local zTo = if w then w.out + outward * 1.4 else Vector3.zero
+	local zTo = if w then Vector3.new(winAt.X, w.out.Y, winAt.Z) + outward * PERCH.out else Vector3.zero
 	-- the squad: their spawns' middle, the camera in front of them
 	local c, face = Vector3.zero, Vector3.new(0, 0, -1)
 	if #map.spawns > 0 then
@@ -320,7 +335,7 @@ local function intro(a: Model)
 		zu = zu * zu * (3 - 2 * zu)
 		-- (the zoom frames the boards and the zombie at them: 27 Nov test, on the window's middle the planter's hedge hid
 		-- him below the frame)
-		local look = front:Lerp(winAt + outward * 1.2 - Vector3.new(0, 1.6, 0), zu)
+		local look = front:Lerp(winAt + outward * 1.0 - Vector3.new(0, 0.8, 0), zu)
 		local dist = (winAt - at).Magnitude
 		local fovWin = math.deg(2 * math.atan(10.5 / dist))
 		local fov = (34 + 1.2 * math.sin(t * 1.7)) * (1 - zu) + (fovWin + 0.4 * math.sin(t * 2.3)) * zu -- (the lens breathing)
@@ -418,9 +433,12 @@ local function intro(a: Model)
 		if zroot then
 			local zstart = N.zoom[1] - 0.4
 			local u = math.clamp((t - zstart) / (HIT - 0.05 - zstart), 0, 1)
-			local p = zFrom:Lerp(zTo, 1 - (1 - u) ^ 1.6)
-			if t >= HIT and t < HIT + 0.12 then p = zTo - outward * 0.7
-			elseif t >= HIT + 0.12 then p = zTo + outward * math.clamp((t - HIT - 0.12) * 1.2, 0, 0.9) end
+			local e = 1 - (1 - u) ^ 1.6
+			local p = zFrom:Lerp(zTo, e)
+			local up = math.clamp((e - 0.72) / 0.22, 0, 1) -- (the climb onto the planter, over the walk's last part)
+			p += Vector3.new(0, PERCH.y * up * up * (3 - 2 * up), 0)
+			if t >= HIT and t < HIT + 0.12 then p = zTo - outward * 0.5 + Vector3.new(0, PERCH.y, 0)
+			elseif t >= HIT + 0.12 then p = zTo + outward * math.clamp((t - HIT - 0.12) * 0.8, 0, 0.5) + Vector3.new(0, PERCH.y, 0) end
 			zroot.CFrame = CFrame.lookAt(p + Vector3.new(0, 3, 0), p + Vector3.new(0, 3, 0) - outward)
 		end
 		if not hit and t >= HIT then
@@ -480,7 +498,9 @@ end)
 skipB.Activated:Connect(skip)
 
 -- the crew member at the helicopter's door (the server's plain R15 in a flight suit): a built helmet with a dark visor,
--- anchored at the root, the reach (mocap) played on his own Animator
+-- anchored at the root, the reach (mocap) played on his own Animator. The helmet and visor are loose anchored parts
+-- that follow his head each frame (r.gear; 27 Nov tests: welded inside his model the dome never drew in a game, though
+-- it sat on his head and drew in Edit)
 local function crewOf(r: any): (Model?, BasePart?, AnimationTrack?)
 	local src = ReplicatedStorage:FindFirstChild("JankfireZmCine")
 	local ct = src and src:FindFirstChild("Crew")
@@ -497,20 +517,19 @@ local function crewOf(r: any): (Model?, BasePart?, AnimationTrack?)
 		helm.Name = "Helmet"; helm.Color = Color3.fromRGB(64, 70, 58); helm.Material = Enum.Material.SmoothPlastic
 		helm.Shape = Enum.PartType.Ball
 		local hd = math.max(hs.X, hs.Y, hs.Z) * 1.22
-		helm.Size = Vector3.new(hd, hd, hd); helm.CanCollide = false; helm.CanQuery = false; helm.Massless = true
-		-- (Welds at set offsets from the head: 27 Nov test, the WeldConstraints left the helmet off his head in a game
-		-- and the visor under his eyes, though they sat right in Edit)
+		helm.Size = Vector3.new(hd, hd, hd); helm.CanCollide = false; helm.CanQuery = false; helm.CanTouch = false; helm.Anchored = true
 		local c0 = CFrame.new(0, hs.Y * 0.22, hs.Z * 0.05)
 		helm.CFrame = head.CFrame * c0
-		local w = Instance.new("Weld"); w.Part0 = head; w.Part1 = helm; w.C0 = c0; w.Parent = helm
-		helm.Parent = m
+		helm.Parent = workspace
+		table.insert(r.trash, helm)
 		local visor = Instance.new("Part")
 		visor.Name = "Visor"; visor.Color = Color3.fromRGB(16, 20, 26); visor.Material = Enum.Material.Glass; visor.Transparency = 0.15
-		visor.Size = Vector3.new(hs.X * 1.02, hs.Y * 0.36, 0.12); visor.CanCollide = false; visor.CanQuery = false; visor.Massless = true
+		visor.Size = Vector3.new(hs.X * 1.02, hs.Y * 0.36, 0.12); visor.CanCollide = false; visor.CanQuery = false; visor.CanTouch = false; visor.Anchored = true
 		local v0 = CFrame.new(0, hs.Y * 0.12, -hs.Z * 0.62)
 		visor.CFrame = head.CFrame * v0
-		local w2 = Instance.new("Weld"); w2.Part0 = head; w2.Part1 = visor; w2.C0 = v0; w2.Parent = visor
-		visor.Parent = m
+		visor.Parent = workspace
+		table.insert(r.trash, visor)
+		r.gear = { head = head, { p = helm, c0 = c0 }, { p = visor, c0 = v0 } }
 	end
 	-- (in the world before the clip loads: an Animator outside the game can't load one; 27 Nov test, his arms stayed down)
 	m.Parent = workspace
@@ -524,6 +543,56 @@ local function crewOf(r: any): (Model?, BasePart?, AnimationTrack?)
 		if ok and tr then tr.Looped = false; tr.Priority = Enum.AnimationPriority.Action; track = tr end
 	end
 	return m, root, track
+end
+-- the others who got out (27 Nov, the owner: teammates already aboard sit in the cabin): a copy of each one's body (a
+-- player's or a squad bot's), scaled like the crew member, seated on a bench along the cabin's far side (Roblox's own R15
+-- sit clip); their real bodies are hidden on this screen while the film runs (the bots walk to the door: the server
+-- hides them at the cut)
+local SIT = "rbxassetid://2506281703"
+local function matesOf(r: any, a: Model): { { m: Model, root: BasePart } }
+	local seated = {}
+	if not lastOut or srv() - lastOut.t > 20 then return seated end
+	for _, nm in lastOut.who do
+		if nm == me.DisplayName or #seated >= 3 then continue end
+		local src: Model? = nil
+		for _, pl in Players:GetPlayers() do
+			if pl ~= me and pl.DisplayName == nm and pl.Character then src = pl.Character end
+		end
+		if not src then
+			local b = a:FindFirstChild(nm, true)
+			if b and b:IsA("Model") and b:FindFirstChildOfClass("Humanoid") then src = b end
+		end
+		if not src then continue end
+		local s0 = src :: Model
+		local was = s0.Archivable
+		s0.Archivable = true
+		local ok, c = pcall(function() return s0:Clone() end)
+		s0.Archivable = was
+		if not ok or not c then continue end
+		local m = c :: Model
+		table.insert(r.hideReal, s0)
+		for _, d in m:GetDescendants() do
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("Sound") then d:Destroy()
+			elseif d:IsA("BasePart") then d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
+			elseif d:IsA("Decal") then d.LocalTransparencyModifier = 0 end
+		end
+		pcall(function() m:ScaleTo(0.85) end)
+		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not root then m:Destroy(); continue end
+		root.Anchored = true
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+		m.Parent = workspace
+		table.insert(r.trash, m)
+		if hum then
+			local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
+			local anim = Instance.new("Animation"); anim.AnimationId = SIT
+			local ok2, tr = pcall(function() return (an :: Animator):LoadAnimation(anim) end)
+			if ok2 and tr then tr.Looped = true; tr.Priority = Enum.AnimationPriority.Action; tr:Play(0) end
+		end
+		table.insert(seated, { m = m, root = root })
+	end
+	return seated
 end
 -- hold a one-shot clip on its last frame
 local function holdEnd(tr: AnimationTrack?)
@@ -565,7 +634,7 @@ local function outro(a: Model)
 	local doorAt = (hm and hm:GetAttribute("DoorAt")) :: any
 	if typeof(doorAt) ~= "Vector3" then doorAt = Vector3.new(-4.6, 6.0, 1.0) end
 	local side = if (doorAt :: Vector3).X >= 0 then 1 else -1 -- (which side the door is on: out of it is that way)
-	local r: any = { guis = {}, vm = {}, trash = {}, beds = {}, showMe = false, kind = "outro", aboard = aboard }
+	local r: any = { guis = {}, vm = {}, trash = {}, beds = {}, showMe = false, kind = "outro", aboard = aboard, hideReal = {} }
 	film = r
 	me:SetAttribute("ZmFilm", true)
 	local key = keyLight(r, 40, 1.4)
@@ -623,8 +692,12 @@ local function outro(a: Model)
 				if ok and tr then tr.Looped = false; tr.Priority = Enum.AnimationPriority.Action4; mytr = tr end
 			end
 		end
-		r.showOnly = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true }
+		-- (nothing of you until your hand comes up: 27 Nov test, the arm stood in the frame's corner from the start)
+		r.showOnly = {}
 	end
+	local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true }
+	local mates: any = nil
+	local bench: BasePart? = nil
 	local crewOn, handOn, doorSaid, clasped, cut, faded = false, false, false, false, false, false
 	r.conn = RunService.RenderStepped:Connect(function()
 		local t = clk()
@@ -640,6 +713,38 @@ local function outro(a: Model)
 				local up = (if h then h.HipHeight else 1.7) + croot.Size.Y / 2
 				local pos = hc:PointToWorldSpace(Vector3.new(d.X - side * 1.5, d.Y - 2.35 + up, d.Z))
 				croot.CFrame = CFrame.lookAt(pos, pos + hc.RightVector * side)
+				-- (his helmet and visor on his head, as it moves with the clip)
+				local g = r.gear
+				if g and g.head and g.head.Parent then
+					for _, x in ipairs(g) do x.p.CFrame = g.head.CFrame * x.c0 end
+				end
+			end
+			-- the others who got out, on the bench along the far side (the server's list can land a frame after the film)
+			if not mates and lastOut and srv() - lastOut.t < 20 then
+				mates = matesOf(r, a)
+				if #mates > 0 then
+					local b = Instance.new("Part")
+					b.Name = "ZmBench"; b.Anchored = true; b.CanCollide = false; b.CanQuery = false; b.CanTouch = false
+					b.Color = Color3.fromRGB(58, 60, 64); b.Material = Enum.Material.SmoothPlastic; b.Size = Vector3.new(1.3, 0.25, 4.8)
+					b.Parent = workspace
+					table.insert(r.trash, b)
+					bench = b
+				end
+			end
+			if mates and #mates > 0 then
+				local d = hc:PointToObjectSpace(doorW())
+				local seatTop = d.Y - 2.35 + 1.05
+				if bench then bench.CFrame = hc * CFrame.new(d.X - side * 3.45, seatTop - 0.125, d.Z) end
+				for k, mt in mates do
+					local dz = ({ -1.45, 1.45, -2.9 })[k] or 0
+					local pos = hc:PointToWorldSpace(Vector3.new(d.X - side * 3.25, seatTop + 0.4 + mt.root.Size.Y / 2, d.Z + dz))
+					mt.root.CFrame = CFrame.lookAt(pos, pos + hc.RightVector * side)
+				end
+			end
+			for _, real in r.hideReal do
+				for _, x in real:GetDescendants() do
+					if (x:IsA("BasePart") or x:IsA("Decal")) and (x :: any).LocalTransparencyModifier ~= 1 then (x :: any).LocalTransparencyModifier = 1 end
+				end
 			end
 			-- your body under the lens, only the reaching arm to be seen
 			if hrp then
@@ -648,7 +753,10 @@ local function outro(a: Model)
 				-- (27 Nov tests: at the head the reaching hand stayed out of frame; a step ahead its arm came up at the frame's
 				-- bottom left corner; a little right and up, it comes up to the middle to meet his)
 				local rt = Vector3.new(e.RightVector.X, 0, e.RightVector.Z).Unit
-				local p = e.Position - Vector3.new(0, headDy + 0.1, 0) + f * 1.7 + rt * 0.45
+				-- (the body starts low and rises with the reach: the hand comes up from the bottom of the frame)
+				local rise = math.clamp((t - F.hand) / 0.45, 0, 1)
+				local sink = 1.3 * (1 - rise) ^ 2
+				local p = e.Position - Vector3.new(0, headDy + 0.1 + sink, 0) + f * 1.7 + rt * 0.45
 				hrp.CFrame = CFrame.lookAt(p, p + f)
 			end
 			if not doorSaid and t >= F.door[1] then
@@ -657,26 +765,24 @@ local function outro(a: Model)
 				sfx(if lib and lib:FindFirstChild("zm_doorslide") then "zm_doorslide" else "hunt_door_open", doorW(), 0.9)
 			end
 			if not crewOn and t >= F.crew and ctr then crewOn = true; ctr:Play(0.2) end
-			if not handOn and t >= F.hand and mytr then handOn = true; mytr:Play(0.15) end
+			if not handOn and t >= F.hand then
+				handOn = true
+				r.showOnly = ARM
+				if mytr then mytr:Play(0.15) end
+			end
 			holdEnd(ctr); holdEnd(mytr)
 			if not clasped and t >= F.step[2] then
 				clasped = true
 				if r.cine then r.cine.kick(0.6) end
 				sfx(if (ReplicatedStorage:FindFirstChild("JankfireSounds") and ReplicatedStorage.JankfireSounds:FindFirstChild("zm_clasp")) then "zm_clasp" else "hunt_punch_hit", nil, 0.5)
 			end
-			-- (Studio: what the film did, for a test to read back)
-			if game:GetService("RunService"):IsStudio() and math.floor(t * 4) ~= r.dbgT then
-				r.dbgT = math.floor(t * 4)
-				local lh = ch and ch:FindFirstChild("LeftHand") :: BasePart?
-				me:SetAttribute("ZmFilmDbg", string.format("t %.2f crew %s hand %s ltm %s cam %s", t,
-					if croot then tostring(hc:PointToObjectSpace(croot.Position)) else "-",
-					if lh then tostring(cam.CFrame:PointToObjectSpace(lh.Position)) else "-",
-					if lh then tostring(lh.LocalTransparencyModifier) else "-", tostring(hc:PointToObjectSpace(cam.CFrame.Position))))
-			end
 			if t >= F.cut then
 				cut = true
 				r.showOnly = {} -- (your body: gone in with him; the server hides it too)
 				if crew then crew.Parent = nil end
+				for _, x in ipairs(r.gear or {}) do x.p.Parent = nil end
+				for _, mt in (mates or {}) :: any do mt.m.Parent = nil end
+				if bench then bench.Parent = nil end
 			end
 		end
 		if not faded and t >= XC.outro - 0.6 then

@@ -439,19 +439,19 @@ hold-out ends):
    logos) with a built helmet and dark visor, scaled to 0.85 to stand in the 4.7-stud cabin, lit by the warm cabin light
    and the film's key light, reaches out (mocap: the vault's Mixamo "Pointing Forward", frames 36-66, retargeted with
    tools/blender/mixamo_r15.py, Animation 110255422946477, held on its last frame).
-4. 2.0 s: your own left hand comes up from the bottom of the frame (the same clip on your own body; everything of it
-   but that arm hidden from your lens).
+4. 2.0 s: your own left hand comes up from the bottom of the frame (the same clip on your own body; nothing of your
+   body is drawn before then, and then only that arm; the body starts 1.3 studs low and rises with the reach).
 5. 2.6-3.6 s: one step forward with a small bob; the clasp sound and a little kick as the hands meet.
 6. 3.7 s: a hard cut to the long lens as it lifts (4.2 s) and flies off; a fade at 8.4 s.
 7. 9.0 s: the stats card (A PLATE): EXTRACTED and the round big, kills / revives / damage / time survived small, then
    the drop called out big, Brass and XP, the odds small; BACK TO LOBBY (or Enter) ends the game when every human who
    got out has pressed it, or the game ends on its own 13 s later.
 Space skips to the card. Anyone left behind sees only the away shot, then the game over. The server hides the bodies
-at the cut. Traps from the tests: the crew member's clip loads only once he is in the world (an Animator outside the
-game can't load one: his arms stayed down); his helmet and visor hang on Welds at set offsets from the head (the
-WeldConstraints sat right in Edit and wrong in a game). Not done yet: teammates already aboard sitting in the cabin
-behind the crew member; the helmet's dome still doesn't draw in a game (the visor does; in Edit both do); your own arm
-shows at the frame's bottom from the start rather than coming up at 2.0 s. Sheets: roblox/docs/zombies/10-heli-old-A-B-27nov.jpg
+at the cut. The others who got out (the server's xout list: players and squad bots) sit in the cabin: a copy of each
+body, scaled 0.85, on a plain bench along the far side, in Roblox's own R15 sit clip, their real bodies hidden on that
+screen for the film. Traps from the tests: the crew member's clip loads only once he is in the world (an Animator
+outside the game can't load one: his arms stayed down); his helmet and visor are loose anchored parts that follow his
+head each frame (welded inside his model, the dome never drew in a game though it drew in Edit). Sheets: roblox/docs/zombies/10-heli-old-A-B-27nov.jpg
 (the old helicopter against A and B, boarding and lift-off) and 11-extraction-film-first-person-27nov.jpg.
 
 ### 4.9 The intro as a news broadcast (27 Nov; the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news", "Then it cuts to shot of the school")
@@ -476,6 +476,9 @@ All words are live TextLabels; no voices; the library sounds need no upload (zm_
 zm_doorslide are JankfireSounds entries pointing at licensed or approved ids). The moon is held each frame up to the
 squad, and the film sets the player's Finishing attribute (CineKit's flag "zmintro") so HubLife leaves the light alone:
 in the tests its zone switch into the match ran the map room's black haze over the feed's first half second, and the
-school's own look landing a beat after the start took the moon back (the whole feed read black). The zombie walks up to
-the planter under the window (the window's sill is above its hedge), so the slam lands on the planter's front. Sheet:
-roblox/docs/zombies/12-news-intro-27nov.jpg.
+school's own look landing a beat after the start took the moon back (the whole feed read black). The school's zombie
+windows all sit over a planter (the mode's outside spot is 7 studs out, in front of it), and its props are CanQuery
+false, so no ray or box query sees one: the film's zombie walks up, climbs onto the planter (ZombieCine's PERCH, top 3.2
+studs up, 1.1 out from the wall) and slams the boards at chest height. Sheets:
+roblox/docs/zombies/12-news-intro-27nov.jpg, 13-film-and-intro-fixes-27nov.jpg (the climb; the film's arm, helmet and
+seated squad).

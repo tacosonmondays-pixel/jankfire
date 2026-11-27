@@ -497,7 +497,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 			open = Vector3.new(math.abs(XC.doorSlide.X) * side * pop, 0, XC.doorSlide.Z * sl)
 		end
 		for _, r in parts.doors do r.p.CFrame = cf * CFrame.new(open) * r.fromHub end
-		if game:GetService("RunService"):IsStudio() then me:SetAttribute("ZmDoorDbg", tostring(open) .. " n " .. #parts.doors) end
 	end
 	if parts.beacon then
 		local on = (os.clock() % 1.2) < 0.16
