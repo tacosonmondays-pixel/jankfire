@@ -653,7 +653,7 @@ def train():
         G.tube(m, CABLE, G.bez(pb[0], pb[1], pb[2], 10), 0.45, segs=8)
     # the wagons: commuter cars, cream with a rose band and dark windows (no one at them)
     x = xf - 7.0
-    if '--box-wagons' not in K.FLAGS:
+    if '--web-wagons' in K.FLAGS:   # (27 Nov 2026: tried and judged; two blind critics kept the old wagons both rounds, so off)
         # (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?": a cambered roof, a dark
         # skirt, double doors with their own windows, open bogies, lamps at the ends)
         for w in range(3):
