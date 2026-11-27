@@ -347,6 +347,9 @@ function ZombieExtract.install(Z: any)
 			g.x.skips[p.UserId] = true
 			if g.st ~= "pre" then return end
 			for _, m in humans(g) do if not g.x.skips[(m.p :: Player).UserId] then return end end
+			-- (27 Nov 2026: the briefing sits between the news and the school (ZombieBrief): everyone skipped the news =
+			-- it opens now, not round 1)
+			if Z.ext.allSkipped and Z.ext.allSkipped(g) then return end
 			g.untilT = math.min(g.untilT, now() + 2.5)
 		end
 	end)

@@ -3752,6 +3752,78 @@
     ],
     "L": -30
    }
+  ],
+  "zm_term_on": [
+   {
+    "id": 9119717523,
+    "title": "Switch Click On Or Off Toggle Button 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.08
+    ],
+    "L": -29
+   }
+  ],
+  "zm_term_hum": [
+   {
+    "id": 9114246115,
+    "title": "Electric Hum 15 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.6,
+     2.8
+    ],
+    "L": -15
+   }
+  ],
+  "zm_term_key": [
+   {
+    "id": 9118138365,
+    "title": "Relay Clicks 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -31
+   }
+  ],
+  "zm_term_sel": [
+   {
+    "id": 9119802022,
+    "title": "Synth Chime Single Synth Tone 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.35
+    ],
+    "L": -30
+   }
+  ],
+  "zm_term_ready": [
+   {
+    "id": 9119802022,
+    "title": "Synth Chime Single Synth Tone 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.9
+    ],
+    "L": -30
+   }
+  ],
+  "zm_term_off": [
+   {
+    "id": 9119717950,
+    "title": "Switch Clicks Metallic Dull Pops 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -36
+   }
   ]
  },
  "vol": {
@@ -3977,7 +4049,13 @@
   "zm_heart": -25,
   "zm_step": -33,
   "zm_revive": -28,
-  "zm_revpat": -30
+  "zm_revpat": -30,
+  "zm_term_on": -26,
+  "zm_term_hum": -34,
+  "zm_term_key": -37,
+  "zm_term_sel": -31,
+  "zm_term_ready": -27,
+  "zm_term_off": -28
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -4079,7 +4157,9 @@
   "zm_credit": 0.04,
   "zm_step": 0.06,
   "zm_revive": 0.04,
-  "zm_revpat": 0.04
+  "zm_revpat": 0.04,
+  "zm_term_key": 0.08,
+  "zm_term_sel": 0.03
  },
  "loop": {
   "minigun_spin": true,

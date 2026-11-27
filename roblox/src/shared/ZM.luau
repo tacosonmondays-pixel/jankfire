@@ -425,4 +425,24 @@ function ZM.xWraps(n: number): { any }
 	return out
 end
 
+-- ------------------------------------------------------------------ the briefing (27 Nov 2026, roblox/docs/ZOMBIES.md 4.14)
+-- (the owner: "Can the cutscene static into like a green text pc code style menu? Thats where you select you weapons and
+-- passives and stuff?") between the intro's static and its school shot: a starting sidearm and one passive each.
+-- server/ZombieBrief.luau checks and applies them; client/ZombieBrief.client.luau draws the terminal
+ZM.BRIEF = {
+	secs = 18, -- the shared timer from the moment it opens; everyone READY closes it sooner
+	at = ZM.X.news.static[2], -- s into the film it opens (the static's end; the school shot plays from its close)
+	sidearms = { "revolver", "pistol", "sawnoff", "akimbo" }, -- the revolver's tier: what you start with (and get back)
+	-- one for the whole game (going down doesn't lose it, unlike a cola). our own names, plain words
+	passives = {
+		bonus = { name = "BONUS PAY", desc = "+20% credits from everything you earn.", credit = 1.2 },
+		headpay = { name = "HEAD MONEY", desc = "Headshot kills pay 200 credits, not 100.", head = 2 },
+		holdon = { name = "HOLD ON", desc = "When you go down you last 60 s, not 30.", bleed = 2 },
+		mender = { name = "MENDER", desc = "You start healing 2 s after a hit, not 4.", regenAfter = 2 },
+		boardup = { name = "BOARD UP", desc = "Boards go back twice as fast and pay 20 credits each, not 10.", board = 0.5, pay = 2 },
+		scrounger = { name = "SCROUNGER", desc = "Every kill puts 2 spare rounds back in the gun you hold.", rounds = 2 },
+	} :: { [string]: any },
+	order = { "bonus", "headpay", "holdon", "mender", "boardup", "scrounger" },
+}
+
 return ZM

@@ -48,6 +48,7 @@ export type Member = {
 	hurtT: number, iframe: number, down: { at: CFrame, untilT: number, self: number? }?, dead: boolean, reviver: Member?, reviveT: number,
 	field: { d: { [number]: number }, t: number, at: Vector3 }?, prompt: ProximityPrompt?,
 	bot: Bot?, -- (a squad bot: its brain)
+	startGun: string?, passive: string?, -- (the briefing's picks, ZombieBrief: the sidearm you start with and get back, a passive)
 }
 export type Bot = {
 	i: number, gun: string, mag: number, reloadUntil: number, nextShot: number, th: Mob?, td: number, task: Member?,
@@ -145,7 +146,7 @@ local function publish()
 end
 local function give(m: Member, d: number, why: string)
 	if d > 0 then
-		local k = call("creditMul", G, m)
+		local k = call("creditMul", G, m, why) -- (why: the briefing's HEAD MONEY pays headshots more, ZombieBrief)
 		if type(k) == "number" then d = math.floor(d * k + 0.5) end
 	end
 	m.c += d
@@ -229,7 +230,7 @@ end
 local function freshKit(m: Member)
 	call("fresh", G, m) -- (back to the start pistol: the Voider's work goes too)
 	if m.p then for wid in m.res do m.p:SetAttribute("ZmRes_" .. wid, nil) end end
-	m.guns = table.clone(R.startGuns)
+	m.guns = if m.startGun then { m.startGun } else table.clone(R.startGuns) -- (the sidearm picked in the briefing)
 	m.melee = R.startMelee
 	m.res = {}
 	for _, wid in m.guns do
@@ -680,11 +681,12 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	local lie = CFrame.lookAt(feet + Vector3.new(0, 1.1, 0), feet + Vector3.new(0, 1.1, 0) + look) * CFrame.Angles(math.rad(-80), 0, 0)
 	r.Anchored = true
 	r.CFrame = lie
-	m.down = { at = CFrame.lookAt(feet + Vector3.new(0, Hitbox.ROOT_UP, 0), feet + Vector3.new(0, Hitbox.ROOT_UP, 0) + look), untilT = now() + R.bleed,
+	local bleed = R.bleed * (tonumber(call("bleedMul", g, m)) or 1) -- (HOLD ON lasts longer: ZombieBrief)
+	m.down = { at = CFrame.lookAt(feet + Vector3.new(0, Hitbox.ROOT_UP, 0), feet + Vector3.new(0, Hitbox.ROOT_UP, 0) + look), untilT = now() + bleed,
 		self = if type(selfT) == "number" then now() + selfT else nil }
 	if p then
-		p:SetAttribute("ZmDown", workspace:GetServerTimeNow() + R.bleed)
-		p:SetAttribute("ACGrace", os.clock() + R.bleed + 5)
+		p:SetAttribute("ZmDown", workspace:GetServerTimeNow() + bleed)
+		p:SetAttribute("ACGrace", os.clock() + bleed + 5)
 	end
 	-- the revive: hold Q over them (27 Nov 2026: F is the flashlight now, and E the grapple)
 	local pr = Instance.new("ProximityPrompt")
@@ -921,7 +923,8 @@ local function squadTick(g: Game, dt: number)
 	for _, m in g.members do
 		local f = m.f
 		if f.alive then
-			if f.hp < (f.maxHp or Weapons.HP) and n - m.hurtT > R.regenAfter then
+			local after = tonumber(call("regenAfter", g, m)) or R.regenAfter -- (MENDER sooner: ZombieBrief)
+			if f.hp < (f.maxHp or Weapons.HP) and n - m.hurtT > after then
 				local rm = call("regenMul", g, m)
 				f.hp = math.min(f.maxHp or Weapons.HP, f.hp + R.regen * dt * (if type(rm) == "number" then rm else 1))
 				Fight.syncHp(f)
@@ -1334,7 +1337,7 @@ end
 -- (the mode's own parts, for ZombieExtra.luau)
 Zombies.X = {
 	give = give, pay = pay, say = say, sayAll = sayAll, member = member, inOpenArea = inOpenArea, arm = arm, grant = grant,
-	pushRes = pushRes, removeMob = removeMob, standUp = standUp, feetOf = feetOf, flat = flat, publish = publish,
+	pushRes = pushRes, removeMob = removeMob, standUp = standUp, freshKit = freshKit, feetOf = feetOf, flat = flat, publish = publish,
 	kitList = kitList, prompt = prompt, buyerOf = buyerOf, maxTotal = maxTotal,
 	openDoor = openDoor, botWalk = function(m: Member): AnimationTrack? return botWalk[m] end, -- (ZombieBots)
 	fight = function(): any return Fight end,

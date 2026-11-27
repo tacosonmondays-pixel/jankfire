@@ -230,13 +230,18 @@ local function showPlanks(gs: GS, i: number)
 	local pr = gs.boardPr[i]
 	if pr then pr.Enabled = gs.planks[i] < R.planks end
 end
+-- (27 Nov 2026: the briefing's BOARD UP nails faster: ZombieBrief's boardTimeMul)
+local function boardTime(g: any, m: any): number
+	return Z.ext.boardTimeMul and tonumber(Z.ext.boardTimeMul(g, m)) or 1
+end
 local function nail(g: any, gs: GS, m: any, i: number)
 	if gs.planks[i] >= R.planks then return end
 	gs.planks[i] += 1
 	showPlanks(gs, i)
 	local x = ms(m)
 	x.boardN += 1
-	if x.boardN <= R.boardCap then X.give(m, R.boardPay, "board") end
+	local pm = Z.ext.boardPayMul and tonumber(Z.ext.boardPayMul(g, m)) or 1 -- (BOARD UP pays more: ZombieBrief)
+	if x.boardN <= R.boardCap then X.give(m, math.floor(R.boardPay * pm + 0.5), "board") end
 	local _ = g
 end
 
@@ -441,7 +446,7 @@ local function start(g: any)
 				if not m then return end
 				local r = X.fight().root(m.f)
 				if not r or (r.Position - w.at.Position):Dot(w.n) < 0.3 then return end -- (only from inside)
-				gs.boarders[m] = { i = i, nextT = now() + R.board }
+				gs.boarders[m] = { i = i, nextT = now() + R.board * boardTime(g, m) }
 			end)
 			pr.PromptButtonHoldEnded:Connect(function(pl: Player)
 				for m, b in gs.boarders do if m.p == pl and b.i == i then gs.boarders[m] = nil end end
@@ -496,7 +501,7 @@ local function tick(g: any, _dt: number)
 	for m, b in gs.boarders do
 		if not m.f.alive or not table.find(g.members, m) then gs.boarders[m] = nil; continue end
 		if n >= b.nextT then
-			b.nextT = n + R.board
+			b.nextT = n + R.board * boardTime(g, m)
 			nail(g, gs, m, b.i)
 		end
 	end

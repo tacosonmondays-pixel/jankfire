@@ -633,7 +633,65 @@ game's motif.
 - **The phone check** (Studio, TouchForce on the player and TouchTest "fake:844x390"): the LIGHT button is in the
   touch cluster (by RELOAD); the buy and revive prompts are Roblox's own, which turn into tap buttons on a phone. Two
   overlaps found: the move stick sat over the round card and the spare rounds ran under the grapple and aim buttons.
-  The fix moves them while TouchOn is set (ZombiesClient; in Studio with the next push): the round beside the credits
+  The fix moves them while TouchOn is set (ZombiesClient; checked in Studio, place version 1638): the round beside the credits
   (one line high), the spare rounds and the chips top right under the menu buttons. The dark areas' dimming is the
   same on any screen.
 
+
+### 4.14 THE BRIEFING (27 Nov; the owner: "Can the cutscene static into like a green text pc code style menu? Thats where you select you weapons and passives and stuff? There will be a cool weapon graphic that's like a green grid hologram thing? It's like debrief after the news")
+The plan (main's brief), then what was built under it.
+- **Where it sits:** news -> gate -> static -> **BRIEFING** -> the school shot -> the squad -> round 1. The film
+  (ZombieCine) holds its clock at the static's end (ZM.X.news.static[2], 5.2 s) while the briefing is up, and plays the
+  school from BriefT1 on. A skip during the news lands you in the briefing (never past it); a skip after it ends the
+  film as before.
+- **The clock:** one shared timer, ZM.BRIEF.secs (18 s) from the moment it opens (BriefT0 = IntroT0 + 5.2, or sooner
+  when every human skipped the news). READY: when every human is ready it closes at once. The bots pick at random (a
+  passive; their gun is ZombieBots' own). Nobody can join a running game today; a member with no pick gets the
+  defaults (the revolver, no passive).
+- **The picks (the server checks and applies them; server/ZombieBrief.luau, new):**
+  - a starting sidearm, one of four of the revolver's tier (ZM.BRIEF.sidearms): REVOLVER, PISTOL, SAWED-OFF,
+    LEFTY & RIGHTY, with plain stats read from Weapons (damage, fire rate, magazine, reload, range, spare rounds). It is
+    what you get back after being out (freshKit's m.startGun).
+  - one passive (ZM.BRIEF.passives, our own names, plain words, never another game's perk names), for the whole game
+    (going down doesn't lose it, unlike a cola):
+    | Passive | What it does | Hook |
+    |---|---|---|
+    | BONUS PAY | +20% credits from everything you earn | creditMul |
+    | HEAD MONEY | headshot kills pay 200, not 100 | creditMul (why "head") |
+    | HOLD ON | down, you last 60 s, not 30 | bleedMul (new) |
+    | MENDER | you start healing 2 s after a hit, not 4 | regenAfter (new) |
+    | BOARD UP | boards go back twice as fast and pay 20 each, not 10 | boardTimeMul / boardPayMul (new, ZombieExtra) |
+    | SCROUNGER | every kill puts 2 spare rounds back in the gun you hold | killed |
+  - the Zm remote: { k = "bpick", w, p } (only while it's open), { k = "bready" }; arena attributes BriefT0, BriefEnd,
+    BriefT1, BriefSquad (JSON: name, sidearm, passive, ready, bot).
+- **The look (client/ZombieBrief.client.luau, new):** the static resolves into a CRT terminal: a switch-on line, a
+  near-black green screen, scanlines, a faint flicker, green monospace text typed out with a block cursor; functional
+  words only (LOADOUT, SIDEARM, PASSIVE, the stat names, READY, the timer, the squad's names and picks). The middle: the
+  chosen sidearm as a hologram in a ViewportFrame: green see-through, an outline (Highlight), on a green grid with a
+  ring, turning, a scan line sweeping up it. All four guns are built when the briefing opens and parked (only the
+  picked one in view): nothing builds while you click.
+- **Input:** mouse (click a row, READY), keyboard (W/S or arrows move, A/D or left/right change column, 1-4 the
+  sidearm, Enter READY), a pad (PadNav: Roblox's selection moves between the rows, A picks, the bumpers change column;
+  Pad.MENUS.zmbrief), touch (tap). MenuCursor "zmbrief" frees the mouse while it's up.
+- **Sound:** recorded terminal sounds only (a switch-on, key ticks under the typing, a select blip, READY), from the
+  licensed library.
+- **Checks:** popscan on a recording of the static -> briefing -> school; a solo test and a test with 3 bots; a sheet and
+  an MP4 to main.
+- **Built and checked (27 Nov, place version 1638; one Play, three short games, solo + the 3 squad bots):**
+  - Picks: 2 (keyboard) gave the pistol in hand with 72 spares; 3 the sawed-off (28 spares); the server's rows
+    and the squad column agree; the bots showed random passives. Space in the news opened the briefing at once (its
+    timer from the skip). READY with every human ready closed it as "ready" (BriefT1 = now + 0.35, the school shot from
+    there, round 1 after the tail); left alone it closed on the timer.
+  - The passive hooks through the whole chain (test op "bhooks"): BONUS PAY credit x1.2 (heads too), HEAD MONEY heads
+    x2, HOLD ON bleed x2, MENDER regenAfter 2, BOARD UP board time x0.5 / pay x2, SCROUNGER 43 -> 45 spares on a kill.
+  - The film: news -> static -> the switch-on (black, the line, the shutters part) -> the terminal -> the switch-off
+    -> the school -> the squad -> round 1; the frames checked one by one at the cuts (popscan), nothing pops in. A late
+    Enter meant for READY no longer skips the school: the film ignores skips for 1 s after the close.
+  - The hologram: all four guns built at the open and parked; the outline (Highlight) is faint inside a ViewportFrame,
+    the green see-through body and the grid carry it. At a phone's 844x390 everything fits; the squad's second lines
+    and the stat names get small (~7 pt) but read.
+  - Sounds (library, no uploads; store.json zm_term_*): zm_term_on (Switch Click On Or Off Toggle Button 2, 9119717523)
+    + zm_term_hum (Electric Hum 15, 9114246115), zm_term_key (Relay Clicks 9, 9118138365) under the typing, zm_term_sel /
+    zm_term_ready (Synth Chime Single Synth Tone 2, 9119802022, short / whole), zm_term_off (Switch Clicks Metallic Dull
+    Pops 7, 9119717950). The library has no keyboard typing takes; the relay click stands in.
+  - Sheet: side notes 20-zombies-briefing-27nov.jpg; clip zombies-briefing-27nov.mp4 (skip -> briefing -> round 1).

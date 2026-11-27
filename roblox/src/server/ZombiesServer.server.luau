@@ -16,3 +16,6 @@ ZombieBots.install(Zombies) -- (26 Nov 2026: the squad's bots revive, fight, sho
 require(script.Parent:WaitForChild("ZombieExtract")).install(Zombies)
 -- (27 Nov 2026: the zombies' glowing eyes, the flashlights (F) and the dark areas before the power; after the extraction)
 require(script.Parent:WaitForChild("ZombieLight")).install(Zombies)
+-- (27 Nov 2026: the briefing between the intro's static and its school shot: a starting sidearm and a passive each;
+-- after the lights, its hooks chain on)
+require(script.Parent:WaitForChild("ZombieBrief")).install(Zombies)

@@ -123,6 +123,31 @@ local aPlate = T.plate(root, "Spare", UDim2.new(1, -260, 1, -196), UDim2.fromOff
 local aText = T.text(aPlate, "Text", "", 13, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 aText.Position = UDim2.fromOffset(10, 0); aText.Size = UDim2.new(1, -20, 1, 0)
 
+-- (27 Nov 2026, the phone check: with the touch layout up (TouchOn) the move stick sat over the round card and the spare
+-- rounds ran under the grapple and aim buttons. On a phone the round goes beside the credits, a line high; the spare
+-- rounds and the chips go top right, under the menu buttons)
+local function layout()
+	if me:GetAttribute("TouchOn") == true then
+		rPlate.Position = UDim2.fromOffset(192, 104); rPlate.Size = UDim2.fromOffset(150, 44)
+		rLabel.Position = UDim2.fromOffset(12, 4)
+		rNum.Position = UDim2.fromOffset(12, 17); rNum.Size = UDim2.fromOffset(60, 24); rNum.TextSize = 22
+		rLeft.Position = UDim2.fromOffset(62, 21)
+		pops.Position = UDim2.fromOffset(348, 104)
+		aPlate.Position = UDim2.new(1, -260, 0, 48)
+		chips.Position = UDim2.new(1, -186, 0, 84)
+	else
+		rPlate.Position = UDim2.new(0, 16, 1, -206); rPlate.Size = UDim2.fromOffset(170, 66)
+		rLabel.Position = UDim2.fromOffset(12, 6)
+		rNum.Position = UDim2.fromOffset(12, 20); rNum.Size = UDim2.fromOffset(70, 40); rNum.TextSize = 34
+		rLeft.Position = UDim2.fromOffset(80, 36)
+		pops.Position = UDim2.fromOffset(192, 104)
+		aPlate.Position = UDim2.new(1, -260, 1, -196)
+		chips.Position = UDim2.fromOffset(16, 152)
+	end
+end
+layout()
+me:GetAttributeChangedSignal("TouchOn"):Connect(layout)
+
 -- the middle: a banner (ROUND 3, the break's countdown), what a buy said
 local banner = T.text(root, "Banner", "", 34, T.TEXT, T.FONT_SHOUT, Enum.TextXAlignment.Center, true)
 banner.AnchorPoint = Vector2.new(0.5, 0); banner.Position = UDim2.new(0.5, 0, 0, 120); banner.Size = UDim2.fromOffset(600, 44)

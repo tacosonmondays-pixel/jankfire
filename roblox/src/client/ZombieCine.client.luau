@@ -185,7 +185,7 @@ local function finish(handBack: boolean)
 	for _, s in r.beds do fade(s, 0, 0.5); task.delay(0.6, function() s:Destroy() end) end
 	Cine.bars(false, 0.25)
 	card("", false, 0.2)
-	skipL.Text = ""; skipB.Visible = false
+	skipL.Text = ""; skipL.Visible = true; skipB.Visible = false
 	if r.cine then r.cine.stop(handBack) end
 	moonBack(r)
 	-- (the bodies the extraction film hid on this screen: drawn again)
@@ -197,6 +197,7 @@ local function finish(handBack: boolean)
 	if r.warm then pcall(r.warm.release) end
 	if r.leadBlack then r.leadBlack = false; black.BackgroundTransparency = 1 end
 	me:SetAttribute("ZmFilm", nil) -- (the zombies HUD back: ZombiesClient)
+	me:SetAttribute("ZmBriefUp", nil)
 	if r.onEnd then pcall(r.onEnd) end
 end
 
@@ -282,13 +283,19 @@ end
 local function intro(a: Model)
 	local t0 = a:GetAttribute("IntroT0")
 	local len = tonumber(a:GetAttribute("IntroLen")) or XC.intro
-	if type(t0) ~= "number" or srv() > t0 + len - 1.2 or film then return end
+	if type(t0) ~= "number" or film then return end
+	do -- (too late to start? with the briefing up the film waits in it; once it closed the film ends its tail after)
+		local b0, b1 = a:GetAttribute("BriefT0"), a:GetAttribute("BriefT1")
+		local endT = if type(b1) == "number" then b1 + len - XC.news.static[2] elseif type(b0) == "number" then math.huge else t0 + len
+		if srv() > endT - 1.2 then return end
+	end
 	local okM, map = pcall(ZM.read, a)
 	if not okM or not map then return end
 	local site = a:GetPivot()
 	local function L(x: number, y: number, z: number): Vector3 return site:PointToWorldSpace(Vector3.new(x, y, z)) end
 	local N = XC.news
-	local r: any = { guis = {}, vm = {}, trash = {}, beds = {}, showMe = false, kind = "intro" }
+	-- (keep: the briefing's screen (ZombieBrief.client) stays on while the film hides the rest)
+	local r: any = { guis = {}, vm = {}, trash = {}, beds = {}, showMe = false, kind = "intro", keep = { JankZmBrief = true } }
 	film = r
 	me:SetAttribute("ZmFilm", true)
 	if okLook and HubLook and HubLook.byArena and HubLook.byArena[a.Name] then pcall(HubLook.set, HubLook.byArena[a.Name], 0) end
@@ -483,10 +490,28 @@ local function intro(a: Model)
 	}
 	-- (27 Nov, main: if the prewarm isn't in when the lead ends, the black holds up to 2 s more, the sting carrying it:
 	-- the film's own clock waits at 0 until it's in; the server's round 1 allows for it)
+	-- (27 Nov 2026: the briefing (ZombieBrief) sits between the static and the school. while it's up the film holds in
+	-- the static's last moment under it (r.inBrief); from BriefT1 the school plays on. a skip during the news jumps to
+	-- it (r.toBrief))
+	local AT = N.static[2]
 	local function clk(): number
 		local raw = srv() - (t0 :: number)
 		if raw >= 0 and not r.warmReady and raw < 2 then r.shift = raw end
-		return raw - (r.shift or 0)
+		local t = raw - (r.shift or 0)
+		if type(a:GetAttribute("BriefT0")) == "number" then
+			if r.toBrief and t < AT then t = AT end
+			if t >= AT then
+				local b1 = a:GetAttribute("BriefT1")
+				if type(b1) == "number" and srv() >= b1 then
+					t = AT + (srv() - b1)
+					r.inBrief, r.briefDone = false, true
+				else
+					t = AT - 0.001
+					r.inBrief = true
+				end
+			end
+		end
+		return t
 	end
 	-- (flag: HubLife leaves the light alone while it plays; 27 Nov test, its zone switch into the match ran the map room's
 	-- black haze over the feed's first half second)
@@ -558,6 +583,10 @@ local function intro(a: Model)
 		local t = clk()
 		hold(r)
 		r.showMe = false
+		local up = r.inBrief == true -- (the briefing's screen reads this: ZombieBrief.client)
+		if me:GetAttribute("ZmBriefUp") ~= up then me:SetAttribute("ZmBriefUp", up) end
+		skipL.Visible = not up
+		skipB.Visible = Keys.isTouch() and not up
 		if r.leadBlack and t >= 0 and (r.warmReady or srv() - (t0 :: number) >= 2) then
 			r.leadBlack = false
 			TweenService:Create(black, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
@@ -716,7 +745,21 @@ local function intro(a: Model)
 	end)
 end
 local function skip()
-	if film and film.kind == "intro" then finish(true)
+	if film and film.kind == "intro" then
+		-- (the briefing: a skip during the news lands you in it, never past it (its own keys while it's up); after it
+		-- the film ends as before)
+		local a = arena()
+		if a and type(a:GetAttribute("BriefT0")) == "number" and not film.briefDone then
+			if not film.toBrief and not film.inBrief then
+				film.toBrief = true
+				zr:FireServer({ k = "xskip" })
+			end
+			return
+		end
+		-- (a late Enter meant for READY lands just after it closes: no skip in the first second of the school)
+		local b1 = a and a:GetAttribute("BriefT1")
+		if type(b1) == "number" and srv() < b1 + 1 then return end
+		finish(true)
 	elseif film and film.kind == "outro" and film.onSkip and film.aboard then film.onSkip() end -- (straight to the card)
 end
 Keys.began(function(io: any, _gp: boolean)
