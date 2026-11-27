@@ -382,8 +382,8 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	"qr", -- both: the same black and white alternation as Barcode
 	-- the second pass (27 Nov): a third blind critic broke the split AI calls (each of these: 2 of 3 critics "AI").
 	-- Lava, Kintsugi, Marble and Moss came back the same day: the owner picked them from the gallery of the retired
-	-- (Lava and Kintsugi Exotic again, Roster.EXOTIC); Urushi is the owner's to decide (new-UV photos sent)
-	"urushi", -- lopsided wreaths, scribbly linework
+	-- (Lava and Kintsugi Exotic again, Roster.EXOTIC); Urushi came back too, the owner's pick from its new-UV photos
+	-- ("I like both urushi and bubblegum"), as it looks in game
 	"copper", -- (Verdigris) blurry blobs, cloudy insides
 	-- and the plain colours checked in game: a flat colour only a shade off another one in its family goes
 	"cream", -- between Fridge White (cleaner white) and Washi (the same cream, with paper flecks)
@@ -395,9 +395,9 @@ Roster.RETIRED = { -- (the audit of 27 Nov: two blind critics, docs/WRAP-TEXTURE
 	-- grids that pass retired (Asanoha, Seigaiha, Shibori, Hazard, Checkered Flag, Missing Texture, Spreadsheet, Neon
 	-- Hex, CRT, Bubble Wrap, Candy Corn, CORP) came back the same day: the owner meant big motifs breaking across the
 	-- gun ("Stamped ones are okay if it's a pattern"), not even repeats. Of those, the owner then crossed out Spreadsheet
-	-- on the gallery: it stays retired. Wood Burl came back, picked from the gallery; Bubblegum is the owner's to decide
+	-- on the gallery: it stays retired. Wood Burl came back, picked from the gallery, and Bubblegum from its new-UV
+	-- photos (the owner: "I like both urushi and bubblegum"), as it looks in game
 	"sheet", -- a spreadsheet cell grid (the owner's cross on the gallery)
-	"bubblegum", -- (3 reworks) round bubbles squashed and cut on every gun
 	"ketchup", -- (3 reworks)
 	"sushi", -- (3 reworks)
 	"pizza", -- (3 reworks) round pepperoni cut at the edges
