@@ -195,7 +195,9 @@ local function water(x0, z0, x1, z1, y)
 	p.CFrame = at((x0 + x1) / 2, y - 0.3, (z0 + z1) / 2); p.Parent = W
 	-- (the surface itself: faint crests of light on small waves, wider than deep; FinisherProFx drifts them)
 	local tx = Instance.new("Texture"); tx.Name = "PoolSurface"; tx.Texture = TEX.surface; tx.Face = Enum.NormalId.Top
-	tx.StudsPerTileU = 26; tx.StudsPerTileV = 13; tx.Color3 = Color3.fromRGB(150, 172, 214); tx.Transparency = 0.72; tx.Parent = p
+	-- (the first cut, 0.72 see-through and a grey-blue tint, only showed when the frame was brightened 3x: the night's
+	-- light dims a texture with the part, so the crests need about twice that to read in the darkest lens, the sheathe)
+	tx.StudsPerTileU = 26; tx.StudsPerTileV = 13; tx.Color3 = Color3.fromRGB(190, 205, 235); tx.Transparency = 0.5; tx.Parent = p
 end
 for _, b in FX.water.boxes do water(b[1], b[2], b[3], b[4], FX.water.y) end
 local ub = FX.water.upper.box

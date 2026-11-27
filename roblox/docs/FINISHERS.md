@@ -300,8 +300,9 @@ rotating angles strong leg perspective" and "instead of lightning, theyre petals
     copy stood inside her to the slice). Each copy, petal or ink, shows only once she is 2.6-4 studs clear of it
     (`clearOf` on the take's own path). It is also hidden while its outline overlaps hers on screen, in front of her
     or behind (`coverOf`). The ink copies stand 3.5 and 7 studs back along her path instead of a fixed 1.6 frames.
-  - In Studio v1548. Film: notes `video/tidecrest_katana_finisher_round4(_small).mp4`. Sheet:
-    `finisher-boards/tidecrest_round4_before_after.jpg`.
+  - In Studio v1548; the pool's ripple crests doubled after it (see-through 0.5, tint 190/205/235: the night dims a
+    texture with its part, and at 0.72 they only showed in the brighter lenses), v1553. Film: notes
+    `video/tidecrest_katana_finisher_round4b(_small).mp4`. Sheet: `finisher-boards/tidecrest_round4b_before_after.jpg`.
 - **The effects (FinisherProFx `coilAndDash`):**
   - petals gathering into a slow swirl round him as he sinks, on take time so the slow motion slows them;
   - a gold glint along the blade at the held breath;
