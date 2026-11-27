@@ -86,8 +86,8 @@ H.GUNS = { "ar", "smg", "shotgun", "sniper", "burst", "lmg", "dmr", "lever", "au
 
 -- his passives: two of these at random each round. Names are labels (no-flavour-text); `say` is the plain line under it
 H.PASSIVES = {
-	{ id = "pulse", name = "PULSE", say = "hiders near him show through walls for a moment", every = 25, range = 60, show = 1.5 },
-	{ id = "tracks", name = "TRACKS", say = "running hiders leave footprints he can see", fresh = 3.0 },
+	{ id = "pulse", name = "PULSE", say = "survivors near him show through walls for a moment", every = 25, range = 60, show = 1.5 },
+	{ id = "tracks", name = "TRACKS", say = "running survivors leave footprints he can see", fresh = 3.0 },
 	{ id = "thick", name = "THICK SKIN", say = "+100 health", hp = 100 },
 	{ id = "firm", name = "FIRM STANCE", say = "shoves move him half as far", knock = 0.5 },
 }
@@ -253,6 +253,19 @@ H.OUTRO = {
 	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2, -- (then each sitter's hips are fitted onto the seat: HuntOutro)
 	walk = { R15 = 507777826, R6 = 180426354 }, walkSpeed = 0.55, -- (Roblox's own walks, slowed: the survivors' walk)
 	stretchSpeed = 0.75, -- (owner: "make them stand up slower it's too snappy")
+	-- the survivors' walk (owner on v4: "one should lead and the other should lag behind it shouldn't be synchronized!
+	-- Also she doesn't look scared at all!!"): she leads at `pace` studs/s (uneven by `uneven`), hunched with her arms in
+	-- (the vault's Hit Stomach held, over Roblox's walk slowed) and glancing round (the look round on her head alone); the
+	-- rest trail `back` studs behind and `side` across, each on their own walk speed and step phase, one stopping for a
+	-- look back (`pauseAt` s, for `pauseLen`) then hurrying (`hurry` x) to catch up
+	scared = { hunch = { R15 = 119535704799687, R6 = 105073434259680 }, glance = { R15 = 119056755652281, R6 = 115269372937672 },
+		hunchWeight = 0.85, walkSpeed = 0.4, pace = 2.4, uneven = 0.22 },
+	group = {
+		{ side = 0, back = 0, speed = 0.4, phase = 0 },
+		{ side = -1.4, back = 1.9, speed = 0.5, phase = 0.37 },
+		{ side = 1.8, back = 3.4, speed = 0.47, phase = 0.71, pauseAt = 1.7, pauseLen = 0.9, hurry = 1.5 },
+		{ side = -0.5, back = 4.8, speed = 0.53, phase = 0.18 },
+	},
 	anims = {
 		R15 = { sit = 123982609501233, stretch = 124144468077269, clap = 119842197482812, cheer = 99464849720944, pump = 82176434072280 },
 		R6 = { sit = 91069648707561, stretch = 86402846376882, clap = 72835829513855, cheer = 134314727808662, pump = 114524043495459 },
@@ -278,7 +291,7 @@ H.OUTRO = {
 -- walks scared up to their spot (Roblox's walk slowed + the intro's look round), then SURVIVE in A's hero type with a
 -- hit, and the lens glides back to the game's camera. Skip: Space, B, a tap
 H.HIDER_INTRO = {
-	on = true,
+	on = false, -- (owner, 27 Nov: "scratch that no cinematic for survivor!! When you load in, it'll tell you survivor")
 	len = 5,
 	title = 1.6, -- (s of SURVIVE at the end; it fades over the last `home` s, then a cut to the game's camera)
 	home = 0.35,
@@ -289,5 +302,10 @@ H.HIDER_INTRO = {
 		hit = "boom", hitVol = 0.5, -- (v1: the boom peaked -1.7 dB)
 	},
 }
+
+-- the survivors' role card (owner, 27 Nov: "no cinematic for survivor!! When you load in, it'll tell you survivor!!"):
+-- SURVIVOR in A's hero type hits in with the game's own impact as they land in the round, holds, fades. It never stops
+-- them moving and costs no hiding time. (HuntHiderIntro.client)
+H.ROLE_CARD = { on = true, word = "SURVIVOR", delay = 0.35, hold = 1.7, fade = 0.5, hit = "boom", hitVol = 0.5 }
 
 return H

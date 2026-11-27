@@ -43,7 +43,10 @@ BLEND = int(opt('--blend', '6'))
 LOOP = '--no-loop' not in argv
 KEEP_DRIFT = '--keep-drift' in argv
 PRIORITY = { 'idle': 0, 'movement': 1, 'action': 2, 'core': 1000 }[opt('--priority', 'idle')]
-UPPER = '--upper' in argv
+UPPER = '--upper' in argv or '--head-only' in argv
+# (27 Nov 2026, HOUSE HUNT's scared walk: --head-only keys the head alone, the parts above it unkeyed at weight 0, so a
+# glance round can lie over another upper-body pose)
+HEAD_ONLY = '--head-only' in argv
 WARP = [tuple(float(x) for x in kv.split(':')) for kv in opt('--warp', '').split(',') if kv]
 
 # (19 Nov 2026, the MotionBricks trial) a .json in = tools/motionbricks/mixamo_rot_sample.py's shape (every bone's world
@@ -192,6 +195,8 @@ def cf_xml(name, pos, R):
     tags = ['X', 'Y', 'Z', 'R00', 'R01', 'R02', 'R10', 'R11', 'R12', 'R20', 'R21', 'R22']
     return '<CoordinateFrame name="%s">%s</CoordinateFrame>' % (name, ''.join('<%s>%.6f</%s>' % (t, x, t) for t, x in zip(tags, v)))
 UNKEYED = { 'HumanoidRootPart', 'LowerTorso' } if UPPER else set()
+if HEAD_ONLY: UNKEYED = { 'HumanoidRootPart', 'LowerTorso', 'UpperTorso', 'Torso' }
+HEAD_PATH = { 'LowerTorso', 'UpperTorso', 'Torso', 'Head' }
 LEGS = { 'LeftUpperLeg', 'RightUpperLeg' }
 def pose_xml(part, rots, hips):
     R = Matrix.Identity(3) if part == 'HumanoidRootPart' or part in UNKEYED else rots[part]
@@ -199,7 +204,7 @@ def pose_xml(part, rots, hips):
         pos = RC['Torso'].transposed() @ hips if part == 'Torso' else Vector((0, 0, 0))
     else:
         pos = hips if part == 'LowerTorso' and not UPPER else Vector((0, 0, 0))
-    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS))
+    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS) and not (HEAD_ONLY and c not in HEAD_PATH))
     wt = 0 if part in UNKEYED else 1
     return ('<Item class="Pose" referent="%s"><Properties><string name="Name">%s</string>%s<float name="Weight">%d</float>'
             '<token name="EasingStyle">0</token><token name="EasingDirection">0</token></Properties>%s</Item>') % (nref(), part, cf_xml('CFrame', pos, R), wt, kids)

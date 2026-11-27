@@ -272,27 +272,55 @@ local function play(a: any)
 		local gd = gTo - gFrom
 		local gDir = if gd.Magnitude > 0.1 then Vector3.new(gd.X, 0, gd.Z).Unit else face
 		r.gFrom, r.gTo, r.gDir = gFrom, gTo, gDir
+		local GR = OUT.group or {}
+		local SC = OUT.scared or {}
 		for i, src in who do
 			local c, rig = copyBody(src)
 			if c then
-				local row = math.ceil((i - 1) / 2)
-				local side = (if i % 2 == 0 then 1 else -1) * row * 2.6
+				local g = GR[i] or { side = (if i % 2 == 0 then 1 else -1) * 1.6, back = 1.7 * i, speed = 0.5, phase = (i * 0.29) % 1 }
+				local lead = i == 1 and GW ~= nil
 				c.Parent = house
 				local base = track(c, if GW then (OUT.walk and OUT.walk[rig]) else (HC.ANIMS[rig] and HC.ANIMS[rig].idle), Enum.AnimationPriority.Action)
-				if base then base.Looped = true; base:Play(0); base:AdjustSpeed(if GW then (OUT.walkSpeed or 0.55) else 1.15) end
-				local la = HC.INTRO.lookAround and HC.INTRO.lookAround[rig]
-				local lk = if GW then track(c, la, Enum.AnimationPriority.Action2) else nil
-				if lk then lk.Looped = true; lk:Play(0.6); lk.TimePosition = i * 1.7; lk:AdjustSpeed(0.7) end
-				table.insert(bodies, { m = c, rig = rig, src = src, side = side, back = row * 2.2, h = rootHeight(c, rig) })
+				if base then base.Looped = true; base:Play(0); base:AdjustSpeed(if GW then (if lead then SC.walkSpeed or 0.4 else g.speed or 0.5) else 1.15) end
+				if lead then -- (scared: hunched, her arms in, glancing round; mocap from the vault until Mixamo's scared walk)
+					local hu = track(c, SC.hunch and SC.hunch[rig], Enum.AnimationPriority.Action2)
+					if hu then hu.Looped = false; hu:Play(0.3, SC.hunchWeight or 0.85, 0); hu.TimePosition = 0.07 end
+					local gl = track(c, SC.glance and SC.glance[rig], Enum.AnimationPriority.Action3)
+					if gl then gl.Looped = true; gl:Play(0.5, 1, 0.85) end
+				elseif GW then
+					local la = HC.INTRO.lookAround and HC.INTRO.lookAround[rig]
+					local lk = track(c, la, Enum.AnimationPriority.Action2)
+					if lk then lk.Looped = true; lk:Play(0.6, 0.8, 0.6 + 0.1 * (i % 3)); lk.TimePosition = i * 0.9 end
+				end
+				table.insert(bodies, { m = c, rig = rig, src = src, g = g, walk = base, h = rootHeight(c, rig) })
 			end
 		end
-		r.placeGroup = function(u: number)
-			local center = gFrom:Lerp(gTo, u)
+		-- each one's place along the hall at t s (the lead's pace uneven; the rest behind her, never in step)
+		r.placeGroup = function(t: number)
+			local L = (gTo - gFrom).Magnitude
 			local right = gDir:Cross(Vector3.yAxis)
+			local pace = SC.pace or 2.4
+			local lead = math.clamp(pace * t + (SC.uneven or 0.22) * math.sin(t * 2.6) / 2.6 * pace, 0, L)
 			for _, b in bodies do
-				local at = center + right * b.side - gDir * b.back + Vector3.new(0, b.h, 0)
-				b.m:PivotTo(CFrame.lookAt(at, at + gDir))
+				local g = b.g
+				local d = lead - (g.back or 0)
+				if g.pauseAt and t > g.pauseAt then -- (stops for a look back, then hurries to catch up)
+					local over = t - g.pauseAt
+					local pl = g.pauseLen or 0.9
+					local lost = math.min(over, pl) * pace - math.max(0, over - pl) * pace * ((g.hurry or 1.5) - 1)
+					d -= math.max(0, lost)
+					if b.walk then
+						local want = if over < pl then 0.06 elseif lost > 0 then (g.speed or 0.5) * (g.hurry or 1.5) else (g.speed or 0.5)
+						if math.abs(b.walk.Speed - want) > 0.01 then b.walk:AdjustSpeed(want) end
+					end
+				end
+				d = math.max(d, -2.2) -- (never back through the wall behind the start)
+				local ph = (g.phase or 0) * 6.283
+				local at = gFrom + gDir * d + right * ((g.side or 0) + 0.22 * math.sin(t * 0.9 + ph)) + Vector3.new(0, b.h, 0)
+				local fwd = CFrame.fromAxisAngle(Vector3.yAxis, 0.07 * math.sin(t * 0.7 + ph)) * gDir
+				b.m:PivotTo(CFrame.lookAt(at, at + fwd))
 			end
+			r.leadAt = gFrom + gDir * lead
 		end
 		r.placeGroup(0)
 	end
@@ -395,10 +423,12 @@ local function play(a: any)
 			p += Vector3.new(0, math.sin(u * 14) * 0.06, 0) -- (a walk's bob)
 			return CFrame.lookAt(p, at)
 		else
-			if r.gFrom then -- (walking backwards ahead of them as they come down the hall)
-				local center = (r.gFrom :: Vector3):Lerp(r.gTo, math.clamp(u, 0, 1))
+			if r.gFrom then -- (a slow dolly back in front of her as she leads them down the hall; no handheld)
+				local lead = (r.leadAt or r.gFrom) :: Vector3
+				r.lensAt = if r.lensAt then (r.lensAt :: Vector3):Lerp(lead, 0.08) else lead
+				local center = r.lensAt :: Vector3
 				local right = (r.gDir :: Vector3):Cross(Vector3.yAxis)
-				return CFrame.lookAt(center + r.gDir * Cine.lerp(8.0, 7.0, u) + right * 1.4 + Vector3.new(0, 4.4, 0), center - r.gDir * 1.0 + Vector3.new(0, 3.2, 0))
+				return CFrame.lookAt(center + r.gDir * Cine.lerp(7.2, 6.4, u) + right * 1.3 + Vector3.new(0, 4.2, 0), center - r.gDir * 1.6 + Vector3.new(0, 3.0, 0))
 			end
 			-- a slow arc in front of them at eye height (they face it)
 			local c = (groupAt or origin.Position) + Vector3.new(0, 3.4, 0)
@@ -427,11 +457,25 @@ local function play(a: any)
 			end
 			return s.Position + Vector3.new(0, 3.6, 0)
 		end
-		reveal = function(u) -- (v6: the lens on the seat's height framed her chest, head out of shot: now on her face)
+		local revealFrom: Vector3? = nil
+		reveal = function(u) -- (v6 framed her chest, head out of shot; v7 sat behind the monitor: the first spot that sees her face)
 			local e = Cine.ease(u)
 			local hd = seatedHead()
-			local from = s.Position + s.LookVector * Cine.lerp(4.4, 4.0, e) + s.RightVector * Cine.lerp(2.6, 2.2, e) + Vector3.new(0, hd.Y - s.Position.Y + 0.2, 0)
-			return CFrame.lookAt(from, hd - Vector3.new(0, 0.5, 0))
+			if not revealFrom then
+				local ex = RaycastParams.new()
+				ex.FilterType = Enum.RaycastFilterType.Exclude
+				local mine: { Instance } = {}
+				for _, b in roomBodies do table.insert(mine, b.m) end
+				ex.FilterDescendantsInstances = mine
+				for _, c in { { 3.0, 2.6 }, { 2.2, 3.4 }, { 1.2, 3.8 }, { 3.0, -2.6 }, { 2.2, -3.4 }, { 0.4, 4.0 }, { 0.4, -4.0 }, { -1.2, 3.6 } } do
+					local p = s.Position + s.LookVector * c[1] + s.RightVector * c[2]
+					p = Vector3.new(p.X, hd.Y + 0.3, p.Z)
+					if not workspace:Raycast(hd, p - hd, ex) then revealFrom = p; break end
+				end
+				if not revealFrom then revealFrom = hd + s.RightVector * 2.6 + Vector3.new(0, 0.4, 0) end
+			end
+			local p0 = revealFrom :: Vector3
+			return CFrame.lookAt(p0 + (hd - p0).Unit * 0.5 * e, hd - Vector3.new(0, 0.4, 0)) -- (a slow push in)
 		end
 	else
 		local c = spot("couch")
@@ -507,7 +551,10 @@ local function play(a: any)
 		-- the survivors walk until the hit-stop holds them
 		if r.placeGroup then
 			local run = math.max(0.1, beat("glitch") - (OUT.hitstop or 0.2))
-			if t <= run then r.placeGroup(math.clamp(t / run, 0, 1)) end
+			if t <= run then r.placeGroup(math.max(0, t)) end
+			for _, b in bodies do -- (each walk on its own step: a phase off the others once the clip has loaded)
+				if b.walk and not b.phased and b.walk.Length > 0 then b.phased = true; b.walk.TimePosition = b.walk.Length * ((b.g and b.g.phase) or 0) end
+			end
 		end
 		-- each sitter's hips onto its seat once the seated clip has them down, whatever the avatar's size (owner, 27 Nov:
 		-- "make sure they're actually sitting and not clipped")
@@ -644,33 +691,8 @@ local function play(a: any)
 			local claps = S.claps or {}
 			if #claps > 0 then sound(claps[math.random(1, #claps)], 0.55 + math.random() * 0.3, false, b.m:GetPivot().Position, room) end
 		end
-		-- whatever anyone wears between the lens and a face fades (the intro's rule)
-		local camP = workspace.CurrentCamera.CFrame.Position
-		local list: { BasePart } = {}
-		local live = if t < beat("glitch") then bodies else roomBodies
-		for _, b in live do
-			for _, acc in b.m:GetChildren() do
-				if acc:IsA("Accessory") then for _, d in acc:GetDescendants() do if d:IsA("BasePart") then d.CanQuery = true; table.insert(list, d) end end end
-			end
-		end
-		local block: { [BasePart]: boolean } = {}
-		for _, b in live do
-			local hd = b.m:FindFirstChild("Head") :: BasePart?
-			if hd and #list > 0 then
-				local dir = (hd.Position + hd.CFrame.LookVector * hd.Size.Z * 0.5) - camP
-				if dir.Magnitude > 0.6 then
-					rp.FilterDescendantsInstances = list
-					local hit = workspace:Raycast(camP, dir.Unit * (dir.Magnitude - 0.3), rp)
-					if hit then block[hit.Instance :: BasePart] = true end
-				end
-			end
-		end
-		for _, h in list do
-			if block[h] then holdFade[h] = os.clock() + 0.6 end
-			local goal = if (holdFade[h] or 0) > os.clock() then 0.92 else 0
-			local cur = h.LocalTransparencyModifier
-			if math.abs(goal - cur) > 0.003 then h.LocalTransparencyModifier = cur + (goal - cur) * math.min(1, dt * 14) end
-		end
+		-- (owner, 27 Nov: hair and heads see-through: nothing anyone wears fades any more; everyone stays solid)
+		local _ = holdFade
 		if t >= len then stop() end
 	end)
 end

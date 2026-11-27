@@ -246,7 +246,7 @@ function ModesTab.draw(ctx: any): number
 		hn.Position = UDim2.fromOffset(14, if c then 5 else 9); hn.Size = UDim2.new(1, -110, 0, if c then 20 else 26)
 		local hc = text(hb, "Count", ("%d IN THE HOUSE"):format(tonumber(ReplicatedStorage:GetAttribute("HuntPlayers")) or 0), if c then 9 else 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); hc.ZIndex = 3
 		hc.AnchorPoint = Vector2.new(1, 0); hc.Position = UDim2.new(1, -12, 0, if c then 9 else 15); hc.Size = UDim2.fromOffset(100, 14)
-		local hs = text(hb, "Sub", "one gunman · everyone else hides · its own lobby", if c then 10 else 12, T.MUTED, T.FONT); hs.ZIndex = 3
+		local hs = text(hb, "Sub", "one hunter · everyone else hides · its own lobby", if c then 10 else 12, T.MUTED, T.FONT); hs.ZIndex = 3
 		hs.Position = UDim2.fromOffset(14, if c then 25 else 36); hs.Size = UDim2.new(1, -24, 0, 16); hs.TextTruncate = Enum.TextTruncate.AtEnd
 		hb.MouseButton1Click:Connect(function()
 			local rf = ReplicatedStorage:FindFirstChild("JankfireRemotes")

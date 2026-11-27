@@ -153,7 +153,7 @@ local passL = label(top, "", 11, T.MUTED, T.FONT, Enum.TextXAlignment.Center)
 passL.Position = UDim2.fromOffset(0, 74); passL.Size = UDim2.new(1, 0, 0, 14)
 local shade = new("Frame", { BackgroundColor3 = Color3.fromRGB(8, 9, 11), BackgroundTransparency = 0.08, BorderSizePixel = 0,
 	Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 0 }, rg)
-local shadeL = label(shade, "THE HIDERS ARE HIDING", 22, T.SOFT, T.FONT_TITLE, Enum.TextXAlignment.Center)
+local shadeL = label(shade, "THE SURVIVORS ARE HIDING", 22, T.SOFT, T.FONT_TITLE, Enum.TextXAlignment.Center) -- (owner: HUNTER / SURVIVOR on screen)
 shadeL.AnchorPoint = Vector2.new(0.5, 0.5); shadeL.Position = UDim2.fromScale(0.5, 0.55); shadeL.Size = UDim2.fromOffset(600, 30)
 local card = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.08, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.42), Size = UDim2.fromOffset(420, 150), Visible = false }, rg)
@@ -173,7 +173,7 @@ local function passivesText(): string
 	for id in string.gmatch(ids, "[^,]+") do
 		for _, pv in HC.PASSIVES do if pv.id == id then table.insert(names, pv.name) end end
 	end
-	return "GUNMAN: " .. table.concat(names, " · ")
+	return "HUNTER: " .. table.concat(names, " · ")
 end
 local function gunName(): string
 	local id = ReplicatedStorage:GetAttribute("HuntGun")
@@ -194,10 +194,10 @@ RunService.RenderStepped:Connect(function()
 	clockL.Text = ("%d:%02d"):format(math.floor(left / 60), math.floor(left % 60))
 	local role = me:GetAttribute("HuntRole")
 	phaseL.Text = if ph == "hide" then "HIDE" elseif ReplicatedStorage:GetAttribute("HuntFightBack") then "FIGHT BACK" else "HUNT"
-	roleL.Text = if role == "gunman" then ("GUNMAN · %s"):format(gunName()) else "HIDER"
+	roleL.Text = if role == "gunman" then ("HUNTER · %s"):format(gunName()) else "SURVIVOR"
 	passL.Text = passivesText()
 	shade.Visible = ph == "hide" and role == "gunman" and left > 0.5 -- (v7: no one-frame flash as the intro hands over)
-	if shade.Visible then shadeL.Text = ("THE HIDERS ARE HIDING · %d"):format(math.ceil(left)) end
+	if shade.Visible then shadeL.Text = ("THE SURVIVORS ARE HIDING · %d"):format(math.ceil(left)) end
 end)
 -- ------------------------------------------------------------------ stage 3: points, the two trap slots, the trap menu
 -- bottom right: your points and the two traps you carry (keys of the PRIMARY / SECONDARY slots use them). UTILITY (G)
@@ -286,10 +286,10 @@ Remote.OnClientEvent:Connect(function(op: string, a: any)
 	end
 	if op ~= "results" or type(a) ~= "table" then return end
 	if me:GetAttribute("Hunt") ~= "round" then return end
-	cardBig.Text = if a.winner == "gunman" then "GUNMAN WINS" elseif a.winner == "hiders" then "HIDERS WIN" else "ROUND OVER"
+	cardBig.Text = if a.winner == "gunman" then "HUNTER WINS" elseif a.winner == "hiders" then "SURVIVORS WIN" else "ROUND OVER"
 	local n = if type(a.survivors) == "table" then #a.survivors else 0
-	cardA.Text = if a.winner == "hiders" and a.why == "the gunman is down" then "GUNMAN DOWN" -- (27 Nov: plain facts, no lowercase whisper)
+	cardA.Text = if a.winner == "hiders" and a.why == "the gunman is down" then "HUNTER DOWN" -- (27 Nov: plain facts, no lowercase whisper)
 		elseif n > 0 then ("%d SURVIVED: %s"):format(n, table.concat(a.survivors, ", ")) else "NO SURVIVORS"
-	cardB.Text = ("GUNMAN %s · %d KILLS"):format(tostring(a.gunman or "-"), tonumber(a.kills) or 0)
+	cardB.Text = ("HUNTER %s · %d KILLS"):format(tostring(a.gunman or "-"), tonumber(a.kills) or 0)
 	cardUntil = os.clock() + HC.ROUND.results
 end)

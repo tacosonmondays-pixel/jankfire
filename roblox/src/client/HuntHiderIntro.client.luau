@@ -314,8 +314,57 @@ local function play(a: any)
 	end)
 end
 
+-- the survivors' role card (owner, 27 Nov: "no cinematic for survivor!! When you load in, it'll tell you survivor!!"):
+-- one word in A's hero type, a quick hit in with the game's impact, a hold, a fade; it never stops them moving
+local function roleCard()
+	local RC = HC.ROLE_CARD
+	if not RC or not RC.on then return end
+	local w0 = os.clock()
+	while (me:GetAttribute("Hunt") ~= "round" or me:GetAttribute("HuntRole") == nil) and os.clock() - w0 < 2 do task.wait(0.05) end
+	if me:GetAttribute("Hunt") ~= "round" or me:GetAttribute("HuntRole") ~= "hider" then return end
+	task.wait(RC.delay or 0.35)
+	local pg = me:FindFirstChildOfClass("PlayerGui")
+	if not pg then return end
+	local old = pg:FindFirstChild("HuntRoleCard")
+	if old then old:Destroy() end
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "HuntRoleCard"; gui.IgnoreGuiInset = true; gui.DisplayOrder = 46; gui.ResetOnSpawn = false
+	gui.Parent = pg
+	local cam = workspace.CurrentCamera
+	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	local size = math.floor(math.clamp(vp.Y * 0.17, 60, 150))
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1; holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.4); holder.Size = UDim2.new(1, 0, 0, size)
+	holder.Parent = gui
+	local scale = Instance.new("UIScale"); scale.Scale = 1.4; scale.Parent = holder
+	local labels: { TextLabel } = {}
+	if UiKit and UiKit.hero then
+		local h, _, set = UiKit.hero(holder, "Role", size, UiKit.SANS_HEAVY, UiKit.A.WORLD, true, true)
+		set(RC.word or "SURVIVOR")
+		h.AnchorPoint = Vector2.new(0.5, 0.5); h.Position = UDim2.fromScale(0.5, 0.5)
+		for _, d in h:GetChildren() do if d:IsA("TextLabel") then table.insert(labels, d) end end
+	else
+		local w = Instance.new("TextLabel")
+		w.BackgroundTransparency = 1; w.Size = UDim2.fromScale(1, 1); w.Text = RC.word or "SURVIVOR"; w.TextScaled = true
+		w.Font = Enum.Font.GothamBlack; w.TextColor3 = Color3.new(1, 1, 1); w.Parent = holder
+		table.insert(labels, w)
+	end
+	local rest: { [TextLabel]: number } = {}
+	for _, l in labels do rest[l] = l.TextTransparency; l.TextTransparency = 1 end
+	TweenService:Create(scale, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	for _, l in labels do TweenService:Create(l, TweenInfo.new(0.1), { TextTransparency = rest[l] }):Play() end
+	sound(RC.hit, false, RC.hitVol)
+	task.wait((RC.hold or 1.7) + 0.16)
+	for _, l in labels do TweenService:Create(l, TweenInfo.new(RC.fade or 0.5), { TextTransparency = 1 }):Play() end
+	task.wait((RC.fade or 0.5) + 0.05)
+	gui:Destroy()
+end
+
 Remote.OnClientEvent:Connect(function(op: string, a: any)
-	if op == "hintro" then
+	if op == "round" then
+		task.spawn(roleCard)
+	elseif op == "hintro" then
 		task.spawn(play, a)
 	elseif op == "results" or op == "outro" then
 		if running then stop(true) end
