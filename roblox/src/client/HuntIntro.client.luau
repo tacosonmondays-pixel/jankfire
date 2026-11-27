@@ -436,7 +436,21 @@ local function play(a: any)
 		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 5 * (1 - u) ^ 2 end,
 			cam = function(u)
 				local e = Cine.ease(u)
-				return look(P(0, hy + Cine.lerp(5.4, 4.7, e), Cine.lerp(-1.3, -1.1, e)), headLive() + P(0, 0, 0.25) - P(0, 0, 0), Cine.lerp(0, 6, e))
+				local base = P(0, hy + Cine.lerp(5.4, 4.7, e), Cine.lerp(-1.3, -1.1, e))
+				local aim = headLive() + P(0, 0, 0.25) - P(0, 0, 0)
+				-- (main on v12: "the face reads clearly from above, not mostly hat") once her face has landed (the hit-stop
+				-- holds it), the lens eases onto the line straight out of her face, so her face is the subject whatever she wears
+				local hd = body:FindFirstChild("Head") :: BasePart?
+				if hd and T() >= beat("snap") + 0.32 then
+					if not r.faceAt then
+						local n = hd.CFrame.LookVector
+						r.faceAt = { from = hd.Position + n * 4.6, at = hd.Position + n * 0.3, t = T() }
+					end
+					local f = r.faceAt
+					local k = smoother(math.clamp((T() - f.t) / 0.45, 0, 1))
+					return look(base:Lerp(f.from, k), aim:Lerp(f.at, k), Cine.lerp(0, 6, e))
+				end
+				return look(base, aim, Cine.lerp(0, 6, e))
 			end },
 		-- 4. outside: low in front of him (between him and the map), looking up at him
 		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, -- (owner: "a calm motion": no handheld,

@@ -284,6 +284,11 @@ Remote.OnClientEvent:Connect(function(op: string, a: any)
 		foundUntil = os.clock() + 1.6
 		return
 	end
+	if op == "round" then -- (main on v1533: the last round's card was still up under the SURVIVOR card: a new round clears it)
+		cardUntil = 0
+		card.Visible = false
+		return
+	end
 	if op ~= "results" or type(a) ~= "table" then return end
 	if me:GetAttribute("Hunt") ~= "round" then return end
 	cardBig.Text = if a.winner == "gunman" then "HUNTER WINS" elseif a.winner == "hiders" then "SURVIVORS WIN" else "ROUND OVER"
