@@ -889,6 +889,54 @@ The owner: "when you press tab in match I want it to pull upa coreboard".
   ![the 2V2 board on Tab](matchmaking/66_scoreboard_2v2.jpg)
   ![a 1V1V1 as one list](matchmaking/67_scoreboard_ffa.jpg)
 
+### Play again and leave (27 Nov 2026, place version 1463)
+
+The victory card (docs/VICTORY.md) ends every match with two buttons: PLAY AGAIN and LEAVE. The card is the
+victory-scene session's; what the buttons do is `server/PlayAgain.luau`.
+
+- **PLAY AGAIN** queues the same queue again: the same mode, size and ranked or casual, through its map vote (or
+  ranked's draft) as usual.
+  - **A Play queue match** (QUICKPLAY, a duel, a classic mode, a private duel). The party is back in its room as
+    before. Then the leader's PLAY AGAIN starts the search the party had, as if FIND was pressed: mode, ranked, FILL
+    and the map pick are all still set (`Party.requeue`).
+  - **A party.** Only the leader's pick re-queues, and it takes the whole party. A member's PLAY AGAIN only says "I'm
+    in"; a member who picked LEAVE is taken out of the party first, so they are not pulled into the next match.
+  - **A hub pad match.** Once your body is back in the hub, you are put back on your side of the same pad (the other
+    side if yours is full: `QuickJoin.onto`). The pad's own queue takes over, so when both sides pick PLAY AGAIN the
+    pad's countdown and map vote run again.
+  - **A match on another server.** Each party whose leader picked PLAY AGAIN goes back to a public server together.
+    It travels with a token; the token's record (the queue, the leader, who they are) sits in the memory store,
+    because teleport data passes through clients. The home server waits up to 20 s for them all, forms the party in
+    the leader's room and searches (`Party.form`). The matchmaker now tags each player with the ticket (`g`) they
+    came in, and each party's leader (`lead`), so the match server knows the parties. A token only groups players
+    listed in its record who arrived with it.
+- **LEAVE** goes home as today: the party's room, or the hub after a pad match.
+- **The picks act at the trip home.** When every real player in the match has picked, that trip runs at once instead
+  of after the end screen's count (`Matches.homeNow`). It doesn't when a play of the match is due, since that has the
+  screen next.
+- **Not offered:** ZOMBIES (its own end), and a match whose party or pad is gone.
+- **The interface** (the Play remote, through `Party.ops`):
+  - `("again", true)` is PLAY AGAIN and `("again", false)` is LEAVE; both return `{ ok, why?, view }`.
+    `("againview")` returns `{ ok, view }`.
+  - `PlayPush` `{ t = "again", view }` goes to everyone in the match at its end and on every pick.
+  - `view = { can, why?, role ("solo" | "leader" | "member"), queue (e.g. "2V2 RANKED", "QUICKPLAY", "1V1 PAD"),
+    pick, lead (the leader's pick, for a member), picked, of }`.
+- **Studio hooks:** `JankPlayTest` `("again", player, yes)` and `("againview", player)`;
+  `("cross", "mine", player, key)` is a ticket for that player as a party leader, and
+  `("cross", "againarrive", player, token)` is an arrival home with a token (`("cross", "home")` lists the tokens
+  backHome made).
+- **Tested in Studio** (v1463, one solo Play, picks made through the hook and the client remote; the card's buttons are
+  victory-scene's, still to come):
+  - A pad ghost 1V1 in THE GRAND ROTUNDA: view `1V1 PAD`, `solo`; picking during the scene sent me home 4.4 s
+    after the pick, without the count, and onto Side1 of the same pad.
+  - A party's casual 1V1 from the Play screen against a stand-in: the push came at the end; PLAY AGAIN from the client
+    remote; back in the room 4.4 s later, searching 1V1 again.
+  - A cross-server ghost 1V1 (`mine` + a rival ticket, `mm`, `arrive`, `start`), its map room and the match:
+    PLAY AGAIN made a token whose record held mode 1v1, casual, me as leader and the player list; arriving with it
+    formed my party in a room, searching `casual:1v1`.
+  - Not run: a member's pick and a member's LEAVE (they need a second real player), two pad players re-queuing at once,
+    and the real teleport home (live only: §6 item 9).
+
 ## 5. How it is built
 
 | file | what |
@@ -1067,6 +1115,9 @@ Two or more real players, each alone in their own public server (or two friends 
 7. Fail-safe: one player leaves the game during the move. The other should be sent back to a public server with a
    note after 30 s, not left in an empty server.
 8. Watch the server log for "cross-server teleport failed" and "[jankfire]" warnings.
+9. PLAY AGAIN (27 Nov 2026): after a cross-server match, a party of two whose leader presses PLAY AGAIN on the victory
+   card lands in one public server together, in the leader's room, searching the same queue ("searching again: ...").
+   A member who pressed LEAVE lands apart and isn't in the party.
 
 **Live since the owner's publish of v1023 (18 Nov 2026, about 21:30 UTC).** The two-player check above is still to
 run. Meanwhile the live queues can be watched without anyone playing:
