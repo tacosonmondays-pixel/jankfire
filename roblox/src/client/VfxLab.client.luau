@@ -6,6 +6,8 @@
 --   tint: the melee weapons' colours
 --   DUMMY: a still copy of you, 10 studs ahead, to hit; effects play on it when it's out
 --   SWING: L>R and R>L, the slash as your own first-person swing draws it
+--   WEAPON SWING (27 Nov): a body that swings each melee weapon as everyone sees a player swing it, the blade's sweep
+--   on it; BLADE / CARD switches the sweep and the old camera-facing crescent. Walk round it, or FREEZE and look
 -- plain on purpose: no flavour text (the owner's rule)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,6 +19,8 @@ local creator = game.CreatorType == Enum.CreatorType.User and me.UserId > 0 and 
 if not (RunService:IsStudio() or creator) then return end
 
 local AnimeFx = require(script.Parent:WaitForChild("AnimeFx")) :: any
+local Anims = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Anims")) :: any
+local CollectionService = game:GetService("CollectionService")
 local Fx = require(script.Parent:WaitForChild("Fx")) :: any -- (the gun's flash and puff)
 
 local TINTS = {
@@ -257,6 +261,98 @@ do
 	end)
 	button(r, "REMOVE", 80, function() if dummy then dummy:Destroy(); dummy = nil end end)
 	button(r, "CLEAR FX", 90, function() AnimeFx.clear() end)
+end
+
+-- the weapon swing: a copy of you posed by ThirdPerson as a test rig (tagged TPRig, TPWeapon = the weapon; a new
+-- TPSwing number swings it), side-on 8 studs ahead, the sweep on the blade it holds
+label("WEAPON SWING (walk round it)")
+do
+	local MELEE = { "katana", "scythe", "knife", "claw", "bread", "slapper", "slipper", "scales" }
+	local swingW = "katana"
+	local swinger: Model? = nil
+	local swingN = 0
+	local looping = false
+	local function makeSwinger()
+		if swinger then swinger:Destroy(); swinger = nil end
+		local ch = me.Character
+		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local cam = workspace.CurrentCamera
+		if not (ch and root and cam) then return end
+		ch.Archivable = true
+		local m = ch:Clone()
+		ch.Archivable = false
+		for _, d in m:GetDescendants() do
+			if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Sound") then d:Destroy()
+			elseif d:IsA("BasePart") then d.Anchored = d.Name == "HumanoidRootPart"; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+		end
+		for _, n in { "TPGun", "TPGun2" } do local g = m:FindFirstChild(n); if g then g:Destroy() end end
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+		local f = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
+		f = if f.Magnitude > 1e-3 then f.Unit else Vector3.new(0, 0, -1)
+		local at = root.Position + f * 8
+		m:PivotTo(CFrame.lookAt(at, at + f:Cross(Vector3.yAxis))) -- (side-on: you see the swing's plane at once)
+		m.Name = "VfxLabSwinger"
+		m:SetAttribute("TPWeapon", swingW)
+		CollectionService:AddTag(m, "TPRig")
+		m.Parent = workspace
+		swinger = m
+	end
+	local function swing(): number
+		if not swinger or not swinger.Parent then makeSwinger(); task.wait(0.4) end
+		local m = swinger
+		if not m then return 1 end
+		if m:GetAttribute("TPWeapon") ~= swingW then m:SetAttribute("TPWeapon", swingW); task.wait(0.4) end
+		swingN += 1
+		m:SetAttribute("TPSwing", swingN)
+		local an = Anims["swing_" .. swingW]
+		local t1 = if an and an.trail then an.trail[1] else 0.08
+		local dur = if an and an.trail then math.max(0.12, (an.trail[2] - an.trail[1]) * 1.3) else 0.18
+		local wid, n = swingW, swingN
+		task.delay(t1, function()
+			if not m.Parent then return end
+			if AnimeFx.STYLE == "blade" and AnimeFx.bodySweep(m, AnimeFx.tintFor(wid), dur) then return end
+			local r = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if r then AnimeFx.bodySlash(r, r.CFrame.LookVector, n % 2 == 0, AnimeFx.reach(wid), AnimeFx.tintFor(wid)) end
+		end)
+		return 1.1
+	end
+	local wBtns: { [string]: TextButton } = {}
+	for i = 1, #MELEE, 4 do
+		local r = row()
+		for j = i, math.min(i + 3, #MELEE) do
+			local w = MELEE[j]
+			wBtns[w] = button(r, string.upper(w), 66, function(b)
+				swingW = w
+				for _, o in wBtns do o.BackgroundColor3 = Color3.fromRGB(44, 46, 54) end
+				b.BackgroundColor3 = Color3.fromRGB(70, 110, 170)
+				if swinger then swinger:SetAttribute("TPWeapon", w) end
+			end)
+		end
+	end
+	wBtns.katana.BackgroundColor3 = Color3.fromRGB(70, 110, 170)
+	local r = row()
+	button(r, "SWING", 70, function() task.spawn(swing) end)
+	button(r, "LOOP", 60, function(b)
+		looping = not looping
+		b.BackgroundColor3 = if looping then Color3.fromRGB(70, 110, 170) else Color3.fromRGB(44, 46, 54)
+		if looping then
+			task.spawn(function()
+				while looping and gui.Parent do
+					local w = swing()
+					local t = 0
+					while t < w and looping do t += task.wait() * math.max(AnimeFx.timeScale(), 0.02) end
+				end
+			end)
+		end
+	end)
+	button(r, "REMOVE", 76, function() looping = false; if swinger then swinger:Destroy(); swinger = nil end end)
+	local r2 = row()
+	local styleB: TextButton
+	styleB = button(r2, "STYLE: BLADE", 130, function()
+		AnimeFx.STYLE = if AnimeFx.STYLE == "blade" then "card" else "blade"
+		styleB.Text = "STYLE: " .. string.upper(AnimeFx.STYLE)
+	end)
 end
 
 local function toggle()

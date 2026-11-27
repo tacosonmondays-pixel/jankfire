@@ -1005,6 +1005,40 @@ will draw it, and scored by a fresh critic agent until it reaches 8; only then d
   strays (a "blue headband" over the target's eyes) and are cut (`burst2d.py` ARCS = []; only the body sheet changed);
   sparks 1.5x. Hit photo `studio_hit_shards_v1424.jpg`; a 13.7 s first-person clip went to main's notes folder.
 
+### The blade sweep: effects on the weapon's own plane (27 Nov 2026, place version 1448)
+The owner: "make sure the effects follow the plane of the weapon and katana for example, are attached along the side
+of the blade". The crescent was a card facing the lens; a melee swing is now a SWEEP (`AnimeFx.sweep`, STYLE "blade";
+"card" keeps the old crescent, workspace attribute `AnimeFxStyle`):
+- **What it is:** every frame of a swing the blade's `Mid` (45 % along it) and `Muzzle` (the tip) are sampled (every
+  melee weapon has both; the katana's kill stretch moves its Muzzle) and a chain of flat Beams (FaceCamera off) runs
+  through the samples: the ribbon lies in the plane the blade swept, its outer edge on the tip's path. Cross-section
+  from `sweep2d.py`: a thin tinted rim, a white band on the outer edge, the tint, an ink line on the inner edge. The
+  oldest 30 % of the path tapers to a point and fades; a four-point glint rides up the blade to the tip and pops there.
+  First person samples in camera space (it rides with your view); third person and other players sweep the blade their
+  body holds (the `TPGun` under the character), so it is seen from wherever you stand.
+- **Beams, measured on a test beam in Edit:** a non-facing Beam's width runs along its attachments' Y axis; its
+  texture's ROWS run along its length and its COLUMNS across its width, the left column on the +Y edge. (The first
+  upload had the cross-section in rows: a stripe ran across the beam.) `BEAM_AXIS`/`BEAM_FLIP` hold the result.
+- **The katana's first-person trail window is its WIND-UP** (the tip over your head and behind the lens): the cut
+  comes after it. The sweep therefore keeps the CUT itself: samples count while the tip moves faster than 25 blade
+  spans a second; a slow tip before a run is still winding up, after a run of 1.5 spans the cut has ended; first person
+  drops a tip within 1 stud of the lens (and starts the next run afresh); a turn over 60 degrees starts it afresh.
+- **First person faces the lens:** the true plane, drawn literally, blew up across the screen (the blade passes by your
+  eye: `studio_sweep_fp_trueplane_first_try.jpg`), and seen edge-on it was a thread. In first person the ribbon keeps
+  the tip's real path but turns its width to face the lens, on the blade's side, 55 % of Mid-to-tip wide.
+- **Corners:** sparse samples made an angular V (`studio_sweep_side_corner_first_try.jpg`): Catmull-Rom points are
+  added where the path turns over 12 degrees.
+- **Seams:** where two segments meet, edge anti-aliasing showed a line; overlapping them let the next segment's blue
+  draw over this one's white (per-beam sorting), and a ZOffset on the core moved it off the body (ZOffset shifts along
+  the camera's look, not the view ray). Now the bodies meet exactly and only the cores overlap their neighbours.
+- **The hit follows the swing:** the burst's longest shard points along the blade's motion on screen and the sparks fly
+  on along it (`AnimeFx.swingDir`). **Guns:** someone else's front flash now faces down their barrel as yours does
+  (VelocityPerpendicular); the side jet was already two crossed cards on the barrel and the puff already leaves along it.
+- **The lab:** WEAPON SWING swings each melee weapon on a posed copy of you (a ThirdPerson test rig, `TPRig` +
+  `TPWeapon`), side-on 8 studs ahead; walk round it or freeze it. STYLE: BLADE / CARD for before and after.
+- Captures: `studio_sweep_fp_v1448.jpg`, `studio_sweep_tp_v1448.jpg` (the shoulder camera: the plane near edge-on),
+  `studio_sweep_side_v1448.jpg` and `studio_sweep_top_v1448.jpg` (the same frozen ribbon from the side and above).
+
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
   flat strand end, a straight base on a shard), rectangular steps, perfect rings, evenly spaced parts (a trefoil reads

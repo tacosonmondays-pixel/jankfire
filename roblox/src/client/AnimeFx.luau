@@ -2,7 +2,8 @@
 -- ANIME WEAPON EFFECTS (the VFX session, 26 Nov 2026; roblox/docs/VFX-PIPELINE.md "Anime weapon effects").
 -- The owner: "better vfx in anime style, especially applied to weapons ... don't use too many meshes, you usually end up
 -- making things look too geometric". So the shapes are Blender-rendered FLIPBOOKS (tools/roblox/vfx/anime/: slash_bl.py,
--- burst_bl.py), played by camera-facing particles; sparks, the twinkle and the impact frame are code.
+-- burst_bl.py), played by camera-facing particles; sparks, the twinkle and the impact frame are code. Since 27 Nov a
+-- melee swing is a SWEEP instead: a ribbon laid on the blade's own path (below, "the blade sweep").
 -- Each flipbook comes in three layers rendered from the same timing, played together from one part:
 --   body  greyscale, tinted per weapon: painted once underneath (LightEmission 0, so the colour survives on bright
 --         floors) and added once on top
@@ -391,6 +392,324 @@ function AnimeFx.lib(id: string, at: Vector3, size: number)
 	keep(p, l.life)
 end
 
+-- ---------------------------------------------------------------- the blade sweep
+-- (27 Nov 2026, the owner: "make sure the effects follow the plane of the weapon and katana for example, are attached
+-- along the side of the blade". The crescent above floated as a card facing the lens; this ribbon is laid on the
+-- blade's own path.) Every frame of a swing the blade's Mid (45 % along it) and tip (Muzzle) are sampled: in camera
+-- space for your own first-person blade, so the ribbon rides with your view as the old smear did, or in the world for
+-- a body seen from outside (its TPGun). A chain of flat Beams (FaceCamera off) runs through the samples, so the ribbon
+-- lies in the plane the blade swept, its outer edge on the tip's path: seen from the side it is the swing's arc, not a
+-- card. Every weapon's own Mid and Muzzle set its size (the katana's stretch moves its Muzzle). Two layers share the
+-- beams' attachments, so they can't slip apart: the body (tinted, its inner edge an ink line, both in sweep2d.py's
+-- texture) and the white core along the outer edge. Older samples thin towards the tip's path and fade (the crescent's
+-- tail). A glint runs from Mid to the tip along the blade while it sweeps.
+AnimeFx.STYLE = "blade" -- ("card": the camera-facing crescent of 26 Nov; the attribute AnimeFxStyle flips it for tests)
+workspace:GetAttributeChangedSignal("AnimeFxStyle"):Connect(function()
+	local v = workspace:GetAttribute("AnimeFxStyle")
+	if v == "blade" or v == "card" then AnimeFx.STYLE = v end
+end)
+local SWEEP_BODY = "rbxassetid://119546036895646"
+local SWEEP_CORE = "rbxassetid://79027786277985"
+local SWEEP_LIFE = 0.16 -- a sample's life on the ribbon (seconds on the effect clock)
+local SWEEP_MAX = 32
+-- (seen in Studio 27 Nov on a test beam between two attachments: a non-facing Beam's width runs along its attachments'
+-- Y axis; its texture's ROWS run along its length and its COLUMNS across its width, the image's left column on the
+-- +Y edge. So sweep2d.py's cross-section runs left to right, outer edge first, and +Y must point to the outer edge:
+-- the flip, as our Y points from the tip in to Mid. The attributes AnimeFxBeamAxis "Y"/"Z" and AnimeFxBeamFlip test)
+local BEAM_AXIS = "Y"
+local BEAM_FLIP = true
+workspace:GetAttributeChangedSignal("AnimeFxBeamAxis"):Connect(function()
+	local v = workspace:GetAttribute("AnimeFxBeamAxis")
+	if v == "Y" or v == "Z" then BEAM_AXIS = v end
+end)
+workspace:GetAttributeChangedSignal("AnimeFxBeamFlip"):Connect(function()
+	BEAM_FLIP = workspace:GetAttribute("AnimeFxBeamFlip") ~= false
+end)
+
+type Sample = { m: Vector3, t: Vector3, age: number }
+type Sweep = { mid: Attachment, tip: Attachment, cam: boolean, tint: Color3, left: number, dur: number, el: number,
+	samples: { Sample }, part: Part, atts: { Attachment }, body: { Beam }, core: { Beam }, glint: BillboardGui?,
+	gImg: ImageLabel?, gAt: Attachment?, band: number, brk: boolean, runL: number, run: number, stopEl: number? }
+local sweeps: { Sweep } = {}
+local swingDir: Vector3? = nil -- the latest sweep's swing direction in the world (its tip's motion) and when
+local swingDirT = -99
+
+local function sweepBeam(p: Part, tex: string, z: number, col: Color3): Beam
+	local b = Instance.new("Beam")
+	b.Texture = tex
+	b.TextureMode = Enum.TextureMode.Stretch
+	b.TextureLength = 1
+	b.TextureSpeed = 0
+	b.FaceCamera = false
+	b.Segments = 1
+	b.LightEmission = 0
+	b.LightInfluence = 0
+	b.Brightness = 1
+	b.ZOffset = z
+	b.Color = ColorSequence.new(col)
+	b.Enabled = false
+	b.Parent = p
+	return b
+end
+
+local addSample: (s: Sweep, m: Vector3, t: Vector3, dt: number?) -> () -- (below)
+-- mid, tip: the blade's attachments; dur: how long the blade sweeps (its clip's trail window); cam: sample in camera
+-- space (your own first-person blade); o.pre: the blade's Mid and tip a frame earlier, in the same space (at a low
+-- frame rate the window is caught late); o.glint = false: no glint
+function AnimeFx.sweep(mid: Attachment, tip: Attachment, tint: Color3, dur: number, cam: boolean, o: { glint: boolean?, pre: { m: Vector3, t: Vector3 }? }?)
+	if not on() then return end
+	local p = holder(CFrame.new())
+	-- (it samples until the cut ends, up to half a second: the clip's window only says when to start looking)
+	local s: Sweep = { mid = mid, tip = tip, cam = cam, tint = tint, left = math.max(dur, 0.5), dur = math.max(dur, 0.03),
+		el = 0, samples = {}, part = p, atts = {}, body = {}, core = {}, glint = nil, gImg = nil, gAt = nil,
+		band = if cam then 0.55 else 1, brk = false, runL = 0, run = 0, stopEl = nil } -- (first person: 55 % of Mid-to-tip, facing you)
+	if o and o.pre then addSample(s, o.pre.m, o.pre.t) end
+	if not (o and o.glint == false) then
+		local at = Instance.new("Attachment")
+		at.Parent = p
+		local g = Instance.new("BillboardGui")
+		g.LightInfluence = 0
+		g.AlwaysOnTop = false
+		g.Adornee = at
+		g.Size = UDim2.fromScale(0, 0)
+		local im = Instance.new("ImageLabel")
+		im.BackgroundTransparency = 1
+		im.Size = UDim2.fromScale(1, 1)
+		im.Image = SPARKLE
+		im.ImageColor3 = Color3.new(1, 1, 1):Lerp(tint, 0.15)
+		im.Parent = g
+		g.Parent = p
+		s.glint, s.gImg, s.gAt = g, im, at
+	end
+	table.insert(sweeps, s)
+end
+
+-- a body's swing seen from outside (or yours in third person): the sweep on the blade it holds (ThirdPerson's TPGun
+-- under the character). false when it holds none
+function AnimeFx.bodySweep(ch: Instance?, tint: Color3, dur: number): boolean
+	local g = ch and ch:FindFirstChild("TPGun")
+	local root = g and g:IsA("Model") and g.PrimaryPart
+	local mid = root and root:FindFirstChild("Mid")
+	local tip = root and root:FindFirstChild("Muzzle")
+	if not (mid and mid:IsA("Attachment") and tip and tip:IsA("Attachment")) then return false end
+	AnimeFx.sweep(mid, tip, tint, dur, false)
+	return true
+end
+
+local function perp(tg: Vector3): Vector3
+	local alt = if math.abs(tg.Y) < 0.9 then Vector3.yAxis else Vector3.xAxis
+	return tg:Cross(alt).Unit
+end
+
+-- (27 Nov, the first real swings: the katana's first-person trail window is its WIND-UP, the tip going over your head
+-- and behind the lens; the cut comes after it, the tip sweeping across the view. So the sweep keeps the CUT itself:)
+-- a sample counts while the tip moves faster than CUT_SPEED blade-spans (Mid to tip) a second; slower before a run is
+-- still the wind-up (skipped), slower after a run of over 1.5 spans is the cut ending (sampling stops). First person
+-- drops a tip within NEAR studs of the lens or behind it (the wind-up round your head) and starts the next run afresh;
+-- a turn over 60 degrees (a wind-up turning into the cut, a backswing) starts it afresh too. A blade that has not moved
+-- adds nothing.
+local NEAR = 1
+local CUT_SPEED = 25
+addSample = function(s: Sweep, m: Vector3, t: Vector3, dt: number?)
+	if s.cam and (t.Z > -NEAR or m.Z > -0.3) then
+		if #s.samples > 0 then s.brk = true end
+		return
+	end
+	local n = #s.samples
+	if n >= 1 and dt then
+		local last = s.samples[n]
+		local v1 = t - last.t
+		if v1.Magnitude < 1e-3 then return end
+		local span = math.max((m - t).Magnitude, 0.05)
+		if v1.Magnitude / math.max(dt, 1e-3) < CUT_SPEED * span then
+			if s.runL > 1.5 * span then
+				s.left = 0 -- (the cut has ended)
+			elseif n == 1 then
+				s.samples[1] = { m = m, t = t, age = 0 } -- (still winding up: the run starts from here)
+			end
+			return
+		end
+		if s.brk then
+			s.samples, s.runL, s.run, s.brk = {}, 0, 0, false
+		elseif n >= 2 then
+			local v0 = last.t - s.samples[n - 1].t
+			if v0.Magnitude > 1e-3 and v1:Dot(v0) < 0.5 * v1.Magnitude * v0.Magnitude then -- (60 degrees: a third-person swing's wind-up turned 70 into the cut, a corner)
+				s.samples, s.runL, s.run = { last }, 0, 0
+			end
+		end
+		if #s.samples >= 1 then s.runL += (t - s.samples[#s.samples].t).Magnitude end
+	end
+	table.insert(s.samples, { m = m, t = t, age = 0 })
+end
+
+local function stepSweep(s: Sweep, dt: number): boolean
+	local cam = workspace.CurrentCamera
+	if not cam then return false end
+	local cf = cam.CFrame
+	local d = dt * TS
+	for _, smp in s.samples do smp.age += d end
+	s.el += d
+	if s.left > 0 and s.mid.Parent and s.tip.Parent then
+		s.left -= d
+		s.run += d
+		if d > 0 or #s.samples == 0 then
+			local m, t = s.mid.WorldPosition, s.tip.WorldPosition
+			if s.cam then m, t = cf:PointToObjectSpace(m), cf:PointToObjectSpace(t) end
+			addSample(s, m, t, dt)
+		end
+	else
+		s.left = 0
+	end
+	if s.left <= 0 and not s.stopEl then s.stopEl = s.el end
+	while #s.samples > 0 and s.samples[1].age > SWEEP_LIFE do table.remove(s.samples, 1) end
+	while #s.samples > SWEEP_MAX do table.remove(s.samples, 1) end
+	local ns = #s.samples
+	if ns < 2 and s.left <= 0 then return false end
+	-- the samples in the world now, then rounded: Catmull-Rom points between two samples where the path turns (a
+	-- low frame rate or a fast swing left a polygon with corners)
+	local Pm: { Vector3 }, Pt: { Vector3 }, Pa: { number } = {}, {}, {}
+	for i, smp in s.samples do
+		local m, t = smp.m, smp.t
+		if s.cam then m, t = cf:PointToWorldSpace(m), cf:PointToWorldSpace(t) end
+		Pm[i], Pt[i], Pa[i] = m, t, smp.age
+	end
+	local Dm: { Vector3 }, Dt: { Vector3 }, Da: { number } = {}, {}, {}
+	local function cr(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, u: number): Vector3
+		local u2, u3 = u * u, u * u * u
+		return 0.5 * ((2 * p1) + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (3 * p1 - p0 - 3 * p2 + p3) * u3)
+	end
+	for i = 1, ns do
+		table.insert(Dm, Pm[i]); table.insert(Dt, Pt[i]); table.insert(Da, Pa[i])
+		if i < ns and #Dt < 56 then
+			local a0, a3 = math.max(i - 1, 1), math.min(i + 2, ns)
+			local e1 = Pt[i + 1] - Pt[i]
+			local e0 = Pt[i] - Pt[a0]
+			local turn = if e0.Magnitude > 1e-4 and e1.Magnitude > 1e-4 then math.deg(math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1))) else 0
+			local sub = if turn > 30 then 3 elseif turn > 12 then 2 else 0
+			for k = 1, sub do
+				local u = k / (sub + 1)
+				table.insert(Dt, cr(Pt[a0], Pt[i], Pt[i + 1], Pt[a3], u))
+				table.insert(Dm, cr(Pm[a0], Pm[i], Pm[i + 1], Pm[a3], u))
+				table.insert(Da, Pa[i] + (Pa[i + 1] - Pa[i]) * u)
+			end
+		end
+	end
+	local n = #Dt
+	-- the band: its share of Mid-to-tip thins with age towards the tip's path, and the tail (the oldest 30 % of the
+	-- tip's path) tapers to a point, so the ribbon never ends on a cut; first person keeps the outer 40 % only
+	local L, acc = 0, { 0 }
+	for i = 2, n do L += (Dt[i] - Dt[i - 1]).Magnitude; acc[i] = L end
+	local C: { Vector3 }, Wd: { number }, U: { Vector3 }, Tr: { number } = {}, {}, {}, {}
+	for i = 1, n do
+		local k = math.clamp(Da[i] / SWEEP_LIFE, 0, 1)
+		local q = if L > 1e-4 then math.clamp(acc[i] / (0.3 * L), 0, 1) else 1
+		q = q * q * (3 - 2 * q)
+		local f = s.band * (1 - 0.62 * k ^ 0.8) * math.max(q, 0.02)
+		local span = Dm[i] - Dt[i]
+		if s.cam then
+			-- (first person: the swing's plane passes by your eye, so the true ribbon is seen edge-on, a thread. Here
+			-- it keeps the tip's own path but turns its width to face the lens, on the side the blade is)
+			local tg = Dt[math.min(i + 1, n)] - Dt[math.max(i - 1, 1)]
+			local wv = tg:Cross(Dt[i] - cf.Position)
+			if wv.Magnitude > 1e-6 then
+				wv = wv.Unit * span.Magnitude
+				span = if wv:Dot(span) < 0 then -wv else wv
+			end
+		end
+		C[i] = Dt[i] + span * (f / 2)
+		Wd[i] = span.Magnitude * f
+		U[i] = if span.Magnitude > 1e-4 then span.Unit else Vector3.yAxis
+		Tr[i] = math.clamp((k - 0.45) / 0.55, 0, 1) ^ 1.3
+	end
+	if ns >= 2 then
+		local a, b = Pt[ns - 1], Pt[ns]
+		if (b - a).Magnitude > 1e-3 then swingDir = (b - a).Unit; swingDirT = os.clock() end
+	end
+	-- (each segment has its own attachments: the body's meet their neighbours' exactly, the core's reach 6 % into
+	-- them. Overlapping bodies let the next segment's blue draw over this one's white, a line across the band at every
+	-- joint; overlapping cores only ever cover a neighbour's white with white. A ZOffset fix moved the core off the body)
+	local TG: { Vector3 }, WW: { Vector3 } = {}, {}
+	for i = 1, n do
+		local tg = C[math.min(i + 1, n)] - C[math.max(i - 1, 1)]
+		tg = if tg.Magnitude > 1e-5 then tg.Unit else perp(U[i])
+		local w = U[i] - tg * U[i]:Dot(tg)
+		w = if w.Magnitude > 1e-4 then w.Unit else perp(tg)
+		if BEAM_FLIP then w = -w end
+		TG[i], WW[i] = tg, w
+	end
+	local function place(at: Attachment, pos: Vector3, i: number)
+		local tg, w = TG[i], WW[i]
+		at.WorldCFrame = if BEAM_AXIS == "Y" then CFrame.fromMatrix(pos, tg, w) else CFrame.fromMatrix(pos, tg, w:Cross(tg))
+	end
+	for i = 1, n - 1 do
+		for e = 1, 4 do
+			local j = 4 * i - 4 + e
+			if not s.atts[j] then
+				local at = Instance.new("Attachment")
+				at.Parent = s.part
+				s.atts[j] = at
+			end
+		end
+		local ov = (C[i + 1] - C[i]) * 0.06
+		place(s.atts[4 * i - 3], C[i], i)
+		place(s.atts[4 * i - 2], C[i + 1], i + 1)
+		place(s.atts[4 * i - 1], C[i] - ov, i)
+		place(s.atts[4 * i], C[i + 1] + ov, i + 1)
+	end
+	for i = 1, math.max(n - 1, #s.body) do
+		local live = i <= n - 1 and (C[i + 1] - C[i]).Magnitude > 1e-4
+		for li = 1, 2 do
+			local list = if li == 1 then s.body else s.core
+			local b = list[i]
+			if not b and live then
+				b = sweepBeam(s.part, if li == 1 then SWEEP_BODY else SWEEP_CORE, if li == 1 then 0 else 0.02, if li == 1 then s.tint else Color3.new(1, 1, 1))
+				list[i] = b
+			end
+			if b then
+				if live then
+					b.Attachment0, b.Attachment1 = if li == 1 then s.atts[4 * i - 3] else s.atts[4 * i - 1], if li == 1 then s.atts[4 * i - 2] else s.atts[4 * i]
+					b.Width0, b.Width1 = Wd[i], Wd[i + 1]
+					b.Transparency = NumberSequence.new(Tr[i], Tr[i + 1])
+					b.Enabled = true
+				else
+					b.Enabled = false
+				end
+			end
+		end
+	end
+	-- the glint: up the band to the tip while the blade sweeps, then a pop at the tip that shrinks away in 0.1 s
+	if s.glint and s.gAt and s.gImg and ns >= 1 then
+		local m, t = Pm[ns], Pt[ns]
+		local g = math.clamp(s.run / 0.1, 0, 1)
+		local after = if s.stopEl then math.max(0, s.el - s.stopEl) else 0
+		local pos = t + (m - t) * (s.band * (1 - g))
+		local sz = (t - m).Magnitude * s.band * (0.9 + 0.5 * g) * math.max(0, 1 - after / 0.1)
+		local toCam = cf.Position - pos
+		if toCam.Magnitude > 1e-3 then pos += toCam.Unit * (sz * 0.3) end -- (in front of the blade, not inside it)
+		s.gAt.WorldPosition = pos
+		s.glint.Size = UDim2.new(sz, 0, sz, 0)
+		s.gImg.Rotation = s.el * 260
+		s.glint.Enabled = sz > 0.01
+	end
+	return true
+end
+
+-- after the camera and the viewmodel (Arsenal's step is Camera + 2): the blade is where it is drawn this frame
+RunService:BindToRenderStep("JankAnimeSweep", Enum.RenderPriority.Camera.Value + 3, function(dt: number)
+	for i = #sweeps, 1, -1 do
+		local s = sweeps[i]
+		local ok, alive = pcall(stepSweep, s, dt)
+		if not ok or not alive or not s.part.Parent then
+			if s.part.Parent then s.part:Destroy() end
+			table.remove(sweeps, i)
+		end
+	end
+end)
+-- the latest swing's direction in the world, if it is under `within` seconds old (the hit points its burst along it)
+function AnimeFx.swingDir(within: number?): Vector3?
+	return if os.clock() - swingDirT < (within or 0.4) then swingDir else nil
+end
+
 -- ---------------------------------------------------------------- the lab's list (VfxLab.client)
 AnimeFx.LIST = {
 	{ id = "slashp_a", label = "SLASH A (150)", kind = "slash" },
@@ -442,9 +761,19 @@ function AnimeFx.hit(at: Vector3, from: Vector3, tint: Color3, heavy: boolean, o
 		local toCam = cam.CFrame.Position - at
 		if toCam.Magnitude > 2.5 then at += toCam.Unit * 1.4 end
 	end
-	AnimeFx.burst(at, if heavy then 3.25 else 2.4, tint) -- (the sheet draws it at 80 %: its margins)
-	-- (round 2: away from the camera and up, 5-7 of them; they flew back past the camera before)
-	AnimeFx.sparks(at, (if dir.Magnitude > 1e-3 then dir.Unit else Vector3.zAxis) * 0.7 + Vector3.new(0, 0.7, 0), if heavy then 7 else 5, tint)
+	-- (27 Nov: along the swing. The burst's longest needle (the sheet's 10 degrees clockwise from up) points the way the
+	-- blade was moving on screen and the sparks fly on along it; with no sweep in the last 0.4 s, as before: away from
+	-- the camera and up)
+	local sd = AnimeFx.swingDir(0.4)
+	local rot: number? = nil
+	if sd then
+		local d2 = AnimeFx.screenDir(sd)
+		rot = math.deg(math.atan2(d2.Y, d2.X)) - 80 + math.random(-8, 8)
+	end
+	AnimeFx.burst(at, if heavy then 3.25 else 2.4, tint, rot) -- (the sheet draws it at 80 %: its margins)
+	local away = if dir.Magnitude > 1e-3 then dir.Unit else Vector3.zAxis
+	local sdir = if sd then sd * 0.85 + away * 0.25 + Vector3.new(0, 0.3, 0) else away * 0.7 + Vector3.new(0, 0.7, 0)
+	AnimeFx.sparks(at, sdir, if heavy then 7 else 5, tint)
 	if heavy then AnimeFx.twinkle(at + Vector3.new(0, 0.4, 0), 1.6, tint) end
 	if own and heavy then AnimeFx.impactFrame(frame) end
 end
@@ -452,6 +781,8 @@ end
 function AnimeFx.clear()
 	for _, e in live do if e.p.Parent then e.p:Destroy() end end
 	table.clear(live)
+	for _, sw in sweeps do if sw.part.Parent then sw.part:Destroy() end end
+	table.clear(sweeps)
 end
 
 return AnimeFx

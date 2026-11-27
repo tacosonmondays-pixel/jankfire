@@ -331,6 +331,7 @@ local smearPts: { { t: number, a: Vector3, b: Vector3 } } = {}
 -- (the anime slash, AnimeFx.ownSlash: this swing's tip samples in camera space, fired once after the 4th)
 local animeSw: { clip: string?, ct: number, pts: { Vector3 }, fired: boolean, pre: Vector3? } = { clip = nil, ct = -1, pts = {}, fired = false }
 local lastTip: Vector3? = nil -- (the tip in camera space on the frame before: a low frame rate's extra point)
+local lastMid: Vector3? = nil -- (and the blade's Mid: the sweep's first sample when the window is caught late)
 local smearPool: { WedgePart } = {}
 local smearFolder: Folder? = nil
 local function wedge(i: number): WedgePart
@@ -384,7 +385,15 @@ local function smearStep(now: number, hidden: boolean)
 				if #animeSw.pts == 0 then animeSw.pre = lastTip end
 				animeSw.ct = ct
 				table.insert(animeSw.pts, cf:PointToObjectSpace(tip.WorldPosition))
-				if not animeSw.fired and #animeSw.pts >= 4 then
+				if AnimeFx.STYLE == "blade" then
+					-- (27 Nov 2026, the owner: the effects "attached along the side of the blade": the sweep samples this
+					-- blade's Mid and tip every frame to the window's end, from the frame before it when there is one)
+					if not animeSw.fired then
+						animeSw.fired = true
+						AnimeFx.sweep(mid, tip, AnimeFx.tintFor(held, Fx.bladeGlow(VM.model)), math.max(0.04, an.trail[2] - ct + 0.02), true,
+							{ pre = if lastTip and lastMid then { m = lastMid :: Vector3, t = lastTip :: Vector3 } else nil })
+					end
+				elseif not animeSw.fired and #animeSw.pts >= 4 then
 					animeSw.fired = true
 					AnimeFx.ownSlash(animeSw.pts, AnimeFx.tintFor(held, Fx.bladeGlow(VM.model)), AnimeFx.fpSize(held))
 				end
@@ -396,7 +405,7 @@ local function smearStep(now: number, hidden: boolean)
 	-- and the slash wanted 4, so it seldom fired (Studio at 15 fps: 1 swing in 3; a 30 fps phone: rarely). On the first
 	-- frame past the window an unfired swing adds the tip there (and the frame before the window when it has only one
 	-- sample) and fires with those
-	if AnimeFx.ON and an and an.trail and ct and root and c == animeSw.clip and not animeSw.fired and ct > an.trail[2] then
+	if AnimeFx.ON and AnimeFx.STYLE ~= "blade" and an and an.trail and ct and root and c == animeSw.clip and not animeSw.fired and ct > an.trail[2] then
 		animeSw.fired = true
 		local tip = root:FindFirstChild("Muzzle") :: Attachment?
 		if not hidden and tip and ct < an.trail[2] + 0.2 and #animeSw.pts >= 1 then
@@ -409,6 +418,8 @@ local function smearStep(now: number, hidden: boolean)
 	do
 		local tip = root and root:FindFirstChild("Muzzle") :: Attachment?
 		lastTip = if tip then camera.CFrame:PointToObjectSpace(tip.WorldPosition) else nil
+		local mid = root and root:FindFirstChild("Mid") :: Attachment?
+		lastMid = if mid then camera.CFrame:PointToObjectSpace(mid.WorldPosition) else nil
 		-- (turn 4: a new swing of the same clip was only noticed when its first sample in the window came before the last
 		-- swing's last one; at 14 fps half the swings looked like the old one, already fired. Any frame now: the clip's
 		-- time going back starts a new swing)
@@ -754,7 +765,10 @@ local function swing(now: number, heavy: boolean?)
 		local an = Anims[clip]
 		local wid, alt = held, swingAlt
 		task.delay(if an and an.trail then an.trail[1] else 0.08, function()
-			local _, _, rt = myChar()
+			local ch, _, rt = myChar()
+			-- (27 Nov: the sweep on the blade your body holds; the camera-facing crescent only without one, or as STYLE "card")
+			local dur = if an and an.trail then math.max(0.12, (an.trail[2] - an.trail[1]) * 1.3) else 0.18
+			if AnimeFx.STYLE == "blade" and AnimeFx.bodySweep(ch, AnimeFx.tintFor(wid), dur) then return end
 			if rt then AnimeFx.bodySlash(rt, camera.CFrame.LookVector, alt, AnimeFx.reach(wid), AnimeFx.tintFor(wid)) end
 		end)
 	end
@@ -1120,6 +1134,9 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 				local wid = if type(f.w) == "string" then f.w else nil
 				local alt = string.match(clip, "[24]$") ~= nil
 				task.delay(if an and an.trail then an.trail[1] else 0.08, function()
+					-- (27 Nov: the sweep on the blade their body holds, seen from wherever you are)
+					local dur = if an and an.trail then math.max(0.12, (an.trail[2] - an.trail[1]) * 1.3) else 0.18
+					if AnimeFx.STYLE == "blade" and AnimeFx.bodySweep(m, AnimeFx.tintFor(wid), dur) then return end
 					if r.Parent then AnimeFx.bodySlash(r, r.CFrame.LookVector, alt, AnimeFx.reach(wid), AnimeFx.tintFor(wid)) end
 				end)
 			end

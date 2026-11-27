@@ -111,5 +111,10 @@
         "ink": 120220254753645
       }
     }
+  },
+  "sweep": {
+    "note": "the blade sweep's cross-section (27 Nov, the owner: effects 'attached along the side of the blade'): tools/roblox/vfx/anime/sweep2d.py; AnimeFx SWEEP_BODY/SWEEP_CORE on a chain of flat Beams through the blade's sampled path; a Beam runs image rows along its length, columns across (left column on its attachments' +Y edge). The first upload (rows across: 97835556421942, 104148363652332) mapped the wrong way",
+    "body": 119546036895646,
+    "core": 79027786277985
   }
 }

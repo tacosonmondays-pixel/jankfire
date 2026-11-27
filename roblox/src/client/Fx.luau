@@ -307,9 +307,12 @@ for _, e in FLASH.list do
 	e.pe.FlipbookFramerate = NR(0)
 	pcall(function() (e.pe :: any).FlipbookBlendFrames = false end)
 end
+-- (27 Nov 2026, the owner: effects follow the weapon's plane: someone else's front flash faces down their barrel, as
+-- your own does (VelocityPerpendicular, a crawl along it), so from the side it turns edge-on and the side jet carries it)
 local FLASH_TP = emitters(6, { Texture = TEX.mflash, FlipbookLayout = FLIP2, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
 	FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0.45, LightInfluence = 0, Brightness = 1.15, ZOffset = 0.3,
-	Lifetime = NR(0.05), Speed = NR(0), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
+	Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+	Lifetime = NR(0.05), Speed = NR(0.01), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
 for _, e in FLASH_TP.list do pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
 local FWHITE = Color3.new(1, 1, 1)
 local function flameCS(c: Color3): ColorSequence -- white core -> the glow colour -> a dim tail
