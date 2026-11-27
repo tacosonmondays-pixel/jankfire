@@ -104,6 +104,18 @@ returned to their sets. 14 Exotics:
 - The bundles got their original wraps back: Night Shift's Neon Hex, Tea House's three patterns, and Hazard Stripes in
   Machine Shop and Explosives.
 
+**The owner's final list** (same day):
+- Spreadsheet stays retired.
+- Lava, Kintsugi, Marble, Wood Burl and Moss come back.
+- Bubblegum and Urushi Maki-e stay retired pending re-renders.
+
+That makes 16 Exotics:
+- Kintsugi to Luxe and Lava to Wild, so Luxe, Wild, Diner and Office have three; Cosmic and Japan have two.
+- Moss goes to Japan, Marble to Luxe, Wood Burl to Wild. 81 wraps can roll.
+
+The bundles' originals are back: Tea House led by Kintsugi, Quarry by Marble, the armory's Assault with Moss and Wood Burl,
+and Explosives led by Lava (Molten stays in the Wild can).
+
 - The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
   card `ShopUI.boxCard`.
 

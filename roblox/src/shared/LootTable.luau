@@ -131,14 +131,17 @@ L.CONTAINERS = {
 -- (same day, the owner: "Stamped ones are okay if it's a pattern": 12 back (Roster c68a332). they return to their sets;
 -- 14 Exotics: Diner and Office three (Neon Hex to Diner's neon, CRT to Office's screens), the rest two; Market Crash
 -- back to Luxe. 77 wraps can roll)
+-- (the owner's final list, same day: Spreadsheet stays retired; Lava, Kintsugi, Marble, Wood Burl and Moss come back.
+-- 16 Exotics: Luxe, Wild, Diner and Office three (Kintsugi to Luxe, Lava to Wild), Cosmic and Japan two. Moss to Japan,
+-- Marble to Luxe, Wood Burl to Wild. 81 wraps can roll)
 L.SPRAY_SETS = { "spraycosmic", "sprayjapan", "sprayluxe", "spraywild", "spraydiner", "sprayoffice" }
 local SPRAY: { [string]: any } = {
 	spraycosmic = { "Cosmic", Color3.fromRGB(118, 92, 206), { "sky", "navy", "matte", "ice", "ghost", "neon", "fade", "rainbow", "nebula", "blackhole" } },
-	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "tiger", "koi", "sakura" } },
-	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "jade", "carbon", "titanium", "geode", "stonks", "lchrome", "holo", "stained" } },
-	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "digital", "denim", "plaid", "zebra", "meat", "aurora", "molten" } },
+	sprayjapan = { "Japan", Color3.fromRGB(196, 66, 56), { "mint", "teal", "seigaiha", "asanoha", "shibori", "washi", "crackle", "moss", "tiger", "koi", "sakura" } },
+	sprayluxe = { "Luxe", Color3.fromRGB(40, 146, 112), { "chrome", "brushed", "granite", "marble", "jade", "carbon", "titanium", "geode", "stonks", "lchrome", "kintsugi", "holo", "stained" } },
+	spraywild = { "Wild", Color3.fromRGB(222, 114, 44), { "camo", "urban", "arctic", "desert", "hivis", "jersey", "burl", "digital", "denim", "plaid", "zebra", "meat", "lava", "aurora", "molten" } },
 	spraydiner = { "Diner", Color3.fromRGB(222, 108, 150), { "cherry", "lemon", "grape", "creamsicle", "sprinkles", "watermelon", "candycorn", "cheese", "china", "bowling", "memphis", "arcade", "dice", "racing", "glitch", "lavalamp", "tokyo", "hex" } },
-	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "barcode", "bubblewrap", "numsoup", "sweater", "sheet", "missing", "corp", "circuit", "vapor", "crt" } },
+	sprayoffice = { "Office", Color3.fromRGB(64, 128, 206), { "white", "tape", "tangerine", "lime", "hazard", "barcode", "bubblewrap", "numsoup", "sweater", "missing", "corp", "circuit", "vapor", "crt" } },
 }
 L.SPRAY_LOOSE = L.SPRAY_SETS[#L.SPRAY_SETS]
 L.SPRAY_OF = {} :: { [string]: string } -- (a wrap id -> its set's container id)
