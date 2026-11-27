@@ -69,6 +69,12 @@ local function closeIn(b: any, target: any, dist: number)
 	local at = tr.Position + d * dist
 	r.CFrame = CFrame.lookAt(at, Vector3.new(tr.Position.X, at.Y, tr.Position.Z))
 end
+local function aimAt(b: any, target: any): Vector3
+	local r, tr = root(b), root(target)
+	if not r or not tr then return Vector3.new(0, 0, -1) end
+	faceTo(b, target)
+	return (tr.Position - (r.Position + Vector3.new(0, 1.6, 0))).Unit
+end
 local function act(b: any, op: string, target: any)
 	local look = faceTo(b, target)
 	if op == "super" then HuntMoves.handle(b, "hold", look); task.wait(0.9) end
@@ -140,10 +146,9 @@ scenarios.show = function(me: Player)
 	HuntMoves.handle(me, "push", faceTo(me, B))
 	task.wait(0.25)
 	check(isDown(B), "the player's push downs a bot (1 s)")
-	task.wait(0.3)
-	HuntRagdoll.ask(B)
+	HuntRagdoll.ask(B) -- (at about 0.25 s: too soon)
 	check(isDown(B), "GET UP refused before 0.5 s")
-	task.wait(0.4)
+	task.wait(0.5)
 	HuntRagdoll.ask(B)
 	check(not isDown(B), "GET UP works after 0.5 s")
 	closeIn(C, B, 4)
@@ -189,18 +194,21 @@ scenarios.kill = function(me: Player)
 	HuntItems.handle(C, "use", 1, faceTo(C, H))
 	check(C:GetAttribute("HuntItems") == "", C.Name .. " set the bear trap")
 	local hpBefore = hp(H)
+	task.wait(1.2) -- (a set trap arms after 1 s)
 	-- the hunter walks into it
 	local hh = H.Character:FindFirstChildOfClass("Humanoid")
 	if hh and root(C) then hh:MoveTo((root(C) :: BasePart).Position) end
 	local w = os.clock()
-	while hp(H) >= hpBefore and os.clock() - w < 4 do task.wait(0.1) end
+	while hp(H) >= hpBefore and os.clock() - w < 6 do task.wait(0.1) end
 	check(hp(H) < hpBefore, ("the bear trap springs on the hunter (hp %d -> %d)"):format(hpBefore, hp(H)))
+	task.wait(3.2) -- (the trap's hold ends)
 	closeIn(B, H, 8)
-	HuntItems.handle(B, "use", 1, faceTo(B, H))
+	HuntItems.handle(B, "use", 1, aimAt(B, H))
 	task.wait(0.2)
 	check((tonumber(H.Character:GetAttribute("StunUntil")) or 0) > workspace:GetServerTimeNow(), "the taser stuns the hunter")
 	task.wait(2.2)
 	closeIn(A, H, 4)
+	say("the bat reaches: " .. table.concat(HuntMoves.debugTargets(A, faceTo(A, H), 7.5, 50), ", "))
 	local hits = 0
 	local start = hp(H)
 	while H.f.alive and hits < 12 do
@@ -254,7 +262,7 @@ scenarios.hunter = function(me: Player)
 	check(C:GetAttribute("HuntProp") == nil, "the disguise breaks when it runs")
 	closeIn(B, H, 8)
 	local p0 = tonumber(B:GetAttribute("HuntPoints")) or 0
-	HuntItems.handle(B, "use", 1, faceTo(B, H))
+	HuntItems.handle(B, "use", 1, aimAt(B, H))
 	task.wait(0.2)
 	check((tonumber(B:GetAttribute("HuntPoints")) or 0) > p0, "the pepper spray catches the hunter (cash for it)")
 	Fight.hurt(A.f, 40, H.f, "ar", false, nil)

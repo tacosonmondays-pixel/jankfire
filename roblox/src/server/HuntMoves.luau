@@ -109,9 +109,9 @@ local function knockOf(look: Vector3, kb: number, up: number, lying: boolean): V
 	return flat * kb + Vector3.new(0, up, 0)
 end
 
-local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string, dmg: number, onlyFirst: boolean, lying: boolean): number
+local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string, dmg: number, onlyFirst: boolean, lying: boolean): (number, number)
 	local list = targets(p, root, look, m.reach, m.cone, lying)
-	local n = 0
+	local n, downs = 0, 0
 	local by = fOf(p)
 	for _, t in list do
 		local v = knockOf(look, m.kb, m.up, lying)
@@ -133,6 +133,7 @@ local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string
 				if dmg > 0 and by and Fight.allow(by, f) then Fight.hurt(f, dmg, by, wid, false, nil) end
 				if f.alive then
 					if HuntRagdoll.down(f, v, rag.rag * sc, rag.min * sc) then
+						downs += 1
 						HuntMoves.onDowned(f)
 					else
 						Fight.knock(f, v * 0.3, wid) -- (just up, or already down: a nudge, never a chain)
@@ -152,7 +153,17 @@ local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string
 		end
 		if onlyFirst then break end
 	end
-	return n
+	return n, downs
+end
+-- (Studio, HuntBots: what a move from p would reach, nearest first)
+function HuntMoves.debugTargets(p: any, look: Vector3, reach: number, cone: number): { string }
+	local r = body(p)
+	if not r then return { "no body" } end
+	local out = {}
+	for _, t in targets(p, r, look, reach, cone, false) do
+		table.insert(out, ("%s@%.1f"):format(if type(t.what) == "table" then tostring(t.what.name) else t.what.Name, t.d))
+	end
+	return out
 end
 
 local function ready(s: St, key: string, cd: number): boolean
@@ -192,8 +203,8 @@ function HuntMoves.handle(p: Player, op: string, a: any, b: any)
 		local m = wpn or MV.jab
 		if not ready(s, "punch", if wpn then m.cd else MV.punch.whiff) then return end
 		s.lock = os.clock() + MV.lock * 0.9
-		local n = hit(p, root, look, m, if wpn then "melee" else "punch", m.dmg, true, false)
-		if n > 0 and not wpn then landedCd("punch", MV.punch.cd) end
+		local _, downs = hit(p, root, look, m, if wpn then "melee" else "punch", m.dmg, true, false)
+		if downs > 0 and not wpn then landedCd("punch", MV.punch.cd) end -- (a punch that downs nobody, an immune one too, costs only the miss)
 	elseif op == "hay" then
 		local held = if s.windT then os.clock() - s.windT else 0
 		s.windT = nil
@@ -201,8 +212,8 @@ function HuntMoves.handle(p: Player, op: string, a: any, b: any)
 		local m = wpn or MV.hay
 		if not ready(s, "punch", if wpn then m.cd else MV.punch.whiff) then return end
 		s.lock = os.clock() + MV.lock * 0.9
-		local n = hit(p, root, look, m, if wpn then "melee" else "punch", if wpn then math.floor(m.dmg * 1.3) else m.dmg, true, false)
-		if n > 0 and not wpn then landedCd("punch", MV.punch.cd) end
+		local _, downs = hit(p, root, look, m, if wpn then "melee" else "punch", if wpn then math.floor(m.dmg * 1.3) else m.dmg, true, false)
+		if downs > 0 and not wpn then landedCd("punch", MV.punch.cd) end
 	elseif op == "push" then
 		s.holdT = nil
 		if not ready(s, "push", MV.push.cd) then return end
