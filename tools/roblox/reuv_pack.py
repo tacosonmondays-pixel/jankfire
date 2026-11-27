@@ -19,7 +19,12 @@ for f in files:
     bpy.ops.import_scene.gltf(filepath=f)
     for o in set(bpy.context.scene.objects) - before:
         if o.type == 'MESH':
-            o.name = key + '~' + o.name
+            nm = o.name
+            # (an artist-kit build names a piece by its node only, "body_wzA", and keeps the slot in its material;
+            # the uploads and the live parts say "body_wzA__duck": put the slot back)
+            if '__' not in nm and o.material_slots and o.material_slots[0].material:
+                nm = nm.split('.')[0] + '__' + o.material_slots[0].material.name.split('.')[0]
+            o.name = key + '~' + nm
             n += 1
 objs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
 for o in objs:
