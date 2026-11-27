@@ -1038,6 +1038,12 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
   `TPWeapon`), side-on 8 studs ahead; walk round it or freeze it. STYLE: BLADE / CARD for before and after.
 - Captures: `studio_sweep_fp_v1448.jpg`, `studio_sweep_tp_v1448.jpg` (the shoulder camera: the plane near edge-on),
   `studio_sweep_side_v1448.jpg` and `studio_sweep_top_v1448.jpg` (the same frozen ribbon from the side and above).
+- **Round 2 (place version 1454), after the critic's 6/10** ("tape or a ruler" in first person; from the shoulder
+  camera "a dotted thread ending in a chevron"): a crescent profile along the ribbon (nothing at the tail, fullest at
+  70 %, closing to a point 5 % of its length past the tip); first person bows its path out by 7 % of its length; from
+  outside, the width turns towards the viewer the more edge-on the swing's plane is (the blade's own plane when open to
+  the camera); never under 7 px across where fullest; the white core at Brightness 1.25. Captures
+  `studio_sweep_fp_v1454.jpg`, `studio_sweep_tp_v1454.jpg`, `studio_sweep_side_v1454.jpg`.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a

@@ -595,30 +595,60 @@ local function stepSweep(s: Sweep, dt: number): boolean
 		end
 	end
 	local n = #Dt
-	-- the band: its share of Mid-to-tip thins with age towards the tip's path, and the tail (the oldest 30 % of the
-	-- tip's path) tapers to a point, so the ribbon never ends on a cut; first person keeps the outer 40 % only
+	-- (round 2, the critic on v1448: "a nearly straight stripe of even width that ends in a square diagonal cut ... tape
+	-- or a ruler"; from the shoulder camera, the plane edge-on, "a dotted thread ending in a chevron".) So:
+	-- the head: the ribbon runs on 5 % of its length past the tip and closes there to a point
+	if n >= 2 then
+		local L0 = 0
+		for i = 2, n do L0 += (Dt[i] - Dt[i - 1]).Magnitude end
+		local hd = Dt[n] - Dt[n - 1]
+		if hd.Magnitude > 1e-5 and L0 > 1e-4 then
+			local ext = hd.Unit * (0.05 * L0)
+			table.insert(Dt, Dt[n] + ext); table.insert(Dm, Dm[n] + ext); table.insert(Da, Da[n])
+			n += 1
+		end
+	end
 	local L, acc = 0, { 0 }
 	for i = 2, n do L += (Dt[i] - Dt[i - 1]).Magnitude; acc[i] = L end
+	-- (a stud's size in pixels at 1 stud away: the ribbon is never under 7 px across where the crescent is fullest)
+	local pxK = 2 * math.tan(math.rad(cam.FieldOfView) / 2) / math.max(cam.ViewportSize.Y, 1)
 	local C: { Vector3 }, Wd: { number }, U: { Vector3 }, Tr: { number } = {}, {}, {}, {}
 	for i = 1, n do
 		local k = math.clamp(Da[i] / SWEEP_LIFE, 0, 1)
-		local q = if L > 1e-4 then math.clamp(acc[i] / (0.3 * L), 0, 1) else 1
-		q = q * q * (3 - 2 * q)
-		local f = s.band * (1 - 0.62 * k ^ 0.8) * math.max(q, 0.02)
+		local u = if L > 1e-4 then acc[i] / L else 1
+		-- a crescent along the swing: nothing at the tail, fullest at 70 %, closing to the point past the tip; it thins
+		-- a little more with age
+		local prof = if u < 0.7 then (u / 0.7) ^ 1.1 else math.max(0, 1 - (u - 0.7) / 0.3) ^ 0.8
+		local f = s.band * prof * (1 - 0.35 * k)
 		local span = Dm[i] - Dt[i]
-		if s.cam then
-			-- (first person: the swing's plane passes by your eye, so the true ribbon is seen edge-on, a thread. Here
-			-- it keeps the tip's own path but turns its width to face the lens, on the side the blade is)
-			local tg = Dt[math.min(i + 1, n)] - Dt[math.max(i - 1, 1)]
-			local wv = tg:Cross(Dt[i] - cf.Position)
-			if wv.Magnitude > 1e-6 then
-				wv = wv.Unit * span.Magnitude
-				span = if wv:Dot(span) < 0 then -wv else wv
+		local sl = span.Magnitude
+		local tg = Dt[math.min(i + 1, n)] - Dt[math.max(i - 1, 1)]
+		local toEye = Dt[i] - cf.Position
+		local wv = tg:Cross(toEye)
+		if wv.Magnitude > 1e-6 and sl > 1e-5 then
+			-- turned towards the lens: always in first person (the swing passes by your eye); from outside by how
+			-- edge-on the swing's plane is (open to the camera: the blade's own plane; edge-on: facing you)
+			wv = wv.Unit * sl
+			if wv:Dot(span) < 0 then wv = -wv end
+			local a = 1
+			if not s.cam then
+				local nrm = tg:Cross(span)
+				local open = if nrm.Magnitude > 1e-6 and toEye.Magnitude > 1e-6 then math.abs(nrm.Unit:Dot(toEye.Unit)) else 1
+				a = 1 - math.clamp(open / 0.45, 0, 1)
+				a = a * a * (3 - 2 * a)
 			end
+			local mix = span * (1 - a) + wv * a
+			span = if mix.Magnitude > 1e-5 then mix.Unit * sl else wv
 		end
-		C[i] = Dt[i] + span * (f / 2)
-		Wd[i] = span.Magnitude * f
-		U[i] = if span.Magnitude > 1e-4 then span.Unit else Vector3.yAxis
+		local t = Dt[i]
+		if s.cam and L > 1e-4 then
+			-- (first person: the path bowed out by 7 % of its length at the middle, so it reads as an arc)
+			t -= span.Unit * (0.07 * L * math.sin(math.pi * u))
+		end
+		local w = math.max(sl * f, 7 * pxK * toEye.Magnitude * prof)
+		C[i] = t + span.Unit * (w / 2)
+		Wd[i] = w
+		U[i] = if sl > 1e-4 then span.Unit else Vector3.yAxis
 		Tr[i] = math.clamp((k - 0.45) / 0.55, 0, 1) ^ 1.3
 	end
 	if ns >= 2 then
@@ -650,7 +680,7 @@ local function stepSweep(s: Sweep, dt: number): boolean
 				s.atts[j] = at
 			end
 		end
-		local ov = (C[i + 1] - C[i]) * 0.06
+		local ov = (C[i + 1] - C[i]) * 0.025 -- (6 % left white ticks at the joints, seen from above)
 		place(s.atts[4 * i - 3], C[i], i)
 		place(s.atts[4 * i - 2], C[i + 1], i + 1)
 		place(s.atts[4 * i - 1], C[i] - ov, i)
@@ -663,6 +693,7 @@ local function stepSweep(s: Sweep, dt: number): boolean
 			local b = list[i]
 			if not b and live then
 				b = sweepBeam(s.part, if li == 1 then SWEEP_BODY else SWEEP_CORE, if li == 1 then 0 else 0.02, if li == 1 then s.tint else Color3.new(1, 1, 1))
+				if li == 2 then b.Brightness = 1.25 end -- (the white band read light grey under the colour grading)
 				list[i] = b
 			end
 			if b then
