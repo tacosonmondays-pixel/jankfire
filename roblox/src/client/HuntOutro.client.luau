@@ -130,6 +130,12 @@ local function copyBody(m: Model): (Model?, string)
 	for _, d in c:GetDescendants() do
 		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("BillboardGui") or d:GetAttribute("Gun") then d:Destroy() end
 	end
+	-- (main, 27 Nov: a copy keeps ThirdPerson's pieces and tags, and it draws its gun or arms on it for a frame or two)
+	for _, d in c:GetDescendants() do
+		if d.Name == "TPGun" or d.Name == "TPItem" or d.Name == "TPRigArms" or d.Name == "HeldWeapon" then d:Destroy() end
+	end
+	for _, tg in c:GetTags() do c:RemoveTag(tg) end
+	for _, d in c:GetDescendants() do for _, tg in d:GetTags() do d:RemoveTag(tg) end end
 	local hum = c:FindFirstChildOfClass("Humanoid")
 	local root = c:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not hum or not root then c:Destroy(); return nil, "R15" end
@@ -807,11 +813,12 @@ local function play(a: any)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end
 			room.Parent = workspace -- (under the static: the pull's first frame is never an empty sky)
 		end
+		-- (main, 27 Nov: a light change on a film's first frame mis-lights it) the room's look comes in under the static
+		if once("roomLook", beat("pull") - 0.1) then HubLook.set("hunt_intro_dark", 0) end
 		if once("room", beat("pull")) then
 			st.Enabled = false
 			house:Destroy()
 			for _, m in who do hide(m, false) end
-			HubLook.set("hunt_intro_dark", 0)
 			local F = OUT.fill
 			if F then -- (main on v8: the pull out read near black on a phone: a soft fill rides with the lens)
 				local fp = Instance.new("Part")

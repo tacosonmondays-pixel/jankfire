@@ -222,6 +222,12 @@ local function play(a: any)
 	for _, d in body:GetDescendants() do
 		if d.Name == "Viewmodel" or d:GetAttribute("Gun") then d:Destroy() end -- (no gun anywhere in the intro)
 	end
+	-- (main, 27 Nov: a copy keeps ThirdPerson's pieces and tags, and it draws its gun or arms on it for a frame or two)
+	for _, d in body:GetDescendants() do
+		if d.Name == "TPGun" or d.Name == "TPItem" or d.Name == "TPRigArms" or d.Name == "HeldWeapon" then d:Destroy() end
+	end
+	for _, tg in body:GetTags() do body:RemoveTag(tg) end
+	for _, d in body:GetDescendants() do for _, tg in d:GetTags() do d:RemoveTag(tg) end end
 	local bh = body:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local broot = body:FindFirstChild("HumanoidRootPart") :: BasePart
 	bh.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
