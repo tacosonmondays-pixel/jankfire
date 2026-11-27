@@ -318,7 +318,7 @@ local function play(a: any)
 		return l
 	end
 	for _, h in handlesOf(body) do h.CanQuery = true end -- (the copy only: the lens rays must find its frills)
-	local function clearLens(m: Model?, subj: Vector3, dt: number)
+	local function clearLens(m: Model?, subj: Vector3, dt: number, nearAt: number?)
 		if not m or not m.Parent then return end
 		local hs = handlesOf(m)
 		if #hs == 0 then return end
@@ -342,7 +342,7 @@ local function play(a: any)
 		for _, h in hs do
 			local o = h.CFrame:PointToObjectSpace(camP)
 			local hz = h.Size / 2
-			local near = (o - Vector3.new(math.clamp(o.X, -hz.X, hz.X), math.clamp(o.Y, -hz.Y, hz.Y), math.clamp(o.Z, -hz.Z, hz.Z))).Magnitude < L.near
+			local near = (o - Vector3.new(math.clamp(o.X, -hz.X, hz.X), math.clamp(o.Y, -hz.Y, hz.Y), math.clamp(o.Z, -hz.Z, hz.Z))).Magnitude < (nearAt or L.near)
 			local goal = if block[h] or near then L.fade else 0
 			local cur = h.LocalTransparencyModifier
 			if math.abs(goal - cur) > 0.003 then
@@ -370,7 +370,7 @@ local function play(a: any)
 	local rt = flat:Cross(Vector3.yAxis)
 	-- behind him, the house ahead: where the swing ends and the hold pushes in from
 	local function behindCF(hp: Vector3, rad: number, up: number, side: number?): CFrame
-		local s = side or 1.4 -- (over his right shoulder: straight behind, his head filled the frame's middle; v6 test)
+		local s = side or 2.0 -- (over his right shoulder: straight behind, his head filled the frame's middle; v6/v7 tests)
 		return CFrame.lookAt(hp - flat * rad + rt * s + Vector3.new(0, up, 0), hp + flat * 6 + rt * (s * 0.4))
 	end
 	local function smoother(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
@@ -416,9 +416,9 @@ local function play(a: any)
 			cam = function(u)
 				local hp = realHead()
 				local a = Cine.ease(u)
-				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -159.3, a))) * flat -- (ends exactly on the hold's over-the-shoulder spot: 20.7 deg, 3.96 out)
-				local at = hp:Lerp(hp + flat * 6 + rt * 0.56, Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
-				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 3.956, a) + Vector3.new(0, Cine.lerp(0.2, 0.9, a), 0), at)
+				local dir = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(Cine.lerp(-30, -151.6, a))) * flat -- (ends exactly on the hold's over-the-shoulder spot: 28.4 deg, 4.21 out)
+				local at = hp:Lerp(hp + flat * 6 + rt * 0.8, Cine.ease(math.clamp((u - 0.2) / 0.8, 0, 1)))
+				return CFrame.lookAt(hp + dir * Cine.lerp(6.4, 4.206, a) + Vector3.new(0, Cine.lerp(0.2, 0.9, a), 0), at)
 			end },
 		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
 		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
@@ -456,7 +456,7 @@ local function play(a: any)
 			clearLens(body, if shot == "shoulder" then handsLive() elseif shot == "behind" then P(sd.at.X, sd.at.Y, sd.at.Z) else facePoint(), dt)
 		else -- (out front: his face; behind him: the house past him; as the lens goes into his head his hair fades)
 			local front = shot == "outside" or shot == "around"
-			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt)
+			clearLens(me.Character, if front then realHead() + Vector3.new(0, 0.3, 0) else realHead() + flat * 4, dt, if front then nil else 2.8)
 		end
 		-- the look round's clip, timed to fill its beat once its length is known
 		if r.lookTrack and not r.lookSped and r.lookTrack.Length > 0 then

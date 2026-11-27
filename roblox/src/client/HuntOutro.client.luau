@@ -115,9 +115,18 @@ local function copyBody(m: Model): (Model?, string)
 	local ok, c = pcall(function() return m:Clone() end)
 	m.Archivable = was
 	if not ok or not c then return nil, "R15" end
+	-- only the body: its limbs, what he wears, his clothes (v1 test: the gunman's rifle came along to the desk)
+	local LIMBS = { Head = true, HumanoidRootPart = true, UpperTorso = true, LowerTorso = true, Torso = true,
+		LeftUpperArm = true, LeftLowerArm = true, LeftHand = true, RightUpperArm = true, RightLowerArm = true, RightHand = true,
+		LeftUpperLeg = true, LeftLowerLeg = true, LeftFoot = true, RightUpperLeg = true, RightLowerLeg = true, RightFoot = true,
+		["Left Arm"] = true, ["Right Arm"] = true, ["Left Leg"] = true, ["Right Leg"] = true }
+	for _, ch in c:GetChildren() do
+		local keepIt = ch:IsA("Humanoid") or ch:IsA("Accessory") or ch:IsA("Clothing") or ch:IsA("ShirtGraphic")
+			or ch:IsA("BodyColors") or ch:IsA("CharacterMesh") or (ch:IsA("BasePart") and LIMBS[ch.Name])
+		if not keepIt then ch:Destroy() end
+	end
 	for _, d in c:GetDescendants() do
-		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("BillboardGui")
-			or d.Name == "Viewmodel" or d:GetAttribute("Gun") then d:Destroy() end
+		if d:IsA("Script") or d:IsA("LocalScript") or d:IsA("BillboardGui") or d:GetAttribute("Gun") then d:Destroy() end
 	end
 	local hum = c:FindFirstChildOfClass("Humanoid")
 	local root = c:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -251,8 +260,8 @@ local function play(a: any)
 		for i, src in who do
 			local c, rig = copyBody(src)
 			if c then
-				local ang = (i - (n + 1) / 2) * 0.75
-				local at = (groupAt :: Vector3) + CFrame.fromAxisAngle(Vector3.yAxis, ang) * (face * -2.2)
+				local ang = (i - (n + 1) / 2) * 0.9
+				local at = (groupAt :: Vector3) + CFrame.fromAxisAngle(Vector3.yAxis, ang) * (face * -3.2)
 				local h = rootHeight(c, rig)
 				c:PivotTo(CFrame.lookAt(at + Vector3.new(0, h, 0), (groupAt :: Vector3) + face * 6 + Vector3.new(0, h, 0)))
 				c.Parent = house
@@ -386,11 +395,11 @@ local function play(a: any)
 		end
 	else
 		local c = spot("couch")
-		pullEnd = CFrame.lookAt(c.Position + c.LookVector * -5.2 + Vector3.new(0, 5.4, 0), scrP + Vector3.new(0, -0.6, 0))
+		pullEnd = CFrame.lookAt(c.Position + c.LookVector * -3.4 + Vector3.new(0, 5.0, 0), scrP + Vector3.new(0, -0.6, 0))
 		reveal = function(u)
 			local e = Cine.ease(u)
-			local from = scrP + scrN * Cine.lerp(2.4, 3.0, e) + c.RightVector * Cine.lerp(2.6, 2.2, e) + Vector3.new(0, -0.6, 0)
-			return CFrame.lookAt(from, c.Position + Vector3.new(0, 3.0, 0))
+			local from = scrP + scrN * Cine.lerp(1.0, 1.6, e) + c.RightVector * Cine.lerp(3.4, 3.0, e) + Vector3.new(0, -0.2, 0)
+			return CFrame.lookAt(from, c.Position + Vector3.new(-0.6, 2.4, 0))
 		end
 	end
 	local smoother = function(u: number): number u = math.clamp(u, 0, 1); return u * u * u * (u * (u * 6 - 15) + 10) end
@@ -412,7 +421,7 @@ local function play(a: any)
 				local from = CFrame.lookAt(scrP + scrN * fillDist(), scrP)
 				return from:Lerp(pullEnd, e)
 			end },
-		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = 42, shake = 0.4, cam = reveal },
+		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 58 else 46, shake = 0.4, cam = reveal },
 	}
 
 	-- ---------------------------------------------------------------- the look, the grade, the bars, the sound
@@ -551,7 +560,7 @@ local function play(a: any)
 				local id = (OUT.anims[b.rig] or {})
 				if set == "A" then
 					local s = track(b.m, id.stretch, Enum.AnimationPriority.Action2)
-					if s then s:Play(0.3) end
+					if s then s:Play(0.3, 1, 1.6); s.TimePosition = 0.8 end
 					sound(S.creak, 0.8, false, b.m:GetPivot().Position, room)
 				else
 					local pick = if i % 3 == 1 then id.cheer elseif i % 3 == 2 then id.clap else id.pump

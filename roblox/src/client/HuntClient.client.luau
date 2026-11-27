@@ -196,7 +196,7 @@ RunService.RenderStepped:Connect(function()
 	phaseL.Text = if ph == "hide" then "HIDE" elseif ReplicatedStorage:GetAttribute("HuntFightBack") then "FIGHT BACK" else "HUNT"
 	roleL.Text = if role == "gunman" then ("GUNMAN · %s"):format(gunName()) else "HIDER"
 	passL.Text = passivesText()
-	shade.Visible = ph == "hide" and role == "gunman"
+	shade.Visible = ph == "hide" and role == "gunman" and left > 0.5 -- (v7: no one-frame flash as the intro hands over)
 	if shade.Visible then shadeL.Text = ("THE HIDERS ARE HIDING · %d"):format(math.ceil(left)) end
 end)
 -- ------------------------------------------------------------------ stage 3: points, the two trap slots, the trap menu
