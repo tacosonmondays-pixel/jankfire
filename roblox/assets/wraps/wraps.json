@@ -261,13 +261,13 @@
   "maps": {
    "color": "ducky_color.png",
    "normal": "ducky_normal.png",
-   "rough": 0.36,
+   "rough": 0.38,
    "metal": 0.0,
-   "emit": "ducky_emit.png"
+   "emit": 0.0
   },
-  "emissive": 1.2,
+  "emissive": 1.0,
   "tint": "ffffff",
-  "accent": "e0883a"
+  "accent": "e1c24a"
  },
  "fade": {
   "maps": {
