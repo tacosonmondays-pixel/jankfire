@@ -95,6 +95,15 @@ Bundles refilled:
 - The armory's Assault: Arctic Camo.
 - The armory's Explosives: Cherry Pop and Tangerine.
 
+**12 back** (same day, the owner: "Stamped ones are okay if it's a pattern"; Roster c68a332): Asanoha, Seigaiha,
+Shibori, Hazard Stripes, Checkered Flag, Missing Texture, Spreadsheet, Neon Hex, CRT, Bubble Wrap, Candy Corn and ☺ CORP
+returned to their sets. 14 Exotics:
+- Diner gets Neon Hex and Office gets CRT, so those two have three; the other sets have two.
+- Market Crash went back to Luxe.
+- 77 wraps can roll.
+- The bundles got their original wraps back: Night Shift's Neon Hex, Tea House's three patterns, and Hazard Stripes in
+  Machine Shop and Explosives.
+
 - The CONTAINERS page scrolls: CRATES AND BAGS (two cards), then SPRAY SETS (three to a row): `ShopBundles.boxes`, each
   card `ShopUI.boxCard`.
 
