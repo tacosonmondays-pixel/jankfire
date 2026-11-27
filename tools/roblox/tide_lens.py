@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rbxm_read as R
 
 FLOOR = -2.78
+CO_TH0, CO_TH1, CO_R0, CO_R1, CO_H, CO_MIX, CO_DX, CO_FOV = 26, 50, 1.1, 0.95, 0.3, 0.72, 0.0, 84
 
 
 def v(*a): return list(a)
@@ -66,7 +67,7 @@ def main(take_p, scan_p, out_p):
     L = {}
     # ---------------------------------------------------------------- the shots: (first frame, name, anchor, weight)
     SHOTS = [(0, 'THE GRIP', 'kLT', 1.0), (16, 'THE DRAW', 'kUT', 0.8), (56, 'THE LENGTH', 'kH', 0.3), (82, 'THE TIP', 'vH', 1.0),
-             (94, 'THE CHARGE', 'kUT', 0.6), (116, 'CLOSING', 'kUT', 0.5), (130, 'THE PASS', 'kLT', 0.6), (139, 'CUT FRAME', 'vUT', 0.5),
+             (94, 'THE COIL', 'kLT', 1.0), (120, 'THE LAUNCH', 'kLT', 0.9), (130, 'THE PASS', 'kLT', 0.6), (139, 'CUT FRAME', 'vUT', 0.5),
              (145, 'PAST HIM', 'kLT', 0.4), (161, 'STILLNESS', 'vH', 1.0), (181, 'THE SHEATHE', 'kUT', 0.7),
              (207, 'THE CUT LANDS', 'vUT', 0.8), (221, 'THE END', 'kH', 0.5)]
     starts = [s[0] for s in SHOTS] + [N]
@@ -113,7 +114,34 @@ def main(take_p, scan_p, out_p):
         dirv = norm([0.93, -0.03, 0.36])                 # from the face toward the lens: his right side, a little in front
         pos = add(face, mulv(dirv, d))
         L[f] = look(pos, add(face, [0.05, 0.08, 0]), roll_deg=4 - 3 * u, fov=fov)
-    # 5 THE CHARGE, 6 CLOSING: his lenses (the game adds the run's handheld shake)
+    # 5 THE COIL (27 Nov, the owner's anime still: "try to recreate it including effects rotating angles strong leg
+    # perspective"; the run replaced by tide_run_splice.py's coil): a very wide lens on the floor right behind his
+    # raised back foot - the sole and the shin huge in the foreground, his body leaning away over the front knee, the
+    # victim small down the lane - swinging round the foot from behind him to his left side as he sinks
+    a, b = span(4)
+    F = P['kLF'][118]                                       # (where the back foot comes to rest: it slides back into the
+    for f in range(a, b + 1):                               # foreground as he sinks, and nothing crosses the lens)
+        u = ease((f - a) / (b - a))
+        # (behind his left side, as the still has it: the raised back foot huge low on the frame's right, his body
+        # leaning away on the left toward the victim; a stud and a half off the sole, just over the floor)
+        th = math.radians(CO_TH0 + (CO_TH1 - CO_TH0) * u)   # (0 = straight behind him, + toward his left)
+        r = CO_R0 + (CO_R1 - CO_R0) * u
+        pos = [F[0] - r * math.sin(th), FLOOR + CO_H, F[2] + r * math.cos(th)]
+        at = add(lerpv(P['kLF'][f], P['kH'][f], CO_MIX), [CO_DX, 0.0, -0.8])
+        L[f] = look(pos, at, roll_deg=-10 + 5 * u, fov=CO_FOV - 4 * u)
+    # 6 THE LAUNCH: the speed snaps, the lens whips after him as he leaves the plant (a hard pan and punch in from
+    # where the coil ended), then chases him low on his left down the lane, falling behind as he pulls away
+    a, b = span(5)
+    c_end = L[a - 1]
+    p0 = c_end[:3]
+    for f in range(a, b + 1):
+        k = f - a
+        hips = P['kLT'][f]
+        chase = add(hips, [-2.9, -0.35 + 0.1 * k / (b - a), 2.0 + 0.35 * k])
+        pos = lerpv(p0, chase, ease_out(k / 4.0, 2.4))
+        at = add(hips, [0.0, 0.45, -3.0])
+        whip = 1 - ease_out(k / 2.0)
+        L[f] = look(pos, at, roll_deg=-9 * whip + 2 * (1 - whip), fov=60 + 16 * whip - 4 * ease(k / (b - a)))
     # 7 THE PASS: rebuilt - low and wide beside the lane, circling the swing in slow motion, a whip out at the end
     a, b = span(6)
     for f in range(a, b + 1):
@@ -166,7 +194,8 @@ def main(take_p, scan_p, out_p):
             (16, 1.0, 'cut'), (22, 0.6), (50, 0.6), (55, 0.95),
             (56, 0.55, 'cut'), (63, 0.75), (81, 0.75),
             (82, 0.5, 'cut'), (93, 0.55),
-            (94, 1.0, 'cut'), (129, 1.0),
+            (94, 0.55, 'cut'), (100, 0.55), (103, 0.42), (116, 0.42), (118.5, 0.27), (120, 0.27),
+            (120, 1.3, 'cut'), (126, 1.15), (129, 1.0),
             (130, 1.0, 'cut'), (133, 0.18), (138, 0.18),
             (139, 0.45, 'cut'), (144, 0.45),
             (145, 1.0, 'cut'), (196, 1.0),

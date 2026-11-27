@@ -93,7 +93,7 @@ def main(take_p, pkg_p, out_p):
 
     ROOT_V = mul([[1, 0, 0, 0], [0, 1, 0, 0.22], [0, 0, 1, -36], [0, 0, 0, 1]], [[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
     r2 = lambda x: round(x, 2)
-    S = {'pts': {k: [] for k in ('kH', 'kUT', 'kLT', 'kRH', 'kLH', 'vH', 'vUT', 'vLT', 'tip', 'guard', 'mouth')},
+    S = {'pts': {k: [] for k in ('kH', 'kUT', 'kLT', 'kRH', 'kLH', 'kLF', 'kRF', 'vH', 'vUT', 'vLT', 'tip', 'guard', 'mouth')},
          'kFoot': [], 'vFoot': [], 'vLow': [], 'inSheath': [], 'relS': [], 'dm': [], 'al': []}
     floor = -3.0
 
@@ -121,6 +121,7 @@ def main(take_p, pkg_p, out_p):
         mouth = pt(mul(sh, mouth_rel), [0, 0, 0])
         capp = pt(mul(sh, cap_rel), [0, 0, 0])
         for key, W, part in (('kH', K, 'Head'), ('kUT', K, 'UpperTorso'), ('kLT', K, 'LowerTorso'), ('kRH', K, 'RightHand'), ('kLH', K, 'LeftHand'),
+                             ('kLF', K, 'LeftFoot'), ('kRF', K, 'RightFoot'),
                              ('vH', V, 'Head'), ('vUT', V, 'UpperTorso'), ('vLT', V, 'LowerTorso')):
             S['pts'][key].append([r2(c) for c in pt(W[part], [0, 0, 0])])
         S['pts']['tip'].append([r2(c) for c in tip]); S['pts']['guard'].append([r2(c) for c in guard]); S['pts']['mouth'].append([r2(c) for c in mouth])

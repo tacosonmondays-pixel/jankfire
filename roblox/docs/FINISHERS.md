@@ -235,22 +235,67 @@ barsIn, stop).
 
 | file | what |
 |---|---|
-| `src/client/FinisherPro.luau` | plays the take on the two real avatars: his clips (uploads 131612410895094 killer, 130332889571388 victim), the roots held still and grounded on each body's own feet (his floor is 2.78 under his origin), the shown katana and sheath riding invisible proxy joints the take moves (`Katana` off the right hand, `Sheath` off the hips), a sheathed blade held to the real sheath, the long blade aimed at the real face at THE TIP, the lens held to the real bodies' points per shot, the time ramps, the shake and kicks, the sounds; `TUNE` holds our own per scene |
+| `src/client/FinisherPro.luau` | plays the take on the two real avatars: the clips (killer 107553046720755 = his take with the run replaced, see below; his own 131612410895094; victim 130332889571388), the roots held still and grounded on each body's own feet (his floor is 2.78 under his origin), the shown katana and sheath riding invisible proxy joints the take moves (`Katana` off the right hand, `Sheath` off the hips), a sheathed blade held to the real sheath, the long blade aimed at the real face at THE TIP, the lens held to the real bodies' points per shot, the time ramps, the shake and kicks, the sounds; `TUNE` holds our own per scene |
 | `src/client/FinisherProFx.luau` | the ink and petals on his frames (glints, action lines, the blade's trail, speed lines, dust, the sweat bead, ink afterimages, the two-tone frames, the ink stroke and splats, the body coming apart into petals) |
 | `src/client/FinisherProData_inkfall.luau` | GENERATED: the lens, shots, ramps, anchors, blade stretch, the stock rig's body points |
 | `tools/roblox/rbxm_read.py` | reads a binary `.rbxm` as plain Python (nothing in it runs) |
 | `tools/roblox/kfs_to_rbxmx.py` | one KeyframeSequence out as `.rbxmx` (then Rojo to `.rbxm`) to upload as an Animation |
 | `tools/roblox/tide_pro_scan.py` | his take on the katana package's own rig by forward kinematics: body points, feet, sheathed frames |
-| `tools/roblox/tide_lens.py` | our lens over his camera, the cuts, the speed ramps (15.0 s with them; 10.6 s as delivered) |
+| `tools/roblox/tide_lens.py` | our lens over his camera, the cuts, the speed ramps (17.2 s with them; 10.6 s as delivered) |
+| `tools/roblox/tide_run_splice.py` | his run (frames 96-130) replaced by a coil and a dash from the bought katana pack's mocap; writes a whole new take `.rbxm` (vault only) that the other tools read in place of his |
 | `tools/roblox/tide_pro_data.py` | writes the data module from the take, the scan and the lens |
 | `tools/roblox/tide_fk_render.py` | renders his take offline in Blender (his camera or ours, a plain stage or our set) |
 | `tools/roblox/tide_waterfall.py` | the night waterfall set (chunky kit + `tide_waterfall.json` for the falls, mist, foam, lanterns, moon, water) |
 | `tools/roblox/tide_water_tex.py` | the falls' streak textures and the ripple ring (our own, drawn from noise) |
 | `tools/roblox/tide_set_import.luau`, `tide_kit_import.luau` | (Edit) build `JankfireFinisherSets.TideWaterfall` and `.TidecrestKit` |
 
-Rebuild after a change: `tide_pro_scan.py` -> `tide_lens.py` -> `tide_pro_data.py`; then push the data module.
+Rebuild after a change: (`tide_run_splice.py` ->) `tide_pro_scan.py` -> `tide_lens.py` -> `tide_pro_data.py`; then push
+the data module (and upload the spliced killer with `kfs_to_rbxmx.py` + Rojo if the splice changed).
+
+**The coil and the dash (27 Nov 2026).** The owner sent an anime still (a swordsman crouched very low before a dash, his
+back foot huge in the foreground) with: "can you replace the run with this? try to recreate it including effects
+rotating angles strong leg perspective" and "instead of lightning, theyre petals!". Only the shot language is taken.
+- **The body** stays mocap, never hand-posed. The killer's frames 96-130 blend into the bought katana pack's
+  `DashHeavy`, played from its half crouch down to its deepest frame. That frame is a deep kneeling lunge: the torso
+  pitched 42 degrees over the front knee, the back knee low, the back foot raised behind with its sole to the lens.
+  He holds it coiled, then the clip's own push-off flings him down the lane. The hips cover his run's 15.6 studs in
+  10 frames, from 2.5 studs a frame off the plant down to his run's 1.13 by frame 130, where his PASS takes over.
+- **Retargeting fixes:**
+  - On our rig's longer legs the back knee meets the floor first and the front foot hangs 0.6 over it. A two-bone
+    solve plants the front foot, bending the hip and knee in the leg's own plane.
+  - The crouch's hands sit at the front of the left hip (an iai grip), so the drawn blade is laid back along the
+    left side, the line a sheathed sword makes.
+  - The sheath is spared 60% of the hips' pitch. Pitched with them, it stuck out behind like a tail.
+- **The lens:**
+  - **THE COIL** is an 84-degree lens a stud off the raised back foot, just over the floor, behind his left side.
+    The sole is huge low on the right, his body leans away on the left, the victim is small down the lane. It swings
+    24 degrees round the foot as he sinks, at 0.42-0.27 speed.
+  - **THE LAUNCH** snaps to 1.3 speed. The lens whips after him off the plant, then chases him low on his left.
+- **The effects (FinisherProFx `coilAndDash`):**
+  - petals gathering into a slow swirl round him as he sinks, on take time so the slow motion slows them;
+  - a gold glint along the blade at the held breath;
+  - on the launch: the swirl blown out and back, a ring of ink lines and a dust kick off the plant;
+  - a stream of petals left hanging down his path;
+  - speed lines in paper and sakura.
 `Finishers.SCENE_ON.inkfall` stays false until the scene is judged ready; in Studio the workspace attribute
 `FinisherSceneTest = "inkfall"` plays it anyway (`preview:inkfall:full:<userId>`).
+
+**The finisher as the victory scene (27 Nov 2026).** The owner: "if you win with a team and multipple people have
+different finishers, the person who did the best has theirs play against the enemy best because weapon finishers are
+usualy duels". The victory scene (its own code) ranks the players and calls `server/FinisherVictory.luau`, which
+FinisherServer fills in:
+- `FV.finisherOf(player, m)` gives the scene finisher a player would bring (several equipped: the weapon with the most
+  kills this match). Only finishers with an in-game scene qualify. The others replay a recorded kill, and there is no
+  kill between the two best.
+- `FV.play(m, best winner, enemy best)` sends it to the match and holds the end screen on `m.finisherUntil`. If it
+  returns false, play the default scene.
+- The victory scene uses the same two through `Matches.endFinisher.pick(p, m?)` and `.play(m, killer, victim)`.
+  These are set by FinisherServer, so there is no load order to wait on. A failed play keeps the caller's
+  provisional `m.finisherUntil`.
+- `Matches.victoryLive = true` (set by VictoryServer at load) or `FV.ON` turns off FinisherServer's own cut on the
+  match-winning round (no world finisher there either) and on a classic mode's end. Until then that old cut still
+  plays, so no match ends with neither.
+- Studio test: `JankFinisherTest("victory", player, dummy, skin?)` plays it on a training dummy.
 
 **To add a finisher:**
 1. Add a row to `Finishers.LIST`.

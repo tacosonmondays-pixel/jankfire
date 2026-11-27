@@ -79,8 +79,9 @@ end
 -- petals: a pool of small pink chips
 -- (round 2, the judge: the end's petals read as "small orange squares ... embers" - now round, pink, lit from inside so
 -- the lanterns' warm light can't turn them orange, and two and a half times as big)
-local PETAL = Color3.fromRGB(255, 176, 200)
-local PETAL2 = Color3.fromRGB(255, 208, 222)
+-- (27 Nov, in game v1419: the pale pink Neon bloomed to white discs at night - deeper pinks land on pink)
+local PETAL = Color3.fromRGB(214, 96, 140)
+local PETAL2 = Color3.fromRGB(232, 130, 168)
 local function petals(sc: any, key: string, n: number, size: number?): { Part }
 	return pool(sc, "petal" .. key, n, function()
 		local s = size or 0.75
@@ -137,7 +138,7 @@ local function speedLines(sc: any, k: number, dir: number, w: number)
 		local rnd = Random.new(5)
 		for i = 1, 26 do
 			local f = Instance.new("Frame")
-			f.BorderSizePixel = 0; f.BackgroundColor3 = WHITE; f.AnchorPoint = Vector2.new(0.5, 0.5)
+			f.BorderSizePixel = 0; f.BackgroundColor3 = if i % 4 == 0 then SAKURA else WHITE; f.AnchorPoint = Vector2.new(0.5, 0.5)
 			f.Parent = g
 			table.insert(list, { f = f, y = rnd:NextNumber(0.06, 0.94), len = rnd:NextNumber(0.12, 0.38), sp = rnd:NextNumber(1.6, 3.2), ph = rnd:NextNumber(0, 1), th = rnd:NextInteger(1, 3) })
 		end
@@ -299,6 +300,91 @@ local function comeApart(sc: any, s: any, u: number, w: number)
 	end
 end
 
+-- THE COIL and THE LAUNCH (frames 100-139 of the spliced take): all from the real body, so on any avatar
+local COIL_A, LAUNCH_F, TRAIL_END = 100, 120, 139
+function Fx.coilAndDash(sc: any, s: any, fi: number, w: number, tip: Vector3, guard: Vector3)
+	local lt = s.kg.model:FindFirstChild("LowerTorso") :: BasePart?
+	if not lt or fi < COIL_A or fi >= TRAIL_END + 24 then return end
+	local floorY = sc.floorY
+	-- (his hips' path, kept per take frame, for the trail)
+	sc.runH = sc.runH or {}
+	local fk = math.floor(fi)
+	if not sc.runH[fk] then sc.runH[fk] = lt.Position end
+	local cam = (workspace.CurrentCamera :: Camera).CFrame
+	local function near(p: Vector3, d: number): boolean return (cam.Position - p).Magnitude < d end
+	-- the swirl: small petals orbiting his hips and legs, rising slowly (on take time, so the slow motion slows them);
+	-- (the coil's lens sits a stud off his back foot: these are smaller than the drifting petals and only the ones
+	-- right on the lens are skipped)
+	if fi < LAUNCH_F + 6 then
+		local ps = petals(sc, "swirl", 26, 0.36)
+		local rnd = Random.new(41)
+		local t = (fi - COIL_A) / 24
+		local cin = smooth((fi - COIL_A) / 6)
+		local blow = math.clamp((fi - LAUNCH_F) / 4, 0, 1)
+		local ctr = Vector3.new(lt.Position.X, floorY, lt.Position.Z)
+		if fi >= LAUNCH_F then
+			local h0 = sc.runH[LAUNCH_F] or lt.Position
+			ctr = Vector3.new(h0.X, floorY, h0.Z)
+		end
+		for i = 1, #ps do
+			local ph = rnd:NextNumber(0, 6.283)
+			local om = rnd:NextNumber(1.1, 2.0) * (if i % 3 == 0 then -1 else 1)
+			local r = rnd:NextNumber(1.3, 2.5) * (1 - 0.22 * smooth((fi - COIL_A) / 18))
+			local h = rnd:NextNumber(0.1, 2.4) + 0.3 * t
+			local a = ph + om * t
+			local out = Vector3.new(math.cos(a), 0, math.sin(a))
+			-- (the launch blows them out and back: the wind of his going)
+			local p = ctr + out * (r + 7 * smooth(blow)) + Vector3.new(0, h + 1.2 * blow, 3.5 * blow)
+			if not near(p, 2.2) then -- (v1419: the ones a stud off the coil's lens filled the frame as white blobs)
+				show(sc, ps[i], CFrame.new(p) * CFrame.Angles(a * 1.7 + ph, a * 0.9, ph), 1 - cin * (1 - 0.1) + 0.9 * blow * blow)
+			end
+		end
+	end
+	-- the held breath: a gold glint running along the blade
+	if fi >= 116 and fi < 120.5 then
+		local u = (fi - 116) / 4.5
+		glint(sc, "coil", guard:Lerp(tip, 0.2 + 0.7 * u), 0.85 * math.sin(math.pi * u) + 0.05, GOLD)
+	end
+	-- the launch: a ring of ink lines on the floor where he leaves, the dust kicked back off the plant
+	if fi >= LAUNCH_F and fi < LAUNCH_F + 3 then
+		local h0 = sc.runH[LAUNCH_F] or lt.Position
+		burstLines(sc, "launch", Vector3.new(h0.X, floorY + 0.4, h0.Z), (fi - LAUNCH_F) / 3, 16, 2.4, INK)
+	end
+	if fi >= LAUNCH_F and fi < LAUNCH_F + 14 then
+		local h0 = sc.runH[LAUNCH_F] or lt.Position
+		local u = (fi - LAUNCH_F) / 14
+		-- (v1419: grey balls read as dark smoke in the pass's shot - paler and thinner)
+		local ps = pool(sc, "kick", 10, function() return part(sc, Vector3.one, Color3.fromRGB(206, 214, 230), Enum.Material.SmoothPlastic, Enum.PartType.Ball) end)
+		local rnd = Random.new(77)
+		for i = 1, #ps do
+			local a = math.rad(rnd:NextNumber(-70, 70)) + math.pi / 2 -- (thrown back, away from the lane)
+			local back = Vector3.new(math.cos(a) * 0.6, 0, math.sin(a))
+			local d = (0.5 + 3.2 * rnd:NextNumber(0.5, 1)) * (1 - (1 - u) ^ 2.5)
+			local r = (0.3 + 0.35 * rnd:NextNumber()) * (1 + 1.8 * u)
+			local p = Vector3.new(h0.X, floorY + r * 0.35 + 0.5 * u, h0.Z) + back * d
+			ps[i].Size = Vector3.one * r
+			if not near(p, 1.2) then show(sc, ps[i], CFrame.new(p), 0.6 + 0.4 * u) end
+		end
+	end
+	-- the trail: petals left along his path as he goes, fluttering up and back, fading
+	if fi >= LAUNCH_F then
+		local ps = petals(sc, "trail", 34, 0.5)
+		local rnd = Random.new(93)
+		for i = 1, #ps do
+			local fs = LAUNCH_F + (i - 1) * (10 / #ps)
+			local age = (fi - fs) / 24
+			if age < 0 or age > 1.1 then continue end
+			local base = sc.runH[math.floor(fs)] or lt.Position
+			local ph = rnd:NextNumber(0, 6.283)
+			local jit = Vector3.new(rnd:NextNumber(-0.7, 0.7), rnd:NextNumber(-0.6, 1.0), rnd:NextNumber(-0.4, 0.4))
+			local p = base + jit + Vector3.new(math.sin(ph + age * 7) * 0.4, 0.5 * age + math.sin(ph * 2 + age * 5) * 0.15, 1.6 * age)
+			if not near(p, 1.5) then
+				show(sc, ps[i], CFrame.new(p) * CFrame.Angles(ph + age * 9, age * 6, ph * 0.5), 0.05 + 0.95 * smooth((age - 0.55) / 0.55))
+			end
+		end
+	end
+end
+
 -- the frames, his numbering (24 fps); fi is the frame on screen
 function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFrame, L: number)
 	sc.fxUsed = {}
@@ -342,10 +428,12 @@ function Fx.step(sc: any, s: any, fi: number, w: number, dt: number, katCF: CFra
 		ps[1].Size = Vector3.new(0.13, 0.18, 0.13)
 		show(sc, ps[1], CFrame.lookAt(c, c + Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z) * -1), 0.15)
 	end
-	-- 5 THE CHARGE, 6 CLOSING: speed lines across the frame, stronger on the last strides; dust on the footfalls
+	-- 5 THE COIL (27 Nov: the owner's anime still, its lightning made petals): petals gathering into a slow swirl round
+	-- him as he sinks, a gold glint along the blade at the held breath; 6 THE LAUNCH: the swirl blown apart, a dust kick
+	-- off the plant, a stream of petals left hanging down his path, speed lines across the frame
+	Fx.coilAndDash(sc, s, fi, w, tip, guard)
 	local slk = 0
-	if fi >= 94 and fi < 116 then slk = 0.55 * smooth((fi - 94) / 4) end
-	if fi >= 116 and fi < 130 then slk = 0.95 end
+	if fi >= 120 and fi < 130 then slk = 0.95 * smooth((fi - 120) / 1.2) end
 	if fi >= 130 and fi < 139 then slk = 0.5 end
 	if sc.lines2d or slk > 0 then speedLines(sc, slk, 1, w) end
 	if sc.lines2d then sc.lines2d.g.Enabled = slk > 0 end
@@ -443,8 +531,8 @@ function Fx.afterimages(sc: any, s: any, fi: number)
 					local tr = an:LoadAnimation(a); tr.Looped = false; tr.Priority = Enum.AnimationPriority.Action4; tr:Play(0, 1, 0)
 					-- (round 2: "pale grey-green ghosts ... motion blur, not ink" - solid ink, the further one fainter)
 					local hl = Instance.new("Highlight"); hl.FillColor = Color3.fromRGB(20, 20, 30); hl.OutlineColor = Color3.fromRGB(20, 20, 30)
-					hl.FillTransparency = 0; hl.OutlineTransparency = 1; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
-					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).LocalTransparencyModifier = 0.15 + 0.3 * k end end
+					hl.FillTransparency = 0.25; hl.OutlineTransparency = 1; hl.DepthMode = Enum.HighlightDepthMode.Occluded; hl.Parent = m
+					for _, d in m:GetDescendants() do if d:IsA("BasePart") or d:IsA("Decal") then (d :: any).LocalTransparencyModifier = 0.4 + 0.25 * k end end -- (round 3: "a flat ragged black cut-out that looks like a missing-texture bug": see-through)
 					table.insert(sc.ghosts, { model = m, tr = tr, root = root, lag = 1.6 * k })
 				else
 					m:Destroy()

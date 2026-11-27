@@ -49,7 +49,9 @@ local STOCK_LT = Vector3.new(2, 0.4, 1) -- (the stock LowerTorso the sheath's jo
 -- props kit (ReplicatedStorage.JankfireFinisherSets), the time ramps, the lens moves, the look
 local TUNE: { [string]: any } = {
 	inkfall = {
-		anims = { k = "131612410895094", v = "130332889571388" },
+		anims = { k = "107553046720755", v = "130332889571388" },
+		-- (27 Nov: k is his take with the run replaced by a coil and a dash - tools/roblox/tide_run_splice.py; his own
+		-- killer, untouched, was 131612410895094)
 		set = "TideWaterfall", kit = "TidecrestKit",
 		short = 207, -- (a round win's short version: from THE CUT LANDS)
 		vZ = -36, -- (where his README stands the victim's root)
@@ -58,7 +60,8 @@ local TUNE: { [string]: any } = {
 		-- coming free, the whirl, the tip's stop at his nose, the rush of the charge, the whoosh into the cut, the hit, the
 		-- click home and the bowl ringing over it, the cut landing, the body on the ground
 		cues = { { 7, "loot_pop", 0.3 }, { 17, "swing", 0.55 }, { 55, "loot_pop", 0.6 }, { 57, "swing", 1 },
-			{ 57, "skin_katana_sakura_swing", 0.7 }, { 86, "whoops", 0.5 }, { 95, "zone_playground", 0.7 }, { 130, "swing", 1 },
+			{ 57, "skin_katana_sakura_swing", 0.7 }, { 86, "whoops", 0.5 }, { 120, "zone_playground", 0.8 }, { 120, "swing", 0.9 },
+			{ 130, "swing", 1 },
 			{ 131, "skin_katana_sakura_swing", 0.85 }, { 139, "round_end", 0.9 }, { 204, "loot_pop", 0.9 }, { 205, "zone_vip", 0.8 },
 			{ 207, "skin_katana_sakura_hit", 0.85 }, { 219, "death", 0.55 } },
 		-- (the falls under it all: Pro Sound Effects' distant waterfall, a steady stream, from Roblox's licensed library;
@@ -66,10 +69,11 @@ local TUNE: { [string]: any } = {
 		bed = { id = "9120552671", vol = 0.42 },
 		-- (a cool light on each fighter from the moon's side: dark avatars against the dark cliffs read by their edges -
 		-- the set's judge, round 1: "the charcoal attacker merges into the cliffs because there is no rim light")
-		rim = { dir = Vector3.new(-0.068, 0.208, 0.976), dist = 4.5, color = Color3.fromRGB(176, 196, 255), bright = 0.6, range = 8 },
+		rim = { dir = Vector3.new(-0.068, 0.208, 0.976), dist = 4.5, color = Color3.fromRGB(176, 196, 255), bright = 0.85, range = 9 },
 		-- (per-shot exposure trims: the extreme close-ups fill the frame with a face or an outfit - a white one blew out
 		-- in v1401's grip and face shots)
-		expTrim = { ["THE GRIP"] = -0.55, ["THE TIP"] = -0.3, STILLNESS = -0.35, ["THE DRAW"] = -0.2, ["THE SHEATHE"] = -0.2 },
+		expTrim = { ["THE GRIP"] = -0.55, ["THE TIP"] = -0.3, STILLNESS = -0.35, ["THE DRAW"] = -0.2, ["THE SHEATHE"] = -0.2,
+			["THE COIL"] = -0.2 },
 		-- the night (the set's SceneLook adds its Sky, Atmosphere, Bloom and grade): a cool moonlit key, blue fill, the
 		-- moon's own light low behind the falls
 		-- (v1393: exposure 1.3 blew white outfits and pale masks out in every close-up; 0.55 with less fill still glowed)
@@ -591,9 +595,10 @@ local function aimed(sc: any, s: any, katCF: CFrame, L: number, fi: number): CFr
 	return CFrame.fromAxisAngle(axis.Unit, ang * wgt) * (katCF - grip) + grip
 end
 
--- the camera's life: a handheld shake on the run, a kick on the hits (frames; decays in ~0.15 s)
-local SHAKE = { ["THE CHARGE"] = 1, CLOSING = 1.4 }
-local BUMPS = { { 11, 0.7 }, { 57, 1 }, { 139, 1.3 }, { 204, 0.6 }, { 207, 1 } }
+-- the camera's life: a handheld shake on the dash, a kick on the hits and on the launch's plant (frames; decays in
+-- ~0.15 s; the coil itself held dead still)
+local SHAKE = { ["THE LAUNCH"] = 1.6 }
+local BUMPS = { { 11, 0.7 }, { 57, 1 }, { 120, 1.2 }, { 139, 1.3 }, { 204, 0.6 }, { 207, 1 } }
 
 function Pro.step(s: any, w: number): (string, number, boolean)
 	local sc = s.scene

@@ -30,14 +30,15 @@ local FX = {
 	lanterns = { { -9, 5.225, -8 }, { 11, 5.225, -30 }, { -9, 5.225, -60 }, { 11, 5.225, 12 } },
 	moon = { dir = { -0.068, 0.208, 0.976 }, dist = 1700, deg = 16 },
 	water = { y = -1.3, boxes = { { -150, 20, -5.7, -120 }, { 7.7, 20, 36, -120 }, { -150, 172, 80, 18 } }, upper = { y = 7.5, box = { -150, 420, 80, 174 } } },
-	glitter = { from = { -27.971, 400 }, to = { -1.678, 24 }, width = 9 },
+	glitter = { from = { -27.971, 400 }, to = { -1.678, 24 }, width = 14 },
 }
 local IS = game:GetService("InsertService")
 local RS = game:GetService("ReplicatedStorage")
 local sets = RS:FindFirstChild("JankfireFinisherSets")
 if not sets then sets = Instance.new("Folder"); sets.Name = "JankfireFinisherSets"; sets.Parent = RS end
 local function mat(n) local ok, m = pcall(function() return (Enum.Material :: any)[n] end); return if ok and m then m else Enum.Material.SmoothPlastic end
-local KIND = { rock = mat("Slate"), stone = mat("Granite"), leaf = mat("Grass"), wood = mat("Wood"), neon = mat("Neon"), plastic = mat("SmoothPlastic"),
+-- (round 3, the judge: "the white-veined marble texture on the floor tiles and lantern roofs is noisy": matte stone)
+local KIND = { rock = mat("Slate"), stone = mat("Concrete"), leaf = mat("Grass"), wood = mat("Wood"), neon = mat("Neon"), plastic = mat("SmoothPlastic"),
 	glass = mat("Glass"), cloud = mat("SmoothPlastic"), mist = mat("SmoothPlastic") }
 local root = IS:LoadAsset(SET)
 local src = root:FindFirstChildWhichIsA("Model") or root
@@ -53,7 +54,7 @@ for _, p in src:GetDescendants() do
 		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds") or string.match(p.Name, "^mistmounds"))
 		if kind == "mist" then p.Transparency = 0.62 end -- (the soft mounds of mist where the falls land)
 		-- (round 2: "the lantern panels bloom to pure white" - amber, the scene's one warm accent)
-		if string.sub(p.Name, 1, 11) == "lanternfire" then p.Color = Color3.fromRGB(255, 170, 90) end
+		if string.sub(p.Name, 1, 11) == "lanternfire" then p.Color = Color3.fromRGB(196, 112, 52) end -- (round 3: "lemon-yellow windows read as monster eyes" - a dimmer amber)
 		if string.sub(p.Name, 1, 9) == "kitorigin" then origin = p else n += 1 end
 	end
 end
@@ -172,13 +173,15 @@ disc("Disc", D, 0, Color3.fromRGB(172, 166, 148), 0)
 local rnd = Random.new(17)
 -- (the seas: three soft overlapping patches a little darker than the disc, in front of it - the disc's +X faces the
 -- lane; the first cut put five round dark spots behind it, then in front they read as a paw print. The halos behind)
-for k, s in { { 0.16, -0.1, 0.42, 0.62 }, { -0.18, 0.08, 0.32, 0.68 }, { 0.02, 0.24, 0.22, 0.72 } } do
+-- (round 3: "three perfect crater circles ... a cartoon cheese moon" - fainter)
+for k, s in { { 0.16, -0.1, 0.42, 0.76 }, { -0.18, 0.08, 0.32, 0.8 }, { 0.02, 0.24, 0.22, 0.84 } } do
 	local sea = disc("Sea" .. k, D * s[3], 0.8, Color3.fromRGB(150, 145, 128), s[4])
 	sea.Size = Vector3.new(0.5, D * s[3], D * s[3] * 0.82)
 	sea.CFrame = face * CFrame.new(0.8, s[2] * D, s[1] * D) * CFrame.Angles(math.rad(25 * k), 0, 0)
 end
-disc("Halo", D * 1.5, -4, Color3.fromRGB(120, 140, 196), 0.975)
-disc("Halo2", D * 2.3, -6, Color3.fromRGB(90, 110, 170), 0.99)
+-- (round 3: "a flat grey plate: no halo" - the glow round it made visible)
+disc("Halo", D * 1.5, -4, Color3.fromRGB(140, 160, 214), 0.9)
+disc("Halo2", D * 2.3, -6, Color3.fromRGB(100, 120, 184), 0.955)
 local W = Instance.new("Model"); W.Name = "Water"; W.Parent = set
 local function water(x0, z0, x1, z1, y)
 	local p = Instance.new("Part"); p.Name = "Water"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
@@ -204,16 +207,18 @@ do
 		e.Transparency = num(0.1, 0.6); e.Lifetime = NumberRange.new(0.25, 0.7); e.Rate = len * 1.6; e.Speed = NumberRange.new(0)
 		e.Shape = Enum.ParticleEmitterShape.Box; e.LightEmission = 1; e.LightInfluence = 0; e.ZOffset = 0.3; e.Rate = len * 0.25; e.Parent = road
 		-- (round 2: "a hard-edged triangle of star sprites" - thin glint streaks across the water, narrowing toward the
-		-- falls; FinisherProFx flickers each on its own beat)
+		-- falls; FinisherProFx flickers each on its own beat. Round 3: "a narrow ladder of evenly spaced white dashes" -
+		-- a broad broken spill: three times as many, short and uneven, thicker down the middle, widening toward us)
 		local rr = Random.new(math.floor(len))
-		for k = 1, math.floor(len / 7) do
-			local u = rr:NextNumber(0, 1)
+		for k = 1, math.floor(len / 2.4) do
+			local u = rr:NextNumber(0, 1) ^ 0.8
 			local c = p0:Lerp(p1, u)
-			local wide = g.width * (0.35 + 0.65 * u)
+			local wide = g.width * (0.3 + 0.7 * u)
+			local across = (rr:NextNumber(-0.5, 0.5) + rr:NextNumber(-0.5, 0.5)) * 0.62
 			local s = Instance.new("Part"); s.Name = "MoonStreak"; s.Anchored = true; s.CanCollide = false; s.CanQuery = false; s.CanTouch = false
-			s.CastShadow = false; s.Material = Enum.Material.Neon; s.Color = Color3.fromRGB(200, 216, 246); s.Transparency = rr:NextNumber(0.35, 0.6)
-			s.Size = Vector3.new(rr:NextNumber(0.3, 1) * wide, 0.04, rr:NextNumber(0.1, 0.22))
-			s.CFrame = O * CFrame.new(c.X + rr:NextNumber(-0.3, 0.3) * wide, y + 0.07, c.Z); s.Parent = W
+			s.CastShadow = false; s.Material = Enum.Material.Neon; s.Color = Color3.fromRGB(214, 224, 246); s.Transparency = rr:NextNumber(0.3, 0.8)
+			s.Size = Vector3.new(rr:NextNumber(0.1, 0.5) * wide * (0.6 + 0.4 * u), 0.04, rr:NextNumber(0.06, 0.2))
+			s.CFrame = O * CFrame.new(c.X + across * wide, y + 0.07, c.Z) * CFrame.Angles(0, math.rad(rr:NextNumber(-8, 8)), 0); s.Parent = W
 		end
 		local sheen = Instance.new("Part"); sheen.Name = "MoonSheen"; sheen.Anchored = true; sheen.CanCollide = false; sheen.CanQuery = false
 		sheen.CanTouch = false; sheen.CastShadow = false; sheen.Material = Enum.Material.Neon; sheen.Color = Color3.fromRGB(120, 132, 168)
