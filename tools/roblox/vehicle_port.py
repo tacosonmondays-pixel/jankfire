@@ -379,6 +379,30 @@ def WAGON_RULES(bed, floor, wheel, iron, wood, cargo, dark):
             'wo_iron': ('plastic', iron), '*': ('plastic', dark)}
 
 
+def hunt_car(model, M, body='7c8790'):
+    """the HOUSE HUNT garage car (offered to hunt-mode, 27 Nov 2026): the web game's hatchback (p_car_hatch) on the
+    car's footprint in hunt_house_layout.FURN['car'] (x -4.5..4.5, y 0..7, z -10..10, front +Z: its hit boxes are the
+    body -4.5,0.8,-10..4.5,4.4,10 and the cabin -4,4.4,-5..4,7,4). M: the prop's placement matrix (Roblox space), as
+    hunt_house_props passes it to every prop. One call in place of hunt_house_props.car(M):
+        import vehicle_port as VP; VP.hunt_car(M_, M)"""
+    tris = port('p_car_hatch', CAR_RULES(body=body))
+    return place(model, tris, M @ fit(tris, (-4.5, 0.0, -10.0, 4.5, 7.0, 10.0)))
+
+
+def highnoon_wagon(x, z, wm='8c6a47', wd='5c4532', iron='4f4a45', cargo='b38f5c', model='wagon'):
+    """the High Noon finisher set's street cart (offered to the finishers session, 27 Nov 2026): the web game's open
+    wagon in the town's woods, on the cart's own footprint in highnoon_town.wagon(x, z) (x +-2.1, z +-3.2, 3 tall,
+    along z), in the town kit's kinds (planks for the bed, wood for the rest). One call in place of wagon(8.6, 21.0):
+        import vehicle_port as VP; VP.highnoon_wagon(8.6, 21.0, C['wm'], C['wd'])"""
+    rules = {'wo_wood': [('2060bf', 'planks', wm), ('40609f', 'planks', wm), ('806020', 'planks', wd),
+                         ('bf4020', 'wood', wd), ('9f4020', 'wood', wd), ('804020', 'wood', wd), ('806040', 'wood', wm),
+                         ('9f8040', 'wood', wm), ('9f8060', 'wood', cargo), ('bf9f80', 'wood', cargo), ('bf8060', 'wood', cargo),
+                         ('202040', 'metal', iron), ('402040', 'metal', iron), ('202020', 'metal', iron)],
+             'wo_iron': ('metal', iron), '*': ('wood', wd)}
+    body, tongue = wagon_parts(port('p_wagon_open', rules))
+    return place(model, body + tongue, fit(body, (x - 2.1, 0.0, z - 3.2, x + 2.1, 3.0, z + 3.2)))
+
+
 def wagon_parts(tris):
     """the open wagon turned so it runs along Z (tongue +Z) and split: (the wagon, its tongue). The tongue is what lies
        ahead of the bed's front board, low down"""
