@@ -115,37 +115,61 @@ local dist = T.text(mark, "Dist", "", 13, T.TEXT, T.FONT_BOLD, Enum.TextXAlignme
 dist.Position = UDim2.fromOffset(0, 20); dist.Size = UDim2.new(1, 0, 0, 18)
 
 -- ------------------------------------------------------------------ the helicopter (local, from the server's times)
+-- which one flies: ZM.X.heli, a model in ReplicatedStorage.JankfireZmKit (ZmKit.importHeli). Its rotors turn about their
+-- hubs (the model's HubMain / HubTail attributes: a 3-blade rotor's box centre isn't its hub); every zh_rotor* piece
+-- about the main hub on the model's up axis, every zh_tail* piece about the tail hub on its side axis
 local heli: Model? = nil
-local parts: { rotor: BasePart?, tail: BasePart?, beacon: BasePart?, body: BasePart?, rotOff: CFrame, tailOff: CFrame } =
-	{ rotor = nil, tail = nil, beacon = nil, body = nil, rotOff = CFrame.new(), tailOff = CFrame.new() }
+type Spinner = { p: BasePart, fromHub: CFrame }
+local parts: { rotors: { Spinner }, tails: { Spinner }, doors: { Spinner }, beacon: BasePart?, body: BasePart?, hubMain: CFrame, hubTail: CFrame } =
+	{ rotors = {}, tails = {}, doors = {}, beacon = nil, body = nil, hubMain = CFrame.new(), hubTail = CFrame.new() }
 local folder = Instance.new("Folder")
 folder.Name = "ZmLocal"
 local spin, spinT, rate = 0, 0, 0
 local function build(): Model?
 	if heli then return heli end
 	local kit = ReplicatedStorage:FindFirstChild("JankfireZmKit")
-	local src = kit and kit:FindFirstChild("Heli")
+	local want = me:GetAttribute("ZmHeli") -- (a test's side-by-side: this client's own pick over ZM.X.heli)
+	local src = kit and (kit:FindFirstChild(if type(want) == "string" then want else (XC.heli or "Heli")) or kit:FindFirstChild("Heli"))
 	if not src or not src:IsA("Model") then return nil end
 	local m = src:Clone()
 	local piv = m:GetPivot()
+	local hm, ht = m:GetAttribute("HubMain"), m:GetAttribute("HubTail")
+	local rotorAt, tailAt = nil, nil
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
 			local nm = string.lower(d.Name)
-			if string.find(nm, "zh_rotor", 1, true) then parts.rotor = d; parts.rotOff = piv:ToObjectSpace(d.CFrame)
-			elseif string.find(nm, "zh_tail", 1, true) then parts.tail = d; parts.tailOff = piv:ToObjectSpace(d.CFrame)
+			if string.find(nm, "zh_rotor", 1, true) then rotorAt = rotorAt or d.Position
+			elseif string.find(nm, "zh_tail", 1, true) then tailAt = tailAt or d.Position
 			elseif string.find(nm, "zh_beacon", 1, true) then parts.beacon = d
-			elseif string.find(nm, "zh_body", 1, true) then parts.body = d
-			elseif string.find(nm, "zh_open", 1, true) then
-				local cl = Instance.new("PointLight") -- (the cabin's warm light out of the open side: the way in reads at night)
-				cl.Color = Color3.fromRGB(255, 214, 168); cl.Range = 14; cl.Brightness = 1.4; cl.Shadows = false
-				cl.Parent = d
-			elseif string.find(nm, "zh_lamp", 1, true) then
-				local sl = Instance.new("SpotLight")
-				sl.Face = Enum.NormalId.Bottom; sl.Angle = 50; sl.Range = 70; sl.Brightness = 3.5
-				sl.Color = Color3.fromRGB(240, 238, 226); sl.Shadows = true
-				sl.Parent = d
+			elseif string.find(nm, "zh_body", 1, true) then parts.body = parts.body or d
+			elseif string.find(nm, "zh_open", 1, true) or string.find(nm, "zh_cabin", 1, true) then
+				if not d:FindFirstChild("CabinLight") then
+					local cl = Instance.new("PointLight") -- (the cabin's warm light: the way in and the glass read at night)
+					cl.Name = "CabinLight"; cl.Color = Color3.fromRGB(255, 214, 168); cl.Range = 14; cl.Brightness = 1.4; cl.Shadows = false
+					cl.Parent = d
+				end
+			elseif string.find(nm, "zh_lamp", 1, true) or string.find(nm, "zh_search", 1, true) then
+				if not d:FindFirstChildOfClass("SpotLight") then
+					local sl = Instance.new("SpotLight")
+					sl.Face = Enum.NormalId.Bottom; sl.Angle = 50; sl.Range = 70; sl.Brightness = 3.5
+					sl.Color = Color3.fromRGB(240, 238, 226); sl.Shadows = true
+					sl.Parent = d
+				end
 			end
+		end
+	end
+	parts.hubMain = CFrame.new(if typeof(hm) == "Vector3" then hm else (if rotorAt then piv:PointToObjectSpace(rotorAt) else Vector3.zero))
+	parts.hubTail = CFrame.new(if typeof(ht) == "Vector3" then ht else (if tailAt then piv:PointToObjectSpace(tailAt) else Vector3.zero))
+	for _, d in m:GetDescendants() do
+		if not d:IsA("BasePart") then continue end
+		local nm = string.lower(d.Name)
+		if string.find(nm, "zh_door", 1, true) then
+			table.insert(parts.doors, { p = d, fromHub = piv:ToObjectSpace(d.CFrame) }) -- (the sliding door: from the pivot)
+		elseif string.find(nm, "zh_rotor", 1, true) then
+			table.insert(parts.rotors, { p = d, fromHub = (piv * parts.hubMain):ToObjectSpace(d.CFrame) })
+		elseif string.find(nm, "zh_tail", 1, true) then
+			table.insert(parts.tails, { p = d, fromHub = (piv * parts.hubTail):ToObjectSpace(d.CFrame) })
 		end
 	end
 	if parts.beacon then
@@ -169,7 +193,7 @@ end
 local function drop()
 	if heli then heli:Destroy() end
 	heli = nil
-	parts.rotor, parts.tail, parts.beacon, parts.body = nil, nil, nil, nil
+	parts.rotors, parts.tails, parts.doors, parts.beacon, parts.body = {}, {}, {}, nil, nil
 	rate, spin, spinT = 0, 0, 0
 end
 
@@ -242,15 +266,31 @@ end
 local rewardUp = false
 local function showReward(res: any)
 	for _, c in card:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
-	-- 1. the title
-	local head = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 40), LayoutOrder = 1 }, card)
-	local t1 = K.text(head, "Title", "EXTRACTED", 34, A.INK, K.SANS_HEAVY); t1.Size = UDim2.new(0.6, 0, 1, 0)
-	local t2 = K.text(head, "Round", "ROUND " .. tostring(res.n), 18, A.INK2, K.SANS_HEAVY, Enum.TextXAlignment.Right)
-	t2.Position = UDim2.fromScale(0.6, 0); t2.Size = UDim2.new(0.4, 0, 1, 0)
+	-- 1. the title: EXTRACTED and the round, big (27 Nov, the owner: "boom displays your round")
+	local head = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 70), LayoutOrder = 1 }, card)
+	local t1 = K.text(head, "Title", "EXTRACTED", 44, A.INK, K.SANS_HEAVY); t1.Position = UDim2.fromOffset(0, 10); t1.Size = UDim2.new(0.62, 0, 0, 50)
+	local rl = K.text(head, "RoundL", "ROUND", 14, A.INK2, K.SANS_HEAVY, Enum.TextXAlignment.Right); rl.Position = UDim2.fromScale(0.62, 0); rl.Size = UDim2.new(0.38, 0, 0, 16)
+	local rh = K.new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 14), Size = UDim2.fromOffset(160, 56) }, head)
+	K.new("UIListLayout", { HorizontalAlignment = Enum.HorizontalAlignment.Right }, rh)
+	local _, _, setR = K.hero(rh, "N", 56, K.SANS_HEAVY, A.INK, false, true)
+	setR(tostring(res.n))
+	-- 1b. the small stats
+	local st = res.stats
+	if type(st) == "table" then
+		local row = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 44), LayoutOrder = 2 }, card)
+		local mm = math.floor((tonumber(st.time) or 0) / 60)
+		local items = { { tostring(st.kills or 0), "KILLS" }, { tostring(st.revives or 0), "REVIVES" },
+			{ tostring(st.dmg or 0), "DAMAGE" }, { string.format("%d:%02d", mm, (tonumber(st.time) or 0) % 60), "TIME SURVIVED" } }
+		for i, it in items do
+			local c = K.new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromScale((i - 1) * 0.25, 0), Size = UDim2.new(0.25, 0, 1, 0) }, row)
+			local a = K.text(c, "N", it[1], 24, A.INK, K.SANS_HEAVY); a.Size = UDim2.new(1, 0, 0, 26)
+			local b = K.text(c, "L", it[2], 12, A.INK2, K.SANS_BOLD); b.Position = UDim2.fromOffset(0, 27); b.Size = UDim2.new(1, 0, 0, 14)
+		end
+	end
 	-- 2. what dropped, big (the last hit in the list: the wrap before the crate before the bag before the can)
 	local best = nil
 	for _, r in (res.rolls or {}) :: { any } do if r.hit then best = r end end
-	local drop = K.new("Frame", { BackgroundColor3 = A.BONE2, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 150), LayoutOrder = 2 }, card)
+	local drop = K.new("Frame", { BackgroundColor3 = A.BONE2, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 150), LayoutOrder = 3 }, card)
 	K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, drop)
 	if best then
 		local art = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 150) }, drop)
@@ -280,7 +320,7 @@ local function showReward(res: any)
 	end
 	-- 3. Brass and XP, hero numbers
 	if res.ok then
-		local heroes = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 74), LayoutOrder = 3 }, card)
+		local heroes = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 74), LayoutOrder = 4 }, card)
 		for i, it in { { "+" .. tostring(res.brass), "BRASS" }, { "+" .. tostring(res.xp), "XP" } } do
 			local col = K.new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromScale((i - 1) * 0.5, 0), Size = UDim2.new(0.5, 0, 1, 0) }, heroes)
 			local _, _, set = K.hero(col, "N", 52, K.SANS_HEAVY, A.INK, false, true)
@@ -289,7 +329,7 @@ local function showReward(res: any)
 		end
 	end
 	-- 4. the odds, small
-	local odds = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 4 }, card)
+	local odds = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 5 }, card)
 	K.new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, odds)
 	local o = 0
 	for _, r in (res.rolls or {}) :: { any } do
@@ -301,11 +341,30 @@ local function showReward(res: any)
 	-- 5. what's said
 	local foot = if res.dry then "A Studio test: nothing was granted" elseif res.ok then ("The odds for rounds " .. tostring(res.band or res.n) .. " and up") else ""
 	if foot ~= "" then
-		local f = K.text(card, "Foot", foot, 14, A.INK2, K.SANS); f.Size = UDim2.new(1, 0, 0, 18); f.LayoutOrder = 5
+		local f = K.text(card, "Foot", foot, 14, A.INK2, K.SANS); f.Size = UDim2.new(1, 0, 0, 18); f.LayoutOrder = 6
 	end
+	-- 6. back to the lobby: the button (or Enter); on its own when the game ends a few seconds later anyway
+	local bar = K.new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 44), LayoutOrder = 7 }, card)
+	local btn = K.new("TextButton", { Name = "Lobby", AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.fromOffset(220, 44),
+		BackgroundColor3 = A.INK, BorderSizePixel = 0, Text = "BACK TO LOBBY", TextColor3 = A.BONE, FontFace = K.SANS_HEAVY, TextSize = 16, AutoButtonColor = true }, bar)
+	K.new("UICorner", { CornerRadius = UDim.new(0, 3) }, btn)
+	btn.Activated:Connect(function() zr:FireServer({ k = "xhome" }); btn.Text = "LEAVING" end)
+	local hint = K.text(bar, "Hint", if Keys.isTouch() then "" else "Enter", 14, A.INK2, K.SANS, Enum.TextXAlignment.Right)
+	hint.Position = UDim2.new(1, -352, 0, 0); hint.Size = UDim2.new(0, 120, 1, 0)
 	dim.Visible, card.Visible, rewardUp = true, true, true
-	task.delay(16, function() dim.Visible, card.Visible, rewardUp = false, false, false end)
+	me:SetAttribute("LoadoutOpen", true) -- (the mouse free for the button; the hands and guns hold still)
+	task.delay(16, function() dim.Visible, card.Visible, rewardUp = false, false, false; me:SetAttribute("LoadoutOpen", nil) end)
 end
+-- the film's own skip (ZombieCine: Space) asks for the card at once
+local pendingRes: any = nil
+me:GetAttributeChangedSignal("ZmCardNow"):Connect(function()
+	if me:GetAttribute("ZmCardNow") and pendingRes then local r = pendingRes; pendingRes = nil; showReward(r) end
+	me:SetAttribute("ZmCardNow", nil)
+end)
+Keys.began(function(io: any, gp: boolean)
+	if gp or not rewardUp then return end
+	if io.KeyCode == Enum.KeyCode.Return then zr:FireServer({ k = "xhome" }) end
+end)
 local xpToast = T.text(root, "XpToast", "", 18, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Center, true)
 xpToast.AnchorPoint = Vector2.new(0.5, 0); xpToast.Position = UDim2.new(0.5, 0, 0.5, 168); xpToast.Size = UDim2.fromOffset(500, 24)
 
@@ -324,7 +383,8 @@ zr.OnClientEvent:Connect(function(x: any)
 		local a = arena()
 		local lift = a and a:GetAttribute("XLift")
 		local at = if type(lift) == "number" then lift - XC.board + XC.outro else srv()
-		task.delay(math.max(0, at - srv()), function() showReward(x.res) end)
+		pendingRes = x.res
+		task.delay(math.max(0, at - srv()), function() if pendingRes == x.res then pendingRes = nil; showReward(x.res) end end)
 	elseif x.k == "xover" then
 		local res = x.res
 		if type(res) ~= "table" then return end
@@ -417,11 +477,28 @@ RunService.RenderStepped:Connect(function(dt: number)
 	rate += (want - rate) * math.min(1, dt * 0.8)
 	spin = (spin + rate * dt) % (math.pi * 2)
 	spinT = (spinT + rate * 1.9 * dt) % (math.pi * 2)
-	if parts.rotor then
-		parts.rotor.CFrame = cf * parts.rotOff * CFrame.Angles(0, spin, 0)
-		parts.rotor.Transparency = math.clamp((rate - 10) / 30, 0, 0.45) -- (a blur at speed)
+	local blur = math.clamp((rate - 10) / 30, 0, 0.4) -- (a blur at speed)
+	for _, r in parts.rotors do
+		r.p.CFrame = cf * parts.hubMain * CFrame.Angles(0, spin, 0) * r.fromHub
+		r.p.Transparency = blur
 	end
-	if parts.tail then parts.tail.CFrame = cf * parts.tailOff * CFrame.Angles(spinT, 0, 0) end
+	for _, r in parts.tails do r.p.CFrame = cf * parts.hubTail * CFrame.Angles(spinT, 0, 0) * r.fromHub end
+	-- the door: out of the hull a hair, then back along the boom, as the film says (ZM.X.film.door; from the lift-off)
+	if #parts.doors > 0 then
+		local open = Vector3.zero
+		if lift then
+			local ft = t - (lift - XC.board)
+			local d0, d1 = XC.film.door[1], XC.film.door[2]
+			local pop = math.clamp((ft - d0) / 0.25, 0, 1)
+			local sl = math.clamp((ft - d0 - 0.2) / math.max(0.1, d1 - d0 - 0.2), 0, 1)
+			sl = sl * sl * (3 - 2 * sl)
+			local dA = heli and heli:GetAttribute("DoorAt")
+			local side = if typeof(dA) == "Vector3" and dA.X < 0 then -1 else 1 -- (out of the hull on the door's own side)
+			open = Vector3.new(math.abs(XC.doorSlide.X) * side * pop, 0, XC.doorSlide.Z * sl)
+		end
+		for _, r in parts.doors do r.p.CFrame = cf * CFrame.new(open) * r.fromHub end
+		if game:GetService("RunService"):IsStudio() then me:SetAttribute("ZmDoorDbg", tostring(open) .. " n " .. #parts.doors) end
+	end
 	if parts.beacon then
 		local on = (os.clock() % 1.2) < 0.16
 		parts.beacon.Transparency = if on then 0 else 0.75
@@ -431,6 +508,13 @@ RunService.RenderStepped:Connect(function(dt: number)
 	lastSt = st
 end)
 me:GetAttributeChangedSignal("ZmArena"):Connect(function()
+	if me:GetAttribute("ZmArena") then
+		-- the helicopters' meshes and pictures loaded at the start (27 Nov test: built late, it showed grey for 2 s)
+		task.spawn(function()
+			local kit = ReplicatedStorage:WaitForChild("JankfireZmKit", 10)
+			if kit then pcall(function() game:GetService("ContentProvider"):PreloadAsync(kit:GetChildren()) end) end
+		end)
+	end
 	if not me:GetAttribute("ZmArena") then
 		offer.Visible = false; hold.Visible = false; mark.Visible = false
 		drop()

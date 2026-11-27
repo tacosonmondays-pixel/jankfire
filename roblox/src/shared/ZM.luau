@@ -301,10 +301,24 @@ ZM.X = {
 	voteS = 20, -- that break lasts this long (a plain break is R.rest)
 	hold = 90, -- the call to the lift-off: who's in the zone then is out
 	arrive = 55, over = 62, land = 66, -- the helicopter: in sight, over the pad, down
-	board = 3.2, -- s after the lift-off time the bodies are in (the film's first shot) and it rises
+	board = 4.2, -- s from the end of the hold-out to the lift-off (the film's first-person boarding plays in it)
 	heavy = { alive = 1.5, cap = 36, gap = 0.5 }, -- the hold-out: 50% more at once (36 at most), spawning twice as fast
-	intro = 7.5, -- the intro film (ZombieCine): round 1 starts 1.5 s after it, or 2.5 s after everyone skipped
-	outro = 8.2, -- the extraction film, then the reward screen
+	intro = 9.9, -- the intro film (ZombieCine): round 1 starts 1.5 s after it, or 2.5 s after everyone skipped
+	-- the intro as a news broadcast (27 Nov, the owner: "have a news broadcast actually for the intro a zombies, it'll be
+	-- like breaking news", "Then it cuts to shot of the school"): s into the film. the live feed (banner, LIVE, the one
+	-- headline, an aerial camera; the zoom to the boarded window), the hit and the static, signal lost, our own shot of
+	-- the school, the squad, your view
+	news = { banner = 0.25, line = 0.8, zoom = { 3.0, 4.0 }, hit = 4.6, static = { 4.65, 5.45 }, school = { 5.6, 7.7 }, squad = { 7.7, 9.3 } },
+	outro = 9.0, -- the extraction film, then the stats card
+	-- (27 Nov, the owner: "first person, helicopter door opens and there's a guy, he reaches out his hand, you take a
+	-- step forward then shot its an away shot of the helicopter flying off then boom displays your round"). s into the
+	-- film: the door slides back, the crew member reaches, your hand comes up, the step, the cut on contact
+	film = { door = { 0.6, 1.5 }, crew = 1.3, hand = 2.0, step = { 2.6, 3.6 }, cut = 3.7 },
+	reach = "rbxassetid://110255422946477", -- (vault Mixamo "Pointing Forward", frames 36-66: the arm out; mocap)
+	doorSlide = Vector3.new(-0.5, 0, 3.6), -- (model space: out of the hull a hair (on the door's side), then back along the boom)
+	-- which helicopter flies (ReplicatedStorage.JankfireZmKit; ZmKit.importHeli): "HeliA" the web game's JANK NEWS heli
+	-- rebuilt without writing, night JANK scheme; "HeliB" the same in a dark rescue scheme; "Heli" the first, chunky one
+	heli = "HeliA",
 	-- the zone per map (map-local studs, the arena's origin; area = the map area it stands in, opened on the call).
 	-- yaw: the way the helicopter's nose points on the pad (degrees about up; 0 = -z, the school's back). from: where it
 	-- comes from, leave: where it goes (map-local, relative to the pad)

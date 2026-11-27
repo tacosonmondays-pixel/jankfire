@@ -403,3 +403,79 @@ To pin down (likely Roblox's default Animate on the bot or zombie rigs); fixed o
   is called out big: a wrap's swatch in its own palette, or a flat glyph for the crate, bag or can, with its name, what
   it is and DROPPED with its odds, on the rarity's lip. Brass and XP as slit hero numbers, then every roll's odds
   small. The footer says whether it was a Studio test.
+
+### 4.7 The helicopter, rebuilt from the web game's (27 Nov; the owner: "Can the helicopter be modeled a bit better? Like the jankfire helicopter?")
+- **Source:** tools/blender/make_heli.py (the web game's JANK NEWS 7: lofted pod and boom, a see-through bubble with a
+  real cabin, gasketed windows, a 3-blade rotor on its hub, mast and pitch links, a 2-blade tail rotor, swept fin,
+  skids, the belly searchlight on its yoke, beacon and nav lights). tools/roblox/zm_heli2_models.py runs its build with
+  the livery swapped and the pieces split for Roblox: zh_body, zh_glass, zh_cabin, zh_lamps, zh_beacon, zh_cam (still),
+  zh_rotor, zh_tail, zh_search (they turn), x3 to studs (29 nose to tail, 9.5 tall), 12.3k triangles.
+- **No writing:** JANK NEWS, the 7 badge, J-ANKY, WE SAW THAT, NO HUGS, HI MOM and NO STEP / OK STEP are gone. A door
+  stripe, a boom stripe, a hazard band and plain panels take their places; the fin keeps its lightning bolt and the
+  ventral fin its hazard bands. The instrument panel's two ring dials (they read as an "8" and a "0") are a plain gauge
+  block. Every texture was looked at full size before the upload (the livery, the trim atlas, the glow atlas).
+- **Two liveries:** A, the JANK scheme for night (dusty pink a8627f, mustard boom and nose b38a33, teal skids and
+  accents 2f8a86), asset 139652899793298; B, a dark rescue scheme (charcoal 383d42, one jank-pink accent stripe
+  c2508f, dark skids), asset 112118070212058. The trim atlas's cyan (the skids) is recoloured per livery.
+- **In the game:** ReplicatedStorage.JankfireZmKit.HeliA / HeliB (ZmKit.importHeli; marker cubes give the hubs, the
+  searchlight's pin and the nose, then go). ZM.X.heli picks which one flies (one line; the first one is still there as
+  "Heli"). Its rotors turn about their own hubs (the model's HubMain / HubTail), the searchlight on zh_search, the warm
+  cabin light in zh_cabin, the beacon blinks, the hover sound on the body. A test's side-by-side: the player attribute
+  ZmHeli on the client overrides the switch. The film's boarding shot is tighter for the smaller body.
+- **The sliding door:** the left rear door (Roblox -X, the boarding side; the front one is filled by the pilot's seat)
+  comes out of the shell, the glass and the cabin's liner as zh_door, zh_doorglass and zh_doorliner (Blender, by the
+  door's box from make_heli's shut lines), with a door marker (the model's DoorAt). The rebuilt assets: A 113544983542207,
+  B 118547508099386 (the third upload: Roblox names each MeshPart after the glTF's mesh data, not its node, so the
+  build sets every mesh's own name to zh_<piece>__<code> too; the second upload's parts came in as "glass.002" and the
+  like and lost their paint codes).
+
+### 4.8 The extraction film, first person (27 Nov; the owner: "she sort of just teleports into the helicopter! How about it's first person, helicopter door opens and there's a guy, he reaches out his hand, you take a step forward then shot its an away shot of the helicopter flying off then boom displays your round and then other small stats return to lobby?")
+On each extracted player's own client (ZombieCine; the times in ZM.X.film, s into the film, which starts when the
+hold-out ends):
+1. 0-0.6 s: first person outside the helicopter's rear door at eye level, a short settle.
+2. 0.6-1.5 s: the door pops out of the hull and slides back along the boom (ZombieExtract.client moves it, from the
+   server's lift-off time), with the door sound.
+3. 1.3 s: the crew member, a plain R15 in a muted olive flight suit (the server's HumanoidDescription; no text or
+   logos) with a built helmet and dark visor, scaled to 0.85 to stand in the 4.7-stud cabin, lit by the warm cabin light
+   and the film's key light, reaches out (mocap: the vault's Mixamo "Pointing Forward", frames 36-66, retargeted with
+   tools/blender/mixamo_r15.py, Animation 110255422946477, held on its last frame).
+4. 2.0 s: your own left hand comes up from the bottom of the frame (the same clip on your own body; everything of it
+   but that arm hidden from your lens).
+5. 2.6-3.6 s: one step forward with a small bob; the clasp sound and a little kick as the hands meet.
+6. 3.7 s: a hard cut to the long lens as it lifts (4.2 s) and flies off; a fade at 8.4 s.
+7. 9.0 s: the stats card (A PLATE): EXTRACTED and the round big, kills / revives / damage / time survived small, then
+   the drop called out big, Brass and XP, the odds small; BACK TO LOBBY (or Enter) ends the game when every human who
+   got out has pressed it, or the game ends on its own 13 s later.
+Space skips to the card. Anyone left behind sees only the away shot, then the game over. The server hides the bodies
+at the cut. Traps from the tests: the crew member's clip loads only once he is in the world (an Animator outside the
+game can't load one: his arms stayed down); his helmet and visor hang on Welds at set offsets from the head (the
+WeldConstraints sat right in Edit and wrong in a game). Not done yet: teammates already aboard sitting in the cabin
+behind the crew member; the helmet's dome still doesn't draw in a game (the visor does; in Edit both do); your own arm
+shows at the frame's bottom from the start rather than coming up at 2.0 s. Sheets: roblox/docs/zombies/10-heli-old-A-B-27nov.jpg
+(the old helicopter against A and B, boarding and lift-off) and 11-extraction-film-first-person-27nov.jpg.
+
+### 4.9 The intro as a news broadcast (27 Nov; the owner: "have a news broadcast actually for the intro a zombies, it'll be like breaking news", "Then it cuts to shot of the school")
+It replaces the fly-over intro (ZombieCine; the times in ZM.X.news; 9.9 s, Space skips, round 1 waits for it):
+1. 0-4.65 s, **the live feed:** a news helicopter's camera over the school's front at night: grain, scan lines and
+   zoom brackets (live UI), focus breathing, a colder flatter grade (a ColorCorrection on this screen only), the
+   helicopter's searchlight sweeping the grounds, a strong moon fill so the school reads. LIVE top left (a blinking
+   dot), BREAKING NEWS slams in as a lower third (A PLATE ink and bone) with one headline under it: OUTBREAK ·
+   JANKFIELD HIGH. Nothing else is written: no ticker, no flavour lines. The news sting (APM's licensed "Breaking News",
+   86819169949071) and the rotor wash (zm_heli) under it.
+2. 3.0-4.6 s, **the zoom** onto a boarded lobby window as a zombie walks out of the dark and slams the planks
+   (zm_board, zm_planks, a kick). The window is the lobby's the feed can see: a clear line from both camera spots and
+   open sky over it score first, then the school's front (the first test's front-most window sat under the entrance
+   canopy behind a lamp post: black at the zoom). The camera works 46-58 studs out (from 75-92 the school's haze left
+   the feed black), the haze is thinned to 30% for the feed only, and the searchlight rides beside the camera, sweeping
+   the grounds, then held on the window for the zoom.
+3. 4.65-5.6 s, **static** (grey blocks new each frame, tear bars, PSE's "Television Static"), then black: the signal's
+   gone. The sting and the rotor wash cut.
+4. 5.6-7.7 s, **the school,** our own lens: outside at night in the fog, the bars, a slow push, the wind (zm_wind).
+5. 7.7-9.3 s, **the squad** in the lobby; the bars lift; the camera lands in your view at 9.9 s.
+All words are live TextLabels; no voices; the library sounds need no upload (zm_news, zm_static, zm_clasp,
+zm_doorslide are JankfireSounds entries pointing at licensed or approved ids). The moon is held each frame up to the
+squad, and the film sets the player's Finishing attribute (CineKit's flag "zmintro") so HubLife leaves the light alone:
+in the tests its zone switch into the match ran the map room's black haze over the feed's first half second, and the
+school's own look landing a beat after the start took the moon back (the whole feed read black). The zombie walks up to
+the planter under the window (the window's sill is above its hedge), so the slam lands on the planter's front. Sheet:
+roblox/docs/zombies/12-news-intro-27nov.jpg.

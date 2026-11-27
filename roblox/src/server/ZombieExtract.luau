@@ -77,6 +77,29 @@ function ZombieExtract.install(Z: any)
 		f:ClearAllChildren()
 		local tpl = g.templates and g.templates[0]
 		if tpl then local c = tpl:Clone(); c.Name = "Zombie"; c.Parent = f end
+		g.startT = now()
+		-- the extraction film's crew member (27 Nov): a plain R15 in a muted flight suit (no text, no logos); the client
+		-- puts a helmet on him and lets him reach out of the door (ZombieCine)
+		task.spawn(function()
+			local ok, crew = pcall(function()
+				local d = Instance.new("HumanoidDescription")
+				local suit, glove, skin = Color3.fromRGB(86, 92, 74), Color3.fromRGB(44, 46, 42), Color3.fromRGB(176, 128, 96)
+				d.HeadColor = skin
+				d.TorsoColor, d.LeftLegColor, d.RightLegColor = suit, suit, suit
+				d.LeftArmColor, d.RightArmColor = suit:Lerp(glove, 0.35), suit:Lerp(glove, 0.35)
+				return Players:CreateHumanoidModelFromDescription(d, Enum.HumanoidRigType.R15)
+			end)
+			if not ok or not crew or g.st == "over" then return end
+			local m = crew :: Model
+			m.Name = "Crew"
+			for _, d in m:GetDescendants() do
+				if d:IsA("Decal") and d.Name ~= "face" then d:Destroy()
+				elseif d:IsA("BasePart") then d.Material = Enum.Material.SmoothPlastic; d.CanCollide = false end
+			end
+			local hum = m:FindFirstChildOfClass("Humanoid")
+			if hum then hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end
+			if f.Parent then m.Parent = f end
+		end)
 		g.untilT = now() + XC.intro + 1.5
 		attrs(g, { IntroT0 = srv() + 0.4, IntroLen = XC.intro, IntroWin = win })
 		return nil
@@ -254,11 +277,15 @@ function ZombieExtract.install(Z: any)
 		end)
 		-- the rewards: the server's own event, once per player (receipt ids)
 		local rows = rowsOf(g)
+		x.home = {}
 		for _, m in g.members do
 			if not m.p then continue end
 			if m.extracted then
 				local ok, res = pcall(ZR.extract, g, m)
 				if not ok then warn("[jankfire] zombies rewards: " .. tostring(res)); res = { n = g.n, ok = false, why = "error", rolls = {} } end
+				-- the stats card's small numbers (27 Nov, the owner: "boom displays your round and then other small stats")
+				res.stats = { kills = m.kills, revives = m.revives, dmg = math.floor(ZR.track(m).dmg + 0.5),
+					time = math.floor(now() - (g.startT or now()) + 0.5) }
 				X.say(m, { k = "xreward", res = res })
 				print(("[jankfire] zombies extraction: %s out at round %d, ok %s (%s), brass %s, xp %s, dry %s"):format(
 					m.name, g.n, tostring(res.ok), tostring(res.why), tostring(res.brass), tostring(res.xp), tostring(res.dry)))
@@ -307,6 +334,12 @@ function ZombieExtract.install(Z: any)
 		if not mine then return end
 		if msg.k == "xcall" then
 			vote(g, p)
+		elseif msg.k == "xhome" then
+			-- back to the lobby from the stats card: when every human who got out has asked, the game ends now
+			if g.x.st ~= "out" or not g.x.home then return end
+			g.x.home[p.UserId] = true
+			for _, m in humans(g) do if m.extracted and not g.x.home[(m.p :: Player).UserId] then return end end
+			Z.stop("home")
 		elseif msg.k == "xskip" then
 			g.x.skips[p.UserId] = true
 			if g.st ~= "pre" then return end
