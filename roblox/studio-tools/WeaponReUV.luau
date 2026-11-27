@@ -230,6 +230,44 @@ local function meshFrom(uri: string)
 	return cache[uri]
 end
 
+-- copies placed before the roll-out (hub displays, racks, any gun built into a map) still wear the old meshes and carry
+-- no ids: map every template's UV1Mesh -> UV2Mesh and swap any part under root whose mesh is an old one (only the mesh
+-- changes). to = "uv1" swaps the other way. Returns how many parts and distinct meshes
+function R.sweep(root: Instance, to: string?, dry: boolean?)
+	local map = {}
+	for _, s in SETS do
+		local live = s[2]()
+		if not live then continue end
+		for _, p in live:GetDescendants() do
+			if p:IsA("MeshPart") then
+				local a, b = p:GetAttribute("UV1Mesh"), p:GetAttribute("UV2Mesh")
+				if a and b and a ~= b then
+					if to == "uv1" then map[b] = a else map[a] = b end
+				end
+			end
+		end
+	end
+	local n, fail, uris, k = 0, 0, {}, 0
+	for _, p in root:GetDescendants() do
+		if not p:IsA("MeshPart") then continue end
+		local want = map[p.MeshContent.Uri]
+		if not want then continue end
+		uris[want] = true
+		if not dry then
+			local src = meshFrom(want)
+			if not src then fail += 1; continue end
+			local size, cf = p.Size, p.CFrame
+			p:ApplyMesh(src)
+			p.Size = size; p.CFrame = cf
+		end
+		n += 1
+		k += 1
+		if k % 200 == 0 then task.wait() end
+	end
+	local u = 0; for _ in uris do u += 1 end
+	return ("%ssweep %s: %d parts, %d distinct meshes, %d failed to load"):format(if dry then "(dry) " else "", root:GetFullName(), n, u, fail)
+end
+
 -- put the old ("uv1") or the new ("uv2") meshes on every part that carries the ids
 function R.switch(which: string, dry: boolean?)
 	local attr = if which == "uv1" then "UV1Mesh" elseif which == "uv2" then "UV2Mesh" else nil

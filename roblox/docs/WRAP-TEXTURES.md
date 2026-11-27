@@ -683,6 +683,16 @@ UVs) 116008015535902, gadgets + gadget skins 78817996541078 (round bodies wrappe
 gun-models session (remodelled to the new standard). New builds get the standard on their own: every exporter calls
 `gun_uvs.unwrap`.
 
+**Where it stands (place v1512, 27 Nov):** every kit gun, skin, gadget and gadget skin template is on the new meshes,
+and a sweep (`R.sweep(workspace.Map)`: every placed copy whose mesh is an old one gets the new one by id) moved the
+hub displays and racks too (no hub rebuild needed). Checked in a solo Play: first person 21/21 and third person 42/42
+parts on new meshes, loadout previews (plain, the Cue skin, the Duckling skin) all new, Lava Lamp changing frames,
+0 wrap or mesh errors. Left on old UVs, small: the 4 added wing pieces on each of the Seraph Pistol and Sniper and 4
+on the Shredder's Chipper (they came after those uploads), 1 Bento Box piece (mesh size changed since its upload), 3
+parts of one hub display case (the chicken) whose new mesh would not load by id, and the skins with no model in the
+place (their packs found 0 models). The artist-kit skins (Ducklings, Triangulum, Royal Duck) name pieces by node and
+keep the slot in the material: `reuv_pack.py` puts the slot back.
+
 **The pictures didn't need redrawing:** a design is drawn per tile, so on the new UVs every wrap simply shows 2.4 times
 bigger. Sheets: `wrap-textures/audit/repeats-27nov.jpg` (guns and gadgets, before and after).
 
@@ -722,7 +732,8 @@ a wrap still failing after three reworks retires. Owners keep everything retired
   deliberate, mirror-symmetric folded planes (a boat body with a spine ridge and keel, a folded neck strip, a diamond
   head, a gold foil beak, flat triangular wings showing the blue side, a fin tail; 68 triangles), and two fresh critics
   both called it MADE. Owners keep it with the new look (`skins_origami2`). Both called the **Decoy Duck** AI too, but
-  its render showed holes where its baked wing paint should be, so it is judged again from an in-game photo. The
+  that render lost its baked wing paint; judged again from in-game photos by two fresh critics it split (one AI, one
+  MADE), so it stays; both said its dark wing paint looks smudgy, a note for the gun-models session. The
   **Incense Burner** split two and two over the two rounds; both rounds pointed at its handles draped over the rim.
 
 **Traps.**
