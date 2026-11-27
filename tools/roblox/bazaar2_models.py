@@ -332,17 +332,45 @@ for (x0, z0, x1, z1, axis, up, y0, y1) in L.STAIRS:
         zw = zo - 0.5 if zo == z0 else zo
         lo_end, hi_end = (x0, x1) if up > 0 else (x1, x0)
         plate('bz_stair', PLASTER, [(lo_end, 0), (hi_end, 0), (hi_end, y1 + 1.0), (lo_end, 1.0)], 0.5, Tr(0, 0, zw))
+# the courtyard's wagons (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?"): the web
+# game's own farm wagon over each wagon box, loaded; --box-wagons brings back the old box dressing
+WEB_WAGONS = '--box-wagons' not in K.FLAGS
+WAGON_BOXES = []
+def web_wagons():
+    """each wagon box (8 x 4.5 x 10) dressed as the web game's open wagon (public/models/p_wagon_open.glb, every face one
+    flat colour sampled from its atlas, in the town's woods with teal wheels, the town's one accent: vehicle_port),
+    loaded with a roped canvas bundle out to the box's sides, its tongue down on the paving ahead of it"""
+    import vehicle_port as VP
+    from mathutils import Matrix
+    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=TEAL2, iron='5a4a40', wood=WOOD2, cargo=CLOTH, dark='4a3a30'))
+    body, tongue = VP.wagon_parts(raw)
+    n = 0
+    for (x0, y0, z0, x1, y1, z1) in WAGON_BOXES:
+        cz = (z0 + z1) / 2
+        yaw = 0.0 if cz < 0 else math.pi                     # (the tongues toward the courtyard's middle line)
+        M = VP.fit(body, (x0 + 0.35, y0, z0, x1 - 0.35, y1 - 0.5, z1), yaw=yaw)
+        n += VP.place('bz_wagon', body + tongue, M)
+        # the load: a canvas bundle over the bed, out to the box's sides, two rope bands round it
+        B('bz_wagon', CLOTH2, x0 + 0.15, 2.6, z0 + 1.6, x1 - 0.15, y1 - 0.05, z1 - 2.2, bev=0.9)
+        for k in (0.33, 0.67):
+            zz = z0 + 1.6 + (z1 - 2.2 - z0 - 1.6) * k
+            B('bz_wagon', ROPE, x0 + 0.05, 2.5, zz - 0.18, x1 - 0.05, y1 + 0.05, zz + 0.18, bev=0.12)
+    print('WAGONS: %d, the web open wagon, loaded (%d triangles placed)' % (len(WAGON_BOXES), n))
+
 # springboards, stalls, wagons
 for p in L.PADS: springboard(p)
 for i, b in enumerate(L.SOLID):
     x0, y0, z0, x1, y1, z1, mm = b
     if mm == 'cover' and y0 == 0.0: stall_dress(x0, z0, x1, z1, y1, i)
-    if mm == 'wood' and y0 == 0.0 and y1 < 6:
+    if mm == 'wood' and y0 == 0.0 and y1 < 6 and WEB_WAGONS:
+        WAGON_BOXES.append((x0, y0, z0, x1, y1, z1))
+    elif mm == 'wood' and y0 == 0.0 and y1 < 6:
         mw = 'bz_wagon'
         B(mw, WOOD, x0, 1.4, z0, x1, y1 - 0.2, z1, bev=0.3)
         for (wx, wz) in ((x0 + 1.4, z0), (x1 - 1.4, z0), (x0 + 1.4, z1), (x1 - 1.4, z1)):
             cylz(mw, WOOD2, wz - 0.3, wz + 0.3, wx, 1.4, 1.4, segs=12, bev=0.05)
         blob(mw, CLOTH, (x0 + x1) / 2, y1 - 0.2, (z0 + z1) / 2, min(x1 - x0, z1 - z0) * 0.42, sy=0.5, sub=1, sx=1.4)
+if WEB_WAGONS: web_wagons()
 # the town wall: plaster on stone, crenellated, a closed gate at each end
 mw = 'bz_wall'
 NW = 64
@@ -409,6 +437,7 @@ VIEWS = [
     ('roofs', (-118, H + 6, -20), (40, H + 4, 10), 22),
     ('plaza', (-48, 6, 34), (0, 12, -40), 24),
     ('hall', (-28, 6, -74), (20, 7, -46), 22),
+    ('courtyard', (-128, 9, 16), (-152, 2, -4), 34),
 ]
 if PREVIEW and '--no-preview' not in K.FLAGS:
     _orig = K.render_previews

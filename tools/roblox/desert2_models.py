@@ -228,7 +228,41 @@ def boulders():
     for (x, y0, z, w, h, d) in L.BOULDERS:
         B(m, rnd.choice((ROCK1, ROCK2, ROCK3)), x - w / 2, y0, z - d / 2, x + w / 2, y0 + h * 0.8, z + d / 2, bev=min(1.6, min(w, d) * 0.3))
         B(m, rnd.choice((ROCK3, ROCK1)), x - w / 2 + 0.8, y0 + h * 0.8 - 0.4, z - d / 2 + 0.8, x + w / 2 - 0.8, y0 + h, z + d / 2 - 0.8, bev=0.7)
+# the broken wagons (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?"): the web
+# game's own farm wagon over each wagon box; --box-wagons brings back the old plank dressing
+WEB_WAGONS = '--box-wagons' not in K.FLAGS
+def web_wagons():
+    """each wagon box dressed as the web game's open wagon (public/models/p_wagon_open.glb, every face one flat colour
+    sampled from its atlas, in the canyon's woods: vehicle_port), broken: no tongue, its front right wheel off and lying
+    flat beside it, the bed dropped a little onto that side. The box (10 x 4.5 x 6) stays the cover."""
+    import vehicle_port as VP
+    from mathutils import Matrix
+    raw = VP.port('p_wagon_open', VP.WAGON_RULES(bed=WOOD, floor=WOOD2, wheel=WOOD2, iron=IRON, wood=CRATE, cargo=CANVAS, dark='4a3f36'))
+    body, tongue = VP.wagon_parts(raw)
+    lo, hi = VP.bounds(body)
+    zc = (lo[2] + hi[2]) / 2
+    off, body = VP.split(body, lambda t: VP.centre(t).x > 2.88 and VP.centre(t).z > zc)
+    if off:
+        olo, ohi = VP.bounds(off)
+        hub = Vector(((olo[0] + ohi[0]) / 2, (olo[1] + ohi[1]) / 2, (olo[2] + ohi[2]) / 2))
+        r = (ohi[1] - olo[1]) / 2
+        # flat on the ground, out from the wagon's side and toward its front
+        off = VP.transform(off, Matrix.Translation((hi[0] + r * 0.9, (ohi[0] - olo[0]) / 2 + 0.02, hub.z + 1.0))
+                           @ Matrix.Rotation(-math.pi / 2, 4, 'Z') @ Matrix.Translation(-hub))
+    # dropped onto the wheel-less side: rolled about the left wheels' line on the ground
+    body = VP.hinge(body, (lo[0], 0.0, 0.0), (0, 0, 1), -math.radians(4.0))
+    n = 0
+    for (x, z, s) in L.WAGONS:
+        b = [bb for bb in L.SOLID if bb[6] == 'wood' and abs((bb[0] + bb[3]) / 2 - x) < 0.1 and abs((bb[2] + bb[5]) / 2 - z) < 0.1][0]
+        x0, y0, z0, x1, y1, z1 = b[:6]
+        along_x = (x1 - x0) >= (z1 - z0)
+        yaw = (math.pi / 2 if s > 0 else -math.pi / 2) if along_x else (0.0 if s > 0 else math.pi)
+        M = VP.fit(body, (x0, y0, z0, x1, y1, z1), yaw=yaw)
+        n += VP.place('ds_wagon', body + off, M)
+    print('WAGONS: %d, the web open wagon, broken (%d triangles placed)' % (len(L.WAGONS), n))
+
 def wagons():
+    if WEB_WAGONS: return web_wagons()
     m = 'ds_wagon'
     for (x, z, s) in L.WAGONS:
         # the box hit is 10 x 4.5 x 6 (or 6 x 4.5 x 10): lay the wagon along its long side
@@ -346,5 +380,7 @@ VIEWS = [
     ('basin', (-28, 5, 14), (10, 20, 36), 20),
     ('mesa', (-120, M_ + 6, -86), (40, M_ + 4, 40), 22),
     ('bridge', (0, M_ + 5, 2), (0, M_ + 2, 44), 26),
+    ('wagon', (-46, 8, -42), (-60, 2, -57), 40),
+    ('wagon2', (-38, 7, 40), (-25, 2, 27), 40),
 ]
 K.finish('desert2', OUT_DIR, PREVIEW, VIEWS, prefix='desert2', sky=(0.78, 0.66, 0.52), sun_rot=(52, 0, -140), sun_energy=3.4)

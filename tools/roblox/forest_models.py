@@ -326,11 +326,21 @@ def rocks(items):
     for (bb, mat, seed, sub) in L.rock_groups(items):
         rock('fo_rocks', ROCK if mat == 'rockf' else MOSS, bb, seed, sub=sub)
 
+# the broken-down car (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?"): the web
+# game's own sedan over the web car's boxes (broken_car below); --box-car brings back the old dressed boxes
+WEB_CAR = '--box-car' not in K.FLAGS
+CAR_REGION = (L.lx(-10.45), -1.0, L.lz(55.0), L.lx(-5.55), 7.0, L.lz(58.4))    # (local studs: the car's boxes)
+CAR_MATS = ('carrust', 'glassdark', 'chrome', 'tire', 'hazard2')
+def in_car(b):
+    r = CAR_REGION
+    return r[0] - 0.01 <= b[0] and b[3] <= r[3] + 0.01 and r[2] - 0.01 <= b[2] and b[5] <= r[5] + 0.01 and b[4] <= r[4]
+
 def dress():
     tents = {}
     rocks_in = []
     for (b, mat, w) in L.KEPT:
         if w.get('pv') in ('pine', 'birch', 'deadtree'): continue        # (trees: trees())
+        if WEB_CAR and mat in CAR_MATS and in_car(b): continue          # (the car: broken_car())
         x0, y0, z0, x1, y1, z1 = b
         sx, sy, sz = x1 - x0, y1 - y0, z1 - z0
         cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
@@ -474,6 +484,57 @@ def road_extras():
         x0, x1 = max(L.lx(b['min'][0]), -420.0), L.lx(b['max'][0])
         bar('fo_road', '3b3c3f', (x0, y, z), (x1, y, z), t=0.18)
 
+def broken_car():
+    """the broken-down car on the road: the web game's own sedan (public/models/p_car_sedan.glb, every face one flat
+    colour sampled from its textures, the plates blank: vehicle_port) laid over the web car's boxes the way they tell
+    it: the bonnet stood up (web box 1415), the rear door on the road's south side swung open (1417, hinged at the
+    B-pillar), the front tyre on the north side flat (1413), the hazards blinking (its indicators are neon ffa448, the
+    colour ForestLife's blinker finds). The boxes stay the collision; the engine block (1416) keeps its own dressing.
+    Inside, where the open door and the bonnet let you look: a dark cabin with seats, a dark engine bay."""
+    import vehicle_port as VP
+    # (round 2, the critics: the rust-brown car sank into the brown road at night; an aged off-white reads, quietly)
+    DARK_IN, SEAT, BODY = '3e4045', '595e67', 'b5afa3'
+    tris = VP.port('p_car_sedan', VP.CAR_RULES(body=BODY, ind='ffa448', ind_kind='neon'))
+    # (the sedan's own frame, studs, front +Z: the windscreen's foot at z 3.91, y 2.72; the B-pillar's back edge at z
+    # 0.05; the body's sides at x +-2.74; the wheels' centres at z 4.27 and -3.98)
+    ZH, YH = 3.91, 2.72
+    for (p, n) in (((0, 0, ZH), (0, 0, 1)), ((2.35, 0, 0), (1, 0, 0)), ((-2.35, 0, 0), (1, 0, 0)),
+                   ((0, 0, 0.05), (0, 0, 1)), ((0, 0, -2.55), (0, 0, 1)), ((0, 0.85, 0), (0, 1, 0))):
+        tris = VP.clip(tris, p, n)
+    def is_hood(t):
+        c = VP.centre(t)
+        return t['mat'] == 'tint' and c.z > ZH and abs(c.x) < 2.35 and t['n'].y > 0.3 and c.y > 2.3
+    def is_door(t):
+        c = VP.centre(t)
+        return c.x < -1.8 and t['n'].x < -0.45 and -2.55 < c.z < 0.05 and c.y > 0.85 and t['obj'] not in ('wheel_rr', 'wheel_fr')
+    hood, tris = VP.split(tris, is_hood)
+    door, tris = VP.split(tris, is_door)
+    hood = VP.hinge(VP.thicken(hood, 0.12), (0, YH, ZH), (1, 0, 0), -math.radians(86))
+    door = VP.hinge(VP.thicken(door, 0.15, look=('plastic', '4a4d52')), (-2.74, 0, 0.05), (0, 1, 0), math.radians(88))
+    # the flat tyre: squashed onto the road, a little wider
+    fl, tris = VP.split(tris, lambda t: t['obj'] == 'wheel_fl')
+    fl = VP.transform(fl, Matrix.Translation((2.38, 0, 0)) @ Matrix.Diagonal((1.1, 0.74, 1.0, 1)) @ Matrix.Translation((-2.38, 0, 0)))
+    # where the openings let you look in, the shell gets a dark inner skin (Roblox draws only a face's front, so a bare
+    # shell would show the road through the car), with a rim round the cut edges; floors and seats inside
+    def near(t):
+        c = VP.centre(t)
+        return t['obj'] == 'shell' and abs(c.x) < 2.76 and -2.75 < c.z < 7.3 and c.y > 0.6
+    inside, tris = VP.split(tris, near)
+    inside = VP.thicken(inside, 0.08, look=('plastic', DARK_IN))
+    room = (VP.box(-2.6, 0.7, -2.6, 2.6, 1.0, 3.4, ('plastic', DARK_IN))                # the cabin floor
+            + VP.box(-2.4, 0.95, ZH - 0.1, 2.4, 1.2, 6.7, ('plastic', DARK_IN))         # the engine bay's floor
+            + VP.box(-2.2, 1.0, -2.4, 2.2, 1.95, -0.7, ('plastic', SEAT))              # the back seat
+            + VP.box(-2.2, 1.95, -2.45, 2.2, 3.3, -1.95, ('plastic', SEAT))
+            + VP.box(-2.05, 1.0, 0.35, -0.35, 3.35, 1.0, ('plastic', SEAT))            # the front seats' backs
+            + VP.box(0.35, 1.0, 0.35, 2.05, 3.35, 1.0, ('plastic', SEAT)))
+    car = tris + inside + hood + door + fl + room
+    # onto the web car's body box (x -10.3..-5.7, z 55.25..57.15 m), front +X: a touch wider and taller than the
+    # sedan (the box car was), the wheels on the road
+    cx, cz = L.lx(-8.0), L.lz(56.2)
+    M = Tr(cx, 0.0, cz) @ Matrix.Rotation(math.pi / 2, 4, 'Y') @ Matrix.Diagonal((5.7 / 5.48, 1.08, 13.8 / 14.3, 1))
+    n = VP.place('fo_road', car, M)
+    print('BROKEN CAR: the web sedan, %d triangles' % n)
+
 def dock_extras():
     # posts down to the lake bed (their boxes stop just under the water), a lamp on a post at the dock's end
     for (b, mat, w) in L.KEPT:
@@ -531,6 +592,7 @@ def edge():
 bpy.ops.wm.read_factory_settings(use_empty=True)
 ground(); lake(); trees(); undergrowth(); dress()
 cabin_extras(); camp_extras(); tower_extras(); mast_extras(); road_extras(); dock_extras(); edge()
+if WEB_CAR: broken_car()
 
 HIT = L.MATS
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.HIT_SOLID]
@@ -596,6 +658,8 @@ VIEWS = [
     ('mastyard_dock', (205, 8, 70), (140, 14, -30), 20),
     ('campsite', (-58, 9, 128), (-108, 3, 90), 20),
     ('road_car', (30, 7, 150), (-42, 3, 171), 20),
+    ('car_close', (-20, 10, 158), (-42, 3, 171.6), 55),
+    ('car_door', (-60, 9, 194), (-42, 3, 172), 55),
     ('clearing_high', (-30, 60, 40), (-18, 0, -27), 22),
 ]
 DAY = '--day' in K.FLAGS

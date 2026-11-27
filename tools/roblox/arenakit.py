@@ -352,10 +352,12 @@ def finish(kit, out_dir, preview_dir=None, views=(), prefix='kit', **pv):
     # --only=<model>,<model>: a patch kit with just these models (18 Nov 2026: swapped into a built arena without a
     # rebuild, WebArena's W.swap; the layout is written whole before this either way)
     only = [f.split('=', 1)[1].split(',') for f in FLAGS if f.startswith('--only=')]
+    # (the z-fight fix runs on the WHOLE kit first, so a patch's pieces move exactly as they do in a full build: 27 Nov
+    # 2026, a Platform patch made after the cut lost its quarters floor's lift off the deck and flickered, 0.02 studs)
+    zfightfix.fix(PIECES)
     if only:
         for key in [k for k in PIECES if k[0] not in only[0]]: del PIECES[key]
         print('ONLY', sorted({k[0] for k in PIECES}))
-    zfightfix.fix(PIECES)
     # the kit's extent: Roblox shrinks the whole upload if any of it reaches past 2,048 studs across
     lo, hi = [1e9] * 3, [-1e9] * 3
     for (model, key), items in PIECES.items():
@@ -369,8 +371,14 @@ def finish(kit, out_dir, preview_dir=None, views=(), prefix='kit', **pv):
           '  TOO BIG: Roblox will shrink it' if span > 2040 else '', len(BACKDROP)))
     flush()
     if preview_dir and views:
+        # (a preview may add meshes of its own: the Forest's fog cube and lake plane. They are taken out again before
+        # the export: on 27 Nov 2026 a Forest patch built with its night preview carried the 2,400-stud fog cube, and
+        # Roblox shrank the whole upload to fit 2,048 studs: the car stood 30 studs off its spot)
+        before = set(bpy.data.objects)
         try: render_previews(preview_dir, views, prefix, **pv)
         except Exception as e: print('PREVIEW FAILED', e)
+        for o in [o for o in bpy.data.objects if o not in before and o.type == 'MESH']:
+            bpy.data.objects.remove(o, do_unlink=True)
     if '--no-glb' not in FLAGS:
         rbxglb.turn_for_roblox()
         out = os.path.join(out_dir, kit + '.glb')

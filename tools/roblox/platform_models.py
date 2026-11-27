@@ -269,9 +269,38 @@ def crane_boom(m, b):
                 za, zb = z0 + (z1 - z0) * k / n, z0 + (z1 - z0) * (k + 1) / n
                 strut(m, YEL2, (xx, y0 + 0.4, za), (xx, y1 - 0.4, zb), 0.45) if k % 2 == 0 else strut(m, YEL2, (xx, y1 - 0.4, za), (xx, y0 + 0.4, zb), 0.45)
 
+# the lifeboats (27 Nov 2026, the vehicles pass: "Can the vehicles on all maps be made a bit better?"): the web game's
+# own enclosed lifeboat over each pair of boxes (lifeboats below); --box-boats brings back the old rounded boxes
+WEB_BOATS = '--box-boats' not in K.FLAGS
+BOATS = []
 def lifeboat(m, b):
     x0, y0, z0, x1, y1, z1 = sb(b)
+    if WEB_BOATS: BOATS.append((x0, y0, z0, x1, y1, z1)); return
     B(m, ORANGE, x0, y0, z0, x1, y1, z1, bev=min(1.4, (y1 - y0) * 0.45))
+
+def lifeboats():
+    """each lifeboat's two boxes (the hull, the canopy on it) dressed as the web game's enclosed lifeboat
+    (public/models/p_wreck_boat.glb: every face one flat colour sampled from its atlas, its roof lettering gone to the
+    hull colour: vehicle_port), its door to the deck; it hangs off the deck's south edge, so two davits on the deck's
+    side hold it (look only, outboard of the rail: nothing to walk into)"""
+    import vehicle_port as VP
+    tris = VP.port('p_wreck_boat', VP.LIFEBOAT_RULES(hull=ORANGE, hull2='a8693c', dark=DARK, glass='34404b', light=WHITE2))
+    hulls = [b for b in BOATS if b[1] < 4.0]
+    for h in hulls:
+        top = max(b[4] for b in BOATS if b[0] >= h[0] - 0.1 and b[3] <= h[3] + 0.1 and b[2] >= h[2] - 0.1 and b[5] <= h[5] + 0.1)
+        box = (h[0], h[1], h[2], h[3], top, h[5])
+        VP.place('pf_boats', tris, VP.fit(tris, box, yaw=-math.pi / 2))     # (front -X; its door, +X, to the deck)
+        # the davits: a post on the deck's side, an arm out over the boat, a fall down to its roof
+        # (round 2, the critics: chunkier, and seated: each post stands on a bracket bolted to the deck's side, no end
+        # hanging below it)
+        zd, zc = -26.0 * S - 0.75, (h[2] + h[5]) / 2
+        for x in (h[0] + 2.6, h[3] - 2.6):
+            B('pf_boats', STEEL2, x - 0.75, -1.6, zd - 0.7, x + 0.75, 0.2, -26.0 * S + 0.05, bev=0.2)      # the bracket
+            strut('pf_boats', STEEL2, (x, -1.2, zd), (x, top + 2.2, zd), 1.0)
+            strut('pf_boats', STEEL2, (x, top + 2.0, zd + 0.3), (x, top + 2.9, zc), 0.9)
+            B('pf_boats', DARK, x - 0.5, top + 2.2, zc - 0.5, x + 0.5, top + 2.9, zc + 0.5, bev=0.15)   # the block
+            strut('pf_boats', DARK, (x, top + 2.3, zc), (x, top - 0.1, zc), 0.22)
+    print('LIFEBOATS: %d, the web lifeboat (%d triangles each)' % (len(hulls), len(tris)))
 
 def helideck(m, b):
     """the helideck: a steel plate, a darker steel ring (no letters, no colour: a tone of the deck itself)"""
@@ -407,11 +436,14 @@ VIEWS = [
     ('att', (75, 5.6, 0), (-30, 4, 0), 18),
     ('def', (-80, 5.6, 6), (30, 6, -6), 18),
     ('cellar', (-60, -16, 40), (30, -18, -10), 18),
+    ('boats', (52, 13, -52), (82, 5, -83), 30),
+    ('boats_sea', (104, 4, -128), (82, 6, -83), 30),
 ]
 
 import bpy
 bpy.ops.wm.read_factory_settings(use_empty=True)
 dress_boxes(); separators(); derrick(); sea(); deco(); lamps()
+if WEB_BOATS: lifeboats()
 solid, pads_, spawns, team = layout()
 K.write_layout(LAYOUT, INFO, solid, pads_, spawns, team, src='tools/roblox/platform_models.py')
 K.finish('platform', OUT_DIR, PREVIEW, VIEWS, prefix='platform', sky=(0.72, 0.76, 0.8), sun_rot=(55, 0, -140))

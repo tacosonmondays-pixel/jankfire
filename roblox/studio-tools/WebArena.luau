@@ -31,6 +31,14 @@ W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 1119400
 	Backrooms = 114408994542661, Forest = 82632705219845, ArcticCabin = 112062417043410,
 	Skatepark = 119318569961702, Station = 95570686035667, JankfieldHigh = 131390597697986,
 	JankfieldHighV2A = 101642156361708, JankfieldHighV2B = 125835445295852 } :: { [string]: number } -- (v2B kit r5, 26 Nov 2026: props off walls and entrances, 4 in 10 lamps dead; r4 was 97107037826202)
+-- patch kits (W.swap) that W.import lays over the whole kit, in order, so a re-import keeps them (27 Nov 2026, the
+-- vehicles pass: the web game's own vehicles, tools/roblox/vehicle_port.py; each map's builder makes them as it is)
+W.PATCHES = {
+	Forest = { 84423293100435 }, -- fo_road, fo_glow: the broken-down car (the web sedan, bonnet up, a door open)
+	Platform = { 100377921529718 }, -- pf_quarters, pf_boats: the lifeboats (the web lifeboat) on chunky davits (r1 71711339249899)
+	DesertV2 = { 118677748712819 }, -- ds_wagon: the broken wagons (the web open wagon, a wheel off)
+	BazaarV2 = { 90333922226970 }, -- bz_wagon: the courtyard wagons (the web open wagon, loaded)
+} :: { [string]: { number } }
 
 -- the live zombies school (20 Nov 2026): the zombies queue picks any Map model tagged ZombiesMap at random, so only ONE
 -- version of Jankfield High is tagged at a time; the others stay built as spares (JankZombies start can still name one
@@ -129,19 +137,21 @@ function W.import(name: string, id: number?): string
 		table.insert(names, ("%s %d"):format(mname, #parts))
 	end
 	container:Destroy()
+	-- the patch kits laid over this kit (W.PATCHES), in order: a whole re-import keeps them
+	for _, pid in (W.PATCHES[name] or {}) do table.insert(names, "patch " .. W.swap(name, pid)) end
 	table.sort(names)
 	return ("kit %s (asset %d): %d models%s\n  %s"):format(L.kit, aid, #names, if bad > 0 then ", " .. bad .. " pieces with no name rule" else "", table.concat(names, "\n  "))
 end
 
 -- a patch kit (18 Nov 2026: arenakit's --only=<model>,...): swaps just the models in asset `id` into the kit library and
 -- into the built arena's Shell (placed as W.build places them), and leaves everything else as it is: the other models,
--- the Gut's installed heart, hand-set attributes. (a later full W.import + W.build needs a kit uploaded whole)
+-- the Gut's installed heart, hand-set attributes. A patch that should outlive a whole W.import goes into W.PATCHES.
+-- (with the arena not built, only the library is swapped)
 --   print(W.swap("Gut", <asset id>))
 function W.swap(name: string, id: number): string
 	local L = layout(name)
 	local root = workspace.Map:FindFirstChild(name)
-	if not root then return name .. " is not built" end
-	local shell = root:FindFirstChild("Shell")
+	local shell = root and root:FindFirstChild("Shell")
 	local ok, container = pcall(function() return InsertService:LoadAsset(id) end)
 	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
 	local groups, bad = {}, 0
