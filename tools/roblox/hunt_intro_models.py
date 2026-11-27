@@ -56,12 +56,13 @@ def room_a():
     K.B(p, DARK, -1.4, 3.42, -5.6, 1.4, 3.55, -4.9, bev=0.04, segs=1)     # the keyboard
     K.B(p, DARK, -3.3, 0.0, -6.6, -2.2, 2.4, -4.9, bev=0.1)               # the tower under the desk
     K.cyl(p, STEEL, 3.0, 3.4, -5.4, 0.3, 0.55, segs=14, bev=0.06)         # a mug
-    # the office chair, pushed back and turned
-    M = Tr(2.8, 0, -2.6) @ Ry(math.radians(-28))
-    K.B(p, DARK, -1.1, 2.1, -1.1, 1.1, 2.5, 1.1, bev=0.2, M=M)
-    K.B(p, DARK, -1.0, 2.5, 0.75, 1.0, 5.2, 1.05, bev=0.22, M=M)
-    K.cyl(p, STEEL, 2.8, 0.4, -2.6, 0.14, 1.7, segs=10, bev=0.04)
-    K.cyl(p, DARK, 2.8, 0.0, -2.6, 1.1, 0.4, segs=16, bev=0.1)
+    # the office chair, its own piece at its own origin (HuntIntroData.chair: pushed back and turned in the intro, at
+    # the desk in the gunman's win film)
+    c = 'hiA_chair'
+    K.B(c, DARK, -1.1, 2.1, -1.1, 1.1, 2.5, 1.1, bev=0.2)
+    K.B(c, DARK, -1.0, 2.5, 0.75, 1.0, 5.2, 1.05, bev=0.22)
+    K.cyl(c, STEEL, 0.0, 0.4, 0.0, 0.14, 1.7, segs=10, bev=0.04)
+    K.cyl(c, DARK, 0.0, 0.0, 0.0, 1.1, 0.4, segs=16, bev=0.1)
     # the bed along the left wall, its head at the back
     K.B(p, WOOD, -8.0, 0.0, -1.0, -3.4, 1.4, 7.0, bev=0.15)
     K.B(p, TRIM, -7.9, 1.4, -0.9, -3.5, 2.3, 6.9, bev=0.25)               # the mattress
@@ -133,6 +134,30 @@ def room_b():
     K.cyl(p, STEEL, 4.4, 0.0, 1.8, 0.7, 0.2, segs=14, bev=0.05)            # a lamp stand with no shade
     K.cyl(p, STEEL, 4.4, 0.2, 1.8, 0.08, 4.6, segs=8, bev=0.02)
 
+# ---------------------------------------------------------------- the win films' pieces (27 Nov, the owner's endings)
+def win_pieces():
+    # the friends' couch in the attic (only in the hiders' win film), at its own origin, facing -z (the TV): a worn
+    # two-seater with a blanket over one arm
+    c = 'hiB_couch'
+    FAB, CUSH, BLANKET = '7a6f63', '8b8073', '5f6b73'
+    K.B(c, FAB, -3.0, 0.3, -1.4, 3.0, 1.5, 1.4, bev=0.35)                 # the base
+    for x0 in (-2.6, 0.05):
+        K.B(c, CUSH, x0, 1.5, -1.3, x0 + 2.55, 2.1, 1.0, bev=0.3)          # the seat cushions
+    K.B(c, FAB, -3.0, 1.5, 0.9, 3.0, 4.0, 1.4, bev=0.4)                   # the back
+    for sx in (-1, 1):
+        K.B(c, FAB, sx * 3.0 - (0.7 if sx > 0 else 0), 0.3, -1.4, sx * 3.0 + (0.0 if sx > 0 else 0.7), 2.8, 1.4, bev=0.35)   # the arms
+        K.B(c, WOOD2, sx * 2.6 - 0.2, 0.0, -1.2, sx * 2.6 + 0.2, 0.3, -0.8, bev=0.06)   # the feet
+        K.B(c, WOOD2, sx * 2.6 - 0.2, 0.0, 0.8, sx * 2.6 + 0.2, 0.3, 1.2, bev=0.06)
+    K.B(c, BLANKET, 2.3, 1.6, -1.45, 3.05, 2.9, 1.2, bev=0.3)              # a blanket over the right arm
+    # a game controller (each friend holds one: welded to the right hand), at its own origin: chunky, plain, no marks
+    g = 'hiB_pad'
+    K.B(g, '3a3d42', -0.55, -0.12, -0.3, 0.55, 0.12, 0.25, bev=0.1)
+    for sx in (-1, 1):
+        K.cyl(g, '3a3d42', sx * 0.45, -0.12, 0.25, 0.2, 0.24, segs=12, bev=0.06)
+        K.cyl(g, '8d9297', sx * 0.28, 0.12, -0.08, 0.08, 0.05, segs=10, bev=0.02)
+    # a sofa cushion knocked to the floor (the gunman's win walk through the wrecked house)
+    K.B('hiW_cushion', '8b8073', -1.2, 0.0, -1.0, 1.2, 0.6, 1.0, bev=0.28)
+
 # ---------------------------------------------------------------- the data the client reads
 SCREENS = {
     # where the light comes from: one Part (centre, size, facing +z = toward the actor), its colour and its light
@@ -143,6 +168,19 @@ ACTOR = (0.0, 0.0, 0.0)
 # where each piece sits in the kit (apart, so the previews and Studio's import don't overlap): the client moves a room
 # by -origin to put the actor's feet at its spot
 ORIGIN = {'hiA': (0.0, 0.0, 0.0), 'hiB': (40.0, 0.0, 0.0)}
+# the pieces that stand at their own origin (the client places them from the spots below; the kit keeps each at its
+# room's origin: hiA_chair at A's, hiB_couch and hiB_pad at B's, hiW_cushion at none)
+PIECES = {'hiA_chair': 'hiA', 'hiB_couch': 'hiB', 'hiB_pad': 'hiB', 'hiW_cushion': None}
+# spots in the rooms' own space: (x, y, z, yaw degrees); a seat is where the sitter's hips go
+SPOTS = {
+    'chairIntro': (2.8, 0.0, -2.6, -28.0),      # A: the chair pushed back and turned (the intro)
+    'chairDesk': (0.0, 0.0, -2.9, 0.0),         # A: the chair at the desk (the gunman's win)
+    'deskSeat': (0.0, 2.5, -2.95, 0.0),         # A: his hips on it, facing the screen
+    'couch': (0.6, 0.0, 2.8, 0.0),              # B: the friends' couch, facing the TV
+    'seat1': (-0.72, 2.1, 2.65, 0.0), 'seat2': (1.92, 2.1, 2.65, 0.0),   # B: its two seats
+    'seat3': (-4.0, 2.4, 1.6, 14.0),            # B: the sheeted armchair
+    'stand1': (-1.6, 0.0, 5.4, 6.0), 'stand2': (1.2, 0.0, 5.6, -8.0), 'stand3': (-3.8, 0.0, 4.7, 16.0),   # behind it
+}
 
 def write_data():
     def v3(t): return 'Vector3.new(%s)' % ', '.join(K.fmt(v) for v in t)
@@ -156,12 +194,17 @@ def write_data():
         o.append('\t\t%s = { at = %s, size = %s, col = "%s", light = { kind = "%s", brightness = %s, range = %s, col = "%s" } },' % (
             k, v3(s['at']), v3(s['size']), s['col'], lk, K.fmt(lb), K.fmt(lr), lc))
     o.append('\t},')
+    o.append('\tpieces = { %s },' % ', '.join('%s = %s' % (k, ('"%s"' % v[2:]) if v else 'false') for k, v in PIECES.items()))
+    o.append('\tspots = {')
+    for k, (x, y, z, yaw) in SPOTS.items():
+        o.append('\t\t%s = { %s, %s, %s, %s },' % (k, K.fmt(x), K.fmt(y), K.fmt(z), K.fmt(yaw)))
+    o.append('\t},')
     o.append('}')
     with open(DATA, 'w', encoding='utf-8', newline='\n') as f: f.write('\n'.join(o) + '\n')
     print('WROTE', DATA)
 
 for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
-room_a(); room_b()
+room_a(); room_b(); win_pieces()
 # move each piece to its own spot in the kit
 for (model, key), items in list(K.PIECES.items()):
     o = next((v for k, v in ORIGIN.items() if model.startswith(k + '_') or model == k), (0.0, 0.0, 0.0))

@@ -157,6 +157,16 @@ local function play(a: any)
 			m.Parent = folder
 		end
 	end
+	-- the office chair (its own piece since the win films move it to the desk): pushed back and turned
+	local chairSrc = if set == "A" then kit:FindFirstChild("hiA_chair") else nil
+	local ci = Data.spots and Data.spots.chairIntro
+	if chairSrc and ci then
+		local at = SET_AT * CFrame.new(ci[1], ci[2], ci[3]) * CFrame.Angles(0, math.rad(ci[4]), 0)
+		local m = chairSrc:Clone()
+		local inv = CFrame.new(Data.origin.A):Inverse()
+		for _, p in m:GetDescendants() do if p:IsA("BasePart") then p.CFrame = at * (inv * p.CFrame) end end
+		m.Parent = folder
+	end
 	local function P(x: number, y: number, z: number): Vector3 return (SET_AT * CFrame.new(x, y, z)).Position end
 	-- the screen: one part, its light toward him
 	local sd = Data.screens[set]

@@ -83,6 +83,7 @@ if RunService:IsStudio() then
 				gun = o.gun, hide = o.hide, hunt = o.hunt, fightBack = o.fightBack, passives = o.passives, map = o.map, introSet = o.introSet }) }
 		end
 		if op == "stop" then return require(script.Parent:WaitForChild("HuntRound")).stop() end
+		if op == "win" then require(script.Parent:WaitForChild("HuntRound")).forceWin(args[1] or "gunman"); return "won " .. tostring(args[1]) end -- (the win films)
 		-- ("hurt", p, who?, dmg?, head?): the round's member named who (a stand-in's or a player's name; nil = the first
 		-- living hider) takes dmg from p as if shot (head = a headshot). Fight.allow still decides (the hunt phase only)
 		if op == "hurt" then

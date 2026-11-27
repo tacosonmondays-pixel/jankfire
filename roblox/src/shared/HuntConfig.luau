@@ -102,6 +102,10 @@ H.MAPS = {
 	{
 		id = "house", source = "HuntHouse", title = "THE HOUSE", strip = { "Hunt" }, -- (the copy: no doors, exit, tables)
 		outside = { 0, -1.5, 70, 0, -1 }, -- (the gunman's intro ends here: the front walk, facing the front door)
+		-- the win films (27 Nov): his walk in from the front door, looking into the living room, toward the dining room, then
+		-- on to the fireplace (eye height 5.6); the survivors' regroup in the hall (x, y, z, facing yaw degrees)
+		outroWalk = { path = { { 2, 5.6, 34 }, { 0, 5.6, 26 }, { -6, 5.6, 20 } }, looks = { { -30, 4.5, 30 }, { 26, 4.5, 10 }, { -50, 4.2, 21 } } },
+		outroGroup = { -2, 0, 14, 180 },
 		gunman = { 3, 0, -21, 0, -1 },
 		hiders = {
 			{ 93, -1.5, -145 }, { -43, -1.5, 69 }, { -77, -1.5, -149 }, { 55, 13, -19 }, { -55, 13, -37 }, { 99, -1, 37 },
@@ -215,6 +219,34 @@ H.INTRO = {
 	lens = { fade = 0.92, near = 1.2 },
 	-- the hit-stop on the snap: `at` s after it starts, his body holds for `len` s while the lens kicks
 	hitstop = { at = 0.1, len = 0.2 },
+}
+
+-- the round's win films (the owner, 27 Nov: "it was just a game you were playing"; HuntOutro.client): everyone in the
+-- round sees the winners' film (len s), then the results card. Beats on an 11 s film: the house until the glitch, the
+-- static, the pull back out of the screen, the reveal. Stand-in mocap from the vault until the Mixamo list lands
+-- (MIXAMO-CLIPS-NEEDED: Sitting, Typing, Sitting Clap, High Five): seated breathing, seated arm stretch, upper-body
+-- clapping / cheering / fist pump (mixamo_r15.py --upper). sitDrop: how far the seated clip drops the hips below the root
+H.OUTRO = {
+	on = true,
+	len = 11,
+	beats = { glitch = 4.2, pull = 4.7, reveal = 8.2 },
+	hitstop = 0.2,
+	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2,
+	anims = {
+		R15 = { sit = 123982609501233, stretch = 124144468077269, clap = 119842197482812, cheer = 99464849720944, pump = 82176434072280 },
+		R6 = { sit = 91069648707561, stretch = 86402846376882, clap = 72835829513855, cheer = 134314727808662, pump = 114524043495459 },
+	},
+	-- recordings only, no voices (Pro Sound Effects); claps are single hand claps, each at one friend (never a crowd)
+	sounds = {
+		house = { id = 9116969466, vol = 1.0 },                        -- (Morning Birds 2: outside, through the walls)
+		burst = { id = 9126097362, vol = 0.35, region = { 0.0, 0.7 } }, -- (Television Static: the switch-on burst)
+		hum = { id = 9125446564, vol = 0.16 },                         -- (room A: the PC's fans; the intro's hum)
+		hiss = { id = 9126097362, vol = 0.1, region = { 3.0, 8.0 } },  -- (room B: the TV's static)
+		keys = { id = 9113142993, vol = 0.5 },                         -- (Apple Keyboard 28: keys)
+		pad = { id = 9119719128, vol = 0.5 },                          -- (Switches: buttons on a video controller)
+		creak = { id = 9116257140, vol = 0.5 },                        -- (Leather Sofa 4: body movement)
+		claps = { { id = 9114763105, vol = 0.5 }, { id = 9114762817, vol = 0.5 }, { id = 9114763106, vol = 0.5 }, { id = 9114762823, vol = 0.5 } },
+	},
 }
 
 return H

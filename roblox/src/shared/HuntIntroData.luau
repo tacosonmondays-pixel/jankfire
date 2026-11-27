@@ -9,4 +9,17 @@ return {
 		A = { at = Vector3.new(0, 5.45, -5.83), size = Vector3.new(3.9, 2.25, 0.06), col = "9fc4ff", light = { kind = "surface", brightness = 1.1, range = 16, col = "b8d4ff" } },
 		B = { at = Vector3.new(0, 4, -4.53), size = Vector3.new(3.2, 2.3, 0.06), col = "c8ccd2", light = { kind = "surface", brightness = 1, range = 15, col = "e4e8f0" } },
 	},
+	pieces = { hiA_chair = "A", hiB_couch = "B", hiB_pad = "B", hiW_cushion = false },
+	spots = {
+		chairIntro = { 2.8, 0, -2.6, -28 },
+		chairDesk = { 0, 0, -2.9, 0 },
+		deskSeat = { 0, 2.5, -2.95, 0 },
+		couch = { 0.6, 0, 2.8, 0 },
+		seat1 = { -0.72, 2.1, 2.65, 0 },
+		seat2 = { 1.92, 2.1, 2.65, 0 },
+		seat3 = { -4, 2.4, 1.6, 14 },
+		stand1 = { -1.6, 0, 5.4, 6 },
+		stand2 = { 1.2, 0, 5.6, -8 },
+		stand3 = { -3.8, 0, 4.7, 16 },
+	},
 }

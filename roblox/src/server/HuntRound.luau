@@ -237,9 +237,34 @@ local function finish(winner: string, why: string)
 	local res = { winner = winner, why = why, gunman = if gm then (if gm.p then gm.p.DisplayName else gm.f.name) else nil,
 		kills = g.kills, survivors = survivors, gun = g.gun }
 	pub("HuntWinner", winner)
+	-- the win film first (the owner, 27 Nov: "it was just a game you were playing"; HuntOutro.client): everyone in the
+	-- round sees the winners' film, then the card. the gunman's: his body; the hiders': the survivors' bodies
+	local OUT = HC.OUTRO
+	local w = if winner == "gunman" then "gunman" elseif winner == "hiders" then "hiders" else nil
+	if OUT and OUT.on and w then
+		local who = {}
+		for _, m in g.members do
+			local keep = if w == "gunman" then m.role == "gunman" else (m.role == "hider" and alive(m))
+			local mdl = keep and Fight.model(m.f)
+			if mdl then table.insert(who, mdl) end
+		end
+		if #who > 0 then
+			g.endAt = now() + OUT.len + RD.results
+			phase("outro", serverNow() + OUT.len)
+			local pack = { win = w, who = who, map = g.map, mapId = g.def.id, origin = g.origin, len = OUT.len, t0 = serverNow() }
+			for _, m in g.members do if m.p and m.p.Parent then Remote:FireClient(m.p, "outro", pack) end end
+			task.delay(OUT.len, function()
+				if G ~= g then return end
+				phase("end", serverNow() + RD.results)
+				Remote:FireAllClients("results", res)
+			end)
+			return
+		end
+	end
 	phase("end", serverNow() + RD.results)
 	Remote:FireAllClients("results", res)
 end
+HuntRound.forceWin = function(winner: string) finish(winner, "test") end -- (Studio tests: JankHuntTest "win")
 local function cleanup()
 	local g = G
 	if not g then return end
