@@ -67,6 +67,9 @@ local TUNE: { [string]: any } = {
 		-- (a cool light on each fighter from the moon's side: dark avatars against the dark cliffs read by their edges -
 		-- the set's judge, round 1: "the charcoal attacker merges into the cliffs because there is no rim light")
 		rim = { dir = Vector3.new(-0.068, 0.208, 0.976), dist = 4.5, color = Color3.fromRGB(176, 196, 255), bright = 0.6, range = 8 },
+		-- (per-shot exposure trims: the extreme close-ups fill the frame with a face or an outfit - a white one blew out
+		-- in v1401's grip and face shots)
+		expTrim = { ["THE GRIP"] = -0.55, ["THE TIP"] = -0.3, STILLNESS = -0.35, ["THE DRAW"] = -0.2, ["THE SHEATHE"] = -0.2 },
 		-- the night (the set's SceneLook adds its Sky, Atmosphere, Bloom and grade): a cool moonlit key, blue fill, the
 		-- moon's own light low behind the falls
 		-- (v1393: exposure 1.3 blew white outfits and pale masks out in every close-up; 0.55 with less fill still glowed)
@@ -661,8 +664,18 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 	end
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Scriptable
+	-- (his field of view is vertical, Roblox's default: held so for the scene in case anything left the camera otherwise)
+	if not sc.fovModeWas then sc.fovModeWas = cam.FieldOfViewMode end
+	if cam.FieldOfViewMode ~= Enum.FieldOfViewMode.Vertical then cam.FieldOfViewMode = Enum.FieldOfViewMode.Vertical end
 	cam.CFrame = cw
 	cam.FieldOfView = fov
+	-- (the shot's exposure)
+	local lk = d.look and d.look.lighting
+	if lk and lk.ExposureCompensation then
+		local want = lk.ExposureCompensation + ((d.expTrim and d.expTrim[sc.shotNow]) or 0)
+		local L = game:GetService("Lighting")
+		if math.abs(L.ExposureCompensation - want) > 1e-3 then L.ExposureCompensation = want end
+	end
 	-- the ink and petals (after the lens: the glints turn to it), the sounds on their frames
 	if Fx then
 		local ok, err = pcall(Fx.step, sc, s, fi, w, dt, katCF, L)
@@ -685,9 +698,10 @@ function Pro.step(s: any, w: number): (string, number, boolean)
 		local kl, vl = s.kg.model:FindFirstChild("LowerTorso") :: BasePart?, s.vg.model:FindFirstChild("LowerTorso") :: BasePart?
 		local cq = sc.take:PointToObjectSpace(cw.Position)
 		local skl = stockPt(d, "kLT", pi_, pa)
-		workspace:SetAttribute("ProDebug", ("f%.1f %s | kRoot %s %s kLT %s (stock %s) | vRoot %s %s vLT %s | cam %.1f,%.1f,%.1f off %.1f,%.1f,%.1f | gnd %.2f %.2f"):format(
+		workspace:SetAttribute("ProDebug", ("f%.1f %s | kRoot %s %s kLT %s (stock %s) | vRoot %s %s vLT %s | cam %.1f,%.1f,%.1f off %.1f,%.1f,%.1f | gnd %.2f %.2f | fov set %.1f now %.1f %s vp %dx%d"):format(
 			fi, tostring(sc.shotNow), s.kg.root.Name, rel(s.kg.root), rel(kl), if skl then ("%.1f,%.1f,%.1f"):format(skl.X, skl.Y, skl.Z) else "-",
-			s.vg.root.Name, rel(s.vg.root), rel(vl), cq.X, cq.Y, cq.Z, sc.anOff.X, sc.anOff.Y, sc.anOff.Z, sc.gnd.k.off, sc.gnd.v.off))
+			s.vg.root.Name, rel(s.vg.root), rel(vl), cq.X, cq.Y, cq.Z, sc.anOff.X, sc.anOff.Y, sc.anOff.Z, sc.gnd.k.off, sc.gnd.v.off,
+			fov, cam.FieldOfView, tostring(cam.FieldOfViewMode), cam.ViewportSize.X, cam.ViewportSize.Y))
 	end
 	-- (the shot's name and how far through it, for Finisher.luau's overlay: the last shot carries the name card)
 	local s0, s1 = pi_, pi_
@@ -723,6 +737,7 @@ function Pro.stop(s: any)
 	s.scene = nil
 	playing = nil
 	for _, tr in sc.tracks do pcall(function() tr:Stop(0) end) end
+	if sc.fovModeWas then pcall(function() (workspace.CurrentCamera :: Camera).FieldOfViewMode = sc.fovModeWas end) end
 	local bed = sc.bed
 	if bed and bed.Parent then
 		game:GetService("TweenService"):Create(bed, TweenInfo.new(0.3), { Volume = 0 }):Play()

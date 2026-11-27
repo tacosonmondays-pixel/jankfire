@@ -19,6 +19,10 @@ el = strip.elements[0] if hasattr(strip, 'elements') and len(strip.elements) els
 ow = getattr(el, 'orig_width', 0) or 1280
 oh = getattr(el, 'orig_height', 0) or 720
 sc.render.resolution_x, sc.render.resolution_y = W, int(W * oh / ow) // 2 * 2
+# (a movie strip keeps its own pixel size: rendered smaller it shows only its middle. Scale it to the output -
+# 26 Nov: stills taken at half width were the centre half of each frame, which read as a lens twice too tight)
+strip.transform.scale_x = W / ow
+strip.transform.scale_y = (int(W * oh / ow) // 2 * 2) / oh
 sc.render.resolution_percentage = 100
 sc.view_settings.view_transform = 'Standard'
 sc.render.image_settings.file_format = 'JPEG'

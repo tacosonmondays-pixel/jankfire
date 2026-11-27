@@ -152,13 +152,15 @@ end
 -- (v1373: the first disc blew out white under the night's exposure, seas and all: a dimmer moon, darker seas)
 disc("Disc", D, 0, Color3.fromRGB(172, 166, 148), 0)
 local rnd = Random.new(17)
-for k, s in { { 0.18, -0.12, 0.34 }, { -0.2, 0.05, 0.26 }, { 0.05, 0.22, 0.2 }, { -0.08, -0.25, 0.16 }, { 0.26, 0.18, 0.14 } } do
-	local sea = disc("Sea" .. k, D * s[3], -1.2, Color3.fromRGB(122, 118, 104), 0.1)
-	sea.CFrame = face * CFrame.new(-1.2, s[2] * D, s[1] * D)
+-- (the seas: three soft overlapping patches a little darker than the disc, in front of it - the disc's +X faces the
+-- lane; the first cut put five round dark spots behind it, then in front they read as a paw print. The halos behind)
+for k, s in { { 0.16, -0.1, 0.42, 0.62 }, { -0.18, 0.08, 0.32, 0.68 }, { 0.02, 0.24, 0.22, 0.72 } } do
+	local sea = disc("Sea" .. k, D * s[3], 0.8, Color3.fromRGB(150, 145, 128), s[4])
+	sea.Size = Vector3.new(0.5, D * s[3], D * s[3] * 0.82)
+	sea.CFrame = face * CFrame.new(0.8, s[2] * D, s[1] * D) * CFrame.Angles(math.rad(25 * k), 0, 0)
 end
-disc("Halo", D * 1.5, 4, Color3.fromRGB(120, 140, 196), 0.975)
-disc("Halo2", D * 2.3, 6, Color3.fromRGB(90, 110, 170), 0.99)
--- the water: the pool and the lake above the cascade, dark and glassy; the moon's road of glints on it
+disc("Halo", D * 1.5, -4, Color3.fromRGB(120, 140, 196), 0.975)
+disc("Halo2", D * 2.3, -6, Color3.fromRGB(90, 110, 170), 0.99)
 local W = Instance.new("Model"); W.Name = "Water"; W.Parent = set
 local function water(x0, z0, x1, z1, y)
 	local p = Instance.new("Part"); p.Name = "Water"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
