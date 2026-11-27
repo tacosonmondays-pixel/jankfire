@@ -414,18 +414,21 @@ local function walkCam(s: any, t: number): (Vector3, Vector3, number)
 	if tt < WALK_TRACK then
 		return L + fk * 9.5 + up * 4.2 + right * 0.9, L + up * 3.3 + fk * 0.6, 46
 	elseif tt < WALK_LOW then
+		-- (on the one in front's left: teammates huddle on the right, behind)
 		local u = (tt - WALK_TRACK) / (WALK_LOW - WALK_TRACK)
-		return L + right * (10.5 - u * 1.2) + fk * 2.0 + up * 1.3, L + up * 3.0 - fk * 1.0, 44
+		return L - right * (12.5 - u * 1.5) + fk * 1.0 + up * 1.2, L + up * 3.2 - fk * 0.8, 46
 	elseif tt < W.tStop then
+		-- high behind them all, a wide lens into the dark ahead: they're small in the lower third
 		local back = W.bodies[#W.bodies] and W.bodies[#W.bodies].off.Y or 2.5
 		local u = (tt - WALK_LOW) / math.max(0.1, W.tStop - WALK_LOW)
-		local behind = L - fk * (back + 7.5 - u * 1.2)
-		return behind + up * 5.6 + right * 1.4, L + fk * 12 + up * 3.2, 48
+		local behind = L - fk * (back + 8.5 - u * 1.2)
+		return behind + up * 6.8 + right * 1.0, L + fk * 16 + up * 2.2, 58
 	end
-	-- the startle: a whip in on the one in front's face, then held (a slow drift while the card is up)
-	local close = L + fk * 5.0 + up * 4.4 + right * 0.5
-	local look = L + up * 4.1
-	local behind = L - fk * 6.3 + up * 5.6 + right * 1.4
+	-- the startle: a whip in to a two-shot, the one in front's face and the huddle behind, then held (a slow drift
+	-- while the card is up)
+	local close = L + fk * 7.0 + up * 4.2 - right * 0.6
+	local look = L + up * 3.7 + right * 0.4
+	local behind = L - fk * 8.0 + up * 6.8 + right * 1.0
 	local w = math.clamp((tt - W.tStop) / 0.16, 0, 1)
 	w = 1 - (1 - w) ^ 3
 	local at = behind:Lerp(close, w)
@@ -433,7 +436,7 @@ local function walkCam(s: any, t: number): (Vector3, Vector3, number)
 		local k = (tt - len) * 0.3
 		at += right * math.sin(k) * 0.25 + up * math.sin(k * 0.7) * 0.08
 	end
-	return at, look, 42
+	return at, look, 46
 end
 
 -- the screen's unease, each frame
@@ -582,7 +585,7 @@ local function arriveBodies(s: any, ends: { any }, folder: Instance, riser: bool
 		local up = if r6 then 3 else ((hum and hum.HipHeight or 2) + b.root.Size.Y / 2)
 		local a = {
 			b = b, fin = fin, dir = dir, dist = dist, t0 = T - tw, tw = math.max(tw, 1e-3), tPose = T - 0.12,
-			once = pd.once == true, poseLen = pd.len, up = up, rootToPivot = b.root.CFrame:ToObjectSpace(b.model:GetPivot()),
+			once = pd.once == true, poseLen = pd.len, holdAt = pd.hold, up = up, rootToPivot = b.root.CFrame:ToObjectSpace(b.model:GetPivot()),
 			idle = load(if r6 then AR.idle6 else AR.idle),
 			walk = if dist > 0 then load(if r6 then V.WALK.walk6 else V.WALK.walk) else nil,
 			pose = load(pd.anim),
@@ -594,11 +597,11 @@ local function arriveBodies(s: any, ends: { any }, folder: Instance, riser: bool
 	end
 	local h = A.hero
 	if not h then return end
-	A.land = h.tPose + (if h.once then h.poseLen else 0.9)
+	A.land = h.tPose + (if h.holdAt then h.holdAt elseif h.once then h.poseLen else 0.9)
 	A.cut = math.clamp(A.land + 0.6, 2.4, math.max(2.4, s.len - 1.3))
 	-- the close lens's room in front of the one in front (a map's spot: a wall there pulls it in)
 	local k = h.up / 3
-	A.near0, A.near1 = 5.6 * k, 3.3 * k
+	A.near0, A.near1 = 5.6 * k, 3.6 * k
 	if not riser then
 		local o = h.fin.Position + Vector3.new(0, 1.5 * k, 0)
 		local hit = blockHit(rayParams(skip), o, h.dir * (6.4 * k), false)
@@ -619,13 +622,13 @@ local function arriveAt(a: any, t: number): Vector3
 end
 
 -- a paused track at a moment and a weight
-local function scrub(tr: AnimationTrack?, w: number, at: number, loop: boolean)
+local function scrub(tr: AnimationTrack?, w: number, at: number, loop: boolean, stopAt: number?)
 	if not tr then return end
 	local L = tr.Length
 	if L <= 0 then return end -- (still loading: preloaded at the top, so rare)
 	if not tr.IsPlaying then tr:Play(0, 0.001, 0) end
 	tr:AdjustSpeed(0)
-	tr.TimePosition = if loop then at % L else math.clamp(at, 0, L - 0.02)
+	tr.TimePosition = if loop then at % L else math.clamp(at, 0, math.min(L - 0.02, stopAt or L))
 	tr:AdjustWeight(math.max(w, 0.001), 0)
 end
 
@@ -646,7 +649,7 @@ local function arriveMove(s: any, t: number)
 		local walked = a.dist - (a.fin.Position - p).Magnitude
 		scrub(a.idle, wI, te, true)
 		scrub(a.walk, wW, walked / V.ARRIVE.stride, true)
-		scrub(a.pose, wP, te - a.tPose, not a.once)
+		scrub(a.pose, wP, te - a.tPose, not a.once, a.holdAt)
 	end
 end
 
