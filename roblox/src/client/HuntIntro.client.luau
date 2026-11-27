@@ -407,7 +407,9 @@ local function play(a: any)
 		if not ch or not hd then return { side = 2.0, rad = 3.7, close = 2.3, reach = 0 } end
 		local back = reach(ch, hd.Position, -flat)
 		local right = reach(ch, hd.Position, rt)
-		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2), reach = math.max(back, right) }
+		-- (v16: the leaves hung on her other side: the hide distance is what she wears' reach every way round)
+		local all = math.max(back, right, reach(ch, hd.Position, flat), reach(ch, hd.Position, -rt), reach(ch, hd.Position, Vector3.yAxis))
+		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2), reach = all }
 		return ext :: any
 	end
 	-- (owner on v14: "When it snaps to outside she should still be look up with the same camera angle") the match cut:
@@ -559,7 +561,7 @@ local function play(a: any)
 			-- now, and the game's own camera can't either: HuntIntroSolid holds her at 0 until the cut into first person)
 			local hd0 = me.Character and me.Character:FindFirstChild("Head") :: BasePart?
 			-- (v15: the lens brushed the hat's leaves: her head and what she wears go as the lens reaches what she wears)
-			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < math.max(1.0, math.min(2.6, behindExt().reach + 0.3))
+			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < math.max(1.0, math.min(3.2, behindExt().reach + 0.25))
 			if not r.fp and (atHead or t >= len - 0.12) then
 				r.fp = true
 				local ch = me.Character -- (first person: her head and what she wears off this screen, as the game does)
