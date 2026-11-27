@@ -371,6 +371,30 @@ local function intro(a: Model)
 		for _, d in m:GetDescendants() do
 			if d:IsA("BodyColors") or d:IsA("Shirt") or d:IsA("Pants") or d:IsA("ShirtGraphic") then d:Destroy() end
 		end
+		-- (27 Nov, the owner: "zombies having glowing eyes": no face (it's the head's own picture), and glowing eyes of
+		-- their own, made here (the server's, ZombieLight, can land a step after the film copies the body), half as big
+		-- again as the game's: from the news lens, under the searchlight, that size didn't read)
+		local hd = m:FindFirstChild("Head")
+		if hd and hd:IsA("BasePart") then
+			if hd:IsA("MeshPart") then hd.TextureID = "" end
+			for _, d in hd:GetChildren() do
+				if d:IsA("Decal") or (d:IsA("BasePart") and (d.Name == "ZmEyeL" or d.Name == "ZmEyeR")) then d:Destroy() end
+			end
+			local hs = hd.Size
+			for _, side in { -1, 1 } do
+				local e = Instance.new("Part")
+				e.Name = if side < 0 then "ZmEyeL" else "ZmEyeR"
+				e.Material = Enum.Material.Neon
+				e.Color = ZM.EYE
+				e.Size = Vector3.new(hs.X * 0.33, hs.Y * 0.16, 0.06)
+				e.CanCollide, e.CanQuery, e.CanTouch, e.Massless, e.CastShadow = false, false, false, true, false
+				e.CFrame = hd.CFrame * CFrame.new(side * hs.X * 0.2, hs.Y * 0.08, -hs.Z * 0.47)
+				local w = Instance.new("WeldConstraint")
+				w.Part0, w.Part1 = hd, e
+				w.Parent = e
+				e.Parent = hd
+			end
+		end
 		local skin, shirt, pants = SKIN[rng2:NextInteger(1, #SKIN)], SHIRT[rng2:NextInteger(1, #SHIRT)], PANTS[rng2:NextInteger(1, #PANTS)]
 		local torn = if rng2:NextNumber() < 0.45 then (if rng2:NextNumber() < 0.5 then "LeftUpperArm" else "RightUpperArm") else ""
 		for _, p in m:GetChildren() do

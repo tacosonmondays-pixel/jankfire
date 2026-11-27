@@ -139,8 +139,9 @@ Client: `ZombiesClient.luau` (credits with +N, the round tally, F prompts, the d
 How it plugs in (stage 1, place v1154):
 - Zombies are Fighters of kind "zombie" in workspace.Dummies (every weapon hits them; their hits and deaths skip the
   feed, quests, kill effects and finishers: Fight.zombieHurt / zombieDied). Squad bots are kind "zbot", in the arena.
-- Buying and reviving are ProximityPrompts on **F** (as on the web; E is our grapple, F only yanks while hooked to a
-  person). Shutter 0.3 s, wall gun 0.3 s, revive 3 s.
+- Buying and reviving are ProximityPrompts on **Q** (F as on the web till 27 Nov 2026; F is the flashlight now, 4.11.
+  E is our grapple, and Q's other jobs, the katana's wave and the Scythe's form, aren't in ZOMBIES). Shutter 0.3 s,
+  wall gun 0.3 s, revive 3 s.
 - A player in a game reads as Zone **"match"** (Matches.zoneHook), plus attribute ZmOn: every menu already hides and
   loadouts lock for a match.
 - Spare rounds: Rules Ammo.res; the player's ZmRes_<weapon> attributes; Arsenal's reloads read them.
@@ -544,3 +545,32 @@ own look took the moon back). Sheets: roblox/docs/zombies/12-news-intro-27nov.jp
   moon come in on its first frame). The visor is opaque now: a see-through Glass visor wasn't drawn behind the door's
   window, so it came on only as the door slid open, with a white glint. Test trap: at round 20 the zombies down the
   test player within ~9 s of xland (use round 2 and a ForceField).
+
+### 4.11 Glowing eyes, flashlights and the dark areas (27 Nov; the owner: "Can you make zombies having glowing eyes, also some parts of the map you need a flashlight it'll be like most games f for flashlight?")
+server/ZombieLight.luau (installed after ZombieExtract) and client/ZombieLight.client.luau; ZM.DARK, ZM.EYE.
+- **The eyes.** Two small Neon pieces on every zombie's face (welded to the head; nothing queries or touches them, so
+  shots still hit the rig), a sickly yellow-green (178, 236, 104: a paler one burnt to white). They go on the bodies
+  every zombie is cloned from at the game's start, so the specials and the bosses have them too, scaled with them. No
+  light per zombie (36 at a time); a boss gets a faint PointLight of the same colour on each client. The intro's gate
+  crowd (ZombieCine `dress`): no face (it's the dynamic head's own picture: TextureID cleared) and eyes of their own,
+  made on the client and half as big again (the server's can land a step after the film copies the body, and the
+  game's size didn't read from the news lens under the searchlight).
+- **The flashlight: F** (Binds "light", FLASHLIGHT (ZOMBIES) in Settings > KEYBINDS; a pad's D-pad up, otherwise
+  unused; the phone's LIGHT button by RELOAD, lit while on). In a ZOMBIES game only, and not while your rope is on
+  something (then F is the grapple's yank / reel, as before). The client asks the server ({ k = "light" } on the Zm
+  remote); the player attribute ZmLight is the state, and every client draws every beam (ForestLife's pattern): a warm
+  white SpotLight from the head (42 degrees, 48 studs). Yours rides your camera instead (the head doesn't tilt with
+  your look), the only one with shadows. The click: zm_flashlight, PSE "Flashlight On Off Clicks 1" (9114479678,
+  library, no upload; played from 0.3 s, where the click is).
+- **The dark areas** (ZM.DARK: tunnels, the boiler room, the lockers hall, the gym wing). Before the power their 58
+  lamps are off (tagged PowerLight at the start: ZombieExtra turns them on with the power), and while your camera is
+  in one this client's light eases down to near-black over 0.6 s (Ambient 16,18,24, exposure -0.7: a faint fill, you
+  can still move; you need the light to see them coming), and back as you leave or the power comes on. Films own the
+  light (ZmFilm). The squad bots' flashlights come on in a dark area before the power (their body's ZmLight).
+- **Measured** (Studio, the boiler room, dark): four beams (yours with shadows + three bots') cost +0.07 ms render CPU
+  (3.50 -> 3.57) and +0.23 ms GPU (3.40 -> 3.63).
+- **Test traps.** `JankZombies open` opens every door AND turns the power on (no dark areas then): put the test player
+  and the bots in a dark area by PivotTo instead. A held Scriptable camera is reset by the camera guard ("stuck,
+  reset as V would") after a moment: hold it with a RenderStepped connection for photos.
+- Sheet: roblox/docs/zombies/18-zombies-lights-27nov.jpg (dark without and with the light, the power on, the gate
+  crowd's eyes). Place version 1631.

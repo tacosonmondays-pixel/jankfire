@@ -2,7 +2,7 @@
 -- ZOMBIES (the web game's co-op wave survival, server/zombies.js; the owner, 20 Nov 2026: "lets bring back zombies!!
 -- We can used colored dummies for now!!"). A squad of up to 4 on a zombies map (the contract: roblox/docs/ZOMBIES.md).
 -- Endless rounds of zombies climb in through the windows of whichever areas are open and walk the nav grid
--- (ZombieNav.luau) to the nearest of the squad. Hits and kills earn credits, spent with F on shutters and wall guns (F, as on the web: E is the grapple).
+-- (ZombieNav.luau) to the nearest of the squad. Hits and kills earn credits, spent with Q on shutters and wall guns (F on the web; F is the flashlight here since 27 Nov 2026, and E the grapple).
 -- A downed player is revived by a friend holding F; when everyone's down it's over.
 --
 -- Zombies are Fighters of kind "zombie": coloured R15 dummies in workspace.Dummies, so every weapon we have hits them
@@ -659,12 +659,12 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 		p:SetAttribute("ZmDown", workspace:GetServerTimeNow() + R.bleed)
 		p:SetAttribute("ACGrace", os.clock() + R.bleed + 5)
 	end
-	-- the revive: hold F over them
+	-- the revive: hold Q over them (27 Nov 2026: F is the flashlight now, and E the grapple)
 	local pr = Instance.new("ProximityPrompt")
 	pr.Name = "ZmRevive"
 	pr.ActionText = "Revive"
 	pr.ObjectText = m.name
-	pr.KeyboardKeyCode = Enum.KeyCode.F
+	pr.KeyboardKeyCode = Enum.KeyCode.Q
 	pr.HoldDuration = R.revive
 	pr.MaxActivationDistance = 9
 	pr.RequiresLineOfSight = false
@@ -688,7 +688,7 @@ local function goDown(t: Fighter, _amt: number, _by: Fighter?, _wid: string): bo
 	return true
 end
 
--- ------------------------------------------------------------------ doors and wall guns (F)
+-- ------------------------------------------------------------------ doors and wall guns (Q)
 local function openDoor(g: Game, i: number, by: Member?)
 	if g.open[i] then return end
 	g.open[i] = true
@@ -711,7 +711,9 @@ local function prompt(parent: BasePart, action: string, object: string, hold: nu
 	local pr = Instance.new("ProximityPrompt")
 	pr.ActionText = action
 	pr.ObjectText = object
-	pr.KeyboardKeyCode = Enum.KeyCode.F
+	-- (Q since 27 Nov 2026, the owner: "f for flashlight". most games buy on E, but E is the grapple here; Q's other
+	-- jobs, the katana's wave and the Scythe's form, aren't in ZOMBIES)
+	pr.KeyboardKeyCode = Enum.KeyCode.Q
 	pr.HoldDuration = hold
 	pr.MaxActivationDistance = 9
 	pr.RequiresLineOfSight = false
@@ -773,7 +775,7 @@ end
 -- ------------------------------------------------------------------ the squad's bots (web server/zmbots.js)
 -- a squad is always Zombies.SQUAD: bots take the empty slots. their bodies, spawns and credits are here; their brains
 -- (revive, fight, shop, hold a window: ZombieBots.luau, since 26 Nov 2026) step through Zombies.ext.botStep. they go
--- down like anyone and are revived the same way (hold F over them). their models live in the arena (not
+-- down like anyone and are revived the same way (hold Q over them). their models live in the arena (not
 -- workspace.Dummies: nobody's aim locks onto them) and nothing queries them (shots pass through)
 Zombies.SQUAD = 4
 local BOT_SHIRT = { Color3.fromRGB(70, 110, 170), Color3.fromRGB(150, 70, 60), Color3.fromRGB(90, 130, 80), Color3.fromRGB(170, 140, 70) }

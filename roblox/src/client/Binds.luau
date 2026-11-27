@@ -42,6 +42,7 @@ Binds.ACTIONS = {
 	{ id = "reelin", label = "GRAPPLE REEL IN (HOLD)", group = "MOVEMENT", kb = { "F" }, pad = "ButtonB" }, -- (26 Nov 2026: held with your rope on anything, you're pulled along it. the yank's keys by default: a tap yanks, a hold reels; bound apart, each is its own. Move.client)
 	{ id = "reel", label = "AUTO GRAPPLE", group = "MOVEMENT", kb = { "X" }, pad = "DPadRight" }, -- (19 Nov 2026: your grapple onto the opponent nearest your aim, HookCharges.LOCK; the id is the old reel's, so rebinds keep. a pad's D-Right is it in a match after GO, the emote wheel's everywhere else: Move.client, FlairClient)
 	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "DPadDown" },
+	{ id = "light", label = "FLASHLIGHT (ZOMBIES)", group = "MOVEMENT", kb = { "F" }, pad = "DPadUp" }, -- (27 Nov 2026, the owner: "f for flashlight". in a ZOMBIES game only, and not mid-rope: F is the yank's / the reel's then. ZombieLight.client)
 	{ id = "emote", label = "EMOTE WHEEL", group = "MENUS", kb = { "T" }, pad = "DPadRight" },
 	{ id = "loadout", label = "LOADOUT", group = "MENUS", kb = { "L" } },
 	{ id = "play", label = "PLAY MENU", group = "MENUS", kb = { "M" } },

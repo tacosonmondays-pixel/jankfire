@@ -453,7 +453,7 @@ local function step(g: any, m: any, dt: number)
 				wish = walkTo(goal.at, s.goalField)
 				goal.holdT = nil
 			elseif not th or b.td > 14 then
-				-- there: a beat to "hold F", then buy
+				-- there: a beat to "hold Q", then buy
 				goal.holdT = goal.holdT or (n + 0.45)
 				if n >= (goal.holdT :: number) then
 					local okA, errA = pcall(goal.act)

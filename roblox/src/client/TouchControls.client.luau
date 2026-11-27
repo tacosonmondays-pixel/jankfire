@@ -1058,6 +1058,7 @@ RunService.Heartbeat:Connect(function()
 	for _, b in BTNS do
 		local A = b.A
 		local vis = (fight or not A.fight) and not watching and not b.rec.hid and (not A.q or kat or scy) and (not A.body or onBody) and (not A.rope or onRope) and (not A.lock or lockOn or hunt) and (not A.melee or swung)
+			and (not A.zm or (me:GetAttribute("ZmOn") == true and not onRope)) -- (the flashlight: ZOMBIES, not mid-rope)
 			and not (hunt and b.act == "yank")
 		if b.face.Visible ~= vis then b.face.Visible = vis end
 		do -- (HOLDOUT's words have no glyph: PUNCH, PUSH, LIE stay words alone)
@@ -1072,7 +1073,7 @@ RunService.Heartbeat:Connect(function()
 			local word = if scy then "FORM" else "WAVE"
 			if b.face.Text ~= word then b.face.Text = word end
 		end
-		local lit = (b.act == "aim" and aimOn) or (b.act == "wave" and kat and edgeFull)
+		local lit = (b.act == "aim" and aimOn) or (b.act == "wave" and kat and edgeFull) or (b.act == "light" and me:GetAttribute("ZmLight") == true)
 		if lit ~= b.lit or b.face.BackgroundColor3 ~= (if lit then T.ACCENT else T.BG) then b.lit = lit; style(b.face, lit, b.act == "fire", b.rec.a) end
 	end
 	for id, p in pills do

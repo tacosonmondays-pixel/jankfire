@@ -3,7 +3,7 @@
 -- Machine, power-up drops, window boards and the mystery crate. it plugs into the mode (Zombies.luau) through
 -- Zombies.ext (the web's zx* / zs* hooks) and uses the mode's own parts (Zombies.X). the numbers: shared/ZM.luau.
 -- the machines' models are built here (chunky boxes, quiet colours, one accent each); the markers come from the map
--- (roblox/docs/ZOMBIES.md: Power, CheatMachine, Voider, Colas, Crate, every window's Boards). buying is F (prompts)
+-- (roblox/docs/ZOMBIES.md: Power, CheatMachine, Voider, Colas, Crate, every window's Boards). buying is Q (prompts; F till 27 Nov 2026)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")

@@ -22,7 +22,7 @@ local K = Enum.KeyCode
 
 -- what a button can do. look: a thumb on it steers the view too; fight: only where weapons work; q: the katana's wave or
 -- the Scythe's form (shown with one of them out); body: the grapple's yank (shown while your rope is on a person);
--- rope: shown while your rope is on anything; lock: the AUTO GRAPPLE (shown in a match after GO; the id stays "reel":
+-- rope: shown while your rope is on anything; zm: in a ZOMBIES game only (the flashlight); lock: the AUTO GRAPPLE (shown in a match after GO; the id stays "reel":
 -- it was the reel till 19 Nov 2026, so saved layouts keep their place); melee: shown with a swung melee weapon out.
 -- act: the button presses that one action only (Keys.press's act; 26 Nov 2026: REEL and YANK both press F)
 TL.ACTIONS = {
@@ -45,6 +45,7 @@ TL.ACTIONS = {
 	reel = { key = K.X, label = "LOCK", lock = true },
 	reelin = { key = K.F, label = "REEL", rope = true, act = "reelin" }, -- (26 Nov 2026: hold to be pulled along your rope, Move.client)
 	lunge = { key = K.Z, label = "LUNGE", fight = true, melee = true, act = "lunge" }, -- (26 Nov 2026: the melee lunge, MeleeLunge)
+	light = { key = K.F, label = "LIGHT", zm = true, act = "light" }, -- (27 Nov 2026: the flashlight, in a ZOMBIES game only: ZombieLight.client)
 } :: { [string]: any }
 -- the editor's ACTION list, in this order (only actions whose listeners hear Keys: the goggles' flash listens to the
 -- keyboard alone, so it isn't here)
@@ -66,6 +67,7 @@ TL.ITEMS = {
 	{ id = "reel", kind = "btn", act = "reel", x = 56, y = 304, d = 50, fixed = true },
 	{ id = "reelin", kind = "btn", act = "reelin", x = 172, y = 214, d = 50, fixed = true }, -- (26 Nov 2026: by the HOOK, over STAB)
 	{ id = "lunge", kind = "btn", act = "lunge", x = 238, y = 150, d = 50, fixed = true }, -- (26 Nov 2026: left of STAB, with a melee weapon out)
+	{ id = "light", kind = "btn", act = "light", x = 236, y = 44, d = 46, fixed = true }, -- (27 Nov 2026: left of RELOAD, in ZOMBIES)
 	{ id = "settings", kind = "pill", label = "SETTINGS", w = 34, keep = true }, -- (27 Nov, ui-mocks: a gear alone (TouchGlyphs), clear of the score)
 	{ id = "auto", kind = "pill", label = "AUTO", w = 88 }, -- (27 Nov, ui-mocks: the fire glyph and AUTO ON / OFF)
 	{ id = "emote", kind = "pill", label = "EMOTE", w = 76 },

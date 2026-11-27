@@ -105,7 +105,7 @@ ZM.COLAS = {
 	pockets = { name = "DEEP POCKETS", price = 3000, color = Color3.fromHex("ffe14d"), desc = "Every gun holds half again as much ammo.", ammo = 1.5 },
 	thirdhand = { name = "THIRD HAND", price = 4000, color = Color3.fromHex("7dff4f"), desc = "Carry three guns.", guns = 3 },
 } :: { [string]: any }
--- the Warranty Voider: hold F with the weapon in your hands. three goes per weapon, dearer each time. mul = damage to
+-- the Warranty Voider: hold Q with the weapon in your hands (F till 27 Nov 2026). three goes per weapon, dearer each time. mul = damage to
 -- zombies, ammo = what the gun holds. from the second go it rolls a side effect (again at the third)
 ZM.UP = { name = "WARRANTY VOIDER", price = { 2500, 5000, 9000 }, mul = { [0] = 1, 1.6, 2.4, 3.4 }, ammo = { [0] = 1, 1.2, 1.4, 1.6 }, tier = { "VOID", "VOID II", "VOID III" } }
 ZM.UPFX = {
@@ -177,6 +177,13 @@ ZM.TYPES = {
 } :: { [string]: any }
 ZM.TYPE_ORDER = { "chonk", "biter", "hardhat", "screamer" }
 ZM.BOSSES = { "manager", "mascot" }
+-- the lights (27 Nov 2026, the owner: "Can you make zombies having glowing eyes, also some parts of the map you need a
+-- flashlight"): the areas that stay near-black till the power is on, by the school's area ids (each client dims its own
+-- light while its camera is in one, ZombieLight.client; their lamps wait for the power, server/ZombieLight.luau; a map
+-- without these ids has no dark areas), and the zombies' eyes' colour (two small Neon pieces, a sickly yellow-green: a
+-- paler one burnt to white in the Neon)
+ZM.DARK = { tunnels = true, boiler = true, lockers = true, gymwing = true } :: { [string]: boolean }
+ZM.EYE = Color3.fromRGB(178, 236, 104)
 ZM.BOSS = { every = 5, delay = 5, perPlayer = 0.5, perBot = 0.15, hitCap = 0.06 }
 -- a boss's HP for a squad of `people` real players and `bots` bots in round r
 function ZM.bossHp(ty: string, r: number, people: number, bots: number): number

@@ -14,3 +14,5 @@ ZombieSpecial.install(Zombies) -- (stage 3: limbs, the specials, the bosses; aft
 ZombieBots.install(Zombies) -- (26 Nov 2026: the squad's bots revive, fight, shop and hold windows)
 -- (27 Nov 2026: the extraction, its rewards (ZombieRewards) and the intro's timing; after the bots, its hooks chain on)
 require(script.Parent:WaitForChild("ZombieExtract")).install(Zombies)
+-- (27 Nov 2026: the zombies' glowing eyes, the flashlights (F) and the dark areas before the power; after the extraction)
+require(script.Parent:WaitForChild("ZombieLight")).install(Zombies)
