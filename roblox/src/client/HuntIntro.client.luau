@@ -96,6 +96,7 @@ local function stop()
 	r.alive = false
 	if r.conn then r.conn:Disconnect() end
 	if r.solid then pcall(function() RunService:UnbindFromRenderStep("HuntIntroSolid") end) end
+	if r.cutlog then pcall(function() RunService:UnbindFromRenderStep("HuntIntroCutLog") end) end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
 	if r.tail then -- (the birds: peace carries on past the hand-back and fades out)
 		local b = r.tail
@@ -241,6 +242,29 @@ local function play(a: any)
 		snap = track(animator, ids.snapTop or ids.snap, Enum.AnimationPriority.Action3), -- (arms free: down, off her face)
 	}
 	if A.calm then A.calm.Looped = true; A.calm:Play(0) end
+	-- (owner on v15: a cut showed a stray first frame) the snap's last pose, measured once on a hidden twin far under the
+	-- room: both top-down shots know their final framing from their first frame (no settling, no snap into place)
+	task.spawn(function()
+		local tw = body:Clone()
+		tw.Name = "HuntIntroTwin"
+		tw:PivotTo(SET_AT * CFrame.new(0, -300, 0) * CFrame.new(0, rootH, 0))
+		tw.Parent = folder
+		local th = tw:FindFirstChildOfClass("Humanoid")
+		local ta = th and (th:FindFirstChildOfClass("Animator") or Instance.new("Animator", th))
+		local tr = ta and track(ta :: Animator, ids.snapTop or ids.snap, Enum.AnimationPriority.Action4)
+		if tr then
+			tr.Looped = false
+			tr:Play(0, 1, 0)
+			local w = os.clock()
+			while tr.Length <= 0 and os.clock() - w < 3 do task.wait(0.05) end
+			tr.TimePosition = math.max(0, tr.Length - 0.05)
+			task.wait(0.35)
+			local hd2 = tw:FindFirstChild("Head") :: BasePart?
+			local rt2 = tw:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if hd2 and rt2 then r.faceOff = rt2.CFrame:ToObjectSpace(hd2.CFrame) end
+		end
+		tw:Destroy()
+	end)
 
 	-- the bars and the drone (the light goes dark once the camera is ours: below)
 	Cine.bars(true, 0.4)
@@ -426,6 +450,13 @@ local function play(a: any)
 		local n = (flat * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
 		local crown = (Vector3.yAxis * math.cos(a) - flat * math.sin(a)).Unit
 		local p = realHead()
+		local c3 = me.Character
+		local rr3 = c3 and c3:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r.faceOff and rr3 and (rr3.Position - O.Position).Magnitude < 12 then
+			local fcf = rr3.CFrame * (r.faceOff :: CFrame)
+			local d0 = Cine.lerp(5.0, 5.5, smoother(u))
+			return CFrame.lookAt(fcf.Position + fcf.LookVector * d0 + flat * 0.4, fcf.Position + fcf.LookVector * 0.25, fcf.UpVector)
+		end
 		local hd = realHeadPart()
 		if hd and T() >= beat("outside") + 0.12 then
 			if not r.outFace then r.outFace = { n = hd.CFrame.LookVector, c = hd.CFrame.UpVector, p = hd.Position, t = T() } end
@@ -470,12 +501,17 @@ local function play(a: any)
 				local n = (fz * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
 				local crown = (Vector3.yAxis * math.cos(a) - fz * math.sin(a)).Unit
 				local face = headLive()
-				local hd = body:FindFirstChild("Head") :: BasePart?
-				if hd and T() >= beat("snap") + 0.32 then
-					if not r.faceAt then r.faceAt = { n = hd.CFrame.LookVector, c = hd.CFrame.UpVector, p = hd.Position, t = T() } end
-					local f = r.faceAt
-					local k = smoother(math.clamp((T() - f.t) / 0.45, 0, 1))
-					n = n:Lerp(f.n, k).Unit; crown = crown:Lerp(f.c, k).Unit; face = face:Lerp(f.p, k)
+				if r.faceOff then -- (the snap's last pose: this frame is already the final framing)
+					local fcf = broot.CFrame * (r.faceOff :: CFrame)
+					n, crown, face = fcf.LookVector, fcf.UpVector, fcf.Position
+				else
+					local hd = body:FindFirstChild("Head") :: BasePart?
+					if hd and T() >= beat("snap") + 0.32 then
+						if not r.faceAt then r.faceAt = { n = hd.CFrame.LookVector, c = hd.CFrame.UpVector, p = hd.Position, t = T() } end
+						local f = r.faceAt
+						local k = smoother(math.clamp((T() - f.t) / 0.45, 0, 1))
+						n = n:Lerp(f.n, k).Unit; crown = crown:Lerp(f.c, k).Unit; face = face:Lerp(f.p, k)
+					end
 				end
 				return CFrame.lookAt(face + n * d + fz * 0.4, face + n * 0.25, crown)
 			end },
@@ -534,6 +570,21 @@ local function play(a: any)
 		end
 	end)
 	r.solid = true
+	if game:GetService("RunService"):IsStudio() then
+		local lines: { string } = {}
+		RunService:BindToRenderStep("HuntIntroCutLog", Enum.RenderPriority.Last.Value + 95, function()
+			if not r.alive then return end
+			local t = T()
+			local near = math.abs(t - beat("snap")) < 0.12 or math.abs(t - beat("outside")) < 0.12
+			if near then
+				local cf = workspace.CurrentCamera.CFrame
+				table.insert(lines, ("%.3f %s %s pos=%.0f,%.0f,%.0f look=%.2f,%.2f,%.2f room=%s"):format(t, tostring(r.cine and r.cine.shot),
+					workspace.CurrentCamera.CameraType.Name, cf.X, cf.Y, cf.Z, cf.LookVector.X, cf.LookVector.Y, cf.LookVector.Z, tostring(folder.Parent ~= nil)))
+				me:SetAttribute("HuntCutLog", table.concat(lines, "\n"))
+			end
+		end)
+		r.cutlog = true
+	end
 	HubLook.set("hunt_intro_dark", 0) -- (Finishing is set now: HubLife leaves the light to us)
 
 	-- the cues: the clips, the flicker, the heartbeat, the hit, outside
@@ -575,6 +626,12 @@ local function play(a: any)
 					end
 				end
 			end
+		end
+		if r.dropRoomAt and t >= r.dropRoomAt then r.dropRoomAt = nil; if folder.Parent then folder.Parent = nil end end
+		if t >= beat("outside") - 0.6 and t < beat("outside") + 0.2 then -- (the engine's eye on the outside spot before the cut)
+			local c4 = me.Character
+			local rr4 = c4 and c4:FindFirstChild("HumanoidRootPart") :: BasePart?
+			workspace.CurrentCamera.Focus = if rr4 then rr4.CFrame else O
 		end
 		-- the snap holds on its last frame: her face straight up until the cut outside
 		if A.snap and not r.snapHeld and A.snap.IsPlaying and A.snap.Length > 0 and A.snap.TimePosition >= A.snap.Length - 0.05 then
@@ -675,7 +732,7 @@ local function play(a: any)
 				r.tail = birds
 				TweenService:Create(birds, TweenInfo.new(1.6, Enum.EasingStyle.Sine), { Volume = S.birds.vol }):Play()
 			end
-			if folder.Parent then folder.Parent = nil end
+			r.dropRoomAt = t + 0.1 -- (the room goes a few frames after the cut, never in its frame)
 			local rc = me.Character
 			local rh = rc and rc:FindFirstChildOfClass("Humanoid")
 			local ra = rh and rh:FindFirstChildOfClass("Animator")
