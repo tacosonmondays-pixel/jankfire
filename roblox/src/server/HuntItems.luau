@@ -253,6 +253,17 @@ USE.propgun = function(p, root, look, T)
 	local ignore: { Instance } = { ch }
 	for _, m in G.members do local mm = Fight.model(m.f); if mm then table.insert(ignore, mm) end end
 	params.FilterDescendantsInstances = ignore
+	-- (THE HOUSE: its furniture shows as merged meshes over invisible hit boxes, Solid: aim through to the box and become
+	-- the house kit's piece nearest its size; the harness found nothing to copy before)
+	local solid = G.map:FindFirstChild("Solid")
+	if solid then
+		local sp = RaycastParams.new()
+		sp.FilterType = Enum.RaycastFilterType.Include
+		sp.FilterDescendantsInstances = { solid }
+		local h2 = workspace:Raycast(eye, look.Unit * T.range, sp)
+		local box = h2 and h2.Instance
+		if box and box:IsA("BasePart") and HuntItems.propFromBox(p, root, hum, box) then return true end
+	end
 	local hit = workspace:Raycast(eye, look.Unit * T.range, params)
 	local piece = hit and hit.Instance
 	if not (piece and piece:IsA("BasePart") and piece:IsDescendantOf(G.map)) then return false end
@@ -285,6 +296,65 @@ USE.propgun = function(p, root, look, T)
 	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	Remote:FireAllClients("fx", "prop", root.Position)
 	sfx("hunt_pop", root, 1)
+	return true
+end
+-- the house kit's furniture a hit box can become: the nearest by its sorted sizes, scaled to the box's height
+local PROP_KIT = { "hiW_chair", "hiW_lamp", "hiW_armchair", "hiB_couch", "hiT_table", "hiW_cushion", "hiT_medkit" }
+local function hideBody(p: Player, ch: Model, keep: Instance): { [Instance]: number }
+	local saved: { [Instance]: number } = {}
+	for _, d in ch:GetDescendants() do
+		if (d:IsA("BasePart") or d:IsA("Decal")) and not d:IsDescendantOf(keep) then
+			saved[d] = (d :: any).Transparency; (d :: any).Transparency = 1
+		end
+	end
+	return saved
+end
+function HuntItems.propFromBox(p: Player, root: BasePart, hum: Humanoid, box: BasePart): boolean
+	local sz = box.Size
+	local big = math.max(sz.X, sz.Y, sz.Z)
+	if big > 14 or big < 0.8 or (sz.Y < 1.2 and sz.X * sz.Z > 60) then return false end -- (furniture: not a wall or a floor)
+	local kit = ReplicatedStorage:FindFirstChild(HC.INTRO and HC.INTRO.kit or "")
+	if not kit then return false end
+	local want = { sz.X, sz.Y, sz.Z }; table.sort(want)
+	local best, bestScore = nil, math.huge
+	for _, name in PROP_KIT do
+		local src = kit:FindFirstChild(name)
+		if src and src:IsA("Model") then
+			local _, e = src:GetBoundingBox()
+			local have = { e.X, e.Y, e.Z }; table.sort(have)
+			local score = 0
+			for i = 1, 3 do score += math.abs(math.log(math.max(0.1, have[i]) / math.max(0.1, want[i]))) end
+			if score < bestScore then best, bestScore = src, score end
+		end
+	end
+	if not best then return false end
+	HuntItems.unprop(p)
+	local m = (best :: Model):Clone()
+	m.Name = "HuntDisguise"
+	local _, e0 = m:GetBoundingBox()
+	local k = math.clamp(sz.Y / math.max(0.2, e0.Y), 0.6, 1.6)
+	local yaw = select(2, box.CFrame:ToEulerAnglesYXZ())
+	local feet = root.Position.Y - (hum.HipHeight + root.Size.Y / 2)
+	-- (kit space: each piece stands on y 0 round its own origin) scaled, turned like the box, its feet on yours
+	local at = CFrame.new(root.Position.X, feet, root.Position.Z) * CFrame.Angles(0, yaw, 0)
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			local lc = d.CFrame
+			d.Size *= k
+			d.CFrame = at * (CFrame.new(lc.Position * k) * lc.Rotation)
+			d.Anchored = false; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.Massless = true
+			local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = d; w.Parent = d
+		end
+	end
+	m.Parent = p.Character
+	local s = st[p]
+	local ch = p.Character :: Model
+	local saved = hideBody(p, ch, m)
+	if s then s.disguise = { part = m :: any, saved = saved, dist = hum.DisplayDistanceType } end
+	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	Remote:FireAllClients("fx", "prop", root.Position)
+	sfx("hunt_pop", root, 1)
+	publish(p)
 	return true
 end
 -- a hit on someone in disguise or healing breaks it

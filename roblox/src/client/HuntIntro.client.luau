@@ -399,15 +399,15 @@ local function play(a: any)
 		if roomFront == nil then roomFront = reach(body, headP(), fz) end
 		return math.max(want, (roomFront :: number) + 0.55) -- (owner on v13: the close rushes back, just outside what she wears)
 	end
-	local ext: { side: number, rad: number, close: number }? = nil
-	local function behindExt(): { side: number, rad: number, close: number }
+	local ext: { side: number, rad: number, close: number, reach: number }? = nil
+	local function behindExt(): { side: number, rad: number, close: number, reach: number }
 		if ext then return ext end
 		local ch = me.Character
 		local hd = ch and ch:FindFirstChild("Head") :: BasePart?
-		if not ch or not hd then return { side = 2.0, rad = 3.7, close = 2.3 } end
+		if not ch or not hd then return { side = 2.0, rad = 3.7, close = 2.3, reach = 0 } end
 		local back = reach(ch, hd.Position, -flat)
 		local right = reach(ch, hd.Position, rt)
-		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2) }
+		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2), reach = math.max(back, right) }
 		return ext :: any
 	end
 	-- (owner on v14: "When it snaps to outside she should still be look up with the same camera angle") the match cut:
@@ -558,7 +558,8 @@ local function play(a: any)
 			-- (owner on v11: her hair and then her whole head went see-through out here: the lens fades nothing of hers
 			-- now, and the game's own camera can't either: HuntIntroSolid holds her at 0 until the cut into first person)
 			local hd0 = me.Character and me.Character:FindFirstChild("Head") :: BasePart?
-			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < 1.0
+			-- (v15: the lens brushed the hat's leaves: her head and what she wears go as the lens reaches what she wears)
+			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < math.max(1.0, math.min(2.6, behindExt().reach + 0.3))
 			if not r.fp and (atHead or t >= len - 0.12) then
 				r.fp = true
 				local ch = me.Character -- (first person: her head and what she wears off this screen, as the game does)

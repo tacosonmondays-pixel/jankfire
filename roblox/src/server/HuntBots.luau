@@ -243,7 +243,7 @@ scenarios.hunter = function(me: Player)
 		for _, d in g.map:GetDescendants() do
 			local mdl = d:FindFirstAncestorOfClass("Model")
 			local isBody = mdl ~= nil and mdl:FindFirstChildOfClass("Humanoid") ~= nil
-			if d:IsA("BasePart") and d.CanQuery and d.Transparency < 0.5 and not isBody and not d:FindFirstAncestor("HuntPicks") then
+			if d:IsA("BasePart") and d.CanQuery and (d.Transparency < 0.5 or d:FindFirstAncestor("Solid") ~= nil) and not isBody and not d:FindFirstAncestor("HuntPicks") then -- (THE HOUSE: the hit boxes)
 				local sz = d.Size
 				local big = math.max(sz.X, sz.Y, sz.Z)
 				if big <= 12 and big >= 1.5 and sz.Y >= 1.2 then
@@ -257,7 +257,8 @@ scenarios.hunter = function(me: Player)
 		cr.CFrame = CFrame.lookAt(cr.Position, Vector3.new(best.Position.X, cr.Position.Y, best.Position.Z))
 		local eye = cr.Position + Vector3.new(0, 1.6, 0)
 		HuntItems.handle(C, "use", 1, (best.Position - eye).Unit)
-		check(C:GetAttribute("HuntProp") == true, ("the prop gun: %s turns into a copy of a %.0fx%.0fx%.0f piece"):format(C.Name, best.Size.X, best.Size.Y, best.Size.Z))
+		local dm = C.Character:FindFirstChild("HuntDisguise")
+		check(C:GetAttribute("HuntProp") == true, ("the prop gun: %s aims at a %.0fx%.0fx%.0f piece and becomes %s"):format(C.Name, best.Size.X, best.Size.Y, best.Size.Z, dm and (if dm:IsA("Model") then "a kit piece" else "a copy") or "nothing"))
 	else
 		say("no furniture in reach for the prop gun")
 	end
