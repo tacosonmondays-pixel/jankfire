@@ -93,8 +93,19 @@ in the same folder.
   - the one in front stands at the middle of a team's spawns, facing the arena's middle;
   - rays find the floors and test the lens lines, looking past invisible walls;
   - the wide lenses frame about 13 studs at any distance.
-- **Seen in Play:** RooftopV2, RooftopV3, Crate, DesertV2, The Gut, Arctic Cabin, Platform. The others are placed but not yet
-  photographed; move a weak one by hand by editing its Parts.
+- **Seen in Play: all 15** (27 Nov spot check, place v1544: a forced 4v4 win on each map with three stand-ins, frozen
+  at the close lens's landing and at the wide shot with the card). OK as placed: Rooftop, RooftopV2, RooftopV3, Crate,
+  Platform, Bazaar, The Gut, DesertV2, SuburbV2, Backrooms, Arctic Cabin, Station; Forest is the walk.
+  - Fixed: BazaarV2's wide lenses (the kit's pole and a crate stood in front: now straight on, 11 studs out, 5.2 up)
+    and Skatepark's (outside the arena's wall, drawn in Play: now 7.5 studs out inside it). Each spot says how in its
+    `Reaimed` attribute.
+  - **Check lenses in Play, not Edit:** the visible kit is swapped in at Play start ("471 Blender models swapped in"),
+    so Edit rays miss poles, crates and walls that the camera sees; walled arenas' invisible walls are drawn in Play.
+  - Skatepark's spot has no Mate3 (no floor there): a 4v4 shows three of the four.
+  - The pet (workspace.ClientPets) is hidden every frame: its follower rewrites its parts' transparency, and its pink
+    Highlight outline draws even with the parts hidden.
+- **Phone:** the card follows TouchTest's `fake:WxH` box (player attribute `FakeScreen`); on a short screen it pins near
+  the top and shrinks to fit (a 4v4 card with the PLAY AGAIN row fits 844x390 with room).
 
 ## THE WALK (a walk spot: the Spooky Forest)
 - The owner, 27 Nov: "For scary map can you try make them walk in the forest scared as the screen distorts?"

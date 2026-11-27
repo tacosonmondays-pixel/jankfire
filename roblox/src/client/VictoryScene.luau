@@ -735,20 +735,25 @@ local function hideNear(center: Vector3, keep: Instance)
 	end
 end
 -- (the owner's pet, the knee-high Mini Mannequin, follows them on every screen: client/Pets, workspace.ClientPets.
--- it has no Humanoid, so the look above misses it: v1449, The Gut's spot)
+-- it has no Humanoid, so the look above misses it: v1449, The Gut's spot. written every frame: the pet's follower
+-- rewrites its parts' LocalTransparencyModifier now and then so nothing can leave it hidden - the spot check, 27 Nov,
+-- found it standing by the team on four maps)
 local function hidePets()
 	local f = workspace:FindFirstChild("ClientPets")
 	if not f then return end
 	for _, x in f:GetDescendants() do
-		if (x:IsA("BasePart") or x:IsA("Decal")) and hiddenNear[x] == nil then
-			hiddenNear[x] = (x :: any).LocalTransparencyModifier; (x :: any).LocalTransparencyModifier = 1
+		if x:IsA("BasePart") or x:IsA("Decal") then
+			if hiddenNear[x] == nil then hiddenNear[x] = (x :: any).LocalTransparencyModifier end
+			if (x :: any).LocalTransparencyModifier ~= 1 then (x :: any).LocalTransparencyModifier = 1 end
+		elseif x:IsA("Highlight") and x.Enabled then -- (its pink outline draws even with the parts hidden)
+			hiddenNear[x] = 1; x.Enabled = false
 		end
 	end
 end
 local function showNear()
 	for x, v in hiddenNear do
 		if x.Parent then
-			if x:IsA("LayerCollector") then (x :: any).Enabled = true else (x :: any).LocalTransparencyModifier = v end
+			if x:IsA("LayerCollector") or x:IsA("Highlight") then (x :: any).Enabled = true else (x :: any).LocalTransparencyModifier = v end
 		end
 	end
 	table.clear(hiddenNear)

@@ -31,22 +31,42 @@ local gui = K.new("ScreenGui", { Name = "JankVictoryCard", ResetOnSpawn = false,
 local holder = K.new("Frame", { Name = "Scaled", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
 local scale = K.new("UIScale", {}, holder)
 local compact = false
-local function fit()
+local TOP = 92 -- (the plate's top, pinned: critic round 3 - it sat at a different height on every screen)
+local top = TOP -- (a short screen: near the top edge)
+local plateH = 400
+-- the screen: the camera's, or a Studio test's phone-sized box (the player attribute FakeScreen, set by TouchTest's
+-- "fake:WxH": the card lays itself out in that box, as on a phone)
+local function screen(): (Vector2, boolean)
+	local f = me:GetAttribute("FakeScreen")
+	if typeof(f) == "Vector2" then return f, true end
 	local cam = workspace.CurrentCamera
-	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	return (if cam then cam.ViewportSize else Vector2.new(1280, 720)), false
+end
+local function fit()
+	local vp, fake = screen()
 	compact = vp.Y < 560 or me:GetAttribute("TouchOn") == true
+	top = if compact then 16 else TOP
 	local s = if compact then math.clamp(vp.Y / 520, 0.6, 1) else math.clamp(vp.Y / 720, 0.8, 2)
+	-- (a tall card on a short screen shrinks to fit it: a 4v4 card with its rewards and the picks ran off a 390-point
+	-- phone, 27 Nov)
+	s = math.max(0.45, math.min(s, vp.Y / (top + plateH + 14)))
 	scale.Scale = s
-	holder.Size = UDim2.fromScale(1 / s, 1 / s)
+	if fake then
+		holder.AnchorPoint, holder.Position = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5)
+		holder.Size = UDim2.fromOffset(vp.X / s, vp.Y / s)
+	else
+		holder.AnchorPoint, holder.Position = Vector2.zero, UDim2.new()
+		holder.Size = UDim2.fromScale(1 / s, 1 / s)
+	end
 end
 fit()
 do
 	local cam = workspace.CurrentCamera
 	if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+	me:GetAttributeChangedSignal("FakeScreen"):Connect(function() task.defer(fit) end)
 end
 
 -- the plate, and a soft shadow under it (critic round 1: the bone plate all but vanished on the bright set)
-local TOP = 92 -- (the plate's top, pinned: critic round 3 - it sat at a different height on every screen)
 local shade = K.new("Frame", { Name = "Shade", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.6, BorderSizePixel = 0,
 	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -44, 0, TOP + 6), Size = UDim2.fromOffset(W + 4, 404) }, holder)
 K.new("UICorner", { CornerRadius = UDim.new(0, 5) }, shade)
@@ -316,6 +336,12 @@ local function size()
 	local h = list.AbsoluteContentSize.Y / scale.Scale
 	plate.Size = UDim2.fromOffset(W, math.floor(h + PAD + 4 + 34 + (if picks.Visible then 62 else 0)))
 	shade.Size = UDim2.fromOffset(W + 4, plate.Size.Y.Offset + 4)
+	if math.abs(plate.Size.Y.Offset - plateH) > 1 then
+		plateH = plate.Size.Y.Offset
+		fit()
+		plate.Position = UDim2.new(1, -48, 0, top)
+		shade.Position = UDim2.new(1, -44, 0, top + 6)
+	end
 end
 list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(size)
 
@@ -334,12 +360,12 @@ function Card.show(d: any)
 	keyWord()
 	gui.Enabled = true
 	-- in from the right, quick
-	plate.Position = UDim2.new(1, -12, 0, TOP)
+	plate.Position = UDim2.new(1, -12, 0, top)
 	plate.BackgroundTransparency = 0.2
-	shade.Position = UDim2.new(1, -8, 0, TOP + 6)
+	shade.Position = UDim2.new(1, -8, 0, top + 6)
 	TweenService:Create(plate, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-		{ Position = UDim2.new(1, -48, 0, TOP), BackgroundTransparency = 0 }):Play()
-	TweenService:Create(shade, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.new(1, -44, 0, TOP + 6) }):Play()
+		{ Position = UDim2.new(1, -48, 0, top), BackgroundTransparency = 0 }):Play()
+	TweenService:Create(shade, TweenInfo.new(0.32, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.new(1, -44, 0, top + 6) }):Play()
 	task.defer(size)
 end
 
