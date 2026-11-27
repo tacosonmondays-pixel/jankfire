@@ -191,10 +191,10 @@ H.INTRO = {
 	-- louder and faster, then peace: birds outside. a table is a Roblox library id (Pro Sound Effects / APM, under the
 	-- EFFECTS volume) with its level and an optional slice; a string is the game's own library by name (Sfx)
 	sounds = {
-		hum = { id = 9125446564, vol = 0.55 },                         -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
-		heart = { id = 9043365842, vol = 1.0 },                        -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
-		birds = { id = 9116969466, vol = 0.6 },                        -- (PSE: Morning Birds 2, active chirping)
-		hiss = { id = 9126097362, vol = 0.3, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
+		hum = { id = 9125446564, vol = 0.1 },                          -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
+		heart = { id = 9043365842, vol = 0.13 },                       -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
+		birds = { id = 9116969466, vol = 1.5 },                        -- (PSE: Morning Birds 2, active chirping)
+		hiss = { id = 9126097362, vol = 0.1, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
 		buzz = "zm_flicker", hit = "boom",
 	},
 	-- the heartbeat's build: from `from` (s on the 16 s beats) to the snap it goes from rate[1] to rate[2] times its
