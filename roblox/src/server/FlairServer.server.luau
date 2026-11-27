@@ -260,7 +260,7 @@ local function onKill(info: any)
 	if info.w == "void" or info.w == "shredder" then return end
 	local kp = k.ref :: Player
 	if not kp.Parent or kp:GetAttribute("Zone") == "hub" then return end
-	if kp:GetAttribute("Hunt") ~= nil then return end -- (HOLDOUT: deaths are the cube break-up only, HUNT.md section 6)
+	if kp:GetAttribute("Hunt") ~= nil then return end -- (HOUSE HUNT: deaths are the cube break-up only, HUNT.md section 6)
 	local id = worn(kp)
 	if id == "none" then return end
 	local m = Fight.model(v)
