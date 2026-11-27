@@ -185,7 +185,7 @@ local function props(H: any, O: Vector3, tf: Folder, into: Folder): string
 	for _, t in H.tvs do -- the screen: a thin panel just proud of the TV's dark screen (HuntProps lights it)
 		local at = turnCF(t[1], t[2], t[3], t[4], O)
 		local s = part(into, "TV", at * CF(0, 3.5, 0.42), V3(11.0, 6.0, 0.08))
-		s.Transparency = 0; s.Material = Enum.Material.SmoothPlastic; s.Color = hex("66707c"); s.CanQuery = false
+		s.Transparency = 0; s.Material = Enum.Material.Neon; s.Color = hex("3e444e"); s.CanQuery = false -- (round 6: a dim slate glow, not a black hole)
 		s:SetAttribute("Kind", "tv")
 		nt += 1
 	end
@@ -297,8 +297,8 @@ end
 -- the architecture through W.import("HuntHouse", ARCH) as any arena, then the furniture and the moving pieces with
 -- this, which paints them the same way (a piece's name: <model><n>__<kind>_<hex>) and adds them to the same kit
 -- WITHOUT clearing it (W.import clears the kit first)
-B.ARCH = 136965769771206
-B.FURN = 130920219476735
+B.ARCH = 95696978300779
+B.FURN = 85875007992700
 local MAT = { plastic = Enum.Material.SmoothPlastic, neon = Enum.Material.Neon, glass = Enum.Material.Glass, water = Enum.Material.SmoothPlastic }
 local SEE = { glass = 0.35, water = 0.25 }
 function B.importExtra(id: number?): string
