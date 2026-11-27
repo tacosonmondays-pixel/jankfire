@@ -109,7 +109,7 @@ HuntMoves.landed = function(p: Player, f: any, kind: string)
 end
 HuntMoves.extra = function(p: Player): { any }
 	local g = HuntRound.G
-	if not g or g.phase ~= "hunt" or not HuntRound.memberOf(p) then return {} end
+	if not g or (g.phase ~= "hunt" and g.phase ~= "hide") or not HuntRound.memberOf(p) then return {} end -- (the hide too, as canShove)
 	local out = {}
 	for _, m in g.members do if not m.p and m.f.alive then table.insert(out, m.f) end end
 	return out
