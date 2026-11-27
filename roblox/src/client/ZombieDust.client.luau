@@ -37,9 +37,26 @@ local PARK = CFrame.new(0, -5000, 0)
 -- a slot: a motes box (HuntDust.motes), maybe a shaft (HuntDust.shaft), moved from lamp to lamp
 type Slot = { p: BasePart, e: ParticleEmitter, shaft: BasePart?, key: any }
 local function emitterOf(p: BasePart): ParticleEmitter return p:FindFirstChildOfClass("ParticleEmitter") :: ParticleEmitter end
+-- (27 Nov 2026, the owner: "The dust particles look like they're not moving!!": they settle and wander now, each one
+-- turning and twinkling over its life, half again as big and bright as HOUSE HUNT's; the wander (Acceleration) is
+-- nudged every couple of seconds per box, so the air seems to move)
+local function kp(t: number, v: number): NumberSequenceKeypoint return NumberSequenceKeypoint.new(t, v) end
+local function lively(e: ParticleEmitter)
+	e.Speed = NumberRange.new(0.4, 1.0)
+	e.Drag = 0.5
+	e.SpreadAngle = Vector2.new(180, 180)
+	e.Acceleration = Vector3.new(0, -0.08, 0)
+	e.Rotation = NumberRange.new(0, 360)
+	e.RotSpeed = NumberRange.new(-120, 120)
+	e.Size = NumberSequence.new({ kp(0, 0.15), kp(0.25, 0.2), kp(0.5, 0.16), kp(0.75, 0.2), kp(1, 0.17) })
+	e.Transparency = NumberSequence.new({ kp(0, 1), kp(0.1, 0.05), kp(0.25, 0.4), kp(0.4, 0.05), kp(0.55, 0.45), kp(0.7, 0.05), kp(0.85, 0.35), kp(1, 1) })
+	e.Brightness = 2.4
+	e.LightEmission = 0.5
+end
 local function newSlot(name: string, col: Color3, withShaft: boolean, width: number, see: number): Slot
 	local p = D.motes(folder, PARK, Vector3.new(6, 8, 6), col, { name = name, rate = 3, prefill = false })
 	local s: Slot = { p = p, e = emitterOf(p), shaft = nil, key = nil }
+	lively(s.e)
 	s.e.Enabled = false
 	if withShaft then
 		s.shaft = D.shaft(folder, PARK.Position, PARK.Position - Vector3.new(0, 8, 0), width, col, { name = name .. "Shaft", see = see })
@@ -89,6 +106,7 @@ local winSlots: { Slot } = {}
 for i = 1, WINDOWS do table.insert(winSlots, newSlot("Window" .. i, MOON, true, 3.6, 0.92)) end
 local beam = D.motes(folder, PARK, Vector3.new(3.5, 3.5, 14), WARM, { name = "Beam", rate = 9, prefill = false })
 local beamE = emitterOf(beam)
+lively(beamE)
 beamE.Enabled = false
 local wisps = D.motes(folder, PARK, Vector3.new(16, 6, 16), Color3.fromRGB(200, 204, 210), { name = "Wisps", rate = 1.5, prefill = false, emission = 0.1 })
 local wispE = emitterOf(wisps)
@@ -108,6 +126,11 @@ end
 -- ------------------------------------------------------------ the arena's lamps and windows
 local lights: { Light } = {}
 local floorOf: { [Light]: number } = {}
+-- (27 Nov 2026: the school's tubes flicker now, SchoolLife.client) a lamp lit any time in the last 4 s keeps its dust,
+-- so a stutter doesn't hop the motes to another lamp; its shaft goes out and back with it (shaftConn)
+local lastOn: { [Light]: number } = {}
+local LIT_FOR = 4
+local shaftConn: { [number]: RBXScriptConnection } = {}
 local seen: Model? = nil
 local map: any = nil
 local rp = RaycastParams.new()
@@ -120,7 +143,7 @@ local function lampAt(l: Light): Vector3?
 end
 local function learn(a: Model)
 	seen = a
-	table.clear(lights); table.clear(floorOf)
+	table.clear(lights); table.clear(floorOf); table.clear(lastOn)
 	for _, d in a:GetDescendants() do
 		if d:IsA("PointLight") or d:IsA("SpotLight") or d:IsA("SurfaceLight") then table.insert(lights, d) end
 	end
@@ -158,8 +181,10 @@ local function pick()
 	local eye = cam.CFrame.Position
 	-- the lamps: lit, near, nearest first; a slot keeps its lamp while it's still in the list (no churn)
 	local near = {}
+	local now = os.clock()
 	for _, l in lights do
-		if l.Parent and l.Enabled and l.Brightness > 0 then
+		if l.Parent and l.Enabled and l.Brightness > 0 then lastOn[l] = now end
+		if l.Parent and now - (lastOn[l] or -math.huge) < LIT_FOR then
 			local at = lampAt(l)
 			if at then
 				local d = (at - eye).Magnitude
@@ -187,13 +212,17 @@ local function pick()
 	for i, s in lampShafts do
 		local n = near[i]
 		if n then
-			if s.key ~= n.l then
-				s.key = n.l
-				shaftTo(s, n.at - Vector3.new(0, 0.5, 0), Vector3.new(n.at.X, floorUnder(n.l, n.at) + 0.2, n.at.Z))
+			local l = n.l :: Light
+			if s.key ~= l then
+				s.key = l
+				shaftTo(s, n.at - Vector3.new(0, 0.5, 0), Vector3.new(n.at.X, floorUnder(l, n.at) + 0.2, n.at.Z))
+				if shaftConn[i] then shaftConn[i]:Disconnect() end
+				shaftConn[i] = l:GetPropertyChangedSignal("Enabled"):Connect(function() if s.key == l then shaftOn(s, l.Enabled) end end)
 			end
-			shaftOn(s, true)
+			shaftOn(s, l.Enabled)
 		else
 			s.key = nil
+			if shaftConn[i] then shaftConn[i]:Disconnect(); shaftConn[i] = nil end
 			shaftOn(s, false)
 		end
 	end
@@ -212,7 +241,7 @@ local function pick()
 			if s.key ~= n.w then
 				s.key = n.w
 				local w = n.w
-				local inward = -(w.n :: Vector3)
+				local inward = w.n :: Vector3 -- (a window's n points in, to the play side: Zombies spawns at out facing n)
 				local c = (w.inn :: Vector3) + inward * 2.5 + Vector3.new(0, 2.6, 0)
 				place(s, CFrame.lookAt(c, c + inward), Vector3.new(5, 5, 4), nil)
 				-- (in at the window's top, down to the floor a few studs inside)
@@ -232,12 +261,39 @@ task.spawn(function()
 	end
 end)
 
--- every frame: the box ahead of your flashlight, the wisps round you in the dark
+-- the air moving: every couple of seconds each box's motes get a new gentle sideways wander (and keep settling)
+task.spawn(function()
+	local rng = Random.new()
+	while true do
+		task.wait(1.6 + rng:NextNumber() * 1.2)
+		if not folder.Parent then continue end
+		for _, s in lampSlots do
+			if s.e.Enabled then s.e.Acceleration = Vector3.new(rng:NextNumber(-0.14, 0.14), -0.08 + rng:NextNumber(-0.03, 0.03), rng:NextNumber(-0.14, 0.14)) end
+		end
+		for _, s in winSlots do
+			if s.e.Enabled then s.e.Acceleration = Vector3.new(rng:NextNumber(-0.14, 0.14), -0.06, rng:NextNumber(-0.14, 0.14)) end
+		end
+	end
+end)
+
+-- every frame: the box ahead of your flashlight, the wisps round you in the dark. the beam's motes swirl away from the
+-- way you move (the air you push), on top of their own wander
 local nextDark, dark = 0, false
-RunService.RenderStepped:Connect(function()
+local lastCam: Vector3? = nil
+local camVel = Vector3.zero
+RunService.RenderStepped:Connect(function(dt: number)
 	if not folder.Parent then return end
 	local cam = workspace.CurrentCamera
 	if not cam then return end
+	local cp = cam.CFrame.Position
+	if lastCam and dt > 0 then
+		local v = (cp - lastCam) / dt
+		if v.Magnitude < 60 then camVel = camVel:Lerp(v, math.clamp(dt * 4, 0, 1)) end
+	end
+	lastCam = cp
+	local push = -camVel * 0.12
+	if push.Magnitude > 1.6 then push = push.Unit * 1.6 end
+	beamE.Acceleration = Vector3.new(push.X, -0.08 + push.Y * 0.3, push.Z)
 	local mine = me:GetAttribute("ZmLight") == true and me:GetAttribute("ZmFilm") ~= true
 	if mine and not beamE.Enabled then beamE.Enabled = true; beamE:Emit(30) elseif not mine then beamE.Enabled = false end
 	if mine then beam.CFrame = cam.CFrame * CFrame.new(0, -0.3, -8.5) end

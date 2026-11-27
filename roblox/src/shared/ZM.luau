@@ -97,44 +97,46 @@ end
 ZM.R.mach, ZM.R.machStep, ZM.R.machSpin, ZM.R.machCd = 1250, 500, 2.6, 15
 ZM.R.dropChance, ZM.R.dropCap, ZM.R.dropLife, ZM.R.dropBlink, ZM.R.dropReach = 0.045, 4, 25, 5, 1.7 * S
 ZM.R.upHold, ZM.R.fxGap = 1.2, 0.35
--- the colas (Jank Cola is the first). colaMax at once; all gone if you go down (Get Up Juice is used up instead)
+-- the colas (ARMOR is the first). colaMax at once; all gone if you go down (SELF REVIVE is used up instead).
+-- (27 Nov 2026, the owner's rule, no jokes on screen: every name here, the colas', the machine's, the drops', the
+-- upgrade's, is a plain label of what it does; never another game's (CoD's) power-up or perk names. ids unchanged)
 ZM.COLAS = {
-	jank = { name = "JANK COLA", price = 2500, color = Color3.fromHex("ff5a3a"), desc = "Claws hit you half as hard. You heal faster." },
-	getup = { name = "GET UP JUICE", price = 1500, color = Color3.fromHex("ff4fd8"), desc = "Go down and you get back up by yourself, once.", self = 4 },
-	legday = { name = "LEG DAY", price = 2000, color = Color3.fromHex("4fd8ff"), desc = "You run faster.", speed = 1.12 },
-	pockets = { name = "DEEP POCKETS", price = 3000, color = Color3.fromHex("ffe14d"), desc = "Every gun holds half again as much ammo.", ammo = 1.5 },
-	thirdhand = { name = "THIRD HAND", price = 4000, color = Color3.fromHex("7dff4f"), desc = "Carry three guns.", guns = 3 },
+	jank = { name = "ARMOR", price = 2500, color = Color3.fromHex("ff5a3a"), desc = "Claws hit you half as hard. You heal faster." },
+	getup = { name = "SELF REVIVE", price = 1500, color = Color3.fromHex("ff4fd8"), desc = "Go down and you get back up by yourself, once.", self = 4 },
+	legday = { name = "RUN SPEED", price = 2000, color = Color3.fromHex("4fd8ff"), desc = "You run faster.", speed = 1.12 },
+	pockets = { name = "MORE AMMO", price = 3000, color = Color3.fromHex("ffe14d"), desc = "Every gun holds half again as much ammo.", ammo = 1.5 },
+	thirdhand = { name = "THIRD GUN", price = 4000, color = Color3.fromHex("7dff4f"), desc = "Carry three guns.", guns = 3 },
 } :: { [string]: any }
 -- the Warranty Voider: hold Q with the weapon in your hands (F till 27 Nov 2026). three goes per weapon, dearer each time. mul = damage to
 -- zombies, ammo = what the gun holds. from the second go it rolls a side effect (again at the third)
-ZM.UP = { name = "WARRANTY VOIDER", price = { 2500, 5000, 9000 }, mul = { [0] = 1, 1.6, 2.4, 3.4 }, ammo = { [0] = 1, 1.2, 1.4, 1.6 }, tier = { "VOID", "VOID II", "VOID III" } }
+ZM.UP = { name = "UPGRADE", price = { 2500, 5000, 9000 }, mul = { [0] = 1, 1.6, 2.4, 3.4 }, ammo = { [0] = 1, 1.2, 1.4, 1.6 }, tier = { "UPGRADE 1", "UPGRADE 2", "UPGRADE 3" } }
 ZM.UPFX = {
-	zap = { name = "ZAPPY", desc = "Hits jump to the zombies next to it.", color = Color3.fromHex("4fd8ff"), reach = 6 * S, n = { [2] = 2, [3] = 4 }, part = 0.4 },
-	toast = { name = "TOASTY", desc = "Sets them on fire.", color = Color3.fromHex("ff8a3a"), secs = 3, tick = 0.12 },
-	frost = { name = "FROSTY", desc = "Freezes them for a moment.", color = Color3.fromHex("bfefff"), secs = 1.1, again = 5 },
-	boing = { name = "BOINGY", desc = "Pops them into the air.", color = Color3.fromHex("ff4fd8"), up = 9 * S },
-	tips = { name = "TIPPY", desc = "+5 credits a hit.", color = Color3.fromHex("7dff4f"), pay = 5 },
+	zap = { name = "CHAIN SHOCK", desc = "Hits jump to the zombies next to it.", color = Color3.fromHex("4fd8ff"), reach = 6 * S, n = { [2] = 2, [3] = 4 }, part = 0.4 },
+	toast = { name = "BURN", desc = "Sets them on fire.", color = Color3.fromHex("ff8a3a"), secs = 3, tick = 0.12 },
+	frost = { name = "FREEZE", desc = "Freezes them for a moment.", color = Color3.fromHex("bfefff"), secs = 1.1, again = 5 },
+	boing = { name = "LAUNCH", desc = "Pops them into the air.", color = Color3.fromHex("ff4fd8"), up = 9 * S },
+	tips = { name = "CREDITS PER HIT", desc = "+5 credits a hit.", color = Color3.fromHex("7dff4f"), pay = 5 },
 } :: { [string]: any }
 ZM.UPFX_ORDER = { "zap", "toast", "frost", "boing", "tips" }
 -- the Cheat Machine (needs the power): pay, it rolls one of these. team ones are for everyone, the rest for whoever paid
 ZM.MODS = {
-	oneshot = { name = "ONE AND DONE", desc = "Every hit kills.", dur = 15, team = true, color = Color3.fromHex("ff3030") },
-	taxfraud = { name = "TAX FRAUD", desc = "Double credits.", dur = 30, team = true, color = Color3.fromHex("7dff4f") },
-	bottomless = { name = "BOTTOMLESS MAG", desc = "No reloads, no running out.", dur = 20, team = false, color = Color3.fromHex("ffe14d") },
-	zoomies = { name = "ZOOMIES", desc = "You run 40% faster.", dur = 25, team = false, color = Color3.fromHex("4fd8ff"), speed = 1.4 },
-	brainfreeze = { name = "BRAIN FREEZE", desc = "Zombies move slowly.", dur = 15, team = true, color = Color3.fromHex("bfefff") },
-	bighead = { name = "BIG HEAD MODE", desc = "Zombie heads are huge. Every kill counts as a headshot.", dur = 25, team = true, color = Color3.fromHex("ffb347") },
-	vampire = { name = "VAMPIRE TEETH", desc = "Your hits heal you.", dur = 20, team = false, color = Color3.fromHex("c01040") },
-	bouncy = { name = "BOUNCY CASTLE", desc = "Every hit sends them flying.", dur = 20, team = true, color = Color3.fromHex("ff4fd8") },
+	oneshot = { name = "ONE-HIT KILLS", desc = "Every hit kills.", dur = 15, team = true, color = Color3.fromHex("ff3030") },
+	taxfraud = { name = "DOUBLE CREDITS", desc = "Double credits.", dur = 30, team = true, color = Color3.fromHex("7dff4f") },
+	bottomless = { name = "NO RELOADS", desc = "No reloads, no running out.", dur = 20, team = false, color = Color3.fromHex("ffe14d") },
+	zoomies = { name = "RUN FASTER", desc = "You run 40% faster.", dur = 25, team = false, color = Color3.fromHex("4fd8ff"), speed = 1.4 },
+	brainfreeze = { name = "SLOW ZOMBIES", desc = "Zombies move slowly.", dur = 15, team = true, color = Color3.fromHex("bfefff") },
+	bighead = { name = "BIG HEADS", desc = "Zombie heads are huge. Every kill counts as a headshot.", dur = 25, team = true, color = Color3.fromHex("ffb347") },
+	vampire = { name = "HITS HEAL", desc = "Your hits heal you.", dur = 20, team = false, color = Color3.fromHex("c01040") },
+	bouncy = { name = "HITS LAUNCH", desc = "Every hit sends them flying.", dur = 20, team = true, color = Color3.fromHex("ff4fd8") },
 } :: { [string]: any }
 ZM.MOD_ORDER = { "oneshot", "taxfraud", "bottomless", "zoomies", "brainfreeze", "bighead", "vampire", "bouncy" }
 function ZM.machPrice(uses: number): number return ZM.R.mach + ZM.R.machStep * uses end
 -- drops: a zombie you kill sometimes leaves one (dropCap a round, gone after dropLife). (the web's killstreak drops wait
 -- for killstreaks on Roblox)
 ZM.DROPS = {
-	tipjar = { name = "TIP JAR", desc = "+400 credits for everyone.", color = Color3.fromHex("7dff4f"), w = 3 },
-	restock = { name = "RESTOCK", desc = "Full ammo for everyone.", color = Color3.fromHex("4fd8ff"), w = 3 },
-	aisle5 = { name = "CLEAN-UP ON AISLE 5", desc = "Every zombie pops.", color = Color3.fromHex("ff4fd8"), w = 2 },
+	tipjar = { name = "+400 CREDITS", desc = "For everyone.", color = Color3.fromHex("7dff4f"), w = 3 },
+	restock = { name = "FULL AMMO", desc = "For everyone.", color = Color3.fromHex("4fd8ff"), w = 3 },
+	aisle5 = { name = "ALL ZOMBIES KILLED", desc = "Every zombie on the map.", color = Color3.fromHex("ff4fd8"), w = 2 },
 } :: { [string]: any }
 ZM.DROP_ORDER = { "tipjar", "restock", "aisle5" }
 function ZM.dropPick(rnd: (() -> number)?): string

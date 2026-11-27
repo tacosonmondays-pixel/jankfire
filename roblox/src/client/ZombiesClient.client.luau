@@ -245,7 +245,7 @@ zr.OnClientEvent:Connect(function(x: any)
 		show(tostring(x.name), if def then def.desc else nil, 2.5)
 	elseif x.k == "boss" then
 		if x.st == "warn" then show(tostring(x.name), "on the way", 3)
-		elseif x.st == "meeting" then say(tostring(x.name) .. " called a meeting", false)
+		elseif x.st == "meeting" then say(tostring(x.name) .. " summons more zombies", false)
 		elseif x.st == "dead" then show(tostring(x.name) .. " DOWN", nil, 3) end
 	elseif x.k == "over" then
 		for _, c in oRows:GetChildren() do if c:IsA("Frame") then c:Destroy() end end

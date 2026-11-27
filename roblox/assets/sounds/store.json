@@ -3836,6 +3836,73 @@
     ],
     "L": -23
    }
+  ],
+  "zm_tubehum": [
+   {
+    "id": 9114246115,
+    "title": "Electric Hum 15 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.6,
+     2.8
+    ],
+    "L": -15
+   }
+  ],
+  "zm_ballast": [
+   {
+    "id": 9118138365,
+    "title": "Relay Clicks 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -31
+   }
+  ],
+  "zm_spark": [
+   {
+    "id": 9114277402,
+    "title": "Electric Zaps 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.6
+    ],
+    "L": -23
+   },
+   {
+    "id": 9114277623,
+    "title": "Electric Zaps 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.6
+    ],
+    "L": -23
+   }
+  ],
+  "zm_arc": [
+   {
+    "id": 9114277338,
+    "title": "Electric Zaps 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.37
+    ],
+    "L": -24
+   }
+  ],
+  "zm_relay": [
+   {
+    "id": 9113808115,
+    "title": "Circuit Breaker 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -21
+   }
   ]
  },
  "vol": {
@@ -4068,7 +4135,12 @@
   "zm_term_sel": -31,
   "zm_term_ready": -27,
   "zm_term_off": -28,
-  "zm_limb": -28
+  "zm_limb": -28,
+  "zm_tubehum": -44,
+  "zm_ballast": -40,
+  "zm_spark": -28,
+  "zm_arc": -31,
+  "zm_relay": -33
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -4173,7 +4245,10 @@
   "zm_revpat": 0.04,
   "zm_term_key": 0.08,
   "zm_term_sel": 0.03,
-  "zm_limb": 0.1
+  "zm_limb": 0.1,
+  "zm_ballast": 0.1,
+  "zm_spark": 0.08,
+  "zm_arc": 0.1
  },
  "loop": {
   "minigun_spin": true,
@@ -4187,7 +4262,8 @@
   "rope_creak": true,
   "rig_charge": true,
   "zm_heli": true,
-  "zm_wind": true
+  "zm_wind": true,
+  "zm_tubehum": true
  },
  "roll": {
   "gun_water": [
@@ -4289,6 +4365,26 @@
   "zm_step": [
    6,
    50
+  ],
+  "zm_tubehum": [
+   4,
+   24
+  ],
+  "zm_ballast": [
+   3,
+   30
+  ],
+  "zm_spark": [
+   5,
+   60
+  ],
+  "zm_arc": [
+   10,
+   120
+  ],
+  "zm_relay": [
+   10,
+   120
   ]
  }
 }

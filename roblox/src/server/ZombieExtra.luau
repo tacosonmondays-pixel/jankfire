@@ -151,10 +151,10 @@ local function voidIt(g: any, gs: GS, m: any)
 	local wid = m.f.held
 	local x = ms(m)
 	if not gs.power then X.say(m, { k = "buy", ok = false, m = "no power" }); return end
-	if not W[wid] or (wid ~= m.melee and not table.find(m.guns, wid)) then X.say(m, { k = "buy", ok = false, m = "hold the weapon to void" }); return end
+	if not W[wid] or (wid ~= m.melee and not table.find(m.guns, wid)) then X.say(m, { k = "buy", ok = false, m = "hold the weapon to upgrade" }); return end
 	local cur = x.up[wid] or { t = 0, fx = "" }
 	local price = ZM.UP.price[cur.t + 1]
-	if not price then X.say(m, { k = "buy", ok = false, m = "fully voided" }); return end
+	if not price then X.say(m, { k = "buy", ok = false, m = "fully upgraded" }); return end
 	if not X.pay(m, price) then return end
 	local tier = cur.t + 1
 	local fx = ""
@@ -304,7 +304,7 @@ local function crateReset(g: any, gs: GS)
 	local cm = c.model
 	if cm then cm:SetAttribute("Spin", nil); cm:SetAttribute("Offer", nil); cm:SetAttribute("W", nil); cm:SetAttribute("By", nil) end
 	local pr = c.pr
-	if pr then pr.ActionText = "Open  " .. R.crate; pr.ObjectText = "MYSTERY CRATE" end
+	if pr then pr.ActionText = "Open  " .. R.crate; pr.ObjectText = "RANDOM WEAPON" end
 	local _ = g
 end
 local function useCrate(g: any, gs: GS, m: any)
@@ -376,12 +376,12 @@ local function start(g: any)
 	-- the Voider, the Cheat Machine
 	if map.voider then
 		local mm = machine(gs.folder, "Voider", floorOf(map.voider), 5, 4.2, 3, Color3.fromHex("9a7cff"))
-		local pr = X.prompt(mm.PrimaryPart, "Void", ZM.UP.name, R.upHold)
+		local pr = X.prompt(mm.PrimaryPart, "Upgrade", ZM.UP.name, R.upHold)
 		wire(pr, function(m: any) voidIt(g, gs, m) end)
 	end
 	if map.mach then
 		local mm = machine(gs.folder, "CheatMachine", floorOf(map.mach), 3.4, 6.2, 3, Color3.fromHex("ff4fd8"))
-		local pr = X.prompt(mm.PrimaryPart, "Play  " .. ZM.machPrice(0), "CHEAT MACHINE", R.hold)
+		local pr = X.prompt(mm.PrimaryPart, "Play  " .. ZM.machPrice(0), "BOOST MACHINE", R.hold)
 		gs.mach.pr = pr
 		wire(pr, function(m: any) playMach(g, gs, m) end)
 	end
@@ -403,7 +403,7 @@ local function start(g: any)
 		cm.PrimaryPart = body
 		cm.Parent = gs.folder
 		gs.crate.model = cm
-		local pr = X.prompt(body, "Open  " .. R.crate, "MYSTERY CRATE", R.hold)
+		local pr = X.prompt(body, "Open  " .. R.crate, "RANDOM WEAPON", R.hold)
 		gs.crate.pr = pr
 		wire(pr, function(m: any) useCrate(g, gs, m) end)
 	end

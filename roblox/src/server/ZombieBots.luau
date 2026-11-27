@@ -80,11 +80,40 @@ local function floorAt(g: any, p: Vector3): Vector3?
 	local x, z = Nav.centre(g.nav, c)
 	return Vector3.new(x, g.nav.floor[c], z)
 end
--- a field to a fixed spot, redone when the spot moves, a door opens, or it's old
+-- a field to a fixed spot, redone when the spot moves, a door opens, or it's old. (27 Nov 2026, the owner: "Make sure
+-- the zombies aren't laggy": a field over the opened school is 5-20 ms; a bot's is a stepped job now (ZombieNav
+-- flowBegin / flowStep) sharing BOT_FIELD_MS a tick across the bots, the old one serving while it builds)
+local BOT_FIELD_MS = 2
+local budgetT, budgetLeft = 0, 0
+local function budget(): number
+	local t = now()
+	if t - budgetT > 0.05 then budgetT, budgetLeft = t, BOT_FIELD_MS end
+	return budgetLeft
+end
+local function stepJob(j: any): boolean
+	local b = budget()
+	if b <= 0.05 then return false end
+	local t0 = os.clock()
+	local done = Nav.flowStep(j, b)
+	budgetLeft -= (os.clock() - t0) * 1000
+	return done
+end
 local function fieldTo(g: any, f: Field, at: Vector3, maxAge: number): { [number]: number }
+	local job = (f :: any).job
+	if job then
+		if stepJob(job.j) then
+			f.d, f.t, f.at = job.j.d, job.t, job.at
+			;(f :: any).job = nil
+		end
+		return f.d
+	end
 	if now() - f.t > maxAge or flat(at - f.at).Magnitude > 3 or math.abs(at.Y - f.at.Y) > 4 or f.t < g.fieldT then
-		Nav.flow(g.nav, g.open, at, f.d)
-		f.t, f.at = now(), at
+		local j = Nav.flowBegin(g.nav, g.open, at)
+		if stepJob(j) then
+			f.d, f.t, f.at = j.d, now(), at
+		else
+			(f :: any).job = { j = j, t = now(), at = at }
+		end
 	end
 	return f.d
 end

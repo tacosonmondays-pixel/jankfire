@@ -765,3 +765,41 @@ segments and a faint emission; boxes pre-filled with :Emit so nothing fades up).
 - Checked in Play (place version 1647): the whole order recorded and read frame by frame. Left as polish: a short
   dark beat at the handoff into the briefing, and the very closest frame still shows the bezel at the sides in Studio's
   wide view. Sheet: side notes 23-zombies-intro-terminal-27nov.jpg; clip zombies-intro-terminal-27nov.mp4.
+
+### 4.18 Plain names, moving dust, tubes that flicker and spark (27 Nov; the owner: "The dust particles look like they're not moving!! Can lights flicker too? Some electrical certain sounds etc?"; main: no jokes on screen, never CoD's power-up names)
+- **Plain names** (ZM.luau, ids unchanged): every name on screen is a label of what it does. Colas ARMOR, SELF REVIVE,
+  RUN SPEED, MORE AMMO, THIRD GUN; the machine UPGRADE (tiers UPGRADE 1-3, prompt "Upgrade"); its effects CHAIN SHOCK,
+  BURN, FREEZE, LAUNCH, CREDITS PER HIT; modifiers ONE-HIT KILLS, DOUBLE CREDITS, NO RELOADS, RUN FASTER, SLOW ZOMBIES,
+  BIG HEADS, HITS HEAL, HITS LAUNCH; drops +400 CREDITS, FULL AMMO, ALL ZOMBIES KILLED (ZombieExtra: BOOST MACHINE,
+  RANDOM WEAPON; ZombiesClient: "<boss> summons more zombies"). Kept as names, flagged to main: the bosses and
+  specials (THE FLOOR MANAGER, THE MASCOT, CHONK, ANKLE BITER, HARD HAT, SCREAMER).
+- **Dust that moves** (ZombieDust.client `lively`): speed 0.4-1.0, drag 0.5, every direction, settling (-0.08),
+  turning (+-120 deg/s), a size and transparency pulse over each mote's life (the twinkle), half again HOUSE HUNT's size
+  and brightness; each box's sideways wander is re-drawn every 1.6-2.8 s; the flashlight's motes swirl away from the way
+  the camera moves. A lamp lit in the last 4 s keeps its dust (a flicker doesn't hop the motes to another lamp); its
+  shaft goes out and back with its light (shaftConn).
+- **Fix, the window shafts:** ZombieDust took `-w.n` as inward, but a window's n points in, to the play side (Zombies
+  spawns at `out` facing n), so the moon shafts slanted out of the building. Now they fall into the room.
+- **Tubes that fail like fluorescents** (SchoolLife.client), each group on its own clock (3-12 s): blinks (45%), a
+  struggling restart (20%), a dying stutter of at most 0.9 s into a dark spell, a spark 35% of the time (20%), a long
+  dropout (15%). The fitting's glow, the group's lights and the fill light beside each fitting (an untagged light within
+  6 studs) go out together: the room dims (18% in the test room). Seizure safety: the room's light changes at most 3
+  times a second (ROOM_GAP 0.34 s; measured: room-wide changes 0.33 s or more apart); only the small fitting stutters
+  faster; a spark flashes once. A dark area's tubes stay off till the power, then each restarts within 1.5 s. Dead for
+  good: groups 3, 9, 15, 20.
+- **Sparks:** 24-34 long hot streaks (the VFX library's vfx_spark, Squash 1.6, 9-18 studs/s, gravity 55), one 0.06 s
+  flash (range 16), 6-12 more spat a beat later, the crackle.
+- **Electrical sounds** (recordings from Roblox's licensed library, store.json): zm_tubehum looped on the two nearest
+  lit tubes (within 30 studs, silent while out), zm_ballast as a tube catches (within 45 studs, at most every 0.08 s),
+  zm_spark, and now and then (18-42 s) a distant zm_arc or zm_relay from a tube 30-90 studs off. They come from the
+  group's fitting nearest you (a group spans floors).
+- **Bots' path fields** are stepped jobs too (ZombieBots.fieldTo, BOT_FIELD_MS 2 a frame).
+- **Test hook (Studio):** player attribute ZmFlickTest = "spark" | "restart" | "dying": the nearest lit tube does it.
+- **Checked in Play (place version 1650):** a clip under a lit tube (a spark, a restart, a dying stutter) with its
+  sounds; the dust's render cost is noise (CPU 3.64-3.76 ms on, 3.65 off; GPU 3.75 both; 60 fps); zombies on a client:
+  walkers' per-frame tracks steady at 8-10 studs/s, no jumps (a legless crawler hops, as designed); 8 corpses all on
+  the floor (lowest part within 0.1 stud). Sheet: side notes 24-zombies-flicker-dust-27nov.jpg; clip
+  zombies-flicker-spark-27nov.mp4.
+- **Trap, the recorder:** Studio's video_capture all but drops positional sound (a 2D spark records at -31 dB, the same
+  spark 3 studs away in 3D at -78 dB). For a clip with sound, the test harness mirrored each zm_ sound flat at its
+  Atten (Sfx sets it on every copy) and the hums at their distance gain. Not shipped.
