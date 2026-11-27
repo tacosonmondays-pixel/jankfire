@@ -410,6 +410,30 @@ local function play(a: any)
 		ext = { side = math.max(2.0, right + 0.9), rad = math.max(3.7, back + 2.0), close = math.max(2.3, back + 1.2) }
 		return ext :: any
 	end
+	-- (owner on v14: "When it snaps to outside she should still be look up with the same camera angle") the match cut:
+	-- the room's top-down framing on her real body outside, her face still up (the same clip's last frame), only the
+	-- world round her changed; read off her real head a moment after the cut
+	local function realHeadPart(): BasePart?
+		local c2 = me.Character
+		local hd = c2 and c2:FindFirstChild("Head") :: BasePart?
+		if hd and (hd.Position - O.Position).Magnitude < 12 then return hd end
+		return nil
+	end
+	local function topOutside(u: number): CFrame
+		local a = math.rad(74)
+		local n = (flat * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
+		local crown = (Vector3.yAxis * math.cos(a) - flat * math.sin(a)).Unit
+		local p = realHead()
+		local hd = realHeadPart()
+		if hd and T() >= beat("outside") + 0.12 then
+			if not r.outFace then r.outFace = { n = hd.CFrame.LookVector, c = hd.CFrame.UpVector, p = hd.Position, t = T() } end
+			local f = r.outFace
+			local k = smoother(math.clamp((T() - f.t) / 0.25, 0, 1))
+			n = n:Lerp(f.n, k).Unit; crown = crown:Lerp(f.c, k).Unit; p = p:Lerp(f.p, k)
+		end
+		local d = Cine.lerp(5.0, 5.5, smoother(u))
+		return CFrame.lookAt(p + n * d + flat * 0.4, p + n * 0.25, crown)
+	end
 	local shots = {
 		-- 1. the room: a low wide, a slow push, a profile (27 Nov: trimmed, to give the end outside its room)
 		{ name = "wide", t0 = 0, t1 = beat("push"), fov = function(u) return Cine.lerp(56, 52, u) end,
@@ -453,19 +477,18 @@ local function play(a: any)
 				end
 				return CFrame.lookAt(face + n * d + fz * 0.4, face + n * 0.25, crown)
 			end },
-		-- 4. outside: low in front of him (between him and the map), looking up at him
-		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 44, -- (owner: "a calm motion": no handheld,
-			cam = function(u)                                                   -- the lens on her body, not her moving head)
-				local from = O.Position + flat * Cine.lerp(5.4, 5.0, Cine.ease(u)) + rt * 2.4 + Vector3.new(0, 1.1, 0)
-				return look(from, realBody() + Vector3.new(0, 0.1, 0))
-			end },
+		-- 4. outside: the match cut (above), held a beat, still rising slowly
+		{ name = "outside", t0 = beat("outside"), t1 = beat("around"), fov = 50, cam = function(u) return topOutside(u) end },
 		-- 5. the look round (owner, 27 Nov): a slow drift out to a three-quarter as his head and shoulders turn left and
 		-- right and his hands come down
-		{ name = "around", t0 = beat("around"), t1 = beat("swing"), fov = function(u) return Cine.lerp(44, 38, u) end,
+		{ name = "around", t0 = beat("around"), t1 = beat("swing"),
+			fov = function(u) local k = smoother(math.clamp(u / 0.4, 0, 1)); return Cine.lerp(50, Cine.lerp(44, 38, u), k) end,
 			cam = function(u) -- (owner: "why is she shaking?": the lens followed her moving head, with a handheld on top)
 				local e = Cine.ease(u)
 				local from = O.Position + flat * Cine.lerp(5.0, 6.2, e) + rt * Cine.lerp(2.4, 3.6, e) + Vector3.new(0, Cine.lerp(1.1, 1.9, e), 0)
-				return look(from, realBody() - Vector3.new(0, 0.7 * e, 0))
+				local cf = look(from, realBody() - Vector3.new(0, 0.7 * e, 0))
+				local k = smoother(math.clamp(u / 0.4, 0, 1)) -- (a crane down out of the top-down as her head comes down)
+				return if k < 1 then topOutside(1):Lerp(cf, k) else cf
 			end },
 		-- 6. the swing: round to behind him as he looks down
 		{ name = "swing", t0 = beat("swing"), t1 = beat("hold"), fov = 40,
@@ -482,12 +505,22 @@ local function play(a: any)
 		-- 7. the hold (owner: "more before the zoom in"): his back to us, the house ahead, a slow push
 		{ name = "hold", t0 = beat("hold"), t1 = beat("enter"), fov = 40,
 			cam = function(u) local X = behindExt(); return behindCF(steadyHead(), Cine.lerp(X.rad, X.rad - 0.5, u), 0.9, X.side) end },
-		-- 8. (owner on v11: her head went see-through as the lens pushed into it) the push stops behind her, solid, and
-		-- cuts straight into first person as the bars lift
-		{ name = "enter", t0 = beat("enter"), t1 = beat("cut"), fov = function(u) return Cine.lerp(40, 36, smoother(u)) end,
-			cam = function(u) local X = behindExt(); return behindCF(steadyHead(), Cine.lerp(X.rad - 0.5, math.min(X.rad - 0.5, X.close), smoother(u)), 0.9, X.side) end },
-		{ name = "fp", t0 = beat("cut"), t1 = len, fov = function() local _, gf = Cine.gameplay(flat); return gf end,
-			cam = function() return (Cine.gameplay(flat)) end },
+		-- 8. (owner on v14: "I liked the original transition into gameplay, it was a lot smoother") one smootherstep push
+		-- into her eyes, as v8's: round her shoulder (the side comes in last, so it passes what she wears), her head solid
+		-- till the lens is at it, then gone as first person hides it
+		{ name = "enter", t0 = beat("enter"), t1 = len,
+			fov = function(u) local _, gf = Cine.gameplay(flat); return Cine.lerp(40, gf, smoother(u)) end,
+			cam = function(u)
+				local X = behindExt()
+				local e = smoother(u)
+				local hp = steadyHead()
+				local side = X.side * (1 - smoother(math.clamp((u - 0.3) / 0.7, 0, 1)))
+				local back = (X.rad - 0.5) * (1 - e)
+				local pos = hp - flat * back + rt * side + Vector3.new(0, 0.9 * (1 - e), 0)
+				local g = Cine.gameplay(flat)
+				local at = (hp + flat * 6 + rt * (X.side * 0.4)):Lerp(g.Position + g.LookVector * 6, e)
+				return CFrame.lookAt(pos, at):Lerp(g, smoother(math.clamp((u - 0.8) / 0.2, 0, 1)))
+			end },
 	}
 	r.cine = Cine.play(shots, { clock = T, flag = "huntintro", warm = 0.4 })
 	RunService:BindToRenderStep("HuntIntroSolid", Enum.RenderPriority.Last.Value + 90, function()
@@ -524,7 +557,9 @@ local function play(a: any)
 		else -- (out front: his face; behind him: the house past him; as the lens goes into his head his hair fades)
 			-- (owner on v11: her hair and then her whole head went see-through out here: the lens fades nothing of hers
 			-- now, and the game's own camera can't either: HuntIntroSolid holds her at 0 until the cut into first person)
-			if once("cut", beat("cut")) then
+			local hd0 = me.Character and me.Character:FindFirstChild("Head") :: BasePart?
+			local atHead = hd0 ~= nil and shot == "enter" and (workspace.CurrentCamera.CFrame.Position - hd0.Position).Magnitude < 1.0
+			if not r.fp and (atHead or t >= len - 0.12) then
 				r.fp = true
 				local ch = me.Character -- (first person: her head and what she wears off this screen, as the game does)
 				if ch then
@@ -642,8 +677,8 @@ local function play(a: any)
 			local rh = rc and rc:FindFirstChildOfClass("Humanoid")
 			local ra = rh and rh:FindFirstChildOfClass("Animator")
 			if ra then
-				local up = track(ra, ids.snap, Enum.AnimationPriority.Action3)
-				if up then up:Play(0.15, 1, 1); up.TimePosition = math.max(0, up.Length - 0.05); up:AdjustSpeed(0); table.insert(r.realTracks, up) end
+				local up = track(ra, ids.snapTop or ids.snap, Enum.AnimationPriority.Action3)
+				if up then up:Play(0, 1, 1); up.TimePosition = math.max(0, up.Length - 0.05); up:AdjustSpeed(0); table.insert(r.realTracks, up) end
 				r.realAnimator = ra
 			end
 		end
