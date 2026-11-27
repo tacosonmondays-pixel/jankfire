@@ -527,6 +527,7 @@ local function play(a: any)
 					end
 				end
 			end
+			vp:SetAttribute("Pieces", #vp:GetChildren()) -- (a debug read: how many pieces the screen's picture holds)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end
 			room.Parent = workspace -- (under the static: the pull's first frame is never an empty sky)
 		end

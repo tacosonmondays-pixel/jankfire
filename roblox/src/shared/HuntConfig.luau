@@ -104,7 +104,7 @@ H.MAPS = {
 		outside = { 0, -1.5, 70, 0, -1 }, -- (the gunman's intro ends here: the front walk, facing the front door)
 		-- the win films (27 Nov): his walk in from the front door, looking into the living room, toward the dining room, then
 		-- on to the fireplace (eye height 5.6); the survivors' regroup in the hall (x, y, z, facing yaw degrees)
-		outroWalk = { path = { { -4, 5.6, 36 }, { -4, 5.6, 28 }, { -8, 5.6, 21 } }, looks = { { -30, 4.5, 30 }, { 26, 4.5, 10 }, { -50, 4.2, 21 } } }, -- (v1: off the stairs)
+		outroWalk = { path = { { -4, 5.6, 36 }, { -4, 5.6, 28 }, { -8, 5.6, 21 } }, looks = { { -30, 4.5, 32 }, { -34, 4.0, 12 }, { -50, 4.2, 21 } } }, -- (v1: off the stairs; v3: never toward them)
 		outroGroup = { -2, 0, 14, 180 },
 		-- the wreck along his walk (main, 27 Nov: "start the walk with destroyed place"): { piece, x, y, z, yaw, pitch, roll }
 		-- in degrees (yaw first, then the tip). No blood, no bodies: things knocked over, a frame askew, a door off its hinge
