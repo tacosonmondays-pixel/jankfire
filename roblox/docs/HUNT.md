@@ -356,18 +356,23 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)
-- `tools/roblox/hunt_house_layout.py` holds the single layout. Run it and it checks spawns, door swings and that every
-  room is reached. It currently passes, with one false flag at the WC door, whose leaf stops 0.1 stud short of the
-  toilet.
+- `tools/roblox/hunt_house_layout.py` holds the single layout. Run it and it checks spawns, door swings, the way
+  through every doorway (`DOORWAYS BLOCKED`: 1 to 3 studs out on both sides, added 27 Nov after Clip found the pantry
+  in the garage doorway) and that every room is reached. It currently passes, with one false flag at the WC door,
+  whose leaf stops 0.1 stud short of the toilet.
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
-  - architecture, `--only=hh_`: asset 73849514931340 (`HuntBuild.B.ARCH`);
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: asset 100087196866288 (`B.FURN`, kit 3:
-    the sofa base sits inside its arms).
+  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 4, 27 Nov: hunt_arch6 = 121682936033577);
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 4: hunt_furn7 =
+    139469122663323).
+  - Each judge round rebuilds both halves (`--name=hunt_archN` / `hunt_furnN`) and re-uploads them; the ids above
+    are the latest. Judge rounds and their fixes: vault `Reviews\The House - judge rounds.md`.
 
   HuntBuild `B.importExtra(FURN)` adds the second half without clearing the first.
-- New textures: siding 127661606333401, shingles 135435899461861, lawn 82912196276517, fence boards 136590475412292,
-  asphalt 72215822270952. The rest are the school's pictures.
+- New textures: siding 127661606333401, shingles 135435899461861, lawn2 118128219477802 (round 4: calmer; the first
+  lawn was 82912196276517), fence boards 136590475412292, asphalt 72215822270952, oak planks 123980610531995, kitchen
+  tile 101846364880605, plaster 87623840105825. The rest are the school's pictures. `hunt_house_textures.py` makes
+  them; `TEXS` in hunt_house_models.py maps each textured colour to its picture (the picture's own colour wins).
 - In Studio, in this order:
   1. `W.import("HuntHouse", B.ARCH)`
   2. `B.importExtra()`
@@ -380,6 +385,11 @@ Each stage ends with a frame sheet sent to main, a commit on `claude/f-roblox-st
 - The one-line hooks in shared files are in (commit 2df0027): `Unarmed` in Fight.holstered, Arsenal's inHub and
   HubHolster; `NoGrapple` in Move.client (tryHook, tryYank, tryLock) and Main.server's hook handler; `Body.sink` taken
   off HipHeight in Move.client; the HOLDOUT card in ModesTab; the look in HubLook.
+- 27 Nov (commit 092e0cb): FlairServer's onKill returns early when the killer has `Hunt` set, so a gunman's worn kill
+  effect never plays on a hider (round re-test v1407: a shell of limb shapes showed with the cubes, against section 6).
+- Round test verified in Play (v1407): the gunman's spawn grace (HuntRound `grace`, 6 s) keeps the round going, a
+  headshot breaks a stand-in into cubes, the last kill gives GUNMAN WINS, the house comes back with the lobby
+  attributes, and X lies down (HipHeight 0.05, `HuntLie`) and gets up again.
 
 ### Animations (mocap, the vault's Mixamo clips)
 - Uploaded for R15 and R6 (ids in `HuntConfig.ANIMS`): idle, run, the haymaker (a rear hook that holds at its
