@@ -1,0 +1,49 @@
+{
+ "unit": 10.0,
+ "items": {
+  "duck@origami": {
+   "lo": [
+    -0.17,
+    -0.1,
+    -0.29
+   ],
+   "hi": [
+    0.17,
+    0.278,
+    0.305
+   ],
+   "tris": 68,
+   "pieces": [
+    "body__paper",
+    "beak__foil",
+    "wings__fold",
+    "tail__fold",
+    "eye__eye"
+   ],
+   "grip": [
+    0,
+    0,
+    0.02
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ],
+   "wrap": {
+    "a": [
+     "body"
+    ],
+    "b": [
+     "wings",
+     "tail"
+    ]
+   },
+   "name": "Origami Duck",
+   "rarity": "legendary",
+   "skin": "duck_origami",
+   "item": "duck"
+  }
+ },
+ "asset": 90833126444689
+}

@@ -651,6 +651,94 @@ After both passes, 14 are retired and `Roster.wraps` holds 91. Checked in Edit a
 spray pool (the Cosmic, Wild, Japan, Office and Luxe pools hold 12, 16, 11, 16 and 9 wraps). The shop session refills
 its own explicit lists (the spray sets, and the shop collections whose hero was Kintsugi, Marble or Lava).
 
+## Repeats and circles: the new UV standard (27 Nov 2026)
+
+The owner: "Camos with just repeating patterns don't look too good! Also things like that are circular it doesn't
+wrap properly!!"
+
+**The cause was the UVs, not only the pictures.** The old unfold (`gun_uvs_v1.py`) put one 1024 px tile on every
+0.25 m of gun, so a rifle showed each picture about four times along its length, and it cut its islands wherever a
+face family changed, so round motifs were sliced on the stock, grip and rails and halves didn't meet. Measured on the
+kit guns: 24-36% of the visible faces stretched more than 25%, and the visible seams ran 7.5 m on the AR, 12 m on the
+sniper.
+
+**The new standard (`tools/roblox/gun_uvs.py`):** 0.6 m of gun a tile (`TILE_M`, the sidearms x1.25, the gadgets
+x1.4), a CONFORMAL unwrap per island (angles kept, so a circle stays a circle), seams only on hidden edges (a crease
+over 25 degrees unless one face looks left or both look up, or an edge in the down-right quarter along the gun), each
+island laid in the gun's frame (u along the gun, v up, never mirrored) at one density by area. Measured: 9-15% of the
+visible faces stretch over 25%; visible seams 2.0 m on the AR, 2.1 m on the sniper, 0.6 m on the pistol. ABF was
+tried and was worse. The old file stays as `gun_uvs_v1.py`.
+
+**The roll-out, in place.** `reuv_glb.py` (guns) and `reuv_items.py` (gadgets) take the EXACT uploaded files and give
+the wrappable pieces new UVs (neon, glass and pieces with their own picture keep theirs); `reuv_pack.py` packs a
+family into one upload, every piece named `<key>~<piece>` (on the mesh too: Roblox names a MeshPart after its mesh).
+In Studio, `studio-tools/WeaponReUV.luau` `R.applyPack(id)` puts each new mesh on the live part with `ApplyMesh`, so
+every attribute, child, hat seat and paint stays; a part whose mesh size doesn't match is left alone and reported.
+`R.backup()` parked the old sets first in `ServerStorage.PolishBackup.UV1` (kit set, live templates, skins, Shredder
+tools, gadgets): `R.switch("uv1")` puts them all back. Each piece was rendered from three angles with a dot grid before
+upload. Packs: rifles 98535799930208, long guns + pistols 122112179593757, melee + fun 112849712799045, projectiles
+95453192702937, skins s1-s6 88340093828227 / 136775598083759 / 82011815267471 / 105320662544353 / 109798696891055 /
+74830220884452, the six skins outside the kit book (ducklings, Triangulum, Royal Duck, Seraph, rebuilt with the new
+UVs) 116008015535902, gadgets + gadget skins 78817996541078 (round bodies wrapped on their sides only, item_models2.ROUND_SIDES). The knife's Fish, Karambit and Butterfly were left to the
+gun-models session (remodelled to the new standard). New builds get the standard on their own: every exporter calls
+`gun_uvs.unwrap`.
+
+**The pictures didn't need redrawing:** a design is drawn per tile, so on the new UVs every wrap simply shows 2.4 times
+bigger. Sheets: `wrap-textures/audit/repeats-27nov.jpg` (guns and gadgets, before and after).
+
+**The audit.** All 76 picture wraps (the 74 kept after the AI audit, Lava Lamp and Molten) were rendered at the new
+tile on the AR, the sniper and the pistol (left side, three-quarter top, flat tile) and judged by two fresh blind critics
+for visible repeats and broken circles, with known controls in every round (Tiger, Camo, Wood KEEP; Asanoha RETIRE:
+they always landed). Fair rules: both RETIRE, it goes; both KEEP, it stays; otherwise it is reworked and judged again;
+a wrap still failing after three reworks retires. Owners keep everything retired (`Roster.RETIRED`).
+- **Kept as they are (43):** Molten and 42 others.
+- **Reworked and passed (11):** China (sprays scattered, no medallions), Amethyst Geode (long agate bands, no round
+  pockets), Memphis and Arcade (no rings or dots), Number Soup (11 shapes of mixed size), Stonks (one thick trace, no
+  ticker bars), Aurora (softer, broader curtains), Vaporwave (the sunset on the body rows, the grid one band away),
+  Dice (four big dice), Koi (no lily pads, two big koi), Lava Lamp (twelve smaller lobed blobs that turn as they move:
+  none is a circle; 32 new frames).
+- **Retired (21):** the stamped grids both critics retired at once: Asanoha, Seigaiha, Shibori, Hazard Stripes,
+  Checkered Flag, Missing Texture, Spreadsheet, Neon Hex, CRT, Bubble Wrap, Candy Corn, ☺ CORP; and three reworks
+  failed: Bubblegum, Wood Burl, Ketchup & Mustard, Sushi, Pizza, Corporate Memo, Organ Donor, Big Wave, Leopard. Their
+  pictures stay exactly as uploaded (the failed rework drawings were put back), so owners see what they own.
+- **Ducky** failed three reworks too, but it is the VIP pack's wrap (sold, granted by id, in no pool): it stays as it
+  was, the owner's call.
+- Exotics: Big Wave, CRT and Neon Hex leave the containers (retired); Koi, Aurora, Vaporwave and Lava Lamp stay.
+
+**Gadgets (the owner: "Check gadget wraps too").**
+- Every kept picture wrap (51, the living ones by their first frame) was rendered on five gadgets (grenade, medkit,
+  smoke canister, duck, camera; front and back) with the new UVs, three retired grid wraps as controls, and judged by
+  two fresh blind critics (KEEP / WEAK / BAD on gadgets). The controls came out BAD from both; no kept wrap is BAD from
+  both, so none is held back from gadgets. Their notes found three UV faults, all fixed before upload: the smoke
+  canister's band blew the picture up several times, the duck's front pinched stripes into a swirl, and the grenade's
+  bottom smeared. The cure (`item_models2.ROUND_SIDES`, and `round_uv` now wraps side faces only): the canister's body
+  and band and the duck's body are wrapped round the upright axis, and every round wrap leaves caps and poles to the
+  unfold. What stays WEAK is the picture, not the UVs: a stripe or band design (Hi-Vis, Jersey, Watermelon) lands as
+  fragments on small boxes, and Lava Lamp's blobs leave the canister and camera almost bare.
+- The 8 gadget skins went through the AI and duplicates test (rendered in their own paint beside the 13 gadgets, two
+  fresh critics, the wraps audit's brief): no duplicates. Both called the **Origami Duck** AI ("random decimated
+  facets", a crunched mesh rather than folds). Skins have no "out of pools, owners keep" switch (`LootTable.RETIRED`
+  takes a skin away and refunds a container), so main's call was to rework it: `item_skins.duck_origami` is now a few
+  deliberate, mirror-symmetric folded planes (a boat body with a spine ridge and keel, a folded neck strip, a diamond
+  head, a gold foil beak, flat triangular wings showing the blue side, a fin tail; 68 triangles), and two fresh critics
+  both called it MADE. Owners keep it with the new look (`skins_origami2`). Both called the **Decoy Duck** AI too, but
+  its render showed holes where its baked wing paint should be, so it is judged again from an in-game photo. The
+  **Incense Burner** split two and two over the two rounds; both rounds pointed at its handles draped over the rim.
+
+**Traps.**
+- Pack pieces must carry the key on the MESH name: the first ten packs arrived as `trim__...001` with no key.
+- A gadget node can have two pieces of two looks (the calc's keys): the pack keeps the look code and WeaponReUV picks
+  the candidate whose mesh size matches.
+- Closed smooth bodies (the duck) have no natural seam: the general unfold pinches them into a swirl. Wrap them round
+  (sides only).
+- Running the whole `WrapBook.luau` now also sets every wrap's `Dark` to its partner colour (what `wrap_upload.py`
+  writes since 19 Nov); the 27 Nov update ran only the reworked rows (`turn2_wraps` style), the rest untouched.
+- A long `applyPack` (four 15 MB packs) outlives the MCP call (it reports a timeout) but finishes in Studio: check
+  each part's `MeshContent` against its `UV2Mesh` attribute before applying again.
+- The old-UV switch is per part (main: whole-set copies in PolishBackup weigh on saves): `UV1Mesh` / `UV2Mesh` on every
+  re-UV'd WrapUV part, `R.switch("uv1" | "uv2")` loads each mesh by id and ApplyMesh's it. A model imported later has
+  no ids and is never touched. Main asks the owner before the ids are dropped.
+
 ## Redrawing or adding a wrap
 
 ```bash

@@ -690,50 +690,72 @@ def duck_decoy():
 PAPER, PAPER_C, FOIL = 'e7e3d8', '6f86a6', '8f7c52'
 
 
+def solid(g, piece, verts, faces):
+    """a closed solid from a few named points (item frame) and its faces: crisp folded paper, every face flat"""
+    bm = bmesh.new()
+    vs = {k: bm.verts.new(P(*v)) for k, v in verts.items()}
+    for f in faces: bm.faces.new([vs[k] for k in f])
+    _out(bm)
+    g._add(piece, bm, smooth=None)
+
+
+def flap(g, piece, pts, off):
+    """a flat paper flap: the outline pts (item frame) given a thickness by moving a copy by off"""
+    bm = bmesh.new()
+    top = [bm.verts.new(P(*v)) for v in pts]
+    bot = [bm.verts.new(P(v[0] + off[0], v[1] + off[1], v[2] + off[2])) for v in pts]
+    bm.faces.new(top); bm.faces.new(bot[::-1])
+    n = len(pts)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([top[i], bot[i], bot[j], top[j]])
+    _out(bm)
+    g._add(piece, bm, smooth=None)
+
+
 def duck_origami():
+    """ORIGAMI DUCK, remodelled 27 Nov 2026 (two blind critics read the first one, a faceted ball, as "random decimated
+       facets"). Now a few deliberate folded planes, mirror-symmetric like a real fold: a boat of a body with a sharp
+       spine ridge and a keel, a narrow folded neck strip, a diamond head, a gold foil beak, two flat triangular wing
+       flaps showing the paper's blue side, and a fin of a tail. Pale paper, the blue reverse, one gold accent"""
     g = Gun('x_duck_origami')
     g.slot('paper', PAPER); g.slot('fold', PAPER_C); g.slot('foil', FOIL); g.slot('eye', '2b2d33')
-    # a folded paper duck: crisp flat facets everywhere (no round shading), pale paper with the folds' blue side showing
-    # on the wings and the tail fin, a pointed beak folded in gold foil, a faceted head, two pressed dark dots for eyes
-    def body(x, y, z):
-        t = max(0.0, z / 0.26)
-        if y < -0.05: y = -0.05 + (y + 0.05) * 0.4
-        return x * (1 - 0.4 * t * t), y + 0.08 * t ** 2.5, z
-    faceted(g, 'body__paper', 0.19, 0.14, 0.26, (0, -0.02, 0.03), sub=1, warp=body)
-    faceted(g, 'body__paper', 0.11, 0.11, 0.11, (0, 0.175, -0.12), sub=1)
-    # the wings: folded flaps, the blue side up, raised at the back
+    # the body: chest point, spine ridge (two creases), the widest fold at the waist, a raised back, a keel underneath
+    solid(g, 'body__paper', {
+        'F': (0, 0.0, -0.205), 'T1': (0, 0.105, -0.07), 'T2': (0, 0.115, 0.12), 'B': (0, 0.075, 0.255),
+        'L': (-0.17, 0.01, 0.03), 'R': (0.17, 0.01, 0.03), 'K': (0, -0.10, 0.01)},
+        [('F', 'T1', 'L'), ('T1', 'T2', 'L'), ('T2', 'B', 'L'), ('F', 'R', 'T1'), ('T1', 'R', 'T2'), ('T2', 'R', 'B'),
+         ('F', 'L', 'K'), ('L', 'B', 'K'), ('F', 'K', 'R'), ('R', 'K', 'B')])
+    # the neck: a narrow strip folded to a three-sided column, leaning forward, its foot inside the body
+    nb, nt = (0.03, -0.115), (0.18, -0.14)
+    solid(g, 'body__paper', {
+        'f0': (0, nb[0], nb[1] - 0.035), 'l0': (-0.034, nb[0], nb[1] + 0.022), 'r0': (0.034, nb[0], nb[1] + 0.022),
+        'f1': (0, nt[0], nt[1] - 0.03), 'l1': (-0.028, nt[0], nt[1] + 0.018), 'r1': (0.028, nt[0], nt[1] + 0.018)},
+        [('f0', 'r0', 'l0'), ('f1', 'l1', 'r1'), ('f0', 'l0', 'l1', 'f1'), ('l0', 'r0', 'r1', 'l1'), ('r0', 'f0', 'f1', 'r1')])
+    # the head: a folded diamond (eight faces) on the neck's top
+    solid(g, 'body__paper', {
+        'T': (0, 0.278, -0.15), 'D': (0, 0.148, -0.145), 'Bk': (0, 0.214, -0.08), 'Fh': (0, 0.21, -0.222),
+        'L': (-0.062, 0.21, -0.155), 'R': (0.062, 0.21, -0.155)},
+        [('T', 'L', 'Fh'), ('T', 'Fh', 'R'), ('T', 'R', 'Bk'), ('T', 'Bk', 'L'),
+         ('D', 'Fh', 'L'), ('D', 'R', 'Fh'), ('D', 'Bk', 'R'), ('D', 'L', 'Bk')])
+    # the beak: a gold foil pyramid out of the head's front point
+    solid(g, 'beak__foil', {
+        'a': (-0.026, 0.222, -0.207), 'b': (0.026, 0.222, -0.207), 'c': (0.021, 0.192, -0.203), 'd': (-0.021, 0.192, -0.203),
+        't': (0, 0.2, -0.29)},
+        [('a', 'd', 'c', 'b'), ('a', 'b', 't'), ('b', 'c', 't'), ('c', 'd', 't'), ('d', 'a', 't')])
+    # the wings: flat triangular flaps on the waist folds, the blue side up, tips raised at the back
     for sx in (-1, 1):
-        wing = [(sx * 0.15, 0.0, -0.07), (sx * 0.185, 0.03, 0.06), (sx * 0.13, 0.085, 0.17), (sx * 0.11, 0.05, -0.02)]
-        bm = bmesh.new()
-        top = [bm.verts.new(P(*v)) for v in wing]
-        bot = [bm.verts.new(P(v[0] - sx * 0.018, v[1] - 0.01, v[2])) for v in wing]
-        bm.faces.new(top); bm.faces.new(bot[::-1])
-        for i in range(4):
-            j = (i + 1) % 4
-            bm.faces.new([top[i], bot[i], bot[j], top[j]])
-        _out(bm)
-        g._add('wings__fold', bm)
-    # the tail: a folded fin up behind
-    tail = [(0, 0.06, 0.18), (0, 0.2, 0.29), (0, 0.08, 0.3)]
-    flatfin = bmesh.new()
-    vs = [flatfin.verts.new(P(sx * 0.03 * (1 - (k == 1) * 0.6), y, z)) for (sx, (x, y, z), k) in [(1, tail[0], 0), (1, tail[1], 1), (1, tail[2], 2), (-1, tail[0], 0), (-1, tail[1], 1), (-1, tail[2], 2)]]
-    flatfin.faces.new(vs[:3]); flatfin.faces.new(vs[3:][::-1])
-    for i in range(3):
-        j = (i + 1) % 3
-        flatfin.faces.new([vs[i], vs[3 + i], vs[3 + j], vs[j]])
-    _out(flatfin)
-    g._add('tail__fold', flatfin)
-    # the beak: a gold foil pyramid
-    bm = bmesh.new()
-    base = [bm.verts.new(P(x, y, z)) for x, y, z in ((-0.04, 0.16, -0.2), (0.04, 0.16, -0.2), (0.03, 0.135, -0.19), (-0.03, 0.135, -0.19))]
-    tip = bm.verts.new(P(0, 0.142, -0.29))
-    bm.faces.new(base[::-1])
-    for i in range(4):
-        bm.faces.new([base[i], base[(i + 1) % 4], tip])
-    _out(bm)
-    g._add('beak__foil', bm)
+        flap(g, 'wings__fold', [(sx * 0.11, 0.075, -0.06), (sx * 0.168, 0.045, 0.12), (sx * 0.125, 0.135, 0.175)],
+             (-sx * 0.012, -0.012, 0.0))
+    # the tail: an upright fin behind, folded from the back point
+    flap(g, 'tail__fold', [(0.01, 0.065, 0.17), (0.01, 0.075, 0.275), (0.01, 0.205, 0.305)], (-0.02, 0.0, 0.0))
+    # the eyes: two small dark diamonds pressed into the head's sides
     for sx in (-1, 1):
-        faceted(g, 'eye__eye', 0.012, 0.014, 0.008, (sx * 0.07, 0.205, -0.19), sub=1, rot=(0, -0.55 * sx, 0))
+        x = sx * 0.047
+        solid(g, 'eye__eye', {
+            'u': (x, 0.24, -0.17), 'd': (x, 0.218, -0.17), 'f': (x, 0.229, -0.183), 'b': (x, 0.229, -0.157),
+            'o': (x + sx * 0.009, 0.229, -0.17)},
+            [('u', 'f', 'o'), ('f', 'd', 'o'), ('d', 'b', 'o'), ('b', 'u', 'o'), ('u', 'b', 'd', 'f')])
     g.spots = {'grip': GRIP['duck'], 'gripRot': [0, 0, 0]}
     return g
 
