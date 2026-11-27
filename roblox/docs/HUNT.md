@@ -398,8 +398,14 @@ source one part with its light:
 **Where the gunman comes in:** each map gets an `outside` spot (x, y, z, facing) just outside it, facing in. The
 gunman is released there, not inside.
 
-**Tech:** one shared cinematic piece (letterbox and a shot list stepped against a clock), shared with the finishers
-and the victory scene rather than a third system.
+**Tech:** `client/CineKit.luau`, the one shared cinematic piece (letterbox, a shot list stepped against a clock, the
+finishers' handheld shake and hit kick, the hand-back onto the gameplay camera). The finishers and the victory scene
+move onto it with their next scenes. `client/HuntIntro.client.luau` plays the intro; `shared/HuntIntroData.luau` (made
+by the intro script) holds the rooms' screens. The mocap: `HuntConfig.INTRO.anims` (vault clips; the Mixamo list for
+better takes is with main). While it plays every HUD is off (the hide shade covered the first recordings, v1415).
+
+**Played in Studio (v1415):** both rooms, the hand-back to first person at the head with the flags put back. The clean
+re-recordings for the owner's sheet come with the next turn.
 
 ## Built so far (26 Nov 2026, hunt-mode session)
 
@@ -410,9 +416,11 @@ and the victory scene rather than a third system.
   whose leaf stops 0.1 stud short of the toilet.
 - `hunt_house_models.py` builds the kit (247k triangles). One whole upload came back "Unknown Error" from Open Cloud,
   so the kit goes up in two halves:
-  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 4, 27 Nov: hunt_arch6 = 121682936033577);
-  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 4: hunt_furn7 =
-    139469122663323).
+  - architecture, `--only=hh_`: `HuntBuild.B.ARCH` (round 5, 27 Nov: hunt_arch7 = 95903954275327);
+  - furniture plus the moving pieces (`hx_*` templates), `--only=hp_,hx_`: `B.FURN` (round 5: hunt_furn8 =
+    129533495160640).
+  - the gunman's intro rooms, `tools/roblox/hunt_intro_models.py`: `B.INTRO` (hunt_intro2 = 106007849260783),
+    imported by `B.importIntro()` into `ReplicatedStorage.JankfireHuntIntro`.
   - Each judge round rebuilds both halves (`--name=hunt_archN` / `hunt_furnN`) and re-uploads them; the ids above
     are the latest. Judge rounds and their fixes: vault `Reviews\The House - judge rounds.md`.
 
