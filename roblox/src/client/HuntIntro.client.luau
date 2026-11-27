@@ -473,8 +473,9 @@ local function play(a: any)
 		local p = realHead()
 		local c3 = me.Character
 		local rr3 = c3 and c3:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if r.faceOff and rr3 and (rr3.Position - O.Position).Magnitude < 12 then
-			local fcf = rr3.CFrame * (r.faceOff :: CFrame)
+		local off = r.faceOffReal or r.faceOff
+		if off and rr3 and (rr3.Position - O.Position).Magnitude < 12 then
+			local fcf = rr3.CFrame * (off :: CFrame)
 			local d0 = Cine.lerp(5.0, 5.5, smoother(u))
 			return CFrame.lookAt(fcf.Position + fcf.LookVector * d0 + flat * 0.4, fcf.Position + fcf.LookVector * 0.25, fcf.UpVector)
 		end
@@ -775,6 +776,15 @@ local function play(a: any)
 				if up then up:Play(0, 1, 1); up.TimePosition = math.max(0, up.Length - 0.05); up:AdjustSpeed(0); table.insert(r.realTracks, up) end
 				r.realAnimator = ra
 			end
+			r.upAt = t
+		end
+		-- (v18 on a plain avatar: her real head sat ~40 deg off the room copy's in the same frame of the same clip) the
+		-- face-up as her real body has it, read once it shows (the frame after it's set, and again until the cut)
+		if r.upAt and t >= r.upAt + 0.12 and t < beat("outside") then
+			local rc = me.Character
+			local rr = rc and rc:FindFirstChild("HumanoidRootPart") :: BasePart?
+			local rh = rc and rc:FindFirstChild("Head") :: BasePart?
+			if rr and rh and (rr.Position - O.Position).Magnitude < 12 then r.faceOffReal = rr.CFrame:ToObjectSpace(rh.CFrame) end
 		end
 		-- the look round (owner, 27 Nov): his hands come down slowly into a relaxed stand as he looks left and right
 		if once("around", beat("around")) and r.realAnimator then
