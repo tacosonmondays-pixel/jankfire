@@ -187,8 +187,22 @@ H.INTRO = {
 		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 130441780593124, look = 95541089023402 },
 	},
 	static = { 72310839769760, 86008837872701, 122572333792473, 98994588240705 }, -- (B's screen: soft grey noise, nothing readable)
-	-- recordings only, no voices (Sfx names; a missing one stays silent)
-	sounds = { drone = "intro_drone", buzz = "zm_flicker", heart = "intro_heart", hit = "boom", air = "intro_air", hiss = "intro_hiss" },
+	-- recordings only, no voices. the owner's order (27 Nov): the room's hum (PC fans, a fridge), a heartbeat getting
+	-- louder and faster, then peace: birds outside. a table is a Roblox library id (Pro Sound Effects / APM, under the
+	-- EFFECTS volume) with its level and an optional slice; a string is the game's own library by name (Sfx)
+	sounds = {
+		hum = { id = 9125446564, vol = 0.55 },                         -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
+		heart = { id = 9043365842, vol = 1.0 },                        -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
+		birds = { id = 9116969466, vol = 0.6 },                        -- (PSE: Morning Birds 2, active chirping)
+		hiss = { id = 9126097362, vol = 0.3, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
+		buzz = "zm_flicker", hit = "boom",
+	},
+	-- the heartbeat's build: from `from` (s on the 16 s beats) to the snap it goes from rate[1] to rate[2] times its
+	-- 96 BPM and from gain[1] to gain[2] of its level, while the hum ducks to `duck` of its own
+	heart = { from = 3.6, rate = { 0.85, 1.85 }, gain = { 0.12, 1.0 }, duck = 0.35 },
+	-- the owner's liminal grade (27 Nov: "greyish until the zoom into first person and the bars disappear"): a washed-out
+	-- grey over the whole film that lifts with the bars
+	grade = { saturation = -0.82, contrast = -0.12, brightness = 0.03, tint = Color3.fromRGB(232, 234, 238), blur = 1.5 },
 }
 
 return H

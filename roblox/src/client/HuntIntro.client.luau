@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
 local J = ReplicatedStorage:WaitForChild("Jankfire")
 local HC = require(J:WaitForChild("HuntConfig")) :: any
@@ -43,12 +44,37 @@ HubLook.looks.hunt_intro_dark = {
 
 local running: any = nil
 
-local function loop(name: string, vol: number): Sound?
-	local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
-	local src = lib and lib:FindFirstChild(name)
-	if not (src and src:IsA("Sound")) then return nil end
-	local s = src:Clone()
-	s.Looped = true; s.Volume = (src :: Sound).Volume * vol; s.Parent = SoundService
+local function effectsGroup(): SoundGroup?
+	local m = SoundService:FindFirstChild("JankMaster")
+	local g = m and m:FindFirstChild("Effects")
+	return if g and g:IsA("SoundGroup") then g else nil
+end
+-- a looped bed from HC.INTRO.sounds: a table plays its Roblox library id (with its slice) under EFFECTS; a string
+-- clones the game's library Sound of that name. vol scales its level (0: starts silent, a caller brings it up)
+local function bed(e: any, vol: number?): Sound?
+	local s: Sound
+	if type(e) == "table" and e.id then
+		s = Instance.new("Sound")
+		s.Name = "HuntIntroSound"
+		s.SoundId = "rbxassetid://" .. tostring(e.id)
+		s.Volume = (e.vol or 0.5) * (vol or 1)
+		if e.region then
+			s.PlaybackRegionsEnabled = true
+			s.PlaybackRegion = NumberRange.new(e.region[1], e.region[2])
+			s.LoopRegion = NumberRange.new(e.region[1], e.region[2])
+		end
+		s.SoundGroup = effectsGroup()
+	elseif type(e) == "string" then
+		local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+		local src = lib and lib:FindFirstChild(e)
+		if not (src and src:IsA("Sound")) then return nil end
+		s = src:Clone()
+		s.Volume = (src :: Sound).Volume * (vol or 1)
+	else
+		return nil
+	end
+	s.Looped = true
+	s.Parent = SoundService
 	s:Play()
 	return s
 end
@@ -70,6 +96,14 @@ local function stop()
 	r.alive = false
 	if r.conn then r.conn:Disconnect() end
 	for _, s in r.sounds do pcall(function() s:Stop(); s:Destroy() end) end
+	if r.tail then -- (the birds: peace carries on past the hand-back and fades out)
+		local b = r.tail
+		local tw = TweenService:Create(b, TweenInfo.new(4, Enum.EasingStyle.Sine), { Volume = 0 })
+		tw.Completed:Once(function() b:Destroy() end)
+		tw:Play()
+	end
+	if r.grade then r.grade:Destroy() end
+	if r.blur then r.blur:Destroy() end
 	for _, tr in r.realTracks do pcall(function() tr:Stop(0.3) end) end
 	if r.folder then r.folder:Destroy() end
 	for g, was in r.guis do if g.Parent then g.Enabled = was end end -- (the HUD back)
@@ -187,8 +221,39 @@ local function play(a: any)
 
 	-- the bars and the drone (the light goes dark once the camera is ours: below)
 	Cine.bars(true, 0.4)
-	local d = loop(HC.INTRO.sounds.drone, 0.9); if d then table.insert(r.sounds, d) end
-	if set == "B" then local h = loop(HC.INTRO.sounds.hiss, 0.5); if h then table.insert(r.sounds, h) end end
+	-- the sound (the owner, 27 Nov): the room's hum (B: and its TV's static), a heartbeat building louder and faster
+	-- under it to the snap, then peace: birds outside
+	local S = HC.INTRO.sounds
+	local hum = bed(S.hum); if hum then table.insert(r.sounds, hum) end
+	local humVol = if hum then hum.Volume else 0
+	if set == "B" then local h = bed(S.hiss); if h then table.insert(r.sounds, h) end end
+	local heart = bed(S.heart, 0) -- (one bed: its speed and level built up each frame below)
+	local shift: PitchShiftSoundEffect? = nil
+	if heart then
+		table.insert(r.sounds, heart)
+		local ps = Instance.new("PitchShiftSoundEffect") -- (holds the beat's pitch as it speeds up)
+		ps.Octave = 1
+		ps.Parent = heart
+		shift = ps
+	end
+	-- the grade (the owner: liminal, "greyish until the zoom into first person and the bars disappear"): on the
+	-- camera, so the zone looks under it never touch it
+	local G = HC.INTRO.grade
+	local cam = workspace.CurrentCamera
+	if G and cam then
+		local cc = Instance.new("ColorCorrectionEffect")
+		cc.Name = "HuntIntroGrade"
+		cc.Saturation = G.saturation; cc.Contrast = G.contrast; cc.Brightness = G.brightness; cc.TintColor = G.tint
+		cc.Parent = cam
+		r.grade = cc
+		if (G.blur or 0) > 0 then
+			local b = Instance.new("BlurEffect")
+			b.Name = "HuntIntroBlur"
+			b.Size = G.blur
+			b.Parent = cam
+			r.blur = b
+		end
+	end
 
 	-- the shots (16 s; k scales them to the real hide). set space: his feet at the origin, the screen at -z
 	local headP = function(): Vector3 return P(0, hy, 0) end
@@ -294,10 +359,28 @@ local function play(a: any)
 			frame = (frame % #HC.INTRO.static) + 1
 			noise.Image = "rbxassetid://" .. tostring(HC.INTRO.static[frame])
 		end
-		if build > 0 and t < 10.4 * k and os.clock() >= nextBeat then -- (a heartbeat building)
+		-- the heartbeat: louder and faster up to the snap, the hum ducking under it
+		local HB = HC.INTRO.heart
+		if heart and HB and t < 10.4 * k then
+			local u = math.clamp((t - HB.from * k) / ((10.4 - HB.from) * k), 0, 1)
+			local rate = Cine.lerp(HB.rate[1], HB.rate[2], u ^ 1.4)
+			heart.PlaybackSpeed = rate
+			if shift then shift.Octave = math.clamp(1 / rate, 0.5, 2) end
+			heart.Volume = if t < HB.from * k then 0 else S.heart.vol * Cine.lerp(HB.gain[1], HB.gain[2], u ^ 1.6)
+			if hum then hum.Volume = humVol * Cine.lerp(1, HB.duck, u) end
+		end
+		if build > 0 and t < 10.4 * k and os.clock() >= nextBeat then -- (the screen's buzz with its flicker)
 			nextBeat = os.clock() + Cine.lerp(0.95, 0.38, build)
-			sfx(HC.INTRO.sounds.heart, 0.5 + 0.5 * build)
-			if math.random() < 0.35 * build then sfx(HC.INTRO.sounds.buzz, 0.4 + 0.4 * build) end
+			if math.random() < 0.35 * build then sfx(S.buzz, 0.4 + 0.4 * build) end
+		end
+		-- the grade lifts with the bars, into the game's own colour
+		if r.grade and G then
+			local w = 1 - math.clamp((t - 14.6 * k) / 0.9, 0, 1)
+			r.grade.Saturation = G.saturation * w
+			r.grade.Contrast = G.contrast * w
+			r.grade.Brightness = G.brightness * w
+			r.grade.TintColor = Color3.new(1, 1, 1):Lerp(G.tint, w)
+			if r.blur then r.blur.Size = (G.blur or 0) * w end
 		end
 		-- his clips
 		if once("crazy", 5.5 * k) and A.crazy then A.crazy:Play(0.2, 1, 1) end
@@ -307,13 +390,17 @@ local function play(a: any)
 		if once("snap", 10.4 * k) then
 			if A.snap then A.snap:Play(0.04, 1, 1.3) end
 			if r.cine then r.cine.kick(9) end
-			sfx(HC.INTRO.sounds.hit, 1)
+			sfx(S.hit, 1)
+			for _, s in r.sounds do pcall(function() s:Stop() end) end -- (the room's sound ends on the hit: then peace)
 		end
-		-- outside: the round's light, the air, the real body looks up and then down
+		-- outside: the round's light, the birds, the real body looks up and then down
 		if once("outside", 11.4 * k) then
 			HubLook.set(roundLook(), 0)
-			for _, s in r.sounds do pcall(function() s:Stop() end) end
-			local air = loop(HC.INTRO.sounds.air, 0.7); if air then table.insert(r.sounds, air) end
+			local birds = bed(S.birds, 0)
+			if birds then -- (peace: the birds come up, and carry on past the hand-back: stop fades them)
+				r.tail = birds
+				TweenService:Create(birds, TweenInfo.new(1.6, Enum.EasingStyle.Sine), { Volume = S.birds.vol }):Play()
+			end
 			if folder.Parent then folder.Parent = nil end
 			local rc = me.Character
 			local rh = rc and rc:FindFirstChildOfClass("Humanoid")
