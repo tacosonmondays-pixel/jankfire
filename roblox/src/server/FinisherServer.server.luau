@@ -301,6 +301,8 @@ function FV.play(m: any, kp: Player, vp: Player): (boolean, string, number?)
 	if type(m) ~= "table" or typeof(kp) ~= "Instance" or typeof(vp) ~= "Instance" or not kp.Parent or not vp.Parent then
 		return false, "a player left", nil
 	end
+	-- (one cinematic a match: the old match-winning-kill cut may already be on - FV.ON came on after that round)
+	if type(m.finisherFrom) == "number" and os.clock() - m.finisherFrom < 20 then return true, "already playing", nil end
 	local c = FV.finisherOf(kp, m)
 	if not c then return false, "no scene finisher equipped", nil end
 	local k, v = Fight.of(kp), Fight.of(vp)
