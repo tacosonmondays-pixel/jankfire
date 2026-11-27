@@ -272,6 +272,21 @@ judging Play captures only):
 | round | score | what it said |
 |---|---|---|
 | 1 (v1413) | 5 | the structure reads real (menu hierarchy, loadout layout, the Tab table); overlaps, unlabelled marks, three icon styles in the loadout, the shop's top row unreadable, numbers that don't add up |
+| 2 (v1426) | 6 | the fixes held; "two design systems" (the A+B mix) is now its first point |
+| 3 (not saved) | 6 | the loadout and Tab board "would pass"; the A+B mix again |
+| 4 (v1437) | 7 | one icon family missing (shaded coin, emoji padlock), collisions, orphans |
+| all-B (v1441) | 6 | the A screens in B's colours, on one switch (`ReplicatedStorage` attribute `UiLook` = "B"): bare words on a light floor and dark phone buttons scored lower. The owner's picks stay the main look; both are on side-session-notes `ui_build_picks_vs_allB.jpg` |
+| 5 (v1451) | 6 | contrast, phone overlaps, mixed fonts |
+| 6 (v1456) | 6.5 | told "the direction is the owner's": key cap families, contradictory states, right edges, test data |
+| 7 (v1464) | 7 | data adds up; the Tab board "the best screen" |
+| 8 (v1477) | 7 | "every number I checked adds up"; alignment and contrast slips |
+| 9 (v1488, 4a2715e) | 7 | "the PC loadout, shop and Tab board would pass as shipped work"; the phone buttons, the picker's mixed type, the score-bar seam |
+
+**Where it stands:** four rounds at 7. Two kinds of point remain:
+- **Reversals of each other:** "need 12" wanted, then called a repeat; a your-side bar asked for, then called an unlabelled mark.
+- **The phone's round buttons:** text in translucent circles, no icons. Every critic since round 5 put this first. It needs an icon set (glyphs drawn, uploaded and wired into `TouchControls`' `newFace` and `style`), which is the next piece of work.
+
+The rest goes against the owner's picks: the PLAY slab's face, the hub menu bare on the world, two shape styles.
 
 ## 6. Rebuild the mocks
 
