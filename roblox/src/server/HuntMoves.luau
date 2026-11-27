@@ -16,6 +16,8 @@ local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Hunt
 local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local HuntRagdoll = require(script.Parent:WaitForChild("HuntRagdoll")) :: any
 local MV = HC.MOVES
+-- (a Studio test bot, HuntBots: a table { f, Character } that acts through the same calls a player's remote does)
+local function fOf(p: any): any return if type(p) == "table" then p.f else Fight.byPlayer[p] end
 
 local HuntMoves = {}
 -- (stage 2 sets these: may `a` shove `b` at all; may a punch from `a` hurt `b`)
@@ -81,9 +83,10 @@ local function targets(p: Player, root: BasePart, look: Vector3, reach: number, 
 		local r = body(q)
 		if r and HuntMoves.canShove(p, q) then consider(r.Position, q) end
 	end
+	local self = fOf(p)
 	for _, f in HuntMoves.extra(p) do
 		local r = Fight.root(f)
-		if r and f.alive then consider(r.Position, f) end
+		if r and f.alive and f ~= self then consider(r.Position, f) end
 	end
 	local map = workspace:FindFirstChild("Map")
 	local h = map and map:FindFirstChild(HC.HOUSE)
@@ -109,7 +112,7 @@ end
 local function hit(p: Player, root: BasePart, look: Vector3, m: any, wid: string, dmg: number, onlyFirst: boolean, lying: boolean): number
 	local list = targets(p, root, look, m.reach, m.cone, lying)
 	local n = 0
-	local by = Fight.byPlayer[p]
+	local by = fOf(p)
 	for _, t in list do
 		local v = knockOf(look, m.kb, m.up, lying)
 		if typeof(t.what) == "Instance" and t.what:IsA("BasePart") then
@@ -163,7 +166,7 @@ function HuntMoves.handle(p: Player, op: string, a: any, b: any)
 	if p:GetAttribute("Hunt") == nil then return end
 	if op == "getup" then HuntRagdoll.ask(p); return end -- (the get-up button: the hunter too)
 	if p:GetAttribute("HuntRole") == "gunman" then return end -- (stage 2: the gunman has his gun, not these)
-	if HuntRagdoll.isDown(Fight.byPlayer[p]) then return end -- (down: no moves)
+	if HuntRagdoll.isDown(fOf(p)) then return end -- (down: no moves)
 	local root, hum = body(p)
 	if not root or not hum then return end
 	local s = stOf(p)

@@ -45,7 +45,7 @@ local function member(f: Fighter?): Member?
 end
 HuntRound.member = member
 function HuntRound.memberOf(p: Player): Member?
-	local f = Fight.byPlayer[p]
+	local f = if type(p) == "table" then (p :: any).f else Fight.byPlayer[p] -- (a Studio test bot: HuntBots)
 	return member(f)
 end
 function HuntRound.busy(): boolean return G ~= nil end

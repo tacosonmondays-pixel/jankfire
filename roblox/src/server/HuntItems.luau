@@ -23,6 +23,8 @@ local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local Remote = Remotes:WaitForChild("Hunt") :: RemoteEvent
 local SlipR = Remotes:FindFirstChild("Slip") :: RemoteEvent?
 local PTS = HC.POINTS
+-- (a Studio test bot, HuntBots: a table { f, Character } that acts through the same calls a player's remote does)
+local function fOf(p: any): any return if type(p) == "table" then p.f else Fight.byPlayer[p] end
 
 local HuntItems = {}
 local TRAP: { [string]: any } = {}
@@ -87,7 +89,7 @@ end
 local function caught(by: Player, dmg: number?)
 	local m = gunmanOf()
 	if not m then return end
-	local bf = Fight.byPlayer[by]
+	local bf = fOf(by)
 	if dmg and dmg > 0 and bf then Fight.hurt(m.f, dmg, bf, "trap", false, nil) end
 	HuntItems.score(by, PTS.trap)
 end
@@ -201,7 +203,7 @@ USE.decoy = function(p, root, look, T)
 	return true
 end
 
-local function fighterOf(p: Player): any return Fight.byPlayer[p] end
+local function fighterOf(p: Player): any return fOf(p) end
 local function heal(p: Player, amt: number)
 	local f = fighterOf(p)
 	if not f or not f.alive then return end
@@ -512,7 +514,7 @@ function HuntItems.pick(p: Player, id: string): string
 	local it = PICK[id]
 	if not g or not s or not it then return "no" end
 	if g.phase ~= "hide" then return "closed" end
-	local m = g.byF[Fight.byPlayer[p]]
+	local m = g.byF[fOf(p)]
 	if not m or m.role ~= "hider" or not m.alive then return "no" end
 	if s.picked then return "taken" end
 	if s.points < (it.price or 0) then return "cash" end
@@ -547,6 +549,11 @@ function HuntItems.onStart(g: any)
 	end
 	makeSpots(g)
 	makeTables(g)
+end
+-- (Studio: a test bot gets a survivor's purse and slots, HuntBots)
+function HuntItems.addBot(b: any)
+	st[b] = { points = PTS.start, items = {}, weapon = nil, nextAlive = 0, prop = nil }
+	publish(b)
 end
 function HuntItems.onFightBack(_g: any)
 	for _, pt in spots do
@@ -629,7 +636,7 @@ function HuntItems.handle(p: Player, op: string, a: any, b: any): boolean
 	local g = G
 	local s = st[p]
 	if not g or not s or (g.phase ~= "hunt" and not (op == "use" and g.phase == "hide")) then return true end
-	local m = g.byF[Fight.byPlayer[p]]
+	local m = g.byF[fOf(p)]
 	if not m or not m.alive or m.role ~= "hider" then return true end
 	if op == "buy" then
 		local T = TRAP[a]

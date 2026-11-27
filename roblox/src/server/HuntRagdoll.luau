@@ -150,7 +150,7 @@ end
 HuntRagdoll.up = up
 
 function HuntRagdoll.ask(p: Player)
-	local f = Fight.byPlayer[p]
+	local f = if type(p) == "table" then (p :: any).f else Fight.byPlayer[p] -- (a Studio test bot too)
 	local r = f and down[f]
 	if r and os.clock() >= r.minT then up(f) end
 end

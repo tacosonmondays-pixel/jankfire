@@ -89,6 +89,9 @@ if RunService:IsStudio() then
 		if op == "use" then HuntItems.handle(p, "use", args[1], args[2]); return p:GetAttribute("HuntItems") end
 		if op == "cash" then HuntItems.score(p, tonumber(args[1]) or 0); return p:GetAttribute("HuntPoints") end
 		if op == "getup" then require(script.Parent:WaitForChild("HuntRagdoll")).ask(p); return "asked" end
+		-- (27 Nov, the harness: HuntBots) ("bots", p, scenario) runs "show" | "kill" | "hunter" | "time" in the current round; ("botlog")
+		if op == "bots" then return require(script.Parent:WaitForChild("HuntBots")).run(p, args[1]) end
+		if op == "botlog" then return require(script.Parent:WaitForChild("HuntBots")).log() end
 		if op == "rag" then
 			local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 			local HR = require(script.Parent:WaitForChild("HuntRagdoll")) :: any
