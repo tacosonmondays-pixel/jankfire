@@ -550,6 +550,25 @@ short enough where you can chain all three".
   that can hurt goes to someone it can hurt before a nearer teammate. The prop gun in THE HOUSE (merged furniture
   meshes over invisible hit boxes, Solid) aims through to the hit box and becomes the house kit's piece nearest its size.
 
+## 15. Dust in the light (owner, 27 Nov: "Can you add ambiance stuff like dust particles under light?")
+- **THE HOUSE:** `HuntBuild.B.ambience()`, run after `B.build`, puts everything in `Map.HuntHouse.Ambience` (the round
+  copies the house, so it goes along).
+  - It takes the sun from the house's own look (`hunt_house`: from the west, slightly south) and finds the sunny
+    windows from the glass hit boxes.
+  - It fills each window's light column with motes, raycast to the floor: the six west windows and two front
+    ground-floor ones.
+  - It adds faint shafts in the three biggest west windows, and motes under three ceiling lamps (`B.DUST`).
+  - 11 mote boxes, about 350 motes alive. Render cost +0.1-0.15 ms (Play, 60 fps either way).
+- **The films' rooms:** `client/HuntDust.screen` puts motes in the screen's glow (the intro's PC) and adds a faint
+  shaft from the attic's TV. They are pre-filled as the room is built.
+- **Motes:** the VFX library's soft glow (vfx_glow), lit by the scene (LightInfluence 1, a little emission), 0.11-0.13
+  studs, 12% at their peak. At 0.06 studs and 35% they read as nothing in Play.
+- **Shafts:** two plain camera-facing bands (full width and 55%), about 90% clear, 12 segments.
+  - A beam's transparency is sampled per segment: with one segment, the clear ends made the whole beam invisible.
+  - The soft glow stretched along a beam leaves almost no alpha.
+  - Additive light (LightEmission 1) at 80% transparency vanishes in a sunny room.
+- Before/after: side-session-notes `holdout/dust_before_after_27nov.jpg` (place v1632).
+
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)
