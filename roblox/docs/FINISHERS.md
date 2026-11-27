@@ -212,6 +212,17 @@ clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as 
     `WF_` pack templates and every sting.
   - **Mesh detail.** Every mesh in TideWaterfall, TidecrestKit and HighNoonTownA is `RenderFidelity` Precise, in Edit
     and in their builders. A game script can't change it at run time.
+  - **Fetched is not drawn.** The frame check (30 fps, first scene of a fresh Play) found Tidecrest's katana and sheath
+    coming in 5-6 frames into the first shot, with the preload or without it. They were placed and fetched from frame
+    1, but cloned into the workspace on that frame, and a mesh is only built for drawing once it is in the workspace.
+    `Pro.warm` now parks the kit's two models in the warm-up stage under the set's floor (`parkKit`), and `propKit`
+    takes those, so they are there from frame 1 (Studio v1603). The set itself never had the problem: it was parked.
+  - **Open:** on the first scene of a game, the bodies show pale and see-through for the first 2 frames before going
+    solid. This was there before the prewarm. High Noon's victim is missing on its first frame only.
+  - **Checked (Studio, 30 fps, fresh Plays, `vid_all.py` + `popscan.py`):** no pop-in inside any shot of Tidecrest or
+    High Noon. The scan's local jumps are the films' own blade streaks and flashes, the same with and without the
+    prewarm. The eight world finishers on a standing dummy, the first ones of the game: 2 local jumps in 27 s, both
+    at High Noon's own ricochet flash. Sheet: notes `finisher-boards/finisher_popin_before_after.jpg`.
 
 ### Selling and showing it
 

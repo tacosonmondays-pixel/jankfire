@@ -283,6 +283,27 @@ local function prewarmScene(sid: string, d: any, set: Instance?): any
 	return nil
 end
 
+-- (27 Nov, the frame check: the katana and the sheath came in 7 frames into the film's first shot, every first scene of
+-- a game - placed and fetched from the first frame, but a mesh is only built for drawing once it is in the workspace,
+-- and these were cloned in on that frame. The warm-up parks the kit's two models in the stage, under the set's floor;
+-- propKit takes them as they stand)
+local function parkKit(d: any, folder: Instance)
+	local lib = ReplicatedStorage:FindFirstChild("JankfireFinisherSets")
+	local kit = lib and d.kit and lib:FindFirstChild(d.kit)
+	if not kit then return end
+	for _, name in { "KatanaModel", "SheathModel" } do
+		local src = kit:FindFirstChild(name)
+		if src and src:IsA("Model") and not folder:FindFirstChild(name) then
+			local m = src:Clone()
+			for _, p in m:GetDescendants() do
+				if p:IsA("BasePart") then p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false end
+			end
+			m:PivotTo(ORIGIN * CFrame.new(0, -40, 0))
+			m.Parent = folder
+		end
+	end
+end
+
 function Pro.warm(sid: string): boolean
 	local d = dataOf(sid)
 	if not d or playing == sid then return false end
@@ -303,6 +324,7 @@ function Pro.warm(sid: string): boolean
 		end
 		local set = buildSet(d, folder, step)
 		if nw.dead then return end
+		parkKit(d, folder)
 		nw.set, nw.ready = set, true
 		if RunService:IsStudio() then
 			workspace:SetAttribute("FinisherWarm", ("%s pro ready: %d frames, %.1f s"):format(sid, frames, os.clock() - t0))
@@ -362,7 +384,9 @@ local function propKit(sc: any, d: any)
 		local src = kit:FindFirstChild(pair[1])
 		local root = src and src:FindFirstChild(pair[2])
 		if src and root and root:IsA("BasePart") then
-			local m = src:Clone()
+			-- (the one the warm-up parked in the stage, its meshes already built; else a fresh copy)
+			local parked = sc.folder and sc.folder:FindFirstChild(pair[1])
+			local m = if parked and parked:IsA("Model") then parked else src:Clone()
 			local r = m:FindFirstChild(pair[2]) :: BasePart
 			for _, p in m:GetDescendants() do
 				if p:IsA("BasePart") then
