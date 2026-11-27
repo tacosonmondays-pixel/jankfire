@@ -166,7 +166,7 @@ def ceilings():
         K.B('hh_trim', TRIM, a, 10.8, b, c, 12.0, d, bev=0.2)
     for (a, b, c, d) in ((26.0, -22.0, 42.0, -14.0), (25.2, 15.2, 42.8, 28.8), (14.0, -11.0, 23.0, -3.0)):   # (judge round 4: lit coves)
         for (u0, v0, u1, v1) in ((a, b, c, b + 1.2), (a, d - 1.2, c, d), (a, b, a + 1.2, d), (c - 1.2, b, c, d)):
-            K.B('hh_lamp', 'fff1dc', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
+            K.B('hh_lamp', 'd9c7ab', u0, 11.82, v0, u1, 11.98, v1, bev=0.03, kind='neon', segs=1)
     for bx in (33.0, 46.0):                                           # (judge round 5: the kitchen's front half)
         K.B('hh_trim', TRIM, bx - 1.0, 10.6, -11.0, bx + 1.0, 12.0, 3.5, bev=0.3)
     # the stairwell's edge: a white fascia where the upper floor stops over the hall
@@ -497,7 +497,7 @@ def stair():
     K.B('hh_ext', OAKFLOOR, 14, 12.6, -56, 50, 13.0, -42, bev=0.05, flat=True)
     K.B('hh_ext', TRIM, 13.8, 11.8, -56.2, 50.2, 12.8, -42, bev=0.15)
     for px in (15.5, 48.5):
-        column(px, -55.0, L.PATIO, 11.8)
+        column(px, -55.0, L.DECK, 11.8)
 
 def column(x, z, y0, y1):
     K.B('hh_ext', TRIM, x - 1.0, y0 + 0.8, z - 1.0, x + 1.0, y1 - 0.8, z + 1.0, bev=0.2)
@@ -613,17 +613,20 @@ def grounds():
         elif m == 'concrete' and y1 > -1.6:
             K.B('hh_yard', CONC, x0, y1 - 0.6, z0, x1, y1, z1, bev=0.1, flat=True, segs=1)
     # the patio's edge, a step down to the lawn; the driveway's kerb
-    K.B('hh_yard', STONE, -60.4, -1.55, -64.4, 52.4, -0.95, -63.6, bev=0.12)
-    K.B('hh_yard', STONE, -60.4, -1.55, -64.4, -59.6, -0.95, -42, bev=0.12)
-    K.B('hh_yard', STONE, 51.6, -1.55, -64.4, 52.4, -0.95, -42, bev=0.12)
+    K.B('hh_yard', STONE, -60.4, -1.55, -64.4, 52.4, L.DECK + 0.1, -63.6, bev=0.12)   # (round 7: the terrace's face)
+    K.B('hh_yard', STONE, -60.4, -1.55, -64.4, -59.6, L.DECK + 0.1, -42, bev=0.12)
+    K.B('hh_yard', STONE, 51.6, -1.55, -64.4, 52.4, L.DECK + 0.1, -42, bev=0.12)
+    for (x0, z0, x1, z1, top) in L.STEPS:                              # (judges round 7) broad steps down to the path
+        K.B('hh_yard', PAVERS, x0, L.GROUND - 0.3, z0, x1, top, z1, bev=0.12)
+        K.B('hh_yard', STONE, x0 - 0.2, top - 0.2, z0 - 0.2, x1 + 0.2, top + 0.05, z0 + 0.4, bev=0.1)
     # the pergola over the store tables; stepping stones across the lawn from the patio to the shed
     PR.pergola(L.PERGOLA['x0'], L.PERGOLA['x1'], L.PERGOLA['z0'], L.PERGOLA['z1'], L.PERGOLA['top'])
     bx0, bz0, bx1, bz1 = L.PLAYBAY['x0'], L.PLAYBAY['z0'], L.PLAYBAY['x1'], L.PLAYBAY['z1']     # (judge round 4: the play bay)
     for (x0, z0, x1, z1) in L.PADS:                                    # (judge round 5: two pads, paler, a trim kerb)
         K.B('hh_yard', 'a69a88', x0, L.GROUND - 0.3, z0, x1, L.GROUND + 0.1, z1, bev=0.0, flat=True)
     for (x0, z0, x1, z1) in L.KERBS:
-        K.B('hh_yard', 'dad5cb', x0, L.GROUND - 0.2, z0, x1, L.GROUND + 0.9, z1, bev=0.45)
-    z = -64.2                                                           # the patio to the deck: 4-stud pavers on the axis
+        K.B('hh_yard', 'b9ad99', x0, L.GROUND - 0.2, z0, x1, L.GROUND + 0.9, z1, bev=0.45)
+    z = -68.2                                                           # the terrace's steps to the deck: 4-stud pavers on the axis
     while z > -118.5:
         K.B('hh_yard', PAVERS, -10.0, L.GROUND - 0.3, z - 3.6, -6.0, L.GROUND + 0.12, z, bev=0.15, flat=True, segs=1)
         z -= 4.0
@@ -747,7 +750,7 @@ def lights():
             K.cyl('hh_lamp', '5a5e64', x, 9.6, z, 1.62, 0.15, segs=24, bev=0.04)
             K.cyl('hh_lamp', 'fff1dc', x, 7.82, z, 1.35, 0.12, segs=24, bev=0.03, kind='neon')     # (judge round 2: it glows)
             nook = abs(x - 18.7) < 0.1                                  # (judge round 3: the nook's blew its rug out)
-            K.light('spot', x, 7.6, z, (0, -1, 0), 1.3 if nook else 3.4, 13 if nook else 14, 90 if nook else 60, 'ffd6a8')
+            K.light('spot', x, 7.6, z, (0, -1, 0), 1.3 if nook else 3.0, 13 if nook else 16, 100 if nook else 105, 'ffd6a8')
             LIGHTROOMS.append((rid, x, 7.6, z))
             continue
         K.cyl('hh_lamp', 'f4efe6', x, yc - 1.0, z, 2.1, 1.0, segs=24, bev=0.35, r2=1.6)
@@ -859,7 +862,7 @@ def hunt_luau():
     o.append('\t\t-- lights by room: room, x, y, z (the Light markers WebArena makes, matched by where they are)')
     o.append('\t\tlightRooms = { %s },' % ', '.join('{ %s, %s }' % (q(l[0]), ', '.join(fmt(v) for v in l[1:4])) for l in LIGHTROOMS))
     o.append('\t\tprops = { %s },' % ', '.join('{ %s, %s, %s }' % (q(p[0]), ', '.join(fmt(v) for v in p[1:4]), q(p[4])) for p in L.PROPS))
-    o.append('\t\ttables = { %s },' % ', '.join('{ %s, %s }' % (q(t[0]), ', '.join(fmt(v) for v in (t[1], L.PATIO, t[2]))) for t in L.STORE))
+    o.append('\t\ttables = { %s },' % ', '.join('{ %s, %s }' % (q(t[0]), ', '.join(fmt(v) for v in (t[1], L.DECK, t[2]))) for t in L.STORE))
     beds = [(k, cx, y, cz, t) for (k, cx, y, cz, t) in L.FURN if k in L.BOUNCY]
     o.append('\t\t-- beds you can bounce on: kind, x, y, z, turn')
     o.append('\t\tbeds = { %s },' % ', '.join('{ %s, %s, %d }' % (q(k), ', '.join(fmt(v) for v in (cx, y, cz)), t) for (k, cx, y, cz, t) in beds))

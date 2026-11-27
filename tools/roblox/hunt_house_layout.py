@@ -30,7 +30,8 @@ G0, U0 = 0.0, 13.0             # the floors' tops
 CLEAR = 12.0                   # clear height of a storey
 EAVE, RIDGE = 26.0, 41.0       # the main roof
 GROUND = -1.5                  # the lawn
-PATIO = -1.0                   # the patio and the garage floor
+PATIO = -1.0                   # the garage floor and the driveway
+DECK = 0.0                     # (judges round 7: the garden was one height) the back terrace, level with the floor
 DOOR_W, DOOR_H = 6.0, 9.5
 SILL, HEAD = 3.5, 9.5
 X0, X1, Z0, Z1 = -60.0, 60.0, -42.0, 42.0        # the house's outside faces
@@ -225,14 +226,16 @@ for px in (-13.5, 13.5): box(px - 1, 0, 50, px + 1, 12, 52, 'post')
 # the balcony over the patio (the playroom's door), on two posts; a solid parapet
 slab(14, -56, 50, -42, 12.0, 13.0, 'balcony')
 box(14, 13, -56, 50, 16.4, -55.4, 'rail'); box(14, 13, -56, 14.6, 16.4, -42, 'rail'); box(49.4, 13, -56, 50, 16.4, -42, 'rail')
-for px in (15.5, 48.5): box(px - 1, PATIO, -56, px + 1, 12, -54, 'post')
+for px in (15.5, 48.5): box(px - 1, DECK, -56, px + 1, 12, -54, 'post')
 # the garage roof's parapet (you can get up there from the trampoline)
 box(60, 14, GZ0, 104, 15.5, GZ0 + 1, 'parapet'); box(103, 14, GZ0, 104, 15.5, Z1, 'parapet'); box(60, 14, Z1 - 1, 104, 15.5, Z1, 'parapet')
 
 # ================================================================ the grounds
 slab(LOT[0] - 2, LOT[1] - 2, LOT[2] + 2, LOT[3] + 2, -6.0, GROUND, 'grass',
      holes=[(X0, Z0, X1, Z1), (60, GZ0, 104, Z1), (-60, -64, 52, -42), (62, 42, 102, 82), (-3, 54, 3, 80), (-14, 42, 14, 52)])
-slab(-60, -64, 52, -42, -6.0, PATIO, 'pavers')                   # the patio, a step down from the house
+slab(-60, -64, 52, -42, -6.0, DECK, 'pavers')                    # the terrace, level with the house's floor (round 7)
+STEPS = [(-13.0, -66.0, -3.0, -64.0, DECK - 0.5), (-13.0, -68.0, -3.0, -66.0, DECK - 1.0)]   # down to the path's lawn
+for (x0, z0, x1, z1, top) in STEPS: box(x0, -6.0, z0, x1, top, z1, 'pavers')
 slab(62, 42, 102, 82, -6.0, PATIO, 'concrete')                   # the driveway
 slab(-3, 54, 3, 80, -6.0, -1.2, 'pavers')                        # the front path
 box(LOT[0] - 2, -6, 80, LOT[2] + 2, -1.2, 84, 'pavers')          # the sidewalk (over the lawn's edge)
@@ -473,15 +476,15 @@ F('bathtub', 4.5, -36.5, y=U0, turn=1); F('vanity', -10, -30, y=U0, turn=1); F('
 STORE = [   # the three store tables: tab, centre x, z (they face +z, the house)
     ('vip', -46.0, -55.0), ('coins', -31.0, -55.0), ('cases', -16.0, -55.0)]
 for (_, tx, tz) in STORE:
-    F('storetable', tx, tz, y=PATIO, turn=0)
+    F('storetable', tx, tz, y=DECK, turn=0)
 # the pergola over the store tables: six posts, beams and rafters at 10.5..12 (the kit), the posts' hit boxes here
 PERGOLA = dict(x0=-57.0, x1=-6.0, z0=-63.0, z1=-45.5, top=12.0)
 for px in (PERGOLA['x0'], (PERGOLA['x0'] + PERGOLA['x1']) / 2, PERGOLA['x1']):
     for pz in (PERGOLA['z0'], PERGOLA['z1']):
-        box(px - 0.9, PATIO, pz - 0.9, px + 0.9, 10.5, pz + 0.9, 'post')
-F('grill', 34, -61, y=PATIO, turn=0)
-F('patiotable', 26, -50, y=PATIO); F('patiochair', 22, -50, y=PATIO, turn=1); F('patiochair', 30, -50, y=PATIO, turn=3)
-F('lounger', 40, -50, y=PATIO, turn=0)
+        box(px - 0.9, DECK, pz - 0.9, px + 0.9, 10.5, pz + 0.9, 'post')
+F('grill', 34, -61, y=DECK, turn=0)
+F('patiotable', 26, -50, y=DECK); F('patiochair', 22, -50, y=DECK, turn=1); F('patiochair', 30, -50, y=DECK, turn=3)
+F('lounger', 40, -50, y=DECK, turn=0)
 TRAMP = dict(x=-24.0, z=-104.0, r=13.0, top=2.6, y=GROUND)      # the trampoline: its mat's centre, radius, top (HuntBuild's
 F('trampoline', TRAMP['x'], TRAMP['z'], y=GROUND)              #  round mat and padded ring are the hit shapes)
 F('tree', 54.0, -118.0, y=GROUND); F('treebench', 54.0, -118.0, y=GROUND)
@@ -503,7 +506,8 @@ F('flowerbed', -60, -150, y=GROUND, turn=0); F('flowerbed', -20, -150, y=GROUND,
 for hz in (-80, -100, -120, -140): F('hedgetall', -81.5, hz, y=GROUND, turn=1)   # (judge round 3: tall hedges on the side
 for hz in (-40, -60, -80, -100, -120, -140): F('hedgetall', 105.5, hz, y=GROUND, turn=1)   #  fences, the neighbours screened)
 F('hose', 58, -46, y=PATIO)
-for hx in (-40, 0, 40, 60):                      # hedges along the back fence, between the flower beds
+F('tree', -8.0, -149.0, y=GROUND)                                # (judges round 7: one tall thing at the path's end)
+for hx in (-40, 40, 60):                         # hedges along the back fence, between the flower beds
     F('hedge', hx, -149.5, y=GROUND)
 F('flowerbed', 40, -128, y=GROUND, turn=0); F('flowerbed', 40, -136, y=GROUND, turn=0)
 # ---------------------------------------------------------------- the front

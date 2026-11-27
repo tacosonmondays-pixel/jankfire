@@ -129,7 +129,7 @@ local function switches(root: Instance, sf: Instance)
 end
 
 local SCREEN_ON = Color3.fromRGB(118, 146, 168)
-local SCREEN_OFF = Color3.fromRGB(70, 77, 88)   -- (judges rounds 3-6: off = a dim slate glow (Neon), not a black hole)
+local SCREEN_OFF = Color3.fromRGB(70, 74, 80)   -- (judges rounds 3-6: off = a dim slate glow (Neon), not a black hole)
 local function props(pf: Instance, zone: BasePart?)
 	for _, p in pf:GetChildren() do
 		local kind = p:GetAttribute("Kind")

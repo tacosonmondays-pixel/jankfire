@@ -719,8 +719,8 @@ def pergola(x0, x1, z0, z1, top):
     I = K.I4
     for px in (x0, (x0 + x1) / 2, x1):
         for pz in (z0, z1):
-            K.B('hh_yard', 'e9e4da', px - 1.1, -1.0, pz - 1.1, px + 1.1, top - 1.8, pz + 1.1, bev=0.25)
-            K.B('hh_yard', 'e9e4da', px - 1.5, -1.0, pz - 1.5, px + 1.5, -0.1, pz + 1.5, bev=0.25)
+            K.B('hh_yard', 'e9e4da', px - 1.1, 0.0, pz - 1.1, px + 1.1, top - 1.8, pz + 1.1, bev=0.25)
+            K.B('hh_yard', 'e9e4da', px - 1.5, 0.0, pz - 1.5, px + 1.5, 0.9, pz + 1.5, bev=0.25)
     for pz in (z0, z1):
         K.B('hh_yard', 'b7a083', x0 - 2.2, top - 1.9, pz - 0.85, x1 + 2.2, top - 0.2, pz + 0.85, bev=0.3)
     x = x0 - 1.0
