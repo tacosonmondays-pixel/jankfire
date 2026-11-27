@@ -31,7 +31,7 @@ TL.ACTIONS = {
 	jump = { key = K.Space, label = "JUMP" },
 	crouch = { key = K.C, label = "SLIDE" },
 	sprint = { key = K.LeftShift, label = "RUN" },
-	hook = { key = K.E, label = "HOOK", look = true },
+	hook = { key = K.E, label = "GRAPPLE", look = true }, -- (27 Nov: the same word as the PC's)
 	reload = { key = K.R, label = "RELOAD", fight = true },
 	swap = { label = "SWAP", fight = true }, -- (your last weapon: TouchControls works out which)
 	slot1 = { key = K.One, label = "SLOT 1", fight = true },

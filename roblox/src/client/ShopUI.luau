@@ -195,7 +195,7 @@ local function button(parent: Instance, text: string, kind: string, size: UDim2,
 	}, parent)
 	if kind ~= "tab" then T.corner(face) end
 	if kind == "dark" then T.edge(face) end
-	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = if kind == "tab" then T.INK else T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.6, 0, 0, 3), Visible = false }, face)
+	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = if kind == "tab" then (T.MARK or T.INK) else T.ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 0), Size = UDim2.new(0.6, 0, 0, 3), Visible = false }, face)
 	local b = { face = face, mark = mark, kind = kind, enabled = true, base = base }
 	local function lit(c: Color3): Color3 return c:Lerp(WHITE, 0.14) end
 	face.MouseEnter:Connect(function()

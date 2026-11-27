@@ -422,7 +422,7 @@ function News.armPic(btn: GuiObject, e: any)
 		if d:IsA("GuiObject") and d.Name ~= "New" then d.Position = d.Position + UDim2.fromOffset(0, 46) end
 	end
 	-- (round 2: a flat silhouette like the slot rows', white; black on the white card you're looking at)
-	local pv, pc = viewport(btn, { Name = "Pic", Position = UDim2.fromOffset(10, 6), Size = UDim2.fromOffset(212, 50), BackgroundTransparency = 1, ZIndex = 5,
+	local pv, pc = viewport(btn, { Name = "Pic", Position = UDim2.fromOffset(14, 10), Size = UDim2.fromOffset(204, 44), BackgroundTransparency = 1, ZIndex = 5,
 		Ambient = Color3.new(1, 1, 1), LightColor = Color3.new(0, 0, 0) })
 	pc.FieldOfView = 30
 	local m, rel = previewModel(e.id, hatOf(e.id), skinOf(e.id))
@@ -433,9 +433,10 @@ function News.armPic(btn: GuiObject, e: any)
 	News.flat(m)
 	m.Parent = pv
 	local cf, sz = m:GetBoundingBox()
-	-- (fit its width to the card: a viewport 30 degrees tall and 212 x 50, the long side across)
-	local half = math.max(sz.X, sz.Z) / 2 / (212 / 50)
-	local r = math.max(half, sz.Y / 2) * 1.08
+	-- (round 4: one scale for every card, the size a long rifle needs, so a pistol reads small and a shotgun long, as
+	-- they are; only a weapon bigger than that is fitted down)
+	local half = math.max(sz.X, sz.Z) / 2 / (204 / 44)
+	local r = math.max(half, sz.Y / 2, 0.95) * 1.06
 	pc.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, r / math.tan(math.rad(15))), cf.Position)
 	if not e.live then pv.ImageTransparency = 0.55 end
 end
@@ -567,6 +568,14 @@ local equipBtn = button(info, "EQUIP", "main", UDim2.fromOffset(34, 610), UDim2.
 equipBtn.face.FontFace = FONT_TITLE; equipBtn.face.TextSize = 26
 News.skewIt(equipBtn, 12)
 News.mbar = News.MUI.panel(info, words) -- (the weapon's level under its name: LV, XP, the next camo)
+do -- (27 Nov round 4: as wide as the stat bars under it, and its words wide enough for MASTERY n)
+	local mb = info:FindFirstChild("Mastery") :: Frame?
+	if mb then
+		mb.Size = UDim2.fromOffset(432, mb.Size.Y.Offset)
+		local lvL = mb:FindFirstChildWhichIsA("TextLabel")
+		if lvL then lvL.Size = UDim2.fromOffset(110, lvL.Size.Y.Offset) end
+	end
+end
 -- buying a Robux weapon (Unlocks.ROBUX) here once they aren't free for everyone (Unlocks.robuxFree): the equip button
 -- halves, Robux on the left (the shop's prompt, ShopBuy "weapon:<id>"), Coins on the right (the server takes them,
 -- JankfireRemotes.Purchases "brass", after a second press to be sure; not enough: the shop's COINS tab). prices:

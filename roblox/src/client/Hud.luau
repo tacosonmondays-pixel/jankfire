@@ -25,7 +25,7 @@ local speedNum = T.text(speed, "Value", "0", 15, T.TEXT, T.FONT_HEAVY, Enum.Text
 speedNum.Position = UDim2.fromOffset(0, 0); speedNum.Size = UDim2.new(0.5, -3, 1, 0); speedNum.TextStrokeTransparency = 0.75
 local speedSub = T.text(speed, "Unit", "m/s", 12, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Left)
 speedSub.Position = UDim2.new(0.5, 3, 0, 1); speedSub.Size = UDim2.new(0.5, -3, 1, 0); speedSub.RichText = true
-speedSub.TextTransparency = 0.25; speedSub.TextStrokeTransparency = 0.8
+speedSub.TextTransparency = 0; speedSub.TextStrokeTransparency = 0.75
 -- (not in the hub, like FightHud's health and weapon card: owner, 18 Nov)
 do
 	local me = Players.LocalPlayer

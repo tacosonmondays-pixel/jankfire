@@ -97,7 +97,7 @@ function MUI.panel(info: Frame, words: Frame?): (any) -> ()
 		box.Visible = e ~= nil and e.live == true
 		if not box.Visible then return end
 		local level, into, need, frac = M.progress(xpMap()[e.id] or 0)
-		lv.Text = "LV " .. level
+		lv.Text = "MASTERY " .. level -- (27 Nov, ui-mocks: "LV" alone read as the player's level)
 		xp.Text = if level >= M.MAX then "MAX" else ("%s / %s XP"):format(MUI.num(into), MUI.num(need))
 		fill.Size = UDim2.fromScale(frac, 1)
 		fill.BackgroundColor3 = if level >= M.MAX then T.ACCENT else T.TEXT

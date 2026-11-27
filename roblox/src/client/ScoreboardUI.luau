@@ -25,7 +25,7 @@ local B = K.B
 
 -- the look (design pixels: the HUD's 720-tall frame, Theme.scaled). the mock was 1080 tall: these are its sizes / 1.5
 local LOOK = {
-	W = 654, -- a table's width
+	W = 560, -- a table's width (round 4: 654 left a dead gap between the names and the numbers)
 	TOP = 27, -- the score bug's top
 	CELL_W = 100, CELL_H = 80, -- a side's score cell
 	CLOCK_W = 120,

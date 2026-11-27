@@ -216,17 +216,24 @@ local function hudStep()
 	if not it or not plate.Visible then return end
 	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles")
 		elseif it.id == "camera" and me:GetAttribute("Photo") then (if charges() > 0 then "Camera · print" else ("Camera · %ds"):format(math.max(1, math.ceil((tonumber(me:GetAttribute("ItemAt")) or 0) - workspace:GetServerTimeNow())))) else it.name
+	label = string.upper(label) -- (round 4: capitals, like the HUD's other words)
 	if nameL.Text ~= label then nameL.Text = label end
 	chip.Visible = false -- (round 3: no colour chip; the count says it in words)
 	nameL.TextStrokeTransparency = 0.8
 	setPips(it.charges)
 	local n, at = charges()
 	pipsBox.Visible = false
+	do -- (no key cap on a touch screen, checked each frame: a test can force touch after the cap was made)
+		local UIS = game:GetService("UserInputService")
+		local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
+		local kc = plate:FindFirstChild("Key") :: GuiObject?
+		if kc then kc.Visible = not touch end
+	end
 	local cnt = plate:FindFirstChild("Count") :: TextLabel?
 	if not cnt then
 		cnt = T.text(plate, "Count", "", 15, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 		local c2 = cnt :: TextLabel
-		c2.AnchorPoint = Vector2.new(1, 0.5); c2.Position = UDim2.new(1, -12, 0.5, 0); c2.Size = UDim2.fromOffset(60, 20); c2.TextStrokeTransparency = 0.8
+		c2.AnchorPoint = Vector2.new(1, 0.5); c2.Position = UDim2.new(1, 0, 0.5, 0); c2.Size = UDim2.fromOffset(60, 20); c2.TextStrokeTransparency = 0.8
 	end
 	local cl = cnt :: TextLabel
 	cl.Text = "×" .. n

@@ -323,13 +323,16 @@ end
 -- (27 Nov 2026, the owner's pick from the ui-mocks sheet: the phone is A PLATE: bone discs with ink words, FIRE an ink
 -- disc with a bone rim, a pressed or switched-on button turns ink; the stick a bone ring and knob)
 local BONE, INK = Color3.fromRGB(229, 226, 219), Color3.fromRGB(29, 31, 35)
+-- (the all-B alternative, ReplicatedStorage UiLook "B": dark slab discs with white words, FIRE Butter)
+local ALT = game:GetService("ReplicatedStorage"):GetAttribute("UiLook") == "B"
+if ALT then BONE, INK = Color3.fromRGB(13, 14, 16), Color3.fromRGB(240, 240, 236) end
 local HUNT_WORDS = { fire = "PUNCH", hook = "PUSH", reel = "LIE" } -- (HOLDOUT's words: placeAll)
 local function style(face: TextButton, lit: boolean, accentEdge: boolean?, own: number?)
 	local a = math.clamp(S.alpha * (own or 1), 0.1, 1)
 	local dark = lit ~= (accentEdge == true) -- (FIRE is ink at rest and bone while held; the rest the other way round)
-	face.BackgroundColor3 = if dark then INK else BONE
+	face.BackgroundColor3 = if ALT and accentEdge and not lit then Color3.fromRGB(245, 221, 138) elseif dark then INK else BONE
 	face.BackgroundTransparency = 1 - a * 0.9
-	face.TextColor3 = if dark then BONE else INK
+	face.TextColor3 = if ALT and accentEdge and not lit then Color3.fromRGB(16, 17, 19) elseif dark then BONE else INK
 	face.TextTransparency = (1 - a) * 0.55
 	local st = face:FindFirstChildOfClass("UIStroke")
 	if st then
@@ -421,9 +424,9 @@ local function build()
 	stickRing = T.new("Frame", { Name = "Stick", AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = INK,
 		BackgroundTransparency = 0.86, Size = UDim2.fromOffset(104, 104) }, pad) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickRing)
-	T.edge(stickRing, BONE, 0.25, 3)
+	T.edge(stickRing, if ALT then Color3.new(1, 1, 1) else BONE, 0.25, 3)
 	stickKnob = T.new("Frame", { Name = "Knob", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		BackgroundColor3 = BONE, BackgroundTransparency = 0.1, Size = UDim2.fromOffset(46, 46) }, stickRing) :: Frame
+		BackgroundColor3 = if ALT then Color3.new(1, 1, 1) else BONE, BackgroundTransparency = 0.1, Size = UDim2.fromOffset(46, 46) }, stickRing) :: Frame
 	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, stickKnob)
 
 	-- the top row: SETTINGS, AUTO and EMOTE, each placed on its own (TL.place: right to left along the top, or where
@@ -1114,7 +1117,7 @@ RunService.Heartbeat:Connect(function()
 			placeHudBox("Ammo", o + UDim2.fromOffset(2, 48), function() end, function(f: any)
 				if not (f and f.swiped) then Keys.tap(Enum.KeyCode.R) end -- (a tap reloads; a swipe changed weapon instead)
 			end)
-			local cp = o + UDim2.fromOffset(0, 150) -- (27 Nov: under the A ammo, 48 + 96 + 6)
+			local cp = o + UDim2.fromOffset(0, -34) -- (27 Nov: over the gadget card: under the taller A ammo they fell off a phone's screen)
 			if chips.Position ~= cp then chips.Position = cp end
 		end
 	end

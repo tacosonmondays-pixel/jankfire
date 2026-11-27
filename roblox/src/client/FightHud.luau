@@ -144,7 +144,7 @@ end
 -- red when you're nearly dead. ("Hp" keeps its name: TouchControls places it on a phone)
 local hpPlate = T.new("Frame", { Name = "Hp", BackgroundTransparency = 1, Position = UDim2.new(0, 40, 1, -112), Size = UDim2.fromOffset(220, 84) }, hud)
 local hpEdge = T.new("UIStroke", { Transparency = 1, Enabled = false }, hpPlate)
-local hpBox, hpText, hpSet = K.hero(hpPlate, "Value", 62, T.FONT_HEAVY, K.A.WORLD, true, false)
+local hpBox, hpText, hpSet = K.hero(hpPlate, "Value", 62, if K.alt() then K.COND else T.FONT_HEAVY, K.A.WORLD, true, false)
 hpBox.Position = UDim2.fromOffset(-2, 0)
 local hpShown = -1
 local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
@@ -163,7 +163,7 @@ at(wSub, UDim2.fromOffset(0, 18), UDim2.fromOffset(300, 16))
 wSub.TextStrokeTransparency = 0.8
 local ammoRow = T.new("Frame", { Name = "CountRow", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 34), Size = UDim2.fromOffset(300, 62) }, ammoPlate)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Right, VerticalAlignment = Enum.VerticalAlignment.Bottom, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, ammoRow)
-local ammoBox, ammoText, ammoSet = K.hero(ammoRow, "Count", 62, T.FONT_HEAVY, K.A.WORLD, true, false)
+local ammoBox, ammoText, ammoSet = K.hero(ammoRow, "Count", 62, if K.alt() then K.COND else T.FONT_HEAVY, K.A.WORLD, true, false)
 ammoBox.LayoutOrder = 1
 local ammoMag = T.text(ammoRow, "Mag", "", 27, K.A.WORLD, T.FONT_HEAVY)
 ammoMag.AutomaticSize = Enum.AutomaticSize.X; ammoMag.Size = UDim2.fromOffset(0, 40); ammoMag.LayoutOrder = 2
@@ -223,6 +223,7 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	end
 	-- (a classic mode's spoon look: the knife is the Spoon, Modes.luau's SpoonLook)
 	local shown = if wid == "knife" and game:GetService("Players").LocalPlayer:GetAttribute("SpoonLook") then "Spoon" else w.name
+	shown = string.upper(shown) -- (round 4: capitals, like the words on the left)
 	if wName.Text ~= shown then wName.Text = shown end
 	wChip.BackgroundColor3 = w.color
 	ammoSet(count, if countColor == T.TEXT then K.A.WORLD else countColor)
@@ -292,8 +293,8 @@ local tiles = T.new("Frame", {
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, HorizontalAlignment = Enum.HorizontalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tiles)
 local tileRow = T.new("Frame", { Name = "Tiles", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = 1 }, tiles)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tileRow)
-local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = K.A.INK, BackgroundTransparency = 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 24), LayoutOrder = 2 }, tiles)
-T.corner(tab, 2)
+local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = if K.alt() then K.B.SLAB else K.A.INK, BackgroundTransparency = if K.alt() then 0.06 else 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 24), LayoutOrder = 2 }, tiles)
+T.corner(tab, if K.alt() then 0 else 2)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, tab)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, tab)
 local tabRound = T.text(tab, "Round", "", 11, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY)
@@ -305,14 +306,13 @@ local tileList: { Tile } = {}
 local function tileFor(i: number): Tile
 	local t = tileList[i]
 	if t then return t end
-	local f = T.new("Frame", { Name = "Side" .. i, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 59), LayoutOrder = i }, tileRow)
-	T.corner(f, 7)
-	T.new("UIPadding", { PaddingLeft = UDim.new(0, if i % 2 == 1 then 17 else 13), PaddingRight = UDim.new(0, if i % 2 == 1 then 13 else 17) }, f)
-	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 11) }, f)
-	local box, _, set = K.hero(f, "Wins", 40, T.FONT_HEAVY, K.A.INK, false, false)
-	-- (the first side reads number then heads, the second heads then number: the two face each other)
-	box.LayoutOrder = if i % 2 == 1 then 1 else 2
-	local heads = T.new("Frame", { Name = "Heads", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = if i % 2 == 1 then 2 else 1 }, f)
+	local f = T.new("Frame", { Name = "Side" .. i, BorderSizePixel = 0, Size = UDim2.fromOffset(92, 59), LayoutOrder = i }, tileRow)
+	T.corner(f, if K.alt() then 0 else 7)
+	-- (round 4: the number centred on the tile; the heads a column at the tile's outer edge)
+	local box, _, set = K.hero(f, "Wins", if K.alt() then 46 else 40, if K.alt() then K.COND else T.FONT_HEAVY, K.A.INK, false, false)
+	box.AnchorPoint = Vector2.new(0.5, 0.5); box.Position = UDim2.fromScale(0.5, 0.5)
+	local heads = T.new("Frame", { Name = "Heads", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0),
+		AnchorPoint = Vector2.new(if i % 2 == 1 then 1 else 0, 0.5), Position = UDim2.new(if i % 2 == 1 then 1 else 0, if i % 2 == 1 then -7 else 7, 0.5, 0) }, f)
 	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3) }, heads)
 	t = { f = f, set = set, heads = heads, shown = "" }
 	tileList[i] = t

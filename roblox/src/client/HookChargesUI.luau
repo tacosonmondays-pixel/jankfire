@@ -84,7 +84,7 @@ for i = 1, HC.CHARGES do
 	T.corner(f, 2)
 	pips[i] = { back = bk, fill = f }
 end
-local lockF = word("OFF UNTIL GO", 4, 12)
+local lockF = word("LOCKED TILL GO", 4, 12)
 lockF.TextTransparency = 0.25
 local gap = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(8, 1), LayoutOrder = 5 }, readout)
 local autoCap = cap(6)
@@ -136,7 +136,8 @@ RunService.RenderStepped:Connect(function()
 	local auto = alive and ((HC.LOCK and HC.LOCK.on and (me:GetAttribute("Zone") == "match" or test) and not me:GetAttribute("ZmOn"))
 		or (HC.AUTO and HC.AUTO.on and me:GetAttribute("QuickMatch") == true))
 	local show = HookChargesUI.limited() and alive
-	local any = show or lockedNow or auto == true
+	local inMatch = alive and me:GetAttribute("Zone") == "match" and not me:GetAttribute("ZmOn")
+	local any = show or lockedNow or auto == true or inMatch
 	if readout.Visible ~= any then readout.Visible = any end
 	if not any then lastN = s.n; return end
 	-- the hook part: its key, HOOK, the pips while charges count, AT GO before the round
@@ -145,10 +146,12 @@ RunService.RenderStepped:Connect(function()
 	local UIS = game:GetService("UserInputService")
 	local touch = (UIS.TouchEnabled and not UIS.KeyboardEnabled) or me:GetAttribute("TouchForce") == true
 		or game:GetService("StarterPlayer"):GetAttribute("TouchForce") == true
-	hookCap.Visible = (show or lockedNow) and not touch; hookWord.Visible = show or lockedNow
+	hookCap.Visible = (show or lockedNow or inMatch) and not touch; hookWord.Visible = show or lockedNow or inMatch
 	row.Visible = show
-	lockF.Visible = lockedNow
-	gap.Visible = (show or lockedNow) and auto == true
+	lockF.Visible = lockedNow or (inMatch and not show)
+	lockF.Text = if lockedNow then "LOCKED TILL GO" else "READY"
+	lockF.TextTransparency = if lockedNow then 0.25 else 0
+	gap.Visible = (show or lockedNow or inMatch) and auto == true
 	autoCap.Visible = auto == true and not touch; autoWord.Visible = auto == true; autoState.Visible = auto == true; autoB.Visible = false
 	if auto then
 		local ak = Binds.label("reel")

@@ -625,11 +625,12 @@ return function(C: any): any
 	end
 	-- a price you press: ink with bone words and the pads' lip under it; short of it: greyed, "need N more" under it
 	local function priceBtn(parent: Instance, icon: string?, words: string, ok: boolean, need: string?, x: UDim, w: number): TextButton
-		local b = new("TextButton", { Name = "Price", AutoButtonColor = false, BackgroundColor3 = if ok then INK else Color3.fromRGB(205, 200, 190), BorderSizePixel = 0,
+		local b = new("TextButton", { Name = "Price", AutoButtonColor = false, BackgroundColor3 = if ok then T.ACCENT else T.TRACK, BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(x.Scale, x.Offset, 0.5, if need then -7 else -2), Size = UDim2.fromOffset(w, 32),
 			Text = "", ZIndex = 4 }, parent)
-		new("UICorner", { CornerRadius = UDim.new(0, 8) }, b)
-		local lip = new("Frame", { Name = "Lip", BackgroundColor3 = if ok then Color3.new(0, 0, 0) else LIP, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 3), Size = UDim2.fromScale(1, 1), ZIndex = 3 }, b)
+		new("UICorner", { CornerRadius = UDim.new(0, if T.RADIUS == 0 then 0 else 8) }, b)
+		local lip = new("Frame", { Name = "Lip", BackgroundColor3 = if ok then Color3.new(0, 0, 0) else LIP, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 3), Size = UDim2.fromScale(1, 1), ZIndex = 3,
+			Visible = T.RADIUS ~= 0 }, b) -- (the pads' lip is A's; B's slabs have none)
 		new("UICorner", { CornerRadius = UDim.new(0, 8) }, lip)
 		local row = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0, 1),
 			AutomaticSize = Enum.AutomaticSize.X, ZIndex = 5 }, b)
@@ -640,7 +641,7 @@ return function(C: any): any
 				GroupTransparency = if ok then 0 else 0.4 }, row)
 			if not Purse.icon(icon, ic, 16) then ic:Destroy() end
 		end
-		local l = txt(row, words, 15, if ok then BONE else Color3.fromRGB(86, 83, 77), T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		local l = txt(row, words, 15, if ok then T.INK else T.MUTED, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
 		if need then
 			local n = txt(parent, need, 11, Color3.fromRGB(150, 84, 40), T.FONT_BOLD, Enum.TextXAlignment.Center)

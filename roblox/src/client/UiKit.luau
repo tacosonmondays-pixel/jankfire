@@ -154,11 +154,25 @@ function K.hero(parent: Instance, name: string, size: number, font: Font, color:
 	return h, l, set
 end
 
+-- the all-B alternative (27 Nov, main's ask: the A screens in B's colours, to show the owner side by side): while
+-- ReplicatedStorage's attribute UiLook is "B", themeA() hands out B's slabs (Butter for the one button that does
+-- something), the hub's PLAY is a Butter slab and the HUD's big numbers are Oswald. read when a screen is built
+function K.alt(): boolean
+	return game:GetService("ReplicatedStorage"):GetAttribute("UiLook") == "B"
+end
+local themeBPress: any = nil
 -- Theme in A's colours, for a menu that should sit light on the game (the shop, the hub's menus): bone plates and cards,
 -- ink words, ink for the one button that does something (its words bone), near-square corners, no hairlines. a menu
 -- swaps its `local T = require(Theme)` for this and every T.* read and T.plate / T.text / T.key follows
 local themeA: any = nil
 function K.themeA(): any
+	if K.alt() then
+		if themeBPress then return themeBPress end
+		local base = K.themeB()
+		local P: any = { ACCENT = K.B.BUTTER, INK = K.B.INK, MARK = K.B.BUTTER }
+		themeBPress = setmetatable(P, { __index = base })
+		return themeBPress
+	end
 	if themeA then return themeA end
 	local Theme = require(script.Parent:WaitForChild("Theme")) :: any
 	local c = Color3.fromRGB
@@ -167,7 +181,7 @@ function K.themeA(): any
 		EDGE = c(0, 0, 0), EDGE_A = 0.9, TEXT = c(29, 31, 35), MUTED = c(86, 83, 77), SOFT = c(64, 62, 58), DIM = c(140, 136, 128),
 		ACCENT = c(29, 31, 35), INK = c(229, 226, 219), DANGER = c(196, 64, 56), RADIUS = 3,
 		-- (one family in A: Builder Sans. Theme's wide Builder Extended titles read as a third face next to it)
-		FONT_TITLE = Theme.FONT_HEAVY, FONT_SHOUT = Theme.FONT_HEAVY,
+		FONT_TITLE = Theme.FONT_HEAVY, FONT_SHOUT = Theme.FONT_HEAVY, MARK = c(229, 226, 219),
 	}
 	P.corner = function(o: Instance, r: number?): UICorner return Theme.corner(o, if r and r >= 20 then r else 3) end
 	P.edge = function(o: Instance, color: Color3?, alpha: number?, thick: number?): UIStroke
