@@ -695,3 +695,20 @@ The plan (main's brief), then what was built under it.
     zm_term_ready (Synth Chime Single Synth Tone 2, 9119802022, short / whole), zm_term_off (Switch Clicks Metallic Dull
     Pops 7, 9119717950). The library has no keyboard typing takes; the relay click stands in.
   - Sheet: side notes 20-zombies-briefing-27nov.jpg; clip zombies-briefing-27nov.mp4 (skip -> briefing -> round 1).
+
+### 4.15 Dust in the light (27 Nov; the owner: "Can you add ambiance stuff like dust particles under light?")
+client/ZombieDust.client.luau (new), built on HOUSE HUNT's client/HuntDust.luau, so its traps come with it (the VFX
+library's soft glow at 0.11-0.13 studs and ~12% at their peak, lit by the scene; shafts of two plain bands with 12
+segments and a faint emission; boxes pre-filled with :Emit so nothing fades up).
+- Motes under the 8 nearest lit lamps (within 36 studs of the camera), a box from the lamp to the floor (the floor ray
+  skips the fixture's own housing). A dark area's lamps are off till the power, so are its motes.
+- A faint shaft under the 3 nearest lamps: its own pool, re-pointed each half second (a beam moves for nothing). The
+  first take, warm at 0.9, read as a beige pillar under the school's cool tubes: now their own white (214, 226, 240)
+  at 0.95.
+- The 2 nearest zombie windows: a cool moonlit shaft in through the boards, motes in it.
+- Your flashlight: motes in a box ahead of the beam, left hanging as you sweep; the scene lights them, so only the beam
+  shows them. A dark area before the power: a few faint wisps round you.
+- Switch: workspace attribute ZmDust = false. Cost (Studio, the lobby, 8 boxes + 3 shafts + a window): render CPU
+  3.48 -> 3.50 ms, GPU 3.22 -> 3.29 ms (two runs, 3 s each). Place version 1640.
+- Sheet: side notes 21-zombies-dust-27nov.jpg (before / after / the tunnel's beam / the rejected first shaft); clip
+  zombies-dust-27nov.mp4.
