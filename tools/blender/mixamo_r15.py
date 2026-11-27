@@ -47,6 +47,10 @@ UPPER = '--upper' in argv or '--head-only' in argv
 # (27 Nov 2026, HOUSE HUNT's scared walk: --head-only keys the head alone, the parts above it unkeyed at weight 0, so a
 # glance round can lie over another upper-body pose)
 HEAD_ONLY = '--head-only' in argv
+# (HOUSE HUNT's top-down snap: --no-arms leaves the arms unkeyed, so a raised fist can't cover the face; the arms
+# come from whatever plays under it)
+NO_ARMS = '--no-arms' in argv
+ARMS = { 'LeftUpperArm', 'RightUpperArm', 'Left Arm', 'Right Arm' }
 WARP = [tuple(float(x) for x in kv.split(':')) for kv in opt('--warp', '').split(',') if kv]
 
 # (19 Nov 2026, the MotionBricks trial) a .json in = tools/motionbricks/mixamo_rot_sample.py's shape (every bone's world
@@ -204,7 +208,7 @@ def pose_xml(part, rots, hips):
         pos = RC['Torso'].transposed() @ hips if part == 'Torso' else Vector((0, 0, 0))
     else:
         pos = hips if part == 'LowerTorso' and not UPPER else Vector((0, 0, 0))
-    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS) and not (HEAD_ONLY and c not in HEAD_PATH))
+    kids = ''.join(pose_xml(c, rots, hips) for c in TREE.get(part, []) if not (UPPER and c in LEGS) and not (HEAD_ONLY and c not in HEAD_PATH) and not (NO_ARMS and c in ARMS))
     wt = 0 if part in UNKEYED else 1
     return ('<Item class="Pose" referent="%s"><Properties><string name="Name">%s</string>%s<float name="Weight">%d</float>'
             '<token name="EasingStyle">0</token><token name="EasingDirection">0</token></Properties>%s</Item>') % (nref(), part, cf_xml('CFrame', pos, R), wt, kids)

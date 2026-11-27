@@ -495,16 +495,16 @@ local function play(a: any)
 				for _, b in roomBodies do table.insert(mine, b.m) end
 				ex.FilterDescendantsInstances = mine
 				for _, c in { { 3.0, 2.6 }, { 2.2, 3.4 }, { 1.2, 3.8 }, { 3.0, -2.6 }, { 2.2, -3.4 }, { 0.4, 4.0 }, { 0.4, -4.0 }, { -1.2, 3.6 } } do
-					local p = s.Position + s.LookVector * c[1] * 1.3 + s.RightVector * c[2] * 1.3 -- (v8: a step wider)
+					local p = s.Position + s.LookVector * c[1] * 1.6 + s.RightVector * c[2] * 1.6 -- (v8, v9: wider; her head was cut)
 					p = Vector3.new(p.X, hd.Y + 0.3, p.Z)
 					if not workspace:Raycast(hd, p - hd, ex) then revealFrom = p; break end
-					p = Vector3.new(hd.X, p.Y, hd.Z) + (p - Vector3.new(hd.X, p.Y, hd.Z)) / 1.3 -- (blocked further out: try the old distance)
+					p = Vector3.new(hd.X, p.Y, hd.Z) + (p - Vector3.new(hd.X, p.Y, hd.Z)) / 1.6 -- (blocked further out: try the old distance)
 					if not workspace:Raycast(hd, p - hd, ex) then revealFrom = p; break end
 				end
 				if not revealFrom then revealFrom = hd + s.RightVector * 2.6 + Vector3.new(0, 0.4, 0) end
 			end
 			local p0 = revealFrom :: Vector3
-			return CFrame.lookAt(p0 + (hd - p0).Unit * 0.5 * e, hd - Vector3.new(0, 0.4, 0)) -- (a slow push in)
+			return CFrame.lookAt(p0 + (hd - p0).Unit * 0.5 * e, hd + Vector3.new(0, 0.1, 0)) -- (a slow push in, on her face)
 		end
 	else
 		local c = spot("couch")
@@ -535,7 +535,7 @@ local function play(a: any)
 				local from = CFrame.lookAt(scrP + scrN * fillDist(), scrP)
 				return from:Lerp(pullEnd, e)
 			end },
-		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 64 else 46, shake = 0.4, cam = reveal },
+		{ name = "reveal", t0 = beat("reveal"), t1 = len, fov = if set == "B" then 64 else 52, shake = 0.4, cam = reveal },
 	}
 
 	-- ---------------------------------------------------------------- the look, the grade, the bars, the sound

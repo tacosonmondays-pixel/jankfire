@@ -200,8 +200,10 @@ H.INTRO = {
 	anims = {
 		-- (snap, owner 27 Nov: "I wanted to be staring straight up": the vault's Victory Idle 3, frames 15-29, the face
 		-- 74 deg up and square to the hips; the old snap, a boxing head hit, peaked twisted 133 deg off them)
-		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 99336910488698, look = 108845709130342 },
-		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 110975607602455, look = 95541089023402 },
+		-- (snapTop: the same face-up with the arms left unkeyed: v13's raised fist covered her face from above; the
+		-- full one stays for outside, where her hands come down slowly)
+		R15 = { crazy = 136466865725956, nod = 130020646585198, shake = 116523207869437, snap = 99336910488698, look = 108845709130342, snapTop = 123559013651150 },
+		R6 = { crazy = 86292029421586, nod = 78893331405051, shake = 137563690783496, snap = 110975607602455, look = 95541089023402, snapTop = 131306120175253 },
 	},
 	static = { 72310839769760, 86008837872701, 122572333792473, 98994588240705 }, -- (B's screen: soft grey noise, nothing readable)
 	-- recordings only, no voices. the owner's order (27 Nov): the room's hum (PC fans, a fridge), a heartbeat getting
@@ -255,7 +257,7 @@ H.OUTRO = {
 	-- is?"): { s, yaw (deg, + = left), pitch (deg) } keys on her view: nervous glances, a pause, one look back over her
 	-- shoulder at the friends trailing (about 1 s), then forward again
 	hiderLooks = { { 0, 0, -4 }, { 0.9, 0, -4 }, { 1.6, 28, -3 }, { 2.0, 28, -3 }, { 2.6, -22, -5 }, { 2.85, -22, -5 },
-		{ 3.5, -150, -9 }, { 4.45, -150, -9 }, { 5.1, 0, -4 }, { 5.6, 6, -3 } },
+		{ 3.5, -160, -8 }, { 4.45, -160, -8 }, { 5.1, 0, -4 }, { 5.6, 6, -3 } },
 	hitstop = 0.2,
 	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2, -- (then each sitter's hips are fitted onto the seat: HuntOutro)
 	walk = { R15 = 507777826, R6 = 180426354 }, walkSpeed = 0.55, -- (Roblox's own walks, slowed: the survivors' walk)
@@ -269,9 +271,9 @@ H.OUTRO = {
 		hunchWeight = 0.85, walkSpeed = 0.4, pace = 2.4, uneven = 0.22 },
 	group = {
 		{ side = 0, back = 0, speed = 0.4, phase = 0 },
-		{ side = -1.4, back = 1.9, speed = 0.5, phase = 0.37 },
-		{ side = 1.8, back = 3.4, speed = 0.47, phase = 0.71, pauseAt = 1.7, pauseLen = 0.9, hurry = 1.5 },
-		{ side = -0.5, back = 4.8, speed = 0.53, phase = 0.18 },
+		{ side = -1.4, back = 2.8, speed = 0.5, phase = 0.37 }, -- (v6, first person: the nearest filled the look back)
+		{ side = 1.8, back = 4.6, speed = 0.47, phase = 0.71, pauseAt = 1.7, pauseLen = 0.9, hurry = 1.5 },
+		{ side = -0.5, back = 6.2, speed = 0.53, phase = 0.18 },
 	},
 	anims = {
 		R15 = { sit = 123982609501233, stretch = 124144468077269, clap = 119842197482812, cheer = 99464849720944, pump = 82176434072280 },

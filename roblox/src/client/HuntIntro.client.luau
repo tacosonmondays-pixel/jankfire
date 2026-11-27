@@ -238,7 +238,7 @@ local function play(a: any)
 		crazy = track(animator, ids.crazy, Enum.AnimationPriority.Action),
 		nod = track(animator, ids.nod, Enum.AnimationPriority.Action2),
 		shake = track(animator, ids.shake, Enum.AnimationPriority.Action2),
-		snap = track(animator, ids.snap, Enum.AnimationPriority.Action3),
+		snap = track(animator, ids.snapTop or ids.snap, Enum.AnimationPriority.Action3), -- (arms free: down, off her face)
 	}
 	if A.calm then A.calm.Looped = true; A.calm:Play(0) end
 
@@ -439,7 +439,7 @@ local function play(a: any)
 		-- before her face lands the line is the clip's (74 deg up); once it lands (the hit-stop), her real face's
 		{ name = "above", t0 = beat("snap"), t1 = beat("outside"), fov = 50, shake = function(u) return 3 * (1 - u) ^ 2 end,
 			cam = function(u)
-				local d = Cine.lerp(3.6, 5.4, smoother(u))
+				local d = Cine.lerp(3.2, 5.0, smoother(u))
 				local a = math.rad(74)
 				local n = (fz * math.cos(a) + Vector3.yAxis * math.sin(a)).Unit
 				local crown = (Vector3.yAxis * math.cos(a) - fz * math.sin(a)).Unit
@@ -620,6 +620,7 @@ local function play(a: any)
 			kl.Parent = kp
 			kp.Parent = folder
 			r.key = kp
+			for _, k in { "crazy", "nod", "shake" } do local tr = A[k]; if tr and tr.IsPlaying then tr:Stop(0.15) end end -- (arms down)
 			if A.snap then A.snap.Looped = false; A.snap:Play(0.06, 1, 1) end
 			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)
