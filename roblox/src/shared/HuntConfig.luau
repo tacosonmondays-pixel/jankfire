@@ -193,7 +193,7 @@ H.WEAPONS = {
 -- (x, y, z, facing x, z; local to the map); a map without one lets him out at its `gunman` spot as before
 H.INTRO = {
 	on = true,
-	set = "both",
+	set = "A", -- (owner, 27 Nov: the gunman's intro is room A, the bedroom; B the attic is the hiders' win film's)
 	kit = "JankfireHuntIntro", -- (ReplicatedStorage: hiA_room, hiA_props, hiB_room, hiB_props; HuntBuild.importIntro)
 	outsideLead = 8.8, -- (s before the hunt: he stands at the map's outside spot from the cut outside (beats.outside), held still)
 	-- mocap (the vault's Mixamo clips, mixamo_r15.py; R15 and R6). calm = ANIMS idle
@@ -206,10 +206,13 @@ H.INTRO = {
 	-- louder and faster, then peace: birds outside. a table is a Roblox library id (Pro Sound Effects / APM, under the
 	-- EFFECTS volume) with its level and an optional slice; a string is the game's own library by name (Sfx)
 	sounds = {
-		hum = { id = 9125446564, vol = 0.16 },                         -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
-		heart = { id = 9043365842, vol = 0.2 },                        -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
-		birds = { id = 9116969466, vol = 3.5 },                        -- (PSE: Morning Birds 2, active chirping)
-		hiss = { id = 9126097362, vol = 0.1, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
+		-- (owner, 27 Nov: "it's missing that fridge hum and fans... static... birds... heartbeat": all were there, far too quiet:
+		-- hum -33 dB, heartbeat peaks -15, birds -38 in the recording; all raised about 9-10 dB)
+		hum = { id = 9125446564, vol = 0.5 },                          -- (PSE: Command Room Tone, Deep Air Conditioning Hum 2)
+		heart = { id = 9043365842, vol = 0.6 },                        -- (APM, Epic Score: HEARTBEAT 02 96BPM; sped up, pitch held)
+		birds = { id = 9116969466, vol = 10 },                         -- (PSE: Morning Birds 2, active chirping: a quiet recording)
+		burst = { id = 9126097362, vol = 1.0, region = { 0.0, 0.7 } }, -- (Television Static: a burst on the cut outside)
+		hiss = { id = 9126097362, vol = 0.35, region = { 3.0, 8.0 } }, -- (PSE: Television Static, constant: room B's TV)
 		buzz = "zm_flicker", hit = "boom",
 	},
 	-- the heartbeat's build: from `from` (s on the 16 s beats) to the snap it goes from rate[1] to rate[2] times its
@@ -251,13 +254,14 @@ H.OUTRO = {
 	},
 	-- recordings only, no voices (Pro Sound Effects); claps are single hand claps, each at one friend (never a crowd)
 	sounds = {
-		house = { id = 9116969466, vol = 1.0 },                        -- (Morning Birds 2: outside, through the walls)
-		burst = { id = 9126097362, vol = 0.35, region = { 0.0, 0.7 } }, -- (Television Static: the switch-on burst)
-		hum = { id = 9125446564, vol = 0.16 },                         -- (room A: the PC's fans; the intro's hum)
-		hiss = { id = 9126097362, vol = 0.1, region = { 3.0, 8.0 } },  -- (room B: the TV's static)
-		keys = { id = 9113142993, vol = 0.5 },                         -- (Apple Keyboard 28: keys)
-		pad = { id = 9119719128, vol = 0.5 },                          -- (Switches: buttons on a video controller)
-		creak = { id = 9116257140, vol = 0.5 },                        -- (Leather Sofa 4: body movement)
+		house = { id = 9116969466, vol = 6 },                          -- (Morning Birds 2: outside, through the walls; v5: -48 dB, silent)
+		houseTone = { id = 9125446564, vol = 0.3 },                    -- (the house's own quiet room tone under it)
+		burst = { id = 9126097362, vol = 1.1, region = { 0.0, 0.7 } },  -- (Television Static: the switch-on burst; v5 peaked -17)
+		hum = { id = 9125446564, vol = 0.5 },                          -- (room A: the PC's fans; the intro's hum)
+		hiss = { id = 9126097362, vol = 0.4, region = { 3.0, 8.0 } },  -- (room B: the TV's static; v3: -44 dB)
+		keys = { id = 9113142993, vol = 1.0 },                         -- (Apple Keyboard 28: keys)
+		pad = { id = 9119719128, vol = 1.0 },                          -- (Switches: buttons on a video controller)
+		creak = { id = 9116257140, vol = 0.9 },                        -- (Leather Sofa 4: body movement)
 		claps = { { id = 9114763105, vol = 0.5 }, { id = 9114762817, vol = 0.5 }, { id = 9114763106, vol = 0.5 }, { id = 9114762823, vol = 0.5 } },
 	},
 }

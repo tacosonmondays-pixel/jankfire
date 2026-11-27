@@ -468,6 +468,7 @@ local function play(a: any)
 	Cine.bars(true, 0.4)
 	r.cine = Cine.play(shots, { clock = T, flag = "huntoutro" })
 	keep(sound(S.house, 1, true))
+	keep(sound(S.houseTone, 1, true))
 
 	-- the full-screen static of the glitch (the intro's static pictures: soft grey noise, nothing readable)
 	local pg = me:FindFirstChildOfClass("PlayerGui")

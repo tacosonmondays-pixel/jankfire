@@ -566,6 +566,8 @@ local function play(a: any)
 		-- outside: the round's light, the birds, the real body looks up and then down
 		if once("outside", beat("outside")) then
 			HubLook.set(roundLook(), 0)
+			local burst = bed(S.burst) -- (a static burst on the cut outside: the owner's "static sounds")
+			if burst then burst.Looped = false; burst.Ended:Once(function() burst:Destroy() end) end
 			local birds = bed(S.birds, 0)
 			if birds then -- (peace: the birds come up, and carry on past the hand-back: stop fades them)
 				r.tail = birds
