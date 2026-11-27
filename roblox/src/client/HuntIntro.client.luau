@@ -397,7 +397,7 @@ local function play(a: any)
 	local roomFront: number? = nil
 	local function nearFront(want: number): number -- (a close-up's distance from her head, past what she wears in front)
 		if roomFront == nil then roomFront = reach(body, headP(), fz) end
-		return math.max(want, (roomFront :: number) + 1.0)
+		return math.max(want, (roomFront :: number) + 0.55) -- (owner on v13: the close rushes back, just outside what she wears)
 	end
 	local ext: { side: number, rad: number, close: number }? = nil
 	local function behindExt(): { side: number, rad: number, close: number }
@@ -419,15 +419,15 @@ local function play(a: any)
 		{ name = "profile", t0 = beat("profile"), t1 = beat("build"), fov = 30, shake = 0.5,
 			cam = function(u) return look(lerpV(P(5.6, hy, -0.5), P(4.9, hy, -0.25), u), headLive()) end },
 		-- 2. the build: shorter shots, the shake growing
-		{ name = "shoulder", t0 = beat("build"), t1 = beat("behind"), fov = 34, shake = 1.2,
+		{ name = "shoulder", t0 = beat("build"), t1 = beat("behind"), fov = 34, shake = 1.6,
 			cam = function(u) return look(lerpV(P(1.7, hy - 0.9, 1.9), P(1.45, hy - 0.8, 1.6), u), handsLive()) end }, -- (his shaking hands)
-		{ name = "behind", t0 = beat("behind"), t1 = beat("dutch"), fov = 46, shake = 1.8,
+		{ name = "behind", t0 = beat("behind"), t1 = beat("dutch"), fov = 46, shake = 2.3,
 			cam = function(u) return look(lerpV(P(0.8, hy + 0.55, 3.0), P(0.55, hy + 0.45, 2.4), u), P(sd.at.X, sd.at.Y, sd.at.Z)) end },
-		{ name = "dutch", t0 = beat("dutch"), t1 = beat("face"), fov = 40, shake = 2.6,
-			cam = function(u) return look(lerpV(P(-2.5, hy - 0.1, -2.6), P(-2.25, hy, -2.3), u), headLive(), 10) end }, -- (owner on v12: no lens from below)
-		{ name = "face", t0 = beat("face"), t1 = beat("rush"), fov = 30, shake = 3.6,
+		{ name = "dutch", t0 = beat("dutch"), t1 = beat("face"), fov = 40, shake = 3.2,
+			cam = function(u) return look(lerpV(P(-2.5, hy - 0.1, -2.6), P(-2.25, hy, -2.3), u), headLive(), 14) end }, -- (owner on v12: no lens from below)
+		{ name = "face", t0 = beat("face"), t1 = beat("rush"), fov = 30, shake = 4.2,
 			cam = function(u) local z = nearFront(2.05); return look(lerpV(P(0.5, hy, -(z + 0.45)), P(0.3, hy, -z), u), headLive()) end },
-		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) * 1.7 / nearFront(1.7) end, shake = function(u) return 4.5 + 2.0 * u end,
+		{ name = "rush", t0 = beat("rush"), t1 = beat("snap"), fov = function(u) return Cine.lerp(34, 26, u) * 1.7 / nearFront(1.7) end, shake = function(u) return 5.0 + 2.5 * u end,
 			cam = function(u) local z = nearFront(1.7); return look(lerpV(P(0, hy + 0.1, -(z + 1.7)), P(0, hy + 0.05, -z), u), headLive()) end },
 		-- 3. the snap: high and in front, his face snapping up into the lens (27 Nov: straight down it was hair and
 		-- hats on a dressed-up avatar; from the front the face reads on any body)
@@ -605,10 +605,11 @@ local function play(a: any)
 			if r.blur then r.blur.Size = (G.blur or 0) * w end
 		end
 		-- his clips
-		if once("crazy", beat("build")) and A.crazy then A.crazy:Play(0.2, 1, 1) end
-		if once("nod", beat("behind")) and A.nod then A.nod:Play(0.1, 1, 1.4) end
-		if once("shake", beat("dutch")) and A.shake then A.shake:Play(0.1, 1, 1.6) end
-		if once("crazy2", beat("face")) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.5) end
+		-- (owner on v13: "I liked the old like manic movements": the possessed build, quicker again)
+		if once("crazy", beat("build")) and A.crazy then A.crazy:Play(0.15, 1, 1.25) end
+		if once("nod", beat("behind")) and A.nod then A.nod:Play(0.08, 1, 1.8) end
+		if once("shake", beat("dutch")) and A.shake then A.shake:Play(0.08, 1, 2.0) end
+		if once("crazy2", beat("face")) and A.crazy then A.crazy.TimePosition = 2.0; A.crazy:AdjustSpeed(1.9) end
 		if r.key then r.key.Position = workspace.CurrentCamera.CFrame.Position end
 		if once("snap", beat("snap")) then
 			local kp = Instance.new("Part")
@@ -621,7 +622,7 @@ local function play(a: any)
 			kp.Parent = folder
 			r.key = kp
 			for _, k in { "crazy", "nod", "shake" } do local tr = A[k]; if tr and tr.IsPlaying then tr:Stop(0.15) end end -- (arms down)
-			if A.snap then A.snap.Looped = false; A.snap:Play(0.06, 1, 1) end
+			if A.snap then A.snap.Looped = false; A.snap:Play(0.03, 1, 1.7) end -- (owner: "a sudden look up": a whip, not an ease)
 			if r.cine then r.cine.kick(12) end
 			sfx(S.hit, 1)
 			for _, s in r.sounds do pcall(function() s:Stop() end) end -- (the room's sound ends on the hit: then peace)

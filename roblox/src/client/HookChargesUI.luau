@@ -138,6 +138,7 @@ RunService.RenderStepped:Connect(function()
 	local show = HookChargesUI.limited() and alive
 	local inMatch = alive and me:GetAttribute("Zone") == "match" and not me:GetAttribute("ZmOn")
 	local any = show or lockedNow or auto == true or inMatch
+	if me:GetAttribute("Hunt") ~= nil then any = false end -- (HOUSE HUNT has no grapple: E pushes, X lies down there)
 	if readout.Visible ~= any then readout.Visible = any end
 	if not any then lastN = s.n; return end
 	-- the hook part: its key, HOOK, the pips while charges count, AT GO before the round

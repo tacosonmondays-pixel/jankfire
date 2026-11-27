@@ -119,7 +119,8 @@ H.MAPS = {
 			looks = { { -30, 4.5, 33 }, { -36, 4.0, 13 }, { -46, 4.2, 32 }, { -52, 4.0, 16 } } },        -- (and slower looks round)
 		outroGroup = { -2, 0, 14, 180 },
 		tables = { 82, -1, 56, 180 }, -- (the item tables: on the driveway in front of the garage, facing the street)
-		outroGroupWalk = { from = { -2, 0, 35 }, to = { -2, 0, 16 } }, -- (owner: the survivors walk through the house too: down the hall)
+		outroGroupWalk = { from = { -1, 0, 20 }, to = { -1, 0, 38.5 } }, -- (owner on v6: "walking out toward the door": up the hall to the front door)
+		outroDoor = { -3.5, 3.5, 41, 0, 9.8 }, -- (the front doorway: x from, x to, z, floor, height: two leaves swing out as she nears it)
 		-- the wreck along his walk (main, 27 Nov: "start the walk with destroyed place"): { piece, x, y, z, yaw, pitch, roll }
 		-- in degrees (yaw first, then the tip). No blood, no bodies: things knocked over, a frame askew, a door off its hinge
 		outroWreck = {
@@ -270,7 +271,7 @@ H.INTRO = {
 	-- and the face (or hands) fades to `fade`, and anything within `near` studs of the lens
 	lens = { fade = 0.92, near = 0.35 }, -- (owner on v11: "her hair is like invisible or clear?": only what the lens is inside fades)
 	-- the hit-stop on the snap: `at` s after it starts, his body holds for `len` s while the lens kicks
-	hitstop = { at = 0.3, len = 0.3 }, -- (as the face lands straight up: a held beat)
+	hitstop = { at = 0.17, len = 0.35 }, -- (as the face lands straight up after the whip: a held beat)
 }
 
 -- the round's win films (the owner, 27 Nov: "it was just a game you were playing"; HuntOutro.client): everyone in the
@@ -287,8 +288,10 @@ H.OUTRO = {
 	-- the survivors' walk through her eyes (owner, 27 Nov: "Hiders winning can it be first person like how the hunters
 	-- is?"): { s, yaw (deg, + = left), pitch (deg) } keys on her view: nervous glances, a pause, one look back over her
 	-- shoulder at the friends trailing (about 1 s), then forward again
-	hiderLooks = { { 0, 0, -4 }, { 0.9, 0, -4 }, { 1.6, 28, -3 }, { 2.0, 28, -3 }, { 2.6, -22, -5 }, { 2.85, -22, -5 },
-		{ 3.5, -160, -8 }, { 4.45, -160, -8 }, { 5.1, 0, -4 }, { 5.6, 6, -3 } },
+	-- (owner on v6: "the turns should be smoother!!": fewer, longer turns, smootherstep, the door straight ahead at the end)
+	hiderLooks = { { 0, 0, -3 }, { 0.9, 0, -3 }, { 2.1, -150, -6 }, { 2.7, -150, -6 }, { 3.9, 0, -3 }, { 4.3, 12, -2 },
+		{ 4.8, 0, -1 }, { 5.6, 0, 0 } },
+	doorAt = 4.5, -- (s: the front door swings open, daylight spills in)
 	hitstop = 0.2,
 	sitDrop = { R15 = 1.2, R6 = 1.4 }, sitBack = 0.2, -- (then each sitter's hips are fitted onto the seat: HuntOutro)
 	walk = { R15 = 507777826, R6 = 180426354 }, walkSpeed = 0.55, -- (Roblox's own walks, slowed: the survivors' walk)
@@ -299,7 +302,7 @@ H.OUTRO = {
 	-- rest trail `back` studs behind and `side` across, each on their own walk speed and step phase, one stopping for a
 	-- look back (`pauseAt` s, for `pauseLen`) then hurrying (`hurry` x) to catch up
 	scared = { hunch = { R15 = 119535704799687, R6 = 105073434259680 }, glance = { R15 = 119056755652281, R6 = 115269372937672 },
-		hunchWeight = 0.85, walkSpeed = 0.4, pace = 2.4, uneven = 0.22 },
+		hunchWeight = 0.85, walkSpeed = 0.45, pace = 3.0, uneven = 0.12 }, -- (to the door by the static)
 	group = {
 		{ side = 0, back = 0, speed = 0.4, phase = 0 },
 		{ side = -1.4, back = 2.8, speed = 0.5, phase = 0.37 }, -- (v6, first person: the nearest filled the look back)

@@ -1480,6 +1480,15 @@ RunService:BindToRenderStep("JankfireArsenal", Enum.RenderPriority.Camera.Value 
 	if tool and tool.Name == "Shredder" then
 		local heat = tool:GetAttribute("Heat")
 		H.weapon("shredder", nil, false, 0, if tool:GetAttribute("Hot") then "OVERHEATED" else ("heat %d%%"):format(math.floor((if type(heat) == "number" then heat else 0) * 100 + 0.5)))
+	elseif me:GetAttribute("Hunt") ~= nil and me:GetAttribute("HuntRole") ~= "gunman" and H.plate then
+		-- (HOUSE HUNT: survivors and the house hold no gun: the plate names the weapon they took, or goes)
+		local wpn = me:GetAttribute("HuntWeapon")
+		local nm: string? = nil
+		if type(wpn) == "string" then
+			local ok, HCm = pcall(function() return require(game:GetService("ReplicatedStorage").Jankfire.HuntConfig) :: any end)
+			nm = if ok and HCm.WEAPONS[wpn] then HCm.WEAPONS[wpn].name else string.upper(wpn)
+		end
+		H.plate(nm, nil)
 	elseif holstered then
 		H.weapon(held, a and a.mag, reloading, kat(), "HOLSTERED")
 	elseif a2 then -- (Lefty & Righty: both mags, left | right)

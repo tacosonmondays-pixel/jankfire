@@ -297,6 +297,30 @@ local function play(a: any)
 				table.insert(bodies, { m = c, rig = rig, src = src, g = g, walk = base, h = rootHeight(c, rig) })
 			end
 		end
+		local DW = mapDef and mapDef.outroDoor
+		if DW then
+			r.door = {}
+			local w = (DW[2] - DW[1]) / 2
+			local h = DW[5] or 9.8
+			for _, sgn in { -1, 1 } do
+				local hinge = origin * CFrame.new(if sgn < 0 then DW[1] else DW[2], DW[4] or 0, DW[3])
+				local leaf = Instance.new("Part")
+				leaf.Name = "HuntOutroDoor"; leaf.Anchored = true; leaf.CanCollide = false; leaf.CanQuery = false; leaf.CanTouch = false
+				leaf.Size = Vector3.new(w - 0.05, h, 0.35); leaf.Color = Color3.fromRGB(138, 122, 104); leaf.Material = Enum.Material.SmoothPlastic
+				local function at(open: number): CFrame return hinge * CFrame.Angles(0, sgn * open, 0) * CFrame.new(-sgn * w / 2, h / 2, 0) end
+				leaf.CFrame = at(0)
+				leaf.Parent = house
+				table.insert(r.door, { leaf = leaf, at = at })
+			end
+			local sun = Instance.new("Part") -- (the daylight outside it, coming in as it opens)
+			sun.Name = "HuntOutroDaylight"; sun.Anchored = true; sun.CanCollide = false; sun.CanQuery = false; sun.CanTouch = false
+			sun.Transparency = 1; sun.Size = Vector3.new(0.2, 0.2, 0.2)
+			sun.CFrame = origin * CFrame.new((DW[1] + DW[2]) / 2, (DW[4] or 0) + h * 0.6, DW[3] + 3)
+			local sl = Instance.new("PointLight"); sl.Brightness = 0; sl.Range = 26; sl.Shadows = false; sl.Color = Color3.fromRGB(255, 242, 222)
+			sl.Parent = sun
+			sun.Parent = house
+			r.daylight = sl
+		end
 		if GW and bodies[1] then -- (first person: her own body is the lens, not in the shot)
 			r.fp = true
 			r.fpEyeH = bodies[1].h + 1.55
@@ -441,7 +465,8 @@ local function play(a: any)
 					local a0, a1 = K[i], K[i + 1]
 					if tt >= a1[1] then yaw, pitch = a1[2], a1[3]
 					elseif tt >= a0[1] then
-						local k = Cine.ease((tt - a0[1]) / (a1[1] - a0[1]))
+						local x = math.clamp((tt - a0[1]) / (a1[1] - a0[1]), 0, 1)
+						local k = x * x * x * (x * (x * 6 - 15) + 10) -- (smootherstep: the owner's "smoother")
 						yaw, pitch = a0[2] + (a1[2] - a0[2]) * k, a0[3] + (a1[3] - a0[3]) * k
 						break
 					end
@@ -579,6 +604,18 @@ local function play(a: any)
 		if not r.alive then return end
 		local t = T()
 		-- the survivors walk until the hit-stop holds them
+		if r.door and t >= (OUT.doorAt or 4.5) and t <= beat("glitch") then -- (the front door swings open, daylight in)
+			local x = math.clamp((t - (OUT.doorAt or 4.5)) / 0.9, 0, 1)
+			local k = x * x * x * (x * (x * 6 - 15) + 10)
+			for _, d in r.door do d.leaf.CFrame = d.at(k * math.rad(100)) end
+			if r.daylight then r.daylight.Brightness = 3.0 * k end
+			if not r.doorSnd then
+				r.doorSnd = true
+				local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+				local ds = lib and lib:FindFirstChild("hunt_door_open")
+				if ds and ds:IsA("Sound") then local c = ds:Clone(); c.Parent = SoundService; c:Play(); c.Ended:Once(function() c:Destroy() end) end
+			end
+		end
 		if r.placeGroup then
 			local run = math.max(0.1, beat("glitch") - (OUT.hitstop or 0.2))
 			if t <= run then r.placeGroup(math.max(0, t)) end

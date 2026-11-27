@@ -466,6 +466,35 @@ says survive!! You can skip it!! It'll be short regardless". `HuntHiderIntro.cli
 - **While it plays:** the real body is anchored and hidden locally (after the game's camera each frame), every other
   HUD is off and put back after, and `HuntIntro = "hider"` is set so HuntClient stands back.
 
+## 14. Ragdoll, the three moves and the item tables (owner, 27 Nov)
+
+The owner: "Outside by the garage I want tables with a medkit, bandages, beat mace, taser , bear trap, and a special prop
+gun?.. You can pick one before the hunter gets there maybe? Medkit taser and prop gun cost money!! Then there's push super
+push and punch!! ... we need ragdoll mechanic and a button to unragdoll!! Cooldown shouldn't be crazy long but also not
+short enough where you can chain all three".
+
+- **Ragdoll (server/HuntRagdoll):** a landed move stands the body's Motor6Ds down (all but the root's) and holds the limbs
+  with limited ball sockets (R15 and R6), then puts the joints back on the get-up. A player's own client runs their
+  body's physics (it goes limp on Remote `rag`); a stand-in is the server's. While down: the anti-cheat's ACGrace,
+  StunUntil (the game's own stun, so a downed hunter can't shoot), HuntRag / HuntRagMin for the client's GET UP key.
+- **The moves (HC.MOVES):** PUSH down 1 s (up after 0.5), cd 3 s; SUPER PUSH (hold) down 2 s (up after 1), cd 10 s;
+  PUNCH (tap or wound up) down 3 s with a 2.5 s stun, cd 6 s when it lands (1.2 s on a miss). After any move every move
+  waits 1 s, and someone just up can't be downed again for 2 s. FIRM STANCE halves the hunter's time down. They work
+  on the hunter and on other survivors, in a round (hide and hunt) and in the house. A weapon's swing stays a knock.
+- **GET UP:** Space / pad A / the phone's jump, once the move's minimum time has passed (a key cap bottom middle, dim
+  until then); the vault's Mixamo Getting Up plays (HC.RAGDOLL.getUp), no moving till it's done.
+- **The item tables (HC.PICKS):** two store tables (copied from the patio's) on the driveway in front of the garage
+  (THE HOUSE's `tables`; a map without them: its first hider spot). Every survivor starts in a row in front of them and
+  takes ONE in the hide (F): BANDAGES (+25 a use, 3), BASEBALL BAT, PEPPER SPRAY, BEAR TRAP free; MEDKIT (full over 2.5 s),
+  TASER, PROP GUN for $40 of the round's cash (POINTS.start = 40: exactly one; never coins, never Robux). The prompts go
+  when you've taken one, and close when the hunter is let out. The trap menu (G, the hunt) sells the rest; the taser and
+  the medkit are the tables' only.
+- **The prop gun:** aim at a piece of furniture (slot key) and become a copy of it, your body hidden. Moving faster than
+  9 studs/s, attacking, being hit or being downed breaks it; one charge.
+- **CASH:** the round's points are shown as $.
+- **Test (Studio):** JankHuntTest ("pick", p, id), ("use", p, slot, look), ("cash", p, n), ("rag", p, who, dur, min),
+  ("getup", p).
+
 ## Built so far (26 Nov 2026, hunt-mode session)
 
 ### The house's kit and layout (stage 1)

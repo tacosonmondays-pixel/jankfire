@@ -208,7 +208,9 @@ local function formKey(): string
 	local k = if ok then (B :: any).label("form") else "Q"
 	return if k ~= "" then k else "Q"
 end
+local plateOwn = false
 function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?, mag2: number?)
+	if plateOwn then plateOwn = false; hubBare() end
 	local w = Weapons.list[wid]
 	if not w then return end
 	local count, sub, subColor, countColor = "", "", T.MUTED, T.TEXT
@@ -250,6 +252,21 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 	if ammoMag.Text ~= magT then ammoMag.Text = magT end
 	if wSub.Text ~= sub then wSub.Text = sub end
 	wSub.TextColor3 = subColor
+end
+
+-- (HOUSE HUNT, 27 Nov: a survivor holds no gun: the plate names the weapon they took, or isn't there; never the
+-- HOLSTERED rifle) Arsenal calls this for them instead of H.weapon
+function H.plate(name: string?, sub: string?)
+	plateOwn = true
+	local want = name ~= nil and me:GetAttribute("Zone") ~= "hub"
+	if ammoPlate.Visible ~= want then ammoPlate.Visible = want end
+	if not name then return end
+	wChip.Visible = false
+	if wName.Text ~= name then wName.Text = name end
+	ammoSet("", K.A.WORLD)
+	if ammoMag.Text ~= "" then ammoMag.Text = "" end
+	if wSub.Text ~= (sub or "") then wSub.Text = sub or "" end
+	wSub.TextColor3 = T.MUTED
 end
 
 -- ---------------------------------------------------------------- clock + kill target
