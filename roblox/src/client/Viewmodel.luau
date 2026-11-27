@@ -245,6 +245,21 @@ local function look(wid: string): any
 	if not row then return nil end
 	local want = LookPlayer:GetAttribute("HoldLook")
 	local base = (row.looks and ((type(want) == "string" and row.looks[want]) or row.looks[row.use])) or row
+	-- (Studio tuning: the player's SkinHoldTune attribute, JSON {shift = [x, y, z] metres, tilt = [x, y, z] degrees,
+	-- scale}, places the held skin live; scale takes at the next equip. Write the numbers back into holds.json)
+	if IS_STUDIO and wid == VM.wid and VM.skin then
+		local tt = LookPlayer:GetAttribute("SkinHoldTune")
+		if type(tt) == "string" and tt ~= "" then
+			local ok, t = pcall(function() return game:GetService("HttpService"):JSONDecode(tt) end)
+			if ok and type(t) == "table" then
+				local function v3(a: any, m: number): Vector3?
+					return if type(a) == "table" then Vector3.new((a[1] or 0) * m, (a[2] or 0) * m, (a[3] or 0) * m) else nil
+				end
+				return setmetatable({ shift = v3(t.shift, 1) or base.shift, tilt = v3(t.tilt, math.pi / 180) or base.tilt,
+					scale = t.scale or base.scale }, { __index = base })
+			end
+		end
+	end
 	-- a held skin's own place in the hand (holds.json <weapon>.skins.<id> shift / tilt / scale; 27 Nov: the claw-grip
 	-- Karambit, its talon below the fist, sits higher and bigger than the knife)
 	local sk = wid == VM.wid and VM.skin and row.skins and row.skins[VM.skin]

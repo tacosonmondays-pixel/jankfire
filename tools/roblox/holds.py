@@ -70,6 +70,7 @@ for wid, h in H.items():
         if p.get('scale'): bits.append('scale = %s' % f(p['scale']))
         if p.get('tilt'): bits.append('tilt = %s' % V([math.radians(a) for a in p['tilt']]))
         if p.get('aimZ'): bits.append('aimZ = %s' % f(p['aimZ']))
+        if p.get('tp'): bits.append('tp = %s' % V([math.radians(a) for a in p['tp']]))  # (a skin's turn in the hand, third person)
         return bits
     if h.get('skins'):  # a skin's own hands (its fields over the weapon's, written out whole), and its own shift /
         # scale / tilt when it has them (Viewmodel.look lays them over the weapon's: the claw-grip Karambit)

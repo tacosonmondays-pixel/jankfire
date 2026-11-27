@@ -607,6 +607,8 @@ local function grabsFor(r: Rig)
 	end
 end
 
+local TP_STUDIO = game:GetService("RunService"):IsStudio()
+
 local function holdFrame(wid: string, side: string, k: number, frame: CFrame?, skin: string?): (CFrame?, string?, number)
 	local rows = AvatarArms.rows(wid, skin) -- (the hold session: a skin's own hands, the knife's spoon)
 	local row = rows and rows[side]
@@ -669,6 +671,17 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	local sk = if type(skin) == "string" then skin else nil
 	r.holdR, r.poseR, r.turnR = holdFrame(wid, "Right", r.k, nil, sk)
 	r.holdL, r.poseL, r.turnL = holdFrame(wid, "Left", r.k, nil, sk)
+	-- (gun-models, 27 Nov 2026) a skin's own turn in the hand, about the grip (holds.json skins.<id>.tp, degrees): the
+	-- claw-grip Karambit stands up out of the fist, its claw below it, instead of pointing its ring ahead and its claw
+	-- back into the body. Studio: a stand-in's TPTurnTune attribute (JSON [x, y, z] degrees) tries one at its build
+	local rws = AvatarArms.rows(wid, sk)
+	local tpv: Vector3? = rws and rws.tp
+	local tt = if TP_STUDIO and src then src:GetAttribute("TPTurnTune") else nil
+	if type(tt) == "string" and tt ~= "" then
+		local ok, a = pcall(function() return game:GetService("HttpService"):JSONDecode(tt) end)
+		if ok and type(a) == "table" then tpv = V(math.rad(a[1] or 0), math.rad(a[2] or 0), math.rad(a[3] or 0)) end
+	end
+	;(r :: any).tpTurn = if tpv then CF(r.gripPt) * eul(tpv) * CF(-r.gripPt) else nil
 	-- (the hold session) a one-handed gun's left hand waits off screen in first person (away): here the arm keeps its
 	-- own pose and only comes to the gun for the reload's grabs below
 	local rowL = (AvatarArms.rows(wid, sk) or {}).Left
@@ -1685,6 +1698,8 @@ local function stepRig(r: Rig, dt: number, now: number)
 			local p, crot = sampleClip(clip.name, clip.t)
 			G = G * CF(p * r.k * TP.T.clipK) * crot
 		end
+		local tpt = (r :: any).tpTurn -- (a skin's own turn in the hand, after the clip: the swing's path stays the weapon's)
+		if tpt then G = G * tpt end
 		-- (the Scythe's mocap swing) the weapon in the animated right fist: the hand as its joints have it (chest space),
 		-- the weapon's right-hand hold frame on the fist's grip
 		if moW > 0 and aSh and aElb and aWr and r.holdR then
