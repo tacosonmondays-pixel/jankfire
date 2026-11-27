@@ -343,7 +343,7 @@ end
 -- the gunman's intro kit (tools/roblox/hunt_intro_models.py; HUNT.md section 11): its rooms and the mask go to
 -- ReplicatedStorage[HuntConfig.INTRO.kit] for the clients (HuntIntro) and the server (HuntMask), each model at its file
 -- frame (room A round the origin, B at +40 x, the mask round a head at -40 x: HuntIntroData.origin)
-B.INTRO = 108059890099837 -- (hunt_intro5, 27 Nov: + the item tables' hiT_ pieces; hunt_intro4 = 70825613805108)
+B.INTRO = 132268489251156 -- (hunt_intro6, 27 Nov: + the item tables' hiT_ pieces, a red medkit; hunt_intro4 = 70825613805108)
 function B.importIntro(id: number?): string
 	local aid = id or B.INTRO
 	local HC = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("HuntConfig")) :: any

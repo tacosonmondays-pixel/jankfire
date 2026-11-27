@@ -199,9 +199,12 @@ H.TRAPS = {
 -- round's cash (POINTS.start buys exactly one); never coins, never Robux (THE ROBUX RULE). `weapon` = held in the hand
 H.PICKS = {
 	on = true,
+	-- (main on v1545: big things you can tell apart, on short tables) the kit table at tableScale, two items a table at
+	-- itemScale (an item's own scale / yaw on top), gap studs between tables
+	tableScale = 0.7, itemScale = 1.6, gap = 2.6,
 	items = {
 		{ id = "bandage", name = "BANDAGES", price = 0 },
-		{ id = "bat", name = "BASEBALL BAT", price = 0, weapon = "bat" },
+		{ id = "bat", name = "BASEBALL BAT", price = 0, weapon = "bat", scale = 0.75, yaw = 28 },
 		{ id = "spray", name = "PEPPER SPRAY", price = 0 },
 		{ id = "beartrap", name = "BEAR TRAP", price = 0 },
 		{ id = "medkit", name = "MEDKIT", price = 40 },

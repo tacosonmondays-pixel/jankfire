@@ -443,38 +443,54 @@ local function makeTables(g: any)
 	local folder = Instance.new("Folder"); folder.Name = "HuntPicks"; folder.Parent = g.map
 	-- (the house kit's chunky table and items: hunt_intro_models.py's hiT_ pieces in the intro kit; else plain parts)
 	local kit = ReplicatedStorage:FindFirstChild(HC.INTRO and HC.INTRO.kit or "")
-	local function kitPiece(name: string, at: CFrame): Model?
+	local function kitPiece(name: string, at: CFrame, sc: number?): Model?
 		local src = kit and kit:FindFirstChild(name)
 		if not src then return nil end
+		local k = sc or 1
 		local m = src:Clone() :: Model
-		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CFrame = at * d.CFrame; d.Anchored = true end end
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") then
+				local lc = d.CFrame
+				d.Size *= k
+				d.CFrame = at * (CFrame.new(lc.Position * k) * lc.Rotation)
+				d.Anchored = true
+			end
+		end
 		m.Parent = folder
 		return m
 	end
-	local top = 4.2
-	for k, dx in { -5.2, 5.2 } do
-		local at = T * CFrame.new(dx, 0, 0)
-		local km = kitPiece("hiT_table", at)
+	-- (main on v1545: "the items are tiny dark lumps along a long plank") four short tables, two big things on each
+	local P = HC.PICKS
+	local TS, IS = P.tableScale or 0.7, P.itemScale or 1.6
+	local items = P.items
+	local nT = math.ceil(#items / 2)
+	local gap = 10 * TS + (P.gap or 2.6)
+	local top = 3.6 * TS
+	for k = 1, nT do
+		local at = T * CFrame.new((k - (nT + 1) / 2) * gap, 0, 0)
+		local km = kitPiece("hiT_table", at, TS)
 		if km then
 			km.Name = "PickTable" .. k
-			top = 3.6
 		else
-			part({ Size = Vector3.new(10, 0.6, 4.6), CFrame = at * CFrame.new(0, 3.9, 0), Color = Color3.fromRGB(150, 128, 104), CanCollide = true }, folder).Name = "PickTable" .. k
-			for _, lx in { -4.4, 4.4 } do for _, lz in { -1.9, 1.9 } do
-				part({ Size = Vector3.new(0.5, 3.6, 0.5), CFrame = at * CFrame.new(lx, 1.8, lz), Color = Color3.fromRGB(96, 90, 84), CanCollide = true }, folder)
+			top = 3.0
+			part({ Size = Vector3.new(7, 0.6, 3.4), CFrame = at * CFrame.new(0, 2.7, 0), Color = Color3.fromRGB(150, 128, 104), CanCollide = true }, folder).Name = "PickTable" .. k
+			for _, lx in { -3.0, 3.0 } do for _, lz in { -1.3, 1.3 } do
+				part({ Size = Vector3.new(0.5, 2.4, 0.5), CFrame = at * CFrame.new(lx, 1.2, lz), Color = Color3.fromRGB(96, 90, 84), CanCollide = true }, folder)
 			end end
 		end
 	end
-	local items = HC.PICKS.items
 	for i, it in items do
-		local x = -9.0 + (i - 1) * 3.0
-		local at = T * CFrame.new(x, top + 0.05, 0.4)
-		if not kitPiece("hiT_" .. it.id, at) then
+		local k = math.ceil(i / 2)
+		local onTable = if i % 2 == 1 and i == #items then 0 else (if i % 2 == 1 then -1 else 1)
+		local x = (k - (nT + 1) / 2) * gap + onTable * 10 * TS * 0.24
+		local at = T * CFrame.new(x, top + 0.05, 0.2) * CFrame.Angles(0, math.rad(it.yaw or 0), 0)
+		if not kitPiece("hiT_" .. it.id, at, IS * (it.scale or 1)) then
 			local m = itemModel(it.id)
+			m:ScaleTo(IS * (it.scale or 1))
 			m:PivotTo(at)
 			m.Parent = folder
 		end
-		local pt = part({ Size = Vector3.new(2, 2, 2), Transparency = 1, CFrame = at * CFrame.new(0, 1, 0) }, folder)
+		local pt = part({ Size = Vector3.new(2.6, 2.6, 2.6), Transparency = 1, CFrame = at * CFrame.new(0, 1.3, 0) }, folder)
 		pt.Name = "Pick_" .. it.id
 		local pr = Instance.new("ProximityPrompt")
 		pr.ActionText = if it.price > 0 then ("TAKE  $%d"):format(it.price) else "TAKE"

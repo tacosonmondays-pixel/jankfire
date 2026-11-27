@@ -205,12 +205,12 @@ def pick_pieces():
     for i, x in enumerate((-0.75, 0.0, 0.75)):
         K.cyl(b, 'e6ddcb', x, 0.0, 0.0, 0.34, 0.6 if i != 1 else 0.7, segs=14, bev=0.05)
     K.B(b, 'ddd2be', 0.2, 0.0, 0.42, 1.3, 0.04, 0.72, bev=0.0, segs=1)
-    m = 'hiT_medkit'                                                    # a case, a green band, a handle
-    K.B(m, 'e2e3de', -0.9, 0.0, -0.6, 0.9, 1.0, 0.6, bev=0.12)
-    K.B(m, '5c9470', -0.92, 0.4, -0.62, 0.92, 0.62, 0.62, bev=0.04)
+    m = 'hiT_medkit'                                                    # a red case, a pale band, a handle (main: "a red medkit box")
+    K.B(m, 'b8473f', -0.9, 0.0, -0.6, 0.9, 1.0, 0.6, bev=0.12)
+    K.B(m, 'e8e2d6', -0.92, 0.4, -0.62, 0.92, 0.62, 0.62, bev=0.04)
     K.B(m, '2e2c2a', -0.4, 1.0, -0.08, 0.4, 1.22, 0.08, bev=0.05)
     sp = 'hiT_spray'                                                    # a can and its cap
-    K.cyl(sp, 'c45c3a', 0.0, 0.0, 0.0, 0.3, 1.35, segs=16, bev=0.05)
+    K.cyl(sp, 'd28a3c', 0.0, 0.0, 0.0, 0.3, 1.35, segs=16, bev=0.05)   # (orange: the medkit is the red one)
     K.cyl(sp, '2e2c2a', 0.0, 1.35, 0.0, 0.18, 0.3, segs=12, bev=0.04)
     bt = 'hiT_beartrap'                                                 # a plate and two jaws, open
     K.cyl(bt, '5e6670', 0.0, 0.0, 0.0, 1.05, 0.22, segs=20, bev=0.05)
