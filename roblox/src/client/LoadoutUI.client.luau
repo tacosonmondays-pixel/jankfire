@@ -335,7 +335,7 @@ for i, slot in Roster.SLOTS do
 	local name = label(body, "", 40, UDim2.fromOffset(58, 12), UDim2.fromOffset(250, 48), TEXT)
 	name.FontFace = FONT_TITLE; name.TextScaled = true; name.TextWrapped = false; name.ZIndex = 3
 	new("UITextSizeConstraint", { MaxTextSize = 40 }, name)
-	local wrap = label(body, "", 16, UDim2.fromOffset(60, 60), UDim2.fromOffset(250, 22), GREY)
+	local wrap = label(body, "", 18, UDim2.fromOffset(60, 60), UDim2.fromOffset(250, 22), GREY) -- (round 10: a size up)
 	wrap.ZIndex = 3
 	-- (no colour bar: the owner's quieter look. kept for the code that sets it)
 	local bar = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, body)
@@ -450,7 +450,7 @@ do -- (round 3: one button set here: Butter skews press, flat slabs are the rest
 	if b then
 		b.BackgroundColor3 = PANEL; b.BackgroundTransparency = 0.06; b.AutoButtonColor = false
 		b.FontFace = FONT_TITLE; b.TextSize = 20; b.TextColor3 = TEXT
-		b.AnchorPoint = Vector2.new(1, 1); b.Position = UDim2.new(1, -12, 1, -46); b.Size = UDim2.fromOffset(212, 58) -- (round 7: level with EQUIP, as tall; round 9: the equip row's 762)
+		b.AnchorPoint = Vector2.new(1, 1); b.Position = UDim2.new(1, 12, 1, -46); b.Size = UDim2.fromOffset(212, 58) -- (round 7: level with EQUIP, as tall; round 9: the equip row's 762; round 10: 8 off the panel, the grid's gutter)
 		b.TextXAlignment = Enum.TextXAlignment.Left -- (round 9: the word after its key, not centred away from it)
 		do -- (round 9: on a PC no counter-scale, so it stays exactly level with EQUIP; a phone keeps it to stay tappable)
 			local UIS = game:GetService("UserInputService")
@@ -571,7 +571,7 @@ for i = 1, 4 do
 	local bg = new("Frame", { BackgroundColor3 = Color3.fromRGB(44, 46, 52), BorderSizePixel = 0, Position = UDim2.fromOffset(0, 40), Size = UDim2.new(1, 0, 0, 5) }, row)
 	local fill = new("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
 	-- (the slot's average for this number: a short Butter tick on the track, News.avg)
-	local tick = new("Frame", { Name = "Avg", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0, 0, 0, -2), Size = UDim2.fromOffset(2, 9), Visible = false, ZIndex = 3 }, bg) -- (round 9: above the track, off the white fill)
+	local tick = new("Frame", { Name = "Avg", BackgroundColor3 = GREY, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0, 0, 0, -2), Size = UDim2.fromOffset(2, 10), Visible = false, ZIndex = 3 }, bg) -- (round 9: above the track, off the white fill; round 10: grey, Butter is for what you press)
 	new("UIStroke", { Color = Color3.fromRGB(16, 17, 19), Thickness = 1 }, tick) -- (round 7: Butter on the white fill too)
 	table.insert(statRows, { name = name, val = val, fill = fill, tick = tick } :: any)
 end
@@ -832,7 +832,7 @@ function News.avg(e: any, rows: { any })
 		end
 	end
 	local word = ({ primary = "Primary", secondary = "Secondary", melee = "Melee", utility = "Gadget" })[e.slot] or "Slot"
-	News.avgNote.Text = ('<font color="#f5dd8a">|</font>  %s average'):format(word)
+	News.avgNote.Text = ('<font color="#9a9ea6">|</font>  %s average'):format(word)
 	News.avgNote.Visible = e.live
 end
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
@@ -1085,7 +1085,7 @@ local function arrows(row: ScrollingFrame, parent: GuiObject)
 	-- (round 7: a fade under each arrow: the cut card at the edge fades out instead of sitting under it)
 	local function fade(right: boolean): Frame
 		local fd = new("Frame", { Name = "Fade", BackgroundColor3 = PANEL, BorderSizePixel = 0, AnchorPoint = Vector2.new(if right then 1 else 0, 0.5), ZIndex = 19, Visible = false }, parent)
-		new("UIGradient", { Rotation = if right then 0 else 180, Transparency = NumberSequence.new(1, 0.06) }, fd)
+		new("UIGradient", { Rotation = if right then 0 else 180, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.45, 0.12), NumberSequenceKeypoint.new(1, 0.06) }) }, fd) -- (round 10: opaque sooner)
 		return fd
 	end
 	local lf, rf = fade(false), fade(true)
@@ -1175,10 +1175,10 @@ local function cardModel(c: Card, id: string)
 	m.Parent = c.vp
 	local cf, sz = m:GetBoundingBox()
 	local half = math.max(sz.X, sz.Z) / 2 / (156 / 80)
-	-- (round 9: one scale for every slot (the room a long rifle needs), a gadget a little closer; only a bigger one is
-	-- fitted down. a pistol filled its row like the rifle did)
-	local floorW = if c.slot == "utility" then 2.0 else 3.4
-	local r = math.max(half, sz.Y / 2, floorW / (156 / 80)) * 1.1
+	-- (round 10: the preview models are all about 6 studs, so each is framed by its class: a pistol reads about 0.6 of a
+	-- rifle, a gadget half; a pistol used to fill its row like the rifle did)
+	local classK = ({ primary = 1, secondary = 0.6, melee = 0.95, utility = 0.5 } :: { [string]: number })[c.slot] or 1
+	local r = math.max(half, sz.Y / 2) * 1.1 / classK
 	c.cam.CFrame = CFrame.lookAt(cf.Position + Vector3.new(0, 0, r / math.tan(math.rad(20))), cf.Position)
 end
 

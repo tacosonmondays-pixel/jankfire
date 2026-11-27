@@ -147,7 +147,7 @@ local hpEdge = T.new("UIStroke", { Transparency = 1, Enabled = false }, hpPlate)
 local hpBox, hpText, hpSet = K.hero(hpPlate, "Value", 62, if K.alt() then K.COND else T.FONT_HEAVY, K.A.WORLD, true, false)
 hpBox.Position = UDim2.fromOffset(-2, 0)
 local hpShown = -1
-local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.45, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
+local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = Color3.fromRGB(20, 20, 24), BackgroundTransparency = 0.25, Position = UDim2.fromOffset(0, 70), Size = UDim2.fromOffset(200, 10) }, hpPlate)
 T.corner(hpTrack, 5)
 local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = K.A.BONE, Size = UDim2.fromScale(1, 1) }, hpTrack)
 T.corner(hpBar, 5)
@@ -171,7 +171,7 @@ local ammoPlate = T.new("Frame", { Name = "Ammo", BackgroundTransparency = 1, Po
 local wChip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, Size = UDim2.fromOffset(0, 0), Visible = false }, ammoPlate)
 local wName = T.text(ammoPlate, "Weapon", "", 15, K.A.WORLD, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 at(wName, UDim2.fromOffset(0, 0), UDim2.fromOffset(300, 18))
-wName.TextTruncate = Enum.TextTruncate.AtEnd; wName.TextStrokeTransparency = 0.8
+wName.TextTruncate = Enum.TextTruncate.AtEnd; wName.TextStrokeTransparency = 0.45 -- (round 10: firmer on bright maps)
 local wSub = T.text(ammoPlate, "State", "", 13, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right)
 at(wSub, UDim2.fromOffset(0, 18), UDim2.fromOffset(300, 16))
 wSub.TextStrokeTransparency = 0.8
@@ -308,7 +308,7 @@ T.new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical, HorizontalA
 local tileRow = T.new("Frame", { Name = "Tiles", BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.XY, Size = UDim2.fromOffset(0, 0), LayoutOrder = 1 }, tiles)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 7) }, tileRow)
 local tab = T.new("Frame", { Name = "Tab", BackgroundColor3 = if K.alt() then K.B.SLAB else K.A.INK, BackgroundTransparency = if K.alt() then 0.06 else 0.18, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 28), LayoutOrder = 2 }, tiles)
-T.corner(tab, if K.alt() then 0 else 2)
+T.corner(tab, if K.alt() then 0 else 6) -- (round 10: rounded like the tiles above it)
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 11), PaddingRight = UDim.new(0, 11) }, tab)
 T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8) }, tab)
 local tabRound = T.text(tab, "Round", "", 11, Color3.fromRGB(185, 178, 165), T.FONT_HEAVY)
@@ -395,7 +395,8 @@ local function showTiles(parts: { string }): boolean
 			local f = tileFor(i).f
 			local bar = f:FindFirstChild("Mine") :: Frame?
 			if not bar then
-				bar = T.new("Frame", { Name = "Mine", BackgroundColor3 = K.A.BONE, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 4), Size = UDim2.new(0.5, 0, 0, 3) }, f) :: any
+				bar = T.new("Frame", { Name = "Mine", BackgroundColor3 = K.A.INK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 1, 4), Size = UDim2.new(0.5, 0, 0, 4) }, f) :: any -- (round 10: ink, bone vanished on a pale map)
+				T.new("UIStroke", { Color = K.A.BONE, Thickness = 1, Transparency = 0.3 }, bar :: any)
 			end
 			(bar :: Frame).Visible = mine == i
 		end

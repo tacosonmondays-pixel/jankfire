@@ -231,7 +231,7 @@ local function hudStep()
 	end
 	if nameL.Text ~= label then nameL.Text = label end
 	chip.Visible = false -- (round 3: no colour chip; the count says it in words)
-	nameL.TextStrokeTransparency = 0.8
+	nameL.TextStrokeTransparency = 0.45 -- (round 10: firmer on bright maps)
 	setPips(it.charges)
 	local n, at = charges()
 	pipsBox.Visible = false

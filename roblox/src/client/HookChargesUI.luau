@@ -67,7 +67,7 @@ local function cap(order: number): TextLabel
 end
 local function word(text: string, order: number, size: number?): TextLabel
 	local l = new("TextLabel", { BackgroundTransparency = 1, FontFace = T.FONT_HEAVY, TextSize = size or 14, TextColor3 = WORLD, Text = text,
-		TextStrokeColor3 = Color3.new(0, 0, 0), TextStrokeTransparency = 0.78, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 22),
+		TextStrokeColor3 = Color3.new(0, 0, 0), TextStrokeTransparency = 0.5, AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 22), -- (round 10: firmer)
 		LayoutOrder = order }, readout)
 	return l
 end

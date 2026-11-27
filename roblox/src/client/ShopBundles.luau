@@ -645,7 +645,7 @@ return function(C: any): any
 		local lightPanel = (T.CARD.R + T.CARD.G + T.CARD.B) > 1.5 -- (round 9: by the panel's own brightness)
 		local l = txt(row, words, 15, if ok then T.INK elseif lightPanel then Color3.fromRGB(29, 31, 35) else T.MUTED, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 32); l.LayoutOrder = 2; l.ZIndex = 5; l.RichText = true
-		if not ok then l.TextTransparency = 0.35 end -- (round 7: dark words greyed, not light on light: they were unreadable)
+		if not ok then l.TextTransparency = 0.12 end -- (round 10: darker; read as faint) -- (round 7: dark words greyed, not light on light: they were unreadable)
 		if need then
 			local n = txt(parent, need, 11, Color3.fromRGB(150, 84, 40), T.FONT_BOLD, Enum.TextXAlignment.Center)
 			n.AnchorPoint = Vector2.new(1, 0); n.Position = UDim2.new(x.Scale, x.Offset, 0.5, 13); n.Size = UDim2.fromOffset(w, 14); n.ZIndex = 4

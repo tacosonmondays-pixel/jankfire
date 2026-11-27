@@ -90,7 +90,7 @@ count.TextColor3 = Color3.new(1, 1, 1); count.TextTransparency = 0.3; count.Text
 -- hand stack. the wallet sits at y 58 on every screen: under the touch row of EMOTE / SETTINGS pills on a phone (agreed
 -- 17 Nov) and under the settings pill on a computer)
 local walletGui = T.new("ScreenGui", { Name = "JankQuestsWallet", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
-local wallet = T.plate(T.scaled(walletGui), "Wallet", UDim2.new(1, -24, 0, 58), UDim2.fromOffset(0, 32))
+local wallet = T.plate(T.scaled(walletGui), "Wallet", UDim2.new(1, -24, 0, 47), UDim2.fromOffset(0, 32)) -- (27 Nov, ui-mocks round 10: centred on the XP row's line)
 wallet.AnchorPoint = Vector2.new(1, 0)
 wallet.AutomaticSize = Enum.AutomaticSize.X
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, wallet)

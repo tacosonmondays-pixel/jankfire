@@ -127,6 +127,7 @@ new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, VerticalAli
 	SortOrder = Enum.SortOrder.LayoutOrder }, ticks)
 local track = new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK or T.CARD_HI, AnchorPoint = Vector2.new(0, 1) }, head)
 local fill = new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(1, 1) }, track)
+track.Visible = false -- (27 Nov, ui-mocks round 10: it read as ready progress beside "0 of 1 ready"; the seconds say the time)
 
 type Tile = { slot: string, btn: TextButton, st: UIStroke, lab: TextLabel, name: TextLabel, vp: ViewportFrame, cam: Camera }
 local tiles: { Tile } = {}
@@ -139,9 +140,9 @@ for i, slot in Roster.SLOTS do
 	local lab = text(btn, "Slot", Roster.SLOT_NAMES[slot] or slot, 10, T.MUTED, T.FONT_BOLD)
 	local vp, cam = GunPreview.viewport(btn, { Name = "Picture", BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.55 })
 	T.corner(vp, 4)
-	local name = text(btn, "Name", "", 13, T.TEXT, T.FONT_HEAVY)
+	local name = text(btn, "Name", "", 16, T.TEXT, K.COND) -- (round 10: the loadout's condensed Title Case)
 	name.TextScaled = true
-	new("UITextSizeConstraint", { MaxTextSize = 13, MinTextSize = 8 }, name)
+	new("UITextSizeConstraint", { MaxTextSize = 16, MinTextSize = 9 }, name)
 	btn.Activated:Connect(function() setTray(if S.tray == slot then nil else slot) end)
 	table.insert(tiles, { slot = slot, btn = btn, st = st, lab = lab, name = name, vp = vp, cam = cam })
 end
@@ -271,7 +272,7 @@ local function drawTiles()
 	for i, tl in tiles do
 		local wid = cur[i]
 		local e = wid and Roster.byId[wid]
-		tl.name.Text = if e then string.upper(e.name) else "-"
+		tl.name.Text = if e then e.name else "-"
 		local on = S.tray == tl.slot
 		if wid and e then
 			task.defer(function()
@@ -289,8 +290,9 @@ local function drawTiles()
 				if m and a.Y > 0 then
 					local cf, sz = m:GetBoundingBox()
 					local asp = a.X / a.Y
-					local floorW = if tl.slot == "utility" then 2.0 else 3.4
-					local r = math.max(math.max(sz.X, sz.Z) / 2 / asp, sz.Y / 2, floorW / asp) * 1.1
+					-- (round 10: by class, as the loadout's rows: the preview models are all about 6 studs)
+					local classK = ({ primary = 1, secondary = 0.6, melee = 0.95, utility = 0.5 } :: { [string]: number })[tl.slot] or 1
+					local r = math.max(math.max(sz.X, sz.Z) / 2 / asp, sz.Y / 2) * 1.1 / classK
 					local dist = r / math.tan(math.rad(tl.cam.FieldOfView / 2))
 					tl.cam.CFrame = CFrame.lookAt(cf.Position - tl.cam.CFrame.LookVector * dist, cf.Position)
 				end
