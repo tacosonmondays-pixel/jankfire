@@ -99,8 +99,10 @@ local EASE = {
 
 local function v3(a: { number }): Vector3 return Vector3.new(a[1], a[2], a[3]) end
 
--- a clip's pose at time t: position offset (studs) and the rotation (base euler + offset; quaternion blend for slerp)
-function VM.sample(name: string, t: number, base: Vector3): (Vector3, CFrame)
+-- a clip's pose at time t: position offset (studs) and the rotation (base euler + offset; quaternion blend for slerp).
+-- rf: a share of the clip's turn (a skin's clipRot: the claw-grip Karambit swings along the knife's path but turns
+-- less, so its claw stays on the camera's side of the forearm)
+function VM.sample(name: string, t: number, base: Vector3, rf: number?): (Vector3, CFrame)
 	local a = Anims[name]
 	local keys = a.keys
 	local k0, k1 = keys[1], keys[#keys]
@@ -118,7 +120,7 @@ function VM.sample(name: string, t: number, base: Vector3): (Vector3, CFrame)
 		local c1 = CFrame.fromEulerAnglesXYZ((sb + v3(k1.r)).X, (sb + v3(k1.r)).Y, (sb + v3(k1.r)).Z)
 		return p, c0:Lerp(c1, e)
 	end
-	local r = base + v3(k0.r):Lerp(v3(k1.r), e)
+	local r = base + v3(k0.r):Lerp(v3(k1.r), e) * (rf or 1)
 	return p, CFrame.fromEulerAnglesXYZ(r.X, r.Y, r.Z)
 end
 
@@ -247,7 +249,10 @@ local function look(wid: string): any
 	local base = (row.looks and ((type(want) == "string" and row.looks[want]) or row.looks[row.use])) or row
 	-- (Studio tuning: the player's SkinHoldTune attribute, JSON {shift = [x, y, z] metres, tilt = [x, y, z] degrees,
 	-- scale}, places the held skin live; scale takes at the next equip. Write the numbers back into holds.json)
-	if IS_STUDIO and wid == VM.wid and VM.skin then
+	-- a held skin's own place in the hand (holds.json <weapon>.skins.<id> shift / tilt / scale, and clipRot: the share
+	-- of a swing's turn it takes; 27 Nov: the claw-grip Karambit, seen from its side with its claw toward the centre)
+	local sk = wid == VM.wid and VM.skin and row.skins and row.skins[VM.skin]
+	if IS_STUDIO and sk then
 		local tt = LookPlayer:GetAttribute("SkinHoldTune")
 		if type(tt) == "string" and tt ~= "" then
 			local ok, t = pcall(function() return game:GetService("HttpService"):JSONDecode(tt) end)
@@ -255,20 +260,17 @@ local function look(wid: string): any
 				local function v3(a: any, m: number): Vector3?
 					return if type(a) == "table" then Vector3.new((a[1] or 0) * m, (a[2] or 0) * m, (a[3] or 0) * m) else nil
 				end
-				return setmetatable({ shift = v3(t.shift, 1) or base.shift, tilt = v3(t.tilt, math.pi / 180) or base.tilt,
-					scale = t.scale or base.scale }, { __index = base })
+				return setmetatable({ shift = v3(t.shift, 1) or sk.shift or base.shift, tilt = v3(t.tilt, math.pi / 180) or sk.tilt or base.tilt,
+					scale = t.scale or sk.scale or base.scale, clipRot = t.clipRot or sk.clipRot }, { __index = base })
 			end
 		end
 	end
-	-- a held skin's own place in the hand (holds.json <weapon>.skins.<id> shift / tilt / scale; 27 Nov: the claw-grip
-	-- Karambit, its talon below the fist, sits higher and bigger than the knife)
-	local sk = wid == VM.wid and VM.skin and row.skins and row.skins[VM.skin]
-	if sk and (sk.shift or sk.tilt or sk.scale) then
+	if sk and (sk.shift or sk.tilt or sk.scale or sk.clipRot) then
 		local key = wid .. "@" .. (VM.skin :: string)
 		local m = skinLooks[key]
 		if not m or m._base ~= base then
-			m = setmetatable({ _base = base, shift = sk.shift or base.shift, tilt = sk.tilt or base.tilt, scale = sk.scale or base.scale },
-				{ __index = base })
+			m = setmetatable({ _base = base, shift = sk.shift or base.shift, tilt = sk.tilt or base.tilt, scale = sk.scale or base.scale,
+				clipRot = sk.clipRot }, { __index = base })
 			skinLooks[key] = m
 		end
 		return m
@@ -1117,7 +1119,8 @@ function VM.update(dt: number, c: Ctx)
 	-- the clip (draw / swing / parry / reload / stagger)
 	local cp, crot: CFrame? = Vector3.zero, nil
 	if clip then
-		cp, crot = VM.sample(clip.name, clip.t, rot)
+		local lr = VM.look(VM.wid) -- (VM.look: in here `look` is the camera's look vector)
+		cp, crot = VM.sample(clip.name, clip.t, rot, lr and lr.clipRot)
 	end
 	-- aim down sights: blend to the sight on the screen's centre, rotation to none
 	local ra = 1 - c.aim * 0.6

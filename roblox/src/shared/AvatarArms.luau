@@ -246,10 +246,35 @@ end
 -- weapon's own: -Z forward, +Y up), k = studs per metre of the weapon's file, frame = the weapon's frame against root
 -- if root is not it (the Shredder's handle), scale = the viewmodel's size (the hands grow with the weapon). false if
 -- your character isn't ready or the weapon has no row
+local AA_STUDIO = game:GetService("RunService"):IsStudio()
 function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: number, frame: CFrame?, scale: number?, skin: string?): boolean
 	local ch = Players.LocalPlayer and Players.LocalPlayer.Character
 	local rows = AvatarArms.rows(wid, skin)
 	if not ch or not rows or not ch:FindFirstChildOfClass("Humanoid") then return false end
+	-- (Studio tuning, gun-models 27 Nov 2026: the player's HandRowTune attribute, JSON {weapon, skin, Right / Left =
+	-- {at = [m], rot = [deg], size, turn = deg, elbow = [camera m]}}, laid over that weapon's hand rows at the next equip.
+	-- Write the numbers back into holds.json)
+	local tt = if AA_STUDIO then (Players.LocalPlayer :: Player):GetAttribute("HandRowTune") else nil
+	if type(tt) == "string" and tt ~= "" then
+		local ok, t = pcall(function() return game:GetService("HttpService"):JSONDecode(tt) end)
+		if ok and type(t) == "table" and t.weapon == wid and (t.skin == nil or t.skin == skin) then
+			local nr = table.clone(rows)
+			for _, sd in { "Right", "Left" } do
+				local o, base = t[sd], rows[sd]
+				if type(o) == "table" and base then
+					local r2 = table.clone(base)
+					local function v3(a: any, m: number): Vector3 return Vector3.new((a[1] or 0) * m, (a[2] or 0) * m, (a[3] or 0) * m) end
+					if o.at then r2.at = v3(o.at, 1) end
+					if o.rot then r2.rot = v3(o.rot, math.pi / 180) end
+					if o.size then r2.size = o.size end
+					if o.turn then r2.turn = math.rad(o.turn) end
+					if o.elbow then r2.elbow = v3(o.elbow, 1) end
+					nr[sd] = r2
+				end
+			end
+			rows = nr
+		end
+	end
 	local src: { [string]: { BasePart } } = {}
 	for _, side in { "Right", "Left" } do
 		if not rows[side] then continue end
