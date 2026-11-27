@@ -329,7 +329,8 @@ end)
 local SMEAR_LIFE = 0.12
 local smearPts: { { t: number, a: Vector3, b: Vector3 } } = {}
 -- (the anime slash, AnimeFx.ownSlash: this swing's tip samples in camera space, fired once after the 4th)
-local animeSw: { clip: string?, ct: number, pts: { Vector3 }, fired: boolean } = { clip = nil, ct = -1, pts = {}, fired = false }
+local animeSw: { clip: string?, ct: number, pts: { Vector3 }, fired: boolean, pre: Vector3? } = { clip = nil, ct = -1, pts = {}, fired = false }
+local lastTip: Vector3? = nil -- (the tip in camera space on the frame before: a low frame rate's extra point)
 local smearPool: { WedgePart } = {}
 local smearFolder: Folder? = nil
 local function wedge(i: number): WedgePart
@@ -380,6 +381,7 @@ local function smearStep(now: number, hidden: boolean)
 			table.insert(smearPts, { t = now, a = cf:PointToObjectSpace(mid.WorldPosition), b = cf:PointToObjectSpace(tip.WorldPosition) })
 			if AnimeFx.ON then
 				if c ~= animeSw.clip or ct < animeSw.ct - 0.01 then animeSw.clip = c; animeSw.pts = {}; animeSw.fired = false end
+				if #animeSw.pts == 0 then animeSw.pre = lastTip end
 				animeSw.ct = ct
 				table.insert(animeSw.pts, cf:PointToObjectSpace(tip.WorldPosition))
 				if not animeSw.fired and #animeSw.pts >= 4 then
@@ -388,6 +390,31 @@ local function smearStep(now: number, hidden: boolean)
 				end
 			end
 			Fx.bladeFlames(VM.model, mid.WorldPosition, tip.WorldPosition) -- (an angel katana: flame tongues off the blade)
+		end
+	end
+	-- (27 Nov 2026) the anime slash at a low frame rate: the trail window (kat_light1: 0.096 s) caught 1-3 tip samples
+	-- and the slash wanted 4, so it seldom fired (Studio at 15 fps: 1 swing in 3; a 30 fps phone: rarely). On the first
+	-- frame past the window an unfired swing adds the tip there (and the frame before the window when it has only one
+	-- sample) and fires with those
+	if AnimeFx.ON and an and an.trail and ct and root and c == animeSw.clip and not animeSw.fired and ct > an.trail[2] then
+		animeSw.fired = true
+		local tip = root:FindFirstChild("Muzzle") :: Attachment?
+		if not hidden and tip and ct < an.trail[2] + 0.2 and #animeSw.pts >= 1 then
+			local pts = table.clone(animeSw.pts)
+			if #pts < 2 and animeSw.pre then table.insert(pts, 1, animeSw.pre :: Vector3) end
+			table.insert(pts, camera.CFrame:PointToObjectSpace(tip.WorldPosition))
+			AnimeFx.ownSlash(pts, AnimeFx.tintFor(held, Fx.bladeGlow(VM.model)), AnimeFx.fpSize(held))
+		end
+	end
+	do
+		local tip = root and root:FindFirstChild("Muzzle") :: Attachment?
+		lastTip = if tip then camera.CFrame:PointToObjectSpace(tip.WorldPosition) else nil
+		-- (turn 4: a new swing of the same clip was only noticed when its first sample in the window came before the last
+		-- swing's last one; at 14 fps half the swings looked like the old one, already fired. Any frame now: the clip's
+		-- time going back starts a new swing)
+		if c and ct and c == animeSw.clip then
+			if ct < animeSw.ct - 0.01 then animeSw.pts = {}; animeSw.fired = false end
+			animeSw.ct = ct
 		end
 	end
 	while #smearPts > 0 and (now - smearPts[1].t > SMEAR_LIFE or #smearPts > 24) do table.remove(smearPts, 1) end

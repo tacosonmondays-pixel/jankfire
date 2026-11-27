@@ -17,9 +17,10 @@ local creator = game.CreatorType == Enum.CreatorType.User and me.UserId > 0 and 
 if not (RunService:IsStudio() or creator) then return end
 
 local AnimeFx = require(script.Parent:WaitForChild("AnimeFx")) :: any
+local Fx = require(script.Parent:WaitForChild("Fx")) :: any -- (the gun's flash and puff)
 
 local TINTS = {
-	{ "KATANA", Color3.fromRGB(150, 200, 255) },
+	{ "KATANA", Color3.fromRGB(70, 160, 255) },
 	{ "SCYTHE", Color3.fromRGB(62, 230, 200) },
 	{ "KNIFE", Color3.fromRGB(200, 208, 220) },
 	{ "RED", Color3.fromRGB(235, 60, 50) },
@@ -37,9 +38,13 @@ gui.DisplayOrder = 60
 gui.Enabled = false
 gui.Parent = me:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(300, 520)
-frame.Position = UDim2.new(0, 16, 0.5, -260)
+local frame = Instance.new("ScrollingFrame") -- (the list outgrew a short screen: it scrolls)
+frame.Size = UDim2.new(0, 310, 0.86, 0)
+frame.Position = UDim2.new(0, 16, 0.07, 0)
+frame.CanvasSize = UDim2.new()
+frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+frame.ScrollBarThickness = 5
+frame.ScrollingDirection = Enum.ScrollingDirection.Y
 frame.BackgroundColor3 = Color3.fromRGB(22, 23, 27)
 frame.BackgroundTransparency = 0.08
 frame.BorderSizePixel = 0
@@ -139,11 +144,27 @@ local function play(kind: string, id: string): number
 			AnimeFx.slash(CFrame.new(at), d2.Unit, alt, 3.2, tint, { take = id })
 		end
 		alt = not alt
-	elseif kind == "burst" then AnimeFx.burst(at, 2.4, tint)
-	elseif kind == "sparks" then AnimeFx.sparks(at, (at - from).Unit * -1 + Vector3.new(0, 0.4, 0), 12, tint)
+	elseif kind == "burst" then AnimeFx.burst(at, 2.4, tint, nil, id)
+	elseif kind == "sparks" then AnimeFx.sparks(at, (at - from).Unit * 0.7 + Vector3.new(0, 0.7, 0), 6, tint) -- (away from you, as a hit's)
 	elseif kind == "twinkle" then AnimeFx.twinkle(at, 1.6, tint)
 	elseif kind == "hit" then AnimeFx.hit(at, from, tint, true, false)
 	elseif kind == "impact" then AnimeFx.impactFrame()
+	elseif kind == "muzzle" then
+		-- side-on: the barrel points across the screen (the jet); facing you: at the camera (the front drawing)
+		local cam = workspace.CurrentCamera
+		local dir = if id == "muzzle_front" then (from - at).Unit elseif cam then cam.CFrame.RightVector else Vector3.xAxis
+		Fx.muzzle(CFrame.lookAt(at, at + dir), false, false, nil)
+		return 0.9
+	elseif kind == "bullet" then
+		-- Fx.impact as a gun calls it, on concrete: the anime pop, the chips and the dust (no hole: nothing is hit)
+		local cam = workspace.CurrentCamera
+		local n = if id == "pop_wall" and cam then -cam.CFrame.RightVector else Vector3.yAxis
+		Fx.impact(at - Vector3.new(0, 1.2, 0), n, nil, Enum.Material.Concrete, { hole = false })
+		return 0.6
+	elseif kind == "lib" then
+		AnimeFx.lib(id, at, 3)
+		local l = AnimeFx.LIB[id]
+		return if l then l.life else 1
 	end
 	return 0.6
 end
@@ -191,6 +212,7 @@ do
 	for _, s in { { "1x", 1 }, { "0.5x", 0.5 }, { "0.25x", 0.25 }, { "0.1x", 0.1 }, { "FREEZE", 0 } } do
 		local b = button(r, s[1] :: string, if s[2] == 0 then 62 else 48, function(b)
 			AnimeFx.setTimeScale(s[2] :: number)
+			Fx.setTimeScale(s[2] :: number)
 			for _, o in speedBtns do o.BackgroundColor3 = Color3.fromRGB(44, 46, 54) end
 			b.BackgroundColor3 = Color3.fromRGB(70, 110, 170)
 		end)
@@ -239,9 +261,11 @@ end
 
 local function toggle()
 	gui.Enabled = not gui.Enabled
+	AnimeFx.LAB = gui.Enabled
 	if not gui.Enabled then
 		for k in loops do loops[k] = false end
 		AnimeFx.setTimeScale(1)
+		Fx.setTimeScale(1)
 	end
 end
 UIS.InputBegan:Connect(function(io: InputObject, gp: boolean)

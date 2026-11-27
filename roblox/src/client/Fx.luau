@@ -190,10 +190,14 @@ local TEX = {
 	-- the muzzle flash since 17 Nov (the owner: the web's 16-point star "looks kinda ugly"): flame tongues from Kenney's
 	-- Particle Pack (CC0, kenney.nl) laid out by tools/roblox/vfx/mflash_sheet.py; warm as drawn, the N ones white for
 	-- a skin's own flash colour
-	mflash = "rbxassetid://114197784927969", -- the flash seen down the barrel: 5-7 uneven tongues round a hot core (2x2)
-	mflashN = "rbxassetid://94655748843416",
-	mside = "rbxassetid://131614116535562", -- one tongue lying along +X, its root at the left (2x2; see SIDE_X0)
-	msideN = "rbxassetid://131131912689549",
+	-- (26 Nov 2026: the ANIME flash, tools/roblox/vfx/anime/mflash_bl.py + flash_sheet.py, critic 8/10: FRONT a soft-lobed
+	-- hot core and 4-6 flame petals, SIDE a jet pinched at the muzzle, blooming, opening into a crown of tongues; no black,
+	-- a deeper tint band on every rim. The Kenney tongues were mflash 114197784927969, mflashN 94655748843416, mside
+	-- 131614116535562, msideN 131131912689549, with SIDE_X0/X1/TH 0.065/0.64/0.15 and a front size factor of 1.8)
+	mflash = "rbxassetid://118551877487592", -- the flash seen down the barrel (2x2 drawings, warm as drawn)
+	mflashN = "rbxassetid://118710197890428", -- (the same, white and grey, for a skin's flash colour)
+	mside = "rbxassetid://120195278728665", -- the jet lying along +X, its root at the left (2x2; see SIDE_X0)
+	msideN = "rbxassetid://86580385005542",
 	-- the skin SETS' own flashes (19 Nov; tools/roblox/vfx/set_flash_sheets.py, coloured as drawn, 2x2 variants) and the
 	-- Tidecrest ink stroke (a Beam strip, white for a tint)
 	mfWings = "rbxassetid://117124030009254", -- Seraph: angel wings of light either side of a white-hot core
@@ -320,11 +324,14 @@ local FLAMEBURST = emitters(4, { Texture = TEX.flame, FlipbookLayout = FLIP4, Fl
 -- the shot's smoke off the muzzle (flipbook.js muzzlePuff: 0.22 -> 0.85 m, 0.55-0.8 s, half see-through, 1.6 m/s along
 -- the shot and a little up, drag 3.5). only for a muzzle over 1.3 m from the camera (never your own gun in first
 -- person), at most one every 60 ms from about the same spot
-local MPUFF = emitters(6, { Texture = TEX.soft4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightInfluence = 1,
-	Color = cs(Color3.fromRGB(176, 176, 176)), Size = grow(0.22 * S * H, 0.85 * S * H), Transparency = ns(0, 0.5, 0.75, 0.5, 1, 1),
+-- (26 Nov 2026: the ANIME puff, tools/roblox/vfx/anime/puff2d.py, critic 8/10: a cel heap of round bumps in two flat
+-- tones that swells, splits into three little clouds and is gone by 3/4 of its life. Its light is drawn from the upper
+-- right, so it turns at most 10 degrees and never spins; its frames are not blended. It was TEX.soft4, half see-through)
+local MPUFF = emitters(6, { Texture = "rbxassetid://72278630370185", FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightInfluence = 1,
+	Color = cs(Color3.fromRGB(176, 176, 176)), Size = grow(0.45 * S * H, 0.85 * S * H), Transparency = NumberSequence.new(0.12),
 	Lifetime = NR(0.55, 0.8), Speed = NR(1.64 * S), SpreadAngle = Vector2.new(6, 6), Drag = 3.5,
-	Rotation = NR(0, 360), RotSpeed = NR(-115, 115) })
-blendPool(MPUFF, 16)
+	Rotation = NR(-10, 10), RotSpeed = NR(0) })
+for _, e in MPUFF.list do oneshot(e.pe, 16); pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
 -- what a bullet knocks off a wall (fx.js impact: 10 grey squares off the normal at 4 m/s +- 3, 0.5 s, 0.15 -> 0.08 m,
 -- gravity 12, fading 1 - t^2): Blender flakes, tumbling, in the surface's colour; then a small puff of its dust
 local CHIPS = emitters(8, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(8, 14),
@@ -336,6 +343,14 @@ local DUST = emitters(8, { Texture = TEX.dust, FlipbookLayout = FLIP4, FlipbookM
 	Lifetime = NR(0.55, 0.75), Speed = NR(0.5 * S, 1.6 * S), SpreadAngle = Vector2.new(25, 25), Drag = 4,
 	Acceleration = Vector3.new(0, 0.4 * S, 0), Rotation = NR(0, 360), RotSpeed = NR(-40, 40) })
 blendPool(DUST, 16)
+-- (26 Nov 2026, the in-game critic: the soft tan dust beside the cel bullet pop clashed, "blurry, muddy and opaque". A
+-- bullet's dust is now the cel puff (MPUFF's sheet): at most half the pop's width, behind it, 0.04 s late as the star
+-- collapses. The soft DUST stays for landings, slides and the katana biting walls)
+local IMPF = emitters(8, { Texture = "rbxassetid://72278630370185", FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightInfluence = 1,
+	Size = grow(0.18 * S * H, 0.42 * S * H), Transparency = NumberSequence.new(0.05), ZOffset = -0.5,
+	Lifetime = NR(0.45, 0.6), Speed = NR(0.4 * S, 1.1 * S), SpreadAngle = Vector2.new(20, 20), Drag = 4,
+	Acceleration = Vector3.new(0, 0.3 * S, 0), Rotation = NR(-10, 10), RotSpeed = NR(0) })
+for _, e in IMPF.list do oneshot(e.pe, 16); pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
 -- sparks (fx.js sparks: white and pale yellow turning orange, 0.1-0.3 s, gravity 14, drag 2), stretched along their flight
 local SPARK = emitters(6, { Texture = TEX.spark, LightEmission = 1, LightInfluence = 0, Brightness = 3,
 	Orientation = Enum.ParticleOrientation.VelocityParallel, Color = HOT,
@@ -344,6 +359,36 @@ local SPARK = emitters(6, { Texture = TEX.spark, LightEmission = 1, LightInfluen
 -- a quick white pop (the sparks' and the melee hit's flash sphere), sized per call
 local POP = emitters(4, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 2,
 	Lifetime = NR(0.12), Speed = NR(0), Transparency = ns(0, 0, 1, 1) })
+-- (26 Nov 2026: the ANIME bullet pop, tools/roblox/vfx/anime/pop2d.py + sheet.py comp, critic 8/10: a white splash crown
+-- of six concave needles (long ones along the wall), then orange, then four speed lines out of the wall, gone in 0.12 s.
+-- One painted sheet, coloured as drawn, turned so its spray points out of the wall on screen; a mirrored copy on every
+-- other hit, the roll +-20 degrees and the size 75-100 %, so a shotgun's pellets don't stamp one shape. Fx.POP_ON = false: off)
+local POPS = { emitters(8, { Texture = "rbxassetid://117121815346472", FlipbookLayout = FLIP4, FlipbookMode = ONESHOT,
+	LightEmission = 0, LightInfluence = 0, Brightness = 1, Lifetime = NR(0.32), Speed = NR(0), Transparency = NumberSequence.new(0) }) }
+POPS[2] = emitters(8, { Texture = "rbxassetid://93647862092636", FlipbookLayout = FLIP4, FlipbookMode = ONESHOT,
+	LightEmission = 0, LightInfluence = 0, Brightness = 1, Lifetime = NR(0.32), Speed = NR(0), Transparency = NumberSequence.new(0) })
+for _, pool in POPS do for _, e in pool.list do oneshot(e.pe, 16); pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end end
+local popN = 0
+Fx.POP_ON = true
+local function popAt(at: Vector3, n: Vector3, sc: number)
+	if not Fx.POP_ON then return end
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	-- the drawing's up is the wall's normal: its direction on screen sets the roll (a particle's positive Rotation turns
+	-- it ANTICLOCKWISE, seen in Studio 26 Nov); seen face-on, any roll
+	local v = cam.CFrame:VectorToObjectSpace(n)
+	local roll = if v.X * v.X + v.Y * v.Y > 0.02 then math.deg(math.atan2(v.Y, v.X)) - 90 + math.random(-20, 20) else math.random(0, 359)
+	popN += 1
+	local size = 0.5 * S * sc * (0.75 + math.random() * 0.25) -- (never over one pop: a shotgun stays readable)
+	-- (the drawing's hit point is 0.4 of a half-width below its centre: move the particle that far along the drawing's
+	-- up as it lands on screen, so the hit point sits on the hit)
+	local r = math.rad(roll)
+	local up = cam.CFrame.RightVector * -math.sin(r) + cam.CFrame.UpVector * math.cos(r)
+	local p = emAt(POPS[popN % 2 + 1], at + n * 0.06 + up * (0.4 * size), n)
+	p.Rotation = NR(roll)
+	p.Size = NumberSequence.new(size)
+	emit(p, 1)
+end
 
 -- the flash's light: a few PointLights on the host, lit for a moment and dimmed back out on the effect clock
 type Lt = { l: PointLight, att: Attachment, t: number, life: number, b0: number, live: boolean }
@@ -435,7 +480,7 @@ local function flamePlane(): BasePart
 end
 -- where the side sheet's flame shows (alpha over 0.2, measured on the sheet): from SIDE_X0 to SIDE_X1 of a cell's width,
 -- SIDE_TH of its height thick
-local SIDE_X0, SIDE_X1, SIDE_TH = 0.065, 0.64, 0.15
+local SIDE_X0, SIDE_X1, SIDE_TH = 0.068, 0.889, 0.292 -- (the anime jet, measured by flash_sheet.py)
 local function flameShow(pos: Vector3, dir: Vector3, len: number, thick: number, color: Color3?, life: number)
 	flameI = flameI % 8 + 1
 	local F = flames[flameI]
@@ -610,6 +655,13 @@ local function puff(at: Vector3, n: Vector3, color: Color3, count: number)
 	pe.Color = cs(color)
 	emit(pe, count)
 end
+local function cpuff(at: Vector3, n: Vector3, color: Color3, count: number)
+	task.delay(0.04, function()
+		local pe = emAt(IMPF, at + n * 0.1, n)
+		pe.Color = cs(color)
+		emit(pe, count)
+	end)
+end
 local function sparkBurst(at: Vector3, dir: Vector3, count: number)
 	emit(emAt(SPARK, at, dir), count)
 end
@@ -701,25 +753,28 @@ function Fx.impact(at: Vector3, normal: Vector3, inst: Instance?, mat: Enum.Mate
 	local base = if part and visible then part.Color else KIND_COL[kind]
 	local sc = (o and o.scale) or 1
 	local function k(x: number): number return math.max(1, math.floor(x * sc + 0.5)) end
+	if kind ~= "soft" and kind ~= "cloth" then popAt(at, normal, sc) end -- (the anime pop: not off dirt or cloth)
 	if kind == "metal" then
 		sparkBurst(at + normal * 0.05, normal, k(7))
 		chunks(at, normal, k(4), base, Enum.Material.Metal)
-		puff(at, normal, Color3.fromRGB(110, 110, 114), 1)
+		cpuff(at, normal, Color3.fromRGB(110, 110, 114), 1)
 	elseif kind == "glass" then
 		chunks(at, normal, k(8), Color3.fromRGB(200, 235, 255), Enum.Material.Glass)
 		sparkBurst(at, normal, k(2))
 	elseif kind == "wood" then
 		chunks(at, normal, k(8), base:Lerp(Color3.fromRGB(225, 195, 150), 0.4), Enum.Material.Wood, true)
-		puff(at, normal, base:Lerp(Color3.fromRGB(205, 180, 140), 0.5), 1)
+		cpuff(at, normal, base:Lerp(Color3.fromRGB(205, 180, 140), 0.5), 1)
 	elseif kind == "soft" then
-		puff(at, normal, base:Lerp(Color3.fromRGB(150, 130, 100), 0.4), 2)
+		cpuff(at, normal, base:Lerp(Color3.fromRGB(150, 130, 100), 0.4), 2)
 		chunks(at, normal, k(6), base, Enum.Material.Ground)
 	elseif kind == "cloth" then
-		puff(at, normal, base:Lerp(Color3.new(1, 1, 1), 0.4), 1)
+		cpuff(at, normal, base:Lerp(Color3.new(1, 1, 1), 0.4), 1)
 		chunks(at, normal, k(4), base, Enum.Material.Fabric)
 	else -- concrete, brick, tiles, plastic...: the web's 10 chips, in the surface's colour, and a puff of its dust
-		chunks(at, normal, k(10), base, Enum.Material.Slate)
-		puff(at, normal, Color3.fromRGB(160, 160, 160):Lerp(base, 0.25), 1)
+		-- (27 Nov 2026, the in-game critic: beside the anime pop the 10 soft chips read as "dirt stains in an even ring"; the
+		-- pop has its own black debris, so 4 chips while it's on)
+		chunks(at, normal, k(if Fx.POP_ON then 4 else 10), base, Enum.Material.Slate)
+		cpuff(at, normal, Color3.fromRGB(160, 160, 160):Lerp(base, 0.25), 1)
 	end
 	-- a hole in what it hit (visible, fixed surfaces: not dirt, not the invisible collision boxes behind the models)
 	if not (o and o.hole == false) and visible and kind ~= "soft" and part and part.Anchored then
@@ -786,7 +841,7 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	local mt = if tk then MF_TEX[tk] else nil
 	f.Texture = if mt then mt elseif color then TEX.mflashN else TEX.mflash
 	-- (a set's drawing fills its cell where the tongues fill about half of theirs: x1.25, not x1.8. the wings stay level)
-	local fs = 0.24 * k * 1.1 * H * (if mt then 1.25 else 1.8)
+	local fs = 0.24 * k * 1.1 * H * (if mt then 1.25 else 1.3) -- (the anime drawings fill their cells, as a set's do)
 	f.Size = nsk({ { 0, fs, fs * 0.27 }, { 1, fs, fs * 0.27 } })
 	f.Lifetime = NR(life); f.Color = cs(if mt then FWHITE else color or FWHITE)
 	f.Rotation = if tk == "wings" or tk == "ring" then NR(-6, 6) else NR(0, 360)

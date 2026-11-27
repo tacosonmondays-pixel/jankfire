@@ -30,7 +30,9 @@ def aligned(im, size):
     cx, cy, half = (x0 + x1) / 2, (y0 + y1) / 2, max(x1 - x0, y1 - y0) / 2 + 2
     box = (int(cx - half), int(cy - half), int(cx + half), int(cy + half))
     pad = Image.new('RGB', (int(2 * half) + 1, int(2 * half) + 1), tuple(int(v) for v in bg))
-    pad.paste(Image.fromarray(im).crop(box), (0, 0))
+    # (only the part inside the image: PIL fills a crop past the edge with black, which read as a huge error)
+    ib = (max(box[0], 0), max(box[1], 0), min(box[2], w), min(box[3], h))
+    pad.paste(Image.fromarray(im).crop(ib), (ib[0] - box[0], ib[1] - box[1]))
     return np.array(pad.resize((size, size), Image.LANCZOS)).astype(np.float32)
 
 

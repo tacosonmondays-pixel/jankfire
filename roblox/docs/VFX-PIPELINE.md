@@ -931,6 +931,77 @@ will draw it, and scored by a fresh critic agent until it reaches 8; only then d
   repack to Roblox 4x4 sheets with `repack.py --from 3 --ease 0.6`; they are realistic fire, smoke, lightning and magic,
   for the gun and ability effects, not the anime slashes.
 
+### In game (Studio, 26 Nov evening): what changed after the first real swing
+- **Judge in game, not just offline.** The Blender slash passed the offline critic at 8 but read 4/10 in first person on
+  the bright training range ("four stacked, see-through pale arcs ... a ghostly wind smear"): its white core covered most
+  of it and its additive layers washed out. The bullet pop, PAINTED and coloured as drawn, held up. So:
+  - `ingame_sim.py` composites a sheet's frame onto a clean Studio capture of the same view with the game's own blend
+    (painted / added), at the in-game size; the critic judges that, and only then does it go to Studio.
+  - **The slash is now 2D** (`slash2d.py`, sheets `slashp_a/b/c` + mirrors, `painted = true` in AnimeFx.SHEET): one
+    opaque crescent with a spiral outer edge, a white band on the outer leading edge (30 %), a saturated tint behind
+    (katana 70, 160, 255), a tapered ink line on the inner trailing edge, one echo peeling off the inner edge
+    tangentially; f0 a white sliver, f1 white, f2-4 hold, f5-6 tail wipe, f7-10 a shrinking curved sliver off the head.
+    Critic in the in-game simulation 7 → 7 → 8 (the echo first read as a second blade, then as a hook / bird's wing).
+    The Blender sheets stay in SHEET (the lab's "OLD BLENDER SLASH").
+  - **Sparks** were soft stadiums flying 8 studs, past the camera ("white leaves, rice grains or feathers"): now a hard
+    comet (`spark2d.py`, head up), 5-7, a 35° cone away from the camera, under 3 studs of travel.
+  - **Bullet dust**: the old soft tan DUST next to the cel pop clashed ("blurry, muddy"): `Fx.impact` plays the cel puff
+    (`IMPF`, MPUFF's sheet) at half the pop's width, behind it, 0.04 s late. DUST stays for landings and slides.
+- **A particle's positive Rotation turns it ANTICLOCKWISE on screen.** AnimeFx assumed clockwise (`ROT_SIGN = -1`), so
+  slashes swept and bulged the mirror way; seen in the v1372 stage slashes (bulging up, not down) and a side-wall pop
+  that opened the wrong way. `ROT_SIGN = 1` and the pop's roll flipped (`math.atan2(v.Y, v.X) - 90`).
+- **Command-bar `require` makes a second module copy:** setting `AnimeFx.ON` from execute_luau changed nothing in the
+  game's swings. Tests flip the game's copy with the workspace attribute `AnimeFxOn` (and `AnimeFxSparkRot`).
+- **The first-person slash's centre** came from the blade tip's projection, which starts near the lens and landed it
+  off screen: it is clamped near the middle of the view now. **The hit burst** was drawn at the body's centre and hidden
+  by it: it is pulled 1.4 studs towards the camera.
+- **Freezing a gun test with FxTimeScale = 0 stacks flashes:** shots fired after the freeze never age, so 4-6 flashes
+  pile up into a blurry many-spiked sunburst. Freeze on one tap and let go.
+
+### In game, turn 3 (Studio, 27 Nov 01:27-01:35 UTC, place version 1409)
+- **The rotation sign is confirmed:** three bullet pops on a grey wall in Edit at Rotation 0 / +90 / -90 opened up / left
+  / right. `ref_frame.py` now turns cells the same way. The clean error number for the pop on that stage (design f0 vs
+  Studio, `mad.py`): 8.4-9.5 full, 6.2-7.3 after an 8x downsample, the same at all three rotations; with the old sign
+  the +90 one measured 36.6.
+- **The painted slash plays** (take A seen frozen): one opaque blue crescent with its ink line, riding with the camera
+  beside the blade. Its white core layer did not load in that frame ("Asset content representation is being
+  generated" in the console, hours after upload, though PreloadAsync said Success): the next capture checks it.
+- **The slash fired on 1 swing in 3 at Studio's 15 fps:** Arsenal fired `ownSlash` after 4 blade-tip samples inside
+  the clip's trail window, and kat_light1's window is 0.096 s (1-2 frames at 15 fps, ~3 at 30). Now an unfired swing
+  adds the tip on the first frame past the window (and the frame before it, when it has only one sample) and fires
+  with those.
+- **The cel dust** shows 0.13 s after a shot as a few small tan puffs; the pop at 35 ms reads as a hot star.
+- **The muzzle flash cannot be frozen at 15 fps:** its life is under one frame there (the v1391 capture stands).
+- **The critic on those captures:** slash 6 (about 8 expected with its core), burst 4, sparks 6, pop 5, "cel dust" 3.
+  What followed:
+  - **A slash layer's ink sat 10 px off its body:** every layer was its own emitter on a 0.2-stud part, and a part's
+    emitter spawns each particle at a random spot inside the part. AnimeFx's layers now emit from one Attachment
+    (a point), so body, core and ink register.
+  - **The burst is a painted 2D drawing** (`burst2d.py`, `burstp_a`): a white flash star, then five concave needles
+    with white streaks, a jagged white core, three ink wedges and two broken shock arcs, breaking into flying shards.
+    The Blender `burst_a` stays in the lab as "OLD BLENDER BURST".
+  - **Sparks are two painted emitters** (`spark2d.py` rim + core): a tinted shard with a white core at half its width.
+    AnimeFx feeds them one spark at a time, turning their Attachment and setting the same Speed and Lifetime on both
+    before each `Emit(1)`, so each core rides inside its rim. They shrink out, never fade.
+  - **The "dust smudges" were the web's 10 soft chip flakes,** not the cel puff: 4 while the pop is on. The pop's
+    "yellow glow" was the revolver tracer's end; the pop itself measured 9.5 on the clean stage.
+
+### In game, turn 4 (Studio, 27 Nov 02:40-02:47 UTC, place version 1423)
+- **Flipbook frame blending was the "soft, see-through" look.** `ParticleEmitter.FlipbookBlendFrames` is on by default
+  and cross-fades each frame into the next, so at any moment a cel effect showed two drawings half see-through: the
+  slash's "translucent" body, its "feathered" inner edge and its doubled ink. AnimeFx's layers turn it off (Fx's pools
+  already did). Seen by switching it off on a frozen frame: `studio_slash_blended_v1409code.jpg` vs
+  `studio_slash_crisp_v1423.jpg`.
+- **A hit's effects faded into the body they sat in** (pale and see-through on the dummy, solid against the sky):
+  the burst and sparks render up to 2 studs nearer the camera (`ZOffset`, which keeps their size on screen;
+  `AnimeFx.nearZ`, never past 0.6 studs from the lens). `studio_hit_near_v1423.jpg`, `studio_hit_v1423.jpg`.
+- **The low-frame-rate slash, second half:** a new swing of the same clip was noticed only when its first sample in the
+  trail window came earlier in the clip than the last swing's last sample; at 14 fps half the swings looked like the
+  old, already fired one. Arsenal now tracks the clip's time on every frame and starts a new swing when it goes back.
+  Measured with the client forced to 14.7 fps (a busy-wait in RenderStepped): 5 of 5 swings fired (2 of 5 before).
+- **Testing at a low frame rate:** Studio's client throttles to 15 fps when unfocused; to force it, burn ~58 ms in a
+  RenderStepped handler from the client command bar, and disconnect it after.
+
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
   flat strand end, a straight base on a shard), rectangular steps, perfect rings, evenly spaced parts (a trefoil reads
@@ -944,7 +1015,38 @@ will draw it, and scored by a fresh critic agent until it reaches 8; only then d
 - **A white additive blob vanishes on a bright sky:** keep a tinted rim outside the white.
 - **The peak needs mass:** the critic measured shard widths by erosion; thin is right only for the exit.
 
-- **Muzzle flash and smoke (gun side, in progress):** `mflash_bl.py` (2x2 drawings: FRONT a lobed core and 4-6 flame
-  petals, SIDE a pinched jet; no black, a deeper tint band on every rim; critic: front 8, side 7 after two rounds) and
-  `puff_bl.py` (a cel-shaded metaball puff; critic 5 in round 1: it read as clay and pearls, a union of circles with sharp
-  cusps and two flat tones is next). Round sheets: `docs/vfx/anime/`.
+- **The muzzle flash** (`mflash_bl.py` + `flash_sheet.py`; Fx `TEX.mflash/mflashN/mside/msideN`): four 2x2 drawings
+  a view, composited body + core into one picture (Fx shows one random cell per shot), warm as drawn and a grey copy a
+  skin's flash colour tints. FRONT: a soft-lobed hot core (two harmonics, the largest lobe 1.6x the smallest) with 4-6
+  flame petals, one or two dominant. SIDE: a jet pinched at the muzzle, widest at 40-50 %, its front a convex curve with
+  3-4 unequal triangular tongues and V notches (no straight wall), the white a hot bulb with two unequal off-axis prongs,
+  at most one flame petal. No black (it read as soot on a flash): a deeper band of the same tint on every rim. Critic:
+  front 6 → 8, side 5 → 6 → 7 → 8. `flash_sheet.py` measures the side drawings for Fx (`SIDE_X0/X1/TH` 0.068 / 0.889 /
+  0.292); the drawings fill their cells, so the front's size factor went 1.8 → 1.3. The Kenney tongues' ids are kept in
+  a comment by `TEX` for a one-line revert.
+- **The puff** (`puff2d.py`, 2D numpy at 4x supersample; Fx `MPUFF`): metaballs in Blender read as clay and pearls, so
+  the puff is drawn flat: hand-placed round bumps (a dominant one, a trailing one, a crown, an uneven bottom row), two
+  flat tones with the shadow low and on the outer left (23-27 % of the area), an occlusion rim, satellite mini-clusters
+  on f3-8; it splits into three contiguous little clouds that shrink to 40 % and are gone from f12 (a cloud that shrinks
+  away, not a fade). Light islands under 40 px are folded into the shadow (`drop_light_islands`). The light is drawn
+  from the upper right, so in Fx it turns at most 10° and never spins, and its frames are not blended. Critic: 5 (clay)
+  → 6 → 7 → 8.
+- **The bullet pop** (`pop2d.py` + `sheet.py comp`; Fx `POPS`, `popAt` in `Fx.impact`, not off dirt or cloth): one
+  PAINTED sheet (orange ff8719, a deep d75a0a edge, white, black), 16 frames over 0.32 s, live on f0-f3. The drawing's
+  up is the wall's normal and its hit point sits 0.4 of a half-width below the cell's centre (the spray only goes
+  outward): Fx rolls the particle to the normal's direction on screen and moves it along that up by 0.4 x its Size.
+  f0 a white splash crown of six concave needles (long ones ALONG the wall, none into it) with the deep edge; f1 the
+  same orange with a white streak up each needle's middle, two black shards in the gaps, four lines growing out of the
+  needles' tips; f2 the star at 35 % and the lines full, tails at the core; f3 the heads fly on as the lines shorten.
+  A mirrored sheet on every other hit, the roll +-20°, the size 75-100 % (a shotgun reads as a spray, not a stamp).
+  Critic 4 → 6 → 8: round 1 was a bird's foot / potted plant (short side spikes, a stub into the wall, a box core);
+  round 2 had hairline orange and floating line pieces. `Fx.POP_ON = false` turns it off.
+- **The error number (MAD)** after AnyVFX: `ref_frame.py` composites a sheet's cell on the background sampled from a
+  Studio capture, turned by the particle's Rotation; `mad.py` compares it with the capture (per channel 0-255, at full
+  size and after an 8x downsample). It measures what the game's drawing loses against the design.
+- **The library in the lab:** six of game-vfx's CC0 flipbooks (fire burst, big explosion, smoke burst, lightning, frost,
+  arcane) repacked and uploaded (`AnimeFx.LIB`, ids in `assets/vfx/anime.json`), playable in the lab next to ours. They
+  are painted-realistic, not anime: candidates for a rocket's blast or the taser's arc, not used by any weapon yet.
+- **The lab plays with the switch off:** `AnimeFx.LAB` is true while the lab is open (the effects check `ON or LAB`);
+  its speed buttons slow Fx too (`Fx.setTimeScale`), so the gun's flash and puff can be watched at 0.1x.
+- Round sheets: `docs/vfx/anime/`.

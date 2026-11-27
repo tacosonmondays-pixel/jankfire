@@ -4,6 +4,10 @@
 #   py -E -P sheet.py preview <frames dir> <name> <frames> <out.jpg> [tint hex] [layers]
 #       a strip of every frame composited the way Roblox will draw them: body tinted and added, core added, ink painted
 #       over, on mid-grey (top row) and near-black (bottom row)
+#   py -E -P sheet.py comp <frames dir> <name> <grid> <rim hex> <out.png> [edge hex]
+#       ONE painted sheet of the layers, bottom to top: an optional edge (in the edge colour), the body (in the rim
+#       colour), the black ink, the white core: for small effects Fx plays as a single painted particle (the bullet
+#       pop), coloured as drawn
 import os
 import sys
 
@@ -80,7 +84,33 @@ def preview(d, name, n, out, tint='7fd8ff', layers='body,core,ink'):
     print('preview', out, im.shape)
 
 
+def comp(d, name, grid, rim, out, edge=None):
+    rc = np.array([int(rim[i:i + 2], 16) / 255 for i in (0, 2, 4)], np.float32)
+    ec = np.array([int(edge[i:i + 2], 16) / 255 for i in (0, 2, 4)], np.float32) if edge else None
+    names = ('edge', 'body', 'ink', 'core') if edge else ('body', 'ink', 'core')
+    lay = {k: frames(d, name, k) for k in names}
+    g = int(grid)
+    h, w = lay['body'][0].shape[:2]
+    sheet = np.zeros((h * g, w * g, 4), np.uint8)
+    for i in range(min(g * g, len(lay['body']))):
+        rgb = np.zeros((h, w, 3), np.float32)
+        a = np.zeros((h, w), np.float32)
+        cols = {'edge': ec, 'body': rc, 'ink': np.zeros(3, np.float32), 'core': np.ones(3, np.float32)}
+        for k in names:
+            col = cols[k]
+            la = lay[k][i][..., 3].astype(np.float32) / 255
+            na = la + a * (1 - la)
+            rgb = np.where(na[..., None] > 1e-4, (col * la[..., None] + rgb * (a * (1 - la))[..., None]) / np.maximum(na, 1e-4)[..., None], 0)
+            a = na
+        cell = (np.concatenate([rgb, a[..., None]], -1) * 255 + 0.5).clip(0, 255).astype(np.uint8)
+        r, c = divmod(i, g)
+        sheet[r * h:(r + 1) * h, c * w:(c + 1) * w] = bleed(cell)
+    Image.fromarray(sheet, 'RGBA').save(out)
+    print('comp', out, sheet.shape)
+
+
 if __name__ == '__main__':
     cmd = sys.argv[1]
     if cmd == 'pack': pack(*sys.argv[2:7])
     elif cmd == 'preview': preview(*sys.argv[2:])
+    elif cmd == 'comp': comp(*sys.argv[2:8])

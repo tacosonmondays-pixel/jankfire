@@ -93,7 +93,7 @@ def lobes(ox, oy, R, k, ph, inset=0.0, n=48):
     pts = []
     for i in range(n):
         a = i / n * math.tau
-        r = R * (1 + 0.2 * math.sin(k * a + ph)) * (1 - inset)
+        r = R * (1 + 0.16 * math.sin(k * a + ph) + 0.12 * math.sin(a + ph * 1.7)) * (1 - inset)
         pts.append((ox + math.cos(a) * r, oy + math.sin(a) * r))
     return pts
 
@@ -140,39 +140,78 @@ def jet_outline(ox, oy, L, H, at, scale_w=1.0, s_end=1.0, n=48, et=1.15, eb=1.15
 
 
 def side(v):
+    # round 4: the jet's front is a CONVEX curve with triangular tongues growing out of it (V notches between them, no
+    # straight wall); the white is a hot bulb with curved edges, widest at the bloom, the unequal prongs leaving from it
     ox, oy = -1.0, 0.0
-    L = JET_L * rng.uniform(0.92, 1.05)
-    at = BLOOM_AT * rng.uniform(0.9, 1.1)
-    H = CELL * rng.uniform(0.3, 0.38)
+    L = JET_L * rng.uniform(0.94, 1.04)
+    H = CELL * rng.uniform(0.32, 0.38)
+    at = rng.uniform(0.4, 0.5)
+    et, eb = rng.uniform(0.35, 0.55), rng.uniform(0.35, 0.55)
+    xc = 0.7  # the corners of the front, as a share of L
     shapes = {'rim': [], 'body': [], 'core': []}
-    # the main body up to the split, then 2-3 tongues fanning a little (at most 5 degrees each) to their own points
-    et, eb = rng.uniform(0.8, 1.5), rng.uniform(0.8, 1.5)
-    bump = rng.choice((-1, 1)) * rng.uniform(0.12, 0.22)
-    bat = rng.uniform(0.45, 0.6)
-    shapes['rim'].append(jet_outline(ox, oy, L * 0.72, H, at / 0.72, et=et, eb=eb, bump=bump, bump_at=bat))
-    shapes['body'].append(jet_outline(ox, oy, L * 0.72, H, at / 0.72, scale_w=0.84, et=et, eb=eb, bump=bump, bump_at=bat))
-    ntong = rng.choice((2, 3))
-    for j in range(ntong):
-        off = (j - (ntong - 1) / 2) * H * 0.22
-        ang = math.radians(rng.uniform(-5, 5)) + off * 0.15
-        tip = rng.uniform(0.7, 0.9) * L
-        x0 = ox + L * 0.45
-        shapes['rim'].append(petal(x0, oy + off * 0.6, ang, tip - L * 0.45, H * 0.42))
-        shapes['body'].append(petal(x0, oy + off * 0.6, ang, tip - L * 0.45, H * 0.42, inset=0.18))
-    # 1-2 short side petals near the muzzle
-    sgns = rng.sample((-1, 1), 2)
-    for k in range(rng.choice((1, 2))):
-        sgn = sgns[k]
-        a = sgn * math.radians(rng.uniform(50, 70))
-        x0 = ox + L * rng.uniform(0.02, 0.08)
-        pl = L * rng.uniform(0.24, 0.3)
-        shapes['rim'].append(petal(x0, oy, a, pl, pl * 0.38))
-        shapes['body'].append(petal(x0, oy, a, pl, pl * 0.38, inset=0.2))
-    # the white: the bloom and the first 40 % of the length
-    # the white: the bloom and the first 40 %, ending in two prongs (no diamond)
-    shapes['core'].append(jet_outline(ox, oy, L * 0.36, H * 0.66, min(0.9, at / 0.36), et=1.6, eb=1.6))
-    for sgn in (-1, 1):
-        shapes['core'].append(petal(ox + L * 0.22, oy + sgn * H * 0.08, sgn * math.radians(rng.uniform(3, 8)), L * rng.uniform(0.22, 0.32), H * 0.22))
+
+    def half(s_, e):  # the jet's half height at s_ (pinched at the muzzle, the bloom at `at`, a slow taper)
+        if s_ < at: return H / 2 * (0.1 + 0.9 * math.sin(s_ / at * math.pi / 2) ** 1.4)
+        return H / 2 * ((1 - s_) / (1 - at)) ** e
+
+    n = rng.choice((3, 4))
+    lens = [1.0] + [rng.uniform(0.55, 0.8) for _ in range(n - 1)]
+    rng.shuffle(lens)
+    bulge = L * rng.uniform(0.08, 0.12)
+    ht, hb = half(xc, et), half(xc, eb)
+
+    def outline(scale_y, scale_x):
+        top, bot = [], []
+        for i in range(31):
+            s_ = xc * i / 30
+            x = ox + L * s_ * scale_x
+            top.append((x, oy + half(s_, et) * scale_y)); bot.append((x, oy - half(s_, eb) * scale_y))
+        # the front: from the top corner over a convex arc to the bottom corner, tongues out of it
+        front = []
+        xs = ox + L * xc * scale_x
+        for k in range(n + 1):
+            phi = math.pi / 2 - math.pi * k / n  # +90 .. -90 degrees: the notches, then the corners
+            hy = ht if phi > 0 else hb
+            nx, ny = xs + bulge * scale_x * math.cos(phi), oy + hy * scale_y * math.sin(phi)
+            if 0 < k < n:
+                # a notch, set back into the curve by 40-60 % of the neighbouring tongue's length
+                depth = L * 0.3 * min(lens[k - 1], lens[k]) * rng.uniform(0.4, 0.6) * 0.5
+                nx -= depth * scale_x
+            front.append((nx, ny))
+            if k < n:
+                # the tongue between this notch and the next: its tip out along the curve's normal, leaning forward
+                phm = math.pi / 2 - math.pi * (k + 0.5) / n
+                hy2 = ht if phm > 0 else hb
+                bx, by = xs + bulge * scale_x * math.cos(phm), oy + hy2 * scale_y * math.sin(phm)
+                dx, dy = math.cos(phm) * 0.6 + 1.0, math.sin(phm) * 0.45  # (the outer tongues at most about 20 degrees)
+                dl = math.hypot(dx, dy)
+                tl = L * 0.3 * lens[k] * (0.92 if scale_y < 1 else 1.0)
+                front.append((bx + dx / dl * tl * scale_x, by + dy / dl * tl * scale_y))
+        return top + front[1:-1] + bot[::-1]
+
+    shapes['rim'].append(outline(1.0, 1.0))
+    shapes['body'].append(outline(0.84, 0.965))
+    # at most one side petal, a real flame petal angled 45-60 degrees forward
+    if rng.random() < 0.75:
+        sgn = rng.choice((-1, 1))
+        a = sgn * math.radians(rng.uniform(45, 60))
+        pl = L * rng.uniform(0.2, 0.26)
+        x0 = ox + L * rng.uniform(0.06, 0.12)
+        shapes['rim'].append(petal(x0, oy, a, pl, pl * 0.42))
+        shapes['body'].append(petal(x0, oy, a, pl, pl * 0.42, inset=0.2))
+    # the white: a hot bulb following the outline at ~65 % of its height, widest at the bloom, rounding off at ~0.55,
+    # then two UNEQUAL prongs off the axis leaving from it
+    top, bot = [], []
+    s_end = at + 0.12
+    for i in range(41):
+        s_ = s_end * i / 40
+        k = 0.65 * (1 if s_ < at else math.sqrt(max(0.0, 1 - ((s_ - at) / (s_end - at)) ** 2)))
+        top.append((ox + L * s_, oy + half(s_, et) * k)); bot.append((ox + L * s_, oy - half(s_, eb) * k))
+    shapes['core'].append(top + bot[::-1])
+    off = H * rng.uniform(0.04, 0.08) * rng.choice((-1, 1))
+    long_l = L * rng.uniform(0.24, 0.3)
+    shapes['core'].append(petal(ox + L * (at + 0.02), oy + off, math.radians(rng.uniform(2, 6)) * (1 if off > 0 else -1), long_l, H * 0.26))
+    shapes['core'].append(petal(ox + L * at, oy - off * 0.7, -math.radians(rng.uniform(4, 9)) * (1 if off > 0 else -1), long_l / rng.uniform(1.3, 1.5), H * 0.22))
     return shapes
 
 
