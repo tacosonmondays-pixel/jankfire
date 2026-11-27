@@ -596,6 +596,7 @@ local function stepSweep(s: Sweep, dt: number): boolean
 	end
 	-- (round 3, the critic on v1454: "both edges kink ... a joined polyline", seams fanning at a tight curl: now no piece
 	-- turns more than about 8 degrees. A segment gets as many points as the sharper of the turns at its two ends needs)
+	local sIdx: { number } = {} -- (where each sample landed in the dense path)
 	local function turnAt(i: number): number
 		if i <= 1 or i >= ns then return 0 end
 		local e0, e1 = Pt[i] - Pt[i - 1], Pt[i + 1] - Pt[i]
@@ -603,7 +604,7 @@ local function stepSweep(s: Sweep, dt: number): boolean
 		return math.deg(math.acos(math.clamp(e0.Unit:Dot(e1.Unit), -1, 1)))
 	end
 	for i = 1, ns do
-		table.insert(Dm, Pm[i]); table.insert(Dt, Pt[i]); table.insert(Da, Pa[i])
+		table.insert(Dm, Pm[i]); table.insert(Dt, Pt[i]); table.insert(Da, Pa[i]); sIdx[i] = #Dt
 		if i < ns and #Dt < 96 then
 			local a0, a3 = math.max(i - 1, 1), math.min(i + 2, ns)
 			local sub = math.clamp(math.ceil(math.max(turnAt(i), turnAt(i + 1)) / 8) - 1, 0, 8)
@@ -631,17 +632,28 @@ local function stepSweep(s: Sweep, dt: number): boolean
 	end
 	local L, acc = 0, { 0 }
 	for i = 2, n do L += (Dt[i] - Dt[i - 1]).Magnitude; acc[i] = L end
+	-- (round 6, the critic on v1479: a third-person swing's bent lead-in still stood in the tail as "a 7 or an ice axe",
+	-- longer than any fixed hidden share. The ribbon shows only from the lead-in's last sharp bend: the last sample
+	-- where the tip turned over 45 degrees within three steps, in the first 60 % of the path; the crescent grows in
+	-- from there)
+	local a0 = 0
+	if L > 1e-4 then
+		for j = 2, ns - 1 do
+			local sum = 0
+			for k = math.max(2, j - 2), j do sum += turnAt(k) end
+			local dj = sIdx[j]
+			if sum > 45 and dj and acc[dj] and acc[dj] < 0.6 * L then a0 = acc[dj] end
+		end
+	end
 	-- (a stud's size in pixels at 1 stud away: the ribbon is never under 7 px across where the crescent is fullest)
 	local pxK = 2 * math.tan(math.rad(cam.FieldOfView) / 2) / math.max(cam.ViewportSize.Y, 1)
 	local C: { Vector3 }, Wd: { number }, U: { Vector3 }, Tr: { number } = {}, {}, {}, {}
 	for i = 1, n do
 		local k = math.clamp(Da[i] / SWEEP_LIFE, 0, 1)
-		local u = if L > 1e-4 then acc[i] / L else 1
+		local u = if L - a0 > 1e-4 then (acc[i] - a0) / (L - a0) else 1
 		-- a crescent along the swing: nothing at the tail, fullest at 70 %, closing to the point past the tip; it thins
 		-- a little more with age
-		-- (round 5: the oldest 12 % shows nothing, so a bent lead-in into the cut can't stand in the tail as an angular
-		-- bar, "a 7 or an ice axe")
-		local prof = if u < 0.12 then 0 elseif u < 0.7 then ((u - 0.12) / 0.58) ^ 1.25 else math.max(0, 1 - (u - 0.7) / 0.3) ^ 0.8
+		local prof = if u <= 0 then 0 elseif u < 0.7 then (u / 0.7) ^ 1.2 else math.max(0, 1 - (u - 0.7) / 0.3) ^ 0.8
 		local f = s.band * prof * (1 - 0.35 * k)
 		local span = Dm[i] - Dt[i]
 		local sl = span.Magnitude

@@ -1058,6 +1058,10 @@ of the blade". The crescent was a card facing the lens; a melee swing is now a S
 - **Round 5 (place version 1479):** that swing's bent lead-in still stood in the tail as an angular bar ("a 7 or an
   ice axe"). Tighter restarts (45/75 degrees) chopped the swing's own curve into a shard, so they went back to 60/100;
   instead the oldest 12 % of the ribbon shows nothing and the width grows in after it. `studio_sweep_tp_v1479.jpg`.
+- **Round 6 (place version 1487):** the lead-in was longer than any fixed share, so the ribbon now shows only from the
+  lead-in's last sharp bend (the last sample where the tip turned over 45 degrees within three steps, in the first 60 %
+  of the path) and the crescent grows in from there; nothing restarts. `studio_sweep_tp_v1487.jpg`,
+  `studio_sweep_fp_v1487.jpg`.
 
 ### Lessons (the critic loop)
 - **"Geometric" has a list of tells:** constant-radius arcs, symmetric widths, perpendicular cuts (a chord-cut head, a
