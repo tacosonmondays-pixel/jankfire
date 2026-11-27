@@ -57,6 +57,15 @@ do
 		if ok then Pro = P end
 	end
 end
+-- (the films' prewarm, client/CineKit.luau: everything the scene will draw or play, fetched in the lead-in)
+local CineKit: any = nil
+do
+	local m = script.Parent:FindFirstChild("CineKit")
+	if m then
+		local ok, K = pcall(require, m)
+		if ok then CineKit = K end
+	end
+end
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Finishers = require(Shared:WaitForChild("Finishers")) :: any
 
@@ -1449,6 +1458,50 @@ function Scene.unwarm(sid: string?)
 	end
 end
 
+-- (27 Nov, the owner: "Things pop in because it renders as the clip plays". Everything the scene uses - the set and
+-- its town with the onlookers' clothes, the clips, the cue and bed sounds - fetched in the lead-in with the set, not on
+-- the frame that first shows it. The set is far off every map: ZoneCull has nothing to keep)
+local function prewarmScene(sid: string, d: any, ex: any, stage: Instance): any
+	local sets: { Instance } = { stage }
+	local anims: { string } = {}
+	for _, clip in d.clips or {} do
+		local id = Finishers.SCENE_ANIMS[clip]
+		if id then table.insert(anims, "rbxassetid://" .. tostring(id)) end
+	end
+	local sounds: { string } = {}
+	local sndLib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+	local seen: { [string]: boolean } = {}
+	for _, q in ex.cues or {} do
+		local name = q[2]
+		if type(name) == "string" and not seen[name] then
+			seen[name] = true
+			if string.match(name, "^%d+$") then
+				table.insert(sounds, "rbxassetid://" .. name)
+			elseif sndLib then
+				local x = sndLib:FindFirstChild(name, true)
+				if x then table.insert(sets, x) end
+			end
+		end
+	end
+	for _, b in ex.audio or {} do if b.id then table.insert(sounds, "rbxassetid://" .. tostring(b.id)) end end
+	if CineKit and CineKit.prewarm then
+		local ok, wm = pcall(CineKit.prewarm, nil, { key = "FinisherScene_" .. sid, sets = sets, anims = anims, sounds = sounds, timeout = 20, keepFor = 1 })
+		if ok and wm then
+			pcall(wm.release)
+			if game:GetService("RunService"):IsStudio() then
+				workspace:SetAttribute("FinisherPrewarm", ("%s: %d assets, %.2f s%s"):format(sid, wm.assets, wm.waited, if wm.ok then "" else " (timed out)"))
+			end
+			return wm
+		end
+	end
+	-- (no CineKit: the clips and the sounds alone, as before)
+	local list = {}
+	for _, id in anims do local a = Instance.new("Animation"); a.AnimationId = id; table.insert(list, a) end
+	for _, id in sounds do local x = Instance.new("Sound"); x.SoundId = id; table.insert(list, x) end
+	pcall(function() ContentProvider:PreloadAsync(list) end)
+	return nil
+end
+
 -- Scene.warm(sceneId) -> boolean   builds that scene's set ahead (true: built, on its way, or already there)
 function Scene.warm(sid: string): boolean
 	if Pro and Pro.has(sid) then return Pro.warm(sid) end
@@ -1482,24 +1535,7 @@ function Scene.warm(sid: string): boolean
 		if game:GetService("RunService"):IsStudio() then
 			workspace:SetAttribute("FinisherWarm", ("%s %s ready: %d frames, %.1f s"):format(sid, tostring(key), frames, os.clock() - t0))
 		end
-		-- (the clips and the sounds fetched now, not on their frames)
-		local list = {}
-		for _, clip in d.clips or {} do
-			local id = Finishers.SCENE_ANIMS[clip]
-			if id then
-				local a = Instance.new("Animation")
-				a.AnimationId = "rbxassetid://" .. id
-				table.insert(list, a)
-			end
-		end
-		local function snd(id: string)
-			local x = Instance.new("Sound")
-			x.SoundId = "rbxassetid://" .. id
-			table.insert(list, x)
-		end
-		for _, q in ex.cues or {} do if string.match(q[2], "^%d+$") then snd(q[2]) end end
-		for _, b in ex.audio or {} do snd(b.id) end
-		pcall(function() ContentProvider:PreloadAsync(list) end)
+		prewarmScene(sid, d, ex, stage)
 	end)
 	return true
 end
@@ -1559,6 +1595,9 @@ function Scene.start(s: any, kind: string): any
 		sc.folder, sc.stage = folder, stage
 		sc.setParts, sc.town = buildSet(s.row.scene, d, ex, townKey, stage, nil)
 		sc.setParts = sc.setParts or {}
+		-- (not built ahead - a Studio preview, a scene no warning named: its assets fetched behind the film, never a
+		-- frozen frame in it)
+		task.spawn(prewarmScene, s.row.scene, d, ex, stage)
 	end
 	local c1 = os.clock()
 	-- (the scene's own light, as its video: the place's Lighting saved first and put back by Scene.stop)

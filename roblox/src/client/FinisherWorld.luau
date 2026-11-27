@@ -1295,4 +1295,40 @@ RunService.RenderStepped:Connect(function(dt: number)
 end)
 
 FW.TEX = TEX
+
+-- (27 Nov, the owner: "Things pop in because it renders as the clip plays". A world finisher has no lead of its own -
+-- it plays the frame the round is won - so everything it can use is fetched once, at load: the pack templates it
+-- spawns (their particle and beam pictures) and every sting it plays. Its pictures above are fetched the same way. No
+-- keep: it plays on the body you are looking at, under your own camera)
+local PACKS = { "WF_GoldFlash", "WF_SparkRing", "WF_Swirl", "WF_WindLines" }
+task.spawn(function()
+	local K = mod("CineKit")
+	if not (K and K.prewarm) then return end
+	local RS = game:GetService("ReplicatedStorage")
+	local sets: { Instance } = {}
+	local vfx = RS:WaitForChild("JankfireVfx", 30)
+	for _, n in PACKS do
+		local x = vfx and vfx:FindFirstChild(n, true)
+		if x then table.insert(sets, x) end
+	end
+	local lib = RS:WaitForChild("JankfireSounds", 30)
+	local seen: { [string]: boolean } = {}
+	for _, list in STING do
+		for _, q in list do
+			local name = q[2]
+			if type(name) == "string" and not seen[name] then
+				seen[name] = true
+				local x = lib and lib:FindFirstChild(name, true)
+				if x then table.insert(sets, x) end
+			end
+		end
+	end
+	local ok, wm = pcall(K.prewarm, nil, { key = "FinisherWorld", sets = sets, timeout = 30, keepFor = 1 })
+	if ok and wm then
+		pcall(wm.release)
+		if game:GetService("RunService"):IsStudio() then
+			workspace:SetAttribute("WorldFinisherPrewarm", ("%d assets, %.2f s%s"):format(wm.assets, wm.waited, if wm.ok then "" else " (timed out)"))
+		end
+	end
+end)
 return FW

@@ -33,6 +33,15 @@ do
 		if ok then Sfx = S end
 	end
 end
+-- (the films' prewarm, client/CineKit.luau: everything the scene will draw or play, fetched in the lead-in)
+local CineKit: any = nil
+do
+	local m = script.Parent:FindFirstChild("CineKit")
+	if m then
+		local ok, K = pcall(require, m)
+		if ok then CineKit = K end
+	end
+end
 
 -- the set's spot (FinisherScene's: far off every map, client-only parts): the floor under the killer's start
 local ORIGIN = CFrame.new(0, 600, -24000)
@@ -227,6 +236,53 @@ function Pro.unwarm(sid: string?)
 	end
 end
 
+-- (27 Nov, the owner: "Things pop in because it renders as the clip plays". Every mesh, picture, clip and sound the
+-- scene uses is fetched in the lead-in: the round before a match can end, when the server names the scenes that may
+-- come (Scene.warm). Not on the frame that first shows it. The set sits far off every map, so ZoneCull has nothing to
+-- keep; the bodies are the match's own avatars, already drawn)
+local function prewarmScene(sid: string, d: any, set: Instance?): any
+	local sets: { Instance } = {}
+	if set then table.insert(sets, set) end
+	local lib = ReplicatedStorage:FindFirstChild("JankfireFinisherSets")
+	local kit = lib and d.kit and lib:FindFirstChild(d.kit)
+	if kit then table.insert(sets, kit) end
+	local sndLib = ReplicatedStorage:FindFirstChild("JankfireSounds")
+	if sndLib then
+		local seen: { [string]: boolean } = {}
+		for _, q in d.cues or {} do
+			local name = q[2]
+			if type(name) == "string" and not seen[name] then
+				seen[name] = true
+				local x = sndLib:FindFirstChild(name, true)
+				if x then table.insert(sets, x) end
+			end
+		end
+	end
+	local anims: { string } = {}
+	for _, id in d.anims or {} do table.insert(anims, "rbxassetid://" .. tostring(id)) end
+	local sounds: { string } = {}
+	if d.bed and d.bed.id then table.insert(sounds, "rbxassetid://" .. tostring(d.bed.id)) end
+	if CineKit and CineKit.prewarm then
+		local ok, wm = pcall(CineKit.prewarm, nil, { key = "FinisherPro_" .. sid, sets = sets, anims = anims, sounds = sounds, timeout = 20, keepFor = 1 })
+		if ok and wm then
+			pcall(wm.release)
+			if RunService:IsStudio() then
+				workspace:SetAttribute("FinisherPrewarm", ("%s: %d assets, %.2f s%s"):format(sid, wm.assets, wm.waited, if wm.ok then "" else " (timed out)"))
+			end
+			return wm
+		end
+	end
+	-- (no CineKit: the clips alone, as before)
+	local list = {}
+	for _, id in anims do
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		table.insert(list, a)
+	end
+	pcall(function() ContentProvider:PreloadAsync(list) end)
+	return nil
+end
+
 function Pro.warm(sid: string): boolean
 	local d = dataOf(sid)
 	if not d or playing == sid then return false end
@@ -251,13 +307,7 @@ function Pro.warm(sid: string): boolean
 		if RunService:IsStudio() then
 			workspace:SetAttribute("FinisherWarm", ("%s pro ready: %d frames, %.1f s"):format(sid, frames, os.clock() - t0))
 		end
-		local list = {}
-		for _, id in d.anims or {} do
-			local a = Instance.new("Animation")
-			a.AnimationId = "rbxassetid://" .. id
-			table.insert(list, a)
-		end
-		pcall(function() ContentProvider:PreloadAsync(list) end)
+		prewarmScene(sid, d, set)
 	end)
 	return true
 end
@@ -426,6 +476,9 @@ function Pro.start(s: any, kind: string, sid: string): any
 		folder.Parent = workspace
 		sc.folder = folder
 		sc.set = buildSet(d, folder, nil)
+		-- (not built ahead - a Studio preview, a scene no warning named: its assets fetched behind the film, never a
+		-- frozen frame in it)
+		task.spawn(prewarmScene, sid, d, sc.set)
 	end
 	local c1 = os.clock()
 	applyLook(sc, d.look or {})

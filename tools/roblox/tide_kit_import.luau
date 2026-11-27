@@ -83,6 +83,8 @@ for mname, m in D do
 		c.Color = Color3.fromRGB(q[4][1], q[4][2], q[4][3])
 		c.Transparency = q[6]
 		c.Anchored = true; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.Massless = true
+		-- (27 Nov, films with no pop-in: the blade and the sheath at full detail - RenderFidelity can't change at run time)
+		if c:IsA("MeshPart") then c.RenderFidelity = Enum.RenderFidelity.Precise end
 		c.Parent = model
 	end
 	model.PrimaryPart = r

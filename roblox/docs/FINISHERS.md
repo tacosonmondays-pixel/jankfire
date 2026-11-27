@@ -198,6 +198,20 @@ clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as 
   ones the skins its players wear own. Each client builds those sets then, about 120 boxes or 40 town pieces a frame,
   parked at the scene's spot far off every map, and fetches their clips and sounds (`FinisherScene` `Scene.warm`).
   `Scene.start` takes the parked set as it stands. Going home drops an unused one (`Scene.unwarm`).
+- **Nothing pops in (27 Nov).** The owner: "Things pop in because it renders as the clip plays". The fix uses
+  `CineKit.prewarm`; see PERFORMANCE.md, "Films: nothing pops in".
+  - **Scenes.** As soon as a scene's set is built ahead, `prewarmScene` in `FinisherScene` (High Noon) and
+    `FinisherPro` (Tidecrest) preloads everything the scene draws or plays:
+    - the set and its town, including the onlookers' clothes, and Tidecrest's blade kit;
+    - the clips;
+    - the cue sounds from the library, and the music bed.
+    The sets stand far off every map, so ZoneCull has nothing to keep. A scene nobody warmed (a Studio preview)
+    runs the same preload behind the film, never as a frozen frame.
+  - **World finishers.** They have no lead: they play the frame a round is won. `FinisherClient` loads
+    `FinisherWorld` 4 s after joining instead of on the first one, and its load preloads its pictures, the four
+    `WF_` pack templates and every sting.
+  - **Mesh detail.** Every mesh in TideWaterfall, TidecrestKit and HighNoonTownA is `RenderFidelity` Precise, in Edit
+    and in their builders. A game script can't change it at run time.
 
 ### Selling and showing it
 

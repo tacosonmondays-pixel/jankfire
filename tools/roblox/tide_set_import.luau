@@ -52,6 +52,7 @@ for _, p in src:GetDescendants() do
 		local kind, hex = string.match(p.Name, "__(%a+)_(%x%x%x%x%x%x)$")
 		if kind then p.Color = Color3.fromHex(hex); p.Material = KIND[kind] or Enum.Material.SmoothPlastic end
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+		if p:IsA("MeshPart") then p.RenderFidelity = Enum.RenderFidelity.Precise end -- (27 Nov, films with no pop-in: every mesh at full detail - RenderFidelity can't be changed at run time)
 		p.CastShadow = not (string.match(p.Name, "^mountains") or string.match(p.Name, "^clouds") or string.match(p.Name, "^mistmounds"))
 		if kind == "mist" then p.Transparency = 0.62 end -- (the soft mounds of mist where the falls land)
 		if string.sub(p.Name, 1, 7) == "poolbed" then p.Color = Color3.fromRGB(14, 20, 32) end -- (round 4: dark under the pool)

@@ -28,6 +28,7 @@ local function import(id, name)
 			local kind, hex = string.match(p.Name, "__(%a+)_(%x%x%x%x%x%x)$")
 			if kind then p.Color = Color3.fromHex(hex); p.Material = MAT[kind] or Enum.Material.SmoothPlastic end
 			p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+			if p:IsA("MeshPart") then p.RenderFidelity = Enum.RenderFidelity.Precise end -- (27 Nov, films with no pop-in: every mesh at full detail - RenderFidelity can't be changed at run time)
 			if string.sub(p.Name, 1, 9) == "kitorigin" then origin = p end
 		end
 	end

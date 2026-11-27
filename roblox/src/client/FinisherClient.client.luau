@@ -35,6 +35,9 @@ local function world(): any
 	end
 	return if FW then FW else nil
 end
+-- (27 Nov, films with no pop-in: loaded a few seconds after joining, not on the first round won. Its pictures, pack
+-- templates and stings are fetched when it loads, so the first world finisher of a game has nothing left to fetch)
+task.delay(4, world)
 local worldOn: { Instance } = {}
 remote.OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" or msg.t ~= "finisher" then return end
