@@ -779,9 +779,10 @@ from `Roster.RETIRED` (a guarded push of Roster), then the shop-gui session's se
 
 **The owner's picks on the gallery (27 Nov, cda59f9; the owner's eye overrules the critics).** Ticked and back: Lava,
 Kintsugi, Marble, Moss and Wood Burl (Lava and Kintsugi Exotic again: they never left `Roster.EXOTIC`), with Seigaiha
-and Checkered Flag. Crossed out: Spreadsheet, retired again. Question marks: Bubblegum and Urushi Maki-e stay retired
-until the owner decides from a before/now sheet (notes folder `OWNER_bubblegum_urushi_27nov.jpg`). So 16 of the 35 are
-back and `Roster.RETIRED` holds 19. Checked on the new UVs from the gallery photos: the five have no motif sliced at a
+and Checkered Flag. Crossed out: Spreadsheet, retired again. Question marks: Bubblegum and Urushi Maki-e, shown to the
+owner on a before/now sheet (notes folder `OWNER_bubblegum_urushi_27nov.jpg`); the owner: "I like both urushi and
+bubblegum", so both came back as they look in game, no redraw (7ae9a34). So 18 of the 35 are back and `Roster.RETIRED`
+holds 17 (`Roster.wraps` 89). Checked on the new UVs from the gallery photos: the five have no motif sliced at a
 seam (crack networks, veins, noise and grain); at the 0.6 m tile Lava's cells are bigger than on the old render.
 Shop-gui installed the Roster with its sets in one Studio turn.
 
