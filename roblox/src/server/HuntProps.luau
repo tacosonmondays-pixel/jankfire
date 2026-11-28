@@ -217,13 +217,52 @@ local function props(pf: Instance, zone: BasePart?)
 	end
 end
 
+-- (owner, 27 Nov, playing it live: "Outside the new items aren't there it's just game passes for standard mode and coins
+-- for Robux") the terrace's three tables show HOUSE HUNT's own items, the round's pick-table pieces (the intro kit's hiT_
+-- models, as HuntItems lays them), each with its name and price; they're picked from the tables by the garage once a
+-- round starts. The shop stays in the menu
+local SHOW = { { "bandage", "medkit", "spray" }, { "bat", "beartrap" }, { "taser", "propgun" } } -- (west to east)
 local function tables(tf: Instance)
-	for _, t in tf:GetChildren() do
-		if not t:IsA("BasePart") then continue end
-		local tab = HC.TABLES[t:GetAttribute("Tab")]
-		if not tab then continue end
-		local pr = prompt(t, tab.label, 9)
-		pr:SetAttribute("ShopOpen", tab.open) -- (ShopClient opens the shop on that tab, on the client that pressed it)
+	local kit = game:GetService("ReplicatedStorage"):FindFirstChild(HC.INTRO and HC.INTRO.kit or "")
+	local P = HC.PICKS or {}
+	local byId: { [string]: any } = {}
+	for _, it in P.items or {} do byId[it.id] = it end
+	local list: { BasePart } = {}
+	for _, t in tf:GetChildren() do if t:IsA("BasePart") then table.insert(list, t) end end
+	table.sort(list, function(a, b) return a.Position.X < b.Position.X end)
+	for i, t in list do
+		local ids = SHOW[i] or {}
+		-- (HuntBuild's prompt part stands 4 up and 3.4 out in front of the table's middle; the top is 5.2 up)
+		local top = t.Position - Vector3.new(0, 4.0, 3.4) + Vector3.new(0, 5.22, 0)
+		local T = CFrame.new(top) * CFrame.Angles(0, math.pi, 0) -- (as the round's tables lay them, facing the same way)
+		for k, id in ids do
+			local it = byId[id]
+			if not it then continue end
+			local x = (k - (#ids + 1) / 2) * (if #ids >= 3 then 3.0 else 4.0)
+			local at = T * CFrame.new(x, 0, 0) * CFrame.Angles(0, math.rad(it.yaw or 0), 0)
+			local src = kit and kit:FindFirstChild("hiT_" .. id)
+			if src then
+				local sc = (P.itemScale or 1.6) * (it.scale or 1)
+				local m = src:Clone() :: Model
+				m.Name = "Show_" .. id
+				for _, d in m:GetDescendants() do
+					if d:IsA("BasePart") then
+						local lc = d.CFrame
+						d.Size *= sc
+						d.CFrame = at * (CFrame.new(lc.Position * sc) * lc.Rotation)
+						d.Anchored = true; d.CanCollide = false; d.CanTouch = false
+					end
+				end
+				m.Parent = tf
+			end
+			local pt = Instance.new("Part")
+			pt.Name = "Show_" .. id .. "_Prompt"; pt.Anchored = true; pt.CanCollide = false; pt.CanQuery = false; pt.CanTouch = false
+			pt.Transparency = 1; pt.Size = Vector3.new(2.4, 2.4, 2.4); pt.CFrame = at * CFrame.new(0, 1.2, 0)
+			pt.Parent = tf
+			local pr = prompt(pt, "PICKED AT A ROUND'S START", 8)
+			pr.ObjectText = it.name .. (if (it.price or 0) > 0 then ("  $%d"):format(it.price) else "  FREE")
+			pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton
+		end
 	end
 end
 

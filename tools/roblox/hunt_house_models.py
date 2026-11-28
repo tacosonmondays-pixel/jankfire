@@ -126,6 +126,10 @@ def floors():
         rects = [(x0, z0, x1, z1)]
         if r['id'] == 'gallery': rects = subtract(rects, L.VOID)
         slab_rects(rects, y - 0.4, y, 'hh_floor_' + r['lv'], FLOORCOL[r['floor']])
+    # (owner, 27 Nov: "part of the floor... it's not closed and you can see the void") the back passage opens onto the back
+    # hall with no wall between: the stud between their slabs (x -3.5..3.5, z -13..-12) had no floor. The passage's oak
+    # runs on over it (hunt_house_finish_check.py sweeps the kit's floor for any others)
+    slab_rects([(-3.5, -13.0, 3.5, -12.0)], -0.4, 0.0, 'hh_floor_G', FLOORCOL['oak'])
     # thresholds through the walls (the floor's own wood inside, stone at the outside doors)
     for (x0, y0, z0, x1, y1, z1, kind) in L.OPENS:
         if kind not in DOORISH or kind == 'rollup': continue
@@ -173,16 +177,72 @@ def ceilings():
     K.B('hh_trim', TRIM, 3.4, 11.6, 31.0, 12.0, 13.0, 31.6, bev=0.12)
     K.B('hh_trim', TRIM, 3.4, 11.6, 17.8, 4.0, 13.0, 31.6, bev=0.12)
 
+# (owner, 27 Nov, playing it live: "indoor skirting that just ends, I think at one part of the house it's even floating")
+# a run is laid only where a wall stands right behind it (the passage's open mouths had boards across bare floor), its
+# cuts are this storey's own openings only (an upper room's runs were cut over every ground-floor window below), and an
+# end that meets neither a doorway nor a wall across turns the outside corner (so the next run closes on it)
+def _solid_at(x, y, z):
+    for (x0, y0, z0, x1, y1, z1, m) in L.SOLID:
+        if m == 'glass': continue
+        if x0 <= x <= x1 and y0 <= y <= y1 and z0 <= z <= z1: return True
+    return False
+
+def _pt(ax, a, line, y):
+    return (a, y, line) if ax == 'x' else (line, y, a)
+
+def backed(ax, line, inward, y, s0, s1, step=0.25):
+    """the parts of s0..s1 (on the room's face `line`) with a wall right behind them, ends found to 0.01"""
+    def ok(u): return _solid_at(*_pt(ax, u, line - inward * 0.4, y + 0.4))
+    def edge(a, b):                                  # ok(a) != ok(b): the change between them
+        fa = ok(a)
+        for _ in range(8):
+            m = (a + b) / 2
+            if ok(m) == fa: a = m
+            else: b = m
+        return (a + b) / 2
+    out, cur, prev, prevok = [], None, None, None
+    u = s0
+    while True:
+        o = ok(u)
+        if prev is None:
+            if o: cur = s0
+        elif o != prevok:
+            e = edge(prev, u)
+            if o: cur = e
+            else: out.append((cur, e)); cur = None
+        prev, prevok = u, o
+        if u >= s1: break
+        u = min(s1, u + step)
+    if cur is not None: out.append((cur, s1))
+    return [(a, b) for (a, b) in out if b - a > 0.3]
+
+def corner_out(ax, line, inward, y, end, out, holes, thick):
+    """how far a run's end goes on: 0 at a doorway/window edge or a wall across it, else the board's thickness (an
+    outside corner, closed by the run round it)"""
+    for (h0, h1) in holes:
+        if abs((h0 if out > 0 else h1) - end) < 0.3: return 0.0
+    if _solid_at(*_pt(ax, end + out * 0.15, line + inward * 0.15, y + 0.4)): return 0.0
+    return thick
+
+def storey_holes(ax, line, inward, y):
+    return [(h0, h1) for (h0, h1, hy0, hy1, k) in openings_on(ax, line - inward * 0.6, y, 1.4) if abs(hy0 - y) <= 0.5]
+
 def skirting():
     """skirting boards round every room, cut at its doorways; the bathrooms' tiled wainscot"""
     for r in L.ROOMS:
         x0, z0, x1, z1 = r['r']
         y = lv_y(r['lv']) if r['id'] != 'garage' else L.PATIO
         if r['id'] == 'garage': continue
+        if r['id'] == 'passage': z0 = -13.0       # (its mouth onto the back hall, the filler floor: the side walls' ends too)
         edges = (('x', z0, x0, x1, +1), ('x', z1, x0, x1, -1), ('z', x0, z0, z1, +1), ('z', x1, z0, z1, -1))
         for (ax, line, a0, a1, inward) in edges:
-            holes = [(h0, h1) for (h0, h1, hy0, hy1, k) in openings_on(ax, line - inward * 0.6, y, 1.4) if hy0 <= y + 0.5]
-            for (s0, s1) in run_minus(a0, a1, holes):
+            holes = storey_holes(ax, line, inward, y)
+            runs = []
+            for (r0, r1) in run_minus(a0, a1, holes):
+                for (b0, b1) in backed(ax, line, inward, y, r0, r1):
+                    runs.append((b0 - corner_out(ax, line, inward, y, b0, -1, holes, 0.3),
+                                 b1 + corner_out(ax, line, inward, y, b1, +1, holes, 0.3)))
+            for (s0, s1) in runs:
                 if ax == 'x':
                     zz0, zz1 = (line, line + 0.3) if inward > 0 else (line - 0.3, line)
                     K.B('hh_trim', TRIM, s0, y, zz0, s1, y + 0.8, zz1, bev=0.1, segs=1)
@@ -203,10 +263,11 @@ def skirting():
         x0, z0, x1, z1 = r['r']
         y = lv_y(r['lv'])
         for (ax, line, a0, a1, inward) in (('x', z0, x0, x1, +1), ('x', z1, x0, x1, -1), ('z', x0, z0, z1, +1), ('z', x1, z0, z1, -1)):
-            holes = [(h0, h1) for (h0, h1, hy0, hy1, k) in openings_on(ax, line - inward * 0.6, y, 1.4) if hy0 <= y + 0.5]
+            holes = storey_holes(ax, line, inward, y)
             if r['id'] == 'entry' and ax == 'z' and inward < 0: holes.append((17.0, 36.5))       # (the stair's side)
             if r['id'] == 'gallery': holes.append((17.0, 31.5) if ax == 'z' else (-99, -98))
-            for (s0, s1) in run_minus(a0, a1, holes):
+            wruns = [bb for (r0, r1) in run_minus(a0, a1, holes) for bb in backed(ax, line, inward, y, r0, r1)]
+            for (s0, s1) in wruns:
                 def bx(u0, v0, w0, u1, v1, w1, col, bev=0.06):
                     if ax == 'x': K.B('hh_trim', col, u0, v0, w0, u1, v1, w1, bev=bev, segs=1)
                     else: K.B('hh_trim', col, w0, v0, u0, w1, v1, u1, bev=bev, segs=1)

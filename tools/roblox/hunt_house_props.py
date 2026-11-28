@@ -438,7 +438,11 @@ def bins(M):
 
 # ---------------------------------------------------------------- the patio and the garden
 def storetable(M, tab='vip'):
-    acc = TABLE_ACCENT.get(tab, CREAM)
+    # (owner, 27 Nov: "Outside the new items aren't there it's just game passes for standard mode and coins for Robux")
+    # plain tables now: HOUSE HUNT's own items stand on them (HuntProps.tables, the intro kit's hiT_ pieces); the shop's
+    # crown, coins and case are gone (the shop stays in the menu)
+    acc = '8a6f50'
+    tab = 'items'
     B(OAK, -5, 4.6, -2.5, 5, 5.2, 2.5, M, bev=0.2)
     for x in (-4.4, 4.4): B(OAK, x - 0.35, 0, -2.0, x + 0.35, 4.6, 2.0, M, bev=0.1)
     B(OAK, -4.9, 1.2, 2.2, 4.9, 4.6, 2.45, M, bev=0.08)                                # the skirt
@@ -454,7 +458,7 @@ def storetable(M, tab='vip'):
     elif tab == 'coins':
         for (x, z, n) in ((-1.6, 0, 5), (0.4, -0.6, 3), (1.8, 0.6, 7)):
             for i in range(n): C('c7a64e', x, 5.2 + i * 0.32, z, 0.75, 0.3, M, segs=16, bev=0.08)
-    else:
+    elif tab == 'cases':
         B('8a6f50', -1.8, 5.2, -1.4, 1.8, 7.8, 1.4, M, bev=0.3)
         B('5f6468', -1.9, 6.3, -1.5, 1.9, 6.7, 1.5, M, bev=0.1)
         B(acc, -0.4, 6.0, 1.35, 0.4, 7.0, 1.55, M, bev=0.1)
